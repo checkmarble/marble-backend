@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  marble-backend:
+    container_name: marble-backend
+    build: .
+    environment:
+      PORT: 8080
+      PG_HOSTNAME: db
+      PG_PORT: 5432
+      PG_USER: marble
+      PG_PASSWORD: marble
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    container_name: postgres
+    image: postgres
+    restart: always
+#    user: postgres
+    environment:
+      POSTGRES_USER: marble
+      POSTGRES_PASSWORD: marble
+      POSTGRES_DB: marble
+      PGDATA: /data/postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-db:/data/postgres
+#      - ./sql:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marble"]
+      interval: 2s
+      timeout: 1s
+      retries: 5
+
+
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: root
+    ports:
+      - "5050:80"
+
+volumes:
+  postgres-db:
+    driver: local
