@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"marble/marble-backend/app"
+
 	"github.com/jackc/pgx/v5"
-	"gitlab.com/marble5/marble-backend-are-poc/app"
 )
 
 func (r *PGRepository) GetDecision(orgID string, decisionID string) (decision app.Decision, err error) {

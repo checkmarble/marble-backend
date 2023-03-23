@@ -1,11 +1,11 @@
-FROM golang:1.20.1-alpine as build
+FROM golang:1.20 as build
 
 WORKDIR /go/src/app
 COPY . .
 
-RUN go mod download
+RUN go get
 
-RUN CGO_ENABLED=0 go build -o /go/bin/app -ldflags="-X 'main.version=`git describe --tags --abbrev=0`'"
+RUN CGO_ENABLED=0 go build -o /go/bin/app -ldflags="-X 'main.version=`git rev-parse --short HEAD`'"
 
 FROM gcr.io/distroless/static
 

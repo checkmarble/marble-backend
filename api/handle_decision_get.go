@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"net/http"
 
+	"marble/marble-backend/app"
+
 	"github.com/go-chi/chi/v5"
-	"gitlab.com/marble5/marble-backend-are-poc/app"
 )
 
 func (a *API) handleDecisionGet() http.HandlerFunc {

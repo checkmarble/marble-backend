@@ -5,9 +5,10 @@ import (
 	"net/http"
 	"time"
 
+	"marble/marble-backend/app"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"gitlab.com/marble5/marble-backend-are-poc/app"
 )
 
 type API struct {

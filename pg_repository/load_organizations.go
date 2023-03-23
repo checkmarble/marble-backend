@@ -4,8 +4,9 @@ import (
 	"context"
 	"log"
 
+	"marble/marble-backend/app"
+
 	"github.com/jackc/pgx/v5"
-	"gitlab.com/marble5/marble-backend-are-poc/app"
 )
 
 func (r *PGRepository) LoadOrganizations() {

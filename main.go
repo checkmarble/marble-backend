@@ -10,13 +10,13 @@ import (
 	"syscall"
 	"time"
 
-	"gitlab.com/marble5/marble-backend-are-poc/api"
-	"gitlab.com/marble5/marble-backend-are-poc/app"
-	"gitlab.com/marble5/marble-backend-are-poc/pg_repository"
+	"marble/marble-backend/api"
+	"marble/marble-backend/app"
+	"marble/marble-backend/pg_repository"
 )
 
 var version = "local-dev"
-var appName = "marble-backend-are-poc"
+var appName = "marble/marble-backend"
 
 // embed migrations sql folder
 //

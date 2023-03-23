@@ -8,9 +8,10 @@ import (
 	"log"
 	"os"
 
+	"marble/marble-backend/app"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pressly/goose/v3"
-	"gitlab.com/marble5/marble-backend-are-poc/app"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )

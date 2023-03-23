@@ -1,6 +1,6 @@
 package pg_repository
 
-import "gitlab.com/marble5/marble-backend-are-poc/app"
+import "marble/marble-backend/app"
 
 func (r *PGRepository) FillOrgWithTestData(orgID string) {
 
