@@ -3,7 +3,7 @@ package pg_repository
 import (
 	"context"
 
-	"gitlab.com/marble5/marble-backend-are-poc/app"
+	"marble/marble-backend/app"
 )
 
 func (r *PGRepository) StoreDecision(orgID string, decision app.Decision) (id string, err error) {
