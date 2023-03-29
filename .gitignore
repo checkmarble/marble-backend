@@ -1,0 +1,7 @@
+# ignore .last_id file, used to store the last id of the decision stored when calling curl
+.last_id
+
+# output folder, used to build the app outside of docker if needed
+/output
+
+.DS_Store

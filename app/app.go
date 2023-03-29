@@ -18,6 +18,9 @@ type RepositoryInterface interface {
 	// Decisions
 	StoreDecision(orgID string, decision Decision) (id string, err error)
 	GetDecision(orgID string, decisionID string) (Decision, error)
+
+	// Ingestion
+	IngestObject(orgID string, ingestPayload IngestPayload) (err error)
 }
 
 func New(r RepositoryInterface) (*App, error) {

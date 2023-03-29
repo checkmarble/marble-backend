@@ -10,6 +10,7 @@ const (
 	Int
 	Float
 	String
+	Timestamp
 )
 
 func (d DataType) String() string {
@@ -22,6 +23,8 @@ func (d DataType) String() string {
 		return "Float"
 	case String:
 		return "String"
+	case Timestamp:
+		return "Timestamp"
 	}
 	return "unknown"
 }

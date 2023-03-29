@@ -110,6 +110,17 @@ CREATE TABLE decision_rules(
 	  REFERENCES decisions(id)
 );
 
+CREATE TABLE transactions(
+  id uuid DEFAULT uuid_generate_v4(),
+  object_id VARCHAR NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  value double precision,
+  title VARCHAR,
+  description VARCHAR,
+
+  PRIMARY KEY(id)
+)
+
 -- +goose StatementEnd
 
 -- +goose Down

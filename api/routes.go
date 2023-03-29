@@ -24,6 +24,14 @@ func (a *API) routes() {
 
 	})
 
+	a.router.Route("/ingestion", func(r chi.Router) {
+
+		// use authentication middleware
+		r.Use(a.authCtx)
+		r.Post("/{object_type}", a.handleIngestion())
+
+	})
+
 }
 
 func (a *API) displayRoutes() {

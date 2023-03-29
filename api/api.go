@@ -24,6 +24,7 @@ type AppInterface interface {
 	PayloadFromTriggerObject(organizationID string, triggerObject map[string]any) (app.Payload, error)
 	CreateDecision(organizationID string, scenarioID string, payload app.Payload) (app.Decision, error)
 	GetDecision(organizationID string, requestedDecisionID string) (app.Decision, error)
+	IngestObject(orgID string, ingestPayload app.IngestPayload) (err error)
 }
 
 func New(port string, a AppInterface) (*http.Server, error) {

@@ -34,6 +34,19 @@ func (r *PGRepository) FillOrgWithTestData(orgID string) {
 					},
 				},
 			},
+			"transactions": {
+				Fields: map[string]app.Field{
+					"id": {DataType: app.String},
+					"object_id": {
+						DataType: app.String,
+					},
+					"updated_at":  {DataType: app.Timestamp},
+					"value":       {DataType: app.Float},
+					"title":       {DataType: app.String},
+					"description": {DataType: app.String},
+				},
+				LinksToSingle: map[string]app.LinkToSingle{},
+			},
 			"user": {
 				Fields: map[string]app.Field{
 					"id": {
@@ -57,31 +70,31 @@ func (r *PGRepository) FillOrgWithTestData(orgID string) {
 	// Basic logical
 	rules := []app.Rule{
 		{
-			RootNode:      app.And{app.True{}, app.True{}},
+			RootNode:      app.And{Left: app.True{}, Right: app.True{}},
 			ScoreModifier: 2,
 			Name:          "Rule 1 Name",
 			Description:   "Rule 1 Desc",
 		},
 		{
-			RootNode:      app.And{app.True{}, app.False{}},
+			RootNode:      app.And{Left: app.True{}, Right: app.False{}},
 			ScoreModifier: 2,
 			Name:          "Rule 2 Name",
 			Description:   "Rule 2 Desc",
 		},
 		{
-			RootNode:      app.And{app.True{}, app.And{app.True{}, app.Eq{app.IntValue{5}, app.IntValue{5}}}},
+			RootNode:      app.And{Left: app.True{}, Right: app.And{Left: app.True{}, Right: app.Eq{Left: app.IntValue{Value: 5}, Right: app.IntValue{Value: 5}}}},
 			ScoreModifier: 2,
 			Name:          "Rule 3 Name",
 			Description:   "Rule 3 Desc",
 		},
 		{
-			RootNode:      app.And{app.True{}, app.And{app.True{}, app.Eq{app.IntValue{6}, app.IntValue{5}}}},
+			RootNode:      app.And{Left: app.True{}, Right: app.And{Left: app.True{}, Right: app.Eq{Left: app.IntValue{Value: 6}, Right: app.IntValue{Value: 5}}}},
 			ScoreModifier: 2,
 			Name:          "Rule 4 Name",
 			Description:   "Rule 4 Desc",
 		},
 		{
-			RootNode:      app.And{app.True{}, app.And{app.True{}, app.Eq{app.FloatValue{5}, app.IntValue{5}}}},
+			RootNode:      app.And{Left: app.True{}, Right: app.And{Left: app.True{}, Right: app.Eq{Left: app.FloatValue{Value: 5}, Right: app.IntValue{Value: 5}}}},
 			ScoreModifier: 2,
 			Name:          "Rule 5 Name",
 			Description:   "Rule 5 Desc",
