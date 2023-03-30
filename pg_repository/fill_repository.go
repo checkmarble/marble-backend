@@ -144,4 +144,7 @@ func (r *PGRepository) FillOrgWithTestData(orgID string) {
 
 	r.organizations[orgID].Scenarios = s
 	r.organizations[orgID].DataModel = dm
+
+	// Ignore error, for duplicate insert
+	r.PostScenario(orgID, s["3a6cabee-a565-42b2-af40-5295386c8269"])
 }

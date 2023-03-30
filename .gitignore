@@ -31,3 +31,9 @@ go.work
 
 # asdf versionning tool
 .tool-versions
+
+# env
+.env
+
+# vscode
+.vscode/settings.json
