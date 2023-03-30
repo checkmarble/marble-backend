@@ -1,0 +1,8 @@
+#used as a convenience file when using curl commands
+.last_id
+
+# used by go buil
+/output
+
+# MacOS thumbnails
+.DS_Store

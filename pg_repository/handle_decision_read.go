@@ -45,7 +45,7 @@ func (r *PGRepository) GetDecision(orgID string, decisionID string) (decision ap
 	var d_scenario_id string
 	var d_scenario_name string
 	var d_scenario_description string
-	var d_scenario_version string
+	var d_scenario_version int
 	var d_score int
 	var d_error_code int
 
@@ -70,12 +70,10 @@ func (r *PGRepository) GetDecision(orgID string, decisionID string) (decision ap
 			d.ID = d_id
 			d.Created_at = d_created_at
 			d.Outcome = app.OutcomeFrom(d_outcome)
-			d.Scenario = app.Scenario{
-				ID:          d_scenario_id,
-				Name:        d_scenario_name,
-				Description: d_scenario_description,
-				Version:     d_scenario_version,
-			}
+			d.ScenarioID = d_scenario_id
+			d.ScenarioName = d_scenario_name
+			d.ScenarioDescription = d_scenario_description
+			d.ScenarioVersion = d_scenario_version
 			d.Score = d_score
 			d.RuleExecutions = make([]app.RuleExecution, 0)
 			d.DecisionError = app.DecisionError(d_error_code)
@@ -101,7 +99,7 @@ func (r *PGRepository) GetDecision(orgID string, decisionID string) (decision ap
 	}
 
 	if err != nil {
-		return app.Decision{}, fmt.Errorf("Error getting decision : %w\n", err)
+		return app.Decision{}, fmt.Errorf("error getting decision : %w", err)
 	}
 
 	return d, nil

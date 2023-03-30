@@ -5,11 +5,27 @@ import (
 	"fmt"
 	"log"
 	"runtime/debug"
+	"time"
 )
 
 ///////////////////////////////
 // Scenario
 ///////////////////////////////
+
+// type Scenario struct {
+// 	ID string
+
+// 	Name        string
+// 	Description string
+
+// 	Version string
+
+// 	TriggerCondition    Node   // A trigger condition is a formula tree
+// 	Rules               []Rule // Rules have a formula + score + metadata
+// 	TriggerObjectType   string
+// 	OutcomeApproveScore int
+// 	OutcomeRejectScore  int
+// }
 
 type Scenario struct {
 	ID string
@@ -17,13 +33,28 @@ type Scenario struct {
 	Name        string
 	Description string
 
-	Version string
+	TriggerObjectType string
 
-	TriggerCondition    Node   // A trigger condition is a formula tree
-	Rules               []Rule // Rules have a formula + score + metadata
-	TriggerObjectType   string
-	OutcomeApproveScore int
-	OutcomeRejectScore  int
+	CreatedAt   time.Time
+	LiveVersion *ScenarioIteration
+}
+
+type ScenarioIteration struct {
+	ID         string
+	ScenarioID string
+	Version    int
+
+	CreatedAt time.Time
+	UpdatedAt time.Time
+
+	Body ScenarioIterationBody
+}
+
+type ScenarioIterationBody struct {
+	TriggerCondition     Node
+	Rules                []Rule
+	ScoreReviewThreshold int
+	ScoreRejectThreshold int
 }
 
 ///////////////////////////////
@@ -31,16 +62,20 @@ type Scenario struct {
 ///////////////////////////////
 
 type ScenarioExecution struct {
-	Scenario       Scenario
-	RuleExecutions []RuleExecution
-	Score          int
-	Outcome        Outcome
+	ScenarioID          string
+	ScenarioName        string
+	ScenarioDescription string
+	ScenarioVersion     int
+	RuleExecutions      []RuleExecution
+	Score               int
+	Outcome             Outcome
 }
 
 var (
 	ErrPanicInScenarioEvalution                         = errors.New("panic during scenario evaluation")
 	ErrScenarioTriggerTypeAndTiggerObjectTypeMismatch   = errors.New("scenario's trigger_type and provided trigger_object type are different")
 	ErrScenarioTriggerConditionAndTriggerObjectMismatch = errors.New("trigger_object does not match the scenario's trigger conditions")
+	ErrScenarioHasNoLiveVersion                         = errors.New("scenario has no live version")
 )
 
 func (s Scenario) Eval(p Payload) (se ScenarioExecution, err error) {
@@ -63,13 +98,18 @@ func (s Scenario) Eval(p Payload) (se ScenarioExecution, err error) {
 
 	log.Printf("Evaluating scenario %s", s.ID)
 
+	// If the scenario has no live version, don't try to Eval() it, return early
+	if s.LiveVersion == nil {
+		return ScenarioExecution{}, ErrScenarioHasNoLiveVersion
+	}
+
 	// Check the scenario & trigger_object's types
 	if s.TriggerObjectType != p.TableName {
-		return ScenarioExecution{}, ErrScenarioTriggerConditionAndTriggerObjectMismatch
+		return ScenarioExecution{}, ErrScenarioTriggerTypeAndTiggerObjectTypeMismatch
 	}
 
 	// Evaluate the trigger
-	triggerPassed, ok := s.TriggerCondition.Eval(p).(bool)
+	triggerPassed, ok := s.LiveVersion.Body.TriggerCondition.Eval(p).(bool)
 	if !ok {
 		return ScenarioExecution{}, fmt.Errorf("unable to evaluate trigger condition")
 	}
@@ -81,7 +121,7 @@ func (s Scenario) Eval(p Payload) (se ScenarioExecution, err error) {
 	// Evaluate all rules
 	score := 0
 	ruleExecutions := make([]RuleExecution, 0)
-	for _, rule := range s.Rules {
+	for _, rule := range s.LiveVersion.Body.Rules {
 
 		// Evaluate single rule
 		ruleExecution := rule.Eval(p)
@@ -98,25 +138,28 @@ func (s Scenario) Eval(p Payload) (se ScenarioExecution, err error) {
 	// Compute outcome from score
 	o := None
 
-	if score < s.OutcomeApproveScore {
+	if score < s.LiveVersion.Body.ScoreReviewThreshold {
 		o = Approve
 	}
-	if score >= s.OutcomeApproveScore && score < s.OutcomeRejectScore {
+	if score >= s.LiveVersion.Body.ScoreReviewThreshold && score < s.LiveVersion.Body.ScoreRejectThreshold {
 		o = Review
 	}
-	if score >= s.OutcomeRejectScore {
-		o = Approve
+	if score > s.LiveVersion.Body.ScoreRejectThreshold {
+		o = Reject
 	}
 
 	// Build ScenarioExecution as result
 	se = ScenarioExecution{
-		Scenario:       s,
-		RuleExecutions: ruleExecutions,
-		Score:          score,
-		Outcome:        o,
+		ScenarioID:          s.ID,
+		ScenarioName:        s.Name,
+		ScenarioDescription: s.Description,
+		ScenarioVersion:     s.LiveVersion.Version,
+		RuleExecutions:      ruleExecutions,
+		Score:               score,
+		Outcome:             o,
 	}
 
-	log.Printf("scenario %s (A:%v R:%v), score = %v, outcome = %s", s.ID, s.OutcomeApproveScore, s.OutcomeRejectScore, score, o.String())
+	log.Printf("scenario %s (Rev:%v Rej:%v), score = %v, outcome = %s", s.ID, s.LiveVersion.Body.ScoreReviewThreshold, s.LiveVersion.Body.ScoreRejectThreshold, score, o.String())
 
 	return se, nil
 }

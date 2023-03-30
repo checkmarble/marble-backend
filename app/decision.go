@@ -72,12 +72,17 @@ func (d DecisionError) String() string {
 ///////////////////////////////
 
 type Decision struct {
-	ID             string
-	Created_at     time.Time
-	Payload        Payload
-	Outcome        Outcome
-	Scenario       Scenario
-	RuleExecutions []RuleExecution
-	Score          int
-	DecisionError  DecisionError
+	ID         string
+	Created_at time.Time
+	Payload    Payload
+
+	Outcome             Outcome
+	ScenarioID          string
+	ScenarioName        string
+	ScenarioDescription string
+	ScenarioVersion     int
+	RuleExecutions      []RuleExecution
+	Score               int
+
+	DecisionError DecisionError
 }

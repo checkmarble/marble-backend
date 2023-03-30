@@ -1,6 +1,9 @@
 package pg_repository
 
-import "marble/marble-backend/app"
+import (
+	"marble/marble-backend/app"
+	"time"
+)
 
 func (r *PGRepository) FillOrgWithTestData(orgID string) {
 
@@ -106,21 +109,39 @@ func (r *PGRepository) FillOrgWithTestData(orgID string) {
 		},
 	}
 
+	///////////////////////////////
+	// Create iteration & body
+	///////////////////////////////
+
+	sib := app.ScenarioIterationBody{
+		TriggerCondition: app.True{},
+		Rules:            rules,
+
+		ScoreReviewThreshold: 10,
+		ScoreRejectThreshold: 30,
+	}
+
+	si := app.ScenarioIteration{
+		ID: "2c5e8eab-a6ab-4e22-8992-ac8edd608bef", // same as scenarioID, no worries
+
+		ScenarioID: "3a6cabee-a565-42b2-af40-5295386c8269",
+		Version:    1,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+		Body:       sib,
+	}
+
 	// map[scenarioID]app.Scenario
 	s := make(map[string]app.Scenario)
 	s["3a6cabee-a565-42b2-af40-5295386c8269"] = app.Scenario{
-		ID: "3a6cabee-a565-42b2-af40-5295386c8269",
-
+		ID:          "3a6cabee-a565-42b2-af40-5295386c8269",
 		Name:        "My 1st scenario",
 		Description: "check if the API works",
-		Version:     "alpha",
 
-		TriggerCondition:  app.True{},
-		Rules:             rules,
+		CreatedAt:         time.Now(),
 		TriggerObjectType: "tx",
 
-		OutcomeApproveScore: 10,
-		OutcomeRejectScore:  30,
+		LiveVersion: &si,
 	}
 
 	// map[clientID]map[scenarioID]app.Scenario

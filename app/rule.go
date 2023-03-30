@@ -5,9 +5,11 @@ package app
 ///////////////////////////////
 
 type Rule struct {
+	DisplayOrder int
+	Name         string
+	Description  string
+
 	RootNode      Node
-	Name          string
-	Description   string
 	ScoreModifier int
 }
 
