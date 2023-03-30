@@ -20,7 +20,7 @@ type RepositoryInterface interface {
 	GetDecision(orgID string, decisionID string) (Decision, error)
 
 	// Ingestion
-	IngestObject(orgID string, ingestPayload IngestPayload) (err error)
+	IngestObject(dynamicStructWithReader DynamicStructWithReader, table Table) (err error)
 }
 
 func New(r RepositoryInterface) (*App, error) {

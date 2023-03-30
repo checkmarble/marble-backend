@@ -87,8 +87,7 @@ func validateParsedJson(instance interface{}) error {
 	return nil
 }
 
-func ParseToDataModelObject(dataModel DataModel, jsonBody []byte, tableName string) (DynamicStructWithReader, error) {
-	table := dataModel.Tables[tableName]
+func ParseToDataModelObject(table Table, jsonBody []byte) (*DynamicStructWithReader, error) {
 	fields := table.Fields
 
 	custom_type := makeDynamicStructBuilder(fields)
@@ -103,7 +102,7 @@ func ParseToDataModelObject(dataModel DataModel, jsonBody []byte, tableName stri
 	err := json.Unmarshal(jsonBody, &dynamicStructInstance)
 	if err != nil {
 		// add code here to distinguish between badly formatted json and other errors
-		return DynamicStructWithReader{Instance: dynamicStructInstance, Reader: dynamicStructReader, Table: table}, err
+		return nil, err
 	}
 
 	// If the data has been successfully parsed, we can validate it
@@ -111,13 +110,13 @@ func ParseToDataModelObject(dataModel DataModel, jsonBody []byte, tableName stri
 	// There are two possible cases of error
 	err = validateParsedJson(dynamicStructInstance)
 	if err != nil {
-		return DynamicStructWithReader{Instance: dynamicStructInstance, Reader: dynamicStructReader, Table: table}, err
+		return nil, err
 	}
 
-	return DynamicStructWithReader{Instance: dynamicStructInstance, Reader: dynamicStructReader, Table: table}, nil
+	return &DynamicStructWithReader{Instance: dynamicStructInstance, Reader: dynamicStructReader, Table: table}, nil
 }
 
-func ReadFieldFromDynamicStruct(dynamicStruct DynamicStructWithReader, fieldName string) interface{} {
+func (dynamicStruct DynamicStructWithReader) ReadFieldFromDynamicStruct(fieldName string) interface{} {
 	check := dynamicStruct.Reader.HasField((capitalize(fieldName)))
 	if !check {
 		log.Fatalf("Field %v not found in dynamic struct", fieldName)

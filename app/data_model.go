@@ -38,6 +38,7 @@ type DataModel struct {
 }
 
 type Table struct {
+	Name          string
 	Fields        map[string]Field
 	LinksToSingle map[string]LinkToSingle
 }

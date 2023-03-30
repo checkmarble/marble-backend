@@ -1,15 +1,5 @@
 package app
 
-import (
-	"fmt"
-)
-
-type IngestPayload struct {
-	ObjectType string
-	ObjectBody []byte
-}
-
-func (a *App) IngestObject(organizationID string, ingestPayload IngestPayload) (err error) {
-	fmt.Println(ingestPayload)
-	return a.repository.IngestObject(organizationID, ingestPayload)
+func (a *App) IngestObject(dynamicStructWithReader DynamicStructWithReader, table Table) (err error) {
+	return a.repository.IngestObject(dynamicStructWithReader, table)
 }

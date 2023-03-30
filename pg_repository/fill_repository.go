@@ -14,7 +14,7 @@ func (r *PGRepository) FillOrgWithTestData(orgID string) {
 
 	dm := app.DataModel{
 		Tables: map[string]app.Table{
-			"tx": {
+			"tx": {Name: "tx",
 				Fields: map[string]app.Field{
 					"id": {
 						DataType: app.String,
@@ -35,6 +35,7 @@ func (r *PGRepository) FillOrgWithTestData(orgID string) {
 				},
 			},
 			"transactions": {
+				Name: "transactions",
 				Fields: map[string]app.Field{
 					"id": {DataType: app.String},
 					"object_id": {
@@ -48,6 +49,7 @@ func (r *PGRepository) FillOrgWithTestData(orgID string) {
 				LinksToSingle: map[string]app.LinkToSingle{},
 			},
 			"user": {
+				Name: "user",
 				Fields: map[string]app.Field{
 					"id": {
 						DataType: app.String,
@@ -100,19 +102,19 @@ func (r *PGRepository) FillOrgWithTestData(orgID string) {
 			Description:   "Rule 5 Desc",
 		},
 		{
-			RootNode:      app.And{app.True{}, app.And{app.True{}, app.Eq{app.FloatValue{5}, app.FieldValue{dm, "tx", []string{"amount"}}}}},
+			RootNode:      app.And{Left: app.True{}, Right: app.And{Left: app.True{}, Right: app.Eq{Left: app.FloatValue{Value: 5}, Right: app.FieldValue{Datamodel: dm, RootTableName: "tx", Path: []string{"amount"}}}}},
 			ScoreModifier: 2,
 			Name:          "Rule 6 Name",
 			Description:   "Rule 6 Desc",
 		},
 		{
-			RootNode:      app.And{app.True{}, app.And{app.True{}, app.Eq{app.FloatValue{6}, app.FieldValue{dm, "tx", []string{"amount"}}}}},
+			RootNode:      app.And{Left: app.True{}, Right: app.And{Left: app.True{}, Right: app.Eq{Left: app.FloatValue{Value: 6}, Right: app.FieldValue{Datamodel: dm, RootTableName: "tx", Path: []string{"amount"}}}}},
 			ScoreModifier: 2,
 			Name:          "Rule 7 Name",
 			Description:   "Rule 7 Desc",
 		},
 		{
-			RootNode:      app.And{app.True{}, app.And{app.True{}, app.Eq{app.FloatValue{6}, app.FieldValue{dm, "tx", []string{"sender"}}}}},
+			RootNode:      app.And{Left: app.True{}, Right: app.And{Left: app.True{}, Right: app.Eq{Left: app.FloatValue{Value: 6}, Right: app.FieldValue{Datamodel: dm, RootTableName: "tx", Path: []string{"sender"}}}}},
 			ScoreModifier: 2,
 			Name:          "Rule 8 Name",
 			Description:   "Rule 8 Desc",
