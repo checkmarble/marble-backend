@@ -51,6 +51,8 @@ type True struct{}
 
 func (t True) Eval() bool { return true }
 
+func (t True) Print() string { return "TRUE" }
+
 // Marshal with added "Type" operator
 func (t True) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
@@ -78,6 +80,8 @@ func (t *True) UnmarshalJSON(b []byte) error {
 type False struct{}
 
 func (f False) Eval() bool { return false }
+
+func (f False) Print() string { return "FALSE" }
 
 // Marshal with added "Type" operator
 func (f False) MarshalJSON() ([]byte, error) {
@@ -107,6 +111,10 @@ type EqBool struct{ Left, Right OperatorBool }
 
 func (eq EqBool) Eval() bool {
 	return eq.Left.Eval() == eq.Right.Eval()
+}
+
+func (eq EqBool) Print() string {
+	return fmt.Sprintf("( %s =bool %s )", eq.Left.Print(), eq.Right.Print())
 }
 
 func (eq EqBool) MarshalJSON() ([]byte, error) {

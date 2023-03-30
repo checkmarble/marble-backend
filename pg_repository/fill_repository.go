@@ -2,6 +2,7 @@ package pg_repository
 
 import (
 	"marble/marble-backend/app"
+	"marble/marble-backend/app/operators"
 	"time"
 )
 
@@ -60,52 +61,28 @@ func (r *PGRepository) FillOrgWithTestData(orgID string) {
 	// Basic logical
 	rules := []app.Rule{
 		{
-			RootNode:      app.And{app.True{}, app.True{}},
+			Formula:       &operators.True{},
 			ScoreModifier: 2,
 			Name:          "Rule 1 Name",
 			Description:   "Rule 1 Desc",
 		},
 		{
-			RootNode:      app.And{app.True{}, app.False{}},
+			Formula:       &operators.False{},
 			ScoreModifier: 2,
 			Name:          "Rule 2 Name",
 			Description:   "Rule 2 Desc",
 		},
 		{
-			RootNode:      app.And{app.True{}, app.And{app.True{}, app.Eq{app.IntValue{5}, app.IntValue{5}}}},
+			Formula:       &operators.EqBool{&operators.True{}, &operators.True{}},
 			ScoreModifier: 2,
 			Name:          "Rule 3 Name",
 			Description:   "Rule 3 Desc",
 		},
 		{
-			RootNode:      app.And{app.True{}, app.And{app.True{}, app.Eq{app.IntValue{6}, app.IntValue{5}}}},
+			Formula:       &operators.EqBool{&operators.True{}, &operators.EqBool{&operators.False{}, &operators.False{}}},
 			ScoreModifier: 2,
 			Name:          "Rule 4 Name",
 			Description:   "Rule 4 Desc",
-		},
-		{
-			RootNode:      app.And{app.True{}, app.And{app.True{}, app.Eq{app.FloatValue{5}, app.IntValue{5}}}},
-			ScoreModifier: 2,
-			Name:          "Rule 5 Name",
-			Description:   "Rule 5 Desc",
-		},
-		{
-			RootNode:      app.And{app.True{}, app.And{app.True{}, app.Eq{app.FloatValue{5}, app.FieldValue{dm, "tx", []string{"amount"}}}}},
-			ScoreModifier: 2,
-			Name:          "Rule 6 Name",
-			Description:   "Rule 6 Desc",
-		},
-		{
-			RootNode:      app.And{app.True{}, app.And{app.True{}, app.Eq{app.FloatValue{6}, app.FieldValue{dm, "tx", []string{"amount"}}}}},
-			ScoreModifier: 2,
-			Name:          "Rule 7 Name",
-			Description:   "Rule 7 Desc",
-		},
-		{
-			RootNode:      app.And{app.True{}, app.And{app.True{}, app.Eq{app.FloatValue{6}, app.FieldValue{dm, "tx", []string{"sender"}}}}},
-			ScoreModifier: 2,
-			Name:          "Rule 8 Name",
-			Description:   "Rule 8 Desc",
 		},
 	}
 
@@ -114,7 +91,7 @@ func (r *PGRepository) FillOrgWithTestData(orgID string) {
 	///////////////////////////////
 
 	sib := app.ScenarioIterationBody{
-		TriggerCondition: app.True{},
+		TriggerCondition: &operators.True{},
 		Rules:            rules,
 
 		ScoreReviewThreshold: 10,

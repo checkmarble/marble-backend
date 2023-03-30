@@ -1,5 +1,7 @@
 package app
 
+import "marble/marble-backend/app/operators"
+
 ///////////////////////////////
 // Rule
 ///////////////////////////////
@@ -9,7 +11,7 @@ type Rule struct {
 	Name         string
 	Description  string
 
-	RootNode      Node
+	Formula       operators.OperatorBool
 	ScoreModifier int
 }
 
@@ -49,7 +51,7 @@ func (r RuleExecutionError) String() string {
 func (r Rule) Eval(p Payload) RuleExecution {
 
 	// Eval the Node
-	res := r.RootNode.Eval(p).(bool)
+	res := r.Formula.Eval()
 
 	score := 0
 	if res {

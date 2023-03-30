@@ -2,8 +2,8 @@ package app
 
 import (
 	"errors"
-	"fmt"
 	"log"
+	"marble/marble-backend/app/operators"
 	"runtime/debug"
 	"time"
 )
@@ -51,7 +51,7 @@ type ScenarioIteration struct {
 }
 
 type ScenarioIterationBody struct {
-	TriggerCondition     Node
+	TriggerCondition     operators.OperatorBool
 	Rules                []Rule
 	ScoreReviewThreshold int
 	ScoreRejectThreshold int
@@ -109,10 +109,7 @@ func (s Scenario) Eval(p Payload) (se ScenarioExecution, err error) {
 	}
 
 	// Evaluate the trigger
-	triggerPassed, ok := s.LiveVersion.Body.TriggerCondition.Eval(p).(bool)
-	if !ok {
-		return ScenarioExecution{}, fmt.Errorf("unable to evaluate trigger condition")
-	}
+	triggerPassed := s.LiveVersion.Body.TriggerCondition.Eval()
 
 	if !triggerPassed {
 		return ScenarioExecution{}, ErrScenarioTriggerConditionAndTriggerObjectMismatch
@@ -125,7 +122,7 @@ func (s Scenario) Eval(p Payload) (se ScenarioExecution, err error) {
 
 		// Evaluate single rule
 		ruleExecution := rule.Eval(p)
-		log.Printf("Rule %s (score_modifier = %v) is %v\n", ruleExecution.Rule.RootNode.Print(p), ruleExecution.Rule.ScoreModifier, ruleExecution.Result)
+		log.Printf("Rule %s (score_modifier = %v) is %v\n", ruleExecution.Rule.Formula.Print(), ruleExecution.Rule.ScoreModifier, ruleExecution.Result)
 
 		// Increment scenario score when rule is true
 		if ruleExecution.Result {

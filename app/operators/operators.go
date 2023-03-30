@@ -24,6 +24,9 @@ type Operator interface {
 	// We need operators to Marshall & Unmarshall to JSON themselves
 	json.Marshaler
 	json.Unmarshaler
+
+	// Self-print
+	Print() string
 }
 
 // Used to add and read the "type" kep anytime we marshal/unmarshal
