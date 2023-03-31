@@ -12,21 +12,6 @@ import (
 // Scenario
 ///////////////////////////////
 
-// type Scenario struct {
-// 	ID string
-
-// 	Name        string
-// 	Description string
-
-// 	Version string
-
-// 	TriggerCondition    Node   // A trigger condition is a formula tree
-// 	Rules               []Rule // Rules have a formula + score + metadata
-// 	TriggerObjectType   string
-// 	OutcomeApproveScore int
-// 	OutcomeRejectScore  int
-// }
-
 type Scenario struct {
 	ID string
 

@@ -73,13 +73,13 @@ func (r *PGRepository) FillOrgWithTestData(orgID string) {
 			Description:   "Rule 2 Desc",
 		},
 		{
-			Formula:       &operators.EqBool{&operators.True{}, &operators.True{}},
+			Formula:       &operators.EqBool{Left: &operators.True{}, Right: &operators.True{}},
 			ScoreModifier: 2,
 			Name:          "Rule 3 Name",
 			Description:   "Rule 3 Desc",
 		},
 		{
-			Formula:       &operators.EqBool{&operators.True{}, &operators.EqBool{&operators.False{}, &operators.False{}}},
+			Formula:       &operators.EqBool{Left: &operators.True{}, Right: &operators.EqBool{Left: &operators.False{}, Right: &operators.False{}}},
 			ScoreModifier: 2,
 			Name:          "Rule 4 Name",
 			Description:   "Rule 4 Desc",
