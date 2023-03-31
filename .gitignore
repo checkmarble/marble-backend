@@ -1,7 +1,8 @@
-# ignore .last_id file, used to store the last id of the decision stored when calling curl
+#used as a convenience file when using curl commands
 .last_id
 
-# output folder, used to build the app outside of docker if needed
+# used by go buil
 /output
 
+# MacOS thumbnails
 .DS_Store

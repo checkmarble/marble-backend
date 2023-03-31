@@ -75,7 +75,7 @@ CREATE TABLE decisions(
     scenario_id uuid NOT NULL,
     scenario_name VARCHAR NOT NULL,
     scenario_description VARCHAR NOT NULL,
-    scenario_version VARCHAR NOT NULL,
+    scenario_version INT NOT NULL,
     score INT NOT NULL,
     error_code INT NOT NULL,
     --error_message VARCHAR NOT NULL,

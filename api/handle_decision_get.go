@@ -77,10 +77,10 @@ func (a *API) handleDecisionGet() http.HandlerFunc {
 		}
 
 		responseScenario := APIScenario{
-			ID:          decision.Scenario.ID,
-			Name:        decision.Scenario.Name,
-			Description: decision.Scenario.Description,
-			Version:     decision.Scenario.Version,
+			ID:          decision.ScenarioID,
+			Name:        decision.ScenarioName,
+			Description: decision.ScenarioDescription,
+			Version:     decision.ScenarioVersion,
 		}
 
 		responseDecision := APIDecision{

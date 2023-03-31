@@ -37,12 +37,15 @@ func (a *App) CreateDecision(organizationID string, scenarioID string, payload P
 	///////////////////////////////
 	d := Decision{
 		// ID is empty as of now
-		Created_at:     t,
-		Payload:        payload,
-		Outcome:        scenarioExecution.Outcome,
-		Scenario:       s,
-		RuleExecutions: scenarioExecution.RuleExecutions,
-		Score:          scenarioExecution.Score,
+		Created_at:          t,
+		Payload:             payload,
+		Outcome:             scenarioExecution.Outcome,
+		ScenarioID:          scenarioExecution.ScenarioID,
+		ScenarioName:        scenarioExecution.ScenarioName,
+		ScenarioDescription: scenarioExecution.ScenarioDescription,
+		ScenarioVersion:     scenarioExecution.ScenarioVersion,
+		RuleExecutions:      scenarioExecution.RuleExecutions,
+		Score:               scenarioExecution.Score,
 		// TODO DecisionError DecisionError
 	}
 
