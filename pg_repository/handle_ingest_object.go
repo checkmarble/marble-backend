@@ -29,6 +29,10 @@ func (r *PGRepository) IngestObject(payloadStructWithReader app.DynamicStructWit
 	}
 
 	sql, args, err := r.queryBuilder.Insert(table.Name).Columns(columnNamesSlice...).Values(values...).Suffix("RETURNING \"id\"").ToSql()
+	if err != nil {
+		log.Printf("Error building the query: %s\n", err)
+		return err
+	}
 
 	log.Printf("args: %v\n", args)
 	var createdObjectId string
