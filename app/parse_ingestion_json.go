@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -24,6 +25,8 @@ type DynamicStructWithReader struct {
 	Table    Table
 }
 
+var ErrFormatValidation = errors.New("The input object is not valid")
+
 var validate *validator.Validate
 
 func makeDynamicStructBuilder(fields map[string]Field) dynamicstruct.DynamicStruct {
@@ -31,7 +34,7 @@ func makeDynamicStructBuilder(fields map[string]Field) dynamicstruct.DynamicStru
 
 	var stringPointerType *string
 	var intPointerType *int
-	var floatPointerType *float32 // or 64 ? I don't see a good reason to use 64
+	var floatPointerType *float32
 	var boolPointerType *bool
 	var timePointerType *time.Time
 
@@ -81,7 +84,7 @@ func validateParsedJson(instance interface{}) error {
 			count++
 		}
 		if count > 0 {
-			return err
+			return ErrFormatValidation
 		}
 	}
 	return nil
@@ -101,8 +104,7 @@ func (app *App) ParseToDataModelObject(table Table, jsonBody []byte) (*DynamicSt
 	// causes a panic. We should manage the errors accordingly.
 	err := json.Unmarshal(jsonBody, &dynamicStructInstance)
 	if err != nil {
-		// add code here to distinguish between badly formatted json and other errors
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", ErrFormatValidation, err)
 	}
 
 	// If the data has been successfully parsed, we can validate it
@@ -141,7 +143,7 @@ func (dynamicStruct DynamicStructWithReader) ReadFieldFromDynamicStruct(fieldNam
 	case Timestamp:
 		return field.PointerTime()
 	default:
-		log.Fatal("Unknown data type")
+		log.Fatalf("Unknown data type: %s", fieldFromModel.DataType)
 		return nil
 	}
 }

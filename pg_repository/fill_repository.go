@@ -37,7 +37,6 @@ func (r *PGRepository) FillOrgWithTestData(orgID string) {
 			"transactions": {
 				Name: "transactions",
 				Fields: map[string]app.Field{
-					"id": {DataType: app.String},
 					"object_id": {
 						DataType: app.String,
 					},
