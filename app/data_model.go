@@ -10,6 +10,7 @@ const (
 	Int
 	Float
 	String
+	Timestamp
 )
 
 func (d DataType) String() string {
@@ -22,6 +23,8 @@ func (d DataType) String() string {
 		return "Float"
 	case String:
 		return "String"
+	case Timestamp:
+		return "Timestamp"
 	}
 	return "unknown"
 }
@@ -35,6 +38,7 @@ type DataModel struct {
 }
 
 type Table struct {
+	Name          string
 	Fields        map[string]Field
 	LinksToSingle map[string]LinkToSingle
 }
@@ -47,6 +51,14 @@ type LinkToSingle struct {
 	LinkedTableName string
 	ParentFieldName string
 	ChildFieldName  string
+}
+
+func (app *App) GetDataModel(orgID string) (DataModel, error) {
+	dataModel, err := app.repository.GetDataModel(orgID)
+	if err != nil {
+		return DataModel{}, err
+	}
+	return dataModel, nil
 }
 
 ///////////////////////////////

@@ -20,10 +20,13 @@ type API struct {
 
 type AppInterface interface {
 	GetOrganizationIDFromToken(token string) (orgID string, err error)
+	GetDataModel(organizationID string) (app.DataModel, error)
 
 	PayloadFromTriggerObject(organizationID string, triggerObject map[string]any) (app.Payload, error)
 	CreateDecision(organizationID string, scenarioID string, payload app.Payload) (app.Decision, error)
 	GetDecision(organizationID string, requestedDecisionID string) (app.Decision, error)
+	IngestObject(dynamicStructWithReader app.DynamicStructWithReader, table app.Table) (err error)
+	ParseToDataModelObject(table app.Table, objectBody []byte) (*app.DynamicStructWithReader, error)
 }
 
 func New(port string, a AppInterface) (*http.Server, error) {
