@@ -153,21 +153,6 @@ func (r *PGRepository) GetDataModel(orgID string) (app.DataModel, error) {
 	return org.DataModel, nil
 }
 
-func (r *PGRepository) GetScenario(orgID string, scenarioID string) (app.Scenario, error) {
-
-	org, orgFound := r.organizations[orgID]
-	if !orgFound {
-		return app.Scenario{}, app.ErrNotFoundInRepository
-	}
-
-	scenario, scenarioFound := org.Scenarios[scenarioID]
-	if !scenarioFound {
-		return app.Scenario{}, app.ErrNotFoundInRepository
-	}
-
-	return scenario, nil
-}
-
 func (r *PGRepository) GetOrganizationIDFromToken(token string) (orgID string, err error) {
 	for _, o := range r.organizations {
 		for _, t := range o.Tokens {
