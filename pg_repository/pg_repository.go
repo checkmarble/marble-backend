@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pressly/goose/v3"
 
+	"github.com/Masterminds/squirrel"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -25,6 +26,8 @@ type PGRepository struct {
 	scenarios  map[string]map[string]app.Scenario //map[orgID][scenarioID]Scenario
 
 	organizations map[string]*app.Organization // //map[orgID]Organization
+
+	queryBuilder squirrel.StatementBuilderType
 }
 
 func New(host string, port string, user string, password string, migrationFS embed.FS) (*PGRepository, error) {
@@ -103,6 +106,8 @@ func New(host string, port string, user string, password string, migrationFS emb
 		dataModels:    dm,
 		scenarios:     s,
 		organizations: o,
+
+		queryBuilder: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar),
 	}
 
 	///////////////////////////////

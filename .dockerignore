@@ -1,0 +1,3 @@
+# ignore already-built apps
+output
+output/*

@@ -18,7 +18,7 @@ func (r *PGRepository) FillOrgWithTestData(orgID string) {
 
 	dm := app.DataModel{
 		Tables: map[string]app.Table{
-			"tx": {
+			"tx": {Name: "tx",
 				Fields: map[string]app.Field{
 					"id": {
 						DataType: app.String,
@@ -38,7 +38,21 @@ func (r *PGRepository) FillOrgWithTestData(orgID string) {
 					},
 				},
 			},
+			"transactions": {
+				Name: "transactions",
+				Fields: map[string]app.Field{
+					"object_id": {
+						DataType: app.String,
+					},
+					"updated_at":  {DataType: app.Timestamp},
+					"value":       {DataType: app.Float},
+					"title":       {DataType: app.String},
+					"description": {DataType: app.String},
+				},
+				LinksToSingle: map[string]app.LinkToSingle{},
+			},
 			"user": {
+				Name: "user",
 				Fields: map[string]app.Field{
 					"id": {
 						DataType: app.String,
