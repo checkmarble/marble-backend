@@ -1,4 +1,4 @@
-package app
+package data_model
 
 // /////////////////////////////
 // Data types
@@ -53,14 +53,6 @@ type LinkToSingle struct {
 	ChildFieldName  string
 }
 
-func (app *App) GetDataModel(orgID string) (DataModel, error) {
-	dataModel, err := app.repository.GetDataModel(orgID)
-	if err != nil {
-		return DataModel{}, err
-	}
-	return dataModel, nil
-}
-
 ///////////////////////////////
 // Data Access
 ///////////////////////////////
@@ -74,17 +66,4 @@ func (dm DataModel) FieldAt(rootName string, path []string) Field {
 
 	return dm.FieldAt(currentRoot.LinksToSingle[path[0]].LinkedTableName, path[1:])
 
-}
-
-func (dm DataModel) FieldValueAtFromPayload(payload Payload, path []string) interface{} {
-
-	// Value is found
-	if len(path) == 1 {
-		return payload.Data[path[0]]
-	}
-
-	// Value needs to be derived
-	// TODO
-
-	return nil
 }

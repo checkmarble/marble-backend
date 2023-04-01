@@ -4,7 +4,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"log"
-	"marble/marble-backend/app"
+	"marble/marble-backend/app/dynamic_reading"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -57,7 +57,7 @@ func (a *API) handleIngestion() http.HandlerFunc {
 
 		payloadStructWithReaderPtr, err := a.app.ParseToDataModelObject(table, object_body)
 		if err != nil {
-			if errors.Is(err, app.ErrFormatValidation) {
+			if errors.Is(err, dynamic_reading.ErrFormatValidation) {
 				http.Error(w, "Format validation error", http.StatusBadRequest) // 400
 				return
 			}

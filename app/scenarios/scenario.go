@@ -1,9 +1,10 @@
-package app
+package scenarios
 
 import (
 	"errors"
 	"log"
 	"marble/marble-backend/app/operators"
+	payload_package "marble/marble-backend/app/payload"
 	"runtime/debug"
 	"time"
 )
@@ -63,7 +64,7 @@ var (
 	ErrScenarioHasNoLiveVersion                         = errors.New("scenario has no live version")
 )
 
-func (s Scenario) Eval(p Payload) (se ScenarioExecution, err error) {
+func (s Scenario) Eval(p payload_package.Payload) (se ScenarioExecution, err error) {
 
 	///////////////////////////////
 	// Recover in case the evaluation panicked.

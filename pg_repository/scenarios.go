@@ -2,12 +2,12 @@ package pg_repository
 
 import (
 	"context"
-	"marble/marble-backend/app"
+	"marble/marble-backend/app/scenarios"
 
 	"github.com/Masterminds/squirrel"
 )
 
-func (r *PGRepository) GetScenario(orgID string, scenarioID string) (s app.Scenario, err error) {
+func (r *PGRepository) GetScenario(orgID string, scenarioID string) (s scenarios.Scenario, err error) {
 	sql, args, err := r.queryBuilder.
 		Select("id", "name", "description", "trigger_object_type", "created_at").
 		From("scenarios").
@@ -26,7 +26,7 @@ func (r *PGRepository) GetScenario(orgID string, scenarioID string) (s app.Scena
 	return
 }
 
-func (r *PGRepository) PostScenario(orgID string, scenario app.Scenario) (id string, err error) {
+func (r *PGRepository) PostScenario(orgID string, scenario scenarios.Scenario) (id string, err error) {
 	sql, args, err := r.queryBuilder.
 		Insert("scenarios").
 		Columns(

@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"log"
 	"time"
+
+	payload_package "marble/marble-backend/app/payload"
+	"marble/marble-backend/app/scenarios"
 )
 
 var ErrScenarioNotFound = errors.New("scenario not found")
 
-func (a *App) CreateDecision(organizationID string, scenarioID string, payload Payload) (Decision, error) {
+func (a *App) CreateDecision(organizationID string, scenarioID string, payload payload_package.Payload) (scenarios.Decision, error) {
 
 	t := time.Now().UTC()
 
@@ -19,9 +22,9 @@ func (a *App) CreateDecision(organizationID string, scenarioID string, payload P
 	s, err := a.repository.GetScenario(organizationID, scenarioID)
 
 	if errors.Is(err, ErrNotFoundInRepository) {
-		return Decision{}, ErrScenarioNotFound
+		return scenarios.Decision{}, ErrScenarioNotFound
 	} else if err != nil {
-		return Decision{}, fmt.Errorf("error getting scenario: %w", err)
+		return scenarios.Decision{}, fmt.Errorf("error getting scenario: %w", err)
 	}
 
 	///////////////////////////////
@@ -29,13 +32,13 @@ func (a *App) CreateDecision(organizationID string, scenarioID string, payload P
 	///////////////////////////////
 	scenarioExecution, err := s.Eval(payload)
 	if err != nil {
-		return Decision{}, fmt.Errorf("error evaluating scenario: %w", err)
+		return scenarios.Decision{}, fmt.Errorf("error evaluating scenario: %w", err)
 	}
 
 	///////////////////////////////
 	// Build and persist decision
 	///////////////////////////////
-	d := Decision{
+	d := scenarios.Decision{
 		// ID is empty as of now
 		Created_at:          t,
 		Payload:             payload,

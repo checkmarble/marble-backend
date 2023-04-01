@@ -6,11 +6,12 @@ import (
 	"time"
 
 	"marble/marble-backend/app"
+	"marble/marble-backend/app/scenarios"
 
 	"github.com/jackc/pgx/v5"
 )
 
-func (r *PGRepository) GetDecision(orgID string, decisionID string) (decision app.Decision, err error) {
+func (r *PGRepository) GetDecision(orgID string, decisionID string) (decision scenarios.Decision, err error) {
 
 	queryString := `
 	SELECT
@@ -56,7 +57,7 @@ func (r *PGRepository) GetDecision(orgID string, decisionID string) (decision ap
 	var dr_error_code int
 
 	// create an empty Decision object
-	d := app.Decision{}
+	d := scenarios.Decision{}
 
 	// Loop counter
 	i := 0
@@ -69,24 +70,24 @@ func (r *PGRepository) GetDecision(orgID string, decisionID string) (decision ap
 
 			d.ID = d_id
 			d.Created_at = d_created_at
-			d.Outcome = app.OutcomeFrom(d_outcome)
+			d.Outcome = scenarios.OutcomeFrom(d_outcome)
 			d.ScenarioID = d_scenario_id
 			d.ScenarioName = d_scenario_name
 			d.ScenarioDescription = d_scenario_description
 			d.ScenarioVersion = d_scenario_version
 			d.Score = d_score
-			d.RuleExecutions = make([]app.RuleExecution, 0)
-			d.DecisionError = app.DecisionError(d_error_code)
+			d.RuleExecutions = make([]scenarios.RuleExecution, 0)
+			d.DecisionError = scenarios.DecisionError(d_error_code)
 		}
 
-		d.RuleExecutions = append(d.RuleExecutions, app.RuleExecution{
-			Rule: app.Rule{
+		d.RuleExecutions = append(d.RuleExecutions, scenarios.RuleExecution{
+			Rule: scenarios.Rule{
 				Name:        dr_name,
 				Description: dr_description,
 			},
 			Result:              dr_result,
 			ResultScoreModifier: dr_score_modifier,
-			Error:               app.RuleExecutionError(dr_error_code),
+			Error:               scenarios.RuleExecutionError(dr_error_code),
 		})
 
 		i++
@@ -95,11 +96,11 @@ func (r *PGRepository) GetDecision(orgID string, decisionID string) (decision ap
 	})
 
 	if i == 0 {
-		return app.Decision{}, app.ErrNotFoundInRepository
+		return scenarios.Decision{}, app.ErrNotFoundInRepository
 	}
 
 	if err != nil {
-		return app.Decision{}, fmt.Errorf("error getting decision : %w", err)
+		return scenarios.Decision{}, fmt.Errorf("error getting decision : %w", err)
 	}
 
 	return d, nil

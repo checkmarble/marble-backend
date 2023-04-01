@@ -5,7 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"marble/marble-backend/app"
+	"marble/marble-backend/app/data_model"
+	"marble/marble-backend/app/dynamic_reading"
+	payload_package "marble/marble-backend/app/payload"
+	"marble/marble-backend/app/scenarios"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -20,13 +23,13 @@ type API struct {
 
 type AppInterface interface {
 	GetOrganizationIDFromToken(token string) (orgID string, err error)
-	GetDataModel(organizationID string) (app.DataModel, error)
+	GetDataModel(organizationID string) (data_model.DataModel, error)
 
-	PayloadFromTriggerObject(organizationID string, triggerObject map[string]any) (app.Payload, error)
-	CreateDecision(organizationID string, scenarioID string, payload app.Payload) (app.Decision, error)
-	GetDecision(organizationID string, requestedDecisionID string) (app.Decision, error)
-	IngestObject(dynamicStructWithReader app.DynamicStructWithReader, table app.Table) (err error)
-	ParseToDataModelObject(table app.Table, objectBody []byte) (*app.DynamicStructWithReader, error)
+	PayloadFromTriggerObject(organizationID string, triggerObject map[string]any) (payload_package.Payload, error)
+	CreateDecision(organizationID string, scenarioID string, payload payload_package.Payload) (scenarios.Decision, error)
+	GetDecision(organizationID string, requestedDecisionID string) (scenarios.Decision, error)
+	IngestObject(dynamicStructWithReader dynamic_reading.DynamicStructWithReader, table data_model.Table) (err error)
+	ParseToDataModelObject(table data_model.Table, objectBody []byte) (*dynamic_reading.DynamicStructWithReader, error)
 }
 
 func New(port string, a AppInterface) (*http.Server, error) {

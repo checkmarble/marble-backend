@@ -1,8 +1,9 @@
 package pg_repository
 
 import (
-	"marble/marble-backend/app"
+	"marble/marble-backend/app/data_model"
 	"marble/marble-backend/app/operators"
+	"marble/marble-backend/app/scenarios"
 	"time"
 )
 
@@ -16,21 +17,21 @@ func (r *PGRepository) FillOrgWithTestData(orgID string) {
 	// Data model
 	///////////////////////////////
 
-	dm := app.DataModel{
-		Tables: map[string]app.Table{
+	dm := data_model.DataModel{
+		Tables: map[string]data_model.Table{
 			"tx": {Name: "tx",
-				Fields: map[string]app.Field{
+				Fields: map[string]data_model.Field{
 					"id": {
-						DataType: app.String,
+						DataType: data_model.String,
 					},
 					"amount": {
-						DataType: app.Float,
+						DataType: data_model.Float,
 					},
 					"sender_id": {
-						DataType: app.String,
+						DataType: data_model.String,
 					},
 				},
-				LinksToSingle: map[string]app.LinkToSingle{
+				LinksToSingle: map[string]data_model.LinkToSingle{
 					"sender": {
 						LinkedTableName: "user",
 						ParentFieldName: "sender_id",
@@ -40,25 +41,25 @@ func (r *PGRepository) FillOrgWithTestData(orgID string) {
 			},
 			"transactions": {
 				Name: "transactions",
-				Fields: map[string]app.Field{
+				Fields: map[string]data_model.Field{
 					"object_id": {
-						DataType: app.String,
+						DataType: data_model.String,
 					},
-					"updated_at":  {DataType: app.Timestamp},
-					"value":       {DataType: app.Float},
-					"title":       {DataType: app.String},
-					"description": {DataType: app.String},
+					"updated_at":  {DataType: data_model.Timestamp},
+					"value":       {DataType: data_model.Float},
+					"title":       {DataType: data_model.String},
+					"description": {DataType: data_model.String},
 				},
-				LinksToSingle: map[string]app.LinkToSingle{},
+				LinksToSingle: map[string]data_model.LinkToSingle{},
 			},
 			"user": {
 				Name: "user",
-				Fields: map[string]app.Field{
+				Fields: map[string]data_model.Field{
 					"id": {
-						DataType: app.String,
+						DataType: data_model.String,
 					},
 					"name": {
-						DataType: app.String,
+						DataType: data_model.String,
 					},
 				},
 			},
@@ -73,7 +74,7 @@ func (r *PGRepository) FillOrgWithTestData(orgID string) {
 	///////////////////////////////
 
 	// Basic logical
-	rules := []app.Rule{
+	rules := []scenarios.Rule{
 		{
 			Formula:       &operators.True{},
 			ScoreModifier: 2,
@@ -104,7 +105,7 @@ func (r *PGRepository) FillOrgWithTestData(orgID string) {
 	// Create iteration & body
 	///////////////////////////////
 
-	sib := app.ScenarioIterationBody{
+	sib := scenarios.ScenarioIterationBody{
 		TriggerCondition: &operators.True{},
 		Rules:            rules,
 
@@ -112,7 +113,7 @@ func (r *PGRepository) FillOrgWithTestData(orgID string) {
 		ScoreRejectThreshold: 30,
 	}
 
-	si := app.ScenarioIteration{
+	si := scenarios.ScenarioIteration{
 		ID: "2c5e8eab-a6ab-4e22-8992-ac8edd608bef", // same as scenarioID, no worries
 
 		ScenarioID: "3a6cabee-a565-42b2-af40-5295386c8269",
@@ -123,8 +124,8 @@ func (r *PGRepository) FillOrgWithTestData(orgID string) {
 	}
 
 	// map[scenarioID]app.Scenario
-	s := make(map[string]app.Scenario)
-	s["3a6cabee-a565-42b2-af40-5295386c8269"] = app.Scenario{
+	s := make(map[string]scenarios.Scenario)
+	s["3a6cabee-a565-42b2-af40-5295386c8269"] = scenarios.Scenario{
 		ID:          "3a6cabee-a565-42b2-af40-5295386c8269",
 		Name:        "My 1st scenario",
 		Description: "check if the API works",

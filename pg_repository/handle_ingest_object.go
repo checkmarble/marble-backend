@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"marble/marble-backend/app"
+	"marble/marble-backend/app/data_model"
+	"marble/marble-backend/app/dynamic_reading"
 )
 
-func (r *PGRepository) IngestObject(payloadStructWithReader app.DynamicStructWithReader, table app.Table) (err error) {
+func (r *PGRepository) IngestObject(payloadStructWithReader dynamic_reading.DynamicStructWithReader, table data_model.Table) (err error) {
 	tx, err := r.db.Begin(context.Background())
 	if err != nil {
 		log.Printf("Error starting transaction: %s\n", err)

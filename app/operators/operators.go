@@ -2,6 +2,7 @@ package operators
 
 import (
 	"encoding/json"
+	"marble/marble-backend/app/dynamic_reading"
 	"time"
 )
 
@@ -39,20 +40,20 @@ type OperatorType struct {
 // /////////////////////////////
 type OperatorFloat interface {
 	Operator
-	Eval() float64
+	Eval(context dynamic_reading.EvaluationContext) float64
 }
 
 type OperatorBool interface {
 	Operator
-	Eval() bool
+	Eval(context dynamic_reading.EvaluationContext) bool
 }
 
 type OperatorDate interface {
 	Operator
-	Eval() time.Time
+	Eval(context dynamic_reading.EvaluationContext) time.Time
 }
 
 type OperatorString interface {
 	Operator
-	Eval() string
+	Eval(context dynamic_reading.EvaluationContext) string
 }

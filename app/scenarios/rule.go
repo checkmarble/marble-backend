@@ -1,6 +1,9 @@
-package app
+package scenarios
 
-import "marble/marble-backend/app/operators"
+import (
+	"marble/marble-backend/app/operators"
+	payload_package "marble/marble-backend/app/payload"
+)
 
 ///////////////////////////////
 // Rule
@@ -48,7 +51,7 @@ func (r RuleExecutionError) String() string {
 //
 ///////////////////////////////
 
-func (r Rule) Eval(p Payload) RuleExecution {
+func (r Rule) Eval(p payload_package.Payload) RuleExecution {
 
 	// Eval the Node
 	res := r.Formula.Eval()

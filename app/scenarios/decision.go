@@ -1,6 +1,9 @@
-package app
+package scenarios
 
-import "time"
+import (
+	payload_package "marble/marble-backend/app/payload"
+	"time"
+)
 
 // /////////////////////////////
 // Outcomes
@@ -74,7 +77,7 @@ func (d DecisionError) String() string {
 type Decision struct {
 	ID         string
 	Created_at time.Time
-	Payload    Payload
+	Payload    payload_package.Payload
 
 	Outcome             Outcome
 	ScenarioID          string

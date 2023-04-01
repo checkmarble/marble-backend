@@ -3,10 +3,10 @@ package pg_repository
 import (
 	"context"
 
-	"marble/marble-backend/app"
+	"marble/marble-backend/app/scenarios"
 )
 
-func (r *PGRepository) StoreDecision(orgID string, decision app.Decision) (id string, err error) {
+func (r *PGRepository) StoreDecision(orgID string, decision scenarios.Decision) (id string, err error) {
 
 	// Begin a transaction to store decision + rules in 1 go
 

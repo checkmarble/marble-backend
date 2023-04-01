@@ -9,6 +9,8 @@ import (
 	"os"
 
 	"marble/marble-backend/app"
+	"marble/marble-backend/app/data_model"
+	"marble/marble-backend/app/scenarios"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pressly/goose/v3"
@@ -22,8 +24,8 @@ type PGRepository struct {
 	db *pgxpool.Pool // connection pool
 
 	// in-memory data
-	dataModels map[string]app.DataModel           //map[orgID]DataModel
-	scenarios  map[string]map[string]app.Scenario //map[orgID][scenarioID]Scenario
+	dataModels map[string]data_model.DataModel          //map[orgID]DataModel
+	scenarios  map[string]map[string]scenarios.Scenario //map[orgID][scenarioID]Scenario
 
 	organizations map[string]*app.Organization // //map[orgID]Organization
 
@@ -96,8 +98,8 @@ func New(host string, port string, user string, password string, migrationFS emb
 	// Build repository
 	///////////////////////////////
 
-	dm := make(map[string]app.DataModel)
-	s := make(map[string]map[string]app.Scenario)
+	dm := make(map[string]data_model.DataModel)
+	s := make(map[string]map[string]scenarios.Scenario)
 	o := make(map[string]*app.Organization)
 
 	r := &PGRepository{
@@ -145,10 +147,10 @@ func (r *PGRepository) Describe() {
 	}
 }
 
-func (r *PGRepository) GetDataModel(orgID string) (app.DataModel, error) {
+func (r *PGRepository) GetDataModel(orgID string) (data_model.DataModel, error) {
 	org, orgFound := r.organizations[orgID]
 	if !orgFound {
-		return app.DataModel{}, app.ErrNotFoundInRepository
+		return data_model.DataModel{}, app.ErrNotFoundInRepository
 	}
 	return org.DataModel, nil
 }
