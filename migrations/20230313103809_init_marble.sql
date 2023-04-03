@@ -126,6 +126,28 @@ CREATE TABLE transactions(
   PRIMARY KEY(id)
 );
 
+CREATE TABLE scenarios(
+  id uuid DEFAULT uuid_generate_v4(),
+
+)
+
+CREATE TABLE scenario_iterations(
+  id uuid DEFAULT uuid_generate_v4(),
+  scenario_id uuid NOT NULL
+
+  PRIMARY KEY(id)
+  CONSTRAINT fk_scenario_iterations_scenarios FOREIGN KEY(scenario_id) REFERENCES scenarios(id)
+)
+
+CREATE TABLE scenario_iteration_rules(
+  id uuid DEFAULT uuid_generate_v4(),
+  org_id uuid NOT NULL,
+  scenario_iteration_id uuid NOT NULL
+
+  PRIMARY KEY(id)
+  CONSTRAINT fk_scenario_iteration_ruless FOREIGN KEY(scenario_iteration_id) REFERENCES scenario_iterations(id)
+)
+
 -- +goose StatementEnd
 -- +goose Down
 -- +goose StatementBegin
