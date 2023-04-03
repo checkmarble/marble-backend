@@ -11,6 +11,8 @@ type RepositoryInterface interface {
 	// Data models & scenarios
 	GetDataModel(orgID string) (DataModel, error)
 	GetScenario(orgID string, scenarioID string) (Scenario, error)
+	PostScenario(orgID string, scenario Scenario) (Scenario, error)
+	GetScenarios(orgID string) ([]Scenario, error)
 
 	// token validation
 	GetOrganizationIDFromToken(token string) (orgID string, err error)

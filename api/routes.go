@@ -15,21 +15,27 @@ func (a *API) routes() {
 	// Decision API subrouter
 	// matches all /decisions routes
 	a.router.Route("/decisions", func(r chi.Router) {
-
 		// use authentication middleware
+
 		r.Use(a.authCtx)
 
 		r.Post("/", a.handleDecisionPost())
 		r.Get("/{decisionID:"+UUIDRegExp+"}", a.handleDecisionGet())
-
 	})
 
 	a.router.Route("/ingestion", func(r chi.Router) {
-
 		// use authentication middleware
 		r.Use(a.authCtx)
-		r.Post("/{object_type}", a.handleIngestion())
 
+		r.Post("/{object_type}", a.handleIngestion())
+	})
+
+	a.router.Route("/scenarios", func(r chi.Router) {
+		// use authentication middleware
+		r.Use(a.authCtx)
+
+		r.Get("/", a.handleScenariosGet())
+		r.Post("/", a.handleScenariosPost())
 	})
 
 }
