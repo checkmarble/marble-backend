@@ -124,9 +124,7 @@ func (r *PGRepository) PostScenario(orgID string, scenario app.Scenario) (app.Sc
 
 	rows, _ := r.db.Query(context.Background(), sql, args...)
 	createdScenario, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenario])
-	if errors.Is(err, pgx.ErrNoRows) {
-		return app.Scenario{}, app.ErrNotFoundInRepository
-	} else if err != nil {
+	if err != nil {
 		return app.Scenario{}, fmt.Errorf("unable to create scenario: %w", err)
 	}
 

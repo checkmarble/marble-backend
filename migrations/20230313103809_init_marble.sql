@@ -76,14 +76,22 @@ CREATE TABLE scenarios(
 CREATE TABLE scenario_iterations(
   id uuid DEFAULT uuid_generate_v4(),
   scenario_id uuid NOT NULL,
+  version smallint NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  score_review_threshold smallint NOT NULL,
+  score_reject_threshold smallint NOT NULL,
   PRIMARY KEY(id),
   CONSTRAINT fk_scenario_iterations_scenarios FOREIGN KEY(scenario_id) REFERENCES scenarios(id)
 );
 
 CREATE TABLE scenario_iteration_rules(
   id uuid DEFAULT uuid_generate_v4(),
-  org_id uuid NOT NULL,
   scenario_iteration_id uuid NOT NULL,
+  display_order smallint NOT NULL,
+  name text NOT NULL,
+  description text NOT NULL,
+  score_modifier smallint NOT NULL,
   PRIMARY KEY(id),
   CONSTRAINT fk_scenario_iteration_rules_scenario_iterations FOREIGN KEY(scenario_iteration_id) REFERENCES scenario_iterations(id)
 );
