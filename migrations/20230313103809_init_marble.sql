@@ -69,7 +69,6 @@ CREATE TABLE scenarios(
   description VARCHAR NOT NULL,
   trigger_object_type VARCHAR NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  live_scenario_iteration_id uuid,
   PRIMARY KEY(id),
   CONSTRAINT fk_scenarios_org FOREIGN KEY(org_id) REFERENCES organizations(id)
 );
@@ -89,9 +88,10 @@ CREATE TABLE scenario_iteration_rules(
   CONSTRAINT fk_scenario_iteration_rules_scenario_iterations FOREIGN KEY(scenario_iteration_id) REFERENCES scenario_iterations(id)
 );
 
--- ALTER TABLE scenarios(
---   ADD CONSTRAINT fk_scenarios_live_scenario_iteration FOREIGN KEY(live_scenario_iteration_id) REFERENCES scenario_iterations(id)
--- );
+ALTER TABLE scenarios
+ADD COLUMN live_scenario_iteration_id uuid,
+  ADD CONSTRAINT fk_scenarios_live_scenario_iteration FOREIGN KEY(live_scenario_iteration_id) REFERENCES scenario_iterations(id);
+
 INSERT INTO scenarios (
     id,
     org_id,
@@ -167,6 +167,6 @@ CREATE TABLE transactions(
 -- +goose StatementEnd
 -- +goose Down
 -- +goose StatementBegin
-SELECT 'down SQL query';
+DROP SCHEMA IF EXISTS marble CASCADE;
 
 -- +goose StatementEnd

@@ -35,7 +35,9 @@ func (r *PGRepository) GetScenarios(orgID string) ([]app.Scenario, error) {
 	sql, args, err := r.queryBuilder.
 		Select("*").
 		From("scenarios").
-		Where(squirrel.Eq{"org_id": orgID}).ToSql()
+		Where(squirrel.Eq{
+			"org_id": orgID,
+		}).ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("unable to build scenario query: %w", err)
 	}
@@ -54,9 +56,10 @@ func (r *PGRepository) GetScenario(orgID string, scenarioID string) (app.Scenari
 	sql, args, err := r.queryBuilder.
 		Select("*").
 		From("scenarios").
-		Where("org_id = ?", orgID).
-		Where("id = ?", scenarioID).
-		ToSql()
+		Where(squirrel.Eq{
+			"org_id": orgID,
+			"id":     scenarioID,
+		}).ToSql()
 
 	if err != nil {
 		return app.Scenario{}, fmt.Errorf("unable to build scenario query: %w", err)

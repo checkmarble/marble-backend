@@ -80,7 +80,6 @@ func (r *PGRepository) LoadOrganizations() {
 		// Create and store a scenario
 		///////////////////////////////
 		rules := []app.Rule{
-
 			{
 				Formula:       &operators.True{},
 				ScoreModifier: 2,
