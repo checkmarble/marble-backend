@@ -69,9 +69,47 @@ CREATE TABLE scenarios(
   description VARCHAR NOT NULL,
   trigger_object_type VARCHAR NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  live_scenario_iteration_id uuid,
   PRIMARY KEY(id),
   CONSTRAINT fk_scenarios_org FOREIGN KEY(org_id) REFERENCES organizations(id)
 );
+
+CREATE TABLE scenario_iterations(
+  id uuid DEFAULT uuid_generate_v4(),
+  scenario_id uuid NOT NULL,
+  PRIMARY KEY(id),
+  CONSTRAINT fk_scenario_iterations_scenarios FOREIGN KEY(scenario_id) REFERENCES scenarios(id)
+);
+
+CREATE TABLE scenario_iteration_rules(
+  id uuid DEFAULT uuid_generate_v4(),
+  org_id uuid NOT NULL,
+  scenario_iteration_id uuid NOT NULL,
+  PRIMARY KEY(id),
+  CONSTRAINT fk_scenario_iteration_rules_scenario_iterations FOREIGN KEY(scenario_iteration_id) REFERENCES scenario_iterations(id)
+);
+
+-- ALTER TABLE scenarios(
+--   ADD CONSTRAINT fk_scenarios_live_scenario_iteration FOREIGN KEY(live_scenario_iteration_id) REFERENCES scenario_iterations(id)
+-- );
+INSERT INTO scenarios (
+    id,
+    org_id,
+    name,
+    description,
+    trigger_object_type
+  )
+VALUES(
+    '3a6cabee-a565-42b2-af40-5295386c8269',
+    (
+      SELECT id
+      FROM organizations
+      WHERE name = 'Test organization'
+    ),
+    'test name',
+    'test description',
+    'tx'
+  );
 
 -- decisions
 -- Outcomes
@@ -125,28 +163,6 @@ CREATE TABLE transactions(
   description VARCHAR,
   PRIMARY KEY(id)
 );
-
-CREATE TABLE scenarios(
-  id uuid DEFAULT uuid_generate_v4(),
-
-)
-
-CREATE TABLE scenario_iterations(
-  id uuid DEFAULT uuid_generate_v4(),
-  scenario_id uuid NOT NULL
-
-  PRIMARY KEY(id)
-  CONSTRAINT fk_scenario_iterations_scenarios FOREIGN KEY(scenario_id) REFERENCES scenarios(id)
-)
-
-CREATE TABLE scenario_iteration_rules(
-  id uuid DEFAULT uuid_generate_v4(),
-  org_id uuid NOT NULL,
-  scenario_iteration_id uuid NOT NULL
-
-  PRIMARY KEY(id)
-  CONSTRAINT fk_scenario_iteration_ruless FOREIGN KEY(scenario_iteration_id) REFERENCES scenario_iterations(id)
-)
 
 -- +goose StatementEnd
 -- +goose Down

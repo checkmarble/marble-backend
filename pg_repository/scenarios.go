@@ -3,6 +3,7 @@ package pg_repository
 import (
 	"context"
 	"errors"
+	"fmt"
 	"marble/marble-backend/app"
 	"time"
 
@@ -17,7 +18,7 @@ type dbScenario struct {
 	Description       string    `db:"description"`
 	TriggerObjectType string    `db:"trigger_object_type"`
 	CreatedAt         time.Time `db:"created_at"`
-	// LiveVersion       *ScenarioIteration `db:"-"`
+	LiveVersionID     string    `db:"live_scenario_iteration_id"`
 }
 
 func (s *dbScenario) dto() app.Scenario {
@@ -27,7 +28,6 @@ func (s *dbScenario) dto() app.Scenario {
 		Description:       s.Description,
 		TriggerObjectType: s.TriggerObjectType,
 		CreatedAt:         s.CreatedAt,
-		// LiveVersion:       s.LiveVersion,
 	}
 }
 
@@ -37,7 +37,7 @@ func (r *PGRepository) GetScenarios(orgID string) ([]app.Scenario, error) {
 		From("scenarios").
 		Where(squirrel.Eq{"org_id": orgID}).ToSql()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to build scenario query: %w", err)
 	}
 
 	rows, _ := r.db.Query(context.Background(), sql, args...)
@@ -54,18 +54,48 @@ func (r *PGRepository) GetScenario(orgID string, scenarioID string) (app.Scenari
 	sql, args, err := r.queryBuilder.
 		Select("*").
 		From("scenarios").
-		Where(squirrel.Eq{"org_id": orgID, "id": scenarioID}).ToSql()
+		Where("org_id = ?", orgID).
+		Where("id = ?", scenarioID).
+		ToSql()
+
 	if err != nil {
-		return app.Scenario{}, err
+		return app.Scenario{}, fmt.Errorf("unable to build scenario query: %w", err)
 	}
 
 	rows, _ := r.db.Query(context.Background(), sql, args...)
 	scenario, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenario])
 	if errors.Is(err, pgx.ErrNoRows) {
 		return app.Scenario{}, app.ErrNotFoundInRepository
+	} else if err != nil {
+		return app.Scenario{}, fmt.Errorf("unable to get scenario: %w", err)
 	}
 
-	return scenario.dto(), err
+	scenarioDTO := scenario.dto()
+
+	if scenario.LiveVersionID == "" {
+		return scenarioDTO, err
+	}
+
+	// liveScenarioIteration, err := r.GetScenarioIteration(orgID, scenario.LiveVersionID)
+
+	// if errors.Is(err, pgx.ErrNoRows) {
+
+	// 	// Silently ignore error, scenario will not point to a live version
+	// 	// TODO: check how this is possible ?
+
+	// 	return app.Scenario{}, err
+
+	// } else if err != nil {
+
+	// 	// Silently ignore error, scenario will not point to a live version
+	// 	// TODO: check how this is possible ?
+
+	// 	return app.Scenario{}, err
+	// }
+
+	// s.LiveVersion = &liveScenarioIteration
+
+	return scenarioDTO, err
 }
 
 func (r *PGRepository) PostScenario(orgID string, scenario app.Scenario) (app.Scenario, error) {
@@ -85,11 +115,16 @@ func (r *PGRepository) PostScenario(orgID string, scenario app.Scenario) (app.Sc
 		).
 		Suffix("RETURNING *").ToSql()
 	if err != nil {
-		return app.Scenario{}, err
+		return app.Scenario{}, fmt.Errorf("unable to build scenario query: %w", err)
 	}
 
 	rows, _ := r.db.Query(context.Background(), sql, args...)
 	createdScenario, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenario])
+	if errors.Is(err, pgx.ErrNoRows) {
+		return app.Scenario{}, app.ErrNotFoundInRepository
+	} else if err != nil {
+		return app.Scenario{}, fmt.Errorf("unable to create scenario: %w", err)
+	}
 
 	return createdScenario.dto(), err
 }

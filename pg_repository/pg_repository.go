@@ -97,14 +97,14 @@ func New(host string, port string, user string, password string, migrationFS emb
 	///////////////////////////////
 
 	dm := make(map[string]app.DataModel)
-	s := make(map[string]map[string]app.Scenario)
+	//s := make(map[string]map[string]app.Scenario)
 	o := make(map[string]*app.Organization)
 
 	r := &PGRepository{
 		db: dbpool,
 
-		dataModels:    dm,
-		scenarios:     s,
+		dataModels: dm,
+		//scenarios:     s,
 		organizations: o,
 
 		queryBuilder: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar),
@@ -115,11 +115,6 @@ func New(host string, port string, user string, password string, migrationFS emb
 	///////////////////////////////
 
 	r.LoadOrganizations()
-	//r.Fill()
-
-	//log.Println("Dumping organizations")
-	//spew.Dump(r.organizations)
-
 	r.Describe()
 
 	return r, nil
@@ -131,10 +126,10 @@ func (r *PGRepository) Describe() {
 	for _, o := range r.organizations {
 		log.Printf("%s (# %v)", o.Name, o.ID)
 
-		log.Printf("\tscenarios\n")
-		for _, s := range o.Scenarios {
-			log.Printf("\t\t%s (# %v) : %s", s.Name, s.ID, s.Description)
-		}
+		// log.Printf("\tscenarios\n")
+		// for _, s := range o.Scenarios {
+		// 	log.Printf("\t\t%s (# %v) : %s", s.Name, s.ID, s.Description)
+		// }
 
 		log.Printf("\ttokens\n")
 		for _, t := range o.Tokens {
