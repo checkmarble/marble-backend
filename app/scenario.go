@@ -13,15 +13,12 @@ import (
 ///////////////////////////////
 
 type Scenario struct {
-	ID string
-
-	Name        string
-	Description string
-
-	TriggerObjectType string
-
-	CreatedAt   time.Time
-	LiveVersion *ScenarioIteration
+	ID                string             `json:"id"`
+	Name              string             `json:"name"`
+	Description       string             `json:"description"`
+	TriggerObjectType string             `json:"triggerObjectType"`
+	CreatedAt         time.Time          `json:"createdAt"`
+	LiveVersion       *ScenarioIteration `json:"-"`
 }
 
 type ScenarioIteration struct {

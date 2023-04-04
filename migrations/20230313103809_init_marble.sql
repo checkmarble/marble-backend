@@ -68,7 +68,7 @@ CREATE TABLE scenarios(
   name VARCHAR NOT NULL,
   description VARCHAR NOT NULL,
   trigger_object_type VARCHAR NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   PRIMARY KEY(id),
   CONSTRAINT fk_scenarios_org FOREIGN KEY(org_id) REFERENCES organizations(id)
 );
@@ -123,9 +123,8 @@ CREATE TABLE transactions(
   value double precision,
   title VARCHAR,
   description VARCHAR,
-
   PRIMARY KEY(id)
-)
+);
 
 -- +goose StatementEnd
 -- +goose Down

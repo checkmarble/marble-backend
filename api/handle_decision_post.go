@@ -90,9 +90,9 @@ func (a *API) handleDecisionPost() http.HandlerFunc {
 
 		// Create an empty instance of handleQuotesPostRequest
 
-		responseRules := make([]APIRule, len(decision.RuleExecutions))
+		responseRules := make([]APIDecisionRule, len(decision.RuleExecutions))
 		for i := 0; i < len(decision.RuleExecutions); i++ {
-			responseRules[i] = APIRule{
+			responseRules[i] = APIDecisionRule{
 				Name:          decision.RuleExecutions[i].Rule.Name,
 				Description:   decision.RuleExecutions[i].Rule.Description,
 				ScoreModifier: decision.RuleExecutions[i].ResultScoreModifier,
@@ -108,7 +108,7 @@ func (a *API) handleDecisionPost() http.HandlerFunc {
 
 		}
 
-		responseScenario := APIScenario{
+		responseScenario := APIDecisionScenario{
 			ID:          decision.ScenarioID,
 			Name:        decision.ScenarioName,
 			Description: decision.ScenarioDescription,

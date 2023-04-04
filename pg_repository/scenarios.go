@@ -2,53 +2,94 @@ package pg_repository
 
 import (
 	"context"
+	"errors"
 	"marble/marble-backend/app"
+	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/jackc/pgx/v5"
 )
 
-func (r *PGRepository) GetScenario(orgID string, scenarioID string) (s app.Scenario, err error) {
+type dbScenario struct {
+	ID                string    `db:"id"`
+	OrgID             string    `db:"org_id"`
+	Name              string    `db:"name"`
+	Description       string    `db:"description"`
+	TriggerObjectType string    `db:"trigger_object_type"`
+	CreatedAt         time.Time `db:"created_at"`
+	// LiveVersion       *ScenarioIteration `db:"-"`
+}
+
+func (s *dbScenario) dto() app.Scenario {
+	return app.Scenario{
+		ID:                s.ID,
+		Name:              s.Name,
+		Description:       s.Description,
+		TriggerObjectType: s.TriggerObjectType,
+		CreatedAt:         s.CreatedAt,
+		// LiveVersion:       s.LiveVersion,
+	}
+}
+
+func (r *PGRepository) GetScenarios(orgID string) ([]app.Scenario, error) {
 	sql, args, err := r.queryBuilder.
-		Select("id", "name", "description", "trigger_object_type", "created_at").
+		Select("*").
+		From("scenarios").
+		Where(squirrel.Eq{"org_id": orgID}).ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	rows, _ := r.db.Query(context.Background(), sql, args...)
+	scenarios, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbScenario])
+
+	scenarioDTOs := make([]app.Scenario, len(scenarios))
+	for i, scenario := range scenarios {
+		scenarioDTOs[i] = scenario.dto()
+	}
+	return scenarioDTOs, err
+}
+
+func (r *PGRepository) GetScenario(orgID string, scenarioID string) (app.Scenario, error) {
+	sql, args, err := r.queryBuilder.
+		Select("*").
 		From("scenarios").
 		Where(squirrel.Eq{"org_id": orgID, "id": scenarioID}).ToSql()
 	if err != nil {
-		return
+		return app.Scenario{}, err
 	}
 
-	err = r.db.QueryRow(context.Background(), sql, args...).Scan(
-		&s.ID,
-		&s.Name,
-		&s.Description,
-		&s.TriggerObjectType,
-		&s.CreatedAt,
-	)
-	return
+	rows, _ := r.db.Query(context.Background(), sql, args...)
+	scenario, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenario])
+	if errors.Is(err, pgx.ErrNoRows) {
+		return app.Scenario{}, app.ErrNotFoundInRepository
+	}
+
+	return scenario.dto(), err
 }
 
-func (r *PGRepository) PostScenario(orgID string, scenario app.Scenario) (id string, err error) {
+func (r *PGRepository) PostScenario(orgID string, scenario app.Scenario) (app.Scenario, error) {
 	sql, args, err := r.queryBuilder.
 		Insert("scenarios").
 		Columns(
 			"org_id",
-			"id",
 			"name",
 			"description",
 			"trigger_object_type",
-			"created_at").
+		).
 		Values(
 			orgID,
-			scenario.ID,
 			scenario.Name,
 			scenario.Description,
 			scenario.TriggerObjectType,
-			scenario.CreatedAt.UTC()).
-		Suffix("RETURNING \"id\"").ToSql()
+		).
+		Suffix("RETURNING *").ToSql()
 	if err != nil {
-		return
+		return app.Scenario{}, err
 	}
 
-	err = r.db.QueryRow(context.TODO(), sql, args).Scan(&id)
+	rows, _ := r.db.Query(context.Background(), sql, args...)
+	createdScenario, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenario])
 
-	return
+	return createdScenario.dto(), err
 }
