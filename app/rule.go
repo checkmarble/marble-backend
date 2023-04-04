@@ -1,6 +1,9 @@
 package app
 
-import "marble/marble-backend/app/operators"
+import (
+	"log"
+	"marble/marble-backend/app/operators"
+)
 
 ///////////////////////////////
 // Rule
@@ -48,10 +51,14 @@ func (r RuleExecutionError) String() string {
 //
 ///////////////////////////////
 
-func (r Rule) Eval(dataAccessor operators.DataAccessor) RuleExecution {
+func (r Rule) Eval(dataAccessor operators.DataAccessor) (RuleExecution, error) {
 
 	// Eval the Node
-	res := r.Formula.Eval(dataAccessor)
+	res, err := r.Formula.Eval(dataAccessor)
+	if err != nil {
+		log.Printf("Error while evaluating rule %s: %v", r.Name, err)
+		return RuleExecution{}, err
+	}
 
 	score := 0
 	if res {
@@ -67,5 +74,5 @@ func (r Rule) Eval(dataAccessor operators.DataAccessor) RuleExecution {
 
 	//log.Printf("Rule %s is %v, score = %v", r.RootNode.Print(p), res, score)
 
-	return re
+	return re, nil
 }

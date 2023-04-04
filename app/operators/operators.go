@@ -45,20 +45,20 @@ type OperatorType struct {
 // /////////////////////////////
 type OperatorFloat interface {
 	Operator
-	Eval(dataAccessor DataAccessor) float64
+	Eval(dataAccessor DataAccessor) (float64, error)
 }
 
 type OperatorBool interface {
 	Operator
-	Eval(dataAccessor DataAccessor) bool
+	Eval(dataAccessor DataAccessor) (bool, error)
 }
 
 type OperatorDate interface {
 	Operator
-	Eval(dataAccessor DataAccessor) time.Time
+	Eval(dataAccessor DataAccessor) (time.Time, error)
 }
 
 type OperatorString interface {
 	Operator
-	Eval(dataAccessor DataAccessor) string
+	Eval(dataAccessor DataAccessor) (string, error)
 }

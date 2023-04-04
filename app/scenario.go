@@ -93,7 +93,10 @@ func (s Scenario) Eval(pd Payload, dataModel DataModel) (se ScenarioExecution, e
 	dataAccessor := DataAccessorImpl{DataModel: dataModel, Payload: pd}
 
 	// Evaluate the trigger
-	triggerPassed := s.LiveVersion.Body.TriggerCondition.Eval(&dataAccessor)
+	triggerPassed, err := s.LiveVersion.Body.TriggerCondition.Eval(&dataAccessor)
+	if err != nil {
+		return ScenarioExecution{}, err
+	}
 
 	if !triggerPassed {
 		return ScenarioExecution{}, ErrScenarioTriggerConditionAndTriggerObjectMismatch
@@ -105,7 +108,10 @@ func (s Scenario) Eval(pd Payload, dataModel DataModel) (se ScenarioExecution, e
 	for _, rule := range s.LiveVersion.Body.Rules {
 
 		// Evaluate single rule
-		ruleExecution := rule.Eval(&dataAccessor)
+		ruleExecution, err := rule.Eval(&dataAccessor)
+		if err != nil {
+			return ScenarioExecution{}, err
+		}
 		log.Printf("Rule %s (score_modifier = %v) is %v\n", ruleExecution.Rule.Formula.Print(), ruleExecution.Rule.ScoreModifier, ruleExecution.Result)
 
 		// Increment scenario score when rule is true

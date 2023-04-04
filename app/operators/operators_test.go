@@ -14,7 +14,7 @@ func (d *DataAccessorImpl) GetPayloadField(fieldName string) (interface{}, error
 	return nil, nil
 }
 func (d *DataAccessorImpl) GetDBField(path []string, fieldName string) (interface{}, error) {
-	return nil, nil
+	return true, nil
 }
 
 func TestLogic(t *testing.T) {
@@ -28,7 +28,11 @@ func TestLogic(t *testing.T) {
 	dataAccessor := DataAccessorImpl{}
 
 	expected := true
-	got := tree.Eval(&dataAccessor)
+	got, err := tree.Eval(&dataAccessor)
+
+	if err != nil {
+		t.Errorf("error: %v", err)
+	}
 
 	if got != expected {
 		t.Errorf("got: %v, expected: %v", got, expected)
@@ -46,7 +50,33 @@ func TestLogic2(t *testing.T) {
 	dataAccessor := DataAccessorImpl{}
 
 	expected := false
-	got := tree.Eval(&dataAccessor)
+	got, err := tree.Eval(&dataAccessor)
+
+	if err != nil {
+		t.Errorf("error: %v", err)
+	}
+
+	if got != expected {
+		t.Errorf("got: %v, expected: %v", got, expected)
+	}
+}
+
+func TestLogic3(t *testing.T) {
+	tree := EqBool{
+		Left: &True{},
+		Right: &EqBool{
+			Left:  &DbFieldBool{Path: []string{"a", "b"}, FieldName: "c"},
+			Right: &True{},
+		},
+	}
+	dataAccessor := DataAccessorImpl{}
+
+	expected := true
+	got, err := tree.Eval(&dataAccessor)
+
+	if err != nil {
+		t.Errorf("error: %v", err)
+	}
 
 	if got != expected {
 		t.Errorf("got: %v, expected: %v", got, expected)
@@ -57,7 +87,7 @@ func TestMarshalUnMarshal(t *testing.T) {
 	tree := EqBool{
 		Left: &True{},
 		Right: &EqBool{
-			Left:  &False{},
+			Left:  &DbFieldBool{Path: []string{"a", "b"}, FieldName: "c"},
 			Right: &True{},
 		},
 	}
@@ -78,8 +108,14 @@ func TestMarshalUnMarshal(t *testing.T) {
 	spew.Dump(tree)
 	spew.Dump(rootOperator)
 
-	expected := tree.Eval(&dataAccessor)
-	got := rootOperator.Eval(&dataAccessor)
+	expected, err := tree.Eval(&dataAccessor)
+	if err != nil {
+		t.Errorf("error: %v", err)
+	}
+	got, err := rootOperator.Eval(&dataAccessor)
+	if err != nil {
+		t.Errorf("error: %v", err)
+	}
 
 	if got != expected {
 		t.Errorf("got: %v, expected: %v", got, expected)
