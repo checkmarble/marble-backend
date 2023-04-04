@@ -9,16 +9,17 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype/zeronull"
 )
 
 type dbScenario struct {
-	ID                string    `db:"id"`
-	OrgID             string    `db:"org_id"`
-	Name              string    `db:"name"`
-	Description       string    `db:"description"`
-	TriggerObjectType string    `db:"trigger_object_type"`
-	CreatedAt         time.Time `db:"created_at"`
-	LiveVersionID     string    `db:"live_scenario_iteration_id"`
+	ID                string        `db:"id"`
+	OrgID             string        `db:"org_id"`
+	Name              string        `db:"name"`
+	Description       string        `db:"description"`
+	TriggerObjectType string        `db:"trigger_object_type"`
+	CreatedAt         time.Time     `db:"created_at"`
+	LiveVersionID     zeronull.Text `db:"live_scenario_iteration_id"`
 }
 
 func (s *dbScenario) dto() app.Scenario {
