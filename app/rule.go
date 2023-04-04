@@ -48,10 +48,10 @@ func (r RuleExecutionError) String() string {
 //
 ///////////////////////////////
 
-func (r Rule) Eval(p Payload) RuleExecution {
+func (r Rule) Eval(dataAccessor operators.DataAccessor) RuleExecution {
 
 	// Eval the Node
-	res := r.Formula.Eval()
+	res := r.Formula.Eval(dataAccessor)
 
 	score := 0
 	if res {

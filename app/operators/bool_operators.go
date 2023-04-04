@@ -49,7 +49,7 @@ func unmarshalOperatorBool(jsonBytes []byte) (OperatorBool, error) {
 // /////////////////////////////
 type True struct{}
 
-func (t True) Eval() bool { return true }
+func (t True) Eval(d DataAccessor) bool { return true }
 
 func (t True) Print() string { return "TRUE" }
 
@@ -79,7 +79,7 @@ func (t *True) UnmarshalJSON(b []byte) error {
 // /////////////////////////////
 type False struct{}
 
-func (f False) Eval() bool { return false }
+func (f False) Eval(d DataAccessor) bool { return false }
 
 func (f False) Print() string { return "FALSE" }
 
@@ -109,8 +109,8 @@ func (f *False) UnmarshalJSON(b []byte) error {
 // /////////////////////////////
 type EqBool struct{ Left, Right OperatorBool }
 
-func (eq EqBool) Eval() bool {
-	return eq.Left.Eval() == eq.Right.Eval()
+func (eq EqBool) Eval(d DataAccessor) bool {
+	return eq.Left.Eval(d) == eq.Right.Eval(d)
 }
 
 func (eq EqBool) Print() string {

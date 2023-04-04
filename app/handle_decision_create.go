@@ -25,9 +25,19 @@ func (a *App) CreateDecision(organizationID string, scenarioID string, payload P
 	}
 
 	///////////////////////////////
+	// Get Data Model
+	///////////////////////////////
+	dm, err := a.repository.GetDataModel(organizationID)
+	if errors.Is(err, ErrNotFoundInRepository) {
+		return Decision{}, ErrScenarioNotFound
+	} else if err != nil {
+		return Decision{}, fmt.Errorf("error getting scenario: %w", err)
+	}
+
+	///////////////////////////////
 	// Execute scenario
 	///////////////////////////////
-	scenarioExecution, err := s.Eval(payload)
+	scenarioExecution, err := s.Eval(payload, dm)
 	if err != nil {
 		return Decision{}, fmt.Errorf("error evaluating scenario: %w", err)
 	}

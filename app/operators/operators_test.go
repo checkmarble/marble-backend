@@ -8,6 +8,15 @@ import (
 	"github.com/davecgh/go-spew/spew"
 )
 
+type DataAccessorImpl struct{}
+
+func (d *DataAccessorImpl) GetPayloadField(path []string) (interface{}, error) {
+	return nil, nil
+}
+func (d *DataAccessorImpl) GetDBField(path []string) (interface{}, error) {
+	return nil, nil
+}
+
 func TestLogic(t *testing.T) {
 	tree := EqBool{
 		Left: &True{},
@@ -16,9 +25,10 @@ func TestLogic(t *testing.T) {
 			Right: &False{},
 		},
 	}
+	dataAccessor := DataAccessorImpl{}
 
 	expected := true
-	got := tree.Eval()
+	got := tree.Eval(&dataAccessor)
 
 	if got != expected {
 		t.Errorf("got: %v, expected: %v", got, expected)
@@ -33,9 +43,10 @@ func TestLogic2(t *testing.T) {
 			Right: &True{},
 		},
 	}
+	dataAccessor := DataAccessorImpl{}
 
 	expected := false
-	got := tree.Eval()
+	got := tree.Eval(&dataAccessor)
 
 	if got != expected {
 		t.Errorf("got: %v, expected: %v", got, expected)
@@ -50,6 +61,7 @@ func TestMarshalUnMarshal(t *testing.T) {
 			Right: &True{},
 		},
 	}
+	dataAccessor := DataAccessorImpl{}
 
 	JSONbytes, err := tree.MarshalJSON()
 	if err != nil {
@@ -66,8 +78,8 @@ func TestMarshalUnMarshal(t *testing.T) {
 	spew.Dump(tree)
 	spew.Dump(rootOperator)
 
-	expected := tree.Eval()
-	got := rootOperator.Eval()
+	expected := tree.Eval(&dataAccessor)
+	got := rootOperator.Eval(&dataAccessor)
 
 	if got != expected {
 		t.Errorf("got: %v, expected: %v", got, expected)
