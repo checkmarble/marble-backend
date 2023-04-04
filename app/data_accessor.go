@@ -5,9 +5,9 @@ type DataAccessorImpl struct {
 	Payload   Payload
 }
 
-func (d *DataAccessorImpl) GetPayloadField(path []string) (interface{}, error) {
+func (d *DataAccessorImpl) GetPayloadField(fieldName string) (interface{}, error) {
 	return nil, nil
 }
-func (d *DataAccessorImpl) GetDBField(path []string) (interface{}, error) {
+func (d *DataAccessorImpl) GetDBField(path []string, fieldName string) (interface{}, error) {
 	return nil, nil
 }

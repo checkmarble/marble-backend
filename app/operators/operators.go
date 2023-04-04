@@ -14,8 +14,8 @@ import (
 var operatorFromType = make(map[string]func() Operator)
 
 type DataAccessor interface {
-	GetPayloadField(path []string) (interface{}, error)
-	GetDBField(path []string) (interface{}, error)
+	GetPayloadField(fieldName string) (interface{}, error)
+	GetDBField(path []string, fieldName string) (interface{}, error)
 	// GetListField(path []string) (interface{}, error)
 }
 
