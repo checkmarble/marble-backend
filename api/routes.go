@@ -36,6 +36,10 @@ func (a *API) routes() {
 
 		r.Get("/", a.handleScenariosGet())
 		r.Post("/", a.handleScenariosPost())
+
+		r.Route("/{scenarioID:"+UUIDRegExp+"}", func(r chi.Router) {
+			r.Get("/", a.handleScenarioGet())
+		})
 	})
 
 }
