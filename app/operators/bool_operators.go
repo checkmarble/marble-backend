@@ -215,7 +215,7 @@ func (field DbFieldBool) MarshalJSON() ([]byte, error) {
 		OperatorType
 		Data dbFieldBoolData `json:"data"`
 	}{
-		OperatorType: OperatorType{Type: "DBFIELDBOOL"},
+		OperatorType: OperatorType{Type: "DB_FIELD_BOOL"},
 		Data: dbFieldBoolData{
 			Path:      field.Path,
 			FieldName: field.FieldName,
@@ -225,12 +225,12 @@ func (field DbFieldBool) MarshalJSON() ([]byte, error) {
 
 // register creation
 func init() {
-	operatorFromType["DBFIELDBOOL"] = func() Operator { return &DbFieldBool{} }
+	operatorFromType["DB_FIELD_BOOL"] = func() Operator { return &DbFieldBool{} }
 }
 
 func (field *DbFieldBool) UnmarshalJSON(b []byte) error {
 
-	log.Println("unmarshalling DBFIELDBOOL")
+	log.Println("unmarshalling DB_FIELD_BOOL")
 
 	// data schema
 	var dbFieldBoolData struct {

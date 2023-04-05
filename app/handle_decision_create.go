@@ -8,6 +8,7 @@ import (
 )
 
 var ErrScenarioNotFound = errors.New("scenario not found")
+var ErrDataModelNotFound = errors.New("scenario not found")
 
 func (a *App) CreateDecision(organizationID string, scenarioID string, payload Payload) (Decision, error) {
 
@@ -29,9 +30,9 @@ func (a *App) CreateDecision(organizationID string, scenarioID string, payload P
 	///////////////////////////////
 	dm, err := a.repository.GetDataModel(organizationID)
 	if errors.Is(err, ErrNotFoundInRepository) {
-		return Decision{}, ErrScenarioNotFound
+		return Decision{}, ErrDataModelNotFound
 	} else if err != nil {
-		return Decision{}, fmt.Errorf("error getting scenario: %w", err)
+		return Decision{}, fmt.Errorf("error getting data model: %w", err)
 	}
 
 	///////////////////////////////
