@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"fmt"
 )
@@ -30,7 +31,7 @@ func (a *App) PayloadFromTriggerObject(organizationID string, triggerObject map[
 		return Payload{}, fmt.Errorf("\"type\" key is not a string: %w", ErrTriggerObjectAndDataModelMismatch)
 	}
 
-	_, err := a.repository.GetDataModel(organizationID)
+	_, err := a.repository.GetDataModel(context.TODO(), organizationID)
 	if errors.Is(err, ErrNotFoundInRepository) {
 		return Payload{}, fmt.Errorf("data model not found")
 	} else if err != nil {

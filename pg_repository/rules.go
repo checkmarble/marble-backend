@@ -35,7 +35,7 @@ func (sir *dbScenarioIterationRule) dto() (app.Rule, error) {
 	}, nil
 }
 
-func (r *PGRepository) CreateScenarioIterationRule(scenarioIterationID string, orgID string, rule app.Rule) (app.Rule, error) {
+func (r *PGRepository) CreateScenarioIterationRule(ctx context.Context, scenarioIterationID string, orgID string, rule app.Rule) (app.Rule, error) {
 	formulaBytes, err := rule.Formula.MarshalJSON()
 	if err != nil {
 		return app.Rule{}, fmt.Errorf("unable to marshal rule formula: %w", err)
@@ -64,7 +64,7 @@ func (r *PGRepository) CreateScenarioIterationRule(scenarioIterationID string, o
 		return app.Rule{}, fmt.Errorf("unable to build rule query: %w", err)
 	}
 
-	rows, _ := r.db.Query(context.TODO(), sql, args...)
+	rows, _ := r.db.Query(ctx, sql, args...)
 	createdRule, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenarioIterationRule])
 	if err != nil {
 		return app.Rule{}, fmt.Errorf("unable to create rule: %w", err)
@@ -78,7 +78,7 @@ func (r *PGRepository) CreateScenarioIterationRule(scenarioIterationID string, o
 	return ruleDTO, err
 }
 
-func (r *PGRepository) createScenarioIterationRules(_ context.Context, tx pgx.Tx, orgID string, scenarioIterationID string, rules []app.Rule) ([]app.Rule, error) {
+func (r *PGRepository) createScenarioIterationRules(ctx context.Context, tx pgx.Tx, orgID string, scenarioIterationID string, rules []app.Rule) ([]app.Rule, error) {
 	query := r.queryBuilder.
 		Insert("scenario_iteration_rules").
 		Columns(
@@ -114,7 +114,7 @@ func (r *PGRepository) createScenarioIterationRules(_ context.Context, tx pgx.Tx
 		return nil, fmt.Errorf("unable to build rule query: %w", err)
 	}
 
-	rows, _ := tx.Query(context.TODO(), sql, args...)
+	rows, _ := tx.Query(ctx, sql, args...)
 	createdRules, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbScenarioIterationRule])
 	if err != nil {
 		return nil, fmt.Errorf("unable to create rules: %w", err)

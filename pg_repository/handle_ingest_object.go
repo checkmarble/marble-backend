@@ -7,15 +7,15 @@ import (
 	"marble/marble-backend/app"
 )
 
-func (r *PGRepository) IngestObject(payloadStructWithReader app.DynamicStructWithReader, table app.Table) (err error) {
-	tx, err := r.db.Begin(context.Background())
+func (r *PGRepository) IngestObject(ctx context.Context, payloadStructWithReader app.DynamicStructWithReader, table app.Table) (err error) {
+	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		log.Printf("Error starting transaction: %s\n", err)
 		return err
 	}
 	// Rollback is safe to call even if the tx is already closed, so if
 	// the tx commits successfully, this is a no-op
-	defer tx.Rollback(context.Background())
+	defer tx.Rollback(ctx)
 
 	columnNamesSlice := make([]string, len(table.Fields))
 	valuesNumberSlice := make([]string, len(table.Fields))
@@ -36,14 +36,14 @@ func (r *PGRepository) IngestObject(payloadStructWithReader app.DynamicStructWit
 
 	log.Printf("args: %v\n", args)
 	var createdObjectId string
-	err = tx.QueryRow(context.TODO(), sql, args...).Scan(&createdObjectId)
+	err = tx.QueryRow(ctx, sql, args...).Scan(&createdObjectId)
 	if err != nil {
 		log.Printf("Error inserting object: %s\n", err)
 		return err
 	}
 	log.Printf("Created object in db: type %s, id \"%s\"\n", table.Name, createdObjectId)
 
-	err = tx.Commit(context.Background())
+	err = tx.Commit(ctx)
 	if err != nil {
 		log.Printf("Error committing transaction: %s\n", err)
 		return err

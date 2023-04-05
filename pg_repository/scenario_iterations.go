@@ -43,7 +43,7 @@ func (si *dbScenarioIteration) dto() (app.ScenarioIteration, error) {
 	}, nil
 }
 
-func (r *PGRepository) GetScenarioIteration(orgID string, scenarioIterationID string) (app.ScenarioIteration, error) {
+func (r *PGRepository) GetScenarioIteration(ctx context.Context, orgID string, scenarioIterationID string) (app.ScenarioIteration, error) {
 	sql, args, err := r.queryBuilder.
 		Select(
 			"si.*",
@@ -64,7 +64,7 @@ func (r *PGRepository) GetScenarioIteration(orgID string, scenarioIterationID st
 		Rules []dbScenarioIterationRule
 	}
 
-	rows, _ := r.db.Query(context.TODO(), sql, args...)
+	rows, _ := r.db.Query(ctx, sql, args...)
 	scenarioIteration, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[DBRow])
 	if errors.Is(err, pgx.ErrNoRows) {
 		return app.ScenarioIteration{}, app.ErrNotFoundInRepository

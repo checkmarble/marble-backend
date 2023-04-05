@@ -140,7 +140,7 @@ func (r *PGRepository) Describe() {
 	}
 }
 
-func (r *PGRepository) GetDataModel(orgID string) (app.DataModel, error) {
+func (r *PGRepository) GetDataModel(_ context.Context, orgID string) (app.DataModel, error) {
 	org, orgFound := r.organizations[orgID]
 	if !orgFound {
 		return app.DataModel{}, app.ErrNotFoundInRepository
@@ -148,7 +148,7 @@ func (r *PGRepository) GetDataModel(orgID string) (app.DataModel, error) {
 	return org.DataModel, nil
 }
 
-func (r *PGRepository) GetOrganizationIDFromToken(token string) (orgID string, err error) {
+func (r *PGRepository) GetOrganizationIDFromToken(_ context.Context, token string) (orgID string, err error) {
 	for _, o := range r.organizations {
 		for _, t := range o.Tokens {
 			if t == token {

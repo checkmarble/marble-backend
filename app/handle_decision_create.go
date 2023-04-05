@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -16,7 +17,7 @@ func (a *App) CreateDecision(organizationID string, scenarioID string, payload P
 	///////////////////////////////
 	// Get scenario
 	///////////////////////////////
-	s, err := a.repository.GetScenario(organizationID, scenarioID)
+	s, err := a.repository.GetScenario(context.TODO(), organizationID, scenarioID)
 
 	if errors.Is(err, ErrNotFoundInRepository) {
 		return Decision{}, ErrScenarioNotFound
@@ -49,7 +50,7 @@ func (a *App) CreateDecision(organizationID string, scenarioID string, payload P
 		// TODO DecisionError DecisionError
 	}
 
-	id, err := a.repository.StoreDecision(organizationID, d)
+	id, err := a.repository.StoreDecision(context.TODO(), organizationID, d)
 	if err != nil {
 		log.Printf("error storing decision: %v", err)
 	}
