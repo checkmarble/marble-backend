@@ -19,10 +19,10 @@ func (r *PGRepository) GetScenarioIteration(orgID string, scenarioIterationID st
 	// Build query
 	sql, args, err := r.queryBuilder.
 		Select("si.id, si.scenario_id, si.version, si.score_review_threshold, si.score_reject_threshold, si.trigger_condition, sir.display_order, sir.name, sir.description, sir.formula, sir.score_modifier").
-		From("scenario_iteration si").
+		From("scenario_iterations si").
 		Join("scenario_iteration_rules sir ON sir.scenario_iteration_id = si.id").
 		Where("si.id = ?", scenarioIterationID).
-		Where("si.ord_id = ?", orgID).
+		Where("si.org_id = ?", orgID).
 		ToSql()
 	if err != nil {
 		return app.ScenarioIteration{}, fmt.Errorf("unable to build scenario iteration query: %w", err)
@@ -31,21 +31,21 @@ func (r *PGRepository) GetScenarioIteration(orgID string, scenarioIterationID st
 	// Execute query
 	// Struct corresponding to rows
 	type DBRow struct {
-		ID         string `db:"si.id"`
-		ScenarioID string `db:"si.scenario_id"`
-		Version    int    `db:"si.version"`
+		ID         string `db:"id"`
+		ScenarioID string `db:"scenario_id"`
+		Version    int    `db:"version"`
 
-		ScoreReviewThreshold int `db:"si.score_review_threshold"`
-		ScoreRejectThreshold int `db:"si.score_reject_threshold"`
+		ScoreReviewThreshold int `db:"score_review_threshold"`
+		ScoreRejectThreshold int `db:"score_reject_threshold"`
 
-		TriggerCondition []byte `db:"si.trigger_condition"`
+		TriggerCondition []byte `db:"trigger_condition"`
 
-		DisplayOrder int    `db:"sir.display_order"`
-		Name         string `db:"sir.name"`
-		Description  string `db:"sir.formula"`
+		DisplayOrder int    `db:"display_order"`
+		Name         string `db:"name"`
+		Description  string `db:"description"`
 
-		Formula       []byte `db:"sir.formula"`
-		ScoreModifier int    `db:"si.score_modifier"`
+		Formula       []byte `db:"formula"`
+		ScoreModifier int    `db:"score_modifier"`
 	}
 
 	rows, err := r.db.Query(context.TODO(), sql, args...)

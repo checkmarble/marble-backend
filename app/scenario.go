@@ -18,7 +18,7 @@ type Scenario struct {
 	Description       string             `json:"description"`
 	TriggerObjectType string             `json:"triggerObjectType"`
 	CreatedAt         time.Time          `json:"createdAt"`
-	LiveVersion       *ScenarioIteration `json:"-"`
+	LiveVersion       *ScenarioIteration `json:"liveVersion"`
 }
 
 type ScenarioIteration struct {

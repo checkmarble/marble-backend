@@ -9,17 +9,17 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype/zeronull"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type dbScenario struct {
-	ID                string        `db:"id"`
-	OrgID             string        `db:"org_id"`
-	Name              string        `db:"name"`
-	Description       string        `db:"description"`
-	TriggerObjectType string        `db:"trigger_object_type"`
-	CreatedAt         time.Time     `db:"created_at"`
-	LiveVersionID     zeronull.Text `db:"live_scenario_iteration_id"`
+	ID                string      `db:"id"`
+	OrgID             string      `db:"org_id"`
+	Name              string      `db:"name"`
+	Description       string      `db:"description"`
+	TriggerObjectType string      `db:"trigger_object_type"`
+	CreatedAt         time.Time   `db:"created_at"`
+	LiveVersionID     pgtype.Text `db:"live_scenario_iteration_id"`
 }
 
 func (s *dbScenario) dto() app.Scenario {
@@ -76,28 +76,13 @@ func (r *PGRepository) GetScenario(orgID string, scenarioID string) (app.Scenari
 
 	scenarioDTO := scenario.dto()
 
-	if scenario.LiveVersionID == "" {
-		return scenarioDTO, err
+	if scenario.LiveVersionID.Valid {
+		liveScenarioIteration, err := r.GetScenarioIteration(orgID, scenario.LiveVersionID.String)
+		if err != nil {
+			return app.Scenario{}, fmt.Errorf("unable to get live scenario iteration: %w", err)
+		}
+		scenarioDTO.LiveVersion = &liveScenarioIteration
 	}
-
-	// liveScenarioIteration, err := r.GetScenarioIteration(orgID, scenario.LiveVersionID)
-
-	// if errors.Is(err, pgx.ErrNoRows) {
-
-	// 	// Silently ignore error, scenario will not point to a live version
-	// 	// TODO: check how this is possible ?
-
-	// 	return app.Scenario{}, err
-
-	// } else if err != nil {
-
-	// 	// Silently ignore error, scenario will not point to a live version
-	// 	// TODO: check how this is possible ?
-
-	// 	return app.Scenario{}, err
-	// }
-
-	// s.LiveVersion = &liveScenarioIteration
 
 	return scenarioDTO, err
 }

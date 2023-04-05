@@ -6,12 +6,12 @@ import (
 	"marble/marble-backend/app"
 	"marble/marble-backend/app/operators"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 )
 
 type dbScenarioIterationRule struct {
 	ID                  string `db:"id"`
+	OrgID               string `db:"org_id"`
 	ScenarioIterationID string `db:"scenario_iteration_id"`
 	DisplayOrder        int    `db:"display_order"`
 	Name                string `db:"name"`
@@ -35,27 +35,25 @@ func (sir *dbScenarioIterationRule) dto() (app.Rule, error) {
 	}, nil
 }
 
-func (r *PGRepository) insertScenarioIterationRuleQuery() squirrel.InsertBuilder {
-	return r.queryBuilder.
-		Insert("scenario_iteration_rules").
-		Columns(
-			"scenario_iteration_id",
-			"display_order",
-			"name",
-			"description",
-			"formula",
-			"score_modifier")
-}
-
-func (r *PGRepository) CreateScenarioIterationRule(scenarioIterationID string, rule app.Rule) (app.Rule, error) {
+func (r *PGRepository) CreateScenarioIterationRule(scenarioIterationID string, orgID string, rule app.Rule) (app.Rule, error) {
 	formulaBytes, err := rule.Formula.MarshalJSON()
 	if err != nil {
 		return app.Rule{}, fmt.Errorf("unable to marshal rule formula: %w", err)
 	}
 
-	sql, args, err := r.insertScenarioIterationRuleQuery().
+	sql, args, err := r.queryBuilder.
+		Insert("scenario_iteration_rules").
+		Columns(
+			"scenario_iteration_id",
+			"org_id",
+			"display_order",
+			"name",
+			"description",
+			"formula",
+			"score_modifier").
 		Values(
 			scenarioIterationID,
+			orgID,
 			rule.DisplayOrder,
 			rule.Name,
 			rule.Description,
@@ -80,8 +78,17 @@ func (r *PGRepository) CreateScenarioIterationRule(scenarioIterationID string, r
 	return ruleDTO, err
 }
 
-func (r *PGRepository) CreateScenarioIterationRules(scenarioIterationID string, rules []app.Rule) ([]app.Rule, error) {
-	query := r.insertScenarioIterationRuleQuery()
+func (r *PGRepository) createScenarioIterationRules(_ context.Context, tx pgx.Tx, orgID string, scenarioIterationID string, rules []app.Rule) ([]app.Rule, error) {
+	query := r.queryBuilder.
+		Insert("scenario_iteration_rules").
+		Columns(
+			"scenario_iteration_id",
+			"org_id",
+			"display_order",
+			"name",
+			"description",
+			"formula",
+			"score_modifier")
 
 	for _, rule := range rules {
 		formulaBytes, err := rule.Formula.MarshalJSON()
@@ -93,10 +100,11 @@ func (r *PGRepository) CreateScenarioIterationRules(scenarioIterationID string, 
 		query = query.
 			Values(
 				scenarioIterationID,
+				orgID,
 				rule.DisplayOrder,
 				rule.Name,
 				rule.Description,
-				formulaBytes,
+				string(formulaBytes),
 				rule.ScoreModifier,
 			)
 	}
@@ -106,7 +114,7 @@ func (r *PGRepository) CreateScenarioIterationRules(scenarioIterationID string, 
 		return nil, fmt.Errorf("unable to build rule query: %w", err)
 	}
 
-	rows, _ := r.db.Query(context.TODO(), sql, args...)
+	rows, _ := tx.Query(context.TODO(), sql, args...)
 	createdRules, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbScenarioIterationRule])
 	if err != nil {
 		return nil, fmt.Errorf("unable to create rules: %w", err)

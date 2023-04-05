@@ -124,7 +124,7 @@ func (r *PGRepository) LoadOrganizations() {
 			Body:       sib,
 		}
 
-		s, err := r.CreateScenarioIteration(testOrgID, si)
+		s, err := r.CreateScenarioIteration(context.TODO(), testOrgID, si)
 		if err != nil {
 			log.Printf("error creating scenario: %v", err)
 		}

@@ -7,18 +7,18 @@ import (
 	"marble/marble-backend/app/operators"
 	"time"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 )
 
 type dbScenarioIteration struct {
 	ID                   string    `db:"id"`
+	OrgID                string    `db:"org_id"`
 	ScenarioID           string    `db:"scenario_id"`
 	Version              int       `db:"version"`
 	CreatedAt            time.Time `db:"created_at"`
 	UpdatedAt            time.Time `db:"updated_at"`
-	ScoreReviewThreshold int       `db:"si.score_review_threshold"`
-	ScoreRejectThreshold int       `db:"si.score_reject_threshold"`
+	ScoreReviewThreshold int       `db:"score_review_threshold"`
+	ScoreRejectThreshold int       `db:"score_reject_threshold"`
 	TriggerCondition     []byte    `db:"trigger_condition"`
 }
 
@@ -42,53 +42,69 @@ func (si *dbScenarioIteration) dto() (app.ScenarioIteration, error) {
 	}, nil
 }
 
-func (r *PGRepository) getNextVersionNumberBuilder(scenarioID string) squirrel.SelectBuilder {
-	return r.queryBuilder.Select("MAX(version)").From("scenario_iterations").Where("scenario_id = ?", scenarioID)
+func (r *PGRepository) getNextVersionNumberBuilder(scenarioID string) (string, []interface{}, error) {
+	return r.queryBuilder.
+		Select("MAX(version)+1 as version").
+		From("scenario_iterations").
+		Where("scenario_id = ?", scenarioID).ToSql()
 }
 
-func (r *PGRepository) CreateScenarioIteration(orgID string, scenarioIteration app.ScenarioIteration) (app.ScenarioIteration, error) {
+func (r *PGRepository) CreateScenarioIteration(ctx context.Context, orgID string, scenarioIteration app.ScenarioIteration) (app.ScenarioIteration, error) {
 	triggerConditionBytes, err := scenarioIteration.Body.TriggerCondition.MarshalJSON()
 	if err != nil {
 		return app.ScenarioIteration{}, fmt.Errorf("unable to marshal trigger condition: %w", err)
 	}
 
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return app.ScenarioIteration{}, fmt.Errorf("unable to start a transaction: %w", err)
+	}
+	defer tx.Rollback(ctx) // safe to call even if tx commits
+
 	sql, args, err := r.queryBuilder.
+		Select("MAX(version)+1").
+		From("scenario_iterations").
+		Where("scenario_id = ?", scenarioIteration.ScenarioID).ToSql()
+	if err != nil {
+		return app.ScenarioIteration{}, fmt.Errorf("unable to build next iteration version query: %w", err)
+	}
+
+	var version int
+	err = tx.QueryRow(ctx, sql, args...).Scan(&version)
+	if err != nil {
+		return app.ScenarioIteration{}, fmt.Errorf("unable to get scenario next iteration version: %w", err)
+	}
+
+	sql, args, err = r.queryBuilder.
 		Insert("scenario_iterations").
 		Columns(
-			"org_id",
 			"scenario_id",
+			"org_id",
 			"version",
 			"trigger_condition",
 			"score_review_threshold",
 			"score_reject_threshold",
 		).
 		Values(
-			orgID,
 			scenarioIteration.ScenarioID,
-			r.getNextVersionNumberBuilder(scenarioIteration.ScenarioID),
-			triggerConditionBytes,
+			orgID,
+			version,
+			string(triggerConditionBytes),
 			scenarioIteration.Body.ScoreReviewThreshold,
 			scenarioIteration.Body.ScoreRejectThreshold,
 		).
 		Suffix("RETURNING *").ToSql()
-
 	if err != nil {
 		return app.ScenarioIteration{}, fmt.Errorf("unable to build scenario iteration query: %w", err)
 	}
 
-	tx, err := r.db.Begin(context.Background())
-	if err != nil {
-		return app.ScenarioIteration{}, fmt.Errorf("unable to start a transaction: %w", err)
-	}
-	defer tx.Rollback(context.Background()) // safe to call even if tx commits
-
-	rows, _ := tx.Query(context.TODO(), sql, args...)
+	rows, _ := tx.Query(ctx, sql, args...)
 	createdScenarioIteration, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenarioIteration])
 	if err != nil {
 		return app.ScenarioIteration{}, fmt.Errorf("unable to create scenario iteration: %w", err)
 	}
 
-	createdRules, err := r.CreateScenarioIterationRules(createdScenarioIteration.ID, scenarioIteration.Body.Rules)
+	createdRules, err := r.createScenarioIterationRules(ctx, tx, orgID, createdScenarioIteration.ID, scenarioIteration.Body.Rules)
 	if err != nil {
 		return app.ScenarioIteration{}, fmt.Errorf("unable to create scenario iteration rules: %w", err)
 	}
@@ -99,6 +115,8 @@ func (r *PGRepository) CreateScenarioIteration(orgID string, scenarioIteration a
 	}
 
 	scenarioIterationDTO.Body.Rules = createdRules
+
+	tx.Commit(ctx)
 
 	return scenarioIterationDTO, nil
 }
