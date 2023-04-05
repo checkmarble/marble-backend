@@ -2,6 +2,7 @@ package pg_repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"marble/marble-backend/app"
 	"marble/marble-backend/app/operators"
@@ -40,6 +41,50 @@ func (si *dbScenarioIteration) dto() (app.ScenarioIteration, error) {
 			ScoreRejectThreshold: si.ScoreRejectThreshold,
 		},
 	}, nil
+}
+
+func (r *PGRepository) GetScenarioIteration(orgID string, scenarioIterationID string) (app.ScenarioIteration, error) {
+	sql, args, err := r.queryBuilder.
+		Select(
+			"si.*",
+			"array_agg(row(sir.*)) as rules",
+		).
+		From("scenario_iterations si").
+		Join("scenario_iteration_rules sir on sir.scenario_iteration_id = si.id").
+		Where("si.id = ?", scenarioIterationID).
+		Where("si.org_id = ?", orgID).
+		GroupBy("si.id").
+		ToSql()
+	if err != nil {
+		return app.ScenarioIteration{}, fmt.Errorf("unable to build scenario iteration query: %w", err)
+	}
+
+	type DBRow struct {
+		dbScenarioIteration
+		Rules []dbScenarioIterationRule
+	}
+
+	rows, _ := r.db.Query(context.TODO(), sql, args...)
+	scenarioIteration, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[DBRow])
+	if errors.Is(err, pgx.ErrNoRows) {
+		return app.ScenarioIteration{}, app.ErrNotFoundInRepository
+	} else if err != nil {
+		return app.ScenarioIteration{}, fmt.Errorf("unable to collect scenario iteration: %w", err)
+	}
+
+	scenarioIterationDTO, err := scenarioIteration.dto()
+	if err != nil {
+		return app.ScenarioIteration{}, fmt.Errorf("dto issue: %w", err)
+	}
+	for _, rule := range scenarioIteration.Rules {
+		ruleDto, err := rule.dto()
+		if err != nil {
+			return app.ScenarioIteration{}, fmt.Errorf("dto issue: %w", err)
+		}
+		scenarioIterationDTO.Body.Rules = append(scenarioIterationDTO.Body.Rules, ruleDto)
+	}
+
+	return scenarioIterationDTO, nil
 }
 
 func (r *PGRepository) getNextVersionNumberBuilder(scenarioID string) (string, []interface{}, error) {

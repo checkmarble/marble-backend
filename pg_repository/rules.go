@@ -16,8 +16,8 @@ type dbScenarioIterationRule struct {
 	DisplayOrder        int    `db:"display_order"`
 	Name                string `db:"name"`
 	Description         string `db:"description"`
-	Formula             []byte `db:"formula"`
 	ScoreModifier       int    `db:"score_modifier"`
+	Formula             []byte `db:"formula"`
 }
 
 func (sir *dbScenarioIterationRule) dto() (app.Rule, error) {
