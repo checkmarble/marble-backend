@@ -11,14 +11,14 @@ import (
 var ErrScenarioNotFound = errors.New("scenario not found")
 var ErrDataModelNotFound = errors.New("data model not found")
 
-func (app *App) CreateDecision(organizationID string, scenarioID string, payload Payload) (Decision, error) {
+func (app *App) CreateDecision(ctx context.Context, organizationID string, scenarioID string, payload Payload) (Decision, error) {
 
 	t := time.Now().UTC()
 
 	///////////////////////////////
 	// Get scenario
 	///////////////////////////////
-	s, err := app.repository.GetScenario(context.TODO(), organizationID, scenarioID)
+	s, err := app.repository.GetScenario(ctx, organizationID, scenarioID)
 
 	if errors.Is(err, ErrNotFoundInRepository) {
 		return Decision{}, ErrScenarioNotFound
@@ -61,7 +61,7 @@ func (app *App) CreateDecision(organizationID string, scenarioID string, payload
 		// TODO DecisionError DecisionError
 	}
 
-	id, err := app.repository.StoreDecision(context.TODO(), organizationID, d)
+	id, err := app.repository.StoreDecision(ctx, organizationID, d)
 	if err != nil {
 		log.Printf("error storing decision: %v", err)
 	}

@@ -11,13 +11,14 @@ import (
 // AuthCtx sets the organization ID in the context from the authorization header
 func (a *API) authCtx(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 
 		// read token from headers
 		bearerToken := r.Header.Get("Authorization")        // looks like 'Bearer 12345'
 		token := strings.TrimPrefix(bearerToken, "Bearer ") // looks like '12345'
 
 		// Find org from token
-		orgID, err := a.app.GetOrganizationIDFromToken(token)
+		orgID, err := a.app.GetOrganizationIDFromToken(ctx, token)
 
 		// If error, stop processing here
 		if err != nil {
@@ -28,7 +29,7 @@ func (a *API) authCtx(next http.Handler) http.Handler {
 		// Else, add org ID to the context
 		log.Printf("token %v matched organization # %v\n", token, orgID)
 
-		ctx := context.WithValue(r.Context(), contextKeyOrgID, orgID)
+		ctx = context.WithValue(ctx, contextKeyOrgID, orgID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

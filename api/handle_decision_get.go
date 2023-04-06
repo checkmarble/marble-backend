@@ -20,11 +20,12 @@ func (a *API) handleDecisionGet() http.HandlerFunc {
 	// return is a decision
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 
 		///////////////////////////////
 		// Authorize request
 		///////////////////////////////
-		orgID, err := orgIDFromCtx(r.Context())
+		orgID, err := orgIDFromCtx(ctx)
 		if err != nil {
 			http.Error(w, "", http.StatusUnauthorized)
 			return
@@ -41,7 +42,7 @@ func (a *API) handleDecisionGet() http.HandlerFunc {
 		// Execute request
 		////////////////////////////////////////////////////////////
 
-		decision, err := a.app.GetDecision(orgID, decisionID)
+		decision, err := a.app.GetDecision(ctx, orgID, decisionID)
 
 		if errors.Is(err, app.ErrNotFoundInRepository) {
 			http.Error(w, "", http.StatusNotFound)
