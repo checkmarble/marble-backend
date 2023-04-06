@@ -7,10 +7,9 @@ import "marble/marble-backend/app/operators"
 ///////////////////////////////
 
 type Rule struct {
-	DisplayOrder int
-	Name         string
-	Description  string
-
+	DisplayOrder  int
+	Name          string
+	Description   string
 	Formula       operators.OperatorBool
 	ScoreModifier int
 }

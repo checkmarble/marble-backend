@@ -6,17 +6,17 @@ import (
 	"marble/marble-backend/app"
 )
 
-func (r *PGRepository) StoreDecision(orgID string, decision app.Decision) (id string, err error) {
+func (r *PGRepository) StoreDecision(ctx context.Context, orgID string, decision app.Decision) (id string, err error) {
 
 	// Begin a transaction to store decision + rules in 1 go
 
-	tx, err := r.db.Begin(context.Background())
+	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return "", err
 	}
 	// Rollback is safe to call even if the tx is already closed, so if
 	// the tx commits successfully, this is a no-op
-	defer tx.Rollback(context.Background())
+	defer tx.Rollback(ctx)
 
 	// insert the decision
 	insertDecisionQueryString := `
@@ -37,7 +37,7 @@ func (r *PGRepository) StoreDecision(orgID string, decision app.Decision) (id st
 	`
 
 	var createdDecisionID string
-	err = tx.QueryRow(context.TODO(), insertDecisionQueryString,
+	err = tx.QueryRow(ctx, insertDecisionQueryString,
 		orgID,
 		decision.Created_at.UTC(),
 		decision.Outcome.String(),
@@ -70,14 +70,14 @@ func (r *PGRepository) StoreDecision(orgID string, decision app.Decision) (id st
 	// Loop over each rule execution, add it to the transaction
 	for _, re := range decision.RuleExecutions {
 
-		_, err = tx.Exec(context.Background(), insertRuleQueryString, orgID, createdDecisionID, re.Rule.Name, re.Rule.Description, re.ResultScoreModifier, re.Result, re.Error)
+		_, err = tx.Exec(ctx, insertRuleQueryString, orgID, createdDecisionID, re.Rule.Name, re.Rule.Description, re.ResultScoreModifier, re.Result, re.Error)
 		if err != nil {
 			return "", err
 		}
 
 	}
 
-	err = tx.Commit(context.Background())
+	err = tx.Commit(ctx)
 	if err != nil {
 		return "", err
 	}

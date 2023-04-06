@@ -1,5 +1,7 @@
 package app
 
+import "context"
+
 // /////////////////////////////
 // Data types
 // /////////////////////////////
@@ -54,7 +56,7 @@ type LinkToSingle struct {
 }
 
 func (app *App) GetDataModel(orgID string) (DataModel, error) {
-	dataModel, err := app.repository.GetDataModel(orgID)
+	dataModel, err := app.repository.GetDataModel(context.TODO(), orgID)
 	if err != nil {
 		return DataModel{}, err
 	}

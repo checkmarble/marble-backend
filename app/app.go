@@ -1,6 +1,9 @@
 package app
 
-import "errors"
+import (
+	"context"
+	"errors"
+)
 
 type App struct {
 	repository RepositoryInterface
@@ -9,20 +12,20 @@ type App struct {
 type RepositoryInterface interface {
 
 	// Data models & scenarios
-	GetDataModel(orgID string) (DataModel, error)
-	GetScenario(orgID string, scenarioID string) (Scenario, error)
-	PostScenario(orgID string, scenario Scenario) (Scenario, error)
-	GetScenarios(orgID string) ([]Scenario, error)
+	GetDataModel(ctx context.Context, orgID string) (DataModel, error)
+	GetScenario(ctx context.Context, orgID string, scenarioID string) (Scenario, error)
+	PostScenario(ctx context.Context, orgID string, scenario Scenario) (Scenario, error)
+	GetScenarios(ctx context.Context, orgID string) ([]Scenario, error)
 
 	// token validation
-	GetOrganizationIDFromToken(token string) (orgID string, err error)
+	GetOrganizationIDFromToken(ctx context.Context, token string) (orgID string, err error)
 
 	// Decisions
-	StoreDecision(orgID string, decision Decision) (id string, err error)
-	GetDecision(orgID string, decisionID string) (Decision, error)
+	StoreDecision(ctx context.Context, orgID string, decision Decision) (id string, err error)
+	GetDecision(ctx context.Context, orgID string, decisionID string) (Decision, error)
 
 	// Ingestion
-	IngestObject(dynamicStructWithReader DynamicStructWithReader, table Table) (err error)
+	IngestObject(ctx context.Context, dynamicStructWithReader DynamicStructWithReader, table Table) (err error)
 }
 
 func New(r RepositoryInterface) (*App, error) {

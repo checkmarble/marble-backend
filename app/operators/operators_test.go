@@ -58,7 +58,7 @@ func TestMarshalUnMarshal(t *testing.T) {
 
 	t.Log(string(JSONbytes))
 
-	rootOperator, err := unmarshalOperatorBool(JSONbytes)
+	rootOperator, err := UnmarshalOperatorBool(JSONbytes)
 	if err != nil {
 		t.Errorf("error unmarshaling operator: %v", err)
 	}
