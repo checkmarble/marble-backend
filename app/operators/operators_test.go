@@ -13,7 +13,7 @@ type DataAccessorImpl struct{}
 func (d *DataAccessorImpl) GetPayloadField(fieldName string) (interface{}, error) {
 	return nil, nil
 }
-func (d *DataAccessorImpl) GetDBField(path []string, fieldName string) (interface{}, error) {
+func (d *DataAccessorImpl) GetDbField(path []string, fieldName string) (interface{}, error) {
 	return true, nil
 }
 
