@@ -5,16 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"time"
 )
 
 var ErrScenarioNotFound = errors.New("scenario not found")
 var ErrDataModelNotFound = errors.New("data model not found")
 
 func (app *App) CreateDecision(ctx context.Context, organizationID string, scenarioID string, payload Payload) (Decision, error) {
-
-	t := time.Now().UTC()
-
 	///////////////////////////////
 	// Get scenario
 	///////////////////////////////
@@ -48,8 +44,6 @@ func (app *App) CreateDecision(ctx context.Context, organizationID string, scena
 	// Build and persist decision
 	///////////////////////////////
 	d := Decision{
-		// ID is empty as of now
-		Created_at:          t,
 		Payload:             payload,
 		Outcome:             scenarioExecution.Outcome,
 		ScenarioID:          scenarioExecution.ScenarioID,
@@ -61,13 +55,10 @@ func (app *App) CreateDecision(ctx context.Context, organizationID string, scena
 		// TODO DecisionError DecisionError
 	}
 
-	id, err := app.repository.StoreDecision(ctx, organizationID, d)
+	createdDecision, err := app.repository.StoreDecision(ctx, organizationID, d)
 	if err != nil {
 		log.Printf("error storing decision: %v", err)
 	}
 
-	// succesfully created decision
-	d.ID = id
-
-	return d, nil
+	return createdDecision, nil
 }
