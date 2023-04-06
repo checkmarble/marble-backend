@@ -29,7 +29,7 @@ func (app *App) CreateDecision(organizationID string, scenarioID string, payload
 	///////////////////////////////
 	// Get Data Model
 	///////////////////////////////
-	dm, err := app.repository.GetDataModel(organizationID)
+	dm, err := app.repository.GetDataModel(context.TODO(), organizationID)
 	if errors.Is(err, ErrNotFoundInRepository) {
 		return Decision{}, ErrDataModelNotFound
 	} else if err != nil {
@@ -61,7 +61,7 @@ func (app *App) CreateDecision(organizationID string, scenarioID string, payload
 		// TODO DecisionError DecisionError
 	}
 
-	id, err := a.repository.StoreDecision(context.TODO(), organizationID, d)
+	id, err := app.repository.StoreDecision(context.TODO(), organizationID, d)
 	if err != nil {
 		log.Printf("error storing decision: %v", err)
 	}
