@@ -73,6 +73,58 @@ CREATE TABLE scenarios(
   CONSTRAINT fk_scenarios_org FOREIGN KEY(org_id) REFERENCES organizations(id)
 );
 
+CREATE TABLE scenario_iterations(
+  id uuid DEFAULT uuid_generate_v4(),
+  org_id uuid NOT NULL,
+  scenario_id uuid NOT NULL,
+  version smallint NOT NULL,
+  trigger_condition json NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  score_review_threshold smallint NOT NULL,
+  score_reject_threshold smallint NOT NULL,
+  PRIMARY KEY(id),
+  CONSTRAINT fk_scenario_iterations_scenarios FOREIGN KEY(scenario_id) REFERENCES scenarios(id),
+  CONSTRAINT fk_scenario_iterations_org FOREIGN KEY(org_id) REFERENCES organizations(id)
+);
+
+CREATE TABLE scenario_iteration_rules(
+  id uuid DEFAULT uuid_generate_v4(),
+  org_id uuid NOT NULL,
+  scenario_iteration_id uuid NOT NULL,
+  display_order smallint NOT NULL,
+  name text NOT NULL,
+  description text NOT NULL,
+  score_modifier smallint NOT NULL,
+  formula json NOT NULL,
+  PRIMARY KEY(id),
+  CONSTRAINT fk_scenario_iteration_rules_scenario_iterations FOREIGN KEY(scenario_iteration_id) REFERENCES scenario_iterations(id),
+  CONSTRAINT fk_scenario_iteration_rules_org FOREIGN KEY(org_id) REFERENCES organizations(id)
+);
+
+ALTER TABLE scenarios
+ADD COLUMN live_scenario_iteration_id uuid,
+  ADD CONSTRAINT fk_scenarios_live_scenario_iteration FOREIGN KEY(live_scenario_iteration_id) REFERENCES scenario_iterations(id);
+
+INSERT INTO scenarios (
+    id,
+    org_id,
+    name,
+    description,
+    trigger_object_type
+  )
+VALUES(
+    '3a6cabee-a565-42b2-af40-5295386c8269',
+    (
+      SELECT id
+      FROM organizations
+      WHERE name = 'Test organization'
+    ),
+    'test name',
+    'test description',
+    'tx'
+  );
+
 -- decisions
 -- Outcomes
 CREATE TYPE decision_outcome AS ENUM (
@@ -129,6 +181,6 @@ CREATE TABLE transactions(
 -- +goose StatementEnd
 -- +goose Down
 -- +goose StatementBegin
-SELECT 'down SQL query';
+DROP SCHEMA IF EXISTS marble CASCADE;
 
 -- +goose StatementEnd

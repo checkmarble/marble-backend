@@ -10,7 +10,7 @@ import (
 // get an unmarshalled operator
 // /////////////////////////////
 
-func unmarshalOperatorBool(jsonBytes []byte) (OperatorBool, error) {
+func UnmarshalOperatorBool(jsonBytes []byte) (OperatorBool, error) {
 
 	log.Printf("unmarshalOperatorBool: %v", string(jsonBytes))
 
@@ -162,14 +162,14 @@ func (eq *EqBool) UnmarshalJSON(b []byte) error {
 	}
 
 	// Build concrete Left operand
-	left, err := unmarshalOperatorBool(eqData.LeftOp)
+	left, err := UnmarshalOperatorBool(eqData.LeftOp)
 	if err != nil {
 		return fmt.Errorf("unable to instantiate Left operator: %w", err)
 	}
 	eq.Left = left
 
 	// Build concrete Right operand
-	right, err := unmarshalOperatorBool(eqData.RightOp)
+	right, err := UnmarshalOperatorBool(eqData.RightOp)
 	if err != nil {
 		return fmt.Errorf("unable to instantiate Right operator: %w", err)
 	}

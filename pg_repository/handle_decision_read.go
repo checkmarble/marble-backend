@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func (r *PGRepository) GetDecision(orgID string, decisionID string) (decision app.Decision, err error) {
+func (r *PGRepository) GetDecision(ctx context.Context, orgID string, decisionID string) (decision app.Decision, err error) {
 
 	queryString := `
 	SELECT
@@ -37,7 +37,7 @@ func (r *PGRepository) GetDecision(orgID string, decisionID string) (decision ap
 	AND d.id = $2
 	`
 
-	rows, _ := r.db.Query(context.Background(), queryString, orgID, decisionID)
+	rows, _ := r.db.Query(ctx, queryString, orgID, decisionID)
 
 	var d_id string
 	var d_created_at time.Time
