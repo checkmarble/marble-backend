@@ -8,6 +8,15 @@ import (
 	"github.com/davecgh/go-spew/spew"
 )
 
+type DataAccessorImpl struct{}
+
+func (d *DataAccessorImpl) GetPayloadField(fieldName string) (interface{}, error) {
+	return nil, nil
+}
+func (d *DataAccessorImpl) GetDbField(path []string, fieldName string) (interface{}, error) {
+	return true, nil
+}
+
 func TestLogic(t *testing.T) {
 	tree := EqBool{
 		Left: &True{},
@@ -16,9 +25,14 @@ func TestLogic(t *testing.T) {
 			Right: &False{},
 		},
 	}
+	dataAccessor := DataAccessorImpl{}
 
 	expected := true
-	got := tree.Eval()
+	got, err := tree.Eval(&dataAccessor)
+
+	if err != nil {
+		t.Errorf("error: %v", err)
+	}
 
 	if got != expected {
 		t.Errorf("got: %v, expected: %v", got, expected)
@@ -33,9 +47,36 @@ func TestLogic2(t *testing.T) {
 			Right: &True{},
 		},
 	}
+	dataAccessor := DataAccessorImpl{}
 
 	expected := false
-	got := tree.Eval()
+	got, err := tree.Eval(&dataAccessor)
+
+	if err != nil {
+		t.Errorf("error: %v", err)
+	}
+
+	if got != expected {
+		t.Errorf("got: %v, expected: %v", got, expected)
+	}
+}
+
+func TestLogic3(t *testing.T) {
+	tree := EqBool{
+		Left: &True{},
+		Right: &EqBool{
+			Left:  &DbFieldBool{Path: []string{"a", "b"}, FieldName: "c"},
+			Right: &True{},
+		},
+	}
+	dataAccessor := DataAccessorImpl{}
+
+	expected := true
+	got, err := tree.Eval(&dataAccessor)
+
+	if err != nil {
+		t.Errorf("error: %v", err)
+	}
 
 	if got != expected {
 		t.Errorf("got: %v, expected: %v", got, expected)
@@ -46,10 +87,11 @@ func TestMarshalUnMarshal(t *testing.T) {
 	tree := EqBool{
 		Left: &True{},
 		Right: &EqBool{
-			Left:  &False{},
+			Left:  &DbFieldBool{Path: []string{"a", "b"}, FieldName: "c"},
 			Right: &True{},
 		},
 	}
+	dataAccessor := DataAccessorImpl{}
 
 	JSONbytes, err := tree.MarshalJSON()
 	if err != nil {
@@ -66,8 +108,14 @@ func TestMarshalUnMarshal(t *testing.T) {
 	spew.Dump(tree)
 	spew.Dump(rootOperator)
 
-	expected := tree.Eval()
-	got := rootOperator.Eval()
+	expected, err := tree.Eval(&dataAccessor)
+	if err != nil {
+		t.Errorf("error: %v", err)
+	}
+	got, err := rootOperator.Eval(&dataAccessor)
+	if err != nil {
+		t.Errorf("error: %v", err)
+	}
 
 	if got != expected {
 		t.Errorf("got: %v, expected: %v", got, expected)

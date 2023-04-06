@@ -13,6 +13,12 @@ import (
 
 var operatorFromType = make(map[string]func() Operator)
 
+type DataAccessor interface {
+	GetPayloadField(fieldName string) (interface{}, error)
+	GetDbField(path []string, fieldName string) (interface{}, error)
+	// GetListField(path []string) (interface{}, error)
+}
+
 // /////////////////////////////
 // Operator
 // /////////////////////////////
@@ -39,20 +45,20 @@ type OperatorType struct {
 // /////////////////////////////
 type OperatorFloat interface {
 	Operator
-	Eval() float64
+	Eval(dataAccessor DataAccessor) (float64, error)
 }
 
 type OperatorBool interface {
 	Operator
-	Eval() bool
+	Eval(dataAccessor DataAccessor) (bool, error)
 }
 
 type OperatorDate interface {
 	Operator
-	Eval() time.Time
+	Eval(dataAccessor DataAccessor) (time.Time, error)
 }
 
 type OperatorString interface {
 	Operator
-	Eval() string
+	Eval(dataAccessor DataAccessor) (string, error)
 }

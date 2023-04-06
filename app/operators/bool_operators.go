@@ -49,7 +49,7 @@ func UnmarshalOperatorBool(jsonBytes []byte) (OperatorBool, error) {
 // /////////////////////////////
 type True struct{}
 
-func (t True) Eval() bool { return true }
+func (t True) Eval(d DataAccessor) (bool, error) { return true, nil }
 
 func (t True) Print() string { return "TRUE" }
 
@@ -79,7 +79,7 @@ func (t *True) UnmarshalJSON(b []byte) error {
 // /////////////////////////////
 type False struct{}
 
-func (f False) Eval() bool { return false }
+func (f False) Eval(d DataAccessor) (bool, error) { return false, nil }
 
 func (f False) Print() string { return "FALSE" }
 
@@ -109,8 +109,13 @@ func (f *False) UnmarshalJSON(b []byte) error {
 // /////////////////////////////
 type EqBool struct{ Left, Right OperatorBool }
 
-func (eq EqBool) Eval() bool {
-	return eq.Left.Eval() == eq.Right.Eval()
+func (eq EqBool) Eval(d DataAccessor) (bool, error) {
+	valLeft, errLeft := eq.Left.Eval(d)
+	valRight, errRight := eq.Right.Eval(d)
+	if errLeft != nil || errRight != nil {
+		return false, fmt.Errorf("error in EqBool.Eval: %v, %v", errLeft, errRight)
+	}
+	return valLeft == valRight, nil
 }
 
 func (eq EqBool) Print() string {
@@ -169,6 +174,75 @@ func (eq *EqBool) UnmarshalJSON(b []byte) error {
 		return fmt.Errorf("unable to instantiate Right operator: %w", err)
 	}
 	eq.Right = right
+
+	return nil
+}
+
+// /////////////////////////////
+// Db field Boolean
+// /////////////////////////////
+type DbFieldBool struct {
+	Path      []string
+	FieldName string
+}
+
+func (field DbFieldBool) Eval(d DataAccessor) (bool, error) {
+	val, err := d.GetDbField(field.Path, field.FieldName)
+	if err != nil {
+		fmt.Printf("Error getting DB field: %v", err)
+		return false, err
+	}
+	va, ok := val.(bool)
+	if ok {
+		return va, nil
+	}
+	return false, fmt.Errorf("DB field %s is not a boolean", field.FieldName)
+}
+
+func (field DbFieldBool) Print() string {
+	return fmt.Sprintf("( Boolean field from DB: path %v, field name %s )", field.Path, field.FieldName)
+}
+
+func (field DbFieldBool) MarshalJSON() ([]byte, error) {
+
+	// data schema
+	type dbFieldBoolData struct {
+		Path      []string `json:"path"`
+		FieldName string   `json:"fieldName"`
+	}
+
+	return json.Marshal(struct {
+		OperatorType
+		Data dbFieldBoolData `json:"data"`
+	}{
+		OperatorType: OperatorType{Type: "DB_FIELD_BOOL"},
+		Data: dbFieldBoolData{
+			Path:      field.Path,
+			FieldName: field.FieldName,
+		},
+	})
+}
+
+// register creation
+func init() {
+	operatorFromType["DB_FIELD_BOOL"] = func() Operator { return &DbFieldBool{} }
+}
+
+func (field *DbFieldBool) UnmarshalJSON(b []byte) error {
+
+	log.Println("unmarshalling DB_FIELD_BOOL")
+
+	// data schema
+	var dbFieldBoolData struct {
+		Path      []string `json:"path"`
+		FieldName string   `json:"fieldName"`
+	}
+
+	if err := json.Unmarshal(b, &dbFieldBoolData); err != nil {
+		return fmt.Errorf("unable to unmarshal operator to intermediate path/fieldName representation: %w", err)
+	}
+	field.Path = dbFieldBoolData.Path
+	field.FieldName = dbFieldBoolData.FieldName
 
 	return nil
 }
