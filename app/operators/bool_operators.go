@@ -187,7 +187,7 @@ type DbFieldBool struct {
 }
 
 func (field DbFieldBool) Eval(d DataAccessor) (bool, error) {
-	val, err := d.GetDBField(field.Path, field.FieldName)
+	val, err := d.GetDbField(field.Path, field.FieldName)
 	if err != nil {
 		fmt.Printf("Error getting DB field: %v", err)
 		return false, err

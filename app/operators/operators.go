@@ -15,7 +15,7 @@ var operatorFromType = make(map[string]func() Operator)
 
 type DataAccessor interface {
 	GetPayloadField(fieldName string) (interface{}, error)
-	GetDBField(path []string, fieldName string) (interface{}, error)
+	GetDbField(path []string, fieldName string) (interface{}, error)
 	// GetListField(path []string) (interface{}, error)
 }
 
