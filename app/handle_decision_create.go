@@ -38,7 +38,7 @@ func (app *App) CreateDecision(organizationID string, scenarioID string, payload
 	///////////////////////////////
 	// Execute scenario
 	///////////////////////////////
-	scenarioExecution, err := s.Eval(app, payload, dm)
+	scenarioExecution, err := s.Eval(app.repository, payload, dm)
 	if err != nil {
 		return Decision{}, fmt.Errorf("error evaluating scenario: %w", err)
 	}

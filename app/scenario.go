@@ -60,7 +60,7 @@ var (
 	ErrScenarioHasNoLiveVersion                         = errors.New("scenario has no live version")
 )
 
-func (s Scenario) Eval(app *App, pd Payload, dataModel DataModel) (se ScenarioExecution, err error) {
+func (s Scenario) Eval(repo RepositoryInterface, pd Payload, dataModel DataModel) (se ScenarioExecution, err error) {
 
 	///////////////////////////////
 	// Recover in case the evaluation panicked.
@@ -90,7 +90,7 @@ func (s Scenario) Eval(app *App, pd Payload, dataModel DataModel) (se ScenarioEx
 		return ScenarioExecution{}, ErrScenarioTriggerTypeAndTiggerObjectTypeMismatch
 	}
 
-	dataAccessor := DataAccessorImpl{DataModel: dataModel, Payload: pd, app: app}
+	dataAccessor := DataAccessorImpl{DataModel: dataModel, Payload: pd, repository: repo}
 
 	// Evaluate the trigger
 	triggerPassed, err := s.LiveVersion.Body.TriggerCondition.Eval(&dataAccessor)
