@@ -87,13 +87,6 @@ func (r *PGRepository) GetScenarioIteration(ctx context.Context, orgID string, s
 	return scenarioIterationDTO, nil
 }
 
-func (r *PGRepository) getNextVersionNumberBuilder(scenarioID string) (string, []interface{}, error) {
-	return r.queryBuilder.
-		Select("MAX(version)+1 as version").
-		From("scenario_iterations").
-		Where("scenario_id = ?", scenarioID).ToSql()
-}
-
 func (r *PGRepository) CreateScenarioIteration(ctx context.Context, orgID string, scenarioIteration app.ScenarioIteration) (app.ScenarioIteration, error) {
 	triggerConditionBytes, err := scenarioIteration.Body.TriggerCondition.MarshalJSON()
 	if err != nil {
