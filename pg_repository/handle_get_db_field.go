@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func (rep *PGRepository) GetDbField(path []string, fieldName string, dataModel app.DataModel, payload app.Payload) (pgtype.Bool|pgtype.Int2, error) {
+func (rep *PGRepository) GetDbField(path []string, fieldName string, dataModel app.DataModel, payload app.Payload) (interface{}, error) {
 
 	if len(path) == 0 {
 		return nil, fmt.Errorf("Path is empty")
