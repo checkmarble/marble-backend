@@ -60,7 +60,7 @@ var (
 	ErrScenarioHasNoLiveVersion                         = errors.New("scenario has no live version")
 )
 
-func (s Scenario) Eval(repo RepositoryInterface, pd Payload, dataModel DataModel) (se ScenarioExecution, err error) {
+func (s Scenario) Eval(repo RepositoryInterface, payloadStructWithReader DynamicStructWithReader, dataModel DataModel) (se ScenarioExecution, err error) {
 
 	///////////////////////////////
 	// Recover in case the evaluation panicked.
@@ -86,11 +86,11 @@ func (s Scenario) Eval(repo RepositoryInterface, pd Payload, dataModel DataModel
 	}
 
 	// Check the scenario & trigger_object's types
-	if s.TriggerObjectType != pd.TableName {
+	if s.TriggerObjectType != payloadStructWithReader.Table.Name {
 		return ScenarioExecution{}, ErrScenarioTriggerTypeAndTiggerObjectTypeMismatch
 	}
 
-	dataAccessor := DataAccessorImpl{DataModel: dataModel, Payload: pd, repository: repo}
+	dataAccessor := DataAccessorImpl{DataModel: dataModel, Payload: payloadStructWithReader, repository: repo}
 
 	// Evaluate the trigger
 	triggerPassed, err := s.LiveVersion.Body.TriggerCondition.Eval(&dataAccessor)

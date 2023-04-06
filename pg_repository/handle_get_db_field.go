@@ -11,15 +11,20 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func (rep *PGRepository) GetDbField(path []string, fieldName string, dataModel app.DataModel, payload app.Payload) (interface{}, error) {
+func (rep *PGRepository) GetDbField(path []string, fieldName string, dataModel app.DataModel, payloadStructWithReader app.DynamicStructWithReader) (interface{}, error) {
 
 	if len(path) == 0 {
 		return nil, fmt.Errorf("Path is empty")
 	}
-	base_object_id, ok := payload.Data["object_id"].(string)
+	// base_object_id, ok := payload.Data["object_id"].(string)
+	base_object_id_ptr, ok := payloadStructWithReader.ReadFieldFromDynamicStruct("object_id").(*string)
 	if !ok {
 		return nil, fmt.Errorf("object_id in payload is not a string")
 	}
+	if base_object_id_ptr == nil {
+		return nil, fmt.Errorf("object_id in payload is null") // should not happen, as per input validation
+	}
+	base_object_id := *base_object_id_ptr
 
 	firstTable := dataModel.Tables[path[0]]
 

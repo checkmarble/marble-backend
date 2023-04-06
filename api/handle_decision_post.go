@@ -4,11 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 
 	"marble/marble-backend/app"
-
-	"github.com/davecgh/go-spew/spew"
 )
 
 func (a *API) handleDecisionPost() http.HandlerFunc {
@@ -19,8 +18,9 @@ func (a *API) handleDecisionPost() http.HandlerFunc {
 
 	// handleDecisionPostRequest is the request body
 	type handleDecisionPostRequest struct {
-		ScenarioID    string         `json:"scenario_id"`
-		TriggerObject map[string]any `json:"trigger_object"`
+		ScenarioID        string          `json:"scenario_id"`
+		TriggerObjectRaw  json.RawMessage `json:"trigger_object"`
+		TriggerObjectType string          `json:"object_type"`
 	}
 
 	// return is a decision
@@ -55,25 +55,37 @@ func (a *API) handleDecisionPost() http.HandlerFunc {
 			return
 		}
 
-		spew.Dump(requestData)
-
-		////////////////////////////////////////////////////////////
-		// Execute request
-		////////////////////////////////////////////////////////////
-
-		// decode and validate payload
-		payload, err := a.app.PayloadFromTriggerObject(orgID, requestData.TriggerObject)
-
-		if errors.Is(err, app.ErrTriggerObjectAndDataModelMismatch) {
-			http.Error(w, fmt.Errorf("could not process trigger_object: %w", err).Error(), http.StatusBadRequest)
+		dataModel, err := a.app.GetDataModel(orgID)
+		if err != nil {
+			log.Printf("Unable to find datamodel by orgId for ingestion: %v", err)
+			http.Error(w, "No data model found for this organization ID.", http.StatusInternalServerError) // 500
 			return
-		} else if err != nil {
-			http.Error(w, fmt.Errorf("could not process trigger_object: %w", err).Error(), http.StatusInternalServerError)
+		}
+
+		tables := dataModel.Tables
+		table, ok := tables[requestData.TriggerObjectType]
+		if !ok {
+			log.Printf("Table %s not found in data model for organization %s", requestData.TriggerObjectType, orgID)
+			http.Error(w, "No data model found for this object type.", http.StatusNotFound) // 404
+			return
+		}
+
+		payloadStructWithReaderPtr, err := a.app.ParseToDataModelObject(table, requestData.TriggerObjectRaw)
+		if err != nil {
+			if errors.Is(err, app.ErrFormatValidation) {
+				http.Error(w, "Format validation error", http.StatusBadRequest) // 400
+				return
+			}
+			log.Printf("Unexpected error while parsing to data model object: %v", err)
+			http.Error(w, "", http.StatusInternalServerError) // 500
 			return
 		}
 
 		// make a decision
-		decision, err := a.app.CreateDecision(orgID, requestData.ScenarioID, payload)
+		triggerObjectMap := make(map[string]interface{})
+		err = json.Unmarshal(requestData.TriggerObjectRaw, &triggerObjectMap)
+		payload := app.Payload{TableName: requestData.TriggerObjectType, Data: triggerObjectMap}
+		decision, err := a.app.CreateDecision(orgID, requestData.ScenarioID, *payloadStructWithReaderPtr, payload)
 
 		if errors.Is(err, app.ErrScenarioNotFound) {
 			http.Error(w, "scenario not found", http.StatusNotFound)

@@ -164,12 +164,30 @@ func (r *PGRepository) LoadOrganizations() {
 						"object_id": {
 							DataType: app.String,
 						},
-						"updated_at":  {DataType: app.Timestamp},
-						"value":       {DataType: app.Float},
-						"title":       {DataType: app.String},
-						"description": {DataType: app.String},
+						"updated_at":      {DataType: app.Timestamp},
+						"value":           {DataType: app.Float},
+						"title":           {DataType: app.String},
+						"description":     {DataType: app.String},
+						"bank_account_id": {DataType: app.String},
 					},
-					LinksToSingle: map[string]app.LinkToSingle{},
+					LinksToSingle: map[string]app.LinkToSingle{
+						"bank_account": {
+							LinkedTableName: "bank_accounts",
+							ParentFieldName: "object_id",
+							ChildFieldName:  "bank_account_id"},
+					},
+				},
+				"bank_accounts": {
+					Name: "bank_accounts",
+					Fields: map[string]app.Field{
+						"object_id": {
+							DataType: app.String,
+						},
+						"updated_at": {DataType: app.Timestamp},
+						"balance":    {DataType: app.Float},
+						"name":       {DataType: app.String},
+						"currency":   {DataType: app.String},
+					},
 				},
 				"user": {
 					Name: "user",

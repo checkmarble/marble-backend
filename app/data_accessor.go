@@ -2,7 +2,7 @@ package app
 
 type DataAccessorImpl struct {
 	DataModel  DataModel
-	Payload    Payload
+	Payload    DynamicStructWithReader
 	repository RepositoryInterface
 }
 

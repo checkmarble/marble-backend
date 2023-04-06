@@ -11,7 +11,7 @@ import (
 var ErrScenarioNotFound = errors.New("scenario not found")
 var ErrDataModelNotFound = errors.New("data model not found")
 
-func (app *App) CreateDecision(organizationID string, scenarioID string, payload Payload) (Decision, error) {
+func (app *App) CreateDecision(organizationID string, scenarioID string, payloadStructWithReader DynamicStructWithReader, paylaod Payload) (Decision, error) {
 
 	t := time.Now().UTC()
 
@@ -39,7 +39,7 @@ func (app *App) CreateDecision(organizationID string, scenarioID string, payload
 	///////////////////////////////
 	// Execute scenario
 	///////////////////////////////
-	scenarioExecution, err := s.Eval(app.repository, payload, dm)
+	scenarioExecution, err := s.Eval(app.repository, payloadStructWithReader, dm)
 	if err != nil {
 		return Decision{}, fmt.Errorf("error evaluating scenario: %w", err)
 	}
