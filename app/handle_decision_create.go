@@ -8,7 +8,7 @@ import (
 )
 
 var ErrScenarioNotFound = errors.New("scenario not found")
-var ErrDataModelNotFound = errors.New("scenario not found")
+var ErrDataModelNotFound = errors.New("data model not found")
 
 func (app *App) CreateDecision(organizationID string, scenarioID string, payload Payload) (Decision, error) {
 
