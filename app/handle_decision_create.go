@@ -11,7 +11,7 @@ import (
 var ErrScenarioNotFound = errors.New("scenario not found")
 var ErrDataModelNotFound = errors.New("data model not found")
 
-func (app *App) CreateDecision(organizationID string, scenarioID string, payloadStructWithReader DynamicStructWithReader, paylaod Payload) (Decision, error) {
+func (app *App) CreateDecision(organizationID string, scenarioID string, payloadStructWithReader DynamicStructWithReader, payload Payload) (Decision, error) {
 
 	t := time.Now().UTC()
 
