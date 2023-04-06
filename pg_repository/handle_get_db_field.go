@@ -16,7 +16,6 @@ func (rep *PGRepository) GetDbField(path []string, fieldName string, dataModel a
 	if len(path) == 0 {
 		return nil, fmt.Errorf("Path is empty")
 	}
-	// base_object_id, ok := payload.Data["object_id"].(string)
 	base_object_id_ptr, ok := payloadStructWithReader.ReadFieldFromDynamicStruct("object_id").(*string)
 	if !ok {
 		return nil, fmt.Errorf("object_id in payload is not a string")
