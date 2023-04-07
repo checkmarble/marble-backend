@@ -26,11 +26,11 @@ func (a *API) handleDecisionPost() http.HandlerFunc {
 	// return is a decision
 
 	return func(w http.ResponseWriter, r *http.Request) {
-
+		ctx := r.Context()
 		///////////////////////////////
 		// Authorize request
 		///////////////////////////////
-		orgID, err := orgIDFromCtx(r.Context())
+		orgID, err := orgIDFromCtx(ctx)
 		if err != nil {
 			http.Error(w, "", http.StatusUnauthorized)
 			return
@@ -62,7 +62,7 @@ func (a *API) handleDecisionPost() http.HandlerFunc {
 		////////////////////////////////////////////////////////////
 
 		// decode and validate payload
-		payload, err := a.app.PayloadFromTriggerObject(orgID, requestData.TriggerObject)
+		payload, err := a.app.PayloadFromTriggerObject(ctx, orgID, requestData.TriggerObject)
 
 		if errors.Is(err, app.ErrTriggerObjectAndDataModelMismatch) {
 			http.Error(w, fmt.Errorf("could not process trigger_object: %w", err).Error(), http.StatusBadRequest)
@@ -73,7 +73,7 @@ func (a *API) handleDecisionPost() http.HandlerFunc {
 		}
 
 		// make a decision
-		decision, err := a.app.CreateDecision(orgID, requestData.ScenarioID, payload)
+		decision, err := a.app.CreateDecision(ctx, orgID, requestData.ScenarioID, payload)
 
 		if errors.Is(err, app.ErrScenarioNotFound) {
 			http.Error(w, "scenario not found", http.StatusNotFound)

@@ -7,6 +7,7 @@
 *.dll
 *.so
 *.dylib
+__debug_bin
 
 # Test binary, built with `go test -c`
 *.test
@@ -37,3 +38,5 @@ go.work
 
 # vscode
 .vscode/settings.json
+
+docker-compose.dev.yml

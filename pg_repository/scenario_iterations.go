@@ -100,7 +100,7 @@ func (r *PGRepository) CreateScenarioIteration(ctx context.Context, orgID string
 	defer tx.Rollback(ctx) // safe to call even if tx commits
 
 	sql, args, err := r.queryBuilder.
-		Select("MAX(version)+1").
+		Select("COALESCE(MAX(version)+1, 1)").
 		From("scenario_iterations").
 		Where("scenario_id = ?", scenarioIteration.ScenarioID).ToSql()
 	if err != nil {

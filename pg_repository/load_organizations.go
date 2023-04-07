@@ -3,7 +3,6 @@ package pg_repository
 import (
 	"context"
 	"log"
-	"time"
 
 	"marble/marble-backend/app"
 	"marble/marble-backend/app/operators"
@@ -79,58 +78,58 @@ func (r *PGRepository) LoadOrganizations() {
 		///////////////////////////////
 		// Create and store a scenario
 		///////////////////////////////
-		rules := []app.Rule{
-			{
-				Formula:       &operators.True{},
-				ScoreModifier: 2,
-				Name:          "Rule 1 Name",
-				Description:   "Rule 1 Desc",
-			},
-			{
-				Formula:       &operators.False{},
-				ScoreModifier: 2,
-				Name:          "Rule 2 Name",
-				Description:   "Rule 2 Desc",
-			},
-			{
-				Formula:       &operators.EqBool{Left: &operators.True{}, Right: &operators.True{}},
-				ScoreModifier: 2,
-				Name:          "Rule 3 Name",
-				Description:   "Rule 3 Desc",
-			},
-			{
-				Formula:       &operators.EqBool{Left: &operators.True{}, Right: &operators.EqBool{Left: &operators.False{}, Right: &operators.False{}}},
-				ScoreModifier: 2,
-				Name:          "Rule 4 Name",
-				Description:   "Rule 4 Desc",
-			},
+		scenario := app.Scenario{
+			Name:              "test name",
+			Description:       "test description",
+			TriggerObjectType: "tx",
 		}
-
-		sib := app.ScenarioIterationBody{
-			TriggerCondition: &operators.True{},
-			Rules:            rules,
-
-			ScoreReviewThreshold: 10,
-			ScoreRejectThreshold: 30,
-		}
-
-		si := app.ScenarioIteration{
-			ID: "2c5e8eab-a6ab-4e22-8992-ac8edd608bef", // same as scenarioID, no worries
-
-			ScenarioID: "3a6cabee-a565-42b2-af40-5295386c8269",
-			Version:    1,
-			CreatedAt:  time.Now(),
-			UpdatedAt:  time.Now(),
-			Body:       sib,
-		}
-
-		s, err := r.CreateScenarioIteration(context.TODO(), testOrgID, si)
+		scenario, err = r.PostScenario(context.TODO(), testOrgID, scenario)
 		if err != nil {
 			log.Printf("error creating scenario: %v", err)
 		}
-		err = r.PublishScenarioIteration(context.TODO(), testOrgID, "3a6cabee-a565-42b2-af40-5295386c8269", s.ID)
+
+		scenarioIteration := app.ScenarioIteration{
+			ScenarioID: scenario.ID,
+			Body: app.ScenarioIterationBody{
+				TriggerCondition:     &operators.True{},
+				ScoreReviewThreshold: 10,
+				ScoreRejectThreshold: 30,
+				Rules: []app.Rule{
+					{
+						Formula:       &operators.True{},
+						ScoreModifier: 2,
+						Name:          "Rule 1 Name",
+						Description:   "Rule 1 Desc",
+					},
+					{
+						Formula:       &operators.False{},
+						ScoreModifier: 2,
+						Name:          "Rule 2 Name",
+						Description:   "Rule 2 Desc",
+					},
+					{
+						Formula:       &operators.EqBool{Left: &operators.True{}, Right: &operators.True{}},
+						ScoreModifier: 2,
+						Name:          "Rule 3 Name",
+						Description:   "Rule 3 Desc",
+					},
+					{
+						Formula:       &operators.EqBool{Left: &operators.True{}, Right: &operators.EqBool{Left: &operators.False{}, Right: &operators.False{}}},
+						ScoreModifier: 2,
+						Name:          "Rule 4 Name",
+						Description:   "Rule 4 Desc",
+					},
+				},
+			},
+		}
+
+		scenarioIteration, err = r.CreateScenarioIteration(context.TODO(), testOrgID, scenarioIteration)
 		if err != nil {
 			log.Printf("error creating scenario iteration: %v", err)
+		}
+		err = r.PublishScenarioIteration(context.TODO(), testOrgID, scenarioIteration.ID)
+		if err != nil {
+			log.Printf("error publishind scenario iteration: %v", err)
 		}
 
 		///////////////////////////////

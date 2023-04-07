@@ -139,7 +139,7 @@ CREATE TYPE decision_outcome AS ENUM (
 CREATE TABLE decisions(
   id uuid DEFAULT uuid_generate_v4(),
   org_id uuid NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   outcome decision_outcome NOT NULL,
   scenario_id uuid NOT NULL,
   scenario_name VARCHAR NOT NULL,
@@ -161,7 +161,7 @@ CREATE TABLE decision_rules(
   description VARCHAR NOT NULL,
   score_modifier INT NOT NULL,
   result BOOLEAN NOT NULL,
-  error_code INT,
+  error_code INT NOT NULL,
   --error_message VARCHAR,
   PRIMARY KEY(id),
   CONSTRAINT fk_decision_rules_org FOREIGN KEY(org_id) REFERENCES organizations(id),

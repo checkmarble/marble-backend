@@ -17,7 +17,7 @@ type Payload struct {
 
 var ErrTriggerObjectAndDataModelMismatch = errors.New("trigger object does not conform to data model")
 
-func (a *App) PayloadFromTriggerObject(organizationID string, triggerObject map[string]any) (Payload, error) {
+func (a *App) PayloadFromTriggerObject(ctx context.Context, organizationID string, triggerObject map[string]any) (Payload, error) {
 
 	// Check that there is a "type" key
 	triggerObjectType, found := triggerObject["type"]
@@ -31,7 +31,7 @@ func (a *App) PayloadFromTriggerObject(organizationID string, triggerObject map[
 		return Payload{}, fmt.Errorf("\"type\" key is not a string: %w", ErrTriggerObjectAndDataModelMismatch)
 	}
 
-	_, err := a.repository.GetDataModel(context.TODO(), organizationID)
+	_, err := a.repository.GetDataModel(ctx, organizationID)
 	if errors.Is(err, ErrNotFoundInRepository) {
 		return Payload{}, fmt.Errorf("data model not found")
 	} else if err != nil {

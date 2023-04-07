@@ -19,17 +19,17 @@ func (a *API) handleIngestion() http.HandlerFunc {
 	// return is a decision
 
 	return func(w http.ResponseWriter, r *http.Request) {
-
+		ctx := r.Context()
 		///////////////////////////////
 		// Authorize request
 		///////////////////////////////
-		orgID, err := orgIDFromCtx(r.Context())
+		orgID, err := orgIDFromCtx(ctx)
 		if err != nil {
 			http.Error(w, "", http.StatusUnauthorized) // 401
 			return
 		}
 
-		dataModel, err := a.app.GetDataModel(orgID)
+		dataModel, err := a.app.GetDataModel(ctx, orgID)
 		if err != nil {
 			log.Printf("Unable to find datamodel by orgId for ingestion: %v", err)
 			http.Error(w, "No data model found for this organization ID.", http.StatusInternalServerError) // 500
@@ -55,7 +55,7 @@ func (a *API) handleIngestion() http.HandlerFunc {
 			return
 		}
 
-		payloadStructWithReaderPtr, err := a.app.ParseToDataModelObject(table, object_body)
+		payloadStructWithReaderPtr, err := a.app.ParseToDataModelObject(ctx, table, object_body)
 		if err != nil {
 			if errors.Is(err, app.ErrFormatValidation) {
 				http.Error(w, "Format validation error", http.StatusBadRequest) // 400
@@ -66,7 +66,7 @@ func (a *API) handleIngestion() http.HandlerFunc {
 			return
 		}
 
-		err = a.app.IngestObject(*payloadStructWithReaderPtr, table)
+		err = a.app.IngestObject(ctx, *payloadStructWithReaderPtr, table)
 		if err != nil {
 			log.Printf("Error while ingesting object: %v", err)
 			http.Error(w, "", http.StatusInternalServerError) // 500

@@ -21,7 +21,7 @@ type RepositoryInterface interface {
 	GetOrganizationIDFromToken(ctx context.Context, token string) (orgID string, err error)
 
 	// Decisions
-	StoreDecision(ctx context.Context, orgID string, decision Decision) (id string, err error)
+	StoreDecision(ctx context.Context, orgID string, decision Decision) (Decision, error)
 	GetDecision(ctx context.Context, orgID string, decisionID string) (Decision, error)
 
 	// Ingestion
