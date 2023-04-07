@@ -31,6 +31,13 @@ func main() {
 
 	// Read ENV variables for configuration
 
+	// Port
+	env, ok := os.LookupEnv("ENV")
+	if !ok || env == "" {
+		env = "DEV"
+		log.Printf("no ENV environment variable (default to DEV)")
+	}
+
 	// API
 	// Port
 	port, ok := os.LookupEnv("PORT")
@@ -69,8 +76,9 @@ func main() {
 	// Postgres repository
 	pgRepository, _ := pg_repository.New(PGHostname, PGPort, PGUser, PGPassword, embedMigrations)
 
-	// In-memory repository
-	// repository, _ := repository.New()
+	if env == "DEV" {
+		pgRepository.Seed()
+	}
 
 	app, _ := app.New(pgRepository)
 	api, _ := api.New("8080", app)
@@ -98,72 +106,4 @@ func main() {
 	api.Shutdown(shutdownCtx)
 
 	log.Printf("stopping %s version %s", appName, version)
-
-	// //datamodel tests
-	// dm := engine.DataModel{
-	// 	Tables: map[string]engine.Table{
-	// 		"tx": {
-	// 			Fields: map[string]engine.Field{
-	// 				"id": {
-	// 					DataType: engine.String,
-	// 				},
-	// 				"amount": {
-	// 					DataType: engine.Float,
-	// 				},
-	// 				"sender_id": {
-	// 					DataType: engine.String,
-	// 				},
-	// 			},
-	// 			LinksToSingle: map[string]engine.LinkToSingle{
-	// 				"sender": {
-	// 					LinkedTableName: "user",
-	// 					ParentFieldName: "sender_id",
-	// 					ChildFieldName:  "id",
-	// 				},
-	// 			},
-	// 		},
-	// 		"user": {
-	// 			Fields: map[string]engine.Field{
-	// 				"id": {
-	// 					DataType: engine.String,
-	// 				},
-	// 				"name": {
-	// 					DataType: engine.String,
-	// 				},
-	// 			},
-	// 		},
-	// 	},
-	// }
-	// spew.Dump(dm)
-
-	// // Payload
-	// p := engine.Payload{
-	// 	TableName: "tx",
-	// 	Data: map[string]interface{}{
-	// 		"id":        "2713",
-	// 		"amount":    5.0,
-	// 		"sender_id": "42",
-	// 	}}
-
-	// spew.Dump(p)
-	// // Expression tests
-	// exprs := []engine.Node{
-
-	// 	// Basic Logical & operators
-	// 	engine.And{engine.True{}, engine.True{}},
-	// 	engine.And{engine.True{}, engine.False{}},
-	// 	engine.And{engine.True{}, engine.And{engine.True{}, engine.Eq{engine.IntValue{5}, engine.IntValue{5}}}},
-	// 	engine.And{engine.True{}, engine.And{engine.True{}, engine.Eq{engine.IntValue{6}, engine.IntValue{5}}}},
-	// 	engine.And{engine.True{}, engine.And{engine.True{}, engine.Eq{engine.FloatValue{5}, engine.IntValue{5}}}},
-
-	// 	// with datamodel
-	// 	engine.And{engine.True{}, engine.And{engine.True{}, engine.Eq{engine.FloatValue{5}, engine.FieldValue{dm, "tx", []string{"amount"}}}}},
-	// 	engine.And{engine.True{}, engine.And{engine.True{}, engine.Eq{engine.FloatValue{6}, engine.FieldValue{dm, "tx", []string{"amount"}}}}},
-	// 	engine.And{engine.True{}, engine.And{engine.True{}, engine.Eq{engine.FloatValue{6}, engine.FieldValue{dm, "tx", []string{"sender"}}}}},
-	// }
-
-	// for _, e := range exprs {
-	// 	fmt.Println(e.Print(p), " evals to :", e.Eval(p))
-	// }
-
 }

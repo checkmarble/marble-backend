@@ -32,6 +32,7 @@ CREATE TABLE data_models(
   org_id uuid NOT NULL,
   version VARCHAR NOT NULL,
   status data_models_status NOT NULL,
+  tables json NOT NULL,
   PRIMARY KEY(id),
   CONSTRAINT fk_data_models_org FOREIGN KEY(org_id) REFERENCES organizations(id)
 );
@@ -44,22 +45,6 @@ CREATE TABLE tokens(
   PRIMARY KEY(id),
   CONSTRAINT fk_tokens_org FOREIGN KEY(org_id) REFERENCES organizations(id)
 );
-
--- insert data into orgs
-INSERT INTO organizations (name, database_name)
-VALUES ('Marble', 'marble'),
-  ('Test organization', 'test_1');
-
--- insert data into tokens
-INSERT INTO tokens (org_id, token)
-VALUES (
-    (
-      SELECT id
-      FROM organizations
-      WHERE name = 'Test organization'
-    ),
-    'token12345'
-  );
 
 -- scenarios table
 CREATE TABLE scenarios(
@@ -105,25 +90,6 @@ CREATE TABLE scenario_iteration_rules(
 ALTER TABLE scenarios
 ADD COLUMN live_scenario_iteration_id uuid,
   ADD CONSTRAINT fk_scenarios_live_scenario_iteration FOREIGN KEY(live_scenario_iteration_id) REFERENCES scenario_iterations(id);
-
-INSERT INTO scenarios (
-    id,
-    org_id,
-    name,
-    description,
-    trigger_object_type
-  )
-VALUES(
-    '3a6cabee-a565-42b2-af40-5295386c8269',
-    (
-      SELECT id
-      FROM organizations
-      WHERE name = 'Test organization'
-    ),
-    'test name',
-    'test description',
-    'tx'
-  );
 
 -- decisions
 -- Outcomes

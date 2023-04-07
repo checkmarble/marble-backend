@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-type dbDecisionRules struct {
+type dbDecisionRule struct {
 	ID            string `db:"id"`
 	OrgID         string `db:"org_id"`
 	DecisionID    string `db:"decision_id"`
@@ -19,7 +19,7 @@ type dbDecisionRules struct {
 	ErrorCode     int    `db:"error_code"`
 }
 
-func (dr *dbDecisionRules) dto() app.RuleExecution {
+func (dr *dbDecisionRule) dto() app.RuleExecution {
 	return app.RuleExecution{
 		Rule: app.Rule{
 			Name:        dr.Name,
@@ -63,7 +63,7 @@ func (r *PGRepository) createDecisionRules(ctx context.Context, tx pgx.Tx, orgID
 	}
 
 	rows, _ := tx.Query(ctx, sql, args...)
-	createdDecisionRules, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbDecisionRules])
+	createdDecisionRules, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbDecisionRule])
 	if err != nil {
 		return nil, fmt.Errorf("unable to create rules: %w", err)
 	}
