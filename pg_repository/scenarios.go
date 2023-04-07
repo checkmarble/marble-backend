@@ -116,14 +116,13 @@ func (r *PGRepository) PostScenario(ctx context.Context, orgID string, scenario 
 	return createdScenario.dto(), err
 }
 
-// TODO: work on this, the method can be used to link any iteration with a scenario (no check on relationship)
-// Idea: only pass a scenarioIterationID and get the scenarioID from it ?
-func (r *PGRepository) PublishScenarioIteration(ctx context.Context, orgID string, scenarioID string, scenarioIterationID string) error {
+func (r *PGRepository) PublishScenarioIteration(ctx context.Context, orgID string, scenarioIterationID string) error {
 	sql, args, err := r.queryBuilder.
 		Update("scenarios").
 		Set("live_scenario_iteration_id", scenarioIterationID).
-		Where("id = ?", scenarioID).
-		Where("org_id = ?", orgID).
+		From("scenario_iterations si").
+		Where("si.id = ?", scenarioIterationID).
+		Where("scenarios.id = si.scenario_id").
 		ToSql()
 
 	if err != nil {
@@ -138,8 +137,6 @@ func (r *PGRepository) PublishScenarioIteration(ctx context.Context, orgID strin
 	return nil
 }
 
-// TODO: do we want to unpublish a scenario form scenarioID ? or from scenarioIterationID ?
-// Comment is here to think of both publication signature together
 func (r *PGRepository) UnpublishScenarioIteration(ctx context.Context, orgID string, scenarioID string) error {
 	sql, args, err := r.queryBuilder.
 		Update("scenarios").
