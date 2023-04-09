@@ -17,123 +17,78 @@ type TestCase struct {
 	dataModel      app.DataModel
 	payload        app.Payload
 	name           string
-	query          string
-	params         []interface{}
+	expectedQuery  string
+	expectedParams []interface{}
 	expectedOutput interface{}
 }
 
 func TestLogic(t *testing.T) {
-
+	dataModel := app.DataModel{
+		Tables: map[string]app.Table{
+			"transactions": {
+				Name: "transactions",
+				Fields: map[string]app.Field{
+					"object_id": {
+						DataType: app.String,
+					},
+					"updated_at":  {DataType: app.Timestamp},
+					"value":       {DataType: app.Float},
+					"isValidated": {DataType: app.Bool},
+					"account_id":  {DataType: app.String},
+				},
+				LinksToSingle: map[string]app.LinkToSingle{
+					"accounts": {
+						LinkedTableName: "accounts",
+						ParentFieldName: "object_id",
+						ChildFieldName:  "account_id",
+					},
+				},
+			},
+			"accounts": {
+				Name: "accounts",
+				Fields: map[string]app.Field{
+					"object_id": {
+						DataType: app.String,
+					},
+					"updated_at":   {DataType: app.Timestamp},
+					"status":       {DataType: app.String},
+					"is_validated": {DataType: app.Bool},
+				},
+				LinksToSingle: map[string]app.LinkToSingle{},
+			},
+		},
+	}
+	payload := app.Payload{TableName: "transactions", Data: map[string]interface{}{"object_id": "1234"}}
+	param := []interface{}{"1234"}
 	cases := []TestCase{
 		{
-			name:      "Direct table read",
-			path:      []string{"transactions"},
-			fieldName: "isValidated",
-			dataModel: app.DataModel{
-				Tables: map[string]app.Table{
-					"transactions": {
-						Name: "transactions",
-						Fields: map[string]app.Field{
-							"object_id": {
-								DataType: app.String,
-							},
-							"updated_at":  {DataType: app.Timestamp},
-							"value":       {DataType: app.Float},
-							"isValidated": {DataType: app.Bool},
-						},
-						LinksToSingle: map[string]app.LinkToSingle{},
-					},
-				},
-			},
-			payload:        app.Payload{TableName: "transactions", Data: map[string]interface{}{"object_id": "1234"}},
-			query:          "SELECT transactions.isValidated FROM transactions WHERE transactions.object_id = $1",
-			params:         []interface{}{"1234"},
+			name:           "Direct table read",
+			path:           []string{"transactions"},
+			fieldName:      "isValidated",
+			dataModel:      dataModel,
+			payload:        payload,
+			expectedQuery:  "SELECT transactions.isValidated FROM transactions WHERE transactions.object_id = $1",
+			expectedParams: param,
 			expectedOutput: pgtype.Bool{Bool: true, Valid: true},
 		},
 		{
-			name:      "Table read with join - bool",
-			path:      []string{"transactions", "accounts"},
-			fieldName: "isValidated",
-			dataModel: app.DataModel{
-				Tables: map[string]app.Table{
-					"transactions": {
-						Name: "transactions",
-						Fields: map[string]app.Field{
-							"object_id": {
-								DataType: app.String,
-							},
-							"updated_at":  {DataType: app.Timestamp},
-							"value":       {DataType: app.Float},
-							"isValidated": {DataType: app.Bool},
-							"account_id":  {DataType: app.String},
-						},
-						LinksToSingle: map[string]app.LinkToSingle{
-							"accounts": {
-								LinkedTableName: "accounts",
-								ParentFieldName: "object_id",
-								ChildFieldName:  "account_id",
-							},
-						},
-					},
-					"accounts": {
-						Name: "accounts",
-						Fields: map[string]app.Field{
-							"object_id": {
-								DataType: app.String,
-							},
-							"updated_at":  {DataType: app.Timestamp},
-							"isValidated": {DataType: app.Bool},
-						},
-						LinksToSingle: map[string]app.LinkToSingle{},
-					},
-				},
-			},
-			payload:        app.Payload{TableName: "transactions", Data: map[string]interface{}{"object_id": "1234"}},
-			query:          "SELECT accounts.isValidated FROM transactions JOIN accounts ON transactions.account_id = accounts.object_id WHERE transactions.object_id = $1",
-			params:         []interface{}{"1234"},
+			name:           "Table read with join - bool",
+			path:           []string{"transactions", "accounts"},
+			fieldName:      "isValidated",
+			dataModel:      dataModel,
+			payload:        payload,
+			expectedQuery:  "SELECT accounts.isValidated FROM transactions JOIN accounts ON transactions.account_id = accounts.object_id WHERE transactions.object_id = $1",
+			expectedParams: param,
 			expectedOutput: pgtype.Bool{Bool: true, Valid: true},
 		},
 		{
-			name:      "Table read with join - string",
-			path:      []string{"transactions", "accounts"},
-			fieldName: "status",
-			dataModel: app.DataModel{
-				Tables: map[string]app.Table{
-					"transactions": {
-						Name: "transactions",
-						Fields: map[string]app.Field{
-							"object_id": {
-								DataType: app.String,
-							},
-							"updated_at":  {DataType: app.Timestamp},
-							"value":       {DataType: app.Float},
-							"isValidated": {DataType: app.Bool},
-							"account_id":  {DataType: app.String},
-						},
-						LinksToSingle: map[string]app.LinkToSingle{
-							"accounts": {
-								LinkedTableName: "accounts",
-								ParentFieldName: "object_id",
-								ChildFieldName:  "account_id",
-							},
-						},
-					},
-					"accounts": {
-						Name: "accounts",
-						Fields: map[string]app.Field{
-							"object_id": {
-								DataType: app.String,
-							},
-							"updated_at": {DataType: app.Timestamp},
-							"status":     {DataType: app.String},
-						},
-						LinksToSingle: map[string]app.LinkToSingle{},
-					},
-				},
-			},
-			payload:        app.Payload{TableName: "transactions", Data: map[string]interface{}{"object_id": "1234"}},
-			query:          "SELECT accounts.status FROM transactions JOIN accounts ON transactions.account_id = accounts.object_id WHERE transactions.object_id = $1",
-			params:         []interface{}{"1234"},
+			name:           "Table read with join - string",
+			path:           []string{"transactions", "accounts"},
+			fieldName:      "status",
+			dataModel:      dataModel,
+			payload:        payload,
+			expectedQuery:  "SELECT accounts.status FROM transactions JOIN accounts ON transactions.account_id = accounts.object_id WHERE transactions.object_id = $1",
+			expectedParams: param,
 			expectedOutput: pgtype.Text{String: "VALIDATED", Valid: true},
 		},
 	}
@@ -147,7 +102,7 @@ func TestLogic(t *testing.T) {
 			defer mock.Close()
 
 			rows := mock.NewRows([]string{"isValidated"}).AddRow(example.expectedOutput)
-			mock.ExpectQuery(example.query).WithArgs(example.params...).WillReturnRows(rows)
+			mock.ExpectQuery(example.expectedQuery).WithArgs(example.expectedParams...).WillReturnRows(rows)
 
 			repo := PGRepository{db: mock, queryBuilder: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)}
 
