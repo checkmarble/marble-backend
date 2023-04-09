@@ -16,6 +16,9 @@ func (d *DataAccessorImpl) GetPayloadField(fieldName string) (interface{}, error
 func (d *DataAccessorImpl) GetDbField(path []string, fieldName string) (interface{}, error) {
 	return true, nil
 }
+func (d *DataAccessorImpl) ValidateDbFieldReadConsistency(path []string, fieldName string) error {
+	return nil
+}
 
 func TestLogic(t *testing.T) {
 	tree := EqBool{
