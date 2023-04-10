@@ -12,11 +12,8 @@ import (
 )
 
 type TestCase struct {
-	path           []string
-	fieldName      string
-	dataModel      app.DataModel
-	payload        app.Payload
 	name           string
+	readParams     app.DbFieldReadParams
 	expectedQuery  string
 	expectedParams []interface{}
 	expectedOutput interface{}
@@ -62,31 +59,23 @@ func TestLogic(t *testing.T) {
 	param := []interface{}{"1234"}
 	cases := []TestCase{
 		{
+
 			name:           "Direct table read",
-			path:           []string{"transactions"},
-			fieldName:      "isValidated",
-			dataModel:      dataModel,
-			payload:        payload,
+			readParams:     app.DbFieldReadParams{Path: []string{"transactions"}, FieldName: "isValidated", DataModel: dataModel, Payload: payload},
 			expectedQuery:  "SELECT transactions.isValidated FROM transactions WHERE transactions.object_id = $1",
 			expectedParams: param,
 			expectedOutput: pgtype.Bool{Bool: true, Valid: true},
 		},
 		{
 			name:           "Table read with join - bool",
-			path:           []string{"transactions", "accounts"},
-			fieldName:      "isValidated",
-			dataModel:      dataModel,
-			payload:        payload,
+			readParams:     app.DbFieldReadParams{Path: []string{"transactions", "accounts"}, FieldName: "isValidated", DataModel: dataModel, Payload: payload},
 			expectedQuery:  "SELECT accounts.isValidated FROM transactions JOIN accounts ON transactions.account_id = accounts.object_id WHERE transactions.object_id = $1",
 			expectedParams: param,
 			expectedOutput: pgtype.Bool{Bool: true, Valid: true},
 		},
 		{
 			name:           "Table read with join - string",
-			path:           []string{"transactions", "accounts"},
-			fieldName:      "status",
-			dataModel:      dataModel,
-			payload:        payload,
+			readParams:     app.DbFieldReadParams{Path: []string{"transactions", "accounts"}, FieldName: "status", DataModel: dataModel, Payload: payload},
 			expectedQuery:  "SELECT accounts.status FROM transactions JOIN accounts ON transactions.account_id = accounts.object_id WHERE transactions.object_id = $1",
 			expectedParams: param,
 			expectedOutput: pgtype.Text{String: "VALIDATED", Valid: true},
@@ -106,7 +95,7 @@ func TestLogic(t *testing.T) {
 
 			repo := PGRepository{db: mock, queryBuilder: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)}
 
-			val, err := repo.GetDbField(example.path, example.fieldName, example.dataModel, example.payload)
+			val, err := repo.GetDbField(example.readParams)
 
 			if err := mock.ExpectationsWereMet(); err != nil {
 				t.Errorf("there were unfulfilled expectations: %s", err)

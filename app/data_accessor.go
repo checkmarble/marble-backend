@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"marble/marble-backend/app/operators"
 )
@@ -11,11 +12,25 @@ type DataAccessorImpl struct {
 	repository RepositoryInterface
 }
 
+type DbFieldReadParams struct {
+	Path      []string
+	FieldName string
+	DataModel DataModel
+	Payload   Payload
+}
+
+var ErrNoRowsReadInDB = errors.New("No rows read while reading DB field")
+
 func (d *DataAccessorImpl) GetPayloadField(fieldName string) (interface{}, error) {
 	return nil, nil
 }
 func (d *DataAccessorImpl) GetDbField(path []string, fieldName string) (interface{}, error) {
-	return d.repository.GetDbField(path, fieldName, d.DataModel, d.Payload)
+	return d.repository.GetDbField(DbFieldReadParams{
+		Path:      path,
+		FieldName: fieldName,
+		DataModel: d.DataModel,
+		Payload:   d.Payload,
+	})
 }
 
 func (d *DataAccessorImpl) ValidateDbFieldReadConsistency(path []string, fieldName string) error {

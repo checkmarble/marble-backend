@@ -2,6 +2,7 @@ package pg_repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"marble/marble-backend/app"
@@ -12,20 +13,20 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func (rep *PGRepository) queryDbForField(path []string, fieldName string, dataModel app.DataModel, payload app.Payload) (pgx.Row, error) {
-	base_object_id, ok := payload.Data["object_id"].(string)
+func (rep *PGRepository) queryDbForField(readParams app.DbFieldReadParams) (pgx.Row, error) {
+	base_object_id, ok := readParams.Payload.Data["object_id"].(string)
 	if !ok {
 		return nil, fmt.Errorf("object_id in payload is not a string")
 	}
 
-	firstTable := dataModel.Tables[path[0]]
-	lastTable := dataModel.Tables[path[len(path)-1]]
+	firstTable := readParams.DataModel.Tables[readParams.Path[0]]
+	lastTable := readParams.DataModel.Tables[readParams.Path[len(readParams.Path)-1]]
 
-	query := rep.queryBuilder.Select(fmt.Sprintf("%s.%s", lastTable.Name, fieldName)).From(firstTable.Name)
+	query := rep.queryBuilder.Select(fmt.Sprintf("%s.%s", lastTable.Name, readParams.FieldName)).From(firstTable.Name)
 
-	for i := 1; i < len(path); i++ {
-		table := dataModel.Tables[path[i-1]]
-		next_table := dataModel.Tables[path[i]]
+	for i := 1; i < len(readParams.Path); i++ {
+		table := readParams.DataModel.Tables[readParams.Path[i-1]]
+		next_table := readParams.DataModel.Tables[readParams.Path[i]]
 
 		link, ok := table.LinksToSingle[next_table.Name]
 		if !ok {
@@ -49,20 +50,23 @@ func scanRowReturnValue[T pgtype.Bool | pgtype.Int2 | pgtype.Float8 | pgtype.Tex
 	var returnVariable T
 	err := row.Scan(&returnVariable)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return returnVariable, fmt.Errorf("No rows scanned while reading DB: %w", app.ErrNoRowsReadInDB)
+		}
 		return returnVariable, err
 	}
 	return returnVariable, nil
 }
 
-func (rep *PGRepository) GetDbField(path []string, fieldName string, dataModel app.DataModel, payload app.Payload) (interface{}, error) {
+func (rep *PGRepository) GetDbField(readParams app.DbFieldReadParams) (interface{}, error) {
 
-	row, err := rep.queryDbForField(path, fieldName, dataModel, payload)
+	row, err := rep.queryDbForField(readParams)
 	if err != nil {
 		return nil, err
 	}
 
-	lastTable := dataModel.Tables[path[len(path)-1]]
-	fieldFromModel := lastTable.Fields[fieldName]
+	lastTable := readParams.DataModel.Tables[readParams.Path[len(readParams.Path)-1]]
+	fieldFromModel := lastTable.Fields[readParams.FieldName]
 
 	switch fieldFromModel.DataType {
 	case app.Bool:
