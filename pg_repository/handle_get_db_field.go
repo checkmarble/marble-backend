@@ -51,6 +51,7 @@ func scanRowReturnValue[T pgtype.Bool | pgtype.Int2 | pgtype.Float8 | pgtype.Tex
 	err := row.Scan(&returnVariable)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
+			fmt.Println("coucou")
 			return returnVariable, fmt.Errorf("No rows scanned while reading DB: %w", app.ErrNoRowsReadInDB)
 		}
 		return returnVariable, err
