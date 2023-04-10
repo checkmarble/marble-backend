@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type DataAccessorImpl struct{}
@@ -14,7 +15,7 @@ func (d *DataAccessorImpl) GetPayloadField(fieldName string) (interface{}, error
 	return nil, nil
 }
 func (d *DataAccessorImpl) GetDbField(path []string, fieldName string) (interface{}, error) {
-	return true, nil
+	return pgtype.Bool{Bool: true, Valid: true}, nil
 }
 func (d *DataAccessorImpl) ValidateDbFieldReadConsistency(path []string, fieldName string) error {
 	return nil
