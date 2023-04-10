@@ -51,7 +51,7 @@ func (a *API) handleDecisionPost() http.HandlerFunc {
 		err = d.Decode(requestData)
 		if err != nil {
 			// Could not parse JSON
-			http.Error(w, fmt.Errorf("could not parse input JSON: %w", err).Error(), http.StatusBadRequest)
+			http.Error(w, fmt.Errorf("could not parse input JSON: %w", err).Error(), http.StatusUnprocessableEntity)
 			return
 		}
 
@@ -73,7 +73,7 @@ func (a *API) handleDecisionPost() http.HandlerFunc {
 		payloadStructWithReaderPtr, err := app.ParseToDataModelObject(table, requestData.TriggerObjectRaw)
 		if err != nil {
 			if errors.Is(err, app.ErrFormatValidation) {
-				http.Error(w, "Format validation error", http.StatusBadRequest) // 400
+				http.Error(w, "Format validation error", http.StatusUnprocessableEntity) // 422
 				return
 			}
 			log.Printf("Unexpected error while parsing to data model object: %v", err)
