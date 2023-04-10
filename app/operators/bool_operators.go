@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // /////////////////////////////
@@ -187,16 +189,25 @@ type DbFieldBool struct {
 }
 
 func (field DbFieldBool) Eval(d DataAccessor) (bool, error) {
-	val, err := d.GetDbField(field.Path, field.FieldName)
+	err := d.ValidateDbFieldReadConsistency(field.Path, field.FieldName)
+	if err != nil {
+		return false, err
+	}
+
+	valRaw, err := d.GetDbField(field.Path, field.FieldName)
 	if err != nil {
 		fmt.Printf("Error getting DB field: %v", err)
 		return false, err
 	}
-	va, ok := val.(bool)
-	if ok {
-		return va, nil
+
+	valNullable, ok := valRaw.(pgtype.Bool)
+	if !ok {
+		return false, fmt.Errorf("DB field %s is not a boolean", field.FieldName)
 	}
-	return false, fmt.Errorf("DB field %s is not a boolean", field.FieldName)
+	if !valNullable.Valid {
+		return false, fmt.Errorf("DB field %s is null", field.FieldName)
+	}
+	return valNullable.Bool, nil
 }
 
 func (field DbFieldBool) Print() string {

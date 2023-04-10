@@ -2,6 +2,7 @@ package operators
 
 import (
 	"encoding/json"
+	"errors"
 	"time"
 )
 
@@ -17,7 +18,10 @@ type DataAccessor interface {
 	GetPayloadField(fieldName string) (interface{}, error)
 	GetDbField(path []string, fieldName string) (interface{}, error)
 	// GetListField(path []string) (interface{}, error)
+	ValidateDbFieldReadConsistency(path []string, fieldName string) error
 }
+
+var ErrDbReadInconsistentWithDataModel = errors.New("Data model inconsistent with path or field name read from DB")
 
 // /////////////////////////////
 // Operator

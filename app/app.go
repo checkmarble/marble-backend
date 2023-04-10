@@ -28,7 +28,7 @@ type RepositoryInterface interface {
 	IngestObject(ctx context.Context, dynamicStructWithReader DynamicStructWithReader, table Table) (err error)
 
 	// DB field access
-	GetDbField(path []string, fieldName string, dataModel DataModel, payload DynamicStructWithReader) (interface{}, error)
+	GetDbField(readParams DbFieldReadParams) (interface{}, error)
 }
 
 func New(r RepositoryInterface) (*App, error) {

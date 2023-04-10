@@ -2,40 +2,41 @@ package pg_repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"marble/marble-backend/app"
+	"marble/marble-backend/app/operators"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func (rep *PGRepository) GetDbField(path []string, fieldName string, dataModel app.DataModel, payloadStructWithReader app.DynamicStructWithReader) (interface{}, error) {
-
-	if len(path) == 0 {
-		return nil, fmt.Errorf("Path is empty")
-	}
-	base_object_id_ptr, ok := payloadStructWithReader.ReadFieldFromDynamicStruct("object_id").(*string)
+func (rep *PGRepository) queryDbForField(readParams app.DbFieldReadParams) (pgx.Row, error) {
+	base_object_id_itf := readParams.Payload.ReadFieldFromDynamicStruct("object_id")
+	base_object_id_ptr, ok := base_object_id_itf.(*string)
 	if !ok {
-		return nil, fmt.Errorf("object_id in payload is not a string")
+		return nil, fmt.Errorf("object_id in payload is not a string") // should not happen, as per input validation
 	}
+
 	if base_object_id_ptr == nil {
 		return nil, fmt.Errorf("object_id in payload is null") // should not happen, as per input validation
 	}
 	base_object_id := *base_object_id_ptr
 
-	firstTable := dataModel.Tables[path[0]]
+	firstTable := readParams.DataModel.Tables[readParams.Path[0]]
+	lastTable := readParams.DataModel.Tables[readParams.Path[len(readParams.Path)-1]]
 
-	lastTable := dataModel.Tables[path[len(path)-1]]
-	query := rep.queryBuilder.Select(fmt.Sprintf("%s.%s", lastTable.Name, fieldName)).From(firstTable.Name)
+	query := rep.queryBuilder.Select(fmt.Sprintf("%s.%s", lastTable.Name, readParams.FieldName)).From(firstTable.Name)
 
-	for i := 1; i < len(path)-1; i++ {
-		table := dataModel.Tables[path[i]]
-		next_table := dataModel.Tables[path[i+1]]
+	for i := 1; i < len(readParams.Path); i++ {
+		table := readParams.DataModel.Tables[readParams.Path[i-1]]
+		next_table := readParams.DataModel.Tables[readParams.Path[i]]
+
 		link, ok := table.LinksToSingle[next_table.Name]
 		if !ok {
-			return nil, fmt.Errorf("No link from %s to %s", table.Name, next_table.Name)
+			return nil, fmt.Errorf("No link from %s to %s: %w", table.Name, next_table.Name, operators.ErrDbReadInconsistentWithDataModel)
 		}
 		query = query.Join(fmt.Sprintf("%s ON %s.%s = %s.%s", next_table.Name, table.Name, link.ChildFieldName, next_table.Name, link.ParentFieldName))
 	}
@@ -47,31 +48,46 @@ func (rep *PGRepository) GetDbField(path []string, fieldName string, dataModel a
 		return nil, err
 	}
 
-	fields := lastTable.Fields
-	fieldFromModel, ok := fields[fieldName]
+	rows := rep.db.QueryRow(context.TODO(), sql, args...)
+	return rows, nil
+}
+
+func scanRowReturnValue[T pgtype.Bool | pgtype.Int2 | pgtype.Float8 | pgtype.Text | pgtype.Timestamp](row pgx.Row) (T, error) {
+	var returnVariable T
+	err := row.Scan(&returnVariable)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			fmt.Println("coucou")
+			return returnVariable, fmt.Errorf("No rows scanned while reading DB: %w", app.ErrNoRowsReadInDB)
+		}
+		return returnVariable, err
+	}
+	return returnVariable, nil
+}
+
+func (rep *PGRepository) GetDbField(readParams app.DbFieldReadParams) (interface{}, error) {
+
+	row, err := rep.queryDbForField(readParams)
+	if err != nil {
+		return nil, err
+	}
+
+	lastTable := readParams.DataModel.Tables[readParams.Path[len(readParams.Path)-1]]
+	fieldFromModel := lastTable.Fields[readParams.FieldName]
 
 	switch fieldFromModel.DataType {
 	case app.Bool:
-		return scanToVariable[pgtype.Bool](sql, args, rep.db)
+		return scanRowReturnValue[pgtype.Bool](row)
 	case app.Int:
-		return scanToVariable[pgtype.Int2](sql, args, rep.db)
+		return scanRowReturnValue[pgtype.Int2](row)
 	case app.Float:
-		return scanToVariable[pgtype.Float8](sql, args, rep.db)
+		return scanRowReturnValue[pgtype.Float8](row)
 	case app.String:
-		return scanToVariable[pgtype.Text](sql, args, rep.db)
+		return scanRowReturnValue[pgtype.Text](row)
 	case app.Timestamp:
-		return scanToVariable[pgtype.Timestamp](sql, args, rep.db)
+		return scanRowReturnValue[pgtype.Timestamp](row)
 	default:
 		return nil, fmt.Errorf("Unknown data type when reading from db: %s", fieldFromModel.DataType)
 	}
 
-}
-
-func scanToVariable[T pgtype.Bool | pgtype.Int2 | pgtype.Float8 | pgtype.Text | pgtype.Timestamp](sql string, args []interface{}, db *pgxpool.Pool) (T, error) {
-	var returnVariable T
-	err := db.QueryRow(context.TODO(), sql, args...).Scan(&returnVariable)
-	if err != nil {
-		return returnVariable, err
-	}
-	return returnVariable, nil
 }
