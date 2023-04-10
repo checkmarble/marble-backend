@@ -16,7 +16,7 @@ type DbFieldReadParams struct {
 	Path      []string
 	FieldName string
 	DataModel DataModel
-	Payload   Payload
+	Payload   DynamicStructWithReader
 }
 
 var ErrNoRowsReadInDB = errors.New("No rows read while reading DB field")

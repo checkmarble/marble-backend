@@ -55,7 +55,7 @@ func (a *API) handleIngestion() http.HandlerFunc {
 			return
 		}
 
-		payloadStructWithReaderPtr, err := a.app.ParseToDataModelObject(table, object_body)
+		payloadStructWithReaderPtr, err := app.ParseToDataModelObject(table, object_body)
 		if err != nil {
 			if errors.Is(err, app.ErrFormatValidation) {
 				http.Error(w, "Format validation error", http.StatusBadRequest) // 400

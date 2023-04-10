@@ -70,7 +70,7 @@ func (a *API) handleDecisionPost() http.HandlerFunc {
 			return
 		}
 
-		payloadStructWithReaderPtr, err := a.app.ParseToDataModelObject(table, requestData.TriggerObjectRaw)
+		payloadStructWithReaderPtr, err := app.ParseToDataModelObject(table, requestData.TriggerObjectRaw)
 		if err != nil {
 			if errors.Is(err, app.ErrFormatValidation) {
 				http.Error(w, "Format validation error", http.StatusBadRequest) // 400

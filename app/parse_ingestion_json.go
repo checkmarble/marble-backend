@@ -90,7 +90,7 @@ func validateParsedJson(instance interface{}) error {
 	return nil
 }
 
-func (app *App) ParseToDataModelObject(table Table, jsonBody []byte) (*DynamicStructWithReader, error) {
+func ParseToDataModelObject(table Table, jsonBody []byte) (*DynamicStructWithReader, error) {
 	fields := table.Fields
 
 	custom_type := makeDynamicStructBuilder(fields)
