@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -21,12 +22,12 @@ type API struct {
 type AppInterface interface {
 	ScenarioAppInterface
 
-	GetOrganizationIDFromToken(token string) (orgID string, err error)
-	GetDataModel(organizationID string) (app.DataModel, error)
+	GetOrganizationIDFromToken(ctx context.Context, token string) (orgID string, err error)
+	GetDataModel(ctx context.Context, organizationID string) (app.DataModel, error)
 
-	CreateDecision(organizationID string, scenarioID string, dynamicStructWithReader app.DynamicStructWithReader, payload app.Payload) (app.Decision, error)
-	GetDecision(organizationID string, requestedDecisionID string) (app.Decision, error)
-	IngestObject(dynamicStructWithReader app.DynamicStructWithReader, table app.Table) (err error)
+	CreateDecision(ctx context.Context, organizationID string, scenarioID string, dynamicStructWithReader app.DynamicStructWithReader, payload app.Payload) (app.Decision, error)
+	GetDecision(ctx context.Context, organizationID string, requestedDecisionID string) (app.Decision, error)
+	IngestObject(ctx context.Context, dynamicStructWithReader app.DynamicStructWithReader, table app.Table) (err error)
 }
 
 func New(port string, a AppInterface) (*http.Server, error) {

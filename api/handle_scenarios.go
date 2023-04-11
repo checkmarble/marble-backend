@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"marble/marble-backend/app"
@@ -10,21 +11,23 @@ import (
 )
 
 type ScenarioAppInterface interface {
-	GetScenarios(organizationID string) ([]app.Scenario, error)
-	CreateScenario(organizationID string, scenario app.Scenario) (app.Scenario, error)
+	GetScenarios(ctx context.Context, organizationID string) ([]app.Scenario, error)
+	CreateScenario(ctx context.Context, organizationID string, scenario app.Scenario) (app.Scenario, error)
 
-	GetScenario(organizationID string, scenarioID string) (app.Scenario, error)
+	GetScenario(ctx context.Context, organizationID string, scenarioID string) (app.Scenario, error)
 }
 
 func (a *API) handleScenariosGet() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := orgIDFromCtx(r.Context())
+		ctx := r.Context()
+
+		orgID, err := orgIDFromCtx(ctx)
 		if err != nil {
 			http.Error(w, "", http.StatusUnauthorized)
 			return
 		}
 
-		scenarios, err := a.app.GetScenarios(orgID)
+		scenarios, err := a.app.GetScenarios(ctx, orgID)
 		if err != nil {
 			// Could not execute request
 			http.Error(w, fmt.Errorf("error getting scenarios: %w", err).Error(), http.StatusInternalServerError)
@@ -42,7 +45,9 @@ func (a *API) handleScenariosGet() http.HandlerFunc {
 
 func (a *API) handleScenariosPost() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := orgIDFromCtx(r.Context())
+		ctx := r.Context()
+
+		orgID, err := orgIDFromCtx(ctx)
 		if err != nil {
 			http.Error(w, "", http.StatusUnauthorized)
 			return
@@ -56,7 +61,7 @@ func (a *API) handleScenariosPost() http.HandlerFunc {
 			return
 		}
 
-		scenario, err := a.app.CreateScenario(orgID, *requestData)
+		scenario, err := a.app.CreateScenario(ctx, orgID, *requestData)
 		if err != nil {
 			// Could not execute request
 			// TODO(errors): handle missing fields error ?
@@ -75,14 +80,16 @@ func (a *API) handleScenariosPost() http.HandlerFunc {
 
 func (a *API) handleScenarioGet() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := orgIDFromCtx(r.Context())
+		ctx := r.Context()
+
+		orgID, err := orgIDFromCtx(ctx)
 		if err != nil {
 			http.Error(w, "", http.StatusUnauthorized)
 			return
 		}
 		scenarioID := chi.URLParam(r, "scenarioID")
 
-		scenario, err := a.app.GetScenario(orgID, scenarioID)
+		scenario, err := a.app.GetScenario(ctx, orgID, scenarioID)
 		if err != nil {
 			// Could not execute request
 			http.Error(w, fmt.Errorf("error getting scenario(id: %s): %w", scenarioID, err).Error(), http.StatusInternalServerError)

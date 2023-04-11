@@ -146,7 +146,7 @@ func (s Scenario) Eval(repo RepositoryInterface, payloadStructWithReader Dynamic
 		Outcome:             o,
 	}
 
-	log.Printf("scenario %s (Rev:%v Rej:%v), score = %v, outcome = %s", s.ID, s.LiveVersion.Body.ScoreReviewThreshold, s.LiveVersion.Body.ScoreRejectThreshold, score, o.String())
+	log.Printf("scenario %s (Rev:%v Rej:%v), score = %v, outcome = %s", s.ID, s.LiveVersion.Body.ScoreReviewThreshold, s.LiveVersion.Body.ScoreRejectThreshold, score, o)
 
 	return se, nil
 }

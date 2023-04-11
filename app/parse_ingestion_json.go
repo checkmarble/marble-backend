@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -90,7 +91,7 @@ func validateParsedJson(instance interface{}) error {
 	return nil
 }
 
-func ParseToDataModelObject(table Table, jsonBody []byte) (*DynamicStructWithReader, error) {
+func ParseToDataModelObject(_ context.Context, table Table, jsonBody []byte) (*DynamicStructWithReader, error) {
 	fields := table.Fields
 
 	custom_type := makeDynamicStructBuilder(fields)

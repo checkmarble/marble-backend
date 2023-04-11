@@ -2,14 +2,14 @@ package app
 
 import "context"
 
-func (a *App) GetScenarios(organizationID string) ([]Scenario, error) {
-	return a.repository.GetScenarios(context.TODO(), organizationID)
+func (a *App) GetScenarios(ctx context.Context, organizationID string) ([]Scenario, error) {
+	return a.repository.GetScenarios(ctx, organizationID)
 }
 
-func (a *App) CreateScenario(organizationID string, scenario Scenario) (Scenario, error) {
-	return a.repository.PostScenario(context.TODO(), organizationID, scenario)
+func (a *App) CreateScenario(ctx context.Context, organizationID string, scenario Scenario) (Scenario, error) {
+	return a.repository.PostScenario(ctx, organizationID, scenario)
 }
 
-func (a *App) GetScenario(organizationID string, scenarioID string) (Scenario, error) {
-	return a.repository.GetScenario(context.TODO(), organizationID, scenarioID)
+func (a *App) GetScenario(ctx context.Context, organizationID string, scenarioID string) (Scenario, error) {
+	return a.repository.GetScenario(ctx, organizationID, scenarioID)
 }

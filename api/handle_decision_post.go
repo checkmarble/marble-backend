@@ -26,11 +26,11 @@ func (a *API) handleDecisionPost() http.HandlerFunc {
 	// return is a decision
 
 	return func(w http.ResponseWriter, r *http.Request) {
-
+		ctx := r.Context()
 		///////////////////////////////
 		// Authorize request
 		///////////////////////////////
-		orgID, err := orgIDFromCtx(r.Context())
+		orgID, err := orgIDFromCtx(ctx)
 		if err != nil {
 			http.Error(w, "", http.StatusUnauthorized)
 			return
@@ -55,7 +55,7 @@ func (a *API) handleDecisionPost() http.HandlerFunc {
 			return
 		}
 
-		dataModel, err := a.app.GetDataModel(orgID)
+		dataModel, err := a.app.GetDataModel(ctx, orgID)
 		if err != nil {
 			log.Printf("Unable to find datamodel by orgId for ingestion: %v", err)
 			http.Error(w, "No data model found for this organization ID.", http.StatusInternalServerError) // 500
@@ -70,7 +70,7 @@ func (a *API) handleDecisionPost() http.HandlerFunc {
 			return
 		}
 
-		payloadStructWithReaderPtr, err := app.ParseToDataModelObject(table, requestData.TriggerObjectRaw)
+		payloadStructWithReaderPtr, err := app.ParseToDataModelObject(ctx, table, requestData.TriggerObjectRaw)
 		if err != nil {
 			if errors.Is(err, app.ErrFormatValidation) {
 				http.Error(w, "Format validation error", http.StatusUnprocessableEntity) // 422
@@ -85,7 +85,7 @@ func (a *API) handleDecisionPost() http.HandlerFunc {
 		triggerObjectMap := make(map[string]interface{})
 		err = json.Unmarshal(requestData.TriggerObjectRaw, &triggerObjectMap)
 		payload := app.Payload{TableName: requestData.TriggerObjectType, Data: triggerObjectMap}
-		decision, err := a.app.CreateDecision(orgID, requestData.ScenarioID, *payloadStructWithReaderPtr, payload)
+		decision, err := a.app.CreateDecision(ctx, orgID, requestData.ScenarioID, *payloadStructWithReaderPtr, payload)
 
 		if errors.Is(err, app.ErrScenarioNotFound) {
 			http.Error(w, "scenario not found", http.StatusNotFound)

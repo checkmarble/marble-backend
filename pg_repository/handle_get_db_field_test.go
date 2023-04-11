@@ -220,11 +220,12 @@ func TestReadFromDbWithDockerDb(t *testing.T) {
 			"accounts":     accounts,
 		},
 	}
-	payload, err := app.ParseToDataModelObject(transactions, []byte(`{"object_id": "9283b948-a140-4993-9c41-d5475fda5671"}`))
+	ctx := context.Background()
+	payload, err := app.ParseToDataModelObject(ctx, transactions, []byte(`{"object_id": "9283b948-a140-4993-9c41-d5475fda5671"}`))
 	if err != nil {
 		t.Fatalf("Could not parse payload: %s", err)
 	}
-	payload_not_in_db, err := app.ParseToDataModelObject(transactions, []byte(`{"object_id": "6d3a330d-7204-4561-b523-9fa0d518d184"}`))
+	payload_not_in_db, err := app.ParseToDataModelObject(ctx, transactions, []byte(`{"object_id": "6d3a330d-7204-4561-b523-9fa0d518d184"}`))
 	if err != nil {
 		t.Fatalf("Could not parse payload: %s", err)
 	}
@@ -307,7 +308,8 @@ func TestReadRowsWithMockDb(t *testing.T) {
 			"accounts":     accounts,
 		}}
 
-	payload, err := app.ParseToDataModelObject(transactions, []byte(`{"object_id": "9283b948-a140-4993-9c41-d5475fda5671"}`))
+	ctx := context.Background()
+	payload, err := app.ParseToDataModelObject(ctx, transactions, []byte(`{"object_id": "9283b948-a140-4993-9c41-d5475fda5671"}`))
 	if err != nil {
 		t.Fatalf("Could not parse payload: %s", err)
 	}
@@ -402,7 +404,8 @@ func TestNoRowsReadWithMockDb(t *testing.T) {
 			"transactions": transactions,
 			"accounts":     accounts,
 		}}
-	payload, err := app.ParseToDataModelObject(transactions, []byte(`{"object_id": "9283b948-a140-4993-9c41-d5475fda5671"}`))
+	ctx := context.Background()
+	payload, err := app.ParseToDataModelObject(ctx, transactions, []byte(`{"object_id": "9283b948-a140-4993-9c41-d5475fda5671"}`))
 	if err != nil {
 		t.Fatalf("Could not parse payload: %s", err)
 	}

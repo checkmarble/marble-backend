@@ -55,8 +55,8 @@ type LinkToSingle struct {
 	ChildFieldName  string
 }
 
-func (app *App) GetDataModel(orgID string) (DataModel, error) {
-	dataModel, err := app.repository.GetDataModel(context.TODO(), orgID)
+func (app *App) GetDataModel(ctx context.Context, orgID string) (DataModel, error) {
+	dataModel, err := app.repository.GetDataModel(ctx, orgID)
 	if err != nil {
 		return DataModel{}, err
 	}

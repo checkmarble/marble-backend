@@ -116,12 +116,13 @@ func (r *PGRepository) PostScenario(ctx context.Context, orgID string, scenario 
 	return createdScenario.dto(), err
 }
 
-func (r *PGRepository) PublishScenarioIteration(ctx context.Context, orgID string, scenarioID string, scenarioIterationID string) error {
+func (r *PGRepository) PublishScenarioIteration(ctx context.Context, orgID string, scenarioIterationID string) error {
 	sql, args, err := r.queryBuilder.
 		Update("scenarios").
 		Set("live_scenario_iteration_id", scenarioIterationID).
-		Where("id = ?", scenarioID).
-		Where("org_id = ?", orgID).
+		From("scenario_iterations si").
+		Where("si.id = ?", scenarioIterationID).
+		Where("scenarios.id = si.scenario_id").
 		ToSql()
 
 	if err != nil {
