@@ -21,6 +21,7 @@ type API struct {
 
 type AppInterface interface {
 	ScenarioAppInterface
+	OrganizationAppInterface
 
 	GetOrganizationIDFromToken(ctx context.Context, token string) (orgID string, err error)
 	GetDataModel(ctx context.Context, organizationID string) (app.DataModel, error)

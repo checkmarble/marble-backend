@@ -14,14 +14,14 @@ func (r *PGRepository) Seed() {
 	// Organizations
 	///////////////////////////////
 
-	_, err := r.CreateOrganization(context.TODO(), CreateOrganisation{
+	_, err := r.CreateOrganization(context.TODO(), app.CreateOrganisation{
 		Name:         "Marble",
 		DatabaseName: "marble",
 	})
 	if err != nil {
 		log.Printf("error creating organisation: %v", err)
 	}
-	org, err := r.CreateOrganization(context.TODO(), CreateOrganisation{
+	org, err := r.CreateOrganization(context.TODO(), app.CreateOrganisation{
 		Name:         "Test organization",
 		DatabaseName: "test_1",
 	})
