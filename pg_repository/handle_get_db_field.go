@@ -14,10 +14,16 @@ import (
 )
 
 func (rep *PGRepository) queryDbForField(readParams app.DbFieldReadParams) (pgx.Row, error) {
-	base_object_id, ok := readParams.Payload.Data["object_id"].(string)
+	base_object_id_itf := readParams.Payload.ReadFieldFromDynamicStruct("object_id")
+	base_object_id_ptr, ok := base_object_id_itf.(*string)
 	if !ok {
-		return nil, fmt.Errorf("object_id in payload is not a string")
+		return nil, fmt.Errorf("object_id in payload is not a string") // should not happen, as per input validation
 	}
+
+	if base_object_id_ptr == nil {
+		return nil, fmt.Errorf("object_id in payload is null") // should not happen, as per input validation
+	}
+	base_object_id := *base_object_id_ptr
 
 	firstTable := readParams.DataModel.Tables[readParams.Path[0]]
 	lastTable := readParams.DataModel.Tables[readParams.Path[len(readParams.Path)-1]]

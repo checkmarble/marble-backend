@@ -25,11 +25,9 @@ type AppInterface interface {
 	GetOrganizationIDFromToken(ctx context.Context, token string) (orgID string, err error)
 	GetDataModel(ctx context.Context, organizationID string) (app.DataModel, error)
 
-	PayloadFromTriggerObject(ctx context.Context, organizationID string, triggerObject map[string]any) (app.Payload, error)
-	CreateDecision(ctx context.Context, organizationID string, scenarioID string, payload app.Payload) (app.Decision, error)
+	CreateDecision(ctx context.Context, organizationID string, scenarioID string, dynamicStructWithReader app.DynamicStructWithReader, payload app.Payload) (app.Decision, error)
 	GetDecision(ctx context.Context, organizationID string, requestedDecisionID string) (app.Decision, error)
 	IngestObject(ctx context.Context, dynamicStructWithReader app.DynamicStructWithReader, table app.Table) (err error)
-	ParseToDataModelObject(ctx context.Context, table app.Table, objectBody []byte) (*app.DynamicStructWithReader, error)
 }
 
 func New(port string, a AppInterface) (*http.Server, error) {
