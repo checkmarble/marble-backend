@@ -10,7 +10,8 @@ import (
 var ErrScenarioNotFound = errors.New("scenario not found")
 var ErrDataModelNotFound = errors.New("data model not found")
 
-func (app *App) CreateDecision(ctx context.Context, organizationID string, scenarioID string, payload Payload) (Decision, error) {
+func (app *App) CreateDecision(ctx context.Context, organizationID string, scenarioID string, payloadStructWithReader DynamicStructWithReader, payload Payload) (Decision, error) {
+
 	///////////////////////////////
 	// Get scenario
 	///////////////////////////////
@@ -35,7 +36,7 @@ func (app *App) CreateDecision(ctx context.Context, organizationID string, scena
 	///////////////////////////////
 	// Execute scenario
 	///////////////////////////////
-	scenarioExecution, err := s.Eval(app.repository, payload, dm)
+	scenarioExecution, err := s.Eval(app.repository, payloadStructWithReader, dm)
 	if err != nil {
 		return Decision{}, fmt.Errorf("error evaluating scenario: %w", err)
 	}

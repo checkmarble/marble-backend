@@ -40,7 +40,7 @@ func (a *API) handleIngestion() http.HandlerFunc {
 		object_body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			log.Printf("Error while reading request body bytes in api handle_ingestion: %s", err)
-			http.Error(w, "", http.StatusBadRequest) // 500
+			http.Error(w, "", http.StatusUnprocessableEntity) // 422
 			return
 		}
 		// TODO: remove this before production
@@ -55,10 +55,10 @@ func (a *API) handleIngestion() http.HandlerFunc {
 			return
 		}
 
-		payloadStructWithReaderPtr, err := a.app.ParseToDataModelObject(ctx, table, object_body)
+		payloadStructWithReaderPtr, err := app.ParseToDataModelObject(ctx, table, object_body)
 		if err != nil {
 			if errors.Is(err, app.ErrFormatValidation) {
-				http.Error(w, "Format validation error", http.StatusBadRequest) // 400
+				http.Error(w, "Format validation error", http.StatusUnprocessableEntity) // 422
 				return
 			}
 			log.Printf("Unexpected error while parsing to data model object: %v", err)

@@ -141,6 +141,17 @@ CREATE TABLE transactions(
   value double precision,
   title VARCHAR,
   description VARCHAR,
+  bank_account_id uuid,
+  PRIMARY KEY(id)
+);
+
+CREATE TABLE bank_accounts(
+  id uuid DEFAULT uuid_generate_v4(),
+  object_id VARCHAR NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  balance double precision,
+  name VARCHAR,
+  currency VARCHAR NOT NULL,
   PRIMARY KEY(id)
 );
 

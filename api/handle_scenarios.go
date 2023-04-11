@@ -57,7 +57,7 @@ func (a *API) handleScenariosPost() http.HandlerFunc {
 		err = json.NewDecoder(r.Body).Decode(requestData)
 		if err != nil {
 			// Could not parse JSON
-			http.Error(w, fmt.Errorf("could not parse input JSON: %w", err).Error(), http.StatusBadRequest)
+			http.Error(w, fmt.Errorf("could not parse input JSON: %w", err).Error(), http.StatusUnprocessableEntity)
 			return
 		}
 
