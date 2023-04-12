@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func (rep *PGRepository) queryDbForField(readParams app.DbFieldReadParams) (pgx.Row, error) {
+func (rep *PGRepository) queryDbForField(ctx context.Context, readParams app.DbFieldReadParams) (pgx.Row, error) {
 	base_object_id_itf := readParams.Payload.ReadFieldFromDynamicStruct("object_id")
 	base_object_id_ptr, ok := base_object_id_itf.(*string)
 	if !ok {
@@ -48,7 +48,7 @@ func (rep *PGRepository) queryDbForField(readParams app.DbFieldReadParams) (pgx.
 		return nil, err
 	}
 
-	rows := rep.db.QueryRow(context.TODO(), sql, args...)
+	rows := rep.db.QueryRow(ctx, sql, args...)
 	return rows, nil
 }
 
@@ -65,9 +65,9 @@ func scanRowReturnValue[T pgtype.Bool | pgtype.Int2 | pgtype.Float8 | pgtype.Tex
 	return returnVariable, nil
 }
 
-func (rep *PGRepository) GetDbField(readParams app.DbFieldReadParams) (interface{}, error) {
+func (rep *PGRepository) GetDbField(ctx context.Context, readParams app.DbFieldReadParams) (interface{}, error) {
 
-	row, err := rep.queryDbForField(readParams)
+	row, err := rep.queryDbForField(ctx, readParams)
 	if err != nil {
 		return nil, err
 	}

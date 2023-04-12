@@ -26,7 +26,7 @@ func (app *App) CreateDecision(ctx context.Context, organizationID string, scena
 	///////////////////////////////
 	// Get Data Model
 	///////////////////////////////
-	dm, err := app.repository.GetDataModel(context.TODO(), organizationID)
+	dm, err := app.repository.GetDataModel(ctx, organizationID)
 	if errors.Is(err, ErrNotFoundInRepository) {
 		return Decision{}, ErrDataModelNotFound
 	} else if err != nil {
