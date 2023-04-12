@@ -9,18 +9,20 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type dbScenarioIteration struct {
-	ID                   string    `db:"id"`
-	OrgID                string    `db:"org_id"`
-	ScenarioID           string    `db:"scenario_id"`
-	Version              int       `db:"version"`
-	CreatedAt            time.Time `db:"created_at"`
-	UpdatedAt            time.Time `db:"updated_at"`
-	ScoreReviewThreshold int       `db:"score_review_threshold"`
-	ScoreRejectThreshold int       `db:"score_reject_threshold"`
-	TriggerCondition     []byte    `db:"trigger_condition"`
+	ID                   string      `db:"id"`
+	OrgID                string      `db:"org_id"`
+	ScenarioID           string      `db:"scenario_id"`
+	Version              int         `db:"version"`
+	CreatedAt            time.Time   `db:"created_at"`
+	UpdatedAt            time.Time   `db:"updated_at"`
+	ScoreReviewThreshold int         `db:"score_review_threshold"`
+	ScoreRejectThreshold int         `db:"score_reject_threshold"`
+	TriggerCondition     []byte      `db:"trigger_condition"`
+	DeletedAt            pgtype.Time `db:"deleted_at"`
 }
 
 func (si *dbScenarioIteration) dto() (app.ScenarioIteration, error) {

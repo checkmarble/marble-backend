@@ -35,6 +35,7 @@ type RepositoryInterface interface {
 	CreateOrganization(ctx context.Context, organization CreateOrganizationInput) (Organization, error)
 	GetOrganization(ctx context.Context, orgID string) (Organization, error)
 	UpdateOrganization(ctx context.Context, organization UpdateOrganizationInput) (Organization, error)
+	SoftDeleteOrganization(ctx context.Context, orgID string) error
 }
 
 func New(r RepositoryInterface) (*App, error) {

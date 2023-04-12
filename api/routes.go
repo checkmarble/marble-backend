@@ -54,7 +54,7 @@ func (a *API) routes() {
 			r.Route("/{orgID:"+UUIDRegExp+"}", func(r chi.Router) {
 				r.Get("/", a.handleGetOrganization())
 				r.Put("/", a.handlePutOrganization())
-				// r.Delete("/", a.handleDeleteOrganization())
+				r.Delete("/", a.handleDeleteOrganization())
 			})
 		})
 	})

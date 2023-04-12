@@ -7,17 +7,19 @@ import (
 	"marble/marble-backend/app/operators"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type dbScenarioIterationRule struct {
-	ID                  string `db:"id"`
-	OrgID               string `db:"org_id"`
-	ScenarioIterationID string `db:"scenario_iteration_id"`
-	DisplayOrder        int    `db:"display_order"`
-	Name                string `db:"name"`
-	Description         string `db:"description"`
-	ScoreModifier       int    `db:"score_modifier"`
-	Formula             []byte `db:"formula"`
+	ID                  string      `db:"id"`
+	OrgID               string      `db:"org_id"`
+	ScenarioIterationID string      `db:"scenario_iteration_id"`
+	DisplayOrder        int         `db:"display_order"`
+	Name                string      `db:"name"`
+	Description         string      `db:"description"`
+	ScoreModifier       int         `db:"score_modifier"`
+	Formula             []byte      `db:"formula"`
+	DeletedAt           pgtype.Time `db:"deleted_at"`
 }
 
 func (sir *dbScenarioIterationRule) dto() (app.Rule, error) {

@@ -17,3 +17,7 @@ func (a *App) GetOrganization(ctx context.Context, organizationID string) (Organ
 func (a *App) UpdateOrganization(ctx context.Context, organization UpdateOrganizationInput) (Organization, error) {
 	return a.repository.UpdateOrganization(ctx, organization)
 }
+
+func (a *App) SoftDeleteOrganization(ctx context.Context, organizationID string) error {
+	return a.repository.SoftDeleteOrganization(ctx, organizationID)
+}

@@ -4,16 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"marble/marble-backend/app"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type dbOrganization struct {
-	ID           string `db:"id"`
-	Name         string `db:"name"`
-	DatabaseName string `db:"database_name"`
+	ID           string      `db:"id"`
+	Name         string      `db:"name"`
+	DatabaseName string      `db:"database_name"`
+	DeletedAt    pgtype.Time `db:"deleted_at"`
 }
 
 func (org *dbOrganization) dto() app.Organization {
@@ -124,4 +127,24 @@ func (r *PGRepository) UpdateOrganization(ctx context.Context, organization app.
 	}
 
 	return updatedOrg.dto(), nil
+}
+
+// TODO(soft-delete): handle cascade soft deletion
+func (r *PGRepository) SoftDeleteOrganization(ctx context.Context, orgID string) error {
+	deletedAt := time.Now().UTC()
+
+	sql, args, err := r.queryBuilder.
+		Update("organizations").
+		Set("deleted_at", deletedAt).
+		Where("id = ?", orgID).ToSql()
+	if err != nil {
+		return fmt.Errorf("unable to build organization query: %w", err)
+	}
+
+	_, err = r.db.Exec(ctx, sql, args...)
+	if err != nil {
+		return fmt.Errorf("unable to soft delete org(id: %s): %w", orgID, err)
+	}
+
+	return nil
 }

@@ -9,19 +9,21 @@ import (
 	"marble/marble-backend/app"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type dbDecision struct {
-	ID                  string    `db:"id"`
-	OrgID               string    `db:"org_id"`
-	CreatedAt           time.Time `db:"created_at"`
-	Outcome             string    `db:"outcome"`
-	ScenarioID          string    `db:"scenario_id"`
-	ScenarioName        string    `db:"scenario_name"`
-	ScenarioDescription string    `db:"scenario_description"`
-	ScenarioVersion     int       `db:"scenario_version"`
-	Score               int       `db:"score"`
-	ErrorCode           int       `db:"error_code"`
+	ID                  string      `db:"id"`
+	OrgID               string      `db:"org_id"`
+	CreatedAt           time.Time   `db:"created_at"`
+	Outcome             string      `db:"outcome"`
+	ScenarioID          string      `db:"scenario_id"`
+	ScenarioName        string      `db:"scenario_name"`
+	ScenarioDescription string      `db:"scenario_description"`
+	ScenarioVersion     int         `db:"scenario_version"`
+	Score               int         `db:"score"`
+	ErrorCode           int         `db:"error_code"`
+	DeletedAt           pgtype.Time `db:"deleted_at"`
 }
 
 func (d *dbDecision) dto() app.Decision {

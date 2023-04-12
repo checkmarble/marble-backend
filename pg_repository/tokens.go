@@ -8,12 +8,14 @@ import (
 	"marble/marble-backend/app"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type dbToken struct {
-	ID    string `db:"id"`
-	OrgID string `db:"org_id"`
-	Token string `db:"token"`
+	ID        string      `db:"id"`
+	OrgID     string      `db:"org_id"`
+	Token     string      `db:"token"`
+	DeletedAt pgtype.Time `db:"deleted_at"`
 }
 
 func (t *dbToken) dto() app.Token {

@@ -21,6 +21,7 @@ CREATE TABLE organizations(
   id uuid DEFAULT uuid_generate_v4(),
   name VARCHAR NOT NULL,
   database_name VARCHAR NOT NULL,
+  deleted_at TIMESTAMP WITH TIME ZONE,
   PRIMARY KEY(id)
 );
 
@@ -33,6 +34,7 @@ CREATE TABLE data_models(
   version VARCHAR NOT NULL,
   status data_models_status NOT NULL,
   tables json NOT NULL,
+  deleted_at TIMESTAMP WITH TIME ZONE,
   PRIMARY KEY(id),
   CONSTRAINT fk_data_models_org FOREIGN KEY(org_id) REFERENCES organizations(id)
 );
@@ -42,6 +44,7 @@ CREATE TABLE tokens(
   id uuid DEFAULT uuid_generate_v4(),
   org_id uuid NOT NULL,
   token VARCHAR NOT NULL,
+  deleted_at TIMESTAMP WITH TIME ZONE,
   PRIMARY KEY(id),
   CONSTRAINT fk_tokens_org FOREIGN KEY(org_id) REFERENCES organizations(id)
 );
@@ -54,6 +57,7 @@ CREATE TABLE scenarios(
   description VARCHAR NOT NULL,
   trigger_object_type VARCHAR NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMP WITH TIME ZONE,
   PRIMARY KEY(id),
   CONSTRAINT fk_scenarios_org FOREIGN KEY(org_id) REFERENCES organizations(id)
 );
@@ -68,6 +72,7 @@ CREATE TABLE scenario_iterations(
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   score_review_threshold smallint NOT NULL,
   score_reject_threshold smallint NOT NULL,
+  deleted_at TIMESTAMP WITH TIME ZONE,
   PRIMARY KEY(id),
   CONSTRAINT fk_scenario_iterations_scenarios FOREIGN KEY(scenario_id) REFERENCES scenarios(id),
   CONSTRAINT fk_scenario_iterations_org FOREIGN KEY(org_id) REFERENCES organizations(id)
@@ -82,6 +87,7 @@ CREATE TABLE scenario_iteration_rules(
   description text NOT NULL,
   score_modifier smallint NOT NULL,
   formula json NOT NULL,
+  deleted_at TIMESTAMP WITH TIME ZONE,
   PRIMARY KEY(id),
   CONSTRAINT fk_scenario_iteration_rules_scenario_iterations FOREIGN KEY(scenario_iteration_id) REFERENCES scenario_iterations(id),
   CONSTRAINT fk_scenario_iteration_rules_org FOREIGN KEY(org_id) REFERENCES organizations(id)
@@ -113,6 +119,7 @@ CREATE TABLE decisions(
   scenario_version INT NOT NULL,
   score INT NOT NULL,
   error_code INT NOT NULL,
+  deleted_at TIMESTAMP WITH TIME ZONE,
   --error_message VARCHAR NOT NULL,
   PRIMARY KEY(id),
   CONSTRAINT fk_decisions_org FOREIGN KEY(org_id) REFERENCES organizations(id)
@@ -128,6 +135,7 @@ CREATE TABLE decision_rules(
   score_modifier INT NOT NULL,
   result BOOLEAN NOT NULL,
   error_code INT NOT NULL,
+  deleted_at TIMESTAMP WITH TIME ZONE,
   --error_message VARCHAR,
   PRIMARY KEY(id),
   CONSTRAINT fk_decision_rules_org FOREIGN KEY(org_id) REFERENCES organizations(id),
@@ -142,6 +150,7 @@ CREATE TABLE transactions(
   title VARCHAR,
   description VARCHAR,
   bank_account_id uuid,
+  deleted_at TIMESTAMP WITH TIME ZONE,
   PRIMARY KEY(id)
 );
 
@@ -152,6 +161,7 @@ CREATE TABLE bank_accounts(
   balance double precision,
   name VARCHAR,
   currency VARCHAR NOT NULL,
+  deleted_at TIMESTAMP WITH TIME ZONE,
   PRIMARY KEY(id)
 );
 

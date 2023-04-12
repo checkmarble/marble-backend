@@ -17,7 +17,7 @@ type OrganizationAppInterface interface {
 
 	GetOrganization(ctx context.Context, organizationID string) (app.Organization, error)
 	UpdateOrganization(ctx context.Context, organization app.UpdateOrganizationInput) (app.Organization, error)
-	// DeleteOrganization(ctx context.Context, organizationID string) error
+	SoftDeleteOrganization(ctx context.Context, organizationID string) error
 }
 
 type APIOrganization struct {
@@ -149,5 +149,24 @@ func (a *API) handlePutOrganization() http.HandlerFunc {
 			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)
 			return
 		}
+	}
+}
+
+func (a *API) handleDeleteOrganization() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		orgID := chi.URLParam(r, "orgID")
+
+		err := a.app.SoftDeleteOrganization(ctx, orgID)
+		if errors.Is(err, app.ErrNotFoundInRepository) {
+			http.Error(w, "", http.StatusNotFound)
+			return
+		} else if err != nil {
+			// Could not execute request
+			http.Error(w, fmt.Errorf("error deleting org(id: %s): %w", orgID, err).Error(), http.StatusInternalServerError)
+			return
+		}
+		return
 	}
 }
