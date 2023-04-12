@@ -42,6 +42,22 @@ func (a *API) routes() {
 		})
 	})
 
+	// Group all admin endpoints
+	a.router.Group(func(r chi.Router) {
+		//TODO(admin): add middleware for admin auth
+		// r.Use(a.adminAuthCtx)
+
+		a.router.Route("/organizations", func(r chi.Router) {
+			r.Get("/", a.handleGetOrganizations())
+			r.Post("/", a.handlePostOrganization())
+
+			r.Route("/{orgID:"+UUIDRegExp+"}", func(r chi.Router) {
+				r.Get("/", a.handleGetOrganization())
+				// 	r.Put("/", a.UpdateOrganization())    // PUT /users/{id} - update a single user by :id
+				// 	r.Delete("/", a.DeleteOrganization()) // DELETE /users/{id} - delete a single user by :id
+			})
+		})
+	})
 }
 
 func (a *API) displayRoutes() {

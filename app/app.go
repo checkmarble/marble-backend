@@ -28,7 +28,12 @@ type RepositoryInterface interface {
 	IngestObject(ctx context.Context, dynamicStructWithReader DynamicStructWithReader, table Table) (err error)
 
 	// DB field access
-	GetDbField(readParams DbFieldReadParams) (interface{}, error)
+	GetDbField(ctx context.Context, readParams DbFieldReadParams) (interface{}, error)
+
+	// Organization
+	GetOrganizations(ctx context.Context) ([]Organization, error)
+	CreateOrganization(ctx context.Context, organisation CreateOrganizationInput) (Organization, error)
+	GetOrganization(ctx context.Context, orgID string) (Organization, error)
 }
 
 func New(r RepositoryInterface) (*App, error) {

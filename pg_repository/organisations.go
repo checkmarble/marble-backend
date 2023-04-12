@@ -26,7 +26,7 @@ func (org *dbOrganization) dto() app.Organization {
 func (r *PGRepository) GetOrganization(ctx context.Context, orgID string) (app.Organization, error) {
 	sql, args, err := r.queryBuilder.
 		Select("*").
-		From("organizations").
+		From("organizations o").
 		Where("o.id = ?", orgID).
 		ToSql()
 	if err != nil {
@@ -50,12 +50,29 @@ func (r *PGRepository) GetOrganization(ctx context.Context, orgID string) (app.O
 	return organizationDTO, nil
 }
 
-type CreateOrganisation struct {
-	Name         string
-	DatabaseName string
+func (r *PGRepository) GetOrganizations(ctx context.Context) ([]app.Organization, error) {
+	sql, args, err := r.queryBuilder.
+		Select("*").
+		From("organizations").
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("unable to build organization query: %w", err)
+	}
+
+	rows, _ := r.db.Query(ctx, sql, args...)
+	organizations, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbOrganization])
+	if err != nil {
+		return nil, fmt.Errorf("unable to get organizations: %w", err)
+	}
+
+	organizationDTOs := make([]app.Organization, len(organizations))
+	for i, org := range organizations {
+		organizationDTOs[i] = org.dto()
+	}
+	return organizationDTOs, nil
 }
 
-func (r *PGRepository) CreateOrganization(ctx context.Context, organisation CreateOrganisation) (app.Organization, error) {
+func (r *PGRepository) CreateOrganization(ctx context.Context, organisation app.CreateOrganizationInput) (app.Organization, error) {
 	sql, args, err := r.queryBuilder.
 		Insert("organizations").
 		Columns(
