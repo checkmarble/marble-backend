@@ -19,14 +19,14 @@ func (r *PGRepository) Seed() {
 		DatabaseName: "marble",
 	})
 	if err != nil {
-		log.Printf("error creating organisation: %v", err)
+		log.Printf("error creating organization: %v", err)
 	}
 	org, err := r.CreateOrganization(context.TODO(), app.CreateOrganizationInput{
 		Name:         "Test organization",
 		DatabaseName: "test_1",
 	})
 	if err != nil {
-		log.Printf("error creating organisation: %v", err)
+		log.Printf("error creating organization: %v", err)
 	}
 
 	///////////////////////////////
