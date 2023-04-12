@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-type dbDecisions struct {
+type dbDecision struct {
 	ID                  string    `db:"id"`
 	OrgID               string    `db:"org_id"`
 	CreatedAt           time.Time `db:"created_at"`
@@ -24,7 +24,7 @@ type dbDecisions struct {
 	ErrorCode           int       `db:"error_code"`
 }
 
-func (d *dbDecisions) dto() app.Decision {
+func (d *dbDecision) dto() app.Decision {
 	return app.Decision{
 		ID:                  d.ID,
 		Created_at:          d.CreatedAt,
@@ -56,8 +56,8 @@ func (r *PGRepository) GetDecision(ctx context.Context, orgID string, decisionID
 	}
 
 	type DBRow struct {
-		dbDecisions
-		Rules []dbDecisionRules
+		dbDecision
+		Rules []dbDecisionRule
 	}
 
 	rows, _ := r.db.Query(ctx, sql, args...)
@@ -110,7 +110,7 @@ func (r *PGRepository) StoreDecision(ctx context.Context, orgID string, decision
 	}
 
 	rows, _ := tx.Query(ctx, sql, args...)
-	createdDecision, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbDecisions])
+	createdDecision, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbDecision])
 	if err != nil {
 		return app.Decision{}, fmt.Errorf("unable to create decision: %w", err)
 	}

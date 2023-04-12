@@ -31,28 +31,67 @@ func (d DataType) String() string {
 	return "unknown"
 }
 
+// /////////////////////////////
+// Status
+// /////////////////////////////
+type Status int
+
+const (
+	Validated Status = iota
+	Live
+	Deprecated
+)
+
+// Provide a string value for each status
+func (o Status) String() string {
+	switch o {
+	case Validated:
+		return "validated"
+	case Live:
+		return "live"
+	case Deprecated:
+		return "deprecated"
+	}
+	return "deprecated"
+}
+
+// Provide an Status from a string value
+func StatusFrom(s string) Status {
+	switch s {
+	case "validated":
+		return Validated
+	case "live":
+		return Live
+	case "deprecated":
+		return Deprecated
+	}
+	return Deprecated
+}
+
 ///////////////////////////////
 // Data Model
 ///////////////////////////////
 
 type DataModel struct {
-	Tables map[string]Table
+	Version string
+	Status  Status
+	Tables  map[string]Table `json:"tables"`
 }
 
 type Table struct {
-	Name          string
-	Fields        map[string]Field
-	LinksToSingle map[string]LinkToSingle
+	Name          string                  `json:"name"`
+	Fields        map[string]Field        `json:"fields"`
+	LinksToSingle map[string]LinkToSingle `json:"linksToSingle"`
 }
 
 type Field struct {
-	DataType DataType
+	DataType DataType `json:"dataType"`
 }
 
 type LinkToSingle struct {
-	LinkedTableName string
-	ParentFieldName string
-	ChildFieldName  string
+	LinkedTableName string `json:"linkedTableName"`
+	ParentFieldName string `json:"parentFieldName"`
+	ChildFieldName  string `json:"childFieldName"`
 }
 
 func (app *App) GetDataModel(ctx context.Context, orgID string) (DataModel, error) {

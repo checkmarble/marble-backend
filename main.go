@@ -31,6 +31,13 @@ func main() {
 
 	// Read ENV variables for configuration
 
+	// Port
+	env, ok := os.LookupEnv("ENV")
+	if !ok || env == "" {
+		env = "DEV"
+		log.Printf("no ENV environment variable (default to DEV)")
+	}
+
 	// API
 	// Port
 	port, ok := os.LookupEnv("PORT")
@@ -69,8 +76,9 @@ func main() {
 	// Postgres repository
 	pgRepository, _ := pg_repository.New(PGHostname, PGPort, PGUser, PGPassword, embedMigrations)
 
-	// In-memory repository
-	// repository, _ := repository.New()
+	if env == "DEV" {
+		pgRepository.Seed()
+	}
 
 	app, _ := app.New(pgRepository)
 	api, _ := api.New("8080", app)
@@ -98,5 +106,4 @@ func main() {
 	api.Shutdown(shutdownCtx)
 
 	log.Printf("stopping %s version %s", appName, version)
-
 }

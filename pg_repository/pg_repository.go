@@ -8,8 +8,6 @@ import (
 	"log"
 	"os"
 
-	"marble/marble-backend/app"
-
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -28,20 +26,11 @@ type PgxPoolIface interface {
 }
 
 type PGRepository struct {
-	// Postgres
-	db PgxPoolIface // connection pool
-
-	// in-memory data
-	dataModels map[string]app.DataModel           //map[orgID]DataModel
-	scenarios  map[string]map[string]app.Scenario //map[orgID][scenarioID]Scenario
-
-	organizations map[string]*app.Organization // //map[orgID]Organization
-
+	db           PgxPoolIface
 	queryBuilder squirrel.StatementBuilderType
 }
 
 func New(host string, port string, user string, password string, migrationFS embed.FS) (*PGRepository, error) {
-
 	connectionString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=marble sslmode=disable", host, port, user, password)
 	log.Printf("connection string: %v\n", connectionString)
 
@@ -106,66 +95,10 @@ func New(host string, port string, user string, password string, migrationFS emb
 	// Build repository
 	///////////////////////////////
 
-	dm := make(map[string]app.DataModel)
-	//s := make(map[string]map[string]app.Scenario)
-	o := make(map[string]*app.Organization)
-
 	r := &PGRepository{
-		db: dbpool,
-
-		dataModels: dm,
-		//scenarios:     s,
-		organizations: o,
-
+		db:           dbpool,
 		queryBuilder: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar),
 	}
 
-	///////////////////////////////
-	// Load organizations into memory
-	///////////////////////////////
-
-	r.LoadOrganizations()
-	r.Describe()
-
 	return r, nil
-}
-
-func (r *PGRepository) Describe() {
-
-	log.Println("organizations loaded:")
-	for _, o := range r.organizations {
-		log.Printf("%s (# %v)", o.Name, o.ID)
-
-		// log.Printf("\tscenarios\n")
-		// for _, s := range o.Scenarios {
-		// 	log.Printf("\t\t%s (# %v) : %s", s.Name, s.ID, s.Description)
-		// }
-
-		log.Printf("\ttokens\n")
-		for _, t := range o.Tokens {
-			log.Printf("\t\t%s", t)
-		}
-
-		log.Println()
-	}
-}
-
-func (r *PGRepository) GetDataModel(_ context.Context, orgID string) (app.DataModel, error) {
-	org, orgFound := r.organizations[orgID]
-	if !orgFound {
-		return app.DataModel{}, app.ErrNotFoundInRepository
-	}
-	return org.DataModel, nil
-}
-
-func (r *PGRepository) GetOrganizationIDFromToken(_ context.Context, token string) (orgID string, err error) {
-	for _, o := range r.organizations {
-		for _, t := range o.Tokens {
-			if t == token {
-				return o.ID, nil
-			}
-		}
-	}
-
-	return "", app.ErrNotFoundInRepository
 }
