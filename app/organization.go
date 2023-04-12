@@ -5,7 +5,7 @@ type Organization struct {
 	Name string
 }
 
-type CreateOrganisation struct {
+type CreateOrganizationInput struct {
 	Name         string
 	DatabaseName string
 }

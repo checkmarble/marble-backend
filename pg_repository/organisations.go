@@ -61,9 +61,7 @@ func (r *PGRepository) GetOrganizations(ctx context.Context) ([]app.Organization
 
 	rows, _ := r.db.Query(ctx, sql, args...)
 	organizations, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbOrganization])
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, app.ErrNotFoundInRepository
-	} else if err != nil {
+	if err != nil {
 		return nil, fmt.Errorf("unable to get organizations: %w", err)
 	}
 
@@ -74,7 +72,7 @@ func (r *PGRepository) GetOrganizations(ctx context.Context) ([]app.Organization
 	return organizationDTOs, nil
 }
 
-func (r *PGRepository) CreateOrganization(ctx context.Context, organisation app.CreateOrganisation) (app.Organization, error) {
+func (r *PGRepository) CreateOrganization(ctx context.Context, organisation app.CreateOrganizationInput) (app.Organization, error) {
 	sql, args, err := r.queryBuilder.
 		Insert("organizations").
 		Columns(

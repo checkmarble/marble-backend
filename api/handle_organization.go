@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"marble/marble-backend/app"
 	"net/http"
@@ -12,7 +13,7 @@ import (
 
 type OrganizationAppInterface interface {
 	GetOrganizations(ctx context.Context) ([]app.Organization, error)
-	CreateOrganization(ctx context.Context, organization app.CreateOrganisation) (app.Organization, error)
+	CreateOrganization(ctx context.Context, organization app.CreateOrganizationInput) (app.Organization, error)
 
 	GetOrganization(ctx context.Context, organizationID string) (app.Organization, error)
 	// UpdateOrganization(ctx context.Context, organizationID string, scenario app.Scenario) (app.Organization, error)
@@ -49,7 +50,7 @@ func (a *API) handleGetOrganizations() http.HandlerFunc {
 	}
 }
 
-type CreateOrganisation struct {
+type CreateOrganizationInput struct {
 	Name         string `json:"name"`
 	DatabaseName string `json:"databaseName"`
 }
@@ -58,7 +59,7 @@ func (a *API) handlePostOrganization() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		requestData := &CreateOrganisation{}
+		requestData := &CreateOrganizationInput{}
 		err := json.NewDecoder(r.Body).Decode(requestData)
 		if err != nil {
 			// Could not parse JSON
@@ -66,7 +67,7 @@ func (a *API) handlePostOrganization() http.HandlerFunc {
 			return
 		}
 
-		org, err := a.app.CreateOrganization(ctx, app.CreateOrganisation{
+		org, err := a.app.CreateOrganization(ctx, app.CreateOrganizationInput{
 			Name:         requestData.Name,
 			DatabaseName: requestData.DatabaseName,
 		})
@@ -91,7 +92,10 @@ func (a *API) handleGetOrganization() http.HandlerFunc {
 		orgID := chi.URLParam(r, "orgID")
 
 		org, err := a.app.GetOrganization(ctx, orgID)
-		if err != nil {
+		if errors.Is(err, app.ErrNotFoundInRepository) {
+			http.Error(w, "", http.StatusNotFound)
+			return
+		} else if err != nil {
 			// Could not execute request
 			http.Error(w, fmt.Errorf("error getting org(id: %s): %w", orgID, err).Error(), http.StatusInternalServerError)
 			return

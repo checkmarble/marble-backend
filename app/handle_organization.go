@@ -6,7 +6,7 @@ func (a *App) GetOrganizations(ctx context.Context) ([]Organization, error) {
 	return a.repository.GetOrganizations(ctx)
 }
 
-func (a *App) CreateOrganization(ctx context.Context, organisation CreateOrganisation) (Organization, error) {
+func (a *App) CreateOrganization(ctx context.Context, organisation CreateOrganizationInput) (Organization, error) {
 	return a.repository.CreateOrganization(ctx, organisation)
 }
 

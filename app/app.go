@@ -32,7 +32,7 @@ type RepositoryInterface interface {
 
 	// Organization
 	GetOrganizations(ctx context.Context) ([]Organization, error)
-	CreateOrganization(ctx context.Context, organisation CreateOrganisation) (Organization, error)
+	CreateOrganization(ctx context.Context, organisation CreateOrganizationInput) (Organization, error)
 	GetOrganization(ctx context.Context, orgID string) (Organization, error)
 }
 
