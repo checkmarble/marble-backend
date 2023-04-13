@@ -34,11 +34,20 @@ func (a *API) routes() {
 		// use authentication middleware
 		r.Use(a.authCtx)
 
-		r.Get("/", a.handleScenariosGet())
-		r.Post("/", a.handleScenariosPost())
+		r.Get("/", a.handleGetScenarios())
+		r.Post("/", a.handlePostScenarios())
 
 		r.Route("/{scenarioID:"+UUIDRegExp+"}", func(r chi.Router) {
-			r.Get("/", a.handleScenarioGet())
+			r.Get("/", a.handleGetScenario())
+
+			r.Route("/iterations", func(r chi.Router) {
+				r.Post("/", a.handlePostScenarioIteration())
+				r.Get("/", a.handleGetScenarioIterations())
+
+				r.Route("/{scenarioIterationID:"+UUIDRegExp+"}", func(r chi.Router) {
+					r.Get("/", a.handleGetScenarioIteration())
+				})
+			})
 		})
 	})
 
