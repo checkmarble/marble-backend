@@ -257,7 +257,7 @@ func TestReadFromDbWithDockerDb(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			val, err := repo.GetDbField(c.readParams)
+			val, err := repo.GetDbField(context.Background(), c.readParams)
 			if err != nil {
 				t.Errorf("Could not read field from DB: %s", err)
 			}
@@ -352,7 +352,7 @@ func TestReadRowsWithMockDb(t *testing.T) {
 
 			repo := PGRepository{db: mock, queryBuilder: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)}
 
-			val, err := repo.GetDbField(example.readParams)
+			val, err := repo.GetDbField(context.Background(), example.readParams)
 
 			if err := mock.ExpectationsWereMet(); err != nil {
 				t.Errorf("there were unfulfilled expectations: %s", err)
@@ -439,7 +439,7 @@ func TestNoRowsReadWithMockDb(t *testing.T) {
 			mock.ExpectQuery(example.expectedQuery).WithArgs(example.expectedParams...).WillReturnError(pgx.ErrNoRows)
 			repo := PGRepository{db: mock, queryBuilder: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)}
 
-			_, err = repo.GetDbField(example.readParams)
+			_, err = repo.GetDbField(context.Background(), example.readParams)
 			if err != nil {
 				fmt.Printf("Error: %s", err)
 				if errors.Is(err, app.ErrNoRowsReadInDB) {

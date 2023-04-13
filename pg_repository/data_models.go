@@ -9,15 +9,17 @@ import (
 	"marble/marble-backend/app"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // TODO(data_model): handle versionning + status / change db schema if it's useless
 type dbDataModel struct {
-	ID      string `db:"id"`
-	OrgID   string `db:"org_id"`
-	Version string `db:"version"`
-	Status  string `db:"status"`
-	Tables  []byte `db:"tables"`
+	ID        string      `db:"id"`
+	OrgID     string      `db:"org_id"`
+	Version   string      `db:"version"`
+	Status    string      `db:"status"`
+	Tables    []byte      `db:"tables"`
+	DeletedAt pgtype.Time `db:"deleted_at"`
 }
 
 func (dm *dbDataModel) dto() (app.DataModel, error) {

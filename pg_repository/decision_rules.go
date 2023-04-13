@@ -6,17 +6,19 @@ import (
 	"marble/marble-backend/app"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type dbDecisionRule struct {
-	ID            string `db:"id"`
-	OrgID         string `db:"org_id"`
-	DecisionID    string `db:"decision_id"`
-	Name          string `db:"name"`
-	Description   string `db:"description"`
-	ScoreModifier int    `db:"score_modifier"`
-	Result        bool   `db:"result"`
-	ErrorCode     int    `db:"error_code"`
+	ID            string      `db:"id"`
+	OrgID         string      `db:"org_id"`
+	DecisionID    string      `db:"decision_id"`
+	Name          string      `db:"name"`
+	Description   string      `db:"description"`
+	ScoreModifier int         `db:"score_modifier"`
+	Result        bool        `db:"result"`
+	ErrorCode     int         `db:"error_code"`
+	DeletedAt     pgtype.Time `db:"deleted_at"`
 }
 
 func (dr *dbDecisionRule) dto() app.RuleExecution {

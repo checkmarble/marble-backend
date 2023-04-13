@@ -20,6 +20,7 @@ type dbScenario struct {
 	TriggerObjectType string      `db:"trigger_object_type"`
 	CreatedAt         time.Time   `db:"created_at"`
 	LiveVersionID     pgtype.Text `db:"live_scenario_iteration_id"`
+	DeletedAt         pgtype.Time `db:"deleted_at"`
 }
 
 func (s *dbScenario) dto() app.Scenario {

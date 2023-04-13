@@ -16,8 +16,8 @@ type OrganizationAppInterface interface {
 	CreateOrganization(ctx context.Context, organization app.CreateOrganizationInput) (app.Organization, error)
 
 	GetOrganization(ctx context.Context, organizationID string) (app.Organization, error)
-	// UpdateOrganization(ctx context.Context, organizationID string, scenario app.Scenario) (app.Organization, error)
-	// DeleteOrganization(ctx context.Context, organizationID string, scenario app.Scenario) (app.Organization, error)
+	UpdateOrganization(ctx context.Context, organization app.UpdateOrganizationInput) (app.Organization, error)
+	SoftDeleteOrganization(ctx context.Context, organizationID string) error
 }
 
 type APIOrganization struct {
@@ -107,5 +107,66 @@ func (a *API) handleGetOrganization() http.HandlerFunc {
 			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)
 			return
 		}
+	}
+}
+
+type UpdateOrganizationInput struct {
+	Name         *string `json:"name"`
+	DatabaseName *string `json:"databaseName"`
+}
+
+func (a *API) handlePutOrganization() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		orgID := chi.URLParam(r, "orgID")
+
+		requestData := &UpdateOrganizationInput{}
+		err := json.NewDecoder(r.Body).Decode(requestData)
+		if err != nil {
+			// Could not parse JSON
+			http.Error(w, fmt.Errorf("could not parse input JSON: %w", err).Error(), http.StatusBadRequest)
+			return
+		}
+
+		org, err := a.app.UpdateOrganization(ctx, app.UpdateOrganizationInput{
+			ID:           orgID,
+			Name:         requestData.Name,
+			DatabaseName: requestData.DatabaseName,
+		})
+		if errors.Is(err, app.ErrNotFoundInRepository) {
+			http.Error(w, "", http.StatusNotFound)
+			return
+		} else if err != nil {
+			// Could not execute request
+			http.Error(w, fmt.Errorf("error getting org(id: %s): %w", orgID, err).Error(), http.StatusInternalServerError)
+			return
+		}
+
+		err = json.NewEncoder(w).Encode(APIOrganization{ID: org.ID, Name: org.Name})
+		if err != nil {
+			// Could not encode JSON
+			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+func (a *API) handleDeleteOrganization() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		orgID := chi.URLParam(r, "orgID")
+
+		err := a.app.SoftDeleteOrganization(ctx, orgID)
+		if errors.Is(err, app.ErrNotFoundInRepository) {
+			http.Error(w, "", http.StatusNotFound)
+			return
+		} else if err != nil {
+			// Could not execute request
+			http.Error(w, fmt.Errorf("error deleting org(id: %s): %w", orgID, err).Error(), http.StatusInternalServerError)
+			return
+		}
+		return
 	}
 }

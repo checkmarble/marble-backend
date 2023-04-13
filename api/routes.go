@@ -53,8 +53,8 @@ func (a *API) routes() {
 
 			r.Route("/{orgID:"+UUIDRegExp+"}", func(r chi.Router) {
 				r.Get("/", a.handleGetOrganization())
-				// 	r.Put("/", a.UpdateOrganization())    // PUT /users/{id} - update a single user by :id
-				// 	r.Delete("/", a.DeleteOrganization()) // DELETE /users/{id} - delete a single user by :id
+				r.Put("/", a.handlePutOrganization())
+				r.Delete("/", a.handleDeleteOrganization())
 			})
 		})
 	})

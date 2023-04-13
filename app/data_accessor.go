@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"marble/marble-backend/app/operators"
@@ -25,7 +26,7 @@ func (d *DataAccessorImpl) GetPayloadField(fieldName string) (interface{}, error
 	return nil, nil
 }
 func (d *DataAccessorImpl) GetDbField(path []string, fieldName string) (interface{}, error) {
-	return d.repository.GetDbField(DbFieldReadParams{
+	return d.repository.GetDbField(context.TODO(), DbFieldReadParams{
 		Path:      path,
 		FieldName: fieldName,
 		DataModel: d.DataModel,
