@@ -8,23 +8,14 @@ import (
 // Return a map[string]any to use with Update().SetMap()
 //
 // Inspired from pgx.RowToStructByName implementation
-func updateMapByName[T any](input T) map[string]any {
+func updateMapByName(input any) map[string]any {
 	result := make(map[string]any)
 
-	inputElemValue := reflect.ValueOf(input)
-	if inputElemValue.Kind() != reflect.Ptr {
-		inputElemValue = reflect.ValueOf(&input)
-	}
-	inputElemType := inputElemValue.Elem().Type()
+	inputElemValue := reflectValue(input)
+	inputElemType := inputElemValue.Type()
 
-	for i := 0; i < inputElemType.NumField(); i++ {
-		sf := inputElemType.Field(i)
-		if sf.PkgPath != "" && !sf.Anonymous {
-			// Field is unexported, skip it.
-			continue
-		}
-		if sf.Anonymous && sf.Type.Kind() == reflect.Struct {
-			// Don't handle anoymous struct embedding
+	for _, sf := range reflect.VisibleFields(inputElemType) {
+		if !sf.IsExported() {
 			continue
 		}
 		dbTag, dbTagPresent := sf.Tag.Lookup("db")
@@ -37,13 +28,35 @@ func updateMapByName[T any](input T) map[string]any {
 			continue
 		}
 		colValue := reflect.Indirect(inputElemValue).FieldByName(sf.Name)
-		if colValue.Kind() != reflect.Ptr {
-			result[colName] = colValue
-		} else if !colValue.IsNil() {
-			result[colName] = colValue.Elem()
+		switch colValue.Kind() {
+		case reflect.Struct:
+			continue
+		case reflect.Ptr, reflect.Map, reflect.Array, reflect.Chan, reflect.Slice:
+			if colValue.IsNil() {
+				continue
+			}
+			value := colValue.Elem().Interface()
+			if reflect.ValueOf(value).Kind() == reflect.Struct {
+				result[colName] = updateMapByName(value)
+			} else {
+				result[colName] = value
+			}
+		default:
+			result[colName] = colValue.Interface()
 		}
-
 	}
 
 	return result
+}
+
+func reflectValue(obj interface{}) reflect.Value {
+	var val reflect.Value
+
+	if reflect.TypeOf(obj).Kind() == reflect.Ptr {
+		val = reflect.ValueOf(obj).Elem()
+	} else {
+		val = reflect.ValueOf(obj)
+	}
+
+	return val
 }
