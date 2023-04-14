@@ -52,13 +52,6 @@ func (api *API) routes() {
 
 		})
 
-		authedRouter.Route("/ingestion", func(r chi.Router) {
-			// use authentication middleware
-			r.Use(api.authMiddlewareFactory(apiOnlyMdw))
-
-			r.Post("/{object_type}", api.handleIngestion())
-		})
-
 		// Group all admin endpoints
 		authedRouter.Group(func(routerAdmin chi.Router) {
 			//TODO(admin): add middleware for admin auth

@@ -32,7 +32,11 @@ func (a *API) jwtValidator(next http.Handler) http.Handler {
 				if method != VALIDATION_ALGO {
 					return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
 				}
-				return []byte(HARD_CODED_PUBLIC_KEY), nil
+				_, publicKey, err := getKeys()
+				if err != nil {
+					return nil, err
+				}
+				return publicKey, nil
 			})
 
 			if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
