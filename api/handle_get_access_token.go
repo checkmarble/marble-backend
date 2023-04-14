@@ -79,30 +79,37 @@ type Claims struct {
 
 func (api *API) handleGetAccessToken() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
 		var creds Credentials
 		// Get the JSON body and decode into credentials
 		err := json.NewDecoder(r.Body).Decode(&creds)
-		if err != nil {
+		if err != nil || creds.RefreshToken == "" {
 			// If the structure of the body is wrong, return an HTTP error
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		if creds.RefreshToken != HARD_CODED_API_TOKEN_API && creds.RefreshToken != HARD_CODED_API_TOKEN_USER {
+		// Find org from token
+		orgID, err := api.app.GetOrganizationIDFromToken(ctx, creds.RefreshToken)
+		if err != nil && creds.RefreshToken != HARD_CODED_API_TOKEN_API && creds.RefreshToken != HARD_CODED_API_TOKEN_USER {
+			log.Println("No org found for token")
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
+
 		var tokenType TokenType
-		if creds.RefreshToken == HARD_CODED_API_TOKEN_API {
+		if creds.RefreshToken == HARD_CODED_API_TOKEN_API || orgID != "" {
 			tokenType = ApiToken
 		} else {
 			tokenType = UserToken
+			orgID = HARD_CODED_ORG_ID
 		}
 
 		// Create the Claims
 		expirationTime := time.Now().Add(time.Duration(TOKEN_LIFETIME_MINUTES) * time.Minute)
 		claims := &Claims{
-			OrganizationId: HARD_CODED_ORG_ID,
+			OrganizationId: orgID,
 			Type:           string(tokenType),
 			Role:           "ADMIN",
 			RegisteredClaims: jwt.RegisteredClaims{
