@@ -25,6 +25,13 @@ type APIOrganization struct {
 	Name string `json:"name"`
 }
 
+func NewAPIOrganization(org app.Organization) APIOrganization {
+	return APIOrganization{
+		ID:   org.ID,
+		Name: org.Name,
+	}
+}
+
 func (a *API) handleGetOrganizations() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -38,7 +45,7 @@ func (a *API) handleGetOrganizations() http.HandlerFunc {
 
 		apiOrganizations := make([]APIOrganization, len(organizations))
 		for i, org := range organizations {
-			apiOrganizations[i] = APIOrganization{ID: org.ID, Name: org.Name}
+			apiOrganizations[i] = NewAPIOrganization(org)
 		}
 
 		err = json.NewEncoder(w).Encode(&apiOrganizations)
@@ -76,7 +83,7 @@ func (a *API) handlePostOrganization() http.HandlerFunc {
 			return
 		}
 
-		err = json.NewEncoder(w).Encode(APIOrganization{ID: org.ID, Name: org.Name})
+		err = json.NewEncoder(w).Encode(NewAPIOrganization(org))
 		if err != nil {
 			// Could not encode JSON
 			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)
@@ -101,7 +108,7 @@ func (a *API) handleGetOrganization() http.HandlerFunc {
 			return
 		}
 
-		err = json.NewEncoder(w).Encode(APIOrganization{ID: org.ID, Name: org.Name})
+		err = json.NewEncoder(w).Encode(NewAPIOrganization(org))
 		if err != nil {
 			// Could not encode JSON
 			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)
@@ -143,7 +150,7 @@ func (a *API) handlePutOrganization() http.HandlerFunc {
 			return
 		}
 
-		err = json.NewEncoder(w).Encode(APIOrganization{ID: org.ID, Name: org.Name})
+		err = json.NewEncoder(w).Encode(NewAPIOrganization(org))
 		if err != nil {
 			// Could not encode JSON
 			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)

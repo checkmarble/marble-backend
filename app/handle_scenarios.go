@@ -6,7 +6,7 @@ func (a *App) GetScenarios(ctx context.Context, organizationID string) ([]Scenar
 	return a.repository.GetScenarios(ctx, organizationID)
 }
 
-func (a *App) CreateScenario(ctx context.Context, organizationID string, scenario Scenario) (Scenario, error) {
+func (a *App) CreateScenario(ctx context.Context, organizationID string, scenario CreateScenarioInput) (Scenario, error) {
 	return a.repository.PostScenario(ctx, organizationID, scenario)
 }
 

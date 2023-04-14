@@ -45,6 +45,35 @@ func (si *dbScenarioIteration) dto() (app.ScenarioIteration, error) {
 	}, nil
 }
 
+func (r *PGRepository) GetScenarioIterations(ctx context.Context, orgID string, scenarioID string) ([]app.ScenarioIteration, error) {
+	sql, args, err := r.queryBuilder.
+		Select("*").
+		From("scenario_iterations").
+		Where("scenario_id= ?", scenarioID).
+		Where("org_id = ?", orgID).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("unable to build scenario iteration query: %w", err)
+	}
+
+	rows, _ := r.db.Query(ctx, sql, args...)
+	scenarioIterations, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbScenarioIteration])
+	if err != nil {
+		return nil, fmt.Errorf("unable to collect scenario iteration: %w", err)
+	}
+
+	var scenarioIterationDTOs []app.ScenarioIteration
+	for _, si := range scenarioIterations {
+		siDTO, err := si.dto()
+		if err != nil {
+			return nil, fmt.Errorf("dto issue: %w", err)
+		}
+		scenarioIterationDTOs = append(scenarioIterationDTOs, siDTO)
+	}
+
+	return scenarioIterationDTOs, nil
+}
+
 func (r *PGRepository) GetScenarioIteration(ctx context.Context, orgID string, scenarioIterationID string) (app.ScenarioIteration, error) {
 	sql, args, err := r.queryBuilder.
 		Select(
@@ -89,7 +118,7 @@ func (r *PGRepository) GetScenarioIteration(ctx context.Context, orgID string, s
 	return scenarioIterationDTO, nil
 }
 
-func (r *PGRepository) CreateScenarioIteration(ctx context.Context, orgID string, scenarioIteration app.ScenarioIteration) (app.ScenarioIteration, error) {
+func (r *PGRepository) CreateScenarioIteration(ctx context.Context, orgID string, scenarioIteration app.CreateScenarioIterationInput) (app.ScenarioIteration, error) {
 	triggerConditionBytes, err := scenarioIteration.Body.TriggerCondition.MarshalJSON()
 	if err != nil {
 		return app.ScenarioIteration{}, fmt.Errorf("unable to marshal trigger condition: %w", err)

@@ -88,7 +88,7 @@ func (r *PGRepository) GetScenario(ctx context.Context, orgID string, scenarioID
 	return scenarioDTO, err
 }
 
-func (r *PGRepository) PostScenario(ctx context.Context, orgID string, scenario app.Scenario) (app.Scenario, error) {
+func (r *PGRepository) PostScenario(ctx context.Context, orgID string, scenario app.CreateScenarioInput) (app.Scenario, error) {
 	sql, args, err := r.queryBuilder.
 		Insert("scenarios").
 		Columns(

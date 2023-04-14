@@ -113,17 +113,17 @@ func (r *PGRepository) Seed() {
 	///////////////////////////////
 	// Create and store a scenario
 	///////////////////////////////
-	scenario := app.Scenario{
+	createScenarioInput := app.CreateScenarioInput{
 		Name:              "test name",
 		Description:       "test description",
 		TriggerObjectType: "tx",
 	}
-	scenario, err = r.PostScenario(context.TODO(), org.ID, scenario)
+	scenario, err := r.PostScenario(context.TODO(), org.ID, createScenarioInput)
 	if err != nil {
 		log.Printf("error creating scenario: %v", err)
 	}
 
-	scenarioIteration := app.ScenarioIteration{
+	createScenarioIterationInput := app.CreateScenarioIterationInput{
 		ScenarioID: scenario.ID,
 		Body: app.ScenarioIterationBody{
 			TriggerCondition:     &operators.True{},
@@ -158,7 +158,7 @@ func (r *PGRepository) Seed() {
 		},
 	}
 
-	scenarioIteration, err = r.CreateScenarioIteration(context.TODO(), org.ID, scenarioIteration)
+	scenarioIteration, err := r.CreateScenarioIteration(context.TODO(), org.ID, createScenarioIterationInput)
 	if err != nil {
 		log.Printf("error creating scenario iteration: %v", err)
 	}
