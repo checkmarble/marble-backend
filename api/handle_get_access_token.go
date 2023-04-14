@@ -9,14 +9,49 @@ import (
 )
 
 var jwtKey = []byte("MY_SECRET_KEY")
-var HARD_CODED_API_TOKEN = "12345"
+var HARD_CODED_API_TOKEN_API = "12345"
+var HARD_CODED_API_TOKEN_USER = "67890"
 var HARD_CODED_ORG_ID = "12345"
 var TOKEN_LIFETIME_MINUTES = 30
-var SIGNING_ALGO = jwt.SigningMethodHS256
+var SIGNING_ALGO = jwt.SigningMethodRS256
 
 type Credentials struct {
 	RefreshToken string `json:"refresh_token"`
 }
+
+type Role int
+
+const (
+	READER Role = iota
+	BUILDER
+	PUBLISHER
+	ADMIN
+)
+
+func (r Role) String() string {
+	return [...]string{"READER", "BUILDER", "PUBLISHER", "ADMIN"}[r]
+}
+func RoleFromString(s string) Role {
+	switch s {
+	case "READER":
+		return READER
+	case "BUILDER":
+		return BUILDER
+	case "PUBLISHER":
+		return PUBLISHER
+	case "ADMIN":
+		return ADMIN
+	}
+	return READER
+}
+
+type TokenType string
+
+const (
+	ApiToken      TokenType = "API"
+	UserToken     TokenType = "USER"
+	InternalToken TokenType = "INTERNAL"
+)
 
 // We add jwt.RegisteredClaims as an embedded type, to provide fields like expiry time
 type Claims struct {
@@ -39,19 +74,22 @@ func (api *API) handleGetAccessToken() http.HandlerFunc {
 			return
 		}
 
-		if creds.RefreshToken != HARD_CODED_API_TOKEN {
+		if creds.RefreshToken != HARD_CODED_API_TOKEN_API && creds.RefreshToken != HARD_CODED_API_TOKEN_USER {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
+		var tokenType TokenType
+		if creds.RefreshToken == HARD_CODED_API_TOKEN_API {
+			tokenType = ApiToken
+		} else {
+			tokenType = UserToken
+		}
 
 		// Create the Claims
-		// Declare the expiration time of the token
-		// here, we have kept it as 5 minutes
 		expirationTime := time.Now().Add(time.Duration(TOKEN_LIFETIME_MINUTES) * time.Minute)
-		// Create the JWT claims, which includes the username and expiry time
 		claims := &Claims{
 			OrganizationId: HARD_CODED_ORG_ID,
-			Type:           "API",
+			Type:           string(tokenType),
 			Role:           "ADMIN",
 			RegisteredClaims: jwt.RegisteredClaims{
 				ExpiresAt: jwt.NewNumericDate(expirationTime),

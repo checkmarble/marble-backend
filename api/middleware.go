@@ -37,8 +37,6 @@ func (a *API) jwtValidator(next http.Handler) http.Handler {
 
 			if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 				ctx := context.WithValue(r.Context(), "claims", claims)
-				// Access context values in handlers like this
-				// props, _ := r.Context().Value("props").(jwt.MapClaims)
 				next.ServeHTTP(w, r.WithContext(ctx))
 			} else {
 				fmt.Println(err)
@@ -50,28 +48,64 @@ func (a *API) jwtValidator(next http.Handler) http.Handler {
 	})
 }
 
-func (a *API) authCtx(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
+func (a *API) authMiddlewareFactory(middlewareParams map[TokenType]Role) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
 
-		claims, ok := ctx.Value("claims").(jwt.MapClaims)
-		if !ok {
-			log.Println("claims not found in context")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("Unauthorized"))
-			return
-		}
-		organizationId, ok := claims["organization_id"].(string)
-		if !ok {
-			log.Println("organization_id not found in claims")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("Unauthorized"))
-			return
-		}
+			// first, extract the token claims from the context
+			claims, ok := ctx.Value("claims").(jwt.MapClaims)
+			if !ok {
+				log.Println("claims not found in context")
+				w.WriteHeader(http.StatusForbidden)
+				w.Write([]byte("Unauthorized"))
+				return
+			}
 
-		ctx = context.WithValue(ctx, contextKeyOrgID, organizationId)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+			organizationId, ok := claims["organization_id"].(string)
+			if !ok {
+				log.Println("organization_id not found in claims")
+				w.WriteHeader(http.StatusForbidden)
+				w.Write([]byte("Unauthorized"))
+				return
+			}
+			tokenType, ok := claims["type"].(string)
+			if !ok {
+				log.Println("Token type not found in claims")
+				w.WriteHeader(http.StatusForbidden)
+				w.Write([]byte("Unauthorized"))
+				return
+			}
+			tokenRoleString, ok := claims["role"].(string)
+			if !ok {
+				log.Println("Role not found in claims")
+				w.WriteHeader(http.StatusForbidden)
+				w.Write([]byte("Unauthorized"))
+				return
+			}
+			tokenRole := RoleFromString(tokenRoleString)
+
+			// Next, check if the endpoint allows this type of token
+			middlewareParamsRole, ok := middlewareParams[TokenType(tokenType)]
+			if !ok {
+				log.Println("Token type not allowed for this endpoint")
+				w.WriteHeader(http.StatusForbidden)
+				w.Write([]byte("Unauthorized"))
+				return
+			}
+			if tokenRole < middlewareParamsRole {
+				log.Println("Token role not allowed for this endpoint")
+				w.WriteHeader(http.StatusForbidden)
+				w.Write([]byte("Unauthorized"))
+				return
+			}
+
+			ctx = context.WithValue(ctx, contextKeyOrgID, organizationId)
+			ctx = context.WithValue(ctx, contextKeyTokenType, tokenType)
+			ctx = context.WithValue(ctx, contextKeyTokenRole, tokenRole)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
 }
 
 var ErrOrgNotInContext = fmt.Errorf("organization ID not found in request context")
