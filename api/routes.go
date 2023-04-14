@@ -23,47 +23,72 @@ func (api *API) routes() {
 
 			r.Use(api.authCtx)
 
-			r.Post("/", api.handleDecisionPost())
-			r.Get("/{decisionID:"+UUIDRegExp+"}", api.handleDecisionGet())
-		})
+			api.router.Route("/ingestion", func(r chi.Router) {
+				// use authentication middleware
+				r.Use(api.authCtx)
 
-		baseRouter.Route("/ingestion", func(r chi.Router) {
-			// use authentication middleware
-			r.Use(api.authCtx)
-
-			r.Post("/{object_type}", api.handleIngestion())
-		})
-
-		baseRouter.Route("/scenarios", func(r chi.Router) {
-			// use authentication middleware
-			r.Use(api.authCtx)
-
-			r.Get("/", api.handleScenariosGet())
-			r.Post("/", api.handleScenariosPost())
-
-			r.Route("/{scenarioID:"+UUIDRegExp+"}", func(r chi.Router) {
-				r.Get("/", api.handleScenarioGet())
+				r.Post("/{object_type}", api.handleIngestion())
 			})
-		})
 
-		// Group all admin endpoints
-		baseRouter.Group(func(r chi.Router) {
-			//TODO(admin): add middleware for admin auth
-			// r.Use(api.adminAuthCtx)
+			api.router.Route("/scenarios", func(r chi.Router) {
+				// use authentication middleware
+				r.Use(api.authCtx)
 
-			baseRouter.Route("/organizations", func(r chi.Router) {
-				r.Get("/", api.handleGetOrganizations())
-				r.Post("/", api.handlePostOrganization())
+				r.Get("/", api.handleGetScenarios())
+				r.Post("/", api.handlePostScenarios())
 
-				r.Route("/{orgID:"+UUIDRegExp+"}", func(r chi.Router) {
-					r.Get("/", api.handleGetOrganization())
-					r.Put("/", api.handlePutOrganization())
-					r.Delete("/", api.handleDeleteOrganization())
+				r.Route("/{scenarioID:"+UUIDRegExp+"}", func(r chi.Router) {
+					r.Get("/", api.handleGetScenario())
+
+					r.Route("/iterations", func(r chi.Router) {
+						r.Post("/", api.handlePostScenarioIteration())
+						r.Get("/", api.handleGetScenarioIterations())
+
+						r.Route("/{scenarioIterationID:"+UUIDRegExp+"}", func(r chi.Router) {
+							r.Get("/", api.handleGetScenarioIteration())
+						})
+					})
+				})
+			})
+
+			baseRouter.Route("/ingestion", func(r chi.Router) {
+				// use authentication middleware
+				r.Use(api.authCtx)
+
+				r.Post("/{object_type}", api.handleIngestion())
+			})
+
+			baseRouter.Route("/scenarios", func(r chi.Router) {
+				// use authentication middleware
+				r.Use(api.authCtx)
+
+				r.Get("/", api.handleGetScenarios())
+				r.Post("/", api.handlePostScenarios())
+
+				r.Route("/{scenarioID:"+UUIDRegExp+"}", func(r chi.Router) {
+					r.Get("/", api.handleGetScenario())
+				})
+			})
+
+			// Group all admin endpoints
+			baseRouter.Group(func(r chi.Router) {
+				//TODO(admin): add middleware for admin auth
+				// r.Use(api.adminAuthCtx)
+
+				baseRouter.Route("/organizations", func(r chi.Router) {
+					r.Get("/", api.handleGetOrganizations())
+					r.Post("/", api.handlePostOrganization())
+
+					r.Route("/{orgID:"+UUIDRegExp+"}", func(r chi.Router) {
+						r.Get("/", api.handleGetOrganization())
+						r.Put("/", api.handlePutOrganization())
+						r.Delete("/", api.handleDeleteOrganization())
+					})
 				})
 			})
 		})
-	})
 
+	})
 }
 
 func (api *API) displayRoutes() {
