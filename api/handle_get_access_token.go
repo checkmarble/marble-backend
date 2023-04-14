@@ -1,8 +1,6 @@
 package api
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -16,66 +14,6 @@ var HARD_CODED_API_TOKEN_USER = "67890"
 var HARD_CODED_ORG_ID = "12345"
 var TOKEN_LIFETIME_MINUTES = 30
 var SIGNING_ALGO = jwt.SigningMethodRS256
-
-var globalPrivateKey *rsa.PrivateKey
-
-// Temporary placeholder. Do not use a global variable, use dependency injection instead. And read it from secret manager
-func getKeys() (*rsa.PrivateKey, *rsa.PublicKey, error) {
-	if globalPrivateKey == nil {
-		privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-		if err != nil {
-			log.Fatal(err)
-		}
-		globalPrivateKey = privateKey
-	}
-	return globalPrivateKey, &globalPrivateKey.PublicKey, nil
-}
-
-type Credentials struct {
-	RefreshToken string `json:"refresh_token"`
-}
-
-type Role int
-
-const (
-	READER Role = iota
-	BUILDER
-	PUBLISHER
-	ADMIN
-)
-
-func (r Role) String() string {
-	return [...]string{"READER", "BUILDER", "PUBLISHER", "ADMIN"}[r]
-}
-func RoleFromString(s string) Role {
-	switch s {
-	case "READER":
-		return READER
-	case "BUILDER":
-		return BUILDER
-	case "PUBLISHER":
-		return PUBLISHER
-	case "ADMIN":
-		return ADMIN
-	}
-	return READER
-}
-
-type TokenType string
-
-const (
-	ApiToken      TokenType = "API"
-	UserToken     TokenType = "USER"
-	InternalToken TokenType = "INTERNAL"
-)
-
-// We add jwt.RegisteredClaims as an embedded type, to provide fields like expiry time
-type Claims struct {
-	OrganizationId string `json:"organization_id"`
-	Type           string `json:"type"`
-	Role           string `json:"role"`
-	jwt.RegisteredClaims
-}
 
 func (api *API) handleGetAccessToken() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -122,7 +60,7 @@ func (api *API) handleGetAccessToken() http.HandlerFunc {
 		token := jwt.NewWithClaims(SIGNING_ALGO, claims)
 		// Create the JWT string
 
-		privateKey, _, err := getKeys()
+		privateKey, _, err := api.signingSecretAccessor.ReadSigningSecrets()
 		if err != nil {
 			log.Printf("Could not read private key, %v\n", err)
 			w.WriteHeader(http.StatusInternalServerError)

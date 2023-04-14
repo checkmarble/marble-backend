@@ -22,31 +22,30 @@ func (a *API) jwtValidator(next http.Handler) http.Handler {
 			fmt.Println("Malformed token")
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte("Malformed Token"))
-		} else {
-			jwtToken := authHeader[1]
-			token, err := jwt.Parse(jwtToken, func(token *jwt.Token) (interface{}, error) {
-				method, ok := token.Method.(*jwt.SigningMethodRSA)
-				if !ok {
-					return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
-				}
-				if method != VALIDATION_ALGO {
-					return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
-				}
-				_, publicKey, err := getKeys()
-				if err != nil {
-					return nil, err
-				}
-				return publicKey, nil
-			})
+			return
+		}
 
-			if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-				ctx := context.WithValue(r.Context(), "claims", claims)
-				next.ServeHTTP(w, r.WithContext(ctx))
-			} else {
-				fmt.Println(err)
-				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte("Unauthorized"))
+		jwtToken := authHeader[1]
+		token, err := jwt.Parse(jwtToken, func(token *jwt.Token) (interface{}, error) {
+			method, ok := token.Method.(*jwt.SigningMethodRSA)
+			if !ok || method != VALIDATION_ALGO {
+				return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
 			}
+
+			_, publicKey, err := a.signingSecretAccessor.ReadSigningSecrets()
+			if err != nil {
+				return nil, err
+			}
+			return publicKey, nil
+		})
+
+		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+			ctx := context.WithValue(r.Context(), contextKeyClaims, claims)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		} else {
+			fmt.Println(err)
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("Unauthorized"))
 		}
 
 	})
@@ -58,7 +57,7 @@ func (a *API) authMiddlewareFactory(middlewareParams map[TokenType]Role) func(ne
 			ctx := r.Context()
 
 			// first, extract the token claims from the context
-			claims, ok := ctx.Value("claims").(jwt.MapClaims)
+			claims, ok := ctx.Value(contextKeyClaims).(jwt.MapClaims)
 			if !ok {
 				log.Println("claims not found in context")
 				w.WriteHeader(http.StatusForbidden)
@@ -90,14 +89,14 @@ func (a *API) authMiddlewareFactory(middlewareParams map[TokenType]Role) func(ne
 			tokenRole := RoleFromString(tokenRoleString)
 
 			// Next, check if the endpoint allows this type of token
-			middlewareParamsRole, ok := middlewareParams[TokenType(tokenType)]
+			middlewareParamsMinimumRole, ok := middlewareParams[TokenType(tokenType)]
 			if !ok {
 				log.Println("Token type not allowed for this endpoint")
 				w.WriteHeader(http.StatusForbidden)
 				w.Write([]byte("Unauthorized"))
 				return
 			}
-			if tokenRole < middlewareParamsRole {
+			if tokenRole < middlewareParamsMinimumRole {
 				log.Println("Token role not allowed for this endpoint")
 				w.WriteHeader(http.StatusForbidden)
 				w.Write([]byte("Unauthorized"))
