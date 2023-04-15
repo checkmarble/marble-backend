@@ -35,15 +35,15 @@ See [our API docs](https://docs.checkmarble.com/reference/introduction-1) for re
 
 Requires: `docker` to run & `go` to develop
 
-`docker compose up -d --build`  : build the app container, and launches the stack (in deamon mode)
-Creates a `marble-backend-are-poc_postgres-db` volume to store PG data.
+`docker compose up -d --build` : build the app container, and launches the stack (in deamon mode)
+Creates a `marble-backend_postgres-db` volume to store PG data.
 
 `docker compose logs -f -t marble-backend db` shows the logs for the app and PG. useful to filter out annoying PGAdmin logs
 
-`docker volume rm marble-backend-are-poc_postgres-db` deletes the PG volume, useful to reset the app to a known state
+`docker volume rm marble-backend_postgres-db` deletes the PG volume, useful to reset the app to a known state
 
 In practice, this single-line will delete the stack and create a new one:
-`docker compose down && docker volume rm marble-backend-are-poc_postgres-db && docker compose up -d --build && docker compose logs -f -t marble-backend db`
+`docker compose down && docker volume rm marble-backend_postgres-db && docker compose up -d --build && docker compose logs -f -t marble-backend db`
 `ctrl-C` to detach from the logs output
 
 ### curl calls
@@ -54,8 +54,16 @@ Token value is hardcoded to `token12345` for convenience.
 ```sh
 // Initialise variables in your shell
 SCENARIO_ID=...
-TOKEN="token12345"
+REFRESH_TOKEN="token12345"
 ```
+
+Get an access token by calling
+
+```sh
+TOKEN=$(curl -XPOST -H "Content-type: application/json" -d "{\"refresh_token\": \"$REFRESH_TOKEN\"}" 'http://localhost:8080/token')
+```
+
+Beware that the implementation of getting the different types of access tokens is not finished yet, and you may encounter authorization errors on the various endpoints.
 
 ```sh
 curl -XPOST -H "Content-type: application/json" -H "Authorization: Bearer $TOKEN" -d "$(jq -n --arg scenario_id "$SCENARIO_ID" '{"scenario_id": $scenario_id, "trigger_object":{"type": "tx", "amount": 5.0} }')" 'http://localhost:8080/decisions'

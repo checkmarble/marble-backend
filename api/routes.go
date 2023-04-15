@@ -15,7 +15,7 @@ func (api *API) routes() {
 	readerOnlyMdw := map[TokenType]Role{UserToken: READER}
 	builderMdw := map[TokenType]Role{UserToken: BUILDER}
 
-	api.router.Get("/token", api.handleGetAccessToken())
+	api.router.Post("/token", api.handleGetAccessToken())
 
 	api.router.With(api.jwtValidator).Group(func(authedRouter chi.Router) {
 		// Everything other than getting a token is protected by JWT
