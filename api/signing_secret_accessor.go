@@ -82,7 +82,6 @@ func readPrivateKey(ctx context.Context, client *secretmanager.Client, name stri
 	}
 
 	block, _ := pem.Decode(payload)
-	fmt.Println(block.Type)
 	if block == nil || block.Type != "RSA PRIVATE KEY" {
 		log.Fatal("failed to decode PEM block containing RSA private key")
 	}
