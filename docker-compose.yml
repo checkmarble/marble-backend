@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   marble-backend:
@@ -10,8 +10,12 @@ services:
       PG_PORT: 5432
       PG_USER: marble
       PG_PASSWORD: marble
+      GOOGLE_APPLICATION_CREDENTIALS: /gcp/creds.json
+      GOOGLE_CLOUD_PROJECT: "tokyo-country-381508"
     ports:
       - "8080:8080"
+    volumes:
+      - $HOME/.config/gcloud/application_default_credentials.json:/gcp/creds.json:ro
     depends_on:
       db:
         condition: service_healthy
@@ -20,7 +24,7 @@ services:
     container_name: postgres
     image: postgres
     restart: always
-#    user: postgres
+    #    user: postgres
     environment:
       POSTGRES_USER: marble
       POSTGRES_PASSWORD: marble
@@ -30,13 +34,12 @@ services:
       - "5432:5432"
     volumes:
       - postgres-db:/data/postgres
-#      - ./sql:/docker-entrypoint-initdb.d
+    #      - ./sql:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U marble"]
       interval: 2s
       timeout: 1s
       retries: 5
-
 
   pgadmin:
     container_name: pgadmin

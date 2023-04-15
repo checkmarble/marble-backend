@@ -22,7 +22,7 @@ type API struct {
 }
 
 type SigningSecretReader interface {
-	ReadSigningSecrets() (*rsa.PrivateKey, *rsa.PublicKey, error)
+	ReadSigningSecrets(ctx context.Context) (*rsa.PrivateKey, *rsa.PublicKey, error)
 }
 
 type AppInterface interface {

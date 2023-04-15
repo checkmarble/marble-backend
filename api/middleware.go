@@ -17,6 +17,7 @@ var VALIDATION_ALGO = jwt.SigningMethodRS256
 // AuthCtx sets the organization ID in the context from the authorization header
 func (a *API) jwtValidator(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 		authHeader := strings.Split(r.Header.Get("Authorization"), "Bearer ")
 		if len(authHeader) != 2 {
 			fmt.Println("Malformed token")
@@ -32,12 +33,18 @@ func (a *API) jwtValidator(next http.Handler) http.Handler {
 				return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
 			}
 
-			_, publicKey, err := a.signingSecretAccessor.ReadSigningSecrets()
+			_, publicKey, err := a.signingSecretAccessor.ReadSigningSecrets(ctx)
 			if err != nil {
 				return nil, err
 			}
 			return publicKey, nil
 		})
+		if err != nil {
+			fmt.Println(err)
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("Unauthorized"))
+			return
+		}
 
 		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 			ctx := context.WithValue(r.Context(), contextKeyClaims, claims)

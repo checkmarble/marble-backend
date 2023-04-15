@@ -60,7 +60,7 @@ func (api *API) handleGetAccessToken() http.HandlerFunc {
 		token := jwt.NewWithClaims(SIGNING_ALGO, claims)
 		// Create the JWT string
 
-		privateKey, _, err := api.signingSecretAccessor.ReadSigningSecrets()
+		privateKey, _, err := api.signingSecretAccessor.ReadSigningSecrets(ctx)
 		if err != nil {
 			log.Printf("Could not read private key, %v\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
