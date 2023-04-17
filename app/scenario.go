@@ -27,6 +27,12 @@ type CreateScenarioInput struct {
 	TriggerObjectType string
 }
 
+type UpdateScenarioInput struct {
+	ID          string
+	Name        *string
+	Description *string
+}
+
 type ScenarioIteration struct {
 	ID         string
 	ScenarioID string

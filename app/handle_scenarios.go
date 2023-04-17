@@ -13,3 +13,7 @@ func (a *App) CreateScenario(ctx context.Context, organizationID string, scenari
 func (a *App) GetScenario(ctx context.Context, organizationID string, scenarioID string) (Scenario, error) {
 	return a.repository.GetScenario(ctx, organizationID, scenarioID)
 }
+
+func (a *App) UpdateScenario(ctx context.Context, organizationID string, scenario UpdateScenarioInput) (Scenario, error) {
+	return a.repository.UpdateScenario(ctx, organizationID, scenario)
+}

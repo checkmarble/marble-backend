@@ -14,6 +14,7 @@ type RepositoryInterface interface {
 	// Data models & scenarios
 	GetDataModel(ctx context.Context, orgID string) (DataModel, error)
 	GetScenario(ctx context.Context, orgID string, scenarioID string) (Scenario, error)
+	UpdateScenario(ctx context.Context, orgID string, scenario UpdateScenarioInput) (Scenario, error)
 	PostScenario(ctx context.Context, orgID string, scenario CreateScenarioInput) (Scenario, error)
 	GetScenarios(ctx context.Context, orgID string) ([]Scenario, error)
 	GetScenarioIterations(ctx context.Context, orgID string, scenarioID string) ([]ScenarioIteration, error)
