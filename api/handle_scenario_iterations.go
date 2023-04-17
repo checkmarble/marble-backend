@@ -19,8 +19,8 @@ type ScenarioIterationAppInterface interface {
 }
 
 type APIScenarioIterationBody struct {
-	TriggerCondition operators.OperatorBool `json:"triggerCondition"`
-	// Rules                []Rule                 `json:"rules"`
+	TriggerCondition json.RawMessage `json:"triggerCondition"`
+	// Rules                []Rule          `json:"rules"`
 	ScoreReviewThreshold int `json:"scoreReviewThreshold"`
 	ScoreRejectThreshold int `json:"scoreRejectThreshold"`
 }
@@ -48,9 +48,14 @@ type APIScenarioIterationWithBody struct {
 	Body APIScenarioIterationBody `json:"body"`
 }
 
-func NewAPIScenarioIterationWithBody(si app.ScenarioIteration) APIScenarioIterationWithBody {
+func NewAPIScenarioIterationWithBody(si app.ScenarioIteration) (APIScenarioIterationWithBody, error) {
+	triggerConditionBytes, err := si.Body.TriggerCondition.MarshalJSON()
+	if err != nil {
+		return APIScenarioIterationWithBody{}, fmt.Errorf("unable to marshal trigger condition: %w", err)
+	}
+
 	body := APIScenarioIterationBody{
-		TriggerCondition:     si.Body.TriggerCondition,
+		TriggerCondition:     triggerConditionBytes,
 		ScoreReviewThreshold: si.Body.ScoreReviewThreshold,
 		ScoreRejectThreshold: si.Body.ScoreRejectThreshold,
 	}
@@ -61,7 +66,7 @@ func NewAPIScenarioIterationWithBody(si app.ScenarioIteration) APIScenarioIterat
 	return APIScenarioIterationWithBody{
 		APIScenarioIteration: NewAPIScenarioIteration(si),
 		Body:                 body,
-	}
+	}, nil
 }
 
 func (a *API) handleGetScenarioIterations() http.HandlerFunc {
@@ -97,7 +102,7 @@ func (a *API) handleGetScenarioIterations() http.HandlerFunc {
 }
 
 type CreateScenarioIterationInput struct {
-	Body app.ScenarioIterationBody `json:"body"`
+	Body APIScenarioIterationBody `json:"body"`
 }
 
 func (a *API) handlePostScenarioIteration() http.HandlerFunc {
@@ -114,14 +119,24 @@ func (a *API) handlePostScenarioIteration() http.HandlerFunc {
 		requestData := &CreateScenarioIterationInput{}
 		err = json.NewDecoder(r.Body).Decode(requestData)
 		if err != nil {
-			// Could not parse JSON
 			http.Error(w, fmt.Errorf("could not parse input JSON: %w", err).Error(), http.StatusUnprocessableEntity)
 			return
 		}
 
-		scenario, err := a.app.CreateScenarioIteration(ctx, orgID, app.CreateScenarioIterationInput{
+		triggerCondition, err := operators.UnmarshalOperatorBool(requestData.Body.TriggerCondition)
+		if err != nil {
+			http.Error(w, fmt.Errorf("could not unmarshal trigger condition: %w", err).Error(), http.StatusUnprocessableEntity)
+			return
+		}
+
+		si, err := a.app.CreateScenarioIteration(ctx, orgID, app.CreateScenarioIterationInput{
 			ScenarioID: scenarioID,
-			Body:       requestData.Body,
+			Body: app.ScenarioIterationBody{
+				TriggerCondition:     triggerCondition,
+				Rules:                nil,
+				ScoreReviewThreshold: requestData.Body.ScoreReviewThreshold,
+				ScoreRejectThreshold: requestData.Body.ScoreRejectThreshold,
+			},
 		})
 		if err != nil {
 			// Could not execute request
@@ -130,9 +145,13 @@ func (a *API) handlePostScenarioIteration() http.HandlerFunc {
 			return
 		}
 
-		err = json.NewEncoder(w).Encode(NewAPIScenarioIterationWithBody(scenario))
+		apiScenarioIterationWithBody, err := NewAPIScenarioIterationWithBody(si)
 		if err != nil {
-			// Could not encode JSON
+			http.Error(w, fmt.Errorf("could not create new api scenario iteration: %w", err).Error(), http.StatusInternalServerError)
+			return
+		}
+		err = json.NewEncoder(w).Encode(apiScenarioIterationWithBody)
+		if err != nil {
 			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)
 			return
 		}
@@ -157,7 +176,12 @@ func (a *API) handleGetScenarioIteration() http.HandlerFunc {
 			return
 		}
 
-		err = json.NewEncoder(w).Encode(NewAPIScenarioIterationWithBody(si))
+		apiScenarioIterationWithBody, err := NewAPIScenarioIterationWithBody(si)
+		if err != nil {
+			http.Error(w, fmt.Errorf("could not create new api scenario iteration: %w", err).Error(), http.StatusInternalServerError)
+			return
+		}
+		err = json.NewEncoder(w).Encode(apiScenarioIterationWithBody)
 		if err != nil {
 			// Could not encode JSON
 			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)

@@ -81,6 +81,9 @@ func (r *PGRepository) CreateScenarioIterationRule(ctx context.Context, scenario
 }
 
 func (r *PGRepository) createScenarioIterationRules(ctx context.Context, tx pgx.Tx, orgID string, scenarioIterationID string, rules []app.Rule) ([]app.Rule, error) {
+	if len(rules) == 0 {
+		return nil, nil
+	}
 	query := r.queryBuilder.
 		Insert("scenario_iteration_rules").
 		Columns(
