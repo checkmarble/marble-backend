@@ -125,7 +125,7 @@ type dbUpdateScenarioInput struct {
 func (r *PGRepository) UpdateScenario(ctx context.Context, orgID string, scenario app.UpdateScenarioInput) (app.Scenario, error) {
 	sql, args, err := r.queryBuilder.
 		Update("scenarios").
-		SetMap(updateMapByName(dbUpdateScenarioInput{
+		SetMap(upsertMapByName(dbUpdateScenarioInput{
 			Name:        scenario.Name,
 			Description: scenario.Description,
 		})).

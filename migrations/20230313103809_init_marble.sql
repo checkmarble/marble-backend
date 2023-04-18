@@ -87,6 +87,7 @@ CREATE TABLE scenario_iteration_rules(
   description text NOT NULL,
   score_modifier smallint NOT NULL,
   formula json NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   deleted_at TIMESTAMP WITH TIME ZONE,
   PRIMARY KEY(id),
   CONSTRAINT fk_scenario_iteration_rules_scenario_iterations FOREIGN KEY(scenario_iteration_id) REFERENCES scenario_iterations(id),

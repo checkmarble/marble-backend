@@ -19,6 +19,7 @@ type dbScenarioIterationRule struct {
 	Description         string      `db:"description"`
 	ScoreModifier       int         `db:"score_modifier"`
 	Formula             []byte      `db:"formula"`
+	CreatedAt           pgtype.Time `db:"created_at"`
 	DeletedAt           pgtype.Time `db:"deleted_at"`
 }
 

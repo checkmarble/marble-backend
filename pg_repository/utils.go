@@ -8,7 +8,7 @@ import (
 // Return a map[string]any to use with Update().SetMap()
 //
 // Inspired from pgx.RowToStructByName implementation
-func updateMapByName(input any) map[string]any {
+func upsertMapByName(input any) map[string]any {
 	result := make(map[string]any)
 
 	inputElemValue := reflectValue(input)
@@ -37,7 +37,7 @@ func updateMapByName(input any) map[string]any {
 			}
 			value := colValue.Elem().Interface()
 			if reflect.ValueOf(value).Kind() == reflect.Struct {
-				result[colName] = updateMapByName(value)
+				result[colName] = upsertMapByName(value)
 			} else {
 				result[colName] = value
 			}

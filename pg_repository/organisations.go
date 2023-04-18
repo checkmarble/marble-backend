@@ -108,7 +108,7 @@ type dbUpdateOrganizationInput struct {
 func (r *PGRepository) UpdateOrganization(ctx context.Context, organization app.UpdateOrganizationInput) (app.Organization, error) {
 	sql, args, err := r.queryBuilder.
 		Update("organizations").
-		SetMap(updateMapByName(dbUpdateOrganizationInput{
+		SetMap(upsertMapByName(dbUpdateOrganizationInput{
 			Name:         organization.Name,
 			DatabaseName: organization.DatabaseName,
 		})).
