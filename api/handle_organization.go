@@ -32,11 +32,11 @@ func NewAPIOrganization(org app.Organization) APIOrganization {
 	}
 }
 
-func (a *API) handleGetOrganizations() http.HandlerFunc {
+func (api *API) handleGetOrganizations() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		organizations, err := a.app.GetOrganizations(ctx)
+		organizations, err := api.app.GetOrganizations(ctx)
 		if err != nil {
 			// Could not execute request
 			http.Error(w, fmt.Errorf("error getting organizations: %w", err).Error(), http.StatusInternalServerError)
@@ -62,7 +62,7 @@ type CreateOrganizationInput struct {
 	DatabaseName string `json:"databaseName"`
 }
 
-func (a *API) handlePostOrganization() http.HandlerFunc {
+func (api *API) handlePostOrganization() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -74,7 +74,7 @@ func (a *API) handlePostOrganization() http.HandlerFunc {
 			return
 		}
 
-		org, err := a.app.CreateOrganization(ctx, app.CreateOrganizationInput{
+		org, err := api.app.CreateOrganization(ctx, app.CreateOrganizationInput{
 			Name:         requestData.Name,
 			DatabaseName: requestData.DatabaseName,
 		})
@@ -92,13 +92,13 @@ func (a *API) handlePostOrganization() http.HandlerFunc {
 	}
 }
 
-func (a *API) handleGetOrganization() http.HandlerFunc {
+func (api *API) handleGetOrganization() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
 		orgID := chi.URLParam(r, "orgID")
 
-		org, err := a.app.GetOrganization(ctx, orgID)
+		org, err := api.app.GetOrganization(ctx, orgID)
 		if errors.Is(err, app.ErrNotFoundInRepository) {
 			http.Error(w, "", http.StatusNotFound)
 			return
@@ -122,7 +122,7 @@ type UpdateOrganizationInput struct {
 	DatabaseName *string `json:"databaseName"`
 }
 
-func (a *API) handlePutOrganization() http.HandlerFunc {
+func (api *API) handlePutOrganization() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -136,7 +136,7 @@ func (a *API) handlePutOrganization() http.HandlerFunc {
 			return
 		}
 
-		org, err := a.app.UpdateOrganization(ctx, app.UpdateOrganizationInput{
+		org, err := api.app.UpdateOrganization(ctx, app.UpdateOrganizationInput{
 			ID:           orgID,
 			Name:         requestData.Name,
 			DatabaseName: requestData.DatabaseName,
@@ -159,13 +159,13 @@ func (a *API) handlePutOrganization() http.HandlerFunc {
 	}
 }
 
-func (a *API) handleDeleteOrganization() http.HandlerFunc {
+func (api *API) handleDeleteOrganization() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
 		orgID := chi.URLParam(r, "orgID")
 
-		err := a.app.SoftDeleteOrganization(ctx, orgID)
+		err := api.app.SoftDeleteOrganization(ctx, orgID)
 		if errors.Is(err, app.ErrNotFoundInRepository) {
 			http.Error(w, "", http.StatusNotFound)
 			return

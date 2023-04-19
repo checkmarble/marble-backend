@@ -10,22 +10,18 @@ import (
 var ErrScenarioNotFound = errors.New("scenario not found")
 var ErrDataModelNotFound = errors.New("data model not found")
 
+func (app *App) GetDecision(ctx context.Context, orgID string, decisionID string) (Decision, error) {
+	return app.repository.GetDecision(ctx, orgID, decisionID)
+}
+
 func (app *App) CreateDecision(ctx context.Context, organizationID string, scenarioID string, payloadStructWithReader DynamicStructWithReader, payload Payload) (Decision, error) {
-
-	///////////////////////////////
-	// Get scenario
-	///////////////////////////////
 	s, err := app.repository.GetScenario(ctx, organizationID, scenarioID)
-
 	if errors.Is(err, ErrNotFoundInRepository) {
 		return Decision{}, ErrScenarioNotFound
 	} else if err != nil {
 		return Decision{}, fmt.Errorf("error getting scenario: %w", err)
 	}
 
-	///////////////////////////////
-	// Get Data Model
-	///////////////////////////////
 	dm, err := app.repository.GetDataModel(ctx, organizationID)
 	if errors.Is(err, ErrNotFoundInRepository) {
 		return Decision{}, ErrDataModelNotFound
@@ -33,17 +29,11 @@ func (app *App) CreateDecision(ctx context.Context, organizationID string, scena
 		return Decision{}, fmt.Errorf("error getting data model: %w", err)
 	}
 
-	///////////////////////////////
-	// Execute scenario
-	///////////////////////////////
 	scenarioExecution, err := s.Eval(app.repository, payloadStructWithReader, dm)
 	if err != nil {
 		return Decision{}, fmt.Errorf("error evaluating scenario: %w", err)
 	}
 
-	///////////////////////////////
-	// Build and persist decision
-	///////////////////////////////
 	d := Decision{
 		Payload:             payload,
 		Outcome:             scenarioExecution.Outcome,

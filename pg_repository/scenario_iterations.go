@@ -189,3 +189,49 @@ func (r *PGRepository) CreateScenarioIteration(ctx context.Context, orgID string
 
 	return scenarioIterationDTO, nil
 }
+
+type dbUpdateScenarioIterationInput struct {
+	ScoreReviewThreshold *int    `db:"score_review_threshold"`
+	ScoreRejectThreshold *int    `db:"score_reject_threshold"`
+	TriggerCondition     *[]byte `db:"trigger_condition"`
+}
+
+func (r *PGRepository) UpdateScenarioIteration(ctx context.Context, orgID string, scenarioIteration app.UpdateScenarioIterationInput) (app.ScenarioIteration, error) {
+	if scenarioIteration.Body == nil {
+		return app.ScenarioIteration{}, fmt.Errorf("nothing to update")
+	}
+	updateScenarioIterationInput := dbUpdateScenarioIterationInput{
+		ScoreReviewThreshold: scenarioIteration.Body.ScoreReviewThreshold,
+		ScoreRejectThreshold: scenarioIteration.Body.ScoreRejectThreshold,
+	}
+	if scenarioIteration.Body.TriggerCondition != nil {
+		triggerConditionBytes, err := (*scenarioIteration.Body.TriggerCondition).MarshalJSON()
+		if err != nil {
+			return app.ScenarioIteration{}, fmt.Errorf("unable to marshal trigger condition: %w", err)
+		}
+		updateScenarioIterationInput.TriggerCondition = &triggerConditionBytes
+	}
+
+	sql, args, err := r.queryBuilder.
+		Update("scenario_iterations").
+		SetMap(upsertMapByName(updateScenarioIterationInput)).
+		Where("id = ?", scenarioIteration.ID).
+		Where("org_id = ?", orgID).
+		Suffix("RETURNING *").ToSql()
+	if err != nil {
+		return app.ScenarioIteration{}, fmt.Errorf("unable to build scenario iteration query: %w", err)
+	}
+
+	rows, _ := r.db.Query(ctx, sql, args...)
+	updatedScenarioIteration, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenarioIteration])
+	if err != nil {
+		return app.ScenarioIteration{}, fmt.Errorf("unable to update scenario iteration: %w", err)
+	}
+
+	scenarioIterationDTO, err := updatedScenarioIteration.dto()
+	if err != nil {
+		return app.ScenarioIteration{}, fmt.Errorf("dto issue: %w", err)
+	}
+
+	return scenarioIterationDTO, nil
+}

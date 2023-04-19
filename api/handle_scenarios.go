@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"marble/marble-backend/app"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 type ScenarioAppInterface interface {
 	GetScenarios(ctx context.Context, organizationID string) ([]app.Scenario, error)
 	CreateScenario(ctx context.Context, organizationID string, scenario app.CreateScenarioInput) (app.Scenario, error)
+	UpdateScenario(ctx context.Context, organizationID string, scenario app.UpdateScenarioInput) (app.Scenario, error)
 
 	GetScenario(ctx context.Context, organizationID string, scenarioID string) (app.Scenario, error)
 }
@@ -38,7 +40,7 @@ func NewAPIScenario(scenario app.Scenario) APIScenario {
 	}
 }
 
-func (a *API) handleGetScenarios() http.HandlerFunc {
+func (api *API) handleGetScenarios() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -48,7 +50,7 @@ func (a *API) handleGetScenarios() http.HandlerFunc {
 			return
 		}
 
-		scenarios, err := a.app.GetScenarios(ctx, orgID)
+		scenarios, err := api.app.GetScenarios(ctx, orgID)
 		if err != nil {
 			// Could not execute request
 			http.Error(w, fmt.Errorf("error getting scenarios: %w", err).Error(), http.StatusInternalServerError)
@@ -75,7 +77,7 @@ type CreateScenarioInput struct {
 	TriggerObjectType string `json:"triggerObjectType"`
 }
 
-func (a *API) handlePostScenarios() http.HandlerFunc {
+func (api *API) handlePostScenarios() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -93,7 +95,7 @@ func (a *API) handlePostScenarios() http.HandlerFunc {
 			return
 		}
 
-		scenario, err := a.app.CreateScenario(ctx, orgID, app.CreateScenarioInput{
+		scenario, err := api.app.CreateScenario(ctx, orgID, app.CreateScenarioInput{
 			Name:              requestData.Name,
 			Description:       requestData.Description,
 			TriggerObjectType: requestData.TriggerObjectType,
@@ -114,7 +116,7 @@ func (a *API) handlePostScenarios() http.HandlerFunc {
 	}
 }
 
-func (a *API) handleGetScenario() http.HandlerFunc {
+func (api *API) handleGetScenario() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -125,8 +127,55 @@ func (a *API) handleGetScenario() http.HandlerFunc {
 		}
 		scenarioID := chi.URLParam(r, "scenarioID")
 
-		scenario, err := a.app.GetScenario(ctx, orgID, scenarioID)
+		scenario, err := api.app.GetScenario(ctx, orgID, scenarioID)
 		if err != nil {
+			// Could not execute request
+			http.Error(w, fmt.Errorf("error getting scenario(id: %s): %w", scenarioID, err).Error(), http.StatusInternalServerError)
+			return
+		}
+
+		err = json.NewEncoder(w).Encode(NewAPIScenario(scenario))
+		if err != nil {
+			// Could not encode JSON
+			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+type UpdateScenarioInput struct {
+	Name        *string `json:"name"`
+	Description *string `json:"description"`
+}
+
+func (api *API) handlePutScenario() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		orgID, err := orgIDFromCtx(ctx)
+		if err != nil {
+			http.Error(w, "", http.StatusUnauthorized)
+			return
+		}
+		scenarioID := chi.URLParam(r, "scenarioID")
+
+		requestData := &UpdateScenarioInput{}
+		err = json.NewDecoder(r.Body).Decode(requestData)
+		if err != nil {
+			// Could not parse JSON
+			http.Error(w, fmt.Errorf("could not parse input JSON: %w", err).Error(), http.StatusBadRequest)
+			return
+		}
+
+		scenario, err := api.app.UpdateScenario(ctx, orgID, app.UpdateScenarioInput{
+			ID:          scenarioID,
+			Name:        requestData.Name,
+			Description: requestData.Description,
+		})
+		if errors.Is(err, app.ErrNotFoundInRepository) {
+			http.Error(w, "", http.StatusNotFound)
+			return
+		} else if err != nil {
 			// Could not execute request
 			http.Error(w, fmt.Errorf("error getting scenario(id: %s): %w", scenarioID, err).Error(), http.StatusInternalServerError)
 			return

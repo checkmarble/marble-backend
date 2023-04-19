@@ -117,12 +117,43 @@ func (r *PGRepository) PostScenario(ctx context.Context, orgID string, scenario 
 	return createdScenario.dto(), err
 }
 
+type dbUpdateScenarioInput struct {
+	Name        *string `db:"name"`
+	Description *string `db:"description"`
+}
+
+func (r *PGRepository) UpdateScenario(ctx context.Context, orgID string, scenario app.UpdateScenarioInput) (app.Scenario, error) {
+	sql, args, err := r.queryBuilder.
+		Update("scenarios").
+		SetMap(upsertMapByName(dbUpdateScenarioInput{
+			Name:        scenario.Name,
+			Description: scenario.Description,
+		})).
+		Where("id = ?", scenario.ID).
+		Where("org_id = ?", orgID).
+		Suffix("RETURNING *").ToSql()
+	if err != nil {
+		return app.Scenario{}, fmt.Errorf("unable to build scenario query: %w", err)
+	}
+
+	rows, _ := r.db.Query(ctx, sql, args...)
+	updatedScenario, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenario])
+	if errors.Is(err, pgx.ErrNoRows) {
+		return app.Scenario{}, app.ErrNotFoundInRepository
+	} else if err != nil {
+		return app.Scenario{}, fmt.Errorf("unable to update scenario(id: %s): %w", scenario.ID, err)
+	}
+
+	return updatedScenario.dto(), nil
+}
+
 func (r *PGRepository) PublishScenarioIteration(ctx context.Context, orgID string, scenarioIterationID string) error {
 	sql, args, err := r.queryBuilder.
 		Update("scenarios").
 		Set("live_scenario_iteration_id", scenarioIterationID).
 		From("scenario_iterations si").
 		Where("si.id = ?", scenarioIterationID).
+		Where("si.org_id = ?", orgID).
 		Where("scenarios.id = si.scenario_id").
 		ToSql()
 

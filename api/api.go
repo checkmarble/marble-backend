@@ -22,14 +22,13 @@ type API struct {
 type AppInterface interface {
 	ScenarioAppInterface
 	ScenarioIterationAppInterface
+	ScenarioIterationRuleAppInterface
 	OrganizationAppInterface
+	DecisionInterface
+	IngestionInterface
 
 	GetOrganizationIDFromToken(ctx context.Context, token string) (orgID string, err error)
 	GetDataModel(ctx context.Context, organizationID string) (app.DataModel, error)
-
-	CreateDecision(ctx context.Context, organizationID string, scenarioID string, dynamicStructWithReader app.DynamicStructWithReader, payload app.Payload) (app.Decision, error)
-	GetDecision(ctx context.Context, organizationID string, requestedDecisionID string) (app.Decision, error)
-	IngestObject(ctx context.Context, dynamicStructWithReader app.DynamicStructWithReader, table app.Table) (err error)
 }
 
 func New(port string, a AppInterface) (*http.Server, error) {
@@ -45,6 +44,12 @@ func New(port string, a AppInterface) (*http.Server, error) {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			next.ServeHTTP(w, r)
+		})
+	})
 
 	s := &API{
 		app: a,
