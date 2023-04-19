@@ -30,25 +30,40 @@ func (a *API) routes() {
 		r.Post("/{object_type}", a.handleIngestion())
 	})
 
-	a.router.Route("/scenarios", func(r chi.Router) {
+	// Group all front endpoints
+	a.router.Group(func(r chi.Router) {
 		// use authentication middleware
 		r.Use(a.authCtx)
 
-		r.Get("/", a.handleGetScenarios())
-		r.Post("/", a.handlePostScenarios())
+		r.Route("/scenarios", func(r chi.Router) {
 
-		r.Route("/{scenarioID:"+UUIDRegExp+"}", func(r chi.Router) {
-			r.Get("/", a.handleGetScenario())
-			r.Put("/", a.handlePutScenario())
+			r.Get("/", a.handleGetScenarios())
+			r.Post("/", a.handlePostScenarios())
 
-			r.Route("/iterations", func(r chi.Router) {
-				r.Post("/", a.handlePostScenarioIteration())
-				r.Get("/", a.handleGetScenarioIterations())
+			r.Route("/{scenarioID:"+UUIDRegExp+"}", func(r chi.Router) {
+				r.Get("/", a.handleGetScenario())
+				r.Put("/", a.handlePutScenario())
 
-				r.Route("/{scenarioIterationID:"+UUIDRegExp+"}", func(r chi.Router) {
-					r.Get("/", a.handleGetScenarioIteration())
+				r.Route("/iterations", func(r chi.Router) {
+					r.Get("/", a.handleGetScenarioIterations())
+					r.Post("/", a.handlePostScenarioIteration())
 				})
 			})
+		})
+
+		r.Route("/scenario-iteration/{scenarioIterationID:"+UUIDRegExp+"}", func(r chi.Router) {
+			r.Get("/", a.handleGetScenarioIteration())
+			r.Put("/", a.handlePutScenarioIteration())
+
+			r.Route("/rules", func(r chi.Router) {
+				r.Get("/", a.handleGetScenarioIterationRules())
+				r.Post("/", a.handlePostScenarioIterationRule())
+			})
+		})
+
+		r.Route("/scenario-iteration-rule/{ruleID:"+UUIDRegExp+"}", func(r chi.Router) {
+			r.Get("/", a.handleGetScenarioIterationRule())
+			r.Put("/", a.handlePutScenarioIterationRule())
 		})
 	})
 

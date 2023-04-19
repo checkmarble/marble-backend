@@ -37,15 +37,8 @@ type ScenarioIteration struct {
 	ID         string
 	ScenarioID string
 	Version    int
-
-	CreatedAt time.Time
-	UpdatedAt time.Time
-
-	Body ScenarioIterationBody
-}
-
-type CreateScenarioIterationInput struct {
-	ScenarioID string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 	Body       ScenarioIterationBody
 }
 
@@ -54,6 +47,29 @@ type ScenarioIterationBody struct {
 	Rules                []Rule
 	ScoreReviewThreshold int
 	ScoreRejectThreshold int
+}
+
+type CreateScenarioIterationInput struct {
+	ScenarioID string
+	Body       CreateScenarioIterationBody
+}
+
+type CreateScenarioIterationBody struct {
+	TriggerCondition     operators.OperatorBool
+	Rules                []CreateRuleInput
+	ScoreReviewThreshold int
+	ScoreRejectThreshold int
+}
+
+type UpdateScenarioIterationInput struct {
+	ID   string
+	Body *UpdateScenarioIterationBody
+}
+
+type UpdateScenarioIterationBody struct {
+	TriggerCondition     *operators.OperatorBool
+	ScoreReviewThreshold *int
+	ScoreRejectThreshold *int
 }
 
 ///////////////////////////////

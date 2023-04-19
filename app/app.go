@@ -20,6 +20,11 @@ type RepositoryInterface interface {
 	GetScenarioIterations(ctx context.Context, orgID string, scenarioID string) ([]ScenarioIteration, error)
 	CreateScenarioIteration(ctx context.Context, orgID string, scenarioIteration CreateScenarioIterationInput) (ScenarioIteration, error)
 	GetScenarioIteration(ctx context.Context, orgID string, scenarioIterationID string) (ScenarioIteration, error)
+	UpdateScenarioIteration(ctx context.Context, orgID string, scenarioIteration UpdateScenarioIterationInput) (ScenarioIteration, error)
+	GetScenarioIterationRules(ctx context.Context, orgID string, scenarioIterationID string) ([]Rule, error)
+	CreateScenarioIterationRule(ctx context.Context, orgID string, rule CreateRuleInput) (Rule, error)
+	GetScenarioIterationRule(ctx context.Context, orgID string, ruleID string) (Rule, error)
+	UpdateScenarioIterationRule(ctx context.Context, orgID string, rule UpdateRuleInput) (Rule, error)
 
 	// token validation
 	GetOrganizationIDFromToken(ctx context.Context, token string) (orgID string, err error)

@@ -11,7 +11,7 @@ import (
 func upsertMapByName(input any) map[string]any {
 	result := make(map[string]any)
 
-	inputElemValue := reflectValue(input)
+	inputElemValue := reflect.Indirect(reflect.ValueOf(input))
 	inputElemType := inputElemValue.Type()
 
 	for _, sf := range reflect.VisibleFields(inputElemType) {
@@ -27,15 +27,15 @@ func upsertMapByName(input any) map[string]any {
 			// Field is ignored, skip it.
 			continue
 		}
-		colValue := reflect.Indirect(inputElemValue).FieldByName(sf.Name)
+		colValue := inputElemValue.FieldByName(sf.Name)
 		switch colValue.Kind() {
 		case reflect.Struct:
 			continue
-		case reflect.Ptr, reflect.Map, reflect.Array, reflect.Chan, reflect.Slice:
+		case reflect.Ptr, reflect.Map, reflect.Chan, reflect.Slice:
 			if colValue.IsNil() {
 				continue
 			}
-			value := colValue.Elem().Interface()
+			value := reflect.Indirect(colValue).Interface()
 			if reflect.ValueOf(value).Kind() == reflect.Struct {
 				result[colName] = upsertMapByName(value)
 			} else {
@@ -47,16 +47,4 @@ func upsertMapByName(input any) map[string]any {
 	}
 
 	return result
-}
-
-func reflectValue(obj interface{}) reflect.Value {
-	var val reflect.Value
-
-	if reflect.TypeOf(obj).Kind() == reflect.Ptr {
-		val = reflect.ValueOf(obj).Elem()
-	} else {
-		val = reflect.ValueOf(obj)
-	}
-
-	return val
 }

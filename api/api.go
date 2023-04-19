@@ -22,6 +22,7 @@ type API struct {
 type AppInterface interface {
 	ScenarioAppInterface
 	ScenarioIterationAppInterface
+	ScenarioIterationRuleAppInterface
 	OrganizationAppInterface
 
 	GetOrganizationIDFromToken(ctx context.Context, token string) (orgID string, err error)

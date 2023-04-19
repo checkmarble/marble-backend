@@ -125,11 +125,11 @@ func (r *PGRepository) Seed() {
 
 	createScenarioIterationInput := app.CreateScenarioIterationInput{
 		ScenarioID: scenario.ID,
-		Body: app.ScenarioIterationBody{
+		Body: app.CreateScenarioIterationBody{
 			TriggerCondition:     &operators.True{},
 			ScoreReviewThreshold: 10,
 			ScoreRejectThreshold: 30,
-			Rules: []app.Rule{
+			Rules: []app.CreateRuleInput{
 				{
 					Formula:       &operators.True{},
 					ScoreModifier: 2,
