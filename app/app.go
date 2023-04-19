@@ -10,6 +10,7 @@ type App struct {
 }
 
 type RepositoryInterface interface {
+	RepositoryScenarioPublicationInterface
 
 	// Data models & scenarios
 	GetDataModel(ctx context.Context, orgID string) (DataModel, error)

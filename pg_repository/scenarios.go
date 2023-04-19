@@ -147,7 +147,7 @@ func (r *PGRepository) UpdateScenario(ctx context.Context, orgID string, scenari
 	return updatedScenario.dto(), nil
 }
 
-func (r *PGRepository) PublishScenarioIteration(ctx context.Context, orgID string, scenarioIterationID string) error {
+func (r *PGRepository) publishScenarioIteration(ctx context.Context, tx pgx.Tx, orgID string, scenarioIterationID string) error {
 	sql, args, err := r.queryBuilder.
 		Update("scenarios").
 		Set("live_scenario_iteration_id", scenarioIterationID).
@@ -161,7 +161,7 @@ func (r *PGRepository) PublishScenarioIteration(ctx context.Context, orgID strin
 		return fmt.Errorf("unable to build query: %w", err)
 	}
 
-	_, err = r.db.Exec(ctx, sql, args...)
+	_, err = tx.Exec(ctx, sql, args...)
 	if err != nil {
 		return fmt.Errorf("unable to run query: %w", err)
 	}
@@ -169,7 +169,7 @@ func (r *PGRepository) PublishScenarioIteration(ctx context.Context, orgID strin
 	return nil
 }
 
-func (r *PGRepository) UnpublishScenarioIteration(ctx context.Context, orgID string, scenarioID string) error {
+func (r *PGRepository) unpublishScenarioIteration(ctx context.Context, tx pgx.Tx, orgID string, scenarioID string) error {
 	sql, args, err := r.queryBuilder.
 		Update("scenarios").
 		Set("live_scenario_iteration_id", nil).
@@ -181,7 +181,7 @@ func (r *PGRepository) UnpublishScenarioIteration(ctx context.Context, orgID str
 		return fmt.Errorf("unable to build query: %w", err)
 	}
 
-	_, err = r.db.Exec(ctx, sql, args...)
+	_, err = tx.Exec(ctx, sql, args...)
 	if err != nil {
 		return fmt.Errorf("unable to run query: %w", err)
 	}

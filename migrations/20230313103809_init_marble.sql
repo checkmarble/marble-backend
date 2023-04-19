@@ -98,6 +98,22 @@ ALTER TABLE scenarios
 ADD COLUMN live_scenario_iteration_id uuid,
   ADD CONSTRAINT fk_scenarios_live_scenario_iteration FOREIGN KEY(live_scenario_iteration_id) REFERENCES scenario_iterations(id);
 
+-- scenario_publications
+CREATE TABLE scenario_publications(
+  id uuid DEFAULT uuid_generate_v4(),
+  org_id uuid NOT NULL,
+  -- user_id uuid NOT NULL,
+  scenario_id uuid NOT NULL,
+  scenario_iteration_id uuid NOT NULL,
+  publication_action VARCHAR NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  PRIMARY KEY(id),
+  CONSTRAINT fk_scenario_publications_org FOREIGN KEY(org_id) REFERENCES organizations(id),
+  -- CONSTRAINT fk_scenario_publications_user FOREIGN KEY(user_id) REFERENCES users(id),
+  CONSTRAINT fk_scenario_publications_scenario_id FOREIGN KEY(scenario_id) REFERENCES scenarios(id),
+  CONSTRAINT fk_scenario_publications_scenario_iterations FOREIGN KEY(scenario_iteration_id) REFERENCES scenario_iterations(id)
+);
+
 -- decisions
 -- Outcomes
 CREATE TYPE decision_outcome AS ENUM (

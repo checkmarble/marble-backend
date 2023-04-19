@@ -14,7 +14,7 @@ import (
 	"github.com/pressly/goose/v3"
 
 	"github.com/Masterminds/squirrel"
-	_ "github.com/jackc/pgx/v5/stdlib"
+	_ "github.com/jackc/pgx/v5/stdlib" //https://github.com/jackc/pgx/wiki/Getting-started-with-pgx-through-database-sql
 )
 
 type PgxPoolIface interface {
