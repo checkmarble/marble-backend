@@ -74,7 +74,7 @@ func NewAPIScenarioIterationWithBody(si app.ScenarioIteration) (APIScenarioItera
 	}, nil
 }
 
-func (a *API) handleGetScenarioIterations() http.HandlerFunc {
+func (api *API) handleGetScenarioIterations() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -85,7 +85,7 @@ func (a *API) handleGetScenarioIterations() http.HandlerFunc {
 		}
 		scenarioID := chi.URLParam(r, "scenarioID")
 
-		scenarioIterations, err := a.app.GetScenarioIterations(ctx, orgID, scenarioID)
+		scenarioIterations, err := api.app.GetScenarioIterations(ctx, orgID, scenarioID)
 		if err != nil {
 			// Could not execute request
 			http.Error(w, fmt.Errorf("error getting scenario(id: %s) iterations: %w", scenarioID, err).Error(), http.StatusInternalServerError)
@@ -117,7 +117,7 @@ type CreateScenarioIterationInput struct {
 	Body *CreateScenarioIterationBody `json:"body"`
 }
 
-func (a *API) handlePostScenarioIteration() http.HandlerFunc {
+func (api *API) handlePostScenarioIteration() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -164,7 +164,7 @@ func (a *API) handlePostScenarioIteration() http.HandlerFunc {
 			})
 		}
 
-		si, err := a.app.CreateScenarioIteration(ctx, orgID, createScenarioIterationInput)
+		si, err := api.app.CreateScenarioIteration(ctx, orgID, createScenarioIterationInput)
 		if err != nil {
 			// Could not execute request
 			// TODO(errors): handle missing fields error ?
@@ -185,7 +185,7 @@ func (a *API) handlePostScenarioIteration() http.HandlerFunc {
 	}
 }
 
-func (a *API) handleGetScenarioIteration() http.HandlerFunc {
+func (api *API) handleGetScenarioIteration() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -196,7 +196,7 @@ func (a *API) handleGetScenarioIteration() http.HandlerFunc {
 		}
 		scenarioIterationID := chi.URLParam(r, "scenarioIterationID")
 
-		si, err := a.app.GetScenarioIteration(ctx, orgID, scenarioIterationID)
+		si, err := api.app.GetScenarioIteration(ctx, orgID, scenarioIterationID)
 		if err != nil {
 			// Could not execute request
 			http.Error(w, fmt.Errorf("error getting scenarioIterationID(id: %s): %w", scenarioIterationID, err).Error(), http.StatusInternalServerError)
@@ -225,7 +225,7 @@ type UpdateScenarioIterationInput struct {
 	} `json:"body"`
 }
 
-func (a *API) handlePutScenarioIteration() http.HandlerFunc {
+func (api *API) handlePutScenarioIteration() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -265,7 +265,7 @@ func (a *API) handlePutScenarioIteration() http.HandlerFunc {
 			updateScenarioIterationInput.Body.TriggerCondition = &triggerCondition
 		}
 
-		updatedSI, err := a.app.UpdateScenarioIteration(ctx, orgID, updateScenarioIterationInput)
+		updatedSI, err := api.app.UpdateScenarioIteration(ctx, orgID, updateScenarioIterationInput)
 		if err != nil {
 			// Could not execute request
 			// TODO(errors): handle missing fields error ?

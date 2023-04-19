@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"io/ioutil"
 	"log"
@@ -10,7 +11,11 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func (a *API) handleIngestion() http.HandlerFunc {
+type IngestionInterface interface {
+	IngestObject(ctx context.Context, dynamicStructWithReader app.DynamicStructWithReader, table app.Table) (err error)
+}
+
+func (api *API) handleIngestion() http.HandlerFunc {
 
 	///////////////////////////////
 	// Request and Response types defined in scope
@@ -29,7 +34,7 @@ func (a *API) handleIngestion() http.HandlerFunc {
 			return
 		}
 
-		dataModel, err := a.app.GetDataModel(ctx, orgID)
+		dataModel, err := api.app.GetDataModel(ctx, orgID)
 		if err != nil {
 			log.Printf("Unable to find datamodel by orgId for ingestion: %v", err)
 			http.Error(w, "No data model found for this organization ID.", http.StatusInternalServerError) // 500
@@ -66,7 +71,7 @@ func (a *API) handleIngestion() http.HandlerFunc {
 			return
 		}
 
-		err = a.app.IngestObject(ctx, *payloadStructWithReaderPtr, table)
+		err = api.app.IngestObject(ctx, *payloadStructWithReaderPtr, table)
 		if err != nil {
 			log.Printf("Error while ingesting object: %v", err)
 			http.Error(w, "", http.StatusInternalServerError) // 500

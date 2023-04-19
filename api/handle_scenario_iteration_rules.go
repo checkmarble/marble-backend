@@ -46,7 +46,7 @@ func NewAPIScenarioIterationRule(rule app.Rule) (APIScenarioIterationRule, error
 	}, nil
 }
 
-func (a *API) handleGetScenarioIterationRules() http.HandlerFunc {
+func (api *API) handleGetScenarioIterationRules() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -57,7 +57,7 @@ func (a *API) handleGetScenarioIterationRules() http.HandlerFunc {
 		}
 		scenarioIterationID := chi.URLParam(r, "scenarioIterationID")
 
-		rules, err := a.app.GetScenarioIterationRules(ctx, orgID, scenarioIterationID)
+		rules, err := api.app.GetScenarioIterationRules(ctx, orgID, scenarioIterationID)
 		if err != nil {
 			// Could not execute request
 			http.Error(w, fmt.Errorf("error getting scenario_iteration(id: %s) rules: %w", scenarioIterationID, err).Error(), http.StatusInternalServerError)
@@ -91,7 +91,7 @@ type CreateScenarioIterationRuleInput struct {
 	ScoreModifier int             `json:"scoreModifier"`
 }
 
-func (a *API) handlePostScenarioIterationRule() http.HandlerFunc {
+func (api *API) handlePostScenarioIterationRule() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -115,7 +115,7 @@ func (a *API) handlePostScenarioIterationRule() http.HandlerFunc {
 			return
 		}
 
-		rule, err := a.app.CreateScenarioIterationRule(ctx, orgID, app.CreateRuleInput{
+		rule, err := api.app.CreateScenarioIterationRule(ctx, orgID, app.CreateRuleInput{
 			ScenarioIterationID: scenarioIterationID,
 			DisplayOrder:        requestData.DisplayOrder,
 			Name:                requestData.Name,
@@ -143,7 +143,7 @@ func (a *API) handlePostScenarioIterationRule() http.HandlerFunc {
 	}
 }
 
-func (a *API) handleGetScenarioIterationRule() http.HandlerFunc {
+func (api *API) handleGetScenarioIterationRule() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -154,7 +154,7 @@ func (a *API) handleGetScenarioIterationRule() http.HandlerFunc {
 		}
 		ruleID := chi.URLParam(r, "ruleID")
 
-		rule, err := a.app.GetScenarioIterationRule(ctx, orgID, ruleID)
+		rule, err := api.app.GetScenarioIterationRule(ctx, orgID, ruleID)
 		if err != nil {
 			// Could not execute request
 			http.Error(w, fmt.Errorf("error getting rule(id: %s): %w", ruleID, err).Error(), http.StatusInternalServerError)
@@ -183,7 +183,7 @@ type UpdateScenarioIterationRuleInput struct {
 	ScoreModifier *int             `json:"scoreModifier"`
 }
 
-func (a *API) handlePutScenarioIterationRule() http.HandlerFunc {
+func (api *API) handlePutScenarioIterationRule() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -218,7 +218,7 @@ func (a *API) handlePutScenarioIterationRule() http.HandlerFunc {
 			updateRuleInput.Formula = &formula
 		}
 
-		updatedRule, err := a.app.UpdateScenarioIterationRule(ctx, orgID, updateRuleInput)
+		updatedRule, err := api.app.UpdateScenarioIterationRule(ctx, orgID, updateRuleInput)
 		if err != nil {
 			// Could not execute request
 			// TODO(errors): handle missing fields error ?

@@ -40,7 +40,7 @@ func NewAPIScenario(scenario app.Scenario) APIScenario {
 	}
 }
 
-func (a *API) handleGetScenarios() http.HandlerFunc {
+func (api *API) handleGetScenarios() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -50,7 +50,7 @@ func (a *API) handleGetScenarios() http.HandlerFunc {
 			return
 		}
 
-		scenarios, err := a.app.GetScenarios(ctx, orgID)
+		scenarios, err := api.app.GetScenarios(ctx, orgID)
 		if err != nil {
 			// Could not execute request
 			http.Error(w, fmt.Errorf("error getting scenarios: %w", err).Error(), http.StatusInternalServerError)
@@ -77,7 +77,7 @@ type CreateScenarioInput struct {
 	TriggerObjectType string `json:"triggerObjectType"`
 }
 
-func (a *API) handlePostScenarios() http.HandlerFunc {
+func (api *API) handlePostScenarios() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -95,7 +95,7 @@ func (a *API) handlePostScenarios() http.HandlerFunc {
 			return
 		}
 
-		scenario, err := a.app.CreateScenario(ctx, orgID, app.CreateScenarioInput{
+		scenario, err := api.app.CreateScenario(ctx, orgID, app.CreateScenarioInput{
 			Name:              requestData.Name,
 			Description:       requestData.Description,
 			TriggerObjectType: requestData.TriggerObjectType,
@@ -116,7 +116,7 @@ func (a *API) handlePostScenarios() http.HandlerFunc {
 	}
 }
 
-func (a *API) handleGetScenario() http.HandlerFunc {
+func (api *API) handleGetScenario() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -127,7 +127,7 @@ func (a *API) handleGetScenario() http.HandlerFunc {
 		}
 		scenarioID := chi.URLParam(r, "scenarioID")
 
-		scenario, err := a.app.GetScenario(ctx, orgID, scenarioID)
+		scenario, err := api.app.GetScenario(ctx, orgID, scenarioID)
 		if err != nil {
 			// Could not execute request
 			http.Error(w, fmt.Errorf("error getting scenario(id: %s): %w", scenarioID, err).Error(), http.StatusInternalServerError)
@@ -148,7 +148,7 @@ type UpdateScenarioInput struct {
 	Description *string `json:"description"`
 }
 
-func (a *API) handlePutScenario() http.HandlerFunc {
+func (api *API) handlePutScenario() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -167,7 +167,7 @@ func (a *API) handlePutScenario() http.HandlerFunc {
 			return
 		}
 
-		scenario, err := a.app.UpdateScenario(ctx, orgID, app.UpdateScenarioInput{
+		scenario, err := api.app.UpdateScenario(ctx, orgID, app.UpdateScenarioInput{
 			ID:          scenarioID,
 			Name:        requestData.Name,
 			Description: requestData.Description,

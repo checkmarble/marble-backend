@@ -10,89 +10,89 @@ import (
 // RegExp that matches UUIDv4 format
 const UUIDRegExp = "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}"
 
-func (a *API) routes() {
+func (api *API) routes() {
 
 	// Decision API subrouter
 	// matches all /decisions routes
-	a.router.Route("/decisions", func(r chi.Router) {
+	api.router.Route("/decisions", func(r chi.Router) {
 		// use authentication middleware
 
-		r.Use(a.authCtx)
+		r.Use(api.authCtx)
 
-		r.Post("/", a.handleDecisionPost())
-		r.Get("/{decisionID:"+UUIDRegExp+"}", a.handleDecisionGet())
+		r.Post("/", api.handlePostDecision())
+		r.Get("/{decisionID:"+UUIDRegExp+"}", api.handleGetDecision())
 	})
 
-	a.router.Route("/ingestion", func(r chi.Router) {
+	api.router.Route("/ingestion", func(r chi.Router) {
 		// use authentication middleware
-		r.Use(a.authCtx)
+		r.Use(api.authCtx)
 
-		r.Post("/{object_type}", a.handleIngestion())
+		r.Post("/{object_type}", api.handleIngestion())
 	})
 
 	// Group all front endpoints
-	a.router.Group(func(r chi.Router) {
+	api.router.Group(func(r chi.Router) {
 		// use authentication middleware
-		r.Use(a.authCtx)
+		r.Use(api.authCtx)
 
 		r.Route("/scenarios", func(r chi.Router) {
 
-			r.Get("/", a.handleGetScenarios())
-			r.Post("/", a.handlePostScenarios())
+			r.Get("/", api.handleGetScenarios())
+			r.Post("/", api.handlePostScenarios())
 
 			r.Route("/{scenarioID:"+UUIDRegExp+"}", func(r chi.Router) {
-				r.Get("/", a.handleGetScenario())
-				r.Put("/", a.handlePutScenario())
+				r.Get("/", api.handleGetScenario())
+				r.Put("/", api.handlePutScenario())
 
 				r.Route("/iterations", func(r chi.Router) {
-					r.Get("/", a.handleGetScenarioIterations())
-					r.Post("/", a.handlePostScenarioIteration())
+					r.Get("/", api.handleGetScenarioIterations())
+					r.Post("/", api.handlePostScenarioIteration())
 				})
 			})
 		})
 
 		r.Route("/scenario-iteration/{scenarioIterationID:"+UUIDRegExp+"}", func(r chi.Router) {
-			r.Get("/", a.handleGetScenarioIteration())
-			r.Put("/", a.handlePutScenarioIteration())
+			r.Get("/", api.handleGetScenarioIteration())
+			r.Put("/", api.handlePutScenarioIteration())
 
 			r.Route("/rules", func(r chi.Router) {
-				r.Get("/", a.handleGetScenarioIterationRules())
-				r.Post("/", a.handlePostScenarioIterationRule())
+				r.Get("/", api.handleGetScenarioIterationRules())
+				r.Post("/", api.handlePostScenarioIterationRule())
 			})
 		})
 
 		r.Route("/scenario-iteration-rule/{ruleID:"+UUIDRegExp+"}", func(r chi.Router) {
-			r.Get("/", a.handleGetScenarioIterationRule())
-			r.Put("/", a.handlePutScenarioIterationRule())
+			r.Get("/", api.handleGetScenarioIterationRule())
+			r.Put("/", api.handlePutScenarioIterationRule())
 		})
 	})
 
 	// Group all admin endpoints
-	a.router.Group(func(r chi.Router) {
+	api.router.Group(func(r chi.Router) {
 		//TODO(admin): add middleware for admin auth
 		// r.Use(a.adminAuthCtx)
 
-		a.router.Route("/organizations", func(r chi.Router) {
-			r.Get("/", a.handleGetOrganizations())
-			r.Post("/", a.handlePostOrganization())
+		api.router.Route("/organizations", func(r chi.Router) {
+			r.Get("/", api.handleGetOrganizations())
+			r.Post("/", api.handlePostOrganization())
 
 			r.Route("/{orgID:"+UUIDRegExp+"}", func(r chi.Router) {
-				r.Get("/", a.handleGetOrganization())
-				r.Put("/", a.handlePutOrganization())
-				r.Delete("/", a.handleDeleteOrganization())
+				r.Get("/", api.handleGetOrganization())
+				r.Put("/", api.handlePutOrganization())
+				r.Delete("/", api.handleDeleteOrganization())
 			})
 		})
 	})
 }
 
-func (a *API) displayRoutes() {
+func (api *API) displayRoutes() {
 
 	walkFunc := func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
 		log.Printf("Route setup: %s %s\n", method, route)
 		return nil
 	}
 
-	if err := chi.Walk(a.router, walkFunc); err != nil {
+	if err := chi.Walk(api.router, walkFunc); err != nil {
 		log.Printf("Error describing routes: %v", err)
 	}
 
