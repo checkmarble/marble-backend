@@ -176,11 +176,11 @@ func (api *API) handleGetScenarioIterationRule() http.HandlerFunc {
 }
 
 type UpdateScenarioIterationRuleInput struct {
-	DisplayOrder  *int             `json:"displayOrder"`
-	Name          *string          `json:"name"`
-	Description   *string          `json:"description"`
-	Formula       *json.RawMessage `json:"formula"`
-	ScoreModifier *int             `json:"scoreModifier"`
+	DisplayOrder  *int             `json:"displayOrder,omitempty"`
+	Name          *string          `json:"name,omitempty"`
+	Description   *string          `json:"description,omitempty"`
+	Formula       *json.RawMessage `json:"formula,omitempty"`
+	ScoreModifier *int             `json:"scoreModifier,omitempty"`
 }
 
 func (api *API) handlePutScenarioIterationRule() http.HandlerFunc {

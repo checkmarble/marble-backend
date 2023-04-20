@@ -114,7 +114,7 @@ type CreateScenarioIterationBody struct {
 }
 
 type CreateScenarioIterationInput struct {
-	Body *CreateScenarioIterationBody `json:"body"`
+	Body CreateScenarioIterationBody `json:"body"`
 }
 
 func (api *API) handlePostScenarioIteration() http.HandlerFunc {
@@ -219,10 +219,10 @@ func (api *API) handleGetScenarioIteration() http.HandlerFunc {
 
 type UpdateScenarioIterationInput struct {
 	Body *struct {
-		TriggerCondition     *json.RawMessage `json:"triggerCondition"`
-		ScoreReviewThreshold *int             `json:"scoreReviewThreshold"`
-		ScoreRejectThreshold *int             `json:"scoreRejectThreshold"`
-	} `json:"body"`
+		TriggerCondition     *json.RawMessage `json:"triggerCondition,omitempty"`
+		ScoreReviewThreshold *int             `json:"scoreReviewThreshold,omitempty"`
+		ScoreRejectThreshold *int             `json:"scoreRejectThreshold,omitempty"`
+	} `json:"body,omitempty"`
 }
 
 func (api *API) handlePutScenarioIteration() http.HandlerFunc {

@@ -37,11 +37,11 @@ func NewAPIScenarioPublication(sp app.ScenarioPublication) APIScenarioPublicatio
 }
 
 type ReadScenarioPublicationsFilters struct {
-	ID         *string
-	ScenarioID *string
-	// UserID              *string
-	ScenarioIterationID *string
-	PublicationAction   *string
+	ID *string `json:"id,omitempty"`
+	// UserID              *string `json:"userID,omitempty"`
+	ScenarioID          *string `json:"scenarioID,omitempty"`
+	ScenarioIterationID *string `json:"scenarioIterationID,omitempty"`
+	PublicationAction   *string `json:"publicationAction,omitempty"`
 }
 
 func (api *API) handleGetScenarioPublications() http.HandlerFunc {
