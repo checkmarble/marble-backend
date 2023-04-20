@@ -2,7 +2,6 @@ package pg_repository
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"marble/marble-backend/app"
 	"time"
@@ -13,6 +12,7 @@ import (
 
 type dbScenarioPublication struct {
 	ID    string `db:"id"`
+	Rank  int32  `db:"rank"`
 	OrgID string `db:"org_id"`
 	// UserID              string    `db:"user_id"`
 	ScenarioID          string    `db:"scenario_id"`
@@ -24,6 +24,7 @@ type dbScenarioPublication struct {
 func (sp *dbScenarioPublication) dto() app.ScenarioPublication {
 	return app.ScenarioPublication{
 		ID:    sp.ID,
+		Rank:  sp.Rank,
 		OrgID: sp.OrgID,
 		// UserID:              sp.UserID,
 		ScenarioID:          sp.ScenarioID,
@@ -33,14 +34,27 @@ func (sp *dbScenarioPublication) dto() app.ScenarioPublication {
 	}
 }
 
-func (r *PGRepository) ReadScenarioPublications(ctx context.Context, orgID string, scenarioID string) ([]app.ScenarioPublication, error) {
+type ReadScenarioPublicationsFilters struct {
+	ID         *string `db:"id"`
+	ScenarioID *string `db:"scenario_id"`
+	// UserID              *string    `db:"user_id"`
+	ScenarioIterationID *string `db:"scenario_iteration_id"`
+	PublicationAction   *string `db:"publication_action"`
+}
+
+func (r *PGRepository) ReadScenarioPublications(ctx context.Context, orgID string, filters app.ReadScenarioPublicationsFilters) ([]app.ScenarioPublication, error) {
 	sql, args, err := r.queryBuilder.
 		Select("*").
 		From("scenario_publications").
-		Where(squirrel.Eq{
-			"org_id":      orgID,
-			"scenario_id": scenarioID,
-		}).ToSql()
+		Where("org_id = ?", orgID).
+		Where(squirrel.Eq(columnValueMap(ReadScenarioPublicationsFilters{
+			ID:         filters.ID,
+			ScenarioID: filters.ScenarioID,
+			// UserID:              filters.UserID,
+			ScenarioIterationID: filters.ScenarioIterationID,
+			PublicationAction:   filters.PublicationAction,
+		}))).
+		OrderBy("rank DESC").ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("unable to build scenario publication query: %w", err)
 	}
@@ -53,52 +67,6 @@ func (r *PGRepository) ReadScenarioPublications(ctx context.Context, orgID strin
 		scenarioPubblicationDTOs[i] = scenario.dto()
 	}
 	return scenarioPubblicationDTOs, err
-}
-
-func (r *PGRepository) ReadScenarioIterationPublications(ctx context.Context, orgID string, scenarioIterationID string) ([]app.ScenarioPublication, error) {
-	sql, args, err := r.queryBuilder.
-		Select("*").
-		From("scenario_publications").
-		Where(squirrel.Eq{
-			"org_id":                orgID,
-			"scenario_iteration_id": scenarioIterationID,
-		}).ToSql()
-	if err != nil {
-		return nil, fmt.Errorf("unable to build scenario publication query: %w", err)
-	}
-
-	rows, _ := r.db.Query(ctx, sql, args...)
-	scenarioPublications, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbScenarioPublication])
-
-	scenarioPubblicationDTOs := make([]app.ScenarioPublication, len(scenarioPublications))
-	for i, scenario := range scenarioPublications {
-		scenarioPubblicationDTOs[i] = scenario.dto()
-	}
-	return scenarioPubblicationDTOs, err
-}
-
-func (r *PGRepository) ReadScenarioPublication(ctx context.Context, orgID string, scenarioPublicationID string) (app.ScenarioPublication, error) {
-	sql, args, err := r.queryBuilder.
-		Select("*").
-		From("scenario_publications").
-		Where(squirrel.Eq{
-			"org_id": orgID,
-			"id":     scenarioPublicationID,
-		}).ToSql()
-
-	if err != nil {
-		return app.ScenarioPublication{}, fmt.Errorf("unable to build scenario publication query: %w", err)
-	}
-
-	rows, _ := r.db.Query(ctx, sql, args...)
-	scenarioPublication, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenarioPublication])
-	if errors.Is(err, pgx.ErrNoRows) {
-		return app.ScenarioPublication{}, app.ErrNotFoundInRepository
-	} else if err != nil {
-		return app.ScenarioPublication{}, fmt.Errorf("unable to get scenario publication: %w", err)
-	}
-
-	return scenarioPublication.dto(), err
 }
 
 type dbCreateScenarioPublication struct {
@@ -112,7 +80,7 @@ type dbCreateScenarioPublication struct {
 func (r *PGRepository) createScenarioPublication(ctx context.Context, tx pgx.Tx, sp dbCreateScenarioPublication) (dbScenarioPublication, error) {
 	sql, args, err := r.queryBuilder.
 		Insert("scenario_publications").
-		SetMap(upsertMapByName(sp)).
+		SetMap(columnValueMap(sp)).
 		Suffix("RETURNING *").ToSql()
 	if err != nil {
 		return dbScenarioPublication{}, fmt.Errorf("unable to build scenario publication query: %w", err)
@@ -127,7 +95,7 @@ func (r *PGRepository) createScenarioPublication(ctx context.Context, tx pgx.Tx,
 	return createdScenarioPublication, err
 }
 
-func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID string, sp app.CreateScenarioPublication) ([]app.ScenarioPublication, error) {
+func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID string, sp app.CreateScenarioPublicationInput) ([]app.ScenarioPublication, error) {
 	scenario, err := r.GetScenario(ctx, orgID, sp.ScenarioID)
 	if err != nil {
 		return nil, app.ErrNotFoundInRepository
@@ -143,6 +111,9 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 	switch sp.PublicationAction {
 	case app.Publish:
 		if scenario.LiveVersion != nil {
+			if scenario.LiveVersion.ID == sp.ScenarioIterationID {
+				return nil, fmt.Errorf("scenario iteration(id: %s) is already live", sp.ScenarioIterationID)
+			}
 			unpublishOldIteration, err := r.createScenarioPublication(ctx, tx, dbCreateScenarioPublication{
 				OrgID: orgID,
 				// UserID: sp.UserID,
@@ -174,7 +145,7 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 		}
 	case app.Unpublish:
 		if scenario.LiveVersion == nil || scenario.LiveVersion.ID != sp.ScenarioIterationID {
-			return nil, fmt.Errorf("unable to unpublish scenario iteration(id: %s): current live scenario iteration point to a different scenario iteration(id: %s): %w", sp.ScenarioIterationID, scenario.LiveVersion.ID, err)
+			return nil, fmt.Errorf("unable to unpublish scenario iteration(id: %s): current live scenario iteration point to a different scenario iteration(id: %s)", sp.ScenarioIterationID, scenario.LiveVersion.ID)
 		}
 		unpublishOldIteration, err := r.createScenarioPublication(ctx, tx, dbCreateScenarioPublication{
 			OrgID: orgID,

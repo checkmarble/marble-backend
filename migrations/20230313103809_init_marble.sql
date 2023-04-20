@@ -101,6 +101,7 @@ ADD COLUMN live_scenario_iteration_id uuid,
 -- scenario_publications
 CREATE TABLE scenario_publications(
   id uuid DEFAULT uuid_generate_v4(),
+  rank SERIAL,
   org_id uuid NOT NULL,
   -- user_id uuid NOT NULL,
   scenario_id uuid NOT NULL,

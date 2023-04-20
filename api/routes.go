@@ -65,6 +65,11 @@ func (api *API) routes() {
 			r.Get("/", api.handleGetScenarioIterationRule())
 			r.Put("/", api.handlePutScenarioIterationRule())
 		})
+
+		r.Route("/scenario-publications", func(r chi.Router) {
+			r.Get("/", api.handleGetScenarioPublications())
+			r.Post("/", api.handlePostScenarioPublication())
+		})
 	})
 
 	// Group all admin endpoints

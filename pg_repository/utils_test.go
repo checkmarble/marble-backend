@@ -75,7 +75,7 @@ func TestUpdateMapByName(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			got := upsertMapByName(&c.data)
+			got := columnValueMap(&c.data)
 
 			if !reflect.DeepEqual(c.expected, got) {
 				t.Errorf("ExpecteMockedTestCased %v, got %v", c.expected, got)

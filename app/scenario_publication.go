@@ -36,6 +36,7 @@ func PublicationActionFrom(s string) PublicationAction {
 
 type ScenarioPublication struct {
 	ID    string
+	Rank  int32
 	OrgID string
 	// UserID              string
 	ScenarioID          string
@@ -44,7 +45,15 @@ type ScenarioPublication struct {
 	CreatedAt           time.Time
 }
 
-type CreateScenarioPublication struct {
+type ReadScenarioPublicationsFilters struct {
+	ID         *string
+	ScenarioID *string
+	// UserID              *string
+	ScenarioIterationID *string
+	PublicationAction   *string
+}
+
+type CreateScenarioPublicationInput struct {
 	// UserID              string
 	ScenarioID          string
 	ScenarioIterationID string

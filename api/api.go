@@ -26,6 +26,7 @@ type AppInterface interface {
 	OrganizationAppInterface
 	DecisionInterface
 	IngestionInterface
+	ScenarioPublicationAppInterface
 
 	GetOrganizationIDFromToken(ctx context.Context, token string) (orgID string, err error)
 	GetDataModel(ctx context.Context, organizationID string) (app.DataModel, error)
