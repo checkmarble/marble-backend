@@ -5,10 +5,13 @@ import (
 	"strings"
 )
 
-// Return a map[string]any to use with Update().SetMap()
+// Return a map[string]any of column with non nil values to use with :
+//   - Update().SetMap()
+//   - Insert().SetMap()
+//   - Where(squirrel.Eq())
 //
 // Inspired from pgx.RowToStructByName implementation
-func upsertMapByName(input any) map[string]any {
+func columnValueMap(input any) map[string]any {
 	result := make(map[string]any)
 
 	inputElemValue := reflect.Indirect(reflect.ValueOf(input))
@@ -37,7 +40,7 @@ func upsertMapByName(input any) map[string]any {
 			}
 			value := reflect.Indirect(colValue).Interface()
 			if reflect.ValueOf(value).Kind() == reflect.Struct {
-				result[colName] = upsertMapByName(value)
+				result[colName] = columnValueMap(value)
 			} else {
 				result[colName] = value
 			}

@@ -214,7 +214,7 @@ func (r *PGRepository) UpdateScenarioIteration(ctx context.Context, orgID string
 
 	sql, args, err := r.queryBuilder.
 		Update("scenario_iterations").
-		SetMap(upsertMapByName(updateScenarioIterationInput)).
+		SetMap(columnValueMap(updateScenarioIterationInput)).
 		Where("id = ?", scenarioIteration.ID).
 		Where("org_id = ?", orgID).
 		Suffix("RETURNING *").ToSql()

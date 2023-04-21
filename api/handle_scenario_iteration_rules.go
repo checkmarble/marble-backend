@@ -64,14 +64,14 @@ func (api *API) handleGetScenarioIterationRules() http.HandlerFunc {
 			return
 		}
 
-		var apiRules []APIScenarioIterationRule
-		for _, rule := range rules {
+		apiRules := make([]APIScenarioIterationRule, len(rules))
+		for i, rule := range rules {
 			apiRule, err := NewAPIScenarioIterationRule(rule)
 			if err != nil {
 				http.Error(w, fmt.Errorf("could not create new api scenario iteration rule: %w", err).Error(), http.StatusInternalServerError)
 				return
 			}
-			apiRules = append(apiRules, apiRule)
+			apiRules[i] = apiRule
 		}
 
 		err = json.NewEncoder(w).Encode(apiRules)
@@ -176,11 +176,11 @@ func (api *API) handleGetScenarioIterationRule() http.HandlerFunc {
 }
 
 type UpdateScenarioIterationRuleInput struct {
-	DisplayOrder  *int             `json:"displayOrder"`
-	Name          *string          `json:"name"`
-	Description   *string          `json:"description"`
-	Formula       *json.RawMessage `json:"formula"`
-	ScoreModifier *int             `json:"scoreModifier"`
+	DisplayOrder  *int             `json:"displayOrder,omitempty"`
+	Name          *string          `json:"name,omitempty"`
+	Description   *string          `json:"description,omitempty"`
+	Formula       *json.RawMessage `json:"formula,omitempty"`
+	ScoreModifier *int             `json:"scoreModifier,omitempty"`
 }
 
 func (api *API) handlePutScenarioIterationRule() http.HandlerFunc {

@@ -118,8 +118,8 @@ func (api *API) handleGetOrganization() http.HandlerFunc {
 }
 
 type UpdateOrganizationInput struct {
-	Name         *string `json:"name"`
-	DatabaseName *string `json:"databaseName"`
+	Name         *string `json:"name,omitempty"`
+	DatabaseName *string `json:"databaseName,omitempty"`
 }
 
 func (api *API) handlePutOrganization() http.HandlerFunc {

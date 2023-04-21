@@ -144,8 +144,8 @@ func (api *API) handleGetScenario() http.HandlerFunc {
 }
 
 type UpdateScenarioInput struct {
-	Name        *string `json:"name"`
-	Description *string `json:"description"`
+	Name        *string `json:"name,omitempty"`
+	Description *string `json:"description,omitempty"`
 }
 
 func (api *API) handlePutScenario() http.HandlerFunc {

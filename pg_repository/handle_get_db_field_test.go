@@ -83,8 +83,8 @@ func TestMain(m *testing.M) {
 	pool.MaxWait = testDbLifetime * time.Second
 
 	hostAndPort := resource.GetHostPort("5432/tcp") // docker container will bind to another port than 5432 if already taken
-	databaseUrl := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", testUser, testPassword, hostAndPort, testDbName)
-	dbpool, err = pgxpool.New(context.Background(), databaseUrl)
+	databaseURL := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", testUser, testPassword, hostAndPort, testDbName)
+	dbpool, err = pgxpool.New(context.Background(), databaseURL)
 	if err != nil {
 		log.Fatalf("Could not connect to database: %s", err)
 	}
@@ -101,7 +101,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not connect to db: %s", err)
 	}
 
-	createTablesSql := `
+	createTablesSQL := `
 	CREATE SCHEMA testschema;
 
 	GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA testschema TO test_user;
@@ -167,7 +167,7 @@ func TestMain(m *testing.M) {
 	  );
 	  `
 
-	if _, err := dbpool.Exec(context.Background(), createTablesSql); err != nil {
+	if _, err := dbpool.Exec(context.Background(), createTablesSQL); err != nil {
 		log.Fatalf("Could not create tables: %s", err)
 	}
 
@@ -225,7 +225,7 @@ func TestReadFromDbWithDockerDb(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Could not parse payload: %s", err)
 	}
-	payload_not_in_db, err := app.ParseToDataModelObject(ctx, transactions, []byte(`{"object_id": "6d3a330d-7204-4561-b523-9fa0d518d184"}`))
+	payloadNotInDB, err := app.ParseToDataModelObject(ctx, transactions, []byte(`{"object_id": "6d3a330d-7204-4561-b523-9fa0d518d184"}`))
 	if err != nil {
 		t.Fatalf("Could not parse payload: %s", err)
 	}
@@ -243,7 +243,7 @@ func TestReadFromDbWithDockerDb(t *testing.T) {
 		},
 		{
 			name:           "Read null float field from DB without join",
-			readParams:     app.DbFieldReadParams{Path: []string{"transactions"}, FieldName: "value", DataModel: dataModel, Payload: *payload_not_in_db},
+			readParams:     app.DbFieldReadParams{Path: []string{"transactions"}, FieldName: "value", DataModel: dataModel, Payload: *payloadNotInDB},
 			expectedOutput: pgtype.Float8{Float64: 0, Valid: false},
 		},
 		{

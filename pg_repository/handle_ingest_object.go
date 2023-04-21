@@ -35,13 +35,13 @@ func (r *PGRepository) IngestObject(ctx context.Context, payloadStructWithReader
 	}
 
 	log.Printf("args: %v\n", args)
-	var createdObjectId string
-	err = tx.QueryRow(ctx, sql, args...).Scan(&createdObjectId)
+	var createdObjectID string
+	err = tx.QueryRow(ctx, sql, args...).Scan(&createdObjectID)
 	if err != nil {
 		log.Printf("Error inserting object: %s\n", err)
 		return err
 	}
-	log.Printf("Created object in db: type %s, id \"%s\"\n", table.Name, createdObjectId)
+	log.Printf("Created object in db: type %s, id \"%s\"\n", table.Name, createdObjectID)
 
 	err = tx.Commit(ctx)
 	if err != nil {

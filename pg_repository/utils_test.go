@@ -1,13 +1,10 @@
 package pg_repository
 
 import (
+	"marble/marble-backend/utils"
 	"reflect"
 	"testing"
 )
-
-func Ptr[T any](v T) *T {
-	return &v
-}
 
 func TestUpdateMapByName(t *testing.T) {
 	type NestedData struct {
@@ -33,17 +30,17 @@ func TestUpdateMapByName(t *testing.T) {
 	cases := []TestCase{
 		{
 			name:     "Should retrieve Key",
-			data:     Data{Key: Ptr("string")},
+			data:     Data{Key: utils.Ptr("string")},
 			expected: Expected{"key": "string", "array": [2]string{}},
 		},
 		{
 			name:     "No db tag: should ignore IgnoredKey",
-			data:     Data{IgnoredKey: Ptr("string")},
+			data:     Data{IgnoredKey: utils.Ptr("string")},
 			expected: Expected{"array": [2]string{}},
 		},
 		{
 			name:     "Unexported field: should ignore ignoredKey",
-			data:     Data{ignoredKey: Ptr("string")},
+			data:     Data{ignoredKey: utils.Ptr("string")},
 			expected: Expected{"array": [2]string{}},
 		},
 		{
@@ -63,19 +60,19 @@ func TestUpdateMapByName(t *testing.T) {
 		},
 		{
 			name:     "Ignore Nested struct: should ignore IgnoreNestedStruct",
-			data:     Data{IgnoreNestedStruct: NestedData{Nested: Ptr("string")}},
+			data:     Data{IgnoreNestedStruct: NestedData{Nested: utils.Ptr("string")}},
 			expected: Expected{"array": [2]string{}},
 		},
 		{
 			name:     "Pointer to Nested struct: should recursively handle pointer to nested struct",
-			data:     Data{NestedStruct: &NestedData{Nested: Ptr("string")}},
+			data:     Data{NestedStruct: &NestedData{Nested: utils.Ptr("string")}},
 			expected: Expected{"nested_struct": Expected{"nested": "string"}, "array": [2]string{}},
 		},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			got := upsertMapByName(&c.data)
+			got := columnValueMap(&c.data)
 
 			if !reflect.DeepEqual(c.expected, got) {
 				t.Errorf("ExpecteMockedTestCased %v, got %v", c.expected, got)
