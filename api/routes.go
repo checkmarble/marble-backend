@@ -4,11 +4,16 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/ggicci/httpin"
 	"github.com/go-chi/chi/v5"
 )
 
 // RegExp that matches UUIDv4 format
 const UUIDRegExp = "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}"
+
+func init() {
+	httpin.UseGochiURLParam("path", chi.URLParam)
+}
 
 func (api *API) routes() {
 
@@ -67,7 +72,9 @@ func (api *API) routes() {
 		})
 
 		r.Route("/scenario-publications", func(r chi.Router) {
-			r.Get("/", api.handleGetScenarioPublications())
+			r.With(
+				httpin.NewInput(GetScenarioPublicationsInput{}),
+			).Get("/", api.handleGetScenarioPublications())
 			r.Post("/", api.handlePostScenarioPublication())
 		})
 	})

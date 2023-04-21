@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"marble/marble-backend/app"
+	"marble/marble-backend/utils"
 	"net/http"
 	"time"
+
+	"github.com/ggicci/httpin"
 )
 
 type ScenarioPublicationAppInterface interface {
@@ -36,12 +39,12 @@ func NewAPIScenarioPublication(sp app.ScenarioPublication) APIScenarioPublicatio
 	}
 }
 
-type ReadScenarioPublicationsFilters struct {
-	ID *string `json:"id,omitempty"`
-	// UserID              *string `json:"userID,omitempty"`
-	ScenarioID          *string `json:"scenarioID,omitempty"`
-	ScenarioIterationID *string `json:"scenarioIterationID,omitempty"`
-	PublicationAction   *string `json:"publicationAction,omitempty"`
+type GetScenarioPublicationsInput struct {
+	ID string `in:"query=id"`
+	// UserID              string `in:"query=userID"`
+	ScenarioID          string `in:"query=scenarioID"`
+	ScenarioIterationID string `in:"query=scenarioIterationID"`
+	PublicationAction   string `in:"query=publicationAction"`
 }
 
 func (api *API) handleGetScenarioPublications() http.HandlerFunc {
@@ -54,20 +57,15 @@ func (api *API) handleGetScenarioPublications() http.HandlerFunc {
 			return
 		}
 
-		//TODO(filters): get filters from query parameters
-		requestData := &ReadScenarioPublicationsFilters{}
-		// err = json.NewDecoder(r.Body).Decode(requestData)
-		// if err != nil {
-		// 	http.Error(w, fmt.Errorf("could not parse input JSON: %w", err).Error(), http.StatusUnprocessableEntity)
-		// 	return
-		// }
+		input := ctx.Value(httpin.Input).(*GetScenarioPublicationsInput)
 
+		options := &utils.PtrToOptions{OmitZero: true}
 		scenarioPublications, err := api.app.ReadScenarioPublications(ctx, orgID, app.ReadScenarioPublicationsFilters{
-			ID:         requestData.ID,
-			ScenarioID: requestData.ScenarioID,
-			// UserID:              requestData.UserID,
-			ScenarioIterationID: requestData.ScenarioIterationID,
-			PublicationAction:   requestData.PublicationAction,
+			ID:         utils.PtrTo(input.ID, options),
+			ScenarioID: utils.PtrTo(input.ScenarioID, options),
+			// UserID:              utils.PtrTo(input.UserID,, options),
+			ScenarioIterationID: utils.PtrTo(input.ScenarioIterationID, options),
+			PublicationAction:   utils.PtrTo(input.PublicationAction, options),
 		})
 		if err != nil {
 			// Could not execute request
@@ -76,9 +74,9 @@ func (api *API) handleGetScenarioPublications() http.HandlerFunc {
 			return
 		}
 
-		var scenarioPublicationDTOs []APIScenarioPublication
-		for _, sp := range scenarioPublications {
-			scenarioPublicationDTOs = append(scenarioPublicationDTOs, NewAPIScenarioPublication(sp))
+		scenarioPublicationDTOs := make([]APIScenarioPublication, len(scenarioPublications))
+		for i, sp := range scenarioPublications {
+			scenarioPublicationDTOs[i] = NewAPIScenarioPublication(sp)
 		}
 
 		err = json.NewEncoder(w).Encode(scenarioPublicationDTOs)
@@ -89,7 +87,7 @@ func (api *API) handleGetScenarioPublications() http.HandlerFunc {
 	}
 }
 
-type CreateScenarioPublicationInput struct {
+type PostScenarioPublicationInput struct {
 	// UserID              string    `json:"userID"`
 	ScenarioID          string `json:"scenarioID"`
 	ScenarioIterationID string `json:"scenarioIterationID"`
@@ -106,7 +104,7 @@ func (api *API) handlePostScenarioPublication() http.HandlerFunc {
 			return
 		}
 
-		requestData := &CreateScenarioPublicationInput{}
+		requestData := &PostScenarioPublicationInput{}
 		err = json.NewDecoder(r.Body).Decode(requestData)
 		if err != nil {
 			http.Error(w, fmt.Errorf("could not parse input JSON: %w", err).Error(), http.StatusUnprocessableEntity)
@@ -126,9 +124,9 @@ func (api *API) handlePostScenarioPublication() http.HandlerFunc {
 			return
 		}
 
-		var scenarioPublicationDTOs []APIScenarioPublication
-		for _, sp := range scenarioPublications {
-			scenarioPublicationDTOs = append(scenarioPublicationDTOs, NewAPIScenarioPublication(sp))
+		scenarioPublicationDTOs := make([]APIScenarioPublication, len(scenarioPublications))
+		for i, sp := range scenarioPublications {
+			scenarioPublicationDTOs[i] = NewAPIScenarioPublication(sp)
 		}
 
 		err = json.NewEncoder(w).Encode(scenarioPublicationDTOs)

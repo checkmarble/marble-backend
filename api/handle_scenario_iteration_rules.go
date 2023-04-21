@@ -64,14 +64,14 @@ func (api *API) handleGetScenarioIterationRules() http.HandlerFunc {
 			return
 		}
 
-		var apiRules []APIScenarioIterationRule
-		for _, rule := range rules {
+		apiRules := make([]APIScenarioIterationRule, len(rules))
+		for i, rule := range rules {
 			apiRule, err := NewAPIScenarioIterationRule(rule)
 			if err != nil {
 				http.Error(w, fmt.Errorf("could not create new api scenario iteration rule: %w", err).Error(), http.StatusInternalServerError)
 				return
 			}
-			apiRules = append(apiRules, apiRule)
+			apiRules[i] = apiRule
 		}
 
 		err = json.NewEncoder(w).Encode(apiRules)

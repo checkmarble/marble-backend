@@ -55,10 +55,11 @@ func NewAPIDecision(decision app.Decision) APIDecision {
 			Version:     decision.ScenarioVersion,
 		},
 		Score: decision.Score,
+		Rules: make([]APIDecisionRule, len(decision.RuleExecutions)),
 	}
 
-	for _, ruleExecution := range decision.RuleExecutions {
-		apiDecision.Rules = append(apiDecision.Rules, NewAPIDecisionRule(ruleExecution))
+	for i, ruleExecution := range decision.RuleExecutions {
+		apiDecision.Rules[i] = NewAPIDecisionRule(ruleExecution)
 	}
 
 	// Error added here to make sure it does not appear if empty

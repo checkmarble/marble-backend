@@ -59,13 +59,14 @@ func NewAPIScenarioIterationWithBody(si app.ScenarioIteration) (APIScenarioItera
 		TriggerCondition:     triggerConditionBytes,
 		ScoreReviewThreshold: si.Body.ScoreReviewThreshold,
 		ScoreRejectThreshold: si.Body.ScoreRejectThreshold,
+		Rules:                make([]APIScenarioIterationRule, len(si.Body.Rules)),
 	}
-	for _, rule := range si.Body.Rules {
+	for i, rule := range si.Body.Rules {
 		apiRule, err := NewAPIScenarioIterationRule(rule)
 		if err != nil {
 			return APIScenarioIterationWithBody{}, fmt.Errorf("could not create new api scenario iteration rule: %w", err)
 		}
-		body.Rules = append(body.Rules, apiRule)
+		body.Rules[i] = apiRule
 	}
 
 	return APIScenarioIterationWithBody{
@@ -92,9 +93,9 @@ func (api *API) handleGetScenarioIterations() http.HandlerFunc {
 			return
 		}
 
-		var apiScenarioIterations []APIScenarioIteration
-		for _, si := range scenarioIterations {
-			apiScenarioIterations = append(apiScenarioIterations, NewAPIScenarioIteration(si))
+		apiScenarioIterations := make([]APIScenarioIteration, len(scenarioIterations))
+		for i, si := range scenarioIterations {
+			apiScenarioIterations[i] = NewAPIScenarioIteration(si)
 		}
 
 		err = json.NewEncoder(w).Encode(apiScenarioIterations)
@@ -147,21 +148,22 @@ func (api *API) handlePostScenarioIteration() http.HandlerFunc {
 				TriggerCondition:     triggerCondition,
 				ScoreReviewThreshold: requestData.Body.ScoreReviewThreshold,
 				ScoreRejectThreshold: requestData.Body.ScoreRejectThreshold,
+				Rules:                make([]app.CreateRuleInput, len(requestData.Body.Rules)),
 			},
 		}
-		for _, rule := range requestData.Body.Rules {
+		for i, rule := range requestData.Body.Rules {
 			formula, err := operators.UnmarshalOperatorBool(rule.Formula)
 			if err != nil {
 				http.Error(w, fmt.Errorf("could not unmarshal formula: %w", err).Error(), http.StatusUnprocessableEntity)
 				return
 			}
-			createScenarioIterationInput.Body.Rules = append(createScenarioIterationInput.Body.Rules, app.CreateRuleInput{
+			createScenarioIterationInput.Body.Rules[i] = app.CreateRuleInput{
 				DisplayOrder:  rule.DisplayOrder,
 				Name:          rule.Name,
 				Description:   rule.Description,
 				Formula:       formula,
 				ScoreModifier: rule.ScoreModifier,
-			})
+			}
 		}
 
 		si, err := api.app.CreateScenarioIteration(ctx, orgID, createScenarioIterationInput)
