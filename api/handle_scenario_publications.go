@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"marble/marble-backend/app"
 	"marble/marble-backend/utils"
@@ -15,6 +16,7 @@ import (
 type ScenarioPublicationAppInterface interface {
 	ReadScenarioPublications(ctx context.Context, orgID string, filters app.ReadScenarioPublicationsFilters) ([]app.ScenarioPublication, error)
 	CreateScenarioPublication(ctx context.Context, orgID string, sp app.CreateScenarioPublicationInput) ([]app.ScenarioPublication, error)
+	ReadScenarioPublication(ctx context.Context, orgID string, scenarioPublicationID string) (app.ScenarioPublication, error)
 }
 
 type APIScenarioPublication struct {
@@ -40,7 +42,6 @@ func NewAPIScenarioPublication(sp app.ScenarioPublication) APIScenarioPublicatio
 }
 
 type GetScenarioPublicationsInput struct {
-	ID string `in:"query=id"`
 	// UserID              string `in:"query=userID"`
 	ScenarioID          string `in:"query=scenarioID"`
 	ScenarioIterationID string `in:"query=scenarioIterationID"`
@@ -61,7 +62,6 @@ func (api *API) handleGetScenarioPublications() http.HandlerFunc {
 
 		options := &utils.PtrToOptions{OmitZero: true}
 		scenarioPublications, err := api.app.ReadScenarioPublications(ctx, orgID, app.ReadScenarioPublicationsFilters{
-			ID:         utils.PtrTo(input.ID, options),
 			ScenarioID: utils.PtrTo(input.ScenarioID, options),
 			// UserID:              utils.PtrTo(input.UserID,, options),
 			ScenarioIterationID: utils.PtrTo(input.ScenarioIterationID, options),
@@ -129,6 +129,41 @@ func (api *API) handlePostScenarioPublication() http.HandlerFunc {
 		}
 
 		err = json.NewEncoder(w).Encode(scenarioPublicationDTOs)
+		if err != nil {
+			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+type GetScenarioPublicationInput struct {
+	ScenarioPublicationID string `in:"path=scenarioPublicationID"`
+}
+
+func (api *API) handleGetScenarioPublication() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		orgID, err := orgIDFromCtx(ctx)
+		if err != nil {
+			http.Error(w, "", http.StatusUnauthorized)
+			return
+		}
+
+		input := ctx.Value(httpin.Input).(*GetScenarioPublicationInput)
+
+		scenarioPublication, err := api.app.ReadScenarioPublication(ctx, orgID, input.ScenarioPublicationID)
+		if errors.Is(err, app.ErrNotFoundInRepository) {
+			http.Error(w, "", http.StatusNotFound)
+			return
+		} else if err != nil {
+			// Could not execute request
+			// TODO(errors): handle missing fields error ?
+			http.Error(w, fmt.Errorf("error getting scenario publication(id: %s): %w", input.ScenarioPublicationID, err).Error(), http.StatusInternalServerError)
+			return
+		}
+
+		err = json.NewEncoder(w).Encode(NewAPIScenarioPublication(scenarioPublication))
 		if err != nil {
 			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)
 			return

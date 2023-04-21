@@ -2,6 +2,7 @@ package pg_repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"marble/marble-backend/app"
 	"time"
@@ -35,7 +36,6 @@ func (sp *dbScenarioPublication) dto() app.ScenarioPublication {
 }
 
 type ReadScenarioPublicationsFilters struct {
-	ID         *string `db:"id"`
 	ScenarioID *string `db:"scenario_id"`
 	// UserID              *string    `db:"user_id"`
 	ScenarioIterationID *string `db:"scenario_iteration_id"`
@@ -48,7 +48,6 @@ func (r *PGRepository) ReadScenarioPublications(ctx context.Context, orgID strin
 		From("scenario_publications").
 		Where("org_id = ?", orgID).
 		Where(squirrel.Eq(columnValueMap(ReadScenarioPublicationsFilters{
-			ID:         filters.ID,
 			ScenarioID: filters.ScenarioID,
 			// UserID:              filters.UserID,
 			ScenarioIterationID: filters.ScenarioIterationID,
@@ -170,4 +169,26 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 	tx.Commit(ctx)
 
 	return scenarioPublications, err
+}
+
+func (r *PGRepository) ReadScenarioPublication(ctx context.Context, orgID string, ID string) (app.ScenarioPublication, error) {
+	sql, args, err := r.queryBuilder.
+		Select("*").
+		From("scenario_publications").
+		Where("org_id = ?", orgID).
+		Where("id = ?", ID).
+		OrderBy("rank DESC").ToSql()
+	if err != nil {
+		return app.ScenarioPublication{}, fmt.Errorf("unable to build scenario publication query: %w", err)
+	}
+
+	rows, _ := r.db.Query(ctx, sql, args...)
+	scenarioPublication, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenarioPublication])
+	if errors.Is(err, pgx.ErrNoRows) {
+		return app.ScenarioPublication{}, app.ErrNotFoundInRepository
+	} else if err != nil {
+		return app.ScenarioPublication{}, fmt.Errorf("unable to get scenario publication: %w", err)
+	}
+
+	return scenarioPublication.dto(), err
 }

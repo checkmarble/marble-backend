@@ -46,7 +46,6 @@ type ScenarioPublication struct {
 }
 
 type ReadScenarioPublicationsFilters struct {
-	ID         *string
 	ScenarioID *string
 	// UserID              *string
 	ScenarioIterationID *string
