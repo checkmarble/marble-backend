@@ -41,25 +41,26 @@ func (api *API) routes() {
 		r.Use(api.authCtx)
 
 		r.Route("/scenarios", func(r chi.Router) {
-
 			r.Get("/", api.handleGetScenarios())
 			r.Post("/", api.handlePostScenarios())
 
 			r.Route("/{scenarioID:"+UUIDRegExp+"}", func(r chi.Router) {
 				r.Get("/", api.handleGetScenario())
 				r.Put("/", api.handlePutScenario())
-
-				r.Route("/iterations", func(r chi.Router) {
-					r.Get("/", api.handleGetScenarioIterations())
-					r.Post("/", api.handlePostScenarioIteration())
-				})
 			})
 		})
 
 		r.Route("/scenario-iterations", func(r chi.Router) {
+			r.With(httpin.NewInput(GetScenarioIterationsInput{})).
+				Get("/", api.handleGetScenarioIterations())
+			r.With(httpin.NewInput(PostScenarioIteration{})).
+				Post("/", api.handlePostScenarioIteration())
+
 			r.Route("/{scenarioIterationID:"+UUIDRegExp+"}", func(r chi.Router) {
-				r.Get("/", api.handleGetScenarioIteration())
-				r.Put("/", api.handlePutScenarioIteration())
+				r.With(httpin.NewInput(GetScenarioIterationInput{})).
+					Get("/", api.handleGetScenarioIteration())
+				r.With(httpin.NewInput(PutScenarioIterationInput{})).
+					Put("/", api.handlePutScenarioIteration())
 			})
 		})
 

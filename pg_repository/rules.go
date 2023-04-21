@@ -34,13 +34,14 @@ func (sir *dbScenarioIterationRule) dto() (app.Rule, error) {
 	}
 
 	return app.Rule{
-		ID:            sir.ID,
-		DisplayOrder:  sir.DisplayOrder,
-		Name:          sir.Name,
-		Description:   sir.Description,
-		Formula:       formula,
-		ScoreModifier: sir.ScoreModifier,
-		CreatedAt:     sir.CreatedAt,
+		ID:                  sir.ID,
+		ScenarioIterationID: sir.ScenarioIterationID,
+		DisplayOrder:        sir.DisplayOrder,
+		Name:                sir.Name,
+		Description:         sir.Description,
+		Formula:             formula,
+		ScoreModifier:       sir.ScoreModifier,
+		CreatedAt:           sir.CreatedAt,
 	}, nil
 }
 

@@ -11,13 +11,14 @@ import (
 ///////////////////////////////
 
 type Rule struct {
-	ID            string
-	DisplayOrder  int
-	Name          string
-	Description   string
-	Formula       operators.OperatorBool
-	ScoreModifier int
-	CreatedAt     time.Time
+	ID                  string
+	ScenarioIterationID string
+	DisplayOrder        int
+	Name                string
+	Description         string
+	Formula             operators.OperatorBool
+	ScoreModifier       int
+	CreatedAt           time.Time
 }
 
 type GetScenarioIterationRulesFilters struct {

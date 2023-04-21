@@ -6,21 +6,22 @@ import (
 	"fmt"
 	"marble/marble-backend/app"
 	"marble/marble-backend/app/operators"
+	"marble/marble-backend/utils"
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi/v5"
+	"github.com/ggicci/httpin"
 )
 
 type ScenarioIterationAppInterface interface {
-	GetScenarioIterations(ctx context.Context, orgID string, scenarioID string) ([]app.ScenarioIteration, error)
+	GetScenarioIterations(ctx context.Context, orgID string, filters app.GetScenarioIterationFilters) ([]app.ScenarioIteration, error)
 	CreateScenarioIteration(ctx context.Context, orgID string, scenarioIteration app.CreateScenarioIterationInput) (app.ScenarioIteration, error)
 	GetScenarioIteration(ctx context.Context, orgID string, scenarioIterationID string) (app.ScenarioIteration, error)
 	UpdateScenarioIteration(ctx context.Context, organizationID string, rule app.UpdateScenarioIterationInput) (app.ScenarioIteration, error)
 }
 
 type APIScenarioIterationBody struct {
-	TriggerCondition     json.RawMessage            `json:"triggerCondition"`
+	TriggerCondition     json.RawMessage            `json:"triggerCondition,omitempty"`
 	Rules                []APIScenarioIterationRule `json:"rules,omitempty"`
 	ScoreReviewThreshold int                        `json:"scoreReviewThreshold"`
 	ScoreRejectThreshold int                        `json:"scoreRejectThreshold"`
@@ -50,13 +51,7 @@ type APIScenarioIterationWithBody struct {
 }
 
 func NewAPIScenarioIterationWithBody(si app.ScenarioIteration) (APIScenarioIterationWithBody, error) {
-	triggerConditionBytes, err := si.Body.TriggerCondition.MarshalJSON()
-	if err != nil {
-		return APIScenarioIterationWithBody{}, fmt.Errorf("unable to marshal trigger condition: %w", err)
-	}
-
 	body := APIScenarioIterationBody{
-		TriggerCondition:     triggerConditionBytes,
 		ScoreReviewThreshold: si.Body.ScoreReviewThreshold,
 		ScoreRejectThreshold: si.Body.ScoreRejectThreshold,
 		Rules:                make([]APIScenarioIterationRule, len(si.Body.Rules)),
@@ -69,10 +64,22 @@ func NewAPIScenarioIterationWithBody(si app.ScenarioIteration) (APIScenarioItera
 		body.Rules[i] = apiRule
 	}
 
+	if si.Body.TriggerCondition != nil {
+		triggerConditionBytes, err := si.Body.TriggerCondition.MarshalJSON()
+		if err != nil {
+			return APIScenarioIterationWithBody{}, fmt.Errorf("unable to marshal trigger condition: %w", err)
+		}
+		body.TriggerCondition = triggerConditionBytes
+	}
+
 	return APIScenarioIterationWithBody{
 		APIScenarioIteration: NewAPIScenarioIteration(si),
 		Body:                 body,
 	}, nil
+}
+
+type GetScenarioIterationsInput struct {
+	ScenarioID string `in:"query=scenarioId"`
 }
 
 func (api *API) handleGetScenarioIterations() http.HandlerFunc {
@@ -84,12 +91,16 @@ func (api *API) handleGetScenarioIterations() http.HandlerFunc {
 			http.Error(w, "", http.StatusUnauthorized)
 			return
 		}
-		scenarioID := chi.URLParam(r, "scenarioID")
 
-		scenarioIterations, err := api.app.GetScenarioIterations(ctx, orgID, scenarioID)
+		input := ctx.Value(httpin.Input).(*GetScenarioIterationsInput)
+
+		options := &utils.PtrToOptions{OmitZero: true}
+		scenarioIterations, err := api.app.GetScenarioIterations(ctx, orgID, app.GetScenarioIterationFilters{
+			ScenarioID: utils.PtrTo(input.ScenarioID, options),
+		})
 		if err != nil {
 			// Could not execute request
-			http.Error(w, fmt.Errorf("error getting scenario(id: %s) iterations: %w", scenarioID, err).Error(), http.StatusInternalServerError)
+			http.Error(w, fmt.Errorf("error getting scenario(id: %s) iterations: %w", input.ScenarioID, err).Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -108,14 +119,17 @@ func (api *API) handleGetScenarioIterations() http.HandlerFunc {
 }
 
 type CreateScenarioIterationBody struct {
-	TriggerCondition     json.RawMessage                      `json:"triggerCondition"`
-	Rules                []PostScenarioIterationRuleInputBody `json:"rules"`
-	ScoreReviewThreshold int                                  `json:"scoreReviewThreshold"`
-	ScoreRejectThreshold int                                  `json:"scoreRejectThreshold"`
+	ScenarioID string `json:"scenarioId"`
+	Body       *struct {
+		TriggerCondition     *json.RawMessage                     `json:"triggerCondition,omitempty"`
+		Rules                []PostScenarioIterationRuleInputBody `json:"rules"`
+		ScoreReviewThreshold *int                                 `json:"scoreReviewThreshold,omitempty"`
+		ScoreRejectThreshold *int                                 `json:"scoreRejectThreshold,omitempty"`
+	} `json:"body,omitempty"`
 }
 
-type CreateScenarioIterationInput struct {
-	Body CreateScenarioIterationBody `json:"body"`
+type PostScenarioIteration struct {
+	Body *CreateScenarioIterationBody `in:"body=json"`
 }
 
 func (api *API) handlePostScenarioIteration() http.HandlerFunc {
@@ -127,42 +141,42 @@ func (api *API) handlePostScenarioIteration() http.HandlerFunc {
 			http.Error(w, "", http.StatusUnauthorized)
 			return
 		}
-		scenarioID := chi.URLParam(r, "scenarioID")
 
-		requestData := &CreateScenarioIterationInput{}
-		err = json.NewDecoder(r.Body).Decode(requestData)
-		if err != nil {
-			http.Error(w, fmt.Errorf("could not parse input JSON: %w", err).Error(), http.StatusUnprocessableEntity)
-			return
-		}
-
-		triggerCondition, err := operators.UnmarshalOperatorBool(requestData.Body.TriggerCondition)
-		if err != nil {
-			http.Error(w, fmt.Errorf("could not unmarshal trigger condition: %w", err).Error(), http.StatusUnprocessableEntity)
-			return
-		}
+		input := ctx.Value(httpin.Input).(*PostScenarioIteration)
 
 		createScenarioIterationInput := app.CreateScenarioIterationInput{
-			ScenarioID: scenarioID,
-			Body: app.CreateScenarioIterationBody{
-				TriggerCondition:     triggerCondition,
-				ScoreReviewThreshold: requestData.Body.ScoreReviewThreshold,
-				ScoreRejectThreshold: requestData.Body.ScoreRejectThreshold,
-				Rules:                make([]app.CreateRuleInput, len(requestData.Body.Rules)),
-			},
+			ScenarioID: input.Body.ScenarioID,
 		}
-		for i, rule := range requestData.Body.Rules {
-			formula, err := operators.UnmarshalOperatorBool(rule.Formula)
-			if err != nil {
-				http.Error(w, fmt.Errorf("could not unmarshal formula: %w", err).Error(), http.StatusUnprocessableEntity)
-				return
+
+		if input.Body.Body != nil {
+			createScenarioIterationInput.Body = &app.CreateScenarioIterationBody{
+				ScoreReviewThreshold: input.Body.Body.ScoreReviewThreshold,
+				ScoreRejectThreshold: input.Body.Body.ScoreRejectThreshold,
+				Rules:                make([]app.CreateRuleInput, len(input.Body.Body.Rules)),
 			}
-			createScenarioIterationInput.Body.Rules[i] = app.CreateRuleInput{
-				DisplayOrder:  rule.DisplayOrder,
-				Name:          rule.Name,
-				Description:   rule.Description,
-				Formula:       formula,
-				ScoreModifier: rule.ScoreModifier,
+
+			for i, rule := range input.Body.Body.Rules {
+				formula, err := operators.UnmarshalOperatorBool(rule.Formula)
+				if err != nil {
+					http.Error(w, fmt.Errorf("could not unmarshal formula: %w", err).Error(), http.StatusUnprocessableEntity)
+					return
+				}
+				createScenarioIterationInput.Body.Rules[i] = app.CreateRuleInput{
+					DisplayOrder:  rule.DisplayOrder,
+					Name:          rule.Name,
+					Description:   rule.Description,
+					Formula:       formula,
+					ScoreModifier: rule.ScoreModifier,
+				}
+			}
+
+			if input.Body.Body.TriggerCondition != nil {
+				triggerCondition, err := operators.UnmarshalOperatorBool(*input.Body.Body.TriggerCondition)
+				if err != nil {
+					http.Error(w, fmt.Errorf("could not unmarshal trigger condition: %w", err).Error(), http.StatusUnprocessableEntity)
+					return
+				}
+				createScenarioIterationInput.Body.TriggerCondition = triggerCondition
 			}
 		}
 
@@ -187,6 +201,10 @@ func (api *API) handlePostScenarioIteration() http.HandlerFunc {
 	}
 }
 
+type GetScenarioIterationInput struct {
+	ScenarioIterationID string `in:"path=scenarioIterationID"`
+}
+
 func (api *API) handleGetScenarioIteration() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -196,12 +214,13 @@ func (api *API) handleGetScenarioIteration() http.HandlerFunc {
 			http.Error(w, "", http.StatusUnauthorized)
 			return
 		}
-		scenarioIterationID := chi.URLParam(r, "scenarioIterationID")
 
-		si, err := api.app.GetScenarioIteration(ctx, orgID, scenarioIterationID)
+		input := ctx.Value(httpin.Input).(*GetScenarioIterationInput)
+
+		si, err := api.app.GetScenarioIteration(ctx, orgID, input.ScenarioIterationID)
 		if err != nil {
 			// Could not execute request
-			http.Error(w, fmt.Errorf("error getting scenarioIterationID(id: %s): %w", scenarioIterationID, err).Error(), http.StatusInternalServerError)
+			http.Error(w, fmt.Errorf("error getting scenarioIterationID(id: %s): %w", input.ScenarioIterationID, err).Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -219,12 +238,17 @@ func (api *API) handleGetScenarioIteration() http.HandlerFunc {
 	}
 }
 
-type UpdateScenarioIterationInput struct {
+type UpdateScenarioIterationBody struct {
 	Body *struct {
 		TriggerCondition     *json.RawMessage `json:"triggerCondition,omitempty"`
 		ScoreReviewThreshold *int             `json:"scoreReviewThreshold,omitempty"`
 		ScoreRejectThreshold *int             `json:"scoreRejectThreshold,omitempty"`
-	} `json:"body,omitempty"`
+	} `json:"body,omtiempty"`
+}
+
+type PutScenarioIterationInput struct {
+	ScenarioIterationID string                       `in:"path=scenarioIterationID"`
+	Body                *UpdateScenarioIterationBody `in:"body=json"`
 }
 
 func (api *API) handlePutScenarioIteration() http.HandlerFunc {
@@ -236,35 +260,29 @@ func (api *API) handlePutScenarioIteration() http.HandlerFunc {
 			http.Error(w, "", http.StatusUnauthorized)
 			return
 		}
-		scenarioIterationID := chi.URLParam(r, "scenarioIterationID")
 
-		requestData := &UpdateScenarioIterationInput{}
-		err = json.NewDecoder(r.Body).Decode(requestData)
-		if err != nil {
-			http.Error(w, fmt.Errorf("could not parse input JSON: %w", err).Error(), http.StatusUnprocessableEntity)
-			return
-		}
+		input := ctx.Value(httpin.Input).(*PutScenarioIterationInput)
 
-		if requestData.Body == nil {
+		if input.Body.Body == nil {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 
 		updateScenarioIterationInput := app.UpdateScenarioIterationInput{
-			ID: scenarioIterationID,
+			ID: input.ScenarioIterationID,
 			Body: &app.UpdateScenarioIterationBody{
-				ScoreReviewThreshold: requestData.Body.ScoreReviewThreshold,
-				ScoreRejectThreshold: requestData.Body.ScoreRejectThreshold,
+				ScoreReviewThreshold: input.Body.Body.ScoreReviewThreshold,
+				ScoreRejectThreshold: input.Body.Body.ScoreRejectThreshold,
 			},
 		}
 
-		if requestData.Body.TriggerCondition != nil {
-			triggerCondition, err := operators.UnmarshalOperatorBool(*requestData.Body.TriggerCondition)
+		if input.Body.Body.TriggerCondition != nil {
+			triggerCondition, err := operators.UnmarshalOperatorBool(*input.Body.Body.TriggerCondition)
 			if err != nil {
 				http.Error(w, fmt.Errorf("could not unmarshal triggerCondition: %w", err).Error(), http.StatusUnprocessableEntity)
 				return
 			}
-			updateScenarioIterationInput.Body.TriggerCondition = &triggerCondition
+			updateScenarioIterationInput.Body.TriggerCondition = triggerCondition
 		}
 
 		updatedSI, err := api.app.UpdateScenarioIteration(ctx, orgID, updateScenarioIterationInput)

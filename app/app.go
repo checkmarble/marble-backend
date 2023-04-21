@@ -18,7 +18,7 @@ type RepositoryInterface interface {
 	UpdateScenario(ctx context.Context, orgID string, scenario UpdateScenarioInput) (Scenario, error)
 	PostScenario(ctx context.Context, orgID string, scenario CreateScenarioInput) (Scenario, error)
 	GetScenarios(ctx context.Context, orgID string) ([]Scenario, error)
-	GetScenarioIterations(ctx context.Context, orgID string, scenarioID string) ([]ScenarioIteration, error)
+	GetScenarioIterations(ctx context.Context, orgID string, filters GetScenarioIterationFilters) ([]ScenarioIteration, error)
 	CreateScenarioIteration(ctx context.Context, orgID string, scenarioIteration CreateScenarioIterationInput) (ScenarioIteration, error)
 	GetScenarioIteration(ctx context.Context, orgID string, scenarioIterationID string) (ScenarioIteration, error)
 	UpdateScenarioIteration(ctx context.Context, orgID string, scenarioIteration UpdateScenarioIterationInput) (ScenarioIteration, error)

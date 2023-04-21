@@ -2,8 +2,8 @@ package app
 
 import "context"
 
-func (app *App) GetScenarioIterations(ctx context.Context, organizationID string, scenarioID string) ([]ScenarioIteration, error) {
-	return app.repository.GetScenarioIterations(ctx, organizationID, scenarioID)
+func (app *App) GetScenarioIterations(ctx context.Context, organizationID string, filters GetScenarioIterationFilters) ([]ScenarioIteration, error) {
+	return app.repository.GetScenarioIterations(ctx, organizationID, filters)
 }
 
 func (app *App) CreateScenarioIteration(ctx context.Context, organizationID string, scenarioIteration CreateScenarioIterationInput) (ScenarioIteration, error) {

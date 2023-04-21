@@ -6,6 +6,7 @@ import (
 
 	"marble/marble-backend/app"
 	"marble/marble-backend/app/operators"
+	"marble/marble-backend/utils"
 )
 
 func (r *PGRepository) Seed() {
@@ -125,10 +126,10 @@ func (r *PGRepository) Seed() {
 
 	createScenarioIterationInput := app.CreateScenarioIterationInput{
 		ScenarioID: scenario.ID,
-		Body: app.CreateScenarioIterationBody{
+		Body: &app.CreateScenarioIterationBody{
 			TriggerCondition:     &operators.True{},
-			ScoreReviewThreshold: 10,
-			ScoreRejectThreshold: 30,
+			ScoreReviewThreshold: utils.Ptr(10),
+			ScoreRejectThreshold: utils.Ptr(30),
 			Rules: []app.CreateRuleInput{
 				{
 					Formula:       &operators.True{},

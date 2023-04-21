@@ -21,13 +21,14 @@ type ScenarioIterationRuleAppInterface interface {
 }
 
 type APIScenarioIterationRule struct {
-	ID            string          `json:"id"`
-	DisplayOrder  int             `json:"displayOrder"`
-	Name          string          `json:"name"`
-	Description   string          `json:"description"`
-	Formula       json.RawMessage `json:"formula"`
-	ScoreModifier int             `json:"scoreModifier"`
-	CreatedAt     time.Time       `json:"createdAt"`
+	ID                  string          `json:"id"`
+	ScenarioIterationID string          `json:"scenarioIterationId"`
+	DisplayOrder        int             `json:"displayOrder"`
+	Name                string          `json:"name"`
+	Description         string          `json:"description"`
+	Formula             json.RawMessage `json:"formula"`
+	ScoreModifier       int             `json:"scoreModifier"`
+	CreatedAt           time.Time       `json:"createdAt"`
 }
 
 func NewAPIScenarioIterationRule(rule app.Rule) (APIScenarioIterationRule, error) {
@@ -37,18 +38,19 @@ func NewAPIScenarioIterationRule(rule app.Rule) (APIScenarioIterationRule, error
 	}
 
 	return APIScenarioIterationRule{
-		ID:            rule.ID,
-		DisplayOrder:  rule.DisplayOrder,
-		Name:          rule.Name,
-		Description:   rule.Description,
-		Formula:       formula,
-		ScoreModifier: rule.ScoreModifier,
-		CreatedAt:     rule.CreatedAt,
+		ID:                  rule.ID,
+		ScenarioIterationID: rule.ScenarioIterationID,
+		DisplayOrder:        rule.DisplayOrder,
+		Name:                rule.Name,
+		Description:         rule.Description,
+		Formula:             formula,
+		ScoreModifier:       rule.ScoreModifier,
+		CreatedAt:           rule.CreatedAt,
 	}, nil
 }
 
 type GetScenarioIterationRulesInput struct {
-	ScenarioIterationID string `in:"query=scenarioIterationID"`
+	ScenarioIterationID string `in:"query=scenarioIterationId"`
 }
 
 func (api *API) handleGetScenarioIterationRules() http.HandlerFunc {
