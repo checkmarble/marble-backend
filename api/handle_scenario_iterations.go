@@ -108,10 +108,10 @@ func (api *API) handleGetScenarioIterations() http.HandlerFunc {
 }
 
 type CreateScenarioIterationBody struct {
-	TriggerCondition     json.RawMessage                    `json:"triggerCondition"`
-	Rules                []CreateScenarioIterationRuleInput `json:"rules"`
-	ScoreReviewThreshold int                                `json:"scoreReviewThreshold"`
-	ScoreRejectThreshold int                                `json:"scoreRejectThreshold"`
+	TriggerCondition     json.RawMessage                      `json:"triggerCondition"`
+	Rules                []PostScenarioIterationRuleInputBody `json:"rules"`
+	ScoreReviewThreshold int                                  `json:"scoreReviewThreshold"`
+	ScoreRejectThreshold int                                  `json:"scoreRejectThreshold"`
 }
 
 type CreateScenarioIterationInput struct {

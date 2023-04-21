@@ -2,8 +2,8 @@ package app
 
 import "context"
 
-func (app *App) GetScenarioIterationRules(ctx context.Context, organizationID string, scenarioIterationID string) ([]Rule, error) {
-	return app.repository.GetScenarioIterationRules(ctx, organizationID, scenarioIterationID)
+func (app *App) GetScenarioIterationRules(ctx context.Context, organizationID string, filters GetScenarioIterationRulesFilters) ([]Rule, error) {
+	return app.repository.GetScenarioIterationRules(ctx, organizationID, filters)
 }
 
 func (app *App) CreateScenarioIterationRule(ctx context.Context, organizationID string, rule CreateRuleInput) (Rule, error) {

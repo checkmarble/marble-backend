@@ -20,6 +20,10 @@ type Rule struct {
 	CreatedAt     time.Time
 }
 
+type GetScenarioIterationRulesFilters struct {
+	ScenarioIterationID *string
+}
+
 type CreateRuleInput struct {
 	ScenarioIterationID string
 	DisplayOrder        int

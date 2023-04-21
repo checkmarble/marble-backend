@@ -9,6 +9,7 @@ import (
 	"marble/marble-backend/app/operators"
 	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -70,12 +71,18 @@ func (r *PGRepository) GetScenarioIterationRule(ctx context.Context, orgID strin
 	return ruleDTO, err
 }
 
-func (r *PGRepository) GetScenarioIterationRules(ctx context.Context, orgID string, scenarioIterationID string) ([]app.Rule, error) {
+type GetScenarioPublicationsFilters struct {
+	ScenarioIterationID *string `db:"scenario_iteration_id"`
+}
+
+func (r *PGRepository) GetScenarioIterationRules(ctx context.Context, orgID string, filters app.GetScenarioIterationRulesFilters) ([]app.Rule, error) {
 	sql, args, err := r.queryBuilder.
 		Select("*").
 		From("scenario_iteration_rules").
 		Where("org_id = ?", orgID).
-		Where("scenario_iteration_id= ?", scenarioIterationID).
+		Where(squirrel.Eq(columnValueMap(GetScenarioPublicationsFilters{
+			ScenarioIterationID: filters.ScenarioIterationID,
+		}))).
 		ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("unable to build rule query: %w", err)

@@ -22,7 +22,7 @@ type RepositoryInterface interface {
 	CreateScenarioIteration(ctx context.Context, orgID string, scenarioIteration CreateScenarioIterationInput) (ScenarioIteration, error)
 	GetScenarioIteration(ctx context.Context, orgID string, scenarioIterationID string) (ScenarioIteration, error)
 	UpdateScenarioIteration(ctx context.Context, orgID string, scenarioIteration UpdateScenarioIterationInput) (ScenarioIteration, error)
-	GetScenarioIterationRules(ctx context.Context, orgID string, scenarioIterationID string) ([]Rule, error)
+	GetScenarioIterationRules(ctx context.Context, orgID string, filters GetScenarioIterationRulesFilters) ([]Rule, error)
 	CreateScenarioIterationRule(ctx context.Context, orgID string, rule CreateRuleInput) (Rule, error)
 	GetScenarioIterationRule(ctx context.Context, orgID string, ruleID string) (Rule, error)
 	UpdateScenarioIterationRule(ctx context.Context, orgID string, rule UpdateRuleInput) (Rule, error)

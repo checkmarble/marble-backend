@@ -62,8 +62,8 @@ func (api *API) handleGetScenarioPublications() http.HandlerFunc {
 
 		options := &utils.PtrToOptions{OmitZero: true}
 		scenarioPublications, err := api.app.ReadScenarioPublications(ctx, orgID, app.ReadScenarioPublicationsFilters{
-			ScenarioID: utils.PtrTo(input.ScenarioID, options),
 			// UserID:              utils.PtrTo(input.UserID,, options),
+			ScenarioID:          utils.PtrTo(input.ScenarioID, options),
 			ScenarioIterationID: utils.PtrTo(input.ScenarioIterationID, options),
 			PublicationAction:   utils.PtrTo(input.PublicationAction, options),
 		})
