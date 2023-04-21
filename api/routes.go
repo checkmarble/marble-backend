@@ -72,10 +72,10 @@ func (api *API) routes() {
 		})
 
 		r.Route("/scenario-publications", func(r chi.Router) {
-			r.With(
-				httpin.NewInput(GetScenarioPublicationsInput{}),
-			).Get("/", api.handleGetScenarioPublications())
-			r.Post("/", api.handlePostScenarioPublication())
+			r.With(httpin.NewInput(GetScenarioPublicationsInput{})).
+				Get("/", api.handleGetScenarioPublications())
+			r.With(httpin.NewInput(PostScenarioPublicationInput{})).
+				Post("/", api.handlePostScenarioPublication())
 		})
 	})
 

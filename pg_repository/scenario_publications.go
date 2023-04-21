@@ -163,6 +163,8 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 		if err != nil {
 			return nil, fmt.Errorf("unable to unpublish scenario(id: %s): %w", sp.ScenarioID, err)
 		}
+	default:
+		return nil, fmt.Errorf("unknown publication action")
 	}
 
 	tx.Commit(ctx)

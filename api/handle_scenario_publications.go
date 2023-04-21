@@ -87,11 +87,15 @@ func (api *API) handleGetScenarioPublications() http.HandlerFunc {
 	}
 }
 
-type PostScenarioPublicationInput struct {
+type PostScenarioPublicationBody struct {
 	// UserID              string    `json:"userID"`
 	ScenarioID          string `json:"scenarioID"`
 	ScenarioIterationID string `json:"scenarioIterationID"`
 	PublicationAction   string `json:"publicationAction"`
+}
+
+type PostScenarioPublicationInput struct {
+	Body *PostScenarioPublicationBody `in:"body=json"`
 }
 
 func (api *API) handlePostScenarioPublication() http.HandlerFunc {
@@ -104,18 +108,13 @@ func (api *API) handlePostScenarioPublication() http.HandlerFunc {
 			return
 		}
 
-		requestData := &PostScenarioPublicationInput{}
-		err = json.NewDecoder(r.Body).Decode(requestData)
-		if err != nil {
-			http.Error(w, fmt.Errorf("could not parse input JSON: %w", err).Error(), http.StatusUnprocessableEntity)
-			return
-		}
+		input := ctx.Value(httpin.Input).(*PostScenarioPublicationInput)
 
 		scenarioPublications, err := api.app.CreateScenarioPublication(ctx, orgID, app.CreateScenarioPublicationInput{
-			// UserID: requestData.UserID,
-			ScenarioID:          requestData.ScenarioID,
-			ScenarioIterationID: requestData.ScenarioIterationID,
-			PublicationAction:   app.PublicationActionFrom(requestData.PublicationAction),
+			// UserID: input.Body.UserID,
+			ScenarioID:          input.Body.ScenarioID,
+			ScenarioIterationID: input.Body.ScenarioIterationID,
+			PublicationAction:   app.PublicationActionFrom(input.Body.PublicationAction),
 		})
 		if err != nil {
 			// Could not execute request
