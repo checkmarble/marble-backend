@@ -15,6 +15,7 @@ func (api *API) routes() {
 	apiOnlyMdw := map[TokenType]Role{ApiToken: ADMIN}
 	readerOnlyMdw := map[TokenType]Role{UserToken: READER}
 	builderMdw := map[TokenType]Role{UserToken: BUILDER}
+	publisherMdw := map[TokenType]Role{UserToken: PUBLISHER}
 
 	api.router.Post("/token", api.handleGetAccessToken())
 
@@ -90,7 +91,7 @@ func (api *API) routes() {
 			scenarPublicationsRouter.With(httpin.NewInput(ListScenarioPublicationsInput{})).
 				Get("/", api.ListScenarioPublications())
 			scenarPublicationsRouter.With(httpin.NewInput(CreateScenarioPublicationInput{})).
-				With(api.authMiddlewareFactory(builderMdw)).
+				With(api.authMiddlewareFactory(publisherMdw)).
 				Post("/", api.CreateScenarioPublication())
 
 			scenarPublicationsRouter.Route("/{scenarioPublicationID:"+UUIDRegExp+"}", func(r chi.Router) {
