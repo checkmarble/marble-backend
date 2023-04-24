@@ -11,105 +11,116 @@ import (
 // RegExp that matches UUIDv4 format
 const UUIDRegExp = "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}"
 
-func init() {
-	httpin.UseGochiURLParam("path", chi.URLParam)
-}
-
 func (api *API) routes() {
+	apiOnlyMdw := map[TokenType]Role{ApiToken: ADMIN}
+	readerOnlyMdw := map[TokenType]Role{UserToken: READER}
+	builderMdw := map[TokenType]Role{UserToken: BUILDER}
+	publisherMdw := map[TokenType]Role{UserToken: PUBLISHER}
 
-	// Decision API subrouter
-	// matches all /decisions routes
-	api.router.Route("/decisions", func(r chi.Router) {
-		// use authentication middleware
+	api.router.Post("/token", api.handleGetAccessToken())
 
-		r.Use(api.authCtx)
+	api.router.With(api.jwtValidator).Group(func(authedRouter chi.Router) {
+		// Everything other than getting a token is protected by JWT
 
-		r.Post("/", api.handlePostDecision())
-		r.Get("/{decisionID:"+UUIDRegExp+"}", api.handleGetDecision())
-	})
+		// Decision API subrouter
+		// matches all /decisions routes
+		authedRouter.Route("/decisions", func(decisionsRouter chi.Router) {
 
-	api.router.Route("/ingestion", func(r chi.Router) {
-		// use authentication middleware
-		r.Use(api.authCtx)
+			apiAndReaderUserMdw := map[TokenType]Role{ApiToken: ADMIN, UserToken: READER}
 
-		r.Post("/{object_type}", api.handleIngestion())
-	})
+			decisionsRouter.Use(api.authMiddlewareFactory(apiAndReaderUserMdw))
+			decisionsRouter.Get("/{decisionID:"+UUIDRegExp+"}", api.handleGetDecision())
+			decisionsRouter.With(api.authMiddlewareFactory(apiOnlyMdw)).Post("/", api.handlePostDecision())
+		})
 
-	// Group all front endpoints
-	api.router.Group(func(r chi.Router) {
-		// use authentication middleware
-		r.Use(api.authCtx)
+		authedRouter.Route("/ingestion", func(r chi.Router) {
+			r.Use(api.authMiddlewareFactory(apiOnlyMdw))
+			r.Post("/{object_type}", api.handleIngestion())
+		})
 
-		r.Route("/scenarios", func(r chi.Router) {
-			r.Get("/", api.ListScenarios())
-			r.With(httpin.NewInput(CreateScenarioInput{})).
+		authedRouter.Route("/scenarios", func(scenariosRouter chi.Router) {
+			scenariosRouter.Use(api.authMiddlewareFactory(readerOnlyMdw))
+
+			scenariosRouter.Get("/", api.ListScenarios())
+			scenariosRouter.With(api.authMiddlewareFactory(builderMdw)).
+				With(httpin.NewInput(CreateScenarioInput{})).
 				Post("/", api.CreateScenario())
 
-			r.Route("/{scenarioID:"+UUIDRegExp+"}", func(r chi.Router) {
+			scenariosRouter.Route("/{scenarioID:"+UUIDRegExp+"}", func(r chi.Router) {
 				r.With(httpin.NewInput(GetScenarioInput{})).
 					Get("/", api.GetScenario())
 				r.With(httpin.NewInput(UpdateScenarioInput{})).
 					Put("/", api.UpdateScenario())
 			})
+
 		})
 
-		r.Route("/scenario-iterations", func(r chi.Router) {
-			r.With(httpin.NewInput(ListScenarioIterationsInput{})).
+		authedRouter.Route("/scenario-iterations", func(scenarIterRouter chi.Router) {
+			scenarIterRouter.With(httpin.NewInput(ListScenarioIterationsInput{})).
 				Get("/", api.ListScenarioIterations())
-			r.With(httpin.NewInput(CreateScenarioIterationInput{})).
+			scenarIterRouter.With(httpin.NewInput(CreateScenarioIterationInput{})).
+				With(api.authMiddlewareFactory(builderMdw)).
 				Post("/", api.CreateScenarioIteration())
 
-			r.Route("/{scenarioIterationID:"+UUIDRegExp+"}", func(r chi.Router) {
+			scenarIterRouter.Route("/{scenarioIterationID:"+UUIDRegExp+"}", func(r chi.Router) {
 				r.With(httpin.NewInput(GetScenarioIterationInput{})).
 					Get("/", api.GetScenarioIteration())
 				r.With(httpin.NewInput(UpdateScenarioIterationInput{})).
+					With(api.authMiddlewareFactory(builderMdw)).
 					Put("/", api.UpdateScenarioIteration())
 			})
 		})
 
-		r.Route("/scenario-iteration-rules", func(r chi.Router) {
-			r.With(httpin.NewInput(ListScenarioIterationRulesInput{})).
+		authedRouter.Route("/scenario-iteration-rules", func(scenarIterRulesRouter chi.Router) {
+			scenarIterRulesRouter.With(httpin.NewInput(ListScenarioIterationRulesInput{})).
 				Get("/", api.ListScenarioIterationRules())
-			r.With(httpin.NewInput(CreateScenarioIterationRuleInput{})).
+			scenarIterRulesRouter.With(httpin.NewInput(CreateScenarioIterationRuleInput{})).
+				With(api.authMiddlewareFactory(builderMdw)).
 				Post("/", api.CreateScenarioIterationRule())
 
-			r.Route("/{ruleID:"+UUIDRegExp+"}", func(r chi.Router) {
+			scenarIterRulesRouter.Route("/{ruleID:"+UUIDRegExp+"}", func(r chi.Router) {
 				r.With(httpin.NewInput(GetScenarioIterationRuleInput{})).
 					Get("/", api.GetScenarioIterationRule())
 				r.With(httpin.NewInput(UpdateScenarioIterationRuleInput{})).
+					With(api.authMiddlewareFactory(builderMdw)).
 					Put("/", api.UpdateScenarioIterationRule())
 			})
 		})
 
-		r.Route("/scenario-publications", func(r chi.Router) {
-			r.With(httpin.NewInput(ListScenarioPublicationsInput{})).
+		authedRouter.Route("/scenario-publications", func(scenarPublicationsRouter chi.Router) {
+			scenarPublicationsRouter.With(httpin.NewInput(ListScenarioPublicationsInput{})).
 				Get("/", api.ListScenarioPublications())
-			r.With(httpin.NewInput(CreateScenarioPublicationInput{})).
+			scenarPublicationsRouter.With(httpin.NewInput(CreateScenarioPublicationInput{})).
+				With(api.authMiddlewareFactory(publisherMdw)).
 				Post("/", api.CreateScenarioPublication())
 
-			r.Route("/{scenarioPublicationID:"+UUIDRegExp+"}", func(r chi.Router) {
+			scenarPublicationsRouter.Route("/{scenarioPublicationID:"+UUIDRegExp+"}", func(r chi.Router) {
 				r.With(httpin.NewInput(GetScenarioPublicationInput{})).
 					Get("/", api.GetScenarioPublication())
 			})
 		})
-	})
 
-	// Group all admin endpoints
-	api.router.Group(func(r chi.Router) {
-		//TODO(admin): add middleware for admin auth
-		// r.Use(a.adminAuthCtx)
+		// Group all admin endpoints
+		authedRouter.Group(func(routerAdmin chi.Router) {
+			//TODO(admin): add middleware for admin auth
+			// r.Use(api.adminAuthCtx)
 
-		api.router.Route("/organizations", func(r chi.Router) {
-			r.Get("/", api.handleGetOrganizations())
-			r.Post("/", api.handlePostOrganization())
+			routerAdmin.Route("/organizations", func(r chi.Router) {
+				r.Get("/", api.handleGetOrganizations())
+				r.Post("/", api.handlePostOrganization())
 
-			r.Route("/{orgID:"+UUIDRegExp+"}", func(r chi.Router) {
-				r.Get("/", api.handleGetOrganization())
-				r.Put("/", api.handlePutOrganization())
-				r.Delete("/", api.handleDeleteOrganization())
+				r.Route("/{orgID:"+UUIDRegExp+"}", func(r chi.Router) {
+					r.Get("/", api.handleGetOrganization())
+					r.Put("/", api.handlePutOrganization())
+					r.Delete("/", api.handleDeleteOrganization())
+				})
 			})
 		})
 	})
+}
+
+func init() {
+	httpin.UseGochiURLParam("path", chi.URLParam)
 }
 
 func (api *API) displayRoutes() {

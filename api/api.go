@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"crypto/rsa"
 	"fmt"
 	"net/http"
 	"time"
@@ -15,8 +16,13 @@ import (
 type API struct {
 	app AppInterface
 
-	port   string
-	router *chi.Mux
+	port                  string
+	router                *chi.Mux
+	signingSecretAccessor SigningSecretReader
+}
+
+type SigningSecretReader interface {
+	ReadSigningSecrets(ctx context.Context) (*rsa.PrivateKey, *rsa.PublicKey, error)
 }
 
 type AppInterface interface {
@@ -55,8 +61,9 @@ func New(port string, a AppInterface) (*http.Server, error) {
 	s := &API{
 		app: a,
 
-		port:   port,
-		router: r,
+		port:                  port,
+		router:                r,
+		signingSecretAccessor: &signingSecretAccessorImpl{},
 	}
 
 	// Setup the routes
