@@ -10,15 +10,13 @@ type App struct {
 }
 
 type RepositoryInterface interface {
+	RepositoryScenarioInterface
+	RepositoryScenarioItertionInterface
+	RepositoryScenarioItertionRuleInterface
+	RepositoryScenarioPublicationInterface
 
 	// Data models & scenarios
 	GetDataModel(ctx context.Context, orgID string) (DataModel, error)
-	GetScenario(ctx context.Context, orgID string, scenarioID string) (Scenario, error)
-	PostScenario(ctx context.Context, orgID string, scenario CreateScenarioInput) (Scenario, error)
-	GetScenarios(ctx context.Context, orgID string) ([]Scenario, error)
-	GetScenarioIterations(ctx context.Context, orgID string, scenarioID string) ([]ScenarioIteration, error)
-	CreateScenarioIteration(ctx context.Context, orgID string, scenarioIteration CreateScenarioIterationInput) (ScenarioIteration, error)
-	GetScenarioIteration(ctx context.Context, orgID string, scenarioIterationID string) (ScenarioIteration, error)
 
 	// token validation
 	GetOrganizationIDFromToken(ctx context.Context, token string) (orgID string, err error)

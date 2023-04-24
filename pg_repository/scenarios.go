@@ -33,7 +33,7 @@ func (s *dbScenario) dto() app.Scenario {
 	}
 }
 
-func (r *PGRepository) GetScenarios(ctx context.Context, orgID string) ([]app.Scenario, error) {
+func (r *PGRepository) ListScenarios(ctx context.Context, orgID string) ([]app.Scenario, error) {
 	sql, args, err := r.queryBuilder.
 		Select("*").
 		From("scenarios").
@@ -88,7 +88,7 @@ func (r *PGRepository) GetScenario(ctx context.Context, orgID string, scenarioID
 	return scenarioDTO, err
 }
 
-func (r *PGRepository) PostScenario(ctx context.Context, orgID string, scenario app.CreateScenarioInput) (app.Scenario, error) {
+func (r *PGRepository) CreateScenario(ctx context.Context, orgID string, scenario app.CreateScenarioInput) (app.Scenario, error) {
 	sql, args, err := r.queryBuilder.
 		Insert("scenarios").
 		Columns(
@@ -117,12 +117,43 @@ func (r *PGRepository) PostScenario(ctx context.Context, orgID string, scenario 
 	return createdScenario.dto(), err
 }
 
-func (r *PGRepository) PublishScenarioIteration(ctx context.Context, orgID string, scenarioIterationID string) error {
+type dbUpdateScenarioInput struct {
+	Name        *string `db:"name"`
+	Description *string `db:"description"`
+}
+
+func (r *PGRepository) UpdateScenario(ctx context.Context, orgID string, scenario app.UpdateScenarioInput) (app.Scenario, error) {
+	sql, args, err := r.queryBuilder.
+		Update("scenarios").
+		SetMap(columnValueMap(dbUpdateScenarioInput{
+			Name:        scenario.Name,
+			Description: scenario.Description,
+		})).
+		Where("id = ?", scenario.ID).
+		Where("org_id = ?", orgID).
+		Suffix("RETURNING *").ToSql()
+	if err != nil {
+		return app.Scenario{}, fmt.Errorf("unable to build scenario query: %w", err)
+	}
+
+	rows, _ := r.db.Query(ctx, sql, args...)
+	updatedScenario, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenario])
+	if errors.Is(err, pgx.ErrNoRows) {
+		return app.Scenario{}, app.ErrNotFoundInRepository
+	} else if err != nil {
+		return app.Scenario{}, fmt.Errorf("unable to update scenario(id: %s): %w", scenario.ID, err)
+	}
+
+	return updatedScenario.dto(), nil
+}
+
+func (r *PGRepository) publishScenarioIteration(ctx context.Context, tx pgx.Tx, orgID string, scenarioIterationID string) error {
 	sql, args, err := r.queryBuilder.
 		Update("scenarios").
 		Set("live_scenario_iteration_id", scenarioIterationID).
 		From("scenario_iterations si").
 		Where("si.id = ?", scenarioIterationID).
+		Where("si.org_id = ?", orgID).
 		Where("scenarios.id = si.scenario_id").
 		ToSql()
 
@@ -130,7 +161,7 @@ func (r *PGRepository) PublishScenarioIteration(ctx context.Context, orgID strin
 		return fmt.Errorf("unable to build query: %w", err)
 	}
 
-	_, err = r.db.Exec(ctx, sql, args...)
+	_, err = tx.Exec(ctx, sql, args...)
 	if err != nil {
 		return fmt.Errorf("unable to run query: %w", err)
 	}
@@ -138,7 +169,7 @@ func (r *PGRepository) PublishScenarioIteration(ctx context.Context, orgID strin
 	return nil
 }
 
-func (r *PGRepository) UnpublishScenarioIteration(ctx context.Context, orgID string, scenarioID string) error {
+func (r *PGRepository) unpublishScenarioIteration(ctx context.Context, tx pgx.Tx, orgID string, scenarioID string) error {
 	sql, args, err := r.queryBuilder.
 		Update("scenarios").
 		Set("live_scenario_iteration_id", nil).
@@ -150,7 +181,7 @@ func (r *PGRepository) UnpublishScenarioIteration(ctx context.Context, orgID str
 		return fmt.Errorf("unable to build query: %w", err)
 	}
 
-	_, err = r.db.Exec(ctx, sql, args...)
+	_, err = tx.Exec(ctx, sql, args...)
 	if err != nil {
 		return fmt.Errorf("unable to run query: %w", err)
 	}

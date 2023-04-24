@@ -6,6 +6,7 @@ import (
 
 	"marble/marble-backend/app"
 	"marble/marble-backend/app/operators"
+	"marble/marble-backend/utils"
 )
 
 func (r *PGRepository) Seed() {
@@ -118,18 +119,18 @@ func (r *PGRepository) Seed() {
 		Description:       "test description",
 		TriggerObjectType: "tx",
 	}
-	scenario, err := r.PostScenario(context.TODO(), org.ID, createScenarioInput)
+	scenario, err := r.CreateScenario(context.TODO(), org.ID, createScenarioInput)
 	if err != nil {
 		log.Printf("error creating scenario: %v", err)
 	}
 
 	createScenarioIterationInput := app.CreateScenarioIterationInput{
 		ScenarioID: scenario.ID,
-		Body: app.ScenarioIterationBody{
+		Body: &app.CreateScenarioIterationBody{
 			TriggerCondition:     &operators.True{},
-			ScoreReviewThreshold: 10,
-			ScoreRejectThreshold: 30,
-			Rules: []app.Rule{
+			ScoreReviewThreshold: utils.Ptr(10),
+			ScoreRejectThreshold: utils.Ptr(30),
+			Rules: []app.CreateRuleInput{
 				{
 					Formula:       &operators.True{},
 					ScoreModifier: 2,
@@ -162,7 +163,11 @@ func (r *PGRepository) Seed() {
 	if err != nil {
 		log.Printf("error creating scenario iteration: %v", err)
 	}
-	err = r.PublishScenarioIteration(context.TODO(), org.ID, scenarioIteration.ID)
+	_, err = r.CreateScenarioPublication(context.TODO(), org.ID, app.CreateScenarioPublicationInput{
+		ScenarioID:          scenarioIteration.ScenarioID,
+		ScenarioIterationID: scenarioIteration.ID,
+		PublicationAction:   app.Publish,
+	})
 	if err != nil {
 		log.Printf("error publishind scenario iteration: %v", err)
 	}

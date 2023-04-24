@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/ggicci/httpin"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -27,8 +28,8 @@ func (api *API) routes() {
 			apiAndReaderUserMdw := map[TokenType]Role{ApiToken: ADMIN, UserToken: READER}
 
 			decisionsRouter.Use(api.authMiddlewareFactory(apiAndReaderUserMdw))
-			decisionsRouter.Get("/{decisionID:"+UUIDRegExp+"}", api.handleDecisionGet())
-			decisionsRouter.With(api.authMiddlewareFactory(apiOnlyMdw)).Post("/", api.handleDecisionPost())
+			decisionsRouter.Get("/{decisionID:"+UUIDRegExp+"}", api.handleGetDecision())
+			decisionsRouter.With(api.authMiddlewareFactory(apiOnlyMdw)).Post("/", api.handlePostDecision())
 		})
 
 		authedRouter.Route("/ingestion", func(r chi.Router) {
@@ -39,17 +40,63 @@ func (api *API) routes() {
 		authedRouter.Route("/scenarios", func(scenariosRouter chi.Router) {
 			scenariosRouter.Use(api.authMiddlewareFactory(readerOnlyMdw))
 
-			scenariosRouter.Get("/", api.handleGetScenarios())
+			scenariosRouter.Get("/", api.ListScenarios())
+			scenariosRouter.With(api.authMiddlewareFactory(builderMdw)).
+				With(httpin.NewInput(CreateScenarioInput{})).
+				Post("/", api.CreateScenario())
+
 			scenariosRouter.Route("/{scenarioID:"+UUIDRegExp+"}", func(r chi.Router) {
-				r.Get("/", api.handleGetScenario())
-				r.With(api.authMiddlewareFactory(builderMdw)).Post("/", api.handlePostScenarios())
-				r.Route("/iterations", func(r chi.Router) {
-					r.Get("/", api.handleGetScenarioIterations())
-					r.Get("/{scenarioIterationID:"+UUIDRegExp+"}", api.handleGetScenarioIteration())
-					r.With(api.authMiddlewareFactory(builderMdw)).Post("/{scenarioID:"+UUIDRegExp+"}/iterations", api.handlePostScenarioIteration())
-				})
+				r.With(httpin.NewInput(GetScenarioInput{})).
+					Get("/", api.GetScenario())
+				r.With(httpin.NewInput(UpdateScenarioInput{})).
+					Put("/", api.UpdateScenario())
 			})
 
+		})
+
+		authedRouter.Route("/scenario-iterations", func(scenarIterRouter chi.Router) {
+			scenarIterRouter.With(httpin.NewInput(ListScenarioIterationsInput{})).
+				Get("/", api.ListScenarioIterations())
+			scenarIterRouter.With(httpin.NewInput(CreateScenarioIterationInput{})).
+				With(api.authMiddlewareFactory(builderMdw)).
+				Post("/", api.CreateScenarioIteration())
+
+			scenarIterRouter.Route("/{scenarioIterationID:"+UUIDRegExp+"}", func(r chi.Router) {
+				r.With(httpin.NewInput(GetScenarioIterationInput{})).
+					Get("/", api.GetScenarioIteration())
+				r.With(httpin.NewInput(UpdateScenarioIterationInput{})).
+					With(api.authMiddlewareFactory(builderMdw)).
+					Put("/", api.UpdateScenarioIteration())
+			})
+		})
+
+		authedRouter.Route("/scenario-iteration-rules", func(scenarIterRulesRouter chi.Router) {
+			scenarIterRulesRouter.With(httpin.NewInput(ListScenarioIterationRulesInput{})).
+				Get("/", api.ListScenarioIterationRules())
+			scenarIterRulesRouter.With(httpin.NewInput(CreateScenarioIterationRuleInput{})).
+				With(api.authMiddlewareFactory(builderMdw)).
+				Post("/", api.CreateScenarioIterationRule())
+
+			scenarIterRulesRouter.Route("/{ruleID:"+UUIDRegExp+"}", func(r chi.Router) {
+				r.With(httpin.NewInput(GetScenarioIterationRuleInput{})).
+					Get("/", api.GetScenarioIterationRule())
+				r.With(httpin.NewInput(UpdateScenarioIterationRuleInput{})).
+					With(api.authMiddlewareFactory(builderMdw)).
+					Put("/", api.UpdateScenarioIterationRule())
+			})
+		})
+
+		authedRouter.Route("/scenario-publications", func(scenarPublicationsRouter chi.Router) {
+			scenarPublicationsRouter.With(httpin.NewInput(ListScenarioPublicationsInput{})).
+				Get("/", api.ListScenarioPublications())
+			scenarPublicationsRouter.With(httpin.NewInput(CreateScenarioPublicationInput{})).
+				With(api.authMiddlewareFactory(builderMdw)).
+				Post("/", api.CreateScenarioPublication())
+
+			scenarPublicationsRouter.Route("/{scenarioPublicationID:"+UUIDRegExp+"}", func(r chi.Router) {
+				r.With(httpin.NewInput(GetScenarioPublicationInput{})).
+					Get("/", api.GetScenarioPublication())
+			})
 		})
 
 		// Group all admin endpoints
@@ -68,8 +115,11 @@ func (api *API) routes() {
 				})
 			})
 		})
-
 	})
+}
+
+func init() {
+	httpin.UseGochiURLParam("path", chi.URLParam)
 }
 
 func (api *API) displayRoutes() {

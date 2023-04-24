@@ -14,7 +14,7 @@ const (
 	Review
 	Reject
 	None
-	Unknown
+	UnknownOutcome
 )
 
 // Provide a string value for each outcome
@@ -28,7 +28,7 @@ func (o Outcome) String() string {
 		return "reject"
 	case None:
 		return "null"
-	case Unknown:
+	case UnknownOutcome:
 		return "unknown"
 	}
 	return "unknown"
@@ -46,9 +46,9 @@ func OutcomeFrom(s string) Outcome {
 	case "null":
 		return None
 	case "unknown":
-		return Unknown
+		return UnknownOutcome
 	}
-	return Unknown
+	return UnknownOutcome
 }
 
 ///////////////////////////////
@@ -74,10 +74,9 @@ func (d DecisionError) String() string {
 ///////////////////////////////
 
 type Decision struct {
-	ID         string
-	Created_at time.Time
-	Payload    Payload
-
+	ID                  string
+	CreatedAt           time.Time
+	Payload             Payload
 	Outcome             Outcome
 	ScenarioID          string
 	ScenarioName        string
@@ -85,6 +84,5 @@ type Decision struct {
 	ScenarioVersion     int
 	RuleExecutions      []RuleExecution
 	Score               int
-
-	DecisionError DecisionError
+	DecisionError       DecisionError
 }

@@ -3,6 +3,7 @@ package app
 import (
 	"log"
 	"marble/marble-backend/app/operators"
+	"time"
 )
 
 ///////////////////////////////
@@ -10,11 +11,36 @@ import (
 ///////////////////////////////
 
 type Rule struct {
-	DisplayOrder  int
-	Name          string
-	Description   string
-	Formula       operators.OperatorBool
-	ScoreModifier int
+	ID                  string
+	ScenarioIterationID string
+	DisplayOrder        int
+	Name                string
+	Description         string
+	Formula             operators.OperatorBool
+	ScoreModifier       int
+	CreatedAt           time.Time
+}
+
+type GetScenarioIterationRulesFilters struct {
+	ScenarioIterationID *string
+}
+
+type CreateRuleInput struct {
+	ScenarioIterationID string
+	DisplayOrder        int
+	Name                string
+	Description         string
+	Formula             operators.OperatorBool
+	ScoreModifier       int
+}
+
+type UpdateRuleInput struct {
+	ID            string
+	DisplayOrder  *int
+	Name          *string
+	Description   *string
+	Formula       *operators.OperatorBool
+	ScoreModifier *int
 }
 
 ///////////////////////////////

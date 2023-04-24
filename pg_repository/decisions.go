@@ -29,15 +29,14 @@ type dbDecision struct {
 func (d *dbDecision) dto() app.Decision {
 	return app.Decision{
 		ID:                  d.ID,
-		Created_at:          d.CreatedAt,
+		CreatedAt:           d.CreatedAt,
 		Outcome:             app.OutcomeFrom(d.Outcome),
 		ScenarioID:          d.ScenarioID,
 		ScenarioName:        d.ScenarioName,
 		ScenarioDescription: d.ScenarioDescription,
 		ScenarioVersion:     d.ScenarioVersion,
 		Score:               d.Score,
-		// RuleExecutions:      d.RuleExecutions,
-		DecisionError: app.DecisionError(d.ErrorCode),
+		DecisionError:       app.DecisionError(d.ErrorCode),
 	}
 }
 
