@@ -2,8 +2,15 @@ package app
 
 import "context"
 
-func (app *App) GetScenarioIterationRules(ctx context.Context, organizationID string, filters GetScenarioIterationRulesFilters) ([]Rule, error) {
-	return app.repository.GetScenarioIterationRules(ctx, organizationID, filters)
+type RepositoryScenarioItertionRuleInterface interface {
+	ListScenarioIterationRules(ctx context.Context, orgID string, filters GetScenarioIterationRulesFilters) ([]Rule, error)
+	CreateScenarioIterationRule(ctx context.Context, orgID string, rule CreateRuleInput) (Rule, error)
+	GetScenarioIterationRule(ctx context.Context, orgID string, ruleID string) (Rule, error)
+	UpdateScenarioIterationRule(ctx context.Context, orgID string, rule UpdateRuleInput) (Rule, error)
+}
+
+func (app *App) ListScenarioIterationRules(ctx context.Context, organizationID string, filters GetScenarioIterationRulesFilters) ([]Rule, error) {
+	return app.repository.ListScenarioIterationRules(ctx, organizationID, filters)
 }
 
 func (app *App) CreateScenarioIterationRule(ctx context.Context, organizationID string, rule CreateRuleInput) (Rule, error) {

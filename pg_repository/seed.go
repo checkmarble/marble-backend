@@ -119,7 +119,7 @@ func (r *PGRepository) Seed() {
 		Description:       "test description",
 		TriggerObjectType: "tx",
 	}
-	scenario, err := r.PostScenario(context.TODO(), org.ID, createScenarioInput)
+	scenario, err := r.CreateScenario(context.TODO(), org.ID, createScenarioInput)
 	if err != nil {
 		log.Printf("error creating scenario: %v", err)
 	}

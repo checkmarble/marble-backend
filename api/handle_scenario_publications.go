@@ -14,9 +14,9 @@ import (
 )
 
 type ScenarioPublicationAppInterface interface {
-	ReadScenarioPublications(ctx context.Context, orgID string, filters app.ReadScenarioPublicationsFilters) ([]app.ScenarioPublication, error)
+	ListScenarioPublications(ctx context.Context, orgID string, filters app.ListScenarioPublicationsFilters) ([]app.ScenarioPublication, error)
 	CreateScenarioPublication(ctx context.Context, orgID string, sp app.CreateScenarioPublicationInput) ([]app.ScenarioPublication, error)
-	ReadScenarioPublication(ctx context.Context, orgID string, scenarioPublicationID string) (app.ScenarioPublication, error)
+	GetScenarioPublication(ctx context.Context, orgID string, scenarioPublicationID string) (app.ScenarioPublication, error)
 }
 
 type APIScenarioPublication struct {
@@ -41,14 +41,14 @@ func NewAPIScenarioPublication(sp app.ScenarioPublication) APIScenarioPublicatio
 	}
 }
 
-type GetScenarioPublicationsInput struct {
+type ListScenarioPublicationsInput struct {
 	// UserID              string `in:"query=userID"`
 	ScenarioID          string `in:"query=scenarioID"`
 	ScenarioIterationID string `in:"query=scenarioIterationID"`
 	PublicationAction   string `in:"query=publicationAction"`
 }
 
-func (api *API) handleGetScenarioPublications() http.HandlerFunc {
+func (api *API) ListScenarioPublications() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -58,10 +58,10 @@ func (api *API) handleGetScenarioPublications() http.HandlerFunc {
 			return
 		}
 
-		input := ctx.Value(httpin.Input).(*GetScenarioPublicationsInput)
+		input := ctx.Value(httpin.Input).(*ListScenarioPublicationsInput)
 
 		options := &utils.PtrToOptions{OmitZero: true}
-		scenarioPublications, err := api.app.ReadScenarioPublications(ctx, orgID, app.ReadScenarioPublicationsFilters{
+		scenarioPublications, err := api.app.ListScenarioPublications(ctx, orgID, app.ListScenarioPublicationsFilters{
 			// UserID:              utils.PtrTo(input.UserID,, options),
 			ScenarioID:          utils.PtrTo(input.ScenarioID, options),
 			ScenarioIterationID: utils.PtrTo(input.ScenarioIterationID, options),
@@ -87,18 +87,18 @@ func (api *API) handleGetScenarioPublications() http.HandlerFunc {
 	}
 }
 
-type PostScenarioPublicationBody struct {
+type CreateScenarioPublicationBody struct {
 	// UserID              string    `json:"userID"`
 	ScenarioID          string `json:"scenarioID"`
 	ScenarioIterationID string `json:"scenarioIterationID"`
 	PublicationAction   string `json:"publicationAction"`
 }
 
-type PostScenarioPublicationInput struct {
-	Body *PostScenarioPublicationBody `in:"body=json"`
+type CreateScenarioPublicationInput struct {
+	Body *CreateScenarioPublicationBody `in:"body=json"`
 }
 
-func (api *API) handlePostScenarioPublication() http.HandlerFunc {
+func (api *API) CreateScenarioPublication() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -108,7 +108,7 @@ func (api *API) handlePostScenarioPublication() http.HandlerFunc {
 			return
 		}
 
-		input := ctx.Value(httpin.Input).(*PostScenarioPublicationInput)
+		input := ctx.Value(httpin.Input).(*CreateScenarioPublicationInput)
 
 		scenarioPublications, err := api.app.CreateScenarioPublication(ctx, orgID, app.CreateScenarioPublicationInput{
 			// UserID: input.Body.UserID,
@@ -140,7 +140,7 @@ type GetScenarioPublicationInput struct {
 	ScenarioPublicationID string `in:"path=scenarioPublicationID"`
 }
 
-func (api *API) handleGetScenarioPublication() http.HandlerFunc {
+func (api *API) GetScenarioPublication() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -152,7 +152,7 @@ func (api *API) handleGetScenarioPublication() http.HandlerFunc {
 
 		input := ctx.Value(httpin.Input).(*GetScenarioPublicationInput)
 
-		scenarioPublication, err := api.app.ReadScenarioPublication(ctx, orgID, input.ScenarioPublicationID)
+		scenarioPublication, err := api.app.GetScenarioPublication(ctx, orgID, input.ScenarioPublicationID)
 		if errors.Is(err, app.ErrNotFoundInRepository) {
 			http.Error(w, "", http.StatusNotFound)
 			return

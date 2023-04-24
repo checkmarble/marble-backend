@@ -53,16 +53,16 @@ func (si *dbScenarioIteration) dto() (app.ScenarioIteration, error) {
 	return siDTO, nil
 }
 
-type GetScenarioIterationsFilters struct {
+type ListScenarioIterationsFilters struct {
 	ScenarioID *string `db:"scenario_id"`
 }
 
-func (r *PGRepository) GetScenarioIterations(ctx context.Context, orgID string, filters app.GetScenarioIterationFilters) ([]app.ScenarioIteration, error) {
+func (r *PGRepository) ListScenarioIterations(ctx context.Context, orgID string, filters app.GetScenarioIterationFilters) ([]app.ScenarioIteration, error) {
 	sql, args, err := r.queryBuilder.
 		Select("*").
 		From("scenario_iterations").
 		Where("org_id = ?", orgID).
-		Where(squirrel.Eq(columnValueMap(GetScenarioIterationsFilters{
+		Where(squirrel.Eq(columnValueMap(ListScenarioIterationsFilters{
 			ScenarioID: filters.ScenarioID,
 		}))).
 		ToSql()

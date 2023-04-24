@@ -41,55 +41,55 @@ func (api *API) routes() {
 		r.Use(api.authCtx)
 
 		r.Route("/scenarios", func(r chi.Router) {
-			r.Get("/", api.handleGetScenarios())
-			r.With(httpin.NewInput(PostScenarioInput{})).
-				Post("/", api.handlePostScenarios())
+			r.Get("/", api.ListScenarios())
+			r.With(httpin.NewInput(CreateScenarioInput{})).
+				Post("/", api.CreateScenario())
 
 			r.Route("/{scenarioID:"+UUIDRegExp+"}", func(r chi.Router) {
 				r.With(httpin.NewInput(GetScenarioInput{})).
-					Get("/", api.handleGetScenario())
-				r.With(httpin.NewInput(PutScenarioInput{})).
-					Put("/", api.handlePutScenario())
+					Get("/", api.GetScenario())
+				r.With(httpin.NewInput(UpdateScenarioInput{})).
+					Put("/", api.UpdateScenario())
 			})
 		})
 
 		r.Route("/scenario-iterations", func(r chi.Router) {
-			r.With(httpin.NewInput(GetScenarioIterationsInput{})).
-				Get("/", api.handleGetScenarioIterations())
-			r.With(httpin.NewInput(PostScenarioIterationInput{})).
-				Post("/", api.handlePostScenarioIteration())
+			r.With(httpin.NewInput(ListScenarioIterationsInput{})).
+				Get("/", api.ListScenarioIterations())
+			r.With(httpin.NewInput(CreateScenarioIterationInput{})).
+				Post("/", api.CreateScenarioIteration())
 
 			r.Route("/{scenarioIterationID:"+UUIDRegExp+"}", func(r chi.Router) {
 				r.With(httpin.NewInput(GetScenarioIterationInput{})).
-					Get("/", api.handleGetScenarioIteration())
-				r.With(httpin.NewInput(PutScenarioIterationInput{})).
-					Put("/", api.handlePutScenarioIteration())
+					Get("/", api.GetScenarioIteration())
+				r.With(httpin.NewInput(UpdateScenarioIterationInput{})).
+					Put("/", api.UpdateScenarioIteration())
 			})
 		})
 
 		r.Route("/scenario-iteration-rules", func(r chi.Router) {
-			r.With(httpin.NewInput(GetScenarioIterationRulesInput{})).
-				Get("/", api.handleGetScenarioIterationRules())
-			r.With(httpin.NewInput(PostScenarioIterationRuleInput{})).
-				Post("/", api.handlePostScenarioIterationRule())
+			r.With(httpin.NewInput(ListScenarioIterationRulesInput{})).
+				Get("/", api.ListScenarioIterationRules())
+			r.With(httpin.NewInput(CreateScenarioIterationRuleInput{})).
+				Post("/", api.CreateScenarioIterationRule())
 
 			r.Route("/{ruleID:"+UUIDRegExp+"}", func(r chi.Router) {
 				r.With(httpin.NewInput(GetScenarioIterationRuleInput{})).
-					Get("/", api.handleGetScenarioIterationRule())
-				r.With(httpin.NewInput(PutScenarioIterationRuleInput{})).
-					Put("/", api.handlePutScenarioIterationRule())
+					Get("/", api.GetScenarioIterationRule())
+				r.With(httpin.NewInput(UpdateScenarioIterationRuleInput{})).
+					Put("/", api.UpdateScenarioIterationRule())
 			})
 		})
 
 		r.Route("/scenario-publications", func(r chi.Router) {
-			r.With(httpin.NewInput(GetScenarioPublicationsInput{})).
-				Get("/", api.handleGetScenarioPublications())
-			r.With(httpin.NewInput(PostScenarioPublicationInput{})).
-				Post("/", api.handlePostScenarioPublication())
+			r.With(httpin.NewInput(ListScenarioPublicationsInput{})).
+				Get("/", api.ListScenarioPublications())
+			r.With(httpin.NewInput(CreateScenarioPublicationInput{})).
+				Post("/", api.CreateScenarioPublication())
 
 			r.Route("/{scenarioPublicationID:"+UUIDRegExp+"}", func(r chi.Router) {
 				r.With(httpin.NewInput(GetScenarioPublicationInput{})).
-					Get("/", api.handleGetScenarioPublication())
+					Get("/", api.GetScenarioPublication())
 			})
 		})
 	})

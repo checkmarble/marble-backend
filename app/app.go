@@ -10,22 +10,13 @@ type App struct {
 }
 
 type RepositoryInterface interface {
+	RepositoryScenarioInterface
+	RepositoryScenarioItertionInterface
+	RepositoryScenarioItertionRuleInterface
 	RepositoryScenarioPublicationInterface
 
 	// Data models & scenarios
 	GetDataModel(ctx context.Context, orgID string) (DataModel, error)
-	GetScenario(ctx context.Context, orgID string, scenarioID string) (Scenario, error)
-	UpdateScenario(ctx context.Context, orgID string, scenario UpdateScenarioInput) (Scenario, error)
-	PostScenario(ctx context.Context, orgID string, scenario CreateScenarioInput) (Scenario, error)
-	GetScenarios(ctx context.Context, orgID string) ([]Scenario, error)
-	GetScenarioIterations(ctx context.Context, orgID string, filters GetScenarioIterationFilters) ([]ScenarioIteration, error)
-	CreateScenarioIteration(ctx context.Context, orgID string, scenarioIteration CreateScenarioIterationInput) (ScenarioIteration, error)
-	GetScenarioIteration(ctx context.Context, orgID string, scenarioIterationID string) (ScenarioIteration, error)
-	UpdateScenarioIteration(ctx context.Context, orgID string, scenarioIteration UpdateScenarioIterationInput) (ScenarioIteration, error)
-	GetScenarioIterationRules(ctx context.Context, orgID string, filters GetScenarioIterationRulesFilters) ([]Rule, error)
-	CreateScenarioIterationRule(ctx context.Context, orgID string, rule CreateRuleInput) (Rule, error)
-	GetScenarioIterationRule(ctx context.Context, orgID string, ruleID string) (Rule, error)
-	UpdateScenarioIterationRule(ctx context.Context, orgID string, rule UpdateRuleInput) (Rule, error)
 
 	// token validation
 	GetOrganizationIDFromToken(ctx context.Context, token string) (orgID string, err error)

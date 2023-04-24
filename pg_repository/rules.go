@@ -72,16 +72,16 @@ func (r *PGRepository) GetScenarioIterationRule(ctx context.Context, orgID strin
 	return ruleDTO, err
 }
 
-type GetScenarioPublicationsFilters struct {
+type ListScenarioIterationRulesFilters struct {
 	ScenarioIterationID *string `db:"scenario_iteration_id"`
 }
 
-func (r *PGRepository) GetScenarioIterationRules(ctx context.Context, orgID string, filters app.GetScenarioIterationRulesFilters) ([]app.Rule, error) {
+func (r *PGRepository) ListScenarioIterationRules(ctx context.Context, orgID string, filters app.GetScenarioIterationRulesFilters) ([]app.Rule, error) {
 	sql, args, err := r.queryBuilder.
 		Select("*").
 		From("scenario_iteration_rules").
 		Where("org_id = ?", orgID).
-		Where(squirrel.Eq(columnValueMap(GetScenarioPublicationsFilters{
+		Where(squirrel.Eq(columnValueMap(ListScenarioIterationRulesFilters{
 			ScenarioIterationID: filters.ScenarioIterationID,
 		}))).
 		ToSql()

@@ -14,7 +14,7 @@ import (
 )
 
 type ScenarioIterationAppInterface interface {
-	GetScenarioIterations(ctx context.Context, orgID string, filters app.GetScenarioIterationFilters) ([]app.ScenarioIteration, error)
+	ListScenarioIterations(ctx context.Context, orgID string, filters app.GetScenarioIterationFilters) ([]app.ScenarioIteration, error)
 	CreateScenarioIteration(ctx context.Context, orgID string, scenarioIteration app.CreateScenarioIterationInput) (app.ScenarioIteration, error)
 	GetScenarioIteration(ctx context.Context, orgID string, scenarioIterationID string) (app.ScenarioIteration, error)
 	UpdateScenarioIteration(ctx context.Context, organizationID string, rule app.UpdateScenarioIterationInput) (app.ScenarioIteration, error)
@@ -78,11 +78,11 @@ func NewAPIScenarioIterationWithBody(si app.ScenarioIteration) (APIScenarioItera
 	}, nil
 }
 
-type GetScenarioIterationsInput struct {
+type ListScenarioIterationsInput struct {
 	ScenarioID string `in:"query=scenarioId"`
 }
 
-func (api *API) handleGetScenarioIterations() http.HandlerFunc {
+func (api *API) ListScenarioIterations() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -92,10 +92,10 @@ func (api *API) handleGetScenarioIterations() http.HandlerFunc {
 			return
 		}
 
-		input := ctx.Value(httpin.Input).(*GetScenarioIterationsInput)
+		input := ctx.Value(httpin.Input).(*ListScenarioIterationsInput)
 
 		options := &utils.PtrToOptions{OmitZero: true}
-		scenarioIterations, err := api.app.GetScenarioIterations(ctx, orgID, app.GetScenarioIterationFilters{
+		scenarioIterations, err := api.app.ListScenarioIterations(ctx, orgID, app.GetScenarioIterationFilters{
 			ScenarioID: utils.PtrTo(input.ScenarioID, options),
 		})
 		if err != nil {
@@ -121,18 +121,18 @@ func (api *API) handleGetScenarioIterations() http.HandlerFunc {
 type CreateScenarioIterationBody struct {
 	ScenarioID string `json:"scenarioId"`
 	Body       *struct {
-		TriggerCondition     *json.RawMessage                     `json:"triggerCondition,omitempty"`
-		Rules                []PostScenarioIterationRuleInputBody `json:"rules"`
-		ScoreReviewThreshold *int                                 `json:"scoreReviewThreshold,omitempty"`
-		ScoreRejectThreshold *int                                 `json:"scoreRejectThreshold,omitempty"`
+		TriggerCondition     *json.RawMessage                       `json:"triggerCondition,omitempty"`
+		Rules                []CreateScenarioIterationRuleInputBody `json:"rules"`
+		ScoreReviewThreshold *int                                   `json:"scoreReviewThreshold,omitempty"`
+		ScoreRejectThreshold *int                                   `json:"scoreRejectThreshold,omitempty"`
 	} `json:"body,omitempty"`
 }
 
-type PostScenarioIterationInput struct {
+type CreateScenarioIterationInput struct {
 	Body *CreateScenarioIterationBody `in:"body=json"`
 }
 
-func (api *API) handlePostScenarioIteration() http.HandlerFunc {
+func (api *API) CreateScenarioIteration() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -142,7 +142,7 @@ func (api *API) handlePostScenarioIteration() http.HandlerFunc {
 			return
 		}
 
-		input := ctx.Value(httpin.Input).(*PostScenarioIterationInput)
+		input := ctx.Value(httpin.Input).(*CreateScenarioIterationInput)
 
 		createScenarioIterationInput := app.CreateScenarioIterationInput{
 			ScenarioID: input.Body.ScenarioID,
@@ -205,7 +205,7 @@ type GetScenarioIterationInput struct {
 	ScenarioIterationID string `in:"path=scenarioIterationID"`
 }
 
-func (api *API) handleGetScenarioIteration() http.HandlerFunc {
+func (api *API) GetScenarioIteration() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -246,12 +246,12 @@ type UpdateScenarioIterationBody struct {
 	} `json:"body,omtiempty"`
 }
 
-type PutScenarioIterationInput struct {
+type UpdateScenarioIterationInput struct {
 	ScenarioIterationID string                       `in:"path=scenarioIterationID"`
 	Body                *UpdateScenarioIterationBody `in:"body=json"`
 }
 
-func (api *API) handlePutScenarioIteration() http.HandlerFunc {
+func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -261,7 +261,7 @@ func (api *API) handlePutScenarioIteration() http.HandlerFunc {
 			return
 		}
 
-		input := ctx.Value(httpin.Input).(*PutScenarioIterationInput)
+		input := ctx.Value(httpin.Input).(*UpdateScenarioIterationInput)
 
 		if input.Body.Body == nil {
 			w.WriteHeader(http.StatusNoContent)

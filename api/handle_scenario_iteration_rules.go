@@ -14,7 +14,7 @@ import (
 )
 
 type ScenarioIterationRuleAppInterface interface {
-	GetScenarioIterationRules(ctx context.Context, organizationID string, filters app.GetScenarioIterationRulesFilters) ([]app.Rule, error)
+	ListScenarioIterationRules(ctx context.Context, organizationID string, filters app.GetScenarioIterationRulesFilters) ([]app.Rule, error)
 	CreateScenarioIterationRule(ctx context.Context, organizationID string, rule app.CreateRuleInput) (app.Rule, error)
 	GetScenarioIterationRule(ctx context.Context, organizationID string, ruleID string) (app.Rule, error)
 	UpdateScenarioIterationRule(ctx context.Context, organizationID string, rule app.UpdateRuleInput) (app.Rule, error)
@@ -49,11 +49,11 @@ func NewAPIScenarioIterationRule(rule app.Rule) (APIScenarioIterationRule, error
 	}, nil
 }
 
-type GetScenarioIterationRulesInput struct {
+type ListScenarioIterationRulesInput struct {
 	ScenarioIterationID string `in:"query=scenarioIterationId"`
 }
 
-func (api *API) handleGetScenarioIterationRules() http.HandlerFunc {
+func (api *API) ListScenarioIterationRules() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -63,10 +63,10 @@ func (api *API) handleGetScenarioIterationRules() http.HandlerFunc {
 			return
 		}
 
-		input := ctx.Value(httpin.Input).(*GetScenarioIterationRulesInput)
+		input := ctx.Value(httpin.Input).(*ListScenarioIterationRulesInput)
 
 		options := &utils.PtrToOptions{OmitZero: true}
-		rules, err := api.app.GetScenarioIterationRules(ctx, orgID, app.GetScenarioIterationRulesFilters{
+		rules, err := api.app.ListScenarioIterationRules(ctx, orgID, app.GetScenarioIterationRulesFilters{
 			ScenarioIterationID: utils.PtrTo(input.ScenarioIterationID, options),
 		})
 		if err != nil {
@@ -94,7 +94,7 @@ func (api *API) handleGetScenarioIterationRules() http.HandlerFunc {
 	}
 }
 
-type PostScenarioIterationRuleInputBody struct {
+type CreateScenarioIterationRuleInputBody struct {
 	ScenarioIterationID string          `json:"scenarioIterationId"`
 	DisplayOrder        int             `json:"displayOrder"`
 	Name                string          `json:"name"`
@@ -103,11 +103,11 @@ type PostScenarioIterationRuleInputBody struct {
 	ScoreModifier       int             `json:"scoreModifier"`
 }
 
-type PostScenarioIterationRuleInput struct {
-	Body *PostScenarioIterationRuleInputBody `in:"body=json"`
+type CreateScenarioIterationRuleInput struct {
+	Body *CreateScenarioIterationRuleInputBody `in:"body=json"`
 }
 
-func (api *API) handlePostScenarioIterationRule() http.HandlerFunc {
+func (api *API) CreateScenarioIterationRule() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -117,7 +117,7 @@ func (api *API) handlePostScenarioIterationRule() http.HandlerFunc {
 			return
 		}
 
-		input := ctx.Value(httpin.Input).(*PostScenarioIterationRuleInput)
+		input := ctx.Value(httpin.Input).(*CreateScenarioIterationRuleInput)
 
 		formula, err := operators.UnmarshalOperatorBool(input.Body.Formula)
 		if err != nil {
@@ -157,7 +157,7 @@ type GetScenarioIterationRuleInput struct {
 	RuleID string `in:"path=ruleID"`
 }
 
-func (api *API) handleGetScenarioIterationRule() http.HandlerFunc {
+func (api *API) GetScenarioIterationRule() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -198,12 +198,12 @@ type UpdateScenarioIterationRuleBody struct {
 	ScoreModifier *int             `json:"scoreModifier,omitempty"`
 }
 
-type PutScenarioIterationRuleInput struct {
+type UpdateScenarioIterationRuleInput struct {
 	RuleID string                           `in:"path=ruleID"`
 	Body   *UpdateScenarioIterationRuleBody `in:"body=json"`
 }
 
-func (api *API) handlePutScenarioIterationRule() http.HandlerFunc {
+func (api *API) UpdateScenarioIterationRule() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -213,7 +213,7 @@ func (api *API) handlePutScenarioIterationRule() http.HandlerFunc {
 			return
 		}
 
-		input := ctx.Value(httpin.Input).(*PutScenarioIterationRuleInput)
+		input := ctx.Value(httpin.Input).(*UpdateScenarioIterationRuleInput)
 
 		updateRuleInput := app.UpdateRuleInput{
 			ID:            input.RuleID,
