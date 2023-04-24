@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"marble/marble-backend/app"
 	"marble/marble-backend/app/operators"
+	"strings"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -59,7 +60,7 @@ type ListScenarioIterationsFilters struct {
 
 func (r *PGRepository) ListScenarioIterations(ctx context.Context, orgID string, filters app.GetScenarioIterationFilters) ([]app.ScenarioIteration, error) {
 	sql, args, err := r.queryBuilder.
-		Select("*").
+		Select(columnList[dbScenarioIteration]()...).
 		From("scenario_iterations").
 		Where("org_id = ?", orgID).
 		Where(squirrel.Eq(columnValueMap(ListScenarioIterationsFilters{
@@ -89,11 +90,12 @@ func (r *PGRepository) ListScenarioIterations(ctx context.Context, orgID string,
 }
 
 func (r *PGRepository) GetScenarioIteration(ctx context.Context, orgID string, scenarioIterationID string) (app.ScenarioIteration, error) {
+	siCols := columnList[dbScenarioIteration]("si")
+	sirCols := columnList[dbScenarioIterationRule]("sir")
+
 	sql, args, err := r.queryBuilder.
-		Select(
-			"si.*",
-			"array_agg(row(sir.*)) FILTER (WHERE sir.id IS NOT NULL) as rules",
-		).
+		Select(siCols...).
+		Column(fmt.Sprintf("array_agg(row(%s)) FILTER (WHERE sir.id IS NOT NULL) as rules", strings.Join(sirCols, ","))).
 		From("scenario_iterations si").
 		LeftJoin("scenario_iteration_rules sir on sir.scenario_iteration_id = si.id").
 		Where("si.id = ?", scenarioIterationID).

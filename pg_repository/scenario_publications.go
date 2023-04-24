@@ -44,7 +44,7 @@ type ListScenarioPublicationsFilters struct {
 
 func (r *PGRepository) ListScenarioPublications(ctx context.Context, orgID string, filters app.ListScenarioPublicationsFilters) ([]app.ScenarioPublication, error) {
 	sql, args, err := r.queryBuilder.
-		Select("*").
+		Select(columnList[dbScenarioPublication]()...).
 		From("scenario_publications").
 		Where("org_id = ?", orgID).
 		Where(squirrel.Eq(columnValueMap(ListScenarioPublicationsFilters{
@@ -173,7 +173,7 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 
 func (r *PGRepository) GetScenarioPublication(ctx context.Context, orgID string, ID string) (app.ScenarioPublication, error) {
 	sql, args, err := r.queryBuilder.
-		Select("*").
+		Select(columnList[dbScenarioPublication]()...).
 		From("scenario_publications").
 		Where("org_id = ?", orgID).
 		Where("id = ?", ID).

@@ -35,7 +35,7 @@ func (s *dbScenario) dto() app.Scenario {
 
 func (r *PGRepository) ListScenarios(ctx context.Context, orgID string) ([]app.Scenario, error) {
 	sql, args, err := r.queryBuilder.
-		Select("*").
+		Select(columnList[dbScenario]()...).
 		From("scenarios").
 		Where(squirrel.Eq{
 			"org_id": orgID,
@@ -56,7 +56,7 @@ func (r *PGRepository) ListScenarios(ctx context.Context, orgID string) ([]app.S
 
 func (r *PGRepository) GetScenario(ctx context.Context, orgID string, scenarioID string) (app.Scenario, error) {
 	sql, args, err := r.queryBuilder.
-		Select("*").
+		Select(columnList[dbScenario]()...).
 		From("scenarios").
 		Where(squirrel.Eq{
 			"org_id": orgID,
@@ -88,21 +88,22 @@ func (r *PGRepository) GetScenario(ctx context.Context, orgID string, scenarioID
 	return scenarioDTO, err
 }
 
+type dbCreateScenario struct {
+	OrgID             string `db:"org_id"`
+	Name              string `db:"name"`
+	Description       string `db:"description"`
+	TriggerObjectType string `db:"trigger_object_type"`
+}
+
 func (r *PGRepository) CreateScenario(ctx context.Context, orgID string, scenario app.CreateScenarioInput) (app.Scenario, error) {
 	sql, args, err := r.queryBuilder.
 		Insert("scenarios").
-		Columns(
-			"org_id",
-			"name",
-			"description",
-			"trigger_object_type",
-		).
-		Values(
-			orgID,
-			scenario.Name,
-			scenario.Description,
-			scenario.TriggerObjectType,
-		).
+		SetMap(columnValueMap(dbCreateScenario{
+			OrgID:             orgID,
+			Name:              scenario.Name,
+			Description:       scenario.Description,
+			TriggerObjectType: scenario.TriggerObjectType,
+		})).
 		Suffix("RETURNING *").ToSql()
 	if err != nil {
 		return app.Scenario{}, fmt.Errorf("unable to build scenario query: %w", err)
