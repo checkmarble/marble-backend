@@ -35,19 +35,19 @@ func (sp *dbScenarioPublication) dto() app.ScenarioPublication {
 	}
 }
 
-type ReadScenarioPublicationsFilters struct {
+type ListScenarioPublicationsFilters struct {
 	ScenarioID *string `db:"scenario_id"`
 	// UserID              *string    `db:"user_id"`
 	ScenarioIterationID *string `db:"scenario_iteration_id"`
 	PublicationAction   *string `db:"publication_action"`
 }
 
-func (r *PGRepository) ReadScenarioPublications(ctx context.Context, orgID string, filters app.ReadScenarioPublicationsFilters) ([]app.ScenarioPublication, error) {
+func (r *PGRepository) ListScenarioPublications(ctx context.Context, orgID string, filters app.ListScenarioPublicationsFilters) ([]app.ScenarioPublication, error) {
 	sql, args, err := r.queryBuilder.
 		Select("*").
 		From("scenario_publications").
 		Where("org_id = ?", orgID).
-		Where(squirrel.Eq(columnValueMap(ReadScenarioPublicationsFilters{
+		Where(squirrel.Eq(columnValueMap(ListScenarioPublicationsFilters{
 			ScenarioID: filters.ScenarioID,
 			// UserID:              filters.UserID,
 			ScenarioIterationID: filters.ScenarioIterationID,
@@ -171,7 +171,7 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 	return scenarioPublications, err
 }
 
-func (r *PGRepository) ReadScenarioPublication(ctx context.Context, orgID string, ID string) (app.ScenarioPublication, error) {
+func (r *PGRepository) GetScenarioPublication(ctx context.Context, orgID string, ID string) (app.ScenarioPublication, error) {
 	sql, args, err := r.queryBuilder.
 		Select("*").
 		From("scenario_publications").

@@ -42,6 +42,10 @@ type ScenarioIteration struct {
 	Body       ScenarioIterationBody
 }
 
+type GetScenarioIterationFilters struct {
+	ScenarioID *string
+}
+
 type ScenarioIterationBody struct {
 	TriggerCondition     operators.OperatorBool
 	Rules                []Rule
@@ -51,14 +55,14 @@ type ScenarioIterationBody struct {
 
 type CreateScenarioIterationInput struct {
 	ScenarioID string
-	Body       CreateScenarioIterationBody
+	Body       *CreateScenarioIterationBody
 }
 
 type CreateScenarioIterationBody struct {
 	TriggerCondition     operators.OperatorBool
 	Rules                []CreateRuleInput
-	ScoreReviewThreshold int
-	ScoreRejectThreshold int
+	ScoreReviewThreshold *int
+	ScoreRejectThreshold *int
 }
 
 type UpdateScenarioIterationInput struct {
@@ -67,7 +71,7 @@ type UpdateScenarioIterationInput struct {
 }
 
 type UpdateScenarioIterationBody struct {
-	TriggerCondition     *operators.OperatorBool
+	TriggerCondition     operators.OperatorBool
 	ScoreReviewThreshold *int
 	ScoreRejectThreshold *int
 }

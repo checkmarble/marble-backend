@@ -6,27 +6,29 @@ import (
 	"fmt"
 	"marble/marble-backend/app"
 	"marble/marble-backend/app/operators"
+	"marble/marble-backend/utils"
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi/v5"
+	"github.com/ggicci/httpin"
 )
 
 type ScenarioIterationRuleAppInterface interface {
-	GetScenarioIterationRules(ctx context.Context, organizationID string, scenarioIterationID string) ([]app.Rule, error)
+	ListScenarioIterationRules(ctx context.Context, organizationID string, filters app.GetScenarioIterationRulesFilters) ([]app.Rule, error)
 	CreateScenarioIterationRule(ctx context.Context, organizationID string, rule app.CreateRuleInput) (app.Rule, error)
 	GetScenarioIterationRule(ctx context.Context, organizationID string, ruleID string) (app.Rule, error)
 	UpdateScenarioIterationRule(ctx context.Context, organizationID string, rule app.UpdateRuleInput) (app.Rule, error)
 }
 
 type APIScenarioIterationRule struct {
-	ID            string          `json:"id"`
-	DisplayOrder  int             `json:"displayOrder"`
-	Name          string          `json:"name"`
-	Description   string          `json:"description"`
-	Formula       json.RawMessage `json:"formula"`
-	ScoreModifier int             `json:"scoreModifier"`
-	CreatedAt     time.Time       `json:"createdAt"`
+	ID                  string          `json:"id"`
+	ScenarioIterationID string          `json:"scenarioIterationId"`
+	DisplayOrder        int             `json:"displayOrder"`
+	Name                string          `json:"name"`
+	Description         string          `json:"description"`
+	Formula             json.RawMessage `json:"formula"`
+	ScoreModifier       int             `json:"scoreModifier"`
+	CreatedAt           time.Time       `json:"createdAt"`
 }
 
 func NewAPIScenarioIterationRule(rule app.Rule) (APIScenarioIterationRule, error) {
@@ -36,17 +38,22 @@ func NewAPIScenarioIterationRule(rule app.Rule) (APIScenarioIterationRule, error
 	}
 
 	return APIScenarioIterationRule{
-		ID:            rule.ID,
-		DisplayOrder:  rule.DisplayOrder,
-		Name:          rule.Name,
-		Description:   rule.Description,
-		Formula:       formula,
-		ScoreModifier: rule.ScoreModifier,
-		CreatedAt:     rule.CreatedAt,
+		ID:                  rule.ID,
+		ScenarioIterationID: rule.ScenarioIterationID,
+		DisplayOrder:        rule.DisplayOrder,
+		Name:                rule.Name,
+		Description:         rule.Description,
+		Formula:             formula,
+		ScoreModifier:       rule.ScoreModifier,
+		CreatedAt:           rule.CreatedAt,
 	}, nil
 }
 
-func (api *API) handleGetScenarioIterationRules() http.HandlerFunc {
+type ListScenarioIterationRulesInput struct {
+	ScenarioIterationID string `in:"query=scenarioIterationId"`
+}
+
+func (api *API) ListScenarioIterationRules() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -55,12 +62,16 @@ func (api *API) handleGetScenarioIterationRules() http.HandlerFunc {
 			http.Error(w, "", http.StatusUnauthorized)
 			return
 		}
-		scenarioIterationID := chi.URLParam(r, "scenarioIterationID")
 
-		rules, err := api.app.GetScenarioIterationRules(ctx, orgID, scenarioIterationID)
+		input := ctx.Value(httpin.Input).(*ListScenarioIterationRulesInput)
+
+		options := &utils.PtrToOptions{OmitZero: true}
+		rules, err := api.app.ListScenarioIterationRules(ctx, orgID, app.GetScenarioIterationRulesFilters{
+			ScenarioIterationID: utils.PtrTo(input.ScenarioIterationID, options),
+		})
 		if err != nil {
 			// Could not execute request
-			http.Error(w, fmt.Errorf("error getting scenario_iteration(id: %s) rules: %w", scenarioIterationID, err).Error(), http.StatusInternalServerError)
+			http.Error(w, fmt.Errorf("error getting scenario_iteration rules: %w", err).Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -83,15 +94,20 @@ func (api *API) handleGetScenarioIterationRules() http.HandlerFunc {
 	}
 }
 
-type CreateScenarioIterationRuleInput struct {
-	DisplayOrder  int             `json:"displayOrder"`
-	Name          string          `json:"name"`
-	Description   string          `json:"description"`
-	Formula       json.RawMessage `json:"formula"`
-	ScoreModifier int             `json:"scoreModifier"`
+type CreateScenarioIterationRuleInputBody struct {
+	ScenarioIterationID string          `json:"scenarioIterationId"`
+	DisplayOrder        int             `json:"displayOrder"`
+	Name                string          `json:"name"`
+	Description         string          `json:"description"`
+	Formula             json.RawMessage `json:"formula"`
+	ScoreModifier       int             `json:"scoreModifier"`
 }
 
-func (api *API) handlePostScenarioIterationRule() http.HandlerFunc {
+type CreateScenarioIterationRuleInput struct {
+	Body *CreateScenarioIterationRuleInputBody `in:"body=json"`
+}
+
+func (api *API) CreateScenarioIterationRule() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -100,28 +116,22 @@ func (api *API) handlePostScenarioIterationRule() http.HandlerFunc {
 			http.Error(w, "", http.StatusUnauthorized)
 			return
 		}
-		scenarioIterationID := chi.URLParam(r, "scenarioIterationID")
 
-		requestData := &CreateScenarioIterationRuleInput{}
-		err = json.NewDecoder(r.Body).Decode(requestData)
-		if err != nil {
-			http.Error(w, fmt.Errorf("could not parse input JSON: %w", err).Error(), http.StatusUnprocessableEntity)
-			return
-		}
+		input := ctx.Value(httpin.Input).(*CreateScenarioIterationRuleInput)
 
-		formula, err := operators.UnmarshalOperatorBool(requestData.Formula)
+		formula, err := operators.UnmarshalOperatorBool(input.Body.Formula)
 		if err != nil {
 			http.Error(w, fmt.Errorf("could not unmarshal formula: %w", err).Error(), http.StatusUnprocessableEntity)
 			return
 		}
 
 		rule, err := api.app.CreateScenarioIterationRule(ctx, orgID, app.CreateRuleInput{
-			ScenarioIterationID: scenarioIterationID,
-			DisplayOrder:        requestData.DisplayOrder,
-			Name:                requestData.Name,
-			Description:         requestData.Description,
+			ScenarioIterationID: input.Body.ScenarioIterationID,
+			DisplayOrder:        input.Body.DisplayOrder,
+			Name:                input.Body.Name,
+			Description:         input.Body.Description,
 			Formula:             formula,
-			ScoreModifier:       requestData.ScoreModifier,
+			ScoreModifier:       input.Body.ScoreModifier,
 		})
 		if err != nil {
 			// Could not execute request
@@ -143,7 +153,11 @@ func (api *API) handlePostScenarioIterationRule() http.HandlerFunc {
 	}
 }
 
-func (api *API) handleGetScenarioIterationRule() http.HandlerFunc {
+type GetScenarioIterationRuleInput struct {
+	RuleID string `in:"path=ruleID"`
+}
+
+func (api *API) GetScenarioIterationRule() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -152,12 +166,13 @@ func (api *API) handleGetScenarioIterationRule() http.HandlerFunc {
 			http.Error(w, "", http.StatusUnauthorized)
 			return
 		}
-		ruleID := chi.URLParam(r, "ruleID")
 
-		rule, err := api.app.GetScenarioIterationRule(ctx, orgID, ruleID)
+		input := ctx.Value(httpin.Input).(*GetScenarioIterationRuleInput)
+
+		rule, err := api.app.GetScenarioIterationRule(ctx, orgID, input.RuleID)
 		if err != nil {
 			// Could not execute request
-			http.Error(w, fmt.Errorf("error getting rule(id: %s): %w", ruleID, err).Error(), http.StatusInternalServerError)
+			http.Error(w, fmt.Errorf("error getting rule(id: %s): %w", input.RuleID, err).Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -175,7 +190,7 @@ func (api *API) handleGetScenarioIterationRule() http.HandlerFunc {
 	}
 }
 
-type UpdateScenarioIterationRuleInput struct {
+type UpdateScenarioIterationRuleBody struct {
 	DisplayOrder  *int             `json:"displayOrder,omitempty"`
 	Name          *string          `json:"name,omitempty"`
 	Description   *string          `json:"description,omitempty"`
@@ -183,7 +198,12 @@ type UpdateScenarioIterationRuleInput struct {
 	ScoreModifier *int             `json:"scoreModifier,omitempty"`
 }
 
-func (api *API) handlePutScenarioIterationRule() http.HandlerFunc {
+type UpdateScenarioIterationRuleInput struct {
+	RuleID string                           `in:"path=ruleID"`
+	Body   *UpdateScenarioIterationRuleBody `in:"body=json"`
+}
+
+func (api *API) UpdateScenarioIterationRule() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -192,25 +212,19 @@ func (api *API) handlePutScenarioIterationRule() http.HandlerFunc {
 			http.Error(w, "", http.StatusUnauthorized)
 			return
 		}
-		ruleID := chi.URLParam(r, "ruleID")
 
-		requestData := &UpdateScenarioIterationRuleInput{}
-		err = json.NewDecoder(r.Body).Decode(requestData)
-		if err != nil {
-			http.Error(w, fmt.Errorf("could not parse input JSON: %w", err).Error(), http.StatusUnprocessableEntity)
-			return
-		}
+		input := ctx.Value(httpin.Input).(*UpdateScenarioIterationRuleInput)
 
 		updateRuleInput := app.UpdateRuleInput{
-			ID:            ruleID,
-			DisplayOrder:  requestData.DisplayOrder,
-			Name:          requestData.Name,
-			Description:   requestData.Description,
-			ScoreModifier: requestData.ScoreModifier,
+			ID:            input.RuleID,
+			DisplayOrder:  input.Body.DisplayOrder,
+			Name:          input.Body.Name,
+			Description:   input.Body.Description,
+			ScoreModifier: input.Body.ScoreModifier,
 		}
 
-		if requestData.Formula != nil {
-			formula, err := operators.UnmarshalOperatorBool(*requestData.Formula)
+		if input.Body.Formula != nil {
+			formula, err := operators.UnmarshalOperatorBool(*input.Body.Formula)
 			if err != nil {
 				http.Error(w, fmt.Errorf("could not unmarshal formula: %w", err).Error(), http.StatusUnprocessableEntity)
 				return

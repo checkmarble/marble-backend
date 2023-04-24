@@ -45,7 +45,7 @@ type ScenarioPublication struct {
 	CreatedAt           time.Time
 }
 
-type ReadScenarioPublicationsFilters struct {
+type ListScenarioPublicationsFilters struct {
 	ScenarioID *string
 	// UserID              *string
 	ScenarioIterationID *string
