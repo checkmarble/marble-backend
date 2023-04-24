@@ -42,18 +42,21 @@ func (api *API) routes() {
 
 		r.Route("/scenarios", func(r chi.Router) {
 			r.Get("/", api.handleGetScenarios())
-			r.Post("/", api.handlePostScenarios())
+			r.With(httpin.NewInput(PostScenarioInput{})).
+				Post("/", api.handlePostScenarios())
 
 			r.Route("/{scenarioID:"+UUIDRegExp+"}", func(r chi.Router) {
-				r.Get("/", api.handleGetScenario())
-				r.Put("/", api.handlePutScenario())
+				r.With(httpin.NewInput(GetScenarioInput{})).
+					Get("/", api.handleGetScenario())
+				r.With(httpin.NewInput(PutScenarioInput{})).
+					Put("/", api.handlePutScenario())
 			})
 		})
 
 		r.Route("/scenario-iterations", func(r chi.Router) {
 			r.With(httpin.NewInput(GetScenarioIterationsInput{})).
 				Get("/", api.handleGetScenarioIterations())
-			r.With(httpin.NewInput(PostScenarioIteration{})).
+			r.With(httpin.NewInput(PostScenarioIterationInput{})).
 				Post("/", api.handlePostScenarioIteration())
 
 			r.Route("/{scenarioIterationID:"+UUIDRegExp+"}", func(r chi.Router) {

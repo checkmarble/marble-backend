@@ -128,7 +128,7 @@ type CreateScenarioIterationBody struct {
 	} `json:"body,omitempty"`
 }
 
-type PostScenarioIteration struct {
+type PostScenarioIterationInput struct {
 	Body *CreateScenarioIterationBody `in:"body=json"`
 }
 
@@ -142,7 +142,7 @@ func (api *API) handlePostScenarioIteration() http.HandlerFunc {
 			return
 		}
 
-		input := ctx.Value(httpin.Input).(*PostScenarioIteration)
+		input := ctx.Value(httpin.Input).(*PostScenarioIterationInput)
 
 		createScenarioIterationInput := app.CreateScenarioIterationInput{
 			ScenarioID: input.Body.ScenarioID,
