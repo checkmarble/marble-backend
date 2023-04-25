@@ -54,7 +54,6 @@ type ListScenarioPublicationsFilters struct {
 
 type CreateScenarioPublicationInput struct {
 	// UserID              string
-	ScenarioID          string
 	ScenarioIterationID string
 	PublicationAction   PublicationAction
 }

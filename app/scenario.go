@@ -18,7 +18,7 @@ type Scenario struct {
 	Description       string
 	TriggerObjectType string
 	CreatedAt         time.Time
-	LiveVersion       *ScenarioIteration
+	LiveVersion       *PublishedScenarioIteration
 }
 
 type CreateScenarioInput struct {
@@ -33,10 +33,82 @@ type UpdateScenarioInput struct {
 	Description *string
 }
 
-type ScenarioIteration struct {
+type PublishedScenarioIteration struct {
 	ID         string
 	ScenarioID string
 	Version    int
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	Body       PublishedScenarioIterationBody
+}
+
+type PublishedScenarioIterationBody struct {
+	TriggerCondition     operators.OperatorBool
+	Rules                []Rule
+	ScoreReviewThreshold int
+	ScoreRejectThreshold int
+}
+
+func NewPublishedScenarioIteration(si ScenarioIteration) (PublishedScenarioIteration, error) {
+	result := PublishedScenarioIteration{
+		ID:         si.ID,
+		ScenarioID: si.ScenarioID,
+		CreatedAt:  si.CreatedAt,
+		UpdatedAt:  si.UpdatedAt,
+	}
+
+	if si.Version == nil {
+		return PublishedScenarioIteration{}, ErrScenarioIterationNotValid
+	}
+	result.Version = *si.Version
+
+	if si.Body.ScoreReviewThreshold == nil {
+		return PublishedScenarioIteration{}, ErrScenarioIterationNotValid
+	}
+	result.Body.ScoreReviewThreshold = *si.Body.ScoreReviewThreshold
+
+	if si.Body.ScoreRejectThreshold == nil {
+		return PublishedScenarioIteration{}, ErrScenarioIterationNotValid
+	}
+	result.Body.ScoreRejectThreshold = *si.Body.ScoreRejectThreshold
+
+	if len(si.Body.Rules) < 1 {
+		return PublishedScenarioIteration{}, ErrScenarioIterationNotValid
+	}
+	result.Body.Rules = si.Body.Rules
+
+	if si.Body.TriggerCondition == nil {
+		return PublishedScenarioIteration{}, ErrScenarioIterationNotValid
+	}
+	result.Body.TriggerCondition = si.Body.TriggerCondition
+
+	return result, nil
+}
+
+func (si ScenarioIteration) IsValideForPublication() bool {
+	if si.Body.ScoreReviewThreshold == nil {
+		return false
+	}
+
+	if si.Body.ScoreRejectThreshold == nil {
+		return false
+	}
+
+	if len(si.Body.Rules) < 1 {
+		return false
+	}
+
+	if si.Body.TriggerCondition == nil {
+		return false
+	}
+
+	return true
+}
+
+type ScenarioIteration struct {
+	ID         string
+	ScenarioID string
+	Version    *int
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 	Body       ScenarioIterationBody
@@ -49,8 +121,8 @@ type GetScenarioIterationFilters struct {
 type ScenarioIterationBody struct {
 	TriggerCondition     operators.OperatorBool
 	Rules                []Rule
-	ScoreReviewThreshold int
-	ScoreRejectThreshold int
+	ScoreReviewThreshold *int
+	ScoreRejectThreshold *int
 }
 
 type CreateScenarioIterationInput struct {

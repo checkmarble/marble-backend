@@ -89,7 +89,6 @@ func (api *API) ListScenarioPublications() http.HandlerFunc {
 
 type CreateScenarioPublicationBody struct {
 	// UserID              string    `json:"userID"`
-	ScenarioID          string `json:"scenarioID"`
 	ScenarioIterationID string `json:"scenarioIterationID"`
 	PublicationAction   string `json:"publicationAction"`
 }
@@ -112,11 +111,13 @@ func (api *API) CreateScenarioPublication() http.HandlerFunc {
 
 		scenarioPublications, err := api.app.CreateScenarioPublication(ctx, orgID, app.CreateScenarioPublicationInput{
 			// UserID: input.Body.UserID,
-			ScenarioID:          input.Body.ScenarioID,
 			ScenarioIterationID: input.Body.ScenarioIterationID,
 			PublicationAction:   app.PublicationActionFrom(input.Body.PublicationAction),
 		})
-		if err != nil {
+		if errors.Is(err, app.ErrScenarioIterationNotValid) {
+			http.Error(w, app.ErrScenarioIterationNotValid.Error(), http.StatusForbidden)
+			return
+		} else if err != nil {
 			// Could not execute request
 			// TODO(errors): handle missing fields error ?
 			http.Error(w, fmt.Errorf("error handling scenario publication: %w", err).Error(), http.StatusInternalServerError)
