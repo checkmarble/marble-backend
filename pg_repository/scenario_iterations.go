@@ -237,7 +237,32 @@ func (r *PGRepository) UpdateScenarioIteration(ctx context.Context, orgID string
 		updateScenarioIterationInput.TriggerCondition = &triggerConditionBytes
 	}
 
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return app.ScenarioIteration{}, fmt.Errorf("unable to start a transaction: %w", err)
+	}
+	defer tx.Rollback(ctx) // safe to call even if tx commits
+
 	sql, args, err := r.queryBuilder.
+		Select("version IS NULL").
+		From("scenario_iterations").
+		Where("id = ?", scenarioIteration.ID).
+		Where("org_id = ?", orgID).
+		ToSql()
+	if err != nil {
+		return app.ScenarioIteration{}, fmt.Errorf("unable to build scenario iteration query: %w", err)
+	}
+
+	var isDraft bool
+	err = tx.QueryRow(ctx, sql, args...).Scan(&isDraft)
+	if err != nil {
+		return app.ScenarioIteration{}, fmt.Errorf("unable to check if scenario iteration is draft: %w", err)
+	}
+	if !isDraft {
+		return app.ScenarioIteration{}, app.ErrScenarioIterationNotDraft
+	}
+
+	sql, args, err = r.queryBuilder.
 		Update("scenario_iterations").
 		SetMap(columnValueMap(updateScenarioIterationInput)).
 		Where("id = ?", scenarioIteration.ID).
@@ -247,7 +272,7 @@ func (r *PGRepository) UpdateScenarioIteration(ctx context.Context, orgID string
 		return app.ScenarioIteration{}, fmt.Errorf("unable to build scenario iteration query: %w", err)
 	}
 
-	rows, _ := r.db.Query(ctx, sql, args...)
+	rows, _ := tx.Query(ctx, sql, args...)
 	updatedScenarioIteration, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenarioIteration])
 	if err != nil {
 		return app.ScenarioIteration{}, fmt.Errorf("unable to update scenario iteration: %w", err)
@@ -257,6 +282,8 @@ func (r *PGRepository) UpdateScenarioIteration(ctx context.Context, orgID string
 	if err != nil {
 		return app.ScenarioIteration{}, fmt.Errorf("dto issue: %w", err)
 	}
+
+	tx.Commit(ctx)
 
 	return scenarioIterationDTO, nil
 }
