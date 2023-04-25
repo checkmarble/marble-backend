@@ -234,17 +234,43 @@ func (r *PGRepository) UpdateScenarioIterationRule(ctx context.Context, orgID st
 		dbUpdateRuleInput.Formula = &formulaBytes
 	}
 
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return app.Rule{}, fmt.Errorf("unable to start a transaction: %w", err)
+	}
+	defer tx.Rollback(ctx) // safe to call even if tx commits
+
 	sql, args, err := r.queryBuilder.
+		Select("si.version IS NULL").
+		From("scenario_iteration_rules sir").
+		Join("scenario_iterations si on si.id = sir.scenario_iteration_id").
+		Where("sir.id = ?", rule.ID).
+		Where("sir.org_id = ?", orgID).
+		ToSql()
+	if err != nil {
+		return app.Rule{}, fmt.Errorf("unable to build scenario iteration rule query: %w", err)
+	}
+
+	var isDraft bool
+	err = tx.QueryRow(ctx, sql, args...).Scan(&isDraft)
+	if err != nil {
+		return app.Rule{}, fmt.Errorf("unable to check if scenario iteration is draft: %w", err)
+	}
+	if !isDraft {
+		return app.Rule{}, app.ErrScenarioIterationNotDraft
+	}
+
+	sql, args, err = r.queryBuilder.
 		Update("scenario_iteration_rules").
 		SetMap(columnValueMap(dbUpdateRuleInput)).
 		Where("id = ?", rule.ID).
 		Where("org_id = ?", orgID).
 		Suffix("RETURNING *").ToSql()
 	if err != nil {
-		return app.Rule{}, fmt.Errorf("unable to build scenario query: %w", err)
+		return app.Rule{}, fmt.Errorf("unable to build scenario iteration rule query: %w", err)
 	}
 
-	rows, _ := r.db.Query(ctx, sql, args...)
+	rows, _ := tx.Query(ctx, sql, args...)
 	updatedRule, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenarioIterationRule])
 	if errors.Is(err, pgx.ErrNoRows) {
 		return app.Rule{}, app.ErrNotFoundInRepository
@@ -256,6 +282,8 @@ func (r *PGRepository) UpdateScenarioIterationRule(ctx context.Context, orgID st
 	if err != nil {
 		return app.Rule{}, fmt.Errorf("dto issue: %w", err)
 	}
+
+	tx.Commit(ctx)
 
 	return ruleDTO, err
 }
