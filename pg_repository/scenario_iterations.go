@@ -15,11 +15,13 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+var ErrAlreadyPublished = errors.New("scenario iteration is already published")
+
 type dbScenarioIteration struct {
 	ID                   string          `db:"id"`
 	OrgID                string          `db:"org_id"`
 	ScenarioID           string          `db:"scenario_id"`
-	Version              int             `db:"version"`
+	Version              pgtype.Int2     `db:"version"`
 	CreatedAt            time.Time       `db:"created_at"`
 	UpdatedAt            time.Time       `db:"updated_at"`
 	ScoreReviewThreshold pgtype.Int2     `db:"score_review_threshold"`
@@ -32,16 +34,21 @@ func (si *dbScenarioIteration) dto() (app.ScenarioIteration, error) {
 	siDTO := app.ScenarioIteration{
 		ID:         si.ID,
 		ScenarioID: si.ScenarioID,
-		Version:    si.Version,
 		CreatedAt:  si.CreatedAt,
 		UpdatedAt:  si.UpdatedAt,
 	}
 
+	if si.Version.Valid {
+		version := int(si.Version.Int16)
+		siDTO.Version = &version
+	}
 	if si.ScoreReviewThreshold.Valid {
-		siDTO.Body.ScoreReviewThreshold = int(si.ScoreReviewThreshold.Int16)
+		scoreReviewThreshold := int(si.ScoreReviewThreshold.Int16)
+		siDTO.Body.ScoreReviewThreshold = &scoreReviewThreshold
 	}
 	if si.ScoreRejectThreshold.Valid {
-		siDTO.Body.ScoreRejectThreshold = int(si.ScoreRejectThreshold.Int16)
+		scoreRejectThreshold := int(si.ScoreRejectThreshold.Int16)
+		siDTO.Body.ScoreRejectThreshold = &scoreRejectThreshold
 	}
 	if si.TriggerCondition != nil {
 		triggerc, err := operators.UnmarshalOperatorBool(si.TriggerCondition)
@@ -90,6 +97,10 @@ func (r *PGRepository) ListScenarioIterations(ctx context.Context, orgID string,
 }
 
 func (r *PGRepository) GetScenarioIteration(ctx context.Context, orgID string, scenarioIterationID string) (app.ScenarioIteration, error) {
+	return r.getScenarioIterationRaw(ctx, r.db, orgID, scenarioIterationID)
+}
+
+func (r *PGRepository) getScenarioIterationRaw(ctx context.Context, pool PgxPoolOrTxIface, orgID string, scenarioIterationID string) (app.ScenarioIteration, error) {
 	siCols := columnList[dbScenarioIteration]("si")
 	sirCols := columnList[dbScenarioIterationRule]("sir")
 
@@ -111,7 +122,7 @@ func (r *PGRepository) GetScenarioIteration(ctx context.Context, orgID string, s
 		Rules []dbScenarioIterationRule
 	}
 
-	rows, _ := r.db.Query(ctx, sql, args...)
+	rows, _ := pool.Query(ctx, sql, args...)
 	scenarioIteration, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[DBRow])
 	if errors.Is(err, pgx.ErrNoRows) {
 		return app.ScenarioIteration{}, app.ErrNotFoundInRepository
@@ -137,7 +148,6 @@ func (r *PGRepository) GetScenarioIteration(ctx context.Context, orgID string, s
 type dbCreateScenarioIteration struct {
 	OrgID                string `db:"org_id"`
 	ScenarioID           string `db:"scenario_id"`
-	Version              int    `db:"version"`
 	ScoreReviewThreshold *int   `db:"score_review_threshold"`
 	ScoreRejectThreshold *int   `db:"score_reject_threshold"`
 	TriggerCondition     []byte `db:"trigger_condition"`
@@ -169,21 +179,6 @@ func (r *PGRepository) CreateScenarioIteration(ctx context.Context, orgID string
 	defer tx.Rollback(ctx) // safe to call even if tx commits
 
 	sql, args, err := r.queryBuilder.
-		Select("COALESCE(MAX(version)+1, 1)").
-		From("scenario_iterations").
-		Where("scenario_id = ?", scenarioIteration.ScenarioID).ToSql()
-	if err != nil {
-		return app.ScenarioIteration{}, fmt.Errorf("unable to build next iteration version query: %w", err)
-	}
-
-	var version int
-	err = tx.QueryRow(ctx, sql, args...).Scan(&version)
-	if err != nil {
-		return app.ScenarioIteration{}, fmt.Errorf("unable to get scenario next iteration version: %w", err)
-	}
-	createScenarioIteration.Version = version
-
-	sql, args, err = r.queryBuilder.
 		Insert("scenario_iterations").
 		SetMap(columnValueMap(createScenarioIteration)).
 		Suffix("RETURNING *").ToSql()
@@ -191,7 +186,7 @@ func (r *PGRepository) CreateScenarioIteration(ctx context.Context, orgID string
 		return app.ScenarioIteration{}, fmt.Errorf("unable to build scenario iteration query: %w", err)
 	}
 
-	rows, _ := tx.Query(ctx, sql, args...)
+	rows, _ := r.db.Query(ctx, sql, args...)
 	createdScenarioIteration, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenarioIteration])
 	if err != nil {
 		return app.ScenarioIteration{}, fmt.Errorf("unable to create scenario iteration: %w", err)
@@ -210,7 +205,10 @@ func (r *PGRepository) CreateScenarioIteration(ctx context.Context, orgID string
 		scenarioIterationDTO.Body.Rules = createdRules
 	}
 
-	tx.Commit(ctx)
+	err = tx.Commit(ctx)
+	if err != nil {
+		return app.ScenarioIteration{}, fmt.Errorf("transaction issue: %w", err)
+	}
 
 	return scenarioIterationDTO, nil
 }
@@ -283,7 +281,56 @@ func (r *PGRepository) UpdateScenarioIteration(ctx context.Context, orgID string
 		return app.ScenarioIteration{}, fmt.Errorf("dto issue: %w", err)
 	}
 
-	tx.Commit(ctx)
+	err = tx.Commit(ctx)
+	if err != nil {
+		return app.ScenarioIteration{}, fmt.Errorf("transaction issue: %w", err)
+	}
 
 	return scenarioIterationDTO, nil
+}
+
+func (r *PGRepository) publishScenarioIteration(ctx context.Context, tx pgx.Tx, orgID string, scenarioIterationID string) error {
+	si, err := r.getScenarioIterationRaw(ctx, tx, orgID, scenarioIterationID)
+	if err != nil {
+		return err
+	}
+
+	if !si.IsValideForPublication() {
+		return app.ErrScenarioIterationNotValid
+	}
+
+	sql, args, err := r.queryBuilder.
+		Select("COALESCE(MAX(version)+1, 1)").
+		From("scenario_iterations").
+		Where("scenario_id = ?", si.ScenarioID).ToSql()
+	if err != nil {
+		return fmt.Errorf("unable to build next iteration version query: %w", err)
+	}
+
+	var version int
+	err = tx.QueryRow(ctx, sql, args...).Scan(&version)
+	if err != nil {
+		return fmt.Errorf("unable to get scenario next iteration version: %w", err)
+	}
+
+	sql, args, err = r.queryBuilder.
+		Update("scenario_iterations").
+		Set("version", version).
+		Where("id = ?", scenarioIterationID).
+		Where("version is null").
+		Where("org_id = ?", orgID).ToSql()
+	if err != nil {
+		return fmt.Errorf("unable to build query: %w", err)
+	}
+
+	commandTag, err := tx.Exec(ctx, sql, args...)
+	if err != nil {
+		return fmt.Errorf("unable to run query: %w", err)
+	}
+
+	if commandTag.RowsAffected() == 0 {
+		return ErrAlreadyPublished
+	}
+
+	return nil
 }

@@ -95,29 +95,41 @@ func (r *PGRepository) createScenarioPublication(ctx context.Context, tx pgx.Tx,
 }
 
 func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID string, sp app.CreateScenarioPublicationInput) ([]app.ScenarioPublication, error) {
-	scenario, err := r.GetScenario(ctx, orgID, sp.ScenarioID)
-	if err != nil {
-		return nil, app.ErrNotFoundInRepository
-	}
-
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to start a transaction: %w", err)
 	}
 	defer tx.Rollback(ctx) // safe to call even if tx commits
 
+	sql, args, err := r.queryBuilder.
+		Select("s.id, s.live_scenario_iteration_id").
+		From("scenario_iterations si").
+		Join("scenarios s on s.id = si.scenario_id").
+		Where("si.id = ?", sp.ScenarioIterationID).
+		Where("si.org_id = ?", orgID).ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("unable to build scenario publication query: %w", err)
+	}
+
+	var scenarioID string
+	var liveSIID *string
+	err = tx.QueryRow(ctx, sql, args...).Scan(&scenarioID, &liveSIID)
+	if err != nil {
+		return nil, app.ErrNotFoundInRepository
+	}
+
 	var scenarioPublications []app.ScenarioPublication
 	switch sp.PublicationAction {
 	case app.Publish:
-		if scenario.LiveVersion != nil {
-			if scenario.LiveVersion.ID == sp.ScenarioIterationID {
-				return nil, fmt.Errorf("scenario iteration(id: %s) is already live", sp.ScenarioIterationID)
+		if liveSIID != nil {
+			if *liveSIID == sp.ScenarioIterationID {
+				return nil, fmt.Errorf("scenario iteration(id: %s) is already live", *liveSIID)
 			}
 			unpublishOldIteration, err := r.createScenarioPublication(ctx, tx, dbCreateScenarioPublication{
 				OrgID: orgID,
 				// UserID: sp.UserID,
-				ScenarioID:          sp.ScenarioID,
-				ScenarioIterationID: scenario.LiveVersion.ID,
+				ScenarioID:          scenarioID,
+				ScenarioIterationID: *liveSIID,
 				PublicationAction:   app.Unpublish.String(),
 			})
 			if err != nil {
@@ -126,10 +138,15 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 			scenarioPublications = append(scenarioPublications, unpublishOldIteration.dto())
 		}
 
+		err = r.publishScenarioIteration(ctx, tx, orgID, sp.ScenarioIterationID)
+		if err != nil && !errors.Is(err, ErrAlreadyPublished) {
+			return nil, fmt.Errorf("unable to publish scenario iteration: %w", err)
+		}
+
 		publishNewIteration, err := r.createScenarioPublication(ctx, tx, dbCreateScenarioPublication{
 			OrgID: orgID,
 			// UserID: sp.UserID,
-			ScenarioID:          sp.ScenarioID,
+			ScenarioID:          scenarioID,
 			ScenarioIterationID: sp.ScenarioIterationID,
 			PublicationAction:   app.Publish.String(),
 		})
@@ -138,18 +155,19 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 		}
 		scenarioPublications = append(scenarioPublications, publishNewIteration.dto())
 
-		err = r.publishScenarioIteration(ctx, tx, orgID, sp.ScenarioIterationID)
+		err = r.setLiveScenarioIteration(ctx, tx, orgID, sp.ScenarioIterationID)
 		if err != nil {
 			return nil, fmt.Errorf("unable to publish live scenario iteration(id: %s): %w", sp.ScenarioIterationID, err)
 		}
+
 	case app.Unpublish:
-		if scenario.LiveVersion == nil || scenario.LiveVersion.ID != sp.ScenarioIterationID {
-			return nil, fmt.Errorf("unable to unpublish scenario iteration(id: %s): current live scenario iteration point to a different scenario iteration(id: %s)", sp.ScenarioIterationID, scenario.LiveVersion.ID)
+		if liveSIID == nil || *liveSIID != sp.ScenarioIterationID {
+			return nil, fmt.Errorf("unable to unpublish: scenario iteration(id: %s) is not live", sp.ScenarioIterationID)
 		}
 		unpublishOldIteration, err := r.createScenarioPublication(ctx, tx, dbCreateScenarioPublication{
 			OrgID: orgID,
 			// UserID: sp.UserID,
-			ScenarioID:          sp.ScenarioID,
+			ScenarioID:          scenarioID,
 			ScenarioIterationID: sp.ScenarioIterationID,
 			PublicationAction:   app.Unpublish.String(),
 		})
@@ -158,17 +176,21 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 		}
 		scenarioPublications = append(scenarioPublications, unpublishOldIteration.dto())
 
-		err = r.unpublishScenarioIteration(ctx, tx, orgID, sp.ScenarioID)
+		err = r.unsetLiveScenarioIteration(ctx, tx, orgID, scenarioID)
 		if err != nil {
-			return nil, fmt.Errorf("unable to unpublish scenario(id: %s): %w", sp.ScenarioID, err)
+			return nil, fmt.Errorf("unable to unpublish scenario(id: %s): %w", scenarioID, err)
 		}
+
 	default:
 		return nil, fmt.Errorf("unknown publication action")
 	}
 
-	tx.Commit(ctx)
+	err = tx.Commit(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("transaction issue: %w", err)
+	}
 
-	return scenarioPublications, err
+	return scenarioPublications, nil
 }
 
 func (r *PGRepository) GetScenarioPublication(ctx context.Context, orgID string, ID string) (app.ScenarioPublication, error) {

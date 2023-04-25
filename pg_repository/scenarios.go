@@ -46,12 +46,15 @@ func (r *PGRepository) ListScenarios(ctx context.Context, orgID string) ([]app.S
 
 	rows, _ := r.db.Query(ctx, sql, args...)
 	scenarios, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbScenario])
+	if err != nil {
+		return nil, fmt.Errorf("unable to get scenarios: %w", err)
+	}
 
 	scenarioDTOs := make([]app.Scenario, len(scenarios))
 	for i, scenario := range scenarios {
 		scenarioDTOs[i] = scenario.dto()
 	}
-	return scenarioDTOs, err
+	return scenarioDTOs, nil
 }
 
 func (r *PGRepository) GetScenario(ctx context.Context, orgID string, scenarioID string) (app.Scenario, error) {
@@ -82,7 +85,11 @@ func (r *PGRepository) GetScenario(ctx context.Context, orgID string, scenarioID
 		if err != nil {
 			return app.Scenario{}, fmt.Errorf("unable to get live scenario iteration: %w", err)
 		}
-		scenarioDTO.LiveVersion = &liveScenarioIteration
+		liveVersion, err := app.NewPublishedScenarioIteration(liveScenarioIteration)
+		if err != nil {
+			return app.Scenario{}, app.ErrScenarioIterationNotValid
+		}
+		scenarioDTO.LiveVersion = &liveVersion
 	}
 
 	return scenarioDTO, err
@@ -148,7 +155,7 @@ func (r *PGRepository) UpdateScenario(ctx context.Context, orgID string, scenari
 	return updatedScenario.dto(), nil
 }
 
-func (r *PGRepository) publishScenarioIteration(ctx context.Context, tx pgx.Tx, orgID string, scenarioIterationID string) error {
+func (r *PGRepository) setLiveScenarioIteration(ctx context.Context, tx pgx.Tx, orgID string, scenarioIterationID string) error {
 	sql, args, err := r.queryBuilder.
 		Update("scenarios").
 		Set("live_scenario_iteration_id", scenarioIterationID).
@@ -170,7 +177,7 @@ func (r *PGRepository) publishScenarioIteration(ctx context.Context, tx pgx.Tx, 
 	return nil
 }
 
-func (r *PGRepository) unpublishScenarioIteration(ctx context.Context, tx pgx.Tx, orgID string, scenarioID string) error {
+func (r *PGRepository) unsetLiveScenarioIteration(ctx context.Context, tx pgx.Tx, orgID string, scenarioID string) error {
 	sql, args, err := r.queryBuilder.
 		Update("scenarios").
 		Set("live_scenario_iteration_id", nil).

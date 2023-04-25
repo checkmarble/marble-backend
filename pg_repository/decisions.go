@@ -124,7 +124,10 @@ func (r *PGRepository) StoreDecision(ctx context.Context, orgID string, decision
 	createdDecisionDTO := createdDecision.dto()
 	createdDecisionDTO.RuleExecutions = createdDecisionRules
 
-	tx.Commit(ctx)
+	err = tx.Commit(ctx)
+	if err != nil {
+		return app.Decision{}, fmt.Errorf("transaction issue: %w", err)
+	}
 
 	return createdDecisionDTO, nil
 }

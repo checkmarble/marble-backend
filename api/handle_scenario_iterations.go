@@ -24,14 +24,14 @@ type ScenarioIterationAppInterface interface {
 type APIScenarioIterationBody struct {
 	TriggerCondition     json.RawMessage            `json:"triggerCondition,omitempty"`
 	Rules                []APIScenarioIterationRule `json:"rules,omitempty"`
-	ScoreReviewThreshold int                        `json:"scoreReviewThreshold"`
-	ScoreRejectThreshold int                        `json:"scoreRejectThreshold"`
+	ScoreReviewThreshold *int                       `json:"scoreReviewThreshold,omitempty"`
+	ScoreRejectThreshold *int                       `json:"scoreRejectThreshold,omitempty"`
 }
 
 type APIScenarioIteration struct {
 	ID         string    `json:"id"`
 	ScenarioID string    `json:"scenarioId"`
-	Version    int       `json:"version"`
+	Version    *int      `json:"version,omitempty"`
 	CreatedAt  time.Time `json:"createdAt"`
 	UpdatedAt  time.Time `json:"updatedAt"`
 }
