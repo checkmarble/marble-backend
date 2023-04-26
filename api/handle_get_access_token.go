@@ -12,8 +12,9 @@ import (
 var HARD_CODED_API_TOKEN_API = "12345"
 var HARD_CODED_API_TOKEN_USER = "67890"
 var HARD_CODED_ORG_ID = "12345"
-var TOKEN_LIFETIME_MINUTES = 30
 var SIGNING_ALGO = jwt.SigningMethodRS256
+
+const TOKEN_LIFETIME_MINUTES = 30
 
 func (api *API) handleGetAccessToken() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
