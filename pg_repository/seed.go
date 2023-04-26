@@ -164,7 +164,6 @@ func (r *PGRepository) Seed() {
 		log.Printf("error creating scenario iteration: %v", err)
 	}
 	_, err = r.CreateScenarioPublication(context.TODO(), org.ID, app.CreateScenarioPublicationInput{
-		ScenarioID:          scenarioIteration.ScenarioID,
 		ScenarioIterationID: scenarioIteration.ID,
 		PublicationAction:   app.Publish,
 	})

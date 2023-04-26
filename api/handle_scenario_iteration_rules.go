@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"marble/marble-backend/app"
 	"marble/marble-backend/app/operators"
@@ -233,10 +234,13 @@ func (api *API) UpdateScenarioIterationRule() http.HandlerFunc {
 		}
 
 		updatedRule, err := api.app.UpdateScenarioIterationRule(ctx, orgID, updateRuleInput)
-		if err != nil {
+		if errors.Is(err, app.ErrScenarioIterationNotDraft) {
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		} else if err != nil {
 			// Could not execute request
 			// TODO(errors): handle missing fields error ?
-			http.Error(w, fmt.Errorf("error getting rule: %w", err).Error(), http.StatusInternalServerError)
+			http.Error(w, fmt.Errorf("error updating rule: %w", err).Error(), http.StatusInternalServerError)
 			return
 		}
 

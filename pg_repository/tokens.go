@@ -28,7 +28,7 @@ func (t *dbToken) dto() app.Token {
 
 func (r *PGRepository) GetOrganizationIDFromToken(ctx context.Context, token string) (orgID string, err error) {
 	sql, args, err := r.queryBuilder.
-		Select("o.*").
+		Select(columnList[dbOrganization]("o")...).
 		From("tokens t").
 		Join("organizations o on o.id = t.org_id").
 		Where("token = ?", token).

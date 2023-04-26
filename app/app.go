@@ -45,4 +45,8 @@ func New(r RepositoryInterface) (*App, error) {
 
 // Sentinel errors that the repository can use
 // We define those here because we can't import the repository package in the app itself
-var ErrNotFoundInRepository = errors.New("item not found in repository")
+var (
+	ErrNotFoundInRepository      = errors.New("item not found in repository")
+	ErrScenarioIterationNotDraft = errors.New("scenario iteration is not a draft")
+	ErrScenarioIterationNotValid = errors.New("scenario iteration is not valid for publication")
+)

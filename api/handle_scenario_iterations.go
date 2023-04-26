@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"marble/marble-backend/app"
 	"marble/marble-backend/app/operators"
@@ -23,14 +24,14 @@ type ScenarioIterationAppInterface interface {
 type APIScenarioIterationBody struct {
 	TriggerCondition     json.RawMessage            `json:"triggerCondition,omitempty"`
 	Rules                []APIScenarioIterationRule `json:"rules,omitempty"`
-	ScoreReviewThreshold int                        `json:"scoreReviewThreshold"`
-	ScoreRejectThreshold int                        `json:"scoreRejectThreshold"`
+	ScoreReviewThreshold *int                       `json:"scoreReviewThreshold,omitempty"`
+	ScoreRejectThreshold *int                       `json:"scoreRejectThreshold,omitempty"`
 }
 
 type APIScenarioIteration struct {
 	ID         string    `json:"id"`
 	ScenarioID string    `json:"scenarioId"`
-	Version    int       `json:"version"`
+	Version    *int      `json:"version,omitempty"`
 	CreatedAt  time.Time `json:"createdAt"`
 	UpdatedAt  time.Time `json:"updatedAt"`
 }
@@ -286,10 +287,13 @@ func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 		}
 
 		updatedSI, err := api.app.UpdateScenarioIteration(ctx, orgID, updateScenarioIterationInput)
-		if err != nil {
+		if errors.Is(err, app.ErrScenarioIterationNotDraft) {
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		} else if err != nil {
 			// Could not execute request
 			// TODO(errors): handle missing fields error ?
-			http.Error(w, fmt.Errorf("error getting scenario iteration: %w", err).Error(), http.StatusInternalServerError)
+			http.Error(w, fmt.Errorf("error updating scenario iteration: %w", err).Error(), http.StatusInternalServerError)
 			return
 		}
 

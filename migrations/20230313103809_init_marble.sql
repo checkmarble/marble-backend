@@ -66,7 +66,7 @@ CREATE TABLE scenario_iterations(
   id uuid DEFAULT uuid_generate_v4(),
   org_id uuid NOT NULL,
   scenario_id uuid NOT NULL,
-  version smallint NOT NULL,
+  version smallint,
   trigger_condition json,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),

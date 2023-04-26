@@ -35,7 +35,7 @@ func (s *dbScenario) dto() app.Scenario {
 
 func (r *PGRepository) ListScenarios(ctx context.Context, orgID string) ([]app.Scenario, error) {
 	sql, args, err := r.queryBuilder.
-		Select("*").
+		Select(columnList[dbScenario]()...).
 		From("scenarios").
 		Where(squirrel.Eq{
 			"org_id": orgID,
@@ -46,17 +46,20 @@ func (r *PGRepository) ListScenarios(ctx context.Context, orgID string) ([]app.S
 
 	rows, _ := r.db.Query(ctx, sql, args...)
 	scenarios, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbScenario])
+	if err != nil {
+		return nil, fmt.Errorf("unable to get scenarios: %w", err)
+	}
 
 	scenarioDTOs := make([]app.Scenario, len(scenarios))
 	for i, scenario := range scenarios {
 		scenarioDTOs[i] = scenario.dto()
 	}
-	return scenarioDTOs, err
+	return scenarioDTOs, nil
 }
 
 func (r *PGRepository) GetScenario(ctx context.Context, orgID string, scenarioID string) (app.Scenario, error) {
 	sql, args, err := r.queryBuilder.
-		Select("*").
+		Select(columnList[dbScenario]()...).
 		From("scenarios").
 		Where(squirrel.Eq{
 			"org_id": orgID,
@@ -82,27 +85,32 @@ func (r *PGRepository) GetScenario(ctx context.Context, orgID string, scenarioID
 		if err != nil {
 			return app.Scenario{}, fmt.Errorf("unable to get live scenario iteration: %w", err)
 		}
-		scenarioDTO.LiveVersion = &liveScenarioIteration
+		liveVersion, err := app.NewPublishedScenarioIteration(liveScenarioIteration)
+		if err != nil {
+			return app.Scenario{}, app.ErrScenarioIterationNotValid
+		}
+		scenarioDTO.LiveVersion = &liveVersion
 	}
 
 	return scenarioDTO, err
 }
 
+type dbCreateScenario struct {
+	OrgID             string `db:"org_id"`
+	Name              string `db:"name"`
+	Description       string `db:"description"`
+	TriggerObjectType string `db:"trigger_object_type"`
+}
+
 func (r *PGRepository) CreateScenario(ctx context.Context, orgID string, scenario app.CreateScenarioInput) (app.Scenario, error) {
 	sql, args, err := r.queryBuilder.
 		Insert("scenarios").
-		Columns(
-			"org_id",
-			"name",
-			"description",
-			"trigger_object_type",
-		).
-		Values(
-			orgID,
-			scenario.Name,
-			scenario.Description,
-			scenario.TriggerObjectType,
-		).
+		SetMap(columnValueMap(dbCreateScenario{
+			OrgID:             orgID,
+			Name:              scenario.Name,
+			Description:       scenario.Description,
+			TriggerObjectType: scenario.TriggerObjectType,
+		})).
 		Suffix("RETURNING *").ToSql()
 	if err != nil {
 		return app.Scenario{}, fmt.Errorf("unable to build scenario query: %w", err)
@@ -147,7 +155,7 @@ func (r *PGRepository) UpdateScenario(ctx context.Context, orgID string, scenari
 	return updatedScenario.dto(), nil
 }
 
-func (r *PGRepository) publishScenarioIteration(ctx context.Context, tx pgx.Tx, orgID string, scenarioIterationID string) error {
+func (r *PGRepository) setLiveScenarioIteration(ctx context.Context, tx pgx.Tx, orgID string, scenarioIterationID string) error {
 	sql, args, err := r.queryBuilder.
 		Update("scenarios").
 		Set("live_scenario_iteration_id", scenarioIterationID).
@@ -169,7 +177,7 @@ func (r *PGRepository) publishScenarioIteration(ctx context.Context, tx pgx.Tx, 
 	return nil
 }
 
-func (r *PGRepository) unpublishScenarioIteration(ctx context.Context, tx pgx.Tx, orgID string, scenarioID string) error {
+func (r *PGRepository) unsetLiveScenarioIteration(ctx context.Context, tx pgx.Tx, orgID string, scenarioID string) error {
 	sql, args, err := r.queryBuilder.
 		Update("scenarios").
 		Set("live_scenario_iteration_id", nil).
