@@ -13,11 +13,11 @@ const UUIDRegExp = "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-
 
 func (api *API) routes() {
 	// TODO: API token authorizes calls to all endpoints, until we have finalized end-user authentication
-	apiOnlyMdw := map[TokenType]Role{ApiToken: ADMIN}
-	readerOnlyMdw := map[TokenType]Role{UserToken: READER, ApiToken: ADMIN}
-	builderMdw := map[TokenType]Role{UserToken: BUILDER, ApiToken: ADMIN}
-	publisherMdw := map[TokenType]Role{UserToken: PUBLISHER, ApiToken: ADMIN}
-	apiAndReaderUserMdw := map[TokenType]Role{ApiToken: ADMIN, UserToken: READER}
+	apiOnlyMdw := api.authMiddlewareFactory(map[TokenType]Role{ApiToken: ADMIN})
+	readerOnlyMdw := api.authMiddlewareFactory(map[TokenType]Role{UserToken: READER, ApiToken: ADMIN})
+	builderMdw := api.authMiddlewareFactory(map[TokenType]Role{UserToken: BUILDER, ApiToken: ADMIN})
+	publisherMdw := api.authMiddlewareFactory(map[TokenType]Role{UserToken: PUBLISHER, ApiToken: ADMIN})
+	apiAndReaderUserMdw := api.authMiddlewareFactory(map[TokenType]Role{ApiToken: ADMIN, UserToken: READER})
 
 	api.router.Post("/token", api.handleGetAccessToken())
 
@@ -28,24 +28,24 @@ func (api *API) routes() {
 		// matches all /decisions routes
 		authedRouter.Route("/decisions", func(decisionsRouter chi.Router) {
 
-			decisionsRouter.Use(api.authMiddlewareFactory(apiAndReaderUserMdw))
+			decisionsRouter.Use(apiAndReaderUserMdw)
 
 			decisionsRouter.Get("/{decisionID:"+UUIDRegExp+"}", api.handleGetDecision())
-			decisionsRouter.With(api.authMiddlewareFactory(apiOnlyMdw)).
+			decisionsRouter.With(apiOnlyMdw).
 				Post("/", api.handlePostDecision())
 		})
 
 		authedRouter.Route("/ingestion", func(r chi.Router) {
-			r.Use(api.authMiddlewareFactory(apiOnlyMdw))
+			r.Use(apiOnlyMdw)
 
 			r.Post("/{object_type}", api.handleIngestion())
 		})
 
 		authedRouter.Route("/scenarios", func(scenariosRouter chi.Router) {
-			scenariosRouter.Use(api.authMiddlewareFactory(readerOnlyMdw))
+			scenariosRouter.Use(readerOnlyMdw)
 
 			scenariosRouter.Get("/", api.ListScenarios())
-			scenariosRouter.With(api.authMiddlewareFactory(builderMdw)).
+			scenariosRouter.With(builderMdw).
 				With(httpin.NewInput(CreateScenarioInput{})).
 				Post("/", api.CreateScenario())
 
@@ -59,48 +59,48 @@ func (api *API) routes() {
 		})
 
 		authedRouter.Route("/scenario-iterations", func(scenarIterRouter chi.Router) {
-			scenarIterRouter.Use(api.authMiddlewareFactory(readerOnlyMdw))
+			scenarIterRouter.Use(readerOnlyMdw)
 
 			scenarIterRouter.With(httpin.NewInput(ListScenarioIterationsInput{})).
 				Get("/", api.ListScenarioIterations())
 			scenarIterRouter.With(httpin.NewInput(CreateScenarioIterationInput{})).
-				With(api.authMiddlewareFactory(builderMdw)).
+				With(builderMdw).
 				Post("/", api.CreateScenarioIteration())
 
 			scenarIterRouter.Route("/{scenarioIterationID:"+UUIDRegExp+"}", func(r chi.Router) {
 				r.With(httpin.NewInput(GetScenarioIterationInput{})).
 					Get("/", api.GetScenarioIteration())
 				r.With(httpin.NewInput(UpdateScenarioIterationInput{})).
-					With(api.authMiddlewareFactory(builderMdw)).
+					With(builderMdw).
 					Put("/", api.UpdateScenarioIteration())
 			})
 		})
 
 		authedRouter.Route("/scenario-iteration-rules", func(scenarIterRulesRouter chi.Router) {
-			scenarIterRulesRouter.Use(api.authMiddlewareFactory(readerOnlyMdw))
+			scenarIterRulesRouter.Use(readerOnlyMdw)
 
 			scenarIterRulesRouter.With(httpin.NewInput(ListScenarioIterationRulesInput{})).
 				Get("/", api.ListScenarioIterationRules())
 			scenarIterRulesRouter.With(httpin.NewInput(CreateScenarioIterationRuleInput{})).
-				With(api.authMiddlewareFactory(builderMdw)).
+				With(builderMdw).
 				Post("/", api.CreateScenarioIterationRule())
 
 			scenarIterRulesRouter.Route("/{ruleID:"+UUIDRegExp+"}", func(r chi.Router) {
 				r.With(httpin.NewInput(GetScenarioIterationRuleInput{})).
 					Get("/", api.GetScenarioIterationRule())
 				r.With(httpin.NewInput(UpdateScenarioIterationRuleInput{})).
-					With(api.authMiddlewareFactory(builderMdw)).
+					With(builderMdw).
 					Put("/", api.UpdateScenarioIterationRule())
 			})
 		})
 
 		authedRouter.Route("/scenario-publications", func(scenarPublicationsRouter chi.Router) {
-			scenarPublicationsRouter.Use(api.authMiddlewareFactory(readerOnlyMdw))
+			scenarPublicationsRouter.Use(readerOnlyMdw)
 
 			scenarPublicationsRouter.With(httpin.NewInput(ListScenarioPublicationsInput{})).
 				Get("/", api.ListScenarioPublications())
 			scenarPublicationsRouter.With(httpin.NewInput(CreateScenarioPublicationInput{})).
-				With(api.authMiddlewareFactory(publisherMdw)).
+				With(publisherMdw).
 				Post("/", api.CreateScenarioPublication())
 
 			scenarPublicationsRouter.Route("/{scenarioPublicationID:"+UUIDRegExp+"}", func(r chi.Router) {
