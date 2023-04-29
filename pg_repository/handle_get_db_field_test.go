@@ -221,11 +221,11 @@ func TestReadFromDbWithDockerDb(t *testing.T) {
 		},
 	}
 	ctx := context.Background()
-	payload, err := app.ParseToDataModelObject(ctx, transactions, []byte(`{"object_id": "9283b948-a140-4993-9c41-d5475fda5671"}`))
+	payload, err := app.ParseToDataModelObject(ctx, transactions, []byte(`{"object_id": "9283b948-a140-4993-9c41-d5475fda5671", "updated_at": "2021-01-01T00:00:00Z"}`))
 	if err != nil {
 		t.Fatalf("Could not parse payload: %s", err)
 	}
-	payloadNotInDB, err := app.ParseToDataModelObject(ctx, transactions, []byte(`{"object_id": "6d3a330d-7204-4561-b523-9fa0d518d184"}`))
+	payloadNotInDB, err := app.ParseToDataModelObject(ctx, transactions, []byte(`{"object_id": "6d3a330d-7204-4561-b523-9fa0d518d184", "updated_at": "2021-01-01T00:00:00Z"}`))
 	if err != nil {
 		t.Fatalf("Could not parse payload: %s", err)
 	}
@@ -309,32 +309,31 @@ func TestReadRowsWithMockDb(t *testing.T) {
 		}}
 
 	ctx := context.Background()
-	payload, err := app.ParseToDataModelObject(ctx, transactions, []byte(`{"object_id": "9283b948-a140-4993-9c41-d5475fda5671"}`))
+	payload, err := app.ParseToDataModelObject(ctx, transactions, []byte(`{"object_id": "9283b948-a140-4993-9c41-d5475fda5671", "updated_at": "2021-01-01T00:00:00Z"}`))
 	if err != nil {
 		t.Fatalf("Could not parse payload: %s", err)
 	}
-	param := []interface{}{"1234"}
 	cases := []MockedTestCase{
 		{
 
 			name:           "Direct table read",
 			readParams:     app.DbFieldReadParams{Path: []string{"transactions"}, FieldName: "isValidated", DataModel: dataModel, Payload: *payload},
 			expectedQuery:  "SELECT transactions.isValidated FROM transactions WHERE transactions.object_id = $1",
-			expectedParams: param,
+			expectedParams: []interface{}{"9283b948-a140-4993-9c41-d5475fda5671"},
 			expectedOutput: pgtype.Bool{Bool: true, Valid: true},
 		},
 		{
 			name:           "Table read with join - bool",
 			readParams:     app.DbFieldReadParams{Path: []string{"transactions", "accounts"}, FieldName: "isValidated", DataModel: dataModel, Payload: *payload},
 			expectedQuery:  "SELECT accounts.isValidated FROM transactions JOIN accounts ON transactions.account_id = accounts.object_id WHERE transactions.object_id = $1",
-			expectedParams: param,
+			expectedParams: []interface{}{"9283b948-a140-4993-9c41-d5475fda5671"},
 			expectedOutput: pgtype.Bool{Bool: true, Valid: true},
 		},
 		{
 			name:           "Table read with join - string",
 			readParams:     app.DbFieldReadParams{Path: []string{"transactions", "accounts"}, FieldName: "status", DataModel: dataModel, Payload: *payload},
 			expectedQuery:  "SELECT accounts.status FROM transactions JOIN accounts ON transactions.account_id = accounts.object_id WHERE transactions.object_id = $1",
-			expectedParams: param,
+			expectedParams: []interface{}{"9283b948-a140-4993-9c41-d5475fda5671"},
 			expectedOutput: pgtype.Text{String: "VALIDATED", Valid: true},
 		},
 	}
@@ -405,25 +404,24 @@ func TestNoRowsReadWithMockDb(t *testing.T) {
 			"accounts":     accounts,
 		}}
 	ctx := context.Background()
-	payload, err := app.ParseToDataModelObject(ctx, transactions, []byte(`{"object_id": "9283b948-a140-4993-9c41-d5475fda5671"}`))
+	payload, err := app.ParseToDataModelObject(ctx, transactions, []byte(`{"object_id": "9283b948-a140-4993-9c41-d5475fda5671", "updated_at": "2021-01-01T00:00:00Z"}`))
 	if err != nil {
 		t.Fatalf("Could not parse payload: %s", err)
 	}
-	param := []interface{}{"1234"}
 	cases := []MockedTestCase{
 		{
 
 			name:           "Direct table read",
 			readParams:     app.DbFieldReadParams{Path: []string{"transactions"}, FieldName: "isValidated", DataModel: dataModel, Payload: *payload},
 			expectedQuery:  "SELECT transactions.isValidated FROM transactions WHERE transactions.object_id = $1",
-			expectedParams: param,
+			expectedParams: []interface{}{"9283b948-a140-4993-9c41-d5475fda5671"},
 			expectedOutput: pgtype.Bool{Bool: true, Valid: true},
 		},
 		{
 			name:           "Table read with join - bool",
 			readParams:     app.DbFieldReadParams{Path: []string{"transactions", "accounts"}, FieldName: "isValidated", DataModel: dataModel, Payload: *payload},
 			expectedQuery:  "SELECT accounts.isValidated FROM transactions JOIN accounts ON transactions.account_id = accounts.object_id WHERE transactions.object_id = $1",
-			expectedParams: param,
+			expectedParams: []interface{}{"9283b948-a140-4993-9c41-d5475fda5671"},
 			expectedOutput: pgtype.Bool{Bool: true, Valid: true},
 		},
 	}

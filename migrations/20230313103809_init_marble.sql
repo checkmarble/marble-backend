@@ -3,13 +3,13 @@
 -- create and make default the marble schema
 CREATE SCHEMA marble;
 
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA marble TO marble;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA marble TO postgres;
 
 ALTER DATABASE marble
 SET search_path TO marble,
   public;
 
-ALTER ROLE marble
+ALTER ROLE postgres
 SET search_path TO marble,
   public;
 
@@ -103,14 +103,12 @@ CREATE TABLE scenario_publications(
   id uuid DEFAULT uuid_generate_v4(),
   rank SERIAL,
   org_id uuid NOT NULL,
-  -- user_id uuid NOT NULL,
   scenario_id uuid NOT NULL,
   scenario_iteration_id uuid NOT NULL,
   publication_action VARCHAR NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   PRIMARY KEY(id),
   CONSTRAINT fk_scenario_publications_org FOREIGN KEY(org_id) REFERENCES organizations(id),
-  -- CONSTRAINT fk_scenario_publications_user FOREIGN KEY(user_id) REFERENCES users(id),
   CONSTRAINT fk_scenario_publications_scenario_id FOREIGN KEY(scenario_id) REFERENCES scenarios(id),
   CONSTRAINT fk_scenario_publications_scenario_iterations FOREIGN KEY(scenario_iteration_id) REFERENCES scenario_iterations(id)
 );
@@ -138,7 +136,6 @@ CREATE TABLE decisions(
   score INT NOT NULL,
   error_code INT NOT NULL,
   deleted_at TIMESTAMP WITH TIME ZONE,
-  --error_message VARCHAR NOT NULL,
   PRIMARY KEY(id),
   CONSTRAINT fk_decisions_org FOREIGN KEY(org_id) REFERENCES organizations(id)
 );
@@ -154,7 +151,6 @@ CREATE TABLE decision_rules(
   result BOOLEAN NOT NULL,
   error_code INT NOT NULL,
   deleted_at TIMESTAMP WITH TIME ZONE,
-  --error_message VARCHAR,
   PRIMARY KEY(id),
   CONSTRAINT fk_decision_rules_org FOREIGN KEY(org_id) REFERENCES organizations(id),
   CONSTRAINT fk_decision_rules_decisions FOREIGN KEY(decision_id) REFERENCES decisions(id)

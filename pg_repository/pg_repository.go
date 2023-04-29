@@ -25,46 +25,31 @@ type PgxPoolIface interface {
 	Close()
 }
 
+type PGConfig struct {
+	Hostname    string
+	Port        string
+	User        string
+	Password    string
+	MigrationFS embed.FS
+}
+
 type PGRepository struct {
 	db           PgxPoolIface
 	queryBuilder squirrel.StatementBuilderType
 }
 
-func New(host string, port string, user string, password string, migrationFS embed.FS) (*PGRepository, error) {
-	connectionString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=marble sslmode=disable", host, port, user, password)
-	log.Printf("connection string: %v\n", connectionString)
-
-	///////////////////////////////
-	// Run migrations if any
-	// This requires its own *sql.DB connection
-	///////////////////////////////
-
-	// Setup its own connection
-	migrationDB, err := sql.Open("pgx", connectionString)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
-		os.Exit(1)
+func (config PGConfig) GetConnectionString(env string) string {
+	connectionString := fmt.Sprintf("host=%s user=%s password=%s database=marble sslmode=disable", config.Hostname, config.User, config.Password)
+	if env == "DEV" {
+		// Cloud Run connects to the DB through a proxy and a unix socket, so we don't need need to specify the port
+		// but we do when running locally
+		connectionString = fmt.Sprintf("%s port=%s", connectionString, config.Port)
 	}
+	return connectionString
+}
 
-	// start goose migrations
-	log.Println("Migrations starting")
-
-	goose.SetBaseFS(migrationFS)
-
-	if err := goose.SetDialect("postgres"); err != nil {
-		panic(err)
-	}
-
-	if err := goose.Up(migrationDB, "migrations"); err != nil {
-		panic(err)
-	}
-
-	migrationDB.Close()
-	log.Println("Migrations completed")
-
-	///////////////////////////////
-	// Setup connection pool
-	///////////////////////////////
+func New(env string, PGConfig PGConfig) (*PGRepository, error) {
+	connectionString := PGConfig.GetConnectionString(env)
 
 	dbpool, err := pgxpool.New(context.Background(), connectionString)
 	if err != nil {
@@ -74,9 +59,7 @@ func New(host string, port string, user string, password string, migrationFS emb
 
 	log.Printf("DB connection pool created. Stats: %+v\n", dbpool.Stat())
 
-	///////////////////////////////
 	// Test connection
-	///////////////////////////////
 	var currentPGUser string
 	err = dbpool.QueryRow(context.Background(), "SELECT current_user;").Scan(&currentPGUser)
 	if err != nil {
@@ -91,14 +74,40 @@ func New(host string, port string, user string, password string, migrationFS emb
 	}
 	log.Printf("search path: %v\n", searchPath)
 
-	///////////////////////////////
-	// Build repository
-	///////////////////////////////
-
 	r := &PGRepository{
 		db:           dbpool,
 		queryBuilder: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar),
 	}
 
 	return r, nil
+}
+
+func RunMigrations(PGConfig PGConfig, env string) {
+	connectionString := PGConfig.GetConnectionString(env)
+
+	migrationDB, err := sql.Open("pgx", connectionString)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+		os.Exit(1)
+	}
+
+	// start goose migrations
+	log.Println("Migrations starting")
+	goose.SetBaseFS(PGConfig.MigrationFS)
+
+	if err := goose.SetDialect("postgres"); err != nil {
+		panic(err)
+	}
+
+	err = migrationDB.Ping()
+	if err != nil {
+		log.Println("error while pinging db")
+		panic(err)
+	}
+
+	if err := goose.Up(migrationDB, "migrations"); err != nil {
+		panic(err)
+	}
+
+	migrationDB.Close()
 }
