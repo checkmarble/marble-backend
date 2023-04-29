@@ -8,7 +8,7 @@ services:
       PORT: 8080
       PG_HOSTNAME: db
       PG_PORT: 5432
-      PG_USER: marble
+      PG_USER: postgres
       PG_PASSWORD: marble
       GOOGLE_APPLICATION_CREDENTIALS: /gcp/creds.json
       GOOGLE_CLOUD_PROJECT: "tokyo-country-381508"
@@ -26,7 +26,7 @@ services:
     restart: always
     #    user: postgres
     environment:
-      POSTGRES_USER: marble
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: marble
       POSTGRES_DB: marble
       PGDATA: /data/postgres
@@ -36,7 +36,7 @@ services:
       - postgres-db:/data/postgres
     #      - ./sql:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U marble"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 2s
       timeout: 1s
       retries: 5
