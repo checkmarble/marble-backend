@@ -25,18 +25,30 @@ type PgxPoolIface interface {
 	Close()
 }
 
+type PGCOnfig struct {
+	Hostname    string
+	Port        string
+	User        string
+	Password    string
+	MigrationFS embed.FS
+}
+
 type PGRepository struct {
 	db           PgxPoolIface
 	queryBuilder squirrel.StatementBuilderType
 }
 
-func New(host string, port string, user string, password string, migrationFS embed.FS) (*PGRepository, error) {
-	connectionString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=marble sslmode=disable", host, port, user, password)
-	log.Printf("connection string: %v\n", connectionString)
+func New(env string, pgConfig PGCOnfig) (*PGRepository, error) {
+
+	connectionString := fmt.Sprintf("host=%s user=%s password=%s database=marble sslmode=disable", pgConfig.Hostname, pgConfig.User, pgConfig.Password)
+	if env == "DEV" {
+		// Cloud Run connects to the DB through a proxy and a unix socket, so we don't need need to specify the port
+		// but we do when running locally
+		connectionString = fmt.Sprintf("%s port=%s", connectionString, pgConfig.Port)
+	}
 
 	///////////////////////////////
 	// Run migrations if any
-	// This requires its own *sql.DB connection
 	///////////////////////////////
 
 	// Setup its own connection
@@ -49,9 +61,15 @@ func New(host string, port string, user string, password string, migrationFS emb
 	// start goose migrations
 	log.Println("Migrations starting")
 
-	goose.SetBaseFS(migrationFS)
+	goose.SetBaseFS(pgConfig.MigrationFS)
 
 	if err := goose.SetDialect("postgres"); err != nil {
+		panic(err)
+	}
+
+	err = migrationDB.Ping()
+	if err != nil {
+		log.Println("error while pinging db")
 		panic(err)
 	}
 
@@ -60,7 +78,6 @@ func New(host string, port string, user string, password string, migrationFS emb
 	}
 
 	migrationDB.Close()
-	log.Println("Migrations completed")
 
 	///////////////////////////////
 	// Setup connection pool

@@ -15,73 +15,63 @@ import (
 	"marble/marble-backend/pg_repository"
 )
 
-var version = "local-dev"
-var appName = "marble/marble-backend"
-
 // embed migrations sql folder
 //
 //go:embed migrations/*.sql
 var embedMigrations embed.FS
 
+func mustGetenv(k string) string {
+	v := os.Getenv(k)
+	if v == "" {
+		log.Fatalf("Fatal Error in connect_unix.go: %s environment variable not set.\n", k)
+	}
+	return v
+}
+
+func getEnvWithDefault(k string, def string) string {
+	v, ok := os.LookupEnv(k)
+	if !ok || v == "" {
+		log.Printf("no %s environment variable (default to %s)\n", k, def)
+		return def
+	}
+	return v
+}
+
 func main() {
 	////////////////////////////////////////////////////////////
 	// Init
 	////////////////////////////////////////////////////////////
-	log.Printf("starting %s version %s", appName, version)
 
 	// Read ENV variables for configuration
+	env := getEnvWithDefault("ENV", "DEV")
+	pgPort := getEnvWithDefault("PG_PORT", "5432")
 
-	// Port
-	env, ok := os.LookupEnv("ENV")
-	if !ok || env == "" {
-		env = "DEV"
-		log.Printf("no ENV environment variable (default to DEV)")
-	}
-
-	// API
-	// Port
-	port, ok := os.LookupEnv("PORT")
-	if !ok || port == "" {
-		log.Fatalf("set PORT environment variable")
-	}
-
-	// Postgres
-	PGHostname, ok := os.LookupEnv("PG_HOSTNAME")
-	if !ok || PGHostname == "" {
-		log.Fatalf("set PG_HOSTNAME environment variable")
-	}
-
-	PGPort, ok := os.LookupEnv("PG_PORT")
-	if !ok || PGPort == "" {
-		log.Fatalf("set PG_PORT environment variable")
-	}
-
-	PGUser, ok := os.LookupEnv("PG_USER")
-	if !ok || PGUser == "" {
-		log.Fatalf("set PG_USER environment variable")
-	}
-
-	PGPassword, ok := os.LookupEnv("PG_PASSWORD")
-	if !ok || PGPassword == "" {
-		log.Fatalf("set PG_PASSWORD environment variable")
-	}
-
-	// Output config for debug before starting
-	log.Printf("Port: %v", port)
+	var (
+		port       = mustGetenv("PORT")
+		pgHostname = mustGetenv("PG_HOSTNAME")
+		pgUser     = mustGetenv("PG_USER")
+		pgPassword = mustGetenv("PG_PASSWORD")
+	)
 
 	////////////////////////////////////////////////////////////
 	// Setup dependencies
 	////////////////////////////////////////////////////////////
 
 	// Postgres repository
-	pgRepository, _ := pg_repository.New(PGHostname, PGPort, PGUser, PGPassword, embedMigrations)
+	pgRepository, _ := pg_repository.New(env, pg_repository.PGCOnfig{
+		Hostname:    pgHostname,
+		Port:        pgPort,
+		User:        pgUser,
+		Password:    pgPassword,
+		MigrationFS: embedMigrations,
+	})
 
 	if env == "DEV" {
 		pgRepository.Seed()
 	}
 
 	app, _ := app.New(pgRepository)
-	api, _ := api.New("8080", app)
+	api, _ := api.New(port, app)
 
 	////////////////////////////////////////////////////////////
 	// Start serving the app
@@ -105,5 +95,4 @@ func main() {
 	defer cancel()
 	api.Shutdown(shutdownCtx)
 
-	log.Printf("stopping %s version %s", appName, version)
 }
