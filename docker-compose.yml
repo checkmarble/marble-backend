@@ -15,8 +15,8 @@ services:
     ports:
       - "8080:8080"
     command:
-      - "-migrations=true"
-      - "-server=true"
+      - "-migrations"
+      - "-server"
     volumes:
       - $HOME/.config/gcloud/application_default_credentials.json:/gcp/creds.json:ro
     depends_on:
