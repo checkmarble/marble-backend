@@ -254,7 +254,11 @@ func (r *PGRepository) UpdateScenarioIteration(ctx context.Context, orgID string
 	var isDraft bool
 	err = tx.QueryRow(ctx, sql, args...).Scan(&isDraft)
 	if err != nil {
-		return app.ScenarioIteration{}, fmt.Errorf("unable to check if scenario iteration is draft: %w", err)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return app.ScenarioIteration{}, app.ErrNotFoundInRepository
+		} else {
+			return app.ScenarioIteration{}, fmt.Errorf("unable to check if scenario iteration is draft: %w", err)
+		}
 	}
 	if !isDraft {
 		return app.ScenarioIteration{}, app.ErrScenarioIterationNotDraft

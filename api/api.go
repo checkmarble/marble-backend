@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"golang.org/x/exp/slog"
 )
 
 type API struct {
@@ -19,6 +20,7 @@ type API struct {
 	port                  string
 	router                *chi.Mux
 	signingSecretAccessor SigningSecretReader
+	logger                *slog.Logger
 }
 
 type SigningSecretReader interface {
@@ -38,7 +40,7 @@ type AppInterface interface {
 	GetDataModel(ctx context.Context, organizationID string) (app.DataModel, error)
 }
 
-func New(port string, a AppInterface) (*http.Server, error) {
+func New(port string, a AppInterface, logger *slog.Logger) (*http.Server, error) {
 
 	///////////////////////////////
 	// Setup a router
@@ -64,6 +66,7 @@ func New(port string, a AppInterface) (*http.Server, error) {
 		port:                  port,
 		router:                r,
 		signingSecretAccessor: &signingSecretAccessorImpl{},
+		logger:                logger,
 	}
 
 	// Setup the routes

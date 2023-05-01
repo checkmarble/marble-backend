@@ -5,14 +5,15 @@ import (
 	"embed"
 	"fmt"
 	"log"
+	"marble/marble-backend/api"
+	"marble/marble-backend/app"
+	"marble/marble-backend/pg_repository"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"marble/marble-backend/api"
-	"marble/marble-backend/app"
-	"marble/marble-backend/pg_repository"
+	"golang.org/x/exp/slog"
 )
 
 // embed migrations sql folder
@@ -56,6 +57,16 @@ func main() {
 	////////////////////////////////////////////////////////////
 	// Setup dependencies
 	////////////////////////////////////////////////////////////
+	var logger *slog.Logger
+	if env == "DEV" {
+		textHandler := slog.NewTextHandler(os.Stderr)
+		logger = slog.New(textHandler)
+		jsonHandler := slog.NewJSONHandler(os.Stderr)
+		logger = slog.New(jsonHandler)
+	} else {
+		jsonHandler := slog.NewJSONHandler(os.Stderr)
+		logger = slog.New(jsonHandler)
+	}
 
 	// Postgres repository
 	pgRepository, _ := pg_repository.New(env, pg_repository.PGCOnfig{
@@ -64,14 +75,14 @@ func main() {
 		User:        pgUser,
 		Password:    pgPassword,
 		MigrationFS: embedMigrations,
-	})
+	}, logger)
 
 	if env == "DEV" {
 		pgRepository.Seed()
 	}
 
-	app, _ := app.New(pgRepository)
-	api, _ := api.New(port, app)
+	app, _ := app.New(pgRepository, logger)
+	api, _ := api.New(port, app, logger)
 
 	////////////////////////////////////////////////////////////
 	// Start serving the app

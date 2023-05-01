@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"marble/marble-backend/app"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"golang.org/x/exp/slog"
 )
 
 type OrganizationAppInterface interface {
@@ -38,8 +38,8 @@ func (api *API) handleGetOrganizations() http.HandlerFunc {
 
 		organizations, err := api.app.GetOrganizations(ctx)
 		if err != nil {
-			// Could not execute request
-			http.Error(w, fmt.Errorf("error getting organizations: %w", err).Error(), http.StatusInternalServerError)
+			api.logger.ErrorCtx(ctx, "Error getting organizations: \n"+err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
@@ -50,8 +50,8 @@ func (api *API) handleGetOrganizations() http.HandlerFunc {
 
 		err = json.NewEncoder(w).Encode(&apiOrganizations)
 		if err != nil {
-			// Could not encode JSON
-			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)
+			api.logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}
@@ -69,8 +69,7 @@ func (api *API) handlePostOrganization() http.HandlerFunc {
 		requestData := &CreateOrganizationInput{}
 		err := json.NewDecoder(r.Body).Decode(requestData)
 		if err != nil {
-			// Could not parse JSON
-			http.Error(w, fmt.Errorf("could not parse input JSON: %w", err).Error(), http.StatusBadRequest)
+			http.Error(w, "Could not parse input JSON", http.StatusUnprocessableEntity)
 			return
 		}
 
@@ -79,14 +78,15 @@ func (api *API) handlePostOrganization() http.HandlerFunc {
 			DatabaseName: requestData.DatabaseName,
 		})
 		if err != nil {
-			http.Error(w, fmt.Errorf("error creating organization: %w", err).Error(), http.StatusInternalServerError)
+			api.logger.ErrorCtx(ctx, "Error creating organizations: \n"+err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		err = json.NewEncoder(w).Encode(NewAPIOrganization(org))
 		if err != nil {
-			// Could not encode JSON
-			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)
+			api.logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}
@@ -97,21 +97,22 @@ func (api *API) handleGetOrganization() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID := chi.URLParam(r, "orgID")
+		logger := api.logger.With(slog.String("orgID", orgID))
 
 		org, err := api.app.GetOrganization(ctx, orgID)
 		if errors.Is(err, app.ErrNotFoundInRepository) {
 			http.Error(w, "", http.StatusNotFound)
 			return
 		} else if err != nil {
-			// Could not execute request
-			http.Error(w, fmt.Errorf("error getting org(id: %s): %w", orgID, err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Error getting organization: \n"+err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		err = json.NewEncoder(w).Encode(NewAPIOrganization(org))
 		if err != nil {
-			// Could not encode JSON
-			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}
@@ -127,12 +128,12 @@ func (api *API) handlePutOrganization() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID := chi.URLParam(r, "orgID")
+		logger := api.logger.With(slog.String("orgID", orgID))
 
 		requestData := &UpdateOrganizationInput{}
 		err := json.NewDecoder(r.Body).Decode(requestData)
 		if err != nil {
-			// Could not parse JSON
-			http.Error(w, fmt.Errorf("could not parse input JSON: %w", err).Error(), http.StatusBadRequest)
+			http.Error(w, "Could not parse input JSON", http.StatusUnprocessableEntity)
 			return
 		}
 
@@ -142,18 +143,18 @@ func (api *API) handlePutOrganization() http.HandlerFunc {
 			DatabaseName: requestData.DatabaseName,
 		})
 		if errors.Is(err, app.ErrNotFoundInRepository) {
-			http.Error(w, "", http.StatusNotFound)
+			http.Error(w, "Organization not found", http.StatusNotFound)
 			return
 		} else if err != nil {
-			// Could not execute request
-			http.Error(w, fmt.Errorf("error getting org(id: %s): %w", orgID, err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Error updating organizations: \n"+err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		err = json.NewEncoder(w).Encode(NewAPIOrganization(org))
 		if err != nil {
-			// Could not encode JSON
-			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}
@@ -164,6 +165,7 @@ func (api *API) handleDeleteOrganization() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID := chi.URLParam(r, "orgID")
+		logger := api.logger.With(slog.String("orgID", orgID))
 
 		err := api.app.SoftDeleteOrganization(ctx, orgID)
 		if errors.Is(err, app.ErrNotFoundInRepository) {
@@ -171,9 +173,9 @@ func (api *API) handleDeleteOrganization() http.HandlerFunc {
 			return
 		} else if err != nil {
 			// Could not execute request
-			http.Error(w, fmt.Errorf("error deleting org(id: %s): %w", orgID, err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Error deleting organization: \n"+err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		return
 	}
 }

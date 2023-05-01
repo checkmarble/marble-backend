@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"marble/marble-backend/app"
 	"net/http"
 	"time"
 
 	"github.com/ggicci/httpin"
+	"golang.org/x/exp/slog"
 )
 
 type ScenarioAppInterface interface {
@@ -48,11 +48,12 @@ func (api *API) ListScenarios() http.HandlerFunc {
 			http.Error(w, "", http.StatusUnauthorized)
 			return
 		}
+		logger := api.logger.With(slog.String("orgID", orgID))
 
 		scenarios, err := api.app.ListScenarios(ctx, orgID)
 		if err != nil {
-			// Could not execute request
-			http.Error(w, fmt.Errorf("error getting scenarios: %w", err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Error listing scenarios: \n"+err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
@@ -63,8 +64,8 @@ func (api *API) ListScenarios() http.HandlerFunc {
 
 		err = json.NewEncoder(w).Encode(apiScenarios)
 		if err != nil {
-			// Could not encode JSON
-			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}
@@ -91,6 +92,7 @@ func (api *API) CreateScenario() http.HandlerFunc {
 		}
 
 		input := ctx.Value(httpin.Input).(*CreateScenarioInput)
+		logger := api.logger.With(slog.String("orgID", orgID))
 
 		scenario, err := api.app.CreateScenario(ctx, orgID, app.CreateScenarioInput{
 			Name:              input.Body.Name,
@@ -98,16 +100,15 @@ func (api *API) CreateScenario() http.HandlerFunc {
 			TriggerObjectType: input.Body.TriggerObjectType,
 		})
 		if err != nil {
-			// Could not execute request
-			// TODO(errors): handle missing fields error ?
-			http.Error(w, fmt.Errorf("error getting scenarios: %w", err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Error creating scenario: \n"+err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		err = json.NewEncoder(w).Encode(NewAPIScenario(scenario))
 		if err != nil {
-			// Could not encode JSON
-			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}
@@ -128,18 +129,22 @@ func (api *API) GetScenario() http.HandlerFunc {
 		}
 
 		input := ctx.Value(httpin.Input).(*GetScenarioInput)
+		logger := api.logger.With(slog.String("orgID", orgID), slog.String("scenarioID", input.ScenarioID))
 
 		scenario, err := api.app.GetScenario(ctx, orgID, input.ScenarioID)
-		if err != nil {
-			// Could not execute request
-			http.Error(w, fmt.Errorf("error getting scenario(id: %s): %w", input.ScenarioID, err).Error(), http.StatusInternalServerError)
+		if errors.Is(err, app.ErrScenarioNotFound) {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		} else if err != nil {
+			logger.ErrorCtx(ctx, "Error getting scenario: \n"+err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		err = json.NewEncoder(w).Encode(NewAPIScenario(scenario))
 		if err != nil {
-			// Could not encode JSON
-			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}
@@ -166,6 +171,7 @@ func (api *API) UpdateScenario() http.HandlerFunc {
 		}
 
 		input := ctx.Value(httpin.Input).(*UpdateScenarioInput)
+		logger := api.logger.With(slog.String("orgID", orgID), slog.String("scenarioID", input.ScenarioID))
 
 		scenario, err := api.app.UpdateScenario(ctx, orgID, app.UpdateScenarioInput{
 			ID:          input.ScenarioID,
@@ -173,18 +179,18 @@ func (api *API) UpdateScenario() http.HandlerFunc {
 			Description: input.Body.Description,
 		})
 		if errors.Is(err, app.ErrNotFoundInRepository) {
-			http.Error(w, "", http.StatusNotFound)
+			w.WriteHeader(http.StatusNotFound)
 			return
 		} else if err != nil {
-			// Could not execute request
-			http.Error(w, fmt.Errorf("error getting scenario(id: %s): %w", input.ScenarioID, err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Error updating scenario: \n"+err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		err = json.NewEncoder(w).Encode(NewAPIScenario(scenario))
 		if err != nil {
-			// Could not encode JSON
-			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}

@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pressly/goose/v3"
+	"golang.org/x/exp/slog"
 
 	"github.com/Masterminds/squirrel"
 	_ "github.com/jackc/pgx/v5/stdlib" //https://github.com/jackc/pgx/wiki/Getting-started-with-pgx-through-database-sql
@@ -36,11 +37,13 @@ type PGCOnfig struct {
 type PGRepository struct {
 	db           PgxPoolIface
 	queryBuilder squirrel.StatementBuilderType
+	logger       *slog.Logger
 }
 
-func New(env string, pgConfig PGCOnfig) (*PGRepository, error) {
+func New(env string, pgConfig PGCOnfig, logger *slog.Logger) (*PGRepository, error) {
 
 	connectionString := fmt.Sprintf("host=%s user=%s password=%s database=marble sslmode=disable", pgConfig.Hostname, pgConfig.User, pgConfig.Password)
+	fmt.Println(connectionString)
 	if env == "DEV" {
 		// Cloud Run connects to the DB through a proxy and a unix socket, so we don't need need to specify the port
 		// but we do when running locally
@@ -115,6 +118,7 @@ func New(env string, pgConfig PGCOnfig) (*PGRepository, error) {
 	r := &PGRepository{
 		db:           dbpool,
 		queryBuilder: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar),
+		logger:       logger,
 	}
 
 	return r, nil
