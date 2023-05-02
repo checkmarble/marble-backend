@@ -80,5 +80,6 @@ require (
 	github.com/ory/dockertest/v3 v3.9.1
 	github.com/pashagolub/pgxmock/v2 v2.6.0
 	github.com/stretchr/testify v1.8.2
+	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53
 	golang.org/x/oauth2 v0.0.0-20221014153046-6fdb5e3db783
 )

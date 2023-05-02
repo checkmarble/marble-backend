@@ -19,7 +19,7 @@ func (api *API) routes() {
 	publisherMdw := api.authMiddlewareFactory(map[TokenType]Role{UserToken: PUBLISHER, ApiToken: ADMIN})
 	apiAndReaderUserMdw := api.authMiddlewareFactory(map[TokenType]Role{ApiToken: ADMIN, UserToken: READER})
 
-	api.router.Post("/token", api.handleGetAccessToken())
+	api.router.With(httpin.NewInput(GetNewAccessTokenInput{})).Post("/token", api.handleGetAccessToken())
 
 	api.router.With(api.jwtValidator).Group(func(authedRouter chi.Router) {
 		// Everything other than getting a token is protected by JWT
@@ -27,10 +27,10 @@ func (api *API) routes() {
 		// Decision API subrouter
 		// matches all /decisions routes
 		authedRouter.Route("/decisions", func(decisionsRouter chi.Router) {
-
 			decisionsRouter.Use(apiAndReaderUserMdw)
 
-			decisionsRouter.Get("/{decisionID:"+UUIDRegExp+"}", api.handleGetDecision())
+			decisionsRouter.With(httpin.NewInput(GetDecisionInput{})).
+				Get("/{decisionID:"+UUIDRegExp+"}", api.handleGetDecision())
 			decisionsRouter.With(apiOnlyMdw).
 				Post("/", api.handlePostDecision())
 		})
@@ -116,12 +116,16 @@ func (api *API) routes() {
 
 			routerAdmin.Route("/organizations", func(r chi.Router) {
 				r.Get("/", api.handleGetOrganizations())
-				r.Post("/", api.handlePostOrganization())
+				r.With(httpin.NewInput(CreateOrganizationInput{})).
+					Post("/", api.handlePostOrganization())
 
 				r.Route("/{orgID:"+UUIDRegExp+"}", func(r chi.Router) {
-					r.Get("/", api.handleGetOrganization())
-					r.Put("/", api.handlePutOrganization())
-					r.Delete("/", api.handleDeleteOrganization())
+					r.With(httpin.NewInput(GetOrganizationInput{})).
+						Get("/", api.handleGetOrganization())
+					r.With(httpin.NewInput(UpdateOrganizationInput{})).
+						Put("/", api.handlePutOrganization())
+					r.With(httpin.NewInput(DeleteOrganizationInput{})).
+						Delete("/", api.handleDeleteOrganization())
 				})
 			})
 		})

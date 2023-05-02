@@ -303,7 +303,9 @@ func (r *PGRepository) UpdateScenarioIterationRule(ctx context.Context, orgID st
 
 	var isDraft bool
 	err = tx.QueryRow(ctx, sql, args...).Scan(&isDraft)
-	if err != nil {
+	if errors.Is(err, pgx.ErrNoRows) {
+		return app.Rule{}, app.ErrNotFoundInRepository
+	} else if err != nil {
 		return app.Rule{}, fmt.Errorf("unable to check if scenario iteration is draft: %w", err)
 	}
 	if !isDraft {

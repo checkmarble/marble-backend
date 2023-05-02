@@ -5,16 +5,16 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pressly/goose/v3"
+	"golang.org/x/exp/slog"
 
 	"github.com/Masterminds/squirrel"
-	_ "github.com/jackc/pgx/v5/stdlib" //https://github.com/jackc/pgx/wiki/Getting-started-with-pgx-through-database-sql
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type PgxPoolIface interface {
@@ -53,26 +53,21 @@ func New(env string, PGConfig PGConfig) (*PGRepository, error) {
 
 	dbpool, err := pgxpool.New(context.Background(), connectionString)
 	if err != nil {
-		log.Printf("Unable to create connection pool: %v\n", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("unable to create connection pool: %w", err)
 	}
-
-	log.Printf("DB connection pool created. Stats: %+v\n", dbpool.Stat())
 
 	// Test connection
 	var currentPGUser string
 	err = dbpool.QueryRow(context.Background(), "SELECT current_user;").Scan(&currentPGUser)
 	if err != nil {
-		log.Printf("unable to get current user: %v", err)
+		return nil, fmt.Errorf("unable to get current user: %w", err)
 	}
-	log.Printf("current Postgres user: %v\n", currentPGUser)
 
 	var searchPath string
 	err = dbpool.QueryRow(context.Background(), "SHOW search_path;").Scan(&searchPath)
 	if err != nil {
-		log.Printf("unable to get search_path user: %v", err)
+		return nil, fmt.Errorf("unable to get search path: %w", err)
 	}
-	log.Printf("search path: %v\n", searchPath)
 
 	r := &PGRepository{
 		db:           dbpool,
@@ -82,17 +77,18 @@ func New(env string, PGConfig PGConfig) (*PGRepository, error) {
 	return r, nil
 }
 
-func RunMigrations(PGConfig PGConfig, env string) {
+func RunMigrations(env string, PGConfig PGConfig, logger *slog.Logger) {
 	connectionString := PGConfig.GetConnectionString(env)
 
 	migrationDB, err := sql.Open("pgx", connectionString)
+	defer migrationDB.Close()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
 		os.Exit(1)
 	}
 
 	// start goose migrations
-	log.Println("Migrations starting")
+	logger.Info("Migrations starting")
 	goose.SetBaseFS(PGConfig.MigrationFS)
 
 	if err := goose.SetDialect("postgres"); err != nil {
@@ -101,13 +97,12 @@ func RunMigrations(PGConfig PGConfig, env string) {
 
 	err = migrationDB.Ping()
 	if err != nil {
-		log.Println("error while pinging db")
+		logger.Error("Unable to ping database: \n" + err.Error())
 		panic(err)
 	}
 
 	if err := goose.Up(migrationDB, "migrations"); err != nil {
+		logger.Error("unable to run migrations: \n" + err.Error())
 		panic(err)
 	}
-
-	migrationDB.Close()
 }

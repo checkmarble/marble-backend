@@ -114,8 +114,10 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 	var scenarioID string
 	var liveSIID *string
 	err = tx.QueryRow(ctx, sql, args...).Scan(&scenarioID, &liveSIID)
-	if err != nil {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, app.ErrNotFoundInRepository
+	} else if err != nil {
+		return nil, fmt.Errorf("unable to query scenario iteration: %w", err)
 	}
 
 	var scenarioPublications []app.ScenarioPublication

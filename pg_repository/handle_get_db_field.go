@@ -63,10 +63,9 @@ func (rep *PGRepository) queryDbForField(ctx context.Context, readParams app.DbF
 func scanRowReturnValue[T pgtype.Bool | pgtype.Int2 | pgtype.Float8 | pgtype.Text | pgtype.Timestamp](row pgx.Row) (T, error) {
 	var returnVariable T
 	err := row.Scan(&returnVariable)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return returnVariable, fmt.Errorf("No rows scanned while reading DB: %w", app.ErrNoRowsReadInDB)
-		}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return returnVariable, fmt.Errorf("No rows scanned while reading DB: %w", app.ErrNoRowsReadInDB)
+	} else if err != nil {
 		return returnVariable, err
 	}
 	return returnVariable, nil

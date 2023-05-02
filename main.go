@@ -4,16 +4,16 @@ import (
 	"context"
 	"embed"
 	"flag"
-	"fmt"
 	"log"
+	"marble/marble-backend/api"
+	"marble/marble-backend/app"
+	"marble/marble-backend/pg_repository"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"marble/marble-backend/api"
-	"marble/marble-backend/app"
-	"marble/marble-backend/pg_repository"
+	"golang.org/x/exp/slog"
 )
 
 // embed migrations sql folder
@@ -38,14 +38,56 @@ func getEnvWithDefault(k string, def string) string {
 	return v
 }
 
-func run_server(pgRepository *pg_repository.PGRepository, port string, env string) { // Read ENV variables for configuration
+func loggerAttributeReplacer(groups []string, a slog.Attr) slog.Attr {
+	// Rename "msg" to "message" so that stackdriver logging can parse it as the main message
+	if a.Key == "msg" {
+		a.Key = "message"
+		return a
+	}
 
+	// Rename "level" to "severity" and convert the value so that stackdriver can properly parse it to a stackdriver severity
+	if a.Key == slog.LevelKey {
+		a.Key = "severity"
+
+		level := a.Value.Any().(slog.Level)
+
+		const (
+			LevelDebug   = slog.LevelDebug
+			LevelInfo    = slog.LevelInfo
+			LevelWarning = slog.LevelWarn
+			LevelError   = slog.LevelError
+		)
+
+		const (
+			gcpLevelDebug   = "DEBUG"
+			gcpLevelInfo    = "INFO"
+			gcpLevelWarning = "WARNING"
+			gcpLevelError   = "ERROR"
+		)
+
+		switch {
+		case level < LevelInfo:
+			a.Value = slog.StringValue(gcpLevelDebug)
+		case level < LevelWarning:
+			a.Value = slog.StringValue(gcpLevelInfo)
+		case level < LevelError:
+			a.Value = slog.StringValue(gcpLevelWarning)
+		default:
+			a.Value = slog.StringValue(gcpLevelError)
+		}
+	}
+
+	return a
+}
+
+func run_server(pgRepository *pg_repository.PGRepository, port string, env string, logger *slog.Logger) {
+	ctx := context.Background()
 	if env == "DEV" {
 		pgRepository.Seed()
 	}
 
 	app, _ := app.New(pgRepository)
-	api, _ := api.New(port, app)
+	api, _ := api.New(port, app, logger)
 
 	////////////////////////////////////////////////////////////
 	// Start serving the app
@@ -58,20 +100,20 @@ func run_server(pgRepository *pg_repository.PGRepository, port string, env strin
 	go func() {
 		log.Printf("starting server on port %v\n", port)
 		if err := api.ListenAndServe(); err != nil {
-			log.Println(fmt.Errorf("error serving the app: %w", err))
+			logger.ErrorCtx(ctx, "error serving the app: \n"+err.Error())
 		}
-		log.Println("server returned")
+		logger.InfoCtx(ctx, "server returned")
 	}()
 
 	// Block until we receive our signal.
 	<-notify.Done()
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	api.Shutdown(shutdownCtx)
 }
 
-func run_migrations(pgConfig pg_repository.PGConfig, env string) {
-	pg_repository.RunMigrations(pgConfig, env)
+func run_migrations(env string, pgConfig pg_repository.PGConfig, logger *slog.Logger) {
+	pg_repository.RunMigrations(env, pgConfig, logger)
 }
 
 func main() {
@@ -85,6 +127,19 @@ func main() {
 		pgPassword = mustGetenv("PG_PASSWORD")
 	)
 
+	////////////////////////////////////////////////////////////
+	// Setup dependencies
+	////////////////////////////////////////////////////////////
+
+	var logger *slog.Logger
+	if env == "DEV" {
+		textHandler := slog.HandlerOptions{ReplaceAttr: loggerAttributeReplacer}.NewTextHandler(os.Stderr)
+		logger = slog.New(textHandler)
+	} else {
+		jsonHandler := slog.HandlerOptions{ReplaceAttr: loggerAttributeReplacer}.NewJSONHandler(os.Stderr)
+		logger = slog.New(jsonHandler)
+	}
+
 	pgConfig := pg_repository.PGConfig{
 		Hostname:    pgHostname,
 		Port:        pgPort,
@@ -93,17 +148,21 @@ func main() {
 		MigrationFS: embedMigrations,
 	}
 
-	pgRepository, _ := pg_repository.New(env, pgConfig)
+	pgRepository, err := pg_repository.New(env, pgConfig)
+	if err != nil {
+		logger.Error("error creating pg repository:\n", err.Error())
+	}
 
 	shouldRunMigrations := flag.Bool("migrations", false, "Run migrations")
 	shouldRunServer := flag.Bool("server", false, "Run server")
 	flag.Parse()
+	logger.DebugCtx(context.Background(), "shouldRunMigrations", *shouldRunMigrations, "shouldRunServer", *shouldRunServer)
 
 	if *shouldRunMigrations {
-		run_migrations(pgConfig, env)
+		run_migrations(env, pgConfig, logger)
 	}
 	if *shouldRunServer {
-		run_server(pgRepository, port, env)
+		run_server(pgRepository, port, env, logger)
 	}
 
 }

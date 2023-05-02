@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
@@ -15,14 +14,13 @@ var HARD_CODED_PUBLIC_KEY = []byte("MY_SECRET_KEY")
 var VALIDATION_ALGO = jwt.SigningMethodRS256
 
 // AuthCtx sets the organization ID in the context from the authorization header
-func (a *API) jwtValidator(next http.Handler) http.Handler {
+func (api *API) jwtValidator(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		authHeader := strings.Split(r.Header.Get("Authorization"), "Bearer ")
 		if len(authHeader) != 2 {
-			fmt.Println("Malformed token")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("Malformed Token"))
+			api.logger.ErrorCtx(ctx, "Malformed Token")
+			http.Error(w, "", http.StatusUnauthorized)
 			return
 		}
 
@@ -33,16 +31,15 @@ func (a *API) jwtValidator(next http.Handler) http.Handler {
 				return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
 			}
 
-			_, publicKey, err := a.signingSecretAccessor.ReadSigningSecrets(ctx)
+			_, publicKey, err := api.signingSecretAccessor.ReadSigningSecrets(ctx)
 			if err != nil {
 				return nil, err
 			}
 			return publicKey, nil
 		})
 		if err != nil {
-			fmt.Println(err)
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("Unauthorized"))
+			api.logger.ErrorCtx(ctx, err.Error())
+			http.Error(w, "", http.StatusUnauthorized)
 			return
 		}
 
@@ -50,15 +47,14 @@ func (a *API) jwtValidator(next http.Handler) http.Handler {
 			ctx := context.WithValue(r.Context(), contextKeyClaims, claims)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		} else {
-			fmt.Println(err)
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("Unauthorized"))
+			api.logger.ErrorCtx(ctx, err.Error())
+			http.Error(w, "", http.StatusUnauthorized)
 		}
 
 	})
 }
 
-func (a *API) authMiddlewareFactory(middlewareParams map[TokenType]Role) func(next http.Handler) http.Handler {
+func (api *API) authMiddlewareFactory(middlewareParams map[TokenType]Role) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
@@ -66,31 +62,27 @@ func (a *API) authMiddlewareFactory(middlewareParams map[TokenType]Role) func(ne
 			// first, extract the token claims from the context
 			claims, ok := ctx.Value(contextKeyClaims).(jwt.MapClaims)
 			if !ok {
-				log.Println("claims not found in context")
-				w.WriteHeader(http.StatusForbidden)
-				w.Write([]byte("Unauthorized"))
+				api.logger.ErrorCtx(ctx, "claims not found in context")
+				http.Error(w, "", http.StatusUnauthorized)
 				return
 			}
 
 			organizationId, ok := claims["organization_id"].(string)
 			if !ok {
-				log.Println("organization_id not found in claims")
-				w.WriteHeader(http.StatusForbidden)
-				w.Write([]byte("Unauthorized"))
+				api.logger.ErrorCtx(ctx, "organization_id not found in claims")
+				http.Error(w, "", http.StatusUnauthorized)
 				return
 			}
 			tokenType, ok := claims["type"].(string)
 			if !ok {
-				log.Println("Token type not found in claims")
-				w.WriteHeader(http.StatusForbidden)
-				w.Write([]byte("Unauthorized"))
+				api.logger.ErrorCtx(ctx, "Token type not found in claims")
+				http.Error(w, "", http.StatusUnauthorized)
 				return
 			}
 			tokenRoleString, ok := claims["role"].(string)
 			if !ok {
-				log.Println("Role not found in claims")
-				w.WriteHeader(http.StatusForbidden)
-				w.Write([]byte("Unauthorized"))
+				api.logger.ErrorCtx(ctx, "Role not found in claims")
+				http.Error(w, "", http.StatusUnauthorized)
 				return
 			}
 			tokenRole := RoleFromString(tokenRoleString)
@@ -98,15 +90,13 @@ func (a *API) authMiddlewareFactory(middlewareParams map[TokenType]Role) func(ne
 			// Next, check if the endpoint allows this type of token
 			middlewareParamsMinimumRole, ok := middlewareParams[TokenType(tokenType)]
 			if !ok {
-				log.Println("Token type not allowed for this endpoint")
-				w.WriteHeader(http.StatusForbidden)
-				w.Write([]byte("Unauthorized"))
+				api.logger.WarnCtx(ctx, "Token type not allowed for this endpoint")
+				http.Error(w, "", http.StatusUnauthorized)
 				return
 			}
 			if tokenRole < middlewareParamsMinimumRole {
-				log.Println("Token role not allowed for this endpoint")
-				w.WriteHeader(http.StatusForbidden)
-				w.Write([]byte("Unauthorized"))
+				api.logger.WarnCtx(ctx, "Token role not allowed for this endpoint")
+				http.Error(w, "", http.StatusUnauthorized)
 				return
 			}
 

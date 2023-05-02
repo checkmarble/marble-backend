@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"io/ioutil"
-	"log"
 	"marble/marble-backend/app"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"golang.org/x/exp/slog"
 )
 
 type IngestionInterface interface {
@@ -16,69 +16,56 @@ type IngestionInterface interface {
 }
 
 func (api *API) handleIngestion() http.HandlerFunc {
-
-	///////////////////////////////
-	// Request and Response types defined in scope
-	///////////////////////////////
-
-	// return is a decision
-
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		///////////////////////////////
-		// Authorize request
-		///////////////////////////////
 		orgID, err := orgIDFromCtx(ctx)
 		if err != nil {
 			http.Error(w, "", http.StatusUnauthorized) // 401
 			return
 		}
+		logger := api.logger.With(slog.String("orgId", orgID))
 
 		dataModel, err := api.app.GetDataModel(ctx, orgID)
 		if err != nil {
-			log.Printf("Unable to find datamodel by orgId for ingestion: %v", err)
-			http.Error(w, "No data model found for this organization ID.", http.StatusInternalServerError) // 500
+			logger.ErrorCtx(ctx, "Unable to find datamodel by orgId for ingestion:\n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
 		object_type := chi.URLParam(r, "object_type")
 		object_body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			log.Printf("Error while reading request body bytes in api handle_ingestion: %s", err)
-			http.Error(w, "", http.StatusUnprocessableEntity) // 422
+			logger.ErrorCtx(ctx, "Error while reading request body bytes in api handle_ingestion")
+			http.Error(w, "", http.StatusUnprocessableEntity)
 			return
 		}
-		// TODO: remove this before production
-		log.Printf("Received object type: %s\n", object_type)
-		log.Printf("Received object body: %s\n", object_body)
+		logger = logger.With(slog.String("object_type", object_type))
 
 		tables := dataModel.Tables
 		table, ok := tables[object_type]
 		if !ok {
-			log.Printf("Table %s not found in data model for organization %s", object_type, orgID)
-			http.Error(w, "No data model found for this object type.", http.StatusNotFound) // 404
+			logger.ErrorCtx(ctx, "Table not found in data model for organization")
+			http.Error(w, "", http.StatusNotFound)
 			return
 		}
 
 		payloadStructWithReaderPtr, err := app.ParseToDataModelObject(ctx, table, object_body)
-		if err != nil {
-			if errors.Is(err, app.ErrFormatValidation) {
-				http.Error(w, "Format validation error", http.StatusUnprocessableEntity) // 422
-				return
-			}
-			log.Printf("Unexpected error while parsing to data model object: %v", err)
-			http.Error(w, "", http.StatusInternalServerError) // 500
+		if errors.Is(err, app.ErrFormatValidation) {
+			http.Error(w, "", http.StatusUnprocessableEntity)
+			return
+		} else if err != nil {
+			logger.ErrorCtx(ctx, "Unexpected error while parsing to data model object:\n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
 		err = api.app.IngestObject(ctx, *payloadStructWithReaderPtr, table)
 		if err != nil {
-			log.Printf("Error while ingesting object: %v", err)
-			http.Error(w, "", http.StatusInternalServerError) // 500
+			logger.ErrorCtx(ctx, "Error while ingesting object:\n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
-		w.WriteHeader(http.StatusCreated) // 201
-		return
+		w.WriteHeader(http.StatusCreated)
 	}
 
 }

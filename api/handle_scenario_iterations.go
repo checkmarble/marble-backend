@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ggicci/httpin"
+	"golang.org/x/exp/slog"
 )
 
 type ScenarioIterationAppInterface interface {
@@ -60,7 +61,7 @@ func NewAPIScenarioIterationWithBody(si app.ScenarioIteration) (APIScenarioItera
 	for i, rule := range si.Body.Rules {
 		apiRule, err := NewAPIScenarioIterationRule(rule)
 		if err != nil {
-			return APIScenarioIterationWithBody{}, fmt.Errorf("could not create new api scenario iteration rule: %w", err)
+			return APIScenarioIterationWithBody{}, fmt.Errorf("Could not create new api scenario iteration rule: %w", err)
 		}
 		body.Rules[i] = apiRule
 	}
@@ -68,7 +69,7 @@ func NewAPIScenarioIterationWithBody(si app.ScenarioIteration) (APIScenarioItera
 	if si.Body.TriggerCondition != nil {
 		triggerConditionBytes, err := si.Body.TriggerCondition.MarshalJSON()
 		if err != nil {
-			return APIScenarioIterationWithBody{}, fmt.Errorf("unable to marshal trigger condition: %w", err)
+			return APIScenarioIterationWithBody{}, fmt.Errorf("Unable to marshal trigger condition: %w", err)
 		}
 		body.TriggerCondition = triggerConditionBytes
 	}
@@ -94,14 +95,15 @@ func (api *API) ListScenarioIterations() http.HandlerFunc {
 		}
 
 		input := ctx.Value(httpin.Input).(*ListScenarioIterationsInput)
+		logger := api.logger.With(slog.String("scenarioId", input.ScenarioID), slog.String("orgId", orgID))
 
 		options := &utils.PtrToOptions{OmitZero: true}
 		scenarioIterations, err := api.app.ListScenarioIterations(ctx, orgID, app.GetScenarioIterationFilters{
 			ScenarioID: utils.PtrTo(input.ScenarioID, options),
 		})
 		if err != nil {
-			// Could not execute request
-			http.Error(w, fmt.Errorf("error getting scenario(id: %s) iterations: %w", input.ScenarioID, err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Error Listing scenario iterations: \n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
@@ -112,8 +114,8 @@ func (api *API) ListScenarioIterations() http.HandlerFunc {
 
 		err = json.NewEncoder(w).Encode(apiScenarioIterations)
 		if err != nil {
-			// Could not encode JSON
-			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -130,7 +132,7 @@ type CreateScenarioIterationBody struct {
 }
 
 type CreateScenarioIterationInput struct {
-	Body *CreateScenarioIterationBody `in:"body=json"`
+	Payload *CreateScenarioIterationBody `in:"body=json"`
 }
 
 func (api *API) CreateScenarioIteration() http.HandlerFunc {
@@ -144,22 +146,24 @@ func (api *API) CreateScenarioIteration() http.HandlerFunc {
 		}
 
 		input := ctx.Value(httpin.Input).(*CreateScenarioIterationInput)
+		logger := api.logger.With(slog.String("scenarioId", input.Payload.ScenarioID), slog.String("orgId", orgID))
 
 		createScenarioIterationInput := app.CreateScenarioIterationInput{
-			ScenarioID: input.Body.ScenarioID,
+			ScenarioID: input.Payload.ScenarioID,
 		}
 
-		if input.Body.Body != nil {
+		if input.Payload.Body != nil {
 			createScenarioIterationInput.Body = &app.CreateScenarioIterationBody{
-				ScoreReviewThreshold: input.Body.Body.ScoreReviewThreshold,
-				ScoreRejectThreshold: input.Body.Body.ScoreRejectThreshold,
-				Rules:                make([]app.CreateRuleInput, len(input.Body.Body.Rules)),
+				ScoreReviewThreshold: input.Payload.Body.ScoreReviewThreshold,
+				ScoreRejectThreshold: input.Payload.Body.ScoreRejectThreshold,
+				Rules:                make([]app.CreateRuleInput, len(input.Payload.Body.Rules)),
 			}
 
-			for i, rule := range input.Body.Body.Rules {
+			for i, rule := range input.Payload.Body.Rules {
 				formula, err := operators.UnmarshalOperatorBool(rule.Formula)
 				if err != nil {
-					http.Error(w, fmt.Errorf("could not unmarshal formula: %w", err).Error(), http.StatusUnprocessableEntity)
+					logger.ErrorCtx(ctx, "Could not unmarshal formula: \n"+err.Error())
+					http.Error(w, "", http.StatusUnprocessableEntity)
 					return
 				}
 				createScenarioIterationInput.Body.Rules[i] = app.CreateRuleInput{
@@ -171,10 +175,11 @@ func (api *API) CreateScenarioIteration() http.HandlerFunc {
 				}
 			}
 
-			if input.Body.Body.TriggerCondition != nil {
-				triggerCondition, err := operators.UnmarshalOperatorBool(*input.Body.Body.TriggerCondition)
+			if input.Payload.Body.TriggerCondition != nil {
+				triggerCondition, err := operators.UnmarshalOperatorBool(*input.Payload.Body.TriggerCondition)
 				if err != nil {
-					http.Error(w, fmt.Errorf("could not unmarshal trigger condition: %w", err).Error(), http.StatusUnprocessableEntity)
+					logger.ErrorCtx(ctx, "Could not unmarshal trigger condition: \n"+err.Error())
+					http.Error(w, "", http.StatusUnprocessableEntity)
 					return
 				}
 				createScenarioIterationInput.Body.TriggerCondition = triggerCondition
@@ -183,20 +188,21 @@ func (api *API) CreateScenarioIteration() http.HandlerFunc {
 
 		si, err := api.app.CreateScenarioIteration(ctx, orgID, createScenarioIterationInput)
 		if err != nil {
-			// Could not execute request
-			// TODO(errors): handle missing fields error ?
-			http.Error(w, fmt.Errorf("error getting scenarios: %w", err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Error creating scenario iteration: \n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
 		apiScenarioIterationWithBody, err := NewAPIScenarioIterationWithBody(si)
 		if err != nil {
-			http.Error(w, fmt.Errorf("could not create new api scenario iteration: %w", err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Error marshalling scenario iteration: \n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 		err = json.NewEncoder(w).Encode(apiScenarioIterationWithBody)
 		if err != nil {
-			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -217,23 +223,28 @@ func (api *API) GetScenarioIteration() http.HandlerFunc {
 		}
 
 		input := ctx.Value(httpin.Input).(*GetScenarioIterationInput)
+		logger := api.logger.With(slog.String("scenarioIterationId", input.ScenarioIterationID), slog.String("orgId", orgID))
 
 		si, err := api.app.GetScenarioIteration(ctx, orgID, input.ScenarioIterationID)
-		if err != nil {
-			// Could not execute request
-			http.Error(w, fmt.Errorf("error getting scenarioIterationID(id: %s): %w", input.ScenarioIterationID, err).Error(), http.StatusInternalServerError)
+		if errors.Is(err, app.ErrNotFoundInRepository) {
+			http.Error(w, "", http.StatusNotFound)
+			return
+		} else if err != nil {
+			logger.ErrorCtx(ctx, "Error getting scenario iteration: \n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
 		apiScenarioIterationWithBody, err := NewAPIScenarioIterationWithBody(si)
 		if err != nil {
-			http.Error(w, fmt.Errorf("could not create new api scenario iteration: %w", err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Error marshalling scenario iteration: \n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 		err = json.NewEncoder(w).Encode(apiScenarioIterationWithBody)
 		if err != nil {
-			// Could not encode JSON
-			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -249,7 +260,7 @@ type UpdateScenarioIterationBody struct {
 
 type UpdateScenarioIterationInput struct {
 	ScenarioIterationID string                       `in:"path=scenarioIterationID"`
-	Body                *UpdateScenarioIterationBody `in:"body=json"`
+	Payload             *UpdateScenarioIterationBody `in:"body=json"`
 }
 
 func (api *API) UpdateScenarioIteration() http.HandlerFunc {
@@ -263,48 +274,55 @@ func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 		}
 
 		input := ctx.Value(httpin.Input).(*UpdateScenarioIterationInput)
+		logger := api.logger.With(slog.String("scenarioIterationId", input.ScenarioIterationID), slog.String("orgId", orgID))
 
-		if input.Body.Body == nil {
-			w.WriteHeader(http.StatusNoContent)
+		if input.Payload.Body == nil {
+			http.Error(w, "", http.StatusNoContent)
 			return
 		}
 
-		updateScenarioIterationInput := app.UpdateScenarioIterationInput{
+		appUpdateScenarioIterationInput := app.UpdateScenarioIterationInput{
 			ID: input.ScenarioIterationID,
 			Body: &app.UpdateScenarioIterationBody{
-				ScoreReviewThreshold: input.Body.Body.ScoreReviewThreshold,
-				ScoreRejectThreshold: input.Body.Body.ScoreRejectThreshold,
+				ScoreReviewThreshold: input.Payload.Body.ScoreReviewThreshold,
+				ScoreRejectThreshold: input.Payload.Body.ScoreRejectThreshold,
 			},
 		}
 
-		if input.Body.Body.TriggerCondition != nil {
-			triggerCondition, err := operators.UnmarshalOperatorBool(*input.Body.Body.TriggerCondition)
+		if input.Payload.Body.TriggerCondition != nil {
+			triggerCondition, err := operators.UnmarshalOperatorBool(*input.Payload.Body.TriggerCondition)
 			if err != nil {
-				http.Error(w, fmt.Errorf("could not unmarshal triggerCondition: %w", err).Error(), http.StatusUnprocessableEntity)
+				logger.ErrorCtx(ctx, "Could not unmarshal trigger condition: \n"+err.Error())
+				http.Error(w, "", http.StatusUnprocessableEntity)
 				return
 			}
-			updateScenarioIterationInput.Body.TriggerCondition = triggerCondition
+			appUpdateScenarioIterationInput.Body.TriggerCondition = triggerCondition
 		}
 
-		updatedSI, err := api.app.UpdateScenarioIteration(ctx, orgID, updateScenarioIterationInput)
+		updatedSI, err := api.app.UpdateScenarioIteration(ctx, orgID, appUpdateScenarioIterationInput)
 		if errors.Is(err, app.ErrScenarioIterationNotDraft) {
-			http.Error(w, err.Error(), http.StatusForbidden)
+			logger.WarnCtx(ctx, "Cannot update scenario iteration that is not in draft state: \n"+err.Error())
+			http.Error(w, "", http.StatusForbidden)
+			return
+		} else if errors.Is(err, app.ErrNotFoundInRepository) {
+			http.Error(w, "", http.StatusNotFound)
 			return
 		} else if err != nil {
-			// Could not execute request
-			// TODO(errors): handle missing fields error ?
-			http.Error(w, fmt.Errorf("error updating scenario iteration: %w", err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Error updating scenario iteration: \n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
 		apiRule, err := NewAPIScenarioIterationWithBody(updatedSI)
 		if err != nil {
-			http.Error(w, fmt.Errorf("could not create new api scenario iteration: %w", err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Error marshalling API scenario iteration: \n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 		err = json.NewEncoder(w).Encode(apiRule)
 		if err != nil {
-			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 	}

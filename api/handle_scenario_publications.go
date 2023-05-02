@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"marble/marble-backend/app"
 	"marble/marble-backend/utils"
 	"net/http"
 	"time"
 
 	"github.com/ggicci/httpin"
+	"golang.org/x/exp/slog"
 )
 
 type ScenarioPublicationAppInterface interface {
@@ -20,9 +20,8 @@ type ScenarioPublicationAppInterface interface {
 }
 
 type APIScenarioPublication struct {
-	ID   string `json:"id"`
-	Rank int32  `json:"rank"`
-	// UserID              string    `json:"userID"`
+	ID                  string    `json:"id"`
+	Rank                int32     `json:"rank"`
 	ScenarioID          string    `json:"scenarioID"`
 	ScenarioIterationID string    `json:"scenarioIterationID"`
 	PublicationAction   string    `json:"publicationAction"`
@@ -42,7 +41,6 @@ func NewAPIScenarioPublication(sp app.ScenarioPublication) APIScenarioPublicatio
 }
 
 type ListScenarioPublicationsInput struct {
-	// UserID              string `in:"query=userID"`
 	ScenarioID          string `in:"query=scenarioID"`
 	ScenarioIterationID string `in:"query=scenarioIterationID"`
 	PublicationAction   string `in:"query=publicationAction"`
@@ -59,18 +57,17 @@ func (api *API) ListScenarioPublications() http.HandlerFunc {
 		}
 
 		input := ctx.Value(httpin.Input).(*ListScenarioPublicationsInput)
+		logger := api.logger.With(slog.String("orgID", orgID), slog.String("scenarioID", input.ScenarioID))
 
 		options := &utils.PtrToOptions{OmitZero: true}
 		scenarioPublications, err := api.app.ListScenarioPublications(ctx, orgID, app.ListScenarioPublicationsFilters{
-			// UserID:              utils.PtrTo(input.UserID,, options),
 			ScenarioID:          utils.PtrTo(input.ScenarioID, options),
 			ScenarioIterationID: utils.PtrTo(input.ScenarioIterationID, options),
 			PublicationAction:   utils.PtrTo(input.PublicationAction, options),
 		})
 		if err != nil {
-			// Could not execute request
-			// TODO(errors): handle missing fields error ?
-			http.Error(w, fmt.Errorf("error getting scenario publications: %w", err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Error listing scenario publications: \n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
@@ -81,14 +78,14 @@ func (api *API) ListScenarioPublications() http.HandlerFunc {
 
 		err = json.NewEncoder(w).Encode(scenarioPublicationDTOs)
 		if err != nil {
-			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Error encoding scenario publications: \n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 	}
 }
 
 type CreateScenarioPublicationBody struct {
-	// UserID              string    `json:"userID"`
 	ScenarioIterationID string `json:"scenarioIterationID"`
 	PublicationAction   string `json:"publicationAction"`
 }
@@ -108,19 +105,19 @@ func (api *API) CreateScenarioPublication() http.HandlerFunc {
 		}
 
 		input := ctx.Value(httpin.Input).(*CreateScenarioPublicationInput)
+		logger := api.logger.With(slog.String("orgID", orgID), slog.String("scenarioIterationID", input.Body.ScenarioIterationID))
 
 		scenarioPublications, err := api.app.CreateScenarioPublication(ctx, orgID, app.CreateScenarioPublicationInput{
-			// UserID: input.Body.UserID,
 			ScenarioIterationID: input.Body.ScenarioIterationID,
 			PublicationAction:   app.PublicationActionFrom(input.Body.PublicationAction),
 		})
 		if errors.Is(err, app.ErrScenarioIterationNotValid) {
-			http.Error(w, app.ErrScenarioIterationNotValid.Error(), http.StatusForbidden)
+			logger.WarnCtx(ctx, "Scenario iteration not valid")
+			http.Error(w, "", http.StatusForbidden)
 			return
 		} else if err != nil {
-			// Could not execute request
-			// TODO(errors): handle missing fields error ?
-			http.Error(w, fmt.Errorf("error handling scenario publication: %w", err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Error creating scenario publication: \n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
@@ -131,7 +128,8 @@ func (api *API) CreateScenarioPublication() http.HandlerFunc {
 
 		err = json.NewEncoder(w).Encode(scenarioPublicationDTOs)
 		if err != nil {
-			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Error encoding scenario publications: \n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -152,21 +150,22 @@ func (api *API) GetScenarioPublication() http.HandlerFunc {
 		}
 
 		input := ctx.Value(httpin.Input).(*GetScenarioPublicationInput)
+		logger := api.logger.With(slog.String("orgID", orgID), slog.String("scenarioPublicationID", input.ScenarioPublicationID))
 
 		scenarioPublication, err := api.app.GetScenarioPublication(ctx, orgID, input.ScenarioPublicationID)
 		if errors.Is(err, app.ErrNotFoundInRepository) {
 			http.Error(w, "", http.StatusNotFound)
 			return
 		} else if err != nil {
-			// Could not execute request
-			// TODO(errors): handle missing fields error ?
-			http.Error(w, fmt.Errorf("error getting scenario publication(id: %s): %w", input.ScenarioPublicationID, err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Error getting scenario publication: \n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
 		err = json.NewEncoder(w).Encode(NewAPIScenarioPublication(scenarioPublication))
 		if err != nil {
-			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Error encoding scenario publication: \n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 	}

@@ -4,14 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"log"
 	"net/http"
 	"time"
 
 	"marble/marble-backend/app"
 
-	"github.com/go-chi/chi/v5"
+	"github.com/ggicci/httpin"
+	"golang.org/x/exp/slog"
 )
 
 type DecisionInterface interface {
@@ -96,6 +95,10 @@ func NewAPIDecisionRule(rule app.RuleExecution) APIDecisionRule {
 	return apiDecisionRule
 }
 
+type GetDecisionInput struct {
+	DecisionID string `in:"path=decisionID"`
+}
+
 func (api *API) handleGetDecision() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -105,31 +108,38 @@ func (api *API) handleGetDecision() http.HandlerFunc {
 			http.Error(w, "", http.StatusUnauthorized)
 			return
 		}
-		decisionID := chi.URLParam(r, "decisionID")
+		input := ctx.Value(httpin.Input).(*GetDecisionInput)
+		decisionID := input.DecisionID
+
+		logger := api.logger.With(slog.String("decisionID", decisionID))
 
 		decision, err := api.app.GetDecision(ctx, orgID, decisionID)
 		if errors.Is(err, app.ErrNotFoundInRepository) {
 			http.Error(w, "", http.StatusNotFound)
 			return
 		} else if err != nil {
-			// Could not execute request
-			http.Error(w, fmt.Errorf("error getting decision: %w", err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "error getting decision: \n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
 		err = json.NewEncoder(w).Encode(NewAPIDecision(decision))
 		if err != nil {
-			// Could not encode JSON
-			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "error encoding response JSON: \n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 	}
 }
 
-type CreateDecisionInput struct {
+type CreateDecisionBody struct {
 	ScenarioID        string          `json:"scenario_id"`
 	TriggerObjectRaw  json.RawMessage `json:"trigger_object"`
 	TriggerObjectType string          `json:"object_type"`
+}
+
+type CreatedDecisionInput struct {
+	Body *CreateDecisionBody `in:"body=json"`
 }
 
 func (api *API) handlePostDecision() http.HandlerFunc {
@@ -142,37 +152,32 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 			return
 		}
 
-		requestData := &CreateDecisionInput{}
-		err = json.NewDecoder(r.Body).Decode(requestData)
-		if err != nil {
-			// Could not parse JSON
-			http.Error(w, fmt.Errorf("could not parse input JSON: %w", err).Error(), http.StatusUnprocessableEntity)
-			return
-		}
+		input := ctx.Value(httpin.Input).(*CreatedDecisionInput)
+		requestData := input.Body
+		logger := api.logger.With(slog.String("scenarioId", requestData.ScenarioID), slog.String("objectType", requestData.TriggerObjectType), slog.String("orgId", orgID))
 
 		dataModel, err := api.app.GetDataModel(ctx, orgID)
 		if err != nil {
-			log.Printf("Unable to find datamodel by orgId for ingestion: %v", err)
-			http.Error(w, "No data model found for this organization ID.", http.StatusInternalServerError) // 500
+			logger.ErrorCtx(ctx, "Unable to find datamodel by orgId for ingestion: \n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
 		tables := dataModel.Tables
 		table, ok := tables[requestData.TriggerObjectType]
 		if !ok {
-			log.Printf("Table %s not found in data model for organization %s", requestData.TriggerObjectType, orgID)
-			http.Error(w, "No data model found for this object type.", http.StatusNotFound) // 404
+			logger.ErrorCtx(ctx, "Table not found in data model for organization")
+			http.Error(w, "", http.StatusNotFound)
 			return
 		}
 
 		payloadStructWithReaderPtr, err := app.ParseToDataModelObject(ctx, table, requestData.TriggerObjectRaw)
-		if err != nil {
-			if errors.Is(err, app.ErrFormatValidation) {
-				http.Error(w, "Format validation error", http.StatusUnprocessableEntity) // 422
-				return
-			}
-			log.Printf("Unexpected error while parsing to data model object: %v", err)
-			http.Error(w, "", http.StatusInternalServerError) // 500
+		if errors.Is(err, app.ErrFormatValidation) {
+			http.Error(w, "Format validation error", http.StatusUnprocessableEntity) // 422
+			return
+		} else if err != nil {
+			logger.ErrorCtx(ctx, "Unexpected error while parsing to data model object:\n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
@@ -180,7 +185,8 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 		triggerObjectMap := make(map[string]interface{})
 		err = json.Unmarshal(requestData.TriggerObjectRaw, &triggerObjectMap)
 		if err != nil {
-			http.Error(w, fmt.Errorf("could not unmarshal trigger object: %w", err).Error(), http.StatusUnprocessableEntity)
+			logger.ErrorCtx(ctx, "Could not unmarshal trigger object: \n"+err.Error())
+			http.Error(w, "", http.StatusUnprocessableEntity)
 			return
 		}
 		payload := app.Payload{TableName: requestData.TriggerObjectType, Data: triggerObjectMap}
@@ -189,15 +195,15 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 			http.Error(w, "scenario not found", http.StatusNotFound)
 			return
 		} else if err != nil {
-			// Could not execute request
-			http.Error(w, fmt.Errorf("could not create a decision: %w", err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "Could not create a decision: \n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
 		err = json.NewEncoder(w).Encode(NewAPIDecision(decision))
 		if err != nil {
-			// Could not encode JSON
-			http.Error(w, fmt.Errorf("could not encode response JSON: %w", err).Error(), http.StatusInternalServerError)
+			logger.ErrorCtx(ctx, "error encoding response JSON: \n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 	}
