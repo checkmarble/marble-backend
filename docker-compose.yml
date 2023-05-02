@@ -14,6 +14,9 @@ services:
       GOOGLE_CLOUD_PROJECT: "tokyo-country-381508"
     ports:
       - "8080:8080"
+    command:
+      - "-migrations"
+      - "-server"
     volumes:
       - $HOME/.config/gcloud/application_default_credentials.json:/gcp/creds.json:ro
     depends_on:
@@ -24,7 +27,6 @@ services:
     container_name: postgres
     image: postgres
     restart: always
-    #    user: postgres
     environment:
       POSTGRES_USER: marble
       POSTGRES_PASSWORD: marble
@@ -34,7 +36,6 @@ services:
       - "5432:5432"
     volumes:
       - postgres-db:/data/postgres
-    #      - ./sql:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 2s

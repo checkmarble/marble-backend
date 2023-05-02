@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"embed"
-	"fmt"
+	"flag"
 	"log"
 	"marble/marble-backend/api"
 	"marble/marble-backend/app"
@@ -80,44 +80,8 @@ func loggerAttributeReplacer(groups []string, a slog.Attr) slog.Attr {
 	return a
 }
 
-func main() {
-	////////////////////////////////////////////////////////////
-	// Init
-	////////////////////////////////////////////////////////////
-
-	// Read ENV variables for configuration
-	env := getEnvWithDefault("ENV", "DEV")
-	pgPort := getEnvWithDefault("PG_PORT", "5432")
-
-	var (
-		port       = mustGetenv("PORT")
-		pgHostname = mustGetenv("PG_HOSTNAME")
-		pgUser     = mustGetenv("PG_USER")
-		pgPassword = mustGetenv("PG_PASSWORD")
-	)
-
-	// ////////////////////////////////////////////////////////////
-	// // Setup dependencies
-	// ////////////////////////////////////////////////////////////
-
-	var logger *slog.Logger
-	if env == "DEV" {
-		textHandler := slog.HandlerOptions{ReplaceAttr: loggerAttributeReplacer}.NewTextHandler(os.Stderr)
-		logger = slog.New(textHandler)
-	} else {
-		jsonHandler := slog.HandlerOptions{ReplaceAttr: loggerAttributeReplacer}.NewJSONHandler(os.Stderr)
-		logger = slog.New(jsonHandler)
-	}
-
-	// Postgres repository
-	pgRepository, _ := pg_repository.New(env, pg_repository.PGCOnfig{
-		Hostname:    pgHostname,
-		Port:        pgPort,
-		User:        pgUser,
-		Password:    pgPassword,
-		MigrationFS: embedMigrations,
-	}, logger)
-
+func run_server(pgRepository *pg_repository.PGRepository, port string, env string, logger *slog.Logger) {
+	ctx := context.Background()
 	if env == "DEV" {
 		pgRepository.Seed()
 	}
@@ -136,15 +100,69 @@ func main() {
 	go func() {
 		log.Printf("starting server on port %v\n", port)
 		if err := api.ListenAndServe(); err != nil {
-			log.Println(fmt.Errorf("error serving the app: %w", err))
+			logger.ErrorCtx(ctx, "error serving the app: \n"+err.Error())
 		}
-		log.Println("server returned")
+		logger.InfoCtx(ctx, "server returned")
 	}()
 
 	// Block until we receive our signal.
 	<-notify.Done()
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	api.Shutdown(shutdownCtx)
+}
+
+func run_migrations(env string, pgConfig pg_repository.PGConfig, logger *slog.Logger) {
+	pg_repository.RunMigrations(env, pgConfig, logger)
+}
+
+func main() {
+	env := getEnvWithDefault("ENV", "DEV")
+	pgPort := getEnvWithDefault("PG_PORT", "5432")
+
+	var (
+		port       = mustGetenv("PORT")
+		pgHostname = mustGetenv("PG_HOSTNAME")
+		pgUser     = mustGetenv("PG_USER")
+		pgPassword = mustGetenv("PG_PASSWORD")
+	)
+
+	////////////////////////////////////////////////////////////
+	// Setup dependencies
+	////////////////////////////////////////////////////////////
+
+	var logger *slog.Logger
+	if env == "DEV" {
+		textHandler := slog.HandlerOptions{ReplaceAttr: loggerAttributeReplacer}.NewTextHandler(os.Stderr)
+		logger = slog.New(textHandler)
+	} else {
+		jsonHandler := slog.HandlerOptions{ReplaceAttr: loggerAttributeReplacer}.NewJSONHandler(os.Stderr)
+		logger = slog.New(jsonHandler)
+	}
+
+	pgConfig := pg_repository.PGConfig{
+		Hostname:    pgHostname,
+		Port:        pgPort,
+		User:        pgUser,
+		Password:    pgPassword,
+		MigrationFS: embedMigrations,
+	}
+
+	pgRepository, err := pg_repository.New(env, pgConfig)
+	if err != nil {
+		logger.Error("error creating pg repository:\n", err.Error())
+	}
+
+	shouldRunMigrations := flag.Bool("migrations", false, "Run migrations")
+	shouldRunServer := flag.Bool("server", false, "Run server")
+	flag.Parse()
+	logger.DebugCtx(context.Background(), "shouldRunMigrations", *shouldRunMigrations, "shouldRunServer", *shouldRunServer)
+
+	if *shouldRunMigrations {
+		run_migrations(env, pgConfig, logger)
+	}
+	if *shouldRunServer {
+		run_server(pgRepository, port, env, logger)
+	}
 
 }
