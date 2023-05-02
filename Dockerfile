@@ -14,4 +14,4 @@ COPY --from=build /go/bin/app /
 ENV PORT=8080
 EXPOSE $PORT
 
-CMD ["/app"]
+ENTRYPOINT ["/app"]

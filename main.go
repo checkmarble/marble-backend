@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"embed"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -37,34 +38,7 @@ func getEnvWithDefault(k string, def string) string {
 	return v
 }
 
-func main() {
-	////////////////////////////////////////////////////////////
-	// Init
-	////////////////////////////////////////////////////////////
-
-	// Read ENV variables for configuration
-	env := getEnvWithDefault("ENV", "DEV")
-	pgPort := getEnvWithDefault("PG_PORT", "5432")
-
-	var (
-		port       = mustGetenv("PORT")
-		pgHostname = mustGetenv("PG_HOSTNAME")
-		pgUser     = mustGetenv("PG_USER")
-		pgPassword = mustGetenv("PG_PASSWORD")
-	)
-
-	////////////////////////////////////////////////////////////
-	// Setup dependencies
-	////////////////////////////////////////////////////////////
-
-	// Postgres repository
-	pgRepository, _ := pg_repository.New(env, pg_repository.PGCOnfig{
-		Hostname:    pgHostname,
-		Port:        pgPort,
-		User:        pgUser,
-		Password:    pgPassword,
-		MigrationFS: embedMigrations,
-	})
+func run_server(pgRepository *pg_repository.PGRepository, port string, env string) { // Read ENV variables for configuration
 
 	if env == "DEV" {
 		pgRepository.Seed()
@@ -94,5 +68,42 @@ func main() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	api.Shutdown(shutdownCtx)
+}
+
+func run_migrations(pgConfig pg_repository.PGConfig, env string) {
+	pg_repository.RunMigrations(pgConfig, env)
+}
+
+func main() {
+	env := getEnvWithDefault("ENV", "DEV")
+	pgPort := getEnvWithDefault("PG_PORT", "5432")
+
+	var (
+		port       = mustGetenv("PORT")
+		pgHostname = mustGetenv("PG_HOSTNAME")
+		pgUser     = mustGetenv("PG_USER")
+		pgPassword = mustGetenv("PG_PASSWORD")
+	)
+
+	pgConfig := pg_repository.PGConfig{
+		Hostname:    pgHostname,
+		Port:        pgPort,
+		User:        pgUser,
+		Password:    pgPassword,
+		MigrationFS: embedMigrations,
+	}
+
+	pgRepository, _ := pg_repository.New(env, pgConfig)
+
+	shouldRunMigrations := flag.Bool("migrations", false, "Run migrations")
+	shouldRunServer := flag.Bool("server", false, "Run server")
+	flag.Parse()
+
+	if *shouldRunMigrations {
+		run_migrations(pgConfig, env)
+	}
+	if *shouldRunServer {
+		run_server(pgRepository, port, env)
+	}
 
 }

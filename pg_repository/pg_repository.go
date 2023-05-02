@@ -25,7 +25,7 @@ type PgxPoolIface interface {
 	Close()
 }
 
-type PGCOnfig struct {
+type PGConfig struct {
 	Hostname    string
 	Port        string
 	User        string
@@ -38,20 +38,53 @@ type PGRepository struct {
 	queryBuilder squirrel.StatementBuilderType
 }
 
-func New(env string, pgConfig PGCOnfig) (*PGRepository, error) {
-
-	connectionString := fmt.Sprintf("host=%s user=%s password=%s database=marble sslmode=disable", pgConfig.Hostname, pgConfig.User, pgConfig.Password)
+func (config PGConfig) GetConnectionString(env string) string {
+	connectionString := fmt.Sprintf("host=%s user=%s password=%s database=marble sslmode=disable", config.Hostname, config.User, config.Password)
 	if env == "DEV" {
 		// Cloud Run connects to the DB through a proxy and a unix socket, so we don't need need to specify the port
 		// but we do when running locally
-		connectionString = fmt.Sprintf("%s port=%s", connectionString, pgConfig.Port)
+		connectionString = fmt.Sprintf("%s port=%s", connectionString, config.Port)
+	}
+	return connectionString
+}
+
+func New(env string, PGConfig PGConfig) (*PGRepository, error) {
+	connectionString := PGConfig.GetConnectionString(env)
+
+	dbpool, err := pgxpool.New(context.Background(), connectionString)
+	if err != nil {
+		log.Printf("Unable to create connection pool: %v\n", err)
+		os.Exit(1)
 	}
 
-	///////////////////////////////
-	// Run migrations if any
-	///////////////////////////////
+	log.Printf("DB connection pool created. Stats: %+v\n", dbpool.Stat())
 
-	// Setup its own connection
+	// Test connection
+	var currentPGUser string
+	err = dbpool.QueryRow(context.Background(), "SELECT current_user;").Scan(&currentPGUser)
+	if err != nil {
+		log.Printf("unable to get current user: %v", err)
+	}
+	log.Printf("current Postgres user: %v\n", currentPGUser)
+
+	var searchPath string
+	err = dbpool.QueryRow(context.Background(), "SHOW search_path;").Scan(&searchPath)
+	if err != nil {
+		log.Printf("unable to get search_path user: %v", err)
+	}
+	log.Printf("search path: %v\n", searchPath)
+
+	r := &PGRepository{
+		db:           dbpool,
+		queryBuilder: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar),
+	}
+
+	return r, nil
+}
+
+func RunMigrations(PGConfig PGConfig, env string) {
+	connectionString := PGConfig.GetConnectionString(env)
+
 	migrationDB, err := sql.Open("pgx", connectionString)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
@@ -60,8 +93,7 @@ func New(env string, pgConfig PGCOnfig) (*PGRepository, error) {
 
 	// start goose migrations
 	log.Println("Migrations starting")
-
-	goose.SetBaseFS(pgConfig.MigrationFS)
+	goose.SetBaseFS(PGConfig.MigrationFS)
 
 	if err := goose.SetDialect("postgres"); err != nil {
 		panic(err)
@@ -78,44 +110,4 @@ func New(env string, pgConfig PGCOnfig) (*PGRepository, error) {
 	}
 
 	migrationDB.Close()
-
-	///////////////////////////////
-	// Setup connection pool
-	///////////////////////////////
-
-	dbpool, err := pgxpool.New(context.Background(), connectionString)
-	if err != nil {
-		log.Printf("Unable to create connection pool: %v\n", err)
-		os.Exit(1)
-	}
-
-	log.Printf("DB connection pool created. Stats: %+v\n", dbpool.Stat())
-
-	///////////////////////////////
-	// Test connection
-	///////////////////////////////
-	var currentPGUser string
-	err = dbpool.QueryRow(context.Background(), "SELECT current_user;").Scan(&currentPGUser)
-	if err != nil {
-		log.Printf("unable to get current user: %v", err)
-	}
-	log.Printf("current Postgres user: %v\n", currentPGUser)
-
-	var searchPath string
-	err = dbpool.QueryRow(context.Background(), "SHOW search_path;").Scan(&searchPath)
-	if err != nil {
-		log.Printf("unable to get search_path user: %v", err)
-	}
-	log.Printf("search path: %v\n", searchPath)
-
-	///////////////////////////////
-	// Build repository
-	///////////////////////////////
-
-	r := &PGRepository{
-		db:           dbpool,
-		queryBuilder: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar),
-	}
-
-	return r, nil
 }
