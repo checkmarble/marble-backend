@@ -42,12 +42,10 @@ func updateExistingVersionIfPresent(
 
 	var id string
 	err = tx.QueryRow(ctx, sql, args...).Scan(&id)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil
-		} else {
-			return err
-		}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	} else if err != nil {
+		return err
 	}
 
 	sql, args, err = queryBuilder.

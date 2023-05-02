@@ -20,7 +20,7 @@ func (api *API) jwtValidator(next http.Handler) http.Handler {
 		authHeader := strings.Split(r.Header.Get("Authorization"), "Bearer ")
 		if len(authHeader) != 2 {
 			api.logger.ErrorCtx(ctx, "Malformed Token")
-			w.WriteHeader(http.StatusUnauthorized)
+			http.Error(w, "", http.StatusUnauthorized)
 			return
 		}
 
@@ -39,7 +39,7 @@ func (api *API) jwtValidator(next http.Handler) http.Handler {
 		})
 		if err != nil {
 			api.logger.ErrorCtx(ctx, err.Error())
-			w.WriteHeader(http.StatusUnauthorized)
+			http.Error(w, "", http.StatusUnauthorized)
 			return
 		}
 
@@ -48,7 +48,7 @@ func (api *API) jwtValidator(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		} else {
 			api.logger.ErrorCtx(ctx, err.Error())
-			w.WriteHeader(http.StatusUnauthorized)
+			http.Error(w, "", http.StatusUnauthorized)
 		}
 
 	})
@@ -63,26 +63,26 @@ func (api *API) authMiddlewareFactory(middlewareParams map[TokenType]Role) func(
 			claims, ok := ctx.Value(contextKeyClaims).(jwt.MapClaims)
 			if !ok {
 				api.logger.ErrorCtx(ctx, "claims not found in context")
-				w.WriteHeader(http.StatusForbidden)
+				http.Error(w, "", http.StatusUnauthorized)
 				return
 			}
 
 			organizationId, ok := claims["organization_id"].(string)
 			if !ok {
 				api.logger.ErrorCtx(ctx, "organization_id not found in claims")
-				w.WriteHeader(http.StatusForbidden)
+				http.Error(w, "", http.StatusUnauthorized)
 				return
 			}
 			tokenType, ok := claims["type"].(string)
 			if !ok {
 				api.logger.ErrorCtx(ctx, "Token type not found in claims")
-				w.WriteHeader(http.StatusForbidden)
+				http.Error(w, "", http.StatusUnauthorized)
 				return
 			}
 			tokenRoleString, ok := claims["role"].(string)
 			if !ok {
 				api.logger.ErrorCtx(ctx, "Role not found in claims")
-				w.WriteHeader(http.StatusForbidden)
+				http.Error(w, "", http.StatusUnauthorized)
 				return
 			}
 			tokenRole := RoleFromString(tokenRoleString)
@@ -91,12 +91,12 @@ func (api *API) authMiddlewareFactory(middlewareParams map[TokenType]Role) func(
 			middlewareParamsMinimumRole, ok := middlewareParams[TokenType(tokenType)]
 			if !ok {
 				api.logger.WarnCtx(ctx, "Token type not allowed for this endpoint")
-				w.WriteHeader(http.StatusForbidden)
+				http.Error(w, "", http.StatusUnauthorized)
 				return
 			}
 			if tokenRole < middlewareParamsMinimumRole {
 				api.logger.WarnCtx(ctx, "Token role not allowed for this endpoint")
-				w.WriteHeader(http.StatusForbidden)
+				http.Error(w, "", http.StatusUnauthorized)
 				return
 			}
 

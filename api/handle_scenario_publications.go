@@ -67,7 +67,7 @@ func (api *API) ListScenarioPublications() http.HandlerFunc {
 		})
 		if err != nil {
 			logger.ErrorCtx(ctx, "Error listing scenario publications: \n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
@@ -79,7 +79,7 @@ func (api *API) ListScenarioPublications() http.HandlerFunc {
 		err = json.NewEncoder(w).Encode(scenarioPublicationDTOs)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Error encoding scenario publications: \n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -113,11 +113,11 @@ func (api *API) CreateScenarioPublication() http.HandlerFunc {
 		})
 		if errors.Is(err, app.ErrScenarioIterationNotValid) {
 			logger.WarnCtx(ctx, "Scenario iteration not valid")
-			w.WriteHeader(http.StatusForbidden)
+			http.Error(w, "", http.StatusForbidden)
 			return
 		} else if err != nil {
 			logger.ErrorCtx(ctx, "Error creating scenario publication: \n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
@@ -129,7 +129,7 @@ func (api *API) CreateScenarioPublication() http.HandlerFunc {
 		err = json.NewEncoder(w).Encode(scenarioPublicationDTOs)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Error encoding scenario publications: \n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -154,18 +154,18 @@ func (api *API) GetScenarioPublication() http.HandlerFunc {
 
 		scenarioPublication, err := api.app.GetScenarioPublication(ctx, orgID, input.ScenarioPublicationID)
 		if errors.Is(err, app.ErrNotFoundInRepository) {
-			w.WriteHeader(http.StatusNotFound)
+			http.Error(w, "", http.StatusNotFound)
 			return
 		} else if err != nil {
 			logger.ErrorCtx(ctx, "Error getting scenario publication: \n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
 		err = json.NewEncoder(w).Encode(NewAPIScenarioPublication(scenarioPublication))
 		if err != nil {
 			logger.ErrorCtx(ctx, "Error encoding scenario publication: \n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 	}

@@ -28,7 +28,7 @@ func (api *API) handleIngestion() http.HandlerFunc {
 		dataModel, err := api.app.GetDataModel(ctx, orgID)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Unable to find datamodel by orgId for ingestion:\n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError) // 500
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
@@ -36,7 +36,7 @@ func (api *API) handleIngestion() http.HandlerFunc {
 		object_body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Error while reading request body bytes in api handle_ingestion")
-			w.WriteHeader(http.StatusUnprocessableEntity)
+			http.Error(w, "", http.StatusUnprocessableEntity)
 			return
 		}
 		logger = logger.With(slog.String("object_type", object_type))
@@ -45,24 +45,24 @@ func (api *API) handleIngestion() http.HandlerFunc {
 		table, ok := tables[object_type]
 		if !ok {
 			logger.ErrorCtx(ctx, "Table not found in data model for organization")
-			w.WriteHeader(http.StatusNotFound)
+			http.Error(w, "", http.StatusNotFound)
 			return
 		}
 
 		payloadStructWithReaderPtr, err := app.ParseToDataModelObject(ctx, table, object_body)
 		if errors.Is(err, app.ErrFormatValidation) {
-			w.WriteHeader(http.StatusUnprocessableEntity)
+			http.Error(w, "", http.StatusUnprocessableEntity)
 			return
 		} else if err != nil {
 			logger.ErrorCtx(ctx, "Unexpected error while parsing to data model object:\n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
 		err = api.app.IngestObject(ctx, *payloadStructWithReaderPtr, table)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Error while ingesting object:\n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusCreated)

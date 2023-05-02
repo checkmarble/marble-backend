@@ -115,18 +115,18 @@ func (api *API) handleGetDecision() http.HandlerFunc {
 
 		decision, err := api.app.GetDecision(ctx, orgID, decisionID)
 		if errors.Is(err, app.ErrNotFoundInRepository) {
-			w.WriteHeader(http.StatusNotFound)
+			http.Error(w, "", http.StatusNotFound)
 			return
 		} else if err != nil {
 			logger.ErrorCtx(ctx, "error getting decision: \n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
 		err = json.NewEncoder(w).Encode(NewAPIDecision(decision))
 		if err != nil {
 			logger.ErrorCtx(ctx, "error encoding response JSON: \n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -159,7 +159,7 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 		dataModel, err := api.app.GetDataModel(ctx, orgID)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Unable to find datamodel by orgId for ingestion: \n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
@@ -167,7 +167,7 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 		table, ok := tables[requestData.TriggerObjectType]
 		if !ok {
 			logger.ErrorCtx(ctx, "Table not found in data model for organization")
-			w.WriteHeader(http.StatusNotFound)
+			http.Error(w, "", http.StatusNotFound)
 			return
 		}
 
@@ -177,7 +177,7 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 			return
 		} else if err != nil {
 			logger.ErrorCtx(ctx, "Unexpected error while parsing to data model object:\n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
@@ -186,7 +186,7 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 		err = json.Unmarshal(requestData.TriggerObjectRaw, &triggerObjectMap)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Could not unmarshal trigger object: \n"+err.Error())
-			w.WriteHeader(http.StatusUnprocessableEntity)
+			http.Error(w, "", http.StatusUnprocessableEntity)
 			return
 		}
 		payload := app.Payload{TableName: requestData.TriggerObjectType, Data: triggerObjectMap}
@@ -196,14 +196,14 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 			return
 		} else if err != nil {
 			logger.ErrorCtx(ctx, "Could not create a decision: \n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
 		err = json.NewEncoder(w).Encode(NewAPIDecision(decision))
 		if err != nil {
 			logger.ErrorCtx(ctx, "error encoding response JSON: \n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 	}

@@ -29,7 +29,7 @@ func (api *API) handleGetAccessToken() http.HandlerFunc {
 
 		orgID, err := api.app.GetOrganizationIDFromToken(ctx, creds.RefreshToken)
 		if err != nil && creds.RefreshToken != HARD_CODED_API_TOKEN_API && creds.RefreshToken != HARD_CODED_API_TOKEN_USER {
-			w.WriteHeader(http.StatusUnauthorized)
+			http.Error(w, "", http.StatusUnauthorized)
 			return
 		}
 		logger := api.logger.With(slog.String("orgID", orgID))
@@ -58,13 +58,13 @@ func (api *API) handleGetAccessToken() http.HandlerFunc {
 		privateKey, _, err := api.signingSecretAccessor.ReadSigningSecrets(ctx)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Could not read private key:\n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 		}
 
 		tokenString, err := token.SignedString(privateKey)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Could not create jwt:\n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 

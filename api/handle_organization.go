@@ -39,7 +39,7 @@ func (api *API) handleGetOrganizations() http.HandlerFunc {
 		organizations, err := api.app.GetOrganizations(ctx)
 		if err != nil {
 			api.logger.ErrorCtx(ctx, "Error getting organizations: \n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
@@ -51,7 +51,7 @@ func (api *API) handleGetOrganizations() http.HandlerFunc {
 		err = json.NewEncoder(w).Encode(&apiOrganizations)
 		if err != nil {
 			api.logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -79,14 +79,14 @@ func (api *API) handlePostOrganization() http.HandlerFunc {
 		})
 		if err != nil {
 			api.logger.ErrorCtx(ctx, "Error creating organizations: \n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
 		err = json.NewEncoder(w).Encode(NewAPIOrganization(org))
 		if err != nil {
 			api.logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -109,14 +109,14 @@ func (api *API) handleGetOrganization() http.HandlerFunc {
 			return
 		} else if err != nil {
 			logger.ErrorCtx(ctx, "Error getting organization: \n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
 		err = json.NewEncoder(w).Encode(NewAPIOrganization(org))
 		if err != nil {
 			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -151,14 +151,14 @@ func (api *API) handlePutOrganization() http.HandlerFunc {
 			return
 		} else if err != nil {
 			logger.ErrorCtx(ctx, "Error updating organizations: \n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
 		err = json.NewEncoder(w).Encode(NewAPIOrganization(org))
 		if err != nil {
 			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -182,7 +182,7 @@ func (api *API) handleDeleteOrganization() http.HandlerFunc {
 		} else if err != nil {
 			// Could not execute request
 			logger.ErrorCtx(ctx, "Error deleting organization: \n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 	}

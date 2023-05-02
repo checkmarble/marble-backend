@@ -50,7 +50,6 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/crypto v0.7.0 // indirect
-	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53 // indirect
 	golang.org/x/mod v0.9.0 // indirect
 	golang.org/x/net v0.8.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
@@ -81,5 +80,6 @@ require (
 	github.com/ory/dockertest/v3 v3.9.1
 	github.com/pashagolub/pgxmock/v2 v2.6.0
 	github.com/stretchr/testify v1.8.2
+	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53
 	golang.org/x/oauth2 v0.0.0-20221014153046-6fdb5e3db783
 )

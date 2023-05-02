@@ -74,7 +74,7 @@ func (api *API) ListScenarioIterationRules() http.HandlerFunc {
 		})
 		if err != nil {
 			logger.ErrorCtx(ctx, "Error listing rules:\n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
@@ -83,7 +83,7 @@ func (api *API) ListScenarioIterationRules() http.HandlerFunc {
 			apiRule, err := NewAPIScenarioIterationRule(rule)
 			if err != nil {
 				logger.ErrorCtx(ctx, "Error marshalling API scenario iteration rule:\n"+err.Error())
-				w.WriteHeader(http.StatusInternalServerError)
+				http.Error(w, "", http.StatusInternalServerError)
 				return
 			}
 			apiRules[i] = apiRule
@@ -92,7 +92,7 @@ func (api *API) ListScenarioIterationRules() http.HandlerFunc {
 		err = json.NewEncoder(w).Encode(apiRules)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -127,7 +127,7 @@ func (api *API) CreateScenarioIterationRule() http.HandlerFunc {
 		formula, err := operators.UnmarshalOperatorBool(input.Body.Formula)
 		if err != nil {
 			logger.WarnCtx(ctx, "Could not unmarshal formula:\n"+err.Error())
-			w.WriteHeader(http.StatusUnprocessableEntity)
+			http.Error(w, "", http.StatusUnprocessableEntity)
 			return
 		}
 
@@ -141,20 +141,20 @@ func (api *API) CreateScenarioIterationRule() http.HandlerFunc {
 		})
 		if err != nil {
 			logger.ErrorCtx(ctx, "Error creating scenario iteration rule:\n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
 		apiRule, err := NewAPIScenarioIterationRule(rule)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Error marshalling API scenario iteration rule:\n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 		err = json.NewEncoder(w).Encode(apiRule)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -178,23 +178,26 @@ func (api *API) GetScenarioIterationRule() http.HandlerFunc {
 		logger := api.logger.With(slog.String("ruleId", input.RuleID), slog.String("orgID", orgID))
 
 		rule, err := api.app.GetScenarioIterationRule(ctx, orgID, input.RuleID)
-		if err != nil {
+		if errors.Is(err, app.ErrNotFoundInRepository) {
+			http.Error(w, "", http.StatusNotFound)
+			return
+		} else if err != nil {
 			// Could not execute request
 			logger.ErrorCtx(ctx, "Could not get scenario iteration rule: \n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
 		apiRule, err := NewAPIScenarioIterationRule(rule)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Could not marshall API scenario iteration rule: \n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 		err = json.NewEncoder(w).Encode(apiRule)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -238,7 +241,7 @@ func (api *API) UpdateScenarioIterationRule() http.HandlerFunc {
 			formula, err := operators.UnmarshalOperatorBool(*input.Body.Formula)
 			if err != nil {
 				logger.ErrorCtx(ctx, "Could not unmarshal formula:\n"+err.Error())
-				w.WriteHeader(http.StatusUnprocessableEntity)
+				http.Error(w, "", http.StatusUnprocessableEntity)
 				return
 			}
 			updateRuleInput.Formula = &formula
@@ -246,27 +249,27 @@ func (api *API) UpdateScenarioIterationRule() http.HandlerFunc {
 
 		updatedRule, err := api.app.UpdateScenarioIterationRule(ctx, orgID, updateRuleInput)
 		if errors.Is(err, app.ErrScenarioIterationNotDraft) {
-			w.WriteHeader(http.StatusForbidden)
+			http.Error(w, "", http.StatusForbidden)
 			return
 		} else if errors.Is(err, app.ErrNotFoundInRepository) {
-			w.WriteHeader(http.StatusNotFound)
+			http.Error(w, "", http.StatusNotFound)
 			return
 		} else if err != nil {
 			logger.ErrorCtx(ctx, "Error updating rule:\n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
 		apiRule, err := NewAPIScenarioIterationRule(updatedRule)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Could not marshall API scenario iteration rule: \n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 		err = json.NewEncoder(w).Encode(apiRule)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 	}
