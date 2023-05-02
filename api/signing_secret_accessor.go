@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"log"
 	"os"
 )
 
@@ -16,14 +15,6 @@ var publicKeySecretName = "AUTHENTICATION_JWT_VERIFYING_KEY"
 type signingSecretAccessorImpl struct {
 	privateKey *rsa.PrivateKey
 	publicKey  *rsa.PublicKey
-}
-
-func mustGetenv(k string) string {
-	v := os.Getenv(k)
-	if v == "" {
-		log.Fatalf("Fatal Error in connect_unix.go: %s environment variable not set.\n", k)
-	}
-	return v
 }
 
 func readPrivateKey() (*rsa.PrivateKey, error) {
