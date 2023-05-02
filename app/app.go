@@ -3,13 +3,10 @@ package app
 import (
 	"context"
 	"errors"
-
-	"golang.org/x/exp/slog"
 )
 
 type App struct {
 	repository RepositoryInterface
-	logger     *slog.Logger
 }
 
 type RepositoryInterface interface {
@@ -42,7 +39,7 @@ type RepositoryInterface interface {
 	SoftDeleteOrganization(ctx context.Context, orgID string) error
 }
 
-func New(r RepositoryInterface, logger *slog.Logger) (*App, error) {
+func New(r RepositoryInterface) (*App, error) {
 	return &App{repository: r}, nil
 }
 

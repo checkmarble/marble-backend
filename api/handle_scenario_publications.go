@@ -20,9 +20,8 @@ type ScenarioPublicationAppInterface interface {
 }
 
 type APIScenarioPublication struct {
-	ID   string `json:"id"`
-	Rank int32  `json:"rank"`
-	// UserID              string    `json:"userID"`
+	ID                  string    `json:"id"`
+	Rank                int32     `json:"rank"`
 	ScenarioID          string    `json:"scenarioID"`
 	ScenarioIterationID string    `json:"scenarioIterationID"`
 	PublicationAction   string    `json:"publicationAction"`
@@ -42,7 +41,6 @@ func NewAPIScenarioPublication(sp app.ScenarioPublication) APIScenarioPublicatio
 }
 
 type ListScenarioPublicationsInput struct {
-	// UserID              string `in:"query=userID"`
 	ScenarioID          string `in:"query=scenarioID"`
 	ScenarioIterationID string `in:"query=scenarioIterationID"`
 	PublicationAction   string `in:"query=publicationAction"`
@@ -63,7 +61,6 @@ func (api *API) ListScenarioPublications() http.HandlerFunc {
 
 		options := &utils.PtrToOptions{OmitZero: true}
 		scenarioPublications, err := api.app.ListScenarioPublications(ctx, orgID, app.ListScenarioPublicationsFilters{
-			// UserID:              utils.PtrTo(input.UserID,, options),
 			ScenarioID:          utils.PtrTo(input.ScenarioID, options),
 			ScenarioIterationID: utils.PtrTo(input.ScenarioIterationID, options),
 			PublicationAction:   utils.PtrTo(input.PublicationAction, options),
@@ -89,7 +86,6 @@ func (api *API) ListScenarioPublications() http.HandlerFunc {
 }
 
 type CreateScenarioPublicationBody struct {
-	// UserID              string    `json:"userID"`
 	ScenarioIterationID string `json:"scenarioIterationID"`
 	PublicationAction   string `json:"publicationAction"`
 }
@@ -112,7 +108,6 @@ func (api *API) CreateScenarioPublication() http.HandlerFunc {
 		logger := api.logger.With(slog.String("orgID", orgID), slog.String("scenarioIterationID", input.Body.ScenarioIterationID))
 
 		scenarioPublications, err := api.app.CreateScenarioPublication(ctx, orgID, app.CreateScenarioPublicationInput{
-			// UserID: input.Body.UserID,
 			ScenarioIterationID: input.Body.ScenarioIterationID,
 			PublicationAction:   app.PublicationActionFrom(input.Body.PublicationAction),
 		})

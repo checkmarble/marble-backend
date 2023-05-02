@@ -81,7 +81,7 @@ func main() {
 		pgRepository.Seed()
 	}
 
-	app, _ := app.New(pgRepository, logger)
+	app, _ := app.New(pgRepository)
 	api, _ := api.New(port, app, logger)
 
 	////////////////////////////////////////////////////////////

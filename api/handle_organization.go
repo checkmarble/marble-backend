@@ -7,7 +7,7 @@ import (
 	"marble/marble-backend/app"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
+	"github.com/ggicci/httpin"
 	"golang.org/x/exp/slog"
 )
 
@@ -57,21 +57,21 @@ func (api *API) handleGetOrganizations() http.HandlerFunc {
 	}
 }
 
-type CreateOrganizationInput struct {
+type CreateOrganizationBody struct {
 	Name         string `json:"name"`
 	DatabaseName string `json:"databaseName"`
+}
+
+type CreateOrganizationInput struct {
+	Body *CreateOrganizationBody `in:"body=json"`
 }
 
 func (api *API) handlePostOrganization() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		requestData := &CreateOrganizationInput{}
-		err := json.NewDecoder(r.Body).Decode(requestData)
-		if err != nil {
-			http.Error(w, "Could not parse input JSON", http.StatusUnprocessableEntity)
-			return
-		}
+		input := ctx.Value(httpin.Input).(*CreateOrganizationInput)
+		requestData := input.Body
 
 		org, err := api.app.CreateOrganization(ctx, app.CreateOrganizationInput{
 			Name:         requestData.Name,
@@ -92,11 +92,15 @@ func (api *API) handlePostOrganization() http.HandlerFunc {
 	}
 }
 
+type GetOrganizationInput struct {
+	orgID string `in:"path=orgID"`
+}
+
 func (api *API) handleGetOrganization() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID := chi.URLParam(r, "orgID")
+		orgID := ctx.Value(httpin.Input).(*GetOrganizationInput).orgID
 		logger := api.logger.With(slog.String("orgID", orgID))
 
 		org, err := api.app.GetOrganization(ctx, orgID)
@@ -118,24 +122,24 @@ func (api *API) handleGetOrganization() http.HandlerFunc {
 	}
 }
 
-type UpdateOrganizationInput struct {
+type UpdateOrganizationBody struct {
 	Name         *string `json:"name,omitempty"`
 	DatabaseName *string `json:"databaseName,omitempty"`
+}
+
+type UpdateOrganizationInput struct {
+	OrgID string                  `in:"path=orgID"`
+	Body  *UpdateOrganizationBody `in:"body=json"`
 }
 
 func (api *API) handlePutOrganization() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID := chi.URLParam(r, "orgID")
+		input := ctx.Value(httpin.Input).(*UpdateOrganizationInput)
+		requestData := input.Body
+		orgID := input.OrgID
 		logger := api.logger.With(slog.String("orgID", orgID))
-
-		requestData := &UpdateOrganizationInput{}
-		err := json.NewDecoder(r.Body).Decode(requestData)
-		if err != nil {
-			http.Error(w, "Could not parse input JSON", http.StatusUnprocessableEntity)
-			return
-		}
 
 		org, err := api.app.UpdateOrganization(ctx, app.UpdateOrganizationInput{
 			ID:           orgID,
@@ -160,11 +164,15 @@ func (api *API) handlePutOrganization() http.HandlerFunc {
 	}
 }
 
+type DeleteOrganizationInput struct {
+	orgID string `in:"path=orgID"`
+}
+
 func (api *API) handleDeleteOrganization() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID := chi.URLParam(r, "orgID")
+		orgID := ctx.Value(httpin.Input).(*DeleteOrganizationInput).orgID
 		logger := api.logger.With(slog.String("orgID", orgID))
 
 		err := api.app.SoftDeleteOrganization(ctx, orgID)

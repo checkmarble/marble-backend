@@ -1,10 +1,10 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 	"time"
 
+	"github.com/ggicci/httpin"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/exp/slog"
 )
@@ -16,16 +16,16 @@ var SIGNING_ALGO = jwt.SigningMethodRS256
 
 const TOKEN_LIFETIME_MINUTES = 30
 
+type GetNewAccessTokenInput struct {
+	Credentials Credentials `in:"body=json"`
+}
+
 func (api *API) handleGetAccessToken() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		var creds Credentials
-		err := json.NewDecoder(r.Body).Decode(&creds)
-		if err != nil || creds.RefreshToken == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
+		input := ctx.Value(httpin.Input).(*GetNewAccessTokenInput)
+		creds := input.Credentials
 
 		orgID, err := api.app.GetOrganizationIDFromToken(ctx, creds.RefreshToken)
 		if err != nil && creds.RefreshToken != HARD_CODED_API_TOKEN_API && creds.RefreshToken != HARD_CODED_API_TOKEN_USER {

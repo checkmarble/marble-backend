@@ -9,7 +9,7 @@ import (
 
 	"marble/marble-backend/app"
 
-	"github.com/go-chi/chi/v5"
+	"github.com/ggicci/httpin"
 	"golang.org/x/exp/slog"
 )
 
@@ -95,6 +95,10 @@ func NewAPIDecisionRule(rule app.RuleExecution) APIDecisionRule {
 	return apiDecisionRule
 }
 
+type GetDecisionInput struct {
+	DecisionID string `in:"path=decisionID"`
+}
+
 func (api *API) handleGetDecision() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -104,7 +108,8 @@ func (api *API) handleGetDecision() http.HandlerFunc {
 			http.Error(w, "", http.StatusUnauthorized)
 			return
 		}
-		decisionID := chi.URLParam(r, "decisionID")
+		input := ctx.Value(httpin.Input).(*GetDecisionInput)
+		decisionID := input.DecisionID
 
 		logger := api.logger.With(slog.String("decisionID", decisionID))
 
@@ -127,10 +132,14 @@ func (api *API) handleGetDecision() http.HandlerFunc {
 	}
 }
 
-type CreateDecisionInput struct {
+type CreateDecisionBody struct {
 	ScenarioID        string          `json:"scenario_id"`
 	TriggerObjectRaw  json.RawMessage `json:"trigger_object"`
 	TriggerObjectType string          `json:"object_type"`
+}
+
+type CreatedDecisionInput struct {
+	Body *CreateDecisionBody `in:"body=json"`
 }
 
 func (api *API) handlePostDecision() http.HandlerFunc {
@@ -142,16 +151,10 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 			http.Error(w, "", http.StatusUnauthorized)
 			return
 		}
-		logger := api.logger.With(slog.String("orgId", orgID))
 
-		requestData := &CreateDecisionInput{}
-		err = json.NewDecoder(r.Body).Decode(requestData)
-		if err != nil {
-			logger.WarnCtx(ctx, "error decoding request JSON: \n"+err.Error())
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			return
-		}
-		logger = logger.With(slog.String("scenarioId", requestData.ScenarioID), slog.String("objectType", requestData.TriggerObjectType))
+		input := ctx.Value(httpin.Input).(*CreatedDecisionInput)
+		requestData := input.Body
+		logger := api.logger.With(slog.String("scenarioId", requestData.ScenarioID), slog.String("objectType", requestData.TriggerObjectType), slog.String("orgId", orgID))
 
 		dataModel, err := api.app.GetDataModel(ctx, orgID)
 		if err != nil {
