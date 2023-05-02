@@ -13,6 +13,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+func rowIsValid(tableName string) sq.Eq {
+	return sq.Eq{fmt.Sprintf("%s.valid_until", tableName): "Infinity"}
+}
+
 func (rep *PGRepository) queryDbForField(ctx context.Context, readParams app.DbFieldReadParams) (pgx.Row, error) {
 	base_object_id_itf := readParams.Payload.ReadFieldFromDynamicStruct("object_id")
 	base_object_id_ptr, ok := base_object_id_itf.(*string)
@@ -40,14 +44,13 @@ func (rep *PGRepository) queryDbForField(ctx context.Context, readParams app.DbF
 		}
 		joinClause := fmt.Sprintf("%s ON %s.%s = %s.%s", next_table.Name, table.Name, link.ChildFieldName, next_table.Name, link.ParentFieldName)
 		query = query.Join(joinClause).
-			Where(sq.Eq{fmt.Sprintf("%s.valid_until", next_table.Name): "Infinity"})
+			Where(rowIsValid(next_table.Name))
 	}
 
 	query = query.Where(sq.Eq{fmt.Sprintf("%s.object_id", firstTable.Name): base_object_id}).
-		Where(sq.Eq{fmt.Sprintf("%s.valid_until", firstTable.Name): "Infinity"})
+		Where(rowIsValid(firstTable.Name))
 	sql, args, err := query.ToSql()
-	fmt.Println(sql)
-	fmt.Println(args)
+
 	if err != nil {
 		log.Printf("Error building the query: %s\n", err)
 		return nil, err
