@@ -9,7 +9,6 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func rowIsValid(tableName string) sq.Eq {
@@ -58,40 +57,18 @@ func (rep *PGRepository) queryDbForField(ctx context.Context, readParams app.DbF
 	return rows, nil
 }
 
-func scanRowReturnValue[T pgtype.Bool | pgtype.Int2 | pgtype.Float8 | pgtype.Text | pgtype.Timestamp](row pgx.Row) (T, error) {
-	var returnVariable T
-	err := row.Scan(&returnVariable)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return returnVariable, fmt.Errorf("No rows scanned while reading DB: %w", app.ErrNoRowsReadInDB)
-	} else if err != nil {
-		return returnVariable, err
-	}
-	return returnVariable, nil
-}
-
 func (rep *PGRepository) GetDbField(ctx context.Context, readParams app.DbFieldReadParams) (interface{}, error) {
-
 	row, err := rep.queryDbForField(ctx, readParams)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Error while building query for DB field: %w", err)
 	}
 
-	lastTable := readParams.DataModel.Tables[readParams.Path[len(readParams.Path)-1]]
-	fieldFromModel := lastTable.Fields[readParams.FieldName]
-
-	switch fieldFromModel.DataType {
-	case app.Bool:
-		return scanRowReturnValue[pgtype.Bool](row)
-	case app.Int:
-		return scanRowReturnValue[pgtype.Int2](row)
-	case app.Float:
-		return scanRowReturnValue[pgtype.Float8](row)
-	case app.String:
-		return scanRowReturnValue[pgtype.Text](row)
-	case app.Timestamp:
-		return scanRowReturnValue[pgtype.Timestamp](row)
-	default:
-		return nil, fmt.Errorf("Unknown data type when reading from db: %s", fieldFromModel.DataType)
+	var output any
+	err = row.Scan(&output)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return output, fmt.Errorf("No rows scanned while reading DB: %w", app.ErrNoRowsReadInDB)
+	} else if err != nil {
+		return output, fmt.Errorf("Error while scanning row to get DB field: %w", err)
 	}
-
+	return output, nil
 }
