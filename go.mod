@@ -42,6 +42,7 @@ require (
 	github.com/opencontainers/image-spec v1.1.0-rc2 // indirect
 	github.com/opencontainers/runc v1.1.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
@@ -62,6 +63,7 @@ require (
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 require (
@@ -70,11 +72,13 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/ggicci/httpin v0.10.1
 	github.com/go-playground/validator v9.31.0+incompatible
+	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/golang-jwt/jwt/v5 v5.0.0-rc.2
 	github.com/google/go-cmp v0.5.9
 	github.com/jackc/pgx/v5 v5.3.1
 	github.com/ompluscator/dynamic-struct v1.4.0
 	github.com/ory/dockertest/v3 v3.9.1
 	github.com/pashagolub/pgxmock/v2 v2.6.0
+	github.com/stretchr/testify v1.8.2
 	golang.org/x/oauth2 v0.0.0-20221014153046-6fdb5e3db783
 )

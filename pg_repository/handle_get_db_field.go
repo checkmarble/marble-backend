@@ -13,6 +13,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+func rowIsValid(tableName string) sq.Eq {
+	return sq.Eq{fmt.Sprintf("%s.valid_until", tableName): "Infinity"}
+}
+
 func (rep *PGRepository) queryDbForField(ctx context.Context, readParams app.DbFieldReadParams) (pgx.Row, error) {
 	base_object_id_itf := readParams.Payload.ReadFieldFromDynamicStruct("object_id")
 	base_object_id_ptr, ok := base_object_id_itf.(*string)
@@ -38,11 +42,15 @@ func (rep *PGRepository) queryDbForField(ctx context.Context, readParams app.DbF
 		if !ok {
 			return nil, fmt.Errorf("No link from %s to %s: %w", table.Name, next_table.Name, operators.ErrDbReadInconsistentWithDataModel)
 		}
-		query = query.Join(fmt.Sprintf("%s ON %s.%s = %s.%s", next_table.Name, table.Name, link.ChildFieldName, next_table.Name, link.ParentFieldName))
+		joinClause := fmt.Sprintf("%s ON %s.%s = %s.%s", next_table.Name, table.Name, link.ChildFieldName, next_table.Name, link.ParentFieldName)
+		query = query.Join(joinClause).
+			Where(rowIsValid(next_table.Name))
 	}
 
-	query = query.Where(sq.Eq{fmt.Sprintf("%s.object_id", firstTable.Name): base_object_id})
+	query = query.Where(sq.Eq{fmt.Sprintf("%s.object_id", firstTable.Name): base_object_id}).
+		Where(rowIsValid(firstTable.Name))
 	sql, args, err := query.ToSql()
+
 	if err != nil {
 		log.Printf("Error building the query: %s\n", err)
 		return nil, err
@@ -57,7 +65,6 @@ func scanRowReturnValue[T pgtype.Bool | pgtype.Int2 | pgtype.Float8 | pgtype.Tex
 	err := row.Scan(&returnVariable)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			fmt.Println("coucou")
 			return returnVariable, fmt.Errorf("No rows scanned while reading DB: %w", app.ErrNoRowsReadInDB)
 		}
 		return returnVariable, err
