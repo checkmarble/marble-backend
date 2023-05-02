@@ -80,22 +80,22 @@ func TestReadFromDbWithDockerDb(t *testing.T) {
 	cases := []MockedTestCase{
 		{
 			name:           "Read boolean field from DB without join",
-			readParams:     app.DbFieldReadParams{Path: []string{"transactions"}, FieldName: "isValidated", DataModel: dataModel, Payload: *payload},
+			readParams:     app.DbFieldReadParams{Path: []string{"transactions"}, FieldName: "isValidated", DataModel: dataModel, Payload: payload},
 			expectedOutput: pgtype.Bool{Bool: true, Valid: true},
 		},
 		{
 			name:           "Read float field from DB without join",
-			readParams:     app.DbFieldReadParams{Path: []string{"transactions"}, FieldName: "value", DataModel: dataModel, Payload: *payload},
+			readParams:     app.DbFieldReadParams{Path: []string{"transactions"}, FieldName: "value", DataModel: dataModel, Payload: payload},
 			expectedOutput: pgtype.Float8{Float64: 10, Valid: true},
 		},
 		{
 			name:           "Read null float field from DB without join",
-			readParams:     app.DbFieldReadParams{Path: []string{"transactions"}, FieldName: "value", DataModel: dataModel, Payload: *payloadNotInDB},
+			readParams:     app.DbFieldReadParams{Path: []string{"transactions"}, FieldName: "value", DataModel: dataModel, Payload: payloadNotInDB},
 			expectedOutput: pgtype.Float8{Float64: 0, Valid: false},
 		},
 		{
 			name:           "Read string field from DB with join",
-			readParams:     app.DbFieldReadParams{Path: []string{"transactions", "bank_accounts"}, FieldName: "status", DataModel: dataModel, Payload: *payload},
+			readParams:     app.DbFieldReadParams{Path: []string{"transactions", "bank_accounts"}, FieldName: "status", DataModel: dataModel, Payload: payload},
 			expectedOutput: pgtype.Text{String: "VALIDATED", Valid: true},
 		},
 	}
@@ -162,21 +162,21 @@ func TestReadRowsWithMockDb(t *testing.T) {
 		{
 
 			name:           "Direct table read",
-			readParams:     app.DbFieldReadParams{Path: []string{"transactions"}, FieldName: "isValidated", DataModel: dataModel, Payload: *payload},
+			readParams:     app.DbFieldReadParams{Path: []string{"transactions"}, FieldName: "isValidated", DataModel: dataModel, Payload: payload},
 			expectedQuery:  "SELECT transactions.isValidated FROM transactions WHERE transactions.object_id = $1 AND transactions.valid_until = $2",
 			expectedParams: []interface{}{"9283b948-a140-4993-9c41-d5475fda5671", "Infinity"},
 			expectedOutput: pgtype.Bool{Bool: true, Valid: true},
 		},
 		{
 			name:           "Table read with join - bool",
-			readParams:     app.DbFieldReadParams{Path: []string{"transactions", "bank_accounts"}, FieldName: "isValidated", DataModel: dataModel, Payload: *payload},
+			readParams:     app.DbFieldReadParams{Path: []string{"transactions", "bank_accounts"}, FieldName: "isValidated", DataModel: dataModel, Payload: payload},
 			expectedQuery:  "SELECT bank_accounts.isValidated FROM transactions JOIN bank_accounts ON transactions.account_id = bank_accounts.object_id WHERE bank_accounts.valid_until = $1 AND transactions.object_id = $2 AND transactions.valid_until = $3",
 			expectedParams: []interface{}{"Infinity", "9283b948-a140-4993-9c41-d5475fda5671", "Infinity"},
 			expectedOutput: pgtype.Bool{Bool: true, Valid: true},
 		},
 		{
 			name:           "Table read with join - string",
-			readParams:     app.DbFieldReadParams{Path: []string{"transactions", "bank_accounts"}, FieldName: "status", DataModel: dataModel, Payload: *payload},
+			readParams:     app.DbFieldReadParams{Path: []string{"transactions", "bank_accounts"}, FieldName: "status", DataModel: dataModel, Payload: payload},
 			expectedQuery:  "SELECT bank_accounts.status FROM transactions JOIN bank_accounts ON transactions.account_id = bank_accounts.object_id WHERE bank_accounts.valid_until = $1 AND transactions.object_id = $2 AND transactions.valid_until = $3",
 			expectedParams: []interface{}{"Infinity", "9283b948-a140-4993-9c41-d5475fda5671", "Infinity"},
 			expectedOutput: pgtype.Text{String: "VALIDATED", Valid: true},
@@ -257,14 +257,14 @@ func TestNoRowsReadWithMockDb(t *testing.T) {
 		{
 
 			name:           "Direct table read",
-			readParams:     app.DbFieldReadParams{Path: []string{"transactions"}, FieldName: "isValidated", DataModel: dataModel, Payload: *payload},
+			readParams:     app.DbFieldReadParams{Path: []string{"transactions"}, FieldName: "isValidated", DataModel: dataModel, Payload: payload},
 			expectedQuery:  "SELECT transactions.isValidated FROM transactions WHERE transactions.object_id = $1 AND transactions.valid_until = $2",
 			expectedParams: []interface{}{"9283b948-a140-4993-9c41-d5475fda5671", "Infinity"},
 			expectedOutput: pgtype.Bool{Bool: true, Valid: true},
 		},
 		{
 			name:           "Table read with join - bool",
-			readParams:     app.DbFieldReadParams{Path: []string{"transactions", "bank_accounts"}, FieldName: "isValidated", DataModel: dataModel, Payload: *payload},
+			readParams:     app.DbFieldReadParams{Path: []string{"transactions", "bank_accounts"}, FieldName: "isValidated", DataModel: dataModel, Payload: payload},
 			expectedQuery:  "SELECT bank_accounts.isValidated FROM transactions JOIN bank_accounts ON transactions.account_id = bank_accounts.object_id WHERE bank_accounts.valid_until = $1 AND transactions.object_id = $2 AND transactions.valid_until = $3",
 			expectedParams: []interface{}{"Infinity", "9283b948-a140-4993-9c41-d5475fda5671", "Infinity"},
 			expectedOutput: pgtype.Bool{Bool: true, Valid: true},

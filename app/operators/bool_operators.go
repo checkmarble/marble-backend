@@ -3,7 +3,6 @@ package operators
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -13,9 +12,6 @@ import (
 // /////////////////////////////
 
 func UnmarshalOperatorBool(jsonBytes []byte) (OperatorBool, error) {
-
-	log.Printf("unmarshalOperatorBool: %v", string(jsonBytes))
-
 	// All operators follow the same schema
 	var _op struct {
 		OperatorType
@@ -72,7 +68,6 @@ func init() {
 }
 
 func (t *True) UnmarshalJSON(b []byte) error {
-	log.Println("unmarshaling True")
 	return nil
 }
 
@@ -102,7 +97,6 @@ func init() {
 }
 
 func (f *False) UnmarshalJSON(b []byte) error {
-	log.Println("unmarshaling False")
 	return nil
 }
 
@@ -150,9 +144,6 @@ func init() {
 }
 
 func (eq *EqBool) UnmarshalJSON(b []byte) error {
-
-	log.Println("unmarshalling EQBOOL")
-
 	// data schema
 	var eqData struct {
 		LeftOp  json.RawMessage `json:"left"`
@@ -240,9 +231,6 @@ func init() {
 }
 
 func (field *DbFieldBool) UnmarshalJSON(b []byte) error {
-
-	log.Println("unmarshalling DB_FIELD_BOOL")
-
 	// data schema
 	var dbFieldBoolData struct {
 		Path      []string `json:"path"`

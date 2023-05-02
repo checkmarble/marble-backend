@@ -3,6 +3,8 @@ package app
 import (
 	"context"
 	"errors"
+
+	"golang.org/x/exp/slog"
 )
 
 type App struct {
@@ -26,7 +28,7 @@ type RepositoryInterface interface {
 	GetDecision(ctx context.Context, orgID string, decisionID string) (Decision, error)
 
 	// Ingestion
-	IngestObject(ctx context.Context, dynamicStructWithReader DynamicStructWithReader, table Table) (err error)
+	IngestObject(ctx context.Context, dynamicStructWithReader DynamicStructWithReader, table Table, logger *slog.Logger) (err error)
 
 	// DB field access
 	GetDbField(ctx context.Context, readParams DbFieldReadParams) (interface{}, error)

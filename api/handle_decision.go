@@ -14,7 +14,7 @@ import (
 )
 
 type DecisionInterface interface {
-	CreateDecision(ctx context.Context, organizationID string, scenarioID string, dynamicStructWithReader app.DynamicStructWithReader, payload app.Payload) (app.Decision, error)
+	CreateDecision(ctx context.Context, input app.CreateDecisionInput, logger *slog.Logger) (app.Decision, error)
 	GetDecision(ctx context.Context, organizationID string, requestedDecisionID string) (app.Decision, error)
 }
 
@@ -171,7 +171,7 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 			return
 		}
 
-		payloadStructWithReaderPtr, err := app.ParseToDataModelObject(ctx, table, requestData.TriggerObjectRaw)
+		payloadStructWithReader, err := app.ParseToDataModelObject(ctx, table, requestData.TriggerObjectRaw)
 		if errors.Is(err, app.ErrFormatValidation) {
 			http.Error(w, "Format validation error", http.StatusUnprocessableEntity) // 422
 			return
@@ -190,7 +190,12 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 			return
 		}
 		payload := app.Payload{TableName: requestData.TriggerObjectType, Data: triggerObjectMap}
-		decision, err := api.app.CreateDecision(ctx, orgID, requestData.ScenarioID, *payloadStructWithReaderPtr, payload)
+		decision, err := api.app.CreateDecision(ctx, app.CreateDecisionInput{
+			ScenarioID:              requestData.ScenarioID,
+			Payload:                 payload,
+			OrganizationID:          orgID,
+			PayloadStructWithReader: payloadStructWithReader,
+		}, logger)
 		if errors.Is(err, app.ErrScenarioNotFound) {
 			http.Error(w, "scenario not found", http.StatusNotFound)
 			return

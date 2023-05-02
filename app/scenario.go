@@ -1,11 +1,13 @@
 package app
 
 import (
+	"context"
 	"errors"
-	"log"
 	"marble/marble-backend/app/operators"
 	"runtime/debug"
 	"time"
+
+	"golang.org/x/exp/slog"
 )
 
 ///////////////////////////////
@@ -169,7 +171,7 @@ var (
 	ErrScenarioHasNoLiveVersion                         = errors.New("scenario has no live version")
 )
 
-func (s Scenario) Eval(repo RepositoryInterface, payloadStructWithReader DynamicStructWithReader, dataModel DataModel) (se ScenarioExecution, err error) {
+func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStructWithReader DynamicStructWithReader, dataModel DataModel, logger *slog.Logger) (se ScenarioExecution, err error) {
 
 	///////////////////////////////
 	// Recover in case the evaluation panicked.
@@ -177,17 +179,15 @@ func (s Scenario) Eval(repo RepositoryInterface, payloadStructWithReader Dynamic
 	///////////////////////////////
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("recovered from panic: %v", r)
-
-			log.Println("stacktrace from panic: ")
-			log.Println(string(debug.Stack()))
+			logger.WarnCtx(ctx, "recovered from panic during Eval. stacktrace from panic: ")
+			logger.WarnCtx(ctx, string(debug.Stack()))
 
 			err = ErrPanicInScenarioEvalution
 			se = ScenarioExecution{}
 		}
 	}()
 
-	log.Printf("Evaluating scenario %s", s.ID)
+	logger.InfoCtx(ctx, "Evaluting scenario", "scenarioId", s.ID)
 
 	// If the scenario has no live version, don't try to Eval() it, return early
 	if s.LiveVersion == nil {
@@ -221,7 +221,7 @@ func (s Scenario) Eval(repo RepositoryInterface, payloadStructWithReader Dynamic
 		if err != nil {
 			return ScenarioExecution{}, err
 		}
-		log.Printf("Rule %s (score_modifier = %v) is %v\n", ruleExecution.Rule.Formula.Print(), ruleExecution.Rule.ScoreModifier, ruleExecution.Result)
+		logger.InfoCtx(ctx, "Rule executed", slog.Int("score_modifier", ruleExecution.Rule.ScoreModifier), slog.String("ruleName", ruleExecution.Rule.Formula.Print()), slog.Bool("result", ruleExecution.Result))
 
 		// Increment scenario score when rule is true
 		if ruleExecution.Result {
@@ -255,7 +255,7 @@ func (s Scenario) Eval(repo RepositoryInterface, payloadStructWithReader Dynamic
 		Outcome:             o,
 	}
 
-	log.Printf("scenario %s (Rev:%v Rej:%v), score = %v, outcome = %s", s.ID, s.LiveVersion.Body.ScoreReviewThreshold, s.LiveVersion.Body.ScoreRejectThreshold, score, o)
+	logger.InfoCtx(ctx, "Evaluated scenario", "score", score, "outcome", o)
 
 	return se, nil
 }
