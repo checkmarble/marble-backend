@@ -1,7 +1,7 @@
 package app
 
 import (
-	"log"
+	"fmt"
 	"marble/marble-backend/app/operators"
 	"time"
 )
@@ -81,8 +81,7 @@ func (r Rule) Eval(dataAccessor operators.DataAccessor) (RuleExecution, error) {
 	// Eval the Node
 	res, err := r.Formula.Eval(dataAccessor)
 	if err != nil {
-		log.Printf("Error while evaluating rule %s: %v", r.Name, err)
-		return RuleExecution{}, err
+		return RuleExecution{}, fmt.Errorf("error while evaluating rule %s: %w", r.Name, err)
 	}
 
 	score := 0
@@ -94,10 +93,7 @@ func (r Rule) Eval(dataAccessor operators.DataAccessor) (RuleExecution, error) {
 		Rule:                r,
 		Result:              res,
 		ResultScoreModifier: score,
-		// TODO error ?
 	}
-
-	//log.Printf("Rule %s is %v, score = %v", r.RootNode.Print(p), res, score)
 
 	return re, nil
 }

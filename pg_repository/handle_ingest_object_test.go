@@ -3,6 +3,7 @@ package pg_repository
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"marble/marble-backend/app"
@@ -11,6 +12,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/exp/slog"
 )
 
 func TestHandleFirstIngestObject(t *testing.T) {
@@ -27,6 +29,7 @@ func TestHandleFirstIngestObject(t *testing.T) {
 		},
 	}
 	ctx := context.Background()
+	logger := slog.New(slog.NewTextHandler(os.Stderr))
 
 	object_id, err := uuid.NewV4()
 	payload, err := app.ParseToDataModelObject(ctx, transactions, []byte(fmt.Sprintf(`{"object_id": "%s", "updated_at": "2021-01-01T00:00:00Z"}`, object_id.String())))
@@ -35,7 +38,7 @@ func TestHandleFirstIngestObject(t *testing.T) {
 	}
 
 	assert := assert.New(t)
-	err = TestRepo.IngestObject(ctx, *payload, transactions)
+	err = TestRepo.IngestObject(ctx, payload, transactions, logger)
 	if err != nil {
 		t.Errorf("Error while inserting object into DB: %s", err)
 	}
@@ -76,6 +79,7 @@ func TestHandleRenewedIngestObject(t *testing.T) {
 		},
 	}
 	ctx := context.Background()
+	logger := slog.New(slog.NewTextHandler(os.Stderr))
 
 	object_id, err := uuid.NewV4()
 	payload, err := app.ParseToDataModelObject(ctx, transactions, []byte(fmt.Sprintf(`{"object_id": "%s", "updated_at": "2021-01-01T00:00:00Z"}`, object_id.String())))
@@ -84,11 +88,11 @@ func TestHandleRenewedIngestObject(t *testing.T) {
 	}
 
 	assert := assert.New(t)
-	err = TestRepo.IngestObject(ctx, *payload, transactions)
+	err = TestRepo.IngestObject(ctx, payload, transactions, logger)
 	if err != nil {
 		t.Errorf("Error while inserting object into DB: %s", err)
 	}
-	_ = TestRepo.IngestObject(ctx, *payload, transactions)
+	_ = TestRepo.IngestObject(ctx, payload, transactions, logger)
 
 	sql, args, err := TestRepo.queryBuilder.
 		Select("COUNT(*) AS nb").

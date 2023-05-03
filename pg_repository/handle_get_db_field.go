@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"marble/marble-backend/app"
 	"marble/marble-backend/app/operators"
 
@@ -52,8 +51,7 @@ func (rep *PGRepository) queryDbForField(ctx context.Context, readParams app.DbF
 	sql, args, err := query.ToSql()
 
 	if err != nil {
-		log.Printf("Error building the query: %s\n", err)
-		return nil, err
+		return nil, fmt.Errorf("Error while building SQL query: %w", err)
 	}
 
 	rows := rep.db.QueryRow(ctx, sql, args...)
@@ -72,10 +70,9 @@ func scanRowReturnValue[T pgtype.Bool | pgtype.Int2 | pgtype.Float8 | pgtype.Tex
 }
 
 func (rep *PGRepository) GetDbField(ctx context.Context, readParams app.DbFieldReadParams) (interface{}, error) {
-
 	row, err := rep.queryDbForField(ctx, readParams)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Error while building query for DB field: %w", err)
 	}
 
 	lastTable := readParams.DataModel.Tables[readParams.Path[len(readParams.Path)-1]]
@@ -95,5 +92,4 @@ func (rep *PGRepository) GetDbField(ctx context.Context, readParams app.DbFieldR
 	default:
 		return nil, fmt.Errorf("Unknown data type when reading from db: %s", fieldFromModel.DataType)
 	}
-
 }
