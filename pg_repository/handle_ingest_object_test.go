@@ -27,7 +27,7 @@ func TestHandleFirstIngestObject(t *testing.T) {
 		},
 	}
 	ctx := context.Background()
-	// logger := globalTestParams.logger
+	logger := globalTestParams.logger
 
 	object_id, err := uuid.NewV4()
 	payload, err := app.ParseToDataModelObject(ctx, transactions, []byte(fmt.Sprintf(`{"object_id": "%s", "updated_at": "2021-01-01T00:00:00Z"}`, object_id.String())))
@@ -36,7 +36,7 @@ func TestHandleFirstIngestObject(t *testing.T) {
 	}
 
 	assert := assert.New(t)
-	err = globalTestParams.repository.IngestObject(ctx, *payload, transactions)
+	err = globalTestParams.repository.IngestObject(ctx, payload, transactions, logger)
 	if err != nil {
 		t.Errorf("Error while inserting object into DB: %s", err)
 	}
@@ -77,7 +77,7 @@ func TestHandleRenewedIngestObject(t *testing.T) {
 		},
 	}
 	ctx := context.Background()
-	// logger := globalTestParams.logger
+	logger := globalTestParams.logger
 
 	object_id, err := uuid.NewV4()
 	payload, err := app.ParseToDataModelObject(ctx, transactions, []byte(fmt.Sprintf(`{"object_id": "%s", "updated_at": "2021-01-01T00:00:00Z"}`, object_id.String())))
@@ -86,11 +86,11 @@ func TestHandleRenewedIngestObject(t *testing.T) {
 	}
 
 	assert := assert.New(t)
-	err = globalTestParams.repository.IngestObject(ctx, *payload, transactions)
+	err = globalTestParams.repository.IngestObject(ctx, payload, transactions, logger)
 	if err != nil {
 		t.Errorf("Error while inserting object into DB: %s", err)
 	}
-	_ = globalTestParams.repository.IngestObject(ctx, *payload, transactions)
+	_ = globalTestParams.repository.IngestObject(ctx, payload, transactions, logger)
 
 	sql, args, err := globalTestParams.repository.queryBuilder.
 		Select("COUNT(*) AS nb").

@@ -4,7 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+
+	"golang.org/x/exp/slog"
 )
 
 var ErrScenarioNotFound = errors.New("scenario not found")
@@ -14,28 +15,35 @@ func (app *App) GetDecision(ctx context.Context, orgID string, decisionID string
 	return app.repository.GetDecision(ctx, orgID, decisionID)
 }
 
-func (app *App) CreateDecision(ctx context.Context, organizationID string, scenarioID string, payloadStructWithReader DynamicStructWithReader, payload Payload) (Decision, error) {
-	s, err := app.repository.GetScenario(ctx, organizationID, scenarioID)
+type CreateDecisionInput struct {
+	OrganizationID          string
+	ScenarioID              string
+	Payload                 Payload
+	PayloadStructWithReader DynamicStructWithReader
+}
+
+func (app *App) CreateDecision(ctx context.Context, input CreateDecisionInput, logger *slog.Logger) (Decision, error) {
+	s, err := app.repository.GetScenario(ctx, input.OrganizationID, input.ScenarioID)
 	if errors.Is(err, ErrNotFoundInRepository) {
 		return Decision{}, ErrScenarioNotFound
 	} else if err != nil {
 		return Decision{}, fmt.Errorf("error getting scenario: %w", err)
 	}
 
-	dm, err := app.repository.GetDataModel(ctx, organizationID)
+	dm, err := app.repository.GetDataModel(ctx, input.OrganizationID)
 	if errors.Is(err, ErrNotFoundInRepository) {
 		return Decision{}, ErrDataModelNotFound
 	} else if err != nil {
 		return Decision{}, fmt.Errorf("error getting data model: %w", err)
 	}
 
-	scenarioExecution, err := s.Eval(app.repository, payloadStructWithReader, dm)
+	scenarioExecution, err := s.Eval(ctx, app.repository, input.PayloadStructWithReader, dm, logger)
 	if err != nil {
 		return Decision{}, fmt.Errorf("error evaluating scenario: %w", err)
 	}
 
 	d := Decision{
-		Payload:             payload,
+		Payload:             input.Payload,
 		Outcome:             scenarioExecution.Outcome,
 		ScenarioID:          scenarioExecution.ScenarioID,
 		ScenarioName:        scenarioExecution.ScenarioName,
@@ -46,9 +54,9 @@ func (app *App) CreateDecision(ctx context.Context, organizationID string, scena
 		// TODO DecisionError DecisionError
 	}
 
-	createdDecision, err := app.repository.StoreDecision(ctx, organizationID, d)
+	createdDecision, err := app.repository.StoreDecision(ctx, input.OrganizationID, d)
 	if err != nil {
-		log.Printf("error storing decision: %v", err)
+		return Decision{}, fmt.Errorf("error storing decision: %w", err)
 	}
 
 	return createdDecision, nil

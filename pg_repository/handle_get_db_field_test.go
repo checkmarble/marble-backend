@@ -70,22 +70,22 @@ func TestReadFromDbWithDockerDb(t *testing.T) {
 	cases := []LocalDbTestCase{
 		{
 			name:           "Read boolean field from DB without join",
-			readParams:     app.DbFieldReadParams{Path: []string{"transactions"}, FieldName: "title", DataModel: dataModel, Payload: *payload},
+			readParams:     app.DbFieldReadParams{Path: []string{"transactions"}, FieldName: "title", DataModel: dataModel, Payload: payload},
 			expectedOutput: pgtype.Text{String: "AMAZON", Valid: true},
 		},
 		{
 			name:           "Read float field from DB without join",
-			readParams:     app.DbFieldReadParams{Path: []string{"transactions"}, FieldName: "value", DataModel: dataModel, Payload: *payload},
+			readParams:     app.DbFieldReadParams{Path: []string{"transactions"}, FieldName: "value", DataModel: dataModel, Payload: payload},
 			expectedOutput: pgtype.Float8{Float64: 10, Valid: true},
 		},
 		{
 			name:           "Read null float field from DB without join",
-			readParams:     app.DbFieldReadParams{Path: []string{"transactions"}, FieldName: "value", DataModel: dataModel, Payload: *payloadNotInDB},
+			readParams:     app.DbFieldReadParams{Path: []string{"transactions"}, FieldName: "value", DataModel: dataModel, Payload: payloadNotInDB},
 			expectedOutput: pgtype.Float8{Float64: 0, Valid: false},
 		},
 		{
 			name:           "Read string field from DB with join",
-			readParams:     app.DbFieldReadParams{Path: []string{"transactions", "bank_accounts"}, FieldName: "name", DataModel: dataModel, Payload: *payload},
+			readParams:     app.DbFieldReadParams{Path: []string{"transactions", "bank_accounts"}, FieldName: "name", DataModel: dataModel, Payload: payload},
 			expectedOutput: pgtype.Text{String: "SHINE", Valid: true},
 		},
 	}
@@ -102,5 +102,4 @@ func TestReadFromDbWithDockerDb(t *testing.T) {
 			}
 		})
 	}
-
 }
