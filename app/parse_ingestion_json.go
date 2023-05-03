@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 	"unicode"
@@ -74,7 +73,6 @@ func validateParsedJson(instance interface{}) error {
 		// This error should happen in the dynamic struct is badly formatted, or if the tags
 		// contain bad values. If this returns an error, it's a 500 error.
 		if _, ok := err.(*validator.InvalidValidationError); ok {
-			log.Println(err)
 			return err
 		}
 
@@ -91,7 +89,7 @@ func validateParsedJson(instance interface{}) error {
 	return nil
 }
 
-func ParseToDataModelObject(_ context.Context, table Table, jsonBody []byte) (*DynamicStructWithReader, error) {
+func ParseToDataModelObject(_ context.Context, table Table, jsonBody []byte) (DynamicStructWithReader, error) {
 	fields := table.Fields
 
 	custom_type := makeDynamicStructBuilder(fields)
@@ -105,7 +103,7 @@ func ParseToDataModelObject(_ context.Context, table Table, jsonBody []byte) (*D
 	// causes a panic. We should manage the errors accordingly.
 	err := json.Unmarshal(jsonBody, &dynamicStructInstance)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrFormatValidation, err)
+		return DynamicStructWithReader{}, fmt.Errorf("%w: %w", ErrFormatValidation, err)
 	}
 
 	// If the data has been successfully parsed, we can validate it
@@ -113,24 +111,17 @@ func ParseToDataModelObject(_ context.Context, table Table, jsonBody []byte) (*D
 	// There are two possible cases of error
 	err = validateParsedJson(dynamicStructInstance)
 	if err != nil {
-		return nil, err
+		return DynamicStructWithReader{}, err
 	}
 
-	return &DynamicStructWithReader{Instance: dynamicStructInstance, Reader: dynamicStructReader, Table: table}, nil
+	return DynamicStructWithReader{Instance: dynamicStructInstance, Reader: dynamicStructReader, Table: table}, nil
 }
 
 func (dynamicStruct DynamicStructWithReader) ReadFieldFromDynamicStruct(fieldName string) interface{} {
-	check := dynamicStruct.Reader.HasField((capitalize(fieldName)))
-	if !check {
-		log.Fatalf("Field %v not found in dynamic struct", fieldName)
-	}
 	field := dynamicStruct.Reader.GetField(capitalize(fieldName))
 	table := dynamicStruct.Table
 	fields := table.Fields
-	fieldFromModel, ok := fields[fieldName]
-	if !ok {
-		log.Fatalf("Field %v not found in table when reading from dynamic struct", fieldName)
-	}
+	fieldFromModel := fields[fieldName]
 
 	switch fieldFromModel.DataType {
 	case Bool:
@@ -144,7 +135,6 @@ func (dynamicStruct DynamicStructWithReader) ReadFieldFromDynamicStruct(fieldNam
 	case Timestamp:
 		return field.PointerTime()
 	default:
-		log.Fatalf("Unknown data type: %s", fieldFromModel.DataType)
-		return nil
+		panic("Unknown data type")
 	}
 }

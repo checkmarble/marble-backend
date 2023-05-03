@@ -3,11 +3,12 @@ package pg_repository
 import (
 	"context"
 	"errors"
-	"log"
+	"fmt"
 	"marble/marble-backend/app"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
+	"golang.org/x/exp/slog"
 )
 
 func generateInsertValues(table app.Table, payloadStructWithReader app.DynamicStructWithReader) (columnNames []string, values []interface{}) {
@@ -30,10 +31,11 @@ func updateExistingVersionIfPresent(
 	payloadStructWithReader app.DynamicStructWithReader,
 	table app.Table) (err error) {
 
+	object_id := payloadStructWithReader.ReadFieldFromDynamicStruct("object_id")
 	sql, args, err := queryBuilder.
 		Select("id").
 		From(table.Name).
-		Where(squirrel.Eq{"object_id": payloadStructWithReader.ReadFieldFromDynamicStruct("object_id")}).
+		Where(squirrel.Eq{"object_id": object_id}).
 		Where(squirrel.Eq{"valid_until": "Infinity"}).
 		ToSql()
 	if err != nil {
@@ -64,39 +66,34 @@ func updateExistingVersionIfPresent(
 	return nil
 }
 
-func (r *PGRepository) IngestObject(ctx context.Context, payloadStructWithReader app.DynamicStructWithReader, table app.Table) (err error) {
+func (r *PGRepository) IngestObject(ctx context.Context, payloadStructWithReader app.DynamicStructWithReader, table app.Table, logger *slog.Logger) (err error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
-		log.Printf("Error starting transaction: %s\n", err)
-		return err
+		return fmt.Errorf("Error starting transaction: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
 	err = updateExistingVersionIfPresent(ctx, r.queryBuilder, tx, payloadStructWithReader, table)
 	if err != nil {
-		log.Printf("Error updating existing version: %s\n", err)
-		return err
+		return fmt.Errorf("Error updating existing version: %w", err)
 	}
 
 	columnNames, values := generateInsertValues(table, payloadStructWithReader)
 	sql, args, err := r.queryBuilder.Insert(table.Name).Columns(columnNames...).Values(values...).Suffix("RETURNING \"id\"").ToSql()
 	if err != nil {
-		log.Printf("Error building the query: %s\n", err)
-		return err
+		return fmt.Errorf("Error building the query: %w", err)
 	}
 
 	var createdObjectID string
 	err = tx.QueryRow(ctx, sql, args...).Scan(&createdObjectID)
 	if err != nil {
-		log.Printf("Error inserting object: %s\n", err)
-		return err
+		return fmt.Errorf("Error inserting object: %w", err)
 	}
-	log.Printf("Created object in db: type %s, id \"%s\"\n", table.Name, createdObjectID)
+	logger.InfoCtx(ctx, "Created object in db", slog.String("type", table.Name), slog.String("object_id", createdObjectID))
 
 	err = tx.Commit(ctx)
 	if err != nil {
-		log.Printf("Error committing transaction: %s\n", err)
-		return err
+		return fmt.Errorf("Error committing transaction: %w", err)
 	}
 	return nil
 }
