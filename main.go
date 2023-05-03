@@ -18,7 +18,7 @@ import (
 
 // embed migrations sql folder
 //
-//go:embed migrations/*.sql
+//go:embed pg_repository/migrations/*.sql
 var embedMigrations embed.FS
 
 func mustGetenv(k string) string {

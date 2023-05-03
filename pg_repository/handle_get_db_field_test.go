@@ -31,7 +31,7 @@ type LocalDbTestCase struct {
 
 func TestReadFromDbWithDockerDb(t *testing.T) {
 	transactions := app.Table{
-		Name: "transactions",
+		Name: "transactions_test",
 		Fields: map[string]app.Field{
 			"object_id": {
 				DataType: app.String,
@@ -42,15 +42,15 @@ func TestReadFromDbWithDockerDb(t *testing.T) {
 			"account_id":  {DataType: app.String},
 		},
 		LinksToSingle: map[string]app.LinkToSingle{
-			"bank_accounts": {
-				LinkedTableName: "bank_accounts",
+			"bank_accounts_test": {
+				LinkedTableName: "bank_accounts_test",
 				ParentFieldName: "object_id",
 				ChildFieldName:  "account_id",
 			},
 		},
 	}
 	bank_accounts := app.Table{
-		Name: "bank_accounts",
+		Name: "bank_accounts_test",
 		Fields: map[string]app.Field{
 			"object_id": {
 				DataType: app.String,
@@ -63,16 +63,18 @@ func TestReadFromDbWithDockerDb(t *testing.T) {
 	}
 	dataModel := app.DataModel{
 		Tables: map[string]app.Table{
-			"transactions":  transactions,
-			"bank_accounts": bank_accounts,
+			"transactions_test":  transactions,
+			"bank_accounts_test": bank_accounts,
 		},
 	}
 	ctx := context.Background()
-	payload, err := app.ParseToDataModelObject(ctx, transactions, []byte(`{"object_id": "9283b948-a140-4993-9c41-d5475fda5671", "updated_at": "2021-01-01T00:00:00Z"}`))
+	transactionId1 := globalTestParams.testIds["TransactionId1"]
+	transactionId2 := globalTestParams.testIds["TransactionId2"]
+	payload, err := app.ParseToDataModelObject(ctx, transactions, []byte(fmt.Sprintf(`{"object_id": "%s", "updated_at": "2021-01-01T00:00:00Z"}`, transactionId1)))
 	if err != nil {
 		t.Fatalf("Could not parse payload: %s", err)
 	}
-	payloadNotInDB, err := app.ParseToDataModelObject(ctx, transactions, []byte(`{"object_id": "6d3a330d-7204-4561-b523-9fa0d518d184", "updated_at": "2021-01-01T00:00:00Z"}`))
+	payloadNotInDB, err := app.ParseToDataModelObject(ctx, transactions, []byte(fmt.Sprintf(`{"object_id": "%s", "updated_at": "2021-01-01T00:00:00Z"}`, transactionId2)))
 	if err != nil {
 		t.Fatalf("Could not parse payload: %s", err)
 	}
@@ -80,22 +82,22 @@ func TestReadFromDbWithDockerDb(t *testing.T) {
 	cases := []MockedTestCase{
 		{
 			name:           "Read boolean field from DB without join",
-			readParams:     app.DbFieldReadParams{Path: []string{"transactions"}, FieldName: "isValidated", DataModel: dataModel, Payload: *payload},
+			readParams:     app.DbFieldReadParams{Path: []string{"transactions_test"}, FieldName: "isValidated", DataModel: dataModel, Payload: *payload},
 			expectedOutput: pgtype.Bool{Bool: true, Valid: true},
 		},
 		{
 			name:           "Read float field from DB without join",
-			readParams:     app.DbFieldReadParams{Path: []string{"transactions"}, FieldName: "value", DataModel: dataModel, Payload: *payload},
+			readParams:     app.DbFieldReadParams{Path: []string{"transactions_test"}, FieldName: "value", DataModel: dataModel, Payload: *payload},
 			expectedOutput: pgtype.Float8{Float64: 10, Valid: true},
 		},
 		{
 			name:           "Read null float field from DB without join",
-			readParams:     app.DbFieldReadParams{Path: []string{"transactions"}, FieldName: "value", DataModel: dataModel, Payload: *payloadNotInDB},
+			readParams:     app.DbFieldReadParams{Path: []string{"transactions_test"}, FieldName: "value", DataModel: dataModel, Payload: *payloadNotInDB},
 			expectedOutput: pgtype.Float8{Float64: 0, Valid: false},
 		},
 		{
 			name:           "Read string field from DB with join",
-			readParams:     app.DbFieldReadParams{Path: []string{"transactions", "bank_accounts"}, FieldName: "status", DataModel: dataModel, Payload: *payload},
+			readParams:     app.DbFieldReadParams{Path: []string{"transactions_test", "bank_accounts_test"}, FieldName: "status", DataModel: dataModel, Payload: *payload},
 			expectedOutput: pgtype.Text{String: "VALIDATED", Valid: true},
 		},
 	}
@@ -117,7 +119,7 @@ func TestReadFromDbWithDockerDb(t *testing.T) {
 
 func TestReadRowsWithMockDb(t *testing.T) {
 	transactions := app.Table{
-		Name: "transactions",
+		Name: "transactions_test",
 		Fields: map[string]app.Field{
 			"object_id": {
 				DataType: app.String,
@@ -128,15 +130,15 @@ func TestReadRowsWithMockDb(t *testing.T) {
 			"account_id":  {DataType: app.String},
 		},
 		LinksToSingle: map[string]app.LinkToSingle{
-			"bank_accounts": {
-				LinkedTableName: "bank_accounts",
+			"bank_accounts_test": {
+				LinkedTableName: "bank_accounts_test",
 				ParentFieldName: "object_id",
 				ChildFieldName:  "account_id",
 			},
 		},
 	}
 	bank_accounts := app.Table{
-		Name: "bank_accounts",
+		Name: "bank_accounts_test",
 		Fields: map[string]app.Field{
 			"object_id": {
 				DataType: app.String,
@@ -149,12 +151,13 @@ func TestReadRowsWithMockDb(t *testing.T) {
 	}
 	dataModel := app.DataModel{
 		Tables: map[string]app.Table{
-			"transactions":  transactions,
-			"bank_accounts": bank_accounts,
+			"transactions_test":  transactions,
+			"bank_accounts_test": bank_accounts,
 		}}
 
 	ctx := context.Background()
-	payload, err := app.ParseToDataModelObject(ctx, transactions, []byte(`{"object_id": "9283b948-a140-4993-9c41-d5475fda5671", "updated_at": "2021-01-01T00:00:00Z"}`))
+	transactionId1 := globalTestParams.testIds["TransactionId1"]
+	payload, err := app.ParseToDataModelObject(ctx, transactions, []byte(fmt.Sprintf(`{"object_id": "%s", "updated_at": "2021-01-01T00:00:00Z"}`, transactionId1)))
 	if err != nil {
 		t.Fatalf("Could not parse payload: %s", err)
 	}
@@ -162,23 +165,23 @@ func TestReadRowsWithMockDb(t *testing.T) {
 		{
 
 			name:           "Direct table read",
-			readParams:     app.DbFieldReadParams{Path: []string{"transactions"}, FieldName: "isValidated", DataModel: dataModel, Payload: *payload},
+			readParams:     app.DbFieldReadParams{Path: []string{"transactions_test"}, FieldName: "isValidated", DataModel: dataModel, Payload: *payload},
 			expectedQuery:  "SELECT transactions.isValidated FROM transactions WHERE transactions.object_id = $1 AND transactions.valid_until = $2",
-			expectedParams: []interface{}{"9283b948-a140-4993-9c41-d5475fda5671", "Infinity"},
+			expectedParams: []interface{}{transactionId1, "Infinity"},
 			expectedOutput: pgtype.Bool{Bool: true, Valid: true},
 		},
 		{
 			name:           "Table read with join - bool",
-			readParams:     app.DbFieldReadParams{Path: []string{"transactions", "bank_accounts"}, FieldName: "isValidated", DataModel: dataModel, Payload: *payload},
+			readParams:     app.DbFieldReadParams{Path: []string{"transactions_test", "bank_accounts_test"}, FieldName: "isValidated", DataModel: dataModel, Payload: *payload},
 			expectedQuery:  "SELECT bank_accounts.isValidated FROM transactions JOIN bank_accounts ON transactions.account_id = bank_accounts.object_id WHERE bank_accounts.valid_until = $1 AND transactions.object_id = $2 AND transactions.valid_until = $3",
-			expectedParams: []interface{}{"Infinity", "9283b948-a140-4993-9c41-d5475fda5671", "Infinity"},
+			expectedParams: []interface{}{"Infinity", transactionId1, "Infinity"},
 			expectedOutput: pgtype.Bool{Bool: true, Valid: true},
 		},
 		{
 			name:           "Table read with join - string",
-			readParams:     app.DbFieldReadParams{Path: []string{"transactions", "bank_accounts"}, FieldName: "status", DataModel: dataModel, Payload: *payload},
+			readParams:     app.DbFieldReadParams{Path: []string{"transactions_test", "bank_accounts_test"}, FieldName: "status", DataModel: dataModel, Payload: *payload},
 			expectedQuery:  "SELECT bank_accounts.status FROM transactions JOIN bank_accounts ON transactions.account_id = bank_accounts.object_id WHERE bank_accounts.valid_until = $1 AND transactions.object_id = $2 AND transactions.valid_until = $3",
-			expectedParams: []interface{}{"Infinity", "9283b948-a140-4993-9c41-d5475fda5671", "Infinity"},
+			expectedParams: []interface{}{"Infinity", transactionId1, "Infinity"},
 			expectedOutput: pgtype.Text{String: "VALIDATED", Valid: true},
 		},
 	}
@@ -213,7 +216,7 @@ func TestReadRowsWithMockDb(t *testing.T) {
 
 func TestNoRowsReadWithMockDb(t *testing.T) {
 	transactions := app.Table{
-		Name: "transactions",
+		Name: "transactions_test",
 		Fields: map[string]app.Field{
 			"object_id": {
 				DataType: app.String,
@@ -224,15 +227,15 @@ func TestNoRowsReadWithMockDb(t *testing.T) {
 			"account_id":  {DataType: app.String},
 		},
 		LinksToSingle: map[string]app.LinkToSingle{
-			"bank_accounts": {
-				LinkedTableName: "bank_accounts",
+			"bank_accounts_test": {
+				LinkedTableName: "bank_accounts_test",
 				ParentFieldName: "object_id",
 				ChildFieldName:  "account_id",
 			},
 		},
 	}
 	bank_accounts := app.Table{
-		Name: "bank_accounts",
+		Name: "bank_accounts_test",
 		Fields: map[string]app.Field{
 			"object_id": {
 				DataType: app.String,
@@ -245,11 +248,12 @@ func TestNoRowsReadWithMockDb(t *testing.T) {
 	}
 	dataModel := app.DataModel{
 		Tables: map[string]app.Table{
-			"transactions":  transactions,
-			"bank_accounts": bank_accounts,
+			"transactions_test":  transactions,
+			"bank_accounts_test": bank_accounts,
 		}}
 	ctx := context.Background()
-	payload, err := app.ParseToDataModelObject(ctx, transactions, []byte(`{"object_id": "9283b948-a140-4993-9c41-d5475fda5671", "updated_at": "2021-01-01T00:00:00Z"}`))
+	transactionId1 := globalTestParams.testIds["TransactionId1"]
+	payload, err := app.ParseToDataModelObject(ctx, transactions, []byte(fmt.Sprintf(`{"object_id": "%s", "updated_at": "2021-01-01T00:00:00Z"}`, transactionId1)))
 	if err != nil {
 		t.Fatalf("Could not parse payload: %s", err)
 	}
@@ -257,16 +261,16 @@ func TestNoRowsReadWithMockDb(t *testing.T) {
 		{
 
 			name:           "Direct table read",
-			readParams:     app.DbFieldReadParams{Path: []string{"transactions"}, FieldName: "isValidated", DataModel: dataModel, Payload: *payload},
+			readParams:     app.DbFieldReadParams{Path: []string{"transactions_test"}, FieldName: "isValidated", DataModel: dataModel, Payload: *payload},
 			expectedQuery:  "SELECT transactions.isValidated FROM transactions WHERE transactions.object_id = $1 AND transactions.valid_until = $2",
-			expectedParams: []interface{}{"9283b948-a140-4993-9c41-d5475fda5671", "Infinity"},
+			expectedParams: []interface{}{transactionId1, "Infinity"},
 			expectedOutput: pgtype.Bool{Bool: true, Valid: true},
 		},
 		{
 			name:           "Table read with join - bool",
-			readParams:     app.DbFieldReadParams{Path: []string{"transactions", "bank_accounts"}, FieldName: "isValidated", DataModel: dataModel, Payload: *payload},
+			readParams:     app.DbFieldReadParams{Path: []string{"transactions_test", "bank_accounts_test"}, FieldName: "isValidated", DataModel: dataModel, Payload: *payload},
 			expectedQuery:  "SELECT bank_accounts.isValidated FROM transactions JOIN bank_accounts ON transactions.account_id = bank_accounts.object_id WHERE bank_accounts.valid_until = $1 AND transactions.object_id = $2 AND transactions.valid_until = $3",
-			expectedParams: []interface{}{"Infinity", "9283b948-a140-4993-9c41-d5475fda5671", "Infinity"},
+			expectedParams: []interface{}{"Infinity", transactionId1, "Infinity"},
 			expectedOutput: pgtype.Bool{Bool: true, Valid: true},
 		},
 	}

@@ -15,7 +15,7 @@ import (
 
 func TestHandleFirstIngestObject(t *testing.T) {
 	transactions := app.Table{
-		Name: "transactions",
+		Name: "transactions_test",
 		Fields: map[string]app.Field{
 			"object_id": {
 				DataType: app.String,
@@ -27,6 +27,7 @@ func TestHandleFirstIngestObject(t *testing.T) {
 		},
 	}
 	ctx := context.Background()
+	// logger := globalTestParams.logger
 
 	object_id, err := uuid.NewV4()
 	payload, err := app.ParseToDataModelObject(ctx, transactions, []byte(fmt.Sprintf(`{"object_id": "%s", "updated_at": "2021-01-01T00:00:00Z"}`, object_id.String())))
@@ -64,7 +65,7 @@ func TestHandleFirstIngestObject(t *testing.T) {
 
 func TestHandleRenewedIngestObject(t *testing.T) {
 	transactions := app.Table{
-		Name: "transactions",
+		Name: "transactions_test",
 		Fields: map[string]app.Field{
 			"object_id": {
 				DataType: app.String,
@@ -76,6 +77,7 @@ func TestHandleRenewedIngestObject(t *testing.T) {
 		},
 	}
 	ctx := context.Background()
+	// logger := globalTestParams.logger
 
 	object_id, err := uuid.NewV4()
 	payload, err := app.ParseToDataModelObject(ctx, transactions, []byte(fmt.Sprintf(`{"object_id": "%s", "updated_at": "2021-01-01T00:00:00Z"}`, object_id.String())))
