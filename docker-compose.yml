@@ -8,7 +8,7 @@ services:
       PORT: 8080
       PG_HOSTNAME: db
       PG_PORT: 5432
-      PG_USER: marble
+      PG_USER: postgres
       PG_PASSWORD: marble
       GOOGLE_APPLICATION_CREDENTIALS: /gcp/creds.json
       GOOGLE_CLOUD_PROJECT: "tokyo-country-381508"
@@ -28,7 +28,7 @@ services:
     image: postgres
     restart: always
     environment:
-      POSTGRES_USER: marble
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: marble
       POSTGRES_DB: marble
       PGDATA: /data/postgres

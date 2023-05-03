@@ -19,7 +19,7 @@ type dataModelTestCase struct {
 
 func TestDataModelRepoEndToEnd(t *testing.T) {
 	transactions := app.Table{
-		Name: "transactions_test",
+		Name: "transactions",
 		Fields: map[string]app.Field{
 			"object_id": {
 				DataType: app.String,
@@ -30,10 +30,10 @@ func TestDataModelRepoEndToEnd(t *testing.T) {
 			"account_id":  {DataType: app.String},
 		},
 		LinksToSingle: map[string]app.LinkToSingle{
-			"bank_accounts_test": {
-				LinkedTableName: "bank_accounts_test",
+			"bank_accounts": {
+				LinkedTableName: "bank_accounts",
 				ParentFieldName: "object_id",
-				ChildFieldName:  "account_id",
+				ChildFieldName:  "bank_account_id",
 			},
 		},
 	}
@@ -52,8 +52,8 @@ func TestDataModelRepoEndToEnd(t *testing.T) {
 
 	dataModel := app.DataModel{
 		Tables: map[string]app.Table{
-			"transactions_test":  transactions,
-			"bank_accounts_test": bank_accounts,
+			"transactions":  transactions,
+			"bank_accounts": bank_accounts,
 		},
 		Version: "1.0.0",
 	}
