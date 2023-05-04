@@ -45,7 +45,7 @@ You can choose to launch the application locally, using the provided debug task 
 
 - Start a DB using docker (you can inspire from the existing docker file)
 - Create your local `.env` using the provided `.env.tmpl`.
-  - To create a `SIGNING_PEM` run `openssl genrsa -out signing.pem 2048` and save the value as a one liner using `\n` for line breaks
+  - To create a `AUTHENTICATION_JWT_SIGNING_KEY` run `openssl genrsa -out signing.pem 2048` and save the value as a one liner using `\n` for line breaks
 - Lauch the debug task (VS Code)
 
 ## API
