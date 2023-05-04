@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"crypto/rsa"
 	"fmt"
 	"net/http"
 	"time"
@@ -17,14 +16,10 @@ import (
 type API struct {
 	app AppInterface
 
-	port                  string
-	router                *chi.Mux
-	signingSecretAccessor SigningSecretReader
-	logger                *slog.Logger
-}
-
-type SigningSecretReader interface {
-	ReadSigningSecrets(ctx context.Context) (*rsa.PrivateKey, *rsa.PublicKey, error)
+	port           string
+	router         *chi.Mux
+	signingSecrets SigningSecrets
+	logger         *slog.Logger
 }
 
 type AppInterface interface {
@@ -40,7 +35,7 @@ type AppInterface interface {
 	GetDataModel(ctx context.Context, organizationID string) (app.DataModel, error)
 }
 
-func New(port string, a AppInterface, logger *slog.Logger) (*http.Server, error) {
+func New(port string, a AppInterface, logger *slog.Logger, signingSecrets SigningSecrets) (*http.Server, error) {
 
 	///////////////////////////////
 	// Setup a router
@@ -63,10 +58,10 @@ func New(port string, a AppInterface, logger *slog.Logger) (*http.Server, error)
 	s := &API{
 		app: a,
 
-		port:                  port,
-		router:                r,
-		signingSecretAccessor: &signingSecretAccessorImpl{},
-		logger:                logger,
+		port:           port,
+		router:         r,
+		signingSecrets: signingSecrets,
+		logger:         logger,
 	}
 
 	// Setup the routes

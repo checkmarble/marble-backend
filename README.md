@@ -1,39 +1,32 @@
-This repo is a proof of concept re-implementation of our python backend in Go
+# Introduction
 
-### Goal: implement an MVP to de-risk our absence of backend
-
-Features:
-
-- Simple monolith, follows hexagonal architecture (API / App / repo layers)
-- Dynamic data model per organization
-  - Tables & fields
-  - 1:1 relationships
-- AST (abstract syntax tree) to represent rules
-  - Simplistic operators with limited safety checks
-- Scenarios = a set of rules and thresholds
-- Simplistic authentication
-- Connection to a Postgres DB
-  - Migrations included at start of app by default
-  - see `migrations` folder for DB structure
-- Preloading of organizations, datamodels, scenarios, tokens in memory on app startup
-  - hardcoded datamodels & scenarios
-
-### API
-
-- Create a decision: `POST /decisions`
-- View a decision `GET /decisions/id`
-
-See [our API docs](https://docs.checkmarble.com/reference/introduction-1) for reference
-
-### Stack
+This repo is the Marble backend implementation:
 
 - 1 single Go app
 - Postgres DB
 - PGAdmin (to view the DB content)
 
-### Usage
+## Getting Started
 
-Requires: `docker` to run & `go` to develop
+### Requirements
+
+[Install Go](https://go.dev/doc/install) on your laptop. For now, there is no fixed version in the project, but according to `go.mod` we all use a `1.20` version.
+
+> NB: To handle different version, you can look at [Managing Go installations](https://go.dev/doc/manage-install) or use a version manager tool like [asdf](https://github.com/kennyp/asdf-golang)
+
+You may also need to [install the gcloud CLI](https://cloud.google.com/sdk/docs/install) in order to interact with deployed environments.
+
+> NB: the GCP project is `tokyo-country-381508` (you may need to ask for permissions)
+
+Create `application_default_credentials.json` by running :
+
+```sh
+gcloud auth application-default login
+```
+
+### Lauch the project
+
+#### Docker
 
 `docker compose up -d --build` : build the app container, and launches the stack (in deamon mode)
 Creates a `marble-backend_postgres-db` volume to store PG data.
@@ -46,7 +39,22 @@ In practice, this single-line will delete the stack and create a new one:
 `docker compose down && docker volume rm marble-backend_postgres-db && docker compose up -d --build && docker compose logs -f -t marble-backend db`
 `ctrl-C` to detach from the logs output
 
-### curl calls
+#### Local (VS Code)
+
+You can choose to launch the application locally, using the provided debug task (especially usefull to dev, as the task launch a debugger):
+
+- Start a DB using docker (you can inspire from the existing docker file)
+- Create your local `.env` using the provided `.env.tmpl`.
+  - To create a `AUTHENTICATION_JWT_SIGNING_KEY` run `openssl genrsa -out signing.pem 2048` and save the value as a one liner using `\n` for line breaks
+- Lauch the debug task (VS Code)
+
+## API
+
+The rooting of the application is defined inside `api/routes.go`
+
+See [our API docs](https://docs.checkmarble.com/reference/introduction-1) for public facing reference or the Open API Specification for internal endpoints on Postman.
+
+## curl calls
 
 `POST` a decision. Get TokenID and ScenarioID from startup log (cf `seed.go`).
 Token value is hardcoded to `token12345` for convenience.
