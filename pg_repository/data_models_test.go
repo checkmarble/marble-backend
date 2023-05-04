@@ -71,21 +71,21 @@ func TestDataModelRepoEndToEnd(t *testing.T) {
 	asserts := assert.New(t)
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			val, err := TestRepo.CreateDataModel(ctx, orgID, dataModel)
+			val, err := globalTestParams.repository.CreateDataModel(ctx, orgID, dataModel)
 			if err != nil {
 				t.Errorf("Could not read field from DB: %s", err)
 			}
 
 			asserts.Equal(c.expectedOutput, val, "[Create] Output data model should match the input one")
 
-			val, err = TestRepo.GetDataModel(ctx, orgID)
+			val, err = globalTestParams.repository.GetDataModel(ctx, orgID)
 			if err != nil {
 				t.Errorf("Could not read field from DB: %s", err)
 			}
 			asserts.Equal(c.expectedOutput, val, "[Get] Output data model should match the input one")
 
 			unknownOrgID, _ := uuid.NewV4()
-			val, err = TestRepo.GetDataModel(ctx, unknownOrgID.String())
+			val, err = globalTestParams.repository.GetDataModel(ctx, unknownOrgID.String())
 			if !errors.Is(err, app.ErrNotFoundInRepository) {
 				t.Errorf("Should return an error if the org id is unknown: %s", err)
 			}
