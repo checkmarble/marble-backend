@@ -6,7 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"os"
+	"marble/marble-backend/utils"
 )
 
 var privateKeySecretName = "AUTHENTICATION_JWT_SIGNING_KEY"
@@ -18,7 +18,7 @@ type signingSecretAccessorImpl struct {
 }
 
 func readPrivateKey() (*rsa.PrivateKey, error) {
-	privateKeyString := os.Getenv("AUTHENTICATION_JWT_SIGNING_KEY")
+	privateKeyString := utils.GetRequiredStringEnv("AUTHENTICATION_JWT_SIGNING_KEY")
 
 	block, _ := pem.Decode([]byte(privateKeyString))
 	if block == nil || block.Type != "RSA PRIVATE KEY" {
@@ -33,7 +33,7 @@ func readPrivateKey() (*rsa.PrivateKey, error) {
 }
 
 func readPublicKey() (*rsa.PublicKey, error) {
-	publicKeyString := os.Getenv("AUTHENTICATION_JWT_VERIFYING_KEY")
+	publicKeyString := utils.GetRequiredStringEnv("AUTHENTICATION_JWT_VERIFYING_KEY")
 
 	block, _ := pem.Decode([]byte(publicKeyString))
 	if block == nil || block.Type != "PUBLIC KEY" {
