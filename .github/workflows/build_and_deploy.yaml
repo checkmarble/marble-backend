@@ -81,8 +81,8 @@ jobs:
             --region="europe-west9" \
             --args=-server \
             --service-account=marble-backend-cloud-run@${{ steps.get_env.outputs.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
-            --set-env-vars=PG_HOSTNAME=/cloudsql/${{ steps.get_env.outputs.GCP_PROJECT_ID }}:europe-west9:marble-sandbox,PG_USER=postgresGOOGLE_CLOUD_PROJECT=${{ steps.get_env.outputs.GCP_PROJECT_ID }} \
-            --set-secrets=PG_PASSWORD=POSTGRES_SANDBOX:latest \
+            --set-env-vars=PG_HOSTNAME=/cloudsql/${{ steps.get_env.outputs.GCP_PROJECT_ID }}:europe-west9:marble-sandbox,PG_USER=postgres,GOOGLE_CLOUD_PROJECT=${{ steps.get_env.outputs.GCP_PROJECT_ID }},ENV=${{ steps.get_env.outputs.GCP_PROJECT_ID }} \
+            --set-secrets=PG_PASSWORD=POSTGRES_SANDBOX:latest,AUTHENTICATION_JWT_SIGNING_KEY=AUTHENTICATION_JWT_SIGNING_KEY:latest,AUTHENTICATION_JWT_VERIFYING_KEY=AUTHENTICATION_JWT_VERIFYING_KEY:latest \
             --set-cloudsql-instances=${{ steps.get_env.outputs.GCP_PROJECT_ID }}:europe-west9:marble-sandbox \
             --port=8080
 
@@ -94,6 +94,6 @@ jobs:
             --region="europe-west9" \
             --args=-migrations \
             --service-account=marble-backend-cloud-run@${{ steps.get_env.outputs.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
-            --set-env-vars=PG_HOSTNAME=/cloudsql/${{ steps.get_env.outputs.GCP_PROJECT_ID }}:europe-west9:marble-sandbox,PG_USER=postgres,GOOGLE_CLOUD_PROJECT=${{ steps.get_env.outputs.GCP_PROJECT_ID }} \
+            --set-env-vars=PG_HOSTNAME=/cloudsql/${{ steps.get_env.outputs.GCP_PROJECT_ID }}:europe-west9:marble-sandbox,PG_USER=postgres,GOOGLE_CLOUD_PROJECT=${{ steps.get_env.outputs.GCP_PROJECT_ID }},ENV=${{ steps.get_env.outputs.GCP_PROJECT_ID }} \
             --set-secrets=PG_PASSWORD=POSTGRES_SANDBOX:latest \
             --set-cloudsql-instances=${{ steps.get_env.outputs.GCP_PROJECT_ID }}:europe-west9:marble-sandbox
