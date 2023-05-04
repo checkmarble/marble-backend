@@ -8,6 +8,7 @@ import (
 	"marble/marble-backend/api"
 	"marble/marble-backend/app"
 	"marble/marble-backend/pg_repository"
+	"marble/marble-backend/utils"
 	"os"
 	"os/signal"
 	"syscall"
@@ -20,23 +21,6 @@ import (
 //
 //go:embed migrations/*.sql
 var embedMigrations embed.FS
-
-func mustGetenv(k string) string {
-	v := os.Getenv(k)
-	if v == "" {
-		log.Fatalf("Fatal Error in connect_unix.go: %s environment variable not set.\n", k)
-	}
-	return v
-}
-
-func getEnvWithDefault(k string, def string) string {
-	v, ok := os.LookupEnv(k)
-	if !ok || v == "" {
-		log.Printf("no %s environment variable (default to %s)\n", k, def)
-		return def
-	}
-	return v
-}
 
 func loggerAttributeReplacer(groups []string, a slog.Attr) slog.Attr {
 	// Rename "msg" to "message" so that stackdriver logging can parse it as the main message
@@ -117,14 +101,13 @@ func run_migrations(env string, pgConfig pg_repository.PGConfig, logger *slog.Lo
 }
 
 func main() {
-	env := getEnvWithDefault("ENV", "DEV")
-	pgPort := getEnvWithDefault("PG_PORT", "5432")
-
 	var (
-		port       = mustGetenv("PORT")
-		pgHostname = mustGetenv("PG_HOSTNAME")
-		pgUser     = mustGetenv("PG_USER")
-		pgPassword = mustGetenv("PG_PASSWORD")
+		env        = utils.GetStringEnv("ENV", "DEV")
+		port       = utils.GetRequiredStringEnv("PORT")
+		pgPort     = utils.GetStringEnv("PG_PORT", "5432")
+		pgHostname = utils.GetRequiredStringEnv("PG_HOSTNAME")
+		pgUser     = utils.GetRequiredStringEnv("PG_USER")
+		pgPassword = utils.GetRequiredStringEnv("PG_PASSWORD")
 	)
 
 	////////////////////////////////////////////////////////////
@@ -164,5 +147,4 @@ func main() {
 	if *shouldRunServer {
 		run_server(pgRepository, port, env, logger)
 	}
-
 }
