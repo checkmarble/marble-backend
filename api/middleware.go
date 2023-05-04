@@ -31,11 +31,7 @@ func (api *API) jwtValidator(next http.Handler) http.Handler {
 				return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
 			}
 
-			_, publicKey, err := api.signingSecretAccessor.ReadSigningSecrets(ctx)
-			if err != nil {
-				return nil, err
-			}
-			return publicKey, nil
+			return api.signingSecrets.publicKey, nil
 		})
 		if err != nil {
 			api.logger.ErrorCtx(ctx, err.Error())

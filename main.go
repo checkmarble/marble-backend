@@ -87,7 +87,7 @@ func run_server(pgRepository *pg_repository.PGRepository, port string, env strin
 	}
 
 	app, _ := app.New(pgRepository)
-	api, _ := api.New(port, app, logger)
+	api, _ := api.New(port, app, logger, api.NewSigningSecrets())
 
 	////////////////////////////////////////////////////////////
 	// Start serving the app
