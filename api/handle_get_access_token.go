@@ -72,7 +72,7 @@ func (api *API) handleGetAccessToken() http.HandlerFunc {
 		err = json.NewEncoder(w).Encode(APIToken{
 			AccessToken: tokenString,
 			TokenType:   "Bearer",
-			ExpiresIn:   expirationTime,
+			ExpiresAt:   expirationTime,
 		})
 		if err != nil {
 			logger.ErrorCtx(ctx, "error encoding response JSON: \n"+err.Error())
