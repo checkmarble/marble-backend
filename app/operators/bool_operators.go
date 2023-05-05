@@ -53,8 +53,11 @@ func (t True) Print() string { return "TRUE" }
 func (t True) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		OperatorType
+		Children   []Operator  `json:"children"`
+		StaticData interface{} `json:"static_data"`
 	}{
 		OperatorType: OperatorType{Type: "TRUE"},
+		Children:     []Operator{},
 	})
 }
 
@@ -80,8 +83,11 @@ func (f False) Print() string { return "FALSE" }
 func (f False) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		OperatorType
+		Children   []Operator  `json:"children"`
+		StaticData interface{} `json:"static_data"`
 	}{
 		OperatorType: OperatorType{Type: "FALSE"},
+		Children:     []Operator{},
 	})
 }
 
@@ -122,10 +128,11 @@ func (eq EqBool) MarshalJSON() ([]byte, error) {
 
 	return json.Marshal(struct {
 		OperatorType
-		Data []OperatorBool `json:"children"`
+		Children   []OperatorBool `json:"children"`
+		StaticData interface{}    `json:"static_data"`
 	}{
 		OperatorType: OperatorType{Type: "EQUAL_BOOL"},
-		Data: []OperatorBool{
+		Children: []OperatorBool{
 			eq.Left,
 			eq.Right,
 		},
@@ -213,13 +220,15 @@ func (field DbFieldBool) MarshalJSON() ([]byte, error) {
 
 	return json.Marshal(struct {
 		OperatorType
-		Data dbFieldBoolData `json:"staticData"`
+		Children   []OperatorBool `json:"children"`
+		StaticData interface{}    `json:"staticData"`
 	}{
 		OperatorType: OperatorType{Type: "DB_FIELD_BOOL"},
-		Data: dbFieldBoolData{
+		StaticData: dbFieldBoolData{
 			Path:      field.Path,
 			FieldName: field.FieldName,
 		},
+		Children: []OperatorBool{},
 	})
 }
 

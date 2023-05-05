@@ -177,12 +177,12 @@ func TestMarshallBoolOperators(t *testing.T) {
 		{
 			name:     "true",
 			operator: True{},
-			expected: `{"type":"TRUE"}`,
+			expected: `{"type":"TRUE","children":[],"static_data":null}`,
 		},
 		{
 			name:     "false",
 			operator: False{},
-			expected: `{"type":"FALSE"}`,
+			expected: `{"type":"FALSE","children":[],"static_data":null}`,
 		},
 		{
 			name: "equal",
@@ -190,7 +190,7 @@ func TestMarshallBoolOperators(t *testing.T) {
 				Left:  &True{},
 				Right: &False{},
 			},
-			expected: `{"type":"EQUAL_BOOL","children":[{"type":"TRUE"},{"type":"FALSE"}]}`,
+			expected: `{"type":"EQUAL_BOOL","children":[{"type":"TRUE","children":[],"static_data":null},{"type":"FALSE","children":[],"static_data":null}],"static_data":null}`,
 		},
 		{
 			name: "db field bool",
@@ -198,7 +198,7 @@ func TestMarshallBoolOperators(t *testing.T) {
 				Path:      []string{"a", "b"},
 				FieldName: "c",
 			},
-			expected: `{"type":"DB_FIELD_BOOL","staticData":{"path":["a","b"],"fieldName":"c"}}`,
+			expected: `{"type":"DB_FIELD_BOOL","children":[],"staticData":{"path":["a","b"],"fieldName":"c"}}`,
 		},
 	}
 
