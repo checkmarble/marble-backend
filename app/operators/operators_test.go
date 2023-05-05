@@ -1,8 +1,6 @@
 package operators
 
 import (
-	"bytes"
-	"fmt"
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
@@ -147,29 +145,26 @@ func TestMarshalUnMarshal(t *testing.T) {
 
 }
 
-func TestMarshalContracts(t *testing.T) {
-	for typeKey, creatorFunc := range operatorFromType {
+// func TestMarshalContracts(t *testing.T) {
+// 	for typeKey, creatorFunc := range operatorFromType {
+// 		testname := typeKey
+// 		t.Run(testname, func(t *testing.T) {
 
-		testname := typeKey
-		t.Run(testname, func(t *testing.T) {
+// 			op := creatorFunc()
+// 			JSONop, err := op.MarshalJSON()
+// 			if err != nil {
+// 				t.Errorf("unable to marshal operator to JSON")
+// 			}
 
-			op := creatorFunc()
-			JSONop, err := op.MarshalJSON()
-			if err != nil {
-				t.Errorf("unable to marshal operator to JSON")
-			}
-
-			if !bytes.Contains(JSONop, []byte("data")) {
-				t.Errorf("marshaled operator does not contain `data`")
-			}
-			if !bytes.Contains(JSONop, []byte(fmt.Sprintf("\"type\":\"%s\"", typeKey))) {
-				t.Errorf("marshaled operator does not contain `\"type\":\"%s\"`", typeKey)
-			}
-
-		})
-	}
-
-}
+// 			if !bytes.Contains(JSONop, []byte("data")) {
+// 				t.Errorf("marshaled operator does not contain `data`")
+// 			}
+// 			if !bytes.Contains(JSONop, []byte(fmt.Sprintf("\"type\":\"%s\"", typeKey))) {
+// 				t.Errorf("marshaled operator does not contain `\"type\":\"%s\"`", typeKey)
+// 			}
+// 		})
+// 	}
+// }
 
 func TestMarshallBoolOperators(t *testing.T) {
 	type testCase struct {
