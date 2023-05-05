@@ -26,6 +26,15 @@ var ErrDbReadInconsistentWithDataModel = errors.New("Data model inconsistent wit
 // /////////////////////////////
 // Operator
 // /////////////////////////////
+
+// Common serialized operator structure:
+// {
+// 	 "type" : string, name (ID) of the operator
+// 	 "staticData" : struct, static values of the operator (e.g. constant values, path for field to read...)
+// 	 "children" : slice of operators, children of the operator. E.g. equivalent of "left" and "right" in a
+// 				  binary operator. Number of elements in slice enforced at marshalling/unmarshalling time.
+// }
+
 type Operator interface {
 	// 	Needs() ([]APIField, []DBField, []DBVariable, []List)
 
