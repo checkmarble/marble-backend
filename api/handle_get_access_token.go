@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -15,6 +16,12 @@ var HARD_CODED_ORG_ID = "12345"
 var SIGNING_ALGO = jwt.SigningMethodRS256
 
 const TOKEN_LIFETIME_MINUTES = 30
+
+type APIToken struct {
+	AccessToken string    `json:"access_token"`
+	TokenType   string    `json:"token_type"`
+	ExpiresIn   time.Time `json:"expires_in"`
+}
 
 type GetNewAccessTokenInput struct {
 	Credentials Credentials `in:"body=json"`
@@ -62,8 +69,15 @@ func (api *API) handleGetAccessToken() http.HandlerFunc {
 			return
 		}
 
-		w.Write([]byte(tokenString))
-		w.WriteHeader(http.StatusOK)
-
+		err = json.NewEncoder(w).Encode(APIToken{
+			AccessToken: tokenString,
+			TokenType:   "Bearer",
+			ExpiresIn:   expirationTime,
+		})
+		if err != nil {
+			logger.ErrorCtx(ctx, "error encoding response JSON: \n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
+			return
+		}
 	}
 }
