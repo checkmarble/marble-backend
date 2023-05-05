@@ -33,7 +33,7 @@ func (d *DataAccessorImpl) GetDbField(path []string, fieldName string) (interfac
 	} else {
 		val = pgtype.Bool{Bool: true, Valid: false}
 	}
-	return &val, nil
+	return val, nil
 }
 func (d *DataAccessorImpl) ValidateDbFieldReadConsistency(path []string, fieldName string) error {
 	return nil
