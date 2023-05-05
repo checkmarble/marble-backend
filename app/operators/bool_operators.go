@@ -14,34 +14,30 @@ import (
 func UnmarshalOperatorBool(jsonBytes []byte) (OperatorBool, error) {
 	// All operators follow the same schema
 
-	var _op struct {
-		OperatorType
-		Children   []json.RawMessage `json:"children"`
-		StaticData json.RawMessage   `json:"staticData"`
-	}
+	var _opType OperatorType
 
-	if err := json.Unmarshal(jsonBytes, &_op); err != nil {
+	if err := json.Unmarshal(jsonBytes, &_opType); err != nil {
 		return nil, fmt.Errorf("unable to unmarshal operator to intermediate type/data representation: %w", err)
 	}
 
 	// find operator in map
-	opFunc, found := operatorFromType[_op.Type]
+	opGetterFunc, found := operatorFromType[_opType.Type]
 	if !found {
-		return nil, fmt.Errorf("operator %s not registered", _op.Type)
+		return nil, fmt.Errorf("operator %s not registered", _opType.Type)
 	}
 
 	// cast operator to OperatorBool
-	op, ok := opFunc().(OperatorBool)
+	typedOp, ok := opGetterFunc().(OperatorBool)
 	if !ok {
-		return nil, fmt.Errorf("operator %s could not be cast to OperatorBool interface", _op.Type)
+		return nil, fmt.Errorf("operator %s could not be cast to OperatorBool interface", _opType.Type)
 	}
 
 	// unmarshal operator
-	if err := json.Unmarshal(jsonBytes, op); err != nil {
-		return nil, fmt.Errorf("operator %s could not be unmarshalled: %w", _op.Type, err)
+	if err := json.Unmarshal(jsonBytes, typedOp); err != nil {
+		return nil, fmt.Errorf("operator %s could not be unmarshalled: %w", _opType.Type, err)
 	}
 
-	return op, nil
+	return typedOp, nil
 }
 
 // ///////////////////////////////////////////////////////////////////////////////////////
