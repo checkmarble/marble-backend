@@ -245,3 +245,67 @@ func (field *DbFieldBool) UnmarshalJSON(b []byte) error {
 
 	return nil
 }
+
+// ///////////////////////////////////////////////////////////////////////////////////////
+// Payload field Boolean
+// ///////////////////////////////////////////////////////////////////////////////////////
+type PayloadFieldBool struct {
+	FieldName string
+}
+
+func (field PayloadFieldBool) Eval(d DataAccessor) (bool, error) {
+
+	valRaw := d.GetPayloadField(field.FieldName)
+
+	valPointer, ok := valRaw.(*bool)
+	if !ok {
+		return false, fmt.Errorf("DB field %s is not a pointer to a boolean", field.FieldName)
+	}
+	if valPointer == nil {
+		return false, fmt.Errorf("DB field %s is null", field.FieldName)
+	}
+	return *valPointer, nil
+}
+
+func (field PayloadFieldBool) Print() string {
+	return fmt.Sprintf("( Boolean field from Payload: %s )", field.FieldName)
+}
+
+func (field PayloadFieldBool) MarshalJSON() ([]byte, error) {
+
+	// data schema
+	type payloadFieldBoolData struct {
+		FieldName string `json:"fieldName"`
+	}
+
+	return json.Marshal(struct {
+		OperatorType
+		StaticData payloadFieldBoolData `json:"staticData"`
+	}{
+		OperatorType: OperatorType{Type: "PAYLOAD_FIELD_BOOL"},
+		StaticData: payloadFieldBoolData{
+			FieldName: field.FieldName,
+		},
+	})
+}
+
+// register creation
+func init() {
+	operatorFromType["PAYLOAD_FIELD_BOOL"] = func() Operator { return &PayloadFieldBool{} }
+}
+
+func (field *PayloadFieldBool) UnmarshalJSON(b []byte) error {
+	// data schema
+	var dbFieldBoolData struct {
+		StaticData struct {
+			FieldName string `json:"fieldName"`
+		} `json:"staticData"`
+	}
+
+	if err := json.Unmarshal(b, &dbFieldBoolData); err != nil {
+		return fmt.Errorf("unable to unmarshal operator to intermediate staticData representation: %w", err)
+	}
+	field.FieldName = dbFieldBoolData.StaticData.FieldName
+
+	return nil
+}
