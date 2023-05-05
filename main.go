@@ -19,7 +19,7 @@ import (
 
 // embed migrations sql folder
 //
-//go:embed migrations/*.sql
+//go:embed pg_repository/migrations/*.sql
 var embedMigrations embed.FS
 
 func run_server(pgRepository *pg_repository.PGRepository, port string, env string, logger *slog.Logger) {
@@ -55,7 +55,7 @@ func run_server(pgRepository *pg_repository.PGRepository, port string, env strin
 }
 
 func run_migrations(env string, pgConfig pg_repository.PGConfig, logger *slog.Logger) {
-	pg_repository.RunMigrations(env, pgConfig, logger)
+	pg_repository.RunMigrations(env, pgConfig, "pg_repository/migrations", logger)
 }
 
 func main() {
