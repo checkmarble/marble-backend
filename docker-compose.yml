@@ -4,21 +4,12 @@ services:
   marble-backend:
     container_name: marble-backend
     build: .
-    environment:
-      PORT: 8080
-      PG_HOSTNAME: db
-      PG_PORT: 5432
-      PG_USER: marble
-      PG_PASSWORD: marble
-      GOOGLE_APPLICATION_CREDENTIALS: /gcp/creds.json
-      GOOGLE_CLOUD_PROJECT: "tokyo-country-381508"
+    env_file: .env.docker-compose
     ports:
       - "8080:8080"
     command:
       - "-migrations"
       - "-server"
-    volumes:
-      - $HOME/.config/gcloud/application_default_credentials.json:/gcp/creds.json:ro
     depends_on:
       db:
         condition: service_healthy
@@ -28,7 +19,7 @@ services:
     image: postgres
     restart: always
     environment:
-      POSTGRES_USER: marble
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: marble
       POSTGRES_DB: marble
       PGDATA: /data/postgres

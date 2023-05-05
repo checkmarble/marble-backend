@@ -1,30 +1,57 @@
 package pg_repository
 
 import (
+	"bytes"
 	"context"
+	"embed"
 	"fmt"
 	"log"
 	"os"
 	"testing"
+	"text/template"
 	"time"
 
-	"github.com/Masterminds/squirrel"
+	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
+	"golang.org/x/exp/slog"
 )
 
-var testDbPool *pgxpool.Pool
-var TestRepo *PGRepository
+type testParams struct {
+	repository *PGRepository
+	logger     *slog.Logger
+	testIds    map[string]string
+}
+
+var globalTestParams testParams
 
 const (
 	testDbLifetime = 120 // seconds
-	testUser       = "test_user"
+	testUser       = "postgres"
 	testPassword   = "pwd"
 	testHost       = "localhost"
-	testDbName     = "test_db"
+	testDbName     = "marble"
 	testPort       = "5432"
 )
+
+func stringBuilder(format string, args map[string]string) string {
+	var msg bytes.Buffer
+
+	tmpl, err := template.New("").Parse(format)
+
+	if err != nil {
+		return format
+	}
+
+	tmpl.Execute(&msg, args)
+	return msg.String()
+}
+
+// embed migrations sql folder
+//
+//go:embed migrations/*.sql
+var embedMigrations embed.FS
 
 func TestMain(m *testing.M) {
 	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
@@ -63,7 +90,7 @@ func TestMain(m *testing.M) {
 
 	hostAndPort := resource.GetHostPort("5432/tcp") // docker container will bind to another port than 5432 if already taken
 	databaseURL := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", testUser, testPassword, hostAndPort, testDbName)
-	testDbPool, err = pgxpool.New(context.Background(), databaseURL)
+	testDbPool, err := pgxpool.New(context.Background(), databaseURL)
 	if err != nil {
 		log.Fatalf("Could not connect to database: %s", err)
 	}
@@ -80,86 +107,76 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not connect to db: %s", err)
 	}
 
-	createTablesSQL := `
-	CREATE SCHEMA testschema;
-
-	GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA testschema TO test_user;
-
-	ALTER DATABASE test_db
-	SET search_path TO testschema,
-	public;
-
-	ALTER ROLE test_user
-	SET search_path TO testschema,
-	public;
-
-	CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
-	CREATE TABLE transactions(
-		id uuid DEFAULT uuid_generate_v4(),
-		object_id VARCHAR NOT NULL,
-		updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
-		valid_from TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  		valid_until TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT 'INFINITY',
-		account_id VARCHAR,
-		title VARCHAR,
-		value FLOAT,
-		isValidated BOOLEAN,
-		PRIMARY KEY(id)
-	  );
-
-	CREATE INDEX transactions_object_id_idx ON transactions(object_id, valid_until DESC, valid_from, updated_at);
-
-	CREATE TABLE bank_accounts(
-		ID UUID DEFAULT uuid_generate_v4(),
-		object_id VARCHAR NOT NULL,
-		updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
-		valid_from TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  		valid_until TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT 'INFINITY',
-		status VARCHAR,
-		PRIMARY KEY(id)
-	);
-
-	CREATE INDEX bank_accounts_object_id_idx ON bank_accounts(object_id, valid_until DESC, valid_from, updated_at);
-
+	insertDataSQL := `
 	INSERT INTO bank_accounts (
 		object_id,
 		updated_at,
-		status
+		name,
+		currency
 	  )
 	VALUES(
-		'5c8a32f9-29c7-413c-91a8-1a363ef7e6b5',
+		'{{.BankAccountId}}',
 		'2021-01-01T00:00:00Z',
-		'VALIDATED'
+		'SHINE',
+		'EUR'
 	  );
 
 	INSERT INTO transactions (
 		object_id,
-		account_id,
+		bank_account_id,
 		updated_at,
 		value,
-		isValidated
+		title
 	  )
 	VALUES(
-		'9283b948-a140-4993-9c41-d5475fda5671',
-		'5c8a32f9-29c7-413c-91a8-1a363ef7e6b5',
+		'{{.TransactionId1}}',
+		'{{.BankAccountId}}',
 		'2021-01-01T00:00:00Z',
 		10,
-		true
+		'AMAZON'
 	  ),(
-		'6d3a330d-7204-4561-b523-9fa0d518d184',
-		'5c8a32f9-29c7-413c-91a8-1a363ef7e6b5',
+		'{{.TransactionId2}}',
+		'{{.BankAccountId}}',
 		'2021-01-01T00:00:00Z',
 		NULL,
-		false
+		'GCP'
 	  );
-	  `
+	INSERT INTO organizations (
+		id,
+		name,
+  		database_name
+	)
+	VALUES(
+		'{{.OrganizationId}}',
+		'Organization 1',
+		'marble'
+	)
+	`
 
-	if _, err := testDbPool.Exec(context.Background(), createTablesSQL); err != nil {
-		log.Fatalf("Could not create tables: %s", err)
+	organizationId, _ := uuid.NewV4()
+	bankAccountId, _ := uuid.NewV4()
+	transactionId1, _ := uuid.NewV4()
+	transactionId2, _ := uuid.NewV4()
+	testIds := map[string]string{
+		"OrganizationId": organizationId.String(),
+		"BankAccountId":  bankAccountId.String(),
+		"TransactionId1": transactionId1.String(),
+		"TransactionId2": transactionId2.String(),
+	}
+	insertDataSQL = stringBuilder(insertDataSQL, testIds)
+
+	pgConfig := PGConfig{
+		ConnectionString: databaseURL,
+		MigrationFS:      embedMigrations,
+	}
+	TestRepo, err := New("DEV", pgConfig)
+	logger := slog.New(slog.NewTextHandler(os.Stderr))
+	RunMigrations("DEV", pgConfig, "migrations", logger)
+	if _, err := TestRepo.db.Exec(context.Background(), insertDataSQL); err != nil {
+		log.Fatalf("Could not insert test data into tables: %s", err)
 	}
 
-	TestRepo = &PGRepository{db: testDbPool, queryBuilder: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)}
+	globalTestParams = testParams{repository: TestRepo, logger: logger, testIds: testIds}
 
 	//Run tests
 	code := m.Run()
