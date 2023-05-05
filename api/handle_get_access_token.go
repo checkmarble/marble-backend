@@ -20,7 +20,7 @@ const TOKEN_LIFETIME_MINUTES = 30
 type APIToken struct {
 	AccessToken string    `json:"access_token"`
 	TokenType   string    `json:"token_type"`
-	ExpiresIn   time.Time `json:"expires_in"`
+	ExpiresAt   time.Time `json:"expires_at"`
 }
 
 type GetNewAccessTokenInput struct {
