@@ -192,6 +192,14 @@ func TestMarshallBoolOperators(t *testing.T) {
 			},
 			expected: `{"type":"EQUAL_BOOL","children":[{"type":"TRUE"},{"type":"FALSE"}]}`,
 		},
+		{
+			name: "db field bool",
+			operator: &DbFieldBool{
+				Path:      []string{"a", "b"},
+				FieldName: "c",
+			},
+			expected: `{"type":"DB_FIELD_BOOL","staticData":{"path":["a","b"],"fieldName":"c"}}`,
+		},
 	}
 
 	for _, c := range cases {
@@ -230,6 +238,14 @@ func TestUnmarshallBoolOperators(t *testing.T) {
 				Right: &False{},
 			},
 			json: `{"type":"EQUAL_BOOL","children":[{"type":"TRUE"},{"type":"FALSE"}]}`,
+		},
+		{
+			name: "equal",
+			expected: &DbFieldBool{
+				Path:      []string{"a", "b"},
+				FieldName: "c",
+			},
+			json: `{"type":"DB_FIELD_BOOL","staticData":{"path":["a","b"],"fieldName":"c"}}`,
 		},
 	}
 

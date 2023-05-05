@@ -151,6 +151,11 @@ func (eq *EqBool) UnmarshalJSON(b []byte) error {
 		return fmt.Errorf("unable to unmarshal operator to intermediate children representation: %w", err)
 	}
 
+	// Check number of children
+	if len(eqData.Children) != 2 {
+		return fmt.Errorf("wrong number of children for operator EQUAL_BOOL: %d", len(eqData.Children))
+	}
+
 	// Build concrete Left operand
 	left, err := UnmarshalOperatorBool(eqData.Children[0])
 	if err != nil {
@@ -212,7 +217,7 @@ func (field DbFieldBool) MarshalJSON() ([]byte, error) {
 
 	return json.Marshal(struct {
 		OperatorType
-		Data dbFieldBoolData `json:"data"`
+		Data dbFieldBoolData `json:"staticData"`
 	}{
 		OperatorType: OperatorType{Type: "DB_FIELD_BOOL"},
 		Data: dbFieldBoolData{
@@ -227,18 +232,20 @@ func init() {
 	operatorFromType["DB_FIELD_BOOL"] = func() Operator { return &DbFieldBool{} }
 }
 
-func (field DbFieldBool) UnmarshalJSON(b []byte) error {
+func (field *DbFieldBool) UnmarshalJSON(b []byte) error {
 	// data schema
 	var dbFieldBoolData struct {
-		Path      []string `json:"path"`
-		FieldName string   `json:"fieldName"`
+		StaticData struct {
+			Path      []string `json:"path"`
+			FieldName string   `json:"fieldName"`
+		} `json:"staticData"`
 	}
 
 	if err := json.Unmarshal(b, &dbFieldBoolData); err != nil {
-		return fmt.Errorf("unable to unmarshal operator to intermediate path/fieldName representation: %w", err)
+		return fmt.Errorf("unable to unmarshal operator to intermediate staticData representation: %w", err)
 	}
-	field.Path = dbFieldBoolData.Path
-	field.FieldName = dbFieldBoolData.FieldName
+	field.Path = dbFieldBoolData.StaticData.Path
+	field.FieldName = dbFieldBoolData.StaticData.FieldName
 
 	return nil
 }
