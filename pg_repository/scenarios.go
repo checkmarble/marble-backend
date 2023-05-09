@@ -34,6 +34,8 @@ func (s *dbScenario) dto() app.Scenario {
 }
 
 func (r *PGRepository) ListScenarios(ctx context.Context, orgID string) ([]app.Scenario, error) {
+	// TODO: Currently, this will not include the scenario's live version, if there is one. The logic that gets is is executed in the GetScenario
+	// method. This should be refactored to be moved to the app, not repository, level.
 	sql, args, err := r.queryBuilder.
 		Select(columnList[dbScenario]()...).
 		From("scenarios").
@@ -139,20 +141,20 @@ func (r *PGRepository) UpdateScenario(ctx context.Context, orgID string, scenari
 		})).
 		Where("id = ?", scenario.ID).
 		Where("org_id = ?", orgID).
-		Suffix("RETURNING *").ToSql()
+		ToSql()
 	if err != nil {
 		return app.Scenario{}, fmt.Errorf("unable to build scenario query: %w", err)
 	}
 
-	rows, _ := r.db.Query(ctx, sql, args...)
-	updatedScenario, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenario])
+	_, err = r.db.Exec(ctx, sql, args...)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return app.Scenario{}, app.ErrNotFoundInRepository
 	} else if err != nil {
 		return app.Scenario{}, fmt.Errorf("unable to update scenario(id: %s): %w", scenario.ID, err)
 	}
 
-	return updatedScenario.dto(), nil
+	// Quick and dirty workaround to have the live version included in the return value
+	return r.GetScenario(ctx, orgID, scenario.ID)
 }
 
 func (r *PGRepository) setLiveScenarioIteration(ctx context.Context, tx pgx.Tx, orgID string, scenarioIterationID string) error {

@@ -11,12 +11,6 @@ import (
 	"marble/marble-backend/app"
 )
 
-type LocalDbTestCase struct {
-	name           string
-	readParams     app.DbFieldReadParams
-	expectedOutput interface{}
-}
-
 func TestReadFromDbWithDockerDb(t *testing.T) {
 	transactions := app.Table{
 		Name: "transactions",
@@ -67,7 +61,13 @@ func TestReadFromDbWithDockerDb(t *testing.T) {
 		t.Fatalf("Could not parse payload: %s", err)
 	}
 
-	cases := []LocalDbTestCase{
+	type localDbTestCase struct {
+		name           string
+		readParams     app.DbFieldReadParams
+		expectedOutput interface{}
+	}
+
+	cases := []localDbTestCase{
 		{
 			name:           "Read boolean field from DB without join",
 			readParams:     app.DbFieldReadParams{Path: []string{"transactions"}, FieldName: "title", DataModel: dataModel, Payload: payload},
