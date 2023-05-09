@@ -9,8 +9,8 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "program": "${cwd}/main.go",
-      "envFile": "${cwd}/.env",
+      "program": "${workspaceFolder}",
+      "envFile": ["${workspaceFolder}/.env.local", "${workspaceFolder}/.env"],
       "args": ["--server", "--migrations"]
     },
     {
@@ -18,8 +18,8 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "program": "${cwd}/main.go",
-      "envFile": "${cwd}/.env.local",
+      "program": "${workspaceFolder}/main.go",
+      "envFile": "${workspaceFolder}/.env.local",
       "args": ["--server", "--migrations"]
     }
   ]
