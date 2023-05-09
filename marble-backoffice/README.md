@@ -39,4 +39,4 @@ yarn create vite --template react-swc-ts
 
 Customisations made to the default project:
 
-- none
+- add alias @ for ./src
