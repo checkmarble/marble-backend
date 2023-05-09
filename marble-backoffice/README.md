@@ -16,6 +16,11 @@ Clean code architecture with minimal dependencies.
 
 The goal is to re-scaffold the project in the future with different tech choices, so the amount of modification made to the scaffolded files stays low and documented (See "Scaffolding and customisations" in this file).
 
+
+### Client side Routing
+
+React router handle client side routing.
+
 #### Design system
 
 Mui Core is used as an implemtation of material design.
@@ -31,6 +36,7 @@ Main dev dependencies:
 Main runtime dependencies:
 - React ~18
 - Mui Core ~5
+- React router ~6
 
 code style: Prettier
 
