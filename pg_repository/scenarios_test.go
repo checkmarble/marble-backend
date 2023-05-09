@@ -10,20 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func cleanupScenario(id string, orgID string) error {
-	sql, args, err := globalTestParams.repository.queryBuilder.
-		Delete("").
-		From("scenarios").
-		Where("id = ?", id).
-		Where("org_id = ?", orgID).
-		ToSql()
-	if err != nil {
-		return err
-	}
-	_, err = globalTestParams.repository.db.Exec(context.Background(), sql, args...)
-	return err
-}
-
 func cleanupScenarios(ids []string, orgID string) error {
 	sql, args, err := globalTestParams.repository.queryBuilder.
 		Delete("").
@@ -58,7 +44,7 @@ func TestCreateScenario(t *testing.T) {
 	asserts.Regexp(uuidRegexp, scenar.ID)
 	asserts.True(scenar.LiveVersion == nil)
 
-	cleanupScenario(scenar.ID, globalTestParams.testIds["OrganizationId"])
+	cleanupScenarios([]string{scenar.ID}, globalTestParams.testIds["OrganizationId"])
 	if err != nil {
 		t.Fatalf("Could not cleanup scenarios: %s", err)
 	}
@@ -101,7 +87,7 @@ func TestUpdateScenario(t *testing.T) {
 	asserts.Equal(scenar.ID, newScenar.ID)
 	asserts.True(newScenar.LiveVersion == nil)
 
-	cleanupScenario(scenar.ID, globalTestParams.testIds["OrganizationId"])
+	cleanupScenarios([]string{scenar.ID}, globalTestParams.testIds["OrganizationId"])
 	if err != nil {
 		t.Fatalf("Could not cleanup scenarios: %s", err)
 	}
@@ -209,7 +195,7 @@ func TestGetScenarioWithLiveVersion(t *testing.T) {
 	asserts.Equal(scenar.TriggerObjectType, scenarWithLiveVersion.TriggerObjectType)
 	asserts.Equal(iteration.ID, scenarWithLiveVersion.LiveVersion.ID)
 
-	cleanupScenario(scenar.ID, globalTestParams.testIds["OrganizationId"])
+	cleanupScenarios([]string{scenar.ID}, globalTestParams.testIds["OrganizationId"])
 	if err != nil {
 		t.Fatalf("Could not cleanup scenarios: %s", err)
 	}

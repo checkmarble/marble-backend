@@ -25,17 +25,21 @@ type APIScenario struct {
 	Description       string    `json:"description"`
 	TriggerObjectType string    `json:"triggerObjectType"`
 	CreatedAt         time.Time `json:"createdAt"`
-	IsLive            bool      `json:"isLive"`
+	LiveVersionID     *string   `json:"liveVersionId,omitempty"`
 }
 
 func NewAPIScenario(scenario app.Scenario) APIScenario {
+	var liveVersionId string
+	if scenario.LiveVersion != nil {
+		liveVersionId = scenario.LiveVersion.ID
+	}
 	return APIScenario{
 		ID:                scenario.ID,
 		Name:              scenario.Name,
 		Description:       scenario.Description,
 		TriggerObjectType: scenario.TriggerObjectType,
 		CreatedAt:         scenario.CreatedAt,
-		IsLive:            scenario.LiveVersion != nil,
+		LiveVersionID:     &liveVersionId,
 	}
 }
 

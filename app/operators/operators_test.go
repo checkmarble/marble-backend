@@ -161,7 +161,7 @@ func TestMarshalContracts(t *testing.T) {
 			var mapFormatOp map[string]interface{}
 			err = json.Unmarshal(JSONop, &mapFormatOp)
 			fmt.Println(mapFormatOp)
-			for k, _ := range mapFormatOp {
+			for k := range mapFormatOp {
 				if k != "type" && k != "staticData" && k != "children" {
 					t.Errorf("marshaled operator contains unexpected key: %s", k)
 				}
