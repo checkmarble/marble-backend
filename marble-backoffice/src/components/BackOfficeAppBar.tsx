@@ -14,6 +14,8 @@ import ListItemText from "@mui/material/ListItemText";
 import MenuIcon from "@mui/icons-material/Menu";
 import InboxIcon from "@mui/icons-material/MoveToInbox";
 import MailIcon from "@mui/icons-material/Mail";
+import { PageLink } from "@/models";
+import { useNavigate } from "react-router-dom";
 
 interface Page {
   title: string;
@@ -23,18 +25,23 @@ interface Page {
 const APP_BAR_PAGES: ReadonlyArray<Page> = [
   {
     title: "Home",
-    link: "/home",
+    link: PageLink.Home,
   },
   {
     title: "Organizations",
-    link: "/organizations",
+    link: PageLink.Organization,
   },
 ] as const;
 
 function BackOfficeAppBar() {
-  const handleNavigate = useCallback((link: string) => {
-    console.log(`Navigation not implemented: ${link}`);
-  }, []);
+  const nagivator = useNavigate();
+
+  const handleNavigate = useCallback(
+    (link: string) => {
+      nagivator(link);
+    },
+    [nagivator]
+  );
 
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
 
