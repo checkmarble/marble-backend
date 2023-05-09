@@ -1,12 +1,14 @@
-import './App.css'
+import "./App.css";
+import { CssBaseline } from "@mui/material";
+import BackOfficeAppBar from "@/components/BackOfficeAppBar";
 
 function App() {
-
   return (
     <>
-      <p>Marble Backoffice</p>
+      <CssBaseline />
+      <BackOfficeAppBar />
     </>
-  )
+  );
 }
 
-export default App
+export default App;
