@@ -12,11 +12,28 @@ import (
 
 type DataAccessorImpl struct{}
 
-func (d *DataAccessorImpl) GetPayloadField(fieldName string) (interface{}, error) {
-	return nil, nil
+func (d *DataAccessorImpl) GetPayloadField(fieldName string) interface{} {
+	var val bool
+	if fieldName == "true" {
+		val = true
+	} else if fieldName == "false" {
+		val = false
+	} else {
+		return nil
+	}
+	return &val
 }
+
 func (d *DataAccessorImpl) GetDbField(path []string, fieldName string) (interface{}, error) {
-	return pgtype.Bool{Bool: true, Valid: true}, nil
+	var val pgtype.Bool
+	if fieldName == "true" {
+		val = pgtype.Bool{Bool: true, Valid: true}
+	} else if fieldName == "false" {
+		val = pgtype.Bool{Bool: false, Valid: true}
+	} else {
+		val = pgtype.Bool{Bool: true, Valid: false}
+	}
+	return val, nil
 }
 func (d *DataAccessorImpl) ValidateDbFieldReadConsistency(path []string, fieldName string) error {
 	return nil
@@ -57,7 +74,7 @@ func TestLogicEval(t *testing.T) {
 			operator: &EqBool{
 				Left: &True{},
 				Right: &EqBool{
-					Left:  &DbFieldBool{Path: []string{"a", "b"}, FieldName: "c"},
+					Left:  &DbFieldBool{Path: []string{"a", "b"}, FieldName: "true"},
 					Right: &True{},
 				},
 			},
@@ -69,6 +86,16 @@ func TestLogicEval(t *testing.T) {
 				Left:  &True{},
 				Right: &False{},
 			},
+			expected: false,
+		},
+		{
+			name:     "Payload true",
+			operator: &PayloadFieldBool{FieldName: "true"},
+			expected: true,
+		},
+		{
+			name:     "Payload false",
+			operator: &PayloadFieldBool{FieldName: "false"},
 			expected: false,
 		},
 	}
@@ -84,7 +111,35 @@ func TestLogicEval(t *testing.T) {
 			asserts.Equal(c.expected, got)
 		})
 	}
+}
 
+func TestLogicEvalErrorCase(t *testing.T) {
+	type testCase struct {
+		name     string
+		operator OperatorBool
+	}
+	dataAccessor := DataAccessorImpl{}
+
+	cases := []testCase{
+		{
+			name:     "Payload nil",
+			operator: &PayloadFieldBool{FieldName: "nil"},
+		},
+		{
+			name:     "Payload nil",
+			operator: &DbFieldBool{Path: []string{"table"}, FieldName: "nil"},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			_, err := c.operator.Eval(&dataAccessor)
+
+			if err == nil {
+				t.Errorf("Was expecting an error reading a null field")
+			}
+
+		})
+	}
 }
 
 func TestMarshalUnMarshal(t *testing.T) {
@@ -108,7 +163,7 @@ func TestMarshalUnMarshal(t *testing.T) {
 			operator: &EqBool{
 				Left: &True{},
 				Right: &EqBool{
-					Left:  &DbFieldBool{Path: []string{"a", "b"}, FieldName: "c"},
+					Left:  &DbFieldBool{Path: []string{"a", "b"}, FieldName: "true"},
 					Right: &True{},
 				},
 			},
@@ -161,7 +216,7 @@ func TestMarshalContracts(t *testing.T) {
 			var mapFormatOp map[string]interface{}
 			err = json.Unmarshal(JSONop, &mapFormatOp)
 			fmt.Println(mapFormatOp)
-			for k, _ := range mapFormatOp {
+			for k := range mapFormatOp {
 				if k != "type" && k != "staticData" && k != "children" {
 					t.Errorf("marshaled operator contains unexpected key: %s", k)
 				}
