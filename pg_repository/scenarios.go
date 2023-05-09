@@ -24,13 +24,18 @@ type dbScenario struct {
 }
 
 func (s *dbScenario) dto() app.Scenario {
-	return app.Scenario{
+	scenario := app.Scenario{
 		ID:                s.ID,
 		Name:              s.Name,
 		Description:       s.Description,
 		TriggerObjectType: s.TriggerObjectType,
 		CreatedAt:         s.CreatedAt,
 	}
+	if s.LiveVersionID.Valid {
+		id := s.LiveVersionID.String
+		scenario.LiveVersionID = &id
+	}
+	return scenario
 }
 
 func (r *PGRepository) ListScenarios(ctx context.Context, orgID string) ([]app.Scenario, error) {
@@ -57,7 +62,7 @@ func (r *PGRepository) ListScenarios(ctx context.Context, orgID string) ([]app.S
 	return scenarioDTOs, nil
 }
 
-func (r *PGRepository) GetScenario(ctx context.Context, orgID string, scenarioID string) (app.Scenario, error) {
+func (r *PGRepository) GetScenario(ctx context.Context, orgID string, scenarioID string) (app.ScenarioWithLiveVersion, error) {
 	sql, args, err := r.queryBuilder.
 		Select(columnList[dbScenario]()...).
 		From("scenarios").
@@ -67,27 +72,33 @@ func (r *PGRepository) GetScenario(ctx context.Context, orgID string, scenarioID
 		}).ToSql()
 
 	if err != nil {
-		return app.Scenario{}, fmt.Errorf("unable to build scenario query: %w", err)
+		return app.ScenarioWithLiveVersion{}, fmt.Errorf("unable to build scenario query: %w", err)
 	}
 
 	rows, _ := r.db.Query(ctx, sql, args...)
 	scenario, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenario])
 	if errors.Is(err, pgx.ErrNoRows) {
-		return app.Scenario{}, app.ErrNotFoundInRepository
+		return app.ScenarioWithLiveVersion{}, app.ErrNotFoundInRepository
 	} else if err != nil {
-		return app.Scenario{}, fmt.Errorf("unable to get scenario: %w", err)
+		return app.ScenarioWithLiveVersion{}, fmt.Errorf("unable to get scenario: %w", err)
 	}
 
-	scenarioDTO := scenario.dto()
+	scenarioDTO := app.ScenarioWithLiveVersion{
+		ID:                scenario.ID,
+		Name:              scenario.Name,
+		Description:       scenario.Description,
+		TriggerObjectType: scenario.TriggerObjectType,
+		CreatedAt:         scenario.CreatedAt,
+	}
 
 	if scenario.LiveVersionID.Valid {
 		liveScenarioIteration, err := r.GetScenarioIteration(ctx, orgID, scenario.LiveVersionID.String)
 		if err != nil {
-			return app.Scenario{}, fmt.Errorf("unable to get live scenario iteration: %w", err)
+			return app.ScenarioWithLiveVersion{}, fmt.Errorf("unable to get live scenario iteration: %w", err)
 		}
 		liveVersion, err := app.NewPublishedScenarioIteration(liveScenarioIteration)
 		if err != nil {
-			return app.Scenario{}, app.ErrScenarioIterationNotValid
+			return app.ScenarioWithLiveVersion{}, app.ErrScenarioIterationNotValid
 		}
 		scenarioDTO.LiveVersion = &liveVersion
 	}

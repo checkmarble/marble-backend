@@ -16,7 +16,7 @@ type ScenarioAppInterface interface {
 	ListScenarios(ctx context.Context, organizationID string) ([]app.Scenario, error)
 	CreateScenario(ctx context.Context, organizationID string, scenario app.CreateScenarioInput) (app.Scenario, error)
 	UpdateScenario(ctx context.Context, organizationID string, scenario app.UpdateScenarioInput) (app.Scenario, error)
-	GetScenario(ctx context.Context, organizationID string, scenarioID string) (app.Scenario, error)
+	GetScenario(ctx context.Context, organizationID string, scenarioID string) (app.ScenarioWithLiveVersion, error)
 }
 
 type APIScenario struct {
@@ -25,7 +25,7 @@ type APIScenario struct {
 	Description       string    `json:"description"`
 	TriggerObjectType string    `json:"triggerObjectType"`
 	CreatedAt         time.Time `json:"createdAt"`
-	IsLive            bool      `json:"isLive"`
+	LiveVersionID     *string   `json:"liveVersionId,omitempty"`
 }
 
 func NewAPIScenario(scenario app.Scenario) APIScenario {
@@ -35,8 +35,22 @@ func NewAPIScenario(scenario app.Scenario) APIScenario {
 		Description:       scenario.Description,
 		TriggerObjectType: scenario.TriggerObjectType,
 		CreatedAt:         scenario.CreatedAt,
-		IsLive:            scenario.LiveVersion != nil,
+		LiveVersionID:     scenario.LiveVersionID,
 	}
+}
+
+func NewAPIScenarioWithLiveVersion(scenario app.ScenarioWithLiveVersion) APIScenario {
+	apiScenario := APIScenario{
+		ID:                scenario.ID,
+		Name:              scenario.Name,
+		Description:       scenario.Description,
+		TriggerObjectType: scenario.TriggerObjectType,
+		CreatedAt:         scenario.CreatedAt,
+	}
+	if scenario.LiveVersion != nil {
+		apiScenario.LiveVersionID = &scenario.LiveVersion.ID
+	}
+	return apiScenario
 }
 
 func (api *API) ListScenarios() http.HandlerFunc {
@@ -141,7 +155,7 @@ func (api *API) GetScenario() http.HandlerFunc {
 			return
 		}
 
-		err = json.NewEncoder(w).Encode(NewAPIScenario(scenario))
+		err = json.NewEncoder(w).Encode(NewAPIScenarioWithLiveVersion(scenario))
 		if err != nil {
 			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
 			http.Error(w, "", http.StatusInternalServerError)

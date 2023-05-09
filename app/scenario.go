@@ -20,6 +20,15 @@ type Scenario struct {
 	Description       string
 	TriggerObjectType string
 	CreatedAt         time.Time
+	LiveVersionID     *string
+}
+
+type ScenarioWithLiveVersion struct {
+	ID                string
+	Name              string
+	Description       string
+	TriggerObjectType string
+	CreatedAt         time.Time
 	LiveVersion       *PublishedScenarioIteration
 }
 
@@ -171,7 +180,7 @@ var (
 	ErrScenarioHasNoLiveVersion                         = errors.New("scenario has no live version")
 )
 
-func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStructWithReader DynamicStructWithReader, dataModel DataModel, logger *slog.Logger) (se ScenarioExecution, err error) {
+func (s ScenarioWithLiveVersion) Eval(ctx context.Context, repo RepositoryInterface, payloadStructWithReader DynamicStructWithReader, dataModel DataModel, logger *slog.Logger) (se ScenarioExecution, err error) {
 
 	///////////////////////////////
 	// Recover in case the evaluation panicked.
