@@ -12,7 +12,17 @@ Marble BackOffice is a frontend for the staff of Marble. It displays information
 
 Clean code architecture with minimal dependencies.
 
+#### Scaffolding
+
 The goal is to re-scaffold the project in the future with different tech choices, so the amount of modification made to the scaffolded files stays low and documented (See "Scaffolding and customisations" in this file).
+
+#### Design system
+
+Mui Core is used as an implemtation of material design.
+
+A backoffice is made up of a lot of simple controls and pages. The choice to use Mui Core is driven by the need to write simple html, not ease of customization.
+
+### Dependencies
 
 Main dev dependencies:
 - node
@@ -20,6 +30,9 @@ Main dev dependencies:
 
 Main runtime dependencies:
 - React ~18
+- Mui Core ~5
+
+code style: Prettier
 
 ### Run locally
 
