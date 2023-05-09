@@ -259,10 +259,10 @@ func (field PayloadFieldBool) Eval(d DataAccessor) (bool, error) {
 
 	valPointer, ok := valRaw.(*bool)
 	if !ok {
-		return false, fmt.Errorf("DB field %s is not a pointer to a boolean", field.FieldName)
+		return false, fmt.Errorf("Payload field %s is not a pointer to a boolean", field.FieldName)
 	}
 	if valPointer == nil {
-		return false, fmt.Errorf("DB field %s is null", field.FieldName)
+		return false, fmt.Errorf("Payload field %s is null", field.FieldName)
 	}
 	return *valPointer, nil
 }
