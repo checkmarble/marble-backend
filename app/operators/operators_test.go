@@ -98,6 +98,55 @@ func TestLogicEval(t *testing.T) {
 			operator: &PayloadFieldBool{FieldName: "false"},
 			expected: false,
 		},
+		{
+			name: "variadic and: 3 ops, true",
+			operator: &And{
+				Operands: []OperatorBool{&True{}, &True{}, &True{}},
+			},
+			expected: true,
+		},
+		{
+			name: "variadic and: 3 ops, false",
+			operator: &And{
+				Operands: []OperatorBool{&True{}, &True{}, &False{}},
+			},
+			expected: false,
+		},
+		{
+			name: "variadic and: 1 ops, false",
+			operator: &And{
+				Operands: []OperatorBool{&False{}},
+			},
+			expected: false,
+		},
+		{
+			name: "variadic or: 3 ops, true",
+			operator: &Or{
+				Operands: []OperatorBool{&False{}, &True{}, &False{}},
+			},
+			expected: true,
+		},
+		{
+			name: "variadic and: 3 ops, false",
+			operator: &Or{
+				Operands: []OperatorBool{&False{}, &False{}, &False{}},
+			},
+			expected: false,
+		},
+		{
+			name: "variadic and: 1 ops, false",
+			operator: &And{
+				Operands: []OperatorBool{&False{}},
+			},
+			expected: false,
+		},
+		{
+			name: "NOT true",
+			operator: &Not{
+				Child: &True{},
+			},
+			expected: false,
+		},
 	}
 	asserts := assert.New(t)
 	for _, c := range cases {
@@ -166,6 +215,24 @@ func TestMarshalUnMarshal(t *testing.T) {
 					Left:  &DbFieldBool{Path: []string{"a", "b"}, FieldName: "true"},
 					Right: &True{},
 				},
+			},
+		},
+		{
+			name: "Variadic and",
+			operator: &And{
+				Operands: []OperatorBool{&True{}, &True{}, &False{}},
+			},
+		},
+		{
+			name: "Variadic or",
+			operator: &Or{
+				Operands: []OperatorBool{&True{}, &True{}, &False{}},
+			},
+		},
+		{
+			name: "Not true",
+			operator: &Not{
+				Child: True{},
 			},
 		},
 	}
@@ -262,6 +329,27 @@ func TestMarshallBoolOperators(t *testing.T) {
 				FieldName: "c",
 			},
 			expected: `{"type":"DB_FIELD_BOOL","staticData":{"path":["a","b"],"fieldName":"c"}}`,
+		},
+		{
+			name: "variadic and",
+			operator: &And{
+				Operands: []OperatorBool{&True{}, &True{}, &False{}},
+			},
+			expected: `{"type":"AND","children":[{"type":"TRUE"},{"type":"TRUE"},{"type":"FALSE"}]}`,
+		},
+		{
+			name: "variadic or",
+			operator: &Or{
+				Operands: []OperatorBool{&True{}, &True{}, &False{}},
+			},
+			expected: `{"type":"OR","children":[{"type":"TRUE"},{"type":"TRUE"},{"type":"FALSE"}]}`,
+		},
+		{
+			name: "not true",
+			operator: &Not{
+				Child: True{},
+			},
+			expected: `{"type":"NOT","children":[{"type":"TRUE"}]}`,
 		},
 	}
 
