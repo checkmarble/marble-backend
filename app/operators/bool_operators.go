@@ -53,7 +53,7 @@ func init() {
 
 func (t True) Eval(d DataAccessor) (bool, error) { return true, nil }
 
-func (t True) Print() string { return "TRUE" }
+func (t True) String() string { return "TRUE" }
 
 // Marshal with added "Type" operator
 func (t True) MarshalJSON() ([]byte, error) {
@@ -80,7 +80,7 @@ func init() {
 
 func (f False) Eval(d DataAccessor) (bool, error) { return false, nil }
 
-func (f False) Print() string { return "FALSE" }
+func (f False) String() string { return "FALSE" }
 
 // Marshal with added "Type" operator
 func (f False) MarshalJSON() ([]byte, error) {
@@ -114,8 +114,8 @@ func (eq EqBool) Eval(d DataAccessor) (bool, error) {
 	return valLeft == valRight, nil
 }
 
-func (eq EqBool) Print() string {
-	return fmt.Sprintf("( %s =bool %s )", eq.Left.Print(), eq.Right.Print())
+func (eq EqBool) String() string {
+	return fmt.Sprintf("( %s =bool %s )", eq.Left.String(), eq.Right.String())
 }
 
 func (eq EqBool) MarshalJSON() ([]byte, error) {
@@ -199,7 +199,7 @@ func (field DbFieldBool) Eval(d DataAccessor) (bool, error) {
 	return valNullable.Bool, nil
 }
 
-func (field DbFieldBool) Print() string {
+func (field DbFieldBool) String() string {
 	return fmt.Sprintf("( Boolean field from DB: path %v, field name %s )", field.Path, field.FieldName)
 }
 
@@ -267,7 +267,7 @@ func (field PayloadFieldBool) Eval(d DataAccessor) (bool, error) {
 	return *valPointer, nil
 }
 
-func (field PayloadFieldBool) Print() string {
+func (field PayloadFieldBool) String() string {
 	return fmt.Sprintf("( Boolean field from Payload: %s )", field.FieldName)
 }
 
@@ -328,10 +328,10 @@ func (and And) Eval(d DataAccessor) (bool, error) {
 	return true, nil
 }
 
-func (and And) Print() string {
+func (and And) String() string {
 	opsPrinted := make([]string, len(and.Operands))
 	for i, op := range and.Operands {
-		opsPrinted[i] = op.Print()
+		opsPrinted[i] = op.String()
 	}
 	return fmt.Sprintf("( %s )", strings.Join(opsPrinted, " AND "))
 }
@@ -398,10 +398,10 @@ func (or Or) Eval(d DataAccessor) (bool, error) {
 	return false, nil
 }
 
-func (or Or) Print() string {
+func (or Or) String() string {
 	opsPrinted := make([]string, len(or.Operands))
 	for i, op := range or.Operands {
-		opsPrinted[i] = op.Print()
+		opsPrinted[i] = op.String()
 	}
 	return fmt.Sprintf("( %s )", strings.Join(opsPrinted, " OR "))
 }
@@ -464,8 +464,8 @@ func (not Not) Eval(d DataAccessor) (bool, error) {
 	return !res, nil
 }
 
-func (not Not) Print() string {
-	return fmt.Sprintf("( !%s )", not.Child.Print())
+func (not Not) String() string {
+	return fmt.Sprintf("( !%s )", not.Child.String())
 }
 
 func (not Not) MarshalJSON() ([]byte, error) {
