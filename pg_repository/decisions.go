@@ -26,7 +26,7 @@ type dbDecision struct {
 	DeletedAt           pgtype.Time `db:"deleted_at"`
 }
 
-func (d *dbDecision) dto() app.Decision {
+func (d *dbDecision) toDomain() app.Decision {
 	return app.Decision{
 		ID:                  d.ID,
 		CreatedAt:           d.CreatedAt,
@@ -69,9 +69,9 @@ func (r *PGRepository) GetDecision(ctx context.Context, orgID string, decisionID
 		return app.Decision{}, fmt.Errorf("unable to get decision: %w", err)
 	}
 
-	decisionDTO := decision.dto()
+	decisionDTO := decision.toDomain()
 	for _, rule := range decision.Rules {
-		decisionDTO.RuleExecutions = append(decisionDTO.RuleExecutions, rule.dto())
+		decisionDTO.RuleExecutions = append(decisionDTO.RuleExecutions, rule.toDomain())
 	}
 	return decisionDTO, nil
 }
@@ -121,7 +121,7 @@ func (r *PGRepository) StoreDecision(ctx context.Context, orgID string, decision
 		return app.Decision{}, fmt.Errorf("unable to create decision rules: %w", err)
 	}
 
-	createdDecisionDTO := createdDecision.dto()
+	createdDecisionDTO := createdDecision.toDomain()
 	createdDecisionDTO.RuleExecutions = createdDecisionRules
 
 	err = tx.Commit(ctx)

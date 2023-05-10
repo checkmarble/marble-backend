@@ -21,7 +21,7 @@ type dbDecisionRule struct {
 	DeletedAt     pgtype.Time `db:"deleted_at"`
 }
 
-func (dr *dbDecisionRule) dto() app.RuleExecution {
+func (dr *dbDecisionRule) toDomain() app.RuleExecution {
 	return app.RuleExecution{
 		Rule: app.Rule{
 			Name:        dr.Name,
@@ -72,7 +72,7 @@ func (r *PGRepository) createDecisionRules(ctx context.Context, tx pgx.Tx, orgID
 
 	decisionRulesDTOs := make([]app.RuleExecution, len(createdDecisionRules))
 	for i, decisionRule := range createdDecisionRules {
-		decisionRulesDTOs[i] = decisionRule.dto()
+		decisionRulesDTOs[i] = decisionRule.toDomain()
 	}
 	return decisionRulesDTOs, err
 }
