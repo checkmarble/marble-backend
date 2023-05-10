@@ -46,7 +46,7 @@ func columnList[T any](prefixes ...string) []string {
 // Return a map[string]any of column with non nil values to use with :
 //   - Update().SetMap()
 //   - Insert().SetMap()
-//   - Where(squirrel.Eq())
+//   - Where(sq.Eq())
 //
 // Inspired from pgx.RowToStructByName implementation
 func columnValueMap(input any) map[string]any {

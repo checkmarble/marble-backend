@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Masterminds/squirrel"
+	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -70,7 +70,7 @@ func (r *PGRepository) ListScenarioIterations(ctx context.Context, orgID string,
 		Select(columnList[dbScenarioIteration]()...).
 		From("scenario_iterations").
 		Where("org_id = ?", orgID).
-		Where(squirrel.Eq(columnValueMap(ListScenarioIterationsFilters{
+		Where(sq.Eq(columnValueMap(ListScenarioIterationsFilters{
 			ScenarioID: filters.ScenarioID,
 		}))).
 		ToSql()

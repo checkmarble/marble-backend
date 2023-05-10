@@ -7,7 +7,7 @@ import (
 	"marble/marble-backend/app"
 	"time"
 
-	"github.com/Masterminds/squirrel"
+	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -41,7 +41,7 @@ func (r *PGRepository) ListScenarios(ctx context.Context, orgID string) ([]app.S
 	sql, args, err := r.queryBuilder.
 		Select(columnList[dbScenario]()...).
 		From("scenarios").
-		Where(squirrel.Eq{
+		Where(sq.Eq{
 			"org_id": orgID,
 		}).ToSql()
 	if err != nil {
@@ -65,7 +65,7 @@ func (r *PGRepository) GetScenario(ctx context.Context, orgID string, scenarioID
 	sql, args, err := r.queryBuilder.
 		Select(columnList[dbScenario]()...).
 		From("scenarios").
-		Where(squirrel.Eq{
+		Where(sq.Eq{
 			"org_id": orgID,
 			"id":     scenarioID,
 		}).ToSql()
