@@ -221,7 +221,7 @@ func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStr
 		if err != nil {
 			return ScenarioExecution{}, err
 		}
-		logger.InfoCtx(ctx, "Rule executed", slog.Int("score_modifier", ruleExecution.Rule.ScoreModifier), slog.String("ruleName", ruleExecution.Rule.Formula.Print()), slog.Bool("result", ruleExecution.Result))
+		logger.InfoCtx(ctx, "Rule executed", slog.Int("score_modifier", ruleExecution.Rule.ScoreModifier), slog.String("ruleName", ruleExecution.Rule.Formula.String()), slog.Bool("result", ruleExecution.Result))
 
 		// Increment scenario score when rule is true
 		if ruleExecution.Result {

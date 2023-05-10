@@ -3,6 +3,7 @@ package operators
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -45,9 +46,14 @@ func UnmarshalOperatorBool(jsonBytes []byte) (OperatorBool, error) {
 // ///////////////////////////////////////////////////////////////////////////////////////
 type True struct{}
 
+// register creation
+func init() {
+	operatorFromType["TRUE"] = func() Operator { return &True{} }
+}
+
 func (t True) Eval(d DataAccessor) (bool, error) { return true, nil }
 
-func (t True) Print() string { return "TRUE" }
+func (t True) String() string { return "TRUE" }
 
 // Marshal with added "Type" operator
 func (t True) MarshalJSON() ([]byte, error) {
@@ -56,11 +62,6 @@ func (t True) MarshalJSON() ([]byte, error) {
 	}{
 		OperatorType: OperatorType{Type: "TRUE"},
 	})
-}
-
-// register creation
-func init() {
-	operatorFromType["TRUE"] = func() Operator { return &True{} }
 }
 
 func (t True) UnmarshalJSON(b []byte) error {
@@ -72,9 +73,14 @@ func (t True) UnmarshalJSON(b []byte) error {
 // ///////////////////////////////////////////////////////////////////////////////////////
 type False struct{}
 
+// register creation
+func init() {
+	operatorFromType["FALSE"] = func() Operator { return &False{} }
+}
+
 func (f False) Eval(d DataAccessor) (bool, error) { return false, nil }
 
-func (f False) Print() string { return "FALSE" }
+func (f False) String() string { return "FALSE" }
 
 // Marshal with added "Type" operator
 func (f False) MarshalJSON() ([]byte, error) {
@@ -83,11 +89,6 @@ func (f False) MarshalJSON() ([]byte, error) {
 	}{
 		OperatorType: OperatorType{Type: "FALSE"},
 	})
-}
-
-// register creation
-func init() {
-	operatorFromType["FALSE"] = func() Operator { return &False{} }
 }
 
 func (f False) UnmarshalJSON(b []byte) error {
@@ -99,6 +100,11 @@ func (f False) UnmarshalJSON(b []byte) error {
 // ///////////////////////////////////////////////////////////////////////////////////////
 type EqBool struct{ Left, Right OperatorBool }
 
+// register creation
+func init() {
+	operatorFromType["EQUAL_BOOL"] = func() Operator { return &EqBool{} }
+}
+
 func (eq EqBool) Eval(d DataAccessor) (bool, error) {
 	valLeft, errLeft := eq.Left.Eval(d)
 	valRight, errRight := eq.Right.Eval(d)
@@ -108,17 +114,11 @@ func (eq EqBool) Eval(d DataAccessor) (bool, error) {
 	return valLeft == valRight, nil
 }
 
-func (eq EqBool) Print() string {
-	return fmt.Sprintf("( %s =bool %s )", eq.Left.Print(), eq.Right.Print())
+func (eq EqBool) String() string {
+	return fmt.Sprintf("( %s =bool %s )", eq.Left.String(), eq.Right.String())
 }
 
 func (eq EqBool) MarshalJSON() ([]byte, error) {
-
-	// data schema
-	type eqData struct {
-		LeftOp  OperatorBool `json:"left"`
-		RightOp OperatorBool `json:"right"`
-	}
 
 	return json.Marshal(struct {
 		OperatorType
@@ -130,11 +130,6 @@ func (eq EqBool) MarshalJSON() ([]byte, error) {
 			eq.Right,
 		},
 	})
-}
-
-// register creation
-func init() {
-	operatorFromType["EQUAL_BOOL"] = func() Operator { return &EqBool{} }
 }
 
 func (eq *EqBool) UnmarshalJSON(b []byte) error {
@@ -177,6 +172,11 @@ type DbFieldBool struct {
 	FieldName string
 }
 
+// register creation
+func init() {
+	operatorFromType["DB_FIELD_BOOL"] = func() Operator { return &DbFieldBool{} }
+}
+
 func (field DbFieldBool) Eval(d DataAccessor) (bool, error) {
 	err := d.ValidateDbFieldReadConsistency(field.Path, field.FieldName)
 	if err != nil {
@@ -199,7 +199,7 @@ func (field DbFieldBool) Eval(d DataAccessor) (bool, error) {
 	return valNullable.Bool, nil
 }
 
-func (field DbFieldBool) Print() string {
+func (field DbFieldBool) String() string {
 	return fmt.Sprintf("( Boolean field from DB: path %v, field name %s )", field.Path, field.FieldName)
 }
 
@@ -221,11 +221,6 @@ func (field DbFieldBool) MarshalJSON() ([]byte, error) {
 			FieldName: field.FieldName,
 		},
 	})
-}
-
-// register creation
-func init() {
-	operatorFromType["DB_FIELD_BOOL"] = func() Operator { return &DbFieldBool{} }
 }
 
 func (field *DbFieldBool) UnmarshalJSON(b []byte) error {
@@ -253,6 +248,11 @@ type PayloadFieldBool struct {
 	FieldName string
 }
 
+// register creation
+func init() {
+	operatorFromType["PAYLOAD_FIELD_BOOL"] = func() Operator { return &PayloadFieldBool{} }
+}
+
 func (field PayloadFieldBool) Eval(d DataAccessor) (bool, error) {
 
 	valRaw := d.GetPayloadField(field.FieldName)
@@ -267,7 +267,7 @@ func (field PayloadFieldBool) Eval(d DataAccessor) (bool, error) {
 	return *valPointer, nil
 }
 
-func (field PayloadFieldBool) Print() string {
+func (field PayloadFieldBool) String() string {
 	return fmt.Sprintf("( Boolean field from Payload: %s )", field.FieldName)
 }
 
@@ -289,11 +289,6 @@ func (field PayloadFieldBool) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// register creation
-func init() {
-	operatorFromType["PAYLOAD_FIELD_BOOL"] = func() Operator { return &PayloadFieldBool{} }
-}
-
 func (field *PayloadFieldBool) UnmarshalJSON(b []byte) error {
 	// data schema
 	var dbFieldBoolData struct {
@@ -306,6 +301,204 @@ func (field *PayloadFieldBool) UnmarshalJSON(b []byte) error {
 		return fmt.Errorf("unable to unmarshal operator to intermediate staticData representation: %w", err)
 	}
 	field.FieldName = dbFieldBoolData.StaticData.FieldName
+
+	return nil
+}
+
+// ///////////////////////////////////////////////////////////////////////////////////////
+// AND
+// ///////////////////////////////////////////////////////////////////////////////////////
+
+type And struct{ Operands []OperatorBool }
+
+// register creation
+func init() {
+	operatorFromType["AND"] = func() Operator { return &And{} }
+}
+
+func (and And) Eval(d DataAccessor) (bool, error) {
+	for _, op := range and.Operands {
+		res, err := op.Eval(d)
+		if err != nil {
+			return false, err
+		} else if !res {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func (and And) String() string {
+	opsPrinted := make([]string, len(and.Operands))
+	for i, op := range and.Operands {
+		opsPrinted[i] = op.String()
+	}
+	return fmt.Sprintf("( %s )", strings.Join(opsPrinted, " AND "))
+}
+
+func (and And) MarshalJSON() ([]byte, error) {
+
+	return json.Marshal(struct {
+		OperatorType
+		Children []OperatorBool `json:"children"`
+	}{
+		OperatorType: OperatorType{Type: "AND"},
+		Children:     and.Operands,
+	})
+}
+
+func (and *And) UnmarshalJSON(b []byte) error {
+	// data schema
+	var andData struct {
+		Children []json.RawMessage `json:"children"`
+	}
+	if err := json.Unmarshal(b, &andData); err != nil {
+		return fmt.Errorf("unable to unmarshal operator to intermediate children representation: %w", err)
+	}
+
+	// Check number of children
+	if len(andData.Children) == 0 {
+		return fmt.Errorf("No children for operator AND: %d operands", len(andData.Children))
+	}
+
+	children := make([]OperatorBool, len(andData.Children))
+	for i, child := range andData.Children {
+		// Build concrete operand
+		op, err := UnmarshalOperatorBool(child)
+		if err != nil {
+			return fmt.Errorf("unable to instantiate AND operand: %w", err)
+		}
+		children[i] = op
+	}
+	and.Operands = children
+
+	return nil
+}
+
+// ///////////////////////////////////////////////////////////////////////////////////////
+// OR
+// ///////////////////////////////////////////////////////////////////////////////////////
+
+type Or struct{ Operands []OperatorBool }
+
+// register creation
+func init() {
+	operatorFromType["OR"] = func() Operator { return &Or{} }
+}
+
+func (or Or) Eval(d DataAccessor) (bool, error) {
+	for _, op := range or.Operands {
+		res, err := op.Eval(d)
+		if err != nil {
+			return false, err
+		} else if res {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (or Or) String() string {
+	opsPrinted := make([]string, len(or.Operands))
+	for i, op := range or.Operands {
+		opsPrinted[i] = op.String()
+	}
+	return fmt.Sprintf("( %s )", strings.Join(opsPrinted, " OR "))
+}
+
+func (or Or) MarshalJSON() ([]byte, error) {
+
+	return json.Marshal(struct {
+		OperatorType
+		Children []OperatorBool `json:"children"`
+	}{
+		OperatorType: OperatorType{Type: "OR"},
+		Children:     or.Operands,
+	})
+}
+
+func (or *Or) UnmarshalJSON(b []byte) error {
+	// data schema
+	var orData struct {
+		Children []json.RawMessage `json:"children"`
+	}
+	if err := json.Unmarshal(b, &orData); err != nil {
+		return fmt.Errorf("unable to unmarshal operator to intermediate children representation: %w", err)
+	}
+
+	// Check number of children
+	if len(orData.Children) == 0 {
+		return fmt.Errorf("No children for operator OR: %d operands", len(orData.Children))
+	}
+
+	children := make([]OperatorBool, len(orData.Children))
+	for i, child := range orData.Children {
+		// Build concrete operand
+		op, err := UnmarshalOperatorBool(child)
+		if err != nil {
+			return fmt.Errorf("unable to instantiate OR operand: %w", err)
+		}
+		children[i] = op
+	}
+	or.Operands = children
+
+	return nil
+}
+
+// ///////////////////////////////////////////////////////////////////////////////////////
+// NOT
+// ///////////////////////////////////////////////////////////////////////////////////////
+
+type Not struct{ Child OperatorBool }
+
+// register creation
+func init() {
+	operatorFromType["NOT"] = func() Operator { return &Not{} }
+}
+
+func (not Not) Eval(d DataAccessor) (bool, error) {
+	res, err := not.Child.Eval(d)
+	if err != nil {
+		return false, err
+	}
+	return !res, nil
+}
+
+func (not Not) String() string {
+	return fmt.Sprintf("( !%s )", not.Child.String())
+}
+
+func (not Not) MarshalJSON() ([]byte, error) {
+
+	return json.Marshal(struct {
+		OperatorType
+		Children []OperatorBool `json:"children"`
+	}{
+		OperatorType: OperatorType{Type: "NOT"},
+		Children:     []OperatorBool{not.Child},
+	})
+}
+
+func (not *Not) UnmarshalJSON(b []byte) error {
+	// data schema
+	var notData struct {
+		Children []json.RawMessage `json:"children"`
+	}
+	if err := json.Unmarshal(b, &notData); err != nil {
+		return fmt.Errorf("unable to unmarshal operator to intermediate children representation: %w", err)
+	}
+
+	// Check number of children
+	if len(notData.Children) != 1 {
+		return fmt.Errorf("Incorrect number of children operators for operator NOT: %d operands", len(notData.Children))
+	}
+
+	// Build concrete operand
+	op, err := UnmarshalOperatorBool(notData.Children[0])
+	if err != nil {
+		return fmt.Errorf("unable to instantiate NOT operand: %w", err)
+	}
+	not.Child = op
 
 	return nil
 }

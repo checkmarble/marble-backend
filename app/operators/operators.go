@@ -45,7 +45,7 @@ type Operator interface {
 	json.Unmarshaler
 
 	// Self-print
-	Print() string
+	String() string
 }
 
 // Used to add and read the "type" kep anytime we marshal/unmarshal
