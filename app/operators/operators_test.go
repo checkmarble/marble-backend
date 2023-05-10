@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 )
@@ -250,9 +249,6 @@ func TestMarshalUnMarshal(t *testing.T) {
 				t.Errorf("error unmarshaling operator: %v", err)
 			}
 
-			spew.Dump(c.operator)
-			spew.Dump(rootOperator)
-
 			expected, err := c.operator.Eval(&dataAccessor)
 			if err != nil {
 				t.Errorf("error: %v", err)
@@ -351,6 +347,21 @@ func TestMarshallBoolOperators(t *testing.T) {
 			},
 			expected: `{"type":"NOT","children":[{"type":"TRUE"}]}`,
 		},
+		{
+			name: "eq with null",
+			operator: &EqBool{
+				Left:  &True{},
+				Right: nil,
+			},
+			expected: `{"type":"EQUAL_BOOL","children":[{"type":"TRUE"},null]}`,
+		},
+		{
+			name: "or with null",
+			operator: &Or{
+				Operands: []OperatorBool{&True{}, nil, &False{}},
+			},
+			expected: `{"type":"OR","children":[{"type":"TRUE"},null,{"type":"FALSE"}]}`,
+		},
 	}
 
 	for _, c := range cases {
@@ -398,6 +409,21 @@ func TestUnmarshallBoolOperators(t *testing.T) {
 			},
 			json: `{"type":"DB_FIELD_BOOL","staticData":{"path":["a","b"],"fieldName":"c"}}`,
 		},
+		{
+			name: "eq with null",
+			expected: &EqBool{
+				Left:  &True{},
+				Right: nil,
+			},
+			json: `{"type":"EQUAL_BOOL","children":[{"type":"TRUE"},null]}`,
+		},
+		{
+			name: "or with null",
+			expected: &Or{
+				Operands: []OperatorBool{&True{}, nil, &False{}},
+			},
+			json: `{"type":"OR","children":[{"type":"TRUE"},null,{"type":"FALSE"}]}`,
+		},
 	}
 
 	for _, c := range cases {
@@ -407,6 +433,43 @@ func TestUnmarshallBoolOperators(t *testing.T) {
 				t.Errorf("error marshaling operator: %v", err)
 			}
 			asserts.Equal(c.expected, operator)
+		})
+	}
+}
+
+func TestInvalidOperators(t *testing.T) {
+	type testCase struct {
+		name     string
+		operator OperatorBool
+	}
+
+	cases := []testCase{
+		{
+			name:     "empty and",
+			operator: &And{},
+		},
+		{
+			name:     "and with null",
+			operator: &And{Operands: []OperatorBool{&True{}, nil}},
+		},
+		{
+			name:     "and with null first",
+			operator: &And{Operands: []OperatorBool{nil, &True{}, &False{}}},
+		},
+		{
+			name: "eq",
+			operator: &EqBool{
+				Left:  &True{},
+				Right: nil,
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if c.operator.isValid() {
+				t.Errorf("operator should be invalid")
+			}
 		})
 	}
 }

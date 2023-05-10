@@ -2,6 +2,7 @@ package operators
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -12,8 +13,13 @@ import (
 // get an unmarshalled operator
 // /////////////////////////////
 
+var ErrEvaluatingInvalidOperator = errors.New("Error evaluating invalid opereator")
+
 func UnmarshalOperatorBool(jsonBytes []byte) (OperatorBool, error) {
 	// All operators follow the same schema
+	if string(jsonBytes) == "null" {
+		return nil, nil
+	}
 
 	var _opType OperatorType
 
@@ -53,6 +59,8 @@ func init() {
 
 func (t True) Eval(d DataAccessor) (bool, error) { return true, nil }
 
+func (t True) isValid() bool { return true }
+
 func (t True) String() string { return "TRUE" }
 
 // Marshal with added "Type" operator
@@ -80,6 +88,8 @@ func init() {
 
 func (f False) Eval(d DataAccessor) (bool, error) { return false, nil }
 
+func (f False) isValid() bool { return true }
+
 func (f False) String() string { return "FALSE" }
 
 // Marshal with added "Type" operator
@@ -106,12 +116,19 @@ func init() {
 }
 
 func (eq EqBool) Eval(d DataAccessor) (bool, error) {
+	if !eq.isValid() {
+		return false, ErrEvaluatingInvalidOperator
+	}
 	valLeft, errLeft := eq.Left.Eval(d)
 	valRight, errRight := eq.Right.Eval(d)
 	if errLeft != nil || errRight != nil {
 		return false, fmt.Errorf("error in EqBool.Eval: %v, %v", errLeft, errRight)
 	}
 	return valLeft == valRight, nil
+}
+
+func (eq EqBool) isValid() bool {
+	return eq.Left != nil && eq.Right != nil && eq.Left.isValid() && eq.Right.isValid()
 }
 
 func (eq EqBool) String() string {
@@ -178,6 +195,10 @@ func init() {
 }
 
 func (field DbFieldBool) Eval(d DataAccessor) (bool, error) {
+	if !field.isValid() {
+		return false, ErrEvaluatingInvalidOperator
+	}
+
 	err := d.ValidateDbFieldReadConsistency(field.Path, field.FieldName)
 	if err != nil {
 		return false, err
@@ -197,6 +218,10 @@ func (field DbFieldBool) Eval(d DataAccessor) (bool, error) {
 		return false, fmt.Errorf("DB field %s is null", field.FieldName)
 	}
 	return valNullable.Bool, nil
+}
+
+func (field DbFieldBool) isValid() bool {
+	return len(field.Path) > 0 && field.FieldName != ""
 }
 
 func (field DbFieldBool) String() string {
@@ -254,6 +279,9 @@ func init() {
 }
 
 func (field PayloadFieldBool) Eval(d DataAccessor) (bool, error) {
+	if !field.isValid() {
+		return false, ErrEvaluatingInvalidOperator
+	}
 
 	valRaw := d.GetPayloadField(field.FieldName)
 
@@ -265,6 +293,10 @@ func (field PayloadFieldBool) Eval(d DataAccessor) (bool, error) {
 		return false, fmt.Errorf("Payload field %s is null", field.FieldName)
 	}
 	return *valPointer, nil
+}
+
+func (field PayloadFieldBool) isValid() bool {
+	return field.FieldName != ""
 }
 
 func (field PayloadFieldBool) String() string {
@@ -317,6 +349,10 @@ func init() {
 }
 
 func (and And) Eval(d DataAccessor) (bool, error) {
+	if !and.isValid() {
+		return false, ErrEvaluatingInvalidOperator
+	}
+
 	for _, op := range and.Operands {
 		res, err := op.Eval(d)
 		if err != nil {
@@ -326,6 +362,18 @@ func (and And) Eval(d DataAccessor) (bool, error) {
 		}
 	}
 	return true, nil
+}
+
+func (and And) isValid() bool {
+	if len(and.Operands) == 0 {
+		return false
+	}
+	for _, op := range and.Operands {
+		if op == nil || !op.isValid() {
+			return false
+		}
+	}
+	return true
 }
 
 func (and And) String() string {
@@ -356,11 +404,6 @@ func (and *And) UnmarshalJSON(b []byte) error {
 		return fmt.Errorf("unable to unmarshal operator to intermediate children representation: %w", err)
 	}
 
-	// Check number of children
-	if len(andData.Children) == 0 {
-		return fmt.Errorf("No children for operator AND: %d operands", len(andData.Children))
-	}
-
 	children := make([]OperatorBool, len(andData.Children))
 	for i, child := range andData.Children {
 		// Build concrete operand
@@ -387,6 +430,10 @@ func init() {
 }
 
 func (or Or) Eval(d DataAccessor) (bool, error) {
+	if !or.isValid() {
+		return false, ErrEvaluatingInvalidOperator
+	}
+
 	for _, op := range or.Operands {
 		res, err := op.Eval(d)
 		if err != nil {
@@ -396,6 +443,18 @@ func (or Or) Eval(d DataAccessor) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+func (or Or) isValid() bool {
+	if len(or.Operands) == 0 {
+		return false
+	}
+	for _, op := range or.Operands {
+		if op == nil || !op.isValid() {
+			return false
+		}
+	}
+	return true
 }
 
 func (or Or) String() string {
@@ -426,11 +485,6 @@ func (or *Or) UnmarshalJSON(b []byte) error {
 		return fmt.Errorf("unable to unmarshal operator to intermediate children representation: %w", err)
 	}
 
-	// Check number of children
-	if len(orData.Children) == 0 {
-		return fmt.Errorf("No children for operator OR: %d operands", len(orData.Children))
-	}
-
 	children := make([]OperatorBool, len(orData.Children))
 	for i, child := range orData.Children {
 		// Build concrete operand
@@ -457,11 +511,19 @@ func init() {
 }
 
 func (not Not) Eval(d DataAccessor) (bool, error) {
+	if !not.isValid() {
+		return false, ErrEvaluatingInvalidOperator
+	}
+
 	res, err := not.Child.Eval(d)
 	if err != nil {
 		return false, err
 	}
 	return !res, nil
+}
+
+func (not Not) isValid() bool {
+	return not.Child != nil && not.Child.isValid()
 }
 
 func (not Not) String() string {
