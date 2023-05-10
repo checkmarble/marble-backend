@@ -200,6 +200,14 @@ func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStr
 		return ScenarioExecution{}, utils.ErrOrgNotInContext
 	}
 	liveVersion, err := repo.GetScenarioIteration(ctx, orgID, *s.LiveVersionID)
+	if err != nil {
+		return ScenarioExecution{}, err
+	}
+
+	publishedVersion, err := NewPublishedScenarioIteration(liveVersion)
+	if err != nil {
+		return ScenarioExecution{}, ErrScenarioIterationNotValid
+	}
 
 	// Check the scenario & trigger_object's types
 	if s.TriggerObjectType != payloadStructWithReader.Table.Name {
@@ -209,7 +217,7 @@ func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStr
 	dataAccessor := DataAccessorImpl{DataModel: dataModel, Payload: payloadStructWithReader, repository: repo}
 
 	// Evaluate the trigger
-	triggerPassed, err := liveVersion.Body.TriggerCondition.Eval(&dataAccessor)
+	triggerPassed, err := publishedVersion.Body.TriggerCondition.Eval(&dataAccessor)
 	if err != nil {
 		return ScenarioExecution{}, err
 	}
@@ -221,7 +229,7 @@ func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStr
 	// Evaluate all rules
 	score := 0
 	ruleExecutions := make([]RuleExecution, 0)
-	for _, rule := range liveVersion.Body.Rules {
+	for _, rule := range publishedVersion.Body.Rules {
 
 		// Evaluate single rule
 		ruleExecution, err := rule.Eval(&dataAccessor)
@@ -241,13 +249,13 @@ func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStr
 	// Compute outcome from score
 	o := None
 
-	if score < *liveVersion.Body.ScoreReviewThreshold {
+	if score < publishedVersion.Body.ScoreReviewThreshold {
 		o = Approve
 	}
-	if score >= *liveVersion.Body.ScoreReviewThreshold && score < *liveVersion.Body.ScoreRejectThreshold {
+	if score >= publishedVersion.Body.ScoreReviewThreshold && score < publishedVersion.Body.ScoreRejectThreshold {
 		o = Review
 	}
-	if score > *liveVersion.Body.ScoreRejectThreshold {
+	if score > publishedVersion.Body.ScoreRejectThreshold {
 		o = Reject
 	}
 
@@ -256,7 +264,7 @@ func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStr
 		ScenarioID:          s.ID,
 		ScenarioName:        s.Name,
 		ScenarioDescription: s.Description,
-		ScenarioVersion:     *liveVersion.Version,
+		ScenarioVersion:     publishedVersion.Version,
 		RuleExecutions:      ruleExecutions,
 		Score:               score,
 		Outcome:             o,
