@@ -88,7 +88,7 @@ func NewPublishedScenarioIteration(si ScenarioIteration) (PublishedScenarioItera
 	return result, nil
 }
 
-func (si ScenarioIteration) IsValideForPublication() bool {
+func (si ScenarioIteration) IsValidForPublication() bool {
 	if si.Body.ScoreReviewThreshold == nil {
 		return false
 	}
@@ -100,8 +100,15 @@ func (si ScenarioIteration) IsValideForPublication() bool {
 	if len(si.Body.Rules) < 1 {
 		return false
 	}
+	for _, rule := range si.Body.Rules {
+		if !rule.Formula.IsValid() {
+			return false
+		}
+	}
 
 	if si.Body.TriggerCondition == nil {
+		return false
+	} else if !si.Body.TriggerCondition.IsValid() {
 		return false
 	}
 

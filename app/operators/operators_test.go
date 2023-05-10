@@ -467,7 +467,7 @@ func TestInvalidOperators(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if c.operator.isValid() {
+			if c.operator.IsValid() {
 				t.Errorf("operator should be invalid")
 			}
 		})

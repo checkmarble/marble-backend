@@ -59,7 +59,7 @@ func init() {
 
 func (t True) Eval(d DataAccessor) (bool, error) { return true, nil }
 
-func (t True) isValid() bool { return true }
+func (t True) IsValid() bool { return true }
 
 func (t True) String() string { return "TRUE" }
 
@@ -88,7 +88,7 @@ func init() {
 
 func (f False) Eval(d DataAccessor) (bool, error) { return false, nil }
 
-func (f False) isValid() bool { return true }
+func (f False) IsValid() bool { return true }
 
 func (f False) String() string { return "FALSE" }
 
@@ -116,7 +116,7 @@ func init() {
 }
 
 func (eq EqBool) Eval(d DataAccessor) (bool, error) {
-	if !eq.isValid() {
+	if !eq.IsValid() {
 		return false, ErrEvaluatingInvalidOperator
 	}
 	valLeft, errLeft := eq.Left.Eval(d)
@@ -127,8 +127,8 @@ func (eq EqBool) Eval(d DataAccessor) (bool, error) {
 	return valLeft == valRight, nil
 }
 
-func (eq EqBool) isValid() bool {
-	return eq.Left != nil && eq.Right != nil && eq.Left.isValid() && eq.Right.isValid()
+func (eq EqBool) IsValid() bool {
+	return eq.Left != nil && eq.Right != nil && eq.Left.IsValid() && eq.Right.IsValid()
 }
 
 func (eq EqBool) String() string {
@@ -195,7 +195,7 @@ func init() {
 }
 
 func (field DbFieldBool) Eval(d DataAccessor) (bool, error) {
-	if !field.isValid() {
+	if !field.IsValid() {
 		return false, ErrEvaluatingInvalidOperator
 	}
 
@@ -220,7 +220,7 @@ func (field DbFieldBool) Eval(d DataAccessor) (bool, error) {
 	return valNullable.Bool, nil
 }
 
-func (field DbFieldBool) isValid() bool {
+func (field DbFieldBool) IsValid() bool {
 	return len(field.Path) > 0 && field.FieldName != ""
 }
 
@@ -279,7 +279,7 @@ func init() {
 }
 
 func (field PayloadFieldBool) Eval(d DataAccessor) (bool, error) {
-	if !field.isValid() {
+	if !field.IsValid() {
 		return false, ErrEvaluatingInvalidOperator
 	}
 
@@ -295,7 +295,7 @@ func (field PayloadFieldBool) Eval(d DataAccessor) (bool, error) {
 	return *valPointer, nil
 }
 
-func (field PayloadFieldBool) isValid() bool {
+func (field PayloadFieldBool) IsValid() bool {
 	return field.FieldName != ""
 }
 
@@ -349,7 +349,7 @@ func init() {
 }
 
 func (and And) Eval(d DataAccessor) (bool, error) {
-	if !and.isValid() {
+	if !and.IsValid() {
 		return false, ErrEvaluatingInvalidOperator
 	}
 
@@ -364,12 +364,12 @@ func (and And) Eval(d DataAccessor) (bool, error) {
 	return true, nil
 }
 
-func (and And) isValid() bool {
+func (and And) IsValid() bool {
 	if len(and.Operands) == 0 {
 		return false
 	}
 	for _, op := range and.Operands {
-		if op == nil || !op.isValid() {
+		if op == nil || !op.IsValid() {
 			return false
 		}
 	}
@@ -430,7 +430,7 @@ func init() {
 }
 
 func (or Or) Eval(d DataAccessor) (bool, error) {
-	if !or.isValid() {
+	if !or.IsValid() {
 		return false, ErrEvaluatingInvalidOperator
 	}
 
@@ -445,12 +445,12 @@ func (or Or) Eval(d DataAccessor) (bool, error) {
 	return false, nil
 }
 
-func (or Or) isValid() bool {
+func (or Or) IsValid() bool {
 	if len(or.Operands) == 0 {
 		return false
 	}
 	for _, op := range or.Operands {
-		if op == nil || !op.isValid() {
+		if op == nil || !op.IsValid() {
 			return false
 		}
 	}
@@ -511,7 +511,7 @@ func init() {
 }
 
 func (not Not) Eval(d DataAccessor) (bool, error) {
-	if !not.isValid() {
+	if !not.IsValid() {
 		return false, ErrEvaluatingInvalidOperator
 	}
 
@@ -522,8 +522,8 @@ func (not Not) Eval(d DataAccessor) (bool, error) {
 	return !res, nil
 }
 
-func (not Not) isValid() bool {
-	return not.Child != nil && not.Child.isValid()
+func (not Not) IsValid() bool {
+	return not.Child != nil && not.Child.IsValid()
 }
 
 func (not Not) String() string {

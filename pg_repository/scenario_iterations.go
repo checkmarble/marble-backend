@@ -298,7 +298,7 @@ func (r *PGRepository) publishScenarioIteration(ctx context.Context, tx pgx.Tx, 
 		return err
 	}
 
-	if !si.IsValideForPublication() {
+	if !si.IsValidForPublication() {
 		return app.ErrScenarioIterationNotValid
 	}
 
