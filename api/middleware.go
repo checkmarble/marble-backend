@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"marble/marble-backend/utils"
 	"net/http"
 	"strings"
 
@@ -40,7 +41,7 @@ func (api *API) jwtValidator(next http.Handler) http.Handler {
 		}
 
 		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-			ctx := context.WithValue(r.Context(), contextKeyClaims, claims)
+			ctx := context.WithValue(r.Context(), utils.ContextKeyClaims, claims)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		} else {
 			api.logger.ErrorCtx(ctx, err.Error())
@@ -56,7 +57,7 @@ func (api *API) authMiddlewareFactory(middlewareParams map[TokenType]Role) func(
 			ctx := r.Context()
 
 			// first, extract the token claims from the context
-			claims, ok := ctx.Value(contextKeyClaims).(jwt.MapClaims)
+			claims, ok := ctx.Value(utils.ContextKeyClaims).(jwt.MapClaims)
 			if !ok {
 				api.logger.ErrorCtx(ctx, "claims not found in context")
 				http.Error(w, "", http.StatusUnauthorized)
@@ -96,9 +97,9 @@ func (api *API) authMiddlewareFactory(middlewareParams map[TokenType]Role) func(
 				return
 			}
 
-			ctx = context.WithValue(ctx, contextKeyOrgID, organizationId)
-			ctx = context.WithValue(ctx, contextKeyTokenType, tokenType)
-			ctx = context.WithValue(ctx, contextKeyTokenRole, tokenRole)
+			ctx = context.WithValue(ctx, utils.ContextKeyOrgID, organizationId)
+			ctx = context.WithValue(ctx, utils.ContextKeyTokenType, tokenType)
+			ctx = context.WithValue(ctx, utils.ContextKeyTokenRole, tokenRole)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
