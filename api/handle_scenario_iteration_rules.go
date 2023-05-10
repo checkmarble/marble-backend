@@ -59,7 +59,7 @@ func (api *API) ListScenarioIterationRules() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := orgIDFromCtx(ctx)
+		orgID, err := utils.OrgIDFromCtx(ctx)
 		if err != nil {
 			http.Error(w, "", http.StatusUnauthorized)
 			return
@@ -115,7 +115,7 @@ func (api *API) CreateScenarioIterationRule() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := orgIDFromCtx(ctx)
+		orgID, err := utils.OrgIDFromCtx(ctx)
 		if err != nil {
 			http.Error(w, "", http.StatusUnauthorized)
 			return
@@ -168,7 +168,7 @@ func (api *API) GetScenarioIterationRule() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := orgIDFromCtx(ctx)
+		orgID, err := utils.OrgIDFromCtx(ctx)
 		if err != nil {
 			http.Error(w, "", http.StatusUnauthorized)
 			return
@@ -220,7 +220,7 @@ func (api *API) UpdateScenarioIterationRule() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := orgIDFromCtx(ctx)
+		orgID, err := utils.OrgIDFromCtx(ctx)
 		if err != nil {
 			http.Error(w, "", http.StatusUnauthorized)
 			return

@@ -103,16 +103,3 @@ func (api *API) authMiddlewareFactory(middlewareParams map[TokenType]Role) func(
 		})
 	}
 }
-
-var ErrOrgNotInContext = fmt.Errorf("organization ID not found in request context")
-
-func orgIDFromCtx(ctx context.Context) (id string, err error) {
-
-	orgID, found := ctx.Value(contextKeyOrgID).(string)
-
-	if !found {
-		return "", ErrOrgNotInContext
-	}
-
-	return orgID, nil
-}

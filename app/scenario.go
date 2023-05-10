@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"marble/marble-backend/app/operators"
+	"marble/marble-backend/utils"
 	"runtime/debug"
 	"time"
 
@@ -20,7 +21,7 @@ type Scenario struct {
 	Description       string
 	TriggerObjectType string
 	CreatedAt         time.Time
-	LiveVersion       *PublishedScenarioIteration
+	LiveVersionID     *string
 }
 
 type CreateScenarioInput struct {
@@ -190,9 +191,15 @@ func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStr
 	logger.InfoCtx(ctx, "Evaluting scenario", "scenarioId", s.ID)
 
 	// If the scenario has no live version, don't try to Eval() it, return early
-	if s.LiveVersion == nil {
+	if s.LiveVersionID == nil {
 		return ScenarioExecution{}, ErrScenarioHasNoLiveVersion
 	}
+
+	orgID, err := utils.OrgIDFromCtx(ctx)
+	if err != nil {
+		return ScenarioExecution{}, utils.ErrOrgNotInContext
+	}
+	liveVersion, err := repo.GetScenarioIteration(ctx, orgID, *s.LiveVersionID)
 
 	// Check the scenario & trigger_object's types
 	if s.TriggerObjectType != payloadStructWithReader.Table.Name {
@@ -202,7 +209,7 @@ func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStr
 	dataAccessor := DataAccessorImpl{DataModel: dataModel, Payload: payloadStructWithReader, repository: repo}
 
 	// Evaluate the trigger
-	triggerPassed, err := s.LiveVersion.Body.TriggerCondition.Eval(&dataAccessor)
+	triggerPassed, err := liveVersion.Body.TriggerCondition.Eval(&dataAccessor)
 	if err != nil {
 		return ScenarioExecution{}, err
 	}
@@ -214,7 +221,7 @@ func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStr
 	// Evaluate all rules
 	score := 0
 	ruleExecutions := make([]RuleExecution, 0)
-	for _, rule := range s.LiveVersion.Body.Rules {
+	for _, rule := range liveVersion.Body.Rules {
 
 		// Evaluate single rule
 		ruleExecution, err := rule.Eval(&dataAccessor)
@@ -234,13 +241,13 @@ func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStr
 	// Compute outcome from score
 	o := None
 
-	if score < s.LiveVersion.Body.ScoreReviewThreshold {
+	if score < *liveVersion.Body.ScoreReviewThreshold {
 		o = Approve
 	}
-	if score >= s.LiveVersion.Body.ScoreReviewThreshold && score < s.LiveVersion.Body.ScoreRejectThreshold {
+	if score >= *liveVersion.Body.ScoreReviewThreshold && score < *liveVersion.Body.ScoreRejectThreshold {
 		o = Review
 	}
-	if score > s.LiveVersion.Body.ScoreRejectThreshold {
+	if score > *liveVersion.Body.ScoreRejectThreshold {
 		o = Reject
 	}
 
@@ -249,7 +256,7 @@ func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStr
 		ScenarioID:          s.ID,
 		ScenarioName:        s.Name,
 		ScenarioDescription: s.Description,
-		ScenarioVersion:     s.LiveVersion.Version,
+		ScenarioVersion:     *liveVersion.Version,
 		RuleExecutions:      ruleExecutions,
 		Score:               score,
 		Outcome:             o,

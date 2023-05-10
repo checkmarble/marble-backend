@@ -42,7 +42,7 @@ func TestCreateScenario(t *testing.T) {
 	asserts.Equal("This is a test scenario", scenar.Description)
 	asserts.Equal("transactions", scenar.TriggerObjectType)
 	asserts.Regexp(uuidRegexp, scenar.ID)
-	asserts.True(scenar.LiveVersion == nil)
+	asserts.True(scenar.LiveVersionID == nil)
 
 	cleanupScenarios([]string{scenar.ID}, globalTestParams.testIds["OrganizationId"])
 	if err != nil {
@@ -85,7 +85,7 @@ func TestUpdateScenario(t *testing.T) {
 	asserts.Equal("New description", newScenar.Description)
 	asserts.Equal("transactions", newScenar.TriggerObjectType)
 	asserts.Equal(scenar.ID, newScenar.ID)
-	asserts.True(newScenar.LiveVersion == nil)
+	asserts.True(newScenar.LiveVersionID == nil)
 
 	cleanupScenarios([]string{scenar.ID}, globalTestParams.testIds["OrganizationId"])
 	if err != nil {
@@ -193,7 +193,7 @@ func TestGetScenarioWithLiveVersion(t *testing.T) {
 	asserts.Equal(scenar.Name, scenarWithLiveVersion.Name)
 	asserts.Equal(scenar.Description, scenarWithLiveVersion.Description)
 	asserts.Equal(scenar.TriggerObjectType, scenarWithLiveVersion.TriggerObjectType)
-	asserts.Equal(iteration.ID, scenarWithLiveVersion.LiveVersion.ID)
+	asserts.Equal(iteration.ID, *scenarWithLiveVersion.LiveVersionID)
 
 	cleanupScenarios([]string{scenar.ID}, globalTestParams.testIds["OrganizationId"])
 	if err != nil {

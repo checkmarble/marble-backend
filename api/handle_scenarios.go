@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"marble/marble-backend/app"
+	"marble/marble-backend/utils"
 	"net/http"
 	"time"
 
@@ -29,17 +30,13 @@ type APIScenario struct {
 }
 
 func NewAPIScenario(scenario app.Scenario) APIScenario {
-	var liveVersionId string
-	if scenario.LiveVersion != nil {
-		liveVersionId = scenario.LiveVersion.ID
-	}
 	return APIScenario{
 		ID:                scenario.ID,
 		Name:              scenario.Name,
 		Description:       scenario.Description,
 		TriggerObjectType: scenario.TriggerObjectType,
 		CreatedAt:         scenario.CreatedAt,
-		LiveVersionID:     &liveVersionId,
+		LiveVersionID:     scenario.LiveVersionID,
 	}
 }
 
@@ -47,7 +44,7 @@ func (api *API) ListScenarios() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := orgIDFromCtx(ctx)
+		orgID, err := utils.OrgIDFromCtx(ctx)
 		if err != nil {
 			http.Error(w, "", http.StatusUnauthorized)
 			return
@@ -89,7 +86,7 @@ func (api *API) CreateScenario() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := orgIDFromCtx(ctx)
+		orgID, err := utils.OrgIDFromCtx(ctx)
 		if err != nil {
 			http.Error(w, "", http.StatusUnauthorized)
 			return
@@ -126,7 +123,7 @@ func (api *API) GetScenario() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := orgIDFromCtx(ctx)
+		orgID, err := utils.OrgIDFromCtx(ctx)
 		if err != nil {
 			http.Error(w, "", http.StatusUnauthorized)
 			return
@@ -168,7 +165,7 @@ func (api *API) UpdateScenario() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := orgIDFromCtx(ctx)
+		orgID, err := utils.OrgIDFromCtx(ctx)
 		if err != nil {
 			http.Error(w, "", http.StatusUnauthorized)
 			return

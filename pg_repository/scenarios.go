@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"marble/marble-backend/app"
-	"sort"
-	"sync"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -26,31 +24,17 @@ type dbScenario struct {
 }
 
 func (s *dbScenario) dto() app.Scenario {
-	return app.Scenario{
+	scenario := app.Scenario{
 		ID:                s.ID,
 		Name:              s.Name,
 		Description:       s.Description,
 		TriggerObjectType: s.TriggerObjectType,
 		CreatedAt:         s.CreatedAt,
 	}
-}
-
-func (r *PGRepository) addLiveVersionToScenario(ctx context.Context, orgID string, scenario dbScenario) (app.Scenario, error) {
-	scenarioDTO := scenario.dto()
-
-	if scenario.LiveVersionID.Valid {
-		liveScenarioIteration, err := r.GetScenarioIteration(ctx, orgID, scenario.LiveVersionID.String)
-		if err != nil {
-			return app.Scenario{}, fmt.Errorf("unable to get live scenario iteration: %w", err)
-		}
-		liveVersion, err := app.NewPublishedScenarioIteration(liveScenarioIteration)
-		if err != nil {
-			return app.Scenario{}, app.ErrScenarioIterationNotValid
-		}
-		scenarioDTO.LiveVersion = &liveVersion
+	if s.LiveVersionID.Valid {
+		scenario.LiveVersionID = &s.LiveVersionID.String
 	}
-
-	return scenarioDTO, nil
+	return scenario
 }
 
 func (r *PGRepository) ListScenarios(ctx context.Context, orgID string) ([]app.Scenario, error) {
@@ -70,35 +54,10 @@ func (r *PGRepository) ListScenarios(ctx context.Context, orgID string) ([]app.S
 		return nil, fmt.Errorf("unable to get scenarios: %w", err)
 	}
 
-	// Getting live versions asynchronously, so we need to re-sort the scenarios after
-	out := make(chan app.Scenario, len(scenarios))
-	errs := make(chan error, len(scenarios))
-	var wg sync.WaitGroup
-	wg.Add(len(scenarios))
-	for i, scenario := range scenarios {
-		go func(i int, scenario dbScenario) {
-			defer wg.Done()
-			scenarioDTO, err := r.addLiveVersionToScenario(ctx, orgID, scenario)
-			if err != nil {
-				errs <- fmt.Errorf("unable to get live version for scenario: %w", err)
-			}
-			out <- scenarioDTO
-		}(i, scenario)
-	}
-	wg.Wait()
-	close(out)
-	close(errs)
-
 	scenarioDTOs := []app.Scenario{}
-	if len(errs) > 0 {
-		return scenarioDTOs, <-errs
+	for _, s := range scenarios {
+		scenarioDTOs = append(scenarioDTOs, s.dto())
 	}
-	for s := range out {
-		scenarioDTOs = append(scenarioDTOs, s)
-	}
-	sort.Slice(scenarioDTOs, func(i, j int) bool {
-		return scenarioDTOs[i].CreatedAt.Before(scenarioDTOs[j].CreatedAt)
-	})
 	return scenarioDTOs, nil
 }
 
@@ -123,7 +82,7 @@ func (r *PGRepository) GetScenario(ctx context.Context, orgID string, scenarioID
 		return app.Scenario{}, fmt.Errorf("unable to get scenario: %w", err)
 	}
 
-	return r.addLiveVersionToScenario(ctx, orgID, scenario)
+	return scenario.dto(), nil
 }
 
 type dbCreateScenario struct {
@@ -153,7 +112,7 @@ func (r *PGRepository) CreateScenario(ctx context.Context, orgID string, scenari
 		return app.Scenario{}, fmt.Errorf("unable to create scenario: %w", err)
 	}
 
-	return r.addLiveVersionToScenario(ctx, orgID, createdScenario)
+	return createdScenario.dto(), nil
 }
 
 type dbUpdateScenarioInput struct {
@@ -184,7 +143,7 @@ func (r *PGRepository) UpdateScenario(ctx context.Context, orgID string, scenari
 		return app.Scenario{}, fmt.Errorf("unable to update scenario(id: %s): %w", scenario.ID, err)
 	}
 
-	return r.addLiveVersionToScenario(ctx, orgID, updatedScenario)
+	return updatedScenario.dto(), nil
 }
 
 func (r *PGRepository) setLiveScenarioIteration(ctx context.Context, tx pgx.Tx, orgID string, scenarioIterationID string) error {

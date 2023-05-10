@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"marble/marble-backend/app"
+	"marble/marble-backend/utils"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -18,7 +19,7 @@ type IngestionInterface interface {
 func (api *API) handleIngestion() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		orgID, err := orgIDFromCtx(ctx)
+		orgID, err := utils.OrgIDFromCtx(ctx)
 		if err != nil {
 			http.Error(w, "", http.StatusUnauthorized) // 401
 			return
