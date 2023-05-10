@@ -9,7 +9,7 @@ import (
 	"marble/marble-backend/app/operators"
 	"time"
 
-	"github.com/Masterminds/squirrel"
+	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -81,7 +81,7 @@ func (r *PGRepository) ListScenarioIterationRules(ctx context.Context, orgID str
 		Select(columnList[dbScenarioIterationRule]()...).
 		From("scenario_iteration_rules").
 		Where("org_id = ?", orgID).
-		Where(squirrel.Eq(columnValueMap(ListScenarioIterationRulesFilters{
+		Where(sq.Eq(columnValueMap(ListScenarioIterationRulesFilters{
 			ScenarioIterationID: filters.ScenarioIterationID,
 		}))).
 		ToSql()

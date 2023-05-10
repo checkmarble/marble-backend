@@ -7,7 +7,7 @@ import (
 	"marble/marble-backend/app"
 	"time"
 
-	"github.com/Masterminds/squirrel"
+	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -47,7 +47,7 @@ func (r *PGRepository) ListScenarioPublications(ctx context.Context, orgID strin
 		Select(columnList[dbScenarioPublication]()...).
 		From("scenario_publications").
 		Where("org_id = ?", orgID).
-		Where(squirrel.Eq(columnValueMap(ListScenarioPublicationsFilters{
+		Where(sq.Eq(columnValueMap(ListScenarioPublicationsFilters{
 			ScenarioID: filters.ScenarioID,
 			// UserID:              filters.UserID,
 			ScenarioIterationID: filters.ScenarioIterationID,
