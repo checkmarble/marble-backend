@@ -46,6 +46,8 @@ type Operator interface {
 
 	// Self-print
 	String() string
+
+	IsValid() bool
 }
 
 // Used to add and read the "type" kep anytime we marshal/unmarshal
