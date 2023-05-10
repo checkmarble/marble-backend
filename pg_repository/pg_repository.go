@@ -13,7 +13,7 @@ import (
 	"github.com/pressly/goose/v3"
 	"golang.org/x/exp/slog"
 
-	"github.com/Masterminds/squirrel"
+	sq "github.com/Masterminds/squirrel"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -36,7 +36,7 @@ type PGConfig struct {
 
 type PGRepository struct {
 	db           PgxPoolIface
-	queryBuilder squirrel.StatementBuilderType
+	queryBuilder sq.StatementBuilderType
 }
 
 func (config PGConfig) GetConnectionString(env string) string {
@@ -75,7 +75,7 @@ func New(env string, PGConfig PGConfig) (*PGRepository, error) {
 
 	r := &PGRepository{
 		db:           dbpool,
-		queryBuilder: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar),
+		queryBuilder: sq.StatementBuilder.PlaceholderFormat(sq.Dollar),
 	}
 
 	return r, nil

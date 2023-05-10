@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"marble/marble-backend/app"
 
-	"github.com/Masterminds/squirrel"
+	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"golang.org/x/exp/slog"
 )
@@ -26,7 +26,7 @@ func generateInsertValues(table app.Table, payloadStructWithReader app.DynamicSt
 
 func updateExistingVersionIfPresent(
 	ctx context.Context,
-	queryBuilder squirrel.StatementBuilderType,
+	queryBuilder sq.StatementBuilderType,
 	tx pgx.Tx,
 	payloadStructWithReader app.DynamicStructWithReader,
 	table app.Table) (err error) {
@@ -35,8 +35,8 @@ func updateExistingVersionIfPresent(
 	sql, args, err := queryBuilder.
 		Select("id").
 		From(table.Name).
-		Where(squirrel.Eq{"object_id": object_id}).
-		Where(squirrel.Eq{"valid_until": "Infinity"}).
+		Where(sq.Eq{"object_id": object_id}).
+		Where(sq.Eq{"valid_until": "Infinity"}).
 		ToSql()
 	if err != nil {
 		return err
@@ -53,7 +53,7 @@ func updateExistingVersionIfPresent(
 	sql, args, err = queryBuilder.
 		Update(table.Name).
 		Set("valid_until", "now()").
-		Where(squirrel.Eq{"id": id}).
+		Where(sq.Eq{"id": id}).
 		ToSql()
 	if err != nil {
 		return err

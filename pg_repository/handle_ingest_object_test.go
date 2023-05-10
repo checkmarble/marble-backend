@@ -7,7 +7,7 @@ import (
 
 	"marble/marble-backend/app"
 
-	"github.com/Masterminds/squirrel"
+	sq "github.com/Masterminds/squirrel"
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
@@ -44,7 +44,7 @@ func TestHandleFirstIngestObject(t *testing.T) {
 	sql, args, err := globalTestParams.repository.queryBuilder.
 		Select("COUNT(*) AS nb").
 		From(transactions.Name).
-		Where(squirrel.Eq{"object_id": payload.ReadFieldFromDynamicStruct("object_id")}).
+		Where(sq.Eq{"object_id": payload.ReadFieldFromDynamicStruct("object_id")}).
 		ToSql()
 	var nb int
 	_ = globalTestParams.repository.db.QueryRow(ctx, sql, args...).Scan(&nb)
@@ -53,7 +53,7 @@ func TestHandleFirstIngestObject(t *testing.T) {
 	sql, args, err = globalTestParams.repository.queryBuilder.
 		Select("valid_from, valid_until").
 		From(transactions.Name).
-		Where(squirrel.Eq{"object_id": payload.ReadFieldFromDynamicStruct("object_id")}).
+		Where(sq.Eq{"object_id": payload.ReadFieldFromDynamicStruct("object_id")}).
 		ToSql()
 	var valid_from, valid_until pgtype.Timestamp
 	_ = globalTestParams.repository.db.QueryRow(ctx, sql, args...).Scan(&valid_from, &valid_until)
@@ -95,7 +95,7 @@ func TestHandleRenewedIngestObject(t *testing.T) {
 	sql, args, err := globalTestParams.repository.queryBuilder.
 		Select("COUNT(*) AS nb").
 		From(transactions.Name).
-		Where(squirrel.Eq{"object_id": payload.ReadFieldFromDynamicStruct("object_id")}).
+		Where(sq.Eq{"object_id": payload.ReadFieldFromDynamicStruct("object_id")}).
 		ToSql()
 	var nb int
 	_ = globalTestParams.repository.db.QueryRow(ctx, sql, args...).Scan(&nb)
@@ -104,7 +104,7 @@ func TestHandleRenewedIngestObject(t *testing.T) {
 	sql, args, err = globalTestParams.repository.queryBuilder.
 		Select("valid_from, valid_until").
 		From(transactions.Name).
-		Where(squirrel.Eq{"object_id": payload.ReadFieldFromDynamicStruct("object_id")}).
+		Where(sq.Eq{"object_id": payload.ReadFieldFromDynamicStruct("object_id")}).
 		OrderBy("valid_from").
 		ToSql()
 	var valid_from, valid_until pgtype.Timestamp
