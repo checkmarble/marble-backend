@@ -46,6 +46,11 @@ func UnmarshalOperatorBool(jsonBytes []byte) (OperatorBool, error) {
 // ///////////////////////////////////////////////////////////////////////////////////////
 type True struct{}
 
+// register creation
+func init() {
+	operatorFromType["TRUE"] = func() Operator { return &True{} }
+}
+
 func (t True) Eval(d DataAccessor) (bool, error) { return true, nil }
 
 func (t True) Print() string { return "TRUE" }
@@ -59,11 +64,6 @@ func (t True) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// register creation
-func init() {
-	operatorFromType["TRUE"] = func() Operator { return &True{} }
-}
-
 func (t True) UnmarshalJSON(b []byte) error {
 	return nil
 }
@@ -72,6 +72,11 @@ func (t True) UnmarshalJSON(b []byte) error {
 // False
 // ///////////////////////////////////////////////////////////////////////////////////////
 type False struct{}
+
+// register creation
+func init() {
+	operatorFromType["FALSE"] = func() Operator { return &False{} }
+}
 
 func (f False) Eval(d DataAccessor) (bool, error) { return false, nil }
 
@@ -86,11 +91,6 @@ func (f False) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// register creation
-func init() {
-	operatorFromType["FALSE"] = func() Operator { return &False{} }
-}
-
 func (f False) UnmarshalJSON(b []byte) error {
 	return nil
 }
@@ -99,6 +99,11 @@ func (f False) UnmarshalJSON(b []byte) error {
 // Eq
 // ///////////////////////////////////////////////////////////////////////////////////////
 type EqBool struct{ Left, Right OperatorBool }
+
+// register creation
+func init() {
+	operatorFromType["EQUAL_BOOL"] = func() Operator { return &EqBool{} }
+}
 
 func (eq EqBool) Eval(d DataAccessor) (bool, error) {
 	valLeft, errLeft := eq.Left.Eval(d)
@@ -125,11 +130,6 @@ func (eq EqBool) MarshalJSON() ([]byte, error) {
 			eq.Right,
 		},
 	})
-}
-
-// register creation
-func init() {
-	operatorFromType["EQUAL_BOOL"] = func() Operator { return &EqBool{} }
 }
 
 func (eq *EqBool) UnmarshalJSON(b []byte) error {
@@ -170,6 +170,11 @@ func (eq *EqBool) UnmarshalJSON(b []byte) error {
 type DbFieldBool struct {
 	Path      []string
 	FieldName string
+}
+
+// register creation
+func init() {
+	operatorFromType["DB_FIELD_BOOL"] = func() Operator { return &DbFieldBool{} }
 }
 
 func (field DbFieldBool) Eval(d DataAccessor) (bool, error) {
@@ -218,11 +223,6 @@ func (field DbFieldBool) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// register creation
-func init() {
-	operatorFromType["DB_FIELD_BOOL"] = func() Operator { return &DbFieldBool{} }
-}
-
 func (field *DbFieldBool) UnmarshalJSON(b []byte) error {
 	// data schema
 	var dbFieldBoolData struct {
@@ -246,6 +246,11 @@ func (field *DbFieldBool) UnmarshalJSON(b []byte) error {
 // ///////////////////////////////////////////////////////////////////////////////////////
 type PayloadFieldBool struct {
 	FieldName string
+}
+
+// register creation
+func init() {
+	operatorFromType["PAYLOAD_FIELD_BOOL"] = func() Operator { return &PayloadFieldBool{} }
 }
 
 func (field PayloadFieldBool) Eval(d DataAccessor) (bool, error) {
@@ -284,11 +289,6 @@ func (field PayloadFieldBool) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// register creation
-func init() {
-	operatorFromType["PAYLOAD_FIELD_BOOL"] = func() Operator { return &PayloadFieldBool{} }
-}
-
 func (field *PayloadFieldBool) UnmarshalJSON(b []byte) error {
 	// data schema
 	var dbFieldBoolData struct {
@@ -310,6 +310,11 @@ func (field *PayloadFieldBool) UnmarshalJSON(b []byte) error {
 // ///////////////////////////////////////////////////////////////////////////////////////
 
 type And struct{ Operands []OperatorBool }
+
+// register creation
+func init() {
+	operatorFromType["AND"] = func() Operator { return &And{} }
+}
 
 func (and And) Eval(d DataAccessor) (bool, error) {
 	for _, op := range and.Operands {
@@ -340,11 +345,6 @@ func (and And) MarshalJSON() ([]byte, error) {
 		OperatorType: OperatorType{Type: "AND"},
 		Children:     and.Operands,
 	})
-}
-
-// register creation
-func init() {
-	operatorFromType["AND"] = func() Operator { return &And{} }
 }
 
 func (and *And) UnmarshalJSON(b []byte) error {
@@ -381,6 +381,11 @@ func (and *And) UnmarshalJSON(b []byte) error {
 
 type Or struct{ Operands []OperatorBool }
 
+// register creation
+func init() {
+	operatorFromType["OR"] = func() Operator { return &Or{} }
+}
+
 func (or Or) Eval(d DataAccessor) (bool, error) {
 	for _, op := range or.Operands {
 		res, err := op.Eval(d)
@@ -410,11 +415,6 @@ func (or Or) MarshalJSON() ([]byte, error) {
 		OperatorType: OperatorType{Type: "OR"},
 		Children:     or.Operands,
 	})
-}
-
-// register creation
-func init() {
-	operatorFromType["OR"] = func() Operator { return &Or{} }
 }
 
 func (or *Or) UnmarshalJSON(b []byte) error {
@@ -451,6 +451,11 @@ func (or *Or) UnmarshalJSON(b []byte) error {
 
 type Not struct{ Child OperatorBool }
 
+// register creation
+func init() {
+	operatorFromType["NOT"] = func() Operator { return &Not{} }
+}
+
 func (not Not) Eval(d DataAccessor) (bool, error) {
 	res, err := not.Child.Eval(d)
 	if err != nil {
@@ -472,11 +477,6 @@ func (not Not) MarshalJSON() ([]byte, error) {
 		OperatorType: OperatorType{Type: "NOT"},
 		Children:     []OperatorBool{not.Child},
 	})
-}
-
-// register creation
-func init() {
-	operatorFromType["NOT"] = func() Operator { return &Not{} }
 }
 
 func (not *Not) UnmarshalJSON(b []byte) error {
