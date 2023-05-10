@@ -24,13 +24,17 @@ type dbScenario struct {
 }
 
 func (s *dbScenario) dto() app.Scenario {
-	return app.Scenario{
+	scenario := app.Scenario{
 		ID:                s.ID,
 		Name:              s.Name,
 		Description:       s.Description,
 		TriggerObjectType: s.TriggerObjectType,
 		CreatedAt:         s.CreatedAt,
 	}
+	if s.LiveVersionID.Valid {
+		scenario.LiveVersionID = &s.LiveVersionID.String
+	}
+	return scenario
 }
 
 func (r *PGRepository) ListScenarios(ctx context.Context, orgID string) ([]app.Scenario, error) {
@@ -50,9 +54,9 @@ func (r *PGRepository) ListScenarios(ctx context.Context, orgID string) ([]app.S
 		return nil, fmt.Errorf("unable to get scenarios: %w", err)
 	}
 
-	scenarioDTOs := make([]app.Scenario, len(scenarios))
-	for i, scenario := range scenarios {
-		scenarioDTOs[i] = scenario.dto()
+	scenarioDTOs := []app.Scenario{}
+	for _, s := range scenarios {
+		scenarioDTOs = append(scenarioDTOs, s.dto())
 	}
 	return scenarioDTOs, nil
 }
@@ -78,21 +82,7 @@ func (r *PGRepository) GetScenario(ctx context.Context, orgID string, scenarioID
 		return app.Scenario{}, fmt.Errorf("unable to get scenario: %w", err)
 	}
 
-	scenarioDTO := scenario.dto()
-
-	if scenario.LiveVersionID.Valid {
-		liveScenarioIteration, err := r.GetScenarioIteration(ctx, orgID, scenario.LiveVersionID.String)
-		if err != nil {
-			return app.Scenario{}, fmt.Errorf("unable to get live scenario iteration: %w", err)
-		}
-		liveVersion, err := app.NewPublishedScenarioIteration(liveScenarioIteration)
-		if err != nil {
-			return app.Scenario{}, app.ErrScenarioIterationNotValid
-		}
-		scenarioDTO.LiveVersion = &liveVersion
-	}
-
-	return scenarioDTO, err
+	return scenario.dto(), nil
 }
 
 type dbCreateScenario struct {
@@ -122,7 +112,7 @@ func (r *PGRepository) CreateScenario(ctx context.Context, orgID string, scenari
 		return app.Scenario{}, fmt.Errorf("unable to create scenario: %w", err)
 	}
 
-	return createdScenario.dto(), err
+	return createdScenario.dto(), nil
 }
 
 type dbUpdateScenarioInput struct {
@@ -139,7 +129,8 @@ func (r *PGRepository) UpdateScenario(ctx context.Context, orgID string, scenari
 		})).
 		Where("id = ?", scenario.ID).
 		Where("org_id = ?", orgID).
-		Suffix("RETURNING *").ToSql()
+		Suffix("RETURNING *").
+		ToSql()
 	if err != nil {
 		return app.Scenario{}, fmt.Errorf("unable to build scenario query: %w", err)
 	}

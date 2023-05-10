@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"marble/marble-backend/app"
+	"marble/marble-backend/utils"
 
 	"github.com/ggicci/httpin"
 	"golang.org/x/exp/slog"
@@ -103,7 +104,7 @@ func (api *API) handleGetDecision() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := orgIDFromCtx(ctx)
+		orgID, err := utils.OrgIDFromCtx(ctx)
 		if err != nil {
 			http.Error(w, "", http.StatusUnauthorized)
 			return
@@ -146,7 +147,7 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := orgIDFromCtx(ctx)
+		orgID, err := utils.OrgIDFromCtx(ctx)
 		if err != nil {
 			http.Error(w, "", http.StatusUnauthorized)
 			return
