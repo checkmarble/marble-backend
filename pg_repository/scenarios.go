@@ -89,12 +89,12 @@ func (r *PGRepository) ListScenarios(ctx context.Context, orgID string) ([]app.S
 	close(out)
 	close(errs)
 
-	scenarioDTOs := make([]app.Scenario, len(scenarios))
+	scenarioDTOs := []app.Scenario{}
 	if len(errs) > 0 {
 		return scenarioDTOs, <-errs
 	}
-	for i := range scenarioDTOs {
-		scenarioDTOs[i] = <-out
+	for s := range out {
+		scenarioDTOs = append(scenarioDTOs, s)
 	}
 	sort.Slice(scenarioDTOs, func(i, j int) bool {
 		return scenarioDTOs[i].CreatedAt.Before(scenarioDTOs[j].CreatedAt)
