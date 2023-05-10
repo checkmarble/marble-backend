@@ -29,7 +29,7 @@ var ErrFormatValidation = errors.New("The input object is not valid")
 
 var validate *validator.Validate
 
-func makeDynamicStructBuilder(fields map[string]Field) dynamicstruct.DynamicStruct {
+func makeDynamicStructBuilder(fields map[FieldName]Field) dynamicstruct.DynamicStruct {
 	custom_type := dynamicstruct.NewStruct()
 
 	var stringPointerType *string
@@ -43,22 +43,23 @@ func makeDynamicStructBuilder(fields map[string]Field) dynamicstruct.DynamicStru
 	custom_type.AddField("Updated_at", timePointerType, `validate:"required"`)
 
 	for fieldName, field := range fields {
-		switch strings.ToLower(fieldName) {
+		name := string(fieldName)
+		switch strings.ToLower(name) {
 		case "object_id", "updated_at":
 			// already added above, with a different validation tag
 			break
 		default:
 			switch field.DataType {
 			case Bool:
-				custom_type.AddField(capitalize(fieldName), boolPointerType, "")
+				custom_type.AddField(capitalize(name), boolPointerType, "")
 			case Int:
-				custom_type.AddField(capitalize(fieldName), intPointerType, "")
+				custom_type.AddField(capitalize(name), intPointerType, "")
 			case Float:
-				custom_type.AddField(capitalize(fieldName), floatPointerType, "")
+				custom_type.AddField(capitalize(name), floatPointerType, "")
 			case String:
-				custom_type.AddField(capitalize(fieldName), stringPointerType, "")
+				custom_type.AddField(capitalize(name), stringPointerType, "")
 			case Timestamp:
-				custom_type.AddField(capitalize(fieldName), timePointerType, "")
+				custom_type.AddField(capitalize(name), timePointerType, "")
 			}
 		}
 	}
@@ -117,8 +118,8 @@ func ParseToDataModelObject(_ context.Context, table Table, jsonBody []byte) (Dy
 	return DynamicStructWithReader{Instance: dynamicStructInstance, Reader: dynamicStructReader, Table: table}, nil
 }
 
-func (dynamicStruct DynamicStructWithReader) ReadFieldFromDynamicStruct(fieldName string) interface{} {
-	field := dynamicStruct.Reader.GetField(capitalize(fieldName))
+func (dynamicStruct DynamicStructWithReader) ReadFieldFromDynamicStruct(fieldName FieldName) interface{} {
+	field := dynamicStruct.Reader.GetField(capitalize(string(fieldName)))
 	table := dynamicStruct.Table
 	fields := table.Fields
 	fieldFromModel := fields[fieldName]

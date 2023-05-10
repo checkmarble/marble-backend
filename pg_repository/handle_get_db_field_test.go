@@ -14,7 +14,7 @@ import (
 func TestReadFromDbWithDockerDb(t *testing.T) {
 	transactions := app.Table{
 		Name: "transactions",
-		Fields: map[string]app.Field{
+		Fields: map[app.FieldName]app.Field{
 			"object_id": {
 				DataType: app.String,
 			},
@@ -23,7 +23,7 @@ func TestReadFromDbWithDockerDb(t *testing.T) {
 			"title":           {DataType: app.String},
 			"bank_account_id": {DataType: app.String},
 		},
-		LinksToSingle: map[string]app.LinkToSingle{
+		LinksToSingle: map[app.LinkName]app.LinkToSingle{
 			"bank_accounts": {
 				LinkedTableName: "bank_accounts",
 				ParentFieldName: "object_id",
@@ -33,7 +33,7 @@ func TestReadFromDbWithDockerDb(t *testing.T) {
 	}
 	bank_accounts := app.Table{
 		Name: "bank_accounts",
-		Fields: map[string]app.Field{
+		Fields: map[app.FieldName]app.Field{
 			"object_id": {
 				DataType: app.String,
 			},
@@ -41,10 +41,10 @@ func TestReadFromDbWithDockerDb(t *testing.T) {
 			"name":       {DataType: app.String},
 			"balance":    {DataType: app.Float},
 		},
-		LinksToSingle: map[string]app.LinkToSingle{},
+		LinksToSingle: map[app.LinkName]app.LinkToSingle{},
 	}
 	dataModel := app.DataModel{
-		Tables: map[string]app.Table{
+		Tables: map[app.TableName]app.Table{
 			"transactions":  transactions,
 			"bank_accounts": bank_accounts,
 		},

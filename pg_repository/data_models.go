@@ -23,7 +23,7 @@ type dbDataModel struct {
 }
 
 func (dm *dbDataModel) dto() (app.DataModel, error) {
-	var tables map[string]app.Table
+	var tables map[app.TableName]app.Table
 	if err := json.Unmarshal(dm.Tables, &tables); err != nil {
 		return app.DataModel{}, fmt.Errorf("unable to unmarshal data model tables: %w", err)
 	}

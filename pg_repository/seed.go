@@ -46,9 +46,9 @@ func (r *PGRepository) Seed() {
 	// Create and sotre a data model
 	///////////////////////////////
 	r.CreateDataModel(context.TODO(), org.ID, app.DataModel{
-		Tables: map[string]app.Table{
+		Tables: map[app.TableName]app.Table{
 			"tx": {Name: "tx",
-				Fields: map[string]app.Field{
+				Fields: map[app.FieldName]app.Field{
 					"id": {
 						DataType: app.String,
 					},
@@ -59,7 +59,7 @@ func (r *PGRepository) Seed() {
 						DataType: app.String,
 					},
 				},
-				LinksToSingle: map[string]app.LinkToSingle{
+				LinksToSingle: map[app.LinkName]app.LinkToSingle{
 					"sender": {
 						LinkedTableName: "user",
 						ParentFieldName: "sender_id",
@@ -69,7 +69,7 @@ func (r *PGRepository) Seed() {
 			},
 			"transactions": {
 				Name: "transactions",
-				Fields: map[string]app.Field{
+				Fields: map[app.FieldName]app.Field{
 					"object_id": {
 						DataType: app.String,
 					},
@@ -79,7 +79,7 @@ func (r *PGRepository) Seed() {
 					"description":     {DataType: app.String},
 					"bank_account_id": {DataType: app.String},
 				},
-				LinksToSingle: map[string]app.LinkToSingle{
+				LinksToSingle: map[app.LinkName]app.LinkToSingle{
 					"bank_account": {
 						LinkedTableName: "bank_accounts",
 						ParentFieldName: "object_id",
@@ -88,7 +88,7 @@ func (r *PGRepository) Seed() {
 			},
 			"bank_accounts": {
 				Name: "bank_accounts",
-				Fields: map[string]app.Field{
+				Fields: map[app.FieldName]app.Field{
 					"object_id": {
 						DataType: app.String,
 					},
@@ -100,7 +100,7 @@ func (r *PGRepository) Seed() {
 			},
 			"user": {
 				Name: "user",
-				Fields: map[string]app.Field{
+				Fields: map[app.FieldName]app.Field{
 					"id": {
 						DataType: app.String,
 					},

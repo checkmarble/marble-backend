@@ -40,14 +40,14 @@ func (d *DataAccessorImpl) ValidateDbFieldReadConsistency(path []string, fieldNa
 	}
 
 	for _, tableName := range path {
-		_, ok := d.DataModel.Tables[tableName]
+		_, ok := d.DataModel.Tables[TableName(tableName)]
 		if !ok {
 			return fmt.Errorf("Table %s in path not found in data model: %w", tableName, operators.ErrDbReadInconsistentWithDataModel)
 		}
 	}
 
-	lastTable := d.DataModel.Tables[path[len(path)-1]]
-	_, ok := lastTable.Fields[fieldName]
+	lastTable := d.DataModel.Tables[TableName(path[len(path)-1])]
+	_, ok := lastTable.Fields[FieldName(fieldName)]
 	if !ok {
 		return fmt.Errorf("Field %s in table %s not found in data model: %w", fieldName, lastTable.Name, operators.ErrDbReadInconsistentWithDataModel)
 	}

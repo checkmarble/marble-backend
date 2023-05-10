@@ -12,41 +12,65 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func rowIsValid(tableName string) sq.Eq {
+func rowIsValid(tableName app.TableName) sq.Eq {
 	return sq.Eq{fmt.Sprintf("%s.valid_until", tableName): "Infinity"}
 }
 
+func getLastTableFromPath(path []string, dataModel app.DataModel) (app.Table, error) {
+	firstTable := dataModel.Tables[app.TableName(path[0])]
+	if len(path) == 1 {
+		return firstTable, nil
+	}
+
+	currentTable := firstTable
+	for i := 1; i < len(path); i++ {
+		link, ok := currentTable.LinksToSingle[app.LinkName(path[i])]
+		if !ok {
+			return app.Table{}, fmt.Errorf("No link with name %s: %w", path[i], operators.ErrDbReadInconsistentWithDataModel)
+		}
+		nextTable := dataModel.Tables[app.TableName(link.LinkedTableName)]
+
+		currentTable = nextTable
+	}
+	return currentTable, nil
+}
+
 func (rep *PGRepository) queryDbForField(ctx context.Context, readParams app.DbFieldReadParams) (pgx.Row, error) {
-	base_object_id_itf := readParams.Payload.ReadFieldFromDynamicStruct("object_id")
-	base_object_id_ptr, ok := base_object_id_itf.(*string)
+	baseObjectIdAny := readParams.Payload.ReadFieldFromDynamicStruct("object_id")
+	baseObjectIdPtr, ok := baseObjectIdAny.(*string)
 	if !ok {
 		return nil, fmt.Errorf("object_id in payload is not a string") // should not happen, as per input validation
 	}
 
-	if base_object_id_ptr == nil {
+	if baseObjectIdPtr == nil {
 		return nil, fmt.Errorf("object_id in payload is null") // should not happen, as per input validation
 	}
-	base_object_id := *base_object_id_ptr
+	baseObjectId := *baseObjectIdPtr
 
-	firstTable := readParams.DataModel.Tables[readParams.Path[0]]
-	lastTable := readParams.DataModel.Tables[readParams.Path[len(readParams.Path)-1]]
-
-	query := rep.queryBuilder.Select(fmt.Sprintf("%s.%s", lastTable.Name, readParams.FieldName)).From(firstTable.Name)
-
-	for i := 1; i < len(readParams.Path); i++ {
-		table := readParams.DataModel.Tables[readParams.Path[i-1]]
-		next_table := readParams.DataModel.Tables[readParams.Path[i]]
-
-		link, ok := table.LinksToSingle[next_table.Name]
-		if !ok {
-			return nil, fmt.Errorf("No link from %s to %s: %w", table.Name, next_table.Name, operators.ErrDbReadInconsistentWithDataModel)
-		}
-		joinClause := fmt.Sprintf("%s ON %s.%s = %s.%s", next_table.Name, table.Name, link.ChildFieldName, next_table.Name, link.ParentFieldName)
-		query = query.Join(joinClause).
-			Where(rowIsValid(next_table.Name))
+	firstTable := readParams.DataModel.Tables[app.TableName(readParams.Path[0])]
+	lastTable, err := getLastTableFromPath(readParams.Path, readParams.DataModel)
+	if err != nil {
+		return nil, err
 	}
 
-	query = query.Where(sq.Eq{fmt.Sprintf("%s.object_id", firstTable.Name): base_object_id}).
+	query := rep.queryBuilder.Select(fmt.Sprintf("%s.%s", lastTable.Name, readParams.FieldName)).From(string(firstTable.Name))
+
+	currentTable := firstTable
+	for i := 1; i < len(readParams.Path); i++ {
+		link, ok := currentTable.LinksToSingle[app.LinkName(readParams.Path[i])]
+		if !ok {
+			return nil, fmt.Errorf("No link with name %s: %w", readParams.Path[i], operators.ErrDbReadInconsistentWithDataModel)
+		}
+		nextTable := readParams.DataModel.Tables[app.TableName(link.LinkedTableName)]
+
+		joinClause := fmt.Sprintf("%s ON %s.%s = %s.%s", nextTable.Name, currentTable.Name, link.ChildFieldName, nextTable.Name, link.ParentFieldName)
+		query = query.Join(joinClause).
+			Where(rowIsValid(nextTable.Name))
+
+		currentTable = nextTable
+	}
+
+	query = query.Where(sq.Eq{fmt.Sprintf("%s.object_id", firstTable.Name): baseObjectId}).
 		Where(rowIsValid(firstTable.Name))
 	sql, args, err := query.ToSql()
 
@@ -75,8 +99,8 @@ func (rep *PGRepository) GetDbField(ctx context.Context, readParams app.DbFieldR
 		return nil, fmt.Errorf("Error while building query for DB field: %w", err)
 	}
 
-	lastTable := readParams.DataModel.Tables[readParams.Path[len(readParams.Path)-1]]
-	fieldFromModel := lastTable.Fields[readParams.FieldName]
+	lastTable := readParams.DataModel.Tables[app.TableName(readParams.Path[len(readParams.Path)-1])]
+	fieldFromModel := lastTable.Fields[app.FieldName(readParams.FieldName)]
 
 	switch fieldFromModel.DataType {
 	case app.Bool:

@@ -16,7 +16,7 @@ import (
 func TestHandleFirstIngestObject(t *testing.T) {
 	transactions := app.Table{
 		Name: "transactions",
-		Fields: map[string]app.Field{
+		Fields: map[app.FieldName]app.Field{
 			"object_id": {
 				DataType: app.String,
 			},
@@ -43,7 +43,7 @@ func TestHandleFirstIngestObject(t *testing.T) {
 
 	sql, args, err := globalTestParams.repository.queryBuilder.
 		Select("COUNT(*) AS nb").
-		From(transactions.Name).
+		From(string(transactions.Name)).
 		Where(sq.Eq{"object_id": payload.ReadFieldFromDynamicStruct("object_id")}).
 		ToSql()
 	var nb int
@@ -52,7 +52,7 @@ func TestHandleFirstIngestObject(t *testing.T) {
 
 	sql, args, err = globalTestParams.repository.queryBuilder.
 		Select("valid_from, valid_until").
-		From(transactions.Name).
+		From(string(transactions.Name)).
 		Where(sq.Eq{"object_id": payload.ReadFieldFromDynamicStruct("object_id")}).
 		ToSql()
 	var valid_from, valid_until pgtype.Timestamp
@@ -66,7 +66,7 @@ func TestHandleFirstIngestObject(t *testing.T) {
 func TestHandleRenewedIngestObject(t *testing.T) {
 	transactions := app.Table{
 		Name: "transactions",
-		Fields: map[string]app.Field{
+		Fields: map[app.FieldName]app.Field{
 			"object_id": {
 				DataType: app.String,
 			},
@@ -94,7 +94,7 @@ func TestHandleRenewedIngestObject(t *testing.T) {
 
 	sql, args, err := globalTestParams.repository.queryBuilder.
 		Select("COUNT(*) AS nb").
-		From(transactions.Name).
+		From(string(transactions.Name)).
 		Where(sq.Eq{"object_id": payload.ReadFieldFromDynamicStruct("object_id")}).
 		ToSql()
 	var nb int
@@ -103,7 +103,7 @@ func TestHandleRenewedIngestObject(t *testing.T) {
 
 	sql, args, err = globalTestParams.repository.queryBuilder.
 		Select("valid_from, valid_until").
-		From(transactions.Name).
+		From(string(transactions.Name)).
 		Where(sq.Eq{"object_id": payload.ReadFieldFromDynamicStruct("object_id")}).
 		OrderBy("valid_from").
 		ToSql()
