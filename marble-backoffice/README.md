@@ -5,35 +5,19 @@ Marble BackOffice is a frontend for the staff of Marble. It displays information
 ## Dependencies
 
 - [Marble Backend API](https://github.com/checkmarble/marble-backend)
+- Firebase Auth
 
 ## Development
-
-### Coding guidelines
-
-Clean code architecture with minimal dependencies.
-
-#### Scaffolding
-
-The goal is to re-scaffold the project in the future with different tech choices, so the amount of modification made to the scaffolded files stays low and documented (See "Scaffolding and customisations" in this file).
-
-
-### Client side Routing
-
-React router handle client side routing.
-
-#### Design system
-
-Mui Core is used as an implemtation of material design.
-
-A backoffice is made up of a lot of simple controls and pages. The choice to use Mui Core is driven by the need to write simple html, not ease of customization.
 
 ### Dependencies
 
 Main dev dependencies:
+
 - node
 - yarn
 
 Main runtime dependencies:
+
 - React ~18
 - Mui Core ~5
 - React router ~6
@@ -49,9 +33,44 @@ yarn
 yarn dev --port=3000
 ```
 
-## Scaffolding and customisations
+### Coding guidelines
+
+Clean code architecture with minimal dependencies.
+
+### Scaffolding
+
+The goal is to re-scaffold the project in the future with different tech choices, so the amount of modification made to the scaffolded files stays low and documented (See "Scaffolding and customisations" in this file).
+
+### Client side Routing
+
+React router handle client side routing.
+
+### Design system
+
+Mui Core is used as an implemtation of material design.
+
+A backoffice is made up of a lot of simple controls and pages. The choice to use Mui Core is driven by the need to write simple html, not ease of customization.
+
+### Authentication
+
+The authentication is handled by firebase.
+
+The only supported Identity Provider is Google.
+
+The official tutorial has been followed step by step: [feedbackAuthenticate Using Google with JavaScript](https://firebase.google.com/docs/auth/web/google-signin)
+
+`firebase emulators:start`
+
+### Firebase auth: signInWithPopup vs signInWithRedirect
+
+The authentication is currently using `signInWithPopup`, so the website can be deployed on any domain.
+
+We hate pop ups because they are unreliable and not mobile friendly. `signInWithRedirect` will be use as soon as the domains on which the website is deployed is known. 
+
+### Scaffolding and customisations
 
 This project has been scaffolded using the following command:
+
 ```
 yarn create vite --template react-swc-ts
 ```

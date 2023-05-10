@@ -14,8 +14,15 @@ import ListItemText from "@mui/material/ListItemText";
 import MenuIcon from "@mui/icons-material/Menu";
 import InboxIcon from "@mui/icons-material/MoveToInbox";
 import MailIcon from "@mui/icons-material/Mail";
-import { PageLink } from "@/models";
+import Tooltip from "@mui/material/Tooltip";
+import Avatar from "@mui/material/Avatar";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import { Divider } from "@mui/material";
+import { AuthenticatedUser, PageLink } from "@/models";
 import { useNavigate } from "react-router-dom";
+import { useAuthenticatedUser } from "@/services";
+import services from "@/injectServices";
 
 interface Page {
   title: string;
@@ -36,21 +43,12 @@ const APP_BAR_PAGES: ReadonlyArray<Page> = [
 function BackOfficeAppBar() {
   const nagivator = useNavigate();
 
-  const handleNavigate = useCallback(
-    (link: string) => {
-      nagivator(link);
-    },
-    [nagivator]
-  );
-
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
 
-  const toggleDrawer = useCallback(
-    () => setDrawerOpen(!drawerOpen),
-    [drawerOpen]
-  );
-  const closeDrawer = useCallback(() => setDrawerOpen(false), []);
+  const toggleDrawer = () => setDrawerOpen(!drawerOpen);
+  const closeDrawer = () => setDrawerOpen(false);
 
+  const user = useAuthenticatedUser();
   return (
     <AppBar position="static">
       <Toolbar disableGutters>
@@ -74,7 +72,7 @@ function BackOfficeAppBar() {
           {APP_BAR_PAGES.map((page: Page, index) => (
             <Button
               key={index}
-              onClick={() => handleNavigate(page.link)}
+              onClick={() => nagivator(page.link)}
               sx={{
                 my: 2,
                 color: "white",
@@ -85,6 +83,8 @@ function BackOfficeAppBar() {
             </Button>
           ))}
         </Box>
+        {/* spacer for desktop */}
+        <Box sx={{ display: { xs: "none", md: "flex" }, flexGrow: 1 }} />
 
         {/* Mobile App Bar */}
         <Box sx={{ display: { xs: "flex", md: "none" }, flexGrow: 1 }}>
@@ -123,7 +123,7 @@ function BackOfficeAppBar() {
               <List>
                 {APP_BAR_PAGES.map((page: Page, index) => (
                   <ListItem key={index} disablePadding>
-                    <ListItemButton onClick={() => handleNavigate(page.link)}>
+                    <ListItemButton onClick={() => nagivator(page.link)}>
                       <ListItemIcon>
                         {index % 2 === 0 ? <InboxIcon /> : <MailIcon />}
                       </ListItemIcon>
@@ -135,8 +135,66 @@ function BackOfficeAppBar() {
             </Box>
           </Drawer>
         </Box>
+        <Box sx={{ display: "flex", flexGrow: 0, mr: 1 }}>
+          <SettingsMenu user={user} />
+        </Box>
       </Toolbar>
     </AppBar>
+  );
+}
+
+interface SettingsMenuProps {
+  user: AuthenticatedUser;
+}
+function SettingsMenu({ user }: SettingsMenuProps) {
+  const [anchorElUser, setAnchorElUser] = useState<null | HTMLElement>(null);
+
+  const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorElUser(event.currentTarget);
+  };
+
+  const handleCloseUserMenu = () => {
+    setAnchorElUser(null);
+  };
+
+  const handleLogout = useCallback(() => {
+    handleCloseUserMenu();
+    services().authenticationService.signOut();
+  }, []);
+
+  return (
+    <>
+      <Tooltip title="Open settings">
+        <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
+          <Avatar alt="Remy Sharp" src={user.photoURL || ""} />
+        </IconButton>
+      </Tooltip>
+      <Menu
+        sx={{ mt: "45px" }}
+        id="menu-appbar"
+        anchorEl={anchorElUser}
+        anchorOrigin={{
+          vertical: "top",
+          horizontal: "right",
+        }}
+        keepMounted
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "right",
+        }}
+        open={Boolean(anchorElUser)}
+        onClose={handleCloseUserMenu}
+      >
+        <MenuItem>
+          <Typography>{user.email}</Typography>
+        </MenuItem>
+        <Divider />
+
+        <MenuItem onClick={handleLogout}>
+          <Typography textAlign="center">Logout</Typography>
+        </MenuItem>
+      </Menu>
+    </>
   );
 }
 
