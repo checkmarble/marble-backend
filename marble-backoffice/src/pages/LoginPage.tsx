@@ -1,4 +1,7 @@
 import { useCallback, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { SignInError } from "@/models";
+import { useSignIn } from "@/services";
 import services from "@/injectServices";
 import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
@@ -6,20 +9,26 @@ import Box from "@mui/material/Box";
 import Avatar from "@mui/material/Avatar";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import Typography from "@mui/material/Typography";
-import { SignInError } from "@/models";
 import Alert from "@mui/material/Alert";
 
-function Login() {
+function LoginPage() {
+  const [searchParams] = useSearchParams();
+
   const [errorMessage, setErrorMessage] = useState<string>("");
-  const handleLogin = useCallback(() => {
+  const { signIn } = useSignIn(
+    services().authenticationService,
+    searchParams.get("redirect")
+  );
+
+  const handleLogin = useCallback(async () => {
     try {
-      services().authenticationService.authenticationRepository.signIn();
+      await signIn();
     } catch (error) {
       if (error instanceof SignInError) {
         setErrorMessage(error.message);
       }
     }
-  }, []);
+  }, [signIn]);
 
   return (
     <Container maxWidth="xs">
@@ -54,4 +63,4 @@ function Login() {
   );
 }
 
-export default Login;
+export default LoginPage;

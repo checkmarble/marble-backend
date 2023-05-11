@@ -5,4 +5,17 @@ export interface AuthenticatedUser {
   photoURL: string | null;
 }
 
-export type OnAuthenticatedUserChanged = (user: AuthenticatedUser | null) => void;
+export type OnAuthenticatedUserChanged = (
+  user: AuthenticatedUser | null
+) => void;
+
+export enum AuthenticationStatus {
+  Unknown,
+  Authenticated,
+  NotAuthenticated,
+}
+
+export interface Authentication {
+  user: AuthenticatedUser | null;
+  status: AuthenticationStatus;
+}

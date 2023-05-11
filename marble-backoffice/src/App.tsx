@@ -1,18 +1,33 @@
 import "./App.css";
-import { CssBaseline } from "@mui/material";
+import { Box, CssBaseline, LinearProgress } from "@mui/material";
 import { Outlet } from "react-router-dom";
-import AuthFence from "./components/AuthFence";
+import { AuthenticatedUserContext, useAuthentication } from "./services";
+import services from "@/injectServices";
 import BackOfficeAppBar from "@/components/BackOfficeAppBar";
 
 function App() {
+  const { user, authLoading, displayPrivatePage } = useAuthentication(
+    services().authenticationService
+  );
+
   return (
-    <>
+    <AuthenticatedUserContext.Provider value={user}>
       <CssBaseline />
-      <AuthFence>
-        <BackOfficeAppBar />
+      {authLoading && (
+        <Box sx={{ width: "100%" }}>
+          <LinearProgress />
+        </Box>
+      )}
+
+      {displayPrivatePage ? (
+        <>
+          <BackOfficeAppBar />
+          <Outlet />
+        </>
+      ) : (
         <Outlet />
-      </AuthFence>
-    </>
+      )}
+    </AuthenticatedUserContext.Provider>
   );
 }
 
