@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"marble/marble-backend/app"
 	"marble/marble-backend/app/operators"
 
@@ -86,8 +85,6 @@ func (rep *PGRepository) queryDbForField(ctx context.Context, readParams app.DbF
 	}
 
 	sql, args, err := query.ToSql()
-	log.Println(sql)
-	log.Println(args)
 
 	if err != nil {
 		return nil, fmt.Errorf("Error while building SQL query: %w", err)

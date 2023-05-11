@@ -185,8 +185,9 @@ func (eq *EqBool) UnmarshalJSON(b []byte) error {
 // Db field Boolean
 // ///////////////////////////////////////////////////////////////////////////////////////
 type DbFieldBool struct {
-	Path      []string
-	FieldName string
+	TriggerTableName string
+	Path             []string
+	FieldName        string
 }
 
 // register creation
@@ -199,12 +200,7 @@ func (field DbFieldBool) Eval(d DataAccessor) (bool, error) {
 		return false, ErrEvaluatingInvalidOperator
 	}
 
-	err := d.ValidateDbFieldReadConsistency(field.Path, field.FieldName)
-	if err != nil {
-		return false, err
-	}
-
-	valRaw, err := d.GetDbField(field.Path, field.FieldName)
+	valRaw, err := d.GetDbField(field.TriggerTableName, field.Path, field.FieldName)
 	if err != nil {
 		fmt.Printf("Error getting DB field: %v", err)
 		return false, err
@@ -221,7 +217,7 @@ func (field DbFieldBool) Eval(d DataAccessor) (bool, error) {
 }
 
 func (field DbFieldBool) IsValid() bool {
-	return len(field.Path) > 0 && field.FieldName != ""
+	return field.TriggerTableName != "" && len(field.Path) > 0 && field.FieldName != ""
 }
 
 func (field DbFieldBool) String() string {
@@ -232,8 +228,9 @@ func (field DbFieldBool) MarshalJSON() ([]byte, error) {
 
 	// data schema
 	type dbFieldBoolData struct {
-		Path      []string `json:"path"`
-		FieldName string   `json:"fieldName"`
+		TriggerTableName string   `json:"triggerTableName"`
+		Path             []string `json:"path"`
+		FieldName        string   `json:"fieldName"`
 	}
 
 	return json.Marshal(struct {
@@ -242,8 +239,9 @@ func (field DbFieldBool) MarshalJSON() ([]byte, error) {
 	}{
 		OperatorType: OperatorType{Type: "DB_FIELD_BOOL"},
 		Data: dbFieldBoolData{
-			Path:      field.Path,
-			FieldName: field.FieldName,
+			TriggerTableName: field.TriggerTableName,
+			Path:             field.Path,
+			FieldName:        field.FieldName,
 		},
 	})
 }
@@ -252,14 +250,16 @@ func (field *DbFieldBool) UnmarshalJSON(b []byte) error {
 	// data schema
 	var dbFieldBoolData struct {
 		StaticData struct {
-			Path      []string `json:"path"`
-			FieldName string   `json:"fieldName"`
+			TriggerTableName string   `json:"triggerTableName"`
+			Path             []string `json:"path"`
+			FieldName        string   `json:"fieldName"`
 		} `json:"staticData"`
 	}
 
 	if err := json.Unmarshal(b, &dbFieldBoolData); err != nil {
 		return fmt.Errorf("unable to unmarshal operator to intermediate staticData representation: %w", err)
 	}
+	field.TriggerTableName = dbFieldBoolData.StaticData.TriggerTableName
 	field.Path = dbFieldBoolData.StaticData.Path
 	field.FieldName = dbFieldBoolData.StaticData.FieldName
 
