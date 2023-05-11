@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type DataAccessorImpl struct{}
+type DataAccessorBoolImpl struct{}
 
-func (d *DataAccessorImpl) GetPayloadField(fieldName string) interface{} {
+func (d *DataAccessorBoolImpl) GetPayloadField(fieldName string) interface{} {
 	var val bool
 	if fieldName == "true" {
 		val = true
@@ -23,7 +23,7 @@ func (d *DataAccessorImpl) GetPayloadField(fieldName string) interface{} {
 	return &val
 }
 
-func (d *DataAccessorImpl) GetDbField(triggerTableName string, path []string, fieldName string) (interface{}, error) {
+func (d *DataAccessorBoolImpl) GetDbField(triggerTableName string, path []string, fieldName string) (interface{}, error) {
 	var val pgtype.Bool
 	if fieldName == "true" {
 		val = pgtype.Bool{Bool: true, Valid: true}
@@ -41,7 +41,7 @@ func TestLogicEval(t *testing.T) {
 		operator OperatorBool
 		expected bool
 	}
-	dataAccessor := DataAccessorImpl{}
+	dataAccessor := DataAccessorBoolImpl{}
 
 	cases := []testCase{
 		{
@@ -163,7 +163,7 @@ func TestLogicEvalErrorCase(t *testing.T) {
 		name     string
 		operator OperatorBool
 	}
-	dataAccessor := DataAccessorImpl{}
+	dataAccessor := DataAccessorBoolImpl{}
 
 	cases := []testCase{
 		{
@@ -192,7 +192,7 @@ func TestMarshalUnMarshal(t *testing.T) {
 		name     string
 		operator OperatorBool
 	}
-	dataAccessor := DataAccessorImpl{}
+	dataAccessor := DataAccessorBoolImpl{}
 	asserts := assert.New(t)
 
 	cases := []testCase{

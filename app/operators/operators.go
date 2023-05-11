@@ -6,12 +6,11 @@ import (
 	"time"
 )
 
-///////////////////////////////
+// /////////////////////////////
 // Init function
-///////////////////////////////
+// /////////////////////////////
 // Used to generate a map[operator ID]func() Operator
 // This allows registering each operator's unique ID and constructor
-
 var operatorFromType = make(map[string]func() Operator)
 
 type DataAccessor interface {
@@ -20,7 +19,10 @@ type DataAccessor interface {
 	// GetListField(path []string) (interface{}, error)
 }
 
-var ErrDbReadInconsistentWithDataModel = errors.New("Data model inconsistent with path or field name read from DB")
+var (
+	ErrDbReadInconsistentWithDataModel = errors.New("Data model inconsistent with path or field name read from DB")
+	ErrEvaluatingInvalidOperator       = errors.New("Error evaluating invalid opereator")
+)
 
 // /////////////////////////////
 // Operator
