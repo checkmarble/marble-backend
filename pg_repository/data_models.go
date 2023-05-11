@@ -22,7 +22,7 @@ type dbDataModel struct {
 	DeletedAt pgtype.Time `db:"deleted_at"`
 }
 
-func (dm *dbDataModel) dto() (app.DataModel, error) {
+func (dm *dbDataModel) toDomain() (app.DataModel, error) {
 	var tables map[string]app.Table
 	if err := json.Unmarshal(dm.Tables, &tables); err != nil {
 		return app.DataModel{}, fmt.Errorf("unable to unmarshal data model tables: %w", err)
@@ -52,7 +52,7 @@ func (r *PGRepository) GetDataModel(ctx context.Context, orgID string) (app.Data
 		return app.DataModel{}, fmt.Errorf("unable to get data model for org(id: %s): %w", orgID, err)
 	}
 
-	return dataModel.dto()
+	return dataModel.toDomain()
 }
 
 func (r *PGRepository) CreateDataModel(ctx context.Context, orgID string, dataModel app.DataModel) (app.DataModel, error) {
@@ -85,5 +85,5 @@ func (r *PGRepository) CreateDataModel(ctx context.Context, orgID string, dataMo
 		return app.DataModel{}, fmt.Errorf("unable to create token: %w", err)
 	}
 
-	return createdDataModel.dto()
+	return createdDataModel.toDomain()
 }

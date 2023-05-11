@@ -22,7 +22,7 @@ type dbScenarioPublication struct {
 	CreatedAt           time.Time `db:"created_at"`
 }
 
-func (sp *dbScenarioPublication) dto() app.ScenarioPublication {
+func (sp *dbScenarioPublication) toDomain() app.ScenarioPublication {
 	return app.ScenarioPublication{
 		ID:    sp.ID,
 		Rank:  sp.Rank,
@@ -63,7 +63,7 @@ func (r *PGRepository) ListScenarioPublications(ctx context.Context, orgID strin
 
 	scenarioPubblicationDTOs := make([]app.ScenarioPublication, len(scenarioPublications))
 	for i, scenario := range scenarioPublications {
-		scenarioPubblicationDTOs[i] = scenario.dto()
+		scenarioPubblicationDTOs[i] = scenario.toDomain()
 	}
 	return scenarioPubblicationDTOs, err
 }
@@ -137,7 +137,7 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 			if err != nil {
 				return nil, fmt.Errorf("unable to unpublish old scenario iteration: %w", err)
 			}
-			scenarioPublications = append(scenarioPublications, unpublishOldIteration.dto())
+			scenarioPublications = append(scenarioPublications, unpublishOldIteration.toDomain())
 		}
 
 		err = r.publishScenarioIteration(ctx, tx, orgID, sp.ScenarioIterationID)
@@ -155,7 +155,7 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 		if err != nil {
 			return nil, fmt.Errorf("unable to publish new scenario iteration: %w", err)
 		}
-		scenarioPublications = append(scenarioPublications, publishNewIteration.dto())
+		scenarioPublications = append(scenarioPublications, publishNewIteration.toDomain())
 
 		err = r.setLiveScenarioIteration(ctx, tx, orgID, sp.ScenarioIterationID)
 		if err != nil {
@@ -176,7 +176,7 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 		if err != nil {
 			return nil, fmt.Errorf("unable to unpublish provided scenario iteration: %w", err)
 		}
-		scenarioPublications = append(scenarioPublications, unpublishOldIteration.dto())
+		scenarioPublications = append(scenarioPublications, unpublishOldIteration.toDomain())
 
 		err = r.unsetLiveScenarioIteration(ctx, tx, orgID, scenarioID)
 		if err != nil {
@@ -214,5 +214,5 @@ func (r *PGRepository) GetScenarioPublication(ctx context.Context, orgID string,
 		return app.ScenarioPublication{}, fmt.Errorf("unable to get scenario publication: %w", err)
 	}
 
-	return scenarioPublication.dto(), err
+	return scenarioPublication.toDomain(), err
 }

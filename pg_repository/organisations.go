@@ -19,7 +19,7 @@ type dbOrganization struct {
 	DeletedAt    pgtype.Time `db:"deleted_at"`
 }
 
-func (org *dbOrganization) dto() app.Organization {
+func (org *dbOrganization) toDomain() app.Organization {
 	return app.Organization{
 		ID:   org.ID,
 		Name: org.Name,
@@ -49,7 +49,7 @@ func (r *PGRepository) GetOrganization(ctx context.Context, orgID string) (app.O
 		return app.Organization{}, fmt.Errorf("unable to get organization(id: %s): %w", orgID, err)
 	}
 
-	organizationDTO := organization.dto()
+	organizationDTO := organization.toDomain()
 	return organizationDTO, nil
 }
 
@@ -70,7 +70,7 @@ func (r *PGRepository) GetOrganizations(ctx context.Context) ([]app.Organization
 
 	organizationDTOs := make([]app.Organization, len(organizations))
 	for i, org := range organizations {
-		organizationDTOs[i] = org.dto()
+		organizationDTOs[i] = org.toDomain()
 	}
 	return organizationDTOs, nil
 }
@@ -97,7 +97,7 @@ func (r *PGRepository) CreateOrganization(ctx context.Context, organization app.
 		return app.Organization{}, fmt.Errorf("unable to create organization: %w", err)
 	}
 
-	return createdOrg.dto(), nil
+	return createdOrg.toDomain(), nil
 }
 
 type dbUpdateOrganizationInput struct {
@@ -126,7 +126,7 @@ func (r *PGRepository) UpdateOrganization(ctx context.Context, organization app.
 		return app.Organization{}, fmt.Errorf("unable to update org(id: %s): %w", organization.ID, err)
 	}
 
-	return updatedOrg.dto(), nil
+	return updatedOrg.toDomain(), nil
 }
 
 // TODO(soft-delete): handle cascade soft deletion

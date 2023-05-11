@@ -27,7 +27,7 @@ type dbScenarioIterationRule struct {
 	DeletedAt           pgtype.Time `db:"deleted_at"`
 }
 
-func (sir *dbScenarioIterationRule) dto() (app.Rule, error) {
+func (sir *dbScenarioIterationRule) toDomain() (app.Rule, error) {
 	formula, err := operators.UnmarshalOperatorBool(sir.Formula)
 	if err != nil {
 		return app.Rule{}, fmt.Errorf("unable to unmarshal rule: %w", err)
@@ -64,7 +64,7 @@ func (r *PGRepository) GetScenarioIterationRule(ctx context.Context, orgID strin
 		return app.Rule{}, fmt.Errorf("unable to get rule: %w", err)
 	}
 
-	ruleDTO, err := rule.dto()
+	ruleDTO, err := rule.toDomain()
 	if err != nil {
 		return app.Rule{}, fmt.Errorf("dto issue: %w", err)
 	}
@@ -97,7 +97,7 @@ func (r *PGRepository) ListScenarioIterationRules(ctx context.Context, orgID str
 
 	var ruleDTOs []app.Rule
 	for _, rule := range rules {
-		ruleDTO, err := rule.dto()
+		ruleDTO, err := rule.toDomain()
 		if err != nil {
 			return nil, fmt.Errorf("dto issue: %w", err)
 		}
@@ -171,7 +171,7 @@ func (r *PGRepository) CreateScenarioIterationRule(ctx context.Context, orgID st
 		return app.Rule{}, fmt.Errorf("unable to create rule: %w", err)
 	}
 
-	ruleDTO, err := createdRule.dto()
+	ruleDTO, err := createdRule.toDomain()
 	if err != nil {
 		return app.Rule{}, fmt.Errorf("dto issue: %w", err)
 	}
@@ -251,7 +251,7 @@ func (r *PGRepository) createScenarioIterationRules(ctx context.Context, tx pgx.
 
 	rulesDTOs := make([]app.Rule, len(createdRules))
 	for i, createdRule := range createdRules {
-		rulesDTOs[i], err = createdRule.dto()
+		rulesDTOs[i], err = createdRule.toDomain()
 		if err != nil {
 			return nil, fmt.Errorf("dto issue: %w", err)
 		}
@@ -330,7 +330,7 @@ func (r *PGRepository) UpdateScenarioIterationRule(ctx context.Context, orgID st
 		return app.Rule{}, fmt.Errorf("unable to update rule(id: %s): %w", rule.ID, err)
 	}
 
-	ruleDTO, err := updatedRule.dto()
+	ruleDTO, err := updatedRule.toDomain()
 	if err != nil {
 		return app.Rule{}, fmt.Errorf("dto issue: %w", err)
 	}
