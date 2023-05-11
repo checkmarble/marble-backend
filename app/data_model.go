@@ -75,23 +75,38 @@ func StatusFrom(s string) Status {
 type DataModel struct {
 	Version string
 	Status  Status
-	Tables  map[string]Table `json:"tables"`
+	Tables  map[TableName]Table `json:"tables"`
+}
+
+type (
+	TableName string
+	FieldName string
+	LinkName  string
+)
+
+func toLinkNames(arr []string) []LinkName {
+	var result []LinkName
+	for _, s := range arr {
+		result = append(result, LinkName(s))
+	}
+	return result
 }
 
 type Table struct {
-	Name          string                  `json:"name"`
-	Fields        map[string]Field        `json:"fields"`
-	LinksToSingle map[string]LinkToSingle `json:"linksToSingle"`
+	Name          TableName                 `json:"name"`
+	Fields        map[FieldName]Field       `json:"fields"`
+	LinksToSingle map[LinkName]LinkToSingle `json:"linksToSingle"`
 }
 
 type Field struct {
-	DataType DataType `json:"dataType"`
+	Name     FieldName `json:"name"`
+	DataType DataType  `json:"dataType"`
 }
 
 type LinkToSingle struct {
-	LinkedTableName string `json:"linkedTableName"`
-	ParentFieldName string `json:"parentFieldName"`
-	ChildFieldName  string `json:"childFieldName"`
+	LinkedTableName TableName `json:"linkedTableName"`
+	ParentFieldName FieldName `json:"parentFieldName"`
+	ChildFieldName  FieldName `json:"childFieldName"`
 }
 
 func (app *App) GetDataModel(ctx context.Context, orgID string) (DataModel, error) {
@@ -100,19 +115,4 @@ func (app *App) GetDataModel(ctx context.Context, orgID string) (DataModel, erro
 		return DataModel{}, err
 	}
 	return dataModel, nil
-}
-
-///////////////////////////////
-// Data Access
-///////////////////////////////
-
-func (dm DataModel) FieldAt(rootName string, path []string) Field {
-	currentRoot := dm.Tables[rootName]
-
-	if len(path) == 1 {
-		return currentRoot.Fields[path[0]]
-	}
-
-	return dm.FieldAt(currentRoot.LinksToSingle[path[0]].LinkedTableName, path[1:])
-
 }

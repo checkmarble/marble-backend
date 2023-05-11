@@ -23,7 +23,7 @@ func (d *DataAccessorImpl) GetPayloadField(fieldName string) interface{} {
 	return &val
 }
 
-func (d *DataAccessorImpl) GetDbField(path []string, fieldName string) (interface{}, error) {
+func (d *DataAccessorImpl) GetDbField(triggerTableName string, path []string, fieldName string) (interface{}, error) {
 	var val pgtype.Bool
 	if fieldName == "true" {
 		val = pgtype.Bool{Bool: true, Valid: true}
@@ -33,9 +33,6 @@ func (d *DataAccessorImpl) GetDbField(path []string, fieldName string) (interfac
 		val = pgtype.Bool{Bool: true, Valid: false}
 	}
 	return val, nil
-}
-func (d *DataAccessorImpl) ValidateDbFieldReadConsistency(path []string, fieldName string) error {
-	return nil
 }
 
 func TestLogicEval(t *testing.T) {
@@ -73,7 +70,7 @@ func TestLogicEval(t *testing.T) {
 			operator: &EqBool{
 				Left: &True{},
 				Right: &EqBool{
-					Left:  &DbFieldBool{Path: []string{"a", "b"}, FieldName: "true"},
+					Left:  &DbFieldBool{TriggerTableName: "a", Path: []string{"b", "c"}, FieldName: "true"},
 					Right: &True{},
 				},
 			},
@@ -175,7 +172,7 @@ func TestLogicEvalErrorCase(t *testing.T) {
 		},
 		{
 			name:     "Payload nil",
-			operator: &DbFieldBool{Path: []string{"table"}, FieldName: "nil"},
+			operator: &DbFieldBool{TriggerTableName: "transactions", Path: []string{"accounts"}, FieldName: "nil"},
 		},
 	}
 	for _, c := range cases {
@@ -211,7 +208,7 @@ func TestMarshalUnMarshal(t *testing.T) {
 			operator: &EqBool{
 				Left: &True{},
 				Right: &EqBool{
-					Left:  &DbFieldBool{Path: []string{"a", "b"}, FieldName: "true"},
+					Left:  &DbFieldBool{TriggerTableName: "transactinos", Path: []string{"accounts", "companies"}, FieldName: "true"},
 					Right: &True{},
 				},
 			},
@@ -321,10 +318,11 @@ func TestMarshallBoolOperators(t *testing.T) {
 		{
 			name: "db field bool",
 			operator: &DbFieldBool{
-				Path:      []string{"a", "b"},
-				FieldName: "c",
+				TriggerTableName: "transactions",
+				Path:             []string{"accounts", "companies"},
+				FieldName:        "name",
 			},
-			expected: `{"type":"DB_FIELD_BOOL","staticData":{"path":["a","b"],"fieldName":"c"}}`,
+			expected: `{"type":"DB_FIELD_BOOL","staticData":{"triggerTableName":"transactions","path":["accounts","companies"],"fieldName":"name"}}`,
 		},
 		{
 			name: "variadic and",
@@ -404,10 +402,11 @@ func TestUnmarshallBoolOperators(t *testing.T) {
 		{
 			name: "equal",
 			expected: &DbFieldBool{
-				Path:      []string{"a", "b"},
-				FieldName: "c",
+				TriggerTableName: "transactions",
+				Path:             []string{"accounts", "companies"},
+				FieldName:        "name",
 			},
-			json: `{"type":"DB_FIELD_BOOL","staticData":{"path":["a","b"],"fieldName":"c"}}`,
+			json: `{"type":"DB_FIELD_BOOL","staticData":{"triggerTableName":"transactions","path":["accounts","companies"],"fieldName":"name"}}`,
 		},
 		{
 			name: "eq with null",

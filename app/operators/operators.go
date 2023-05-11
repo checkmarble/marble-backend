@@ -16,9 +16,8 @@ var operatorFromType = make(map[string]func() Operator)
 
 type DataAccessor interface {
 	GetPayloadField(fieldName string) interface{}
-	GetDbField(path []string, fieldName string) (interface{}, error)
+	GetDbField(triggerTableName string, path []string, fieldName string) (interface{}, error)
 	// GetListField(path []string) (interface{}, error)
-	ValidateDbFieldReadConsistency(path []string, fieldName string) error
 }
 
 var ErrDbReadInconsistentWithDataModel = errors.New("Data model inconsistent with path or field name read from DB")

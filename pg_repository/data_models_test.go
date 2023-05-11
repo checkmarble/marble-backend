@@ -20,7 +20,7 @@ type dataModelTestCase struct {
 func TestDataModelRepoEndToEnd(t *testing.T) {
 	transactions := app.Table{
 		Name: "transactions",
-		Fields: map[string]app.Field{
+		Fields: map[app.FieldName]app.Field{
 			"object_id": {
 				DataType: app.String,
 			},
@@ -29,7 +29,7 @@ func TestDataModelRepoEndToEnd(t *testing.T) {
 			"isValidated": {DataType: app.Bool},
 			"account_id":  {DataType: app.String},
 		},
-		LinksToSingle: map[string]app.LinkToSingle{
+		LinksToSingle: map[app.LinkName]app.LinkToSingle{
 			"bank_accounts": {
 				LinkedTableName: "bank_accounts",
 				ParentFieldName: "object_id",
@@ -39,7 +39,7 @@ func TestDataModelRepoEndToEnd(t *testing.T) {
 	}
 	bank_accounts := app.Table{
 		Name: "bank_accounts_test",
-		Fields: map[string]app.Field{
+		Fields: map[app.FieldName]app.Field{
 			"object_id": {
 				DataType: app.String,
 			},
@@ -47,11 +47,11 @@ func TestDataModelRepoEndToEnd(t *testing.T) {
 			"status":       {DataType: app.String},
 			"is_validated": {DataType: app.Bool},
 		},
-		LinksToSingle: map[string]app.LinkToSingle{},
+		LinksToSingle: map[app.LinkName]app.LinkToSingle{},
 	}
 
 	dataModel := app.DataModel{
-		Tables: map[string]app.Table{
+		Tables: map[app.TableName]app.Table{
 			"transactions":  transactions,
 			"bank_accounts": bank_accounts,
 		},
@@ -73,14 +73,14 @@ func TestDataModelRepoEndToEnd(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			val, err := globalTestParams.repository.CreateDataModel(ctx, orgID, dataModel)
 			if err != nil {
-				t.Errorf("Could not read field from DB: %s", err)
+				t.Errorf("Could not create data model: %s", err)
 			}
 
 			asserts.Equal(c.expectedOutput, val, "[Create] Output data model should match the input one")
 
 			val, err = globalTestParams.repository.GetDataModel(ctx, orgID)
 			if err != nil {
-				t.Errorf("Could not read field from DB: %s", err)
+				t.Errorf("Could not read data model from DB: %s", err)
 			}
 			asserts.Equal(c.expectedOutput, val, "[Get] Output data model should match the input one")
 

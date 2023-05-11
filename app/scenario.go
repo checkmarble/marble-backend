@@ -217,7 +217,7 @@ func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStr
 	}
 
 	// Check the scenario & trigger_object's types
-	if s.TriggerObjectType != payloadStructWithReader.Table.Name {
+	if s.TriggerObjectType != string(payloadStructWithReader.Table.Name) {
 		return ScenarioExecution{}, ErrScenarioTriggerTypeAndTiggerObjectTypeMismatch
 	}
 
