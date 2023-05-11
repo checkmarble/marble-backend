@@ -18,7 +18,7 @@ type dbToken struct {
 	DeletedAt pgtype.Time `db:"deleted_at"`
 }
 
-func (t *dbToken) dto() app.Token {
+func (t *dbToken) toDomain() app.Token {
 	return app.Token{
 		ID:    t.ID,
 		OrgID: t.OrgID,
@@ -100,5 +100,5 @@ func (r *PGRepository) CreateToken(ctx context.Context, token CreateToken) (app.
 		return app.Token{}, fmt.Errorf("unable to create token: %w", err)
 	}
 
-	return createdToken.dto(), nil
+	return createdToken.toDomain(), nil
 }

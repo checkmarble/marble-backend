@@ -30,7 +30,7 @@ type dbScenarioIteration struct {
 	DeletedAt            pgtype.Time     `db:"deleted_at"`
 }
 
-func (si *dbScenarioIteration) dto() (app.ScenarioIteration, error) {
+func (si *dbScenarioIteration) toDomain() (app.ScenarioIteration, error) {
 	siDTO := app.ScenarioIteration{
 		ID:         si.ID,
 		ScenarioID: si.ScenarioID,
@@ -86,7 +86,7 @@ func (r *PGRepository) ListScenarioIterations(ctx context.Context, orgID string,
 
 	var scenarioIterationDTOs []app.ScenarioIteration
 	for _, si := range scenarioIterations {
-		siDTO, err := si.dto()
+		siDTO, err := si.toDomain()
 		if err != nil {
 			return nil, fmt.Errorf("dto issue: %w", err)
 		}
@@ -130,12 +130,12 @@ func (r *PGRepository) getScenarioIterationRaw(ctx context.Context, pool PgxPool
 		return app.ScenarioIteration{}, fmt.Errorf("unable to collect scenario iteration: %w", err)
 	}
 
-	scenarioIterationDTO, err := scenarioIteration.dto()
+	scenarioIterationDTO, err := scenarioIteration.toDomain()
 	if err != nil {
 		return app.ScenarioIteration{}, fmt.Errorf("dto issue: %w", err)
 	}
 	for _, rule := range scenarioIteration.Rules {
-		ruleDto, err := rule.dto()
+		ruleDto, err := rule.toDomain()
 		if err != nil {
 			return app.ScenarioIteration{}, fmt.Errorf("dto issue: %w", err)
 		}
@@ -192,7 +192,7 @@ func (r *PGRepository) CreateScenarioIteration(ctx context.Context, orgID string
 		return app.ScenarioIteration{}, fmt.Errorf("unable to create scenario iteration: %w", err)
 	}
 
-	scenarioIterationDTO, err := createdScenarioIteration.dto()
+	scenarioIterationDTO, err := createdScenarioIteration.toDomain()
 	if err != nil {
 		return app.ScenarioIteration{}, fmt.Errorf("dto issue: %w", err)
 	}
@@ -279,7 +279,7 @@ func (r *PGRepository) UpdateScenarioIteration(ctx context.Context, orgID string
 		return app.ScenarioIteration{}, fmt.Errorf("unable to update scenario iteration: %w", err)
 	}
 
-	scenarioIterationDTO, err := updatedScenarioIteration.dto()
+	scenarioIterationDTO, err := updatedScenarioIteration.toDomain()
 	if err != nil {
 		return app.ScenarioIteration{}, fmt.Errorf("dto issue: %w", err)
 	}

@@ -23,7 +23,7 @@ type dbScenario struct {
 	DeletedAt         pgtype.Time `db:"deleted_at"`
 }
 
-func (s *dbScenario) dto() app.Scenario {
+func (s *dbScenario) toDomain() app.Scenario {
 	scenario := app.Scenario{
 		ID:                s.ID,
 		Name:              s.Name,
@@ -56,7 +56,7 @@ func (r *PGRepository) ListScenarios(ctx context.Context, orgID string) ([]app.S
 
 	scenarioDTOs := []app.Scenario{}
 	for _, s := range scenarios {
-		scenarioDTOs = append(scenarioDTOs, s.dto())
+		scenarioDTOs = append(scenarioDTOs, s.toDomain())
 	}
 	return scenarioDTOs, nil
 }
@@ -82,7 +82,7 @@ func (r *PGRepository) GetScenario(ctx context.Context, orgID string, scenarioID
 		return app.Scenario{}, fmt.Errorf("unable to get scenario: %w", err)
 	}
 
-	return scenario.dto(), nil
+	return scenario.toDomain(), nil
 }
 
 type dbCreateScenario struct {
@@ -112,7 +112,7 @@ func (r *PGRepository) CreateScenario(ctx context.Context, orgID string, scenari
 		return app.Scenario{}, fmt.Errorf("unable to create scenario: %w", err)
 	}
 
-	return createdScenario.dto(), nil
+	return createdScenario.toDomain(), nil
 }
 
 type dbUpdateScenarioInput struct {
@@ -143,7 +143,7 @@ func (r *PGRepository) UpdateScenario(ctx context.Context, orgID string, scenari
 		return app.Scenario{}, fmt.Errorf("unable to update scenario(id: %s): %w", scenario.ID, err)
 	}
 
-	return updatedScenario.dto(), nil
+	return updatedScenario.toDomain(), nil
 }
 
 func (r *PGRepository) setLiveScenarioIteration(ctx context.Context, tx pgx.Tx, orgID string, scenarioIterationID string) error {
