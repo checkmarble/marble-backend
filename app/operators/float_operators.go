@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math"
 	"strings"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // /////////////////////////////
@@ -93,6 +95,91 @@ func (f *FloatValue) UnmarshalJSON(b []byte) error {
 }
 
 // ///////////////////////////////////////////////////////////////////////////////////////
+// Db field Float
+// ///////////////////////////////////////////////////////////////////////////////////////
+type DbFieldFloat struct {
+	TriggerTableName string
+	Path             []string
+	FieldName        string
+}
+
+// register creation
+func init() {
+	operatorFromType["DB_FIELD_FLOAT"] = func() Operator { return &DbFieldFloat{} }
+}
+
+func (field DbFieldFloat) Eval(d DataAccessor) (float64, error) {
+	if !field.IsValid() {
+		return 0, ErrEvaluatingInvalidOperator
+	}
+
+	valRaw, err := d.GetDbField(field.TriggerTableName, field.Path, field.FieldName)
+	if err != nil {
+		fmt.Printf("Error getting DB field: %v", err)
+		return 0, err
+	}
+
+	valNullable, ok := valRaw.(pgtype.Float8)
+	if !ok {
+		return 0, fmt.Errorf("DB field %s is not a float", field.FieldName)
+	}
+	if !valNullable.Valid {
+		return 0, fmt.Errorf("DB field %s is null", field.FieldName)
+	}
+	return valNullable.Float64, nil
+}
+
+func (field DbFieldFloat) IsValid() bool {
+	return field.TriggerTableName != "" && len(field.Path) > 0 && field.FieldName != ""
+}
+
+func (field DbFieldFloat) String() string {
+	return fmt.Sprintf("( Boolean field from DB: path %v, field name %s )", field.Path, field.FieldName)
+}
+
+func (field DbFieldFloat) MarshalJSON() ([]byte, error) {
+
+	// data schema
+	type dbFieldData struct {
+		TriggerTableName string   `json:"triggerTableName"`
+		Path             []string `json:"path"`
+		FieldName        string   `json:"fieldName"`
+	}
+
+	return json.Marshal(struct {
+		OperatorType
+		Data dbFieldData `json:"staticData"`
+	}{
+		OperatorType: OperatorType{Type: "DB_FIELD_FLOAT"},
+		Data: dbFieldData{
+			TriggerTableName: field.TriggerTableName,
+			Path:             field.Path,
+			FieldName:        field.FieldName,
+		},
+	})
+}
+
+func (field *DbFieldFloat) UnmarshalJSON(b []byte) error {
+	// data schema
+	var dbFieldData struct {
+		StaticData struct {
+			TriggerTableName string   `json:"triggerTableName"`
+			Path             []string `json:"path"`
+			FieldName        string   `json:"fieldName"`
+		} `json:"staticData"`
+	}
+
+	if err := json.Unmarshal(b, &dbFieldData); err != nil {
+		return fmt.Errorf("unable to unmarshal operator to intermediate staticData representation: %w", err)
+	}
+	field.TriggerTableName = dbFieldData.StaticData.TriggerTableName
+	field.Path = dbFieldData.StaticData.Path
+	field.FieldName = dbFieldData.StaticData.FieldName
+
+	return nil
+}
+
+// ///////////////////////////////////////////////////////////////////////////////////////
 // Payload field Float
 // ///////////////////////////////////////////////////////////////////////////////////////
 type PayloadFieldFloat struct {
@@ -101,7 +188,7 @@ type PayloadFieldFloat struct {
 
 // register creation
 func init() {
-	operatorFromType["PAYLOAD_FIELD_FLOAT"] = func() Operator { return &PayloadFieldBool{} }
+	operatorFromType["PAYLOAD_FIELD_FLOAT"] = func() Operator { return &PayloadFieldFloat{} }
 }
 
 func (field PayloadFieldFloat) Eval(d DataAccessor) (float64, error) {

@@ -53,6 +53,15 @@ func TestLogicEvalFloat(t *testing.T) {
 			expected: 1,
 		},
 		{
+			name: "db field",
+			operator: &DbFieldFloat{
+				TriggerTableName: "table",
+				Path:             []string{"1", "2"},
+				FieldName:        "10.5",
+			},
+			expected: 10.5,
+		},
+		{
 			name:     "payload field",
 			operator: &PayloadFieldFloat{FieldName: "10.5"},
 			expected: 10.5,
@@ -161,6 +170,18 @@ func TestMarshalUnMarshalFloat(t *testing.T) {
 		{
 			name:     "Scalar value",
 			operator: &FloatValue{Value: 42.42},
+		},
+		{
+			name: "Db field",
+			operator: &DbFieldFloat{
+				TriggerTableName: "table",
+				Path:             []string{"1", "2"},
+				FieldName:        "10.5",
+			},
+		},
+		{
+			name:     "Payload field",
+			operator: &PayloadFieldFloat{FieldName: "10.5"},
 		},
 		{
 			name: "Sum",
