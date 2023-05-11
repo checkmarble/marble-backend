@@ -110,17 +110,30 @@ func TestMain(m *testing.M) {
 	}
 
 	insertDataSQL := `
+	INSERT INTO companies (
+		object_id,
+		updated_at,
+		name
+	  )
+	VALUES(
+		'{{.CompanyId}}',
+		'2021-01-01T00:00:00Z',
+		'Test company 1'
+	);
+
 	INSERT INTO bank_accounts (
 		object_id,
 		updated_at,
 		name,
-		currency
+		currency,
+		company_id
 	  )
 	VALUES(
 		'{{.BankAccountId}}',
 		'2021-01-01T00:00:00Z',
 		'SHINE',
-		'EUR'
+		'EUR',
+		'{{.CompanyId}}'
 	  );
 
 	INSERT INTO transactions (
@@ -131,18 +144,13 @@ func TestMain(m *testing.M) {
 		title
 	  )
 	VALUES(
-		'{{.TransactionId1}}',
+		'{{.TransactionId}}',
 		'{{.BankAccountId}}',
 		'2021-01-01T00:00:00Z',
 		10,
 		'AMAZON'
-	  ),(
-		'{{.TransactionId2}}',
-		'{{.BankAccountId}}',
-		'2021-01-01T00:00:00Z',
-		NULL,
-		'GCP'
 	  );
+
 	INSERT INTO organizations (
 		id,
 		name,
@@ -156,14 +164,15 @@ func TestMain(m *testing.M) {
 	`
 
 	organizationId, _ := uuid.NewV4()
+	companyId, _ := uuid.NewV4()
 	bankAccountId, _ := uuid.NewV4()
-	transactionId1, _ := uuid.NewV4()
-	transactionId2, _ := uuid.NewV4()
+	transactionId, _ := uuid.NewV4()
+
 	testIds := map[string]string{
 		"OrganizationId": organizationId.String(),
+		"CompanyId":      companyId.String(),
 		"BankAccountId":  bankAccountId.String(),
-		"TransactionId1": transactionId1.String(),
-		"TransactionId2": transactionId2.String(),
+		"TransactionId":  transactionId.String(),
 	}
 	insertDataSQL = stringBuilder(insertDataSQL, testIds)
 

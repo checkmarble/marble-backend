@@ -73,14 +73,14 @@ func TestDataModelRepoEndToEnd(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			val, err := globalTestParams.repository.CreateDataModel(ctx, orgID, dataModel)
 			if err != nil {
-				t.Errorf("Could not read field from DB: %s", err)
+				t.Errorf("Could not create data model: %s", err)
 			}
 
 			asserts.Equal(c.expectedOutput, val, "[Create] Output data model should match the input one")
 
 			val, err = globalTestParams.repository.GetDataModel(ctx, orgID)
 			if err != nil {
-				t.Errorf("Could not read field from DB: %s", err)
+				t.Errorf("Could not read data model from DB: %s", err)
 			}
 			asserts.Equal(c.expectedOutput, val, "[Get] Output data model should match the input one")
 

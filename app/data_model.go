@@ -84,6 +84,14 @@ type (
 	LinkName  string
 )
 
+func toLinkNames(arr []string) []LinkName {
+	var result []LinkName
+	for _, s := range arr {
+		result = append(result, LinkName(s))
+	}
+	return result
+}
+
 type Table struct {
 	Name          TableName                 `json:"name"`
 	Fields        map[FieldName]Field       `json:"fields"`

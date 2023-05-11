@@ -14,6 +14,7 @@ require (
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.0 // indirect
 	github.com/containerd/continuity v0.3.0 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/cli v23.0.1+incompatible // indirect
 	github.com/docker/docker v23.0.1+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
@@ -55,7 +56,6 @@ require (
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
-	github.com/davecgh/go-spew v1.1.1
 	github.com/ggicci/httpin v0.10.1
 	github.com/go-playground/validator v9.31.0+incompatible
 	github.com/gofrs/uuid v4.4.0+incompatible
