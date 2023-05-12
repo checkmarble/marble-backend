@@ -2,7 +2,6 @@ package operators
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -12,8 +11,6 @@ import (
 // /////////////////////////////
 // get an unmarshalled operator
 // /////////////////////////////
-
-var ErrEvaluatingInvalidOperator = errors.New("Error evaluating invalid opereator")
 
 func UnmarshalOperatorBool(jsonBytes []byte) (OperatorBool, error) {
 	// All operators follow the same schema
@@ -323,16 +320,16 @@ func (field PayloadFieldBool) MarshalJSON() ([]byte, error) {
 
 func (field *PayloadFieldBool) UnmarshalJSON(b []byte) error {
 	// data schema
-	var dbFieldBoolData struct {
+	var payloadFieldData struct {
 		StaticData struct {
 			FieldName string `json:"fieldName"`
 		} `json:"staticData"`
 	}
 
-	if err := json.Unmarshal(b, &dbFieldBoolData); err != nil {
+	if err := json.Unmarshal(b, &payloadFieldData); err != nil {
 		return fmt.Errorf("unable to unmarshal operator to intermediate staticData representation: %w", err)
 	}
-	field.FieldName = dbFieldBoolData.StaticData.FieldName
+	field.FieldName = payloadFieldData.StaticData.FieldName
 
 	return nil
 }
