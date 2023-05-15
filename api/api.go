@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"golang.org/x/exp/slog"
 )
 
@@ -35,7 +36,7 @@ type AppInterface interface {
 	GetDataModel(ctx context.Context, organizationID string) (app.DataModel, error)
 }
 
-func New(port string, a AppInterface, logger *slog.Logger, signingSecrets SigningSecrets) (*http.Server, error) {
+func New(port string, a AppInterface, logger *slog.Logger, signingSecrets SigningSecrets, corsAllowLocalhost bool) (*http.Server, error) {
 
 	///////////////////////////////
 	// Setup a router
@@ -48,6 +49,7 @@ func New(port string, a AppInterface, logger *slog.Logger, signingSecrets Signin
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(cors.Handler(corsOption(corsAllowLocalhost)))
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")

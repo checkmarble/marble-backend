@@ -18,12 +18,17 @@ import (
 
 func runServer(pgRepository *pg_repository.PGRepository, port string, env string, logger *slog.Logger) {
 	ctx := context.Background()
-	if env == "DEV" || env == "staging" {
+
+	devEnv := env == "DEV"
+
+	corsAllowLocalhost := devEnv
+
+	if devEnv || env == "staging" {
 		pgRepository.Seed()
 	}
 
 	app, _ := app.New(pgRepository)
-	api, _ := api.New(port, app, logger, api.NewSigningSecrets())
+	api, _ := api.New(port, app, logger, api.NewSigningSecrets(), corsAllowLocalhost)
 
 	////////////////////////////////////////////////////////////
 	// Start serving the app

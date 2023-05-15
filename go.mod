@@ -58,6 +58,7 @@ require (
 require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/ggicci/httpin v0.10.1
+	github.com/go-chi/cors v1.2.1
 	github.com/go-playground/validator v9.31.0+incompatible
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/golang-jwt/jwt/v5 v5.0.0-rc.2
