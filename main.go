@@ -22,7 +22,7 @@ import (
 //go:embed pg_repository/migrations_core/*.sql
 var embedMigrations embed.FS
 
-func run_server(pgRepository *pg_repository.PGRepository, port string, env string, logger *slog.Logger) {
+func runServer(pgRepository *pg_repository.PGRepository, port string, env string, logger *slog.Logger) {
 	ctx := context.Background()
 	if env == "DEV" {
 		pgRepository.Seed()
@@ -54,8 +54,17 @@ func run_server(pgRepository *pg_repository.PGRepository, port string, env strin
 	api.Shutdown(shutdownCtx)
 }
 
-func run_migrations(env string, pgConfig pg_repository.PGConfig, logger *slog.Logger) {
+func runMigrations(env string, pgConfig pg_repository.PGConfig, logger *slog.Logger) {
 	pg_repository.RunMigrations(env, pgConfig, "pg_repository/migrations", logger, false)
+}
+
+func runWipeDb(pgConfig pg_repository.PGConfig, logger *slog.Logger) {
+	env := utils.GetStringEnv("ENV", "DEV")
+	gcpProjectId := utils.GetStringEnv("GOOGLE_CLOUD_PROJECT", "")
+	if env != "DEV" || gcpProjectId != "tokyo-country-381508" {
+		log.Fatal("WipeDb is only allowed in DEV or staging environment")
+	}
+	pg_repository.WipeDb(env, pgConfig, "pg_repository/migrations", logger)
 }
 
 func main() {
@@ -96,13 +105,17 @@ func main() {
 
 	shouldRunMigrations := flag.Bool("migrations", false, "Run migrations")
 	shouldRunServer := flag.Bool("server", false, "Run server")
+	shouldWipeDb := flag.Bool("wipe", false, "Truncate db tables")
 	flag.Parse()
 	logger.DebugCtx(context.Background(), "shouldRunMigrations", *shouldRunMigrations, "shouldRunServer", *shouldRunServer)
 
+	if *shouldWipeDb {
+		runWipeDb(pgConfig, logger)
+	}
 	if *shouldRunMigrations {
-		run_migrations(env, pgConfig, logger)
+		runMigrations(env, pgConfig, logger)
 	}
 	if *shouldRunServer {
-		run_server(pgRepository, port, env, logger)
+		runServer(pgRepository, port, env, logger)
 	}
 }

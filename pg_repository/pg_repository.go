@@ -117,3 +117,39 @@ func RunMigrations(env string, pgConfig PGConfig, migrationsDirectory string, lo
 		}
 	}
 }
+
+func WipeDb(env string, pgConfig PGConfig, migrationsDirectory string, logger *slog.Logger) {
+	// Wipe the database by running all migrations down and then up again
+	connectionString := pgConfig.GetConnectionString(env)
+
+	migrationDB, err := sql.Open("pgx", connectionString)
+	defer migrationDB.Close()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+		os.Exit(1)
+	}
+
+	// start goose migrations
+	logger.Info("Migrations starting")
+	goose.SetBaseFS(pgConfig.MigrationFS)
+
+	if err := goose.SetDialect("postgres"); err != nil {
+		panic(err)
+	}
+
+	err = migrationDB.Ping()
+	if err != nil {
+		logger.Error("Unable to ping database: \n" + err.Error())
+		panic(err)
+	}
+
+	if err := goose.Reset(migrationDB, migrationsDirectory); err != nil {
+		logger.Error("unable to reset migrations: \n" + err.Error())
+		panic(err)
+	}
+	if err := goose.Up(migrationDB, migrationsDirectory); err != nil {
+		logger.Error("unable to run migrations: \n" + err.Error())
+		panic(err)
+
+	}
+}
