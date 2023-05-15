@@ -2,7 +2,7 @@ import { createRoutesFromElements, Route } from "react-router-dom";
 import { PathFragment } from "@/models";
 import App from "@/App";
 import ErrorPage from "@/pages/ErrorPage";
-import OrganizationsPage from "@/pages/OrganizationPage";
+import OrganizationsPage from "@/pages/OrganizationsPage";
 import HomePage from "@/pages/HomePage";
 import LoginPage from "@/pages/LoginPage";
 

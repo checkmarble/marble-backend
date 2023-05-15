@@ -1,8 +1,9 @@
 import { type Repositories } from "./repositories";
-import { AuthenticationService } from "./services/AuthenticationService";
+import { AuthenticationService, OrganizationService } from "./services";
 
 export interface Services {
   authenticationService: AuthenticationService;
+  organizationService: OrganizationService;
 }
 
 let globalServices: Services | null;
@@ -14,6 +15,9 @@ export function initializeServices(repositories: Repositories) {
   globalServices = {
     authenticationService: new AuthenticationService(
       repositories.authenticationRepository
+    ),
+    organizationService: new OrganizationService(
+      repositories.organizationRepository
     ),
   };
 }
