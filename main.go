@@ -24,12 +24,15 @@ var embedMigrations embed.FS
 
 func run_server(pgRepository *pg_repository.PGRepository, port string, env string, logger *slog.Logger) {
 	ctx := context.Background()
+	corsAllowLocalhost := false
+
 	if env == "DEV" {
 		pgRepository.Seed()
+		corsAllowLocalhost = true
 	}
 
 	app, _ := app.New(pgRepository)
-	api, _ := api.New(port, app, logger, api.NewSigningSecrets())
+	api, _ := api.New(port, app, logger, api.NewSigningSecrets(), corsAllowLocalhost)
 
 	////////////////////////////////////////////////////////////
 	// Start serving the app
