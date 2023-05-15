@@ -12,7 +12,10 @@ import "./index.css";
 
 const firebase = initializeFirebase();
 
-const repositories: Repositories = makeRepositories(firebase);
+const repositories: Repositories = makeRepositories(
+  firebase,
+  new URL("http://localhost:8080")
+);
 initializeServices(repositories);
 
 const router = createBrowserRouter(backofficeRoutes());

@@ -81,7 +81,7 @@ export function useAuthentication(authService: AuthenticationService) {
     user: authentication.user,
     authLoading: authentication.status == AuthenticationStatus.Unknown,
     displayPrivatePage:
-    routeRequireAuthenticatedUser &&
+      routeRequireAuthenticatedUser &&
       authentication.status === AuthenticationStatus.Authenticated,
   };
 }

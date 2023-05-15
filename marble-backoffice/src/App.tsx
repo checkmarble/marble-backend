@@ -13,13 +13,11 @@ function App() {
   return (
     <AuthenticatedUserContext.Provider value={user}>
       <CssBaseline />
-      {authLoading && (
+      {authLoading ? (
         <Box sx={{ width: "100%" }}>
           <LinearProgress />
         </Box>
-      )}
-
-      {displayPrivatePage ? (
+      ) : displayPrivatePage ? (
         <>
           <BackOfficeAppBar />
           <Outlet />
