@@ -11,7 +11,7 @@ CREATE TABLE companies(
 );
 CREATE INDEX companies_object_id_idx ON companies(object_id, valid_until DESC, valid_from, updated_at);
 
-CREATE TABLE accountss(
+CREATE TABLE accounts(
   id uuid DEFAULT uuid_generate_v4(),
   object_id VARCHAR NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -24,7 +24,7 @@ CREATE TABLE accountss(
   name VARCHAR,
   PRIMARY KEY(id)
 );
-CREATE INDEX accountss_object_id_idx ON accountss(object_id, valid_until DESC, valid_from, updated_at);
+CREATE INDEX accounts_object_id_idx ON accounts(object_id, valid_until DESC, valid_from, updated_at);
 
 CREATE TABLE transactions(
   id uuid DEFAULT uuid_generate_v4(),
@@ -33,7 +33,7 @@ CREATE TABLE transactions(
   valid_from TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   valid_until TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT 'INFINITY',
   amount double precision,
-  accounts_id VARCHAR,
+  account_id VARCHAR,
   bic_country VARCHAR,
   country VARCHAR,
   description VARCHAR,
@@ -49,8 +49,8 @@ CREATE INDEX transactions_object_id_idx ON transactions(object_id, valid_until D
 -- +goose StatementBegin
 DROP INDEX companies_object_id_idx;
 DROP TABLE companies;
-DROP INDEX accountss_object_id_idx;
-DROP TABLE accountss;
+DROP INDEX accounts_object_id_idx;
+DROP TABLE accounts;
 DROP INDEX transactions_object_id_idx;
 DROP TABLE transactions;
 -- +goose StatementEnd

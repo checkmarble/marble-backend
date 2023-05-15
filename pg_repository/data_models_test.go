@@ -30,15 +30,15 @@ func TestDataModelRepoEndToEnd(t *testing.T) {
 			"account_id":  {DataType: app.String},
 		},
 		LinksToSingle: map[app.LinkName]app.LinkToSingle{
-			"accountss": {
-				LinkedTableName: "accountss",
+			"accounts": {
+				LinkedTableName: "accounts",
 				ParentFieldName: "object_id",
-				ChildFieldName:  "accounts_id",
+				ChildFieldName:  "account_id",
 			},
 		},
 	}
-	accountss := app.Table{
-		Name: "accountss_test",
+	accounts := app.Table{
+		Name: "accounts_test",
 		Fields: map[app.FieldName]app.Field{
 			"object_id": {
 				DataType: app.String,
@@ -53,7 +53,7 @@ func TestDataModelRepoEndToEnd(t *testing.T) {
 	dataModel := app.DataModel{
 		Tables: map[app.TableName]app.Table{
 			"transactions": transactions,
-			"accountss":    accountss,
+			"accounts":     accounts,
 		},
 		Version: "1.0.0",
 	}

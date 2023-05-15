@@ -62,7 +62,7 @@ func (r *PGRepository) Seed() {
 						DataType: app.String,
 					},
 					"updated_at":  {DataType: app.Timestamp},
-					"accounts_id": {DataType: app.String},
+					"account_id":  {DataType: app.String},
 					"bic_country": {DataType: app.String},
 					"country":     {DataType: app.String},
 					"description": {DataType: app.String},
@@ -73,13 +73,13 @@ func (r *PGRepository) Seed() {
 				},
 				LinksToSingle: map[app.LinkName]app.LinkToSingle{
 					"accounts": {
-						LinkedTableName: "accountss",
+						LinkedTableName: "accounts",
 						ParentFieldName: "object_id",
-						ChildFieldName:  "accounts_id"},
+						ChildFieldName:  "account_id"},
 				},
 			},
-			"accountss": {
-				Name: "accountss",
+			"accounts": {
+				Name: "accounts",
 				Fields: map[app.FieldName]app.Field{
 					"object_id": {
 						DataType: app.String,

@@ -19,21 +19,21 @@ func TestReadFromDb(t *testing.T) {
 			"object_id": {
 				DataType: app.String,
 			},
-			"updated_at":  {DataType: app.Timestamp},
-			"value":       {DataType: app.Float},
-			"title":       {DataType: app.String},
-			"accounts_id": {DataType: app.String},
+			"updated_at": {DataType: app.Timestamp},
+			"value":      {DataType: app.Float},
+			"title":      {DataType: app.String},
+			"account_id": {DataType: app.String},
 		},
 		LinksToSingle: map[app.LinkName]app.LinkToSingle{
-			"accountss": {
-				LinkedTableName: "accountss",
+			"accounts": {
+				LinkedTableName: "accounts",
 				ParentFieldName: "object_id",
-				ChildFieldName:  "accounts_id",
+				ChildFieldName:  "account_id",
 			},
 		},
 	}
-	accountss := app.Table{
-		Name: "accountss",
+	accounts := app.Table{
+		Name: "accounts",
 		Fields: map[app.FieldName]app.Field{
 			"object_id": {
 				DataType: app.String,
@@ -65,7 +65,7 @@ func TestReadFromDb(t *testing.T) {
 	dataModel := app.DataModel{
 		Tables: map[app.TableName]app.Table{
 			"transactions": transactions,
-			"accountss":    accountss,
+			"accounts":     accounts,
 			"companies":    companies,
 		},
 	}
@@ -90,19 +90,19 @@ func TestReadFromDb(t *testing.T) {
 	cases := []testCase{
 		{
 			name:           "Read string field from DB with one join",
-			readParams:     app.DbFieldReadParams{TriggerTableName: app.TableName("transactions"), Path: []app.LinkName{"accountss"}, FieldName: "name", DataModel: dataModel, Payload: payload},
+			readParams:     app.DbFieldReadParams{TriggerTableName: app.TableName("transactions"), Path: []app.LinkName{"accounts"}, FieldName: "name", DataModel: dataModel, Payload: payload},
 			expectedOutput: pgtype.Text{String: "SHINE", Valid: true},
 			expectedError:  nil,
 		},
 		{
 			name:           "Read string field from DB with two joins",
-			readParams:     app.DbFieldReadParams{TriggerTableName: app.TableName("transactions"), Path: []app.LinkName{"accountss", "companies"}, FieldName: "name", DataModel: dataModel, Payload: payload},
+			readParams:     app.DbFieldReadParams{TriggerTableName: app.TableName("transactions"), Path: []app.LinkName{"accounts", "companies"}, FieldName: "name", DataModel: dataModel, Payload: payload},
 			expectedOutput: pgtype.Text{String: "Test company 1", Valid: true},
 			expectedError:  nil,
 		},
 		{
 			name:           "Read string field from DB, no line found",
-			readParams:     app.DbFieldReadParams{TriggerTableName: app.TableName("transactions"), Path: []app.LinkName{"accountss"}, FieldName: "name", DataModel: dataModel, Payload: payloadNotInDB},
+			readParams:     app.DbFieldReadParams{TriggerTableName: app.TableName("transactions"), Path: []app.LinkName{"accounts"}, FieldName: "name", DataModel: dataModel, Payload: payloadNotInDB},
 			expectedOutput: pgtype.Text{String: "", Valid: false},
 			expectedError:  app.ErrNoRowsReadInDB,
 		},

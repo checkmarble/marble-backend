@@ -139,7 +139,7 @@ func TestMain(m *testing.M) {
 		'Test company 1'
 	);
 
-	INSERT INTO accountss (
+	INSERT INTO accounts (
 		object_id,
 		updated_at,
 		name,
@@ -156,7 +156,7 @@ func TestMain(m *testing.M) {
 
 	INSERT INTO transactions (
 		object_id,
-		accounts_id,
+		account_id,
 		updated_at,
 		amount,
 		title
@@ -191,19 +191,6 @@ func TestMain(m *testing.M) {
 		"CompanyId":      companyId.String(),
 		"BankAccountId":  bankAccountId.String(),
 		"TransactionId":  transactionId.String(),
-	}
-	query := `SELECT table_name FROM information_schema.tables WHERE table_schema='public'`
-	rows, err := TestRepo.db.Query(context.Background(), query)
-	if err != nil {
-		log.Fatalf("Could not query tables: %s", err)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var tableName string
-		if err := rows.Scan(&tableName); err != nil {
-			log.Fatalf("Could not scan table name: %s", err)
-		}
-		fmt.Println(tableName)
 	}
 
 	insertDataSQL = stringBuilder(insertDataSQL, testIds)

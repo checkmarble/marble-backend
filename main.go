@@ -22,6 +22,9 @@ import (
 //go:embed pg_repository/migrations_core/*.sql
 var embedMigrations embed.FS
 
+//go:embed pg_repository/migrations_test_org/*.sql
+var embedMigrationsTestOrg embed.FS
+
 func runServer(pgRepository *pg_repository.PGRepository, port string, env string, logger *slog.Logger) {
 	ctx := context.Background()
 	if env == "DEV" {
@@ -56,6 +59,10 @@ func runServer(pgRepository *pg_repository.PGRepository, port string, env string
 
 func runMigrations(env string, pgConfig pg_repository.PGConfig, logger *slog.Logger) {
 	pg_repository.RunMigrations(env, pgConfig, "pg_repository/migrations", logger, false)
+	if env == "DEV" {
+		pgConfig.MigrationFS = embedMigrationsTestOrg
+		pg_repository.RunMigrations("DEV", pgConfig, "migrations_test_org", logger, true)
+	}
 }
 
 func runWipeDb(pgConfig pg_repository.PGConfig, logger *slog.Logger) {

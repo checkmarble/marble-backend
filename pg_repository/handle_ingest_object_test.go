@@ -20,10 +20,10 @@ func TestHandleFirstIngestObject(t *testing.T) {
 			"object_id": {
 				DataType: app.String,
 			},
-			"updated_at":  {DataType: app.Timestamp},
-			"amount":      {DataType: app.Float},
-			"title":       {DataType: app.String},
-			"accounts_id": {DataType: app.String},
+			"updated_at": {DataType: app.Timestamp},
+			"amount":     {DataType: app.Float},
+			"title":      {DataType: app.String},
+			"account_id": {DataType: app.String},
 		},
 	}
 	ctx := context.Background()
@@ -70,10 +70,10 @@ func TestHandleRenewedIngestObject(t *testing.T) {
 			"object_id": {
 				DataType: app.String,
 			},
-			"updated_at":  {DataType: app.Timestamp},
-			"amount":      {DataType: app.Float},
-			"title":       {DataType: app.String},
-			"accounts_id": {DataType: app.String},
+			"updated_at": {DataType: app.Timestamp},
+			"amount":     {DataType: app.Float},
+			"title":      {DataType: app.String},
+			"account_id": {DataType: app.String},
 		},
 	}
 	ctx := context.Background()
