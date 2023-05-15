@@ -139,7 +139,7 @@ func TestMain(m *testing.M) {
 		'Test company 1'
 	);
 
-	INSERT INTO bank_accounts (
+	INSERT INTO accountss (
 		object_id,
 		updated_at,
 		name,
@@ -156,9 +156,9 @@ func TestMain(m *testing.M) {
 
 	INSERT INTO transactions (
 		object_id,
-		bank_account_id,
+		accounts_id,
 		updated_at,
-		value,
+		amount,
 		title
 	  )
 	VALUES(
@@ -172,7 +172,7 @@ func TestMain(m *testing.M) {
 	INSERT INTO organizations (
 		id,
 		name,
-		  database_name
+		database_name
 	)
 	VALUES(
 		'{{.OrganizationId}}',
