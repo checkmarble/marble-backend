@@ -81,7 +81,7 @@ func New(env string, PGConfig PGConfig) (*PGRepository, error) {
 	return r, nil
 }
 
-func RunMigrations(env string, pgConfig PGConfig, migrationsDirectory string, logger *slog.Logger) {
+func RunMigrations(env string, pgConfig PGConfig, migrationsDirectory string, logger *slog.Logger, allowMissing bool) {
 	connectionString := pgConfig.GetConnectionString(env)
 
 	migrationDB, err := sql.Open("pgx", connectionString)
@@ -105,8 +105,15 @@ func RunMigrations(env string, pgConfig PGConfig, migrationsDirectory string, lo
 		panic(err)
 	}
 
-	if err := goose.Up(migrationDB, migrationsDirectory); err != nil {
-		logger.Error("unable to run migrations: \n" + err.Error())
-		panic(err)
+	if allowMissing {
+		if err := goose.Up(migrationDB, migrationsDirectory, goose.WithAllowMissing()); err != nil {
+			logger.Error("unable to run migrations: \n" + err.Error())
+			panic(err)
+		}
+	} else {
+		if err := goose.Up(migrationDB, migrationsDirectory); err != nil {
+			logger.Error("unable to run migrations: \n" + err.Error())
+			panic(err)
+		}
 	}
 }
