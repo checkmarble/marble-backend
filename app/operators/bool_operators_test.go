@@ -181,6 +181,38 @@ func TestLogicEval(t *testing.T) {
 			},
 			expected: false,
 		},
+		{
+			name: "Greater than (float, true)",
+			operator: &GreaterFloat{
+				Left:  &FloatValue{Value: 10},
+				Right: &FloatValue{Value: 5},
+			},
+			expected: true,
+		},
+		{
+			name: "Greater than or equal (float, false)",
+			operator: &GreaterOrEqualFloat{
+				Left:  &FloatValue{Value: 1},
+				Right: &FloatValue{Value: 5},
+			},
+			expected: false,
+		},
+		{
+			name: "Greater than or equal (float, True)",
+			operator: &GreaterOrEqualFloat{
+				Left:  &FloatValue{Value: 5},
+				Right: &FloatValue{Value: 5},
+			},
+			expected: true,
+		},
+		{
+			name: "Equal (float, true)",
+			operator: &EqualFloat{
+				Left:  &FloatValue{Value: 5},
+				Right: &FloatValue{Value: 5},
+			},
+			expected: true,
+		},
 	}
 	asserts := assert.New(t)
 	for _, c := range cases {
@@ -188,10 +220,10 @@ func TestLogicEval(t *testing.T) {
 			got, err := c.operator.Eval(&dataAccessor)
 
 			if err != nil {
-				t.Errorf("error: %v", err)
+				t.Errorf("error: %v on %s", err, c.name)
 			}
 
-			asserts.Equal(c.expected, got)
+			asserts.Equal(c.expected, got, c.name)
 		})
 	}
 }
