@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"embed"
 	"flag"
 	"log"
 	"marble/marble-backend/api"
@@ -16,14 +15,6 @@ import (
 
 	"golang.org/x/exp/slog"
 )
-
-// embed migrations sql folder
-//
-//go:embed pg_repository/migrations_core/*.sql
-var embedMigrations embed.FS
-
-//go:embed pg_repository/migrations_test_org/*.sql
-var embedMigrationsTestOrg embed.FS
 
 func runServer(pgRepository *pg_repository.PGRepository, port string, env string, logger *slog.Logger) {
 	ctx := context.Background()
@@ -57,23 +48,6 @@ func runServer(pgRepository *pg_repository.PGRepository, port string, env string
 	api.Shutdown(shutdownCtx)
 }
 
-func runMigrations(env string, pgConfig pg_repository.PGConfig, logger *slog.Logger) {
-	pg_repository.RunMigrations(env, pgConfig, "pg_repository/migrations", logger, false)
-	if env == "DEV" {
-		pgConfig.MigrationFS = embedMigrationsTestOrg
-		pg_repository.RunMigrations("DEV", pgConfig, "migrations_test_org", logger, true)
-	}
-}
-
-func runWipeDb(pgConfig pg_repository.PGConfig, logger *slog.Logger) {
-	env := utils.GetStringEnv("ENV", "DEV")
-	gcpProjectId := utils.GetStringEnv("GOOGLE_CLOUD_PROJECT", "")
-	if env != "DEV" && gcpProjectId != "tokyo-country-381508" {
-		log.Fatal("WipeDb is only allowed in DEV or staging environment")
-	}
-	pg_repository.WipeDb(env, pgConfig, "pg_repository/migrations_core", logger)
-}
-
 func main() {
 	var (
 		env        = utils.GetStringEnv("ENV", "DEV")
@@ -98,16 +72,10 @@ func main() {
 	}
 
 	pgConfig := pg_repository.PGConfig{
-		Hostname:    pgHostname,
-		Port:        pgPort,
-		User:        pgUser,
-		Password:    pgPassword,
-		MigrationFS: embedMigrations,
-	}
-
-	pgRepository, err := pg_repository.New(env, pgConfig)
-	if err != nil {
-		logger.Error("error creating pg repository:\n", err.Error())
+		Hostname: pgHostname,
+		Port:     pgPort,
+		User:     pgUser,
+		Password: pgPassword,
 	}
 
 	shouldRunMigrations := flag.Bool("migrations", false, "Run migrations")
@@ -117,12 +85,16 @@ func main() {
 	logger.DebugCtx(context.Background(), "shouldRunMigrations", *shouldRunMigrations, "shouldRunServer", *shouldRunServer)
 
 	if *shouldWipeDb {
-		runWipeDb(pgConfig, logger)
+		pg_repository.WipeDb(env, pgConfig, logger)
 	}
 	if *shouldRunMigrations {
-		runMigrations(env, pgConfig, logger)
+		pg_repository.RunMigrations(env, pgConfig, logger)
 	}
 	if *shouldRunServer {
+		pgRepository, err := pg_repository.New(env, pgConfig)
+		if err != nil {
+			logger.Error("error creating pg repository:\n", err.Error())
+		}
 		runServer(pgRepository, port, env, logger)
 	}
 }

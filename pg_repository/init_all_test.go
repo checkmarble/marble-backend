@@ -3,7 +3,6 @@ package pg_repository
 import (
 	"bytes"
 	"context"
-	"embed"
 	"fmt"
 	"log"
 	"os"
@@ -49,14 +48,6 @@ func stringBuilder(format string, args map[string]string) string {
 	tmpl.Execute(&msg, args)
 	return msg.String()
 }
-
-// embed migrations sql folder
-//
-//go:embed migrations_core/*.sql
-var embedMigrations embed.FS
-
-//go:embed migrations_test_org/*.sql
-var embedMigrationsTestOrg embed.FS
 
 func TestMain(m *testing.M) {
 	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
@@ -112,17 +103,9 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not connect to db: %s", err)
 	}
 
-	pgConfig := PGConfig{
-		ConnectionString: databaseURL,
-		MigrationFS:      embedMigrations,
-	}
-
+	pgConfig := PGConfig{ConnectionString: databaseURL}
 	logger := slog.New(slog.NewTextHandler(os.Stderr))
-	// First populate the core tables
-	RunMigrations("DEV", pgConfig, "migrations_core", logger, false)
-	// Then populate the test org tables for data ingestion, with the "allow missing" option activated
-	pgConfig.MigrationFS = embedMigrationsTestOrg
-	RunMigrations("DEV", pgConfig, "migrations_test_org", logger, true)
+	RunMigrations("DEV", pgConfig, logger)
 
 	// Need to declare this after the migrations, to have the correct search path
 	TestRepo, err := New("DEV", pgConfig)

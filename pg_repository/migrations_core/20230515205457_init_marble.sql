@@ -144,16 +144,16 @@ CREATE TABLE decision_rules(
 -- +goose StatementEnd
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE organizations;
 DROP TABLE data_models;
 DROP TYPE data_models_status;
 DROP TABLE tokens;
-DROP TABLE scenarios;
-DROP TABLE scenario_iterations;
+DROP TABLE scenario_iterations CASCADE;
 DROP TABLE scenario_iteration_rules;
 DROP TABLE scenario_publications;
-DROP TABLE decisions;
+DROP TABLE decisions CASCADE;
 DROP TABLE decision_rules;
 DROP TYPE decision_outcome;
+DROP TABLE scenarios CASCADE;
+DROP TABLE organizations CASCADE;
 
 -- +goose StatementEnd
