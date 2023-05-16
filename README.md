@@ -48,6 +48,12 @@ You can choose to launch the application locally, using the provided debug task 
   - To create a `AUTHENTICATION_JWT_SIGNING_KEY` run `openssl genrsa -out signing.pem 2048` and save the value as a one liner using `\n` for line breaks
 - Lauch the debug task (VS Code)
 
+### DB Seed and reset
+
+- execute the program with flags -migrations to run migrations, -wipe to reset the DB to an empty state, -server to start the server
+- in dev or staging environments, -server additionally runs the seed script from pg_repository/seed.go.
+- in the cloud staging environment, two Cloud Run jobs exist to take the migrations/wipe actions
+
 ## API
 
 The rooting of the application is defined inside `api/routes.go`

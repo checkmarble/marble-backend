@@ -18,7 +18,7 @@ import (
 
 func runServer(pgRepository *pg_repository.PGRepository, port string, env string, logger *slog.Logger) {
 	ctx := context.Background()
-	if env == "DEV" {
+	if env == "DEV" || env == "staging" {
 		pgRepository.Seed()
 	}
 

@@ -5,7 +5,6 @@ import (
 	"embed"
 	"fmt"
 	"log"
-	"marble/marble-backend/utils"
 
 	"github.com/pressly/goose/v3"
 	"golang.org/x/exp/slog"
@@ -51,7 +50,7 @@ func RunMigrations(env string, pgConfig PGConfig, logger *slog.Logger) {
 	if err := runMigrationsWithFolder(db, migrationParams{fileSystem: embedMigrations, folderName: "migrations_core", allowMissing: false}, logger); err != nil {
 		log.Fatalln(err)
 	}
-	if env == "DEV" {
+	if env == "DEV" || env == "staging" {
 		if err := runMigrationsWithFolder(db, migrationParams{fileSystem: embedMigrationsTestOrg, folderName: "migrations_test_org", allowMissing: true}, logger); err != nil {
 			log.Fatalln(err)
 		}
@@ -59,8 +58,7 @@ func RunMigrations(env string, pgConfig PGConfig, logger *slog.Logger) {
 }
 
 func WipeDb(env string, pgConfig PGConfig, logger *slog.Logger) {
-	gcpProjectId := utils.GetStringEnv("GOOGLE_CLOUD_PROJECT", "")
-	if env != "DEV" && gcpProjectId != "tokyo-country-381508" {
+	if env != "DEV" && env != "staging" {
 		log.Fatal("WipeDb is only allowed in DEV or staging environment")
 	}
 
@@ -71,7 +69,7 @@ func WipeDb(env string, pgConfig PGConfig, logger *slog.Logger) {
 	}
 
 	// Teardown full db schema
-	if env == "DEV" {
+	if env == "DEV" || env == "staging" {
 		if err := resetDbWithFolder(db, migrationParams{fileSystem: embedMigrationsTestOrg, folderName: "migrations_test_org", allowMissing: true}, logger); err != nil {
 			log.Fatalln(err)
 		}
@@ -84,7 +82,7 @@ func WipeDb(env string, pgConfig PGConfig, logger *slog.Logger) {
 	if err := runMigrationsWithFolder(db, migrationParams{fileSystem: embedMigrations, folderName: "migrations_core", allowMissing: false}, logger); err != nil {
 		log.Fatalln(err)
 	}
-	if env == "DEV" {
+	if env == "DEV" || env == "staging" {
 		if err := runMigrationsWithFolder(db, migrationParams{fileSystem: embedMigrationsTestOrg, folderName: "migrations_test_org", allowMissing: true}, logger); err != nil {
 			log.Fatalln(err)
 		}
