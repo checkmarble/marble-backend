@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 -- create and make default the marble schema
-CREATE SCHEMA marble;
+CREATE SCHEMA IF NOT EXISTS marble;
 
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA marble TO postgres;
 

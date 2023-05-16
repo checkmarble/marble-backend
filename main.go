@@ -68,10 +68,10 @@ func runMigrations(env string, pgConfig pg_repository.PGConfig, logger *slog.Log
 func runWipeDb(pgConfig pg_repository.PGConfig, logger *slog.Logger) {
 	env := utils.GetStringEnv("ENV", "DEV")
 	gcpProjectId := utils.GetStringEnv("GOOGLE_CLOUD_PROJECT", "")
-	if env != "DEV" || gcpProjectId != "tokyo-country-381508" {
+	if env != "DEV" && gcpProjectId != "tokyo-country-381508" {
 		log.Fatal("WipeDb is only allowed in DEV or staging environment")
 	}
-	pg_repository.WipeDb(env, pgConfig, "pg_repository/migrations", logger)
+	pg_repository.WipeDb(env, pgConfig, "pg_repository/migrations_core", logger)
 }
 
 func main() {

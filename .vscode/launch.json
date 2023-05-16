@@ -14,13 +14,13 @@
       "args": ["--server", "--migrations"]
     },
     {
-      "name": "Launch Package (.env.local)",
+      "name": "Wipe and Launch (.env.local)",
       "type": "go",
       "request": "launch",
       "mode": "auto",
       "program": "${workspaceFolder}/main.go",
       "envFile": "${workspaceFolder}/.env.local",
-      "args": ["--server", "--migrations"]
+      "args": ["--server", "--wipe"]
     }
   ]
 }
