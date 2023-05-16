@@ -3,7 +3,6 @@ package pg_repository
 import (
 	"bytes"
 	"context"
-	"embed"
 	"fmt"
 	"log"
 	"os"
@@ -49,11 +48,6 @@ func stringBuilder(format string, args map[string]string) string {
 	tmpl.Execute(&msg, args)
 	return msg.String()
 }
-
-// embed migrations sql folder
-//
-//go:embed migrations/*.sql
-var embedMigrations embed.FS
 
 func TestMain(m *testing.M) {
 	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
@@ -109,6 +103,13 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not connect to db: %s", err)
 	}
 
+	pgConfig := PGConfig{ConnectionString: databaseURL}
+	logger := slog.New(slog.NewTextHandler(os.Stderr))
+	RunMigrations("DEV", pgConfig, logger)
+
+	// Need to declare this after the migrations, to have the correct search path
+	TestRepo, err := New("DEV", pgConfig)
+
 	insertDataSQL := `
 	INSERT INTO companies (
 		object_id,
@@ -121,7 +122,7 @@ func TestMain(m *testing.M) {
 		'Test company 1'
 	);
 
-	INSERT INTO bank_accounts (
+	INSERT INTO accounts (
 		object_id,
 		updated_at,
 		name,
@@ -138,9 +139,9 @@ func TestMain(m *testing.M) {
 
 	INSERT INTO transactions (
 		object_id,
-		bank_account_id,
+		account_id,
 		updated_at,
-		value,
+		amount,
 		title
 	  )
 	VALUES(
@@ -154,7 +155,7 @@ func TestMain(m *testing.M) {
 	INSERT INTO organizations (
 		id,
 		name,
-  		database_name
+		database_name
 	)
 	VALUES(
 		'{{.OrganizationId}}',
@@ -174,15 +175,8 @@ func TestMain(m *testing.M) {
 		"BankAccountId":  bankAccountId.String(),
 		"TransactionId":  transactionId.String(),
 	}
-	insertDataSQL = stringBuilder(insertDataSQL, testIds)
 
-	pgConfig := PGConfig{
-		ConnectionString: databaseURL,
-		MigrationFS:      embedMigrations,
-	}
-	TestRepo, err := New("DEV", pgConfig)
-	logger := slog.New(slog.NewTextHandler(os.Stderr))
-	RunMigrations("DEV", pgConfig, "migrations", logger)
+	insertDataSQL = stringBuilder(insertDataSQL, testIds)
 	if _, err := TestRepo.db.Exec(context.Background(), insertDataSQL); err != nil {
 		log.Fatalf("Could not insert test data into tables: %s", err)
 	}

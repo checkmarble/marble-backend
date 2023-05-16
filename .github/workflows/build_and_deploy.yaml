@@ -37,6 +37,7 @@ jobs:
           if true || [${{ github.ref_name }} == "master"]
           then 
             echo "GCP_PROJECT_ID=${{ vars.GCP_PROJECT_ID_STAGING }}" >> $GITHUB_OUTPUT
+            echo "ENV=staging" >> $GITHUB_OUTPUT
           fi
         # Add prod case once setup
 
@@ -81,7 +82,7 @@ jobs:
             --region="europe-west9" \
             --args=-server \
             --service-account=marble-backend-cloud-run@${{ steps.get_env.outputs.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
-            --set-env-vars=PG_HOSTNAME=/cloudsql/${{ steps.get_env.outputs.GCP_PROJECT_ID }}:europe-west9:marble-sandbox,PG_USER=postgres,GOOGLE_CLOUD_PROJECT=${{ steps.get_env.outputs.GCP_PROJECT_ID }},ENV=${{ steps.get_env.outputs.GCP_PROJECT_ID }} \
+            --set-env-vars=PG_HOSTNAME=/cloudsql/${{ steps.get_env.outputs.GCP_PROJECT_ID }}:europe-west9:marble-sandbox,PG_USER=postgres,GOOGLE_CLOUD_PROJECT=${{ steps.get_env.outputs.GCP_PROJECT_ID }},ENV=${{ steps.get_env.outputs.ENV }} \
             --set-secrets=PG_PASSWORD=POSTGRES_SANDBOX:latest,AUTHENTICATION_JWT_SIGNING_KEY=AUTHENTICATION_JWT_SIGNING_KEY:latest \
             --set-cloudsql-instances=${{ steps.get_env.outputs.GCP_PROJECT_ID }}:europe-west9:marble-sandbox \
             --port=8080
@@ -94,6 +95,18 @@ jobs:
             --region="europe-west9" \
             --args=-migrations \
             --service-account=marble-backend-cloud-run@${{ steps.get_env.outputs.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
-            --set-env-vars=PG_HOSTNAME=/cloudsql/${{ steps.get_env.outputs.GCP_PROJECT_ID }}:europe-west9:marble-sandbox,PG_USER=postgres,GOOGLE_CLOUD_PROJECT=${{ steps.get_env.outputs.GCP_PROJECT_ID }},ENV=${{ steps.get_env.outputs.GCP_PROJECT_ID }} \
+            --set-env-vars=PG_HOSTNAME=/cloudsql/${{ steps.get_env.outputs.GCP_PROJECT_ID }}:europe-west9:marble-sandbox,PG_USER=postgres,GOOGLE_CLOUD_PROJECT=${{ steps.get_env.outputs.GCP_PROJECT_ID }},ENV=${{ steps.get_env.outputs.ENV }} \
+            --set-secrets=PG_PASSWORD=POSTGRES_SANDBOX:latest \
+            --set-cloudsql-instances=${{ steps.get_env.outputs.GCP_PROJECT_ID }}:europe-west9:marble-sandbox
+
+      - name: Deploy reset db job
+        run: |
+          gcloud beta run jobs deploy marble-backend-db-reset \
+            --quiet \
+            --image="eu.gcr.io/${{ steps.get_env.outputs.GCP_PROJECT_ID }}/marble-backend:latest" \
+            --region="europe-west9" \
+            --args=-wipe \
+            --service-account=marble-backend-cloud-run@${{ steps.get_env.outputs.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
+            --set-env-vars=PG_HOSTNAME=/cloudsql/${{ steps.get_env.outputs.GCP_PROJECT_ID }}:europe-west9:marble-sandbox,PG_USER=postgres,GOOGLE_CLOUD_PROJECT=${{ steps.get_env.outputs.GCP_PROJECT_ID }},ENV=${{ steps.get_env.outputs.ENV }} \
             --set-secrets=PG_PASSWORD=POSTGRES_SANDBOX:latest \
             --set-cloudsql-instances=${{ steps.get_env.outputs.GCP_PROJECT_ID }}:europe-west9:marble-sandbox

@@ -1,20 +1,5 @@
 -- +goose Up
 -- +goose StatementBegin
--- create and make default the marble schema
-CREATE SCHEMA marble;
-
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA marble TO postgres;
-
-ALTER DATABASE marble
-SET search_path TO marble,
-  public;
-
-ALTER ROLE postgres
-SET search_path TO marble,
-  public;
-
--- add UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- organizations
 CREATE TABLE organizations(
@@ -36,7 +21,7 @@ CREATE TABLE data_models(
   tables json NOT NULL,
   deleted_at TIMESTAMP WITH TIME ZONE,
   PRIMARY KEY(id),
-  CONSTRAINT fk_data_models_org FOREIGN KEY(org_id) REFERENCES organizations(id)
+  CONSTRAINT fk_data_models_org FOREIGN KEY(org_id) REFERENCES organizations(id) ON DELETE CASCADE
 );
 
 -- tokens
@@ -46,7 +31,7 @@ CREATE TABLE tokens(
   token VARCHAR NOT NULL,
   deleted_at TIMESTAMP WITH TIME ZONE,
   PRIMARY KEY(id),
-  CONSTRAINT fk_tokens_org FOREIGN KEY(org_id) REFERENCES organizations(id)
+  CONSTRAINT fk_tokens_org FOREIGN KEY(org_id) REFERENCES organizations(id) ON DELETE CASCADE
 );
 
 -- scenarios table
@@ -59,7 +44,7 @@ CREATE TABLE scenarios(
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMP WITH TIME ZONE,
   PRIMARY KEY(id),
-  CONSTRAINT fk_scenarios_org FOREIGN KEY(org_id) REFERENCES organizations(id)
+  CONSTRAINT fk_scenarios_org FOREIGN KEY(org_id) REFERENCES organizations(id) ON DELETE CASCADE
 );
 
 CREATE TABLE scenario_iterations(
@@ -74,8 +59,8 @@ CREATE TABLE scenario_iterations(
   score_reject_threshold smallint,
   deleted_at TIMESTAMP WITH TIME ZONE,
   PRIMARY KEY(id),
-  CONSTRAINT fk_scenario_iterations_scenarios FOREIGN KEY(scenario_id) REFERENCES scenarios(id),
-  CONSTRAINT fk_scenario_iterations_org FOREIGN KEY(org_id) REFERENCES organizations(id)
+  CONSTRAINT fk_scenario_iterations_scenarios FOREIGN KEY(scenario_id) REFERENCES scenarios(id) ON DELETE CASCADE,
+  CONSTRAINT fk_scenario_iterations_org FOREIGN KEY(org_id) REFERENCES organizations(id) ON DELETE CASCADE
 );
 
 CREATE TABLE scenario_iteration_rules(
@@ -90,13 +75,13 @@ CREATE TABLE scenario_iteration_rules(
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   deleted_at TIMESTAMP WITH TIME ZONE,
   PRIMARY KEY(id),
-  CONSTRAINT fk_scenario_iteration_rules_scenario_iterations FOREIGN KEY(scenario_iteration_id) REFERENCES scenario_iterations(id),
-  CONSTRAINT fk_scenario_iteration_rules_org FOREIGN KEY(org_id) REFERENCES organizations(id)
+  CONSTRAINT fk_scenario_iteration_rules_scenario_iterations FOREIGN KEY(scenario_iteration_id) REFERENCES scenario_iterations(id) ON DELETE CASCADE,
+  CONSTRAINT fk_scenario_iteration_rules_org FOREIGN KEY(org_id) REFERENCES organizations(id) ON DELETE CASCADE
 );
 
 ALTER TABLE scenarios
 ADD COLUMN live_scenario_iteration_id uuid,
-  ADD CONSTRAINT fk_scenarios_live_scenario_iteration FOREIGN KEY(live_scenario_iteration_id) REFERENCES scenario_iterations(id);
+  ADD CONSTRAINT fk_scenarios_live_scenario_iteration FOREIGN KEY(live_scenario_iteration_id) REFERENCES scenario_iterations(id) ON DELETE CASCADE;
 
 -- scenario_publications
 CREATE TABLE scenario_publications(
@@ -108,9 +93,9 @@ CREATE TABLE scenario_publications(
   publication_action VARCHAR NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   PRIMARY KEY(id),
-  CONSTRAINT fk_scenario_publications_org FOREIGN KEY(org_id) REFERENCES organizations(id),
-  CONSTRAINT fk_scenario_publications_scenario_id FOREIGN KEY(scenario_id) REFERENCES scenarios(id),
-  CONSTRAINT fk_scenario_publications_scenario_iterations FOREIGN KEY(scenario_iteration_id) REFERENCES scenario_iterations(id)
+  CONSTRAINT fk_scenario_publications_org FOREIGN KEY(org_id) REFERENCES organizations(id) ON DELETE CASCADE,
+  CONSTRAINT fk_scenario_publications_scenario_id FOREIGN KEY(scenario_id) REFERENCES scenarios(id) ON DELETE CASCADE,
+  CONSTRAINT fk_scenario_publications_scenario_iterations FOREIGN KEY(scenario_iteration_id) REFERENCES scenario_iterations(id) ON DELETE CASCADE
 );
 
 -- decisions
@@ -137,7 +122,7 @@ CREATE TABLE decisions(
   error_code INT NOT NULL,
   deleted_at TIMESTAMP WITH TIME ZONE,
   PRIMARY KEY(id),
-  CONSTRAINT fk_decisions_org FOREIGN KEY(org_id) REFERENCES organizations(id)
+  CONSTRAINT fk_decisions_org FOREIGN KEY(org_id) REFERENCES organizations(id) ON DELETE CASCADE
 );
 
 -- decision rules table
@@ -152,44 +137,23 @@ CREATE TABLE decision_rules(
   error_code INT NOT NULL,
   deleted_at TIMESTAMP WITH TIME ZONE,
   PRIMARY KEY(id),
-  CONSTRAINT fk_decision_rules_org FOREIGN KEY(org_id) REFERENCES organizations(id),
-  CONSTRAINT fk_decision_rules_decisions FOREIGN KEY(decision_id) REFERENCES decisions(id)
+  CONSTRAINT fk_decision_rules_org FOREIGN KEY(org_id) REFERENCES organizations(id) ON DELETE CASCADE,
+  CONSTRAINT fk_decision_rules_decisions FOREIGN KEY(decision_id) REFERENCES decisions(id) ON DELETE CASCADE
 );
-
-CREATE TABLE transactions(
-  id uuid DEFAULT uuid_generate_v4(),
-  object_id VARCHAR NOT NULL,
-  updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
-  valid_from TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  valid_until TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT 'INFINITY',
-  value double precision,
-  title VARCHAR,
-  description VARCHAR,
-  bank_account_id uuid,
-  deleted_at TIMESTAMP WITH TIME ZONE,
-  PRIMARY KEY(id)
-);
-
-CREATE INDEX transactions_object_id_idx ON transactions(object_id, valid_until DESC, valid_from, updated_at);
-
-CREATE TABLE bank_accounts(
-  id uuid DEFAULT uuid_generate_v4(),
-  object_id VARCHAR NOT NULL,
-  updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
-  valid_from TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  valid_until TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT 'INFINITY',
-  balance double precision,
-  name VARCHAR,
-  currency VARCHAR NOT NULL,
-  deleted_at TIMESTAMP WITH TIME ZONE,
-  PRIMARY KEY(id)
-);
-
-CREATE INDEX bank_accounts_object_id_idx ON bank_accounts(object_id, valid_until DESC, valid_from, updated_at);
 
 -- +goose StatementEnd
 -- +goose Down
 -- +goose StatementBegin
-DROP SCHEMA IF EXISTS marble CASCADE;
+DROP TABLE data_models;
+DROP TYPE data_models_status;
+DROP TABLE tokens;
+DROP TABLE scenario_iterations CASCADE;
+DROP TABLE scenario_iteration_rules;
+DROP TABLE scenario_publications;
+DROP TABLE decisions CASCADE;
+DROP TABLE decision_rules;
+DROP TYPE decision_outcome;
+DROP TABLE scenarios CASCADE;
+DROP TABLE organizations CASCADE;
 
 -- +goose StatementEnd
