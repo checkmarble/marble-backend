@@ -15,13 +15,21 @@ func (r *PGRepository) Seed() {
 	// Organizations
 	///////////////////////////////
 
-	_, err := r.CreateOrganization(context.TODO(), app.CreateOrganizationInput{
-		Name:         "Marble",
-		DatabaseName: "marble",
-	})
+	organizations, err := r.GetOrganizations(context.TODO())
 	if err != nil {
-		log.Printf("error creating organization: %v", err)
+		log.Printf("error getting organizations: %v", err)
 	}
+	var testOrg *app.Organization
+	for _, org := range organizations {
+		if org.Name == "Test organization" {
+			testOrg = &org
+		}
+	}
+	if testOrg != nil {
+		log.Printf("test organization already exists, skip inserting the rest of the seed data")
+		return
+	}
+
 	org, err := r.CreateOrganization(context.TODO(), app.CreateOrganizationInput{
 		Name:         "Test organization",
 		DatabaseName: "test_1",
@@ -43,70 +51,55 @@ func (r *PGRepository) Seed() {
 	}
 
 	///////////////////////////////
-	// Create and sotre a data model
+	// Create and store a data model
 	///////////////////////////////
 	r.CreateDataModel(context.TODO(), org.ID, app.DataModel{
 		Tables: map[app.TableName]app.Table{
-			"tx": {Name: "tx",
-				Fields: map[app.FieldName]app.Field{
-					"id": {
-						DataType: app.String,
-					},
-					"amount": {
-						DataType: app.Float,
-					},
-					"sender_id": {
-						DataType: app.String,
-					},
-				},
-				LinksToSingle: map[app.LinkName]app.LinkToSingle{
-					"sender": {
-						LinkedTableName: "user",
-						ParentFieldName: "sender_id",
-						ChildFieldName:  "id",
-					},
-				},
-			},
 			"transactions": {
 				Name: "transactions",
 				Fields: map[app.FieldName]app.Field{
 					"object_id": {
 						DataType: app.String,
 					},
-					"updated_at":      {DataType: app.Timestamp},
-					"value":           {DataType: app.Float},
-					"title":           {DataType: app.String},
-					"description":     {DataType: app.String},
-					"bank_account_id": {DataType: app.String},
+					"updated_at":  {DataType: app.Timestamp},
+					"account_id":  {DataType: app.String},
+					"bic_country": {DataType: app.String},
+					"country":     {DataType: app.String},
+					"description": {DataType: app.String},
+					"direction":   {DataType: app.String},
+					"status":      {DataType: app.String},
+					"title":       {DataType: app.String},
+					"amount":      {DataType: app.Float},
 				},
 				LinksToSingle: map[app.LinkName]app.LinkToSingle{
-					"bank_account": {
-						LinkedTableName: "bank_accounts",
+					"accounts": {
+						LinkedTableName: "accounts",
 						ParentFieldName: "object_id",
-						ChildFieldName:  "bank_account_id"},
+						ChildFieldName:  "account_id"},
 				},
 			},
-			"bank_accounts": {
-				Name: "bank_accounts",
+			"accounts": {
+				Name: "accounts",
 				Fields: map[app.FieldName]app.Field{
 					"object_id": {
 						DataType: app.String,
 					},
 					"updated_at": {DataType: app.Timestamp},
 					"balance":    {DataType: app.Float},
+					"company_id": {DataType: app.String},
 					"name":       {DataType: app.String},
 					"currency":   {DataType: app.String},
+					"is_frozen":  {DataType: app.Bool},
 				},
 			},
-			"user": {
-				Name: "user",
+			"companies": {
+				Name: "companies",
 				Fields: map[app.FieldName]app.Field{
-					"id": {
+					"object_id": {
 						DataType: app.String,
 					},
-					"name": {
-						DataType: app.String,
-					},
+					"updated_at": {DataType: app.Timestamp},
+					"name":       {DataType: app.String},
 				},
 			},
 		},
@@ -117,7 +110,7 @@ func (r *PGRepository) Seed() {
 	createScenarioInput := app.CreateScenarioInput{
 		Name:              "test name",
 		Description:       "test description",
-		TriggerObjectType: "tx",
+		TriggerObjectType: "transactions",
 	}
 	scenario, err := r.CreateScenario(context.TODO(), org.ID, createScenarioInput)
 	if err != nil {

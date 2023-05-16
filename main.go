@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"embed"
 	"flag"
 	"log"
 	"marble/marble-backend/api"
@@ -17,14 +16,9 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-// embed migrations sql folder
-//
-//go:embed pg_repository/migrations/*.sql
-var embedMigrations embed.FS
-
-func run_server(pgRepository *pg_repository.PGRepository, port string, env string, logger *slog.Logger) {
+func runServer(pgRepository *pg_repository.PGRepository, port string, env string, logger *slog.Logger) {
 	ctx := context.Background()
-	if env == "DEV" {
+	if env == "DEV" || env == "staging" {
 		pgRepository.Seed()
 	}
 
@@ -54,10 +48,6 @@ func run_server(pgRepository *pg_repository.PGRepository, port string, env strin
 	api.Shutdown(shutdownCtx)
 }
 
-func run_migrations(env string, pgConfig pg_repository.PGConfig, logger *slog.Logger) {
-	pg_repository.RunMigrations(env, pgConfig, "pg_repository/migrations", logger)
-}
-
 func main() {
 	var (
 		env        = utils.GetStringEnv("ENV", "DEV")
@@ -82,27 +72,29 @@ func main() {
 	}
 
 	pgConfig := pg_repository.PGConfig{
-		Hostname:    pgHostname,
-		Port:        pgPort,
-		User:        pgUser,
-		Password:    pgPassword,
-		MigrationFS: embedMigrations,
-	}
-
-	pgRepository, err := pg_repository.New(env, pgConfig)
-	if err != nil {
-		logger.Error("error creating pg repository:\n", err.Error())
+		Hostname: pgHostname,
+		Port:     pgPort,
+		User:     pgUser,
+		Password: pgPassword,
 	}
 
 	shouldRunMigrations := flag.Bool("migrations", false, "Run migrations")
 	shouldRunServer := flag.Bool("server", false, "Run server")
+	shouldWipeDb := flag.Bool("wipe", false, "Truncate db tables")
 	flag.Parse()
 	logger.DebugCtx(context.Background(), "shouldRunMigrations", *shouldRunMigrations, "shouldRunServer", *shouldRunServer)
 
+	if *shouldWipeDb {
+		pg_repository.WipeDb(env, pgConfig, logger)
+	}
 	if *shouldRunMigrations {
-		run_migrations(env, pgConfig, logger)
+		pg_repository.RunMigrations(env, pgConfig, logger)
 	}
 	if *shouldRunServer {
-		run_server(pgRepository, port, env, logger)
+		pgRepository, err := pg_repository.New(env, pgConfig)
+		if err != nil {
+			logger.Error("error creating pg repository:\n", err.Error())
+		}
+		runServer(pgRepository, port, env, logger)
 	}
 }

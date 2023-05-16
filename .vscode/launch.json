@@ -14,7 +14,25 @@
       "args": ["--server", "--migrations"]
     },
     {
-      "name": "Launch Package (.env.local)",
+      "name": "wipe db",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env.local",
+      "args": ["--wipe"]
+    },
+    {
+      "name": "Wipe and Launch (.env.local)",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/main.go",
+      "envFile": "${workspaceFolder}/.env.local",
+      "args": ["--server", "--wipe"]
+    },
+    {
+      "name": "Migrate and Launch (.env.local)",
       "type": "go",
       "request": "launch",
       "mode": "auto",
