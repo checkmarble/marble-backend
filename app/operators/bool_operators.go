@@ -561,3 +561,88 @@ func (not *Not) UnmarshalJSON(b []byte) error {
 
 	return nil
 }
+
+// ///////////////////////////////////////////////////////////////////////////////////////
+// String in list
+// ///////////////////////////////////////////////////////////////////////////////////////
+
+type StringIsInList struct {
+	str  OperatorString
+	list OperatorStringList
+}
+
+// register creation
+func init() {
+	operatorFromType["STRING_IS_IN_LIST"] = func() Operator { return &StringIsInList{} }
+}
+
+func (s StringIsInList) Eval(d DataAccessor) (bool, error) {
+	if !s.IsValid() {
+		return false, ErrEvaluatingInvalidOperator
+	}
+
+	str, err := s.str.Eval(d)
+	if err != nil {
+		return false, err
+	}
+	list, err := s.list.Eval(d)
+	if err != nil {
+		return false, err
+	}
+	for _, listItem := range list {
+		if str == listItem {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (s StringIsInList) IsValid() bool {
+	return s.str != nil && s.str.IsValid() && s.list != nil && s.list.IsValid()
+}
+
+func (s StringIsInList) String() string {
+	return fmt.Sprintf("( %s IN (%s) )", s.str.String(), s.list.String())
+}
+
+func (s StringIsInList) MarshalJSON() ([]byte, error) {
+
+	return json.Marshal(struct {
+		OperatorType
+		Children []Operator `json:"children"`
+	}{
+		OperatorType: OperatorType{Type: "STRING_IS_IN_LIST"},
+		Children:     []Operator{s.str, s.list},
+	})
+}
+
+func (s *StringIsInList) UnmarshalJSON(b []byte) error {
+	// data schema
+	var notData struct {
+		Children []json.RawMessage `json:"children"`
+	}
+	if err := json.Unmarshal(b, &notData); err != nil {
+		return fmt.Errorf("unable to unmarshal operator to intermediate children representation: %w", err)
+	}
+
+	// Check number of children
+	if len(notData.Children) != 2 {
+		return fmt.Errorf("Incorrect number of children operators for operator STRING IS IN LIST: %d operands", len(notData.Children))
+	}
+
+	// Build concrete operand
+	str, err := UnmarshalOperatorString(notData.Children[0])
+	if err != nil {
+		return fmt.Errorf("unable to instantiate string operand: %w", err)
+	}
+	s.str = str
+
+	// Build concrete operand
+	list, err := UnmarshalOperatorStringList(notData.Children[1])
+	if err != nil {
+		return fmt.Errorf("unable to instantiate string list operand: %w", err)
+	}
+	s.list = list
+
+	return nil
+}

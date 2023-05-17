@@ -141,6 +141,78 @@ func TestLogicEval(t *testing.T) {
 			},
 			expected: false,
 		},
+		{
+			name: "string equality",
+			operator: &EqString{
+				Left:  &StringValue{text: "a"},
+				Right: &StringValue{text: "a"},
+			},
+			expected: true,
+		},
+		{
+			name: "string equality",
+			operator: &EqString{
+				Left:  &StringValue{text: "a"},
+				Right: &StringValue{text: "b"},
+			},
+			expected: false,
+		},
+		{
+			name: "string is in",
+			operator: &StringIsInList{
+				str:  &StringValue{text: "a"},
+				list: &StringListValue{strings: []string{"a", "b", "c"}},
+			},
+			expected: true,
+		},
+		{
+			name: "string is in: not found",
+			operator: &StringIsInList{
+				str:  &StringValue{text: "z"},
+				list: &StringListValue{strings: []string{"a", "b", "c"}},
+			},
+			expected: false,
+		},
+		{
+			name: "string is in: not found (empty)",
+			operator: &StringIsInList{
+				str:  &StringValue{text: "z"},
+				list: &StringListValue{strings: []string{}},
+			},
+			expected: false,
+		},
+		{
+			name: "Greater than (float, true)",
+			operator: &GreaterFloat{
+				Left:  &FloatValue{Value: 10},
+				Right: &FloatValue{Value: 5},
+			},
+			expected: true,
+		},
+		{
+			name: "Greater than or equal (float, false)",
+			operator: &GreaterOrEqualFloat{
+				Left:  &FloatValue{Value: 1},
+				Right: &FloatValue{Value: 5},
+			},
+			expected: false,
+		},
+		{
+			name: "Greater than or equal (float, True)",
+			operator: &GreaterOrEqualFloat{
+				Left:  &FloatValue{Value: 5},
+				Right: &FloatValue{Value: 5},
+			},
+			expected: true,
+		},
+		{
+			name: "Equal (float, true)",
+			operator: &EqualFloat{
+				Left:  &FloatValue{Value: 5},
+				Right: &FloatValue{Value: 5},
+			},
+			expected: true,
+		},
 	}
 	asserts := assert.New(t)
 	for _, c := range cases {
@@ -148,10 +220,10 @@ func TestLogicEval(t *testing.T) {
 			got, err := c.operator.Eval(&dataAccessor)
 
 			if err != nil {
-				t.Errorf("error: %v", err)
+				t.Errorf("error: %v on %s", err, c.name)
 			}
 
-			asserts.Equal(c.expected, got)
+			asserts.Equal(c.expected, got, c.name)
 		})
 	}
 }
@@ -227,6 +299,27 @@ func TestMarshalUnMarshal(t *testing.T) {
 			name: "Not true",
 			operator: &Not{
 				Child: True{},
+			},
+		},
+		{
+			name: "String equality",
+			operator: &EqString{
+				Left:  &StringValue{text: "a"},
+				Right: &StringValue{text: "abc"},
+			},
+		},
+		{
+			name: "String is in",
+			operator: &StringIsInList{
+				str:  &StringValue{text: "a"},
+				list: &StringListValue{strings: []string{"a", "b", "c"}},
+			},
+		},
+		{
+			name: "String is in",
+			operator: &StringIsInList{
+				str:  &StringValue{text: "a"},
+				list: &StringListValue{strings: []string{"a", "b", "c"}},
 			},
 		},
 	}
@@ -331,6 +424,14 @@ func TestMarshallBoolOperators(t *testing.T) {
 			},
 			expected: `{"type":"OR","children":[{"type":"TRUE"},null,{"type":"FALSE"}]}`,
 		},
+		{
+			name: "String is in",
+			operator: &StringIsInList{
+				str:  &StringValue{text: "a"},
+				list: &StringListValue{strings: []string{"a", "b", "c"}},
+			},
+			expected: `{"type":"STRING_IS_IN_LIST","children":[{"type":"STRING_SCALAR","staticData":{"text":"a"}},{"type":"STRING_LIST_CONSTANT","staticData":{"strings":["a","b","c"]}}]}`,
+		},
 	}
 
 	for _, c := range cases {
@@ -393,6 +494,14 @@ func TestUnmarshallBoolOperators(t *testing.T) {
 				Operands: []OperatorBool{&True{}, nil, &False{}},
 			},
 			json: `{"type":"OR","children":[{"type":"TRUE"},null,{"type":"FALSE"}]}`,
+		},
+		{
+			name: "String is in",
+			expected: &StringIsInList{
+				str:  &StringValue{text: "a"},
+				list: &StringListValue{strings: []string{"a", "b", "c"}},
+			},
+			json: `{"type":"STRING_IS_IN_LIST","children":[{"type":"STRING_SCALAR","staticData":{"text":"a"}},{"type":"STRING_LIST_CONSTANT","staticData":{"strings":["a","b","c"]}}]}`,
 		},
 	}
 

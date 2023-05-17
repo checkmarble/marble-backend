@@ -78,3 +78,8 @@ type OperatorString interface {
 	Operator
 	Eval(dataAccessor DataAccessor) (string, error)
 }
+
+type OperatorStringList interface {
+	Operator
+	Eval(dataAccessor DataAccessor) ([]string, error)
+}

@@ -2,7 +2,6 @@ package operators
 
 import (
 	"fmt"
-	"log"
 	"strconv"
 	"testing"
 
@@ -14,7 +13,6 @@ type DataAccessorFloatImpl struct{}
 
 func (d *DataAccessorFloatImpl) GetPayloadField(fieldName string) interface{} {
 	var val float64
-	log.Println("bla")
 	if f, err := strconv.ParseFloat(fieldName, 64); err == nil {
 		val = f
 	} else {
