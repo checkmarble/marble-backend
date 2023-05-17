@@ -2,7 +2,7 @@ package app
 
 import "context"
 
-type RepositoryScenarioInterface interface {
+type RepositoryScenarios interface {
 	ListScenarios(ctx context.Context, orgID string) ([]Scenario, error)
 	CreateScenario(ctx context.Context, orgID string, scenario CreateScenarioInput) (Scenario, error)
 	GetScenario(ctx context.Context, orgID string, scenarioID string) (Scenario, error)

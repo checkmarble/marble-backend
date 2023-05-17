@@ -2,7 +2,7 @@ package app
 
 import "context"
 
-type RepositoryScenarioItertionInterface interface {
+type RepositoryScenarioItertions interface {
 	ListScenarioIterations(ctx context.Context, orgID string, filters GetScenarioIterationFilters) ([]ScenarioIteration, error)
 	CreateScenarioIteration(ctx context.Context, orgID string, scenarioIteration CreateScenarioIterationInput) (ScenarioIteration, error)
 	GetScenarioIteration(ctx context.Context, orgID string, scenarioIterationID string) (ScenarioIteration, error)

@@ -179,7 +179,7 @@ var (
 	ErrScenarioHasNoLiveVersion                         = errors.New("scenario has no live version")
 )
 
-func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStructWithReader DynamicStructWithReader, dataModel DataModel, logger *slog.Logger) (se ScenarioExecution, err error) {
+func (s Scenario) Eval(ctx context.Context, repo Repository, payloadStructWithReader DynamicStructWithReader, dataModel DataModel, logger *slog.Logger) (se ScenarioExecution, err error) {
 
 	///////////////////////////////
 	// Recover in case the evaluation panicked.

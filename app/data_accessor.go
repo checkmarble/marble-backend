@@ -8,7 +8,7 @@ import (
 type DataAccessorImpl struct {
 	DataModel  DataModel
 	Payload    DynamicStructWithReader
-	repository RepositoryInterface
+	repository Repository
 }
 
 type DbFieldReadParams struct {

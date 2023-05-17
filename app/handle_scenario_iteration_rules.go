@@ -2,7 +2,7 @@ package app
 
 import "context"
 
-type RepositoryScenarioItertionRuleInterface interface {
+type RepositoryScenarioItertionRules interface {
 	ListScenarioIterationRules(ctx context.Context, orgID string, filters GetScenarioIterationRulesFilters) ([]Rule, error)
 	CreateScenarioIterationRule(ctx context.Context, orgID string, rule CreateRuleInput) (Rule, error)
 	GetScenarioIterationRule(ctx context.Context, orgID string, ruleID string) (Rule, error)

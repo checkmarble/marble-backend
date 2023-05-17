@@ -4,7 +4,7 @@ import (
 	"context"
 )
 
-type RepositoryScenarioPublicationInterface interface {
+type RepositoryScenarioPublications interface {
 	ListScenarioPublications(ctx context.Context, orgID string, filters ListScenarioPublicationsFilters) ([]ScenarioPublication, error)
 	CreateScenarioPublication(ctx context.Context, orgID string, sp CreateScenarioPublicationInput) ([]ScenarioPublication, error)
 	GetScenarioPublication(ctx context.Context, orgID string, scenarioPublicationID string) (ScenarioPublication, error)

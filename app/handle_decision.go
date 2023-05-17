@@ -8,6 +8,11 @@ import (
 	"golang.org/x/exp/slog"
 )
 
+type RepositoryDecisions interface {
+	StoreDecision(ctx context.Context, orgID string, decision Decision) (Decision, error)
+	GetDecision(ctx context.Context, orgID string, decisionID string) (Decision, error)
+}
+
 var ErrScenarioNotFound = errors.New("scenario not found")
 var ErrDataModelNotFound = errors.New("data model not found")
 
