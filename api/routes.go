@@ -32,6 +32,7 @@ func (api *API) routes() {
 			decisionsRouter.With(httpin.NewInput(GetDecisionInput{})).
 				Get("/{decisionID:"+UUIDRegExp+"}", api.handleGetDecision())
 			decisionsRouter.With(apiOnlyMdw).
+				With(httpin.NewInput(CreateDecisionInput{})).
 				Post("/", api.handlePostDecision())
 		})
 
