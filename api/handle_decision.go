@@ -106,7 +106,7 @@ func (api *API) handleGetDecision() http.HandlerFunc {
 
 		orgID, err := utils.OrgIDFromCtx(ctx)
 		if err != nil {
-			http.Error(w, "", http.StatusUnauthorized)
+			http.Error(w, "", http.StatusForbidden)
 			return
 		}
 		input := ctx.Value(httpin.Input).(*GetDecisionInput)
@@ -149,7 +149,7 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 
 		orgID, err := utils.OrgIDFromCtx(ctx)
 		if err != nil {
-			http.Error(w, "", http.StatusUnauthorized)
+			http.Error(w, "", http.StatusForbidden)
 			return
 		}
 

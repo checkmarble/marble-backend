@@ -46,7 +46,7 @@ func (api *API) ListScenarios() http.HandlerFunc {
 
 		orgID, err := utils.OrgIDFromCtx(ctx)
 		if err != nil {
-			http.Error(w, "", http.StatusUnauthorized)
+			http.Error(w, "", http.StatusForbidden)
 			return
 		}
 		logger := api.logger.With(slog.String("orgID", orgID))
@@ -88,7 +88,7 @@ func (api *API) CreateScenario() http.HandlerFunc {
 
 		orgID, err := utils.OrgIDFromCtx(ctx)
 		if err != nil {
-			http.Error(w, "", http.StatusUnauthorized)
+			http.Error(w, "", http.StatusForbidden)
 			return
 		}
 
@@ -125,7 +125,7 @@ func (api *API) GetScenario() http.HandlerFunc {
 
 		orgID, err := utils.OrgIDFromCtx(ctx)
 		if err != nil {
-			http.Error(w, "", http.StatusUnauthorized)
+			http.Error(w, "", http.StatusForbidden)
 			return
 		}
 
@@ -167,7 +167,7 @@ func (api *API) UpdateScenario() http.HandlerFunc {
 
 		orgID, err := utils.OrgIDFromCtx(ctx)
 		if err != nil {
-			http.Error(w, "", http.StatusUnauthorized)
+			http.Error(w, "", http.StatusForbidden)
 			return
 		}
 

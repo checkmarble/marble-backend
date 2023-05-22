@@ -90,7 +90,7 @@ func (api *API) ListScenarioIterations() http.HandlerFunc {
 
 		orgID, err := utils.OrgIDFromCtx(ctx)
 		if err != nil {
-			http.Error(w, "", http.StatusUnauthorized)
+			http.Error(w, "", http.StatusForbidden)
 			return
 		}
 
@@ -141,7 +141,7 @@ func (api *API) CreateScenarioIteration() http.HandlerFunc {
 
 		orgID, err := utils.OrgIDFromCtx(ctx)
 		if err != nil {
-			http.Error(w, "", http.StatusUnauthorized)
+			http.Error(w, "", http.StatusForbidden)
 			return
 		}
 
@@ -218,7 +218,7 @@ func (api *API) GetScenarioIteration() http.HandlerFunc {
 
 		orgID, err := utils.OrgIDFromCtx(ctx)
 		if err != nil {
-			http.Error(w, "", http.StatusUnauthorized)
+			http.Error(w, "", http.StatusForbidden)
 			return
 		}
 
@@ -269,7 +269,7 @@ func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 
 		orgID, err := utils.OrgIDFromCtx(ctx)
 		if err != nil {
-			http.Error(w, "", http.StatusUnauthorized)
+			http.Error(w, "", http.StatusForbidden)
 			return
 		}
 

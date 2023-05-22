@@ -52,7 +52,7 @@ func (api *API) ListScenarioPublications() http.HandlerFunc {
 
 		orgID, err := utils.OrgIDFromCtx(ctx)
 		if err != nil {
-			http.Error(w, "", http.StatusUnauthorized)
+			http.Error(w, "", http.StatusForbidden)
 			return
 		}
 
@@ -100,7 +100,7 @@ func (api *API) CreateScenarioPublication() http.HandlerFunc {
 
 		orgID, err := utils.OrgIDFromCtx(ctx)
 		if err != nil {
-			http.Error(w, "", http.StatusUnauthorized)
+			http.Error(w, "", http.StatusForbidden)
 			return
 		}
 
@@ -145,7 +145,7 @@ func (api *API) GetScenarioPublication() http.HandlerFunc {
 
 		orgID, err := utils.OrgIDFromCtx(ctx)
 		if err != nil {
-			http.Error(w, "", http.StatusUnauthorized)
+			http.Error(w, "", http.StatusForbidden)
 			return
 		}
 
