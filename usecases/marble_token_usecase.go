@@ -29,7 +29,7 @@ func (usecase *MarbleTokenUseCase) NewMarbleToken(ctx context.Context, apiKey st
 		if err != nil {
 			return "", nil, err
 		}
-		token, time := usecase.encodeMarbleToken(Credentials{OrganizationId: orgID, Role: API_KEY})
+		token, time := usecase.encodeMarbleToken(Credentials{OrganizationId: orgID, Role: API_CLIENT})
 		return token, &time, nil
 	}
 

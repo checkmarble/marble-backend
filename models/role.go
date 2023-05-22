@@ -4,30 +4,38 @@ type Role int
 
 const (
 	NO_ROLE Role = iota
-	READER
+	VIEWER
 	BUILDER
 	PUBLISHER
 	ADMIN
-	API_KEY
+	API_CLIENT
 	MARBLE_ADMIN
 )
 
 func (r Role) String() string {
-	return [...]string{"NO_ROLE", "READER", "BUILDER", "PUBLISHER", "ADMIN", "API_KEY", "MARBLE_ADMIN"}[r]
+	return [...]string{"NO_ROLE", "VIEWER", "BUILDER", "PUBLISHER", "ADMIN", "API_CLIENT", "MARBLE_ADMIN"}[r]
+}
+
+func (r Role) Permissions() []Permission {
+	permissions := ROLES_PERMISSIOMS[r]
+	if permissions == nil {
+		return []Permission{}
+	}
+	return permissions
 }
 
 func RoleFromString(s string) Role {
 	switch s {
-	case "READER":
-		return READER
+	case "VIEWER":
+		return VIEWER
 	case "BUILDER":
 		return BUILDER
 	case "PUBLISHER":
 		return PUBLISHER
 	case "ADMIN":
 		return ADMIN
-	case "API_KEY":
-		return API_KEY
+	case "API_CLIENT":
+		return API_CLIENT
 	case "MARBLE_ADMIN":
 		return MARBLE_ADMIN
 	}

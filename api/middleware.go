@@ -7,6 +7,8 @@ import (
 	"marble/marble-backend/utils"
 	"net/http"
 	"strings"
+
+	"golang.org/x/exp/slices"
 )
 
 func ParseAuthorizationBearerHeader(header http.Header) (string, error) {
@@ -45,18 +47,20 @@ func (api *API) jwtValidator(next http.Handler) http.Handler {
 	})
 }
 
-func (api *API) enforceRoleMiddleware(requiredRole Role) func(next http.Handler) http.Handler {
+func (api *API) enforcePermissionMiddleware(permission Permission) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 			ctx := r.Context()
 			creds := utils.CredentialsFromCtx(ctx)
-			grantedRole := creds.Role
-			if grantedRole < requiredRole {
-				api.logger.WarnCtx(ctx, "Token role not allowed for this endpoint")
-				http.Error(w, "", http.StatusUnauthorized)
-			} else {
+			allowed := slices.Contains(creds.Role.Permissions(), permission)
+
+			if allowed {
 				next.ServeHTTP(w, r)
+			} else {
+				errorMessage := fmt.Sprintf("Missing permission %s", permission.String())
+				api.logger.WarnCtx(ctx, errorMessage)
+				http.Error(w, errorMessage, http.StatusForbidden)
 			}
 		})
 	}
