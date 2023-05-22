@@ -139,7 +139,7 @@ type CreateDecisionBody struct {
 	TriggerObjectType string          `json:"object_type"`
 }
 
-type CreatedDecisionInput struct {
+type CreateDecisionInput struct {
 	Body *CreateDecisionBody `in:"body=json"`
 }
 
@@ -153,7 +153,7 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 			return
 		}
 
-		input := ctx.Value(httpin.Input).(*CreatedDecisionInput)
+		input := ctx.Value(httpin.Input).(*CreateDecisionInput)
 		requestData := input.Body
 		logger := api.logger.With(slog.String("scenarioId", requestData.ScenarioID), slog.String("objectType", requestData.TriggerObjectType), slog.String("orgId", orgID))
 
