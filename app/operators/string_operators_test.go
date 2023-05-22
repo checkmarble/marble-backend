@@ -31,7 +31,7 @@ func TestLogicEvalString(t *testing.T) {
 		{
 			name: "scalar",
 			operator: &StringValue{
-				text: "abc",
+				Text: "abc",
 			},
 			expected: "abc",
 		},
@@ -75,7 +75,7 @@ func TestMarshalUnMarshalString(t *testing.T) {
 	cases := []testCase{
 		{
 			name:     "Scalar value",
-			operator: &StringValue{text: "abc"},
+			operator: &StringValue{Text: "abc"},
 		},
 		{
 			name: "Db field",
@@ -131,7 +131,7 @@ func TestMarshallBoolOperatorsString(t *testing.T) {
 	cases := []testCase{
 		{
 			name:     "scalar value",
-			operator: &StringValue{text: "abc"},
+			operator: &StringValue{Text: "abc"},
 			expected: `{"type":"STRING_SCALAR","staticData":{"text":"abc"}}`,
 		},
 	}
@@ -157,7 +157,7 @@ func TestUnmarshallBoolOperatorsString(t *testing.T) {
 	cases := []testCase{
 		{
 			name:     "string scalar value",
-			expected: &StringValue{text: "abc"},
+			expected: &StringValue{Text: "abc"},
 			json:     `{"type":"STRING_SCALAR","staticData":{"text":"abc"}}`,
 		},
 	}
