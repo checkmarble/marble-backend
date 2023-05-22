@@ -40,6 +40,11 @@ func (d *dbDecision) toDomain() app.Decision {
 	}
 }
 
+type DbDecisionWithRules struct {
+	dbDecision
+	Rules []dbDecisionRule
+}
+
 func (r *PGRepository) GetDecision(ctx context.Context, orgID string, decisionID string) (app.Decision, error) {
 	sql, args, err := r.queryBuilder.
 		Select(
@@ -56,13 +61,8 @@ func (r *PGRepository) GetDecision(ctx context.Context, orgID string, decisionID
 		return app.Decision{}, fmt.Errorf("unable to build scenario iteration query: %w", err)
 	}
 
-	type DBRow struct {
-		dbDecision
-		Rules []dbDecisionRule
-	}
-
 	rows, _ := r.db.Query(ctx, sql, args...)
-	decision, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[DBRow])
+	decision, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[DbDecisionWithRules])
 	if errors.Is(err, pgx.ErrNoRows) {
 		return app.Decision{}, app.ErrNotFoundInRepository
 	} else if err != nil {
@@ -74,6 +74,37 @@ func (r *PGRepository) GetDecision(ctx context.Context, orgID string, decisionID
 		decisionDTO.RuleExecutions = append(decisionDTO.RuleExecutions, rule.toDomain())
 	}
 	return decisionDTO, nil
+}
+
+func (r *PGRepository) ListDecisions(ctx context.Context, orgID string) ([]app.Decision, error) {
+	sql, args, err := r.queryBuilder.
+		Select(
+			"d.*",
+			"array_agg(row(dr.*)) as rules",
+		).
+		From("decisions d").
+		Join("decision_rules dr on dr.decision_id = d.id").
+		Where("d.org_id = ?", orgID).
+		GroupBy("d.id").
+		ToSql()
+	if err != nil {
+		return []app.Decision{}, fmt.Errorf("unable to build scenario iteration query: %w", err)
+	}
+
+	rows, _ := r.db.Query(ctx, sql, args...)
+	decisionsDTOs, err := pgx.CollectRows(rows, pgx.RowToStructByName[DbDecisionWithRules])
+	if err != nil {
+		return nil, fmt.Errorf("unable to list decisions: %w", err)
+	}
+	decisions := make([]app.Decision, len(decisionsDTOs))
+	for i, dbDecision := range decisionsDTOs {
+		decisions[i] = dbDecision.toDomain()
+		for _, dbRule := range dbDecision.Rules {
+			decisions[i].RuleExecutions = append(decisions[i].RuleExecutions, dbRule.toDomain())
+		}
+	}
+
+	return decisions, nil
 }
 
 func (r *PGRepository) StoreDecision(ctx context.Context, orgID string, decision app.Decision) (app.Decision, error) {

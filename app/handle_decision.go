@@ -15,6 +15,10 @@ func (app *App) GetDecision(ctx context.Context, orgID string, decisionID string
 	return app.repository.GetDecision(ctx, orgID, decisionID)
 }
 
+func (app *App) ListDecisions(ctx context.Context, orgID string) ([]Decision, error) {
+	return app.repository.ListDecisions(ctx, orgID)
+}
+
 type CreateDecisionInput struct {
 	OrganizationID          string
 	ScenarioID              string
