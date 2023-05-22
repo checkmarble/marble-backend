@@ -1,47 +1,17 @@
 package models
 
 import (
-	"fmt"
+	"errors"
 )
 
-// UnAuthorizedError is rendered with the http status code 400
-type BadParameterError struct {
-	Message string
-	From    error
-}
-
-func (err *BadParameterError) Error() string {
-	return fmt.Sprintf("Bad Parameter: %s", err.Message)
-}
-
-func (err *BadParameterError) Unwrap() error {
-	return err.From
-}
+// BadParameterError is rendered with the http status code 400
+var BadParameterError = errors.New("Bad Parameter")
 
 // UnAuthorizedError is rendered with the http status code 401
-type UnAuthorizedError struct {
-	Message string
-	From    error
-}
+var UnAuthorizedError = errors.New("Authorized")
 
-func (err *UnAuthorizedError) Error() string {
-	return fmt.Sprintf("UnAuthorized: %s", err.Message)
-}
+// ForbiddenError is rendered with the http status code 403
+var ForbiddenError = errors.New("Forbidden")
 
-func (err *UnAuthorizedError) Unwrap() error {
-	return err.From
-}
-
-// UnAuthorizedError is rendered with the http status code 404
-type NotFoundError struct {
-	Message string
-	From    error
-}
-
-func (err *NotFoundError) Error() string {
-	return fmt.Sprintf("NotFound: %s", err.Message)
-}
-
-func (err *NotFoundError) Unwrap() error {
-	return err.From
-}
+// NotFoundError is rendered with the http status code 404
+var NotFoundError = errors.New("Not found")

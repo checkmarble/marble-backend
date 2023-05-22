@@ -37,10 +37,7 @@ func (usecase *MarbleTokenUseCase) NewMarbleToken(ctx context.Context, apiKey st
 		identity, err := usecase.firebaseTokenRepository.VerifyFirebaseIDToken(ctx, firebaseIdToken)
 
 		if err != nil {
-			return "", nil, &BadParameterError{
-				Message: "Firebase Api token fail",
-				From:    err,
-			}
+			return "", nil, fmt.Errorf("Firebase TokenID verification fail: %w", UnAuthorizedError)
 		}
 
 		user := usecase.userRepository.UserByFirebaseUid(identity.FirebaseUid)
@@ -48,9 +45,7 @@ func (usecase *MarbleTokenUseCase) NewMarbleToken(ctx context.Context, apiKey st
 			// first connection
 			user = usecase.userRepository.UserByEmail(identity.Email)
 			if user == nil {
-				return "", nil, &UnAuthorizedError{
-					Message: fmt.Sprintf("Unknown user %s", identity.Email),
-				}
+				return "", nil, fmt.Errorf("Unknown user %s: %w", identity.Email, ForbiddenError)
 			}
 			// store firebase Id
 			if err := usecase.userRepository.UpdateFirebaseId(user.UserId, identity.FirebaseUid); err != nil {
@@ -61,9 +56,7 @@ func (usecase *MarbleTokenUseCase) NewMarbleToken(ctx context.Context, apiKey st
 		return token, &time, nil
 	}
 
-	return "", nil, &UnAuthorizedError{
-		Message: "API key or Firebase JWT token required.",
-	}
+	return "", nil, fmt.Errorf("API key or Firebase JWT token required: %w", BadParameterError)
 
 }
 

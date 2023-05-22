@@ -64,9 +64,7 @@ func (repo *UserRepositoryHardcoded) UserByEmail(email string) *User {
 func (repo *UserRepositoryHardcoded) UpdateFirebaseId(userId string, firebaseUid string) error {
 	user := repo.findUserById(userId)
 	if user == nil {
-		return &NotFoundError{
-			Message: fmt.Sprintf("Can't find user %s", userId),
-		}
+		return fmt.Errorf("User %s: %w", userId, NotFoundError)
 	}
 	user.FirebaseUid = firebaseUid
 	return nil
