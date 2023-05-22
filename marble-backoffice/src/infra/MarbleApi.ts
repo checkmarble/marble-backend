@@ -69,6 +69,6 @@ export class MarbleApi {
   }
 
   async organizations(): Promise<unknown> {
-    return this.getAuthorizedJson("/organization");
+    return this.getAuthorizedJson("/organizations");
   }
 }

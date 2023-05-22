@@ -1,6 +1,10 @@
-import { type FirebaseApp, initializeApp } from "firebase/app";
+import {
+  type FirebaseApp,
+  initializeApp,
+} from "firebase/app";
 import {
   getAuth,
+  connectAuthEmulator,
   type Auth,
   GoogleAuthProvider,
 } from "firebase/auth";
@@ -11,7 +15,7 @@ export interface FirebaseWrapper {
   googleAuthProvider: GoogleAuthProvider;
 }
 
-export function initializeFirebase(): FirebaseWrapper {
+export function initializeFirebase(authEmulator: boolean): FirebaseWrapper {
   // Initialize Firebase
   const app = initializeApp({
     apiKey: "AIzaSyAElc2shIKIrYzLSzWmWaZ1C7yEuoS-bBw",
@@ -23,6 +27,10 @@ export function initializeFirebase(): FirebaseWrapper {
   });
 
   const auth = getAuth(app);
+  if (authEmulator) {
+    connectAuthEmulator(auth, "http://localhost:9099");
+  }
+
   // To apply the default browser preference instead of explicitly setting it.
   auth.useDeviceLanguage();
 
@@ -34,4 +42,3 @@ export function initializeFirebase(): FirebaseWrapper {
     googleAuthProvider,
   };
 }
-
