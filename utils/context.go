@@ -3,26 +3,27 @@ package utils
 import (
 	"context"
 	"fmt"
+	. "marble/marble-backend/models"
 )
 
 type ContextKey int
 
 const (
-	ContextKeyOrgID ContextKey = iota
-	ContextKeyClaims
-	ContextKeyTokenType
-	ContextKeyTokenRole
+	ContextKeyCredentials ContextKey = iota
 )
 
-var ErrOrgNotInContext = fmt.Errorf("organization ID not found in request context")
+func CredentialsFromCtx(ctx context.Context) Credentials {
 
-func OrgIDFromCtx(ctx context.Context) (id string, err error) {
-
-	orgID, found := ctx.Value(ContextKeyOrgID).(string)
+	creds, found := ctx.Value(ContextKeyCredentials).(*Credentials)
 
 	if !found {
-		return "", ErrOrgNotInContext
+		panic(fmt.Errorf("Credentials not found in request context"))
 	}
 
-	return orgID, nil
+	return *creds
+}
+
+func OrgIDFromCtx(ctx context.Context) (id string, err error) {
+	creds := CredentialsFromCtx(ctx)
+	return creds.OrganizationId, nil
 }

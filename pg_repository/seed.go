@@ -6,6 +6,7 @@ import (
 
 	"marble/marble-backend/app"
 	"marble/marble-backend/app/operators"
+	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
 )
 
@@ -19,7 +20,7 @@ func (r *PGRepository) Seed() {
 	if err != nil {
 		log.Printf("error getting organizations: %v", err)
 	}
-	var testOrg *app.Organization
+	var testOrg *models.Organization
 	for _, org := range organizations {
 		if org.Name == "Test organization" {
 			testOrg = &org
@@ -30,7 +31,7 @@ func (r *PGRepository) Seed() {
 		return
 	}
 
-	org, err := r.CreateOrganization(context.TODO(), app.CreateOrganizationInput{
+	org, err := r.CreateOrganization(context.TODO(), models.CreateOrganizationInput{
 		Name:         "Test organization",
 		DatabaseName: "test_1",
 	})

@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	. "marble/marble-backend/models"
 
 	"golang.org/x/exp/slog"
 )
@@ -19,9 +20,6 @@ type RepositoryInterface interface {
 
 	// Data models & scenarios
 	GetDataModel(ctx context.Context, orgID string) (DataModel, error)
-
-	// token validation
-	GetOrganizationIDFromToken(ctx context.Context, token string) (orgID string, err error)
 
 	// Decisions
 	StoreDecision(ctx context.Context, orgID string, decision Decision) (Decision, error)

@@ -18,11 +18,16 @@ You may also need to [install the gcloud CLI](https://cloud.google.com/sdk/docs/
 
 > NB: the GCP project is `tokyo-country-381508` (you may need to ask for permissions)
 
-Create `application_default_credentials.json` by running :
+### Firebase emulator suite for local development
 
-```sh
-gcloud auth application-default login
+Installation: https://firebase.google.com/docs/emulator-suite
+
+Then start the emulator suite:
+
 ```
+firebase emulators:start
+```
+
 
 ### Lauch the project
 

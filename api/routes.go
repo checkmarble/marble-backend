@@ -2,6 +2,7 @@ package api
 
 import (
 	"log"
+	. "marble/marble-backend/models"
 	"net/http"
 
 	"github.com/ggicci/httpin"
@@ -13,16 +14,16 @@ const UUIDRegExp = "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-
 
 func (api *API) routes() {
 	// TODO: API token authorizes calls to all endpoints, until we have finalized end-user authentication
-	apiOnlyMdw := api.authMiddlewareFactory(map[TokenType]Role{ApiToken: ADMIN})
-	readerOnlyMdw := api.authMiddlewareFactory(map[TokenType]Role{UserToken: READER, ApiToken: ADMIN})
-	builderMdw := api.authMiddlewareFactory(map[TokenType]Role{UserToken: BUILDER, ApiToken: ADMIN})
-	publisherMdw := api.authMiddlewareFactory(map[TokenType]Role{UserToken: PUBLISHER, ApiToken: ADMIN})
-	apiAndReaderUserMdw := api.authMiddlewareFactory(map[TokenType]Role{ApiToken: ADMIN, UserToken: READER})
+	apiOnlyMdw := api.enforceRoleMiddleware(ADMIN)
+	readerOnlyMdw := api.enforceRoleMiddleware(READER)
+	builderMdw := api.enforceRoleMiddleware(BUILDER)
+	publisherMdw := api.enforceRoleMiddleware(PUBLISHER)
+	apiAndReaderUserMdw := api.enforceRoleMiddleware(READER)
 
-	api.router.With(httpin.NewInput(GetNewAccessTokenInput{})).Post("/token", api.handleGetAccessToken())
+	api.router.Post("/token", api.handlePostFirebaseIdToken())
 
 	api.router.With(api.jwtValidator).Group(func(authedRouter chi.Router) {
-		// Everything other than getting a token is protected by JWT
+		// Authentication using  JWT marble token required.
 
 		// Decision API subrouter
 		// matches all /decisions routes
