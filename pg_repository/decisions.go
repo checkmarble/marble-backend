@@ -86,6 +86,8 @@ func (r *PGRepository) ListDecisions(ctx context.Context, orgID string) ([]app.D
 		Join("decision_rules dr on dr.decision_id = d.id").
 		Where("d.org_id = ?", orgID).
 		GroupBy("d.id").
+		OrderBy("d.created_at DESC").
+		Limit(1000).
 		ToSql()
 	if err != nil {
 		return []app.Decision{}, fmt.Errorf("unable to build scenario iteration query: %w", err)
