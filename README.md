@@ -79,7 +79,7 @@ REFRESH_TOKEN="token12345"
 Get an access token by calling
 
 ```sh
-TOKEN=$(curl -XPOST -H "Content-type: application/json" -d "{\"refresh_token\": \"$REFRESH_TOKEN\"}" 'http://localhost:8080/token')
+TOKEN=$(curl -XPOST -H "Content-type: application/json" -H "X-API-Key: token12345" http://localhost:8080/token)
 ```
 
 Beware that the implementation of getting the different types of access tokens is not finished yet, and you may encounter authorization errors on the various endpoints.
