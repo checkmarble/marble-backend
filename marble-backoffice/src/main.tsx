@@ -9,12 +9,17 @@ import {
 } from "./repositories/Repositories";
 import { initializeServices } from "./injectServices";
 import "./index.css";
+import { Environments } from "./Environment";
 
-const firebase = initializeFirebase();
+const environment = import.meta.env.DEV
+  ? Environments.Local
+  : Environments.Staging;
+
+const firebase = initializeFirebase(environment.authEmulator);
 
 const repositories: Repositories = makeRepositories(
   firebase,
-  new URL("http://localhost:8080")
+  environment.marbleBackend
 );
 initializeServices(repositories);
 
