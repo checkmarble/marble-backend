@@ -565,8 +565,8 @@ func (div *DivideFloat) UnmarshalJSON(b []byte) error {
 // ///////////////////////////////////////////////////////////////////////////////////////
 
 type RoundFloat struct {
-	operand OperatorFloat
-	level   int
+	Operand OperatorFloat
+	Level   int
 }
 
 // register creation
@@ -579,21 +579,21 @@ func (r RoundFloat) Eval(d DataAccessor) (float64, error) {
 		return 0, ErrEvaluatingInvalidOperator
 	}
 
-	val, err := r.operand.Eval(d)
+	val, err := r.Operand.Eval(d)
 	if err != nil {
 		return 0, err
 	}
 
-	ratio := math.Pow(10, float64(r.level))
+	ratio := math.Pow(10, float64(r.Level))
 	return math.Round(val*ratio) / ratio, nil
 }
 
 func (r RoundFloat) IsValid() bool {
-	return r.operand != nil && r.operand.IsValid()
+	return r.Operand != nil && r.Operand.IsValid()
 }
 
 func (r RoundFloat) String() string {
-	return fmt.Sprintf("ROUND(%s, %v)", r.operand.String(), r.level)
+	return fmt.Sprintf("ROUND(%s, %v)", r.Operand.String(), r.Level)
 }
 
 func (r RoundFloat) MarshalJSON() ([]byte, error) {
@@ -607,8 +607,8 @@ func (r RoundFloat) MarshalJSON() ([]byte, error) {
 		StaticData roundData       `json:"staticData"`
 	}{
 		OperatorType: OperatorType{Type: "ROUND_FLOAT"},
-		Children:     []OperatorFloat{r.operand},
-		StaticData:   roundData{Level: r.level},
+		Children:     []OperatorFloat{r.Operand},
+		StaticData:   roundData{Level: r.Level},
 	})
 }
 
@@ -624,13 +624,13 @@ func (r *RoundFloat) UnmarshalJSON(b []byte) error {
 		return fmt.Errorf("unable to unmarshal operator to intermediate children representation: %w", err)
 	}
 
-	// Build concrete child operand
+	// Build concrete child Operand
 	child, err := UnmarshalOperatorFloat(roundData.Children[0])
 	if err != nil {
 		return fmt.Errorf("unable to instantiate child operator: %w", err)
 	}
-	r.operand = child
-	r.level = roundData.StaticData.Level
+	r.Operand = child
+	r.Level = roundData.StaticData.Level
 
 	return nil
 }

@@ -46,7 +46,7 @@ func UnmarshalOperatorString(jsonBytes []byte) (OperatorString, error) {
 // StringValue
 // ///////////////////////////////////////////////////////////////////////////////////////
 type StringValue struct {
-	text string
+	Text string
 }
 
 // register creation
@@ -54,11 +54,11 @@ func init() {
 	operatorFromType["STRING_SCALAR"] = func() Operator { return &StringValue{} }
 }
 
-func (s StringValue) Eval(d DataAccessor) (string, error) { return s.text, nil }
+func (s StringValue) Eval(d DataAccessor) (string, error) { return s.Text, nil }
 
 func (s StringValue) IsValid() bool { return true }
 
-func (s StringValue) String() string { return s.text }
+func (s StringValue) String() string { return s.Text }
 
 // Marshal with added "Type" operator
 func (s StringValue) MarshalJSON() ([]byte, error) {
@@ -71,7 +71,7 @@ func (s StringValue) MarshalJSON() ([]byte, error) {
 		StaticData stringValueIntermediate `json:"staticData"`
 	}{
 		OperatorType: OperatorType{Type: "STRING_SCALAR"},
-		StaticData:   stringValueIntermediate{s.text},
+		StaticData:   stringValueIntermediate{s.Text},
 	})
 }
 
@@ -86,7 +86,7 @@ func (s *StringValue) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &stringValueData); err != nil {
 		return fmt.Errorf("unable to unmarshal operator to intermediate staticData representation: %w", err)
 	}
-	s.text = stringValueData.StaticData.Text
+	s.Text = stringValueData.StaticData.Text
 
 	return nil
 }

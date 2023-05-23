@@ -567,8 +567,8 @@ func (not *Not) UnmarshalJSON(b []byte) error {
 // ///////////////////////////////////////////////////////////////////////////////////////
 
 type StringIsInList struct {
-	str  OperatorString
-	list OperatorStringList
+	Str  OperatorString
+	List OperatorStringList
 }
 
 // register creation
@@ -581,11 +581,11 @@ func (s StringIsInList) Eval(d DataAccessor) (bool, error) {
 		return false, ErrEvaluatingInvalidOperator
 	}
 
-	str, err := s.str.Eval(d)
+	str, err := s.Str.Eval(d)
 	if err != nil {
 		return false, err
 	}
-	list, err := s.list.Eval(d)
+	list, err := s.List.Eval(d)
 	if err != nil {
 		return false, err
 	}
@@ -598,11 +598,11 @@ func (s StringIsInList) Eval(d DataAccessor) (bool, error) {
 }
 
 func (s StringIsInList) IsValid() bool {
-	return s.str != nil && s.str.IsValid() && s.list != nil && s.list.IsValid()
+	return s.Str != nil && s.Str.IsValid() && s.List != nil && s.List.IsValid()
 }
 
 func (s StringIsInList) String() string {
-	return fmt.Sprintf("( %s IN (%s) )", s.str.String(), s.list.String())
+	return fmt.Sprintf("( %s IN (%s) )", s.Str.String(), s.List.String())
 }
 
 func (s StringIsInList) MarshalJSON() ([]byte, error) {
@@ -612,7 +612,7 @@ func (s StringIsInList) MarshalJSON() ([]byte, error) {
 		Children []Operator `json:"children"`
 	}{
 		OperatorType: OperatorType{Type: "STRING_IS_IN_LIST"},
-		Children:     []Operator{s.str, s.list},
+		Children:     []Operator{s.Str, s.List},
 	})
 }
 
@@ -635,14 +635,14 @@ func (s *StringIsInList) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return fmt.Errorf("unable to instantiate string operand: %w", err)
 	}
-	s.str = str
+	s.Str = str
 
 	// Build concrete operand
 	list, err := UnmarshalOperatorStringList(notData.Children[1])
 	if err != nil {
 		return fmt.Errorf("unable to instantiate string list operand: %w", err)
 	}
-	s.list = list
+	s.List = list
 
 	return nil
 }

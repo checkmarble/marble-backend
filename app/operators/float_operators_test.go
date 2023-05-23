@@ -97,16 +97,16 @@ func TestLogicEvalFloat(t *testing.T) {
 		{
 			name: "round",
 			operator: &RoundFloat{
-				operand: &FloatValue{Value: 2.5123},
-				level:   2,
+				Operand: &FloatValue{Value: 2.5123},
+				Level:   2,
 			},
 			expected: 2.51,
 		},
 		{
 			name: "round (negative)",
 			operator: &RoundFloat{
-				operand: &FloatValue{Value: 12345},
-				level:   -2,
+				Operand: &FloatValue{Value: 12345},
+				Level:   -2,
 			},
 			expected: 12300,
 		},
@@ -210,15 +210,15 @@ func TestMarshalUnMarshalFloat(t *testing.T) {
 		{
 			name: "Round",
 			operator: &RoundFloat{
-				operand: &FloatValue{Value: 2.5123},
-				level:   2,
+				Operand: &FloatValue{Value: 2.5123},
+				Level:   2,
 			},
 		},
 		{
 			name: "Round (negative)",
 			operator: &RoundFloat{
-				operand: &FloatValue{Value: 7652.5123},
-				level:   -2,
+				Operand: &FloatValue{Value: 7652.5123},
+				Level:   -2,
 			},
 		},
 	}
@@ -299,8 +299,8 @@ func TestMarshallBoolOperatorsFloat(t *testing.T) {
 		{
 			name: "Round",
 			operator: &RoundFloat{
-				operand: &FloatValue{Value: 2.5123},
-				level:   2,
+				Operand: &FloatValue{Value: 2.5123},
+				Level:   2,
 			},
 			expected: `{"type":"ROUND_FLOAT","children":[{"type":"FLOAT_SCALAR","staticData":{"value":2.5123}}],"staticData":{"level":2}}`,
 		},
@@ -363,8 +363,8 @@ func TestUnmarshallBoolOperatorsFloat(t *testing.T) {
 		{
 			name: "Round",
 			expected: &RoundFloat{
-				operand: &FloatValue{Value: 2.5123},
-				level:   2,
+				Operand: &FloatValue{Value: 2.5123},
+				Level:   2,
 			},
 			json: `{"type":"ROUND_FLOAT","children":[{"type":"FLOAT_SCALAR","staticData":{"value":2.5123}}],"staticData":{"level":2}}`,
 		},
