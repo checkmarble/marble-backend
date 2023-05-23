@@ -23,6 +23,7 @@ func (api *API) routes() {
 		authedRouter.Route("/decisions", func(decisionsRouter chi.Router) {
 			decisionsRouter.Use(api.enforcePermissionMiddleware(DECISION_READ))
 
+			decisionsRouter.Get("/", api.handleListDecisions())
 			decisionsRouter.With(httpin.NewInput(GetDecisionInput{})).
 				Get("/{decisionID:"+UUIDRegExp+"}", api.handleGetDecision())
 

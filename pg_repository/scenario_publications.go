@@ -142,7 +142,7 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 
 		err = r.publishScenarioIteration(ctx, tx, orgID, sp.ScenarioIterationID)
 		if err != nil && !errors.Is(err, ErrAlreadyPublished) {
-			return nil, fmt.Errorf("unable to publish scenario iteration: %w", err)
+			return nil, fmt.Errorf("unable to publish scenario iteration: \n%w", err)
 		}
 
 		publishNewIteration, err := r.createScenarioPublication(ctx, tx, dbCreateScenarioPublication{
@@ -153,13 +153,13 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 			PublicationAction:   app.Publish.String(),
 		})
 		if err != nil {
-			return nil, fmt.Errorf("unable to publish new scenario iteration: %w", err)
+			return nil, fmt.Errorf("unable to publish new scenario iteration: \n%w", err)
 		}
 		scenarioPublications = append(scenarioPublications, publishNewIteration.toDomain())
 
 		err = r.setLiveScenarioIteration(ctx, tx, orgID, sp.ScenarioIterationID)
 		if err != nil {
-			return nil, fmt.Errorf("unable to publish live scenario iteration(id: %s): %w", sp.ScenarioIterationID, err)
+			return nil, fmt.Errorf("unable to publish live scenario iteration(id: %s): \n%w", sp.ScenarioIterationID, err)
 		}
 
 	case app.Unpublish:
@@ -174,13 +174,13 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 			PublicationAction:   app.Unpublish.String(),
 		})
 		if err != nil {
-			return nil, fmt.Errorf("unable to unpublish provided scenario iteration: %w", err)
+			return nil, fmt.Errorf("unable to unpublish provided scenario iteration: \n%w", err)
 		}
 		scenarioPublications = append(scenarioPublications, unpublishOldIteration.toDomain())
 
 		err = r.unsetLiveScenarioIteration(ctx, tx, orgID, scenarioID)
 		if err != nil {
-			return nil, fmt.Errorf("unable to unpublish scenario(id: %s): %w", scenarioID, err)
+			return nil, fmt.Errorf("unable to unpublish scenario(id: %s): \n%w", scenarioID, err)
 		}
 
 	default:
@@ -189,7 +189,7 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 
 	err = tx.Commit(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("transaction issue: %w", err)
+		return nil, fmt.Errorf("transaction issue: \n%w", err)
 	}
 
 	return scenarioPublications, nil
