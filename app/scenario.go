@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"marble/marble-backend/app/operators"
 	"marble/marble-backend/utils"
 	"runtime/debug"
@@ -60,59 +61,45 @@ func NewPublishedScenarioIteration(si ScenarioIteration) (PublishedScenarioItera
 		UpdatedAt:  si.UpdatedAt,
 	}
 
-	if si.Version == nil {
-		return PublishedScenarioIteration{}, ErrScenarioIterationNotValid
+	err := si.IsValidForPublication()
+	if err != nil {
+		return PublishedScenarioIteration{}, err
 	}
+
 	result.Version = *si.Version
-
-	if si.Body.ScoreReviewThreshold == nil {
-		return PublishedScenarioIteration{}, ErrScenarioIterationNotValid
-	}
 	result.Body.ScoreReviewThreshold = *si.Body.ScoreReviewThreshold
-
-	if si.Body.ScoreRejectThreshold == nil {
-		return PublishedScenarioIteration{}, ErrScenarioIterationNotValid
-	}
 	result.Body.ScoreRejectThreshold = *si.Body.ScoreRejectThreshold
-
-	if len(si.Body.Rules) < 1 {
-		return PublishedScenarioIteration{}, ErrScenarioIterationNotValid
-	}
 	result.Body.Rules = si.Body.Rules
-
-	if si.Body.TriggerCondition == nil {
-		return PublishedScenarioIteration{}, ErrScenarioIterationNotValid
-	}
 	result.Body.TriggerCondition = si.Body.TriggerCondition
 
 	return result, nil
 }
 
-func (si ScenarioIteration) IsValidForPublication() bool {
+func (si ScenarioIteration) IsValidForPublication() error {
 	if si.Body.ScoreReviewThreshold == nil {
-		return false
+		return fmt.Errorf("Scenario iteration has no ScoreReviewThreshold: \n%w", ErrScenarioIterationNotValid)
 	}
 
 	if si.Body.ScoreRejectThreshold == nil {
-		return false
+		return fmt.Errorf("Scenario iteration has no ScoreRejectThreshold: \n%w", ErrScenarioIterationNotValid)
 	}
 
 	if len(si.Body.Rules) < 1 {
-		return false
+		return fmt.Errorf("Scenario iteration has no rules: \n%w", ErrScenarioIterationNotValid)
 	}
 	for _, rule := range si.Body.Rules {
 		if !rule.Formula.IsValid() {
-			return false
+			return fmt.Errorf("Scenario iteration rule has invalid rules: \n%w", ErrScenarioIterationNotValid)
 		}
 	}
 
 	if si.Body.TriggerCondition == nil {
-		return false
+		return fmt.Errorf("Scenario iteration has no trigger condition: \n%w", ErrScenarioIterationNotValid)
 	} else if !si.Body.TriggerCondition.IsValid() {
-		return false
+		return fmt.Errorf("Scenario iteration trigger condition is invalid: \n%w", ErrScenarioIterationNotValid)
 	}
 
-	return true
+	return nil
 }
 
 type ScenarioIteration struct {
@@ -213,7 +200,7 @@ func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStr
 
 	publishedVersion, err := NewPublishedScenarioIteration(liveVersion)
 	if err != nil {
-		return ScenarioExecution{}, ErrScenarioIterationNotValid
+		return ScenarioExecution{}, err
 	}
 
 	// Check the scenario & trigger_object's types

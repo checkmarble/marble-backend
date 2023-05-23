@@ -113,7 +113,7 @@ func (api *API) CreateScenarioPublication() http.HandlerFunc {
 		})
 		if errors.Is(err, app.ErrScenarioIterationNotValid) {
 			logger.WarnCtx(ctx, "Scenario iteration not valid")
-			http.Error(w, "", http.StatusForbidden)
+			http.Error(w, err.Error(), http.StatusForbidden)
 			return
 		} else if err != nil {
 			logger.ErrorCtx(ctx, "Error creating scenario publication: \n"+err.Error())
