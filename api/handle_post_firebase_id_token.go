@@ -3,7 +3,6 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -12,7 +11,7 @@ func (api *API) handlePostFirebaseIdToken() http.HandlerFunc {
 	return func(w http.ResponseWriter, request *http.Request) {
 
 		// api key from header
-		apiKey := strings.TrimSpace(request.Header.Get("X-API-Key"))
+		apiKey := ParseApiKeyHeader(request.Header)
 
 		// token from header
 		idToken, err := ParseAuthorizationBearerHeader(request.Header)
@@ -25,6 +24,9 @@ func (api *API) handlePostFirebaseIdToken() http.HandlerFunc {
 
 		usecase := api.usecases.MarbleTokenUseCase()
 		marbleToken, expirationTime, err := usecase.NewMarbleToken(context, apiKey, idToken)
+		if err != nil {
+			err = wrapErrInUnAuthorizedError(err)
+		}
 		if presentError(context, api.logger, w, err) {
 			return
 		}
@@ -36,7 +38,7 @@ func (api *API) handlePostFirebaseIdToken() http.HandlerFunc {
 		}{
 			AccessToken: marbleToken,
 			TokenType:   "Bearer",
-			ExpiresAt:   *expirationTime,
+			ExpiresAt:   expirationTime,
 		})
 	}
 

@@ -16,27 +16,36 @@ type MarbleTokenUseCase struct {
 	tokenLifetimeMinute     int
 }
 
-func (usecase *MarbleTokenUseCase) encodeMarbleToken(creds Credentials) (string, time.Time) {
+func (usecase *MarbleTokenUseCase) encodeMarbleToken(creds Credentials) (string, time.Time, error) {
 	expirationTime := time.Now().Add(time.Duration(usecase.tokenLifetimeMinute) * time.Minute)
 
-	return usecase.marbleJwtRepository.EncodeMarbleToken(expirationTime, creds), expirationTime
+	token, err := usecase.marbleJwtRepository.EncodeMarbleToken(expirationTime, creds)
+	return token, expirationTime, err
 }
 
-func (usecase *MarbleTokenUseCase) NewMarbleToken(ctx context.Context, apiKey string, firebaseIdToken string) (string, *time.Time, error) {
+func (usecase *MarbleTokenUseCase) adaptCredentialFromApiKey(ctx context.Context, apiKey string) (Credentials, error) {
+	orgID, err := usecase.apiKeyRepository.GetOrganizationIDFromApiKey(ctx, apiKey)
+	if err != nil {
+		return Credentials{}, err
+	}
+	return Credentials{OrganizationId: orgID, Role: API_CLIENT}, nil
+}
+
+func (usecase *MarbleTokenUseCase) NewMarbleToken(ctx context.Context, apiKey string, firebaseIdToken string) (string, time.Time, error) {
 	if apiKey != "" {
-		orgID, err := usecase.apiKeyRepository.GetOrganizationIDFromApiKey(ctx, apiKey)
+		credentials, err := usecase.adaptCredentialFromApiKey(ctx, apiKey)
 		if err != nil {
-			return "", nil, err
+			return "", time.Time{}, err
 		}
-		token, time := usecase.encodeMarbleToken(Credentials{OrganizationId: orgID, Role: API_CLIENT})
-		return token, &time, nil
+
+		return usecase.encodeMarbleToken(credentials)
 	}
 
 	if firebaseIdToken != "" {
 		identity, err := usecase.firebaseTokenRepository.VerifyFirebaseIDToken(ctx, firebaseIdToken)
 
 		if err != nil {
-			return "", nil, fmt.Errorf("Firebase TokenID verification fail: %w", UnAuthorizedError)
+			return "", time.Time{}, fmt.Errorf("Firebase TokenID verification fail: %w", err)
 		}
 
 		user := usecase.userRepository.UserByFirebaseUid(identity.FirebaseUid)
@@ -44,22 +53,27 @@ func (usecase *MarbleTokenUseCase) NewMarbleToken(ctx context.Context, apiKey st
 			// first connection
 			user = usecase.userRepository.UserByEmail(identity.Email)
 			if user == nil {
-				return "", nil, fmt.Errorf("Unknown user %s: %w", identity.Email, ForbiddenError)
+				return "", time.Time{}, fmt.Errorf("Unknown user %s: %w", identity.Email, NotFoundError)
 			}
 			// store firebase Id
 			if err := usecase.userRepository.UpdateFirebaseId(user.UserId, identity.FirebaseUid); err != nil {
-				return "", nil, err
+				return "", time.Time{}, err
 			}
 		}
-		token, time := usecase.encodeMarbleToken(Credentials{OrganizationId: user.OrganizationId, Role: user.Role})
-		return token, &time, nil
+		return usecase.encodeMarbleToken(Credentials{OrganizationId: user.OrganizationId, Role: user.Role})
 	}
 
-	return "", nil, fmt.Errorf("API key or Firebase JWT token required: %w", BadParameterError)
-
+	return "", time.Time{}, fmt.Errorf("API key or Firebase JWT token required: %w", UnAuthorizedError)
 }
 
-func (usecase *MarbleTokenUseCase) ValidateMarbleToken(marbleToken string) (Credentials, error) {
+func (usecase *MarbleTokenUseCase) ValidateCredentials(ctx context.Context, marbleToken string, apiKey string) (Credentials, error) {
+	if apiKey != "" {
+		return usecase.adaptCredentialFromApiKey(ctx, apiKey)
+	}
 
-	return usecase.marbleJwtRepository.ValidateMarbleToken(marbleToken)
+	if marbleToken != "" {
+		return usecase.marbleJwtRepository.ValidateMarbleToken(marbleToken)
+	}
+
+	return Credentials{}, fmt.Errorf("Marble Access Token or X-API-Key is missing: %w", UnAuthorizedError)
 }

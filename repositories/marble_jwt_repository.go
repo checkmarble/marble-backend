@@ -22,7 +22,7 @@ type Claims struct {
 
 var VALIDATION_ALGO = jwt.SigningMethodRS256
 
-func (repo *MarbleJwtRepository) EncodeMarbleToken(expirationTime time.Time, creds Credentials) string {
+func (repo *MarbleJwtRepository) EncodeMarbleToken(expirationTime time.Time, creds Credentials) (string, error) {
 
 	claims := &Claims{
 		OrganizationId: creds.OrganizationId,
@@ -37,10 +37,10 @@ func (repo *MarbleJwtRepository) EncodeMarbleToken(expirationTime time.Time, cre
 
 	tokenString, err := token.SignedString(&repo.jwtSigningPrivateKey)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
-	return tokenString
+	return tokenString, nil
 }
 
 func (repo *MarbleJwtRepository) ValidateMarbleToken(marbleToken string) (Credentials, error) {
