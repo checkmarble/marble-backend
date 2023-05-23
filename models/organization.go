@@ -1,4 +1,4 @@
-package app
+package models
 
 type Organization struct {
 	ID   string

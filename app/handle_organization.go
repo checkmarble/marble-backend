@@ -1,6 +1,9 @@
 package app
 
-import "context"
+import (
+	"context"
+	. "marble/marble-backend/models"
+)
 
 func (app *App) GetOrganizations(ctx context.Context) ([]Organization, error) {
 	return app.repository.GetOrganizations(ctx)

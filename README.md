@@ -18,11 +18,16 @@ You may also need to [install the gcloud CLI](https://cloud.google.com/sdk/docs/
 
 > NB: the GCP project is `tokyo-country-381508` (you may need to ask for permissions)
 
-Create `application_default_credentials.json` by running :
+### Firebase emulator suite for local development
 
-```sh
-gcloud auth application-default login
+Installation: https://firebase.google.com/docs/emulator-suite
+
+Then start the emulator suite:
+
 ```
+firebase emulators:start
+```
+
 
 ### Lauch the project
 
@@ -74,7 +79,7 @@ REFRESH_TOKEN="token12345"
 Get an access token by calling
 
 ```sh
-TOKEN=$(curl -XPOST -H "Content-type: application/json" -d "{\"refresh_token\": \"$REFRESH_TOKEN\"}" 'http://localhost:8080/token')
+TOKEN=$(curl -XPOST -H "Content-type: application/json" -H "X-API-Key: token12345" http://localhost:8080/token)
 ```
 
 Beware that the implementation of getting the different types of access tokens is not finished yet, and you may encounter authorization errors on the various endpoints.

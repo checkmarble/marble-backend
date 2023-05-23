@@ -204,7 +204,7 @@ func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStr
 
 	orgID, err := utils.OrgIDFromCtx(ctx)
 	if err != nil {
-		return ScenarioExecution{}, utils.ErrOrgNotInContext
+		return ScenarioExecution{}, err
 	}
 	liveVersion, err := repo.GetScenarioIteration(ctx, orgID, *s.LiveVersionID)
 	if err != nil {
