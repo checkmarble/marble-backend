@@ -4,21 +4,22 @@ import (
 	"marble/marble-backend/repositories"
 )
 
-type Usecases struct {
-	repositories repositories.Repositories
+type Configuration struct {
+	TokenLifetimeMinute int
 }
 
-func NewUsecases(repositories repositories.Repositories) Usecases {
-	return Usecases{
-		repositories: repositories,
-	}
+type Usecases struct {
+	Repositories repositories.Repositories
+	Config       Configuration
 }
 
 func (usecases *Usecases) MarbleTokenUseCase() MarbleTokenUseCase {
+	repositories := usecases.Repositories
 	return MarbleTokenUseCase{
-		firebaseTokenRepository: usecases.repositories.FirebaseTokenRepository,
-		marbleJwtRepository:     usecases.repositories.MarbleJwtRepository,
-		userRepository:          usecases.repositories.UserRepository,
-		apiKeyRepository:        usecases.repositories.ApiKeyRepository,
+		firebaseTokenRepository: repositories.FirebaseTokenRepository,
+		marbleJwtRepository:     repositories.MarbleJwtRepository,
+		userRepository:          repositories.UserRepository,
+		apiKeyRepository:        repositories.ApiKeyRepository,
+		tokenLifetimeMinute:     usecases.Config.TokenLifetimeMinute,
 	}
 }

@@ -10,6 +10,7 @@ import (
 	. "marble/marble-backend/models"
 	"marble/marble-backend/pg_repository"
 	"marble/marble-backend/repositories"
+	"marble/marble-backend/usecases"
 	"marble/marble-backend/utils"
 	"os"
 	"os/signal"
@@ -19,7 +20,7 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-func runServer(pgRepository *pg_repository.PGRepository, port string, env string, logger *slog.Logger) {
+func runServer(config usecases.Configuration, pgRepository *pg_repository.PGRepository, port string, env string, logger *slog.Logger) {
 	ctx := context.Background()
 
 	devEnv := env == "DEV"
@@ -48,7 +49,12 @@ func runServer(pgRepository *pg_repository.PGRepository, port string, env string
 		},
 	}, pgRepository)
 
-	api, _ := api.New(ctx, port, app, *repositories, logger, corsAllowLocalhost)
+	usecases := usecases.Usecases{
+		Repositories: *repositories,
+		Config:       config,
+	}
+
+	api, _ := api.New(ctx, port, app, usecases, logger, corsAllowLocalhost)
 
 	////////////////////////////////////////////////////////////
 	// Start serving the app
@@ -74,6 +80,7 @@ func runServer(pgRepository *pg_repository.PGRepository, port string, env string
 }
 
 func main() {
+
 	var (
 		env        = utils.GetStringEnv("ENV", "DEV")
 		port       = utils.GetRequiredStringEnv("PORT")
@@ -81,6 +88,9 @@ func main() {
 		pgHostname = utils.GetRequiredStringEnv("PG_HOSTNAME")
 		pgUser     = utils.GetRequiredStringEnv("PG_USER")
 		pgPassword = utils.GetRequiredStringEnv("PG_PASSWORD")
+		config     = usecases.Configuration{
+			TokenLifetimeMinute: utils.GetIntEnv("TOKEN_LIFETIME_MINUTE", 30),
+		}
 	)
 
 	////////////////////////////////////////////////////////////
@@ -120,6 +130,6 @@ func main() {
 		if err != nil {
 			logger.Error("error creating pg repository:\n", err.Error())
 		}
-		runServer(pgRepository, port, env, logger)
+		runServer(config, pgRepository, port, env, logger)
 	}
 }

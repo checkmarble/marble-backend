@@ -13,12 +13,11 @@ type MarbleTokenUseCase struct {
 	firebaseTokenRepository repositories.FireBaseTokenRepository
 	userRepository          repositories.UserRepository
 	apiKeyRepository        repositories.ApiKeyRepository
+	tokenLifetimeMinute     int
 }
 
-const TOKEN_LIFETIME_MINUTES = 1
-
 func (usecase *MarbleTokenUseCase) encodeMarbleToken(creds Credentials) (string, time.Time) {
-	expirationTime := time.Now().Add(time.Duration(TOKEN_LIFETIME_MINUTES) * time.Minute)
+	expirationTime := time.Now().Add(time.Duration(usecase.tokenLifetimeMinute) * time.Minute)
 
 	return usecase.marbleJwtRepository.EncodeMarbleToken(expirationTime, creds), expirationTime
 }
