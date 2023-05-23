@@ -2,6 +2,7 @@ package pg_repository
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -24,9 +25,17 @@ type dbDecision struct {
 	Score               int         `db:"score"`
 	ErrorCode           int         `db:"error_code"`
 	DeletedAt           pgtype.Time `db:"deleted_at"`
+	TriggerObjectRaw    []byte      `db:"trigger_object"`
+	TriggerObjectType   string      `db:"trigger_object_type"`
 }
 
 func (d *dbDecision) toDomain() app.Decision {
+	triggerObject := make(map[string]interface{})
+	err := json.Unmarshal(d.TriggerObjectRaw, &triggerObject)
+	if err != nil {
+		panic(err)
+	}
+
 	return app.Decision{
 		ID:                  d.ID,
 		CreatedAt:           d.CreatedAt,
@@ -37,6 +46,7 @@ func (d *dbDecision) toDomain() app.Decision {
 		ScenarioVersion:     d.ScenarioVersion,
 		Score:               d.Score,
 		DecisionError:       app.DecisionError(d.ErrorCode),
+		Payload:             app.Payload{TableName: d.TriggerObjectType, Data: triggerObject},
 	}
 }
 
@@ -127,6 +137,8 @@ func (r *PGRepository) StoreDecision(ctx context.Context, orgID string, decision
 			"scenario_version",
 			"score",
 			"error_code",
+			"trigger_object",
+			"trigger_object_type",
 		).
 		Values(
 			orgID,
@@ -137,6 +149,8 @@ func (r *PGRepository) StoreDecision(ctx context.Context, orgID string, decision
 			decision.ScenarioVersion,
 			decision.Score,
 			decision.DecisionError,
+			decision.Payload.Data,
+			decision.Payload.TableName,
 		).
 		Suffix("RETURNING *").ToSql()
 	if err != nil {
