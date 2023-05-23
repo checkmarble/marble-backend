@@ -21,7 +21,7 @@ func (api *API) handleIngestion() http.HandlerFunc {
 		ctx := r.Context()
 		orgID, err := utils.OrgIDFromCtx(ctx)
 		if err != nil {
-			http.Error(w, "", http.StatusUnauthorized) // 401
+			http.Error(w, "", http.StatusForbidden)
 			return
 		}
 		logger := api.logger.With(slog.String("orgId", orgID))

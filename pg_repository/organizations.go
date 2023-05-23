@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"marble/marble-backend/app"
+	. "marble/marble-backend/models"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -19,21 +20,21 @@ type dbOrganization struct {
 	DeletedAt    pgtype.Time `db:"deleted_at"`
 }
 
-func (org *dbOrganization) toDomain() app.Organization {
-	return app.Organization{
+func (org *dbOrganization) toDomain() Organization {
+	return Organization{
 		ID:   org.ID,
 		Name: org.Name,
 	}
 }
 
-func (r *PGRepository) GetOrganization(ctx context.Context, orgID string) (app.Organization, error) {
+func (r *PGRepository) GetOrganization(ctx context.Context, orgID string) (Organization, error) {
 	sql, args, err := r.queryBuilder.
 		Select("*").
 		From("organizations o").
 		Where("o.id = ?", orgID).
 		ToSql()
 	if err != nil {
-		return app.Organization{}, fmt.Errorf("unable to build organization query: %w", err)
+		return Organization{}, fmt.Errorf("unable to build organization query: %w", err)
 	}
 
 	type DBRow struct {
@@ -44,16 +45,16 @@ func (r *PGRepository) GetOrganization(ctx context.Context, orgID string) (app.O
 	rows, _ := r.db.Query(ctx, sql, args...)
 	organization, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[DBRow])
 	if errors.Is(err, pgx.ErrNoRows) {
-		return app.Organization{}, app.ErrNotFoundInRepository
+		return Organization{}, app.ErrNotFoundInRepository
 	} else if err != nil {
-		return app.Organization{}, fmt.Errorf("unable to get organization(id: %s): %w", orgID, err)
+		return Organization{}, fmt.Errorf("unable to get organization(id: %s): %w", orgID, err)
 	}
 
 	organizationDTO := organization.toDomain()
 	return organizationDTO, nil
 }
 
-func (r *PGRepository) GetOrganizations(ctx context.Context) ([]app.Organization, error) {
+func (r *PGRepository) GetOrganizations(ctx context.Context) ([]Organization, error) {
 	sql, args, err := r.queryBuilder.
 		Select("*").
 		From("organizations").
@@ -68,14 +69,14 @@ func (r *PGRepository) GetOrganizations(ctx context.Context) ([]app.Organization
 		return nil, fmt.Errorf("unable to get organizations: %w", err)
 	}
 
-	organizationDTOs := make([]app.Organization, len(organizations))
+	organizationDTOs := make([]Organization, len(organizations))
 	for i, org := range organizations {
 		organizationDTOs[i] = org.toDomain()
 	}
 	return organizationDTOs, nil
 }
 
-func (r *PGRepository) CreateOrganization(ctx context.Context, organization app.CreateOrganizationInput) (app.Organization, error) {
+func (r *PGRepository) CreateOrganization(ctx context.Context, organization CreateOrganizationInput) (Organization, error) {
 	sql, args, err := r.queryBuilder.
 		Insert("organizations").
 		Columns(
@@ -88,13 +89,13 @@ func (r *PGRepository) CreateOrganization(ctx context.Context, organization app.
 		).
 		Suffix("RETURNING *").ToSql()
 	if err != nil {
-		return app.Organization{}, fmt.Errorf("unable to build organization query: %w", err)
+		return Organization{}, fmt.Errorf("unable to build organization query: %w", err)
 	}
 
 	rows, _ := r.db.Query(ctx, sql, args...)
 	createdOrg, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbOrganization])
 	if err != nil {
-		return app.Organization{}, fmt.Errorf("unable to create organization: %w", err)
+		return Organization{}, fmt.Errorf("unable to create organization: %w", err)
 	}
 
 	return createdOrg.toDomain(), nil
@@ -105,7 +106,7 @@ type dbUpdateOrganizationInput struct {
 	DatabaseName *string `db:"database_name"`
 }
 
-func (r *PGRepository) UpdateOrganization(ctx context.Context, organization app.UpdateOrganizationInput) (app.Organization, error) {
+func (r *PGRepository) UpdateOrganization(ctx context.Context, organization UpdateOrganizationInput) (Organization, error) {
 	sql, args, err := r.queryBuilder.
 		Update("organizations").
 		SetMap(columnValueMap(dbUpdateOrganizationInput{
@@ -115,15 +116,15 @@ func (r *PGRepository) UpdateOrganization(ctx context.Context, organization app.
 		Where("id = ?", organization.ID).
 		Suffix("RETURNING *").ToSql()
 	if err != nil {
-		return app.Organization{}, fmt.Errorf("unable to build organization query: %w", err)
+		return Organization{}, fmt.Errorf("unable to build organization query: %w", err)
 	}
 
 	rows, _ := r.db.Query(ctx, sql, args...)
 	updatedOrg, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbOrganization])
 	if errors.Is(err, pgx.ErrNoRows) {
-		return app.Organization{}, app.ErrNotFoundInRepository
+		return Organization{}, app.ErrNotFoundInRepository
 	} else if err != nil {
-		return app.Organization{}, fmt.Errorf("unable to update org(id: %s): %w", organization.ID, err)
+		return Organization{}, fmt.Errorf("unable to update org(id: %s): %w", organization.ID, err)
 	}
 
 	return updatedOrg.toDomain(), nil

@@ -26,15 +26,15 @@ func (t *dbToken) toDomain() app.Token {
 	}
 }
 
-func (r *PGRepository) GetOrganizationIDFromToken(ctx context.Context, token string) (orgID string, err error) {
+func (r *PGRepository) GetOrganizationIDFromApiKey(ctx context.Context, apiKey string) (orgID string, err error) {
 	sql, args, err := r.queryBuilder.
 		Select(columnList[dbOrganization]("o")...).
 		From("tokens t").
 		Join("organizations o on o.id = t.org_id").
-		Where("token = ?", token).
+		Where("token = ?", apiKey).
 		ToSql()
 	if err != nil {
-		return "", fmt.Errorf("unable to build tokens query: %w", err)
+		return "", fmt.Errorf("unable to build apiKey query: %w", err)
 	}
 
 	rows, _ := r.db.Query(ctx, sql, args...)
@@ -42,7 +42,7 @@ func (r *PGRepository) GetOrganizationIDFromToken(ctx context.Context, token str
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", app.ErrNotFoundInRepository
 	} else if err != nil {
-		return "", fmt.Errorf("unable to get org from token: %w", err)
+		return "", fmt.Errorf("unable to get org from apiKey %s: %w", apiKey, err)
 	}
 
 	return org.ID, nil

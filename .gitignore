@@ -40,3 +40,7 @@ go.work
 .vscode/settings.json
 
 docker-compose.dev.yml
+*.log
+
+# backoffice is not merged in master
+marble-backoffice/node_modules

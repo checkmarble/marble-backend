@@ -2,24 +2,29 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
 	"marble/marble-backend/app"
+	"marble/marble-backend/repositories"
+	"marble/marble-backend/usecases"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"golang.org/x/exp/slog"
 )
 
 type API struct {
 	app AppInterface
 
-	port           string
-	router         *chi.Mux
-	signingSecrets SigningSecrets
-	logger         *slog.Logger
+	port         string
+	router       *chi.Mux
+	repositories repositories.Repositories
+	usecases     usecases.Usecases
+	logger       *slog.Logger
 }
 
 type AppInterface interface {
@@ -31,11 +36,10 @@ type AppInterface interface {
 	IngestionInterface
 	ScenarioPublicationAppInterface
 
-	GetOrganizationIDFromToken(ctx context.Context, token string) (orgID string, err error)
 	GetDataModel(ctx context.Context, organizationID string) (app.DataModel, error)
 }
 
-func New(port string, a AppInterface, logger *slog.Logger, signingSecrets SigningSecrets) (*http.Server, error) {
+func New(ctx context.Context, port string, a AppInterface, repositories repositories.Repositories, logger *slog.Logger, corsAllowLocalhost bool) (*http.Server, error) {
 
 	///////////////////////////////
 	// Setup a router
@@ -48,6 +52,7 @@ func New(port string, a AppInterface, logger *slog.Logger, signingSecrets Signin
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(cors.Handler(corsOption(corsAllowLocalhost)))
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -58,10 +63,11 @@ func New(port string, a AppInterface, logger *slog.Logger, signingSecrets Signin
 	s := &API{
 		app: a,
 
-		port:           port,
-		router:         r,
-		signingSecrets: signingSecrets,
-		logger:         logger,
+		port:         port,
+		router:       r,
+		repositories: repositories,
+		usecases:     usecases.NewUsecases(repositories),
+		logger:       logger,
 	}
 
 	// Setup the routes
@@ -89,4 +95,12 @@ func New(port string, a AppInterface, logger *slog.Logger, signingSecrets Signin
 	}
 
 	return srv, nil
+}
+
+func PresentModel(w http.ResponseWriter, model any) {
+	err := json.NewEncoder(w).Encode(model)
+	if err != nil {
+		panic(err)
+	}
+
 }
