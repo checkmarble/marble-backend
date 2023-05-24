@@ -22,7 +22,7 @@ type DbFieldReadParams struct {
 var ErrNoRowsReadInDB = errors.New("No rows read while reading DB field")
 
 func (d *DataAccessorImpl) GetPayloadField(fieldName string) interface{} {
-	return d.GetPayloadField(fieldName)
+	return d.Payload.ReadFieldFromDynamicStruct(FieldName(fieldName))
 }
 func (d *DataAccessorImpl) GetDbField(triggerTableName string, path []string, fieldName string) (interface{}, error) {
 	return d.repository.GetDbField(context.TODO(), DbFieldReadParams{
