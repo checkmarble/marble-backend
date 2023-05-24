@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"marble/marble-backend/app"
 	"marble/marble-backend/app/operators"
+	"marble/marble-backend/utils"
 	"strings"
 	"time"
 
@@ -146,6 +147,7 @@ func (r *PGRepository) getScenarioIterationRaw(ctx context.Context, pool PgxPool
 }
 
 type dbCreateScenarioIteration struct {
+	Id                   string `db:"id"`
 	OrgID                string `db:"org_id"`
 	ScenarioID           string `db:"scenario_id"`
 	ScoreReviewThreshold *int   `db:"score_review_threshold"`
@@ -155,6 +157,7 @@ type dbCreateScenarioIteration struct {
 
 func (r *PGRepository) CreateScenarioIteration(ctx context.Context, orgID string, scenarioIteration app.CreateScenarioIterationInput) (app.ScenarioIteration, error) {
 	createScenarioIteration := dbCreateScenarioIteration{
+		Id:         utils.NewPrimaryKey(orgID),
 		OrgID:      orgID,
 		ScenarioID: scenarioIteration.ScenarioID,
 	}
