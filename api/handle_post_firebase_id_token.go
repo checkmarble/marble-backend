@@ -22,7 +22,7 @@ func (api *API) handlePostFirebaseIdToken() http.HandlerFunc {
 
 		context := request.Context()
 
-		usecase := api.usecases.MarbleTokenUseCase()
+		usecase := api.usecases.NewMarbleTokenUseCase()
 		marbleToken, expirationTime, err := usecase.NewMarbleToken(context, apiKey, idToken)
 		if err != nil {
 			err = wrapErrInUnAuthorizedError(err)
