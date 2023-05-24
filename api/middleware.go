@@ -12,20 +12,6 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func ParseAuthorizationBearerHeader(header http.Header) (string, error) {
-	authorization := header.Get("Authorization")
-	if authorization == "" {
-		return "", nil
-	}
-
-	authHeader := strings.Split(header.Get("Authorization"), "Bearer ")
-	if len(authHeader) != 2 {
-		return "", fmt.Errorf("Malformed Token: %w", UnAuthorizedError)
-	}
-
-	return authHeader[1], nil
-}
-
 func ParseApiKeyHeader(header http.Header) string {
 	return strings.TrimSpace(header.Get("X-API-Key"))
 }
