@@ -34,7 +34,7 @@ func makeDynamicStructBuilder(fields map[FieldName]Field) dynamicstruct.DynamicS
 
 	var stringPointerType *string
 	var intPointerType *int
-	var floatPointerType *float32
+	var floatPointerType *float64
 	var boolPointerType *bool
 	var timePointerType *time.Time
 
@@ -130,7 +130,7 @@ func (dynamicStruct DynamicStructWithReader) ReadFieldFromDynamicStruct(fieldNam
 	case Int:
 		return field.PointerInt()
 	case Float:
-		return field.PointerFloat32()
+		return field.PointerFloat64()
 	case String:
 		return field.PointerString()
 	case Timestamp:
