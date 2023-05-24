@@ -251,7 +251,7 @@ func (r *PGRepository) Seed() {
 				},
 				{
 					Formula: &operators.StringIsInList{
-						Str: &operators.PayloadFieldString{FieldName: "bic"},
+						Str: &operators.PayloadFieldString{FieldName: "bic_country"},
 						List: &operators.StringListValue{
 							Strings: []string{"FRTRZOFRPP", "FPPRPFFXXX"},
 						},
@@ -263,7 +263,7 @@ func (r *PGRepository) Seed() {
 					Formula: &operators.DbFieldBool{
 						FieldName:        "is_frozen",
 						TriggerTableName: "transactions",
-						Path:             []string{"account"},
+						Path:             []string{"accounts"},
 					},
 					ScoreModifier: 100,
 					Name:          "Frozen account",

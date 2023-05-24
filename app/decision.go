@@ -25,7 +25,7 @@ func (o Outcome) String() string {
 	case Review:
 		return "review"
 	case Reject:
-		return "reject"
+		return "decline"
 	case None:
 		return "null"
 	case UnknownOutcome:
