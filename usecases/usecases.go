@@ -13,7 +13,7 @@ type Usecases struct {
 	Config       Configuration
 }
 
-func (usecases *Usecases) MarbleTokenUseCase() MarbleTokenUseCase {
+func (usecases *Usecases) NewMarbleTokenUseCase() MarbleTokenUseCase {
 	repositories := usecases.Repositories
 	return MarbleTokenUseCase{
 		firebaseTokenRepository: repositories.FirebaseTokenRepository,
@@ -21,5 +21,11 @@ func (usecases *Usecases) MarbleTokenUseCase() MarbleTokenUseCase {
 		userRepository:          repositories.UserRepository,
 		apiKeyRepository:        repositories.ApiKeyRepository,
 		tokenLifetimeMinute:     usecases.Config.TokenLifetimeMinute,
+	}
+}
+
+func (usecases *Usecases) NewOrganizationUseCase() OrganizationUseCase {
+	return OrganizationUseCase{
+		organizationRepository: usecases.Repositories.OrganizationRepository,
 	}
 }
