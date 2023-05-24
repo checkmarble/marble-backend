@@ -1,6 +1,7 @@
+import { useState } from "react";
 import services from "@/injectServices";
 import { Organization } from "@/models";
-import { useAllOrganizations } from "@/services";
+import { useAllOrganizations, useCreateOrganization } from "@/services";
 import BusinessIcon from "@mui/icons-material/Business";
 import AddIcon from "@mui/icons-material/Add";
 import ListSubheader from "@mui/material/ListSubheader";
@@ -12,11 +13,13 @@ import ListItem from "@mui/material/ListItem";
 import ListItemAvatar from "@mui/material/ListItemAvatar";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
+import FormDialog from "@/components/FormDialog";
 
 function OrganizationsPage() {
-  const { allOrganizations } = useAllOrganizations(
+  const { allOrganizations, fetchAllOrganizations } = useAllOrganizations(
     services().organizationService
   );
+  const [createOrgaDialogOpen, setCreateOrgaDialogOpen] = useState(false);
 
   const fakeOrganizations: Organization[] = [
     {
@@ -26,19 +29,49 @@ function OrganizationsPage() {
     },
   ];
 
+  const { createOrganization } = useCreateOrganization(
+    services().organizationService
+  );
+
+  const handleCreateOrganizationClick = () => {
+    setCreateOrgaDialogOpen(true);
+  };
+
+  const handleValidateCreateOrganization = async (
+    newOrganizationName: string
+  ) => {
+    await createOrganization(newOrganizationName);
+    await fetchAllOrganizations();
+  };
+
   return (
     <Container
       sx={{
         maxWidth: "md",
-        position:'relative'
+        position: "relative",
       }}
     >
+      <FormDialog
+        open={createOrgaDialogOpen}
+        title="Create Organization"
+        message="To create a new Organization, please enter it's name."
+        inputLabel="Organization name"
+        okTitle="Create"
+        setDialogOpen={setCreateOrgaDialogOpen}
+        onValidate={handleValidateCreateOrganization}
+      ></FormDialog>
       <Fab
-        sx={{ position: "absolute", top: "10px", right:"50px", paddingRight:"20px"}}
+        sx={{
+          position: "absolute",
+          top: "10px",
+          right: "50px",
+          paddingRight: "20px",
+        }}
         color="primary"
         size="small"
         variant="extended"
         aria-label="add"
+        onClick={handleCreateOrganizationClick}
       >
         <AddIcon sx={{ mr: 1 }} />
         New Organization

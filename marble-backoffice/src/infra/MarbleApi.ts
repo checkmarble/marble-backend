@@ -6,6 +6,8 @@ import {
   setAuthorizationBearerHeader,
 } from "./fetchUtils";
 
+const ORGANIZATION_URL_PATH = "organizations";
+
 export class MarbleApi {
   fetchFirebaseIdToken: () => Promise<string>;
   baseUrl: URL;
@@ -21,8 +23,20 @@ export class MarbleApi {
     return new URL(path, this.baseUrl);
   }
 
-  async fetchMarbleToken() : Promise<string> {
-    const firebaseIdToken = await this.fetchFirebaseIdToken();
+  async fetchFirebaseToken() {
+    try {
+      return await this.fetchFirebaseIdToken();
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        console.log(err);
+      }
+      throw err;
+    }
+  }
+
+  async fetchMarbleToken(): Promise<string> {
+    const firebaseIdToken = await this.fetchFirebaseToken();
+
     const request = new Request(this.apiUrl("/token"), {
       method: HttpMethod.Post,
     });
@@ -68,7 +82,29 @@ export class MarbleApi {
     return this.authorizedApiFetch(request);
   }
 
+  async postAuthorizedJson(args: {
+    path: string;
+    body: unknown;
+  }): Promise<unknown> {
+    const request = new Request(this.apiUrl(args.path), {
+      method: HttpMethod.Post,
+      body: JSON.stringify(args.body),
+      headers: {
+        "Content-type": "application/json; charset=UTF-8",
+      },
+    });
+
+    return this.authorizedApiFetch(request);
+  }
+
   async organizations(): Promise<unknown> {
-    return this.getAuthorizedJson("/organizations");
+    return this.getAuthorizedJson(ORGANIZATION_URL_PATH);
+  }
+
+  async postOrganization(createOrganizationBody: unknown): Promise<unknown> {
+    return this.postAuthorizedJson({
+      path: ORGANIZATION_URL_PATH,
+      body: createOrganizationBody,
+    });
   }
 }
