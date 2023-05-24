@@ -41,7 +41,7 @@ func OutcomeFrom(s string) Outcome {
 		return Approve
 	case "review":
 		return Review
-	case "reject":
+	case "decline":
 		return Reject
 	case "null":
 		return None
