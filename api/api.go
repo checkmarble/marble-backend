@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"marble/marble-backend/app"
-	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases"
 
 	"github.com/go-chi/chi/v5"
@@ -20,11 +19,10 @@ import (
 type API struct {
 	app AppInterface
 
-	port         string
-	router       *chi.Mux
-	repositories repositories.Repositories
-	usecases     usecases.Usecases
-	logger       *slog.Logger
+	port     string
+	router   *chi.Mux
+	usecases usecases.Usecases
+	logger   *slog.Logger
 }
 
 type AppInterface interface {
@@ -39,7 +37,7 @@ type AppInterface interface {
 	GetDataModel(ctx context.Context, organizationID string) (app.DataModel, error)
 }
 
-func New(ctx context.Context, port string, a AppInterface, repositories repositories.Repositories, logger *slog.Logger, corsAllowLocalhost bool) (*http.Server, error) {
+func New(ctx context.Context, port string, a AppInterface, usecases usecases.Usecases, logger *slog.Logger, corsAllowLocalhost bool) (*http.Server, error) {
 
 	///////////////////////////////
 	// Setup a router
@@ -63,11 +61,10 @@ func New(ctx context.Context, port string, a AppInterface, repositories reposito
 	s := &API{
 		app: a,
 
-		port:         port,
-		router:       r,
-		repositories: repositories,
-		usecases:     usecases.NewUsecases(repositories),
-		logger:       logger,
+		port:     port,
+		router:   r,
+		usecases: usecases,
+		logger:   logger,
 	}
 
 	// Setup the routes

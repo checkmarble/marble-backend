@@ -17,6 +17,7 @@ import (
 type DecisionInterface interface {
 	CreateDecision(ctx context.Context, input app.CreateDecisionInput, logger *slog.Logger) (app.Decision, error)
 	GetDecision(ctx context.Context, organizationID string, requestedDecisionID string) (app.Decision, error)
+	ListDecisions(ctx context.Context, organizationID string) ([]app.Decision, error)
 }
 
 type APIError struct {
@@ -25,14 +26,15 @@ type APIError struct {
 }
 
 type APIDecision struct {
-	ID            string              `json:"id"`
-	CreatedAt     time.Time           `json:"created_at"`
-	TriggerObject map[string]any      `json:"trigger_object"`
-	Outcome       string              `json:"outcome"`
-	Scenario      APIDecisionScenario `json:"scenario"`
-	Rules         []APIDecisionRule   `json:"rules"`
-	Score         int                 `json:"score"`
-	Error         *APIError           `json:"error"`
+	ID                string              `json:"id"`
+	CreatedAt         time.Time           `json:"created_at"`
+	TriggerObject     map[string]any      `json:"trigger_object"`
+	TriggerObjectType string              `json:"trigger_object_type"`
+	Outcome           string              `json:"outcome"`
+	Scenario          APIDecisionScenario `json:"scenario"`
+	Rules             []APIDecisionRule   `json:"rules"`
+	Score             int                 `json:"score"`
+	Error             *APIError           `json:"error"`
 }
 
 type APIDecisionScenario struct {
@@ -44,10 +46,11 @@ type APIDecisionScenario struct {
 
 func NewAPIDecision(decision app.Decision) APIDecision {
 	apiDecision := APIDecision{
-		ID:            decision.ID,
-		CreatedAt:     decision.CreatedAt,
-		TriggerObject: decision.Payload.Data,
-		Outcome:       decision.Outcome.String(),
+		ID:                decision.ID,
+		CreatedAt:         decision.CreatedAt,
+		TriggerObjectType: decision.Payload.TableName,
+		TriggerObject:     decision.Payload.Data,
+		Outcome:           decision.Outcome.String(),
 		Scenario: APIDecisionScenario{
 			ID:          decision.ScenarioID,
 			Name:        decision.ScenarioName,
@@ -125,6 +128,37 @@ func (api *API) handleGetDecision() http.HandlerFunc {
 		}
 
 		err = json.NewEncoder(w).Encode(NewAPIDecision(decision))
+		if err != nil {
+			logger.ErrorCtx(ctx, "error encoding response JSON: \n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+func (api *API) handleListDecisions() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		orgID, err := utils.OrgIDFromCtx(ctx)
+		if err != nil {
+			http.Error(w, "", http.StatusUnauthorized)
+			return
+		}
+		logger := api.logger.With(slog.String("orgID", orgID))
+
+		decisions, err := api.app.ListDecisions(ctx, orgID)
+		if err != nil {
+			logger.ErrorCtx(ctx, "error listing decisions: \n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
+			return
+		}
+		apiDecisions := make([]APIDecision, len(decisions))
+		for i, decision := range decisions {
+			apiDecisions[i] = NewAPIDecision(decision)
+		}
+
+		err = json.NewEncoder(w).Encode(apiDecisions)
 		if err != nil {
 			logger.ErrorCtx(ctx, "error encoding response JSON: \n"+err.Error())
 			http.Error(w, "", http.StatusInternalServerError)

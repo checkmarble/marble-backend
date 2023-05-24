@@ -301,8 +301,8 @@ func (r *PGRepository) publishScenarioIteration(ctx context.Context, tx pgx.Tx, 
 		return err
 	}
 
-	if !si.IsValidForPublication() {
-		return app.ErrScenarioIterationNotValid
+	if err := si.IsValidForPublication(); err != nil {
+		return err
 	}
 
 	sql, args, err := r.queryBuilder.

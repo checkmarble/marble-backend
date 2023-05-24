@@ -24,6 +24,7 @@ type RepositoryInterface interface {
 	// Decisions
 	StoreDecision(ctx context.Context, orgID string, decision Decision) (Decision, error)
 	GetDecision(ctx context.Context, orgID string, decisionID string) (Decision, error)
+	ListDecisions(ctx context.Context, orgID string) ([]Decision, error)
 
 	// Ingestion
 	IngestObject(ctx context.Context, dynamicStructWithReader DynamicStructWithReader, table Table, logger *slog.Logger) (err error)

@@ -1,10 +1,23 @@
 package utils
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strconv"
 )
+
+func GetIntEnv(envVarName string, defaultValue int) int {
+	envValue, ok := os.LookupEnv(envVarName)
+	if !ok || envValue == "" {
+		return defaultValue
+	}
+	intValue, err := strconv.Atoi(envValue)
+	if err != nil {
+		panic(fmt.Sprintf("Environment variable %s is not valid. '%s' is an integer", envVarName, envValue))
+	}
+	return intValue
+}
 
 func GetRequiredStringEnv(envVar string) string {
 	envValue, ok := os.LookupEnv(envVar)
