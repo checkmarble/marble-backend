@@ -1,6 +1,10 @@
-import { Organization } from "@/models";
-import { OrganizationRepository, fetchOrganizations } from "@/repositories";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { type CreateOrganization, type Organization } from "@/models";
+import {
+  OrganizationRepository,
+  fetchOrganizations,
+  createOrganization,
+} from "@/repositories";
 
 export class OrganizationService {
   organizationRepository: OrganizationRepository;
@@ -12,6 +16,10 @@ export class OrganizationService {
   async allOrganization() {
     return fetchOrganizations(this.organizationRepository);
   }
+
+  async createOrganization(create: CreateOrganization) {
+    return createOrganization(this.organizationRepository, create);
+  }
 }
 
 export function useAllOrganizations(service: OrganizationService) {
@@ -19,13 +27,33 @@ export function useAllOrganizations(service: OrganizationService) {
     Organization[] | null
   >(null);
 
-  useEffect(() => {
-    (async () => {
-      setAllOrganizations(await service.allOrganization());
-    })();
+  const fetchAllOrganizations = useCallback(async () => {
+    setAllOrganizations(await service.allOrganization());
   }, [service]);
+  
+  useEffect(() => {
+    fetchAllOrganizations()
+  }, [fetchAllOrganizations]);
+
 
   return {
     allOrganizations,
+    fetchAllOrganizations,
+  };
+}
+
+export function useCreateOrganization(service: OrganizationService) {
+  const createOrganization = useCallback(
+    async (name: string) => {
+      await service.createOrganization({
+        name,
+        databaseName: `${name}_database`,
+      });
+    },
+    [service]
+  );
+
+  return {
+    createOrganization,
   };
 }

@@ -8,8 +8,14 @@ export interface Organization {
 
 export function adaptOrganization(dto: OrganizationDto): Organization {
   return {
-    organizationId: dto.organization_id,
+    organizationId: dto.id,
     name: dto.name,
-    dateCreated: dto.date_created,
+    dateCreated: new Date(), // temporary
   };
+}
+
+
+export interface CreateOrganization {
+  name: string;
+  databaseName: string;
 }
