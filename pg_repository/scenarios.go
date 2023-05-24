@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"marble/marble-backend/app"
+	"marble/marble-backend/utils"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
@@ -86,6 +87,7 @@ func (r *PGRepository) GetScenario(ctx context.Context, orgID string, scenarioID
 }
 
 type dbCreateScenario struct {
+	Id                string `db:"id"`
 	OrgID             string `db:"org_id"`
 	Name              string `db:"name"`
 	Description       string `db:"description"`
@@ -96,6 +98,7 @@ func (r *PGRepository) CreateScenario(ctx context.Context, orgID string, scenari
 	sql, args, err := r.queryBuilder.
 		Insert("scenarios").
 		SetMap(columnValueMap(dbCreateScenario{
+			Id:                utils.NewPrimaryKey(orgID),
 			OrgID:             orgID,
 			Name:              scenario.Name,
 			Description:       scenario.Description,
