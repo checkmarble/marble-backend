@@ -12,8 +12,8 @@ import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import MenuIcon from "@mui/icons-material/Menu";
-import InboxIcon from "@mui/icons-material/MoveToInbox";
-import MailIcon from "@mui/icons-material/Mail";
+import BusinessIcon from "@mui/icons-material/Business";
+import HouseIcon from "@mui/icons-material/House";
 import Tooltip from "@mui/material/Tooltip";
 import Avatar from "@mui/material/Avatar";
 import Menu from "@mui/material/Menu";
@@ -27,16 +27,19 @@ import services from "@/injectServices";
 interface Page {
   title: string;
   link: string;
+  icon: JSX.Element;
 }
 
 const APP_BAR_PAGES: ReadonlyArray<Page> = [
   {
     title: "Home",
     link: PageLink.Home,
+    icon: <HouseIcon />,
   },
   {
     title: "Organizations",
-    link: PageLink.Organization,
+    link: PageLink.Organizations,
+    icon: <BusinessIcon />,
   },
 ] as const;
 
@@ -124,9 +127,7 @@ function BackOfficeAppBar() {
                 {APP_BAR_PAGES.map((page: Page, index) => (
                   <ListItem key={index} disablePadding>
                     <ListItemButton onClick={() => nagivator(page.link)}>
-                      <ListItemIcon>
-                        {index % 2 === 0 ? <InboxIcon /> : <MailIcon />}
-                      </ListItemIcon>
+                      <ListItemIcon>{page.icon}</ListItemIcon>
                       <ListItemText primary={page.title} />
                     </ListItemButton>
                   </ListItem>

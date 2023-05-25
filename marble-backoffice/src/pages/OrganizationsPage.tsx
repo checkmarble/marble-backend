@@ -1,6 +1,6 @@
 import { useState } from "react";
 import services from "@/injectServices";
-import { Organization } from "@/models";
+import { PageLink } from "@/models";
 import { useAllOrganizations, useCreateOrganization } from "@/services";
 import BusinessIcon from "@mui/icons-material/Business";
 import AddIcon from "@mui/icons-material/Add";
@@ -16,6 +16,7 @@ import ListItemText from "@mui/material/ListItemText";
 import FormDialog from "@/components/FormDialog";
 import { useLoading } from "@/hooks/Loading";
 import DelayedLinearProgress from "@/components/DelayedLinearProgress";
+import { useNavigate } from "react-router";
 
 function OrganizationsPage() {
   const [pageLoading, pageLoadingDispatcher] = useLoading();
@@ -26,14 +27,6 @@ function OrganizationsPage() {
   );
 
   const [createOrgaDialogOpen, setCreateOrgaDialogOpen] = useState(false);
-
-  const fakeOrganizations: Organization[] = [
-    {
-      organizationId: "someid",
-      name: "Zorg",
-      dateCreated: new Date(),
-    },
-  ];
 
   const { createOrganization } = useCreateOrganization(
     services().organizationService
@@ -48,6 +41,12 @@ function OrganizationsPage() {
   ) => {
     await createOrganization(newOrganizationName);
     await fetchAllOrganizations();
+  };
+
+  const navigator = useNavigate();
+
+  const handleOrganizationClick = (organisationId: string) => {
+    navigator(PageLink.organizationDetails(organisationId));
   };
 
   return (
@@ -88,9 +87,13 @@ function OrganizationsPage() {
           <ListSubheader inset>
             {allOrganizations?.length} Organizations
           </ListSubheader>
-          {(allOrganizations || fakeOrganizations).map((organization) => (
+          {(allOrganizations || []).map((organization) => (
             <ListItem key={organization.organizationId}>
-              <ListItemButton>
+              <ListItemButton
+                onClick={() =>
+                  handleOrganizationClick(organization.organizationId)
+                }
+              >
                 <ListItemAvatar>
                   <Avatar>
                     <BusinessIcon />
