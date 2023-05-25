@@ -21,10 +21,10 @@ func (api *API) handleIngestion() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		orgID, err := utils.OrgIDFromCtx(ctx)
-		if err != nil {
-			http.Error(w, "", http.StatusForbidden)
+		if presentError(ctx, api.logger, w, err) {
 			return
 		}
+
 		logger := api.logger.With(slog.String("orgId", orgID))
 
 		usecase := api.usecases.NewIngestionUseCase()

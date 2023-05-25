@@ -51,8 +51,7 @@ func (api *API) ListScenarioPublications() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID, err := utils.OrgIDFromCtx(ctx)
-		if err != nil {
-			http.Error(w, "", http.StatusForbidden)
+		if presentError(ctx, api.logger, w, err) {
 			return
 		}
 
@@ -99,8 +98,7 @@ func (api *API) CreateScenarioPublication() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID, err := utils.OrgIDFromCtx(ctx)
-		if err != nil {
-			http.Error(w, "", http.StatusForbidden)
+		if presentError(ctx, api.logger, w, err) {
 			return
 		}
 
@@ -144,8 +142,7 @@ func (api *API) GetScenarioPublication() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID, err := utils.OrgIDFromCtx(ctx)
-		if err != nil {
-			http.Error(w, "", http.StatusForbidden)
+		if presentError(ctx, api.logger, w, err) {
 			return
 		}
 
