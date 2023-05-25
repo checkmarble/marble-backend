@@ -1,5 +1,7 @@
 package models
 
+import "golang.org/x/exp/slices"
+
 type Role int
 
 const (
@@ -22,6 +24,10 @@ func (r Role) Permissions() []Permission {
 		return []Permission{}
 	}
 	return permissions
+}
+
+func (r Role) HasPermission(permission Permission) bool {
+	return slices.Contains(r.Permissions(), permission)
 }
 
 func RoleFromString(s string) Role {

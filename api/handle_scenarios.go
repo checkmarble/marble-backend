@@ -44,7 +44,7 @@ func (api *API) ListScenarios() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := utils.OrgIDFromCtx(ctx)
+		orgID, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(ctx, api.logger, w, err) {
 			return
 		}
@@ -52,9 +52,8 @@ func (api *API) ListScenarios() http.HandlerFunc {
 		logger := api.logger.With(slog.String("orgID", orgID))
 
 		scenarios, err := api.app.ListScenarios(ctx, orgID)
-		if err != nil {
-			logger.ErrorCtx(ctx, "Error listing scenarios: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
+
+		if presentError(ctx, api.logger, w, err) {
 			return
 		}
 
@@ -86,7 +85,7 @@ func (api *API) CreateScenario() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := utils.OrgIDFromCtx(ctx)
+		orgID, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(ctx, api.logger, w, err) {
 			return
 		}
@@ -122,7 +121,7 @@ func (api *API) GetScenario() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := utils.OrgIDFromCtx(ctx)
+		orgID, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(ctx, api.logger, w, err) {
 			return
 		}
@@ -163,7 +162,7 @@ func (api *API) UpdateScenario() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := utils.OrgIDFromCtx(ctx)
+		orgID, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(ctx, api.logger, w, err) {
 			return
 		}
