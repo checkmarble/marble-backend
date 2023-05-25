@@ -154,10 +154,10 @@ func TestGetScenarioWithLiveVersion(t *testing.T) {
 	iteration, err := globalTestParams.repository.CreateScenarioIteration(context.Background(), globalTestParams.testIds["OrganizationId"], app.CreateScenarioIterationInput{
 		ScenarioID: scenar.ID,
 		Body: &app.CreateScenarioIterationBody{
-			TriggerCondition: operators.True{},
+			TriggerCondition: &operators.BoolValue{Value: true},
 			Rules: []app.CreateRuleInput{
 				{
-					Formula:       &operators.True{},
+					Formula:       &operators.BoolValue{Value: true},
 					ScoreModifier: 2,
 					Name:          "Rule 1 Name",
 					Description:   "Rule 1 Desc",
