@@ -43,7 +43,7 @@ func (r *PGRepository) Seed() {
 	// Tokens
 	///////////////////////////////
 
-	token, err := r.CreateToken(context.TODO(), CreateToken{
+	_, err = r.CreateToken(context.TODO(), CreateToken{
 		OrgID: org.ID,
 		Token: "token12345",
 	})
@@ -184,11 +184,11 @@ func (r *PGRepository) Seed() {
 				Operands: []operators.OperatorBool{
 					&operators.EqString{
 						Left:  &operators.PayloadFieldString{FieldName: "direction"},
-						Right: &operators.StringValue{Text: "payout"},
+						Right: &operators.StringValue{Value: "payout"},
 					},
 					&operators.EqString{
 						Left:  &operators.PayloadFieldString{FieldName: "status"},
-						Right: &operators.StringValue{Text: "pending"},
+						Right: &operators.StringValue{Value: "pending"},
 					},
 				},
 			},
@@ -223,7 +223,7 @@ func (r *PGRepository) Seed() {
 					Formula: &operators.StringIsInList{
 						Str: &operators.PayloadFieldString{FieldName: "bic_country"},
 						List: &operators.StringListValue{
-							Strings: []string{"HU", "IT", "PO", "IR"},
+							Value: []string{"HU", "IT", "PO", "IR"},
 						},
 					},
 					ScoreModifier: 10,
@@ -233,7 +233,7 @@ func (r *PGRepository) Seed() {
 					Formula: &operators.StringIsInList{
 						Str: &operators.PayloadFieldString{FieldName: "bic_country"},
 						List: &operators.StringListValue{
-							Strings: []string{"RO", "RU", "LT"},
+							Value: []string{"RO", "RU", "LT"},
 						},
 					},
 					ScoreModifier: 20,
@@ -243,7 +243,7 @@ func (r *PGRepository) Seed() {
 					Formula: &operators.EqString{
 						Left: &operators.PayloadFieldString{FieldName: "bic_country"},
 						Right: &operators.StringValue{
-							Text: "FR",
+							Value: "FR",
 						},
 					},
 					ScoreModifier: -10,
@@ -253,7 +253,7 @@ func (r *PGRepository) Seed() {
 					Formula: &operators.StringIsInList{
 						Str: &operators.PayloadFieldString{FieldName: "bic_country"},
 						List: &operators.StringListValue{
-							Strings: []string{"FRTRZOFRPP", "FPPRPFFXXX"},
+							Value: []string{"FRTRZOFRPP", "FPPRPFFXXX"},
 						},
 					},
 					ScoreModifier: 10,
@@ -284,8 +284,5 @@ func (r *PGRepository) Seed() {
 	}
 
 	log.Println("")
-	log.Println("Finish to Seed the DB :")
-	log.Printf("\t- $SCENARIO_ID: %s\n", scenario.ID)
-	log.Printf("\t- $TOKEN: %s\n", token.Token)
-	log.Println("")
+	log.Println("Finish to Seed the DB")
 }

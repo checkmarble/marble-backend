@@ -144,40 +144,40 @@ func TestLogicEval(t *testing.T) {
 		{
 			name: "string equality",
 			operator: &EqString{
-				Left:  &StringValue{Text: "a"},
-				Right: &StringValue{Text: "a"},
+				Left:  &StringValue{Value: "a"},
+				Right: &StringValue{Value: "a"},
 			},
 			expected: true,
 		},
 		{
 			name: "string equality",
 			operator: &EqString{
-				Left:  &StringValue{Text: "a"},
-				Right: &StringValue{Text: "b"},
+				Left:  &StringValue{Value: "a"},
+				Right: &StringValue{Value: "b"},
 			},
 			expected: false,
 		},
 		{
 			name: "string is in",
 			operator: &StringIsInList{
-				Str:  &StringValue{Text: "a"},
-				List: &StringListValue{Strings: []string{"a", "b", "c"}},
+				Str:  &StringValue{Value: "a"},
+				List: &StringListValue{Value: []string{"a", "b", "c"}},
 			},
 			expected: true,
 		},
 		{
 			name: "string is in: not found",
 			operator: &StringIsInList{
-				Str:  &StringValue{Text: "z"},
-				List: &StringListValue{Strings: []string{"a", "b", "c"}},
+				Str:  &StringValue{Value: "z"},
+				List: &StringListValue{Value: []string{"a", "b", "c"}},
 			},
 			expected: false,
 		},
 		{
 			name: "string is in: not found (empty)",
 			operator: &StringIsInList{
-				Str:  &StringValue{Text: "z"},
-				List: &StringListValue{Strings: []string{}},
+				Str:  &StringValue{Value: "z"},
+				List: &StringListValue{Value: []string{}},
 			},
 			expected: false,
 		},
@@ -210,6 +210,13 @@ func TestLogicEval(t *testing.T) {
 			operator: &EqualFloat{
 				Left:  &FloatValue{Value: 5},
 				Right: &FloatValue{Value: 5},
+			},
+			expected: true,
+		},
+		{
+			name: "Constant float",
+			operator: &BoolValue{
+				Value: true,
 			},
 			expected: true,
 		},
@@ -304,22 +311,22 @@ func TestMarshalUnMarshal(t *testing.T) {
 		{
 			name: "String equality",
 			operator: &EqString{
-				Left:  &StringValue{Text: "a"},
-				Right: &StringValue{Text: "abc"},
+				Left:  &StringValue{Value: "a"},
+				Right: &StringValue{Value: "abc"},
 			},
 		},
 		{
 			name: "String is in",
 			operator: &StringIsInList{
-				Str:  &StringValue{Text: "a"},
-				List: &StringListValue{Strings: []string{"a", "b", "c"}},
+				Str:  &StringValue{Value: "a"},
+				List: &StringListValue{Value: []string{"a", "b", "c"}},
 			},
 		},
 		{
 			name: "String is in",
 			operator: &StringIsInList{
-				Str:  &StringValue{Text: "a"},
-				List: &StringListValue{Strings: []string{"a", "b", "c"}},
+				Str:  &StringValue{Value: "a"},
+				List: &StringListValue{Value: []string{"a", "b", "c"}},
 			},
 		},
 	}
@@ -427,10 +434,10 @@ func TestMarshallBoolOperators(t *testing.T) {
 		{
 			name: "String is in",
 			operator: &StringIsInList{
-				Str:  &StringValue{Text: "a"},
-				List: &StringListValue{Strings: []string{"a", "b", "c"}},
+				Str:  &StringValue{Value: "a"},
+				List: &StringListValue{Value: []string{"a", "b", "c"}},
 			},
-			expected: `{"type":"STRING_IS_IN_LIST","children":[{"type":"STRING_SCALAR","staticData":{"text":"a"}},{"type":"STRING_LIST_CONSTANT","staticData":{"strings":["a","b","c"]}}]}`,
+			expected: `{"type":"STRING_IS_IN_LIST","children":[{"type":"STRING_CONSTANT","staticData":{"text":"a"}},{"type":"STRING_LIST_CONSTANT","staticData":{"strings":["a","b","c"]}}]}`,
 		},
 	}
 
@@ -498,10 +505,10 @@ func TestUnmarshallBoolOperators(t *testing.T) {
 		{
 			name: "String is in",
 			expected: &StringIsInList{
-				Str:  &StringValue{Text: "a"},
-				List: &StringListValue{Strings: []string{"a", "b", "c"}},
+				Str:  &StringValue{Value: "a"},
+				List: &StringListValue{Value: []string{"a", "b", "c"}},
 			},
-			json: `{"type":"STRING_IS_IN_LIST","children":[{"type":"STRING_SCALAR","staticData":{"text":"a"}},{"type":"STRING_LIST_CONSTANT","staticData":{"strings":["a","b","c"]}}]}`,
+			json: `{"type":"STRING_IS_IN_LIST","children":[{"type":"STRING_CONSTANT","staticData":{"text":"a"}},{"type":"STRING_LIST_CONSTANT","staticData":{"strings":["a","b","c"]}}]}`,
 		},
 	}
 
