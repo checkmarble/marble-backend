@@ -7,7 +7,7 @@ import (
 
 type DataAccessorImpl struct {
 	DataModel  DataModel
-	Payload    DynamicStructWithReader
+	Payload    Payload
 	repository RepositoryInterface
 }
 
@@ -16,13 +16,13 @@ type DbFieldReadParams struct {
 	Path             []LinkName
 	FieldName        FieldName
 	DataModel        DataModel
-	Payload          DynamicStructWithReader
+	Payload          Payload
 }
 
 var ErrNoRowsReadInDB = errors.New("No rows read while reading DB field")
 
 func (d *DataAccessorImpl) GetPayloadField(fieldName string) interface{} {
-	return d.Payload.ReadFieldFromDynamicStruct(FieldName(fieldName))
+	return d.Payload.ReadFieldFromPayload(FieldName(fieldName))
 }
 func (d *DataAccessorImpl) GetDbField(triggerTableName string, path []string, fieldName string) (interface{}, error) {
 	return d.repository.GetDbField(context.TODO(), DbFieldReadParams{

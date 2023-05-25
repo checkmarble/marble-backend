@@ -13,7 +13,7 @@ import (
 )
 
 type IngestionInterface interface {
-	IngestObject(ctx context.Context, dynamicStructWithReader app.DynamicStructWithReader, table app.Table, logger *slog.Logger) (err error)
+	IngestObject(ctx context.Context, payload app.Payload, table app.Table, logger *slog.Logger) (err error)
 }
 
 func (api *API) handleIngestion() http.HandlerFunc {

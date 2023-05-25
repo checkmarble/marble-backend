@@ -47,7 +47,7 @@ func (d *dbDecision) toDomain() app.Decision {
 		ScenarioVersion:     d.ScenarioVersion,
 		Score:               d.Score,
 		DecisionError:       app.DecisionError(d.ErrorCode),
-		Payload:             app.Payload{TableName: d.TriggerObjectType, Data: triggerObject},
+		PayloadForArchive:   app.PayloadForArchive{TableName: d.TriggerObjectType, Data: triggerObject},
 	}
 }
 
@@ -152,8 +152,8 @@ func (r *PGRepository) StoreDecision(ctx context.Context, orgID string, decision
 			decision.ScenarioVersion,
 			decision.Score,
 			decision.DecisionError,
-			decision.Payload.Data,
-			decision.Payload.TableName,
+			decision.PayloadForArchive.Data,
+			decision.PayloadForArchive.TableName,
 		).
 		Suffix("RETURNING *").ToSql()
 	if err != nil {

@@ -28,7 +28,7 @@ type RepositoryInterface interface {
 	ListDecisions(ctx context.Context, orgID string) ([]Decision, error)
 
 	// Ingestion
-	IngestObject(ctx context.Context, dynamicStructWithReader DynamicStructWithReader, table Table, logger *slog.Logger) (err error)
+	IngestObject(ctx context.Context, payload Payload, table Table, logger *slog.Logger) (err error)
 
 	// DB field access
 	GetDbField(ctx context.Context, readParams DbFieldReadParams) (interface{}, error)

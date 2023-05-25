@@ -94,8 +94,8 @@ func (rep *PGRepository) queryDbForField(ctx context.Context, readParams app.DbF
 	return rows, nil
 }
 
-func getBaseObjectIdFromPayload(payload app.DynamicStructWithReader) (string, error) {
-	baseObjectIdAny := payload.ReadFieldFromDynamicStruct("object_id")
+func getBaseObjectIdFromPayload(payload app.Payload) (string, error) {
+	baseObjectIdAny := payload.ReadFieldFromPayload("object_id")
 	baseObjectIdPtr, ok := baseObjectIdAny.(*string)
 	if !ok {
 		return "", fmt.Errorf("object_id in payload is not a string") // should not happen, as per input validation

@@ -11,14 +11,14 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-func generateInsertValues(table app.Table, payloadStructWithReader app.DynamicStructWithReader) (columnNames []string, values []interface{}) {
+func generateInsertValues(table app.Table, payloadStructWithReader app.Payload) (columnNames []string, values []interface{}) {
 	nbFields := len(table.Fields)
 	columnNames = make([]string, nbFields)
 	values = make([]interface{}, nbFields)
 	i := 0
 	for fieldName := range table.Fields {
 		columnNames[i] = string(fieldName)
-		values[i] = payloadStructWithReader.ReadFieldFromDynamicStruct(fieldName)
+		values[i] = payloadStructWithReader.ReadFieldFromPayload(fieldName)
 		i++
 	}
 	return columnNames, values
@@ -28,10 +28,10 @@ func updateExistingVersionIfPresent(
 	ctx context.Context,
 	queryBuilder sq.StatementBuilderType,
 	tx pgx.Tx,
-	payloadStructWithReader app.DynamicStructWithReader,
+	payloadStructWithReader app.Payload,
 	table app.Table) (err error) {
 
-	object_id := payloadStructWithReader.ReadFieldFromDynamicStruct("object_id")
+	object_id := payloadStructWithReader.ReadFieldFromPayload("object_id")
 	sql, args, err := queryBuilder.
 		Select("id").
 		From(string(table.Name)).
@@ -66,7 +66,7 @@ func updateExistingVersionIfPresent(
 	return nil
 }
 
-func (r *PGRepository) IngestObject(ctx context.Context, payloadStructWithReader app.DynamicStructWithReader, table app.Table, logger *slog.Logger) (err error) {
+func (r *PGRepository) IngestObject(ctx context.Context, payloadStructWithReader app.Payload, table app.Table, logger *slog.Logger) (err error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("Error starting transaction: %w", err)
