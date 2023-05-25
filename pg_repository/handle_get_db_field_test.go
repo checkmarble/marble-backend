@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"marble/marble-backend/app"
+	"marble/marble-backend/models"
 )
 
 func TestReadFromDb(t *testing.T) {
@@ -104,7 +105,7 @@ func TestReadFromDb(t *testing.T) {
 			name:           "Read string field from DB, no line found",
 			readParams:     app.DbFieldReadParams{TriggerTableName: app.TableName("transactions"), Path: []app.LinkName{"accounts"}, FieldName: "name", DataModel: dataModel, Payload: payloadNotInDB},
 			expectedOutput: pgtype.Text{String: "", Valid: false},
-			expectedError:  app.ErrNoRowsReadInDB,
+			expectedError:  models.OperatorNoRowsReadInDbError,
 		},
 	}
 

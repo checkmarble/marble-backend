@@ -63,6 +63,7 @@ type RuleExecutionError int
 const (
 	DivisionByZero RuleExecutionError = 100
 	NullFieldRead  RuleExecutionError = 200
+	NoRowsRead     RuleExecutionError = 201
 )
 
 func (r RuleExecutionError) String() string {
@@ -71,6 +72,8 @@ func (r RuleExecutionError) String() string {
 		return "A division by zero occurred in a rule"
 	case NullFieldRead:
 		return "A field read in a rule is null"
+	case NoRowsRead:
+		return "No rows were read from db in a rule"
 	}
 	return ""
 }

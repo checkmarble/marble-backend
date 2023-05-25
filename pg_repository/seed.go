@@ -95,8 +95,8 @@ func (r *PGRepository) Seed() {
 				LinksToSingle: map[app.LinkName]app.LinkToSingle{
 					"company": {
 						LinkedTableName: "companies",
-						ParentFieldName: "company_id",
-						ChildFieldName:  "object_id"},
+						ParentFieldName: "object_id",
+						ChildFieldName:  "company_id"},
 				},
 			},
 			"companies": {

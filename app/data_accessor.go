@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"errors"
 )
 
 type DataAccessorImpl struct {
@@ -18,8 +17,6 @@ type DbFieldReadParams struct {
 	DataModel        DataModel
 	Payload          DynamicStructWithReader
 }
-
-var ErrNoRowsReadInDB = errors.New("No rows read while reading DB field")
 
 func (d *DataAccessorImpl) GetPayloadField(fieldName string) (interface{}, error) {
 	return d.Payload.ReadFieldFromDynamicStruct(FieldName(fieldName))

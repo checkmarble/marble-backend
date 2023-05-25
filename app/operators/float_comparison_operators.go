@@ -22,7 +22,7 @@ func (o GreaterFloat) Eval(d DataAccessor) (bool, error) {
 	valLeft, errLeft := o.Left.Eval(d)
 	valRight, errRight := o.Right.Eval(d)
 	if errLeft != nil || errRight != nil {
-		return false, fmt.Errorf("error in GreaterFloat.Eval: %v, %v", errLeft, errRight)
+		return false, fmt.Errorf("error in GreaterFloat.Eval: %w, %w", errLeft, errRight)
 	}
 	return valLeft > valRight, nil
 }
@@ -174,7 +174,7 @@ func (o EqualFloat) Eval(d DataAccessor) (bool, error) {
 	valLeft, errLeft := o.Left.Eval(d)
 	valRight, errRight := o.Right.Eval(d)
 	if errLeft != nil || errRight != nil {
-		return false, fmt.Errorf("error in EqualFloat.Eval: %v, %v", errLeft, errRight)
+		return false, fmt.Errorf("error in EqualFloat.Eval: %w, %w", errLeft, errRight)
 	}
 	return valLeft == valRight, nil
 }
@@ -250,7 +250,7 @@ func (o LesserOrEqualFloat) Eval(d DataAccessor) (bool, error) {
 	valLeft, errLeft := o.Left.Eval(d)
 	valRight, errRight := o.Right.Eval(d)
 	if errLeft != nil || errRight != nil {
-		return false, fmt.Errorf("error in LesserOrEqualFloat.Eval: %v, %v", errLeft, errRight)
+		return false, fmt.Errorf("error in LesserOrEqualFloat.Eval: %w, %w", errLeft, errRight)
 	}
 	return valLeft <= valRight, nil
 }
@@ -326,7 +326,7 @@ func (o LesserFloat) Eval(d DataAccessor) (bool, error) {
 	valLeft, errLeft := o.Left.Eval(d)
 	valRight, errRight := o.Right.Eval(d)
 	if errLeft != nil || errRight != nil {
-		return false, fmt.Errorf("error in LesserFloat.Eval: %v, %v", errLeft, errRight)
+		return false, fmt.Errorf("error in LesserFloat.Eval: %w, %w", errLeft, errRight)
 	}
 	return valLeft <= valRight, nil
 }

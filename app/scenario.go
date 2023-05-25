@@ -308,10 +308,11 @@ func setRuleExecutionError(ruleExecution RuleExecution, err error) (RuleExecutio
 		ruleExecution.Error = NullFieldRead
 	} else if errors.Is(err, models.OperatorDivisionByZeroError) {
 		ruleExecution.Error = DivisionByZero
+	} else if errors.Is(err, models.OperatorNoRowsReadInDbError) {
+		ruleExecution.Error = NoRowsRead
 	} else {
 		// return early in case of an unexpected error
 		return ruleExecution, err
 	}
 	return ruleExecution, nil
-
 }

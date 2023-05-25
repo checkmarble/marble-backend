@@ -120,7 +120,7 @@ func (eq EqBool) Eval(d DataAccessor) (bool, error) {
 	valLeft, errLeft := eq.Left.Eval(d)
 	valRight, errRight := eq.Right.Eval(d)
 	if errLeft != nil || errRight != nil {
-		return false, fmt.Errorf("error in EqBool.Eval: %v, %v", errLeft, errRight)
+		return false, fmt.Errorf("error in EqBool.Eval: %w, %w", errLeft, errRight)
 	}
 	return valLeft == valRight, nil
 }
@@ -200,7 +200,6 @@ func (field DbFieldBool) Eval(d DataAccessor) (bool, error) {
 
 	valRaw, err := d.GetDbField(field.TriggerTableName, field.Path, field.FieldName)
 	if err != nil {
-		fmt.Printf("Error getting DB field: %v", err)
 		return false, err
 	}
 
