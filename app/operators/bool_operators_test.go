@@ -45,10 +45,10 @@ func TestLogicEval(t *testing.T) {
 		{
 			name: "1",
 			operator: &EqBool{
-				Left: &True{},
+				Left: &BoolValue{Value: true},
 				Right: &EqBool{
-					Left:  &False{},
-					Right: &False{},
+					Left:  &BoolValue{Value: false},
+					Right: &BoolValue{Value: false},
 				},
 			},
 			expected: true,
@@ -56,20 +56,20 @@ func TestLogicEval(t *testing.T) {
 		{
 			name: "2",
 			operator: &EqBool{
-				Left: &True{},
+				Left: &BoolValue{Value: true},
 				Right: &EqBool{
-					Left:  &False{},
-					Right: &True{},
+					Left:  &BoolValue{Value: false},
+					Right: &BoolValue{Value: true},
 				},
 			},
 			expected: false},
 		{
 			name: "3",
 			operator: &EqBool{
-				Left: &True{},
+				Left: &BoolValue{Value: true},
 				Right: &EqBool{
 					Left:  &DbFieldBool{TriggerTableName: "a", Path: []string{"b", "c"}, FieldName: "true"},
-					Right: &True{},
+					Right: &BoolValue{Value: true},
 				},
 			},
 			expected: true,
@@ -77,8 +77,8 @@ func TestLogicEval(t *testing.T) {
 		{
 			name: "4",
 			operator: &EqBool{
-				Left:  &True{},
-				Right: &False{},
+				Left:  &BoolValue{Value: true},
+				Right: &BoolValue{Value: false},
 			},
 			expected: false,
 		},
@@ -95,49 +95,49 @@ func TestLogicEval(t *testing.T) {
 		{
 			name: "variadic and: 3 ops, true",
 			operator: &And{
-				Operands: []OperatorBool{&True{}, &True{}, &True{}},
+				Operands: []OperatorBool{&BoolValue{Value: true}, &BoolValue{Value: true}, &BoolValue{Value: true}},
 			},
 			expected: true,
 		},
 		{
 			name: "variadic and: 3 ops, false",
 			operator: &And{
-				Operands: []OperatorBool{&True{}, &True{}, &False{}},
+				Operands: []OperatorBool{&BoolValue{Value: true}, &BoolValue{Value: true}, &BoolValue{Value: false}},
 			},
 			expected: false,
 		},
 		{
 			name: "variadic and: 1 ops, false",
 			operator: &And{
-				Operands: []OperatorBool{&False{}},
+				Operands: []OperatorBool{&BoolValue{Value: false}},
 			},
 			expected: false,
 		},
 		{
 			name: "variadic or: 3 ops, true",
 			operator: &Or{
-				Operands: []OperatorBool{&False{}, &True{}, &False{}},
+				Operands: []OperatorBool{&BoolValue{Value: false}, &BoolValue{Value: true}, &BoolValue{Value: false}},
 			},
 			expected: true,
 		},
 		{
 			name: "variadic and: 3 ops, false",
 			operator: &Or{
-				Operands: []OperatorBool{&False{}, &False{}, &False{}},
+				Operands: []OperatorBool{&BoolValue{Value: false}, &BoolValue{Value: false}, &BoolValue{Value: false}},
 			},
 			expected: false,
 		},
 		{
 			name: "variadic and: 1 ops, false",
 			operator: &And{
-				Operands: []OperatorBool{&False{}},
+				Operands: []OperatorBool{&BoolValue{Value: false}},
 			},
 			expected: false,
 		},
 		{
 			name: "NOT true",
 			operator: &Not{
-				Child: &True{},
+				Child: &BoolValue{Value: true},
 			},
 			expected: false,
 		},
@@ -276,36 +276,36 @@ func TestMarshalUnMarshal(t *testing.T) {
 		{
 			name: "Simple Equal",
 			operator: &EqBool{
-				Left:  &False{},
-				Right: &True{},
+				Left:  &BoolValue{Value: false},
+				Right: &BoolValue{Value: true},
 			},
 		},
 		{
 			name: "Larger tree",
 			operator: &EqBool{
-				Left: &True{},
+				Left: &BoolValue{Value: true},
 				Right: &EqBool{
 					Left:  &DbFieldBool{TriggerTableName: "transactinos", Path: []string{"accounts", "companies"}, FieldName: "true"},
-					Right: &True{},
+					Right: &BoolValue{Value: true},
 				},
 			},
 		},
 		{
 			name: "Variadic and",
 			operator: &And{
-				Operands: []OperatorBool{&True{}, &True{}, &False{}},
+				Operands: []OperatorBool{&BoolValue{Value: true}, &BoolValue{Value: true}, &BoolValue{Value: false}},
 			},
 		},
 		{
 			name: "Variadic or",
 			operator: &Or{
-				Operands: []OperatorBool{&True{}, &True{}, &False{}},
+				Operands: []OperatorBool{&BoolValue{Value: true}, &BoolValue{Value: true}, &BoolValue{Value: false}},
 			},
 		},
 		{
 			name: "Not true",
 			operator: &Not{
-				Child: True{},
+				Child: &BoolValue{Value: true},
 			},
 		},
 		{
@@ -370,21 +370,21 @@ func TestMarshallBoolOperators(t *testing.T) {
 	cases := []testCase{
 		{
 			name:     "true",
-			operator: True{},
-			expected: `{"type":"TRUE"}`,
+			operator: &BoolValue{Value: true},
+			expected: `{"type":"BOOL_CONSTANT","staticData":{"value":true}}`,
 		},
 		{
 			name:     "false",
-			operator: False{},
-			expected: `{"type":"FALSE"}`,
+			operator: &BoolValue{Value: false},
+			expected: `{"type":"BOOL_CONSTANT","staticData":{"value":false}}`,
 		},
 		{
 			name: "equal",
 			operator: &EqBool{
-				Left:  &True{},
-				Right: &False{},
+				Left:  &BoolValue{Value: true},
+				Right: &BoolValue{Value: false},
 			},
-			expected: `{"type":"EQUAL_BOOL","children":[{"type":"TRUE"},{"type":"FALSE"}]}`,
+			expected: `{"type":"EQUAL_BOOL","children":[{"type":"BOOL_CONSTANT","staticData":{"value":true}},{"type":"BOOL_CONSTANT","staticData":{"value":false}}]}`,
 		},
 		{
 			name: "db field bool",
@@ -398,38 +398,38 @@ func TestMarshallBoolOperators(t *testing.T) {
 		{
 			name: "variadic and",
 			operator: &And{
-				Operands: []OperatorBool{&True{}, &True{}, &False{}},
+				Operands: []OperatorBool{&BoolValue{Value: true}, &BoolValue{Value: true}, &BoolValue{Value: false}},
 			},
-			expected: `{"type":"AND","children":[{"type":"TRUE"},{"type":"TRUE"},{"type":"FALSE"}]}`,
+			expected: `{"type":"AND","children":[{"type":"BOOL_CONSTANT","staticData":{"value":true}},{"type":"BOOL_CONSTANT","staticData":{"value":true}},{"type":"BOOL_CONSTANT","staticData":{"value":false}}]}`,
 		},
 		{
 			name: "variadic or",
 			operator: &Or{
-				Operands: []OperatorBool{&True{}, &True{}, &False{}},
+				Operands: []OperatorBool{&BoolValue{Value: true}, &BoolValue{Value: true}, &BoolValue{Value: false}},
 			},
-			expected: `{"type":"OR","children":[{"type":"TRUE"},{"type":"TRUE"},{"type":"FALSE"}]}`,
+			expected: `{"type":"OR","children":[{"type":"BOOL_CONSTANT","staticData":{"value":true}},{"type":"BOOL_CONSTANT","staticData":{"value":true}},{"type":"BOOL_CONSTANT","staticData":{"value":false}}]}`,
 		},
 		{
 			name: "not true",
 			operator: &Not{
-				Child: True{},
+				Child: &BoolValue{Value: true},
 			},
-			expected: `{"type":"NOT","children":[{"type":"TRUE"}]}`,
+			expected: `{"type":"NOT","children":[{"type":"BOOL_CONSTANT","staticData":{"value":true}}]}`,
 		},
 		{
 			name: "eq with null",
 			operator: &EqBool{
-				Left:  &True{},
+				Left:  &BoolValue{Value: true},
 				Right: nil,
 			},
-			expected: `{"type":"EQUAL_BOOL","children":[{"type":"TRUE"},null]}`,
+			expected: `{"type":"EQUAL_BOOL","children":[{"type":"BOOL_CONSTANT","staticData":{"value":true}},null]}`,
 		},
 		{
 			name: "or with null",
 			operator: &Or{
-				Operands: []OperatorBool{&True{}, nil, &False{}},
+				Operands: []OperatorBool{&BoolValue{Value: true}, nil, &BoolValue{Value: false}},
 			},
-			expected: `{"type":"OR","children":[{"type":"TRUE"},null,{"type":"FALSE"}]}`,
+			expected: `{"type":"OR","children":[{"type":"BOOL_CONSTANT","staticData":{"value":true}},null,{"type":"BOOL_CONSTANT","staticData":{"value":false}}]}`,
 		},
 		{
 			name: "String is in",
@@ -462,21 +462,21 @@ func TestUnmarshallBoolOperators(t *testing.T) {
 	cases := []testCase{
 		{
 			name:     "true",
-			expected: &True{},
-			json:     `{"type":"TRUE"}`,
+			expected: &BoolValue{Value: true},
+			json:     `{"type":"BOOL_CONSTANT","staticData":{"value":true}}`,
 		},
 		{
 			name:     "false",
-			expected: &False{},
-			json:     `{"type":"FALSE"}`,
+			expected: &BoolValue{Value: false},
+			json:     `{"type":"BOOL_CONSTANT","staticData":{"value":false}}`,
 		},
 		{
 			name: "equal",
 			expected: &EqBool{
-				Left:  &True{},
-				Right: &False{},
+				Left:  &BoolValue{Value: true},
+				Right: &BoolValue{Value: false},
 			},
-			json: `{"type":"EQUAL_BOOL","children":[{"type":"TRUE"},{"type":"FALSE"}]}`,
+			json: `{"type":"EQUAL_BOOL","children":[{"type":"BOOL_CONSTANT","staticData":{"value":true}},{"type":"BOOL_CONSTANT","staticData":{"value":false}}]}`,
 		},
 		{
 			name: "equal",
@@ -490,17 +490,17 @@ func TestUnmarshallBoolOperators(t *testing.T) {
 		{
 			name: "eq with null",
 			expected: &EqBool{
-				Left:  &True{},
+				Left:  &BoolValue{Value: true},
 				Right: nil,
 			},
-			json: `{"type":"EQUAL_BOOL","children":[{"type":"TRUE"},null]}`,
+			json: `{"type":"EQUAL_BOOL","children":[{"type":"BOOL_CONSTANT","staticData":{"value":true}},null]}`,
 		},
 		{
 			name: "or with null",
 			expected: &Or{
-				Operands: []OperatorBool{&True{}, nil, &False{}},
+				Operands: []OperatorBool{&BoolValue{Value: true}, nil, &BoolValue{Value: false}},
 			},
-			json: `{"type":"OR","children":[{"type":"TRUE"},null,{"type":"FALSE"}]}`,
+			json: `{"type":"OR","children":[{"type":"BOOL_CONSTANT","staticData":{"value":true}},null,{"type":"BOOL_CONSTANT","staticData":{"value":false}}]}`,
 		},
 		{
 			name: "String is in",
@@ -536,16 +536,16 @@ func TestInvalidOperators(t *testing.T) {
 		},
 		{
 			name:     "and with null",
-			operator: &And{Operands: []OperatorBool{&True{}, nil}},
+			operator: &And{Operands: []OperatorBool{&BoolValue{Value: true}, nil}},
 		},
 		{
 			name:     "and with null first",
-			operator: &And{Operands: []OperatorBool{nil, &True{}, &False{}}},
+			operator: &And{Operands: []OperatorBool{nil, &BoolValue{Value: true}, &BoolValue{Value: false}}},
 		},
 		{
 			name: "eq",
 			operator: &EqBool{
-				Left:  &True{},
+				Left:  &BoolValue{Value: true},
 				Right: nil,
 			},
 		},

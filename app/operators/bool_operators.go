@@ -94,64 +94,6 @@ func (bv *BoolValue) UnmarshalJSON(b []byte) error {
 }
 
 // ///////////////////////////////////////////////////////////////////////////////////////
-// True
-// ///////////////////////////////////////////////////////////////////////////////////////
-type True struct{}
-
-// register creation
-func init() {
-	operatorFromType["TRUE"] = func() Operator { return &True{} }
-}
-
-func (t True) Eval(d DataAccessor) (bool, error) { return true, nil }
-
-func (t True) IsValid() bool { return true }
-
-func (t True) String() string { return "TRUE" }
-
-// Marshal with added "Type" operator
-func (t True) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
-		OperatorType
-	}{
-		OperatorType: OperatorType{Type: "TRUE"},
-	})
-}
-
-func (t True) UnmarshalJSON(b []byte) error {
-	return nil
-}
-
-// ///////////////////////////////////////////////////////////////////////////////////////
-// False
-// ///////////////////////////////////////////////////////////////////////////////////////
-type False struct{}
-
-// register creation
-func init() {
-	operatorFromType["FALSE"] = func() Operator { return &False{} }
-}
-
-func (f False) Eval(d DataAccessor) (bool, error) { return false, nil }
-
-func (f False) IsValid() bool { return true }
-
-func (f False) String() string { return "FALSE" }
-
-// Marshal with added "Type" operator
-func (f False) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
-		OperatorType
-	}{
-		OperatorType: OperatorType{Type: "FALSE"},
-	})
-}
-
-func (f False) UnmarshalJSON(b []byte) error {
-	return nil
-}
-
-// ///////////////////////////////////////////////////////////////////////////////////////
 // Eq
 // ///////////////////////////////////////////////////////////////////////////////////////
 type EqBool struct{ Left, Right OperatorBool }

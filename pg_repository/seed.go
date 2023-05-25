@@ -121,30 +121,30 @@ func (r *PGRepository) Seed() {
 	createScenarioIterationInput := app.CreateScenarioIterationInput{
 		ScenarioID: scenario.ID,
 		Body: &app.CreateScenarioIterationBody{
-			TriggerCondition:     &operators.True{},
+			TriggerCondition:     &operators.BoolValue{Value: true},
 			ScoreReviewThreshold: utils.Ptr(10),
 			ScoreRejectThreshold: utils.Ptr(30),
 			Rules: []app.CreateRuleInput{
 				{
-					Formula:       &operators.True{},
+					Formula:       &operators.BoolValue{Value: true},
 					ScoreModifier: 2,
 					Name:          "Rule 1 Name",
 					Description:   "Rule 1 Desc",
 				},
 				{
-					Formula:       &operators.False{},
+					Formula:       &operators.BoolValue{Value: false},
 					ScoreModifier: 2,
 					Name:          "Rule 2 Name",
 					Description:   "Rule 2 Desc",
 				},
 				{
-					Formula:       &operators.EqBool{Left: &operators.True{}, Right: &operators.True{}},
+					Formula:       &operators.EqBool{Left: &operators.BoolValue{Value: true}, Right: &operators.BoolValue{Value: true}},
 					ScoreModifier: 2,
 					Name:          "Rule 3 Name",
 					Description:   "Rule 3 Desc",
 				},
 				{
-					Formula:       &operators.EqBool{Left: &operators.True{}, Right: &operators.EqBool{Left: &operators.False{}, Right: &operators.False{}}},
+					Formula:       &operators.EqBool{Left: &operators.BoolValue{Value: true}, Right: &operators.EqBool{Left: &operators.BoolValue{Value: false}, Right: &operators.BoolValue{Value: false}}},
 					ScoreModifier: 2,
 					Name:          "Rule 4 Name",
 					Description:   "Rule 4 Desc",
