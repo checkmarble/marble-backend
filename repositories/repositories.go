@@ -15,6 +15,7 @@ type Repositories struct {
 	ApiKeyRepository        ApiKeyRepository
 	OrganizationRepository  OrganizationRepository
 	IngestionRepository     IngestionRepository
+	DataModelRepository     DataModelRepository
 }
 
 func NewRepositories(marbleJwtSigningKey rsa.PrivateKey, firebaseClient auth.Client, users []User, pgRepository *pg_repository.PGRepository) *Repositories {
@@ -29,5 +30,6 @@ func NewRepositories(marbleJwtSigningKey rsa.PrivateKey, firebaseClient auth.Cli
 		ApiKeyRepository:       pgRepository,
 		OrganizationRepository: pgRepository,
 		IngestionRepository:    pgRepository,
+		DataModelRepository:    pgRepository,
 	}
 }

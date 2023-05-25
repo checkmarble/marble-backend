@@ -114,6 +114,12 @@ func (api *API) routes() {
 			})
 		})
 
+		authedRouter.Route("/data-model", func(dataModelRouter chi.Router) {
+			dataModelRouter.Use(api.enforcePermissionMiddleware(DATA_MODEL_READ))
+
+			dataModelRouter.Get("/", api.handleGetDataModel())
+		})
+
 		// Group all admin endpoints
 		authedRouter.Group(func(routerAdmin chi.Router) {
 			routerAdmin.Use(api.enforcePermissionMiddleware(ORGANIZATIONS_LIST))

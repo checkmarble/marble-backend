@@ -24,6 +24,10 @@ func (usecase *MarbleTokenUseCase) encodeMarbleToken(creds Credentials) (string,
 }
 
 func (usecase *MarbleTokenUseCase) adaptCredentialFromApiKey(ctx context.Context, apiKey string) (Credentials, error) {
+	// Useful to test api as a marble-admin
+	// if apiKey == "marble-admin" {
+	// 	return Credentials{OrganizationId: "", Role: MARBLE_ADMIN}, nil
+	// }
 	orgID, err := usecase.apiKeyRepository.GetOrganizationIDFromApiKey(ctx, apiKey)
 	if err != nil {
 		return Credentials{}, err

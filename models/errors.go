@@ -8,7 +8,7 @@ import (
 var BadParameterError = errors.New("Bad Parameter")
 
 // UnAuthorizedError is rendered with the http status code 401
-var UnAuthorizedError = errors.New("Authorized")
+var UnAuthorizedError = errors.New("UnAuthorized")
 
 // ForbiddenError is rendered with the http status code 403
 var ForbiddenError = errors.New("Forbidden")
