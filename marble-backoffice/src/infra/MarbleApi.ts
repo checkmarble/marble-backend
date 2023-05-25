@@ -97,8 +97,13 @@ export class MarbleApi {
     return this.authorizedApiFetch(request);
   }
 
-  async organizations(): Promise<unknown> {
+  async allOrganizations(): Promise<unknown> {
     return this.getAuthorizedJson(ORGANIZATION_URL_PATH);
+  }
+
+  async organizationsById(organizationId: string): Promise<unknown> {
+    const orgIdParam = encodeURIComponent(organizationId);
+    return this.getAuthorizedJson(`${ORGANIZATION_URL_PATH}/${orgIdParam}`);
   }
 
   async postOrganization(createOrganizationBody: unknown): Promise<unknown> {

@@ -2,7 +2,8 @@ import { useCallback } from "react";
 import { type CreateOrganization, type Organization } from "@/models";
 import {
   OrganizationRepository,
-  fetchOrganizations,
+  fetchAllOrganizations,
+  fetchOrganization,
   createOrganization,
 } from "@/repositories";
 import { useSimpleLoader } from "@/hooks/SimpleLoader";
@@ -16,11 +17,15 @@ export class OrganizationService {
   }
 
   async allOrganization() {
-    return fetchOrganizations(this.organizationRepository);
+    return fetchAllOrganizations(this.organizationRepository);
   }
 
   async createOrganization(create: CreateOrganization) {
     return createOrganization(this.organizationRepository, create);
+  }
+
+  async organizationById(organizationId: string) {
+    return fetchOrganization(this.organizationRepository, organizationId);
   }
 }
 
@@ -28,7 +33,6 @@ export function useAllOrganizations(
   service: OrganizationService,
   loadingDispatcher: LoadingDispatcher
 ) {
-  
   const loadAllOrganizations = useCallback(() => {
     return service.allOrganization();
   }, [service]);
@@ -40,6 +44,26 @@ export function useAllOrganizations(
   return {
     allOrganizations,
     fetchAllOrganizations,
+  };
+}
+
+export function useOrganization(
+  service: OrganizationService,
+  loadingDispatcher: LoadingDispatcher,
+  organizationId: string
+) {
+  const loadOrganization = useCallback(() => {
+    return service.organizationById(organizationId);
+  }, [service, organizationId]);
+
+  const [organization, fetchOrganization] = useSimpleLoader<Organization>(
+    loadingDispatcher,
+    loadOrganization
+  );
+
+  return {
+    organization,
+    fetchOrganization,
   };
 }
 
