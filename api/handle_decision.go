@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"marble/marble-backend/app"
+	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
 
 	"github.com/ggicci/httpin"
@@ -199,7 +200,7 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 		}
 
 		tables := dataModel.Tables
-		table, ok := tables[app.TableName(requestData.TriggerObjectType)]
+		table, ok := tables[models.TableName(requestData.TriggerObjectType)]
 		if !ok {
 			logger.ErrorCtx(ctx, "Table not found in data model for organization")
 			http.Error(w, "", http.StatusNotFound)

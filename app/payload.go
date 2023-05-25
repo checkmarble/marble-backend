@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"marble/marble-backend/models"
 	"strings"
 	"time"
 	"unicode"
@@ -21,7 +22,7 @@ func capitalize(str string) string {
 
 type Payload struct {
 	Reader dynamicstruct.Reader
-	Table  Table
+	Table  models.Table
 }
 
 type PayloadForArchive struct {
@@ -31,7 +32,7 @@ type PayloadForArchive struct {
 
 var ErrFormatValidation = errors.New("The input object is not valid")
 
-func buildDynamicStruct(fields map[FieldName]Field) dynamicstruct.DynamicStruct {
+func buildDynamicStruct(fields map[models.FieldName]models.Field) dynamicstruct.DynamicStruct {
 	custom_type := dynamicstruct.NewStruct()
 
 	var stringPointerType *string
@@ -52,15 +53,15 @@ func buildDynamicStruct(fields map[FieldName]Field) dynamicstruct.DynamicStruct 
 			break
 		default:
 			switch field.DataType {
-			case Bool:
+			case models.Bool:
 				custom_type.AddField(capitalize(name), boolPointerType, "")
-			case Int:
+			case models.Int:
 				custom_type.AddField(capitalize(name), intPointerType, "")
-			case Float:
+			case models.Float:
 				custom_type.AddField(capitalize(name), floatPointerType, "")
-			case String:
+			case models.String:
 				custom_type.AddField(capitalize(name), stringPointerType, "")
-			case Timestamp:
+			case models.Timestamp:
 				custom_type.AddField(capitalize(name), timePointerType, "")
 			}
 		}
@@ -92,7 +93,7 @@ func validateParsedJson(instance interface{}) error {
 	return nil
 }
 
-func ParseToDataModelObject(_ context.Context, table Table, jsonBody []byte) (Payload, error) {
+func ParseToDataModelObject(_ context.Context, table models.Table, jsonBody []byte) (Payload, error) {
 	fields := table.Fields
 
 	custom_type := buildDynamicStruct(fields)
@@ -123,7 +124,7 @@ func ParseToDataModelObject(_ context.Context, table Table, jsonBody []byte) (Pa
 	return Payload{Reader: dynamicStructReader, Table: table}, nil
 }
 
-func (payload Payload) ReadFieldFromPayload(fieldName FieldName) (interface{}, error) {
+func (payload Payload) ReadFieldFromPayload(fieldName models.FieldName) (interface{}, error) {
 	field := payload.Reader.GetField(capitalize(string(fieldName)))
 	table := payload.Table
 	fields := table.Fields
@@ -133,15 +134,15 @@ func (payload Payload) ReadFieldFromPayload(fieldName FieldName) (interface{}, e
 	}
 
 	switch fieldFromModel.DataType {
-	case Bool:
+	case models.Bool:
 		return field.PointerBool(), nil
-	case Int:
+	case models.Int:
 		return field.PointerInt(), nil
-	case Float:
+	case models.Float:
 		return field.PointerFloat64(), nil
-	case String:
+	case models.String:
 		return field.PointerString(), nil
-	case Timestamp:
+	case models.Timestamp:
 		return field.PointerTime(), nil
 	default:
 		return nil, fmt.Errorf("The field %v has no supported data type", fieldName)

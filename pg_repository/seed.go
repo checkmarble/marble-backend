@@ -54,25 +54,25 @@ func (r *PGRepository) Seed() {
 	///////////////////////////////
 	// Create and store a data model
 	///////////////////////////////
-	r.CreateDataModel(context.TODO(), org.ID, app.DataModel{
-		Tables: map[app.TableName]app.Table{
+	r.CreateDataModel(context.TODO(), org.ID, models.DataModel{
+		Tables: map[models.TableName]models.Table{
 			"transactions": {
 				Name: "transactions",
-				Fields: map[app.FieldName]app.Field{
+				Fields: map[models.FieldName]models.Field{
 					"object_id": {
-						DataType: app.String,
+						DataType: models.String,
 					},
-					"updated_at":  {DataType: app.Timestamp},
-					"account_id":  {DataType: app.String},
-					"bic_country": {DataType: app.String},
-					"country":     {DataType: app.String},
-					"description": {DataType: app.String},
-					"direction":   {DataType: app.String},
-					"status":      {DataType: app.String},
-					"title":       {DataType: app.String},
-					"amount":      {DataType: app.Float},
+					"updated_at":  {DataType: models.Timestamp},
+					"account_id":  {DataType: models.String},
+					"bic_country": {DataType: models.String},
+					"country":     {DataType: models.String},
+					"description": {DataType: models.String},
+					"direction":   {DataType: models.String},
+					"status":      {DataType: models.String},
+					"title":       {DataType: models.String},
+					"amount":      {DataType: models.Float},
 				},
-				LinksToSingle: map[app.LinkName]app.LinkToSingle{
+				LinksToSingle: map[models.LinkName]models.LinkToSingle{
 					"account": {
 						LinkedTableName: "accounts",
 						ParentFieldName: "object_id",
@@ -81,18 +81,18 @@ func (r *PGRepository) Seed() {
 			},
 			"accounts": {
 				Name: "accounts",
-				Fields: map[app.FieldName]app.Field{
+				Fields: map[models.FieldName]models.Field{
 					"object_id": {
-						DataType: app.String,
+						DataType: models.String,
 					},
-					"updated_at": {DataType: app.Timestamp},
-					"balance":    {DataType: app.Float},
-					"company_id": {DataType: app.String},
-					"name":       {DataType: app.String},
-					"currency":   {DataType: app.String},
-					"is_frozen":  {DataType: app.Bool},
+					"updated_at": {DataType: models.Timestamp},
+					"balance":    {DataType: models.Float},
+					"company_id": {DataType: models.String},
+					"name":       {DataType: models.String},
+					"currency":   {DataType: models.String},
+					"is_frozen":  {DataType: models.Bool},
 				},
-				LinksToSingle: map[app.LinkName]app.LinkToSingle{
+				LinksToSingle: map[models.LinkName]models.LinkToSingle{
 					"company": {
 						LinkedTableName: "companies",
 						ParentFieldName: "object_id",
@@ -101,12 +101,12 @@ func (r *PGRepository) Seed() {
 			},
 			"companies": {
 				Name: "companies",
-				Fields: map[app.FieldName]app.Field{
+				Fields: map[models.FieldName]models.Field{
 					"object_id": {
-						DataType: app.String,
+						DataType: models.String,
 					},
-					"updated_at": {DataType: app.Timestamp},
-					"name":       {DataType: app.String},
+					"updated_at": {DataType: models.Timestamp},
+					"name":       {DataType: models.String},
 				},
 			},
 		},

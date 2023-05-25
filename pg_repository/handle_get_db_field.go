@@ -26,21 +26,21 @@ func (rep *PGRepository) GetDbField(ctx context.Context, readParams app.DbFieldR
 	if err != nil {
 		return nil, err
 	}
-	fieldFromModel, ok := lastTable.Fields[app.FieldName(readParams.FieldName)]
+	fieldFromModel, ok := lastTable.Fields[models.FieldName(readParams.FieldName)]
 	if !ok {
 		return nil, fmt.Errorf("Field %s not found in table %s", readParams.FieldName, lastTable.Name)
 	}
 
 	switch fieldFromModel.DataType {
-	case app.Bool:
+	case models.Bool:
 		return scanRowReturnValue[pgtype.Bool](row)
-	case app.Int:
+	case models.Int:
 		return scanRowReturnValue[pgtype.Int2](row)
-	case app.Float:
+	case models.Float:
 		return scanRowReturnValue[pgtype.Float8](row)
-	case app.String:
+	case models.String:
 		return scanRowReturnValue[pgtype.Text](row)
-	case app.Timestamp:
+	case models.Timestamp:
 		return scanRowReturnValue[pgtype.Timestamp](row)
 	default:
 		return nil, fmt.Errorf("Unknown data type when reading from db: %s", fieldFromModel.DataType)
@@ -109,7 +109,7 @@ func getBaseObjectIdFromPayload(payload app.Payload) (string, error) {
 	return baseObjectId, nil
 }
 
-func addJoinsOnIntermediateTables(query sq.SelectBuilder, readParams app.DbFieldReadParams, firstTable app.Table) (sq.SelectBuilder, error) {
+func addJoinsOnIntermediateTables(query sq.SelectBuilder, readParams app.DbFieldReadParams, firstTable models.Table) (sq.SelectBuilder, error) {
 	currentTable := firstTable
 	for _, linkName := range readParams.Path {
 		link, ok := currentTable.LinksToSingle[linkName]
@@ -130,25 +130,25 @@ func addJoinsOnIntermediateTables(query sq.SelectBuilder, readParams app.DbField
 	return query, nil
 }
 
-func rowIsValid(tableName app.TableName) sq.Eq {
+func rowIsValid(tableName models.TableName) sq.Eq {
 	return sq.Eq{fmt.Sprintf("%s.valid_until", tableName): "Infinity"}
 }
 
-func getLastTableFromPath(params app.DbFieldReadParams) (app.Table, error) {
+func getLastTableFromPath(params app.DbFieldReadParams) (models.Table, error) {
 	firstTable, ok := params.DataModel.Tables[params.TriggerTableName]
 	if !ok {
-		return app.Table{}, fmt.Errorf("Table %s not found in data model", params.TriggerTableName)
+		return models.Table{}, fmt.Errorf("Table %s not found in data model", params.TriggerTableName)
 	}
 
 	currentTable := firstTable
 	for _, linkName := range params.Path {
 		link, ok := currentTable.LinksToSingle[linkName]
 		if !ok {
-			return app.Table{}, fmt.Errorf("No link with name %s: %w", linkName, operators.ErrDbReadInconsistentWithDataModel)
+			return models.Table{}, fmt.Errorf("No link with name %s: %w", linkName, operators.ErrDbReadInconsistentWithDataModel)
 		}
 		nextTable, ok := params.DataModel.Tables[link.LinkedTableName]
 		if !ok {
-			return app.Table{}, fmt.Errorf("No table with name %s: %w", link.LinkedTableName, operators.ErrDbReadInconsistentWithDataModel)
+			return models.Table{}, fmt.Errorf("No table with name %s: %w", link.LinkedTableName, operators.ErrDbReadInconsistentWithDataModel)
 		}
 
 		currentTable = nextTable

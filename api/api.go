@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"marble/marble-backend/app"
+	"marble/marble-backend/models"
 	"marble/marble-backend/usecases"
 
 	"github.com/go-chi/chi/v5"
@@ -33,7 +33,7 @@ type AppInterface interface {
 	IngestionInterface
 	ScenarioPublicationAppInterface
 
-	GetDataModel(ctx context.Context, organizationID string) (app.DataModel, error)
+	GetDataModel(ctx context.Context, organizationID string) (models.DataModel, error)
 }
 
 func New(ctx context.Context, port string, a AppInterface, usecases usecases.Usecases, logger *slog.Logger, corsAllowLocalhost bool) (*http.Server, error) {

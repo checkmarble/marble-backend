@@ -20,7 +20,7 @@ type RepositoryInterface interface {
 	RepositoryScenarioPublicationInterface
 
 	// Data models & scenarios
-	GetDataModel(ctx context.Context, orgID string) (DataModel, error)
+	GetDataModel(ctx context.Context, orgID string) (models.DataModel, error)
 
 	// Decisions
 	StoreDecision(ctx context.Context, orgID string, decision Decision) (Decision, error)
@@ -28,7 +28,7 @@ type RepositoryInterface interface {
 	ListDecisions(ctx context.Context, orgID string) ([]Decision, error)
 
 	// Ingestion
-	IngestObject(ctx context.Context, payload Payload, table Table, logger *slog.Logger) (err error)
+	IngestObject(ctx context.Context, payload Payload, table models.Table, logger *slog.Logger) (err error)
 
 	// DB field access
 	GetDbField(ctx context.Context, readParams DbFieldReadParams) (interface{}, error)

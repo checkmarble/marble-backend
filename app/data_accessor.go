@@ -2,30 +2,31 @@ package app
 
 import (
 	"context"
+	"marble/marble-backend/models"
 )
 
 type DataAccessorImpl struct {
-	DataModel  DataModel
+	DataModel  models.DataModel
 	Payload    Payload
 	repository RepositoryInterface
 }
 
 type DbFieldReadParams struct {
-	TriggerTableName TableName
-	Path             []LinkName
-	FieldName        FieldName
-	DataModel        DataModel
+	TriggerTableName models.TableName
+	Path             []models.LinkName
+	FieldName        models.FieldName
+	DataModel        models.DataModel
 	Payload          Payload
 }
 
 func (d *DataAccessorImpl) GetPayloadField(fieldName string) (interface{}, error) {
-	return d.Payload.ReadFieldFromPayload(FieldName(fieldName))
+	return d.Payload.ReadFieldFromPayload(models.FieldName(fieldName))
 }
 func (d *DataAccessorImpl) GetDbField(triggerTableName string, path []string, fieldName string) (interface{}, error) {
 	return d.repository.GetDbField(context.TODO(), DbFieldReadParams{
-		TriggerTableName: TableName(triggerTableName),
-		Path:             toLinkNames(path),
-		FieldName:        FieldName(fieldName),
+		TriggerTableName: models.TableName(triggerTableName),
+		Path:             models.ToLinkNames(path),
+		FieldName:        models.FieldName(fieldName),
 		DataModel:        d.DataModel,
 		Payload:          d.Payload,
 	})

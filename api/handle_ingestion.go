@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"marble/marble-backend/app"
+	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
 	"net/http"
 
@@ -13,7 +14,7 @@ import (
 )
 
 type IngestionInterface interface {
-	IngestObject(ctx context.Context, payload app.Payload, table app.Table, logger *slog.Logger) (err error)
+	IngestObject(ctx context.Context, payload app.Payload, table models.Table, logger *slog.Logger) (err error)
 }
 
 func (api *API) handleIngestion() http.HandlerFunc {
@@ -43,7 +44,7 @@ func (api *API) handleIngestion() http.HandlerFunc {
 		logger = logger.With(slog.String("object_type", object_type))
 
 		tables := dataModel.Tables
-		table, ok := tables[app.TableName(object_type)]
+		table, ok := tables[models.TableName(object_type)]
 		if !ok {
 			logger.ErrorCtx(ctx, "Table not found in data model for organization")
 			http.Error(w, "", http.StatusNotFound)

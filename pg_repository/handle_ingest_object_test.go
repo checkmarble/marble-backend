@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"marble/marble-backend/app"
+	"marble/marble-backend/models"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/gofrs/uuid"
@@ -14,16 +15,16 @@ import (
 )
 
 func TestHandleFirstIngestObject(t *testing.T) {
-	transactions := app.Table{
+	transactions := models.Table{
 		Name: "transactions",
-		Fields: map[app.FieldName]app.Field{
+		Fields: map[models.FieldName]models.Field{
 			"object_id": {
-				DataType: app.String,
+				DataType: models.String,
 			},
-			"updated_at": {DataType: app.Timestamp},
-			"amount":     {DataType: app.Float},
-			"title":      {DataType: app.String},
-			"account_id": {DataType: app.String},
+			"updated_at": {DataType: models.Timestamp},
+			"amount":     {DataType: models.Float},
+			"title":      {DataType: models.String},
+			"account_id": {DataType: models.String},
 		},
 	}
 	ctx := context.Background()
@@ -67,16 +68,16 @@ func TestHandleFirstIngestObject(t *testing.T) {
 }
 
 func TestHandleRenewedIngestObject(t *testing.T) {
-	transactions := app.Table{
+	transactions := models.Table{
 		Name: "transactions",
-		Fields: map[app.FieldName]app.Field{
+		Fields: map[models.FieldName]models.Field{
 			"object_id": {
-				DataType: app.String,
+				DataType: models.String,
 			},
-			"updated_at": {DataType: app.Timestamp},
-			"amount":     {DataType: app.Float},
-			"title":      {DataType: app.String},
-			"account_id": {DataType: app.String},
+			"updated_at": {DataType: models.Timestamp},
+			"amount":     {DataType: models.Float},
+			"title":      {DataType: models.String},
+			"account_id": {DataType: models.String},
 		},
 	}
 	ctx := context.Background()
