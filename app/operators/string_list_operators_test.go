@@ -29,7 +29,7 @@ func TestLogicEvalStringList(t *testing.T) {
 		{
 			name: "scalar",
 			operator: &StringListValue{
-				Strings: []string{"abc", "def"},
+				Value: []string{"abc", "def"},
 			},
 			expected: []string{"abc", "def"},
 		},
@@ -59,7 +59,7 @@ func TestMarshalUnMarshalStringList(t *testing.T) {
 	cases := []testCase{
 		{
 			name:     "Constant value",
-			operator: &StringListValue{Strings: []string{"abc", "def"}},
+			operator: &StringListValue{Value: []string{"abc", "def"}},
 		},
 	}
 	for _, c := range cases {

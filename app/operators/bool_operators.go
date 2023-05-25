@@ -46,6 +46,55 @@ func UnmarshalOperatorBool(jsonBytes []byte) (OperatorBool, error) {
 }
 
 // ///////////////////////////////////////////////////////////////////////////////////////
+// BoolValue
+// ///////////////////////////////////////////////////////////////////////////////////////
+type BoolValue struct {
+	Value bool
+}
+
+// register creation
+func init() {
+	operatorFromType["BOOL_CONSTANT"] = func() Operator { return &BoolValue{} }
+}
+
+func (bv BoolValue) Eval(d DataAccessor) (bool, error) { return bv.Value, nil }
+
+func (bv BoolValue) IsValid() bool { return true }
+
+func (bv BoolValue) String() string { return fmt.Sprintf("%v", bv.Value) }
+
+// Marshal with added "Type" operator
+func (bv BoolValue) MarshalJSON() ([]byte, error) {
+	type boolValueIntermediate struct {
+		Value bool `json:"value"`
+	}
+
+	return json.Marshal(struct {
+		OperatorType
+		StaticData boolValueIntermediate `json:"staticData"`
+	}{
+		OperatorType: OperatorType{Type: "BOOL_CONSTANT"},
+		StaticData:   boolValueIntermediate{bv.Value},
+	})
+}
+
+func (bv *BoolValue) UnmarshalJSON(b []byte) error {
+	// data schema
+	var boolValueData struct {
+		StaticData struct {
+			Value bool `json:"value"`
+		} `json:"staticData"`
+	}
+
+	if err := json.Unmarshal(b, &boolValueData); err != nil {
+		return fmt.Errorf("unable to unmarshal operator to intermediate staticData representation: %w", err)
+	}
+	bv.Value = boolValueData.StaticData.Value
+
+	return nil
+}
+
+// ///////////////////////////////////////////////////////////////////////////////////////
 // True
 // ///////////////////////////////////////////////////////////////////////////////////////
 type True struct{}

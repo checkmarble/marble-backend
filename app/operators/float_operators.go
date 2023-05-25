@@ -55,7 +55,7 @@ type FloatValue struct {
 
 // register creation
 func init() {
-	operatorFromType["FLOAT_SCALAR"] = func() Operator { return &FloatValue{} }
+	operatorFromType["FLOAT_CONSTANT"] = func() Operator { return &FloatValue{} }
 }
 
 func (f FloatValue) Eval(d DataAccessor) (float64, error) { return f.Value, nil }
@@ -76,7 +76,7 @@ func (f FloatValue) MarshalJSON() ([]byte, error) {
 		OperatorType
 		StaticData floatValueIntermediate `json:"staticData"`
 	}{
-		OperatorType: OperatorType{Type: "FLOAT_SCALAR"},
+		OperatorType: OperatorType{Type: "FLOAT_CONSTANT"},
 		StaticData:   floatValueIntermediate{f.Value},
 	})
 }
