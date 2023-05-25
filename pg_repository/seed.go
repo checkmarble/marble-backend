@@ -275,7 +275,7 @@ func (r *PGRepository) Seed() {
 					Formula: &operators.DbFieldBool{
 						FieldName:        "is_frozen",
 						TriggerTableName: "transactions",
-						Path:             []string{"accounts"},
+						Path:             []string{"account"},
 					},
 					ScoreModifier: 100,
 					Name:          "Frozen account",

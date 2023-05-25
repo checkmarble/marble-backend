@@ -3,6 +3,7 @@ package operators
 import (
 	"encoding/json"
 	"fmt"
+	"marble/marble-backend/models"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -112,7 +113,6 @@ func (field DbFieldString) Eval(d DataAccessor) (string, error) {
 
 	valRaw, err := d.GetDbField(field.TriggerTableName, field.Path, field.FieldName)
 	if err != nil {
-		fmt.Printf("Error getting DB field: %v", err)
 		return "", err
 	}
 
@@ -121,7 +121,7 @@ func (field DbFieldString) Eval(d DataAccessor) (string, error) {
 		return "", fmt.Errorf("DB field %s is not a string", field.FieldName)
 	}
 	if !valNullable.Valid {
-		return "", fmt.Errorf("DB field %s is null", field.FieldName)
+		return "", fmt.Errorf("DB field %s is null: %w", field.FieldName, models.OperatorNullValueReadError)
 	}
 	return valNullable.String, nil
 }
@@ -193,14 +193,17 @@ func (field PayloadFieldString) Eval(d DataAccessor) (string, error) {
 		return "", ErrEvaluatingInvalidOperator
 	}
 
-	valRaw := d.GetPayloadField(field.FieldName)
+	valRaw, err := d.GetPayloadField(field.FieldName)
+	if err != nil {
+		return "", err
+	}
 
 	valPointer, ok := valRaw.(*string)
 	if !ok {
 		return "", fmt.Errorf("Payload field %s is not a pointer to a string", field.FieldName)
 	}
 	if valPointer == nil {
-		return "", fmt.Errorf("Payload field %s is null", field.FieldName)
+		return "", fmt.Errorf("Payload field %s is null: %w", field.FieldName, models.OperatorNullValueReadError)
 	}
 	return *valPointer, nil
 }

@@ -15,3 +15,8 @@ var ForbiddenError = errors.New("Forbidden")
 
 // NotFoundError is rendered with the http status code 404
 var NotFoundError = errors.New("Not found")
+
+// Is used when a null value is read in a db field operator
+var OperatorNullValueReadError = errors.New("Field read with null value")
+
+var OperatorDivisionByZeroError = errors.New("Division by zero")

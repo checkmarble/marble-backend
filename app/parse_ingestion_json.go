@@ -102,15 +102,18 @@ func ParseToDataModelObject(_ context.Context, table Table, jsonBody []byte) (Dy
 	// json, or timestamps.
 	// We could also have more serious errors, like a non-capitalized field in the dynamic struct that
 	// causes a panic. We should manage the errors accordingly.
-	err := json.Unmarshal(jsonBody, &dynamicStructInstance)
-	if err != nil {
+	decoder := json.NewDecoder(strings.NewReader(string(jsonBody)))
+	// Reject fields that are not present in the data model/the dynamic struct
+	decoder.DisallowUnknownFields()
+
+	if err := decoder.Decode(&dynamicStructInstance); err != nil {
 		return DynamicStructWithReader{}, fmt.Errorf("%w: %w", ErrFormatValidation, err)
 	}
 
 	// If the data has been successfully parsed, we can validate it
 	// This is done using the validate tags on the dynamic struct
 	// There are two possible cases of error
-	err = validateParsedJson(dynamicStructInstance)
+	err := validateParsedJson(dynamicStructInstance)
 	if err != nil {
 		return DynamicStructWithReader{}, err
 	}
@@ -118,24 +121,27 @@ func ParseToDataModelObject(_ context.Context, table Table, jsonBody []byte) (Dy
 	return DynamicStructWithReader{Instance: dynamicStructInstance, Reader: dynamicStructReader, Table: table}, nil
 }
 
-func (dynamicStruct DynamicStructWithReader) ReadFieldFromDynamicStruct(fieldName FieldName) interface{} {
+func (dynamicStruct DynamicStructWithReader) ReadFieldFromDynamicStruct(fieldName FieldName) (interface{}, error) {
 	field := dynamicStruct.Reader.GetField(capitalize(string(fieldName)))
 	table := dynamicStruct.Table
 	fields := table.Fields
-	fieldFromModel := fields[fieldName]
+	fieldFromModel, ok := fields[fieldName]
+	if !ok {
+		return nil, fmt.Errorf("The field %v is not in table %v schema", fieldName, table.Name)
+	}
 
 	switch fieldFromModel.DataType {
 	case Bool:
-		return field.PointerBool()
+		return field.PointerBool(), nil
 	case Int:
-		return field.PointerInt()
+		return field.PointerInt(), nil
 	case Float:
-		return field.PointerFloat64()
+		return field.PointerFloat64(), nil
 	case String:
-		return field.PointerString()
+		return field.PointerString(), nil
 	case Timestamp:
-		return field.PointerTime()
+		return field.PointerTime(), nil
 	default:
-		panic("Unknown data type")
+		return nil, fmt.Errorf("The field %v has no supported data type", fieldName)
 	}
 }

@@ -98,7 +98,7 @@ func (o GreaterOrEqualFloat) Eval(d DataAccessor) (bool, error) {
 	valLeft, errLeft := o.Left.Eval(d)
 	valRight, errRight := o.Right.Eval(d)
 	if errLeft != nil || errRight != nil {
-		return false, fmt.Errorf("error in GreaterOrEqualFloat.Eval: %v, %v", errLeft, errRight)
+		return false, fmt.Errorf("error in GreaterOrEqualFloat.Eval: %w, %w", errLeft, errRight)
 	}
 	return valLeft >= valRight, nil
 }

@@ -10,8 +10,8 @@ import (
 
 type DataAccessorStringImpl struct{}
 
-func (d *DataAccessorStringImpl) GetPayloadField(fieldName string) interface{} {
-	return &fieldName
+func (d *DataAccessorStringImpl) GetPayloadField(fieldName string) (interface{}, error) {
+	return &fieldName, nil
 }
 
 func (d *DataAccessorStringImpl) GetDbField(triggerTableName string, path []string, fieldName string) (interface{}, error) {

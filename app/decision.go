@@ -58,13 +58,13 @@ func OutcomeFrom(s string) Outcome {
 type DecisionError int
 
 const (
-	NoScoreAllRulesFailed DecisionError = 100
+	PlaceholderDecisionError DecisionError = 100
 )
 
 func (d DecisionError) String() string {
 	switch d {
-	case NoScoreAllRulesFailed:
-		return "Scenario was not able to compute a score because all rules failed."
+	case PlaceholderDecisionError:
+		return "Actual decision error types will go here"
 	}
 	return ""
 }

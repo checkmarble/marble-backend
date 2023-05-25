@@ -9,16 +9,16 @@ import (
 
 type DataAccessorBoolImpl struct{}
 
-func (d *DataAccessorBoolImpl) GetPayloadField(fieldName string) interface{} {
+func (d *DataAccessorBoolImpl) GetPayloadField(fieldName string) (interface{}, error) {
 	var val bool
 	if fieldName == "true" {
 		val = true
 	} else if fieldName == "false" {
 		val = false
 	} else {
-		return nil
+		return nil, nil
 	}
-	return &val
+	return &val, nil
 }
 
 func (d *DataAccessorBoolImpl) GetDbField(triggerTableName string, path []string, fieldName string) (interface{}, error) {

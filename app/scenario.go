@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"marble/marble-backend/app/operators"
+	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
 	"runtime/debug"
 	"time"
@@ -224,20 +225,15 @@ func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStr
 	score := 0
 	ruleExecutions := make([]RuleExecution, 0)
 	for _, rule := range publishedVersion.Body.Rules {
-
-		// Evaluate single rule
-		ruleExecution, err := rule.Eval(&dataAccessor)
+		score, ruleExecutions, err = evalScenarioRule(ctx, ruleExecutionAggregationInput{
+			aggRuleExecutions: ruleExecutions,
+			aggScore:          score,
+			rule:              rule,
+			dataAccessor:      &dataAccessor,
+		}, logger)
 		if err != nil {
 			return ScenarioExecution{}, err
 		}
-		logger.InfoCtx(ctx, "Rule executed", slog.Int("score_modifier", ruleExecution.Rule.ScoreModifier), slog.String("ruleName", ruleExecution.Rule.Formula.String()), slog.Bool("result", ruleExecution.Result))
-
-		// Increment scenario score when rule is true
-		if ruleExecution.Result {
-			score += ruleExecution.Rule.ScoreModifier
-		}
-
-		ruleExecutions = append(ruleExecutions, ruleExecution)
 	}
 
 	// Compute outcome from score
@@ -267,4 +263,55 @@ func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStr
 	logger.InfoCtx(ctx, "Evaluated scenario", "score", score, "outcome", o)
 
 	return se, nil
+}
+
+type ruleExecutionAggregationInput struct {
+	aggRuleExecutions []RuleExecution
+	aggScore          int
+	rule              Rule
+	dataAccessor      operators.DataAccessor
+}
+
+func evalScenarioRule(ctx context.Context, input ruleExecutionAggregationInput, logger *slog.Logger) (score int, ruleExecutions []RuleExecution, err error) {
+	// Evaluate single rule
+	ruleExecution, err := input.rule.Eval(input.dataAccessor)
+	if err != nil {
+		ruleExecution.Rule = input.rule
+		ruleExecution, err = setRuleExecutionError(ruleExecution, err)
+		if err != nil {
+			return score, ruleExecutions, err
+		}
+		logger.InfoCtx(ctx, "Rule had an error",
+			slog.String("ruleName", input.rule.Name),
+			slog.String("ruleId", input.rule.ID),
+			slog.String("formula", input.rule.Formula.String()),
+			slog.String("error", ruleExecution.Error.String()),
+		)
+	}
+
+	// Increment scenario score when rule is true
+	if ruleExecution.Result {
+		logger.InfoCtx(ctx, "Rule executed",
+			slog.Int("score_modifier", input.rule.ScoreModifier),
+			slog.String("ruleName", input.rule.Name),
+			slog.Bool("result", ruleExecution.Result),
+		)
+		score = input.aggScore + ruleExecution.Rule.ScoreModifier
+	}
+
+	ruleExecutions = append(input.aggRuleExecutions, ruleExecution)
+	return score, ruleExecutions, nil
+}
+
+func setRuleExecutionError(ruleExecution RuleExecution, err error) (RuleExecution, error) {
+	if errors.Is(err, models.OperatorNullValueReadError) {
+		ruleExecution.Error = NullFieldRead
+	} else if errors.Is(err, models.OperatorDivisionByZeroError) {
+		ruleExecution.Error = DivisionByZero
+	} else {
+		// return early in case of an unexpected error
+		return ruleExecution, err
+	}
+	return ruleExecution, nil
+
 }

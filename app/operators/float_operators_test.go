@@ -11,14 +11,14 @@ import (
 
 type DataAccessorFloatImpl struct{}
 
-func (d *DataAccessorFloatImpl) GetPayloadField(fieldName string) interface{} {
+func (d *DataAccessorFloatImpl) GetPayloadField(fieldName string) (interface{}, error) {
 	var val float64
 	if f, err := strconv.ParseFloat(fieldName, 64); err == nil {
 		val = f
 	} else {
-		return nil
+		return nil, nil
 	}
-	return &val
+	return &val, nil
 }
 
 func (d *DataAccessorFloatImpl) GetDbField(triggerTableName string, path []string, fieldName string) (interface{}, error) {
