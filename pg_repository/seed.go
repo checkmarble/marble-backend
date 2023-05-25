@@ -288,7 +288,7 @@ func (r *PGRepository) Seed() {
 							TriggerTableName: "transactions",
 							Path:             []string{"account", "company"},
 						},
-						Right: &operators.StringValue{Text: "Company 1"},
+						Right: &operators.StringValue{Value: "Company 1"},
 					},
 					ScoreModifier: 1,
 					Name:          "Test auto-fail rule",
