@@ -3,6 +3,7 @@ package operators
 import (
 	"encoding/json"
 	"fmt"
+	"marble/marble-backend/models"
 	"math"
 	"strings"
 
@@ -61,7 +62,9 @@ func (f FloatValue) Eval(d DataAccessor) (float64, error) { return f.Value, nil 
 
 func (f FloatValue) IsValid() bool { return true }
 
-func (f FloatValue) String() string { return fmt.Sprintf("%f", f.Value) }
+func (f FloatValue) String() string {
+	return fmt.Sprintf("%f", f.Value)
+}
 
 // Marshal with added "Type" operator
 func (f FloatValue) MarshalJSON() ([]byte, error) {
@@ -115,7 +118,6 @@ func (field DbFieldFloat) Eval(d DataAccessor) (float64, error) {
 
 	valRaw, err := d.GetDbField(field.TriggerTableName, field.Path, field.FieldName)
 	if err != nil {
-		fmt.Printf("Error getting DB field: %v", err)
 		return 0, err
 	}
 
@@ -124,7 +126,7 @@ func (field DbFieldFloat) Eval(d DataAccessor) (float64, error) {
 		return 0, fmt.Errorf("DB field %s is not a float", field.FieldName)
 	}
 	if !valNullable.Valid {
-		return 0, fmt.Errorf("DB field %s is null", field.FieldName)
+		return 0, fmt.Errorf("DB field %s is null: %w", field.FieldName, models.OperatorNullValueReadError)
 	}
 	return valNullable.Float64, nil
 }
@@ -196,14 +198,17 @@ func (field PayloadFieldFloat) Eval(d DataAccessor) (float64, error) {
 		return 0, ErrEvaluatingInvalidOperator
 	}
 
-	valRaw := d.GetPayloadField(field.FieldName)
+	valRaw, err := d.GetPayloadField(field.FieldName)
+	if err != nil {
+		return 0, err
+	}
 
 	valPointer, ok := valRaw.(*float64)
 	if !ok {
 		return 0, fmt.Errorf("Payload field %s is not a pointer to a float", field.FieldName)
 	}
 	if valPointer == nil {
-		return 0, fmt.Errorf("Payload field %s is null", field.FieldName)
+		return 0, fmt.Errorf("Payload field %s is null: %w", field.FieldName, models.OperatorNullValueReadError)
 	}
 	return *valPointer, nil
 }
@@ -510,7 +515,7 @@ func (div DivideFloat) Eval(d DataAccessor) (float64, error) {
 	if err != nil {
 		return 0, err
 	} else if right == 0 {
-		return 0, fmt.Errorf("Division by 0 error: %s", div.String())
+		return 0, fmt.Errorf("Division by 0 error: %s: %w", div.String(), models.OperatorDivisionByZeroError)
 	}
 	return left / right, nil
 }

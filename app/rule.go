@@ -61,13 +61,19 @@ type RuleExecution struct {
 type RuleExecutionError int
 
 const (
-	FieldEmptyOrMissing RuleExecutionError = 200
+	DivisionByZero RuleExecutionError = 100
+	NullFieldRead  RuleExecutionError = 200
+	NoRowsRead     RuleExecutionError = 201
 )
 
 func (r RuleExecutionError) String() string {
 	switch r {
-	case FieldEmptyOrMissing:
-		return "A field in rule is empty or missing"
+	case DivisionByZero:
+		return "A division by zero occurred in a rule"
+	case NullFieldRead:
+		return "A field read in a rule is null"
+	case NoRowsRead:
+		return "No rows were read from db in a rule"
 	}
 	return ""
 }

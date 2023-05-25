@@ -73,7 +73,7 @@ func (r *PGRepository) Seed() {
 					"amount":      {DataType: app.Float},
 				},
 				LinksToSingle: map[app.LinkName]app.LinkToSingle{
-					"accounts": {
+					"account": {
 						LinkedTableName: "accounts",
 						ParentFieldName: "object_id",
 						ChildFieldName:  "account_id"},
@@ -91,6 +91,12 @@ func (r *PGRepository) Seed() {
 					"name":       {DataType: app.String},
 					"currency":   {DataType: app.String},
 					"is_frozen":  {DataType: app.Bool},
+				},
+				LinksToSingle: map[app.LinkName]app.LinkToSingle{
+					"company": {
+						LinkedTableName: "companies",
+						ParentFieldName: "object_id",
+						ChildFieldName:  "company_id"},
 				},
 			},
 			"companies": {
@@ -210,6 +216,7 @@ func (r *PGRepository) Seed() {
 					},
 					ScoreModifier: 10,
 					Name:          "Medium amount",
+					Description:   "Amount is between 10k and 100k, hence medium risk",
 				},
 				{
 					Formula: &operators.GreaterOrEqualFloat{
@@ -218,6 +225,7 @@ func (r *PGRepository) Seed() {
 					},
 					ScoreModifier: 20,
 					Name:          "High amount",
+					Description:   "Amount is greater than 100k, hence high risk",
 				},
 				{
 					Formula: &operators.StringIsInList{
@@ -228,6 +236,7 @@ func (r *PGRepository) Seed() {
 					},
 					ScoreModifier: 10,
 					Name:          "Medium risk country",
+					Description:   "Country is in the list of medium risk (european) countries",
 				},
 				{
 					Formula: &operators.StringIsInList{
@@ -238,6 +247,7 @@ func (r *PGRepository) Seed() {
 					},
 					ScoreModifier: 20,
 					Name:          "High risk country",
+					Description:   "Country is in the list of high risk (european) countries",
 				},
 				{
 					Formula: &operators.EqString{
@@ -248,6 +258,7 @@ func (r *PGRepository) Seed() {
 					},
 					ScoreModifier: -10,
 					Name:          "Low risk country",
+					Description:   "Country is domestic (France)",
 				},
 				{
 					Formula: &operators.StringIsInList{
@@ -258,15 +269,30 @@ func (r *PGRepository) Seed() {
 					},
 					ScoreModifier: 10,
 					Name:          "High risk BIC",
+					Description:   "BIC is in the list of known high risk BICs",
 				},
 				{
 					Formula: &operators.DbFieldBool{
 						FieldName:        "is_frozen",
 						TriggerTableName: "transactions",
-						Path:             []string{"accounts"},
+						Path:             []string{"account"},
 					},
 					ScoreModifier: 100,
 					Name:          "Frozen account",
+					Description:   "The account is frozen",
+				},
+				{
+					Formula: &operators.EqString{
+						Left: &operators.DbFieldString{
+							FieldName:        "name",
+							TriggerTableName: "transactions",
+							Path:             []string{"account", "company"},
+						},
+						Right: &operators.StringValue{Value: "Company 1"},
+					},
+					ScoreModifier: 1,
+					Name:          "Test auto-fail rule",
+					Description:   "This rule fails for testing purposes, if the owner company has not been ingested",
 				},
 			},
 		},

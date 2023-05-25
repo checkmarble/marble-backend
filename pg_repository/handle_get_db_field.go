@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"marble/marble-backend/app"
 	"marble/marble-backend/app/operators"
+	"marble/marble-backend/models"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -50,7 +51,7 @@ func scanRowReturnValue[T pgtype.Bool | pgtype.Int2 | pgtype.Float8 | pgtype.Tex
 	var returnVariable T
 	err := row.Scan(&returnVariable)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return returnVariable, fmt.Errorf("No rows scanned while reading DB: %w", app.ErrNoRowsReadInDB)
+		return returnVariable, fmt.Errorf("No rows scanned while reading DB: %w", models.OperatorNoRowsReadInDbError)
 	} else if err != nil {
 		return returnVariable, err
 	}
@@ -95,7 +96,7 @@ func (rep *PGRepository) queryDbForField(ctx context.Context, readParams app.DbF
 }
 
 func getBaseObjectIdFromPayload(payload app.Payload) (string, error) {
-	baseObjectIdAny := payload.ReadFieldFromPayload("object_id")
+	baseObjectIdAny, _ := payload.ReadFieldFromPayload("object_id")
 	baseObjectIdPtr, ok := baseObjectIdAny.(*string)
 	if !ok {
 		return "", fmt.Errorf("object_id in payload is not a string") // should not happen, as per input validation
