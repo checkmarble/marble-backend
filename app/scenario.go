@@ -262,9 +262,10 @@ func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStr
 	return se, nil
 }
 
-func evalScenarioRule(ctx context.Context, rule Rule, dataAccessor operators.DataAccessor, logger *slog.Logger) (score int, ruleExecution RuleExecution, err error) {
+func evalScenarioRule(ctx context.Context, rule Rule, dataAccessor operators.DataAccessor, logger *slog.Logger) (int, RuleExecution, error) {
 	// Evaluate single rule
-	ruleExecution, err = rule.Eval(dataAccessor)
+	score := 0
+	ruleExecution, err := rule.Eval(dataAccessor)
 	if err != nil {
 		ruleExecution.Rule = rule
 		ruleExecution, err = setRuleExecutionError(ruleExecution, err)
