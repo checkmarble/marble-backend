@@ -18,7 +18,7 @@ func generateInsertValues(table app.Table, payloadStructWithReader app.DynamicSt
 	i := 0
 	for fieldName := range table.Fields {
 		columnNames[i] = string(fieldName)
-		values[i] = payloadStructWithReader.ReadFieldFromDynamicStruct(fieldName)
+		values[i], _ = payloadStructWithReader.ReadFieldFromDynamicStruct(fieldName)
 		i++
 	}
 	return columnNames, values
@@ -31,7 +31,7 @@ func updateExistingVersionIfPresent(
 	payloadStructWithReader app.DynamicStructWithReader,
 	table app.Table) (err error) {
 
-	object_id := payloadStructWithReader.ReadFieldFromDynamicStruct("object_id")
+	object_id, _ := payloadStructWithReader.ReadFieldFromDynamicStruct("object_id")
 	sql, args, err := queryBuilder.
 		Select("id").
 		From(string(table.Name)).

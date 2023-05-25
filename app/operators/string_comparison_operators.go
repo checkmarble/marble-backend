@@ -22,7 +22,7 @@ func (eq EqString) Eval(d DataAccessor) (bool, error) {
 	valLeft, errLeft := eq.Left.Eval(d)
 	valRight, errRight := eq.Right.Eval(d)
 	if errLeft != nil || errRight != nil {
-		return false, fmt.Errorf("error in EqBool.Eval: %v, %v", errLeft, errRight)
+		return false, fmt.Errorf("error in EqString.Eval: %w, %w", errLeft, errRight)
 	}
 	return valLeft == valRight, nil
 }
