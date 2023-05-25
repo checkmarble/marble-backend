@@ -207,7 +207,7 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 			return
 		}
 
-		payloadStructWithReader, err := app.ParseToDataModelObject(ctx, table, requestData.TriggerObjectRaw)
+		payloadStructWithReader, err := app.ParseToDataModelObject(table, requestData.TriggerObjectRaw)
 		if errors.Is(err, app.ErrFormatValidation) {
 			http.Error(w, "Format validation error", http.StatusUnprocessableEntity) // 422
 			return
@@ -225,7 +225,7 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 			http.Error(w, "", http.StatusUnprocessableEntity)
 			return
 		}
-		payloadForArchive := app.PayloadForArchive{TableName: requestData.TriggerObjectType, Data: triggerObjectMap}
+		payloadForArchive := models.PayloadForArchive{TableName: requestData.TriggerObjectType, Data: triggerObjectMap}
 		decision, err := api.app.CreateDecision(ctx, app.CreateDecisionInput{
 			ScenarioID:              requestData.ScenarioID,
 			PayloadForArchive:       payloadForArchive,

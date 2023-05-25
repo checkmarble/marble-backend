@@ -32,7 +32,7 @@ func TestHandleFirstIngestObject(t *testing.T) {
 
 	object_id_uuid, _ := uuid.NewV4()
 	object_id := object_id_uuid.String()
-	payload, err := app.ParseToDataModelObject(ctx, transactions, []byte(fmt.Sprintf(`{"object_id": "%s", "updated_at": "2021-01-01T00:00:00Z"}`, object_id)))
+	payload, err := app.ParseToDataModelObject(transactions, []byte(fmt.Sprintf(`{"object_id": "%s", "updated_at": "2021-01-01T00:00:00Z"}`, object_id)))
 	if err != nil {
 		t.Fatalf("Could not parse payload: %s", err)
 	}
@@ -84,7 +84,7 @@ func TestHandleRenewedIngestObject(t *testing.T) {
 	logger := globalTestParams.logger
 
 	object_id, err := uuid.NewV4()
-	payload, err := app.ParseToDataModelObject(ctx, transactions, []byte(fmt.Sprintf(`{"object_id": "%s", "updated_at": "2021-01-01T00:00:00Z"}`, object_id.String())))
+	payload, err := app.ParseToDataModelObject(transactions, []byte(fmt.Sprintf(`{"object_id": "%s", "updated_at": "2021-01-01T00:00:00Z"}`, object_id.String())))
 	if err != nil {
 		t.Fatalf("Could not parse payload: %s", err)
 	}

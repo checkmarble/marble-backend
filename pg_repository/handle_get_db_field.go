@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"marble/marble-backend/app"
 	"marble/marble-backend/app/operators"
 	"marble/marble-backend/models"
 
@@ -13,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func (rep *PGRepository) GetDbField(ctx context.Context, readParams app.DbFieldReadParams) (interface{}, error) {
+func (rep *PGRepository) GetDbField(ctx context.Context, readParams models.DbFieldReadParams) (interface{}, error) {
 	if len(readParams.Path) == 0 {
 		return nil, fmt.Errorf("Path is empty: %w", operators.ErrDbReadInconsistentWithDataModel)
 	}
@@ -58,7 +57,7 @@ func scanRowReturnValue[T pgtype.Bool | pgtype.Int2 | pgtype.Float8 | pgtype.Tex
 	return returnVariable, nil
 }
 
-func (rep *PGRepository) queryDbForField(ctx context.Context, readParams app.DbFieldReadParams) (pgx.Row, error) {
+func (rep *PGRepository) queryDbForField(ctx context.Context, readParams models.DbFieldReadParams) (pgx.Row, error) {
 	baseObjectId, err := getBaseObjectIdFromPayload(readParams.Payload)
 	if err != nil {
 		return nil, err
@@ -95,7 +94,7 @@ func (rep *PGRepository) queryDbForField(ctx context.Context, readParams app.DbF
 	return rows, nil
 }
 
-func getBaseObjectIdFromPayload(payload app.Payload) (string, error) {
+func getBaseObjectIdFromPayload(payload models.Payload) (string, error) {
 	baseObjectIdAny, _ := payload.ReadFieldFromPayload("object_id")
 	baseObjectIdPtr, ok := baseObjectIdAny.(*string)
 	if !ok {
@@ -109,7 +108,7 @@ func getBaseObjectIdFromPayload(payload app.Payload) (string, error) {
 	return baseObjectId, nil
 }
 
-func addJoinsOnIntermediateTables(query sq.SelectBuilder, readParams app.DbFieldReadParams, firstTable models.Table) (sq.SelectBuilder, error) {
+func addJoinsOnIntermediateTables(query sq.SelectBuilder, readParams models.DbFieldReadParams, firstTable models.Table) (sq.SelectBuilder, error) {
 	currentTable := firstTable
 	for _, linkName := range readParams.Path {
 		link, ok := currentTable.LinksToSingle[linkName]
@@ -134,7 +133,7 @@ func rowIsValid(tableName models.TableName) sq.Eq {
 	return sq.Eq{fmt.Sprintf("%s.valid_until", tableName): "Infinity"}
 }
 
-func getLastTableFromPath(params app.DbFieldReadParams) (models.Table, error) {
+func getLastTableFromPath(params models.DbFieldReadParams) (models.Table, error) {
 	firstTable, ok := params.DataModel.Tables[params.TriggerTableName]
 	if !ok {
 		return models.Table{}, fmt.Errorf("Table %s not found in data model", params.TriggerTableName)

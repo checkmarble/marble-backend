@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"marble/marble-backend/models"
 
 	"golang.org/x/exp/slog"
 )
@@ -22,8 +23,8 @@ func (app *App) ListDecisions(ctx context.Context, orgID string) ([]Decision, er
 type CreateDecisionInput struct {
 	OrganizationID          string
 	ScenarioID              string
-	PayloadForArchive       PayloadForArchive
-	PayloadStructWithReader Payload
+	PayloadForArchive       models.PayloadForArchive
+	PayloadStructWithReader models.Payload
 }
 
 func (app *App) CreateDecision(ctx context.Context, input CreateDecisionInput, logger *slog.Logger) (Decision, error) {

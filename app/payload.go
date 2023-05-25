@@ -1,34 +1,17 @@
 package app
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"marble/marble-backend/models"
+	"marble/marble-backend/pure_utils"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/go-playground/validator"
 	dynamicstruct "github.com/ompluscator/dynamic-struct"
 )
-
-func capitalize(str string) string {
-	runes := []rune(str)
-	runes[0] = unicode.ToUpper(runes[0])
-	return string(runes)
-}
-
-type Payload struct {
-	Reader dynamicstruct.Reader
-	Table  models.Table
-}
-
-type PayloadForArchive struct {
-	TableName string
-	Data      map[string]interface{}
-}
 
 var ErrFormatValidation = errors.New("The input object is not valid")
 
@@ -54,15 +37,15 @@ func buildDynamicStruct(fields map[models.FieldName]models.Field) dynamicstruct.
 		default:
 			switch field.DataType {
 			case models.Bool:
-				custom_type.AddField(capitalize(name), boolPointerType, "")
+				custom_type.AddField(pure_utils.Capitalize(name), boolPointerType, "")
 			case models.Int:
-				custom_type.AddField(capitalize(name), intPointerType, "")
+				custom_type.AddField(pure_utils.Capitalize(name), intPointerType, "")
 			case models.Float:
-				custom_type.AddField(capitalize(name), floatPointerType, "")
+				custom_type.AddField(pure_utils.Capitalize(name), floatPointerType, "")
 			case models.String:
-				custom_type.AddField(capitalize(name), stringPointerType, "")
+				custom_type.AddField(pure_utils.Capitalize(name), stringPointerType, "")
 			case models.Timestamp:
-				custom_type.AddField(capitalize(name), timePointerType, "")
+				custom_type.AddField(pure_utils.Capitalize(name), timePointerType, "")
 			}
 		}
 	}
@@ -93,7 +76,7 @@ func validateParsedJson(instance interface{}) error {
 	return nil
 }
 
-func ParseToDataModelObject(_ context.Context, table models.Table, jsonBody []byte) (Payload, error) {
+func ParseToDataModelObject(table models.Table, jsonBody []byte) (models.Payload, error) {
 	fields := table.Fields
 
 	custom_type := buildDynamicStruct(fields)
@@ -110,7 +93,7 @@ func ParseToDataModelObject(_ context.Context, table models.Table, jsonBody []by
 	decoder.DisallowUnknownFields()
 
 	if err := decoder.Decode(&dynamicStructInstance); err != nil {
-		return Payload{}, fmt.Errorf("%w: %w", ErrFormatValidation, err)
+		return models.Payload{}, fmt.Errorf("%w: %w", ErrFormatValidation, err)
 	}
 
 	// If the data has been successfully parsed, we can validate it
@@ -118,33 +101,8 @@ func ParseToDataModelObject(_ context.Context, table models.Table, jsonBody []by
 	// There are two possible cases of error
 	err := validateParsedJson(dynamicStructInstance)
 	if err != nil {
-		return Payload{}, err
+		return models.Payload{}, err
 	}
 
-	return Payload{Reader: dynamicStructReader, Table: table}, nil
-}
-
-func (payload Payload) ReadFieldFromPayload(fieldName models.FieldName) (interface{}, error) {
-	field := payload.Reader.GetField(capitalize(string(fieldName)))
-	table := payload.Table
-	fields := table.Fields
-	fieldFromModel, ok := fields[fieldName]
-	if !ok {
-		return nil, fmt.Errorf("The field %v is not in table %v schema", fieldName, table.Name)
-	}
-
-	switch fieldFromModel.DataType {
-	case models.Bool:
-		return field.PointerBool(), nil
-	case models.Int:
-		return field.PointerInt(), nil
-	case models.Float:
-		return field.PointerFloat64(), nil
-	case models.String:
-		return field.PointerString(), nil
-	case models.Timestamp:
-		return field.PointerTime(), nil
-	default:
-		return nil, fmt.Errorf("The field %v has no supported data type", fieldName)
-	}
+	return models.Payload{Reader: dynamicStructReader, Table: table}, nil
 }

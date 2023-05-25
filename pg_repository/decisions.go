@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"marble/marble-backend/app"
+	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
 
 	"github.com/jackc/pgx/v5"
@@ -47,7 +48,7 @@ func (d *dbDecision) toDomain() app.Decision {
 		ScenarioVersion:     d.ScenarioVersion,
 		Score:               d.Score,
 		DecisionError:       app.DecisionError(d.ErrorCode),
-		PayloadForArchive:   app.PayloadForArchive{TableName: d.TriggerObjectType, Data: triggerObject},
+		PayloadForArchive:   models.PayloadForArchive{TableName: d.TriggerObjectType, Data: triggerObject},
 	}
 }
 

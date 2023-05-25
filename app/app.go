@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"marble/marble-backend/models"
-
-	"golang.org/x/exp/slog"
 )
 
 type App struct {
@@ -27,11 +25,8 @@ type RepositoryInterface interface {
 	GetDecision(ctx context.Context, orgID string, decisionID string) (Decision, error)
 	ListDecisions(ctx context.Context, orgID string) ([]Decision, error)
 
-	// Ingestion
-	IngestObject(ctx context.Context, payload Payload, table models.Table, logger *slog.Logger) (err error)
-
 	// DB field access
-	GetDbField(ctx context.Context, readParams DbFieldReadParams) (interface{}, error)
+	GetDbField(ctx context.Context, readParams models.DbFieldReadParams) (interface{}, error)
 }
 
 func New(r RepositoryInterface) (*App, error) {

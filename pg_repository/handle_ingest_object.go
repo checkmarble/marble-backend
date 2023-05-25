@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"marble/marble-backend/app"
 	"marble/marble-backend/models"
 
 	sq "github.com/Masterminds/squirrel"
@@ -12,7 +11,7 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-func generateInsertValues(table models.Table, payloadStructWithReader app.Payload) (columnNames []string, values []interface{}) {
+func generateInsertValues(table models.Table, payloadStructWithReader models.Payload) (columnNames []string, values []interface{}) {
 	nbFields := len(table.Fields)
 	columnNames = make([]string, nbFields)
 	values = make([]interface{}, nbFields)
@@ -29,7 +28,7 @@ func updateExistingVersionIfPresent(
 	ctx context.Context,
 	queryBuilder sq.StatementBuilderType,
 	tx pgx.Tx,
-	payloadStructWithReader app.Payload,
+	payloadStructWithReader models.Payload,
 	table models.Table) (err error) {
 
 	object_id, _ := payloadStructWithReader.ReadFieldFromPayload("object_id")
@@ -67,7 +66,7 @@ func updateExistingVersionIfPresent(
 	return nil
 }
 
-func (r *PGRepository) IngestObject(ctx context.Context, payloadStructWithReader app.Payload, table models.Table, logger *slog.Logger) (err error) {
+func (r *PGRepository) IngestObject(ctx context.Context, payloadStructWithReader models.Payload, table models.Table, logger *slog.Logger) (err error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("Error starting transaction: %w", err)

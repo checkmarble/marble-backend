@@ -167,7 +167,11 @@ var (
 	ErrScenarioHasNoLiveVersion                         = errors.New("scenario has no live version")
 )
 
-func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStructWithReader Payload, dataModel models.DataModel, logger *slog.Logger) (se ScenarioExecution, err error) {
+type ClientDataRepositoryItf interface {
+	GetDbField(ctx context.Context, readParams models.DbFieldReadParams) (interface{}, error)
+}
+
+func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStructWithReader models.Payload, dataModel models.DataModel, logger *slog.Logger) (se ScenarioExecution, err error) {
 
 	///////////////////////////////
 	// Recover in case the evaluation panicked.

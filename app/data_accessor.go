@@ -7,23 +7,15 @@ import (
 
 type DataAccessorImpl struct {
 	DataModel  models.DataModel
-	Payload    Payload
+	Payload    models.Payload
 	repository RepositoryInterface
-}
-
-type DbFieldReadParams struct {
-	TriggerTableName models.TableName
-	Path             []models.LinkName
-	FieldName        models.FieldName
-	DataModel        models.DataModel
-	Payload          Payload
 }
 
 func (d *DataAccessorImpl) GetPayloadField(fieldName string) (interface{}, error) {
 	return d.Payload.ReadFieldFromPayload(models.FieldName(fieldName))
 }
 func (d *DataAccessorImpl) GetDbField(triggerTableName string, path []string, fieldName string) (interface{}, error) {
-	return d.repository.GetDbField(context.TODO(), DbFieldReadParams{
+	return d.repository.GetDbField(context.TODO(), models.DbFieldReadParams{
 		TriggerTableName: models.TableName(triggerTableName),
 		Path:             models.ToLinkNames(path),
 		FieldName:        models.FieldName(fieldName),

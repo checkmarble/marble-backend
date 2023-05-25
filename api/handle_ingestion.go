@@ -14,7 +14,7 @@ import (
 )
 
 type IngestionInterface interface {
-	IngestObject(ctx context.Context, payload app.Payload, table models.Table, logger *slog.Logger) (err error)
+	IngestObject(ctx context.Context, payload models.Payload, table models.Table, logger *slog.Logger) (err error)
 }
 
 func (api *API) handleIngestion() http.HandlerFunc {
@@ -26,6 +26,8 @@ func (api *API) handleIngestion() http.HandlerFunc {
 			return
 		}
 		logger := api.logger.With(slog.String("orgId", orgID))
+
+		usecase := api.usecases.NewIngestionUseCase()
 
 		dataModel, err := api.app.GetDataModel(ctx, orgID)
 		if err != nil {
@@ -51,7 +53,7 @@ func (api *API) handleIngestion() http.HandlerFunc {
 			return
 		}
 
-		payloadStructWithReader, err := app.ParseToDataModelObject(ctx, table, object_body)
+		payloadStructWithReader, err := app.ParseToDataModelObject(table, object_body)
 		if errors.Is(err, app.ErrFormatValidation) {
 			http.Error(w, "", http.StatusUnprocessableEntity)
 			return
@@ -61,7 +63,7 @@ func (api *API) handleIngestion() http.HandlerFunc {
 			return
 		}
 
-		err = api.app.IngestObject(ctx, payloadStructWithReader, table, logger)
+		err = usecase.IngestObject(ctx, payloadStructWithReader, table, logger)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Error while ingesting object:\n"+err.Error())
 			http.Error(w, "", http.StatusInternalServerError)
