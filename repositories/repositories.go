@@ -13,6 +13,7 @@ type Repositories struct {
 	MarbleJwtRepository     MarbleJwtRepository
 	UserRepository          UserRepository
 	ApiKeyRepository        ApiKeyRepository
+	OrganizationRepository  OrganizationRepository
 }
 
 func NewRepositories(marbleJwtSigningKey rsa.PrivateKey, firebaseClient auth.Client, users []User, pgRepository *pg_repository.PGRepository) *Repositories {
@@ -23,7 +24,8 @@ func NewRepositories(marbleJwtSigningKey rsa.PrivateKey, firebaseClient auth.Cli
 		MarbleJwtRepository: MarbleJwtRepository{
 			jwtSigningPrivateKey: marbleJwtSigningKey,
 		},
-		UserRepository:   NewHardcodedUserRepository(users),
-		ApiKeyRepository: pgRepository,
+		UserRepository:         NewHardcodedUserRepository(users),
+		ApiKeyRepository:       pgRepository,
+		OrganizationRepository: pgRepository,
 	}
 }

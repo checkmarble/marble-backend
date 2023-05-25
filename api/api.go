@@ -29,7 +29,6 @@ type AppInterface interface {
 	ScenarioAppInterface
 	ScenarioIterationAppInterface
 	ScenarioIterationRuleAppInterface
-	OrganizationAppInterface
 	DecisionInterface
 	IngestionInterface
 	ScenarioPublicationAppInterface
@@ -100,4 +99,9 @@ func PresentModel(w http.ResponseWriter, model any) {
 		panic(err)
 	}
 
+}
+
+func PresentNothing(w http.ResponseWriter) {
+	w.Header().Del("Content-Type")
+	w.WriteHeader(http.StatusNoContent)
 }

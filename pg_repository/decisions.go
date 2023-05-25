@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"marble/marble-backend/app"
+	"marble/marble-backend/utils"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -129,6 +130,7 @@ func (r *PGRepository) StoreDecision(ctx context.Context, orgID string, decision
 	sql, args, err := r.queryBuilder.
 		Insert("decisions").
 		Columns(
+			"id",
 			"org_id",
 			"outcome",
 			"scenario_id",
@@ -141,6 +143,7 @@ func (r *PGRepository) StoreDecision(ctx context.Context, orgID string, decision
 			"trigger_object_type",
 		).
 		Values(
+			utils.NewPrimaryKey(orgID),
 			orgID,
 			decision.Outcome.String(),
 			decision.ScenarioID,

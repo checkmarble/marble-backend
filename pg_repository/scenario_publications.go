@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"marble/marble-backend/app"
+	"marble/marble-backend/utils"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
@@ -69,8 +70,8 @@ func (r *PGRepository) ListScenarioPublications(ctx context.Context, orgID strin
 }
 
 type dbCreateScenarioPublication struct {
-	OrgID string `db:"org_id"`
-	// UserID              string `db:"user_id"`
+	Id                  string `db:"id"`
+	OrgID               string `db:"org_id"`
 	ScenarioID          string `db:"scenario_id"`
 	ScenarioIterationID string `db:"scenario_iteration_id"`
 	PublicationAction   string `db:"publication_action"`
@@ -128,8 +129,8 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 				return nil, fmt.Errorf("scenario iteration(id: %s) is already live", *liveSIID)
 			}
 			unpublishOldIteration, err := r.createScenarioPublication(ctx, tx, dbCreateScenarioPublication{
-				OrgID: orgID,
-				// UserID: sp.UserID,
+				Id:                  utils.NewPrimaryKey(orgID),
+				OrgID:               orgID,
 				ScenarioID:          scenarioID,
 				ScenarioIterationID: *liveSIID,
 				PublicationAction:   app.Unpublish.String(),
@@ -146,8 +147,8 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 		}
 
 		publishNewIteration, err := r.createScenarioPublication(ctx, tx, dbCreateScenarioPublication{
-			OrgID: orgID,
-			// UserID: sp.UserID,
+			Id:                  utils.NewPrimaryKey(orgID),
+			OrgID:               orgID,
 			ScenarioID:          scenarioID,
 			ScenarioIterationID: sp.ScenarioIterationID,
 			PublicationAction:   app.Publish.String(),
@@ -167,8 +168,8 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 			return nil, fmt.Errorf("unable to unpublish: scenario iteration(id: %s) is not live", sp.ScenarioIterationID)
 		}
 		unpublishOldIteration, err := r.createScenarioPublication(ctx, tx, dbCreateScenarioPublication{
-			OrgID: orgID,
-			// UserID: sp.UserID,
+			Id:                  utils.NewPrimaryKey(orgID),
+			OrgID:               orgID,
 			ScenarioID:          scenarioID,
 			ScenarioIterationID: sp.ScenarioIterationID,
 			PublicationAction:   app.Unpublish.String(),

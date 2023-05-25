@@ -12,7 +12,7 @@ func corsOption(corsAllowLocalhost bool) cors.Options {
 	return cors.Options{
 		AllowedOrigins:   allowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Authorization"},
+		AllowedHeaders:   []string{"Authorization", "Content-Type"},
 		AllowCredentials: false,
 		MaxAge:           7200, // Maximum value not ignored by any of major browsers
 	}

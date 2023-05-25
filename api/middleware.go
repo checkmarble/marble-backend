@@ -39,7 +39,7 @@ func (api *API) credentialsMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		usecase := api.usecases.MarbleTokenUseCase()
+		usecase := api.usecases.NewMarbleTokenUseCase()
 		ctx := r.Context()
 		creds, err := usecase.ValidateCredentials(ctx, jwtToken, apiKey)
 		if err != nil {

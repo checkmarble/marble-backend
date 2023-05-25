@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"marble/marble-backend/app"
 	"marble/marble-backend/app/operators"
+	"marble/marble-backend/utils"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
@@ -108,6 +109,7 @@ func (r *PGRepository) ListScenarioIterationRules(ctx context.Context, orgID str
 }
 
 type dbCreateScenarioIterationRuleInput struct {
+	Id                  string `db:"id"`
 	OrgID               string `db:"org_id"`
 	ScenarioIterationID string `db:"scenario_iteration_id"`
 	DisplayOrder        int    `db:"display_order"`
@@ -119,6 +121,7 @@ type dbCreateScenarioIterationRuleInput struct {
 
 func (r *PGRepository) CreateScenarioIterationRule(ctx context.Context, orgID string, rule app.CreateRuleInput) (app.Rule, error) {
 	dbCreateRuleInput := dbCreateScenarioIterationRuleInput{
+		Id:                  utils.NewPrimaryKey(orgID),
 		OrgID:               orgID,
 		ScenarioIterationID: rule.ScenarioIterationID,
 		DisplayOrder:        rule.DisplayOrder,
@@ -211,6 +214,7 @@ func (r *PGRepository) createScenarioIterationRules(ctx context.Context, tx pgx.
 	query := r.queryBuilder.
 		Insert("scenario_iteration_rules").
 		Columns(
+			"id",
 			"scenario_iteration_id",
 			"org_id",
 			"display_order",
@@ -228,6 +232,7 @@ func (r *PGRepository) createScenarioIterationRules(ctx context.Context, tx pgx.
 		// append all values to the query
 		query = query.
 			Values(
+				utils.NewPrimaryKey(orgID),
 				scenarioIterationID,
 				orgID,
 				rule.DisplayOrder,

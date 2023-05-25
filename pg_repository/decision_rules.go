@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"marble/marble-backend/app"
+	"marble/marble-backend/utils"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -37,6 +38,7 @@ func (r *PGRepository) createDecisionRules(ctx context.Context, tx pgx.Tx, orgID
 	query := r.queryBuilder.
 		Insert("decision_rules").
 		Columns(
+			"id",
 			"org_id",
 			"decision_id",
 			"name",
@@ -49,6 +51,7 @@ func (r *PGRepository) createDecisionRules(ctx context.Context, tx pgx.Tx, orgID
 	for _, re := range ruleExecutions {
 		query = query.
 			Values(
+				utils.NewPrimaryKey(orgID),
 				orgID,
 				decisionID,
 				re.Rule.Name,

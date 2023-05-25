@@ -21,7 +21,7 @@ func NewHardcodedUserRepository(hardcodedUsers []User) UserRepository {
 	repo := UserRepositoryHardcoded{}
 
 	for _, user := range hardcodedUsers {
-		repo.users.Store(user.UserId, &user)
+		repo.users.Store(user.UserId, user)
 	}
 
 	return &repo
@@ -30,9 +30,9 @@ func NewHardcodedUserRepository(hardcodedUsers []User) UserRepository {
 func (repo *UserRepositoryHardcoded) findUser(predicate func(user User) bool) *User {
 	var result *User
 	repo.users.Range(func(_, u interface{}) bool {
-		user := u.(*User)
-		if predicate(*user) {
-			result = user
+		user := u.(User)
+		if predicate(user) {
+			result = &user
 			return false
 		}
 		return true
@@ -46,7 +46,8 @@ func (repo *UserRepositoryHardcoded) findUserById(userId string) *User {
 	if !ok {
 		return nil
 	}
-	return user.(*User)
+	result := user.(User)
+	return &result
 }
 
 func (repo *UserRepositoryHardcoded) UserByFirebaseUid(firebaseUid string) *User {
@@ -67,5 +68,6 @@ func (repo *UserRepositoryHardcoded) UpdateFirebaseId(userId string, firebaseUid
 		return fmt.Errorf("User %s: %w", userId, NotFoundError)
 	}
 	user.FirebaseUid = firebaseUid
+	repo.users.Store(userId, *user)
 	return nil
 }

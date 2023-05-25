@@ -121,7 +121,7 @@ func (api *API) routes() {
 			routerAdmin.Route("/organizations", func(r chi.Router) {
 				r.Get("/", api.handleGetOrganizations())
 
-				r.With(httpin.NewInput(CreateOrganizationInput{})).
+				r.With(httpin.NewInput(CreateOrganizationInputDto{})).
 					With(api.enforcePermissionMiddleware(ORGANIZATIONS_CREATE)).
 					Post("/", api.handlePostOrganization())
 
