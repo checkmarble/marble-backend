@@ -18,7 +18,7 @@ import Tooltip from "@mui/material/Tooltip";
 import Avatar from "@mui/material/Avatar";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
-import { Divider } from "@mui/material";
+import Divider from "@mui/material/Divider";
 import { AuthenticatedUser, PageLink } from "@/models";
 import { useNavigate } from "react-router-dom";
 import { useAuthenticatedUser } from "@/services";

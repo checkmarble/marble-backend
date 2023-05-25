@@ -1,5 +1,7 @@
 import "./App.css";
-import { Box, CssBaseline, LinearProgress } from "@mui/material";
+import CssBaseline from "@mui/material/CssBaseline";
+import Box from "@mui/material/Box";
+import LinearProgress from "@mui/material/LinearProgress";
 import { Outlet } from "react-router-dom";
 import { AuthenticatedUserContext, useAuthentication } from "./services";
 import services from "@/injectServices";

@@ -22,7 +22,7 @@ export async function fetchAllOrganizations(
   return dtos.organizations.map(adaptOrganization);
 }
 
-export async function createOrganization(
+export async function postOrganization(
   repository: OrganizationRepository,
   create: CreateOrganization
 ): Promise<Organization> {

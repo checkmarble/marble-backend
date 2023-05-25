@@ -17,7 +17,7 @@ export function backofficeRoutes() {
         element={<OrganizationsPage />}
       />
       <Route
-        path={`/${PathFragment.OrganizationDetails}/:organisationId`}
+        path={`/${PathFragment.OrganizationDetails}/:organizationId`}
         element={<OrganizationDetailsPage />}
       />
     </Route>

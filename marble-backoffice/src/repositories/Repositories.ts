@@ -1,11 +1,13 @@
 import { FirebaseWrapper } from "@/infra/firebase";
 import { AuthenticationRepository } from "./AuthenticationRepository";
 import { OrganizationRepository } from "./OrganizationRepository";
+import { ScenariosRepository } from "./ScenariosRepository";
 import { MarbleApi } from "@/infra/MarbleApi";
 
 export interface Repositories {
   authenticationRepository: AuthenticationRepository;
   organizationRepository: OrganizationRepository;
+  scenarioRepository: ScenariosRepository;
 }
 
 export function makeRepositories(
@@ -20,5 +22,6 @@ export function makeRepositories(
   return {
     authenticationRepository: authenticationRepository,
     organizationRepository: { marbleApi },
+    scenarioRepository: { marbleApi },
   };
 }

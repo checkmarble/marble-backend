@@ -7,6 +7,7 @@ import {
 } from "./fetchUtils";
 
 const ORGANIZATION_URL_PATH = "organizations";
+const SCENARIO_URL_PATH = "scenarios";
 
 export class MarbleApi {
   fetchFirebaseIdToken: () => Promise<string>;
@@ -112,4 +113,15 @@ export class MarbleApi {
       body: createOrganizationBody,
     });
   }
+
+  async scenariosOfOrganization(organizationId: string): Promise<unknown> {
+    return this.getAuthorizedJson(
+      urlWithOrganizationId(SCENARIO_URL_PATH, organizationId)
+    );
+  }
+}
+
+function urlWithOrganizationId(path: string, organizationId: string): string {
+  const r = new URLSearchParams({ "organization-id": organizationId });
+  return `${path}/?${r.toString()}`;
 }
