@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -90,17 +89,4 @@ func New(ctx context.Context, port string, a AppInterface, usecases usecases.Use
 	}
 
 	return srv, nil
-}
-
-func PresentModel(w http.ResponseWriter, model any) {
-	err := json.NewEncoder(w).Encode(model)
-	if err != nil {
-		panic(err)
-	}
-
-}
-
-func PresentNothing(w http.ResponseWriter) {
-	w.Header().Del("Content-Type")
-	w.WriteHeader(http.StatusNoContent)
 }
