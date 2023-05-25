@@ -27,6 +27,7 @@ func (usecases *Usecases) NewMarbleTokenUseCase() MarbleTokenUseCase {
 func (usecases *Usecases) NewOrganizationUseCase() OrganizationUseCase {
 	return OrganizationUseCase{
 		organizationRepository: usecases.Repositories.OrganizationRepository,
+		datamodelRepository:    usecases.Repositories.DataModelRepository,
 	}
 }
 
