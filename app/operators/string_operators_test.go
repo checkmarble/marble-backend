@@ -132,7 +132,7 @@ func TestMarshallBoolOperatorsString(t *testing.T) {
 		{
 			name:     "scalar value",
 			operator: &StringValue{Value: "abc"},
-			expected: `{"type":"STRING_CONSTANT","staticData":{"text":"abc"}}`,
+			expected: `{"type":"STRING_CONSTANT","staticData":{"value":"abc"}}`,
 		},
 	}
 
@@ -158,7 +158,7 @@ func TestUnmarshallBoolOperatorsString(t *testing.T) {
 		{
 			name:     "string scalar value",
 			expected: &StringValue{Value: "abc"},
-			json:     `{"type":"STRING_CONSTANT","staticData":{"text":"abc"}}`,
+			json:     `{"type":"STRING_CONSTANT","staticData":{"value":"abc"}}`,
 		},
 	}
 

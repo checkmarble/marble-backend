@@ -437,7 +437,7 @@ func TestMarshallBoolOperators(t *testing.T) {
 				Str:  &StringValue{Value: "a"},
 				List: &StringListValue{Value: []string{"a", "b", "c"}},
 			},
-			expected: `{"type":"STRING_IS_IN_LIST","children":[{"type":"STRING_CONSTANT","staticData":{"text":"a"}},{"type":"STRING_LIST_CONSTANT","staticData":{"strings":["a","b","c"]}}]}`,
+			expected: `{"type":"STRING_IS_IN_LIST","children":[{"type":"STRING_CONSTANT","staticData":{"value":"a"}},{"type":"STRING_LIST_CONSTANT","staticData":{"value":["a","b","c"]}}]}`,
 		},
 	}
 
@@ -508,7 +508,7 @@ func TestUnmarshallBoolOperators(t *testing.T) {
 				Str:  &StringValue{Value: "a"},
 				List: &StringListValue{Value: []string{"a", "b", "c"}},
 			},
-			json: `{"type":"STRING_IS_IN_LIST","children":[{"type":"STRING_CONSTANT","staticData":{"text":"a"}},{"type":"STRING_LIST_CONSTANT","staticData":{"strings":["a","b","c"]}}]}`,
+			json: `{"type":"STRING_IS_IN_LIST","children":[{"type":"STRING_CONSTANT","staticData":{"value":"a"}},{"type":"STRING_LIST_CONSTANT","staticData":{"value":["a","b","c"]}}]}`,
 		},
 	}
 
