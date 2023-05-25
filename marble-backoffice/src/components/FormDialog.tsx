@@ -6,6 +6,8 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
+import { showLoader, useLoading } from "@/hooks/Loading";
+import DelayedLinearProgress from "./DelayedLinearProgress";
 
 interface FormDialogProps {
   open: boolean;
@@ -13,31 +15,36 @@ interface FormDialogProps {
   message: string;
   inputLabel: string;
   okTitle: string;
-  setDialogOpen: (open: boolean)=> void;
-  onValidate: (text: string) => void;
+  setDialogOpen: (open: boolean) => void;
+  onValidate: (text: string) => Promise<void>;
 }
 export default function FormDialog(props: PropsWithChildren<FormDialogProps>) {
   const [text, setText] = useState("");
+  const [formLoading, formLoadingDispatcher] = useLoading();
 
   const handleClose = () => {
-    props.setDialogOpen(false)
+    props.setDialogOpen(false);
   };
 
-  const handleValidate = () => {
-    setText("")
-    props.setDialogOpen(false)
-    props.onValidate(text);
+  const handleValidate = async () => {
+    await showLoader(formLoadingDispatcher, props.onValidate(text));
+    setText("");
+    props.setDialogOpen(false);
   };
 
-  const valid = !!text.trim()
+  const valid = !!text.trim();
 
   const handleTextChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setText(event.target.value);
   };
 
+  const formDisable = formLoading;
+
   return (
     <div>
       <Dialog open={props.open} onClose={handleClose}>
+        <DelayedLinearProgress loading={formLoading} />
+
         <DialogTitle>{props.title}</DialogTitle>
         <DialogContent>
           <DialogContentText>{props.message}</DialogContentText>
@@ -52,11 +59,15 @@ export default function FormDialog(props: PropsWithChildren<FormDialogProps>) {
             variant="standard"
             value={text}
             onChange={handleTextChange}
+            disabled={formDisable}
           />
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>Cancel</Button>
-          <Button onClick={handleValidate} disabled={!valid} >{props.okTitle}</Button>
+
+          <Button onClick={handleValidate} disabled={!valid || formDisable}>
+            {props.okTitle}
+          </Button>
         </DialogActions>
       </Dialog>
     </div>

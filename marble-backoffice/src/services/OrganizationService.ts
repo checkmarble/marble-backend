@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { type CreateOrganization, type Organization } from "@/models";
 import {
   OrganizationRepository,
   fetchOrganizations,
   createOrganization,
 } from "@/repositories";
+import { useSimpleLoader } from "@/hooks/SimpleLoader";
+import { type LoadingDispatcher } from "@/hooks/Loading";
 
 export class OrganizationService {
   organizationRepository: OrganizationRepository;
@@ -22,19 +24,18 @@ export class OrganizationService {
   }
 }
 
-export function useAllOrganizations(service: OrganizationService) {
-  const [allOrganizations, setAllOrganizations] = useState<
-    Organization[] | null
-  >(null);
-
-  const fetchAllOrganizations = useCallback(async () => {
-    setAllOrganizations(await service.allOrganization());
-  }, [service]);
+export function useAllOrganizations(
+  service: OrganizationService,
+  loadingDispatcher: LoadingDispatcher
+) {
   
-  useEffect(() => {
-    fetchAllOrganizations()
-  }, [fetchAllOrganizations]);
+  const loadAllOrganizations = useCallback(() => {
+    return service.allOrganization();
+  }, [service]);
 
+  const [allOrganizations, fetchAllOrganizations] = useSimpleLoader<
+    Organization[]
+  >(loadingDispatcher, loadAllOrganizations);
 
   return {
     allOrganizations,

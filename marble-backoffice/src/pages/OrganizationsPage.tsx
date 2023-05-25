@@ -14,11 +14,17 @@ import ListItemAvatar from "@mui/material/ListItemAvatar";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import FormDialog from "@/components/FormDialog";
+import { useLoading } from "@/hooks/Loading";
+import DelayedLinearProgress from "@/components/DelayedLinearProgress";
 
 function OrganizationsPage() {
+  const [pageLoading, pageLoadingDispatcher] = useLoading();
+
   const { allOrganizations, fetchAllOrganizations } = useAllOrganizations(
-    services().organizationService
+    services().organizationService,
+    pageLoadingDispatcher
   );
+
   const [createOrgaDialogOpen, setCreateOrgaDialogOpen] = useState(false);
 
   const fakeOrganizations: Organization[] = [
@@ -45,12 +51,8 @@ function OrganizationsPage() {
   };
 
   return (
-    <Container
-      sx={{
-        maxWidth: "md",
-        position: "relative",
-      }}
-    >
+    <>
+      <DelayedLinearProgress loading={pageLoading} />
       <FormDialog
         open={createOrgaDialogOpen}
         title="Create Organization"
@@ -60,43 +62,50 @@ function OrganizationsPage() {
         setDialogOpen={setCreateOrgaDialogOpen}
         onValidate={handleValidateCreateOrganization}
       ></FormDialog>
-      <Fab
+      <Container
         sx={{
-          position: "absolute",
-          top: "10px",
-          right: "50px",
-          paddingRight: "20px",
+          maxWidth: "md",
+          position: "relative",
         }}
-        color="primary"
-        size="small"
-        variant="extended"
-        aria-label="add"
-        onClick={handleCreateOrganizationClick}
       >
-        <AddIcon sx={{ mr: 1 }} />
-        New Organization
-      </Fab>
-      <List aria-label="organizations">
-        <ListSubheader inset>
-          {allOrganizations?.length} Organizations
-        </ListSubheader>
-        {(allOrganizations || fakeOrganizations).map((organization) => (
-          <ListItem key={organization.organizationId}>
-            <ListItemButton>
-              <ListItemAvatar>
-                <Avatar>
-                  <BusinessIcon />
-                </Avatar>
-              </ListItemAvatar>
-              <ListItemText
-                primary={organization.name}
-                secondary={organization.dateCreated.toDateString()}
-              />
-            </ListItemButton>
-          </ListItem>
-        ))}
-      </List>
-    </Container>
+        <Fab
+          sx={{
+            position: "absolute",
+            top: "10px",
+            right: "50px",
+            paddingRight: "20px",
+          }}
+          color="primary"
+          size="small"
+          variant="extended"
+          aria-label="add"
+          onClick={handleCreateOrganizationClick}
+        >
+          <AddIcon sx={{ mr: 1 }} />
+          New Organization
+        </Fab>
+        <List aria-label="organizations">
+          <ListSubheader inset>
+            {allOrganizations?.length} Organizations
+          </ListSubheader>
+          {(allOrganizations || fakeOrganizations).map((organization) => (
+            <ListItem key={organization.organizationId}>
+              <ListItemButton>
+                <ListItemAvatar>
+                  <Avatar>
+                    <BusinessIcon />
+                  </Avatar>
+                </ListItemAvatar>
+                <ListItemText
+                  primary={organization.name}
+                  secondary={organization.dateCreated.toDateString()}
+                />
+              </ListItemButton>
+            </ListItem>
+          ))}
+        </List>
+      </Container>
+    </>
   );
 }
 
