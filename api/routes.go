@@ -125,9 +125,8 @@ func (api *API) routes() {
 					With(api.enforcePermissionMiddleware(ORGANIZATIONS_CREATE)).
 					Post("/", api.handlePostOrganization())
 
-				r.Route("/{orgID:"+UUIDRegExp+"}", func(r chi.Router) {
-					r.With(httpin.NewInput(GetOrganizationInput{})).
-						Get("/", api.handleGetOrganization())
+				r.Route("/{orgID}", func(r chi.Router) {
+					r.Get("/", api.handleGetOrganization())
 
 					r.With(httpin.NewInput(UpdateOrganizationInput{})).
 						With(api.enforcePermissionMiddleware(ORGANIZATIONS_CREATE)).
