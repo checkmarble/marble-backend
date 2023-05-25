@@ -272,10 +272,15 @@ func (r *PGRepository) Seed() {
 					Description:   "BIC is in the list of known high risk BICs",
 				},
 				{
-					Formula: &operators.DbFieldBool{
-						FieldName:        "is_frozen",
-						TriggerTableName: "transactions",
-						Path:             []string{"account"},
+					Formula: &operators.EqBool{
+						Left: &operators.DbFieldBool{
+							FieldName:        "is_frozen",
+							TriggerTableName: "transactions",
+							Path:             []string{"account"},
+						},
+						Right: &operators.BoolValue{
+							Value: true,
+						},
 					},
 					ScoreModifier: 100,
 					Name:          "Frozen account",

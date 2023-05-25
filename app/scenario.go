@@ -229,15 +229,12 @@ func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStr
 	score := 0
 	ruleExecutions := make([]RuleExecution, 0)
 	for _, rule := range publishedVersion.Body.Rules {
-		score, ruleExecutions, err = evalScenarioRule(ctx, ruleExecutionAggregationInput{
-			aggRuleExecutions: ruleExecutions,
-			aggScore:          score,
-			rule:              rule,
-			dataAccessor:      &dataAccessor,
-		}, logger)
+		scoreModifier, ruleExecution, err := evalScenarioRule(ctx, rule, &dataAccessor, logger)
 		if err != nil {
 			return ScenarioExecution{}, err
 		}
+		score += scoreModifier
+		ruleExecutions = append(ruleExecutions, ruleExecution)
 	}
 
 	// Compute outcome from score
@@ -269,26 +266,20 @@ func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStr
 	return se, nil
 }
 
-type ruleExecutionAggregationInput struct {
-	aggRuleExecutions []RuleExecution
-	aggScore          int
-	rule              Rule
-	dataAccessor      operators.DataAccessor
-}
-
-func evalScenarioRule(ctx context.Context, input ruleExecutionAggregationInput, logger *slog.Logger) (score int, ruleExecutions []RuleExecution, err error) {
+func evalScenarioRule(ctx context.Context, rule Rule, dataAccessor operators.DataAccessor, logger *slog.Logger) (int, RuleExecution, error) {
 	// Evaluate single rule
-	ruleExecution, err := input.rule.Eval(input.dataAccessor)
+	score := 0
+	ruleExecution, err := rule.Eval(dataAccessor)
 	if err != nil {
-		ruleExecution.Rule = input.rule
+		ruleExecution.Rule = rule
 		ruleExecution, err = setRuleExecutionError(ruleExecution, err)
 		if err != nil {
-			return score, ruleExecutions, err
+			return score, ruleExecution, err
 		}
 		logger.InfoCtx(ctx, "Rule had an error",
-			slog.String("ruleName", input.rule.Name),
-			slog.String("ruleId", input.rule.ID),
-			slog.String("formula", input.rule.Formula.String()),
+			slog.String("ruleName", rule.Name),
+			slog.String("ruleId", rule.ID),
+			slog.String("formula", rule.Formula.String()),
 			slog.String("error", ruleExecution.Error.String()),
 		)
 	}
@@ -296,15 +287,14 @@ func evalScenarioRule(ctx context.Context, input ruleExecutionAggregationInput, 
 	// Increment scenario score when rule is true
 	if ruleExecution.Result {
 		logger.InfoCtx(ctx, "Rule executed",
-			slog.Int("score_modifier", input.rule.ScoreModifier),
-			slog.String("ruleName", input.rule.Name),
+			slog.Int("score_modifier", rule.ScoreModifier),
+			slog.String("ruleName", rule.Name),
 			slog.Bool("result", ruleExecution.Result),
 		)
-		score = input.aggScore + ruleExecution.Rule.ScoreModifier
+		fmt.Printf("rule score modifier: %d\n", ruleExecution.Rule.ScoreModifier)
+		score = ruleExecution.Rule.ScoreModifier
 	}
-
-	ruleExecutions = append(input.aggRuleExecutions, ruleExecution)
-	return score, ruleExecutions, nil
+	return score, ruleExecution, nil
 }
 
 func setRuleExecutionError(ruleExecution RuleExecution, err error) (RuleExecution, error) {
