@@ -1,32 +1,19 @@
 import { useCallback } from "react";
-import { type CreateOrganization, type Organization } from "@/models";
+import type { Organization, Scenarios } from "@/models";
 import {
-  OrganizationRepository,
+  type OrganizationRepository,
+  type ScenariosRepository,
   fetchAllOrganizations,
   fetchOrganization,
-  createOrganization,
+  postOrganization,
+  fetchScenarios,
 } from "@/repositories";
 import { useSimpleLoader } from "@/hooks/SimpleLoader";
 import { type LoadingDispatcher } from "@/hooks/Loading";
 
-export class OrganizationService {
+export interface OrganizationService {
   organizationRepository: OrganizationRepository;
-
-  constructor(organizationRepository: OrganizationRepository) {
-    this.organizationRepository = organizationRepository;
-  }
-
-  async allOrganization() {
-    return fetchAllOrganizations(this.organizationRepository);
-  }
-
-  async createOrganization(create: CreateOrganization) {
-    return createOrganization(this.organizationRepository, create);
-  }
-
-  async organizationById(organizationId: string) {
-    return fetchOrganization(this.organizationRepository, organizationId);
-  }
+  scenariosRepository: ScenariosRepository;
 }
 
 export function useAllOrganizations(
@@ -34,16 +21,16 @@ export function useAllOrganizations(
   loadingDispatcher: LoadingDispatcher
 ) {
   const loadAllOrganizations = useCallback(() => {
-    return service.allOrganization();
+    return fetchAllOrganizations(service.organizationRepository);
   }, [service]);
 
-  const [allOrganizations, fetchAllOrganizations] = useSimpleLoader<
+  const [allOrganizations, refreshAllOrganizations] = useSimpleLoader<
     Organization[]
   >(loadingDispatcher, loadAllOrganizations);
 
   return {
     allOrganizations,
-    fetchAllOrganizations,
+    refreshAllOrganizations,
   };
 }
 
@@ -53,24 +40,24 @@ export function useOrganization(
   organizationId: string
 ) {
   const loadOrganization = useCallback(() => {
-    return service.organizationById(organizationId);
+    return fetchOrganization(service.organizationRepository, organizationId);
   }, [service, organizationId]);
 
-  const [organization, fetchOrganization] = useSimpleLoader<Organization>(
+  const [organization, refreshOrganization] = useSimpleLoader<Organization>(
     loadingDispatcher,
     loadOrganization
   );
 
   return {
     organization,
-    fetchOrganization,
+    refreshOrganization,
   };
 }
 
 export function useCreateOrganization(service: OrganizationService) {
   const createOrganization = useCallback(
     async (name: string) => {
-      await service.createOrganization({
+      await postOrganization(service.organizationRepository, {
         name,
         databaseName: `${name}_database`,
       });
@@ -80,5 +67,25 @@ export function useCreateOrganization(service: OrganizationService) {
 
   return {
     createOrganization,
+  };
+}
+
+export function useScenarios(
+  service: OrganizationService,
+  loadingDispatcher: LoadingDispatcher,
+  organizationId: string
+) {
+  const loadScenarios = useCallback(() => {
+    return fetchScenarios(service.scenariosRepository, organizationId);
+  }, [service, organizationId]);
+
+  const [scenarios, refreshScenarios] = useSimpleLoader<Scenarios[]>(
+    loadingDispatcher,
+    loadScenarios
+  );
+
+  return {
+    scenarios,
+    refreshScenarios,
   };
 }

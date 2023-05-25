@@ -21,7 +21,7 @@ import { useNavigate } from "react-router";
 function OrganizationsPage() {
   const [pageLoading, pageLoadingDispatcher] = useLoading();
 
-  const { allOrganizations, fetchAllOrganizations } = useAllOrganizations(
+  const { allOrganizations, refreshAllOrganizations } = useAllOrganizations(
     services().organizationService,
     pageLoadingDispatcher
   );
@@ -40,13 +40,13 @@ function OrganizationsPage() {
     newOrganizationName: string
   ) => {
     await createOrganization(newOrganizationName);
-    await fetchAllOrganizations();
+    await refreshAllOrganizations();
   };
 
   const navigator = useNavigate();
 
-  const handleOrganizationClick = (organisationId: string) => {
-    navigator(PageLink.organizationDetails(organisationId));
+  const handleOrganizationClick = (organizationId: string) => {
+    navigator(PageLink.organizationDetails(organizationId));
   };
 
   return (
