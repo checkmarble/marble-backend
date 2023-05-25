@@ -45,10 +45,10 @@ func (api *API) ListScenarios() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID, err := utils.OrgIDFromCtx(ctx)
-		if err != nil {
-			http.Error(w, "", http.StatusForbidden)
+		if presentError(ctx, api.logger, w, err) {
 			return
 		}
+
 		logger := api.logger.With(slog.String("orgID", orgID))
 
 		scenarios, err := api.app.ListScenarios(ctx, orgID)
@@ -87,8 +87,7 @@ func (api *API) CreateScenario() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID, err := utils.OrgIDFromCtx(ctx)
-		if err != nil {
-			http.Error(w, "", http.StatusForbidden)
+		if presentError(ctx, api.logger, w, err) {
 			return
 		}
 
@@ -124,8 +123,7 @@ func (api *API) GetScenario() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID, err := utils.OrgIDFromCtx(ctx)
-		if err != nil {
-			http.Error(w, "", http.StatusForbidden)
+		if presentError(ctx, api.logger, w, err) {
 			return
 		}
 
@@ -166,8 +164,7 @@ func (api *API) UpdateScenario() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID, err := utils.OrgIDFromCtx(ctx)
-		if err != nil {
-			http.Error(w, "", http.StatusForbidden)
+		if presentError(ctx, api.logger, w, err) {
 			return
 		}
 

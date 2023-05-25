@@ -109,8 +109,7 @@ func (api *API) handleGetDecision() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID, err := utils.OrgIDFromCtx(ctx)
-		if err != nil {
-			http.Error(w, "", http.StatusForbidden)
+		if presentError(ctx, api.logger, w, err) {
 			return
 		}
 		input := ctx.Value(httpin.Input).(*GetDecisionInput)
@@ -142,8 +141,7 @@ func (api *API) handleListDecisions() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID, err := utils.OrgIDFromCtx(ctx)
-		if err != nil {
-			http.Error(w, "", http.StatusUnauthorized)
+		if presentError(ctx, api.logger, w, err) {
 			return
 		}
 		logger := api.logger.With(slog.String("orgID", orgID))
@@ -183,8 +181,7 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID, err := utils.OrgIDFromCtx(ctx)
-		if err != nil {
-			http.Error(w, "", http.StatusForbidden)
+		if presentError(ctx, api.logger, w, err) {
 			return
 		}
 
