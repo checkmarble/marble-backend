@@ -50,7 +50,7 @@ func (api *API) ListScenarioPublications() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := utils.OrgIDFromCtx(ctx)
+		orgID, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(ctx, api.logger, w, err) {
 			return
 		}
@@ -97,7 +97,7 @@ func (api *API) CreateScenarioPublication() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := utils.OrgIDFromCtx(ctx)
+		orgID, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(ctx, api.logger, w, err) {
 			return
 		}
@@ -141,7 +141,7 @@ func (api *API) GetScenarioPublication() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := utils.OrgIDFromCtx(ctx)
+		orgID, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(ctx, api.logger, w, err) {
 			return
 		}

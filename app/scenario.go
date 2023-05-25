@@ -194,7 +194,7 @@ func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStr
 		return ScenarioExecution{}, ErrScenarioHasNoLiveVersion
 	}
 
-	orgID, err := utils.OrgIDFromCtx(ctx)
+	orgID, err := utils.OrgIDFromCtx(ctx, nil)
 	if err != nil {
 		return ScenarioExecution{}, err
 	}

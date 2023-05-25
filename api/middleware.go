@@ -8,8 +8,6 @@ import (
 	"marble/marble-backend/utils"
 	"net/http"
 	"strings"
-
-	"golang.org/x/exp/slices"
 )
 
 func ParseApiKeyHeader(header http.Header) string {
@@ -61,7 +59,7 @@ func (api *API) enforcePermissionMiddleware(permission Permission) func(next htt
 
 			ctx := r.Context()
 			creds := utils.CredentialsFromCtx(ctx)
-			allowed := slices.Contains(creds.Role.Permissions(), permission)
+			allowed := creds.Role.HasPermission(permission)
 
 			if allowed {
 				next.ServeHTTP(w, r)
