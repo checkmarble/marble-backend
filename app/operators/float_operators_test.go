@@ -264,21 +264,21 @@ func TestMarshallBoolOperatorsFloat(t *testing.T) {
 		{
 			name:     "scalar value",
 			operator: &FloatValue{Value: 42.42},
-			expected: `{"type":"FLOAT_SCALAR","staticData":{"value":42.42}}`,
+			expected: `{"type":"FLOAT_CONSTANT","staticData":{"value":42.42}}`,
 		},
 		{
 			name: "sum",
 			operator: &SumFloat{
 				Operands: []OperatorFloat{&FloatValue{Value: 1}, &FloatValue{Value: 2.5}},
 			},
-			expected: `{"type":"SUM_FLOAT","children":[{"type":"FLOAT_SCALAR","staticData":{"value":1}},{"type":"FLOAT_SCALAR","staticData":{"value":2.5}}]}`,
+			expected: `{"type":"SUM_FLOAT","children":[{"type":"FLOAT_CONSTANT","staticData":{"value":1}},{"type":"FLOAT_CONSTANT","staticData":{"value":2.5}}]}`,
 		},
 		{
 			name: "product",
 			operator: &ProductFloat{
 				Operands: []OperatorFloat{&FloatValue{Value: 1}, &FloatValue{Value: 2.5}},
 			},
-			expected: `{"type":"PRODUCT_FLOAT","children":[{"type":"FLOAT_SCALAR","staticData":{"value":1}},{"type":"FLOAT_SCALAR","staticData":{"value":2.5}}]}`,
+			expected: `{"type":"PRODUCT_FLOAT","children":[{"type":"FLOAT_CONSTANT","staticData":{"value":1}},{"type":"FLOAT_CONSTANT","staticData":{"value":2.5}}]}`,
 		},
 		{
 			name: "subtraction",
@@ -286,7 +286,7 @@ func TestMarshallBoolOperatorsFloat(t *testing.T) {
 				Left:  &FloatValue{Value: 1},
 				Right: &FloatValue{Value: 2.5},
 			},
-			expected: `{"type":"SUBTRACT_FLOAT","children":[{"type":"FLOAT_SCALAR","staticData":{"value":1}},{"type":"FLOAT_SCALAR","staticData":{"value":2.5}}]}`,
+			expected: `{"type":"SUBTRACT_FLOAT","children":[{"type":"FLOAT_CONSTANT","staticData":{"value":1}},{"type":"FLOAT_CONSTANT","staticData":{"value":2.5}}]}`,
 		},
 		{
 			name: "division",
@@ -294,7 +294,7 @@ func TestMarshallBoolOperatorsFloat(t *testing.T) {
 				Left:  &FloatValue{Value: 1},
 				Right: &FloatValue{Value: 2.5},
 			},
-			expected: `{"type":"DIVIDE_FLOAT","children":[{"type":"FLOAT_SCALAR","staticData":{"value":1}},{"type":"FLOAT_SCALAR","staticData":{"value":2.5}}]}`,
+			expected: `{"type":"DIVIDE_FLOAT","children":[{"type":"FLOAT_CONSTANT","staticData":{"value":1}},{"type":"FLOAT_CONSTANT","staticData":{"value":2.5}}]}`,
 		},
 		{
 			name: "Round",
@@ -302,7 +302,7 @@ func TestMarshallBoolOperatorsFloat(t *testing.T) {
 				Operand: &FloatValue{Value: 2.5123},
 				Level:   2,
 			},
-			expected: `{"type":"ROUND_FLOAT","children":[{"type":"FLOAT_SCALAR","staticData":{"value":2.5123}}],"staticData":{"level":2}}`,
+			expected: `{"type":"ROUND_FLOAT","children":[{"type":"FLOAT_CONSTANT","staticData":{"value":2.5123}}],"staticData":{"level":2}}`,
 		},
 	}
 
@@ -328,21 +328,21 @@ func TestUnmarshallBoolOperatorsFloat(t *testing.T) {
 		{
 			name:     "or with null",
 			expected: &FloatValue{Value: 42.42},
-			json:     `{"type":"FLOAT_SCALAR","staticData":{"value":42.42}}`,
+			json:     `{"type":"FLOAT_CONSTANT","staticData":{"value":42.42}}`,
 		},
 		{
 			name: "sum",
 			expected: &SumFloat{
 				Operands: []OperatorFloat{&FloatValue{Value: 1}, &FloatValue{Value: 2.5}},
 			},
-			json: `{"type":"SUM_FLOAT","children":[{"type":"FLOAT_SCALAR","staticData":{"value":1}},{"type":"FLOAT_SCALAR","staticData":{"value":2.5}}]}`,
+			json: `{"type":"SUM_FLOAT","children":[{"type":"FLOAT_CONSTANT","staticData":{"value":1}},{"type":"FLOAT_CONSTANT","staticData":{"value":2.5}}]}`,
 		},
 		{
 			name: "product",
 			expected: &ProductFloat{
 				Operands: []OperatorFloat{&FloatValue{Value: 1}, &FloatValue{Value: 2.5}},
 			},
-			json: `{"type":"PRODUCT_FLOAT","children":[{"type":"FLOAT_SCALAR","staticData":{"value":1}},{"type":"FLOAT_SCALAR","staticData":{"value":2.5}}]}`,
+			json: `{"type":"PRODUCT_FLOAT","children":[{"type":"FLOAT_CONSTANT","staticData":{"value":1}},{"type":"FLOAT_CONSTANT","staticData":{"value":2.5}}]}`,
 		},
 		{
 			name: "subtraction",
@@ -350,7 +350,7 @@ func TestUnmarshallBoolOperatorsFloat(t *testing.T) {
 				Left:  &FloatValue{Value: 1},
 				Right: &FloatValue{Value: 2.5},
 			},
-			json: `{"type":"SUBTRACT_FLOAT","children":[{"type":"FLOAT_SCALAR","staticData":{"value":1}},{"type":"FLOAT_SCALAR","staticData":{"value":2.5}}]}`,
+			json: `{"type":"SUBTRACT_FLOAT","children":[{"type":"FLOAT_CONSTANT","staticData":{"value":1}},{"type":"FLOAT_CONSTANT","staticData":{"value":2.5}}]}`,
 		},
 		{
 			name: "division",
@@ -358,7 +358,7 @@ func TestUnmarshallBoolOperatorsFloat(t *testing.T) {
 				Left:  &FloatValue{Value: 1},
 				Right: &FloatValue{Value: 2.5},
 			},
-			json: `{"type":"DIVIDE_FLOAT","children":[{"type":"FLOAT_SCALAR","staticData":{"value":1}},{"type":"FLOAT_SCALAR","staticData":{"value":2.5}}]}`,
+			json: `{"type":"DIVIDE_FLOAT","children":[{"type":"FLOAT_CONSTANT","staticData":{"value":1}},{"type":"FLOAT_CONSTANT","staticData":{"value":2.5}}]}`,
 		},
 		{
 			name: "Round",
@@ -366,7 +366,7 @@ func TestUnmarshallBoolOperatorsFloat(t *testing.T) {
 				Operand: &FloatValue{Value: 2.5123},
 				Level:   2,
 			},
-			json: `{"type":"ROUND_FLOAT","children":[{"type":"FLOAT_SCALAR","staticData":{"value":2.5123}}],"staticData":{"level":2}}`,
+			json: `{"type":"ROUND_FLOAT","children":[{"type":"FLOAT_CONSTANT","staticData":{"value":2.5123}}],"staticData":{"level":2}}`,
 		},
 	}
 

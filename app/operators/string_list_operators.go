@@ -44,7 +44,7 @@ func UnmarshalOperatorStringList(jsonBytes []byte) (OperatorStringList, error) {
 // StringListValue
 // ///////////////////////////////////////////////////////////////////////////////////////
 type StringListValue struct {
-	Strings []string
+	Value []string
 }
 
 // register creation
@@ -52,16 +52,16 @@ func init() {
 	operatorFromType["STRING_LIST_CONSTANT"] = func() Operator { return &StringListValue{} }
 }
 
-func (s StringListValue) Eval(d DataAccessor) ([]string, error) { return s.Strings, nil }
+func (s StringListValue) Eval(d DataAccessor) ([]string, error) { return s.Value, nil }
 
-func (s StringListValue) IsValid() bool { return s.Strings != nil }
+func (s StringListValue) IsValid() bool { return s.Value != nil }
 
-func (s StringListValue) String() string { return fmt.Sprintf("%v", s.Strings) }
+func (s StringListValue) String() string { return fmt.Sprintf("%v", s.Value) }
 
 // Marshal with added "Type" operator
 func (s StringListValue) MarshalJSON() ([]byte, error) {
 	type stringValueIntermediate struct {
-		Strings []string `json:"strings"`
+		Value []string `json:"value"`
 	}
 
 	return json.Marshal(struct {
@@ -69,7 +69,7 @@ func (s StringListValue) MarshalJSON() ([]byte, error) {
 		StaticData stringValueIntermediate `json:"staticData"`
 	}{
 		OperatorType: OperatorType{Type: "STRING_LIST_CONSTANT"},
-		StaticData:   stringValueIntermediate{s.Strings},
+		StaticData:   stringValueIntermediate{Value: s.Value},
 	})
 }
 
@@ -77,14 +77,14 @@ func (s *StringListValue) UnmarshalJSON(b []byte) error {
 	// data schema
 	var stringValueData struct {
 		StaticData struct {
-			Strings []string `json:"strings"`
+			Strings []string `json:"value"`
 		} `json:"staticData"`
 	}
 
 	if err := json.Unmarshal(b, &stringValueData); err != nil {
 		return fmt.Errorf("unable to unmarshal operator to intermediate staticData representation: %w", err)
 	}
-	s.Strings = stringValueData.StaticData.Strings
+	s.Value = stringValueData.StaticData.Strings
 
 	return nil
 }

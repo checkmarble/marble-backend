@@ -45,60 +45,51 @@ func UnmarshalOperatorBool(jsonBytes []byte) (OperatorBool, error) {
 }
 
 // ///////////////////////////////////////////////////////////////////////////////////////
-// True
+// BoolValue
 // ///////////////////////////////////////////////////////////////////////////////////////
-type True struct{}
+type BoolValue struct {
+	Value bool
+}
 
 // register creation
 func init() {
-	operatorFromType["TRUE"] = func() Operator { return &True{} }
+	operatorFromType["BOOL_CONSTANT"] = func() Operator { return &BoolValue{} }
 }
 
-func (t True) Eval(d DataAccessor) (bool, error) { return true, nil }
+func (bv BoolValue) Eval(d DataAccessor) (bool, error) { return bv.Value, nil }
 
-func (t True) IsValid() bool { return true }
+func (bv BoolValue) IsValid() bool { return true }
 
-func (t True) String() string { return "TRUE" }
+func (bv BoolValue) String() string { return fmt.Sprintf("%v", bv.Value) }
 
 // Marshal with added "Type" operator
-func (t True) MarshalJSON() ([]byte, error) {
+func (bv BoolValue) MarshalJSON() ([]byte, error) {
+	type boolValueIntermediate struct {
+		Value bool `json:"value"`
+	}
+
 	return json.Marshal(struct {
 		OperatorType
+		StaticData boolValueIntermediate `json:"staticData"`
 	}{
-		OperatorType: OperatorType{Type: "TRUE"},
+		OperatorType: OperatorType{Type: "BOOL_CONSTANT"},
+		StaticData:   boolValueIntermediate{bv.Value},
 	})
 }
 
-func (t True) UnmarshalJSON(b []byte) error {
-	return nil
-}
+func (bv *BoolValue) UnmarshalJSON(b []byte) error {
+	// data schema
+	var boolValueData struct {
+		StaticData struct {
+			Value bool `json:"value"`
+		} `json:"staticData"`
+	}
 
-// ///////////////////////////////////////////////////////////////////////////////////////
-// False
-// ///////////////////////////////////////////////////////////////////////////////////////
-type False struct{}
+	if err := json.Unmarshal(b, &boolValueData); err != nil {
+		return fmt.Errorf("unable to unmarshal operator to intermediate staticData representation: %w", err)
+	}
+	bv.Value = boolValueData.StaticData.Value
 
-// register creation
-func init() {
-	operatorFromType["FALSE"] = func() Operator { return &False{} }
-}
-
-func (f False) Eval(d DataAccessor) (bool, error) { return false, nil }
-
-func (f False) IsValid() bool { return true }
-
-func (f False) String() string { return "FALSE" }
-
-// Marshal with added "Type" operator
-func (f False) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
-		OperatorType
-	}{
-		OperatorType: OperatorType{Type: "FALSE"},
-	})
-}
-
-func (f False) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
