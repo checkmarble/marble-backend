@@ -75,15 +75,14 @@ func (api *API) handlePostOrganization() http.HandlerFunc {
 	}
 }
 
-type GetOrganizationInput struct {
-	orgID string `in:"path=orgID"`
-}
-
 func (api *API) handleGetOrganization() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID := ctx.Value(httpin.Input).(*GetOrganizationInput).orgID
+		orgID, err := requiredUuidUrlParam(r, "orgID")
+		if presentError(ctx, api.logger, w, err) {
+			return
+		}
 
 		usecase := api.usecases.NewOrganizationUseCase()
 		organization, err := usecase.GetOrganization(ctx, orgID)
