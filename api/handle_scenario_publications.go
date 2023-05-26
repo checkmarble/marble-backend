@@ -51,7 +51,7 @@ func (api *API) ListScenarioPublications() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(ctx, api.logger, w, err) {
+		if presentError(w, r, err) {
 			return
 		}
 
@@ -98,7 +98,7 @@ func (api *API) CreateScenarioPublication() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(ctx, api.logger, w, err) {
+		if presentError(w, r, err) {
 			return
 		}
 
@@ -142,7 +142,7 @@ func (api *API) GetScenarioPublication() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(ctx, api.logger, w, err) {
+		if presentError(w, r, err) {
 			return
 		}
 

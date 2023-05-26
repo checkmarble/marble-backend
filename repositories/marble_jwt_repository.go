@@ -17,6 +17,8 @@ type MarbleJwtRepository struct {
 type Claims struct {
 	OrganizationId string `json:"organization_id"`
 	Role           string `json:"role"`
+	UserId         string `json:"user_id,omitempty"`
+	ApiKeyName     string `json:"api_key_name,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -27,6 +29,8 @@ func (repo *MarbleJwtRepository) EncodeMarbleToken(expirationTime time.Time, cre
 	claims := &Claims{
 		OrganizationId: creds.OrganizationId,
 		Role:           creds.Role.String(),
+		UserId:         creds.ActorIdentity.UserId,
+		ApiKeyName:     creds.ActorIdentity.ApiKeyName,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			Issuer:    "marble",
@@ -60,6 +64,10 @@ func (repo *MarbleJwtRepository) ValidateMarbleToken(marbleToken string) (Creden
 		return Credentials{
 			OrganizationId: claims.OrganizationId,
 			Role:           RoleFromString(claims.Role),
+			ActorIdentity: Identity{
+				UserId:     claims.UserId,
+				ApiKeyName: claims.ApiKeyName,
+			},
 		}, nil
 	} else {
 		return Credentials{}, fmt.Errorf("Invalid Marble Jwt Token")

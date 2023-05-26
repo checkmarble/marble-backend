@@ -27,7 +27,7 @@ func (api *API) handlePostFirebaseIdToken() http.HandlerFunc {
 		if err != nil {
 			err = wrapErrInUnAuthorizedError(err)
 		}
-		if presentError(context, api.logger, w, err) {
+		if presentError(w, request, err) {
 			return
 		}
 

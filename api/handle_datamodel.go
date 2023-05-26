@@ -11,13 +11,13 @@ func (api *API) handleGetDataModel() http.HandlerFunc {
 		ctx := r.Context()
 
 		organizationId, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(ctx, api.logger, w, err) {
+		if presentError(w, r, err) {
 			return
 		}
 
 		usecase := api.usecases.NewOrganizationUseCase()
 		dataModel, err := usecase.GetDataModel(ctx, organizationId)
-		if presentError(ctx, api.logger, w, err) {
+		if presentError(w, r, err) {
 			return
 		}
 

@@ -20,6 +20,7 @@ func (usecases *Usecases) NewMarbleTokenUseCase() MarbleTokenUseCase {
 		marbleJwtRepository:     repositories.MarbleJwtRepository,
 		userRepository:          repositories.UserRepository,
 		apiKeyRepository:        repositories.ApiKeyRepository,
+		organizationRepository:  repositories.OrganizationRepository,
 		tokenLifetimeMinute:     usecases.Config.TokenLifetimeMinute,
 	}
 }

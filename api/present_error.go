@@ -1,17 +1,15 @@
 package api
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
-	"golang.org/x/exp/slog"
-
 	. "marble/marble-backend/models"
+	"marble/marble-backend/utils"
 	"net/http"
 )
 
-func presentError(ctx context.Context, logger *slog.Logger, w http.ResponseWriter, err error) bool {
+func presentError(w http.ResponseWriter, r *http.Request, err error) bool {
 	if err == nil {
 		return false
 	}
@@ -24,7 +22,7 @@ func presentError(ctx context.Context, logger *slog.Logger, w http.ResponseWrite
 	} else if errors.Is(err, NotFoundError) {
 		http.Error(w, err.Error(), http.StatusNotFound)
 	} else {
-		logger.ErrorCtx(ctx, fmt.Sprintf("Unexpected Error: %s", err))
+		utils.LogRequestError(r, fmt.Sprintf("Unexpected Error: %s", err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 	return true
