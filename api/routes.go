@@ -16,7 +16,7 @@ func (api *API) routes() {
 
 	api.router.Post("/token", api.handlePostFirebaseIdToken())
 
-	api.router.With(api.credentialsMiddleware).With(api.loggerMiddleware(api.logger)).Group(func(authedRouter chi.Router) {
+	api.router.With(api.credentialsMiddleware).Group(func(authedRouter chi.Router) {
 		// Authentication using marble token (JWT) or API Key required.
 
 		// Decision API subrouter

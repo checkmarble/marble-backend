@@ -17,7 +17,16 @@ const (
 	ContextKeyLogger
 )
 
-func loggerFromContext(ctx context.Context) *slog.Logger {
+func StoreLoggerInContextMiddleware(logger *slog.Logger) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctxWithToken := context.WithValue(r.Context(), ContextKeyLogger, logger)
+			next.ServeHTTP(w, r.WithContext(ctxWithToken))
+		})
+	}
+}
+
+func LoggerFromContext(ctx context.Context) *slog.Logger {
 	logger, found := ctx.Value(ContextKeyLogger).(*slog.Logger)
 	if !found {
 		panic(fmt.Errorf("logger not found context"))
@@ -27,7 +36,7 @@ func loggerFromContext(ctx context.Context) *slog.Logger {
 
 func LogRequestError(r *http.Request, msg string, args ...any) {
 	ctx := r.Context()
-	loggerFromContext(ctx).ErrorCtx(ctx, msg, args...)
+	LoggerFromContext(ctx).ErrorCtx(ctx, msg, args...)
 }
 
 func CredentialsFromCtx(ctx context.Context) (models.Credentials, bool) {
@@ -52,8 +61,10 @@ func OrgIDFromCtx(ctx context.Context, request *http.Request) (organizationID st
 	var requestOrganizationId string
 	if request != nil {
 		requestOrganizationId = request.URL.Query().Get("organization-id")
-		if err := ValidateUuid(requestOrganizationId); err != nil {
-			return "", err
+		if requestOrganizationId != "" {
+			if err := ValidateUuid(requestOrganizationId); err != nil {
+				return "", err
+			}
 		}
 	}
 

@@ -2,6 +2,7 @@ package models
 
 type Identity struct {
 	UserId     string
+	Email      string
 	ApiKeyName string
 }
 
@@ -11,12 +12,13 @@ type Credentials struct {
 	ActorIdentity  Identity // email or api key, for audit log
 }
 
-func NewCredentialWithUser(organizationId string, role Role, userId string) Credentials {
+func NewCredentialWithUser(organizationId string, role Role, userId string, userEmail string) Credentials {
 	return Credentials{
 		OrganizationId: organizationId,
 		Role:           role,
 		ActorIdentity: Identity{
 			UserId: userId,
+			Email:  userEmail,
 		},
 	}
 }

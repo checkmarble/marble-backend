@@ -28,33 +28,6 @@ func wrapErrInUnAuthorizedError(err error) error {
 	return errors.Join(UnAuthorizedError, err)
 }
 
-func (api *API) loggerMiddleware(logger *slog.Logger) func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-			// If there is creds and the creds contain a userId or an Api key
-			// Then create a new logger with this useful information.
-			if creds, ok := utils.CredentialsFromCtx(r.Context()); ok {
-				if attr, ok := logAttr(creds.ActorIdentity); ok {
-					logger = logger.With(attr)
-				}
-			}
-			ctxWithToken := context.WithValue(r.Context(), utils.ContextKeyLogger, logger)
-			next.ServeHTTP(w, r.WithContext(ctxWithToken))
-		})
-	}
-}
-
-func logAttr(identity models.Identity) (attr slog.Attr, ok bool) {
-	if identity.ApiKeyName != "" {
-		return slog.String("ApiKeyName", identity.ApiKeyName), true
-	}
-	if identity.UserId != "" {
-		return slog.String("UserId", identity.UserId), true
-	}
-	return slog.Attr{}, false
-}
-
 // AuthCtx sets the organization ID in the context from the authorization header
 func (api *API) credentialsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -78,9 +51,28 @@ func (api *API) credentialsMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		ctxWithToken := context.WithValue(ctx, utils.ContextKeyCredentials, creds)
-		next.ServeHTTP(w, r.WithContext(ctxWithToken))
+		newContext := context.WithValue(ctx, utils.ContextKeyCredentials, creds)
+
+		// Creds contain a userId or an Api key
+		// create a new logger with this useful information.
+		if attr, ok := identityAttr(creds.ActorIdentity); ok {
+			logger := utils.LoggerFromContext(newContext).With(attr)
+			// store new logger in context
+			newContext = context.WithValue(newContext, utils.ContextKeyLogger, logger)
+		}
+
+		next.ServeHTTP(w, r.WithContext(newContext))
 	})
+}
+
+func identityAttr(identity models.Identity) (attr slog.Attr, ok bool) {
+	if identity.ApiKeyName != "" {
+		return slog.String("ApiKeyName", identity.ApiKeyName), true
+	}
+	if identity.Email != "" {
+		return slog.String("Email", identity.Email), true
+	}
+	return slog.Attr{}, false
 }
 
 func (api *API) enforcePermissionMiddleware(permission Permission) func(next http.Handler) http.Handler {

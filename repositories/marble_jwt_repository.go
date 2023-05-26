@@ -18,6 +18,7 @@ type Claims struct {
 	OrganizationId string `json:"organization_id"`
 	Role           string `json:"role"`
 	UserId         string `json:"user_id,omitempty"`
+	Email          string `json:"user_email,omitempty"`
 	ApiKeyName     string `json:"api_key_name,omitempty"`
 	jwt.RegisteredClaims
 }
@@ -30,6 +31,7 @@ func (repo *MarbleJwtRepository) EncodeMarbleToken(expirationTime time.Time, cre
 		OrganizationId: creds.OrganizationId,
 		Role:           creds.Role.String(),
 		UserId:         creds.ActorIdentity.UserId,
+		Email:          creds.ActorIdentity.Email,
 		ApiKeyName:     creds.ActorIdentity.ApiKeyName,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
@@ -67,6 +69,7 @@ func (repo *MarbleJwtRepository) ValidateMarbleToken(marbleToken string) (Creden
 			ActorIdentity: Identity{
 				UserId:     claims.UserId,
 				ApiKeyName: claims.ApiKeyName,
+				Email:      claims.Email,
 			},
 		}, nil
 	} else {
