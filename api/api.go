@@ -8,6 +8,7 @@ import (
 
 	"marble/marble-backend/models"
 	"marble/marble-backend/usecases"
+	"marble/marble-backend/utils"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -47,6 +48,7 @@ func New(ctx context.Context, port string, a AppInterface, usecases usecases.Use
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(utils.StoreLoggerInContextMiddleware(logger))
 	r.Use(cors.Handler(corsOption(corsAllowLocalhost)))
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -81,7 +81,7 @@ func (usecase *MarbleTokenUseCase) NewMarbleToken(ctx context.Context, apiKey st
 				return "", time.Time{}, err
 			}
 		}
-		return usecase.encodeMarbleToken(NewCredentialWithUser(user.OrganizationId, user.Role, user.UserId))
+		return usecase.encodeMarbleToken(NewCredentialWithUser(user.OrganizationId, user.Role, user.UserId, user.Email))
 	}
 
 	return "", time.Time{}, fmt.Errorf("API key or Firebase JWT token required: %w", UnAuthorizedError)
