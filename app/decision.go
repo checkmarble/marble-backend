@@ -1,6 +1,7 @@
 package app
 
 import (
+	"marble/marble-backend/models"
 	"time"
 )
 
@@ -76,7 +77,7 @@ func (d DecisionError) String() string {
 type Decision struct {
 	ID                  string
 	CreatedAt           time.Time
-	Payload             Payload
+	PayloadForArchive   models.PayloadForArchive
 	Outcome             Outcome
 	ScenarioID          string
 	ScenarioName        string

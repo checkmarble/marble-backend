@@ -4,21 +4,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"marble/marble-backend/app"
+	"marble/marble-backend/models"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"golang.org/x/exp/slog"
 )
 
-func generateInsertValues(table app.Table, payloadStructWithReader app.DynamicStructWithReader) (columnNames []string, values []interface{}) {
+func generateInsertValues(table models.Table, payloadStructWithReader models.Payload) (columnNames []string, values []interface{}) {
 	nbFields := len(table.Fields)
 	columnNames = make([]string, nbFields)
 	values = make([]interface{}, nbFields)
 	i := 0
 	for fieldName := range table.Fields {
 		columnNames[i] = string(fieldName)
-		values[i], _ = payloadStructWithReader.ReadFieldFromDynamicStruct(fieldName)
+		values[i], _ = payloadStructWithReader.ReadFieldFromPayload(fieldName)
 		i++
 	}
 	return columnNames, values
@@ -28,10 +28,10 @@ func updateExistingVersionIfPresent(
 	ctx context.Context,
 	queryBuilder sq.StatementBuilderType,
 	tx pgx.Tx,
-	payloadStructWithReader app.DynamicStructWithReader,
-	table app.Table) (err error) {
+	payloadStructWithReader models.Payload,
+	table models.Table) (err error) {
 
-	object_id, _ := payloadStructWithReader.ReadFieldFromDynamicStruct("object_id")
+	object_id, _ := payloadStructWithReader.ReadFieldFromPayload("object_id")
 	sql, args, err := queryBuilder.
 		Select("id").
 		From(string(table.Name)).
@@ -66,7 +66,7 @@ func updateExistingVersionIfPresent(
 	return nil
 }
 
-func (r *PGRepository) IngestObject(ctx context.Context, payloadStructWithReader app.DynamicStructWithReader, table app.Table, logger *slog.Logger) (err error) {
+func (r *PGRepository) IngestObject(ctx context.Context, payloadStructWithReader models.Payload, table models.Table, logger *slog.Logger) (err error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("Error starting transaction: %w", err)

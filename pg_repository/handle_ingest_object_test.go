@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"marble/marble-backend/app"
+	"marble/marble-backend/models"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/gofrs/uuid"
@@ -14,16 +15,16 @@ import (
 )
 
 func TestHandleFirstIngestObject(t *testing.T) {
-	transactions := app.Table{
+	transactions := models.Table{
 		Name: "transactions",
-		Fields: map[app.FieldName]app.Field{
+		Fields: map[models.FieldName]models.Field{
 			"object_id": {
-				DataType: app.String,
+				DataType: models.String,
 			},
-			"updated_at": {DataType: app.Timestamp},
-			"amount":     {DataType: app.Float},
-			"title":      {DataType: app.String},
-			"account_id": {DataType: app.String},
+			"updated_at": {DataType: models.Timestamp},
+			"amount":     {DataType: models.Float},
+			"title":      {DataType: models.String},
+			"account_id": {DataType: models.String},
 		},
 	}
 	ctx := context.Background()
@@ -31,7 +32,7 @@ func TestHandleFirstIngestObject(t *testing.T) {
 
 	object_id_uuid, _ := uuid.NewV4()
 	object_id := object_id_uuid.String()
-	payload, err := app.ParseToDataModelObject(ctx, transactions, []byte(fmt.Sprintf(`{"object_id": "%s", "updated_at": "2021-01-01T00:00:00Z"}`, object_id)))
+	payload, err := app.ParseToDataModelObject(transactions, []byte(fmt.Sprintf(`{"object_id": "%s", "updated_at": "2021-01-01T00:00:00Z"}`, object_id)))
 	if err != nil {
 		t.Fatalf("Could not parse payload: %s", err)
 	}
@@ -42,7 +43,7 @@ func TestHandleFirstIngestObject(t *testing.T) {
 		t.Errorf("Error while inserting object into DB: %s", err)
 	}
 
-	id, _ := payload.ReadFieldFromDynamicStruct("object_id")
+	id, _ := payload.ReadFieldFromPayload("object_id")
 	sql, args, err := globalTestParams.repository.queryBuilder.
 		Select("COUNT(*) AS nb").
 		From(string(transactions.Name)).
@@ -52,7 +53,7 @@ func TestHandleFirstIngestObject(t *testing.T) {
 	_ = globalTestParams.repository.db.QueryRow(ctx, sql, args...).Scan(&nb)
 	assert.Equal(1, nb, "Expected to find 1 row in DB")
 
-	id, _ = payload.ReadFieldFromDynamicStruct("object_id")
+	id, _ = payload.ReadFieldFromPayload("object_id")
 	sql, args, err = globalTestParams.repository.queryBuilder.
 		Select("valid_from, valid_until").
 		From(string(transactions.Name)).
@@ -67,23 +68,23 @@ func TestHandleFirstIngestObject(t *testing.T) {
 }
 
 func TestHandleRenewedIngestObject(t *testing.T) {
-	transactions := app.Table{
+	transactions := models.Table{
 		Name: "transactions",
-		Fields: map[app.FieldName]app.Field{
+		Fields: map[models.FieldName]models.Field{
 			"object_id": {
-				DataType: app.String,
+				DataType: models.String,
 			},
-			"updated_at": {DataType: app.Timestamp},
-			"amount":     {DataType: app.Float},
-			"title":      {DataType: app.String},
-			"account_id": {DataType: app.String},
+			"updated_at": {DataType: models.Timestamp},
+			"amount":     {DataType: models.Float},
+			"title":      {DataType: models.String},
+			"account_id": {DataType: models.String},
 		},
 	}
 	ctx := context.Background()
 	logger := globalTestParams.logger
 
 	object_id, err := uuid.NewV4()
-	payload, err := app.ParseToDataModelObject(ctx, transactions, []byte(fmt.Sprintf(`{"object_id": "%s", "updated_at": "2021-01-01T00:00:00Z"}`, object_id.String())))
+	payload, err := app.ParseToDataModelObject(transactions, []byte(fmt.Sprintf(`{"object_id": "%s", "updated_at": "2021-01-01T00:00:00Z"}`, object_id.String())))
 	if err != nil {
 		t.Fatalf("Could not parse payload: %s", err)
 	}
@@ -95,7 +96,7 @@ func TestHandleRenewedIngestObject(t *testing.T) {
 	}
 	_ = globalTestParams.repository.IngestObject(ctx, payload, transactions, logger)
 
-	id, _ := payload.ReadFieldFromDynamicStruct("object_id")
+	id, _ := payload.ReadFieldFromPayload("object_id")
 	sql, args, err := globalTestParams.repository.queryBuilder.
 		Select("COUNT(*) AS nb").
 		From(string(transactions.Name)).
@@ -105,7 +106,7 @@ func TestHandleRenewedIngestObject(t *testing.T) {
 	_ = globalTestParams.repository.db.QueryRow(ctx, sql, args...).Scan(&nb)
 	assert.Equal(2, nb, "Expected to find 2 rows in DB")
 
-	id, _ = payload.ReadFieldFromDynamicStruct("object_id")
+	id, _ = payload.ReadFieldFromPayload("object_id")
 	sql, args, err = globalTestParams.repository.queryBuilder.
 		Select("valid_from, valid_until").
 		From(string(transactions.Name)).

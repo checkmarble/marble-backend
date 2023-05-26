@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"marble/marble-backend/app"
+	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
 
 	"github.com/ggicci/httpin"
@@ -48,8 +49,8 @@ func NewAPIDecision(decision app.Decision) APIDecision {
 	apiDecision := APIDecision{
 		ID:                decision.ID,
 		CreatedAt:         decision.CreatedAt,
-		TriggerObjectType: decision.Payload.TableName,
-		TriggerObject:     decision.Payload.Data,
+		TriggerObjectType: decision.PayloadForArchive.TableName,
+		TriggerObject:     decision.PayloadForArchive.Data,
 		Outcome:           decision.Outcome.String(),
 		Scenario: APIDecisionScenario{
 			ID:          decision.ScenarioID,
@@ -199,14 +200,14 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 		}
 
 		tables := dataModel.Tables
-		table, ok := tables[app.TableName(requestData.TriggerObjectType)]
+		table, ok := tables[models.TableName(requestData.TriggerObjectType)]
 		if !ok {
 			logger.ErrorCtx(ctx, "Table not found in data model for organization")
 			http.Error(w, "", http.StatusNotFound)
 			return
 		}
 
-		payloadStructWithReader, err := app.ParseToDataModelObject(ctx, table, requestData.TriggerObjectRaw)
+		payloadStructWithReader, err := app.ParseToDataModelObject(table, requestData.TriggerObjectRaw)
 		if errors.Is(err, app.ErrFormatValidation) {
 			http.Error(w, "Format validation error", http.StatusUnprocessableEntity) // 422
 			return
@@ -224,10 +225,10 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 			http.Error(w, "", http.StatusUnprocessableEntity)
 			return
 		}
-		payload := app.Payload{TableName: requestData.TriggerObjectType, Data: triggerObjectMap}
+		payloadForArchive := models.PayloadForArchive{TableName: requestData.TriggerObjectType, Data: triggerObjectMap}
 		decision, err := api.app.CreateDecision(ctx, app.CreateDecisionInput{
 			ScenarioID:              requestData.ScenarioID,
-			Payload:                 payload,
+			PayloadForArchive:       payloadForArchive,
 			OrganizationID:          orgID,
 			PayloadStructWithReader: payloadStructWithReader,
 		}, logger)

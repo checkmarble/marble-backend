@@ -9,27 +9,28 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"marble/marble-backend/app"
+	"marble/marble-backend/models"
 )
 
 type dataModelTestCase struct {
 	name           string
-	input          app.DataModel
+	input          models.DataModel
 	expectedOutput interface{}
 }
 
 func TestDataModelRepoEndToEnd(t *testing.T) {
-	transactions := app.Table{
+	transactions := models.Table{
 		Name: "transactions",
-		Fields: map[app.FieldName]app.Field{
+		Fields: map[models.FieldName]models.Field{
 			"object_id": {
-				DataType: app.String,
+				DataType: models.String,
 			},
-			"updated_at":  {DataType: app.Timestamp},
-			"value":       {DataType: app.Float},
-			"isValidated": {DataType: app.Bool},
-			"account_id":  {DataType: app.String},
+			"updated_at":  {DataType: models.Timestamp},
+			"value":       {DataType: models.Float},
+			"isValidated": {DataType: models.Bool},
+			"account_id":  {DataType: models.String},
 		},
-		LinksToSingle: map[app.LinkName]app.LinkToSingle{
+		LinksToSingle: map[models.LinkName]models.LinkToSingle{
 			"accounts": {
 				LinkedTableName: "accounts",
 				ParentFieldName: "object_id",
@@ -37,21 +38,21 @@ func TestDataModelRepoEndToEnd(t *testing.T) {
 			},
 		},
 	}
-	accounts := app.Table{
+	accounts := models.Table{
 		Name: "accounts_test",
-		Fields: map[app.FieldName]app.Field{
+		Fields: map[models.FieldName]models.Field{
 			"object_id": {
-				DataType: app.String,
+				DataType: models.String,
 			},
-			"updated_at":   {DataType: app.Timestamp},
-			"status":       {DataType: app.String},
-			"is_validated": {DataType: app.Bool},
+			"updated_at":   {DataType: models.Timestamp},
+			"status":       {DataType: models.String},
+			"is_validated": {DataType: models.Bool},
 		},
-		LinksToSingle: map[app.LinkName]app.LinkToSingle{},
+		LinksToSingle: map[models.LinkName]models.LinkToSingle{},
 	}
 
-	dataModel := app.DataModel{
-		Tables: map[app.TableName]app.Table{
+	dataModel := models.DataModel{
+		Tables: map[models.TableName]models.Table{
 			"transactions": transactions,
 			"accounts":     accounts,
 		},

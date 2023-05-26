@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"marble/marble-backend/app"
 	"marble/marble-backend/app/operators"
 	"marble/marble-backend/models"
 
@@ -13,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func (rep *PGRepository) GetDbField(ctx context.Context, readParams app.DbFieldReadParams) (interface{}, error) {
+func (rep *PGRepository) GetDbField(ctx context.Context, readParams models.DbFieldReadParams) (interface{}, error) {
 	if len(readParams.Path) == 0 {
 		return nil, fmt.Errorf("Path is empty: %w", operators.ErrDbReadInconsistentWithDataModel)
 	}
@@ -26,21 +25,21 @@ func (rep *PGRepository) GetDbField(ctx context.Context, readParams app.DbFieldR
 	if err != nil {
 		return nil, err
 	}
-	fieldFromModel, ok := lastTable.Fields[app.FieldName(readParams.FieldName)]
+	fieldFromModel, ok := lastTable.Fields[models.FieldName(readParams.FieldName)]
 	if !ok {
 		return nil, fmt.Errorf("Field %s not found in table %s", readParams.FieldName, lastTable.Name)
 	}
 
 	switch fieldFromModel.DataType {
-	case app.Bool:
+	case models.Bool:
 		return scanRowReturnValue[pgtype.Bool](row)
-	case app.Int:
+	case models.Int:
 		return scanRowReturnValue[pgtype.Int2](row)
-	case app.Float:
+	case models.Float:
 		return scanRowReturnValue[pgtype.Float8](row)
-	case app.String:
+	case models.String:
 		return scanRowReturnValue[pgtype.Text](row)
-	case app.Timestamp:
+	case models.Timestamp:
 		return scanRowReturnValue[pgtype.Timestamp](row)
 	default:
 		return nil, fmt.Errorf("Unknown data type when reading from db: %s", fieldFromModel.DataType)
@@ -58,7 +57,7 @@ func scanRowReturnValue[T pgtype.Bool | pgtype.Int2 | pgtype.Float8 | pgtype.Tex
 	return returnVariable, nil
 }
 
-func (rep *PGRepository) queryDbForField(ctx context.Context, readParams app.DbFieldReadParams) (pgx.Row, error) {
+func (rep *PGRepository) queryDbForField(ctx context.Context, readParams models.DbFieldReadParams) (pgx.Row, error) {
 	baseObjectId, err := getBaseObjectIdFromPayload(readParams.Payload)
 	if err != nil {
 		return nil, err
@@ -95,8 +94,8 @@ func (rep *PGRepository) queryDbForField(ctx context.Context, readParams app.DbF
 	return rows, nil
 }
 
-func getBaseObjectIdFromPayload(payload app.DynamicStructWithReader) (string, error) {
-	baseObjectIdAny, _ := payload.ReadFieldFromDynamicStruct("object_id")
+func getBaseObjectIdFromPayload(payload models.Payload) (string, error) {
+	baseObjectIdAny, _ := payload.ReadFieldFromPayload("object_id")
 	baseObjectIdPtr, ok := baseObjectIdAny.(*string)
 	if !ok {
 		return "", fmt.Errorf("object_id in payload is not a string") // should not happen, as per input validation
@@ -109,7 +108,7 @@ func getBaseObjectIdFromPayload(payload app.DynamicStructWithReader) (string, er
 	return baseObjectId, nil
 }
 
-func addJoinsOnIntermediateTables(query sq.SelectBuilder, readParams app.DbFieldReadParams, firstTable app.Table) (sq.SelectBuilder, error) {
+func addJoinsOnIntermediateTables(query sq.SelectBuilder, readParams models.DbFieldReadParams, firstTable models.Table) (sq.SelectBuilder, error) {
 	currentTable := firstTable
 	for _, linkName := range readParams.Path {
 		link, ok := currentTable.LinksToSingle[linkName]
@@ -130,25 +129,25 @@ func addJoinsOnIntermediateTables(query sq.SelectBuilder, readParams app.DbField
 	return query, nil
 }
 
-func rowIsValid(tableName app.TableName) sq.Eq {
+func rowIsValid(tableName models.TableName) sq.Eq {
 	return sq.Eq{fmt.Sprintf("%s.valid_until", tableName): "Infinity"}
 }
 
-func getLastTableFromPath(params app.DbFieldReadParams) (app.Table, error) {
+func getLastTableFromPath(params models.DbFieldReadParams) (models.Table, error) {
 	firstTable, ok := params.DataModel.Tables[params.TriggerTableName]
 	if !ok {
-		return app.Table{}, fmt.Errorf("Table %s not found in data model", params.TriggerTableName)
+		return models.Table{}, fmt.Errorf("Table %s not found in data model", params.TriggerTableName)
 	}
 
 	currentTable := firstTable
 	for _, linkName := range params.Path {
 		link, ok := currentTable.LinksToSingle[linkName]
 		if !ok {
-			return app.Table{}, fmt.Errorf("No link with name %s: %w", linkName, operators.ErrDbReadInconsistentWithDataModel)
+			return models.Table{}, fmt.Errorf("No link with name %s: %w", linkName, operators.ErrDbReadInconsistentWithDataModel)
 		}
 		nextTable, ok := params.DataModel.Tables[link.LinkedTableName]
 		if !ok {
-			return app.Table{}, fmt.Errorf("No table with name %s: %w", link.LinkedTableName, operators.ErrDbReadInconsistentWithDataModel)
+			return models.Table{}, fmt.Errorf("No table with name %s: %w", link.LinkedTableName, operators.ErrDbReadInconsistentWithDataModel)
 		}
 
 		currentTable = nextTable

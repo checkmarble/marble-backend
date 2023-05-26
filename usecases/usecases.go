@@ -29,3 +29,9 @@ func (usecases *Usecases) NewOrganizationUseCase() OrganizationUseCase {
 		organizationRepository: usecases.Repositories.OrganizationRepository,
 	}
 }
+
+func (usecases *Usecases) NewIngestionUseCase() IngestionUseCase {
+	return IngestionUseCase{
+		ingestionRepository: usecases.Repositories.IngestionRepository,
+	}
+}
