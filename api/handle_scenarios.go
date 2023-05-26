@@ -45,7 +45,7 @@ func (api *API) ListScenarios() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(ctx, api.logger, w, err) {
+		if presentError(w, r, err) {
 			return
 		}
 
@@ -53,7 +53,7 @@ func (api *API) ListScenarios() http.HandlerFunc {
 
 		scenarios, err := api.app.ListScenarios(ctx, orgID)
 
-		if presentError(ctx, api.logger, w, err) {
+		if presentError(w, r, err) {
 			return
 		}
 
@@ -86,7 +86,7 @@ func (api *API) CreateScenario() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(ctx, api.logger, w, err) {
+		if presentError(w, r, err) {
 			return
 		}
 
@@ -122,7 +122,7 @@ func (api *API) GetScenario() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(ctx, api.logger, w, err) {
+		if presentError(w, r, err) {
 			return
 		}
 
@@ -163,7 +163,7 @@ func (api *API) UpdateScenario() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(ctx, api.logger, w, err) {
+		if presentError(w, r, err) {
 			return
 		}
 

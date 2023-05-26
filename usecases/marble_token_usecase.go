@@ -13,6 +13,7 @@ type MarbleTokenUseCase struct {
 	firebaseTokenRepository repositories.FireBaseTokenRepository
 	userRepository          repositories.UserRepository
 	apiKeyRepository        repositories.ApiKeyRepository
+	organizationRepository  repositories.OrganizationRepository
 	tokenLifetimeMinute     int
 }
 
@@ -26,13 +27,29 @@ func (usecase *MarbleTokenUseCase) encodeMarbleToken(creds Credentials) (string,
 func (usecase *MarbleTokenUseCase) adaptCredentialFromApiKey(ctx context.Context, apiKey string) (Credentials, error) {
 	// Useful to test api as a marble-admin
 	// if apiKey == "marble-admin" {
-	// 	return Credentials{OrganizationId: "", Role: MARBLE_ADMIN}, nil
+	// 	return NewCredentialWithUser("", MARBLE_ADMIN, "", "vivien.miniussi@checkmarble.com"), nil
 	// }
-	orgID, err := usecase.apiKeyRepository.GetOrganizationIDFromApiKey(ctx, apiKey)
+	organizationId, err := usecase.apiKeyRepository.GetOrganizationIDFromApiKey(ctx, apiKey)
 	if err != nil {
 		return Credentials{}, err
 	}
-	return Credentials{OrganizationId: orgID, Role: API_CLIENT}, nil
+
+	// Build a token name from the organization name because
+	// We don't want to log the apiKey itself.
+	apiKeyName, err := usecase.makeTokenName(ctx, organizationId)
+	if err != nil {
+		return Credentials{}, err
+	}
+	return NewCredentialWithApiKey(organizationId, API_CLIENT, apiKeyName), nil
+}
+
+func (usecase *MarbleTokenUseCase) makeTokenName(ctx context.Context, organizationId string) (string, error) {
+	organizationName, err := usecase.organizationRepository.GetOrganization(ctx, organizationId)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("ApiKey Of %s", organizationName), nil
 }
 
 func (usecase *MarbleTokenUseCase) NewMarbleToken(ctx context.Context, apiKey string, firebaseIdToken string) (string, time.Time, error) {
@@ -64,7 +81,7 @@ func (usecase *MarbleTokenUseCase) NewMarbleToken(ctx context.Context, apiKey st
 				return "", time.Time{}, err
 			}
 		}
-		return usecase.encodeMarbleToken(Credentials{OrganizationId: user.OrganizationId, Role: user.Role})
+		return usecase.encodeMarbleToken(NewCredentialWithUser(user.OrganizationId, user.Role, user.UserId))
 	}
 
 	return "", time.Time{}, fmt.Errorf("API key or Firebase JWT token required: %w", UnAuthorizedError)

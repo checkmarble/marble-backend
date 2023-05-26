@@ -13,9 +13,10 @@ import (
 const UUIDRegExp = "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}"
 
 func (api *API) routes() {
+
 	api.router.Post("/token", api.handlePostFirebaseIdToken())
 
-	api.router.With(api.credentialsMiddleware).Group(func(authedRouter chi.Router) {
+	api.router.With(api.credentialsMiddleware).With(api.loggerMiddleware(api.logger)).Group(func(authedRouter chi.Router) {
 		// Authentication using marble token (JWT) or API Key required.
 
 		// Decision API subrouter

@@ -26,7 +26,7 @@ func (api *API) handleGetOrganizations() http.HandlerFunc {
 
 		usecase := api.usecases.NewOrganizationUseCase()
 		organizations, err := usecase.GetOrganizations(ctx)
-		if presentError(ctx, api.logger, w, err) {
+		if presentError(w, r, err) {
 			return
 		}
 
@@ -68,7 +68,7 @@ func (api *API) handlePostOrganization() http.HandlerFunc {
 			Name:         inputDto.Name,
 			DatabaseName: inputDto.DatabaseName,
 		})
-		if presentError(ctx, api.logger, w, err) {
+		if presentError(w, r, err) {
 			return
 		}
 		presentOrganization(w, organization)
@@ -80,14 +80,14 @@ func (api *API) handleGetOrganization() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID, err := requiredUuidUrlParam(r, "orgID")
-		if presentError(ctx, api.logger, w, err) {
+		if presentError(w, r, err) {
 			return
 		}
 
 		usecase := api.usecases.NewOrganizationUseCase()
 		organization, err := usecase.GetOrganization(ctx, orgID)
 
-		if presentError(ctx, api.logger, w, err) {
+		if presentError(w, r, err) {
 			return
 		}
 
@@ -120,7 +120,7 @@ func (api *API) handlePutOrganization() http.HandlerFunc {
 			DatabaseName: requestData.DatabaseName,
 		})
 
-		if presentError(ctx, api.logger, w, err) {
+		if presentError(w, r, err) {
 			return
 		}
 
@@ -140,7 +140,7 @@ func (api *API) handleDeleteOrganization() http.HandlerFunc {
 
 		usecase := api.usecases.NewOrganizationUseCase()
 		err := usecase.SoftDeleteOrganization(ctx, orgID)
-		if presentError(ctx, api.logger, w, err) {
+		if presentError(w, r, err) {
 			return
 		}
 		PresentNothing(w)
