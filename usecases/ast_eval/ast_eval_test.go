@@ -1,28 +1,23 @@
-package models
+package ast_eval
 
 import (
 	"encoding/json"
 	"fmt"
 	"testing"
 
+	"marble/marble-backend/models/ast"
+
 	"github.com/stretchr/testify/assert"
 )
 
-func NewTestExpression() *ASTNode {
+func NewTestExpression() ast.Node {
 	// DatabaseAccess("account", "balance") + 4 > 100
-	return NewASTSuperior().
-		AddChild(
-			NewASTNodePlus().
-				AddChild(
-					NewASTNodeDatabaseAccess("account", "balance"),
-				).
-				AddChild(
-					NewASTNodeNumber(4),
-				),
+	return ast.Node{Function: ast.FUNC_GREATER}.
+		AddChild(ast.Node{Function: ast.FUNC_PLUS}.
+			AddChild(ast.NewNodeDatabaseAccess("account", "balance")).
+			AddChild(ast.Node{Constant: 4}),
 		).
-		AddChild(
-			NewASTNodeNumber(100),
-		)
+		AddChild(ast.Node{Constant: 100})
 }
 
 func TestEval(t *testing.T) {
@@ -42,4 +37,13 @@ func TestAstToJson(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, serialized)
 	fmt.Println(string(serialized))
+}
+
+func TestRenderAstToJavascript(t *testing.T) {
+
+	root := NewTestExpression()
+
+	js, err := RenderAstToJavascript(root, "ruleName")
+	assert.NoError(t, err)
+	fmt.Println(js)
 }
