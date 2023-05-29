@@ -1,6 +1,8 @@
 package ast
 
 import (
+	"encoding/json"
+	"fmt"
 	"marble/marble-backend/models/ast"
 	"testing"
 
@@ -45,4 +47,17 @@ func TestAdaptASTNode(t *testing.T) {
 			AddChild(ast.Node{Constant: 1}).
 			AddNamedChild("named", ast.Node{Constant: 2}),
 	)
+}
+
+func TestAstToJson(t *testing.T) {
+
+	node := ast.NewAstCompareBalance()
+
+	dto, err := AdaptNodeDto(node)
+	assert.NoError(t, err)
+
+	serialized, err := json.Marshal(dto)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, serialized)
+	fmt.Println(string(serialized))
 }
