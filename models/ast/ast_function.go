@@ -48,7 +48,7 @@ func NewNodeDatabaseAccess(tableName string, fieldName string) Node {
 
 func NewNodeReadPayload(fieldName string) Node {
 	return Node{Function: FUNC_READ_PAYLOAD}.
-		AddNamedChild(FUNC_READ_PAYLOAD_ARGUMENT_FIELD, Node{Constant: fieldName})
+		AddNamedChild(FUNC_READ_PAYLOAD_ARGUMENT_FIELD_NAME, Node{Constant: fieldName})
 }
 
-const FUNC_READ_PAYLOAD_ARGUMENT_FIELD = "field"
+const FUNC_READ_PAYLOAD_ARGUMENT_FIELD_NAME = "fieldName"
