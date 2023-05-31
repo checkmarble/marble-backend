@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,6 +20,10 @@ func (d *DataAccessorStringImpl) GetPayloadField(fieldName string) (interface{},
 func (d *DataAccessorStringImpl) GetDbField(triggerTableName string, path []string, fieldName string) (interface{}, error) {
 	val := pgtype.Text{String: fieldName, Valid: true}
 	return val, nil
+}
+
+func (d *DataAccessorStringImpl) GetDbHandle() *pgxpool.Pool {
+	return nil
 }
 
 func TestLogicEvalString(t *testing.T) {

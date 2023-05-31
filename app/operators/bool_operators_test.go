@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -33,6 +34,10 @@ func (d *DataAccessorBoolImpl) GetDbField(triggerTableName string, path []string
 		val = pgtype.Bool{Bool: true, Valid: false}
 	}
 	return val, nil
+}
+
+func (d *DataAccessorBoolImpl) GetDbHandle() *pgxpool.Pool {
+	return nil
 }
 
 func TestLogicEval(t *testing.T) {

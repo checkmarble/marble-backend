@@ -6,6 +6,7 @@ import (
 	"marble/marble-backend/models"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,6 +18,10 @@ func (d *DataAccessorStringListImpl) GetPayloadField(fieldName string) (interfac
 
 func (d *DataAccessorStringListImpl) GetDbField(triggerTableName string, path []string, fieldName string) (interface{}, error) {
 	return nil, nil
+}
+
+func (d *DataAccessorStringListImpl) GetDbHandle() *pgxpool.Pool {
+	return nil
 }
 
 func TestLogicEvalStringList(t *testing.T) {

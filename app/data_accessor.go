@@ -3,6 +3,8 @@ package app
 import (
 	"context"
 	"marble/marble-backend/models"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type DataAccessorImpl struct {
@@ -22,4 +24,7 @@ func (d *DataAccessorImpl) GetDbField(triggerTableName string, path []string, fi
 		DataModel:        d.DataModel,
 		Payload:          d.Payload,
 	})
+}
+func (d *DataAccessorImpl) GetDbHandle() *pgxpool.Pool {
+	return nil
 }

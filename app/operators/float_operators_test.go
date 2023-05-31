@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -33,6 +34,10 @@ func (d *DataAccessorFloatImpl) GetDbField(triggerTableName string, path []strin
 	return val, nil
 }
 func (d *DataAccessorFloatImpl) ValidateDbFieldReadConsistency(path []string, fieldName string) error {
+	return nil
+}
+
+func (d *DataAccessorFloatImpl) GetDbHandle() *pgxpool.Pool {
 	return nil
 }
 
