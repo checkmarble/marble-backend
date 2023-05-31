@@ -1,6 +1,7 @@
 package operators
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 )
@@ -15,12 +16,12 @@ func init() {
 	operatorFromType["GREATER_FLOAT"] = func() Operator { return &GreaterFloat{} }
 }
 
-func (o GreaterFloat) Eval(d DataAccessor) (bool, error) {
+func (o GreaterFloat) Eval(ctx context.Context, d DataAccessor) (bool, error) {
 	if !o.IsValid() {
 		return false, ErrEvaluatingInvalidOperator
 	}
-	valLeft, errLeft := o.Left.Eval(d)
-	valRight, errRight := o.Right.Eval(d)
+	valLeft, errLeft := o.Left.Eval(ctx, d)
+	valRight, errRight := o.Right.Eval(ctx, d)
 	if errLeft != nil || errRight != nil {
 		return false, fmt.Errorf("error in GreaterFloat.Eval: %w, %w", errLeft, errRight)
 	}
@@ -91,12 +92,12 @@ func init() {
 	operatorFromType["GREATER_OR_EQUAL_FLOAT"] = func() Operator { return &GreaterOrEqualFloat{} }
 }
 
-func (o GreaterOrEqualFloat) Eval(d DataAccessor) (bool, error) {
+func (o GreaterOrEqualFloat) Eval(ctx context.Context, d DataAccessor) (bool, error) {
 	if !o.IsValid() {
 		return false, ErrEvaluatingInvalidOperator
 	}
-	valLeft, errLeft := o.Left.Eval(d)
-	valRight, errRight := o.Right.Eval(d)
+	valLeft, errLeft := o.Left.Eval(ctx, d)
+	valRight, errRight := o.Right.Eval(ctx, d)
 	if errLeft != nil || errRight != nil {
 		return false, fmt.Errorf("error in GreaterOrEqualFloat.Eval: %w, %w", errLeft, errRight)
 	}
@@ -167,12 +168,12 @@ func init() {
 	operatorFromType["EQUAL_FLOAT"] = func() Operator { return &EqualFloat{} }
 }
 
-func (o EqualFloat) Eval(d DataAccessor) (bool, error) {
+func (o EqualFloat) Eval(ctx context.Context, d DataAccessor) (bool, error) {
 	if !o.IsValid() {
 		return false, ErrEvaluatingInvalidOperator
 	}
-	valLeft, errLeft := o.Left.Eval(d)
-	valRight, errRight := o.Right.Eval(d)
+	valLeft, errLeft := o.Left.Eval(ctx, d)
+	valRight, errRight := o.Right.Eval(ctx, d)
 	if errLeft != nil || errRight != nil {
 		return false, fmt.Errorf("error in EqualFloat.Eval: %w, %w", errLeft, errRight)
 	}
@@ -243,12 +244,12 @@ func init() {
 	operatorFromType["LESSER_OR_EQUAL_FLOAT"] = func() Operator { return &LesserOrEqualFloat{} }
 }
 
-func (o LesserOrEqualFloat) Eval(d DataAccessor) (bool, error) {
+func (o LesserOrEqualFloat) Eval(ctx context.Context, d DataAccessor) (bool, error) {
 	if !o.IsValid() {
 		return false, ErrEvaluatingInvalidOperator
 	}
-	valLeft, errLeft := o.Left.Eval(d)
-	valRight, errRight := o.Right.Eval(d)
+	valLeft, errLeft := o.Left.Eval(ctx, d)
+	valRight, errRight := o.Right.Eval(ctx, d)
 	if errLeft != nil || errRight != nil {
 		return false, fmt.Errorf("error in LesserOrEqualFloat.Eval: %w, %w", errLeft, errRight)
 	}
@@ -319,12 +320,12 @@ func init() {
 	operatorFromType["LESSER_FLOAT"] = func() Operator { return &LesserFloat{} }
 }
 
-func (o LesserFloat) Eval(d DataAccessor) (bool, error) {
+func (o LesserFloat) Eval(ctx context.Context, d DataAccessor) (bool, error) {
 	if !o.IsValid() {
 		return false, ErrEvaluatingInvalidOperator
 	}
-	valLeft, errLeft := o.Left.Eval(d)
-	valRight, errRight := o.Right.Eval(d)
+	valLeft, errLeft := o.Left.Eval(ctx, d)
+	valRight, errRight := o.Right.Eval(ctx, d)
 	if errLeft != nil || errRight != nil {
 		return false, fmt.Errorf("error in LesserFloat.Eval: %w, %w", errLeft, errRight)
 	}

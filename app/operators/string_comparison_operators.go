@@ -1,6 +1,7 @@
 package operators
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 )
@@ -15,12 +16,12 @@ func init() {
 	operatorFromType["EQUAL_STRING"] = func() Operator { return &EqString{} }
 }
 
-func (eq EqString) Eval(d DataAccessor) (bool, error) {
+func (eq EqString) Eval(ctx context.Context, d DataAccessor) (bool, error) {
 	if !eq.IsValid() {
 		return false, ErrEvaluatingInvalidOperator
 	}
-	valLeft, errLeft := eq.Left.Eval(d)
-	valRight, errRight := eq.Right.Eval(d)
+	valLeft, errLeft := eq.Left.Eval(ctx, d)
+	valRight, errRight := eq.Right.Eval(ctx, d)
 	if errLeft != nil || errRight != nil {
 		return false, fmt.Errorf("error in EqString.Eval: %w, %w", errLeft, errRight)
 	}

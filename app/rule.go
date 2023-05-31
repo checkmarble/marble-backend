@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"marble/marble-backend/app/operators"
 	"time"
@@ -82,10 +83,10 @@ func (r RuleExecutionError) String() string {
 //
 ///////////////////////////////
 
-func (r Rule) Eval(dataAccessor operators.DataAccessor) (RuleExecution, error) {
+func (r Rule) Eval(ctx context.Context, dataAccessor operators.DataAccessor) (RuleExecution, error) {
 
 	// Eval the Node
-	res, err := r.Formula.Eval(dataAccessor)
+	res, err := r.Formula.Eval(ctx, dataAccessor)
 	if err != nil {
 		return RuleExecution{}, fmt.Errorf("error while evaluating rule %s: %w", r.Name, err)
 	}

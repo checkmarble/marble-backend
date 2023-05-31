@@ -1,7 +1,9 @@
 package operators
 
 import (
+	"context"
 	"fmt"
+	"marble/marble-backend/models"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -53,7 +55,7 @@ func TestLogicEvalString(t *testing.T) {
 	asserts := assert.New(t)
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			got, err := c.operator.Eval(&dataAccessor)
+			got, err := c.operator.Eval(context.Background(), &dataAccessor)
 
 			if err != nil {
 				t.Errorf("error: %v", err)
@@ -105,11 +107,11 @@ func TestMarshalUnMarshalString(t *testing.T) {
 			}
 			fmt.Println(rootOperator)
 
-			expected, err := c.operator.Eval(&dataAccessor)
+			expected, err := c.operator.Eval(context.Background(), &dataAccessor)
 			if err != nil {
 				t.Errorf("error: %v", err)
 			}
-			got, err := rootOperator.Eval(&dataAccessor)
+			got, err := rootOperator.Eval(context.Background(), &dataAccessor)
 			if err != nil {
 				t.Errorf("error: %v", err)
 			}

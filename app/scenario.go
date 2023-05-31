@@ -216,7 +216,7 @@ func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStr
 	dataAccessor := DataAccessorImpl{DataModel: dataModel, Payload: payloadStructWithReader, repository: repo}
 
 	// Evaluate the trigger
-	triggerPassed, err := publishedVersion.Body.TriggerCondition.Eval(&dataAccessor)
+	triggerPassed, err := publishedVersion.Body.TriggerCondition.Eval(ctx, &dataAccessor)
 	if err != nil {
 		return ScenarioExecution{}, err
 	}
@@ -269,7 +269,7 @@ func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStr
 func evalScenarioRule(ctx context.Context, rule Rule, dataAccessor operators.DataAccessor, logger *slog.Logger) (int, RuleExecution, error) {
 	// Evaluate single rule
 	score := 0
-	ruleExecution, err := rule.Eval(dataAccessor)
+	ruleExecution, err := rule.Eval(ctx, dataAccessor)
 	if err != nil {
 		ruleExecution.Rule = rule
 		ruleExecution, err = setRuleExecutionError(ruleExecution, err)

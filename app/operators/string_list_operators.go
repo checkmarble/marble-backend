@@ -1,6 +1,7 @@
 package operators
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 )
@@ -52,7 +53,9 @@ func init() {
 	operatorFromType["STRING_LIST_CONSTANT"] = func() Operator { return &StringListValue{} }
 }
 
-func (s StringListValue) Eval(d DataAccessor) ([]string, error) { return s.Value, nil }
+func (s StringListValue) Eval(ctx context.Context, d DataAccessor) ([]string, error) {
+	return s.Value, nil
+}
 
 func (s StringListValue) IsValid() bool { return s.Value != nil }
 
