@@ -29,7 +29,7 @@ type PGConfig struct {
 }
 
 type PGRepository struct {
-	db           PgxPoolIface
+	db           *pgxpool.Pool
 	queryBuilder sq.StatementBuilderType
 }
 
@@ -73,4 +73,8 @@ func New(env string, PGConfig PGConfig) (*PGRepository, error) {
 	}
 
 	return r, nil
+}
+
+func (r *PGRepository) GetDbPool() *pgxpool.Pool {
+	return r.db
 }

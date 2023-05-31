@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"marble/marble-backend/models"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type App struct {
@@ -27,6 +29,8 @@ type RepositoryInterface interface {
 
 	// DB field access
 	GetDbField(ctx context.Context, readParams models.DbFieldReadParams) (interface{}, error)
+
+	GetDbPool() *pgxpool.Pool
 }
 
 func New(r RepositoryInterface) (*App, error) {

@@ -26,6 +26,10 @@ func (d *DataAccessorStringImpl) GetDbHandle() *pgxpool.Pool {
 	return nil
 }
 
+func (d *DataAccessorStringImpl) GetVariable(ctx context.Context, id string) (models.Variable, error) {
+	return models.Variable{}, nil
+}
+
 func TestLogicEvalString(t *testing.T) {
 	type testCase struct {
 		name     string

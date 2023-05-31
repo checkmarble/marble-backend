@@ -42,10 +42,6 @@ var (
 // }
 
 type Operator interface {
-	// 	Needs() ([]APIField, []DBField, []DBVariable, []List)
-
-	// DescribeForFront() []byte // JSON representation of each operator > STRONG LINK BT app and API
-
 	// We need operators to Marshall & Unmarshall to JSON themselves
 	json.Marshaler
 	json.Unmarshaler

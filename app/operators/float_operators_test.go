@@ -41,6 +41,10 @@ func (d *DataAccessorFloatImpl) GetDbHandle() *pgxpool.Pool {
 	return nil
 }
 
+func (d *DataAccessorFloatImpl) GetVariable(ctx context.Context, id string) (models.Variable, error) {
+	return models.Variable{}, nil
+}
+
 func TestLogicEvalFloat(t *testing.T) {
 	type testCase struct {
 		name     string
