@@ -15,7 +15,12 @@ func PresentModel(w http.ResponseWriter, model any) {
 	if err != nil {
 		panic(err)
 	}
+}
 
+func PresentModelWithName(w http.ResponseWriter, keyName string, models any) {
+	PresentModel(w, map[string]any{
+		keyName: models,
+	})
 }
 
 func PresentNothing(w http.ResponseWriter) {

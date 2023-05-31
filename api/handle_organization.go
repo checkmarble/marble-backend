@@ -30,13 +30,7 @@ func (api *API) handleGetOrganizations() http.HandlerFunc {
 			return
 		}
 
-		apiOrganizations := utils.Map(organizations, NewAPIOrganization)
-
-		PresentModel(w, struct {
-			Organizations []APIOrganization `json:"organizations"`
-		}{
-			Organizations: apiOrganizations,
-		})
+		PresentModelWithName(w, "organizations", utils.Map(organizations, NewAPIOrganization))
 	}
 }
 
@@ -47,14 +41,6 @@ type CreateOrganizationBodyDto struct {
 
 type CreateOrganizationInputDto struct {
 	Body *CreateOrganizationBodyDto `in:"body=json"`
-}
-
-func presentOrganization(w http.ResponseWriter, organization models.Organization) {
-	PresentModel(w, struct {
-		Organization APIOrganization `json:"organization"`
-	}{
-		Organization: NewAPIOrganization(organization),
-	})
 }
 
 func (api *API) handlePostOrganization() http.HandlerFunc {
@@ -71,15 +57,19 @@ func (api *API) handlePostOrganization() http.HandlerFunc {
 		if presentError(w, r, err) {
 			return
 		}
-		presentOrganization(w, organization)
+		PresentModelWithName(w, "organization", NewAPIOrganization(organization))
 	}
+}
+
+func requiredOrgIdUrlParam(r *http.Request) (string, error) {
+	return requiredUuidUrlParam(r, "orgID")
 }
 
 func (api *API) handleGetOrganization() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := requiredUuidUrlParam(r, "orgID")
+		orgID, err := requiredOrgIdUrlParam(r)
 		if presentError(w, r, err) {
 			return
 		}
@@ -91,7 +81,7 @@ func (api *API) handleGetOrganization() http.HandlerFunc {
 			return
 		}
 
-		presentOrganization(w, organization)
+		PresentModelWithName(w, "organization", NewAPIOrganization(organization))
 	}
 }
 
@@ -124,7 +114,7 @@ func (api *API) handlePutOrganization() http.HandlerFunc {
 			return
 		}
 
-		presentOrganization(w, organization)
+		PresentModelWithName(w, "organization", NewAPIOrganization(organization))
 	}
 }
 

@@ -1,7 +1,6 @@
 package api
 
 import (
-	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
 	"net/http"
 )
@@ -21,10 +20,6 @@ func (api *API) handleGetDataModel() http.HandlerFunc {
 			return
 		}
 
-		PresentModel(w, struct {
-			DataModel models.DataModel `json:"data_model"`
-		}{
-			DataModel: dataModel,
-		})
+		PresentModelWithName(w, "data_model", dataModel)
 	}
 }
