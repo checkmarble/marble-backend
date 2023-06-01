@@ -193,20 +193,7 @@ func (field PayloadFieldString) Eval(ctx context.Context, d DataAccessor) (strin
 	if !field.IsValid() {
 		return "", ErrEvaluatingInvalidOperator
 	}
-
-	valRaw, err := d.GetPayloadField(field.FieldName)
-	if err != nil {
-		return "", err
-	}
-
-	valPointer, ok := valRaw.(*string)
-	if !ok {
-		return "", fmt.Errorf("Payload field %s is not a pointer to a string", field.FieldName)
-	}
-	if valPointer == nil {
-		return "", fmt.Errorf("Payload field %s is null: %w", field.FieldName, models.OperatorNullValueReadError)
-	}
-	return *valPointer, nil
+	return getPayloadFieldGeneric[string](d, field.FieldName)
 }
 
 func (field PayloadFieldString) IsValid() bool {

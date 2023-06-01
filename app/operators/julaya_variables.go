@@ -4,17 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"marble/marble-backend/models"
+	"marble/marble-backend/utils"
 )
+
+func checkOrgIdJulaya(orgID string) bool {
+	// TODO adapt once org provisioned
+	return orgID == "JULAYA_ORG_ID"
+}
 
 // ///////////////////////////////////////////////////////////////////////////////////////
 // Variable: Sum transactions (cash, payout, one month) for Julaya
 // ///////////////////////////////////////////////////////////////////////////////////////
-
-// To be moved to the data accessor to be able to check at runtime if the scenario belongs to the proper org
-func getOrgName() string {
-	return "Julaya"
-}
 
 type JulayaSumCashPayoutOneMonth struct{}
 
@@ -24,20 +24,18 @@ func init() {
 }
 
 func (r JulayaSumCashPayoutOneMonth) Eval(ctx context.Context, d DataAccessor) (float64, error) {
-	db := d.GetDbHandle()
-
-	// Get account_id from payload. Basically a copy/paste from the string payload field operator Eval()
-	accountIdRaw, err := d.GetPayloadField("account_id")
+	orgID, err := utils.OrgIDFromCtx(ctx, nil)
 	if err != nil {
 		return 0, err
+	} else if checkOrgIdJulaya(orgID) {
+		return 0, fmt.Errorf("org_id is not Julaya")
 	}
 
-	accountIdPointer, ok := accountIdRaw.(*string)
-	if !ok {
-		return 0, fmt.Errorf("Payload field %s is not a pointer to a string", "account_id")
-	}
-	if accountIdPointer == nil {
-		return 0, fmt.Errorf("Payload field %s is null: %w", "account_id", models.OperatorNullValueReadError)
+	db := d.GetDbHandle()
+
+	accountId, err := getPayloadFieldGeneric[string](d, "account_id")
+	if err != nil {
+		return 0, err
 	}
 
 	// Execute query with the account id
@@ -54,19 +52,12 @@ func (r JulayaSumCashPayoutOneMonth) Eval(ctx context.Context, d DataAccessor) (
 	// NB: in this implementation, nothing is stopping us from also retrieving the transaction_date from the
 	// payload, instead of using SQL NOW().
 	// Here, I'm skipping on this to keep it simple and keep the two implementations functionally equivalent.
-	args := []any{*accountIdPointer}
-	rows := db.QueryRow(ctx, sql, args...)
-	var output float64
-	err = rows.Scan(&output)
-	if err != nil {
-		return 0, err
-	}
-
-	return output, nil
+	args := []any{accountId}
+	return queryDbFieldGeneric[float64](ctx, db, sql, args)
 }
 
 func (r JulayaSumCashPayoutOneMonth) IsValid() bool {
-	return getOrgName() == "Julaya"
+	return true
 }
 
 func (r JulayaSumCashPayoutOneMonth) String() string {

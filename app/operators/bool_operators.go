@@ -272,19 +272,7 @@ func (field PayloadFieldBool) Eval(ctx context.Context, d DataAccessor) (bool, e
 		return false, ErrEvaluatingInvalidOperator
 	}
 
-	valRaw, err := d.GetPayloadField(field.FieldName)
-	if err != nil {
-		return false, err
-	}
-
-	valPointer, ok := valRaw.(*bool)
-	if !ok {
-		return false, fmt.Errorf("Payload field %s is not a pointer to a boolean", field.FieldName)
-	}
-	if valPointer == nil {
-		return false, fmt.Errorf("Payload field %s is null: %w", field.FieldName, models.OperatorNullValueReadError)
-	}
-	return *valPointer, nil
+	return getPayloadFieldGeneric[bool](d, field.FieldName)
 }
 
 func (field PayloadFieldBool) IsValid() bool {

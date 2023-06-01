@@ -198,20 +198,7 @@ func (field PayloadFieldFloat) Eval(ctx context.Context, d DataAccessor) (float6
 	if !field.IsValid() {
 		return 0, ErrEvaluatingInvalidOperator
 	}
-
-	valRaw, err := d.GetPayloadField(field.FieldName)
-	if err != nil {
-		return 0, err
-	}
-
-	valPointer, ok := valRaw.(*float64)
-	if !ok {
-		return 0, fmt.Errorf("Payload field %s is not a pointer to a float", field.FieldName)
-	}
-	if valPointer == nil {
-		return 0, fmt.Errorf("Payload field %s is null: %w", field.FieldName, models.OperatorNullValueReadError)
-	}
-	return *valPointer, nil
+	return getPayloadFieldGeneric[float64](d, field.FieldName)
 }
 
 func (field PayloadFieldFloat) IsValid() bool {

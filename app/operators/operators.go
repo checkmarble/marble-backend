@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"marble/marble-backend/models"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -21,7 +20,6 @@ type DataAccessor interface {
 	GetPayloadField(fieldName string) (interface{}, error)
 	GetDbField(triggerTableName string, path []string, fieldName string) (interface{}, error)
 	GetDbHandle() *pgxpool.Pool
-	GetVariable(ctx context.Context, variableId string) (models.Variable, error)
 }
 
 var (

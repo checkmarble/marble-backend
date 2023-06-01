@@ -3,7 +3,6 @@ package operators
 import (
 	"context"
 	"fmt"
-	"marble/marble-backend/models"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -24,10 +23,6 @@ func (d *DataAccessorStringImpl) GetDbField(triggerTableName string, path []stri
 
 func (d *DataAccessorStringImpl) GetDbHandle() *pgxpool.Pool {
 	return nil
-}
-
-func (d *DataAccessorStringImpl) GetVariable(ctx context.Context, id string) (models.Variable, error) {
-	return models.Variable{}, nil
 }
 
 func TestLogicEvalString(t *testing.T) {

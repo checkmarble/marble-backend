@@ -3,7 +3,6 @@ package operators
 import (
 	"context"
 	"fmt"
-	"marble/marble-backend/models"
 	"strconv"
 	"testing"
 
@@ -39,10 +38,6 @@ func (d *DataAccessorFloatImpl) ValidateDbFieldReadConsistency(path []string, fi
 
 func (d *DataAccessorFloatImpl) GetDbHandle() *pgxpool.Pool {
 	return nil
-}
-
-func (d *DataAccessorFloatImpl) GetVariable(ctx context.Context, id string) (models.Variable, error) {
-	return models.Variable{}, nil
 }
 
 func TestLogicEvalFloat(t *testing.T) {
