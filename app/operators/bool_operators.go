@@ -190,7 +190,7 @@ func (field DbFieldBool) Eval(ctx context.Context, d DataAccessor) (bool, error)
 		return false, ErrEvaluatingInvalidOperator
 	}
 
-	valRaw, err := d.GetDbField(field.TriggerTableName, field.Path, field.FieldName)
+	valRaw, err := d.GetDbField(ctx, field.TriggerTableName, field.Path, field.FieldName)
 	if err != nil {
 		return false, err
 	}
@@ -271,7 +271,6 @@ func (field PayloadFieldBool) Eval(ctx context.Context, d DataAccessor) (bool, e
 	if !field.IsValid() {
 		return false, ErrEvaluatingInvalidOperator
 	}
-
 	return getPayloadFieldGeneric[bool](d, field.FieldName)
 }
 

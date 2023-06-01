@@ -29,7 +29,6 @@ type AppInterface interface {
 	ScenarioAppInterface
 	ScenarioIterationAppInterface
 	ScenarioIterationRuleAppInterface
-	DecisionInterface
 	ScenarioPublicationAppInterface
 
 	GetDataModel(ctx context.Context, organizationID string) (models.DataModel, error)

@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -14,12 +13,6 @@ import (
 	"github.com/ggicci/httpin"
 	"golang.org/x/exp/slog"
 )
-
-type DecisionInterface interface {
-	CreateDecision(ctx context.Context, input app.CreateDecisionInput, logger *slog.Logger) (app.Decision, error)
-	GetDecision(ctx context.Context, organizationID string, requestedDecisionID string) (app.Decision, error)
-	ListDecisions(ctx context.Context, organizationID string) ([]app.Decision, error)
-}
 
 type APIError struct {
 	Code    int    `json:"code"`
@@ -117,7 +110,8 @@ func (api *API) handleGetDecision() http.HandlerFunc {
 
 		logger := api.logger.With(slog.String("decisionID", decisionID))
 
-		decision, err := api.app.GetDecision(ctx, orgID, decisionID)
+		usecase := api.usecases.NewDecisionUsecase()
+		decision, err := usecase.GetDecision(ctx, orgID, decisionID)
 		if errors.Is(err, app.ErrNotFoundInRepository) {
 			http.Error(w, "", http.StatusNotFound)
 			return
@@ -146,7 +140,8 @@ func (api *API) handleListDecisions() http.HandlerFunc {
 		}
 		logger := api.logger.With(slog.String("orgID", orgID))
 
-		decisions, err := api.app.ListDecisions(ctx, orgID)
+		usecase := api.usecases.NewDecisionUsecase()
+		decisions, err := usecase.ListDecisions(ctx, orgID)
 		if err != nil {
 			logger.ErrorCtx(ctx, "error listing decisions: \n"+err.Error())
 			http.Error(w, "", http.StatusInternalServerError)
@@ -172,7 +167,7 @@ type CreateDecisionBody struct {
 	TriggerObjectType string          `json:"object_type"`
 }
 
-type CreateDecisionInput struct {
+type CreateDecisionInputDto struct {
 	Body *CreateDecisionBody `in:"body=json"`
 }
 
@@ -185,7 +180,7 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 			return
 		}
 
-		input := ctx.Value(httpin.Input).(*CreateDecisionInput)
+		input := ctx.Value(httpin.Input).(*CreateDecisionInputDto)
 		requestData := input.Body
 		logger := api.logger.With(slog.String("scenarioId", requestData.ScenarioID), slog.String("objectType", requestData.TriggerObjectType), slog.String("orgId", orgID))
 
@@ -223,13 +218,14 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 			return
 		}
 		payloadForArchive := models.PayloadForArchive{TableName: requestData.TriggerObjectType, Data: triggerObjectMap}
-		decision, err := api.app.CreateDecision(ctx, app.CreateDecisionInput{
+		decisionUsecase := api.usecases.NewDecisionUsecase()
+		decision, err := decisionUsecase.CreateDecision(ctx, models.CreateDecisionInput{
 			ScenarioID:              requestData.ScenarioID,
 			PayloadForArchive:       payloadForArchive,
 			OrganizationID:          orgID,
 			PayloadStructWithReader: payloadStructWithReader,
 		}, logger)
-		if errors.Is(err, app.ErrScenarioNotFound) {
+		if errors.Is(err, models.NotFoundError) {
 			http.Error(w, "scenario not found", http.StatusNotFound)
 			return
 		} else if err != nil {

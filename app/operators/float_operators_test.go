@@ -23,7 +23,7 @@ func (d *DataAccessorFloatImpl) GetPayloadField(fieldName string) (interface{}, 
 	return &val, nil
 }
 
-func (d *DataAccessorFloatImpl) GetDbField(triggerTableName string, path []string, fieldName string) (interface{}, error) {
+func (d *DataAccessorFloatImpl) GetDbField(ctx context.Context, triggerTableName string, path []string, fieldName string) (interface{}, error) {
 	var val pgtype.Float8
 	if f, err := strconv.ParseFloat(fieldName, 64); err == nil {
 		val = pgtype.Float8{Float64: f, Valid: true}

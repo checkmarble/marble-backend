@@ -117,7 +117,7 @@ func (field DbFieldFloat) Eval(ctx context.Context, d DataAccessor) (float64, er
 		return 0, ErrEvaluatingInvalidOperator
 	}
 
-	valRaw, err := d.GetDbField(field.TriggerTableName, field.Path, field.FieldName)
+	valRaw, err := d.GetDbField(ctx, field.TriggerTableName, field.Path, field.FieldName)
 	if err != nil {
 		return 0, err
 	}
