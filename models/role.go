@@ -15,7 +15,24 @@ const (
 )
 
 func (r Role) String() string {
-	return [...]string{"NO_ROLE", "VIEWER", "BUILDER", "PUBLISHER", "ADMIN", "API_CLIENT", "MARBLE_ADMIN"}[r]
+	switch r {
+	case NO_ROLE:
+		return "NO_ROLE"
+	case VIEWER:
+		return "VIEWER"
+	case BUILDER:
+		return "BUILDER"
+	case PUBLISHER:
+		return "PUBLISHER"
+	case ADMIN:
+		return "ADMIN"
+	case API_CLIENT:
+		return "API_CLIENT"
+	case MARBLE_ADMIN:
+		return "MARBLE_ADMIN"
+	default:
+		return "UNKNOWN_ROLE"
+	}
 }
 
 func (r Role) Permissions() []Permission {
