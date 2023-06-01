@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"marble/marble-backend/infra"
 	"os"
 	"testing"
 	"text/template"
@@ -108,7 +109,11 @@ func TestMain(m *testing.M) {
 	RunMigrations("DEV", pgConfig, logger)
 
 	// Need to declare this after the migrations, to have the correct search path
-	TestRepo, err := New("DEV", pgConfig)
+	anotherPool, err := infra.NewPostgresConnectionPool(pgConfig.GetConnectionString("DEV"))
+	if err != nil {
+		log.Fatalf("Could not create connection pool: %s", err)
+	}
+	TestRepo, err := New(anotherPool)
 
 	insertDataSQL := `
 	INSERT INTO companies (

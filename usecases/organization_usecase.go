@@ -7,8 +7,10 @@ import (
 )
 
 type OrganizationUseCase struct {
+	transactionFactory     repositories.TransactionFactory
 	organizationRepository repositories.OrganizationRepository
 	datamodelRepository    repositories.DataModelRepository
+	userRepository         repositories.UserRepository
 }
 
 func (usecase *OrganizationUseCase) GetOrganizations(ctx context.Context) ([]models.Organization, error) {
@@ -33,4 +35,15 @@ func (usecase *OrganizationUseCase) SoftDeleteOrganization(ctx context.Context, 
 
 func (usecase *OrganizationUseCase) GetDataModel(ctx context.Context, organizationID string) (models.DataModel, error) {
 	return usecase.datamodelRepository.GetDataModel(ctx, organizationID)
+}
+
+func (usecase *OrganizationUseCase) GetUsersOfOrganization(organizationIDFilter string) ([]models.User, error) {
+
+	return repositories.TransactionReturnValue(
+		usecase.transactionFactory,
+		models.DATABASE_MARBLE,
+		func(tx repositories.Transaction) ([]models.User, error) {
+			return usecase.userRepository.UsersOfOrganization(tx, organizationIDFilter)
+		},
+	)
 }
