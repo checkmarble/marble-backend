@@ -1,6 +1,7 @@
 package api
 
 import (
+	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
 	"net/http"
@@ -63,6 +64,23 @@ func (api *API) handlePostOrganization() http.HandlerFunc {
 
 func requiredOrgIdUrlParam(r *http.Request) (string, error) {
 	return requiredUuidUrlParam(r, "orgID")
+}
+
+func (api *API) handleGetOrganizationUsers() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		orgID, err := requiredOrgIdUrlParam(r)
+		if presentError(w, r, err) {
+			return
+		}
+
+		usecase := api.usecases.NewOrganizationUseCase()
+		users, err := usecase.GetUsersOfOrganization(orgID)
+		if presentError(w, r, err) {
+			return
+		}
+
+		PresentModelWithName(w, "users", utils.Map(users, dto.AdaptUserDto))
+	}
 }
 
 func (api *API) handleGetOrganization() http.HandlerFunc {

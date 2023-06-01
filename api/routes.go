@@ -2,6 +2,7 @@ package api
 
 import (
 	"log"
+	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
 	"net/http"
 
@@ -125,6 +126,13 @@ func (api *API) routes() {
 		authedRouter.Group(func(routerAdmin chi.Router) {
 			routerAdmin.Use(api.enforcePermissionMiddleware(models.ORGANIZATIONS_LIST))
 
+			routerAdmin.Route("/users", func(r chi.Router) {
+				r.Get("/", api.handleGetAllUsers())
+
+				r.With(httpin.NewInput(dto.PostCreateUser{})).
+					With(api.enforcePermissionMiddleware(models.MARBLE_USER_CREATE)).
+					Post("/", api.handlePostUser())
+			})
 			routerAdmin.Route("/organizations", func(r chi.Router) {
 				r.Get("/", api.handleGetOrganizations())
 
@@ -134,6 +142,7 @@ func (api *API) routes() {
 
 				r.Route("/{orgID}", func(r chi.Router) {
 					r.Get("/", api.handleGetOrganization())
+					r.Get("/users", api.handleGetOrganizationUsers())
 
 					r.With(httpin.NewInput(UpdateOrganizationInputDto{})).
 						With(api.enforcePermissionMiddleware(models.ORGANIZATIONS_CREATE)).
