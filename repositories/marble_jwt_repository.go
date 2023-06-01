@@ -30,7 +30,7 @@ func (repo *MarbleJwtRepository) EncodeMarbleToken(expirationTime time.Time, cre
 	claims := &Claims{
 		OrganizationId: creds.OrganizationId,
 		Role:           creds.Role.String(),
-		UserId:         creds.ActorIdentity.UserId,
+		UserId:         string(creds.ActorIdentity.UserId),
 		Email:          creds.ActorIdentity.Email,
 		ApiKeyName:     creds.ActorIdentity.ApiKeyName,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -67,7 +67,7 @@ func (repo *MarbleJwtRepository) ValidateMarbleToken(marbleToken string) (Creden
 			OrganizationId: claims.OrganizationId,
 			Role:           RoleFromString(claims.Role),
 			ActorIdentity: Identity{
-				UserId:     claims.UserId,
+				UserId:     UserId(claims.UserId),
 				ApiKeyName: claims.ApiKeyName,
 				Email:      claims.Email,
 			},

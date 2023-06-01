@@ -16,19 +16,23 @@ type Usecases struct {
 func (usecases *Usecases) NewMarbleTokenUseCase() MarbleTokenUseCase {
 	repositories := usecases.Repositories
 	return MarbleTokenUseCase{
-		firebaseTokenRepository: repositories.FirebaseTokenRepository,
-		marbleJwtRepository:     repositories.MarbleJwtRepository,
-		userRepository:          repositories.UserRepository,
-		apiKeyRepository:        repositories.ApiKeyRepository,
-		organizationRepository:  repositories.OrganizationRepository,
-		tokenLifetimeMinute:     usecases.Config.TokenLifetimeMinute,
+		transactionFactory:       repositories.TransactionFactory,
+		firebaseTokenRepository:  repositories.FirebaseTokenRepository,
+		marbleJwtRepository:      repositories.MarbleJwtRepository,
+		userRepository:           repositories.UserRepository,
+		hardcodedUsersRepository: repositories.HardcodedUsersRepository,
+		apiKeyRepository:         repositories.ApiKeyRepository,
+		organizationRepository:   repositories.OrganizationRepository,
+		tokenLifetimeMinute:      usecases.Config.TokenLifetimeMinute,
 	}
 }
 
 func (usecases *Usecases) NewOrganizationUseCase() OrganizationUseCase {
 	return OrganizationUseCase{
+		transactionFactory:     usecases.Repositories.TransactionFactory,
 		organizationRepository: usecases.Repositories.OrganizationRepository,
 		datamodelRepository:    usecases.Repositories.DataModelRepository,
+		userRepository:         usecases.Repositories.UserRepository,
 	}
 }
 
@@ -46,5 +50,12 @@ func (usecases *Usecases) NewDecisionUsecase() DecisionUsecase {
 		datamodelRepository:             usecases.Repositories.DataModelRepository,
 		scenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,
 		scenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
+	}
+}
+
+func (usecases *Usecases) NewUserUseCase() UserUseCase {
+	return UserUseCase{
+		transactionFactory: usecases.Repositories.TransactionFactory,
+		userRepository:     usecases.Repositories.UserRepository,
 	}
 }

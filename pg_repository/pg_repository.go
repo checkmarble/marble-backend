@@ -25,6 +25,7 @@ type PGConfig struct {
 	Port             string
 	User             string
 	Password         string
+	Database         string
 	ConnectionString string
 }
 
@@ -37,7 +38,7 @@ func (config PGConfig) GetConnectionString(env string) string {
 	if config.ConnectionString != "" {
 		return config.ConnectionString
 	}
-	connectionString := fmt.Sprintf("host=%s user=%s password=%s database=marble sslmode=disable", config.Hostname, config.User, config.Password)
+	connectionString := fmt.Sprintf("host=%s user=%s password=%s database=%s sslmode=disable", config.Hostname, config.User, config.Password, config.Database)
 	if env == "DEV" {
 		// Cloud Run connects to the DB through a proxy and a unix socket, so we don't need need to specify the port
 		// but we do when running locally
@@ -46,17 +47,11 @@ func (config PGConfig) GetConnectionString(env string) string {
 	return connectionString
 }
 
-func New(env string, PGConfig PGConfig) (*PGRepository, error) {
-	connectionString := PGConfig.GetConnectionString(env)
-
-	dbpool, err := pgxpool.New(context.Background(), connectionString)
-	if err != nil {
-		return nil, fmt.Errorf("unable to create connection pool: %w", err)
-	}
+func New(dbpool *pgxpool.Pool) (*PGRepository, error) {
 
 	// Test connection
 	var currentPGUser string
-	err = dbpool.QueryRow(context.Background(), "SELECT current_user;").Scan(&currentPGUser)
+	err := dbpool.QueryRow(context.Background(), "SELECT current_user;").Scan(&currentPGUser)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get current user: %w", err)
 	}

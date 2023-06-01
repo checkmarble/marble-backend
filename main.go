@@ -7,6 +7,7 @@ import (
 	"marble/marble-backend/api"
 	"marble/marble-backend/app"
 	"marble/marble-backend/infra"
+	"marble/marble-backend/models"
 	. "marble/marble-backend/models"
 	"marble/marble-backend/pg_repository"
 	"marble/marble-backend/repositories"
@@ -17,10 +18,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/exp/slog"
 )
 
-func runServer(config usecases.Configuration, pgRepository *pg_repository.PGRepository, port string, env string, logger *slog.Logger) {
+func runServer(config usecases.Configuration, pgRepository *pg_repository.PGRepository, marbleConnectionPool *pgxpool.Pool, port string, env string, logger *slog.Logger) {
 	ctx := context.Background()
 
 	devEnv := env == "DEV"
@@ -34,20 +36,35 @@ func runServer(config usecases.Configuration, pgRepository *pg_repository.PGRepo
 	marbleJwtSigningKey := infra.MustParseSigningKey(utils.GetRequiredStringEnv("AUTHENTICATION_JWT_SIGNING_KEY"))
 
 	app, _ := app.New(pgRepository)
-	repositories := repositories.NewRepositories(marbleJwtSigningKey, infra.IntializeFirebase(ctx), []User{
-		{
-			UserId:         "d7428f95-b6f2-4af1-85c8-f9b19d896101",
-			Email:          "vivien.miniussi@checkmarble.com",
-			Role:           MARBLE_ADMIN,
-			OrganizationId: "",
+	repositories := repositories.NewRepositories(
+		marbleJwtSigningKey,
+		infra.IntializeFirebase(ctx),
+		[]User{
+			{
+				UserId:         "d7428f95-b6f2-4af1-85c8-f9b19d896101",
+				Email:          "vivien.miniussi@checkmarble.com",
+				Role:           MARBLE_ADMIN,
+				OrganizationId: "",
+			},
+			{
+				UserId:         "d7428f95-b6f2-4af1-85c8-f9b19d896102",
+				Email:          "vivien@zorg.com",
+				Role:           MARBLE_ADMIN,
+				OrganizationId: "",
+			},
 		},
-		{
-			UserId:         "d7428f95-b6f2-4af1-85c8-f9b19d896102",
-			Email:          "vivien@zorg.com",
-			Role:           MARBLE_ADMIN,
-			OrganizationId: "",
+		pgRepository,
+		marbleConnectionPool,
+		map[models.DatabaseName]string{
+			"zorg": pg_repository.PGConfig{
+				Hostname: "localhost",
+				Port:     "5432",
+				User:     "zorg",
+				Password: "very-secret",
+				Database: "marbleclient_zorg",
+			}.GetConnectionString(env),
 		},
-	}, pgRepository)
+	)
 
 	usecases := usecases.Usecases{
 		Repositories: *repositories,
@@ -88,6 +105,7 @@ func main() {
 		pgHostname = utils.GetRequiredStringEnv("PG_HOSTNAME")
 		pgUser     = utils.GetRequiredStringEnv("PG_USER")
 		pgPassword = utils.GetRequiredStringEnv("PG_PASSWORD")
+		pgDatabase = "marble"
 		config     = usecases.Configuration{
 			TokenLifetimeMinute: utils.GetIntEnv("TOKEN_LIFETIME_MINUTE", 30),
 		}
@@ -111,6 +129,7 @@ func main() {
 		Port:     pgPort,
 		User:     pgUser,
 		Password: pgPassword,
+		Database: pgDatabase,
 	}
 
 	shouldRunMigrations := flag.Bool("migrations", false, "Run migrations")
@@ -126,10 +145,18 @@ func main() {
 		pg_repository.RunMigrations(env, pgConfig, logger)
 	}
 	if *shouldRunServer {
-		pgRepository, err := pg_repository.New(env, pgConfig)
+
+		connectionString := pgConfig.GetConnectionString(env)
+		marbleConnectionPool, err := infra.NewPostgresConnectionPool(connectionString)
+		if err != nil {
+			log.Fatal("error creating postgres connection to marble database", err.Error())
+		}
+
+		pgRepository, err := pg_repository.New(marbleConnectionPool)
 		if err != nil {
 			logger.Error("error creating pg repository:\n", err.Error())
+			return
 		}
-		runServer(config, pgRepository, port, env, logger)
+		runServer(config, pgRepository, marbleConnectionPool, port, env, logger)
 	}
 }
