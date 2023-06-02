@@ -35,3 +35,10 @@ func (api *API) handlePostUser() http.HandlerFunc {
 		PresentModelWithName(w, "user", dto.AdaptUserDto(createdUser))
 	}
 }
+
+func (api *API) handleGetCredentials() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		creds := utils.MustCredentialsFromCtx(r.Context())
+		PresentModelWithName(w, "credentials", dto.AdaptCredentialDto(creds))
+	}
+}

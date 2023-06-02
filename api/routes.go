@@ -20,6 +20,8 @@ func (api *API) routes() {
 	api.router.With(api.credentialsMiddleware).Group(func(authedRouter chi.Router) {
 		// Authentication using marble token (JWT) or API Key required.
 
+		authedRouter.Get("/credentials", api.handleGetCredentials())
+
 		// Decision API subrouter
 		// matches all /decisions routes
 		authedRouter.Route("/decisions", func(decisionsRouter chi.Router) {
