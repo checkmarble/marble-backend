@@ -16,7 +16,7 @@ func (d *DataAccessorStringImpl) GetPayloadField(fieldName string) (interface{},
 	return &fieldName, nil
 }
 
-func (d *DataAccessorStringImpl) GetDbField(triggerTableName string, path []string, fieldName string) (interface{}, error) {
+func (d *DataAccessorStringImpl) GetDbField(ctx context.Context, triggerTableName string, path []string, fieldName string) (interface{}, error) {
 	val := pgtype.Text{String: fieldName, Valid: true}
 	return val, nil
 }

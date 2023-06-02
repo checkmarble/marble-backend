@@ -41,13 +41,13 @@ func (d *dbDecision) toDomain() app.Decision {
 	return app.Decision{
 		ID:                  d.ID,
 		CreatedAt:           d.CreatedAt,
-		Outcome:             app.OutcomeFrom(d.Outcome),
+		Outcome:             models.OutcomeFrom(d.Outcome),
 		ScenarioID:          d.ScenarioID,
 		ScenarioName:        d.ScenarioName,
 		ScenarioDescription: d.ScenarioDescription,
 		ScenarioVersion:     d.ScenarioVersion,
 		Score:               d.Score,
-		DecisionError:       app.DecisionError(d.ErrorCode),
+		DecisionError:       models.DecisionError(d.ErrorCode),
 		PayloadForArchive:   models.PayloadForArchive{TableName: d.TriggerObjectType, Data: triggerObject},
 	}
 }

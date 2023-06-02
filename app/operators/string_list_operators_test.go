@@ -15,7 +15,7 @@ func (d *DataAccessorStringListImpl) GetPayloadField(fieldName string) (interfac
 	return nil, nil
 }
 
-func (d *DataAccessorStringListImpl) GetDbField(triggerTableName string, path []string, fieldName string) (interface{}, error) {
+func (d *DataAccessorStringListImpl) GetDbField(ctx context.Context, triggerTableName string, path []string, fieldName string) (interface{}, error) {
 	return nil, nil
 }
 

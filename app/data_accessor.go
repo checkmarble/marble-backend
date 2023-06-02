@@ -16,8 +16,8 @@ type DataAccessorImpl struct {
 func (d *DataAccessorImpl) GetPayloadField(fieldName string) (interface{}, error) {
 	return d.Payload.ReadFieldFromPayload(models.FieldName(fieldName))
 }
-func (d *DataAccessorImpl) GetDbField(triggerTableName string, path []string, fieldName string) (interface{}, error) {
-	return d.repository.GetDbField(context.TODO(), models.DbFieldReadParams{
+func (d *DataAccessorImpl) GetDbField(ctx context.Context, triggerTableName string, path []string, fieldName string) (interface{}, error) {
+	return d.repository.GetDbField(ctx, models.DbFieldReadParams{
 		TriggerTableName: models.TableName(triggerTableName),
 		Path:             models.ToLinkNames(path),
 		FieldName:        models.FieldName(fieldName),
