@@ -52,7 +52,7 @@ func (usecase *MarbleTokenUseCase) makeTokenName(ctx context.Context, organizati
 	return fmt.Sprintf("ApiKey Of %s", organizationName), nil
 }
 
-func (usecase *MarbleTokenUseCase) NewMarbleToken(ctx context.Context, apiKey string, firebaseIdToken string) (string, time.Time, error) {
+func (usecase *MarbleTokenUseCase) NewMarbleToken(ctx context.Context, apiKey string, firebaseToken string) (string, time.Time, error) {
 	if apiKey != "" {
 		credentials, err := usecase.adaptCredentialFromApiKey(ctx, apiKey)
 		if err != nil {
@@ -62,8 +62,8 @@ func (usecase *MarbleTokenUseCase) NewMarbleToken(ctx context.Context, apiKey st
 		return usecase.encodeMarbleToken(credentials)
 	}
 
-	if firebaseIdToken != "" {
-		identity, err := usecase.firebaseTokenRepository.VerifyFirebaseIDToken(ctx, firebaseIdToken)
+	if firebaseToken != "" {
+		identity, err := usecase.firebaseTokenRepository.VerifyFirebaseToken(ctx, firebaseToken)
 
 		if err != nil {
 			return "", time.Time{}, fmt.Errorf("Firebase TokenID verification fail: %w", err)
