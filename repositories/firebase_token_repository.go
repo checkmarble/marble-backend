@@ -13,24 +13,27 @@ type FireBaseTokenRepository struct {
 	firebaseClient auth.Client
 }
 
-func (repo *FireBaseTokenRepository) VerifyFirebaseIDToken(ctx context.Context, firebaseIdToken string) (FirebaseIdentity, error) {
-	token, err := repo.firebaseClient.VerifyIDToken(ctx, firebaseIdToken)
+func (repo *FireBaseTokenRepository) VerifyFirebaseToken(ctx context.Context, firebaseToken string) (FirebaseIdentity, error) {
+	token, err := repo.firebaseClient.VerifyIDToken(ctx, firebaseToken)
+	if err != nil {
+		token, err = repo.firebaseClient.VerifySessionCookie(ctx, firebaseToken)
+	}
 	if err != nil {
 		return FirebaseIdentity{}, err
 	}
 	identities := token.Firebase.Identities["email"]
 	if identities == nil {
-		return FirebaseIdentity{}, fmt.Errorf("Unexpected firebase IdToken content: Field email is missing.")
+		return FirebaseIdentity{}, fmt.Errorf("Unexpected firebase token content: Field email is missing.")
 	}
 
 	emails, ok := identities.([]interface{})
 	if !ok || len(emails) == 0 {
-		return FirebaseIdentity{}, fmt.Errorf("Unexpected firebase IdToken content: identities is not an array.")
+		return FirebaseIdentity{}, fmt.Errorf("Unexpected firebase token content: identities is not an array.")
 	}
 
 	email, ok := emails[0].(string)
 	if !ok {
-		return FirebaseIdentity{}, fmt.Errorf("Unexpected firebase IdToken content.")
+		return FirebaseIdentity{}, fmt.Errorf("Unexpected firebase token content.")
 	}
 
 	return FirebaseIdentity{
