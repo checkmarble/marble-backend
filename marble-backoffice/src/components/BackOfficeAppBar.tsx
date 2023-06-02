@@ -13,6 +13,7 @@ import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import MenuIcon from "@mui/icons-material/Menu";
 import BusinessIcon from "@mui/icons-material/Business";
+import PeopleIcon from "@mui/icons-material/People";
 import HouseIcon from "@mui/icons-material/House";
 import Tooltip from "@mui/material/Tooltip";
 import Avatar from "@mui/material/Avatar";
@@ -40,6 +41,11 @@ const APP_BAR_PAGES: ReadonlyArray<Page> = [
     title: "Organizations",
     link: PageLink.Organizations,
     icon: <BusinessIcon />,
+  },
+  {
+    title: "Users",
+    link: PageLink.Users,
+    icon: <PeopleIcon />,
   },
 ] as const;
 

@@ -3,9 +3,7 @@ import services from "@/injectServices";
 import { PageLink } from "@/models";
 import { useAllOrganizations, useCreateOrganization } from "@/services";
 import BusinessIcon from "@mui/icons-material/Business";
-import AddIcon from "@mui/icons-material/Add";
 import ListSubheader from "@mui/material/ListSubheader";
-import Fab from "@mui/material/Fab";
 import Avatar from "@mui/material/Avatar";
 import Container from "@mui/material/Container";
 import List from "@mui/material/List";
@@ -14,6 +12,7 @@ import ListItemAvatar from "@mui/material/ListItemAvatar";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import FormDialog from "@/components/FormDialog";
+import CreateButtonFab from "@/components/CreateButtonFab";
 import { useLoading } from "@/hooks/Loading";
 import DelayedLinearProgress from "@/components/DelayedLinearProgress";
 import { useNavigate } from "react-router";
@@ -67,22 +66,8 @@ function OrganizationsPage() {
           position: "relative",
         }}
       >
-        <Fab
-          sx={{
-            position: "absolute",
-            top: "10px",
-            right: "50px",
-            paddingRight: "20px",
-          }}
-          color="primary"
-          size="small"
-          variant="extended"
-          aria-label="add"
-          onClick={handleCreateOrganizationClick}
-        >
-          <AddIcon sx={{ mr: 1 }} />
-          New Organization
-        </Fab>
+        <CreateButtonFab title="New Organization" onClick={handleCreateOrganizationClick} />
+
         <List aria-label="organizations">
           <ListSubheader inset>
             {allOrganizations?.length} Organizations

@@ -1,9 +1,14 @@
 import { type Repositories } from "./repositories";
-import { AuthenticationService, type OrganizationService } from "./services";
+import {
+  AuthenticationService,
+  type OrganizationService,
+  type UserService,
+} from "./services";
 
 export interface Services {
   authenticationService: AuthenticationService;
   organizationService: OrganizationService;
+  userService: UserService;
 }
 
 let globalServices: Services | null;
@@ -19,6 +24,10 @@ export function initializeServices(repositories: Repositories) {
     organizationService: {
       organizationRepository: repositories.organizationRepository,
       scenariosRepository: repositories.scenarioRepository,
+      userRepository: repositories.userRepository,
+    },
+    userService: {
+      userRepository: repositories.userRepository,
     },
   };
 }

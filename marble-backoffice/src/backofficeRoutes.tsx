@@ -3,6 +3,7 @@ import { PathFragment } from "@/models";
 import App from "@/App";
 import ErrorPage from "@/pages/ErrorPage";
 import OrganizationsPage from "@/pages/OrganizationsPage";
+import UsersPage from "@/pages/UsersPage";
 import OrganizationDetailsPage from "./pages/OrganizationDetailsPage";
 import HomePage from "@/pages/HomePage";
 import LoginPage from "@/pages/LoginPage";
@@ -15,6 +16,10 @@ export function backofficeRoutes() {
       <Route
         path={PathFragment.Organizations}
         element={<OrganizationsPage />}
+      />
+      <Route
+        path={PathFragment.Users}
+        element={<UsersPage />}
       />
       <Route
         path={`/${PathFragment.OrganizationDetails}/:organizationId`}
