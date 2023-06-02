@@ -1,4 +1,5 @@
 import { adaptPostTokenResult } from "@/models/marbleToken";
+import { CreateUser } from "@/models";
 import {
   HttpMethod,
   fetchJson,
@@ -8,6 +9,7 @@ import {
 
 const ORGANIZATION_URL_PATH = "organizations";
 const SCENARIO_URL_PATH = "scenarios";
+const USERS_URL_PATH = "users";
 
 export class MarbleApi {
   fetchFirebaseIdToken: () => Promise<string>;
@@ -118,6 +120,21 @@ export class MarbleApi {
     return this.getAuthorizedJson(
       urlWithOrganizationId(SCENARIO_URL_PATH, organizationId)
     );
+  }
+
+  async allUsers(): Promise<unknown> {
+    return this.getAuthorizedJson(USERS_URL_PATH);
+  }
+  
+  async postUser(createUser: CreateUser): Promise<unknown> {
+    return this.postAuthorizedJson({
+      path: USERS_URL_PATH,
+      body: {
+        email: createUser.email,
+        role: createUser.role,
+        organization_id: createUser.organizationId,
+      },
+    });
   }
 }
 

@@ -6,8 +6,9 @@ package models
 type DatabaseType int
 
 const (
+	DATABASE_TYPE_INVALID DatabaseType = iota
 	// Marble database: there isone just one in practice
-	DATABASE_TYPE_MARBLE DatabaseType = iota
+	DATABASE_TYPE_MARBLE
 	// client's database
 	DATABASE_TYPE_CLIENT
 )

@@ -3,6 +3,7 @@ import type { Organization, Scenarios } from "@/models";
 import {
   type OrganizationRepository,
   type ScenariosRepository,
+  type UserRepository,
   fetchAllOrganizations,
   fetchOrganization,
   postOrganization,
@@ -14,6 +15,7 @@ import { type LoadingDispatcher } from "@/hooks/Loading";
 export interface OrganizationService {
   organizationRepository: OrganizationRepository;
   scenariosRepository: ScenariosRepository;
+  userRepository: UserRepository;
 }
 
 export function useAllOrganizations(
