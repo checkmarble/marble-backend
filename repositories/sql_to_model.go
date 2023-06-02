@@ -85,7 +85,7 @@ func SqlToModel[DBModel, Model any](transaction TransactionPostgres, s squirrel.
 		return zeroModel, err
 	}
 	if model == nil {
-		return zeroModel, fmt.Errorf("no %v zeroModel %w", reflect.TypeOf(zeroModel), models.NotFoundError)
+		return zeroModel, fmt.Errorf("%v %w", reflect.TypeOf(zeroModel).Name(), models.NotFoundError)
 	}
 	return *model, nil
 }

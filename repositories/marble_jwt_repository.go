@@ -3,6 +3,7 @@ package repositories
 import (
 	"crypto/rsa"
 	"fmt"
+	"marble/marble-backend/dto"
 	. "marble/marble-backend/models"
 	"time"
 
@@ -15,11 +16,7 @@ type MarbleJwtRepository struct {
 
 // We add jwt.RegisteredClaims as an embedded type, to provide fields like expiry time
 type Claims struct {
-	OrganizationId string `json:"organization_id"`
-	Role           string `json:"role"`
-	UserId         string `json:"user_id,omitempty"`
-	Email          string `json:"user_email,omitempty"`
-	ApiKeyName     string `json:"api_key_name,omitempty"`
+	Credentials dto.Credentials `json:"credentials"`
 	jwt.RegisteredClaims
 }
 
@@ -28,11 +25,7 @@ var VALIDATION_ALGO = jwt.SigningMethodRS256
 func (repo *MarbleJwtRepository) EncodeMarbleToken(expirationTime time.Time, creds Credentials) (string, error) {
 
 	claims := &Claims{
-		OrganizationId: creds.OrganizationId,
-		Role:           creds.Role.String(),
-		UserId:         string(creds.ActorIdentity.UserId),
-		Email:          creds.ActorIdentity.Email,
-		ApiKeyName:     creds.ActorIdentity.ApiKeyName,
+		Credentials: dto.AdaptCredentialDto(creds),
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			Issuer:    "marble",
@@ -63,15 +56,7 @@ func (repo *MarbleJwtRepository) ValidateMarbleToken(marbleToken string) (Creden
 	}
 
 	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
-		return Credentials{
-			OrganizationId: claims.OrganizationId,
-			Role:           RoleFromString(claims.Role),
-			ActorIdentity: Identity{
-				UserId:     UserId(claims.UserId),
-				ApiKeyName: claims.ApiKeyName,
-				Email:      claims.Email,
-			},
-		}, nil
+		return dto.AdaptCredential(claims.Credentials), nil
 	} else {
 		return Credentials{}, fmt.Errorf("Invalid Marble Jwt Token")
 	}
