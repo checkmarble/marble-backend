@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"marble/marble-backend/models"
+	"sync"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -14,9 +15,10 @@ type DatabaseConnectionPoolRepository interface {
 }
 
 type DatabaseConnectionPoolRepositoryImpl struct {
-	clientConnectionStrings map[models.DatabaseName]string
-	marbleConnectionPool    *pgxpool.Pool
-	clientsConnectionPools  map[models.DatabaseName]*pgxpool.Pool
+	clientConnectionStrings     map[models.DatabaseName]string
+	marbleConnectionPool        *pgxpool.Pool
+	clientsConnectionPools      map[models.DatabaseName]*pgxpool.Pool
+	clientsConnectionPoolsMutex sync.Mutex
 }
 
 func NewDatabaseConnectionPoolRepository(marbleConnectionPool *pgxpool.Pool, clientConnectionStrings map[models.DatabaseName]string) DatabaseConnectionPoolRepository {
@@ -35,6 +37,15 @@ func (repo *DatabaseConnectionPoolRepositoryImpl) DatabaseConnectionPool(db mode
 
 	if db.DatabaseType == models.DATABASE_TYPE_CLIENT {
 
+		repo.clientsConnectionPoolsMutex.Lock()
+		defer repo.clientsConnectionPoolsMutex.Unlock()
+
+		// return existing pool is already created
+		if pool, found := repo.clientsConnectionPools[db.Name]; found {
+			return pool, nil
+		}
+
+		// create and register new pool
 		newPool, err := repo.newClientDatabaseConnectionPool(db.Name)
 		if err != nil {
 			return nil, err
