@@ -37,3 +37,14 @@ func (usecases *Usecases) NewIngestionUseCase() IngestionUseCase {
 		ingestionRepository: usecases.Repositories.IngestionRepository,
 	}
 }
+
+func (usecases *Usecases) NewDecisionUsecase() DecisionUsecase {
+	return DecisionUsecase{
+		dbPoolRepository:                usecases.Repositories.DbPoolRepository,
+		ingestedDataReadRepository:      usecases.Repositories.IngestedDataReadRepository,
+		decisionRepository:              usecases.Repositories.DecisionRepository,
+		datamodelRepository:             usecases.Repositories.DataModelRepository,
+		scenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,
+		scenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
+	}
+}

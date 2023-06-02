@@ -1,16 +1,11 @@
 package app
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"marble/marble-backend/app/operators"
 	"marble/marble-backend/models"
-	"marble/marble-backend/utils"
-	"runtime/debug"
 	"time"
-
-	"golang.org/x/exp/slog"
 )
 
 ///////////////////////////////
@@ -157,7 +152,7 @@ type ScenarioExecution struct {
 	ScenarioVersion     int
 	RuleExecutions      []RuleExecution
 	Score               int
-	Outcome             Outcome
+	Outcome             models.Outcome
 }
 
 var (
@@ -166,147 +161,3 @@ var (
 	ErrScenarioTriggerConditionAndTriggerObjectMismatch = errors.New("trigger_object does not match the scenario's trigger conditions")
 	ErrScenarioHasNoLiveVersion                         = errors.New("scenario has no live version")
 )
-
-type ClientDataRepositoryItf interface {
-	GetDbField(ctx context.Context, readParams models.DbFieldReadParams) (interface{}, error)
-}
-
-func (s Scenario) Eval(ctx context.Context, repo RepositoryInterface, payloadStructWithReader models.Payload, dataModel models.DataModel, logger *slog.Logger) (se ScenarioExecution, err error) {
-
-	///////////////////////////////
-	// Recover in case the evaluation panicked.
-	// Even if there is a "recoverer" middleware in our stack, this allows a sentinel error to be used and to catch the failure early
-	///////////////////////////////
-	defer func() {
-		if r := recover(); r != nil {
-			logger.WarnCtx(ctx, "recovered from panic during Eval. stacktrace from panic: ")
-			logger.WarnCtx(ctx, string(debug.Stack()))
-
-			err = ErrPanicInScenarioEvalution
-			se = ScenarioExecution{}
-		}
-	}()
-
-	logger.InfoCtx(ctx, "Evaluting scenario", "scenarioId", s.ID)
-
-	// If the scenario has no live version, don't try to Eval() it, return early
-	if s.LiveVersionID == nil {
-		return ScenarioExecution{}, ErrScenarioHasNoLiveVersion
-	}
-
-	orgID, err := utils.OrgIDFromCtx(ctx, nil)
-	if err != nil {
-		return ScenarioExecution{}, err
-	}
-	liveVersion, err := repo.GetScenarioIteration(ctx, orgID, *s.LiveVersionID)
-	if err != nil {
-		return ScenarioExecution{}, err
-	}
-
-	publishedVersion, err := NewPublishedScenarioIteration(liveVersion)
-	if err != nil {
-		return ScenarioExecution{}, err
-	}
-
-	// Check the scenario & trigger_object's types
-	if s.TriggerObjectType != string(payloadStructWithReader.Table.Name) {
-		return ScenarioExecution{}, ErrScenarioTriggerTypeAndTiggerObjectTypeMismatch
-	}
-
-	dataAccessor := DataAccessorImpl{DataModel: dataModel, Payload: payloadStructWithReader, repository: repo}
-
-	// Evaluate the trigger
-	triggerPassed, err := publishedVersion.Body.TriggerCondition.Eval(&dataAccessor)
-	if err != nil {
-		return ScenarioExecution{}, err
-	}
-
-	if !triggerPassed {
-		return ScenarioExecution{}, ErrScenarioTriggerConditionAndTriggerObjectMismatch
-	}
-
-	// Evaluate all rules
-	score := 0
-	ruleExecutions := make([]RuleExecution, 0)
-	for _, rule := range publishedVersion.Body.Rules {
-		scoreModifier, ruleExecution, err := evalScenarioRule(ctx, rule, &dataAccessor, logger)
-		if err != nil {
-			return ScenarioExecution{}, err
-		}
-		score += scoreModifier
-		ruleExecutions = append(ruleExecutions, ruleExecution)
-	}
-
-	// Compute outcome from score
-	o := None
-
-	if score < publishedVersion.Body.ScoreReviewThreshold {
-		o = Approve
-	}
-	if score >= publishedVersion.Body.ScoreReviewThreshold && score < publishedVersion.Body.ScoreRejectThreshold {
-		o = Review
-	}
-	if score > publishedVersion.Body.ScoreRejectThreshold {
-		o = Reject
-	}
-
-	// Build ScenarioExecution as result
-	se = ScenarioExecution{
-		ScenarioID:          s.ID,
-		ScenarioName:        s.Name,
-		ScenarioDescription: s.Description,
-		ScenarioVersion:     publishedVersion.Version,
-		RuleExecutions:      ruleExecutions,
-		Score:               score,
-		Outcome:             o,
-	}
-
-	logger.InfoCtx(ctx, "Evaluated scenario", "score", score, "outcome", o)
-
-	return se, nil
-}
-
-func evalScenarioRule(ctx context.Context, rule Rule, dataAccessor operators.DataAccessor, logger *slog.Logger) (int, RuleExecution, error) {
-	// Evaluate single rule
-	score := 0
-	ruleExecution, err := rule.Eval(dataAccessor)
-	if err != nil {
-		ruleExecution.Rule = rule
-		ruleExecution, err = setRuleExecutionError(ruleExecution, err)
-		if err != nil {
-			return score, ruleExecution, err
-		}
-		logger.InfoCtx(ctx, "Rule had an error",
-			slog.String("ruleName", rule.Name),
-			slog.String("ruleId", rule.ID),
-			slog.String("formula", rule.Formula.String()),
-			slog.String("error", ruleExecution.Error.String()),
-		)
-	}
-
-	// Increment scenario score when rule is true
-	if ruleExecution.Result {
-		logger.InfoCtx(ctx, "Rule executed",
-			slog.Int("score_modifier", rule.ScoreModifier),
-			slog.String("ruleName", rule.Name),
-			slog.Bool("result", ruleExecution.Result),
-		)
-		fmt.Printf("rule score modifier: %d\n", ruleExecution.Rule.ScoreModifier)
-		score = ruleExecution.Rule.ScoreModifier
-	}
-	return score, ruleExecution, nil
-}
-
-func setRuleExecutionError(ruleExecution RuleExecution, err error) (RuleExecution, error) {
-	if errors.Is(err, models.OperatorNullValueReadError) {
-		ruleExecution.Error = NullFieldRead
-	} else if errors.Is(err, models.OperatorDivisionByZeroError) {
-		ruleExecution.Error = DivisionByZero
-	} else if errors.Is(err, models.OperatorNoRowsReadInDbError) {
-		ruleExecution.Error = NoRowsRead
-	} else {
-		// return early in case of an unexpected error
-		return ruleExecution, err
-	}
-	return ruleExecution, nil
-}

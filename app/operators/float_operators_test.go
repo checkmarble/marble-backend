@@ -1,11 +1,13 @@
 package operators
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,7 +23,7 @@ func (d *DataAccessorFloatImpl) GetPayloadField(fieldName string) (interface{}, 
 	return &val, nil
 }
 
-func (d *DataAccessorFloatImpl) GetDbField(triggerTableName string, path []string, fieldName string) (interface{}, error) {
+func (d *DataAccessorFloatImpl) GetDbField(ctx context.Context, triggerTableName string, path []string, fieldName string) (interface{}, error) {
 	var val pgtype.Float8
 	if f, err := strconv.ParseFloat(fieldName, 64); err == nil {
 		val = pgtype.Float8{Float64: f, Valid: true}
@@ -31,6 +33,10 @@ func (d *DataAccessorFloatImpl) GetDbField(triggerTableName string, path []strin
 	return val, nil
 }
 func (d *DataAccessorFloatImpl) ValidateDbFieldReadConsistency(path []string, fieldName string) error {
+	return nil
+}
+
+func (d *DataAccessorFloatImpl) GetDbHandle() *pgxpool.Pool {
 	return nil
 }
 
@@ -114,7 +120,7 @@ func TestLogicEvalFloat(t *testing.T) {
 	asserts := assert.New(t)
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			got, err := c.operator.Eval(&dataAccessor)
+			got, err := c.operator.Eval(context.Background(), &dataAccessor)
 
 			if err != nil {
 				t.Errorf("error: %v", err)
@@ -146,7 +152,7 @@ func TestLogicEvalErrorCaseFloat(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			_, err := c.operator.Eval(&dataAccessor)
+			_, err := c.operator.Eval(context.Background(), &dataAccessor)
 
 			if err == nil {
 				t.Errorf("Was expecting an error reading a null field")
@@ -237,11 +243,11 @@ func TestMarshalUnMarshalFloat(t *testing.T) {
 			}
 			fmt.Println(rootOperator)
 
-			expected, err := c.operator.Eval(&dataAccessor)
+			expected, err := c.operator.Eval(context.Background(), &dataAccessor)
 			if err != nil {
 				t.Errorf("error: %v", err)
 			}
-			got, err := rootOperator.Eval(&dataAccessor)
+			got, err := rootOperator.Eval(context.Background(), &dataAccessor)
 			if err != nil {
 				t.Errorf("error: %v", err)
 			}

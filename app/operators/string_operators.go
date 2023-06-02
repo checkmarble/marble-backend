@@ -1,6 +1,7 @@
 package operators
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"marble/marble-backend/models"
@@ -55,7 +56,7 @@ func init() {
 	operatorFromType["STRING_CONSTANT"] = func() Operator { return &StringValue{} }
 }
 
-func (s StringValue) Eval(d DataAccessor) (string, error) { return s.Value, nil }
+func (s StringValue) Eval(ctx context.Context, d DataAccessor) (string, error) { return s.Value, nil }
 
 func (s StringValue) IsValid() bool { return true }
 
@@ -106,12 +107,12 @@ func init() {
 	operatorFromType["DB_FIELD_STRING"] = func() Operator { return &DbFieldString{} }
 }
 
-func (field DbFieldString) Eval(d DataAccessor) (string, error) {
+func (field DbFieldString) Eval(ctx context.Context, d DataAccessor) (string, error) {
 	if !field.IsValid() {
 		return "", ErrEvaluatingInvalidOperator
 	}
 
-	valRaw, err := d.GetDbField(field.TriggerTableName, field.Path, field.FieldName)
+	valRaw, err := d.GetDbField(ctx, field.TriggerTableName, field.Path, field.FieldName)
 	if err != nil {
 		return "", err
 	}
@@ -188,24 +189,11 @@ func init() {
 	operatorFromType["PAYLOAD_FIELD_STRING"] = func() Operator { return &PayloadFieldString{} }
 }
 
-func (field PayloadFieldString) Eval(d DataAccessor) (string, error) {
+func (field PayloadFieldString) Eval(ctx context.Context, d DataAccessor) (string, error) {
 	if !field.IsValid() {
 		return "", ErrEvaluatingInvalidOperator
 	}
-
-	valRaw, err := d.GetPayloadField(field.FieldName)
-	if err != nil {
-		return "", err
-	}
-
-	valPointer, ok := valRaw.(*string)
-	if !ok {
-		return "", fmt.Errorf("Payload field %s is not a pointer to a string", field.FieldName)
-	}
-	if valPointer == nil {
-		return "", fmt.Errorf("Payload field %s is null: %w", field.FieldName, models.OperatorNullValueReadError)
-	}
-	return *valPointer, nil
+	return getPayloadFieldGeneric[string](d, field.FieldName)
 }
 
 func (field PayloadFieldString) IsValid() bool {

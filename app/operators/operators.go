@@ -1,9 +1,12 @@
 package operators
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // /////////////////////////////
@@ -15,8 +18,8 @@ var operatorFromType = make(map[string]func() Operator)
 
 type DataAccessor interface {
 	GetPayloadField(fieldName string) (interface{}, error)
-	GetDbField(triggerTableName string, path []string, fieldName string) (interface{}, error)
-	// GetListField(path []string) (interface{}, error)
+	GetDbField(ctx context.Context, triggerTableName string, path []string, fieldName string) (interface{}, error)
+	GetDbHandle() *pgxpool.Pool
 }
 
 var (
@@ -37,10 +40,6 @@ var (
 // }
 
 type Operator interface {
-	// 	Needs() ([]APIField, []DBField, []DBVariable, []List)
-
-	// DescribeForFront() []byte // JSON representation of each operator > STRONG LINK BT app and API
-
 	// We need operators to Marshall & Unmarshall to JSON themselves
 	json.Marshaler
 	json.Unmarshaler
@@ -61,25 +60,25 @@ type OperatorType struct {
 // /////////////////////////////
 type OperatorFloat interface {
 	Operator
-	Eval(dataAccessor DataAccessor) (float64, error)
+	Eval(ctx context.Context, dataAccessor DataAccessor) (float64, error)
 }
 
 type OperatorBool interface {
 	Operator
-	Eval(dataAccessor DataAccessor) (bool, error)
+	Eval(ctx context.Context, dataAccessor DataAccessor) (bool, error)
 }
 
 type OperatorDate interface {
 	Operator
-	Eval(dataAccessor DataAccessor) (time.Time, error)
+	Eval(ctx context.Context, dataAccessor DataAccessor) (time.Time, error)
 }
 
 type OperatorString interface {
 	Operator
-	Eval(dataAccessor DataAccessor) (string, error)
+	Eval(ctx context.Context, dataAccessor DataAccessor) (string, error)
 }
 
 type OperatorStringList interface {
 	Operator
-	Eval(dataAccessor DataAccessor) ([]string, error)
+	Eval(ctx context.Context, dataAccessor DataAccessor) ([]string, error)
 }

@@ -1,6 +1,7 @@
 package operators
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"marble/marble-backend/models"
@@ -58,7 +59,7 @@ func init() {
 	operatorFromType["FLOAT_CONSTANT"] = func() Operator { return &FloatValue{} }
 }
 
-func (f FloatValue) Eval(d DataAccessor) (float64, error) { return f.Value, nil }
+func (f FloatValue) Eval(ctx context.Context, d DataAccessor) (float64, error) { return f.Value, nil }
 
 func (f FloatValue) IsValid() bool { return true }
 
@@ -111,12 +112,12 @@ func init() {
 	operatorFromType["DB_FIELD_FLOAT"] = func() Operator { return &DbFieldFloat{} }
 }
 
-func (field DbFieldFloat) Eval(d DataAccessor) (float64, error) {
+func (field DbFieldFloat) Eval(ctx context.Context, d DataAccessor) (float64, error) {
 	if !field.IsValid() {
 		return 0, ErrEvaluatingInvalidOperator
 	}
 
-	valRaw, err := d.GetDbField(field.TriggerTableName, field.Path, field.FieldName)
+	valRaw, err := d.GetDbField(ctx, field.TriggerTableName, field.Path, field.FieldName)
 	if err != nil {
 		return 0, err
 	}
@@ -193,24 +194,11 @@ func init() {
 	operatorFromType["PAYLOAD_FIELD_FLOAT"] = func() Operator { return &PayloadFieldFloat{} }
 }
 
-func (field PayloadFieldFloat) Eval(d DataAccessor) (float64, error) {
+func (field PayloadFieldFloat) Eval(ctx context.Context, d DataAccessor) (float64, error) {
 	if !field.IsValid() {
 		return 0, ErrEvaluatingInvalidOperator
 	}
-
-	valRaw, err := d.GetPayloadField(field.FieldName)
-	if err != nil {
-		return 0, err
-	}
-
-	valPointer, ok := valRaw.(*float64)
-	if !ok {
-		return 0, fmt.Errorf("Payload field %s is not a pointer to a float", field.FieldName)
-	}
-	if valPointer == nil {
-		return 0, fmt.Errorf("Payload field %s is null: %w", field.FieldName, models.OperatorNullValueReadError)
-	}
-	return *valPointer, nil
+	return getPayloadFieldGeneric[float64](d, field.FieldName)
 }
 
 func (field PayloadFieldFloat) IsValid() bool {
@@ -266,14 +254,14 @@ func init() {
 	operatorFromType["SUM_FLOAT"] = func() Operator { return &SumFloat{} }
 }
 
-func (s SumFloat) Eval(d DataAccessor) (float64, error) {
+func (s SumFloat) Eval(ctx context.Context, d DataAccessor) (float64, error) {
 	if !s.IsValid() {
 		return 0, ErrEvaluatingInvalidOperator
 	}
 
 	total := 0.
 	for _, op := range s.Operands {
-		res, err := op.Eval(d)
+		res, err := op.Eval(ctx, d)
 		if err != nil {
 			return 0, err
 		} else {
@@ -348,14 +336,14 @@ func init() {
 	operatorFromType["PRODUCT_FLOAT"] = func() Operator { return &ProductFloat{} }
 }
 
-func (p ProductFloat) Eval(d DataAccessor) (float64, error) {
+func (p ProductFloat) Eval(ctx context.Context, d DataAccessor) (float64, error) {
 	if !p.IsValid() {
 		return 0, ErrEvaluatingInvalidOperator
 	}
 
 	total := 1.
 	for _, op := range p.Operands {
-		res, err := op.Eval(d)
+		res, err := op.Eval(ctx, d)
 		if err != nil {
 			return 0, err
 		} else {
@@ -430,16 +418,16 @@ func init() {
 	operatorFromType["SUBTRACT_FLOAT"] = func() Operator { return &SubtractFloat{} }
 }
 
-func (s SubtractFloat) Eval(d DataAccessor) (float64, error) {
+func (s SubtractFloat) Eval(ctx context.Context, d DataAccessor) (float64, error) {
 	if !s.IsValid() {
 		return 0, ErrEvaluatingInvalidOperator
 	}
 
-	left, err := s.Left.Eval(d)
+	left, err := s.Left.Eval(ctx, d)
 	if err != nil {
 		return 0, err
 	}
-	right, err := s.Right.Eval(d)
+	right, err := s.Right.Eval(ctx, d)
 	if err != nil {
 		return 0, err
 	}
@@ -502,16 +490,16 @@ func init() {
 	operatorFromType["DIVIDE_FLOAT"] = func() Operator { return &DivideFloat{} }
 }
 
-func (div DivideFloat) Eval(d DataAccessor) (float64, error) {
+func (div DivideFloat) Eval(ctx context.Context, d DataAccessor) (float64, error) {
 	if !div.IsValid() {
 		return 0, ErrEvaluatingInvalidOperator
 	}
 
-	left, err := div.Left.Eval(d)
+	left, err := div.Left.Eval(ctx, d)
 	if err != nil {
 		return 0, err
 	}
-	right, err := div.Right.Eval(d)
+	right, err := div.Right.Eval(ctx, d)
 	if err != nil {
 		return 0, err
 	} else if right == 0 {
@@ -579,12 +567,12 @@ func init() {
 	operatorFromType["ROUND_FLOAT"] = func() Operator { return &RoundFloat{} }
 }
 
-func (r RoundFloat) Eval(d DataAccessor) (float64, error) {
+func (r RoundFloat) Eval(ctx context.Context, d DataAccessor) (float64, error) {
 	if !r.IsValid() {
 		return 0, ErrEvaluatingInvalidOperator
 	}
 
-	val, err := r.Operand.Eval(d)
+	val, err := r.Operand.Eval(ctx, d)
 	if err != nil {
 		return 0, err
 	}

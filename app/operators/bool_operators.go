@@ -1,6 +1,7 @@
 package operators
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"marble/marble-backend/models"
@@ -57,7 +58,7 @@ func init() {
 	operatorFromType["BOOL_CONSTANT"] = func() Operator { return &BoolValue{} }
 }
 
-func (bv BoolValue) Eval(d DataAccessor) (bool, error) { return bv.Value, nil }
+func (bv BoolValue) Eval(ctx context.Context, d DataAccessor) (bool, error) { return bv.Value, nil }
 
 func (bv BoolValue) IsValid() bool { return true }
 
@@ -104,12 +105,12 @@ func init() {
 	operatorFromType["EQUAL_BOOL"] = func() Operator { return &EqBool{} }
 }
 
-func (eq EqBool) Eval(d DataAccessor) (bool, error) {
+func (eq EqBool) Eval(ctx context.Context, d DataAccessor) (bool, error) {
 	if !eq.IsValid() {
 		return false, ErrEvaluatingInvalidOperator
 	}
-	valLeft, errLeft := eq.Left.Eval(d)
-	valRight, errRight := eq.Right.Eval(d)
+	valLeft, errLeft := eq.Left.Eval(ctx, d)
+	valRight, errRight := eq.Right.Eval(ctx, d)
 	if errLeft != nil || errRight != nil {
 		return false, fmt.Errorf("error in EqBool.Eval: %w, %w", errLeft, errRight)
 	}
@@ -184,12 +185,12 @@ func init() {
 	operatorFromType["DB_FIELD_BOOL"] = func() Operator { return &DbFieldBool{} }
 }
 
-func (field DbFieldBool) Eval(d DataAccessor) (bool, error) {
+func (field DbFieldBool) Eval(ctx context.Context, d DataAccessor) (bool, error) {
 	if !field.IsValid() {
 		return false, ErrEvaluatingInvalidOperator
 	}
 
-	valRaw, err := d.GetDbField(field.TriggerTableName, field.Path, field.FieldName)
+	valRaw, err := d.GetDbField(ctx, field.TriggerTableName, field.Path, field.FieldName)
 	if err != nil {
 		return false, err
 	}
@@ -266,24 +267,11 @@ func init() {
 	operatorFromType["PAYLOAD_FIELD_BOOL"] = func() Operator { return &PayloadFieldBool{} }
 }
 
-func (field PayloadFieldBool) Eval(d DataAccessor) (bool, error) {
+func (field PayloadFieldBool) Eval(ctx context.Context, d DataAccessor) (bool, error) {
 	if !field.IsValid() {
 		return false, ErrEvaluatingInvalidOperator
 	}
-
-	valRaw, err := d.GetPayloadField(field.FieldName)
-	if err != nil {
-		return false, err
-	}
-
-	valPointer, ok := valRaw.(*bool)
-	if !ok {
-		return false, fmt.Errorf("Payload field %s is not a pointer to a boolean", field.FieldName)
-	}
-	if valPointer == nil {
-		return false, fmt.Errorf("Payload field %s is null: %w", field.FieldName, models.OperatorNullValueReadError)
-	}
-	return *valPointer, nil
+	return getPayloadFieldGeneric[bool](d, field.FieldName)
 }
 
 func (field PayloadFieldBool) IsValid() bool {
@@ -339,13 +327,13 @@ func init() {
 	operatorFromType["AND"] = func() Operator { return &And{} }
 }
 
-func (and And) Eval(d DataAccessor) (bool, error) {
+func (and And) Eval(ctx context.Context, d DataAccessor) (bool, error) {
 	if !and.IsValid() {
 		return false, ErrEvaluatingInvalidOperator
 	}
 
 	for _, op := range and.Operands {
-		res, err := op.Eval(d)
+		res, err := op.Eval(ctx, d)
 		if err != nil {
 			return false, err
 		} else if !res {
@@ -420,13 +408,13 @@ func init() {
 	operatorFromType["OR"] = func() Operator { return &Or{} }
 }
 
-func (or Or) Eval(d DataAccessor) (bool, error) {
+func (or Or) Eval(ctx context.Context, d DataAccessor) (bool, error) {
 	if !or.IsValid() {
 		return false, ErrEvaluatingInvalidOperator
 	}
 
 	for _, op := range or.Operands {
-		res, err := op.Eval(d)
+		res, err := op.Eval(ctx, d)
 		if err != nil {
 			return false, err
 		} else if res {
@@ -501,12 +489,12 @@ func init() {
 	operatorFromType["NOT"] = func() Operator { return &Not{} }
 }
 
-func (not Not) Eval(d DataAccessor) (bool, error) {
+func (not Not) Eval(ctx context.Context, d DataAccessor) (bool, error) {
 	if !not.IsValid() {
 		return false, ErrEvaluatingInvalidOperator
 	}
 
-	res, err := not.Child.Eval(d)
+	res, err := not.Child.Eval(ctx, d)
 	if err != nil {
 		return false, err
 	}
@@ -570,16 +558,16 @@ func init() {
 	operatorFromType["STRING_IS_IN_LIST"] = func() Operator { return &StringIsInList{} }
 }
 
-func (s StringIsInList) Eval(d DataAccessor) (bool, error) {
+func (s StringIsInList) Eval(ctx context.Context, d DataAccessor) (bool, error) {
 	if !s.IsValid() {
 		return false, ErrEvaluatingInvalidOperator
 	}
 
-	str, err := s.Str.Eval(d)
+	str, err := s.Str.Eval(ctx, d)
 	if err != nil {
 		return false, err
 	}
-	list, err := s.List.Eval(d)
+	list, err := s.List.Eval(ctx, d)
 	if err != nil {
 		return false, err
 	}

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"marble/marble-backend/app"
+	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
 	"net/http"
 	"time"
@@ -130,7 +131,7 @@ func (api *API) GetScenario() http.HandlerFunc {
 		logger := api.logger.With(slog.String("orgID", orgID), slog.String("scenarioID", input.ScenarioID))
 
 		scenario, err := api.app.GetScenario(ctx, orgID, input.ScenarioID)
-		if errors.Is(err, app.ErrScenarioNotFound) {
+		if errors.Is(err, models.NotFoundError) {
 			http.Error(w, "", http.StatusNotFound)
 			return
 		} else if err != nil {

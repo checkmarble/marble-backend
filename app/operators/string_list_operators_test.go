@@ -1,9 +1,11 @@
 package operators
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -13,8 +15,12 @@ func (d *DataAccessorStringListImpl) GetPayloadField(fieldName string) (interfac
 	return nil, nil
 }
 
-func (d *DataAccessorStringListImpl) GetDbField(triggerTableName string, path []string, fieldName string) (interface{}, error) {
+func (d *DataAccessorStringListImpl) GetDbField(ctx context.Context, triggerTableName string, path []string, fieldName string) (interface{}, error) {
 	return nil, nil
+}
+
+func (d *DataAccessorStringListImpl) GetDbHandle() *pgxpool.Pool {
+	return nil
 }
 
 func TestLogicEvalStringList(t *testing.T) {
@@ -37,7 +43,7 @@ func TestLogicEvalStringList(t *testing.T) {
 	asserts := assert.New(t)
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			got, err := c.operator.Eval(&dataAccessor)
+			got, err := c.operator.Eval(context.Background(), &dataAccessor)
 
 			if err != nil {
 				t.Errorf("error: %v", err)
@@ -77,11 +83,11 @@ func TestMarshalUnMarshalStringList(t *testing.T) {
 			}
 			fmt.Println(rootOperator)
 
-			expected, err := c.operator.Eval(&dataAccessor)
+			expected, err := c.operator.Eval(context.Background(), &dataAccessor)
 			if err != nil {
 				t.Errorf("error: %v", err)
 			}
-			got, err := rootOperator.Eval(&dataAccessor)
+			got, err := rootOperator.Eval(context.Background(), &dataAccessor)
 			if err != nil {
 				t.Errorf("error: %v", err)
 			}
