@@ -125,6 +125,11 @@ export class MarbleApi {
   async allUsers(): Promise<unknown> {
     return this.getAuthorizedJson(USERS_URL_PATH);
   }
+
+  async usersOfOrganization(organizationId: string): Promise<unknown> {
+    const orgIdParam = encodeURIComponent(organizationId);
+    return this.getAuthorizedJson(`${ORGANIZATION_URL_PATH}/${orgIdParam}/users`);
+  }
   
   async postUser(createUser: CreateUser): Promise<unknown> {
     return this.postAuthorizedJson({
