@@ -10,10 +10,15 @@ export interface UserRepository {
   marbleApi: MarbleApi;
 }
 
-export async function fetchAllUsers(
-  repository: UserRepository
+export async function fetchUsers(
+  repository: UserRepository,
+  organizationIdFilter?: string
 ): Promise<User[]> {
-  const result = adaptUsersApiResultDto(await repository.marbleApi.allUsers());
+  const users = organizationIdFilter
+    ? repository.marbleApi.usersOfOrganization(organizationIdFilter)
+    : repository.marbleApi.allUsers();
+  const result = adaptUsersApiResultDto(await users);
+
   return result.users.map(adaptUser);
 }
 

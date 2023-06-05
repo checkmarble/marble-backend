@@ -61,7 +61,7 @@ export function useCreateOrganization(service: OrganizationService) {
     async (name: string) => {
       await postOrganization(service.organizationRepository, {
         name,
-        databaseName: `${name}_database`,
+        databaseName: name,
       });
     },
     [service]
