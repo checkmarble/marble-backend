@@ -12,11 +12,8 @@ import (
 
 // embed migrations sql folder
 //
-//go:embed migrations_core/*.sql
+//go:embed migrations/*.sql
 var embedMigrations embed.FS
-
-//go:embed migrations_test_org/*.sql
-var embedMigrationsTestOrg embed.FS
 
 type migrationParams struct {
 	fileSystem   embed.FS
@@ -47,13 +44,8 @@ func RunMigrations(env string, pgConfig PGConfig, logger *slog.Logger) {
 	}
 
 	// Run core migrations, then test ingestion db migrations
-	if err := runMigrationsWithFolder(db, migrationParams{fileSystem: embedMigrations, folderName: "migrations_core", allowMissing: false}, logger); err != nil {
+	if err := runMigrationsWithFolder(db, migrationParams{fileSystem: embedMigrations, folderName: "migrations", allowMissing: false}, logger); err != nil {
 		log.Fatalln(err)
-	}
-	if env == "DEV" || env == "staging" {
-		if err := runMigrationsWithFolder(db, migrationParams{fileSystem: embedMigrationsTestOrg, folderName: "migrations_test_org", allowMissing: true}, logger); err != nil {
-			log.Fatalln(err)
-		}
 	}
 }
 
@@ -68,24 +60,13 @@ func WipeDb(env string, pgConfig PGConfig, logger *slog.Logger) {
 		log.Fatalln(err)
 	}
 
-	// Teardown full db schema
-	if env == "DEV" || env == "staging" {
-		if err := resetDbWithFolder(db, migrationParams{fileSystem: embedMigrationsTestOrg, folderName: "migrations_test_org", allowMissing: true}, logger); err != nil {
-			log.Fatalln(err)
-		}
-	}
-	if err := resetDbWithFolder(db, migrationParams{fileSystem: embedMigrations, folderName: "migrations_core", allowMissing: false}, logger); err != nil {
+	if err := resetDbWithFolder(db, migrationParams{fileSystem: embedMigrations, folderName: "migrations", allowMissing: false}, logger); err != nil {
 		log.Fatalln(err)
 	}
 
 	// Restore db schema
-	if err := runMigrationsWithFolder(db, migrationParams{fileSystem: embedMigrations, folderName: "migrations_core", allowMissing: false}, logger); err != nil {
+	if err := runMigrationsWithFolder(db, migrationParams{fileSystem: embedMigrations, folderName: "migrations", allowMissing: false}, logger); err != nil {
 		log.Fatalln(err)
-	}
-	if env == "DEV" || env == "staging" {
-		if err := runMigrationsWithFolder(db, migrationParams{fileSystem: embedMigrationsTestOrg, folderName: "migrations_test_org", allowMissing: true}, logger); err != nil {
-			log.Fatalln(err)
-		}
 	}
 }
 
