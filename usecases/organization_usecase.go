@@ -12,6 +12,7 @@ type OrganizationUseCase struct {
 	transactionFactory     repositories.TransactionFactory
 	organizationRepository repositories.OrganizationRepository
 	datamodelRepository    repositories.DataModelRepository
+	apiKeyRepository       repositories.ApiKeyRepository
 	userRepository         repositories.UserRepository
 }
 
@@ -66,4 +67,9 @@ func (usecase *OrganizationUseCase) GetUsersOfOrganization(organizationIDFilter 
 			return usecase.userRepository.UsersOfOrganization(tx, organizationIDFilter)
 		},
 	)
+}
+
+func (usecase *OrganizationUseCase) GetApiKeyOfOrganization(ctx context.Context, organizationId string) ([]models.ApiKey, error) {
+
+	return usecase.apiKeyRepository.GetApiKeyOfOrganization(ctx, organizationId)
 }

@@ -32,7 +32,7 @@ func wrapErrInUnAuthorizedError(err error) error {
 func (api *API) credentialsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		apiKey := ParseApiKeyHeader(r.Header)
+		key := ParseApiKeyHeader(r.Header)
 
 		jwtToken, err := ParseAuthorizationBearerHeader(r.Header)
 		if err != nil {
@@ -42,7 +42,7 @@ func (api *API) credentialsMiddleware(next http.Handler) http.Handler {
 
 		usecase := api.usecases.NewMarbleTokenUseCase()
 		ctx := r.Context()
-		creds, err := usecase.ValidateCredentials(ctx, jwtToken, apiKey)
+		creds, err := usecase.ValidateCredentials(ctx, jwtToken, key)
 		if err != nil {
 			err = wrapErrInUnAuthorizedError(err)
 		}
