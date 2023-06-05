@@ -40,12 +40,8 @@ func (usecase *SeedUseCase) SeedZorgOrganization(zorgOrganizationId string) erro
 			zorgOrganizationId,
 		)
 
-		if err != nil {
-			if repositories.IsIsUniqueViolationError(err) {
-				err = nil
-			} else {
-				return err
-			}
+		if repositories.IsIsUniqueViolationError(err) {
+			return repositories.ErrIgnoreRoolBackError
 		}
 
 		_, err = usecase.userRepository.CreateUser(tx, models.CreateUser{
@@ -53,12 +49,6 @@ func (usecase *SeedUseCase) SeedZorgOrganization(zorgOrganizationId string) erro
 			Role:           models.ADMIN,
 			OrganizationId: zorgOrganizationId,
 		})
-		// ignore user already added
-		if repositories.IsIsUniqueViolationError(err) {
-			err = nil
-		} else {
-			return err
-		}
 
 		return err
 	})
