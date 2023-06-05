@@ -24,6 +24,7 @@ type Repositories struct {
 	DecisionRepository              DecisionRepository
 	ScenarioReadRepository          ScenarioReadRepository
 	ScenarioIterationReadRepository ScenarioIterationReadRepository
+	LegacyPgRepository              *pg_repository.PGRepository
 }
 
 func NewRepositories(
@@ -68,5 +69,6 @@ func NewRepositories(
 		DecisionRepository:              pgRepository,
 		ScenarioReadRepository:          pgRepository,
 		ScenarioIterationReadRepository: pgRepository,
+		LegacyPgRepository:              pgRepository,
 	}
 }

@@ -2,32 +2,44 @@ package pg_repository
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
 	"log"
-
 	"marble/marble-backend/app"
 	"marble/marble-backend/app/operators"
 	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
 )
 
-func (r *PGRepository) Seed(zorgOrganizationId string) {
+func randomAPiKey() string {
+	var key = make([]byte, 8)
+	_, err := rand.Read(key)
+	if err != nil {
+		panic(fmt.Errorf("randomAPiKey: %w", err))
+	}
+	return hex.EncodeToString(key)
+}
+
+func (r *PGRepository) Seed(zorgOrganizationId string) error {
 
 	///////////////////////////////
 	// Tokens
 	///////////////////////////////
 
-	_, err := r.CreateToken(context.TODO(), CreateToken{
+	_, err := r.CreateApiKey(context.TODO(), CreateApiKey{
 		OrgID: zorgOrganizationId,
-		Token: "token12345",
+		Key:   randomAPiKey(),
 	})
 	if err != nil {
 		log.Printf("error creating token: %v", err)
+		return err
 	}
 
 	///////////////////////////////
 	// Create and store a data model
 	///////////////////////////////
-	r.CreateDataModel(context.TODO(), zorgOrganizationId, models.DataModel{
+	_, err = r.CreateDataModel(context.TODO(), zorgOrganizationId, models.DataModel{
 		Tables: map[models.TableName]models.Table{
 			"transactions": {
 				Name: "transactions",
@@ -84,6 +96,11 @@ func (r *PGRepository) Seed(zorgOrganizationId string) {
 			},
 		},
 	})
+
+	if err != nil {
+		return err
+	}
+
 	///////////////////////////////
 	// Create and store a scenario
 	///////////////////////////////
@@ -95,6 +112,7 @@ func (r *PGRepository) Seed(zorgOrganizationId string) {
 	scenario, err := r.CreateScenario(context.TODO(), zorgOrganizationId, createScenarioInput)
 	if err != nil {
 		log.Printf("error creating scenario: %v", err)
+		return err
 	}
 
 	createScenarioIterationInput := app.CreateScenarioIterationInput{
@@ -135,6 +153,7 @@ func (r *PGRepository) Seed(zorgOrganizationId string) {
 	scenarioIteration, err := r.CreateScenarioIteration(context.TODO(), zorgOrganizationId, createScenarioIterationInput)
 	if err != nil {
 		log.Printf("error creating scenario iteration: %v", err)
+		return err
 	}
 	_, err = r.CreateScenarioPublication(context.TODO(), zorgOrganizationId, app.CreateScenarioPublicationInput{
 		ScenarioIterationID: scenarioIteration.ID,
@@ -142,6 +161,7 @@ func (r *PGRepository) Seed(zorgOrganizationId string) {
 	})
 	if err != nil {
 		log.Printf("error publishing scenario iteration: %v", err)
+		return err
 	}
 
 	///////////////////////////////
@@ -154,6 +174,7 @@ func (r *PGRepository) Seed(zorgOrganizationId string) {
 	})
 	if err != nil {
 		log.Printf("error creating demo scenario: %v", err)
+		return err
 	}
 
 	createDemoScenarioIterationInput := app.CreateScenarioIterationInput{
@@ -278,6 +299,7 @@ func (r *PGRepository) Seed(zorgOrganizationId string) {
 	demoScenarioIteration, err := r.CreateScenarioIteration(context.TODO(), zorgOrganizationId, createDemoScenarioIterationInput)
 	if err != nil {
 		log.Printf("error creating demo scenario iteration: %v", err)
+		return err
 	}
 	_, err = r.CreateScenarioPublication(context.TODO(), zorgOrganizationId, app.CreateScenarioPublicationInput{
 		ScenarioIterationID: demoScenarioIteration.ID,
@@ -285,8 +307,10 @@ func (r *PGRepository) Seed(zorgOrganizationId string) {
 	})
 	if err != nil {
 		log.Printf("error publishing demo scenario iteration: %v", err)
+		return err
 	}
 
 	log.Println("")
 	log.Println("Finish to Seed the DB")
+	return nil
 }
