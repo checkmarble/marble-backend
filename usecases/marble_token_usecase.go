@@ -9,14 +9,13 @@ import (
 )
 
 type MarbleTokenUseCase struct {
-	transactionFactory       repositories.TransactionFactory
-	marbleJwtRepository      repositories.MarbleJwtRepository
-	firebaseTokenRepository  repositories.FireBaseTokenRepository
-	userRepository           repositories.UserRepository
-	hardcodedUsersRepository *repositories.HardcodedUsersRepository
-	apiKeyRepository         repositories.ApiKeyRepository
-	organizationRepository   repositories.OrganizationRepository
-	tokenLifetimeMinute      int
+	transactionFactory      repositories.TransactionFactory
+	marbleJwtRepository     repositories.MarbleJwtRepository
+	firebaseTokenRepository repositories.FireBaseTokenRepository
+	userRepository          repositories.UserRepository
+	apiKeyRepository        repositories.ApiKeyRepository
+	organizationRepository  repositories.OrganizationRepository
+	tokenLifetimeMinute     int
 }
 
 func (usecase *MarbleTokenUseCase) encodeMarbleToken(creds models.Credentials) (string, time.Time, error) {
@@ -73,11 +72,6 @@ func (usecase *MarbleTokenUseCase) NewMarbleToken(ctx context.Context, apiKey st
 
 		user, err := repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE, func(tx repositories.Transaction) (models.User, error) {
 
-			// Use hardcoded users if available
-			if user := usecase.hardcodedUsersRepository.UserByEmail(identity.Email); user != nil {
-				return *user, nil
-			}
-
 			user, err := usecase.userRepository.UserByFirebaseUid(tx, identity.FirebaseUid)
 			if err != nil {
 				return models.User{}, err
@@ -96,7 +90,7 @@ func (usecase *MarbleTokenUseCase) NewMarbleToken(ctx context.Context, apiKey st
 				if err := usecase.userRepository.UpdateFirebaseId(tx, user.UserId, identity.FirebaseUid); err != nil {
 					return models.User{}, err
 				}
-				return *user, nil
+				return usecase.userRepository.UserByUid(tx, user.UserId)
 			}
 
 			return models.User{}, fmt.Errorf("unknown user %s: %w", identity.Email, models.NotFoundError)

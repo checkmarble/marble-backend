@@ -22,6 +22,7 @@ require (
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.0 // indirect
 	github.com/containerd/continuity v0.3.0 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/cli v23.0.1+incompatible // indirect
 	github.com/docker/docker v23.0.1+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
@@ -34,7 +35,6 @@ require (
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/s2a-go v0.1.3 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.3 // indirect
 	github.com/googleapis/gax-go/v2 v2.8.0 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
@@ -81,13 +81,13 @@ require (
 require (
 	firebase.google.com/go/v4 v4.11.0
 	github.com/Masterminds/squirrel v1.5.4
-	github.com/davecgh/go-spew v1.1.1
 	github.com/ggicci/httpin v0.10.1
 	github.com/go-chi/cors v1.2.1
 	github.com/go-playground/validator v9.31.0+incompatible
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/golang-jwt/jwt/v4 v4.5.0
-	github.com/golang-jwt/jwt/v5 v5.0.0-rc.2
+	github.com/google/uuid v1.3.0
+	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/jackc/pgx/v5 v5.3.1
 	github.com/ompluscator/dynamic-struct v1.4.0
 	github.com/ory/dockertest/v3 v3.9.1

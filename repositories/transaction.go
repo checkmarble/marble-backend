@@ -2,9 +2,12 @@ package repositories
 
 import (
 	"context"
+	"errors"
 	"marble/marble-backend/models"
 
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // Opaque type, down-casted to TransactionPostgres in by repositories
@@ -43,4 +46,11 @@ func TransactionReturnValue[ReturnType any](factory TransactionFactory, database
 		return fnErr
 	})
 	return value, transactionErr
+}
+
+var ErrIgnoreRoolBackError = errors.New("ignore rollback error")
+
+func IsIsUniqueViolationError(err error) bool {
+	var pgxErr *pgconn.PgError
+	return errors.As(err, &pgxErr) && pgxErr.Code == pgerrcode.UniqueViolation
 }

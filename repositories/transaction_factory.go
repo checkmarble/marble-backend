@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"errors"
 	"marble/marble-backend/models"
 
 	"github.com/jackc/pgx/v5"
@@ -24,11 +25,19 @@ func (t *TransactionFactoryPosgresql) Transaction(database models.Database, fn f
 	// context.Background: I suppose we don't need cancellation at the sql request level.
 	ctx := context.Background()
 
-	return pgx.BeginFunc(ctx, connPool, func(tx pgx.Tx) error {
+	err = pgx.BeginFunc(ctx, connPool, func(tx pgx.Tx) error {
 		return fn(TransactionPostgres{
 			Target: database,
 			ctx:    ctx,
 			tx:     tx,
 		})
 	})
+
+	// helper: The callback can return ErrIgnoreRoolBackError
+	// to explicitly specify that the error should be ignored.
+	if errors.Is(err, ErrIgnoreRoolBackError) {
+		return nil
+	}
+
+	return err
 }
