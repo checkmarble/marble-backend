@@ -8,12 +8,17 @@ import (
 	"github.com/google/uuid"
 )
 
+type OrganizationSeeder interface {
+	Seed(organizationId string) error
+}
+
 type OrganizationUseCase struct {
 	transactionFactory     repositories.TransactionFactory
 	organizationRepository repositories.OrganizationRepository
 	datamodelRepository    repositories.DataModelRepository
 	apiKeyRepository       repositories.ApiKeyRepository
 	userRepository         repositories.UserRepository
+	organizationSeeder     OrganizationSeeder
 }
 
 func (usecase *OrganizationUseCase) GetOrganizations(ctx context.Context) ([]models.Organization, error) {
@@ -22,7 +27,7 @@ func (usecase *OrganizationUseCase) GetOrganizations(ctx context.Context) ([]mod
 
 func (usecase *OrganizationUseCase) CreateOrganization(ctx context.Context, createOrga models.CreateOrganizationInput) (models.Organization, error) {
 
-	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE, func(tx repositories.Transaction) (models.Organization, error) {
+	organization, err := repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE, func(tx repositories.Transaction) (models.Organization, error) {
 		newOrganizationId := uuid.NewString()
 		err := usecase.organizationRepository.CreateOrganization(tx, createOrga, newOrganizationId)
 		if err != nil {
@@ -31,6 +36,12 @@ func (usecase *OrganizationUseCase) CreateOrganization(ctx context.Context, crea
 		return usecase.organizationRepository.GetOrganizationById(tx, newOrganizationId)
 	})
 
+	if err != nil {
+		return organization, err
+	}
+
+	err = usecase.organizationSeeder.Seed(organization.ID)
+	return organization, err
 }
 
 func (usecase *OrganizationUseCase) GetOrganization(ctx context.Context, organizationID string) (models.Organization, error) {
@@ -56,6 +67,11 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 
 func (usecase *OrganizationUseCase) GetDataModel(ctx context.Context, organizationID string) (models.DataModel, error) {
 	return usecase.datamodelRepository.GetDataModel(ctx, organizationID)
+}
+
+func (usecase *OrganizationUseCase) GetApiKeyOfOrganization(ctx context.Context, organizationID string) (models.Token[], error) {
+	// return usecase.datamodelRepository.GetDataModel(ctx, organizationID)
+	return models.Token[]{}, nil
 }
 
 func (usecase *OrganizationUseCase) GetUsersOfOrganization(organizationIDFilter string) ([]models.User, error) {

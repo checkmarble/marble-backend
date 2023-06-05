@@ -9,6 +9,7 @@ type SeedUseCase struct {
 	transactionFactory     repositories.TransactionFactory
 	organizationRepository repositories.OrganizationRepository
 	userRepository         repositories.UserRepository
+	organizationSeeder     OrganizationSeeder
 }
 
 func (usecase *SeedUseCase) SeedMarbleAdmins(firstMarbleAdminEmail string) error {
@@ -30,7 +31,7 @@ func (usecase *SeedUseCase) SeedMarbleAdmins(firstMarbleAdminEmail string) error
 
 func (usecase *SeedUseCase) SeedZorgOrganization(zorgOrganizationId string) error {
 
-	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE, func(tx repositories.Transaction) error {
+	err := usecase.transactionFactory.Transaction(models.DATABASE_MARBLE, func(tx repositories.Transaction) error {
 		err := usecase.organizationRepository.CreateOrganization(
 			tx,
 			models.CreateOrganizationInput{
@@ -44,13 +45,12 @@ func (usecase *SeedUseCase) SeedZorgOrganization(zorgOrganizationId string) erro
 			return repositories.ErrIgnoreRoolBackError
 		}
 
-		_, err = usecase.userRepository.CreateUser(tx, models.CreateUser{
-			Email:          "jbe@zorg.com",
-			Role:           models.ADMIN,
-			OrganizationId: zorgOrganizationId,
-		})
-
 		return err
 	})
 
+	if err != nil {
+		return err
+	}
+
+	return usecase.organizationSeeder.Seed(zorgOrganizationId)
 }

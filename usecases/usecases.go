@@ -32,6 +32,7 @@ func (usecases *Usecases) NewOrganizationUseCase() OrganizationUseCase {
 		organizationRepository: usecases.Repositories.OrganizationRepository,
 		datamodelRepository:    usecases.Repositories.DataModelRepository,
 		userRepository:         usecases.Repositories.UserRepository,
+		organizationSeeder:     usecases.Repositories.LegacyPgRepository,
 	}
 }
 
@@ -64,5 +65,6 @@ func (usecases *Usecases) NewSeedUseCase() SeedUseCase {
 		transactionFactory:     usecases.Repositories.TransactionFactory,
 		organizationRepository: usecases.Repositories.OrganizationRepository,
 		userRepository:         usecases.Repositories.UserRepository,
+		organizationSeeder:     usecases.Repositories.LegacyPgRepository,
 	}
 }
