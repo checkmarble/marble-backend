@@ -39,7 +39,8 @@ func NewRepositories(
 	)
 
 	transactionFactory := &TransactionFactoryPosgresql{
-		DatabaseConnectionPoolRepository: databaseConnectionPoolRepository,
+		databaseConnectionPoolRepository: databaseConnectionPoolRepository,
+		marbleConnectionPool:             marbleConnectionPool,
 	}
 
 	queryBuilder := squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
@@ -55,8 +56,11 @@ func NewRepositories(
 		UserRepository: &UserRepositoryPostgresql{
 			queryBuilder: queryBuilder,
 		},
-		ApiKeyRepository:                pgRepository,
-		OrganizationRepository:          pgRepository,
+		ApiKeyRepository: pgRepository,
+		OrganizationRepository: &OrganizationRepositoryPostgresql{
+			transactionFactory: transactionFactory,
+			queryBuilder:       queryBuilder,
+		},
 		IngestionRepository:             pgRepository,
 		DataModelRepository:             pgRepository,
 		DbPoolRepository:                pgRepository,

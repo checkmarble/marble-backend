@@ -10,41 +10,14 @@ import (
 	"marble/marble-backend/utils"
 )
 
-func (r *PGRepository) Seed() {
-
-	///////////////////////////////
-	// Organizations
-	///////////////////////////////
-
-	organizations, err := r.GetOrganizations(context.TODO())
-	if err != nil {
-		log.Printf("error getting organizations: %v", err)
-	}
-	var testOrg *models.Organization
-	for _, org := range organizations {
-		if org.Name == "Test organization" {
-			testOrg = &org
-		}
-	}
-	if testOrg != nil {
-		log.Printf("test organization already exists, skip inserting the rest of the seed data")
-		return
-	}
-
-	org, err := r.CreateOrganization(context.TODO(), models.CreateOrganizationInput{
-		Name:         "Test organization",
-		DatabaseName: "test_1",
-	})
-	if err != nil {
-		log.Printf("error creating organization: %v", err)
-	}
+func (r *PGRepository) Seed(zorgOrganizationId string) {
 
 	///////////////////////////////
 	// Tokens
 	///////////////////////////////
 
-	_, err = r.CreateToken(context.TODO(), CreateToken{
-		OrgID: org.ID,
+	_, err := r.CreateToken(context.TODO(), CreateToken{
+		OrgID: zorgOrganizationId,
 		Token: "token12345",
 	})
 	if err != nil {
@@ -54,7 +27,7 @@ func (r *PGRepository) Seed() {
 	///////////////////////////////
 	// Create and store a data model
 	///////////////////////////////
-	r.CreateDataModel(context.TODO(), org.ID, models.DataModel{
+	r.CreateDataModel(context.TODO(), zorgOrganizationId, models.DataModel{
 		Tables: map[models.TableName]models.Table{
 			"transactions": {
 				Name: "transactions",
@@ -119,7 +92,7 @@ func (r *PGRepository) Seed() {
 		Description:       "test description",
 		TriggerObjectType: "transactions",
 	}
-	scenario, err := r.CreateScenario(context.TODO(), org.ID, createScenarioInput)
+	scenario, err := r.CreateScenario(context.TODO(), zorgOrganizationId, createScenarioInput)
 	if err != nil {
 		log.Printf("error creating scenario: %v", err)
 	}
@@ -159,11 +132,11 @@ func (r *PGRepository) Seed() {
 		},
 	}
 
-	scenarioIteration, err := r.CreateScenarioIteration(context.TODO(), org.ID, createScenarioIterationInput)
+	scenarioIteration, err := r.CreateScenarioIteration(context.TODO(), zorgOrganizationId, createScenarioIterationInput)
 	if err != nil {
 		log.Printf("error creating scenario iteration: %v", err)
 	}
-	_, err = r.CreateScenarioPublication(context.TODO(), org.ID, app.CreateScenarioPublicationInput{
+	_, err = r.CreateScenarioPublication(context.TODO(), zorgOrganizationId, app.CreateScenarioPublicationInput{
 		ScenarioIterationID: scenarioIteration.ID,
 		PublicationAction:   app.Publish,
 	})
@@ -174,7 +147,7 @@ func (r *PGRepository) Seed() {
 	///////////////////////////////
 	// Also create the demo scenario
 	///////////////////////////////
-	demoScenario, err := r.CreateScenario(context.TODO(), org.ID, app.CreateScenarioInput{
+	demoScenario, err := r.CreateScenario(context.TODO(), zorgOrganizationId, app.CreateScenarioInput{
 		Name:              "Demo scenario",
 		Description:       "Demo scenario",
 		TriggerObjectType: "transactions",
@@ -302,11 +275,11 @@ func (r *PGRepository) Seed() {
 			},
 		},
 	}
-	demoScenarioIteration, err := r.CreateScenarioIteration(context.TODO(), org.ID, createDemoScenarioIterationInput)
+	demoScenarioIteration, err := r.CreateScenarioIteration(context.TODO(), zorgOrganizationId, createDemoScenarioIterationInput)
 	if err != nil {
 		log.Printf("error creating demo scenario iteration: %v", err)
 	}
-	_, err = r.CreateScenarioPublication(context.TODO(), org.ID, app.CreateScenarioPublicationInput{
+	_, err = r.CreateScenarioPublication(context.TODO(), zorgOrganizationId, app.CreateScenarioPublicationInput{
 		ScenarioIterationID: demoScenarioIteration.ID,
 		PublicationAction:   app.Publish,
 	})

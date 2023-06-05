@@ -67,8 +67,13 @@ func runServer(config usecases.Configuration, pgRepository *pg_repository.PGRepo
 	}
 
 	if devEnv || env == "staging" {
-		pgRepository.Seed()
-		seedUsecase.SeedZorgOrganization()
+		zorgOrganizationId := "13617a88-56f5-4baa-8d11-ce102f7da907"
+		err := seedUsecase.SeedZorgOrganization(zorgOrganizationId)
+		if err != nil {
+			panic(err)
+		}
+		// TODO: this seed must occur for every new organization
+		// pgRepository.Seed(zorgOrganizationId)
 	}
 
 	api, _ := api.New(ctx, port, app, usecases, logger, corsAllowLocalhost)
@@ -98,7 +103,6 @@ func runServer(config usecases.Configuration, pgRepository *pg_repository.PGRepo
 
 func main() {
 
-	utils.GetStringEnv("MARBLE_ADMIN", "DEV")
 	var (
 		env        = utils.GetStringEnv("ENV", "DEV")
 		port       = utils.GetRequiredStringEnv("PORT")

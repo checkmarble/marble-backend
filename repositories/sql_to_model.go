@@ -17,7 +17,7 @@ func SqlInsert(transaction TransactionPostgres, s squirrel.InsertBuilder) error 
 		return err
 	}
 
-	_, err = transaction.tx.Exec(transaction.ctx, query, args...)
+	_, err = transaction.Exec(query, args...)
 	return err
 }
 
@@ -29,7 +29,7 @@ func SqlUpdate(transaction TransactionPostgres, s squirrel.UpdateBuilder) error 
 		return err
 	}
 
-	_, err = transaction.tx.Exec(transaction.ctx, query, args...)
+	_, err = transaction.Exec(query, args...)
 	return err
 }
 
@@ -41,7 +41,7 @@ func SqlToListOfModels[DBModel, Model any](transaction TransactionPostgres, s sq
 		return nil, err
 	}
 
-	rows, err := transaction.tx.Query(transaction.ctx, query, args...)
+	rows, err := transaction.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
