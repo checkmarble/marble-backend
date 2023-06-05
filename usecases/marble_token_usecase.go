@@ -45,7 +45,7 @@ func (usecase *MarbleTokenUseCase) adaptCredentialFromApiKey(ctx context.Context
 }
 
 func (usecase *MarbleTokenUseCase) makeTokenName(ctx context.Context, organizationId string) (string, error) {
-	organizationName, err := usecase.organizationRepository.GetOrganization(ctx, organizationId)
+	organizationName, err := usecase.organizationRepository.GetOrganizationById(nil, organizationId)
 	if err != nil {
 		return "", err
 	}

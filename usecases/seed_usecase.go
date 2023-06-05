@@ -1,7 +1,6 @@
 package usecases
 
 import (
-	"context"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
 )
@@ -26,19 +25,42 @@ func (usecase *SeedUseCase) SeedMarbleAdmins(firstMarbleAdminEmail string) error
 		}
 		return err
 	})
+
 }
 
-func (usecase *SeedUseCase) SeedZorgOrganization() error {
+func (usecase *SeedUseCase) SeedZorgOrganization(zorgOrganizationId string) error {
 
-	ctx := context.Background()
+	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE, func(tx repositories.Transaction) error {
+		err := usecase.organizationRepository.CreateOrganization(
+			tx,
+			models.CreateOrganizationInput{
+				Name:         "Zorg",
+				DatabaseName: "Zorg",
+			},
+			zorgOrganizationId,
+		)
 
-	_, err := usecase.organizationRepository.CreateOrganization(ctx, models.CreateOrganizationInput{
-		Name:         "Zorg",
-		DatabaseName: "Zorg",
+		if err != nil {
+			if repositories.IsIsUniqueViolationError(err) {
+				err = nil
+			} else {
+				return err
+			}
+		}
+
+		_, err = usecase.userRepository.CreateUser(tx, models.CreateUser{
+			Email:          "jbe@zorg.com",
+			Role:           models.ADMIN,
+			OrganizationId: zorgOrganizationId,
+		})
+		// ignore user already added
+		if repositories.IsIsUniqueViolationError(err) {
+			err = nil
+		} else {
+			return err
+		}
+
+		return err
 	})
 
-	if err != nil {
-		return err
-	}
-	return nil
 }

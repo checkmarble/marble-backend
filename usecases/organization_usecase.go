@@ -4,6 +4,8 @@ import (
 	"context"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
+
+	"github.com/google/uuid"
 )
 
 type OrganizationUseCase struct {
@@ -14,23 +16,41 @@ type OrganizationUseCase struct {
 }
 
 func (usecase *OrganizationUseCase) GetOrganizations(ctx context.Context) ([]models.Organization, error) {
-	return usecase.organizationRepository.GetOrganizations(ctx)
+	return usecase.organizationRepository.AllOrganizations(nil)
 }
 
 func (usecase *OrganizationUseCase) CreateOrganization(ctx context.Context, createOrga models.CreateOrganizationInput) (models.Organization, error) {
-	return usecase.organizationRepository.CreateOrganization(ctx, createOrga)
+
+	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE, func(tx repositories.Transaction) (models.Organization, error) {
+		newOrganizationId := uuid.NewString()
+		err := usecase.organizationRepository.CreateOrganization(tx, createOrga, newOrganizationId)
+		if err != nil {
+			return models.Organization{}, err
+		}
+		return usecase.organizationRepository.GetOrganizationById(tx, newOrganizationId)
+	})
+
 }
 
 func (usecase *OrganizationUseCase) GetOrganization(ctx context.Context, organizationID string) (models.Organization, error) {
-	return usecase.organizationRepository.GetOrganization(ctx, organizationID)
+	return usecase.organizationRepository.GetOrganizationById(nil, organizationID)
 }
 
 func (usecase *OrganizationUseCase) UpdateOrganization(ctx context.Context, organization models.UpdateOrganizationInput) (models.Organization, error) {
-	return usecase.organizationRepository.UpdateOrganization(ctx, organization)
+	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE, func(tx repositories.Transaction) (models.Organization, error) {
+		err := usecase.organizationRepository.UpdateOrganization(tx, organization)
+		if err != nil {
+			return models.Organization{}, err
+		}
+		return usecase.organizationRepository.GetOrganizationById(tx, organization.ID)
+	})
 }
 
-func (usecase *OrganizationUseCase) SoftDeleteOrganization(ctx context.Context, organizationID string) error {
-	return usecase.organizationRepository.SoftDeleteOrganization(ctx, organizationID)
+func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, organizationID string) error {
+
+	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE, func(tx repositories.Transaction) error {
+		return usecase.organizationRepository.DeleteOrganization(nil, organizationID)
+	})
 }
 
 func (usecase *OrganizationUseCase) GetDataModel(ctx context.Context, organizationID string) (models.DataModel, error) {

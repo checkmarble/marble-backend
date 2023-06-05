@@ -6,18 +6,21 @@ import (
 	"marble/marble-backend/models"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type TransactionFactory interface {
 	Transaction(database models.Database, fn func(tx Transaction) error) error
+	ImplicitTransactionOnMarbleDatabase() Transaction
 }
 
 type TransactionFactoryPosgresql struct {
-	DatabaseConnectionPoolRepository DatabaseConnectionPoolRepository
+	databaseConnectionPoolRepository DatabaseConnectionPoolRepository
+	marbleConnectionPool             *pgxpool.Pool
 }
 
-func (t *TransactionFactoryPosgresql) Transaction(database models.Database, fn func(tx Transaction) error) error {
-	connPool, err := t.DatabaseConnectionPoolRepository.DatabaseConnectionPool(database)
+func (repo *TransactionFactoryPosgresql) Transaction(database models.Database, fn func(tx Transaction) error) error {
+	connPool, err := repo.databaseConnectionPoolRepository.DatabaseConnectionPool(database)
 	if err != nil {
 		return err
 	}
@@ -29,7 +32,7 @@ func (t *TransactionFactoryPosgresql) Transaction(database models.Database, fn f
 		return fn(TransactionPostgres{
 			Target: database,
 			ctx:    ctx,
-			tx:     tx,
+			exec:   tx,
 		})
 	})
 
@@ -40,4 +43,12 @@ func (t *TransactionFactoryPosgresql) Transaction(database models.Database, fn f
 	}
 
 	return err
+}
+
+func (repo *TransactionFactoryPosgresql) ImplicitTransactionOnMarbleDatabase() Transaction {
+	return TransactionPostgres{
+		Target: models.DATABASE_MARBLE,
+		ctx:    context.Background(),
+		exec:   repo.marbleConnectionPool,
+	}
 }

@@ -147,7 +147,7 @@ func (api *API) handleDeleteOrganization() http.HandlerFunc {
 		orgID := ctx.Value(httpin.Input).(*DeleteOrganizationInput).orgID
 
 		usecase := api.usecases.NewOrganizationUseCase()
-		err := usecase.SoftDeleteOrganization(ctx, orgID)
+		err := usecase.DeleteOrganization(ctx, orgID)
 		if presentError(w, r, err) {
 			return
 		}

@@ -19,11 +19,26 @@ type Transaction interface {
 type TransactionPostgres struct {
 	Target models.Database
 	ctx    context.Context
-	tx     pgx.Tx
+	exec   TransactionOrPool // Optional, used when no transaction is provided
+}
+
+type TransactionOrPool interface {
+	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 }
 
 func (tx TransactionPostgres) Database() models.Database {
 	return tx.Target
+}
+
+// helper
+func (transaction *TransactionPostgres) Exec(sql string, arguments ...any) (pgconn.CommandTag, error) {
+	return transaction.exec.Exec(transaction.ctx, sql, arguments...)
+}
+
+// helper
+func (transaction *TransactionPostgres) Query(sql string, arguments ...any) (pgx.Rows, error) {
+	return transaction.exec.Query(transaction.ctx, sql, arguments...)
 }
 
 // Helper for TransactionFactory.Transaction that return something and an error:
