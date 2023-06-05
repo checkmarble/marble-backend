@@ -8,7 +8,6 @@ import (
 	"marble/marble-backend/app"
 	"marble/marble-backend/infra"
 	"marble/marble-backend/models"
-	. "marble/marble-backend/models"
 	"marble/marble-backend/pg_repository"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases"
@@ -29,30 +28,12 @@ func runServer(config usecases.Configuration, pgRepository *pg_repository.PGRepo
 
 	corsAllowLocalhost := devEnv
 
-	if devEnv || env == "staging" {
-		pgRepository.Seed()
-	}
-
 	marbleJwtSigningKey := infra.MustParseSigningKey(utils.GetRequiredStringEnv("AUTHENTICATION_JWT_SIGNING_KEY"))
 
 	app, _ := app.New(pgRepository)
 	repositories := repositories.NewRepositories(
 		marbleJwtSigningKey,
 		infra.IntializeFirebase(ctx),
-		[]User{
-			{
-				UserId:         "d7428f95-b6f2-4af1-85c8-f9b19d896101",
-				Email:          "vivien.miniussi@checkmarble.com",
-				Role:           MARBLE_ADMIN,
-				OrganizationId: "",
-			},
-			{
-				UserId:         "d7428f95-b6f2-4af1-85c8-f9b19d896102",
-				Email:          "vivien@zorg.com",
-				Role:           MARBLE_ADMIN,
-				OrganizationId: "",
-			},
-		},
 		pgRepository,
 		marbleConnectionPool,
 		map[models.DatabaseName]string{
@@ -69,6 +50,25 @@ func runServer(config usecases.Configuration, pgRepository *pg_repository.PGRepo
 	usecases := usecases.Usecases{
 		Repositories: *repositories,
 		Config:       config,
+	}
+
+	////////////////////////////////////////////////////////////
+	// Seed the database
+	////////////////////////////////////////////////////////////
+
+	seedUsecase := usecases.NewSeedUseCase()
+
+	marbleAdminEmail, _ := os.LookupEnv("MARBLE_ADMIN_EMAIL")
+	if marbleAdminEmail != "" {
+		err := seedUsecase.SeedMarbleAdmins(marbleAdminEmail)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	if devEnv || env == "staging" {
+		pgRepository.Seed()
+		seedUsecase.SeedZorgOrganization()
 	}
 
 	api, _ := api.New(ctx, port, app, usecases, logger, corsAllowLocalhost)
@@ -98,6 +98,7 @@ func runServer(config usecases.Configuration, pgRepository *pg_repository.PGRepo
 
 func main() {
 
+	utils.GetStringEnv("MARBLE_ADMIN", "DEV")
 	var (
 		env        = utils.GetStringEnv("ENV", "DEV")
 		port       = utils.GetRequiredStringEnv("PORT")

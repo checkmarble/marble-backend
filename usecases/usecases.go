@@ -16,14 +16,13 @@ type Usecases struct {
 func (usecases *Usecases) NewMarbleTokenUseCase() MarbleTokenUseCase {
 	repositories := usecases.Repositories
 	return MarbleTokenUseCase{
-		transactionFactory:       repositories.TransactionFactory,
-		firebaseTokenRepository:  repositories.FirebaseTokenRepository,
-		marbleJwtRepository:      repositories.MarbleJwtRepository,
-		userRepository:           repositories.UserRepository,
-		hardcodedUsersRepository: repositories.HardcodedUsersRepository,
-		apiKeyRepository:         repositories.ApiKeyRepository,
-		organizationRepository:   repositories.OrganizationRepository,
-		tokenLifetimeMinute:      usecases.Config.TokenLifetimeMinute,
+		transactionFactory:      repositories.TransactionFactory,
+		firebaseTokenRepository: repositories.FirebaseTokenRepository,
+		marbleJwtRepository:     repositories.MarbleJwtRepository,
+		userRepository:          repositories.UserRepository,
+		apiKeyRepository:        repositories.ApiKeyRepository,
+		organizationRepository:  repositories.OrganizationRepository,
+		tokenLifetimeMinute:     usecases.Config.TokenLifetimeMinute,
 	}
 }
 
@@ -57,5 +56,13 @@ func (usecases *Usecases) NewUserUseCase() UserUseCase {
 	return UserUseCase{
 		transactionFactory: usecases.Repositories.TransactionFactory,
 		userRepository:     usecases.Repositories.UserRepository,
+	}
+}
+
+func (usecases *Usecases) NewSeedUseCase() SeedUseCase {
+	return SeedUseCase{
+		transactionFactory:     usecases.Repositories.TransactionFactory,
+		organizationRepository: usecases.Repositories.OrganizationRepository,
+		userRepository:         usecases.Repositories.UserRepository,
 	}
 }

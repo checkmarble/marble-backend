@@ -133,5 +133,9 @@ func (repo *UserRepositoryPostgresql) UserByEmail(tx Transaction, email string) 
 
 func (repo *UserRepositoryPostgresql) UpdateFirebaseId(tx Transaction, userId models.UserId, firebaseUid string) error {
 	pgTx := repo.toPostgresTransaction(tx)
-	return SqlUpdate(pgTx, repo.queryBuilder.Update(dbmodels.TABLE_USERS).Where("id = ?", string(userId)))
+	return SqlUpdate(pgTx, repo.queryBuilder.
+		Update(dbmodels.TABLE_USERS).
+		Set("firebase_uid", firebaseUid).
+		Where("id = ?", string(userId)),
+	)
 }

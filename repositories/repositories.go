@@ -3,7 +3,6 @@ package repositories
 import (
 	"crypto/rsa"
 	"marble/marble-backend/models"
-	. "marble/marble-backend/models"
 	"marble/marble-backend/pg_repository"
 
 	"firebase.google.com/go/v4/auth"
@@ -15,7 +14,6 @@ type Repositories struct {
 	TransactionFactory              TransactionFactory
 	FirebaseTokenRepository         FireBaseTokenRepository
 	MarbleJwtRepository             MarbleJwtRepository
-	HardcodedUsersRepository        *HardcodedUsersRepository
 	UserRepository                  UserRepository
 	ApiKeyRepository                ApiKeyRepository
 	OrganizationRepository          OrganizationRepository
@@ -31,7 +29,6 @@ type Repositories struct {
 func NewRepositories(
 	marbleJwtSigningKey rsa.PrivateKey,
 	firebaseClient auth.Client,
-	users []User,
 	pgRepository *pg_repository.PGRepository,
 	marbleConnectionPool *pgxpool.Pool,
 	clientConnectionStrings map[models.DatabaseName]string,
@@ -55,7 +52,6 @@ func NewRepositories(
 		MarbleJwtRepository: MarbleJwtRepository{
 			jwtSigningPrivateKey: marbleJwtSigningKey,
 		},
-		HardcodedUsersRepository: NewHardcodedUserRepository(users),
 		UserRepository: &UserRepositoryPostgresql{
 			queryBuilder: queryBuilder,
 		},
