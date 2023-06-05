@@ -120,8 +120,12 @@ func (api *API) routes() {
 
 		authedRouter.Route("/data-model", func(dataModelRouter chi.Router) {
 			dataModelRouter.Use(api.enforcePermissionMiddleware(models.DATA_MODEL_READ))
-
 			dataModelRouter.Get("/", api.handleGetDataModel())
+		})
+
+		authedRouter.Route("/apikeys", func(dataModelRouter chi.Router) {
+			dataModelRouter.Use(api.enforcePermissionMiddleware(models.APIKEY_READ))
+			dataModelRouter.Get("/", api.handleGetApiKey())
 		})
 
 		// Group all admin endpoints

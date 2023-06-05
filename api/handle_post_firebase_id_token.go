@@ -11,7 +11,7 @@ func (api *API) handlePostFirebaseIdToken() http.HandlerFunc {
 	return func(w http.ResponseWriter, request *http.Request) {
 
 		// api key from header
-		apiKey := ParseApiKeyHeader(request.Header)
+		key := ParseApiKeyHeader(request.Header)
 
 		// token from header
 		bearerToken, err := ParseAuthorizationBearerHeader(request.Header)
@@ -23,7 +23,7 @@ func (api *API) handlePostFirebaseIdToken() http.HandlerFunc {
 		context := request.Context()
 
 		usecase := api.usecases.NewMarbleTokenUseCase()
-		marbleToken, expirationTime, err := usecase.NewMarbleToken(context, apiKey, bearerToken)
+		marbleToken, expirationTime, err := usecase.NewMarbleToken(context, key, bearerToken)
 		if err != nil {
 			err = wrapErrInUnAuthorizedError(err)
 		}

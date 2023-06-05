@@ -72,8 +72,6 @@ func runServer(config usecases.Configuration, pgRepository *pg_repository.PGRepo
 		if err != nil {
 			panic(err)
 		}
-		// TODO: this seed must occur for every new organization
-		// pgRepository.Seed(zorgOrganizationId)
 	}
 
 	api, _ := api.New(ctx, port, app, usecases, logger, corsAllowLocalhost)
