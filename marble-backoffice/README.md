@@ -61,11 +61,9 @@ The official tutorial has been followed step by step: [feedbackAuthenticate Usin
 
 `firebase emulators:start`
 
-### Firebase auth: signInWithPopup vs signInWithRedirect
+### Firebase auth: signInWithRedirect
 
-The authentication is currently using `signInWithPopup`, so the website can be deployed on any domain.
-
-We hate pop ups because they are unreliable and not mobile friendly. `signInWithRedirect` will be use as soon as the domains on which the website is deployed is known. 
+The authentication is using `signInWithRedirect`. The domain https://marble-backoffice-staging.web.app/organizations is registered in console.firebase.com > Authentication > Settings > Authorized domains
 
 ### Scaffolding and customisations
 

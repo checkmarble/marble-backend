@@ -26,19 +26,8 @@ export class MarbleApi {
     return new URL(path, this.baseUrl);
   }
 
-  async fetchFirebaseToken() {
-    try {
-      return await this.fetchFirebaseIdToken();
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        console.log(err);
-      }
-      throw err;
-    }
-  }
-
   async fetchMarbleToken(): Promise<string> {
-    const firebaseIdToken = await this.fetchFirebaseToken();
+    const firebaseIdToken = await this.fetchFirebaseIdToken()
 
     const request = new Request(this.apiUrl("/token"), {
       method: HttpMethod.Post,

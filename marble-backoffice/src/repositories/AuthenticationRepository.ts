@@ -1,7 +1,7 @@
 import {
   onAuthStateChanged,
   type User as FirebaseUser,
-  signInWithPopup,
+  signInWithRedirect,
 } from "firebase/auth";
 import {
   SignInError,
@@ -49,30 +49,13 @@ export class AuthenticationRepository {
   async signIn() {
     // source: https://firebase.google.com/docs/auth/web/google-signin
     try {
-      const result = await signInWithPopup(
+
+      await signInWithRedirect(
         this.firebase.auth,
         this.firebase.googleAuthProvider
       );
-      // // This gives you a Google Access Token. You can use it to access the Google API.
-      // const credential = GoogleAuthProvider.credentialFromResult(result);
-      // const token = credential.accessToken;
 
-      // // The signed-in user info.
-      console.log(
-        `User ${result.user.email} signed in with ${result.providerId} using (${result.operationType})`
-      );
-
-      // // IdP data available using getAdditionalUserInfo(result)
-      // // ...
     } catch (error) {
-      // // Handle Errors here.
-      // const errorCode = error.code;
-      // const errorMessage = error.message;
-      // // The email of the user's account used.
-      // const email = error.customData.email;
-      // The AuthCredential type that was used.
-      // const credential = GoogleAuthProvider.credentialFromError(error);
-      // ...
       if (error instanceof Error) {
         throw new SignInError(`Sign in error`, error);
       } else {
