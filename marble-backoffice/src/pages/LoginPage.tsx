@@ -25,7 +25,8 @@ function LoginPage() {
       await signIn();
     } catch (error) {
       if (error instanceof SignInError) {
-        setErrorMessage(error.message);
+        setErrorMessage(`${error.message}: ${error.from.message}`);
+        throw error.from;
       }
     }
   }, [signIn]);
