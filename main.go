@@ -110,7 +110,7 @@ func main() {
 		pgPassword = utils.GetRequiredStringEnv("PG_PASSWORD")
 		pgDatabase = "marble"
 		config     = usecases.Configuration{
-			TokenLifetimeMinute: utils.GetIntEnv("TOKEN_LIFETIME_MINUTE", 30),
+			TokenLifetimeMinute: utils.GetIntEnv("TOKEN_LIFETIME_MINUTE", 60*2),
 		}
 	)
 
