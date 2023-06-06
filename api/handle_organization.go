@@ -10,14 +10,16 @@ import (
 )
 
 type APIOrganization struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	DatabaseName string `json:"database_name"`
 }
 
 func NewAPIOrganization(org models.Organization) APIOrganization {
 	return APIOrganization{
-		ID:   org.ID,
-		Name: org.Name,
+		ID:           org.ID,
+		Name:         org.Name,
+		DatabaseName: org.DatabaseName,
 	}
 }
 

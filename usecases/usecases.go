@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"marble/marble-backend/repositories"
+	"marble/marble-backend/usecases/organization"
 )
 
 type Configuration struct {
@@ -31,9 +32,9 @@ func (usecases *Usecases) NewOrganizationUseCase() OrganizationUseCase {
 		transactionFactory:     usecases.Repositories.TransactionFactory,
 		organizationRepository: usecases.Repositories.OrganizationRepository,
 		datamodelRepository:    usecases.Repositories.DataModelRepository,
-		userRepository:         usecases.Repositories.UserRepository,
-		organizationSeeder:     usecases.Repositories.LegacyPgRepository,
 		apiKeyRepository:       usecases.Repositories.ApiKeyRepository,
+		userRepository:         usecases.Repositories.UserRepository,
+		organizationCreator:    usecases.NewOrganizationCreator(),
 	}
 }
 
@@ -63,9 +64,21 @@ func (usecases *Usecases) NewUserUseCase() UserUseCase {
 
 func (usecases *Usecases) NewSeedUseCase() SeedUseCase {
 	return SeedUseCase{
-		transactionFactory:     usecases.Repositories.TransactionFactory,
-		organizationRepository: usecases.Repositories.OrganizationRepository,
-		userRepository:         usecases.Repositories.UserRepository,
-		organizationSeeder:     usecases.Repositories.LegacyPgRepository,
+		transactionFactory:  usecases.Repositories.TransactionFactory,
+		userRepository:      usecases.Repositories.UserRepository,
+		organizationCreator: usecases.NewOrganizationCreator(),
+	}
+}
+
+func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCreator {
+	return organization.OrganizationCreator{
+		TransactionFactory:     usecases.Repositories.TransactionFactory,
+		OrganizationRepository: usecases.Repositories.OrganizationRepository,
+		OrganizationSeeder:     usecases.Repositories.LegacyPgRepository,
+		PopulateClientTables: organization.PopulateClientTables{
+			TransactionFactory:     usecases.Repositories.TransactionFactory,
+			OrganizationRepository: usecases.Repositories.OrganizationRepository,
+			ClientTablesRepository: usecases.Repositories.ClientTablesRepository,
+		},
 	}
 }

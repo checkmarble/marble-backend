@@ -12,15 +12,15 @@ const (
 	DATABASE_TYPE_CLIENT
 )
 
-type DatabaseName string
+type PostgresConnection string
 
 type Database struct {
 	DatabaseType DatabaseType
-	Name         DatabaseName
+	Connection   PostgresConnection
 }
 
 // There is only one instance of Marble database
 var DATABASE_MARBLE = Database{
 	DatabaseType: DATABASE_TYPE_MARBLE,
-	Name:         DatabaseName("marble"),
+	Connection:   PostgresConnection("connection string to marble database"),
 }

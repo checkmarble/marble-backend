@@ -4,13 +4,10 @@ import (
 	"context"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
+	"marble/marble-backend/usecases/organization"
 
 	"github.com/google/uuid"
 )
-
-type OrganizationSeeder interface {
-	Seed(organizationId string) error
-}
 
 type OrganizationUseCase struct {
 	transactionFactory     repositories.TransactionFactory
@@ -18,7 +15,7 @@ type OrganizationUseCase struct {
 	datamodelRepository    repositories.DataModelRepository
 	apiKeyRepository       repositories.ApiKeyRepository
 	userRepository         repositories.UserRepository
-	organizationSeeder     OrganizationSeeder
+	organizationCreator    organization.OrganizationCreator
 }
 
 func (usecase *OrganizationUseCase) GetOrganizations(ctx context.Context) ([]models.Organization, error) {
@@ -27,21 +24,8 @@ func (usecase *OrganizationUseCase) GetOrganizations(ctx context.Context) ([]mod
 
 func (usecase *OrganizationUseCase) CreateOrganization(ctx context.Context, createOrga models.CreateOrganizationInput) (models.Organization, error) {
 
-	organization, err := repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE, func(tx repositories.Transaction) (models.Organization, error) {
-		newOrganizationId := uuid.NewString()
-		err := usecase.organizationRepository.CreateOrganization(tx, createOrga, newOrganizationId)
-		if err != nil {
-			return models.Organization{}, err
-		}
-		return usecase.organizationRepository.GetOrganizationById(tx, newOrganizationId)
-	})
-
-	if err != nil {
-		return organization, err
-	}
-
-	err = usecase.organizationSeeder.Seed(organization.ID)
-	return organization, err
+	newOrganizationId := uuid.NewString()
+	return usecase.organizationCreator.CreateOrganizationWithId(newOrganizationId, createOrga)
 }
 
 func (usecase *OrganizationUseCase) GetOrganization(ctx context.Context, organizationID string) (models.Organization, error) {

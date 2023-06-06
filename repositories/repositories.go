@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"crypto/rsa"
-	"marble/marble-backend/models"
 	"marble/marble-backend/pg_repository"
 
 	"firebase.google.com/go/v4/auth"
@@ -25,6 +24,7 @@ type Repositories struct {
 	ScenarioReadRepository          ScenarioReadRepository
 	ScenarioIterationReadRepository ScenarioIterationReadRepository
 	LegacyPgRepository              *pg_repository.PGRepository
+	ClientTablesRepository          ClientTablesRepository
 }
 
 func NewRepositories(
@@ -32,11 +32,9 @@ func NewRepositories(
 	firebaseClient auth.Client,
 	pgRepository *pg_repository.PGRepository,
 	marbleConnectionPool *pgxpool.Pool,
-	clientConnectionStrings map[models.DatabaseName]string,
 ) *Repositories {
 	databaseConnectionPoolRepository := NewDatabaseConnectionPoolRepository(
 		marbleConnectionPool,
-		clientConnectionStrings,
 	)
 
 	transactionFactory := &TransactionFactoryPosgresql{
@@ -70,5 +68,8 @@ func NewRepositories(
 		ScenarioReadRepository:          pgRepository,
 		ScenarioIterationReadRepository: pgRepository,
 		LegacyPgRepository:              pgRepository,
+		ClientTablesRepository: &ClientTablesRepositoryPostgresql{
+			queryBuilder: queryBuilder,
+		},
 	}
 }

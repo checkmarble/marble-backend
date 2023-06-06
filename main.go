@@ -7,7 +7,6 @@ import (
 	"marble/marble-backend/api"
 	"marble/marble-backend/app"
 	"marble/marble-backend/infra"
-	"marble/marble-backend/models"
 	"marble/marble-backend/pg_repository"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases"
@@ -36,15 +35,6 @@ func runServer(config usecases.Configuration, pgRepository *pg_repository.PGRepo
 		infra.IntializeFirebase(ctx),
 		pgRepository,
 		marbleConnectionPool,
-		map[models.DatabaseName]string{
-			"zorg": pg_repository.PGConfig{
-				Hostname: "localhost",
-				Port:     "5432",
-				User:     "zorg",
-				Password: "very-secret",
-				Database: "marbleclient_zorg",
-			}.GetConnectionString(env),
-		},
 	)
 
 	usecases := usecases.Usecases{
