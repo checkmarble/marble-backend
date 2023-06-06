@@ -10,21 +10,25 @@ import (
 )
 
 type Repositories struct {
-	TransactionFactory              TransactionFactory
-	FirebaseTokenRepository         FireBaseTokenRepository
-	MarbleJwtRepository             MarbleJwtRepository
-	UserRepository                  UserRepository
-	ApiKeyRepository                ApiKeyRepository
-	OrganizationRepository          OrganizationRepository
-	IngestionRepository             IngestionRepository
-	DataModelRepository             DataModelRepository
-	DbPoolRepository                DbPoolRepository
-	IngestedDataReadRepository      IngestedDataReadRepository
-	DecisionRepository              DecisionRepository
-	ScenarioReadRepository          ScenarioReadRepository
-	ScenarioIterationReadRepository ScenarioIterationReadRepository
-	LegacyPgRepository              *pg_repository.PGRepository
-	ClientTablesRepository          ClientTablesRepository
+	TransactionFactory               TransactionFactory
+	FirebaseTokenRepository          FireBaseTokenRepository
+	MarbleJwtRepository              MarbleJwtRepository
+	UserRepository                   UserRepository
+	ApiKeyRepository                 ApiKeyRepository
+	OrganizationRepository           OrganizationRepository
+	IngestionRepository              IngestionRepository
+	DataModelRepository              DataModelRepository
+	DbPoolRepository                 DbPoolRepository
+	IngestedDataReadRepository       IngestedDataReadRepository
+	DecisionRepository               DecisionRepository
+	ScenarioReadRepository           ScenarioReadRepository
+	ScenarioWriteRepository          ScenarioWriteRepository
+	ScenarioIterationReadRepository  ScenarioIterationReadRepository
+	ScenarioIterationWriteRepository ScenarioIterationWriteRepository
+	ScenarioIterationRuleRepository  ScenarioIterationRuleRepository
+	ScenarioPublicationRepository    ScenarioPublicationRepository
+	LegacyPgRepository               *pg_repository.PGRepository
+	ClientTablesRepository           ClientTablesRepository
 }
 
 func NewRepositories(
@@ -60,14 +64,18 @@ func NewRepositories(
 			transactionFactory: transactionFactory,
 			queryBuilder:       queryBuilder,
 		},
-		IngestionRepository:             pgRepository,
-		DataModelRepository:             pgRepository,
-		DbPoolRepository:                pgRepository,
-		IngestedDataReadRepository:      pgRepository,
-		DecisionRepository:              pgRepository,
-		ScenarioReadRepository:          pgRepository,
-		ScenarioIterationReadRepository: pgRepository,
-		LegacyPgRepository:              pgRepository,
+		IngestionRepository:              pgRepository,
+		DataModelRepository:              pgRepository,
+		DbPoolRepository:                 pgRepository,
+		IngestedDataReadRepository:       pgRepository,
+		DecisionRepository:               pgRepository,
+		ScenarioReadRepository:           pgRepository,
+		ScenarioWriteRepository:          pgRepository,
+		ScenarioIterationReadRepository:  pgRepository,
+		ScenarioIterationWriteRepository: pgRepository,
+		ScenarioIterationRuleRepository:  pgRepository,
+		ScenarioPublicationRepository:    pgRepository,
+		LegacyPgRepository:               pgRepository,
 		ClientTablesRepository: &ClientTablesRepositoryPostgresql{
 			queryBuilder: queryBuilder,
 		},
