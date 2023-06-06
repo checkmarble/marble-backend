@@ -18,6 +18,22 @@ You may also need to [install the gcloud CLI](https://cloud.google.com/sdk/docs/
 
 > NB: the GCP project is `tokyo-country-381508` (you may need to ask for permissions)
 
+### Deployment
+
+
+#### Prerequisites
+
+Install firebase-tools (`npm install -g firebase-tools`)
+
+```
+firebase login
+firebase init
+```
+
+# deploy to staging
+
+(cd marble-backoffice && yarn build) && firebase deploy --only hosting:marble-backoffice-staging
+
 ### Firebase emulator suite for local development
 
 Installation: https://firebase.google.com/docs/emulator-suite
