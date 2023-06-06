@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,13 +13,6 @@ import (
 	"github.com/ggicci/httpin"
 	"golang.org/x/exp/slog"
 )
-
-type ScenarioIterationAppInterface interface {
-	ListScenarioIterations(ctx context.Context, orgID string, filters app.GetScenarioIterationFilters) ([]app.ScenarioIteration, error)
-	CreateScenarioIteration(ctx context.Context, orgID string, scenarioIteration app.CreateScenarioIterationInput) (app.ScenarioIteration, error)
-	GetScenarioIteration(ctx context.Context, orgID string, scenarioIterationID string) (app.ScenarioIteration, error)
-	UpdateScenarioIteration(ctx context.Context, organizationID string, rule app.UpdateScenarioIterationInput) (app.ScenarioIteration, error)
-}
 
 type APIScenarioIterationBody struct {
 	TriggerCondition     json.RawMessage            `json:"triggerCondition"`
@@ -97,7 +89,8 @@ func (api *API) ListScenarioIterations() http.HandlerFunc {
 		logger := api.logger.With(slog.String("scenarioId", input.ScenarioID), slog.String("orgId", orgID))
 
 		options := &utils.PtrToOptions{OmitZero: true}
-		scenarioIterations, err := api.app.ListScenarioIterations(ctx, orgID, app.GetScenarioIterationFilters{
+		usecase := api.usecases.NewScenarioIterationUsecase()
+		scenarioIterations, err := usecase.ListScenarioIterations(ctx, orgID, app.GetScenarioIterationFilters{
 			ScenarioID: utils.PtrTo(input.ScenarioID, options),
 		})
 		if err != nil {
@@ -184,7 +177,8 @@ func (api *API) CreateScenarioIteration() http.HandlerFunc {
 			}
 		}
 
-		si, err := api.app.CreateScenarioIteration(ctx, orgID, createScenarioIterationInput)
+		usecase := api.usecases.NewScenarioIterationUsecase()
+		si, err := usecase.CreateScenarioIteration(ctx, orgID, createScenarioIterationInput)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Error creating scenario iteration: \n"+err.Error())
 			http.Error(w, "", http.StatusInternalServerError)
@@ -222,7 +216,8 @@ func (api *API) GetScenarioIteration() http.HandlerFunc {
 		input := ctx.Value(httpin.Input).(*GetScenarioIterationInput)
 		logger := api.logger.With(slog.String("scenarioIterationId", input.ScenarioIterationID), slog.String("orgId", orgID))
 
-		si, err := api.app.GetScenarioIteration(ctx, orgID, input.ScenarioIterationID)
+		usecase := api.usecases.NewScenarioIterationUsecase()
+		si, err := usecase.GetScenarioIteration(ctx, orgID, input.ScenarioIterationID)
 		if errors.Is(err, app.ErrNotFoundInRepository) {
 			http.Error(w, "", http.StatusNotFound)
 			return
@@ -295,7 +290,8 @@ func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 			appUpdateScenarioIterationInput.Body.TriggerCondition = triggerCondition
 		}
 
-		updatedSI, err := api.app.UpdateScenarioIteration(ctx, orgID, appUpdateScenarioIterationInput)
+		usecase := api.usecases.NewScenarioIterationUsecase()
+		updatedSI, err := usecase.UpdateScenarioIteration(ctx, orgID, appUpdateScenarioIterationInput)
 		if errors.Is(err, app.ErrScenarioIterationNotDraft) {
 			logger.WarnCtx(ctx, "Cannot update scenario iteration that is not in draft state: \n"+err.Error())
 			http.Error(w, "", http.StatusForbidden)
