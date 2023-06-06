@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,13 +13,6 @@ import (
 	"github.com/ggicci/httpin"
 	"golang.org/x/exp/slog"
 )
-
-type ScenarioIterationRuleAppInterface interface {
-	ListScenarioIterationRules(ctx context.Context, organizationID string, filters app.GetScenarioIterationRulesFilters) ([]app.Rule, error)
-	CreateScenarioIterationRule(ctx context.Context, organizationID string, rule app.CreateRuleInput) (app.Rule, error)
-	GetScenarioIterationRule(ctx context.Context, organizationID string, ruleID string) (app.Rule, error)
-	UpdateScenarioIterationRule(ctx context.Context, organizationID string, rule app.UpdateRuleInput) (app.Rule, error)
-}
 
 type APIScenarioIterationRule struct {
 	ID                  string          `json:"id"`
@@ -68,7 +60,8 @@ func (api *API) ListScenarioIterationRules() http.HandlerFunc {
 		logger := api.logger.With(slog.String("scenarioIterationId", input.ScenarioIterationID), slog.String("orgID", orgID))
 
 		options := &utils.PtrToOptions{OmitZero: true}
-		rules, err := api.app.ListScenarioIterationRules(ctx, orgID, app.GetScenarioIterationRulesFilters{
+		usecase := api.usecases.NewScenarioIterationRuleUsecase()
+		rules, err := usecase.ListScenarioIterationRules(ctx, orgID, app.GetScenarioIterationRulesFilters{
 			ScenarioIterationID: utils.PtrTo(input.ScenarioIterationID, options),
 		})
 		if err != nil {
@@ -129,7 +122,8 @@ func (api *API) CreateScenarioIterationRule() http.HandlerFunc {
 			return
 		}
 
-		rule, err := api.app.CreateScenarioIterationRule(ctx, orgID, app.CreateRuleInput{
+		usecase := api.usecases.NewScenarioIterationRuleUsecase()
+		rule, err := usecase.CreateScenarioIterationRule(ctx, orgID, app.CreateRuleInput{
 			ScenarioIterationID: input.Body.ScenarioIterationID,
 			DisplayOrder:        input.Body.DisplayOrder,
 			Name:                input.Body.Name,
@@ -174,7 +168,8 @@ func (api *API) GetScenarioIterationRule() http.HandlerFunc {
 		input := ctx.Value(httpin.Input).(*GetScenarioIterationRuleInput)
 		logger := api.logger.With(slog.String("ruleId", input.RuleID), slog.String("orgID", orgID))
 
-		rule, err := api.app.GetScenarioIterationRule(ctx, orgID, input.RuleID)
+		usecase := api.usecases.NewScenarioIterationRuleUsecase()
+		rule, err := usecase.GetScenarioIterationRule(ctx, orgID, input.RuleID)
 		if errors.Is(err, app.ErrNotFoundInRepository) {
 			http.Error(w, "", http.StatusNotFound)
 			return
@@ -243,7 +238,8 @@ func (api *API) UpdateScenarioIterationRule() http.HandlerFunc {
 			updateRuleInput.Formula = &formula
 		}
 
-		updatedRule, err := api.app.UpdateScenarioIterationRule(ctx, orgID, updateRuleInput)
+		usecase := api.usecases.NewScenarioIterationRuleUsecase()
+		updatedRule, err := usecase.UpdateScenarioIterationRule(ctx, orgID, updateRuleInput)
 		if errors.Is(err, app.ErrScenarioIterationNotDraft) {
 			http.Error(w, "", http.StatusForbidden)
 			return

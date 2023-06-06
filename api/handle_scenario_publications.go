@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"marble/marble-backend/app"
@@ -12,12 +11,6 @@ import (
 	"github.com/ggicci/httpin"
 	"golang.org/x/exp/slog"
 )
-
-type ScenarioPublicationAppInterface interface {
-	ListScenarioPublications(ctx context.Context, orgID string, filters app.ListScenarioPublicationsFilters) ([]app.ScenarioPublication, error)
-	CreateScenarioPublication(ctx context.Context, orgID string, sp app.CreateScenarioPublicationInput) ([]app.ScenarioPublication, error)
-	GetScenarioPublication(ctx context.Context, orgID string, scenarioPublicationID string) (app.ScenarioPublication, error)
-}
 
 type APIScenarioPublication struct {
 	ID                  string    `json:"id"`
@@ -59,7 +52,8 @@ func (api *API) ListScenarioPublications() http.HandlerFunc {
 		logger := api.logger.With(slog.String("orgID", orgID), slog.String("scenarioID", input.ScenarioID))
 
 		options := &utils.PtrToOptions{OmitZero: true}
-		scenarioPublications, err := api.app.ListScenarioPublications(ctx, orgID, app.ListScenarioPublicationsFilters{
+		usecase := api.usecases.NewScenarioPublicationUsecase()
+		scenarioPublications, err := usecase.ListScenarioPublications(ctx, orgID, app.ListScenarioPublicationsFilters{
 			ScenarioID:          utils.PtrTo(input.ScenarioID, options),
 			ScenarioIterationID: utils.PtrTo(input.ScenarioIterationID, options),
 			PublicationAction:   utils.PtrTo(input.PublicationAction, options),
@@ -105,7 +99,8 @@ func (api *API) CreateScenarioPublication() http.HandlerFunc {
 		input := ctx.Value(httpin.Input).(*CreateScenarioPublicationInput)
 		logger := api.logger.With(slog.String("orgID", orgID), slog.String("scenarioIterationID", input.Body.ScenarioIterationID))
 
-		scenarioPublications, err := api.app.CreateScenarioPublication(ctx, orgID, app.CreateScenarioPublicationInput{
+		usecase := api.usecases.NewScenarioPublicationUsecase()
+		scenarioPublications, err := usecase.CreateScenarioPublication(ctx, orgID, app.CreateScenarioPublicationInput{
 			ScenarioIterationID: input.Body.ScenarioIterationID,
 			PublicationAction:   app.PublicationActionFrom(input.Body.PublicationAction),
 		})
@@ -149,7 +144,8 @@ func (api *API) GetScenarioPublication() http.HandlerFunc {
 		input := ctx.Value(httpin.Input).(*GetScenarioPublicationInput)
 		logger := api.logger.With(slog.String("orgID", orgID), slog.String("scenarioPublicationID", input.ScenarioPublicationID))
 
-		scenarioPublication, err := api.app.GetScenarioPublication(ctx, orgID, input.ScenarioPublicationID)
+		usecase := api.usecases.NewScenarioPublicationUsecase()
+		scenarioPublication, err := usecase.GetScenarioPublication(ctx, orgID, input.ScenarioPublicationID)
 		if errors.Is(err, app.ErrNotFoundInRepository) {
 			http.Error(w, "", http.StatusNotFound)
 			return

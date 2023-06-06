@@ -103,7 +103,7 @@ func (usecases *Usecases) NewScenarioIterationUsecase() ScenarioIterationUsecase
 	}
 }
 
-func (usecases *Usecases) ScenarioIterationRuleUsecase() ScenarioIterationRuleUsecase {
+func (usecases *Usecases) NewScenarioIterationRuleUsecase() ScenarioIterationRuleUsecase {
 	return ScenarioIterationRuleUsecase{
 		repository: usecases.Repositories.ScenarioIterationRuleRepository,
 	}

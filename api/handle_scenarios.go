@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"marble/marble-backend/app"
@@ -13,13 +12,6 @@ import (
 	"github.com/ggicci/httpin"
 	"golang.org/x/exp/slog"
 )
-
-type ScenarioAppInterface interface {
-	ListScenarios(ctx context.Context, organizationID string) ([]app.Scenario, error)
-	CreateScenario(ctx context.Context, organizationID string, scenario app.CreateScenarioInput) (app.Scenario, error)
-	UpdateScenario(ctx context.Context, organizationID string, scenario app.UpdateScenarioInput) (app.Scenario, error)
-	GetScenario(ctx context.Context, organizationID string, scenarioID string) (app.Scenario, error)
-}
 
 type APIScenario struct {
 	ID                string    `json:"id"`
@@ -52,7 +44,8 @@ func (api *API) ListScenarios() http.HandlerFunc {
 
 		logger := api.logger.With(slog.String("orgID", orgID))
 
-		scenarios, err := api.app.ListScenarios(ctx, orgID)
+		usecase := api.usecases.NewScenarioUsecase()
+		scenarios, err := usecase.ListScenarios(ctx, orgID)
 
 		if presentError(w, r, err) {
 			return
@@ -94,7 +87,8 @@ func (api *API) CreateScenario() http.HandlerFunc {
 		input := ctx.Value(httpin.Input).(*CreateScenarioInput)
 		logger := api.logger.With(slog.String("orgID", orgID))
 
-		scenario, err := api.app.CreateScenario(ctx, orgID, app.CreateScenarioInput{
+		usecase := api.usecases.NewScenarioUsecase()
+		scenario, err := usecase.CreateScenario(ctx, orgID, app.CreateScenarioInput{
 			Name:              input.Body.Name,
 			Description:       input.Body.Description,
 			TriggerObjectType: input.Body.TriggerObjectType,
@@ -130,7 +124,8 @@ func (api *API) GetScenario() http.HandlerFunc {
 		input := ctx.Value(httpin.Input).(*GetScenarioInput)
 		logger := api.logger.With(slog.String("orgID", orgID), slog.String("scenarioID", input.ScenarioID))
 
-		scenario, err := api.app.GetScenario(ctx, orgID, input.ScenarioID)
+		usecase := api.usecases.NewScenarioUsecase()
+		scenario, err := usecase.GetScenario(ctx, orgID, input.ScenarioID)
 		if errors.Is(err, models.NotFoundError) {
 			http.Error(w, "", http.StatusNotFound)
 			return
@@ -171,7 +166,8 @@ func (api *API) UpdateScenario() http.HandlerFunc {
 		input := ctx.Value(httpin.Input).(*UpdateScenarioInput)
 		logger := api.logger.With(slog.String("orgID", orgID), slog.String("scenarioID", input.ScenarioID))
 
-		scenario, err := api.app.UpdateScenario(ctx, orgID, app.UpdateScenarioInput{
+		usecase := api.usecases.NewScenarioUsecase()
+		scenario, err := usecase.UpdateScenario(ctx, orgID, app.UpdateScenarioInput{
 			ID:          input.ScenarioID,
 			Name:        input.Body.Name,
 			Description: input.Body.Description,
