@@ -3,13 +3,13 @@ package usecases
 import (
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
+	"marble/marble-backend/usecases/organization"
 )
 
 type SeedUseCase struct {
-	transactionFactory     repositories.TransactionFactory
-	organizationRepository repositories.OrganizationRepository
-	userRepository         repositories.UserRepository
-	organizationSeeder     OrganizationSeeder
+	transactionFactory  repositories.TransactionFactory
+	userRepository      repositories.UserRepository
+	organizationCreator organization.OrganizationCreator
 }
 
 func (usecase *SeedUseCase) SeedMarbleAdmins(firstMarbleAdminEmail string) error {
@@ -31,26 +31,15 @@ func (usecase *SeedUseCase) SeedMarbleAdmins(firstMarbleAdminEmail string) error
 
 func (usecase *SeedUseCase) SeedZorgOrganization(zorgOrganizationId string) error {
 
-	err := usecase.transactionFactory.Transaction(models.DATABASE_MARBLE, func(tx repositories.Transaction) error {
-		err := usecase.organizationRepository.CreateOrganization(
-			tx,
-			models.CreateOrganizationInput{
-				Name:         "Zorg",
-				DatabaseName: "Zorg",
-			},
-			zorgOrganizationId,
-		)
-
-		if repositories.IsIsUniqueViolationError(err) {
-			return repositories.ErrIgnoreRoolBackError
-		}
-
-		return err
-	})
-
-	if err != nil {
-		return err
+	_, err := usecase.organizationCreator.CreateOrganizationWithId(
+		zorgOrganizationId,
+		models.CreateOrganizationInput{
+			Name:         "Zorg",
+			DatabaseName: "zorg",
+		},
+	)
+	if repositories.IsIsUniqueViolationError(err) {
+		return nil
 	}
-
-	return usecase.organizationSeeder.Seed(zorgOrganizationId)
+	return err
 }

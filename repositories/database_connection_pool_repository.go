@@ -15,18 +15,16 @@ type DatabaseConnectionPoolRepository interface {
 }
 
 type DatabaseConnectionPoolRepositoryImpl struct {
-	clientConnectionStrings     map[models.DatabaseName]string
 	marbleConnectionPool        *pgxpool.Pool
-	clientsConnectionPools      map[models.DatabaseName]*pgxpool.Pool
+	clientsConnectionPools      map[models.PostgresConnection]*pgxpool.Pool
 	clientsConnectionPoolsMutex sync.Mutex
 }
 
-func NewDatabaseConnectionPoolRepository(marbleConnectionPool *pgxpool.Pool, clientConnectionStrings map[models.DatabaseName]string) DatabaseConnectionPoolRepository {
+func NewDatabaseConnectionPoolRepository(marbleConnectionPool *pgxpool.Pool) DatabaseConnectionPoolRepository {
 
 	return &DatabaseConnectionPoolRepositoryImpl{
-		clientConnectionStrings: clientConnectionStrings,
-		marbleConnectionPool:    marbleConnectionPool,
-		clientsConnectionPools:  make(map[models.DatabaseName]*pgxpool.Pool),
+		marbleConnectionPool:   marbleConnectionPool,
+		clientsConnectionPools: make(map[models.PostgresConnection]*pgxpool.Pool),
 	}
 }
 
@@ -41,30 +39,25 @@ func (repo *DatabaseConnectionPoolRepositoryImpl) DatabaseConnectionPool(db mode
 		defer repo.clientsConnectionPoolsMutex.Unlock()
 
 		// return existing pool is already created
-		if pool, found := repo.clientsConnectionPools[db.Name]; found {
+		if pool, found := repo.clientsConnectionPools[db.Connection]; found {
 			return pool, nil
 		}
 
 		// create and register new pool
-		newPool, err := repo.newClientDatabaseConnectionPool(db.Name)
+		newPool, err := repo.newClientDatabaseConnectionPool(db.Connection)
 		if err != nil {
 			return nil, err
 		}
-		repo.clientsConnectionPools[db.Name] = newPool
+		repo.clientsConnectionPools[db.Connection] = newPool
 		return newPool, nil
 	}
 
 	return nil, errors.New("DatabaseConnectionPoolRepositoryImpl: unknown database type")
 }
 
-func (repo *DatabaseConnectionPoolRepositoryImpl) newClientDatabaseConnectionPool(name models.DatabaseName) (*pgxpool.Pool, error) {
+func (repo *DatabaseConnectionPoolRepositoryImpl) newClientDatabaseConnectionPool(connection models.PostgresConnection) (*pgxpool.Pool, error) {
 
-	connectionString, ok := repo.clientConnectionStrings[name]
-	if !ok {
-		return nil, fmt.Errorf("DatabaseConnectionPoolRepositoryImpl: unknown database name: %s", name)
-	}
-
-	dbpool, err := pgxpool.New(context.Background(), connectionString)
+	dbpool, err := pgxpool.New(context.Background(), string(connection))
 	if err != nil {
 		return nil, fmt.Errorf("unable to create connection pool: %w", err)
 	}

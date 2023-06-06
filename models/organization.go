@@ -1,8 +1,9 @@
 package models
 
 type Organization struct {
-	ID   string
-	Name string
+	ID           string
+	Name         string
+	DatabaseName string
 }
 
 type CreateOrganizationInput struct {

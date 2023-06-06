@@ -16,7 +16,7 @@ type PgxPoolOrTxIface interface {
 }
 
 // Return a []string of columns based on db tag
-func columnList[T any](prefixes ...string) []string {
+func ColumnList[T any](prefixes ...string) []string {
 	var value T
 	var result []string
 

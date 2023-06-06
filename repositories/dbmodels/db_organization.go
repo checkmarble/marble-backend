@@ -18,8 +18,9 @@ var OrganizationFields = []string{"id", "name", "database_name", "deleted_at"}
 func AdaptOrganization(db DBOrganizationResult) models.Organization {
 
 	return models.Organization{
-		ID:   db.Id,
-		Name: db.Name,
+		ID:           db.Id,
+		Name:         db.Name,
+		DatabaseName: db.DatabaseName,
 	}
 }
 

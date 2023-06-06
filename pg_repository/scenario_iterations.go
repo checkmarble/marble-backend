@@ -68,7 +68,7 @@ type ListScenarioIterationsFilters struct {
 
 func (r *PGRepository) ListScenarioIterations(ctx context.Context, orgID string, filters app.GetScenarioIterationFilters) ([]app.ScenarioIteration, error) {
 	sql, args, err := r.queryBuilder.
-		Select(columnList[dbScenarioIteration]()...).
+		Select(ColumnList[dbScenarioIteration]()...).
 		From("scenario_iterations").
 		Where("org_id = ?", orgID).
 		Where(sq.Eq(columnValueMap(ListScenarioIterationsFilters{
@@ -102,8 +102,8 @@ func (r *PGRepository) GetScenarioIteration(ctx context.Context, orgID string, s
 }
 
 func (r *PGRepository) getScenarioIterationRaw(ctx context.Context, pool PgxPoolOrTxIface, orgID string, scenarioIterationID string) (app.ScenarioIteration, error) {
-	siCols := columnList[dbScenarioIteration]("si")
-	sirCols := columnList[dbScenarioIterationRule]("sir")
+	siCols := ColumnList[dbScenarioIteration]("si")
+	sirCols := ColumnList[dbScenarioIterationRule]("sir")
 
 	sql, args, err := r.queryBuilder.
 		Select(siCols...).
