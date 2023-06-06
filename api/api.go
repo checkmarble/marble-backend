@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"marble/marble-backend/models"
 	"marble/marble-backend/usecases"
 	"marble/marble-backend/utils"
 
@@ -17,19 +16,13 @@ import (
 )
 
 type API struct {
-	app AppInterface
-
 	port     string
 	router   *chi.Mux
 	usecases usecases.Usecases
 	logger   *slog.Logger
 }
 
-type AppInterface interface {
-	GetDataModel(ctx context.Context, organizationID string) (models.DataModel, error)
-}
-
-func New(ctx context.Context, port string, a AppInterface, usecases usecases.Usecases, logger *slog.Logger, corsAllowLocalhost bool) (*http.Server, error) {
+func New(ctx context.Context, port string, usecases usecases.Usecases, logger *slog.Logger, corsAllowLocalhost bool) (*http.Server, error) {
 
 	///////////////////////////////
 	// Setup a router
@@ -52,8 +45,6 @@ func New(ctx context.Context, port string, a AppInterface, usecases usecases.Use
 	})
 
 	s := &API{
-		app: a,
-
 		port:     port,
 		router:   r,
 		usecases: usecases,

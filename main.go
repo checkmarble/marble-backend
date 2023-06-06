@@ -5,7 +5,6 @@ import (
 	"flag"
 	"log"
 	"marble/marble-backend/api"
-	"marble/marble-backend/app"
 	"marble/marble-backend/infra"
 	"marble/marble-backend/pg_repository"
 	"marble/marble-backend/repositories"
@@ -29,7 +28,6 @@ func runServer(config usecases.Configuration, pgRepository *pg_repository.PGRepo
 
 	marbleJwtSigningKey := infra.MustParseSigningKey(utils.GetRequiredStringEnv("AUTHENTICATION_JWT_SIGNING_KEY"))
 
-	app, _ := app.New(pgRepository)
 	repositories := repositories.NewRepositories(
 		marbleJwtSigningKey,
 		infra.IntializeFirebase(ctx),
@@ -64,7 +62,7 @@ func runServer(config usecases.Configuration, pgRepository *pg_repository.PGRepo
 		}
 	}
 
-	api, _ := api.New(ctx, port, app, usecases, logger, corsAllowLocalhost)
+	api, _ := api.New(ctx, port, usecases, logger, corsAllowLocalhost)
 
 	////////////////////////////////////////////////////////////
 	// Start serving the app
