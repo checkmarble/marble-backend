@@ -1,10 +1,11 @@
 import { MarbleApi } from "@/infra/MarbleApi";
-import { adaptUser } from "@/models";
-import type { User, CreateUser } from "@/models";
+import { adaptCredential, adaptUser } from "@/models";
+import type { User, CreateUser, Credentials } from "@/models";
 import {
   adaptSingleUserApiResultDto,
   adaptUsersApiResultDto,
 } from "@/models/UserDto";
+import { adaptCredentialsApiResultDto } from "@/models/CredentialsDto";
 
 export interface UserRepository {
   marbleApi: MarbleApi;
@@ -30,4 +31,11 @@ export async function postUser(
     await repositories.marbleApi.postUser(createUser)
   );
   return adaptUser(result.user);
+}
+
+export async function fetchCredentials(
+  repository: UserRepository
+): Promise<Credentials> {
+  const dto = adaptCredentialsApiResultDto(await repository.marbleApi.credentials());
+  return adaptCredential(dto.credentials);
 }

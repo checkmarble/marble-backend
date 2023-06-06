@@ -54,7 +54,7 @@ function OrganizationsPage() {
       <FormDialog
         open={createOrgaDialogOpen}
         title="Create Organization"
-        message="To create a new Organization, please enter it's name."
+        message="To create a new Organization, please enter it's name. ⚠ The Organization's name is used to create postgresql schema name."
         inputLabel="Organization name"
         okTitle="Create"
         setDialogOpen={setCreateOrgaDialogOpen}

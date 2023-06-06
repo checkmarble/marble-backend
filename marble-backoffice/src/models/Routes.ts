@@ -1,5 +1,5 @@
 export enum PathFragment {
-  Home = "home",
+  Home = "",
   Login = "login",
   Organizations = "organizations",
   OrganizationDetails = "organizations",
