@@ -130,6 +130,10 @@ export class MarbleApi {
       },
     });
   }
+
+  async credentials(): Promise<unknown> {
+    return this.getAuthorizedJson("credentials");
+  }
 }
 
 function urlWithOrganizationId(path: string, organizationId: string): string {

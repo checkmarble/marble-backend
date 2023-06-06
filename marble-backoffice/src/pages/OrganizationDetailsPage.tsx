@@ -6,11 +6,15 @@ import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 import { useLoading } from "@/hooks/Loading";
 import services from "@/injectServices";
-import { useOrganization, useScenarios } from "@/services";
+import {
+  useOrganization,
+  useScenarios,
+  useUsers,
+  useCreateUser,
+} from "@/services";
 import DelayedLinearProgress from "@/components/DelayedLinearProgress";
 import AddUserDialog from "@/components/AddUserDialog";
 import CreateButtonFab from "@/components/CreateButtonFab";
-import { useUsers, useCreateUser } from "@/services";
 import { type CreateUser, Role } from "@/models";
 import ListOfUsers from "@/components/ListOfUsers";
 
@@ -105,9 +109,7 @@ function OrganizationDetailsPage() {
             ))}
           </>
         )}
-        {users != null && (
-          <ListOfUsers users={users} />
-        )}
+        {users != null && <ListOfUsers users={users} />}
       </Container>
     </>
   );

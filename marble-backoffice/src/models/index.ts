@@ -5,3 +5,4 @@ export * from "./Organization";
 export * from "./Scenarios";
 export * from "./User";
 export * from "./Role";
+export * from "./Credentials";

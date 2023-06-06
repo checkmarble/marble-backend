@@ -1,6 +1,6 @@
 import { useCallback } from "react";
-import type { CreateUser, User } from "@/models";
-import { type UserRepository, fetchUsers, postUser } from "@/repositories";
+import type { CreateUser, User, Credentials } from "@/models";
+import { type UserRepository, fetchUsers, postUser, fetchCredentials } from "@/repositories";
 import { useSimpleLoader } from "@/hooks/SimpleLoader";
 import { type LoadingDispatcher } from "@/hooks/Loading";
 
@@ -25,6 +25,21 @@ export function useUsers(
   return {
     users,
     refreshUsers,
+  };
+}
+
+export function useCredentials(service: UserService, loadingDispatcher: LoadingDispatcher) {
+  const loadCredentials = useCallback(() => {
+    return fetchCredentials(service.userRepository);
+  }, [service]);
+  
+  const [credentials] = useSimpleLoader<Credentials>(
+    loadingDispatcher,
+    loadCredentials
+  );
+
+  return {
+    credentials
   };
 }
 
