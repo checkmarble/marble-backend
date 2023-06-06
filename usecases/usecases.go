@@ -33,6 +33,7 @@ func (usecases *Usecases) NewOrganizationUseCase() OrganizationUseCase {
 		datamodelRepository:    usecases.Repositories.DataModelRepository,
 		userRepository:         usecases.Repositories.UserRepository,
 		organizationSeeder:     usecases.Repositories.LegacyPgRepository,
+		apiKeyRepository:       usecases.Repositories.ApiKeyRepository,
 	}
 }
 

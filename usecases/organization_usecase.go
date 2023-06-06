@@ -69,11 +69,6 @@ func (usecase *OrganizationUseCase) GetDataModel(ctx context.Context, organizati
 	return usecase.datamodelRepository.GetDataModel(ctx, organizationID)
 }
 
-func (usecase *OrganizationUseCase) GetApiKeyOfOrganization(ctx context.Context, organizationID string) (models.Token[], error) {
-	// return usecase.datamodelRepository.GetDataModel(ctx, organizationID)
-	return models.Token[]{}, nil
-}
-
 func (usecase *OrganizationUseCase) GetUsersOfOrganization(organizationIDFilter string) ([]models.User, error) {
 
 	return repositories.TransactionReturnValue(

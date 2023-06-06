@@ -34,25 +34,25 @@ func (dto *DBApiKey) toDomain() models.ApiKey {
 	}
 }
 
-func (r *PGRepository) GetOrganizationIDFromApiKey(ctx context.Context, key string) (orgID string, err error) {
+func (r *PGRepository) GetApiKeyByKey(ctx context.Context, key string) (models.ApiKey, error) {
 	sql, args, err := r.queryBuilder.
 		Select(ApiKeyFields...).
 		From(TABLE_APIKEYS).
 		Where("key = ?", key).
 		ToSql()
 	if err != nil {
-		return "", fmt.Errorf("unable to build apiKey query: %w", err)
+		return models.ApiKey{}, fmt.Errorf("unable to build apiKey query: %w", err)
 	}
 
 	rows, _ := r.db.Query(ctx, sql, args...)
 	apiKey, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[DBApiKey])
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", app.ErrNotFoundInRepository
+		return models.ApiKey{}, app.ErrNotFoundInRepository
 	} else if err != nil {
-		return "", fmt.Errorf("unable to get org from apiKey %s: %w", key, err)
+		return models.ApiKey{}, fmt.Errorf("unable to get org from apiKey %s: %w", key, err)
 	}
 
-	return apiKey.OrgID, nil
+	return apiKey.toDomain(), nil
 }
 
 func (r *PGRepository) GetApiKeyOfOrganization(ctx context.Context, orgID string) ([]models.ApiKey, error) {
