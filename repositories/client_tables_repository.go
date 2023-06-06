@@ -22,7 +22,7 @@ type ClientTablesRepositoryPostgresql struct {
 func (repo *ClientTablesRepositoryPostgresql) CreateSchema(tx Transaction, schema string) error {
 	pgTx := repo.toPostgresTransaction(tx)
 
-	sql := fmt.Sprintf("CREATE SCHEMA %s", pgx.Identifier.Sanitize([]string{schema}))
+	sql := fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", pgx.Identifier.Sanitize([]string{schema}))
 
 	_, err := pgTx.Exec(sql)
 	return err

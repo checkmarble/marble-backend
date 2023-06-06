@@ -11,19 +11,22 @@ type PopulateClientTables struct {
 	ClientTablesRepository repositories.ClientTablesRepository
 }
 
-func (p *PopulateClientTables) CreateClientTables(organization models.Organization, database models.Database) error {
+func (p *PopulateClientTables) CreateClientTables(marbleTx repositories.Transaction, organization models.Organization, database models.Database) error {
 
 	// create entry in client_tables
-	return p.TransactionFactory.Transaction(models.DATABASE_MARBLE, func(tx repositories.Transaction) error {
-		err := p.ClientTablesRepository.CreateClientTables(tx, models.ClientTables{
-			OrganizationId: organization.ID,
-			Schema:         organization.DatabaseName,
-		})
-		if err != nil {
-			return err
-		}
+	err := p.ClientTablesRepository.CreateClientTables(marbleTx, models.ClientTables{
+		OrganizationId: organization.ID,
+		Schema:         organization.DatabaseName,
+	})
+	if err != nil {
+		return err
+	}
 
-		return p.ClientTablesRepository.CreateSchema(tx, organization.DatabaseName)
+	// Open a new transaction 'clientTx' to write in the client database.
+	// The client can be in another sql instance
+	// Note that the error is returned, so in case of a roolback in 'clientTx', 'marbleTx' will also be rolled back.
+	return p.TransactionFactory.Transaction(database, func(clientTx repositories.Transaction) error {
+		return p.ClientTablesRepository.CreateSchema(clientTx, organization.DatabaseName)
 	})
 
 }
