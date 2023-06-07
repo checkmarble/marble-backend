@@ -7,6 +7,7 @@ import UsersPage from "@/pages/UsersPage";
 import OrganizationDetailsPage from "./pages/OrganizationDetailsPage";
 import HomePage from "@/pages/HomePage";
 import LoginPage from "@/pages/LoginPage";
+import IngestionPage from "./pages/IngestionPage";
 
 export function backofficeRoutes() {
   return createRoutesFromElements(
@@ -24,6 +25,10 @@ export function backofficeRoutes() {
       <Route
         path={`/${PathFragment.OrganizationDetails}/:organizationId`}
         element={<OrganizationDetailsPage />}
+      />
+      <Route
+        path={`/${PathFragment.Ingestion}/:organizationId`}
+        element={<IngestionPage />}
       />
     </Route>
   );

@@ -27,25 +27,23 @@ const CredentialsInfo: React.FC<{ credentials: Credentials }> = ({
   credentials,
 }) => {
   return (
-    <>
-      <Paper sx={{ p: 2 }}>
-        <Typography variant="h6" gutterBottom>
-          Your credentials
-        </Typography>
-        <Typography variant="subtitle1" gutterBottom>
-          Role: {credentials.role}
-        </Typography>
+    <Paper sx={{ p: 2 }}>
+      <Typography variant="h6" gutterBottom>
+        Your credentials
+      </Typography>
+      <Typography variant="subtitle1" gutterBottom>
+        Role: {credentials.role}
+      </Typography>
 
-        <Typography variant="body1" gutterBottom>
-          {credentials.actorIdentity.email && (
-            <p>Email: {credentials.actorIdentity.email}</p>
-          )}
-          {credentials.actorIdentity.apiKeyName && (
-            <p>Api Key Name:{credentials.actorIdentity.email}</p>
-          )}
-        </Typography>
-      </Paper>
-    </>
+      <Typography variant="body1" gutterBottom>
+        {credentials.actorIdentity.email && (
+          <>Email: {credentials.actorIdentity.email}</>
+        )}
+        {credentials.actorIdentity.apiKeyName && (
+          <>Api Key Name: {credentials.actorIdentity.email}</>
+        )}
+      </Typography>
+    </Paper>
   );
 };
 
