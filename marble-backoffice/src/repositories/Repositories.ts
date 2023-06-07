@@ -4,6 +4,8 @@ import { OrganizationRepository } from "./OrganizationRepository";
 import { UserRepository } from "./UserRepository";
 import { ScenariosRepository } from "./ScenariosRepository";
 import { MarbleApi } from "@/infra/MarbleApi";
+import { MarbleApiFetcher } from "@/infra/MarbleApiFetcher";
+import { setAuthorizationBearerHeader } from "@/infra/fetchUtils";
 
 export interface Repositories {
   authenticationRepository: AuthenticationRepository;
@@ -17,9 +19,15 @@ export function makeRepositories(
   backendUrl: URL
 ): Repositories {
   const authenticationRepository = new AuthenticationRepository(firebase);
-  const marbleApi = new MarbleApi(backendUrl, () =>
-    authenticationRepository.fetchIdToken()
-  );
+
+  const fetcher = new MarbleApiFetcher(
+    backendUrl,
+    async (headers: Headers) => {
+      const idToken = await authenticationRepository.fetchIdToken()
+      setAuthorizationBearerHeader(headers, idToken);
+    }
+  )
+  const marbleApi = new MarbleApi(backendUrl, fetcher);
 
   return {
     authenticationRepository: authenticationRepository,
