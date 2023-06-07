@@ -12,6 +12,7 @@ export interface Repositories {
   organizationRepository: OrganizationRepository;
   userRepository: UserRepository;
   scenarioRepository: ScenariosRepository;
+  marbleApiWithApiKeyFactory: (apiKey: string) => MarbleApi;
 }
 
 export function makeRepositories(
@@ -20,19 +21,28 @@ export function makeRepositories(
 ): Repositories {
   const authenticationRepository = new AuthenticationRepository(firebase);
 
-  const fetcher = new MarbleApiFetcher(
+  const marbleApiWithFirebaseToken = new MarbleApi(
     backendUrl,
-    async (headers: Headers) => {
-      const idToken = await authenticationRepository.fetchIdToken()
+    new MarbleApiFetcher(backendUrl, async (headers: Headers) => {
+      const idToken = await authenticationRepository.fetchIdToken();
       setAuthorizationBearerHeader(headers, idToken);
-    }
-  )
-  const marbleApi = new MarbleApi(backendUrl, fetcher);
+    })
+  );
+
+  const marbleApiWithApiKeyFactory = (apiKey: string): MarbleApi => {
+    return new MarbleApi(
+      backendUrl,
+      new MarbleApiFetcher(backendUrl, async (headers: Headers) => {
+        headers.set("X-API-Key", apiKey);
+      })
+    );
+  };
 
   return {
     authenticationRepository: authenticationRepository,
-    organizationRepository: { marbleApi },
-    userRepository: { marbleApi },
-    scenarioRepository: { marbleApi },
+    organizationRepository: { marbleApi: marbleApiWithFirebaseToken },
+    userRepository: { marbleApi: marbleApiWithFirebaseToken },
+    scenarioRepository: { marbleApi: marbleApiWithFirebaseToken },
+    marbleApiWithApiKeyFactory,
   };
 }
