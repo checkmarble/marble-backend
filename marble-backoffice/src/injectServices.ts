@@ -3,12 +3,14 @@ import {
   AuthenticationService,
   type OrganizationService,
   type UserService,
+  type IngestionService,
 } from "./services";
 
 export interface Services {
   authenticationService: AuthenticationService;
   organizationService: OrganizationService;
   userService: UserService;
+  ingestionService: IngestionService;
 }
 
 let globalServices: Services | null;
@@ -28,6 +30,10 @@ export function initializeServices(repositories: Repositories) {
     },
     userService: {
       userRepository: repositories.userRepository,
+    },
+    ingestionService: {
+      organizationRepository: repositories.organizationRepository,
+      marbleApiWithApiKeyFactory: repositories.marbleApiWithApiKeyFactory,
     },
   };
 }
