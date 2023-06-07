@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"marble/marble-backend/models"
 	"math"
 	"strings"
 
@@ -127,7 +126,7 @@ func (field DbFieldFloat) Eval(ctx context.Context, d DataAccessor) (float64, er
 		return 0, fmt.Errorf("DB field %s is not a float", field.FieldName)
 	}
 	if !valNullable.Valid {
-		return 0, fmt.Errorf("DB field %s is null: %w", field.FieldName, models.OperatorNullValueReadError)
+		return 0, fmt.Errorf("DB field %s is null: %w", field.FieldName, OperatorNullValueReadError)
 	}
 	return valNullable.Float64, nil
 }
@@ -503,7 +502,7 @@ func (div DivideFloat) Eval(ctx context.Context, d DataAccessor) (float64, error
 	if err != nil {
 		return 0, err
 	} else if right == 0 {
-		return 0, fmt.Errorf("Division by 0 error: %s: %w", div.String(), models.OperatorDivisionByZeroError)
+		return 0, fmt.Errorf("Division by 0 error: %s: %w", div.String(), OperatorDivisionByZeroError)
 	}
 	return left / right, nil
 }

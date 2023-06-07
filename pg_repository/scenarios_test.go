@@ -2,8 +2,8 @@ package pg_repository
 
 import (
 	"context"
-	"marble/marble-backend/app"
-	"marble/marble-backend/app/operators"
+	"marble/marble-backend/models"
+	"marble/marble-backend/models/operators"
 	"testing"
 
 	sq "github.com/Masterminds/squirrel"
@@ -28,7 +28,7 @@ func TestCreateScenario(t *testing.T) {
 	scenar, err := globalTestParams.repository.CreateScenario(
 		context.Background(),
 		globalTestParams.testIds["OrganizationId"],
-		app.CreateScenarioInput{
+		models.CreateScenarioInput{
 			Name:              "Scenario 1",
 			Description:       "This is a test scenario",
 			TriggerObjectType: "transactions",
@@ -54,7 +54,7 @@ func TestUpdateScenario(t *testing.T) {
 	scenar, err := globalTestParams.repository.CreateScenario(
 		context.Background(),
 		globalTestParams.testIds["OrganizationId"],
-		app.CreateScenarioInput{
+		models.CreateScenarioInput{
 			Name:              "Scenario 1",
 			Description:       "This is a test scenario",
 			TriggerObjectType: "transactions",
@@ -70,7 +70,7 @@ func TestUpdateScenario(t *testing.T) {
 	newScenar, err := globalTestParams.repository.UpdateScenario(
 		context.Background(),
 		globalTestParams.testIds["OrganizationId"],
-		app.UpdateScenarioInput{
+		models.UpdateScenarioInput{
 			ID:          scenar.ID,
 			Name:        &newName,
 			Description: &newDesc,
@@ -98,7 +98,7 @@ func TestListScenarios(t *testing.T) {
 	scenar1, err := globalTestParams.repository.CreateScenario(
 		context.Background(),
 		globalTestParams.testIds["OrganizationId"],
-		app.CreateScenarioInput{
+		models.CreateScenarioInput{
 			Name:              "Scenario 1",
 			Description:       "This is a test scenario",
 			TriggerObjectType: "transactions",
@@ -109,7 +109,7 @@ func TestListScenarios(t *testing.T) {
 	scenar2, err := globalTestParams.repository.CreateScenario(
 		context.Background(),
 		globalTestParams.testIds["OrganizationId"],
-		app.CreateScenarioInput{
+		models.CreateScenarioInput{
 			Name:              "Scenario 2",
 			Description:       "This is another test scenario",
 			TriggerObjectType: "transactions",
@@ -128,7 +128,7 @@ func TestListScenarios(t *testing.T) {
 	}
 
 	asserts := assert.New(t)
-	asserts.Equal([]app.Scenario{scenar1, scenar2}, scenarios)
+	asserts.Equal([]models.Scenario{scenar1, scenar2}, scenarios)
 	asserts.Equal(2, len(scenarios))
 
 	cleanupScenarios([]string{scenar1.ID, scenar2.ID}, globalTestParams.testIds["OrganizationId"])
@@ -141,7 +141,7 @@ func TestGetScenarioWithLiveVersion(t *testing.T) {
 	scenar, err := globalTestParams.repository.CreateScenario(
 		context.Background(),
 		globalTestParams.testIds["OrganizationId"],
-		app.CreateScenarioInput{
+		models.CreateScenarioInput{
 			Name:              "Scenario 1",
 			Description:       "This is a test scenario",
 			TriggerObjectType: "transactions",
@@ -151,11 +151,11 @@ func TestGetScenarioWithLiveVersion(t *testing.T) {
 	}
 
 	score := 10
-	iteration, err := globalTestParams.repository.CreateScenarioIteration(context.Background(), globalTestParams.testIds["OrganizationId"], app.CreateScenarioIterationInput{
+	iteration, err := globalTestParams.repository.CreateScenarioIteration(context.Background(), globalTestParams.testIds["OrganizationId"], models.CreateScenarioIterationInput{
 		ScenarioID: scenar.ID,
-		Body: &app.CreateScenarioIterationBody{
+		Body: &models.CreateScenarioIterationBody{
 			TriggerCondition: &operators.BoolValue{Value: true},
-			Rules: []app.CreateRuleInput{
+			Rules: []models.CreateRuleInput{
 				{
 					Formula:       &operators.BoolValue{Value: true},
 					ScoreModifier: 2,
@@ -171,9 +171,9 @@ func TestGetScenarioWithLiveVersion(t *testing.T) {
 		t.Fatalf("Could not create scenario iteration: %s", err)
 	}
 
-	_, err = globalTestParams.repository.CreateScenarioPublication(context.Background(), globalTestParams.testIds["OrganizationId"], app.CreateScenarioPublicationInput{
+	_, err = globalTestParams.repository.CreateScenarioPublication(context.Background(), globalTestParams.testIds["OrganizationId"], models.CreateScenarioPublicationInput{
 		ScenarioIterationID: iteration.ID,
-		PublicationAction:   app.PublicationActionFrom("publish"),
+		PublicationAction:   models.PublicationActionFrom("publish"),
 	})
 	if err != nil {
 		t.Fatalf("Could not create scenario publication: %s", err)

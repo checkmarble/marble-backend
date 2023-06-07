@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 
-	"marble/marble-backend/app"
 	"marble/marble-backend/models"
 
 	"github.com/jackc/pgx/v5"
@@ -48,7 +47,7 @@ func (r *PGRepository) GetDataModel(ctx context.Context, orgID string) (models.D
 	rows, _ := r.db.Query(ctx, sql, args...)
 	dataModel, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbDataModel])
 	if errors.Is(err, pgx.ErrNoRows) {
-		return models.DataModel{}, app.ErrNotFoundInRepository
+		return models.DataModel{}, models.NotFoundInRepositoryError
 	} else if err != nil {
 		return models.DataModel{}, fmt.Errorf("unable to get data model for org(id: %s): %w", orgID, err)
 	}

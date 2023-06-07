@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"marble/marble-backend/app"
 	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
 
@@ -47,7 +46,7 @@ func (r *PGRepository) GetApiKeyByKey(ctx context.Context, key string) (models.A
 	rows, _ := r.db.Query(ctx, sql, args...)
 	apiKey, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[DBApiKey])
 	if errors.Is(err, pgx.ErrNoRows) {
-		return models.ApiKey{}, app.ErrNotFoundInRepository
+		return models.ApiKey{}, models.NotFoundInRepositoryError
 	} else if err != nil {
 		return models.ApiKey{}, fmt.Errorf("unable to get org from apiKey %s: %w", key, err)
 	}
@@ -68,7 +67,7 @@ func (r *PGRepository) GetApiKeyOfOrganization(ctx context.Context, orgID string
 	rows, _ := r.db.Query(ctx, sql, args...)
 	apiKeys, err := pgx.CollectRows(rows, pgx.RowToStructByName[DBApiKey])
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, app.ErrNotFoundInRepository
+		return nil, models.NotFoundInRepositoryError
 	} else if err != nil {
 		return nil, fmt.Errorf("unable to get apiKeys for org(id: %s): %w", orgID, err)
 	}

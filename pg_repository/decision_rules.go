@@ -3,7 +3,7 @@ package pg_repository
 import (
 	"context"
 	"fmt"
-	"marble/marble-backend/app"
+	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
 
 	"github.com/jackc/pgx/v5"
@@ -22,19 +22,19 @@ type dbDecisionRule struct {
 	DeletedAt     pgtype.Time `db:"deleted_at"`
 }
 
-func (dr *dbDecisionRule) toDomain() app.RuleExecution {
-	return app.RuleExecution{
-		Rule: app.Rule{
+func (dr *dbDecisionRule) toDomain() models.RuleExecution {
+	return models.RuleExecution{
+		Rule: models.Rule{
 			Name:        dr.Name,
 			Description: dr.Description,
 		},
 		Result:              dr.Result,
 		ResultScoreModifier: dr.ScoreModifier,
-		Error:               app.RuleExecutionError(dr.ErrorCode),
+		Error:               models.RuleExecutionError(dr.ErrorCode),
 	}
 }
 
-func (r *PGRepository) createDecisionRules(ctx context.Context, tx pgx.Tx, orgID string, decisionID string, ruleExecutions []app.RuleExecution) ([]app.RuleExecution, error) {
+func (r *PGRepository) createDecisionRules(ctx context.Context, tx pgx.Tx, orgID string, decisionID string, ruleExecutions []models.RuleExecution) ([]models.RuleExecution, error) {
 	query := r.queryBuilder.
 		Insert("decision_rules").
 		Columns(
@@ -73,7 +73,7 @@ func (r *PGRepository) createDecisionRules(ctx context.Context, tx pgx.Tx, orgID
 		return nil, fmt.Errorf("unable to create rules: %w", err)
 	}
 
-	decisionRulesDTOs := make([]app.RuleExecution, len(createdDecisionRules))
+	decisionRulesDTOs := make([]models.RuleExecution, len(createdDecisionRules))
 	for i, decisionRule := range createdDecisionRules {
 		decisionRulesDTOs[i] = decisionRule.toDomain()
 	}

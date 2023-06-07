@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"marble/marble-backend/app"
-	"marble/marble-backend/app/operators"
+	"marble/marble-backend/models"
+	"marble/marble-backend/models/operators"
 	"marble/marble-backend/utils"
 	"strings"
 	"time"
@@ -31,8 +31,8 @@ type dbScenarioIteration struct {
 	DeletedAt            pgtype.Time     `db:"deleted_at"`
 }
 
-func (si *dbScenarioIteration) toDomain() (app.ScenarioIteration, error) {
-	siDTO := app.ScenarioIteration{
+func (si *dbScenarioIteration) toDomain() (models.ScenarioIteration, error) {
+	siDTO := models.ScenarioIteration{
 		ID:         si.ID,
 		ScenarioID: si.ScenarioID,
 		CreatedAt:  si.CreatedAt,
@@ -54,7 +54,7 @@ func (si *dbScenarioIteration) toDomain() (app.ScenarioIteration, error) {
 	if si.TriggerCondition != nil {
 		triggerc, err := operators.UnmarshalOperatorBool(si.TriggerCondition)
 		if err != nil {
-			return app.ScenarioIteration{}, fmt.Errorf("unable to unmarshal trigger condition: %w", err)
+			return models.ScenarioIteration{}, fmt.Errorf("unable to unmarshal trigger condition: %w", err)
 		}
 		siDTO.Body.TriggerCondition = triggerc
 	}
@@ -66,7 +66,7 @@ type ListScenarioIterationsFilters struct {
 	ScenarioID *string `db:"scenario_id"`
 }
 
-func (r *PGRepository) ListScenarioIterations(ctx context.Context, orgID string, filters app.GetScenarioIterationFilters) ([]app.ScenarioIteration, error) {
+func (r *PGRepository) ListScenarioIterations(ctx context.Context, orgID string, filters models.GetScenarioIterationFilters) ([]models.ScenarioIteration, error) {
 	sql, args, err := r.queryBuilder.
 		Select(ColumnList[dbScenarioIteration]()...).
 		From("scenario_iterations").
@@ -85,7 +85,7 @@ func (r *PGRepository) ListScenarioIterations(ctx context.Context, orgID string,
 		return nil, fmt.Errorf("unable to collect scenario iteration: %w", err)
 	}
 
-	var scenarioIterationDTOs []app.ScenarioIteration
+	var scenarioIterationDTOs []models.ScenarioIteration
 	for _, si := range scenarioIterations {
 		siDTO, err := si.toDomain()
 		if err != nil {
@@ -97,11 +97,11 @@ func (r *PGRepository) ListScenarioIterations(ctx context.Context, orgID string,
 	return scenarioIterationDTOs, nil
 }
 
-func (r *PGRepository) GetScenarioIteration(ctx context.Context, orgID string, scenarioIterationID string) (app.ScenarioIteration, error) {
+func (r *PGRepository) GetScenarioIteration(ctx context.Context, orgID string, scenarioIterationID string) (models.ScenarioIteration, error) {
 	return r.getScenarioIterationRaw(ctx, r.db, orgID, scenarioIterationID)
 }
 
-func (r *PGRepository) getScenarioIterationRaw(ctx context.Context, pool PgxPoolOrTxIface, orgID string, scenarioIterationID string) (app.ScenarioIteration, error) {
+func (r *PGRepository) getScenarioIterationRaw(ctx context.Context, pool PgxPoolOrTxIface, orgID string, scenarioIterationID string) (models.ScenarioIteration, error) {
 	siCols := ColumnList[dbScenarioIteration]("si")
 	sirCols := ColumnList[dbScenarioIterationRule]("sir")
 
@@ -115,7 +115,7 @@ func (r *PGRepository) getScenarioIterationRaw(ctx context.Context, pool PgxPool
 		GroupBy("si.id").
 		ToSql()
 	if err != nil {
-		return app.ScenarioIteration{}, fmt.Errorf("unable to build scenario iteration query: %w", err)
+		return models.ScenarioIteration{}, fmt.Errorf("unable to build scenario iteration query: %w", err)
 	}
 
 	type DBRow struct {
@@ -126,19 +126,19 @@ func (r *PGRepository) getScenarioIterationRaw(ctx context.Context, pool PgxPool
 	rows, _ := pool.Query(ctx, sql, args...)
 	scenarioIteration, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[DBRow])
 	if errors.Is(err, pgx.ErrNoRows) {
-		return app.ScenarioIteration{}, app.ErrNotFoundInRepository
+		return models.ScenarioIteration{}, models.NotFoundInRepositoryError
 	} else if err != nil {
-		return app.ScenarioIteration{}, fmt.Errorf("unable to collect scenario iteration: %w", err)
+		return models.ScenarioIteration{}, fmt.Errorf("unable to collect scenario iteration: %w", err)
 	}
 
 	scenarioIterationDTO, err := scenarioIteration.toDomain()
 	if err != nil {
-		return app.ScenarioIteration{}, fmt.Errorf("dto issue: %w", err)
+		return models.ScenarioIteration{}, fmt.Errorf("dto issue: %w", err)
 	}
 	for _, rule := range scenarioIteration.Rules {
 		ruleDto, err := rule.toDomain()
 		if err != nil {
-			return app.ScenarioIteration{}, fmt.Errorf("dto issue: %w", err)
+			return models.ScenarioIteration{}, fmt.Errorf("dto issue: %w", err)
 		}
 		scenarioIterationDTO.Body.Rules = append(scenarioIterationDTO.Body.Rules, ruleDto)
 	}
@@ -155,7 +155,7 @@ type dbCreateScenarioIteration struct {
 	TriggerCondition     []byte `db:"trigger_condition"`
 }
 
-func (r *PGRepository) CreateScenarioIteration(ctx context.Context, orgID string, scenarioIteration app.CreateScenarioIterationInput) (app.ScenarioIteration, error) {
+func (r *PGRepository) CreateScenarioIteration(ctx context.Context, orgID string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error) {
 	createScenarioIteration := dbCreateScenarioIteration{
 		Id:         utils.NewPrimaryKey(orgID),
 		OrgID:      orgID,
@@ -169,7 +169,7 @@ func (r *PGRepository) CreateScenarioIteration(ctx context.Context, orgID string
 		if scenarioIteration.Body.TriggerCondition != nil {
 			triggerConditionBytes, err := scenarioIteration.Body.TriggerCondition.MarshalJSON()
 			if err != nil {
-				return app.ScenarioIteration{}, fmt.Errorf("unable to marshal trigger condition: %w", err)
+				return models.ScenarioIteration{}, fmt.Errorf("unable to marshal trigger condition: %w", err)
 			}
 			createScenarioIteration.TriggerCondition = triggerConditionBytes
 		}
@@ -177,7 +177,7 @@ func (r *PGRepository) CreateScenarioIteration(ctx context.Context, orgID string
 
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
-		return app.ScenarioIteration{}, fmt.Errorf("unable to start a transaction: %w", err)
+		return models.ScenarioIteration{}, fmt.Errorf("unable to start a transaction: %w", err)
 	}
 	defer tx.Rollback(ctx) // safe to call even if tx commits
 
@@ -186,31 +186,31 @@ func (r *PGRepository) CreateScenarioIteration(ctx context.Context, orgID string
 		SetMap(columnValueMap(createScenarioIteration)).
 		Suffix("RETURNING *").ToSql()
 	if err != nil {
-		return app.ScenarioIteration{}, fmt.Errorf("unable to build scenario iteration query: %w", err)
+		return models.ScenarioIteration{}, fmt.Errorf("unable to build scenario iteration query: %w", err)
 	}
 
 	rows, _ := r.db.Query(ctx, sql, args...)
 	createdScenarioIteration, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenarioIteration])
 	if err != nil {
-		return app.ScenarioIteration{}, fmt.Errorf("unable to create scenario iteration: %w", err)
+		return models.ScenarioIteration{}, fmt.Errorf("unable to create scenario iteration: %w", err)
 	}
 
 	scenarioIterationDTO, err := createdScenarioIteration.toDomain()
 	if err != nil {
-		return app.ScenarioIteration{}, fmt.Errorf("dto issue: %w", err)
+		return models.ScenarioIteration{}, fmt.Errorf("dto issue: %w", err)
 	}
 
 	if scenarioIteration.Body != nil {
 		createdRules, err := r.createScenarioIterationRules(ctx, tx, orgID, createdScenarioIteration.ID, scenarioIteration.Body.Rules)
 		if err != nil {
-			return app.ScenarioIteration{}, fmt.Errorf("unable to create scenario iteration rules: %w", err)
+			return models.ScenarioIteration{}, fmt.Errorf("unable to create scenario iteration rules: %w", err)
 		}
 		scenarioIterationDTO.Body.Rules = createdRules
 	}
 
 	err = tx.Commit(ctx)
 	if err != nil {
-		return app.ScenarioIteration{}, fmt.Errorf("transaction issue: %w", err)
+		return models.ScenarioIteration{}, fmt.Errorf("transaction issue: %w", err)
 	}
 
 	return scenarioIterationDTO, nil
@@ -222,9 +222,9 @@ type dbUpdateScenarioIterationInput struct {
 	TriggerCondition     *[]byte `db:"trigger_condition"`
 }
 
-func (r *PGRepository) UpdateScenarioIteration(ctx context.Context, orgID string, scenarioIteration app.UpdateScenarioIterationInput) (app.ScenarioIteration, error) {
+func (r *PGRepository) UpdateScenarioIteration(ctx context.Context, orgID string, scenarioIteration models.UpdateScenarioIterationInput) (models.ScenarioIteration, error) {
 	if scenarioIteration.Body == nil {
-		return app.ScenarioIteration{}, fmt.Errorf("nothing to update")
+		return models.ScenarioIteration{}, fmt.Errorf("nothing to update")
 	}
 	updateScenarioIterationInput := dbUpdateScenarioIterationInput{
 		ScoreReviewThreshold: scenarioIteration.Body.ScoreReviewThreshold,
@@ -233,14 +233,14 @@ func (r *PGRepository) UpdateScenarioIteration(ctx context.Context, orgID string
 	if scenarioIteration.Body.TriggerCondition != nil {
 		triggerConditionBytes, err := scenarioIteration.Body.TriggerCondition.MarshalJSON()
 		if err != nil {
-			return app.ScenarioIteration{}, fmt.Errorf("unable to marshal trigger condition: %w", err)
+			return models.ScenarioIteration{}, fmt.Errorf("unable to marshal trigger condition: %w", err)
 		}
 		updateScenarioIterationInput.TriggerCondition = &triggerConditionBytes
 	}
 
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
-		return app.ScenarioIteration{}, fmt.Errorf("unable to start a transaction: %w", err)
+		return models.ScenarioIteration{}, fmt.Errorf("unable to start a transaction: %w", err)
 	}
 	defer tx.Rollback(ctx) // safe to call even if tx commits
 
@@ -251,19 +251,19 @@ func (r *PGRepository) UpdateScenarioIteration(ctx context.Context, orgID string
 		Where("org_id = ?", orgID).
 		ToSql()
 	if err != nil {
-		return app.ScenarioIteration{}, fmt.Errorf("unable to build scenario iteration query: %w", err)
+		return models.ScenarioIteration{}, fmt.Errorf("unable to build scenario iteration query: %w", err)
 	}
 
 	var isDraft bool
 	err = tx.QueryRow(ctx, sql, args...).Scan(&isDraft)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return app.ScenarioIteration{}, app.ErrNotFoundInRepository
+		return models.ScenarioIteration{}, models.NotFoundInRepositoryError
 	} else if err != nil {
-		return app.ScenarioIteration{}, fmt.Errorf("unable to check if scenario iteration is draft: %w", err)
+		return models.ScenarioIteration{}, fmt.Errorf("unable to check if scenario iteration is draft: %w", err)
 	}
 
 	if !isDraft {
-		return app.ScenarioIteration{}, app.ErrScenarioIterationNotDraft
+		return models.ScenarioIteration{}, models.ErrScenarioIterationNotDraft
 	}
 
 	sql, args, err = r.queryBuilder.
@@ -273,23 +273,23 @@ func (r *PGRepository) UpdateScenarioIteration(ctx context.Context, orgID string
 		Where("org_id = ?", orgID).
 		Suffix("RETURNING *").ToSql()
 	if err != nil {
-		return app.ScenarioIteration{}, fmt.Errorf("unable to build scenario iteration query: %w", err)
+		return models.ScenarioIteration{}, fmt.Errorf("unable to build scenario iteration query: %w", err)
 	}
 
 	rows, _ := tx.Query(ctx, sql, args...)
 	updatedScenarioIteration, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenarioIteration])
 	if err != nil {
-		return app.ScenarioIteration{}, fmt.Errorf("unable to update scenario iteration: %w", err)
+		return models.ScenarioIteration{}, fmt.Errorf("unable to update scenario iteration: %w", err)
 	}
 
 	scenarioIterationDTO, err := updatedScenarioIteration.toDomain()
 	if err != nil {
-		return app.ScenarioIteration{}, fmt.Errorf("dto issue: %w", err)
+		return models.ScenarioIteration{}, fmt.Errorf("dto issue: %w", err)
 	}
 
 	err = tx.Commit(ctx)
 	if err != nil {
-		return app.ScenarioIteration{}, fmt.Errorf("transaction issue: %w", err)
+		return models.ScenarioIteration{}, fmt.Errorf("transaction issue: %w", err)
 	}
 
 	return scenarioIterationDTO, nil

@@ -2,10 +2,10 @@ package repositories
 
 import (
 	"context"
-	"marble/marble-backend/app"
+	"marble/marble-backend/models"
 )
 
 type ScenarioWriteRepository interface {
-	CreateScenario(ctx context.Context, orgID string, scenario app.CreateScenarioInput) (app.Scenario, error)
-	UpdateScenario(ctx context.Context, orgID string, scenario app.UpdateScenarioInput) (app.Scenario, error)
+	CreateScenario(ctx context.Context, orgID string, scenario models.CreateScenarioInput) (models.Scenario, error)
+	UpdateScenario(ctx context.Context, orgID string, scenario models.UpdateScenarioInput) (models.Scenario, error)
 }

@@ -3,7 +3,8 @@ package api
 import (
 	"encoding/json"
 	"errors"
-	"marble/marble-backend/app"
+	"marble/marble-backend/dto"
+	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
 	"net/http"
 	"time"
@@ -21,7 +22,7 @@ type APIScenarioPublication struct {
 	CreatedAt           time.Time `json:"createdAt"`
 }
 
-func NewAPIScenarioPublication(sp app.ScenarioPublication) APIScenarioPublication {
+func NewAPIScenarioPublication(sp models.ScenarioPublication) APIScenarioPublication {
 	return APIScenarioPublication{
 		ID:   sp.ID,
 		Rank: sp.Rank,
@@ -33,12 +34,6 @@ func NewAPIScenarioPublication(sp app.ScenarioPublication) APIScenarioPublicatio
 	}
 }
 
-type ListScenarioPublicationsInput struct {
-	ScenarioID          string `in:"query=scenarioID"`
-	ScenarioIterationID string `in:"query=scenarioIterationID"`
-	PublicationAction   string `in:"query=publicationAction"`
-}
-
 func (api *API) ListScenarioPublications() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -48,12 +43,12 @@ func (api *API) ListScenarioPublications() http.HandlerFunc {
 			return
 		}
 
-		input := ctx.Value(httpin.Input).(*ListScenarioPublicationsInput)
+		input := ctx.Value(httpin.Input).(*dto.ListScenarioPublicationsInput)
 		logger := api.logger.With(slog.String("orgID", orgID), slog.String("scenarioID", input.ScenarioID))
 
 		options := &utils.PtrToOptions{OmitZero: true}
 		usecase := api.usecases.NewScenarioPublicationUsecase()
-		scenarioPublications, err := usecase.ListScenarioPublications(ctx, orgID, app.ListScenarioPublicationsFilters{
+		scenarioPublications, err := usecase.ListScenarioPublications(ctx, orgID, models.ListScenarioPublicationsFilters{
 			ScenarioID:          utils.PtrTo(input.ScenarioID, options),
 			ScenarioIterationID: utils.PtrTo(input.ScenarioIterationID, options),
 			PublicationAction:   utils.PtrTo(input.PublicationAction, options),
@@ -78,15 +73,6 @@ func (api *API) ListScenarioPublications() http.HandlerFunc {
 	}
 }
 
-type CreateScenarioPublicationBody struct {
-	ScenarioIterationID string `json:"scenarioIterationID"`
-	PublicationAction   string `json:"publicationAction"`
-}
-
-type CreateScenarioPublicationInput struct {
-	Body *CreateScenarioPublicationBody `in:"body=json"`
-}
-
 func (api *API) CreateScenarioPublication() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -96,15 +82,15 @@ func (api *API) CreateScenarioPublication() http.HandlerFunc {
 			return
 		}
 
-		input := ctx.Value(httpin.Input).(*CreateScenarioPublicationInput)
+		input := ctx.Value(httpin.Input).(*dto.CreateScenarioPublicationInput)
 		logger := api.logger.With(slog.String("orgID", orgID), slog.String("scenarioIterationID", input.Body.ScenarioIterationID))
 
 		usecase := api.usecases.NewScenarioPublicationUsecase()
-		scenarioPublications, err := usecase.CreateScenarioPublication(ctx, orgID, app.CreateScenarioPublicationInput{
+		scenarioPublications, err := usecase.CreateScenarioPublication(ctx, orgID, models.CreateScenarioPublicationInput{
 			ScenarioIterationID: input.Body.ScenarioIterationID,
-			PublicationAction:   app.PublicationActionFrom(input.Body.PublicationAction),
+			PublicationAction:   models.PublicationActionFrom(input.Body.PublicationAction),
 		})
-		if errors.Is(err, app.ErrScenarioIterationNotValid) {
+		if errors.Is(err, models.ErrScenarioIterationNotValid) {
 			logger.WarnCtx(ctx, "Scenario iteration not valid")
 			http.Error(w, err.Error(), http.StatusForbidden)
 			return
@@ -146,7 +132,7 @@ func (api *API) GetScenarioPublication() http.HandlerFunc {
 
 		usecase := api.usecases.NewScenarioPublicationUsecase()
 		scenarioPublication, err := usecase.GetScenarioPublication(ctx, orgID, input.ScenarioPublicationID)
-		if errors.Is(err, app.ErrNotFoundInRepository) {
+		if errors.Is(err, models.NotFoundInRepositoryError) {
 			http.Error(w, "", http.StatusNotFound)
 			return
 		} else if err != nil {

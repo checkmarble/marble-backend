@@ -3,8 +3,6 @@ package operators
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"marble/marble-backend/utils"
 )
 
 func checkOrgIdJulaya(orgID string) bool {
@@ -24,13 +22,6 @@ func init() {
 }
 
 func (r JulayaSumCashPayoutOneMonth) Eval(ctx context.Context, d DataAccessor) (float64, error) {
-	orgID, err := utils.OrgIDFromCtx(ctx, nil)
-	if err != nil {
-		return 0, err
-	} else if checkOrgIdJulaya(orgID) {
-		return 0, fmt.Errorf("org_id is not Julaya")
-	}
-
 	db := d.GetDbHandle()
 
 	accountId, err := getPayloadFieldGeneric[string](d, "account_id")

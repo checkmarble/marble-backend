@@ -8,7 +8,6 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 
-	"marble/marble-backend/app"
 	"marble/marble-backend/models"
 )
 
@@ -87,7 +86,7 @@ func TestDataModelRepoEndToEnd(t *testing.T) {
 
 			unknownOrgID, _ := uuid.NewV4()
 			val, err = globalTestParams.repository.GetDataModel(ctx, unknownOrgID.String())
-			if !errors.Is(err, app.ErrNotFoundInRepository) {
+			if !errors.Is(err, models.NotFoundInRepositoryError) {
 				t.Errorf("Should return an error if the org id is unknown: %s", err)
 			}
 		})

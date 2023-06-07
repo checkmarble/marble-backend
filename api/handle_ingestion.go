@@ -55,7 +55,7 @@ func (api *API) handleIngestion() http.HandlerFunc {
 		}
 
 		payloadStructWithReader, err := app.ParseToDataModelObject(table, object_body)
-		if errors.Is(err, app.ErrFormatValidation) {
+		if errors.Is(err, models.FormatValidationError) {
 			http.Error(w, "", http.StatusUnprocessableEntity)
 			return
 		} else if err != nil {

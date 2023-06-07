@@ -11,6 +11,7 @@ import (
 
 	"marble/marble-backend/app"
 	"marble/marble-backend/models"
+	"marble/marble-backend/models/operators"
 )
 
 func TestReadFromDb(t *testing.T) {
@@ -104,7 +105,7 @@ func TestReadFromDb(t *testing.T) {
 			name:           "Read string field from DB, no line found",
 			readParams:     models.DbFieldReadParams{TriggerTableName: models.TableName("transactions"), Path: []models.LinkName{"accounts"}, FieldName: "name", DataModel: dataModel, Payload: payloadNotInDB},
 			expectedOutput: pgtype.Text{String: "", Valid: false},
-			expectedError:  models.OperatorNoRowsReadInDbError,
+			expectedError:  operators.OperatorNoRowsReadInDbError,
 		},
 	}
 
