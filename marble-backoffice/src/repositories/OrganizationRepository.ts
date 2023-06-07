@@ -1,13 +1,11 @@
 import { MarbleApi } from "@/infra/MarbleApi";
-import {
-  type Organization,
-  adaptOrganization,
-  type CreateOrganization,
-} from "@/models";
+import type { Organization, CreateOrganization, ApiKey } from "@/models";
 import {
   adaptOrganizationsApiResultDto,
   adaptSingleOrganizationApiResultDto,
 } from "@/models/OrganizationDto";
+import { adaptApiKeysResultDto } from "@/models/ApiKeyDto";
+import { adaptOrganization, adaptApiKey } from "@/models";
 
 export interface OrganizationRepository {
   marbleApi: MarbleApi;
@@ -44,4 +42,14 @@ export async function fetchOrganization(
     await repository.marbleApi.organizationsById(organizationId)
   );
   return adaptOrganization(result.organization);
+}
+
+export async function fetchApiKeys(
+  repository: OrganizationRepository,
+  organizationId: string,
+): Promise<ApiKey[]> {
+  const dto = adaptApiKeysResultDto(
+    await repository.marbleApi.apiKeysOfOrganization(organizationId)
+  );
+  return dto.api_keys.map(adaptApiKey);
 }
