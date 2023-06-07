@@ -79,6 +79,7 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 			TransactionFactory:     usecases.Repositories.TransactionFactory,
 			OrganizationRepository: usecases.Repositories.OrganizationRepository,
 			ClientTablesRepository: usecases.Repositories.ClientTablesRepository,
+			DataModelRepository:    usecases.Repositories.DataModelRepository,
 		},
 	}
 }

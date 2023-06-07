@@ -23,16 +23,7 @@ func (creator *OrganizationCreator) CreateOrganizationWithId(newOrganizationId s
 		if err != nil {
 			return models.Organization{}, err
 		}
-		organization, err := creator.OrganizationRepository.GetOrganizationById(tx, newOrganizationId)
-		if err != nil {
-			return models.Organization{}, err
-		}
-
-		err = creator.PopulateClientTables.CreateClientTables(tx, organization, models.DATABASE_MARBLE)
-		if err != nil {
-			return models.Organization{}, err
-		}
-		return organization, err
+		return creator.OrganizationRepository.GetOrganizationById(tx, newOrganizationId)
 	})
 
 	if err != nil {
@@ -40,6 +31,15 @@ func (creator *OrganizationCreator) CreateOrganizationWithId(newOrganizationId s
 	}
 
 	err = creator.OrganizationSeeder.Seed(organization.ID)
+	if err != nil {
+		return models.Organization{}, err
+	}
+
+	_, err = repositories.TransactionReturnValue(creator.TransactionFactory, models.DATABASE_MARBLE, func(tx repositories.Transaction) (any, error) {
+		err := creator.PopulateClientTables.CreateClientTables(tx, organization, models.DATABASE_MARBLE)
+
+		return nil, err
+	})
 	if err != nil {
 		return models.Organization{}, err
 	}
