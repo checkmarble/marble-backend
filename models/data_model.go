@@ -99,6 +99,7 @@ type Table struct {
 type Field struct {
 	Name     FieldName `json:"name"`
 	DataType DataType  `json:"dataType"`
+	Nullable bool      `json:"nullable"`
 }
 
 type LinkToSingle struct {
