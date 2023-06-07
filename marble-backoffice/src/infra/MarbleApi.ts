@@ -5,6 +5,12 @@ import { AuthorizedFetcher } from "./AuthorizedFetcher";
 const ORGANIZATION_URL_PATH = "organizations";
 const SCENARIO_URL_PATH = "scenarios";
 const USERS_URL_PATH = "users";
+const INGESTION_URL_PATH = "ingestion";
+
+export interface IngestObject {
+  tableName: string;
+  content: Record<string, unknown>;
+}
 
 export class MarbleApi {
   baseUrl: URL;
@@ -94,6 +100,15 @@ export class MarbleApi {
     return this.getAuthorizedJson(
       urlWithOrganizationId("apikeys", organizationId)
     );
+  }
+
+  async ingest(ingestObject: IngestObject) {
+    const objectTypeParam = encodeURIComponent(ingestObject.tableName);
+    await this.postAuthorizedJson({
+      path: `${INGESTION_URL_PATH}/${objectTypeParam}`,
+      body: ingestObject.content,
+    });
+    return ingestObject
   }
 }
 

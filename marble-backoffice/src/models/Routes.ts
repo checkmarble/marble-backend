@@ -4,6 +4,7 @@ export enum PathFragment {
   Organizations = "organizations",
   OrganizationDetails = "organizations",
   Users = "users",
+  Ingestion = "ingestion",
 }
 
 export const PageLink = {
@@ -17,6 +18,7 @@ export const PageLink = {
   organizationDetails: (organizationId: string) =>
   `/${PathFragment.OrganizationDetails}/${organizationId}`,
   Users: `/${PathFragment.Users}`,
+  ingestion: (organizationId: string) => `/${PathFragment.Ingestion}/${organizationId}`,
 };
 
 export function isRouteRequireAuthenticatedUser(path: string) {

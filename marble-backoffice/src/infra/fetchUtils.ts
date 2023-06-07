@@ -22,7 +22,12 @@ export async function fetchJson(request: Request): Promise<unknown> {
   if (!response.ok) {
     throw new HttpError(request, response);
   }
-  return await response.json();
+  // test if the response content type is json
+  const contentType = response.headers.get("content-type");
+  if (contentType == "application/json") {
+    return await response.json();
+  }
+  return Promise.resolve({});
 }
 
 export async function makePostRequest(args: {

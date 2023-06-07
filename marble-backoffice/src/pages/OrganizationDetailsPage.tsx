@@ -1,9 +1,16 @@
 import { useState } from "react";
-import Container from "@mui/system/Container";
 import { useParams } from "react-router";
+import { useNavigate } from "react-router-dom";
 import Card from "@mui/material/Card";
+import Container from "@mui/system/Container";
 import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
+import Button from "@mui/material/Button";
+import Box from "@mui/material/Box";
+import AddIcon from "@mui/icons-material/Add";
+// import DeleteIcon from "@mui/icons-material/Delete";
+import SendIcon from "@mui/icons-material/SendOutlined";
+
 import { useLoading } from "@/hooks/Loading";
 import services from "@/injectServices";
 import {
@@ -14,8 +21,7 @@ import {
 } from "@/services";
 import DelayedLinearProgress from "@/components/DelayedLinearProgress";
 import AddUserDialog from "@/components/AddUserDialog";
-import CreateButtonFab from "@/components/CreateButtonFab";
-import { type CreateUser, Role } from "@/models";
+import { type CreateUser, Role, PageLink } from "@/models";
 import ListOfUsers from "@/components/ListOfUsers";
 
 function OrganizationDetailsPage() {
@@ -57,6 +63,11 @@ function OrganizationDetailsPage() {
     await refreshUsers();
   };
 
+  const naviator = useNavigate();
+  const handleNavigateToIngestion = () => {
+    naviator(PageLink.ingestion(organizationId))
+  };
+
   return (
     <>
       <DelayedLinearProgress loading={pageLoading} />
@@ -74,26 +85,36 @@ function OrganizationDetailsPage() {
           position: "relative",
         }}
       >
-        <CreateButtonFab title="Add User" onClick={handleCreateUserClick} />
-
-        {/* <div>organizationId: {organizationId}</div> */}
-        {organization && (
-          <>
-            <Typography variant="h3">{organization.name}</Typography>
-          </>
-        )}
+        <Typography variant="h3">{organization?.name}</Typography>
+        <Box
+          sx={{
+            display: "flex",
+            flexWrap: "wrap",
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: 4
+          }}
+        >
+          <Button onClick={handleNavigateToIngestion} variant="text" startIcon={<SendIcon />}> Data Ingestion</Button>
+          <Button onClick={handleCreateUserClick} variant="outlined" startIcon={<AddIcon />}>
+            Add User
+          </Button>
+          {/* <Button variant="outlined" startIcon={<DeleteIcon />}>
+            Delete
+          </Button> */}
+        </Box>
         {scenarios != null && (
           <>
             <Typography variant="h4">{scenarios.length} Scenarios</Typography>
             {scenarios.map((scenario) => (
-              <Card key={scenario.scenariosId}>
+              <Card key={scenario.scenariosId} sx={{ mb: 2 }}>
                 <CardContent>
                   <Typography
                     sx={{ fontSize: 14 }}
                     color="text.secondary"
                     gutterBottom
                   >
-                    Scenario
+                    Scenario <code>{scenario.scenariosId}</code>
                   </Typography>
                   <Typography variant="h5" component="div">
                     {scenario.name}
