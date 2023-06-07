@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"fmt"
 )
 
 // BadParameterError is rendered with the http status code 400
@@ -16,10 +17,19 @@ var ForbiddenError = errors.New("Forbidden")
 // NotFoundError is rendered with the http status code 404
 var NotFoundError = errors.New("Not found")
 
-// Is used when a null value is read in a db field operator
-var OperatorNullValueReadError = errors.New("Field read with null value")
+var (
+	PanicInScenarioEvalutionError = errors.New("panic during scenario evaluation")
+	NotFoundInRepositoryError     = fmt.Errorf("item not found in repository: %w", NotFoundError)
+)
 
-// Is used when no rows are read in a db field operator
-var OperatorNoRowsReadInDbError = errors.New("No rows read in db")
+var (
+	ErrScenarioIterationNotDraft                          = errors.New("scenario iteration is not a draft")
+	ErrScenarioIterationNotValid                          = errors.New("scenario iteration is not valid for publication")
+	ScenarioHasNoLiveVersionError                         = errors.New("scenario has no live version")
+	ScenarioTriggerTypeAndTiggerObjectTypeMismatchError   = errors.New("scenario's trigger_type and provided trigger_object type are different")
+	ScenarioTriggerConditionAndTriggerObjectMismatchError = errors.New("trigger_object does not match the scenario's trigger conditions")
+)
 
-var OperatorDivisionByZeroError = errors.New("Division by zero")
+var (
+	FormatValidationError = errors.New("The input object is not valid")
+)

@@ -2,12 +2,12 @@ package repositories
 
 import (
 	"context"
-	"marble/marble-backend/app"
+	"marble/marble-backend/models"
 )
 
 type ScenarioIterationRuleRepository interface {
-	ListScenarioIterationRules(ctx context.Context, orgID string, filters app.GetScenarioIterationRulesFilters) ([]app.Rule, error)
-	CreateScenarioIterationRule(ctx context.Context, orgID string, rule app.CreateRuleInput) (app.Rule, error)
-	GetScenarioIterationRule(ctx context.Context, orgID string, ruleID string) (app.Rule, error)
-	UpdateScenarioIterationRule(ctx context.Context, orgID string, rule app.UpdateRuleInput) (app.Rule, error)
+	ListScenarioIterationRules(ctx context.Context, orgID string, filters models.GetScenarioIterationRulesFilters) ([]models.Rule, error)
+	CreateScenarioIterationRule(ctx context.Context, orgID string, rule models.CreateRuleInput) (models.Rule, error)
+	GetScenarioIterationRule(ctx context.Context, orgID string, ruleID string) (models.Rule, error)
+	UpdateScenarioIterationRule(ctx context.Context, orgID string, rule models.UpdateRuleInput) (models.Rule, error)
 }

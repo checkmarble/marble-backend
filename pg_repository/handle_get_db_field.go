@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"marble/marble-backend/app/operators"
 	"marble/marble-backend/models"
+	"marble/marble-backend/models/operators"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -50,7 +50,7 @@ func scanRowReturnValue[T pgtype.Bool | pgtype.Int2 | pgtype.Float8 | pgtype.Tex
 	var returnVariable T
 	err := row.Scan(&returnVariable)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return returnVariable, fmt.Errorf("No rows scanned while reading DB: %w", models.OperatorNoRowsReadInDbError)
+		return returnVariable, fmt.Errorf("No rows scanned while reading DB: %w", operators.OperatorNoRowsReadInDbError)
 	} else if err != nil {
 		return returnVariable, err
 	}

@@ -2,7 +2,6 @@ package app
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/pure_utils"
@@ -12,8 +11,6 @@ import (
 	"github.com/go-playground/validator"
 	dynamicstruct "github.com/ompluscator/dynamic-struct"
 )
-
-var ErrFormatValidation = errors.New("The input object is not valid")
 
 func buildDynamicStruct(fields map[models.FieldName]models.Field) dynamicstruct.DynamicStruct {
 	custom_type := dynamicstruct.NewStruct()
@@ -70,7 +67,7 @@ func validateParsedJson(instance interface{}) error {
 			count++
 		}
 		if count > 0 {
-			return ErrFormatValidation
+			return models.FormatValidationError
 		}
 	}
 	return nil
@@ -93,7 +90,7 @@ func ParseToDataModelObject(table models.Table, jsonBody []byte) (models.Payload
 	decoder.DisallowUnknownFields()
 
 	if err := decoder.Decode(&dynamicStructInstance); err != nil {
-		return models.Payload{}, fmt.Errorf("%w: %w", ErrFormatValidation, err)
+		return models.Payload{}, fmt.Errorf("%w: %w", models.FormatValidationError, err)
 	}
 
 	// If the data has been successfully parsed, we can validate it

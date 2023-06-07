@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"marble/marble-backend/models"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -122,7 +121,7 @@ func (field DbFieldString) Eval(ctx context.Context, d DataAccessor) (string, er
 		return "", fmt.Errorf("DB field %s is not a string", field.FieldName)
 	}
 	if !valNullable.Valid {
-		return "", fmt.Errorf("DB field %s is null: %w", field.FieldName, models.OperatorNullValueReadError)
+		return "", fmt.Errorf("DB field %s is null: %w", field.FieldName, OperatorNullValueReadError)
 	}
 	return valNullable.String, nil
 }

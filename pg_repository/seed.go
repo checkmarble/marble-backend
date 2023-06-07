@@ -6,9 +6,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
-	"marble/marble-backend/app"
-	"marble/marble-backend/app/operators"
 	"marble/marble-backend/models"
+	"marble/marble-backend/models/operators"
 	"marble/marble-backend/utils"
 )
 
@@ -104,7 +103,7 @@ func (r *PGRepository) Seed(zorgOrganizationId string) error {
 	///////////////////////////////
 	// Create and store a scenario
 	///////////////////////////////
-	createScenarioInput := app.CreateScenarioInput{
+	createScenarioInput := models.CreateScenarioInput{
 		Name:              "test name",
 		Description:       "test description",
 		TriggerObjectType: "transactions",
@@ -115,13 +114,13 @@ func (r *PGRepository) Seed(zorgOrganizationId string) error {
 		return err
 	}
 
-	createScenarioIterationInput := app.CreateScenarioIterationInput{
+	createScenarioIterationInput := models.CreateScenarioIterationInput{
 		ScenarioID: scenario.ID,
-		Body: &app.CreateScenarioIterationBody{
+		Body: &models.CreateScenarioIterationBody{
 			TriggerCondition:     &operators.BoolValue{Value: true},
 			ScoreReviewThreshold: utils.Ptr(10),
 			ScoreRejectThreshold: utils.Ptr(30),
-			Rules: []app.CreateRuleInput{
+			Rules: []models.CreateRuleInput{
 				{
 					Formula:       &operators.BoolValue{Value: true},
 					ScoreModifier: 2,
@@ -155,9 +154,9 @@ func (r *PGRepository) Seed(zorgOrganizationId string) error {
 		log.Printf("error creating scenario iteration: %v", err)
 		return err
 	}
-	_, err = r.CreateScenarioPublication(context.TODO(), zorgOrganizationId, app.CreateScenarioPublicationInput{
+	_, err = r.CreateScenarioPublication(context.TODO(), zorgOrganizationId, models.CreateScenarioPublicationInput{
 		ScenarioIterationID: scenarioIteration.ID,
-		PublicationAction:   app.Publish,
+		PublicationAction:   models.Publish,
 	})
 	if err != nil {
 		log.Printf("error publishing scenario iteration: %v", err)
@@ -167,7 +166,7 @@ func (r *PGRepository) Seed(zorgOrganizationId string) error {
 	///////////////////////////////
 	// Also create the demo scenario
 	///////////////////////////////
-	demoScenario, err := r.CreateScenario(context.TODO(), zorgOrganizationId, app.CreateScenarioInput{
+	demoScenario, err := r.CreateScenario(context.TODO(), zorgOrganizationId, models.CreateScenarioInput{
 		Name:              "Demo scenario",
 		Description:       "Demo scenario",
 		TriggerObjectType: "transactions",
@@ -177,9 +176,9 @@ func (r *PGRepository) Seed(zorgOrganizationId string) error {
 		return err
 	}
 
-	createDemoScenarioIterationInput := app.CreateScenarioIterationInput{
+	createDemoScenarioIterationInput := models.CreateScenarioIterationInput{
 		ScenarioID: demoScenario.ID,
-		Body: &app.CreateScenarioIterationBody{
+		Body: &models.CreateScenarioIterationBody{
 			TriggerCondition: &operators.And{
 				Operands: []operators.OperatorBool{
 					&operators.EqString{
@@ -194,7 +193,7 @@ func (r *PGRepository) Seed(zorgOrganizationId string) error {
 			},
 			ScoreReviewThreshold: utils.Ptr(20),
 			ScoreRejectThreshold: utils.Ptr(30),
-			Rules: []app.CreateRuleInput{
+			Rules: []models.CreateRuleInput{
 				{
 					Formula: &operators.And{
 						Operands: []operators.OperatorBool{
@@ -301,9 +300,9 @@ func (r *PGRepository) Seed(zorgOrganizationId string) error {
 		log.Printf("error creating demo scenario iteration: %v", err)
 		return err
 	}
-	_, err = r.CreateScenarioPublication(context.TODO(), zorgOrganizationId, app.CreateScenarioPublicationInput{
+	_, err = r.CreateScenarioPublication(context.TODO(), zorgOrganizationId, models.CreateScenarioPublicationInput{
 		ScenarioIterationID: demoScenarioIteration.ID,
-		PublicationAction:   app.Publish,
+		PublicationAction:   models.Publish,
 	})
 	if err != nil {
 		log.Printf("error publishing demo scenario iteration: %v", err)

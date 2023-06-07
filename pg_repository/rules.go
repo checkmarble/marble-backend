@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"marble/marble-backend/app"
-	"marble/marble-backend/app/operators"
+	"marble/marble-backend/models"
+	"marble/marble-backend/models/operators"
 	"marble/marble-backend/utils"
 	"time"
 
@@ -28,13 +28,13 @@ type dbScenarioIterationRule struct {
 	DeletedAt           pgtype.Time `db:"deleted_at"`
 }
 
-func (sir *dbScenarioIterationRule) toDomain() (app.Rule, error) {
+func (sir *dbScenarioIterationRule) toDomain() (models.Rule, error) {
 	formula, err := operators.UnmarshalOperatorBool(sir.Formula)
 	if err != nil {
-		return app.Rule{}, fmt.Errorf("unable to unmarshal rule: %w", err)
+		return models.Rule{}, fmt.Errorf("unable to unmarshal rule: %w", err)
 	}
 
-	return app.Rule{
+	return models.Rule{
 		ID:                  sir.ID,
 		ScenarioIterationID: sir.ScenarioIterationID,
 		DisplayOrder:        sir.DisplayOrder,
@@ -46,7 +46,7 @@ func (sir *dbScenarioIterationRule) toDomain() (app.Rule, error) {
 	}, nil
 }
 
-func (r *PGRepository) GetScenarioIterationRule(ctx context.Context, orgID string, ruleID string) (app.Rule, error) {
+func (r *PGRepository) GetScenarioIterationRule(ctx context.Context, orgID string, ruleID string) (models.Rule, error) {
 	sql, args, err := r.queryBuilder.
 		Select(ColumnList[dbScenarioIterationRule]()...).
 		From("scenario_iteration_rules").
@@ -54,20 +54,20 @@ func (r *PGRepository) GetScenarioIterationRule(ctx context.Context, orgID strin
 		Where("id= ?", ruleID).
 		ToSql()
 	if err != nil {
-		return app.Rule{}, fmt.Errorf("unable to build rule query: %w", err)
+		return models.Rule{}, fmt.Errorf("unable to build rule query: %w", err)
 	}
 
 	rows, _ := r.db.Query(ctx, sql, args...)
 	rule, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenarioIterationRule])
 	if errors.Is(err, pgx.ErrNoRows) {
-		return app.Rule{}, app.ErrNotFoundInRepository
+		return models.Rule{}, models.NotFoundInRepositoryError
 	} else if err != nil {
-		return app.Rule{}, fmt.Errorf("unable to get rule: %w", err)
+		return models.Rule{}, fmt.Errorf("unable to get rule: %w", err)
 	}
 
 	ruleDTO, err := rule.toDomain()
 	if err != nil {
-		return app.Rule{}, fmt.Errorf("dto issue: %w", err)
+		return models.Rule{}, fmt.Errorf("dto issue: %w", err)
 	}
 
 	return ruleDTO, err
@@ -77,7 +77,7 @@ type ListScenarioIterationRulesFilters struct {
 	ScenarioIterationID *string `db:"scenario_iteration_id"`
 }
 
-func (r *PGRepository) ListScenarioIterationRules(ctx context.Context, orgID string, filters app.GetScenarioIterationRulesFilters) ([]app.Rule, error) {
+func (r *PGRepository) ListScenarioIterationRules(ctx context.Context, orgID string, filters models.GetScenarioIterationRulesFilters) ([]models.Rule, error) {
 	sql, args, err := r.queryBuilder.
 		Select(ColumnList[dbScenarioIterationRule]()...).
 		From("scenario_iteration_rules").
@@ -96,7 +96,7 @@ func (r *PGRepository) ListScenarioIterationRules(ctx context.Context, orgID str
 		return nil, fmt.Errorf("unable to get rules: %w", err)
 	}
 
-	var ruleDTOs []app.Rule
+	var ruleDTOs []models.Rule
 	for _, rule := range rules {
 		ruleDTO, err := rule.toDomain()
 		if err != nil {
@@ -119,7 +119,7 @@ type dbCreateScenarioIterationRuleInput struct {
 	Formula             []byte `db:"formula"`
 }
 
-func (r *PGRepository) CreateScenarioIterationRule(ctx context.Context, orgID string, rule app.CreateRuleInput) (app.Rule, error) {
+func (r *PGRepository) CreateScenarioIterationRule(ctx context.Context, orgID string, rule models.CreateRuleInput) (models.Rule, error) {
 	dbCreateRuleInput := dbCreateScenarioIterationRuleInput{
 		Id:                  utils.NewPrimaryKey(orgID),
 		OrgID:               orgID,
@@ -131,13 +131,13 @@ func (r *PGRepository) CreateScenarioIterationRule(ctx context.Context, orgID st
 	}
 	formulaBytes, err := rule.Formula.MarshalJSON()
 	if err != nil {
-		return app.Rule{}, fmt.Errorf("unable to marshal rule formula: %w", err)
+		return models.Rule{}, fmt.Errorf("unable to marshal rule formula: %w", err)
 	}
 	dbCreateRuleInput.Formula = formulaBytes
 
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
-		return app.Rule{}, fmt.Errorf("unable to start a transaction: %w", err)
+		return models.Rule{}, fmt.Errorf("unable to start a transaction: %w", err)
 	}
 	defer tx.Rollback(ctx) // safe to call even if tx commits
 
@@ -148,16 +148,16 @@ func (r *PGRepository) CreateScenarioIterationRule(ctx context.Context, orgID st
 		Where("org_id = ?", orgID).
 		ToSql()
 	if err != nil {
-		return app.Rule{}, fmt.Errorf("unable to build scenario iteration rule query: %w", err)
+		return models.Rule{}, fmt.Errorf("unable to build scenario iteration rule query: %w", err)
 	}
 
 	var isDraft bool
 	err = tx.QueryRow(ctx, sql, args...).Scan(&isDraft)
 	if err != nil {
-		return app.Rule{}, fmt.Errorf("unable to check if scenario iteration is draft: %w", err)
+		return models.Rule{}, fmt.Errorf("unable to check if scenario iteration is draft: %w", err)
 	}
 	if !isDraft {
-		return app.Rule{}, app.ErrScenarioIterationNotDraft
+		return models.Rule{}, models.ErrScenarioIterationNotDraft
 	}
 
 	sql, args, err = r.queryBuilder.
@@ -165,29 +165,29 @@ func (r *PGRepository) CreateScenarioIterationRule(ctx context.Context, orgID st
 		SetMap(columnValueMap(dbCreateRuleInput)).
 		Suffix("RETURNING *").ToSql()
 	if err != nil {
-		return app.Rule{}, fmt.Errorf("unable to build rule query: %w", err)
+		return models.Rule{}, fmt.Errorf("unable to build rule query: %w", err)
 	}
 
 	rows, _ := tx.Query(ctx, sql, args...)
 	createdRule, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenarioIterationRule])
 	if err != nil {
-		return app.Rule{}, fmt.Errorf("unable to create rule: %w", err)
+		return models.Rule{}, fmt.Errorf("unable to create rule: %w", err)
 	}
 
 	ruleDTO, err := createdRule.toDomain()
 	if err != nil {
-		return app.Rule{}, fmt.Errorf("dto issue: %w", err)
+		return models.Rule{}, fmt.Errorf("dto issue: %w", err)
 	}
 
 	err = tx.Commit(ctx)
 	if err != nil {
-		return app.Rule{}, fmt.Errorf("transaction issue: %w", err)
+		return models.Rule{}, fmt.Errorf("transaction issue: %w", err)
 	}
 
 	return ruleDTO, err
 }
 
-func (r *PGRepository) createScenarioIterationRules(ctx context.Context, tx pgx.Tx, orgID string, scenarioIterationID string, rules []app.CreateRuleInput) ([]app.Rule, error) {
+func (r *PGRepository) createScenarioIterationRules(ctx context.Context, tx pgx.Tx, orgID string, scenarioIterationID string, rules []models.CreateRuleInput) ([]models.Rule, error) {
 	if len(rules) == 0 {
 		return nil, nil
 	}
@@ -208,7 +208,7 @@ func (r *PGRepository) createScenarioIterationRules(ctx context.Context, tx pgx.
 		return nil, fmt.Errorf("unable to check if scenario iteration is draft: %w", err)
 	}
 	if !isDraft {
-		return nil, app.ErrScenarioIterationNotDraft
+		return nil, models.ErrScenarioIterationNotDraft
 	}
 
 	query := r.queryBuilder.
@@ -254,7 +254,7 @@ func (r *PGRepository) createScenarioIterationRules(ctx context.Context, tx pgx.
 		return nil, fmt.Errorf("unable to create rules: %w", err)
 	}
 
-	rulesDTOs := make([]app.Rule, len(createdRules))
+	rulesDTOs := make([]models.Rule, len(createdRules))
 	for i, createdRule := range createdRules {
 		rulesDTOs[i], err = createdRule.toDomain()
 		if err != nil {
@@ -273,7 +273,7 @@ type dbUpdateScenarioIterationRuleInput struct {
 	Formula       *[]byte `db:"formula"`
 }
 
-func (r *PGRepository) UpdateScenarioIterationRule(ctx context.Context, orgID string, rule app.UpdateRuleInput) (app.Rule, error) {
+func (r *PGRepository) UpdateScenarioIterationRule(ctx context.Context, orgID string, rule models.UpdateRuleInput) (models.Rule, error) {
 	dbUpdateRuleInput := dbUpdateScenarioIterationRuleInput{
 		ID:            rule.ID,
 		DisplayOrder:  rule.DisplayOrder,
@@ -284,14 +284,14 @@ func (r *PGRepository) UpdateScenarioIterationRule(ctx context.Context, orgID st
 	if rule.Formula != nil {
 		formulaBytes, err := json.Marshal(rule.Formula)
 		if err != nil {
-			return app.Rule{}, fmt.Errorf("unable to marshal rule formula: %w", err)
+			return models.Rule{}, fmt.Errorf("unable to marshal rule formula: %w", err)
 		}
 		dbUpdateRuleInput.Formula = &formulaBytes
 	}
 
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
-		return app.Rule{}, fmt.Errorf("unable to start a transaction: %w", err)
+		return models.Rule{}, fmt.Errorf("unable to start a transaction: %w", err)
 	}
 	defer tx.Rollback(ctx) // safe to call even if tx commits
 
@@ -303,18 +303,18 @@ func (r *PGRepository) UpdateScenarioIterationRule(ctx context.Context, orgID st
 		Where("sir.org_id = ?", orgID).
 		ToSql()
 	if err != nil {
-		return app.Rule{}, fmt.Errorf("unable to build scenario iteration rule query: %w", err)
+		return models.Rule{}, fmt.Errorf("unable to build scenario iteration rule query: %w", err)
 	}
 
 	var isDraft bool
 	err = tx.QueryRow(ctx, sql, args...).Scan(&isDraft)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return app.Rule{}, app.ErrNotFoundInRepository
+		return models.Rule{}, models.NotFoundInRepositoryError
 	} else if err != nil {
-		return app.Rule{}, fmt.Errorf("unable to check if scenario iteration is draft: %w", err)
+		return models.Rule{}, fmt.Errorf("unable to check if scenario iteration is draft: %w", err)
 	}
 	if !isDraft {
-		return app.Rule{}, app.ErrScenarioIterationNotDraft
+		return models.Rule{}, models.ErrScenarioIterationNotDraft
 	}
 
 	sql, args, err = r.queryBuilder.
@@ -324,25 +324,25 @@ func (r *PGRepository) UpdateScenarioIterationRule(ctx context.Context, orgID st
 		Where("org_id = ?", orgID).
 		Suffix("RETURNING *").ToSql()
 	if err != nil {
-		return app.Rule{}, fmt.Errorf("unable to build scenario iteration rule query: %w", err)
+		return models.Rule{}, fmt.Errorf("unable to build scenario iteration rule query: %w", err)
 	}
 
 	rows, _ := tx.Query(ctx, sql, args...)
 	updatedRule, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenarioIterationRule])
 	if errors.Is(err, pgx.ErrNoRows) {
-		return app.Rule{}, app.ErrNotFoundInRepository
+		return models.Rule{}, models.NotFoundInRepositoryError
 	} else if err != nil {
-		return app.Rule{}, fmt.Errorf("unable to update rule(id: %s): %w", rule.ID, err)
+		return models.Rule{}, fmt.Errorf("unable to update rule(id: %s): %w", rule.ID, err)
 	}
 
 	ruleDTO, err := updatedRule.toDomain()
 	if err != nil {
-		return app.Rule{}, fmt.Errorf("dto issue: %w", err)
+		return models.Rule{}, fmt.Errorf("dto issue: %w", err)
 	}
 
 	err = tx.Commit(ctx)
 	if err != nil {
-		return app.Rule{}, fmt.Errorf("transaction issue: %w", err)
+		return models.Rule{}, fmt.Errorf("transaction issue: %w", err)
 	}
 
 	return ruleDTO, err

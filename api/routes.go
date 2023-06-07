@@ -48,14 +48,14 @@ func (api *API) routes() {
 			scenariosRouter.Get("/", api.ListScenarios())
 
 			scenariosRouter.With(api.enforcePermissionMiddleware(models.SCENARIO_CREATE)).
-				With(httpin.NewInput(CreateScenarioInput{})).
+				With(httpin.NewInput(dto.CreateScenarioInput{})).
 				Post("/", api.CreateScenario())
 
 			scenariosRouter.Route("/{scenarioID:"+UUIDRegExp+"}", func(r chi.Router) {
 				r.With(httpin.NewInput(GetScenarioInput{})).
 					Get("/", api.GetScenario())
 
-				r.With(httpin.NewInput(UpdateScenarioInput{})).
+				r.With(httpin.NewInput(dto.UpdateScenarioInput{})).
 					With(api.enforcePermissionMiddleware(models.SCENARIO_CREATE)).
 					Put("/", api.UpdateScenario())
 			})
@@ -68,7 +68,7 @@ func (api *API) routes() {
 			scenarIterRouter.With(httpin.NewInput(ListScenarioIterationsInput{})).
 				Get("/", api.ListScenarioIterations())
 
-			scenarIterRouter.With(httpin.NewInput(CreateScenarioIterationInput{})).
+			scenarIterRouter.With(httpin.NewInput(dto.CreateScenarioIterationInput{})).
 				With(api.enforcePermissionMiddleware(models.SCENARIO_CREATE)).
 				Post("/", api.CreateScenarioIteration())
 
@@ -76,7 +76,7 @@ func (api *API) routes() {
 				r.With(httpin.NewInput(GetScenarioIterationInput{})).
 					Get("/", api.GetScenarioIteration())
 
-				r.With(httpin.NewInput(UpdateScenarioIterationInput{})).
+				r.With(httpin.NewInput(dto.UpdateScenarioIterationInput{})).
 					With(api.enforcePermissionMiddleware(models.SCENARIO_CREATE)).
 					Put("/", api.UpdateScenarioIteration())
 			})
@@ -88,7 +88,7 @@ func (api *API) routes() {
 			scenarIterRulesRouter.With(httpin.NewInput(ListScenarioIterationRulesInput{})).
 				Get("/", api.ListScenarioIterationRules())
 
-			scenarIterRulesRouter.With(httpin.NewInput(CreateScenarioIterationRuleInput{})).
+			scenarIterRulesRouter.With(httpin.NewInput(dto.CreateScenarioIterationRuleInput{})).
 				With(api.enforcePermissionMiddleware(models.SCENARIO_CREATE)).
 				Post("/", api.CreateScenarioIterationRule())
 
@@ -96,7 +96,7 @@ func (api *API) routes() {
 				r.With(httpin.NewInput(GetScenarioIterationRuleInput{})).
 					Get("/", api.GetScenarioIterationRule())
 
-				r.With(httpin.NewInput(UpdateScenarioIterationRuleInput{})).
+				r.With(httpin.NewInput(dto.UpdateScenarioIterationRuleInput{})).
 					With(api.enforcePermissionMiddleware(models.SCENARIO_CREATE)).
 					Put("/", api.UpdateScenarioIterationRule())
 			})
@@ -105,10 +105,10 @@ func (api *API) routes() {
 		authedRouter.Route("/scenario-publications", func(scenarPublicationsRouter chi.Router) {
 			scenarPublicationsRouter.Use(api.enforcePermissionMiddleware(models.SCENARIO_READ))
 
-			scenarPublicationsRouter.With(httpin.NewInput(ListScenarioPublicationsInput{})).
+			scenarPublicationsRouter.With(httpin.NewInput(dto.ListScenarioPublicationsInput{})).
 				Get("/", api.ListScenarioPublications())
 
-			scenarPublicationsRouter.With(httpin.NewInput(CreateScenarioPublicationInput{})).
+			scenarPublicationsRouter.With(httpin.NewInput(dto.CreateScenarioPublicationInput{})).
 				With(api.enforcePermissionMiddleware(models.SCENARIO_PUBLISH)).
 				Post("/", api.CreateScenarioPublication())
 

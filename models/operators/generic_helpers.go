@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"marble/marble-backend/models"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -23,7 +22,7 @@ func getPayloadFieldGeneric[T string | bool | float64](d DataAccessor, fieldName
 		return output, fmt.Errorf("Payload field %s is not a pointer to the right type %T", "account_id", output)
 	}
 	if fieldPointer == nil {
-		return output, fmt.Errorf("Payload field %s is null: %w", "account_id", models.OperatorNullValueReadError)
+		return output, fmt.Errorf("Payload field %s is null: %w", "account_id", OperatorNullValueReadError)
 	}
 	output = *fieldPointer
 
@@ -35,7 +34,7 @@ func queryDbFieldGeneric[T float64 | string](ctx context.Context, db *pgxpool.Po
 	rows := db.QueryRow(ctx, sql, args...)
 	err := rows.Scan(&output)
 	if err != nil && errors.Is(err, pgx.ErrNoRows) {
-		return output, fmt.Errorf("No rows scanned while reading DB: %w", models.OperatorNoRowsReadInDbError)
+		return output, fmt.Errorf("No rows scanned while reading DB: %w", OperatorNoRowsReadInDbError)
 	}
 	return output, err
 }

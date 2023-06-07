@@ -38,7 +38,7 @@ type APIDecisionScenario struct {
 	Version     int    `json:"version"`
 }
 
-func NewAPIDecision(decision app.Decision) APIDecision {
+func NewAPIDecision(decision models.Decision) APIDecision {
 	apiDecision := APIDecision{
 		ID:                decision.ID,
 		CreatedAt:         decision.CreatedAt,
@@ -76,7 +76,7 @@ type APIDecisionRule struct {
 	Error         *APIError `json:"error"`
 }
 
-func NewAPIDecisionRule(rule app.RuleExecution) APIDecisionRule {
+func NewAPIDecisionRule(rule models.RuleExecution) APIDecisionRule {
 	apiDecisionRule := APIDecisionRule{
 		Name:          rule.Rule.Name,
 		Description:   rule.Rule.Description,
@@ -112,7 +112,7 @@ func (api *API) handleGetDecision() http.HandlerFunc {
 
 		usecase := api.usecases.NewDecisionUsecase()
 		decision, err := usecase.GetDecision(ctx, orgID, decisionID)
-		if errors.Is(err, app.ErrNotFoundInRepository) {
+		if errors.Is(err, models.NotFoundInRepositoryError) {
 			http.Error(w, "", http.StatusNotFound)
 			return
 		} else if err != nil {
@@ -201,7 +201,7 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 		}
 
 		payloadStructWithReader, err := app.ParseToDataModelObject(table, requestData.TriggerObjectRaw)
-		if errors.Is(err, app.ErrFormatValidation) {
+		if errors.Is(err, models.FormatValidationError) {
 			http.Error(w, "Format validation error", http.StatusUnprocessableEntity) // 422
 			return
 		} else if err != nil {

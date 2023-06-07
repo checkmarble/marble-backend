@@ -4,9 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"marble/marble-backend/app"
-	"marble/marble-backend/app/operators"
 	"marble/marble-backend/models"
+	"marble/marble-backend/models/operators"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/utils"
 	"runtime/debug"
@@ -23,35 +22,35 @@ type DecisionUsecase struct {
 	scenarioIterationReadRepository repositories.ScenarioIterationReadRepository
 }
 
-func (usecase *DecisionUsecase) GetDecision(ctx context.Context, orgID string, decisionID string) (app.Decision, error) {
+func (usecase *DecisionUsecase) GetDecision(ctx context.Context, orgID string, decisionID string) (models.Decision, error) {
 	return usecase.decisionRepository.GetDecision(ctx, orgID, decisionID)
 }
 
-func (usecase *DecisionUsecase) ListDecisions(ctx context.Context, orgID string) ([]app.Decision, error) {
+func (usecase *DecisionUsecase) ListDecisions(ctx context.Context, orgID string) ([]models.Decision, error) {
 	return usecase.decisionRepository.ListDecisions(ctx, orgID)
 }
 
-func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models.CreateDecisionInput, logger *slog.Logger) (app.Decision, error) {
+func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models.CreateDecisionInput, logger *slog.Logger) (models.Decision, error) {
 	scenario, err := usecase.scenarioReadRepository.GetScenario(ctx, input.OrganizationID, input.ScenarioID)
-	if errors.Is(err, app.ErrNotFoundInRepository) {
-		return app.Decision{}, fmt.Errorf("Scenario not found: %w", models.NotFoundError)
+	if errors.Is(err, models.NotFoundInRepositoryError) {
+		return models.Decision{}, fmt.Errorf("Scenario not found: %w", models.NotFoundError)
 	} else if err != nil {
-		return app.Decision{}, fmt.Errorf("error getting scenario: %w", err)
+		return models.Decision{}, fmt.Errorf("error getting scenario: %w", err)
 	}
 
 	dm, err := usecase.datamodelRepository.GetDataModel(ctx, input.OrganizationID)
-	if errors.Is(err, app.ErrNotFoundInRepository) {
-		return app.Decision{}, fmt.Errorf("Data model not found: %w", models.NotFoundError)
+	if errors.Is(err, models.NotFoundInRepositoryError) {
+		return models.Decision{}, fmt.Errorf("Data model not found: %w", models.NotFoundError)
 	} else if err != nil {
-		return app.Decision{}, fmt.Errorf("error getting data model: %w", err)
+		return models.Decision{}, fmt.Errorf("error getting data model: %w", err)
 	}
 
 	scenarioExecution, err := usecase.EvalScenario(ctx, scenario, input.PayloadStructWithReader, dm, logger)
 	if err != nil {
-		return app.Decision{}, fmt.Errorf("error evaluating scenario: %w", err)
+		return models.Decision{}, fmt.Errorf("error evaluating scenario: %w", err)
 	}
 
-	d := app.Decision{
+	d := models.Decision{
 		PayloadForArchive:   input.PayloadForArchive,
 		Outcome:             scenarioExecution.Outcome,
 		ScenarioID:          scenarioExecution.ScenarioID,
@@ -64,13 +63,13 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 
 	createdDecision, err := usecase.decisionRepository.StoreDecision(ctx, input.OrganizationID, d)
 	if err != nil {
-		return app.Decision{}, fmt.Errorf("error storing decision: %w", err)
+		return models.Decision{}, fmt.Errorf("error storing decision: %w", err)
 	}
 
 	return createdDecision, nil
 }
 
-func (usecase *DecisionUsecase) EvalScenario(ctx context.Context, scenario app.Scenario, payloadStructWithReader models.Payload, dataModel models.DataModel, logger *slog.Logger) (se app.ScenarioExecution, err error) {
+func (usecase *DecisionUsecase) EvalScenario(ctx context.Context, scenario models.Scenario, payloadStructWithReader models.Payload, dataModel models.DataModel, logger *slog.Logger) (se models.ScenarioExecution, err error) {
 
 	///////////////////////////////
 	// Recover in case the evaluation panicked.
@@ -81,8 +80,8 @@ func (usecase *DecisionUsecase) EvalScenario(ctx context.Context, scenario app.S
 			logger.WarnCtx(ctx, "recovered from panic during Eval. stacktrace from panic: ")
 			logger.WarnCtx(ctx, string(debug.Stack()))
 
-			err = app.ErrPanicInScenarioEvalution
-			se = app.ScenarioExecution{}
+			err = models.PanicInScenarioEvalutionError
+			se = models.ScenarioExecution{}
 		}
 	}()
 
@@ -90,26 +89,26 @@ func (usecase *DecisionUsecase) EvalScenario(ctx context.Context, scenario app.S
 
 	// If the scenario has no live version, don't try to Eval() it, return early
 	if scenario.LiveVersionID == nil {
-		return app.ScenarioExecution{}, app.ErrScenarioHasNoLiveVersion
+		return models.ScenarioExecution{}, models.ScenarioHasNoLiveVersionError
 	}
 
 	orgID, err := utils.OrgIDFromCtx(ctx, nil)
 	if err != nil {
-		return app.ScenarioExecution{}, err
+		return models.ScenarioExecution{}, err
 	}
 	liveVersion, err := usecase.scenarioIterationReadRepository.GetScenarioIteration(ctx, orgID, *scenario.LiveVersionID)
 	if err != nil {
-		return app.ScenarioExecution{}, err
+		return models.ScenarioExecution{}, err
 	}
 
-	publishedVersion, err := app.NewPublishedScenarioIteration(liveVersion)
+	publishedVersion, err := models.NewPublishedScenarioIteration(liveVersion)
 	if err != nil {
-		return app.ScenarioExecution{}, err
+		return models.ScenarioExecution{}, err
 	}
 
 	// Check the scenario & trigger_object's types
 	if scenario.TriggerObjectType != string(payloadStructWithReader.Table.Name) {
-		return app.ScenarioExecution{}, app.ErrScenarioTriggerTypeAndTiggerObjectTypeMismatch
+		return models.ScenarioExecution{}, models.ScenarioTriggerTypeAndTiggerObjectTypeMismatchError
 	}
 
 	dataAccessor := DataAccessor{DataModel: dataModel, Payload: payloadStructWithReader, dbPoolRepository: usecase.dbPoolRepository, ingestedDataReadRepository: usecase.ingestedDataReadRepository}
@@ -117,20 +116,20 @@ func (usecase *DecisionUsecase) EvalScenario(ctx context.Context, scenario app.S
 	// Evaluate the trigger
 	triggerPassed, err := publishedVersion.Body.TriggerCondition.Eval(ctx, &dataAccessor)
 	if err != nil {
-		return app.ScenarioExecution{}, err
+		return models.ScenarioExecution{}, err
 	}
 
 	if !triggerPassed {
-		return app.ScenarioExecution{}, app.ErrScenarioTriggerConditionAndTriggerObjectMismatch
+		return models.ScenarioExecution{}, models.ScenarioTriggerConditionAndTriggerObjectMismatchError
 	}
 
 	// Evaluate all rules
 	score := 0
-	ruleExecutions := make([]app.RuleExecution, 0)
+	ruleExecutions := make([]models.RuleExecution, 0)
 	for _, rule := range publishedVersion.Body.Rules {
 		scoreModifier, ruleExecution, err := evalScenarioRule(ctx, rule, &dataAccessor, logger)
 		if err != nil {
-			return app.ScenarioExecution{}, err
+			return models.ScenarioExecution{}, err
 		}
 		score += scoreModifier
 		ruleExecutions = append(ruleExecutions, ruleExecution)
@@ -150,7 +149,7 @@ func (usecase *DecisionUsecase) EvalScenario(ctx context.Context, scenario app.S
 	}
 
 	// Build ScenarioExecution as result
-	se = app.ScenarioExecution{
+	se = models.ScenarioExecution{
 		ScenarioID:          scenario.ID,
 		ScenarioName:        scenario.Name,
 		ScenarioDescription: scenario.Description,
@@ -165,10 +164,10 @@ func (usecase *DecisionUsecase) EvalScenario(ctx context.Context, scenario app.S
 	return se, nil
 }
 
-func evalScenarioRule(ctx context.Context, rule app.Rule, dataAccessor operators.DataAccessor, logger *slog.Logger) (int, app.RuleExecution, error) {
+func evalScenarioRule(ctx context.Context, rule models.Rule, dataAccessor operators.DataAccessor, logger *slog.Logger) (int, models.RuleExecution, error) {
 	// Evaluate single rule
 	score := 0
-	ruleExecution, err := rule.Eval(ctx, dataAccessor)
+	ruleExecution, err := EvalRule(ctx, rule, dataAccessor)
 	if err != nil {
 		ruleExecution.Rule = rule
 		ruleExecution, err = setRuleExecutionError(ruleExecution, err)
@@ -196,16 +195,37 @@ func evalScenarioRule(ctx context.Context, rule app.Rule, dataAccessor operators
 	return score, ruleExecution, nil
 }
 
-func setRuleExecutionError(ruleExecution app.RuleExecution, err error) (app.RuleExecution, error) {
-	if errors.Is(err, models.OperatorNullValueReadError) {
-		ruleExecution.Error = app.NullFieldRead
-	} else if errors.Is(err, models.OperatorDivisionByZeroError) {
-		ruleExecution.Error = app.DivisionByZero
-	} else if errors.Is(err, models.OperatorNoRowsReadInDbError) {
-		ruleExecution.Error = app.NoRowsRead
+func setRuleExecutionError(ruleExecution models.RuleExecution, err error) (models.RuleExecution, error) {
+	if errors.Is(err, operators.OperatorNullValueReadError) {
+		ruleExecution.Error = models.NullFieldRead
+	} else if errors.Is(err, operators.OperatorDivisionByZeroError) {
+		ruleExecution.Error = models.DivisionByZero
+	} else if errors.Is(err, operators.OperatorNoRowsReadInDbError) {
+		ruleExecution.Error = models.NoRowsRead
 	} else {
 		// return early in case of an unexpected error
 		return ruleExecution, err
 	}
 	return ruleExecution, nil
+}
+
+func EvalRule(ctx context.Context, rule models.Rule, dataAccessor operators.DataAccessor) (models.RuleExecution, error) {
+	// Eval the Node
+	res, err := rule.Formula.Eval(ctx, dataAccessor)
+	if err != nil {
+		return models.RuleExecution{}, fmt.Errorf("error while evaluating rule %s: %w", rule.Name, err)
+	}
+
+	score := 0
+	if res {
+		score = rule.ScoreModifier
+	}
+
+	re := models.RuleExecution{
+		Rule:                rule,
+		Result:              res,
+		ResultScoreModifier: score,
+	}
+
+	return re, nil
 }

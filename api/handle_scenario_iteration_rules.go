@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"marble/marble-backend/app"
-	"marble/marble-backend/app/operators"
+	"marble/marble-backend/dto"
+	"marble/marble-backend/models"
+	"marble/marble-backend/models/operators"
 	"marble/marble-backend/utils"
 	"net/http"
 	"time"
@@ -25,7 +26,7 @@ type APIScenarioIterationRule struct {
 	CreatedAt           time.Time       `json:"createdAt"`
 }
 
-func NewAPIScenarioIterationRule(rule app.Rule) (APIScenarioIterationRule, error) {
+func NewAPIScenarioIterationRule(rule models.Rule) (APIScenarioIterationRule, error) {
 	formula, err := rule.Formula.MarshalJSON()
 	if err != nil {
 		return APIScenarioIterationRule{}, fmt.Errorf("unable to marshal formula: %w", err)
@@ -61,7 +62,7 @@ func (api *API) ListScenarioIterationRules() http.HandlerFunc {
 
 		options := &utils.PtrToOptions{OmitZero: true}
 		usecase := api.usecases.NewScenarioIterationRuleUsecase()
-		rules, err := usecase.ListScenarioIterationRules(ctx, orgID, app.GetScenarioIterationRulesFilters{
+		rules, err := usecase.ListScenarioIterationRules(ctx, orgID, models.GetScenarioIterationRulesFilters{
 			ScenarioIterationID: utils.PtrTo(input.ScenarioIterationID, options),
 		})
 		if err != nil {
@@ -90,19 +91,6 @@ func (api *API) ListScenarioIterationRules() http.HandlerFunc {
 	}
 }
 
-type CreateScenarioIterationRuleInputBody struct {
-	ScenarioIterationID string          `json:"scenarioIterationId"`
-	DisplayOrder        int             `json:"displayOrder"`
-	Name                string          `json:"name"`
-	Description         string          `json:"description"`
-	Formula             json.RawMessage `json:"formula"`
-	ScoreModifier       int             `json:"scoreModifier"`
-}
-
-type CreateScenarioIterationRuleInput struct {
-	Body *CreateScenarioIterationRuleInputBody `in:"body=json"`
-}
-
 func (api *API) CreateScenarioIterationRule() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -112,7 +100,7 @@ func (api *API) CreateScenarioIterationRule() http.HandlerFunc {
 			return
 		}
 
-		input := ctx.Value(httpin.Input).(*CreateScenarioIterationRuleInput)
+		input := ctx.Value(httpin.Input).(*dto.CreateScenarioIterationRuleInput)
 		logger := api.logger.With(slog.String("scenarioIterationId", input.Body.ScenarioIterationID), slog.String("orgID", orgID))
 
 		formula, err := operators.UnmarshalOperatorBool(input.Body.Formula)
@@ -123,7 +111,7 @@ func (api *API) CreateScenarioIterationRule() http.HandlerFunc {
 		}
 
 		usecase := api.usecases.NewScenarioIterationRuleUsecase()
-		rule, err := usecase.CreateScenarioIterationRule(ctx, orgID, app.CreateRuleInput{
+		rule, err := usecase.CreateScenarioIterationRule(ctx, orgID, models.CreateRuleInput{
 			ScenarioIterationID: input.Body.ScenarioIterationID,
 			DisplayOrder:        input.Body.DisplayOrder,
 			Name:                input.Body.Name,
@@ -170,7 +158,7 @@ func (api *API) GetScenarioIterationRule() http.HandlerFunc {
 
 		usecase := api.usecases.NewScenarioIterationRuleUsecase()
 		rule, err := usecase.GetScenarioIterationRule(ctx, orgID, input.RuleID)
-		if errors.Is(err, app.ErrNotFoundInRepository) {
+		if errors.Is(err, models.NotFoundInRepositoryError) {
 			http.Error(w, "", http.StatusNotFound)
 			return
 		} else if err != nil {
@@ -195,19 +183,6 @@ func (api *API) GetScenarioIterationRule() http.HandlerFunc {
 	}
 }
 
-type UpdateScenarioIterationRuleBody struct {
-	DisplayOrder  *int             `json:"displayOrder,omitempty"`
-	Name          *string          `json:"name,omitempty"`
-	Description   *string          `json:"description,omitempty"`
-	Formula       *json.RawMessage `json:"formula,omitempty"`
-	ScoreModifier *int             `json:"scoreModifier,omitempty"`
-}
-
-type UpdateScenarioIterationRuleInput struct {
-	RuleID string                           `in:"path=ruleID"`
-	Body   *UpdateScenarioIterationRuleBody `in:"body=json"`
-}
-
 func (api *API) UpdateScenarioIterationRule() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -217,10 +192,10 @@ func (api *API) UpdateScenarioIterationRule() http.HandlerFunc {
 			return
 		}
 
-		input := ctx.Value(httpin.Input).(*UpdateScenarioIterationRuleInput)
+		input := ctx.Value(httpin.Input).(*dto.UpdateScenarioIterationRuleInput)
 		logger := api.logger.With(slog.String("ruleId", input.RuleID), slog.String("orgID", orgID))
 
-		updateRuleInput := app.UpdateRuleInput{
+		updateRuleInput := models.UpdateRuleInput{
 			ID:            input.RuleID,
 			DisplayOrder:  input.Body.DisplayOrder,
 			Name:          input.Body.Name,
@@ -240,10 +215,10 @@ func (api *API) UpdateScenarioIterationRule() http.HandlerFunc {
 
 		usecase := api.usecases.NewScenarioIterationRuleUsecase()
 		updatedRule, err := usecase.UpdateScenarioIterationRule(ctx, orgID, updateRuleInput)
-		if errors.Is(err, app.ErrScenarioIterationNotDraft) {
+		if errors.Is(err, models.ErrScenarioIterationNotDraft) {
 			http.Error(w, "", http.StatusForbidden)
 			return
-		} else if errors.Is(err, app.ErrNotFoundInRepository) {
+		} else if errors.Is(err, models.NotFoundInRepositoryError) {
 			http.Error(w, "", http.StatusNotFound)
 			return
 		} else if err != nil {

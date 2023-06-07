@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"marble/marble-backend/app"
+	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
 	"time"
 
@@ -23,15 +23,15 @@ type dbScenarioPublication struct {
 	CreatedAt           time.Time `db:"created_at"`
 }
 
-func (sp *dbScenarioPublication) toDomain() app.ScenarioPublication {
-	return app.ScenarioPublication{
+func (sp *dbScenarioPublication) toDomain() models.ScenarioPublication {
+	return models.ScenarioPublication{
 		ID:    sp.ID,
 		Rank:  sp.Rank,
 		OrgID: sp.OrgID,
 		// UserID:              sp.UserID,
 		ScenarioID:          sp.ScenarioID,
 		ScenarioIterationID: sp.ScenarioIterationID,
-		PublicationAction:   app.PublicationActionFrom(sp.PublicationAction),
+		PublicationAction:   models.PublicationActionFrom(sp.PublicationAction),
 		CreatedAt:           sp.CreatedAt,
 	}
 }
@@ -43,7 +43,7 @@ type ListScenarioPublicationsFilters struct {
 	PublicationAction   *string `db:"publication_action"`
 }
 
-func (r *PGRepository) ListScenarioPublications(ctx context.Context, orgID string, filters app.ListScenarioPublicationsFilters) ([]app.ScenarioPublication, error) {
+func (r *PGRepository) ListScenarioPublications(ctx context.Context, orgID string, filters models.ListScenarioPublicationsFilters) ([]models.ScenarioPublication, error) {
 	sql, args, err := r.queryBuilder.
 		Select(ColumnList[dbScenarioPublication]()...).
 		From("scenario_publications").
@@ -62,7 +62,7 @@ func (r *PGRepository) ListScenarioPublications(ctx context.Context, orgID strin
 	rows, _ := r.db.Query(ctx, sql, args...)
 	scenarioPublications, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbScenarioPublication])
 
-	scenarioPubblicationDTOs := make([]app.ScenarioPublication, len(scenarioPublications))
+	scenarioPubblicationDTOs := make([]models.ScenarioPublication, len(scenarioPublications))
 	for i, scenario := range scenarioPublications {
 		scenarioPubblicationDTOs[i] = scenario.toDomain()
 	}
@@ -95,7 +95,7 @@ func (r *PGRepository) createScenarioPublication(ctx context.Context, tx pgx.Tx,
 	return createdScenarioPublication, err
 }
 
-func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID string, sp app.CreateScenarioPublicationInput) ([]app.ScenarioPublication, error) {
+func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID string, sp models.CreateScenarioPublicationInput) ([]models.ScenarioPublication, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to start a transaction: %w", err)
@@ -116,14 +116,14 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 	var liveSIID *string
 	err = tx.QueryRow(ctx, sql, args...).Scan(&scenarioID, &liveSIID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, app.ErrNotFoundInRepository
+		return nil, models.NotFoundInRepositoryError
 	} else if err != nil {
 		return nil, fmt.Errorf("unable to query scenario iteration: %w", err)
 	}
 
-	var scenarioPublications []app.ScenarioPublication
+	var scenarioPublications []models.ScenarioPublication
 	switch sp.PublicationAction {
-	case app.Publish:
+	case models.Publish:
 		if liveSIID != nil {
 			if *liveSIID == sp.ScenarioIterationID {
 				return nil, fmt.Errorf("scenario iteration(id: %s) is already live", *liveSIID)
@@ -133,7 +133,7 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 				OrgID:               orgID,
 				ScenarioID:          scenarioID,
 				ScenarioIterationID: *liveSIID,
-				PublicationAction:   app.Unpublish.String(),
+				PublicationAction:   models.Unpublish.String(),
 			})
 			if err != nil {
 				return nil, fmt.Errorf("unable to unpublish old scenario iteration: %w", err)
@@ -151,7 +151,7 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 			OrgID:               orgID,
 			ScenarioID:          scenarioID,
 			ScenarioIterationID: sp.ScenarioIterationID,
-			PublicationAction:   app.Publish.String(),
+			PublicationAction:   models.Publish.String(),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("unable to publish new scenario iteration: \n%w", err)
@@ -163,7 +163,7 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 			return nil, fmt.Errorf("unable to publish live scenario iteration(id: %s): \n%w", sp.ScenarioIterationID, err)
 		}
 
-	case app.Unpublish:
+	case models.Unpublish:
 		if liveSIID == nil || *liveSIID != sp.ScenarioIterationID {
 			return nil, fmt.Errorf("unable to unpublish: scenario iteration(id: %s) is not live", sp.ScenarioIterationID)
 		}
@@ -172,7 +172,7 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 			OrgID:               orgID,
 			ScenarioID:          scenarioID,
 			ScenarioIterationID: sp.ScenarioIterationID,
-			PublicationAction:   app.Unpublish.String(),
+			PublicationAction:   models.Unpublish.String(),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("unable to unpublish provided scenario iteration: \n%w", err)
@@ -196,7 +196,7 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 	return scenarioPublications, nil
 }
 
-func (r *PGRepository) GetScenarioPublication(ctx context.Context, orgID string, ID string) (app.ScenarioPublication, error) {
+func (r *PGRepository) GetScenarioPublication(ctx context.Context, orgID string, ID string) (models.ScenarioPublication, error) {
 	sql, args, err := r.queryBuilder.
 		Select(ColumnList[dbScenarioPublication]()...).
 		From("scenario_publications").
@@ -204,15 +204,15 @@ func (r *PGRepository) GetScenarioPublication(ctx context.Context, orgID string,
 		Where("id = ?", ID).
 		OrderBy("rank DESC").ToSql()
 	if err != nil {
-		return app.ScenarioPublication{}, fmt.Errorf("unable to build scenario publication query: %w", err)
+		return models.ScenarioPublication{}, fmt.Errorf("unable to build scenario publication query: %w", err)
 	}
 
 	rows, _ := r.db.Query(ctx, sql, args...)
 	scenarioPublication, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenarioPublication])
 	if errors.Is(err, pgx.ErrNoRows) {
-		return app.ScenarioPublication{}, app.ErrNotFoundInRepository
+		return models.ScenarioPublication{}, models.NotFoundInRepositoryError
 	} else if err != nil {
-		return app.ScenarioPublication{}, fmt.Errorf("unable to get scenario publication: %w", err)
+		return models.ScenarioPublication{}, fmt.Errorf("unable to get scenario publication: %w", err)
 	}
 
 	return scenarioPublication.toDomain(), err

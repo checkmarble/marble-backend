@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"time"
 
-	"marble/marble-backend/app"
 	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
 
@@ -31,14 +30,14 @@ type dbDecision struct {
 	TriggerObjectType   string      `db:"trigger_object_type"`
 }
 
-func (d *dbDecision) toDomain() app.Decision {
+func (d *dbDecision) toDomain() models.Decision {
 	triggerObject := make(map[string]interface{})
 	err := json.Unmarshal(d.TriggerObjectRaw, &triggerObject)
 	if err != nil {
 		panic(err)
 	}
 
-	return app.Decision{
+	return models.Decision{
 		ID:                  d.ID,
 		CreatedAt:           d.CreatedAt,
 		Outcome:             models.OutcomeFrom(d.Outcome),
@@ -57,7 +56,7 @@ type DbDecisionWithRules struct {
 	Rules []dbDecisionRule
 }
 
-func (r *PGRepository) GetDecision(ctx context.Context, orgID string, decisionID string) (app.Decision, error) {
+func (r *PGRepository) GetDecision(ctx context.Context, orgID string, decisionID string) (models.Decision, error) {
 	sql, args, err := r.queryBuilder.
 		Select(
 			"d.*",
@@ -70,15 +69,15 @@ func (r *PGRepository) GetDecision(ctx context.Context, orgID string, decisionID
 		GroupBy("d.id").
 		ToSql()
 	if err != nil {
-		return app.Decision{}, fmt.Errorf("unable to build scenario iteration query: %w", err)
+		return models.Decision{}, fmt.Errorf("unable to build scenario iteration query: %w", err)
 	}
 
 	rows, _ := r.db.Query(ctx, sql, args...)
 	decision, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[DbDecisionWithRules])
 	if errors.Is(err, pgx.ErrNoRows) {
-		return app.Decision{}, app.ErrNotFoundInRepository
+		return models.Decision{}, models.NotFoundInRepositoryError
 	} else if err != nil {
-		return app.Decision{}, fmt.Errorf("unable to get decision: %w", err)
+		return models.Decision{}, fmt.Errorf("unable to get decision: %w", err)
 	}
 
 	decisionDTO := decision.toDomain()
@@ -88,7 +87,7 @@ func (r *PGRepository) GetDecision(ctx context.Context, orgID string, decisionID
 	return decisionDTO, nil
 }
 
-func (r *PGRepository) ListDecisions(ctx context.Context, orgID string) ([]app.Decision, error) {
+func (r *PGRepository) ListDecisions(ctx context.Context, orgID string) ([]models.Decision, error) {
 	sql, args, err := r.queryBuilder.
 		Select(
 			"d.*",
@@ -102,7 +101,7 @@ func (r *PGRepository) ListDecisions(ctx context.Context, orgID string) ([]app.D
 		Limit(1000).
 		ToSql()
 	if err != nil {
-		return []app.Decision{}, fmt.Errorf("unable to build scenario iteration query: %w", err)
+		return []models.Decision{}, fmt.Errorf("unable to build scenario iteration query: %w", err)
 	}
 
 	rows, _ := r.db.Query(ctx, sql, args...)
@@ -110,7 +109,7 @@ func (r *PGRepository) ListDecisions(ctx context.Context, orgID string) ([]app.D
 	if err != nil {
 		return nil, fmt.Errorf("unable to list decisions: %w", err)
 	}
-	decisions := make([]app.Decision, len(decisionsDTOs))
+	decisions := make([]models.Decision, len(decisionsDTOs))
 	for i, dbDecision := range decisionsDTOs {
 		decisions[i] = dbDecision.toDomain()
 		for _, dbRule := range dbDecision.Rules {
@@ -121,10 +120,10 @@ func (r *PGRepository) ListDecisions(ctx context.Context, orgID string) ([]app.D
 	return decisions, nil
 }
 
-func (r *PGRepository) StoreDecision(ctx context.Context, orgID string, decision app.Decision) (app.Decision, error) {
+func (r *PGRepository) StoreDecision(ctx context.Context, orgID string, decision models.Decision) (models.Decision, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
-		return app.Decision{}, fmt.Errorf("unable to start a transaction: %w", err)
+		return models.Decision{}, fmt.Errorf("unable to start a transaction: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
@@ -158,18 +157,18 @@ func (r *PGRepository) StoreDecision(ctx context.Context, orgID string, decision
 		).
 		Suffix("RETURNING *").ToSql()
 	if err != nil {
-		return app.Decision{}, fmt.Errorf("unable to build decision query: %w", err)
+		return models.Decision{}, fmt.Errorf("unable to build decision query: %w", err)
 	}
 
 	rows, _ := tx.Query(ctx, sql, args...)
 	createdDecision, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbDecision])
 	if err != nil {
-		return app.Decision{}, fmt.Errorf("unable to create decision: %w", err)
+		return models.Decision{}, fmt.Errorf("unable to create decision: %w", err)
 	}
 
 	createdDecisionRules, err := r.createDecisionRules(ctx, tx, orgID, createdDecision.ID, decision.RuleExecutions)
 	if err != nil {
-		return app.Decision{}, fmt.Errorf("unable to create decision rules: %w", err)
+		return models.Decision{}, fmt.Errorf("unable to create decision rules: %w", err)
 	}
 
 	createdDecisionDTO := createdDecision.toDomain()
@@ -177,7 +176,7 @@ func (r *PGRepository) StoreDecision(ctx context.Context, orgID string, decision
 
 	err = tx.Commit(ctx)
 	if err != nil {
-		return app.Decision{}, fmt.Errorf("transaction issue: %w", err)
+		return models.Decision{}, fmt.Errorf("transaction issue: %w", err)
 	}
 
 	return createdDecisionDTO, nil

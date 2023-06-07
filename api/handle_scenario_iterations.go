@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"marble/marble-backend/app"
-	"marble/marble-backend/app/operators"
+	"marble/marble-backend/dto"
+	"marble/marble-backend/models"
+	"marble/marble-backend/models/operators"
 	"marble/marble-backend/utils"
 	"net/http"
 	"time"
@@ -29,7 +30,7 @@ type APIScenarioIteration struct {
 	UpdatedAt  time.Time `json:"updatedAt"`
 }
 
-func NewAPIScenarioIteration(si app.ScenarioIteration) APIScenarioIteration {
+func NewAPIScenarioIteration(si models.ScenarioIteration) APIScenarioIteration {
 	return APIScenarioIteration{
 		ID:         si.ID,
 		ScenarioID: si.ScenarioID,
@@ -44,7 +45,7 @@ type APIScenarioIterationWithBody struct {
 	Body APIScenarioIterationBody `json:"body"`
 }
 
-func NewAPIScenarioIterationWithBody(si app.ScenarioIteration) (APIScenarioIterationWithBody, error) {
+func NewAPIScenarioIterationWithBody(si models.ScenarioIteration) (APIScenarioIterationWithBody, error) {
 	body := APIScenarioIterationBody{
 		ScoreReviewThreshold: si.Body.ScoreReviewThreshold,
 		ScoreRejectThreshold: si.Body.ScoreRejectThreshold,
@@ -90,7 +91,7 @@ func (api *API) ListScenarioIterations() http.HandlerFunc {
 
 		options := &utils.PtrToOptions{OmitZero: true}
 		usecase := api.usecases.NewScenarioIterationUsecase()
-		scenarioIterations, err := usecase.ListScenarioIterations(ctx, orgID, app.GetScenarioIterationFilters{
+		scenarioIterations, err := usecase.ListScenarioIterations(ctx, orgID, models.GetScenarioIterationFilters{
 			ScenarioID: utils.PtrTo(input.ScenarioID, options),
 		})
 		if err != nil {
@@ -113,20 +114,6 @@ func (api *API) ListScenarioIterations() http.HandlerFunc {
 	}
 }
 
-type CreateScenarioIterationBody struct {
-	ScenarioID string `json:"scenarioId"`
-	Body       *struct {
-		TriggerCondition     *json.RawMessage                       `json:"triggerCondition,omitempty"`
-		Rules                []CreateScenarioIterationRuleInputBody `json:"rules"`
-		ScoreReviewThreshold *int                                   `json:"scoreReviewThreshold,omitempty"`
-		ScoreRejectThreshold *int                                   `json:"scoreRejectThreshold,omitempty"`
-	} `json:"body,omitempty"`
-}
-
-type CreateScenarioIterationInput struct {
-	Payload *CreateScenarioIterationBody `in:"body=json"`
-}
-
 func (api *API) CreateScenarioIteration() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -136,18 +123,18 @@ func (api *API) CreateScenarioIteration() http.HandlerFunc {
 			return
 		}
 
-		input := ctx.Value(httpin.Input).(*CreateScenarioIterationInput)
+		input := ctx.Value(httpin.Input).(*dto.CreateScenarioIterationInput)
 		logger := api.logger.With(slog.String("scenarioId", input.Payload.ScenarioID), slog.String("orgId", orgID))
 
-		createScenarioIterationInput := app.CreateScenarioIterationInput{
+		createScenarioIterationInput := models.CreateScenarioIterationInput{
 			ScenarioID: input.Payload.ScenarioID,
 		}
 
 		if input.Payload.Body != nil {
-			createScenarioIterationInput.Body = &app.CreateScenarioIterationBody{
+			createScenarioIterationInput.Body = &models.CreateScenarioIterationBody{
 				ScoreReviewThreshold: input.Payload.Body.ScoreReviewThreshold,
 				ScoreRejectThreshold: input.Payload.Body.ScoreRejectThreshold,
-				Rules:                make([]app.CreateRuleInput, len(input.Payload.Body.Rules)),
+				Rules:                make([]models.CreateRuleInput, len(input.Payload.Body.Rules)),
 			}
 
 			for i, rule := range input.Payload.Body.Rules {
@@ -157,7 +144,7 @@ func (api *API) CreateScenarioIteration() http.HandlerFunc {
 					http.Error(w, "", http.StatusUnprocessableEntity)
 					return
 				}
-				createScenarioIterationInput.Body.Rules[i] = app.CreateRuleInput{
+				createScenarioIterationInput.Body.Rules[i] = models.CreateRuleInput{
 					DisplayOrder:  rule.DisplayOrder,
 					Name:          rule.Name,
 					Description:   rule.Description,
@@ -218,7 +205,7 @@ func (api *API) GetScenarioIteration() http.HandlerFunc {
 
 		usecase := api.usecases.NewScenarioIterationUsecase()
 		si, err := usecase.GetScenarioIteration(ctx, orgID, input.ScenarioIterationID)
-		if errors.Is(err, app.ErrNotFoundInRepository) {
+		if errors.Is(err, models.NotFoundInRepositoryError) {
 			http.Error(w, "", http.StatusNotFound)
 			return
 		} else if err != nil {
@@ -242,19 +229,6 @@ func (api *API) GetScenarioIteration() http.HandlerFunc {
 	}
 }
 
-type UpdateScenarioIterationBody struct {
-	Body *struct {
-		TriggerCondition     *json.RawMessage `json:"triggerCondition,omitempty"`
-		ScoreReviewThreshold *int             `json:"scoreReviewThreshold,omitempty"`
-		ScoreRejectThreshold *int             `json:"scoreRejectThreshold,omitempty"`
-	} `json:"body,omtiempty"`
-}
-
-type UpdateScenarioIterationInput struct {
-	ScenarioIterationID string                       `in:"path=scenarioIterationID"`
-	Payload             *UpdateScenarioIterationBody `in:"body=json"`
-}
-
 func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -264,7 +238,7 @@ func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 			return
 		}
 
-		input := ctx.Value(httpin.Input).(*UpdateScenarioIterationInput)
+		input := ctx.Value(httpin.Input).(*dto.UpdateScenarioIterationInput)
 		logger := api.logger.With(slog.String("scenarioIterationId", input.ScenarioIterationID), slog.String("orgId", orgID))
 
 		if input.Payload.Body == nil {
@@ -272,9 +246,9 @@ func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 			return
 		}
 
-		appUpdateScenarioIterationInput := app.UpdateScenarioIterationInput{
+		appUpdateScenarioIterationInput := models.UpdateScenarioIterationInput{
 			ID: input.ScenarioIterationID,
-			Body: &app.UpdateScenarioIterationBody{
+			Body: &models.UpdateScenarioIterationBody{
 				ScoreReviewThreshold: input.Payload.Body.ScoreReviewThreshold,
 				ScoreRejectThreshold: input.Payload.Body.ScoreRejectThreshold,
 			},
@@ -292,11 +266,11 @@ func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 
 		usecase := api.usecases.NewScenarioIterationUsecase()
 		updatedSI, err := usecase.UpdateScenarioIteration(ctx, orgID, appUpdateScenarioIterationInput)
-		if errors.Is(err, app.ErrScenarioIterationNotDraft) {
+		if errors.Is(err, models.ErrScenarioIterationNotDraft) {
 			logger.WarnCtx(ctx, "Cannot update scenario iteration that is not in draft state: \n"+err.Error())
 			http.Error(w, "", http.StatusForbidden)
 			return
-		} else if errors.Is(err, app.ErrNotFoundInRepository) {
+		} else if errors.Is(err, models.NotFoundInRepositoryError) {
 			http.Error(w, "", http.StatusNotFound)
 			return
 		} else if err != nil {

@@ -3,7 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
-	"marble/marble-backend/app"
+	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
 	"net/http"
@@ -22,7 +22,7 @@ type APIScenario struct {
 	LiveVersionID     *string   `json:"liveVersionId,omitempty"`
 }
 
-func NewAPIScenario(scenario app.Scenario) APIScenario {
+func NewAPIScenario(scenario models.Scenario) APIScenario {
 	return APIScenario{
 		ID:                scenario.ID,
 		Name:              scenario.Name,
@@ -65,16 +65,6 @@ func (api *API) ListScenarios() http.HandlerFunc {
 	}
 }
 
-type CreateScenarioBody struct {
-	Name              string `json:"name"`
-	Description       string `json:"description"`
-	TriggerObjectType string `json:"triggerObjectType"`
-}
-
-type CreateScenarioInput struct {
-	Body *CreateScenarioBody `in:"body=json"`
-}
-
 func (api *API) CreateScenario() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -84,11 +74,11 @@ func (api *API) CreateScenario() http.HandlerFunc {
 			return
 		}
 
-		input := ctx.Value(httpin.Input).(*CreateScenarioInput)
+		input := ctx.Value(httpin.Input).(*dto.CreateScenarioInput)
 		logger := api.logger.With(slog.String("orgID", orgID))
 
 		usecase := api.usecases.NewScenarioUsecase()
-		scenario, err := usecase.CreateScenario(ctx, orgID, app.CreateScenarioInput{
+		scenario, err := usecase.CreateScenario(ctx, orgID, models.CreateScenarioInput{
 			Name:              input.Body.Name,
 			Description:       input.Body.Description,
 			TriggerObjectType: input.Body.TriggerObjectType,
@@ -144,16 +134,6 @@ func (api *API) GetScenario() http.HandlerFunc {
 	}
 }
 
-type UpdateScenarioBody struct {
-	Name        *string `json:"name,omitempty"`
-	Description *string `json:"description,omitempty"`
-}
-
-type UpdateScenarioInput struct {
-	ScenarioID string              `in:"path=scenarioID"`
-	Body       *UpdateScenarioBody `in:"body=json"`
-}
-
 func (api *API) UpdateScenario() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -163,16 +143,16 @@ func (api *API) UpdateScenario() http.HandlerFunc {
 			return
 		}
 
-		input := ctx.Value(httpin.Input).(*UpdateScenarioInput)
+		input := ctx.Value(httpin.Input).(*dto.UpdateScenarioInput)
 		logger := api.logger.With(slog.String("orgID", orgID), slog.String("scenarioID", input.ScenarioID))
 
 		usecase := api.usecases.NewScenarioUsecase()
-		scenario, err := usecase.UpdateScenario(ctx, orgID, app.UpdateScenarioInput{
+		scenario, err := usecase.UpdateScenario(ctx, orgID, models.UpdateScenarioInput{
 			ID:          input.ScenarioID,
 			Name:        input.Body.Name,
 			Description: input.Body.Description,
 		})
-		if errors.Is(err, app.ErrNotFoundInRepository) {
+		if errors.Is(err, models.NotFoundInRepositoryError) {
 			http.Error(w, "", http.StatusNotFound)
 			return
 		} else if err != nil {
