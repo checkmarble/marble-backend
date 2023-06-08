@@ -7,6 +7,7 @@ import (
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/operators"
 	"marble/marble-backend/repositories"
+	"marble/marble-backend/usecases/organization"
 	"marble/marble-backend/utils"
 	"runtime/debug"
 
@@ -14,7 +15,7 @@ import (
 )
 
 type DecisionUsecase struct {
-	dbPoolRepository                repositories.DbPoolRepository
+	orgTransactionFactory           organization.OrgTransactionFactory
 	ingestedDataReadRepository      repositories.IngestedDataReadRepository
 	decisionRepository              repositories.DecisionRepository
 	datamodelRepository             repositories.DataModelRepository
@@ -111,7 +112,16 @@ func (usecase *DecisionUsecase) EvalScenario(ctx context.Context, scenario model
 		return models.ScenarioExecution{}, models.ScenarioTriggerTypeAndTiggerObjectTypeMismatchError
 	}
 
-	dataAccessor := DataAccessor{DataModel: dataModel, Payload: payloadStructWithReader, dbPoolRepository: usecase.dbPoolRepository, ingestedDataReadRepository: usecase.ingestedDataReadRepository}
+	dbPool, err := usecase.orgTransactionFactory.OrganizationPool(orgID)
+	if err != nil {
+		return models.ScenarioExecution{}, err
+	}
+
+	dataAccessor := DataAccessor{
+		DataModel:                  dataModel,
+		Payload:                    payloadStructWithReader,
+		dbPool:                     dbPool,
+		ingestedDataReadRepository: usecase.ingestedDataReadRepository}
 
 	// Evaluate the trigger
 	triggerPassed, err := publishedVersion.Body.TriggerCondition.Eval(ctx, &dataAccessor)

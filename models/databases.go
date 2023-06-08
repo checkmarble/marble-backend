@@ -1,27 +1,34 @@
 package models
 
-// Mable backend connects to multiple databases simultaneously.
-// - One instance of Marble database (hardcoded).
-// - Multiple intances of client's databases.
-type DatabaseType int
-
-const (
-	DATABASE_TYPE_INVALID DatabaseType = iota
-	// Marble database: there isone just one in practice
-	DATABASE_TYPE_MARBLE
-	// client's database
-	DATABASE_TYPE_CLIENT
-)
-
 type PostgresConnection string
 
 type Database struct {
-	DatabaseType DatabaseType
-	Connection   PostgresConnection
+	Connection PostgresConnection
+}
+
+// SchemaType is use
+type DatabaseSchemaType int
+
+const (
+	// Marble Database schema
+	DATABASE_SCHEMA_TYPE_MARBLE DatabaseSchemaType = iota
+	// client's shema database
+	DATABASE_SCHEMA_TYPE_CLIENT
+)
+
+type DatabaseSchema struct {
+	SchemaType DatabaseSchemaType
+	Database   Database
+	Schema     string
 }
 
 // There is only one instance of Marble database
 var DATABASE_MARBLE = Database{
-	DatabaseType: DATABASE_TYPE_MARBLE,
-	Connection:   PostgresConnection("connection string to marble database"),
+	Connection: PostgresConnection("connection string to marble database"),
+}
+
+var DATABASE_MARBLE_SCHEMA = DatabaseSchema{
+	SchemaType: DATABASE_SCHEMA_TYPE_MARBLE,
+	Database:   DATABASE_MARBLE,
+	Schema:     "marble",
 }

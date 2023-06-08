@@ -66,7 +66,7 @@ func (usecase *MarbleTokenUseCase) NewMarbleToken(ctx context.Context, apiKey st
 			return "", time.Time{}, fmt.Errorf("firebase TokenID verification fail: %w", err)
 		}
 
-		user, err := repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE, func(tx repositories.Transaction) (models.User, error) {
+		user, err := repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.User, error) {
 
 			user, err := usecase.userRepository.UserByFirebaseUid(tx, identity.FirebaseUid)
 			if err != nil {

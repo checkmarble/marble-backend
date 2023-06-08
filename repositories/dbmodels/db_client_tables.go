@@ -18,6 +18,10 @@ var ClientTablesFields = pg_repository.ColumnList[DBClientTables]()
 func AdaptClientTable(db DBClientTables) models.ClientTables {
 	return models.ClientTables{
 		OrganizationId: db.OrgId,
-		Schema:         db.SchemaName,
+		DatabaseSchema: models.DatabaseSchema{
+			SchemaType: models.DATABASE_SCHEMA_TYPE_CLIENT,
+			Database:   models.DATABASE_MARBLE,
+			Schema:     db.SchemaName,
+		},
 	}
 }

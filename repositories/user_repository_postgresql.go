@@ -20,23 +20,15 @@ type UserRepository interface {
 }
 
 type UserRepositoryPostgresql struct {
-	queryBuilder squirrel.StatementBuilderType
-}
-
-func (repo *UserRepositoryPostgresql) toPostgresTransaction(transaction Transaction) TransactionPostgres {
-
-	tx := transaction.(TransactionPostgres)
-	if transaction.Database() != models.DATABASE_MARBLE {
-		panic("UserRepositoryPostgresql can only handle transactions in DATABASE_MARBLE")
-	}
-	return tx
+	transactionFactory TransactionFactory
+	queryBuilder       squirrel.StatementBuilderType
 }
 
 func (repo *UserRepositoryPostgresql) CreateUser(tx Transaction, createUser models.CreateUser) (models.UserId, error) {
 
 	userId := models.UserId(uuid.NewString())
 
-	pgTx := repo.toPostgresTransaction(tx)
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	var orgId *string
 	if len(createUser.OrganizationId) != 0 {
@@ -64,7 +56,7 @@ func (repo *UserRepositoryPostgresql) CreateUser(tx Transaction, createUser mode
 }
 
 func (repo *UserRepositoryPostgresql) DeleteUser(tx Transaction, userID models.UserId) error {
-	pgTx := repo.toPostgresTransaction(tx)
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	return SqlDelete(
 		pgTx,
@@ -73,7 +65,8 @@ func (repo *UserRepositoryPostgresql) DeleteUser(tx Transaction, userID models.U
 }
 
 func (repo *UserRepositoryPostgresql) UserByID(tx Transaction, userId models.UserId) (models.User, error) {
-	pgTx := repo.toPostgresTransaction(tx)
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
 	return SqlToModel(
 		pgTx,
 		repo.queryBuilder.
@@ -87,7 +80,7 @@ func (repo *UserRepositoryPostgresql) UserByID(tx Transaction, userId models.Use
 
 func (repo *UserRepositoryPostgresql) UsersOfOrganization(tx Transaction, organizationIDFilter string) ([]models.User, error) {
 
-	pgTx := repo.toPostgresTransaction(tx)
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	return SqlToListOfModels(
 		pgTx,
@@ -101,7 +94,7 @@ func (repo *UserRepositoryPostgresql) UsersOfOrganization(tx Transaction, organi
 }
 
 func (repo *UserRepositoryPostgresql) AllUsers(tx Transaction) ([]models.User, error) {
-	pgTx := repo.toPostgresTransaction(tx)
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	return SqlToListOfModels(
 		pgTx,
@@ -114,7 +107,7 @@ func (repo *UserRepositoryPostgresql) AllUsers(tx Transaction) ([]models.User, e
 }
 
 func (repo *UserRepositoryPostgresql) UserByFirebaseUid(tx Transaction, firebaseUid string) (*models.User, error) {
-	pgTx := repo.toPostgresTransaction(tx)
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	return SqlToOptionalModel(
 		pgTx,
@@ -128,7 +121,7 @@ func (repo *UserRepositoryPostgresql) UserByFirebaseUid(tx Transaction, firebase
 }
 
 func (repo *UserRepositoryPostgresql) UserByEmail(tx Transaction, email string) (*models.User, error) {
-	pgTx := repo.toPostgresTransaction(tx)
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	return SqlToOptionalModel(
 		pgTx,
@@ -142,7 +135,8 @@ func (repo *UserRepositoryPostgresql) UserByEmail(tx Transaction, email string) 
 }
 
 func (repo *UserRepositoryPostgresql) UpdateFirebaseId(tx Transaction, userId models.UserId, firebaseUid string) error {
-	pgTx := repo.toPostgresTransaction(tx)
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
 	return SqlUpdate(pgTx, repo.queryBuilder.
 		Update(dbmodels.TABLE_USERS).
 		Set("firebase_uid", firebaseUid).
