@@ -11,7 +11,7 @@ import (
 type DataAccessor struct {
 	DataModel                  models.DataModel
 	Payload                    models.Payload
-	dbPoolRepository           repositories.DbPoolRepository
+	dbPool                     *pgxpool.Pool
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
 }
 
@@ -28,5 +28,5 @@ func (d *DataAccessor) GetDbField(ctx context.Context, triggerTableName string, 
 	})
 }
 func (d *DataAccessor) GetDbHandle() *pgxpool.Pool {
-	return d.dbPoolRepository.GetDbPool()
+	return d.dbPool
 }

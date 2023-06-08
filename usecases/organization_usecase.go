@@ -33,7 +33,7 @@ func (usecase *OrganizationUseCase) GetOrganization(ctx context.Context, organiz
 }
 
 func (usecase *OrganizationUseCase) UpdateOrganization(ctx context.Context, organization models.UpdateOrganizationInput) (models.Organization, error) {
-	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE, func(tx repositories.Transaction) (models.Organization, error) {
+	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Organization, error) {
 		err := usecase.organizationRepository.UpdateOrganization(tx, organization)
 		if err != nil {
 			return models.Organization{}, err
@@ -44,7 +44,7 @@ func (usecase *OrganizationUseCase) UpdateOrganization(ctx context.Context, orga
 
 func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, organizationID string) error {
 
-	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE, func(tx repositories.Transaction) error {
+	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
 		return usecase.organizationRepository.DeleteOrganization(nil, organizationID)
 	})
 }
@@ -57,7 +57,7 @@ func (usecase *OrganizationUseCase) GetUsersOfOrganization(organizationIDFilter 
 
 	return repositories.TransactionReturnValue(
 		usecase.transactionFactory,
-		models.DATABASE_MARBLE,
+		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) ([]models.User, error) {
 			return usecase.userRepository.UsersOfOrganization(tx, organizationIDFilter)
 		},
