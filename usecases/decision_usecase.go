@@ -112,15 +112,11 @@ func (usecase *DecisionUsecase) EvalScenario(ctx context.Context, scenario model
 		return models.ScenarioExecution{}, models.ScenarioTriggerTypeAndTiggerObjectTypeMismatchError
 	}
 
-	dbPool, err := usecase.orgTransactionFactory.OrganizationPool(orgID)
-	if err != nil {
-		return models.ScenarioExecution{}, err
-	}
-
 	dataAccessor := DataAccessor{
 		DataModel:                  dataModel,
 		Payload:                    payloadStructWithReader,
-		dbPool:                     dbPool,
+		orgTransactionFactory:      usecase.orgTransactionFactory,
+		organizationId:             orgID,
 		ingestedDataReadRepository: usecase.ingestedDataReadRepository}
 
 	// Evaluate the trigger

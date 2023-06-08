@@ -1,4 +1,4 @@
-package pg_repository
+package repositories
 
 // func TestHandleFirstIngestObject(t *testing.T) {
 // 	transactions := models.Table{
