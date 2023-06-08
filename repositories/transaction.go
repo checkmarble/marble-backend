@@ -46,29 +46,6 @@ func (transaction *TransactionPostgres) QueryRow(sql string, arguments ...any) p
 	return transaction.exec.QueryRow(transaction.ctx, sql, arguments...)
 }
 
-// Helper for TransactionFactory.Transaction that return something and an error:
-// TransactionReturnValue and the callback fn returns (Model, error)
-// Example:
-// return repositories.TransactionReturnValue(
-//
-//	 usecase.transactionFactory,
-//	 models.DATABASE_MARBLE_SCHEMA,
-//	 func(tx repositories.Transaction) ([]models.User, error) {
-//		return usecase.userRepository.Users(tx)
-//	 },
-//
-// )
-
-func TransactionReturnValue[ReturnType any](factory TransactionFactory, databaseSchema models.DatabaseSchema, fn func(tx Transaction) (ReturnType, error)) (ReturnType, error) {
-	var value ReturnType
-	transactionErr := factory.Transaction(databaseSchema, func(tx Transaction) error {
-		var fnErr error
-		value, fnErr = fn(tx)
-		return fnErr
-	})
-	return value, transactionErr
-}
-
 var ErrIgnoreRoolBackError = errors.New("ignore rollback error")
 
 func IsIsUniqueViolationError(err error) bool {

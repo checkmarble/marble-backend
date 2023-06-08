@@ -75,3 +75,25 @@ func (repo *TransactionFactoryPosgresql) Transaction(databaseSchema models.Datab
 
 	return err
 }
+
+// Helper for TransactionFactory.Transaction that return something and an error:
+// TransactionReturnValue and the callback fn returns (Model, error)
+// Example:
+// return repositories.TransactionReturnValue(
+//
+//	 usecase.transactionFactory,
+//	 models.DATABASE_MARBLE_SCHEMA,
+//	 func(tx repositories.Transaction) ([]models.User, error) {
+//		return usecase.userRepository.Users(tx)
+//	 },
+//
+// )
+func TransactionReturnValue[ReturnType any](factory TransactionFactory, databaseSchema models.DatabaseSchema, fn func(tx Transaction) (ReturnType, error)) (ReturnType, error) {
+	var value ReturnType
+	transactionErr := factory.Transaction(databaseSchema, func(tx Transaction) error {
+		var fnErr error
+		value, fnErr = fn(tx)
+		return fnErr
+	})
+	return value, transactionErr
+}

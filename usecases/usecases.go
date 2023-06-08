@@ -40,8 +40,9 @@ func (usecases *Usecases) NewOrganizationUseCase() OrganizationUseCase {
 
 func (usecases *Usecases) NewOrgTransactionFactory() organization.OrgTransactionFactory {
 	return &organization.OrgTransactionFactoryImpl{
-		ClientTablesRepository: usecases.Repositories.ClientTablesRepository,
-		TransactionFactory:     usecases.Repositories.TransactionFactory,
+		ClientTablesRepository:           usecases.Repositories.ClientTablesRepository,
+		TransactionFactory:               usecases.Repositories.TransactionFactory,
+		DatabaseConnectionPoolRepository: usecases.Repositories.DatabaseConnectionPoolRepository,
 	}
 }
 

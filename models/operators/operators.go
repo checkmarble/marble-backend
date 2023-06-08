@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // /////////////////////////////
@@ -18,7 +19,7 @@ var operatorFromType = make(map[string]func() Operator)
 type DataAccessor interface {
 	GetPayloadField(fieldName string) (interface{}, error)
 	GetDbField(ctx context.Context, triggerTableName string, path []string, fieldName string) (interface{}, error)
-	GetDbHandle() *pgxpool.Pool
+	GetDbHandle() (db *pgxpool.Pool, schema string, err error)
 }
 
 var (
