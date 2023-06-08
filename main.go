@@ -56,7 +56,7 @@ func runServer(config usecases.Configuration, pgRepository *pg_repository.PGRepo
 		}
 	}
 
-	if devEnv || env == "staging" {
+	if devEnv {
 		zorgOrganizationId := "13617a88-56f5-4baa-8d11-ce102f7da907"
 		err := seedUsecase.SeedZorgOrganization(zorgOrganizationId)
 		if err != nil {
