@@ -115,59 +115,59 @@ func TestMain(m *testing.M) {
 	}
 	TestRepo, err := New(anotherPool)
 
-	insertDataSQL := `
-	INSERT INTO companies (
-		object_id,
-		updated_at,
-		name
-	  )
-	VALUES(
-		'{{.CompanyId}}',
-		'2021-01-01T00:00:00Z',
-		'Test company 1'
-	);
+	// insertDataSQL := `
+	// INSERT INTO companies (
+	// 	object_id,
+	// 	updated_at,
+	// 	name
+	//   )
+	// VALUES(
+	// 	'{{.CompanyId}}',
+	// 	'2021-01-01T00:00:00Z',
+	// 	'Test company 1'
+	// );
 
-	INSERT INTO accounts (
-		object_id,
-		updated_at,
-		name,
-		currency,
-		company_id
-	  )
-	VALUES(
-		'{{.BankAccountId}}',
-		'2021-01-01T00:00:00Z',
-		'SHINE',
-		'EUR',
-		'{{.CompanyId}}'
-	  );
+	// INSERT INTO accounts (
+	// 	object_id,
+	// 	updated_at,
+	// 	name,
+	// 	currency,
+	// 	company_id
+	//   )
+	// VALUES(
+	// 	'{{.BankAccountId}}',
+	// 	'2021-01-01T00:00:00Z',
+	// 	'SHINE',
+	// 	'EUR',
+	// 	'{{.CompanyId}}'
+	//   );
 
-	INSERT INTO transactions (
-		object_id,
-		account_id,
-		updated_at,
-		amount,
-		title
-	  )
-	VALUES(
-		'{{.TransactionId}}',
-		'{{.BankAccountId}}',
-		'2021-01-01T00:00:00Z',
-		10,
-		'AMAZON'
-	  );
+	// INSERT INTO transactions (
+	// 	object_id,
+	// 	account_id,
+	// 	updated_at,
+	// 	amount,
+	// 	title
+	//   )
+	// VALUES(
+	// 	'{{.TransactionId}}',
+	// 	'{{.BankAccountId}}',
+	// 	'2021-01-01T00:00:00Z',
+	// 	10,
+	// 	'AMAZON'
+	//   );
 
-	INSERT INTO organizations (
-		id,
-		name,
-		database_name
-	)
-	VALUES(
-		'{{.OrganizationId}}',
-		'Organization 1',
-		'marble'
-	)
-	`
+	// INSERT INTO organizations (
+	// 	id,
+	// 	name,
+	// 	database_name
+	// )
+	// VALUES(
+	// 	'{{.OrganizationId}}',
+	// 	'Organization 1',
+	// 	'marble'
+	// )
+	// `
 
 	organizationId, _ := uuid.NewV4()
 	companyId, _ := uuid.NewV4()
@@ -181,10 +181,10 @@ func TestMain(m *testing.M) {
 		"TransactionId":  transactionId.String(),
 	}
 
-	insertDataSQL = stringBuilder(insertDataSQL, testIds)
-	if _, err := TestRepo.db.Exec(context.Background(), insertDataSQL); err != nil {
-		log.Fatalf("Could not insert test data into tables: %s", err)
-	}
+	// insertDataSQL = stringBuilder(insertDataSQL, testIds)
+	// if _, err := TestRepo.db.Exec(context.Background(), insertDataSQL); err != nil {
+	// 	log.Fatalf("Could not insert test data into tables: %s", err)
+	// }
 
 	globalTestParams = testParams{repository: TestRepo, logger: logger, testIds: testIds}
 
