@@ -86,7 +86,7 @@ func (usecase *MarbleTokenUseCase) NewMarbleToken(ctx context.Context, apiKey st
 				if err := usecase.userRepository.UpdateFirebaseId(tx, user.UserId, identity.FirebaseUid); err != nil {
 					return models.User{}, err
 				}
-				return usecase.userRepository.UserByUid(tx, user.UserId)
+				return usecase.userRepository.UserByID(tx, user.UserId)
 			}
 
 			return models.User{}, fmt.Errorf("unknown user %s: %w", identity.Email, models.NotFoundError)

@@ -10,7 +10,8 @@ import (
 
 type UserRepository interface {
 	CreateUser(tx Transaction, createUser models.CreateUser) (models.UserId, error)
-	UserByUid(tx Transaction, userId models.UserId) (models.User, error)
+	DeleteUser(tx Transaction, userID models.UserId) error
+	UserByID(tx Transaction, userId models.UserId) (models.User, error)
 	UsersOfOrganization(tx Transaction, organizationIDFilter string) ([]models.User, error)
 	AllUsers(tx Transaction) ([]models.User, error)
 	UserByFirebaseUid(tx Transaction, firebaseUid string) (*models.User, error)
@@ -62,7 +63,16 @@ func (repo *UserRepositoryPostgresql) CreateUser(tx Transaction, createUser mode
 	)
 }
 
-func (repo *UserRepositoryPostgresql) UserByUid(tx Transaction, userId models.UserId) (models.User, error) {
+func (repo *UserRepositoryPostgresql) DeleteUser(tx Transaction, userID models.UserId) error {
+	pgTx := repo.toPostgresTransaction(tx)
+
+	return SqlDelete(
+		pgTx,
+		repo.queryBuilder.Delete(dbmodels.TABLE_USERS).Where("id = ?", string(userID)),
+	)
+}
+
+func (repo *UserRepositoryPostgresql) UserByID(tx Transaction, userId models.UserId) (models.User, error) {
 	pgTx := repo.toPostgresTransaction(tx)
 	return SqlToModel(
 		pgTx,

@@ -35,3 +35,11 @@ func AdaptCreateUser(dto PostCreateUser) models.CreateUser {
 		OrganizationId: dto.Body.OrganizationId,
 	}
 }
+
+type GetUser struct {
+	UserID string `in:"path=userID"`
+}
+
+type DeleteUser struct {
+	UserID string `in:"path=userID"`
+}
