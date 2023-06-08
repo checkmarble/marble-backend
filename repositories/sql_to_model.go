@@ -33,6 +33,18 @@ func SqlUpdate(transaction TransactionPostgres, s squirrel.UpdateBuilder) error 
 	return err
 }
 
+// execute the sql delete query with the given transaction
+func SqlDelete(transaction TransactionPostgres, s squirrel.DeleteBuilder) error {
+
+	query, args, err := s.ToSql()
+	if err != nil {
+		return err
+	}
+
+	_, err = transaction.Exec(query, args...)
+	return err
+}
+
 // executes the sql query with the given transaction and returns a list of models using the provided adapter
 func SqlToListOfModels[DBModel, Model any](transaction TransactionPostgres, s squirrel.SelectBuilder, adapter func(dbModel DBModel) Model) ([]Model, error) {
 

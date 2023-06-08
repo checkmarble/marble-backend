@@ -142,7 +142,7 @@ func (api *API) routes() {
 			routerAdmin.Route("/organizations", func(r chi.Router) {
 				r.Get("/", api.handleGetOrganizations())
 
-				r.With(httpin.NewInput(CreateOrganizationInputDto{})).
+				r.With(httpin.NewInput(dto.CreateOrganizationInputDto{})).
 					With(api.enforcePermissionMiddleware(models.ORGANIZATIONS_CREATE)).
 					Post("/", api.handlePostOrganization())
 
@@ -150,12 +150,16 @@ func (api *API) routes() {
 					r.Get("/", api.handleGetOrganization())
 					r.Get("/users", api.handleGetOrganizationUsers())
 
-					r.With(httpin.NewInput(UpdateOrganizationInputDto{})).
-						With(api.enforcePermissionMiddleware(models.ORGANIZATIONS_CREATE)).
+					r.With(
+						api.enforcePermissionMiddleware(models.ORGANIZATIONS_CREATE),
+						httpin.NewInput(dto.UpdateOrganizationInputDto{}),
+					).
 						Put("/", api.handlePutOrganization())
 
-					r.With(httpin.NewInput(DeleteOrganizationInput{})).
-						With(api.enforcePermissionMiddleware(models.ORGANIZATIONS_CREATE)).
+					r.With(
+						api.enforcePermissionMiddleware(models.ORGANIZATIONS_CREATE),
+						httpin.NewInput(dto.DeleteOrganizationInput{}),
+					).
 						Delete("/", api.handleDeleteOrganization())
 				})
 			})

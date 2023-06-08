@@ -1,7 +1,6 @@
 package repositories
 
 import (
-	"errors"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories/dbmodels"
 
@@ -60,7 +59,6 @@ func (repo *OrganizationRepositoryPostgresql) GetOrganizationById(tx Transaction
 }
 
 func (repo *OrganizationRepositoryPostgresql) CreateOrganization(tx Transaction, createOrganization models.CreateOrganizationInput, newOrganizationId string) error {
-
 	pgTx := repo.toPostgresTransaction(tx)
 
 	return SqlInsert(
@@ -80,7 +78,6 @@ func (repo *OrganizationRepositoryPostgresql) CreateOrganization(tx Transaction,
 }
 
 func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(tx Transaction, updateOrganization models.UpdateOrganizationInput) error {
-
 	pgTx := repo.toPostgresTransaction(tx)
 
 	var updateRequest = repo.queryBuilder.Update(dbmodels.TABLE_ORGANIZATION)
@@ -98,5 +95,7 @@ func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(tx Transaction,
 }
 
 func (repo *OrganizationRepositoryPostgresql) DeleteOrganization(tx Transaction, organizationID string) error {
-	return errors.New("Deletion of an organization not implemented")
+	pgTx := repo.toPostgresTransaction(tx)
+
+	return SqlDelete(pgTx, repo.queryBuilder.Delete(dbmodels.TABLE_ORGANIZATION).Where("id = ?", organizationID))
 }
