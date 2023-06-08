@@ -16,9 +16,11 @@ export const PageLink = {
   },
   Organizations: `/${PathFragment.Organizations}`,
   organizationDetails: (organizationId: string) =>
-  `/${PathFragment.OrganizationDetails}/${organizationId}`,
+    `/${PathFragment.OrganizationDetails}/${organizationId}`,
   Users: `/${PathFragment.Users}`,
-  ingestion: (organizationId: string) => `/${PathFragment.Ingestion}/${organizationId}`,
+  userDetails: (userId: string) => `/${PathFragment.Users}/${userId}`,
+  ingestion: (organizationId: string) =>
+    `/${PathFragment.Ingestion}/${organizationId}`,
 };
 
 export function isRouteRequireAuthenticatedUser(path: string) {

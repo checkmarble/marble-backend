@@ -33,9 +33,28 @@ export async function postUser(
   return adaptUser(result.user);
 }
 
+export async function getUser(
+  repositories: UserRepository,
+  userId: string
+): Promise<User> {
+  const result = adaptSingleUserApiResultDto(
+    await repositories.marbleApi.getUser(userId)
+  );
+  return adaptUser(result.user);
+}
+
+export async function deleteUser(
+  repositories: UserRepository,
+  userId: string
+): Promise<void> {
+  await repositories.marbleApi.deleteUser(userId);
+}
+
 export async function fetchCredentials(
   repository: UserRepository
 ): Promise<Credentials> {
-  const dto = adaptCredentialsApiResultDto(await repository.marbleApi.credentials());
+  const dto = adaptCredentialsApiResultDto(
+    await repository.marbleApi.credentials()
+  );
   return adaptCredential(dto.credentials);
 }
