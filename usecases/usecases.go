@@ -38,15 +38,22 @@ func (usecases *Usecases) NewOrganizationUseCase() OrganizationUseCase {
 	}
 }
 
+func (usecases *Usecases) NewOrgTransactionFactory() organization.OrgTransactionFactory {
+	return &organization.OrgTransactionFactoryImpl{
+		ClientTablesRepository: usecases.Repositories.ClientTablesRepository,
+		TransactionFactory:     usecases.Repositories.TransactionFactory,
+	}
+}
+
 func (usecases *Usecases) NewIngestionUseCase() IngestionUseCase {
 	return IngestionUseCase{
-		ingestionRepository: usecases.Repositories.IngestionRepository,
+		orgTransactionFactory: usecases.NewOrgTransactionFactory(),
+		ingestionRepository:   usecases.Repositories.IngestionRepository,
 	}
 }
 
 func (usecases *Usecases) NewDecisionUsecase() DecisionUsecase {
 	return DecisionUsecase{
-		dbPoolRepository:                usecases.Repositories.DbPoolRepository,
 		ingestedDataReadRepository:      usecases.Repositories.IngestedDataReadRepository,
 		decisionRepository:              usecases.Repositories.DecisionRepository,
 		datamodelRepository:             usecases.Repositories.DataModelRepository,

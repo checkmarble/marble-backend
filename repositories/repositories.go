@@ -18,7 +18,6 @@ type Repositories struct {
 	OrganizationRepository           OrganizationRepository
 	IngestionRepository              IngestionRepository
 	DataModelRepository              DataModelRepository
-	DbPoolRepository                 DbPoolRepository
 	IngestedDataReadRepository       IngestedDataReadRepository
 	DecisionRepository               DecisionRepository
 	ScenarioReadRepository           ScenarioReadRepository
@@ -37,6 +36,7 @@ func NewRepositories(
 	pgRepository *pg_repository.PGRepository,
 	marbleConnectionPool *pgxpool.Pool,
 ) *Repositories {
+
 	databaseConnectionPoolRepository := NewDatabaseConnectionPoolRepository(
 		marbleConnectionPool,
 	)
@@ -57,16 +57,18 @@ func NewRepositories(
 			jwtSigningPrivateKey: marbleJwtSigningKey,
 		},
 		UserRepository: &UserRepositoryPostgresql{
-			queryBuilder: queryBuilder,
+			transactionFactory: transactionFactory,
+			queryBuilder:       queryBuilder,
 		},
 		ApiKeyRepository: pgRepository,
 		OrganizationRepository: &OrganizationRepositoryPostgresql{
 			transactionFactory: transactionFactory,
 			queryBuilder:       queryBuilder,
 		},
-		IngestionRepository:              pgRepository,
+		IngestionRepository: &IngestionRepositoryImpl{
+			queryBuilder: queryBuilder,
+		},
 		DataModelRepository:              pgRepository,
-		DbPoolRepository:                 pgRepository,
 		IngestedDataReadRepository:       pgRepository,
 		DecisionRepository:               pgRepository,
 		ScenarioReadRepository:           pgRepository,
@@ -77,7 +79,8 @@ func NewRepositories(
 		ScenarioPublicationRepository:    pgRepository,
 		LegacyPgRepository:               pgRepository,
 		ClientTablesRepository: &ClientTablesRepositoryPostgresql{
-			queryBuilder: queryBuilder,
+			transactionFactory: transactionFactory,
+			queryBuilder:       queryBuilder,
 		},
 	}
 }

@@ -11,17 +11,33 @@ import (
 )
 
 type ClientTablesRepository interface {
+	ClientTableOfOrganization(tx Transaction, organizationId string) (models.ClientTables, error)
 	CreateClientTables(tx Transaction, createClientTable models.ClientTables) error
 	CreateSchema(tx Transaction, schema string) error
 	CreateTable(tx Transaction, schema string, table models.Table) error
 }
 
 type ClientTablesRepositoryPostgresql struct {
-	queryBuilder squirrel.StatementBuilderType
+	transactionFactory TransactionFactory
+	queryBuilder       squirrel.StatementBuilderType
+}
+
+func (repo *ClientTablesRepositoryPostgresql) ClientTableOfOrganization(tx Transaction, organizationId string) (models.ClientTables, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	return SqlToModel(
+		pgTx,
+		repo.queryBuilder.
+			Select(dbmodels.ClientTablesFields...).
+			From(dbmodels.TABLE_CLIENT_TABLES).
+			Where(squirrel.Eq{"org_id": organizationId}),
+		dbmodels.AdaptClientTable,
+	)
+
 }
 
 func (repo *ClientTablesRepositoryPostgresql) CreateSchema(tx Transaction, schema string) error {
-	pgTx := repo.toPostgresTransaction(tx)
+	pgTx := adaptClientDatabaseTransaction(tx)
 
 	sql := fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", pgx.Identifier.Sanitize([]string{schema}))
 
@@ -30,12 +46,12 @@ func (repo *ClientTablesRepositoryPostgresql) CreateSchema(tx Transaction, schem
 }
 
 func (repo *ClientTablesRepositoryPostgresql) CreateTable(tx Transaction, schema string, table models.Table) error {
-	pgTx := repo.toPostgresTransaction(tx)
+	pgTx := adaptClientDatabaseTransaction(tx)
 
 	sanitizedTableName := pgx.Identifier.Sanitize([]string{schema, string(table.Name)})
 	createTableExpr := squirrel.Expr(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (", sanitizedTableName))
 
-	idColumn := squirrel.Expr("id uuid DEFAULT uuid_generate_v4(),")
+	idColumn := squirrel.Expr("id uuid,")
 	createTableExpr = squirrel.ConcatExpr(createTableExpr, idColumn)
 
 	validFromColumn := squirrel.Expr("valid_from TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),")
@@ -71,7 +87,7 @@ func (repo *ClientTablesRepositoryPostgresql) CreateTable(tx Transaction, schema
 }
 
 func (repo *ClientTablesRepositoryPostgresql) CreateClientTables(tx Transaction, createClientTable models.ClientTables) error {
-	pgTx := repo.toPostgresTransaction(tx)
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	return SqlInsert(
 		pgTx,
@@ -82,18 +98,9 @@ func (repo *ClientTablesRepositoryPostgresql) CreateClientTables(tx Transaction,
 			Values(
 				uuid.NewString(),
 				createClientTable.OrganizationId,
-				createClientTable.Schema,
+				createClientTable.DatabaseSchema.Schema,
 			),
 	)
-}
-
-func (repo *ClientTablesRepositoryPostgresql) toPostgresTransaction(transaction Transaction) TransactionPostgres {
-
-	tx := transaction.(TransactionPostgres)
-	if transaction.Database() != models.DATABASE_MARBLE {
-		panic("UserRepositoryPostgresql can only handle transactions in DATABASE_MARBLE")
-	}
-	return tx
 }
 
 func toPgType(dataType models.DataType) string {

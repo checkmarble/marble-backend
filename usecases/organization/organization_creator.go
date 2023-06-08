@@ -18,7 +18,7 @@ type OrganizationCreator struct {
 
 func (creator *OrganizationCreator) CreateOrganizationWithId(newOrganizationId string, createOrga models.CreateOrganizationInput) (models.Organization, error) {
 
-	organization, err := repositories.TransactionReturnValue(creator.TransactionFactory, models.DATABASE_MARBLE, func(tx repositories.Transaction) (models.Organization, error) {
+	organization, err := repositories.TransactionReturnValue(creator.TransactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Organization, error) {
 		err := creator.OrganizationRepository.CreateOrganization(tx, createOrga, newOrganizationId)
 		if err != nil {
 			return models.Organization{}, err
@@ -35,8 +35,10 @@ func (creator *OrganizationCreator) CreateOrganizationWithId(newOrganizationId s
 		return models.Organization{}, err
 	}
 
-	_, err = repositories.TransactionReturnValue(creator.TransactionFactory, models.DATABASE_MARBLE, func(tx repositories.Transaction) (any, error) {
-		err := creator.PopulateClientTables.CreateClientTables(tx, organization, models.DATABASE_MARBLE)
+	_, err = repositories.TransactionReturnValue(creator.TransactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (any, error) {
+		// store client's data in marble DB
+		orgDatabase := models.DATABASE_MARBLE
+		err := creator.PopulateClientTables.CreateClientTables(tx, organization, orgDatabase)
 
 		return nil, err
 	})
