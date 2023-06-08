@@ -1,6 +1,7 @@
 package organization
 
 import (
+	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
 )
@@ -16,7 +17,7 @@ func (p *PopulateClientTables) CreateClientTables(marbleTx repositories.Transact
 	// create entry in client_tables
 	err := p.ClientTablesRepository.CreateClientTables(marbleTx, models.ClientTables{
 		OrganizationId: organization.ID,
-		Schema:         organization.DatabaseName,
+		Schema:         fmt.Sprintf("org-%s", organization.DatabaseName),
 	})
 	if err != nil {
 		return err

@@ -69,7 +69,7 @@ func (api *API) handleIngestion() http.HandlerFunc {
 			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
-		w.WriteHeader(http.StatusCreated)
+		PresentNothingStatusCode(w, http.StatusCreated)
 	}
 
 }
