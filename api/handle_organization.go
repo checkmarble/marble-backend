@@ -9,20 +9,6 @@ import (
 	"github.com/ggicci/httpin"
 )
 
-type APIOrganization struct {
-	ID           string `json:"id"`
-	Name         string `json:"name"`
-	DatabaseName string `json:"database_name"`
-}
-
-func NewAPIOrganization(org models.Organization) APIOrganization {
-	return APIOrganization{
-		ID:           org.ID,
-		Name:         org.Name,
-		DatabaseName: org.DatabaseName,
-	}
-}
-
 func (api *API) handleGetOrganizations() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -33,24 +19,15 @@ func (api *API) handleGetOrganizations() http.HandlerFunc {
 			return
 		}
 
-		PresentModelWithName(w, "organizations", utils.Map(organizations, NewAPIOrganization))
+		PresentModelWithName(w, "organizations", utils.Map(organizations, dto.AdaptOrganizationDto))
 	}
-}
-
-type CreateOrganizationBodyDto struct {
-	Name         string `json:"name"`
-	DatabaseName string `json:"databaseName"`
-}
-
-type CreateOrganizationInputDto struct {
-	Body *CreateOrganizationBodyDto `in:"body=json"`
 }
 
 func (api *API) handlePostOrganization() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		inputDto := ctx.Value(httpin.Input).(*CreateOrganizationInputDto).Body
+		inputDto := ctx.Value(httpin.Input).(*dto.CreateOrganizationInputDto).Body
 
 		usecase := api.usecases.NewOrganizationUseCase()
 		organization, err := usecase.CreateOrganization(ctx, models.CreateOrganizationInput{
@@ -60,7 +37,7 @@ func (api *API) handlePostOrganization() http.HandlerFunc {
 		if presentError(w, r, err) {
 			return
 		}
-		PresentModelWithName(w, "organization", NewAPIOrganization(organization))
+		PresentModelWithName(w, "organization", dto.AdaptOrganizationDto(organization))
 	}
 }
 
@@ -101,25 +78,15 @@ func (api *API) handleGetOrganization() http.HandlerFunc {
 			return
 		}
 
-		PresentModelWithName(w, "organization", NewAPIOrganization(organization))
+		PresentModelWithName(w, "organization", dto.AdaptOrganizationDto(organization))
 	}
-}
-
-type UpdateOrganizationBodyDto struct {
-	Name         *string `json:"name,omitempty"`
-	DatabaseName *string `json:"databaseName,omitempty"`
-}
-
-type UpdateOrganizationInputDto struct {
-	OrgID string                     `in:"path=orgID"`
-	Body  *UpdateOrganizationBodyDto `in:"body=json"`
 }
 
 func (api *API) handlePutOrganization() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		input := ctx.Value(httpin.Input).(*UpdateOrganizationInputDto)
+		input := ctx.Value(httpin.Input).(*dto.UpdateOrganizationInputDto)
 		requestData := input.Body
 		orgID := input.OrgID
 
@@ -134,19 +101,15 @@ func (api *API) handlePutOrganization() http.HandlerFunc {
 			return
 		}
 
-		PresentModelWithName(w, "organization", NewAPIOrganization(organization))
+		PresentModelWithName(w, "organization", dto.AdaptOrganizationDto(organization))
 	}
-}
-
-type DeleteOrganizationInput struct {
-	orgID string `in:"path=orgID"`
 }
 
 func (api *API) handleDeleteOrganization() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID := ctx.Value(httpin.Input).(*DeleteOrganizationInput).orgID
+		orgID := ctx.Value(httpin.Input).(*dto.DeleteOrganizationInput).OrgID
 
 		usecase := api.usecases.NewOrganizationUseCase()
 		err := usecase.DeleteOrganization(ctx, orgID)
