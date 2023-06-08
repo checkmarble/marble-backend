@@ -24,8 +24,12 @@ func PresentModelWithName(w http.ResponseWriter, keyName string, models any) {
 }
 
 func PresentNothing(w http.ResponseWriter) {
+	PresentNothingStatusCode(w, http.StatusNoContent)
+}
+
+func PresentNothingStatusCode(w http.ResponseWriter, statusCode int) {
 	w.Header().Del("Content-Type")
-	w.WriteHeader(http.StatusNoContent)
+	w.WriteHeader(statusCode)
 }
 
 func requiredUuidUrlParam(r *http.Request, urlParamName string) (string, error) {
