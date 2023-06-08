@@ -138,6 +138,19 @@ func (api *API) routes() {
 				r.With(httpin.NewInput(dto.PostCreateUser{})).
 					With(api.enforcePermissionMiddleware(models.MARBLE_USER_CREATE)).
 					Post("/", api.handlePostUser())
+
+				r.Route("/{userID}", func(r chi.Router) {
+					r.With(
+						httpin.NewInput(dto.GetUser{}),
+					).
+						Get("/", api.handleGetUser())
+
+					r.With(
+						api.enforcePermissionMiddleware(models.MARBLE_USER_DELETE),
+						httpin.NewInput(dto.DeleteUser{}),
+					).
+						Delete("/", api.handleDeleteUser())
+				})
 			})
 			routerAdmin.Route("/organizations", func(r chi.Router) {
 				r.Get("/", api.handleGetOrganizations())
