@@ -66,7 +66,10 @@ function OrganizationsPage() {
           position: "relative",
         }}
       >
-        <CreateButtonFab title="New Organization" onClick={handleCreateOrganizationClick} />
+        <CreateButtonFab
+          title="New Organization"
+          onClick={handleCreateOrganizationClick}
+        />
 
         <List aria-label="organizations">
           <ListSubheader inset>

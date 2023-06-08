@@ -44,9 +44,16 @@ export async function fetchOrganization(
   return adaptOrganization(result.organization);
 }
 
+export async function deleteOrganization(
+  repository: OrganizationRepository,
+  organizationId: string
+): Promise<void> {
+  await repository.marbleApi.deleteOrganization(organizationId);
+}
+
 export async function fetchApiKeys(
   repository: OrganizationRepository,
-  organizationId: string,
+  organizationId: string
 ): Promise<ApiKey[]> {
   const dto = adaptApiKeysResultDto(
     await repository.marbleApi.apiKeysOfOrganization(organizationId)

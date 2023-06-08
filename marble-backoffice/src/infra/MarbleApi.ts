@@ -48,6 +48,14 @@ export class MarbleApi {
     return this.fetcher.authorizedApiFetch(request);
   }
 
+  async deleteAuthorizedJson(path: string): Promise<unknown> {
+    const request = new Request(this.apiUrl(path), {
+      method: HttpMethod.Delete,
+    });
+
+    return this.fetcher.authorizedApiFetch(request);
+  }
+
   async allOrganizations(): Promise<unknown> {
     return this.getAuthorizedJson(ORGANIZATION_URL_PATH);
   }
@@ -62,6 +70,11 @@ export class MarbleApi {
       path: ORGANIZATION_URL_PATH,
       body: createOrganizationBody,
     });
+  }
+
+  async deleteOrganization(organizationId: string): Promise<unknown> {
+    const orgIdParam = encodeURIComponent(organizationId);
+    return this.deleteAuthorizedJson(`${ORGANIZATION_URL_PATH}/${orgIdParam}`);
   }
 
   async scenariosOfOrganization(organizationId: string): Promise<unknown> {
@@ -108,7 +121,7 @@ export class MarbleApi {
       path: `${INGESTION_URL_PATH}/${objectTypeParam}`,
       body: ingestObject.content,
     });
-    return ingestObject
+    return ingestObject;
   }
 }
 
