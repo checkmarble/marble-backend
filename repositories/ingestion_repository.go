@@ -6,6 +6,7 @@ import (
 	"marble/marble-backend/models"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"golang.org/x/exp/slog"
 )
@@ -28,14 +29,17 @@ func (repo *IngestionRepositoryImpl) IngestObject(transaction Transaction, paylo
 	}
 
 	columnNames, values := generateInsertValues(table, payloadStructWithReader)
-	sql := repo.queryBuilder.Insert(string(table.Name)).Columns(columnNames...).Values(values...).Suffix("RETURNING \"id\"")
+	columnNames = append(columnNames, "id")
+	values = append(values, uuid.NewString())
+
+	sql := repo.queryBuilder.Insert(tableNameWithSchema(tx, table.Name)).Columns(columnNames...).Values(values...).Suffix("RETURNING \"id\"")
 
 	var createdObjectID string
 	err = SqlInsert(tx, sql)
 	if err != nil {
 		return err
 	}
-	logger.Info("Created object in db", slog.String("type", string(table.Name)), slog.String("object_id", createdObjectID))
+	logger.Info("Created object in db", slog.String("type", tableNameWithSchema(tx, table.Name)), slog.String("object_id", createdObjectID))
 
 	return nil
 }
@@ -62,7 +66,7 @@ func updateExistingVersionIfPresent(
 	object_id, _ := payloadStructWithReader.ReadFieldFromPayload("object_id")
 	sql, args, err := queryBuilder.
 		Select("id").
-		From(string(table.Name)).
+		From(tableNameWithSchema(tx, table.Name)).
 		Where(squirrel.Eq{"object_id": object_id}).
 		Where(squirrel.Eq{"valid_until": "Infinity"}).
 		ToSql()
@@ -79,7 +83,7 @@ func updateExistingVersionIfPresent(
 	}
 
 	sql, args, err = queryBuilder.
-		Update(string(table.Name)).
+		Update(tableNameWithSchema(tx, table.Name)).
 		Set("valid_until", "now()").
 		Where(squirrel.Eq{"id": id}).
 		ToSql()

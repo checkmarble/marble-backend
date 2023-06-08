@@ -35,8 +35,8 @@ func (d *DataAccessorBoolImpl) GetDbField(ctx context.Context, triggerTableName 
 	return val, nil
 }
 
-func (d *DataAccessorBoolImpl) GetDbHandle() *pgxpool.Pool {
-	return nil
+func (d *DataAccessorBoolImpl) GetDbHandle() (db *pgxpool.Pool, schema string, err error) {
+	return nil, "", nil
 }
 
 func TestLogicEval(t *testing.T) {

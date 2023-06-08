@@ -36,8 +36,8 @@ func (d *DataAccessorFloatImpl) ValidateDbFieldReadConsistency(path []string, fi
 	return nil
 }
 
-func (d *DataAccessorFloatImpl) GetDbHandle() *pgxpool.Pool {
-	return nil
+func (d *DataAccessorFloatImpl) GetDbHandle() (db *pgxpool.Pool, schema string, err error) {
+	return nil, "", nil
 }
 
 func TestLogicEvalFloat(t *testing.T) {

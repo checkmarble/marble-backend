@@ -10,6 +10,7 @@ import (
 )
 
 type Repositories struct {
+	DatabaseConnectionPoolRepository DatabaseConnectionPoolRepository
 	TransactionFactory               TransactionFactory
 	FirebaseTokenRepository          FireBaseTokenRepository
 	MarbleJwtRepository              MarbleJwtRepository
@@ -49,7 +50,8 @@ func NewRepositories(
 	queryBuilder := squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
 
 	return &Repositories{
-		TransactionFactory: transactionFactory,
+		DatabaseConnectionPoolRepository: databaseConnectionPoolRepository,
+		TransactionFactory:               transactionFactory,
 		FirebaseTokenRepository: FireBaseTokenRepository{
 			firebaseClient: firebaseClient,
 		},
@@ -69,7 +71,7 @@ func NewRepositories(
 			queryBuilder: queryBuilder,
 		},
 		DataModelRepository:              pgRepository,
-		IngestedDataReadRepository:       pgRepository,
+		IngestedDataReadRepository:       &IngestedDataReadRepositoryImpl{queryBuilder: queryBuilder},
 		DecisionRepository:               pgRepository,
 		ScenarioReadRepository:           pgRepository,
 		ScenarioWriteRepository:          pgRepository,

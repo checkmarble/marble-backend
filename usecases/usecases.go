@@ -40,8 +40,9 @@ func (usecases *Usecases) NewOrganizationUseCase() OrganizationUseCase {
 
 func (usecases *Usecases) NewOrgTransactionFactory() organization.OrgTransactionFactory {
 	return &organization.OrgTransactionFactoryImpl{
-		ClientTablesRepository: usecases.Repositories.ClientTablesRepository,
-		TransactionFactory:     usecases.Repositories.TransactionFactory,
+		ClientTablesRepository:           usecases.Repositories.ClientTablesRepository,
+		TransactionFactory:               usecases.Repositories.TransactionFactory,
+		DatabaseConnectionPoolRepository: usecases.Repositories.DatabaseConnectionPoolRepository,
 	}
 }
 
@@ -54,6 +55,7 @@ func (usecases *Usecases) NewIngestionUseCase() IngestionUseCase {
 
 func (usecases *Usecases) NewDecisionUsecase() DecisionUsecase {
 	return DecisionUsecase{
+		orgTransactionFactory:           usecases.NewOrgTransactionFactory(),
 		ingestedDataReadRepository:      usecases.Repositories.IngestedDataReadRepository,
 		decisionRepository:              usecases.Repositories.DecisionRepository,
 		datamodelRepository:             usecases.Repositories.DataModelRepository,

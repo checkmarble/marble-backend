@@ -10,14 +10,14 @@ import (
 type OrgTransactionFactory interface {
 	OrganizationDatabaseSchema(organizationId string) (models.DatabaseSchema, error)
 	TransactionInOrgSchema(organizationId string, f func(tx repositories.Transaction) error) error
-	// used by legacy code that to not support transactions
-	OrganizationPool(organizationId string) (*pgxpool.Pool, error)
+	// used by legacy code that didn't support transactions
+	OrganizationDbPool(dbSchema models.DatabaseSchema) (*pgxpool.Pool, error)
 }
 
 type OrgTransactionFactoryImpl struct {
 	ClientTablesRepository           repositories.ClientTablesRepository
 	TransactionFactory               repositories.TransactionFactory
-	databaseConnectionPoolRepository repositories.DatabaseConnectionPoolRepository
+	DatabaseConnectionPoolRepository repositories.DatabaseConnectionPoolRepository
 }
 
 func (factory *OrgTransactionFactoryImpl) OrganizationDatabaseSchema(organizationId string) (models.DatabaseSchema, error) {
@@ -43,12 +43,22 @@ func (factory *OrgTransactionFactoryImpl) TransactionInOrgSchema(organizationId 
 	return factory.TransactionFactory.Transaction(dbSchema, f)
 }
 
-func (factory *OrgTransactionFactoryImpl) OrganizationPool(organizationId string) (*pgxpool.Pool, error) {
+func (factory *OrgTransactionFactoryImpl) OrganizationDbPool(dbSchema models.DatabaseSchema) (*pgxpool.Pool, error) {
 
-	dbSchema, err := factory.OrganizationDatabaseSchema(organizationId)
-	if err != nil {
-		return nil, err
-	}
+	return factory.DatabaseConnectionPoolRepository.DatabaseConnectionPool(dbSchema.Database.Connection)
+}
 
-	return factory.databaseConnectionPoolRepository.DatabaseConnectionPool(dbSchema.Database.Connection)
+// helper
+func TransactionInOrgSchemaReturnValue[ReturnType any](
+	factory OrgTransactionFactory,
+	organizationId string,
+	fn func(tx repositories.Transaction) (ReturnType, error),
+) (ReturnType, error) {
+	var value ReturnType
+	transactionErr := factory.TransactionInOrgSchema(organizationId, func(tx repositories.Transaction) error {
+		var fnErr error
+		value, fnErr = fn(tx)
+		return fnErr
+	})
+	return value, transactionErr
 }
