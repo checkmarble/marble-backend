@@ -18,14 +18,18 @@ import {
   useScenarios,
   useUsers,
   useCreateUser,
+  useDeleteOrganization,
 } from "@/services";
 import DelayedLinearProgress from "@/components/DelayedLinearProgress";
 import AddUserDialog from "@/components/AddUserDialog";
 import { type CreateUser, Role, PageLink } from "@/models";
 import ListOfUsers from "@/components/ListOfUsers";
+import { DeleteForever } from "@mui/icons-material";
+import AlertDialog from "@/components/AlertDialog";
 
 function OrganizationDetailsPage() {
   const { organizationId } = useParams();
+  const navigate = useNavigate();
 
   if (!organizationId) {
     throw Error("Organization Id is missing");
@@ -45,6 +49,21 @@ function OrganizationDetailsPage() {
     organizationId
   );
 
+  const [deleteOrgAlertDialogOpen, setDeleteOrgAlertDialogOpen] =
+    useState(false);
+  const { deleteOrganization } = useDeleteOrganization(
+    services().organizationService
+  );
+
+  const handleDeleteOrgClick = () => {
+    setDeleteOrgAlertDialogOpen(true);
+  };
+  const handleDeleteOrg = async () => {
+    await deleteOrganization(organizationId);
+    setDeleteOrgAlertDialogOpen(false);
+    navigate(PageLink.Organizations);
+  };
+
   const [createUserDialogOpen, setCreateUserDialogOpen] = useState(false);
   const { createUser } = useCreateUser(services().userService);
 
@@ -63,9 +82,8 @@ function OrganizationDetailsPage() {
     await refreshUsers();
   };
 
-  const naviator = useNavigate();
   const handleNavigateToIngestion = () => {
-    naviator(PageLink.ingestion(organizationId))
+    navigate(PageLink.ingestion(organizationId));
   };
 
   return (
@@ -78,7 +96,20 @@ function OrganizationDetailsPage() {
         organizationId={organizationId}
         availableRoles={[Role.VIEWER, Role.BUILDER, Role.PUBLISHER, Role.ADMIN]}
         title="Add User"
-      ></AddUserDialog>
+      />
+      <AlertDialog
+        title="Confirm organization deletion"
+        open={deleteOrgAlertDialogOpen}
+        handleClose={() => {
+          setDeleteOrgAlertDialogOpen(false);
+        }}
+        handleValidate={handleDeleteOrg}
+      >
+        <Typography variant="body1">
+          Are you sure to delete {organization?.name} ? This action is
+          destructive (no soft delete)
+        </Typography>
+      </AlertDialog>
       <Container
         sx={{
           maxWidth: "md",
@@ -90,18 +121,33 @@ function OrganizationDetailsPage() {
           sx={{
             display: "flex",
             flexWrap: "wrap",
-            justifyContent: 'center',
-            alignItems: 'center',
-            gap: 4
+            justifyContent: "center",
+            alignItems: "center",
+            gap: 4,
           }}
         >
-          <Button onClick={handleNavigateToIngestion} variant="text" startIcon={<SendIcon />}> Data Ingestion</Button>
-          <Button onClick={handleCreateUserClick} variant="outlined" startIcon={<AddIcon />}>
+          <Button
+            onClick={handleNavigateToIngestion}
+            variant="text"
+            startIcon={<SendIcon />}
+          >
+            Data Ingestion
+          </Button>
+          <Button
+            onClick={handleCreateUserClick}
+            variant="outlined"
+            startIcon={<AddIcon />}
+          >
             Add User
           </Button>
-          {/* <Button variant="outlined" startIcon={<DeleteIcon />}>
+          <Button
+            onClick={handleDeleteOrgClick}
+            variant="contained"
+            startIcon={<DeleteForever />}
+            color="error"
+          >
             Delete
-          </Button> */}
+          </Button>
         </Box>
         {scenarios != null && (
           <>

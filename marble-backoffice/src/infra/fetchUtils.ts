@@ -14,6 +14,7 @@ export class HttpError {
 
 export enum HttpMethod {
   Post = "POST",
+  Delete = "DELETE",
   Get = "GET",
 }
 

@@ -8,6 +8,7 @@ import {
   fetchOrganization,
   postOrganization,
   fetchScenarios,
+  deleteOrganization,
 } from "@/repositories";
 import { useSimpleLoader } from "@/hooks/SimpleLoader";
 import { type LoadingDispatcher } from "@/hooks/Loading";
@@ -70,6 +71,17 @@ export function useCreateOrganization(service: OrganizationService) {
   return {
     createOrganization,
   };
+}
+
+export function useDeleteOrganization(service: OrganizationService) {
+  const deleteOrg = useCallback(
+    async (organizationId: string) => {
+      await deleteOrganization(service.organizationRepository, organizationId);
+    },
+    [service]
+  );
+
+  return { deleteOrganization: deleteOrg };
 }
 
 export function useScenarios(

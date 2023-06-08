@@ -7,7 +7,7 @@ import (
 func corsOption(corsAllowLocalhost bool) cors.Options {
 	allowedOrigins := []string{"https://*"}
 	if corsAllowLocalhost {
-		allowedOrigins = append(allowedOrigins, "http://localhost:3000")
+		allowedOrigins = append(allowedOrigins, "http://localhost:3000", "http://localhost:5173")
 	}
 	return cors.Options{
 		AllowedOrigins:   allowedOrigins,
