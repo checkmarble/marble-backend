@@ -10,6 +10,7 @@ import { User } from "@/models";
 
 interface ListOfUsersProps {
   users: User[];
+  onUserClick?: (user: User) => void;
 }
 
 export default function ListOfUsers(props: ListOfUsersProps) {
@@ -21,7 +22,11 @@ export default function ListOfUsers(props: ListOfUsersProps) {
         <ListSubheader inset>{users.length} Users</ListSubheader>
         {users.map((user) => (
           <ListItem key={user.userId}>
-            <ListItemButton>
+            <ListItemButton
+              onClick={() => {
+                props.onUserClick?.(user);
+              }}
+            >
               <ListItemAvatar>
                 <Avatar>
                   <PersonIcon />
