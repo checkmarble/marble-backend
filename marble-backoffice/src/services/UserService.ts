@@ -1,6 +1,13 @@
 import { useCallback } from "react";
 import type { CreateUser, User, Credentials } from "@/models";
-import { type UserRepository, fetchUsers, postUser, fetchCredentials } from "@/repositories";
+import {
+  type UserRepository,
+  fetchUsers,
+  postUser,
+  fetchCredentials,
+  getUser,
+  deleteUser,
+} from "@/repositories";
 import { useSimpleLoader } from "@/hooks/SimpleLoader";
 import { type LoadingDispatcher } from "@/hooks/Loading";
 
@@ -28,18 +35,52 @@ export function useUsers(
   };
 }
 
-export function useCredentials(service: UserService, loadingDispatcher: LoadingDispatcher) {
+export function useUser(
+  service: UserService,
+  loadingDispatcher: LoadingDispatcher,
+  userId?: string
+) {
+  const loadUser = useCallback(() => {
+    if (!userId) return Promise.reject("userId is required");
+    return getUser(service.userRepository, userId);
+  }, [service.userRepository, userId]);
+
+  const [user] = useSimpleLoader<User>(loadingDispatcher, loadUser);
+
+  return {
+    user,
+  };
+}
+
+export function useDeleteUser(service: UserService) {
+  const delUser = useCallback(
+    (userId?: string) => {
+      if (!userId) return;
+      return deleteUser(service.userRepository, userId);
+    },
+    [service.userRepository]
+  );
+
+  return {
+    deleteUser: delUser,
+  };
+}
+
+export function useCredentials(
+  service: UserService,
+  loadingDispatcher: LoadingDispatcher
+) {
   const loadCredentials = useCallback(() => {
     return fetchCredentials(service.userRepository);
   }, [service]);
-  
+
   const [credentials] = useSimpleLoader<Credentials>(
     loadingDispatcher,
     loadCredentials
   );
 
   return {
-    credentials
+    credentials,
   };
 }
 

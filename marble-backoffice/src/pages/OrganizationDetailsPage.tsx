@@ -176,7 +176,14 @@ function OrganizationDetailsPage() {
             ))}
           </>
         )}
-        {users != null && <ListOfUsers users={users} />}
+        {users != null && (
+          <ListOfUsers
+            users={users}
+            onUserClick={(user) => {
+              navigate(PageLink.userDetails(user.userId));
+            }}
+          />
+        )}
       </Container>
     </>
   );

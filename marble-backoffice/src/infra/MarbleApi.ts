@@ -105,6 +105,16 @@ export class MarbleApi {
     });
   }
 
+  async getUser(userId: string): Promise<unknown> {
+    const userIdParam = encodeURIComponent(userId);
+    return this.getAuthorizedJson(`${USERS_URL_PATH}/${userIdParam}`);
+  }
+
+  async deleteUser(userId: string): Promise<unknown> {
+    const userIdParam = encodeURIComponent(userId);
+    return this.deleteAuthorizedJson(`${USERS_URL_PATH}/${userIdParam}`);
+  }
+
   async credentials(): Promise<unknown> {
     return this.getAuthorizedJson("credentials");
   }

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import services from "@/injectServices";
-import { type CreateUser, Role } from "@/models";
+import { type CreateUser, Role, PageLink } from "@/models";
 import { useUsers, useCreateUser } from "@/services";
 import Container from "@mui/material/Container";
 import { useLoading } from "@/hooks/Loading";
@@ -8,9 +8,11 @@ import AddUserDialog from "@/components/AddUserDialog";
 import CreateButtonFab from "@/components/CreateButtonFab";
 import DelayedLinearProgress from "@/components/DelayedLinearProgress";
 import ListOfUsers from "@/components/ListOfUsers";
+import { useNavigate } from "react-router-dom";
 
 function UsersPage() {
   const [pageLoading, pageLoadingDispatcher] = useLoading();
+  const navigate = useNavigate();
 
   const { users, refreshUsers } = useUsers(
     services().userService,
@@ -52,7 +54,14 @@ function UsersPage() {
           onClick={handleCreateUserClick}
         />
 
-        {users !== null && <ListOfUsers users={users} />}
+        {users !== null && (
+          <ListOfUsers
+            users={users}
+            onUserClick={(user) => {
+              navigate(PageLink.userDetails(user.userId));
+            }}
+          />
+        )}
       </Container>
     </>
   );
