@@ -140,9 +140,7 @@ func (api *API) routes() {
 					Post("/", api.handlePostUser())
 
 				r.Route("/{userID}", func(r chi.Router) {
-					r.With(
-						httpin.NewInput(dto.GetUser{}),
-					).
+					r.With(httpin.NewInput(dto.GetUser{})).
 						Get("/", api.handleGetUser())
 
 					r.With(
