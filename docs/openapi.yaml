@@ -1,0 +1,2427 @@
+openapi: 3.0.3
+info:
+  version: 1.0.0
+  title: "Marble API"
+  description: "Consume Marble internal endpoints"
+tags:
+  - name: Admin
+    description: Admin operations.
+  - name: Data Model
+    description: Operations about data model.
+  - name: Authorization
+    description: Operations about authorization.
+  - name: Users
+    description: Operations about users.
+  - name: Organizations
+    description: Operations about organizations.
+  - name: Decisions
+    description: Operations about decisions.
+  - name: Ingestions
+    description: Operations about data ingestion.
+  - name: Scenarios
+    description: Operations about scenarios.
+  - name: Scenario Iterations
+    description: Operations about scenario iterations.
+  - name: Scenario Iteration Rules
+    description: Operations about scenario iteration rules.
+  - name: Scenario Publications
+    description: Operations about scenario publications.
+  - name: CustomLists
+    description: Operations about custom lists.
+servers:
+  - url: "http://localhost:8080"
+    description: Local devlopment server
+paths:
+  /token:
+    post:
+      tags:
+        - Authorization
+      summary: Get an access token
+      description: You need to suply either "X-API-Key" or “Authorization" header
+      operationId: postToken
+      security: []
+      parameters:
+        - in: header
+          description: "Valid Api Key token to generate a new access token"
+          name: X-API-Key
+          schema:
+            type: string
+        - in: header
+          description: "Valid bearer token to generate a new access token"
+          name: Authorization
+          schema:
+            type: string
+      responses:
+        "200":
+          description: New access token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Token"
+        "401":
+          $ref: "#/components/responses/401"
+  /credentials:
+    get:
+      tags:
+        - Authorization
+      summary: Get user credentials included in the token
+      description: You need to suply either "X-API-Key" or “Authorization" header
+      operationId: getCredentials
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Credentials included in the token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Credentials"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+  /decisions:
+    get:
+      tags:
+        - Decisions
+      summary: List decisions
+      operationId: listDecisions
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of corresponding decisions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Decision"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+    post:
+      tags:
+        - Decisions
+      summary: Create a decision
+      operationId: createDecision
+      security:
+        - bearerAuth: []
+      requestBody:
+        description: "Payload object used to be trigger the decision engine"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDecisionBody"
+        required: true
+      responses:
+        "200":
+          description: The decision corresponding to the provided payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Decision"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+  /decisions/{decisionId}:
+    get:
+      tags:
+        - Decisions
+      summary: Get a decision by id
+      operationId: getDecision
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: decisionId
+          description: ID of the decision that need to be fetched
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The decision corresponding to the provided `decisionId`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Decision"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+  /ingestion/{objectType}:
+    post:
+      tags:
+        - Ingestions
+      summary: Ingest some data
+      operationId: createIngestion
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: objectType
+          description: Type of the data that needs to be ingested
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: "Data that needs to be added to the database. The `objectType` is used to determine the type of the data"
+        content:
+          application/json:
+            schema:
+              type: object
+        required: true
+      responses:
+        "201":
+          description: Data created
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "422":
+          $ref: "#/components/responses/422"
+  /custom-lists:
+    get:
+      tags:
+        - CustomList
+      summary: List custom list
+      operationId: listCustomLists
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of corresponding custom lists
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - custom_lists
+                properties:
+                  custom_lists:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CustomList"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+    post:
+      tags:
+        - CustomList
+      summary: Create a custom list
+      operationId: createCustomList
+      security:
+        - bearerAuth: []
+      requestBody:
+        description: Custom list object that needs to be added to the database
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCustomListBody"
+        required: true
+      responses:
+        "200":
+          description: Created custom list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomList"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "422":
+          $ref: "#/components/responses/422"
+  /custom-lists/{customListId}:
+    get:
+      tags:
+        - CustomList
+      summary: Get values of the corresponding custom list
+      operationId: getCustomList
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: customListId
+          description: ID of the custom list that need to be fetched
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Values from the custom list corresponding to the provided `customListId`
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - custom_list_with_values
+                properties:
+                  custom_list_with_values:
+                    $ref: "#/components/schemas/CustomListWithValues"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+    patch:
+      tags:
+        - CustomList
+      summary: Update a custom list
+      operationId: updateCustomList
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: customListId
+          description: ID of the custom list that need to be updated
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: "Updated scenario object"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCustomListBody"
+        required: true
+      responses:
+        "200":
+          description: The updated custom list corresponding to the provided `customListId`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomList"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+    delete:
+      tags:
+        - CustomList
+      summary: Delete a custom list
+      operationId: deleteCustomList
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: customListId
+          description: ID of the custom list that need to be deleted
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The deleted custom list corresponding to the provided `customListId`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomList"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+  /custom-lists/{customListId}/values:
+    post:
+      tags:
+        - CustomList
+      summary: Create a custom list value
+      operationId: createCustomListValue
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: customListId
+          description: ID of the custom list on which the value will be added
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: Custom list value object that needs to be added to the database
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCustomListValueBody"
+        required: true
+      responses:
+        "200":
+          description: Created custom list Value
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomListValue"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "422":
+          $ref: "#/components/responses/422"
+    delete:
+      tags:
+        - CustomList
+      summary: Delete a custom list value
+      operationId: deleteCustomListValue
+      security:
+        - Oauth2ClientCredentials: []
+      parameters:
+        - name: customListId
+          description: ID of the custom list associated with the deleted value
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: "Delete custom list value object"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeleteCustomListValueBody"
+        required: true
+      responses:
+        "200":
+          description: The deleted custom list value corresponding to the provided `customListId`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomListValue"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+  /scenarios:
+    get:
+      tags:
+        - Scenarios
+      summary: List scenarios
+      operationId: listScenarios
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of corresponding scenario
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Scenario"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+    post:
+      tags:
+        - Scenarios
+      summary: Create a scenario
+      operationId: createScenario
+      security:
+        - bearerAuth: []
+      requestBody:
+        description: "Scenario object that needs to be added to the database"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateScenarioBody"
+        required: true
+      responses:
+        "200":
+          description: Created scenario
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Scenario"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "422":
+          $ref: "#/components/responses/422"
+  /scenarios/{scenarioId}:
+    get:
+      tags:
+        - Scenarios
+      summary: Get a scenario by id
+      operationId: getScenario
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scenarioId
+          description: ID of the scenario that need to be fetched
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The scenario corresponding to the provided `scenarioId`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Scenario"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+    put:
+      deprecated: true
+      tags:
+        - Scenarios
+      summary: Update a scenario
+      operationId: updateScenario_deprecated
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scenarioId
+          description: ID of the scenario that need to be updated
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: "Updated scenario object"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateScenarioBody"
+        required: true
+      responses:
+        "200":
+          description: The updated scenario corresponding to the provided `scenarioId`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Scenario"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+    patch:
+      tags:
+        - Scenarios
+      summary: Update a scenario
+      operationId: updateScenario
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scenarioId
+          description: ID of the scenario that need to be updated
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: "Updated scenario object"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateScenarioBody"
+        required: true
+      responses:
+        "200":
+          description: The updated scenario corresponding to the provided `scenarioId`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Scenario"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+  /scenario-iterations:
+    get:
+      tags:
+        - Scenario Iterations
+      summary: List iterations
+      description: List iterations corresponding to filters
+      operationId: listScenarioIterations
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scenarioId
+          description: ID of the scenario returned iterations should be linked to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Scenario iterations corresponding to filters
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ScenarioIteration"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+    post:
+      tags:
+        - Scenario Iterations
+      summary: Create a scenario iteration
+      description: Create a scenario iteration for a given `scenarioId`
+      operationId: createScenarioIteration
+      security:
+        - bearerAuth: []
+      requestBody:
+        description: "Scenario iteration object to create and linked `scenarioId`"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateScenarioIterationBody"
+        required: true
+      responses:
+        "200":
+          description: The created scenario iteration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScenarioIterationWithBody"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+  /scenario-iterations/{scenarioIterationId}:
+    get:
+      tags:
+        - Scenario Iterations
+      summary: Get a scenario iteration by id
+      operationId: getScenarioIteration
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scenarioIterationId
+          description: ID of the scenario iteration that need to be fetched
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The scenario iteration corresponding to the provided `scenarioIterationId`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScenarioIterationWithBody"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+    put:
+      deprecated: true
+      tags:
+        - Scenario Iterations
+      summary: Update a scenario iteration
+      operationId: updateScenarioIteration_deprecated
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scenarioIterationId
+          description: ID of the scenario iteration that need to be updated
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: "Updated scenario iteration object"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateScenarioIterationBody"
+        required: true
+      responses:
+        "200":
+          description: The updated scenario iteration corresponding to the provided `scenarioIterationId`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScenarioIterationWithBody"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+    patch:
+      tags:
+        - Scenario Iterations
+      summary: Update a scenario iteration
+      operationId: updateScenarioIteration
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scenarioIterationId
+          description: ID of the scenario iteration that need to be updated
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: "Updated scenario iteration object"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateScenarioIterationBody"
+        required: true
+      responses:
+        "200":
+          description: The updated scenario iteration corresponding to the provided `scenarioIterationId`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScenarioIterationWithBody"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+  /scenario-iteration-rules:
+    get:
+      tags:
+        - Scenario Iteration Rules
+      summary: List rules
+      description: List rules using provided filters
+      operationId: listScenarioIterationRules
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scenarioIterationId
+          description: ID of the scenario iteration returned rules should be linked to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Scenario iterations rules corresponding to filters
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ScenarioIterationRule"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+    post:
+      tags:
+        - Scenario Iteration Rules
+      summary: Create a scenario iteration rule
+      description: Create a scenario iteration rule for a given `scenarioIterationId`
+      operationId: createScenarioIterationRule
+      security:
+        - bearerAuth: []
+      requestBody:
+        description: "Scenario iteration rule object to create and linked `scenarioIterationId`"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateScenarioIterationRuleBody"
+        required: true
+      responses:
+        "200":
+          description: The created scenario iteration rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScenarioIterationRule"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+  /scenario-iteration-rules/{ruleId}:
+    get:
+      tags:
+        - Scenario Iteration Rules
+      summary: Get a scenario iteration rule by id
+      operationId: getScenarioIterationRule
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ruleId
+          description: ID of the rule that need to be fetched
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The scenario iteration rule corresponding to the provided `ruleId`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScenarioIterationRule"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+    put:
+      deprecated: true
+      tags:
+        - Scenario Iteration Rules
+      summary: Update a scenario iteration rule
+      operationId: updateScenarioIterationRule_deprecated
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ruleId
+          description: ID of the rule that need to be updated
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: "Updated scenario iteration rule object"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateScenarioIterationRuleBody"
+        required: true
+      responses:
+        "200":
+          description: The updated scenario iteration rule corresponding to the provided `ruleId`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScenarioIterationRule"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+    patch:
+      tags:
+        - Scenario Iteration Rules
+      summary: Update a scenario iteration rule
+      operationId: updateScenarioIterationRule
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ruleId
+          description: ID of the rule that need to be updated
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: "Updated scenario iteration rule object"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateScenarioIterationRuleBody"
+        required: true
+      responses:
+        "200":
+          description: The updated scenario iteration rule corresponding to the provided `ruleId`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScenarioIterationRule"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+  /scenario-publications:
+    get:
+      tags:
+        - Scenario Publications
+      summary: List scenario publications
+      description: List scenario publications using provided filters
+      operationId: listScenarioPublications
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scenarioId
+          description: ID of the scenario returned publications should be linked to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: scenarioIterationId
+          description: ID of the scenario iteration returned publications should be linked to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: publicationAction
+          description: publication action to return
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/PublicationAction"
+      responses:
+        "200":
+          description: Scenario publications corresponding to filters
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ScenarioPublication"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+    post:
+      tags:
+        - Scenario Publications
+      summary: Create a scenario publication
+      operationId: createScenarioPublication
+      security:
+        - bearerAuth: []
+      requestBody:
+        description: "Describe the scenario publication action"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateScenarioPublicationBody"
+        required: true
+      responses:
+        "200":
+          description: The list of created scenario publication actions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ScenarioPublication"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+  /scenario-publications/{scenarioPublicationId}:
+    get:
+      tags:
+        - Scenario Publications
+      summary: Get a scenario publication by id
+      operationId: getScenarioPublication
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scenarioPublicationId
+          description: ID of the scenario publication that need to be fetched
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The scenario publication corresponding to the provided `scenarioPublicationId`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScenarioPublication"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+  /data-model:
+    get:
+      tags:
+        - Data Model
+      summary: Get the data model associated with the current organization (present in the JWT)
+      operationId: getDataModel
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: The scenario publication corresponding to the provided `scenarioPublicationId`
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data_model
+                properties:
+                  data_model:
+                    $ref: "#/components/schemas/DataModel"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+  /apikeys:
+    get:
+      tags:
+        - Authorization
+      summary: List api keys associated with the current organization (present in the JWT)
+      operationId: listApiKeys
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: The apikeys corresponding to the current organization (present in the JWT)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - api_keys
+                properties:
+                  api_keys:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ApiKey"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+  /users:
+    get:
+      tags:
+        - Admin
+        - Users
+      summary: List all users present in the database
+      operationId: listUsers
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: The list of users present in the database
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - users
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+    post:
+      tags:
+        - Admin
+        - Users
+      summary: Create a user
+      operationId: createUser
+      security:
+        - bearerAuth: []
+      requestBody:
+        description: Describe the user to create
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUser"
+        required: true
+      responses:
+        "200":
+          description: The created user
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - user
+                properties:
+                  user:
+                    $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+  /users/{userId}:
+    get:
+      tags:
+        - Admin
+        - Users
+      summary: Get a user by id
+      operationId: getUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          description: ID of the user that need to be fetched
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The user corresponding to the provided `userId`
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - user
+                properties:
+                  user:
+                    $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+    delete:
+      tags:
+        - Admin
+        - Users
+      summary: Delete a user by id
+      operationId: deleteUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          description: ID of the user that need to be deleted
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: The user has been deleted
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+  /organizations:
+    get:
+      tags:
+        - Admin
+        - Organizations
+      summary: List all organizations present in the database
+      operationId: listOrganizations
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: The list of organizations present in the database
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - organizations
+                properties:
+                  organizations:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Organization"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+    post:
+      tags:
+        - Admin
+        - Organizations
+      summary: Create an organization
+      operationId: createOrganization
+      security:
+        - bearerAuth: []
+      requestBody:
+        description: Describe the organization to create
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrganizationBodyDto"
+        required: true
+      responses:
+        "200":
+          description: The created organization
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - organization
+                properties:
+                  organization:
+                    $ref: "#/components/schemas/Organization"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+  /organizations/{organizationId}:
+    get:
+      tags:
+        - Admin
+        - Organizations
+      summary: Get an organization by id
+      operationId: getOrganization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: organizationId
+          description: ID of the organization that need to be fetched
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The organization corresponding to the provided `organizationId`
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - organization
+                properties:
+                  organization:
+                    $ref: "#/components/schemas/Organization"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+    put:
+      deprecated: true
+      tags:
+        - Admin
+        - Organizations
+      summary: Update an organization by id
+      operationId: updateOrganization_deprecated
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: organizationId
+          description: ID of the organization that need to be updated
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: Describe the organization to update
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrganizationBodyDto"
+        required: true
+      responses:
+        "200":
+          description: The updated organization
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - organization
+                properties:
+                  organization:
+                    $ref: "#/components/schemas/Organization"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+    patch:
+      tags:
+        - Admin
+        - Organizations
+      summary: Update an organization by id
+      operationId: updateOrganization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: organizationId
+          description: ID of the organization that need to be updated
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: Describe the organization to update
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrganizationBodyDto"
+        required: true
+      responses:
+        "200":
+          description: The updated organization
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - organization
+                properties:
+                  organization:
+                    $ref: "#/components/schemas/Organization"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+    delete:
+      tags:
+        - Admin
+        - Organizations
+      summary: Delete an organization by id
+      operationId: deleteOrganization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: organizationId
+          description: ID of the organization that need to be deleted
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: The organization has been deleted
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+  /organizations/{organizationId}/users:
+    get:
+      tags:
+        - Admin
+        - Organizations
+      summary: List all users of an organization
+      operationId: listOrganizationUsers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: organizationId
+          description: ID of the organization
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The list of users of the organization
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - users
+                properties:
+                  users:
+                    $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+components:
+  schemas:
+    Organization:
+      type: object
+      required:
+        - id
+        - name
+        - database_name
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        database_name:
+          type: string
+    CreateOrganizationBodyDto:
+      type: object
+      required:
+        - name
+        - database_name
+      properties:
+        name:
+          type: string
+        database_name:
+          type: string
+    UpdateOrganizationBodyDto:
+      type: object
+      properties:
+        name:
+          type: string
+        database_name:
+          type: string
+    User:
+      type: object
+      required:
+        - user_id
+        - email
+        - role
+        - organization_id
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        role:
+          type: string
+        organization_id:
+          type: string
+          format: uuid
+    CreateUser:
+      type: object
+      required:
+        - email
+        - role
+        - organization_id
+      properties:
+        email:
+          type: string
+        role:
+          type: string
+        organization_id:
+          type: string
+          format: uuid
+    ApiKey:
+      type: object
+      required:
+        - api_key_id
+        - organization_id
+        - key
+        - role
+      properties:
+        api_key_id:
+          type: string
+        organization_id:
+          type: string
+          format: uuid
+        key:
+          type: string
+        role:
+          type: string
+    DataModel:
+      type: object
+      required:
+        - tables
+      properties:
+        tables:
+          type: object
+          additionalProperties:
+            type: object
+            required:
+              - name
+              - fields
+              - linksToSingle
+            properties:
+              name:
+                type: string
+              fields:
+                type: object
+                additionalProperties:
+                  type: object
+                  required:
+                    - name
+                    - dataType
+                  properties:
+                    name:
+                      type: string
+                    dataType:
+                      type: string
+                      enum: [Bool, Int, Float, String, Timestamp, unknown]
+              linksToSingle:
+                type: object
+                additionalProperties:
+                  type: object
+                  required:
+                    - linkedTableName
+                    - parentFieldName
+                    - childFieldName
+                  properties:
+                    linkedTableName:
+                      type: string
+                    parentFieldName:
+                      type: string
+                    childFieldName:
+                      type: string
+    Token:
+      type: object
+      required:
+        - access_token
+        - token_type
+        - expires_in
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+        expires_in:
+          type: string
+          format: date-time
+    Credentials:
+      type: object
+      required:
+        - credentials
+      properties:
+        credentials:
+          type: object
+          required:
+            - organization_id
+            - role
+            - actor_identity
+          properties:
+            organization_id:
+              type: string
+            role:
+              type: string
+            actor_identity:
+              type: object
+              properties:
+                user_id:
+                  type: string
+                email:
+                  type: string
+                api_key_name:
+                  type: string
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+    Decision:
+      type: object
+      required:
+        - id
+        - created_at
+        - trigger_object
+        - trigger_object_type
+        - outcome
+        - scenario
+        - rules
+        - score
+      properties:
+        id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        trigger_object:
+          type: object
+        trigger_object_type:
+          type: string
+        outcome:
+          type: string
+          enum: ["approve", "review", "decline", "null", "unknown"]
+        scenario:
+          type: object
+          required:
+            - id
+            - name
+            - description
+            - version
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            description:
+              type: string
+            version:
+              type: integer
+        rules:
+          type: array
+          items:
+            type: object
+            required:
+              - name
+              - description
+              - score_modifier
+              - result
+            properties:
+              name:
+                type: string
+              description:
+                type: string
+              score_modifier:
+                type: integer
+              result:
+                type: boolean
+              error:
+                $ref: "#/components/schemas/Error"
+        score:
+          type: integer
+        error:
+          $ref: "#/components/schemas/Error"
+    CreateDecisionBody:
+      type: object
+      required:
+        - scenario_id
+        - trigger_object
+        - object_type
+      properties:
+        scenario_id:
+          type: string
+          format: uuid
+        trigger_object:
+          type: object
+        object_type:
+          type: string
+    CustomList:
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CustomListValue:
+      type: object
+      required:
+        - id
+        - value
+      properties:
+        id:
+          type: string
+          format: uuid
+        value:
+          type: string
+    CustomListWithValues:
+      allOf:
+        - $ref: "#/components/schemas/CustomList"
+        - type: object
+          required:
+            - values
+          properties:
+            values:
+              type: array
+              items:
+                $ref: "#/components/schemas/CustomListValue"
+    CreateCustomListBody:
+      type: object
+      required:
+        - name
+        - description
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+    UpdateCustomListBody:
+      type: object
+      required:
+        - name
+        - description
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+    CreateCustomListValueBody:
+      type: object
+      required:
+        - value
+      properties:
+        value:
+          type: string
+    DeleteCustomListValueBody:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: id of the custom list value to delete
+    Scenario:
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - triggerObjectType
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        triggerObjectType:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        liveVersionId:
+          type: string
+          format: uuid
+    CreateScenarioBody:
+      type: object
+      required:
+        - name
+        - description
+        - triggerObjectType
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        triggerObjectType:
+          type: string
+    UpdateScenarioBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+    ScenarioIteration:
+      type: object
+      required:
+        - id
+        - scenarioId
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        scenarioId:
+          type: string
+          format: uuid
+        version:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ScenarioIterationWithBody:
+      allOf:
+        - $ref: "#/components/schemas/ScenarioIteration"
+        - type: object
+          required:
+            - body
+          properties:
+            body:
+              type: object
+              required:
+                - rules
+              properties:
+                triggerCondition:
+                  $ref: "#/components/schemas/Operator"
+                  description: Valid marshalled operator
+                scoreReviewThreshold:
+                  type: integer
+                  minimum: 0
+                scoreRejectThreshold:
+                  type: integer
+                  minimum: 0
+                rules:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ScenarioIterationRule"
+    CreateScenarioIterationBody:
+      type: object
+      required:
+        - scenarioId
+      properties:
+        scenarioId:
+          type: string
+          format: uuid
+        body:
+          type: object
+          properties:
+            triggerCondition:
+              $ref: "#/components/schemas/Operator"
+              description: Valid marshalled operator
+            scoreReviewThreshold:
+              type: integer
+              minimum: 0
+            scoreRejectThreshold:
+              type: integer
+              minimum: 0
+            rules:
+              type: array
+              items:
+                $ref: "#/components/schemas/CreateScenarioIterationRuleBody"
+    UpdateScenarioIterationBody:
+      type: object
+      properties:
+        body:
+          type: object
+          properties:
+            triggerCondition:
+              $ref: "#/components/schemas/Operator"
+              description: Valid marshalled operator
+            scoreReviewThreshold:
+              type: integer
+              minimum: 0
+            scoreRejectThreshold:
+              type: integer
+              minimum: 0
+    ScenarioIterationRule:
+      type: object
+      required:
+        - id
+        - scenarioIterationId
+        - displayOrder
+        - name
+        - description
+        - formula
+        - scoreModifier
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        scenarioIterationId:
+          type: string
+          format: uuid
+        displayOrder:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        formula:
+          $ref: "#/components/schemas/Operator"
+          description: Valid marshalled operator
+        scoreModifier:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+    CreateScenarioIterationRuleBody:
+      type: object
+      required:
+        - scenarioIterationId
+        - displayOrder
+        - name
+        - description
+        - formula
+        - scoreModifier
+      properties:
+        scenarioIterationId:
+          type: string
+          format: uuid
+        displayOrder:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        formula:
+          $ref: "#/components/schemas/Operator"
+          description: Valid marshalled operator
+        scoreModifier:
+          type: integer
+    UpdateScenarioIterationRuleBody:
+      type: object
+      properties:
+        displayOrder:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        formula:
+          type: object
+          description: Valid marshalled operator
+        scoreModifier:
+          type: integer
+    ScenarioPublication:
+      type: object
+      required:
+        - id
+        - createdAt
+        - scenarioIterationId
+        - publicationAction
+      properties:
+        id:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        scenarioIterationId:
+          type: string
+          format: uuid
+        publicationAction:
+          $ref: "#/components/schemas/PublicationAction"
+    CreateScenarioPublicationBody:
+      type: object
+      required:
+        - scenarioIterationId
+        - publicationAction
+      properties:
+        scenarioIterationId:
+          type: string
+          format: uuid
+        publicationAction:
+          $ref: "#/components/schemas/PublicationAction"
+    PublicationAction:
+      type: string
+      enum: ["publish", "unpublish"]
+    Operator:
+      oneOf:
+        - $ref: "#/components/schemas/AndOperator"
+        - $ref: "#/components/schemas/BoolConstantOperator"
+        - $ref: "#/components/schemas/DbFieldBoolOperator"
+        - $ref: "#/components/schemas/DbFieldFloatOperator"
+        - $ref: "#/components/schemas/DbFieldStringOperator"
+        - $ref: "#/components/schemas/DivideFloatOperator"
+        - $ref: "#/components/schemas/EqualBoolOperator"
+        - $ref: "#/components/schemas/EqualStringOperator"
+        - $ref: "#/components/schemas/EqualFloatOperator"
+        - $ref: "#/components/schemas/FloatConstantOperator"
+        - $ref: "#/components/schemas/GreaterFloatOperator"
+        - $ref: "#/components/schemas/GreaterOrEqualFloatOperator"
+        - $ref: "#/components/schemas/LesserFloatOperator"
+        - $ref: "#/components/schemas/LesserOrEqualFloatOperator"
+        - $ref: "#/components/schemas/NotOperator"
+        - $ref: "#/components/schemas/OrOperator"
+        - $ref: "#/components/schemas/PayloadFieldBoolOperator"
+        - $ref: "#/components/schemas/PayloadFieldFloatOperator"
+        - $ref: "#/components/schemas/PayloadFieldStringOperator"
+        - $ref: "#/components/schemas/ProductFloatOperator"
+        - $ref: "#/components/schemas/RoundFloatOperator"
+        - $ref: "#/components/schemas/StringIsInListOperator"
+        - $ref: "#/components/schemas/StringListConstantOperator"
+        - $ref: "#/components/schemas/StringConstantOperator"
+        - $ref: "#/components/schemas/SubstractFloatOperator"
+        - $ref: "#/components/schemas/SumFloatOperator"
+    AndOperator:
+      type: object
+      required:
+        - type
+        - children
+      properties:
+        type:
+          type: string
+          enum: ["AND"]
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/Operator"
+    OrOperator:
+      type: object
+      required:
+        - type
+        - children
+      properties:
+        type:
+          type: string
+          enum: ["OR"]
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/Operator"
+    EqualBoolOperator:
+      type: object
+      required:
+        - type
+        - children
+      properties:
+        type:
+          type: string
+          enum: ["EQUAL_BOOL"]
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/Operator"
+    EqualStringOperator:
+      type: object
+      required:
+        - type
+        - children
+      properties:
+        type:
+          type: string
+          enum: ["EQUAL_STRING"]
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/Operator"
+    EqualFloatOperator:
+      type: object
+      required:
+        - type
+        - children
+      properties:
+        type:
+          type: string
+          enum: ["EQUAL_FLOAT"]
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/Operator"
+    NotOperator:
+      type: object
+      required:
+        - type
+        - children
+      properties:
+        type:
+          type: string
+          enum: ["NOT"]
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/Operator"
+    StringIsInListOperator:
+      type: object
+      required:
+        - type
+        - children
+      properties:
+        type:
+          type: string
+          enum: ["STRING_IS_IN_LIST"]
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/Operator"
+    StringListConstantOperator:
+      type: object
+      required:
+        - type
+        - staticData
+      properties:
+        type:
+          type: string
+          enum: ["STRING_LIST_CONSTANT"]
+        staticData:
+          type: object
+          required:
+            - value
+          properties:
+            value:
+              type: array
+              items:
+                type: string
+    FloatConstantOperator:
+      type: object
+      required:
+        - type
+        - staticData
+      properties:
+        type:
+          type: string
+          enum: ["FLOAT_CONSTANT"]
+        staticData:
+          type: object
+          required:
+            - value
+          properties:
+            value:
+              type: number
+    BoolConstantOperator:
+      type: object
+      required:
+        - type
+        - staticData
+      properties:
+        type:
+          type: string
+          enum: ["BOOL_CONSTANT"]
+        staticData:
+          type: object
+          required:
+            - value
+          properties:
+            value:
+              type: boolean
+    GreaterFloatOperator:
+      type: object
+      required:
+        - type
+        - children
+      properties:
+        type:
+          type: string
+          enum: ["GREATER_FLOAT"]
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/Operator"
+    GreaterOrEqualFloatOperator:
+      type: object
+      required:
+        - type
+        - children
+      properties:
+        type:
+          type: string
+          enum: ["GREATER_OR_EQUAL_FLOAT"]
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/Operator"
+    LesserFloatOperator:
+      type: object
+      required:
+        - type
+        - children
+      properties:
+        type:
+          type: string
+          enum: ["LESSER_FLOAT"]
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/Operator"
+    LesserOrEqualFloatOperator:
+      type: object
+      required:
+        - type
+        - children
+      properties:
+        type:
+          type: string
+          enum: ["LESSER_OR_EQUAL_FLOAT"]
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/Operator"
+    StringConstantOperator:
+      type: object
+      required:
+        - type
+        - staticData
+      properties:
+        type:
+          type: string
+          enum: ["STRING_CONSTANT"]
+        staticData:
+          type: object
+          required:
+            - value
+          properties:
+            value:
+              type: string
+    DbFieldBoolOperator:
+      type: object
+      required:
+        - type
+        - staticData
+      properties:
+        type:
+          type: string
+          enum: ["DB_FIELD_BOOL"]
+        staticData:
+          type: object
+          required:
+            - triggerTableName
+            - path
+            - fieldName
+          properties:
+            triggerTableName:
+              type: string
+            path:
+              type: array
+              items:
+                type: string
+            fieldName:
+              type: string
+    DbFieldFloatOperator:
+      type: object
+      required:
+        - type
+        - staticData
+      properties:
+        type:
+          type: string
+          enum: ["DB_FIELD_FLOAT"]
+        staticData:
+          type: object
+          required:
+            - triggerTableName
+            - path
+            - fieldName
+          properties:
+            triggerTableName:
+              type: string
+            path:
+              type: array
+              items:
+                type: string
+            fieldName:
+              type: string
+    DbFieldStringOperator:
+      type: object
+      required:
+        - type
+        - staticData
+      properties:
+        type:
+          type: string
+          enum: ["DB_FIELD_STRING"]
+        staticData:
+          type: object
+          required:
+            - triggerTableName
+            - path
+            - fieldName
+          properties:
+            triggerTableName:
+              type: string
+            path:
+              type: array
+              items:
+                type: string
+            fieldName:
+              type: string
+    PayloadFieldBoolOperator:
+      type: object
+      required:
+        - type
+        - staticData
+      properties:
+        type:
+          type: string
+          enum: ["PAYLOAD_FIELD_BOOL"]
+        staticData:
+          type: object
+          required:
+            - fieldName
+          properties:
+            fieldName:
+              type: string
+    PayloadFieldFloatOperator:
+      type: object
+      required:
+        - type
+        - staticData
+      properties:
+        type:
+          type: string
+          enum: ["PAYLOAD_FIELD_FLOAT"]
+        staticData:
+          type: object
+          required:
+            - fieldName
+          properties:
+            fieldName:
+              type: string
+    PayloadFieldStringOperator:
+      type: object
+      required:
+        - type
+        - staticData
+      properties:
+        type:
+          type: string
+          enum: ["PAYLOAD_FIELD_STRING"]
+        staticData:
+          type: object
+          required:
+            - fieldName
+          properties:
+            fieldName:
+              type: string
+    SumFloatOperator:
+      type: object
+      required:
+        - type
+        - children
+      properties:
+        type:
+          type: string
+          enum: ["SUM_FLOAT"]
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/Operator"
+    ProductFloatOperator:
+      type: object
+      required:
+        - type
+        - children
+      properties:
+        type:
+          type: string
+          enum: ["PRODUCT_FLOAT"]
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/Operator"
+    SubstractFloatOperator:
+      type: object
+      required:
+        - type
+        - children
+      properties:
+        type:
+          type: string
+          enum: ["SUBTRACT_FLOAT"]
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/Operator"
+    DivideFloatOperator:
+      type: object
+      required:
+        - type
+        - children
+        - staticData
+      properties:
+        type:
+          type: string
+          enum: ["DIVIDE_FLOAT"]
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/Operator"
+    RoundFloatOperator:
+      type: object
+      required:
+        - type
+        - children
+        - staticData
+      properties:
+        type:
+          type: string
+          enum: ["ROUND_FLOAT"]
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/Operator"
+        staticData:
+          type: object
+          required:
+            - level
+          properties:
+            level:
+              type: integer
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    "401":
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            type: string
+            example: Unauthorized
+    "403":
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            type: string
+            example: Forbidden
+    "404":
+      description: Not found
+      content:
+        application/json:
+          schema:
+            type: string
+            example: Not found
+    "422":
+      description: Unprocessable Content
+      content:
+        application/json:
+          schema:
+            type: object
+            description: To be defined
