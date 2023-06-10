@@ -1,6 +1,20 @@
 package models
 
-import "time"
+import (
+	"fmt"
+	"marble/marble-backend/models/operators"
+	"time"
+)
+
+type ScenarioPublication struct {
+	ID                  string
+	Rank                int32
+	OrgID               string
+	ScenarioID          string
+	ScenarioIterationID string
+	PublicationAction   PublicationAction
+	CreatedAt           time.Time
+}
 
 type PublicationAction int
 
@@ -34,26 +48,91 @@ func PublicationActionFrom(s string) PublicationAction {
 	return UnknownPublicationAction
 }
 
-type ScenarioPublication struct {
-	ID    string
-	Rank  int32
-	OrgID string
-	// UserID              string
-	ScenarioID          string
-	ScenarioIterationID string
-	PublicationAction   PublicationAction
-	CreatedAt           time.Time
+type PublishedScenarioIteration struct {
+	ID         string
+	ScenarioID string
+	Version    int
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	Body       PublishedScenarioIterationBody
+}
+
+type PublishedScenarioIterationBody struct {
+	TriggerCondition     operators.OperatorBool
+	Rules                []Rule
+	ScoreReviewThreshold int
+	ScoreRejectThreshold int
+	BatchTriggerSQL      string
+	Schedule             string
+}
+
+func NewPublishedScenarioIteration(si ScenarioIteration, scenarioType ScenarioType) (PublishedScenarioIteration, error) {
+	result := PublishedScenarioIteration{
+		ID:         si.ID,
+		ScenarioID: si.ScenarioID,
+		CreatedAt:  si.CreatedAt,
+		UpdatedAt:  si.UpdatedAt,
+	}
+
+	err := si.IsValidForPublication(scenarioType)
+	if err != nil {
+		return PublishedScenarioIteration{}, err
+	}
+
+	result.Version = *si.Version
+	result.Body.ScoreReviewThreshold = *si.Body.ScoreReviewThreshold
+	result.Body.ScoreRejectThreshold = *si.Body.ScoreRejectThreshold
+	result.Body.Rules = si.Body.Rules
+	result.Body.TriggerCondition = si.Body.TriggerCondition
+	result.Body.BatchTriggerSQL = si.Body.BatchTriggerSQL
+	result.Body.Schedule = si.Body.Schedule
+
+	return result, nil
+}
+
+func (si ScenarioIteration) IsValidForPublication(scenarioType ScenarioType) error {
+	if si.Body.ScoreReviewThreshold == nil {
+		return fmt.Errorf("Scenario iteration has no ScoreReviewThreshold: \n%w", ErrScenarioIterationNotValid)
+	}
+
+	if si.Body.ScoreRejectThreshold == nil {
+		return fmt.Errorf("Scenario iteration has no ScoreRejectThreshold: \n%w", ErrScenarioIterationNotValid)
+	}
+
+	if len(si.Body.Rules) < 1 {
+		return fmt.Errorf("Scenario iteration has no rules: \n%w", ErrScenarioIterationNotValid)
+	}
+	for _, rule := range si.Body.Rules {
+		if !rule.Formula.IsValid() {
+			return fmt.Errorf("Scenario iteration rule has invalid rules: \n%w", ErrScenarioIterationNotValid)
+		}
+	}
+
+	if si.Body.TriggerCondition == nil {
+		return fmt.Errorf("Scenario iteration has no trigger condition: \n%w", ErrScenarioIterationNotValid)
+	} else if !si.Body.TriggerCondition.IsValid() {
+		return fmt.Errorf("Scenario iteration trigger condition is invalid: \n%w", ErrScenarioIterationNotValid)
+	}
+
+	if scenarioType == Scheduled {
+		if si.Body.Schedule == "" {
+			return fmt.Errorf("Scheduled scenario iteration has no schedule: \n%w", ErrScenarioIterationNotValid)
+		}
+		if si.Body.BatchTriggerSQL == "" {
+			return fmt.Errorf("Scheduled scenario iteration has no trigger SQL: \n%w", ErrScenarioIterationNotValid)
+		}
+	}
+
+	return nil
 }
 
 type ListScenarioPublicationsFilters struct {
-	ScenarioID *string
-	// UserID              *string
+	ScenarioID          *string
 	ScenarioIterationID *string
 	PublicationAction   *string
 }
 
 type CreateScenarioPublicationInput struct {
-	// UserID              string
 	ScenarioIterationID string
 	PublicationAction   PublicationAction
 }
