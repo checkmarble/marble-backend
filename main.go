@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"crypto/rsa"
 	"flag"
 	"log"
 	"marble/marble-backend/api"
 	"marble/marble-backend/infra"
+	"marble/marble-backend/jobs"
 	"marble/marble-backend/pg_repository"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases"
@@ -87,6 +89,25 @@ func runServer(config usecases.Configuration, pgRepository *pg_repository.PGRepo
 	api.Shutdown(shutdownCtx)
 }
 
+func runScheduledBatches(config usecases.Configuration, pgRepository *pg_repository.PGRepository, marbleConnectionPool *pgxpool.Pool, logger *slog.Logger) {
+	ctx := context.Background()
+
+	repositories := repositories.NewRepositories(
+		rsa.PrivateKey{},
+		infra.IntializeFirebase(ctx),
+		pgRepository,
+		marbleConnectionPool,
+	)
+
+	usecases := usecases.Usecases{
+		Repositories: *repositories,
+		Config:       config,
+	}
+
+	jobs.ExecuteAllScheduledScenarios(ctx, usecases, logger)
+
+}
+
 func main() {
 
 	var (
@@ -126,6 +147,7 @@ func main() {
 	shouldRunMigrations := flag.Bool("migrations", false, "Run migrations")
 	shouldRunServer := flag.Bool("server", false, "Run server")
 	shouldWipeDb := flag.Bool("wipe", false, "Truncate db tables")
+	shouldRunScheduledScenarios := flag.Bool("scheduled", false, "Run scheduled scenarios")
 	flag.Parse()
 	logger.DebugCtx(context.Background(), "shouldRunMigrations", *shouldRunMigrations, "shouldRunServer", *shouldRunServer)
 
@@ -135,6 +157,8 @@ func main() {
 	if *shouldRunMigrations {
 		pg_repository.RunMigrations(env, pgConfig, logger)
 	}
+	// The below specifically does not share a connection pool with the functions "run migrations" and "wipe db" because it conflicts
+	// with the postgresql search path update
 	if *shouldRunServer {
 
 		connectionString := pgConfig.GetConnectionString(env)
@@ -149,5 +173,20 @@ func main() {
 			return
 		}
 		runServer(config, pgRepository, marbleConnectionPool, port, env, logger)
+	}
+
+	if *shouldRunScheduledScenarios {
+		connectionString := pgConfig.GetConnectionString(env)
+		marbleConnectionPool, err := infra.NewPostgresConnectionPool(connectionString)
+		if err != nil {
+			log.Fatal("error creating postgres connection to marble database", err.Error())
+		}
+
+		pgRepository, err := pg_repository.New(marbleConnectionPool)
+		if err != nil {
+			logger.Error("error creating pg repository:\n", err.Error())
+			return
+		}
+		runScheduledBatches(config, pgRepository, marbleConnectionPool, logger)
 	}
 }
