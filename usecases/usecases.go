@@ -108,3 +108,7 @@ func (usecases *Usecases) NewScenarioIterationRuleUsecase() ScenarioIterationRul
 		repository: usecases.Repositories.ScenarioIterationRuleRepository,
 	}
 }
+
+func (usecases *Usecases) NewScheduledScenarioExecutionUsecase() ScheduledScenarioExecutionUsecase {
+	return ScheduledScenarioExecutionUsecase{}
+}

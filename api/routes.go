@@ -119,6 +119,21 @@ func (api *API) routes() {
 			})
 		})
 
+		authedRouter.Route("/scheduled-scenario-executions", func(r chi.Router) {
+			r.Use(api.enforcePermissionMiddleware(models.DECISION_READ))
+
+			r.With(httpin.NewInput(dto.ListScheduledScenarioExecutionInput{})).
+				Get("/", api.handleListScheduledScenarioExecution())
+
+			r.Route("/{scheduledScenarioExecutionID:"+UUIDRegExp+"}", func(r chi.Router) {
+				r.Get("/", api.handleGetScheduledScenarioExecution())
+
+				// TODO : Enforce permission : only accessible for automated calls from the scheduler
+				r.With(httpin.NewInput(dto.UpdateScheduledScenarioExecutionInput{})).
+					Patch("/", api.handleUpdateScheduledScenarioExecution())
+			})
+		})
+
 		authedRouter.Route("/data-model", func(dataModelRouter chi.Router) {
 			dataModelRouter.Use(api.enforcePermissionMiddleware(models.DATA_MODEL_READ))
 			dataModelRouter.Get("/", api.handleGetDataModel())
