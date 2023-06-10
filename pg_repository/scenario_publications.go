@@ -95,7 +95,7 @@ func (r *PGRepository) createScenarioPublication(ctx context.Context, tx pgx.Tx,
 	return createdScenarioPublication, err
 }
 
-func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID string, sp models.CreateScenarioPublicationInput) ([]models.ScenarioPublication, error) {
+func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID string, sp models.CreateScenarioPublicationInput, scenarioType models.ScenarioType) ([]models.ScenarioPublication, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to start a transaction: %w", err)
@@ -141,7 +141,7 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 			scenarioPublications = append(scenarioPublications, unpublishOldIteration.toDomain())
 		}
 
-		err = r.publishScenarioIteration(ctx, tx, orgID, sp.ScenarioIterationID)
+		err = r.publishScenarioIteration(ctx, tx, orgID, sp.ScenarioIterationID, scenarioType)
 		if err != nil && !errors.Is(err, ErrAlreadyPublished) {
 			return nil, fmt.Errorf("unable to publish scenario iteration: \n%w", err)
 		}

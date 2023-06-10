@@ -121,6 +121,7 @@ func TestListScenarios(t *testing.T) {
 	scenarios, err := globalTestParams.repository.ListScenarios(
 		context.Background(),
 		globalTestParams.testIds["OrganizationId"],
+		models.ListScenariosFilters{},
 	)
 
 	if err != nil {
@@ -174,7 +175,7 @@ func TestGetScenarioWithLiveVersion(t *testing.T) {
 	_, err = globalTestParams.repository.CreateScenarioPublication(context.Background(), globalTestParams.testIds["OrganizationId"], models.CreateScenarioPublicationInput{
 		ScenarioIterationID: iteration.ID,
 		PublicationAction:   models.PublicationActionFrom("publish"),
-	})
+	}, models.RealTime)
 	if err != nil {
 		t.Fatalf("Could not create scenario publication: %s", err)
 	}

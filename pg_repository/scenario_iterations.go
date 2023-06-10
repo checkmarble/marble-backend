@@ -29,6 +29,8 @@ type dbScenarioIteration struct {
 	ScoreRejectThreshold pgtype.Int2     `db:"score_reject_threshold"`
 	TriggerCondition     json.RawMessage `db:"trigger_condition"`
 	DeletedAt            pgtype.Time     `db:"deleted_at"`
+	BatchTriggerSQL      string          `db:"batch_trigger_sql"`
+	Schedule             string          `db:"schedule"`
 }
 
 func (si *dbScenarioIteration) toDomain() (models.ScenarioIteration, error) {
@@ -37,6 +39,10 @@ func (si *dbScenarioIteration) toDomain() (models.ScenarioIteration, error) {
 		ScenarioID: si.ScenarioID,
 		CreatedAt:  si.CreatedAt,
 		UpdatedAt:  si.UpdatedAt,
+		Body: models.ScenarioIterationBody{
+			BatchTriggerSQL: si.BatchTriggerSQL,
+			Schedule:        si.Schedule,
+		},
 	}
 
 	if si.Version.Valid {
@@ -153,6 +159,8 @@ type dbCreateScenarioIteration struct {
 	ScoreReviewThreshold *int   `db:"score_review_threshold"`
 	ScoreRejectThreshold *int   `db:"score_reject_threshold"`
 	TriggerCondition     []byte `db:"trigger_condition"`
+	BatchTriggerSQL      string `db:"batch_trigger_sql"`
+	Schedule             string `db:"schedule"`
 }
 
 func (r *PGRepository) CreateScenarioIteration(ctx context.Context, orgID string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error) {
@@ -165,6 +173,8 @@ func (r *PGRepository) CreateScenarioIteration(ctx context.Context, orgID string
 	if scenarioIteration.Body != nil {
 		createScenarioIteration.ScoreReviewThreshold = scenarioIteration.Body.ScoreReviewThreshold
 		createScenarioIteration.ScoreRejectThreshold = scenarioIteration.Body.ScoreRejectThreshold
+		createScenarioIteration.BatchTriggerSQL = scenarioIteration.Body.BatchTriggerSQL
+		createScenarioIteration.Schedule = scenarioIteration.Body.Schedule
 
 		if scenarioIteration.Body.TriggerCondition != nil {
 			triggerConditionBytes, err := scenarioIteration.Body.TriggerCondition.MarshalJSON()
@@ -220,6 +230,8 @@ type dbUpdateScenarioIterationInput struct {
 	ScoreReviewThreshold *int    `db:"score_review_threshold"`
 	ScoreRejectThreshold *int    `db:"score_reject_threshold"`
 	TriggerCondition     *[]byte `db:"trigger_condition"`
+	BatchTriggerSQL      *string `db:"batch_trigger_sql"`
+	Schedule             *string `db:"schedule"`
 }
 
 func (r *PGRepository) UpdateScenarioIteration(ctx context.Context, orgID string, scenarioIteration models.UpdateScenarioIterationInput) (models.ScenarioIteration, error) {
@@ -230,6 +242,8 @@ func (r *PGRepository) UpdateScenarioIteration(ctx context.Context, orgID string
 		ScoreReviewThreshold: scenarioIteration.Body.ScoreReviewThreshold,
 		ScoreRejectThreshold: scenarioIteration.Body.ScoreRejectThreshold,
 	}
+	updateScenarioIterationInput.BatchTriggerSQL = scenarioIteration.Body.BatchTriggerSQL
+	updateScenarioIterationInput.Schedule = scenarioIteration.Body.Schedule
 	if scenarioIteration.Body.TriggerCondition != nil {
 		triggerConditionBytes, err := scenarioIteration.Body.TriggerCondition.MarshalJSON()
 		if err != nil {
@@ -295,13 +309,13 @@ func (r *PGRepository) UpdateScenarioIteration(ctx context.Context, orgID string
 	return scenarioIterationDTO, nil
 }
 
-func (r *PGRepository) publishScenarioIteration(ctx context.Context, tx pgx.Tx, orgID string, scenarioIterationID string) error {
+func (r *PGRepository) publishScenarioIteration(ctx context.Context, tx pgx.Tx, orgID string, scenarioIterationID string, scenarioType models.ScenarioType) error {
 	si, err := r.getScenarioIterationRaw(ctx, tx, orgID, scenarioIterationID)
 	if err != nil {
 		return err
 	}
 
-	if err := si.IsValidForPublication(); err != nil {
+	if err := si.IsValidForPublication(scenarioType); err != nil {
 		return err
 	}
 

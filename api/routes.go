@@ -45,7 +45,8 @@ func (api *API) routes() {
 		authedRouter.Route("/scenarios", func(scenariosRouter chi.Router) {
 			scenariosRouter.Use(api.enforcePermissionMiddleware(models.SCENARIO_READ))
 
-			scenariosRouter.Get("/", api.ListScenarios())
+			scenariosRouter.With(httpin.NewInput(dto.ListScenarioInput{})).
+				Get("/", api.ListScenarios())
 
 			scenariosRouter.With(api.enforcePermissionMiddleware(models.SCENARIO_CREATE)).
 				With(httpin.NewInput(dto.CreateScenarioInput{})).

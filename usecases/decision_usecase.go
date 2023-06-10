@@ -101,7 +101,7 @@ func (usecase *DecisionUsecase) EvalScenario(ctx context.Context, scenario model
 		return models.ScenarioExecution{}, err
 	}
 
-	publishedVersion, err := models.NewPublishedScenarioIteration(liveVersion)
+	publishedVersion, err := models.NewPublishedScenarioIteration(liveVersion, scenario.ScenarioType)
 	if err != nil {
 		return models.ScenarioExecution{}, err
 	}

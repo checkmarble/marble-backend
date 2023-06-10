@@ -20,6 +20,8 @@ type APIScenarioIterationBody struct {
 	Rules                []APIScenarioIterationRule `json:"rules"`
 	ScoreReviewThreshold *int                       `json:"scoreReviewThreshold"`
 	ScoreRejectThreshold *int                       `json:"scoreRejectThreshold"`
+	BatchTriggerSQL      string                     `json:"batchTriggerSql"`
+	Schedule             string                     `json:"schedule"`
 }
 
 type APIScenarioIteration struct {
@@ -49,6 +51,8 @@ func NewAPIScenarioIterationWithBody(si models.ScenarioIteration) (APIScenarioIt
 	body := APIScenarioIterationBody{
 		ScoreReviewThreshold: si.Body.ScoreReviewThreshold,
 		ScoreRejectThreshold: si.Body.ScoreRejectThreshold,
+		BatchTriggerSQL:      si.Body.BatchTriggerSQL,
+		Schedule:             si.Body.Schedule,
 		Rules:                make([]APIScenarioIterationRule, len(si.Body.Rules)),
 	}
 	for i, rule := range si.Body.Rules {
@@ -134,6 +138,8 @@ func (api *API) CreateScenarioIteration() http.HandlerFunc {
 			createScenarioIterationInput.Body = &models.CreateScenarioIterationBody{
 				ScoreReviewThreshold: input.Payload.Body.ScoreReviewThreshold,
 				ScoreRejectThreshold: input.Payload.Body.ScoreRejectThreshold,
+				BatchTriggerSQL:      input.Payload.Body.BatchTriggerSQL,
+				Schedule:             input.Payload.Body.Schedule,
 				Rules:                make([]models.CreateRuleInput, len(input.Payload.Body.Rules)),
 			}
 
@@ -246,11 +252,13 @@ func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 			return
 		}
 
-		appUpdateScenarioIterationInput := models.UpdateScenarioIterationInput{
+		updateScenarioIterationInput := models.UpdateScenarioIterationInput{
 			ID: input.ScenarioIterationID,
 			Body: &models.UpdateScenarioIterationBody{
 				ScoreReviewThreshold: input.Payload.Body.ScoreReviewThreshold,
 				ScoreRejectThreshold: input.Payload.Body.ScoreRejectThreshold,
+				Schedule:             input.Payload.Body.Schedule,
+				BatchTriggerSQL:      input.Payload.Body.BatchTriggerSQL,
 			},
 		}
 
@@ -261,11 +269,11 @@ func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 				http.Error(w, "", http.StatusUnprocessableEntity)
 				return
 			}
-			appUpdateScenarioIterationInput.Body.TriggerCondition = triggerCondition
+			updateScenarioIterationInput.Body.TriggerCondition = triggerCondition
 		}
 
 		usecase := api.usecases.NewScenarioIterationUsecase()
-		updatedSI, err := usecase.UpdateScenarioIteration(ctx, orgID, appUpdateScenarioIterationInput)
+		updatedSI, err := usecase.UpdateScenarioIteration(ctx, orgID, updateScenarioIterationInput)
 		if errors.Is(err, models.ErrScenarioIterationNotDraft) {
 			logger.WarnCtx(ctx, "Cannot update scenario iteration that is not in draft state: \n"+err.Error())
 			http.Error(w, "", http.StatusForbidden)

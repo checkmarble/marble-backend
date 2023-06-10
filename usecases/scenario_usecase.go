@@ -11,8 +11,8 @@ type ScenarioUsecase struct {
 	scenarioWriteRepository repositories.ScenarioWriteRepository
 }
 
-func (usecase *ScenarioUsecase) ListScenarios(ctx context.Context, organizationID string) ([]models.Scenario, error) {
-	return usecase.scenarioReadRepository.ListScenarios(ctx, organizationID)
+func (usecase *ScenarioUsecase) ListScenarios(ctx context.Context, organizationID string, filters models.ListScenariosFilters) ([]models.Scenario, error) {
+	return usecase.scenarioReadRepository.ListScenarios(ctx, organizationID, filters)
 }
 
 func (usecase *ScenarioUsecase) GetScenario(ctx context.Context, organizationID string, scenarioID string) (models.Scenario, error) {

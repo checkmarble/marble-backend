@@ -22,6 +22,7 @@ type dbScenario struct {
 	CreatedAt         time.Time   `db:"created_at"`
 	LiveVersionID     pgtype.Text `db:"live_scenario_iteration_id"`
 	DeletedAt         pgtype.Time `db:"deleted_at"`
+	ScenarioType      string      `db:"scenario_type"`
 }
 
 func (s *dbScenario) toDomain() models.Scenario {
@@ -31,6 +32,7 @@ func (s *dbScenario) toDomain() models.Scenario {
 		Description:       s.Description,
 		TriggerObjectType: s.TriggerObjectType,
 		CreatedAt:         s.CreatedAt,
+		ScenarioType:      models.ScenarioTypeFrom(s.ScenarioType),
 	}
 	if s.LiveVersionID.Valid {
 		scenario.LiveVersionID = &s.LiveVersionID.String
@@ -38,13 +40,27 @@ func (s *dbScenario) toDomain() models.Scenario {
 	return scenario
 }
 
-func (r *PGRepository) ListScenarios(ctx context.Context, orgID string) ([]models.Scenario, error) {
-	sql, args, err := r.queryBuilder.
+func (r *PGRepository) ListScenarios(ctx context.Context, orgID string, filters models.ListScenariosFilters) ([]models.Scenario, error) {
+	query := r.queryBuilder.
 		Select(ColumnList[dbScenario]()...).
 		From("scenarios").
 		Where(sq.Eq{
 			"org_id": orgID,
-		}).ToSql()
+		})
+	if filters.IsActive != nil {
+		if *filters.IsActive {
+			query = query.Where("live_scenario_iteration_id IS NOT NULL")
+		} else {
+			query = query.Where("live_scenario_iteration_id IS NULL")
+		}
+	}
+	if filters.ScenarioType != nil {
+		query = query.Where(sq.Eq{
+			"scenario_type": filters.ScenarioType.String(),
+		})
+	}
+
+	sql, args, err := query.ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("unable to build scenario query: %w", err)
 	}
@@ -92,6 +108,7 @@ type dbCreateScenario struct {
 	Name              string `db:"name"`
 	Description       string `db:"description"`
 	TriggerObjectType string `db:"trigger_object_type"`
+	ScenarioType      string `db:"scenario_type"`
 }
 
 func (r *PGRepository) CreateScenario(ctx context.Context, orgID string, scenario models.CreateScenarioInput) (models.Scenario, error) {
@@ -103,6 +120,7 @@ func (r *PGRepository) CreateScenario(ctx context.Context, orgID string, scenari
 			Name:              scenario.Name,
 			Description:       scenario.Description,
 			TriggerObjectType: scenario.TriggerObjectType,
+			ScenarioType:      scenario.ScenarioType.String(),
 		})).
 		Suffix("RETURNING *").ToSql()
 	if err != nil {

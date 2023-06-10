@@ -157,7 +157,7 @@ func (r *PGRepository) Seed(zorgOrganizationId string) error {
 	_, err = r.CreateScenarioPublication(context.TODO(), zorgOrganizationId, models.CreateScenarioPublicationInput{
 		ScenarioIterationID: scenarioIteration.ID,
 		PublicationAction:   models.Publish,
-	})
+	}, models.RealTime)
 	if err != nil {
 		log.Printf("error publishing scenario iteration: %v", err)
 		return err
@@ -303,7 +303,7 @@ func (r *PGRepository) Seed(zorgOrganizationId string) error {
 	_, err = r.CreateScenarioPublication(context.TODO(), zorgOrganizationId, models.CreateScenarioPublicationInput{
 		ScenarioIterationID: demoScenarioIteration.ID,
 		PublicationAction:   models.Publish,
-	})
+	}, models.RealTime)
 	if err != nil {
 		log.Printf("error publishing demo scenario iteration: %v", err)
 		return err
