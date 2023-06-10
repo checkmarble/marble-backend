@@ -81,6 +81,7 @@ require (
 require (
 	firebase.google.com/go/v4 v4.11.0
 	github.com/Masterminds/squirrel v1.5.4
+	github.com/adhocore/gronx v1.6.3
 	github.com/ggicci/httpin v0.10.1
 	github.com/go-chi/cors v1.2.1
 	github.com/go-playground/validator v9.31.0+incompatible
