@@ -8,10 +8,9 @@ import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
 import AddIcon from "@mui/icons-material/Add";
-// import DeleteIcon from "@mui/icons-material/Delete";
 import SendIcon from "@mui/icons-material/SendOutlined";
 import Approval from "@mui/icons-material/Approval";
-
+import DeleteForever from "@mui/icons-material/DeleteForever";
 import { useLoading } from "@/hooks/Loading";
 import services from "@/injectServices";
 import {
@@ -22,11 +21,10 @@ import {
   useDeleteOrganization,
 } from "@/services";
 import DelayedLinearProgress from "@/components/DelayedLinearProgress";
+import AlertDialog from "@/components/AlertDialog";
 import AddUserDialog from "@/components/AddUserDialog";
 import { type CreateUser, Role, PageLink } from "@/models";
 import ListOfUsers from "@/components/ListOfUsers";
-import { DeleteForever } from "@mui/icons-material";
-import AlertDialog from "@/components/AlertDialog";
 
 function OrganizationDetailsPage() {
   const { organizationId } = useParams();
