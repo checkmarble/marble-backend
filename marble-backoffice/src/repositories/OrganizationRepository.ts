@@ -1,11 +1,10 @@
-import { MarbleApi } from "@/infra/MarbleApi";
+import type { MarbleApi } from "@/infra/MarbleApi";
 import type { Organization, CreateOrganization, ApiKey } from "@/models";
 import {
-  adaptOrganizationsApiResultDto,
-  adaptSingleOrganizationApiResultDto,
+  adaptOrganizationsApiResult,
+  adaptSingleOrganizationApiResult,
 } from "@/models/OrganizationDto";
-import { adaptApiKeysResultDto } from "@/models/ApiKeyDto";
-import { adaptOrganization, adaptApiKey } from "@/models";
+import { adaptApiKeysApiResult } from "@/models/ApiKeyDto";
 
 export interface OrganizationRepository {
   marbleApi: MarbleApi;
@@ -14,34 +13,30 @@ export interface OrganizationRepository {
 export async function fetchAllOrganizations(
   repository: OrganizationRepository
 ): Promise<Organization[]> {
-  const dtos = adaptOrganizationsApiResultDto(
+  return adaptOrganizationsApiResult(
     await repository.marbleApi.allOrganizations()
   );
-  return dtos.organizations.map(adaptOrganization);
 }
 
 export async function postOrganization(
   repository: OrganizationRepository,
   create: CreateOrganization
 ): Promise<Organization> {
-  const created = adaptSingleOrganizationApiResultDto(
+  return adaptSingleOrganizationApiResult(
     await repository.marbleApi.postOrganization({
       name: create.name,
       databaseName: create.databaseName,
     })
   );
-
-  return adaptOrganization(created.organization);
 }
 
 export async function fetchOrganization(
   repository: OrganizationRepository,
   organizationId: string
 ): Promise<Organization> {
-  const result = adaptSingleOrganizationApiResultDto(
+  return adaptSingleOrganizationApiResult(
     await repository.marbleApi.organizationsById(organizationId)
   );
-  return adaptOrganization(result.organization);
 }
 
 export async function deleteOrganization(
@@ -55,8 +50,7 @@ export async function fetchApiKeys(
   repository: OrganizationRepository,
   organizationId: string
 ): Promise<ApiKey[]> {
-  const dto = adaptApiKeysResultDto(
+  return adaptApiKeysApiResult(
     await repository.marbleApi.apiKeysOfOrganization(organizationId)
   );
-  return dto.api_keys.map(adaptApiKey);
 }

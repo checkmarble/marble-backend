@@ -1,7 +1,6 @@
 import * as yup from "yup";
+import { Organization } from "./Organization";
 import { adaptDtoWithYup } from "@/infra/adaptDtoWithYup";
-
-// ------ OrganizationDto
 
 const OrganizationSchema = yup.object({
   id: yup.string().required(),
@@ -11,34 +10,31 @@ const OrganizationSchema = yup.object({
 
 export type OrganizationDto = yup.InferType<typeof OrganizationSchema>;
 
-// ------ OrganizationsApiResultDto
-
-const OrganizationsApiResultSchema = yup.object({
-  organizations: yup.array().of(OrganizationSchema).required(),
-});
-
-export type OrganizationsApiResultDto = yup.InferType<
-  typeof OrganizationsApiResultSchema
->;
-
-export function adaptOrganizationsApiResultDto(
-  json: unknown
-): OrganizationsApiResultDto {
-  return adaptDtoWithYup(json, OrganizationsApiResultSchema);
+export function adaptOrganization(dto: OrganizationDto): Organization {
+  return {
+    organizationId: dto.id,
+    name: dto.name,
+    dateCreated: new Date(), // temporary
+  };
 }
 
-// ------ SingleOrganizationApiResult
+export function adaptOrganizationsApiResult(json: unknown): Organization[] {
+  const dtos = adaptDtoWithYup(
+    json,
+    yup.object({
+      organizations: yup.array().of(OrganizationSchema).required(),
+    })
 
-const SingleOrganizationApiSchema = yup.object({
-  organization: OrganizationSchema,
-});
+  );
+  return dtos.organizations.map((dto) => adaptOrganization(dto));
+}
 
-export type SingleOrganizationApiResultDto = yup.InferType<
-  typeof SingleOrganizationApiSchema
->;
-
-export function adaptSingleOrganizationApiResultDto(
-  json: unknown
-): SingleOrganizationApiResultDto {
-  return adaptDtoWithYup(json, SingleOrganizationApiSchema);
+export function adaptSingleOrganizationApiResult(json: unknown): Organization {
+  const dto = adaptDtoWithYup(
+    json,
+    yup.object({
+      organization: OrganizationSchema,
+    })
+  );
+  return adaptOrganization(dto.organization);
 }

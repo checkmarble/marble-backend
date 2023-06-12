@@ -1,4 +1,6 @@
 import * as yup from "yup";
+import { User } from "./User";
+import { adaptRole } from "./Role";
 import { adaptDtoWithYup } from "@/infra/adaptDtoWithYup";
 
 const UserSchema = yup.object({
@@ -10,34 +12,30 @@ const UserSchema = yup.object({
 
 export type UserDto = yup.InferType<typeof UserSchema>;
 
-// ------ UsersApiResultDto
-
-const UsersApiResultSchema = yup.object({
-    users: yup.array().required().of(UserSchema),
-});
-
-export type UsersApiResultDto = yup.InferType<
-  typeof UsersApiResultSchema
->;
-
-export function adaptUsersApiResultDto(
-  json: unknown
-): UsersApiResultDto {
-  return adaptDtoWithYup(json, UsersApiResultSchema);
+export function adaptUser(dto: UserDto): User {
+  return {
+    userId: dto.user_id,
+    email: dto.email,
+    role: adaptRole(dto.role),
+    organizationId: dto.organization_id,
+  };
 }
 
-// ------ SingleUserApiResultDto
+export function adaptUsersApiResult(json: unknown): User[] {
+  return adaptDtoWithYup(
+    json,
+    yup.object({
+      users: yup.array().required().of(UserSchema),
+    })
+  ).users.map((dto) => adaptUser(dto));
+}
 
-const SingleUserApiResultSchema = yup.object({
-    user: UserSchema,
-});
-
-export type SingleUserApiResultDto = yup.InferType<
-  typeof SingleUserApiResultSchema
->;
-
-export function adaptSingleUserApiResultDto(
-  json: unknown
-): SingleUserApiResultDto {
-  return adaptDtoWithYup(json, SingleUserApiResultSchema);
+export function adaptSingleUserApiResult(json: unknown): User {
+  const dto = adaptDtoWithYup(
+    json,
+    yup.object({
+      user: UserSchema,
+    })
+  ).user;
+  return adaptUser(dto);
 }

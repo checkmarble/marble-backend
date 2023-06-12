@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import type { Organization, Scenarios } from "@/models";
+import type { Organization, Scenario } from "@/models";
 import {
   type OrganizationRepository,
   type ScenariosRepository,
@@ -93,7 +93,7 @@ export function useScenarios(
     return fetchScenarios(service.scenariosRepository, organizationId);
   }, [service, organizationId]);
 
-  const [scenarios, refreshScenarios] = useSimpleLoader<Scenarios[]>(
+  const [scenarios, refreshScenarios] = useSimpleLoader<Scenario[]>(
     loadingDispatcher,
     loadScenarios
   );
