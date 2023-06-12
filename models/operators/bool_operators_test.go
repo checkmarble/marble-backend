@@ -39,6 +39,13 @@ func (d *DataAccessorBoolImpl) GetDbHandle() *pgxpool.Pool {
 	return nil
 }
 
+func (d *DataAccessorBoolImpl) GetTriggerObjectName() string {
+	return ""
+}
+func (d *DataAccessorBoolImpl) ExecutionType() string {
+	return ""
+}
+
 func TestLogicEval(t *testing.T) {
 	type testCase struct {
 		name     string

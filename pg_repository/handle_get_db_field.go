@@ -94,7 +94,7 @@ func (rep *PGRepository) queryDbForField(ctx context.Context, readParams models.
 	return rows, nil
 }
 
-func getBaseObjectIdFromPayload(payload models.Payload) (string, error) {
+func getBaseObjectIdFromPayload(payload models.TriggerFieldReader) (string, error) {
 	baseObjectIdAny, _ := payload.ReadFieldFromPayload("object_id")
 	baseObjectIdPtr, ok := baseObjectIdAny.(*string)
 	if !ok {

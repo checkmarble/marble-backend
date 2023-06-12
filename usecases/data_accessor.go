@@ -10,9 +10,11 @@ import (
 
 type DataAccessor struct {
 	DataModel                  models.DataModel
-	Payload                    models.Payload
+	Payload                    models.TriggerFieldReader
 	dbPoolRepository           repositories.DbPoolRepository
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
+	executionType              string
+	triggerTableName           string
 }
 
 func (d *DataAccessor) GetPayloadField(fieldName string) (interface{}, error) {
@@ -29,4 +31,12 @@ func (d *DataAccessor) GetDbField(ctx context.Context, triggerTableName string, 
 }
 func (d *DataAccessor) GetDbHandle() *pgxpool.Pool {
 	return d.dbPoolRepository.GetDbPool()
+}
+
+func (d *DataAccessor) ExecutionType() string {
+	return string(d.executionType)
+}
+
+func (d *DataAccessor) GetTriggerObjectName() string {
+	return string(d.triggerTableName)
 }

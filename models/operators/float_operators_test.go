@@ -40,6 +40,13 @@ func (d *DataAccessorFloatImpl) GetDbHandle() *pgxpool.Pool {
 	return nil
 }
 
+func (d *DataAccessorFloatImpl) GetTriggerObjectName() string {
+	return ""
+}
+func (d *DataAccessorFloatImpl) ExecutionType() string {
+	return ""
+}
+
 func TestLogicEvalFloat(t *testing.T) {
 	type testCase struct {
 		name     string
