@@ -14,6 +14,7 @@ type ClientTablesRepository interface {
 	ClientTableOfOrganization(tx Transaction, organizationId string) (models.ClientTables, error)
 	CreateClientTables(tx Transaction, createClientTable models.ClientTables) error
 	CreateSchema(tx Transaction, schema string) error
+	DeleteSchema(tx Transaction, schema string) error
 	CreateTable(tx Transaction, schema string, table models.Table) error
 }
 
@@ -39,7 +40,16 @@ func (repo *ClientTablesRepositoryPostgresql) ClientTableOfOrganization(tx Trans
 func (repo *ClientTablesRepositoryPostgresql) CreateSchema(tx Transaction, schema string) error {
 	pgTx := adaptClientDatabaseTransaction(tx)
 
-	sql := fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", pgx.Identifier.Sanitize([]string{schema}))
+	sql := fmt.Sprintf("CREATE SCHEMA %s", pgx.Identifier.Sanitize([]string{schema}))
+
+	_, err := pgTx.Exec(sql)
+	return err
+}
+
+func (repo *ClientTablesRepositoryPostgresql) DeleteSchema(tx Transaction, schema string) error {
+	pgTx := adaptClientDatabaseTransaction(tx)
+
+	sql := fmt.Sprintf("DROP SCHEMA %s CASCADE", pgx.Identifier.Sanitize([]string{schema}))
 
 	_, err := pgTx.Exec(sql)
 	return err
