@@ -10,6 +10,7 @@ import Box from "@mui/material/Box";
 import AddIcon from "@mui/icons-material/Add";
 // import DeleteIcon from "@mui/icons-material/Delete";
 import SendIcon from "@mui/icons-material/SendOutlined";
+import Approval from "@mui/icons-material/Approval";
 
 import { useLoading } from "@/hooks/Loading";
 import services from "@/injectServices";
@@ -86,6 +87,10 @@ function OrganizationDetailsPage() {
     navigate(PageLink.ingestion(organizationId));
   };
 
+  const handleNavigateToDecisions = () => {
+    navigate(PageLink.decisions(organizationId));
+  };
+
   return (
     <>
       <DelayedLinearProgress loading={pageLoading} />
@@ -134,6 +139,13 @@ function OrganizationDetailsPage() {
             Data Ingestion
           </Button>
           <Button
+            onClick={handleNavigateToDecisions}
+            variant="outlined"
+            startIcon={<Approval />}
+          >
+            Decisions
+          </Button>
+          <Button
             onClick={handleCreateUserClick}
             variant="outlined"
             startIcon={<AddIcon />}
@@ -153,14 +165,14 @@ function OrganizationDetailsPage() {
           <>
             <Typography variant="h4">{scenarios.length} Scenarios</Typography>
             {scenarios.map((scenario) => (
-              <Card key={scenario.scenariosId} sx={{ mb: 2 }}>
+              <Card key={scenario.scenarioId} sx={{ mb: 2 }}>
                 <CardContent>
                   <Typography
                     sx={{ fontSize: 14 }}
                     color="text.secondary"
                     gutterBottom
                   >
-                    Scenario <code>{scenario.scenariosId}</code>
+                    Scenario <code>{scenario.scenarioId}</code>
                   </Typography>
                   <Typography variant="h5" component="div">
                     {scenario.name}
