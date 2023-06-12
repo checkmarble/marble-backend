@@ -30,11 +30,13 @@ func (usecases *Usecases) NewMarbleTokenUseCase() MarbleTokenUseCase {
 func (usecases *Usecases) NewOrganizationUseCase() OrganizationUseCase {
 	return OrganizationUseCase{
 		transactionFactory:     usecases.Repositories.TransactionFactory,
+		orgTransactionFactory:  usecases.NewOrgTransactionFactory(),
 		organizationRepository: usecases.Repositories.OrganizationRepository,
 		datamodelRepository:    usecases.Repositories.DataModelRepository,
 		apiKeyRepository:       usecases.Repositories.ApiKeyRepository,
 		userRepository:         usecases.Repositories.UserRepository,
 		organizationCreator:    usecases.NewOrganizationCreator(),
+		clientTables:           usecases.Repositories.ClientTablesRepository,
 	}
 }
 

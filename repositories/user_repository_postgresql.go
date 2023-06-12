@@ -11,6 +11,7 @@ import (
 type UserRepository interface {
 	CreateUser(tx Transaction, createUser models.CreateUser) (models.UserId, error)
 	DeleteUser(tx Transaction, userID models.UserId) error
+	DeleteUsersOfOrganization(tx Transaction, organizationId string) error
 	UserByID(tx Transaction, userId models.UserId) (models.User, error)
 	UsersOfOrganization(tx Transaction, organizationIDFilter string) ([]models.User, error)
 	AllUsers(tx Transaction) ([]models.User, error)
@@ -61,6 +62,15 @@ func (repo *UserRepositoryPostgresql) DeleteUser(tx Transaction, userID models.U
 	return SqlDelete(
 		pgTx,
 		repo.queryBuilder.Delete(dbmodels.TABLE_USERS).Where("id = ?", string(userID)),
+	)
+}
+
+func (repo *UserRepositoryPostgresql) DeleteUsersOfOrganization(tx Transaction, organizationId string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	return SqlDelete(
+		pgTx,
+		repo.queryBuilder.Delete(dbmodels.TABLE_USERS).Where("organization_id = ?", string(organizationId)),
 	)
 }
 
