@@ -49,27 +49,6 @@ func RunMigrations(env string, pgConfig PGConfig, logger *slog.Logger) {
 	}
 }
 
-func WipeDb(env string, pgConfig PGConfig, logger *slog.Logger) {
-	if env != "DEV" && env != "staging" {
-		log.Fatal("WipeDb is only allowed in DEV or staging environment")
-	}
-
-	// Reset schema, then migrate it again to restore an empty db
-	db, err := setupDbConnection(env, pgConfig)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	if err := resetDbWithFolder(db, migrationParams{fileSystem: embedMigrations, folderName: "migrations", allowMissing: false}, logger); err != nil {
-		log.Fatalln(err)
-	}
-
-	// Restore db schema
-	if err := runMigrationsWithFolder(db, migrationParams{fileSystem: embedMigrations, folderName: "migrations", allowMissing: false}, logger); err != nil {
-		log.Fatalln(err)
-	}
-}
-
 func runMigrationsWithFolder(db *sql.DB, params migrationParams, logger *slog.Logger) error {
 	// start goose migrations
 	logger.Info("Migrations starting to setup DB: " + params.folderName)
@@ -87,27 +66,6 @@ func runMigrationsWithFolder(db *sql.DB, params migrationParams, logger *slog.Lo
 	} else {
 		if err := goose.Up(db, params.folderName); err != nil {
 			return fmt.Errorf("unable to run migrations: %w \n", err)
-		}
-	}
-	return nil
-}
-
-func resetDbWithFolder(db *sql.DB, params migrationParams, logger *slog.Logger) error {
-	// start goose migrations
-	logger.Info("Migrations starting to reset DB: " + params.folderName)
-	goose.SetBaseFS(params.fileSystem)
-	if err := goose.SetDialect("postgres"); err != nil {
-		return err
-	}
-
-	// When running on the secondary folder containing the test org migrations, we allow missing migrations to allow out of order migrations with the main folder
-	if params.allowMissing {
-		if err := goose.Reset(db, params.folderName, goose.WithAllowMissing()); err != nil {
-			return fmt.Errorf("unable to reset migrations: %w \n", err)
-		}
-	} else {
-		if err := goose.Reset(db, params.folderName); err != nil {
-			return fmt.Errorf("unable to reset migrations: %w \n", err)
 		}
 	}
 	return nil
