@@ -1,11 +1,10 @@
-import { MarbleApi } from "@/infra/MarbleApi";
-import { adaptCredential, adaptUser } from "@/models";
+import { type MarbleApi } from "@/infra/MarbleApi";
 import type { User, CreateUser, Credentials } from "@/models";
 import {
-  adaptSingleUserApiResultDto,
-  adaptUsersApiResultDto,
+  adaptSingleUserApiResult,
+  adaptUsersApiResult,
 } from "@/models/UserDto";
-import { adaptCredentialsApiResultDto } from "@/models/CredentialsDto";
+import { adaptCredential } from "@/models/CredentialsDto";
 
 export interface UserRepository {
   marbleApi: MarbleApi;
@@ -18,29 +17,23 @@ export async function fetchUsers(
   const users = organizationIdFilter
     ? repository.marbleApi.usersOfOrganization(organizationIdFilter)
     : repository.marbleApi.allUsers();
-  const result = adaptUsersApiResultDto(await users);
-
-  return result.users.map(adaptUser);
+  return adaptUsersApiResult(await users);
 }
 
 export async function postUser(
   repositories: UserRepository,
   createUser: CreateUser
 ): Promise<User> {
-  const result = adaptSingleUserApiResultDto(
+  return adaptSingleUserApiResult(
     await repositories.marbleApi.postUser(createUser)
   );
-  return adaptUser(result.user);
 }
 
 export async function getUser(
   repositories: UserRepository,
   userId: string
 ): Promise<User> {
-  const result = adaptSingleUserApiResultDto(
-    await repositories.marbleApi.getUser(userId)
-  );
-  return adaptUser(result.user);
+  return adaptSingleUserApiResult(await repositories.marbleApi.getUser(userId));
 }
 
 export async function deleteUser(
@@ -53,8 +46,5 @@ export async function deleteUser(
 export async function fetchCredentials(
   repository: UserRepository
 ): Promise<Credentials> {
-  const dto = adaptCredentialsApiResultDto(
-    await repository.marbleApi.credentials()
-  );
-  return adaptCredential(dto.credentials);
+  return adaptCredential(await repository.marbleApi.credentials());
 }

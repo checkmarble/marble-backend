@@ -82,7 +82,7 @@ func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(tx Transaction,
 }
 
 func (repo *OrganizationRepositoryPostgresql) DeleteOrganization(tx Transaction, organizationID string) error {
-	pgTx := repo.adaptMarbleDatabaseTransaction(tx)
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	return SqlDelete(pgTx, repo.queryBuilder.Delete(dbmodels.TABLE_ORGANIZATION).Where("id = ?", organizationID))
 }

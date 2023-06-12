@@ -1,6 +1,6 @@
-import { MarbleApi } from "@/infra/MarbleApi";
-import { Scenarios, adaptScenario } from "@/models/Scenarios";
-import { adaptScenariosApiResultDto } from "@/models/ScenariosDto";
+import { type MarbleApi } from "@/infra/MarbleApi";
+import type { Scenario } from "@/models/Scenario";
+import { adaptScenariosApiResult } from "@/models/ScenarioDto";
 
 export interface ScenariosRepository {
   marbleApi: MarbleApi;
@@ -9,9 +9,8 @@ export interface ScenariosRepository {
 export async function fetchScenarios(
   repository: ScenariosRepository,
   organizationId: string
-): Promise<Scenarios[]> {
-  const result = adaptScenariosApiResultDto(
+): Promise<Scenario[]> {
+  return adaptScenariosApiResult(
     await repository.marbleApi.scenariosOfOrganization(organizationId)
   );
-  return result.map(adaptScenario);
 }
