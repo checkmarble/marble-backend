@@ -19,7 +19,7 @@ import Button from "@mui/material/Button";
 import InputLabel from "@mui/material/InputLabel";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
-import { Box } from "@mui/system";
+import Box from "@mui/system/Box";
 
 function DecisionsPage() {
   const { organizationId } = useParams();

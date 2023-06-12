@@ -1,19 +1,17 @@
 import services from "@/injectServices";
-import { useDeleteUser, useUser } from "@/services";
+import { useNavigate, useParams } from "react-router-dom";
 import Container from "@mui/material/Container";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+import DeleteForever from "@mui/icons-material/DeleteForever";
+import AlertDialog from "@/components/AlertDialog";
 import { useLoading } from "@/hooks/Loading";
 import DelayedLinearProgress from "@/components/DelayedLinearProgress";
-import { useNavigate, useParams } from "react-router-dom";
-import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Stack,
-  Typography,
-} from "@mui/material";
-import { DeleteForever } from "@mui/icons-material";
-import AlertDialog from "@/components/AlertDialog";
+import { useDeleteUser, useUser } from "@/services";
 import { useState } from "react";
 
 function UserDetailPage() {
