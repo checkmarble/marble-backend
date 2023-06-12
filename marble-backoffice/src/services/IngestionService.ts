@@ -49,8 +49,8 @@ export function useIngestion(
       }),
 
       // two transactions account in companyAId
-      injectTransaction(marbleApi, accountId, 12.5),
-      injectTransaction(marbleApi, accountId, 10),
+      injectTransaction(marbleApi, accountId, "transaction_a", 12.5),
+      injectTransaction(marbleApi, accountId, "transaction_b", 10),
     ])
     return all
 
@@ -64,11 +64,12 @@ export function useIngestion(
 async function injectTransaction(
   api: MarbleApi,
   accountId: string,
+  transaction_id: string,
   amount: number
 ): Promise<IngestObject> {
   const tableName = "transactions";
   const content = {
-    object_id: "transaction_a+",
+    object_id: transaction_id,
     updated_at: new Date().toISOString(),
     amount: amount,
     account_id: accountId,

@@ -50,15 +50,23 @@ export function useCreateDecision(
     if (marbleApi === null) {
       return null; // MarbleApi not initialized yet
     }
+
+    const triggerObject = {
+      object_id: "transaction_c",
+      account_id: "account-a-id",
+      direction: "payout",
+      status: "pending",
+      bic_country: "FR",
+      amount: 100,
+      updated_at: new Date(),
+    };
+
     return showLoader(
       loadingDispatcher,
       postDecision(marbleApi, {
         scenario_id: createScenarioViewModel.scenarioId,
         object_type: "transactions",
-        trigger_object: {
-          object_id: "1",
-          updated_at: new Date(),
-        },
+        trigger_object: triggerObject,
       })
     );
   }, [marbleApi, loadingDispatcher, createScenarioViewModel]);
