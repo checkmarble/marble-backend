@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"marble/marble-backend/usecases"
 
@@ -10,6 +11,7 @@ import (
 
 func ExecuteAllScheduledScenarios(ctx context.Context, usecases usecases.Usecases, logger *slog.Logger) {
 
+	fmt.Println("Executing all scheduled scenarios")
 	scenarioUsecase := usecases.NewScenarioUsecase()
 	scenarios, err := scenarioUsecase.ListAllScenarios(ctx)
 
@@ -18,6 +20,11 @@ func ExecuteAllScheduledScenarios(ctx context.Context, usecases usecases.Usecase
 		log.Fatal(err)
 	}
 	for _, scenario := range scenarios {
-		usecase.ExecuteScheduledScenarioIfDue(ctx, scenario.OrganizationID, scenario.ID, logger)
+		logger.DebugCtx(ctx, "Executing scenario: "+scenario.ID, "scenarioID", scenario.ID)
+		err := usecase.ExecuteScheduledScenarioIfDue(ctx, scenario.OrganizationID, scenario.ID, logger)
+		if err != nil {
+			logger.ErrorCtx(ctx, "Error executing scheduled scenario: "+scenario.ID, "scenarioId", scenario.ID, " Error: ", err)
+		}
 	}
+	logger.InfoCtx(ctx, "Done executing all scheduled scenarios")
 }

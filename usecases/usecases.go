@@ -122,5 +122,10 @@ func (usecases *Usecases) NewScenarioIterationRuleUsecase() ScenarioIterationRul
 }
 
 func (usecases *Usecases) NewScheduledExecutionUsecase() ScheduledExecutionUsecase {
-	return ScheduledExecutionUsecase{}
+	return ScheduledExecutionUsecase{
+		scenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,
+		scenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
+		scheduledExecutionRepository:    usecases.Repositories.ScheduledExecutionRepository,
+		transactionFactory:              usecases.Repositories.TransactionFactory,
+	}
 }

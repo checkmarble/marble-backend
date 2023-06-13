@@ -17,7 +17,7 @@ type DBScheduledExecution struct {
 
 const TABLE_SCHEDULED_EXECUTIONS = "scheduled_executions"
 
-var ScheduledExecutionFields = []string{"id", "scenario_id", "scenario_iteration_id", "status", "started_at", "finished_at"}
+var ScheduledExecutionFields = []string{"id", "organization_id", "scenario_id", "scenario_iteration_id", "status", "started_at", "finished_at"}
 
 func AdaptScheduledExecution(db DBScheduledExecution) models.ScheduledExecution {
 	return models.ScheduledExecution{
@@ -31,10 +31,4 @@ func AdaptScheduledExecution(db DBScheduledExecution) models.ScheduledExecution 
 
 type UpdateScheduledExecutionDbBody struct {
 	Status *string
-}
-
-func AdaptUpdateScheduledExecutionDbInput(updateScheduledEx models.UpdateScheduledExecutionInput) UpdateScheduledExecutionDbBody {
-	return UpdateScheduledExecutionDbBody{
-		Status: updateScheduledEx.Status,
-	}
 }

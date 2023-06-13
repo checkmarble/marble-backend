@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
+	"marble/marble-backend/utils"
 	"runtime/debug"
+	"time"
 
 	"github.com/adhocore/gronx"
+	"github.com/google/uuid"
 	"golang.org/x/exp/slog"
 )
 
@@ -39,8 +42,9 @@ func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(ctx context.Co
 }
 
 func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(ctx context.Context, input models.CreateScheduledExecutionInput) error {
+	id := uuid.NewString()
 	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
-		return usecase.scheduledExecutionRepository.CreateScheduledExecution(tx, input)
+		return usecase.scheduledExecutionRepository.CreateScheduledExecution(tx, input, id)
 	})
 }
 
@@ -50,12 +54,13 @@ func (usecase *ScheduledExecutionUsecase) UpdateScheduledExecution(ctx context.C
 	})
 }
 
-func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx context.Context, orgID string, scenarioID string, logger *slog.Logger) error {
+func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx context.Context, orgID string, scenarioID string, logger *slog.Logger) (err error) {
 	// This is called by a cron job, for all scheduled scenarios. It is crucial that a panic on one scenario does not break all the others.
 	defer func() {
 		if r := recover(); r != nil {
 			logger.ErrorCtx(ctx, "recovered from panic during scheduled scenario execution. Stacktrace from panic: ")
 			logger.ErrorCtx(ctx, string(debug.Stack()))
+			err = fmt.Errorf("Recovered from panic during scheduled scenario execution")
 		}
 	}()
 
@@ -63,22 +68,8 @@ func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx cont
 	if err != nil {
 		return err
 	}
-	if scenario.LiveVersionID == nil {
-		return fmt.Errorf("Scenario has no live version %w", models.BadParameterError)
-	}
-	scenarioIteration, err := usecase.scenarioIterationReadRepository.GetScenarioIteration(ctx, orgID, *scenario.LiveVersionID)
-	if err != nil {
-		return err
-	}
-	if scenarioIteration.Body.Schedule == "" {
-		return fmt.Errorf("Scenario is not scheduled %w", models.BadParameterError)
-	}
 
-	liveVersion, err := usecase.scenarioIterationReadRepository.GetScenarioIteration(ctx, orgID, *scenario.LiveVersionID)
-	if err != nil {
-		return err
-	}
-	publishedVersion, err := models.NewPublishedScenarioIteration(liveVersion)
+	publishedVersion, err := usecase.getPublishedScenarioIteration(ctx, scenario)
 	if err != nil {
 		return err
 	}
@@ -93,24 +84,93 @@ func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx cont
 		return err
 	}
 
-	isDue, err := gron.IsDue(publishedVersion.Body.Schedule)
+	tz, _ := time.LoadLocation("Europe/Paris")
+	isDue, err := executionIsDue(publishedVersion.Body.Schedule, previousExecutions, tz)
 	if err != nil {
 		return err
 	}
-	if len(previousExecutions) > 0 {
-		prevIsDue, err := gron.IsDue(publishedVersion.Body.Schedule, previousExecutions[0].StartedAt)
+
+	if isDue {
+		logger.DebugCtx(ctx, fmt.Sprintf("Scenario iteration %s is due", publishedVersion.ID))
+		id := uuid.NewString()
+		err = usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+			return usecase.scheduledExecutionRepository.CreateScheduledExecution(tx, models.CreateScheduledExecutionInput{
+				OrganizationID:      orgID,
+				ScenarioID:          scenarioID,
+				ScenarioIterationID: publishedVersion.ID,
+			}, id)
+		})
 		if err != nil {
 			return err
 		}
-		isDue = isDue && !prevIsDue
-	}
 
-	if isDue {
-		// TODO: implement batch scenar execution/dispatch
+		// Actually execute the scheduled scenario
+		if err := executeScheduledBatchScenario(ctx, usecase, orgID, scenarioID, publishedVersion, logger); err != nil {
+			usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+				return usecase.scheduledExecutionRepository.UpdateScheduledExecution(tx, models.UpdateScheduledExecutionInput{
+					ID:     id,
+					Status: utils.PtrTo("failure", nil),
+				})
+			})
+			return err
+		}
+
+		// Mark the scheduled scenario as sucess
+		err = usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+			return usecase.scheduledExecutionRepository.UpdateScheduledExecution(tx, models.UpdateScheduledExecutionInput{
+				ID:     id,
+				Status: utils.PtrTo("success", nil),
+			})
+		})
+		if err != nil {
+			return err
+		}
+		logger.DebugCtx(ctx, fmt.Sprintf("Scenario iteration %s executed successfully", publishedVersion.ID))
+		return nil
 	} else {
-		// Scheduled scenario has already been executed (or is in the process of being executed)
+
 		return nil
 	}
+}
 
-	return nil
+func executionIsDue(schedule string, previousExecutions []models.ScheduledExecution, tz *time.Location) (bool, error) {
+	if len(previousExecutions) == 0 {
+		return true, nil
+	}
+
+	nextTick, err := gronx.NextTickAfter(schedule, previousExecutions[0].StartedAt.In(tz), false)
+	if err != nil {
+		return true, err
+	}
+	if nextTick.After(time.Now()) {
+		return false, nil
+	}
+	return true, nil
+}
+
+func executeScheduledBatchScenario(ctx context.Context, usecase *ScheduledExecutionUsecase, orgID, scenarioID string, publishedVersion models.PublishedScenarioIteration, logger *slog.Logger) error {
+	return fmt.Errorf("Not implemented")
+}
+
+func (usecase *ScheduledExecutionUsecase) getPublishedScenarioIteration(ctx context.Context, scenario models.Scenario) (models.PublishedScenarioIteration, error) {
+	if scenario.LiveVersionID == nil {
+		return models.PublishedScenarioIteration{}, fmt.Errorf("Scenario has no live version %w", models.BadParameterError)
+	}
+	scenarioIteration, err := usecase.scenarioIterationReadRepository.GetScenarioIteration(ctx, scenario.OrganizationID, *scenario.LiveVersionID)
+	if err != nil {
+		return models.PublishedScenarioIteration{}, err
+	}
+	if scenarioIteration.Body.Schedule == "" {
+		return models.PublishedScenarioIteration{}, fmt.Errorf("Scenario is not scheduled %w", models.BadParameterError)
+	}
+
+	liveVersion, err := usecase.scenarioIterationReadRepository.GetScenarioIteration(ctx, scenario.OrganizationID, *scenario.LiveVersionID)
+	if err != nil {
+		return models.PublishedScenarioIteration{}, err
+	}
+	publishedVersion, err := models.NewPublishedScenarioIteration(liveVersion)
+	if err != nil {
+		return models.PublishedScenarioIteration{}, err
+	}
+	return publishedVersion, nil
 }

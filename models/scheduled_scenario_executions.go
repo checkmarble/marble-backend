@@ -16,7 +16,7 @@ type UpdateScheduledExecutionInput struct {
 }
 
 type CreateScheduledExecutionInput struct {
-	Organizationid      string
-	ScenarioId          string
+	OrganizationID      string
+	ScenarioID          string
 	ScenarioIterationID string
 }

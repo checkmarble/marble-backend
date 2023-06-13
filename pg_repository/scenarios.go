@@ -27,6 +27,7 @@ type dbScenario struct {
 func (s *dbScenario) toDomain() models.Scenario {
 	scenario := models.Scenario{
 		ID:                s.ID,
+		OrganizationID:    s.OrgID,
 		Name:              s.Name,
 		Description:       s.Description,
 		TriggerObjectType: s.TriggerObjectType,

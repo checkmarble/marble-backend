@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"marble/marble-backend/models"
-	"marble/marble-backend/pg_repository"
 	"marble/marble-backend/repositories/dbmodels"
 
 	"github.com/Masterminds/squirrel"
@@ -11,7 +10,7 @@ import (
 type ScheduledExecutionRepository interface {
 	GetScheduledExecution(tx Transaction, organizationId, id string) (models.ScheduledExecution, error)
 	ListScheduledExecutions(tx Transaction, organizationId, scenarioId string) ([]models.ScheduledExecution, error)
-	CreateScheduledExecution(tx Transaction, input models.CreateScheduledExecutionInput) error
+	CreateScheduledExecution(tx Transaction, input models.CreateScheduledExecutionInput, newScheduledExecutionId string) error
 	UpdateScheduledExecution(tx Transaction, updateScheduledEx models.UpdateScheduledExecutionInput) error
 }
 
@@ -47,21 +46,23 @@ func (repo *ScheduledExecutionRepositoryPostgresql) ListScheduledExecutions(tx T
 	)
 }
 
-func (repo *ScheduledExecutionRepositoryPostgresql) CreateScheduledExecution(tx Transaction, createScheduledEx models.CreateScheduledExecutionInput) error {
+func (repo *ScheduledExecutionRepositoryPostgresql) CreateScheduledExecution(tx Transaction, createScheduledEx models.CreateScheduledExecutionInput, newScheduledExecutionId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	return SqlInsert(
 		pgTx,
 		repo.queryBuilder.Insert(dbmodels.TABLE_SCHEDULED_EXECUTIONS).
 			Columns(
+				"id",
 				"organization_id",
 				"scenario_id",
 				"scenario_iteration_id",
 				"status",
 			).
 			Values(
-				createScheduledEx.Organizationid,
-				createScheduledEx.ScenarioId,
+				newScheduledExecutionId,
+				createScheduledEx.OrganizationID,
+				createScheduledEx.ScenarioID,
 				createScheduledEx.ScenarioIterationID,
 				"in_progress",
 			),
@@ -70,11 +71,18 @@ func (repo *ScheduledExecutionRepositoryPostgresql) CreateScheduledExecution(tx 
 
 func (repo *ScheduledExecutionRepositoryPostgresql) UpdateScheduledExecution(tx Transaction, updateScheduledEx models.UpdateScheduledExecutionInput) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+	query := repo.queryBuilder.Update(dbmodels.TABLE_SCHEDULED_EXECUTIONS).
+		Where("id = ?", updateScheduledEx.ID)
+
+	if updateScheduledEx.Status != nil {
+		query = query.Set("status", *updateScheduledEx.Status)
+		if *updateScheduledEx.Status == "success" {
+			query = query.Set("finished_at", "NOW()")
+		}
+	}
+
 	return SqlUpdate(
 		pgTx,
-		repo.queryBuilder.
-			Update(dbmodels.TABLE_SCHEDULED_EXECUTIONS).
-			SetMap(pg_repository.ColumnValueMap(dbmodels.AdaptUpdateScheduledExecutionDbInput(updateScheduledEx))).
-			Where("id = ?", updateScheduledEx.ID),
+		query,
 	)
 }
