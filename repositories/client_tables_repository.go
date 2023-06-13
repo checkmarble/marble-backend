@@ -42,7 +42,7 @@ func (repo *ClientTablesRepositoryPostgresql) CreateSchema(tx Transaction, schem
 
 	sql := fmt.Sprintf("CREATE SCHEMA %s", pgx.Identifier.Sanitize([]string{schema}))
 
-	_, err := pgTx.Exec(sql)
+	_, err := pgTx.SqlExec(sql)
 	return err
 }
 
@@ -51,7 +51,7 @@ func (repo *ClientTablesRepositoryPostgresql) DeleteSchema(tx Transaction, schem
 
 	sql := fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE", pgx.Identifier.Sanitize([]string{schema}))
 
-	_, err := pgTx.Exec(sql)
+	_, err := pgTx.SqlExec(sql)
 	return err
 }
 
@@ -92,15 +92,14 @@ func (repo *ClientTablesRepositoryPostgresql) CreateTable(tx Transaction, schema
 		return err
 	}
 
-	_, err = pgTx.Exec(sql, args...)
+	_, err = pgTx.SqlExec(sql, args...)
 	return err
 }
 
 func (repo *ClientTablesRepositoryPostgresql) CreateClientTables(tx Transaction, createClientTable models.ClientTables) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	return SqlInsert(
-		pgTx,
+	_, err := pgTx.ExecBuilder(
 		repo.queryBuilder.Insert(dbmodels.TABLE_CLIENT_TABLES).
 			Columns(
 				dbmodels.ClientTablesFields...,
@@ -111,6 +110,7 @@ func (repo *ClientTablesRepositoryPostgresql) CreateClientTables(tx Transaction,
 				createClientTable.DatabaseSchema.Schema,
 			),
 	)
+	return err
 }
 
 func toPgType(dataType models.DataType) string {

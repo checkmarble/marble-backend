@@ -18,7 +18,7 @@ type Transaction interface {
 type TransactionPostgres struct {
 	databaseShema models.DatabaseSchema
 	ctx           context.Context
-	exec          TransactionOrPool // Optional, used when no transaction is provided
+	exec          TransactionOrPool
 }
 
 type TransactionOrPool interface {
@@ -31,24 +31,31 @@ func (tx TransactionPostgres) DatabaseSchema() models.DatabaseSchema {
 	return tx.databaseShema
 }
 
-// helper
-func (transaction *TransactionPostgres) Exec(sql string, arguments ...any) (pgconn.CommandTag, error) {
-	return transaction.exec.Exec(transaction.ctx, sql, arguments...)
-}
-
-// helper
-func (transaction *TransactionPostgres) Query(sql string, arguments ...any) (pgx.Rows, error) {
-	return transaction.exec.Query(transaction.ctx, sql, arguments...)
-}
-
-// helper
-func (transaction *TransactionPostgres) QueryRow(sql string, arguments ...any) pgx.Row {
-	return transaction.exec.QueryRow(transaction.ctx, sql, arguments...)
-}
-
 var ErrIgnoreRoolBackError = errors.New("ignore rollback error")
 
 func IsIsUniqueViolationError(err error) bool {
 	var pgxErr *pgconn.PgError
 	return errors.As(err, &pgxErr) && pgxErr.Code == pgerrcode.UniqueViolation
+}
+
+func (transaction *TransactionPostgres) SqlExec(query string, args ...any) (rowsAffected int64, err error) {
+
+	tag, err := transaction.exec.Exec(transaction.ctx, query, args...)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), err
+}
+
+type AnyBuilder interface {
+	ToSql() (string, []interface{}, error)
+}
+
+func (transaction *TransactionPostgres) ExecBuilder(builder AnyBuilder) (rowsAffected int64, err error) {
+	query, args, err := builder.ToSql()
+	if err != nil {
+		return 0, err
+	}
+
+	return transaction.SqlExec(query, args...)
 }

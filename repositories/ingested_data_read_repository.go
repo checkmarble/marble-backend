@@ -102,7 +102,7 @@ func (repo *IngestedDataReadRepositoryImpl) queryDbForField(tx TransactionPostgr
 		return nil, fmt.Errorf("Error while building SQL query: %w", err)
 	}
 
-	row := tx.QueryRow(sql, args...)
+	row := tx.exec.QueryRow(tx.ctx, sql, args...)
 	return row, nil
 }
 
