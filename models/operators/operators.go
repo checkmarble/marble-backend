@@ -19,7 +19,7 @@ var operatorFromType = make(map[string]func() Operator)
 type DataAccessor interface {
 	GetPayloadField(fieldName string) (interface{}, error)
 	GetDbField(ctx context.Context, triggerTableName string, path []string, fieldName string) (interface{}, error)
-	GetDbHandle() *pgxpool.Pool
+	GetDbHandle() (db *pgxpool.Pool, schema string, err error)
 	GetTriggerObjectName() string
 	ExecutionType() string
 }

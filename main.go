@@ -146,14 +146,10 @@ func main() {
 
 	shouldRunMigrations := flag.Bool("migrations", false, "Run migrations")
 	shouldRunServer := flag.Bool("server", false, "Run server")
-	shouldWipeDb := flag.Bool("wipe", false, "Truncate db tables")
 	shouldRunScheduledScenarios := flag.Bool("scheduled", false, "Run scheduled scenarios")
 	flag.Parse()
 	logger.DebugCtx(context.Background(), "shouldRunMigrations", *shouldRunMigrations, "shouldRunServer", *shouldRunServer)
 
-	if *shouldWipeDb {
-		pg_repository.WipeDb(env, pgConfig, logger)
-	}
 	if *shouldRunMigrations {
 		pg_repository.RunMigrations(env, pgConfig, logger)
 	}

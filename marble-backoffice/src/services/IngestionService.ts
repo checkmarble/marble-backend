@@ -1,54 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
-import { Role } from "@/models";
-import { type OrganizationRepository, fetchApiKeys } from "@/repositories";
-import { useSimpleLoader } from "@/hooks/SimpleLoader";
-import { type LoadingDispatcher } from "@/hooks/Loading";
-import { MarbleApi, type IngestObject } from "@/infra/MarbleApi";
-
-export interface IngestionService {
-  organizationRepository: OrganizationRepository;
-  marbleApiWithApiKeyFactory: (apiKey: string) => MarbleApi;
-}
-
-export function useClientRoleApiKey(
-  service: IngestionService,
-  loadingDispatcher: LoadingDispatcher,
-  organizationId: string
-) {
-  const loadApiKeyWithApiClientRole = useCallback(async () => {
-    const allApiKeys = await fetchApiKeys(
-      service.organizationRepository,
-      organizationId
-    );
-    const apiKey = allApiKeys.find((apikey) => apikey.role === Role.API_CLIENT);
-    if (apiKey === undefined) {
-      throw Error("The client has no Api key");
-    }
-    return apiKey.key;
-  }, [service, organizationId]);
-
-  const [apiKey] = useSimpleLoader<string>(
-    loadingDispatcher,
-    loadApiKeyWithApiClientRole
-  );
-
-  return {
-    apiKey,
-  };
-}
+import { useCallback } from "react";
+import type { MarbleApi, IngestObject } from "@/infra/MarbleApi";
 
 export function useIngestion(
-  service: IngestionService,
-  // loadingDispatcher: LoadingDispatcher,
-  apiKey: string | null
+  marbleApi: MarbleApi | null
 ) {
-  const [marbleApi, setMarbleApi] = useState<MarbleApi | null>(null);
-
-  useEffect(() => {
-    if (apiKey !== null) {
-      setMarbleApi(service.marbleApiWithApiKeyFactory(apiKey));
-    }
-  }, [apiKey, service]);
 
   const ingest = useCallback(async (): Promise<IngestObject[]> => {
     if (!marbleApi) {
@@ -94,8 +49,8 @@ export function useIngestion(
       }),
 
       // two transactions account in companyAId
-      injectTransaction(marbleApi, accountId, 12.5),
-      injectTransaction(marbleApi, accountId, 10),
+      injectTransaction(marbleApi, accountId, "transaction_a", 12.5),
+      injectTransaction(marbleApi, accountId, "transaction_b", 10),
     ])
     return all
 
@@ -109,11 +64,12 @@ export function useIngestion(
 async function injectTransaction(
   api: MarbleApi,
   accountId: string,
+  transaction_id: string,
   amount: number
 ): Promise<IngestObject> {
   const tableName = "transactions";
   const content = {
-    object_id: "transaction_a+",
+    object_id: transaction_id,
     updated_at: new Date().toISOString(),
     amount: amount,
     account_id: accountId,

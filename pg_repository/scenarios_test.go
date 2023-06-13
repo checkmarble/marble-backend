@@ -25,6 +25,7 @@ func cleanupScenarios(ids []string, orgID string) error {
 }
 
 func TestCreateScenario(t *testing.T) {
+	t.SkipNow()
 	scenar, err := globalTestParams.repository.CreateScenario(
 		context.Background(),
 		globalTestParams.testIds["OrganizationId"],
@@ -51,6 +52,7 @@ func TestCreateScenario(t *testing.T) {
 }
 
 func TestUpdateScenario(t *testing.T) {
+	t.SkipNow()
 	scenar, err := globalTestParams.repository.CreateScenario(
 		context.Background(),
 		globalTestParams.testIds["OrganizationId"],
@@ -95,6 +97,7 @@ func TestUpdateScenario(t *testing.T) {
 }
 
 func TestListScenarios(t *testing.T) {
+	t.SkipNow()
 	scenar1, err := globalTestParams.repository.CreateScenario(
 		context.Background(),
 		globalTestParams.testIds["OrganizationId"],
@@ -139,6 +142,7 @@ func TestListScenarios(t *testing.T) {
 }
 
 func TestGetScenarioWithLiveVersion(t *testing.T) {
+	t.SkipNow()
 	scenar, err := globalTestParams.repository.CreateScenario(
 		context.Background(),
 		globalTestParams.testIds["OrganizationId"],

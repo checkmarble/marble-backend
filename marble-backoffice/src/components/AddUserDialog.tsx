@@ -93,7 +93,7 @@ export default function AddUserFormDialog(
 
           {displayRoleChoice && (
             <>
-              <InputLabel id="select-role-label">Age</InputLabel>
+              <InputLabel id="select-role-label">Role</InputLabel>
               <Select
                 labelId="select-role-label"
                 id="select-role-select"

@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"errors"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/organization"
@@ -11,11 +12,13 @@ import (
 
 type OrganizationUseCase struct {
 	transactionFactory     repositories.TransactionFactory
+	orgTransactionFactory  organization.OrgTransactionFactory
 	organizationRepository repositories.OrganizationRepository
 	datamodelRepository    repositories.DataModelRepository
 	apiKeyRepository       repositories.ApiKeyRepository
 	userRepository         repositories.UserRepository
 	organizationCreator    organization.OrganizationCreator
+	clientTables           repositories.ClientTablesRepository
 }
 
 func (usecase *OrganizationUseCase) GetOrganizations(ctx context.Context) ([]models.Organization, error) {
@@ -33,7 +36,7 @@ func (usecase *OrganizationUseCase) GetOrganization(ctx context.Context, organiz
 }
 
 func (usecase *OrganizationUseCase) UpdateOrganization(ctx context.Context, organization models.UpdateOrganizationInput) (models.Organization, error) {
-	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE, func(tx repositories.Transaction) (models.Organization, error) {
+	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Organization, error) {
 		err := usecase.organizationRepository.UpdateOrganization(tx, organization)
 		if err != nil {
 			return models.Organization{}, err
@@ -44,7 +47,37 @@ func (usecase *OrganizationUseCase) UpdateOrganization(ctx context.Context, orga
 
 func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, organizationID string) error {
 
-	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE, func(tx repositories.Transaction) error {
+	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+		// delete all users
+		err := usecase.userRepository.DeleteUsersOfOrganization(tx, organizationID)
+		if err != nil {
+			return err
+		}
+
+		// fetch client tables to get schema name, then delete schema
+		clientTables, err := usecase.clientTables.ClientTableOfOrganization(tx, organizationID)
+
+		clientTablesFound := err == nil
+
+		if errors.Is(err, models.NotFoundError) {
+			// ignore client tables not found: the organization can be older than the introduction of client tables
+			err = nil
+		}
+
+		if err != nil {
+			return err
+		}
+
+		if clientTablesFound {
+			// another transaction in client's database to delete client's schema:
+			err = usecase.orgTransactionFactory.TransactionInOrgSchema(organizationID, func(clientTx repositories.Transaction) error {
+				return usecase.clientTables.DeleteSchema(clientTx, clientTables.DatabaseSchema.Schema)
+			})
+			if err != nil {
+				return err
+			}
+		}
+
 		return usecase.organizationRepository.DeleteOrganization(nil, organizationID)
 	})
 }
@@ -57,7 +90,7 @@ func (usecase *OrganizationUseCase) GetUsersOfOrganization(organizationIDFilter 
 
 	return repositories.TransactionReturnValue(
 		usecase.transactionFactory,
-		models.DATABASE_MARBLE,
+		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) ([]models.User, error) {
 			return usecase.userRepository.UsersOfOrganization(tx, organizationIDFilter)
 		},

@@ -30,23 +30,34 @@ func (usecases *Usecases) NewMarbleTokenUseCase() MarbleTokenUseCase {
 func (usecases *Usecases) NewOrganizationUseCase() OrganizationUseCase {
 	return OrganizationUseCase{
 		transactionFactory:     usecases.Repositories.TransactionFactory,
+		orgTransactionFactory:  usecases.NewOrgTransactionFactory(),
 		organizationRepository: usecases.Repositories.OrganizationRepository,
 		datamodelRepository:    usecases.Repositories.DataModelRepository,
 		apiKeyRepository:       usecases.Repositories.ApiKeyRepository,
 		userRepository:         usecases.Repositories.UserRepository,
 		organizationCreator:    usecases.NewOrganizationCreator(),
+		clientTables:           usecases.Repositories.ClientTablesRepository,
+	}
+}
+
+func (usecases *Usecases) NewOrgTransactionFactory() organization.OrgTransactionFactory {
+	return &organization.OrgTransactionFactoryImpl{
+		ClientTablesRepository:           usecases.Repositories.ClientTablesRepository,
+		TransactionFactory:               usecases.Repositories.TransactionFactory,
+		DatabaseConnectionPoolRepository: usecases.Repositories.DatabaseConnectionPoolRepository,
 	}
 }
 
 func (usecases *Usecases) NewIngestionUseCase() IngestionUseCase {
 	return IngestionUseCase{
-		ingestionRepository: usecases.Repositories.IngestionRepository,
+		orgTransactionFactory: usecases.NewOrgTransactionFactory(),
+		ingestionRepository:   usecases.Repositories.IngestionRepository,
 	}
 }
 
 func (usecases *Usecases) NewDecisionUsecase() DecisionUsecase {
 	return DecisionUsecase{
-		dbPoolRepository:                usecases.Repositories.DbPoolRepository,
+		orgTransactionFactory:           usecases.NewOrgTransactionFactory(),
 		ingestedDataReadRepository:      usecases.Repositories.IngestedDataReadRepository,
 		decisionRepository:              usecases.Repositories.DecisionRepository,
 		datamodelRepository:             usecases.Repositories.DataModelRepository,
@@ -79,6 +90,7 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 			TransactionFactory:     usecases.Repositories.TransactionFactory,
 			OrganizationRepository: usecases.Repositories.OrganizationRepository,
 			ClientTablesRepository: usecases.Repositories.ClientTablesRepository,
+			DataModelRepository:    usecases.Repositories.DataModelRepository,
 		},
 	}
 }

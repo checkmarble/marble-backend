@@ -19,8 +19,8 @@ func (d *DataAccessorStringListImpl) GetDbField(ctx context.Context, triggerTabl
 	return nil, nil
 }
 
-func (d *DataAccessorStringListImpl) GetDbHandle() *pgxpool.Pool {
-	return nil
+func (d *DataAccessorStringListImpl) GetDbHandle() (db *pgxpool.Pool, schema string, err error) {
+	return nil, "", nil
 }
 
 func TestLogicEvalStringList(t *testing.T) {

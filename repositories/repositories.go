@@ -10,6 +10,7 @@ import (
 )
 
 type Repositories struct {
+	DatabaseConnectionPoolRepository DatabaseConnectionPoolRepository
 	TransactionFactory               TransactionFactory
 	FirebaseTokenRepository          FireBaseTokenRepository
 	MarbleJwtRepository              MarbleJwtRepository
@@ -18,7 +19,6 @@ type Repositories struct {
 	OrganizationRepository           OrganizationRepository
 	IngestionRepository              IngestionRepository
 	DataModelRepository              DataModelRepository
-	DbPoolRepository                 DbPoolRepository
 	IngestedDataReadRepository       IngestedDataReadRepository
 	DecisionRepository               DecisionRepository
 	ScenarioReadRepository           ScenarioReadRepository
@@ -37,6 +37,7 @@ func NewRepositories(
 	pgRepository *pg_repository.PGRepository,
 	marbleConnectionPool *pgxpool.Pool,
 ) *Repositories {
+
 	databaseConnectionPoolRepository := NewDatabaseConnectionPoolRepository(
 		marbleConnectionPool,
 	)
@@ -49,7 +50,8 @@ func NewRepositories(
 	queryBuilder := squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
 
 	return &Repositories{
-		TransactionFactory: transactionFactory,
+		DatabaseConnectionPoolRepository: databaseConnectionPoolRepository,
+		TransactionFactory:               transactionFactory,
 		FirebaseTokenRepository: FireBaseTokenRepository{
 			firebaseClient: firebaseClient,
 		},
@@ -57,17 +59,19 @@ func NewRepositories(
 			jwtSigningPrivateKey: marbleJwtSigningKey,
 		},
 		UserRepository: &UserRepositoryPostgresql{
-			queryBuilder: queryBuilder,
+			transactionFactory: transactionFactory,
+			queryBuilder:       queryBuilder,
 		},
 		ApiKeyRepository: pgRepository,
 		OrganizationRepository: &OrganizationRepositoryPostgresql{
 			transactionFactory: transactionFactory,
 			queryBuilder:       queryBuilder,
 		},
-		IngestionRepository:              pgRepository,
+		IngestionRepository: &IngestionRepositoryImpl{
+			queryBuilder: queryBuilder,
+		},
 		DataModelRepository:              pgRepository,
-		DbPoolRepository:                 pgRepository,
-		IngestedDataReadRepository:       pgRepository,
+		IngestedDataReadRepository:       &IngestedDataReadRepositoryImpl{queryBuilder: queryBuilder},
 		DecisionRepository:               pgRepository,
 		ScenarioReadRepository:           pgRepository,
 		ScenarioWriteRepository:          pgRepository,
@@ -77,7 +81,8 @@ func NewRepositories(
 		ScenarioPublicationRepository:    pgRepository,
 		LegacyPgRepository:               pgRepository,
 		ClientTablesRepository: &ClientTablesRepositoryPostgresql{
-			queryBuilder: queryBuilder,
+			transactionFactory: transactionFactory,
+			queryBuilder:       queryBuilder,
 		},
 	}
 }

@@ -6,7 +6,11 @@ import Button from "@mui/material/Button";
 import DelayedLinearProgress from "@/components/DelayedLinearProgress";
 import { useLoading } from "@/hooks/Loading";
 import services from "@/injectServices";
-import { useOrganization, useClientRoleApiKey, useIngestion } from "@/services";
+import {
+  useOrganization,
+  useIngestion,
+  useMarbleApiWithClientRoleApiKey,
+} from "@/services";
 import { useState } from "react";
 import { IngestObject } from "@/infra/MarbleApi";
 
@@ -25,13 +29,15 @@ function IngestionPage() {
     organizationId
   );
 
-  const { apiKey } = useClientRoleApiKey(
-    services().ingestionService,
+  const { apiKey, marbleApiWithClientRoleApiKey } = useMarbleApiWithClientRoleApiKey(
+    services().apiKeyService,
     pageLoadingDispatcher,
     organizationId
   );
 
-  const { ingest } = useIngestion(services().ingestionService, apiKey);
+  const { ingest } = useIngestion(
+    marbleApiWithClientRoleApiKey,
+  );
 
   const [ingestResult, setIngestResult] = useState<IngestObject[] | null>(null);
 
@@ -66,7 +72,9 @@ function IngestionPage() {
           </Button>
 
           <pre>
-            {ingestResult !== null ? JSON.stringify(ingestResult, null, 2) : false}
+            {ingestResult !== null
+              ? JSON.stringify(ingestResult, null, 2)
+              : false}
           </pre>
         </Paper>
       </Container>

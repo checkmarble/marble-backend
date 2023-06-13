@@ -10,8 +10,8 @@ import (
 )
 
 type TransactionFactory interface {
-	Transaction(database models.Database, fn func(tx Transaction) error) error
-	ImplicitTransactionOnMarbleDatabase() Transaction
+	Transaction(databaseSchema models.DatabaseSchema, fn func(tx Transaction) error) error
+	adaptMarbleDatabaseTransaction(transaction Transaction) TransactionPostgres
 }
 
 type TransactionFactoryPosgresql struct {
@@ -19,8 +19,39 @@ type TransactionFactoryPosgresql struct {
 	marbleConnectionPool             *pgxpool.Pool
 }
 
-func (repo *TransactionFactoryPosgresql) Transaction(database models.Database, fn func(tx Transaction) error) error {
-	connPool, err := repo.databaseConnectionPoolRepository.DatabaseConnectionPool(database)
+func (factory *TransactionFactoryPosgresql) adaptMarbleDatabaseTransaction(transaction Transaction) TransactionPostgres {
+
+	if transaction == nil {
+		transaction = TransactionPostgres{
+			databaseShema: models.DATABASE_MARBLE_SCHEMA,
+			ctx:           context.Background(),
+			exec:          factory.marbleConnectionPool,
+		}
+	}
+
+	return adaptMarbleDatabaseTransaction(transaction)
+}
+
+func adaptMarbleDatabaseTransaction(transaction Transaction) TransactionPostgres {
+
+	tx := transaction.(TransactionPostgres)
+	if transaction.DatabaseSchema().SchemaType != models.DATABASE_SCHEMA_TYPE_MARBLE {
+		panic("can only handle transactions in Marble database.")
+	}
+	return tx
+}
+
+func adaptClientDatabaseTransaction(transaction Transaction) TransactionPostgres {
+
+	tx := transaction.(TransactionPostgres)
+	if transaction.DatabaseSchema().SchemaType != models.DATABASE_SCHEMA_TYPE_CLIENT {
+		panic("can only handle transactions in Client database.")
+	}
+	return tx
+}
+
+func (repo *TransactionFactoryPosgresql) Transaction(databaseSchema models.DatabaseSchema, fn func(tx Transaction) error) error {
+	connPool, err := repo.databaseConnectionPoolRepository.DatabaseConnectionPool(databaseSchema.Database.Connection)
 	if err != nil {
 		return err
 	}
@@ -30,9 +61,9 @@ func (repo *TransactionFactoryPosgresql) Transaction(database models.Database, f
 
 	err = pgx.BeginFunc(ctx, connPool, func(tx pgx.Tx) error {
 		return fn(TransactionPostgres{
-			Target: database,
-			ctx:    ctx,
-			exec:   tx,
+			databaseShema: databaseSchema,
+			ctx:           ctx,
+			exec:          tx,
 		})
 	})
 
@@ -45,10 +76,24 @@ func (repo *TransactionFactoryPosgresql) Transaction(database models.Database, f
 	return err
 }
 
-func (repo *TransactionFactoryPosgresql) ImplicitTransactionOnMarbleDatabase() Transaction {
-	return TransactionPostgres{
-		Target: models.DATABASE_MARBLE,
-		ctx:    context.Background(),
-		exec:   repo.marbleConnectionPool,
-	}
+// Helper for TransactionFactory.Transaction that return something and an error:
+// TransactionReturnValue and the callback fn returns (Model, error)
+// Example:
+// return repositories.TransactionReturnValue(
+//
+//	 usecase.transactionFactory,
+//	 models.DATABASE_MARBLE_SCHEMA,
+//	 func(tx repositories.Transaction) ([]models.User, error) {
+//		return usecase.userRepository.Users(tx)
+//	 },
+//
+// )
+func TransactionReturnValue[ReturnType any](factory TransactionFactory, databaseSchema models.DatabaseSchema, fn func(tx Transaction) (ReturnType, error)) (ReturnType, error) {
+	var value ReturnType
+	transactionErr := factory.Transaction(databaseSchema, func(tx Transaction) error {
+		var fnErr error
+		value, fnErr = fn(tx)
+		return fnErr
+	})
+	return value, transactionErr
 }

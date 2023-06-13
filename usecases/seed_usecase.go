@@ -14,7 +14,7 @@ type SeedUseCase struct {
 
 func (usecase *SeedUseCase) SeedMarbleAdmins(firstMarbleAdminEmail string) error {
 
-	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE, func(tx repositories.Transaction) error {
+	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
 		_, err := usecase.userRepository.CreateUser(tx, models.CreateUser{
 			Email: firstMarbleAdminEmail,
 			Role:  models.MARBLE_ADMIN,

@@ -11,24 +11,24 @@ import (
 )
 
 // Opaque type, down-casted to TransactionPostgres in by repositories
-// We may get ride of it to replace it by TransactionPostgres.
 type Transaction interface {
-	Database() models.Database
+	DatabaseSchema() models.DatabaseSchema
 }
 
 type TransactionPostgres struct {
-	Target models.Database
-	ctx    context.Context
-	exec   TransactionOrPool // Optional, used when no transaction is provided
+	databaseShema models.DatabaseSchema
+	ctx           context.Context
+	exec          TransactionOrPool // Optional, used when no transaction is provided
 }
 
 type TransactionOrPool interface {
 	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
-func (tx TransactionPostgres) Database() models.Database {
-	return tx.Target
+func (tx TransactionPostgres) DatabaseSchema() models.DatabaseSchema {
+	return tx.databaseShema
 }
 
 // helper
@@ -41,26 +41,9 @@ func (transaction *TransactionPostgres) Query(sql string, arguments ...any) (pgx
 	return transaction.exec.Query(transaction.ctx, sql, arguments...)
 }
 
-// Helper for TransactionFactory.Transaction that return something and an error:
-// TransactionReturnValue and the callback fn returns (Model, error)
-// Example:
-// return repositories.TransactionReturnValue(
-//
-//	 usecase.transactionFactory,
-//	 models.DATABASE_MARBLE,
-//	 func(tx repositories.Transaction) ([]models.User, error) {
-//		return usecase.userRepository.Users(tx)
-//	 },
-//
-// )
-func TransactionReturnValue[ReturnType any](factory TransactionFactory, database models.Database, fn func(tx Transaction) (ReturnType, error)) (ReturnType, error) {
-	var value ReturnType
-	transactionErr := factory.Transaction(database, func(tx Transaction) error {
-		var fnErr error
-		value, fnErr = fn(tx)
-		return fnErr
-	})
-	return value, transactionErr
+// helper
+func (transaction *TransactionPostgres) QueryRow(sql string, arguments ...any) pgx.Row {
+	return transaction.exec.QueryRow(transaction.ctx, sql, arguments...)
 }
 
 var ErrIgnoreRoolBackError = errors.New("ignore rollback error")

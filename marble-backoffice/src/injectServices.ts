@@ -1,16 +1,16 @@
 import { type Repositories } from "./repositories";
-import {
-  AuthenticationService,
-  type OrganizationService,
-  type UserService,
-  type IngestionService,
+import { AuthenticationService } from "./services";
+import type {
+  OrganizationService,
+  UserService,
+  ApiKeyService,
 } from "./services";
 
 export interface Services {
   authenticationService: AuthenticationService;
   organizationService: OrganizationService;
   userService: UserService;
-  ingestionService: IngestionService;
+  apiKeyService: ApiKeyService;
 }
 
 let globalServices: Services | null;
@@ -31,7 +31,7 @@ export function initializeServices(repositories: Repositories) {
     userService: {
       userRepository: repositories.userRepository,
     },
-    ingestionService: {
+    apiKeyService: {
       organizationRepository: repositories.organizationRepository,
       marbleApiWithApiKeyFactory: repositories.marbleApiWithApiKeyFactory,
     },

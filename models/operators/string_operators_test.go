@@ -21,8 +21,8 @@ func (d *DataAccessorStringImpl) GetDbField(ctx context.Context, triggerTableNam
 	return val, nil
 }
 
-func (d *DataAccessorStringImpl) GetDbHandle() *pgxpool.Pool {
-	return nil
+func (d *DataAccessorStringImpl) GetDbHandle() (db *pgxpool.Pool, schema string, err error) {
+	return nil, "", nil
 }
 
 func (d *DataAccessorBoolImpl) GetTriggerObjectName() string {

@@ -63,8 +63,7 @@ func (api *API) handleIngestion() http.HandlerFunc {
 			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
-
-		err = usecase.IngestObject(ctx, payloadStructWithReader, table, logger)
+		err = usecase.IngestObject(orgID, payloadStructWithReader, table, logger)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Error while ingesting object:\n"+err.Error())
 			http.Error(w, "", http.StatusInternalServerError)

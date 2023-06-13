@@ -1,4 +1,4 @@
-import type { CreateUser } from "@/models";
+import type { CreateDecision, CreateUser } from "@/models";
 import { HttpMethod } from "./fetchUtils";
 import { AuthorizedFetcher } from "./AuthorizedFetcher";
 
@@ -6,6 +6,7 @@ const ORGANIZATION_URL_PATH = "organizations";
 const SCENARIO_URL_PATH = "scenarios";
 const USERS_URL_PATH = "users";
 const INGESTION_URL_PATH = "ingestion";
+const DECISIONS_URL_PATH = "decisions";
 
 export interface IngestObject {
   tableName: string;
@@ -133,6 +134,18 @@ export class MarbleApi {
     });
     return ingestObject;
   }
+
+  async decisions() : Promise<unknown> {
+    return await this.getAuthorizedJson(DECISIONS_URL_PATH)
+  }
+
+  async postDecision(createDecision: CreateDecision) {
+    return await this.postAuthorizedJson({
+      path: DECISIONS_URL_PATH,
+      body: createDecision
+    })
+  }
+  
 }
 
 function urlWithOrganizationId(path: string, organizationId: string): string {

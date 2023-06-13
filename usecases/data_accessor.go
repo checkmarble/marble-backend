@@ -4,6 +4,7 @@ import (
 	"context"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
+	"marble/marble-backend/usecases/organization"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -11,7 +12,8 @@ import (
 type DataAccessor struct {
 	DataModel                  models.DataModel
 	Payload                    models.TriggerFieldReader
-	dbPoolRepository           repositories.DbPoolRepository
+	orgTransactionFactory      organization.OrgTransactionFactory
+	organizationId             string
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
 	executionType              string
 	triggerTableName           string
@@ -21,16 +23,35 @@ func (d *DataAccessor) GetPayloadField(fieldName string) (interface{}, error) {
 	return d.Payload.ReadFieldFromPayload(models.FieldName(fieldName))
 }
 func (d *DataAccessor) GetDbField(ctx context.Context, triggerTableName string, path []string, fieldName string) (interface{}, error) {
-	return d.ingestedDataReadRepository.GetDbField(ctx, models.DbFieldReadParams{
-		TriggerTableName: models.TableName(triggerTableName),
-		Path:             models.ToLinkNames(path),
-		FieldName:        models.FieldName(fieldName),
-		DataModel:        d.DataModel,
-		Payload:          d.Payload,
-	})
+
+	return organization.TransactionInOrgSchemaReturnValue(
+		d.orgTransactionFactory,
+		d.organizationId,
+		func(tx repositories.Transaction) (interface{}, error) {
+			return d.ingestedDataReadRepository.GetDbField(tx, models.DbFieldReadParams{
+				TriggerTableName: models.TableName(triggerTableName),
+				Path:             models.ToLinkNames(path),
+				FieldName:        models.FieldName(fieldName),
+				DataModel:        d.DataModel,
+				Payload:          d.Payload,
+			})
+		})
+
 }
-func (d *DataAccessor) GetDbHandle() *pgxpool.Pool {
-	return d.dbPoolRepository.GetDbPool()
+
+func (d *DataAccessor) GetDbHandle() (db *pgxpool.Pool, schema string, err error) {
+
+	databaseShema, err := d.orgTransactionFactory.OrganizationDatabaseSchema(d.organizationId)
+	if err != nil {
+		return nil, "", err
+	}
+
+	pool, err := d.orgTransactionFactory.OrganizationDbPool(databaseShema)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return pool, databaseShema.Schema, nil
 }
 
 func (d *DataAccessor) ExecutionType() string {
