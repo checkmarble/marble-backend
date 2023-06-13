@@ -33,6 +33,17 @@ yarn
 yarn dev --port=3000
 ```
 
+### Deployment
+
+### #Manual deployement in staging
+
+⚠️ In the root directory `marble-backend`:
+
+```
+(cd marble-backoffice && yarn build) && firebase deploy --only hosting:marble-backoffice-staging
+```
+
+
 ### Coding guidelines
 
 Clean code architecture with minimal dependencies.
