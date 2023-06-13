@@ -49,7 +49,7 @@ func (repo *ClientTablesRepositoryPostgresql) CreateSchema(tx Transaction, schem
 func (repo *ClientTablesRepositoryPostgresql) DeleteSchema(tx Transaction, schema string) error {
 	pgTx := adaptClientDatabaseTransaction(tx)
 
-	sql := fmt.Sprintf("DROP SCHEMA %s CASCADE", pgx.Identifier.Sanitize([]string{schema}))
+	sql := fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE", pgx.Identifier.Sanitize([]string{schema}))
 
 	_, err := pgTx.Exec(sql)
 	return err
