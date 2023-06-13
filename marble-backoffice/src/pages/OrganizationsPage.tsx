@@ -89,7 +89,7 @@ function OrganizationsPage() {
                 </ListItemAvatar>
                 <ListItemText
                   primary={organization.name}
-                  secondary={organization.dateCreated.toDateString()}
+                  secondary={organization.organizationId}
                 />
               </ListItemButton>
             </ListItem>
