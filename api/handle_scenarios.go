@@ -20,7 +20,6 @@ type APIScenario struct {
 	TriggerObjectType string    `json:"triggerObjectType"`
 	CreatedAt         time.Time `json:"createdAt"`
 	LiveVersionID     *string   `json:"liveVersionId,omitempty"`
-	ScenarioType      string    `json:"scenarioType"`
 }
 
 func NewAPIScenario(scenario models.Scenario) APIScenario {
@@ -31,7 +30,6 @@ func NewAPIScenario(scenario models.Scenario) APIScenario {
 		TriggerObjectType: scenario.TriggerObjectType,
 		CreatedAt:         scenario.CreatedAt,
 		LiveVersionID:     scenario.LiveVersionID,
-		ScenarioType:      scenario.ScenarioType.String(),
 	}
 }
 
@@ -45,9 +43,8 @@ func (api *API) ListScenarios() http.HandlerFunc {
 		}
 
 		logger := api.logger.With(slog.String("orgID", orgID))
-		filters := ctx.Value(httpin.Input).(*dto.ListScenarioInput)
 		usecase := api.usecases.NewScenarioUsecase()
-		scenarios, err := usecase.ListScenarios(ctx, orgID, filters.ToFilters())
+		scenarios, err := usecase.ListScenarios(ctx, orgID)
 
 		if presentError(w, r, err) {
 			return
@@ -84,7 +81,6 @@ func (api *API) CreateScenario() http.HandlerFunc {
 			Name:              input.Body.Name,
 			Description:       input.Body.Description,
 			TriggerObjectType: input.Body.TriggerObjectType,
-			ScenarioType:      models.ScenarioTypeFrom(input.Body.ScenarioType),
 		})
 		if err != nil {
 			logger.ErrorCtx(ctx, "Error creating scenario: \n"+err.Error())

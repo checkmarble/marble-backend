@@ -45,8 +45,7 @@ func (api *API) routes() {
 		authedRouter.Route("/scenarios", func(scenariosRouter chi.Router) {
 			scenariosRouter.Use(api.enforcePermissionMiddleware(models.SCENARIO_READ))
 
-			scenariosRouter.With(httpin.NewInput(dto.ListScenarioInput{})).
-				Get("/", api.ListScenarios())
+			scenariosRouter.Get("/", api.ListScenarios())
 
 			scenariosRouter.With(api.enforcePermissionMiddleware(models.SCENARIO_CREATE)).
 				With(httpin.NewInput(dto.CreateScenarioInput{})).
@@ -119,18 +118,14 @@ func (api *API) routes() {
 			})
 		})
 
-		authedRouter.Route("/scheduled-scenario-executions", func(r chi.Router) {
+		authedRouter.Route("/scheduled-executions", func(r chi.Router) {
 			r.Use(api.enforcePermissionMiddleware(models.DECISION_READ))
 
-			r.With(httpin.NewInput(dto.ListScheduledScenarioExecutionInput{})).
-				Get("/", api.handleListScheduledScenarioExecution())
+			r.With(httpin.NewInput(dto.ListScheduledExecutionInput{})).
+				Get("/", api.handleListScheduledExecution())
 
-			r.Route("/{scheduledScenarioExecutionID:"+UUIDRegExp+"}", func(r chi.Router) {
-				r.Get("/", api.handleGetScheduledScenarioExecution())
-
-				// TODO : Enforce permission : only accessible for automated calls from the scheduler
-				r.With(httpin.NewInput(dto.UpdateScheduledScenarioExecutionInput{})).
-					Patch("/", api.handleUpdateScheduledScenarioExecution())
+			r.Route("/{scheduledExecutionID:"+UUIDRegExp+"}", func(r chi.Router) {
+				r.Get("/", api.handleGetScheduledExecution())
 			})
 		})
 

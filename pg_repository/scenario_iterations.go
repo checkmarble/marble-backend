@@ -309,13 +309,13 @@ func (r *PGRepository) UpdateScenarioIteration(ctx context.Context, orgID string
 	return scenarioIterationDTO, nil
 }
 
-func (r *PGRepository) publishScenarioIteration(ctx context.Context, tx pgx.Tx, orgID string, scenarioIterationID string, scenarioType models.ScenarioType) error {
+func (r *PGRepository) publishScenarioIteration(ctx context.Context, tx pgx.Tx, orgID string, scenarioIterationID string) error {
 	si, err := r.getScenarioIterationRaw(ctx, tx, orgID, scenarioIterationID)
 	if err != nil {
 		return err
 	}
 
-	if err := si.IsValidForPublication(scenarioType); err != nil {
+	if err := si.IsValidForPublication(); err != nil {
 		return err
 	}
 

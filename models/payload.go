@@ -7,10 +7,6 @@ import (
 	dynamicstruct "github.com/ompluscator/dynamic-struct"
 )
 
-type TriggerFieldReader interface {
-	ReadFieldFromPayload(fieldName FieldName) (interface{}, error)
-}
-
 type Payload struct {
 	Reader dynamicstruct.Reader
 	Table  Table
@@ -51,5 +47,5 @@ type DbFieldReadParams struct {
 	Path             []LinkName
 	FieldName        FieldName
 	DataModel        DataModel
-	Payload          TriggerFieldReader
+	Payload          Payload
 }

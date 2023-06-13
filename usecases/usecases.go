@@ -121,6 +121,6 @@ func (usecases *Usecases) NewScenarioIterationRuleUsecase() ScenarioIterationRul
 	}
 }
 
-func (usecases *Usecases) NewScheduledScenarioExecutionUsecase() ScheduledScenarioExecutionUsecase {
-	return ScheduledScenarioExecutionUsecase{}
+func (usecases *Usecases) NewScheduledExecutionUsecase() ScheduledExecutionUsecase {
+	return ScheduledExecutionUsecase{}
 }

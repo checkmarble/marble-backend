@@ -25,13 +25,6 @@ func (d *DataAccessorStringImpl) GetDbHandle() (db *pgxpool.Pool, schema string,
 	return nil, "", nil
 }
 
-func (d *DataAccessorBoolImpl) GetTriggerObjectName() string {
-	return ""
-}
-func (d *DataAccessorBoolImpl) ExecutionType() string {
-	return ""
-}
-
 func TestLogicEvalString(t *testing.T) {
 	type testCase struct {
 		name     string

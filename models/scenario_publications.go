@@ -66,7 +66,7 @@ type PublishedScenarioIterationBody struct {
 	Schedule             string
 }
 
-func NewPublishedScenarioIteration(si ScenarioIteration, scenarioType ScenarioType) (PublishedScenarioIteration, error) {
+func NewPublishedScenarioIteration(si ScenarioIteration) (PublishedScenarioIteration, error) {
 	result := PublishedScenarioIteration{
 		ID:         si.ID,
 		ScenarioID: si.ScenarioID,
@@ -74,7 +74,7 @@ func NewPublishedScenarioIteration(si ScenarioIteration, scenarioType ScenarioTy
 		UpdatedAt:  si.UpdatedAt,
 	}
 
-	err := si.IsValidForPublication(scenarioType)
+	err := si.IsValidForPublication()
 	if err != nil {
 		return PublishedScenarioIteration{}, err
 	}
@@ -90,7 +90,7 @@ func NewPublishedScenarioIteration(si ScenarioIteration, scenarioType ScenarioTy
 	return result, nil
 }
 
-func (si ScenarioIteration) IsValidForPublication(scenarioType ScenarioType) error {
+func (si ScenarioIteration) IsValidForPublication() error {
 	if si.Body.ScoreReviewThreshold == nil {
 		return fmt.Errorf("Scenario iteration has no ScoreReviewThreshold: \n%w", ErrScenarioIterationNotValid)
 	}
@@ -112,15 +112,6 @@ func (si ScenarioIteration) IsValidForPublication(scenarioType ScenarioType) err
 		return fmt.Errorf("Scenario iteration has no trigger condition: \n%w", ErrScenarioIterationNotValid)
 	} else if !si.Body.TriggerCondition.IsValid() {
 		return fmt.Errorf("Scenario iteration trigger condition is invalid: \n%w", ErrScenarioIterationNotValid)
-	}
-
-	if scenarioType == Scheduled {
-		if si.Body.Schedule == "" {
-			return fmt.Errorf("Scheduled scenario iteration has no schedule: \n%w", ErrScenarioIterationNotValid)
-		}
-		if si.Body.BatchTriggerSQL == "" {
-			return fmt.Errorf("Scheduled scenario iteration has no trigger SQL: \n%w", ErrScenarioIterationNotValid)
-		}
 	}
 
 	return nil

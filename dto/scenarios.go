@@ -2,14 +2,12 @@ package dto
 
 import (
 	"encoding/json"
-	"marble/marble-backend/models"
 )
 
 type CreateScenarioBody struct {
 	Name              string `json:"name"`
 	Description       string `json:"description"`
 	TriggerObjectType string `json:"triggerObjectType"`
-	ScenarioType      string `json:"scenarioType"`
 }
 
 type CreateScenarioInput struct {
@@ -24,22 +22,6 @@ type UpdateScenarioBody struct {
 type UpdateScenarioInput struct {
 	ScenarioID string              `in:"path=scenarioID"`
 	Body       *UpdateScenarioBody `in:"body=json"`
-}
-
-type ListScenarioInput struct {
-	ScenarioType *string `in:"query=scenario_type"`
-	IsActive     *bool   `in:"query=is_active"`
-}
-
-func (input ListScenarioInput) ToFilters() models.ListScenariosFilters {
-	output := models.ListScenariosFilters{}
-	stringType := models.ScenarioTypeFrom(*input.ScenarioType)
-	if input.ScenarioType != nil {
-		output.ScenarioType = &stringType
-	}
-	output.IsActive = input.IsActive
-
-	return output
 }
 
 // Scenario iterations

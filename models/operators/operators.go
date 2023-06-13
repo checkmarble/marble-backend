@@ -20,8 +20,6 @@ type DataAccessor interface {
 	GetPayloadField(fieldName string) (interface{}, error)
 	GetDbField(ctx context.Context, triggerTableName string, path []string, fieldName string) (interface{}, error)
 	GetDbHandle() (db *pgxpool.Pool, schema string, err error)
-	GetTriggerObjectName() string
-	ExecutionType() string
 }
 
 var (

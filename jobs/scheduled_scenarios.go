@@ -13,7 +13,7 @@ type ScheduledScenario struct {
 }
 
 func ExecuteAllScheduledScenarios(ctx context.Context, usecases usecases.Usecases, logger *slog.Logger) {
-	usecase := usecases.NewScheduledScenarioExecutionUsecase()
+	usecase := usecases.NewScheduledExecutionUsecase()
 
 	// TODO: implement dynamic reading of it in a dedicated usecase method & repository
 	listToTrigger := []ScheduledScenario{}

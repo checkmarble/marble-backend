@@ -11,24 +11,24 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-type ScheduledScenarioExecutionUsecase struct {
+type ScheduledExecutionUsecase struct {
 	scenarioReadRepository          repositories.ScenarioReadRepository
 	scenarioIterationReadRepository repositories.ScenarioIterationReadRepository
 }
 
-func (usecase *ScheduledScenarioExecutionUsecase) GetScheduledScenarioExecution(ctx context.Context, orgID string, id string) (models.ScheduledScenarioBatchExecution, error) {
-	return models.ScheduledScenarioBatchExecution{}, nil
+func (usecase *ScheduledExecutionUsecase) GetScheduledExecution(ctx context.Context, orgID string, id string) (models.ScheduledExecution, error) {
+	return models.ScheduledExecution{}, nil
 }
 
-func (usecase *ScheduledScenarioExecutionUsecase) ListScheduledScenarioExecutions(ctx context.Context, orgID string, scenarioID string) ([]models.ScheduledScenarioBatchExecution, error) {
-	return []models.ScheduledScenarioBatchExecution{}, nil
+func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(ctx context.Context, orgID string, scenarioID string) ([]models.ScheduledExecution, error) {
+	return []models.ScheduledExecution{}, nil
 }
 
-func (usecase *ScheduledScenarioExecutionUsecase) UpdateScheduledScenarioExecutioExecution(ctx context.Context, orgID string, id string, input models.UpdateScheduledScenarioExecutionBody) (models.ScheduledScenarioBatchExecution, error) {
-	return models.ScheduledScenarioBatchExecution{}, nil
+func (usecase *ScheduledExecutionUsecase) UpdateScheduledExecution(ctx context.Context, orgID string, id string, input models.UpdateScheduledExecutionBody) (models.ScheduledExecution, error) {
+	return models.ScheduledExecution{}, nil
 }
 
-func (usecase *ScheduledScenarioExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx context.Context, orgID string, scenarioID string, logger *slog.Logger) error {
+func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx context.Context, orgID string, scenarioID string, logger *slog.Logger) error {
 	// This is called by a cron job, for all scheduled scenarios. It is crucial that a panic on one scenario does not break all the others.
 	defer func() {
 		if r := recover(); r != nil {
@@ -41,18 +41,22 @@ func (usecase *ScheduledScenarioExecutionUsecase) ExecuteScheduledScenarioIfDue(
 	if err != nil {
 		return err
 	}
-	if scenario.ScenarioType != models.Scheduled {
-		return fmt.Errorf("Scenario is not scheduled %w", models.BadParameterError)
-	}
 	if scenario.LiveVersionID == nil {
 		return fmt.Errorf("Scenario has no live version %w", models.BadParameterError)
+	}
+	scenarioIteration, err := usecase.scenarioIterationReadRepository.GetScenarioIteration(ctx, orgID, *scenario.LiveVersionID)
+	if err != nil {
+		return err
+	}
+	if scenarioIteration.Body.Schedule == "" {
+		return fmt.Errorf("Scenario is not scheduled %w", models.BadParameterError)
 	}
 
 	liveVersion, err := usecase.scenarioIterationReadRepository.GetScenarioIteration(ctx, orgID, *scenario.LiveVersionID)
 	if err != nil {
 		return err
 	}
-	publishedVersion, err := models.NewPublishedScenarioIteration(liveVersion, scenario.ScenarioType)
+	publishedVersion, err := models.NewPublishedScenarioIteration(liveVersion)
 	if err != nil {
 		return err
 	}
@@ -62,7 +66,7 @@ func (usecase *ScheduledScenarioExecutionUsecase) ExecuteScheduledScenarioIfDue(
 	if !ok {
 		return fmt.Errorf("Invalid schedule: %w", models.BadParameterError)
 	}
-	previousExecutions, err := usecase.ListScheduledScenarioExecutions(ctx, orgID, scenarioID)
+	previousExecutions, err := usecase.ListScheduledExecutions(ctx, orgID, scenarioID)
 	if err != nil {
 		return err
 	}
@@ -87,12 +91,4 @@ func (usecase *ScheduledScenarioExecutionUsecase) ExecuteScheduledScenarioIfDue(
 	}
 
 	return nil
-}
-
-func (usecase *ScheduledScenarioExecutionUsecase) GetScheduledScenarioObjectExecution(ctx context.Context, orgID string, id string) (models.ScheduledScenarioObjectExecution, error) {
-	return models.ScheduledScenarioObjectExecution{}, nil
-}
-
-func (usecase *ScheduledScenarioExecutionUsecase) ListScheduledScenarioObjectExecutions(ctx context.Context, orgID string, scenarioID string) ([]models.ScheduledScenarioObjectExecution, error) {
-	return []models.ScheduledScenarioObjectExecution{}, nil
 }
