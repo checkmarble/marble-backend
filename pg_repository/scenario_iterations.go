@@ -77,7 +77,7 @@ func (r *PGRepository) ListScenarioIterations(ctx context.Context, orgID string,
 		Select(ColumnList[dbScenarioIteration]()...).
 		From("scenario_iterations").
 		Where("org_id = ?", orgID).
-		Where(sq.Eq(columnValueMap(ListScenarioIterationsFilters{
+		Where(sq.Eq(ColumnValueMap(ListScenarioIterationsFilters{
 			ScenarioID: filters.ScenarioID,
 		}))).
 		ToSql()
@@ -193,7 +193,7 @@ func (r *PGRepository) CreateScenarioIteration(ctx context.Context, orgID string
 
 	sql, args, err := r.queryBuilder.
 		Insert("scenario_iterations").
-		SetMap(columnValueMap(createScenarioIteration)).
+		SetMap(ColumnValueMap(createScenarioIteration)).
 		Suffix("RETURNING *").ToSql()
 	if err != nil {
 		return models.ScenarioIteration{}, fmt.Errorf("unable to build scenario iteration query: %w", err)
@@ -282,7 +282,7 @@ func (r *PGRepository) UpdateScenarioIteration(ctx context.Context, orgID string
 
 	sql, args, err = r.queryBuilder.
 		Update("scenario_iterations").
-		SetMap(columnValueMap(updateScenarioIterationInput)).
+		SetMap(ColumnValueMap(updateScenarioIterationInput)).
 		Where("id = ?", scenarioIteration.ID).
 		Where("org_id = ?", orgID).
 		Suffix("RETURNING *").ToSql()

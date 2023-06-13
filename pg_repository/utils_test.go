@@ -122,7 +122,7 @@ func TestColumnValueMap(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			got := columnValueMap(&c.data)
+			got := ColumnValueMap(&c.data)
 
 			if !reflect.DeepEqual(c.expected, got) {
 				t.Errorf("Expected %v, got %v", c.expected, got)

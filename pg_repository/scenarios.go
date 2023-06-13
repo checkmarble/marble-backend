@@ -64,6 +64,29 @@ func (r *PGRepository) ListScenarios(ctx context.Context, orgID string) ([]model
 	return scenarioDTOs, nil
 }
 
+func (r *PGRepository) ListAllScenarios(ctx context.Context) ([]models.Scenario, error) {
+	query := r.queryBuilder.
+		Select(ColumnList[dbScenario]()...).
+		From("scenarios")
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("unable to build scenario query: %w", err)
+	}
+
+	rows, _ := r.db.Query(ctx, sql, args...)
+	scenarios, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbScenario])
+	if err != nil {
+		return nil, fmt.Errorf("unable to get scenarios: %w", err)
+	}
+
+	scenarioDTOs := []models.Scenario{}
+	for _, s := range scenarios {
+		scenarioDTOs = append(scenarioDTOs, s.toDomain())
+	}
+	return scenarioDTOs, nil
+}
+
 func (r *PGRepository) GetScenario(ctx context.Context, orgID string, scenarioID string) (models.Scenario, error) {
 	sql, args, err := r.queryBuilder.
 		Select(ColumnList[dbScenario]()...).
@@ -99,7 +122,7 @@ type dbCreateScenario struct {
 func (r *PGRepository) CreateScenario(ctx context.Context, orgID string, scenario models.CreateScenarioInput) (models.Scenario, error) {
 	sql, args, err := r.queryBuilder.
 		Insert("scenarios").
-		SetMap(columnValueMap(dbCreateScenario{
+		SetMap(ColumnValueMap(dbCreateScenario{
 			Id:                utils.NewPrimaryKey(orgID),
 			OrgID:             orgID,
 			Name:              scenario.Name,
@@ -128,7 +151,7 @@ type dbUpdateScenarioInput struct {
 func (r *PGRepository) UpdateScenario(ctx context.Context, orgID string, scenario models.UpdateScenarioInput) (models.Scenario, error) {
 	sql, args, err := r.queryBuilder.
 		Update("scenarios").
-		SetMap(columnValueMap(dbUpdateScenarioInput{
+		SetMap(ColumnValueMap(dbUpdateScenarioInput{
 			Name:        scenario.Name,
 			Description: scenario.Description,
 		})).

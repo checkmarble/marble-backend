@@ -82,7 +82,7 @@ func (r *PGRepository) ListScenarioIterationRules(ctx context.Context, orgID str
 		Select(ColumnList[dbScenarioIterationRule]()...).
 		From("scenario_iteration_rules").
 		Where("org_id = ?", orgID).
-		Where(sq.Eq(columnValueMap(ListScenarioIterationRulesFilters{
+		Where(sq.Eq(ColumnValueMap(ListScenarioIterationRulesFilters{
 			ScenarioIterationID: filters.ScenarioIterationID,
 		}))).
 		ToSql()
@@ -162,7 +162,7 @@ func (r *PGRepository) CreateScenarioIterationRule(ctx context.Context, orgID st
 
 	sql, args, err = r.queryBuilder.
 		Insert("scenario_iteration_rules").
-		SetMap(columnValueMap(dbCreateRuleInput)).
+		SetMap(ColumnValueMap(dbCreateRuleInput)).
 		Suffix("RETURNING *").ToSql()
 	if err != nil {
 		return models.Rule{}, fmt.Errorf("unable to build rule query: %w", err)
@@ -319,7 +319,7 @@ func (r *PGRepository) UpdateScenarioIterationRule(ctx context.Context, orgID st
 
 	sql, args, err = r.queryBuilder.
 		Update("scenario_iteration_rules").
-		SetMap(columnValueMap(dbUpdateRuleInput)).
+		SetMap(ColumnValueMap(dbUpdateRuleInput)).
 		Where("id = ?", rule.ID).
 		Where("org_id = ?", orgID).
 		Suffix("RETURNING *").ToSql()

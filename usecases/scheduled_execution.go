@@ -14,18 +14,40 @@ import (
 type ScheduledExecutionUsecase struct {
 	scenarioReadRepository          repositories.ScenarioReadRepository
 	scenarioIterationReadRepository repositories.ScenarioIterationReadRepository
+	scheduledExecutionRepository    repositories.ScheduledExecutionRepository
+	transactionFactory              repositories.TransactionFactory
 }
 
 func (usecase *ScheduledExecutionUsecase) GetScheduledExecution(ctx context.Context, orgID string, id string) (models.ScheduledExecution, error) {
-	return models.ScheduledExecution{}, nil
+	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.ScheduledExecution, error) {
+		execution, err := usecase.scheduledExecutionRepository.GetScheduledExecution(tx, orgID, id)
+		if err != nil {
+			return models.ScheduledExecution{}, err
+		}
+		return execution, nil
+	})
 }
 
 func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(ctx context.Context, orgID string, scenarioID string) ([]models.ScheduledExecution, error) {
-	return []models.ScheduledExecution{}, nil
+	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) ([]models.ScheduledExecution, error) {
+		executions, err := usecase.scheduledExecutionRepository.ListScheduledExecutions(tx, orgID, scenarioID)
+		if err != nil {
+			return []models.ScheduledExecution{}, err
+		}
+		return executions, nil
+	})
 }
 
-func (usecase *ScheduledExecutionUsecase) UpdateScheduledExecution(ctx context.Context, orgID string, id string, input models.UpdateScheduledExecutionBody) (models.ScheduledExecution, error) {
-	return models.ScheduledExecution{}, nil
+func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(ctx context.Context, input models.CreateScheduledExecutionInput) error {
+	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+		return usecase.scheduledExecutionRepository.CreateScheduledExecution(tx, input)
+	})
+}
+
+func (usecase *ScheduledExecutionUsecase) UpdateScheduledExecution(ctx context.Context, input models.UpdateScheduledExecutionInput) error {
+	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+		return usecase.scheduledExecutionRepository.UpdateScheduledExecution(tx, input)
+	})
 }
 
 func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx context.Context, orgID string, scenarioID string, logger *slog.Logger) error {

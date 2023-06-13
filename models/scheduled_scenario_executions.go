@@ -10,6 +10,13 @@ type ScheduledExecution struct {
 	FinishedAt          *time.Time
 }
 
-type UpdateScheduledExecutionBody struct {
+type UpdateScheduledExecutionInput struct {
+	ID     string
 	Status *string
+}
+
+type CreateScheduledExecutionInput struct {
+	Organizationid      string
+	ScenarioId          string
+	ScenarioIterationID string
 }
