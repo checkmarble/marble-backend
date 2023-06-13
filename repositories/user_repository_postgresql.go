@@ -36,8 +36,7 @@ func (repo *UserRepositoryPostgresql) CreateUser(tx Transaction, createUser mode
 		orgId = &createUser.OrganizationId
 	}
 
-	return userId, SqlInsert(
-		pgTx,
+	_, err := pgTx.ExecBuilder(
 		repo.queryBuilder.Insert(dbmodels.TABLE_USERS).
 			Columns(
 				"id",
@@ -54,24 +53,25 @@ func (repo *UserRepositoryPostgresql) CreateUser(tx Transaction, createUser mode
 				orgId,
 			),
 	)
+	return userId, err
 }
 
 func (repo *UserRepositoryPostgresql) DeleteUser(tx Transaction, userID models.UserId) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	return SqlDelete(
-		pgTx,
+	_, err := pgTx.ExecBuilder(
 		repo.queryBuilder.Delete(dbmodels.TABLE_USERS).Where("id = ?", string(userID)),
 	)
+	return err
 }
 
 func (repo *UserRepositoryPostgresql) DeleteUsersOfOrganization(tx Transaction, organizationId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	return SqlDelete(
-		pgTx,
+	_, err := pgTx.ExecBuilder(
 		repo.queryBuilder.Delete(dbmodels.TABLE_USERS).Where("organization_id = ?", string(organizationId)),
 	)
+	return err
 }
 
 func (repo *UserRepositoryPostgresql) UserByID(tx Transaction, userId models.UserId) (models.User, error) {
@@ -147,9 +147,10 @@ func (repo *UserRepositoryPostgresql) UserByEmail(tx Transaction, email string) 
 func (repo *UserRepositoryPostgresql) UpdateFirebaseId(tx Transaction, userId models.UserId, firebaseUid string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	return SqlUpdate(pgTx, repo.queryBuilder.
+	_, err := pgTx.ExecBuilder(repo.queryBuilder.
 		Update(dbmodels.TABLE_USERS).
 		Set("firebase_uid", firebaseUid).
 		Where("id = ?", string(userId)),
 	)
+	return err
 }
