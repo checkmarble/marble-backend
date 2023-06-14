@@ -21,6 +21,7 @@ type Repositories struct {
 	IngestionRepository              IngestionRepository
 	DataModelRepository              DataModelRepository
 	IngestedDataReadRepository       IngestedDataReadRepository
+	DecisionRepositoryLegacy         DecisionRepositoryLegacy
 	DecisionRepository               DecisionRepository
 	ScenarioReadRepository           ScenarioReadRepository
 	ScenarioWriteRepository          ScenarioWriteRepository
@@ -80,9 +81,13 @@ func NewRepositories(
 		IngestionRepository: &IngestionRepositoryImpl{
 			queryBuilder: queryBuilder,
 		},
-		DataModelRepository:              pgRepository,
-		IngestedDataReadRepository:       &IngestedDataReadRepositoryImpl{queryBuilder: queryBuilder},
-		DecisionRepository:               pgRepository,
+		DataModelRepository:        pgRepository,
+		IngestedDataReadRepository: &IngestedDataReadRepositoryImpl{queryBuilder: queryBuilder},
+		DecisionRepositoryLegacy:   pgRepository,
+		DecisionRepository: &DecisionRepositoryImpl{
+			transactionFactory: transactionFactory,
+			queryBuilder:       queryBuilder,
+		},
 		ScenarioReadRepository:           pgRepository,
 		ScenarioWriteRepository:          pgRepository,
 		ScenarioIterationReadRepository:  pgRepository,
