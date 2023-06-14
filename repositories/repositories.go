@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"crypto/rsa"
+	"marble/marble-backend/models"
 	"marble/marble-backend/pg_repository"
 
 	"firebase.google.com/go/v4/auth"
@@ -29,14 +30,23 @@ type Repositories struct {
 	ScenarioPublicationRepository    ScenarioPublicationRepository
 	LegacyPgRepository               *pg_repository.PGRepository
 	ClientTablesRepository           ClientTablesRepository
+	AwsS3Repository                  AwsS3Repository
+}
+
+func MakeAwsS3Repository(fake bool) AwsS3Repository {
+	if fake {
+		return &AwsS3RepositoryFake{}
+	}
+	return NewAwsS3Repository()
 }
 
 func NewRepositories(
+	configuration models.GlobalConfiguration,
 	marbleJwtSigningKey rsa.PrivateKey,
 	firebaseClient auth.Client,
 	pgRepository *pg_repository.PGRepository,
 	marbleConnectionPool *pgxpool.Pool,
-) *Repositories {
+) (*Repositories, error) {
 
 	databaseConnectionPoolRepository := NewDatabaseConnectionPoolRepository(
 		marbleConnectionPool,
@@ -84,5 +94,6 @@ func NewRepositories(
 			transactionFactory: transactionFactory,
 			queryBuilder:       queryBuilder,
 		},
-	}
+		AwsS3Repository: MakeAwsS3Repository(configuration.FakeAwsS3Repository),
+	}, nil
 }
