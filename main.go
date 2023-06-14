@@ -6,6 +6,7 @@ import (
 	"log"
 	"marble/marble-backend/api"
 	"marble/marble-backend/infra"
+	"marble/marble-backend/models"
 	"marble/marble-backend/pg_repository"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases"
@@ -19,7 +20,7 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-func runServer(config usecases.Configuration, pgRepository *pg_repository.PGRepository, marbleConnectionPool *pgxpool.Pool, port string, env string, logger *slog.Logger) {
+func runServer(configuration models.GlobalConfiguration, pgRepository *pg_repository.PGRepository, marbleConnectionPool *pgxpool.Pool, port string, env string, logger *slog.Logger) {
 	ctx := context.Background()
 
 	devEnv := env == "DEV"
@@ -28,18 +29,25 @@ func runServer(config usecases.Configuration, pgRepository *pg_repository.PGRepo
 
 	marbleJwtSigningKey := infra.MustParseSigningKey(utils.GetRequiredStringEnv("AUTHENTICATION_JWT_SIGNING_KEY"))
 
-	repositories := repositories.NewRepositories(
+	repositories, err := repositories.NewRepositories(
+		configuration,
 		marbleJwtSigningKey,
 		infra.IntializeFirebase(ctx),
 		pgRepository,
 		marbleConnectionPool,
 	)
-
-	usecases := usecases.Usecases{
-		Repositories: *repositories,
-		Config:       config,
+	if err != nil {
+		panic(err)
 	}
 
+	usecases := usecases.Usecases{
+		Repositories:  *repositories,
+		Configuration: configuration,
+	}
+
+	if err != nil {
+		panic(err)
+	}
 	////////////////////////////////////////////////////////////
 	// Seed the database
 	////////////////////////////////////////////////////////////
@@ -97,8 +105,9 @@ func main() {
 		pgUser     = utils.GetRequiredStringEnv("PG_USER")
 		pgPassword = utils.GetRequiredStringEnv("PG_PASSWORD")
 		pgDatabase = "marble"
-		config     = usecases.Configuration{
+		config     = models.GlobalConfiguration{
 			TokenLifetimeMinute: utils.GetIntEnv("TOKEN_LIFETIME_MINUTE", 60*2),
+			FakeAwsS3Repository: utils.GetBoolEnv("FAKE_AWS_S3", false),
 		}
 	)
 

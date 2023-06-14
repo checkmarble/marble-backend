@@ -1,17 +1,14 @@
 package usecases
 
 import (
+	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/organization"
 )
 
-type Configuration struct {
-	TokenLifetimeMinute int
-}
-
 type Usecases struct {
-	Repositories repositories.Repositories
-	Config       Configuration
+	Repositories  repositories.Repositories
+	Configuration models.GlobalConfiguration
 }
 
 func (usecases *Usecases) NewMarbleTokenUseCase() MarbleTokenUseCase {
@@ -23,7 +20,7 @@ func (usecases *Usecases) NewMarbleTokenUseCase() MarbleTokenUseCase {
 		userRepository:          repositories.UserRepository,
 		apiKeyRepository:        repositories.ApiKeyRepository,
 		organizationRepository:  repositories.OrganizationRepository,
-		tokenLifetimeMinute:     usecases.Config.TokenLifetimeMinute,
+		tokenLifetimeMinute:     usecases.Configuration.TokenLifetimeMinute,
 	}
 }
 
