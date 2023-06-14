@@ -4,6 +4,7 @@ import (
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/organization"
+	"marble/marble-backend/usecases/scheduledexecution"
 )
 
 type Usecases struct {
@@ -56,7 +57,7 @@ func (usecases *Usecases) NewDecisionUsecase() DecisionUsecase {
 	return DecisionUsecase{
 		orgTransactionFactory:           usecases.NewOrgTransactionFactory(),
 		ingestedDataReadRepository:      usecases.Repositories.IngestedDataReadRepository,
-		decisionRepository:              usecases.Repositories.DecisionRepository,
+		decisionRepositoryLegacy:        usecases.Repositories.DecisionRepositoryLegacy,
 		datamodelRepository:             usecases.Repositories.DataModelRepository,
 		scenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,
 		scenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
@@ -115,5 +116,12 @@ func (usecases *Usecases) NewScenarioIterationUsecase() ScenarioIterationUsecase
 func (usecases *Usecases) NewScenarioIterationRuleUsecase() ScenarioIterationRuleUsecase {
 	return ScenarioIterationRuleUsecase{
 		repository: usecases.Repositories.ScenarioIterationRuleRepository,
+	}
+}
+
+func (usecases *Usecases) NewExportScheduleExecution() scheduledexecution.ExportScheduleExecution {
+	return &scheduledexecution.ExportScheduleExecutionImpl{
+		AwsS3Repository:    usecases.Repositories.AwsS3Repository,
+		DecisionRepository: usecases.Repositories.DecisionRepository,
 	}
 }
