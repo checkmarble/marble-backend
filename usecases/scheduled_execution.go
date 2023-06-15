@@ -18,7 +18,9 @@ type ScheduledExecutionUsecase struct {
 	scenarioReadRepository          repositories.ScenarioReadRepository
 	scenarioIterationReadRepository repositories.ScenarioIterationReadRepository
 	scheduledExecutionRepository    repositories.ScheduledExecutionRepository
+	dataModelRepository             repositories.DataModelRepository
 	transactionFactory              repositories.TransactionFactory
+	ingestedDataReadRepository      repositories.IngestedDataReadRepository
 }
 
 func (usecase *ScheduledExecutionUsecase) GetScheduledExecution(ctx context.Context, orgID string, id string) (models.ScheduledExecution, error) {
@@ -105,7 +107,7 @@ func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx cont
 		}
 
 		// Actually execute the scheduled scenario
-		if err := executeScheduledBatchScenario(ctx, usecase, orgID, scenarioID, publishedVersion, logger); err != nil {
+		if err := usecase.executeScheduledScenario(ctx, scenario, publishedVersion, logger); err != nil {
 			usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
 				return usecase.scheduledExecutionRepository.UpdateScheduledExecution(tx, models.UpdateScheduledExecutionInput{
 					ID:     id,
@@ -148,7 +150,28 @@ func executionIsDue(schedule string, previousExecutions []models.ScheduledExecut
 	return true, nil
 }
 
-func executeScheduledBatchScenario(ctx context.Context, usecase *ScheduledExecutionUsecase, orgID, scenarioID string, publishedVersion models.PublishedScenarioIteration, logger *slog.Logger) error {
+func (usecase *ScheduledExecutionUsecase) executeScheduledScenario(ctx context.Context, scenario models.Scenario, publishedVersion models.PublishedScenarioIteration, logger *slog.Logger) error {
+
+	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, scenario.OrganizationID)
+	if err != nil {
+		return err
+	}
+	tables := dataModel.Tables
+	table, ok := tables[models.TableName(scenario.TriggerObjectType)]
+	if !ok {
+		return fmt.Errorf("Trigger object type %s not found in data model: %w", scenario.TriggerObjectType, models.NotFoundError)
+	}
+
+	// list objects to score
+	objects, err := usecase.ingestedDataReadRepository.ListAllObjectsFromTable(ctx, table)
+	if err != nil {
+		return err
+	}
+
+	// execute scenario for each object
+
+	// wrap up
+
 	return fmt.Errorf("Not implemented")
 }
 

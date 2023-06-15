@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jackc/pgx/v5/pgtype"
+	"gopkg.in/guregu/null.v3"
 )
 
 // /////////////////////////////
@@ -194,7 +194,7 @@ func (field DbFieldBool) Eval(ctx context.Context, d DataAccessor) (bool, error)
 		return false, err
 	}
 
-	valNullable, ok := valRaw.(pgtype.Bool)
+	valNullable, ok := valRaw.(null.Bool)
 	if !ok {
 		return false, fmt.Errorf("DB field %s is not a boolean", field.FieldName)
 	}
@@ -270,7 +270,21 @@ func (field PayloadFieldBool) Eval(ctx context.Context, d DataAccessor) (bool, e
 	if !field.IsValid() {
 		return false, ErrEvaluatingInvalidOperator
 	}
-	return getPayloadFieldGeneric[bool](d, field.FieldName)
+
+	fieldRaw, err := d.GetPayloadField(field.FieldName)
+	if err != nil {
+		return true, err
+	}
+
+	nullableField, ok := fieldRaw.(null.Bool)
+	if !ok {
+		return true, fmt.Errorf("Payload field %s is not a type null.Bool", field.FieldName)
+	}
+	if !nullableField.Valid {
+		return true, fmt.Errorf("Payload field %s is null: %w", field.FieldName, OperatorNullValueReadError)
+	}
+
+	return nullableField.Bool, nil
 }
 
 func (field PayloadFieldBool) IsValid() bool {
