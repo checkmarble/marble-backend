@@ -35,6 +35,7 @@ func runServer(configuration models.GlobalConfiguration, pgRepository *pg_reposi
 		infra.IntializeFirebase(ctx),
 		pgRepository,
 		marbleConnectionPool,
+		logger,
 	)
 	if err != nil {
 		panic(err)
@@ -45,9 +46,6 @@ func runServer(configuration models.GlobalConfiguration, pgRepository *pg_reposi
 		Configuration: configuration,
 	}
 
-	if err != nil {
-		panic(err)
-	}
 	////////////////////////////////////////////////////////////
 	// Seed the database
 	////////////////////////////////////////////////////////////

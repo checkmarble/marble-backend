@@ -3,8 +3,10 @@ package repositories
 import (
 	"context"
 	"marble/marble-backend/models"
+	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
 )
 
 type DecisionRepositoryLegacy interface {
@@ -32,17 +34,23 @@ func (repo *DecisionRepositoryImpl) DecisionsOfScheduledExecution(scheduledExecu
 
 		decisions := []models.Decision{
 			{
-				ID: "1",
-			},
-			{
-				ID: "2",
+				ID:                  uuid.NewString(),
+				CreatedAt:           time.Now(),
+				Outcome:             models.Approve,
+				ScenarioID:          uuid.NewString(),
+				ScenarioName:        "Scenario 1",
+				ScenarioDescription: "Scenario 1",
+				ScenarioVersion:     1,
+				Score:               666,
 			},
 		}
 
 		err := repo.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(transaction Transaction) error {
 			// tx := adaptClientDatabaseTransaction(transaction)
 
-			for _, decision := range decisions {
+			for i := 1; i <= 100; i++ {
+				var decision = decisions[0]
+				// for _, decision := range decisions {
 
 				decisionsChan <- decision
 			}
