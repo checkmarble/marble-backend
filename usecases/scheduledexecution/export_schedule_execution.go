@@ -11,7 +11,12 @@ import (
 )
 
 type ExportScheduleExecution interface {
-	ExportDecisionsToS3() error
+	ExportDecisionsToS3(inputs ExportDecisionsToS3Input) error
+}
+
+type ExportDecisionsToS3Input struct {
+	S3Bucket             string
+	ScheduledExecutionId string
 }
 
 type ExportScheduleExecutionImpl struct {
@@ -19,15 +24,14 @@ type ExportScheduleExecutionImpl struct {
 	DecisionRepository repositories.DecisionRepository
 }
 
-func (exporter *ExportScheduleExecutionImpl) ExportDecisionsToS3() error {
-	scheduledExecutionId := "{execution_id}"
+func (exporter *ExportScheduleExecutionImpl) ExportDecisionsToS3(inputs ExportDecisionsToS3Input) error {
 
 	pipeReader, pipeWriter := io.Pipe()
 
-	uploadErrorChan := exporter.uploadDecisions(pipeReader, scheduledExecutionId)
+	uploadErrorChan := exporter.uploadDecisions(pipeReader, inputs)
 
 	// write everything. No need to create a second goroutine, the write can be synchronous.
-	exportErr := exporter.exportDecisions(pipeWriter, scheduledExecutionId)
+	exportErr := exporter.exportDecisions(pipeWriter, inputs.ScheduledExecutionId)
 
 	// close the pipe when done
 	pipeWriter.Close()
@@ -38,15 +42,14 @@ func (exporter *ExportScheduleExecutionImpl) ExportDecisionsToS3() error {
 	return errors.Join(exportErr, uploadErr)
 }
 
-func (exporter *ExportScheduleExecutionImpl) uploadDecisions(src *io.PipeReader, scheduledExecutionId string) <-chan error {
-	bucket := "marble-backend-export-scheduled-execution-test"
+func (exporter *ExportScheduleExecutionImpl) uploadDecisions(src *io.PipeReader, inputs ExportDecisionsToS3Input) <-chan error {
 
-	filename := fmt.Sprintf("scheduled_scenario_execution_%s_decisions.ndjson", scheduledExecutionId)
+	filename := fmt.Sprintf("scheduled_scenario_execution_%s_decisions.ndjson", inputs.ScheduledExecutionId)
 
 	// run immediately a goroutine that consume the pipeReader until the pipeWriter is closed
 	uploadErrorChan := make(chan error, 1)
 	go func() {
-		err := exporter.AwsS3Repository.StoreInBucket(context.Background(), bucket, filename, src)
+		err := exporter.AwsS3Repository.StoreInBucket(context.Background(), inputs.S3Bucket, filename, src)
 
 		// Ensure that src is consumed entirely. StoreInBucket can fail without reading everything in src.
 		// The goal is to avoid inifinite blocking of PipeWriter.Write
