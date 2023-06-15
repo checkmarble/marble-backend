@@ -56,6 +56,7 @@ require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
 	github.com/jackc/puddle/v2 v2.2.0 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
 	github.com/leodido/go-urn v1.2.2 // indirect
@@ -97,6 +98,7 @@ require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/aws/aws-sdk-go-v2 v1.18.1
 	github.com/aws/aws-sdk-go-v2/config v1.18.26
+	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.68
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.34.0
 	github.com/ggicci/httpin v0.10.1
 	github.com/go-chi/cors v1.2.1

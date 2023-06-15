@@ -8,6 +8,7 @@ import (
 	"firebase.google.com/go/v4/auth"
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/exp/slog"
 )
 
 type Repositories struct {
@@ -34,19 +35,13 @@ type Repositories struct {
 	AwsS3Repository                  AwsS3Repository
 }
 
-func MakeAwsS3Repository(fake bool) AwsS3Repository {
-	if fake {
-		return &AwsS3RepositoryFake{}
-	}
-	return NewAwsS3Repository()
-}
-
 func NewRepositories(
 	configuration models.GlobalConfiguration,
 	marbleJwtSigningKey rsa.PrivateKey,
 	firebaseClient auth.Client,
 	pgRepository *pg_repository.PGRepository,
 	marbleConnectionPool *pgxpool.Pool,
+	appLogger *slog.Logger,
 ) (*Repositories, error) {
 
 	databaseConnectionPoolRepository := NewDatabaseConnectionPoolRepository(
@@ -99,6 +94,15 @@ func NewRepositories(
 			transactionFactory: transactionFactory,
 			queryBuilder:       queryBuilder,
 		},
-		AwsS3Repository: MakeAwsS3Repository(configuration.FakeAwsS3Repository),
+		AwsS3Repository: func() AwsS3Repository {
+			if configuration.FakeAwsS3Repository {
+				return &AwsS3RepositoryFake{}
+			}
+
+			return &AwsS3RepositoryImpl{
+				s3Client: NewS3Client(),
+				logger:   appLogger,
+			}
+		}(),
 	}, nil
 }

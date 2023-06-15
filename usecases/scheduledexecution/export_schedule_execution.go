@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"marble/marble-backend/dto"
 	"marble/marble-backend/repositories"
 )
 
 type ExportScheduleExecution interface {
-	ExportDecisionsToS3(scheduledExecutionId string) error
+	ExportDecisionsToS3() error
 }
 
 type ExportScheduleExecutionImpl struct {
@@ -18,14 +19,12 @@ type ExportScheduleExecutionImpl struct {
 	DecisionRepository repositories.DecisionRepository
 }
 
-func (exporter *ExportScheduleExecutionImpl) ExportDecisionsToS3(scheduledExecutionId string) error {
+func (exporter *ExportScheduleExecutionImpl) ExportDecisionsToS3() error {
+	scheduledExecutionId := "{execution_id}"
+
 	pipeReader, pipeWriter := io.Pipe()
 
-	// run immediately a goroutine that consume the pipeReader until the pipeWriter is closed
-	uploadErrorChan := make(chan error, 1)
-	go func() {
-		uploadErrorChan <- exporter.AwsS3Repository.StoreInBucket(context.Background(), "bucket", "key", pipeReader)
-	}()
+	uploadErrorChan := exporter.uploadDecisions(pipeReader, scheduledExecutionId)
 
 	// write everything. No need to create a second goroutine, the write can be synchronous.
 	exportErr := exporter.exportDecisions(pipeWriter, scheduledExecutionId)
@@ -37,6 +36,25 @@ func (exporter *ExportScheduleExecutionImpl) ExportDecisionsToS3(scheduledExecut
 	uploadErr := <-uploadErrorChan
 
 	return errors.Join(exportErr, uploadErr)
+}
+
+func (exporter *ExportScheduleExecutionImpl) uploadDecisions(src *io.PipeReader, scheduledExecutionId string) <-chan error {
+	bucket := "marble-backend-export-scheduled-execution-test"
+
+	filename := fmt.Sprintf("scheduled_scenario_execution_%s_decisions.ndjson", scheduledExecutionId)
+
+	// run immediately a goroutine that consume the pipeReader until the pipeWriter is closed
+	uploadErrorChan := make(chan error, 1)
+	go func() {
+		err := exporter.AwsS3Repository.StoreInBucket(context.Background(), bucket, filename, src)
+
+		// Ensure that src is consumed entirely. StoreInBucket can fail without reading everything in src.
+		// The goal is to avoid inifinite blocking of PipeWriter.Write
+		io.Copy(io.Discard, src)
+
+		uploadErrorChan <- err
+	}()
+	return uploadErrorChan
 }
 
 func (exporter *ExportScheduleExecutionImpl) exportDecisions(dest *io.PipeWriter, scheduledExecutionId string) error {
