@@ -15,21 +15,21 @@ type OrgTransactionFactory interface {
 }
 
 type OrgTransactionFactoryImpl struct {
-	ClientTablesRepository           repositories.ClientTablesRepository
+	OrganizationSchemaRepository     repositories.OrganizationSchemaRepository
 	TransactionFactory               repositories.TransactionFactory
 	DatabaseConnectionPoolRepository repositories.DatabaseConnectionPoolRepository
 }
 
 func (factory *OrgTransactionFactoryImpl) OrganizationDatabaseSchema(organizationId string) (models.DatabaseSchema, error) {
-	clientTables, err := factory.ClientTablesRepository.ClientTableOfOrganization(nil, organizationId)
+	organizationSchema, err := factory.OrganizationSchemaRepository.OrganizationSchemaOfOrganization(nil, organizationId)
 	if err != nil {
 		return models.DatabaseSchema{}, err
 	}
 
 	return models.DatabaseSchema{
 		SchemaType: models.DATABASE_SCHEMA_TYPE_CLIENT,
-		Database:   clientTables.DatabaseSchema.Database,
-		Schema:     clientTables.DatabaseSchema.Schema,
+		Database:   organizationSchema.DatabaseSchema.Database,
+		Schema:     organizationSchema.DatabaseSchema.Schema,
 	}, nil
 }
 
