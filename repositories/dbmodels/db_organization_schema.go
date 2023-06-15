@@ -5,18 +5,18 @@ import (
 	"marble/marble-backend/pg_repository"
 )
 
-type DBClientTables struct {
+type DbOrganizationSchema struct {
 	Id         string `db:"id"`
 	OrgId      string `db:"org_id"`
 	SchemaName string `db:"schema_name"`
 }
 
-const TABLE_CLIENT_TABLES = "client_tables"
+const ORGANIZATION_SCHEMA_TABLE = "organizations_schema"
 
-var ClientTablesFields = pg_repository.ColumnList[DBClientTables]()
+var OrganizationSchemaFields = pg_repository.ColumnList[DbOrganizationSchema]()
 
-func AdaptClientTable(db DBClientTables) models.ClientTables {
-	return models.ClientTables{
+func AdaptOrganizationSchema(db DbOrganizationSchema) models.OrganizationSchema {
+	return models.OrganizationSchema{
 		OrganizationId: db.OrgId,
 		DatabaseSchema: models.DatabaseSchema{
 			SchemaType: models.DATABASE_SCHEMA_TYPE_CLIENT,

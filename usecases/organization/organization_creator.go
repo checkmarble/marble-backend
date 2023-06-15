@@ -10,10 +10,10 @@ type OrganizationSeeder interface {
 }
 
 type OrganizationCreator struct {
-	TransactionFactory     repositories.TransactionFactory
-	OrganizationRepository repositories.OrganizationRepository
-	OrganizationSeeder     OrganizationSeeder
-	PopulateClientTables   PopulateClientTables
+	TransactionFactory         repositories.TransactionFactory
+	OrganizationRepository     repositories.OrganizationRepository
+	OrganizationSeeder         OrganizationSeeder
+	PopulateOrganizationSchema PopulateOrganizationSchema
 }
 
 func (creator *OrganizationCreator) CreateOrganizationWithId(newOrganizationId string, createOrga models.CreateOrganizationInput) (models.Organization, error) {
@@ -38,7 +38,7 @@ func (creator *OrganizationCreator) CreateOrganizationWithId(newOrganizationId s
 	_, err = repositories.TransactionReturnValue(creator.TransactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (any, error) {
 		// store client's data in marble DB
 		orgDatabase := models.DATABASE_MARBLE
-		err := creator.PopulateClientTables.CreateClientTables(tx, organization, orgDatabase)
+		err := creator.PopulateOrganizationSchema.CreateOrganizationSchema(tx, organization, orgDatabase)
 
 		return nil, err
 	})
