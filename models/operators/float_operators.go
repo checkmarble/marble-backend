@@ -7,7 +7,7 @@ import (
 	"math"
 	"strings"
 
-	"github.com/jackc/pgx/v5/pgtype"
+	"gopkg.in/guregu/null.v3"
 )
 
 // /////////////////////////////
@@ -121,7 +121,7 @@ func (field DbFieldFloat) Eval(ctx context.Context, d DataAccessor) (float64, er
 		return 0, err
 	}
 
-	valNullable, ok := valRaw.(pgtype.Float8)
+	valNullable, ok := valRaw.(null.Float)
 	if !ok {
 		return 0, fmt.Errorf("DB field %s is not a float", field.FieldName)
 	}
@@ -197,7 +197,20 @@ func (field PayloadFieldFloat) Eval(ctx context.Context, d DataAccessor) (float6
 	if !field.IsValid() {
 		return 0, ErrEvaluatingInvalidOperator
 	}
-	return getPayloadFieldGeneric[float64](d, field.FieldName)
+	fieldRaw, err := d.GetPayloadField(field.FieldName)
+	if err != nil {
+		return 0, err
+	}
+
+	nullableField, ok := fieldRaw.(null.Float)
+	if !ok {
+		return 0, fmt.Errorf("Payload field %s is not a type null.Float", field.FieldName)
+	}
+	if !nullableField.Valid {
+		return 0, fmt.Errorf("Payload field %s is null: %w", field.FieldName, OperatorNullValueReadError)
+	}
+
+	return nullableField.Float64, nil
 }
 
 func (field PayloadFieldFloat) IsValid() bool {

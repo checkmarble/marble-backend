@@ -5,19 +5,19 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/guregu/null.v3"
 )
 
 type DataAccessorStringImpl struct{}
 
 func (d *DataAccessorStringImpl) GetPayloadField(fieldName string) (interface{}, error) {
-	return &fieldName, nil
+	return null.StringFrom(fieldName), nil
 }
 
 func (d *DataAccessorStringImpl) GetDbField(ctx context.Context, triggerTableName string, path []string, fieldName string) (interface{}, error) {
-	val := pgtype.Text{String: fieldName, Valid: true}
+	val := null.NewString(fieldName, true)
 	return val, nil
 }
 

@@ -139,11 +139,11 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 			http.Error(w, "", http.StatusUnprocessableEntity)
 			return
 		}
-		payloadForArchive := models.PayloadForArchive{TableName: requestData.TriggerObjectType, Data: triggerObjectMap}
+		ClientObject := models.ClientObject{TableName: requestData.TriggerObjectType, Data: triggerObjectMap}
 		decisionUsecase := api.usecases.NewDecisionUsecase()
 		decision, err := decisionUsecase.CreateDecision(ctx, models.CreateDecisionInput{
 			ScenarioID:              requestData.ScenarioID,
-			PayloadForArchive:       payloadForArchive,
+			ClientObject:            ClientObject,
 			OrganizationID:          orgID,
 			PayloadStructWithReader: payloadStructWithReader,
 		}, logger)

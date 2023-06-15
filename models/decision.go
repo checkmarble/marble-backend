@@ -5,7 +5,7 @@ import "time"
 type Decision struct {
 	ID                  string
 	CreatedAt           time.Time
-	PayloadForArchive   PayloadForArchive
+	ClientObject        ClientObject
 	Outcome             Outcome
 	ScenarioID          string
 	ScenarioName        string
