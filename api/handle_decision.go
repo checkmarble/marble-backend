@@ -42,8 +42,8 @@ func NewAPIDecision(decision models.Decision) APIDecision {
 	apiDecision := APIDecision{
 		ID:                decision.ID,
 		CreatedAt:         decision.CreatedAt,
-		TriggerObjectType: decision.PayloadForArchive.TableName,
-		TriggerObject:     decision.PayloadForArchive.Data,
+		TriggerObjectType: decision.ClientObject.TableName,
+		TriggerObject:     decision.ClientObject.Data,
 		Outcome:           decision.Outcome.String(),
 		Scenario: APIDecisionScenario{
 			ID:          decision.ScenarioID,
@@ -218,11 +218,11 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 			http.Error(w, "", http.StatusUnprocessableEntity)
 			return
 		}
-		payloadForArchive := models.PayloadForArchive{TableName: requestData.TriggerObjectType, Data: triggerObjectMap}
+		ClientObject := models.ClientObject{TableName: requestData.TriggerObjectType, Data: triggerObjectMap}
 		decisionUsecase := api.usecases.NewDecisionUsecase()
 		decision, err := decisionUsecase.CreateDecision(ctx, models.CreateDecisionInput{
 			ScenarioID:              requestData.ScenarioID,
-			PayloadForArchive:       payloadForArchive,
+			ClientObject:            ClientObject,
 			OrganizationID:          orgID,
 			PayloadStructWithReader: payloadStructWithReader,
 		}, logger)

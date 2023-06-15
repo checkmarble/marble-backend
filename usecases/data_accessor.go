@@ -11,7 +11,7 @@ import (
 
 type DataAccessor struct {
 	DataModel                  models.DataModel
-	Payload                    models.Payload
+	Payload                    models.PayloadReader
 	orgTransactionFactory      organization.OrgTransactionFactory
 	organizationId             string
 	ingestedDataReadRepository repositories.IngestedDataReadRepository

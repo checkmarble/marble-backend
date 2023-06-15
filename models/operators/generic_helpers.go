@@ -19,7 +19,7 @@ func getPayloadFieldGeneric[T string | bool | float64](d DataAccessor, fieldName
 
 	fieldPointer, ok := fieldRaw.(*T)
 	if !ok {
-		return output, fmt.Errorf("Payload field %s is not a pointer to the right type %T", "account_id", output)
+		return output, fmt.Errorf("Payload field %s is not a pointer to the right type %T", fieldName, output)
 	}
 	if fieldPointer == nil {
 		return output, fmt.Errorf("Payload field %s is null: %w", fieldName, OperatorNullValueReadError)

@@ -52,7 +52,7 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 	}
 
 	d := models.Decision{
-		PayloadForArchive:   input.PayloadForArchive,
+		ClientObject:        input.ClientObject,
 		Outcome:             scenarioExecution.Outcome,
 		ScenarioID:          scenarioExecution.ScenarioID,
 		ScenarioName:        scenarioExecution.ScenarioName,

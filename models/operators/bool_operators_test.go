@@ -4,33 +4,33 @@ import (
 	"context"
 	"testing"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/guregu/null.v3"
 )
 
 type DataAccessorBoolImpl struct{}
 
 func (d *DataAccessorBoolImpl) GetPayloadField(fieldName string) (interface{}, error) {
-	var val bool
+	var val null.Bool
 	if fieldName == "true" {
-		val = true
+		val = null.BoolFrom(true)
 	} else if fieldName == "false" {
-		val = false
+		val = null.BoolFrom(false)
 	} else {
 		return nil, nil
 	}
-	return &val, nil
+	return val, nil
 }
 
 func (d *DataAccessorBoolImpl) GetDbField(ctx context.Context, triggerTableName string, path []string, fieldName string) (interface{}, error) {
-	var val pgtype.Bool
+	var val null.Bool
 	if fieldName == "true" {
-		val = pgtype.Bool{Bool: true, Valid: true}
+		val = null.BoolFrom(true)
 	} else if fieldName == "false" {
-		val = pgtype.Bool{Bool: false, Valid: true}
+		val = null.BoolFrom(false)
 	} else {
-		val = pgtype.Bool{Bool: true, Valid: false}
+		val = null.NewBool(false, false)
 	}
 	return val, nil
 }

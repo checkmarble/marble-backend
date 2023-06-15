@@ -61,6 +61,6 @@ func (d DecisionError) String() string {
 type CreateDecisionInput struct {
 	OrganizationID          string
 	ScenarioID              string
-	PayloadForArchive       PayloadForArchive
+	ClientObject            ClientObject
 	PayloadStructWithReader Payload
 }

@@ -8,11 +8,12 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
+	"gopkg.in/guregu/null.v3"
 )
 
 type IngestedDataReadRepository interface {
 	GetDbField(transaction Transaction, readParams models.DbFieldReadParams) (interface{}, error)
+	ListAllObjectsFromTable(transaction Transaction, table models.Table) ([]models.PayloadReader, error)
 }
 
 type IngestedDataReadRepositoryImpl struct {
@@ -41,21 +42,21 @@ func (repo *IngestedDataReadRepositoryImpl) GetDbField(transaction Transaction, 
 
 	switch fieldFromModel.DataType {
 	case models.Bool:
-		return scanRowReturnValue[pgtype.Bool](row)
+		return scanRowReturnValue[null.Bool](row)
 	case models.Int:
-		return scanRowReturnValue[pgtype.Int2](row)
+		return scanRowReturnValue[null.Int](row)
 	case models.Float:
-		return scanRowReturnValue[pgtype.Float8](row)
+		return scanRowReturnValue[null.Float](row)
 	case models.String:
-		return scanRowReturnValue[pgtype.Text](row)
+		return scanRowReturnValue[null.String](row)
 	case models.Timestamp:
-		return scanRowReturnValue[pgtype.Timestamp](row)
+		return scanRowReturnValue[null.Time](row)
 	default:
 		return nil, fmt.Errorf("Unknown data type when reading from db: %s", fieldFromModel.DataType)
 	}
 }
 
-func scanRowReturnValue[T pgtype.Bool | pgtype.Int2 | pgtype.Float8 | pgtype.Text | pgtype.Timestamp](row pgx.Row) (T, error) {
+func scanRowReturnValue[T null.Bool | null.Int | null.Float | null.String | null.Time](row pgx.Row) (T, error) {
 	var returnVariable T
 	err := row.Scan(&returnVariable)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -106,7 +107,7 @@ func (repo *IngestedDataReadRepositoryImpl) queryDbForField(tx TransactionPostgr
 	return row, nil
 }
 
-func getBaseObjectIdFromPayload(payload models.Payload) (string, error) {
+func getBaseObjectIdFromPayload(payload models.PayloadReader) (string, error) {
 	baseObjectIdAny, _ := payload.ReadFieldFromPayload("object_id")
 	baseObjectIdPtr, ok := baseObjectIdAny.(*string)
 	if !ok {
@@ -173,4 +174,83 @@ func getLastTableFromPath(params models.DbFieldReadParams) (models.Table, error)
 		currentTable = nextTable
 	}
 	return currentTable, nil
+}
+
+func (repo *IngestedDataReadRepositoryImpl) ListAllObjectsFromTable(transaction Transaction, table models.Table) ([]models.PayloadReader, error) {
+	tx := adaptClientDatabaseTransaction(transaction)
+
+	columnNames := make([]string, len(table.Fields))
+	i := 0
+	for _, field := range table.Fields {
+		columnNames[i] = string(field.Name)
+		i++
+	}
+
+	sql, args, err := repo.queryBuilder.
+		Select(columnNames...).
+		From(string(table.Name)).
+		Where(rowIsValid(string(table.Name))).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("Error while building SQL query: %w", err)
+	}
+
+	rows, err := tx.Query(sql, args...)
+	if err != nil {
+		return nil, fmt.Errorf("Error while querying DB: %w", err)
+	}
+	defer rows.Close()
+	output := make([]models.PayloadReader, 0)
+	for rows.Next() {
+		object, err := scanIngestedObjectFromRow(rows, table, columnNames)
+		if err != nil {
+			return nil, fmt.Errorf("Error while scanning row: %w", err)
+		}
+		output = append(output, object)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("Error while iterating over rows: %w", err)
+	}
+
+	return output, fmt.Errorf("Not implemented")
+}
+
+func scanIngestedObjectFromRow(row pgx.Rows, table models.Table, columnNames []string) (models.PayloadReader, error) {
+	object := make(map[string]interface{})
+	var err error
+
+	for _, field := range table.Fields {
+		switch field.DataType {
+		case models.Bool:
+			object[string(field.Name)] = null.Bool{}
+		case models.Int:
+			object[string(field.Name)] = null.Int{}
+		case models.Float:
+			object[string(field.Name)] = null.Float{}
+		case models.String:
+			object[string(field.Name)] = null.String{}
+		case models.Timestamp:
+			object[string(field.Name)] = null.Time{}
+		default:
+			return nil, fmt.Errorf("Unknown data type when reading from db: %s", field.DataType)
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	values := make([]interface{}, len(table.Fields))
+	for i := range columnNames {
+		values[i] = new(any)
+	}
+	err = row.Scan(values...)
+	if err != nil {
+		return nil, err
+	}
+
+	for i, value := range values {
+		object[columnNames[i]] = *value.(*any)
+	}
+
+	return models.ClientObject{Data: object}, nil
 }

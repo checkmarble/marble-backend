@@ -6,29 +6,29 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/guregu/null.v3"
 )
 
 type DataAccessorFloatImpl struct{}
 
 func (d *DataAccessorFloatImpl) GetPayloadField(fieldName string) (interface{}, error) {
-	var val float64
+	var val null.Float
 	if f, err := strconv.ParseFloat(fieldName, 64); err == nil {
-		val = f
+		val = null.FloatFrom(f)
 	} else {
-		return nil, nil
+		return null.NewFloat(0, false), nil
 	}
-	return &val, nil
+	return val, nil
 }
 
 func (d *DataAccessorFloatImpl) GetDbField(ctx context.Context, triggerTableName string, path []string, fieldName string) (interface{}, error) {
-	var val pgtype.Float8
+	var val null.Float
 	if f, err := strconv.ParseFloat(fieldName, 64); err == nil {
-		val = pgtype.Float8{Float64: f, Valid: true}
+		val = null.NewFloat(f, true)
 	} else {
-		val = pgtype.Float8{Float64: 0, Valid: false}
+		val = null.NewFloat(0, false)
 	}
 	return val, nil
 }

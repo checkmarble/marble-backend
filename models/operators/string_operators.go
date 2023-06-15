@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/jackc/pgx/v5/pgtype"
+	"gopkg.in/guregu/null.v3"
 )
 
 // /////////////////////////////
@@ -116,7 +116,7 @@ func (field DbFieldString) Eval(ctx context.Context, d DataAccessor) (string, er
 		return "", err
 	}
 
-	valNullable, ok := valRaw.(pgtype.Text)
+	valNullable, ok := valRaw.(null.String)
 	if !ok {
 		return "", fmt.Errorf("DB field %s is not a string", field.FieldName)
 	}
@@ -192,7 +192,20 @@ func (field PayloadFieldString) Eval(ctx context.Context, d DataAccessor) (strin
 	if !field.IsValid() {
 		return "", ErrEvaluatingInvalidOperator
 	}
-	return getPayloadFieldGeneric[string](d, field.FieldName)
+	fieldRaw, err := d.GetPayloadField(field.FieldName)
+	if err != nil {
+		return "", err
+	}
+
+	nullableField, ok := fieldRaw.(null.String)
+	if !ok {
+		return "", fmt.Errorf("Payload field %s is not a type null.String", field.FieldName)
+	}
+	if !nullableField.Valid {
+		return "", fmt.Errorf("Payload field %s is null: %w", field.FieldName, OperatorNullValueReadError)
+	}
+
+	return nullableField.String, nil
 }
 
 func (field PayloadFieldString) IsValid() bool {
