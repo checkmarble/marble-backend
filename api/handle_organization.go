@@ -82,7 +82,7 @@ func (api *API) handleGetOrganization() http.HandlerFunc {
 	}
 }
 
-func (api *API) handlePutOrganization() http.HandlerFunc {
+func (api *API) handlePatchOrganization() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -92,9 +92,10 @@ func (api *API) handlePutOrganization() http.HandlerFunc {
 
 		usecase := api.usecases.NewOrganizationUseCase()
 		organization, err := usecase.UpdateOrganization(ctx, models.UpdateOrganizationInput{
-			ID:           orgID,
-			Name:         requestData.Name,
-			DatabaseName: requestData.DatabaseName,
+			ID:                         orgID,
+			Name:                       requestData.Name,
+			DatabaseName:               requestData.DatabaseName,
+			ExportScheduledExecutionS3: requestData.ExportScheduledExecutionS3,
 		})
 
 		if presentError(w, r, err) {

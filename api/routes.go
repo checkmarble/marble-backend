@@ -176,7 +176,7 @@ func (api *API) routes() {
 						api.enforcePermissionMiddleware(models.ORGANIZATIONS_CREATE),
 						httpin.NewInput(dto.UpdateOrganizationInputDto{}),
 					).
-						Put("/", api.handlePutOrganization())
+						Patch("/", api.handlePatchOrganization())
 
 					r.With(
 						api.enforcePermissionMiddleware(models.ORGANIZATIONS_CREATE),
