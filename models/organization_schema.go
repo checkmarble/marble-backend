@@ -1,6 +1,6 @@
 package models
 
-type ClientTables struct {
+type OrganizationSchema struct {
 	OrganizationId string
 	DatabaseSchema DatabaseSchema
 }

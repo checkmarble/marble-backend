@@ -7,22 +7,22 @@ import (
 	"marble/marble-backend/repositories"
 )
 
-type PopulateClientTables struct {
-	TransactionFactory     repositories.TransactionFactory
-	OrganizationRepository repositories.OrganizationRepository
-	ClientTablesRepository repositories.ClientTablesRepository
-	DataModelRepository    repositories.DataModelRepository
+type PopulateOrganizationSchema struct {
+	TransactionFactory           repositories.TransactionFactory
+	OrganizationRepository       repositories.OrganizationRepository
+	OrganizationSchemaRepository repositories.OrganizationSchemaRepository
+	DataModelRepository          repositories.DataModelRepository
 }
 
-func (p *PopulateClientTables) CreateClientTables(marbleTx repositories.Transaction, organization models.Organization, database models.Database) error {
+func (p *PopulateOrganizationSchema) CreateOrganizationSchema(marbleTx repositories.Transaction, organization models.Organization, database models.Database) error {
 
 	orgDatabaseSchema := models.DatabaseSchema{
 		SchemaType: models.DATABASE_SCHEMA_TYPE_CLIENT,
 		Database:   database,
 		Schema:     fmt.Sprintf("org-%s", organization.DatabaseName),
 	}
-	// create entry in client_tables
-	err := p.ClientTablesRepository.CreateClientTables(marbleTx, models.ClientTables{
+	// create entry in organizations_schema
+	err := p.OrganizationSchemaRepository.CreateOrganizationSchema(marbleTx, models.OrganizationSchema{
 		OrganizationId: organization.ID,
 		DatabaseSchema: orgDatabaseSchema,
 	})
@@ -35,7 +35,7 @@ func (p *PopulateClientTables) CreateClientTables(marbleTx repositories.Transact
 	// Note that the error is returned, so in case of a roolback in 'clientTx', 'marbleTx' will also be rolled back.
 	return p.TransactionFactory.Transaction(orgDatabaseSchema, func(clientTx repositories.Transaction) error {
 
-		err := p.ClientTablesRepository.CreateSchema(clientTx, orgDatabaseSchema.Schema)
+		err := p.OrganizationSchemaRepository.CreateSchema(clientTx, orgDatabaseSchema.Schema)
 		if err != nil {
 			return err
 		}
@@ -45,7 +45,7 @@ func (p *PopulateClientTables) CreateClientTables(marbleTx repositories.Transact
 			return err
 		}
 		for _, table := range dataModel.Tables {
-			err := p.ClientTablesRepository.CreateTable(clientTx, orgDatabaseSchema.Schema, table)
+			err := p.OrganizationSchemaRepository.CreateTable(clientTx, orgDatabaseSchema.Schema, table)
 			if err != nil {
 				return err
 			}

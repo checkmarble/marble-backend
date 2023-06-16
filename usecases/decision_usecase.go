@@ -17,18 +17,18 @@ import (
 type DecisionUsecase struct {
 	orgTransactionFactory           organization.OrgTransactionFactory
 	ingestedDataReadRepository      repositories.IngestedDataReadRepository
-	decisionRepository              repositories.DecisionRepository
+	decisionRepositoryLegacy        repositories.DecisionRepositoryLegacy
 	datamodelRepository             repositories.DataModelRepository
 	scenarioReadRepository          repositories.ScenarioReadRepository
 	scenarioIterationReadRepository repositories.ScenarioIterationReadRepository
 }
 
 func (usecase *DecisionUsecase) GetDecision(ctx context.Context, orgID string, decisionID string) (models.Decision, error) {
-	return usecase.decisionRepository.GetDecision(ctx, orgID, decisionID)
+	return usecase.decisionRepositoryLegacy.GetDecision(ctx, orgID, decisionID)
 }
 
 func (usecase *DecisionUsecase) ListDecisions(ctx context.Context, orgID string) ([]models.Decision, error) {
-	return usecase.decisionRepository.ListDecisions(ctx, orgID)
+	return usecase.decisionRepositoryLegacy.ListDecisions(ctx, orgID)
 }
 
 func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models.CreateDecisionInput, logger *slog.Logger) (models.Decision, error) {
@@ -62,7 +62,7 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 		Score:               scenarioExecution.Score,
 	}
 
-	createdDecision, err := usecase.decisionRepository.StoreDecision(ctx, input.OrganizationID, d)
+	createdDecision, err := usecase.decisionRepositoryLegacy.StoreDecision(ctx, input.OrganizationID, d)
 	if err != nil {
 		return models.Decision{}, fmt.Errorf("error storing decision: %w", err)
 	}

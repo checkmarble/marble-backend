@@ -11,14 +11,14 @@ import (
 )
 
 type OrganizationUseCase struct {
-	transactionFactory     repositories.TransactionFactory
-	orgTransactionFactory  organization.OrgTransactionFactory
-	organizationRepository repositories.OrganizationRepository
-	datamodelRepository    repositories.DataModelRepository
-	apiKeyRepository       repositories.ApiKeyRepository
-	userRepository         repositories.UserRepository
-	organizationCreator    organization.OrganizationCreator
-	clientTables           repositories.ClientTablesRepository
+	transactionFactory           repositories.TransactionFactory
+	orgTransactionFactory        organization.OrgTransactionFactory
+	organizationRepository       repositories.OrganizationRepository
+	datamodelRepository          repositories.DataModelRepository
+	apiKeyRepository             repositories.ApiKeyRepository
+	userRepository               repositories.UserRepository
+	organizationCreator          organization.OrganizationCreator
+	organizationSchemaRepository repositories.OrganizationSchemaRepository
 }
 
 func (usecase *OrganizationUseCase) GetOrganizations(ctx context.Context) ([]models.Organization, error) {
@@ -55,9 +55,9 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 		}
 
 		// fetch client tables to get schema name, then delete schema
-		clientTables, err := usecase.clientTables.ClientTableOfOrganization(tx, organizationID)
+		schema, err := usecase.organizationSchemaRepository.OrganizationSchemaOfOrganization(tx, organizationID)
 
-		clientTablesFound := err == nil
+		schemaFound := err == nil
 
 		if errors.Is(err, models.NotFoundError) {
 			// ignore client tables not found: the organization can be older than the introduction of client tables
@@ -68,10 +68,10 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 			return err
 		}
 
-		if clientTablesFound {
+		if schemaFound {
 			// another transaction in client's database to delete client's schema:
 			err = usecase.orgTransactionFactory.TransactionInOrgSchema(organizationID, func(clientTx repositories.Transaction) error {
-				return usecase.clientTables.DeleteSchema(clientTx, clientTables.DatabaseSchema.Schema)
+				return usecase.organizationSchemaRepository.DeleteSchema(clientTx, schema.DatabaseSchema.Schema)
 			})
 			if err != nil {
 				return err

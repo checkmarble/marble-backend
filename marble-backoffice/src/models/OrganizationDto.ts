@@ -14,7 +14,6 @@ export function adaptOrganization(dto: OrganizationDto): Organization {
   return {
     organizationId: dto.id,
     name: dto.name,
-    dateCreated: new Date(), // temporary
   };
 }
 

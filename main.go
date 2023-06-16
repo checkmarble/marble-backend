@@ -8,9 +8,11 @@ import (
 	"marble/marble-backend/api"
 	"marble/marble-backend/infra"
 	"marble/marble-backend/jobs"
+	"marble/marble-backend/models"
 	"marble/marble-backend/pg_repository"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases"
+	"marble/marble-backend/usecases/scheduledexecution"
 	"marble/marble-backend/utils"
 	"os"
 	"os/signal"
@@ -21,7 +23,7 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-func runServer(config usecases.Configuration, pgRepository *pg_repository.PGRepository, marbleConnectionPool *pgxpool.Pool, port string, env string, logger *slog.Logger) {
+func runServer(configuration models.GlobalConfiguration, pgRepository *pg_repository.PGRepository, marbleConnectionPool *pgxpool.Pool, port string, env string, logger *slog.Logger) {
 	ctx := context.Background()
 
 	devEnv := env == "DEV"
@@ -30,18 +32,32 @@ func runServer(config usecases.Configuration, pgRepository *pg_repository.PGRepo
 
 	marbleJwtSigningKey := infra.MustParseSigningKey(utils.GetRequiredStringEnv("AUTHENTICATION_JWT_SIGNING_KEY"))
 
-	repositories := repositories.NewRepositories(
+	repositories, err := repositories.NewRepositories(
+		configuration,
 		marbleJwtSigningKey,
 		infra.IntializeFirebase(ctx),
 		pgRepository,
 		marbleConnectionPool,
+		logger,
 	)
-
-	usecases := usecases.Usecases{
-		Repositories: *repositories,
-		Config:       config,
+	if err != nil {
+		panic(err)
 	}
 
+	usecases := usecases.Usecases{
+		Repositories:  *repositories,
+		Configuration: configuration,
+	}
+
+	err = usecases.NewExportScheduleExecution().ExportDecisionsToS3(
+		scheduledexecution.ExportDecisionsToS3Input{
+			S3Bucket:             "marble-backend-export-scheduled-execution-test",
+			ScheduledExecutionId: "b2b2b2b2-2b2b-2b2b-2b2b-2b2b2b2b2b2b",
+		},
+	)
+	if err != nil {
+		panic(err)
+	}
 	////////////////////////////////////////////////////////////
 	// Seed the database
 	////////////////////////////////////////////////////////////
@@ -89,19 +105,24 @@ func runServer(config usecases.Configuration, pgRepository *pg_repository.PGRepo
 	api.Shutdown(shutdownCtx)
 }
 
-func runScheduledBatches(config usecases.Configuration, pgRepository *pg_repository.PGRepository, marbleConnectionPool *pgxpool.Pool, logger *slog.Logger) {
+func runScheduledBatches(configuration models.GlobalConfiguration, pgRepository *pg_repository.PGRepository, marbleConnectionPool *pgxpool.Pool, logger *slog.Logger) {
 	ctx := context.Background()
 
-	repositories := repositories.NewRepositories(
+	repositories, err := repositories.NewRepositories(
+		configuration,
 		rsa.PrivateKey{},
 		infra.IntializeFirebase(ctx),
 		pgRepository,
 		marbleConnectionPool,
+		logger,
 	)
+	if err != nil {
+		panic(err)
+	}
 
 	usecases := usecases.Usecases{
-		Repositories: *repositories,
-		Config:       config,
+		Repositories:  *repositories,
+		Configuration: configuration,
 	}
 
 	jobs.ExecuteAllScheduledScenarios(ctx, usecases, logger)
@@ -118,8 +139,9 @@ func main() {
 		pgUser     = utils.GetRequiredStringEnv("PG_USER")
 		pgPassword = utils.GetRequiredStringEnv("PG_PASSWORD")
 		pgDatabase = "marble"
-		config     = usecases.Configuration{
+		config     = models.GlobalConfiguration{
 			TokenLifetimeMinute: utils.GetIntEnv("TOKEN_LIFETIME_MINUTE", 60*2),
+			FakeAwsS3Repository: utils.GetBoolEnv("FAKE_AWS_S3", false),
 		}
 	)
 

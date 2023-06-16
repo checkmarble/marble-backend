@@ -49,8 +49,7 @@ func (repo *ScheduledExecutionRepositoryPostgresql) ListScheduledExecutions(tx T
 func (repo *ScheduledExecutionRepositoryPostgresql) CreateScheduledExecution(tx Transaction, createScheduledEx models.CreateScheduledExecutionInput, newScheduledExecutionId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	return SqlInsert(
-		pgTx,
+	_, err := pgTx.ExecBuilder(
 		repo.queryBuilder.Insert(dbmodels.TABLE_SCHEDULED_EXECUTIONS).
 			Columns(
 				"id",
@@ -67,6 +66,7 @@ func (repo *ScheduledExecutionRepositoryPostgresql) CreateScheduledExecution(tx 
 				"in_progress",
 			),
 	)
+	return err
 }
 
 func (repo *ScheduledExecutionRepositoryPostgresql) UpdateScheduledExecution(tx Transaction, updateScheduledEx models.UpdateScheduledExecutionInput) error {
@@ -81,8 +81,6 @@ func (repo *ScheduledExecutionRepositoryPostgresql) UpdateScheduledExecution(tx 
 		}
 	}
 
-	return SqlUpdate(
-		pgTx,
-		query,
-	)
+	_, err := pgTx.ExecBuilder(query)
+	return err
 }

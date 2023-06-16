@@ -74,19 +74,6 @@ jobs:
         run: |
           docker push eu.gcr.io/${{ steps.get_env.outputs.GCP_PROJECT_ID }}/marble-backend:latest
 
-      - name: Deploy server
-        run: |
-          gcloud run deploy marble-backend \
-            --quiet \
-            --image="eu.gcr.io/${{ steps.get_env.outputs.GCP_PROJECT_ID }}/marble-backend:latest" \
-            --region="europe-west9" \
-            --args=-server \
-            --service-account=marble-backend-cloud-run@${{ steps.get_env.outputs.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
-            --set-env-vars=PG_HOSTNAME=/cloudsql/${{ steps.get_env.outputs.GCP_PROJECT_ID }}:europe-west9:marble-sandbox,PG_USER=postgres,GOOGLE_CLOUD_PROJECT=${{ steps.get_env.outputs.GCP_PROJECT_ID }},ENV=${{ steps.get_env.outputs.ENV }} \
-            --set-secrets=PG_PASSWORD=POSTGRES_SANDBOX:latest,AUTHENTICATION_JWT_SIGNING_KEY=AUTHENTICATION_JWT_SIGNING_KEY:latest \
-            --set-cloudsql-instances=${{ steps.get_env.outputs.GCP_PROJECT_ID }}:europe-west9:marble-sandbox \
-            --port=8080
-
       - name: Deploy migration job
         run: |
           gcloud beta run jobs deploy marble-backend-db-migrations \
@@ -100,3 +87,16 @@ jobs:
             --set-cloudsql-instances=${{ steps.get_env.outputs.GCP_PROJECT_ID }}:europe-west9:marble-sandbox \
             --execute-now \
             --wait
+
+      - name: Deploy server
+        run: |
+          gcloud run deploy marble-backend \
+            --quiet \
+            --image="eu.gcr.io/${{ steps.get_env.outputs.GCP_PROJECT_ID }}/marble-backend:latest" \
+            --region="europe-west9" \
+            --args=-server \
+            --service-account=marble-backend-cloud-run@${{ steps.get_env.outputs.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
+            --set-env-vars=PG_HOSTNAME=/cloudsql/${{ steps.get_env.outputs.GCP_PROJECT_ID }}:europe-west9:marble-sandbox,PG_USER=postgres,GOOGLE_CLOUD_PROJECT=${{ steps.get_env.outputs.GCP_PROJECT_ID }},ENV=${{ steps.get_env.outputs.ENV }},AWS_REGION=eu-west-3 \
+            --set-secrets=PG_PASSWORD=POSTGRES_SANDBOX:latest,AUTHENTICATION_JWT_SIGNING_KEY=AUTHENTICATION_JWT_SIGNING_KEY:latest,AWS_ACCESS_KEY=AWS_ACCESS_KEY:latest,AWS_SECRET_KEY=AWS_SECRET_KEY:latest \
+            --set-cloudsql-instances=${{ steps.get_env.outputs.GCP_PROJECT_ID }}:europe-west9:marble-sandbox \
+            --port=8080

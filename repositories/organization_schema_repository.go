@@ -10,52 +10,52 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-type ClientTablesRepository interface {
-	ClientTableOfOrganization(tx Transaction, organizationId string) (models.ClientTables, error)
-	CreateClientTables(tx Transaction, createClientTable models.ClientTables) error
+type OrganizationSchemaRepository interface {
+	OrganizationSchemaOfOrganization(tx Transaction, organizationId string) (models.OrganizationSchema, error)
+	CreateOrganizationSchema(tx Transaction, createOrganizationSchema models.OrganizationSchema) error
 	CreateSchema(tx Transaction, schema string) error
 	DeleteSchema(tx Transaction, schema string) error
 	CreateTable(tx Transaction, schema string, table models.Table) error
 }
 
-type ClientTablesRepositoryPostgresql struct {
+type OrganizationSchemaRepositoryPostgresql struct {
 	transactionFactory TransactionFactory
 	queryBuilder       squirrel.StatementBuilderType
 }
 
-func (repo *ClientTablesRepositoryPostgresql) ClientTableOfOrganization(tx Transaction, organizationId string) (models.ClientTables, error) {
+func (repo *OrganizationSchemaRepositoryPostgresql) OrganizationSchemaOfOrganization(tx Transaction, organizationId string) (models.OrganizationSchema, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	return SqlToModel(
 		pgTx,
 		repo.queryBuilder.
-			Select(dbmodels.ClientTablesFields...).
-			From(dbmodels.TABLE_CLIENT_TABLES).
+			Select(dbmodels.OrganizationSchemaFields...).
+			From(dbmodels.ORGANIZATION_SCHEMA_TABLE).
 			Where(squirrel.Eq{"org_id": organizationId}),
-		dbmodels.AdaptClientTable,
+		dbmodels.AdaptOrganizationSchema,
 	)
 
 }
 
-func (repo *ClientTablesRepositoryPostgresql) CreateSchema(tx Transaction, schema string) error {
+func (repo *OrganizationSchemaRepositoryPostgresql) CreateSchema(tx Transaction, schema string) error {
 	pgTx := adaptClientDatabaseTransaction(tx)
 
 	sql := fmt.Sprintf("CREATE SCHEMA %s", pgx.Identifier.Sanitize([]string{schema}))
 
-	_, err := pgTx.Exec(sql)
+	_, err := pgTx.SqlExec(sql)
 	return err
 }
 
-func (repo *ClientTablesRepositoryPostgresql) DeleteSchema(tx Transaction, schema string) error {
+func (repo *OrganizationSchemaRepositoryPostgresql) DeleteSchema(tx Transaction, schema string) error {
 	pgTx := adaptClientDatabaseTransaction(tx)
 
-	sql := fmt.Sprintf("DROP SCHEMA %s CASCADE", pgx.Identifier.Sanitize([]string{schema}))
+	sql := fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE", pgx.Identifier.Sanitize([]string{schema}))
 
-	_, err := pgTx.Exec(sql)
+	_, err := pgTx.SqlExec(sql)
 	return err
 }
 
-func (repo *ClientTablesRepositoryPostgresql) CreateTable(tx Transaction, schema string, table models.Table) error {
+func (repo *OrganizationSchemaRepositoryPostgresql) CreateTable(tx Transaction, schema string, table models.Table) error {
 	pgTx := adaptClientDatabaseTransaction(tx)
 
 	sanitizedTableName := pgx.Identifier.Sanitize([]string{schema, string(table.Name)})
@@ -92,25 +92,25 @@ func (repo *ClientTablesRepositoryPostgresql) CreateTable(tx Transaction, schema
 		return err
 	}
 
-	_, err = pgTx.Exec(sql, args...)
+	_, err = pgTx.SqlExec(sql, args...)
 	return err
 }
 
-func (repo *ClientTablesRepositoryPostgresql) CreateClientTables(tx Transaction, createClientTable models.ClientTables) error {
+func (repo *OrganizationSchemaRepositoryPostgresql) CreateOrganizationSchema(tx Transaction, createOrganizationSchema models.OrganizationSchema) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	return SqlInsert(
-		pgTx,
-		repo.queryBuilder.Insert(dbmodels.TABLE_CLIENT_TABLES).
+	_, err := pgTx.ExecBuilder(
+		repo.queryBuilder.Insert(dbmodels.ORGANIZATION_SCHEMA_TABLE).
 			Columns(
-				dbmodels.ClientTablesFields...,
+				dbmodels.OrganizationSchemaFields...,
 			).
 			Values(
 				uuid.NewString(),
-				createClientTable.OrganizationId,
-				createClientTable.DatabaseSchema.Schema,
+				createOrganizationSchema.OrganizationId,
+				createOrganizationSchema.DatabaseSchema.Schema,
 			),
 	)
+	return err
 }
 
 func toPgType(dataType models.DataType) string {

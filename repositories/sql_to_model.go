@@ -9,42 +9,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// execute the sql insert query with the given transaction
-func SqlInsert(transaction TransactionPostgres, s squirrel.InsertBuilder) error {
-
-	query, args, err := s.ToSql()
-	if err != nil {
-		return err
-	}
-
-	_, err = transaction.Exec(query, args...)
-	return err
-}
-
-// execute the sql update query with the given transaction
-func SqlUpdate(transaction TransactionPostgres, s squirrel.UpdateBuilder) error {
-
-	query, args, err := s.ToSql()
-	if err != nil {
-		return err
-	}
-
-	_, err = transaction.Exec(query, args...)
-	return err
-}
-
-// execute the sql delete query with the given transaction
-func SqlDelete(transaction TransactionPostgres, s squirrel.DeleteBuilder) error {
-
-	query, args, err := s.ToSql()
-	if err != nil {
-		return err
-	}
-
-	_, err = transaction.Exec(query, args...)
-	return err
-}
-
 // executes the sql query with the given transaction and returns a list of models using the provided adapter
 func SqlToListOfModels[DBModel, Model any](transaction TransactionPostgres, s squirrel.SelectBuilder, adapter func(dbModel DBModel) Model) ([]Model, error) {
 
@@ -53,7 +17,7 @@ func SqlToListOfModels[DBModel, Model any](transaction TransactionPostgres, s sq
 		return nil, err
 	}
 
-	rows, err := transaction.Query(query, args...)
+	rows, err := transaction.exec.Query(transaction.ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
