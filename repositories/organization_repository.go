@@ -26,7 +26,7 @@ func (repo *OrganizationRepositoryPostgresql) AllOrganizations(tx Transaction) (
 	return SqlToListOfModels(
 		pgTx,
 		repo.queryBuilder.
-			Select(dbmodels.OrganizationFields...).
+			Select(dbmodels.ColumnsSelectOrganization...).
 			From(dbmodels.TABLE_ORGANIZATION).
 			OrderBy("id"),
 		dbmodels.AdaptOrganization,
@@ -38,7 +38,7 @@ func (repo *OrganizationRepositoryPostgresql) GetOrganizationById(tx Transaction
 	return SqlToModel(
 		pgTx,
 		repo.queryBuilder.
-			Select(dbmodels.OrganizationFields...).
+			Select(dbmodels.ColumnsSelectOrganization...).
 			From(dbmodels.TABLE_ORGANIZATION).
 			Where("id = ?", organizationID),
 		dbmodels.AdaptOrganization,
@@ -74,6 +74,9 @@ func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(tx Transaction,
 	}
 	if updateOrganization.DatabaseName != nil {
 		updateRequest = updateRequest.Set("database_name", *updateOrganization.DatabaseName)
+	}
+	if updateOrganization.ExportScheduledExecutionS3 != nil {
+		updateRequest = updateRequest.Set("export_scheduled_execution_s3", *updateOrganization.ExportScheduledExecutionS3)
 	}
 
 	updateRequest = updateRequest.Where("id = ?", updateOrganization.ID)

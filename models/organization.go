@@ -1,9 +1,10 @@
 package models
 
 type Organization struct {
-	ID           string
-	Name         string
-	DatabaseName string
+	ID                         string
+	Name                       string
+	DatabaseName               string
+	ExportScheduledExecutionS3 string
 }
 
 type CreateOrganizationInput struct {
@@ -12,7 +13,8 @@ type CreateOrganizationInput struct {
 }
 
 type UpdateOrganizationInput struct {
-	ID           string
-	Name         *string
-	DatabaseName *string
+	ID                         string
+	Name                       *string
+	DatabaseName               *string
+	ExportScheduledExecutionS3 *string
 }
