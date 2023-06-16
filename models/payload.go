@@ -5,11 +5,11 @@ import (
 	"marble/marble-backend/pure_utils"
 
 	dynamicstruct "github.com/ompluscator/dynamic-struct"
-	"gopkg.in/guregu/null.v3"
 )
 
 type PayloadReader interface {
-	ReadFieldFromPayload(fieldName FieldName) (interface{}, error)
+	ReadFieldFromPayload(fieldName FieldName) (any, error)
+	ReadTableName() TableName
 }
 
 type DbFieldReadParams struct {
@@ -21,52 +21,35 @@ type DbFieldReadParams struct {
 }
 
 type Payload struct {
-	Reader dynamicstruct.Reader
-	Table  Table
+	Reader    dynamicstruct.Reader
+	TableName TableName
 }
 
-func (payload Payload) ReadFieldFromPayload(fieldName FieldName) (interface{}, error) {
-	// output type is null.Bool, null.Int, null.Float, null.String, null.Time
+func (payload Payload) ReadFieldFromPayload(fieldName FieldName) (any, error) {
+	// output type is string, bool, float64, int64, time.Time, bundled in an "any" interface
 	field := payload.Reader.GetField(pure_utils.Capitalize(string(fieldName)))
-	table := payload.Table
-	fields := table.Fields
-	fieldFromModel, ok := fields[fieldName]
-	if !ok {
-		return nil, fmt.Errorf("The field %v is not in table %v schema", fieldName, table.Name)
-	}
 
-	switch fieldFromModel.DataType {
-	case Bool:
-		return null.BoolFromPtr(field.PointerBool()), nil
-	case Int:
-		// cast from *int to *int64...
-		ptrInt := field.PointerInt()
-		ptrInt64 := new(int64)
-		if ptrInt != nil {
-			*ptrInt64 = int64(*ptrInt)
-		}
-		return null.IntFromPtr(ptrInt64), nil
-	case Float:
-		return null.FloatFromPtr(field.PointerFloat64()), nil
-	case String:
-		return null.StringFromPtr(field.PointerString()), nil
-	case Timestamp:
-		return null.TimeFromPtr(field.PointerTime()), nil
-	default:
-		return nil, fmt.Errorf("The field %v has no supported data type", fieldName)
-	}
+	return field.Interface(), nil
+}
+
+func (payload Payload) ReadTableName() TableName {
+	return payload.TableName
 }
 
 type ClientObject struct {
-	TableName string
-	Data      map[string]interface{}
+	TableName TableName
+	Data      map[string]any
 }
 
-func (obj ClientObject) ReadFieldFromPayload(fieldName FieldName) (interface{}, error) {
-	// output type is null.Bool, null.Int, null.Float, null.String, null.Time
+func (obj ClientObject) ReadFieldFromPayload(fieldName FieldName) (any, error) {
+	// output type is string, bool, float64, int64, time.Time, bundled in an "any" interface
 	fieldValue, ok := obj.Data[string(fieldName)]
 	if !ok {
 		return nil, fmt.Errorf("No field with name %s", fieldName)
 	}
 	return fieldValue, nil
+}
+
+func (obj ClientObject) ReadTableName() TableName {
+	return obj.TableName
 }

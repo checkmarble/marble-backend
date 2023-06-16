@@ -47,7 +47,7 @@ func (d *dbDecision) toDomain() models.Decision {
 		ScenarioVersion:     d.ScenarioVersion,
 		Score:               d.Score,
 		DecisionError:       models.DecisionError(d.ErrorCode),
-		ClientObject:        models.ClientObject{TableName: d.TriggerObjectType, Data: triggerObject},
+		ClientObject:        models.ClientObject{TableName: models.TableName(d.TriggerObjectType), Data: triggerObject},
 	}
 }
 

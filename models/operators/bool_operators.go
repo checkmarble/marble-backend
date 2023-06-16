@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-
-	"gopkg.in/guregu/null.v3"
 )
 
 // /////////////////////////////
@@ -189,19 +187,7 @@ func (field DbFieldBool) Eval(ctx context.Context, d DataAccessor) (bool, error)
 		return false, ErrEvaluatingInvalidOperator
 	}
 
-	valRaw, err := d.GetDbField(ctx, field.TriggerTableName, field.Path, field.FieldName)
-	if err != nil {
-		return false, err
-	}
-
-	valNullable, ok := valRaw.(null.Bool)
-	if !ok {
-		return false, fmt.Errorf("DB field %s is not a boolean", field.FieldName)
-	}
-	if !valNullable.Valid {
-		return false, fmt.Errorf("DB field %s is null: %w", field.FieldName, OperatorNullValueReadError)
-	}
-	return valNullable.Bool, nil
+	return getDbFieldGeneric[bool](ctx, d, field.TriggerTableName, field.FieldName, field.Path)
 }
 
 func (field DbFieldBool) IsValid() bool {
@@ -270,21 +256,7 @@ func (field PayloadFieldBool) Eval(ctx context.Context, d DataAccessor) (bool, e
 	if !field.IsValid() {
 		return false, ErrEvaluatingInvalidOperator
 	}
-
-	fieldRaw, err := d.GetPayloadField(field.FieldName)
-	if err != nil {
-		return true, err
-	}
-
-	nullableField, ok := fieldRaw.(null.Bool)
-	if !ok {
-		return true, fmt.Errorf("Payload field %s is not a type null.Bool", field.FieldName)
-	}
-	if !nullableField.Valid {
-		return true, fmt.Errorf("Payload field %s is null: %w", field.FieldName, OperatorNullValueReadError)
-	}
-
-	return nullableField.Bool, nil
+	return getPayloadFieldGeneric[bool](d, field.FieldName)
 }
 
 func (field PayloadFieldBool) IsValid() bool {
