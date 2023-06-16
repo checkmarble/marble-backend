@@ -73,9 +73,10 @@ func (usecases *Usecases) NewUserUseCase() UserUseCase {
 
 func (usecases *Usecases) NewSeedUseCase() SeedUseCase {
 	return SeedUseCase{
-		transactionFactory:  usecases.Repositories.TransactionFactory,
-		userRepository:      usecases.Repositories.UserRepository,
-		organizationCreator: usecases.NewOrganizationCreator(),
+		transactionFactory:     usecases.Repositories.TransactionFactory,
+		userRepository:         usecases.Repositories.UserRepository,
+		organizationCreator:    usecases.NewOrganizationCreator(),
+		organizationRepository: usecases.Repositories.OrganizationRepository,
 	}
 }
 
