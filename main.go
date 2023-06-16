@@ -12,7 +12,6 @@ import (
 	"marble/marble-backend/pg_repository"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases"
-	"marble/marble-backend/usecases/scheduledexecution"
 	"marble/marble-backend/utils"
 	"os"
 	"os/signal"
@@ -49,15 +48,6 @@ func runServer(configuration models.GlobalConfiguration, pgRepository *pg_reposi
 		Configuration: configuration,
 	}
 
-	err = usecases.NewExportScheduleExecution().ExportDecisionsToS3(
-		scheduledexecution.ExportDecisionsToS3Input{
-			S3Bucket:             "marble-backend-export-scheduled-execution-test",
-			ScheduledExecutionId: "b2b2b2b2-2b2b-2b2b-2b2b-2b2b2b2b2b2b",
-		},
-	)
-	if err != nil {
-		panic(err)
-	}
 	////////////////////////////////////////////////////////////
 	// Seed the database
 	////////////////////////////////////////////////////////////
