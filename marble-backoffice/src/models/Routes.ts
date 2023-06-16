@@ -2,7 +2,6 @@ export enum PathFragment {
   Home = "",
   Login = "login",
   Organizations = "organizations",
-  OrganizationDetails = "organizations",
   Users = "users",
   Ingestion = "ingestion",
   Decisions = "decisions",
@@ -17,7 +16,9 @@ export const PageLink = {
   },
   Organizations: `/${PathFragment.Organizations}`,
   organizationDetails: (organizationId: string) =>
-    `/${PathFragment.OrganizationDetails}/${organizationId}`,
+    `/${PathFragment.Organizations}/${organizationId}`,
+  organizationEdit: (organizationId: string) =>
+    `/${PathFragment.Organizations}/${organizationId}/edit`,
   Users: `/${PathFragment.Users}`,
   userDetails: (userId: string) => `/${PathFragment.Users}/${userId}`,
   ingestion: (organizationId: string) => `/${PathFragment.Ingestion}/${organizationId}`,

@@ -1,5 +1,5 @@
-import { useCallback } from "react";
-import type { Organization, Scenario } from "@/models";
+import { useCallback, useState } from "react";
+import { Organization, PageLink, Scenario } from "@/models";
 import {
   type OrganizationRepository,
   type ScenariosRepository,
@@ -9,9 +9,11 @@ import {
   postOrganization,
   fetchScenarios,
   deleteOrganization,
+  patchOrganization,
 } from "@/repositories";
 import { useSimpleLoader } from "@/hooks/SimpleLoader";
-import { type LoadingDispatcher } from "@/hooks/Loading";
+import { showLoader, type LoadingDispatcher } from "@/hooks/Loading";
+import { useNavigate } from "react-router-dom";
 
 export interface OrganizationService {
   organizationRepository: OrganizationRepository;
@@ -101,5 +103,45 @@ export function useScenarios(
   return {
     scenarios,
     refreshScenarios,
+  };
+}
+
+interface OrganizationViewModel {
+  name: string;
+  exportScheduledExecutionS3: string;
+}
+
+export function useEditOrganization(
+  service: OrganizationService,
+  loadingDispatcher: LoadingDispatcher,
+  initialOrganization: Organization
+) {
+  const organizationId = initialOrganization.organizationId;
+
+  const navigate = useNavigate();
+
+  const [organizationViewModel, setOrganizationViewModel] =
+    useState<OrganizationViewModel>({
+      exportScheduledExecutionS3:
+        initialOrganization.exportScheduledExecutionS3,
+      name: initialOrganization.name,
+    });
+
+  const saveOrganization = async () => {
+    const newOrganization = await showLoader(
+      loadingDispatcher,
+      patchOrganization(service.organizationRepository, organizationId, {
+        name: organizationViewModel.name,
+        exportScheduledExecutionS3:
+          organizationViewModel.exportScheduledExecutionS3,
+      })
+    );
+    navigate(PageLink.organizationDetails(newOrganization.organizationId));
+  };
+
+  return {
+    organizationViewModel,
+    setOrganizationViewModel,
+    saveOrganization,
   };
 }

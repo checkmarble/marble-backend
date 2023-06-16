@@ -1,5 +1,10 @@
 import type { MarbleApi } from "@/infra/MarbleApi";
-import type { Organization, CreateOrganization, ApiKey } from "@/models";
+import type {
+  Organization,
+  CreateOrganization,
+  ApiKey,
+  PatchOrganization,
+} from "@/models";
 import {
   adaptOrganizationsApiResult,
   adaptSingleOrganizationApiResult,
@@ -44,6 +49,19 @@ export async function deleteOrganization(
   organizationId: string
 ): Promise<void> {
   await repository.marbleApi.deleteOrganization(organizationId);
+}
+
+export async function patchOrganization(
+  repository: OrganizationRepository,
+  organizationId: string,
+  patchOrganization: PatchOrganization
+): Promise<Organization> {
+  return adaptSingleOrganizationApiResult(
+    await repository.marbleApi.patchOrganization(
+      organizationId,
+      patchOrganization
+    )
+  );
 }
 
 export async function fetchApiKeys(
