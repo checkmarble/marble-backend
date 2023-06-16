@@ -45,7 +45,7 @@ type ListScenarioPublicationsFilters struct {
 
 func (r *PGRepository) ListScenarioPublications(ctx context.Context, orgID string, filters models.ListScenarioPublicationsFilters) ([]models.ScenarioPublication, error) {
 	sql, args, err := r.queryBuilder.
-		Select(ColumnList[dbScenarioPublication]()...).
+		Select(utils.ColumnList[dbScenarioPublication]()...).
 		From("scenario_publications").
 		Where("org_id = ?", orgID).
 		Where(sq.Eq(ColumnValueMap(ListScenarioPublicationsFilters{
@@ -198,7 +198,7 @@ func (r *PGRepository) CreateScenarioPublication(ctx context.Context, orgID stri
 
 func (r *PGRepository) GetScenarioPublication(ctx context.Context, orgID string, ID string) (models.ScenarioPublication, error) {
 	sql, args, err := r.queryBuilder.
-		Select(ColumnList[dbScenarioPublication]()...).
+		Select(utils.ColumnList[dbScenarioPublication]()...).
 		From("scenario_publications").
 		Where("org_id = ?", orgID).
 		Where("id = ?", ID).

@@ -20,7 +20,6 @@ type OrganizationSchemaRepository interface {
 
 type OrganizationSchemaRepositoryPostgresql struct {
 	transactionFactory TransactionFactory
-	queryBuilder       squirrel.StatementBuilderType
 }
 
 func (repo *OrganizationSchemaRepositoryPostgresql) OrganizationSchemaOfOrganization(tx Transaction, organizationId string) (models.OrganizationSchema, error) {
@@ -28,7 +27,7 @@ func (repo *OrganizationSchemaRepositoryPostgresql) OrganizationSchemaOfOrganiza
 
 	return SqlToModel(
 		pgTx,
-		repo.queryBuilder.
+		NewQueryBuilder().
 			Select(dbmodels.OrganizationSchemaFields...).
 			From(dbmodels.ORGANIZATION_SCHEMA_TABLE).
 			Where(squirrel.Eq{"org_id": organizationId}),
@@ -100,7 +99,7 @@ func (repo *OrganizationSchemaRepositoryPostgresql) CreateOrganizationSchema(tx 
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	_, err := pgTx.ExecBuilder(
-		repo.queryBuilder.Insert(dbmodels.ORGANIZATION_SCHEMA_TABLE).
+		NewQueryBuilder().Insert(dbmodels.ORGANIZATION_SCHEMA_TABLE).
 			Columns(
 				dbmodels.OrganizationSchemaFields...,
 			).

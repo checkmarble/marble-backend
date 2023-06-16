@@ -3,8 +3,6 @@ package repositories
 import (
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories/dbmodels"
-
-	"github.com/Masterminds/squirrel"
 )
 
 type OrganizationRepository interface {
@@ -17,7 +15,6 @@ type OrganizationRepository interface {
 
 type OrganizationRepositoryPostgresql struct {
 	transactionFactory TransactionFactory
-	queryBuilder       squirrel.StatementBuilderType
 }
 
 func (repo *OrganizationRepositoryPostgresql) AllOrganizations(tx Transaction) ([]models.Organization, error) {
@@ -25,7 +22,7 @@ func (repo *OrganizationRepositoryPostgresql) AllOrganizations(tx Transaction) (
 
 	return SqlToListOfModels(
 		pgTx,
-		repo.queryBuilder.
+		NewQueryBuilder().
 			Select(dbmodels.ColumnsSelectOrganization...).
 			From(dbmodels.TABLE_ORGANIZATION).
 			OrderBy("id"),
@@ -37,7 +34,7 @@ func (repo *OrganizationRepositoryPostgresql) GetOrganizationById(tx Transaction
 
 	return SqlToModel(
 		pgTx,
-		repo.queryBuilder.
+		NewQueryBuilder().
 			Select(dbmodels.ColumnsSelectOrganization...).
 			From(dbmodels.TABLE_ORGANIZATION).
 			Where("id = ?", organizationID),
@@ -49,7 +46,7 @@ func (repo *OrganizationRepositoryPostgresql) CreateOrganization(tx Transaction,
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	_, err := pgTx.ExecBuilder(
-		repo.queryBuilder.Insert(dbmodels.TABLE_ORGANIZATION).
+		NewQueryBuilder().Insert(dbmodels.TABLE_ORGANIZATION).
 			Columns(
 				"id",
 				"name",
@@ -67,7 +64,7 @@ func (repo *OrganizationRepositoryPostgresql) CreateOrganization(tx Transaction,
 func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(tx Transaction, updateOrganization models.UpdateOrganizationInput) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	var updateRequest = repo.queryBuilder.Update(dbmodels.TABLE_ORGANIZATION)
+	var updateRequest = NewQueryBuilder().Update(dbmodels.TABLE_ORGANIZATION)
 
 	if updateOrganization.Name != nil {
 		updateRequest = updateRequest.Set("name", *updateOrganization.Name)
@@ -88,6 +85,6 @@ func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(tx Transaction,
 func (repo *OrganizationRepositoryPostgresql) DeleteOrganization(tx Transaction, organizationID string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	_, err := pgTx.ExecBuilder(repo.queryBuilder.Delete(dbmodels.TABLE_ORGANIZATION).Where("id = ?", organizationID))
+	_, err := pgTx.ExecBuilder(NewQueryBuilder().Delete(dbmodels.TABLE_ORGANIZATION).Where("id = ?", organizationID))
 	return err
 }
