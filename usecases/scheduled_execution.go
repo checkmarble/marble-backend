@@ -157,13 +157,13 @@ func (usecase *ScheduledExecutionUsecase) executeScheduledScenario(ctx context.C
 		return err
 	}
 	tables := dataModel.Tables
-	table, ok := tables[models.TableName(scenario.TriggerObjectType)]
+	_, ok := tables[models.TableName(scenario.TriggerObjectType)]
 	if !ok {
 		return fmt.Errorf("Trigger object type %s not found in data model: %w", scenario.TriggerObjectType, models.NotFoundError)
 	}
 
 	// list objects to score
-	objects, err := usecase.ingestedDataReadRepository.ListAllObjectsFromTable(ctx, table)
+	// objects, err := usecase.ingestedDataReadRepository.ListAllObjectsFromTable(ctx, table)
 	if err != nil {
 		return err
 	}

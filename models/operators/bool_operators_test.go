@@ -6,33 +6,28 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/guregu/null.v3"
 )
 
 type DataAccessorBoolImpl struct{}
 
 func (d *DataAccessorBoolImpl) GetPayloadField(fieldName string) (interface{}, error) {
-	var val null.Bool
 	if fieldName == "true" {
-		val = null.BoolFrom(true)
+		return true, nil
 	} else if fieldName == "false" {
-		val = null.BoolFrom(false)
+		return false, nil
 	} else {
 		return nil, nil
 	}
-	return val, nil
 }
 
 func (d *DataAccessorBoolImpl) GetDbField(ctx context.Context, triggerTableName string, path []string, fieldName string) (interface{}, error) {
-	var val null.Bool
 	if fieldName == "true" {
-		val = null.BoolFrom(true)
+		return true, nil
 	} else if fieldName == "false" {
-		val = null.BoolFrom(false)
+		return false, nil
 	} else {
-		val = null.NewBool(false, false)
+		return nil, nil
 	}
-	return val, nil
 }
 
 func (d *DataAccessorBoolImpl) GetDbHandle() (db *pgxpool.Pool, schema string, err error) {

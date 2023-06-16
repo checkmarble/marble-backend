@@ -15,15 +15,12 @@ import (
 func buildDynamicStruct(fields map[models.FieldName]models.Field) dynamicstruct.DynamicStruct {
 	custom_type := dynamicstruct.NewStruct()
 
-	var stringPointerType *string
-	var intPointerType *int
-	var floatPointerType *float64
-	var boolPointerType *bool
-	var timePointerType *time.Time
+	var f float64
+	var i int64
 
 	// those fields are mandatory for all tables
-	custom_type.AddField("Object_id", stringPointerType, `validate:"required"`)
-	custom_type.AddField("Updated_at", timePointerType, `validate:"required"`)
+	custom_type.AddField("Object_id", "", `validate:"required"`)
+	custom_type.AddField("Updated_at", time.Time{}, `validate:"required"`)
 
 	for fieldName, field := range fields {
 		name := string(fieldName)
@@ -34,15 +31,15 @@ func buildDynamicStruct(fields map[models.FieldName]models.Field) dynamicstruct.
 		default:
 			switch field.DataType {
 			case models.Bool:
-				custom_type.AddField(pure_utils.Capitalize(name), boolPointerType, "")
+				custom_type.AddField(pure_utils.Capitalize(name), true, "")
 			case models.Int:
-				custom_type.AddField(pure_utils.Capitalize(name), intPointerType, "")
+				custom_type.AddField(pure_utils.Capitalize(name), i, "")
 			case models.Float:
-				custom_type.AddField(pure_utils.Capitalize(name), floatPointerType, "")
+				custom_type.AddField(pure_utils.Capitalize(name), f, "")
 			case models.String:
-				custom_type.AddField(pure_utils.Capitalize(name), stringPointerType, "")
+				custom_type.AddField(pure_utils.Capitalize(name), "", "")
 			case models.Timestamp:
-				custom_type.AddField(pure_utils.Capitalize(name), timePointerType, "")
+				custom_type.AddField(pure_utils.Capitalize(name), time.Time{}, "")
 			}
 		}
 	}
@@ -101,5 +98,5 @@ func ParseToDataModelObject(table models.Table, jsonBody []byte) (models.Payload
 		return models.Payload{}, err
 	}
 
-	return models.Payload{Reader: dynamicStructReader, Table: table}, nil
+	return models.Payload{Reader: dynamicStructReader, TableName: table.Name}, nil
 }

@@ -8,29 +8,24 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/guregu/null.v3"
 )
 
 type DataAccessorFloatImpl struct{}
 
 func (d *DataAccessorFloatImpl) GetPayloadField(fieldName string) (interface{}, error) {
-	var val null.Float
 	if f, err := strconv.ParseFloat(fieldName, 64); err == nil {
-		val = null.FloatFrom(f)
+		return f, nil
 	} else {
-		return null.NewFloat(0, false), nil
+		return nil, nil
 	}
-	return val, nil
 }
 
 func (d *DataAccessorFloatImpl) GetDbField(ctx context.Context, triggerTableName string, path []string, fieldName string) (interface{}, error) {
-	var val null.Float
 	if f, err := strconv.ParseFloat(fieldName, 64); err == nil {
-		val = null.NewFloat(f, true)
+		return f, nil
 	} else {
-		val = null.NewFloat(0, false)
+		return nil, nil
 	}
-	return val, nil
 }
 func (d *DataAccessorFloatImpl) ValidateDbFieldReadConsistency(path []string, fieldName string) error {
 	return nil

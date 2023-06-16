@@ -17,16 +17,34 @@ func getPayloadFieldGeneric[T string | bool | float64](d DataAccessor, fieldName
 		return output, err
 	}
 
-	fieldPointer, ok := fieldRaw.(*T)
+	if fieldRaw == nil {
+		return output, fmt.Errorf("Payload field %s is null: %w", fieldName, OperatorNullValueReadError)
+	}
+
+	val, ok := fieldRaw.(T)
 	if !ok {
 		return output, fmt.Errorf("Payload field %s is not a pointer to the right type %T", fieldName, output)
 	}
-	if fieldPointer == nil {
-		return output, fmt.Errorf("Payload field %s is null: %w", fieldName, OperatorNullValueReadError)
-	}
-	output = *fieldPointer
 
-	return output, nil
+	return val, nil
+}
+
+func getDbFieldGeneric[T string | bool | float64](ctx context.Context, d DataAccessor, triggerTableName, fieldName string, path []string) (T, error) {
+	var output T
+	valRaw, err := d.GetDbField(ctx, triggerTableName, path, fieldName)
+	if err != nil {
+		return output, err
+	}
+
+	if valRaw == nil {
+		return output, fmt.Errorf("DB field %s is null: %w", fieldName, OperatorNullValueReadError)
+	}
+
+	val, ok := valRaw.(T)
+	if !ok {
+		return output, fmt.Errorf("DB field %s is not a %T", fieldName, output)
+	}
+	return val, nil
 }
 
 func queryDbFieldGeneric[T float64 | string](ctx context.Context, db *pgxpool.Pool, sql string, args []any) (T, error) {
