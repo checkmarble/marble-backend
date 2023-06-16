@@ -7,10 +7,12 @@ import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
+import EditIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
 import SendIcon from "@mui/icons-material/SendOutlined";
 import Approval from "@mui/icons-material/Approval";
 import DeleteForever from "@mui/icons-material/DeleteForever";
+import Stack from "@mui/material/Stack";
 import { useLoading } from "@/hooks/Loading";
 import services from "@/injectServices";
 import {
@@ -81,6 +83,10 @@ function OrganizationDetailsPage() {
     await refreshUsers();
   };
 
+  const handleNavigateToEdit = () => {
+    navigate(PageLink.organizationEdit(organizationId));
+  };
+
   const handleNavigateToIngestion = () => {
     navigate(PageLink.ingestion(organizationId));
   };
@@ -116,9 +122,10 @@ function OrganizationDetailsPage() {
       <Container
         sx={{
           maxWidth: "md",
-          position: "relative",
         }}
       >
+        <Stack gap={2}>
+          
         <Typography variant="h3">{organization?.name}</Typography>
         <Box
           sx={{
@@ -130,6 +137,13 @@ function OrganizationDetailsPage() {
           }}
         >
           <Button
+            onClick={handleNavigateToEdit}
+            variant="text"
+            startIcon={<EditIcon />}
+          >
+            Edit
+          </Button>
+          <Button
             onClick={handleNavigateToIngestion}
             variant="text"
             startIcon={<SendIcon />}
@@ -138,7 +152,7 @@ function OrganizationDetailsPage() {
           </Button>
           <Button
             onClick={handleNavigateToDecisions}
-            variant="outlined"
+            variant="text"
             startIcon={<Approval />}
           >
             Decisions
@@ -161,7 +175,7 @@ function OrganizationDetailsPage() {
         </Box>
         {scenarios != null && (
           <>
-            <Typography variant="h4">{scenarios.length} Scenarios</Typography>
+            <Typography variant="subtitle1">{scenarios.length} Scenarios</Typography>
             {scenarios.map((scenario) => (
               <Card key={scenario.scenarioId} sx={{ mb: 2 }}>
                 <CardContent>
@@ -194,6 +208,7 @@ function OrganizationDetailsPage() {
             }}
           />
         )}
+        </Stack>
       </Container>
     </>
   );
