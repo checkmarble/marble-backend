@@ -118,6 +118,17 @@ func (api *API) routes() {
 			})
 		})
 
+		authedRouter.Route("/scheduled-executions", func(r chi.Router) {
+			r.Use(api.enforcePermissionMiddleware(models.DECISION_READ))
+
+			r.With(httpin.NewInput(dto.ListScheduledExecutionInput{})).
+				Get("/", api.handleListScheduledExecution())
+
+			r.Route("/{scheduledExecutionID:"+UUIDRegExp+"}", func(r chi.Router) {
+				r.Get("/", api.handleGetScheduledExecution())
+			})
+		})
+
 		authedRouter.Route("/data-model", func(dataModelRouter chi.Router) {
 			dataModelRouter.Use(api.enforcePermissionMiddleware(models.DATA_MODEL_READ))
 			dataModelRouter.Get("/", api.handleGetDataModel())

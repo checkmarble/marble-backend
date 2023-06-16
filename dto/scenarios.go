@@ -1,6 +1,8 @@
 package dto
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 type CreateScenarioBody struct {
 	Name              string `json:"name"`
@@ -29,6 +31,8 @@ type UpdateScenarioIterationBody struct {
 		TriggerCondition     *json.RawMessage `json:"triggerCondition,omitempty"`
 		ScoreReviewThreshold *int             `json:"scoreReviewThreshold,omitempty"`
 		ScoreRejectThreshold *int             `json:"scoreRejectThreshold,omitempty"`
+		Schedule             *string          `json:"schedule"`
+		BatchTriggerSQL      *string          `json:"batchTriggerSQL"`
 	} `json:"body,omtiempty"`
 }
 
@@ -44,6 +48,8 @@ type CreateScenarioIterationBody struct {
 		Rules                []CreateScenarioIterationRuleInputBody `json:"rules"`
 		ScoreReviewThreshold *int                                   `json:"scoreReviewThreshold,omitempty"`
 		ScoreRejectThreshold *int                                   `json:"scoreRejectThreshold,omitempty"`
+		Schedule             string                                 `json:"schedule"`
+		BatchTriggerSQL      string                                 `json:"batchTriggerSQL"`
 	} `json:"body,omitempty"`
 }
 

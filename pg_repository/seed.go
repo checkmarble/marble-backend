@@ -193,6 +193,7 @@ func (r *PGRepository) Seed(zorgOrganizationId string) error {
 			},
 			ScoreReviewThreshold: utils.Ptr(20),
 			ScoreRejectThreshold: utils.Ptr(30),
+			Schedule:             "*/10 * * * *",
 			Rules: []models.CreateRuleInput{
 				{
 					Formula: &operators.And{

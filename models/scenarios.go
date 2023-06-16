@@ -4,6 +4,7 @@ import "time"
 
 type Scenario struct {
 	ID                string
+	OrganizationID    string
 	Name              string
 	Description       string
 	TriggerObjectType string

@@ -24,9 +24,8 @@ type APIScenarioPublication struct {
 
 func NewAPIScenarioPublication(sp models.ScenarioPublication) APIScenarioPublication {
 	return APIScenarioPublication{
-		ID:   sp.ID,
-		Rank: sp.Rank,
-		// UserID:              sp.UserID,
+		ID:                  sp.ID,
+		Rank:                sp.Rank,
 		ScenarioID:          sp.ScenarioID,
 		ScenarioIterationID: sp.ScenarioIterationID,
 		PublicationAction:   sp.PublicationAction.String(),
@@ -84,6 +83,15 @@ func (api *API) CreateScenarioPublication() http.HandlerFunc {
 
 		input := ctx.Value(httpin.Input).(*dto.CreateScenarioPublicationInput)
 		logger := api.logger.With(slog.String("orgID", orgID), slog.String("scenarioIterationID", input.Body.ScenarioIterationID))
+
+		if errors.Is(err, models.NotFoundError) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		} else if err != nil {
+			logger.ErrorCtx(ctx, "Error getting scenario: \n"+err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
+			return
+		}
 
 		usecase := api.usecases.NewScenarioPublicationUsecase()
 		scenarioPublications, err := usecase.CreateScenarioPublication(ctx, orgID, models.CreateScenarioPublicationInput{

@@ -121,10 +121,7 @@ func TestListScenarios(t *testing.T) {
 		t.Fatalf("Could not create scenario: %s", err)
 	}
 
-	scenarios, err := globalTestParams.repository.ListScenarios(
-		context.Background(),
-		globalTestParams.testIds["OrganizationId"],
-	)
+	scenarios, err := globalTestParams.repository.ListScenarios(context.Background(), globalTestParams.testIds["OrganizationId"])
 
 	if err != nil {
 		t.Fatalf("Could not list scenarios: %s", err)

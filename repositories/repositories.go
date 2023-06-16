@@ -30,6 +30,7 @@ type Repositories struct {
 	ScenarioIterationWriteRepository ScenarioIterationWriteRepository
 	ScenarioIterationRuleRepository  ScenarioIterationRuleRepository
 	ScenarioPublicationRepository    ScenarioPublicationRepository
+	ScheduledExecutionRepository     ScheduledExecutionRepository
 	LegacyPgRepository               *pg_repository.PGRepository
 	OrganizationSchemaRepository     OrganizationSchemaRepository
 	AwsS3Repository                  AwsS3Repository
@@ -89,7 +90,11 @@ func NewRepositories(
 		ScenarioIterationWriteRepository: pgRepository,
 		ScenarioIterationRuleRepository:  pgRepository,
 		ScenarioPublicationRepository:    pgRepository,
-		LegacyPgRepository:               pgRepository,
+		ScheduledExecutionRepository: &ScheduledExecutionRepositoryPostgresql{
+			transactionFactory: transactionFactory,
+			queryBuilder:       queryBuilder,
+		},
+		LegacyPgRepository: pgRepository,
 		OrganizationSchemaRepository: &OrganizationSchemaRepositoryPostgresql{
 			transactionFactory: transactionFactory,
 			queryBuilder:       queryBuilder,

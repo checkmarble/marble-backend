@@ -49,7 +49,7 @@ func ColumnList[T any](prefixes ...string) []string {
 //   - Where(sq.Eq())
 //
 // Inspired from pgx.RowToStructByName implementation
-func columnValueMap(input any) map[string]any {
+func ColumnValueMap(input any) map[string]any {
 	result := make(map[string]any)
 
 	inputElemValue := reflect.Indirect(reflect.ValueOf(input))
@@ -78,7 +78,7 @@ func columnValueMap(input any) map[string]any {
 			}
 			value := reflect.Indirect(colValue).Interface()
 			if reflect.ValueOf(value).Kind() == reflect.Struct {
-				result[colName] = columnValueMap(value)
+				result[colName] = ColumnValueMap(value)
 			} else {
 				result[colName] = value
 			}

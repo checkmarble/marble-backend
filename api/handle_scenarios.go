@@ -43,7 +43,6 @@ func (api *API) ListScenarios() http.HandlerFunc {
 		}
 
 		logger := api.logger.With(slog.String("orgID", orgID))
-
 		usecase := api.usecases.NewScenarioUsecase()
 		scenarios, err := usecase.ListScenarios(ctx, orgID)
 

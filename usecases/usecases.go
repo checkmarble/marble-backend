@@ -119,6 +119,15 @@ func (usecases *Usecases) NewScenarioIterationRuleUsecase() ScenarioIterationRul
 	}
 }
 
+func (usecases *Usecases) NewScheduledExecutionUsecase() ScheduledExecutionUsecase {
+	return ScheduledExecutionUsecase{
+		scenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,
+		scenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
+		scheduledExecutionRepository:    usecases.Repositories.ScheduledExecutionRepository,
+		transactionFactory:              usecases.Repositories.TransactionFactory,
+	}
+}
+
 func (usecases *Usecases) NewExportScheduleExecution() scheduledexecution.ExportScheduleExecution {
 	return &scheduledexecution.ExportScheduleExecutionImpl{
 		AwsS3Repository:    usecases.Repositories.AwsS3Repository,

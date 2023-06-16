@@ -8,4 +8,5 @@ import (
 type ScenarioReadRepository interface {
 	GetScenario(ctx context.Context, orgID string, scenarioID string) (models.Scenario, error)
 	ListScenarios(ctx context.Context, orgID string) ([]models.Scenario, error)
+	ListAllScenarios(ctx context.Context) ([]models.Scenario, error)
 }

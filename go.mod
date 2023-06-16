@@ -96,6 +96,7 @@ require (
 require (
 	firebase.google.com/go/v4 v4.11.0
 	github.com/Masterminds/squirrel v1.5.4
+	github.com/adhocore/gronx v1.6.3
 	github.com/aws/aws-sdk-go-v2 v1.18.1
 	github.com/aws/aws-sdk-go-v2/config v1.18.26
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.68

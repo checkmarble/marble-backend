@@ -15,6 +15,10 @@ func (usecase *ScenarioUsecase) ListScenarios(ctx context.Context, organizationI
 	return usecase.scenarioReadRepository.ListScenarios(ctx, organizationID)
 }
 
+func (usecase *ScenarioUsecase) ListAllScenarios(ctx context.Context) ([]models.Scenario, error) {
+	return usecase.scenarioReadRepository.ListAllScenarios(ctx)
+}
+
 func (usecase *ScenarioUsecase) GetScenario(ctx context.Context, organizationID string, scenarioID string) (models.Scenario, error) {
 	return usecase.scenarioReadRepository.GetScenario(ctx, organizationID, scenarioID)
 }

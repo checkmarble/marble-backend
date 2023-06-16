@@ -48,7 +48,7 @@ func (r *PGRepository) ListScenarioPublications(ctx context.Context, orgID strin
 		Select(ColumnList[dbScenarioPublication]()...).
 		From("scenario_publications").
 		Where("org_id = ?", orgID).
-		Where(sq.Eq(columnValueMap(ListScenarioPublicationsFilters{
+		Where(sq.Eq(ColumnValueMap(ListScenarioPublicationsFilters{
 			ScenarioID: filters.ScenarioID,
 			// UserID:              filters.UserID,
 			ScenarioIterationID: filters.ScenarioIterationID,
@@ -80,7 +80,7 @@ type dbCreateScenarioPublication struct {
 func (r *PGRepository) createScenarioPublication(ctx context.Context, tx pgx.Tx, sp dbCreateScenarioPublication) (dbScenarioPublication, error) {
 	sql, args, err := r.queryBuilder.
 		Insert("scenario_publications").
-		SetMap(columnValueMap(sp)).
+		SetMap(ColumnValueMap(sp)).
 		Suffix("RETURNING *").ToSql()
 	if err != nil {
 		return dbScenarioPublication{}, fmt.Errorf("unable to build scenario publication query: %w", err)
