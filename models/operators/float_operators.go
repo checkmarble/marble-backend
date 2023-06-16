@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"math"
 	"strings"
-
-	"gopkg.in/guregu/null.v3"
 )
 
 // /////////////////////////////
@@ -116,19 +114,7 @@ func (field DbFieldFloat) Eval(ctx context.Context, d DataAccessor) (float64, er
 		return 0, ErrEvaluatingInvalidOperator
 	}
 
-	valRaw, err := d.GetDbField(ctx, field.TriggerTableName, field.Path, field.FieldName)
-	if err != nil {
-		return 0, err
-	}
-
-	valNullable, ok := valRaw.(null.Float)
-	if !ok {
-		return 0, fmt.Errorf("DB field %s is not a float", field.FieldName)
-	}
-	if !valNullable.Valid {
-		return 0, fmt.Errorf("DB field %s is null: %w", field.FieldName, OperatorNullValueReadError)
-	}
-	return valNullable.Float64, nil
+	return getDbFieldGeneric[float64](ctx, d, field.TriggerTableName, field.FieldName, field.Path)
 }
 
 func (field DbFieldFloat) IsValid() bool {
@@ -197,20 +183,7 @@ func (field PayloadFieldFloat) Eval(ctx context.Context, d DataAccessor) (float6
 	if !field.IsValid() {
 		return 0, ErrEvaluatingInvalidOperator
 	}
-	fieldRaw, err := d.GetPayloadField(field.FieldName)
-	if err != nil {
-		return 0, err
-	}
-
-	nullableField, ok := fieldRaw.(null.Float)
-	if !ok {
-		return 0, fmt.Errorf("Payload field %s is not a type null.Float", field.FieldName)
-	}
-	if !nullableField.Valid {
-		return 0, fmt.Errorf("Payload field %s is null: %w", field.FieldName, OperatorNullValueReadError)
-	}
-
-	return nullableField.Float64, nil
+	return getPayloadFieldGeneric[float64](d, field.FieldName)
 }
 
 func (field PayloadFieldFloat) IsValid() bool {

@@ -70,7 +70,7 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 	return createdDecision, nil
 }
 
-func (usecase *DecisionUsecase) EvalScenario(ctx context.Context, scenario models.Scenario, payloadStructWithReader models.Payload, dataModel models.DataModel, logger *slog.Logger) (se models.ScenarioExecution, err error) {
+func (usecase *DecisionUsecase) EvalScenario(ctx context.Context, scenario models.Scenario, payload models.Payload, dataModel models.DataModel, logger *slog.Logger) (se models.ScenarioExecution, err error) {
 
 	///////////////////////////////
 	// Recover in case the evaluation panicked.
@@ -108,13 +108,13 @@ func (usecase *DecisionUsecase) EvalScenario(ctx context.Context, scenario model
 	}
 
 	// Check the scenario & trigger_object's types
-	if scenario.TriggerObjectType != string(payloadStructWithReader.Table.Name) {
+	if scenario.TriggerObjectType != string(payload.TableName) {
 		return models.ScenarioExecution{}, models.ScenarioTriggerTypeAndTiggerObjectTypeMismatchError
 	}
 
 	dataAccessor := DataAccessor{
 		DataModel:                  dataModel,
-		Payload:                    payloadStructWithReader,
+		Payload:                    payload,
 		orgTransactionFactory:      usecase.orgTransactionFactory,
 		organizationId:             orgID,
 		ingestedDataReadRepository: usecase.ingestedDataReadRepository}

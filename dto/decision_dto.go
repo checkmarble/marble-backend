@@ -41,7 +41,7 @@ func NewAPIDecision(decision models.Decision) APIDecision {
 	apiDecision := APIDecision{
 		ID:                decision.ID,
 		CreatedAt:         decision.CreatedAt,
-		TriggerObjectType: decision.ClientObject.TableName,
+		TriggerObjectType: string(decision.ClientObject.TableName),
 		TriggerObject:     decision.ClientObject.Data,
 		Outcome:           decision.Outcome.String(),
 		Scenario: APIDecisionScenario{

@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"errors"
 	"io/ioutil"
 	"marble/marble-backend/app"
@@ -12,10 +11,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"golang.org/x/exp/slog"
 )
-
-type IngestionInterface interface {
-	IngestObject(ctx context.Context, payload models.Payload, table models.Table, logger *slog.Logger) (err error)
-}
 
 func (api *API) handleIngestion() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -54,7 +49,7 @@ func (api *API) handleIngestion() http.HandlerFunc {
 			return
 		}
 
-		payloadStructWithReader, err := app.ParseToDataModelObject(table, object_body)
+		payload, err := app.ParseToDataModelObject(table, object_body)
 		if errors.Is(err, models.FormatValidationError) {
 			http.Error(w, "", http.StatusUnprocessableEntity)
 			return
@@ -63,7 +58,7 @@ func (api *API) handleIngestion() http.HandlerFunc {
 			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
-		err = usecase.IngestObject(orgID, payloadStructWithReader, table, logger)
+		err = usecase.IngestObject(orgID, payload, table, logger)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Error while ingesting object:\n"+err.Error())
 			http.Error(w, "", http.StatusInternalServerError)

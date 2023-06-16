@@ -121,7 +121,7 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 			return
 		}
 
-		payloadStructWithReader, err := app.ParseToDataModelObject(table, requestData.TriggerObjectRaw)
+		payload, err := app.ParseToDataModelObject(table, requestData.TriggerObjectRaw)
 		if errors.Is(err, models.FormatValidationError) {
 			http.Error(w, "Format validation error", http.StatusUnprocessableEntity) // 422
 			return
@@ -139,13 +139,13 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 			http.Error(w, "", http.StatusUnprocessableEntity)
 			return
 		}
-		ClientObject := models.ClientObject{TableName: requestData.TriggerObjectType, Data: triggerObjectMap}
+		ClientObject := models.ClientObject{TableName: models.TableName(requestData.TriggerObjectType), Data: triggerObjectMap}
 		decisionUsecase := api.usecases.NewDecisionUsecase()
 		decision, err := decisionUsecase.CreateDecision(ctx, models.CreateDecisionInput{
 			ScenarioID:              requestData.ScenarioID,
 			ClientObject:            ClientObject,
 			OrganizationID:          orgID,
-			PayloadStructWithReader: payloadStructWithReader,
+			PayloadStructWithReader: payload,
 		}, logger)
 		if errors.Is(err, models.NotFoundError) {
 			http.Error(w, "scenario not found", http.StatusNotFound)

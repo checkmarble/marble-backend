@@ -19,16 +19,16 @@ type IngestionRepositoryImpl struct {
 	queryBuilder squirrel.StatementBuilderType
 }
 
-func (repo *IngestionRepositoryImpl) IngestObject(transaction Transaction, payloadStructWithReader models.Payload, table models.Table, logger *slog.Logger) (err error) {
+func (repo *IngestionRepositoryImpl) IngestObject(transaction Transaction, payload models.Payload, table models.Table, logger *slog.Logger) (err error) {
 
 	tx := adaptClientDatabaseTransaction(transaction)
 
-	err = updateExistingVersionIfPresent(tx, repo.queryBuilder, payloadStructWithReader, table)
+	err = updateExistingVersionIfPresent(tx, repo.queryBuilder, payload, table)
 	if err != nil {
 		return fmt.Errorf("Error updating existing version: %w", err)
 	}
 
-	columnNames, values := generateInsertValues(table, payloadStructWithReader)
+	columnNames, values := generateInsertValues(table, payload)
 	columnNames = append(columnNames, "id")
 	values = append(values, uuid.NewString())
 
@@ -44,14 +44,14 @@ func (repo *IngestionRepositoryImpl) IngestObject(transaction Transaction, paylo
 	return nil
 }
 
-func generateInsertValues(table models.Table, payloadStructWithReader models.Payload) (columnNames []string, values []interface{}) {
+func generateInsertValues(table models.Table, payload models.Payload) (columnNames []string, values []interface{}) {
 	nbFields := len(table.Fields)
 	columnNames = make([]string, nbFields)
 	values = make([]interface{}, nbFields)
 	i := 0
 	for fieldName := range table.Fields {
 		columnNames[i] = string(fieldName)
-		values[i], _ = payloadStructWithReader.ReadFieldFromPayload(fieldName)
+		values[i], _ = payload.ReadFieldFromPayload(fieldName)
 		i++
 	}
 	return columnNames, values
@@ -60,10 +60,10 @@ func generateInsertValues(table models.Table, payloadStructWithReader models.Pay
 func updateExistingVersionIfPresent(
 	tx TransactionPostgres,
 	queryBuilder squirrel.StatementBuilderType,
-	payloadStructWithReader models.Payload,
+	payload models.Payload,
 	table models.Table) (err error) {
 
-	object_id, _ := payloadStructWithReader.ReadFieldFromPayload("object_id")
+	object_id, _ := payload.ReadFieldFromPayload("object_id")
 	sql, args, err := queryBuilder.
 		Select("id").
 		From(tableNameWithSchema(tx, table.Name)).
