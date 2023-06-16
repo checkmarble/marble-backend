@@ -15,9 +15,7 @@ type IngestedDataReadRepository interface {
 	ListAllObjectsFromTable(transaction Transaction, table models.Table) ([]models.ClientObject, error)
 }
 
-type IngestedDataReadRepositoryImpl struct {
-	queryBuilder squirrel.StatementBuilderType
-}
+type IngestedDataReadRepositoryImpl struct{}
 
 func (repo *IngestedDataReadRepositoryImpl) GetDbField(transaction Transaction, readParams models.DbFieldReadParams) (any, error) {
 	tx := adaptClientDatabaseTransaction(transaction)
@@ -59,7 +57,7 @@ func (repo *IngestedDataReadRepositoryImpl) queryDbForField(tx TransactionPostgr
 	lastTableName := tableNameWithSchema(tx, lastTable.Name)
 
 	// setup the end table we read the field from, the beginning table we join from, and relevant filters on the latter
-	query := repo.queryBuilder.
+	query := NewQueryBuilder().
 		Select(fmt.Sprintf("%s.%s", lastTableName, readParams.FieldName)).
 		From(firstTableName).
 		Where(squirrel.Eq{fmt.Sprintf("%s.object_id", firstTableName): baseObjectId}).
@@ -158,7 +156,7 @@ func (repo *IngestedDataReadRepositoryImpl) ListAllObjectsFromTable(transaction 
 		i++
 	}
 
-	objectsAsMap, err := queryWithDynamicColumnList(tx, tableNameWithSchema(tx, table.Name), columnNames, repo.queryBuilder)
+	objectsAsMap, err := queryWithDynamicColumnList(tx, tableNameWithSchema(tx, table.Name), columnNames)
 	if err != nil {
 		return nil, err
 	}
@@ -175,8 +173,8 @@ func (repo *IngestedDataReadRepositoryImpl) ListAllObjectsFromTable(transaction 
 	return output, nil
 }
 
-func queryWithDynamicColumnList(tx TransactionPostgres, qualifiedTableName string, columnNames []string, queryBuilder squirrel.StatementBuilderType) ([]map[string]any, error) {
-	sql, args, err := queryBuilder.
+func queryWithDynamicColumnList(tx TransactionPostgres, qualifiedTableName string, columnNames []string) ([]map[string]any, error) {
+	sql, args, err := NewQueryBuilder().
 		Select(columnNames...).
 		From(qualifiedTableName).
 		Where(rowIsValid(qualifiedTableName)).

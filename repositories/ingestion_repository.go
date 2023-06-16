@@ -16,14 +16,13 @@ type IngestionRepository interface {
 }
 
 type IngestionRepositoryImpl struct {
-	queryBuilder squirrel.StatementBuilderType
 }
 
 func (repo *IngestionRepositoryImpl) IngestObject(transaction Transaction, payload models.Payload, table models.Table, logger *slog.Logger) (err error) {
 
 	tx := adaptClientDatabaseTransaction(transaction)
 
-	err = updateExistingVersionIfPresent(tx, repo.queryBuilder, payload, table)
+	err = updateExistingVersionIfPresent(tx, payload, table)
 	if err != nil {
 		return fmt.Errorf("Error updating existing version: %w", err)
 	}
@@ -32,7 +31,7 @@ func (repo *IngestionRepositoryImpl) IngestObject(transaction Transaction, paylo
 	columnNames = append(columnNames, "id")
 	values = append(values, uuid.NewString())
 
-	sql := repo.queryBuilder.Insert(tableNameWithSchema(tx, table.Name)).Columns(columnNames...).Values(values...).Suffix("RETURNING \"id\"")
+	sql := NewQueryBuilder().Insert(tableNameWithSchema(tx, table.Name)).Columns(columnNames...).Values(values...).Suffix("RETURNING \"id\"")
 
 	var createdObjectID string
 	_, err = tx.ExecBuilder(sql)
@@ -59,12 +58,11 @@ func generateInsertValues(table models.Table, payload models.Payload) (columnNam
 
 func updateExistingVersionIfPresent(
 	tx TransactionPostgres,
-	queryBuilder squirrel.StatementBuilderType,
 	payload models.Payload,
 	table models.Table) (err error) {
 
 	object_id, _ := payload.ReadFieldFromPayload("object_id")
-	sql, args, err := queryBuilder.
+	sql, args, err := NewQueryBuilder().
 		Select("id").
 		From(tableNameWithSchema(tx, table.Name)).
 		Where(squirrel.Eq{"object_id": object_id}).
@@ -82,7 +80,7 @@ func updateExistingVersionIfPresent(
 		return err
 	}
 
-	sql, args, err = queryBuilder.
+	sql, args, err = NewQueryBuilder().
 		Update(tableNameWithSchema(tx, table.Name)).
 		Set("valid_until", "now()").
 		Where(squirrel.Eq{"id": id}).

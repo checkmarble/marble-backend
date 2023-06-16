@@ -16,14 +16,13 @@ type ScheduledExecutionRepository interface {
 
 type ScheduledExecutionRepositoryPostgresql struct {
 	transactionFactory TransactionFactory
-	queryBuilder       squirrel.StatementBuilderType
 }
 
 func (repo *ScheduledExecutionRepositoryPostgresql) GetScheduledExecution(tx Transaction, organizationId, id string) (models.ScheduledExecution, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 	return SqlToModel(
 		pgTx,
-		repo.queryBuilder.
+		NewQueryBuilder().
 			Select(dbmodels.ScheduledExecutionFields...).
 			From(dbmodels.TABLE_SCHEDULED_EXECUTIONS).
 			Where(squirrel.Eq{"organization_id": organizationId}).
@@ -36,7 +35,7 @@ func (repo *ScheduledExecutionRepositoryPostgresql) ListScheduledExecutions(tx T
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 	return SqlToListOfModels(
 		pgTx,
-		repo.queryBuilder.
+		NewQueryBuilder().
 			Select(dbmodels.ScheduledExecutionFields...).
 			From(dbmodels.TABLE_SCHEDULED_EXECUTIONS).
 			Where(squirrel.Eq{"organization_id": organizationId}).
@@ -50,7 +49,7 @@ func (repo *ScheduledExecutionRepositoryPostgresql) CreateScheduledExecution(tx 
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	_, err := pgTx.ExecBuilder(
-		repo.queryBuilder.Insert(dbmodels.TABLE_SCHEDULED_EXECUTIONS).
+		NewQueryBuilder().Insert(dbmodels.TABLE_SCHEDULED_EXECUTIONS).
 			Columns(
 				"id",
 				"organization_id",
@@ -71,7 +70,7 @@ func (repo *ScheduledExecutionRepositoryPostgresql) CreateScheduledExecution(tx 
 
 func (repo *ScheduledExecutionRepositoryPostgresql) UpdateScheduledExecution(tx Transaction, updateScheduledEx models.UpdateScheduledExecutionInput) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
-	query := repo.queryBuilder.Update(dbmodels.TABLE_SCHEDULED_EXECUTIONS).
+	query := NewQueryBuilder().Update(dbmodels.TABLE_SCHEDULED_EXECUTIONS).
 		Where("id = ?", updateScheduledEx.ID)
 
 	if updateScheduledEx.Status != nil {

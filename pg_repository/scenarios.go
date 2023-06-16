@@ -41,7 +41,7 @@ func (s *dbScenario) toDomain() models.Scenario {
 
 func (r *PGRepository) ListScenarios(ctx context.Context, orgID string) ([]models.Scenario, error) {
 	query := r.queryBuilder.
-		Select(ColumnList[dbScenario]()...).
+		Select(utils.ColumnList[dbScenario]()...).
 		From("scenarios").
 		Where(sq.Eq{
 			"org_id": orgID,
@@ -67,7 +67,7 @@ func (r *PGRepository) ListScenarios(ctx context.Context, orgID string) ([]model
 
 func (r *PGRepository) ListAllScenarios(ctx context.Context) ([]models.Scenario, error) {
 	query := r.queryBuilder.
-		Select(ColumnList[dbScenario]()...).
+		Select(utils.ColumnList[dbScenario]()...).
 		From("scenarios")
 
 	sql, args, err := query.ToSql()
@@ -90,7 +90,7 @@ func (r *PGRepository) ListAllScenarios(ctx context.Context) ([]models.Scenario,
 
 func (r *PGRepository) GetScenario(ctx context.Context, orgID string, scenarioID string) (models.Scenario, error) {
 	sql, args, err := r.queryBuilder.
-		Select(ColumnList[dbScenario]()...).
+		Select(utils.ColumnList[dbScenario]()...).
 		From("scenarios").
 		Where(sq.Eq{
 			"org_id": orgID,
