@@ -3,7 +3,7 @@ package dbmodels
 import (
 	"encoding/json"
 	"marble/marble-backend/models"
-	"marble/marble-backend/pg_repository"
+	"marble/marble-backend/utils"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -28,7 +28,7 @@ type DBDecision struct {
 const TABLE_DECISIONS = "decisions"
 const TABLE_DECISION_RULES = "decision_rules"
 
-var ColumnsSelectDecision = pg_repository.ColumnList[DBDecision]()
+var ColumnsSelectDecision = utils.ColumnList[DBDecision]()
 
 func AdaptDecision(db DBDecision) models.Decision {
 	triggerObject := make(map[string]interface{})

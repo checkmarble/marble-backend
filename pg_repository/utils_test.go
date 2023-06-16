@@ -16,7 +16,7 @@ func TestColumnList(t *testing.T) {
 	cases := []TestCase{
 		{
 			name: "Should only keep key",
-			data: ColumnList[struct {
+			data: utils.ColumnList[struct {
 				Key        any `db:"key"`
 				ignoredKey any `db:"ignored_key"`
 				IgnoredKey any
@@ -25,7 +25,7 @@ func TestColumnList(t *testing.T) {
 		},
 		{
 			name: "Should get all columns",
-			data: ColumnList[struct {
+			data: utils.ColumnList[struct {
 				C1 any `db:"c1"`
 				C2 any `db:"c2"`
 				C3 any `db:"c3"`
@@ -36,7 +36,7 @@ func TestColumnList(t *testing.T) {
 		},
 		{
 			name: "Should add provided prefixes",
-			data: ColumnList[struct {
+			data: utils.ColumnList[struct {
 				C1 any `db:"c1"`
 				C2 any `db:"c2"`
 				C3 any `db:"c3"`

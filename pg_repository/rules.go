@@ -48,7 +48,7 @@ func (sir *dbScenarioIterationRule) toDomain() (models.Rule, error) {
 
 func (r *PGRepository) GetScenarioIterationRule(ctx context.Context, orgID string, ruleID string) (models.Rule, error) {
 	sql, args, err := r.queryBuilder.
-		Select(ColumnList[dbScenarioIterationRule]()...).
+		Select(utils.ColumnList[dbScenarioIterationRule]()...).
 		From("scenario_iteration_rules").
 		Where("org_id = ?", orgID).
 		Where("id= ?", ruleID).
@@ -79,7 +79,7 @@ type ListScenarioIterationRulesFilters struct {
 
 func (r *PGRepository) ListScenarioIterationRules(ctx context.Context, orgID string, filters models.GetScenarioIterationRulesFilters) ([]models.Rule, error) {
 	sql, args, err := r.queryBuilder.
-		Select(ColumnList[dbScenarioIterationRule]()...).
+		Select(utils.ColumnList[dbScenarioIterationRule]()...).
 		From("scenario_iteration_rules").
 		Where("org_id = ?", orgID).
 		Where(sq.Eq(ColumnValueMap(ListScenarioIterationRulesFilters{

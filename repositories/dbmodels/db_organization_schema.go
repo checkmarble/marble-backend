@@ -2,7 +2,7 @@ package dbmodels
 
 import (
 	"marble/marble-backend/models"
-	"marble/marble-backend/pg_repository"
+	"marble/marble-backend/utils"
 )
 
 type DbOrganizationSchema struct {
@@ -13,7 +13,7 @@ type DbOrganizationSchema struct {
 
 const ORGANIZATION_SCHEMA_TABLE = "organizations_schema"
 
-var OrganizationSchemaFields = pg_repository.ColumnList[DbOrganizationSchema]()
+var OrganizationSchemaFields = utils.ColumnList[DbOrganizationSchema]()
 
 func AdaptOrganizationSchema(db DbOrganizationSchema) models.OrganizationSchema {
 	return models.OrganizationSchema{

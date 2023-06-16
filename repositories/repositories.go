@@ -36,6 +36,10 @@ type Repositories struct {
 	AwsS3Repository                  AwsS3Repository
 }
 
+func NewQueryBuilder() squirrel.StatementBuilderType {
+	return squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
+}
+
 func NewRepositories(
 	configuration models.GlobalConfiguration,
 	marbleJwtSigningKey rsa.PrivateKey,
@@ -54,8 +58,6 @@ func NewRepositories(
 		marbleConnectionPool:             marbleConnectionPool,
 	}
 
-	queryBuilder := squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
-
 	return &Repositories{
 		DatabaseConnectionPoolRepository: databaseConnectionPoolRepository,
 		TransactionFactory:               transactionFactory,
@@ -67,22 +69,17 @@ func NewRepositories(
 		},
 		UserRepository: &UserRepositoryPostgresql{
 			transactionFactory: transactionFactory,
-			queryBuilder:       queryBuilder,
 		},
 		ApiKeyRepository: pgRepository,
 		OrganizationRepository: &OrganizationRepositoryPostgresql{
 			transactionFactory: transactionFactory,
-			queryBuilder:       queryBuilder,
 		},
-		IngestionRepository: &IngestionRepositoryImpl{
-			queryBuilder: queryBuilder,
-		},
+		IngestionRepository:        &IngestionRepositoryImpl{},
 		DataModelRepository:        pgRepository,
-		IngestedDataReadRepository: &IngestedDataReadRepositoryImpl{queryBuilder: queryBuilder},
+		IngestedDataReadRepository: &IngestedDataReadRepositoryImpl{},
 		DecisionRepositoryLegacy:   pgRepository,
 		DecisionRepository: &DecisionRepositoryImpl{
 			transactionFactory: transactionFactory,
-			queryBuilder:       queryBuilder,
 		},
 		ScenarioReadRepository:           pgRepository,
 		ScenarioWriteRepository:          pgRepository,
@@ -92,12 +89,10 @@ func NewRepositories(
 		ScenarioPublicationRepository:    pgRepository,
 		ScheduledExecutionRepository: &ScheduledExecutionRepositoryPostgresql{
 			transactionFactory: transactionFactory,
-			queryBuilder:       queryBuilder,
 		},
 		LegacyPgRepository: pgRepository,
 		OrganizationSchemaRepository: &OrganizationSchemaRepositoryPostgresql{
 			transactionFactory: transactionFactory,
-			queryBuilder:       queryBuilder,
 		},
 		AwsS3Repository: func() AwsS3Repository {
 			if configuration.FakeAwsS3Repository {
