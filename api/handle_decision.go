@@ -4,94 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"time"
 
 	"marble/marble-backend/app"
+	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
 
 	"github.com/ggicci/httpin"
 	"golang.org/x/exp/slog"
 )
-
-type APIError struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-}
-
-type APIDecision struct {
-	ID                string              `json:"id"`
-	CreatedAt         time.Time           `json:"created_at"`
-	TriggerObject     map[string]any      `json:"trigger_object"`
-	TriggerObjectType string              `json:"trigger_object_type"`
-	Outcome           string              `json:"outcome"`
-	Scenario          APIDecisionScenario `json:"scenario"`
-	Rules             []APIDecisionRule   `json:"rules"`
-	Score             int                 `json:"score"`
-	Error             *APIError           `json:"error"`
-}
-
-type APIDecisionScenario struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Version     int    `json:"version"`
-}
-
-func NewAPIDecision(decision models.Decision) APIDecision {
-	apiDecision := APIDecision{
-		ID:                decision.ID,
-		CreatedAt:         decision.CreatedAt,
-		TriggerObjectType: string(decision.ClientObject.TableName),
-		TriggerObject:     decision.ClientObject.Data,
-		Outcome:           decision.Outcome.String(),
-		Scenario: APIDecisionScenario{
-			ID:          decision.ScenarioID,
-			Name:        decision.ScenarioName,
-			Description: decision.ScenarioDescription,
-			Version:     decision.ScenarioVersion,
-		},
-		Score: decision.Score,
-		Rules: make([]APIDecisionRule, len(decision.RuleExecutions)),
-	}
-
-	for i, ruleExecution := range decision.RuleExecutions {
-		apiDecision.Rules[i] = NewAPIDecisionRule(ruleExecution)
-	}
-
-	// Error added here to make sure it does not appear if empty
-	// Otherwise, by default it will generate an empty APIError{}
-	if int(decision.DecisionError) != 0 {
-		apiDecision.Error = &APIError{int(decision.DecisionError), decision.DecisionError.String()}
-	}
-
-	return apiDecision
-}
-
-type APIDecisionRule struct {
-	Name          string    `json:"name"`
-	Description   string    `json:"description"`
-	ScoreModifier int       `json:"score_modifier"`
-	Result        bool      `json:"result"`
-	Error         *APIError `json:"error"`
-}
-
-func NewAPIDecisionRule(rule models.RuleExecution) APIDecisionRule {
-	apiDecisionRule := APIDecisionRule{
-		Name:          rule.Rule.Name,
-		Description:   rule.Rule.Description,
-		ScoreModifier: rule.ResultScoreModifier,
-		Result:        rule.Result,
-	}
-
-	// Error added here to make sure it does not appear if empty
-	// Otherwise, by default it will generate an empty APIError{}
-	if int(rule.Error) != 0 {
-		apiDecisionRule.Error = &APIError{int(rule.Error), rule.Error.String()}
-	}
-
-	return apiDecisionRule
-}
 
 type GetDecisionInput struct {
 	DecisionID string `in:"path=decisionID"`
@@ -121,7 +42,7 @@ func (api *API) handleGetDecision() http.HandlerFunc {
 			return
 		}
 
-		err = json.NewEncoder(w).Encode(NewAPIDecision(decision))
+		err = json.NewEncoder(w).Encode(dto.NewAPIDecision(decision))
 		if err != nil {
 			logger.ErrorCtx(ctx, "error encoding response JSON: \n"+err.Error())
 			http.Error(w, "", http.StatusInternalServerError)
@@ -147,9 +68,9 @@ func (api *API) handleListDecisions() http.HandlerFunc {
 			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
-		apiDecisions := make([]APIDecision, len(decisions))
+		apiDecisions := make([]dto.APIDecision, len(decisions))
 		for i, decision := range decisions {
-			apiDecisions[i] = NewAPIDecision(decision)
+			apiDecisions[i] = dto.NewAPIDecision(decision)
 		}
 
 		err = json.NewEncoder(w).Encode(apiDecisions)
@@ -235,7 +156,7 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 			return
 		}
 
-		err = json.NewEncoder(w).Encode(NewAPIDecision(decision))
+		err = json.NewEncoder(w).Encode(dto.NewAPIDecision(decision))
 		if err != nil {
 			logger.ErrorCtx(ctx, "error encoding response JSON: \n"+err.Error())
 			http.Error(w, "", http.StatusInternalServerError)

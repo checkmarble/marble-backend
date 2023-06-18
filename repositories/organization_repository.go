@@ -26,7 +26,7 @@ func (repo *OrganizationRepositoryPostgresql) AllOrganizations(tx Transaction) (
 	return SqlToListOfModels(
 		pgTx,
 		repo.queryBuilder.
-			Select(dbmodels.OrganizationFields...).
+			Select(dbmodels.ColumnsSelectOrganization...).
 			From(dbmodels.TABLE_ORGANIZATION).
 			OrderBy("id"),
 		dbmodels.AdaptOrganization,
@@ -38,7 +38,7 @@ func (repo *OrganizationRepositoryPostgresql) GetOrganizationById(tx Transaction
 	return SqlToModel(
 		pgTx,
 		repo.queryBuilder.
-			Select(dbmodels.OrganizationFields...).
+			Select(dbmodels.ColumnsSelectOrganization...).
 			From(dbmodels.TABLE_ORGANIZATION).
 			Where("id = ?", organizationID),
 		dbmodels.AdaptOrganization,
@@ -48,8 +48,7 @@ func (repo *OrganizationRepositoryPostgresql) GetOrganizationById(tx Transaction
 func (repo *OrganizationRepositoryPostgresql) CreateOrganization(tx Transaction, createOrganization models.CreateOrganizationInput, newOrganizationId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	return SqlInsert(
-		pgTx,
+	_, err := pgTx.ExecBuilder(
 		repo.queryBuilder.Insert(dbmodels.TABLE_ORGANIZATION).
 			Columns(
 				"id",
@@ -62,6 +61,7 @@ func (repo *OrganizationRepositoryPostgresql) CreateOrganization(tx Transaction,
 				createOrganization.DatabaseName,
 			),
 	)
+	return err
 }
 
 func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(tx Transaction, updateOrganization models.UpdateOrganizationInput) error {
@@ -75,14 +75,19 @@ func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(tx Transaction,
 	if updateOrganization.DatabaseName != nil {
 		updateRequest = updateRequest.Set("database_name", *updateOrganization.DatabaseName)
 	}
+	if updateOrganization.ExportScheduledExecutionS3 != nil {
+		updateRequest = updateRequest.Set("export_scheduled_execution_s3", *updateOrganization.ExportScheduledExecutionS3)
+	}
 
 	updateRequest = updateRequest.Where("id = ?", updateOrganization.ID)
 
-	return SqlUpdate(pgTx, updateRequest)
+	_, err := pgTx.ExecBuilder(updateRequest)
+	return err
 }
 
 func (repo *OrganizationRepositoryPostgresql) DeleteOrganization(tx Transaction, organizationID string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	return SqlDelete(pgTx, repo.queryBuilder.Delete(dbmodels.TABLE_ORGANIZATION).Where("id = ?", organizationID))
+	_, err := pgTx.ExecBuilder(repo.queryBuilder.Delete(dbmodels.TABLE_ORGANIZATION).Where("id = ?", organizationID))
+	return err
 }

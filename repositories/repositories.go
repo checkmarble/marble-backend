@@ -2,11 +2,13 @@ package repositories
 
 import (
 	"crypto/rsa"
+	"marble/marble-backend/models"
 	"marble/marble-backend/pg_repository"
 
 	"firebase.google.com/go/v4/auth"
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/exp/slog"
 )
 
 type Repositories struct {
@@ -20,6 +22,7 @@ type Repositories struct {
 	IngestionRepository              IngestionRepository
 	DataModelRepository              DataModelRepository
 	IngestedDataReadRepository       IngestedDataReadRepository
+	DecisionRepositoryLegacy         DecisionRepositoryLegacy
 	DecisionRepository               DecisionRepository
 	ScenarioReadRepository           ScenarioReadRepository
 	ScenarioWriteRepository          ScenarioWriteRepository
@@ -29,15 +32,18 @@ type Repositories struct {
 	ScenarioPublicationRepository    ScenarioPublicationRepository
 	ScheduledExecutionRepository     ScheduledExecutionRepository
 	LegacyPgRepository               *pg_repository.PGRepository
-	ClientTablesRepository           ClientTablesRepository
+	OrganizationSchemaRepository     OrganizationSchemaRepository
+	AwsS3Repository                  AwsS3Repository
 }
 
 func NewRepositories(
+	configuration models.GlobalConfiguration,
 	marbleJwtSigningKey rsa.PrivateKey,
 	firebaseClient auth.Client,
 	pgRepository *pg_repository.PGRepository,
 	marbleConnectionPool *pgxpool.Pool,
-) *Repositories {
+	appLogger *slog.Logger,
+) (*Repositories, error) {
 
 	databaseConnectionPoolRepository := NewDatabaseConnectionPoolRepository(
 		marbleConnectionPool,
@@ -71,9 +77,13 @@ func NewRepositories(
 		IngestionRepository: &IngestionRepositoryImpl{
 			queryBuilder: queryBuilder,
 		},
-		DataModelRepository:              pgRepository,
-		IngestedDataReadRepository:       &IngestedDataReadRepositoryImpl{queryBuilder: queryBuilder},
-		DecisionRepository:               pgRepository,
+		DataModelRepository:        pgRepository,
+		IngestedDataReadRepository: &IngestedDataReadRepositoryImpl{queryBuilder: queryBuilder},
+		DecisionRepositoryLegacy:   pgRepository,
+		DecisionRepository: &DecisionRepositoryImpl{
+			transactionFactory: transactionFactory,
+			queryBuilder:       queryBuilder,
+		},
 		ScenarioReadRepository:           pgRepository,
 		ScenarioWriteRepository:          pgRepository,
 		ScenarioIterationReadRepository:  pgRepository,
@@ -85,9 +95,19 @@ func NewRepositories(
 			queryBuilder:       queryBuilder,
 		},
 		LegacyPgRepository: pgRepository,
-		ClientTablesRepository: &ClientTablesRepositoryPostgresql{
+		OrganizationSchemaRepository: &OrganizationSchemaRepositoryPostgresql{
 			transactionFactory: transactionFactory,
 			queryBuilder:       queryBuilder,
 		},
-	}
+		AwsS3Repository: func() AwsS3Repository {
+			if configuration.FakeAwsS3Repository {
+				return &AwsS3RepositoryFake{}
+			}
+
+			return &AwsS3RepositoryImpl{
+				s3Client: NewS3Client(),
+				logger:   appLogger,
+			}
+		}(),
+	}, nil
 }

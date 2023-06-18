@@ -5,6 +5,7 @@ import ErrorPage from "@/pages/ErrorPage";
 import OrganizationsPage from "@/pages/OrganizationsPage";
 import UsersPage from "@/pages/UsersPage";
 import OrganizationDetailsPage from "./pages/OrganizationDetailsPage";
+import OrganizationEditPage from "./pages/OrganizationEditPage";
 import HomePage from "@/pages/HomePage";
 import LoginPage from "@/pages/LoginPage";
 import IngestionPage from "./pages/IngestionPage";
@@ -26,8 +27,12 @@ export function backofficeRoutes() {
         element={<UserDetailPage />}
       />
       <Route
-        path={`/${PathFragment.OrganizationDetails}/:organizationId`}
+        path={`/${PathFragment.Organizations}/:organizationId`}
         element={<OrganizationDetailsPage />}
+      />
+      <Route
+        path={`/${PathFragment.Organizations}/:organizationId/edit`}
+        element={<OrganizationEditPage />}
       />
       <Route
         path={`/${PathFragment.Ingestion}/:organizationId`}

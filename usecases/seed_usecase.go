@@ -7,9 +7,10 @@ import (
 )
 
 type SeedUseCase struct {
-	transactionFactory  repositories.TransactionFactory
-	userRepository      repositories.UserRepository
-	organizationCreator organization.OrganizationCreator
+	transactionFactory     repositories.TransactionFactory
+	userRepository         repositories.UserRepository
+	organizationCreator    organization.OrganizationCreator
+	organizationRepository repositories.OrganizationRepository
 }
 
 func (usecase *SeedUseCase) SeedMarbleAdmins(firstMarbleAdminEmail string) error {
@@ -39,7 +40,16 @@ func (usecase *SeedUseCase) SeedZorgOrganization(zorgOrganizationId string) erro
 		},
 	)
 	if repositories.IsIsUniqueViolationError(err) {
-		return nil
+		err = nil
 	}
-	return err
+
+	if err != nil {
+		return err
+	}
+
+	var testBucketName = "marble-backend-export-scheduled-execution-test"
+	return usecase.organizationRepository.UpdateOrganization(nil, models.UpdateOrganizationInput{
+		ID:                         zorgOrganizationId,
+		ExportScheduledExecutionS3: &testBucketName,
+	})
 }

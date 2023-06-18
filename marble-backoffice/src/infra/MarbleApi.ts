@@ -1,4 +1,4 @@
-import type { CreateDecision, CreateUser } from "@/models";
+import type { CreateDecision, CreateOrganization, PatchOrganization, CreateUser } from "@/models";
 import { HttpMethod } from "./fetchUtils";
 import { AuthorizedFetcher } from "./AuthorizedFetcher";
 
@@ -34,12 +34,13 @@ export class MarbleApi {
     return this.fetcher.authorizedApiFetch(request);
   }
 
-  async postAuthorizedJson(args: {
+  async sendAuthorizedJson(args: {
+    method: HttpMethod;
     path: string;
     body: unknown;
   }): Promise<unknown> {
     const request = new Request(this.apiUrl(args.path), {
-      method: HttpMethod.Post,
+      method: args.method,
       body: JSON.stringify(args.body),
       headers: {
         "Content-type": "application/json; charset=UTF-8",
@@ -66,16 +67,35 @@ export class MarbleApi {
     return this.getAuthorizedJson(`${ORGANIZATION_URL_PATH}/${orgIdParam}`);
   }
 
-  async postOrganization(createOrganizationBody: unknown): Promise<unknown> {
-    return this.postAuthorizedJson({
+  async postOrganization(createOrganizationBody: CreateOrganization): Promise<unknown> {
+    return this.sendAuthorizedJson({
+      method: HttpMethod.Post,
       path: ORGANIZATION_URL_PATH,
-      body: createOrganizationBody,
+      body: {
+        name: createOrganizationBody.name,
+        databaseName: createOrganizationBody.databaseName,
+      },
     });
   }
 
   async deleteOrganization(organizationId: string): Promise<unknown> {
     const orgIdParam = encodeURIComponent(organizationId);
     return this.deleteAuthorizedJson(`${ORGANIZATION_URL_PATH}/${orgIdParam}`);
+  }
+
+  async patchOrganization(
+    organizationId: string,
+    patchOrganization: PatchOrganization
+  ): Promise<unknown> {
+    const orgIdParam = encodeURIComponent(organizationId);
+    return this.sendAuthorizedJson({
+      method: HttpMethod.Patch,
+      path: `${ORGANIZATION_URL_PATH}/${orgIdParam}`,
+      body: {
+        name: patchOrganization.name,
+        export_scheduled_execution_s3: patchOrganization.exportScheduledExecutionS3,
+      },
+    });
   }
 
   async scenariosOfOrganization(organizationId: string): Promise<unknown> {
@@ -96,7 +116,8 @@ export class MarbleApi {
   }
 
   async postUser(createUser: CreateUser): Promise<unknown> {
-    return this.postAuthorizedJson({
+    return this.sendAuthorizedJson({
+      method: HttpMethod.Post,
       path: USERS_URL_PATH,
       body: {
         email: createUser.email,
@@ -128,24 +149,25 @@ export class MarbleApi {
 
   async ingest(ingestObject: IngestObject) {
     const objectTypeParam = encodeURIComponent(ingestObject.tableName);
-    await this.postAuthorizedJson({
+    await this.sendAuthorizedJson({
+      method: HttpMethod.Post,
       path: `${INGESTION_URL_PATH}/${objectTypeParam}`,
       body: ingestObject.content,
     });
     return ingestObject;
   }
 
-  async decisions() : Promise<unknown> {
-    return await this.getAuthorizedJson(DECISIONS_URL_PATH)
+  async decisions(): Promise<unknown> {
+    return await this.getAuthorizedJson(DECISIONS_URL_PATH);
   }
 
   async postDecision(createDecision: CreateDecision) {
-    return await this.postAuthorizedJson({
+    return await this.sendAuthorizedJson({
+      method: HttpMethod.Post,
       path: DECISIONS_URL_PATH,
-      body: createDecision
-    })
+      body: createDecision,
+    });
   }
-  
 }
 
 function urlWithOrganizationId(path: string, organizationId: string): string {

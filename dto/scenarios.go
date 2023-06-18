@@ -33,7 +33,7 @@ type UpdateScenarioIterationBody struct {
 		ScoreRejectThreshold *int             `json:"scoreRejectThreshold,omitempty"`
 		Schedule             *string          `json:"schedule"`
 		BatchTriggerSQL      *string          `json:"batchTriggerSQL"`
-	} `json:"body,omtiempty"`
+	} `json:"body,omitempty"`
 }
 
 type UpdateScenarioIterationInput struct {

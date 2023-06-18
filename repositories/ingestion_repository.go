@@ -35,7 +35,7 @@ func (repo *IngestionRepositoryImpl) IngestObject(transaction Transaction, paylo
 	sql := repo.queryBuilder.Insert(tableNameWithSchema(tx, table.Name)).Columns(columnNames...).Values(values...).Suffix("RETURNING \"id\"")
 
 	var createdObjectID string
-	err = SqlInsert(tx, sql)
+	_, err = tx.ExecBuilder(sql)
 	if err != nil {
 		return err
 	}
@@ -75,7 +75,7 @@ func updateExistingVersionIfPresent(
 	}
 
 	var id string
-	err = tx.QueryRow(sql, args...).Scan(&id)
+	err = tx.exec.QueryRow(tx.ctx, sql, args...).Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil
 	} else if err != nil {
@@ -90,7 +90,7 @@ func updateExistingVersionIfPresent(
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(sql, args...)
+	_, err = tx.SqlExec(sql, args...)
 	if err != nil {
 		return err
 	}

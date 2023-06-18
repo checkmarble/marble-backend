@@ -1,17 +1,15 @@
 package usecases
 
 import (
+	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/organization"
+	"marble/marble-backend/usecases/scheduledexecution"
 )
 
-type Configuration struct {
-	TokenLifetimeMinute int
-}
-
 type Usecases struct {
-	Repositories repositories.Repositories
-	Config       Configuration
+	Repositories  repositories.Repositories
+	Configuration models.GlobalConfiguration
 }
 
 func (usecases *Usecases) NewMarbleTokenUseCase() MarbleTokenUseCase {
@@ -23,26 +21,26 @@ func (usecases *Usecases) NewMarbleTokenUseCase() MarbleTokenUseCase {
 		userRepository:          repositories.UserRepository,
 		apiKeyRepository:        repositories.ApiKeyRepository,
 		organizationRepository:  repositories.OrganizationRepository,
-		tokenLifetimeMinute:     usecases.Config.TokenLifetimeMinute,
+		tokenLifetimeMinute:     usecases.Configuration.TokenLifetimeMinute,
 	}
 }
 
 func (usecases *Usecases) NewOrganizationUseCase() OrganizationUseCase {
 	return OrganizationUseCase{
-		transactionFactory:     usecases.Repositories.TransactionFactory,
-		orgTransactionFactory:  usecases.NewOrgTransactionFactory(),
-		organizationRepository: usecases.Repositories.OrganizationRepository,
-		datamodelRepository:    usecases.Repositories.DataModelRepository,
-		apiKeyRepository:       usecases.Repositories.ApiKeyRepository,
-		userRepository:         usecases.Repositories.UserRepository,
-		organizationCreator:    usecases.NewOrganizationCreator(),
-		clientTables:           usecases.Repositories.ClientTablesRepository,
+		transactionFactory:           usecases.Repositories.TransactionFactory,
+		orgTransactionFactory:        usecases.NewOrgTransactionFactory(),
+		organizationRepository:       usecases.Repositories.OrganizationRepository,
+		datamodelRepository:          usecases.Repositories.DataModelRepository,
+		apiKeyRepository:             usecases.Repositories.ApiKeyRepository,
+		userRepository:               usecases.Repositories.UserRepository,
+		organizationCreator:          usecases.NewOrganizationCreator(),
+		organizationSchemaRepository: usecases.Repositories.OrganizationSchemaRepository,
 	}
 }
 
 func (usecases *Usecases) NewOrgTransactionFactory() organization.OrgTransactionFactory {
 	return &organization.OrgTransactionFactoryImpl{
-		ClientTablesRepository:           usecases.Repositories.ClientTablesRepository,
+		OrganizationSchemaRepository:     usecases.Repositories.OrganizationSchemaRepository,
 		TransactionFactory:               usecases.Repositories.TransactionFactory,
 		DatabaseConnectionPoolRepository: usecases.Repositories.DatabaseConnectionPoolRepository,
 	}
@@ -59,7 +57,7 @@ func (usecases *Usecases) NewDecisionUsecase() DecisionUsecase {
 	return DecisionUsecase{
 		orgTransactionFactory:           usecases.NewOrgTransactionFactory(),
 		ingestedDataReadRepository:      usecases.Repositories.IngestedDataReadRepository,
-		decisionRepository:              usecases.Repositories.DecisionRepository,
+		decisionRepositoryLegacy:        usecases.Repositories.DecisionRepositoryLegacy,
 		datamodelRepository:             usecases.Repositories.DataModelRepository,
 		scenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,
 		scenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
@@ -75,9 +73,10 @@ func (usecases *Usecases) NewUserUseCase() UserUseCase {
 
 func (usecases *Usecases) NewSeedUseCase() SeedUseCase {
 	return SeedUseCase{
-		transactionFactory:  usecases.Repositories.TransactionFactory,
-		userRepository:      usecases.Repositories.UserRepository,
-		organizationCreator: usecases.NewOrganizationCreator(),
+		transactionFactory:     usecases.Repositories.TransactionFactory,
+		userRepository:         usecases.Repositories.UserRepository,
+		organizationCreator:    usecases.NewOrganizationCreator(),
+		organizationRepository: usecases.Repositories.OrganizationRepository,
 	}
 }
 
@@ -86,11 +85,11 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 		TransactionFactory:     usecases.Repositories.TransactionFactory,
 		OrganizationRepository: usecases.Repositories.OrganizationRepository,
 		OrganizationSeeder:     usecases.Repositories.LegacyPgRepository,
-		PopulateClientTables: organization.PopulateClientTables{
-			TransactionFactory:     usecases.Repositories.TransactionFactory,
-			OrganizationRepository: usecases.Repositories.OrganizationRepository,
-			ClientTablesRepository: usecases.Repositories.ClientTablesRepository,
-			DataModelRepository:    usecases.Repositories.DataModelRepository,
+		PopulateOrganizationSchema: organization.PopulateOrganizationSchema{
+			TransactionFactory:           usecases.Repositories.TransactionFactory,
+			OrganizationRepository:       usecases.Repositories.OrganizationRepository,
+			OrganizationSchemaRepository: usecases.Repositories.OrganizationSchemaRepository,
+			DataModelRepository:          usecases.Repositories.DataModelRepository,
 		},
 	}
 }
@@ -131,5 +130,12 @@ func (usecases *Usecases) NewScheduledExecutionUsecase() ScheduledExecutionUseca
 		dataModelRepository:             usecases.Repositories.DataModelRepository,
 		ingestedDataReadRepository:      usecases.Repositories.IngestedDataReadRepository,
 		decisionRepository:              usecases.Repositories.DecisionRepository,
+	}
+}
+
+func (usecases *Usecases) NewExportScheduleExecution() scheduledexecution.ExportScheduleExecution {
+	return &scheduledexecution.ExportScheduleExecutionImpl{
+		AwsS3Repository:    usecases.Repositories.AwsS3Repository,
+		DecisionRepository: usecases.Repositories.DecisionRepository,
 	}
 }
