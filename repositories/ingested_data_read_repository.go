@@ -12,7 +12,7 @@ import (
 
 type IngestedDataReadRepository interface {
 	GetDbField(transaction Transaction, readParams models.DbFieldReadParams) (any, error)
-	ListAllObjectsFromTable(transaction Transaction, table models.Table) ([]models.PayloadReader, error)
+	ListAllObjectsFromTable(transaction Transaction, table models.Table) ([]models.ClientObject, error)
 }
 
 type IngestedDataReadRepositoryImpl struct {
@@ -148,7 +148,7 @@ func getLastTableFromPath(params models.DbFieldReadParams) (models.Table, error)
 	return currentTable, nil
 }
 
-func (repo *IngestedDataReadRepositoryImpl) ListAllObjectsFromTable(transaction Transaction, table models.Table) ([]models.PayloadReader, error) {
+func (repo *IngestedDataReadRepositoryImpl) ListAllObjectsFromTable(transaction Transaction, table models.Table) ([]models.ClientObject, error) {
 	tx := adaptClientDatabaseTransaction(transaction)
 
 	columnNames := make([]string, len(table.Fields))
@@ -158,10 +158,28 @@ func (repo *IngestedDataReadRepositoryImpl) ListAllObjectsFromTable(transaction 
 		i++
 	}
 
-	sql, args, err := repo.queryBuilder.
+	objectsAsMap, err := queryWithDynamicColumnList(tx, string(table.Name), columnNames, repo.queryBuilder)
+	if err != nil {
+		return nil, err
+	}
+
+	output := make([]models.ClientObject, len(objectsAsMap))
+	for i, objectAsMap := range objectsAsMap {
+		object := models.ClientObject{
+			TableName: table.Name,
+			Data:      objectAsMap,
+		}
+		output[i] = object
+	}
+
+	return output, nil
+}
+
+func queryWithDynamicColumnList(tx TransactionPostgres, qualifiedTableName string, columnNames []string, queryBuilder squirrel.StatementBuilderType) ([]map[string]any, error) {
+	sql, args, err := queryBuilder.
 		Select(columnNames...).
-		From(string(table.Name)).
-		Where(rowIsValid(string(table.Name))).
+		From(qualifiedTableName).
+		Where(rowIsValid(qualifiedTableName)).
 		ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("Error while building SQL query: %w", err)
@@ -172,7 +190,7 @@ func (repo *IngestedDataReadRepositoryImpl) ListAllObjectsFromTable(transaction 
 		return nil, fmt.Errorf("Error while querying DB: %w", err)
 	}
 	defer rows.Close()
-	output := make([]models.PayloadReader, 0)
+	output := make([]map[string]any, 0)
 	for rows.Next() {
 		values := make([]any, len(columnNames))
 		referencesToValues := make([]any, 0)
@@ -189,11 +207,7 @@ func (repo *IngestedDataReadRepositoryImpl) ListAllObjectsFromTable(transaction 
 		for i, columnName := range columnNames {
 			objectAsMap[columnName] = values[i]
 		}
-		object := models.ClientObject{
-			TableName: table.Name,
-			Data:      objectAsMap,
-		}
-		output = append(output, object)
+		output = append(output, objectAsMap)
 	}
 
 	if err := rows.Err(); err != nil {
