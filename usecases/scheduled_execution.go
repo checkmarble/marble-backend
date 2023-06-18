@@ -102,7 +102,7 @@ func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx cont
 		return err
 	}
 
-	if isDue {
+	if isDue || true {
 		logger.DebugCtx(ctx, fmt.Sprintf("Scenario iteration %s is due", publishedVersion.ID))
 		id := uuid.NewString()
 		err = usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
@@ -121,7 +121,7 @@ func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx cont
 			usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
 				return usecase.scheduledExecutionRepository.UpdateScheduledExecution(tx, models.UpdateScheduledExecutionInput{
 					ID:     id,
-					Status: utils.PtrTo("failure", nil),
+					Status: utils.PtrTo(models.ScheduledExecutionFailure, nil),
 				})
 			})
 			return err
@@ -131,7 +131,7 @@ func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx cont
 		err = usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
 			return usecase.scheduledExecutionRepository.UpdateScheduledExecution(tx, models.UpdateScheduledExecutionInput{
 				ID:     id,
-				Status: utils.PtrTo("success", nil),
+				Status: utils.PtrTo(models.ScheduledExecutionSuccess, nil),
 			})
 		})
 		if err != nil {
