@@ -130,6 +130,7 @@ func (usecases *Usecases) NewScheduledExecutionUsecase() ScheduledExecutionUseca
 		dataModelRepository:             usecases.Repositories.DataModelRepository,
 		ingestedDataReadRepository:      usecases.Repositories.IngestedDataReadRepository,
 		decisionRepository:              usecases.Repositories.DecisionRepository,
+		scenarioPublicationsRepository:  usecases.Repositories.ScenarioPublicationRepository,
 	}
 }
 
