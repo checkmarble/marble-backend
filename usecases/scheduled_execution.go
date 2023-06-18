@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
@@ -23,7 +24,7 @@ type ScheduledExecutionUsecase struct {
 	transactionFactory              repositories.TransactionFactory
 	orgTransactionFactory           organization.OrgTransactionFactory
 	ingestedDataReadRepository      repositories.IngestedDataReadRepository
-	decisionRepository              repositories.DecisionRepository
+	decisionRepositoryLegacy        repositories.DecisionRepositoryLegacy
 }
 
 func (usecase *ScheduledExecutionUsecase) GetScheduledExecution(ctx context.Context, orgID string, id string) (models.ScheduledExecution, error) {
@@ -183,7 +184,9 @@ func (usecase *ScheduledExecutionUsecase) executeScheduledScenario(ctx context.C
 				orgTransactionFactory:           usecase.orgTransactionFactory,
 				ingestedDataReadRepository:      usecase.ingestedDataReadRepository,
 			}, logger)
-			if err != nil {
+			if errors.Is(err, models.ScenarioTriggerConditionAndTriggerObjectMismatchError) {
+				continue
+			} else if err != nil {
 				return fmt.Errorf("error evaluating scenario: %w", err)
 			}
 
@@ -199,7 +202,7 @@ func (usecase *ScheduledExecutionUsecase) executeScheduledScenario(ctx context.C
 			}
 
 			// TODO: write in a transaction
-			decision, err := usecase.decisionRepository.StoreDecision(ctx, scenario.OrganizationID, decisionInput)
+			decision, err := usecase.decisionRepositoryLegacy.StoreDecision(ctx, scenario.OrganizationID, decisionInput)
 			if err != nil {
 				return fmt.Errorf("error storing decision: %w", err)
 			}
@@ -213,7 +216,7 @@ func (usecase *ScheduledExecutionUsecase) executeScheduledScenario(ctx context.C
 
 	// wrap up
 
-	return fmt.Errorf("Not implemented")
+	return nil
 }
 
 func (usecase *ScheduledExecutionUsecase) getPublishedScenarioIteration(ctx context.Context, scenario models.Scenario) (models.PublishedScenarioIteration, error) {
