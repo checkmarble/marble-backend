@@ -3,6 +3,8 @@ package repositories
 import (
 	"context"
 	"marble/marble-backend/models"
+	"marble/marble-backend/repositories/dbmodels"
+	"marble/marble-backend/utils"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -17,6 +19,7 @@ type DecisionRepositoryLegacy interface {
 
 type DecisionRepository interface {
 	DecisionsOfScheduledExecution(scheduledExecutionId string) (<-chan models.Decision, <-chan error)
+	StoreDecision(tx Transaction, decision models.Decision, organizationID string, newDecisionId string) error
 }
 
 type DecisionRepositoryImpl struct {
@@ -61,6 +64,72 @@ func (repo *DecisionRepositoryImpl) DecisionsOfScheduledExecution(scheduledExecu
 	}()
 
 	return decisionsChan, errorChan
+}
+
+func (repo *DecisionRepositoryImpl) StoreDecision(tx Transaction, decision models.Decision, organizationID string, newDecisionId string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	_, err := pgTx.ExecBuilder(
+		repo.queryBuilder.Insert(dbmodels.TABLE_DECISIONS).
+			Columns(
+				"id",
+				"org_id",
+				"outcome",
+				"scenario_id",
+				"scenario_name",
+				"scenario_description",
+				"scenario_version",
+				"score",
+				"error_code",
+				"trigger_object",
+				"trigger_object_type",
+			).
+			Values(
+				newDecisionId,
+				organizationID,
+				decision.Outcome.String(),
+				decision.ScenarioID,
+				decision.ScenarioName,
+				decision.ScenarioDescription,
+				decision.ScenarioVersion,
+				decision.Score,
+				decision.DecisionError,
+				decision.ClientObject.Data,
+				decision.ClientObject.TableName,
+			),
+	)
+	if err != nil {
+		return err
+	}
+
+	builderForRules := repo.queryBuilder.
+		Insert(dbmodels.TABLE_DECISION_RULES).
+		Columns(
+			"id",
+			"org_id",
+			"decision_id",
+			"name",
+			"description",
+			"score_modifier",
+			"result",
+			"error_code",
+		)
+
+	for _, ruleExecution := range decision.RuleExecutions {
+		builderForRules = builderForRules.
+			Values(
+				utils.NewPrimaryKey(organizationID),
+				organizationID,
+				newDecisionId,
+				ruleExecution.Rule.Name,
+				ruleExecution.Rule.Description,
+				ruleExecution.ResultScoreModifier,
+				ruleExecution.Result,
+				ruleExecution.Error,
+			)
+	}
+	_, err = pgTx.ExecBuilder(builderForRules)
+	return err
 }
 
 // func gfet() {
