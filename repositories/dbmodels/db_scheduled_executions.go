@@ -23,7 +23,7 @@ func AdaptScheduledExecution(db DBScheduledExecution) models.ScheduledExecution 
 	return models.ScheduledExecution{
 		ID:                  db.Id,
 		ScenarioIterationID: db.ScenarioIterationID,
-		Status:              db.Status,
+		Status:              models.ScheduledExecutionStatusFrom(db.Status),
 		StartedAt:           db.StartedAt,
 		FinishedAt:          db.FinishedAt,
 	}
