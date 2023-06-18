@@ -129,7 +129,7 @@ func (usecases *Usecases) NewScheduledExecutionUsecase() ScheduledExecutionUseca
 		orgTransactionFactory:           usecases.NewOrgTransactionFactory(),
 		dataModelRepository:             usecases.Repositories.DataModelRepository,
 		ingestedDataReadRepository:      usecases.Repositories.IngestedDataReadRepository,
-		decisionRepository:              usecases.Repositories.DecisionRepository,
+		decisionRepositoryLegacy:        usecases.Repositories.DecisionRepositoryLegacy,
 	}
 }
 

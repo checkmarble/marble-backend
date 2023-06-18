@@ -153,8 +153,8 @@ func (repo *IngestedDataReadRepositoryImpl) ListAllObjectsFromTable(transaction 
 
 	columnNames := make([]string, len(table.Fields))
 	i := 0
-	for _, field := range table.Fields {
-		columnNames[i] = string(field.Name)
+	for fieldName := range table.Fields {
+		columnNames[i] = string(fieldName)
 		i++
 	}
 
@@ -184,8 +184,7 @@ func queryWithDynamicColumnList(tx TransactionPostgres, qualifiedTableName strin
 	if err != nil {
 		return nil, fmt.Errorf("Error while building SQL query: %w", err)
 	}
-
-	rows, err := tx.Query(sql, args...)
+	rows, err := tx.exec.Query(tx.ctx, sql, args...)
 	if err != nil {
 		return nil, fmt.Errorf("Error while querying DB: %w", err)
 	}
