@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
+	"marble/marble-backend/usecases/organization"
 	"marble/marble-backend/utils"
 	"runtime/debug"
 	"time"
@@ -20,7 +21,9 @@ type ScheduledExecutionUsecase struct {
 	scheduledExecutionRepository    repositories.ScheduledExecutionRepository
 	dataModelRepository             repositories.DataModelRepository
 	transactionFactory              repositories.TransactionFactory
+	orgTransactionFactory           organization.OrgTransactionFactory
 	ingestedDataReadRepository      repositories.IngestedDataReadRepository
+	decisionRepository              repositories.DecisionRepository
 }
 
 func (usecase *ScheduledExecutionUsecase) GetScheduledExecution(ctx context.Context, orgID string, id string) (models.ScheduledExecution, error) {
@@ -151,24 +154,62 @@ func executionIsDue(schedule string, previousExecutions []models.ScheduledExecut
 }
 
 func (usecase *ScheduledExecutionUsecase) executeScheduledScenario(ctx context.Context, scenario models.Scenario, publishedVersion models.PublishedScenarioIteration, logger *slog.Logger) error {
-
 	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, scenario.OrganizationID)
 	if err != nil {
 		return err
 	}
 	tables := dataModel.Tables
-	_, ok := tables[models.TableName(scenario.TriggerObjectType)]
+	table, ok := tables[models.TableName(scenario.TriggerObjectType)]
 	if !ok {
 		return fmt.Errorf("Trigger object type %s not found in data model: %w", scenario.TriggerObjectType, models.NotFoundError)
 	}
 
 	// list objects to score
-	// objects, err := usecase.ingestedDataReadRepository.ListAllObjectsFromTable(ctx, table)
+	err = usecase.orgTransactionFactory.TransactionInOrgSchema(scenario.OrganizationID, func(tx repositories.Transaction) error {
+		objects, err := usecase.ingestedDataReadRepository.ListAllObjectsFromTable(tx, table)
+		if err != nil {
+			return err
+		}
+
+		decisions := make([]models.Decision, 0)
+		// execute scenario for each object
+		for _, object := range objects {
+			scenarioExecution, err := evalScenario(ctx, scenarioEvaluationParameters{
+				scenario:  scenario,
+				payload:   object,
+				dataModel: dataModel,
+			}, scenarioEvaluationRepositories{
+				scenarioIterationReadRepository: usecase.scenarioIterationReadRepository,
+				orgTransactionFactory:           usecase.orgTransactionFactory,
+				ingestedDataReadRepository:      usecase.ingestedDataReadRepository,
+			}, logger)
+			if err != nil {
+				return fmt.Errorf("error evaluating scenario: %w", err)
+			}
+
+			decisionInput := models.Decision{
+				ClientObject:        object,
+				Outcome:             scenarioExecution.Outcome,
+				ScenarioID:          scenarioExecution.ScenarioID,
+				ScenarioName:        scenarioExecution.ScenarioName,
+				ScenarioDescription: scenarioExecution.ScenarioDescription,
+				ScenarioVersion:     scenarioExecution.ScenarioVersion,
+				RuleExecutions:      scenarioExecution.RuleExecutions,
+				Score:               scenarioExecution.Score,
+			}
+
+			// TODO: write in a transaction
+			decision, err := usecase.decisionRepository.StoreDecision(ctx, scenario.OrganizationID, decisionInput)
+			if err != nil {
+				return fmt.Errorf("error storing decision: %w", err)
+			}
+			decisions = append(decisions, decision)
+		}
+		return nil
+	})
 	if err != nil {
 		return err
 	}
-
-	// execute scenario for each object
 
 	// wrap up
 
