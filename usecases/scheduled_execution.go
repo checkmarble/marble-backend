@@ -19,6 +19,7 @@ import (
 type ScheduledExecutionUsecase struct {
 	scenarioReadRepository          repositories.ScenarioReadRepository
 	scenarioIterationReadRepository repositories.ScenarioIterationReadRepository
+	scenarioPublicationsRepository  repositories.ScenarioPublicationRepository
 	scheduledExecutionRepository    repositories.ScheduledExecutionRepository
 	dataModelRepository             repositories.DataModelRepository
 	transactionFactory              repositories.TransactionFactory
@@ -90,13 +91,18 @@ func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx cont
 		return err
 	}
 
-	tz, _ := time.LoadLocation("Europe/Paris")
-	isDue, err := executionIsDue(publishedVersion.Body.Schedule, previousExecutions, tz)
+	publications, err := usecase.scenarioPublicationsRepository.ListScenarioPublications(ctx, scenario.OrganizationID, models.ListScenarioPublicationsFilters{ScenarioID: &scenario.ID})
 	if err != nil {
 		return err
 	}
 
-	if isDue || true {
+	tz, _ := time.LoadLocation("Europe/Paris")
+	isDue, err := executionIsDue(publishedVersion.Body.Schedule, previousExecutions, publications, tz)
+	if err != nil {
+		return err
+	}
+
+	if isDue {
 		logger.DebugCtx(ctx, fmt.Sprintf("Scenario iteration %s is due", publishedVersion.ID))
 		id := uuid.NewString()
 		err = usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
@@ -139,12 +145,16 @@ func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx cont
 	}
 }
 
-func executionIsDue(schedule string, previousExecutions []models.ScheduledExecution, tz *time.Location) (bool, error) {
-	if len(previousExecutions) == 0 {
-		return true, nil
+func executionIsDue(schedule string, previousExecutions []models.ScheduledExecution, publications []models.ScenarioPublication, tz *time.Location) (bool, error) {
+	var referenceTime time.Time
+	if len(previousExecutions) > 0 {
+		referenceTime = previousExecutions[0].StartedAt.In(tz)
+	} else {
+		// if there is no previous execution, consider the last iteration publication time to be the last execution time
+		referenceTime = publications[0].CreatedAt.In(tz)
 	}
 
-	nextTick, err := gronx.NextTickAfter(schedule, previousExecutions[0].StartedAt.In(tz), false)
+	nextTick, err := gronx.NextTickAfter(schedule, referenceTime, false)
 	if err != nil {
 		return true, err
 	}
