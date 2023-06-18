@@ -24,7 +24,7 @@ type ScheduledExecutionUsecase struct {
 	transactionFactory              repositories.TransactionFactory
 	orgTransactionFactory           organization.OrgTransactionFactory
 	ingestedDataReadRepository      repositories.IngestedDataReadRepository
-	decisionRepositoryLegacy        repositories.DecisionRepositoryLegacy
+	decisionRepository              repositories.DecisionRepository
 }
 
 func (usecase *ScheduledExecutionUsecase) GetScheduledExecution(ctx context.Context, orgID string, id string) (models.ScheduledExecution, error) {
@@ -96,7 +96,7 @@ func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx cont
 		return err
 	}
 
-	if isDue {
+	if isDue || true {
 		logger.DebugCtx(ctx, fmt.Sprintf("Scenario iteration %s is due", publishedVersion.ID))
 		id := uuid.NewString()
 		err = usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
@@ -166,13 +166,16 @@ func (usecase *ScheduledExecutionUsecase) executeScheduledScenario(ctx context.C
 	}
 
 	// list objects to score
-	err = usecase.orgTransactionFactory.TransactionInOrgSchema(scenario.OrganizationID, func(tx repositories.Transaction) error {
-		objects, err := usecase.ingestedDataReadRepository.ListAllObjectsFromTable(tx, table)
+	err = usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+		var objects []models.ClientObject
+		err = usecase.orgTransactionFactory.TransactionInOrgSchema(scenario.OrganizationID, func(clientTx repositories.Transaction) error {
+			objects, err = usecase.ingestedDataReadRepository.ListAllObjectsFromTable(clientTx, table)
+			return err
+		})
 		if err != nil {
 			return err
 		}
 
-		decisions := make([]models.Decision, 0)
 		// execute scenario for each object
 		for _, object := range objects {
 			scenarioExecution, err := evalScenario(ctx, scenarioEvaluationParameters{
@@ -201,12 +204,10 @@ func (usecase *ScheduledExecutionUsecase) executeScheduledScenario(ctx context.C
 				Score:               scenarioExecution.Score,
 			}
 
-			// TODO: write in a transaction
-			decision, err := usecase.decisionRepositoryLegacy.StoreDecision(ctx, scenario.OrganizationID, decisionInput)
+			err = usecase.decisionRepository.StoreDecision(tx, decisionInput, scenario.OrganizationID, utils.NewPrimaryKey(scenario.OrganizationID))
 			if err != nil {
 				return fmt.Errorf("error storing decision: %w", err)
 			}
-			decisions = append(decisions, decision)
 		}
 		return nil
 	})
