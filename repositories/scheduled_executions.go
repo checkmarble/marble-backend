@@ -63,7 +63,7 @@ func (repo *ScheduledExecutionRepositoryPostgresql) CreateScheduledExecution(tx 
 				createScheduledEx.OrganizationID,
 				createScheduledEx.ScenarioID,
 				createScheduledEx.ScenarioIterationID,
-				"in_progress",
+				models.ScheduledExecutionPending.String(),
 			),
 	)
 	return err
@@ -75,8 +75,8 @@ func (repo *ScheduledExecutionRepositoryPostgresql) UpdateScheduledExecution(tx 
 		Where("id = ?", updateScheduledEx.ID)
 
 	if updateScheduledEx.Status != nil {
-		query = query.Set("status", *updateScheduledEx.Status)
-		if *updateScheduledEx.Status == "success" {
+		query = query.Set("status", updateScheduledEx.Status.String())
+		if *updateScheduledEx.Status == models.ScheduledExecutionSuccess {
 			query = query.Set("finished_at", "NOW()")
 		}
 	}
