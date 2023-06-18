@@ -158,7 +158,7 @@ func (repo *IngestedDataReadRepositoryImpl) ListAllObjectsFromTable(transaction 
 		i++
 	}
 
-	objectsAsMap, err := queryWithDynamicColumnList(tx, string(table.Name), columnNames, repo.queryBuilder)
+	objectsAsMap, err := queryWithDynamicColumnList(tx, tableNameWithSchema(tx, table.Name), columnNames, repo.queryBuilder)
 	if err != nil {
 		return nil, err
 	}
