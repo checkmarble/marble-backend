@@ -205,7 +205,7 @@ func (usecase *ScheduledExecutionUsecase) executeScheduledScenario(ctx context.C
 			decisionInput := models.Decision{
 				ClientObject:        object,
 				Outcome:             scenarioExecution.Outcome,
-				ScenarioID:          scenarioExecution.ScenarioID,
+				ScenarioId:          scenarioExecution.ScenarioID,
 				ScenarioName:        scenarioExecution.ScenarioName,
 				ScenarioDescription: scenarioExecution.ScenarioDescription,
 				ScenarioVersion:     scenarioExecution.ScenarioVersion,

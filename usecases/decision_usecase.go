@@ -7,25 +7,39 @@ import (
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/organization"
+	"marble/marble-backend/utils"
 
 	"golang.org/x/exp/slog"
 )
 
 type DecisionUsecase struct {
+	transactionFactory              repositories.TransactionFactory
 	orgTransactionFactory           organization.OrgTransactionFactory
 	ingestedDataReadRepository      repositories.IngestedDataReadRepository
 	decisionRepositoryLegacy        repositories.DecisionRepositoryLegacy
+	decisionRepository              repositories.DecisionRepository
 	datamodelRepository             repositories.DataModelRepository
 	scenarioReadRepository          repositories.ScenarioReadRepository
 	scenarioIterationReadRepository repositories.ScenarioIterationReadRepository
 }
 
-func (usecase *DecisionUsecase) GetDecision(ctx context.Context, orgID string, decisionID string) (models.Decision, error) {
-	return usecase.decisionRepositoryLegacy.GetDecision(ctx, orgID, decisionID)
+func (usecase *DecisionUsecase) GetDecision(creds models.Credentials, orgID string, decisionID string) (models.Decision, error) {
+	decision, err := usecase.decisionRepository.DecisionById(nil, decisionID)
+
+	if err != nil {
+		return models.Decision{}, err
+	}
+	return decision, utils.EnforceOrganizationAccess(creds, decision.OrganizationId)
 }
 
-func (usecase *DecisionUsecase) ListDecisions(ctx context.Context, orgID string) ([]models.Decision, error) {
-	return usecase.decisionRepositoryLegacy.ListDecisions(ctx, orgID)
+func (usecase *DecisionUsecase) ListDecisionsOfOrganization(orgID string) ([]models.Decision, error) {
+	return repositories.TransactionReturnValue(
+		usecase.transactionFactory,
+		models.DATABASE_MARBLE_SCHEMA,
+		func(tx repositories.Transaction) ([]models.Decision, error) {
+			return usecase.decisionRepository.DecisionsOfOrganization(tx, orgID, 1000)
+		},
+	)
 }
 
 func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models.CreateDecisionInput, logger *slog.Logger) (models.Decision, error) {
@@ -56,10 +70,13 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 		return models.Decision{}, fmt.Errorf("error evaluating scenario: %w", err)
 	}
 
+	newDecisionId := utils.NewPrimaryKey(input.OrganizationID)
 	d := models.Decision{
+		DecisionId:          newDecisionId,
+		OrganizationId:      input.OrganizationID,
 		ClientObject:        input.ClientObject,
 		Outcome:             scenarioExecution.Outcome,
-		ScenarioID:          scenarioExecution.ScenarioID,
+		ScenarioId:          scenarioExecution.ScenarioID,
 		ScenarioName:        scenarioExecution.ScenarioName,
 		ScenarioDescription: scenarioExecution.ScenarioDescription,
 		ScenarioVersion:     scenarioExecution.ScenarioVersion,
@@ -67,10 +84,12 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 		Score:               scenarioExecution.Score,
 	}
 
-	createdDecision, err := usecase.decisionRepositoryLegacy.StoreDecision(ctx, input.OrganizationID, d)
+	err = usecase.decisionRepositoryLegacy.StoreDecision(ctx, input.OrganizationID, d)
 	if err != nil {
 		return models.Decision{}, fmt.Errorf("error storing decision: %w", err)
 	}
 
-	return createdDecision, nil
+	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Decision, error) {
+		return usecase.decisionRepository.DecisionById(tx, input.OrganizationID)
+	})
 }
