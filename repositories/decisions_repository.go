@@ -194,7 +194,7 @@ func (repo *DecisionRepositoryImpl) rulesOfDecisionsBatch(transaction Transactio
 
 func (repo *DecisionRepositoryImpl) channelOfDecisions(tx TransactionPostgres, query squirrel.Sqlizer) (<-chan models.Decision, <-chan error) {
 
-	decisionsChannel := make(chan models.Decision)
+	decisionsChannel := make(chan models.Decision, 100)
 	errChannel := make(chan error, 1)
 
 	go func() {
@@ -253,7 +253,7 @@ func selectDecisions() squirrel.SelectBuilder {
 
 func BatchChannel[Value any](inChannel <-chan Value, batchSize int) <-chan []Value {
 
-	out := make(chan []Value)
+	out := make(chan []Value, batchSize)
 
 	go func() {
 		defer close(out)

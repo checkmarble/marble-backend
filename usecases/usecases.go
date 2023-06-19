@@ -133,12 +133,14 @@ func (usecases *Usecases) NewScheduledExecutionUsecase() ScheduledExecutionUseca
 		ingestedDataReadRepository:      usecases.Repositories.IngestedDataReadRepository,
 		decisionRepository:              usecases.Repositories.DecisionRepository,
 		scenarioPublicationsRepository:  usecases.Repositories.ScenarioPublicationRepository,
+		exportScheduleExecution:         usecases.NewExportScheduleExecution(),
 	}
 }
 
 func (usecases *Usecases) NewExportScheduleExecution() scheduledexecution.ExportScheduleExecution {
 	return &scheduledexecution.ExportScheduleExecutionImpl{
-		AwsS3Repository:    usecases.Repositories.AwsS3Repository,
-		DecisionRepository: usecases.Repositories.DecisionRepository,
+		AwsS3Repository:        usecases.Repositories.AwsS3Repository,
+		DecisionRepository:     usecases.Repositories.DecisionRepository,
+		OrganizationRepository: usecases.Repositories.OrganizationRepository,
 	}
 }
