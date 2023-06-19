@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"log"
 	"marble/marble-backend/usecases"
-
-	"golang.org/x/exp/slog"
+	"marble/marble-backend/utils"
 )
 
-func ExecuteAllScheduledScenarios(ctx context.Context, usecases usecases.Usecases, logger *slog.Logger) {
+func ExecuteAllScheduledScenarios(ctx context.Context, usecases usecases.Usecases) {
 
 	fmt.Println("Executing all scheduled scenarios")
 	scenarioUsecase := usecases.NewScenarioUsecase()
@@ -19,9 +18,10 @@ func ExecuteAllScheduledScenarios(ctx context.Context, usecases usecases.Usecase
 	if err != nil {
 		log.Fatal(err)
 	}
+	logger := utils.LoggerFromContext(ctx)
 	for _, scenario := range scenarios {
 		logger.DebugCtx(ctx, "Executing scenario: "+scenario.ID, "scenarioID", scenario.ID)
-		err := usecase.ExecuteScheduledScenarioIfDue(ctx, scenario.OrganizationID, scenario.ID, logger)
+		err := usecase.ExecuteScheduledScenarioIfDue(ctx, scenario.OrganizationID, scenario.ID)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Error executing scheduled scenario: "+scenario.ID, "scenarioId", scenario.ID, " Error: ", err)
 		}

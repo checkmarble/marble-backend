@@ -8,11 +8,9 @@ import (
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/organization"
 	"marble/marble-backend/utils"
-	"runtime/debug"
 	"time"
 
 	"github.com/adhocore/gronx"
-	"golang.org/x/exp/slog"
 )
 
 type ScheduledExecutionUsecase struct {
@@ -60,15 +58,15 @@ func (usecase *ScheduledExecutionUsecase) UpdateScheduledExecution(ctx context.C
 	})
 }
 
-func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx context.Context, orgID string, scenarioID string, logger *slog.Logger) (err error) {
+func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx context.Context, orgID string, scenarioID string) (err error) {
 	// This is called by a cron job, for all scheduled scenarios. It is crucial that a panic on one scenario does not break all the others.
-	defer func() {
-		if r := recover(); r != nil {
-			logger.ErrorCtx(ctx, "recovered from panic during scheduled scenario execution. Stacktrace from panic: ")
-			logger.ErrorCtx(ctx, string(debug.Stack()))
-			err = fmt.Errorf("Recovered from panic during scheduled scenario execution")
-		}
-	}()
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// 		logger.ErrorCtx(ctx, "recovered from panic during scheduled scenario execution. Stacktrace from panic: ")
+	// 		logger.ErrorCtx(ctx, string(debug.Stack()))
+	// 		err = fmt.Errorf("Recovered from panic during scheduled scenario execution")
+	// 	}
+	// }()
 
 	scenario, err := usecase.scenarioReadRepository.GetScenario(ctx, orgID, scenarioID)
 	if err != nil {
@@ -102,32 +100,33 @@ func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx cont
 	}
 
 	if isDue || true {
+		logger := utils.LoggerFromContext(ctx)
 		logger.DebugCtx(ctx, fmt.Sprintf("Scenario iteration %s is due", publishedVersion.ID))
-		id := utils.NewPrimaryKey(orgID)
+		scheduledExecutionId := utils.NewPrimaryKey(orgID)
 
 		return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
 			if err := usecase.scheduledExecutionRepository.CreateScheduledExecution(tx, models.CreateScheduledExecutionInput{
 				OrganizationID:      orgID,
 				ScenarioID:          scenarioID,
 				ScenarioIterationID: publishedVersion.ID,
-			}, id); err != nil {
+			}, scheduledExecutionId); err != nil {
 				return err
 			}
 
 			if err := usecase.scheduledExecutionRepository.UpdateScheduledExecution(tx, models.UpdateScheduledExecutionInput{
-				ID:     id,
+				ID:     scheduledExecutionId,
 				Status: utils.PtrTo(models.ScheduledExecutionFailure, nil),
 			}); err != nil {
 				return err
 			}
 
 			// Actually execute the scheduled scenario
-			if err := usecase.executeScheduledScenario(ctx, scenario, publishedVersion, logger); err != nil {
+			if err := usecase.executeScheduledScenario(ctx, scheduledExecutionId, scenario); err != nil {
 				return err
 			}
 
 			if err := usecase.scheduledExecutionRepository.UpdateScheduledExecution(tx, models.UpdateScheduledExecutionInput{
-				ID:     id,
+				ID:     scheduledExecutionId,
 				Status: utils.PtrTo(models.ScheduledExecutionSuccess, nil),
 			}); err != nil {
 				return err
@@ -163,7 +162,7 @@ func executionIsDue(schedule string, previousExecutions []models.ScheduledExecut
 	return true, nil
 }
 
-func (usecase *ScheduledExecutionUsecase) executeScheduledScenario(ctx context.Context, scenario models.Scenario, publishedVersion models.PublishedScenarioIteration, logger *slog.Logger) error {
+func (usecase *ScheduledExecutionUsecase) executeScheduledScenario(ctx context.Context, scheduledExecutionId string, scenario models.Scenario) error {
 	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, scenario.OrganizationID)
 	if err != nil {
 		return err
@@ -171,7 +170,7 @@ func (usecase *ScheduledExecutionUsecase) executeScheduledScenario(ctx context.C
 	tables := dataModel.Tables
 	table, ok := tables[models.TableName(scenario.TriggerObjectType)]
 	if !ok {
-		return fmt.Errorf("Trigger object type %s not found in data model: %w", scenario.TriggerObjectType, models.NotFoundError)
+		return fmt.Errorf("trigger object type %s not found in data model: %w", scenario.TriggerObjectType, models.NotFoundError)
 	}
 
 	// list objects to score
@@ -187,15 +186,21 @@ func (usecase *ScheduledExecutionUsecase) executeScheduledScenario(ctx context.C
 
 		// execute scenario for each object
 		for _, object := range objects {
-			scenarioExecution, err := evalScenario(ctx, scenarioEvaluationParameters{
-				scenario:  scenario,
-				payload:   object,
-				dataModel: dataModel,
-			}, scenarioEvaluationRepositories{
-				scenarioIterationReadRepository: usecase.scenarioIterationReadRepository,
-				orgTransactionFactory:           usecase.orgTransactionFactory,
-				ingestedDataReadRepository:      usecase.ingestedDataReadRepository,
-			}, logger)
+			scenarioExecution, err := evalScenario(
+				ctx,
+				scenarioEvaluationParameters{
+					scenario:  scenario,
+					payload:   object,
+					dataModel: dataModel,
+				},
+				scenarioEvaluationRepositories{
+					scenarioIterationReadRepository: usecase.scenarioIterationReadRepository,
+					orgTransactionFactory:           usecase.orgTransactionFactory,
+					ingestedDataReadRepository:      usecase.ingestedDataReadRepository,
+				},
+				utils.LoggerFromContext(ctx),
+			)
+
 			if errors.Is(err, models.ScenarioTriggerConditionAndTriggerObjectMismatchError) {
 				continue
 			} else if err != nil {
@@ -203,14 +208,15 @@ func (usecase *ScheduledExecutionUsecase) executeScheduledScenario(ctx context.C
 			}
 
 			decisionInput := models.Decision{
-				ClientObject:        object,
-				Outcome:             scenarioExecution.Outcome,
-				ScenarioId:          scenarioExecution.ScenarioID,
-				ScenarioName:        scenarioExecution.ScenarioName,
-				ScenarioDescription: scenarioExecution.ScenarioDescription,
-				ScenarioVersion:     scenarioExecution.ScenarioVersion,
-				RuleExecutions:      scenarioExecution.RuleExecutions,
-				Score:               scenarioExecution.Score,
+				ClientObject:         object,
+				Outcome:              scenarioExecution.Outcome,
+				ScenarioId:           scenarioExecution.ScenarioID,
+				ScenarioName:         scenarioExecution.ScenarioName,
+				ScenarioDescription:  scenarioExecution.ScenarioDescription,
+				ScenarioVersion:      scenarioExecution.ScenarioVersion,
+				RuleExecutions:       scenarioExecution.RuleExecutions,
+				Score:                scenarioExecution.Score,
+				ScheduledExecutionId: &scheduledExecutionId,
 			}
 
 			err = usecase.decisionRepository.StoreDecision(tx, decisionInput, scenario.OrganizationID, utils.NewPrimaryKey(scenario.OrganizationID))

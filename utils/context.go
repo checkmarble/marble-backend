@@ -17,11 +17,15 @@ const (
 	ContextKeyLogger
 )
 
+func StoreLoggerInContext(ctx context.Context, logger *slog.Logger) context.Context {
+	return context.WithValue(ctx, ContextKeyLogger, logger)
+}
+
 func StoreLoggerInContextMiddleware(logger *slog.Logger) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctxWithToken := context.WithValue(r.Context(), ContextKeyLogger, logger)
-			next.ServeHTTP(w, r.WithContext(ctxWithToken))
+			ctxWithLogger := StoreLoggerInContext(r.Context(), logger)
+			next.ServeHTTP(w, r.WithContext(ctxWithLogger))
 		})
 	}
 }
