@@ -4,6 +4,7 @@ import "time"
 
 type Decision struct {
 	DecisionId           string
+	OrganizationId       string
 	CreatedAt            time.Time
 	ClientObject         ClientObject
 	Outcome              Outcome
@@ -14,7 +15,7 @@ type Decision struct {
 	RuleExecutions       []RuleExecution
 	Score                int
 	DecisionError        DecisionError
-	ScheduledExecutionId string
+	ScheduledExecutionId *string
 }
 
 type ScenarioExecution struct {
