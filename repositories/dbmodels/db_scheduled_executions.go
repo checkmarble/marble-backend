@@ -22,6 +22,8 @@ var ScheduledExecutionFields = []string{"id", "organization_id", "scenario_id", 
 func AdaptScheduledExecution(db DBScheduledExecution) models.ScheduledExecution {
 	return models.ScheduledExecution{
 		ID:                  db.Id,
+		OrganizationId:      db.OrganizationId,
+		ScenarioID:          db.ScenarioID,
 		ScenarioIterationID: db.ScenarioIterationID,
 		Status:              models.ScheduledExecutionStatusFrom(db.Status),
 		StartedAt:           db.StartedAt,
