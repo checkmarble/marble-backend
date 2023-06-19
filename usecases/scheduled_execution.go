@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/adhocore/gronx"
-	"github.com/google/uuid"
 	"golang.org/x/exp/slog"
 )
 
@@ -49,7 +48,7 @@ func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(ctx context.Co
 }
 
 func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(ctx context.Context, input models.CreateScheduledExecutionInput) error {
-	id := uuid.NewString()
+	id := utils.NewPrimaryKey(input.OrganizationID)
 	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
 		return usecase.scheduledExecutionRepository.CreateScheduledExecution(tx, input, id)
 	})
