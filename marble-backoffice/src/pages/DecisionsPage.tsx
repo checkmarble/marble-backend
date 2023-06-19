@@ -91,16 +91,19 @@ function DecisionsPage() {
               <Typography variant="h4">
                 Decisions of {organization.name}
               </Typography>
+              <Typography variant="body1">
+               { decisions && `${decisions.length} decisions.`}
+              </Typography>
             </>
           )}
         </Paper>
-        <List>
+        {/* <List>
           {(decisions || []).map((decision) => (
             <ListItem key={decision.decisionId}>
               <ListItemText primary={decision.decisionId} />
             </ListItem>
           ))}
-        </List>
+        </List> */}
 
         <Paper sx={{ m: 2, p: 2 }}>
           <Box

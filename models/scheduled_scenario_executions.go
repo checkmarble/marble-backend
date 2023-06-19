@@ -4,6 +4,8 @@ import "time"
 
 type ScheduledExecution struct {
 	ID                  string
+	OrganizationId      string
+	ScenarioID          string
 	ScenarioIterationID string
 	Status              ScheduledExecutionStatus
 	StartedAt           time.Time

@@ -18,18 +18,18 @@ func SqlToChannelOfDbModel[DBModel any](tx TransactionPostgres, query squirrel.S
 		defer close(modelsChannel)
 		defer close(errChannel)
 
-		var err error
-		for i := 0; i < 1e3; i++ {
-			err = ForEachRow(tx, query, func(row pgx.CollectableRow) error {
-				dbModel, err := pgx.RowToStructByName[DBModel](row)
-				if err != nil {
-					return err
-				} else {
-					modelsChannel <- dbModel
-				}
-				return nil
-			})
-		}
+		// var err error
+		// for i := 0; i < 1e3; i++ {
+		err := ForEachRow(tx, query, func(row pgx.CollectableRow) error {
+			dbModel, err := pgx.RowToStructByName[DBModel](row)
+			if err != nil {
+				return err
+			} else {
+				modelsChannel <- dbModel
+			}
+			return nil
+		})
+		// }
 		errChannel <- err
 
 	}()
