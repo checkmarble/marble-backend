@@ -21,7 +21,7 @@ type DbDecisionRule struct {
 
 const TABLE_DECISION_RULE = "decision_rules"
 
-var SelectDecisionRuleColumn = utils.ColumnList[DbDecision]()
+var SelectDecisionRuleColumn = utils.ColumnList[DbDecisionRule]()
 
 func AdaptRuleExecution(db DbDecisionRule) models.RuleExecution {
 	return models.RuleExecution{

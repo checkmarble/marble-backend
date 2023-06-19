@@ -35,7 +35,7 @@ type APIDecision struct {
 	Rules                []APIDecisionRule   `json:"rules"`
 	Score                int                 `json:"score"`
 	Error                *APIError           `json:"error"`
-	ScheduledExecutionId string              `json:"scheduled_execution_id,omitempty"`
+	ScheduledExecutionId *string             `json:"scheduled_execution_id,omitempty"`
 }
 
 func NewAPIDecision(decision models.Decision) APIDecision {

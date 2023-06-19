@@ -29,25 +29,13 @@ func (api *API) handleGetDecision() http.HandlerFunc {
 		input := ctx.Value(httpin.Input).(*GetDecisionInput)
 		decisionID := input.DecisionID
 
-		logger := api.logger.With(slog.String("decisionID", decisionID))
-
 		usecase := api.usecases.NewDecisionUsecase()
-		decision, err := usecase.GetDecision(ctx, orgID, decisionID)
-		if errors.Is(err, models.NotFoundInRepositoryError) {
-			http.Error(w, "", http.StatusNotFound)
-			return
-		} else if err != nil {
-			logger.ErrorCtx(ctx, "error getting decision: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
+		decision, err := usecase.GetDecision(utils.MustCredentialsFromCtx(ctx), orgID, decisionID)
 
-		err = json.NewEncoder(w).Encode(dto.NewAPIDecision(decision))
-		if err != nil {
-			logger.ErrorCtx(ctx, "error encoding response JSON: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
+		if presentError(w, r, err) {
 			return
 		}
+		PresentModel(w, dto.NewAPIDecision(decision))
 	}
 }
 
@@ -62,10 +50,8 @@ func (api *API) handleListDecisions() http.HandlerFunc {
 		logger := api.logger.With(slog.String("orgID", orgID))
 
 		usecase := api.usecases.NewDecisionUsecase()
-		decisions, err := usecase.ListDecisions(ctx, orgID)
-		if err != nil {
-			logger.ErrorCtx(ctx, "error listing decisions: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
+		decisions, err := usecase.ListDecisionsOfOrganization(orgID)
+		if presentError(w, r, err) {
 			return
 		}
 		apiDecisions := make([]dto.APIDecision, len(decisions))
