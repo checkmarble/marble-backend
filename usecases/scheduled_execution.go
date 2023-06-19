@@ -103,41 +103,41 @@ func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx cont
 
 	if isDue || true {
 		logger.DebugCtx(ctx, fmt.Sprintf("Scenario iteration %s is due", publishedVersion.ID))
-		id := uuid.NewString()
-		err = usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
-			return usecase.scheduledExecutionRepository.CreateScheduledExecution(tx, models.CreateScheduledExecutionInput{
+		id := utils.NewPrimaryKey(orgID)
+
+		return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+			if err := usecase.scheduledExecutionRepository.CreateScheduledExecution(tx, models.CreateScheduledExecutionInput{
 				OrganizationID:      orgID,
 				ScenarioID:          scenarioID,
 				ScenarioIterationID: publishedVersion.ID,
-			}, id)
-		})
-		if err != nil {
-			return err
-		}
+			}, id); err != nil {
+				return err
+			}
 
-		// Actually execute the scheduled scenario
-		if err := usecase.executeScheduledScenario(ctx, scenario, publishedVersion, logger); err != nil {
-			usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
-				return usecase.scheduledExecutionRepository.UpdateScheduledExecution(tx, models.UpdateScheduledExecutionInput{
-					ID:     id,
-					Status: utils.PtrTo(models.ScheduledExecutionFailure, nil),
-				})
-			})
-			return err
-		}
+			if err := usecase.scheduledExecutionRepository.UpdateScheduledExecution(tx, models.UpdateScheduledExecutionInput{
+				ID:     id,
+				Status: utils.PtrTo(models.ScheduledExecutionFailure, nil),
+			}); err != nil {
+				return err
+			}
 
-		// Mark the scheduled scenario as sucess
-		err = usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
-			return usecase.scheduledExecutionRepository.UpdateScheduledExecution(tx, models.UpdateScheduledExecutionInput{
+			// Actually execute the scheduled scenario
+			if err := usecase.executeScheduledScenario(ctx, scenario, publishedVersion, logger); err != nil {
+				return err
+			}
+
+			if err := usecase.scheduledExecutionRepository.UpdateScheduledExecution(tx, models.UpdateScheduledExecutionInput{
 				ID:     id,
 				Status: utils.PtrTo(models.ScheduledExecutionSuccess, nil),
-			})
+			}); err != nil {
+				return err
+			}
+			// Mark the scheduled scenario as sucess
+			logger.DebugCtx(ctx, fmt.Sprintf("Scenario iteration %s executed successfully", publishedVersion.ID))
+
+			return nil
 		})
-		if err != nil {
-			return err
-		}
-		logger.DebugCtx(ctx, fmt.Sprintf("Scenario iteration %s executed successfully", publishedVersion.ID))
-		return nil
+
 	} else {
 
 		return nil
