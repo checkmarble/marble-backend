@@ -96,7 +96,7 @@ func runServer(configuration models.GlobalConfiguration, pgRepository *pg_reposi
 }
 
 func runScheduledBatches(configuration models.GlobalConfiguration, pgRepository *pg_repository.PGRepository, marbleConnectionPool *pgxpool.Pool, logger *slog.Logger) {
-	ctx := context.Background()
+	ctx := utils.StoreLoggerInContext(context.Background(), logger)
 
 	repositories, err := repositories.NewRepositories(
 		configuration,
@@ -115,7 +115,7 @@ func runScheduledBatches(configuration models.GlobalConfiguration, pgRepository 
 		Configuration: configuration,
 	}
 
-	jobs.ExecuteAllScheduledScenarios(ctx, usecases, logger)
+	jobs.ExecuteAllScheduledScenarios(ctx, usecases)
 
 }
 
