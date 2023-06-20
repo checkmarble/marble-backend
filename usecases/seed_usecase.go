@@ -47,9 +47,31 @@ func (usecase *SeedUseCase) SeedZorgOrganization(zorgOrganizationId string) erro
 		return err
 	}
 
+	// assign test s3 bucket name to zorg organization
 	var testBucketName = "marble-backend-export-scheduled-execution-test"
-	return usecase.organizationRepository.UpdateOrganization(nil, models.UpdateOrganizationInput{
+	err = usecase.organizationRepository.UpdateOrganization(nil, models.UpdateOrganizationInput{
 		ID:                         zorgOrganizationId,
 		ExportScheduledExecutionS3: &testBucketName,
 	})
+
+	if err != nil {
+		return err
+	}
+
+	// add Admin user Jean-Baptiste Emanuel Zorg
+	jbeUserId, err := usecase.userRepository.CreateUser(nil, models.CreateUser{
+		Email:          "jbe@zorg.com", // Jean-Baptiste Emanuel Zorg
+		Role:           models.ADMIN,
+		OrganizationId: zorgOrganizationId,
+	})
+	if repositories.IsIsUniqueViolationError(err) {
+		err = nil
+	}
+	if err != nil {
+		return err
+	}
+
+	err = usecase.userRepository.UpdateFirebaseId(nil, jbeUserId, "")
+
+	return err
 }
