@@ -7,7 +7,7 @@ import (
 )
 
 type NodeDto struct {
-	FuncName      string             `json:"funcName,omitempty"`
+	FuncName      string             `json:"name,omitempty"`
 	Constant      any                `json:"constant,omitempty"`
 	Children      []NodeDto          `json:"children,omitempty"`
 	NamedChildren map[string]NodeDto `json:"named_children,omitempty"`
@@ -39,26 +39,9 @@ func AdaptNodeDto(node ast.Node) (NodeDto, error) {
 }
 
 func adaptDtoFunctionName(f ast.Function) (string, error) {
-	switch f {
-	case ast.FUNC_CONSTANT:
-		return "", nil
-	case ast.FUNC_PLUS:
-		return "+", nil
-	case ast.FUNC_MINUS:
-		return "-", nil
-	case ast.FUNC_GREATER:
-		return ">", nil
-	case ast.FUNC_LESS:
-		return "<", nil
-	case ast.FUNC_EQUAL:
-		return "=", nil
-	case ast.FUNC_READ_PAYLOAD:
-		return "ReadPayload", nil
-	case ast.FUNC_DB_ACCESS:
-		return "DatabaseAccess", nil
-	default:
-		return "", fmt.Errorf("function not supported by json renderer: %s", f.DebugString())
-	}
+
+	attributes, err := f.Attributes()
+	return attributes.AstName, err
 }
 
 func AdaptASTNode(dto NodeDto) (ast.Node, error) {
@@ -86,26 +69,19 @@ func AdaptASTNode(dto NodeDto) (ast.Node, error) {
 	}, nil
 }
 
+var astNameFuncMap = func() map[string]ast.Function {
+	result := make(map[string]ast.Function, len(ast.FuncAttributesMap))
+	for f, attributes := range ast.FuncAttributesMap {
+		result[attributes.AstName] = f
+	}
+	return result
+}()
+
 func adaptFunctionName(f string) (ast.Function, error) {
 
-	switch f {
-	case "":
-		return ast.FUNC_CONSTANT, nil
-	case "+":
-		return ast.FUNC_PLUS, nil
-	case "-":
-		return ast.FUNC_MINUS, nil
-	case ">":
-		return ast.FUNC_GREATER, nil
-	case "<":
-		return ast.FUNC_LESS, nil
-	case "=":
-		return ast.FUNC_EQUAL, nil
-	case "ReadPayload":
-		return ast.FUNC_READ_PAYLOAD, nil
-	case "DatabaseAccess":
-		return ast.FUNC_DB_ACCESS, nil
-	default:
-		return -1, fmt.Errorf("function not supported by json renderer: %s", f)
+	if f, ok := astNameFuncMap[f]; ok {
+		return f, nil
 	}
+
+	return ast.FUNC_UNKNOWN, fmt.Errorf("Unknown function: %v", f)
 }
