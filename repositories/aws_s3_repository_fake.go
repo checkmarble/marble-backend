@@ -10,7 +10,7 @@ import (
 type AwsS3RepositoryFake struct{}
 
 func (repo *AwsS3RepositoryFake) StoreInBucket(ctx context.Context, bucketName string, key string, body io.Reader) error {
-	filename := "s3_fake_repo.txt"
+	filename := fmt.Sprintf("s3_fake_repo_%s", key)
 	bucket, err := os.Create(filename)
 	if err != nil {
 		return fmt.Errorf("can't open file %s for writing. %w", filename, err)
