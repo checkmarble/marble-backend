@@ -151,7 +151,7 @@ func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx cont
 		}
 
 		// export decisions
-		return usecase.exportScheduleExecution.ExportScheduledExecutionToS3(scheduledExecution)
+		return usecase.exportScheduleExecution.ExportScheduledExecutionToS3(scenario, scheduledExecution)
 	}
 
 	return nil
