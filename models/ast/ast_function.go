@@ -8,47 +8,141 @@ type Function int
 
 const (
 	FUNC_CONSTANT Function = iota
-	FUNC_PLUS
-	FUNC_MINUS
+	FUNC_ADD
+	FUNC_SUBTRACT
+	FUNC_MULTIPLY
+	FUNC_DIVIDE
 	FUNC_GREATER
 	FUNC_LESS
 	FUNC_EQUAL
-	FUNC_READ_PAYLOAD
+	FUNC_NOT
+	FUNC_VARIABLE
 	FUNC_DB_ACCESS
+	FUNC_UNKNOWN Function = -1
 )
 
-func (f Function) DebugString() string {
-	switch f {
-	case FUNC_CONSTANT:
-		return "CONSTANT"
-	case FUNC_PLUS:
-		return "FUNC_PLUS"
-	case FUNC_MINUS:
-		return "FUNC_MINUS"
-	case FUNC_GREATER:
-		return "FUNC_GREATER"
-	case FUNC_LESS:
-		return "FUNC_LESS"
-	case FUNC_EQUAL:
-		return "FUNC_EQUAL"
-	case FUNC_READ_PAYLOAD:
-		return "FUNC_READ_PAYLOAD"
-	case FUNC_DB_ACCESS:
-		return "FUNC_DB_ACCESS"
-	default:
-		return fmt.Sprintf("Invalid function: %d", f)
+type FuncAttributes struct {
+	DebugName         string
+	AstName           string
+	NumberOfArguments int
+	NamedArguments    []string
+}
+
+var FuncAttributesMap = map[Function]FuncAttributes{
+	FUNC_CONSTANT: {
+		DebugName: "CONSTANT",
+		AstName:   "",
+	},
+	FUNC_ADD: {
+		DebugName:         "FUNC_ADD",
+		AstName:           "+",
+		NumberOfArguments: 2,
+	},
+	FUNC_SUBTRACT: {
+		DebugName:         "FUNC_SUBTRACT",
+		AstName:           "-",
+		NumberOfArguments: 2,
+	},
+	FUNC_MULTIPLY: {
+		DebugName:         "FUNC_MULTIPLY",
+		AstName:           "*",
+		NumberOfArguments: 2,
+	},
+	FUNC_DIVIDE: {
+		DebugName:         "FUNC_DIVIDE",
+		AstName:           "/",
+		NumberOfArguments: 2,
+	},
+	FUNC_GREATER: {
+		DebugName:         "FUNC_GREATER",
+		AstName:           ">",
+		NumberOfArguments: 2,
+	},
+	FUNC_LESS: {
+		DebugName:         "FUNC_LESS",
+		AstName:           "<",
+		NumberOfArguments: 2,
+	},
+	FUNC_EQUAL: {
+		DebugName:         "FUNC_EQUAL",
+		AstName:           "=",
+		NumberOfArguments: 2,
+	},
+	FUNC_NOT: {
+		DebugName:         "FUNC_NOT",
+		AstName:           "Not",
+		NumberOfArguments: 1,
+	},
+	FUNC_VARIABLE:  AttributeFuncVariable.FuncAttributes,
+	FUNC_DB_ACCESS: AttributeFuncDbAccess.FuncAttributes,
+}
+
+func (f Function) Attributes() (FuncAttributes, error) {
+
+	if attributes, ok := FuncAttributesMap[f]; ok {
+		return attributes, nil
 	}
+
+	unknown := fmt.Sprintf("Unknown function: %v", f)
+
+	return FuncAttributes{
+		DebugName: unknown,
+		AstName:   unknown,
+	}, fmt.Errorf(unknown)
+}
+
+func (f Function) DebugString() string {
+	attributes, _ := f.Attributes()
+	return attributes.DebugName
+}
+
+// ======= Constant =======
+
+func NewNodeConstant(value any) Node {
+	return Node{Function: FUNC_CONSTANT, Constant: value}
+}
+
+// ======= Variable =======
+
+var AttributeFuncVariable = struct {
+	FuncAttributes
+	ArgumentVarname string
+}{
+	FuncAttributes: FuncAttributes{
+		DebugName: "FUNC_VARIABLE",
+		AstName:   "Variable",
+		NamedArguments: []string{
+			"varname",
+		},
+	},
+	ArgumentVarname: "varname",
+}
+
+func NewNodeVariable(varname string) Node {
+	return Node{Function: FUNC_VARIABLE}.
+		AddNamedChild(AttributeFuncVariable.ArgumentVarname, NewNodeConstant(varname))
+}
+
+// ======= DbAccess =======
+
+var AttributeFuncDbAccess = struct {
+	FuncAttributes
+	ArgumentTableName string
+	ArgumentFieldName string
+}{
+	FuncAttributes: FuncAttributes{
+		DebugName: "FUNC_DB_ACCESS",
+		AstName:   "DatabaseAccess",
+		NamedArguments: []string{
+			"tableName", "fieldName",
+		},
+	},
+	ArgumentTableName: "tableName",
+	ArgumentFieldName: "fieldName",
 }
 
 func NewNodeDatabaseAccess(tableName string, fieldName string) Node {
 	return Node{Function: FUNC_DB_ACCESS}.
-		AddNamedChild("tableName", Node{Constant: tableName}).
-		AddNamedChild("fieldName", Node{Constant: fieldName})
+		AddNamedChild(AttributeFuncDbAccess.ArgumentTableName, NewNodeConstant(tableName)).
+		AddNamedChild(AttributeFuncDbAccess.ArgumentFieldName, NewNodeConstant(fieldName))
 }
-
-func NewNodeReadPayload(fieldName string) Node {
-	return Node{Function: FUNC_READ_PAYLOAD}.
-		AddNamedChild(FUNC_READ_PAYLOAD_ARGUMENT_FIELD_NAME, Node{Constant: fieldName})
-}
-
-const FUNC_READ_PAYLOAD_ARGUMENT_FIELD_NAME = "fieldName"

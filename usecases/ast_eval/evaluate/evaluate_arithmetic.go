@@ -29,11 +29,17 @@ func arithmeticEval[T int64 | float64](function ast.Function, operands []T) (T, 
 		return 0, err
 	}
 
-	if function == ast.FUNC_PLUS {
+	if function == ast.FUNC_ADD {
 		return l + r, nil
 	}
-	if function == ast.FUNC_MINUS {
+	if function == ast.FUNC_SUBTRACT {
 		return l - r, nil
+	}
+	if function == ast.FUNC_MULTIPLY {
+		return l * r, nil
+	}
+	if function == ast.FUNC_DIVIDE {
+		return l / r, nil
 	}
 
 	return 0, fmt.Errorf("Arithmetic does not support %s function", function.DebugString())

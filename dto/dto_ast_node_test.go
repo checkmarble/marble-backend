@@ -43,9 +43,9 @@ func TestAdaptASTNode(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t,
 		node,
-		ast.Node{Function: ast.FUNC_PLUS}.
-			AddChild(ast.Node{Constant: 1}).
-			AddNamedChild("named", ast.Node{Constant: 2}),
+		ast.Node{Function: ast.FUNC_ADD}.
+			AddChild(ast.NewNodeConstant(1)).
+			AddNamedChild("named", ast.NewNodeConstant(2)),
 	)
 }
 

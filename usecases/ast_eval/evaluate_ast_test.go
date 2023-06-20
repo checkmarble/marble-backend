@@ -15,7 +15,7 @@ func TestEval(t *testing.T) {
 		"balance": 96,
 	}
 	inject := NewEvaluatorInjection()
-	inject.AddEvaluator(ast.FUNC_READ_PAYLOAD, evaluate.ReadPayload{Payload: payload})
+	inject.AddEvaluator(ast.FUNC_VARIABLE, evaluate.Variable{Variables: payload})
 
 	root := ast.NewAstCompareBalance()
 	result, err := EvaluateAst(&inject, root)

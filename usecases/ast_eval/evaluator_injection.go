@@ -30,10 +30,13 @@ func NewEvaluatorInjection() EvaluatorInjectionImpl {
 	}
 
 	// add pure functions that to not rely on any context
-	inject.AddEvaluator(ast.FUNC_PLUS, evaluate.Arithmetic{Function: ast.FUNC_PLUS})
-	inject.AddEvaluator(ast.FUNC_MINUS, evaluate.Arithmetic{Function: ast.FUNC_MINUS})
+	inject.AddEvaluator(ast.FUNC_ADD, evaluate.Arithmetic{Function: ast.FUNC_ADD})
+	inject.AddEvaluator(ast.FUNC_SUBTRACT, evaluate.Arithmetic{Function: ast.FUNC_SUBTRACT})
+	inject.AddEvaluator(ast.FUNC_MULTIPLY, evaluate.Arithmetic{Function: ast.FUNC_MULTIPLY})
+	inject.AddEvaluator(ast.FUNC_DIVIDE, evaluate.Arithmetic{Function: ast.FUNC_DIVIDE})
 	inject.AddEvaluator(ast.FUNC_GREATER, evaluate.Comparison{Function: ast.FUNC_GREATER})
 	inject.AddEvaluator(ast.FUNC_LESS, evaluate.Comparison{Function: ast.FUNC_LESS})
 	inject.AddEvaluator(ast.FUNC_EQUAL, evaluate.Comparison{Function: ast.FUNC_EQUAL})
+	inject.AddEvaluator(ast.FUNC_NOT, evaluate.Comparison{Function: ast.FUNC_NOT})
 	return inject
 }
