@@ -189,15 +189,9 @@ func queryWithDynamicColumnList(tx TransactionPostgres, qualifiedTableName strin
 	defer rows.Close()
 	output := make([]map[string]any, 0)
 	for rows.Next() {
-		values := make([]any, len(columnNames))
-		referencesToValues := make([]any, 0)
-		for i := range values {
-			referencesToValues = append(referencesToValues, &values[i])
-		}
-
-		err = rows.Scan(referencesToValues...)
+		values, err := rows.Values()
 		if err != nil {
-			return nil, fmt.Errorf("Error while scanning row: %w", err)
+			return nil, fmt.Errorf("error while fetching rows: %w", err)
 		}
 
 		objectAsMap := make(map[string]any)
