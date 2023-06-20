@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - develop
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -34,19 +35,27 @@ jobs:
       - name: Set shared env variables
         id: get_env
         run: |
-          if true || [${{ github.ref_name }} == "master"]
+          if [${{ github.ref_name }} == "develop"]
           then 
             echo "GCP_PROJECT_ID=${{ vars.GCP_PROJECT_ID_STAGING }}" >> $GITHUB_OUTPUT
             echo "ENV=staging" >> $GITHUB_OUTPUT
+            echo "DB_INSTANCE_NAME=${{ vars.DB_INSTANCE_NAME_STAGING }}" >> $GITHUB_OUTPUT
+            echo "DB_INSTANCE_REGION=${{ vars.DB_INSTANCE_REGION_STAGING }}" >> $GITHUB_OUTPUT
           fi
-        # Add prod case once setup
+          if [${{ github.ref_name }} == "master"]
+          then 
+            echo "GCP_PROJECT_ID=${{ vars.GCP_PROJECT_ID_PRODUCTION }}" >> $GITHUB_OUTPUT
+            echo "ENV=production" >> $GITHUB_OUTPUT
+            echo "DB_INSTANCE_NAME=${{ vars.DB_INSTANCE_NAME_PRODUCTION }}" >> $GITHUB_OUTPUT
+            echo "DB_INSTANCE_REGION=${{ vars.DB_INSTANCE_REGION_PRODUCTION }}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Checkout
         uses: actions/checkout@master
 
       - name: Auth
         uses: "google-github-actions/auth@v1"
-        if: ${{ github.ref_name }} == "master"
+        if: ${{ github.ref_name }} == "develop"
         with:
           credentials_json: "${{ secrets.GCP_SA_KEY_STAGING }}"
 
@@ -54,8 +63,7 @@ jobs:
         uses: "google-github-actions/auth@v1"
         if: ${{ github.ref_name }} == "master"
         with:
-          credentials_json: "${{ secrets.GCP_SA_KEY_STAGING }}"
-          # To modify when prod is setup
+          credentials_json: "${{ secrets.GCP_SA_KEY_PRODUCTION }}"
 
       - name: "Set up Cloud SDK"
         uses: "google-github-actions/setup-gcloud@v1"
@@ -68,23 +76,23 @@ jobs:
 
       - name: Build
         run: |
-          docker build -t eu.gcr.io/${{ steps.get_env.outputs.GCP_PROJECT_ID }}/marble-backend:latest .
+          docker build -t europe-docker.pkg.dev/${{ steps.get_env.outputs.GCP_PROJECT_ID }}/marble/marble-backend:latest .
 
       - name: Push
         run: |
-          docker push eu.gcr.io/${{ steps.get_env.outputs.GCP_PROJECT_ID }}/marble-backend:latest
+          docker push europe-docker.pkg.dev/${{ steps.get_env.outputs.GCP_PROJECT_ID }}/marble/marble-backend:latest
 
       - name: Deploy migration job
         run: |
           gcloud beta run jobs deploy marble-backend-db-migrations \
             --quiet \
-            --image="eu.gcr.io/${{ steps.get_env.outputs.GCP_PROJECT_ID }}/marble-backend:latest" \
-            --region="europe-west9" \
+            --image="europe-docker.pkg.dev/${{ steps.get_env.outputs.GCP_PROJECT_ID }}/marble/marble-backend:latest" \
+            --region="europe-west1" \
             --args=-migrations \
             --service-account=marble-backend-cloud-run@${{ steps.get_env.outputs.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
-            --set-env-vars=PG_HOSTNAME=/cloudsql/${{ steps.get_env.outputs.GCP_PROJECT_ID }}:europe-west9:marble-sandbox,PG_USER=postgres,GOOGLE_CLOUD_PROJECT=${{ steps.get_env.outputs.GCP_PROJECT_ID }},ENV=${{ steps.get_env.outputs.ENV }} \
-            --set-secrets=PG_PASSWORD=POSTGRES_SANDBOX:latest \
-            --set-cloudsql-instances=${{ steps.get_env.outputs.GCP_PROJECT_ID }}:europe-west9:marble-sandbox \
+            --set-env-vars=PG_HOSTNAME=/cloudsql/${{ steps.get_env.outputs.GCP_PROJECT_ID }}::${{ steps.get_env.outputs.DB_INSTANCE_REGION }}:${{ steps.get_env.outputs.DB_INSTANCE_NAME }},PG_USER=postgres,GOOGLE_CLOUD_PROJECT=${{ steps.get_env.outputs.GCP_PROJECT_ID }},ENV=${{ steps.get_env.outputs.ENV }} \
+            --set-secrets=PG_PASSWORD=POSTGRES_PASSWORD:latest \
+            --set-cloudsql-instances=${{ steps.get_env.outputs.GCP_PROJECT_ID }}:${{ steps.get_env.outputs.DB_INSTANCE_REGION }}:${{ steps.get_env.outputs.DB_INSTANCE_NAME }} \
             --execute-now \
             --wait
 
@@ -92,11 +100,11 @@ jobs:
         run: |
           gcloud run deploy marble-backend \
             --quiet \
-            --image="eu.gcr.io/${{ steps.get_env.outputs.GCP_PROJECT_ID }}/marble-backend:latest" \
-            --region="europe-west9" \
+            --image="europe-docker.pkg.dev/${{ steps.get_env.outputs.GCP_PROJECT_ID }}/marble/marble-backend:latest" \
+            --region="europe-west1" \
             --args=-server \
             --service-account=marble-backend-cloud-run@${{ steps.get_env.outputs.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
-            --set-env-vars=PG_HOSTNAME=/cloudsql/${{ steps.get_env.outputs.GCP_PROJECT_ID }}:europe-west9:marble-sandbox,PG_USER=postgres,GOOGLE_CLOUD_PROJECT=${{ steps.get_env.outputs.GCP_PROJECT_ID }},ENV=${{ steps.get_env.outputs.ENV }},AWS_REGION=eu-west-3 \
-            --set-secrets=PG_PASSWORD=POSTGRES_SANDBOX:latest,AUTHENTICATION_JWT_SIGNING_KEY=AUTHENTICATION_JWT_SIGNING_KEY:latest,AWS_ACCESS_KEY=AWS_ACCESS_KEY:latest,AWS_SECRET_KEY=AWS_SECRET_KEY:latest \
-            --set-cloudsql-instances=${{ steps.get_env.outputs.GCP_PROJECT_ID }}:europe-west9:marble-sandbox \
+            --set-env-vars=PG_HOSTNAME=/cloudsql/${{ steps.get_env.outputs.GCP_PROJECT_ID }}:${{ steps.get_env.outputs.DB_INSTANCE_REGION }}:${{ steps.get_env.outputs.DB_INSTANCE_NAME }},PG_USER=postgres,GOOGLE_CLOUD_PROJECT=${{ steps.get_env.outputs.GCP_PROJECT_ID }},ENV=${{ steps.get_env.outputs.ENV }},AWS_REGION=eu-west-3 \
+            --set-secrets=PG_PASSWORD=POSTGRES_PASSWORD:latest,AUTHENTICATION_JWT_SIGNING_KEY=AUTHENTICATION_JWT_SIGNING_KEY:latest,AWS_ACCESS_KEY=AWS_ACCESS_KEY:latest,AWS_SECRET_KEY=AWS_SECRET_KEY:latest \
+            --set-cloudsql-instances=${{ steps.get_env.outputs.GCP_PROJECT_ID }}:${{ steps.get_env.outputs.DB_INSTANCE_REGION }}:${{ steps.get_env.outputs.DB_INSTANCE_NAME }} \
             --port=8080
