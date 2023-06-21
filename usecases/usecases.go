@@ -152,3 +152,7 @@ func (usecases *Usecases) NewExportScheduleExecution() scheduledexecution.Export
 		OrganizationRepository: usecases.Repositories.OrganizationRepository,
 	}
 }
+
+func (usecases *Usecases) AstExpressionUsecase() AstExpressionUsecase {
+	return AstExpressionUsecase{}
+}

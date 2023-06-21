@@ -1,5 +1,7 @@
 package ast
 
+import "fmt"
+
 type Node struct {
 	// A node is a constant xOR a function
 	Function Function
@@ -7,6 +9,16 @@ type Node struct {
 
 	Children      []Node
 	NamedChildren map[string]Node
+}
+
+func (node *Node) DebugString() string {
+
+	childrenDebugString := fmt.Sprintf("%d children", len(node.Children)+len(node.NamedChildren))
+	if node.Function == FUNC_CONSTANT {
+		return fmt.Sprintf("Node Constant %v %s", node.Constant, childrenDebugString)
+	}
+
+	return fmt.Sprintf("Node %s %s", node.Function.DebugString(), childrenDebugString)
 }
 
 func (node Node) AddChild(child Node) Node {

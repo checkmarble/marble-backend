@@ -6,26 +6,26 @@ import (
 	"marble/marble-backend/usecases/ast_eval/evaluate"
 )
 
-type EvaluatorInjectionImpl struct {
+type EvaluatorInjection struct {
 	availableFunctions map[ast.Function]evaluate.Evaluator
 }
 
-func (inject *EvaluatorInjectionImpl) AddEvaluator(function ast.Function, evaluator evaluate.Evaluator) {
+func (inject *EvaluatorInjection) AddEvaluator(function ast.Function, evaluator evaluate.Evaluator) {
 	if _, ok := inject.availableFunctions[function]; ok {
 		panic(fmt.Errorf("function '%s' is already registered", function.DebugString()))
 	}
 	inject.availableFunctions[function] = evaluator
 }
 
-func (inject *EvaluatorInjectionImpl) GetEvaluator(function ast.Function) (evaluate.Evaluator, error) {
+func (inject *EvaluatorInjection) GetEvaluator(function ast.Function) (evaluate.Evaluator, error) {
 	if funcClass, ok := inject.availableFunctions[function]; ok {
 		return funcClass, nil
 	}
 	return nil, fmt.Errorf("function '%s' is not available", function.DebugString())
 }
 
-func NewEvaluatorInjection() EvaluatorInjectionImpl {
-	inject := EvaluatorInjectionImpl{
+func NewEvaluatorInjection() EvaluatorInjection {
+	inject := EvaluatorInjection{
 		availableFunctions: make(map[ast.Function]evaluate.Evaluator),
 	}
 

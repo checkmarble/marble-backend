@@ -1,19 +1,17 @@
 package ast_eval
 
 import (
+	"errors"
 	"marble/marble-backend/models/ast"
-	"marble/marble-backend/usecases/ast_eval/evaluate"
 	"marble/marble-backend/utils"
 )
 
-type EvaluatorInjection interface {
-	GetEvaluator(function ast.Function) (evaluate.Evaluator, error)
-}
+var ErrRuntimeExpression = errors.New("expression runtime error")
 
 func EvaluateAst(evalInjection EvaluatorInjection, node ast.Node) (any, error) {
 
-	// Easrly exit for constant, because it should have no children.
-	if node.Constant != nil {
+	// Early exit for constant, because it should have no children.
+	if node.Function == ast.FUNC_CONSTANT {
 		return node.Constant, nil
 	}
 
