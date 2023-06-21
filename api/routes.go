@@ -17,6 +17,16 @@ func (api *API) routes() {
 
 	api.router.Post("/token", api.handlePostFirebaseIdToken())
 
+	api.router.Route("/ast-expression", func(astRouter chi.Router) {
+		astRouter.
+			With(httpin.NewInput(PostValidateAstExpression{})).
+			Post("/validate", api.handleValidateAstExpression())
+		astRouter.
+			With(httpin.NewInput(PostRunAstExpression{})).
+			Post("/run", api.handleRunAstExpression())
+		astRouter.Get("/available-functions", api.handleAvailableFunctions())
+	})
+
 	api.router.With(api.credentialsMiddleware).Group(func(authedRouter chi.Router) {
 		// Authentication using marble token (JWT) or API Key required.
 

@@ -18,7 +18,7 @@ func TestEval(t *testing.T) {
 	inject.AddEvaluator(ast.FUNC_VARIABLE, evaluate.Variable{Variables: payload})
 
 	root := ast.NewAstCompareBalance()
-	result, err := EvaluateAst(&inject, root)
+	result, err := EvaluateAst(inject, root)
 	assert.NoError(t, err)
 
 	assert.Equal(t, true, result)
