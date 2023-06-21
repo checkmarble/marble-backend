@@ -139,6 +139,29 @@ func (api *API) routes() {
 			dataModelRouter.Get("/", api.handleGetApiKey())
 		})
 
+		authedRouter.Route("/lists", func(r chi.Router) {
+			r.Get("/", api.handleGetAllLists())
+
+			r.With(httpin.NewInput(dto.CreateListInputDto{})).
+				Post("/", api.handlePostList())
+
+			r.Route("/{listId}", func(r chi.Router) {
+				r.Get("/", api.handleGetListValues())
+				r.Post("/add", api.handlePostListValue())
+				r.Delete("/delete", api.handleDeleteListValue())
+
+				r.With(
+					httpin.NewInput(dto.UpdateListInputDto{}),
+				).
+					Patch("/", api.handlePatchList())
+
+				r.With(
+					httpin.NewInput(dto.DeleteListInputDto{}),
+				).
+					Delete("/", api.handleDeleteList())
+			})
+		})
+
 		// Group all admin endpoints
 		authedRouter.Group(func(routerAdmin chi.Router) {
 			routerAdmin.Use(api.enforcePermissionMiddleware(models.ORGANIZATIONS_LIST))

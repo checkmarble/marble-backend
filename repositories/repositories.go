@@ -34,6 +34,7 @@ type Repositories struct {
 	LegacyPgRepository               *pg_repository.PGRepository
 	OrganizationSchemaRepository     OrganizationSchemaRepository
 	AwsS3Repository                  AwsS3Repository
+	ListRepository                   ListRepository
 }
 
 func NewRepositories(

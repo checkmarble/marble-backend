@@ -71,6 +71,14 @@ func (usecases *Usecases) NewUserUseCase() UserUseCase {
 	}
 }
 
+
+func (usecases *Usecases) NewListUseCase() ListUseCase {
+	return ListUseCase{
+		transactionFactory: usecases.Repositories.TransactionFactory,
+		listRepository:     usecases.Repositories.ListRepository,
+	}
+}
+
 func (usecases *Usecases) NewSeedUseCase() SeedUseCase {
 	return SeedUseCase{
 		transactionFactory:     usecases.Repositories.TransactionFactory,
