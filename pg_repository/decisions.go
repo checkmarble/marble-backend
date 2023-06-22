@@ -13,7 +13,7 @@ type DbDecisionWithRules struct {
 	Rules []dbmodels.DbDecisionRule
 }
 
-func (r *PGRepository) StoreDecision(ctx context.Context, orgID string, decision models.Decision) error {
+func (r *PGRepository) StoreDecision(ctx context.Context, decision models.Decision) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to start a transaction: %w", err)
@@ -37,7 +37,7 @@ func (r *PGRepository) StoreDecision(ctx context.Context, orgID string, decision
 		).
 		Values(
 			decision.DecisionId,
-			orgID,
+			decision.OrganizationId,
 			decision.Outcome.String(),
 			decision.ScenarioId,
 			decision.ScenarioName,
@@ -58,7 +58,7 @@ func (r *PGRepository) StoreDecision(ctx context.Context, orgID string, decision
 		return fmt.Errorf("unable to create decision: %w", err)
 	}
 
-	err = r.createDecisionRules(ctx, tx, orgID, decision.DecisionId, decision.RuleExecutions)
+	err = r.createDecisionRules(ctx, tx, decision.OrganizationId, decision.DecisionId, decision.RuleExecutions)
 	if err != nil {
 		return fmt.Errorf("unable to create decision rules: %w", err)
 	}
