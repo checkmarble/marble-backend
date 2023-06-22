@@ -29,8 +29,8 @@ type dbScenarioIteration struct {
 	ScoreRejectThreshold pgtype.Int2     `db:"score_reject_threshold"`
 	TriggerCondition     json.RawMessage `db:"trigger_condition"`
 	DeletedAt            pgtype.Time     `db:"deleted_at"`
-	BatchTriggerSQL      string          `db:"batch_trigger_sql"`
-	Schedule             string          `db:"schedule"`
+	BatchTriggerSQL      pgtype.Text     `db:"batch_trigger_sql"`
+	Schedule             pgtype.Text     `db:"schedule"`
 }
 
 func (si *dbScenarioIteration) toDomain() (models.ScenarioIteration, error) {
@@ -39,10 +39,14 @@ func (si *dbScenarioIteration) toDomain() (models.ScenarioIteration, error) {
 		ScenarioID: si.ScenarioID,
 		CreatedAt:  si.CreatedAt,
 		UpdatedAt:  si.UpdatedAt,
-		Body: models.ScenarioIterationBody{
-			BatchTriggerSQL: si.BatchTriggerSQL,
-			Schedule:        si.Schedule,
-		},
+		Body:       models.ScenarioIterationBody{},
+	}
+
+	if si.BatchTriggerSQL.Valid {
+		siDTO.Body.BatchTriggerSQL = si.BatchTriggerSQL.String
+	}
+	if si.Schedule.Valid {
+		siDTO.Body.Schedule = si.Schedule.String
 	}
 
 	if si.Version.Valid {
