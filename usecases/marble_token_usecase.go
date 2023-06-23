@@ -26,7 +26,14 @@ func (usecase *MarbleTokenUseCase) encodeMarbleToken(creds models.Credentials) (
 }
 
 func (usecase *MarbleTokenUseCase) adaptCredentialFromApiKey(ctx context.Context, key string) (models.Credentials, error) {
-	apiKey, err := usecase.apiKeyRepository.GetApiKeyByKey(ctx, key)
+	apiKey, err := repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.ApiKey, error) {
+		apiKey, err := usecase.apiKeyRepository.GetApiKeyByKey(tx, key)
+		if err != nil {
+			return models.ApiKey{}, err
+		}
+		return apiKey, nil
+	})
+
 	if err != nil {
 		return models.Credentials{}, err
 	}

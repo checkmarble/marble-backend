@@ -8,3 +8,8 @@ type ApiKey struct {
 	Key            string
 	Role           Role
 }
+
+type CreateApiKeyInput struct {
+	OrganizationId string
+	Key            string
+}

@@ -71,7 +71,7 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 	}
 
 	newDecisionId := utils.NewPrimaryKey(input.OrganizationID)
-	d := models.Decision{
+	decision := models.Decision{
 		DecisionId:          newDecisionId,
 		OrganizationId:      input.OrganizationID,
 		ClientObject:        input.ClientObject,
@@ -84,12 +84,12 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 		Score:               scenarioExecution.Score,
 	}
 
-	err = usecase.decisionRepositoryLegacy.StoreDecision(ctx, input.OrganizationID, d)
+	err = usecase.decisionRepositoryLegacy.StoreDecision(ctx, decision)
 	if err != nil {
 		return models.Decision{}, fmt.Errorf("error storing decision: %w", err)
 	}
 
 	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Decision, error) {
-		return usecase.decisionRepository.DecisionById(tx, input.OrganizationID)
+		return usecase.decisionRepository.DecisionById(tx, newDecisionId)
 	})
 }
