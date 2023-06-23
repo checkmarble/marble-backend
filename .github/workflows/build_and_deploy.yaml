@@ -6,8 +6,6 @@ on:
       - master
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
-    pull_request:
-      types: [opened, synchronize, edited]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -35,33 +33,20 @@ jobs:
     name: Cloud Run Deployment
     runs-on: ubuntu-latest
     steps:
-      - name: print ref type
-        run: |
-          echo ${{ github.ref_type }}
-          echo ${{ github.ref }}
-
-      - name: print prod ?
-        run: |
-          echo "prod"
-        if: ${{ github.ref_type == "tag" }}
-
-      - name: print staging ?
-        run: |
-          echo "staging"
-        if: ${{ github.ref_type == "branch" }}
-
       - name: Set shared env variables
         id: get_env
         run: |
-          if [ ${{ github.ref_name }}="master" ]
+          if [ ${{ github.ref_name }} == 'master' ]
           then 
+            echo "staging env"
             echo "GCP_PROJECT_ID=${{ vars.GCP_PROJECT_ID_STAGING }}" >> $GITHUB_OUTPUT
             echo "ENV=staging" >> $GITHUB_OUTPUT
             echo "DB_INSTANCE_NAME=${{ vars.DB_INSTANCE_NAME_STAGING }}" >> $GITHUB_OUTPUT
             echo "DB_INSTANCE_REGION=${{ vars.DB_INSTANCE_REGION_STAGING }}" >> $GITHUB_OUTPUT
           fi
-          if [ ${{ github.ref_type }}="tag" ]
+          if [ ${{ github.ref_type }} == 'tag' ]
           then 
+            echo "production env"
             echo "GCP_PROJECT_ID=${{ vars.GCP_PROJECT_ID_PRODUCTION }}" >> $GITHUB_OUTPUT
             echo "ENV=production" >> $GITHUB_OUTPUT
             echo "DB_INSTANCE_NAME=${{ vars.DB_INSTANCE_NAME_PRODUCTION }}" >> $GITHUB_OUTPUT
@@ -73,13 +58,13 @@ jobs:
 
       - name: Auth
         uses: "google-github-actions/auth@v1"
-        if: ${{ github.ref_name }} == "master"
+        if: ${{ github.ref_name == 'master' }}
         with:
           credentials_json: "${{ secrets.GCP_SA_KEY_STAGING }}"
 
       - name: Auth if prod
         uses: "google-github-actions/auth@v1"
-        if: ${{ github.ref_type }} == "tag"
+        if: ${{ github.ref_type == 'tag' }}
         with:
           credentials_json: "${{ secrets.GCP_SA_KEY_PRODUCTION }}"
 
