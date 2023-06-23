@@ -36,6 +36,18 @@ jobs:
       - name: print ref type
         run: |
           echo ${{ github.ref_type }}
+          echo ${{ github.ref }}
+
+      - name: print prod ?
+        run: |
+          echo "prod"
+        if: ${{ github.ref_type }} == "tag"
+
+      - name: print staging ?
+        run: |
+          echo "staging"
+        if: ${{ github.ref_type }} == "branch"
+
       - name: Set shared env variables
         id: get_env
         run: |
