@@ -50,12 +50,12 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 
 	liveVersion, err := repositories.scenarioIterationReadRepository.GetScenarioIteration(ctx, params.scenario.OrganizationID, *params.scenario.LiveVersionID)
 	if err != nil {
-		return models.ScenarioExecution{}, err
+		return models.ScenarioExecution{}, fmt.Errorf("Error getting scenario iteration in eval scenar: %w", err)
 	}
 
 	publishedVersion, err := models.NewPublishedScenarioIteration(liveVersion)
 	if err != nil {
-		return models.ScenarioExecution{}, err
+		return models.ScenarioExecution{}, fmt.Errorf("Error mapping published scenario iteration in eval scenario: %w", err)
 	}
 
 	// Check the scenario & trigger_object's types
@@ -74,7 +74,7 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 	// Evaluate the trigger
 	triggerPassed, err := publishedVersion.Body.TriggerCondition.Eval(ctx, &dataAccessor)
 	if err != nil {
-		return models.ScenarioExecution{}, err
+		return models.ScenarioExecution{}, fmt.Errorf("Error evaluating trigger condition in eval scenario: %w", err)
 	}
 	if !triggerPassed {
 		return models.ScenarioExecution{}, models.ScenarioTriggerConditionAndTriggerObjectMismatchError
@@ -86,7 +86,7 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 	for _, rule := range publishedVersion.Body.Rules {
 		scoreModifier, ruleExecution, err := evalScenarioRule(ctx, rule, &dataAccessor, logger)
 		if err != nil {
-			return models.ScenarioExecution{}, err
+			return models.ScenarioExecution{}, fmt.Errorf("Error evaluating rule in eval scenario: %w", err)
 		}
 		score += scoreModifier
 		ruleExecutions = append(ruleExecutions, ruleExecution)

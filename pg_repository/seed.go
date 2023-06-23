@@ -26,7 +26,7 @@ func (r *PGRepository) Seed(zorgOrganizationId string) error {
 	// Tokens
 	///////////////////////////////
 
-	_, err := r.CreateApiKey(context.TODO(), CreateApiKey{
+	err := r.CreateApiKey(context.TODO(), CreateApiKeyInput{
 		OrgID: zorgOrganizationId,
 		Key:   randomAPiKey(),
 	})
