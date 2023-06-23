@@ -9,7 +9,7 @@
     "singleProjectMode": true
   },
   "hosting": {
-    "site": "marble-backoffice-staging",
+    "target": "backoffice",
     "public": "marble-backoffice/dist",
     "headers": [
       {
