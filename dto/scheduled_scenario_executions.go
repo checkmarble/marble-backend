@@ -17,7 +17,7 @@ func AdaptScheduledExecutionDto(ExecutionBatch models.ScheduledExecution) APISch
 	return APIScheduledExecution{
 		ID:                  ExecutionBatch.ID,
 		ScenarioIterationID: ExecutionBatch.ScenarioIterationID,
-		Status:              ExecutionBatch.Status,
+		Status:              ExecutionBatch.Status.String(),
 		StartedAt:           ExecutionBatch.StartedAt,
 		FinishedAt:          ExecutionBatch.FinishedAt,
 	}

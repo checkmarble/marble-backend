@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 )
@@ -12,27 +11,23 @@ import (
 type DataAccessorBoolImpl struct{}
 
 func (d *DataAccessorBoolImpl) GetPayloadField(fieldName string) (interface{}, error) {
-	var val bool
 	if fieldName == "true" {
-		val = true
+		return true, nil
 	} else if fieldName == "false" {
-		val = false
+		return false, nil
 	} else {
 		return nil, nil
 	}
-	return &val, nil
 }
 
 func (d *DataAccessorBoolImpl) GetDbField(ctx context.Context, triggerTableName string, path []string, fieldName string) (interface{}, error) {
-	var val pgtype.Bool
 	if fieldName == "true" {
-		val = pgtype.Bool{Bool: true, Valid: true}
+		return true, nil
 	} else if fieldName == "false" {
-		val = pgtype.Bool{Bool: false, Valid: true}
+		return false, nil
 	} else {
-		val = pgtype.Bool{Bool: true, Valid: false}
+		return nil, nil
 	}
-	return val, nil
 }
 
 func (d *DataAccessorBoolImpl) GetDbHandle() (db *pgxpool.Pool, schema string, err error) {

@@ -9,15 +9,67 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// executes the sql query with the given transaction and returns a list of models using the provided adapter
-func SqlToListOfModels[DBModel, Model any](transaction TransactionPostgres, s squirrel.SelectBuilder, adapter func(dbModel DBModel) Model) ([]Model, error) {
+func SqlToChannelOfDbModel[DBModel any](tx TransactionPostgres, query squirrel.Sqlizer) (<-chan DBModel, <-chan error) {
 
-	query, args, err := s.ToSql()
+	modelsChannel := make(chan DBModel, 100)
+	errChannel := make(chan error, 1)
+
+	go func() {
+		defer close(modelsChannel)
+		defer close(errChannel)
+
+		// var err error
+		// for i := 0; i < 1e3; i++ {
+		err := ForEachRow(tx, query, func(row pgx.CollectableRow) error {
+			dbModel, err := pgx.RowToStructByName[DBModel](row)
+			if err != nil {
+				return err
+			} else {
+				modelsChannel <- dbModel
+			}
+			return nil
+		})
+		// }
+		errChannel <- err
+
+	}()
+
+	return modelsChannel, errChannel
+}
+
+func ForEachRow(transaction TransactionPostgres, query squirrel.Sqlizer, fn func(row pgx.CollectableRow) error) error {
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return err
+	}
+
+	rows, err := transaction.exec.Query(transaction.ctx, sql, args...)
+	if err != nil {
+		return err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		err := fn(rows)
+		if err != nil {
+			return err
+		}
+	}
+
+	return rows.Err()
+}
+
+// executes the sql query with the given transaction and returns a list of models using the provided adapter
+func SqlToListOfModels[DBModel, Model any](transaction TransactionPostgres, query squirrel.Sqlizer, adapter func(dbModel DBModel) Model) ([]Model, error) {
+
+	sql, args, err := query.ToSql()
 	if err != nil {
 		return nil, err
 	}
 
-	rows, err := transaction.exec.Query(transaction.ctx, query, args...)
+	rows, err := transaction.exec.Query(transaction.ctx, sql, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +85,7 @@ func SqlToListOfModels[DBModel, Model any](transaction TransactionPostgres, s sq
 
 // executes the sql query with the given transaction and returns a models using the provided adapter
 // If no result is returned by the query, returns nil
-func SqlToOptionalModel[DBModel, Model any](transaction TransactionPostgres, s squirrel.SelectBuilder, adapter func(dbModel DBModel) Model) (*Model, error) {
+func SqlToOptionalModel[DBModel, Model any](transaction TransactionPostgres, s squirrel.Sqlizer, adapter func(dbModel DBModel) Model) (*Model, error) {
 
 	modelslist, err := SqlToListOfModels(transaction, s, adapter)
 	if err != nil {
@@ -53,7 +105,7 @@ func SqlToOptionalModel[DBModel, Model any](transaction TransactionPostgres, s s
 
 // executes the sql query with the given transaction and returns a models using the provided adapter
 // if no result is returned by the query, returns a NotFoundError
-func SqlToModel[DBModel, Model any](transaction TransactionPostgres, s squirrel.SelectBuilder, adapter func(dbModel DBModel) Model) (Model, error) {
+func SqlToModel[DBModel, Model any](transaction TransactionPostgres, s squirrel.Sqlizer, adapter func(dbModel DBModel) Model) (Model, error) {
 
 	model, err := SqlToOptionalModel(transaction, s, adapter)
 	var zeroModel Model

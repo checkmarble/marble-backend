@@ -7,39 +7,9 @@ import (
 	dynamicstruct "github.com/ompluscator/dynamic-struct"
 )
 
-type Payload struct {
-	Reader dynamicstruct.Reader
-	Table  Table
-}
-
-type PayloadForArchive struct {
-	TableName string
-	Data      map[string]interface{}
-}
-
-func (payload Payload) ReadFieldFromPayload(fieldName FieldName) (interface{}, error) {
-	field := payload.Reader.GetField(pure_utils.Capitalize(string(fieldName)))
-	table := payload.Table
-	fields := table.Fields
-	fieldFromModel, ok := fields[fieldName]
-	if !ok {
-		return nil, fmt.Errorf("The field %v is not in table %v schema", fieldName, table.Name)
-	}
-
-	switch fieldFromModel.DataType {
-	case Bool:
-		return field.PointerBool(), nil
-	case Int:
-		return field.PointerInt(), nil
-	case Float:
-		return field.PointerFloat64(), nil
-	case String:
-		return field.PointerString(), nil
-	case Timestamp:
-		return field.PointerTime(), nil
-	default:
-		return nil, fmt.Errorf("The field %v has no supported data type", fieldName)
-	}
+type PayloadReader interface {
+	ReadFieldFromPayload(fieldName FieldName) (any, error)
+	ReadTableName() TableName
 }
 
 type DbFieldReadParams struct {
@@ -47,5 +17,39 @@ type DbFieldReadParams struct {
 	Path             []LinkName
 	FieldName        FieldName
 	DataModel        DataModel
-	Payload          Payload
+	Payload          PayloadReader
+}
+
+type Payload struct {
+	Reader    dynamicstruct.Reader
+	TableName TableName
+}
+
+func (payload Payload) ReadFieldFromPayload(fieldName FieldName) (any, error) {
+	// output type is string, bool, float64, int64, time.Time, bundled in an "any" interface
+	field := payload.Reader.GetField(pure_utils.Capitalize(string(fieldName)))
+
+	return field.Interface(), nil
+}
+
+func (payload Payload) ReadTableName() TableName {
+	return payload.TableName
+}
+
+type ClientObject struct {
+	TableName TableName
+	Data      map[string]any
+}
+
+func (obj ClientObject) ReadFieldFromPayload(fieldName FieldName) (any, error) {
+	// output type is string, bool, float64, int64, time.Time, bundled in an "any" interface
+	fieldValue, ok := obj.Data[string(fieldName)]
+	if !ok {
+		return nil, fmt.Errorf("No field with name %s", fieldName)
+	}
+	return fieldValue, nil
+}
+
+func (obj ClientObject) ReadTableName() TableName {
+	return obj.TableName
 }

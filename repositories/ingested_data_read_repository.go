@@ -8,18 +8,16 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type IngestedDataReadRepository interface {
-	GetDbField(transaction Transaction, readParams models.DbFieldReadParams) (interface{}, error)
+	GetDbField(transaction Transaction, readParams models.DbFieldReadParams) (any, error)
+	ListAllObjectsFromTable(transaction Transaction, table models.Table) ([]models.ClientObject, error)
 }
 
-type IngestedDataReadRepositoryImpl struct {
-	queryBuilder squirrel.StatementBuilderType
-}
+type IngestedDataReadRepositoryImpl struct{}
 
-func (repo *IngestedDataReadRepositoryImpl) GetDbField(transaction Transaction, readParams models.DbFieldReadParams) (interface{}, error) {
+func (repo *IngestedDataReadRepositoryImpl) GetDbField(transaction Transaction, readParams models.DbFieldReadParams) (any, error) {
 	tx := adaptClientDatabaseTransaction(transaction)
 
 	if len(readParams.Path) == 0 {
@@ -30,40 +28,14 @@ func (repo *IngestedDataReadRepositoryImpl) GetDbField(transaction Transaction, 
 		return nil, fmt.Errorf("Error while building query for DB field: %w", err)
 	}
 
-	lastTable, err := getLastTableFromPath(readParams)
-	if err != nil {
+	var output any
+	err = row.Scan(&output)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("No rows scanned while reading DB: %w", operators.OperatorNoRowsReadInDbError)
+	} else if err != nil {
 		return nil, err
 	}
-	fieldFromModel, ok := lastTable.Fields[models.FieldName(readParams.FieldName)]
-	if !ok {
-		return nil, fmt.Errorf("Field %s not found in table %s", readParams.FieldName, lastTable.Name)
-	}
-
-	switch fieldFromModel.DataType {
-	case models.Bool:
-		return scanRowReturnValue[pgtype.Bool](row)
-	case models.Int:
-		return scanRowReturnValue[pgtype.Int2](row)
-	case models.Float:
-		return scanRowReturnValue[pgtype.Float8](row)
-	case models.String:
-		return scanRowReturnValue[pgtype.Text](row)
-	case models.Timestamp:
-		return scanRowReturnValue[pgtype.Timestamp](row)
-	default:
-		return nil, fmt.Errorf("Unknown data type when reading from db: %s", fieldFromModel.DataType)
-	}
-}
-
-func scanRowReturnValue[T pgtype.Bool | pgtype.Int2 | pgtype.Float8 | pgtype.Text | pgtype.Timestamp](row pgx.Row) (T, error) {
-	var returnVariable T
-	err := row.Scan(&returnVariable)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return returnVariable, fmt.Errorf("No rows scanned while reading DB: %w", operators.OperatorNoRowsReadInDbError)
-	} else if err != nil {
-		return returnVariable, err
-	}
-	return returnVariable, nil
+	return output, nil
 }
 
 func (repo *IngestedDataReadRepositoryImpl) queryDbForField(tx TransactionPostgres, readParams models.DbFieldReadParams) (pgx.Row, error) {
@@ -85,7 +57,7 @@ func (repo *IngestedDataReadRepositoryImpl) queryDbForField(tx TransactionPostgr
 	lastTableName := tableNameWithSchema(tx, lastTable.Name)
 
 	// setup the end table we read the field from, the beginning table we join from, and relevant filters on the latter
-	query := repo.queryBuilder.
+	query := NewQueryBuilder().
 		Select(fmt.Sprintf("%s.%s", lastTableName, readParams.FieldName)).
 		From(firstTableName).
 		Where(squirrel.Eq{fmt.Sprintf("%s.object_id", firstTableName): baseObjectId}).
@@ -106,17 +78,16 @@ func (repo *IngestedDataReadRepositoryImpl) queryDbForField(tx TransactionPostgr
 	return row, nil
 }
 
-func getBaseObjectIdFromPayload(payload models.Payload) (string, error) {
+func getBaseObjectIdFromPayload(payload models.PayloadReader) (string, error) {
 	baseObjectIdAny, _ := payload.ReadFieldFromPayload("object_id")
-	baseObjectIdPtr, ok := baseObjectIdAny.(*string)
+	if baseObjectIdAny == nil {
+		return "", fmt.Errorf("object_id in payload is null") // should not happen, as per input validation
+	}
+	baseObjectId, ok := baseObjectIdAny.(string)
 	if !ok {
 		return "", fmt.Errorf("object_id in payload is not a string") // should not happen, as per input validation
 	}
 
-	if baseObjectIdPtr == nil {
-		return "", fmt.Errorf("object_id in payload is null") // should not happen, as per input validation
-	}
-	baseObjectId := *baseObjectIdPtr
 	return baseObjectId, nil
 }
 
@@ -173,4 +144,66 @@ func getLastTableFromPath(params models.DbFieldReadParams) (models.Table, error)
 		currentTable = nextTable
 	}
 	return currentTable, nil
+}
+
+func (repo *IngestedDataReadRepositoryImpl) ListAllObjectsFromTable(transaction Transaction, table models.Table) ([]models.ClientObject, error) {
+	tx := adaptClientDatabaseTransaction(transaction)
+
+	columnNames := make([]string, len(table.Fields))
+	i := 0
+	for fieldName := range table.Fields {
+		columnNames[i] = string(fieldName)
+		i++
+	}
+
+	objectsAsMap, err := queryWithDynamicColumnList(tx, tableNameWithSchema(tx, table.Name), columnNames)
+	if err != nil {
+		return nil, err
+	}
+
+	output := make([]models.ClientObject, len(objectsAsMap))
+	for i, objectAsMap := range objectsAsMap {
+		object := models.ClientObject{
+			TableName: table.Name,
+			Data:      objectAsMap,
+		}
+		output[i] = object
+	}
+
+	return output, nil
+}
+
+func queryWithDynamicColumnList(tx TransactionPostgres, qualifiedTableName string, columnNames []string) ([]map[string]any, error) {
+	sql, args, err := NewQueryBuilder().
+		Select(columnNames...).
+		From(qualifiedTableName).
+		Where(rowIsValid(qualifiedTableName)).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("Error while building SQL query: %w", err)
+	}
+	rows, err := tx.exec.Query(tx.ctx, sql, args...)
+	if err != nil {
+		return nil, fmt.Errorf("Error while querying DB: %w", err)
+	}
+	defer rows.Close()
+	output := make([]map[string]any, 0)
+	for rows.Next() {
+		values, err := rows.Values()
+		if err != nil {
+			return nil, fmt.Errorf("error while fetching rows: %w", err)
+		}
+
+		objectAsMap := make(map[string]any)
+		for i, columnName := range columnNames {
+			objectAsMap[columnName] = values[i]
+		}
+		output = append(output, objectAsMap)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("Error while iterating over rows: %w", err)
+	}
+
+	return output, nil
 }

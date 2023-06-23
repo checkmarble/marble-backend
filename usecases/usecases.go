@@ -55,9 +55,11 @@ func (usecases *Usecases) NewIngestionUseCase() IngestionUseCase {
 
 func (usecases *Usecases) NewDecisionUsecase() DecisionUsecase {
 	return DecisionUsecase{
+		transactionFactory:              usecases.Repositories.TransactionFactory,
 		orgTransactionFactory:           usecases.NewOrgTransactionFactory(),
 		ingestedDataReadRepository:      usecases.Repositories.IngestedDataReadRepository,
 		decisionRepositoryLegacy:        usecases.Repositories.DecisionRepositoryLegacy,
+		decisionRepository:              usecases.Repositories.DecisionRepository,
 		datamodelRepository:             usecases.Repositories.DataModelRepository,
 		scenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,
 		scenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
@@ -134,12 +136,19 @@ func (usecases *Usecases) NewScheduledExecutionUsecase() ScheduledExecutionUseca
 		scenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
 		scheduledExecutionRepository:    usecases.Repositories.ScheduledExecutionRepository,
 		transactionFactory:              usecases.Repositories.TransactionFactory,
+		orgTransactionFactory:           usecases.NewOrgTransactionFactory(),
+		dataModelRepository:             usecases.Repositories.DataModelRepository,
+		ingestedDataReadRepository:      usecases.Repositories.IngestedDataReadRepository,
+		decisionRepository:              usecases.Repositories.DecisionRepository,
+		scenarioPublicationsRepository:  usecases.Repositories.ScenarioPublicationRepository,
+		exportScheduleExecution:         usecases.NewExportScheduleExecution(),
 	}
 }
 
 func (usecases *Usecases) NewExportScheduleExecution() scheduledexecution.ExportScheduleExecution {
 	return &scheduledexecution.ExportScheduleExecutionImpl{
-		AwsS3Repository:    usecases.Repositories.AwsS3Repository,
-		DecisionRepository: usecases.Repositories.DecisionRepository,
+		AwsS3Repository:        usecases.Repositories.AwsS3Repository,
+		DecisionRepository:     usecases.Repositories.DecisionRepository,
+		OrganizationRepository: usecases.Repositories.OrganizationRepository,
 	}
 }

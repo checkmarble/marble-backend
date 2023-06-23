@@ -97,7 +97,12 @@ func (usecase *OrganizationUseCase) GetUsersOfOrganization(organizationIDFilter 
 	)
 }
 
-func (usecase *OrganizationUseCase) GetApiKeyOfOrganization(ctx context.Context, organizationId string) ([]models.ApiKey, error) {
-
-	return usecase.apiKeyRepository.GetApiKeyOfOrganization(ctx, organizationId)
+func (usecase *OrganizationUseCase) GetApiKeysOfOrganization(ctx context.Context, organizationId string) ([]models.ApiKey, error) {
+	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) ([]models.ApiKey, error) {
+		apiKey, err := usecase.apiKeyRepository.GetApiKeysOfOrganization(tx, organizationId)
+		if err != nil {
+			return []models.ApiKey{}, err
+		}
+		return apiKey, nil
+	})
 }

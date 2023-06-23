@@ -26,32 +26,34 @@ type APIDecisionScenario struct {
 }
 
 type APIDecision struct {
-	ID                string              `json:"id"`
-	CreatedAt         time.Time           `json:"created_at"`
-	TriggerObject     map[string]any      `json:"trigger_object"`
-	TriggerObjectType string              `json:"trigger_object_type"`
-	Outcome           string              `json:"outcome"`
-	Scenario          APIDecisionScenario `json:"scenario"`
-	Rules             []APIDecisionRule   `json:"rules"`
-	Score             int                 `json:"score"`
-	Error             *APIError           `json:"error"`
+	ID                   string              `json:"id"`
+	CreatedAt            time.Time           `json:"created_at"`
+	TriggerObject        map[string]any      `json:"trigger_object"`
+	TriggerObjectType    string              `json:"trigger_object_type"`
+	Outcome              string              `json:"outcome"`
+	Scenario             APIDecisionScenario `json:"scenario"`
+	Rules                []APIDecisionRule   `json:"rules"`
+	Score                int                 `json:"score"`
+	Error                *APIError           `json:"error"`
+	ScheduledExecutionId *string             `json:"scheduled_execution_id,omitempty"`
 }
 
 func NewAPIDecision(decision models.Decision) APIDecision {
 	apiDecision := APIDecision{
-		ID:                decision.ID,
+		ID:                decision.DecisionId,
 		CreatedAt:         decision.CreatedAt,
-		TriggerObjectType: decision.PayloadForArchive.TableName,
-		TriggerObject:     decision.PayloadForArchive.Data,
+		TriggerObjectType: string(decision.ClientObject.TableName),
+		TriggerObject:     decision.ClientObject.Data,
 		Outcome:           decision.Outcome.String(),
 		Scenario: APIDecisionScenario{
-			ID:          decision.ScenarioID,
+			ID:          decision.ScenarioId,
 			Name:        decision.ScenarioName,
 			Description: decision.ScenarioDescription,
 			Version:     decision.ScenarioVersion,
 		},
-		Score: decision.Score,
-		Rules: make([]APIDecisionRule, len(decision.RuleExecutions)),
+		Score:                decision.Score,
+		Rules:                make([]APIDecisionRule, len(decision.RuleExecutions)),
+		ScheduledExecutionId: decision.ScheduledExecutionId,
 	}
 
 	for i, ruleExecution := range decision.RuleExecutions {

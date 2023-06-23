@@ -16,23 +16,22 @@ type IngestionRepository interface {
 }
 
 type IngestionRepositoryImpl struct {
-	queryBuilder squirrel.StatementBuilderType
 }
 
-func (repo *IngestionRepositoryImpl) IngestObject(transaction Transaction, payloadStructWithReader models.Payload, table models.Table, logger *slog.Logger) (err error) {
+func (repo *IngestionRepositoryImpl) IngestObject(transaction Transaction, payload models.Payload, table models.Table, logger *slog.Logger) (err error) {
 
 	tx := adaptClientDatabaseTransaction(transaction)
 
-	err = updateExistingVersionIfPresent(tx, repo.queryBuilder, payloadStructWithReader, table)
+	err = updateExistingVersionIfPresent(tx, payload, table)
 	if err != nil {
 		return fmt.Errorf("Error updating existing version: %w", err)
 	}
 
-	columnNames, values := generateInsertValues(table, payloadStructWithReader)
+	columnNames, values := generateInsertValues(table, payload)
 	columnNames = append(columnNames, "id")
 	values = append(values, uuid.NewString())
 
-	sql := repo.queryBuilder.Insert(tableNameWithSchema(tx, table.Name)).Columns(columnNames...).Values(values...).Suffix("RETURNING \"id\"")
+	sql := NewQueryBuilder().Insert(tableNameWithSchema(tx, table.Name)).Columns(columnNames...).Values(values...).Suffix("RETURNING \"id\"")
 
 	var createdObjectID string
 	_, err = tx.ExecBuilder(sql)
@@ -44,14 +43,14 @@ func (repo *IngestionRepositoryImpl) IngestObject(transaction Transaction, paylo
 	return nil
 }
 
-func generateInsertValues(table models.Table, payloadStructWithReader models.Payload) (columnNames []string, values []interface{}) {
+func generateInsertValues(table models.Table, payload models.Payload) (columnNames []string, values []interface{}) {
 	nbFields := len(table.Fields)
 	columnNames = make([]string, nbFields)
 	values = make([]interface{}, nbFields)
 	i := 0
 	for fieldName := range table.Fields {
 		columnNames[i] = string(fieldName)
-		values[i], _ = payloadStructWithReader.ReadFieldFromPayload(fieldName)
+		values[i], _ = payload.ReadFieldFromPayload(fieldName)
 		i++
 	}
 	return columnNames, values
@@ -59,12 +58,11 @@ func generateInsertValues(table models.Table, payloadStructWithReader models.Pay
 
 func updateExistingVersionIfPresent(
 	tx TransactionPostgres,
-	queryBuilder squirrel.StatementBuilderType,
-	payloadStructWithReader models.Payload,
+	payload models.Payload,
 	table models.Table) (err error) {
 
-	object_id, _ := payloadStructWithReader.ReadFieldFromPayload("object_id")
-	sql, args, err := queryBuilder.
+	object_id, _ := payload.ReadFieldFromPayload("object_id")
+	sql, args, err := NewQueryBuilder().
 		Select("id").
 		From(tableNameWithSchema(tx, table.Name)).
 		Where(squirrel.Eq{"object_id": object_id}).
@@ -82,7 +80,7 @@ func updateExistingVersionIfPresent(
 		return err
 	}
 
-	sql, args, err = queryBuilder.
+	sql, args, err = NewQueryBuilder().
 		Update(tableNameWithSchema(tx, table.Name)).
 		Set("valid_until", "now()").
 		Where(squirrel.Eq{"id": id}).

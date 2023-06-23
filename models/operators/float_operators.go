@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"math"
 	"strings"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // /////////////////////////////
@@ -116,19 +114,7 @@ func (field DbFieldFloat) Eval(ctx context.Context, d DataAccessor) (float64, er
 		return 0, ErrEvaluatingInvalidOperator
 	}
 
-	valRaw, err := d.GetDbField(ctx, field.TriggerTableName, field.Path, field.FieldName)
-	if err != nil {
-		return 0, err
-	}
-
-	valNullable, ok := valRaw.(pgtype.Float8)
-	if !ok {
-		return 0, fmt.Errorf("DB field %s is not a float", field.FieldName)
-	}
-	if !valNullable.Valid {
-		return 0, fmt.Errorf("DB field %s is null: %w", field.FieldName, OperatorNullValueReadError)
-	}
-	return valNullable.Float64, nil
+	return getDbFieldGeneric[float64](ctx, d, field.TriggerTableName, field.FieldName, field.Path)
 }
 
 func (field DbFieldFloat) IsValid() bool {

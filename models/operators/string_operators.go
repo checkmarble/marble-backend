@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // /////////////////////////////
@@ -111,19 +109,7 @@ func (field DbFieldString) Eval(ctx context.Context, d DataAccessor) (string, er
 		return "", ErrEvaluatingInvalidOperator
 	}
 
-	valRaw, err := d.GetDbField(ctx, field.TriggerTableName, field.Path, field.FieldName)
-	if err != nil {
-		return "", err
-	}
-
-	valNullable, ok := valRaw.(pgtype.Text)
-	if !ok {
-		return "", fmt.Errorf("DB field %s is not a string", field.FieldName)
-	}
-	if !valNullable.Valid {
-		return "", fmt.Errorf("DB field %s is null: %w", field.FieldName, OperatorNullValueReadError)
-	}
-	return valNullable.String, nil
+	return getDbFieldGeneric[string](ctx, d, field.TriggerTableName, field.FieldName, field.Path)
 }
 
 func (field DbFieldString) IsValid() bool {

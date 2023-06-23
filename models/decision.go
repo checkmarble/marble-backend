@@ -3,17 +3,19 @@ package models
 import "time"
 
 type Decision struct {
-	ID                  string
-	CreatedAt           time.Time
-	PayloadForArchive   PayloadForArchive
-	Outcome             Outcome
-	ScenarioID          string
-	ScenarioName        string
-	ScenarioDescription string
-	ScenarioVersion     int
-	RuleExecutions      []RuleExecution
-	Score               int
-	DecisionError       DecisionError
+	DecisionId           string
+	OrganizationId       string
+	CreatedAt            time.Time
+	ClientObject         ClientObject
+	Outcome              Outcome
+	ScenarioId           string
+	ScenarioName         string
+	ScenarioDescription  string
+	ScenarioVersion      int
+	RuleExecutions       []RuleExecution
+	Score                int
+	DecisionError        DecisionError
+	ScheduledExecutionId *string
 }
 
 type ScenarioExecution struct {
