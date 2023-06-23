@@ -70,7 +70,9 @@ func NewRepositories(
 		UserRepository: &UserRepositoryPostgresql{
 			transactionFactory: transactionFactory,
 		},
-		ApiKeyRepository: pgRepository,
+		ApiKeyRepository: &ApiKeyRepositoryImpl{
+			transactionFactory: transactionFactory,
+		},
 		OrganizationRepository: &OrganizationRepositoryPostgresql{
 			transactionFactory: transactionFactory,
 		},
