@@ -1,16 +1,51 @@
+import { type FirebaseOptions } from "firebase/app";
+
 export interface Environment {
   authEmulator: boolean;
   marbleBackend: URL;
+  firebaseOptions: FirebaseOptions;
 }
 
 export const Environments: Record<string, Environment> = {
-  Local: {
+  development: {
     authEmulator: true,
     marbleBackend: new URL("http://localhost:8080"),
+    firebaseOptions: {},
   },
 
-  Staging: {
+  staging: {
     authEmulator: false,
-    marbleBackend: new URL("https://marble-backend-gsmyteqtsa-od.a.run.app"),
+    marbleBackend: new URL("https://api.staging.checkmarble.com"),
+    firebaseOptions: {
+      apiKey: "AIzaSyAElc2shIKIrYzLSzWmWaZ1C7yEuoS-bBw",
+      authDomain: "marble-backoffice-staging.web.app",
+      projectId: "tokyo-country-381508",
+      storageBucket: "tokyo-country-381508.appspot.com",
+      messagingSenderId: "1047691849054",
+      appId: "1:1047691849054:web:59e5df4b6dbdacbe60b3cf",
+    },
+  },
+
+  production: {
+    authEmulator: false,
+    marbleBackend: new URL("https://api.checkmarble.com"),
+    firebaseOptions: {
+      apiKey: "AIzaSyDxzrr5GLnlbVQfeSWjBK6_w85rACgXQrg",
+      authDomain: "marble-backoffice-production.web.app",
+      projectId: "marble-prod-1",
+      storageBucket: "marble-prod-1.appspot.com",
+      messagingSenderId: "280431296971",
+      appId: "1:280431296971:web:ff089aa051073474f8f64e",
+    },
   },
 };
+
+export function buildEnvironment(): Environment {
+  const environmentName = import.meta.env.MODE;
+  const enviroment = Environments[environmentName];
+  if (!enviroment) {
+    throw Error(`Unknown environment ${environmentName}`);
+  }
+  console.log(`Using environment ${environmentName}`);
+  return enviroment;
+}
