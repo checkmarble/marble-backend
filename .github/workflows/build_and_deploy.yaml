@@ -33,6 +33,9 @@ jobs:
     name: Cloud Run Deployment
     runs-on: ubuntu-latest
     steps:
+      - name: print ref type
+        run: |
+          echo ${{ github.ref_type }}
       - name: Set shared env variables
         id: get_env
         run: |
