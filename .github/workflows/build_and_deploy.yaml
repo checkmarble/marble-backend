@@ -41,12 +41,12 @@ jobs:
       - name: print prod ?
         run: |
           echo "prod"
-        if: ${{ github.ref_type }} == "tag"
+        if: ${{ github.ref_type == "tag" }}
 
       - name: print staging ?
         run: |
           echo "staging"
-        if: ${{ github.ref_type }} == "branch"
+        if: ${{ github.ref_type == "branch" }}
 
       - name: Set shared env variables
         id: get_env
@@ -58,7 +58,7 @@ jobs:
             echo "DB_INSTANCE_NAME=${{ vars.DB_INSTANCE_NAME_STAGING }}" >> $GITHUB_OUTPUT
             echo "DB_INSTANCE_REGION=${{ vars.DB_INSTANCE_REGION_STAGING }}" >> $GITHUB_OUTPUT
           fi
-          if [ ${{ github.ref_type }}="tag" ]
+          if [ ${{ github.ref_type="tag" }} ]
           then 
             echo "GCP_PROJECT_ID=${{ vars.GCP_PROJECT_ID_PRODUCTION }}" >> $GITHUB_OUTPUT
             echo "ENV=production" >> $GITHUB_OUTPUT
