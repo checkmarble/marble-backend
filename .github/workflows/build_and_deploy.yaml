@@ -75,7 +75,7 @@ jobs:
 
       - name: Configure Docker
         run: |
-          gcloud auth configure-docker
+          gcloud auth configure-docker europe-docker.pkg.dev
 
       - name: Build
         run: |
