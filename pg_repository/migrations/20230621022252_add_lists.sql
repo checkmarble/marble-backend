@@ -3,26 +3,26 @@
 
 
 -- lists
-CREATE TABLE lists(
+CREATE TABLE custom_lists(
   id uuid DEFAULT uuid_generate_v4(),
   org_id uuid NOT NULL,
   name VARCHAR NOT NULL,
   description VARCHAR NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE,
-  updated_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   PRIMARY KEY(id),
-  CONSTRAINT fk_lists_org FOREIGN KEY(org_id) REFERENCES organizations(id) ON DELETE CASCADE
+  CONSTRAINT fk_custom_lists_org FOREIGN KEY(org_id) REFERENCES organizations(id) ON DELETE CASCADE
 );
 
 -- list_value
-CREATE TABLE list_value(
+CREATE TABLE custom_list_value(
   id uuid DEFAULT uuid_generate_v4(),
-  list_id uuid NOT NULL,
+  custom_list_id uuid NOT NULL,
   value VARCHAR NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   deleted_at TIMESTAMP WITH TIME ZONE,
   PRIMARY KEY(id),
-  CONSTRAINT fk_lists_value_lists FOREIGN KEY(list_id) REFERENCES lists(id) ON DELETE CASCADE
+  CONSTRAINT fk_custom_lists_value_lists FOREIGN KEY(custom_list_id) REFERENCES custom_lists(id) ON DELETE CASCADE
 );
 
 -- +goose StatementEnd
@@ -30,7 +30,7 @@ CREATE TABLE list_value(
 -- +goose Down
 -- +goose StatementBegin
 
-DROP TABLE lists CASCADE;
-DROP TABLE list_value CASCADE;
+DROP TABLE custom_lists CASCADE;
+DROP TABLE custom_list_value CASCADE;
 
 -- +goose StatementEnd

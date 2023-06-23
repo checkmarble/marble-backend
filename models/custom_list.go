@@ -2,7 +2,7 @@ package models
 
 import "time"
 
-type List struct {
+type CustomList struct {
 	Id          string
 	OrgId       string
 	Name        string
@@ -11,50 +11,50 @@ type List struct {
 	UpdatedAt   time.Time
 }
 
-type ListValue struct {
+type CustomListValue struct {
 	Id        string
-	ListId    string
+	CustomListId    string
 	Value     string
 	CreatedAt time.Time
-	DeletedAt time.Time
+	DeletedAt *time.Time
 }
 
-type CreateListInput struct {
+type CreateCustomListInput struct {
 	OrgId       string
 	Name        string
 	Description *string
 }
 
-type UpdateListInput struct {
+type UpdateCustomListInput struct {
 	Id          string
 	OrgId       string
 	Name        *string
 	Description *string
 }
 
-type DeleteListInput struct {
+type DeleteCustomListInput struct {
 	Id    string
 	OrgId string
 }
 
-type GetListInput struct {
+type GetCustomListInput struct {
 	Id    string
 	OrgId string
 }
 
-type GetListValuesInput struct {
+type GetCustomListValuesInput struct {
 	Id    string
 	OrgId string
 }
 
-type AddListValueInput struct {
+type AddCustomListValueInput struct {
 	OrgId  string
-	ListId string
+	CustomListId string
 	Value  string
 }
 
-type DeleteListValueInput struct {
+type DeleteCustomListValueInput struct {
 	Id     string
-	ListId string
+	CustomListId string
 	OrgId  string
 }

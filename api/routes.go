@@ -139,26 +139,21 @@ func (api *API) routes() {
 			dataModelRouter.Get("/", api.handleGetApiKey())
 		})
 
-		authedRouter.Route("/lists", func(r chi.Router) {
-			r.Get("/", api.handleGetAllLists())
-
-			r.With(httpin.NewInput(dto.CreateListInputDto{})).
-				Post("/", api.handlePostList())
+		authedRouter.Route("/custom-lists", func(r chi.Router) {
+			r.Get("/", api.handleGetAllCustomLists())
+			r.With(httpin.NewInput(dto.CreateCustomListInputDto{})).Post("/", api.handlePostCustomList())
 
 			r.Route("/{listId}", func(r chi.Router) {
-				r.Get("/", api.handleGetListValues())
-				r.Post("/add", api.handlePostListValue())
-				r.Delete("/delete", api.handleDeleteListValue())
+				r.With(httpin.NewInput(dto.GetCustomListInputDto{})).Get("/", api.handleGetCustomListValues())
+				r.With(httpin.NewInput(dto.UpdateCustomListInputDto{})).Patch("/", api.handlePatchCustomList())
+				r.With(httpin.NewInput(dto.DeleteCustomListInputDto{})).Delete("/", api.handleDeleteCustomList())
+			})
+		})
 
-				r.With(
-					httpin.NewInput(dto.UpdateListInputDto{}),
-				).
-					Patch("/", api.handlePatchList())
-
-				r.With(
-					httpin.NewInput(dto.DeleteListInputDto{}),
-				).
-					Delete("/", api.handleDeleteList())
+		authedRouter.Route("/custom-list-value", func(r chi.Router) {
+			r.Route("/{listId}", func(r chi.Router) {
+				r.With(httpin.NewInput(dto.AddCustomListValueInputDto{})).Post("/", api.handlePostCustomListValue())
+				r.With(httpin.NewInput(dto.DeleteCustomListValueInputDto{})).Delete("/", api.handleDeleteCustomListValue())
 			})
 		})
 

@@ -34,7 +34,7 @@ type Repositories struct {
 	LegacyPgRepository               *pg_repository.PGRepository
 	OrganizationSchemaRepository     OrganizationSchemaRepository
 	AwsS3Repository                  AwsS3Repository
-	ListRepository                   ListRepository
+	CustomListRepository             CustomListRepository
 }
 
 func NewRepositories(
@@ -97,6 +97,10 @@ func NewRepositories(
 		},
 		LegacyPgRepository: pgRepository,
 		OrganizationSchemaRepository: &OrganizationSchemaRepositoryPostgresql{
+			transactionFactory: transactionFactory,
+			queryBuilder:       queryBuilder,
+		},
+		CustomListRepository: &CustomListRepositoryPostgresql{
 			transactionFactory: transactionFactory,
 			queryBuilder:       queryBuilder,
 		},

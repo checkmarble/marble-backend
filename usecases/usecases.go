@@ -72,10 +72,10 @@ func (usecases *Usecases) NewUserUseCase() UserUseCase {
 }
 
 
-func (usecases *Usecases) NewListUseCase() ListUseCase {
-	return ListUseCase{
+func (usecases *Usecases) NewCustomListUseCase() CustomListUseCase {
+	return CustomListUseCase{
 		transactionFactory: usecases.Repositories.TransactionFactory,
-		listRepository:     usecases.Repositories.ListRepository,
+		CustomListRepository:     usecases.Repositories.CustomListRepository,
 	}
 }
 

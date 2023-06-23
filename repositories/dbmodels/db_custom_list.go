@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-type DBListResult struct {
+type DBCustomListResult struct {
 	Id          string    `db:"id"`
 	OrgId       string    `db:"org_id"`
 	Name        string    `db:"name"`
@@ -15,13 +15,13 @@ type DBListResult struct {
 	UpdatedAt   time.Time `db:"updated_at"`
 }
 
-const TABLE_LIST = "lists"
+const TABLE_CUSTOM_LIST = "custom_lists"
 
-var ColumnsSelectList = pg_repository.ColumnList[DBListResult]()
+var ColumnsSelectCustomList = pg_repository.ColumnList[DBCustomListResult]()
 
-func AdaptList(db DBListResult) models.List {
+func AdaptCustomList(db DBCustomListResult) models.CustomList {
 
-	return models.List{
+	return models.CustomList{
 		Id:          db.Id,
 		OrgId:       db.OrgId,
 		Name:        db.Name,
