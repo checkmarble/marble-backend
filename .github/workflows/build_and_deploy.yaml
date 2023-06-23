@@ -93,7 +93,7 @@ jobs:
             --region="europe-west1" \
             --args=-migrations \
             --service-account=marble-backend-cloud-run@${{ steps.get_env.outputs.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
-            --set-env-vars=PG_HOSTNAME=/cloudsql/${{ steps.get_env.outputs.GCP_PROJECT_ID }}::${{ steps.get_env.outputs.DB_INSTANCE_REGION }}:${{ steps.get_env.outputs.DB_INSTANCE_NAME }},PG_USER=postgres,GOOGLE_CLOUD_PROJECT=${{ steps.get_env.outputs.GCP_PROJECT_ID }},ENV=${{ steps.get_env.outputs.ENV }} \
+            --set-env-vars=PG_HOSTNAME=/cloudsql/${{ steps.get_env.outputs.GCP_PROJECT_ID }}:${{ steps.get_env.outputs.DB_INSTANCE_REGION }}:${{ steps.get_env.outputs.DB_INSTANCE_NAME }},PG_USER=postgres,GOOGLE_CLOUD_PROJECT=${{ steps.get_env.outputs.GCP_PROJECT_ID }},ENV=${{ steps.get_env.outputs.ENV }} \
             --set-secrets=PG_PASSWORD=POSTGRES_PASSWORD:latest \
             --set-cloudsql-instances=${{ steps.get_env.outputs.GCP_PROJECT_ID }}:${{ steps.get_env.outputs.DB_INSTANCE_REGION }}:${{ steps.get_env.outputs.DB_INSTANCE_NAME }} \
             --execute-now \
