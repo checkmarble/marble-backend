@@ -24,7 +24,7 @@ func (usecase *ScenarioIterationUsecase) GetScenarioIteration(ctx context.Contex
 
 func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(ctx context.Context, organizationID string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error) {
 	body := scenarioIteration.Body
-	if body == nil && body.Schedule != "" {
+	if body != nil && body.Schedule != "" {
 		gron := gronx.New()
 		ok := gron.IsValid(body.Schedule)
 		if !ok {
@@ -36,7 +36,7 @@ func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(ctx context.Con
 
 func (usecase *ScenarioIterationUsecase) UpdateScenarioIteration(ctx context.Context, organizationID string, scenarioIteration models.UpdateScenarioIterationInput) (models.ScenarioIteration, error) {
 	body := scenarioIteration.Body
-	if body == nil && body.Schedule != nil && *body.Schedule != "" {
+	if body != nil && body.Schedule != nil && *body.Schedule != "" {
 		gron := gronx.New()
 		ok := gron.IsValid(*body.Schedule)
 		if !ok {
