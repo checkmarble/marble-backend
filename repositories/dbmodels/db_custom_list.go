@@ -2,7 +2,7 @@ package dbmodels
 
 import (
 	"marble/marble-backend/models"
-	"marble/marble-backend/pg_repository"
+	"marble/marble-backend/utils"
 	"time"
 )
 
@@ -17,7 +17,7 @@ type DBCustomListResult struct {
 
 const TABLE_CUSTOM_LIST = "custom_lists"
 
-var ColumnsSelectCustomList = pg_repository.ColumnList[DBCustomListResult]()
+var ColumnsSelectCustomList = utils.ColumnList[DBCustomListResult]()
 
 func AdaptCustomList(db DBCustomListResult) models.CustomList {
 
