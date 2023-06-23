@@ -1,10 +1,10 @@
 import { User } from "@/models";
-import {
-  DataGrid,
+import { DataGrid } from "@mui/x-data-grid/DataGrid";
+import type {
   GridRowsProp,
   GridColDef,
   GridRenderCellParams,
-} from "@mui/x-data-grid";
+} from "@mui/x-data-grid/models";
 import Button from "@mui/material/Button";
 import NorthEastIcon from "@mui/icons-material/NorthEast";
 
