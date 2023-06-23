@@ -47,13 +47,13 @@ func (exporter *ExportScheduleExecutionImpl) exportScenarioToS3(scenario models.
 	filename := fmt.Sprintf("scheduled_scenario_execution_%s.json", scheduledExecution.ID)
 
 	encoded, err := json.Marshal(map[string]any{
-		"id":         scheduledExecution.ID,
-		"created_at": scheduledExecution.StartedAt,
+		"scheduled_execution_id": scheduledExecution.ID,
+		"started_at":             scheduledExecution.StartedAt,
 		"scenario": map[string]any{
-			"id":          scenario.ID,
+			"scenario_id": scenario.ID,
 			"name":        scenario.Name,
 			"description": scenario.Description,
-			"version":     scenario.LiveVersionID,
+			// "version":     scenario.LiveVersionID,
 		},
 		"number_of_decisions": numberOfDecision,
 	})
