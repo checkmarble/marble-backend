@@ -20,7 +20,6 @@ type CustomListRepository interface {
 
 type CustomListRepositoryPostgresql struct {
 	transactionFactory TransactionFactory
-	queryBuilder       squirrel.StatementBuilderType
 }
 
 func (repo *CustomListRepositoryPostgresql) AllCustomLists(tx Transaction, orgId string) ([]models.CustomList, error) {
@@ -28,7 +27,7 @@ func (repo *CustomListRepositoryPostgresql) AllCustomLists(tx Transaction, orgId
 
 	return SqlToListOfModels(
 		pgTx,
-		repo.queryBuilder.
+		NewQueryBuilder().
 			Select(dbmodels.ColumnsSelectCustomList...).
 			From(dbmodels.TABLE_CUSTOM_LIST).
 			Where("org_id = ?", orgId).
@@ -41,7 +40,7 @@ func (repo *CustomListRepositoryPostgresql) GetCustomListById(tx Transaction, ge
 
 	return SqlToModel(
 		pgTx,
-		repo.queryBuilder.
+		NewQueryBuilder().
 			Select(dbmodels.ColumnsSelectCustomList...).
 			From(dbmodels.TABLE_CUSTOM_LIST).
 			Where("id = ? AND org_id = ?", getCustomList.Id, getCustomList.OrgId),
@@ -55,7 +54,7 @@ func (repo *CustomListRepositoryPostgresql) GetCustomListValues(tx Transaction, 
 
 	return SqlToListOfModels(
 		pgTx,
-		repo.queryBuilder.
+		NewQueryBuilder().
 			Select(dbmodels.ColumnsSelectCustomListValue...).
 			From(dbmodels.TABLE_CUSTOM_LIST_VALUE).
 			Where("custom_list_id = ? AND deleted_at IS NULL", getCustomList.Id),
@@ -67,7 +66,7 @@ func (repo *CustomListRepositoryPostgresql) CreateCustomList(tx Transaction, cre
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	_, err := pgTx.ExecBuilder(
-		repo.queryBuilder.Insert(dbmodels.TABLE_CUSTOM_LIST).
+		NewQueryBuilder().Insert(dbmodels.TABLE_CUSTOM_LIST).
 			Columns(
 				"id",
 				"org_id",
@@ -87,7 +86,7 @@ func (repo *CustomListRepositoryPostgresql) CreateCustomList(tx Transaction, cre
 func (repo *CustomListRepositoryPostgresql) UpdateCustomList(tx Transaction, updateCustomList models.UpdateCustomListInput) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	var updateRequest = repo.queryBuilder.Update(dbmodels.TABLE_CUSTOM_LIST)
+	var updateRequest = NewQueryBuilder().Update(dbmodels.TABLE_CUSTOM_LIST)
 
 	if updateCustomList.Name != nil {
 		updateRequest = updateRequest.Set("name", *updateCustomList.Name)
@@ -106,7 +105,7 @@ func (repo *CustomListRepositoryPostgresql) UpdateCustomList(tx Transaction, upd
 func (repo *CustomListRepositoryPostgresql) DeleteCustomList(tx Transaction, deleteCustomList models.DeleteCustomListInput) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	_, err := pgTx.ExecBuilder(repo.queryBuilder.Delete(dbmodels.TABLE_CUSTOM_LIST).Where("id = ? AND org_id = ?", deleteCustomList.Id, deleteCustomList.OrgId))
+	_, err := pgTx.ExecBuilder(NewQueryBuilder().Delete(dbmodels.TABLE_CUSTOM_LIST).Where("id = ? AND org_id = ?", deleteCustomList.Id, deleteCustomList.OrgId))
 	return err
 }
 
@@ -114,7 +113,7 @@ func (repo *CustomListRepositoryPostgresql) AddCustomListValue(tx Transaction, a
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	_, err := pgTx.ExecBuilder(
-		repo.queryBuilder.Insert(dbmodels.TABLE_CUSTOM_LIST_VALUE).
+		NewQueryBuilder().Insert(dbmodels.TABLE_CUSTOM_LIST_VALUE).
 			Columns(
 				"id",
 				"custom_list_id",
@@ -133,7 +132,7 @@ func (repo *CustomListRepositoryPostgresql) AddCustomListValue(tx Transaction, a
 func (repo *CustomListRepositoryPostgresql) DeleteCustomListValue(tx Transaction, deleteCustomListValue models.DeleteCustomListValueInput) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	var updateRequest = repo.queryBuilder.Update(dbmodels.TABLE_CUSTOM_LIST_VALUE)
+	var updateRequest = NewQueryBuilder().Update(dbmodels.TABLE_CUSTOM_LIST_VALUE)
 
 	updateRequest = updateRequest.Set("deleted_at", squirrel.Expr("NOW()"))
 

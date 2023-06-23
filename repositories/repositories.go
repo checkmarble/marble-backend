@@ -99,7 +99,6 @@ func NewRepositories(
 		},
 		CustomListRepository: &CustomListRepositoryPostgresql{
 			transactionFactory: transactionFactory,
-			queryBuilder:       queryBuilder,
 		},
 		AwsS3Repository: func() AwsS3Repository {
 			if configuration.FakeAwsS3Repository {
