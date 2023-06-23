@@ -1,7 +1,15 @@
-import { Scenario } from "@/models";
-import { DataGrid, GridRowsProp, GridColDef } from "@mui/x-data-grid";
+import { PageLink, Scenario } from "@/models";
+import { DataGrid } from "@mui/x-data-grid/DataGrid";
+import type {
+  GridRowsProp,
+  GridColDef,
+  GridRenderCellParams,
+} from "@mui/x-data-grid/models";
 
 import CustomGridCell from "./CustomGridCell";
+import Button from "@mui/material/Button";
+import NorthEastIcon from "@mui/icons-material/NorthEast";
+import { useNavigate } from "react-router-dom";
 
 interface ListOfScenariosProps {
   scenarios: Scenario[];
@@ -15,7 +23,6 @@ function ListOfScenarios(props: ListOfScenariosProps) {
   const rows: GridRowsProp = scenarios.map((scenario) => ({
     id: scenario.scenarioId, // needed for datagrid
     actions: scenario.scenarioId, // needed to build a fake 'actions' column
-
     ...scenario, // keep all user data intact
   }));
 
@@ -26,6 +33,13 @@ function ListOfScenarios(props: ListOfScenariosProps) {
     { field: "triggerObjectType", headerName: "triggerObjectType", flex: 1 },
     { field: "createdAt", headerName: "created at", flex: 1 },
     { field: "scenarioId", headerName: "ID", flex: 1 },
+    {
+      field: "actions",
+      headerName: "actions",
+      flex: 1,
+      renderCell: ScenarioDetailsActionsCell,
+      cellClassName: "noHover",
+    },
   ];
 
   return (
@@ -36,6 +50,23 @@ function ListOfScenarios(props: ListOfScenariosProps) {
         slots={{ cell: CustomGridCell }}
         disableRowSelectionOnClick
       />
+    </>
+  );
+}
+
+function ScenarioDetailsActionsCell(params: GridRenderCellParams) {
+  const navigate = useNavigate();
+
+  return (
+    <>
+      <Button
+        size="small"
+        variant="outlined"
+        startIcon={<NorthEastIcon fontSize="small" />}
+        onClick={() => navigate(PageLink.scenarioDetailsPage(params.row.id))}
+      >
+        Details
+      </Button>
     </>
   );
 }

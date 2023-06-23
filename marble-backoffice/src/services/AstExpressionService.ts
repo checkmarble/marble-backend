@@ -64,7 +64,7 @@ export function useAstExpressionBuilder(
 ) {
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
-  const [expressionViewModel, setExpressionViewModel] =
+  const [expressionViewModel] =
     useState<ExpressionViewModel>(() =>
       makeExpressionViewModel(
         NewAstNode({

@@ -1,6 +1,6 @@
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
-import { GridCell, GridCellProps } from "@mui/x-data-grid";
+import { GridCell, type GridCellProps } from "@mui/x-data-grid/components/cell/GridCell";
 import { useState } from "react";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 

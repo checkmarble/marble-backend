@@ -1,10 +1,10 @@
 import { Organization } from "@/models";
-import {
-  DataGrid,
+import { DataGrid } from "@mui/x-data-grid/DataGrid";
+import type {
   GridRowsProp,
   GridColDef,
   GridRenderCellParams,
-} from "@mui/x-data-grid";
+} from "@mui/x-data-grid/models";
 import Button from "@mui/material/Button";
 import NorthEastIcon from "@mui/icons-material/NorthEast";
 import GridCellWithTooltip from "./CustomGridCell";
@@ -60,7 +60,7 @@ function ListOfOrganizations(props: ListOfOrganizationsProps) {
 // see https://github.com/mui/mui-x/blob/master/packages/grid/x-data-grid-generator/src/renderer/renderRating.tsx
 // for reference
 function ListOfOrganizationsActionsCell(
-  params: GridRenderCellParams<any, number, any>
+  params: GridRenderCellParams
 ) {
   if (params.value == null) {
     console.warn("ListOfUsersActionsCell : params.value == null");
