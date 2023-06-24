@@ -111,3 +111,24 @@ jobs:
             --set-secrets=PG_PASSWORD=POSTGRES_PASSWORD:latest,AUTHENTICATION_JWT_SIGNING_KEY=AUTHENTICATION_JWT_SIGNING_KEY:latest,AWS_ACCESS_KEY=AWS_ACCESS_KEY:latest,AWS_SECRET_KEY=AWS_SECRET_KEY:latest \
             --set-cloudsql-instances=${{ steps.get_env.outputs.GCP_PROJECT_ID }}:${{ steps.get_env.outputs.DB_INSTANCE_REGION }}:${{ steps.get_env.outputs.DB_INSTANCE_NAME }} \
             --port=8080
+
+      - name: Deploy scheduler job
+        run: |
+          gcloud beta run jobs deploy marble-backen-scheduler \
+            --quiet \
+            --image="europe-docker.pkg.dev/${{ steps.get_env.outputs.GCP_PROJECT_ID }}/marble/marble-backend:latest" \
+            --region="europe-west1" \
+            --args=-scheduler \
+            --service-account=marble-backend-cloud-run@${{ steps.get_env.outputs.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
+            --set-env-vars=PG_HOSTNAME=/cloudsql/${{ steps.get_env.outputs.GCP_PROJECT_ID }}:${{ steps.get_env.outputs.DB_INSTANCE_REGION }}:${{ steps.get_env.outputs.DB_INSTANCE_NAME }},PG_USER=postgres,GOOGLE_CLOUD_PROJECT=${{ steps.get_env.outputs.GCP_PROJECT_ID }},ENV=${{ steps.get_env.outputs.ENV }} \
+            --set-secrets=PG_PASSWORD=POSTGRES_PASSWORD:latest \
+            --set-cloudsql-instances=${{ steps.get_env.outputs.GCP_PROJECT_ID }}:${{ steps.get_env.outputs.DB_INSTANCE_REGION }}:${{ steps.get_env.outputs.DB_INSTANCE_NAME }}
+
+      - name: Deploy scheduler
+        run: |
+          gcloud scheduler jobs create http scenario-scheduler \
+            --location europe-west1 \
+            --schedule="10 * * * *" \
+            --uri="https://europe-west1-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${{ steps.get_env.outputs.GCP_PROJECT_ID }}/jobs/marble-backend-scheduler:run" \
+            --http-method POST \
+            --oauth-service-account-email scheduler@${{ steps.get_env.outputs.GCP_PROJECT_ID }}.iam.gserviceaccount.com

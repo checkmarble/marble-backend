@@ -158,7 +158,7 @@ func main() {
 
 	shouldRunMigrations := flag.Bool("migrations", false, "Run migrations")
 	shouldRunServer := flag.Bool("server", false, "Run server")
-	shouldRunScheduledScenarios := flag.Bool("scheduled", false, "Run scheduled scenarios")
+	shouldRunScheduledScenarios := flag.Bool("scheduler", false, "Run scheduled scenarios")
 	flag.Parse()
 	logger.DebugCtx(context.Background(), "shouldRunMigrations", *shouldRunMigrations, "shouldRunServer", *shouldRunServer)
 
