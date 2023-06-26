@@ -11,7 +11,7 @@ import (
 )
 
 type DecisionRepositoryLegacy interface {
-	StoreDecision(ctx context.Context, orgID string, decision models.Decision) error
+	StoreDecision(ctx context.Context, decision models.Decision) error
 }
 
 type DecisionRepository interface {
