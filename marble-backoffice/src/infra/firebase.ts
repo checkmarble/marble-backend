@@ -1,4 +1,4 @@
-import { type FirebaseApp, initializeApp } from "firebase/app";
+import { type FirebaseApp, initializeApp, FirebaseOptions } from "firebase/app";
 import {
   getAuth,
   connectAuthEmulator,
@@ -13,16 +13,9 @@ export interface FirebaseWrapper {
   googleAuthProvider: GoogleAuthProvider;
 }
 
-export function initializeFirebase(authEmulator: boolean): FirebaseWrapper {
+export function initializeFirebase(authEmulator: boolean, firebaseOptions: FirebaseOptions): FirebaseWrapper {
   // Initialize Firebase
-  const app = initializeApp({
-    apiKey: "AIzaSyAElc2shIKIrYzLSzWmWaZ1C7yEuoS-bBw",
-    authDomain: "tokyo-country-381508.firebaseapp.com",
-    projectId: "tokyo-country-381508",
-    storageBucket: "tokyo-country-381508.appspot.com",
-    messagingSenderId: "1047691849054",
-    appId: "1:1047691849054:web:59e5df4b6dbdacbe60b3cf",
-  });
+  const app = initializeApp(firebaseOptions);
 
   const auth = getAuth(app);
   if (authEmulator) {

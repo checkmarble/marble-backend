@@ -9,13 +9,10 @@ import {
 } from "./repositories/Repositories";
 import { initializeServices } from "./injectServices";
 import "./index.css";
-import { Environments } from "./Environment";
+import { buildEnvironment } from "./Environment";
 
-const environment = import.meta.env.DEV
-  ? Environments.Local
-  : Environments.Staging;
-
-const firebase = initializeFirebase(environment.authEmulator);
+const environment = buildEnvironment()
+const firebase = initializeFirebase(environment.authEmulator, environment.firebaseOptions);
 
 const repositories: Repositories = makeRepositories(
   firebase,
