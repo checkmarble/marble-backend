@@ -6,7 +6,7 @@
     "ui": {
       "enabled": true
     },
-    "singleProjectMode": true
+    "singleProjectMode": false
   },
   "hosting": {
     "target": "backoffice",
