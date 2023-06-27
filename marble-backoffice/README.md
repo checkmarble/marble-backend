@@ -112,7 +112,7 @@ The only supported Identity Provider is Google.
 
 The official tutorial has been followed step by step: [feedbackAuthenticate Using Google with JavaScript](https://firebase.google.com/docs/auth/web/google-signin)
 
-`firebase emulators:start`
+`firebase --project staging emulators:start`
 
 ### Firebase auth: signInWithRedirect
 

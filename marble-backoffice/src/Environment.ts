@@ -10,7 +10,14 @@ export const Environments: Record<string, Environment> = {
   development: {
     authEmulator: true,
     marbleBackend: new URL("http://localhost:8080"),
-    firebaseOptions: {},
+    firebaseOptions: {
+      apiKey: "AIzaSyAElc2shIKIrYzLSzWmWaZ1C7yEuoS-bBw",
+      authDomain: "tokyo-country-381508.firebaseapp.com",
+      projectId: "tokyo-country-381508",
+      storageBucket: "tokyo-country-381508.appspot.com",
+      messagingSenderId: "1047691849054",
+      appId: "1:1047691849054:web:59e5df4b6dbdacbe60b3cf",
+    },
   },
 
   staging: {

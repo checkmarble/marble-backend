@@ -59,7 +59,7 @@ func (usecase *SeedUseCase) SeedZorgOrganization(zorgOrganizationId string) erro
 	}
 
 	// add Admin user Jean-Baptiste Emanuel Zorg
-	jbeUserId, err := usecase.userRepository.CreateUser(nil, models.CreateUser{
+	_, err = usecase.userRepository.CreateUser(nil, models.CreateUser{
 		Email:          "jbe@zorg.com", // Jean-Baptiste Emanuel Zorg
 		Role:           models.ADMIN,
 		OrganizationId: zorgOrganizationId,
@@ -71,7 +71,21 @@ func (usecase *SeedUseCase) SeedZorgOrganization(zorgOrganizationId string) erro
 		return err
 	}
 
-	err = usecase.userRepository.UpdateFirebaseId(nil, jbeUserId, "")
+	// reset firebase id of all users, so when the firebase emulator restarts
+	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, (func(tx repositories.Transaction) error {
 
-	return err
+		users, err := usecase.userRepository.AllUsers(tx)
+		if err != nil {
+			return err
+		}
+
+		for _, user := range users {
+			err = usecase.userRepository.UpdateFirebaseId(tx, user.UserId, "")
+			if err != nil {
+				return err
+			}
+
+		}
+		return nil
+	}))
 }
