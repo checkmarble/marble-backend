@@ -10,6 +10,8 @@ import Avatar from "@mui/material/Avatar";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import Typography from "@mui/material/Typography";
 import Alert from "@mui/material/Alert";
+import Grid from "@mui/material/Grid";
+import { Paper } from "@mui/material";
 
 function LoginPage() {
   const [searchParams] = useSearchParams();
@@ -32,35 +34,48 @@ function LoginPage() {
   }, [signIn]);
 
   return (
-    <Container maxWidth="xs">
-      <Box
-        sx={{
-          marginTop: 8,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-        }}
-      >
-        <Avatar sx={{ m: 1, bgcolor: "secondary.main" }}>
-          <LockOutlinedIcon />
-        </Avatar>
+    <Grid
+      container
+      direction="row"
+      justifyContent="center"
+      alignItems="center"
+      sx={{
+        minHeight: "100vh",
+      }}
+    >
+      <Grid item maxWidth="xs">
+        <Paper>
+          <Box
+            py={2}
+            px={8}
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
+            <Avatar sx={{ m: 1, bgcolor: "secondary.main" }}>
+              <LockOutlinedIcon />
+            </Avatar>
 
-        <Typography component="h1" variant="h5">
-          Marble BackOffice
-        </Typography>
+            <Typography component="h1" variant="h5">
+              Marble BackOffice
+            </Typography>
 
-        <Button
-          onClick={handleLogin}
-          fullWidth
-          variant="contained"
-          sx={{ mt: 6, mb: 2 }}
-        >
-          Sign in using Google
-        </Button>
+            <Button
+              onClick={handleLogin}
+              fullWidth
+              variant="contained"
+              sx={{ m: 2 }}
+            >
+              Sign in using Google
+            </Button>
 
-        {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
-      </Box>
-    </Container>
+            {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
+          </Box>
+        </Paper>
+      </Grid>
+    </Grid>
   );
 }
 

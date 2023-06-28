@@ -12,10 +12,10 @@ export default function DelayedLinearProgress(
     <Fade
       in={props.loading}
       style={{
-        transitionDelay: props.loading ? "800ms" : "0ms",
+        transitionDelay: props.loading ? "200ms" : "0ms",
       }}
     >
-      <LinearProgress color="inherit" />
+      <LinearProgress color="secondary" />
     </Fade>
   );
 }

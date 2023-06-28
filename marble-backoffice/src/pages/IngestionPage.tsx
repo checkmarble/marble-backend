@@ -29,15 +29,14 @@ function IngestionPage() {
     organizationId
   );
 
-  const { apiKey, marbleApiWithClientRoleApiKey } = useMarbleApiWithClientRoleApiKey(
-    services().apiKeyService,
-    pageLoadingDispatcher,
-    organizationId
-  );
+  const { apiKey, marbleApiWithClientRoleApiKey } =
+    useMarbleApiWithClientRoleApiKey(
+      services().apiKeyService,
+      pageLoadingDispatcher,
+      organizationId
+    );
 
-  const { ingest } = useIngestion(
-    marbleApiWithClientRoleApiKey,
-  );
+  const { ingest } = useIngestion(marbleApiWithClientRoleApiKey);
 
   const [ingestResult, setIngestResult] = useState<IngestObject[] | null>(null);
 

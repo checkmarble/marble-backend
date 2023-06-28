@@ -32,7 +32,7 @@ export default function OrganizationEditPage() {
     <>
       <DelayedLinearProgress loading={pageLoading} />
       <Container component="main" maxWidth="xs">
-        <Paper sx={{ m:2, p: 4 }}>
+        <Paper sx={{ m: 2, p: 4 }}>
           <Stack alignItems="center" spacing={2}>
             {organization && (
               <>
@@ -40,9 +40,7 @@ export default function OrganizationEditPage() {
                 <Typography component="h1" variant="h5">
                   Edit {organization.name}
                 </Typography>
-                <EditOrganizationForm
-                  organization={organization}
-                />
+                <EditOrganizationForm organization={organization} />
               </>
             )}
           </Stack>
@@ -52,9 +50,7 @@ export default function OrganizationEditPage() {
   );
 }
 
-function EditOrganizationForm(props: {
-  organization: Organization;
-}) {
+function EditOrganizationForm(props: { organization: Organization }) {
   const [saving, formSavingDispatcher] = useLoading();
 
   const { organizationViewModel, setOrganizationViewModel, saveOrganization } =

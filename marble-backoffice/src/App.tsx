@@ -1,4 +1,4 @@
-import "./App.css";
+//import "./App.css";
 import CssBaseline from "@mui/material/CssBaseline";
 import Box from "@mui/material/Box";
 import LinearProgress from "@mui/material/LinearProgress";
@@ -15,18 +15,31 @@ function App() {
   return (
     <AuthenticatedUserContext.Provider value={user}>
       <CssBaseline />
-      {authLoading ? (
-        <Box sx={{ width: "100%" }}>
-          <LinearProgress />
-        </Box>
-      ) : displayPrivatePage ? (
-        <>
-          <BackOfficeAppBar />
+      <Box
+        sx={{
+          width: "100%",
+          minHeight: "100vh",
+
+          // Background pattern
+          backgroundColor: "#fafafa",
+          opacity: 0.8,
+          backgroundImage:
+            "radial-gradient(#5a50fa 0.5px, transparent 0.5px), radial-gradient(#5a50fa 0.5px, #fafafa 0.5px)",
+          backgroundSize: "20px 20px",
+          backgroundPosition: "0 0,10px 10px",
+        }}
+      >
+        {authLoading ? (
+          <LinearProgress color="secondary" />
+        ) : displayPrivatePage ? (
+          <>
+            <BackOfficeAppBar />
+            <Outlet />
+          </>
+        ) : (
           <Outlet />
-        </>
-      ) : (
-        <Outlet />
-      )}
+        )}
+      </Box>
     </AuthenticatedUserContext.Provider>
   );
 }
