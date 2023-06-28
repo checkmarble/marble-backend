@@ -33,16 +33,58 @@ yarn
 yarn dev --port=3000
 ```
 
-### Deployment
+## Deployment
 
-### #Manual deployement in staging
+⚠️ All firebase commands must be run In the root directory `marble-backend`:
 
-⚠️ In the root directory `marble-backend`:
+### Deployment in Staging:
 
 ```
-(cd marble-backoffice && yarn build) && firebase deploy --only hosting:marble-backoffice-staging
+(cd marble-backoffice && yarn build-staging) && firebase deploy --project staging --only hosting
 ```
 
+### Deployment in Production:
+```
+(cd marble-backoffice && yarn build-production) && firebase deploy --project production --only hosting
+```
+
+
+### Two firebase projects
+
+- [`firebase project staging`](https://console.firebase.google.com/project/tokyo-country-381508/overview)
+- [`firebase project prod`](https://console.firebase.google.com/project/marble-prod-1/overview)
+
+<img width="585" alt="image" src="https://github.com/checkmarble/marble-backend/assets/130078989/be75687a-8bf6-4f13-8150-e1f8afb866c4">
+
+
+## A firebase app and a deployment per project
+ 
+Each firebase project contain a firebase app named `backoffice` used for authentication.
+
+Each firebase project also contain a "site" in firebase hosting:
+
+- staging site: [`https://marble-backoffice-staging.web.app`](https://console.firebase.google.com/project/tokyo-country-381508/hosting/sites/marble-backoffice-staging)
+- production site: [`https://marble-backoffice-production.web.app`](https://console.firebase.google.com/project/marble-prod-1/hosting/sites/marble-backoffice-production)
+
+
+## One firebase.json
+
+`firebase.json` declares how the website is hosted for staging and production using the alias `backoffice`
+
+```
+"hosting": {
+    "target": "backoffice",
+   (...)
+```
+
+The alias `backoffice` is declared in `.firebaserc`.
+
+## Firebase commands must specify --project
+
+example:`firebase --project production hosting:sites:list`
+
+
+## Technical design
 
 ### Coding guidelines
 
@@ -70,11 +112,11 @@ The only supported Identity Provider is Google.
 
 The official tutorial has been followed step by step: [feedbackAuthenticate Using Google with JavaScript](https://firebase.google.com/docs/auth/web/google-signin)
 
-`firebase emulators:start`
+`firebase --project staging emulators:start`
 
 ### Firebase auth: signInWithRedirect
 
-The authentication is using `signInWithRedirect`. The domain https://marble-backoffice-staging.web.app/organizations is registered in console.firebase.com > Authentication > Settings > Authorized domains
+The authentication is using `signInWithRedirect`. The domains are registered in console.firebase.com > Authentication > Settings > Authorized domains.
 
 ### Scaffolding and customisations
 
