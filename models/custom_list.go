@@ -9,6 +9,7 @@ type CustomList struct {
 	Description string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+	DeletedAt *time.Time
 }
 
 type CustomListValue struct {
@@ -22,7 +23,7 @@ type CustomListValue struct {
 type CreateCustomListInput struct {
 	OrgId       string
 	Name        string
-	Description *string
+	Description string
 }
 
 type UpdateCustomListInput struct {

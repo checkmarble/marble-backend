@@ -14,7 +14,7 @@ type DBCustomListValueResult struct {
 	DeletedAt    *time.Time `db:"deleted_at"`
 }
 
-const TABLE_CUSTOM_LIST_VALUE = "custom_list_value"
+const TABLE_CUSTOM_LIST_VALUE = "custom_list_values"
 
 var ColumnsSelectCustomListValue = utils.ColumnList[DBCustomListValueResult]()
 

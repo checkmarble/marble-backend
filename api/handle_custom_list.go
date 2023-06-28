@@ -1,7 +1,6 @@
 package api
 
 import (
-	"errors"
 	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
@@ -22,19 +21,12 @@ func (api *API) handleGetAllCustomLists() http.HandlerFunc {
 
 		usecase := api.usecases.NewCustomListUseCase()
 		lists, err := usecase.GetCustomLists(ctx, orgID)
-		if errors.Is(err, models.NotFoundInRepositoryError) {
-			http.Error(w, "", http.StatusNotFound)
-			return
-		} else if err != nil {
-			logger.ErrorCtx(ctx, "error getting lists: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
 		if presentError(w, r, err) {
+			logger.ErrorCtx(ctx, "error getting lists: \n"+err.Error())
 			return
 		}
 
-		PresentModelWithName(w, "lists", utils.Map(lists, dto.AdaptCustomListDto))
+		PresentModelWithName(w, "custom_lists", utils.Map(lists, dto.AdaptCustomListDto))
 	}
 }
 
@@ -45,6 +37,7 @@ func (api *API) handlePostCustomList() http.HandlerFunc {
 		if presentError(w, r, err) {
 			return
 		}
+		logger := api.logger.With(slog.String("orgID", orgID))
 
 		inputDto := ctx.Value(httpin.Input).(*dto.CreateCustomListInputDto).Body
 
@@ -52,9 +45,10 @@ func (api *API) handlePostCustomList() http.HandlerFunc {
 		err = usecase.CreateCustomList(ctx, models.CreateCustomListInput{
 			OrgId:       orgID,
 			Name:        inputDto.Name,
-			Description: &inputDto.Description,
+			Description: inputDto.Description,
 		})
 		if presentError(w, r, err) {
+			logger.ErrorCtx(ctx, "error creating a list: \n"+err.Error())
 			return
 		}
 		PresentNothing(w)
@@ -69,6 +63,7 @@ func (api *API) handleGetCustomListValues() http.HandlerFunc {
 		if presentError(w, r, err) {
 			return
 		}
+		logger := api.logger.With(slog.String("orgID", orgID))
 		inputDto := ctx.Value(httpin.Input).(*dto.GetCustomListInputDto)
 
 		usecase := api.usecases.NewCustomListUseCase()
@@ -78,10 +73,11 @@ func (api *API) handleGetCustomListValues() http.HandlerFunc {
 		})
 
 		if presentError(w, r, err) {
+			logger.ErrorCtx(ctx, "error getting a list values: \n"+err.Error())
 			return
 		}
 
-		PresentModelWithName(w, "listsValues", utils.Map(CustomListValues, dto.AdaptCustomListValueDto))
+		PresentModelWithName(w, "custom_list_values", utils.Map(CustomListValues, dto.AdaptCustomListValueDto))
 	}
 }
 
@@ -93,6 +89,7 @@ func (api *API) handlePatchCustomList() http.HandlerFunc {
 		if presentError(w, r, err) {
 			return
 		}
+		logger := api.logger.With(slog.String("orgID", orgID))
 		inputDto := ctx.Value(httpin.Input).(*dto.UpdateCustomListInputDto)
 		listId := inputDto.CustomListID
 		requestData := inputDto.Body
@@ -106,6 +103,7 @@ func (api *API) handlePatchCustomList() http.HandlerFunc {
 		})
 
 		if presentError(w, r, err) {
+			logger.ErrorCtx(ctx, "error updating a list: \n"+err.Error())
 			return
 		}
 
@@ -121,14 +119,16 @@ func (api *API) handleDeleteCustomList() http.HandlerFunc {
 		if presentError(w, r, err) {
 			return
 		}
+		logger := api.logger.With(slog.String("orgID", orgID))
 		inputDto := ctx.Value(httpin.Input).(*dto.DeleteCustomListInputDto)
 
 		usecase := api.usecases.NewCustomListUseCase()
-		err = usecase.DeleteCustomList(ctx, models.DeleteCustomListInput{
+		err = usecase.SoftDeleteCustomList(ctx, models.DeleteCustomListInput{
 			Id:    inputDto.CustomListID,
 			OrgId: orgID,
 		})
 		if presentError(w, r, err) {
+			logger.ErrorCtx(ctx, "error deleting a list: \n"+err.Error())
 			return
 		}
 		PresentNothing(w)
@@ -143,6 +143,7 @@ func (api *API) handlePostCustomListValue() http.HandlerFunc {
 		if presentError(w, r, err) {
 			return
 		}
+		logger := api.logger.With(slog.String("orgID", orgID))
 		inputDto := ctx.Value(httpin.Input).(*dto.AddCustomListValueInputDto)
 		listId := inputDto.CustomListID
 		requestData := inputDto.Body
@@ -154,6 +155,7 @@ func (api *API) handlePostCustomListValue() http.HandlerFunc {
 			Value:        requestData.Value,
 		})
 		if presentError(w, r, err) {
+			logger.ErrorCtx(ctx, "error adding a value to a list: \n"+err.Error())
 			return
 		}
 
@@ -169,6 +171,7 @@ func (api *API) handleDeleteCustomListValue() http.HandlerFunc {
 		if presentError(w, r, err) {
 			return
 		}
+		logger := api.logger.With(slog.String("orgID", orgID))
 		inputDto := ctx.Value(httpin.Input).(*dto.DeleteCustomListValueInputDto)
 		listId := inputDto.CustomListID
 
@@ -180,6 +183,7 @@ func (api *API) handleDeleteCustomListValue() http.HandlerFunc {
 		})
 
 		if presentError(w, r, err) {
+			logger.ErrorCtx(ctx, "error deleting a value to a list: \n"+err.Error())
 			return
 		}
 

@@ -150,11 +150,9 @@ func (api *API) routes() {
 			})
 		})
 
-		authedRouter.Route("/custom-list-value", func(r chi.Router) {
-			r.Route("/{listId}", func(r chi.Router) {
-				r.With(httpin.NewInput(dto.AddCustomListValueInputDto{})).Post("/", api.handlePostCustomListValue())
-				r.With(httpin.NewInput(dto.DeleteCustomListValueInputDto{})).Delete("/", api.handleDeleteCustomListValue())
-			})
+		authedRouter.Route("/custom-list-value/{listId}", func(r chi.Router) {
+			r.With(httpin.NewInput(dto.AddCustomListValueInputDto{})).Post("/", api.handlePostCustomListValue())
+			r.With(httpin.NewInput(dto.DeleteCustomListValueInputDto{})).Delete("/", api.handleDeleteCustomListValue())
 		})
 
 		// Group all admin endpoints
