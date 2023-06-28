@@ -9,10 +9,17 @@ import { AstNode, NoConstant } from "@/models";
 import Paper from "@mui/material/Paper";
 import Alert from "@mui/material/Alert";
 import TextField from "@mui/material/TextField";
+import AddIcon from "@mui/icons-material/Add";
 import {
   useAstExpressionBuilder,
+  setAstNodeName,
+  setAstNodeConstant,
+  addAstNodeOperand,
+  // deleteAstNodeOperand,
+  findNodeIdInDom,
   type NodeViewModel,
 } from "@/services/AstExpressionService";
+import { useCallback } from "react";
 
 export default function ScenarioDetailsPage() {
   // const { scenarioId } = useParams();
@@ -26,7 +33,7 @@ export default function ScenarioDetailsPage() {
 
   const [pageLoading, pageLoadingDispatcher] = useLoading();
 
-  const { expressionViewModel, expressionAstNode, validate, validationErrors } =
+  const { editor, expressionAstNode, validate, validationErrors } =
     useAstExpressionBuilder(
       services().astExpressionService,
       pageLoadingDispatcher
@@ -34,6 +41,45 @@ export default function ScenarioDetailsPage() {
 
   const handleValidateScenario = async () => {
     validate();
+  };
+
+  const handleOperatorNameChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const nodeId = findNodeIdInDom(event.target);
+      setAstNodeName(editor, nodeId, event.target.value);
+    },
+    [editor]
+  );
+
+  const handleAstNodeConstantChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const nodeId = findNodeIdInDom(event.target);
+      setAstNodeConstant(editor, nodeId, event.target.value);
+    },
+    [editor]
+  );
+
+  const handleAddAstNodeOperand = useCallback(
+    (event: React.MouseEvent<HTMLElement>) => {
+      const nodeId = findNodeIdInDom(event.currentTarget);
+      addAstNodeOperand(editor, nodeId);
+    },
+    [editor]
+  );
+
+  // const handleDeleteAstNode = useCallback(
+  //   (event: React.MouseEvent<HTMLElement>) => {
+  //     const nodeId = findNodeIdInDom(event.currentTarget);
+  //     deleteAstNodeOperand(editor, nodeId);
+  //   },
+  //   [editor]
+  // );
+
+  const nodeEditor: NodeEditor = {
+    handleOperatorNameChange,
+    handleAstNodeConstantChange,
+    handleAddAstNodeOperand,
+    // handleDeleteAstNode,
   };
 
   return (
@@ -47,27 +93,44 @@ export default function ScenarioDetailsPage() {
         <Stack direction="column" spacing={2}>
           <Typography variant="h5">Expression Editor</Typography>
 
-          <AstEditor node={expressionViewModel.rootNode} />
+          <AstEditor
+            editor={nodeEditor}
+            node={editor.expressionViewModel.rootNode}
+          />
 
           <Button onClick={handleValidateScenario}>Validate</Button>
-
-          <Typography variant="h5">Result</Typography>
-          <AstNode node={expressionAstNode} />
           {validationErrors.map((error, i) => (
             <Alert key={i} severity="error">
               {error}
             </Alert>
           ))}
+
+          <Typography variant="h5">Result</Typography>
+          <AstNode node={expressionAstNode} />
         </Stack>
       </Container>
     </>
   );
 }
 
-function AstEditor(props: { node: NodeViewModel }) {
-  const node = props.node;
+interface NodeEditor {
+  handleOperatorNameChange: (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => void;
+  handleAstNodeConstantChange: (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => void;
+  handleAddAstNodeOperand: (event: React.MouseEvent<HTMLElement>) => void;
+  // handleDeleteAstNode: (event: React.MouseEvent<HTMLElement>) => void;
+}
 
-
+function AstEditor({
+  editor,
+  node,
+}: {
+  editor: NodeEditor;
+  node: NodeViewModel;
+}) {
   return (
     <Paper
       sx={{
@@ -75,32 +138,45 @@ function AstEditor(props: { node: NodeViewModel }) {
         padding: 1,
         border: 1,
       }}
+      data-node-id={node.id}
     >
-      <TextField
-        sx={{ mr: 2 }}
-        autoFocus
-        margin="dense"
-        label="Function"
-        variant="standard"
-        value={node.name}
-        // onChange={handleEmailChange}
-      />
-      <TextField
-        sx={{ mb: 1 }}
-        autoFocus
-        margin="dense"
-        label="Constant"
-        variant="standard"
-        value={node.constant}
-        // onChange={handleEmailChange}
-      />
-
-      {node.children.map((child, i) => (
-        <AstEditor key={i} node={child} />
+      <Stack
+        direction="row"
+        spacing={2}
+        sx={{
+          alignItems: "baseline",
+        }}
+      >
+        <TextField
+          sx={{ mr: 2 }}
+          autoFocus
+          margin="dense"
+          label="Function"
+          variant="standard"
+          value={node.name}
+          onChange={editor.handleOperatorNameChange}
+        />
+        <TextField
+          sx={{ mb: 1 }}
+          autoFocus
+          margin="dense"
+          label="Constant"
+          variant="standard"
+          value={node.constant}
+          onChange={editor.handleAstNodeConstantChange}
+        />
+        {/* <Button onClick={editor.handleDeleteAstNode}>Delete</Button> */}
+      </Stack>
+      {node.children.map((child) => (
+        <AstEditor key={child.id} editor={editor} node={child} />
       ))}
-      {Object.entries(node.namedChildren).map(([name, child], i) => (
+      <Button onClick={editor.handleAddAstNodeOperand}>
+        <AddIcon />
+        Operand
+      </Button>
+      {Object.entries(node.namedChildren).map(([name, child]) => (
         <>
-          {name} <AstEditor key={i} node={child} />
+          {name} <AstEditor key={child.id} editor={editor} node={child} />
         </>
       ))}
 
@@ -124,6 +200,11 @@ function AstNode(props: { node: AstNode }) {
         {node.constant !== NoConstant && (
           <Typography>
             Constant: <code>{JSON.stringify(node.constant)}</code>
+          </Typography>
+        )}
+        {!node.name && node.constant === NoConstant && (
+          <Typography>
+            ⚠️ Invalid Node: Not a constant, not a function
           </Typography>
         )}
         {node.children.map((child, i) => (
