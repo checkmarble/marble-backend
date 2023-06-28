@@ -71,54 +71,54 @@ export default function AddUserFormDialog(
   const displayRoleChoice = props.availableRoles.length > 1;
 
   return (
-      <Dialog open={props.open} onClose={handleClose} fullWidth maxWidth="sm">
-        <DelayedLinearProgress loading={formLoading} />
+    <Dialog open={props.open} onClose={handleClose} fullWidth maxWidth="sm">
+      <DelayedLinearProgress loading={formLoading} />
 
-        <DialogTitle>{props.title}</DialogTitle>
-        <DialogContent>
-          {props.children}
-          <TextField
-            sx={{ mb: 4 }}
-            autoFocus
-            margin="dense"
-            id="name"
-            label="User's email"
-            type="email"
-            fullWidth
-            variant="standard"
-            value={userViewModel.email}
-            onChange={handleEmailChange}
-            disabled={formDisable}
-          />
+      <DialogTitle>{props.title}</DialogTitle>
+      <DialogContent>
+        {props.children}
+        <TextField
+          sx={{ mb: 4 }}
+          autoFocus
+          margin="dense"
+          id="name"
+          label="User's email"
+          type="email"
+          fullWidth
+          variant="standard"
+          value={userViewModel.email}
+          onChange={handleEmailChange}
+          disabled={formDisable}
+        />
 
-          {displayRoleChoice && (
-            <>
-              <InputLabel id="select-role-label">Role</InputLabel>
-              <Select
-                labelId="select-role-label"
-                id="select-role-select"
-                value={userViewModel.role}
-                variant="standard"
-                label="Role"
-                onChange={handleRoleChange}
-              >
-                {props.availableRoles.map((role, index) => (
-                  <MenuItem key={index} value={role as string}>
-                    {role.toLowerCase()}
-                  </MenuItem>
-                ))}
-              </Select>
-            </>
-          )}
-        </DialogContent>
+        {displayRoleChoice && (
+          <>
+            <InputLabel id="select-role-label">Role</InputLabel>
+            <Select
+              labelId="select-role-label"
+              id="select-role-select"
+              value={userViewModel.role}
+              variant="standard"
+              label="Role"
+              onChange={handleRoleChange}
+            >
+              {props.availableRoles.map((role, index) => (
+                <MenuItem key={index} value={role as string}>
+                  {role.toLowerCase()}
+                </MenuItem>
+              ))}
+            </Select>
+          </>
+        )}
+      </DialogContent>
 
-        <DialogActions>
-          <Button onClick={handleClose}>Cancel</Button>
+      <DialogActions>
+        <Button onClick={handleClose}>Cancel</Button>
 
-          <Button onClick={handleValidate} disabled={!valid || formDisable}>
-            Create
-          </Button>
-        </DialogActions>
-      </Dialog>
+        <Button onClick={handleValidate} disabled={!valid || formDisable}>
+          Create
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }

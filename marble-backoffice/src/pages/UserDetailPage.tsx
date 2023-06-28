@@ -13,6 +13,8 @@ import { useLoading } from "@/hooks/Loading";
 import DelayedLinearProgress from "@/components/DelayedLinearProgress";
 import { useDeleteUser, useUser } from "@/services";
 import { useState } from "react";
+import { Paper } from "@mui/material";
+import ReactJson from "react-json-view";
 
 function UserDetailPage() {
   const { userId } = useParams();
@@ -41,6 +43,7 @@ function UserDetailPage() {
 
   return (
     <>
+      {/*
       <DelayedLinearProgress loading={pageLoading} />
       <Container
         sx={{
@@ -98,6 +101,83 @@ function UserDetailPage() {
             soft delete)
           </Typography>
         </AlertDialog>
+      </Container>
+
+            */}
+
+      <DelayedLinearProgress loading={pageLoading} />
+      <AlertDialog
+        title="Confirm user deletion"
+        open={deleteUserAlertDialogOpen}
+        handleClose={() => {
+          setDeleteUserAlertDialogOpen(false);
+        }}
+        handleValidate={handleDeleteUser}
+      >
+        <Typography variant="body1">
+          Are you sure to delete this user ? This action is destructive (no soft
+          delete)
+        </Typography>
+      </AlertDialog>
+
+      <Container sx={{ my: 1 }}>
+        <Stack
+          direction="column"
+          justifyContent="flex-start"
+          alignItems="center"
+          spacing={2}
+        >
+          {/* Page content header */}
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+            spacing={2}
+            sx={{
+              minWidth: "100%",
+            }}
+          >
+            {/* Title */}
+            <Stack
+              direction="row"
+              justifyContent="flex-start"
+              alignItems="center"
+              spacing={2}
+            >
+              <Typography variant="h4">{user?.email}</Typography>
+            </Stack>
+
+            {/* User Actions */}
+            <Stack
+              direction="row"
+              justifyContent="flex-start"
+              alignItems="center"
+              spacing={2}
+            >
+              <Button
+                onClick={handleDeleteUserClick}
+                variant="contained"
+                startIcon={<DeleteForever />}
+                color="error"
+              >
+                Delete
+              </Button>
+            </Stack>
+          </Stack>
+
+          {/* Page content details */}
+
+          {user && (
+            <Paper sx={{ minWidth: "100%", p: 2, fontSize: "0.8em" }}>
+              <ReactJson
+                src={user}
+                name="user"
+                collapsed={1}
+                theme={"rjv-default"}
+              />
+            </Paper>
+          )}
+        </Stack>
       </Container>
     </>
   );

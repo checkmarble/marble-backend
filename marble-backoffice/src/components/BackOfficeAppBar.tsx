@@ -19,11 +19,13 @@ import Tooltip from "@mui/material/Tooltip";
 import Avatar from "@mui/material/Avatar";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
-import Divider from "@mui/material/Divider";
 import { AuthenticatedUser, PageLink } from "@/models";
 import { useNavigate } from "react-router-dom";
 import { useAuthenticatedUser } from "@/services";
 import services from "@/injectServices";
+import { useCredentials } from "@/services";
+import { useLoading } from "@/hooks/Loading";
+import SettingsIcon from "@mui/icons-material/Settings";
 
 interface Page {
   title: string;
@@ -58,6 +60,7 @@ function BackOfficeAppBar() {
   const closeDrawer = () => setDrawerOpen(false);
 
   const user = useAuthenticatedUser();
+
   return (
     <AppBar position="static">
       <Toolbar disableGutters>
@@ -156,6 +159,13 @@ interface SettingsMenuProps {
 function SettingsMenu({ user }: SettingsMenuProps) {
   const [anchorElUser, setAnchorElUser] = useState<null | HTMLElement>(null);
 
+  const [pageLoading, pageLoadingDispatcher] = useLoading();
+
+  const { credentials } = useCredentials(
+    services().userService,
+    pageLoadingDispatcher
+  );
+
   const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorElUser(event.currentTarget);
   };
@@ -171,11 +181,21 @@ function SettingsMenu({ user }: SettingsMenuProps) {
 
   return (
     <>
-      <Tooltip title="Open settings">
-        <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-          <Avatar alt="Remy Sharp" src={user.photoURL || ""} />
-        </IconButton>
-      </Tooltip>
+      <Box>
+        <Avatar alt="Remy Sharp" src={user.photoURL || ""} />
+      </Box>
+      <Box mx={2}>
+        <Typography sx={{ fontSize: "0.8em" }}>{user.email}</Typography>
+        <Typography sx={{ fontSize: "0.8em" }}>{credentials?.role}</Typography>
+      </Box>
+      <Box>
+        <Tooltip title="Open settings">
+          <IconButton onClick={handleOpenUserMenu}>
+            <SettingsIcon></SettingsIcon>
+          </IconButton>
+        </Tooltip>
+      </Box>
+
       <Menu
         sx={{ mt: "45px" }}
         id="menu-appbar"
@@ -192,11 +212,6 @@ function SettingsMenu({ user }: SettingsMenuProps) {
         open={Boolean(anchorElUser)}
         onClose={handleCloseUserMenu}
       >
-        <MenuItem>
-          <Typography>{user.email}</Typography>
-        </MenuItem>
-        <Divider />
-
         <MenuItem onClick={handleLogout}>
           <Typography textAlign="center">Logout</Typography>
         </MenuItem>

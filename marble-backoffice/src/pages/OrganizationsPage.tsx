@@ -2,20 +2,14 @@ import { useState } from "react";
 import services from "@/injectServices";
 import { PageLink } from "@/models";
 import { useAllOrganizations, useCreateOrganization } from "@/services";
-import BusinessIcon from "@mui/icons-material/Business";
-import ListSubheader from "@mui/material/ListSubheader";
-import Avatar from "@mui/material/Avatar";
 import Container from "@mui/material/Container";
-import List from "@mui/material/List";
-import ListItem from "@mui/material/ListItem";
-import ListItemAvatar from "@mui/material/ListItemAvatar";
-import ListItemButton from "@mui/material/ListItemButton";
-import ListItemText from "@mui/material/ListItemText";
 import FormDialog from "@/components/FormDialog";
-import CreateButtonFab from "@/components/CreateButtonFab";
 import { useLoading } from "@/hooks/Loading";
 import DelayedLinearProgress from "@/components/DelayedLinearProgress";
 import { useNavigate } from "react-router";
+import { Button, Paper, Stack, Typography } from "@mui/material";
+import ListOfOrganizations from "@/components/ListOfOrganizations";
+import AddIcon from "@mui/icons-material/Add";
 
 function OrganizationsPage() {
   const [pageLoading, pageLoadingDispatcher] = useLoading();
@@ -60,41 +54,62 @@ function OrganizationsPage() {
         setDialogOpen={setCreateOrgaDialogOpen}
         onValidate={handleValidateCreateOrganization}
       ></FormDialog>
-      <Container
-        sx={{
-          maxWidth: "md",
-          position: "relative",
-        }}
-      >
-        <CreateButtonFab
-          title="New Organization"
-          onClick={handleCreateOrganizationClick}
-        />
 
-        <List aria-label="organizations">
-          <ListSubheader inset>
-            {allOrganizations?.length} Organizations
-          </ListSubheader>
-          {(allOrganizations || []).map((organization) => (
-            <ListItem key={organization.organizationId}>
-              <ListItemButton
-                onClick={() =>
-                  handleOrganizationClick(organization.organizationId)
-                }
+      <Container sx={{ my: 1 }}>
+        <Stack
+          direction="column"
+          justifyContent="flex-start"
+          alignItems="center"
+          spacing={2}
+        >
+          {/* Page content header */}
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+            spacing={2}
+            sx={{
+              minWidth: "100%",
+            }}
+          >
+            {/* Title */}
+            <Stack
+              direction="row"
+              justifyContent="flex-start"
+              alignItems="center"
+              spacing={2}
+            >
+              <Typography variant="h4" color={"secondary"}>
+                {allOrganizations?.length}
+              </Typography>
+              <Typography variant="h4">Organizations</Typography>
+            </Stack>
+
+            {/* Organization Actions */}
+            <Stack
+              direction="row"
+              justifyContent="flex-start"
+              alignItems="center"
+              spacing={2}
+            >
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={handleCreateOrganizationClick}
               >
-                <ListItemAvatar>
-                  <Avatar>
-                    <BusinessIcon />
-                  </Avatar>
-                </ListItemAvatar>
-                <ListItemText
-                  primary={organization.name}
-                  secondary={organization.organizationId}
-                />
-              </ListItemButton>
-            </ListItem>
-          ))}
-        </List>
+                New Organisation
+              </Button>
+            </Stack>
+          </Stack>
+
+          {/* Page content details */}
+          <Paper sx={{ minWidth: "100%" }}>
+            <ListOfOrganizations
+              organizations={allOrganizations}
+              onOrganizationDetailClick={handleOrganizationClick}
+            />
+          </Paper>
+        </Stack>
       </Container>
     </>
   );
