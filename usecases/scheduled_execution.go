@@ -25,6 +25,7 @@ type ScheduledExecutionUsecase struct {
 	orgTransactionFactory           organization.OrgTransactionFactory
 	ingestedDataReadRepository      repositories.IngestedDataReadRepository
 	decisionRepository              repositories.DecisionRepository
+	customListRepository            repositories.CustomListRepository
 	exportScheduleExecution         scheduledexecution.ExportScheduleExecution
 }
 
@@ -211,6 +212,7 @@ func (usecase *ScheduledExecutionUsecase) executeScheduledScenario(ctx context.C
 					scenarioIterationReadRepository: usecase.scenarioIterationReadRepository,
 					orgTransactionFactory:           usecase.orgTransactionFactory,
 					ingestedDataReadRepository:      usecase.ingestedDataReadRepository,
+					customListRepository:            usecase.customListRepository,
 				},
 				utils.LoggerFromContext(ctx),
 			)

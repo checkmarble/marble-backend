@@ -23,6 +23,7 @@ type scenarioEvaluationRepositories struct {
 	scenarioIterationReadRepository repositories.ScenarioIterationReadRepository
 	orgTransactionFactory           organization.OrgTransactionFactory
 	ingestedDataReadRepository      repositories.IngestedDataReadRepository
+	customListRepository            repositories.CustomListRepository
 }
 
 func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repositories scenarioEvaluationRepositories, logger *slog.Logger) (se models.ScenarioExecution, err error) {
@@ -69,6 +70,7 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 		orgTransactionFactory:      repositories.orgTransactionFactory,
 		organizationId:             params.scenario.OrganizationID,
 		ingestedDataReadRepository: repositories.ingestedDataReadRepository,
+		customListRepository:       repositories.customListRepository,
 	}
 
 	// Evaluate the trigger
