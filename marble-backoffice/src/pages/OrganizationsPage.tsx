@@ -7,7 +7,10 @@ import FormDialog from "@/components/FormDialog";
 import { useLoading } from "@/hooks/Loading";
 import DelayedLinearProgress from "@/components/DelayedLinearProgress";
 import { useNavigate } from "react-router";
-import { Button, Paper, Stack, Typography } from "@mui/material";
+import Button from "@mui/material/Button";
+import Paper from "@mui/material/Paper";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import ListOfOrganizations from "@/components/ListOfOrganizations";
 import AddIcon from "@mui/icons-material/Add";
 

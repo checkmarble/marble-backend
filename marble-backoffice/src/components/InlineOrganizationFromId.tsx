@@ -2,7 +2,9 @@ import { useLoading } from "@/hooks/Loading";
 import services from "@/injectServices";
 import { PageLink } from "@/models";
 import { useOrganization } from "@/services";
-import { CircularProgress, IconButton, Typography } from "@mui/material";
+import CircularProgress from "@mui/material/CircularProgress";
+import IconButton from "@mui/material/IconButton";
+import Typography from "@mui/material/Typography";
 import {
   DefaultComponentProps,
   OverridableTypeMap,

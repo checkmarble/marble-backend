@@ -159,7 +159,7 @@ interface SettingsMenuProps {
 function SettingsMenu({ user }: SettingsMenuProps) {
   const [anchorElUser, setAnchorElUser] = useState<null | HTMLElement>(null);
 
-  const [pageLoading, pageLoadingDispatcher] = useLoading();
+  const [, pageLoadingDispatcher] = useLoading();
 
   const { credentials } = useCredentials(
     services().userService,

@@ -12,7 +12,7 @@ export default function DelayedLinearProgress(
     <Fade
       in={props.loading}
       style={{
-        transitionDelay: props.loading ? "200ms" : "0ms",
+        transitionDelay: props.loading ? "400ms" : "0ms",
       }}
     >
       <LinearProgress color="secondary" />

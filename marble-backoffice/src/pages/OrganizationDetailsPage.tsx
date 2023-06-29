@@ -8,7 +8,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteForever from "@mui/icons-material/DeleteForever";
 import Stack from "@mui/material/Stack";
-import { useLoading } from "@/hooks/Loading";
+import { type LoadingDispatcher, useLoading } from "@/hooks/Loading";
 import services from "@/injectServices";
 import {
   useOrganization,
@@ -26,15 +26,13 @@ import { type CreateUser, Role, PageLink } from "@/models";
 import ListOfUsers from "@/components/ListOfUsers";
 import IconButton from "@mui/material/IconButton";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import {
-  Tabs,
-  Tab,
-  Paper,
-  List,
-  ListItem,
-  ListItemText,
-  Container,
-} from "@mui/material";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
+import Paper from "@mui/material/Paper";
+import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
+import ListItemText from "@mui/material/ListItemText";
+import Container from "@mui/material/Container";
 import ListOfScenarios from "@/components/ListOfScenarios";
 import ReactJson from "react-json-view";
 import NorthEastIcon from "@mui/icons-material/NorthEast";
@@ -88,7 +86,7 @@ function OrganizationDetailsPage() {
 
   const [tabValue, setTabValue] = useState(0);
 
-  const handleChange = (event: React.SyntheticEvent, newValue: number) => {
+  const handleChange = (_: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
 
@@ -214,13 +212,19 @@ function OrganizationDetailsPage() {
 
             <Box sx={{ p: 3 }}>
               {tabValue === 0 && (
-                <OrganizationDetailsUserList></OrganizationDetailsUserList>
+                <OrganizationDetailsUserList
+                  pageLoadingDispatcher={pageLoadingDispatcher}
+                />
               )}
               {tabValue === 1 && (
-                <OrganizationDetailsScenariosList></OrganizationDetailsScenariosList>
+                <OrganizationDetailsScenariosList
+                  pageLoadingDispatcher={pageLoadingDispatcher}
+                />
               )}
               {tabValue === 2 && (
-                <OrganizationDetailsDecisionsList></OrganizationDetailsDecisionsList>
+                <OrganizationDetailsDecisionsList
+                  pageLoadingDispatcher={pageLoadingDispatcher}
+                />
               )}
             </Box>
           </Paper>
@@ -230,14 +234,17 @@ function OrganizationDetailsPage() {
   );
 }
 
-function OrganizationDetailsUserList() {
+function OrganizationDetailsUserList({
+  pageLoadingDispatcher,
+}: {
+  pageLoadingDispatcher: LoadingDispatcher;
+}) {
   const { organizationId } = useParams();
   if (!organizationId) {
     throw Error("Organization Id is missing");
   }
 
   const navigate = useNavigate();
-  const [pageLoading, pageLoadingDispatcher] = useLoading();
 
   const { users, refreshUsers } = useUsers(
     services().userService,
@@ -308,13 +315,15 @@ function OrganizationDetailsUserList() {
   );
 }
 
-function OrganizationDetailsScenariosList() {
+function OrganizationDetailsScenariosList({
+  pageLoadingDispatcher,
+}: {
+  pageLoadingDispatcher: LoadingDispatcher;
+}) {
   const { organizationId } = useParams();
   if (!organizationId) {
     throw Error("Organization Id is missing");
   }
-
-  const [pageLoading, pageLoadingDispatcher] = useLoading();
 
   const { scenarios } = useScenarios(
     services().organizationService,
@@ -327,19 +336,15 @@ function OrganizationDetailsScenariosList() {
   } else return <ListOfScenarios scenarios={scenarios} />;
 }
 
-function OrganizationDetailsDecisionsList() {
+function OrganizationDetailsDecisionsList({
+  pageLoadingDispatcher,
+}: {
+  pageLoadingDispatcher: LoadingDispatcher;
+}) {
   const { organizationId } = useParams();
   if (!organizationId) {
     throw Error("Organization Id is missing");
   }
-
-  const [pageLoading, pageLoadingDispatcher] = useLoading();
-
-  const { scenarios } = useScenarios(
-    services().organizationService,
-    pageLoadingDispatcher,
-    organizationId
-  );
 
   const { marbleApiWithClientRoleApiKey } = useMarbleApiWithClientRoleApiKey(
     services().apiKeyService,
