@@ -1,7 +1,7 @@
 package api
 
 import (
-	"marble/marble-backend/dto"
+	"marble/marble-backend/server/dto"
 	"marble/marble-backend/utils"
 	"net/http"
 
@@ -13,7 +13,7 @@ func (api *API) handleGetAllUsers() http.HandlerFunc {
 
 		usecase := api.usecases.NewUserUseCase()
 		users, err := usecase.GetAllUsers()
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			return
 		}
 
@@ -29,7 +29,7 @@ func (api *API) handlePostUser() http.HandlerFunc {
 
 		usecase := api.usecases.NewUserUseCase()
 		createdUser, err := usecase.AddUser(createUser)
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			return
 		}
 		PresentModelWithName(w, "user", dto.AdaptUserDto(createdUser))
@@ -44,7 +44,7 @@ func (api *API) handleGetUser() http.HandlerFunc {
 
 		usecase := api.usecases.NewUserUseCase()
 		user, err := usecase.GetUser(userID)
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			return
 		}
 
@@ -60,7 +60,7 @@ func (api *API) handleDeleteUser() http.HandlerFunc {
 
 		usecase := api.usecases.NewUserUseCase()
 		err := usecase.DeleteUser(userID)
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			return
 		}
 		PresentNothing(w)

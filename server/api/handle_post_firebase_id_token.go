@@ -2,6 +2,8 @@ package api
 
 import (
 	"fmt"
+	"marble/marble-backend/server/middlewares"
+	"marble/marble-backend/utils"
 	"net/http"
 	"time"
 )
@@ -11,10 +13,10 @@ func (api *API) handlePostFirebaseIdToken() http.HandlerFunc {
 	return func(w http.ResponseWriter, request *http.Request) {
 
 		// api key from header
-		key := ParseApiKeyHeader(request.Header)
+		key := middlewares.ParseApiKeyHeader(request.Header)
 
 		// token from header
-		bearerToken, err := ParseAuthorizationBearerHeader(request.Header)
+		bearerToken, err := utils.ParseAuthorizationBearerHeader(request.Header)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Authorization header: %s", err.Error()), http.StatusBadRequest)
 			return
@@ -25,9 +27,9 @@ func (api *API) handlePostFirebaseIdToken() http.HandlerFunc {
 		usecase := api.usecases.NewMarbleTokenUseCase()
 		marbleToken, expirationTime, err := usecase.NewMarbleToken(context, key, bearerToken)
 		if err != nil {
-			err = wrapErrInUnAuthorizedError(err)
+			err = middlewares.WrapErrInUnAuthorizedError(err)
 		}
-		if presentError(w, request, err) {
+		if utils.PresentError(w, request, err) {
 			return
 		}
 

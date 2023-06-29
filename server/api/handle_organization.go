@@ -1,8 +1,8 @@
 package api
 
 import (
-	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
+	"marble/marble-backend/server/dto"
 	"marble/marble-backend/utils"
 	"net/http"
 
@@ -15,7 +15,7 @@ func (api *API) handleGetOrganizations() http.HandlerFunc {
 
 		usecase := api.usecases.NewOrganizationUseCase()
 		organizations, err := usecase.GetOrganizations(ctx)
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			return
 		}
 
@@ -34,7 +34,7 @@ func (api *API) handlePostOrganization() http.HandlerFunc {
 			Name:         inputDto.Name,
 			DatabaseName: inputDto.DatabaseName,
 		})
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			return
 		}
 		PresentModelWithName(w, "organization", dto.AdaptOrganizationDto(organization))
@@ -48,13 +48,13 @@ func requiredOrgIdUrlParam(r *http.Request) (string, error) {
 func (api *API) handleGetOrganizationUsers() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		orgID, err := requiredOrgIdUrlParam(r)
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			return
 		}
 
 		usecase := api.usecases.NewOrganizationUseCase()
 		users, err := usecase.GetUsersOfOrganization(orgID)
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			return
 		}
 
@@ -67,14 +67,14 @@ func (api *API) handleGetOrganization() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID, err := requiredOrgIdUrlParam(r)
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			return
 		}
 
 		usecase := api.usecases.NewOrganizationUseCase()
 		organization, err := usecase.GetOrganization(ctx, orgID)
 
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			return
 		}
 
@@ -98,7 +98,7 @@ func (api *API) handlePatchOrganization() http.HandlerFunc {
 			ExportScheduledExecutionS3: requestData.ExportScheduledExecutionS3,
 		})
 
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			return
 		}
 
@@ -114,7 +114,7 @@ func (api *API) handleDeleteOrganization() http.HandlerFunc {
 
 		usecase := api.usecases.NewOrganizationUseCase()
 		err := usecase.DeleteOrganization(ctx, orgID)
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			return
 		}
 		PresentNothing(w)

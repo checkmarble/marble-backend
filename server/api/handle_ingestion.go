@@ -3,7 +3,6 @@ package api
 import (
 	"errors"
 	"io/ioutil"
-	"marble/marble-backend/app"
 	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
 	"net/http"
@@ -16,7 +15,7 @@ func (api *API) handleIngestion() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		orgID, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			return
 		}
 
@@ -49,7 +48,7 @@ func (api *API) handleIngestion() http.HandlerFunc {
 			return
 		}
 
-		payload, err := app.ParseToDataModelObject(table, object_body)
+		payload, err := models.ParseToDataModelObject(table, object_body)
 		if errors.Is(err, models.FormatValidationError) {
 			http.Error(w, "", http.StatusUnprocessableEntity)
 			return

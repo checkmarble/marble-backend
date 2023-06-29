@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"marble/marble-backend/server/middlewares"
 	"marble/marble-backend/usecases"
 	"marble/marble-backend/utils"
 
@@ -16,10 +17,10 @@ import (
 )
 
 type API struct {
-	port     string
 	router   *chi.Mux
 	usecases usecases.Usecases
 	logger   *slog.Logger
+	middlewares *middlewares.Middlewares
 }
 
 func New(ctx context.Context, port string, usecases usecases.Usecases, logger *slog.Logger, corsAllowLocalhost bool) (*http.Server, error) {
@@ -45,10 +46,10 @@ func New(ctx context.Context, port string, usecases usecases.Usecases, logger *s
 	})
 
 	s := &API{
-		port:     port,
 		router:   r,
 		usecases: usecases,
 		logger:   logger,
+		middlewares: middlewares.NewMiddlewares(usecases, logger),
 	}
 
 	// Setup the routes

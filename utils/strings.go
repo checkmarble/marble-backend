@@ -1,4 +1,4 @@
-package pure_utils
+package utils
 
 import "unicode"
 

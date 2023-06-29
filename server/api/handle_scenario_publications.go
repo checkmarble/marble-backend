@@ -3,8 +3,8 @@ package api
 import (
 	"encoding/json"
 	"errors"
-	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
+	"marble/marble-backend/server/dto"
 	"marble/marble-backend/utils"
 	"net/http"
 	"time"
@@ -38,7 +38,7 @@ func (api *API) ListScenarioPublications() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			return
 		}
 
@@ -77,7 +77,7 @@ func (api *API) CreateScenarioPublication() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			return
 		}
 
@@ -131,7 +131,7 @@ func (api *API) GetScenarioPublication() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			return
 		}
 

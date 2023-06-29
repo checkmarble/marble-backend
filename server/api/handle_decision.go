@@ -5,9 +5,8 @@ import (
 	"errors"
 	"net/http"
 
-	"marble/marble-backend/app"
-	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
+	"marble/marble-backend/server/dto"
 	"marble/marble-backend/utils"
 
 	"github.com/ggicci/httpin"
@@ -23,7 +22,7 @@ func (api *API) handleGetDecision() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			return
 		}
 		input := ctx.Value(httpin.Input).(*GetDecisionInput)
@@ -32,7 +31,7 @@ func (api *API) handleGetDecision() http.HandlerFunc {
 		usecase := api.usecases.NewDecisionUsecase()
 		decision, err := usecase.GetDecision(utils.MustCredentialsFromCtx(ctx), orgID, decisionID)
 
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			return
 		}
 		PresentModel(w, dto.NewAPIDecision(decision))
@@ -44,14 +43,14 @@ func (api *API) handleListDecisions() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			return
 		}
 		logger := api.logger.With(slog.String("orgID", orgID))
 
 		usecase := api.usecases.NewDecisionUsecase()
 		decisions, err := usecase.ListDecisionsOfOrganization(orgID)
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			return
 		}
 		apiDecisions := make([]dto.APIDecision, len(decisions))
@@ -83,7 +82,7 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 		ctx := r.Context()
 
 		orgID, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			return
 		}
 
@@ -107,7 +106,7 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 			return
 		}
 
-		payload, err := app.ParseToDataModelObject(table, requestData.TriggerObjectRaw)
+		payload, err := models.ParseToDataModelObject(table, requestData.TriggerObjectRaw)
 		if errors.Is(err, models.FormatValidationError) {
 			http.Error(w, "Format validation error", http.StatusUnprocessableEntity) // 422
 			return
@@ -134,7 +133,7 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 			PayloadStructWithReader: payload,
 		}, logger)
 		if errors.Is(err, models.NotFoundError) {
-			presentError(w, r, err)
+			utils.PresentError(w, r, err)
 			// http.Error(w, "scenario not found", http.StatusNotFound)
 			return
 		} else if err != nil {

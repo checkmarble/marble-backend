@@ -1,7 +1,7 @@
 package api
 
 import (
-	"marble/marble-backend/dto"
+	"marble/marble-backend/server/dto"
 	"marble/marble-backend/utils"
 	"net/http"
 )
@@ -11,13 +11,13 @@ func (api *API) handleGetApiKey() http.HandlerFunc {
 		ctx := r.Context()
 
 		organizationId, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			return
 		}
 
 		usecase := api.usecases.NewOrganizationUseCase()
 		apiKeys, err := usecase.GetApiKeysOfOrganization(ctx, organizationId)
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			return
 		}
 

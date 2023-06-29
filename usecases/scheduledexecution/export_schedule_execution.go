@@ -7,9 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
+	"marble/marble-backend/server/dto"
 )
 
 type ExportScheduleExecution interface {

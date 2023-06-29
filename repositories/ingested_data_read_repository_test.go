@@ -58,11 +58,11 @@ package repositories
 // 		},
 // 	}
 // 	transactionId := globalTestParams.testIds["TransactionId"]
-// 	payload, err := app.ParseToDataModelObject(transactions, []byte(fmt.Sprintf(`{"object_id": "%s", "updated_at": "2021-01-01T00:00:00Z"}`, transactionId)))
+// 	payload, err := models.ParseToDataModelObject(transactions, []byte(fmt.Sprintf(`{"object_id": "%s", "updated_at": "2021-01-01T00:00:00Z"}`, transactionId)))
 // 	if err != nil {
 // 		t.Fatalf("Could not parse payload: %s", err)
 // 	}
-// 	payloadNotInDB, err := app.ParseToDataModelObject(transactions, []byte(fmt.Sprintf(`{"object_id": "%s", "updated_at": "2021-01-01T00:00:00Z"}`, "unknown transactionId")))
+// 	payloadNotInDB, err := models.ParseToDataModelObject(transactions, []byte(fmt.Sprintf(`{"object_id": "%s", "updated_at": "2021-01-01T00:00:00Z"}`, "unknown transactionId")))
 // 	if err != nil {
 // 		t.Fatalf("Could not parse payload: %s", err)
 // 	}

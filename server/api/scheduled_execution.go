@@ -2,7 +2,7 @@ package api
 
 import (
 	"fmt"
-	"marble/marble-backend/dto"
+	"marble/marble-backend/server/dto"
 	"marble/marble-backend/utils"
 	"net/http"
 
@@ -14,18 +14,18 @@ func (api *API) handleGetScheduledExecution() http.HandlerFunc {
 		ctx := r.Context()
 
 		id, err := requiredUuidUrlParam(r, "scheduledExecutionID")
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			return
 		}
 		organizationId, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			return
 		}
 
 		usecase := api.usecases.NewScheduledExecutionUsecase()
 		execution, err := usecase.GetScheduledExecution(ctx, organizationId, id)
 
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			return
 		}
 
@@ -41,14 +41,14 @@ func (api *API) handleListScheduledExecution() http.HandlerFunc {
 		scenarioId := input.ScenarioID
 
 		organizationId, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			return
 		}
 
 		usecase := api.usecases.NewScheduledExecutionUsecase()
 		executions, err := usecase.ListScheduledExecutions(ctx, organizationId, scenarioId)
 
-		if presentError(w, r, err) {
+		if utils.PresentError(w, r, err) {
 			fmt.Println(err)
 			return
 		}
