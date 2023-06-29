@@ -16,8 +16,8 @@ interface ListOfOrganizationsProps {
 
 function ListOfOrganizations(props: ListOfOrganizationsProps) {
   const organizations = props.organizations;
-  if (organizations == null) {
-    return <>No organizations</>;
+  if (organizations === null || organizations.length === 0) {
+    return <>No organization</>;
   }
 
   // Enrich the 'organization' to build a 'row'

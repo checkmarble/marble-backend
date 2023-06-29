@@ -17,7 +17,7 @@ interface ListOfUsersProps {
 
 function ListOfUsers(props: ListOfUsersProps) {
   const users = props.users;
-  if (users == null || users.length == 0) {
+  if (users === null || users.length === 0) {
     return <>No users</>;
   }
 

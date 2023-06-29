@@ -9,7 +9,9 @@ interface ListOfScenariosProps {
 
 function ListOfScenarios(props: ListOfScenariosProps) {
   const scenarios = props.scenarios;
-  //if(scenarios==null){return(<>No scenarios</>)}
+  if (scenarios === null || scenarios.length === 0) {
+    return <>No scenarios</>;
+  }
 
   // Enrich the 'scenarios' to build a 'row'
   const rows: GridRowsProp = scenarios.map((scenario) => ({
