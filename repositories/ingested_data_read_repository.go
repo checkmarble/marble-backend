@@ -39,16 +39,27 @@ func (repo *IngestedDataReadRepositoryImpl) GetDbField(transaction Transaction, 
 }
 
 func (repo *IngestedDataReadRepositoryImpl) queryDbForField(tx TransactionPostgres, readParams models.DbFieldReadParams) (pgx.Row, error) {
-	baseObjectId, err := getBaseObjectIdFromPayload(readParams.Payload)
-	if err != nil {
-		return nil, err
-	}
-
-	firstTable, ok := readParams.DataModel.Tables[readParams.TriggerTableName]
+	triggerTable, ok := readParams.DataModel.Tables[readParams.TriggerTableName]
 	if !ok {
 		return nil, fmt.Errorf("Table %s not found in data model", readParams.TriggerTableName)
 	}
-	lastTable, err := getLastTableFromPath(readParams)
+	link, ok := triggerTable.LinksToSingle[readParams.Path[0]]
+	if !ok {
+		return nil, fmt.Errorf("No link with name %s: %w", readParams.Path[0], operators.ErrDbReadInconsistentWithDataModel)
+	}
+
+	firstTableObjectId, err := getFirstTableObjectIdFromPayload(readParams.Payload, link.ChildFieldName)
+	if err != nil {
+		return nil, fmt.Errorf("Error while getting first path table object id from payload: %w", err)
+	}
+
+	// "first table" is the first table reached starting from the trigger table and following the path
+	firstTable, ok := readParams.DataModel.Tables[link.LinkedTableName]
+	if !ok {
+		return nil, fmt.Errorf("No table with name %s: %w", link.LinkedTableName, operators.ErrDbReadInconsistentWithDataModel)
+	}
+	// "last table" is the last table reached starting from the trigger table and following the path, from which the field is selected
+	lastTable, err := getLastTableFromPath(readParams, firstTable)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +71,7 @@ func (repo *IngestedDataReadRepositoryImpl) queryDbForField(tx TransactionPostgr
 	query := NewQueryBuilder().
 		Select(fmt.Sprintf("%s.%s", lastTableName, readParams.FieldName)).
 		From(firstTableName).
-		Where(squirrel.Eq{fmt.Sprintf("%s.object_id", firstTableName): baseObjectId}).
+		Where(squirrel.Eq{fmt.Sprintf("%s.object_id", firstTableName): firstTableObjectId}).
 		Where(rowIsValid(firstTableName))
 
 	query, err = addJoinsOnIntermediateTables(tx, query, readParams, firstTable)
@@ -78,22 +89,23 @@ func (repo *IngestedDataReadRepositoryImpl) queryDbForField(tx TransactionPostgr
 	return row, nil
 }
 
-func getBaseObjectIdFromPayload(payload models.PayloadReader) (string, error) {
-	baseObjectIdAny, _ := payload.ReadFieldFromPayload("object_id")
-	if baseObjectIdAny == nil {
-		return "", fmt.Errorf("object_id in payload is null") // should not happen, as per input validation
+func getFirstTableObjectIdFromPayload(payload models.PayloadReader, fieldName models.FieldName) (string, error) {
+	parentObjectIdItf, _ := payload.ReadFieldFromPayload(fieldName)
+	if parentObjectIdItf == nil {
+		return "", fmt.Errorf("%s in payload is null", fieldName) // should not happen, as per input validation
 	}
-	baseObjectId, ok := baseObjectIdAny.(string)
+	parentObjectId, ok := parentObjectIdItf.(string)
 	if !ok {
-		return "", fmt.Errorf("object_id in payload is not a string") // should not happen, as per input validation
+		return "", fmt.Errorf("%s in payload is not a string", fieldName) // should not happen, as per input validation
 	}
 
-	return baseObjectId, nil
+	return parentObjectId, nil
 }
 
 func addJoinsOnIntermediateTables(tx TransactionPostgres, query squirrel.SelectBuilder, readParams models.DbFieldReadParams, firstTable models.Table) (squirrel.SelectBuilder, error) {
 	currentTable := firstTable
-	for _, linkName := range readParams.Path {
+	// ignore the first element of the path, as it is the starting table of the query
+	for _, linkName := range readParams.Path[1:] {
 		link, ok := currentTable.LinksToSingle[linkName]
 		if !ok {
 			return squirrel.SelectBuilder{}, fmt.Errorf("No link with name %s on table %s: %w", linkName, currentTable.Name, operators.ErrDbReadInconsistentWithDataModel)
@@ -124,14 +136,10 @@ func rowIsValid(tableName string) squirrel.Eq {
 	return squirrel.Eq{fmt.Sprintf("%s.valid_until", tableName): "Infinity"}
 }
 
-func getLastTableFromPath(params models.DbFieldReadParams) (models.Table, error) {
-	firstTable, ok := params.DataModel.Tables[params.TriggerTableName]
-	if !ok {
-		return models.Table{}, fmt.Errorf("Table %s not found in data model", params.TriggerTableName)
-	}
-
+func getLastTableFromPath(params models.DbFieldReadParams, firstTable models.Table) (models.Table, error) {
 	currentTable := firstTable
-	for _, linkName := range params.Path {
+	// ignore the first element of the path, as it is the starting table of the query
+	for _, linkName := range params.Path[1:] {
 		link, ok := currentTable.LinksToSingle[linkName]
 		if !ok {
 			return models.Table{}, fmt.Errorf("No link with name %s: %w", linkName, operators.ErrDbReadInconsistentWithDataModel)
