@@ -27,7 +27,7 @@ const CredentialsInfo: React.FC<{ credentials: Credentials }> = ({
   credentials,
 }) => {
   return (
-    <Paper sx={{ p: 2 }}>
+    <Paper sx={{ p: 2, mt: 2 }}>
       <Typography variant="h6" gutterBottom>
         Your credentials
       </Typography>

@@ -30,10 +30,6 @@ firebase login
 firebase init
 ```
 
-# deploy to staging
-
-(cd marble-backoffice && yarn build) && firebase deploy --only hosting:marble-backoffice-staging
-
 ### Firebase emulator suite for local development
 
 Installation: https://firebase.google.com/docs/emulator-suite

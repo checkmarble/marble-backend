@@ -1,4 +1,4 @@
-import { User } from "@/models";
+import { Organization } from "@/models";
 import {
   DataGrid,
   GridRowsProp,
@@ -7,44 +7,42 @@ import {
 } from "@mui/x-data-grid";
 import Button from "@mui/material/Button";
 import NorthEastIcon from "@mui/icons-material/NorthEast";
+import GridCellWithTooltip from "./CustomGridCell";
 
-import CustomGridCell from "./CustomGridCell";
-
-interface ListOfUsersProps {
-  users: User[] | null;
-  onUserDetailClick?: (userId: string) => void;
+interface ListOfOrganizationsProps {
+  organizations: Organization[] | null;
+  onOrganizationDetailClick?: (organizationId: string) => void;
 }
 
-function ListOfUsers(props: ListOfUsersProps) {
-  const users = props.users;
-  if (users == null || users.length == 0) {
-    return <>No users</>;
+function ListOfOrganizations(props: ListOfOrganizationsProps) {
+  const organizations = props.organizations;
+  if (organizations == null) {
+    return <>No organizations</>;
   }
 
-  // Enrich the 'user' to build a 'row'
-  const rows: GridRowsProp = users.map((user) => ({
-    id: user.userId, // needed for datagrid
-    actions: user.userId, // needed to build a fake 'actions' column
-    onDetailsClick: props.onUserDetailClick
-      ? () => props.onUserDetailClick!(user.userId)
+  // Enrich the 'organization' to build a 'row'
+  const rows: GridRowsProp = organizations.map((organization) => ({
+    id: organization.organizationId, // needed for datagrid
+    actions: organization.organizationId, // needed to build a fake 'actions' column
+    onDetailsClick: props.onOrganizationDetailClick
+      ? () => props.onOrganizationDetailClick!(organization.organizationId)
       : null, // build user-specific actions using the props
 
-    ...user, // keep all user data intact
+    ...organization, // keep all org data intact
   }));
 
   const columns: GridColDef[] = [
-    { field: "email", headerName: "email", flex: 1 },
-    { field: "role", headerName: "role", flex: 1 },
-    { field: "userId", headerName: "ID", flex: 1 },
+    { field: "name", headerName: "name", flex: 1 },
+    { field: "organizationId", headerName: "ID", flex: 1 },
   ];
 
   // Actions, only add column if there actually are actions
-  if (props.onUserDetailClick) {
+  if (props.onOrganizationDetailClick) {
     columns.push({
       field: "actions",
       headerName: "actions",
       flex: 0.5,
-      renderCell: ListOfUsersActionsCell,
+      renderCell: ListOfOrganizationsActionsCell,
       cellClassName: "noHover",
     });
   }
@@ -53,7 +51,7 @@ function ListOfUsers(props: ListOfUsersProps) {
     <DataGrid
       rows={rows}
       columns={columns}
-      slots={{ cell: CustomGridCell }}
+      slots={{ cell: GridCellWithTooltip }}
       disableRowSelectionOnClick
     />
   );
@@ -61,7 +59,7 @@ function ListOfUsers(props: ListOfUsersProps) {
 
 // see https://github.com/mui/mui-x/blob/master/packages/grid/x-data-grid-generator/src/renderer/renderRating.tsx
 // for reference
-function ListOfUsersActionsCell(
+function ListOfOrganizationsActionsCell(
   params: GridRenderCellParams<any, number, any>
 ) {
   if (params.value == null) {
@@ -88,4 +86,4 @@ function ListOfUsersActionsCell(
   );
 }
 
-export default ListOfUsers;
+export default ListOfOrganizations;
