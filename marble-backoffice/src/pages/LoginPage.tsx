@@ -4,14 +4,13 @@ import { SignInError } from "@/models";
 import { useSignIn } from "@/services";
 import services from "@/injectServices";
 import Button from "@mui/material/Button";
-import Container from "@mui/material/Container";
 import Box from "@mui/material/Box";
 import Avatar from "@mui/material/Avatar";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import Typography from "@mui/material/Typography";
 import Alert from "@mui/material/Alert";
 import Grid from "@mui/material/Grid";
-import { Paper } from "@mui/material";
+import Paper from "@mui/material/Paper";
 
 function LoginPage() {
   const [searchParams] = useSearchParams();

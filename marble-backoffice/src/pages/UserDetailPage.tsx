@@ -1,10 +1,7 @@
 import services from "@/injectServices";
 import { useNavigate, useParams } from "react-router-dom";
 import Container from "@mui/material/Container";
-import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import DeleteForever from "@mui/icons-material/DeleteForever";
@@ -13,7 +10,7 @@ import { useLoading } from "@/hooks/Loading";
 import DelayedLinearProgress from "@/components/DelayedLinearProgress";
 import { useDeleteUser, useUser } from "@/services";
 import { useState } from "react";
-import { Paper } from "@mui/material";
+import Paper from "@mui/material/Paper";
 import ReactJson from "react-json-view";
 
 function UserDetailPage() {
