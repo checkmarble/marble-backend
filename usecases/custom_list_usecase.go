@@ -30,10 +30,7 @@ func (usecase *CustomListUseCase) UpdateCustomList(ctx context.Context, updateCu
 				return models.CustomList{}, err
 			}
 		} 
-		return usecase.CustomListRepository.GetCustomListById(tx, models.GetCustomListInput{
-			Id:    updateCustomList.Id,
-			OrgId: updateCustomList.OrgId,
-		})
+		return usecase.CustomListRepository.GetCustomListById(tx, updateCustomList.Id)
 	})
 }
 

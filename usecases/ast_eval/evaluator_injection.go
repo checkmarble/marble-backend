@@ -30,13 +30,13 @@ func NewEvaluatorInjection() EvaluatorInjection {
 	}
 
 	// add pure functions that to not rely on any context
-	inject.AddEvaluator(ast.FUNC_ADD, evaluate.Arithmetic{Function: ast.FUNC_ADD})
-	inject.AddEvaluator(ast.FUNC_SUBTRACT, evaluate.Arithmetic{Function: ast.FUNC_SUBTRACT})
-	inject.AddEvaluator(ast.FUNC_MULTIPLY, evaluate.Arithmetic{Function: ast.FUNC_MULTIPLY})
-	inject.AddEvaluator(ast.FUNC_DIVIDE, evaluate.Arithmetic{Function: ast.FUNC_DIVIDE})
-	inject.AddEvaluator(ast.FUNC_GREATER, evaluate.Comparison{Function: ast.FUNC_GREATER})
-	inject.AddEvaluator(ast.FUNC_LESS, evaluate.Comparison{Function: ast.FUNC_LESS})
-	inject.AddEvaluator(ast.FUNC_EQUAL, evaluate.Comparison{Function: ast.FUNC_EQUAL})
-	inject.AddEvaluator(ast.FUNC_NOT, evaluate.Comparison{Function: ast.FUNC_NOT})
+	inject.AddEvaluator(ast.FUNC_ADD, evaluate.NewArithmetic(ast.FUNC_ADD))
+	inject.AddEvaluator(ast.FUNC_SUBTRACT, evaluate.NewArithmetic(ast.FUNC_SUBTRACT))
+	inject.AddEvaluator(ast.FUNC_MULTIPLY, evaluate.NewArithmetic(ast.FUNC_MULTIPLY))
+	inject.AddEvaluator(ast.FUNC_DIVIDE, evaluate.NewArithmetic(ast.FUNC_DIVIDE))
+	inject.AddEvaluator(ast.FUNC_GREATER, evaluate.NewComparison(ast.FUNC_GREATER))
+	inject.AddEvaluator(ast.FUNC_LESS, evaluate.NewComparison(ast.FUNC_LESS))
+	inject.AddEvaluator(ast.FUNC_EQUAL, evaluate.NewComparison(ast.FUNC_EQUAL))
+	inject.AddEvaluator(ast.FUNC_NOT, evaluate.NewComparison(ast.FUNC_NOT))
 	return inject
 }

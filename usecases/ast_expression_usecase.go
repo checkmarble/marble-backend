@@ -3,11 +3,17 @@ package usecases
 import (
 	"errors"
 	"fmt"
+	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
+	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/ast_eval"
+	"marble/marble-backend/usecases/ast_eval/evaluate"
 )
 
-type AstExpressionUsecase struct{}
+type AstExpressionUsecase struct {
+	CustomListRepository repositories.CustomListRepository
+	Credentials          models.Credentials
+}
 
 var ErrExpressionValidation = errors.New("expression validation fail")
 
@@ -45,6 +51,7 @@ func (usecase *AstExpressionUsecase) Validate(node ast.Node) []error {
 func (usecases *AstExpressionUsecase) Run(expression ast.Node) (any, error) {
 
 	inject := ast_eval.NewEvaluatorInjection()
+	inject.AddEvaluator(ast.FUNC_CUSTOM_LIST_ACCESS, evaluate.NewCustomListValuesAccess(usecases.CustomListRepository, usecases.Credentials))
 	return ast_eval.EvaluateAst(inject, expression)
 
 }

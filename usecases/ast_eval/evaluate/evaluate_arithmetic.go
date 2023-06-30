@@ -9,6 +9,12 @@ type Arithmetic struct {
 	Function ast.Function
 }
 
+func NewArithmetic(f ast.Function) Arithmetic {
+	return Arithmetic{
+		Function: f,
+	}
+}
+
 func (f Arithmetic) Evaluate(arguments ast.Arguments) (any, error) {
 	// try to promote to int64
 	if operands, err := promoteOperandsToInt64(arguments.Args, f.Function); err == nil {

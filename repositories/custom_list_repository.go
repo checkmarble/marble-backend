@@ -9,7 +9,7 @@ import (
 
 type CustomListRepository interface {
 	AllCustomLists(tx Transaction, orgId string) ([]models.CustomList, error)
-	GetCustomListById(tx Transaction, getCustomList models.GetCustomListInput) (models.CustomList, error)
+	GetCustomListById(tx Transaction, id string) (models.CustomList, error)
 	GetCustomListValues(tx Transaction, getCustomList models.GetCustomListValuesInput) ([]models.CustomListValue, error)
 	CreateCustomList(tx Transaction, createCustomList models.CreateCustomListInput, newCustomListId string) error	
 	UpdateCustomList(tx Transaction, updateCustomList models.UpdateCustomListInput) error
@@ -35,7 +35,7 @@ func (repo *CustomListRepositoryPostgresql) AllCustomLists(tx Transaction, orgId
 		dbmodels.AdaptCustomList,
 	)
 }
-func (repo *CustomListRepositoryPostgresql) GetCustomListById(tx Transaction, getCustomList models.GetCustomListInput) (models.CustomList, error) {
+func (repo *CustomListRepositoryPostgresql) GetCustomListById(tx Transaction, id string) (models.CustomList, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	return SqlToModel(
@@ -43,7 +43,7 @@ func (repo *CustomListRepositoryPostgresql) GetCustomListById(tx Transaction, ge
 		NewQueryBuilder().
 			Select(dbmodels.ColumnsSelectCustomList...).
 			From(dbmodels.TABLE_CUSTOM_LIST).
-			Where("id = ? AND organization_id = ?", getCustomList.Id, getCustomList.OrgId),
+			Where("id = ?", id),
 		dbmodels.AdaptCustomList,
 	)
 }

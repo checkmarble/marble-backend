@@ -9,6 +9,12 @@ type Variable struct {
 	Variables map[string]any
 }
 
+func NewVariable(f ast.Function, v map[string]any) Variable {
+	return Variable{
+		Variables: v,
+	}
+}
+
 func (f Variable) Evaluate(arguments ast.Arguments) (any, error) {
 	varname, err := arguments.StringNamedArgument(ast.AttributeFuncVariable.ArgumentVarname)
 	if err != nil {

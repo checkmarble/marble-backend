@@ -6,7 +6,7 @@ import (
 	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
-	"marble/marble-backend/usecases/ast_eval"
+	"marble/marble-backend/usecases/ast_eval/evaluate"
 	"marble/marble-backend/utils"
 	"net/http"
 
@@ -43,6 +43,7 @@ func (api *API) handleValidateAstExpression() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
+		creds := utils.MustCredentialsFromCtx(ctx)
 		input := ctx.Value(httpin.Input).(*PostValidateAstExpression)
 
 		expression, err := dto.AdaptASTNode(*input.Body.Expression)
@@ -51,7 +52,7 @@ func (api *API) handleValidateAstExpression() http.HandlerFunc {
 			return
 		}
 
-		usecase := api.usecases.AstExpressionUsecase()
+		usecase := api.usecases.AstExpressionUsecase(creds)
 		allErrors := usecase.Validate(expression)
 
 		var validationErrorsDto = utils.Map(allErrors, func(err error) string {
@@ -79,7 +80,7 @@ func (api *API) handleValidateAstExpression() http.HandlerFunc {
 }
 
 type PostRunAstExpression struct {
-	expression *dto.NodeDto `in:"body=json"`
+	Body *dto.NodeDto `in:"body=json"`
 }
 
 type RunAstExpressionResultDto struct {
@@ -90,20 +91,20 @@ type RunAstExpressionResultDto struct {
 func (api *API) handleRunAstExpression() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-
+		creds := utils.MustCredentialsFromCtx(ctx)
 		input := ctx.Value(httpin.Input).(*PostRunAstExpression)
 
-		expression, err := dto.AdaptASTNode(*input.expression)
+		expression, err := dto.AdaptASTNode(*input.Body)
 		if err != nil {
 			presentError(w, r, fmt.Errorf("invalid Expression: %w", models.BadParameterError))
 			return
 		}
 
-		usecase := api.usecases.AstExpressionUsecase()
+		usecase := api.usecases.AstExpressionUsecase(creds)
 		result, err := usecase.Run(expression)
 
 		var runtimeErrorDto string
-		if errors.Is(err, ast_eval.ErrRuntimeExpression) {
+		if errors.Is(err, evaluate.ErrRuntimeExpression) {
 			runtimeErrorDto = err.Error()
 		}
 

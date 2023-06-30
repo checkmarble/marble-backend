@@ -73,11 +73,10 @@ func (usecases *Usecases) NewUserUseCase() UserUseCase {
 	}
 }
 
-
 func (usecases *Usecases) NewCustomListUseCase() CustomListUseCase {
 	return CustomListUseCase{
-		transactionFactory: usecases.Repositories.TransactionFactory,
-		CustomListRepository:     usecases.Repositories.CustomListRepository,
+		transactionFactory:   usecases.Repositories.TransactionFactory,
+		CustomListRepository: usecases.Repositories.CustomListRepository,
 	}
 }
 
@@ -153,6 +152,9 @@ func (usecases *Usecases) NewExportScheduleExecution() scheduledexecution.Export
 	}
 }
 
-func (usecases *Usecases) AstExpressionUsecase() AstExpressionUsecase {
-	return AstExpressionUsecase{}
+func (usecases *Usecases) AstExpressionUsecase(creds models.Credentials) AstExpressionUsecase {
+	return AstExpressionUsecase{
+		CustomListRepository: usecases.Repositories.CustomListRepository,
+		Credentials:          creds,
+	}
 }
