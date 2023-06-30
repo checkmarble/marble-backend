@@ -21,25 +21,25 @@ func (f Comparison) Evaluate(arguments ast.Arguments) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return comparisonFunction(f.Function, operandsFloat)
+	return f.comparisonFunction(operandsFloat)
 }
 
-func comparisonFunction(function ast.Function, arguments []float64) (bool, error) {
+func (f Comparison)comparisonFunction(arguments []float64) (bool, error) {
 	l, r, err := leftAndRight(arguments)
 	if err != nil {
 		return false, err
 	}
 
-	if function == ast.FUNC_GREATER {
+	if f.Function == ast.FUNC_GREATER {
 		return l > r, nil
 	}
-	if function == ast.FUNC_LESS {
+	if f.Function == ast.FUNC_LESS {
 		return l < r, nil
 	}
-	if function == ast.FUNC_EQUAL {
+	if f.Function == ast.FUNC_EQUAL {
 		// comparing float64 is not smart, but not illegal
 		return l == r, nil
 	}
 
-	return false, fmt.Errorf("Comparison does not support %s function", function.DebugString())
+	return false, fmt.Errorf("Comparison does not support %s function", f.Function.DebugString())
 }

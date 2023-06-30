@@ -38,5 +38,8 @@ func NewEvaluatorInjection() EvaluatorInjection {
 	inject.AddEvaluator(ast.FUNC_LESS, evaluate.NewComparison(ast.FUNC_LESS))
 	inject.AddEvaluator(ast.FUNC_EQUAL, evaluate.NewComparison(ast.FUNC_EQUAL))
 	inject.AddEvaluator(ast.FUNC_NOT, evaluate.NewComparison(ast.FUNC_NOT))
+	inject.AddEvaluator(ast.FUNC_STRING_EQUAL, evaluate.NewStringComparison(ast.FUNC_STRING_EQUAL))
+	inject.AddEvaluator(ast.FUNC_IS_IN_LIST, evaluate.NewStringListComparison(ast.FUNC_IS_IN_LIST))
+	inject.AddEvaluator(ast.FUNC_IS_NOT_IN_LIST, evaluate.NewStringListComparison(ast.FUNC_IS_NOT_IN_LIST))
 	return inject
 }
