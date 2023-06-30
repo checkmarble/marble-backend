@@ -133,9 +133,8 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 			OrganizationID:          orgID,
 			PayloadStructWithReader: payload,
 		}, logger)
-		if errors.Is(err, models.NotFoundError) {
+		if errors.Is(err, models.NotFoundError) || errors.Is(err, models.BadParameterError) {
 			presentError(w, r, err)
-			// http.Error(w, "scenario not found", http.StatusNotFound)
 			return
 		} else if err != nil {
 			logger.ErrorCtx(ctx, "Could not create a decision: \n"+err.Error())

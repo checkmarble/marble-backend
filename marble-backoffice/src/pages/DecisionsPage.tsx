@@ -1,8 +1,5 @@
 import { useParams } from "react-router";
 import Container from "@mui/system/Container";
-import List from "@mui/material/List";
-import ListItem from "@mui/material/ListItem";
-import ListItemText from "@mui/material/ListItemText";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
 import services from "@/injectServices";
@@ -92,7 +89,7 @@ function DecisionsPage() {
                 Decisions of {organization.name}
               </Typography>
               <Typography variant="body1">
-               { decisions && `${decisions.length} decisions.`}
+                {decisions && `${decisions.length} decisions.`}
               </Typography>
             </>
           )}
