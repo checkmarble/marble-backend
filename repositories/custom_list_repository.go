@@ -14,7 +14,6 @@ type CustomListRepository interface {
 	CreateCustomList(tx Transaction, createCustomList models.CreateCustomListInput, newCustomListId string) error	
 	UpdateCustomList(tx Transaction, updateCustomList models.UpdateCustomListInput) error
 	SoftDeleteCustomList(tx Transaction, deleteCustomList models.DeleteCustomListInput) error
-	DeleteCustomList(tx Transaction, deleteCustomList models.DeleteCustomListInput) error
 	AddCustomListValue(tx Transaction, addCustomListValue models.AddCustomListValueInput, newCustomListId string) error
 	DeleteCustomListValue(tx Transaction, deleteCustomListValue models.DeleteCustomListValueInput) error
 }
@@ -103,18 +102,11 @@ func (repo *CustomListRepositoryPostgresql) UpdateCustomList(tx Transaction, upd
 	return err
 }
 
-func (repo *CustomListRepositoryPostgresql) DeleteCustomList(tx Transaction, deleteCustomList models.DeleteCustomListInput) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
-
-	_, err := pgTx.ExecBuilder(NewQueryBuilder().Delete(dbmodels.TABLE_CUSTOM_LIST).Where("id = ? AND organization_id = ?", deleteCustomList.Id, deleteCustomList.OrgId))
-	return err
-}
-
-
 func (repo *CustomListRepositoryPostgresql) SoftDeleteCustomList(tx Transaction, deleteCustomList models.DeleteCustomListInput) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 	var softDeleteRequest = NewQueryBuilder().Update(dbmodels.TABLE_CUSTOM_LIST)
 	softDeleteRequest = softDeleteRequest.Set("deleted_at", squirrel.Expr("NOW()"))
+	softDeleteRequest = softDeleteRequest.Set("updated_at", squirrel.Expr("NOW()"))
 	softDeleteRequest = softDeleteRequest.Where("id = ? AND organization_id = ?", deleteCustomList.Id, deleteCustomList.OrgId)
 
 	_, err := pgTx.ExecBuilder(softDeleteRequest)
@@ -144,12 +136,12 @@ func (repo *CustomListRepositoryPostgresql) AddCustomListValue(tx Transaction, a
 func (repo *CustomListRepositoryPostgresql) DeleteCustomListValue(tx Transaction, deleteCustomListValue models.DeleteCustomListValueInput) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	var updateRequest = NewQueryBuilder().Update(dbmodels.TABLE_CUSTOM_LIST_VALUE)
+	var deleteRequest = NewQueryBuilder().Update(dbmodels.TABLE_CUSTOM_LIST_VALUE)
 
-	updateRequest = updateRequest.Set("deleted_at", squirrel.Expr("NOW()"))
+	deleteRequest = deleteRequest.Set("deleted_at", squirrel.Expr("NOW()"))
 
-	updateRequest = updateRequest.Where("id = ? AND custom_list_id = ?", deleteCustomListValue.Id, deleteCustomListValue.CustomListId)
+	deleteRequest = deleteRequest.Where("id = ? AND custom_list_id = ?", deleteCustomListValue.Id, deleteCustomListValue.CustomListId)
 
-	_, err := pgTx.ExecBuilder(updateRequest)
+	_, err := pgTx.ExecBuilder(deleteRequest)
 	return err
 }
