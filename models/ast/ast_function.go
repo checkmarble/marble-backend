@@ -19,6 +19,9 @@ const (
 	FUNC_VARIABLE
 	FUNC_DB_ACCESS
 	FUNC_CUSTOM_LIST_ACCESS
+	FUNC_STRING_EQUAL
+	FUNC_IS_IN_LIST
+	FUNC_IS_NOT_IN_LIST
 	FUNC_UNKNOWN Function = -1
 )
 
@@ -78,6 +81,21 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 	FUNC_VARIABLE:  AttributeFuncVariable.FuncAttributes,
 	FUNC_DB_ACCESS: AttributeFuncDbAccess.FuncAttributes,
 	FUNC_CUSTOM_LIST_ACCESS: AttributeFuncCustomListAccess.FuncAttributes,
+	FUNC_STRING_EQUAL: {
+		DebugName:         "FUNC_STRING_EQUAL",
+		AstName:           "StringEqual",
+		NumberOfArguments: 2,
+	},
+	FUNC_IS_IN_LIST: {
+		DebugName:         "FUNC_IS_IN_LIST",
+		AstName:           "IsInList",
+		NumberOfArguments: 2,
+	},
+	FUNC_IS_NOT_IN_LIST: {
+		DebugName:         "FUNC_IS_NOT_IN_LIST",
+		AstName:           "IsNotInList",
+		NumberOfArguments: 2,
+	},
 }
 
 func (f Function) Attributes() (FuncAttributes, error) {
