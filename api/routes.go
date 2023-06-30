@@ -17,7 +17,7 @@ func (api *API) routes() {
 
 	api.router.Post("/token", api.handlePostFirebaseIdToken())
 
-	api.router.Route("/ast-expression", func(astRouter chi.Router) {
+	api.router.With(api.credentialsMiddleware).Route("/ast-expression", func(astRouter chi.Router) {
 		astRouter.
 			With(httpin.NewInput(PostValidateAstExpression{})).
 			Post("/validate", api.handleValidateAstExpression())

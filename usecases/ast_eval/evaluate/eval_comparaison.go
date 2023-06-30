@@ -9,6 +9,12 @@ type Comparison struct {
 	Function ast.Function
 }
 
+func NewComparison(f ast.Function) Comparison {
+	return Comparison{
+		Function: f,
+	}
+}
+
 func (f Comparison) Evaluate(arguments ast.Arguments) (any, error) {
 	// promote to float64
 	operandsFloat, err := promoteOperandsToFloat64(arguments.Args, f.Function)

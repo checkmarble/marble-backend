@@ -18,8 +18,10 @@ const (
 	FUNC_NOT
 	FUNC_VARIABLE
 	FUNC_DB_ACCESS
+	FUNC_CUSTOM_LIST_ACCESS
 	FUNC_UNKNOWN Function = -1
 )
+
 
 type FuncAttributes struct {
 	DebugName         string
@@ -75,6 +77,7 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 	},
 	FUNC_VARIABLE:  AttributeFuncVariable.FuncAttributes,
 	FUNC_DB_ACCESS: AttributeFuncDbAccess.FuncAttributes,
+	FUNC_CUSTOM_LIST_ACCESS: AttributeFuncCustomListAccess.FuncAttributes,
 }
 
 func (f Function) Attributes() (FuncAttributes, error) {

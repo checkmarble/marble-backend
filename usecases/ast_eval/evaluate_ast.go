@@ -1,12 +1,9 @@
 package ast_eval
 
 import (
-	"errors"
 	"marble/marble-backend/models/ast"
 	"marble/marble-backend/utils"
 )
-
-var ErrRuntimeExpression = errors.New("expression runtime error")
 
 func EvaluateAst(evalInjection EvaluatorInjection, node ast.Node) (any, error) {
 

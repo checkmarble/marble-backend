@@ -1,10 +1,13 @@
 package evaluate
 
 import (
+	"errors"
 	"fmt"
 	"marble/marble-backend/models/ast"
 	"marble/marble-backend/utils"
 )
+
+var ErrRuntimeExpression = errors.New("expression runtime error")
 
 func promoteOperandsToInt64(operands []any, function ast.Function) ([]int64, error) {
 	result, err := utils.MapErr(operands, ToInt64)

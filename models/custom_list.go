@@ -38,11 +38,6 @@ type DeleteCustomListInput struct {
 	OrgId string
 }
 
-type GetCustomListInput struct {
-	Id    string
-	OrgId string
-}
-
 type GetCustomListValuesInput struct {
 	Id    string
 	OrgId string
