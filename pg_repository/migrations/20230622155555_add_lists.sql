@@ -37,5 +37,7 @@ CREATE INDEX idx_custom_list_id ON custom_list_values(custom_list_id);
 
 DROP TABLE custom_lists CASCADE;
 DROP TABLE custom_list_value CASCADE;
+DROP INDEX idx_organization_id;
+DROP INDEX idx_custom_list_id;
 
 -- +goose StatementEnd
