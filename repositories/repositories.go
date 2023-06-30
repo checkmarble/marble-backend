@@ -34,6 +34,7 @@ type Repositories struct {
 	LegacyPgRepository               *pg_repository.PGRepository
 	OrganizationSchemaRepository     OrganizationSchemaRepository
 	AwsS3Repository                  AwsS3Repository
+	CustomListRepository             CustomListRepository
 }
 
 func NewQueryBuilder() squirrel.StatementBuilderType {
@@ -94,6 +95,9 @@ func NewRepositories(
 		},
 		LegacyPgRepository: pgRepository,
 		OrganizationSchemaRepository: &OrganizationSchemaRepositoryPostgresql{
+			transactionFactory: transactionFactory,
+		},
+		CustomListRepository: &CustomListRepositoryPostgresql{
 			transactionFactory: transactionFactory,
 		},
 		AwsS3Repository: func() AwsS3Repository {

@@ -139,6 +139,22 @@ func (api *API) routes() {
 			dataModelRouter.Get("/", api.handleGetApiKey())
 		})
 
+		authedRouter.Route("/custom-lists", func(r chi.Router) {
+			r.With(api.enforcePermissionMiddleware(models.CUSTOM_LISTS_READ)).Get("/", api.handleGetAllCustomLists())
+			r.With(api.enforcePermissionMiddleware(models.CUSTOM_LISTS_PUBLISH), httpin.NewInput(dto.CreateCustomListInputDto{})).Post("/", api.handlePostCustomList())
+
+			r.Route("/{listId}", func(r chi.Router) {
+				r.With(api.enforcePermissionMiddleware(models.CUSTOM_LISTS_READ), httpin.NewInput(dto.GetCustomListInputDto{})).Get("/", api.handleGetCustomListValues())
+				r.With(api.enforcePermissionMiddleware(models.CUSTOM_LISTS_PUBLISH), httpin.NewInput(dto.UpdateCustomListInputDto{})).Patch("/", api.handlePatchCustomList())
+				r.With(api.enforcePermissionMiddleware(models.CUSTOM_LISTS_PUBLISH), httpin.NewInput(dto.DeleteCustomListInputDto{})).Delete("/", api.handleDeleteCustomList())
+				r.Route("/values", func(r chi.Router) {
+					r.With(api.enforcePermissionMiddleware(models.CUSTOM_LISTS_PUBLISH), httpin.NewInput(dto.AddCustomListValueInputDto{})).Post("/", api.handlePostCustomListValue())
+					r.With(api.enforcePermissionMiddleware(models.CUSTOM_LISTS_PUBLISH), httpin.NewInput(dto.DeleteCustomListValueInputDto{})).Delete("/", api.handleDeleteCustomListValue())
+				})
+		
+			})
+		})
+
 		// Group all admin endpoints
 		authedRouter.Group(func(routerAdmin chi.Router) {
 			routerAdmin.Use(api.enforcePermissionMiddleware(models.ORGANIZATIONS_LIST))
