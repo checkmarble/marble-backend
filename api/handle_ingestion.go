@@ -25,7 +25,7 @@ func (api *API) handleIngestion() http.HandlerFunc {
 		usecase := api.usecases.NewIngestionUseCase()
 
 		organizationUsecase := api.usecases.NewOrganizationUseCase()
-		dataModel, err := organizationUsecase.GetDataModel(ctx, orgID)
+		dataModel, err := organizationUsecase.GetDataModel(orgID)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Unable to find datamodel by orgId for ingestion:\n"+err.Error())
 			http.Error(w, "", http.StatusInternalServerError)

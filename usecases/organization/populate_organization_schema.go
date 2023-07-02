@@ -1,7 +1,6 @@
 package organization
 
 import (
-	"context"
 	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
@@ -40,7 +39,7 @@ func (p *PopulateOrganizationSchema) CreateOrganizationSchema(marbleTx repositor
 			return err
 		}
 
-		dataModel, err := p.DataModelRepository.GetDataModel(context.TODO(), organization.ID)
+		dataModel, err := p.DataModelRepository.GetDataModel(nil, organization.ID)
 		if err != nil {
 			return err
 		}

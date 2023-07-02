@@ -82,8 +82,8 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 	})
 }
 
-func (usecase *OrganizationUseCase) GetDataModel(ctx context.Context, organizationID string) (models.DataModel, error) {
-	return usecase.datamodelRepository.GetDataModel(ctx, organizationID)
+func (usecase *OrganizationUseCase) GetDataModel(organizationID string) (models.DataModel, error) {
+	return usecase.datamodelRepository.GetDataModel(nil, organizationID)
 }
 
 func (usecase *OrganizationUseCase) GetUsersOfOrganization(organizationIDFilter string) ([]models.User, error) {

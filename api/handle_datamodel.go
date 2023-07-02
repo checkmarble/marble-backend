@@ -15,7 +15,7 @@ func (api *API) handleGetDataModel() http.HandlerFunc {
 		}
 
 		usecase := api.usecases.NewOrganizationUseCase()
-		dataModel, err := usecase.GetDataModel(ctx, organizationId)
+		dataModel, err := usecase.GetDataModel(organizationId)
 		if presentError(w, r, err) {
 			return
 		}
