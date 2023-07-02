@@ -77,8 +77,10 @@ func NewRepositories(
 		OrganizationRepository: &OrganizationRepositoryPostgresql{
 			transactionFactory: transactionFactory,
 		},
-		IngestionRepository:        &IngestionRepositoryImpl{},
-		DataModelRepository:        pgRepository,
+		IngestionRepository: &IngestionRepositoryImpl{},
+		DataModelRepository: &DataModelRepositoryPostgresql{
+			transactionFactory: transactionFactory,
+		},
 		IngestedDataReadRepository: &IngestedDataReadRepositoryImpl{},
 		DecisionRepositoryLegacy:   pgRepository,
 		DecisionRepository: &DecisionRepositoryImpl{
