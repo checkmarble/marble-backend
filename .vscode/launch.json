@@ -30,6 +30,15 @@
       "program": "${workspaceFolder}/main.go",
       "envFile": "${workspaceFolder}/.env.local",
       "args": ["--scheduled"]
+    },
+    {
+      "name": "Launch batch ingestion job (.env.local)",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/main.go",
+      "envFile": "${workspaceFolder}/.env.local",
+      "args": ["--batch-ingestion"]
     }
   ]
 }
