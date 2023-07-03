@@ -134,6 +134,11 @@ export class MarbleApi {
     });
   }
 
+  async scenariosById(scenarioId: string): Promise<unknown> {
+    const scenarioIdParam = encodeURIComponent(scenarioId);
+    return this.getAuthorizedJson(`${SCENARIO_URL_PATH}/${scenarioIdParam}`);
+  }
+
   async allUsers(): Promise<unknown> {
     return this.getAuthorizedJson(USERS_URL_PATH);
   }
@@ -237,6 +242,12 @@ export class MarbleApi {
         payload_type: "transactions",
       },
     });
+  }
+  
+  async builderIdentifiers(organizationId: string) {
+    return await this.getAuthorizedJson(
+      urlWithOrganizationId("builder/identifiers", organizationId)
+    );
   }
 }
 

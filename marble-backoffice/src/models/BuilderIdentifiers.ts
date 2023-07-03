@@ -1,11 +1,9 @@
-
 export interface DataAccessesIdentifier {
   varName: string;
+  //   Vartype: string | null;
+  //   Optional: boolean;
 }
 
 export interface BuilderIdentifiers {
-  uid: string;
-  email: string | null;
-  displayName: string | null;
-  photoURL: string | null;
+  dataAccesses: DataAccessesIdentifier[];
 }

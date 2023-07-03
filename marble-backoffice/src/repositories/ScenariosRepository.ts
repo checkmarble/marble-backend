@@ -1,18 +1,34 @@
 import { type MarbleApi } from "@/infra/MarbleApi";
-import type { Scenario, AstNode } from "@/models";
-import { adaptScenariosApiResult } from "@/models/ScenarioDto";
-import { adapAstValidateSchemaResult, adaptAstNodeDto } from "@/models/AstExpressionDto";
+import type { Scenario, AstNode, BuilderIdentifiers } from "@/models";
+import {
+  adaptScenariosApiResult,
+  adaptSingleScenarioApiResult,
+} from "@/models/ScenarioDto";
+import {
+  adapAstValidateSchemaResult,
+  adaptAstNodeDto,
+} from "@/models/AstExpressionDto";
+import { adaptBuilderIdentifiers } from "@/models/BuilderIdentifiersDto";
 
 export interface ScenariosRepository {
   marbleApi: MarbleApi;
 }
 
-export async function fetchScenarios(
+export async function fetchScenariosOfOrganization(
   repository: ScenariosRepository,
   organizationId: string
 ): Promise<Scenario[]> {
   return adaptScenariosApiResult(
     await repository.marbleApi.scenariosOfOrganization(organizationId)
+  );
+}
+
+export async function fetchScenario(
+  repository: ScenariosRepository,
+  scenarioId: string
+): Promise<Scenario> {
+  return adaptSingleScenarioApiResult(
+    await repository.marbleApi.scenariosById(scenarioId)
   );
 }
 
@@ -22,7 +38,9 @@ export async function validateAstExpression(
   expression: AstNode
 ) {
   return adapAstValidateSchemaResult(
-    await repository.marbleApi.validateAstExpression(adaptAstNodeDto(expression))
+    await repository.marbleApi.validateAstExpression(
+      adaptAstNodeDto(expression)
+    )
   );
 }
 
@@ -31,5 +49,16 @@ export async function runAstExpression(
   // organizationId: string,
   expression: AstNode
 ) {
-  return await repository.marbleApi.runAstExpression(adaptAstNodeDto(expression));
+  return await repository.marbleApi.runAstExpression(
+    adaptAstNodeDto(expression)
+  );
+}
+
+export async function fetchBuilderIdentifiers(
+  repository: ScenariosRepository,
+  organizationId: string
+): Promise<BuilderIdentifiers> {
+  return adaptBuilderIdentifiers(
+    await repository.marbleApi.builderIdentifiers(organizationId)
+  );
 }

@@ -7,7 +7,7 @@ import {
   fetchAllOrganizations,
   fetchOrganization,
   postOrganization,
-  fetchScenarios,
+  fetchScenariosOfOrganization,
   deleteOrganization,
   patchOrganization,
   fetchDataModelOfOrganization,
@@ -98,7 +98,7 @@ export function useScenarios(
   organizationId: string
 ) {
   const loadScenarios = useCallback(() => {
-    return fetchScenarios(service.scenariosRepository, organizationId);
+    return fetchScenariosOfOrganization(service.scenariosRepository, organizationId);
   }, [service, organizationId]);
 
   const [scenarios, refreshScenarios] = useSimpleLoader<Scenario[]>(

@@ -6,18 +6,19 @@ import (
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 	"marble/marble-backend/repositories"
+	"marble/marble-backend/usecases/security"
 	"marble/marble-backend/utils"
 )
 
 type CustomListValuesAccess struct {
 	CustomListRepository repositories.CustomListRepository
-	Creds                models.Credentials
+	EnforceSecurity      security.EnforceSecurity
 }
 
-func NewCustomListValuesAccess(clr repositories.CustomListRepository, creds models.Credentials) CustomListValuesAccess {
+func NewCustomListValuesAccess(clr repositories.CustomListRepository, enforceSecurity security.EnforceSecurity) CustomListValuesAccess {
 	return CustomListValuesAccess{
 		CustomListRepository: clr,
-		Creds:                creds,
+		EnforceSecurity:      enforceSecurity,
 	}
 }
 
@@ -31,7 +32,7 @@ func (clva CustomListValuesAccess) Evaluate(arguments ast.Arguments) (any, error
 	if err != nil {
 		return nil, errors.New("list not found")
 	}
-	if err := utils.EnforceOrganizationAccess(clva.Creds, list.OrgId); err != nil {
+	if err := clva.EnforceSecurity.ReadOrganization(list.OrgId); err != nil {
 		return nil, err
 	}
 
