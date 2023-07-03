@@ -9,6 +9,7 @@ import (
 	"marble/marble-backend/usecases/ast_eval"
 	"marble/marble-backend/usecases/ast_eval/evaluate"
 	"marble/marble-backend/usecases/organization"
+	"marble/marble-backend/utils"
 )
 
 type AstExpressionUsecase struct {
@@ -60,4 +61,44 @@ func (usecase *AstExpressionUsecase) Run(expression ast.Node, payload models.Pay
 		usecase.DatamodelRepository, payload, usecase.Credentials))
 	return ast_eval.EvaluateAst(inject, expression)
 
+}
+
+type DataAccessesIdentifier struct {
+	Varname string `json:"var_name"`
+	Vartype string `json:"var_type"`
+}
+
+type BuilderIdentifiers struct {
+	DataAccesses []DataAccessesIdentifier `json:"data_accesses_identifiers"`
+}
+
+func (usecase *AstExpressionUsecase) Identifiers() (BuilderIdentifiers, error) {
+
+	creds := usecase.Credentials
+	if err := utils.EnforceOrganizationAccess(creds, creds.OrganizationId); err != nil {
+		return BuilderIdentifiers{}, err
+	}
+
+	dataModel, err := usecase.dataModelRepository.GetDataModel(nil, creds.OrganizationId)
+	if err != nil {
+		return BuilderIdentifiers{}, err
+	}
+
+	identifiers := BuilderIdentifiers{}
+
+	for tableName, table := range dataModel.Tables {
+
+		for fieldName, field := range table.Fields {
+
+			identifier := DataAccessesIdentifier{
+
+				Varname: fmt.Sprintf("%s.%s", tableName, fieldName),
+				Vartype: field.DataType.String(),
+			}
+
+			identifiers.DataAccesses = append(identifiers.DataAccesses, identifier)
+		}
+	}
+
+	return identifiers, nil
 }
