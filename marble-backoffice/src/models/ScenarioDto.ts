@@ -28,3 +28,13 @@ export function adaptScenariosApiResult(json: unknown): Scenario[] {
   const dtos = adaptDtoWithYup(json, yup.array().required().of(ScenarioSchema));
   return dtos.map(adaptScenario);
 }
+
+export function adaptSingleScenarioApiResult(json: unknown): Scenario {
+  const dto = adaptDtoWithYup(
+    json,
+    yup.object({
+      scenario: ScenarioSchema,
+    })
+  );
+  return adaptScenario(dto.scenario);
+}

@@ -11,7 +11,7 @@ import GridCellWithTooltip from "./CustomGridCell";
 
 interface ListOfOrganizationsProps {
   organizations: Organization[] | null;
-  onOrganizationDetailClick?: (organizationId: string) => void;
+  onOrganizationDetailClick: (organizationId: string) => void;
 }
 
 function ListOfOrganizations(props: ListOfOrganizationsProps) {
@@ -25,7 +25,7 @@ function ListOfOrganizations(props: ListOfOrganizationsProps) {
     id: organization.organizationId, // needed for datagrid
     actions: organization.organizationId, // needed to build a fake 'actions' column
     onDetailsClick: props.onOrganizationDetailClick
-      ? () => props.onOrganizationDetailClick!(organization.organizationId)
+      ? () => props.onOrganizationDetailClick(organization.organizationId)
       : null, // build user-specific actions using the props
 
     ...organization, // keep all org data intact
@@ -37,15 +37,13 @@ function ListOfOrganizations(props: ListOfOrganizationsProps) {
   ];
 
   // Actions, only add column if there actually are actions
-  if (props.onOrganizationDetailClick) {
-    columns.push({
-      field: "actions",
-      headerName: "actions",
-      flex: 0.5,
-      renderCell: ListOfOrganizationsActionsCell,
-      cellClassName: "noHover",
-    });
-  }
+  columns.push({
+    field: "actions",
+    headerName: "actions",
+    flex: 0.5,
+    renderCell: ListOfOrganizationsActionsCell,
+    cellClassName: "noHover",
+  });
 
   return (
     <DataGrid
@@ -59,9 +57,7 @@ function ListOfOrganizations(props: ListOfOrganizationsProps) {
 
 // see https://github.com/mui/mui-x/blob/master/packages/grid/x-data-grid-generator/src/renderer/renderRating.tsx
 // for reference
-function ListOfOrganizationsActionsCell(
-  params: GridRenderCellParams
-) {
+function ListOfOrganizationsActionsCell(params: GridRenderCellParams) {
   if (params.value == null) {
     console.warn("ListOfUsersActionsCell : params.value == null");
     return null;

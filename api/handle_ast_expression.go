@@ -45,7 +45,6 @@ func (api *API) handleValidateAstExpression() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		creds := utils.CredentialsFromCtx(ctx)
 		input := ctx.Value(httpin.Input).(*PostValidateAstExpression)
 
 		expression, err := dto.AdaptASTNode(*input.Body.Expression)
@@ -54,7 +53,7 @@ func (api *API) handleValidateAstExpression() http.HandlerFunc {
 			return
 		}
 
-		usecase := api.usecases.AstExpressionUsecase(creds)
+		usecase := api.UsecasesWithCreds(r).AstExpressionUsecase()
 		allErrors := usecase.Validate(expression)
 
 		var validationErrorsDto = utils.Map(allErrors, func(err error) string {
@@ -125,12 +124,13 @@ func (api *API) handleRunAstExpression() http.HandlerFunc {
 		if presentError(w, r, err) {
 			return
 		}
-		usecase := api.usecases.AstExpressionUsecase(creds)
+		usecase := api.UsecasesWithCreds(r).AstExpressionUsecase()
 		result, err := usecase.Run(expression, payload)
 
 		var runtimeErrorDto string
 		if errors.Is(err, evaluate.ErrRuntimeExpression) {
 			runtimeErrorDto = err.Error()
+			err = nil
 		}
 
 		if presentError(w, r, err) {

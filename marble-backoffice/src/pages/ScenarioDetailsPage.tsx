@@ -20,32 +20,38 @@ import {
   type NodeViewModel,
 } from "@/services/AstExpressionService";
 import { useCallback } from "react";
+import { useParams } from "react-router-dom";
 
 export default function ScenarioDetailsPage() {
-  // const { scenarioId } = useParams();
-  // const navigate = useNavigate();
+  const { scenarioId } = useParams();
 
-  //   const { scenarios } = useScenarios(
-  //     services().organizationService,
-  //     pageLoadingDispatcher,
-  //     organizationId
-  //   );
+  if (!scenarioId) {
+    throw Error("scenarioId is required");
+  }
+  // const navigate = useNavigate();
 
   const [pageLoading, pageLoadingDispatcher] = useLoading();
 
-  const { editor, expressionAstNode, validate, validationErrors, run } =
-    useAstExpressionBuilder(
-      services().astExpressionService,
-      pageLoadingDispatcher
-    );
+  const {
+    editor,
+    expressionAstNode,
+    validate,
+    validationErrors,
+    run,
+    identifiers,
+  } = useAstExpressionBuilder(
+    services().astExpressionService,
+    scenarioId,
+    pageLoadingDispatcher
+  );
 
-    const handleValidateScenario = async () => {
-      validate();
-    };
-    
-    const handleRunScenario = async () => {
-      run();
-    };
+  const handleValidateScenario = async () => {
+    validate();
+  };
+
+  const handleRunScenario = async () => {
+    run();
+  };
 
   const handleOperatorNameChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -103,14 +109,15 @@ export default function ScenarioDetailsPage() {
             node={editor.expressionViewModel.rootNode}
           /> */}
 
-<Button onClick={handleValidateScenario}>Validate</Button>
-<Button onClick={handleRunScenario}>Run</Button>
+          <Button onClick={handleValidateScenario}>Validate</Button>
+          <Button onClick={handleRunScenario}>Run</Button>
           {validationErrors.map((error, i) => (
             <Alert key={i} severity="error">
               {error}
             </Alert>
           ))}
 
+          <code>{JSON.stringify(identifiers)}</code>
           <Typography variant="h5">Result</Typography>
           <AstNode node={expressionAstNode} />
         </Stack>

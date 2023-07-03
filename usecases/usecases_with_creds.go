@@ -28,3 +28,14 @@ func (usecases *UsecasesWithCreds) NewScenarioUsecase() ScenarioUsecase {
 		scenarioWriteRepository: usecases.Repositories.ScenarioWriteRepository,
 	}
 }
+
+func (usecases *UsecasesWithCreds) AstExpressionUsecase() AstExpressionUsecase {
+	return AstExpressionUsecase{
+		EnforceSecurity:            usecases.NewEnforceSecurity(),
+		OrganizationIdOfContext:    usecases.OrganizationIdOfContext,
+		CustomListRepository:       usecases.Repositories.CustomListRepository,
+		OrgTransactionFactory:      usecases.NewOrgTransactionFactory(),
+		IngestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
+		DataModelRepository:        usecases.Repositories.DataModelRepository,
+	}
+}
