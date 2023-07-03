@@ -1,7 +1,7 @@
 import * as yup from "yup";
 import { adaptDtoWithYup } from "@/infra/adaptDtoWithYup";
 import { adaptRole } from "./Role";
-import { Credentials } from "./Credentials";
+import type { Credentials } from "./Credentials";
 
 const CredentialsSchema = yup.object({
   organization_id: yup.string().defined(),

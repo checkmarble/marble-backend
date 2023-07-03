@@ -35,6 +35,7 @@ func (usecases *Usecases) NewOrganizationUseCase() OrganizationUseCase {
 		userRepository:               usecases.Repositories.UserRepository,
 		organizationCreator:          usecases.NewOrganizationCreator(),
 		organizationSchemaRepository: usecases.Repositories.OrganizationSchemaRepository,
+		populateOrganizationSchema:   usecases.NewPopulateOrganizationSchema(),
 	}
 }
 
@@ -92,15 +93,11 @@ func (usecases *Usecases) NewSeedUseCase() SeedUseCase {
 
 func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCreator {
 	return organization.OrganizationCreator{
-		TransactionFactory:     usecases.Repositories.TransactionFactory,
-		OrganizationRepository: usecases.Repositories.OrganizationRepository,
-		OrganizationSeeder:     usecases.Repositories.LegacyPgRepository,
-		PopulateOrganizationSchema: organization.PopulateOrganizationSchema{
-			TransactionFactory:           usecases.Repositories.TransactionFactory,
-			OrganizationRepository:       usecases.Repositories.OrganizationRepository,
-			OrganizationSchemaRepository: usecases.Repositories.OrganizationSchemaRepository,
-			DataModelRepository:          usecases.Repositories.DataModelRepository,
-		},
+		TransactionFactory:         usecases.Repositories.TransactionFactory,
+		OrganizationRepository:     usecases.Repositories.OrganizationRepository,
+		DataModelRepository:        usecases.Repositories.DataModelRepository,
+		OrganizationSeeder:         usecases.Repositories.LegacyPgRepository,
+		PopulateOrganizationSchema: usecases.NewPopulateOrganizationSchema(),
 	}
 }
 
@@ -161,5 +158,14 @@ func (usecases *Usecases) AstExpressionUsecase(creds models.Credentials) AstExpr
 		OrgTransactionFactory:      usecases.NewOrgTransactionFactory(),
 		IngestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
 		DatamodelRepository:        usecases.Repositories.DataModelRepository,
+	}
+}
+
+func (usecases *Usecases) NewPopulateOrganizationSchema() organization.PopulateOrganizationSchema {
+	return organization.PopulateOrganizationSchema{
+		TransactionFactory:           usecases.Repositories.TransactionFactory,
+		OrganizationRepository:       usecases.Repositories.OrganizationRepository,
+		OrganizationSchemaRepository: usecases.Repositories.OrganizationSchemaRepository,
+		DataModelRepository:          usecases.Repositories.DataModelRepository,
 	}
 }
