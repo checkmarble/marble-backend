@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories/dbmodels"
@@ -21,6 +22,10 @@ type DataModelRepositoryPostgresql struct {
 
 func (repo *DataModelRepositoryPostgresql) GetDataModel(tx Transaction, organizationID string) (models.DataModel, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	if organizationID == "" {
+		return models.DataModel{}, errors.New("organizationID is empty")
+	}
 
 	return SqlToModel(
 		pgTx,
