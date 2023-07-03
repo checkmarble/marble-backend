@@ -4,11 +4,13 @@ import {
   type AstNode,
   type ConstantOptional,
   NoConstant,
+  ConstantType,
 } from "@/models";
 import { MapObjectValues } from "@/MapUtils";
 import {
   type ScenariosRepository,
   validateAstExpression,
+  runAstExpression,
 } from "@/repositories";
 import { type LoadingDispatcher, showLoader } from "@/hooks/Loading";
 
@@ -29,16 +31,16 @@ export interface ExpressionViewModel {
 export interface NodeViewModel {
   id: string;
   name: string;
-  constant: string;
+  constant: ConstantType;
   children: NodeViewModel[];
   namedChildren: Record<string, NodeViewModel>;
 }
 
-function stringifyConstant(constant: ConstantOptional): string {
+function jsonifyConstant(constant: ConstantOptional): ConstantType {
   if (constant === NoConstant) {
     return "";
   } else {
-    return `${constant}`;
+    return constant;
   }
 }
 
@@ -49,7 +51,7 @@ function makeExpressionViewModel(node: AstNode): ExpressionViewModel {
     const newNode: NodeViewModel = {
       id: crypto.randomUUID().toString(),
       name: node.name,
-      constant: stringifyConstant(node.constant),
+      constant: jsonifyConstant(node.constant),
       children: node.children.map(makeNodeViewModel),
       namedChildren: MapObjectValues(node.namedChildren, makeNodeViewModel),
     };
@@ -86,26 +88,23 @@ export function useAstExpressionBuilder(
     useState<ExpressionViewModel>(() =>
       makeExpressionViewModel(
         NewAstNode({
-          name: ">",
+          name: "IsInList",
           children: [
             NewAstNode({
-              name: "*",
-              children: [
-                NewAstNode({
-                  constant: 2,
-                }),
-                NewAstNode({
-                  constant: 3,
-                }),
-              ],
-            }),
-            NewAstNode({
-              constant: 10,
-            }),
-          ],
-        })
-      )
-    );
+              name: "DatabaseAccess",
+              namedChildren: {
+                tableName: NewAstNode({ constant: "transactions"}), 
+                fieldName: NewAstNode({ constant: "name"}),
+                path: NewAstNode({ constant: ["account"]}),
+              }}),
+              NewAstNode({
+                name: "CustomListAccess",
+                namedChildren: {
+                  customListId: NewAstNode({ constant: "0d968583-20da-4199-bf4a-020566a36251"}), 
+                }}),
+            ],
+        }))
+      );
 
   const expressionAstNode = useMemo(
     () => adaptAstNodeFromViewModel(expressionViewModel),
@@ -117,11 +116,22 @@ export function useAstExpressionBuilder(
       pageLoadingDispatcher,
       validateAstExpression(
         service.scenarioRepository,
-        expressionViewModel.rootNode
+        expressionAstNode
       )
     );
     setValidationErrors(result.validationErrors);
-  }, [service, expressionViewModel.rootNode, pageLoadingDispatcher]);
+  }, [service, expressionAstNode, pageLoadingDispatcher]);
+
+  const run = useCallback(async () => {
+    await showLoader(
+      pageLoadingDispatcher,
+      runAstExpression(
+        service.scenarioRepository,
+        expressionAstNode
+      )
+    );
+  }, [service, expressionAstNode, pageLoadingDispatcher]);
+
 
   const editor: ExpressionEditor = {
     expressionViewModel,
@@ -134,6 +144,7 @@ export function useAstExpressionBuilder(
     expressionAstNode,
     validate,
     validationErrors,
+    run,
   };
 }
 

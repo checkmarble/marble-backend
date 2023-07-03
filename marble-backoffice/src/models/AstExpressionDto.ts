@@ -4,7 +4,7 @@ import { type AstNode, type ConstantType, NoConstant } from "./AstExpression";
 import { MapObjectValues } from "@/MapUtils";
 
 // Yup can't infer typescript type from recursive schema, let's declare it manually
-interface AstNodeDto {
+export interface AstNodeDto {
   name?: string;
   constant?: ConstantType;
   children?: AstNodeDto[];
@@ -30,6 +30,14 @@ export function adaptAstNode(dto: AstNodeDto): AstNode {
   };
 }
 
+export function adaptAstNodeDto(model: AstNode): AstNodeDto {
+  return {
+    name: model.name === "" ? undefined : model.name,
+    constant: model.constant === NoConstant ? undefined : model.constant,
+    children: (model.children || []).map((child) => adaptAstNodeDto(child)),
+    named_children: MapObjectValues(model.namedChildren || {}, adaptAstNodeDto)
+  };
+}
 export function adapAstValidateSchemaResult(json: unknown) {
   const dto = adaptDtoWithYup(
     json,

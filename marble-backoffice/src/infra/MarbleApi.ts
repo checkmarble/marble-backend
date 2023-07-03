@@ -7,6 +7,7 @@ import type {
 } from "@/models";
 import { HttpMethod } from "./fetchUtils";
 import { AuthorizedFetcher } from "./AuthorizedFetcher";
+import { AstNodeDto } from "@/models/AstExpressionDto";
 
 const ORGANIZATION_URL_PATH = "organizations";
 const SCENARIO_URL_PATH = "scenarios";
@@ -185,7 +186,7 @@ export class MarbleApi {
     );
   }
 
-  async validateAstExpression(expression: AstNode) {
+  async validateAstExpression(expression: AstNodeDto) {
     // ast-expression/available-functions
     // validate
     return await this.sendAuthorizedJson({
@@ -193,6 +194,28 @@ export class MarbleApi {
       path: `${AST_EXPRESSION_URL_PATH}/validate`,
       body: {
         expression: expression,
+      },
+    });
+  }
+
+  async runAstExpression(expression: AstNodeDto) {
+    // ast-expression/available-functions
+    // run
+    return await this.sendAuthorizedJson({
+      method: HttpMethod.Post,
+      path: `${AST_EXPRESSION_URL_PATH}/run`,
+      body: {
+        expression: expression,
+        payload: {
+          object_id: "transaction_c",
+          account_id: "account-a-id",
+          direction: "payout",
+          status: "pending",
+          bic_country: "FR",
+          amount: 100,
+          updated_at: new Date(),
+        },
+        payload_type: "transactions"
       },
     });
   }
