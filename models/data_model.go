@@ -29,6 +29,22 @@ func (d DataType) String() string {
 	return "unknown"
 }
 
+func DataTypeFrom(s string) DataType {
+	switch s {
+	case "Bool":
+		return Bool
+	case "Int":
+		return Int
+	case "Float":
+		return Float
+	case "String":
+		return String
+	case "Timestamp":
+		return Timestamp
+	}
+	return -1
+}
+
 // /////////////////////////////
 // Status
 // /////////////////////////////
@@ -71,8 +87,8 @@ func StatusFrom(s string) Status {
 ///////////////////////////////
 
 type DataModel struct {
-	Version string
-	Status  Status
+	Version string              `json:"version"`
+	Status  Status              `json:"status"`
 	Tables  map[TableName]Table `json:"tables"`
 }
 

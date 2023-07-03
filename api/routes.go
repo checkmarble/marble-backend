@@ -142,6 +142,10 @@ func (api *API) routes() {
 		authedRouter.Route("/data-model", func(dataModelRouter chi.Router) {
 			dataModelRouter.Use(api.enforcePermissionMiddleware(models.DATA_MODEL_READ))
 			dataModelRouter.Get("/", api.handleGetDataModel())
+
+			dataModelRouter.With(httpin.NewInput(dto.PostDataModel{})).
+				With(api.enforcePermissionMiddleware(models.DATA_MODEL_WRITE)).
+				Post("/", api.handlePostDataModel())
 		})
 
 		authedRouter.Route("/apikeys", func(dataModelRouter chi.Router) {
