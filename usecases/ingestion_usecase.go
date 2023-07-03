@@ -11,6 +11,7 @@ import (
 type IngestionUseCase struct {
 	orgTransactionFactory organization.OrgTransactionFactory
 	ingestionRepository   repositories.IngestionRepository
+	gcsRepository         repositories.GcsRepository
 }
 
 func (usecase *IngestionUseCase) IngestObject(organizationId string, payload models.Payload, table models.Table, logger *slog.Logger) error {
