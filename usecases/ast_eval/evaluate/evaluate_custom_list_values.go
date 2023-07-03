@@ -11,7 +11,7 @@ import (
 
 type CustomListValuesAccess struct {
 	CustomListRepository repositories.CustomListRepository
-	Creds models.Credentials
+	Creds                models.Credentials
 }
 
 func NewCustomListValuesAccess(clr repositories.CustomListRepository, creds models.Credentials) CustomListValuesAccess {
@@ -22,7 +22,6 @@ func NewCustomListValuesAccess(clr repositories.CustomListRepository, creds mode
 }
 
 func (clva CustomListValuesAccess) Evaluate(arguments ast.Arguments) (any, error) {
-	var stringListValues []string
 	listId, ok := arguments.NamedArgs["customListId"].((string))
 	if !ok {
 		return nil, fmt.Errorf("customListId is not a string %w", ErrRuntimeExpression)
@@ -35,15 +34,16 @@ func (clva CustomListValuesAccess) Evaluate(arguments ast.Arguments) (any, error
 	if err := utils.EnforceOrganizationAccess(clva.Creds, list.OrgId); err != nil {
 		return nil, err
 	}
-	
+
 	listValues, err := clva.CustomListRepository.GetCustomListValues(nil, models.GetCustomListValuesInput{
-		Id:    listId,
+		Id: listId,
 	})
 	if err != nil {
 		return nil, err
 	}
-	for _, v := range listValues {
-		stringListValues = append(stringListValues, v.Value)
-	}
-	return stringListValues, nil
+
+	return utils.Map(
+		listValues,
+		func(v models.CustomListValue) string { return v.Value },
+	), nil
 }
