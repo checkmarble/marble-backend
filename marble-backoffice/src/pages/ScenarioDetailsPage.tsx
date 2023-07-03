@@ -33,15 +33,19 @@ export default function ScenarioDetailsPage() {
 
   const [pageLoading, pageLoadingDispatcher] = useLoading();
 
-  const { editor, expressionAstNode, validate, validationErrors } =
+  const { editor, expressionAstNode, validate, validationErrors, run } =
     useAstExpressionBuilder(
       services().astExpressionService,
       pageLoadingDispatcher
     );
 
-  const handleValidateScenario = async () => {
-    validate();
-  };
+    const handleValidateScenario = async () => {
+      validate();
+    };
+    
+    const handleRunScenario = async () => {
+      run();
+    };
 
   const handleOperatorNameChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -93,12 +97,13 @@ export default function ScenarioDetailsPage() {
         <Stack direction="column" spacing={2}>
           <Typography variant="h5">Expression Editor</Typography>
 
-          <AstEditor
+          {/* <AstEditor
             editor={nodeEditor}
             node={editor.expressionViewModel.rootNode}
-          />
+          /> */}
 
-          <Button onClick={handleValidateScenario}>Validate</Button>
+<Button onClick={handleValidateScenario}>Validate</Button>
+<Button onClick={handleRunScenario}>Run</Button>
           {validationErrors.map((error, i) => (
             <Alert key={i} severity="error">
               {error}

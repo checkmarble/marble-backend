@@ -1,8 +1,10 @@
 package api
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"marble/marble-backend/app"
 	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
@@ -80,7 +82,11 @@ func (api *API) handleValidateAstExpression() http.HandlerFunc {
 }
 
 type PostRunAstExpression struct {
-	Body *dto.NodeDto `in:"body=json"`
+	Body struct {
+		Expression  *dto.NodeDto    `json:"expression"`
+		Payload     json.RawMessage `json:"payload"`
+		PayloadType string          `json:"payload_type"`
+	} `in:"body=json"`
 }
 
 type RunAstExpressionResultDto struct {
@@ -93,15 +99,34 @@ func (api *API) handleRunAstExpression() http.HandlerFunc {
 		ctx := r.Context()
 		creds := utils.MustCredentialsFromCtx(ctx)
 		input := ctx.Value(httpin.Input).(*PostRunAstExpression)
+		logger := api.logger
 
-		expression, err := dto.AdaptASTNode(*input.Body)
+		expression, err := dto.AdaptASTNode(*input.Body.Expression)
 		if err != nil {
 			presentError(w, r, fmt.Errorf("invalid Expression: %w", models.BadParameterError))
 			return
 		}
 
+		organizationUsecase := api.usecases.NewOrganizationUseCase()
+		dataModel, err := organizationUsecase.GetDataModel(ctx, creds.OrganizationId)
+		if presentError(w, r, err) {
+			return
+		}
+
+		tables := dataModel.Tables
+		table, ok := tables[models.TableName(input.Body.PayloadType)]
+		if !ok {
+			logger.ErrorCtx(ctx, "Table not found in data model for organization")
+			http.Error(w, "", http.StatusNotFound)
+			return
+		}
+
+		payload, err := app.ParseToDataModelObject(table, input.Body.Payload)
+		if presentError(w, r, err) {
+			return
+		}
 		usecase := api.usecases.AstExpressionUsecase(creds)
-		result, err := usecase.Run(expression)
+		result, err := usecase.Run(expression, payload)
 
 		var runtimeErrorDto string
 		if errors.Is(err, evaluate.ErrRuntimeExpression) {

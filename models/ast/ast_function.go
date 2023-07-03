@@ -25,7 +25,6 @@ const (
 	FUNC_UNKNOWN Function = -1
 )
 
-
 type FuncAttributes struct {
 	DebugName         string
 	AstName           string
@@ -78,8 +77,8 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		AstName:           "Not",
 		NumberOfArguments: 1,
 	},
-	FUNC_VARIABLE:  AttributeFuncVariable.FuncAttributes,
-	FUNC_DB_ACCESS: AttributeFuncDbAccess.FuncAttributes,
+	FUNC_VARIABLE:           AttributeFuncVariable.FuncAttributes,
+	FUNC_DB_ACCESS:          AttributeFuncDbAccess.FuncAttributes,
 	FUNC_CUSTOM_LIST_ACCESS: AttributeFuncCustomListAccess.FuncAttributes,
 	FUNC_STRING_EQUAL: {
 		DebugName:         "FUNC_STRING_EQUAL",
@@ -150,16 +149,18 @@ var AttributeFuncDbAccess = struct {
 	FuncAttributes
 	ArgumentTableName string
 	ArgumentFieldName string
+	ArgumentPathName  string
 }{
 	FuncAttributes: FuncAttributes{
 		DebugName: "FUNC_DB_ACCESS",
 		AstName:   "DatabaseAccess",
 		NamedArguments: []string{
-			"tableName", "fieldName",
+			"tableName", "fieldName", "path",
 		},
 	},
 	ArgumentTableName: "tableName",
 	ArgumentFieldName: "fieldName",
+	ArgumentPathName:  "path",
 }
 
 func NewNodeDatabaseAccess(tableName string, fieldName string) Node {

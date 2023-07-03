@@ -1,7 +1,7 @@
 import { type MarbleApi } from "@/infra/MarbleApi";
 import type { Scenario, AstNode } from "@/models";
 import { adaptScenariosApiResult } from "@/models/ScenarioDto";
-import { adapAstValidateSchemaResult } from "@/models/AstExpressionDto";
+import { adapAstValidateSchemaResult, adaptAstNodeDto } from "@/models/AstExpressionDto";
 
 export interface ScenariosRepository {
   marbleApi: MarbleApi;
@@ -22,6 +22,14 @@ export async function validateAstExpression(
   expression: AstNode
 ) {
   return adapAstValidateSchemaResult(
-    await repository.marbleApi.validateAstExpression(expression)
+    await repository.marbleApi.validateAstExpression(adaptAstNodeDto(expression))
   );
+}
+
+export async function runAstExpression(
+  repository: ScenariosRepository,
+  // organizationId: string,
+  expression: AstNode
+) {
+  return await repository.marbleApi.runAstExpression(adaptAstNodeDto(expression));
 }

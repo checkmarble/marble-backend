@@ -154,7 +154,10 @@ func (usecases *Usecases) NewExportScheduleExecution() scheduledexecution.Export
 
 func (usecases *Usecases) AstExpressionUsecase(creds models.Credentials) AstExpressionUsecase {
 	return AstExpressionUsecase{
-		CustomListRepository: usecases.Repositories.CustomListRepository,
-		Credentials:          creds,
+		CustomListRepository:       usecases.Repositories.CustomListRepository,
+		Credentials:                creds,
+		OrgTransactionFactory:      usecases.NewOrgTransactionFactory(),
+		IngestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
+		DatamodelRepository:        usecases.Repositories.DataModelRepository,
 	}
 }
