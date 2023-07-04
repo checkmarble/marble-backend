@@ -53,16 +53,17 @@ func (d *DataAccessor) GetDbHandle() (db *pgxpool.Pool, schema string, err error
 	return pool, databaseShema.Schema, nil
 }
 
-func (d *DataAccessor) GetDbCustomListValues(ctx context.Context, customListId string) (customListValues []string, err error) {
+func (d *DataAccessor) GetDbCustomListValues(ctx context.Context, customListId string) ([]string, error) {
+	var customListValues []string
 	values, err := d.customListRepository.GetCustomListValues(nil, models.GetCustomListValuesInput{
 		Id:    customListId,
 		OrgId: d.organizationId,
 	})
 	if err != nil {
-		return
+		return nil, err
 	}
 	for _, value := range values {
 		customListValues = append(customListValues, value.Value)
 	}
-	return
+	return customListValues, nil
 }
