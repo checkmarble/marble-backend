@@ -2,15 +2,17 @@ package dto
 
 import (
 	"marble/marble-backend/models"
+	"marble/marble-backend/utils"
 	"time"
 )
 
 type CustomList struct {
-	Id          string    `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	Id          string            `json:"id"`
+	Name        string            `json:"name"`
+	Description string            `json:"description"`
+	CreatedAt   time.Time         `json:"createdAt"`
+	UpdatedAt   time.Time         `json:"updatedAt"`
+	Values      []CustomListValue `json:"values,omitempty"`
 }
 
 type CustomListValue struct {
@@ -28,6 +30,16 @@ func AdaptCustomListDto(list models.CustomList) CustomList {
 	}
 }
 
+func AdaptCustomListWithValuesDto(list models.CustomList, values []models.CustomListValue) CustomList {
+	return CustomList{
+		Id:          string(list.Id),
+		Name:        list.Name,
+		Description: list.Description,
+		CreatedAt:   list.CreatedAt,
+		UpdatedAt:   list.UpdatedAt,
+		Values:      utils.Map(values, AdaptCustomListValueDto),
+	}
+}
 func AdaptCustomListValueDto(listValue models.CustomListValue) CustomListValue {
 	return CustomListValue{
 		Id:    string(listValue.Id),

@@ -55,7 +55,7 @@ func (api *API) handlePostCustomList() http.HandlerFunc {
 	}
 }
 
-func (api *API) handleGetCustomListValues() http.HandlerFunc {
+func (api *API) handleGetCustomListWithValues() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -67,6 +67,7 @@ func (api *API) handleGetCustomListValues() http.HandlerFunc {
 		inputDto := ctx.Value(httpin.Input).(*dto.GetCustomListInputDto)
 
 		usecase := api.usecases.NewCustomListUseCase()
+		CustomList, err := usecase.GetCustomListById(ctx, inputDto.CustomListID)
 		CustomListValues, err := usecase.GetCustomListValues(ctx, models.GetCustomListValuesInput{
 			Id:    inputDto.CustomListID,
 			OrgId: orgID,
@@ -76,8 +77,7 @@ func (api *API) handleGetCustomListValues() http.HandlerFunc {
 			logger.ErrorCtx(ctx, "error getting a list values: \n"+err.Error())
 			return
 		}
-
-		PresentModelWithName(w, "custom_list_values", utils.Map(CustomListValues, dto.AdaptCustomListValueDto))
+		PresentModelWithName(w, "custom_list_values", dto.AdaptCustomListWithValuesDto(CustomList, CustomListValues))
 	}
 }
 
