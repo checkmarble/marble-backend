@@ -67,20 +67,17 @@ func (o *organizationSeeder) Seed(orgId string) error {
 	if err != nil {
 		return err
 	}
-	customListValueId1 := uuid.NewString()
-	customListValueId2 := uuid.NewString()
-	customListValueId3 := uuid.NewString()
 
 	addCustomListValueInput := models.AddCustomListValueInput{
 		OrgId:        orgId,
 		CustomListId: newCustomListId,
 		Value: "Welcome",
 	}
-	o.Repositories.CustomListRepository.AddCustomListValue(nil, addCustomListValueInput, customListValueId1)
+	o.Repositories.CustomListRepository.AddCustomListValue(nil, addCustomListValueInput, uuid.NewString())
 	addCustomListValueInput.Value = "to"
-	o.Repositories.CustomListRepository.AddCustomListValue(nil, addCustomListValueInput, customListValueId2)
+	o.Repositories.CustomListRepository.AddCustomListValue(nil, addCustomListValueInput, uuid.NewString())
 	addCustomListValueInput.Value = "marble"
-	o.Repositories.CustomListRepository.AddCustomListValue(nil, addCustomListValueInput, customListValueId3)
+	o.Repositories.CustomListRepository.AddCustomListValue(nil, addCustomListValueInput, uuid.NewString())
 
 	///////////////////////////////
 	// Create and store a scenario

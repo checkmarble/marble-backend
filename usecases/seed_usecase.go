@@ -84,20 +84,17 @@ func (usecase *SeedUseCase) SeedZorgOrganization(zorgOrganizationId string) erro
 	if err != nil {
 		return err
 	}
-	customListValueId1 := uuid.NewString()
-	customListValueId2 := uuid.NewString()
-	customListValueId3 := uuid.NewString()
 
 	addCustomListValueInput := models.AddCustomListValueInput{
 		OrgId:        zorgOrganizationId,
 		CustomListId: newCustomListId,
 		Value:        "Welcome",
 	}
-	usecase.customListRepository.AddCustomListValue(nil, addCustomListValueInput, customListValueId1)
+	usecase.customListRepository.AddCustomListValue(nil, addCustomListValueInput, uuid.NewString())
 	addCustomListValueInput.Value = "to"
-	usecase.customListRepository.AddCustomListValue(nil, addCustomListValueInput, customListValueId2)
+	usecase.customListRepository.AddCustomListValue(nil, addCustomListValueInput, uuid.NewString())
 	addCustomListValueInput.Value = "marble"
-	usecase.customListRepository.AddCustomListValue(nil, addCustomListValueInput, customListValueId3)
+	usecase.customListRepository.AddCustomListValue(nil, addCustomListValueInput, uuid.NewString())
 
 	// reset firebase id of all users, so when the firebase emulator restarts
 	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, (func(tx repositories.Transaction) error {
