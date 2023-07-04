@@ -35,7 +35,7 @@ func PresentNothingStatusCode(w http.ResponseWriter, statusCode int) {
 func requiredUuidUrlParam(r *http.Request, urlParamName string) (string, error) {
 	uuidParam := chi.URLParam(r, urlParamName)
 	if uuidParam == "" {
-		return "", fmt.Errorf("Url Param '%s' is required: %w", urlParamName, models.BadParameterError)
+		return "", fmt.Errorf("url Param '%s' is required: %w", urlParamName, models.BadParameterError)
 	}
 
 	if err := utils.ValidateUuid(uuidParam); err != nil {

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"marble/marble-backend/models"
-	. "marble/marble-backend/models"
 	"marble/marble-backend/utils"
 	"net/http"
 	"strings"
@@ -22,10 +21,10 @@ func wrapErrInUnAuthorizedError(err error) error {
 	// When to Use 401 Unauthorized?
 	// - An access token is missing.
 	// - An access token is expired, revoked, malformed, or invalid for other reasons.
-	if errors.Is(err, UnAuthorizedError) {
+	if errors.Is(err, models.UnAuthorizedError) {
 		return err
 	}
-	return errors.Join(UnAuthorizedError, err)
+	return errors.Join(models.UnAuthorizedError, err)
 }
 
 // AuthCtx sets the organization ID in the context from the authorization header
@@ -75,7 +74,7 @@ func identityAttr(identity models.Identity) (attr slog.Attr, ok bool) {
 	return slog.Attr{}, false
 }
 
-func (api *API) enforcePermissionMiddleware(permission Permission) func(next http.Handler) http.Handler {
+func (api *API) enforcePermissionMiddleware(permission models.Permission) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 

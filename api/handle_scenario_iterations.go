@@ -58,7 +58,7 @@ func NewAPIScenarioIterationWithBody(si models.ScenarioIteration) (APIScenarioIt
 	for i, rule := range si.Body.Rules {
 		apiRule, err := NewAPIScenarioIterationRule(rule)
 		if err != nil {
-			return APIScenarioIterationWithBody{}, fmt.Errorf("Could not create new api scenario iteration rule: %w", err)
+			return APIScenarioIterationWithBody{}, fmt.Errorf("could not create new api scenario iteration rule: %w", err)
 		}
 		body.Rules[i] = apiRule
 	}
@@ -66,7 +66,7 @@ func NewAPIScenarioIterationWithBody(si models.ScenarioIteration) (APIScenarioIt
 	if si.Body.TriggerCondition != nil {
 		triggerConditionBytes, err := si.Body.TriggerCondition.MarshalJSON()
 		if err != nil {
-			return APIScenarioIterationWithBody{}, fmt.Errorf("Unable to marshal trigger condition: %w", err)
+			return APIScenarioIterationWithBody{}, fmt.Errorf("unable to marshal trigger condition: %w", err)
 		}
 		body.TriggerCondition = triggerConditionBytes
 	}
