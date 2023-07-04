@@ -10,10 +10,6 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-type OrganizationSeeder interface {
-	Seed(organizationId string) error
-}
-
 type Repositories struct {
 	DatabaseConnectionPoolRepository DatabaseConnectionPoolRepository
 	TransactionFactory               TransactionFactory
@@ -37,7 +33,6 @@ type Repositories struct {
 	OrganizationSchemaRepository     OrganizationSchemaRepository
 	AwsS3Repository                  AwsS3Repository
 	CustomListRepository             CustomListRepository
-	OrganizationSeeder               OrganizationSeeder
 }
 
 func NewQueryBuilder() squirrel.StatementBuilderType {
@@ -56,7 +51,6 @@ func NewRepositories(
 	scenarioIterationWriteRepository ScenarioIterationWriteRepository,
 	scenarioIterationRuleRepository ScenarioIterationRuleRepository,
 	scenarioPublicationRepository ScenarioPublicationRepository,
-	OrganizationSeeder OrganizationSeeder,
 
 ) (*Repositories, error) {
 
@@ -128,6 +122,5 @@ func NewRepositories(
 				logger:   appLogger,
 			}
 		}(),
-		OrganizationSeeder: OrganizationSeeder,
 	}, nil
 }
