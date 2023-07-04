@@ -20,13 +20,9 @@ function App() {
           width: "100%",
           minHeight: "100vh",
 
-          // Background pattern
           backgroundColor: "#fafafa",
-          opacity: 0.8,
-          backgroundImage:
-            "radial-gradient(#5a50fa 0.5px, transparent 0.5px), radial-gradient(#5a50fa 0.5px, #fafafa 0.5px)",
-          backgroundSize: "20px 20px",
-          backgroundPosition: "0 0,10px 10px",
+          backgroundImage: "url(/background.svg)",
+          backgroundRepeat: "no-repeat",
         }}
       >
         {authLoading ? (

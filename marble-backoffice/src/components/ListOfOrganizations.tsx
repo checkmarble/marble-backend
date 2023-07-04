@@ -1,85 +1,62 @@
 import { Organization } from "@/models";
 import { DataGrid } from "@mui/x-data-grid/DataGrid";
-import type {
-  GridRowsProp,
-  GridColDef,
-  GridRenderCellParams,
-} from "@mui/x-data-grid/models";
-import Button from "@mui/material/Button";
+import type { GridRowsProp, GridColDef, GridRowParams } from "@mui/x-data-grid";
+import { GridActionsCellItem } from "@mui/x-data-grid";
 import NorthEastIcon from "@mui/icons-material/NorthEast";
-import GridCellWithTooltip from "./CustomGridCell";
+
+import GridCellWithHover from "./GridCellWithHover";
+import ListNoData from "./ListNoData";
 
 interface ListOfOrganizationsProps {
   organizations: Organization[] | null;
   onOrganizationDetailClick: (organizationId: string) => void;
 }
 
-function ListOfOrganizations(props: ListOfOrganizationsProps) {
+export default function ListOfOrganizations(props: ListOfOrganizationsProps) {
   const organizations = props.organizations;
-  if (organizations == null) {
-    return <>No organizations</>;
+
+  if (organizations === null) {
+    return;
+  }
+
+  // empty state
+  if (organizations.length === 0) {
+    return <ListNoData />;
   }
 
   // Enrich the 'organization' to build a 'row'
   const rows: GridRowsProp = organizations.map((organization) => ({
     id: organization.organizationId, // needed for datagrid
-    actions: organization.organizationId, // needed to build a fake 'actions' column
-    onDetailsClick: props.onOrganizationDetailClick
-      ? () => props.onOrganizationDetailClick(organization.organizationId)
-      : null, // build user-specific actions using the props
-
     ...organization, // keep all org data intact
   }));
 
   const columns: GridColDef[] = [
-    { field: "name", headerName: "name", flex: 1 },
-    { field: "organizationId", headerName: "ID", flex: 1 },
+    {
+      field: "name",
+      headerName: "name",
+      flex: 1,
+      renderCell: GridCellWithHover,
+    },
+    {
+      field: "organizationId",
+      headerName: "ID",
+      flex: 1,
+      renderCell: GridCellWithHover,
+    },
+    {
+      field: "actions",
+      type: "actions",
+      getActions: (params: GridRowParams) => [
+        <GridActionsCellItem
+          icon={<NorthEastIcon />}
+          onClick={() =>
+            props.onOrganizationDetailClick(params.row.organizationId)
+          }
+          label="Details"
+        />,
+      ],
+    },
   ];
 
-  // Actions, only add column if there actually are actions
-  columns.push({
-    field: "actions",
-    headerName: "actions",
-    flex: 0.5,
-    renderCell: ListOfOrganizationsActionsCell,
-    cellClassName: "noHover",
-  });
-
-  return (
-    <DataGrid
-      rows={rows}
-      columns={columns}
-      slots={{ cell: GridCellWithTooltip }}
-      disableRowSelectionOnClick
-    />
-  );
+  return <DataGrid rows={rows} columns={columns} disableRowSelectionOnClick />;
 }
-
-// see https://github.com/mui/mui-x/blob/master/packages/grid/x-data-grid-generator/src/renderer/renderRating.tsx
-// for reference
-function ListOfOrganizationsActionsCell(params: GridRenderCellParams) {
-  if (params.value == null) {
-    console.warn("ListOfUsersActionsCell : params.value == null");
-    return null;
-  }
-
-  if (params.row.onDetailsClick == null) {
-    console.warn("ListOfUsersActionsCell : params.row.onDetailsClick == null");
-    return null;
-  }
-
-  return (
-    <>
-      <Button
-        size="small"
-        variant="outlined"
-        startIcon={<NorthEastIcon fontSize="small" />}
-        onClick={params.row.onDetailsClick}
-      >
-        Details
-      </Button>
-    </>
-  );
-}
-
-export default ListOfOrganizations;

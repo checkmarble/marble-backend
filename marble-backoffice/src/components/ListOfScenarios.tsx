@@ -1,74 +1,89 @@
-import { PageLink, Scenario } from "@/models";
+import { Scenario } from "@/models";
 import { DataGrid } from "@mui/x-data-grid/DataGrid";
-import type {
-  GridRowsProp,
-  GridColDef,
-  GridRenderCellParams,
-} from "@mui/x-data-grid/models";
-
-import CustomGridCell from "./CustomGridCell";
-import Button from "@mui/material/Button";
+import type { GridRowsProp, GridColDef, GridRowParams } from "@mui/x-data-grid";
+import GridCellWithHover from "./GridCellWithHover";
+import ListNoData from "./ListNoData";
+import { GridActionsCellItem } from "@mui/x-data-grid";
 import NorthEastIcon from "@mui/icons-material/NorthEast";
-import { useNavigate } from "react-router-dom";
 
 interface ListOfScenariosProps {
-  scenarios: Scenario[];
+  scenarios: Scenario[] | null;
+  onScenarioDetailClick: (scenarioId: string) => void;
 }
 
 function ListOfScenarios(props: ListOfScenariosProps) {
   const scenarios = props.scenarios;
-  //if(scenarios==null){return(<>No scenarios</>)}
+
+  if (scenarios === null) {
+    return;
+  }
+
+  // empty state
+  if (scenarios.length === 0) {
+    return <ListNoData />;
+  }
 
   // Enrich the 'scenarios' to build a 'row'
   const rows: GridRowsProp = scenarios.map((scenario) => ({
     id: scenario.scenarioId, // needed for datagrid
-    actions: scenario.scenarioId, // needed to build a fake 'actions' column
     ...scenario, // keep all user data intact
   }));
 
   // Static columns
   const columns: GridColDef[] = [
-    { field: "name", headerName: "name", flex: 1 },
-    { field: "description", headerName: "description", flex: 1 },
-    { field: "triggerObjectType", headerName: "triggerObjectType", flex: 1 },
-    { field: "createdAt", headerName: "created at", flex: 1 },
-    { field: "scenarioId", headerName: "ID", flex: 1 },
+    {
+      field: "name",
+      headerName: "name",
+      flex: 1,
+      renderCell: GridCellWithHover,
+    },
+    {
+      field: "description",
+      headerName: "description",
+      flex: 1,
+      renderCell: GridCellWithHover,
+    },
+    {
+      field: "triggerObjectType",
+      headerName: "triggerObjectType",
+      flex: 1,
+      renderCell: GridCellWithHover,
+    },
+    {
+      field: "createdAt",
+      headerName: "created at",
+      type: "dateTime",
+      flex: 1,
+      renderCell: GridCellWithHover,
+    },
+    {
+      field: "scenarioId",
+      headerName: "ID",
+      flex: 1,
+      renderCell: GridCellWithHover,
+    },
     {
       field: "actions",
-      headerName: "actions",
-      flex: 1,
-      renderCell: ScenarioDetailsActionsCell,
-      cellClassName: "noHover",
+      type: "actions",
+      getActions: (params: GridRowParams) => [
+        // only add the item if(props.onUserDetailClick) : see https://stackoverflow.com/questions/44908159/how-to-define-an-array-with-conditional-elements
+        ...(props.onScenarioDetailClick
+          ? [
+              <GridActionsCellItem
+                icon={<NorthEastIcon />}
+                onClick={() => props.onScenarioDetailClick(params.row.userId)}
+                label="Details"
+              />,
+            ]
+          : []),
+      ],
     },
   ];
 
   return (
     <>
-      <DataGrid
-        rows={rows}
-        columns={columns}
-        slots={{ cell: CustomGridCell }}
-        disableRowSelectionOnClick
-      />
+      <DataGrid rows={rows} columns={columns} disableRowSelectionOnClick />
     </>
   );
 }
-
-function ScenarioDetailsActionsCell(params: GridRenderCellParams) {
-  const navigate = useNavigate();
-
-  return (
-    <>
-      <Button
-        size="small"
-        variant="outlined"
-        startIcon={<NorthEastIcon fontSize="small" />}
-        onClick={() => navigate(PageLink.scenarioDetailsPage(params.row.id))}
-      >
-        Details
-      </Button>
-    </>
-  );
-}
-
 export default ListOfScenarios;

@@ -314,14 +314,12 @@ function OrganizationDetailsUserList({
         </Stack>
 
         <Box sx={{ minWidth: "100%" }}>
-          {users != null && (
-            <ListOfUsers
-              users={users}
-              onUserDetailClick={(userId) => {
-                navigate(PageLink.userDetails(userId));
-              }}
-            />
-          )}
+          <ListOfUsers
+            users={users}
+            onUserDetailClick={(userId) => {
+              navigate(PageLink.userDetails(userId));
+            }}
+          />
         </Box>
       </Stack>
     </>
@@ -341,9 +339,16 @@ function OrganizationDetailsScenariosList({
     organizationId
   );
 
-  if (scenarios == null || scenarios.length == 0) {
-    return <Typography variant="subtitle1">No scenarios</Typography>;
-  } else return <ListOfScenarios scenarios={scenarios} />;
+  const navigate = useNavigate();
+
+  return (
+    <ListOfScenarios
+      scenarios={scenarios}
+      onScenarioDetailClick={(scenarioId) => {
+        navigate(PageLink.scenarioDetailsPage(scenarioId));
+      }}
+    />
+  );
 }
 
 function OrganizationDetailsDecisionsList({
