@@ -68,6 +68,10 @@ func (api *API) handleGetCustomListWithValues() http.HandlerFunc {
 
 		usecase := api.usecases.NewCustomListUseCase()
 		CustomList, err := usecase.GetCustomListById(ctx, inputDto.CustomListID)
+		if presentError(w, r, err) {
+			logger.ErrorCtx(ctx, "error getting a list: \n"+err.Error())
+			return
+		}
 		CustomListValues, err := usecase.GetCustomListValues(ctx, models.GetCustomListValuesInput{
 			Id:    inputDto.CustomListID,
 			OrgId: orgID,

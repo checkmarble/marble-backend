@@ -31,15 +31,11 @@ func AdaptCustomListDto(list models.CustomList) CustomList {
 }
 
 func AdaptCustomListWithValuesDto(list models.CustomList, values []models.CustomListValue) CustomList {
-	return CustomList{
-		Id:          string(list.Id),
-		Name:        list.Name,
-		Description: list.Description,
-		CreatedAt:   list.CreatedAt,
-		UpdatedAt:   list.UpdatedAt,
-		Values:      utils.Map(values, AdaptCustomListValueDto),
-	}
+	customList := AdaptCustomListDto(list)
+	customList.Values = utils.Map(values, AdaptCustomListValueDto)
+	return customList
 }
+
 func AdaptCustomListValueDto(listValue models.CustomListValue) CustomListValue {
 	return CustomListValue{
 		Id:    string(listValue.Id),
