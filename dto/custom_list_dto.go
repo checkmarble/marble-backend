@@ -2,15 +2,17 @@ package dto
 
 import (
 	"marble/marble-backend/models"
+	"marble/marble-backend/utils"
 	"time"
 )
 
 type CustomList struct {
-	Id          string    `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	Id          string            `json:"id"`
+	Name        string            `json:"name"`
+	Description string            `json:"description"`
+	CreatedAt   time.Time         `json:"createdAt"`
+	UpdatedAt   time.Time         `json:"updatedAt"`
+	Values      []CustomListValue `json:"values,omitempty"`
 }
 
 type CustomListValue struct {
@@ -26,6 +28,12 @@ func AdaptCustomListDto(list models.CustomList) CustomList {
 		CreatedAt:   list.CreatedAt,
 		UpdatedAt:   list.UpdatedAt,
 	}
+}
+
+func AdaptCustomListWithValuesDto(list models.CustomList, values []models.CustomListValue) CustomList {
+	customList := AdaptCustomListDto(list)
+	customList.Values = utils.Map(values, AdaptCustomListValueDto)
+	return customList
 }
 
 func AdaptCustomListValueDto(listValue models.CustomListValue) CustomListValue {
@@ -50,30 +58,30 @@ type UpdateCustomListBodyDto struct {
 }
 
 type UpdateCustomListInputDto struct {
-	CustomListID string             `in:"path=listId"`
-	Body   *UpdateCustomListBodyDto `in:"body=json"`
+	CustomListID string                   `in:"path=customListId"`
+	Body         *UpdateCustomListBodyDto `in:"body=json"`
 }
 
 type GetCustomListInputDto struct {
-	CustomListID string `in:"path=listId"`
+	CustomListID string `in:"path=customListId"`
 }
 
 type DeleteCustomListInputDto struct {
-	CustomListID string `in:"path=listId"`
+	CustomListID string `in:"path=customListId"`
 }
 
-type AddCustomListValueInputDto struct {
-	CustomListID string               `in:"path=listId"`
-	Body   *AddCustomListValueBodyDto `in:"body=json"`
+type CreateCustomListValueInputDto struct {
+	CustomListID string                        `in:"path=customListId"`
+	Body         *CreateCustomListValueBodyDto `in:"body=json"`
 }
 
-type AddCustomListValueBodyDto struct {
+type CreateCustomListValueBodyDto struct {
 	Value string `in:"path=value"`
 }
 
 type DeleteCustomListValueInputDto struct {
-	CustomListID string                  `in:"path=listId"`
-	Body   *DeleteCustomListValueBodyDto `in:"body=json"`
+	CustomListID string                        `in:"path=customListId"`
+	Body         *DeleteCustomListValueBodyDto `in:"body=json"`
 }
 
 type DeleteCustomListValueBodyDto struct {

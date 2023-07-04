@@ -178,7 +178,7 @@ func executionIsDue(schedule string, previousExecutions []models.ScheduledExecut
 }
 
 func (usecase *ScheduledExecutionUsecase) executeScheduledScenario(ctx context.Context, scheduledExecutionId string, scenario models.Scenario) error {
-	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, scenario.OrganizationID)
+	dataModel, err := usecase.dataModelRepository.GetDataModel(nil, scenario.OrganizationID)
 	if err != nil {
 		return err
 	}

@@ -108,7 +108,7 @@ func (api *API) handleRunAstExpression() http.HandlerFunc {
 		}
 
 		organizationUsecase := api.usecases.NewOrganizationUseCase()
-		dataModel, err := organizationUsecase.GetDataModel(ctx, creds.OrganizationId)
+		dataModel, err := organizationUsecase.GetDataModel(creds.OrganizationId)
 		if presentError(w, r, err) {
 			return
 		}

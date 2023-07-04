@@ -3,7 +3,6 @@ import type {
   CreateOrganization,
   PatchOrganization,
   CreateUser,
-  AstNode,
 } from "@/models";
 import { HttpMethod } from "./fetchUtils";
 import { AuthorizedFetcher } from "./AuthorizedFetcher";
@@ -15,6 +14,7 @@ const USERS_URL_PATH = "users";
 const INGESTION_URL_PATH = "ingestion";
 const DECISIONS_URL_PATH = "decisions";
 const AST_EXPRESSION_URL_PATH = "ast-expression";
+const DATA_MODEL_URL_PATH = "data-model";
 
 export interface IngestObject {
   tableName: string;
@@ -113,6 +113,25 @@ export class MarbleApi {
     return this.getAuthorizedJson(
       urlWithOrganizationId(SCENARIO_URL_PATH, organizationId)
     );
+  }
+
+  async dataModelOfOrganization(organizationId: string): Promise<unknown> {
+    return this.getAuthorizedJson(
+      urlWithOrganizationId(DATA_MODEL_URL_PATH, organizationId)
+    );
+  }
+
+  async postDataModelOfOrganization(
+    organizationId: string,
+    dataModel: unknown
+  ) {
+    return await this.sendAuthorizedJson({
+      method: HttpMethod.Post,
+      path: urlWithOrganizationId(DATA_MODEL_URL_PATH, organizationId),
+      body: {
+        data_model: dataModel,
+      },
+    });
   }
 
   async allUsers(): Promise<unknown> {
@@ -215,7 +234,7 @@ export class MarbleApi {
           amount: 100,
           updated_at: new Date(),
         },
-        payload_type: "transactions"
+        payload_type: "transactions",
       },
     });
   }

@@ -1,5 +1,5 @@
-import { useCallback, useState } from "react";
-import { Organization, PageLink, Scenario } from "@/models";
+import { useCallback, useEffect, useState } from "react";
+import { DataModel, Organization, PageLink, Scenario } from "@/models";
 import {
   type OrganizationRepository,
   type ScenariosRepository,
@@ -10,10 +10,16 @@ import {
   fetchScenarios,
   deleteOrganization,
   patchOrganization,
+  fetchDataModelOfOrganization,
+  replaceDataModelOfOrganization,
 } from "@/repositories";
 import { useSimpleLoader } from "@/hooks/SimpleLoader";
 import { showLoader, type LoadingDispatcher } from "@/hooks/Loading";
 import { useNavigate } from "react-router-dom";
+import {
+  adaptDataModelApiResult,
+  adaptDataModelDto,
+} from "@/models/DataModelDto";
 
 export interface OrganizationService {
   organizationRepository: OrganizationRepository;
@@ -103,6 +109,110 @@ export function useScenarios(
   return {
     scenarios,
     refreshScenarios,
+  };
+}
+
+export function useDataModel(
+  service: OrganizationService,
+  loadingDispatcher: LoadingDispatcher,
+  organizationId: string
+) {
+  const loadDataModel = useCallback(async () => {
+    const dataModel = await fetchDataModelOfOrganization(
+      service.scenariosRepository,
+      organizationId
+    );
+    return dataModel;
+  }, [service, organizationId]);
+
+  const [dataModel] = useSimpleLoader<DataModel>(
+    loadingDispatcher,
+    loadDataModel
+  );
+
+  return {
+    dataModel,
+  };
+}
+
+export function useEditDataModel(
+  service: OrganizationService,
+  loadingDispatcher: LoadingDispatcher,
+  organizationId: string,
+  dataModel: DataModel | null
+) {
+  const [dataModelString, setDataModelString] = useState<string | null>(null);
+  const [dataModelError, setDataModelError] = useState<string>("");
+  const [validatedDataModel, setValidatedDataModel] =
+    useState<DataModel | null>(null);
+
+  const setBackendModel = useCallback((dataModel: DataModel) => {
+    setDataModelString(JSON.stringify(adaptDataModelDto(dataModel), null, 2));
+  }, []);
+
+  useEffect(() => {
+    if (dataModel !== null && dataModelString === null) {
+      setBackendModel(dataModel);
+    }
+  }, [dataModel, dataModelString, setBackendModel]);
+
+  const validateDataModel = useCallback(() => {
+    try {
+      const data = JSON.parse(dataModelString || "");
+      setValidatedDataModel(
+        adaptDataModelApiResult({
+          data_model: data,
+        })
+      );
+      setDataModelError("");
+    } catch (e) {
+      setValidatedDataModel(null);
+      if (e instanceof Error) {
+        setDataModelError(e.message);
+      }
+    }
+  }, [dataModelString]);
+
+  useEffect(() => {
+    validateDataModel();
+  }, [dataModelString, validateDataModel]);
+
+  const [saveDataModelAlertDialogOpen, setSaveDataModelAlertDialogOpen] =
+    useState(false);
+
+  const canSave = validatedDataModel !== null;
+  const saveDataModel = async () => {
+    if (validatedDataModel === null) {
+      return;
+    }
+    setSaveDataModelAlertDialogOpen(true);
+  };
+
+  const saveDataModelConfirmed = async () => {
+    if (validatedDataModel === null) {
+      throw Error("Cannot save invalid data model");
+    }
+    const newDataModel = await showLoader(
+      loadingDispatcher,
+      replaceDataModelOfOrganization(
+        service.organizationRepository,
+        organizationId,
+        validatedDataModel
+      )
+    );
+    setBackendModel(newDataModel);
+    setSaveDataModelAlertDialogOpen(false);
+  };
+
+  return {
+    dataModelString,
+    setDataModelString,
+    saveDataModel,
+    saveDataModelConfirmed,
+    dataModelError,
+    saveDataModelAlertDialogOpen,
+    setSaveDataModelAlertDialogOpen,
+    canSave,
   };
 }
 

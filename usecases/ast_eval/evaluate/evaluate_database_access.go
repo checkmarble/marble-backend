@@ -1,7 +1,6 @@
 package evaluate
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"marble/marble-backend/models"
@@ -60,7 +59,7 @@ func (d DatabaseAccess) Evaluate(arguments ast.Arguments) (any, error) {
 }
 
 func (d DatabaseAccess) getDbField(tableName string, fieldName string, path []string) (interface{}, error) {
-	dm, err := d.DatamodelRepository.GetDataModel(context.Background(), d.Creds.OrganizationId)
+	dm, err := d.DatamodelRepository.GetDataModel(nil, d.Creds.OrganizationId)
 	if errors.Is(err, models.NotFoundInRepositoryError) {
 		return models.Decision{}, fmt.Errorf("data model not found: %w", models.NotFoundError)
 	} else if err != nil {

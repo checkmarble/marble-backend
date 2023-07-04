@@ -10,7 +10,8 @@ import {
 import { initializeServices } from "./injectServices";
 import "./index.css";
 import { buildEnvironment } from "./Environment";
-import { ThemeProvider, createTheme } from "@mui/material";
+import ThemeProvider from "@mui/material/styles/ThemeProvider";
+import createTheme from "@mui/material/styles/createTheme";
 
 const environment = buildEnvironment();
 const firebase = initializeFirebase(

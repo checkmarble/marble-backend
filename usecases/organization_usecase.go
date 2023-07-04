@@ -19,6 +19,7 @@ type OrganizationUseCase struct {
 	userRepository               repositories.UserRepository
 	organizationCreator          organization.OrganizationCreator
 	organizationSchemaRepository repositories.OrganizationSchemaRepository
+	populateOrganizationSchema   organization.PopulateOrganizationSchema
 }
 
 func (usecase *OrganizationUseCase) GetOrganizations(ctx context.Context) ([]models.Organization, error) {
@@ -82,8 +83,33 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 	})
 }
 
-func (usecase *OrganizationUseCase) GetDataModel(ctx context.Context, organizationID string) (models.DataModel, error) {
-	return usecase.datamodelRepository.GetDataModel(ctx, organizationID)
+func (usecase *OrganizationUseCase) GetDataModel(organizationID string) (models.DataModel, error) {
+	return usecase.datamodelRepository.GetDataModel(nil, organizationID)
+}
+
+func (usecase *OrganizationUseCase) ReplaceDataModel(organizationID string, newDataModel models.DataModel) (models.DataModel, error) {
+
+	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.DataModel, error) {
+
+		var zeroDataModel models.DataModel
+		// delete data model
+		if err := usecase.datamodelRepository.DeleteDataModel(tx, organizationID); err != nil {
+			return zeroDataModel, err
+		}
+
+		// create data model
+		if err := usecase.datamodelRepository.CreateDataModel(tx, organizationID, newDataModel); err != nil {
+			return zeroDataModel, err
+		}
+
+		// delete and recreate postgres schema
+		if err := usecase.populateOrganizationSchema.WipeAndCreateOrganizationSchema(tx, organizationID, newDataModel); err != nil {
+			return zeroDataModel, err
+		}
+
+		return usecase.datamodelRepository.GetDataModel(tx, organizationID)
+	})
+
 }
 
 func (usecase *OrganizationUseCase) GetUsersOfOrganization(organizationIDFilter string) ([]models.User, error) {
