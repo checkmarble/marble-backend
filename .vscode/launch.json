@@ -29,7 +29,7 @@
       "mode": "auto",
       "program": "${workspaceFolder}/main.go",
       "envFile": "${workspaceFolder}/.env.local",
-      "args": ["--scheduled"]
+      "args": ["--scheduler"]
     }
   ]
 }
