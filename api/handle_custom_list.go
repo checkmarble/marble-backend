@@ -144,7 +144,7 @@ func (api *API) handlePostCustomListValue() http.HandlerFunc {
 			return
 		}
 		logger := api.logger.With(slog.String("orgID", orgID))
-		inputDto := ctx.Value(httpin.Input).(*dto.AddCustomListValueInputDto)
+		inputDto := ctx.Value(httpin.Input).(*dto.CreateCustomListValueInputDto)
 		listId := inputDto.CustomListID
 		requestData := inputDto.Body
 
