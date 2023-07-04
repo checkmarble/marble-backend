@@ -17,7 +17,7 @@ func (usecases *Usecases) NewMarbleTokenUseCase() MarbleTokenUseCase {
 	return MarbleTokenUseCase{
 		transactionFactory:      repositories.TransactionFactory,
 		firebaseTokenRepository: repositories.FirebaseTokenRepository,
-		marbleJwtRepository:     repositories.MarbleJwtRepository,
+		marbleJwtRepository:     repositories.MarbleJwtRepository(),
 		userRepository:          repositories.UserRepository,
 		apiKeyRepository:        repositories.ApiKeyRepository,
 		organizationRepository:  repositories.OrganizationRepository,
@@ -100,9 +100,9 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 		OrganizationSeeder: organization.NewOrganizationSeeder(
 			usecases.Repositories.CustomListRepository,
 			usecases.Repositories.ApiKeyRepository,
-			usecases.Repositories.LegacyPgRepository,
-			usecases.Repositories.LegacyPgRepository,
-			usecases.Repositories.LegacyPgRepository,
+			usecases.Repositories.ScenarioWriteRepository,
+			usecases.Repositories.ScenarioPublicationRepository,
+			usecases.Repositories.ScenarioIterationWriteRepository,
 			usecases.Repositories.TransactionFactory),
 		PopulateOrganizationSchema: usecases.NewPopulateOrganizationSchema(),
 	}
