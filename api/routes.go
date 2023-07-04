@@ -158,7 +158,7 @@ func (api *API) routes() {
 			r.With(api.enforcePermissionMiddleware(models.CUSTOM_LISTS_CREATE), httpin.NewInput(dto.CreateCustomListInputDto{})).Post("/", api.handlePostCustomList())
 
 			r.Route("/{customListId}", func(r chi.Router) {
-				r.With(api.enforcePermissionMiddleware(models.CUSTOM_LISTS_READ), httpin.NewInput(dto.GetCustomListInputDto{})).Get("/", api.handleGetCustomListValues())
+				r.With(api.enforcePermissionMiddleware(models.CUSTOM_LISTS_READ), httpin.NewInput(dto.GetCustomListInputDto{})).Get("/", api.handleGetCustomListWithValues())
 				r.With(api.enforcePermissionMiddleware(models.CUSTOM_LISTS_CREATE), httpin.NewInput(dto.UpdateCustomListInputDto{})).Patch("/", api.handlePatchCustomList())
 				r.With(api.enforcePermissionMiddleware(models.CUSTOM_LISTS_CREATE), httpin.NewInput(dto.DeleteCustomListInputDto{})).Delete("/", api.handleDeleteCustomList())
 				r.Route("/values", func(r chi.Router) {
