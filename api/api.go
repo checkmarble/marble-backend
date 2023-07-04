@@ -22,12 +22,14 @@ type API struct {
 	logger   *slog.Logger
 }
 
-func New(ctx context.Context, port string, usecases usecases.Usecases, logger *slog.Logger, corsAllowLocalhost bool) (*http.Server, error) {
+func New(ctx context.Context, port string, usecases usecases.Usecases, corsAllowLocalhost bool) (*http.Server, error) {
 
 	///////////////////////////////
 	// Setup a router
 	///////////////////////////////
 	r := chi.NewRouter()
+
+	logger := utils.LoggerFromContext(ctx)
 
 	////////////////////////////////////////////////////////////
 	// Middleware

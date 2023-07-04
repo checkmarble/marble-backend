@@ -3,7 +3,6 @@ package repositories
 import (
 	"crypto/rsa"
 	"marble/marble-backend/models"
-	"marble/marble-backend/pg_repository"
 
 	"firebase.google.com/go/v4/auth"
 	"github.com/Masterminds/squirrel"
@@ -11,11 +10,15 @@ import (
 	"golang.org/x/exp/slog"
 )
 
+type OrganizationSeeder interface {
+	Seed(organizationId string) error
+}
+
 type Repositories struct {
 	DatabaseConnectionPoolRepository DatabaseConnectionPoolRepository
 	TransactionFactory               TransactionFactory
 	FirebaseTokenRepository          FireBaseTokenRepository
-	MarbleJwtRepository              MarbleJwtRepository
+	MarbleJwtRepository              func() MarbleJwtRepository
 	UserRepository                   UserRepository
 	ApiKeyRepository                 ApiKeyRepository
 	OrganizationRepository           OrganizationRepository
@@ -31,10 +34,10 @@ type Repositories struct {
 	ScenarioIterationRuleRepository  ScenarioIterationRuleRepository
 	ScenarioPublicationRepository    ScenarioPublicationRepository
 	ScheduledExecutionRepository     ScheduledExecutionRepository
-	LegacyPgRepository               *pg_repository.PGRepository
 	OrganizationSchemaRepository     OrganizationSchemaRepository
 	AwsS3Repository                  AwsS3Repository
 	CustomListRepository             CustomListRepository
+	OrganizationSeeder               OrganizationSeeder
 }
 
 func NewQueryBuilder() squirrel.StatementBuilderType {
@@ -43,21 +46,28 @@ func NewQueryBuilder() squirrel.StatementBuilderType {
 
 func NewRepositories(
 	configuration models.GlobalConfiguration,
-	marbleJwtSigningKey rsa.PrivateKey,
+	marbleJwtSigningKey *rsa.PrivateKey,
 	firebaseClient auth.Client,
-	pgRepository *pg_repository.PGRepository,
 	marbleConnectionPool *pgxpool.Pool,
 	appLogger *slog.Logger,
+	decisionRepositoryLegacy DecisionRepositoryLegacy,
+	scenarioWriteRepository ScenarioWriteRepository,
+	scenarioIterationReadRepository ScenarioIterationReadRepository,
+	scenarioIterationWriteRepository ScenarioIterationWriteRepository,
+	scenarioIterationRuleRepository ScenarioIterationRuleRepository,
+	scenarioPublicationRepository ScenarioPublicationRepository,
+	OrganizationSeeder OrganizationSeeder,
+
 ) (*Repositories, error) {
 
 	databaseConnectionPoolRepository := NewDatabaseConnectionPoolRepository(
 		marbleConnectionPool,
 	)
 
-	transactionFactory := &TransactionFactoryPosgresql{
-		databaseConnectionPoolRepository: databaseConnectionPoolRepository,
-		marbleConnectionPool:             marbleConnectionPool,
-	}
+	transactionFactory := NewTransactionFactoryPosgresql(
+		databaseConnectionPoolRepository,
+		marbleConnectionPool,
+	)
 
 	return &Repositories{
 		DatabaseConnectionPoolRepository: databaseConnectionPoolRepository,
@@ -65,8 +75,13 @@ func NewRepositories(
 		FirebaseTokenRepository: FireBaseTokenRepository{
 			firebaseClient: firebaseClient,
 		},
-		MarbleJwtRepository: MarbleJwtRepository{
-			jwtSigningPrivateKey: marbleJwtSigningKey,
+		MarbleJwtRepository: func() MarbleJwtRepository {
+			if marbleJwtSigningKey == nil {
+				panic("Repositories does not contain a jwt signing key")
+			}
+			return MarbleJwtRepository{
+				jwtSigningPrivateKey: *marbleJwtSigningKey,
+			}
 		},
 		UserRepository: &UserRepositoryPostgresql{
 			transactionFactory: transactionFactory,
@@ -82,20 +97,21 @@ func NewRepositories(
 			transactionFactory: transactionFactory,
 		},
 		IngestedDataReadRepository: &IngestedDataReadRepositoryImpl{},
-		DecisionRepositoryLegacy:   pgRepository,
+		DecisionRepositoryLegacy:   decisionRepositoryLegacy,
 		DecisionRepository: &DecisionRepositoryImpl{
 			transactionFactory: transactionFactory,
 		},
-		ScenarioReadRepository:           pgRepository,
-		ScenarioWriteRepository:          pgRepository,
-		ScenarioIterationReadRepository:  pgRepository,
-		ScenarioIterationWriteRepository: pgRepository,
-		ScenarioIterationRuleRepository:  pgRepository,
-		ScenarioPublicationRepository:    pgRepository,
+		ScenarioReadRepository: NewScenarioReadRepositoryPostgresql(
+			transactionFactory,
+		),
+		ScenarioWriteRepository:          scenarioWriteRepository,
+		ScenarioIterationReadRepository:  scenarioIterationReadRepository,
+		ScenarioIterationWriteRepository: scenarioIterationWriteRepository,
+		ScenarioIterationRuleRepository:  scenarioIterationRuleRepository,
+		ScenarioPublicationRepository:    scenarioPublicationRepository,
 		ScheduledExecutionRepository: &ScheduledExecutionRepositoryPostgresql{
 			transactionFactory: transactionFactory,
 		},
-		LegacyPgRepository: pgRepository,
 		OrganizationSchemaRepository: &OrganizationSchemaRepositoryPostgresql{
 			transactionFactory: transactionFactory,
 		},
@@ -112,5 +128,6 @@ func NewRepositories(
 				logger:   appLogger,
 			}
 		}(),
+		OrganizationSeeder: OrganizationSeeder,
 	}, nil
 }

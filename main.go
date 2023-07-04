@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rsa"
 	"flag"
+	"fmt"
 	"log"
 	"marble/marble-backend/api"
 	"marble/marble-backend/infra"
@@ -18,35 +19,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/exp/slog"
 )
 
-func runServer(configuration models.GlobalConfiguration, pgRepository *pg_repository.PGRepository, marbleConnectionPool *pgxpool.Pool, port string, env string, logger *slog.Logger) {
-	ctx := context.Background()
+func runServer(ctx context.Context, usecases usecases.Usecases, port string, devEnv bool) {
 
-	devEnv := env == "DEV"
+	logger := utils.LoggerFromContext(ctx)
 
 	corsAllowLocalhost := devEnv
-
-	marbleJwtSigningKey := infra.MustParseSigningKey(utils.GetRequiredStringEnv("AUTHENTICATION_JWT_SIGNING_KEY"))
-
-	repositories, err := repositories.NewRepositories(
-		configuration,
-		marbleJwtSigningKey,
-		infra.IntializeFirebase(ctx),
-		pgRepository,
-		marbleConnectionPool,
-		logger,
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	usecases := usecases.Usecases{
-		Repositories:  *repositories,
-		Configuration: configuration,
-	}
 
 	////////////////////////////////////////////////////////////
 	// Seed the database
@@ -70,7 +50,7 @@ func runServer(configuration models.GlobalConfiguration, pgRepository *pg_reposi
 		}
 	}
 
-	api, _ := api.New(ctx, port, usecases, logger, corsAllowLocalhost)
+	api, _ := api.New(ctx, port, usecases, corsAllowLocalhost)
 
 	////////////////////////////////////////////////////////////
 	// Start serving the app
@@ -95,65 +75,44 @@ func runServer(configuration models.GlobalConfiguration, pgRepository *pg_reposi
 	api.Shutdown(shutdownCtx)
 }
 
-func runScheduledBatches(configuration models.GlobalConfiguration, pgRepository *pg_repository.PGRepository, marbleConnectionPool *pgxpool.Pool, logger *slog.Logger) {
-	ctx := utils.StoreLoggerInContext(context.Background(), logger)
-
-	repositories, err := repositories.NewRepositories(
-		configuration,
-		rsa.PrivateKey{},
-		infra.IntializeFirebase(ctx),
-		pgRepository,
-		marbleConnectionPool,
-		logger,
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	usecases := usecases.Usecases{
-		Repositories:  *repositories,
-		Configuration: configuration,
-	}
-
-	jobs.ExecuteAllScheduledScenarios(ctx, usecases)
-
+type AppConfiguration struct {
+	env      string
+	port     string
+	pgConfig pg_repository.PGConfig
+	config   models.GlobalConfiguration
 }
 
 func main() {
 
-	var (
-		env        = utils.GetStringEnv("ENV", "DEV")
-		port       = utils.GetRequiredStringEnv("PORT")
-		pgPort     = utils.GetStringEnv("PG_PORT", "5432")
-		pgHostname = utils.GetRequiredStringEnv("PG_HOSTNAME")
-		pgUser     = utils.GetRequiredStringEnv("PG_USER")
-		pgPassword = utils.GetRequiredStringEnv("PG_PASSWORD")
-		pgDatabase = "marble"
-		config     = models.GlobalConfiguration{
+	appConfig := AppConfiguration{
+		env:  utils.GetStringEnv("ENV", "DEV"),
+		port: utils.GetRequiredStringEnv("PORT"),
+		pgConfig: pg_repository.PGConfig{
+			Hostname: utils.GetRequiredStringEnv("PG_HOSTNAME"),
+			Port:     utils.GetStringEnv("PG_PORT", "5432"),
+			User:     utils.GetRequiredStringEnv("PG_USER"),
+			Password: utils.GetRequiredStringEnv("PG_PASSWORD"),
+			Database: "marble",
+		},
+		config: models.GlobalConfiguration{
 			TokenLifetimeMinute: utils.GetIntEnv("TOKEN_LIFETIME_MINUTE", 60*2),
 			FakeAwsS3Repository: utils.GetBoolEnv("FAKE_AWS_S3", false),
-		}
-	)
+		},
+	}
 
 	////////////////////////////////////////////////////////////
 	// Setup dependencies
 	////////////////////////////////////////////////////////////
 
 	var logger *slog.Logger
-	if env == "DEV" {
+
+	devEnv := appConfig.env == "DEV"
+	if devEnv {
 		textHandler := slog.HandlerOptions{ReplaceAttr: utils.LoggerAttributeReplacer}.NewTextHandler(os.Stderr)
 		logger = slog.New(textHandler)
 	} else {
 		jsonHandler := slog.HandlerOptions{ReplaceAttr: utils.LoggerAttributeReplacer}.NewJSONHandler(os.Stderr)
 		logger = slog.New(jsonHandler)
-	}
-
-	pgConfig := pg_repository.PGConfig{
-		Hostname: pgHostname,
-		Port:     pgPort,
-		User:     pgUser,
-		Password: pgPassword,
-		Database: pgDatabase,
 	}
 
 	shouldRunMigrations := flag.Bool("migrations", false, "Run migrations")
@@ -163,38 +122,61 @@ func main() {
 	logger.DebugCtx(context.Background(), "shouldRunMigrations", *shouldRunMigrations, "shouldRunServer", *shouldRunServer)
 
 	if *shouldRunMigrations {
-		pg_repository.RunMigrations(env, pgConfig, logger)
+		pg_repository.RunMigrations(appConfig.env, appConfig.pgConfig, logger)
 	}
+
+	appContext := utils.StoreLoggerInContext(context.Background(), logger)
+
 	// The below specifically does not share a connection pool with the functions "run migrations" and "wipe db" because it conflicts
 	// with the postgresql search path update
 	if *shouldRunServer {
 
-		connectionString := pgConfig.GetConnectionString(env)
-		marbleConnectionPool, err := infra.NewPostgresConnectionPool(connectionString)
-		if err != nil {
-			log.Fatal("error creating postgres connection to marble database", err.Error())
-		}
+		marbleJwtSigningKey := infra.MustParseSigningKey(utils.GetRequiredStringEnv("AUTHENTICATION_JWT_SIGNING_KEY"))
 
-		pgRepository, err := pg_repository.New(marbleConnectionPool)
-		if err != nil {
-			logger.Error("error creating pg repository:\n", err.Error())
-			return
-		}
-		runServer(config, pgRepository, marbleConnectionPool, port, env, logger)
+		usecases := NewUseCases(appContext, appConfig, &marbleJwtSigningKey)
+		runServer(appContext, usecases, appConfig.port, devEnv)
 	}
 
 	if *shouldRunScheduledScenarios {
-		connectionString := pgConfig.GetConnectionString(env)
-		marbleConnectionPool, err := infra.NewPostgresConnectionPool(connectionString)
-		if err != nil {
-			log.Fatal("error creating postgres connection to marble database", err.Error())
-		}
-
-		pgRepository, err := pg_repository.New(marbleConnectionPool)
-		if err != nil {
-			logger.Error("error creating pg repository:\n", err.Error())
-			return
-		}
-		runScheduledBatches(config, pgRepository, marbleConnectionPool, logger)
+		usecases := NewUseCases(appContext, appConfig, nil)
+		jobs.ExecuteAllScheduledScenarios(appContext, usecases)
 	}
+}
+
+func NewUseCases(ctx context.Context, appConfiguration AppConfiguration, marbleJwtSigningKey *rsa.PrivateKey) usecases.Usecases {
+	connectionString := appConfiguration.pgConfig.GetConnectionString(appConfiguration.env)
+
+	marbleConnectionPool, err := infra.NewPostgresConnectionPool(connectionString)
+	if err != nil {
+		log.Fatal("error creating postgres connection to marble database", err.Error())
+	}
+
+	pgRepository, err := pg_repository.New(marbleConnectionPool)
+	if err != nil {
+		panic(fmt.Errorf("error creating pg repository %w", err))
+	}
+
+	repositories, err := repositories.NewRepositories(
+		appConfiguration.config,
+		marbleJwtSigningKey,
+		infra.IntializeFirebase(ctx),
+		marbleConnectionPool,
+		utils.LoggerFromContext(ctx),
+		pgRepository,
+		pgRepository,
+		pgRepository,
+		pgRepository,
+		pgRepository,
+		pgRepository,
+		pgRepository,
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	return usecases.Usecases{
+		Repositories:  *repositories,
+		Configuration: appConfiguration.config,
+	}
+
 }
