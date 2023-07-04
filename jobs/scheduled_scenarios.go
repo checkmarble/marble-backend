@@ -12,7 +12,7 @@ func ExecuteAllScheduledScenarios(ctx context.Context, usecases usecases.Usecase
 
 	fmt.Println("Executing all scheduled scenarios")
 	scenarioUsecase := usecases.NewScenarioUsecase()
-	scenarios, err := scenarioUsecase.ListAllScenarios(ctx)
+	scenarios, err := scenarioUsecase.ListAllScenarios()
 
 	usecase := usecases.NewScheduledExecutionUsecase()
 	if err != nil {

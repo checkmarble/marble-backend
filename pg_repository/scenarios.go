@@ -5,112 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"marble/marble-backend/models"
+	"marble/marble-backend/repositories/dbmodels"
 	"marble/marble-backend/utils"
-	"time"
 
-	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
-
-type dbScenario struct {
-	ID                string      `db:"id"`
-	OrgID             string      `db:"org_id"`
-	Name              string      `db:"name"`
-	Description       string      `db:"description"`
-	TriggerObjectType string      `db:"trigger_object_type"`
-	CreatedAt         time.Time   `db:"created_at"`
-	LiveVersionID     pgtype.Text `db:"live_scenario_iteration_id"`
-	DeletedAt         pgtype.Time `db:"deleted_at"`
-}
-
-func (s *dbScenario) toDomain() models.Scenario {
-	scenario := models.Scenario{
-		ID:                s.ID,
-		OrganizationID:    s.OrgID,
-		Name:              s.Name,
-		Description:       s.Description,
-		TriggerObjectType: s.TriggerObjectType,
-		CreatedAt:         s.CreatedAt,
-	}
-	if s.LiveVersionID.Valid {
-		scenario.LiveVersionID = &s.LiveVersionID.String
-	}
-	return scenario
-}
-
-func (r *PGRepository) ListScenarios(ctx context.Context, orgID string) ([]models.Scenario, error) {
-	query := r.queryBuilder.
-		Select(utils.ColumnList[dbScenario]()...).
-		From("scenarios").
-		Where(sq.Eq{
-			"org_id": orgID,
-		})
-
-	sql, args, err := query.ToSql()
-	if err != nil {
-		return nil, fmt.Errorf("unable to build scenario query: %w", err)
-	}
-
-	rows, _ := r.db.Query(ctx, sql, args...)
-	scenarios, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbScenario])
-	if err != nil {
-		return nil, fmt.Errorf("unable to get scenarios: %w", err)
-	}
-
-	scenarioDTOs := []models.Scenario{}
-	for _, s := range scenarios {
-		scenarioDTOs = append(scenarioDTOs, s.toDomain())
-	}
-	return scenarioDTOs, nil
-}
-
-func (r *PGRepository) ListAllScenarios(ctx context.Context) ([]models.Scenario, error) {
-	query := r.queryBuilder.
-		Select(utils.ColumnList[dbScenario]()...).
-		From("scenarios")
-
-	sql, args, err := query.ToSql()
-	if err != nil {
-		return nil, fmt.Errorf("unable to build scenario query: %w", err)
-	}
-
-	rows, _ := r.db.Query(ctx, sql, args...)
-	scenarios, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbScenario])
-	if err != nil {
-		return nil, fmt.Errorf("unable to get scenarios: %w", err)
-	}
-
-	scenarioDTOs := []models.Scenario{}
-	for _, s := range scenarios {
-		scenarioDTOs = append(scenarioDTOs, s.toDomain())
-	}
-	return scenarioDTOs, nil
-}
-
-func (r *PGRepository) GetScenario(ctx context.Context, orgID string, scenarioID string) (models.Scenario, error) {
-	sql, args, err := r.queryBuilder.
-		Select(utils.ColumnList[dbScenario]()...).
-		From("scenarios").
-		Where(sq.Eq{
-			"org_id": orgID,
-			"id":     scenarioID,
-		}).ToSql()
-
-	if err != nil {
-		return models.Scenario{}, fmt.Errorf("unable to build scenario query: %w", err)
-	}
-
-	rows, _ := r.db.Query(ctx, sql, args...)
-	scenario, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenario])
-	if errors.Is(err, pgx.ErrNoRows) {
-		return models.Scenario{}, models.NotFoundInRepositoryError
-	} else if err != nil {
-		return models.Scenario{}, fmt.Errorf("unable to get scenario: %w", err)
-	}
-
-	return scenario.toDomain(), nil
-}
 
 type dbCreateScenario struct {
 	Id                string `db:"id"`
@@ -136,12 +35,12 @@ func (r *PGRepository) CreateScenario(ctx context.Context, orgID string, scenari
 	}
 
 	rows, _ := r.db.Query(ctx, sql, args...)
-	createdScenario, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenario])
+	createdScenario, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbmodels.DBScenario])
 	if err != nil {
 		return models.Scenario{}, fmt.Errorf("unable to create scenario: %w", err)
 	}
 
-	return createdScenario.toDomain(), nil
+	return dbmodels.AdaptScenario(createdScenario), nil
 }
 
 type dbUpdateScenarioInput struct {
@@ -165,14 +64,14 @@ func (r *PGRepository) UpdateScenario(ctx context.Context, orgID string, scenari
 	}
 
 	rows, _ := r.db.Query(ctx, sql, args...)
-	updatedScenario, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenario])
+	updatedScenario, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbmodels.DBScenario])
 	if errors.Is(err, pgx.ErrNoRows) {
 		return models.Scenario{}, models.NotFoundInRepositoryError
 	} else if err != nil {
 		return models.Scenario{}, fmt.Errorf("unable to update scenario(id: %s): %w", scenario.ID, err)
 	}
 
-	return updatedScenario.toDomain(), nil
+	return dbmodels.AdaptScenario(updatedScenario), nil
 }
 
 func (r *PGRepository) setLiveScenarioIteration(ctx context.Context, tx pgx.Tx, orgID string, scenarioIterationID string) error {

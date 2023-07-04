@@ -4,6 +4,7 @@ import (
 	"context"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
+	"marble/marble-backend/utils"
 )
 
 type ScenarioUsecase struct {
@@ -12,15 +13,25 @@ type ScenarioUsecase struct {
 }
 
 func (usecase *ScenarioUsecase) ListScenarios(ctx context.Context, organizationID string) ([]models.Scenario, error) {
-	return usecase.scenarioReadRepository.ListScenarios(ctx, organizationID)
+	if err := utils.EnforceOrganizationAccess(utils.MustCredentialsFromCtx(ctx), organizationID); err != nil {
+		return nil, err
+	}
+	return usecase.scenarioReadRepository.ListScenariosOfOrganization(nil, organizationID)
 }
 
-func (usecase *ScenarioUsecase) ListAllScenarios(ctx context.Context) ([]models.Scenario, error) {
-	return usecase.scenarioReadRepository.ListAllScenarios(ctx)
+func (usecase *ScenarioUsecase) ListAllScenarios() ([]models.Scenario, error) {
+	return usecase.scenarioReadRepository.ListAllScenarios(nil)
 }
 
-func (usecase *ScenarioUsecase) GetScenario(ctx context.Context, organizationID string, scenarioID string) (models.Scenario, error) {
-	return usecase.scenarioReadRepository.GetScenario(ctx, organizationID, scenarioID)
+func (usecase *ScenarioUsecase) GetScenario(ctx context.Context, scenarioID string) (models.Scenario, error) {
+	scenario, err := usecase.scenarioReadRepository.GetScenarioById(nil, scenarioID)
+	if err != nil {
+		return models.Scenario{}, err
+	}
+	if err := utils.EnforceOrganizationAccess(utils.MustCredentialsFromCtx(ctx), scenario.OrganizationID); err != nil {
+		return models.Scenario{}, err
+	}
+	return scenario, nil
 }
 
 func (usecase *ScenarioUsecase) UpdateScenario(ctx context.Context, organizationID string, scenario models.UpdateScenarioInput) (models.Scenario, error) {

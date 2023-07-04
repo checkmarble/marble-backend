@@ -74,7 +74,7 @@ func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx cont
 		}
 	}()
 
-	scenario, err := usecase.scenarioReadRepository.GetScenario(ctx, orgID, scenarioID)
+	scenario, err := usecase.scenarioReadRepository.GetScenarioById(nil, scenarioID)
 	if err != nil {
 		return err
 	}

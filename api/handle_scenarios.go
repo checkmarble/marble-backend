@@ -114,7 +114,7 @@ func (api *API) GetScenario() http.HandlerFunc {
 		logger := api.logger.With(slog.String("orgID", orgID), slog.String("scenarioID", input.ScenarioID))
 
 		usecase := api.usecases.NewScenarioUsecase()
-		scenario, err := usecase.GetScenario(ctx, orgID, input.ScenarioID)
+		scenario, err := usecase.GetScenario(ctx, input.ScenarioID)
 		if errors.Is(err, models.NotFoundError) {
 			http.Error(w, "", http.StatusNotFound)
 			return
