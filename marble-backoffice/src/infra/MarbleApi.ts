@@ -1,12 +1,20 @@
-import type { CreateDecision, CreateOrganization, PatchOrganization, CreateUser } from "@/models";
+import type {
+  CreateDecision,
+  CreateOrganization,
+  PatchOrganization,
+  CreateUser,
+  AstNode,
+} from "@/models";
 import { HttpMethod } from "./fetchUtils";
 import { AuthorizedFetcher } from "./AuthorizedFetcher";
+import { AstNodeDto } from "@/models/AstExpressionDto";
 
 const ORGANIZATION_URL_PATH = "organizations";
 const SCENARIO_URL_PATH = "scenarios";
 const USERS_URL_PATH = "users";
 const INGESTION_URL_PATH = "ingestion";
 const DECISIONS_URL_PATH = "decisions";
+const AST_EXPRESSION_URL_PATH = "ast-expression";
 
 export interface IngestObject {
   tableName: string;
@@ -67,7 +75,9 @@ export class MarbleApi {
     return this.getAuthorizedJson(`${ORGANIZATION_URL_PATH}/${orgIdParam}`);
   }
 
-  async postOrganization(createOrganizationBody: CreateOrganization): Promise<unknown> {
+  async postOrganization(
+    createOrganizationBody: CreateOrganization
+  ): Promise<unknown> {
     return this.sendAuthorizedJson({
       method: HttpMethod.Post,
       path: ORGANIZATION_URL_PATH,
@@ -93,7 +103,8 @@ export class MarbleApi {
       path: `${ORGANIZATION_URL_PATH}/${orgIdParam}`,
       body: {
         name: patchOrganization.name,
-        export_scheduled_execution_s3: patchOrganization.exportScheduledExecutionS3,
+        export_scheduled_execution_s3:
+          patchOrganization.exportScheduledExecutionS3,
       },
     });
   }
@@ -166,6 +177,46 @@ export class MarbleApi {
       method: HttpMethod.Post,
       path: DECISIONS_URL_PATH,
       body: createDecision,
+    });
+  }
+
+  async astExpressionAvailableFunctions(): Promise<unknown> {
+    return await this.getAuthorizedJson(
+      `${AST_EXPRESSION_URL_PATH}/available-functions`
+    );
+  }
+
+  async validateAstExpression(expression: AstNodeDto) {
+    // ast-expression/available-functions
+    // validate
+    return await this.sendAuthorizedJson({
+      method: HttpMethod.Post,
+      path: `${AST_EXPRESSION_URL_PATH}/validate`,
+      body: {
+        expression: expression,
+      },
+    });
+  }
+
+  async runAstExpression(expression: AstNodeDto) {
+    // ast-expression/available-functions
+    // run
+    return await this.sendAuthorizedJson({
+      method: HttpMethod.Post,
+      path: `${AST_EXPRESSION_URL_PATH}/run`,
+      body: {
+        expression: expression,
+        payload: {
+          object_id: "transaction_c",
+          account_id: "account-a-id",
+          direction: "payout",
+          status: "pending",
+          bic_country: "FR",
+          amount: 100,
+          updated_at: new Date(),
+        },
+        payload_type: "transactions"
+      },
     });
   }
 }

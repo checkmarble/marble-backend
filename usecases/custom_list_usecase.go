@@ -30,15 +30,8 @@ func (usecase *CustomListUseCase) UpdateCustomList(ctx context.Context, updateCu
 				return models.CustomList{}, err
 			}
 		} 
-		return usecase.CustomListRepository.GetCustomListById(tx, models.GetCustomListInput{
-			Id:    updateCustomList.Id,
-			OrgId: updateCustomList.OrgId,
-		})
+		return usecase.CustomListRepository.GetCustomListById(tx, updateCustomList.Id)
 	})
-}
-
-func (usecase *CustomListUseCase) DeleteCustomList(ctx context.Context, deleteCustomList models.DeleteCustomListInput) error {
-	return usecase.CustomListRepository.DeleteCustomList(nil, deleteCustomList)
 }
 
 func (usecase *CustomListUseCase) SoftDeleteCustomList(ctx context.Context, deleteCustomList models.DeleteCustomListInput) error {

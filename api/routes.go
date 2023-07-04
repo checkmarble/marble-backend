@@ -17,6 +17,16 @@ func (api *API) routes() {
 
 	api.router.Post("/token", api.handlePostFirebaseIdToken())
 
+	api.router.With(api.credentialsMiddleware).Route("/ast-expression", func(astRouter chi.Router) {
+		astRouter.
+			With(httpin.NewInput(PostValidateAstExpression{})).
+			Post("/validate", api.handleValidateAstExpression())
+		astRouter.
+			With(httpin.NewInput(PostRunAstExpression{})).
+			Post("/run", api.handleRunAstExpression())
+		astRouter.Get("/available-functions", api.handleAvailableFunctions())
+	})
+
 	api.router.With(api.credentialsMiddleware).Group(func(authedRouter chi.Router) {
 		// Authentication using marble token (JWT) or API Key required.
 
@@ -140,19 +150,19 @@ func (api *API) routes() {
 		})
 
 		authedRouter.Route("/custom-lists", func(r chi.Router) {
-			r.Get("/", api.handleGetAllCustomLists())
-			r.With(httpin.NewInput(dto.CreateCustomListInputDto{})).Post("/", api.handlePostCustomList())
+			r.With(api.enforcePermissionMiddleware(models.CUSTOM_LISTS_READ)).Get("/", api.handleGetAllCustomLists())
+			r.With(api.enforcePermissionMiddleware(models.CUSTOM_LISTS_CREATE), httpin.NewInput(dto.CreateCustomListInputDto{})).Post("/", api.handlePostCustomList())
 
 			r.Route("/{listId}", func(r chi.Router) {
-				r.With(httpin.NewInput(dto.GetCustomListInputDto{})).Get("/", api.handleGetCustomListValues())
-				r.With(httpin.NewInput(dto.UpdateCustomListInputDto{})).Patch("/", api.handlePatchCustomList())
-				r.With(httpin.NewInput(dto.DeleteCustomListInputDto{})).Delete("/", api.handleDeleteCustomList())
+				r.With(api.enforcePermissionMiddleware(models.CUSTOM_LISTS_READ), httpin.NewInput(dto.GetCustomListInputDto{})).Get("/", api.handleGetCustomListValues())
+				r.With(api.enforcePermissionMiddleware(models.CUSTOM_LISTS_CREATE), httpin.NewInput(dto.UpdateCustomListInputDto{})).Patch("/", api.handlePatchCustomList())
+				r.With(api.enforcePermissionMiddleware(models.CUSTOM_LISTS_CREATE), httpin.NewInput(dto.DeleteCustomListInputDto{})).Delete("/", api.handleDeleteCustomList())
+				r.Route("/values", func(r chi.Router) {
+					r.With(api.enforcePermissionMiddleware(models.CUSTOM_LISTS_CREATE), httpin.NewInput(dto.AddCustomListValueInputDto{})).Post("/", api.handlePostCustomListValue())
+					r.With(api.enforcePermissionMiddleware(models.CUSTOM_LISTS_CREATE), httpin.NewInput(dto.DeleteCustomListValueInputDto{})).Delete("/", api.handleDeleteCustomListValue())
+				})
+		
 			})
-		})
-
-		authedRouter.Route("/custom-list-value/{listId}", func(r chi.Router) {
-			r.With(httpin.NewInput(dto.AddCustomListValueInputDto{})).Post("/", api.handlePostCustomListValue())
-			r.With(httpin.NewInput(dto.DeleteCustomListValueInputDto{})).Delete("/", api.handleDeleteCustomListValue())
 		})
 
 		// Group all admin endpoints

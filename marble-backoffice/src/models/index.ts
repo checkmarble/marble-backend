@@ -8,3 +8,4 @@ export * from "./Role";
 export * from "./Credentials";
 export * from "./ApiKey";
 export * from "./Decision";
+export * from "./AstExpression";

@@ -79,7 +79,7 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 		return models.ScenarioExecution{}, fmt.Errorf("Error evaluating trigger condition in eval scenario: %w", err)
 	}
 	if !triggerPassed {
-		return models.ScenarioExecution{}, models.ScenarioTriggerConditionAndTriggerObjectMismatchError
+		return models.ScenarioExecution{}, fmt.Errorf("Error: scenario trigger object does not match payload %w; %w", models.BadParameterError, models.ScenarioTriggerConditionAndTriggerObjectMismatchError)
 	}
 
 	// Evaluate all rules

@@ -4,6 +4,7 @@ import type {
   OrganizationService,
   UserService,
   ApiKeyService,
+  AstExpressionService,
 } from "./services";
 
 export interface Services {
@@ -11,6 +12,7 @@ export interface Services {
   organizationService: OrganizationService;
   userService: UserService;
   apiKeyService: ApiKeyService;
+  astExpressionService: AstExpressionService;
 }
 
 let globalServices: Services | null;
@@ -34,6 +36,9 @@ export function initializeServices(repositories: Repositories) {
     apiKeyService: {
       organizationRepository: repositories.organizationRepository,
       marbleApiWithApiKeyFactory: repositories.marbleApiWithApiKeyFactory,
+    },
+    astExpressionService: {
+      scenarioRepository: repositories.scenarioRepository,
     },
   };
 }
