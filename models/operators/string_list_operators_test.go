@@ -36,7 +36,7 @@ func TestLogicEvalStringList(t *testing.T) {
 		operator OperatorStringList
 		expected []string
 	}
-	dataAccessor := DataAccessorStringImpl{}
+	dataAccessor := DataAccessorStringListImpl{}
 
 	cases := []testCase{
 		{
