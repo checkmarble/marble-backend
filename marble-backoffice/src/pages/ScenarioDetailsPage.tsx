@@ -217,11 +217,14 @@ function AstNode(props: { node: AstNode }) {
         {node.children.map((child, i) => (
           <AstNode key={i} node={child} />
         ))}
-        {Object.entries(node.namedChildren).map(([name, child], i) => (
-          <>
-            {name} <AstNode key={i} node={child} />
-          </>
-        ))}
+        <div>
+          {Object.entries(node.namedChildren).map(([name, child], i) => (
+            <div key={i}>
+              <Typography variant="subtitle2">{name}</Typography>{" "}
+              <AstNode node={child} />
+            </div>
+          ))}
+        </div>
       </Paper>
     </>
   );
