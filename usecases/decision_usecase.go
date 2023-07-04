@@ -16,6 +16,7 @@ type DecisionUsecase struct {
 	transactionFactory              repositories.TransactionFactory
 	orgTransactionFactory           organization.OrgTransactionFactory
 	ingestedDataReadRepository      repositories.IngestedDataReadRepository
+	customListRepository            repositories.CustomListRepository
 	decisionRepositoryLegacy        repositories.DecisionRepositoryLegacy
 	decisionRepository              repositories.DecisionRepository
 	datamodelRepository             repositories.DataModelRepository
@@ -65,6 +66,7 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 		scenarioIterationReadRepository: usecase.scenarioIterationReadRepository,
 		orgTransactionFactory:           usecase.orgTransactionFactory,
 		ingestedDataReadRepository:      usecase.ingestedDataReadRepository,
+		customListRepository:            usecase.customListRepository,
 	}, logger)
 	if err != nil {
 		return models.Decision{}, fmt.Errorf("error evaluating scenario: %w", err)

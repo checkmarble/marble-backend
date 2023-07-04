@@ -20,6 +20,7 @@ type DataAccessor interface {
 	GetPayloadField(fieldName string) (interface{}, error)
 	GetDbField(ctx context.Context, triggerTableName string, path []string, fieldName string) (interface{}, error)
 	GetDbHandle() (db *pgxpool.Pool, schema string, err error)
+	GetDbCustomListValues(ctx context.Context, customListId string) ([]string, error)
 }
 
 var (

@@ -63,6 +63,7 @@ func (usecases *Usecases) NewDecisionUsecase() DecisionUsecase {
 		datamodelRepository:             usecases.Repositories.DataModelRepository,
 		scenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,
 		scenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
+		customListRepository:            usecases.Repositories.CustomListRepository,
 	}
 }
 
@@ -140,6 +141,7 @@ func (usecases *Usecases) NewScheduledExecutionUsecase() ScheduledExecutionUseca
 		ingestedDataReadRepository:      usecases.Repositories.IngestedDataReadRepository,
 		decisionRepository:              usecases.Repositories.DecisionRepository,
 		scenarioPublicationsRepository:  usecases.Repositories.ScenarioPublicationRepository,
+		customListRepository:            usecases.Repositories.CustomListRepository,
 		exportScheduleExecution:         usecases.NewExportScheduleExecution(),
 	}
 }
