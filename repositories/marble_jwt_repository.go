@@ -4,7 +4,7 @@ import (
 	"crypto/rsa"
 	"fmt"
 	"marble/marble-backend/dto"
-	. "marble/marble-backend/models"
+	"marble/marble-backend/models"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -22,7 +22,7 @@ type Claims struct {
 
 var VALIDATION_ALGO = jwt.SigningMethodRS256
 
-func (repo *MarbleJwtRepository) EncodeMarbleToken(expirationTime time.Time, creds Credentials) (string, error) {
+func (repo *MarbleJwtRepository) EncodeMarbleToken(expirationTime time.Time, creds models.Credentials) (string, error) {
 
 	claims := &Claims{
 		Credentials: dto.AdaptCredentialDto(creds),
@@ -42,22 +42,22 @@ func (repo *MarbleJwtRepository) EncodeMarbleToken(expirationTime time.Time, cre
 	return tokenString, nil
 }
 
-func (repo *MarbleJwtRepository) ValidateMarbleToken(marbleToken string) (Credentials, error) {
+func (repo *MarbleJwtRepository) ValidateMarbleToken(marbleToken string) (models.Credentials, error) {
 	token, err := jwt.ParseWithClaims(marbleToken, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		method, ok := token.Method.(*jwt.SigningMethodRSA)
 		if !ok || method != VALIDATION_ALGO {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return &repo.jwtSigningPrivateKey.PublicKey, nil
 	})
 
 	if err != nil {
-		return Credentials{}, err
+		return models.Credentials{}, err
 	}
 
 	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
 		return dto.AdaptCredential(claims.Credentials), nil
 	} else {
-		return Credentials{}, fmt.Errorf("Invalid Marble Jwt Token")
+		return models.Credentials{}, fmt.Errorf("invalid Marble Jwt Token")
 	}
 }
