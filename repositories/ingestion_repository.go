@@ -12,13 +12,13 @@ import (
 )
 
 type IngestionRepository interface {
-	IngestObject(transaction Transaction, payload models.Payload, table models.Table, logger *slog.Logger) (err error)
+	IngestObject(transaction Transaction, payload models.PayloadReader, table models.Table, logger *slog.Logger) (err error)
 }
 
 type IngestionRepositoryImpl struct {
 }
 
-func (repo *IngestionRepositoryImpl) IngestObject(transaction Transaction, payload models.Payload, table models.Table, logger *slog.Logger) (err error) {
+func (repo *IngestionRepositoryImpl) IngestObject(transaction Transaction, payload models.PayloadReader, table models.Table, logger *slog.Logger) (err error) {
 
 	tx := adaptClientDatabaseTransaction(transaction)
 
@@ -43,7 +43,7 @@ func (repo *IngestionRepositoryImpl) IngestObject(transaction Transaction, paylo
 	return nil
 }
 
-func generateInsertValues(table models.Table, payload models.Payload) (columnNames []string, values []interface{}) {
+func generateInsertValues(table models.Table, payload models.PayloadReader) (columnNames []string, values []interface{}) {
 	nbFields := len(table.Fields)
 	columnNames = make([]string, nbFields)
 	values = make([]interface{}, nbFields)
@@ -58,7 +58,7 @@ func generateInsertValues(table models.Table, payload models.Payload) (columnNam
 
 func updateExistingVersionIfPresent(
 	tx TransactionPostgres,
-	payload models.Payload,
+	payload models.PayloadReader,
 	table models.Table) (err error) {
 
 	object_id, _ := payload.ReadFieldFromPayload("object_id")

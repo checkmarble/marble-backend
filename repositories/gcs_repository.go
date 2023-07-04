@@ -41,7 +41,7 @@ func (repository *GcsRepositoryImpl) ListObjects(ctx context.Context, bucketName
 
 	var output []models.GCSObject
 
-	query := &storage.Query{Prefix: ""}
+	query := &storage.Query{Prefix: prefix}
 	it := bucket.Objects(ctx, query)
 	for {
 		attrs, err := it.Next()

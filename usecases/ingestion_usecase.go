@@ -2,11 +2,15 @@ package usecases
 
 import (
 	"context"
+	"encoding/csv"
 	"fmt"
+	"io"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/organization"
+	"strconv"
 	"strings"
+	"time"
 
 	"golang.org/x/exp/slog"
 )
@@ -18,7 +22,7 @@ type IngestionUseCase struct {
 	datamodelRepository   repositories.DataModelRepository
 }
 
-func (usecase *IngestionUseCase) IngestObject(organizationId string, payload models.Payload, table models.Table, logger *slog.Logger) error {
+func (usecase *IngestionUseCase) IngestObject(organizationId string, payload models.PayloadReader, table models.Table, logger *slog.Logger) error {
 
 	return usecase.orgTransactionFactory.TransactionInOrgSchema(organizationId, func(tx repositories.Transaction) error {
 		return usecase.ingestionRepository.IngestObject(tx, payload, table, logger)
@@ -71,7 +75,7 @@ func (usecase *IngestionUseCase) IngestObjectsFromStorageCsv(ctx context.Context
 			return fmt.Errorf("table %s not found in data model for organization %s", tableName, organizationId)
 		}
 
-		err = ingestObjectsFromCSV(ctx, organizationId, file, table, logger)
+		err = usecase.ingestObjectsFromCSV(ctx, organizationId, file, table, logger)
 		if err != nil {
 			return fmt.Errorf("Error ingesting objects from CSV %s: %w", fullFileName, err)
 		}
@@ -85,6 +89,84 @@ func (usecase *IngestionUseCase) IngestObjectsFromStorageCsv(ctx context.Context
 	return nil
 }
 
-func ingestObjectsFromCSV(ctx context.Context, organizationId string, file models.GCSObject, table models.Table, logger *slog.Logger) error {
+func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organizationId string, file models.GCSObject, table models.Table, logger *slog.Logger) error {
+	r := csv.NewReader(file.Reader)
+	firstRow, err := r.Read()
+	if err != nil {
+		return fmt.Errorf("Error reading first row of CSV: %w", err)
+	}
+	if len(firstRow) != len(table.Fields) {
+		return fmt.Errorf("Invalid number of columns in CSV: expecting %d, got %d", len(table.Fields), len(firstRow))
+	}
+
+	for {
+		record, err := r.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		logger.InfoCtx(ctx, fmt.Sprintf("Ingesting object %v", record))
+		object, err := parseVStringValuesToMap(record, firstRow, table)
+		if err != nil {
+			return err
+		}
+		err = usecase.IngestObject(organizationId, models.ClientObject{
+			TableName: table.Name,
+			Data:      object,
+		}, table, logger)
+
+	}
 	return fmt.Errorf("Not implemented")
+}
+
+func parseVStringValuesToMap(values []string, headers []string, table models.Table) (map[string]any, error) {
+	result := make(map[string]any)
+
+	for i, value := range values {
+		fieldName := headers[i]
+		result[fieldName] = value
+		field := table.Fields[models.FieldName(fieldName)]
+
+		if value == "" {
+			if !field.Nullable {
+				return nil, fmt.Errorf("Field %s is required but is empty", fieldName)
+			}
+			continue
+		}
+
+		switch field.DataType {
+		case models.String:
+			result[fieldName] = value
+		case models.Timestamp:
+			val, err := time.Parse(time.RFC3339, value)
+			if err != nil {
+				return nil, fmt.Errorf("Error parsing timestamp %s for field %s: %w", value, fieldName, err)
+			}
+			result[fieldName] = val
+		case models.Bool:
+			val, err := strconv.ParseBool(value)
+			if err != nil {
+				return nil, fmt.Errorf("Error parsing bool %s for field %s: %w", value, fieldName, err)
+			}
+			result[fieldName] = val
+		case models.Int:
+			val, err := strconv.Atoi(value)
+			if err != nil {
+				return nil, fmt.Errorf("Error parsing int %s for field %s: %w", value, fieldName, err)
+			}
+			result[fieldName] = val
+		case models.Float:
+			val, err := strconv.ParseFloat(value, 64)
+			if err != nil {
+				return nil, fmt.Errorf("Error parsing float %s for field %s: %w", value, fieldName, err)
+			}
+			result[fieldName] = val
+		default:
+			return nil, fmt.Errorf("Invalid data type %s for field %s", field.DataType, fieldName)
+		}
+
+	}
+	return result, nil
 }
