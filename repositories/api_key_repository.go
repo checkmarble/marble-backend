@@ -8,6 +8,7 @@ import (
 type ApiKeyRepository interface {
 	GetApiKeysOfOrganization(tx Transaction, organizationId string) ([]models.ApiKey, error)
 	GetApiKeyByKey(tx Transaction, apiKey string) (models.ApiKey, error)
+	CreateApiKey(tx Transaction, apiKey models.CreateApiKeyInput) error
 }
 
 type ApiKeyRepositoryImpl struct {

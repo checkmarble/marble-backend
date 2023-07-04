@@ -4,6 +4,8 @@ import (
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/organization"
+
+	"github.com/google/uuid"
 )
 
 type SeedUseCase struct {
@@ -11,6 +13,7 @@ type SeedUseCase struct {
 	userRepository         repositories.UserRepository
 	organizationCreator    organization.OrganizationCreator
 	organizationRepository repositories.OrganizationRepository
+	customListRepository   repositories.CustomListRepository
 }
 
 func (usecase *SeedUseCase) SeedMarbleAdmins(firstMarbleAdminEmail string) error {
@@ -70,6 +73,31 @@ func (usecase *SeedUseCase) SeedZorgOrganization(zorgOrganizationId string) erro
 	if err != nil {
 		return err
 	}
+
+	newCustomListId := uuid.NewString()
+
+	err = usecase.customListRepository.CreateCustomList(nil, models.CreateCustomListInput{
+		OrgId:       zorgOrganizationId,
+		Name:        "Welcome to Marble",
+		Description: "Need a whitelist or blacklist ? The list is your friend :)",
+	}, newCustomListId)
+	if err != nil {
+		return err
+	}
+	customListValueId1 := uuid.NewString()
+	customListValueId2 := uuid.NewString()
+	customListValueId3 := uuid.NewString()
+
+	addCustomListValueInput := models.AddCustomListValueInput{
+		OrgId:        zorgOrganizationId,
+		CustomListId: newCustomListId,
+		Value:        "Welcome",
+	}
+	usecase.customListRepository.AddCustomListValue(nil, addCustomListValueInput, customListValueId1)
+	addCustomListValueInput.Value = "to"
+	usecase.customListRepository.AddCustomListValue(nil, addCustomListValueInput, customListValueId2)
+	addCustomListValueInput.Value = "marble"
+	usecase.customListRepository.AddCustomListValue(nil, addCustomListValueInput, customListValueId3)
 
 	// reset firebase id of all users, so when the firebase emulator restarts
 	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, (func(tx repositories.Transaction) error {

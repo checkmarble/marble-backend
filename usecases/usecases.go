@@ -87,6 +87,7 @@ func (usecases *Usecases) NewSeedUseCase() SeedUseCase {
 		userRepository:         usecases.Repositories.UserRepository,
 		organizationCreator:    usecases.NewOrganizationCreator(),
 		organizationRepository: usecases.Repositories.OrganizationRepository,
+		customListRepository:   usecases.Repositories.CustomListRepository,
 	}
 }
 
@@ -94,7 +95,7 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 	return organization.OrganizationCreator{
 		TransactionFactory:     usecases.Repositories.TransactionFactory,
 		OrganizationRepository: usecases.Repositories.OrganizationRepository,
-		OrganizationSeeder:     usecases.Repositories.LegacyPgRepository,
+		OrganizationSeeder:     organization.NewOrganizationSeeder(usecases.Repositories, usecases.Repositories.TransactionFactory),
 		PopulateOrganizationSchema: organization.PopulateOrganizationSchema{
 			TransactionFactory:           usecases.Repositories.TransactionFactory,
 			OrganizationRepository:       usecases.Repositories.OrganizationRepository,

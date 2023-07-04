@@ -5,15 +5,12 @@ import (
 	"marble/marble-backend/repositories"
 )
 
-type OrganizationSeeder interface {
-	Seed(organizationId string) error
-}
-
 type OrganizationCreator struct {
 	TransactionFactory         repositories.TransactionFactory
 	OrganizationRepository     repositories.OrganizationRepository
 	OrganizationSeeder         OrganizationSeeder
 	PopulateOrganizationSchema PopulateOrganizationSchema
+	Repositories               repositories.Repositories
 }
 
 func (creator *OrganizationCreator) CreateOrganizationWithId(newOrganizationId string, createOrga models.CreateOrganizationInput) (models.Organization, error) {

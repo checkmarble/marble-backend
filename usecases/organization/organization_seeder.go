@@ -1,4 +1,4 @@
-package pg_repository
+package organization
 
 import (
 	"context"
@@ -8,7 +8,10 @@ import (
 	"log"
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/operators"
+	"marble/marble-backend/repositories"
 	"marble/marble-backend/utils"
+
+	"github.com/google/uuid"
 )
 
 func randomAPiKey() string {
@@ -20,15 +23,31 @@ func randomAPiKey() string {
 	return hex.EncodeToString(key)
 }
 
-func (r *PGRepository) Seed(zorgOrganizationId string) error {
+type OrganizationSeeder interface {
+	Seed(organizationId string) error
+}
+
+type organizationSeeder struct {
+	TransactionFactory repositories.TransactionFactory
+	Repositories       repositories.Repositories
+}
+
+func NewOrganizationSeeder(repo repositories.Repositories, transactionFactory repositories.TransactionFactory) OrganizationSeeder {
+	return &organizationSeeder{
+		TransactionFactory: transactionFactory,
+		Repositories:       repo,
+	}
+}
+
+func (o *organizationSeeder) Seed(orgId string) error {
 
 	///////////////////////////////
 	// Tokens
 	///////////////////////////////
 
-	err := r.CreateApiKey(context.TODO(), CreateApiKeyInput{
-		OrgID: zorgOrganizationId,
-		Key:   randomAPiKey(),
+	err := o.Repositories.ApiKeyRepository.CreateApiKey(nil, models.CreateApiKeyInput{
+		OrganizationId: orgId,
+		Key:            randomAPiKey(),
 	})
 	if err != nil {
 		log.Printf("error creating token: %v", err)
@@ -38,7 +57,7 @@ func (r *PGRepository) Seed(zorgOrganizationId string) error {
 	///////////////////////////////
 	// Create and store a data model
 	///////////////////////////////
-	_, err = r.CreateDataModel(context.TODO(), zorgOrganizationId, models.DataModel{
+	_, err = o.Repositories.LegacyPgRepository.CreateDataModel(context.TODO(), orgId, models.DataModel{
 		Tables: map[models.TableName]models.Table{
 			"transactions": {
 				Name: "transactions",
@@ -101,6 +120,34 @@ func (r *PGRepository) Seed(zorgOrganizationId string) error {
 	}
 
 	///////////////////////////////
+	// Create and store a custom list
+	///////////////////////////////
+	newCustomListId := uuid.NewString()
+
+	err = o.Repositories.CustomListRepository.CreateCustomList(nil, models.CreateCustomListInput{
+		OrgId:       orgId,
+		Name:        "Welcome to Marble",
+		Description: "Need a whitelist or blacklist ? The list is your friend :)",
+	}, newCustomListId)
+	if err != nil {
+		return err
+	}
+	customListValueId1 := uuid.NewString()
+	customListValueId2 := uuid.NewString()
+	customListValueId3 := uuid.NewString()
+
+	addCustomListValueInput := models.AddCustomListValueInput{
+		OrgId:        orgId,
+		CustomListId: newCustomListId,
+		Value: "Welcome",
+	}
+	o.Repositories.CustomListRepository.AddCustomListValue(nil, addCustomListValueInput, customListValueId1)
+	addCustomListValueInput.Value = "to"
+	o.Repositories.CustomListRepository.AddCustomListValue(nil, addCustomListValueInput, customListValueId2)
+	addCustomListValueInput.Value = "marble"
+	o.Repositories.CustomListRepository.AddCustomListValue(nil, addCustomListValueInput, customListValueId3)
+
+	///////////////////////////////
 	// Create and store a scenario
 	///////////////////////////////
 	createScenarioInput := models.CreateScenarioInput{
@@ -108,7 +155,7 @@ func (r *PGRepository) Seed(zorgOrganizationId string) error {
 		Description:       "test description",
 		TriggerObjectType: "transactions",
 	}
-	scenario, err := r.CreateScenario(context.TODO(), zorgOrganizationId, createScenarioInput)
+	scenario, err := o.Repositories.ScenarioWriteRepository.CreateScenario(context.TODO(), orgId, createScenarioInput)
 	if err != nil {
 		log.Printf("error creating scenario: %v", err)
 		return err
@@ -145,16 +192,22 @@ func (r *PGRepository) Seed(zorgOrganizationId string) error {
 					Name:          "Rule 4 Name",
 					Description:   "Rule 4 Desc",
 				},
+				{
+					Formula:       &operators.StringIsInList{Str: &operators.StringValue{Value: "marble"}, List: &operators.DbCustomListStringArray{CustomListId: newCustomListId}},
+					ScoreModifier: 2,
+					Name:          "Rule 5 Name",
+					Description:   "Rule 5 Desc",
+				},
 			},
 		},
 	}
 
-	scenarioIteration, err := r.CreateScenarioIteration(context.TODO(), zorgOrganizationId, createScenarioIterationInput)
+	scenarioIteration, err := o.Repositories.ScenarioIterationWriteRepository.CreateScenarioIteration(context.TODO(), orgId, createScenarioIterationInput)
 	if err != nil {
 		log.Printf("error creating scenario iteration: %v", err)
 		return err
 	}
-	_, err = r.CreateScenarioPublication(context.TODO(), zorgOrganizationId, models.CreateScenarioPublicationInput{
+	_, err = o.Repositories.ScenarioPublicationRepository.CreateScenarioPublication(context.TODO(), orgId, models.CreateScenarioPublicationInput{
 		ScenarioIterationID: scenarioIteration.ID,
 		PublicationAction:   models.Publish,
 	})
@@ -166,7 +219,7 @@ func (r *PGRepository) Seed(zorgOrganizationId string) error {
 	///////////////////////////////
 	// Also create the demo scenario
 	///////////////////////////////
-	demoScenario, err := r.CreateScenario(context.TODO(), zorgOrganizationId, models.CreateScenarioInput{
+	demoScenario, err := o.Repositories.ScenarioWriteRepository.CreateScenario(context.TODO(), orgId, models.CreateScenarioInput{
 		Name:              "Demo scenario",
 		Description:       "Demo scenario",
 		TriggerObjectType: "transactions",
@@ -296,12 +349,12 @@ func (r *PGRepository) Seed(zorgOrganizationId string) error {
 			},
 		},
 	}
-	demoScenarioIteration, err := r.CreateScenarioIteration(context.TODO(), zorgOrganizationId, createDemoScenarioIterationInput)
+	demoScenarioIteration, err := o.Repositories.ScenarioIterationWriteRepository.CreateScenarioIteration(context.TODO(), orgId, createDemoScenarioIterationInput)
 	if err != nil {
 		log.Printf("error creating demo scenario iteration: %v", err)
 		return err
 	}
-	_, err = r.CreateScenarioPublication(context.TODO(), zorgOrganizationId, models.CreateScenarioPublicationInput{
+	_, err = o.Repositories.ScenarioPublicationRepository.CreateScenarioPublication(context.TODO(), orgId, models.CreateScenarioPublicationInput{
 		ScenarioIterationID: demoScenarioIteration.ID,
 		PublicationAction:   models.Publish,
 	})
