@@ -121,7 +121,7 @@ func TestListScenarios(t *testing.T) {
 		t.Fatalf("Could not create scenario: %s", err)
 	}
 
-	scenarios, err := globalTestParams.repository.ListScenarios(context.Background(), globalTestParams.testIds["OrganizationId"])
+	scenarios, err := globalTestParams.scenarioRepository.ListScenariosOfOrganization(nil, globalTestParams.testIds["OrganizationId"])
 
 	if err != nil {
 		t.Fatalf("Could not list scenarios: %s", err)
@@ -180,9 +180,8 @@ func TestGetScenarioWithLiveVersion(t *testing.T) {
 		t.Fatalf("Could not create scenario publication: %s", err)
 	}
 
-	scenarWithLiveVersion, err := globalTestParams.repository.GetScenario(
-		context.Background(),
-		globalTestParams.testIds["OrganizationId"],
+	scenarWithLiveVersion, err := globalTestParams.scenarioRepository.GetScenarioById(
+		nil,
 		scenar.ID,
 	)
 	if err != nil {
