@@ -12,36 +12,37 @@ import (
 )
 
 type IngestionRepository interface {
-	IngestObject(transaction Transaction, payload models.PayloadReader, table models.Table, logger *slog.Logger) (err error)
+	IngestObject(transaction Transaction, payloads []models.PayloadReader, table models.Table, logger *slog.Logger) (err error)
 }
 
 type IngestionRepositoryImpl struct {
 }
 
-func (repo *IngestionRepositoryImpl) IngestObject(transaction Transaction, payload models.PayloadReader, table models.Table, logger *slog.Logger) (err error) {
+func (repo *IngestionRepositoryImpl) IngestObject(transaction Transaction, payloads []models.PayloadReader, table models.Table, logger *slog.Logger) (err error) {
 
 	tx := adaptClientDatabaseTransaction(transaction)
 
-	objectId, _ := payload.ReadFieldFromPayload("object_id")
-	objectIdStr := objectId.(string)
+	for _, payload := range payloads {
+		objectId, _ := payload.ReadFieldFromPayload("object_id")
+		objectIdStr := objectId.(string)
 
-	err = updateExistingVersionIfPresent(tx, objectIdStr, table)
-	if err != nil {
-		return fmt.Errorf("Error updating existing version: %w", err)
+		err = updateExistingVersionIfPresent(tx, objectIdStr, table)
+		if err != nil {
+			return fmt.Errorf("Error updating existing version: %w", err)
+		}
+
+		columnNames, values := generateInsertValues(table, payload)
+		columnNames = append(columnNames, "id")
+		values = append(values, uuid.NewString())
+
+		sql := NewQueryBuilder().Insert(tableNameWithSchema(tx, table.Name)).Columns(columnNames...).Values(values...).Suffix("RETURNING \"id\"")
+
+		_, err = tx.ExecBuilder(sql)
+		if err != nil {
+			return err
+		}
+		logger.Debug("Created object in db", slog.String("type", tableNameWithSchema(tx, table.Name)), slog.String("id", objectIdStr))
 	}
-
-	columnNames, values := generateInsertValues(table, payload)
-	columnNames = append(columnNames, "id")
-	values = append(values, uuid.NewString())
-
-	sql := NewQueryBuilder().Insert(tableNameWithSchema(tx, table.Name)).Columns(columnNames...).Values(values...).Suffix("RETURNING \"id\"")
-
-	_, err = tx.ExecBuilder(sql)
-	if err != nil {
-		return err
-	}
-	logger.Debug("Created object in db", slog.String("type", tableNameWithSchema(tx, table.Name)), slog.String("id", objectIdStr))
-
 	return nil
 }
 
@@ -58,11 +59,7 @@ func generateInsertValues(table models.Table, payload models.PayloadReader) (col
 	return columnNames, values
 }
 
-func updateExistingVersionIfPresent(
-	tx TransactionPostgres,
-	objectId string,
-	table models.Table) (err error) {
-
+func updateExistingVersionIfPresent(tx TransactionPostgres, objectId string, table models.Table) (err error) {
 	sql, args, err := NewQueryBuilder().
 		Select("id").
 		From(tableNameWithSchema(tx, table.Name)).

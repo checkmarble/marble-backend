@@ -15,6 +15,8 @@ import (
 	"golang.org/x/exp/slog"
 )
 
+const batchSize = 1000
+
 type IngestionUseCase struct {
 	orgTransactionFactory organization.OrgTransactionFactory
 	ingestionRepository   repositories.IngestionRepository
@@ -22,10 +24,10 @@ type IngestionUseCase struct {
 	datamodelRepository   repositories.DataModelRepository
 }
 
-func (usecase *IngestionUseCase) IngestObject(organizationId string, payload models.PayloadReader, table models.Table, logger *slog.Logger) error {
+func (usecase *IngestionUseCase) IngestObject(organizationId string, payloads []models.PayloadReader, table models.Table, logger *slog.Logger) error {
 
 	return usecase.orgTransactionFactory.TransactionInOrgSchema(organizationId, func(tx repositories.Transaction) error {
-		return usecase.ingestionRepository.IngestObject(tx, payload, table, logger)
+		return usecase.ingestionRepository.IngestObject(tx, payloads, table, logger)
 	})
 }
 
@@ -107,6 +109,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 		}
 	}
 
+	payloadReaders := make([]models.PayloadReader, 0)
 	var i int
 	for i = 0; ; i++ {
 		record, err := r.Read()
@@ -116,20 +119,35 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 		if err != nil {
 			return err
 		}
-		// logger.InfoCtx(ctx, fmt.Sprintf("Ingesting object %v", record))
 		object, err := parseVStringValuesToMap(record, firstRow, table)
 		if err != nil {
 			return err
 		}
-		// logger.DebugCtx(ctx, fmt.Sprintf("Object to ingest %d: %+v", i, object))
-
-		if err := usecase.IngestObject(organizationId, models.ClientObject{
+		logger.DebugCtx(ctx, fmt.Sprintf("Object to ingest %d: %+v", i, object))
+		clientObject := models.ClientObject{
 			TableName: table.Name,
 			Data:      object,
-		}, table, logger); err != nil {
+		}
+		payloadReader := models.PayloadReader(clientObject)
+
+		payloadReaders = append(payloadReaders, payloadReader)
+	}
+
+	// ingest by batches of 'batchSize'
+	for j := 0; j < i; j += batchSize {
+		end := j + batchSize
+		if end > i {
+			end = i
+		}
+		batch := payloadReaders[j:end]
+
+		if err := usecase.orgTransactionFactory.TransactionInOrgSchema(organizationId, func(tx repositories.Transaction) error {
+			return usecase.ingestionRepository.IngestObject(tx, batch, table, logger)
+		}); err != nil {
 			return err
 		}
 	}
+
 	end := time.Now()
 	duration := end.Sub(start)
 	// divide by 1e6 convert to milliseconds (base is nanoseconds)
