@@ -34,11 +34,12 @@ export async function fetchScenario(
 
 export async function validateAstExpression(
   repository: ScenariosRepository,
-  // organizationId: string,
+  organizationId: string,
   expression: AstNode
 ) {
   return adapAstValidateSchemaResult(
     await repository.marbleApi.validateAstExpression(
+      organizationId,
       adaptAstNodeDto(expression)
     )
   );
@@ -46,10 +47,11 @@ export async function validateAstExpression(
 
 export async function runAstExpression(
   repository: ScenariosRepository,
-  // organizationId: string,
+  organizationId: string,
   expression: AstNode
 ) {
   return await repository.marbleApi.runAstExpression(
+    organizationId,
     adaptAstNodeDto(expression)
   );
 }
