@@ -23,6 +23,10 @@ func (d *DataAccessorStringImpl) GetDbHandle() (db *pgxpool.Pool, schema string,
 	return nil, "", nil
 }
 
+func (d *DataAccessorStringImpl) GetDbCustomListValues(ctx context.Context, customListId string) ([]string, error) {
+	return nil, nil
+}
+
 func TestLogicEvalString(t *testing.T) {
 	type testCase struct {
 		name     string

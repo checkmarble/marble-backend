@@ -4,12 +4,14 @@ import type {
   CreateOrganization,
   ApiKey,
   PatchOrganization,
+  DataModel,
 } from "@/models";
 import {
   adaptOrganizationsApiResult,
   adaptSingleOrganizationApiResult,
 } from "@/models/OrganizationDto";
 import { adaptApiKeysApiResult } from "@/models/ApiKeyDto";
+import { adaptDataModelDto, adaptDataModelApiResult } from "@/models/DataModelDto";
 
 export interface OrganizationRepository {
   marbleApi: MarbleApi;
@@ -70,5 +72,27 @@ export async function fetchApiKeys(
 ): Promise<ApiKey[]> {
   return adaptApiKeysApiResult(
     await repository.marbleApi.apiKeysOfOrganization(organizationId)
+  );
+}
+
+export async function fetchDataModelOfOrganization(
+  repository: OrganizationRepository,
+  organizationId: string
+): Promise<DataModel> {
+  return adaptDataModelApiResult(
+    await repository.marbleApi.dataModelOfOrganization(organizationId)
+  );
+}
+
+export async function replaceDataModelOfOrganization(
+  repository: OrganizationRepository,
+  organizationId: string,
+  dataModel: DataModel
+): Promise<DataModel> {
+  return adaptDataModelApiResult(
+    await repository.marbleApi.postDataModelOfOrganization(
+      organizationId,
+      adaptDataModelDto(dataModel)
+    )
   );
 }

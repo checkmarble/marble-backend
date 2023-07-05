@@ -25,6 +25,7 @@ type ScheduledExecutionUsecase struct {
 	orgTransactionFactory           organization.OrgTransactionFactory
 	ingestedDataReadRepository      repositories.IngestedDataReadRepository
 	decisionRepository              repositories.DecisionRepository
+	customListRepository            repositories.CustomListRepository
 	exportScheduleExecution         scheduledexecution.ExportScheduleExecution
 }
 
@@ -177,7 +178,7 @@ func executionIsDue(schedule string, previousExecutions []models.ScheduledExecut
 }
 
 func (usecase *ScheduledExecutionUsecase) executeScheduledScenario(ctx context.Context, scheduledExecutionId string, scenario models.Scenario) error {
-	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, scenario.OrganizationID)
+	dataModel, err := usecase.dataModelRepository.GetDataModel(nil, scenario.OrganizationID)
 	if err != nil {
 		return err
 	}
@@ -211,6 +212,7 @@ func (usecase *ScheduledExecutionUsecase) executeScheduledScenario(ctx context.C
 					scenarioIterationReadRepository: usecase.scenarioIterationReadRepository,
 					orgTransactionFactory:           usecase.orgTransactionFactory,
 					ingestedDataReadRepository:      usecase.ingestedDataReadRepository,
+					customListRepository:            usecase.customListRepository,
 				},
 				utils.LoggerFromContext(ctx),
 			)

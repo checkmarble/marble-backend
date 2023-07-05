@@ -35,6 +35,10 @@ func (d *DataAccessorFloatImpl) GetDbHandle() (db *pgxpool.Pool, schema string, 
 	return nil, "", nil
 }
 
+func (d *DataAccessorFloatImpl) GetDbCustomListValues(ctx context.Context, customListId string) ([]string, error) {
+	return nil, nil
+}
+
 func TestLogicEvalFloat(t *testing.T) {
 	type testCase struct {
 		name     string

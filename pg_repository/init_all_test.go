@@ -1,14 +1,12 @@
 package pg_repository
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"log"
 	"marble/marble-backend/infra"
 	"os"
 	"testing"
-	"text/template"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -37,18 +35,18 @@ const (
 	testPort       = "5432"
 )
 
-func stringBuilder(format string, args map[string]string) string {
-	var msg bytes.Buffer
+// func stringBuilder(format string, args map[string]string) string {
+// 	var msg bytes.Buffer
 
-	tmpl, err := template.New("").Parse(format)
+// 	tmpl, err := template.New("").Parse(format)
 
-	if err != nil {
-		return format
-	}
+// 	if err != nil {
+// 		return format
+// 	}
 
-	tmpl.Execute(&msg, args)
-	return msg.String()
-}
+// 	tmpl.Execute(&msg, args)
+// 	return msg.String()
+// }
 
 func TestMain(m *testing.M) {
 	// uses a sensible default on windows (tcp/http) and linux/osx (socket)

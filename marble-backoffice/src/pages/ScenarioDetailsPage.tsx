@@ -79,6 +79,7 @@ export default function ScenarioDetailsPage() {
   //   [editor]
   // );
 
+  //@ts-ignore
   const nodeEditor: NodeEditor = {
     handleOperatorNameChange,
     handleAstNodeConstantChange,
@@ -129,6 +130,7 @@ interface NodeEditor {
   // handleDeleteAstNode: (event: React.MouseEvent<HTMLElement>) => void;
 }
 
+//@ts-ignore
 function AstEditor({
   editor,
   node,

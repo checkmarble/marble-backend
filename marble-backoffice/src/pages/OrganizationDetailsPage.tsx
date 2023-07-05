@@ -18,6 +18,8 @@ import {
   useDeleteOrganization,
   useDecisions,
   useMarbleApiWithClientRoleApiKey,
+  useDataModel,
+  useEditDataModel,
 } from "@/services";
 import DelayedLinearProgress from "@/components/DelayedLinearProgress";
 import AlertDialog from "@/components/AlertDialog";
@@ -26,6 +28,7 @@ import { type CreateUser, Role, PageLink } from "@/models";
 import ListOfUsers from "@/components/ListOfUsers";
 import IconButton from "@mui/material/IconButton";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import TextareaAutosize from "@mui/base/TextareaAutosize";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Paper from "@mui/material/Paper";
@@ -36,6 +39,7 @@ import Container from "@mui/material/Container";
 import ListOfScenarios from "@/components/ListOfScenarios";
 import ReactJson from "react-json-view";
 import NorthEastIcon from "@mui/icons-material/NorthEast";
+import Alert from "@mui/material/Alert";
 
 function OrganizationDetailsPage() {
   const { organizationId } = useParams();
@@ -207,22 +211,32 @@ function OrganizationDetailsPage() {
                 <Tab label="Users" />
                 <Tab label="Scenarios" />
                 <Tab label="Decisions" />
+                <Tab label="Data Model" />
               </Tabs>
             </Box>
 
             <Box sx={{ p: 3 }}>
               {tabValue === 0 && (
                 <OrganizationDetailsUserList
+                  organizationId={organizationId}
                   pageLoadingDispatcher={pageLoadingDispatcher}
                 />
               )}
               {tabValue === 1 && (
                 <OrganizationDetailsScenariosList
+                  organizationId={organizationId}
                   pageLoadingDispatcher={pageLoadingDispatcher}
                 />
               )}
               {tabValue === 2 && (
                 <OrganizationDetailsDecisionsList
+                  organizationId={organizationId}
+                  pageLoadingDispatcher={pageLoadingDispatcher}
+                />
+              )}
+              {tabValue === 3 && (
+                <OrganizationDetailsDataModel
+                  organizationId={organizationId}
                   pageLoadingDispatcher={pageLoadingDispatcher}
                 />
               )}
@@ -236,14 +250,11 @@ function OrganizationDetailsPage() {
 
 function OrganizationDetailsUserList({
   pageLoadingDispatcher,
+  organizationId,
 }: {
   pageLoadingDispatcher: LoadingDispatcher;
+  organizationId: string;
 }) {
-  const { organizationId } = useParams();
-  if (!organizationId) {
-    throw Error("Organization Id is missing");
-  }
-
   const navigate = useNavigate();
 
   const { users, refreshUsers } = useUsers(
@@ -316,15 +327,12 @@ function OrganizationDetailsUserList({
 }
 
 function OrganizationDetailsScenariosList({
+  organizationId,
   pageLoadingDispatcher,
 }: {
   pageLoadingDispatcher: LoadingDispatcher;
+  organizationId: string;
 }) {
-  const { organizationId } = useParams();
-  if (!organizationId) {
-    throw Error("Organization Id is missing");
-  }
-
   const { scenarios } = useScenarios(
     services().organizationService,
     pageLoadingDispatcher,
@@ -338,14 +346,11 @@ function OrganizationDetailsScenariosList({
 
 function OrganizationDetailsDecisionsList({
   pageLoadingDispatcher,
+  organizationId,
 }: {
+  organizationId: string;
   pageLoadingDispatcher: LoadingDispatcher;
 }) {
-  const { organizationId } = useParams();
-  if (!organizationId) {
-    throw Error("Organization Id is missing");
-  }
-
   const { marbleApiWithClientRoleApiKey } = useMarbleApiWithClientRoleApiKey(
     services().apiKeyService,
     pageLoadingDispatcher,
@@ -374,6 +379,79 @@ function OrganizationDetailsDecisionsList({
         </List>
       </>
     );
+}
+
+function OrganizationDetailsDataModel({
+  pageLoadingDispatcher,
+  organizationId,
+}: {
+  pageLoadingDispatcher: LoadingDispatcher;
+  organizationId: string;
+}) {
+  const { dataModel } = useDataModel(
+    services().organizationService,
+    pageLoadingDispatcher,
+    organizationId
+  );
+
+  const {
+    dataModelString,
+    setDataModelString,
+    saveDataModel,
+    saveDataModelConfirmed,
+    dataModelError,
+    saveDataModelAlertDialogOpen,
+    setSaveDataModelAlertDialogOpen,
+    canSave,
+  } = useEditDataModel(
+    services().organizationService,
+    pageLoadingDispatcher,
+    organizationId,
+    dataModel
+  );
+
+  return dataModelString ? (
+    <>
+      {/* Dialog: Replace Data Nodel */}
+      <AlertDialog
+        title="Confirm organization deletion"
+        open={saveDataModelAlertDialogOpen}
+        handleClose={() => {
+          setSaveDataModelAlertDialogOpen(false);
+        }}
+        handleValidate={saveDataModelConfirmed}
+      >
+        <Typography variant="body1">
+          Are you sure to replace the Data Model ? This action is destructive:
+          all the ingested data of this organization will be erased.
+        </Typography>
+      </AlertDialog>
+      {dataModelString !== null && (
+        <Box sx={{
+          mb: 4,
+        }}>
+          <TextareaAutosize
+            minRows="5"
+            value={dataModelString}
+            style={{ width: "100%" }}
+            onChange={(e) => setDataModelString(e.target.value)}
+          />
+          {dataModelError && <Alert severity="error">{dataModelError}</Alert>}
+          <Button
+            onClick={saveDataModel}
+            variant="contained"
+            startIcon={<DeleteForever />}
+            color="warning"
+            disabled={!canSave}
+          >
+            Replace Data Model
+          </Button>
+        </Box>
+      )}
+    </>
+  ) : (
+    false
+  );
 }
 
 export default OrganizationDetailsPage;

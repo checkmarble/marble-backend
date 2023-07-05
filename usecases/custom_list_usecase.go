@@ -38,6 +38,10 @@ func (usecase *CustomListUseCase) SoftDeleteCustomList(ctx context.Context, dele
 	return usecase.CustomListRepository.SoftDeleteCustomList(nil, deleteCustomList)
 }
 
+func (usecase *CustomListUseCase) GetCustomListById(ctx context.Context, id string) (models.CustomList, error) {
+	return usecase.CustomListRepository.GetCustomListById(nil, id)
+}
+
 func (usecase *CustomListUseCase) GetCustomListValues(ctx context.Context, getCustomListValues models.GetCustomListValuesInput) ([]models.CustomListValue, error) {
 	return usecase.CustomListRepository.GetCustomListValues(nil, getCustomListValues)
 }

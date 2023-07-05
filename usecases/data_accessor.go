@@ -15,11 +15,13 @@ type DataAccessor struct {
 	orgTransactionFactory      organization.OrgTransactionFactory
 	organizationId             string
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
+	customListRepository         repositories.CustomListRepository
 }
 
 func (d *DataAccessor) GetPayloadField(fieldName string) (interface{}, error) {
 	return d.Payload.ReadFieldFromPayload(models.FieldName(fieldName))
 }
+
 func (d *DataAccessor) GetDbField(ctx context.Context, triggerTableName string, path []string, fieldName string) (interface{}, error) {
 
 	return organization.TransactionInOrgSchemaReturnValue(
@@ -34,7 +36,6 @@ func (d *DataAccessor) GetDbField(ctx context.Context, triggerTableName string, 
 				Payload:          d.Payload,
 			})
 		})
-
 }
 
 func (d *DataAccessor) GetDbHandle() (db *pgxpool.Pool, schema string, err error) {
@@ -50,4 +51,19 @@ func (d *DataAccessor) GetDbHandle() (db *pgxpool.Pool, schema string, err error
 	}
 
 	return pool, databaseShema.Schema, nil
+}
+
+func (d *DataAccessor) GetDbCustomListValues(ctx context.Context, customListId string) ([]string, error) {
+	var customListValues []string
+	values, err := d.customListRepository.GetCustomListValues(nil, models.GetCustomListValuesInput{
+		Id:    customListId,
+		OrgId: d.organizationId,
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, value := range values {
+		customListValues = append(customListValues, value.Value)
+	}
+	return customListValues, nil
 }

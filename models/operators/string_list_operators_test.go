@@ -23,13 +23,20 @@ func (d *DataAccessorStringListImpl) GetDbHandle() (db *pgxpool.Pool, schema str
 	return nil, "", nil
 }
 
+func (d *DataAccessorStringListImpl) GetDbCustomListValues(ctx context.Context, customListId string) ([]string, error) {
+	if customListId == "test-test-test-test" {
+		return []string{"test", "test2"}, nil
+	}
+	return nil, nil
+}
+
 func TestLogicEvalStringList(t *testing.T) {
 	type testCase struct {
 		name     string
 		operator OperatorStringList
 		expected []string
 	}
-	dataAccessor := DataAccessorStringImpl{}
+	dataAccessor := DataAccessorStringListImpl{}
 
 	cases := []testCase{
 		{
@@ -38,6 +45,13 @@ func TestLogicEvalStringList(t *testing.T) {
 				Value: []string{"abc", "def"},
 			},
 			expected: []string{"abc", "def"},
+		},
+		{
+			name: "db custom list",
+			operator: &DbCustomListStringArray{
+				CustomListId: "test-test-test-test",
+			},
+			expected: []string{"test", "test2"},
 		},
 	}
 	asserts := assert.New(t)
@@ -66,6 +80,10 @@ func TestMarshalUnMarshalStringList(t *testing.T) {
 		{
 			name:     "Constant value",
 			operator: &StringListValue{Value: []string{"abc", "def"}},
+		},
+		{
+			name:     "Constant value",
+			operator: &DbCustomListStringArray{CustomListId: "test-test-test-test"},
 		},
 	}
 	for _, c := range cases {

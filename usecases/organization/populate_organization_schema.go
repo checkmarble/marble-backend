@@ -1,7 +1,6 @@
 package organization
 
 import (
-	"context"
 	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
@@ -30,27 +29,48 @@ func (p *PopulateOrganizationSchema) CreateOrganizationSchema(marbleTx repositor
 		return err
 	}
 
+	dataModel, err := p.DataModelRepository.GetDataModel(marbleTx, organization.ID)
+	if err != nil {
+		return err
+	}
+
 	// Open a new transaction 'clientTx' to write in the client database.
 	// The client can be in another sql instance
 	// Note that the error is returned, so in case of a roolback in 'clientTx', 'marbleTx' will also be rolled back.
-	return p.TransactionFactory.Transaction(orgDatabaseSchema, func(clientTx repositories.Transaction) error {
-
-		err := p.OrganizationSchemaRepository.CreateSchema(clientTx, orgDatabaseSchema.Schema)
-		if err != nil {
-			return err
-		}
-
-		dataModel, err := p.DataModelRepository.GetDataModel(context.TODO(), organization.ID)
-		if err != nil {
-			return err
-		}
-		for _, table := range dataModel.Tables {
-			err := p.OrganizationSchemaRepository.CreateTable(clientTx, orgDatabaseSchema.Schema, table)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
+	return p.TransactionFactory.Transaction(orgDatabaseSchema, func(orgSchemaTx repositories.Transaction) error {
+		return p.populate(orgSchemaTx, orgDatabaseSchema, dataModel)
 	})
+}
 
+func (p *PopulateOrganizationSchema) WipeAndCreateOrganizationSchema(marbleTx repositories.Transaction, organizationId string, newDataModel models.DataModel) error {
+
+	// fetch organization schema
+	orgSchema, err := p.OrganizationSchemaRepository.OrganizationSchemaOfOrganization(marbleTx, organizationId)
+	if err != nil {
+		return err
+	}
+
+	// delete and recreate the entire postgres schema
+	return p.TransactionFactory.Transaction(orgSchema.DatabaseSchema, func(orgSchemaTx repositories.Transaction) error {
+		if err := p.OrganizationSchemaRepository.DeleteSchema(orgSchemaTx, orgSchema.DatabaseSchema.Schema); err != nil {
+			return err
+		}
+		return p.populate(orgSchemaTx, orgSchema.DatabaseSchema, newDataModel)
+	})
+}
+
+func (p *PopulateOrganizationSchema) populate(orgSchemaTx repositories.Transaction, databaseSchema models.DatabaseSchema, dataModel models.DataModel) error {
+
+	err := p.OrganizationSchemaRepository.CreateSchema(orgSchemaTx, databaseSchema.Schema)
+	if err != nil {
+		return err
+	}
+
+	for _, table := range dataModel.Tables {
+		err := p.OrganizationSchemaRepository.CreateTable(orgSchemaTx, databaseSchema.Schema, table)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -92,7 +92,7 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 		logger := api.logger.With(slog.String("scenarioId", requestData.ScenarioID), slog.String("objectType", requestData.TriggerObjectType), slog.String("orgId", orgID))
 
 		organizationUsecase := api.usecases.NewOrganizationUseCase()
-		dataModel, err := organizationUsecase.GetDataModel(ctx, orgID)
+		dataModel, err := organizationUsecase.GetDataModel(orgID)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Unable to find datamodel by orgId for ingestion: \n"+err.Error())
 			http.Error(w, "", http.StatusInternalServerError)
