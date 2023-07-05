@@ -11,7 +11,7 @@ type CustomListRepository interface {
 	AllCustomLists(tx Transaction, orgId string) ([]models.CustomList, error)
 	GetCustomListById(tx Transaction, id string) (models.CustomList, error)
 	GetCustomListValues(tx Transaction, getCustomList models.GetCustomListValuesInput) ([]models.CustomListValue, error)
-	CreateCustomList(tx Transaction, createCustomList models.CreateCustomListInput, newCustomListId string) error	
+	CreateCustomList(tx Transaction, createCustomList models.CreateCustomListInput, newCustomListId string) error
 	UpdateCustomList(tx Transaction, updateCustomList models.UpdateCustomListInput) error
 	SoftDeleteCustomList(tx Transaction, deleteCustomList models.DeleteCustomListInput) error
 	AddCustomListValue(tx Transaction, addCustomListValue models.AddCustomListValueInput, newCustomListId string) error
@@ -43,11 +43,10 @@ func (repo *CustomListRepositoryPostgresql) GetCustomListById(tx Transaction, id
 		NewQueryBuilder().
 			Select(dbmodels.ColumnsSelectCustomList...).
 			From(dbmodels.TABLE_CUSTOM_LIST).
-			Where("id = ?", id),
+			Where("id = ? AND deleted_at IS NULL", id),
 		dbmodels.AdaptCustomList,
 	)
 }
-
 
 func (repo *CustomListRepositoryPostgresql) GetCustomListValues(tx Transaction, getCustomList models.GetCustomListValuesInput) ([]models.CustomListValue, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
@@ -131,7 +130,6 @@ func (repo *CustomListRepositoryPostgresql) AddCustomListValue(tx Transaction, a
 	)
 	return err
 }
-
 
 func (repo *CustomListRepositoryPostgresql) DeleteCustomListValue(tx Transaction, deleteCustomListValue models.DeleteCustomListValueInput) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
