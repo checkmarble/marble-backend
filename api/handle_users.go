@@ -63,7 +63,7 @@ func (api *API) handleDeleteUser() http.HandlerFunc {
 		if presentError(w, r, err) {
 			return
 		}
-		PresentNothing(w)
+		PresentNothingStatusCode(w, http.StatusNoContent)
 	}
 }
 
