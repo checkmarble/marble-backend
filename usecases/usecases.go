@@ -88,15 +88,22 @@ func (usecases *Usecases) NewSeedUseCase() SeedUseCase {
 		userRepository:         usecases.Repositories.UserRepository,
 		organizationCreator:    usecases.NewOrganizationCreator(),
 		organizationRepository: usecases.Repositories.OrganizationRepository,
+		customListRepository:   usecases.Repositories.CustomListRepository,
 	}
 }
 
 func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCreator {
 	return organization.OrganizationCreator{
-		TransactionFactory:         usecases.Repositories.TransactionFactory,
-		OrganizationRepository:     usecases.Repositories.OrganizationRepository,
-		DataModelRepository:        usecases.Repositories.DataModelRepository,
-		OrganizationSeeder:         usecases.Repositories.LegacyPgRepository,
+		TransactionFactory:     usecases.Repositories.TransactionFactory,
+		OrganizationRepository: usecases.Repositories.OrganizationRepository,
+		DataModelRepository:    usecases.Repositories.DataModelRepository,
+		OrganizationSeeder: organization.NewOrganizationSeeder(
+			usecases.Repositories.CustomListRepository,
+			usecases.Repositories.ApiKeyRepository,
+			usecases.Repositories.LegacyPgRepository,
+			usecases.Repositories.LegacyPgRepository,
+			usecases.Repositories.LegacyPgRepository,
+			usecases.Repositories.TransactionFactory),
 		PopulateOrganizationSchema: usecases.NewPopulateOrganizationSchema(),
 	}
 }
