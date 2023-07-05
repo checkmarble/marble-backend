@@ -11,6 +11,7 @@ type CustomListRepository interface {
 	AllCustomLists(tx Transaction, orgId string) ([]models.CustomList, error)
 	GetCustomListById(tx Transaction, id string) (models.CustomList, error)
 	GetCustomListValues(tx Transaction, getCustomList models.GetCustomListValuesInput) ([]models.CustomListValue, error)
+	GetCustomListValueById(tx Transaction, id string) (models.CustomListValue, error)
 	CreateCustomList(tx Transaction, createCustomList models.CreateCustomListInput, newCustomListId string) error
 	UpdateCustomList(tx Transaction, updateCustomList models.UpdateCustomListInput) error
 	SoftDeleteCustomList(tx Transaction, deleteCustomList models.DeleteCustomListInput) error
@@ -57,6 +58,18 @@ func (repo *CustomListRepositoryPostgresql) GetCustomListValues(tx Transaction, 
 			Select(dbmodels.ColumnsSelectCustomListValue...).
 			From(dbmodels.TABLE_CUSTOM_LIST_VALUE).
 			Where("custom_list_id = ? AND deleted_at IS NULL", getCustomList.Id),
+		dbmodels.AdaptCustomListValue,
+	)
+}
+func (repo *CustomListRepositoryPostgresql) GetCustomListValueById(tx Transaction, id string) (models.CustomListValue, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	return SqlToModel(
+		pgTx,
+		NewQueryBuilder().
+			Select(dbmodels.ColumnsSelectCustomListValue...).
+			From(dbmodels.TABLE_CUSTOM_LIST_VALUE).
+			Where("id = ? AND deleted_at IS NULL", id),
 		dbmodels.AdaptCustomListValue,
 	)
 }

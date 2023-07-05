@@ -42,7 +42,7 @@ func (api *API) handlePostCustomList() http.HandlerFunc {
 		inputDto := ctx.Value(httpin.Input).(*dto.CreateCustomListInputDto).Body
 
 		usecase := api.usecases.NewCustomListUseCase()
-		err = usecase.CreateCustomList(ctx, models.CreateCustomListInput{
+		customList, err := usecase.CreateCustomList(ctx, models.CreateCustomListInput{
 			OrgId:       orgID,
 			Name:        inputDto.Name,
 			Description: inputDto.Description,
@@ -51,7 +51,7 @@ func (api *API) handlePostCustomList() http.HandlerFunc {
 			logger.ErrorCtx(ctx, "error creating a list: \n"+err.Error())
 			return
 		}
-		PresentNothing(w)
+		PresentModelWithNameStatusCode(w, "custom_list", dto.AdaptCustomListDto(customList), http.StatusCreated)
 	}
 }
 
@@ -153,7 +153,7 @@ func (api *API) handlePostCustomListValue() http.HandlerFunc {
 		requestData := inputDto.Body
 
 		usecase := api.usecases.NewCustomListUseCase()
-		err = usecase.AddCustomListValue(ctx, models.AddCustomListValueInput{
+		customListValue, err := usecase.AddCustomListValue(ctx, models.AddCustomListValueInput{
 			CustomListId: listId,
 			OrgId:        orgID,
 			Value:        requestData.Value,
@@ -163,7 +163,7 @@ func (api *API) handlePostCustomListValue() http.HandlerFunc {
 			return
 		}
 
-		PresentNothing(w)
+		PresentModelWithNameStatusCode(w, "custom_list_value", dto.AdaptCustomListValueDto(customListValue), http.StatusCreated)
 	}
 }
 
