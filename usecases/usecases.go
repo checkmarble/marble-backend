@@ -105,7 +105,6 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 			usecases.Repositories.LegacyPgRepository,
 			usecases.Repositories.TransactionFactory),
 		PopulateOrganizationSchema: usecases.NewPopulateOrganizationSchema(),
-		Repositories:               repositories.Repositories{},
 	}
 }
 

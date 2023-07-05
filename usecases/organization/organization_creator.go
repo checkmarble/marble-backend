@@ -11,7 +11,6 @@ type OrganizationCreator struct {
 	DataModelRepository        repositories.DataModelRepository
 	OrganizationSeeder         OrganizationSeeder
 	PopulateOrganizationSchema PopulateOrganizationSchema
-	Repositories               repositories.Repositories
 }
 
 func (creator *OrganizationCreator) CreateOrganizationWithId(newOrganizationId string, createOrga models.CreateOrganizationInput) (models.Organization, error) {
