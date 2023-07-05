@@ -81,7 +81,7 @@ func (api *API) handleGetCustomListWithValues() http.HandlerFunc {
 			logger.ErrorCtx(ctx, "error getting a list values: \n"+err.Error())
 			return
 		}
-		PresentModelWithName(w, "custom_list_with_values", dto.AdaptCustomListWithValuesDto(CustomList, CustomListValues))
+		PresentModelWithName(w, "custom_list", dto.AdaptCustomListWithValuesDto(CustomList, CustomListValues))
 	}
 }
 
