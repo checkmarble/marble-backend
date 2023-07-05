@@ -43,24 +43,15 @@ func LogRequestError(r *http.Request, msg string, args ...any) {
 	LoggerFromContext(ctx).ErrorCtx(ctx, msg, args...)
 }
 
-func CredentialsFromCtx(ctx context.Context) (models.Credentials, bool) {
+func CredentialsFromCtx(ctx context.Context) models.Credentials {
 
-	creds, found := ctx.Value(ContextKeyCredentials).(models.Credentials)
-	return creds, found
-}
-
-func MustCredentialsFromCtx(ctx context.Context) models.Credentials {
-
-	creds, found := CredentialsFromCtx(ctx)
-	if !found {
-		panic(fmt.Errorf("credentials not found in request context"))
-	}
+	creds, _ := ctx.Value(ContextKeyCredentials).(models.Credentials)
 	return creds
 }
 
 func OrganizationIdFromRequest(request *http.Request) (organizationID string, err error) {
 
-	creds := MustCredentialsFromCtx(request.Context())
+	creds := CredentialsFromCtx(request.Context())
 
 	var requestOrganizationId string
 	if request != nil {

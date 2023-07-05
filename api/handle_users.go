@@ -69,7 +69,7 @@ func (api *API) handleDeleteUser() http.HandlerFunc {
 
 func (api *API) handleGetCredentials() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		creds := utils.MustCredentialsFromCtx(r.Context())
+		creds := utils.CredentialsFromCtx(r.Context())
 		PresentModelWithName(w, "credentials", dto.AdaptCredentialDto(creds))
 	}
 }

@@ -44,7 +44,7 @@ func (usecase *DecisionUsecase) ListDecisionsOfOrganization(orgID string) ([]mod
 }
 
 func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models.CreateDecisionInput, logger *slog.Logger) (models.Decision, error) {
-	if err := utils.EnforceOrganizationAccess(utils.MustCredentialsFromCtx(ctx), input.OrganizationID); err != nil {
+	if err := utils.EnforceOrganizationAccess(utils.CredentialsFromCtx(ctx), input.OrganizationID); err != nil {
 		return models.Decision{}, err
 	}
 

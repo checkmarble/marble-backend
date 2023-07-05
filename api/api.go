@@ -83,8 +83,7 @@ func New(ctx context.Context, port string, usecases usecases.Usecases, corsAllow
 func (api *API) UsecasesWithCreds(r *http.Request) *usecases.UsecasesWithCreds {
 	ctx := r.Context()
 
-	// empty creds are fine, this is not the place to enforce security
-	creds, _ := utils.CredentialsFromCtx(ctx)
+	creds := utils.CredentialsFromCtx(ctx)
 
 	// marble admin can specify on which organization to operate
 	// Ignore error, empty organizationId is fine, this is not the place to enforce security

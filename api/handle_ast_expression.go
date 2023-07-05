@@ -45,7 +45,7 @@ func (api *API) handleValidateAstExpression() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		creds := utils.MustCredentialsFromCtx(ctx)
+		creds := utils.CredentialsFromCtx(ctx)
 		input := ctx.Value(httpin.Input).(*PostValidateAstExpression)
 
 		expression, err := dto.AdaptASTNode(*input.Body.Expression)
@@ -97,7 +97,7 @@ type RunAstExpressionResultDto struct {
 func (api *API) handleRunAstExpression() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		creds := utils.MustCredentialsFromCtx(ctx)
+		creds := utils.CredentialsFromCtx(ctx)
 		input := ctx.Value(httpin.Input).(*PostRunAstExpression)
 		logger := api.logger
 
