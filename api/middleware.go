@@ -79,7 +79,7 @@ func (api *API) enforcePermissionMiddleware(permission models.Permission) func(n
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 			ctx := r.Context()
-			creds := utils.MustCredentialsFromCtx(ctx)
+			creds := utils.CredentialsFromCtx(ctx)
 			allowed := creds.Role.HasPermission(permission)
 
 			if allowed {
