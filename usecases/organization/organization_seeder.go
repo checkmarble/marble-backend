@@ -28,14 +28,28 @@ type OrganizationSeeder interface {
 }
 
 type organizationSeederImpl struct {
-	TransactionFactory repositories.TransactionFactory
-	Repositories       repositories.Repositories
+	TransactionFactory               repositories.TransactionFactory
+	CustomListRepository             repositories.CustomListRepository
+	ApiKeyRepository                 repositories.ApiKeyRepository
+	ScenarioWriteRepository          repositories.ScenarioWriteRepository
+	ScenarioPublicationRepository    repositories.ScenarioPublicationRepository
+	ScenarioIterationWriteRepository repositories.ScenarioIterationWriteRepository
 }
 
-func NewOrganizationSeeder(repo repositories.Repositories, transactionFactory repositories.TransactionFactory) OrganizationSeeder {
+func NewOrganizationSeeder(
+	clr repositories.CustomListRepository,
+	akr repositories.ApiKeyRepository,
+	swr repositories.ScenarioWriteRepository,
+	spr repositories.ScenarioPublicationRepository,
+	siwr repositories.ScenarioIterationWriteRepository,
+	tf repositories.TransactionFactory) OrganizationSeeder {
 	return &organizationSeederImpl{
-		TransactionFactory: transactionFactory,
-		Repositories:       repo,
+		TransactionFactory:               tf,
+		CustomListRepository:             clr,
+		ApiKeyRepository:                 akr,
+		ScenarioWriteRepository:          swr,
+		ScenarioPublicationRepository:    spr,
+		ScenarioIterationWriteRepository: siwr,
 	}
 }
 
@@ -45,7 +59,7 @@ func (o *organizationSeederImpl) Seed(orgId string) error {
 	// Tokens
 	///////////////////////////////
 
-	err := o.Repositories.ApiKeyRepository.CreateApiKey(nil, models.CreateApiKeyInput{
+	err := o.ApiKeyRepository.CreateApiKey(nil, models.CreateApiKeyInput{
 		OrganizationId: orgId,
 		Key:            randomAPiKey(),
 	})
@@ -59,7 +73,7 @@ func (o *organizationSeederImpl) Seed(orgId string) error {
 	///////////////////////////////
 	newCustomListId := uuid.NewString()
 
-	err = o.Repositories.CustomListRepository.CreateCustomList(nil, models.CreateCustomListInput{
+	err = o.CustomListRepository.CreateCustomList(nil, models.CreateCustomListInput{
 		OrgId:       orgId,
 		Name:        "Welcome to Marble",
 		Description: "Need a whitelist or blacklist ? The list is your friend :)",
@@ -71,13 +85,13 @@ func (o *organizationSeederImpl) Seed(orgId string) error {
 	addCustomListValueInput := models.AddCustomListValueInput{
 		OrgId:        orgId,
 		CustomListId: newCustomListId,
-		Value: "Welcome",
+		Value:        "Welcome",
 	}
-	o.Repositories.CustomListRepository.AddCustomListValue(nil, addCustomListValueInput, uuid.NewString())
+	o.CustomListRepository.AddCustomListValue(nil, addCustomListValueInput, uuid.NewString())
 	addCustomListValueInput.Value = "to"
-	o.Repositories.CustomListRepository.AddCustomListValue(nil, addCustomListValueInput, uuid.NewString())
+	o.CustomListRepository.AddCustomListValue(nil, addCustomListValueInput, uuid.NewString())
 	addCustomListValueInput.Value = "marble"
-	o.Repositories.CustomListRepository.AddCustomListValue(nil, addCustomListValueInput, uuid.NewString())
+	o.CustomListRepository.AddCustomListValue(nil, addCustomListValueInput, uuid.NewString())
 
 	///////////////////////////////
 	// Create and store a scenario
@@ -87,7 +101,7 @@ func (o *organizationSeederImpl) Seed(orgId string) error {
 		Description:       "test description",
 		TriggerObjectType: "transactions",
 	}
-	scenario, err := o.Repositories.ScenarioWriteRepository.CreateScenario(context.TODO(), orgId, createScenarioInput)
+	scenario, err := o.ScenarioWriteRepository.CreateScenario(context.TODO(), orgId, createScenarioInput)
 	if err != nil {
 		log.Printf("error creating scenario: %v", err)
 		return err
@@ -134,12 +148,12 @@ func (o *organizationSeederImpl) Seed(orgId string) error {
 		},
 	}
 
-	scenarioIteration, err := o.Repositories.ScenarioIterationWriteRepository.CreateScenarioIteration(context.TODO(), orgId, createScenarioIterationInput)
+	scenarioIteration, err := o.ScenarioIterationWriteRepository.CreateScenarioIteration(context.TODO(), orgId, createScenarioIterationInput)
 	if err != nil {
 		log.Printf("error creating scenario iteration: %v", err)
 		return err
 	}
-	_, err = o.Repositories.ScenarioPublicationRepository.CreateScenarioPublication(context.TODO(), orgId, models.CreateScenarioPublicationInput{
+	_, err = o.ScenarioPublicationRepository.CreateScenarioPublication(context.TODO(), orgId, models.CreateScenarioPublicationInput{
 		ScenarioIterationID: scenarioIteration.ID,
 		PublicationAction:   models.Publish,
 	})
@@ -151,7 +165,7 @@ func (o *organizationSeederImpl) Seed(orgId string) error {
 	///////////////////////////////
 	// Also create the demo scenario
 	///////////////////////////////
-	demoScenario, err := o.Repositories.ScenarioWriteRepository.CreateScenario(context.TODO(), orgId, models.CreateScenarioInput{
+	demoScenario, err := o.ScenarioWriteRepository.CreateScenario(context.TODO(), orgId, models.CreateScenarioInput{
 		Name:              "Demo scenario",
 		Description:       "Demo scenario",
 		TriggerObjectType: "transactions",
@@ -281,12 +295,12 @@ func (o *organizationSeederImpl) Seed(orgId string) error {
 			},
 		},
 	}
-	demoScenarioIteration, err := o.Repositories.ScenarioIterationWriteRepository.CreateScenarioIteration(context.TODO(), orgId, createDemoScenarioIterationInput)
+	demoScenarioIteration, err := o.ScenarioIterationWriteRepository.CreateScenarioIteration(context.TODO(), orgId, createDemoScenarioIterationInput)
 	if err != nil {
 		log.Printf("error creating demo scenario iteration: %v", err)
 		return err
 	}
-	_, err = o.Repositories.ScenarioPublicationRepository.CreateScenarioPublication(context.TODO(), orgId, models.CreateScenarioPublicationInput{
+	_, err = o.ScenarioPublicationRepository.CreateScenarioPublication(context.TODO(), orgId, models.CreateScenarioPublicationInput{
 		ScenarioIterationID: demoScenarioIteration.ID,
 		PublicationAction:   models.Publish,
 	})
