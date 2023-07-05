@@ -66,7 +66,7 @@ func (usecase *IngestionUseCase) IngestObjectsFromStorageCsv(ctx context.Context
 		organizationId := elements[0]
 		tableName := elements[1]
 
-		dataModel, err := usecase.datamodelRepository.GetDataModel(ctx, organizationId)
+		dataModel, err := usecase.datamodelRepository.GetDataModel(nil, organizationId)
 		if err != nil {
 			return fmt.Errorf("error getting data model for organization %s: %w", organizationId, err)
 		}
@@ -91,6 +91,7 @@ func (usecase *IngestionUseCase) IngestObjectsFromStorageCsv(ctx context.Context
 }
 
 func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organizationId string, file models.GCSObject, table models.Table, logger *slog.Logger) error {
+	start := time.Now()
 	r := csv.NewReader(file.Reader)
 	firstRow, err := r.Read()
 	if err != nil {
@@ -106,7 +107,8 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 		}
 	}
 
-	for i := 0; ; i++ {
+	var i int
+	for i = 0; ; i++ {
 		record, err := r.Read()
 		if err == io.EOF {
 			break
@@ -114,12 +116,12 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 		if err != nil {
 			return err
 		}
-		logger.InfoCtx(ctx, fmt.Sprintf("Ingesting object %v", record))
+		// logger.InfoCtx(ctx, fmt.Sprintf("Ingesting object %v", record))
 		object, err := parseVStringValuesToMap(record, firstRow, table)
 		if err != nil {
 			return err
 		}
-		logger.DebugCtx(ctx, fmt.Sprintf("Object to ingest %d: %+v", i, object))
+		// logger.DebugCtx(ctx, fmt.Sprintf("Object to ingest %d: %+v", i, object))
 
 		if err := usecase.IngestObject(organizationId, models.ClientObject{
 			TableName: table.Name,
@@ -128,6 +130,11 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 			return err
 		}
 	}
+	end := time.Now()
+	duration := end.Sub(start)
+	// divide by 1e6 convert to milliseconds (base is nanoseconds)
+	avgDuration := float64(duration) / float64(i*1e6)
+	logger.InfoCtx(ctx, fmt.Sprintf("Ingested %d objects in %s, average %vms", i, duration, avgDuration))
 
 	return nil
 }

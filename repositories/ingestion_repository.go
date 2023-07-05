@@ -40,7 +40,7 @@ func (repo *IngestionRepositoryImpl) IngestObject(transaction Transaction, paylo
 	if err != nil {
 		return err
 	}
-	logger.Info("Created object in db", slog.String("type", tableNameWithSchema(tx, table.Name)), slog.String("id", objectIdStr))
+	logger.Debug("Created object in db", slog.String("type", tableNameWithSchema(tx, table.Name)), slog.String("id", objectIdStr))
 
 	return nil
 }
