@@ -23,6 +23,13 @@ func PresentModelWithName(w http.ResponseWriter, keyName string, models any) {
 	})
 }
 
+func PresentModelWithNameStatusCode(w http.ResponseWriter, keyName string, models any, statusCode int) {
+	w.WriteHeader(statusCode)
+	PresentModel(w, map[string]any{
+		keyName: models,
+	})
+}
+
 func PresentNothing(w http.ResponseWriter) {
 	PresentNothingStatusCode(w, http.StatusNoContent)
 }

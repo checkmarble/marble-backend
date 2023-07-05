@@ -7,17 +7,11 @@ import (
 )
 
 type CustomList struct {
-	Id          string            `json:"id"`
-	Name        string            `json:"name"`
-	Description string            `json:"description"`
-	CreatedAt   time.Time         `json:"createdAt"`
-	UpdatedAt   time.Time         `json:"updatedAt"`
-	Values      []CustomListValue `json:"values,omitempty"`
-}
-
-type CustomListValue struct {
-	Id    string `json:"id"`
-	Value string `json:"value"`
+	Id          string    `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
 }
 
 func AdaptCustomListDto(list models.CustomList) CustomList {
@@ -30,10 +24,29 @@ func AdaptCustomListDto(list models.CustomList) CustomList {
 	}
 }
 
-func AdaptCustomListWithValuesDto(list models.CustomList, values []models.CustomListValue) CustomList {
-	customList := AdaptCustomListDto(list)
-	customList.Values = utils.Map(values, AdaptCustomListValueDto)
-	return customList
+type CustomListWithValues struct {
+	Id          string            `json:"id"`
+	Name        string            `json:"name"`
+	Description string            `json:"description"`
+	CreatedAt   time.Time         `json:"createdAt"`
+	UpdatedAt   time.Time         `json:"updatedAt"`
+	Values      []CustomListValue `json:"values"`
+}
+
+type CustomListValue struct {
+	Id    string `json:"id"`
+	Value string `json:"value"`
+}
+
+func AdaptCustomListWithValuesDto(list models.CustomList, values []models.CustomListValue) CustomListWithValues {
+	return CustomListWithValues{
+		Id:          string(list.Id),
+		Name:        list.Name,
+		Description: list.Description,
+		CreatedAt:   list.CreatedAt,
+		UpdatedAt:   list.UpdatedAt,
+		Values:      utils.Map(values, AdaptCustomListValueDto),
+	}
 }
 
 func AdaptCustomListValueDto(listValue models.CustomListValue) CustomListValue {
