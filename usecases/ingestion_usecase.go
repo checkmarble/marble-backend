@@ -132,14 +132,15 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 
 		payloadReaders = append(payloadReaders, payloadReader)
 	}
+	numRows := i
 
 	// ingest by batches of 'batchSize'
-	for j := 0; j < i; j += batchSize {
-		end := j + batchSize
-		if end > i {
-			end = i
+	for windowStart := 0; windowStart < numRows; windowStart += batchSize {
+		windowEnd := windowStart + batchSize
+		if windowEnd > numRows {
+			windowEnd = numRows
 		}
-		batch := payloadReaders[j:end]
+		batch := payloadReaders[windowStart:windowEnd]
 
 		if err := usecase.orgTransactionFactory.TransactionInOrgSchema(organizationId, func(tx repositories.Transaction) error {
 			return usecase.ingestionRepository.IngestObject(tx, batch, table, logger)
