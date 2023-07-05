@@ -15,6 +15,7 @@ import (
 
 type APIScenario struct {
 	ID                string    `json:"id"`
+	OrganizationId    string    `json:"organization_id"`
 	Name              string    `json:"name"`
 	Description       string    `json:"description"`
 	TriggerObjectType string    `json:"triggerObjectType"`
@@ -25,6 +26,7 @@ type APIScenario struct {
 func NewAPIScenario(scenario models.Scenario) APIScenario {
 	return APIScenario{
 		ID:                scenario.ID,
+		OrganizationId:    scenario.OrganizationID,
 		Name:              scenario.Name,
 		Description:       scenario.Description,
 		TriggerObjectType: scenario.TriggerObjectType,
