@@ -58,9 +58,9 @@ func MustCredentialsFromCtx(ctx context.Context) models.Credentials {
 	return creds
 }
 
-func OrgIDFromCtx(ctx context.Context, request *http.Request) (organizationID string, err error) {
+func OrganizationIdFromRequest(request *http.Request) (organizationID string, err error) {
 
-	creds := MustCredentialsFromCtx(ctx)
+	creds := MustCredentialsFromCtx(request.Context())
 
 	var requestOrganizationId string
 	if request != nil {
@@ -89,6 +89,11 @@ func OrgIDFromCtx(ctx context.Context, request *http.Request) (organizationID st
 	}
 
 	return creds.OrganizationId, nil
+}
+
+// TODO: replace me with OrganizationIdFromContext
+func OrgIDFromCtx(ctx context.Context, request *http.Request) (organizationID string, err error) {
+	return OrganizationIdFromRequest(request)
 }
 
 func ValidateUuid(uuidParam string) error {

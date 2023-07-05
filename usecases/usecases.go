@@ -108,13 +108,6 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 	}
 }
 
-func (usecases *Usecases) NewScenarioUsecase() ScenarioUsecase {
-	return ScenarioUsecase{
-		scenarioReadRepository:  usecases.Repositories.ScenarioReadRepository,
-		scenarioWriteRepository: usecases.Repositories.ScenarioWriteRepository,
-	}
-}
-
 func (usecases *Usecases) NewScenarioPublicationUsecase() ScenarioPublicationUsecase {
 	return ScenarioPublicationUsecase{
 		scenarioPublicationsRepository: usecases.Repositories.ScenarioPublicationRepository,
