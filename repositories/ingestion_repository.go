@@ -22,7 +22,10 @@ func (repo *IngestionRepositoryImpl) IngestObject(transaction Transaction, paylo
 
 	tx := adaptClientDatabaseTransaction(transaction)
 
-	err = updateExistingVersionIfPresent(tx, payload, table)
+	objectId, _ := payload.ReadFieldFromPayload("object_id")
+	objectIdStr := objectId.(string)
+
+	err = updateExistingVersionIfPresent(tx, objectIdStr, table)
 	if err != nil {
 		return fmt.Errorf("Error updating existing version: %w", err)
 	}
@@ -33,12 +36,11 @@ func (repo *IngestionRepositoryImpl) IngestObject(transaction Transaction, paylo
 
 	sql := NewQueryBuilder().Insert(tableNameWithSchema(tx, table.Name)).Columns(columnNames...).Values(values...).Suffix("RETURNING \"id\"")
 
-	var createdObjectID string
 	_, err = tx.ExecBuilder(sql)
 	if err != nil {
 		return err
 	}
-	logger.Info("Created object in db", slog.String("type", tableNameWithSchema(tx, table.Name)), slog.String("object_id", createdObjectID))
+	logger.Info("Created object in db", slog.String("type", tableNameWithSchema(tx, table.Name)), slog.String("id", objectIdStr))
 
 	return nil
 }
@@ -58,14 +60,13 @@ func generateInsertValues(table models.Table, payload models.PayloadReader) (col
 
 func updateExistingVersionIfPresent(
 	tx TransactionPostgres,
-	payload models.PayloadReader,
+	objectId string,
 	table models.Table) (err error) {
 
-	object_id, _ := payload.ReadFieldFromPayload("object_id")
 	sql, args, err := NewQueryBuilder().
 		Select("id").
 		From(tableNameWithSchema(tx, table.Name)).
-		Where(squirrel.Eq{"object_id": object_id}).
+		Where(squirrel.Eq{"object_id": objectId}).
 		Where(squirrel.Eq{"valid_until": "Infinity"}).
 		ToSql()
 	if err != nil {

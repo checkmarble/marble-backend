@@ -38,23 +38,24 @@ func (usecase *IngestionUseCase) IngestObjectsFromStorageCsv(ctx context.Context
 		return err
 	}
 
-	logger.InfoCtx(ctx, fmt.Sprintf("Found %d CSVs of data to ingest", len(objects)))
-
-	for _, file := range objects {
-		fullFileName := file.FileName
-		if fullFileName == pendingFilesFolder+"/" {
-			// "folder" itself lists as a GCS object, ignore it
-			continue
+	filteredObjects := make([]models.GCSObject, 0)
+	for _, object := range objects {
+		// "folder" itself lists as a GCS object, ignore it
+		if object.FileName != pendingFilesFolder+"/" && strings.HasSuffix(object.FileName, ".csv") {
+			filteredObjects = append(filteredObjects, object)
 		}
+	}
+
+	logger.InfoCtx(ctx, fmt.Sprintf("Found %d CSVs of data to ingest", len(filteredObjects)))
+
+	for _, file := range filteredObjects {
+		fullFileName := file.FileName
 		fmt.Println(fullFileName)
 		logger.InfoCtx(ctx, fmt.Sprintf("Ingesting data from CSV %s", fullFileName))
 
-		// // full filename is path/to/file/{filename}.csv
+		// full filename is path/to/file/{filename}.csv
 		fullFileNameElements := strings.Split(fullFileName, "/")
 		fileName := fullFileNameElements[len(fullFileNameElements)-1]
-		if !strings.HasSuffix(fileName, ".csv") {
-			return fmt.Errorf("Invalid filename %s: expecting .csv extension", fileName)
-		}
 
 		// end of filename is organizationId:tableName:timestamp.csv
 		// (using : because _ can be present in table name, - is present in org id)
@@ -95,11 +96,17 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 	if err != nil {
 		return fmt.Errorf("Error reading first row of CSV: %w", err)
 	}
-	if len(firstRow) != len(table.Fields) {
-		return fmt.Errorf("Invalid number of columns in CSV: expecting %d, got %d", len(table.Fields), len(firstRow))
+
+	// first, check presence of all required fields in the csv
+	for name, field := range table.Fields {
+		if !field.Nullable {
+			if !containsString(firstRow, string(name)) {
+				return fmt.Errorf("Missing required field %s in CSV", name)
+			}
+		}
 	}
 
-	for {
+	for i := 0; ; i++ {
 		record, err := r.Read()
 		if err == io.EOF {
 			break
@@ -112,13 +119,26 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 		if err != nil {
 			return err
 		}
-		err = usecase.IngestObject(organizationId, models.ClientObject{
+		logger.DebugCtx(ctx, fmt.Sprintf("Object to ingest %d: %+v", i, object))
+
+		if err := usecase.IngestObject(organizationId, models.ClientObject{
 			TableName: table.Name,
 			Data:      object,
-		}, table, logger)
-
+		}, table, logger); err != nil {
+			return err
+		}
 	}
-	return fmt.Errorf("Not implemented")
+
+	return nil
+}
+
+func containsString(arr []string, s string) bool {
+	for _, a := range arr {
+		if a == s {
+			return true
+		}
+	}
+	return false
 }
 
 func parseVStringValuesToMap(values []string, headers []string, table models.Table) (map[string]any, error) {
@@ -127,7 +147,10 @@ func parseVStringValuesToMap(values []string, headers []string, table models.Tab
 	for i, value := range values {
 		fieldName := headers[i]
 		result[fieldName] = value
-		field := table.Fields[models.FieldName(fieldName)]
+		field, ok := table.Fields[models.FieldName(fieldName)]
+		if !ok {
+			return nil, fmt.Errorf("Field %s not found in table %s", fieldName, table.Name)
+		}
 
 		if value == "" {
 			if !field.Nullable {
