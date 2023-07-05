@@ -10,7 +10,7 @@ export function useRunOnce(loader: () => Promise<void>) {
 
 export function useSimpleLoader<Things>(
   loadingDispatcher: LoadingDispatcher,
-  loader: () => Promise<Things>
+  loader: () => Promise<Things | null>
 ): [Things | null, () => Promise<void>] {
   const [things, setThings] = useState<Things | null>(null);
 

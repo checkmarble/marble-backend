@@ -53,7 +53,8 @@ func (d DatabaseAccess) Evaluate(arguments ast.Arguments) (any, error) {
 
 	fieldValue, err := d.getDbField(tableName, fieldName, pathStringArr)
 	if err != nil {
-		return nil, fmt.Errorf("getDbField not working %w", err)
+		errorMsg := fmt.Sprintf("tableName: %s, fieldName: %s, path: %v", tableName, fieldName, path)
+		return nil, fmt.Errorf("DatabaseAccess: value not found: %s %w %w", errorMsg, err, ErrRuntimeExpression)
 	}
 	return fieldValue, nil
 }

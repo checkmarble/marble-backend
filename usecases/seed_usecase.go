@@ -74,13 +74,18 @@ func (usecase *SeedUseCase) SeedZorgOrganization(zorgOrganizationId string) erro
 		return err
 	}
 
-	newCustomListId := uuid.NewString()
+	newCustomListId := "d6643d7e-c973-4899-a9a8-805f868ef90a"
 
 	err = usecase.customListRepository.CreateCustomList(nil, models.CreateCustomListInput{
 		OrgId:       zorgOrganizationId,
 		Name:        "Welcome to Marble",
 		Description: "Need a whitelist or blacklist ? The list is your friend :)",
 	}, newCustomListId)
+
+	if repositories.IsIsUniqueViolationError(err) {
+		err = nil
+	}
+
 	if err != nil {
 		return err
 	}
