@@ -110,7 +110,7 @@ export default function ScenarioDetailsPage() {
           /> */}
 
           <Button onClick={handleValidateScenario}>Validate</Button>
-          <Button onClick={handleRunScenario}>Run</Button>
+          <Button onClick={handleRunScenario}>Run (Ingestion required)</Button>
           {validationErrors.map((error, i) => (
             <Alert key={i} severity="error">
               {error}

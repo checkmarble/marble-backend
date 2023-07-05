@@ -96,7 +96,6 @@ type RunAstExpressionResultDto struct {
 func (api *API) handleRunAstExpression() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		creds := utils.CredentialsFromCtx(ctx)
 		input := ctx.Value(httpin.Input).(*PostRunAstExpression)
 		logger := api.logger
 
@@ -107,7 +106,8 @@ func (api *API) handleRunAstExpression() http.HandlerFunc {
 		}
 
 		organizationUsecase := api.usecases.NewOrganizationUseCase()
-		dataModel, err := organizationUsecase.GetDataModel(creds.OrganizationId)
+
+		dataModel, err := organizationUsecase.GetDataModel(api.UsecasesWithCreds(r).OrganizationIdOfContext)
 		if presentError(w, r, err) {
 			return
 		}

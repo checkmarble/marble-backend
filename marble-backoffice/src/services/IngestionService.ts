@@ -1,10 +1,7 @@
 import { useCallback } from "react";
 import type { MarbleApi, IngestObject } from "@/infra/MarbleApi";
 
-export function useIngestion(
-  marbleApi: MarbleApi | null
-) {
-
+export function useIngestion(marbleApi: MarbleApi | null) {
   const ingest = useCallback(async (): Promise<IngestObject[]> => {
     if (!marbleApi) {
       throw Error("MarbleApi not initialized");
@@ -12,6 +9,7 @@ export function useIngestion(
 
     const companyAId = "Zorg-client-a";
     const accountId = "account-a-id";
+    const marble_accountId = "marble-account-id";
 
     const now = new Date().toISOString();
 
@@ -48,12 +46,24 @@ export function useIngestion(
         },
       }),
 
+      marbleApi.ingest({
+        tableName: "accounts",
+        content: {
+          object_id: marble_accountId,
+          updated_at: now,
+          name: "marble",
+          balance: 1e9,
+          company_id: companyAId,
+          currency: "$",
+          is_frozen: false,
+        },
+      }),
+
       // two transactions account in companyAId
       injectTransaction(marbleApi, accountId, "transaction_a", 12.5),
       injectTransaction(marbleApi, accountId, "transaction_b", 10),
-    ])
-    return all
-
+    ]);
+    return all;
   }, [marbleApi]);
 
   return {

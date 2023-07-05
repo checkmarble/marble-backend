@@ -120,7 +120,7 @@ export function useAstExpressionBuilder(
               name: "CustomListAccess",
               namedChildren: {
                 customListId: NewAstNode({
-                  constant: "0d968583-20da-4199-bf4a-020566a36251",
+                  constant: "d6643d7e-c973-4899-a9a8-805f868ef90a",
                 }),
               },
             }),
@@ -135,11 +135,18 @@ export function useAstExpressionBuilder(
   );
 
   const builderIdentifiersLoader = useCallback(async () => {
+    if (scenario === null) {
+      return null;
+    }
+
     return showLoader(
       pageLoadingDispatcher,
-      fetchBuilderIdentifiers(service.scenarioRepository, "TODO")
+      fetchBuilderIdentifiers(
+        service.scenarioRepository,
+        scenario.organizationId
+      )
     );
-  }, [pageLoadingDispatcher, service.scenarioRepository]);
+  }, [pageLoadingDispatcher, scenario, service.scenarioRepository]);
 
   const [identifiers] = useSimpleLoader<BuilderIdentifiers>(
     pageLoadingDispatcher,
@@ -147,19 +154,44 @@ export function useAstExpressionBuilder(
   );
 
   const validate = useCallback(async () => {
+    if (scenario === null) {
+      return null;
+    }
+
     const result = await showLoader(
       pageLoadingDispatcher,
-      validateAstExpression(service.scenarioRepository, expressionAstNode)
+      validateAstExpression(
+        service.scenarioRepository,
+        scenario.organizationId,
+        expressionAstNode
+      )
     );
     setValidationErrors(result.validationErrors);
-  }, [service, expressionAstNode, pageLoadingDispatcher]);
+  }, [
+    scenario,
+    pageLoadingDispatcher,
+    service.scenarioRepository,
+    expressionAstNode,
+  ]);
 
   const run = useCallback(async () => {
+    if (scenario === null) {
+      return null;
+    }
     await showLoader(
       pageLoadingDispatcher,
-      runAstExpression(service.scenarioRepository, expressionAstNode)
+      runAstExpression(
+        service.scenarioRepository,
+        scenario.organizationId,
+        expressionAstNode
+      )
     );
-  }, [service, expressionAstNode, pageLoadingDispatcher]);
+  }, [
+    scenario,
+    pageLoadingDispatcher,
+    service.scenarioRepository,
+    expressionAstNode,
+  ]);
 
   const editor: ExpressionEditor = {
     expressionViewModel,
