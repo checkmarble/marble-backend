@@ -27,19 +27,19 @@ type OrganizationSeeder interface {
 	Seed(organizationId string) error
 }
 
-type organizationSeeder struct {
+type organizationSeederImpl struct {
 	TransactionFactory repositories.TransactionFactory
 	Repositories       repositories.Repositories
 }
 
 func NewOrganizationSeeder(repo repositories.Repositories, transactionFactory repositories.TransactionFactory) OrganizationSeeder {
-	return &organizationSeeder{
+	return &organizationSeederImpl{
 		TransactionFactory: transactionFactory,
 		Repositories:       repo,
 	}
 }
 
-func (o *organizationSeeder) Seed(orgId string) error {
+func (o *organizationSeederImpl) Seed(orgId string) error {
 
 	///////////////////////////////
 	// Tokens
