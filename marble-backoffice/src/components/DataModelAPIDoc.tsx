@@ -40,17 +40,17 @@ export default function DataModelAPIDoc(props: DataModelAPIDocProps) {
   );
 }
 
-interface dataModelToObjectsReturn {
-  name?: string;
-  example?: { [key: string]: boolean | number | string };
-  displayableJSON?: string;
+interface DataModelObject {
+  name: string;
+  example: { [key: string]: boolean | number | string };
+  displayableJSON: string;
 }
 
 function dataModelToObjects(dataModel: DataModel) {
-  const customObjects = [];
+  const customObjects: DataModelObject[] = [];
 
   for (const [tableName, table] of Object.entries(dataModel.tables)) {
-    const validJSON: dataModelToObjectsReturn = {};
+    const validJSON: { [key: string]: boolean | number | string } = {};
     let rawJSONwithComments = "{";
 
     for (const [fieldName, field] of Object.entries(table.fields)) {
