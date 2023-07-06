@@ -1,5 +1,5 @@
 import { type MarbleApi } from "@/infra/MarbleApi";
-import type { Scenario, AstNode, BuilderIdentifiers } from "@/models";
+import type { Scenario, AstNode, EditorIdentifiers } from "@/models";
 import {
   adaptScenariosApiResult,
   adaptSingleScenarioApiResult,
@@ -8,7 +8,7 @@ import {
   adapAstValidateSchemaResult,
   adaptAstNodeDto,
 } from "@/models/AstExpressionDto";
-import { adaptBuilderIdentifiers } from "@/models/BuilderIdentifiersDto";
+import { adaptEditorIdentifiers } from "@/models/EditorIdentifiersDto";
 
 export interface ScenariosRepository {
   marbleApi: MarbleApi;
@@ -56,11 +56,11 @@ export async function runAstExpression(
   );
 }
 
-export async function fetchBuilderIdentifiers(
+export async function fetchEditorIdentifiers(
   repository: ScenariosRepository,
-  organizationId: string
-): Promise<BuilderIdentifiers> {
-  return adaptBuilderIdentifiers(
-    await repository.marbleApi.builderIdentifiers(organizationId)
+  scenarioId: string
+): Promise<EditorIdentifiers> {
+  return adaptEditorIdentifiers(
+    await repository.marbleApi.editorIdentifiers(scenarioId)
   );
 }

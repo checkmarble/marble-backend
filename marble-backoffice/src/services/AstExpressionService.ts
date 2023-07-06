@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import {
   type AstNode,
   type ConstantOptional,
-  type BuilderIdentifiers,
+  type EditorIdentifiers,
   NewAstNode,
   NoConstant,
   ConstantType,
@@ -13,7 +13,7 @@ import {
   type ScenariosRepository,
   validateAstExpression,
   runAstExpression,
-  fetchBuilderIdentifiers,
+  fetchEditorIdentifiers,
   fetchScenario,
 } from "@/repositories";
 import { type LoadingDispatcher, showLoader } from "@/hooks/Loading";
@@ -134,23 +134,20 @@ export function useAstExpressionBuilder(
     [expressionViewModel]
   );
 
-  const builderIdentifiersLoader = useCallback(async () => {
+  const editorIdentifiersLoader = useCallback(async () => {
     if (scenario === null) {
       return null;
     }
 
     return showLoader(
       pageLoadingDispatcher,
-      fetchBuilderIdentifiers(
-        service.scenarioRepository,
-        scenario.organizationId
-      )
+      fetchEditorIdentifiers(service.scenarioRepository, scenario.scenarioId)
     );
   }, [pageLoadingDispatcher, scenario, service.scenarioRepository]);
 
-  const [identifiers] = useSimpleLoader<BuilderIdentifiers>(
+  const [identifiers] = useSimpleLoader<EditorIdentifiers>(
     pageLoadingDispatcher,
-    builderIdentifiersLoader
+    editorIdentifiersLoader
   );
 
   const validate = useCallback(async () => {
