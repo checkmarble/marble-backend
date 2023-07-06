@@ -11,14 +11,20 @@ export interface AstNodeDto {
   named_children?: { [key: string]: AstNodeDto };
 }
 
-const AstNodeSchema = yup.object({
+export const AstNodeSchema = yup.object({
   name: yup.string().optional(),
   constant: yup.mixed(),
   children: yup
     .array()
     .of(yup.lazy(() => AstNodeSchema.default(null)))
     .optional(),
-  namedChildren: yup.object().when(() => AstNodeSchema.default(undefined)).optional(),
+  named_children: yup.lazy((obj) => {
+    return yup.object(
+      MapObjectValues(obj || {}, () => {
+        return AstNodeSchema.default(undefined);
+      })
+    );
+  }),
 }) as yup.Schema<AstNodeDto>; // Can't use lazy schema as array().of argument in TypeScript: https://github.com/jquense/yup/issues/1190
 
 export function adaptAstNode(dto: AstNodeDto): AstNode {
@@ -26,7 +32,7 @@ export function adaptAstNode(dto: AstNodeDto): AstNode {
     name: dto.name || "",
     constant: dto.constant === undefined ? NoConstant : dto.constant,
     children: (dto.children || []).map((child) => adaptAstNode(child)),
-    namedChildren: MapObjectValues(dto.named_children || {}, adaptAstNode)
+    namedChildren: MapObjectValues(dto.named_children || {}, adaptAstNode),
   };
 }
 
@@ -35,7 +41,7 @@ export function adaptAstNodeDto(model: AstNode): AstNodeDto {
     name: model.name === "" ? undefined : model.name,
     constant: model.constant === NoConstant ? undefined : model.constant,
     children: (model.children || []).map((child) => adaptAstNodeDto(child)),
-    named_children: MapObjectValues(model.namedChildren || {}, adaptAstNodeDto)
+    named_children: MapObjectValues(model.namedChildren || {}, adaptAstNodeDto),
   };
 }
 export function adapAstValidateSchemaResult(json: unknown) {
