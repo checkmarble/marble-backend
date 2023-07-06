@@ -163,8 +163,9 @@ var AttributeFuncDbAccess = struct {
 	ArgumentPathName:  "path",
 }
 
-func NewNodeDatabaseAccess(tableName string, fieldName string) Node {
+func NewNodeDatabaseAccess(tableName string, fieldName string, path []string) Node {
 	return Node{Function: FUNC_DB_ACCESS}.
 		AddNamedChild(AttributeFuncDbAccess.ArgumentTableName, NewNodeConstant(tableName)).
-		AddNamedChild(AttributeFuncDbAccess.ArgumentFieldName, NewNodeConstant(fieldName))
+		AddNamedChild(AttributeFuncDbAccess.ArgumentFieldName, NewNodeConstant(fieldName)).
+		AddNamedChild(AttributeFuncDbAccess.ArgumentPathName, NewNodeConstant(path))
 }
