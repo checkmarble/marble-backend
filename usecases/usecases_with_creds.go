@@ -37,5 +37,6 @@ func (usecases *UsecasesWithCreds) AstExpressionUsecase() AstExpressionUsecase {
 		OrgTransactionFactory:      usecases.NewOrgTransactionFactory(),
 		IngestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
 		DataModelRepository:        usecases.Repositories.DataModelRepository,
+		ScenarioRepository:         usecases.Repositories.ScenarioReadRepository,
 	}
 }

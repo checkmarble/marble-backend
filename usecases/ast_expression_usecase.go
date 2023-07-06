@@ -19,6 +19,7 @@ type AstExpressionUsecase struct {
 	OrgTransactionFactory      organization.OrgTransactionFactory
 	IngestedDataReadRepository repositories.IngestedDataReadRepository
 	DataModelRepository        repositories.DataModelRepository
+	ScenarioRepository         repositories.ScenarioReadRepository
 }
 
 var ErrExpressionValidation = errors.New("expression validation fail")
@@ -64,37 +65,68 @@ func (usecase *AstExpressionUsecase) Run(expression ast.Node, payload models.Pay
 
 }
 
-type DataAccessesIdentifier struct {
-	Varname string `json:"var_name"`
-	Vartype string `json:"var_type"`
+type EditorIdentifiers struct {
+	DataAccessors []ast.Node `json:"data_accessors"`
 }
 
-type BuilderIdentifiers struct {
-	DataAccesses []DataAccessesIdentifier `json:"data_accesses_identifiers"`
-}
+func (usecase *AstExpressionUsecase) EditorIdentifiers(scenarioId string) (EditorIdentifiers, error) {
 
-func (usecase *AstExpressionUsecase) Identifiers() (BuilderIdentifiers, error) {
-
-	dataModel, err := usecase.DataModelRepository.GetDataModel(nil, usecase.OrganizationIdOfContext)
+	scenario, err := usecase.ScenarioRepository.GetScenarioById(nil, scenarioId)
 	if err != nil {
-		return BuilderIdentifiers{}, err
+		return EditorIdentifiers{}, err
 	}
 
-	identifiers := BuilderIdentifiers{}
+	if err := usecase.EnforceSecurity.ReadOrganization(scenario.OrganizationID); err != nil {
+		return EditorIdentifiers{}, err
+	}
 
-	for tableName, table := range dataModel.Tables {
+	dataModel, err := usecase.DataModelRepository.GetDataModel(nil, scenario.OrganizationID)
+	if err != nil {
+		return EditorIdentifiers{}, err
+	}
 
-		for fieldName, field := range table.Fields {
+	triggerObjectTable, found := dataModel.Tables[models.TableName(scenario.TriggerObjectType)]
+	if !found {
+		// unexpected error: must be a valid table
+		return EditorIdentifiers{}, fmt.Errorf("triggerObjectTable %s not found in data model", scenario.TriggerObjectType)
+	}
 
-			identifier := DataAccessesIdentifier{
+	var dataAccessors []ast.Node
 
-				Varname: fmt.Sprintf("%s.%s", tableName, fieldName),
-				Vartype: field.DataType.String(),
+	var recursiveDatabaseAccessor func(path []string, links map[models.LinkName]models.LinkToSingle) error
+
+	recursiveDatabaseAccessor = func(path []string, links map[models.LinkName]models.LinkToSingle) error {
+		for linkName, link := range links {
+
+			table, found := dataModel.Tables[link.LinkedTableName]
+			if !found {
+				// unexpected error: must be a valid table
+				return fmt.Errorf("table %s not found in data model", scenario.TriggerObjectType)
 			}
 
-			identifiers.DataAccesses = append(identifiers.DataAccesses, identifier)
+			path = append(path, string(linkName))
+
+			for fieldName := range table.Fields {
+				dataAccessors = append(dataAccessors, ast.NewNodeDatabaseAccess(
+					scenario.TriggerObjectType,
+					string(fieldName),
+					path,
+				))
+			}
+
+			if err := recursiveDatabaseAccessor(path, table.LinksToSingle); err != nil {
+				return err
+			}
 		}
+		return nil
 	}
 
-	return identifiers, nil
+	var path []string
+	if err := recursiveDatabaseAccessor(path, triggerObjectTable.LinksToSingle); err != nil {
+		return EditorIdentifiers{}, err
+	}
+
+	return EditorIdentifiers{
+		DataAccessors: dataAccessors,
+	}, nil
 }
