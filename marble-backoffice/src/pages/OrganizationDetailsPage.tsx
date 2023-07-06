@@ -40,6 +40,8 @@ import ListOfScenarios from "@/components/ListOfScenarios";
 import ReactJson from "react-json-view";
 import NorthEastIcon from "@mui/icons-material/NorthEast";
 import Alert from "@mui/material/Alert";
+import { Divider } from "@mui/material";
+import DataModelAPIDoc from "@/components/DataModelAPIDoc";
 
 function OrganizationDetailsPage() {
   const { organizationId } = useParams();
@@ -427,9 +429,11 @@ function OrganizationDetailsDataModel({
         </Typography>
       </AlertDialog>
       {dataModelString !== null && (
-        <Box sx={{
-          mb: 4,
-        }}>
+        <Box
+          sx={{
+            mb: 4,
+          }}
+        >
           <TextareaAutosize
             minRows="5"
             value={dataModelString}
@@ -446,6 +450,14 @@ function OrganizationDetailsDataModel({
           >
             Replace Data Model
           </Button>
+
+          <Divider
+            sx={{
+              my: 2,
+            }}
+          ></Divider>
+
+          <DataModelAPIDoc dataModel={dataModel} />
         </Box>
       )}
     </>
