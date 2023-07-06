@@ -246,9 +246,10 @@ export class MarbleApi {
     });
   }
 
-  async builderIdentifiers(organizationId: string) {
+  async editorIdentifiers(scenarioId: string) {
+    const scenarioIdParam = encodeURIComponent(scenarioId);
     return await this.getAuthorizedJson(
-      urlWithOrganizationId("builder/identifiers", organizationId)
+      `editor/${scenarioIdParam}/identifiers`
     );
   }
 }

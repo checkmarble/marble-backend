@@ -10,4 +10,4 @@ export * from "./ApiKey";
 export * from "./Decision";
 export * from "./AstExpression";
 export * from "./DataModel";
-export * from "./BuilderIdentifiers";
+export * from "./EditorIdentifiers";

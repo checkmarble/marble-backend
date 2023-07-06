@@ -21,6 +21,7 @@ import {
 } from "@/services/AstExpressionService";
 import { useCallback } from "react";
 import { useParams } from "react-router-dom";
+import ReactJson from "react-json-view";
 
 export default function ScenarioDetailsPage() {
   const { scenarioId } = useParams();
@@ -117,7 +118,16 @@ export default function ScenarioDetailsPage() {
             </Alert>
           ))}
 
-          <code>{JSON.stringify(identifiers)}</code>
+          {identifiers && (
+            <Paper sx={{ minWidth: "100%", p: 2, fontSize: "0.8em" }}>
+              <ReactJson
+                src={identifiers}
+                name="user"
+                collapsed={1}
+                theme={"rjv-default"}
+              />
+            </Paper>
+          )}
           <Typography variant="h5">Result</Typography>
           <AstNode node={expressionAstNode} />
         </Stack>
