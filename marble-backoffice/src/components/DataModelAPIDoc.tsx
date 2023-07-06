@@ -1,15 +1,7 @@
 import { DataModel } from "@/models";
-import { JoinRightSharp } from "@mui/icons-material";
-import {
-  Divider,
-  Paper,
-  TextField,
-  TextareaAutosize,
-  Typography,
-} from "@mui/material";
+import { Divider, Paper, TextareaAutosize, Typography } from "@mui/material";
 import { Fragment } from "react";
 import ReactJson from "react-json-view";
-import { object } from "yup";
 
 interface DataModelAPIDocProps {
   dataModel: DataModel | null;
@@ -30,23 +22,18 @@ export default function DataModelAPIDoc(props: DataModelAPIDocProps) {
         Custom objects to use in the Ingestion and Decision API
       </Typography>
       {apiModel.map((obj) => (
-        <Paper sx={{ p: 2, m: 2 }} variant="outlined">
-          <Fragment key={obj.name}>
-            <Typography sx={{ fontFamily: "monospace" }}>
-              {obj.name} (POST /ingestion/{obj.name})
-            </Typography>
-            <Divider sx={{ my: 2 }} />
-            <ReactJson
-              src={obj.example}
-              style={{ fontSize: ".7em" }}
-            ></ReactJson>
-            <Divider sx={{ my: 2 }} />
+        <Paper sx={{ p: 2, m: 2 }} variant="outlined" key={obj.name}>
+          <Typography sx={{ fontFamily: "monospace" }}>
+            {obj.name} (POST /ingestion/{obj.name})
+          </Typography>
+          <Divider sx={{ my: 2 }} />
+          <ReactJson src={obj.example} style={{ fontSize: ".7em" }}></ReactJson>
+          <Divider sx={{ my: 2 }} />
 
-            <TextareaAutosize
-              value={obj.displayableJSON}
-              style={{ width: "100%" }}
-            />
-          </Fragment>
+          <TextareaAutosize
+            value={obj.displayableJSON}
+            style={{ width: "100%" }}
+          />
         </Paper>
       ))}
     </Fragment>
