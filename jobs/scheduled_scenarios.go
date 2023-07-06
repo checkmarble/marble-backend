@@ -11,8 +11,7 @@ import (
 func ExecuteAllScheduledScenarios(ctx context.Context, usecases usecases.Usecases) {
 
 	fmt.Println("Executing all scheduled scenarios")
-	scenarioUsecase := usecases.NewScenarioUsecase()
-	scenarios, err := scenarioUsecase.ListAllScenarios(ctx)
+	scenarios, err := usecases.Repositories.ScenarioReadRepository.ListAllScenarios(nil)
 
 	usecase := usecases.NewScheduledExecutionUsecase()
 	if err != nil {

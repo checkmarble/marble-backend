@@ -40,6 +40,8 @@ import ListOfScenarios from "@/components/ListOfScenarios";
 import ReactJson from "react-json-view";
 import NorthEastIcon from "@mui/icons-material/NorthEast";
 import Alert from "@mui/material/Alert";
+import { Divider } from "@mui/material";
+import DataModelAPIDoc from "@/components/DataModelAPIDoc";
 
 function OrganizationDetailsPage() {
   const { organizationId } = useParams();
@@ -312,14 +314,12 @@ function OrganizationDetailsUserList({
         </Stack>
 
         <Box sx={{ minWidth: "100%" }}>
-          {users != null && (
-            <ListOfUsers
-              users={users}
-              onUserDetailClick={(userId) => {
-                navigate(PageLink.userDetails(userId));
-              }}
-            />
-          )}
+          <ListOfUsers
+            users={users}
+            onUserDetailClick={(userId) => {
+              navigate(PageLink.userDetails(userId));
+            }}
+          />
         </Box>
       </Stack>
     </>
@@ -339,9 +339,16 @@ function OrganizationDetailsScenariosList({
     organizationId
   );
 
-  if (scenarios == null || scenarios.length == 0) {
-    return <Typography variant="subtitle1">No scenarios</Typography>;
-  } else return <ListOfScenarios scenarios={scenarios} />;
+  const navigate = useNavigate();
+
+  return (
+    <ListOfScenarios
+      scenarios={scenarios}
+      onScenarioDetailClick={(scenarioId) => {
+        navigate(PageLink.scenarioDetailsPage(scenarioId));
+      }}
+    />
+  );
 }
 
 function OrganizationDetailsDecisionsList({
@@ -427,9 +434,11 @@ function OrganizationDetailsDataModel({
         </Typography>
       </AlertDialog>
       {dataModelString !== null && (
-        <Box sx={{
-          mb: 4,
-        }}>
+        <Box
+          sx={{
+            mb: 4,
+          }}
+        >
           <TextareaAutosize
             minRows="5"
             value={dataModelString}
@@ -446,6 +455,14 @@ function OrganizationDetailsDataModel({
           >
             Replace Data Model
           </Button>
+
+          <Divider
+            sx={{
+              my: 2,
+            }}
+          ></Divider>
+
+          <DataModelAPIDoc dataModel={dataModel} />
         </Box>
       )}
     </>

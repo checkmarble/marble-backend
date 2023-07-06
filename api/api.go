@@ -22,12 +22,14 @@ type API struct {
 	logger   *slog.Logger
 }
 
-func New(ctx context.Context, port string, usecases usecases.Usecases, logger *slog.Logger, corsAllowLocalhost bool) (*http.Server, error) {
+func New(ctx context.Context, port string, usecases usecases.Usecases, corsAllowLocalhost bool) (*http.Server, error) {
 
 	///////////////////////////////
 	// Setup a router
 	///////////////////////////////
 	r := chi.NewRouter()
+
+	logger := utils.LoggerFromContext(ctx)
 
 	////////////////////////////////////////////////////////////
 	// Middleware
@@ -76,4 +78,21 @@ func New(ctx context.Context, port string, usecases usecases.Usecases, logger *s
 	}
 
 	return srv, nil
+}
+
+func (api *API) UsecasesWithCreds(r *http.Request) *usecases.UsecasesWithCreds {
+	ctx := r.Context()
+
+	creds := utils.CredentialsFromCtx(ctx)
+
+	// marble admin can specify on which organization to operate
+	// Ignore error, empty organizationId is fine, this is not the place to enforce security
+	organizationId, _ := utils.OrganizationIdFromRequest(r)
+
+	return &usecases.UsecasesWithCreds{
+		Usecases:                api.usecases,
+		Credentials:             creds,
+		Logger:                  utils.LoggerFromContext(ctx),
+		OrganizationIdOfContext: organizationId,
+	}
 }

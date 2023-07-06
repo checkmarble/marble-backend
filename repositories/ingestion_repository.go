@@ -28,7 +28,7 @@ func (repo *IngestionRepositoryImpl) IngestObjects(transaction Transaction, payl
 
 		err = updateExistingVersionIfPresent(tx, objectIdStr, table)
 		if err != nil {
-			return fmt.Errorf("Error updating existing version: %w", err)
+			return fmt.Errorf("error updating existing version: %w", err)
 		}
 
 		columnNames, values := generateInsertValues(table, payload)

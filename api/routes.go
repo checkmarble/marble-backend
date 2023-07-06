@@ -217,6 +217,12 @@ func (api *API) routes() {
 			})
 		})
 
+		authedRouter.Route("/editor/{scenarioID}", func(builderRouter chi.Router) {
+			builderRouter.Use(api.enforcePermissionMiddleware(models.SCENARIO_CREATE))
+
+			builderRouter.Get("/identifiers", api.handleGetEditorIdentifiers())
+		})
+
 		// Group all admin endpoints
 		authedRouter.Group(func(routerAdmin chi.Router) {
 			routerAdmin.Use(api.enforcePermissionMiddleware(models.ORGANIZATIONS_LIST))

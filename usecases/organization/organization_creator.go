@@ -5,10 +5,6 @@ import (
 	"marble/marble-backend/repositories"
 )
 
-type OrganizationSeeder interface {
-	Seed(organizationId string) error
-}
-
 type OrganizationCreator struct {
 	TransactionFactory         repositories.TransactionFactory
 	OrganizationRepository     repositories.OrganizationRepository

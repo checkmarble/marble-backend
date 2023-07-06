@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"marble/marble-backend/infra"
+	"marble/marble-backend/repositories"
 	"os"
 	"testing"
 	"time"
@@ -19,9 +20,10 @@ import (
 const uuidRegexp = `^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$`
 
 type testParams struct {
-	repository *PGRepository
-	logger     *slog.Logger
-	testIds    map[string]string
+	repository         *PGRepository
+	scenarioRepository repositories.ScenarioReadRepository
+	logger             *slog.Logger
+	testIds            map[string]string
 }
 
 var globalTestParams testParams
@@ -184,7 +186,17 @@ func TestMain(m *testing.M) {
 	// 	log.Fatalf("Could not insert test data into tables: %s", err)
 	// }
 
-	globalTestParams = testParams{repository: TestRepo, logger: logger, testIds: testIds}
+	globalTestParams = testParams{
+		repository: TestRepo,
+		scenarioRepository: repositories.NewScenarioReadRepositoryPostgresql(
+			repositories.NewTransactionFactoryPosgresql(
+				nil,
+				anotherPool,
+			),
+		),
+		logger:  logger,
+		testIds: testIds,
+	}
 
 	//Run tests
 	code := m.Run()

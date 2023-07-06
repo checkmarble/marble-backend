@@ -15,6 +15,7 @@ import (
 
 type APIScenario struct {
 	ID                string    `json:"id"`
+	OrganizationId    string    `json:"organization_id"`
 	Name              string    `json:"name"`
 	Description       string    `json:"description"`
 	TriggerObjectType string    `json:"triggerObjectType"`
@@ -25,6 +26,7 @@ type APIScenario struct {
 func NewAPIScenario(scenario models.Scenario) APIScenario {
 	return APIScenario{
 		ID:                scenario.ID,
+		OrganizationId:    scenario.OrganizationID,
 		Name:              scenario.Name,
 		Description:       scenario.Description,
 		TriggerObjectType: scenario.TriggerObjectType,
@@ -35,32 +37,14 @@ func NewAPIScenario(scenario models.Scenario) APIScenario {
 
 func (api *API) ListScenarios() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
 
-		orgID, err := utils.OrgIDFromCtx(ctx, r)
+		usecase := api.UsecasesWithCreds(r).NewScenarioUsecase()
+		scenarios, err := usecase.ListScenarios()
 		if presentError(w, r, err) {
 			return
 		}
 
-		logger := api.logger.With(slog.String("orgID", orgID))
-		usecase := api.usecases.NewScenarioUsecase()
-		scenarios, err := usecase.ListScenarios(ctx, orgID)
-
-		if presentError(w, r, err) {
-			return
-		}
-
-		apiScenarios := make([]APIScenario, len(scenarios))
-		for i, scenario := range scenarios {
-			apiScenarios[i] = NewAPIScenario(scenario)
-		}
-
-		err = json.NewEncoder(w).Encode(apiScenarios)
-		if err != nil {
-			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
+		PresentModel(w, utils.Map(scenarios, NewAPIScenario))
 	}
 }
 
@@ -76,7 +60,7 @@ func (api *API) CreateScenario() http.HandlerFunc {
 		input := ctx.Value(httpin.Input).(*dto.CreateScenarioInput)
 		logger := api.logger.With(slog.String("orgID", orgID))
 
-		usecase := api.usecases.NewScenarioUsecase()
+		usecase := api.UsecasesWithCreds(r).NewScenarioUsecase()
 		scenario, err := usecase.CreateScenario(ctx, orgID, models.CreateScenarioInput{
 			Name:              input.Body.Name,
 			Description:       input.Body.Description,
@@ -103,33 +87,16 @@ type GetScenarioInput struct {
 
 func (api *API) GetScenario() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
 
-		orgID, err := utils.OrgIDFromCtx(ctx, r)
+		input := r.Context().Value(httpin.Input).(*GetScenarioInput)
+
+		usecase := api.UsecasesWithCreds(r).NewScenarioUsecase()
+		scenario, err := usecase.GetScenario(input.ScenarioID)
+
 		if presentError(w, r, err) {
 			return
 		}
-
-		input := ctx.Value(httpin.Input).(*GetScenarioInput)
-		logger := api.logger.With(slog.String("orgID", orgID), slog.String("scenarioID", input.ScenarioID))
-
-		usecase := api.usecases.NewScenarioUsecase()
-		scenario, err := usecase.GetScenario(ctx, orgID, input.ScenarioID)
-		if errors.Is(err, models.NotFoundError) {
-			http.Error(w, "", http.StatusNotFound)
-			return
-		} else if err != nil {
-			logger.ErrorCtx(ctx, "Error getting scenario: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
-
-		err = json.NewEncoder(w).Encode(NewAPIScenario(scenario))
-		if err != nil {
-			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
+		PresentModel(w, NewAPIScenario(scenario))
 	}
 }
 
@@ -145,7 +112,7 @@ func (api *API) UpdateScenario() http.HandlerFunc {
 		input := ctx.Value(httpin.Input).(*dto.UpdateScenarioInput)
 		logger := api.logger.With(slog.String("orgID", orgID), slog.String("scenarioID", input.ScenarioID))
 
-		usecase := api.usecases.NewScenarioUsecase()
+		usecase := api.UsecasesWithCreds(r).NewScenarioUsecase()
 		scenario, err := usecase.UpdateScenario(ctx, orgID, models.UpdateScenarioInput{
 			ID:          input.ScenarioID,
 			Name:        input.Body.Name,

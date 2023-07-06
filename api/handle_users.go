@@ -40,7 +40,7 @@ func (api *API) handleGetUser() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		userID := *&ctx.Value(httpin.Input).(*dto.GetUser).UserID
+		userID := ctx.Value(httpin.Input).(*dto.GetUser).UserID
 
 		usecase := api.usecases.NewUserUseCase()
 		user, err := usecase.GetUser(userID)
@@ -56,7 +56,7 @@ func (api *API) handleDeleteUser() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		userID := *&ctx.Value(httpin.Input).(*dto.DeleteUser).UserID
+		userID := ctx.Value(httpin.Input).(*dto.DeleteUser).UserID
 
 		usecase := api.usecases.NewUserUseCase()
 		err := usecase.DeleteUser(userID)
@@ -69,7 +69,7 @@ func (api *API) handleDeleteUser() http.HandlerFunc {
 
 func (api *API) handleGetCredentials() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		creds := utils.MustCredentialsFromCtx(r.Context())
+		creds := utils.CredentialsFromCtx(r.Context())
 		PresentModelWithName(w, "credentials", dto.AdaptCredentialDto(creds))
 	}
 }

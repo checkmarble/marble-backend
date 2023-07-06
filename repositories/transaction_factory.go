@@ -19,6 +19,16 @@ type TransactionFactoryPosgresql struct {
 	marbleConnectionPool             *pgxpool.Pool
 }
 
+func NewTransactionFactoryPosgresql(
+	databaseConnectionPoolRepository DatabaseConnectionPoolRepository,
+	marbleConnectionPool *pgxpool.Pool,
+) TransactionFactory {
+	return &TransactionFactoryPosgresql{
+		databaseConnectionPoolRepository: databaseConnectionPoolRepository,
+		marbleConnectionPool:             marbleConnectionPool,
+	}
+}
+
 func (factory *TransactionFactoryPosgresql) adaptMarbleDatabaseTransaction(transaction Transaction) TransactionPostgres {
 
 	if transaction == nil {

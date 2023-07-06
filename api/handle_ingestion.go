@@ -2,7 +2,7 @@ package api
 
 import (
 	"errors"
-	"io/ioutil"
+	"io"
 	"marble/marble-backend/app"
 	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
@@ -33,7 +33,7 @@ func (api *API) handleIngestion() http.HandlerFunc {
 		}
 
 		object_type := chi.URLParam(r, "object_type")
-		object_body, err := ioutil.ReadAll(r.Body)
+		object_body, err := io.ReadAll(r.Body)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Error while reading request body bytes in api handle_ingestion")
 			http.Error(w, "", http.StatusUnprocessableEntity)

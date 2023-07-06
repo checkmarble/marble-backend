@@ -1,18 +1,23 @@
 import { useCallback, useMemo, useState } from "react";
 import {
-  NewAstNode,
   type AstNode,
   type ConstantOptional,
+  type EditorIdentifiers,
+  NewAstNode,
   NoConstant,
   ConstantType,
+  Scenario,
 } from "@/models";
 import { MapObjectValues } from "@/MapUtils";
 import {
   type ScenariosRepository,
   validateAstExpression,
   runAstExpression,
+  fetchEditorIdentifiers,
+  fetchScenario,
 } from "@/repositories";
 import { type LoadingDispatcher, showLoader } from "@/hooks/Loading";
+import { useSimpleLoader } from "@/hooks/SimpleLoader";
 
 export interface AstExpressionService {
   scenarioRepository: ScenariosRepository;
@@ -80,8 +85,21 @@ function adaptAstNodeFromViewModel(vm: ExpressionViewModel): AstNode {
 
 export function useAstExpressionBuilder(
   service: AstExpressionService,
+  scenarioId: string,
   pageLoadingDispatcher: LoadingDispatcher
 ) {
+  const scenarioLoader = useCallback(async () => {
+    return showLoader(
+      pageLoadingDispatcher,
+      fetchScenario(service.scenarioRepository, scenarioId)
+    );
+  }, [pageLoadingDispatcher, service.scenarioRepository, scenarioId]);
+
+  const [scenario] = useSimpleLoader<Scenario>(
+    pageLoadingDispatcher,
+    scenarioLoader
+  );
+
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   const [expressionViewModel, setExpressionViewModel] =
@@ -93,45 +111,84 @@ export function useAstExpressionBuilder(
             NewAstNode({
               name: "DatabaseAccess",
               namedChildren: {
-                tableName: NewAstNode({ constant: "transactions"}), 
-                fieldName: NewAstNode({ constant: "name"}),
-                path: NewAstNode({ constant: ["account"]}),
-              }}),
-              NewAstNode({
-                name: "CustomListAccess",
-                namedChildren: {
-                  customListId: NewAstNode({ constant: "0d968583-20da-4199-bf4a-020566a36251"}), 
-                }}),
-            ],
-        }))
-      );
+                tableName: NewAstNode({ constant: "transactions" }),
+                fieldName: NewAstNode({ constant: "name" }),
+                path: NewAstNode({ constant: ["account"] }),
+              },
+            }),
+            NewAstNode({
+              name: "CustomListAccess",
+              namedChildren: {
+                customListId: NewAstNode({
+                  constant: "d6643d7e-c973-4899-a9a8-805f868ef90a",
+                }),
+              },
+            }),
+          ],
+        })
+      )
+    );
 
   const expressionAstNode = useMemo(
     () => adaptAstNodeFromViewModel(expressionViewModel),
     [expressionViewModel]
   );
 
+  const editorIdentifiersLoader = useCallback(async () => {
+    if (scenario === null) {
+      return null;
+    }
+
+    return showLoader(
+      pageLoadingDispatcher,
+      fetchEditorIdentifiers(service.scenarioRepository, scenario.scenarioId)
+    );
+  }, [pageLoadingDispatcher, scenario, service.scenarioRepository]);
+
+  const [identifiers] = useSimpleLoader<EditorIdentifiers>(
+    pageLoadingDispatcher,
+    editorIdentifiersLoader
+  );
+
   const validate = useCallback(async () => {
+    if (scenario === null) {
+      return null;
+    }
+
     const result = await showLoader(
       pageLoadingDispatcher,
       validateAstExpression(
         service.scenarioRepository,
+        scenario.organizationId,
         expressionAstNode
       )
     );
     setValidationErrors(result.validationErrors);
-  }, [service, expressionAstNode, pageLoadingDispatcher]);
+  }, [
+    scenario,
+    pageLoadingDispatcher,
+    service.scenarioRepository,
+    expressionAstNode,
+  ]);
 
   const run = useCallback(async () => {
+    if (scenario === null) {
+      return null;
+    }
     await showLoader(
       pageLoadingDispatcher,
       runAstExpression(
         service.scenarioRepository,
+        scenario.organizationId,
         expressionAstNode
       )
     );
-  }, [service, expressionAstNode, pageLoadingDispatcher]);
-
+  }, [
+    scenario,
+    pageLoadingDispatcher,
+    service.scenarioRepository,
+    expressionAstNode,
+  ]);
 
   const editor: ExpressionEditor = {
     expressionViewModel,
@@ -145,6 +202,7 @@ export function useAstExpressionBuilder(
     validate,
     validationErrors,
     run,
+    identifiers,
   };
 }
 
@@ -192,7 +250,7 @@ export function setAstNodeConstant(
   nodeId: string,
   newConstant: string
 ) {
-  replaceOneNode(editor, nodeId, (node: NodeViewModel) : NodeViewModel => {
+  replaceOneNode(editor, nodeId, (node: NodeViewModel): NodeViewModel => {
     return {
       ...node,
       name: "",
@@ -216,12 +274,8 @@ export function findNodeIdInDom(startNode: HTMLElement | null): string {
   throw Error("nodeId is missing");
 }
 
-
-export function addAstNodeOperand(
-  editor: ExpressionEditor,
-  nodeId : string,
-) {
-  replaceOneNode(editor, nodeId, (node: NodeViewModel) : NodeViewModel => {
+export function addAstNodeOperand(editor: ExpressionEditor, nodeId: string) {
+  replaceOneNode(editor, nodeId, (node: NodeViewModel): NodeViewModel => {
     return {
       ...node,
       constant: "",
@@ -233,7 +287,7 @@ export function addAstNodeOperand(
           constant: "",
           children: [],
           namedChildren: {},
-        }
+        },
       ],
     };
   });

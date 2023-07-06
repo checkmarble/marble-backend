@@ -44,7 +44,11 @@ func (usecase *DecisionUsecase) ListDecisionsOfOrganization(orgID string) ([]mod
 }
 
 func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models.CreateDecisionInput, logger *slog.Logger) (models.Decision, error) {
-	scenario, err := usecase.scenarioReadRepository.GetScenario(ctx, input.OrganizationID, input.ScenarioID)
+	if err := utils.EnforceOrganizationAccess(utils.CredentialsFromCtx(ctx), input.OrganizationID); err != nil {
+		return models.Decision{}, err
+	}
+
+	scenario, err := usecase.scenarioReadRepository.GetScenarioById(nil, input.ScenarioID)
 	if errors.Is(err, models.NotFoundInRepositoryError) {
 		return models.Decision{}, fmt.Errorf("Scenario not found: %w", models.NotFoundError)
 	} else if err != nil {

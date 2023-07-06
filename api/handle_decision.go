@@ -30,7 +30,7 @@ func (api *API) handleGetDecision() http.HandlerFunc {
 		decisionID := input.DecisionID
 
 		usecase := api.usecases.NewDecisionUsecase()
-		decision, err := usecase.GetDecision(utils.MustCredentialsFromCtx(ctx), orgID, decisionID)
+		decision, err := usecase.GetDecision(utils.CredentialsFromCtx(ctx), orgID, decisionID)
 
 		if presentError(w, r, err) {
 			return

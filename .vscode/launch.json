@@ -20,7 +20,7 @@
       "mode": "auto",
       "program": "${workspaceFolder}",
       "envFile": ["${workspaceFolder}/.env.local", "${workspaceFolder}/.env"],
-      "args": ["--server", "--migrations"]
+      "args": ["--server"]
     },
     {
       "name": "Launch scheduled jobs (.env.local)",
@@ -29,7 +29,7 @@
       "mode": "auto",
       "program": "${workspaceFolder}/main.go",
       "envFile": "${workspaceFolder}/.env.local",
-      "args": ["--scheduled"]
+      "args": ["--scheduler"]
     },
     {
       "name": "Launch batch ingestion job (.env.local)",

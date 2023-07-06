@@ -17,7 +17,7 @@ func (usecases *Usecases) NewMarbleTokenUseCase() MarbleTokenUseCase {
 	return MarbleTokenUseCase{
 		transactionFactory:      repositories.TransactionFactory,
 		firebaseTokenRepository: repositories.FirebaseTokenRepository,
-		marbleJwtRepository:     repositories.MarbleJwtRepository,
+		marbleJwtRepository:     repositories.MarbleJwtRepository(),
 		userRepository:          repositories.UserRepository,
 		apiKeyRepository:        repositories.ApiKeyRepository,
 		organizationRepository:  repositories.OrganizationRepository,
@@ -90,23 +90,23 @@ func (usecases *Usecases) NewSeedUseCase() SeedUseCase {
 		userRepository:         usecases.Repositories.UserRepository,
 		organizationCreator:    usecases.NewOrganizationCreator(),
 		organizationRepository: usecases.Repositories.OrganizationRepository,
+		customListRepository:   usecases.Repositories.CustomListRepository,
 	}
 }
 
 func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCreator {
 	return organization.OrganizationCreator{
-		TransactionFactory:         usecases.Repositories.TransactionFactory,
-		OrganizationRepository:     usecases.Repositories.OrganizationRepository,
-		DataModelRepository:        usecases.Repositories.DataModelRepository,
-		OrganizationSeeder:         usecases.Repositories.LegacyPgRepository,
+		TransactionFactory:     usecases.Repositories.TransactionFactory,
+		OrganizationRepository: usecases.Repositories.OrganizationRepository,
+		DataModelRepository:    usecases.Repositories.DataModelRepository,
+		OrganizationSeeder: organization.NewOrganizationSeeder(
+			usecases.Repositories.CustomListRepository,
+			usecases.Repositories.ApiKeyRepository,
+			usecases.Repositories.ScenarioWriteRepository,
+			usecases.Repositories.ScenarioPublicationRepository,
+			usecases.Repositories.ScenarioIterationWriteRepository,
+			usecases.Repositories.TransactionFactory),
 		PopulateOrganizationSchema: usecases.NewPopulateOrganizationSchema(),
-	}
-}
-
-func (usecases *Usecases) NewScenarioUsecase() ScenarioUsecase {
-	return ScenarioUsecase{
-		scenarioReadRepository:  usecases.Repositories.ScenarioReadRepository,
-		scenarioWriteRepository: usecases.Repositories.ScenarioWriteRepository,
 	}
 }
 
@@ -150,16 +150,6 @@ func (usecases *Usecases) NewExportScheduleExecution() scheduledexecution.Export
 		AwsS3Repository:        usecases.Repositories.AwsS3Repository,
 		DecisionRepository:     usecases.Repositories.DecisionRepository,
 		OrganizationRepository: usecases.Repositories.OrganizationRepository,
-	}
-}
-
-func (usecases *Usecases) AstExpressionUsecase(creds models.Credentials) AstExpressionUsecase {
-	return AstExpressionUsecase{
-		CustomListRepository:       usecases.Repositories.CustomListRepository,
-		Credentials:                creds,
-		OrgTransactionFactory:      usecases.NewOrgTransactionFactory(),
-		IngestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
-		DatamodelRepository:        usecases.Repositories.DataModelRepository,
 	}
 }
 

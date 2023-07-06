@@ -10,22 +10,22 @@ import (
 )
 
 type DatabaseAccess struct {
-	DatamodelRepository        repositories.DataModelRepository
+	OrganizationIdOfContext    string
+	DataModelRepository        repositories.DataModelRepository
 	Payload                    models.PayloadReader
 	OrgTransactionFactory      organization.OrgTransactionFactory
 	IngestedDataReadRepository repositories.IngestedDataReadRepository
-	Creds                      models.Credentials
 }
 
 func NewDatabaseAccess(otf organization.OrgTransactionFactory, idrr repositories.IngestedDataReadRepository,
 	dm repositories.DataModelRepository, payload models.PayloadReader,
-	creds models.Credentials) DatabaseAccess {
+	organizationIdOfContext string) DatabaseAccess {
 	return DatabaseAccess{
-		DatamodelRepository:        dm,
+		OrganizationIdOfContext:    organizationIdOfContext,
+		DataModelRepository:        dm,
 		Payload:                    payload,
 		OrgTransactionFactory:      otf,
 		IngestedDataReadRepository: idrr,
-		Creds:                      creds,
 	}
 }
 
@@ -53,13 +53,15 @@ func (d DatabaseAccess) Evaluate(arguments ast.Arguments) (any, error) {
 
 	fieldValue, err := d.getDbField(tableName, fieldName, pathStringArr)
 	if err != nil {
-		return nil, fmt.Errorf("getDbField not working %w", err)
+		errorMsg := fmt.Sprintf("tableName: %s, fieldName: %s, path: %v", tableName, fieldName, path)
+		return nil, fmt.Errorf("DatabaseAccess: value not found: %s %w %w", errorMsg, err, ErrRuntimeExpression)
 	}
 	return fieldValue, nil
 }
 
 func (d DatabaseAccess) getDbField(tableName string, fieldName string, path []string) (interface{}, error) {
-	dm, err := d.DatamodelRepository.GetDataModel(nil, d.Creds.OrganizationId)
+
+	dm, err := d.DataModelRepository.GetDataModel(nil, d.OrganizationIdOfContext)
 	if errors.Is(err, models.NotFoundInRepositoryError) {
 		return models.Decision{}, fmt.Errorf("data model not found: %w", models.NotFoundError)
 	} else if err != nil {
@@ -68,7 +70,7 @@ func (d DatabaseAccess) getDbField(tableName string, fieldName string, path []st
 
 	return organization.TransactionInOrgSchemaReturnValue(
 		d.OrgTransactionFactory,
-		d.Creds.OrganizationId,
+		d.OrganizationIdOfContext,
 		func(tx repositories.Transaction) (interface{}, error) {
 			return d.IngestedDataReadRepository.GetDbField(tx, models.DbFieldReadParams{
 				TriggerTableName: models.TableName(tableName),

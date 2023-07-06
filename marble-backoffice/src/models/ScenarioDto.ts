@@ -4,6 +4,7 @@ import { type Scenario } from "./Scenario";
 
 const ScenarioSchema = yup.object({
   id: yup.string().required(),
+  organization_id: yup.string().required(),
   name: yup.string().required(),
   description: yup.string().required(),
   triggerObjectType: yup.string().required(),
@@ -16,6 +17,7 @@ export type ScenarioDto = yup.InferType<typeof ScenarioSchema>;
 export function adaptScenario(dto: ScenarioDto): Scenario {
   return {
     scenarioId: dto.id,
+    organizationId: dto.organization_id,
     name: dto.name,
     description: dto.description,
     triggerObjectType: dto.triggerObjectType,
@@ -27,4 +29,9 @@ export function adaptScenario(dto: ScenarioDto): Scenario {
 export function adaptScenariosApiResult(json: unknown): Scenario[] {
   const dtos = adaptDtoWithYup(json, yup.array().required().of(ScenarioSchema));
   return dtos.map(adaptScenario);
+}
+
+export function adaptSingleScenarioApiResult(json: unknown): Scenario {
+  const dto = adaptDtoWithYup(json, ScenarioSchema);
+  return adaptScenario(dto);
 }

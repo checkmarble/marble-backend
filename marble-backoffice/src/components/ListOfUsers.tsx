@@ -1,91 +1,68 @@
 import { User } from "@/models";
 import { DataGrid } from "@mui/x-data-grid/DataGrid";
-import type {
-  GridRowsProp,
-  GridColDef,
-  GridRenderCellParams,
-} from "@mui/x-data-grid/models";
-import Button from "@mui/material/Button";
+import type { GridRowsProp, GridColDef, GridRowParams } from "@mui/x-data-grid";
+import { GridActionsCellItem } from "@mui/x-data-grid";
 import NorthEastIcon from "@mui/icons-material/NorthEast";
-
-import CustomGridCell from "./CustomGridCell";
+import ListNoData from "./ListNoData";
+import GridCellWithHover from "./GridCellWithHover";
 
 interface ListOfUsersProps {
   users: User[] | null;
-  onUserDetailClick?: (userId: string) => void;
+  onUserDetailClick: (userId: string) => void;
 }
 
-function ListOfUsers(props: ListOfUsersProps) {
+export default function ListOfUsers(props: ListOfUsersProps) {
   const users = props.users;
-  if (users == null || users.length == 0) {
-    return <>No users</>;
+
+  if (users === null) {
+    return;
+  }
+  if (users.length === 0) {
+    return <ListNoData />;
   }
 
   // Enrich the 'user' to build a 'row'
   const rows: GridRowsProp = users.map((user) => ({
     id: user.userId, // needed for datagrid
-    actions: user.userId, // needed to build a fake 'actions' column
-    onDetailsClick: props.onUserDetailClick
-      ? () => props.onUserDetailClick!(user.userId)
-      : null, // build user-specific actions using the props
-
     ...user, // keep all user data intact
   }));
 
   const columns: GridColDef[] = [
-    { field: "email", headerName: "email", flex: 1 },
-    { field: "role", headerName: "role", flex: 1 },
-    { field: "userId", headerName: "ID", flex: 1 },
+    {
+      field: "email",
+      headerName: "email",
+      flex: 1,
+      renderCell: GridCellWithHover,
+    },
+    {
+      field: "role",
+      headerName: "role",
+      flex: 1,
+      renderCell: GridCellWithHover,
+    },
+    {
+      field: "userId",
+      headerName: "ID",
+      flex: 1,
+      renderCell: GridCellWithHover,
+    },
+    {
+      field: "actions",
+      type: "actions",
+      getActions: (params: GridRowParams) => [
+        // only add the item if(props.onUserDetailClick) : see https://stackoverflow.com/questions/44908159/how-to-define-an-array-with-conditional-elements
+        ...(props.onUserDetailClick
+          ? [
+              <GridActionsCellItem
+                icon={<NorthEastIcon />}
+                onClick={() => props.onUserDetailClick(params.row.userId)}
+                label="Details"
+              />,
+            ]
+          : []),
+      ],
+    },
   ];
 
-  // Actions, only add column if there actually are actions
-  if (props.onUserDetailClick) {
-    columns.push({
-      field: "actions",
-      headerName: "actions",
-      flex: 0.5,
-      renderCell: ListOfUsersActionsCell,
-      cellClassName: "noHover",
-    });
-  }
-
-  return (
-    <DataGrid
-      rows={rows}
-      columns={columns}
-      slots={{ cell: CustomGridCell }}
-      disableRowSelectionOnClick
-    />
-  );
+  return <DataGrid rows={rows} columns={columns} disableRowSelectionOnClick />;
 }
-
-// see https://github.com/mui/mui-x/blob/master/packages/grid/x-data-grid-generator/src/renderer/renderRating.tsx
-// for reference
-function ListOfUsersActionsCell(
-  params: GridRenderCellParams<any, number, any>
-) {
-  if (params.value == null) {
-    console.warn("ListOfUsersActionsCell : params.value == null");
-    return null;
-  }
-
-  if (params.row.onDetailsClick == null) {
-    console.warn("ListOfUsersActionsCell : params.row.onDetailsClick == null");
-    return null;
-  }
-
-  return (
-    <>
-      <Button
-        size="small"
-        variant="outlined"
-        startIcon={<NorthEastIcon fontSize="small" />}
-        onClick={params.row.onDetailsClick}
-      >
-        Details
-      </Button>
-    </>
-  );
-}
-
-export default ListOfUsers;

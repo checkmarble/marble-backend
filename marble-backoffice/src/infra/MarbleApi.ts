@@ -134,6 +134,11 @@ export class MarbleApi {
     });
   }
 
+  async scenariosById(scenarioId: string): Promise<unknown> {
+    const scenarioIdParam = encodeURIComponent(scenarioId);
+    return this.getAuthorizedJson(`${SCENARIO_URL_PATH}/${scenarioIdParam}`);
+  }
+
   async allUsers(): Promise<unknown> {
     return this.getAuthorizedJson(USERS_URL_PATH);
   }
@@ -205,29 +210,31 @@ export class MarbleApi {
     );
   }
 
-  async validateAstExpression(expression: AstNodeDto) {
-    // ast-expression/available-functions
-    // validate
+  async validateAstExpression(organizationId: string, expression: AstNodeDto) {
     return await this.sendAuthorizedJson({
       method: HttpMethod.Post,
-      path: `${AST_EXPRESSION_URL_PATH}/validate`,
+      path: urlWithOrganizationId(
+        `${AST_EXPRESSION_URL_PATH}/validate`,
+        organizationId
+      ),
       body: {
         expression: expression,
       },
     });
   }
 
-  async runAstExpression(expression: AstNodeDto) {
-    // ast-expression/available-functions
-    // run
+  async runAstExpression(organizationId: string, expression: AstNodeDto) {
     return await this.sendAuthorizedJson({
       method: HttpMethod.Post,
-      path: `${AST_EXPRESSION_URL_PATH}/run`,
+      path: urlWithOrganizationId(
+        `${AST_EXPRESSION_URL_PATH}/run`,
+        organizationId
+      ),
       body: {
         expression: expression,
         payload: {
           object_id: "transaction_c",
-          account_id: "account-a-id",
+          account_id: "marble-account-id",
           direction: "payout",
           status: "pending",
           bic_country: "FR",
@@ -238,9 +245,16 @@ export class MarbleApi {
       },
     });
   }
+
+  async editorIdentifiers(scenarioId: string) {
+    const scenarioIdParam = encodeURIComponent(scenarioId);
+    return await this.getAuthorizedJson(
+      `editor/${scenarioIdParam}/identifiers`
+    );
+  }
 }
 
 function urlWithOrganizationId(path: string, organizationId: string): string {
   const r = new URLSearchParams({ "organization-id": organizationId });
-  return `${path}/?${r.toString()}`;
+  return `${path}?${r.toString()}`;
 }

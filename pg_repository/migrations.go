@@ -61,11 +61,11 @@ func runMigrationsWithFolder(db *sql.DB, params migrationParams, logger *slog.Lo
 	// When running on the secondary folder containing the test org migrations, we allow missing migrations to allow out of order migrations with the main folder
 	if params.allowMissing {
 		if err := goose.Up(db, params.folderName, goose.WithAllowMissing()); err != nil {
-			return fmt.Errorf("unable to run migrations: %w \n", err)
+			return fmt.Errorf("unable to run migrations: %w", err)
 		}
 	} else {
 		if err := goose.Up(db, params.folderName); err != nil {
-			return fmt.Errorf("unable to run migrations: %w \n", err)
+			return fmt.Errorf("unable to run migrations: %w", err)
 		}
 	}
 	return nil
