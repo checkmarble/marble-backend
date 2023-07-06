@@ -58,7 +58,7 @@ func (api *API) handleIngestion() http.HandlerFunc {
 			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
-		err = usecase.IngestObject(orgID, []models.PayloadReader{payload}, table, logger)
+		err = usecase.IngestObjects(orgID, []models.PayloadReader{payload}, table, logger)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Error while ingesting object:\n"+err.Error())
 			http.Error(w, "", http.StatusInternalServerError)

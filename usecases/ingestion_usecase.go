@@ -15,7 +15,11 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-const batchSize = 1000
+const (
+	batchSize          = 1000
+	pendingFilesFolder = "pending"
+	doneFilesFolder    = "done"
+)
 
 type IngestionUseCase struct {
 	orgTransactionFactory organization.OrgTransactionFactory
@@ -24,75 +28,75 @@ type IngestionUseCase struct {
 	datamodelRepository   repositories.DataModelRepository
 }
 
-func (usecase *IngestionUseCase) IngestObject(organizationId string, payloads []models.PayloadReader, table models.Table, logger *slog.Logger) error {
+func (usecase *IngestionUseCase) IngestObjects(organizationId string, payloads []models.PayloadReader, table models.Table, logger *slog.Logger) error {
 
 	return usecase.orgTransactionFactory.TransactionInOrgSchema(organizationId, func(tx repositories.Transaction) error {
-		return usecase.ingestionRepository.IngestObject(tx, payloads, table, logger)
+		return usecase.ingestionRepository.IngestObjects(tx, payloads, table, logger)
 	})
 }
 
-func (usecase *IngestionUseCase) IngestObjectsFromStorageCsv(ctx context.Context, bucketName string, logger *slog.Logger) error {
-	pendingFilesFolder := "pending"
-	doneFilesFolder := "done"
-
-	objects, err := usecase.gcsRepository.ListObjects(ctx, bucketName, pendingFilesFolder)
+func (usecase *IngestionUseCase) IngestFilesFromStorageCsv(ctx context.Context, bucketName string, logger *slog.Logger) error {
+	files, err := usecase.gcsRepository.ListFiles(ctx, bucketName, pendingFilesFolder)
 	if err != nil {
 		return err
 	}
 
-	filteredObjects := make([]models.GCSObject, 0)
-	for _, object := range objects {
-		// "folder" itself lists as a GCS object, ignore it
-		if object.FileName != pendingFilesFolder+"/" && strings.HasSuffix(object.FileName, ".csv") {
-			filteredObjects = append(filteredObjects, object)
+	filteredFiles := make([]models.GCSFile, 0)
+	for _, file := range files {
+		// "folder" itself lists as a GCS file, ignore it
+		if file.FileName != pendingFilesFolder+"/" && strings.HasSuffix(file.FileName, ".csv") {
+			filteredFiles = append(filteredFiles, file)
 		}
 	}
 
-	logger.InfoCtx(ctx, fmt.Sprintf("Found %d CSVs of data to ingest", len(filteredObjects)))
+	logger.InfoCtx(ctx, fmt.Sprintf("Found %d CSVs of data to ingest", len(filteredFiles)))
 
-	for _, file := range filteredObjects {
-		fullFileName := file.FileName
-		fmt.Println(fullFileName)
-		logger.InfoCtx(ctx, fmt.Sprintf("Ingesting data from CSV %s", fullFileName))
-
-		// full filename is path/to/file/{filename}.csv
-		fullFileNameElements := strings.Split(fullFileName, "/")
-		fileName := fullFileNameElements[len(fullFileNameElements)-1]
-
-		// end of filename is organizationId:tableName:timestamp.csv
-		// (using : because _ can be present in table name, - is present in org id)
-		elements := strings.Split(fileName, ":")
-		if len(elements) != 3 {
-			return fmt.Errorf("Invalid filename %s: expecting format organizationId:tableName:timestamp.csv", fileName)
+	for _, file := range filteredFiles {
+		if err = usecase.readFileIngestObjects(ctx, file, logger); err != nil {
+			return err
 		}
-		organizationId := elements[0]
-		tableName := elements[1]
-
-		dataModel, err := usecase.datamodelRepository.GetDataModel(nil, organizationId)
-		if err != nil {
-			return fmt.Errorf("error getting data model for organization %s: %w", organizationId, err)
-		}
-
-		table, ok := dataModel.Tables[models.TableName(tableName)]
-		if !ok {
-			return fmt.Errorf("table %s not found in data model for organization %s", tableName, organizationId)
-		}
-
-		err = usecase.ingestObjectsFromCSV(ctx, organizationId, file, table, logger)
-		if err != nil {
-			return fmt.Errorf("Error ingesting objects from CSV %s: %w", fullFileName, err)
-		}
-
-		err = usecase.gcsRepository.MoveObject(ctx, bucketName, fullFileName, strings.Replace(fullFileName, pendingFilesFolder, doneFilesFolder, 1))
-		if err != nil {
-			return fmt.Errorf("Error moving file %s to done folder: %w", fullFileName, err)
-		}
-
 	}
 	return nil
 }
 
-func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organizationId string, file models.GCSObject, table models.Table, logger *slog.Logger) error {
+func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file models.GCSFile, logger *slog.Logger) error {
+	fullFileName := file.FileName
+	logger.InfoCtx(ctx, fmt.Sprintf("Ingesting data from CSV %s", fullFileName))
+
+	// full filename is path/to/file/{filename}.csv
+	fullFileNameElements := strings.Split(fullFileName, "/")
+	fileName := fullFileNameElements[len(fullFileNameElements)-1]
+
+	// end of filename is organizationId:tableName:timestamp.csv
+	// (using : because _ can be present in table name, - is present in org id)
+	elements := strings.Split(fileName, ":")
+	if len(elements) != 3 {
+		return fmt.Errorf("Invalid filename %s: expecting format organizationId:tableName:timestamp.csv", fileName)
+	}
+	organizationId := elements[0]
+	tableName := elements[1]
+
+	dataModel, err := usecase.datamodelRepository.GetDataModel(nil, organizationId)
+	if err != nil {
+		return fmt.Errorf("error getting data model for organization %s: %w", organizationId, err)
+	}
+
+	table, ok := dataModel.Tables[models.TableName(tableName)]
+	if !ok {
+		return fmt.Errorf("table %s not found in data model for organization %s", tableName, organizationId)
+	}
+
+	if err = usecase.ingestObjectsFromCSV(ctx, organizationId, file, table, logger); err != nil {
+		return fmt.Errorf("Error ingesting objects from CSV %s: %w", fullFileName, err)
+	}
+
+	if err = usecase.gcsRepository.MoveFile(ctx, file.BucketName, fullFileName, strings.Replace(fullFileName, pendingFilesFolder, doneFilesFolder, 1)); err != nil {
+		return fmt.Errorf("Error moving file %s to done folder: %w", fullFileName, err)
+	}
+	return nil
+}
+
+func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organizationId string, file models.GCSFile, table models.Table, logger *slog.Logger) error {
 	start := time.Now()
 	r := csv.NewReader(file.Reader)
 	firstRow, err := r.Read()
@@ -119,7 +123,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 		if err != nil {
 			return err
 		}
-		object, err := parseVStringValuesToMap(record, firstRow, table)
+		object, err := parseStringValuesToMap(record, firstRow, table)
 		if err != nil {
 			return err
 		}
@@ -143,7 +147,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 		batch := payloadReaders[windowStart:windowEnd]
 
 		if err := usecase.orgTransactionFactory.TransactionInOrgSchema(organizationId, func(tx repositories.Transaction) error {
-			return usecase.ingestionRepository.IngestObject(tx, batch, table, logger)
+			return usecase.ingestionRepository.IngestObjects(tx, batch, table, logger)
 		}); err != nil {
 			return err
 		}
@@ -167,7 +171,7 @@ func containsString(arr []string, s string) bool {
 	return false
 }
 
-func parseVStringValuesToMap(values []string, headers []string, table models.Table) (map[string]any, error) {
+func parseStringValuesToMap(values []string, headers []string, table models.Table) (map[string]any, error) {
 	result := make(map[string]any)
 
 	for i, value := range values {

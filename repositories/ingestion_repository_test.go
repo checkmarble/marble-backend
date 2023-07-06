@@ -24,7 +24,7 @@ package repositories
 // 	}
 
 // 	assert := assert.New(t)
-// 	err = globalTestParams.repository.IngestObject(ctx, payload, transactions, logger)
+// 	err = globalTestParams.repository.IngestObjects(ctx, payload, transactions, logger)
 // 	if err != nil {
 // 		t.Errorf("Error while inserting object into DB: %s", err)
 // 	}
@@ -76,11 +76,11 @@ package repositories
 // 	}
 
 // 	assert := assert.New(t)
-// 	err = globalTestParams.repository.IngestObject(ctx, payload, transactions, logger)
+// 	err = globalTestParams.repository.IngestObjects(ctx, payload, transactions, logger)
 // 	if err != nil {
 // 		t.Errorf("Error while inserting object into DB: %s", err)
 // 	}
-// 	_ = globalTestParams.repository.IngestObject(ctx, payload, transactions, logger)
+// 	_ = globalTestParams.repository.IngestObjects(ctx, payload, transactions, logger)
 
 // 	id, _ := payload.ReadFieldFromPayload("object_id")
 // 	sql, args, err := globalTestParams.repository.queryBuilder.

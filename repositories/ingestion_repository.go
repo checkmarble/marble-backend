@@ -12,13 +12,13 @@ import (
 )
 
 type IngestionRepository interface {
-	IngestObject(transaction Transaction, payloads []models.PayloadReader, table models.Table, logger *slog.Logger) (err error)
+	IngestObjects(transaction Transaction, payloads []models.PayloadReader, table models.Table, logger *slog.Logger) (err error)
 }
 
 type IngestionRepositoryImpl struct {
 }
 
-func (repo *IngestionRepositoryImpl) IngestObject(transaction Transaction, payloads []models.PayloadReader, table models.Table, logger *slog.Logger) (err error) {
+func (repo *IngestionRepositoryImpl) IngestObjects(transaction Transaction, payloads []models.PayloadReader, table models.Table, logger *slog.Logger) (err error) {
 
 	tx := adaptClientDatabaseTransaction(transaction)
 

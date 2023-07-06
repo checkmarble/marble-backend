@@ -138,8 +138,9 @@ func runBatchIngestion(pgRepository *pg_repository.PGRepository, marbleConnectio
 		Repositories:  *repositories,
 		Configuration: emptyConfiguration,
 	}
+	bucketName := utils.GetRequiredStringEnv("GCS_INGESTION_BUCKET")
 
-	jobs.IngestDataFromStorageCSVs(ctx, usecases)
+	jobs.IngestDataFromStorageCSVs(ctx, usecases, bucketName)
 }
 
 func main() {

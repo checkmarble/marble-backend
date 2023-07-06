@@ -16,7 +16,7 @@ const DECISIONS_URL_PATH = "decisions";
 const AST_EXPRESSION_URL_PATH = "ast-expression";
 const DATA_MODEL_URL_PATH = "data-model";
 
-export interface IngestObject {
+export interface IngestObjects {
   tableName: string;
   content: Record<string, unknown>;
 }
@@ -177,7 +177,7 @@ export class MarbleApi {
     );
   }
 
-  async ingest(ingestObject: IngestObject) {
+  async ingest(ingestObject: IngestObjects) {
     const objectTypeParam = encodeURIComponent(ingestObject.tableName);
     await this.sendAuthorizedJson({
       method: HttpMethod.Post,

@@ -11,13 +11,11 @@ import (
 )
 
 type GcsRepository interface {
-	ListObjects(ctx context.Context, bucketName, prefix string) ([]models.GCSObject, error)
-	MoveObject(ctx context.Context, bucketName, source, destination string) error
+	ListFiles(ctx context.Context, bucketName, prefix string) ([]models.GCSFile, error)
+	MoveFile(ctx context.Context, bucketName, source, destination string) error
 }
 
 type GcsRepositoryImpl struct {
-	// You can create goroutines that concurrently use the same service client to send multiple requests.
-	// source: https://aws.github.io/aws-sdk-go-v2/docs/making-requests/
 	gcsClient *storage.Client
 	logger    *slog.Logger
 }
@@ -32,14 +30,14 @@ func NewGCSClient() *storage.Client {
 	return client
 }
 
-func (repository *GcsRepositoryImpl) ListObjects(ctx context.Context, bucketName, prefix string) ([]models.GCSObject, error) {
+func (repository *GcsRepositoryImpl) ListFiles(ctx context.Context, bucketName, prefix string) ([]models.GCSFile, error) {
 	bucket := repository.gcsClient.Bucket(bucketName)
 	_, err := bucket.Attrs(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get bucket to list GCS objects from bucket %s/%s: %w", bucketName, prefix, err)
 	}
 
-	var output []models.GCSObject
+	var output []models.GCSFile
 
 	query := &storage.Query{Prefix: prefix}
 	it := bucket.Objects(ctx, query)
@@ -57,16 +55,17 @@ func (repository *GcsRepositoryImpl) ListObjects(ctx context.Context, bucketName
 			return nil, fmt.Errorf("Failed to read GCS object %s/%s: %v", bucketName, attrs.Name, err)
 		}
 
-		output = append(output, models.GCSObject{
-			FileName: attrs.Name,
-			Reader:   r,
+		output = append(output, models.GCSFile{
+			FileName:   attrs.Name,
+			Reader:     r,
+			BucketName: bucketName,
 		})
 	}
 
 	return output, nil
 }
 
-func (repository *GcsRepositoryImpl) MoveObject(ctx context.Context, bucketName, srcName, destName string) error {
+func (repository *GcsRepositoryImpl) MoveFile(ctx context.Context, bucketName, srcName, destName string) error {
 	src := repository.gcsClient.Bucket(bucketName).Object(srcName)
 	dst := repository.gcsClient.Bucket(bucketName).Object(destName)
 
