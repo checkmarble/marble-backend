@@ -1,16 +1,8 @@
 import { useCallback } from "react";
 import type { MarbleApi, IngestObjects } from "@/infra/MarbleApi";
 
-<<<<<<< HEAD
-export function useIngestion(
-  marbleApi: MarbleApi | null
-) {
-
-  const ingest = useCallback(async (): Promise<IngestObjects[]> => {
-=======
 export function useIngestion(marbleApi: MarbleApi | null) {
-  const ingest = useCallback(async (): Promise<IngestObject[]> => {
->>>>>>> master
+  const ingest = useCallback(async (): Promise<IngestObjects[]> => {
     if (!marbleApi) {
       throw Error("MarbleApi not initialized");
     }

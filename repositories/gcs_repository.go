@@ -25,7 +25,7 @@ func NewGCSClient() *storage.Client {
 	ctx := context.Background()
 	client, err := storage.NewClient(ctx)
 	if err != nil {
-		panic(fmt.Errorf("Failed to load GCS client: %w", err))
+		panic(fmt.Errorf("failed to load GCS client: %w", err))
 	}
 	return client
 }
@@ -34,7 +34,7 @@ func (repository *GcsRepositoryImpl) ListFiles(ctx context.Context, bucketName, 
 	bucket := repository.gcsClient.Bucket(bucketName)
 	_, err := bucket.Attrs(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get bucket to list GCS objects from bucket %s/%s: %w", bucketName, prefix, err)
+		return nil, fmt.Errorf("failed to get bucket to list GCS objects from bucket %s/%s: %w", bucketName, prefix, err)
 	}
 
 	var output []models.GCSFile
@@ -47,12 +47,12 @@ func (repository *GcsRepositoryImpl) ListFiles(ctx context.Context, bucketName, 
 			break
 		}
 		if err != nil {
-			return nil, fmt.Errorf("Failed to list GCS objects from bucket %s/%s: %v", bucketName, prefix, err)
+			return nil, fmt.Errorf("failed to list GCS objects from bucket %s/%s: %v", bucketName, prefix, err)
 		}
 
 		r, err := bucket.Object(attrs.Name).NewReader(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to read GCS object %s/%s: %v", bucketName, attrs.Name, err)
+			return nil, fmt.Errorf("failed to read GCS object %s/%s: %v", bucketName, attrs.Name, err)
 		}
 
 		output = append(output, models.GCSFile{
