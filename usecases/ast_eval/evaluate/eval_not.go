@@ -1,7 +1,6 @@
 package evaluate
 
 import (
-	"fmt"
 	"marble/marble-backend/models/ast"
 )
 
@@ -11,16 +10,13 @@ type Not struct {
 
 func (f Not) Evaluate(arguments ast.Arguments) (any, error) {
 
-	numberOfOperands := len(arguments.Args)
-	if numberOfOperands != 1 {
-		return false, fmt.Errorf("function %s expects 1 operand, got %d", f.Function.DebugString(), numberOfOperands)
+	if err := verifyNumberOfArguments(f.Function, arguments.Args, 1); err != nil {
+		return nil, err
 	}
 
-	firstArgument := arguments.Args[0]
-
-	v, ok := firstArgument.(bool)
-	if !ok {
-		return false, fmt.Errorf("function %s only accept bool: %v is not a bool", f.Function.DebugString(), firstArgument)
+	v, err := adaptArgumentToBool(f.Function, arguments.Args[0])
+	if err != nil {
+		return false, err
 	}
 
 	return !v, nil
