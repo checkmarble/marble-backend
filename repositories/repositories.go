@@ -32,6 +32,7 @@ type Repositories struct {
 	ScheduledExecutionRepository     ScheduledExecutionRepository
 	OrganizationSchemaRepository     OrganizationSchemaRepository
 	AwsS3Repository                  AwsS3Repository
+	GcsRepository                    GcsRepository
 	CustomListRepository             CustomListRepository
 }
 
@@ -122,5 +123,9 @@ func NewRepositories(
 				logger:   appLogger,
 			}
 		}(),
+		GcsRepository: &GcsRepositoryImpl{
+			gcsClient: NewGCSClient(),
+			logger:    appLogger,
+		},
 	}, nil
 }

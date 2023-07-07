@@ -118,6 +118,7 @@ func main() {
 	shouldRunMigrations := flag.Bool("migrations", false, "Run migrations")
 	shouldRunServer := flag.Bool("server", false, "Run server")
 	shouldRunScheduledScenarios := flag.Bool("scheduler", false, "Run scheduled scenarios")
+	shouldRunBatchIngestion := flag.Bool("batch-ingestion", false, "Run batch ingestion")
 	flag.Parse()
 	logger.DebugCtx(context.Background(), "shouldRunMigrations", *shouldRunMigrations, "shouldRunServer", *shouldRunServer)
 
@@ -127,8 +128,6 @@ func main() {
 
 	appContext := utils.StoreLoggerInContext(context.Background(), logger)
 
-	// The below specifically does not share a connection pool with the functions "run migrations" and "wipe db" because it conflicts
-	// with the postgresql search path update
 	if *shouldRunServer {
 
 		marbleJwtSigningKey := infra.MustParseSigningKey(utils.GetRequiredStringEnv("AUTHENTICATION_JWT_SIGNING_KEY"))
@@ -140,6 +139,12 @@ func main() {
 	if *shouldRunScheduledScenarios {
 		usecases := NewUseCases(appContext, appConfig, nil)
 		jobs.ExecuteAllScheduledScenarios(appContext, usecases)
+	}
+
+	if *shouldRunBatchIngestion {
+		bucketName := utils.GetRequiredStringEnv("GCS_INGESTION_BUCKET")
+		usecases := NewUseCases(appContext, appConfig, nil)
+		jobs.IngestDataFromStorageCSVs(appContext, usecases, bucketName)
 	}
 }
 

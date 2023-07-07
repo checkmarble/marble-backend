@@ -1,8 +1,16 @@
 import { useCallback } from "react";
-import type { MarbleApi, IngestObject } from "@/infra/MarbleApi";
+import type { MarbleApi, IngestObjects } from "@/infra/MarbleApi";
 
+<<<<<<< HEAD
+export function useIngestion(
+  marbleApi: MarbleApi | null
+) {
+
+  const ingest = useCallback(async (): Promise<IngestObjects[]> => {
+=======
 export function useIngestion(marbleApi: MarbleApi | null) {
   const ingest = useCallback(async (): Promise<IngestObject[]> => {
+>>>>>>> master
     if (!marbleApi) {
       throw Error("MarbleApi not initialized");
     }
@@ -76,7 +84,7 @@ async function injectTransaction(
   accountId: string,
   transaction_id: string,
   amount: number
-): Promise<IngestObject> {
+): Promise<IngestObjects> {
   const tableName = "transactions";
   const content = {
     object_id: transaction_id,
