@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"fmt"
 
 	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
@@ -14,23 +15,23 @@ func presentError(w http.ResponseWriter, r *http.Request, err error) bool {
 	}
 
 	if errors.Is(err, models.BadParameterError) {
-		utils.LogRequestError(r, "BadParameterError", "error", err)
+		utils.LogRequestError(r, fmt.Sprintf("BadParameterError: %v", err))
 		http.Error(w, err.Error(), http.StatusBadRequest)
 
 	} else if errors.Is(err, models.UnAuthorizedError) {
-		utils.LogRequestError(r, "UnAuthorizedError", "error", err)
+		utils.LogRequestError(r, fmt.Sprintf("UnAuthorizedError: %v", err))
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 
 	} else if errors.Is(err, models.ForbiddenError) {
-		utils.LogRequestError(r, "ForbiddenError", "error", err)
+		utils.LogRequestError(r, fmt.Sprintf("ForbiddenError: %v", err))
 		http.Error(w, err.Error(), http.StatusForbidden)
 
 	} else if errors.Is(err, models.NotFoundError) {
-		utils.LogRequestError(r, "NotFoundError", "error", err)
+		utils.LogRequestError(r, fmt.Sprintf("NotFoundError: %v", err))
 		http.Error(w, err.Error(), http.StatusNotFound)
 
 	} else {
-		utils.LogRequestError(r, "Unexpected Error", "error", err)
+		utils.LogRequestError(r, fmt.Sprintf("Unexpected Error: %v", err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 	return true
