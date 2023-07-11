@@ -20,18 +20,22 @@ type GcsRepositoryImpl struct {
 	logger    *slog.Logger
 }
 
-func NewGCSClient() *storage.Client {
+func (repository *GcsRepositoryImpl) getGCSClient(ctx context.Context) *storage.Client {
+	// Lazy load the GCS client, as it is used only in one batch usecase, to avoid requiring GCS credentials for all devs
+	if repository.gcsClient != nil {
+		return repository.gcsClient
+	}
 
-	ctx := context.Background()
 	client, err := storage.NewClient(ctx)
 	if err != nil {
 		panic(fmt.Errorf("failed to load GCS client: %w", err))
 	}
+	repository.gcsClient = client
 	return client
 }
 
 func (repository *GcsRepositoryImpl) ListFiles(ctx context.Context, bucketName, prefix string) ([]models.GCSFile, error) {
-	bucket := repository.gcsClient.Bucket(bucketName)
+	bucket := repository.getGCSClient(ctx).Bucket(bucketName)
 	_, err := bucket.Attrs(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get bucket to list GCS objects from bucket %s/%s: %w", bucketName, prefix, err)
@@ -66,8 +70,9 @@ func (repository *GcsRepositoryImpl) ListFiles(ctx context.Context, bucketName, 
 }
 
 func (repository *GcsRepositoryImpl) MoveFile(ctx context.Context, bucketName, srcName, destName string) error {
-	src := repository.gcsClient.Bucket(bucketName).Object(srcName)
-	dst := repository.gcsClient.Bucket(bucketName).Object(destName)
+	gcsClient := repository.getGCSClient(ctx)
+	src := gcsClient.Bucket(bucketName).Object(srcName)
+	dst := gcsClient.Bucket(bucketName).Object(destName)
 
 	// Optional: set a generation-match precondition to avoid potential race
 	// conditions and data corruptions. The request to copy the file is aborted
