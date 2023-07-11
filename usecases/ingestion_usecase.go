@@ -123,7 +123,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 		if err != nil {
 			return err
 		}
-		object, err := parseStringValuesToMap(record, firstRow, table)
+		object, err := parseStringValuesToMap(firstRow, record, table)
 		if err != nil {
 			return err
 		}
@@ -171,7 +171,7 @@ func containsString(arr []string, s string) bool {
 	return false
 }
 
-func parseStringValuesToMap(values []string, headers []string, table models.Table) (map[string]any, error) {
+func parseStringValuesToMap(headers []string, values []string, table models.Table) (map[string]any, error) {
 	result := make(map[string]any)
 
 	for i, value := range values {
@@ -183,7 +183,8 @@ func parseStringValuesToMap(values []string, headers []string, table models.Tabl
 
 		// Handle the case of null values (except for strings, which can be empty strings)
 		if value == "" {
-			if field.DataType == models.String {
+			// Special case for object_id which is a string but must not be empty
+			if field.DataType == models.String && fieldName != "object_id" {
 				result[fieldName] = ""
 			} else if !field.Nullable {
 				return nil, fmt.Errorf("field %s is required but is empty", fieldName)
