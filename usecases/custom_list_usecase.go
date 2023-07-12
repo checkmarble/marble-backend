@@ -4,6 +4,7 @@ import (
 	"context"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -22,6 +23,9 @@ func (usecase *CustomListUseCase) CreateCustomList(ctx context.Context, createCu
 		newCustomListId := uuid.NewString()
 		err := usecase.CustomListRepository.CreateCustomList(tx, createCustomList, newCustomListId)
 		if err != nil {
+			if strings.Contains(err.Error(), "duplicate key value") {
+				return models.CustomList{}, models.DuplicateValueError
+			}
 			return models.CustomList{}, err
 		}
 		return usecase.CustomListRepository.GetCustomListById(tx, newCustomListId)
