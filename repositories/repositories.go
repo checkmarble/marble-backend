@@ -123,9 +123,6 @@ func NewRepositories(
 				logger:   appLogger,
 			}
 		}(),
-		GcsRepository: &GcsRepositoryImpl{
-			gcsClient: NewGCSClient(),
-			logger:    appLogger,
-		},
+		GcsRepository: &GcsRepositoryImpl{logger: appLogger},
 	}, nil
 }
