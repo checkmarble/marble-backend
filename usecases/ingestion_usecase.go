@@ -71,7 +71,7 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file
 	// (using : because _ can be present in table name, - is present in org id)
 	elements := strings.Split(fileName, ":")
 	if len(elements) != 3 {
-		return fmt.Errorf("Invalid filename %s: expecting format organizationId:tableName:timestamp.csv", fileName)
+		return fmt.Errorf("invalid filename %s: expecting format organizationId:tableName:timestamp.csv", fileName)
 	}
 	organizationId := elements[0]
 	tableName := elements[1]
@@ -87,11 +87,11 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file
 	}
 
 	if err = usecase.ingestObjectsFromCSV(ctx, organizationId, file, table, logger); err != nil {
-		return fmt.Errorf("Error ingesting objects from CSV %s: %w", fullFileName, err)
+		return fmt.Errorf("error ingesting objects from CSV %s: %w", fullFileName, err)
 	}
 
 	if err = usecase.gcsRepository.MoveFile(ctx, file.BucketName, fullFileName, strings.Replace(fullFileName, pendingFilesFolder, doneFilesFolder, 1)); err != nil {
-		return fmt.Errorf("Error moving file %s to done folder: %w", fullFileName, err)
+		return fmt.Errorf("error moving file %s to done folder: %w", fullFileName, err)
 	}
 	return nil
 }
@@ -101,14 +101,14 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 	r := csv.NewReader(file.Reader)
 	firstRow, err := r.Read()
 	if err != nil {
-		return fmt.Errorf("Error reading first row of CSV: %w", err)
+		return fmt.Errorf("error reading first row of CSV: %w", err)
 	}
 
 	// first, check presence of all required fields in the csv
 	for name, field := range table.Fields {
 		if !field.Nullable {
 			if !containsString(firstRow, string(name)) {
-				return fmt.Errorf("Missing required field %s in CSV", name)
+				return fmt.Errorf("missing required field %s in CSV", name)
 			}
 		}
 	}
@@ -123,7 +123,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 		if err != nil {
 			return err
 		}
-		object, err := parseStringValuesToMap(record, firstRow, table)
+		object, err := parseStringValuesToMap(firstRow, record, table)
 		if err != nil {
 			return err
 		}
@@ -171,21 +171,27 @@ func containsString(arr []string, s string) bool {
 	return false
 }
 
-func parseStringValuesToMap(values []string, headers []string, table models.Table) (map[string]any, error) {
+func parseStringValuesToMap(headers []string, values []string, table models.Table) (map[string]any, error) {
 	result := make(map[string]any)
 
 	for i, value := range values {
 		fieldName := headers[i]
-		result[fieldName] = value
 		field, ok := table.Fields[models.FieldName(fieldName)]
 		if !ok {
-			return nil, fmt.Errorf("Field %s not found in table %s", fieldName, table.Name)
+			return nil, fmt.Errorf("field %s not found in table %s", fieldName, table.Name)
 		}
 
+		// Handle the case of null values (except for strings, which can be empty strings)
 		if value == "" {
-			if !field.Nullable {
-				return nil, fmt.Errorf("Field %s is required but is empty", fieldName)
+			// Special case for object_id which is a string but must not be empty
+			if field.DataType == models.String && fieldName != "object_id" {
+				result[fieldName] = ""
+			} else if !field.Nullable {
+				return nil, fmt.Errorf("field %s is required but is empty", fieldName)
+			} else {
+				result[fieldName] = nil
 			}
+			// move on to next field
 			continue
 		}
 
@@ -195,29 +201,29 @@ func parseStringValuesToMap(values []string, headers []string, table models.Tabl
 		case models.Timestamp:
 			val, err := time.Parse(time.RFC3339, value)
 			if err != nil {
-				return nil, fmt.Errorf("Error parsing timestamp %s for field %s: %w", value, fieldName, err)
+				return nil, fmt.Errorf("error parsing timestamp %s for field %s: %w", value, fieldName, err)
 			}
 			result[fieldName] = val
 		case models.Bool:
 			val, err := strconv.ParseBool(value)
 			if err != nil {
-				return nil, fmt.Errorf("Error parsing bool %s for field %s: %w", value, fieldName, err)
+				return nil, fmt.Errorf("error parsing bool %s for field %s: %w", value, fieldName, err)
 			}
 			result[fieldName] = val
 		case models.Int:
 			val, err := strconv.Atoi(value)
 			if err != nil {
-				return nil, fmt.Errorf("Error parsing int %s for field %s: %w", value, fieldName, err)
+				return nil, fmt.Errorf("error parsing int %s for field %s: %w", value, fieldName, err)
 			}
 			result[fieldName] = val
 		case models.Float:
 			val, err := strconv.ParseFloat(value, 64)
 			if err != nil {
-				return nil, fmt.Errorf("Error parsing float %s for field %s: %w", value, fieldName, err)
+				return nil, fmt.Errorf("error parsing float %s for field %s: %w", value, fieldName, err)
 			}
 			result[fieldName] = val
 		default:
-			return nil, fmt.Errorf("Invalid data type %s for field %s", field.DataType, fieldName)
+			return nil, fmt.Errorf("invalid data type %s for field %s", field.DataType, fieldName)
 		}
 
 	}
