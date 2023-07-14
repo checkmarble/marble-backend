@@ -20,10 +20,18 @@ func (usecases *UsecasesWithCreds) NewEnforceSecurity() security.EnforceSecurity
 	}
 }
 
+func (usecases *UsecasesWithCreds) NewEnforceScenarioSecurity() security.EnforceSecurityScenario {
+	return &security.EnforceSecurityScenarioImpl{
+		EnforceSecurity: usecases.NewEnforceSecurity(),
+		Credentials:     usecases.Credentials,
+	}
+}
+
 func (usecases *UsecasesWithCreds) NewScenarioUsecase() ScenarioUsecase {
 	return ScenarioUsecase{
+		transactionFactory:      usecases.Repositories.TransactionFactory,
 		OrganizationIdOfContext: usecases.OrganizationIdOfContext,
-		enforceSecurity:         usecases.NewEnforceSecurity(),
+		enforceSecurity:         usecases.NewEnforceScenarioSecurity(),
 		scenarioReadRepository:  usecases.Repositories.ScenarioReadRepository,
 		scenarioWriteRepository: usecases.Repositories.ScenarioWriteRepository,
 	}

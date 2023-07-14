@@ -97,18 +97,20 @@ func (o *organizationSeederImpl) Seed(orgId string) error {
 	// Create and store a scenario
 	///////////////////////////////
 	createScenarioInput := models.CreateScenarioInput{
+		OrganizationID:    orgId,
 		Name:              "test name",
 		Description:       "test description",
 		TriggerObjectType: "transactions",
 	}
-	scenario, err := o.ScenarioWriteRepository.CreateScenario(context.TODO(), orgId, createScenarioInput)
+	testScenarioId := uuid.NewString()
+	err = o.ScenarioWriteRepository.CreateScenario(nil, createScenarioInput, testScenarioId)
 	if err != nil {
 		log.Printf("error creating scenario: %v", err)
 		return err
 	}
 
 	createScenarioIterationInput := models.CreateScenarioIterationInput{
-		ScenarioID: scenario.ID,
+		ScenarioID: testScenarioId,
 		Body: &models.CreateScenarioIterationBody{
 			TriggerCondition:     &operators.BoolValue{Value: true},
 			ScoreReviewThreshold: utils.Ptr(10),
@@ -165,18 +167,20 @@ func (o *organizationSeederImpl) Seed(orgId string) error {
 	///////////////////////////////
 	// Also create the demo scenario
 	///////////////////////////////
-	demoScenario, err := o.ScenarioWriteRepository.CreateScenario(context.TODO(), orgId, models.CreateScenarioInput{
+	demoScenarioId := uuid.NewString()
+	err = o.ScenarioWriteRepository.CreateScenario(nil, models.CreateScenarioInput{
+		OrganizationID:    orgId,
 		Name:              "Demo scenario",
 		Description:       "Demo scenario",
 		TriggerObjectType: "transactions",
-	})
+	}, demoScenarioId)
 	if err != nil {
 		log.Printf("error creating demo scenario: %v", err)
 		return err
 	}
 
 	createDemoScenarioIterationInput := models.CreateScenarioIterationInput{
-		ScenarioID: demoScenario.ID,
+		ScenarioID: demoScenarioId,
 		Body: &models.CreateScenarioIterationBody{
 			TriggerCondition: &operators.And{
 				Operands: []operators.OperatorBool{

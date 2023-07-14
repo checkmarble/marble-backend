@@ -1,11 +1,70 @@
 package repositories
 
 import (
-	"context"
 	"marble/marble-backend/models"
+	"marble/marble-backend/repositories/dbmodels"
 )
 
 type ScenarioWriteRepository interface {
-	CreateScenario(ctx context.Context, orgID string, scenario models.CreateScenarioInput) (models.Scenario, error)
-	UpdateScenario(ctx context.Context, orgID string, scenario models.UpdateScenarioInput) (models.Scenario, error)
+	CreateScenario(tx Transaction, scenario models.CreateScenarioInput, newScenarioId string) error
+	UpdateScenario(tx Transaction, scenario models.UpdateScenarioInput) error
+}
+
+type ScenarioWriteRepositoryPostgresql struct {
+	transactionFactory TransactionFactory
+}
+
+func NewScenarioWriteRepositoryPostgresql(transactionFactory TransactionFactory) ScenarioWriteRepository {
+	return &ScenarioWriteRepositoryPostgresql{
+		transactionFactory: transactionFactory,
+	}
+}
+
+func (repo *ScenarioWriteRepositoryPostgresql) CreateScenario(tx Transaction, scenario models.CreateScenarioInput, newScenarioId string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	_, err := pgTx.ExecBuilder(
+		NewQueryBuilder().Insert(dbmodels.TABLE_SCENARIOS).
+			Columns(
+				"id",
+				"org_id",
+				"name",
+				"description",
+				"trigger_object_type",
+			).
+			Values(
+				newScenarioId,
+				scenario.OrganizationID,
+				scenario.Name,
+				scenario.Description,
+				scenario.TriggerObjectType,
+			),
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (repo *ScenarioWriteRepositoryPostgresql) UpdateScenario(tx Transaction, scenario models.UpdateScenarioInput) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	sql := NewQueryBuilder().
+		Update(dbmodels.TABLE_SCENARIOS).
+		Where("id = ?", scenario.ID)
+
+	if scenario.Name != nil {
+		sql = sql.Set("name", scenario.Name)
+	}
+	if scenario.Description != nil {
+		sql = sql.Set("description", scenario.Description)
+	}
+
+	_, err := pgTx.ExecBuilder(sql)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

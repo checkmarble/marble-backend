@@ -47,7 +47,6 @@ func NewRepositories(
 	marbleConnectionPool *pgxpool.Pool,
 	appLogger *slog.Logger,
 	decisionRepositoryLegacy DecisionRepositoryLegacy,
-	scenarioWriteRepository ScenarioWriteRepository,
 	scenarioIterationReadRepository ScenarioIterationReadRepository,
 	scenarioIterationWriteRepository ScenarioIterationWriteRepository,
 	scenarioIterationRuleRepository ScenarioIterationRuleRepository,
@@ -99,7 +98,9 @@ func NewRepositories(
 		ScenarioReadRepository: NewScenarioReadRepositoryPostgresql(
 			transactionFactory,
 		),
-		ScenarioWriteRepository:          scenarioWriteRepository,
+		ScenarioWriteRepository: NewScenarioWriteRepositoryPostgresql(
+			transactionFactory,
+		),
 		ScenarioIterationReadRepository:  scenarioIterationReadRepository,
 		ScenarioIterationWriteRepository: scenarioIterationWriteRepository,
 		ScenarioIterationRuleRepository:  scenarioIterationRuleRepository,

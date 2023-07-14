@@ -217,3 +217,45 @@ func (r *PGRepository) GetScenarioPublication(ctx context.Context, orgID string,
 
 	return scenarioPublication.toDomain(), err
 }
+
+func (r *PGRepository) setLiveScenarioIteration(ctx context.Context, tx pgx.Tx, orgID string, scenarioIterationID string) error {
+	sql, args, err := r.queryBuilder.
+		Update("scenarios").
+		Set("live_scenario_iteration_id", scenarioIterationID).
+		From("scenario_iterations si").
+		Where("si.id = ?", scenarioIterationID).
+		Where("si.org_id = ?", orgID).
+		Where("scenarios.id = si.scenario_id").
+		ToSql()
+
+	if err != nil {
+		return fmt.Errorf("unable to build query: %w", err)
+	}
+
+	_, err = tx.Exec(ctx, sql, args...)
+	if err != nil {
+		return fmt.Errorf("unable to run query: %w", err)
+	}
+
+	return nil
+}
+
+func (r *PGRepository) unsetLiveScenarioIteration(ctx context.Context, tx pgx.Tx, orgID string, scenarioID string) error {
+	sql, args, err := r.queryBuilder.
+		Update("scenarios").
+		Set("live_scenario_iteration_id", nil).
+		Where("id = ?", scenarioID).
+		Where("org_id = ?", orgID).
+		ToSql()
+
+	if err != nil {
+		return fmt.Errorf("unable to build query: %w", err)
+	}
+
+	_, err = tx.Exec(ctx, sql, args...)
+	if err != nil {
+		return fmt.Errorf("unable to run query: %w", err)
+	}
+
+	return nil
+}
