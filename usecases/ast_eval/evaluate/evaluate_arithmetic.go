@@ -16,37 +16,40 @@ func NewArithmetic(f ast.Function) Arithmetic {
 }
 
 func (f Arithmetic) Evaluate(arguments ast.Arguments) (any, error) {
+
+	leftAny, rightAny, err := leftAndRight(f.Function, arguments.Args)
+	if err != nil {
+		return nil, err
+	}
+
 	// try to promote to int64
-	if operands, err := promoteOperandsToInt64(arguments.Args, f.Function); err == nil {
-		return arithmeticEval(f.Function, operands)
+	if left, right, err := adaptLeftAndRight(f.Function, leftAny, rightAny, promoteArgumentToInt64); err == nil {
+		return arithmeticEval(f.Function, left, right)
 	}
 
-	// promote to float64
-	if operands, err := promoteOperandsToFloat64(arguments.Args, f.Function); err == nil {
-		return arithmeticEval(f.Function, operands)
+	// try to promote to float64
+	if left, right, err := adaptLeftAndRight(f.Function, leftAny, rightAny, promoteArgumentToFloat64); err == nil {
+		return arithmeticEval(f.Function, left, right)
 	}
 
-	return nil, fmt.Errorf("arithmeticFunction %s support int64 and float64", f.Function.DebugString())
+	return nil, fmt.Errorf(
+		"all argments of function %s must be int64 or float64 %w",
+		f.Function.DebugString(), ErrRuntimeExpression,
+	)
 }
 
-func arithmeticEval[T int64 | float64](function ast.Function, operands []T) (T, error) {
-	l, r, err := leftAndRight(operands)
-	if err != nil {
-		return 0, err
-	}
+func arithmeticEval[T int64 | float64](function ast.Function, l, r T) (T, error) {
 
-	if function == ast.FUNC_ADD {
+	switch function {
+	case ast.FUNC_ADD:
 		return l + r, nil
-	}
-	if function == ast.FUNC_SUBTRACT {
+	case ast.FUNC_SUBTRACT:
 		return l - r, nil
-	}
-	if function == ast.FUNC_MULTIPLY {
+	case ast.FUNC_MULTIPLY:
 		return l * r, nil
-	}
-	if function == ast.FUNC_DIVIDE {
+	case ast.FUNC_DIVIDE:
 		return l / r, nil
+	default:
+		return 0, fmt.Errorf("Arithmetic does not support %s function", function.DebugString())
 	}
-
-	return 0, fmt.Errorf("Arithmetic does not support %s function", function.DebugString())
 }
