@@ -69,7 +69,7 @@ func (usecase *AstExpressionUsecase) Run(expression ast.Node, payloadType string
 	}
 
 	if err := usecase.EnforceSecurity.ReadOrganization(organizationId); err != nil {
-		return EditorIdentifiers{}, err
+		return nil, err
 	}
 
 	dataModel, err := usecase.DataModelRepository.GetDataModel(nil, organizationId)
@@ -145,8 +145,9 @@ func (usecase *AstExpressionUsecase) getLinkedDatabaseIdentifiers(scenario model
 
 	var path []string
 	if err := recursiveDatabaseAccessor(path, triggerObjectTable.LinksToSingle); err != nil {
-		return nil, err
+		return []ast.Identifier{}, err
 	}
+	
 	return dataAccessors, nil
 }
 
