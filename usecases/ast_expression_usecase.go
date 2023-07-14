@@ -61,39 +61,26 @@ func (usecase *AstExpressionUsecase) Run(expression ast.Node, payload models.Pay
 	inject.AddEvaluator(ast.FUNC_DB_ACCESS, evaluate.NewDatabaseAccess(
 		usecase.OrgTransactionFactory, usecase.IngestedDataReadRepository,
 		usecase.DataModelRepository, payload, usecase.OrganizationIdOfContext))
+	inject.AddEvaluator(ast.FUNC_PAYLOAD, evaluate.NewPayload(ast.FUNC_PAYLOAD, payload))
 	return ast_eval.EvaluateAst(inject, expression)
 
 }
 
 type EditorIdentifiers struct {
-	DataAccessors []ast.Node `json:"data_accessors"`
+	CustomListAccessors []ast.Node `json:"custom_list_accessors"`
+	PayloadAccessors    []ast.Node `json:"payload_accessors"`
+	DatabaseAccessors   []ast.Node `json:"database_accessors"`
 }
 
-func (usecase *AstExpressionUsecase) EditorIdentifiers(scenarioId string) (EditorIdentifiers, error) {
-
-	scenario, err := usecase.ScenarioRepository.GetScenarioById(nil, scenarioId)
-	if err != nil {
-		return EditorIdentifiers{}, err
-	}
-
-	if err := usecase.EnforceSecurity.ReadOrganization(scenario.OrganizationID); err != nil {
-		return EditorIdentifiers{}, err
-	}
-
-	dataModel, err := usecase.DataModelRepository.GetDataModel(nil, scenario.OrganizationID)
-	if err != nil {
-		return EditorIdentifiers{}, err
-	}
+func (usecase *AstExpressionUsecase) getLinkedDatabaseIdentifiers(scenario models.Scenario, dataModel models.DataModel) ([]ast.Node, error) {
+	var dataAccessors []ast.Node
+	var recursiveDatabaseAccessor func(path []string, links map[models.LinkName]models.LinkToSingle) error
 
 	triggerObjectTable, found := dataModel.Tables[models.TableName(scenario.TriggerObjectType)]
 	if !found {
 		// unexpected error: must be a valid table
-		return EditorIdentifiers{}, fmt.Errorf("triggerObjectTable %s not found in data model", scenario.TriggerObjectType)
+		return nil, fmt.Errorf("triggerObjectTable %s not found in data model", scenario.TriggerObjectType)
 	}
-
-	var dataAccessors []ast.Node
-
-	var recursiveDatabaseAccessor func(path []string, links map[models.LinkName]models.LinkToSingle) error
 
 	recursiveDatabaseAccessor = func(path []string, links map[models.LinkName]models.LinkToSingle) error {
 		for linkName, link := range links {
@@ -123,10 +110,78 @@ func (usecase *AstExpressionUsecase) EditorIdentifiers(scenarioId string) (Edito
 
 	var path []string
 	if err := recursiveDatabaseAccessor(path, triggerObjectTable.LinksToSingle); err != nil {
+		return nil, err
+	}
+	return dataAccessors, nil
+}
+
+func (usecase *AstExpressionUsecase) getPayloadIdentifiers(scenario models.Scenario, dataModel models.DataModel) ([]ast.Node, error) {
+	var dataAccessors []ast.Node
+
+	triggerObjectTable, found := dataModel.Tables[models.TableName(scenario.TriggerObjectType)]
+	if !found {
+		// unexpected error: must be a valid table
+		return nil, fmt.Errorf("triggerObjectTable %s not found in data model", scenario.TriggerObjectType)
+	}
+	for fieldName, _ := range triggerObjectTable.Fields {
+		dataAccessors = append(dataAccessors, ast.Node{
+			Function: ast.FUNC_PAYLOAD,
+			Constant: nil,
+			Children: []ast.Node{
+				ast.NewNodeConstant(fieldName),
+			},
+		})
+	}
+	return dataAccessors, nil
+}
+
+func (usecase *AstExpressionUsecase) getCustomListIdentifiers(organizationId string) ([]ast.Node, error) {
+	var dataAccessors []ast.Node
+
+	customLists, err := usecase.CustomListRepository.AllCustomLists(nil, organizationId)
+	if err != nil {
+		return nil, err
+	}
+	for _, customList := range customLists {
+		dataAccessors = append(dataAccessors, ast.NewNodeCustomListAccess(customList.Id))
+	}
+	return dataAccessors, nil
+}
+
+func (usecase *AstExpressionUsecase) EditorIdentifiers(scenarioId string) (EditorIdentifiers, error) {
+
+	scenario, err := usecase.ScenarioRepository.GetScenarioById(nil, scenarioId)
+	if err != nil {
 		return EditorIdentifiers{}, err
 	}
 
+	if err := usecase.EnforceSecurity.ReadOrganization(scenario.OrganizationID); err != nil {
+		return EditorIdentifiers{}, err
+	}
+
+	dataModel, err := usecase.DataModelRepository.GetDataModel(nil, scenario.OrganizationID)
+	if err != nil {
+		return EditorIdentifiers{}, err
+	}
+
+	databaseAccessors, err := usecase.getLinkedDatabaseIdentifiers(scenario, dataModel)
+	if err != nil {
+		return EditorIdentifiers{}, err
+	}
+
+	payloadAccessors, err := usecase.getPayloadIdentifiers(scenario, dataModel)
+	if err != nil {
+		return EditorIdentifiers{}, err
+	}
+	
+	customListAccessors, err := usecase.getCustomListIdentifiers(scenario.OrganizationID)
+	if err != nil {
+		return EditorIdentifiers{}, err
+	}
+	
 	return EditorIdentifiers{
-		DataAccessors: dataAccessors,
+		CustomListAccessors: customListAccessors,
+		PayloadAccessors:    payloadAccessors,
+		DatabaseAccessors:   databaseAccessors,
 	}, nil
 }
