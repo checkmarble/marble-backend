@@ -44,3 +44,22 @@ func (api *API) handleGetEditorIdentifiers() http.HandlerFunc {
 		})
 	}
 }
+
+func (api *API) handleGetEditorOperators() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		usecase := api.UsecasesWithCreds(r).AstExpressionUsecase()
+		result := usecase.EditorOperators()
+
+		functions := make(map[string]dto.FuncAttributesDto)
+
+		for _, attributes := range result.OperatorAccessors {			
+			functions[attributes.AstName] = dto.AdaptFuncAttributesDto(attributes)
+		}
+		PresentModel(w, struct {
+			OperatorAccessors   map[string]dto.FuncAttributesDto `json:"operators_accessors"`
+		}{
+			OperatorAccessors:   functions,
+		})
+	}
+}
