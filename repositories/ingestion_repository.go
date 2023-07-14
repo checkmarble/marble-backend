@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"marble/marble-backend/models"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
@@ -12,38 +13,46 @@ import (
 )
 
 type IngestionRepository interface {
-	IngestObject(transaction Transaction, payload models.Payload, table models.Table, logger *slog.Logger) (err error)
+	IngestObjects(transaction Transaction, payloads []models.PayloadReader, table models.Table, logger *slog.Logger) (err error)
 }
 
 type IngestionRepositoryImpl struct {
 }
 
-func (repo *IngestionRepositoryImpl) IngestObject(transaction Transaction, payload models.Payload, table models.Table, logger *slog.Logger) (err error) {
+func (repo *IngestionRepositoryImpl) IngestObjects(transaction Transaction, payloads []models.PayloadReader, table models.Table, logger *slog.Logger) (err error) {
 
 	tx := adaptClientDatabaseTransaction(transaction)
 
-	err = updateExistingVersionIfPresent(tx, payload, table)
-	if err != nil {
-		return fmt.Errorf("error updating existing version: %w", err)
+	for _, payload := range payloads {
+		objectIdItf, _ := payload.ReadFieldFromPayload("object_id")
+		updatedAtItf, _ := payload.ReadFieldFromPayload("updated_at")
+		objectId := objectIdItf.(string)
+		updatedAt := updatedAtItf.(time.Time)
+
+		previousIsMoreRecent, err := updateExistingVersionIfPresent(tx, objectId, updatedAt, table)
+		if err != nil {
+			return fmt.Errorf("error updating existing version: %w", err)
+		} else if previousIsMoreRecent {
+			logger.Debug(fmt.Sprintf("Previous version was more recent than %v, skipping", updatedAt), slog.String("type", tableNameWithSchema(tx, table.Name)), slog.String("id", objectId))
+			continue
+		}
+
+		columnNames, values := generateInsertValues(table, payload)
+		columnNames = append(columnNames, "id")
+		values = append(values, uuid.NewString())
+
+		sql := NewQueryBuilder().Insert(tableNameWithSchema(tx, table.Name)).Columns(columnNames...).Values(values...).Suffix("RETURNING \"id\"")
+
+		_, err = tx.ExecBuilder(sql)
+		if err != nil {
+			return err
+		}
+		logger.Debug("Created object in db", slog.String("type", tableNameWithSchema(tx, table.Name)), slog.String("id", objectId))
 	}
-
-	columnNames, values := generateInsertValues(table, payload)
-	columnNames = append(columnNames, "id")
-	values = append(values, uuid.NewString())
-
-	sql := NewQueryBuilder().Insert(tableNameWithSchema(tx, table.Name)).Columns(columnNames...).Values(values...).Suffix("RETURNING \"id\"")
-
-	var createdObjectID string
-	_, err = tx.ExecBuilder(sql)
-	if err != nil {
-		return err
-	}
-	logger.Info("Created object in db", slog.String("type", tableNameWithSchema(tx, table.Name)), slog.String("object_id", createdObjectID))
-
 	return nil
 }
 
-func generateInsertValues(table models.Table, payload models.Payload) (columnNames []string, values []interface{}) {
+func generateInsertValues(table models.Table, payload models.PayloadReader) (columnNames []string, values []interface{}) {
 	nbFields := len(table.Fields)
 	columnNames = make([]string, nbFields)
 	values = make([]interface{}, nbFields)
@@ -56,28 +65,29 @@ func generateInsertValues(table models.Table, payload models.Payload) (columnNam
 	return columnNames, values
 }
 
-func updateExistingVersionIfPresent(
-	tx TransactionPostgres,
-	payload models.Payload,
-	table models.Table) (err error) {
-
-	object_id, _ := payload.ReadFieldFromPayload("object_id")
+func updateExistingVersionIfPresent(tx TransactionPostgres, objectId string, updatedAt time.Time, table models.Table) (bool, error) {
 	sql, args, err := NewQueryBuilder().
-		Select("id").
+		Select("id, updated_at").
 		From(tableNameWithSchema(tx, table.Name)).
-		Where(squirrel.Eq{"object_id": object_id}).
+		Where(squirrel.Eq{"object_id": objectId}).
 		Where(squirrel.Eq{"valid_until": "Infinity"}).
 		ToSql()
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	var id string
-	err = tx.exec.QueryRow(tx.ctx, sql, args...).Scan(&id)
+	var prevUpdatedAt time.Time
+	err = tx.exec.QueryRow(tx.ctx, sql, args...).Scan(&id, &prevUpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil
+		return false, nil
 	} else if err != nil {
-		return err
+		return false, err
+	}
+
+	// "time.Before" is a strict inequality: if the timestamps are the same, proceed to update
+	if updatedAt.Before(prevUpdatedAt) {
+		return true, nil
 	}
 
 	sql, args, err = NewQueryBuilder().
@@ -86,12 +96,12 @@ func updateExistingVersionIfPresent(
 		Where(squirrel.Eq{"id": id}).
 		ToSql()
 	if err != nil {
-		return err
+		return false, err
 	}
 	_, err = tx.SqlExec(sql, args...)
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	return nil
+	return false, nil
 }

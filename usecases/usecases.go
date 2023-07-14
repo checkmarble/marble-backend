@@ -38,6 +38,8 @@ func (usecases *Usecases) NewIngestionUseCase() IngestionUseCase {
 	return IngestionUseCase{
 		orgTransactionFactory: usecases.NewOrgTransactionFactory(),
 		ingestionRepository:   usecases.Repositories.IngestionRepository,
+		gcsRepository:         usecases.Repositories.GcsRepository,
+		datamodelRepository:   usecases.Repositories.DataModelRepository,
 	}
 }
 

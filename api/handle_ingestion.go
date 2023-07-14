@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"marble/marble-backend/app"
 	"marble/marble-backend/models"
@@ -27,7 +28,7 @@ func (api *API) handleIngestion() http.HandlerFunc {
 		organizationUsecase := api.usecases.NewOrganizationUseCase()
 		dataModel, err := organizationUsecase.GetDataModel(orgID)
 		if err != nil {
-			logger.ErrorCtx(ctx, "Unable to find datamodel by orgId for ingestion:\n"+err.Error())
+			logger.ErrorCtx(ctx, fmt.Sprintf("Unable to find datamodel by orgId for ingestion: %v", err))
 			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
@@ -35,7 +36,7 @@ func (api *API) handleIngestion() http.HandlerFunc {
 		object_type := chi.URLParam(r, "object_type")
 		object_body, err := io.ReadAll(r.Body)
 		if err != nil {
-			logger.ErrorCtx(ctx, "Error while reading request body bytes in api handle_ingestion")
+			logger.ErrorCtx(ctx, fmt.Sprintf("Error while reading request body bytes in api handle_ingestion: %v", err))
 			http.Error(w, "", http.StatusUnprocessableEntity)
 			return
 		}
@@ -51,16 +52,17 @@ func (api *API) handleIngestion() http.HandlerFunc {
 
 		payload, err := app.ParseToDataModelObject(table, object_body)
 		if errors.Is(err, models.FormatValidationError) {
+			logger.ErrorCtx(ctx, fmt.Sprintf("format validation error while parsing to data model object: %v", err))
 			http.Error(w, "", http.StatusUnprocessableEntity)
 			return
 		} else if err != nil {
-			logger.ErrorCtx(ctx, "Unexpected error while parsing to data model object:\n"+err.Error())
+			logger.ErrorCtx(ctx, fmt.Sprintf("Unexpected error while parsing to data model object: %v", err))
 			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
-		err = usecase.IngestObject(orgID, payload, table, logger)
+		err = usecase.IngestObjects(orgID, []models.PayloadReader{payload}, table, logger)
 		if err != nil {
-			logger.ErrorCtx(ctx, "Error while ingesting object:\n"+err.Error())
+			logger.ErrorCtx(ctx, fmt.Sprintf("Error while ingesting object: %v", err))
 			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}

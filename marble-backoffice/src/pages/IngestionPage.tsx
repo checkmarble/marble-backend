@@ -12,7 +12,7 @@ import {
   useMarbleApiWithClientRoleApiKey,
 } from "@/services";
 import { useState } from "react";
-import { IngestObject } from "@/infra/MarbleApi";
+import { IngestObjects } from "@/infra/MarbleApi";
 
 function IngestionPage() {
   const { organizationId } = useParams();
@@ -38,7 +38,7 @@ function IngestionPage() {
 
   const { ingest } = useIngestion(marbleApiWithClientRoleApiKey);
 
-  const [ingestResult, setIngestResult] = useState<IngestObject[] | null>(null);
+  const [ingestResult, setIngestResult] = useState<IngestObjects[] | null>(null);
 
   const handleIngest = async () => {
     setIngestResult(await ingest());

@@ -1,8 +1,11 @@
 package evaluate
 
 import (
+	"errors"
 	"fmt"
 	"marble/marble-backend/models/ast"
+
+	"golang.org/x/exp/slices"
 )
 
 type StringInList struct {
@@ -16,22 +19,24 @@ func NewStringInList(f ast.Function) StringInList {
 }
 
 func (f StringInList) Evaluate(arguments ast.Arguments) (any, error) {
-	// promote to float64
-	firstArgument := arguments.Args[0]
-	str, ok := firstArgument.(string)
-	if !ok {
-		return nil, fmt.Errorf("first argument is not a string %w", ErrRuntimeExpression)
+
+	leftAny, rightAny, err := leftAndRight(f.Function, arguments.Args)
+	if err != nil {
+		return nil, err
 	}
-	secondArgument := arguments.Args[1]
-	list, ok := secondArgument.([]string)
-	if !ok {
-		return nil, fmt.Errorf("second argument is not a []string %w", ErrRuntimeExpression)
+
+	left, errLeft := adaptArgumentToString(f.Function, leftAny)
+
+	right, errRight := adaptArgumentToListOfStrings(f.Function, rightAny)
+
+	if err := errors.Join(errLeft, errRight); err != nil {
+		return nil, err
 	}
 
 	if f.Function == ast.FUNC_IS_IN_LIST {
-		return stringInList(str, list), nil
+		return stringInList(left, right), nil
 	} else if f.Function == ast.FUNC_IS_NOT_IN_LIST {
-		return !stringInList(str, list), nil
+		return !stringInList(left, right), nil
 	} else {
 		return false, fmt.Errorf("StringInList does not support %s function", f.Function.DebugString())
 	}
@@ -39,10 +44,5 @@ func (f StringInList) Evaluate(arguments ast.Arguments) (any, error) {
 
 func stringInList(str string, list []string) bool {
 
-	for _, v := range list {
-		if v == str {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(list, str)
 }
