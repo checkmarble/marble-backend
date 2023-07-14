@@ -103,9 +103,9 @@ export default function ScenarioDetailsPage() {
         }}
       >
         <Stack direction="column" spacing={2}>
-          <Typography variant="h5">Expression Editor</Typography>
+          {/* <Typography variant="h5">Expression Editor</Typography>
 
-          {/* <AstEditor
+          <AstEditor
             editor={nodeEditor}
             node={editor.expressionViewModel.rootNode}
           /> */}
@@ -119,16 +119,18 @@ export default function ScenarioDetailsPage() {
           ))}
 
           {identifiers && (
-            <Paper sx={{ minWidth: "100%", p: 2, fontSize: "0.8em" }}>
-              <ReactJson
-                src={identifiers}
-                name="user"
-                collapsed={1}
-                theme={"rjv-default"}
-              />
-            </Paper>
+            <>
+              <Typography variant="h5">Builder Identifiers</Typography>
+              <Paper sx={{ minWidth: "100%", p: 2, fontSize: "0.8em" }}>
+                <ReactJson
+                  src={identifiers}
+                  collapsed={1}
+                  theme={"rjv-default"}
+                />
+              </Paper>
+            </>
           )}
-          <Typography variant="h5">Result</Typography>
+          <Typography variant="h5">Simple rendering of the AST</Typography>
           <AstNode node={expressionAstNode} />
         </Stack>
       </Container>
