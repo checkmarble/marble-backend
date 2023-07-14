@@ -221,6 +221,7 @@ func (api *API) routes() {
 			builderRouter.Use(api.enforcePermissionMiddleware(models.SCENARIO_CREATE))
 
 			builderRouter.Get("/identifiers", api.handleGetEditorIdentifiers())
+			builderRouter.Get("/operators", api.handleGetEditorOperators())
 		})
 
 		// Group all admin endpoints
