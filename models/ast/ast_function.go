@@ -6,6 +6,16 @@ import (
 
 type Function int
 
+var FuncOperators = []Function{
+	FUNC_ADD,
+	FUNC_SUBTRACT,
+	FUNC_MULTIPLY,
+	FUNC_DIVIDE,
+	FUNC_GREATER,
+	FUNC_LESS,
+	FUNC_EQUAL,
+} 
+
 const (
 	FUNC_CONSTANT Function = iota
 	FUNC_ADD
