@@ -8,6 +8,7 @@ import (
 type ScenarioWriteRepository interface {
 	CreateScenario(tx Transaction, scenario models.CreateScenarioInput, newScenarioId string) error
 	UpdateScenario(tx Transaction, scenario models.UpdateScenarioInput) error
+	UpdateScenarioLiveItereationId(tx Transaction, scenarioId string, scenarioIterationId *string) error
 }
 
 type ScenarioWriteRepositoryPostgresql struct {
@@ -61,10 +62,23 @@ func (repo *ScenarioWriteRepositoryPostgresql) UpdateScenario(tx Transaction, sc
 		sql = sql.Set("description", scenario.Description)
 	}
 
-	_, err := pgTx.ExecBuilder(sql)
-	if err != nil {
+	if _, err := pgTx.ExecBuilder(sql); err != nil {
 		return err
 	}
 
+	return nil
+}
+
+func (repo *ScenarioWriteRepositoryPostgresql) UpdateScenarioLiveItereationId(tx Transaction, scenarioId string, scenarioIterationId *string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	sql := NewQueryBuilder().
+		Update(dbmodels.TABLE_SCENARIOS).
+		Where("id = ?", scenarioId).
+		Set("live_scenario_iteration_id", scenarioIterationId)
+
+	if _, err := pgTx.ExecBuilder(sql); err != nil {
+		return err
+	}
 	return nil
 }

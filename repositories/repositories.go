@@ -50,7 +50,6 @@ func NewRepositories(
 	scenarioIterationReadRepository ScenarioIterationReadRepository,
 	scenarioIterationWriteRepository ScenarioIterationWriteRepository,
 	scenarioIterationRuleRepository ScenarioIterationRuleRepository,
-	scenarioPublicationRepository ScenarioPublicationRepository,
 
 ) (*Repositories, error) {
 
@@ -104,7 +103,9 @@ func NewRepositories(
 		ScenarioIterationReadRepository:  scenarioIterationReadRepository,
 		ScenarioIterationWriteRepository: scenarioIterationWriteRepository,
 		ScenarioIterationRuleRepository:  scenarioIterationRuleRepository,
-		ScenarioPublicationRepository:    scenarioPublicationRepository,
+		ScenarioPublicationRepository: NewScenarioPublicationRepositoryPostgresql(
+			transactionFactory,
+		),
 		ScheduledExecutionRepository: &ScheduledExecutionRepositoryPostgresql{
 			transactionFactory: transactionFactory,
 		},

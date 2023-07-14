@@ -309,7 +309,7 @@ func (r *PGRepository) UpdateScenarioIteration(ctx context.Context, orgID string
 	return scenarioIterationDTO, nil
 }
 
-func (r *PGRepository) publishScenarioIteration(ctx context.Context, tx pgx.Tx, orgID string, scenarioIterationID string) error {
+func (r *PGRepository) PublishScenarioIteration(ctx context.Context, tx pgx.Tx, orgID string, scenarioIterationID string) error {
 	si, err := r.getScenarioIterationRaw(ctx, tx, orgID, scenarioIterationID)
 	if err != nil {
 		return err

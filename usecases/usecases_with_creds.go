@@ -48,3 +48,15 @@ func (usecases *UsecasesWithCreds) AstExpressionUsecase() AstExpressionUsecase {
 		ScenarioRepository:         usecases.Repositories.ScenarioReadRepository,
 	}
 }
+
+func (usecases *UsecasesWithCreds) NewScenarioPublicationUsecase() ScenarioPublicationUsecase {
+	return ScenarioPublicationUsecase{
+		transactionFactory:              usecases.Repositories.TransactionFactory,
+		scenarioPublicationsRepository:  usecases.Repositories.ScenarioPublicationRepository,
+		OrganizationIdOfContext:         usecases.OrganizationIdOfContext,
+		scenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,
+		scenarioWriteRepository:         usecases.Repositories.ScenarioWriteRepository,
+		scenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
+		enforceSecurity:                 usecases.NewEnforceScenarioSecurity(),
+	}
+}

@@ -8,6 +8,8 @@ import (
 type EnforceSecurityScenario interface {
 	EnforceSecurity
 	ReadScenario(scenario models.Scenario) error
+	ReadScenarioPublication(scenarioPublication models.ScenarioPublication) error
+	PublishScenario(scenario models.Scenario) error
 	UpdateScenario(scenario models.Scenario) error
 	ListScenarios(organizationId string) error
 	CreateScenario(organizationId string) error
@@ -22,6 +24,20 @@ func (e *EnforceSecurityScenarioImpl) ReadScenario(scenario models.Scenario) err
 
 	return errors.Join(
 		e.Permission(models.SCENARIO_READ),
+		e.ReadOrganization(scenario.OrganizationID),
+	)
+}
+
+func (e *EnforceSecurityScenarioImpl) ReadScenarioPublication(scenarioPublication models.ScenarioPublication) error {
+	return errors.Join(
+		e.Permission(models.SCENARIO_READ),
+		e.ReadOrganization(scenarioPublication.OrgID),
+	)
+}
+
+func (e *EnforceSecurityScenarioImpl) PublishScenario(scenario models.Scenario) error {
+	return errors.Join(
+		e.Permission(models.SCENARIO_PUBLISH),
 		e.ReadOrganization(scenario.OrganizationID),
 	)
 }
