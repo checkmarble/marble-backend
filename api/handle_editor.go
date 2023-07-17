@@ -21,22 +21,22 @@ func (api *API) handleGetEditorIdentifiers() http.HandlerFunc {
 			return
 		}
 
-		databaseNodes, err := utils.MapErr(result.DatabaseAccessors, dto.AdaptNodeDto)
+		databaseNodes, err := utils.MapErr(result.DatabaseAccessors, dto.AdaptIdentifierDto)
 		if presentError(w, r, err) {
 			return
 		}
-		payloadbaseNodes, err := utils.MapErr(result.PayloadAccessors, dto.AdaptNodeDto)
+		payloadbaseNodes, err := utils.MapErr(result.PayloadAccessors, dto.AdaptIdentifierDto)
 		if presentError(w, r, err) {
 			return
 		}
-		customListNodes, err := utils.MapErr(result.CustomListAccessors, dto.AdaptNodeDto)
+		customListNodes, err := utils.MapErr(result.CustomListAccessors, dto.AdaptIdentifierDto)
 		if presentError(w, r, err) {
 			return
 		}
 		PresentModel(w, struct {
-			DatabaseAccessors   []dto.NodeDto `json:"database_accessors"`
-			PayloadAccessors    []dto.NodeDto `json:"payload_accessors"`
-			CustomListAccessors []dto.NodeDto `json:"custom_list_accessors"`
+			DatabaseAccessors   []dto.IdentifierDto `json:"database_accessors"`
+			PayloadAccessors    []dto.IdentifierDto `json:"payload_accessors"`
+			CustomListAccessors []dto.IdentifierDto `json:"custom_list_accessors"`
 		}{
 			DatabaseAccessors:   databaseNodes,
 			PayloadAccessors:    payloadbaseNodes,
