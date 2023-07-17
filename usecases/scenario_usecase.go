@@ -17,7 +17,7 @@ type ScenarioUsecase struct {
 
 func (usecase *ScenarioUsecase) ListScenarios() ([]models.Scenario, error) {
 
-	if err := usecase.enforceSecurity.ListScenarios(usecase.OrganizationIdOfContext); err != nil {
+	if err := usecase.enforceReadScenarioPermission(); err != nil {
 		return nil, err
 	}
 	return usecase.scenarioReadRepository.ListScenariosOfOrganization(nil, usecase.OrganizationIdOfContext)
@@ -25,13 +25,19 @@ func (usecase *ScenarioUsecase) ListScenarios() ([]models.Scenario, error) {
 
 func (usecase *ScenarioUsecase) GetScenario(scenarioID string) (models.Scenario, error) {
 
+	if err := usecase.enforceReadScenarioPermission(); err != nil {
+		return models.Scenario{}, err
+	}
+
 	scenario, err := usecase.scenarioReadRepository.GetScenarioById(nil, scenarioID)
 	if err != nil {
 		return models.Scenario{}, err
 	}
-	if err := usecase.enforceSecurity.ReadScenario(scenario); err != nil {
+
+	if err := usecase.enforceSecurity.ReadOrganization(scenario.OrganizationID); err != nil {
 		return models.Scenario{}, err
 	}
+
 	return scenario, nil
 }
 
@@ -74,4 +80,8 @@ func (usecase *ScenarioUsecase) CreateScenario(scenario models.CreateScenarioInp
 			return usecase.scenarioReadRepository.GetScenarioById(tx, newScenarioId)
 		},
 	)
+}
+
+func (usecase *ScenarioUsecase) enforceReadScenarioPermission() error {
+	return usecase.enforceSecurity.Permission(models.SCENARIO_READ)
 }

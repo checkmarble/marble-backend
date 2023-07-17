@@ -17,6 +17,9 @@ var ForbiddenError = errors.New("Forbidden")
 // NotFoundError is rendered with the http status code 404
 var NotFoundError = errors.New("Not found")
 
+// DuplicateValue is rendered with the http status code 409
+var DuplicateValueError = errors.New("Duplicate value")
+
 var (
 	PanicInScenarioEvalutionError = errors.New("panic during scenario evaluation")
 	NotFoundInRepositoryError     = fmt.Errorf("item not found in repository: %w", NotFoundError)

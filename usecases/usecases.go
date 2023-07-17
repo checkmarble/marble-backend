@@ -12,19 +12,6 @@ type Usecases struct {
 	Configuration models.GlobalConfiguration
 }
 
-func (usecases *Usecases) NewMarbleTokenUseCase() MarbleTokenUseCase {
-	repositories := usecases.Repositories
-	return MarbleTokenUseCase{
-		transactionFactory:      repositories.TransactionFactory,
-		firebaseTokenRepository: repositories.FirebaseTokenRepository,
-		marbleJwtRepository:     repositories.MarbleJwtRepository(),
-		userRepository:          repositories.UserRepository,
-		apiKeyRepository:        repositories.ApiKeyRepository,
-		organizationRepository:  repositories.OrganizationRepository,
-		tokenLifetimeMinute:     usecases.Configuration.TokenLifetimeMinute,
-	}
-}
-
 func (usecases *Usecases) NewOrganizationUseCase() OrganizationUseCase {
 	return OrganizationUseCase{
 		transactionFactory:           usecases.Repositories.TransactionFactory,

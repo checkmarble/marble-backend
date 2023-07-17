@@ -30,6 +30,10 @@ func presentError(w http.ResponseWriter, r *http.Request, err error) bool {
 		utils.LogRequestError(r, fmt.Sprintf("NotFoundError: %v", err))
 		http.Error(w, err.Error(), http.StatusNotFound)
 
+	} else if errors.Is(err, models.DuplicateValueError) {
+		utils.LogRequestError(r, fmt.Sprintf("DuplicateValueError: %v", err))
+		http.Error(w, err.Error(), http.StatusConflict)
+
 	} else {
 		utils.LogRequestError(r, fmt.Sprintf("Unexpected Error: %v", err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)

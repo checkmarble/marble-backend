@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"context"
 	"marble/marble-backend/models"
 	"marble/marble-backend/usecases/scenarios"
 	"marble/marble-backend/usecases/security"
@@ -13,6 +14,7 @@ type UsecasesWithCreds struct {
 	Credentials             models.Credentials
 	Logger                  *slog.Logger
 	OrganizationIdOfContext string
+	Context                 context.Context
 }
 
 func (usecases *UsecasesWithCreds) NewEnforceSecurity() security.EnforceSecurity {
@@ -64,5 +66,19 @@ func (usecases *UsecasesWithCreds) NewScenarioPublicationUsecase() ScenarioPubli
 			usecases.Repositories.ScenarioWriteRepository,
 			usecases.Repositories.ScenarioIterationReadRepository,
 		),
+	}
+}
+
+func (usecases *UsecasesWithCreds) NewMarbleTokenUseCase() MarbleTokenUseCase {
+	repositories := usecases.Repositories
+	return MarbleTokenUseCase{
+		transactionFactory:      repositories.TransactionFactory,
+		firebaseTokenRepository: repositories.FirebaseTokenRepository,
+		marbleJwtRepository:     repositories.MarbleJwtRepository(),
+		userRepository:          repositories.UserRepository,
+		apiKeyRepository:        repositories.ApiKeyRepository,
+		organizationRepository:  repositories.OrganizationRepository,
+		tokenLifetimeMinute:     usecases.Configuration.TokenLifetimeMinute,
+		context:                 usecases.Context,
 	}
 }

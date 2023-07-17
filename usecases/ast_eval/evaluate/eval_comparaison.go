@@ -16,30 +16,28 @@ func NewComparison(f ast.Function) Comparison {
 }
 
 func (f Comparison) Evaluate(arguments ast.Arguments) (any, error) {
-	// promote to float64
-	operandsFloat, err := promoteOperandsToFloat64(arguments.Args, f.Function)
+
+	leftAny, rightAny, err := leftAndRight(f.Function, arguments.Args)
 	if err != nil {
 		return nil, err
 	}
-	return f.comparisonFunction(operandsFloat)
+
+	left, right, err := adaptLeftAndRight(f.Function, leftAny, rightAny, promoteArgumentToFloat64)
+	if err != nil {
+		return nil, err
+	}
+
+	return f.comparisonFunction(left, right)
 }
 
-func (f Comparison)comparisonFunction(arguments []float64) (bool, error) {
-	l, r, err := leftAndRight(arguments)
-	if err != nil {
-		return false, err
-	}
+func (f Comparison) comparisonFunction(l, r float64) (bool, error) {
 
-	if f.Function == ast.FUNC_GREATER {
+	switch f.Function {
+	case ast.FUNC_GREATER:
 		return l > r, nil
-	}
-	if f.Function == ast.FUNC_LESS {
+	case ast.FUNC_LESS:
 		return l < r, nil
+	default:
+		return false, fmt.Errorf("Comparison does not support %s function", f.Function.DebugString())
 	}
-	if f.Function == ast.FUNC_EQUAL {
-		// comparing float64 is not smart, but not illegal
-		return l == r, nil
-	}
-
-	return false, fmt.Errorf("Comparison does not support %s function", f.Function.DebugString())
 }
