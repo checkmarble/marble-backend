@@ -37,7 +37,6 @@ func (o PublicationAction) String() string {
 
 // Provide an PublicationAction from a string value
 func PublicationActionFrom(s string) PublicationAction {
-	fmt.Println("actino from", s)
 	switch s {
 	case "publish":
 		return Publish
