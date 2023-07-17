@@ -36,9 +36,10 @@ func NewEvaluatorInjection() EvaluatorInjection {
 	inject.AddEvaluator(ast.FUNC_DIVIDE, evaluate.NewArithmetic(ast.FUNC_DIVIDE))
 	inject.AddEvaluator(ast.FUNC_GREATER, evaluate.NewComparison(ast.FUNC_GREATER))
 	inject.AddEvaluator(ast.FUNC_LESS, evaluate.NewComparison(ast.FUNC_LESS))
-	inject.AddEvaluator(ast.FUNC_EQUAL, evaluate.NewComparison(ast.FUNC_EQUAL))
-	inject.AddEvaluator(ast.FUNC_NOT, evaluate.NewComparison(ast.FUNC_NOT))
-	inject.AddEvaluator(ast.FUNC_STRING_EQUAL, evaluate.NewStringComparison(ast.FUNC_STRING_EQUAL))
+	inject.AddEvaluator(ast.FUNC_EQUAL, evaluate.Equal{})
+	inject.AddEvaluator(ast.FUNC_NOT, evaluate.Not{Function: ast.FUNC_NOT})
+	inject.AddEvaluator(ast.FUNC_AND, evaluate.BooleanArithmetic{Function: ast.FUNC_AND})
+	inject.AddEvaluator(ast.FUNC_OR, evaluate.BooleanArithmetic{Function: ast.FUNC_OR})
 	inject.AddEvaluator(ast.FUNC_IS_IN_LIST, evaluate.NewStringInList(ast.FUNC_IS_IN_LIST))
 	inject.AddEvaluator(ast.FUNC_IS_NOT_IN_LIST, evaluate.NewStringInList(ast.FUNC_IS_NOT_IN_LIST))
 	return inject

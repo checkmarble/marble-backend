@@ -20,10 +20,8 @@ func (api *API) handlePostFirebaseIdToken() http.HandlerFunc {
 			return
 		}
 
-		context := request.Context()
-
-		usecase := api.usecases.NewMarbleTokenUseCase()
-		marbleToken, expirationTime, err := usecase.NewMarbleToken(context, key, bearerToken)
+		usecase := api.UsecasesWithCreds(request).NewMarbleTokenUseCase()
+		marbleToken, expirationTime, err := usecase.NewMarbleToken(key, bearerToken)
 		if err != nil {
 			err = wrapErrInUnAuthorizedError(err)
 		}

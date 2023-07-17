@@ -94,5 +94,6 @@ func (api *API) UsecasesWithCreds(r *http.Request) *usecases.UsecasesWithCreds {
 		Credentials:             creds,
 		Logger:                  utils.LoggerFromContext(ctx),
 		OrganizationIdOfContext: organizationId,
+		Context:                 ctx,
 	}
 }

@@ -39,9 +39,8 @@ func (api *API) credentialsMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		usecase := api.usecases.NewMarbleTokenUseCase()
-		ctx := r.Context()
-		creds, err := usecase.ValidateCredentials(ctx, jwtToken, key)
+		usecase := api.UsecasesWithCreds(r).NewMarbleTokenUseCase()
+		creds, err := usecase.ValidateCredentials(jwtToken, key)
 		if err != nil {
 			err = wrapErrInUnAuthorizedError(err)
 		}
@@ -50,7 +49,7 @@ func (api *API) credentialsMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		newContext := context.WithValue(ctx, utils.ContextKeyCredentials, creds)
+		newContext := context.WithValue(r.Context(), utils.ContextKeyCredentials, creds)
 
 		// Creds contain a userId or an Api key
 		// create a new logger with this useful information.
