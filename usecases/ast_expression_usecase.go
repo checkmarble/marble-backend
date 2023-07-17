@@ -93,17 +93,17 @@ func (usecase *AstExpressionUsecase) Run(expression ast.Node, payloadType string
 }
 
 type EditorIdentifiers struct {
-	CustomListAccessors []ast.Node `json:"custom_list_accessors"`
-	PayloadAccessors    []ast.Node `json:"payload_accessors"`
-	DatabaseAccessors   []ast.Node `json:"database_accessors"`
+	CustomListAccessors []ast.Identifier `json:"custom_list_accessors"`
+	PayloadAccessors    []ast.Identifier `json:"payload_accessors"`
+	DatabaseAccessors   []ast.Identifier `json:"database_accessors"`
 }
 
 type EditorOperators struct {
 	OperatorAccessors []ast.FuncAttributes `json:"operator_accessors"`
 }
 
-func (usecase *AstExpressionUsecase) getLinkedDatabaseIdentifiers(scenario models.Scenario, dataModel models.DataModel) ([]ast.Node, error) {
-	var dataAccessors []ast.Node
+func (usecase *AstExpressionUsecase) getLinkedDatabaseIdentifiers(scenario models.Scenario, dataModel models.DataModel) ([]ast.Identifier, error) {
+	var dataAccessors []ast.Identifier
 	var recursiveDatabaseAccessor func(path []string, links map[models.LinkName]models.LinkToSingle) error
 
 	triggerObjectTable, found := dataModel.Tables[models.TableName(scenario.TriggerObjectType)]
@@ -124,11 +124,16 @@ func (usecase *AstExpressionUsecase) getLinkedDatabaseIdentifiers(scenario model
 			path = append(path, string(linkName))
 
 			for fieldName := range table.Fields {
-				dataAccessors = append(dataAccessors, ast.NewNodeDatabaseAccess(
-					scenario.TriggerObjectType,
-					string(fieldName),
-					path,
-				))
+				dataAccessors = append(dataAccessors, ast.Identifier{
+					Name:        string(linkName) + "." + string(fieldName),
+					// TODO fill this in a better way
+					Description: "",
+					Node: ast.NewNodeDatabaseAccess(
+						scenario.TriggerObjectType,
+						string(fieldName),
+						path,
+					),
+				})
 			}
 
 			if err := recursiveDatabaseAccessor(path, table.LinksToSingle); err != nil {
@@ -145,8 +150,8 @@ func (usecase *AstExpressionUsecase) getLinkedDatabaseIdentifiers(scenario model
 	return dataAccessors, nil
 }
 
-func (usecase *AstExpressionUsecase) getPayloadIdentifiers(scenario models.Scenario, dataModel models.DataModel) ([]ast.Node, error) {
-	var dataAccessors []ast.Node
+func (usecase *AstExpressionUsecase) getPayloadIdentifiers(scenario models.Scenario, dataModel models.DataModel) ([]ast.Identifier, error) {
+	var dataAccessors []ast.Identifier
 
 	triggerObjectTable, found := dataModel.Tables[models.TableName(scenario.TriggerObjectType)]
 	if !found {
@@ -154,26 +159,34 @@ func (usecase *AstExpressionUsecase) getPayloadIdentifiers(scenario models.Scena
 		return nil, fmt.Errorf("triggerObjectTable %s not found in data model", scenario.TriggerObjectType)
 	}
 	for fieldName, _ := range triggerObjectTable.Fields {
-		dataAccessors = append(dataAccessors, ast.Node{
-			Function: ast.FUNC_PAYLOAD,
-			Constant: nil,
-			Children: []ast.Node{
-				ast.NewNodeConstant(fieldName),
+		dataAccessors = append(dataAccessors, ast.Identifier{
+			Name:        string(triggerObjectTable.Name) + "." + string(fieldName),
+			Description: "",
+			Node:        ast.Node{
+				Function: ast.FUNC_PAYLOAD,
+				Constant: nil,
+				Children: []ast.Node{
+					ast.NewNodeConstant(fieldName),
+				},
 			},
 		})
 	}
 	return dataAccessors, nil
 }
 
-func (usecase *AstExpressionUsecase) getCustomListIdentifiers(organizationId string) ([]ast.Node, error) {
-	var dataAccessors []ast.Node
+func (usecase *AstExpressionUsecase) getCustomListIdentifiers(organizationId string) ([]ast.Identifier, error) {
+	var dataAccessors []ast.Identifier
 
 	customLists, err := usecase.CustomListRepository.AllCustomLists(nil, organizationId)
 	if err != nil {
 		return nil, err
 	}
 	for _, customList := range customLists {
-		dataAccessors = append(dataAccessors, ast.NewNodeCustomListAccess(customList.Id))
+		dataAccessors = append(dataAccessors, ast.Identifier{
+			Name:        customList.Name,
+			Description: customList.Description,
+			Node:        ast.NewNodeCustomListAccess(customList.Id),
+		})
 	}
 	return dataAccessors, nil
 }
@@ -203,12 +216,12 @@ func (usecase *AstExpressionUsecase) EditorIdentifiers(scenarioId string) (Edito
 	if err != nil {
 		return EditorIdentifiers{}, err
 	}
-	
+
 	customListAccessors, err := usecase.getCustomListIdentifiers(scenario.OrganizationID)
 	if err != nil {
 		return EditorIdentifiers{}, err
 	}
-	
+
 	return EditorIdentifiers{
 		CustomListAccessors: customListAccessors,
 		PayloadAccessors:    payloadAccessors,
