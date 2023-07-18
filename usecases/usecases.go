@@ -2,9 +2,13 @@ package usecases
 
 import (
 	"marble/marble-backend/models"
+	"marble/marble-backend/models/ast"
 	"marble/marble-backend/repositories"
+	"marble/marble-backend/usecases/ast_eval"
+	"marble/marble-backend/usecases/ast_eval/evaluate"
 	"marble/marble-backend/usecases/organization"
 	"marble/marble-backend/usecases/scheduledexecution"
+	"marble/marble-backend/usecases/security"
 )
 
 type Usecases struct {
@@ -54,6 +58,7 @@ func (usecases *Usecases) NewDecisionUsecase() DecisionUsecase {
 		scenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,
 		scenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
 		customListRepository:            usecases.Repositories.CustomListRepository,
+		evaluateRuleAstExpression:       usecases.NewEvaluateRuleAstExpression(),
 	}
 }
 
@@ -129,6 +134,7 @@ func (usecases *Usecases) NewScheduledExecutionUsecase() ScheduledExecutionUseca
 		scenarioPublicationsRepository:  usecases.Repositories.ScenarioPublicationRepository,
 		customListRepository:            usecases.Repositories.CustomListRepository,
 		exportScheduleExecution:         usecases.NewExportScheduleExecution(),
+		evaluateRuleAstExpression:       usecases.NewEvaluateRuleAstExpression(),
 	}
 }
 
@@ -146,5 +152,40 @@ func (usecases *Usecases) NewPopulateOrganizationSchema() organization.PopulateO
 		OrganizationRepository:       usecases.Repositories.OrganizationRepository,
 		OrganizationSchemaRepository: usecases.Repositories.OrganizationSchemaRepository,
 		DataModelRepository:          usecases.Repositories.DataModelRepository,
+	}
+}
+
+func (usecases *Usecases) NewEvaluatorInjection(organizationId string, payload models.PayloadReader) ast_eval.EvaluatorInjection {
+	inject := ast_eval.NewEvaluatorInjection()
+
+	// execution of a scenario with a dedicated security context
+	enforceSecurity := &security.EnforceSecurityImpl{
+		Credentials: models.Credentials{
+			OrganizationId: organizationId,
+		},
+	}
+
+	inject.AddEvaluator(ast.FUNC_CUSTOM_LIST_ACCESS,
+		evaluate.NewCustomListValuesAccess(
+			usecases.Repositories.CustomListRepository,
+			enforceSecurity,
+		),
+	)
+
+	inject.AddEvaluator(ast.FUNC_DB_ACCESS,
+		evaluate.NewDatabaseAccess(
+			usecases.NewOrgTransactionFactory(),
+			usecases.Repositories.IngestedDataReadRepository,
+			usecases.Repositories.DataModelRepository,
+			payload,
+			organizationId,
+		))
+
+	return inject
+}
+
+func (usecases *Usecases) NewEvaluateRuleAstExpression() ast_eval.EvaluateRuleAstExpression {
+	return ast_eval.EvaluateRuleAstExpression{
+		EvaluatorInjectionFactory: usecases.NewEvaluatorInjection,
 	}
 }

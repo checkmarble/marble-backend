@@ -8,7 +8,6 @@ import (
 	"marble/marble-backend/models/ast"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/ast_eval"
-	"marble/marble-backend/usecases/ast_eval/evaluate"
 	"marble/marble-backend/usecases/organization"
 	"marble/marble-backend/usecases/security"
 )
@@ -22,6 +21,7 @@ type AstExpressionUsecase struct {
 	DataModelRepository             repositories.DataModelRepository
 	ScenarioRepository              repositories.ScenarioReadRepository
 	ScenarioIterationReadRepository repositories.ScenarioIterationReadRepository
+	EvaluatorInjectionFactory       func(organizationId string, payload models.PayloadReader) ast_eval.EvaluatorInjection
 }
 
 var ErrExpressionValidation = errors.New("expression validation fail")
@@ -58,13 +58,9 @@ func (usecase *AstExpressionUsecase) Validate(node ast.Node) []error {
 }
 
 func (usecase *AstExpressionUsecase) Run(expression ast.Node, payload models.PayloadReader) (any, error) {
-	inject := ast_eval.NewEvaluatorInjection()
-	inject.AddEvaluator(ast.FUNC_CUSTOM_LIST_ACCESS, evaluate.NewCustomListValuesAccess(usecase.CustomListRepository, usecase.EnforceSecurity))
-	inject.AddEvaluator(ast.FUNC_DB_ACCESS, evaluate.NewDatabaseAccess(
-		usecase.OrgTransactionFactory, usecase.IngestedDataReadRepository,
-		usecase.DataModelRepository, payload, usecase.OrganizationIdOfContext))
-	return ast_eval.EvaluateAst(inject, expression)
 
+	environment := usecase.EvaluatorInjectionFactory(usecase.OrganizationIdOfContext, payload)
+	return ast_eval.EvaluateAst(environment, expression)
 }
 
 type EditorIdentifiers struct {
