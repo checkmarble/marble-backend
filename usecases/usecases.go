@@ -90,16 +90,12 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 			usecases.Repositories.CustomListRepository,
 			usecases.Repositories.ApiKeyRepository,
 			usecases.Repositories.ScenarioWriteRepository,
+			usecases.Repositories.ScenarioReadRepository,
 			usecases.Repositories.ScenarioPublicationRepository,
 			usecases.Repositories.ScenarioIterationWriteRepository,
-			usecases.Repositories.TransactionFactory),
+			usecases.Repositories.ScenarioIterationReadRepository,
+		),
 		PopulateOrganizationSchema: usecases.NewPopulateOrganizationSchema(),
-	}
-}
-
-func (usecases *Usecases) NewScenarioPublicationUsecase() ScenarioPublicationUsecase {
-	return ScenarioPublicationUsecase{
-		scenarioPublicationsRepository: usecases.Repositories.ScenarioPublicationRepository,
 	}
 }
 
