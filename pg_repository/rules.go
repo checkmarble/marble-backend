@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
+	"marble/marble-backend/models/ast"
 	"marble/marble-backend/models/operators"
 	"marble/marble-backend/utils"
 	"time"
@@ -16,16 +18,17 @@ import (
 )
 
 type dbScenarioIterationRule struct {
-	ID                  string      `db:"id"`
-	OrgID               string      `db:"org_id"`
-	ScenarioIterationID string      `db:"scenario_iteration_id"`
-	DisplayOrder        int         `db:"display_order"`
-	Name                string      `db:"name"`
-	Description         string      `db:"description"`
-	ScoreModifier       int         `db:"score_modifier"`
-	Formula             []byte      `db:"formula"`
-	CreatedAt           time.Time   `db:"created_at"`
-	DeletedAt           pgtype.Time `db:"deleted_at"`
+	ID                   string      `db:"id"`
+	OrgID                string      `db:"org_id"`
+	ScenarioIterationID  string      `db:"scenario_iteration_id"`
+	DisplayOrder         int         `db:"display_order"`
+	Name                 string      `db:"name"`
+	Description          string      `db:"description"`
+	ScoreModifier        int         `db:"score_modifier"`
+	Formula              []byte      `db:"formula"`
+	FormulaAstExpression []byte      `db:"formula_ast_expression"`
+	CreatedAt            time.Time   `db:"created_at"`
+	DeletedAt            pgtype.Time `db:"deleted_at"`
 }
 
 func (sir *dbScenarioIterationRule) toDomain() (models.Rule, error) {
@@ -34,15 +37,31 @@ func (sir *dbScenarioIterationRule) toDomain() (models.Rule, error) {
 		return models.Rule{}, fmt.Errorf("unable to unmarshal rule: %w", err)
 	}
 
+	var formulaAstExpression *ast.Node
+
+	if len(sir.FormulaAstExpression) != 0 {
+		var serialized dto.NodeDto
+		if err := json.Unmarshal(sir.FormulaAstExpression, &serialized); err != nil {
+			return models.Rule{}, err
+		}
+
+		node, err := dto.AdaptASTNode(serialized)
+		if err != nil {
+			return models.Rule{}, err
+		}
+		formulaAstExpression = &node
+	}
+
 	return models.Rule{
-		ID:                  sir.ID,
-		ScenarioIterationID: sir.ScenarioIterationID,
-		DisplayOrder:        sir.DisplayOrder,
-		Name:                sir.Name,
-		Description:         sir.Description,
-		Formula:             formula,
-		ScoreModifier:       sir.ScoreModifier,
-		CreatedAt:           sir.CreatedAt,
+		ID:                   sir.ID,
+		ScenarioIterationID:  sir.ScenarioIterationID,
+		DisplayOrder:         sir.DisplayOrder,
+		Name:                 sir.Name,
+		Description:          sir.Description,
+		Formula:              formula,
+		FormulaAstExpression: formulaAstExpression,
+		ScoreModifier:        sir.ScoreModifier,
+		CreatedAt:            sir.CreatedAt,
 	}, nil
 }
 
