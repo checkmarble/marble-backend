@@ -170,6 +170,6 @@ func (api *API) handleSaveIterationWithAstExpression() http.HandlerFunc {
 		}
 
 		usecase := api.UsecasesWithCreds(r).AstExpressionUsecase()
-		usecase.SaveAstExpression(expression, input.Body.ScenarioIterationId)
+		usecase.SaveIterationWithAstExpression(expression, input.Body.ScenarioIterationId)
 	}
 }
