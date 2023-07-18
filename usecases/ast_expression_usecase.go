@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"marble/marble-backend/models"
@@ -13,13 +14,14 @@ import (
 )
 
 type AstExpressionUsecase struct {
-	EnforceSecurity            security.EnforceSecurity
-	OrganizationIdOfContext    string
-	CustomListRepository       repositories.CustomListRepository
-	OrgTransactionFactory      organization.OrgTransactionFactory
-	IngestedDataReadRepository repositories.IngestedDataReadRepository
-	DataModelRepository        repositories.DataModelRepository
-	ScenarioRepository         repositories.ScenarioReadRepository
+	EnforceSecurity                 security.EnforceSecurity
+	OrganizationIdOfContext         string
+	CustomListRepository            repositories.CustomListRepository
+	OrgTransactionFactory           organization.OrgTransactionFactory
+	IngestedDataReadRepository      repositories.IngestedDataReadRepository
+	DataModelRepository             repositories.DataModelRepository
+	ScenarioRepository              repositories.ScenarioReadRepository
+	ScenarioIterationReadRepository repositories.ScenarioIterationReadRepository
 }
 
 var ErrExpressionValidation = errors.New("expression validation fail")
@@ -129,4 +131,27 @@ func (usecase *AstExpressionUsecase) EditorIdentifiers(scenarioId string) (Edito
 	return EditorIdentifiers{
 		DataAccessors: dataAccessors,
 	}, nil
+}
+
+func (usecase *AstExpressionUsecase) SaveIterationWithAstExpression(expression ast.Node, scenarioIterationId string) error {
+
+	// TODO: use refactored repo that do not request context.Background and OrganizationIdOfContext
+	scenarioIteration, err := usecase.ScenarioIterationReadRepository.GetScenarioIteration(context.Background(), usecase.OrganizationIdOfContext, scenarioIterationId)
+	if err != nil {
+		return err
+	}
+
+	// fetch scenario and enforce security
+	scenario, err := usecase.ScenarioRepository.GetScenarioById(nil, scenarioIteration.ScenarioID)
+	if err != nil {
+		return err
+	}
+
+	if err := usecase.EnforceSecurity.ReadOrganization(scenario.OrganizationID); err != nil {
+		return err
+	}
+
+	// TODO: write scenarioIteration.Body.Rules to `scenarioIteration`
+
+	return nil
 }
