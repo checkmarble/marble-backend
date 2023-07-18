@@ -1,6 +1,7 @@
 package models
 
 import (
+	"marble/marble-backend/models/ast"
 	"marble/marble-backend/models/operators"
 	"time"
 )
@@ -10,14 +11,15 @@ import (
 ///////////////////////////////
 
 type Rule struct {
-	ID                  string
-	ScenarioIterationID string
-	DisplayOrder        int
-	Name                string
-	Description         string
-	Formula             operators.OperatorBool
-	ScoreModifier       int
-	CreatedAt           time.Time
+	ID                   string
+	ScenarioIterationID  string
+	DisplayOrder         int
+	Name                 string
+	Description          string
+	Formula              operators.OperatorBool
+	FormulaAstExpression *ast.Node
+	ScoreModifier        int
+	CreatedAt            time.Time
 }
 
 type GetScenarioIterationRulesFilters struct {
