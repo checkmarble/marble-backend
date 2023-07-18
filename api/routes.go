@@ -19,6 +19,9 @@ func (api *API) routes() {
 
 	api.router.With(api.credentialsMiddleware).Route("/ast-expression", func(astRouter chi.Router) {
 		astRouter.
+			With(httpin.NewInput(PatchIterationRuleWithAstExpression{})).
+			Patch("/save-iteration-rule", api.handleSaveIterationWithAstExpression())
+		astRouter.
 			With(httpin.NewInput(PostValidateAstExpression{})).
 			Post("/validate", api.handleValidateAstExpression())
 		astRouter.

@@ -7,7 +7,7 @@ import (
 )
 
 type ScenarioIterationRuleUsecase struct {
-	repository repositories.ScenarioIterationRuleRepository
+	repository repositories.ScenarioIterationRuleRepositoryLegacy
 }
 
 func (usecase *ScenarioIterationRuleUsecase) ListScenarioIterationRules(ctx context.Context, organizationID string, filters models.GetScenarioIterationRulesFilters) ([]models.Rule, error) {

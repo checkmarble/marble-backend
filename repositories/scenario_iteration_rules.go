@@ -5,7 +5,7 @@ import (
 	"marble/marble-backend/models"
 )
 
-type ScenarioIterationRuleRepository interface {
+type ScenarioIterationRuleRepositoryLegacy interface {
 	ListScenarioIterationRules(ctx context.Context, orgID string, filters models.GetScenarioIterationRulesFilters) ([]models.Rule, error)
 	CreateScenarioIterationRule(ctx context.Context, orgID string, rule models.CreateRuleInput) (models.Rule, error)
 	GetScenarioIterationRule(ctx context.Context, orgID string, ruleID string) (models.Rule, error)

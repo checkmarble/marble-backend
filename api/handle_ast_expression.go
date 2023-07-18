@@ -144,12 +144,32 @@ func (api *API) handleRunAstExpression() http.HandlerFunc {
 	}
 }
 
-// payload := map[string]any{
-// 	"balance": 96,
-// }
-// inject := NewEvaluatorInjection()
-// inject.AddEvaluator(ast.FUNC_VARIABLE, evaluate.Variable{Variables: payload})
+type PatchIterationRuleWithAstExpression struct {
+	Body struct {
+		Expression          *dto.NodeDto `json:"expression"`
+		ScenarioIterationId string       `json:"scenario_iteration_id"`
+	} `in:"body=json"`
+}
 
-// root := ast.NewAstCompareBalance()
-// result, err := EvaluateAst(&inject, root)
-// assert.NoError(t, err)
+func (api *API) handleSaveIterationWithAstExpression() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		input := r.Context().Value(httpin.Input).(*PatchIterationRuleWithAstExpression)
+
+		if err := utils.ValidateUuid(input.Body.ScenarioIterationId); err != nil {
+			presentError(w, r, err)
+		}
+
+		expression, err := dto.AdaptASTNode(*input.Body.Expression)
+		if err != nil {
+			presentError(w, r, fmt.Errorf("invalid Expression: %w", models.BadParameterError))
+			return
+		}
+
+		if presentError(w, r, err) {
+			return
+		}
+
+		usecase := api.UsecasesWithCreds(r).AstExpressionUsecase()
+		usecase.SaveIterationWithAstExpression(expression, input.Body.ScenarioIterationId)
+	}
+}
