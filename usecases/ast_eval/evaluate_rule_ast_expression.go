@@ -8,11 +8,11 @@ import (
 )
 
 type EvaluateRuleAstExpression struct {
-	EvaluatorInjectionFactory func(organizationId string, payload models.PayloadReader) EvaluatorInjection
+	AstEvaluationEnvironmentFactory func(organizationId string, payload models.PayloadReader) AstEvaluationEnvironment
 }
 
 func (evaluator *EvaluateRuleAstExpression) EvaluateRuleAstExpression(ruleAstExpression ast.Node, organizationId string, payload models.PayloadReader) (bool, error) {
-	environment := evaluator.EvaluatorInjectionFactory(organizationId, payload)
+	environment := evaluator.AstEvaluationEnvironmentFactory(organizationId, payload)
 
 	result, err := EvaluateAst(environment, ruleAstExpression)
 	if err != nil {

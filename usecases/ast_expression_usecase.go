@@ -21,7 +21,7 @@ type AstExpressionUsecase struct {
 	DataModelRepository             repositories.DataModelRepository
 	ScenarioRepository              repositories.ScenarioReadRepository
 	ScenarioIterationReadRepository repositories.ScenarioIterationReadRepository
-	EvaluatorInjectionFactory       func(organizationId string, payload models.PayloadReader) ast_eval.EvaluatorInjection
+	AstEvaluationEnvironmentFactory func(organizationId string, payload models.PayloadReader) ast_eval.AstEvaluationEnvironment
 }
 
 var ErrExpressionValidation = errors.New("expression validation fail")
@@ -59,7 +59,7 @@ func (usecase *AstExpressionUsecase) Validate(node ast.Node) []error {
 
 func (usecase *AstExpressionUsecase) Run(expression ast.Node, payload models.PayloadReader) (any, error) {
 
-	environment := usecase.EvaluatorInjectionFactory(usecase.OrganizationIdOfContext, payload)
+	environment := usecase.AstEvaluationEnvironmentFactory(usecase.OrganizationIdOfContext, payload)
 	return ast_eval.EvaluateAst(environment, expression)
 }
 
