@@ -13,6 +13,7 @@ import (
 type Rule struct {
 	ID                   string
 	ScenarioIterationID  string
+	OrganizationId 		 string
 	DisplayOrder         int
 	Name                 string
 	Description          string

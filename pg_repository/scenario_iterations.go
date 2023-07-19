@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/operators"
+	"marble/marble-backend/repositories/dbmodels"
 	"marble/marble-backend/utils"
 	"strings"
 	"time"
@@ -109,7 +110,7 @@ func (r *PGRepository) GetScenarioIteration(ctx context.Context, orgID string, s
 
 func (r *PGRepository) getScenarioIterationRaw(ctx context.Context, pool PgxPoolOrTxIface, orgID string, scenarioIterationID string) (models.ScenarioIteration, error) {
 	siCols := utils.ColumnList[dbScenarioIteration]("si")
-	sirCols := utils.ColumnList[dbScenarioIterationRule]("sir")
+	sirCols := utils.ColumnList[dbmodels.DBRule]("sir")
 
 	sql, args, err := r.queryBuilder.
 		Select(siCols...).
@@ -126,7 +127,7 @@ func (r *PGRepository) getScenarioIterationRaw(ctx context.Context, pool PgxPool
 
 	type DBRow struct {
 		dbScenarioIteration
-		Rules []dbScenarioIterationRule
+		Rules []dbmodels.DBRule
 	}
 
 	rows, _ := pool.Query(ctx, sql, args...)
@@ -142,7 +143,7 @@ func (r *PGRepository) getScenarioIterationRaw(ctx context.Context, pool PgxPool
 		return models.ScenarioIteration{}, fmt.Errorf("dto issue: %w", err)
 	}
 	for _, rule := range scenarioIteration.Rules {
-		ruleDto, err := rule.toDomain()
+		ruleDto, err := dbmodels.AdaptRule(rule)
 		if err != nil {
 			return models.ScenarioIteration{}, fmt.Errorf("dto issue: %w", err)
 		}

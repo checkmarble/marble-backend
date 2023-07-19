@@ -41,6 +41,8 @@ func (usecases *UsecasesWithCreds) AstExpressionUsecase() AstExpressionUsecase {
 		DataModelRepository:             usecases.Repositories.DataModelRepository,
 		ScenarioRepository:              usecases.Repositories.ScenarioReadRepository,
 		ScenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
+		RuleRepository:                  usecases.Repositories.RuleRepository,
+		ScenarioIterationRuleUsecase:    usecases.Repositories.ScenarioIterationRuleRepositoryLegacy,
 	}
 }
 

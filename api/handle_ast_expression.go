@@ -93,7 +93,7 @@ type RunAstExpressionResultDto struct {
 	RuntimeError string `json:"runtime_error"`
 }
 
-func (api *API) handleRunAstExpression() http.HandlerFunc {
+func (api *API) handleDryRunAstExpression() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		input := ctx.Value(httpin.Input).(*PostRunAstExpression)
@@ -144,18 +144,18 @@ func (api *API) handleRunAstExpression() http.HandlerFunc {
 	}
 }
 
-type PatchIterationRuleWithAstExpression struct {
+type PatchRuleWithAstExpression struct {
 	Body struct {
-		Expression          *dto.NodeDto `json:"expression"`
-		ScenarioIterationId string       `json:"scenario_iteration_id"`
+		Expression *dto.NodeDto `json:"expression"`
+		RuleId     string       `json:"rule_id"`
 	} `in:"body=json"`
 }
 
-func (api *API) handleSaveIterationWithAstExpression() http.HandlerFunc {
+func (api *API) handleSaveRuleWithAstExpression() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		input := r.Context().Value(httpin.Input).(*PatchIterationRuleWithAstExpression)
+		input := r.Context().Value(httpin.Input).(*PatchRuleWithAstExpression)
 
-		if err := utils.ValidateUuid(input.Body.ScenarioIterationId); err != nil {
+		if err := utils.ValidateUuid(input.Body.RuleId); err != nil {
 			presentError(w, r, err)
 		}
 
@@ -170,6 +170,12 @@ func (api *API) handleSaveIterationWithAstExpression() http.HandlerFunc {
 		}
 
 		usecase := api.UsecasesWithCreds(r).AstExpressionUsecase()
-		usecase.SaveAstExpression(expression, input.Body.ScenarioIterationId)
+		err = usecase.SaveRuleWithAstExpression(input.Body.RuleId, expression)
+		if err != nil {
+			fmt.Println(err)
+			presentError(w, r, fmt.Errorf("invalid Expression: %w", models.BadParameterError))
+			return
+		}
+		PresentNothing(w)
 	}
 }

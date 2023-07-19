@@ -23,6 +23,7 @@ type Repositories struct {
 	IngestedDataReadRepository            IngestedDataReadRepository
 	DecisionRepositoryLegacy              DecisionRepositoryLegacy
 	DecisionRepository                    DecisionRepository
+	RuleRepository                        RuleRepository
 	ScenarioReadRepository                ScenarioReadRepository
 	ScenarioWriteRepository               ScenarioWriteRepository
 	ScenarioIterationReadRepository       ScenarioIterationReadRepository
@@ -94,6 +95,9 @@ func NewRepositories(
 		IngestedDataReadRepository: &IngestedDataReadRepositoryImpl{},
 		DecisionRepositoryLegacy:   decisionRepositoryLegacy,
 		DecisionRepository: &DecisionRepositoryImpl{
+			transactionFactory: transactionFactory,
+		},
+		RuleRepository: &RuleRepositoryPostgresql{
 			transactionFactory: transactionFactory,
 		},
 		ScenarioReadRepository: NewScenarioReadRepositoryPostgresql(

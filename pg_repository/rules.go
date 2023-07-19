@@ -5,69 +5,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
-	"marble/marble-backend/models/ast"
-	"marble/marble-backend/models/operators"
+	"marble/marble-backend/repositories/dbmodels"
 	"marble/marble-backend/utils"
-	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
-
-type dbScenarioIterationRule struct {
-	ID                   string      `db:"id"`
-	OrgID                string      `db:"org_id"`
-	ScenarioIterationID  string      `db:"scenario_iteration_id"`
-	DisplayOrder         int         `db:"display_order"`
-	Name                 string      `db:"name"`
-	Description          string      `db:"description"`
-	ScoreModifier        int         `db:"score_modifier"`
-	Formula              []byte      `db:"formula"`
-	FormulaAstExpression []byte      `db:"formula_ast_expression"`
-	CreatedAt            time.Time   `db:"created_at"`
-	DeletedAt            pgtype.Time `db:"deleted_at"`
-}
-
-func (sir *dbScenarioIterationRule) toDomain() (models.Rule, error) {
-	formula, err := operators.UnmarshalOperatorBool(sir.Formula)
-	if err != nil {
-		return models.Rule{}, fmt.Errorf("unable to unmarshal rule: %w", err)
-	}
-
-	var formulaAstExpression *ast.Node
-
-	if len(sir.FormulaAstExpression) != 0 {
-		var serialized dto.NodeDto
-		if err := json.Unmarshal(sir.FormulaAstExpression, &serialized); err != nil {
-			return models.Rule{}, err
-		}
-
-		node, err := dto.AdaptASTNode(serialized)
-		if err != nil {
-			return models.Rule{}, err
-		}
-		formulaAstExpression = &node
-	}
-
-	return models.Rule{
-		ID:                   sir.ID,
-		ScenarioIterationID:  sir.ScenarioIterationID,
-		DisplayOrder:         sir.DisplayOrder,
-		Name:                 sir.Name,
-		Description:          sir.Description,
-		Formula:              formula,
-		FormulaAstExpression: formulaAstExpression,
-		ScoreModifier:        sir.ScoreModifier,
-		CreatedAt:            sir.CreatedAt,
-	}, nil
-}
 
 func (r *PGRepository) GetScenarioIterationRule(ctx context.Context, orgID string, ruleID string) (models.Rule, error) {
 	sql, args, err := r.queryBuilder.
-		Select(utils.ColumnList[dbScenarioIterationRule]()...).
+		Select(utils.ColumnList[dbmodels.DBRule]()...).
 		From("scenario_iteration_rules").
 		Where("org_id = ?", orgID).
 		Where("id= ?", ruleID).
@@ -77,14 +25,14 @@ func (r *PGRepository) GetScenarioIterationRule(ctx context.Context, orgID strin
 	}
 
 	rows, _ := r.db.Query(ctx, sql, args...)
-	rule, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenarioIterationRule])
+	rule, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbmodels.DBRule])
 	if errors.Is(err, pgx.ErrNoRows) {
 		return models.Rule{}, models.NotFoundInRepositoryError
 	} else if err != nil {
 		return models.Rule{}, fmt.Errorf("unable to get rule: %w", err)
 	}
 
-	ruleDTO, err := rule.toDomain()
+	ruleDTO, err := dbmodels.AdaptRule(rule)
 	if err != nil {
 		return models.Rule{}, fmt.Errorf("dto issue: %w", err)
 	}
@@ -98,7 +46,7 @@ type ListScenarioIterationRulesFilters struct {
 
 func (r *PGRepository) ListScenarioIterationRules(ctx context.Context, orgID string, filters models.GetScenarioIterationRulesFilters) ([]models.Rule, error) {
 	sql, args, err := r.queryBuilder.
-		Select(utils.ColumnList[dbScenarioIterationRule]()...).
+		Select(utils.ColumnList[dbmodels.DBRule]()...).
 		From("scenario_iteration_rules").
 		Where("org_id = ?", orgID).
 		Where(sq.Eq(ColumnValueMap(ListScenarioIterationRulesFilters{
@@ -110,14 +58,14 @@ func (r *PGRepository) ListScenarioIterationRules(ctx context.Context, orgID str
 	}
 
 	rows, _ := r.db.Query(ctx, sql, args...)
-	rules, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbScenarioIterationRule])
+	rules, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbmodels.DBRule])
 	if err != nil {
 		return nil, fmt.Errorf("unable to get rules: %w", err)
 	}
 
 	var ruleDTOs []models.Rule
 	for _, rule := range rules {
-		ruleDTO, err := rule.toDomain()
+		ruleDTO, err := dbmodels.AdaptRule(rule)
 		if err != nil {
 			return nil, fmt.Errorf("dto issue: %w", err)
 		}
@@ -188,12 +136,12 @@ func (r *PGRepository) CreateScenarioIterationRule(ctx context.Context, orgID st
 	}
 
 	rows, _ := tx.Query(ctx, sql, args...)
-	createdRule, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenarioIterationRule])
+	createdRule, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbmodels.DBRule])
 	if err != nil {
 		return models.Rule{}, fmt.Errorf("unable to create rule: %w", err)
 	}
 
-	ruleDTO, err := createdRule.toDomain()
+	ruleDTO, err := dbmodels.AdaptRule(createdRule)
 	if err != nil {
 		return models.Rule{}, fmt.Errorf("dto issue: %w", err)
 	}
@@ -268,14 +216,14 @@ func (r *PGRepository) createScenarioIterationRules(ctx context.Context, tx pgx.
 	}
 
 	rows, _ := tx.Query(ctx, sql, args...)
-	createdRules, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbScenarioIterationRule])
+	createdRules, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbmodels.DBRule])
 	if err != nil {
 		return nil, fmt.Errorf("unable to create rules: %w", err)
 	}
 
 	rulesDTOs := make([]models.Rule, len(createdRules))
 	for i, createdRule := range createdRules {
-		rulesDTOs[i], err = createdRule.toDomain()
+		rulesDTOs[i], err = dbmodels.AdaptRule(createdRule)
 		if err != nil {
 			return nil, fmt.Errorf("dto issue: %w", err)
 		}
@@ -347,14 +295,14 @@ func (r *PGRepository) UpdateScenarioIterationRule(ctx context.Context, orgID st
 	}
 
 	rows, _ := tx.Query(ctx, sql, args...)
-	updatedRule, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbScenarioIterationRule])
+	updatedRule, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbmodels.DBRule])
 	if errors.Is(err, pgx.ErrNoRows) {
 		return models.Rule{}, models.NotFoundInRepositoryError
 	} else if err != nil {
 		return models.Rule{}, fmt.Errorf("unable to update rule(id: %s): %w", rule.ID, err)
 	}
 
-	ruleDTO, err := updatedRule.toDomain()
+	ruleDTO, err := dbmodels.AdaptRule(updatedRule)
 	if err != nil {
 		return models.Rule{}, fmt.Errorf("dto issue: %w", err)
 	}
