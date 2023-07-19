@@ -22,6 +22,8 @@ type AstExpressionUsecase struct {
 	DataModelRepository             repositories.DataModelRepository
 	ScenarioRepository              repositories.ScenarioReadRepository
 	ScenarioIterationReadRepository repositories.ScenarioIterationReadRepository
+	RuleRepository                  repositories.RuleRepository
+	ScenarioIterationRuleUsecase    repositories.ScenarioIterationRuleRepositoryLegacy
 }
 
 var ErrExpressionValidation = errors.New("expression validation fail")
@@ -133,25 +135,19 @@ func (usecase *AstExpressionUsecase) EditorIdentifiers(scenarioId string) (Edito
 	}, nil
 }
 
-func (usecase *AstExpressionUsecase) SaveIterationWithAstExpression(expression ast.Node, scenarioIterationId string) error {
-
-	// TODO: use refactored repo that do not request context.Background and OrganizationIdOfContext
-	scenarioIteration, err := usecase.ScenarioIterationReadRepository.GetScenarioIteration(context.Background(), usecase.OrganizationIdOfContext, scenarioIterationId)
+func (usecase *AstExpressionUsecase) SaveRuleWithAstExpression(ruleId string, expression ast.Node) error {
+	rule, err := usecase.ScenarioIterationRuleUsecase.GetScenarioIterationRule(context.Background(), usecase.OrganizationIdOfContext, ruleId)
 	if err != nil {
 		return err
 	}
 
-	// fetch scenario and enforce security
-	scenario, err := usecase.ScenarioRepository.GetScenarioById(nil, scenarioIteration.ScenarioID)
+	if err := usecase.EnforceSecurity.ReadOrganization(rule.OrganizationId); err != nil {
+		return err
+	}
+
+	err = usecase.RuleRepository.UpdateRuleWithAstExpression(nil, rule.ID, expression)
 	if err != nil {
 		return err
 	}
-
-	if err := usecase.EnforceSecurity.ReadOrganization(scenario.OrganizationID); err != nil {
-		return err
-	}
-
-	// TODO: write scenarioIteration.Body.Rules to `scenarioIteration`
-
 	return nil
 }
