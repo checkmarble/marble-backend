@@ -15,7 +15,7 @@ type DataAccessor struct {
 	orgTransactionFactory      organization.OrgTransactionFactory
 	organizationId             string
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
-	customListRepository         repositories.CustomListRepository
+	customListRepository       repositories.CustomListRepository
 }
 
 func (d *DataAccessor) GetPayloadField(fieldName string) (interface{}, error) {

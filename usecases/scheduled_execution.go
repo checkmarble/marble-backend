@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
+	"marble/marble-backend/usecases/ast_eval"
 	"marble/marble-backend/usecases/organization"
 	"marble/marble-backend/usecases/scheduledexecution"
 	"marble/marble-backend/utils"
@@ -27,6 +28,7 @@ type ScheduledExecutionUsecase struct {
 	decisionRepository              repositories.DecisionRepository
 	customListRepository            repositories.CustomListRepository
 	exportScheduleExecution         scheduledexecution.ExportScheduleExecution
+	evaluateRuleAstExpression       ast_eval.EvaluateRuleAstExpression
 }
 
 func (usecase *ScheduledExecutionUsecase) GetScheduledExecution(ctx context.Context, orgID string, id string) (models.ScheduledExecution, error) {
@@ -213,6 +215,7 @@ func (usecase *ScheduledExecutionUsecase) executeScheduledScenario(ctx context.C
 					orgTransactionFactory:           usecase.orgTransactionFactory,
 					ingestedDataReadRepository:      usecase.ingestedDataReadRepository,
 					customListRepository:            usecase.customListRepository,
+					evaluateRuleAstExpression:       usecase.evaluateRuleAstExpression,
 				},
 				utils.LoggerFromContext(ctx),
 			)

@@ -14,11 +14,11 @@ func TestEval(t *testing.T) {
 	payload := map[string]any{
 		"balance": 96,
 	}
-	inject := NewEvaluatorInjection()
-	inject.AddEvaluator(ast.FUNC_VARIABLE, evaluate.Variable{Variables: payload})
+	environment := NewAstEvaluationEnvironment()
+	environment.AddEvaluator(ast.FUNC_VARIABLE, evaluate.Variable{Variables: payload})
 
 	root := ast.NewAstCompareBalance()
-	result, err := EvaluateAst(inject, root)
+	result, err := EvaluateAst(environment, root)
 	assert.NoError(t, err)
 
 	assert.Equal(t, true, result)

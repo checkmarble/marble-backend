@@ -43,6 +43,7 @@ func (usecases *UsecasesWithCreds) AstExpressionUsecase() AstExpressionUsecase {
 		ScenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
 		RuleRepository:                  usecases.Repositories.RuleRepository,
 		ScenarioIterationRuleUsecase:    usecases.Repositories.ScenarioIterationRuleRepositoryLegacy,
+		AstEvaluationEnvironmentFactory: usecases.AstEvaluationEnvironment,
 	}
 }
 
