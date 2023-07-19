@@ -12,7 +12,7 @@ type UsecasesWithCreds struct {
 	Usecases
 	Credentials             models.Credentials
 	Logger                  *slog.Logger
-	OrganizationIdOfContext string
+	OrganizationIdOfContext func() (string, error)
 	Context                 context.Context
 }
 

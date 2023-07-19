@@ -14,7 +14,7 @@ import (
 
 type AstExpressionUsecase struct {
 	EnforceSecurity                 security.EnforceSecurity
-	OrganizationIdOfContext         string
+	OrganizationIdOfContext         func() (string, error)
 	CustomListRepository            repositories.CustomListRepository
 	OrgTransactionFactory           organization.OrgTransactionFactory
 	IngestedDataReadRepository      repositories.IngestedDataReadRepository
@@ -61,7 +61,12 @@ func (usecase *AstExpressionUsecase) Validate(node ast.Node) []error {
 
 func (usecase *AstExpressionUsecase) Run(expression ast.Node, payload models.PayloadReader) (any, error) {
 
-	environment := usecase.AstEvaluationEnvironmentFactory(usecase.OrganizationIdOfContext, payload)
+	organizationId, err := usecase.OrganizationIdOfContext()
+	if err != nil {
+		return nil, err
+	}
+
+	environment := usecase.AstEvaluationEnvironmentFactory(organizationId, payload)
 	return ast_eval.EvaluateAst(environment, expression)
 }
 
@@ -132,7 +137,13 @@ func (usecase *AstExpressionUsecase) EditorIdentifiers(scenarioId string) (Edito
 }
 
 func (usecase *AstExpressionUsecase) SaveRuleWithAstExpression(ruleId string, expression ast.Node) error {
-	rule, err := usecase.ScenarioIterationRuleUsecase.GetScenarioIterationRule(context.Background(), usecase.OrganizationIdOfContext, ruleId)
+
+	organizationId, err := usecase.OrganizationIdOfContext()
+	if err != nil {
+		return err
+	}
+
+	rule, err := usecase.ScenarioIterationRuleUsecase.GetScenarioIterationRule(context.Background(), organizationId, ruleId)
 	if err != nil {
 		return err
 	}

@@ -107,7 +107,11 @@ func (api *API) handleDryRunAstExpression() http.HandlerFunc {
 
 		organizationUsecase := api.usecases.NewOrganizationUseCase()
 
-		dataModel, err := organizationUsecase.GetDataModel(api.UsecasesWithCreds(r).OrganizationIdOfContext)
+		organizationId, err := api.UsecasesWithCreds(r).OrganizationIdOfContext()
+		if presentError(w, r, err) {
+			return
+		}
+		dataModel, err := organizationUsecase.GetDataModel(organizationId)
 		if presentError(w, r, err) {
 			return
 		}
