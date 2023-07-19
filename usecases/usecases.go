@@ -155,8 +155,8 @@ func (usecases *Usecases) NewPopulateOrganizationSchema() organization.PopulateO
 	}
 }
 
-func (usecases *Usecases) NewEvaluatorInjection(organizationId string, payload models.PayloadReader) ast_eval.EvaluatorInjection {
-	inject := ast_eval.NewEvaluatorInjection()
+func (usecases *Usecases) AstEvaluationEnvironment(organizationId string, payload models.PayloadReader) ast_eval.AstEvaluationEnvironment {
+	environment := ast_eval.NewAstEvaluationEnvironment()
 
 	// execution of a scenario with a dedicated security context
 	enforceSecurity := &security.EnforceSecurityImpl{
@@ -165,14 +165,14 @@ func (usecases *Usecases) NewEvaluatorInjection(organizationId string, payload m
 		},
 	}
 
-	inject.AddEvaluator(ast.FUNC_CUSTOM_LIST_ACCESS,
+	environment.AddEvaluator(ast.FUNC_CUSTOM_LIST_ACCESS,
 		evaluate.NewCustomListValuesAccess(
 			usecases.Repositories.CustomListRepository,
 			enforceSecurity,
 		),
 	)
 
-	inject.AddEvaluator(ast.FUNC_DB_ACCESS,
+	environment.AddEvaluator(ast.FUNC_DB_ACCESS,
 		evaluate.NewDatabaseAccess(
 			usecases.NewOrgTransactionFactory(),
 			usecases.Repositories.IngestedDataReadRepository,
@@ -181,11 +181,11 @@ func (usecases *Usecases) NewEvaluatorInjection(organizationId string, payload m
 			organizationId,
 		))
 
-	return inject
+	return environment
 }
 
 func (usecases *Usecases) NewEvaluateRuleAstExpression() ast_eval.EvaluateRuleAstExpression {
 	return ast_eval.EvaluateRuleAstExpression{
-		EvaluatorInjectionFactory: usecases.NewEvaluatorInjection,
+		AstEvaluationEnvironmentFactory: usecases.AstEvaluationEnvironment,
 	}
 }
