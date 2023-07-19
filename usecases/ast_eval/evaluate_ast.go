@@ -5,7 +5,7 @@ import (
 	"marble/marble-backend/utils"
 )
 
-func EvaluateAst(evalInjection EvaluatorInjection, node ast.Node) (any, error) {
+func EvaluateAst(environment AstEvaluationEnvironment, node ast.Node) (any, error) {
 
 	// Early exit for constant, because it should have no children.
 	if node.Function == ast.FUNC_CONSTANT {
@@ -14,7 +14,7 @@ func EvaluateAst(evalInjection EvaluatorInjection, node ast.Node) (any, error) {
 
 	arguments := ast.Arguments{}
 
-	var evalNode = func(node ast.Node) (any, error) { return EvaluateAst(evalInjection, node) }
+	var evalNode = func(node ast.Node) (any, error) { return EvaluateAst(environment, node) }
 
 	// Eval children
 	var err error
@@ -30,7 +30,7 @@ func EvaluateAst(evalInjection EvaluatorInjection, node ast.Node) (any, error) {
 	}
 
 	// get evaluator
-	evaluator, err := evalInjection.GetEvaluator(node.Function)
+	evaluator, err := environment.GetEvaluator(node.Function)
 	if err != nil {
 		return nil, err
 	}

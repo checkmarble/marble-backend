@@ -52,7 +52,7 @@ func (usecases *UsecasesWithCreds) AstExpressionUsecase() AstExpressionUsecase {
 		ScenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
 		RuleRepository:                  usecases.Repositories.RuleRepository,
 		ScenarioIterationRuleUsecase:    usecases.Repositories.ScenarioIterationRuleRepositoryLegacy,
-		EvaluatorInjectionFactory:       usecases.NewEvaluatorInjection,
+		AstEvaluationEnvironmentFactory: usecases.AstEvaluationEnvironment,
 	}
 }
 
