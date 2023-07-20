@@ -38,7 +38,7 @@ func (usecase *AstExpressionUsecase) validateRecursif(node ast.Node, allErrors [
 	}
 
 	if attributes.NumberOfArguments != len(node.Children) {
-		allErrors = append(allErrors, fmt.Errorf("invalid number of arguments for function %s %w", node.DebugString(), ErrExpressionValidation))
+		allErrors = append(allErrors, fmt.Errorf("invalid number of arguments for node [%s] %w", node.DebugString(), ErrExpressionValidation))
 	}
 
 	// TODO: missing named arguments

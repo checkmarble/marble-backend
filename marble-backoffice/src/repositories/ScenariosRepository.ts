@@ -8,6 +8,7 @@ import {
   adapAstValidateSchemaResult,
   adaptAstNodeDto,
 } from "@/models/AstExpressionDto";
+import { adaptDryRunResult } from "@/models/DryRunResultDto";
 import { adaptEditorIdentifiers } from "@/models/EditorIdentifiersDto";
 
 export interface ScenariosRepository {
@@ -45,14 +46,16 @@ export async function validateAstExpression(
   );
 }
 
-export async function runAstExpression(
+export async function dryRunAstExpression(
   repository: ScenariosRepository,
   organizationId: string,
   expression: AstNode
 ) {
-  return await repository.marbleApi.runAstExpression(
-    organizationId,
-    adaptAstNodeDto(expression)
+  return adaptDryRunResult(
+    await repository.marbleApi.dryRunAstExpression(
+      organizationId,
+      adaptAstNodeDto(expression)
+    )
   );
 }
 
