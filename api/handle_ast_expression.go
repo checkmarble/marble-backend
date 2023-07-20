@@ -165,10 +165,6 @@ func (api *API) handleSaveRuleWithAstExpression() http.HandlerFunc {
 			return
 		}
 
-		if presentError(w, r, err) {
-			return
-		}
-
 		usecase := api.UsecasesWithCreds(r).AstExpressionUsecase()
 		err = usecase.SaveRuleWithAstExpression(input.Body.RuleId, expression)
 		if err != nil {
