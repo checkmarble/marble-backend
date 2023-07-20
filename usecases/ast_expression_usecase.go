@@ -2,8 +2,10 @@ package usecases
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"marble/marble-backend/app"
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 	"marble/marble-backend/repositories"
@@ -14,7 +16,7 @@ import (
 
 type AstExpressionUsecase struct {
 	EnforceSecurity                 security.EnforceSecurity
-	OrganizationIdOfContext         string
+	OrganizationIdOfContext         func() (string, error)
 	CustomListRepository            repositories.CustomListRepository
 	OrgTransactionFactory           organization.OrgTransactionFactory
 	IngestedDataReadRepository      repositories.IngestedDataReadRepository
@@ -36,7 +38,7 @@ func (usecase *AstExpressionUsecase) validateRecursif(node ast.Node, allErrors [
 	}
 
 	if attributes.NumberOfArguments != len(node.Children) {
-		allErrors = append(allErrors, fmt.Errorf("invalid number of arguments for function %s %w", node.DebugString(), ErrExpressionValidation))
+		allErrors = append(allErrors, fmt.Errorf("invalid number of arguments for node [%s] %w", node.DebugString(), ErrExpressionValidation))
 	}
 
 	// TODO: missing named arguments
@@ -59,9 +61,34 @@ func (usecase *AstExpressionUsecase) Validate(node ast.Node) []error {
 	return usecase.validateRecursif(node, nil)
 }
 
-func (usecase *AstExpressionUsecase) Run(expression ast.Node, payload models.PayloadReader) (any, error) {
+func (usecase *AstExpressionUsecase) Run(expression ast.Node, payloadType string, payloadRaw json.RawMessage) (any, error) {
 
-	environment := usecase.AstEvaluationEnvironmentFactory(usecase.OrganizationIdOfContext, payload)
+	organizationId, err := usecase.OrganizationIdOfContext()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := usecase.EnforceSecurity.ReadOrganization(organizationId); err != nil {
+		return EditorIdentifiers{}, err
+	}
+
+	dataModel, err := usecase.DataModelRepository.GetDataModel(nil, organizationId)
+	if err != nil {
+		return nil, err
+	}
+
+	tables := dataModel.Tables
+	table, ok := tables[models.TableName(payloadType)]
+	if !ok {
+		return nil, fmt.Errorf("table %s not found in data model  %w", payloadType, models.NotFoundError)
+	}
+
+	payload, err := app.ParseToDataModelObject(table, payloadRaw)
+	if err != nil {
+		return nil, err
+	}
+
+	environment := usecase.AstEvaluationEnvironmentFactory(organizationId, payload)
 	return ast_eval.EvaluateAst(environment, expression)
 }
 
@@ -132,7 +159,13 @@ func (usecase *AstExpressionUsecase) EditorIdentifiers(scenarioId string) (Edito
 }
 
 func (usecase *AstExpressionUsecase) SaveRuleWithAstExpression(ruleId string, expression ast.Node) error {
-	rule, err := usecase.ScenarioIterationRuleUsecase.GetScenarioIterationRule(context.Background(), usecase.OrganizationIdOfContext, ruleId)
+
+	organizationId, err := usecase.OrganizationIdOfContext()
+	if err != nil {
+		return err
+	}
+
+	rule, err := usecase.ScenarioIterationRuleUsecase.GetScenarioIterationRule(context.Background(), organizationId, ruleId)
 	if err != nil {
 		return err
 	}

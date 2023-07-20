@@ -8,7 +8,7 @@ import (
 )
 
 type ScenarioUsecase struct {
-	OrganizationIdOfContext string
+	OrganizationIdOfContext func() (string, error)
 	enforceSecurity         security.EnforceSecurity
 	scenarioReadRepository  repositories.ScenarioReadRepository
 	scenarioWriteRepository repositories.ScenarioWriteRepository
@@ -19,7 +19,11 @@ func (usecase *ScenarioUsecase) ListScenarios() ([]models.Scenario, error) {
 	if err := usecase.enforceReadScenarioPermission(); err != nil {
 		return nil, err
 	}
-	return usecase.scenarioReadRepository.ListScenariosOfOrganization(nil, usecase.OrganizationIdOfContext)
+	organizationId, err := usecase.OrganizationIdOfContext()
+	if err != nil {
+		return nil, err
+	}
+	return usecase.scenarioReadRepository.ListScenariosOfOrganization(nil, organizationId)
 }
 
 func (usecase *ScenarioUsecase) GetScenario(scenarioID string) (models.Scenario, error) {
