@@ -16,31 +16,43 @@ import (
 )
 
 type APIScenarioIterationRule struct {
-	ID                  string          `json:"id"`
-	ScenarioIterationID string          `json:"scenarioIterationId"`
-	DisplayOrder        int             `json:"displayOrder"`
-	Name                string          `json:"name"`
-	Description         string          `json:"description"`
-	Formula             json.RawMessage `json:"formula"`
-	ScoreModifier       int             `json:"scoreModifier"`
-	CreatedAt           time.Time       `json:"createdAt"`
+	ID                   string          `json:"id"`
+	ScenarioIterationID  string          `json:"scenarioIterationId"`
+	DisplayOrder         int             `json:"displayOrder"`
+	Name                 string          `json:"name"`
+	Description          string          `json:"description"`
+	Formula              json.RawMessage `json:"formula"`
+	FormulaAstExpression json.RawMessage `json:"formula_ast_expression"`
+	ScoreModifier        int             `json:"scoreModifier"`
+	CreatedAt            time.Time       `json:"createdAt"`
 }
 
 func NewAPIScenarioIterationRule(rule models.Rule) (APIScenarioIterationRule, error) {
+	var formulaAstExpression []byte
 	formula, err := rule.Formula.MarshalJSON()
 	if err != nil {
 		return APIScenarioIterationRule{}, fmt.Errorf("unable to marshal formula: %w", err)
 	}
 
+	formulaAstExpression = nil
+	if rule.FormulaAstExpression != nil {
+		formulaAst, err := dto.AdaptNodeDto(*rule.FormulaAstExpression)
+		formulaAstExpression, err = json.Marshal(formulaAst)
+		if err != nil {
+			formulaAstExpression = nil
+		}
+	}
+
 	return APIScenarioIterationRule{
-		ID:                  rule.ID,
-		ScenarioIterationID: rule.ScenarioIterationID,
-		DisplayOrder:        rule.DisplayOrder,
-		Name:                rule.Name,
-		Description:         rule.Description,
-		Formula:             formula,
-		ScoreModifier:       rule.ScoreModifier,
-		CreatedAt:           rule.CreatedAt,
+		ID:                   rule.ID,
+		ScenarioIterationID:  rule.ScenarioIterationID,
+		DisplayOrder:         rule.DisplayOrder,
+		Name:                 rule.Name,
+		Description:          rule.Description,
+		Formula:              formula,
+		FormulaAstExpression: formulaAstExpression,
+		ScoreModifier:        rule.ScoreModifier,
+		CreatedAt:            rule.CreatedAt,
 	}, nil
 }
 
