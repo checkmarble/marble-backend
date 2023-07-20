@@ -187,11 +187,13 @@ func ruleExecutionFromRule(ctx context.Context, rule models.Rule, dataAccessor D
 
 	var result bool
 	var err error
-	if evaluateRuleAstExpression != nil {
-		result, err = evaluateRuleAstExpression()
-	} else {
-		result, err = rule.Formula.Eval(ctx, &dataAccessor)
-	}
+	// This is for making the execution of the rule use the AST instead of the old operator model
+	// if evaluateRuleAstExpression != nil {
+	// 	result, err = evaluateRuleAstExpression()
+	// } else {
+	// 	result, err = rule.Formula.Eval(ctx, &dataAccessor)
+	// }
+	result, err = rule.Formula.Eval(ctx, &dataAccessor)
 
 	if err != nil {
 		return models.RuleExecution{}, fmt.Errorf("error while evaluating rule %s: %w", rule.Name, err)
