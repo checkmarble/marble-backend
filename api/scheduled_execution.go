@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"marble/marble-backend/dto"
 	"marble/marble-backend/utils"
 	"net/http"
@@ -49,7 +48,6 @@ func (api *API) handleListScheduledExecution() http.HandlerFunc {
 		executions, err := usecase.ListScheduledExecutions(ctx, organizationId, scenarioId)
 
 		if presentError(w, r, err) {
-			fmt.Println(err)
 			return
 		}
 

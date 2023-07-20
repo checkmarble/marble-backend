@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"marble/marble-backend/app"
 	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
@@ -97,7 +96,6 @@ func (api *API) handleDryRunAstExpression() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		input := ctx.Value(httpin.Input).(*PostRunAstExpression)
-		logger := api.logger
 
 		expression, err := dto.AdaptASTNode(*input.Body.Expression)
 		if err != nil {
@@ -105,31 +103,8 @@ func (api *API) handleDryRunAstExpression() http.HandlerFunc {
 			return
 		}
 
-		organizationUsecase := api.usecases.NewOrganizationUseCase()
-
-		organizationId, err := api.UsecasesWithCreds(r).OrganizationIdOfContext()
-		if presentError(w, r, err) {
-			return
-		}
-		dataModel, err := organizationUsecase.GetDataModel(organizationId)
-		if presentError(w, r, err) {
-			return
-		}
-
-		tables := dataModel.Tables
-		table, ok := tables[models.TableName(input.Body.PayloadType)]
-		if !ok {
-			logger.ErrorCtx(ctx, "Table not found in data model for organization")
-			http.Error(w, "", http.StatusNotFound)
-			return
-		}
-
-		payload, err := app.ParseToDataModelObject(table, input.Body.Payload)
-		if presentError(w, r, err) {
-			return
-		}
 		usecase := api.UsecasesWithCreds(r).AstExpressionUsecase()
-		result, err := usecase.Run(expression, payload)
+		result, err := usecase.Run(expression, input.Body.PayloadType, input.Body.Payload)
 
 		var runtimeErrorDto string
 		if errors.Is(err, evaluate.ErrRuntimeExpression) {
@@ -165,19 +140,14 @@ func (api *API) handleSaveRuleWithAstExpression() http.HandlerFunc {
 
 		expression, err := dto.AdaptASTNode(*input.Body.Expression)
 		if err != nil {
-			presentError(w, r, fmt.Errorf("invalid Expression: %w", models.BadParameterError))
-			return
-		}
-
-		if presentError(w, r, err) {
+			presentError(w, r, fmt.Errorf("invalid Expression: %w %w", err, models.BadParameterError))
 			return
 		}
 
 		usecase := api.UsecasesWithCreds(r).AstExpressionUsecase()
 		err = usecase.SaveRuleWithAstExpression(input.Body.RuleId, expression)
 		if err != nil {
-			fmt.Println(err)
-			presentError(w, r, fmt.Errorf("invalid Expression: %w", models.BadParameterError))
+			presentError(w, r, fmt.Errorf("invalid Expression: %w %w", err, models.BadParameterError))
 			return
 		}
 		PresentNothing(w)

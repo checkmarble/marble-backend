@@ -2,8 +2,10 @@ package usecases
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"marble/marble-backend/app"
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 	"marble/marble-backend/repositories"
@@ -59,9 +61,29 @@ func (usecase *AstExpressionUsecase) Validate(node ast.Node) []error {
 	return usecase.validateRecursif(node, nil)
 }
 
-func (usecase *AstExpressionUsecase) Run(expression ast.Node, payload models.PayloadReader) (any, error) {
+func (usecase *AstExpressionUsecase) Run(expression ast.Node, payloadType string, payloadRaw json.RawMessage) (any, error) {
 
 	organizationId, err := usecase.OrganizationIdOfContext()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := usecase.EnforceSecurity.ReadOrganization(organizationId); err != nil {
+		return EditorIdentifiers{}, err
+	}
+
+	dataModel, err := usecase.DataModelRepository.GetDataModel(nil, organizationId)
+	if err != nil {
+		return nil, err
+	}
+
+	tables := dataModel.Tables
+	table, ok := tables[models.TableName(payloadType)]
+	if !ok {
+		return nil, fmt.Errorf("table %s not found in data model  %w", payloadType, models.NotFoundError)
+	}
+
+	payload, err := app.ParseToDataModelObject(table, payloadRaw)
 	if err != nil {
 		return nil, err
 	}
