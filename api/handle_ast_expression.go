@@ -2,12 +2,10 @@ package api
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
-	"marble/marble-backend/usecases/ast_eval/evaluate"
 	"marble/marble-backend/utils"
 	"net/http"
 
@@ -88,8 +86,7 @@ type PostRunAstExpression struct {
 }
 
 type RunAstExpressionResultDto struct {
-	Result       any    `json:"result"`
-	RuntimeError string `json:"runtime_error"`
+	Evaluation dto.NodeEvaluationDto `json:"evaluation"`
 }
 
 func (api *API) handleDryRunAstExpression() http.HandlerFunc {
@@ -104,12 +101,9 @@ func (api *API) handleDryRunAstExpression() http.HandlerFunc {
 		}
 
 		usecase := api.UsecasesWithCreds(r).AstExpressionUsecase()
-		result, err := usecase.Run(expression, input.Body.PayloadType, input.Body.Payload)
-
-		var runtimeErrorDto string
-		if errors.Is(err, evaluate.ErrRuntimeExpression) {
-			runtimeErrorDto = err.Error()
-			err = nil
+		evaluation, err := usecase.DryRun(expression, input.Body.PayloadType, input.Body.Payload)
+		if presentError(w, r, err) {
+			return
 		}
 
 		if presentError(w, r, err) {
@@ -117,8 +111,7 @@ func (api *API) handleDryRunAstExpression() http.HandlerFunc {
 		}
 
 		PresentModel(w, RunAstExpressionResultDto{
-			Result:       result,
-			RuntimeError: runtimeErrorDto,
+			Evaluation: dto.AdaptNodeEvaluationDto(evaluation),
 		})
 	}
 }

@@ -61,35 +61,43 @@ func (usecase *AstExpressionUsecase) Validate(node ast.Node) []error {
 	return usecase.validateRecursif(node, nil)
 }
 
-func (usecase *AstExpressionUsecase) Run(expression ast.Node, payloadType string, payloadRaw json.RawMessage) (any, error) {
+func (usecase *AstExpressionUsecase) DryRun(expression ast.Node, payloadType string, payloadRaw json.RawMessage) (ast.NodeEvaluation, error) {
+
+	var evaluation ast.NodeEvaluation
 
 	organizationId, err := usecase.OrganizationIdOfContext()
 	if err != nil {
-		return nil, err
+		return evaluation, err
 	}
 
 	if err := usecase.EnforceSecurity.ReadOrganization(organizationId); err != nil {
-		return EditorIdentifiers{}, err
+		return evaluation, err
 	}
 
 	dataModel, err := usecase.DataModelRepository.GetDataModel(nil, organizationId)
 	if err != nil {
-		return nil, err
+		return evaluation, err
 	}
 
 	tables := dataModel.Tables
 	table, ok := tables[models.TableName(payloadType)]
 	if !ok {
-		return nil, fmt.Errorf("table %s not found in data model  %w", payloadType, models.NotFoundError)
+		return evaluation, fmt.Errorf("table %s not found in data model  %w", payloadType, models.NotFoundError)
 	}
 
 	payload, err := app.ParseToDataModelObject(table, payloadRaw)
 	if err != nil {
-		return nil, err
+		return evaluation, err
 	}
 
 	environment := usecase.AstEvaluationEnvironmentFactory(organizationId, payload)
-	return ast_eval.EvaluateAst(environment, expression)
+	evaluation = ast_eval.EvaluateAst(environment, expression)
+
+	return evaluation, nil
+}
+
+func NodeLocation(expression ast.Node, target *ast.Node) (string, error) {
+	return "", nil
 }
 
 type EditorIdentifiers struct {

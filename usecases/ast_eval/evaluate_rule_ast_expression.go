@@ -1,6 +1,7 @@
 package ast_eval
 
 import (
+	"errors"
 	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
@@ -14,14 +15,16 @@ type EvaluateRuleAstExpression struct {
 func (evaluator *EvaluateRuleAstExpression) EvaluateRuleAstExpression(ruleAstExpression ast.Node, organizationId string, payload models.PayloadReader) (bool, error) {
 	environment := evaluator.AstEvaluationEnvironmentFactory(organizationId, payload)
 
-	result, err := EvaluateAst(environment, ruleAstExpression)
-	if err != nil {
-		return false, err
+	evaluation := EvaluateAst(environment, ruleAstExpression)
+
+	result := evaluation.ReturnValue
+	if result == nil {
+		return false, errors.Join(evaluation.AllErrors()...)
 	}
 
 	if value, ok := result.(bool); ok {
 		return value, nil
 	}
 
-	return false, fmt.Errorf("rule ast expression does not return a boolean, '%v' instead %w %w", result, err, evaluate.ErrRuntimeExpression)
+	return false, fmt.Errorf("rule ast expression does not return a boolean, '%v' instead %w", result, evaluate.ErrRuntimeExpression)
 }

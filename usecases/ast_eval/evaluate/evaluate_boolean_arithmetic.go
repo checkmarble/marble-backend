@@ -27,7 +27,7 @@ func (f BooleanArithmetic) Evaluate(arguments ast.Arguments) (any, error) {
 	}
 
 	return nil, fmt.Errorf(
-		"all argments of function %s must be int64 or float64 %w",
+		"all argments of function %s must be booleans %w",
 		f.Function.DebugString(), ErrRuntimeExpression,
 	)
 }
