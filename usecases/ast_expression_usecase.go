@@ -145,9 +145,8 @@ func (usecase *AstExpressionUsecase) getLinkedDatabaseIdentifiers(scenario model
 
 	var path []string
 	if err := recursiveDatabaseAccessor(path, triggerObjectTable.LinksToSingle); err != nil {
-		return []ast.Identifier{}, err
+		return nil, err
 	}
-	
 	return dataAccessors, nil
 }
 
@@ -230,6 +229,16 @@ func (usecase *AstExpressionUsecase) EditorIdentifiers(scenarioId string) (Edito
 	}, nil
 }
 
+func (usecase *AstExpressionUsecase) EditorOperators() EditorOperators {
+	var operatorAccessors []ast.FuncAttributes
+	for _, functionType := range ast.FuncOperators {
+		operatorAccessors = append(operatorAccessors, ast.FuncAttributesMap[ast.Function(functionType)])
+	}
+	return EditorOperators{
+		OperatorAccessors: operatorAccessors,
+	}
+}
+
 func (usecase *AstExpressionUsecase) SaveRuleWithAstExpression(ruleId string, expression ast.Node) error {
 
 	organizationId, err := usecase.OrganizationIdOfContext()
@@ -253,12 +262,3 @@ func (usecase *AstExpressionUsecase) SaveRuleWithAstExpression(ruleId string, ex
 	return nil
 }
 
-func (usecase *AstExpressionUsecase) EditorOperators() EditorOperators {
-	var operatorAccessors []ast.FuncAttributes
-	for _, functionType := range ast.FuncOperators {
-		operatorAccessors = append(operatorAccessors, ast.FuncAttributesMap[ast.Function(functionType)])
-	}
-	return EditorOperators{
-		OperatorAccessors: operatorAccessors,
-	}
-}
