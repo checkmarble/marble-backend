@@ -5,35 +5,48 @@ import (
 	"marble/marble-backend/utils"
 )
 
-func EvaluateAst(environment AstEvaluationEnvironment, node ast.Node) (any, error) {
+func EvaluateAst(environment AstEvaluationEnvironment, node ast.Node) ast.NodeEvaluation {
 
 	// Early exit for constant, because it should have no children.
 	if node.Function == ast.FUNC_CONSTANT {
-		return node.Constant, nil
+		return ast.NodeEvaluation{
+			ReturnValue: node.Constant,
+		}
 	}
 
-	arguments := ast.Arguments{}
+	childEvaluationFail := false
 
-	var evalNode = func(node ast.Node) (any, error) { return EvaluateAst(environment, node) }
-
-	// Eval children
-	var err error
-	arguments.Args, err = utils.MapErr(node.Children, evalNode)
-	if err != nil {
-		return nil, err
+	evalChild := func(child ast.Node) ast.NodeEvaluation {
+		childEval := EvaluateAst(environment, child)
+		if childEval.ReturnValue == nil {
+			childEvaluationFail = true
+		}
+		return childEval
 	}
 
-	// Eval named children
-	arguments.NamedArgs, err = utils.MapMapErr(node.NamedChildren, evalNode)
-	if err != nil {
-		return nil, err
+	// eval each child
+	evaluation := ast.NodeEvaluation{
+		Children:      utils.Map(node.Children, evalChild),
+		NamedChildren: utils.MapMap(node.NamedChildren, evalChild),
 	}
 
-	// get evaluator
+	if childEvaluationFail {
+		// an error occured in at least one of the children. Stop the evaluation.
+		return evaluation
+	}
+
+	getReturnValue := func(e ast.NodeEvaluation) any { return e.ReturnValue }
+	arguments := ast.Arguments{
+		Args:      utils.Map(evaluation.Children, getReturnValue),
+		NamedArgs: utils.MapMap(evaluation.NamedChildren, getReturnValue),
+	}
+
 	evaluator, err := environment.GetEvaluator(node.Function)
 	if err != nil {
-		return nil, err
+		evaluation.EvaluationError = err
+		return evaluation
 	}
 
-	return evaluator.Evaluate(arguments)
+	evaluation.ReturnValue, evaluation.EvaluationError = evaluator.Evaluate(arguments)
+	return evaluation
 }
