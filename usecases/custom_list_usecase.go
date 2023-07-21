@@ -22,6 +22,9 @@ func (usecase *CustomListUseCase) CreateCustomList(ctx context.Context, createCu
 		newCustomListId := uuid.NewString()
 		err := usecase.CustomListRepository.CreateCustomList(tx, createCustomList, newCustomListId)
 		if err != nil {
+			if repositories.IsIsUniqueViolationError(err) {
+				return models.CustomList{}, models.DuplicateValueError
+			}
 			return models.CustomList{}, err
 		}
 		return usecase.CustomListRepository.GetCustomListById(tx, newCustomListId)

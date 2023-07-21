@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
+	"marble/marble-backend/usecases/ast_eval"
 	"marble/marble-backend/usecases/organization"
 	"marble/marble-backend/utils"
 
@@ -22,6 +23,7 @@ type DecisionUsecase struct {
 	datamodelRepository             repositories.DataModelRepository
 	scenarioReadRepository          repositories.ScenarioReadRepository
 	scenarioIterationReadRepository repositories.ScenarioIterationReadRepository
+	evaluateRuleAstExpression       ast_eval.EvaluateRuleAstExpression
 }
 
 func (usecase *DecisionUsecase) GetDecision(creds models.Credentials, orgID string, decisionID string) (models.Decision, error) {
@@ -71,6 +73,7 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 		orgTransactionFactory:           usecase.orgTransactionFactory,
 		ingestedDataReadRepository:      usecase.ingestedDataReadRepository,
 		customListRepository:            usecase.customListRepository,
+		evaluateRuleAstExpression:       usecase.evaluateRuleAstExpression,
 	}, logger)
 	if err != nil {
 		return models.Decision{}, fmt.Errorf("error evaluating scenario: %w", err)

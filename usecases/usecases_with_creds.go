@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"marble/marble-backend/models"
+	"marble/marble-backend/usecases/scenarios"
 	"marble/marble-backend/usecases/security"
 
 	"golang.org/x/exp/slog"
@@ -12,7 +13,7 @@ type UsecasesWithCreds struct {
 	Usecases
 	Credentials             models.Credentials
 	Logger                  *slog.Logger
-	OrganizationIdOfContext string
+	OrganizationIdOfContext func() (string, error)
 	Context                 context.Context
 }
 
@@ -22,10 +23,18 @@ func (usecases *UsecasesWithCreds) NewEnforceSecurity() security.EnforceSecurity
 	}
 }
 
+func (usecases *UsecasesWithCreds) NewEnforceScenarioSecurity() security.EnforceSecurityScenario {
+	return &security.EnforceSecurityScenarioImpl{
+		EnforceSecurity: usecases.NewEnforceSecurity(),
+		Credentials:     usecases.Credentials,
+	}
+}
+
 func (usecases *UsecasesWithCreds) NewScenarioUsecase() ScenarioUsecase {
 	return ScenarioUsecase{
+		transactionFactory:      usecases.Repositories.TransactionFactory,
 		OrganizationIdOfContext: usecases.OrganizationIdOfContext,
-		enforceSecurity:         usecases.NewEnforceSecurity(),
+		enforceSecurity:         usecases.NewEnforceScenarioSecurity(),
 		scenarioReadRepository:  usecases.Repositories.ScenarioReadRepository,
 		scenarioWriteRepository: usecases.Repositories.ScenarioWriteRepository,
 	}
@@ -33,13 +42,34 @@ func (usecases *UsecasesWithCreds) NewScenarioUsecase() ScenarioUsecase {
 
 func (usecases *UsecasesWithCreds) AstExpressionUsecase() AstExpressionUsecase {
 	return AstExpressionUsecase{
-		EnforceSecurity:            usecases.NewEnforceSecurity(),
-		OrganizationIdOfContext:    usecases.OrganizationIdOfContext,
-		CustomListRepository:       usecases.Repositories.CustomListRepository,
-		OrgTransactionFactory:      usecases.NewOrgTransactionFactory(),
-		IngestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
-		DataModelRepository:        usecases.Repositories.DataModelRepository,
-		ScenarioRepository:         usecases.Repositories.ScenarioReadRepository,
+		EnforceSecurity:                 usecases.NewEnforceSecurity(),
+		OrganizationIdOfContext:         usecases.OrganizationIdOfContext,
+		CustomListRepository:            usecases.Repositories.CustomListRepository,
+		OrgTransactionFactory:           usecases.NewOrgTransactionFactory(),
+		IngestedDataReadRepository:      usecases.Repositories.IngestedDataReadRepository,
+		DataModelRepository:             usecases.Repositories.DataModelRepository,
+		ScenarioRepository:              usecases.Repositories.ScenarioReadRepository,
+		ScenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
+		RuleRepository:                  usecases.Repositories.RuleRepository,
+		ScenarioIterationRuleUsecase:    usecases.Repositories.ScenarioIterationRuleRepositoryLegacy,
+		AstEvaluationEnvironmentFactory: usecases.AstEvaluationEnvironment,
+	}
+}
+
+func (usecases *UsecasesWithCreds) NewScenarioPublicationUsecase() ScenarioPublicationUsecase {
+	return ScenarioPublicationUsecase{
+		transactionFactory:              usecases.Repositories.TransactionFactory,
+		scenarioPublicationsRepository:  usecases.Repositories.ScenarioPublicationRepository,
+		scenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,
+		scenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
+		OrganizationIdOfContext:         usecases.OrganizationIdOfContext,
+		enforceSecurity:                 usecases.NewEnforceScenarioSecurity(),
+		scenarioPublisher: scenarios.NewScenarioPublisher(
+			usecases.Repositories.ScenarioPublicationRepository,
+			usecases.Repositories.ScenarioReadRepository,
+			usecases.Repositories.ScenarioWriteRepository,
+			usecases.Repositories.ScenarioIterationReadRepository,
+		),
 	}
 }
 

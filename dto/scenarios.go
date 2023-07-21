@@ -2,6 +2,7 @@ package dto
 
 import (
 	"encoding/json"
+	"marble/marble-backend/models"
 )
 
 type CreateScenarioBody struct {
@@ -99,5 +100,13 @@ type CreateScenarioPublicationInput struct {
 type ListScenarioPublicationsInput struct {
 	ScenarioID          string `in:"query=scenarioID"`
 	ScenarioIterationID string `in:"query=scenarioIterationID"`
-	PublicationAction   string `in:"query=publicationAction"`
+}
+
+func AdaptCreateScenario(input *CreateScenarioInput, orgID string) models.CreateScenarioInput {
+	return models.CreateScenarioInput{
+		OrganizationID:    orgID,
+		Name:              input.Body.Name,
+		Description:       input.Body.Description,
+		TriggerObjectType: input.Body.TriggerObjectType,
+	}
 }

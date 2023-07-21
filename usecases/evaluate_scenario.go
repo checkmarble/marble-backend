@@ -7,6 +7,7 @@ import (
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/operators"
 	"marble/marble-backend/repositories"
+	"marble/marble-backend/usecases/ast_eval"
 	"marble/marble-backend/usecases/organization"
 	"runtime/debug"
 
@@ -24,6 +25,7 @@ type scenarioEvaluationRepositories struct {
 	orgTransactionFactory           organization.OrgTransactionFactory
 	ingestedDataReadRepository      repositories.IngestedDataReadRepository
 	customListRepository            repositories.CustomListRepository
+	evaluateRuleAstExpression       ast_eval.EvaluateRuleAstExpression
 }
 
 func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repositories scenarioEvaluationRepositories, logger *slog.Logger) (se models.ScenarioExecution, err error) {
@@ -86,7 +88,20 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 	score := 0
 	ruleExecutions := make([]models.RuleExecution, 0)
 	for _, rule := range publishedVersion.Body.Rules {
-		scoreModifier, ruleExecution, err := evalScenarioRule(ctx, rule, &dataAccessor, logger)
+
+		var evaluateRuleAstExpression func() (bool, error)
+
+		if rule.FormulaAstExpression != nil {
+			evaluateRuleAstExpression = func() (bool, error) {
+				return repositories.evaluateRuleAstExpression.EvaluateRuleAstExpression(
+					*rule.FormulaAstExpression,
+					dataAccessor.organizationId,
+					dataAccessor.Payload,
+				)
+			}
+		}
+
+		scoreModifier, ruleExecution, err := evalScenarioRule(ctx, rule, dataAccessor, evaluateRuleAstExpression, logger)
 		if err != nil {
 			return models.ScenarioExecution{}, fmt.Errorf("Error evaluating rule in eval scenario: %w", err)
 		}
@@ -123,10 +138,10 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 	return se, nil
 }
 
-func evalScenarioRule(ctx context.Context, rule models.Rule, dataAccessor operators.DataAccessor, logger *slog.Logger) (int, models.RuleExecution, error) {
+func evalScenarioRule(ctx context.Context, rule models.Rule, dataAccessor DataAccessor, evaluateRuleAstExpression func() (bool, error), logger *slog.Logger) (int, models.RuleExecution, error) {
 	// Evaluate single rule
 	score := 0
-	ruleExecution, err := ruleExecutionFromRule(ctx, rule, dataAccessor)
+	ruleExecution, err := ruleExecutionFromRule(ctx, rule, dataAccessor, evaluateRuleAstExpression)
 	if err != nil {
 		ruleExecution.Rule = rule
 		ruleExecution, err = setRuleExecutionError(ruleExecution, err)
@@ -168,21 +183,30 @@ func setRuleExecutionError(ruleExecution models.RuleExecution, err error) (model
 	return ruleExecution, nil
 }
 
-func ruleExecutionFromRule(ctx context.Context, rule models.Rule, dataAccessor operators.DataAccessor) (models.RuleExecution, error) {
-	// Eval the Node
-	res, err := rule.Formula.Eval(ctx, dataAccessor)
+func ruleExecutionFromRule(ctx context.Context, rule models.Rule, dataAccessor DataAccessor, evaluateRuleAstExpression func() (bool, error)) (models.RuleExecution, error) {
+
+	var result bool
+	var err error
+	// This is for making the execution of the rule use the AST instead of the old operator model
+	// if evaluateRuleAstExpression != nil {
+	// 	result, err = evaluateRuleAstExpression()
+	// } else {
+	// 	result, err = rule.Formula.Eval(ctx, &dataAccessor)
+	// }
+	result, err = rule.Formula.Eval(ctx, &dataAccessor)
+
 	if err != nil {
 		return models.RuleExecution{}, fmt.Errorf("error while evaluating rule %s: %w", rule.Name, err)
 	}
 
 	score := 0
-	if res {
+	if result {
 		score = rule.ScoreModifier
 	}
 
 	re := models.RuleExecution{
 		Rule:                rule,
-		Result:              res,
+		Result:              result,
 		ResultScoreModifier: score,
 	}
 

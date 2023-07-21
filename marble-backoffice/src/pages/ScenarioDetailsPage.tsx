@@ -5,11 +5,14 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useLoading } from "@/hooks/Loading";
 import DelayedLinearProgress from "@/components/DelayedLinearProgress";
-import { AstNode, NoConstant } from "@/models";
+import { AstNode, ConstantOptional, NoConstant } from "@/models";
 import Paper from "@mui/material/Paper";
 import Alert from "@mui/material/Alert";
 import TextField from "@mui/material/TextField";
 import AddIcon from "@mui/icons-material/Add";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import ReactJson from "react-json-view";
 import {
   useAstExpressionBuilder,
   setAstNodeName,
@@ -21,7 +24,6 @@ import {
 } from "@/services/AstExpressionService";
 import { useCallback } from "react";
 import { useParams } from "react-router-dom";
-import ReactJson from "react-json-view";
 
 export default function ScenarioDetailsPage() {
   const { scenarioId } = useParams();
@@ -38,6 +40,7 @@ export default function ScenarioDetailsPage() {
     expressionAstNode,
     validate,
     validationErrors,
+    dryRunResult,
     run,
     identifiers,
   } = useAstExpressionBuilder(
@@ -111,12 +114,49 @@ export default function ScenarioDetailsPage() {
           /> */}
 
           <Button onClick={handleValidateScenario}>Validate</Button>
+          {validationErrors.length > 0 && (
+            <Card>
+              <CardContent>
+                <Typography
+                  sx={{ fontSize: 14 }}
+                  color="text.secondary"
+                  gutterBottom
+                >
+                  Validation errors
+                </Typography>
+                {validationErrors.map((error, i) => (
+                  <Alert key={i} severity="error">
+                    {error}
+                  </Alert>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
           <Button onClick={handleRunScenario}>Run (Ingestion required)</Button>
-          {validationErrors.map((error, i) => (
-            <Alert key={i} severity="error">
-              {error}
-            </Alert>
-          ))}
+          {dryRunResult && (
+            <Card>
+              <CardContent>
+                <Typography
+                  sx={{ fontSize: 14 }}
+                  color="text.secondary"
+                  gutterBottom
+                >
+                  Dry run result:{" "}
+                  <AstConstantComponent constant={dryRunResult.result} />
+                </Typography>
+
+                {dryRunResult.runtimeError && (
+                  <>
+                    <Typography variant="subtitle1" gutterBottom>
+                      Runtime Error
+                    </Typography>
+                    <Alert severity="error">{dryRunResult.runtimeError}</Alert>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {identifiers && (
             <>
@@ -225,7 +265,7 @@ function AstNode(props: { node: AstNode }) {
         {node.name && <Typography variant="subtitle1">{node.name}</Typography>}
         {node.constant !== NoConstant && (
           <Typography>
-            Constant: <code>{JSON.stringify(node.constant)}</code>
+            Constant: <AstConstantComponent constant={node.constant} />
           </Typography>
         )}
         {!node.name && node.constant === NoConstant && (
@@ -247,4 +287,11 @@ function AstNode(props: { node: AstNode }) {
       </Paper>
     </>
   );
+}
+
+function AstConstantComponent({ constant }: { constant: ConstantOptional }) {
+  if (constant === NoConstant) {
+    return <>!No Constant!</>;
+  }
+  return <code>{JSON.stringify(constant)}</code>;
 }

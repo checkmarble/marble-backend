@@ -9,7 +9,7 @@ const ScenarioSchema = yup.object({
   description: yup.string().required(),
   triggerObjectType: yup.string().required(),
   createdAt: yup.date().required(),
-  liveVersionId: yup.string().defined().nullable(),
+  liveVersionId: yup.string().nullable(),
 });
 
 export type ScenarioDto = yup.InferType<typeof ScenarioSchema>;
@@ -22,7 +22,7 @@ export function adaptScenario(dto: ScenarioDto): Scenario {
     description: dto.description,
     triggerObjectType: dto.triggerObjectType,
     createdAt: dto.createdAt,
-    liveVersionId: dto.liveVersionId,
+    liveVersionId: dto.liveVersionId === undefined ? null : dto.liveVersionId,
   };
 }
 

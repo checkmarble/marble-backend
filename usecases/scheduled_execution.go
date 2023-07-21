@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
+	"marble/marble-backend/usecases/ast_eval"
 	"marble/marble-backend/usecases/organization"
 	"marble/marble-backend/usecases/scheduledexecution"
 	"marble/marble-backend/utils"
@@ -27,6 +28,7 @@ type ScheduledExecutionUsecase struct {
 	decisionRepository              repositories.DecisionRepository
 	customListRepository            repositories.CustomListRepository
 	exportScheduleExecution         scheduledexecution.ExportScheduleExecution
+	evaluateRuleAstExpression       ast_eval.EvaluateRuleAstExpression
 }
 
 func (usecase *ScheduledExecutionUsecase) GetScheduledExecution(ctx context.Context, orgID string, id string) (models.ScheduledExecution, error) {
@@ -94,7 +96,7 @@ func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx cont
 		return err
 	}
 
-	publications, err := usecase.scenarioPublicationsRepository.ListScenarioPublications(ctx, scenario.OrganizationID, models.ListScenarioPublicationsFilters{ScenarioID: &scenario.ID})
+	publications, err := usecase.scenarioPublicationsRepository.ListScenarioPublicationsOfOrganization(nil, scenario.OrganizationID, models.ListScenarioPublicationsFilters{ScenarioID: &scenario.ID})
 	if err != nil {
 		return err
 	}
@@ -213,6 +215,7 @@ func (usecase *ScheduledExecutionUsecase) executeScheduledScenario(ctx context.C
 					orgTransactionFactory:           usecase.orgTransactionFactory,
 					ingestedDataReadRepository:      usecase.ingestedDataReadRepository,
 					customListRepository:            usecase.customListRepository,
+					evaluateRuleAstExpression:       usecase.evaluateRuleAstExpression,
 				},
 				utils.LoggerFromContext(ctx),
 			)
@@ -242,13 +245,7 @@ func (usecase *ScheduledExecutionUsecase) executeScheduledScenario(ctx context.C
 		}
 		return nil
 	})
-	if err != nil {
-		return err
-	}
-
-	// wrap up
-
-	return nil
+	return err
 }
 
 func (usecase *ScheduledExecutionUsecase) getPublishedScenarioIteration(ctx context.Context, scenario models.Scenario) (models.PublishedScenarioIteration, error) {

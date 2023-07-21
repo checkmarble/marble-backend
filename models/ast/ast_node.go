@@ -13,7 +13,7 @@ type Node struct {
 
 func (node *Node) DebugString() string {
 
-	childrenDebugString := fmt.Sprintf("%d children", len(node.Children)+len(node.NamedChildren))
+	childrenDebugString := fmt.Sprintf("with %d children", len(node.Children)+len(node.NamedChildren))
 	if node.Function == FUNC_CONSTANT {
 		return fmt.Sprintf("Node Constant %v %s", node.Constant, childrenDebugString)
 	}

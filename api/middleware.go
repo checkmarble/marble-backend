@@ -53,8 +53,11 @@ func (api *API) credentialsMiddleware(next http.Handler) http.Handler {
 
 		// Creds contain a userId or an Api key
 		// create a new logger with this useful information.
+
 		if attr, ok := identityAttr(creds.ActorIdentity); ok {
-			logger := utils.LoggerFromContext(newContext).With(attr)
+			logger := utils.LoggerFromContext(newContext).
+				With(attr).
+				With(slog.String("Role", creds.Role.String()))
 			// store new logger in context
 			newContext = context.WithValue(newContext, utils.ContextKeyLogger, logger)
 		}

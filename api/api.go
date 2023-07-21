@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"marble/marble-backend/models"
 	"marble/marble-backend/usecases"
 	"marble/marble-backend/utils"
 
@@ -90,10 +91,19 @@ func (api *API) UsecasesWithCreds(r *http.Request) *usecases.UsecasesWithCreds {
 	organizationId, _ := utils.OrganizationIdFromRequest(r)
 
 	return &usecases.UsecasesWithCreds{
-		Usecases:                api.usecases,
-		Credentials:             creds,
-		Logger:                  utils.LoggerFromContext(ctx),
-		OrganizationIdOfContext: organizationId,
-		Context:                 ctx,
+		Usecases:    api.usecases,
+		Credentials: creds,
+		Logger:      utils.LoggerFromContext(ctx),
+		OrganizationIdOfContext: func() (string, error) {
+			if organizationId == "" {
+				return "", fmt.Errorf(
+					"no OrganizationId for %s in this context. MarbleAdmin can specify one using 'organization-id' query param. %w",
+					creds.ActorIdentityDescription(),
+					models.BadParameterError,
+				)
+			}
+			return organizationId, nil
+		},
+		Context: ctx,
 	}
 }
