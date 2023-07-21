@@ -19,16 +19,13 @@ func NewPayload(f ast.Function, payload models.PayloadReader) Payload {
 }
 
 func (p Payload) Evaluate(arguments ast.Arguments) (any, error) {
-	payloadArg, ok := arguments.Args[0].(string)
-	if !ok {
-		return nil, fmt.Errorf("tableName is not a string %w", ErrRuntimeExpression)
-	}
-	payloadFieldName, err := adaptArgumentToString(p.Function, payloadArg)
+	payloadFieldName, err := adaptArgumentToString(p.Function, arguments.Args[0])
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("payload field name is not a string %w", ErrRuntimeExpression)
 	}
-	if value, err := p.Payload.ReadFieldFromPayload(models.FieldName(payloadFieldName)); err != nil {
-		return value, nil
+	value, err := p.Payload.ReadFieldFromPayload(models.FieldName(payloadFieldName)); 
+	if err != nil {
+		return nil, fmt.Errorf("payload var does not exist: %s", payloadFieldName)
 	}
-	return 0, fmt.Errorf("payload var does not exist: %s", payloadArg)
+	return value, nil
 }
