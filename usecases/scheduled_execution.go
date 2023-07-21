@@ -96,7 +96,7 @@ func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx cont
 		return err
 	}
 
-	publications, err := usecase.scenarioPublicationsRepository.ListScenarioPublications(ctx, scenario.OrganizationID, models.ListScenarioPublicationsFilters{ScenarioID: &scenario.ID})
+	publications, err := usecase.scenarioPublicationsRepository.ListScenarioPublicationsOfOrganization(nil, scenario.OrganizationID, models.ListScenarioPublicationsFilters{ScenarioID: &scenario.ID})
 	if err != nil {
 		return err
 	}
@@ -245,13 +245,7 @@ func (usecase *ScheduledExecutionUsecase) executeScheduledScenario(ctx context.C
 		}
 		return nil
 	})
-	if err != nil {
-		return err
-	}
-
-	// wrap up
-
-	return nil
+	return err
 }
 
 func (usecase *ScheduledExecutionUsecase) getPublishedScenarioIteration(ctx context.Context, scenario models.Scenario) (models.PublishedScenarioIteration, error) {

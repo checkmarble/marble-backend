@@ -9,6 +9,7 @@ import (
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/operators"
 	"marble/marble-backend/repositories"
+	"marble/marble-backend/usecases/scenarios"
 	"marble/marble-backend/utils"
 
 	"github.com/google/uuid"
@@ -28,28 +29,28 @@ type OrganizationSeeder interface {
 }
 
 type organizationSeederImpl struct {
-	TransactionFactory               repositories.TransactionFactory
 	CustomListRepository             repositories.CustomListRepository
 	ApiKeyRepository                 repositories.ApiKeyRepository
 	ScenarioWriteRepository          repositories.ScenarioWriteRepository
-	ScenarioPublicationRepository    repositories.ScenarioPublicationRepository
 	ScenarioIterationWriteRepository repositories.ScenarioIterationWriteRepository
+	ScenarioPublisher                scenarios.ScenarioPublisher
 }
 
 func NewOrganizationSeeder(
 	clr repositories.CustomListRepository,
 	akr repositories.ApiKeyRepository,
 	swr repositories.ScenarioWriteRepository,
+	srr repositories.ScenarioReadRepository,
 	spr repositories.ScenarioPublicationRepository,
 	siwr repositories.ScenarioIterationWriteRepository,
-	tf repositories.TransactionFactory) OrganizationSeeder {
+	sirr repositories.ScenarioIterationReadRepository,
+) OrganizationSeeder {
 	return &organizationSeederImpl{
-		TransactionFactory:               tf,
 		CustomListRepository:             clr,
 		ApiKeyRepository:                 akr,
 		ScenarioWriteRepository:          swr,
-		ScenarioPublicationRepository:    spr,
 		ScenarioIterationWriteRepository: siwr,
+		ScenarioPublisher:                scenarios.NewScenarioPublisher(spr, srr, swr, sirr),
 	}
 }
 
@@ -97,18 +98,20 @@ func (o *organizationSeederImpl) Seed(orgId string) error {
 	// Create and store a scenario
 	///////////////////////////////
 	createScenarioInput := models.CreateScenarioInput{
+		OrganizationID:    orgId,
 		Name:              "test name",
 		Description:       "test description",
 		TriggerObjectType: "transactions",
 	}
-	scenario, err := o.ScenarioWriteRepository.CreateScenario(context.TODO(), orgId, createScenarioInput)
+	testScenarioId := uuid.NewString()
+	err = o.ScenarioWriteRepository.CreateScenario(nil, createScenarioInput, testScenarioId)
 	if err != nil {
 		log.Printf("error creating scenario: %v", err)
 		return err
 	}
 
 	createScenarioIterationInput := models.CreateScenarioIterationInput{
-		ScenarioID: scenario.ID,
+		ScenarioID: testScenarioId,
 		Body: &models.CreateScenarioIterationBody{
 			TriggerCondition:     &operators.BoolValue{Value: true},
 			ScoreReviewThreshold: utils.Ptr(10),
@@ -153,10 +156,13 @@ func (o *organizationSeederImpl) Seed(orgId string) error {
 		log.Printf("error creating scenario iteration: %v", err)
 		return err
 	}
-	_, err = o.ScenarioPublicationRepository.CreateScenarioPublication(context.TODO(), orgId, models.CreateScenarioPublicationInput{
-		ScenarioIterationID: scenarioIteration.ID,
-		PublicationAction:   models.Publish,
-	})
+
+	_, err = o.ScenarioPublisher.PublishOrUnpublishIteration(
+		nil,
+		context.TODO(),
+		orgId,
+		models.PublishScenarioIterationInput{ScenarioIterationId: scenarioIteration.ID, PublicationAction: models.Publish},
+	)
 	if err != nil {
 		log.Printf("error publishing scenario iteration: %v", err)
 		return err
@@ -165,18 +171,20 @@ func (o *organizationSeederImpl) Seed(orgId string) error {
 	///////////////////////////////
 	// Also create the demo scenario
 	///////////////////////////////
-	demoScenario, err := o.ScenarioWriteRepository.CreateScenario(context.TODO(), orgId, models.CreateScenarioInput{
+	demoScenarioId := uuid.NewString()
+	err = o.ScenarioWriteRepository.CreateScenario(nil, models.CreateScenarioInput{
+		OrganizationID:    orgId,
 		Name:              "Demo scenario",
 		Description:       "Demo scenario",
 		TriggerObjectType: "transactions",
-	})
+	}, demoScenarioId)
 	if err != nil {
 		log.Printf("error creating demo scenario: %v", err)
 		return err
 	}
 
 	createDemoScenarioIterationInput := models.CreateScenarioIterationInput{
-		ScenarioID: demoScenario.ID,
+		ScenarioID: demoScenarioId,
 		Body: &models.CreateScenarioIterationBody{
 			TriggerCondition: &operators.And{
 				Operands: []operators.OperatorBool{
@@ -300,10 +308,12 @@ func (o *organizationSeederImpl) Seed(orgId string) error {
 		log.Printf("error creating demo scenario iteration: %v", err)
 		return err
 	}
-	_, err = o.ScenarioPublicationRepository.CreateScenarioPublication(context.TODO(), orgId, models.CreateScenarioPublicationInput{
-		ScenarioIterationID: demoScenarioIteration.ID,
-		PublicationAction:   models.Publish,
-	})
+	_, err = o.ScenarioPublisher.PublishOrUnpublishIteration(
+		nil,
+		context.TODO(),
+		orgId,
+		models.PublishScenarioIterationInput{ScenarioIterationId: demoScenarioIteration.ID, PublicationAction: models.Publish},
+	)
 	if err != nil {
 		log.Printf("error publishing demo scenario iteration: %v", err)
 		return err

@@ -1,8 +1,6 @@
 package api
 
 import (
-	"encoding/json"
-	"errors"
 	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
@@ -10,7 +8,6 @@ import (
 	"time"
 
 	"github.com/ggicci/httpin"
-	"golang.org/x/exp/slog"
 )
 
 type APIScenarioPublication struct {
@@ -35,90 +32,36 @@ func NewAPIScenarioPublication(sp models.ScenarioPublication) APIScenarioPublica
 
 func (api *API) ListScenarioPublications() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
+		input := r.Context().Value(httpin.Input).(*dto.ListScenarioPublicationsInput)
 
-		orgID, err := utils.OrgIDFromCtx(ctx, r)
+		options := &utils.PtrToOptions{OmitZero: true}
+		usecase := api.UsecasesWithCreds(r).NewScenarioPublicationUsecase()
+		scenarioPublications, err := usecase.ListScenarioPublications(models.ListScenarioPublicationsFilters{
+			ScenarioID:          utils.PtrTo(input.ScenarioID, options),
+			ScenarioIterationID: utils.PtrTo(input.ScenarioIterationID, options),
+		})
 		if presentError(w, r, err) {
 			return
 		}
-
-		input := ctx.Value(httpin.Input).(*dto.ListScenarioPublicationsInput)
-		logger := api.logger.With(slog.String("orgID", orgID), slog.String("scenarioID", input.ScenarioID))
-
-		options := &utils.PtrToOptions{OmitZero: true}
-		usecase := api.usecases.NewScenarioPublicationUsecase()
-		scenarioPublications, err := usecase.ListScenarioPublications(ctx, orgID, models.ListScenarioPublicationsFilters{
-			ScenarioID:          utils.PtrTo(input.ScenarioID, options),
-			ScenarioIterationID: utils.PtrTo(input.ScenarioIterationID, options),
-			PublicationAction:   utils.PtrTo(input.PublicationAction, options),
-		})
-		if err != nil {
-			logger.ErrorCtx(ctx, "Error listing scenario publications: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
-
-		scenarioPublicationDTOs := make([]APIScenarioPublication, len(scenarioPublications))
-		for i, sp := range scenarioPublications {
-			scenarioPublicationDTOs[i] = NewAPIScenarioPublication(sp)
-		}
-
-		err = json.NewEncoder(w).Encode(scenarioPublicationDTOs)
-		if err != nil {
-			logger.ErrorCtx(ctx, "Error encoding scenario publications: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
+		PresentModel(w, utils.Map(scenarioPublications, NewAPIScenarioPublication))
 	}
 }
 
 func (api *API) CreateScenarioPublication() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+		input := ctx.Value(httpin.Input).(*dto.CreateScenarioPublicationInput)
 
-		orgID, err := utils.OrgIDFromCtx(ctx, r)
+		usecase := api.UsecasesWithCreds(r).NewScenarioPublicationUsecase()
+		scenarioPublications, err := usecase.ExecuteScenarioPublicationAction(ctx, models.PublishScenarioIterationInput{
+			ScenarioIterationId: input.Body.ScenarioIterationID,
+			PublicationAction:   models.PublicationActionFrom(input.Body.PublicationAction),
+		})
 		if presentError(w, r, err) {
 			return
 		}
 
-		input := ctx.Value(httpin.Input).(*dto.CreateScenarioPublicationInput)
-		logger := api.logger.With(slog.String("orgID", orgID), slog.String("scenarioIterationID", input.Body.ScenarioIterationID))
-
-		if errors.Is(err, models.NotFoundError) {
-			http.Error(w, err.Error(), http.StatusNotFound)
-			return
-		} else if err != nil {
-			logger.ErrorCtx(ctx, "Error getting scenario: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
-
-		usecase := api.usecases.NewScenarioPublicationUsecase()
-		scenarioPublications, err := usecase.CreateScenarioPublication(ctx, orgID, models.CreateScenarioPublicationInput{
-			ScenarioIterationID: input.Body.ScenarioIterationID,
-			PublicationAction:   models.PublicationActionFrom(input.Body.PublicationAction),
-		})
-		if errors.Is(err, models.ErrScenarioIterationNotValid) {
-			logger.WarnCtx(ctx, "Scenario iteration not valid")
-			http.Error(w, err.Error(), http.StatusForbidden)
-			return
-		} else if err != nil {
-			logger.ErrorCtx(ctx, "Error creating scenario publication: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
-
-		scenarioPublicationDTOs := make([]APIScenarioPublication, len(scenarioPublications))
-		for i, sp := range scenarioPublications {
-			scenarioPublicationDTOs[i] = NewAPIScenarioPublication(sp)
-		}
-
-		err = json.NewEncoder(w).Encode(scenarioPublicationDTOs)
-		if err != nil {
-			logger.ErrorCtx(ctx, "Error encoding scenario publications: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
+		PresentModel(w, utils.Map(scenarioPublications, NewAPIScenarioPublication))
 	}
 }
 
@@ -128,32 +71,13 @@ type GetScenarioPublicationInput struct {
 
 func (api *API) GetScenarioPublication() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
+		input := r.Context().Value(httpin.Input).(*GetScenarioPublicationInput)
 
-		orgID, err := utils.OrgIDFromCtx(ctx, r)
+		usecase := api.UsecasesWithCreds(r).NewScenarioPublicationUsecase()
+		scenarioPublication, err := usecase.GetScenarioPublication(input.ScenarioPublicationID)
 		if presentError(w, r, err) {
 			return
 		}
-
-		input := ctx.Value(httpin.Input).(*GetScenarioPublicationInput)
-		logger := api.logger.With(slog.String("orgID", orgID), slog.String("scenarioPublicationID", input.ScenarioPublicationID))
-
-		usecase := api.usecases.NewScenarioPublicationUsecase()
-		scenarioPublication, err := usecase.GetScenarioPublication(ctx, orgID, input.ScenarioPublicationID)
-		if errors.Is(err, models.NotFoundInRepositoryError) {
-			http.Error(w, "", http.StatusNotFound)
-			return
-		} else if err != nil {
-			logger.ErrorCtx(ctx, "Error getting scenario publication: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
-
-		err = json.NewEncoder(w).Encode(NewAPIScenarioPublication(scenarioPublication))
-		if err != nil {
-			logger.ErrorCtx(ctx, "Error encoding scenario publication: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
+		PresentModel(w, NewAPIScenarioPublication(scenarioPublication))
 	}
 }

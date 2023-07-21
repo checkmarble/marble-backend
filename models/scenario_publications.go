@@ -92,26 +92,26 @@ func NewPublishedScenarioIteration(si ScenarioIteration) (PublishedScenarioItera
 
 func (si ScenarioIteration) IsValidForPublication() error {
 	if si.Body.ScoreReviewThreshold == nil {
-		return fmt.Errorf("Scenario iteration has no ScoreReviewThreshold: \n%w", ErrScenarioIterationNotValid)
+		return fmt.Errorf("Scenario iteration has no ScoreReviewThreshold: \n%w", BadParameterError)
 	}
 
 	if si.Body.ScoreRejectThreshold == nil {
-		return fmt.Errorf("Scenario iteration has no ScoreRejectThreshold: \n%w", ErrScenarioIterationNotValid)
+		return fmt.Errorf("Scenario iteration has no ScoreRejectThreshold: \n%w", BadParameterError)
 	}
 
 	if len(si.Body.Rules) < 1 {
-		return fmt.Errorf("Scenario iteration has no rules: \n%w", ErrScenarioIterationNotValid)
+		return fmt.Errorf("Scenario iteration has no rules: \n%w", BadParameterError)
 	}
 	for _, rule := range si.Body.Rules {
 		if !rule.Formula.IsValid() {
-			return fmt.Errorf("Scenario iteration rule has invalid rules: \n%w", ErrScenarioIterationNotValid)
+			return fmt.Errorf("Scenario iteration rule has invalid rules: \n%w", BadParameterError)
 		}
 	}
 
 	if si.Body.TriggerCondition == nil {
-		return fmt.Errorf("Scenario iteration has no trigger condition: \n%w", ErrScenarioIterationNotValid)
+		return fmt.Errorf("Scenario iteration has no trigger condition: \n%w", BadParameterError)
 	} else if !si.Body.TriggerCondition.IsValid() {
-		return fmt.Errorf("Scenario iteration trigger condition is invalid: \n%w", ErrScenarioIterationNotValid)
+		return fmt.Errorf("Scenario iteration trigger condition is invalid: \n%w", BadParameterError)
 	}
 
 	return nil
@@ -120,10 +120,16 @@ func (si ScenarioIteration) IsValidForPublication() error {
 type ListScenarioPublicationsFilters struct {
 	ScenarioID          *string
 	ScenarioIterationID *string
-	PublicationAction   *string
+}
+
+type PublishScenarioIterationInput struct {
+	ScenarioIterationId string
+	PublicationAction   PublicationAction
 }
 
 type CreateScenarioPublicationInput struct {
-	ScenarioIterationID string
+	OrganizationId      string
+	ScenarioId          string
+	ScenarioIterationId string
 	PublicationAction   PublicationAction
 }

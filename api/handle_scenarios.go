@@ -1,8 +1,6 @@
 package api
 
 import (
-	"encoding/json"
-	"errors"
 	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
@@ -10,7 +8,6 @@ import (
 	"time"
 
 	"github.com/ggicci/httpin"
-	"golang.org/x/exp/slog"
 )
 
 type APIScenario struct {
@@ -51,33 +48,19 @@ func (api *API) ListScenarios() http.HandlerFunc {
 func (api *API) CreateScenario() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-
 		orgID, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(w, r, err) {
 			return
 		}
 
 		input := ctx.Value(httpin.Input).(*dto.CreateScenarioInput)
-		logger := api.logger.With(slog.String("orgID", orgID))
 
 		usecase := api.UsecasesWithCreds(r).NewScenarioUsecase()
-		scenario, err := usecase.CreateScenario(ctx, orgID, models.CreateScenarioInput{
-			Name:              input.Body.Name,
-			Description:       input.Body.Description,
-			TriggerObjectType: input.Body.TriggerObjectType,
-		})
-		if err != nil {
-			logger.ErrorCtx(ctx, "Error creating scenario: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
+		scenario, err := usecase.CreateScenario(dto.AdaptCreateScenario(input, orgID))
+		if presentError(w, r, err) {
 			return
 		}
-
-		err = json.NewEncoder(w).Encode(NewAPIScenario(scenario))
-		if err != nil {
-			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
+		PresentModel(w, NewAPIScenario(scenario))
 	}
 }
 
@@ -102,36 +85,17 @@ func (api *API) GetScenario() http.HandlerFunc {
 
 func (api *API) UpdateScenario() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-
-		orgID, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
-			return
-		}
-
-		input := ctx.Value(httpin.Input).(*dto.UpdateScenarioInput)
-		logger := api.logger.With(slog.String("orgID", orgID), slog.String("scenarioID", input.ScenarioID))
-
+		input := r.Context().Value(httpin.Input).(*dto.UpdateScenarioInput)
 		usecase := api.UsecasesWithCreds(r).NewScenarioUsecase()
-		scenario, err := usecase.UpdateScenario(ctx, orgID, models.UpdateScenarioInput{
+		scenario, err := usecase.UpdateScenario(models.UpdateScenarioInput{
 			ID:          input.ScenarioID,
 			Name:        input.Body.Name,
 			Description: input.Body.Description,
 		})
-		if errors.Is(err, models.NotFoundInRepositoryError) {
-			http.Error(w, "", http.StatusNotFound)
-			return
-		} else if err != nil {
-			logger.ErrorCtx(ctx, "Error updating scenario: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
+		if presentError(w, r, err) {
 			return
 		}
 
-		err = json.NewEncoder(w).Encode(NewAPIScenario(scenario))
-		if err != nil {
-			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
+		PresentModel(w, NewAPIScenario(scenario))
 	}
 }
