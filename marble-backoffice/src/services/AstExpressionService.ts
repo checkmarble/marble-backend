@@ -3,11 +3,10 @@ import {
   type AstNode,
   type ConstantOptional,
   type EditorIdentifiers,
-  NewAstNode,
   NoConstant,
   type ConstantType,
   type Scenario,
-  type DryRunResult,
+  type AstNodeEvaluation,
 } from "@/models";
 import { MapObjectValues } from "@/MapUtils";
 import {
@@ -19,6 +18,7 @@ import {
 } from "@/repositories";
 import { type LoadingDispatcher, showLoader } from "@/hooks/Loading";
 import { useSimpleLoader } from "@/hooks/SimpleLoader";
+import { testAst } from "./TestAst";
 
 export interface AstExpressionService {
   scenarioRepository: ScenariosRepository;
@@ -84,28 +84,6 @@ function makeExpressionViewModel(node: AstNode): ExpressionViewModel {
 //   return adaptAstNode(vm.rootNode);
 // }
 
-const testAst = NewAstNode({
-  name: "IsInList",
-  children: [
-    NewAstNode({
-      name: "DatabaseAccess",
-      namedChildren: {
-        tableName: NewAstNode({ constant: "transactions" }),
-        fieldName: NewAstNode({ constant: 0 }),
-        path: NewAstNode({ constant: ["account"] }),
-      },
-      children: [NewAstNode({ constant: 0 })],
-    }),
-    NewAstNode({
-      name: "CustomListAccess",
-      namedChildren: {
-        customListId: NewAstNode({
-          constant: "d6643d7e-c973-4899-a9a8-805f868ef90a",
-        }),
-      },
-    }),
-  ],
-});
 
 export function useAstExpressionBuilder(
   service: AstExpressionService,
@@ -125,7 +103,9 @@ export function useAstExpressionBuilder(
   );
 
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [dryRunResult, setDryRunResult] = useState<DryRunResult | null>(null);
+  const [dryRunResult, setDryRunResult] = useState<AstNodeEvaluation | null>(
+    null
+  );
 
   const [expressionViewModel, setExpressionViewModel] =
     useState<ExpressionViewModel>(() => makeExpressionViewModel(testAst));
