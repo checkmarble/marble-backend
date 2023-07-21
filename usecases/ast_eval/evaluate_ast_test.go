@@ -11,7 +11,7 @@ import (
 func TestEval(t *testing.T) {
 	inject := NewEvaluatorInjection()
 	root := ast.NewAstCompareBalance()
-	result, err := EvaluateAst(inject, root)
+	result, err := EvaluateAst(environment, root)
 	assert.NoError(t, err)
 
 	assert.Equal(t, true, result)

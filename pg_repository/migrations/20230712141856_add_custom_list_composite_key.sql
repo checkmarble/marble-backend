@@ -5,5 +5,5 @@ ALTER TABLE custom_lists ADD CONSTRAINT custom_lists_organization_id_name_key UN
 
 -- +goose Down
 -- +goose StatementBegin
--- +goose StatementEnd
 ALTER TABLE custom_lists DROP CONSTRAINT custom_lists_organization_id_name_key;
+-- +goose StatementEnd

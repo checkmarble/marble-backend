@@ -13,7 +13,7 @@ type ScenarioPublicationUsecase struct {
 	scenarioPublicationsRepository  repositories.ScenarioPublicationRepository
 	scenarioReadRepository          repositories.ScenarioReadRepository
 	scenarioIterationReadRepository repositories.ScenarioIterationReadRepository
-	OrganizationIdOfContext         string
+	OrganizationIdOfContext         func() (string, error)
 	enforceSecurity                 security.EnforceSecurityScenario
 	scenarioPublisher               scenarios.ScenarioPublisher
 }
@@ -33,18 +33,26 @@ func (usecase *ScenarioPublicationUsecase) GetScenarioPublication(scenarioPublic
 
 func (usecase *ScenarioPublicationUsecase) ListScenarioPublications(filters models.ListScenarioPublicationsFilters) ([]models.ScenarioPublication, error) {
 	// Enforce permissions
-	if err := usecase.enforceSecurity.ListScenarios(usecase.OrganizationIdOfContext); err != nil {
+	organizationId, err := usecase.OrganizationIdOfContext()
+	if err != nil {
+		return nil, err
+	}
+	if err := usecase.enforceSecurity.ListScenarios(organizationId); err != nil {
 		return nil, err
 	}
 
-	return usecase.scenarioPublicationsRepository.ListScenarioPublicationsOfOrganization(nil, usecase.OrganizationIdOfContext, filters)
+	return usecase.scenarioPublicationsRepository.ListScenarioPublicationsOfOrganization(nil, organizationId, filters)
 }
 
 func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(ctx context.Context, input models.PublishScenarioIterationInput) ([]models.ScenarioPublication, error) {
 	var scenarioPublications []models.ScenarioPublication
-	err := usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+	organizationId, err := usecase.OrganizationIdOfContext()
+	if err != nil {
+		return nil, err
+	}
+	err = usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
 		// FIXME Outside of transaction until the scenario iteration write repo is migrated
-		scenarioIteration, err := usecase.scenarioIterationReadRepository.GetScenarioIteration(ctx, usecase.OrganizationIdOfContext, input.ScenarioIterationId)
+		scenarioIteration, err := usecase.scenarioIterationReadRepository.GetScenarioIteration(ctx, organizationId, input.ScenarioIterationId)
 		if err != nil {
 			return err
 		}

@@ -1,25 +1,31 @@
 package usecases
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"marble/marble-backend/app"
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/ast_eval"
-	"marble/marble-backend/usecases/ast_eval/evaluate"
 	"marble/marble-backend/usecases/organization"
 	"marble/marble-backend/usecases/security"
 )
 
 type AstExpressionUsecase struct {
-	EnforceSecurity            security.EnforceSecurity
-	OrganizationIdOfContext    string
-	CustomListRepository       repositories.CustomListRepository
-	OrgTransactionFactory      organization.OrgTransactionFactory
-	IngestedDataReadRepository repositories.IngestedDataReadRepository
-	DataModelRepository        repositories.DataModelRepository
-	ScenarioRepository         repositories.ScenarioReadRepository
+	EnforceSecurity                 security.EnforceSecurity
+	OrganizationIdOfContext         func() (string, error)
+	CustomListRepository            repositories.CustomListRepository
+	OrgTransactionFactory           organization.OrgTransactionFactory
+	IngestedDataReadRepository      repositories.IngestedDataReadRepository
+	DataModelRepository             repositories.DataModelRepository
+	ScenarioRepository              repositories.ScenarioReadRepository
+	ScenarioIterationReadRepository repositories.ScenarioIterationReadRepository
+	RuleRepository                  repositories.RuleRepository
+	ScenarioIterationRuleUsecase    repositories.ScenarioIterationRuleRepositoryLegacy
+	AstEvaluationEnvironmentFactory func(organizationId string, payload models.PayloadReader) ast_eval.AstEvaluationEnvironment
 }
 
 var ErrExpressionValidation = errors.New("expression validation fail")
@@ -32,7 +38,7 @@ func (usecase *AstExpressionUsecase) validateRecursif(node ast.Node, allErrors [
 	}
 
 	if attributes.NumberOfArguments != len(node.Children) {
-		allErrors = append(allErrors, fmt.Errorf("invalid number of arguments for function %s %w", node.DebugString(), ErrExpressionValidation))
+		allErrors = append(allErrors, fmt.Errorf("invalid number of arguments for node [%s] %w", node.DebugString(), ErrExpressionValidation))
 	}
 
 	// TODO: missing named arguments
@@ -55,15 +61,35 @@ func (usecase *AstExpressionUsecase) Validate(node ast.Node) []error {
 	return usecase.validateRecursif(node, nil)
 }
 
-func (usecase *AstExpressionUsecase) Run(expression ast.Node, payload models.PayloadReader) (any, error) {
-	inject := ast_eval.NewEvaluatorInjection()
-	inject.AddEvaluator(ast.FUNC_CUSTOM_LIST_ACCESS, evaluate.NewCustomListValuesAccess(usecase.CustomListRepository, usecase.EnforceSecurity))
-	inject.AddEvaluator(ast.FUNC_DB_ACCESS, evaluate.NewDatabaseAccess(
-		usecase.OrgTransactionFactory, usecase.IngestedDataReadRepository,
-		usecase.DataModelRepository, payload, usecase.OrganizationIdOfContext))
-	inject.AddEvaluator(ast.FUNC_PAYLOAD, evaluate.NewPayload(ast.FUNC_PAYLOAD, payload))
-	return ast_eval.EvaluateAst(inject, expression)
+func (usecase *AstExpressionUsecase) Run(expression ast.Node, payloadType string, payloadRaw json.RawMessage) (any, error) {
 
+	organizationId, err := usecase.OrganizationIdOfContext()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := usecase.EnforceSecurity.ReadOrganization(organizationId); err != nil {
+		return EditorIdentifiers{}, err
+	}
+
+	dataModel, err := usecase.DataModelRepository.GetDataModel(nil, organizationId)
+	if err != nil {
+		return nil, err
+	}
+
+	tables := dataModel.Tables
+	table, ok := tables[models.TableName(payloadType)]
+	if !ok {
+		return nil, fmt.Errorf("table %s not found in data model  %w", payloadType, models.NotFoundError)
+	}
+
+	payload, err := app.ParseToDataModelObject(table, payloadRaw)
+	if err != nil {
+		return nil, err
+	}
+
+	environment := usecase.AstEvaluationEnvironmentFactory(organizationId, payload)
+	return ast_eval.EvaluateAst(environment, expression)
 }
 
 type EditorIdentifiers struct {
@@ -211,4 +237,26 @@ func (usecase *AstExpressionUsecase) EditorOperators() EditorOperators {
 	return EditorOperators{
 		OperatorAccessors: operatorAccessors,
 	}
+
+func (usecase *AstExpressionUsecase) SaveRuleWithAstExpression(ruleId string, expression ast.Node) error {
+
+	organizationId, err := usecase.OrganizationIdOfContext()
+	if err != nil {
+		return err
+	}
+
+	rule, err := usecase.ScenarioIterationRuleUsecase.GetScenarioIterationRule(context.Background(), organizationId, ruleId)
+	if err != nil {
+		return err
+	}
+
+	if err := usecase.EnforceSecurity.ReadOrganization(rule.OrganizationId); err != nil {
+		return err
+	}
+
+	err = usecase.RuleRepository.UpdateRuleWithAstExpression(nil, rule.ID, expression)
+	if err != nil {
+		return err
+	}
+	return nil
 }

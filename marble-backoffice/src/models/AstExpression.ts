@@ -9,7 +9,7 @@ export type ConstantType = number | string | boolean | null | Array<ConstantType
 
 // NoConstant could be replaced by undefined
 // slightly overengineer contant value, I hope it is still readable.
-export const NoConstant : unique symbol = Symbol()
+export const NoConstant : unique symbol = Symbol("NoConstant")
 export type ConstantOptional = ConstantType | typeof NoConstant
 
 // helper
