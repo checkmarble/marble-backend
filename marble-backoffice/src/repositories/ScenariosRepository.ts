@@ -8,7 +8,7 @@ import {
   adapAstValidateSchemaResult,
   adaptAstNodeDto,
 } from "@/models/AstExpressionDto";
-import { adaptDryRunResult } from "@/models/DryRunResultDto";
+import { adaptDryRunResult } from "@/models/AstEvaluationDto";
 import { adaptEditorIdentifiers } from "@/models/EditorIdentifiersDto";
 
 export interface ScenariosRepository {
