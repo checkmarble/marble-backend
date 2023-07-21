@@ -177,6 +177,8 @@ func (usecases *Usecases) AstEvaluationEnvironment(organizationId string, payloa
 			organizationId,
 		))
 
+	environment.AddEvaluator(ast.FUNC_PAYLOAD, evaluate.NewPayload(ast.FUNC_PAYLOAD, payload))
+
 	return environment
 }
 
