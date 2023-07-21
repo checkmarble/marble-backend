@@ -9,7 +9,7 @@ import (
 )
 
 func TestEval(t *testing.T) {
-	inject := NewEvaluatorInjection()
+	environment := NewAstEvaluationEnvironment()
 	root := ast.NewAstCompareBalance()
 	result, err := EvaluateAst(environment, root)
 	assert.NoError(t, err)
