@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
+	"marble/marble-backend/models/ast"
 	"marble/marble-backend/repositories/dbmodels"
 	"marble/marble-backend/utils"
 
@@ -76,14 +78,15 @@ func (r *PGRepository) ListScenarioIterationRules(ctx context.Context, orgID str
 }
 
 type dbCreateScenarioIterationRuleInput struct {
-	Id                  string `db:"id"`
-	OrgID               string `db:"org_id"`
-	ScenarioIterationID string `db:"scenario_iteration_id"`
-	DisplayOrder        int    `db:"display_order"`
-	Name                string `db:"name"`
-	Description         string `db:"description"`
-	ScoreModifier       int    `db:"score_modifier"`
-	Formula             []byte `db:"formula"`
+	Id                   string  `db:"id"`
+	OrgID                string  `db:"org_id"`
+	ScenarioIterationID  string  `db:"scenario_iteration_id"`
+	DisplayOrder         int     `db:"display_order"`
+	Name                 string  `db:"name"`
+	Description          string  `db:"description"`
+	ScoreModifier        int     `db:"score_modifier"`
+	Formula              []byte  `db:"formula"`
+	FormulaAstExpression *[]byte `db:"formula_ast_expression"`
 }
 
 func (r *PGRepository) CreateScenarioIterationRule(ctx context.Context, orgID string, rule models.CreateRuleInput) (models.Rule, error) {
@@ -101,6 +104,11 @@ func (r *PGRepository) CreateScenarioIterationRule(ctx context.Context, orgID st
 		return models.Rule{}, fmt.Errorf("unable to marshal rule formula: %w", err)
 	}
 	dbCreateRuleInput.Formula = formulaBytes
+
+	dbCreateRuleInput.FormulaAstExpression, err = serializeFormulaAstExpression(rule.FormulaAstExpression)
+	if err != nil {
+		return models.Rule{}, fmt.Errorf("unable to marshal expression formula: %w", err)
+	}
 
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -188,10 +196,16 @@ func (r *PGRepository) createScenarioIterationRules(ctx context.Context, tx pgx.
 			"name",
 			"description",
 			"formula",
+			"formula_ast_expression",
 			"score_modifier")
 
 	for _, rule := range rules {
 		formulaBytes, err := rule.Formula.MarshalJSON()
+		if err != nil {
+			return nil, fmt.Errorf("unable to marshal rule formula: %w", err)
+		}
+
+		formulaAstExpression, err := serializeFormulaAstExpression(rule.FormulaAstExpression)
 		if err != nil {
 			return nil, fmt.Errorf("unable to marshal rule formula: %w", err)
 		}
@@ -206,6 +220,7 @@ func (r *PGRepository) createScenarioIterationRules(ctx context.Context, tx pgx.
 				rule.Name,
 				rule.Description,
 				string(formulaBytes),
+				formulaAstExpression,
 				rule.ScoreModifier,
 			)
 	}
@@ -232,12 +247,13 @@ func (r *PGRepository) createScenarioIterationRules(ctx context.Context, tx pgx.
 }
 
 type dbUpdateScenarioIterationRuleInput struct {
-	ID            string  `db:"id"`
-	DisplayOrder  *int    `db:"display_order"`
-	Name          *string `db:"name"`
-	Description   *string `db:"description"`
-	ScoreModifier *int    `db:"score_modifier"`
-	Formula       *[]byte `db:"formula"`
+	ID                   string  `db:"id"`
+	DisplayOrder         *int    `db:"display_order"`
+	Name                 *string `db:"name"`
+	Description          *string `db:"description"`
+	ScoreModifier        *int    `db:"score_modifier"`
+	Formula              *[]byte `db:"formula"`
+	FormulaAstExpression *[]byte `db:"formula_ast_expression"`
 }
 
 func (r *PGRepository) UpdateScenarioIterationRule(ctx context.Context, orgID string, rule models.UpdateRuleInput) (models.Rule, error) {
@@ -255,6 +271,12 @@ func (r *PGRepository) UpdateScenarioIterationRule(ctx context.Context, orgID st
 		}
 		dbUpdateRuleInput.Formula = &formulaBytes
 	}
+
+	serializedFormulaAstExpression, err := serializeFormulaAstExpression(rule.FormulaAstExpression)
+	if err != nil {
+		return models.Rule{}, fmt.Errorf("unable to marshal rule formula ast expression: %w", err)
+	}
+	dbUpdateRuleInput.FormulaAstExpression = serializedFormulaAstExpression
 
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -313,4 +335,18 @@ func (r *PGRepository) UpdateScenarioIterationRule(ctx context.Context, orgID st
 	}
 
 	return ruleDTO, err
+}
+
+func serializeFormulaAstExpression(formulaAstExpression *ast.Node) (*[]byte, error) {
+	if formulaAstExpression == nil {
+		return nil, nil
+	}
+
+	nodeDto, err := dto.AdaptNodeDto(*formulaAstExpression)
+	if err != nil {
+		return nil, fmt.Errorf("unable to marshal rule formula ast expression: %w", err)
+	}
+
+	serialized, err := json.Marshal(nodeDto)
+	return &serialized, err
 }

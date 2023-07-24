@@ -26,6 +26,7 @@ type scenarioEvaluationRepositories struct {
 	ingestedDataReadRepository      repositories.IngestedDataReadRepository
 	customListRepository            repositories.CustomListRepository
 	evaluateRuleAstExpression       ast_eval.EvaluateRuleAstExpression
+	logger                          *slog.Logger
 }
 
 func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repositories scenarioEvaluationRepositories, logger *slog.Logger) (se models.ScenarioExecution, err error) {
@@ -89,21 +90,10 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 	ruleExecutions := make([]models.RuleExecution, 0)
 	for _, rule := range publishedVersion.Body.Rules {
 
-		var evaluateRuleAstExpression func() (bool, error)
+		scoreModifier, ruleExecution, err := evalScenarioRule(repositories, rule, dataAccessor)
 
-		if rule.FormulaAstExpression != nil {
-			evaluateRuleAstExpression = func() (bool, error) {
-				return repositories.evaluateRuleAstExpression.EvaluateRuleAstExpression(
-					*rule.FormulaAstExpression,
-					dataAccessor.organizationId,
-					dataAccessor.Payload,
-				)
-			}
-		}
-
-		scoreModifier, ruleExecution, err := evalScenarioRule(ctx, rule, dataAccessor, evaluateRuleAstExpression, logger)
 		if err != nil {
-			return models.ScenarioExecution{}, fmt.Errorf("Error evaluating rule in eval scenario: %w", err)
+			return models.ScenarioExecution{}, fmt.Errorf("error evaluating rule in eval scenario: %w", err)
 		}
 		score += scoreModifier
 		ruleExecutions = append(ruleExecutions, ruleExecution)
@@ -138,17 +128,37 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 	return se, nil
 }
 
-func evalScenarioRule(ctx context.Context, rule models.Rule, dataAccessor DataAccessor, evaluateRuleAstExpression func() (bool, error), logger *slog.Logger) (int, models.RuleExecution, error) {
+func evalScenarioRule(repositories scenarioEvaluationRepositories, rule models.Rule, dataAccessor DataAccessor) (int, models.RuleExecution, error) {
 	// Evaluate single rule
+
+	ruleReturnValue, err := repositories.evaluateRuleAstExpression.EvaluateRuleAstExpression(
+		*rule.FormulaAstExpression,
+		dataAccessor.organizationId,
+		dataAccessor.Payload,
+	)
+
+	if err != nil {
+		return 0, models.RuleExecution{}, fmt.Errorf("error while evaluating rule %s: %w", rule.Name, err)
+	}
+
 	score := 0
-	ruleExecution, err := ruleExecutionFromRule(ctx, rule, dataAccessor, evaluateRuleAstExpression)
+	if ruleReturnValue {
+		score = rule.ScoreModifier
+	}
+
+	ruleExecution := models.RuleExecution{
+		Rule:                rule,
+		Result:              ruleReturnValue,
+		ResultScoreModifier: score,
+	}
+
 	if err != nil {
 		ruleExecution.Rule = rule
 		ruleExecution, err = setRuleExecutionError(ruleExecution, err)
 		if err != nil {
 			return score, ruleExecution, err
 		}
-		logger.InfoCtx(ctx, "Rule had an error",
+		repositories.logger.Info("Rule had an error",
 			slog.String("ruleName", rule.Name),
 			slog.String("ruleId", rule.ID),
 			slog.String("formula", rule.Formula.String()),
@@ -158,7 +168,7 @@ func evalScenarioRule(ctx context.Context, rule models.Rule, dataAccessor DataAc
 
 	// Increment scenario score when rule is true
 	if ruleExecution.Result {
-		logger.InfoCtx(ctx, "Rule executed",
+		repositories.logger.Info("Rule executed",
 			slog.Int("score_modifier", rule.ScoreModifier),
 			slog.String("ruleName", rule.Name),
 			slog.Bool("result", ruleExecution.Result),
@@ -181,34 +191,4 @@ func setRuleExecutionError(ruleExecution models.RuleExecution, err error) (model
 		return ruleExecution, err
 	}
 	return ruleExecution, nil
-}
-
-func ruleExecutionFromRule(ctx context.Context, rule models.Rule, dataAccessor DataAccessor, evaluateRuleAstExpression func() (bool, error)) (models.RuleExecution, error) {
-
-	var result bool
-	var err error
-	// This is for making the execution of the rule use the AST instead of the old operator model
-	// if evaluateRuleAstExpression != nil {
-	// 	result, err = evaluateRuleAstExpression()
-	// } else {
-	// 	result, err = rule.Formula.Eval(ctx, &dataAccessor)
-	// }
-	result, err = rule.Formula.Eval(ctx, &dataAccessor)
-
-	if err != nil {
-		return models.RuleExecution{}, fmt.Errorf("error while evaluating rule %s: %w", rule.Name, err)
-	}
-
-	score := 0
-	if result {
-		score = rule.ScoreModifier
-	}
-
-	re := models.RuleExecution{
-		Rule:                rule,
-		Result:              result,
-		ResultScoreModifier: score,
-	}
-
-	return re, nil
 }

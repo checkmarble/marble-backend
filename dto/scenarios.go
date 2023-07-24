@@ -61,12 +61,13 @@ type CreateScenarioIterationInput struct {
 // rules
 
 type CreateScenarioIterationRuleInputBody struct {
-	ScenarioIterationID string          `json:"scenarioIterationId"`
-	DisplayOrder        int             `json:"displayOrder"`
-	Name                string          `json:"name"`
-	Description         string          `json:"description"`
-	Formula             json.RawMessage `json:"formula"`
-	ScoreModifier       int             `json:"scoreModifier"`
+	ScenarioIterationID  string          `json:"scenarioIterationId"`
+	DisplayOrder         int             `json:"displayOrder"`
+	Name                 string          `json:"name"`
+	Description          string          `json:"description"`
+	Formula              json.RawMessage `json:"formula"`
+	FormulaAstExpression *NodeDto        `json:"formula_ast_expression"`
+	ScoreModifier        int             `json:"scoreModifier"`
 }
 
 type CreateScenarioIterationRuleInput struct {
@@ -74,11 +75,12 @@ type CreateScenarioIterationRuleInput struct {
 }
 
 type UpdateScenarioIterationRuleBody struct {
-	DisplayOrder  *int             `json:"displayOrder,omitempty"`
-	Name          *string          `json:"name,omitempty"`
-	Description   *string          `json:"description,omitempty"`
-	Formula       *json.RawMessage `json:"formula,omitempty"`
-	ScoreModifier *int             `json:"scoreModifier,omitempty"`
+	DisplayOrder         *int             `json:"displayOrder,omitempty"`
+	Name                 *string          `json:"name,omitempty"`
+	Description          *string          `json:"description,omitempty"`
+	Formula              *json.RawMessage `json:"formula,omitempty"`
+	FormulaAstExpression *NodeDto         `json:"formula_ast_expression"`
+	ScoreModifier        *int             `json:"scoreModifier,omitempty"`
 }
 
 type UpdateScenarioIterationRuleInput struct {
