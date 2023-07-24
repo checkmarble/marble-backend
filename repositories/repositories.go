@@ -21,7 +21,6 @@ type Repositories struct {
 	IngestionRepository                   IngestionRepository
 	DataModelRepository                   DataModelRepository
 	IngestedDataReadRepository            IngestedDataReadRepository
-	DecisionRepositoryLegacy              DecisionRepositoryLegacy
 	DecisionRepository                    DecisionRepository
 	RuleRepository                        RuleRepository
 	ScenarioReadRepository                ScenarioReadRepository
@@ -47,7 +46,6 @@ func NewRepositories(
 	firebaseClient auth.Client,
 	marbleConnectionPool *pgxpool.Pool,
 	appLogger *slog.Logger,
-	decisionRepositoryLegacy DecisionRepositoryLegacy,
 	scenarioIterationReadRepository ScenarioIterationReadRepository,
 	scenarioIterationWriteRepository ScenarioIterationWriteRepository,
 	ScenarioIterationRuleRepositoryLegacy ScenarioIterationRuleRepositoryLegacy,
@@ -91,7 +89,6 @@ func NewRepositories(
 			transactionFactory: transactionFactory,
 		},
 		IngestedDataReadRepository: &IngestedDataReadRepositoryImpl{},
-		DecisionRepositoryLegacy:   decisionRepositoryLegacy,
 		DecisionRepository: &DecisionRepositoryImpl{
 			transactionFactory: transactionFactory,
 		},

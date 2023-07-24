@@ -1,7 +1,6 @@
 package repositories
 
 import (
-	"context"
 	"errors"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories/dbmodels"
@@ -9,10 +8,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 )
-
-type DecisionRepositoryLegacy interface {
-	StoreDecision(ctx context.Context, decision models.Decision) error
-}
 
 type DecisionRepository interface {
 	DecisionById(transaction Transaction, decisionId string) (models.Decision, error)
