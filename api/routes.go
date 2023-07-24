@@ -19,11 +19,14 @@ func (api *API) routes() {
 
 	api.router.With(api.credentialsMiddleware).Route("/ast-expression", func(astRouter chi.Router) {
 		astRouter.
+			With(httpin.NewInput(PatchRuleWithAstExpression{})).
+			Patch("/save-rule", api.handleSaveRuleWithAstExpression())
+		astRouter.
 			With(httpin.NewInput(PostValidateAstExpression{})).
 			Post("/validate", api.handleValidateAstExpression())
 		astRouter.
 			With(httpin.NewInput(PostRunAstExpression{})).
-			Post("/run", api.handleRunAstExpression())
+			Post("/dry-run", api.handleDryRunAstExpression())
 		astRouter.Get("/available-functions", api.handleAvailableFunctions())
 	})
 
@@ -221,6 +224,7 @@ func (api *API) routes() {
 			builderRouter.Use(api.enforcePermissionMiddleware(models.SCENARIO_CREATE))
 
 			builderRouter.Get("/identifiers", api.handleGetEditorIdentifiers())
+			builderRouter.Get("/operators", api.handleGetEditorOperators())
 		})
 
 		// Group all admin endpoints

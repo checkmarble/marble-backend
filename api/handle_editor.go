@@ -21,14 +21,45 @@ func (api *API) handleGetEditorIdentifiers() http.HandlerFunc {
 			return
 		}
 
-		nodes, err := utils.MapErr(result.DataAccessors, dto.AdaptNodeDto)
+		databaseNodes, err := utils.MapErr(result.DatabaseAccessors, dto.AdaptNodeDto)
+		if presentError(w, r, err) {
+			return
+		}
+		payloadbaseNodes, err := utils.MapErr(result.PayloadAccessors, dto.AdaptNodeDto)
+		if presentError(w, r, err) {
+			return
+		}
+		customListNodes, err := utils.MapErr(result.CustomListAccessors, dto.AdaptNodeDto)
 		if presentError(w, r, err) {
 			return
 		}
 		PresentModel(w, struct {
-			DataAccessors []dto.NodeDto `json:"data_accessors"`
+			DatabaseAccessors   []dto.NodeDto `json:"database_accessors"`
+			PayloadAccessors    []dto.NodeDto `json:"payload_accessors"`
+			CustomListAccessors []dto.NodeDto `json:"custom_list_accessors"`
 		}{
-			DataAccessors: nodes,
+			DatabaseAccessors:   databaseNodes,
+			PayloadAccessors:    payloadbaseNodes,
+			CustomListAccessors: customListNodes,
+		})
+	}
+}
+
+func (api *API) handleGetEditorOperators() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		usecase := api.UsecasesWithCreds(r).AstExpressionUsecase()
+		result := usecase.EditorOperators()
+
+		functions := make(map[string]dto.FuncAttributesDto)
+
+		for _, attributes := range result.OperatorAccessors {			
+			functions[attributes.AstName] = dto.AdaptFuncAttributesDto(attributes)
+		}
+		PresentModel(w, struct {
+			OperatorAccessors   map[string]dto.FuncAttributesDto `json:"operators_accessors"`
+		}{
+			OperatorAccessors:   functions,
 		})
 	}
 }

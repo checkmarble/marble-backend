@@ -1,23 +1,24 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   type AstNode,
   type ConstantOptional,
   type EditorIdentifiers,
-  NewAstNode,
   NoConstant,
-  ConstantType,
-  Scenario,
+  type ConstantType,
+  type Scenario,
+  type AstNodeEvaluation,
 } from "@/models";
 import { MapObjectValues } from "@/MapUtils";
 import {
   type ScenariosRepository,
   validateAstExpression,
-  runAstExpression,
+  dryRunAstExpression,
   fetchEditorIdentifiers,
   fetchScenario,
 } from "@/repositories";
 import { type LoadingDispatcher, showLoader } from "@/hooks/Loading";
 import { useSimpleLoader } from "@/hooks/SimpleLoader";
+import { testAst } from "./TestAst";
 
 export interface AstExpressionService {
   scenarioRepository: ScenariosRepository;
@@ -71,17 +72,18 @@ function makeExpressionViewModel(node: AstNode): ExpressionViewModel {
   };
 }
 
-function adaptAstNodeFromViewModel(vm: ExpressionViewModel): AstNode {
-  const adaptAstNode = (node: NodeViewModel): AstNode => {
-    return {
-      name: node.name,
-      constant: node.constant ? node.constant : NoConstant,
-      children: node.children.map(adaptAstNode),
-      namedChildren: MapObjectValues(node.namedChildren, adaptAstNode),
-    };
-  };
-  return adaptAstNode(vm.rootNode);
-}
+// function adaptAstNodeFromViewModel(vm: ExpressionViewModel): AstNode {
+//   const adaptAstNode = (node: NodeViewModel): AstNode => {
+//     return {
+//       name: node.name,
+//       constant: node.constant ? node.constant : NoConstant,
+//       children: node.children.map(adaptAstNode),
+//       namedChildren: MapObjectValues(node.namedChildren, adaptAstNode),
+//     };
+//   };
+//   return adaptAstNode(vm.rootNode);
+// }
+
 
 export function useAstExpressionBuilder(
   service: AstExpressionService,
@@ -101,38 +103,18 @@ export function useAstExpressionBuilder(
   );
 
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [dryRunResult, setDryRunResult] = useState<AstNodeEvaluation | null>(
+    null
+  );
 
   const [expressionViewModel, setExpressionViewModel] =
-    useState<ExpressionViewModel>(() =>
-      makeExpressionViewModel(
-        NewAstNode({
-          name: "IsInList",
-          children: [
-            NewAstNode({
-              name: "DatabaseAccess",
-              namedChildren: {
-                tableName: NewAstNode({ constant: "transactions" }),
-                fieldName: NewAstNode({ constant: "name" }),
-                path: NewAstNode({ constant: ["account"] }),
-              },
-            }),
-            NewAstNode({
-              name: "CustomListAccess",
-              namedChildren: {
-                customListId: NewAstNode({
-                  constant: "d6643d7e-c973-4899-a9a8-805f868ef90a",
-                }),
-              },
-            }),
-          ],
-        })
-      )
-    );
+    useState<ExpressionViewModel>(() => makeExpressionViewModel(testAst));
 
-  const expressionAstNode = useMemo(
-    () => adaptAstNodeFromViewModel(expressionViewModel),
-    [expressionViewModel]
-  );
+  // const expressionAstNode = useMemo(
+  //   () => adaptAstNodeFromViewModel(expressionViewModel),
+  //   [expressionViewModel]
+  // );
+  const expressionAstNode = testAst;
 
   const editorIdentifiersLoader = useCallback(async () => {
     if (scenario === null) {
@@ -175,14 +157,16 @@ export function useAstExpressionBuilder(
     if (scenario === null) {
       return null;
     }
-    await showLoader(
+
+    const dryRunResult = await showLoader(
       pageLoadingDispatcher,
-      runAstExpression(
+      dryRunAstExpression(
         service.scenarioRepository,
         scenario.organizationId,
         expressionAstNode
       )
     );
+    setDryRunResult(dryRunResult);
   }, [
     scenario,
     pageLoadingDispatcher,
@@ -201,6 +185,7 @@ export function useAstExpressionBuilder(
     expressionAstNode,
     validate,
     validationErrors,
+    dryRunResult,
     run,
     identifiers,
   };

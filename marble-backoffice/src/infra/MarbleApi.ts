@@ -223,11 +223,11 @@ export class MarbleApi {
     });
   }
 
-  async runAstExpression(organizationId: string, expression: AstNodeDto) {
+  async dryRunAstExpression(organizationId: string, expression: AstNodeDto) {
     return await this.sendAuthorizedJson({
       method: HttpMethod.Post,
       path: urlWithOrganizationId(
-        `${AST_EXPRESSION_URL_PATH}/run`,
+        `${AST_EXPRESSION_URL_PATH}/dry-run`,
         organizationId
       ),
       body: {

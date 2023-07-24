@@ -13,7 +13,7 @@ type UsecasesWithCreds struct {
 	Usecases
 	Credentials             models.Credentials
 	Logger                  *slog.Logger
-	OrganizationIdOfContext string
+	OrganizationIdOfContext func() (string, error)
 	Context                 context.Context
 }
 
@@ -42,13 +42,17 @@ func (usecases *UsecasesWithCreds) NewScenarioUsecase() ScenarioUsecase {
 
 func (usecases *UsecasesWithCreds) AstExpressionUsecase() AstExpressionUsecase {
 	return AstExpressionUsecase{
-		EnforceSecurity:            usecases.NewEnforceSecurity(),
-		OrganizationIdOfContext:    usecases.OrganizationIdOfContext,
-		CustomListRepository:       usecases.Repositories.CustomListRepository,
-		OrgTransactionFactory:      usecases.NewOrgTransactionFactory(),
-		IngestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
-		DataModelRepository:        usecases.Repositories.DataModelRepository,
-		ScenarioRepository:         usecases.Repositories.ScenarioReadRepository,
+		EnforceSecurity:                 usecases.NewEnforceSecurity(),
+		OrganizationIdOfContext:         usecases.OrganizationIdOfContext,
+		CustomListRepository:            usecases.Repositories.CustomListRepository,
+		OrgTransactionFactory:           usecases.NewOrgTransactionFactory(),
+		IngestedDataReadRepository:      usecases.Repositories.IngestedDataReadRepository,
+		DataModelRepository:             usecases.Repositories.DataModelRepository,
+		ScenarioRepository:              usecases.Repositories.ScenarioReadRepository,
+		ScenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
+		RuleRepository:                  usecases.Repositories.RuleRepository,
+		ScenarioIterationRuleUsecase:    usecases.Repositories.ScenarioIterationRuleRepositoryLegacy,
+		AstEvaluationEnvironmentFactory: usecases.AstEvaluationEnvironment,
 	}
 }
 

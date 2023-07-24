@@ -1,7 +1,20 @@
 import * as yup from "yup";
 import { adaptDtoWithYup } from "@/infra/adaptDtoWithYup";
-import { type AstNode, type ConstantType, NoConstant } from "./AstExpression";
+import {
+  type AstNode,
+  type ConstantOptional,
+  type ConstantType,
+  NoConstant,
+} from "./AstExpression";
 import { MapObjectValues } from "@/MapUtils";
+
+export const ConstantOptionalSchema = yup.mixed().nullable().optional(); // {}, null or undefined
+
+export function adaptConstantOptional(
+  constant: yup.InferType<typeof ConstantOptionalSchema>
+): ConstantOptional {
+  return constant === undefined ? NoConstant : constant;
+}
 
 // Yup can't infer typescript type from recursive schema, let's declare it manually
 export interface AstNodeDto {
@@ -13,7 +26,7 @@ export interface AstNodeDto {
 
 export const AstNodeSchema = yup.object({
   name: yup.string().optional(),
-  constant: yup.mixed(),
+  constant: ConstantOptionalSchema,
   children: yup
     .array()
     .of(yup.lazy(() => AstNodeSchema.default(null)))
@@ -30,7 +43,7 @@ export const AstNodeSchema = yup.object({
 export function adaptAstNode(dto: AstNodeDto): AstNode {
   return {
     name: dto.name || "",
-    constant: dto.constant === undefined ? NoConstant : dto.constant,
+    constant: adaptConstantOptional(dto.constant),
     children: (dto.children || []).map((child) => adaptAstNode(child)),
     namedChildren: MapObjectValues(dto.named_children || {}, adaptAstNode),
   };

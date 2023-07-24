@@ -78,9 +78,23 @@ func (usecase *SeedUseCase) SeedZorgOrganization(zorgOrganizationId string) erro
 
 	err = usecase.customListRepository.CreateCustomList(nil, models.CreateCustomListInput{
 		OrgId:       zorgOrganizationId,
-		Name:        "Welcome to Marble",
+		Name:        "zorg custom list",
 		Description: "Need a whitelist or blacklist ? The list is your friend :)",
 	}, newCustomListId)
+
+	if err == nil {
+		// add some values to the hardcoded custom list
+		addCustomListValueInput := models.AddCustomListValueInput{
+			OrgId:        zorgOrganizationId,
+			CustomListId: newCustomListId,
+			Value:        "Welcome",
+		}
+		usecase.customListRepository.AddCustomListValue(nil, addCustomListValueInput, uuid.NewString())
+		addCustomListValueInput.Value = "to"
+		usecase.customListRepository.AddCustomListValue(nil, addCustomListValueInput, uuid.NewString())
+		addCustomListValueInput.Value = "marble"
+		usecase.customListRepository.AddCustomListValue(nil, addCustomListValueInput, uuid.NewString())
+	}
 
 	if repositories.IsIsUniqueViolationError(err) {
 		err = nil
@@ -89,17 +103,6 @@ func (usecase *SeedUseCase) SeedZorgOrganization(zorgOrganizationId string) erro
 	if err != nil {
 		return err
 	}
-
-	addCustomListValueInput := models.AddCustomListValueInput{
-		OrgId:        zorgOrganizationId,
-		CustomListId: newCustomListId,
-		Value:        "Welcome",
-	}
-	usecase.customListRepository.AddCustomListValue(nil, addCustomListValueInput, uuid.NewString())
-	addCustomListValueInput.Value = "to"
-	usecase.customListRepository.AddCustomListValue(nil, addCustomListValueInput, uuid.NewString())
-	addCustomListValueInput.Value = "marble"
-	usecase.customListRepository.AddCustomListValue(nil, addCustomListValueInput, uuid.NewString())
 
 	// reset firebase id of all users, so when the firebase emulator restarts
 	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, (func(tx repositories.Transaction) error {

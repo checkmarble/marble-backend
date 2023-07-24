@@ -1,6 +1,6 @@
 import { Scenario } from "@/models";
 import { DataGrid } from "@mui/x-data-grid/DataGrid";
-import type { GridRowsProp, GridColDef, GridRowParams } from "@mui/x-data-grid";
+import type { GridRowsProp, GridColDef } from "@mui/x-data-grid";
 import GridCellWithHover from "./GridCellWithHover";
 import ListNoData from "./ListNoData";
 import { GridActionsCellItem } from "@mui/x-data-grid";
@@ -24,13 +24,13 @@ function ListOfScenarios(props: ListOfScenariosProps) {
   }
 
   // Enrich the 'scenarios' to build a 'row'
-  const rows: GridRowsProp = scenarios.map((scenario) => ({
+  const rows: GridRowsProp<Scenario> = scenarios.map((scenario) => ({
     id: scenario.scenarioId, // needed for datagrid
     ...scenario, // keep all user data intact
   }));
 
   // Static columns
-  const columns: GridColDef[] = [
+  const columns: GridColDef<Scenario>[] = [
     {
       field: "name",
       headerName: "name",
@@ -65,13 +65,13 @@ function ListOfScenarios(props: ListOfScenariosProps) {
     {
       field: "actions",
       type: "actions",
-      getActions: (params: GridRowParams) => [
+      getActions: (params) => [
         // only add the item if(props.onUserDetailClick) : see https://stackoverflow.com/questions/44908159/how-to-define-an-array-with-conditional-elements
         ...(props.onScenarioDetailClick
           ? [
               <GridActionsCellItem
                 icon={<NorthEastIcon />}
-                onClick={() => props.onScenarioDetailClick(params.row.userId)}
+                onClick={() => props.onScenarioDetailClick(params.row.scenarioId)}
                 label="Details"
               />,
             ]

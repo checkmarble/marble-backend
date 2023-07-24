@@ -2,13 +2,10 @@ package api
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-	"marble/marble-backend/app"
 	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
-	"marble/marble-backend/usecases/ast_eval/evaluate"
 	"marble/marble-backend/utils"
 	"net/http"
 
@@ -89,15 +86,13 @@ type PostRunAstExpression struct {
 }
 
 type RunAstExpressionResultDto struct {
-	Result       any    `json:"result"`
-	RuntimeError string `json:"runtime_error"`
+	Evaluation dto.NodeEvaluationDto `json:"evaluation"`
 }
 
-func (api *API) handleRunAstExpression() http.HandlerFunc {
+func (api *API) handleDryRunAstExpression() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		input := ctx.Value(httpin.Input).(*PostRunAstExpression)
-		logger := api.logger
 
 		expression, err := dto.AdaptASTNode(*input.Body.Expression)
 		if err != nil {
@@ -105,32 +100,10 @@ func (api *API) handleRunAstExpression() http.HandlerFunc {
 			return
 		}
 
-		organizationUsecase := api.usecases.NewOrganizationUseCase()
-
-		dataModel, err := organizationUsecase.GetDataModel(api.UsecasesWithCreds(r).OrganizationIdOfContext)
-		if presentError(w, r, err) {
-			return
-		}
-
-		tables := dataModel.Tables
-		table, ok := tables[models.TableName(input.Body.PayloadType)]
-		if !ok {
-			logger.ErrorCtx(ctx, "Table not found in data model for organization")
-			http.Error(w, "", http.StatusNotFound)
-			return
-		}
-
-		payload, err := app.ParseToDataModelObject(table, input.Body.Payload)
-		if presentError(w, r, err) {
-			return
-		}
 		usecase := api.UsecasesWithCreds(r).AstExpressionUsecase()
-		result, err := usecase.Run(expression, payload)
-
-		var runtimeErrorDto string
-		if errors.Is(err, evaluate.ErrRuntimeExpression) {
-			runtimeErrorDto = err.Error()
-			err = nil
+		evaluation, err := usecase.DryRun(expression, input.Body.PayloadType, input.Body.Payload)
+		if presentError(w, r, err) {
+			return
 		}
 
 		if presentError(w, r, err) {
@@ -138,18 +111,37 @@ func (api *API) handleRunAstExpression() http.HandlerFunc {
 		}
 
 		PresentModel(w, RunAstExpressionResultDto{
-			Result:       result,
-			RuntimeError: runtimeErrorDto,
+			Evaluation: dto.AdaptNodeEvaluationDto(evaluation),
 		})
 	}
 }
 
-// payload := map[string]any{
-// 	"balance": 96,
-// }
-// inject := NewEvaluatorInjection()
-// inject.AddEvaluator(ast.FUNC_VARIABLE, evaluate.Variable{Variables: payload})
+type PatchRuleWithAstExpression struct {
+	Body struct {
+		Expression *dto.NodeDto `json:"expression"`
+		RuleId     string       `json:"rule_id"`
+	} `in:"body=json"`
+}
 
-// root := ast.NewAstCompareBalance()
-// result, err := EvaluateAst(&inject, root)
-// assert.NoError(t, err)
+func (api *API) handleSaveRuleWithAstExpression() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		input := r.Context().Value(httpin.Input).(*PatchRuleWithAstExpression)
+
+		if err := utils.ValidateUuid(input.Body.RuleId); err != nil {
+			presentError(w, r, err)
+		}
+
+		expression, err := dto.AdaptASTNode(*input.Body.Expression)
+		if err != nil {
+			presentError(w, r, fmt.Errorf("invalid Expression: %w %w", err, models.BadParameterError))
+			return
+		}
+
+		usecase := api.UsecasesWithCreds(r).AstExpressionUsecase()
+		err = usecase.SaveRuleWithAstExpression(input.Body.RuleId, expression)
+		if err != nil {
+			presentError(w, r, fmt.Errorf("invalid Expression: %w %w", err, models.BadParameterError))
+		}
+		PresentNothing(w)
+	}
+}

@@ -5,11 +5,19 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useLoading } from "@/hooks/Loading";
 import DelayedLinearProgress from "@/components/DelayedLinearProgress";
-import { AstNode, NoConstant } from "@/models";
+import {
+  type AstNode,
+  type AstNodeEvaluation,
+  ConstantOptional,
+  NoConstant,
+} from "@/models";
 import Paper from "@mui/material/Paper";
 import Alert from "@mui/material/Alert";
 import TextField from "@mui/material/TextField";
 import AddIcon from "@mui/icons-material/Add";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import ReactJson from "react-json-view";
 import {
   useAstExpressionBuilder,
   setAstNodeName,
@@ -21,7 +29,7 @@ import {
 } from "@/services/AstExpressionService";
 import { useCallback } from "react";
 import { useParams } from "react-router-dom";
-import ReactJson from "react-json-view";
+import { boolean } from "yup";
 
 export default function ScenarioDetailsPage() {
   const { scenarioId } = useParams();
@@ -38,6 +46,7 @@ export default function ScenarioDetailsPage() {
     expressionAstNode,
     validate,
     validationErrors,
+    dryRunResult,
     run,
     identifiers,
   } = useAstExpressionBuilder(
@@ -111,12 +120,51 @@ export default function ScenarioDetailsPage() {
           /> */}
 
           <Button onClick={handleValidateScenario}>Validate</Button>
+          {validationErrors.length > 0 && (
+            <Card>
+              <CardContent>
+                <Typography
+                  sx={{ fontSize: 14 }}
+                  color="text.secondary"
+                  gutterBottom
+                >
+                  Validation errors
+                </Typography>
+                {validationErrors.map((error, i) => (
+                  <Alert key={i} severity="error">
+                    {error}
+                  </Alert>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
           <Button onClick={handleRunScenario}>Run (Ingestion required)</Button>
-          {validationErrors.map((error, i) => (
-            <Alert key={i} severity="error">
-              {error}
-            </Alert>
-          ))}
+          {dryRunResult && (
+            <Card>
+              <CardContent>
+                <Typography
+                  sx={{ fontSize: 14 }}
+                  color="text.secondary"
+                  gutterBottom
+                >
+                  Dry run result:{" "}
+                  <AstConstantComponent constant={dryRunResult.returnValue} />
+                </Typography>
+
+                {dryRunResult.returnValue === NoConstant && (
+                  <>
+                    <Typography variant="subtitle1" gutterBottom>
+                      Runtime Error
+                    </Typography>
+                    <Alert severity="error">
+                      <ReactJson src={dryRunResult} theme={"rjv-default"} />
+                    </Alert>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {identifiers && (
             <>
@@ -124,14 +172,14 @@ export default function ScenarioDetailsPage() {
               <Paper sx={{ minWidth: "100%", p: 2, fontSize: "0.8em" }}>
                 <ReactJson
                   src={identifiers}
-                  collapsed={1}
+                  collapsed={true}
                   theme={"rjv-default"}
                 />
               </Paper>
             </>
           )}
           <Typography variant="h5">Simple rendering of the AST</Typography>
-          <AstNode node={expressionAstNode} />
+          <AstNode node={expressionAstNode} evaluation={dryRunResult} />
         </Stack>
       </Container>
     </>
@@ -211,8 +259,13 @@ function AstEditor({
   );
 }
 
-function AstNode(props: { node: AstNode }) {
-  const node = props.node;
+function AstNode({
+  node,
+  evaluation,
+}: {
+  node: AstNode;
+  evaluation: AstNodeEvaluation | null;
+}) {
   return (
     <>
       <Paper
@@ -222,10 +275,18 @@ function AstNode(props: { node: AstNode }) {
           border: 1,
         }}
       >
-        {node.name && <Typography variant="subtitle1">{node.name}</Typography>}
+        {node.name && (
+          <Typography variant="subtitle1">name: {node.name}</Typography>
+        )}
+        {evaluation && evaluation?.returnValue !== NoConstant && node.constant === NoConstant && (
+          <Alert severity="success">
+            Evaluation success:{" "}
+            <AstConstantComponent constant={evaluation.returnValue} />
+          </Alert>
+        )}
         {node.constant !== NoConstant && (
           <Typography>
-            Constant: <code>{JSON.stringify(node.constant)}</code>
+            Constant: <AstConstantComponent constant={node.constant} />
           </Typography>
         )}
         {!node.name && node.constant === NoConstant && (
@@ -233,18 +294,40 @@ function AstNode(props: { node: AstNode }) {
             ⚠️ Invalid Node: Not a constant, not a function
           </Typography>
         )}
+        {evaluation?.evaluationError && (
+          <Alert severity="error">{evaluation.evaluationError}</Alert>
+        )}
         {node.children.map((child, i) => (
-          <AstNode key={i} node={child} />
+          <AstNode
+            key={i}
+            node={child}
+            evaluation={evaluation === null ? null : evaluation.children[i]}
+          />
         ))}
         <div>
           {Object.entries(node.namedChildren).map(([name, child], i) => (
             <div key={i}>
               <Typography variant="subtitle2">{name}</Typography>{" "}
-              <AstNode node={child} />
+              <AstNode
+                node={child}
+                evaluation={
+                  evaluation === null ? null : evaluation.namedChildren[name]
+                }
+              />
             </div>
           ))}
         </div>
       </Paper>
     </>
   );
+}
+
+function AstConstantComponent({ constant }: { constant: ConstantOptional }) {
+  if (constant === NoConstant) {
+    return <>!No Constant!</>;
+  }
+  if (constant === null) {
+    return <>NULL</>;
+  }
+  return <code>{JSON.stringify(constant)}</code>;
 }

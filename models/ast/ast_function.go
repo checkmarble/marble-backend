@@ -6,6 +6,16 @@ import (
 
 type Function int
 
+var FuncOperators = []Function{
+	FUNC_ADD,
+	FUNC_SUBTRACT,
+	FUNC_MULTIPLY,
+	FUNC_DIVIDE,
+	FUNC_GREATER,
+	FUNC_LESS,
+	FUNC_EQUAL,
+} 
+
 const (
 	FUNC_CONSTANT Function = iota
 	FUNC_ADD
@@ -18,7 +28,7 @@ const (
 	FUNC_NOT
 	FUNC_AND
 	FUNC_OR
-	FUNC_VARIABLE
+	FUNC_PAYLOAD
 	FUNC_DB_ACCESS
 	FUNC_CUSTOM_LIST_ACCESS
 	FUNC_IS_IN_LIST
@@ -88,7 +98,11 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		AstName:           "Or",
 		NumberOfArguments: 2,
 	},
-	FUNC_VARIABLE:           AttributeFuncVariable.FuncAttributes,
+	FUNC_PAYLOAD:           {
+		DebugName: "FUNC_PAYLOAD",
+		AstName:   "Payload",
+		NumberOfArguments: 1,
+	},
 	FUNC_DB_ACCESS:          AttributeFuncDbAccess.FuncAttributes,
 	FUNC_CUSTOM_LIST_ACCESS: AttributeFuncCustomListAccess.FuncAttributes,
 	FUNC_IS_IN_LIST: {
@@ -126,27 +140,6 @@ func (f Function) DebugString() string {
 
 func NewNodeConstant(value any) Node {
 	return Node{Function: FUNC_CONSTANT, Constant: value}
-}
-
-// ======= Variable =======
-
-var AttributeFuncVariable = struct {
-	FuncAttributes
-	ArgumentVarname string
-}{
-	FuncAttributes: FuncAttributes{
-		DebugName: "FUNC_VARIABLE",
-		AstName:   "Variable",
-		NamedArguments: []string{
-			"varname",
-		},
-	},
-	ArgumentVarname: "varname",
-}
-
-func NewNodeVariable(varname string) Node {
-	return Node{Function: FUNC_VARIABLE}.
-		AddNamedChild(AttributeFuncVariable.ArgumentVarname, NewNodeConstant(varname))
 }
 
 // ======= DbAccess =======
