@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
+	"marble/marble-backend/models/ast"
 	"marble/marble-backend/models/operators"
 	"marble/marble-backend/utils"
 	"net/http"
@@ -146,16 +147,25 @@ func (api *API) CreateScenarioIteration() http.HandlerFunc {
 			for i, rule := range input.Payload.Body.Rules {
 				formula, err := operators.UnmarshalOperatorBool(rule.Formula)
 				if err != nil {
-					logger.ErrorCtx(ctx, "Could not unmarshal formula: \n"+err.Error())
-					http.Error(w, "", http.StatusUnprocessableEntity)
-					return
+					presentError(w, r, fmt.Errorf("could not unmarshal formula: %w %w", err, models.BadParameterError))
 				}
+
+				var formulaAstExpression *ast.Node
+				if rule.FormulaAstExpression != nil {
+					f, err := dto.AdaptASTNode(*rule.FormulaAstExpression)
+					if err != nil {
+						presentError(w, r, fmt.Errorf("could not unmarshal formula ast expression: %w %w", err, models.BadParameterError))
+					}
+					formulaAstExpression = &f
+				}
+
 				createScenarioIterationInput.Body.Rules[i] = models.CreateRuleInput{
-					DisplayOrder:  rule.DisplayOrder,
-					Name:          rule.Name,
-					Description:   rule.Description,
-					Formula:       formula,
-					ScoreModifier: rule.ScoreModifier,
+					DisplayOrder:         rule.DisplayOrder,
+					Name:                 rule.Name,
+					Description:          rule.Description,
+					Formula:              formula,
+					FormulaAstExpression: formulaAstExpression,
+					ScoreModifier:        rule.ScoreModifier,
 				}
 			}
 

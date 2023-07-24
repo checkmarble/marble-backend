@@ -28,19 +28,21 @@ type GetScenarioIterationRulesFilters struct {
 }
 
 type CreateRuleInput struct {
-	ScenarioIterationID string
-	DisplayOrder        int
-	Name                string
-	Description         string
-	Formula             operators.OperatorBool
-	ScoreModifier       int
+	ScenarioIterationID  string
+	DisplayOrder         int
+	Name                 string
+	Description          string
+	Formula              operators.OperatorBool
+	FormulaAstExpression *ast.Node
+	ScoreModifier        int
 }
 
 type UpdateRuleInput struct {
-	ID            string
-	DisplayOrder  *int
-	Name          *string
-	Description   *string
-	Formula       *operators.OperatorBool
-	ScoreModifier *int
+	ID                   string
+	DisplayOrder         *int
+	Name                 *string
+	Description          *string
+	Formula              *operators.OperatorBool
+	FormulaAstExpression *ast.Node
+	ScoreModifier        *int
 }
