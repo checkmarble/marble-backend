@@ -18,7 +18,6 @@ type DecisionUsecase struct {
 	orgTransactionFactory           organization.OrgTransactionFactory
 	ingestedDataReadRepository      repositories.IngestedDataReadRepository
 	customListRepository            repositories.CustomListRepository
-	decisionRepositoryLegacy        repositories.DecisionRepositoryLegacy
 	decisionRepository              repositories.DecisionRepository
 	datamodelRepository             repositories.DataModelRepository
 	scenarioReadRepository          repositories.ScenarioReadRepository
@@ -52,14 +51,14 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 
 	scenario, err := usecase.scenarioReadRepository.GetScenarioById(nil, input.ScenarioID)
 	if errors.Is(err, models.NotFoundInRepositoryError) {
-		return models.Decision{}, fmt.Errorf("Scenario not found: %w", models.NotFoundError)
+		return models.Decision{}, fmt.Errorf("scenario not found: %w", models.NotFoundError)
 	} else if err != nil {
 		return models.Decision{}, fmt.Errorf("error getting scenario: %w", err)
 	}
 
 	dm, err := usecase.datamodelRepository.GetDataModel(nil, input.OrganizationID)
 	if errors.Is(err, models.NotFoundInRepositoryError) {
-		return models.Decision{}, fmt.Errorf("Data model not found: %w", models.NotFoundError)
+		return models.Decision{}, fmt.Errorf("data model not found: %w", models.NotFoundError)
 	} else if err != nil {
 		return models.Decision{}, fmt.Errorf("error getting data model: %w", err)
 	}
@@ -81,19 +80,17 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 
 	newDecisionId := utils.NewPrimaryKey(input.OrganizationID)
 	decision := models.Decision{
-		DecisionId:          newDecisionId,
-		OrganizationId:      input.OrganizationID,
 		ClientObject:        input.ClientObject,
 		Outcome:             scenarioExecution.Outcome,
+		RuleExecutions:      scenarioExecution.RuleExecutions,
+		ScenarioDescription: scenarioExecution.ScenarioDescription,
 		ScenarioId:          scenarioExecution.ScenarioID,
 		ScenarioName:        scenarioExecution.ScenarioName,
-		ScenarioDescription: scenarioExecution.ScenarioDescription,
 		ScenarioVersion:     scenarioExecution.ScenarioVersion,
-		RuleExecutions:      scenarioExecution.RuleExecutions,
 		Score:               scenarioExecution.Score,
 	}
 
-	err = usecase.decisionRepositoryLegacy.StoreDecision(ctx, decision)
+	err = usecase.decisionRepository.StoreDecision(nil, decision, input.OrganizationID, newDecisionId)
 	if err != nil {
 		return models.Decision{}, fmt.Errorf("error storing decision: %w", err)
 	}
