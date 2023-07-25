@@ -12,7 +12,6 @@ import { type LoadingDispatcher, useLoading } from "@/hooks/Loading";
 import services from "@/injectServices";
 import {
   useOrganization,
-  useScenarios,
   useUsers,
   useCreateUser,
   useDeleteOrganization,
@@ -36,11 +35,11 @@ import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
 import Container from "@mui/material/Container";
-import ListOfScenarios from "@/components/ListOfScenarios";
+import ScenariosList from "@/components/ScenariosList";
 import ReactJson from "react-json-view";
 import NorthEastIcon from "@mui/icons-material/NorthEast";
 import Alert from "@mui/material/Alert";
-import { Divider } from "@mui/material";
+import Divider from "@mui/material/Divider";
 import DataModelAPIDoc from "@/components/DataModelAPIDoc";
 
 function OrganizationDetailsPage() {
@@ -225,7 +224,7 @@ function OrganizationDetailsPage() {
                 />
               )}
               {tabValue === 1 && (
-                <OrganizationDetailsScenariosList
+                <ScenariosList
                   organizationId={organizationId}
                   pageLoadingDispatcher={pageLoadingDispatcher}
                 />
@@ -323,31 +322,6 @@ function OrganizationDetailsUserList({
         </Box>
       </Stack>
     </>
-  );
-}
-
-function OrganizationDetailsScenariosList({
-  organizationId,
-  pageLoadingDispatcher,
-}: {
-  pageLoadingDispatcher: LoadingDispatcher;
-  organizationId: string;
-}) {
-  const { scenarios } = useScenarios(
-    services().organizationService,
-    pageLoadingDispatcher,
-    organizationId
-  );
-
-  const navigate = useNavigate();
-
-  return (
-    <ListOfScenarios
-      scenarios={scenarios}
-      onScenarioDetailClick={(scenarioId) => {
-        navigate(PageLink.scenarioDetailsPage(scenarioId));
-      }}
-    />
   );
 }
 

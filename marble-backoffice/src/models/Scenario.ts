@@ -7,3 +7,9 @@ export interface Scenario {
   createdAt: Date;
   liveVersionId: string | null;
 }
+
+export interface CreateScenario {
+  name: string;
+  description: string;
+  triggerObjectType: string;
+}

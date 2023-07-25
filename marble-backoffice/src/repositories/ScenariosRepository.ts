@@ -1,5 +1,12 @@
 import { type MarbleApi } from "@/infra/MarbleApi";
-import type { Scenario, AstNode, EditorIdentifiers } from "@/models";
+import type {
+  Scenario,
+  AstNode,
+  EditorIdentifiers,
+  CreateScenario,
+  UpdateRule,
+  UpdateIteration,
+} from "@/models";
 import {
   adaptScenariosApiResult,
   adaptSingleScenarioApiResult,
@@ -8,6 +15,8 @@ import {
   adapAstValidateSchemaResult,
   adaptAstNodeDto,
 } from "@/models/AstExpressionDto";
+import { adaptRule } from "@/models/RuleDto";
+import { adaptIteration } from "@/models/IterationDto";
 import { adaptDryRunResult } from "@/models/AstEvaluationDto";
 import { adaptEditorIdentifiers } from "@/models/EditorIdentifiersDto";
 
@@ -65,5 +74,71 @@ export async function fetchEditorIdentifiers(
 ): Promise<EditorIdentifiers> {
   return adaptEditorIdentifiers(
     await repository.marbleApi.editorIdentifiers(scenarioId)
+  );
+}
+
+export async function postScenario(
+  repository: ScenariosRepository,
+  organizationId: string,
+  createScenario: CreateScenario
+) {
+  return adaptSingleScenarioApiResult(
+    await repository.marbleApi.postScenario(organizationId, createScenario)
+  );
+}
+
+export async function postIteration(
+  repository: ScenariosRepository,
+  organizationId: string,
+  scenarioId: string
+) {
+  return adaptIteration(
+    await repository.marbleApi.postIteration(organizationId, scenarioId)
+  );
+}
+
+export async function patchIteration(
+  repository: ScenariosRepository,
+  organizationId: string,
+  iterationId: string,
+  changes: UpdateIteration
+) {
+  await repository.marbleApi.patchIteration(
+    organizationId,
+    iterationId,
+    changes
+  );
+}
+
+export async function postRule(
+  repository: ScenariosRepository,
+  organizationId: string,
+  iterationId: string
+) {
+  return adaptRule(
+    await repository.marbleApi.postRule(organizationId, iterationId)
+  );
+}
+
+export async function updateRule(
+  repository: ScenariosRepository,
+  organizationId: string,
+  ruleId: string,
+  changes: UpdateRule
+) {
+  return adaptRule(
+    await repository.marbleApi.patchRule(organizationId, ruleId, changes)
+  );
+}
+
+export async function publishIteration(
+  repository: ScenariosRepository,
+  organizationId: string,
+  iterationId: string
+) {
+  await repository.marbleApi.postScenarioIterationPublication(
+    organizationId,
+    iterationId,
+    "publish"
   );
 }

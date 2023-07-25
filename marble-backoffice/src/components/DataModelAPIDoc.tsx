@@ -1,6 +1,8 @@
 import { DataModel } from "@/models";
-import { Divider, Paper, TextareaAutosize, Typography } from "@mui/material";
-import { Fragment } from "react";
+import Divider from "@mui/material/Divider";
+import Paper from "@mui/material/Paper";
+import TextareaAutosize from "@mui/material/TextareaAutosize";
+import Typography from "@mui/material/Typography";
 import ReactJson from "react-json-view";
 
 interface DataModelAPIDocProps {
@@ -17,7 +19,7 @@ export default function DataModelAPIDoc(props: DataModelAPIDocProps) {
   const apiModel = dataModelToObjects(dataModel);
 
   return (
-    <Fragment>
+    <>
       <Typography variant="h6">
         Custom objects to use in the Ingestion and Decision API
       </Typography>
@@ -36,7 +38,7 @@ export default function DataModelAPIDoc(props: DataModelAPIDocProps) {
           />
         </Paper>
       ))}
-    </Fragment>
+    </>
   );
 }
 

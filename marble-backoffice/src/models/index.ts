@@ -12,3 +12,5 @@ export * from "./AstExpression";
 export * from "./DataModel";
 export * from "./EditorIdentifiers";
 export * from "./AstEvaluation";
+export * from "./Rule";
+export * from "./Iteration";
