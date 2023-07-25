@@ -99,12 +99,17 @@ func (r *PGRepository) CreateScenarioIterationRule(ctx context.Context, orgID st
 		Description:         rule.Description,
 		ScoreModifier:       rule.ScoreModifier,
 	}
-	formulaBytes, err := rule.Formula.MarshalJSON()
-	if err != nil {
-		return models.Rule{}, fmt.Errorf("unable to marshal rule formula: %w", err)
-	}
-	dbCreateRuleInput.Formula = formulaBytes
+	dbCreateRuleInput.Formula = []byte("{}")
 
+	if rule.Formula != nil {
+		formulaBytes, err := rule.Formula.MarshalJSON()
+		if err != nil {
+			return models.Rule{}, fmt.Errorf("unable to marshal rule formula: %w", err)
+		}
+		dbCreateRuleInput.Formula = formulaBytes
+	}
+
+	var err error
 	dbCreateRuleInput.FormulaAstExpression, err = serializeFormulaAstExpression(rule.FormulaAstExpression)
 	if err != nil {
 		return models.Rule{}, fmt.Errorf("unable to marshal expression formula: %w", err)

@@ -17,7 +17,7 @@ type Rule struct {
 	DisplayOrder         int
 	Name                 string
 	Description          string
-	Formula              operators.OperatorBool
+	Formula              *operators.OperatorBool
 	FormulaAstExpression *ast.Node
 	ScoreModifier        int
 	CreatedAt            time.Time

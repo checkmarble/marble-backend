@@ -28,9 +28,14 @@ type DBRule struct {
 }
 
 func AdaptRule(db DBRule) (models.Rule, error) {
-	formula, err := operators.UnmarshalOperatorBool(db.Formula)
-	if err != nil {
-		return models.Rule{}, fmt.Errorf("unable to unmarshal rule: %w", err)
+
+	var formula *operators.OperatorBool
+	if string(db.Formula) != "{}" {
+		f, err := operators.UnmarshalOperatorBool(db.Formula)
+		if err != nil {
+			return models.Rule{}, fmt.Errorf("unable to unmarshal rule: %w", err)
+		}
+		formula = &f
 	}
 
 	var formulaAstExpression *ast.Node

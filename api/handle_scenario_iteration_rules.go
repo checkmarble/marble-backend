@@ -29,9 +29,14 @@ type APIScenarioIterationRule struct {
 
 func NewAPIScenarioIterationRule(rule models.Rule) (APIScenarioIterationRule, error) {
 
-	formula, err := rule.Formula.MarshalJSON()
-	if err != nil {
-		return APIScenarioIterationRule{}, fmt.Errorf("unable to marshal formula: %w", err)
+	var formula []byte
+
+	if rule.Formula != nil {
+		var err error
+		formula, err = (*rule.Formula).MarshalJSON()
+		if err != nil {
+			return APIScenarioIterationRule{}, fmt.Errorf("unable to marshal formula: %w", err)
+		}
 	}
 
 	var formulaAstExpression *dto.NodeDto
