@@ -52,7 +52,6 @@ func (usecases *Usecases) NewDecisionUsecase() DecisionUsecase {
 		transactionFactory:              usecases.Repositories.TransactionFactory,
 		orgTransactionFactory:           usecases.NewOrgTransactionFactory(),
 		ingestedDataReadRepository:      usecases.Repositories.IngestedDataReadRepository,
-		decisionRepositoryLegacy:        usecases.Repositories.DecisionRepositoryLegacy,
 		decisionRepository:              usecases.Repositories.DecisionRepository,
 		datamodelRepository:             usecases.Repositories.DataModelRepository,
 		scenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,

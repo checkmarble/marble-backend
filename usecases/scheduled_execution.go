@@ -72,7 +72,7 @@ func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx cont
 			logger := utils.LoggerFromContext(ctx)
 			logger.ErrorCtx(ctx, "recovered from panic during scheduled scenario execution. Stacktrace from panic: ")
 			logger.ErrorCtx(ctx, string(debug.Stack()))
-			err = fmt.Errorf("Recovered from panic during scheduled scenario execution")
+			err = fmt.Errorf("recovered from panic during scheduled scenario execution")
 		}
 	}()
 
@@ -89,7 +89,7 @@ func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx cont
 	gron := gronx.New()
 	ok := gron.IsValid(publishedVersion.Body.Schedule)
 	if !ok {
-		return fmt.Errorf("Invalid schedule: %w", models.BadParameterError)
+		return fmt.Errorf("invalid schedule: %w", models.BadParameterError)
 	}
 	previousExecutions, err := usecase.ListScheduledExecutions(ctx, orgID, scenarioID)
 	if err != nil {
@@ -250,14 +250,14 @@ func (usecase *ScheduledExecutionUsecase) executeScheduledScenario(ctx context.C
 
 func (usecase *ScheduledExecutionUsecase) getPublishedScenarioIteration(ctx context.Context, scenario models.Scenario) (models.PublishedScenarioIteration, error) {
 	if scenario.LiveVersionID == nil {
-		return models.PublishedScenarioIteration{}, fmt.Errorf("Scenario has no live version %w", models.BadParameterError)
+		return models.PublishedScenarioIteration{}, fmt.Errorf("scenario has no live version %w", models.BadParameterError)
 	}
 	scenarioIteration, err := usecase.scenarioIterationReadRepository.GetScenarioIteration(ctx, scenario.OrganizationID, *scenario.LiveVersionID)
 	if err != nil {
 		return models.PublishedScenarioIteration{}, err
 	}
 	if scenarioIteration.Body.Schedule == "" {
-		return models.PublishedScenarioIteration{}, fmt.Errorf("Scenario is not scheduled %w", models.BadParameterError)
+		return models.PublishedScenarioIteration{}, fmt.Errorf("scenario is not scheduled %w", models.BadParameterError)
 	}
 
 	liveVersion, err := usecase.scenarioIterationReadRepository.GetScenarioIteration(ctx, scenario.OrganizationID, *scenario.LiveVersionID)
