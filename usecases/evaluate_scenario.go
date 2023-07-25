@@ -161,7 +161,7 @@ func evalScenarioRule(repositories scenarioEvaluationRepositories, rule models.R
 		repositories.logger.Info("Rule had an error",
 			slog.String("ruleName", rule.Name),
 			slog.String("ruleId", rule.ID),
-			slog.String("formula", rule.Formula.String()),
+			slog.String("formula", (*rule.Formula).String()),
 			slog.String("error", ruleExecution.Error.String()),
 		)
 	}

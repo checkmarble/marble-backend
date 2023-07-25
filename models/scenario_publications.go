@@ -103,7 +103,7 @@ func (si ScenarioIteration) IsValidForPublication() error {
 		return fmt.Errorf("Scenario iteration has no rules: \n%w", BadParameterError)
 	}
 	for _, rule := range si.Body.Rules {
-		if !rule.Formula.IsValid() {
+		if rule.Formula == nil || !(*rule.Formula).IsValid() {
 			return fmt.Errorf("Scenario iteration rule has invalid rules: \n%w", BadParameterError)
 		}
 	}
