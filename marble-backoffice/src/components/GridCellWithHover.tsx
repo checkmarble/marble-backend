@@ -1,4 +1,6 @@
-import { Box, IconButton, useTheme } from "@mui/material";
+import Box from "@mui/material/Box";
+import IconButton from "@mui/material/IconButton";
+import useTheme from "@mui/material/styles/useTheme";
 import { GridRenderCellParams } from "@mui/x-data-grid";
 import { useState } from "react";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";

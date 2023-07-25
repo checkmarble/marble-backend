@@ -116,38 +116,7 @@ func (o *organizationSeederImpl) Seed(orgId string) error {
 			TriggerCondition:     &operators.BoolValue{Value: true},
 			ScoreReviewThreshold: utils.Ptr(10),
 			ScoreRejectThreshold: utils.Ptr(30),
-			Rules: []models.CreateRuleInput{
-				{
-					Formula:       &operators.BoolValue{Value: true},
-					ScoreModifier: 2,
-					Name:          "Rule 1 Name",
-					Description:   "Rule 1 Desc",
-				},
-				{
-					Formula:       &operators.BoolValue{Value: false},
-					ScoreModifier: 2,
-					Name:          "Rule 2 Name",
-					Description:   "Rule 2 Desc",
-				},
-				{
-					Formula:       &operators.EqBool{Left: &operators.BoolValue{Value: true}, Right: &operators.BoolValue{Value: true}},
-					ScoreModifier: 2,
-					Name:          "Rule 3 Name",
-					Description:   "Rule 3 Desc",
-				},
-				{
-					Formula:       &operators.EqBool{Left: &operators.BoolValue{Value: true}, Right: &operators.EqBool{Left: &operators.BoolValue{Value: false}, Right: &operators.BoolValue{Value: false}}},
-					ScoreModifier: 2,
-					Name:          "Rule 4 Name",
-					Description:   "Rule 4 Desc",
-				},
-				{
-					Formula:       &operators.StringIsInList{Str: &operators.StringValue{Value: "marble"}, List: &operators.DbCustomListStringArray{CustomListId: newCustomListId}},
-					ScoreModifier: 2,
-					Name:          "Rule 5 Name",
-					Description:   "Rule 5 Desc",
-				},
-			},
+			Rules:                []models.CreateRuleInput{},
 		},
 	}
 

@@ -3,10 +3,13 @@ import type {
   CreateOrganization,
   PatchOrganization,
   CreateUser,
+  CreateScenario,
+  UpdateRule,
+  UpdateIteration,
 } from "@/models";
 import { HttpMethod } from "./fetchUtils";
-import { AuthorizedFetcher } from "./AuthorizedFetcher";
-import { AstNodeDto } from "@/models/AstExpressionDto";
+import type { AuthorizedFetcher } from "./AuthorizedFetcher";
+import { type AstNodeDto, adaptAstNodeDto } from "@/models/AstExpressionDto";
 
 const ORGANIZATION_URL_PATH = "organizations";
 const SCENARIO_URL_PATH = "scenarios";
@@ -15,6 +18,9 @@ const INGESTION_URL_PATH = "ingestion";
 const DECISIONS_URL_PATH = "decisions";
 const AST_EXPRESSION_URL_PATH = "ast-expression";
 const DATA_MODEL_URL_PATH = "data-model";
+const SCENARIO_ITERATIONS_URL_PATH = "scenario-iterations";
+const SCENARIO_ITERATIONS_RULES_URL_PATH = "scenario-iteration-rules";
+const SCENARIO_PUBLICATIONS_URL_PATH = "scenario-publications";
 
 export interface IngestObjects {
   tableName: string;
@@ -251,6 +257,105 @@ export class MarbleApi {
     return await this.getAuthorizedJson(
       `editor/${scenarioIdParam}/identifiers`
     );
+  }
+
+  async postScenario(organizationId: string, createScenario: CreateScenario) {
+    return this.sendAuthorizedJson({
+      method: HttpMethod.Post,
+      path: urlWithOrganizationId(SCENARIO_URL_PATH, organizationId),
+      body: {
+        name: createScenario.name,
+        description: createScenario.description,
+        triggerObjectType: createScenario.triggerObjectType,
+      },
+    });
+  }
+
+  async postIteration(organizationId: string, scenarioId: string) {
+    return this.sendAuthorizedJson({
+      method: HttpMethod.Post,
+      path: urlWithOrganizationId(
+        `${SCENARIO_ITERATIONS_URL_PATH}`,
+        organizationId
+      ),
+      body: {
+        scenarioId: scenarioId,
+        body: {},
+      },
+    });
+  }
+
+  async patchIteration(
+    organizationId: string,
+    iterationId: string,
+    changes: UpdateIteration
+  ) {
+    return this.sendAuthorizedJson({
+      method: HttpMethod.Patch,
+      path: urlWithOrganizationId(
+        `${SCENARIO_ITERATIONS_URL_PATH}/${iterationId}`,
+        organizationId
+      ),
+      body: {
+        body: {
+          scoreReviewThreshold: changes?.scoreReviewThreshold,
+          scoreRejectThreshold: changes?.scoreRejectThreshold,
+          schedule: changes?.schedule,
+          batchTriggerSQL: changes?.batchTriggerSql,
+        }
+      },
+    });
+  }
+
+  async postRule(organizationId: string, iterationId: string) {
+    return this.sendAuthorizedJson({
+      method: HttpMethod.Post,
+      path: urlWithOrganizationId(
+        `${SCENARIO_ITERATIONS_RULES_URL_PATH}`,
+        organizationId
+      ),
+      body: {
+        scenarioIterationId: iterationId,
+      },
+    });
+  }
+
+  async patchRule(organizationId: string, ruleId: string, changes: UpdateRule) {
+    return this.sendAuthorizedJson({
+      method: HttpMethod.Patch,
+      path: urlWithOrganizationId(
+        `${SCENARIO_ITERATIONS_RULES_URL_PATH}/${ruleId}`,
+        organizationId
+      ),
+      body: {
+        name: changes?.name,
+        description: changes?.description,
+        formula_ast_expression:
+          changes.expression === undefined
+            ? undefined
+            : adaptAstNodeDto(changes.expression),
+        displayOrder: changes?.displayOrder,
+        scoreModifier: changes?.scoreModifier,
+      },
+    });
+  }
+
+  async postScenarioIterationPublication(
+    organizationId: string,
+    iterationId: string,
+    publish: "publish" | "unpublish"
+  ) {
+    return this.sendAuthorizedJson({
+      method: HttpMethod.Post,
+      path: urlWithOrganizationId(
+        `${SCENARIO_PUBLICATIONS_URL_PATH}`,
+        organizationId
+      ),
+      body: {
+        scenarioIterationID: iterationId,
+        publicationAction: publish,
+      },
+    });
   }
 }
 
