@@ -29,11 +29,12 @@ type UpdateScenarioInput struct {
 
 type UpdateScenarioIterationBody struct {
 	Body *struct {
-		TriggerCondition     *json.RawMessage `json:"triggerCondition,omitempty"`
-		ScoreReviewThreshold *int             `json:"scoreReviewThreshold,omitempty"`
-		ScoreRejectThreshold *int             `json:"scoreRejectThreshold,omitempty"`
-		Schedule             *string          `json:"schedule"`
-		BatchTriggerSQL      *string          `json:"batchTriggerSQL"`
+		TriggerCondition              *json.RawMessage `json:"triggerCondition,omitempty"`
+		TriggerConditionAstExpression *NodeDto         `json:"trigger_condition_ast_expression"`
+		ScoreReviewThreshold          *int             `json:"scoreReviewThreshold,omitempty"`
+		ScoreRejectThreshold          *int             `json:"scoreRejectThreshold,omitempty"`
+		Schedule                      *string          `json:"schedule"`
+		BatchTriggerSQL               *string          `json:"batchTriggerSQL"`
 	} `json:"body,omitempty"`
 }
 
@@ -45,12 +46,13 @@ type UpdateScenarioIterationInput struct {
 type CreateScenarioIterationBody struct {
 	ScenarioID string `json:"scenarioId"`
 	Body       *struct {
-		TriggerCondition     *json.RawMessage                       `json:"triggerCondition,omitempty"`
-		Rules                []CreateScenarioIterationRuleInputBody `json:"rules"`
-		ScoreReviewThreshold *int                                   `json:"scoreReviewThreshold,omitempty"`
-		ScoreRejectThreshold *int                                   `json:"scoreRejectThreshold,omitempty"`
-		Schedule             string                                 `json:"schedule"`
-		BatchTriggerSQL      string                                 `json:"batchTriggerSQL"`
+		TriggerCondition              *json.RawMessage                       `json:"triggerCondition,omitempty"`
+		TriggerConditionAstExpression *NodeDto                               `json:"trigger_condition_ast_expression"`
+		Rules                         []CreateScenarioIterationRuleInputBody `json:"rules"`
+		ScoreReviewThreshold          *int                                   `json:"scoreReviewThreshold,omitempty"`
+		ScoreRejectThreshold          *int                                   `json:"scoreRejectThreshold,omitempty"`
+		Schedule                      string                                 `json:"schedule"`
+		BatchTriggerSQL               string                                 `json:"batchTriggerSQL"`
 	} `json:"body,omitempty"`
 }
 

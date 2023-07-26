@@ -35,7 +35,7 @@ func AdaptRule(db DBRule) (models.Rule, error) {
 		formula = &f
 	}
 
-	formulaAstExpression, err := AdaptSerizedAstExpression(db.FormulaAstExpression)
+	formulaAstExpression, err := AdaptSerializedAstExpression(db.FormulaAstExpression)
 	if err != nil {
 		return models.Rule{}, fmt.Errorf("unable to unmarshal formula ast expression: %w", err)
 	}
