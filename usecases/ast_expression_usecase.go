@@ -121,8 +121,11 @@ func (usecase *AstExpressionUsecase) getLinkedDatabaseIdentifiers(scenario model
 	}
 
 	recursiveDatabaseAccessor = func(path []string, links map[models.LinkName]models.LinkToSingle) error {
+		var baseAccessorName string
+		for _, tableName := range path {
+			baseAccessorName += tableName + "."
+		}
 		for linkName, link := range links {
-
 			table, found := dataModel.Tables[link.LinkedTableName]
 			if !found {
 				// unexpected error: must be a valid table
@@ -133,7 +136,7 @@ func (usecase *AstExpressionUsecase) getLinkedDatabaseIdentifiers(scenario model
 
 			for fieldName := range table.Fields {
 				dataAccessors = append(dataAccessors, ast.Identifier{
-					Name: string(linkName) + "." + string(fieldName),
+					Name: baseAccessorName + string(linkName) + "." + string(fieldName),
 					// TODO fill this in a better way
 					Description: "",
 					Node: ast.NewNodeDatabaseAccess(
@@ -168,7 +171,7 @@ func (usecase *AstExpressionUsecase) getPayloadIdentifiers(scenario models.Scena
 	}
 	for fieldName, _ := range triggerObjectTable.Fields {
 		dataAccessors = append(dataAccessors, ast.Identifier{
-			Name:        string(triggerObjectTable.Name) + "." + string(fieldName),
+			Name:        string(fieldName),
 			Description: "",
 			Node: ast.Node{
 				Function: ast.FUNC_PAYLOAD,
