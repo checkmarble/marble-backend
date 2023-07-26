@@ -106,7 +106,7 @@ func TestMain(m *testing.M) {
 	repositories, err := repositories.NewRepositories(
 		models.GlobalConfiguration{},
 		nil,
-		infra.IntializeFirebase(ctx),
+		nil,
 		dbPool,
 		utils.LoggerFromContext(appContext),
 		pgRepository,
