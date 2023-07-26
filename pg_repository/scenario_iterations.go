@@ -20,18 +20,19 @@ import (
 var ErrAlreadyPublished = errors.New("scenario iteration is already published")
 
 type dbScenarioIteration struct {
-	ID                   string          `db:"id"`
-	OrgID                string          `db:"org_id"`
-	ScenarioID           string          `db:"scenario_id"`
-	Version              pgtype.Int2     `db:"version"`
-	CreatedAt            time.Time       `db:"created_at"`
-	UpdatedAt            time.Time       `db:"updated_at"`
-	ScoreReviewThreshold pgtype.Int2     `db:"score_review_threshold"`
-	ScoreRejectThreshold pgtype.Int2     `db:"score_reject_threshold"`
-	TriggerCondition     json.RawMessage `db:"trigger_condition"`
-	DeletedAt            pgtype.Time     `db:"deleted_at"`
-	BatchTriggerSQL      string          `db:"batch_trigger_sql"`
-	Schedule             string          `db:"schedule"`
+	ID                            string          `db:"id"`
+	OrgID                         string          `db:"org_id"`
+	ScenarioID                    string          `db:"scenario_id"`
+	Version                       pgtype.Int2     `db:"version"`
+	CreatedAt                     time.Time       `db:"created_at"`
+	UpdatedAt                     time.Time       `db:"updated_at"`
+	ScoreReviewThreshold          pgtype.Int2     `db:"score_review_threshold"`
+	ScoreRejectThreshold          pgtype.Int2     `db:"score_reject_threshold"`
+	TriggerCondition              json.RawMessage `db:"trigger_condition"`
+	TriggerConditionAstExpression []byte          `db:"trigger_condition_ast_expression"`
+	DeletedAt                     pgtype.Time     `db:"deleted_at"`
+	BatchTriggerSQL               string          `db:"batch_trigger_sql"`
+	Schedule                      string          `db:"schedule"`
 }
 
 func (si *dbScenarioIteration) toDomain() (models.ScenarioIteration, error) {
@@ -64,6 +65,12 @@ func (si *dbScenarioIteration) toDomain() (models.ScenarioIteration, error) {
 			return models.ScenarioIteration{}, fmt.Errorf("unable to unmarshal trigger condition: %w", err)
 		}
 		siDTO.Body.TriggerCondition = triggerc
+	}
+
+	var err error
+	siDTO.Body.TriggerConditionAstExpression, err = dbmodels.AdaptSerizedAstExpression(si.TriggerConditionAstExpression)
+	if err != nil {
+		return siDTO, fmt.Errorf("unable to unmarshal trigger codition ast expression: %w", err)
 	}
 
 	return siDTO, nil

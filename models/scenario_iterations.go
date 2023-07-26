@@ -1,6 +1,7 @@
 package models
 
 import (
+	"marble/marble-backend/models/ast"
 	"marble/marble-backend/models/operators"
 	"time"
 )
@@ -15,12 +16,13 @@ type ScenarioIteration struct {
 }
 
 type ScenarioIterationBody struct {
-	TriggerCondition     operators.OperatorBool
-	Rules                []Rule
-	ScoreReviewThreshold *int
-	ScoreRejectThreshold *int
-	BatchTriggerSQL      string
-	Schedule             string
+	TriggerCondition              operators.OperatorBool
+	TriggerConditionAstExpression *ast.Node
+	Rules                         []Rule
+	ScoreReviewThreshold          *int
+	ScoreRejectThreshold          *int
+	BatchTriggerSQL               string
+	Schedule                      string
 }
 
 type GetScenarioIterationFilters struct {
