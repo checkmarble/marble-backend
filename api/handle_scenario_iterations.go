@@ -105,8 +105,9 @@ func (api *API) ListScenarioIterations() http.HandlerFunc {
 
 		options := &utils.PtrToOptions{OmitZero: true}
 		usecase := api.usecases.NewScenarioIterationUsecase()
-		scenarioIterations, err := usecase.ListScenarioIterations(ctx, orgID, models.GetScenarioIterationFilters{
-			ScenarioID: utils.PtrTo(input.ScenarioID, options),
+		scenarioIterations, err := usecase.ListScenarioIterations(models.GetScenarioIterationFilters{
+			OrganizationId: orgID,
+			ScenarioID:     utils.PtrTo(input.ScenarioID, options),
 		})
 		if err != nil {
 			logger.ErrorCtx(ctx, "Error Listing scenario iterations: \n"+err.Error())
@@ -237,7 +238,7 @@ func (api *API) GetScenarioIteration() http.HandlerFunc {
 		logger := api.logger.With(slog.String("scenarioIterationId", input.ScenarioIterationID), slog.String("orgId", orgID))
 
 		usecase := api.usecases.NewScenarioIterationUsecase()
-		si, err := usecase.GetScenarioIteration(ctx, orgID, input.ScenarioIterationID)
+		si, err := usecase.GetScenarioIteration(input.ScenarioIterationID)
 		if errors.Is(err, models.NotFoundInRepositoryError) {
 			http.Error(w, "", http.StatusNotFound)
 			return

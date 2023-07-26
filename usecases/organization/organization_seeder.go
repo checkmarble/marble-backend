@@ -40,7 +40,7 @@ func NewOrganizationSeeder(
 	srr repositories.ScenarioReadRepository,
 	spr repositories.ScenarioPublicationRepository,
 	siwr repositories.ScenarioIterationWriteRepository,
-	sirr repositories.ScenarioIterationReadRepository,
+	sirr repositories.ScenarioIterationReadLegacyRepository,
 ) OrganizationSeeder {
 	return &organizationSeederImpl{
 		CustomListRepository:             clr,

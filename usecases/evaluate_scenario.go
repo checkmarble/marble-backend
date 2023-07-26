@@ -21,7 +21,7 @@ type scenarioEvaluationParameters struct {
 }
 
 type scenarioEvaluationRepositories struct {
-	scenarioIterationReadRepository repositories.ScenarioIterationReadRepository
+	scenarioIterationReadRepository repositories.ScenarioIterationReadLegacyRepository
 	orgTransactionFactory           organization.OrgTransactionFactory
 	ingestedDataReadRepository      repositories.IngestedDataReadRepository
 	customListRepository            repositories.CustomListRepository

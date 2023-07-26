@@ -12,14 +12,14 @@ type ScenarioPublisher struct {
 	scenarioPublicationsRepository  repositories.ScenarioPublicationRepository
 	scenarioReadRepository          repositories.ScenarioReadRepository
 	scenarioWriteRepository         repositories.ScenarioWriteRepository
-	scenarioIterationReadRepository repositories.ScenarioIterationReadRepository
+	scenarioIterationReadRepository repositories.ScenarioIterationReadLegacyRepository
 }
 
 func NewScenarioPublisher(
 	scenarioPublicationsRepository repositories.ScenarioPublicationRepository,
 	scenarioReadRepository repositories.ScenarioReadRepository,
 	scenarioWriteRepository repositories.ScenarioWriteRepository,
-	scenarioIterationReadRepository repositories.ScenarioIterationReadRepository,
+	scenarioIterationReadRepository repositories.ScenarioIterationReadLegacyRepository,
 ) ScenarioPublisher {
 	return ScenarioPublisher{
 		scenarioPublicationsRepository:  scenarioPublicationsRepository,

@@ -21,7 +21,7 @@ type DecisionUsecase struct {
 	decisionRepository              repositories.DecisionRepository
 	datamodelRepository             repositories.DataModelRepository
 	scenarioReadRepository          repositories.ScenarioReadRepository
-	scenarioIterationReadRepository repositories.ScenarioIterationReadRepository
+	scenarioIterationReadRepository repositories.ScenarioIterationReadLegacyRepository
 	evaluateRuleAstExpression       ast_eval.EvaluateRuleAstExpression
 }
 

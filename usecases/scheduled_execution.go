@@ -18,7 +18,7 @@ import (
 
 type ScheduledExecutionUsecase struct {
 	scenarioReadRepository          repositories.ScenarioReadRepository
-	scenarioIterationReadRepository repositories.ScenarioIterationReadRepository
+	scenarioIterationReadRepository repositories.ScenarioIterationReadLegacyRepository
 	scenarioPublicationsRepository  repositories.ScenarioPublicationRepository
 	scheduledExecutionRepository    repositories.ScheduledExecutionRepository
 	dataModelRepository             repositories.DataModelRepository

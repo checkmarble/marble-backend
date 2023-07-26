@@ -14,12 +14,12 @@ type ScenarioIterationUsecase struct {
 	scenarioIterationsWriteRepository repositories.ScenarioIterationWriteRepository
 }
 
-func (usecase *ScenarioIterationUsecase) ListScenarioIterations(ctx context.Context, organizationID string, filters models.GetScenarioIterationFilters) ([]models.ScenarioIteration, error) {
-	return usecase.scenarioIterationsReadRepository.ListScenarioIterations(ctx, organizationID, filters)
+func (usecase *ScenarioIterationUsecase) ListScenarioIterations(filters models.GetScenarioIterationFilters) ([]models.ScenarioIteration, error) {
+	return usecase.scenarioIterationsReadRepository.ListScenarioIterations(nil, filters)
 }
 
-func (usecase *ScenarioIterationUsecase) GetScenarioIteration(ctx context.Context, organizationID string, scenarioIterationID string) (models.ScenarioIteration, error) {
-	return usecase.scenarioIterationsReadRepository.GetScenarioIteration(ctx, organizationID, scenarioIterationID)
+func (usecase *ScenarioIterationUsecase) GetScenarioIteration(scenarioIterationID string) (models.ScenarioIteration, error) {
+	return usecase.scenarioIterationsReadRepository.GetScenarioIteration(nil, scenarioIterationID)
 }
 
 func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(ctx context.Context, organizationID string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error) {

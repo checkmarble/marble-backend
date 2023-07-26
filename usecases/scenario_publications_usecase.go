@@ -12,7 +12,7 @@ type ScenarioPublicationUsecase struct {
 	transactionFactory              repositories.TransactionFactory
 	scenarioPublicationsRepository  repositories.ScenarioPublicationRepository
 	scenarioReadRepository          repositories.ScenarioReadRepository
-	scenarioIterationReadRepository repositories.ScenarioIterationReadRepository
+	scenarioIterationReadRepository repositories.ScenarioIterationReadLegacyRepository
 	OrganizationIdOfContext         func() (string, error)
 	enforceSecurity                 security.EnforceSecurityScenario
 	scenarioPublisher               scenarios.ScenarioPublisher
