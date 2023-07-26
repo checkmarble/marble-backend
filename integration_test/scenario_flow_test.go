@@ -61,8 +61,6 @@ func TestScenarioEndToEnd(t *testing.T) {
 
 	// Create a pair of decision and check that the outcome matches the expectation
 	createDecisions(t, dataModel.Tables["transactions"], usecasesWithCreds, organizationId, scenarioId, logger)
-
-	t.Fatalf("bla")
 }
 
 func setupOrgAndCreds(ctx context.Context, t *testing.T) (models.Credentials, models.DataModel) {

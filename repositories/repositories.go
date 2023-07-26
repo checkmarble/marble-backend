@@ -43,7 +43,7 @@ func NewQueryBuilder() squirrel.StatementBuilderType {
 func NewRepositories(
 	configuration models.GlobalConfiguration,
 	marbleJwtSigningKey *rsa.PrivateKey,
-	firebaseClient auth.Client,
+	firebaseClient *auth.Client,
 	marbleConnectionPool *pgxpool.Pool,
 	appLogger *slog.Logger,
 	scenarioIterationReadRepository ScenarioIterationReadRepository,
