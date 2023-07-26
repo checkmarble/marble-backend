@@ -5,9 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
-	"marble/marble-backend/models/ast"
 	"marble/marble-backend/repositories/dbmodels"
 	"marble/marble-backend/utils"
 
@@ -110,7 +108,7 @@ func (r *PGRepository) CreateScenarioIterationRule(ctx context.Context, orgID st
 	}
 
 	var err error
-	dbCreateRuleInput.FormulaAstExpression, err = serializeFormulaAstExpression(rule.FormulaAstExpression)
+	dbCreateRuleInput.FormulaAstExpression, err = dbmodels.SerializeFormulaAstExpression(rule.FormulaAstExpression)
 	if err != nil {
 		return models.Rule{}, fmt.Errorf("unable to marshal expression formula: %w", err)
 	}
@@ -210,7 +208,7 @@ func (r *PGRepository) createScenarioIterationRules(ctx context.Context, tx pgx.
 			return nil, fmt.Errorf("unable to marshal rule formula: %w", err)
 		}
 
-		formulaAstExpression, err := serializeFormulaAstExpression(rule.FormulaAstExpression)
+		formulaAstExpression, err := dbmodels.SerializeFormulaAstExpression(rule.FormulaAstExpression)
 		if err != nil {
 			return nil, fmt.Errorf("unable to marshal rule formula: %w", err)
 		}
@@ -277,11 +275,11 @@ func (r *PGRepository) UpdateScenarioIterationRule(ctx context.Context, orgID st
 		dbUpdateRuleInput.Formula = &formulaBytes
 	}
 
-	serializedFormulaAstExpression, err := serializeFormulaAstExpression(rule.FormulaAstExpression)
+	var err error
+	dbUpdateRuleInput.FormulaAstExpression, err = dbmodels.SerializeFormulaAstExpression(rule.FormulaAstExpression)
 	if err != nil {
 		return models.Rule{}, fmt.Errorf("unable to marshal rule formula ast expression: %w", err)
 	}
-	dbUpdateRuleInput.FormulaAstExpression = serializedFormulaAstExpression
 
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -340,18 +338,4 @@ func (r *PGRepository) UpdateScenarioIterationRule(ctx context.Context, orgID st
 	}
 
 	return ruleDTO, err
-}
-
-func serializeFormulaAstExpression(formulaAstExpression *ast.Node) (*[]byte, error) {
-	if formulaAstExpression == nil {
-		return nil, nil
-	}
-
-	nodeDto, err := dto.AdaptNodeDto(*formulaAstExpression)
-	if err != nil {
-		return nil, fmt.Errorf("unable to marshal rule formula ast expression: %w", err)
-	}
-
-	serialized, err := json.Marshal(nodeDto)
-	return &serialized, err
 }

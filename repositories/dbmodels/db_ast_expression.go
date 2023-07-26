@@ -1,0 +1,40 @@
+package dbmodels
+
+import (
+	"encoding/json"
+	"fmt"
+	"marble/marble-backend/dto"
+	"marble/marble-backend/models/ast"
+)
+
+func SerializeFormulaAstExpression(formulaAstExpression *ast.Node) (*[]byte, error) {
+	if formulaAstExpression == nil {
+		return nil, nil
+	}
+
+	nodeDto, err := dto.AdaptNodeDto(*formulaAstExpression)
+	if err != nil {
+		return nil, fmt.Errorf("unable to marshal rule formula ast expression: %w", err)
+	}
+
+	serialized, err := json.Marshal(nodeDto)
+	return &serialized, err
+}
+
+func AdaptSerizedAstExpression(serializedAstExpression []byte) (*ast.Node, error) {
+
+	if len(serializedAstExpression) == 0 {
+		return nil, nil
+	}
+
+	var nodeDto dto.NodeDto
+	if err := json.Unmarshal(serializedAstExpression, &nodeDto); err != nil {
+		return nil, err
+	}
+
+	node, err := dto.AdaptASTNode(nodeDto)
+	if err != nil {
+		return nil, err
+	}
+	return &node, nil
+}

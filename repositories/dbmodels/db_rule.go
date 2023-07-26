@@ -1,11 +1,8 @@
 package dbmodels
 
 import (
-	"encoding/json"
 	"fmt"
-	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
-	"marble/marble-backend/models/ast"
 	"marble/marble-backend/models/operators"
 	"marble/marble-backend/utils"
 	"time"
@@ -38,19 +35,9 @@ func AdaptRule(db DBRule) (models.Rule, error) {
 		formula = &f
 	}
 
-	var formulaAstExpression *ast.Node
-
-	if len(db.FormulaAstExpression) != 0 {
-		var serialized dto.NodeDto
-		if err := json.Unmarshal(db.FormulaAstExpression, &serialized); err != nil {
-			return models.Rule{}, err
-		}
-
-		node, err := dto.AdaptASTNode(serialized)
-		if err != nil {
-			return models.Rule{}, err
-		}
-		formulaAstExpression = &node
+	formulaAstExpression, err := AdaptSerizedAstExpression(db.FormulaAstExpression)
+	if err != nil {
+		return models.Rule{}, fmt.Errorf("unable to unmarshal formula ast expression: %w", err)
 	}
 
 	return models.Rule{
