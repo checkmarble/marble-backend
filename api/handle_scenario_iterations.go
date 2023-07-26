@@ -17,12 +17,13 @@ import (
 )
 
 type APIScenarioIterationBody struct {
-	TriggerCondition     json.RawMessage            `json:"triggerCondition"`
-	Rules                []APIScenarioIterationRule `json:"rules"`
-	ScoreReviewThreshold *int                       `json:"scoreReviewThreshold"`
-	ScoreRejectThreshold *int                       `json:"scoreRejectThreshold"`
-	BatchTriggerSQL      string                     `json:"batchTriggerSql"`
-	Schedule             string                     `json:"schedule"`
+	TriggerCondition              json.RawMessage            `json:"triggerCondition"`
+	TriggerConditionAstExpression *dto.NodeDto               `json:"trigger_condition_ast_expression"`
+	Rules                         []APIScenarioIterationRule `json:"rules"`
+	ScoreReviewThreshold          *int                       `json:"scoreReviewThreshold"`
+	ScoreRejectThreshold          *int                       `json:"scoreRejectThreshold"`
+	BatchTriggerSQL               string                     `json:"batchTriggerSql"`
+	Schedule                      string                     `json:"schedule"`
 }
 
 type APIScenarioIteration struct {
@@ -70,6 +71,14 @@ func NewAPIScenarioIterationWithBody(si models.ScenarioIteration) (APIScenarioIt
 			return APIScenarioIterationWithBody{}, fmt.Errorf("unable to marshal trigger condition: %w", err)
 		}
 		body.TriggerCondition = triggerConditionBytes
+	}
+
+	if si.Body.TriggerConditionAstExpression != nil {
+		triggerDto, err := dto.AdaptNodeDto(*si.Body.TriggerConditionAstExpression)
+		if err != nil {
+			return APIScenarioIterationWithBody{}, fmt.Errorf("unable to marshal trigger condition ast expression: %w", err)
+		}
+		body.TriggerConditionAstExpression = &triggerDto
 	}
 
 	return APIScenarioIterationWithBody{
@@ -172,12 +181,20 @@ func (api *API) CreateScenarioIteration() http.HandlerFunc {
 			if input.Payload.Body.TriggerCondition != nil {
 				triggerCondition, err := operators.UnmarshalOperatorBool(*input.Payload.Body.TriggerCondition)
 				if err != nil {
-					logger.ErrorCtx(ctx, "Could not unmarshal trigger condition: \n"+err.Error())
-					http.Error(w, "", http.StatusUnprocessableEntity)
+					presentError(w, r, fmt.Errorf("could not unmarshal trigger condition: %w %w", err, models.BadParameterError))
 					return
 				}
 				createScenarioIterationInput.Body.TriggerCondition = triggerCondition
 			}
+
+			if input.Payload.Body.TriggerConditionAstExpression != nil {
+				trigger, err := dto.AdaptASTNode(*input.Payload.Body.TriggerConditionAstExpression)
+				if err != nil {
+					presentError(w, r, fmt.Errorf("could not unmarshal trigger condition ast expression: %w %w", err, models.BadParameterError))
+				}
+				createScenarioIterationInput.Body.TriggerConditionAstExpression = &trigger
+			}
+
 		}
 
 		usecase := api.usecases.NewScenarioIterationUsecase()
@@ -280,6 +297,14 @@ func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 				return
 			}
 			updateScenarioIterationInput.Body.TriggerCondition = triggerCondition
+		}
+
+		if input.Payload.Body.TriggerConditionAstExpression != nil {
+			trigger, err := dto.AdaptASTNode(*input.Payload.Body.TriggerConditionAstExpression)
+			if err != nil {
+				presentError(w, r, fmt.Errorf("could not unmarshal trigger condition ast expression: %w %w", err, models.BadParameterError))
+			}
+			updateScenarioIterationInput.Body.TriggerConditionAstExpression = &trigger
 		}
 
 		usecase := api.usecases.NewScenarioIterationUsecase()

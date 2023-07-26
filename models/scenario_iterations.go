@@ -35,12 +35,13 @@ type CreateScenarioIterationInput struct {
 }
 
 type CreateScenarioIterationBody struct {
-	TriggerCondition     operators.OperatorBool
-	Rules                []CreateRuleInput
-	ScoreReviewThreshold *int
-	ScoreRejectThreshold *int
-	BatchTriggerSQL      string
-	Schedule             string
+	TriggerCondition              operators.OperatorBool
+	TriggerConditionAstExpression *ast.Node
+	Rules                         []CreateRuleInput
+	ScoreReviewThreshold          *int
+	ScoreRejectThreshold          *int
+	BatchTriggerSQL               string
+	Schedule                      string
 }
 
 type UpdateScenarioIterationInput struct {
@@ -49,9 +50,10 @@ type UpdateScenarioIterationInput struct {
 }
 
 type UpdateScenarioIterationBody struct {
-	TriggerCondition     operators.OperatorBool
-	ScoreReviewThreshold *int
-	ScoreRejectThreshold *int
-	BatchTriggerSQL      *string
-	Schedule             *string
+	TriggerCondition              operators.OperatorBool
+	TriggerConditionAstExpression *ast.Node
+	ScoreReviewThreshold          *int
+	ScoreRejectThreshold          *int
+	BatchTriggerSQL               *string
+	Schedule                      *string
 }
