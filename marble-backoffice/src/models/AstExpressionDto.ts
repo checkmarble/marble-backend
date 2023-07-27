@@ -40,6 +40,9 @@ export const AstNodeSchema = yup.object({
   }),
 }) as yup.Schema<AstNodeDto>; // Can't use lazy schema as array().of argument in TypeScript: https://github.com/jquense/yup/issues/1190
 
+export const AstNodeSchemaNullable =
+  AstNodeSchema.nullable() as yup.Schema<AstNodeDto | null>;
+
 export function adaptAstNode(dto: AstNodeDto): AstNode {
   return {
     name: dto.name || "",
@@ -70,4 +73,9 @@ export function adapAstValidateSchemaResult(json: unknown) {
     expression: adaptAstNode(dto.expression),
     validationErrors: dto.validation_errors || [],
   };
+}
+
+export function adaptLitteralAstNode(json: unknown) : AstNode {
+  const dto = AstNodeSchema.validateSync(json);
+  return adaptAstNode(dto);
 }

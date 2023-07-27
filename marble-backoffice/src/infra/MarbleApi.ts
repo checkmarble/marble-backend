@@ -298,11 +298,15 @@ export class MarbleApi {
       ),
       body: {
         body: {
-          scoreReviewThreshold: changes?.scoreReviewThreshold,
-          scoreRejectThreshold: changes?.scoreRejectThreshold,
-          schedule: changes?.schedule,
+          trigger_condition_ast_expression:
+            changes.triggerCondition === undefined
+              ? undefined
+              : adaptAstNodeDto(changes.triggerCondition),
+          scoreReviewThreshold: changes.scoreReviewThreshold,
+          scoreRejectThreshold: changes.scoreRejectThreshold,
+          schedule: changes.schedule,
           batchTriggerSQL: changes?.batchTriggerSql,
-        }
+        },
       },
     });
   }
@@ -331,9 +335,9 @@ export class MarbleApi {
         name: changes?.name,
         description: changes?.description,
         formula_ast_expression:
-          changes.expression === undefined
+          changes.formula === undefined
             ? undefined
-            : adaptAstNodeDto(changes.expression),
+            : adaptAstNodeDto(changes.formula),
         displayOrder: changes?.displayOrder,
         scoreModifier: changes?.scoreModifier,
       },

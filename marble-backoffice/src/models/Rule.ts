@@ -14,7 +14,7 @@ export interface Rule {
 export interface UpdateRule {
   name?: string;
   description?: string;
-  expression?: AstNode;
+  formula?: AstNode;
   displayOrder?: number;
   scoreModifier?: number;
 }

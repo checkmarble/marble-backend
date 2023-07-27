@@ -1,10 +1,12 @@
+import { type AstNode } from "./AstExpression";
+
 export interface Iteration {
   iterationId: string;
   scenarioId: string;
   version: number | null;
   createdAt: Date;
   updatedAt: Date;
-  triggerCondition: string;
+  triggerCondition: AstNode | null;
   // rules : Rule[];
   scoreReviewThreshold: number | null;
   scoreRejectThreshold: number | null;
@@ -13,7 +15,7 @@ export interface Iteration {
 }
 
 export interface UpdateIteration {
-  // triggerCondition: dto.body.triggerCondition || "",
+  triggerCondition?: AstNode;
   scoreReviewThreshold?: number;
   scoreRejectThreshold?: number;
   schedule?: string;

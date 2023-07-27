@@ -1,6 +1,11 @@
 import * as yup from "yup";
 import { adaptDtoWithYup } from "@/infra/adaptDtoWithYup";
 import type { Iteration } from "./Iteration";
+import {
+  AstNodeSchemaNullable,
+  adaptAstNode,
+} from "./AstExpressionDto";
+import { RuleSchema } from "./RuleDto";
 
 const IterationSchema = yup.object({
   id: yup.string().required(),
@@ -10,8 +15,8 @@ const IterationSchema = yup.object({
   updatedAt: yup.date().required(),
 
   body: yup.object({
-    triggerCondition: yup.string().defined().nullable(),
-    //rules
+    trigger_condition_ast_expression: AstNodeSchemaNullable,
+    rules: yup.array().defined().of(RuleSchema),
     scoreReviewThreshold: yup.number().defined().nullable(),
     scoreRejectThreshold: yup.number().defined().nullable(),
     batchTriggerSql: yup.string().defined(),
@@ -28,7 +33,10 @@ export function adaptIteration(json: unknown): Iteration {
     version: dto.version,
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt,
-    triggerCondition: dto.body.triggerCondition || "",
+    triggerCondition:
+      dto.body.trigger_condition_ast_expression == null
+        ? null
+        : adaptAstNode(dto.body.trigger_condition_ast_expression),
     scoreReviewThreshold: dto.body.scoreReviewThreshold,
     scoreRejectThreshold: dto.body.scoreRejectThreshold,
     batchTriggerSql: dto.body.batchTriggerSql,
