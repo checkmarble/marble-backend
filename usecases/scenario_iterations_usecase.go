@@ -19,6 +19,9 @@ type ScenarioIterationUsecase struct {
 
 func (usecase *ScenarioIterationUsecase) ListScenarioIterations(filters models.GetScenarioIterationFilters) ([]models.ScenarioIteration, error) {
 	organizationId, err := usecase.organizationIdOfContext()
+	if err != nil {
+		return nil, err
+	}
 	scenarioIterations, err := usecase.scenarioIterationsReadRepository.ListScenarioIterations(nil, organizationId, filters)
 	if err != nil {
 		return nil, err

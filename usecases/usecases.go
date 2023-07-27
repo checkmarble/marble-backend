@@ -55,7 +55,7 @@ func (usecases *Usecases) NewDecisionUsecase() DecisionUsecase {
 		decisionRepository:              usecases.Repositories.DecisionRepository,
 		datamodelRepository:             usecases.Repositories.DataModelRepository,
 		scenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,
-		scenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadLegacyRepository,
+		scenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
 		customListRepository:            usecases.Repositories.CustomListRepository,
 		evaluateRuleAstExpression:       usecases.NewEvaluateRuleAstExpression(),
 	}
@@ -97,7 +97,7 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 			usecases.Repositories.ScenarioReadRepository,
 			usecases.Repositories.ScenarioPublicationRepository,
 			usecases.Repositories.ScenarioIterationWriteRepository,
-			usecases.Repositories.ScenarioIterationReadLegacyRepository,
+			usecases.Repositories.ScenarioIterationReadRepository,
 		),
 		PopulateOrganizationSchema: usecases.NewPopulateOrganizationSchema(),
 	}
@@ -112,7 +112,7 @@ func (usecases *Usecases) NewScenarioIterationRuleUsecase() ScenarioIterationRul
 func (usecases *Usecases) NewScheduledExecutionUsecase() ScheduledExecutionUsecase {
 	return ScheduledExecutionUsecase{
 		scenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,
-		scenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadLegacyRepository,
+		scenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
 		scheduledExecutionRepository:    usecases.Repositories.ScheduledExecutionRepository,
 		transactionFactory:              usecases.Repositories.TransactionFactory,
 		orgTransactionFactory:           usecases.NewOrgTransactionFactory(),

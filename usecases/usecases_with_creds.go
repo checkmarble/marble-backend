@@ -70,14 +70,14 @@ func (usecases *UsecasesWithCreds) NewScenarioPublicationUsecase() ScenarioPubli
 		transactionFactory:              usecases.Repositories.TransactionFactory,
 		scenarioPublicationsRepository:  usecases.Repositories.ScenarioPublicationRepository,
 		scenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,
-		scenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadLegacyRepository,
+		scenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
 		OrganizationIdOfContext:         usecases.OrganizationIdOfContext,
 		enforceSecurity:                 usecases.NewEnforceScenarioSecurity(),
 		scenarioPublisher: scenarios.NewScenarioPublisher(
 			usecases.Repositories.ScenarioPublicationRepository,
 			usecases.Repositories.ScenarioReadRepository,
 			usecases.Repositories.ScenarioWriteRepository,
-			usecases.Repositories.ScenarioIterationReadLegacyRepository,
+			usecases.Repositories.ScenarioIterationReadRepository,
 		),
 	}
 }
