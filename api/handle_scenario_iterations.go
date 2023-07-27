@@ -104,7 +104,7 @@ func (api *API) ListScenarioIterations() http.HandlerFunc {
 		logger := api.logger.With(slog.String("scenarioId", input.ScenarioID), slog.String("orgId", orgID))
 
 		options := &utils.PtrToOptions{OmitZero: true}
-		usecase := api.usecases.NewScenarioIterationUsecase()
+		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
 		scenarioIterations, err := usecase.ListScenarioIterations(models.GetScenarioIterationFilters{
 			OrganizationId: orgID,
 			ScenarioID:     utils.PtrTo(input.ScenarioID, options),
@@ -198,7 +198,7 @@ func (api *API) CreateScenarioIteration() http.HandlerFunc {
 
 		}
 
-		usecase := api.usecases.NewScenarioIterationUsecase()
+		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
 		si, err := usecase.CreateScenarioIteration(ctx, orgID, createScenarioIterationInput)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Error creating scenario iteration: \n"+err.Error())
@@ -237,7 +237,7 @@ func (api *API) GetScenarioIteration() http.HandlerFunc {
 		input := ctx.Value(httpin.Input).(*GetScenarioIterationInput)
 		logger := api.logger.With(slog.String("scenarioIterationId", input.ScenarioIterationID), slog.String("orgId", orgID))
 
-		usecase := api.usecases.NewScenarioIterationUsecase()
+		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
 		si, err := usecase.GetScenarioIteration(input.ScenarioIterationID)
 		if errors.Is(err, models.NotFoundInRepositoryError) {
 			http.Error(w, "", http.StatusNotFound)
@@ -308,7 +308,7 @@ func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 			updateScenarioIterationInput.Body.TriggerConditionAstExpression = &trigger
 		}
 
-		usecase := api.usecases.NewScenarioIterationUsecase()
+		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
 		updatedSI, err := usecase.UpdateScenarioIteration(ctx, orgID, updateScenarioIterationInput)
 		if errors.Is(err, models.ErrScenarioIterationNotDraft) {
 			logger.WarnCtx(ctx, "Cannot update scenario iteration that is not in draft state: \n"+err.Error())

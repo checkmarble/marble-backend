@@ -37,10 +37,11 @@ var SelectScenarioIterationColumn = utils.ColumnList[DBScenarioIteration]()
 
 func AdaptScenarioIteration(dto DBScenarioIteration) (models.ScenarioIteration, error) {
 	scenarioIteration := models.ScenarioIteration{
-		ID:         dto.ID,
-		ScenarioID: dto.ScenarioID,
-		CreatedAt:  dto.CreatedAt,
-		UpdatedAt:  dto.UpdatedAt,
+		ID:             dto.ID,
+		OrganizationId: dto.OrgID,
+		ScenarioID:     dto.ScenarioID,
+		CreatedAt:      dto.CreatedAt,
+		UpdatedAt:      dto.UpdatedAt,
 		Body: models.ScenarioIterationBody{
 			BatchTriggerSQL: dto.BatchTriggerSQL,
 			Schedule:        dto.Schedule,

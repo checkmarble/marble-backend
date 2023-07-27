@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
+	"marble/marble-backend/usecases/security"
 
 	"github.com/adhocore/gronx"
 )
@@ -12,14 +13,31 @@ import (
 type ScenarioIterationUsecase struct {
 	scenarioIterationsReadRepository  repositories.ScenarioIterationReadRepository
 	scenarioIterationsWriteRepository repositories.ScenarioIterationWriteRepository
+	enforceSecurity                   security.EnforceSecurityScenario
 }
 
 func (usecase *ScenarioIterationUsecase) ListScenarioIterations(filters models.GetScenarioIterationFilters) ([]models.ScenarioIteration, error) {
-	return usecase.scenarioIterationsReadRepository.ListScenarioIterations(nil, filters)
+	scenarioIterations, err := usecase.scenarioIterationsReadRepository.ListScenarioIterations(nil, filters)
+	if err != nil {
+		return nil, err
+	}
+	for _, si := range scenarioIterations {
+		if err := usecase.enforceSecurity.ReadScenarioIteration(si); err != nil {
+			return nil, err
+		}
+	}
+	return scenarioIterations, nil
 }
 
 func (usecase *ScenarioIterationUsecase) GetScenarioIteration(scenarioIterationID string) (models.ScenarioIteration, error) {
-	return usecase.scenarioIterationsReadRepository.GetScenarioIteration(nil, scenarioIterationID)
+	si, err := usecase.scenarioIterationsReadRepository.GetScenarioIteration(nil, scenarioIterationID)
+	if err != nil {
+		return models.ScenarioIteration{}, err
+	}
+	if err := usecase.enforceSecurity.ReadScenarioIteration(si); err != nil {
+		return models.ScenarioIteration{}, err
+	}
+	return si, nil
 }
 
 func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(ctx context.Context, organizationID string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error) {

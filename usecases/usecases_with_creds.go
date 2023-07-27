@@ -40,6 +40,14 @@ func (usecases *UsecasesWithCreds) NewScenarioUsecase() ScenarioUsecase {
 	}
 }
 
+func (usecases *UsecasesWithCreds) NewScenarioIterationUsecase() ScenarioIterationUsecase {
+	return ScenarioIterationUsecase{
+		scenarioIterationsReadRepository:  usecases.Repositories.ScenarioIterationReadRepository,
+		scenarioIterationsWriteRepository: usecases.Repositories.ScenarioIterationWriteRepository,
+		enforceSecurity:                   usecases.NewEnforceScenarioSecurity(),
+	}
+}
+
 func (usecases *UsecasesWithCreds) AstExpressionUsecase() AstExpressionUsecase {
 	return AstExpressionUsecase{
 		EnforceSecurity:                       usecases.NewEnforceSecurity(),
