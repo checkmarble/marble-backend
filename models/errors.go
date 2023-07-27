@@ -26,11 +26,11 @@ var (
 )
 
 var (
-	ErrScenarioIterationNotDraft                          = errors.New("scenario iteration is not a draft")
-	ErrScenarioIterationNotValid                          = errors.New("scenario iteration is not valid for publication")
-	ScenarioHasNoLiveVersionError                         = errors.New("scenario has no live version")
-	ScenarioTriggerTypeAndTiggerObjectTypeMismatchError   = errors.New("scenario's trigger_type and provided trigger_object type are different")
-	ScenarioTriggerConditionAndTriggerObjectMismatchError = errors.New("trigger_object does not match the scenario's trigger conditions")
+	ErrScenarioIterationNotDraft                          = fmt.Errorf("scenario iteration is not a draft %w", BadParameterError)
+	ErrScenarioIterationNotValid                          = fmt.Errorf("scenario iteration is not valid for publication %w", BadParameterError)
+	ScenarioHasNoLiveVersionError                         = fmt.Errorf("scenario has no live version %w", BadParameterError)
+	ScenarioTriggerTypeAndTiggerObjectTypeMismatchError   = fmt.Errorf("scenario's trigger_type and provided trigger_object type are different %w", BadParameterError)
+	ScenarioTriggerConditionAndTriggerObjectMismatchError = fmt.Errorf("trigger_object does not match the scenario's trigger conditions %w", BadParameterError)
 )
 
 var (
