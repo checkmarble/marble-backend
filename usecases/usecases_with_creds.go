@@ -33,7 +33,7 @@ func (usecases *UsecasesWithCreds) NewEnforceScenarioSecurity() security.Enforce
 func (usecases *UsecasesWithCreds) NewScenarioUsecase() ScenarioUsecase {
 	return ScenarioUsecase{
 		transactionFactory:      usecases.Repositories.TransactionFactory,
-		OrganizationIdOfContext: usecases.OrganizationIdOfContext,
+		organizationIdOfContext: usecases.OrganizationIdOfContext,
 		enforceSecurity:         usecases.NewEnforceScenarioSecurity(),
 		scenarioReadRepository:  usecases.Repositories.ScenarioReadRepository,
 		scenarioWriteRepository: usecases.Repositories.ScenarioWriteRepository,
@@ -45,6 +45,7 @@ func (usecases *UsecasesWithCreds) NewScenarioIterationUsecase() ScenarioIterati
 		scenarioIterationsReadRepository:  usecases.Repositories.ScenarioIterationReadRepository,
 		scenarioIterationsWriteRepository: usecases.Repositories.ScenarioIterationWriteRepository,
 		enforceSecurity:                   usecases.NewEnforceScenarioSecurity(),
+		organizationIdOfContext:           usecases.OrganizationIdOfContext,
 	}
 }
 

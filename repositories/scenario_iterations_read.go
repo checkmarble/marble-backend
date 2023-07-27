@@ -24,7 +24,7 @@ type ScenarioIterationReadRepository interface {
 	GetScenarioIteration(tx Transaction, scenarioIterationID string) (
 		models.ScenarioIteration, error,
 	)
-	ListScenarioIterations(tx Transaction, filters models.GetScenarioIterationFilters) (
+	ListScenarioIterations(tx Transaction, organizationId string, filters models.GetScenarioIterationFilters) (
 		[]models.ScenarioIteration, error,
 	)
 }
@@ -48,11 +48,12 @@ func (repository *ScenarioIterationReadRepositoryPostgresql) GetScenarioIteratio
 
 func (repository *ScenarioIterationReadRepositoryPostgresql) ListScenarioIterations(
 	tx Transaction,
+	organizationId string,
 	filters models.GetScenarioIterationFilters,
 ) ([]models.ScenarioIteration, error) {
 	pgTx := repository.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	sql := selectScenarioIterations().Where(squirrel.Eq{"si.org_id": filters.OrganizationId})
+	sql := selectScenarioIterations().Where(squirrel.Eq{"si.org_id": organizationId})
 	if filters.ScenarioID != nil {
 		sql = sql.Where(squirrel.Eq{"si.scenario_id": *filters.ScenarioID})
 	}

@@ -27,8 +27,7 @@ type ScenarioIterationBody struct {
 }
 
 type GetScenarioIterationFilters struct {
-	OrganizationId string
-	ScenarioID     *string
+	ScenarioID *string
 }
 
 type CreateScenarioIterationInput struct {

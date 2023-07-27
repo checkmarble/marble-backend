@@ -21,39 +21,17 @@ type ListScenarioIterationsInput struct {
 
 func (api *API) ListScenarioIterations() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
+		input := r.Context().Value(httpin.Input).(*ListScenarioIterationsInput)
 
-		orgID, err := utils.OrgIDFromCtx(ctx, r)
+		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
+		scenarioIterations, err := usecase.ListScenarioIterations(models.GetScenarioIterationFilters{
+			ScenarioID: utils.PtrTo(input.ScenarioID, &utils.PtrToOptions{OmitZero: true}),
+		})
 		if presentError(w, r, err) {
 			return
 		}
+		PresentModel(w, utils.Map(scenarioIterations, dto.AdaptScenarioIterationDto))
 
-		input := ctx.Value(httpin.Input).(*ListScenarioIterationsInput)
-		logger := api.logger.With(slog.String("scenarioId", input.ScenarioID), slog.String("orgId", orgID))
-
-		options := &utils.PtrToOptions{OmitZero: true}
-		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
-		scenarioIterations, err := usecase.ListScenarioIterations(models.GetScenarioIterationFilters{
-			OrganizationId: orgID,
-			ScenarioID:     utils.PtrTo(input.ScenarioID, options),
-		})
-		if err != nil {
-			logger.ErrorCtx(ctx, "Error Listing scenario iterations: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
-
-		apiScenarioIterations := make([]dto.ScenarioIterationDto, len(scenarioIterations))
-		for i, si := range scenarioIterations {
-			apiScenarioIterations[i] = dto.AdaptScenarioIterationDto(si)
-		}
-
-		err = json.NewEncoder(w).Encode(apiScenarioIterations)
-		if err != nil {
-			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
 	}
 }
 
@@ -155,39 +133,19 @@ type GetScenarioIterationInput struct {
 
 func (api *API) GetScenarioIteration() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
+		input := r.Context().Value(httpin.Input).(*GetScenarioIterationInput)
 
-		orgID, err := utils.OrgIDFromCtx(ctx, r)
+		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
+		si, err := usecase.GetScenarioIteration(input.ScenarioIterationID)
 		if presentError(w, r, err) {
 			return
 		}
 
-		input := ctx.Value(httpin.Input).(*GetScenarioIterationInput)
-		logger := api.logger.With(slog.String("scenarioIterationId", input.ScenarioIterationID), slog.String("orgId", orgID))
-
-		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
-		si, err := usecase.GetScenarioIteration(input.ScenarioIterationID)
-		if errors.Is(err, models.NotFoundInRepositoryError) {
-			http.Error(w, "", http.StatusNotFound)
-			return
-		} else if err != nil {
-			logger.ErrorCtx(ctx, "Error getting scenario iteration: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
+		scenarioIterationDto, err := dto.AdaptScenarioIterationWithBodyDto(si)
+		if presentError(w, r, err) {
 			return
 		}
-
-		apiScenarioIterationWithBody, err := dto.AdaptScenarioIterationWithBodyDto(si)
-		if err != nil {
-			logger.ErrorCtx(ctx, "Error marshalling scenario iteration: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
-		err = json.NewEncoder(w).Encode(apiScenarioIterationWithBody)
-		if err != nil {
-			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
+		PresentModel(w, scenarioIterationDto)
 	}
 }
 

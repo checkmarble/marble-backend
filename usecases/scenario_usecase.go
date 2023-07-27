@@ -9,14 +9,14 @@ import (
 
 type ScenarioUsecase struct {
 	transactionFactory      repositories.TransactionFactory
-	OrganizationIdOfContext func() (string, error)
+	organizationIdOfContext func() (string, error)
 	enforceSecurity         security.EnforceSecurityScenario
 	scenarioReadRepository  repositories.ScenarioReadRepository
 	scenarioWriteRepository repositories.ScenarioWriteRepository
 }
 
 func (usecase *ScenarioUsecase) ListScenarios() ([]models.Scenario, error) {
-	organizationId, err := usecase.OrganizationIdOfContext()
+	organizationId, err := usecase.organizationIdOfContext()
 	if err != nil {
 		return nil, err
 	}

@@ -11,13 +11,15 @@ import (
 )
 
 type ScenarioIterationUsecase struct {
+	organizationIdOfContext           func() (string, error)
 	scenarioIterationsReadRepository  repositories.ScenarioIterationReadRepository
 	scenarioIterationsWriteRepository repositories.ScenarioIterationWriteRepository
 	enforceSecurity                   security.EnforceSecurityScenario
 }
 
 func (usecase *ScenarioIterationUsecase) ListScenarioIterations(filters models.GetScenarioIterationFilters) ([]models.ScenarioIteration, error) {
-	scenarioIterations, err := usecase.scenarioIterationsReadRepository.ListScenarioIterations(nil, filters)
+	organizationId, err := usecase.organizationIdOfContext()
+	scenarioIterations, err := usecase.scenarioIterationsReadRepository.ListScenarioIterations(nil, organizationId, filters)
 	if err != nil {
 		return nil, err
 	}
