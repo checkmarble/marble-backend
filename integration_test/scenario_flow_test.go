@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/exp/slog"
 )
 
@@ -70,20 +71,14 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T) (models.Credentials, mo
 		Name:         "Test org n°42",
 		DatabaseName: "test_org_42",
 	})
-	if err != nil {
-		t.Fatalf("Could not create organization: %s", err)
-	}
+	assert.NoError(t, err, "Could not create organization")
 	organizationId := organization.ID
 	fmt.Println("Created organization", organizationId)
 
 	// Check that there are no users on the organization yet
 	users, err := orgUsecase.GetUsersOfOrganization(organizationId)
-	if err != nil {
-		t.Fatalf("Could not get users of organization: %s", err)
-	}
-	if len(users) != 0 {
-		t.Fatalf("Expected 0 users, got %d", len(users))
-	}
+	assert.NoError(t, err, "Could not get users of organization")
+	assert.Equal(t, 0, len(users), "Expected 0 users, got %d", len(users))
 
 	// Create a new admin user on the organization
 	userUsecase := testUsecases.NewUserUseCase()
@@ -92,9 +87,7 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T) (models.Credentials, mo
 		OrganizationId: organizationId,
 		Role:           models.ADMIN,
 	})
-	if err != nil {
-		t.Fatalf("Could not create user: %s", err)
-	}
+	assert.NoError(t, err, "Could not create user")
 	adminUserId := adminUser.UserId
 	fmt.Println("Created admin user", adminUserId)
 
@@ -109,9 +102,7 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T) (models.Credentials, mo
 
 	// Create a data model for the organization
 	dataModel, err := orgUsecase.ReplaceDataModel(organizationId, newDataModel())
-	if err != nil {
-		t.Fatalf("Could not create data model: %s", err)
-	}
+	assert.NoError(t, err, "Could not create data model")
 	fmt.Println("Created data model")
 
 	return creds, dataModel
@@ -186,9 +177,7 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 		Description:       "Test scenario description",
 		TriggerObjectType: "transactions",
 	})
-	if err != nil {
-		t.Fatalf("Could not create scenario: %s", err)
-	}
+	assert.NoError(t, err, "Could not create scenario")
 	scenarioId := scenario.ID
 	fmt.Println("Created scenario", scenarioId)
 
@@ -199,9 +188,7 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 		Description:       "Test scenario description",
 		TriggerObjectType: "transactions",
 	})
-	if err == nil {
-		t.Fatalf("Expected error creating scenario on wrong organization, got nil")
-	}
+	assert.Error(t, err, "Expected error creating scenario on wrong organization, got nil")
 
 	// Now, create a scenario iteration, with a rule
 	scenarioIterationUsecase := usecasesWithCreds.NewScenarioIterationUsecase()
@@ -226,9 +213,7 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 			Schedule:             "*/10 * * * *",
 		},
 	})
-	if err != nil {
-		t.Fatalf("Could not create scenario iteration: %s", err)
-	}
+	assert.NoError(t, err, "Could not create scenario iteration")
 	scenarioIterationId := scenarioIteration.ID
 	fmt.Println("Created scenario iteration", scenarioIterationId)
 
@@ -240,12 +225,12 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 			ScoreReviewThreshold: &threshold,
 		},
 	})
-	if err != nil {
-		t.Fatalf("Could not update scenario iteration: %s", err)
-	}
-	if *updatedScenarioIteration.Body.ScoreReviewThreshold != threshold {
-		t.Fatalf("Expected score review threshold to be %d, got %d", threshold, *updatedScenarioIteration.Body.ScoreReviewThreshold)
-	}
+	assert.NoError(t, err, "Could not update scenario iteration")
+	assert.Equal(
+		t,
+		threshold, *updatedScenarioIteration.Body.ScoreReviewThreshold,
+		"Expected score review threshold to be %d, got %d", threshold, *updatedScenarioIteration.Body.ScoreReviewThreshold,
+	)
 
 	// Publish the iteration to make it live
 	scenarioPublicationUsecase := usecasesWithCreds.NewScenarioPublicationUsecase()
@@ -253,22 +238,15 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 		ScenarioIterationId: scenarioIterationId,
 		PublicationAction:   models.Publish,
 	})
-	if err != nil {
-		t.Fatalf("Could not publish scenario iteration: %s", err)
-	}
-	if len(scenarioPublications) != 1 {
-		t.Fatalf("Expected 1 scenario publication, got %d", len(scenarioPublications))
-	}
+	assert.NoError(t, err, "Could not publish scenario iteration")
+	assert.Equal(t, 1, len(scenarioPublications), "Expected 1 scenario publication, got %d", len(scenarioPublications))
 	fmt.Println("Published scenario iteration")
 
 	// Now get the iteration and check it has a version
 	scenarioIteration, err = scenarioIterationUsecase.GetScenarioIteration(usecasesWithCreds.Context, organizationId, scenarioIterationId)
-	if err != nil {
-		t.Fatalf("Could not get scenario iteration: %s", err)
-	}
-	if scenarioIteration.Version == nil || *scenarioIteration.Version != 1 {
-		t.Fatal("Expected scenario iteration to have version 1\n")
-	}
+	assert.NoError(t, err, "Could not get scenario iteration")
+	assert.NotNil(t, scenarioIteration.Version, "Expected scenario iteration to have a version")
+	assert.Equal(t, 1, *scenarioIteration.Version, "Expected scenario iteration to have version 1, got %d", *scenarioIteration.Version)
 	fmt.Printf("Updated scenario iteration %+v\n", scenarioIteration.Body)
 
 	return scenarioId
@@ -287,14 +265,10 @@ func ingestAccounts(t *testing.T, table models.Table, ussecases usecases.Usecase
 		"name": "Approve test account"
 	}`)
 	accountPayload1, err := app.ParseToDataModelObject(table, accountPayloadJson1)
-	if err != nil {
-		t.Fatalf("Could not parse payload: %s", err)
-	}
+	assert.NoError(t, err, "Could not parse payload")
 	accountPayload2, _ := app.ParseToDataModelObject(table, accountPayloadJson2)
 	err = ingestionUsecase.IngestObjects(organizationId, []models.PayloadReader{accountPayload1, accountPayload2}, table, logger)
-	if err != nil {
-		t.Fatalf("Could not ingest data: %s", err)
-	}
+	assert.NoError(t, err, "Could not ingest data")
 }
 
 func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecases.UsecasesWithCreds, organizationId, scenarioId string, logger *slog.Logger) {
@@ -315,9 +289,8 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 	}
 	ClientObject := models.ClientObject{TableName: table.Name, Data: triggerObjectMap}
 	transactionPayload, err := app.ParseToDataModelObject(table, transactionPayloadJson)
-	if err != nil {
-		t.Fatalf("Could not parse payload: %s", err)
-	}
+	assert.NoError(t, err, "Could not parse payload")
+
 	// Then, create the decision
 	rejectDecision, err := decisionUsecase.CreateDecision(usecasesWithCreds.Context, models.CreateDecisionInput{
 		ScenarioID:              scenarioId,
@@ -325,12 +298,8 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		OrganizationID:          organizationId,
 		PayloadStructWithReader: transactionPayload,
 	}, logger)
-	if err != nil {
-		t.Fatalf("Could not create decision: %s", err)
-	}
-	if rejectDecision.Outcome != models.Reject {
-		t.Fatalf("Expected decision to be Reject, got %s", rejectDecision.Outcome)
-	}
+	assert.NoError(t, err, "Could not create decision")
+	assert.Equal(t, models.Reject, rejectDecision.Outcome, "Expected decision to be Reject, got %s", rejectDecision.Outcome)
 	fmt.Println("Created decision", rejectDecision.DecisionId)
 
 	// Create a decision [APROVE]
@@ -347,9 +316,8 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 	}
 	ClientObject = models.ClientObject{TableName: table.Name, Data: triggerObjectMap}
 	transactionPayload, err = app.ParseToDataModelObject(table, transactionPayloadJson)
-	if err != nil {
-		t.Fatalf("Could not parse payload: %s", err)
-	}
+	assert.NoError(t, err, "Could not parse payload")
+
 	// Then, create the decision
 	approveDecision, err := decisionUsecase.CreateDecision(usecasesWithCreds.Context, models.CreateDecisionInput{
 		ScenarioID:              scenarioId,
@@ -357,11 +325,7 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		OrganizationID:          organizationId,
 		PayloadStructWithReader: transactionPayload,
 	}, logger)
-	if err != nil {
-		t.Fatalf("Could not create decision: %s", err)
-	}
-	if approveDecision.Outcome != models.Approve {
-		t.Fatalf("Expected decision to be Approve, got %s", approveDecision.Outcome)
-	}
+	assert.NoError(t, err, "Could not create decision")
+	assert.Equal(t, models.Approve, approveDecision.Outcome, "Expected decision to be Approve, got %s", approveDecision.Outcome)
 	fmt.Println("Created decision", approveDecision.DecisionId)
 }
