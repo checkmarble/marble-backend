@@ -10,7 +10,7 @@ import (
 )
 
 type FireBaseTokenRepository struct {
-	firebaseClient auth.Client
+	firebaseClient *auth.Client
 }
 
 func (repo *FireBaseTokenRepository) VerifyFirebaseToken(ctx context.Context, firebaseToken string) (models.FirebaseIdentity, error) {

@@ -1,30 +1,24 @@
-package pg_repository
+package integration_test
 
 import (
 	"context"
 	"fmt"
 	"log"
 	"marble/marble-backend/infra"
+	"marble/marble-backend/models"
+	"marble/marble-backend/pg_repository"
 	"marble/marble-backend/repositories"
+	"marble/marble-backend/usecases"
+	"marble/marble-backend/utils"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
 	"golang.org/x/exp/slog"
 )
-
-type testParams struct {
-	repository         *PGRepository
-	scenarioRepository repositories.ScenarioReadRepository
-	logger             *slog.Logger
-	testIds            map[string]string
-}
-
-var globalTestParams testParams
 
 const (
 	testDbLifetime = 120 // seconds
@@ -35,20 +29,10 @@ const (
 	testPort       = "5432"
 )
 
-// func stringBuilder(format string, args map[string]string) string {
-// 	var msg bytes.Buffer
-
-// 	tmpl, err := template.New("").Parse(format)
-
-// 	if err != nil {
-// 		return format
-// 	}
-
-// 	tmpl.Execute(&msg, args)
-// 	return msg.String()
-// }
+var testUsecases usecases.Usecases
 
 func TestMain(m *testing.M) {
+	ctx := context.Background()
 	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
 	pool, err := dockertest.NewPool("")
 	if err != nil {
@@ -92,7 +76,7 @@ func TestMain(m *testing.M) {
 
 	if err = pool.Retry(func() error {
 		log.Printf("DB connection pool created. Stats: %+v\n", testDbPool.Stat())
-		err = testDbPool.Ping(context.Background())
+		err = testDbPool.Ping(ctx)
 		if err != nil {
 			log.Printf("Could not ping database: %s", err)
 			return err
@@ -102,98 +86,39 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not connect to db: %s", err)
 	}
 
-	pgConfig := PGConfig{ConnectionString: databaseURL}
+	pgConfig := pg_repository.PGConfig{ConnectionString: databaseURL}
 	logger := slog.New(slog.NewTextHandler(os.Stderr))
-	RunMigrations("DEV", pgConfig, logger)
+	pg_repository.RunMigrations("DEV", pgConfig, logger)
 
 	// Need to declare this after the migrations, to have the correct search path
-	anotherPool, err := infra.NewPostgresConnectionPool(pgConfig.GetConnectionString("DEV"))
+	dbPool, err := infra.NewPostgresConnectionPool(pgConfig.GetConnectionString("DEV"))
 	if err != nil {
 		log.Fatalf("Could not create connection pool: %s", err)
 	}
-	TestRepo, err := New(anotherPool)
 
-	// insertDataSQL := `
-	// INSERT INTO companies (
-	// 	object_id,
-	// 	updated_at,
-	// 	name
-	//   )
-	// VALUES(
-	// 	'{{.CompanyId}}',
-	// 	'2021-01-01T00:00:00Z',
-	// 	'Test company 1'
-	// );
-
-	// INSERT INTO accounts (
-	// 	object_id,
-	// 	updated_at,
-	// 	name,
-	// 	currency,
-	// 	company_id
-	//   )
-	// VALUES(
-	// 	'{{.BankAccountId}}',
-	// 	'2021-01-01T00:00:00Z',
-	// 	'SHINE',
-	// 	'EUR',
-	// 	'{{.CompanyId}}'
-	//   );
-
-	// INSERT INTO transactions (
-	// 	object_id,
-	// 	account_id,
-	// 	updated_at,
-	// 	amount,
-	// 	title
-	//   )
-	// VALUES(
-	// 	'{{.TransactionId}}',
-	// 	'{{.BankAccountId}}',
-	// 	'2021-01-01T00:00:00Z',
-	// 	10,
-	// 	'AMAZON'
-	//   );
-
-	// INSERT INTO organizations (
-	// 	id,
-	// 	name,
-	// 	database_name
-	// )
-	// VALUES(
-	// 	'{{.OrganizationId}}',
-	// 	'Organization 1',
-	// 	'marble'
-	// )
-	// `
-
-	organizationId, _ := uuid.NewV4()
-	companyId, _ := uuid.NewV4()
-	bankAccountId, _ := uuid.NewV4()
-	transactionId, _ := uuid.NewV4()
-
-	testIds := map[string]string{
-		"OrganizationId": organizationId.String(),
-		"CompanyId":      companyId.String(),
-		"BankAccountId":  bankAccountId.String(),
-		"TransactionId":  transactionId.String(),
+	pgRepository, err := pg_repository.New(dbPool)
+	if err != nil {
+		panic(fmt.Errorf("error creating pg repository %w", err))
 	}
 
-	// insertDataSQL = stringBuilder(insertDataSQL, testIds)
-	// if _, err := TestRepo.db.Exec(context.Background(), insertDataSQL); err != nil {
-	// 	log.Fatalf("Could not insert test data into tables: %s", err)
-	// }
+	appContext := utils.StoreLoggerInContext(ctx, logger)
 
-	globalTestParams = testParams{
-		repository: TestRepo,
-		scenarioRepository: repositories.NewScenarioReadRepositoryPostgresql(
-			repositories.NewTransactionFactoryPosgresql(
-				nil,
-				anotherPool,
-			),
-		),
-		logger:  logger,
-		testIds: testIds,
+	repositories, err := repositories.NewRepositories(
+		models.GlobalConfiguration{},
+		nil,
+		nil,
+		dbPool,
+		utils.LoggerFromContext(appContext),
+		pgRepository,
+		pgRepository,
+		pgRepository,
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	testUsecases = usecases.Usecases{
+		Repositories: *repositories,
 	}
 
 	//Run tests
