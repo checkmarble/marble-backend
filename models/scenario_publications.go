@@ -2,7 +2,7 @@ package models
 
 import (
 	"fmt"
-	"marble/marble-backend/models/operators"
+	"marble/marble-backend/models/ast"
 	"time"
 )
 
@@ -58,12 +58,12 @@ type PublishedScenarioIteration struct {
 }
 
 type PublishedScenarioIterationBody struct {
-	TriggerCondition     operators.OperatorBool
-	Rules                []Rule
-	ScoreReviewThreshold int
-	ScoreRejectThreshold int
-	BatchTriggerSQL      string
-	Schedule             string
+	TriggerConditionAstExpression ast.Node
+	Rules                         []Rule
+	ScoreReviewThreshold          int
+	ScoreRejectThreshold          int
+	BatchTriggerSQL               string
+	Schedule                      string
 }
 
 func NewPublishedScenarioIteration(si ScenarioIteration) (PublishedScenarioIteration, error) {
@@ -83,7 +83,7 @@ func NewPublishedScenarioIteration(si ScenarioIteration) (PublishedScenarioItera
 	result.Body.ScoreReviewThreshold = *si.Body.ScoreReviewThreshold
 	result.Body.ScoreRejectThreshold = *si.Body.ScoreRejectThreshold
 	result.Body.Rules = si.Body.Rules
-	result.Body.TriggerCondition = si.Body.TriggerCondition
+	result.Body.TriggerConditionAstExpression = *si.Body.TriggerConditionAstExpression
 	result.Body.BatchTriggerSQL = si.Body.BatchTriggerSQL
 	result.Body.Schedule = si.Body.Schedule
 
@@ -103,16 +103,21 @@ func (si ScenarioIteration) IsValidForPublication() error {
 		return fmt.Errorf("Scenario iteration has no rules: \n%w", BadParameterError)
 	}
 	for _, rule := range si.Body.Rules {
-		if rule.Formula == nil || !(*rule.Formula).IsValid() {
-			return fmt.Errorf("Scenario iteration rule has invalid rules: \n%w", BadParameterError)
+		if rule.FormulaAstExpression == nil {
+			return fmt.Errorf("Scenario iteration rule has no formula ast expression %w", BadParameterError)
 		}
+		// TODO: DRY-run the ast expression
+
+		// if rule.Formula == nil || !(*rule.Formula).IsValid() {
+		// 	return fmt.Errorf("Scenario iteration rule has invalid rules: \n%w", BadParameterError)
+		// }
 	}
 
-	if si.Body.TriggerCondition == nil {
-		return fmt.Errorf("Scenario iteration has no trigger condition: \n%w", BadParameterError)
-	} else if !si.Body.TriggerCondition.IsValid() {
-		return fmt.Errorf("Scenario iteration trigger condition is invalid: \n%w", BadParameterError)
+	if si.Body.TriggerConditionAstExpression == nil {
+		return fmt.Errorf("Scenario iteration has no trigger condition ast expression%w", BadParameterError)
 	}
+
+	// TODO: validity check of si.Body.TriggerConditionAstExpression
 
 	return nil
 }

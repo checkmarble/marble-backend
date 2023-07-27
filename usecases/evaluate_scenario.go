@@ -49,17 +49,17 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 
 	// If the scenario has no live version, don't try to Eval() it, return early
 	if params.scenario.LiveVersionID == nil {
-		return models.ScenarioExecution{}, models.ScenarioHasNoLiveVersionError
+		return models.ScenarioExecution{}, errors.Join(models.ScenarioHasNoLiveVersionError, models.BadParameterError)
 	}
 
 	liveVersion, err := repositories.scenarioIterationReadRepository.GetScenarioIteration(ctx, params.scenario.OrganizationID, *params.scenario.LiveVersionID)
 	if err != nil {
-		return models.ScenarioExecution{}, fmt.Errorf("Error getting scenario iteration in eval scenar: %w", err)
+		return models.ScenarioExecution{}, fmt.Errorf("error getting scenario iteration in eval scenar: %w", err)
 	}
 
 	publishedVersion, err := models.NewPublishedScenarioIteration(liveVersion)
 	if err != nil {
-		return models.ScenarioExecution{}, fmt.Errorf("Error mapping published scenario iteration in eval scenario: %w", err)
+		return models.ScenarioExecution{}, fmt.Errorf("error mapping published scenario iteration in eval scenario: %w", err)
 	}
 
 	// Check the scenario & trigger_object's types
@@ -77,12 +77,17 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 	}
 
 	// Evaluate the trigger
-	triggerPassed, err := publishedVersion.Body.TriggerCondition.Eval(ctx, &dataAccessor)
+	triggerPassed, err := repositories.evaluateRuleAstExpression.EvaluateRuleAstExpression(
+		publishedVersion.Body.TriggerConditionAstExpression,
+		dataAccessor.organizationId,
+		dataAccessor.Payload,
+	)
+
 	if err != nil {
-		return models.ScenarioExecution{}, fmt.Errorf("Error evaluating trigger condition in eval scenario: %w", err)
+		return models.ScenarioExecution{}, fmt.Errorf("error evaluating trigger condition in eval scenario: %w", err)
 	}
 	if !triggerPassed {
-		return models.ScenarioExecution{}, fmt.Errorf("Error: scenario trigger object does not match payload %w; %w", models.BadParameterError, models.ScenarioTriggerConditionAndTriggerObjectMismatchError)
+		return models.ScenarioExecution{}, fmt.Errorf("error: scenario trigger object does not match payload %w; %w", models.BadParameterError, models.ScenarioTriggerConditionAndTriggerObjectMismatchError)
 	}
 
 	// Evaluate all rules
