@@ -18,7 +18,7 @@ import {
 } from "@/repositories";
 import { type LoadingDispatcher, showLoader } from "@/hooks/Loading";
 import { useSimpleLoader } from "@/hooks/SimpleLoader";
-import { testAst } from "./TestAst";
+import { exampleRuleInList } from "./ExampleAst";
 
 export interface AstExpressionService {
   scenarioRepository: ScenariosRepository;
@@ -108,13 +108,13 @@ export function useAstExpressionBuilder(
   );
 
   const [expressionViewModel, setExpressionViewModel] =
-    useState<ExpressionViewModel>(() => makeExpressionViewModel(testAst));
+    useState<ExpressionViewModel>(() => makeExpressionViewModel(exampleRuleInList.formula));
 
   // const expressionAstNode = useMemo(
   //   () => adaptAstNodeFromViewModel(expressionViewModel),
   //   [expressionViewModel]
   // );
-  const expressionAstNode = testAst;
+  const expressionAstNode = exampleRuleInList.formula;
 
   const editorIdentifiersLoader = useCallback(async () => {
     if (scenario === null) {

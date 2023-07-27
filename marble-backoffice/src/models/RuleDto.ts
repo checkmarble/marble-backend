@@ -1,7 +1,7 @@
 import * as yup from "yup";
 import { adaptDtoWithYup } from "@/infra/adaptDtoWithYup";
 import type { Rule } from "./Rule";
-import { type AstNodeDto, AstNodeSchema, adaptAstNode } from "./AstExpressionDto";
+import { adaptAstNode, AstNodeSchemaNullable } from "./AstExpressionDto";
 
 // {
 //     "id": "13617a88-a382-4985-9783-49053d0e8b3b",
@@ -15,14 +15,13 @@ import { type AstNodeDto, AstNodeSchema, adaptAstNode } from "./AstExpressionDto
 //     "createdAt": "2023-07-25T17:42:12.08125+02:00"
 // }
 
-const RuleSchema = yup.object({
+export const RuleSchema = yup.object({
   id: yup.string().required(),
   scenarioIterationId: yup.string().required(),
   displayOrder: yup.number().defined(),
   name: yup.string().defined(),
   description: yup.string().defined(),
-  formula_ast_expression:
-    AstNodeSchema.nullable() as yup.Schema<AstNodeDto | null>,
+  formula_ast_expression: AstNodeSchemaNullable,
   scoreModifier: yup.number().defined(),
   createdAt: yup.date().required(),
 });

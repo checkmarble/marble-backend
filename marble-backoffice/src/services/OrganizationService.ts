@@ -26,7 +26,11 @@ import {
   adaptDataModelApiResult,
   adaptDataModelDto,
 } from "@/models/DataModelDto";
-import { testAst } from "./TestAst";
+import {
+  type ExampleRule,
+  demoRules,
+  exampleTriggerCondition,
+} from "./ExampleAst";
 
 export interface OrganizationService {
   organizationRepository: OrganizationRepository;
@@ -158,27 +162,31 @@ export function useAddScenarios(
           iterationId,
           {
             scoreReviewThreshold: 20,
-            scoreRejectThreshold: 100,
-            // schedule?: string;
-            // batchTriggerSql?: string;
+            scoreRejectThreshold: 30,
+            schedule: "*/10 * * * *",
+            triggerCondition: exampleTriggerCondition,
           }
         );
 
-        // post a new rule
-        const rule = await postRule(
-          service.scenariosRepository,
-          organizationId,
-          iterationId
-        );
+        const createExampleRule = async (exampleRule: ExampleRule) => {
+          const rule = await postRule(
+            service.scenariosRepository,
+            organizationId,
+            iterationId
+          );
 
-        const updatedRule = await updateRule(
-          service.scenariosRepository,
-          organizationId,
-          rule.ruleId,
-          {
-            expression: testAst,
-          }
-        );
+          await updateRule(
+            service.scenariosRepository,
+            organizationId,
+            rule.ruleId,
+            {
+              ...exampleRule,
+            }
+          );
+        };
+
+        // post a rules
+        await Promise.all(demoRules.map(createExampleRule));
 
         await publishIteration(
           service.scenariosRepository,
@@ -186,7 +194,6 @@ export function useAddScenarios(
           iterationId
         );
 
-        console.log(JSON.stringify(updatedRule, null, 2));
         await refreshScenarios();
       };
 
