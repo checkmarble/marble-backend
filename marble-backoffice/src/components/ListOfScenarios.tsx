@@ -1,9 +1,9 @@
 import { Scenario } from "@/models";
-import { DataGrid } from "@mui/x-data-grid/DataGrid";
-import type { GridRowsProp, GridColDef } from "@mui/x-data-grid";
+import { DataGrid } from "@mui/x-data-grid/DataGrid/DataGrid";
+import type { GridRowsProp, GridColDef } from "@mui/x-data-grid/models";
 import GridCellWithHover from "./GridCellWithHover";
 import ListNoData from "./ListNoData";
-import { GridActionsCellItem } from "@mui/x-data-grid";
+import { GridActionsCellItem } from "@mui/x-data-grid/components/cell/GridActionsCellItem";
 import NorthEastIcon from "@mui/icons-material/NorthEast";
 
 interface ListOfScenariosProps {

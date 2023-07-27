@@ -1,7 +1,7 @@
 import { User } from "@/models";
-import { DataGrid } from "@mui/x-data-grid/DataGrid";
-import type { GridRowsProp, GridColDef, GridRowParams } from "@mui/x-data-grid";
-import { GridActionsCellItem } from "@mui/x-data-grid";
+import { DataGrid } from "@mui/x-data-grid/DataGrid/DataGrid";
+import type { GridRowsProp, GridColDef, GridRowParams } from "@mui/x-data-grid/models";
+import { GridActionsCellItem } from "@mui/x-data-grid/components/cell/GridActionsCellItem";
 import NorthEastIcon from "@mui/icons-material/NorthEast";
 import ListNoData from "./ListNoData";
 import GridCellWithHover from "./GridCellWithHover";

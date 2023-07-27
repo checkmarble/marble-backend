@@ -29,7 +29,6 @@ import {
 } from "@/services/AstExpressionService";
 import { useCallback } from "react";
 import { useParams } from "react-router-dom";
-import { boolean } from "yup";
 
 export default function ScenarioDetailsPage() {
   const { scenarioId } = useParams();
