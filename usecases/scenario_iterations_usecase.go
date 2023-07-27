@@ -28,7 +28,7 @@ func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(ctx context.Con
 		gron := gronx.New()
 		ok := gron.IsValid(body.Schedule)
 		if !ok {
-			return models.ScenarioIteration{}, fmt.Errorf("Invalid schedule: %w", models.BadParameterError)
+			return models.ScenarioIteration{}, fmt.Errorf("invalid schedule: %w", models.BadParameterError)
 		}
 	}
 	return usecase.scenarioIterationsWriteRepository.CreateScenarioIteration(ctx, organizationID, scenarioIteration)
@@ -40,7 +40,7 @@ func (usecase *ScenarioIterationUsecase) UpdateScenarioIteration(ctx context.Con
 		gron := gronx.New()
 		ok := gron.IsValid(*body.Schedule)
 		if !ok {
-			return models.ScenarioIteration{}, fmt.Errorf("Invalid schedule: %w", models.BadParameterError)
+			return models.ScenarioIteration{}, fmt.Errorf("invalid schedule: %w", models.BadParameterError)
 		}
 	}
 	return usecase.scenarioIterationsWriteRepository.UpdateScenarioIteration(ctx, organizationID, scenarioIteration)

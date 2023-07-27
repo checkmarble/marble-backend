@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
@@ -12,7 +11,6 @@ import (
 	"time"
 
 	"github.com/ggicci/httpin"
-	"golang.org/x/exp/slog"
 )
 
 type APIScenarioIterationRule struct {
@@ -75,36 +73,22 @@ func (api *API) ListScenarioIterationRules() http.HandlerFunc {
 		}
 
 		input := ctx.Value(httpin.Input).(*ListScenarioIterationRulesInput)
-		logger := api.logger.With(slog.String("scenarioIterationId", input.ScenarioIterationID), slog.String("orgID", orgID))
 
 		options := &utils.PtrToOptions{OmitZero: true}
 		usecase := api.usecases.NewScenarioIterationRuleUsecase()
 		rules, err := usecase.ListScenarioIterationRules(ctx, orgID, models.GetScenarioIterationRulesFilters{
 			ScenarioIterationID: utils.PtrTo(input.ScenarioIterationID, options),
 		})
-		if err != nil {
-			logger.ErrorCtx(ctx, "Error listing rules:\n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
+		if presentError(w, r, err) {
 			return
 		}
 
-		apiRules := make([]APIScenarioIterationRule, len(rules))
-		for i, rule := range rules {
-			apiRule, err := NewAPIScenarioIterationRule(rule)
-			if err != nil {
-				logger.ErrorCtx(ctx, "Error marshalling API scenario iteration rule:\n"+err.Error())
-				http.Error(w, "", http.StatusInternalServerError)
-				return
-			}
-			apiRules[i] = apiRule
-		}
-
-		err = json.NewEncoder(w).Encode(apiRules)
-		if err != nil {
-			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
+		apiRules, err := utils.MapErr(rules, NewAPIScenarioIterationRule)
+		if presentError(w, r, err) {
 			return
 		}
+
+		PresentModel(w, apiRules)
 	}
 }
 
@@ -150,7 +134,6 @@ func (api *API) CreateScenarioIterationRule() http.HandlerFunc {
 		}
 
 		input := ctx.Value(httpin.Input).(*dto.CreateScenarioIterationRuleInput)
-		logger := api.logger.With(slog.String("scenarioIterationId", input.Body.ScenarioIterationID), slog.String("orgID", orgID))
 
 		createInputRule, err := adaptCreateRuleInput(*input.Body)
 		if presentError(w, r, err) {
@@ -159,24 +142,16 @@ func (api *API) CreateScenarioIterationRule() http.HandlerFunc {
 
 		usecase := api.usecases.NewScenarioIterationRuleUsecase()
 		rule, err := usecase.CreateScenarioIterationRule(ctx, orgID, createInputRule)
-		if err != nil {
-			logger.ErrorCtx(ctx, "Error creating scenario iteration rule:\n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
+		if presentError(w, r, err) {
 			return
 		}
 
 		apiRule, err := NewAPIScenarioIterationRule(rule)
-		if err != nil {
-			logger.ErrorCtx(ctx, "Error marshalling API scenario iteration rule:\n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
+		if presentError(w, r, err) {
 			return
 		}
-		err = json.NewEncoder(w).Encode(apiRule)
-		if err != nil {
-			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
+
+		PresentModel(w, apiRule)
 	}
 }
 
@@ -194,32 +169,18 @@ func (api *API) GetScenarioIterationRule() http.HandlerFunc {
 		}
 
 		input := ctx.Value(httpin.Input).(*GetScenarioIterationRuleInput)
-		logger := api.logger.With(slog.String("ruleId", input.RuleID), slog.String("orgID", orgID))
 
 		usecase := api.usecases.NewScenarioIterationRuleUsecase()
 		rule, err := usecase.GetScenarioIterationRule(ctx, orgID, input.RuleID)
-		if errors.Is(err, models.NotFoundInRepositoryError) {
-			http.Error(w, "", http.StatusNotFound)
-			return
-		} else if err != nil {
-			// Could not execute request
-			logger.ErrorCtx(ctx, "Could not get scenario iteration rule: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
+		if presentError(w, r, err) {
 			return
 		}
 
 		apiRule, err := NewAPIScenarioIterationRule(rule)
-		if err != nil {
-			logger.ErrorCtx(ctx, "Could not marshall API scenario iteration rule: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
+		if presentError(w, r, err) {
 			return
 		}
-		err = json.NewEncoder(w).Encode(apiRule)
-		if err != nil {
-			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
+		PresentModel(w, apiRule)
 	}
 }
 
@@ -265,7 +226,6 @@ func (api *API) UpdateScenarioIterationRule() http.HandlerFunc {
 		}
 
 		input := ctx.Value(httpin.Input).(*dto.UpdateScenarioIterationRuleInput)
-		logger := api.logger.With(slog.String("ruleId", input.RuleID), slog.String("orgID", orgID))
 
 		updateRuleInput, err := adaptUpdateScenarioIterationRule(input.RuleID, *input.Body)
 		if presentError(w, r, err) {
@@ -274,29 +234,15 @@ func (api *API) UpdateScenarioIterationRule() http.HandlerFunc {
 
 		usecase := api.usecases.NewScenarioIterationRuleUsecase()
 		updatedRule, err := usecase.UpdateScenarioIterationRule(ctx, orgID, updateRuleInput)
-		if errors.Is(err, models.ErrScenarioIterationNotDraft) {
-			http.Error(w, "", http.StatusForbidden)
-			return
-		} else if errors.Is(err, models.NotFoundInRepositoryError) {
-			http.Error(w, "", http.StatusNotFound)
-			return
-		} else if err != nil {
-			logger.ErrorCtx(ctx, "Error updating rule:\n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
+		if presentError(w, r, err) {
 			return
 		}
 
 		apiRule, err := NewAPIScenarioIterationRule(updatedRule)
-		if err != nil {
-			logger.ErrorCtx(ctx, "Could not marshall API scenario iteration rule: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
+		if presentError(w, r, err) {
 			return
 		}
-		err = json.NewEncoder(w).Encode(apiRule)
-		if err != nil {
-			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
+
+		PresentModel(w, apiRule)
 	}
 }
