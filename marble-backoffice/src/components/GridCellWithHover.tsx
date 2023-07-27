@@ -1,12 +1,12 @@
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import useTheme from "@mui/material/styles/useTheme";
-import { GridRenderCellParams } from "@mui/x-data-grid";
+import type { GridRenderCellParams, GridValidRowModel } from "@mui/x-data-grid/models";
 import { useState } from "react";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 
-export default function GridCellWithControls(
-  params: GridRenderCellParams<any, number, any>
+export default function GridCellWithHover<R extends GridValidRowModel>(
+  params: GridRenderCellParams<R, number>
 ) {
   const valueToDisplay = params.formattedValue
     ? params.formattedValue
