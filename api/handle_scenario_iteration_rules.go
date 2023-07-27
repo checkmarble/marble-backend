@@ -1,63 +1,15 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/operators"
 	"marble/marble-backend/utils"
 	"net/http"
-	"time"
 
 	"github.com/ggicci/httpin"
 )
-
-type APIScenarioIterationRule struct {
-	ID                   string          `json:"id"`
-	ScenarioIterationID  string          `json:"scenarioIterationId"`
-	DisplayOrder         int             `json:"displayOrder"`
-	Name                 string          `json:"name"`
-	Description          string          `json:"description"`
-	Formula              json.RawMessage `json:"formula"`
-	FormulaAstExpression *dto.NodeDto    `json:"formula_ast_expression"`
-	ScoreModifier        int             `json:"scoreModifier"`
-	CreatedAt            time.Time       `json:"createdAt"`
-}
-
-func NewAPIScenarioIterationRule(rule models.Rule) (APIScenarioIterationRule, error) {
-
-	var formula []byte
-
-	if rule.Formula != nil {
-		var err error
-		formula, err = (*rule.Formula).MarshalJSON()
-		if err != nil {
-			return APIScenarioIterationRule{}, fmt.Errorf("unable to marshal formula: %w", err)
-		}
-	}
-
-	var formulaAstExpression *dto.NodeDto
-	if rule.FormulaAstExpression != nil {
-		nodeDto, err := dto.AdaptNodeDto(*rule.FormulaAstExpression)
-		if err != nil {
-			return APIScenarioIterationRule{}, nil
-		}
-		formulaAstExpression = &nodeDto
-	}
-
-	return APIScenarioIterationRule{
-		ID:                   rule.ID,
-		ScenarioIterationID:  rule.ScenarioIterationID,
-		DisplayOrder:         rule.DisplayOrder,
-		Name:                 rule.Name,
-		Description:          rule.Description,
-		Formula:              formula,
-		FormulaAstExpression: formulaAstExpression,
-		ScoreModifier:        rule.ScoreModifier,
-		CreatedAt:            rule.CreatedAt,
-	}, nil
-}
 
 type ListScenarioIterationRulesInput struct {
 	ScenarioIterationID string `in:"query=scenarioIterationId"`
@@ -83,7 +35,7 @@ func (api *API) ListScenarioIterationRules() http.HandlerFunc {
 			return
 		}
 
-		apiRules, err := utils.MapErr(rules, NewAPIScenarioIterationRule)
+		apiRules, err := utils.MapErr(rules, dto.AdaptScenarioIterationRuleDto)
 		if presentError(w, r, err) {
 			return
 		}
@@ -146,7 +98,7 @@ func (api *API) CreateScenarioIterationRule() http.HandlerFunc {
 			return
 		}
 
-		apiRule, err := NewAPIScenarioIterationRule(rule)
+		apiRule, err := dto.AdaptScenarioIterationRuleDto(rule)
 		if presentError(w, r, err) {
 			return
 		}
@@ -176,7 +128,7 @@ func (api *API) GetScenarioIterationRule() http.HandlerFunc {
 			return
 		}
 
-		apiRule, err := NewAPIScenarioIterationRule(rule)
+		apiRule, err := dto.AdaptScenarioIterationRuleDto(rule)
 		if presentError(w, r, err) {
 			return
 		}
@@ -238,7 +190,7 @@ func (api *API) UpdateScenarioIterationRule() http.HandlerFunc {
 			return
 		}
 
-		apiRule, err := NewAPIScenarioIterationRule(updatedRule)
+		apiRule, err := dto.AdaptScenarioIterationRuleDto(updatedRule)
 		if presentError(w, r, err) {
 			return
 		}
