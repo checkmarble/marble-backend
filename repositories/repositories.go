@@ -25,7 +25,6 @@ type Repositories struct {
 	RuleRepository                        RuleRepository
 	ScenarioReadRepository                ScenarioReadRepository
 	ScenarioWriteRepository               ScenarioWriteRepository
-	ScenarioIterationReadLegacyRepository ScenarioIterationReadLegacyRepository
 	ScenarioIterationReadRepository       ScenarioIterationReadRepository
 	ScenarioIterationWriteRepository      ScenarioIterationWriteRepository
 	ScenarioIterationRuleRepositoryLegacy ScenarioIterationRuleRepositoryLegacy
@@ -47,7 +46,6 @@ func NewRepositories(
 	firebaseClient *auth.Client,
 	marbleConnectionPool *pgxpool.Pool,
 	appLogger *slog.Logger,
-	scenarioIterationReadLegacyRepository ScenarioIterationReadLegacyRepository,
 	scenarioIterationWriteRepository ScenarioIterationWriteRepository,
 	ScenarioIterationRuleRepositoryLegacy ScenarioIterationRuleRepositoryLegacy,
 
@@ -102,7 +100,6 @@ func NewRepositories(
 		ScenarioWriteRepository: NewScenarioWriteRepositoryPostgresql(
 			transactionFactory,
 		),
-		ScenarioIterationReadLegacyRepository: scenarioIterationReadLegacyRepository,
 		ScenarioIterationReadRepository: &ScenarioIterationReadRepositoryPostgresql{
 			transactionFactory: transactionFactory,
 		},

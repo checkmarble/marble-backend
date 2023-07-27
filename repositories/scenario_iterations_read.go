@@ -1,7 +1,6 @@
 package repositories
 
 import (
-	"context"
 	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/pure_utils"
@@ -10,15 +9,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 )
-
-type ScenarioIterationReadLegacyRepository interface {
-	GetScenarioIteration(ctx context.Context, orgID string, scenarioIterationID string) (
-		models.ScenarioIteration, error,
-	)
-	ListScenarioIterations(ctx context.Context, orgID string, filters models.GetScenarioIterationFilters) (
-		[]models.ScenarioIteration, error,
-	)
-}
 
 type ScenarioIterationReadRepository interface {
 	GetScenarioIteration(tx Transaction, scenarioIterationID string) (
