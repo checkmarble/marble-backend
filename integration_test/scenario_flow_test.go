@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"marble/marble-backend/app"
 	"marble/marble-backend/models"
+	"marble/marble-backend/models/ast"
 	"marble/marble-backend/models/operators"
 	"marble/marble-backend/usecases"
 	"marble/marble-backend/utils"
@@ -198,19 +199,30 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 		Body: &models.CreateScenarioIterationBody{
 			Rules: []models.CreateRuleInput{
 				{
-					Formula: &operators.EqString{
-						Left:  &operators.DbFieldString{TriggerTableName: "transactions", FieldName: "name", Path: []string{"account"}},
-						Right: &operators.StringValue{Value: "Reject test account"},
+					// TODO remove when we use only the new AST
+					Formula: &operators.BoolValue{Value: false},
+					FormulaAstExpression: &ast.Node{
+						Function: ast.FUNC_EQUAL,
+						Children: []ast.Node{
+							{
+								Function: ast.FUNC_DB_ACCESS,
+								NamedChildren: map[string]ast.Node{
+									"tableName": {Constant: "transactions"},
+									"fieldName": {Constant: "name"},
+									"path":      {Constant: []string{"account"}}},
+							},
+							{Constant: "Reject test account"},
+						},
 					},
 					ScoreModifier: 100,
 					Name:          "Check on account name",
 					Description:   "Check on account name",
 				},
 			},
-			TriggerCondition:     &operators.EqString{Left: &operators.StringValue{Value: "transactions"}, Right: &operators.StringValue{Value: "transactions"}},
-			ScoreReviewThreshold: &threshold,
-			ScoreRejectThreshold: &threshold,
-			Schedule:             "*/10 * * * *",
+			TriggerConditionAstExpression: &ast.Node{Function: ast.FUNC_EQUAL, Children: []ast.Node{{Constant: "transactions"}, {Constant: "transactions"}}},
+			ScoreReviewThreshold:          &threshold,
+			ScoreRejectThreshold:          &threshold,
+			Schedule:                      "*/10 * * * *",
 		},
 	})
 	assert.NoError(t, err, "Could not create scenario iteration")
