@@ -4,6 +4,38 @@ import { AstConstantComponent } from "./AstConstantComponent";
 import Paper from "@mui/material/Paper";
 import Alert from "@mui/material/Alert";
 
+function stringifyAst(node: AstNode): string {
+  if (node.constant !== NoConstant) {
+    return JSON.stringify(node.constant);
+  }
+
+  const children = node.children.map(stringifyAst);
+
+  if (
+    node.name.length <= 3 &&
+    node.children.length == 2 &&
+    node.namedChildren.size == 0
+  ) {
+    return `( ${children[0]} ${node.name} ${children[1]} )`;
+  }
+
+  if (node.namedChildren.size > 0) {
+    const namedChildren: string[] = [];
+
+    node.namedChildren.forEach((child, name) => {
+      namedChildren.push(`${name}: ${stringifyAst(child)}`);
+    });
+
+    children.push(`{ ${namedChildren.join(", ")} }`);
+  }
+
+  return `${node.name}(${children.join(", ")})`;
+}
+
+export function AstNodeTextComponent({ node }: { node: AstNode }) {
+  return <code>{stringifyAst(node)}</code>;
+}
+
 export function AstNodeComponent({
   node,
   evaluation,
