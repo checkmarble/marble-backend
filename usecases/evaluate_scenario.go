@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"marble/marble-backend/models"
-	"marble/marble-backend/models/operators"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/ast_eval"
 	"marble/marble-backend/usecases/organization"
@@ -159,14 +158,11 @@ func evalScenarioRule(repositories scenarioEvaluationRepositories, rule models.R
 
 	if err != nil {
 		ruleExecution.Rule = rule
-		ruleExecution, err = setRuleExecutionError(ruleExecution, err)
-		if err != nil {
-			return score, ruleExecution, err
-		}
+		ruleExecution.Error = err
 		repositories.logger.Info("Rule had an error",
 			slog.String("ruleName", rule.Name),
 			slog.String("ruleId", rule.ID),
-			slog.String("error", ruleExecution.Error.String()),
+			slog.String("error", ruleExecution.Error.Error()),
 		)
 	}
 
@@ -181,18 +177,4 @@ func evalScenarioRule(repositories scenarioEvaluationRepositories, rule models.R
 		score = ruleExecution.Rule.ScoreModifier
 	}
 	return score, ruleExecution, nil
-}
-
-func setRuleExecutionError(ruleExecution models.RuleExecution, err error) (models.RuleExecution, error) {
-	if errors.Is(err, operators.OperatorNullValueReadError) {
-		ruleExecution.Error = models.NullFieldRead
-	} else if errors.Is(err, operators.OperatorDivisionByZeroError) {
-		ruleExecution.Error = models.DivisionByZero
-	} else if errors.Is(err, operators.OperatorNoRowsReadInDbError) {
-		ruleExecution.Error = models.NoRowsRead
-	} else {
-		// return early in case of an unexpected error
-		return ruleExecution, err
-	}
-	return ruleExecution, nil
 }

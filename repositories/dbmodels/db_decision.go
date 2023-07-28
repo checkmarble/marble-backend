@@ -70,15 +70,3 @@ type DBDecisionRule struct {
 	ErrorCode     int         `db:"error_code"`
 	DeletedAt     pgtype.Time `db:"deleted_at"`
 }
-
-func AdaptDecisionRule(db DBDecisionRule) models.RuleExecution {
-	return models.RuleExecution{
-		Rule: models.Rule{
-			Name:        db.Name,
-			Description: db.Description,
-		},
-		Result:              db.Result,
-		ResultScoreModifier: db.ScoreModifier,
-		Error:               models.RuleExecutionError(db.ErrorCode),
-	}
-}

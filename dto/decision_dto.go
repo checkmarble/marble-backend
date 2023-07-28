@@ -79,8 +79,8 @@ func NewAPIDecisionRule(rule models.RuleExecution) APIDecisionRule {
 
 	// Error added here to make sure it does not appear if empty
 	// Otherwise, by default it will generate an empty APIError{}
-	if int(rule.Error) != 0 {
-		apiDecisionRule.Error = &APIError{int(rule.Error), rule.Error.String()}
+	if rule.Error != nil {
+		apiDecisionRule.Error = &APIError{1, rule.Error.Error()}
 	}
 
 	return apiDecisionRule
