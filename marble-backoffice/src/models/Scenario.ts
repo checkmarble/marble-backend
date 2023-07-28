@@ -1,3 +1,5 @@
+import { Iteration } from "./Iteration";
+
 export interface Scenario {
   scenarioId: string;
   organizationId: string;
@@ -6,6 +8,8 @@ export interface Scenario {
   triggerObjectType: string;
   createdAt: Date;
   liveVersionId: string | null;
+
+  liveIteration: Iteration | null;
 }
 
 export interface CreateScenario {

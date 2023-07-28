@@ -7,9 +7,8 @@ import { useLoading } from "@/hooks/Loading";
 import DelayedLinearProgress from "@/components/DelayedLinearProgress";
 import {
   type AstNode,
-  type AstNodeEvaluation,
-  ConstantOptional,
   NoConstant,
+  Rule,
 } from "@/models";
 import Paper from "@mui/material/Paper";
 import Alert from "@mui/material/Alert";
@@ -29,6 +28,9 @@ import {
 } from "@/services/AstExpressionService";
 import { useCallback } from "react";
 import { useParams } from "react-router-dom";
+import { useSingleScenario } from "@/services";
+import { AstConstantComponent } from "@/components/AstConstantComponent";
+import { AstNodeComponent } from "@/components/AstNodeComponent";
 
 export default function ScenarioDetailsPage() {
   const { scenarioId } = useParams();
@@ -40,9 +42,15 @@ export default function ScenarioDetailsPage() {
 
   const [pageLoading, pageLoadingDispatcher] = useLoading();
 
+  const { scenario } = useSingleScenario(
+    services().organizationService,
+    pageLoadingDispatcher,
+    scenarioId
+  );
+
   const {
     editor,
-    expressionAstNode,
+    // expressionAstNode,
     validate,
     validationErrors,
     dryRunResult,
@@ -177,10 +185,52 @@ export default function ScenarioDetailsPage() {
               </Paper>
             </>
           )}
-          <Typography variant="h5">Simple rendering of the AST</Typography>
-          <AstNode node={expressionAstNode} evaluation={dryRunResult} />
+          {/* <Typography variant="h5">Simple rendering of the AST</Typography>
+          <AstNodeComponent node={expressionAstNode} evaluation={dryRunResult} /> */}
+
+          {scenario?.liveIteration && (
+            <>
+              <TriggerCondition
+                triggerCondition={scenario.liveIteration.triggerCondition}
+              />
+              {scenario.liveIteration.rules.map((rule) => (
+                <RuleComponent key={rule.ruleId} rule={rule} />
+              ))}
+            </>
+          )}
         </Stack>
       </Container>
+    </>
+  );
+}
+
+function TriggerCondition({
+  triggerCondition,
+}: {
+  triggerCondition: AstNode | null;
+}) {
+  if (triggerCondition === null) {
+    return <>No trigger condition</>;
+  }
+
+  return (
+    <>
+      <Typography variant="h6">Trigger condition</Typography>
+      <AstNodeComponent node={triggerCondition} />
+    </>
+  );
+}
+
+function RuleComponent({ rule }: { rule: Rule }) {
+  return (
+    <>
+      <Typography variant="h6">Rule {rule.name}</Typography>
+      <Typography variant="subtitle1">Rule {rule.description}</Typography>
+      {rule.formulaAstExpression === null ? (
+        <>No formula</>
+      ) : (
+        <AstNodeComponent node={rule.formulaAstExpression} />
+      )}
     </>
   );
 }
@@ -256,77 +306,4 @@ function AstEditor({
       {/* {node.name && <Typography variant="subtitle1">{node.name}</Typography>} */}
     </Paper>
   );
-}
-
-function AstNode({
-  node,
-  evaluation,
-}: {
-  node: AstNode;
-  evaluation: AstNodeEvaluation | null;
-}) {
-  return (
-    <>
-      <Paper
-        sx={{
-          margin: 2,
-          padding: 1,
-          border: 1,
-        }}
-      >
-        {node.name && (
-          <Typography variant="subtitle1">name: {node.name}</Typography>
-        )}
-        {evaluation && evaluation?.returnValue !== NoConstant && node.constant === NoConstant && (
-          <Alert severity="success">
-            Evaluation success:{" "}
-            <AstConstantComponent constant={evaluation.returnValue} />
-          </Alert>
-        )}
-        {node.constant !== NoConstant && (
-          <Typography>
-            Constant: <AstConstantComponent constant={node.constant} />
-          </Typography>
-        )}
-        {!node.name && node.constant === NoConstant && (
-          <Typography>
-            ⚠️ Invalid Node: Not a constant, not a function
-          </Typography>
-        )}
-        {evaluation?.evaluationError && (
-          <Alert severity="error">{evaluation.evaluationError}</Alert>
-        )}
-        {node.children.map((child, i) => (
-          <AstNode
-            key={i}
-            node={child}
-            evaluation={evaluation === null ? null : evaluation.children[i]}
-          />
-        ))}
-        <div>
-          {Object.entries(node.namedChildren).map(([name, child], i) => (
-            <div key={i}>
-              <Typography variant="subtitle2">{name}</Typography>{" "}
-              <AstNode
-                node={child}
-                evaluation={
-                  evaluation === null ? null : evaluation.namedChildren[name]
-                }
-              />
-            </div>
-          ))}
-        </div>
-      </Paper>
-    </>
-  );
-}
-
-function AstConstantComponent({ constant }: { constant: ConstantOptional }) {
-  if (constant === NoConstant) {
-    return <>!No Constant!</>;
-  }
-  if (constant === null) {
-    return <>NULL</>;
-  }
-  return <code>{JSON.stringify(constant)}</code>;
 }

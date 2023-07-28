@@ -15,8 +15,11 @@ import {
   adapAstValidateSchemaResult,
   adaptAstNodeDto,
 } from "@/models/AstExpressionDto";
-import { adaptRule } from "@/models/RuleDto";
-import { adaptIteration } from "@/models/IterationDto";
+import { adaptRuleApiResult } from "@/models/RuleDto";
+import {
+  adaptIterationApiResult,
+  adaptListIterationsApiResult,
+} from "@/models/IterationDto";
 import { adaptDryRunResult } from "@/models/AstEvaluationDto";
 import { adaptEditorIdentifiers } from "@/models/EditorIdentifiersDto";
 
@@ -87,12 +90,32 @@ export async function postScenario(
   );
 }
 
+export async function fetchIteration(
+  repository: ScenariosRepository,
+  organizationId: string,
+  iterationId: string
+) {
+  return adaptIterationApiResult(
+    await repository.marbleApi.fetchIterationById(organizationId, iterationId)
+  );
+}
+
+export async function fetchIterationsOfScenario(
+  repository: ScenariosRepository,
+  organizationId: string,
+  scenarioId: string
+) {
+  return adaptListIterationsApiResult(
+    await repository.marbleApi.listIterations(organizationId, scenarioId)
+  );
+}
+
 export async function postIteration(
   repository: ScenariosRepository,
   organizationId: string,
   scenarioId: string
 ) {
-  return adaptIteration(
+  return adaptIterationApiResult(
     await repository.marbleApi.postIteration(organizationId, scenarioId)
   );
 }
@@ -115,7 +138,7 @@ export async function postRule(
   organizationId: string,
   iterationId: string
 ) {
-  return adaptRule(
+  return adaptRuleApiResult(
     await repository.marbleApi.postRule(organizationId, iterationId)
   );
 }
@@ -126,7 +149,7 @@ export async function updateRule(
   ruleId: string,
   changes: UpdateRule
 ) {
-  return adaptRule(
+  return adaptRuleApiResult(
     await repository.marbleApi.patchRule(organizationId, ruleId, changes)
   );
 }
