@@ -271,6 +271,24 @@ export class MarbleApi {
     });
   }
 
+  async fetchIterationById(organizationId: string, iterationId: string) {
+    return this.getAuthorizedJson(
+      urlWithOrganizationId(
+        `${SCENARIO_ITERATIONS_URL_PATH}/${iterationId}`,
+        organizationId
+      )
+    );
+  }
+
+  async listIterations(organizationId: string, scenarioId: string) {
+    const r = new URLSearchParams({
+      scenarioId: scenarioId,
+      "organization-id": organizationId,
+    });
+    const path = `${SCENARIO_ITERATIONS_URL_PATH}?${r.toString()}`;
+    return this.getAuthorizedJson(path);
+  }
+
   async postIteration(organizationId: string, scenarioId: string) {
     return this.sendAuthorizedJson({
       method: HttpMethod.Post,

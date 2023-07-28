@@ -1,11 +1,8 @@
 import * as yup from "yup";
 import { adaptDtoWithYup } from "@/infra/adaptDtoWithYup";
 import type { Iteration } from "./Iteration";
-import {
-  AstNodeSchemaNullable,
-  adaptAstNode,
-} from "./AstExpressionDto";
-import { RuleSchema } from "./RuleDto";
+import { AstNodeSchemaNullable, adaptAstNode } from "./AstExpressionDto";
+import { RuleSchema, adaptRule } from "./RuleDto";
 
 const IterationSchema = yup.object({
   id: yup.string().required(),
@@ -24,9 +21,9 @@ const IterationSchema = yup.object({
   }),
 });
 
-export function adaptIteration(json: unknown): Iteration {
-  const dto = adaptDtoWithYup(json, IterationSchema);
+export type IterationSchemaDto = yup.InferType<typeof IterationSchema>
 
+export function adaptIteration(dto: IterationSchemaDto): Iteration {
   return {
     iterationId: dto.id,
     scenarioId: dto.scenarioId,
@@ -41,5 +38,16 @@ export function adaptIteration(json: unknown): Iteration {
     scoreRejectThreshold: dto.body.scoreRejectThreshold,
     batchTriggerSql: dto.body.batchTriggerSql,
     schedule: dto.body.schedule,
+    rules: dto.body.rules.map(adaptRule),
   };
+}
+
+export function adaptIterationApiResult(json: unknown): Iteration {
+  const dto = adaptDtoWithYup(json, IterationSchema);
+  return adaptIteration(dto);
+}
+
+export function adaptListIterationsApiResult(json: unknown): Iteration[] {
+  const dto = adaptDtoWithYup(json, yup.array().defined().of(IterationSchema));
+  return dto.map(adaptIteration);
 }

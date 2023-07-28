@@ -26,9 +26,9 @@ export const RuleSchema = yup.object({
   createdAt: yup.date().required(),
 });
 
-export function adaptRule(json: unknown): Rule {
-  const dto = adaptDtoWithYup(json, RuleSchema);
+export type RuleSchemaDto = yup.InferType<typeof RuleSchema>;
 
+export function adaptRule(dto: RuleSchemaDto): Rule {
   return {
     ruleId: dto.id,
     iterationId: dto.scenarioIterationId,
@@ -42,4 +42,9 @@ export function adaptRule(json: unknown): Rule {
     scoreModifier: dto.scoreModifier,
     createdAt: dto.createdAt,
   };
+}
+
+export function adaptRuleApiResult(json: unknown): Rule {
+  const dto = adaptDtoWithYup(json, RuleSchema);
+  return adaptRule(dto);
 }

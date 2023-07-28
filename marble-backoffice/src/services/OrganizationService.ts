@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { DataModel, Organization, PageLink, Scenario } from "@/models";
+import {
+  DataModel,
+  Organization,
+  PageLink,
+  Scenario,
+} from "@/models";
 import {
   type OrganizationRepository,
   type ScenariosRepository,
@@ -8,11 +13,13 @@ import {
   fetchOrganization,
   postOrganization,
   fetchScenariosOfOrganization,
+  fetchScenario,
   deleteOrganization,
   patchOrganization,
   fetchDataModelOfOrganization,
   replaceDataModelOfOrganization,
   postScenario,
+  fetchIteration,
   postIteration,
   patchIteration,
   postRule,
@@ -123,6 +130,45 @@ export function useScenarios(
   return {
     scenarios,
     refreshScenarios,
+  };
+}
+
+export function useSingleScenario(
+  service: OrganizationService,
+  loadingDispatcher: LoadingDispatcher,
+  scenarioId: string
+) {
+  const loadScenario = useCallback(async () => {
+    const scenario = await fetchScenario(
+      service.scenariosRepository,
+      scenarioId
+    );
+
+    if (scenario.liveVersionId !== null) {
+      scenario.liveIteration = await fetchIteration(
+        service.scenariosRepository,
+        scenario.organizationId,
+        scenario.liveVersionId
+      );
+    }
+
+    // const iterations = fetchIterationsOfScenario(
+    //   service.scenariosRepository,
+    //   scenario.organizationId,
+    //   scenarioId
+    // );
+
+    return scenario;
+  }, [service, scenarioId]);
+
+  const [scenario, refreshScenario] = useSimpleLoader<Scenario>(
+    loadingDispatcher,
+    loadScenario
+  );
+
+  return {
+    scenario,
+    refreshScenario,
   };
 }
 

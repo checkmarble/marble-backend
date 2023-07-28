@@ -1,4 +1,5 @@
 import { type AstNode } from "./AstExpression";
+import { Rule } from "./Rule";
 
 export interface Iteration {
   iterationId: string;
@@ -7,7 +8,7 @@ export interface Iteration {
   createdAt: Date;
   updatedAt: Date;
   triggerCondition: AstNode | null;
-  // rules : Rule[];
+  rules : Rule[];
   scoreReviewThreshold: number | null;
   scoreRejectThreshold: number | null;
   batchTriggerSql: string;
