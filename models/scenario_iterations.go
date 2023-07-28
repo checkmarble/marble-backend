@@ -7,12 +7,13 @@ import (
 )
 
 type ScenarioIteration struct {
-	ID         string
-	ScenarioID string
-	Version    *int
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	Body       ScenarioIterationBody
+	ID             string
+	OrganizationId string
+	ScenarioID     string
+	Version        *int
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	Body           ScenarioIterationBody
 }
 
 type ScenarioIterationBody struct {

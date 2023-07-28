@@ -15,14 +15,14 @@ import (
 )
 
 type AstExpressionUsecase struct {
-	EnforceSecurity                 security.EnforceSecurity
-	OrganizationIdOfContext         func() (string, error)
-	CustomListRepository            repositories.CustomListRepository
-	OrgTransactionFactory           organization.OrgTransactionFactory
-	IngestedDataReadRepository      repositories.IngestedDataReadRepository
-	DataModelRepository             repositories.DataModelRepository
-	ScenarioRepository              repositories.ScenarioReadRepository
-	ScenarioIterationReadRepository repositories.ScenarioIterationReadRepository
+	EnforceSecurity            security.EnforceSecurity
+	OrganizationIdOfContext    func() (string, error)
+	CustomListRepository       repositories.CustomListRepository
+	OrgTransactionFactory      organization.OrgTransactionFactory
+	IngestedDataReadRepository repositories.IngestedDataReadRepository
+	DataModelRepository        repositories.DataModelRepository
+	ScenarioRepository         repositories.ScenarioReadRepository
+	// ScenarioIterationReadLegacyRepository repositories.ScenarioIterationReadLegacyRepository
 	RuleRepository                  repositories.RuleRepository
 	ScenarioIterationRuleUsecase    repositories.ScenarioIterationRuleRepositoryLegacy
 	AstEvaluationEnvironmentFactory func(organizationId string, payload models.PayloadReader) ast_eval.AstEvaluationEnvironment

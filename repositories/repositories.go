@@ -46,7 +46,6 @@ func NewRepositories(
 	firebaseClient *auth.Client,
 	marbleConnectionPool *pgxpool.Pool,
 	appLogger *slog.Logger,
-	scenarioIterationReadRepository ScenarioIterationReadRepository,
 	scenarioIterationWriteRepository ScenarioIterationWriteRepository,
 	ScenarioIterationRuleRepositoryLegacy ScenarioIterationRuleRepositoryLegacy,
 
@@ -101,7 +100,9 @@ func NewRepositories(
 		ScenarioWriteRepository: NewScenarioWriteRepositoryPostgresql(
 			transactionFactory,
 		),
-		ScenarioIterationReadRepository:       scenarioIterationReadRepository,
+		ScenarioIterationReadRepository: &ScenarioIterationReadRepositoryPostgresql{
+			transactionFactory: transactionFactory,
+		},
 		ScenarioIterationWriteRepository:      scenarioIterationWriteRepository,
 		ScenarioIterationRuleRepositoryLegacy: ScenarioIterationRuleRepositoryLegacy,
 		ScenarioPublicationRepository: NewScenarioPublicationRepositoryPostgresql(

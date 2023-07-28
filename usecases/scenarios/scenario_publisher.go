@@ -1,7 +1,6 @@
 package scenarios
 
 import (
-	"context"
 	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
@@ -29,11 +28,10 @@ func NewScenarioPublisher(
 	}
 }
 
-func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(tx repositories.Transaction, ctx context.Context, organizationId string, input models.PublishScenarioIterationInput) ([]models.ScenarioPublication, error) {
+func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(tx repositories.Transaction, organizationId string, input models.PublishScenarioIterationInput) ([]models.ScenarioPublication, error) {
 	var scenarioPublications []models.ScenarioPublication
 
-	// FIXME Outside of transaction until the scenario iteration write repo is migrated
-	scenarioIteration, err := publisher.scenarioIterationReadRepository.GetScenarioIteration(ctx, organizationId, input.ScenarioIterationId)
+	scenarioIteration, err := publisher.scenarioIterationReadRepository.GetScenarioIteration(tx, input.ScenarioIterationId)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +63,7 @@ func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(tx repositories.
 				return nil, err
 			}
 
-			newVersion, err := publisher.getNewVersion(ctx, organizationId, scenarioIteration.ScenarioID)
+			newVersion, err := publisher.getNewVersion(tx, organizationId, scenarioIteration.ScenarioID)
 			if err != nil {
 				return nil, err
 			}
@@ -137,9 +135,8 @@ func (publisher *ScenarioPublisher) publishNewIteration(tx repositories.Transact
 	return scenarioPublication, nil
 }
 
-func (publisher *ScenarioPublisher) getNewVersion(ctx context.Context, organizationId, scenarioId string) (int, error) {
-	// FIXME Outside of transaction until the scenario iteration write repo is migrated
-	scenarioIterations, err := publisher.scenarioIterationReadRepository.ListScenarioIterations(ctx, organizationId, models.GetScenarioIterationFilters{ScenarioID: &scenarioId})
+func (publisher *ScenarioPublisher) getNewVersion(tx repositories.Transaction, organizationId, scenarioId string) (int, error) {
+	scenarioIterations, err := publisher.scenarioIterationReadRepository.ListScenarioIterations(tx, organizationId, models.GetScenarioIterationFilters{ScenarioID: &scenarioId})
 	if err != nil {
 		return 0, err
 	}

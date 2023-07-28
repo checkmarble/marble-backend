@@ -56,4 +56,4 @@ func AdaptRule(db DBRule) (models.Rule, error) {
 
 const TABLE_RULES = "scenario_iteration_rules"
 
-var SelectScenarioIterationRulesColumn = utils.ColumnList[DBRule]()
+var SelectRulesColumn = utils.ColumnList[DBRule]()

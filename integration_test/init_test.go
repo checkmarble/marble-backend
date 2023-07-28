@@ -111,7 +111,6 @@ func TestMain(m *testing.M) {
 		utils.LoggerFromContext(appContext),
 		pgRepository,
 		pgRepository,
-		pgRepository,
 	)
 	if err != nil {
 		panic(err)

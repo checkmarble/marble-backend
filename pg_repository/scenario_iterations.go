@@ -9,15 +9,11 @@ import (
 	"marble/marble-backend/models/operators"
 	"marble/marble-backend/repositories/dbmodels"
 	"marble/marble-backend/utils"
-	"strings"
 	"time"
 
-	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
-
-var ErrAlreadyPublished = errors.New("scenario iteration is already published")
 
 type dbScenarioIteration struct {
 	ID                            string          `db:"id"`
@@ -74,90 +70,6 @@ func (si *dbScenarioIteration) toDomain() (models.ScenarioIteration, error) {
 	}
 
 	return siDTO, nil
-}
-
-type ListScenarioIterationsFilters struct {
-	ScenarioID *string `db:"scenario_id"`
-}
-
-func (r *PGRepository) ListScenarioIterations(ctx context.Context, orgID string, filters models.GetScenarioIterationFilters) ([]models.ScenarioIteration, error) {
-	sql, args, err := r.queryBuilder.
-		Select(utils.ColumnList[dbScenarioIteration]()...).
-		From("scenario_iterations").
-		Where("org_id = ?", orgID).
-		Where(sq.Eq(ColumnValueMap(ListScenarioIterationsFilters{
-			ScenarioID: filters.ScenarioID,
-		}))).
-		ToSql()
-	if err != nil {
-		return nil, fmt.Errorf("unable to build scenario iteration query: %w", err)
-	}
-
-	rows, _ := r.db.Query(ctx, sql, args...)
-	scenarioIterations, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbScenarioIteration])
-	if err != nil {
-		return nil, fmt.Errorf("unable to collect scenario iteration: %w", err)
-	}
-
-	var scenarioIterationDTOs []models.ScenarioIteration
-	for _, si := range scenarioIterations {
-		siDTO, err := si.toDomain()
-		if err != nil {
-			return nil, fmt.Errorf("dto issue: %w", err)
-		}
-		scenarioIterationDTOs = append(scenarioIterationDTOs, siDTO)
-	}
-
-	return scenarioIterationDTOs, nil
-}
-
-func (r *PGRepository) GetScenarioIteration(ctx context.Context, orgID string, scenarioIterationID string) (models.ScenarioIteration, error) {
-	return r.getScenarioIterationRaw(ctx, r.db, orgID, scenarioIterationID)
-}
-
-func (r *PGRepository) getScenarioIterationRaw(ctx context.Context, pool PgxPoolOrTxIface, orgID string, scenarioIterationID string) (models.ScenarioIteration, error) {
-	siCols := utils.ColumnList[dbScenarioIteration]("si")
-	sirCols := utils.ColumnList[dbmodels.DBRule]("sir")
-
-	sql, args, err := r.queryBuilder.
-		Select(siCols...).
-		Column(fmt.Sprintf("array_agg(row(%s)) FILTER (WHERE sir.id IS NOT NULL) as rules", strings.Join(sirCols, ","))).
-		From("scenario_iterations si").
-		LeftJoin("scenario_iteration_rules sir on sir.scenario_iteration_id = si.id").
-		Where("si.id = ?", scenarioIterationID).
-		Where("si.org_id = ?", orgID).
-		GroupBy("si.id").
-		ToSql()
-	if err != nil {
-		return models.ScenarioIteration{}, fmt.Errorf("unable to build scenario iteration query: %w", err)
-	}
-
-	type DBRow struct {
-		dbScenarioIteration
-		Rules []dbmodels.DBRule
-	}
-
-	rows, _ := pool.Query(ctx, sql, args...)
-	scenarioIteration, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[DBRow])
-	if errors.Is(err, pgx.ErrNoRows) {
-		return models.ScenarioIteration{}, models.NotFoundInRepositoryError
-	} else if err != nil {
-		return models.ScenarioIteration{}, fmt.Errorf("unable to collect scenario iteration: %w", err)
-	}
-
-	scenarioIterationDTO, err := scenarioIteration.toDomain()
-	if err != nil {
-		return models.ScenarioIteration{}, fmt.Errorf("dto issue: %w", err)
-	}
-	for _, rule := range scenarioIteration.Rules {
-		ruleDto, err := dbmodels.AdaptRule(rule)
-		if err != nil {
-			return models.ScenarioIteration{}, fmt.Errorf("dto issue: %w", err)
-		}
-		scenarioIterationDTO.Body.Rules = append(scenarioIterationDTO.Body.Rules, ruleDto)
-	}
-
-	return scenarioIterationDTO, nil
 }
 
 type dbCreateScenarioIteration struct {

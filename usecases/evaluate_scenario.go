@@ -52,7 +52,7 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 		return models.ScenarioExecution{}, errors.Join(models.ScenarioHasNoLiveVersionError, models.BadParameterError)
 	}
 
-	liveVersion, err := repositories.scenarioIterationReadRepository.GetScenarioIteration(ctx, params.scenario.OrganizationID, *params.scenario.LiveVersionID)
+	liveVersion, err := repositories.scenarioIterationReadRepository.GetScenarioIteration(nil, *params.scenario.LiveVersionID)
 	if err != nil {
 		return models.ScenarioExecution{}, fmt.Errorf("error getting scenario iteration in eval scenar: %w", err)
 	}

@@ -33,10 +33,19 @@ func (usecases *UsecasesWithCreds) NewEnforceScenarioSecurity() security.Enforce
 func (usecases *UsecasesWithCreds) NewScenarioUsecase() ScenarioUsecase {
 	return ScenarioUsecase{
 		transactionFactory:      usecases.Repositories.TransactionFactory,
-		OrganizationIdOfContext: usecases.OrganizationIdOfContext,
+		organizationIdOfContext: usecases.OrganizationIdOfContext,
 		enforceSecurity:         usecases.NewEnforceScenarioSecurity(),
 		scenarioReadRepository:  usecases.Repositories.ScenarioReadRepository,
 		scenarioWriteRepository: usecases.Repositories.ScenarioWriteRepository,
+	}
+}
+
+func (usecases *UsecasesWithCreds) NewScenarioIterationUsecase() ScenarioIterationUsecase {
+	return ScenarioIterationUsecase{
+		scenarioIterationsReadRepository:  usecases.Repositories.ScenarioIterationReadRepository,
+		scenarioIterationsWriteRepository: usecases.Repositories.ScenarioIterationWriteRepository,
+		enforceSecurity:                   usecases.NewEnforceScenarioSecurity(),
+		organizationIdOfContext:           usecases.OrganizationIdOfContext,
 	}
 }
 
@@ -49,7 +58,6 @@ func (usecases *UsecasesWithCreds) AstExpressionUsecase() AstExpressionUsecase {
 		IngestedDataReadRepository:      usecases.Repositories.IngestedDataReadRepository,
 		DataModelRepository:             usecases.Repositories.DataModelRepository,
 		ScenarioRepository:              usecases.Repositories.ScenarioReadRepository,
-		ScenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
 		RuleRepository:                  usecases.Repositories.RuleRepository,
 		ScenarioIterationRuleUsecase:    usecases.Repositories.ScenarioIterationRuleRepositoryLegacy,
 		AstEvaluationEnvironmentFactory: usecases.AstEvaluationEnvironment,

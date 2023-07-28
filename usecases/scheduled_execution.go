@@ -81,7 +81,7 @@ func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx cont
 		return err
 	}
 
-	publishedVersion, err := usecase.getPublishedScenarioIteration(ctx, scenario)
+	publishedVersion, err := usecase.getPublishedScenarioIteration(scenario)
 	if err != nil {
 		return err
 	}
@@ -248,11 +248,11 @@ func (usecase *ScheduledExecutionUsecase) executeScheduledScenario(ctx context.C
 	return err
 }
 
-func (usecase *ScheduledExecutionUsecase) getPublishedScenarioIteration(ctx context.Context, scenario models.Scenario) (models.PublishedScenarioIteration, error) {
+func (usecase *ScheduledExecutionUsecase) getPublishedScenarioIteration(scenario models.Scenario) (models.PublishedScenarioIteration, error) {
 	if scenario.LiveVersionID == nil {
 		return models.PublishedScenarioIteration{}, fmt.Errorf("scenario has no live version %w", models.BadParameterError)
 	}
-	scenarioIteration, err := usecase.scenarioIterationReadRepository.GetScenarioIteration(ctx, scenario.OrganizationID, *scenario.LiveVersionID)
+	scenarioIteration, err := usecase.scenarioIterationReadRepository.GetScenarioIteration(nil, *scenario.LiveVersionID)
 	if err != nil {
 		return models.PublishedScenarioIteration{}, err
 	}
@@ -260,7 +260,7 @@ func (usecase *ScheduledExecutionUsecase) getPublishedScenarioIteration(ctx cont
 		return models.PublishedScenarioIteration{}, fmt.Errorf("scenario is not scheduled %w", models.BadParameterError)
 	}
 
-	liveVersion, err := usecase.scenarioIterationReadRepository.GetScenarioIteration(ctx, scenario.OrganizationID, *scenario.LiveVersionID)
+	liveVersion, err := usecase.scenarioIterationReadRepository.GetScenarioIteration(nil, *scenario.LiveVersionID)
 	if err != nil {
 		return models.PublishedScenarioIteration{}, err
 	}

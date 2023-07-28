@@ -9,36 +9,37 @@ import (
 
 type ScenarioUsecase struct {
 	transactionFactory      repositories.TransactionFactory
-	OrganizationIdOfContext func() (string, error)
+	organizationIdOfContext func() (string, error)
 	enforceSecurity         security.EnforceSecurityScenario
 	scenarioReadRepository  repositories.ScenarioReadRepository
 	scenarioWriteRepository repositories.ScenarioWriteRepository
 }
 
 func (usecase *ScenarioUsecase) ListScenarios() ([]models.Scenario, error) {
-
-	if err := usecase.enforceReadScenarioPermission(); err != nil {
-		return nil, err
-	}
-	organizationId, err := usecase.OrganizationIdOfContext()
+	organizationId, err := usecase.organizationIdOfContext()
 	if err != nil {
 		return nil, err
 	}
-	return usecase.scenarioReadRepository.ListScenariosOfOrganization(nil, organizationId)
+	scenarios, err := usecase.scenarioReadRepository.ListScenariosOfOrganization(nil, organizationId)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, scenario := range scenarios {
+		if err := usecase.enforceSecurity.ReadScenario(scenario); err != nil {
+			return nil, err
+		}
+	}
+	return scenarios, nil
 }
 
 func (usecase *ScenarioUsecase) GetScenario(scenarioID string) (models.Scenario, error) {
-
-	if err := usecase.enforceReadScenarioPermission(); err != nil {
-		return models.Scenario{}, err
-	}
-
 	scenario, err := usecase.scenarioReadRepository.GetScenarioById(nil, scenarioID)
 	if err != nil {
 		return models.Scenario{}, err
 	}
 
-	if err := usecase.enforceSecurity.ReadOrganization(scenario.OrganizationID); err != nil {
+	if err := usecase.enforceSecurity.ReadScenario(scenario); err != nil {
 		return models.Scenario{}, err
 	}
 
@@ -84,8 +85,4 @@ func (usecase *ScenarioUsecase) CreateScenario(scenario models.CreateScenarioInp
 			return usecase.scenarioReadRepository.GetScenarioById(tx, newScenarioId)
 		},
 	)
-}
-
-func (usecase *ScenarioUsecase) enforceReadScenarioPermission() error {
-	return usecase.enforceSecurity.Permission(models.SCENARIO_READ)
 }

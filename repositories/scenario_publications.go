@@ -90,7 +90,7 @@ func (repo *ScenarioPublicationRepositoryPostgresql) UpdateScenarioIterationVers
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	_, err := pgTx.ExecBuilder(
-		NewQueryBuilder().Update(dbmodels.TABLE_SCENARIOS_ITERATIONS).
+		NewQueryBuilder().Update(dbmodels.TABLE_SCENARIO_ITERATIONS).
 			Set("version", newVersion).
 			Where(squirrel.Eq{"id": scenarioIterationId}),
 	)

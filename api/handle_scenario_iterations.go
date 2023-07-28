@@ -10,82 +10,10 @@ import (
 	"marble/marble-backend/models/operators"
 	"marble/marble-backend/utils"
 	"net/http"
-	"time"
 
 	"github.com/ggicci/httpin"
 	"golang.org/x/exp/slog"
 )
-
-type APIScenarioIterationBody struct {
-	TriggerCondition              json.RawMessage            `json:"triggerCondition"`
-	TriggerConditionAstExpression *dto.NodeDto               `json:"trigger_condition_ast_expression"`
-	Rules                         []APIScenarioIterationRule `json:"rules"`
-	ScoreReviewThreshold          *int                       `json:"scoreReviewThreshold"`
-	ScoreRejectThreshold          *int                       `json:"scoreRejectThreshold"`
-	BatchTriggerSQL               string                     `json:"batchTriggerSql"`
-	Schedule                      string                     `json:"schedule"`
-}
-
-type APIScenarioIteration struct {
-	ID         string    `json:"id"`
-	ScenarioID string    `json:"scenarioId"`
-	Version    *int      `json:"version"`
-	CreatedAt  time.Time `json:"createdAt"`
-	UpdatedAt  time.Time `json:"updatedAt"`
-}
-
-func NewAPIScenarioIteration(si models.ScenarioIteration) APIScenarioIteration {
-	return APIScenarioIteration{
-		ID:         si.ID,
-		ScenarioID: si.ScenarioID,
-		Version:    si.Version,
-		CreatedAt:  si.CreatedAt,
-		UpdatedAt:  si.UpdatedAt,
-	}
-}
-
-type APIScenarioIterationWithBody struct {
-	APIScenarioIteration
-	Body APIScenarioIterationBody `json:"body"`
-}
-
-func NewAPIScenarioIterationWithBody(si models.ScenarioIteration) (APIScenarioIterationWithBody, error) {
-	body := APIScenarioIterationBody{
-		ScoreReviewThreshold: si.Body.ScoreReviewThreshold,
-		ScoreRejectThreshold: si.Body.ScoreRejectThreshold,
-		BatchTriggerSQL:      si.Body.BatchTriggerSQL,
-		Schedule:             si.Body.Schedule,
-		Rules:                make([]APIScenarioIterationRule, len(si.Body.Rules)),
-	}
-	for i, rule := range si.Body.Rules {
-		apiRule, err := NewAPIScenarioIterationRule(rule)
-		if err != nil {
-			return APIScenarioIterationWithBody{}, fmt.Errorf("could not create new api scenario iteration rule: %w", err)
-		}
-		body.Rules[i] = apiRule
-	}
-
-	if si.Body.TriggerCondition != nil {
-		triggerConditionBytes, err := si.Body.TriggerCondition.MarshalJSON()
-		if err != nil {
-			return APIScenarioIterationWithBody{}, fmt.Errorf("unable to marshal trigger condition: %w", err)
-		}
-		body.TriggerCondition = triggerConditionBytes
-	}
-
-	if si.Body.TriggerConditionAstExpression != nil {
-		triggerDto, err := dto.AdaptNodeDto(*si.Body.TriggerConditionAstExpression)
-		if err != nil {
-			return APIScenarioIterationWithBody{}, fmt.Errorf("unable to marshal trigger condition ast expression: %w", err)
-		}
-		body.TriggerConditionAstExpression = &triggerDto
-	}
-
-	return APIScenarioIterationWithBody{
-		APIScenarioIteration: NewAPIScenarioIteration(si),
-		Body:                 body,
-	}, nil
-}
 
 type ListScenarioIterationsInput struct {
 	ScenarioID string `in:"query=scenarioId"`
@@ -93,38 +21,25 @@ type ListScenarioIterationsInput struct {
 
 func (api *API) ListScenarioIterations() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
+		input := r.Context().Value(httpin.Input).(*ListScenarioIterationsInput)
 
-		orgID, err := utils.OrgIDFromCtx(ctx, r)
+		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
+		scenarioIterations, err := usecase.ListScenarioIterations(models.GetScenarioIterationFilters{
+			ScenarioID: utils.PtrTo(input.ScenarioID, &utils.PtrToOptions{OmitZero: true}),
+		})
 		if presentError(w, r, err) {
 			return
 		}
-
-		input := ctx.Value(httpin.Input).(*ListScenarioIterationsInput)
-		logger := api.logger.With(slog.String("scenarioId", input.ScenarioID), slog.String("orgId", orgID))
-
-		options := &utils.PtrToOptions{OmitZero: true}
-		usecase := api.usecases.NewScenarioIterationUsecase()
-		scenarioIterations, err := usecase.ListScenarioIterations(ctx, orgID, models.GetScenarioIterationFilters{
-			ScenarioID: utils.PtrTo(input.ScenarioID, options),
-		})
-		if err != nil {
-			logger.ErrorCtx(ctx, "Error Listing scenario iterations: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
-
-		apiScenarioIterations := make([]APIScenarioIteration, len(scenarioIterations))
+		scenarioIterationsDtos := make([]dto.ScenarioIterationWithBodyDto, len(scenarioIterations))
 		for i, si := range scenarioIterations {
-			apiScenarioIterations[i] = NewAPIScenarioIteration(si)
+			if dto, err := dto.AdaptScenarioIterationWithBodyDto(si); presentError(w, r, err) {
+				return
+			} else {
+				scenarioIterationsDtos[i] = dto
+			}
 		}
+		PresentModel(w, scenarioIterationsDtos)
 
-		err = json.NewEncoder(w).Encode(apiScenarioIterations)
-		if err != nil {
-			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
 	}
 }
 
@@ -197,7 +112,7 @@ func (api *API) CreateScenarioIteration() http.HandlerFunc {
 
 		}
 
-		usecase := api.usecases.NewScenarioIterationUsecase()
+		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
 		si, err := usecase.CreateScenarioIteration(ctx, orgID, createScenarioIterationInput)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Error creating scenario iteration: \n"+err.Error())
@@ -205,7 +120,7 @@ func (api *API) CreateScenarioIteration() http.HandlerFunc {
 			return
 		}
 
-		apiScenarioIterationWithBody, err := NewAPIScenarioIterationWithBody(si)
+		apiScenarioIterationWithBody, err := dto.AdaptScenarioIterationWithBodyDto(si)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Error marshalling scenario iteration: \n"+err.Error())
 			http.Error(w, "", http.StatusInternalServerError)
@@ -226,39 +141,19 @@ type GetScenarioIterationInput struct {
 
 func (api *API) GetScenarioIteration() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
+		input := r.Context().Value(httpin.Input).(*GetScenarioIterationInput)
 
-		orgID, err := utils.OrgIDFromCtx(ctx, r)
+		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
+		si, err := usecase.GetScenarioIteration(input.ScenarioIterationID)
 		if presentError(w, r, err) {
 			return
 		}
 
-		input := ctx.Value(httpin.Input).(*GetScenarioIterationInput)
-		logger := api.logger.With(slog.String("scenarioIterationId", input.ScenarioIterationID), slog.String("orgId", orgID))
-
-		usecase := api.usecases.NewScenarioIterationUsecase()
-		si, err := usecase.GetScenarioIteration(ctx, orgID, input.ScenarioIterationID)
-		if errors.Is(err, models.NotFoundInRepositoryError) {
-			http.Error(w, "", http.StatusNotFound)
-			return
-		} else if err != nil {
-			logger.ErrorCtx(ctx, "Error getting scenario iteration: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
+		scenarioIterationDto, err := dto.AdaptScenarioIterationWithBodyDto(si)
+		if presentError(w, r, err) {
 			return
 		}
-
-		apiScenarioIterationWithBody, err := NewAPIScenarioIterationWithBody(si)
-		if err != nil {
-			logger.ErrorCtx(ctx, "Error marshalling scenario iteration: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
-		err = json.NewEncoder(w).Encode(apiScenarioIterationWithBody)
-		if err != nil {
-			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
+		PresentModel(w, scenarioIterationDto)
 	}
 }
 
@@ -307,7 +202,7 @@ func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 			updateScenarioIterationInput.Body.TriggerConditionAstExpression = &trigger
 		}
 
-		usecase := api.usecases.NewScenarioIterationUsecase()
+		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
 		updatedSI, err := usecase.UpdateScenarioIteration(ctx, orgID, updateScenarioIterationInput)
 		if errors.Is(err, models.ErrScenarioIterationNotDraft) {
 			logger.WarnCtx(ctx, "Cannot update scenario iteration that is not in draft state: \n"+err.Error())
@@ -322,7 +217,7 @@ func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 			return
 		}
 
-		apiRule, err := NewAPIScenarioIterationWithBody(updatedSI)
+		apiRule, err := dto.AdaptScenarioIterationWithBodyDto(updatedSI)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Error marshalling API scenario iteration: \n"+err.Error())
 			http.Error(w, "", http.StatusInternalServerError)
