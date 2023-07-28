@@ -7,7 +7,6 @@ import (
 	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
-	"marble/marble-backend/models/operators"
 	"marble/marble-backend/utils"
 	"net/http"
 
@@ -69,10 +68,6 @@ func (api *API) CreateScenarioIteration() http.HandlerFunc {
 			}
 
 			for i, rule := range input.Payload.Body.Rules {
-				formula, err := operators.UnmarshalOperatorBool(rule.Formula)
-				if err != nil {
-					presentError(w, r, fmt.Errorf("could not unmarshal formula: %w %w", err, models.BadParameterError))
-				}
 
 				var formulaAstExpression *ast.Node
 				if rule.FormulaAstExpression != nil {
@@ -87,19 +82,9 @@ func (api *API) CreateScenarioIteration() http.HandlerFunc {
 					DisplayOrder:         rule.DisplayOrder,
 					Name:                 rule.Name,
 					Description:          rule.Description,
-					Formula:              formula,
 					FormulaAstExpression: formulaAstExpression,
 					ScoreModifier:        rule.ScoreModifier,
 				}
-			}
-
-			if input.Payload.Body.TriggerCondition != nil {
-				triggerCondition, err := operators.UnmarshalOperatorBool(*input.Payload.Body.TriggerCondition)
-				if err != nil {
-					presentError(w, r, fmt.Errorf("could not unmarshal trigger condition: %w %w", err, models.BadParameterError))
-					return
-				}
-				createScenarioIterationInput.Body.TriggerCondition = triggerCondition
 			}
 
 			if input.Payload.Body.TriggerConditionAstExpression != nil {
@@ -182,16 +167,6 @@ func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 				Schedule:             input.Payload.Body.Schedule,
 				BatchTriggerSQL:      input.Payload.Body.BatchTriggerSQL,
 			},
-		}
-
-		if input.Payload.Body.TriggerCondition != nil {
-			triggerCondition, err := operators.UnmarshalOperatorBool(*input.Payload.Body.TriggerCondition)
-			if err != nil {
-				logger.ErrorCtx(ctx, "Could not unmarshal trigger condition: \n"+err.Error())
-				http.Error(w, "", http.StatusUnprocessableEntity)
-				return
-			}
-			updateScenarioIterationInput.Body.TriggerCondition = triggerCondition
 		}
 
 		if input.Payload.Body.TriggerConditionAstExpression != nil {

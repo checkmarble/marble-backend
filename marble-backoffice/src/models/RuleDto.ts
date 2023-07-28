@@ -9,7 +9,6 @@ import { adaptAstNode, AstNodeSchemaNullable } from "./AstExpressionDto";
 //     "displayOrder": 0,
 //     "name": "",
 //     "description": "",
-//     "formula": null,
 //     "formula_ast_expression": null,
 //     "scoreModifier": 0,
 //     "createdAt": "2023-07-25T17:42:12.08125+02:00"

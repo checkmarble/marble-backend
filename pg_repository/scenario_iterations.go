@@ -2,11 +2,9 @@ package pg_repository
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"marble/marble-backend/models"
-	"marble/marble-backend/models/operators"
 	"marble/marble-backend/repositories/dbmodels"
 	"marble/marble-backend/utils"
 	"time"
@@ -16,19 +14,18 @@ import (
 )
 
 type dbScenarioIteration struct {
-	ID                            string          `db:"id"`
-	OrgID                         string          `db:"org_id"`
-	ScenarioID                    string          `db:"scenario_id"`
-	Version                       pgtype.Int2     `db:"version"`
-	CreatedAt                     time.Time       `db:"created_at"`
-	UpdatedAt                     time.Time       `db:"updated_at"`
-	ScoreReviewThreshold          pgtype.Int2     `db:"score_review_threshold"`
-	ScoreRejectThreshold          pgtype.Int2     `db:"score_reject_threshold"`
-	TriggerCondition              json.RawMessage `db:"trigger_condition"`
-	TriggerConditionAstExpression []byte          `db:"trigger_condition_ast_expression"`
-	DeletedAt                     pgtype.Time     `db:"deleted_at"`
-	BatchTriggerSQL               string          `db:"batch_trigger_sql"`
-	Schedule                      string          `db:"schedule"`
+	ID                            string      `db:"id"`
+	OrgID                         string      `db:"org_id"`
+	ScenarioID                    string      `db:"scenario_id"`
+	Version                       pgtype.Int2 `db:"version"`
+	CreatedAt                     time.Time   `db:"created_at"`
+	UpdatedAt                     time.Time   `db:"updated_at"`
+	ScoreReviewThreshold          pgtype.Int2 `db:"score_review_threshold"`
+	ScoreRejectThreshold          pgtype.Int2 `db:"score_reject_threshold"`
+	TriggerConditionAstExpression []byte      `db:"trigger_condition_ast_expression"`
+	DeletedAt                     pgtype.Time `db:"deleted_at"`
+	BatchTriggerSQL               string      `db:"batch_trigger_sql"`
+	Schedule                      string      `db:"schedule"`
 }
 
 func (si *dbScenarioIteration) toDomain() (models.ScenarioIteration, error) {
@@ -55,13 +52,6 @@ func (si *dbScenarioIteration) toDomain() (models.ScenarioIteration, error) {
 		scoreRejectThreshold := int(si.ScoreRejectThreshold.Int16)
 		siDTO.Body.ScoreRejectThreshold = &scoreRejectThreshold
 	}
-	if si.TriggerCondition != nil {
-		triggerc, err := operators.UnmarshalOperatorBool(si.TriggerCondition)
-		if err != nil {
-			return models.ScenarioIteration{}, fmt.Errorf("unable to unmarshal trigger condition: %w", err)
-		}
-		siDTO.Body.TriggerCondition = triggerc
-	}
 
 	var err error
 	siDTO.Body.TriggerConditionAstExpression, err = dbmodels.AdaptSerializedAstExpression(si.TriggerConditionAstExpression)
@@ -78,7 +68,6 @@ type dbCreateScenarioIteration struct {
 	ScenarioID                    string  `db:"scenario_id"`
 	ScoreReviewThreshold          *int    `db:"score_review_threshold"`
 	ScoreRejectThreshold          *int    `db:"score_reject_threshold"`
-	TriggerCondition              []byte  `db:"trigger_condition"`
 	TriggerConditionAstExpression *[]byte `db:"trigger_condition_ast_expression"`
 	BatchTriggerSQL               string  `db:"batch_trigger_sql"`
 	Schedule                      string  `db:"schedule"`
@@ -96,14 +85,6 @@ func (r *PGRepository) CreateScenarioIteration(ctx context.Context, orgID string
 		createScenarioIteration.ScoreRejectThreshold = scenarioIteration.Body.ScoreRejectThreshold
 		createScenarioIteration.BatchTriggerSQL = scenarioIteration.Body.BatchTriggerSQL
 		createScenarioIteration.Schedule = scenarioIteration.Body.Schedule
-
-		if scenarioIteration.Body.TriggerCondition != nil {
-			triggerConditionBytes, err := scenarioIteration.Body.TriggerCondition.MarshalJSON()
-			if err != nil {
-				return models.ScenarioIteration{}, fmt.Errorf("unable to marshal trigger condition: %w", err)
-			}
-			createScenarioIteration.TriggerCondition = triggerConditionBytes
-		}
 
 		var err error
 		createScenarioIteration.TriggerConditionAstExpression, err = dbmodels.SerializeFormulaAstExpression(scenarioIteration.Body.TriggerConditionAstExpression)
@@ -156,7 +137,6 @@ func (r *PGRepository) CreateScenarioIteration(ctx context.Context, orgID string
 type dbUpdateScenarioIterationInput struct {
 	ScoreReviewThreshold          *int    `db:"score_review_threshold"`
 	ScoreRejectThreshold          *int    `db:"score_reject_threshold"`
-	TriggerCondition              *[]byte `db:"trigger_condition"`
 	TriggerConditionAstExpression *[]byte `db:"trigger_condition_ast_expression"`
 	BatchTriggerSQL               *string `db:"batch_trigger_sql"`
 	Schedule                      *string `db:"schedule"`
@@ -172,13 +152,6 @@ func (r *PGRepository) UpdateScenarioIteration(ctx context.Context, orgID string
 	}
 	updateScenarioIterationInput.BatchTriggerSQL = scenarioIteration.Body.BatchTriggerSQL
 	updateScenarioIterationInput.Schedule = scenarioIteration.Body.Schedule
-	if scenarioIteration.Body.TriggerCondition != nil {
-		triggerConditionBytes, err := scenarioIteration.Body.TriggerCondition.MarshalJSON()
-		if err != nil {
-			return models.ScenarioIteration{}, fmt.Errorf("unable to marshal trigger condition: %w", err)
-		}
-		updateScenarioIterationInput.TriggerCondition = &triggerConditionBytes
-	}
 
 	var err error
 	updateScenarioIterationInput.TriggerConditionAstExpression, err = dbmodels.SerializeFormulaAstExpression(scenarioIteration.Body.TriggerConditionAstExpression)

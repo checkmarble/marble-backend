@@ -1,7 +1,6 @@
 package dto
 
 import (
-	"encoding/json"
 	"marble/marble-backend/models"
 )
 
@@ -29,12 +28,11 @@ type UpdateScenarioInput struct {
 
 type UpdateScenarioIterationBody struct {
 	Body *struct {
-		TriggerCondition              *json.RawMessage `json:"triggerCondition,omitempty"`
-		TriggerConditionAstExpression *NodeDto         `json:"trigger_condition_ast_expression"`
-		ScoreReviewThreshold          *int             `json:"scoreReviewThreshold,omitempty"`
-		ScoreRejectThreshold          *int             `json:"scoreRejectThreshold,omitempty"`
-		Schedule                      *string          `json:"schedule"`
-		BatchTriggerSQL               *string          `json:"batchTriggerSQL"`
+		TriggerConditionAstExpression *NodeDto `json:"trigger_condition_ast_expression"`
+		ScoreReviewThreshold          *int     `json:"scoreReviewThreshold,omitempty"`
+		ScoreRejectThreshold          *int     `json:"scoreRejectThreshold,omitempty"`
+		Schedule                      *string  `json:"schedule"`
+		BatchTriggerSQL               *string  `json:"batchTriggerSQL"`
 	} `json:"body,omitempty"`
 }
 
@@ -46,7 +44,6 @@ type UpdateScenarioIterationInput struct {
 type CreateScenarioIterationBody struct {
 	ScenarioID string `json:"scenarioId"`
 	Body       *struct {
-		TriggerCondition              *json.RawMessage                       `json:"triggerCondition,omitempty"`
 		TriggerConditionAstExpression *NodeDto                               `json:"trigger_condition_ast_expression"`
 		Rules                         []CreateScenarioIterationRuleInputBody `json:"rules"`
 		ScoreReviewThreshold          *int                                   `json:"scoreReviewThreshold,omitempty"`
@@ -63,13 +60,12 @@ type CreateScenarioIterationInput struct {
 // rules
 
 type CreateScenarioIterationRuleInputBody struct {
-	ScenarioIterationID  string          `json:"scenarioIterationId"`
-	DisplayOrder         int             `json:"displayOrder"`
-	Name                 string          `json:"name"`
-	Description          string          `json:"description"`
-	Formula              json.RawMessage `json:"formula"`
-	FormulaAstExpression *NodeDto        `json:"formula_ast_expression"`
-	ScoreModifier        int             `json:"scoreModifier"`
+	ScenarioIterationID  string   `json:"scenarioIterationId"`
+	DisplayOrder         int      `json:"displayOrder"`
+	Name                 string   `json:"name"`
+	Description          string   `json:"description"`
+	FormulaAstExpression *NodeDto `json:"formula_ast_expression"`
+	ScoreModifier        int      `json:"scoreModifier"`
 }
 
 type CreateScenarioIterationRuleInput struct {
@@ -77,12 +73,11 @@ type CreateScenarioIterationRuleInput struct {
 }
 
 type UpdateScenarioIterationRuleBody struct {
-	DisplayOrder         *int             `json:"displayOrder,omitempty"`
-	Name                 *string          `json:"name,omitempty"`
-	Description          *string          `json:"description,omitempty"`
-	Formula              *json.RawMessage `json:"formula,omitempty"`
-	FormulaAstExpression *NodeDto         `json:"formula_ast_expression"`
-	ScoreModifier        *int             `json:"scoreModifier,omitempty"`
+	DisplayOrder         *int     `json:"displayOrder,omitempty"`
+	Name                 *string  `json:"name,omitempty"`
+	Description          *string  `json:"description,omitempty"`
+	FormulaAstExpression *NodeDto `json:"formula_ast_expression"`
+	ScoreModifier        *int     `json:"scoreModifier,omitempty"`
 }
 
 type UpdateScenarioIterationRuleInput struct {

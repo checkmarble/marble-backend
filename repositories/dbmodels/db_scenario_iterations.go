@@ -1,10 +1,8 @@
 package dbmodels
 
 import (
-	"encoding/json"
 	"fmt"
 	"marble/marble-backend/models"
-	"marble/marble-backend/models/operators"
 	"marble/marble-backend/utils"
 	"time"
 
@@ -14,19 +12,18 @@ import (
 const TABLE_SCENARIO_ITERATIONS = "scenario_iterations"
 
 type DBScenarioIteration struct {
-	ID                            string          `db:"id"`
-	OrgID                         string          `db:"org_id"`
-	ScenarioID                    string          `db:"scenario_id"`
-	Version                       pgtype.Int2     `db:"version"`
-	CreatedAt                     time.Time       `db:"created_at"`
-	UpdatedAt                     time.Time       `db:"updated_at"`
-	ScoreReviewThreshold          pgtype.Int2     `db:"score_review_threshold"`
-	ScoreRejectThreshold          pgtype.Int2     `db:"score_reject_threshold"`
-	TriggerCondition              json.RawMessage `db:"trigger_condition"`
-	TriggerConditionAstExpression []byte          `db:"trigger_condition_ast_expression"`
-	DeletedAt                     pgtype.Time     `db:"deleted_at"`
-	BatchTriggerSQL               string          `db:"batch_trigger_sql"`
-	Schedule                      string          `db:"schedule"`
+	ID                            string      `db:"id"`
+	OrgID                         string      `db:"org_id"`
+	ScenarioID                    string      `db:"scenario_id"`
+	Version                       pgtype.Int2 `db:"version"`
+	CreatedAt                     time.Time   `db:"created_at"`
+	UpdatedAt                     time.Time   `db:"updated_at"`
+	ScoreReviewThreshold          pgtype.Int2 `db:"score_review_threshold"`
+	ScoreRejectThreshold          pgtype.Int2 `db:"score_reject_threshold"`
+	TriggerConditionAstExpression []byte      `db:"trigger_condition_ast_expression"`
+	DeletedAt                     pgtype.Time `db:"deleted_at"`
+	BatchTriggerSQL               string      `db:"batch_trigger_sql"`
+	Schedule                      string      `db:"schedule"`
 }
 
 type DBScenarioIterationWithRules struct {
@@ -61,13 +58,7 @@ func AdaptScenarioIteration(dto DBScenarioIteration) (models.ScenarioIteration, 
 		scoreRejectThreshold := int(dto.ScoreRejectThreshold.Int16)
 		scenarioIteration.Body.ScoreRejectThreshold = &scoreRejectThreshold
 	}
-	if dto.TriggerCondition != nil {
-		triggerc, err := operators.UnmarshalOperatorBool(dto.TriggerCondition)
-		if err != nil {
-			return models.ScenarioIteration{}, fmt.Errorf("unable to unmarshal trigger condition: %w", err)
-		}
-		scenarioIteration.Body.TriggerCondition = triggerc
-	}
+
 	var err error
 	scenarioIteration.Body.TriggerConditionAstExpression, err = AdaptSerializedAstExpression(dto.TriggerConditionAstExpression)
 	if err != nil {

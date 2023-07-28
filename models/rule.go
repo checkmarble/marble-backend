@@ -2,7 +2,6 @@ package models
 
 import (
 	"marble/marble-backend/models/ast"
-	"marble/marble-backend/models/operators"
 	"time"
 )
 
@@ -17,7 +16,6 @@ type Rule struct {
 	DisplayOrder         int
 	Name                 string
 	Description          string
-	Formula              *operators.OperatorBool
 	FormulaAstExpression *ast.Node
 	ScoreModifier        int
 	CreatedAt            time.Time
@@ -32,7 +30,6 @@ type CreateRuleInput struct {
 	DisplayOrder         int
 	Name                 string
 	Description          string
-	Formula              operators.OperatorBool
 	FormulaAstExpression *ast.Node
 	ScoreModifier        int
 }
@@ -42,7 +39,6 @@ type UpdateRuleInput struct {
 	DisplayOrder         *int
 	Name                 *string
 	Description          *string
-	Formula              *operators.OperatorBool
 	FormulaAstExpression *ast.Node
 	ScoreModifier        *int
 }
