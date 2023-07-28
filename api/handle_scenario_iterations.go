@@ -30,7 +30,15 @@ func (api *API) ListScenarioIterations() http.HandlerFunc {
 		if presentError(w, r, err) {
 			return
 		}
-		PresentModel(w, utils.Map(scenarioIterations, dto.AdaptScenarioIterationDto))
+		scenarioIterationsDtos := make([]dto.ScenarioIterationWithBodyDto, len(scenarioIterations))
+		for i, si := range scenarioIterations {
+			if dto, err := dto.AdaptScenarioIterationWithBodyDto(si); presentError(w, r, err) {
+				return
+			} else {
+				scenarioIterationsDtos[i] = dto
+			}
+		}
+		PresentModel(w, scenarioIterationsDtos)
 
 	}
 }

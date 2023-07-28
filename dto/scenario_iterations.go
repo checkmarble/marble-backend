@@ -70,16 +70,6 @@ func AdaptScenarioIterationRuleDto(rule models.Rule) (ScenarioIterationRuleDto, 
 	}, nil
 }
 
-func AdaptScenarioIterationDto(si models.ScenarioIteration) ScenarioIterationDto {
-	return ScenarioIterationDto{
-		ID:         si.ID,
-		ScenarioID: si.ScenarioID,
-		Version:    si.Version,
-		CreatedAt:  si.CreatedAt,
-		UpdatedAt:  si.UpdatedAt,
-	}
-}
-
 func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIterationWithBodyDto, error) {
 	body := ScenarioIterationBodyDto{
 		ScoreReviewThreshold: si.Body.ScoreReviewThreshold,
@@ -113,7 +103,13 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 	}
 
 	return ScenarioIterationWithBodyDto{
-		ScenarioIterationDto: AdaptScenarioIterationDto(si),
-		Body:                 body,
+		ScenarioIterationDto: ScenarioIterationDto{
+			ID:         si.ID,
+			ScenarioID: si.ScenarioID,
+			Version:    si.Version,
+			CreatedAt:  si.CreatedAt,
+			UpdatedAt:  si.UpdatedAt,
+		},
+		Body: body,
 	}, nil
 }
