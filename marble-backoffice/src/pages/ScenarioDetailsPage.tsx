@@ -5,11 +5,7 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useLoading } from "@/hooks/Loading";
 import DelayedLinearProgress from "@/components/DelayedLinearProgress";
-import {
-  type AstNode,
-  NoConstant,
-  Rule,
-} from "@/models";
+import { type AstNode, NoConstant, Rule } from "@/models";
 import Paper from "@mui/material/Paper";
 import Alert from "@mui/material/Alert";
 import TextField from "@mui/material/TextField";
@@ -30,7 +26,10 @@ import { useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { useSingleScenario } from "@/services";
 import { AstConstantComponent } from "@/components/AstConstantComponent";
-import { AstNodeComponent } from "@/components/AstNodeComponent";
+import {
+  AstNodeComponent,
+  AstNodeTextComponent,
+} from "@/components/AstNodeComponent";
 
 export default function ScenarioDetailsPage() {
   const { scenarioId } = useParams();
@@ -216,6 +215,7 @@ function TriggerCondition({
   return (
     <>
       <Typography variant="h6">Trigger condition</Typography>
+      <AstNodeTextComponent node={triggerCondition} />
       <AstNodeComponent node={triggerCondition} />
     </>
   );
@@ -229,7 +229,10 @@ function RuleComponent({ rule }: { rule: Rule }) {
       {rule.formulaAstExpression === null ? (
         <>No formula</>
       ) : (
-        <AstNodeComponent node={rule.formulaAstExpression} />
+        <>
+          <AstNodeTextComponent node={rule.formulaAstExpression} />
+          <AstNodeComponent node={rule.formulaAstExpression} />
+        </>
       )}
     </>
   );
