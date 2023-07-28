@@ -2,7 +2,6 @@ package pg_repository
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"marble/marble-backend/models"
@@ -83,7 +82,6 @@ type dbCreateScenarioIterationRuleInput struct {
 	Name                 string  `db:"name"`
 	Description          string  `db:"description"`
 	ScoreModifier        int     `db:"score_modifier"`
-	Formula              []byte  `db:"formula"`
 	FormulaAstExpression *[]byte `db:"formula_ast_expression"`
 }
 
@@ -96,15 +94,6 @@ func (r *PGRepository) CreateScenarioIterationRule(ctx context.Context, orgID st
 		Name:                rule.Name,
 		Description:         rule.Description,
 		ScoreModifier:       rule.ScoreModifier,
-	}
-	dbCreateRuleInput.Formula = []byte("{}")
-
-	if rule.Formula != nil {
-		formulaBytes, err := rule.Formula.MarshalJSON()
-		if err != nil {
-			return models.Rule{}, fmt.Errorf("unable to marshal rule formula: %w", err)
-		}
-		dbCreateRuleInput.Formula = formulaBytes
 	}
 
 	var err error
@@ -198,15 +187,10 @@ func (r *PGRepository) createScenarioIterationRules(ctx context.Context, tx pgx.
 			"display_order",
 			"name",
 			"description",
-			"formula",
 			"formula_ast_expression",
 			"score_modifier")
 
 	for _, rule := range rules {
-		formulaBytes, err := rule.Formula.MarshalJSON()
-		if err != nil {
-			return nil, fmt.Errorf("unable to marshal rule formula: %w", err)
-		}
 
 		formulaAstExpression, err := dbmodels.SerializeFormulaAstExpression(rule.FormulaAstExpression)
 		if err != nil {
@@ -222,7 +206,6 @@ func (r *PGRepository) createScenarioIterationRules(ctx context.Context, tx pgx.
 				rule.DisplayOrder,
 				rule.Name,
 				rule.Description,
-				string(formulaBytes),
 				formulaAstExpression,
 				rule.ScoreModifier,
 			)
@@ -255,7 +238,6 @@ type dbUpdateScenarioIterationRuleInput struct {
 	Name                 *string `db:"name"`
 	Description          *string `db:"description"`
 	ScoreModifier        *int    `db:"score_modifier"`
-	Formula              *[]byte `db:"formula"`
 	FormulaAstExpression *[]byte `db:"formula_ast_expression"`
 }
 
@@ -266,13 +248,6 @@ func (r *PGRepository) UpdateScenarioIterationRule(ctx context.Context, orgID st
 		Name:          rule.Name,
 		Description:   rule.Description,
 		ScoreModifier: rule.ScoreModifier,
-	}
-	if rule.Formula != nil {
-		formulaBytes, err := json.Marshal(rule.Formula)
-		if err != nil {
-			return models.Rule{}, fmt.Errorf("unable to marshal rule formula: %w", err)
-		}
-		dbUpdateRuleInput.Formula = &formulaBytes
 	}
 
 	var err error

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
-	"marble/marble-backend/models/operators"
 	"marble/marble-backend/utils"
 	"net/http"
 
@@ -51,18 +50,8 @@ func adaptCreateRuleInput(body dto.CreateScenarioIterationRuleInputBody) (models
 		DisplayOrder:         body.DisplayOrder,
 		Name:                 body.Name,
 		Description:          body.Description,
-		Formula:              nil,
 		FormulaAstExpression: nil,
 		ScoreModifier:        body.ScoreModifier,
-	}
-
-	if body.Formula != nil {
-		formula, err := operators.UnmarshalOperatorBool(body.Formula)
-		if err != nil {
-			return models.CreateRuleInput{}, fmt.Errorf("could not unmarshal formula: %w %w", err, models.BadParameterError)
-		}
-
-		createRuleInput.Formula = formula
 	}
 
 	if body.FormulaAstExpression != nil {
@@ -143,18 +132,8 @@ func adaptUpdateScenarioIterationRule(ruleId string, body dto.UpdateScenarioIter
 		DisplayOrder:         body.DisplayOrder,
 		Name:                 body.Name,
 		Description:          body.Description,
-		Formula:              nil,
 		FormulaAstExpression: nil,
 		ScoreModifier:        body.ScoreModifier,
-	}
-
-	if body.Formula != nil {
-		formula, err := operators.UnmarshalOperatorBool(*body.Formula)
-		if err != nil {
-			return models.UpdateRuleInput{}, fmt.Errorf("could not unmarshal formula: %w %w", err, models.BadParameterError)
-		}
-
-		updateRuleInput.Formula = &formula
 	}
 
 	if body.FormulaAstExpression != nil {

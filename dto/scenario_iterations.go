@@ -1,14 +1,12 @@
 package dto
 
 import (
-	"encoding/json"
 	"fmt"
 	"marble/marble-backend/models"
 	"time"
 )
 
 type ScenarioIterationBodyDto struct {
-	TriggerCondition              json.RawMessage            `json:"triggerCondition"`
 	TriggerConditionAstExpression *NodeDto                   `json:"trigger_condition_ast_expression"`
 	Rules                         []ScenarioIterationRuleDto `json:"rules"`
 	ScoreReviewThreshold          *int                       `json:"scoreReviewThreshold"`
@@ -31,22 +29,17 @@ type ScenarioIterationDto struct {
 }
 
 type ScenarioIterationRuleDto struct {
-	ID                   string          `json:"id"`
-	ScenarioIterationID  string          `json:"scenarioIterationId"`
-	DisplayOrder         int             `json:"displayOrder"`
-	Name                 string          `json:"name"`
-	Description          string          `json:"description"`
-	Formula              json.RawMessage `json:"formula"`
-	FormulaAstExpression *NodeDto        `json:"formula_ast_expression"`
-	ScoreModifier        int             `json:"scoreModifier"`
-	CreatedAt            time.Time       `json:"createdAt"`
+	ID                   string    `json:"id"`
+	ScenarioIterationID  string    `json:"scenarioIterationId"`
+	DisplayOrder         int       `json:"displayOrder"`
+	Name                 string    `json:"name"`
+	Description          string    `json:"description"`
+	FormulaAstExpression *NodeDto  `json:"formula_ast_expression"`
+	ScoreModifier        int       `json:"scoreModifier"`
+	CreatedAt            time.Time `json:"createdAt"`
 }
 
 func AdaptScenarioIterationRuleDto(rule models.Rule) (ScenarioIterationRuleDto, error) {
-	formula, err := (*rule.Formula).MarshalJSON()
-	if err != nil {
-		return ScenarioIterationRuleDto{}, fmt.Errorf("unable to marshal formula: %w", err)
-	}
 
 	var formulaAstExpression *NodeDto
 	if rule.FormulaAstExpression != nil {
@@ -63,7 +56,6 @@ func AdaptScenarioIterationRuleDto(rule models.Rule) (ScenarioIterationRuleDto, 
 		DisplayOrder:         rule.DisplayOrder,
 		Name:                 rule.Name,
 		Description:          rule.Description,
-		Formula:              formula,
 		FormulaAstExpression: formulaAstExpression,
 		ScoreModifier:        rule.ScoreModifier,
 		CreatedAt:            rule.CreatedAt,
@@ -84,14 +76,6 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 			return ScenarioIterationWithBodyDto{}, fmt.Errorf("could not create new api scenario iteration rule: %w", err)
 		}
 		body.Rules[i] = apiRule
-	}
-
-	if si.Body.TriggerCondition != nil {
-		triggerConditionBytes, err := si.Body.TriggerCondition.MarshalJSON()
-		if err != nil {
-			return ScenarioIterationWithBodyDto{}, fmt.Errorf("unable to marshal trigger condition: %w", err)
-		}
-		body.TriggerCondition = triggerConditionBytes
 	}
 
 	if si.Body.TriggerConditionAstExpression != nil {

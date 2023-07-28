@@ -7,7 +7,6 @@ import (
 	"marble/marble-backend/app"
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
-	"marble/marble-backend/models/operators"
 	"marble/marble-backend/usecases"
 	"marble/marble-backend/utils"
 	"os"
@@ -199,8 +198,6 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 		Body: &models.CreateScenarioIterationBody{
 			Rules: []models.CreateRuleInput{
 				{
-					// TODO remove when we use only the new AST
-					Formula: &operators.BoolValue{Value: false},
 					FormulaAstExpression: &ast.Node{
 						Function: ast.FUNC_EQUAL,
 						Children: []ast.Node{

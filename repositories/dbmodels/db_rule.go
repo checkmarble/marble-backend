@@ -3,7 +3,6 @@ package dbmodels
 import (
 	"fmt"
 	"marble/marble-backend/models"
-	"marble/marble-backend/models/operators"
 	"marble/marble-backend/utils"
 	"time"
 
@@ -18,22 +17,12 @@ type DBRule struct {
 	Name                 string      `db:"name"`
 	Description          string      `db:"description"`
 	ScoreModifier        int         `db:"score_modifier"`
-	Formula              []byte      `db:"formula"`
 	FormulaAstExpression []byte      `db:"formula_ast_expression"`
 	CreatedAt            time.Time   `db:"created_at"`
 	DeletedAt            pgtype.Time `db:"deleted_at"`
 }
 
 func AdaptRule(db DBRule) (models.Rule, error) {
-
-	var formula *operators.OperatorBool
-	if string(db.Formula) != "{}" {
-		f, err := operators.UnmarshalOperatorBool(db.Formula)
-		if err != nil {
-			return models.Rule{}, fmt.Errorf("unable to unmarshal rule: %w", err)
-		}
-		formula = &f
-	}
 
 	formulaAstExpression, err := AdaptSerializedAstExpression(db.FormulaAstExpression)
 	if err != nil {
@@ -47,7 +36,6 @@ func AdaptRule(db DBRule) (models.Rule, error) {
 		DisplayOrder:         db.DisplayOrder,
 		Name:                 db.Name,
 		Description:          db.Description,
-		Formula:              formula,
 		FormulaAstExpression: formulaAstExpression,
 		ScoreModifier:        db.ScoreModifier,
 		CreatedAt:            db.CreatedAt,
