@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"marble/marble-backend/models"
-	"marble/marble-backend/models/operators"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -21,7 +20,7 @@ func (repo *IngestedDataReadRepositoryImpl) GetDbField(transaction Transaction, 
 	tx := adaptClientDatabaseTransaction(transaction)
 
 	if len(readParams.Path) == 0 {
-		return nil, fmt.Errorf("path is empty: %w", operators.ErrDbReadInconsistentWithDataModel)
+		return nil, fmt.Errorf("path is empty: %w", models.BadParameterError)
 	}
 	row, err := repo.queryDbForField(tx, readParams)
 	if err != nil {
@@ -31,7 +30,7 @@ func (repo *IngestedDataReadRepositoryImpl) GetDbField(transaction Transaction, 
 	var output any
 	err = row.Scan(&output)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, fmt.Errorf("no rows scanned while reading DB: %w", operators.OperatorNoRowsReadInDbError)
+		return nil, fmt.Errorf("no rows scanned while reading DB: %w", models.NotFoundError)
 	} else if err != nil {
 		return nil, err
 	}
@@ -45,7 +44,7 @@ func (repo *IngestedDataReadRepositoryImpl) queryDbForField(tx TransactionPostgr
 	}
 	link, ok := triggerTable.LinksToSingle[readParams.Path[0]]
 	if !ok {
-		return nil, fmt.Errorf("no link with name %s: %w", readParams.Path[0], operators.ErrDbReadInconsistentWithDataModel)
+		return nil, fmt.Errorf("no link with name %s: %w", readParams.Path[0], models.NotFoundError)
 	}
 
 	firstTableObjectId, err := getFirstTableObjectIdFromPayload(readParams.Payload, link.ChildFieldName)
@@ -56,7 +55,7 @@ func (repo *IngestedDataReadRepositoryImpl) queryDbForField(tx TransactionPostgr
 	// "first table" is the first table reached starting from the trigger table and following the path
 	firstTable, ok := readParams.DataModel.Tables[link.LinkedTableName]
 	if !ok {
-		return nil, fmt.Errorf("no table with name %s: %w", link.LinkedTableName, operators.ErrDbReadInconsistentWithDataModel)
+		return nil, fmt.Errorf("no table with name %s: %w", link.LinkedTableName, models.NotFoundError)
 	}
 	// "last table" is the last table reached starting from the trigger table and following the path, from which the field is selected
 	lastTable, err := getLastTableFromPath(readParams, firstTable)
@@ -108,11 +107,11 @@ func addJoinsOnIntermediateTables(tx TransactionPostgres, query squirrel.SelectB
 	for _, linkName := range readParams.Path[1:] {
 		link, ok := currentTable.LinksToSingle[linkName]
 		if !ok {
-			return squirrel.SelectBuilder{}, fmt.Errorf("no link with name %s on table %s: %w", linkName, currentTable.Name, operators.ErrDbReadInconsistentWithDataModel)
+			return squirrel.SelectBuilder{}, fmt.Errorf("no link with name %s on table %s: %w", linkName, currentTable.Name, models.NotFoundError)
 		}
 		nextTable, ok := readParams.DataModel.Tables[link.LinkedTableName]
 		if !ok {
-			return squirrel.SelectBuilder{}, fmt.Errorf("no table with name %s: %w", link.LinkedTableName, operators.ErrDbReadInconsistentWithDataModel)
+			return squirrel.SelectBuilder{}, fmt.Errorf("no table with name %s: %w", link.LinkedTableName, models.NotFoundError)
 		}
 
 		currentTableName := tableNameWithSchema(tx, currentTable.Name)
@@ -142,11 +141,11 @@ func getLastTableFromPath(params models.DbFieldReadParams, firstTable models.Tab
 	for _, linkName := range params.Path[1:] {
 		link, ok := currentTable.LinksToSingle[linkName]
 		if !ok {
-			return models.Table{}, fmt.Errorf("no link with name %s: %w", linkName, operators.ErrDbReadInconsistentWithDataModel)
+			return models.Table{}, fmt.Errorf("no link with name %s: %w", linkName, models.NotFoundError)
 		}
 		nextTable, ok := params.DataModel.Tables[link.LinkedTableName]
 		if !ok {
-			return models.Table{}, fmt.Errorf("no table with name %s: %w", link.LinkedTableName, operators.ErrDbReadInconsistentWithDataModel)
+			return models.Table{}, fmt.Errorf("no table with name %s: %w", link.LinkedTableName, models.NotFoundError)
 		}
 
 		currentTable = nextTable

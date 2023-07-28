@@ -32,7 +32,7 @@ type RuleExecution struct {
 	Rule                Rule
 	Result              bool
 	ResultScoreModifier int
-	Error               RuleExecutionError
+	Error               error
 }
 
 type RuleExecutionError int
