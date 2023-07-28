@@ -8,7 +8,7 @@ import {
   type Scenario,
   type AstNodeEvaluation,
 } from "@/models";
-import { MapObjectValues } from "@/MapUtils";
+import { MapMap } from "@/MapUtils";
 import {
   type ScenariosRepository,
   validateAstExpression,
@@ -39,7 +39,7 @@ export interface NodeViewModel {
   name: string;
   constant: ConstantType;
   children: NodeViewModel[];
-  namedChildren: Record<string, NodeViewModel>;
+  namedChildren: Map<string, NodeViewModel>;
 }
 
 function jsonifyConstant(constant: ConstantOptional): ConstantType {
@@ -59,7 +59,7 @@ function makeExpressionViewModel(node: AstNode): ExpressionViewModel {
       name: node.name,
       constant: jsonifyConstant(node.constant),
       children: node.children.map(makeNodeViewModel),
-      namedChildren: MapObjectValues(node.namedChildren, makeNodeViewModel),
+      namedChildren: MapMap(node.namedChildren, makeNodeViewModel),
     };
     // nodes.set(newNode.id, newNode);
 
@@ -84,7 +84,6 @@ function makeExpressionViewModel(node: AstNode): ExpressionViewModel {
 //   return adaptAstNode(vm.rootNode);
 // }
 
-
 export function useAstExpressionBuilder(
   service: AstExpressionService,
   scenarioId: string,
@@ -108,7 +107,9 @@ export function useAstExpressionBuilder(
   );
 
   const [expressionViewModel, setExpressionViewModel] =
-    useState<ExpressionViewModel>(() => makeExpressionViewModel(exampleRuleInList.formula));
+    useState<ExpressionViewModel>(() =>
+      makeExpressionViewModel(exampleRuleInList.formula)
+    );
 
   // const expressionAstNode = useMemo(
   //   () => adaptAstNodeFromViewModel(expressionViewModel),
@@ -204,7 +205,7 @@ function replaceOneNode(
     // Possible optimization: copy just the parent of the target node.
     // but I want to avoid early optimization.
     const children = node.children.map(replaceNode);
-    const namedChildren = MapObjectValues(node.namedChildren, replaceNode);
+    const namedChildren = MapMap(node.namedChildren, replaceNode);
     return {
       ...node,
       children,
@@ -241,7 +242,7 @@ export function setAstNodeConstant(
       name: "",
       constant: newConstant,
       children: [],
-      namedChildren: {},
+      namedChildren: new Map(),
     };
   });
 }
@@ -271,7 +272,7 @@ export function addAstNodeOperand(editor: ExpressionEditor, nodeId: string) {
           name: "",
           constant: "",
           children: [],
-          namedChildren: {},
+          namedChildren: new Map(),
         },
       ],
     };

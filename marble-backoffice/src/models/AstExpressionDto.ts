@@ -6,7 +6,7 @@ import {
   type ConstantType,
   NoConstant,
 } from "./AstExpression";
-import { MapObjectValues } from "@/MapUtils";
+import { MapObjectValues, ObjectToMap, MapMap, MapToObject } from "@/MapUtils";
 
 export const ConstantOptionalSchema = yup.mixed().nullable().optional(); // {}, null or undefined
 
@@ -48,7 +48,7 @@ export function adaptAstNode(dto: AstNodeDto): AstNode {
     name: dto.name || "",
     constant: adaptConstantOptional(dto.constant),
     children: (dto.children || []).map((child) => adaptAstNode(child)),
-    namedChildren: MapObjectValues(dto.named_children || {}, adaptAstNode),
+    namedChildren: MapMap(ObjectToMap(dto.named_children || {}), adaptAstNode),
   };
 }
 
@@ -57,7 +57,7 @@ export function adaptAstNodeDto(model: AstNode): AstNodeDto {
     name: model.name === "" ? undefined : model.name,
     constant: model.constant === NoConstant ? undefined : model.constant,
     children: (model.children || []).map((child) => adaptAstNodeDto(child)),
-    named_children: MapObjectValues(model.namedChildren || {}, adaptAstNodeDto),
+    named_children: MapToObject(MapMap(model.namedChildren, adaptAstNodeDto)),
   };
 }
 export function adapAstValidateSchemaResult(json: unknown) {
@@ -75,7 +75,7 @@ export function adapAstValidateSchemaResult(json: unknown) {
   };
 }
 
-export function adaptLitteralAstNode(json: unknown) : AstNode {
+export function adaptLitteralAstNode(json: unknown): AstNode {
   const dto = AstNodeSchema.validateSync(json);
   return adaptAstNode(dto);
 }

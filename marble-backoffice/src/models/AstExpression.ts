@@ -1,16 +1,24 @@
+import { ObjectToMap } from "@/MapUtils";
+
 export interface AstNode {
   name: string;
   constant: ConstantOptional;
   children: AstNode[];
-  namedChildren: Record<string, AstNode>;
+  namedChildren: Map<string, AstNode>;
 }
 
-export type ConstantType = number | string | boolean | null | Array<ConstantType> | { [key: string]: ConstantType }
+export type ConstantType =
+  | number
+  | string
+  | boolean
+  | null
+  | Array<ConstantType>
+  | { [key: string]: ConstantType };
 
 // NoConstant could be replaced by undefined
 // slightly overengineer contant value, I hope it is still readable.
-export const NoConstant : unique symbol = Symbol("NoConstant")
-export type ConstantOptional = ConstantType | typeof NoConstant
+export const NoConstant: unique symbol = Symbol("NoConstant");
+export type ConstantOptional = ConstantType | typeof NoConstant;
 
 // helper
 export function NewAstNode(p: {
@@ -23,6 +31,6 @@ export function NewAstNode(p: {
     name: p.name || "",
     constant: p.constant === undefined ? NoConstant : p.constant,
     children: p.children || [],
-    namedChildren: p.namedChildren || {},
+    namedChildren: ObjectToMap(p.namedChildren || {}),
   };
 }
