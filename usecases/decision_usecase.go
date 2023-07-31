@@ -7,7 +7,7 @@ import (
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/ast_eval"
-	"marble/marble-backend/usecases/organization"
+	"marble/marble-backend/usecases/org_transaction"
 	"marble/marble-backend/utils"
 
 	"golang.org/x/exp/slog"
@@ -15,7 +15,7 @@ import (
 
 type DecisionUsecase struct {
 	transactionFactory              repositories.TransactionFactory
-	orgTransactionFactory           organization.OrgTransactionFactory
+	orgTransactionFactory           org_transaction.Factory
 	ingestedDataReadRepository      repositories.IngestedDataReadRepository
 	customListRepository            repositories.CustomListRepository
 	decisionRepository              repositories.DecisionRepository

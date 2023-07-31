@@ -9,7 +9,7 @@ import (
 	"marble/marble-backend/models/ast"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/ast_eval"
-	"marble/marble-backend/usecases/organization"
+	"marble/marble-backend/usecases/org_transaction"
 	"marble/marble-backend/usecases/security"
 )
 
@@ -17,7 +17,7 @@ type AstExpressionUsecase struct {
 	EnforceSecurity            security.EnforceSecurity
 	OrganizationIdOfContext    func() (string, error)
 	CustomListRepository       repositories.CustomListRepository
-	OrgTransactionFactory      organization.OrgTransactionFactory
+	OrgTransactionFactory      org_transaction.Factory
 	IngestedDataReadRepository repositories.IngestedDataReadRepository
 	DataModelRepository        repositories.DataModelRepository
 	ScenarioRepository         repositories.ScenarioReadRepository

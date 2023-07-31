@@ -6,6 +6,7 @@ import (
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/ast_eval"
 	"marble/marble-backend/usecases/ast_eval/evaluate"
+	"marble/marble-backend/usecases/org_transaction"
 	"marble/marble-backend/usecases/organization"
 	"marble/marble-backend/usecases/scenarios"
 	"marble/marble-backend/usecases/scheduledexecution"
@@ -31,8 +32,8 @@ func (usecases *Usecases) NewOrganizationUseCase() OrganizationUseCase {
 	}
 }
 
-func (usecases *Usecases) NewOrgTransactionFactory() organization.OrgTransactionFactory {
-	return &organization.OrgTransactionFactoryImpl{
+func (usecases *Usecases) NewOrgTransactionFactory() org_transaction.Factory {
+	return &org_transaction.FactoryImpl{
 		OrganizationSchemaRepository:     usecases.Repositories.OrganizationSchemaRepository,
 		TransactionFactory:               usecases.Repositories.TransactionFactory,
 		DatabaseConnectionPoolRepository: usecases.Repositories.DatabaseConnectionPoolRepository,
@@ -188,5 +189,7 @@ func (usecases *Usecases) NewScenarioPublisher() scenarios.ScenarioPublisher {
 }
 
 func (usecases *Usecases) NewValidateScenarioIteration() scenarios.ValidateScenarioIteration {
-	return &scenarios.ValidateScenarioIterationImpl{}
+	return &scenarios.ValidateScenarioIterationImpl{
+		AstEvaluationEnvironmentFactory: usecases.AstEvaluationEnvironment,
+	}
 }

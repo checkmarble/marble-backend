@@ -7,7 +7,7 @@ import (
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/ast_eval"
-	"marble/marble-backend/usecases/organization"
+	"marble/marble-backend/usecases/org_transaction"
 	"marble/marble-backend/usecases/scheduledexecution"
 	"marble/marble-backend/utils"
 	"runtime/debug"
@@ -23,7 +23,7 @@ type ScheduledExecutionUsecase struct {
 	scheduledExecutionRepository    repositories.ScheduledExecutionRepository
 	dataModelRepository             repositories.DataModelRepository
 	transactionFactory              repositories.TransactionFactory
-	orgTransactionFactory           organization.OrgTransactionFactory
+	orgTransactionFactory           org_transaction.Factory
 	ingestedDataReadRepository      repositories.IngestedDataReadRepository
 	decisionRepository              repositories.DecisionRepository
 	customListRepository            repositories.CustomListRepository

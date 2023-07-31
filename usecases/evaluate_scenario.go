@@ -7,7 +7,7 @@ import (
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/ast_eval"
-	"marble/marble-backend/usecases/organization"
+	"marble/marble-backend/usecases/org_transaction"
 	"runtime/debug"
 
 	"golang.org/x/exp/slog"
@@ -21,7 +21,7 @@ type scenarioEvaluationParameters struct {
 
 type scenarioEvaluationRepositories struct {
 	scenarioIterationReadRepository repositories.ScenarioIterationReadRepository
-	orgTransactionFactory           organization.OrgTransactionFactory
+	orgTransactionFactory           org_transaction.Factory
 	ingestedDataReadRepository      repositories.IngestedDataReadRepository
 	customListRepository            repositories.CustomListRepository
 	evaluateRuleAstExpression       ast_eval.EvaluateRuleAstExpression

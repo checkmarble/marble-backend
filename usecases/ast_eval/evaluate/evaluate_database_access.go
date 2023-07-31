@@ -6,18 +6,18 @@ import (
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 	"marble/marble-backend/repositories"
-	"marble/marble-backend/usecases/organization"
+	"marble/marble-backend/usecases/org_transaction"
 )
 
 type DatabaseAccess struct {
 	OrganizationIdOfContext    string
 	DataModelRepository        repositories.DataModelRepository
 	Payload                    models.PayloadReader
-	OrgTransactionFactory      organization.OrgTransactionFactory
+	OrgTransactionFactory      org_transaction.Factory
 	IngestedDataReadRepository repositories.IngestedDataReadRepository
 }
 
-func NewDatabaseAccess(otf organization.OrgTransactionFactory, idrr repositories.IngestedDataReadRepository,
+func NewDatabaseAccess(otf org_transaction.Factory, idrr repositories.IngestedDataReadRepository,
 	dm repositories.DataModelRepository, payload models.PayloadReader,
 	organizationIdOfContext string) DatabaseAccess {
 	return DatabaseAccess{
@@ -68,7 +68,7 @@ func (d DatabaseAccess) getDbField(tableName string, fieldName string, path []st
 		return models.Decision{}, fmt.Errorf("error getting data model: %w", err)
 	}
 
-	return organization.TransactionInOrgSchemaReturnValue(
+	return org_transaction.InOrganizationSchema(
 		d.OrgTransactionFactory,
 		d.OrganizationIdOfContext,
 		func(tx repositories.Transaction) (interface{}, error) {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
+	"marble/marble-backend/usecases/org_transaction"
 	"marble/marble-backend/usecases/organization"
 
 	"github.com/google/uuid"
@@ -12,7 +13,7 @@ import (
 
 type OrganizationUseCase struct {
 	transactionFactory           repositories.TransactionFactory
-	orgTransactionFactory        organization.OrgTransactionFactory
+	orgTransactionFactory        org_transaction.Factory
 	organizationRepository       repositories.OrganizationRepository
 	datamodelRepository          repositories.DataModelRepository
 	apiKeyRepository             repositories.ApiKeyRepository

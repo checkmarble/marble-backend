@@ -4,7 +4,7 @@ import (
 	"context"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
-	"marble/marble-backend/usecases/organization"
+	"marble/marble-backend/usecases/org_transaction"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -12,7 +12,7 @@ import (
 type DataAccessor struct {
 	DataModel                  models.DataModel
 	Payload                    models.PayloadReader
-	orgTransactionFactory      organization.OrgTransactionFactory
+	orgTransactionFactory      org_transaction.Factory
 	organizationId             string
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
 	customListRepository       repositories.CustomListRepository
@@ -24,7 +24,7 @@ func (d *DataAccessor) GetPayloadField(fieldName string) (interface{}, error) {
 
 func (d *DataAccessor) GetDbField(ctx context.Context, triggerTableName string, path []string, fieldName string) (interface{}, error) {
 
-	return organization.TransactionInOrgSchemaReturnValue(
+	return org_transaction.InOrganizationSchema(
 		d.orgTransactionFactory,
 		d.organizationId,
 		func(tx repositories.Transaction) (interface{}, error) {
