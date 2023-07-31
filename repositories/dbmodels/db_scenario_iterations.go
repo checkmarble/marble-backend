@@ -35,15 +35,13 @@ var SelectScenarioIterationColumn = utils.ColumnList[DBScenarioIteration]()
 
 func AdaptScenarioIteration(dto DBScenarioIteration) (models.ScenarioIteration, error) {
 	scenarioIteration := models.ScenarioIteration{
-		Id:             dto.Id,
-		OrganizationId: dto.OrganizationId,
-		ScenarioId:     dto.ScenarioId,
-		CreatedAt:      dto.CreatedAt,
-		UpdatedAt:      dto.UpdatedAt,
-		Body: models.ScenarioIterationBody{
-			BatchTriggerSQL: dto.BatchTriggerSQL,
-			Schedule:        dto.Schedule,
-		},
+		Id:              dto.Id,
+		OrganizationId:  dto.OrganizationId,
+		ScenarioId:      dto.ScenarioId,
+		CreatedAt:       dto.CreatedAt,
+		UpdatedAt:       dto.UpdatedAt,
+		BatchTriggerSQL: dto.BatchTriggerSQL,
+		Schedule:        dto.Schedule,
 	}
 
 	if dto.Version.Valid {
@@ -52,15 +50,15 @@ func AdaptScenarioIteration(dto DBScenarioIteration) (models.ScenarioIteration, 
 	}
 	if dto.ScoreReviewThreshold.Valid {
 		scoreReviewThreshold := int(dto.ScoreReviewThreshold.Int16)
-		scenarioIteration.Body.ScoreReviewThreshold = &scoreReviewThreshold
+		scenarioIteration.ScoreReviewThreshold = &scoreReviewThreshold
 	}
 	if dto.ScoreRejectThreshold.Valid {
 		scoreRejectThreshold := int(dto.ScoreRejectThreshold.Int16)
-		scenarioIteration.Body.ScoreRejectThreshold = &scoreRejectThreshold
+		scenarioIteration.ScoreRejectThreshold = &scoreRejectThreshold
 	}
 
 	var err error
-	scenarioIteration.Body.TriggerConditionAstExpression, err = AdaptSerializedAstExpression(dto.TriggerConditionAstExpression)
+	scenarioIteration.TriggerConditionAstExpression, err = AdaptSerializedAstExpression(dto.TriggerConditionAstExpression)
 	if err != nil {
 		return scenarioIteration, fmt.Errorf("unable to unmarshal trigger codition ast expression: %w", err)
 	}
@@ -74,12 +72,9 @@ func AdaptScenarioIterationWithRules(dto DBScenarioIterationWithRules) (models.S
 		return models.ScenarioIteration{}, err
 	}
 
-	for _, rule := range dto.Rules {
-		r, err := AdaptRule(rule)
-		if err != nil {
-			return models.ScenarioIteration{}, err
-		}
-		scenarioIteration.Body.Rules = append(scenarioIteration.Body.Rules, r)
+	scenarioIteration.Rules, err = utils.MapErr(dto.Rules, AdaptRule)
+	if err != nil {
+		return models.ScenarioIteration{}, err
 	}
 
 	return scenarioIteration, nil

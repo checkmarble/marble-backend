@@ -64,13 +64,13 @@ func AdaptScenarioIterationRuleDto(rule models.Rule) (ScenarioIterationRuleDto, 
 
 func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIterationWithBodyDto, error) {
 	body := ScenarioIterationBodyDto{
-		ScoreReviewThreshold: si.Body.ScoreReviewThreshold,
-		ScoreRejectThreshold: si.Body.ScoreRejectThreshold,
-		BatchTriggerSQL:      si.Body.BatchTriggerSQL,
-		Schedule:             si.Body.Schedule,
-		Rules:                make([]ScenarioIterationRuleDto, len(si.Body.Rules)),
+		ScoreReviewThreshold: si.ScoreReviewThreshold,
+		ScoreRejectThreshold: si.ScoreRejectThreshold,
+		BatchTriggerSQL:      si.BatchTriggerSQL,
+		Schedule:             si.Schedule,
+		Rules:                make([]ScenarioIterationRuleDto, len(si.Rules)),
 	}
-	for i, rule := range si.Body.Rules {
+	for i, rule := range si.Rules {
 		apiRule, err := AdaptScenarioIterationRuleDto(rule)
 		if err != nil {
 			return ScenarioIterationWithBodyDto{}, fmt.Errorf("could not create new api scenario iteration rule: %w", err)
@@ -78,8 +78,8 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 		body.Rules[i] = apiRule
 	}
 
-	if si.Body.TriggerConditionAstExpression != nil {
-		triggerDto, err := AdaptNodeDto(*si.Body.TriggerConditionAstExpression)
+	if si.TriggerConditionAstExpression != nil {
+		triggerDto, err := AdaptNodeDto(*si.TriggerConditionAstExpression)
 		if err != nil {
 			return ScenarioIterationWithBodyDto{}, fmt.Errorf("unable to marshal trigger condition ast expression: %w", err)
 		}

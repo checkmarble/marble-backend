@@ -6,16 +6,12 @@ import (
 )
 
 type ScenarioIteration struct {
-	Id             string
-	OrganizationId string
-	ScenarioId     string
-	Version        *int
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	Body           ScenarioIterationBody
-}
-
-type ScenarioIterationBody struct {
+	Id                            string
+	OrganizationId                string
+	ScenarioId                    string
+	Version                       *int
+	CreatedAt                     time.Time
+	UpdatedAt                     time.Time
 	TriggerConditionAstExpression *ast.Node
 	Rules                         []Rule
 	ScoreReviewThreshold          *int

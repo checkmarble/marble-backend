@@ -29,37 +29,35 @@ type dbScenarioIteration struct {
 }
 
 func (si *dbScenarioIteration) toDomain() (models.ScenarioIteration, error) {
-	siDTO := models.ScenarioIteration{
-		Id:         si.Id,
-		ScenarioId: si.ScenarioId,
-		CreatedAt:  si.CreatedAt,
-		UpdatedAt:  si.UpdatedAt,
-		Body: models.ScenarioIterationBody{
-			BatchTriggerSQL: si.BatchTriggerSQL,
-			Schedule:        si.Schedule,
-		},
+	iteration := models.ScenarioIteration{
+		Id:              si.Id,
+		ScenarioId:      si.ScenarioId,
+		CreatedAt:       si.CreatedAt,
+		UpdatedAt:       si.UpdatedAt,
+		BatchTriggerSQL: si.BatchTriggerSQL,
+		Schedule:        si.Schedule,
 	}
 
 	if si.Version.Valid {
 		version := int(si.Version.Int16)
-		siDTO.Version = &version
+		iteration.Version = &version
 	}
 	if si.ScoreReviewThreshold.Valid {
 		scoreReviewThreshold := int(si.ScoreReviewThreshold.Int16)
-		siDTO.Body.ScoreReviewThreshold = &scoreReviewThreshold
+		iteration.ScoreReviewThreshold = &scoreReviewThreshold
 	}
 	if si.ScoreRejectThreshold.Valid {
 		scoreRejectThreshold := int(si.ScoreRejectThreshold.Int16)
-		siDTO.Body.ScoreRejectThreshold = &scoreRejectThreshold
+		iteration.ScoreRejectThreshold = &scoreRejectThreshold
 	}
 
 	var err error
-	siDTO.Body.TriggerConditionAstExpression, err = dbmodels.AdaptSerializedAstExpression(si.TriggerConditionAstExpression)
+	iteration.TriggerConditionAstExpression, err = dbmodels.AdaptSerializedAstExpression(si.TriggerConditionAstExpression)
 	if err != nil {
-		return siDTO, fmt.Errorf("unable to unmarshal trigger codition ast expression: %w", err)
+		return iteration, fmt.Errorf("unable to unmarshal trigger codition ast expression: %w", err)
 	}
 
-	return siDTO, nil
+	return iteration, nil
 }
 
 type dbCreateScenarioIteration struct {
@@ -123,7 +121,7 @@ func (r *PGRepository) CreateScenarioIteration(ctx context.Context, organization
 		if err != nil {
 			return models.ScenarioIteration{}, fmt.Errorf("unable to create scenario iteration rules: %w", err)
 		}
-		scenarioIterationDTO.Body.Rules = createdRules
+		scenarioIterationDTO.Rules = createdRules
 	}
 
 	err = tx.Commit(ctx)

@@ -237,8 +237,8 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 	assert.NoError(t, err, "Could not update scenario iteration")
 	assert.Equal(
 		t,
-		threshold, *updatedScenarioIteration.Body.ScoreReviewThreshold,
-		"Expected score review threshold to be %d, got %d", threshold, *updatedScenarioIteration.Body.ScoreReviewThreshold,
+		threshold, *updatedScenarioIteration.ScoreReviewThreshold,
+		"Expected score review threshold to be %d, got %d", threshold, *updatedScenarioIteration.ScoreReviewThreshold,
 	)
 
 	// Publish the iteration to make it live
@@ -256,7 +256,7 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 	assert.NoError(t, err, "Could not get scenario iteration")
 	assert.NotNil(t, scenarioIteration.Version, "Expected scenario iteration to have a version")
 	assert.Equal(t, 1, *scenarioIteration.Version, "Expected scenario iteration to have version 1, got %d", *scenarioIteration.Version)
-	fmt.Printf("Updated scenario iteration %+v\n", scenarioIteration.Body)
+	fmt.Printf("Updated scenario iteration %+v\n", scenarioIteration)
 
 	return scenarioId
 }

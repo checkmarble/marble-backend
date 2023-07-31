@@ -256,7 +256,7 @@ func (usecase *ScheduledExecutionUsecase) getPublishedScenarioIteration(scenario
 	if err != nil {
 		return models.PublishedScenarioIteration{}, err
 	}
-	if scenarioIteration.Body.Schedule == "" {
+	if scenarioIteration.Schedule == "" {
 		return models.PublishedScenarioIteration{}, fmt.Errorf("scenario is not scheduled %w", models.BadParameterError)
 	}
 
