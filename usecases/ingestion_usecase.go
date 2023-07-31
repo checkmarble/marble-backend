@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"marble/marble-backend/models"
+	"marble/marble-backend/pure_utils"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/organization"
 	"strconv"
@@ -98,7 +99,7 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file
 
 func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organizationId string, file models.GCSFile, table models.Table, logger *slog.Logger) error {
 	start := time.Now()
-	r := csv.NewReader(file.Reader)
+	r := csv.NewReader(pure_utils.NewReaderWithoutBom(file.Reader))
 	firstRow, err := r.Read()
 	if err != nil {
 		return fmt.Errorf("error reading first row of CSV: %w", err)
