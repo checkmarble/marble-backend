@@ -62,7 +62,7 @@ func (r *PGRepository) ListScenarioIterationRules(ctx context.Context, orgID str
 		return nil, fmt.Errorf("unable to get rules: %w", err)
 	}
 
-	var ruleDTOs []models.Rule
+	ruleDTOs := make([]models.Rule, 0)
 	for _, rule := range rules {
 		ruleDTO, err := dbmodels.AdaptRule(rule)
 		if err != nil {
