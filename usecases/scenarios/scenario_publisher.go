@@ -8,35 +8,22 @@ import (
 )
 
 type ScenarioPublisher struct {
-	scenarioPublicationsRepository  repositories.ScenarioPublicationRepository
-	scenarioReadRepository          repositories.ScenarioReadRepository
-	scenarioWriteRepository         repositories.ScenarioWriteRepository
-	scenarioIterationReadRepository repositories.ScenarioIterationReadRepository
-}
-
-func NewScenarioPublisher(
-	scenarioPublicationsRepository repositories.ScenarioPublicationRepository,
-	scenarioReadRepository repositories.ScenarioReadRepository,
-	scenarioWriteRepository repositories.ScenarioWriteRepository,
-	scenarioIterationReadRepository repositories.ScenarioIterationReadRepository,
-) ScenarioPublisher {
-	return ScenarioPublisher{
-		scenarioPublicationsRepository:  scenarioPublicationsRepository,
-		scenarioReadRepository:          scenarioReadRepository,
-		scenarioWriteRepository:         scenarioWriteRepository,
-		scenarioIterationReadRepository: scenarioIterationReadRepository,
-	}
+	ScenarioPublicationsRepository  repositories.ScenarioPublicationRepository
+	ScenarioReadRepository          repositories.ScenarioReadRepository
+	ScenarioWriteRepository         repositories.ScenarioWriteRepository
+	ScenarioIterationReadRepository repositories.ScenarioIterationReadRepository
+	ValidateScenarioIteration       ValidateScenarioIteration
 }
 
 func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(tx repositories.Transaction, organizationId string, input models.PublishScenarioIterationInput) ([]models.ScenarioPublication, error) {
 	var scenarioPublications []models.ScenarioPublication
 
-	scenarioIteration, err := publisher.scenarioIterationReadRepository.GetScenarioIteration(tx, input.ScenarioIterationId)
+	scenarioIteration, err := publisher.ScenarioIterationReadRepository.GetScenarioIteration(tx, input.ScenarioIterationId)
 	if err != nil {
 		return nil, err
 	}
 
-	scenario, err := publisher.scenarioReadRepository.GetScenarioById(tx, scenarioIteration.ScenarioId)
+	scenario, err := publisher.ScenarioReadRepository.GetScenarioById(tx, scenarioIteration.ScenarioId)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +46,10 @@ func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(tx repositories.
 			if scenario.LiveVersionID != nil && *scenario.LiveVersionID == input.ScenarioIterationId {
 				return []models.ScenarioPublication{}, nil
 			}
-			if err := scenarioIteration.IsValidForPublication(); err != nil {
+			if err := publisher.ValidateScenarioIteration.Validate(ScenarioAndIteration{
+				scenario:  scenario,
+				iteration: scenarioIteration,
+			}); err != nil {
 				return nil, err
 			}
 
@@ -69,7 +59,7 @@ func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(tx repositories.
 			}
 
 			// FIXME Just temporarily placed here, will be moved to scenario iteration write repo
-			err = publisher.scenarioPublicationsRepository.UpdateScenarioIterationVersion(tx, input.ScenarioIterationId, newVersion)
+			err = publisher.ScenarioPublicationsRepository.UpdateScenarioIterationVersion(tx, input.ScenarioIterationId, newVersion)
 			if err != nil {
 				return nil, err
 			}
@@ -97,7 +87,7 @@ func (publisher *ScenarioPublisher) unpublishOldIteration(tx repositories.Transa
 	}
 
 	newScenarioPublicationId := utils.NewPrimaryKey(organizationId)
-	if err := publisher.scenarioPublicationsRepository.CreateScenarioPublication(tx, models.CreateScenarioPublicationInput{
+	if err := publisher.ScenarioPublicationsRepository.CreateScenarioPublication(tx, models.CreateScenarioPublicationInput{
 		OrganizationId:      organizationId,
 		ScenarioIterationId: *liveVersionId,
 		ScenarioId:          scenarioId,
@@ -106,16 +96,16 @@ func (publisher *ScenarioPublisher) unpublishOldIteration(tx repositories.Transa
 		return nil, err
 	}
 
-	if err := publisher.scenarioWriteRepository.UpdateScenarioLiveItereationId(tx, scenarioId, nil); err != nil {
+	if err := publisher.ScenarioWriteRepository.UpdateScenarioLiveItereationId(tx, scenarioId, nil); err != nil {
 		return nil, err
 	}
-	scenarioPublication, err := publisher.scenarioPublicationsRepository.GetScenarioPublicationById(tx, newScenarioPublicationId)
+	scenarioPublication, err := publisher.ScenarioPublicationsRepository.GetScenarioPublicationById(tx, newScenarioPublicationId)
 	return []models.ScenarioPublication{scenarioPublication}, err
 }
 
 func (publisher *ScenarioPublisher) publishNewIteration(tx repositories.Transaction, organizationId, scenarioId, scenarioIterationId string) (models.ScenarioPublication, error) {
 	newScenarioPublicationId := utils.NewPrimaryKey(organizationId)
-	if err := publisher.scenarioPublicationsRepository.CreateScenarioPublication(tx, models.CreateScenarioPublicationInput{
+	if err := publisher.ScenarioPublicationsRepository.CreateScenarioPublication(tx, models.CreateScenarioPublicationInput{
 		OrganizationId:      organizationId,
 		ScenarioIterationId: scenarioIterationId,
 		ScenarioId:          scenarioId,
@@ -124,19 +114,19 @@ func (publisher *ScenarioPublisher) publishNewIteration(tx repositories.Transact
 		return models.ScenarioPublication{}, err
 	}
 
-	scenarioPublication, err := publisher.scenarioPublicationsRepository.GetScenarioPublicationById(tx, newScenarioPublicationId)
+	scenarioPublication, err := publisher.ScenarioPublicationsRepository.GetScenarioPublicationById(tx, newScenarioPublicationId)
 	if err != nil {
 		return models.ScenarioPublication{}, err
 	}
 
-	if err = publisher.scenarioWriteRepository.UpdateScenarioLiveItereationId(tx, scenarioId, &scenarioIterationId); err != nil {
+	if err = publisher.ScenarioWriteRepository.UpdateScenarioLiveItereationId(tx, scenarioId, &scenarioIterationId); err != nil {
 		return models.ScenarioPublication{}, err
 	}
 	return scenarioPublication, nil
 }
 
 func (publisher *ScenarioPublisher) getNewVersion(tx repositories.Transaction, organizationId, scenarioId string) (int, error) {
-	scenarioIterations, err := publisher.scenarioIterationReadRepository.ListScenarioIterations(tx, organizationId, models.GetScenarioIterationFilters{ScenarioId: &scenarioId})
+	scenarioIterations, err := publisher.ScenarioIterationReadRepository.ListScenarioIterations(tx, organizationId, models.GetScenarioIterationFilters{ScenarioId: &scenarioId})
 	if err != nil {
 		return 0, err
 	}

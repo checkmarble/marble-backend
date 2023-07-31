@@ -32,51 +32,6 @@ func (api *API) handleAvailableFunctions() http.HandlerFunc {
 	}
 }
 
-type PostValidateAstExpression struct {
-	Body struct {
-		Expression *dto.NodeDto `json:"expression"`
-	} `in:"body=json"`
-}
-
-func (api *API) handleValidateAstExpression() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-
-		input := ctx.Value(httpin.Input).(*PostValidateAstExpression)
-
-		expression, err := dto.AdaptASTNode(*input.Body.Expression)
-		if err != nil {
-			presentError(w, r, fmt.Errorf("invalid Expression: %w", models.BadParameterError))
-			return
-		}
-
-		usecase := api.UsecasesWithCreds(r).AstExpressionUsecase()
-		allErrors := usecase.Validate(expression)
-
-		var validationErrorsDto = utils.Map(allErrors, func(err error) string {
-			return err.Error()
-		})
-
-		if validationErrorsDto == nil {
-			validationErrorsDto = []string{}
-		}
-
-		expressionDto, err := dto.AdaptNodeDto(expression)
-		if presentError(w, r, err) {
-			return
-		}
-
-		PresentModel(w, struct {
-			Expression       dto.NodeDto `json:"expression"`
-			ValidationErrors []string    `json:"validation_errors"`
-		}{
-			Expression:       expressionDto,
-			ValidationErrors: validationErrorsDto,
-		})
-
-	}
-}
-
 type PostRunAstExpression struct {
 	Body struct {
 		Expression  *dto.NodeDto    `json:"expression"`

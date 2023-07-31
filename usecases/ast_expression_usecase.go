@@ -3,7 +3,6 @@ package usecases
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"marble/marble-backend/app"
 	"marble/marble-backend/models"
@@ -26,39 +25,6 @@ type AstExpressionUsecase struct {
 	RuleRepository                  repositories.RuleRepository
 	ScenarioIterationRuleUsecase    repositories.ScenarioIterationRuleRepositoryLegacy
 	AstEvaluationEnvironmentFactory func(organizationId string, payload models.PayloadReader) ast_eval.AstEvaluationEnvironment
-}
-
-var ErrExpressionValidation = errors.New("expression validation fail")
-
-func (usecase *AstExpressionUsecase) validateRecursif(node ast.Node, allErrors []error) []error {
-
-	attributes, err := node.Function.Attributes()
-	if err != nil {
-		allErrors = append(allErrors, errors.Join(ErrExpressionValidation, err))
-	}
-
-	if attributes.NumberOfArguments != len(node.Children) {
-		allErrors = append(allErrors, fmt.Errorf("invalid number of arguments for node [%s] %w", node.DebugString(), ErrExpressionValidation))
-	}
-
-	// TODO: missing named arguments
-	// for _, d := attributes.NamedArguments
-
-	// TODO: spurious named arguments
-
-	for _, child := range node.Children {
-		allErrors = usecase.validateRecursif(child, allErrors)
-	}
-
-	for _, child := range node.NamedChildren {
-		allErrors = usecase.validateRecursif(child, allErrors)
-	}
-
-	return allErrors
-}
-
-func (usecase *AstExpressionUsecase) Validate(node ast.Node) []error {
-	return usecase.validateRecursif(node, nil)
 }
 
 func (usecase *AstExpressionUsecase) DryRun(expression ast.Node, payloadType string, payloadRaw json.RawMessage) (ast.NodeEvaluation, error) {
@@ -169,7 +135,7 @@ func (usecase *AstExpressionUsecase) getPayloadIdentifiers(scenario models.Scena
 		// unexpected error: must be a valid table
 		return nil, fmt.Errorf("triggerObjectTable %s not found in data model", scenario.TriggerObjectType)
 	}
-	for fieldName, _ := range triggerObjectTable.Fields {
+	for fieldName := range triggerObjectTable.Fields {
 		dataAccessors = append(dataAccessors, ast.Identifier{
 			Name:        string(fieldName),
 			Description: "",

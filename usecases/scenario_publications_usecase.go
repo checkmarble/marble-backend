@@ -1,7 +1,6 @@
 package usecases
 
 import (
-	"context"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/scenarios"
@@ -45,7 +44,7 @@ func (usecase *ScenarioPublicationUsecase) ListScenarioPublications(filters mode
 	return usecase.scenarioPublicationsRepository.ListScenarioPublicationsOfOrganization(nil, organizationId, filters)
 }
 
-func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(ctx context.Context, input models.PublishScenarioIterationInput) ([]models.ScenarioPublication, error) {
+func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(input models.PublishScenarioIterationInput) ([]models.ScenarioPublication, error) {
 	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) ([]models.ScenarioPublication, error) {
 		scenarioIteration, err := usecase.scenarioIterationReadRepository.GetScenarioIteration(tx, input.ScenarioIterationId)
 		if err != nil {

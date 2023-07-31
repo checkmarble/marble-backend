@@ -22,9 +22,6 @@ func (api *API) routes() {
 			With(httpin.NewInput(PatchRuleWithAstExpression{})).
 			Patch("/save-rule", api.handleSaveRuleWithAstExpression())
 		astRouter.
-			With(httpin.NewInput(PostValidateAstExpression{})).
-			Post("/validate", api.handleValidateAstExpression())
-		astRouter.
 			With(httpin.NewInput(PostRunAstExpression{})).
 			Post("/dry-run", api.handleDryRunAstExpression())
 		astRouter.Get("/available-functions", api.handleAvailableFunctions())

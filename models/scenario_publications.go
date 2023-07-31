@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	"marble/marble-backend/models/ast"
 	"time"
 )
@@ -74,11 +73,6 @@ func NewPublishedScenarioIteration(si ScenarioIteration) (PublishedScenarioItera
 		UpdatedAt:  si.UpdatedAt,
 	}
 
-	err := si.IsValidForPublication()
-	if err != nil {
-		return PublishedScenarioIteration{}, err
-	}
-
 	result.Version = *si.Version
 	result.Body.ScoreReviewThreshold = *si.Body.ScoreReviewThreshold
 	result.Body.ScoreRejectThreshold = *si.Body.ScoreRejectThreshold
@@ -88,38 +82,6 @@ func NewPublishedScenarioIteration(si ScenarioIteration) (PublishedScenarioItera
 	result.Body.Schedule = si.Body.Schedule
 
 	return result, nil
-}
-
-func (si ScenarioIteration) IsValidForPublication() error {
-	if si.Body.ScoreReviewThreshold == nil {
-		return fmt.Errorf("Scenario iteration has no ScoreReviewThreshold: \n%w", BadParameterError)
-	}
-
-	if si.Body.ScoreRejectThreshold == nil {
-		return fmt.Errorf("Scenario iteration has no ScoreRejectThreshold: \n%w", BadParameterError)
-	}
-
-	if len(si.Body.Rules) < 1 {
-		return fmt.Errorf("Scenario iteration has no rules: \n%w", BadParameterError)
-	}
-	for _, rule := range si.Body.Rules {
-		if rule.FormulaAstExpression == nil {
-			return fmt.Errorf("Scenario iteration rule has no formula ast expression %w", BadParameterError)
-		}
-		// TODO: DRY-run the ast expression
-
-		// if rule.Formula == nil || !(*rule.Formula).IsValid() {
-		// 	return fmt.Errorf("Scenario iteration rule has invalid rules: \n%w", BadParameterError)
-		// }
-	}
-
-	if si.Body.TriggerConditionAstExpression == nil {
-		return fmt.Errorf("Scenario iteration has no trigger condition ast expression%w", BadParameterError)
-	}
-
-	// TODO: validity check of si.Body.TriggerConditionAstExpression
-
-	return nil
 }
 
 type ListScenarioPublicationsFilters struct {
