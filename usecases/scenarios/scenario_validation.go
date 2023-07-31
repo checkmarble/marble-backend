@@ -22,7 +22,7 @@ type ValidateScenarioIterationImpl struct {
 
 func (validator *ValidateScenarioIterationImpl) Validate(si ScenarioAndIteration) error {
 
-	iteration := si.iteration.Body
+	iteration := si.iteration
 
 	if iteration.ScoreReviewThreshold == nil {
 		return fmt.Errorf("scenario iteration has no ScoreReviewThreshold: \n%w", models.BadParameterError)
