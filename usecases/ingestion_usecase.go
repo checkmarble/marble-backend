@@ -8,7 +8,7 @@ import (
 	"marble/marble-backend/models"
 	"marble/marble-backend/pure_utils"
 	"marble/marble-backend/repositories"
-	"marble/marble-backend/usecases/organization"
+	"marble/marble-backend/usecases/org_transaction"
 	"strconv"
 	"strings"
 	"time"
@@ -23,7 +23,7 @@ const (
 )
 
 type IngestionUseCase struct {
-	orgTransactionFactory organization.OrgTransactionFactory
+	orgTransactionFactory org_transaction.Factory
 	ingestionRepository   repositories.IngestionRepository
 	gcsRepository         repositories.GcsRepository
 	datamodelRepository   repositories.DataModelRepository

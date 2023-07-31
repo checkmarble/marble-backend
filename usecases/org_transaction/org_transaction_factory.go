@@ -1,4 +1,4 @@
-package organization
+package org_transaction
 
 import (
 	"marble/marble-backend/models"
@@ -7,20 +7,20 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type OrgTransactionFactory interface {
+type Factory interface {
 	OrganizationDatabaseSchema(organizationId string) (models.DatabaseSchema, error)
 	TransactionInOrgSchema(organizationId string, f func(tx repositories.Transaction) error) error
 	// used by legacy code that didn't support transactions
 	OrganizationDbPool(dbSchema models.DatabaseSchema) (*pgxpool.Pool, error)
 }
 
-type OrgTransactionFactoryImpl struct {
+type FactoryImpl struct {
 	OrganizationSchemaRepository     repositories.OrganizationSchemaRepository
 	TransactionFactory               repositories.TransactionFactory
 	DatabaseConnectionPoolRepository repositories.DatabaseConnectionPoolRepository
 }
 
-func (factory *OrgTransactionFactoryImpl) OrganizationDatabaseSchema(organizationId string) (models.DatabaseSchema, error) {
+func (factory *FactoryImpl) OrganizationDatabaseSchema(organizationId string) (models.DatabaseSchema, error) {
 	organizationSchema, err := factory.OrganizationSchemaRepository.OrganizationSchemaOfOrganization(nil, organizationId)
 	if err != nil {
 		return models.DatabaseSchema{}, err
@@ -33,7 +33,7 @@ func (factory *OrgTransactionFactoryImpl) OrganizationDatabaseSchema(organizatio
 	}, nil
 }
 
-func (factory *OrgTransactionFactoryImpl) TransactionInOrgSchema(organizationId string, f func(tx repositories.Transaction) error) error {
+func (factory *FactoryImpl) TransactionInOrgSchema(organizationId string, f func(tx repositories.Transaction) error) error {
 
 	dbSchema, err := factory.OrganizationDatabaseSchema(organizationId)
 	if err != nil {
@@ -43,14 +43,14 @@ func (factory *OrgTransactionFactoryImpl) TransactionInOrgSchema(organizationId 
 	return factory.TransactionFactory.Transaction(dbSchema, f)
 }
 
-func (factory *OrgTransactionFactoryImpl) OrganizationDbPool(dbSchema models.DatabaseSchema) (*pgxpool.Pool, error) {
+func (factory *FactoryImpl) OrganizationDbPool(dbSchema models.DatabaseSchema) (*pgxpool.Pool, error) {
 
 	return factory.DatabaseConnectionPoolRepository.DatabaseConnectionPool(dbSchema.Database.Connection)
 }
 
 // helper
-func TransactionInOrgSchemaReturnValue[ReturnType any](
-	factory OrgTransactionFactory,
+func InOrganizationSchema[ReturnType any](
+	factory Factory,
 	organizationId string,
 	fn func(tx repositories.Transaction) (ReturnType, error),
 ) (ReturnType, error) {
