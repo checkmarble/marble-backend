@@ -3,7 +3,6 @@ package usecases
 import (
 	"context"
 	"marble/marble-backend/models"
-	"marble/marble-backend/usecases/scenarios"
 	"marble/marble-backend/usecases/security"
 
 	"golang.org/x/exp/slog"
@@ -72,12 +71,7 @@ func (usecases *UsecasesWithCreds) NewScenarioPublicationUsecase() ScenarioPubli
 		scenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
 		OrganizationIdOfContext:         usecases.OrganizationIdOfContext,
 		enforceSecurity:                 usecases.NewEnforceScenarioSecurity(),
-		scenarioPublisher: scenarios.NewScenarioPublisher(
-			usecases.Repositories.ScenarioPublicationRepository,
-			usecases.Repositories.ScenarioReadRepository,
-			usecases.Repositories.ScenarioWriteRepository,
-			usecases.Repositories.ScenarioIterationReadRepository,
-		),
+		scenarioPublisher:               usecases.NewScenarioPublisher(),
 	}
 }
 

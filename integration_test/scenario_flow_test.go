@@ -243,7 +243,7 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 
 	// Publish the iteration to make it live
 	scenarioPublicationUsecase := usecasesWithCreds.NewScenarioPublicationUsecase()
-	scenarioPublications, err := scenarioPublicationUsecase.ExecuteScenarioPublicationAction(usecasesWithCreds.Context, models.PublishScenarioIterationInput{
+	scenarioPublications, err := scenarioPublicationUsecase.ExecuteScenarioPublicationAction(models.PublishScenarioIterationInput{
 		ScenarioIterationId: scenarioIterationId,
 		PublicationAction:   models.Publish,
 	})

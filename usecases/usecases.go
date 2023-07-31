@@ -7,6 +7,7 @@ import (
 	"marble/marble-backend/usecases/ast_eval"
 	"marble/marble-backend/usecases/ast_eval/evaluate"
 	"marble/marble-backend/usecases/organization"
+	"marble/marble-backend/usecases/scenarios"
 	"marble/marble-backend/usecases/scheduledexecution"
 	"marble/marble-backend/usecases/security"
 )
@@ -90,15 +91,13 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 		TransactionFactory:     usecases.Repositories.TransactionFactory,
 		OrganizationRepository: usecases.Repositories.OrganizationRepository,
 		DataModelRepository:    usecases.Repositories.DataModelRepository,
-		OrganizationSeeder: organization.NewOrganizationSeeder(
-			usecases.Repositories.CustomListRepository,
-			usecases.Repositories.ApiKeyRepository,
-			usecases.Repositories.ScenarioWriteRepository,
-			usecases.Repositories.ScenarioReadRepository,
-			usecases.Repositories.ScenarioPublicationRepository,
-			usecases.Repositories.ScenarioIterationWriteRepository,
-			usecases.Repositories.ScenarioIterationReadRepository,
-		),
+		OrganizationSeeder: &organization.OrganizationSeederImpl{
+			CustomListRepository:             usecases.Repositories.CustomListRepository,
+			ApiKeyRepository:                 usecases.Repositories.ApiKeyRepository,
+			ScenarioWriteRepository:          usecases.Repositories.ScenarioWriteRepository,
+			ScenarioIterationWriteRepository: usecases.Repositories.ScenarioIterationWriteRepository,
+			ScenarioPublisher:                usecases.NewScenarioPublisher(),
+		},
 		PopulateOrganizationSchema: usecases.NewPopulateOrganizationSchema(),
 	}
 }
@@ -176,4 +175,18 @@ func (usecases *Usecases) NewEvaluateRuleAstExpression() ast_eval.EvaluateRuleAs
 	return ast_eval.EvaluateRuleAstExpression{
 		AstEvaluationEnvironmentFactory: usecases.AstEvaluationEnvironment,
 	}
+}
+
+func (usecases *Usecases) NewScenarioPublisher() scenarios.ScenarioPublisher {
+	return scenarios.ScenarioPublisher{
+		ScenarioPublicationsRepository:  usecases.Repositories.ScenarioPublicationRepository,
+		ScenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,
+		ScenarioWriteRepository:         usecases.Repositories.ScenarioWriteRepository,
+		ScenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
+		ValidateScenarioIteration:       usecases.NewValidateScenarioIteration(),
+	}
+}
+
+func (usecases *Usecases) NewValidateScenarioIteration() scenarios.ValidateScenarioIteration {
+	return &scenarios.ValidateScenarioIterationImpl{}
 }

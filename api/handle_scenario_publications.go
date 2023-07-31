@@ -53,7 +53,7 @@ func (api *API) CreateScenarioPublication() http.HandlerFunc {
 		input := ctx.Value(httpin.Input).(*dto.CreateScenarioPublicationInput)
 
 		usecase := api.UsecasesWithCreds(r).NewScenarioPublicationUsecase()
-		scenarioPublications, err := usecase.ExecuteScenarioPublicationAction(ctx, models.PublishScenarioIterationInput{
+		scenarioPublications, err := usecase.ExecuteScenarioPublicationAction(models.PublishScenarioIterationInput{
 			ScenarioIterationId: input.Body.ScenarioIterationId,
 			PublicationAction:   models.PublicationActionFrom(input.Body.PublicationAction),
 		})

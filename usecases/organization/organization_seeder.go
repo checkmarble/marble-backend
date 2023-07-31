@@ -25,7 +25,7 @@ type OrganizationSeeder interface {
 	Seed(organizationId string) error
 }
 
-type organizationSeederImpl struct {
+type OrganizationSeederImpl struct {
 	CustomListRepository             repositories.CustomListRepository
 	ApiKeyRepository                 repositories.ApiKeyRepository
 	ScenarioWriteRepository          repositories.ScenarioWriteRepository
@@ -33,25 +33,7 @@ type organizationSeederImpl struct {
 	ScenarioPublisher                scenarios.ScenarioPublisher
 }
 
-func NewOrganizationSeeder(
-	clr repositories.CustomListRepository,
-	akr repositories.ApiKeyRepository,
-	swr repositories.ScenarioWriteRepository,
-	srr repositories.ScenarioReadRepository,
-	spr repositories.ScenarioPublicationRepository,
-	siwr repositories.ScenarioIterationWriteRepository,
-	sirr repositories.ScenarioIterationReadRepository,
-) OrganizationSeeder {
-	return &organizationSeederImpl{
-		CustomListRepository:             clr,
-		ApiKeyRepository:                 akr,
-		ScenarioWriteRepository:          swr,
-		ScenarioIterationWriteRepository: siwr,
-		ScenarioPublisher:                scenarios.NewScenarioPublisher(spr, srr, swr, sirr),
-	}
-}
-
-func (o *organizationSeederImpl) Seed(organizationId string) error {
+func (o *OrganizationSeederImpl) Seed(organizationId string) error {
 
 	///////////////////////////////
 	// Tokens
