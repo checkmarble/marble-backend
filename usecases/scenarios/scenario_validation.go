@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
+	"marble/marble-backend/usecases/ast_eval"
 )
 
 type ScenarioAndIteration struct {
@@ -17,7 +18,7 @@ type ValidateScenarioIteration interface {
 }
 
 type ValidateScenarioIterationImpl struct {
-	//
+	AstEvaluationEnvironmentFactory func(organizationId string, payload models.PayloadReader) ast_eval.AstEvaluationEnvironment
 }
 
 func (validator *ValidateScenarioIterationImpl) Validate(si ScenarioAndIteration) error {
@@ -55,6 +56,17 @@ func (validator *ValidateScenarioIterationImpl) Validate(si ScenarioAndIteration
 	}
 
 	return nil
+}
+
+func (validator *ValidateScenarioIterationImpl) DryRunTriggerConditionAndRules(si ScenarioAndIteration) {
+
+	payload := models.Payload{}
+	environment := validator.AstEvaluationEnvironmentFactory(si.scenario.OrganizationID)
+	// evaluation = ast_eval.EvaluateAst(environment, expression)
+
+}
+
+func (validator *ValidateScenarioIterationImpl) ValidateAst(node ast.Node) {
 }
 
 func StaticValidation(node ast.Node) error {
