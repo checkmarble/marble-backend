@@ -45,7 +45,7 @@ func AdaptScenarioIterationRuleDto(rule models.Rule) (ScenarioIterationRuleDto, 
 	if rule.FormulaAstExpression != nil {
 		nodeDto, err := AdaptNodeDto(*rule.FormulaAstExpression)
 		if err != nil {
-			return ScenarioIterationRuleDto{}, nil
+			return ScenarioIterationRuleDto{}, err
 		}
 		formulaAstExpression = &nodeDto
 	}
