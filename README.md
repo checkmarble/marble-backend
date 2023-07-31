@@ -37,8 +37,22 @@ Installation: https://firebase.google.com/docs/emulator-suite
 Then start the emulator suite:
 
 ```
-firebase emulators:start
+firebase --project staging emulators:start --import=./firebase-local-data
 ```
+
+Connect in the backoffice using: `admin@checkmarble.com`
+Connect in the frontend using: `jbe@zorg.com`
+
+#### How to add data to ./firebase-local-data
+
+- Run firebase emulator with paramater: `--export-on-exit`
+  `firebase --project staging emulators:start --import=./firebase-local-data --export-on-exit`
+- Add user, change options...
+- Exit the emulator
+- commit
+
+
+#### Export local data
 
 
 ### Lauch the project
