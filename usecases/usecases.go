@@ -105,7 +105,8 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 
 func (usecases *Usecases) NewScenarioIterationRuleUsecase() ScenarioIterationRuleUsecase {
 	return ScenarioIterationRuleUsecase{
-		repository: usecases.Repositories.ScenarioIterationRuleRepositoryLegacy,
+		repository:                usecases.Repositories.ScenarioIterationRuleRepositoryLegacy,
+		validateScenarioIteration: usecases.NewValidateScenarioIteration(),
 	}
 }
 
@@ -181,7 +182,6 @@ func (usecases *Usecases) NewEvaluateRuleAstExpression() ast_eval.EvaluateRuleAs
 func (usecases *Usecases) NewScenarioPublisher() scenarios.ScenarioPublisher {
 	return scenarios.ScenarioPublisher{
 		ScenarioPublicationsRepository:  usecases.Repositories.ScenarioPublicationRepository,
-		ScenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,
 		ScenarioWriteRepository:         usecases.Repositories.ScenarioWriteRepository,
 		ScenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
 		ValidateScenarioIteration:       usecases.NewValidateScenarioIteration(),
@@ -190,6 +190,14 @@ func (usecases *Usecases) NewScenarioPublisher() scenarios.ScenarioPublisher {
 
 func (usecases *Usecases) NewValidateScenarioIteration() scenarios.ValidateScenarioIteration {
 	return &scenarios.ValidateScenarioIterationImpl{
+		DataModelRepository:             usecases.Repositories.DataModelRepository,
 		AstEvaluationEnvironmentFactory: usecases.AstEvaluationEnvironment,
+	}
+}
+
+func (usecase *Usecases) NewScenarioFetcher() scenarios.ScenarioFetcher {
+	return scenarios.ScenarioFetcher{
+		ScenarioReadRepository:          usecase.Repositories.ScenarioReadRepository,
+		ScenarioIterationReadRepository: usecase.Repositories.ScenarioIterationReadRepository,
 	}
 }

@@ -50,28 +50,21 @@ func (usecases *UsecasesWithCreds) NewScenarioIterationUsecase() ScenarioIterati
 
 func (usecases *UsecasesWithCreds) AstExpressionUsecase() AstExpressionUsecase {
 	return AstExpressionUsecase{
-		EnforceSecurity:                 usecases.NewEnforceSecurity(),
-		OrganizationIdOfContext:         usecases.OrganizationIdOfContext,
-		CustomListRepository:            usecases.Repositories.CustomListRepository,
-		OrgTransactionFactory:           usecases.NewOrgTransactionFactory(),
-		IngestedDataReadRepository:      usecases.Repositories.IngestedDataReadRepository,
-		DataModelRepository:             usecases.Repositories.DataModelRepository,
-		ScenarioRepository:              usecases.Repositories.ScenarioReadRepository,
-		RuleRepository:                  usecases.Repositories.RuleRepository,
-		ScenarioIterationRuleUsecase:    usecases.Repositories.ScenarioIterationRuleRepositoryLegacy,
-		AstEvaluationEnvironmentFactory: usecases.AstEvaluationEnvironment,
+		EnforceSecurity:      usecases.NewEnforceSecurity(),
+		CustomListRepository: usecases.Repositories.CustomListRepository,
+		DataModelRepository:  usecases.Repositories.DataModelRepository,
+		ScenarioRepository:   usecases.Repositories.ScenarioReadRepository,
 	}
 }
 
 func (usecases *UsecasesWithCreds) NewScenarioPublicationUsecase() ScenarioPublicationUsecase {
 	return ScenarioPublicationUsecase{
-		transactionFactory:              usecases.Repositories.TransactionFactory,
-		scenarioPublicationsRepository:  usecases.Repositories.ScenarioPublicationRepository,
-		scenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,
-		scenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
-		OrganizationIdOfContext:         usecases.OrganizationIdOfContext,
-		enforceSecurity:                 usecases.NewEnforceScenarioSecurity(),
-		scenarioPublisher:               usecases.NewScenarioPublisher(),
+		transactionFactory:             usecases.Repositories.TransactionFactory,
+		scenarioPublicationsRepository: usecases.Repositories.ScenarioPublicationRepository,
+		OrganizationIdOfContext:        usecases.OrganizationIdOfContext,
+		enforceSecurity:                usecases.NewEnforceScenarioSecurity(),
+		scenarioFetcher:                usecases.NewScenarioFetcher(),
+		scenarioPublisher:              usecases.NewScenarioPublisher(),
 	}
 }
 
