@@ -174,6 +174,11 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 	)
 
 	environment.AddEvaluator(ast.FUNC_PAYLOAD, evaluate.NewPayload(ast.FUNC_PAYLOAD, params.Payload))
+
+	// Custom evaluators for the Blank organization
+	if params.OrganizationId == models.BLANK_ORGANIZATION_ID {
+		addBlankVariableEvaluators(&environment, usecases, params.OrganizationId)
+	}
 	return environment
 }
 

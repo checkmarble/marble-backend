@@ -15,7 +15,7 @@ var FuncOperators = []Function{
 	FUNC_LESS,
 	FUNC_EQUAL,
 	FUNC_IS_IN_LIST,
-} 
+}
 
 const (
 	FUNC_CONSTANT Function = iota
@@ -34,6 +34,7 @@ const (
 	FUNC_CUSTOM_LIST_ACCESS
 	FUNC_IS_IN_LIST
 	FUNC_IS_NOT_IN_LIST
+	FUNC_BLANK_FIRST_TRANSACTION_DATE
 	FUNC_UNKNOWN Function = -1
 )
 
@@ -100,9 +101,9 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		AstName:           "Or",
 		NumberOfArguments: -1,
 	},
-	FUNC_PAYLOAD:           {
-		DebugName: "FUNC_PAYLOAD",
-		AstName:   "Payload",
+	FUNC_PAYLOAD: {
+		DebugName:         "FUNC_PAYLOAD",
+		AstName:           "Payload",
 		NumberOfArguments: 1,
 	},
 	FUNC_DB_ACCESS:          AttributeFuncDbAccess.FuncAttributes,
@@ -116,6 +117,11 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		DebugName:         "FUNC_IS_NOT_IN_LIST",
 		AstName:           "IsNotInList",
 		NumberOfArguments: 2,
+	},
+	FUNC_BLANK_FIRST_TRANSACTION_DATE: {
+		DebugName:         "FUNC_BLANK_FIRST_TRANSACTION_DATE",
+		AstName:           "BlankFirstTransactionDate",
+		NumberOfArguments: 1,
 	},
 }
 
