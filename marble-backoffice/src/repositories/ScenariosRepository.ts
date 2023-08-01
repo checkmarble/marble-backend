@@ -1,7 +1,6 @@
 import { type MarbleApi } from "@/infra/MarbleApi";
 import type {
   Scenario,
-  AstNode,
   EditorIdentifiers,
   CreateScenario,
   UpdateRule,
@@ -11,15 +10,11 @@ import {
   adaptScenariosApiResult,
   adaptSingleScenarioApiResult,
 } from "@/models/ScenarioDto";
-import {
-  adaptAstNodeDto,
-} from "@/models/AstExpressionDto";
-import { adaptRuleApiResult } from "@/models/RuleDto";
+import { adaptRuleApiResult, adaptUpdateRuleApiResult } from "@/models/RuleDto";
 import {
   adaptIterationApiResult,
   adaptListIterationsApiResult,
 } from "@/models/IterationDto";
-import { adaptDryRunResult } from "@/models/AstEvaluationDto";
 import { adaptEditorIdentifiers } from "@/models/EditorIdentifiersDto";
 
 export interface ScenariosRepository {
@@ -41,19 +36,6 @@ export async function fetchScenario(
 ): Promise<Scenario> {
   return adaptSingleScenarioApiResult(
     await repository.marbleApi.scenariosById(scenarioId)
-  );
-}
-
-export async function dryRunAstExpression(
-  repository: ScenariosRepository,
-  organizationId: string,
-  expression: AstNode
-) {
-  return adaptDryRunResult(
-    await repository.marbleApi.dryRunAstExpression(
-      organizationId,
-      adaptAstNodeDto(expression)
-    )
   );
 }
 
@@ -135,7 +117,7 @@ export async function updateRule(
   ruleId: string,
   changes: UpdateRule
 ) {
-  return adaptRuleApiResult(
+  return adaptUpdateRuleApiResult(
     await repository.marbleApi.patchRule(organizationId, ruleId, changes)
   );
 }

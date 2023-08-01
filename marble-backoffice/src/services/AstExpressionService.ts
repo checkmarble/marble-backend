@@ -6,12 +6,10 @@ import {
   NoConstant,
   type ConstantType,
   type Scenario,
-  type AstNodeEvaluation,
 } from "@/models";
 import { MapMap } from "@/MapUtils";
 import {
   type ScenariosRepository,
-  dryRunAstExpression,
   fetchEditorIdentifiers,
   fetchScenario,
 } from "@/repositories";
@@ -100,10 +98,6 @@ export function useAstExpressionBuilder(
     scenarioLoader
   );
 
-  const [dryRunResult, setDryRunResult] = useState<AstNodeEvaluation | null>(
-    null
-  );
-
   const [expressionViewModel, setExpressionViewModel] =
     useState<ExpressionViewModel>(() =>
       makeExpressionViewModel(exampleRuleInList.formula)
@@ -131,27 +125,6 @@ export function useAstExpressionBuilder(
     editorIdentifiersLoader
   );
 
-  const run = useCallback(async () => {
-    if (scenario === null) {
-      return null;
-    }
-
-    const dryRunResult = await showLoader(
-      pageLoadingDispatcher,
-      dryRunAstExpression(
-        service.scenarioRepository,
-        scenario.organizationId,
-        expressionAstNode
-      )
-    );
-    setDryRunResult(dryRunResult);
-  }, [
-    scenario,
-    pageLoadingDispatcher,
-    service.scenarioRepository,
-    expressionAstNode,
-  ]);
-
   const editor: ExpressionEditor = {
     expressionViewModel,
     setExpressionViewModel,
@@ -161,8 +134,6 @@ export function useAstExpressionBuilder(
   return {
     editor,
     expressionAstNode,
-    dryRunResult,
-    run,
     identifiers,
   };
 }

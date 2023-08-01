@@ -5,13 +5,10 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useLoading } from "@/hooks/Loading";
 import DelayedLinearProgress from "@/components/DelayedLinearProgress";
-import { type AstNode, NoConstant, Rule } from "@/models";
+import { type AstNode, Rule } from "@/models";
 import Paper from "@mui/material/Paper";
-import Alert from "@mui/material/Alert";
 import TextField from "@mui/material/TextField";
 import AddIcon from "@mui/icons-material/Add";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
 import ReactJson from "react-json-view";
 import {
   useAstExpressionBuilder,
@@ -25,7 +22,6 @@ import {
 import { useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { useSingleScenario } from "@/services";
-import { AstConstantComponent } from "@/components/AstConstantComponent";
 import {
   AstNodeComponent,
   AstNodeTextComponent,
@@ -50,18 +46,12 @@ export default function ScenarioDetailsPage() {
   const {
     editor,
     // expressionAstNode,
-    dryRunResult,
-    run,
     identifiers,
   } = useAstExpressionBuilder(
     services().astExpressionService,
     scenarioId,
     pageLoadingDispatcher
   );
-
-  const handleRunScenario = async () => {
-    run();
-  };
 
   const handleOperatorNameChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -118,33 +108,6 @@ export default function ScenarioDetailsPage() {
             editor={nodeEditor}
             node={editor.expressionViewModel.rootNode}
           /> */}
-
-          <Button onClick={handleRunScenario}>Run (Ingestion required)</Button>
-          {dryRunResult && (
-            <Card>
-              <CardContent>
-                <Typography
-                  sx={{ fontSize: 14 }}
-                  color="text.secondary"
-                  gutterBottom
-                >
-                  Dry run result:{" "}
-                  <AstConstantComponent constant={dryRunResult.returnValue} />
-                </Typography>
-
-                {dryRunResult.returnValue === NoConstant && (
-                  <>
-                    <Typography variant="subtitle1" gutterBottom>
-                      Runtime Error
-                    </Typography>
-                    <Alert severity="error">
-                      <ReactJson src={dryRunResult} theme={"rjv-default"} />
-                    </Alert>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          )}
 
           {identifiers && (
             <>
