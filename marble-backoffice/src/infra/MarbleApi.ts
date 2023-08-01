@@ -216,19 +216,6 @@ export class MarbleApi {
     );
   }
 
-  async validateAstExpression(organizationId: string, expression: AstNodeDto) {
-    return await this.sendAuthorizedJson({
-      method: HttpMethod.Post,
-      path: urlWithOrganizationId(
-        `${AST_EXPRESSION_URL_PATH}/validate`,
-        organizationId
-      ),
-      body: {
-        expression: expression,
-      },
-    });
-  }
-
   async dryRunAstExpression(organizationId: string, expression: AstNodeDto) {
     return await this.sendAuthorizedJson({
       method: HttpMethod.Post,

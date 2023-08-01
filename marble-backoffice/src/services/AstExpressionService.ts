@@ -11,7 +11,6 @@ import {
 import { MapMap } from "@/MapUtils";
 import {
   type ScenariosRepository,
-  validateAstExpression,
   dryRunAstExpression,
   fetchEditorIdentifiers,
   fetchScenario,
@@ -101,7 +100,6 @@ export function useAstExpressionBuilder(
     scenarioLoader
   );
 
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [dryRunResult, setDryRunResult] = useState<AstNodeEvaluation | null>(
     null
   );
@@ -133,27 +131,6 @@ export function useAstExpressionBuilder(
     editorIdentifiersLoader
   );
 
-  const validate = useCallback(async () => {
-    if (scenario === null) {
-      return null;
-    }
-
-    const result = await showLoader(
-      pageLoadingDispatcher,
-      validateAstExpression(
-        service.scenarioRepository,
-        scenario.organizationId,
-        expressionAstNode
-      )
-    );
-    setValidationErrors(result.validationErrors);
-  }, [
-    scenario,
-    pageLoadingDispatcher,
-    service.scenarioRepository,
-    expressionAstNode,
-  ]);
-
   const run = useCallback(async () => {
     if (scenario === null) {
       return null;
@@ -184,8 +161,6 @@ export function useAstExpressionBuilder(
   return {
     editor,
     expressionAstNode,
-    validate,
-    validationErrors,
     dryRunResult,
     run,
     identifiers,
