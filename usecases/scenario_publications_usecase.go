@@ -52,7 +52,7 @@ func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(ctx 
 			return []models.ScenarioPublication{}, err
 		}
 
-		scenario, err := usecase.scenarioReadRepository.GetScenarioById(tx, scenarioIteration.ScenarioID)
+		scenario, err := usecase.scenarioReadRepository.GetScenarioById(tx, scenarioIteration.ScenarioId)
 		if err != nil {
 			return []models.ScenarioPublication{}, err
 		}
@@ -62,7 +62,7 @@ func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(ctx 
 			return []models.ScenarioPublication{}, err
 		}
 
-		return usecase.scenarioPublisher.PublishOrUnpublishIteration(tx, scenario.OrganizationID, input)
+		return usecase.scenarioPublisher.PublishOrUnpublishIteration(tx, scenario.OrganizationId, input)
 	})
 
 }

@@ -11,7 +11,7 @@ import (
 )
 
 type APIScenario struct {
-	ID                string    `json:"id"`
+	Id                string    `json:"id"`
 	OrganizationId    string    `json:"organization_id"`
 	Name              string    `json:"name"`
 	Description       string    `json:"description"`
@@ -22,8 +22,8 @@ type APIScenario struct {
 
 func NewAPIScenario(scenario models.Scenario) APIScenario {
 	return APIScenario{
-		ID:                scenario.ID,
-		OrganizationId:    scenario.OrganizationID,
+		Id:                scenario.Id,
+		OrganizationId:    scenario.OrganizationId,
 		Name:              scenario.Name,
 		Description:       scenario.Description,
 		TriggerObjectType: scenario.TriggerObjectType,
@@ -48,7 +48,7 @@ func (api *API) ListScenarios() http.HandlerFunc {
 func (api *API) CreateScenario() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		orgID, err := utils.OrgIDFromCtx(ctx, r)
+		organizationId, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(w, r, err) {
 			return
 		}
@@ -56,7 +56,7 @@ func (api *API) CreateScenario() http.HandlerFunc {
 		input := ctx.Value(httpin.Input).(*dto.CreateScenarioInput)
 
 		usecase := api.UsecasesWithCreds(r).NewScenarioUsecase()
-		scenario, err := usecase.CreateScenario(dto.AdaptCreateScenario(input, orgID))
+		scenario, err := usecase.CreateScenario(dto.AdaptCreateScenario(input, organizationId))
 		if presentError(w, r, err) {
 			return
 		}
@@ -65,7 +65,7 @@ func (api *API) CreateScenario() http.HandlerFunc {
 }
 
 type GetScenarioInput struct {
-	ScenarioID string `in:"path=scenarioID"`
+	ScenarioId string `in:"path=scenarioId"`
 }
 
 func (api *API) GetScenario() http.HandlerFunc {
@@ -74,7 +74,7 @@ func (api *API) GetScenario() http.HandlerFunc {
 		input := r.Context().Value(httpin.Input).(*GetScenarioInput)
 
 		usecase := api.UsecasesWithCreds(r).NewScenarioUsecase()
-		scenario, err := usecase.GetScenario(input.ScenarioID)
+		scenario, err := usecase.GetScenario(input.ScenarioId)
 
 		if presentError(w, r, err) {
 			return
@@ -88,7 +88,7 @@ func (api *API) UpdateScenario() http.HandlerFunc {
 		input := r.Context().Value(httpin.Input).(*dto.UpdateScenarioInput)
 		usecase := api.UsecasesWithCreds(r).NewScenarioUsecase()
 		scenario, err := usecase.UpdateScenario(models.UpdateScenarioInput{
-			ID:          input.ScenarioID,
+			Id:          input.ScenarioId,
 			Name:        input.Body.Name,
 			Description: input.Body.Description,
 		})

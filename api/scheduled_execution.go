@@ -37,7 +37,7 @@ func (api *API) handleListScheduledExecution() http.HandlerFunc {
 		ctx := r.Context()
 
 		input := ctx.Value(httpin.Input).(*dto.ListScheduledExecutionInput)
-		scenarioId := input.ScenarioID
+		scenarioId := input.ScenarioId
 
 		organizationId, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(w, r, err) {

@@ -72,7 +72,7 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T) (models.Credentials, mo
 		DatabaseName: "test_org_42",
 	})
 	assert.NoError(t, err, "Could not create organization")
-	organizationId := organization.ID
+	organizationId := organization.Id
 	fmt.Println("Created organization", organizationId)
 
 	// Check that there are no users on the organization yet
@@ -172,18 +172,18 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 	// Create a new empty scenario
 	scenarioUsecase := usecasesWithCreds.NewScenarioUsecase()
 	scenario, err := scenarioUsecase.CreateScenario(models.CreateScenarioInput{
-		OrganizationID:    organizationId,
+		OrganizationId:    organizationId,
 		Name:              "Test scenario",
 		Description:       "Test scenario description",
 		TriggerObjectType: "transactions",
 	})
 	assert.NoError(t, err, "Could not create scenario")
-	scenarioId := scenario.ID
+	scenarioId := scenario.Id
 	fmt.Println("Created scenario", scenarioId)
 
 	// Security: check that creating a scenario on the wrong organization fails
 	_, err = scenarioUsecase.CreateScenario(models.CreateScenarioInput{
-		OrganizationID:    uuid.New().String(),
+		OrganizationId:    uuid.New().String(),
 		Name:              "Test scenario",
 		Description:       "Test scenario description",
 		TriggerObjectType: "transactions",
@@ -194,7 +194,7 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 	scenarioIterationUsecase := usecasesWithCreds.NewScenarioIterationUsecase()
 	threshold := 10
 	scenarioIteration, err := scenarioIterationUsecase.CreateScenarioIteration(usecasesWithCreds.Context, organizationId, models.CreateScenarioIterationInput{
-		ScenarioID: scenarioId,
+		ScenarioId: scenarioId,
 		Body: &models.CreateScenarioIterationBody{
 			Rules: []models.CreateRuleInput{
 				{
@@ -223,13 +223,13 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 		},
 	})
 	assert.NoError(t, err, "Could not create scenario iteration")
-	scenarioIterationId := scenarioIteration.ID
+	scenarioIterationId := scenarioIteration.Id
 	fmt.Println("Created scenario iteration", scenarioIterationId)
 
 	// Actually, modify the scenario iteration
 	threshold = 20
 	updatedScenarioIteration, err := scenarioIterationUsecase.UpdateScenarioIteration(usecasesWithCreds.Context, organizationId, models.UpdateScenarioIterationInput{
-		ID: scenarioIterationId,
+		Id: scenarioIterationId,
 		Body: &models.UpdateScenarioIterationBody{
 			ScoreReviewThreshold: &threshold,
 		},
@@ -302,9 +302,9 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 
 	// Then, create the decision
 	rejectDecision, err := decisionUsecase.CreateDecision(usecasesWithCreds.Context, models.CreateDecisionInput{
-		ScenarioID:              scenarioId,
+		ScenarioId:              scenarioId,
 		ClientObject:            ClientObject,
-		OrganizationID:          organizationId,
+		OrganizationId:          organizationId,
 		PayloadStructWithReader: transactionPayload,
 	}, logger)
 	assert.NoError(t, err, "Could not create decision")
@@ -329,9 +329,9 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 
 	// Then, create the decision
 	approveDecision, err := decisionUsecase.CreateDecision(usecasesWithCreds.Context, models.CreateDecisionInput{
-		ScenarioID:              scenarioId,
+		ScenarioId:              scenarioId,
 		ClientObject:            ClientObject,
-		OrganizationID:          organizationId,
+		OrganizationId:          organizationId,
 		PayloadStructWithReader: transactionPayload,
 	}, logger)
 	assert.NoError(t, err, "Could not create decision")

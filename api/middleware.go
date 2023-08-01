@@ -27,7 +27,7 @@ func wrapErrInUnAuthorizedError(err error) error {
 	return errors.Join(models.UnAuthorizedError, err)
 }
 
-// AuthCtx sets the organization ID in the context from the authorization header
+// AuthCtx sets the organization Id in the context from the authorization header
 func (api *API) credentialsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 

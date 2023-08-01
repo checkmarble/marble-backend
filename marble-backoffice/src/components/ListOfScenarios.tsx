@@ -71,7 +71,9 @@ function ListOfScenarios(props: ListOfScenariosProps) {
           ? [
               <GridActionsCellItem
                 icon={<NorthEastIcon />}
-                onClick={() => props.onScenarioDetailClick(params.row.scenarioId)}
+                onClick={() =>
+                  props.onScenarioDetailClick(params.row.scenarioId)
+                }
                 label="Details"
               />,
             ]

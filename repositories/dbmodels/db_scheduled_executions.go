@@ -8,8 +8,8 @@ import (
 type DBScheduledExecution struct {
 	Id                  string     `db:"id"`
 	OrganizationId      string     `db:"organization_id"`
-	ScenarioID          string     `db:"scenario_id"`
-	ScenarioIterationID string     `db:"scenario_iteration_id"`
+	ScenarioId          string     `db:"scenario_id"`
+	ScenarioIterationId string     `db:"scenario_iteration_id"`
 	Status              string     `db:"status"`
 	StartedAt           time.Time  `db:"started_at"`
 	FinishedAt          *time.Time `db:"finished_at"`
@@ -21,10 +21,10 @@ var ScheduledExecutionFields = []string{"id", "organization_id", "scenario_id", 
 
 func AdaptScheduledExecution(db DBScheduledExecution) models.ScheduledExecution {
 	return models.ScheduledExecution{
-		ID:                  db.Id,
+		Id:                  db.Id,
 		OrganizationId:      db.OrganizationId,
-		ScenarioID:          db.ScenarioID,
-		ScenarioIterationID: db.ScenarioIterationID,
+		ScenarioId:          db.ScenarioId,
+		ScenarioIterationId: db.ScenarioIterationId,
 		Status:              models.ScheduledExecutionStatusFrom(db.Status),
 		StartedAt:           db.StartedAt,
 		FinishedAt:          db.FinishedAt,

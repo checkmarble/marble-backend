@@ -29,7 +29,7 @@ func (creator *OrganizationCreator) CreateOrganizationWithId(newOrganizationId s
 		return models.Organization{}, err
 	}
 
-	err = creator.OrganizationSeeder.Seed(organization.ID)
+	err = creator.OrganizationSeeder.Seed(organization.Id)
 	if err != nil {
 		return models.Organization{}, err
 	}

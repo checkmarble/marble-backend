@@ -6,8 +6,8 @@ import (
 )
 
 type APIScheduledExecution struct {
-	ID                  string     `json:"id"`
-	ScenarioIterationID string     `json:"scenario_iteration_id"`
+	Id                  string     `json:"id"`
+	ScenarioIterationId string     `json:"scenario_iteration_id"`
 	Status              string     `json:"status"`
 	StartedAt           time.Time  `json:"started_at"`
 	FinishedAt          *time.Time `json:"finished_at"`
@@ -15,8 +15,8 @@ type APIScheduledExecution struct {
 
 func AdaptScheduledExecutionDto(ExecutionBatch models.ScheduledExecution) APIScheduledExecution {
 	return APIScheduledExecution{
-		ID:                  ExecutionBatch.ID,
-		ScenarioIterationID: ExecutionBatch.ScenarioIterationID,
+		Id:                  ExecutionBatch.Id,
+		ScenarioIterationId: ExecutionBatch.ScenarioIterationId,
 		Status:              ExecutionBatch.Status.String(),
 		StartedAt:           ExecutionBatch.StartedAt,
 		FinishedAt:          ExecutionBatch.FinishedAt,
@@ -24,5 +24,5 @@ func AdaptScheduledExecutionDto(ExecutionBatch models.ScheduledExecution) APISch
 }
 
 type ListScheduledExecutionInput struct {
-	ScenarioID string `in:"query=scenario_id;required"`
+	ScenarioId string `in:"query=scenario_id;required"`
 }

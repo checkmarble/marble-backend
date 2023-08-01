@@ -11,20 +11,20 @@ import (
 )
 
 type DataModelRepository interface {
-	GetDataModel(tx Transaction, organizationID string) (models.DataModel, error)
-	DeleteDataModel(tx Transaction, organizationID string) error
-	CreateDataModel(tx Transaction, organizationID string, dataModel models.DataModel) error
+	GetDataModel(tx Transaction, organizationId string) (models.DataModel, error)
+	DeleteDataModel(tx Transaction, organizationId string) error
+	CreateDataModel(tx Transaction, organizationId string, dataModel models.DataModel) error
 }
 
 type DataModelRepositoryPostgresql struct {
 	transactionFactory TransactionFactory
 }
 
-func (repo *DataModelRepositoryPostgresql) GetDataModel(tx Transaction, organizationID string) (models.DataModel, error) {
+func (repo *DataModelRepositoryPostgresql) GetDataModel(tx Transaction, organizationId string) (models.DataModel, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	if organizationID == "" {
-		return models.DataModel{}, errors.New("organizationID is empty")
+	if organizationId == "" {
+		return models.DataModel{}, errors.New("organizationId is empty")
 	}
 
 	return SqlToModel(
@@ -32,21 +32,21 @@ func (repo *DataModelRepositoryPostgresql) GetDataModel(tx Transaction, organiza
 		NewQueryBuilder().
 			Select(dbmodels.SelectDataModelColumn...).
 			From(dbmodels.TABLE_DATA_MODELS).
-			Where(squirrel.Eq{"org_id": organizationID}),
+			Where(squirrel.Eq{"org_id": organizationId}),
 		dbmodels.AdaptDataModel,
 	)
 }
 
-func (repo *DataModelRepositoryPostgresql) DeleteDataModel(tx Transaction, organizationID string) error {
+func (repo *DataModelRepositoryPostgresql) DeleteDataModel(tx Transaction, organizationId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	_, err := pgTx.ExecBuilder(
-		NewQueryBuilder().Delete(dbmodels.TABLE_DATA_MODELS).Where("org_id = ?", organizationID),
+		NewQueryBuilder().Delete(dbmodels.TABLE_DATA_MODELS).Where("org_id = ?", organizationId),
 	)
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) CreateDataModel(tx Transaction, organizationID string, dataModel models.DataModel) error {
+func (repo *DataModelRepositoryPostgresql) CreateDataModel(tx Transaction, organizationId string, dataModel models.DataModel) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	tables, err := json.Marshal(dataModel.Tables)
@@ -63,7 +63,7 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModel(tx Transaction, organ
 				"tables",
 			).
 			Values(
-				organizationID,
+				organizationId,
 				dataModel.Version,
 				dataModel.Status.String(),
 				tables,

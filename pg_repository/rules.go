@@ -12,11 +12,11 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func (r *PGRepository) GetScenarioIterationRule(ctx context.Context, orgID string, ruleID string) (models.Rule, error) {
+func (r *PGRepository) GetScenarioIterationRule(ctx context.Context, organizationId string, ruleID string) (models.Rule, error) {
 	sql, args, err := r.queryBuilder.
 		Select(utils.ColumnList[dbmodels.DBRule]()...).
 		From("scenario_iteration_rules").
-		Where("org_id = ?", orgID).
+		Where("org_id = ?", organizationId).
 		Where("id= ?", ruleID).
 		ToSql()
 	if err != nil {
@@ -40,16 +40,16 @@ func (r *PGRepository) GetScenarioIterationRule(ctx context.Context, orgID strin
 }
 
 type ListScenarioIterationRulesFilters struct {
-	ScenarioIterationID *string `db:"scenario_iteration_id"`
+	ScenarioIterationId *string `db:"scenario_iteration_id"`
 }
 
-func (r *PGRepository) ListScenarioIterationRules(ctx context.Context, orgID string, filters models.GetScenarioIterationRulesFilters) ([]models.Rule, error) {
+func (r *PGRepository) ListScenarioIterationRules(ctx context.Context, organizationId string, filters models.GetScenarioIterationRulesFilters) ([]models.Rule, error) {
 	sql, args, err := r.queryBuilder.
 		Select(utils.ColumnList[dbmodels.DBRule]()...).
 		From("scenario_iteration_rules").
-		Where("org_id = ?", orgID).
+		Where("org_id = ?", organizationId).
 		Where(sq.Eq(ColumnValueMap(ListScenarioIterationRulesFilters{
-			ScenarioIterationID: filters.ScenarioIterationID,
+			ScenarioIterationId: filters.ScenarioIterationId,
 		}))).
 		ToSql()
 	if err != nil {
@@ -76,8 +76,8 @@ func (r *PGRepository) ListScenarioIterationRules(ctx context.Context, orgID str
 
 type dbCreateScenarioIterationRuleInput struct {
 	Id                   string  `db:"id"`
-	OrgID                string  `db:"org_id"`
-	ScenarioIterationID  string  `db:"scenario_iteration_id"`
+	OrganizationId       string  `db:"org_id"`
+	ScenarioIterationId  string  `db:"scenario_iteration_id"`
 	DisplayOrder         int     `db:"display_order"`
 	Name                 string  `db:"name"`
 	Description          string  `db:"description"`
@@ -85,11 +85,11 @@ type dbCreateScenarioIterationRuleInput struct {
 	FormulaAstExpression *[]byte `db:"formula_ast_expression"`
 }
 
-func (r *PGRepository) CreateScenarioIterationRule(ctx context.Context, orgID string, rule models.CreateRuleInput) (models.Rule, error) {
+func (r *PGRepository) CreateScenarioIterationRule(ctx context.Context, organizationId string, rule models.CreateRuleInput) (models.Rule, error) {
 	dbCreateRuleInput := dbCreateScenarioIterationRuleInput{
-		Id:                  utils.NewPrimaryKey(orgID),
-		OrgID:               orgID,
-		ScenarioIterationID: rule.ScenarioIterationID,
+		Id:                  utils.NewPrimaryKey(organizationId),
+		OrganizationId:      organizationId,
+		ScenarioIterationId: rule.ScenarioIterationId,
 		DisplayOrder:        rule.DisplayOrder,
 		Name:                rule.Name,
 		Description:         rule.Description,
@@ -111,8 +111,8 @@ func (r *PGRepository) CreateScenarioIterationRule(ctx context.Context, orgID st
 	sql, args, err := r.queryBuilder.
 		Select("version IS NULL").
 		From("scenario_iterations").
-		Where("id = ?", rule.ScenarioIterationID).
-		Where("org_id = ?", orgID).
+		Where("id = ?", rule.ScenarioIterationId).
+		Where("org_id = ?", organizationId).
 		ToSql()
 	if err != nil {
 		return models.Rule{}, fmt.Errorf("unable to build scenario iteration rule query: %w", err)
@@ -154,7 +154,7 @@ func (r *PGRepository) CreateScenarioIterationRule(ctx context.Context, orgID st
 	return ruleDTO, err
 }
 
-func (r *PGRepository) createScenarioIterationRules(ctx context.Context, tx pgx.Tx, orgID string, scenarioIterationID string, rules []models.CreateRuleInput) ([]models.Rule, error) {
+func (r *PGRepository) createScenarioIterationRules(ctx context.Context, tx pgx.Tx, organizationId string, scenarioIterationId string, rules []models.CreateRuleInput) ([]models.Rule, error) {
 	if len(rules) == 0 {
 		return nil, nil
 	}
@@ -162,8 +162,8 @@ func (r *PGRepository) createScenarioIterationRules(ctx context.Context, tx pgx.
 	sql, args, err := r.queryBuilder.
 		Select("version IS NULL").
 		From("scenario_iterations").
-		Where("id = ?", scenarioIterationID).
-		Where("org_id = ?", orgID).
+		Where("id = ?", scenarioIterationId).
+		Where("org_id = ?", organizationId).
 		ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("unable to build scenario iteration rule query: %w", err)
@@ -200,9 +200,9 @@ func (r *PGRepository) createScenarioIterationRules(ctx context.Context, tx pgx.
 		// append all values to the query
 		query = query.
 			Values(
-				utils.NewPrimaryKey(orgID),
-				scenarioIterationID,
-				orgID,
+				utils.NewPrimaryKey(organizationId),
+				scenarioIterationId,
+				organizationId,
 				rule.DisplayOrder,
 				rule.Name,
 				rule.Description,
@@ -233,7 +233,7 @@ func (r *PGRepository) createScenarioIterationRules(ctx context.Context, tx pgx.
 }
 
 type dbUpdateScenarioIterationRuleInput struct {
-	ID                   string  `db:"id"`
+	Id                   string  `db:"id"`
 	DisplayOrder         *int    `db:"display_order"`
 	Name                 *string `db:"name"`
 	Description          *string `db:"description"`
@@ -241,9 +241,9 @@ type dbUpdateScenarioIterationRuleInput struct {
 	FormulaAstExpression *[]byte `db:"formula_ast_expression"`
 }
 
-func (r *PGRepository) UpdateScenarioIterationRule(ctx context.Context, orgID string, rule models.UpdateRuleInput) (models.Rule, error) {
+func (r *PGRepository) UpdateScenarioIterationRule(ctx context.Context, organizationId string, rule models.UpdateRuleInput) (models.Rule, error) {
 	dbUpdateRuleInput := dbUpdateScenarioIterationRuleInput{
-		ID:            rule.ID,
+		Id:            rule.Id,
 		DisplayOrder:  rule.DisplayOrder,
 		Name:          rule.Name,
 		Description:   rule.Description,
@@ -266,8 +266,8 @@ func (r *PGRepository) UpdateScenarioIterationRule(ctx context.Context, orgID st
 		Select("si.version IS NULL").
 		From("scenario_iteration_rules sir").
 		Join("scenario_iterations si on si.id = sir.scenario_iteration_id").
-		Where("sir.id = ?", rule.ID).
-		Where("sir.org_id = ?", orgID).
+		Where("sir.id = ?", rule.Id).
+		Where("sir.org_id = ?", organizationId).
 		ToSql()
 	if err != nil {
 		return models.Rule{}, fmt.Errorf("unable to build scenario iteration rule query: %w", err)
@@ -287,8 +287,8 @@ func (r *PGRepository) UpdateScenarioIterationRule(ctx context.Context, orgID st
 	sql, args, err = r.queryBuilder.
 		Update("scenario_iteration_rules").
 		SetMap(ColumnValueMap(dbUpdateRuleInput)).
-		Where("id = ?", rule.ID).
-		Where("org_id = ?", orgID).
+		Where("id = ?", rule.Id).
+		Where("org_id = ?", organizationId).
 		Suffix("RETURNING *").ToSql()
 	if err != nil {
 		return models.Rule{}, fmt.Errorf("unable to build scenario iteration rule query: %w", err)
@@ -299,7 +299,7 @@ func (r *PGRepository) UpdateScenarioIterationRule(ctx context.Context, orgID st
 	if errors.Is(err, pgx.ErrNoRows) {
 		return models.Rule{}, models.NotFoundInRepositoryError
 	} else if err != nil {
-		return models.Rule{}, fmt.Errorf("unable to update rule(id: %s): %w", rule.ID, err)
+		return models.Rule{}, fmt.Errorf("unable to update rule(id: %s): %w", rule.Id, err)
 	}
 
 	ruleDTO, err := dbmodels.AdaptRule(updatedRule)

@@ -21,16 +21,16 @@ type ScenarioIterationWithBodyDto struct {
 }
 
 type ScenarioIterationDto struct {
-	ID         string    `json:"id"`
-	ScenarioID string    `json:"scenarioId"`
+	Id         string    `json:"id"`
+	ScenarioId string    `json:"scenarioId"`
 	Version    *int      `json:"version"`
 	CreatedAt  time.Time `json:"createdAt"`
 	UpdatedAt  time.Time `json:"updatedAt"`
 }
 
 type ScenarioIterationRuleDto struct {
-	ID                   string    `json:"id"`
-	ScenarioIterationID  string    `json:"scenarioIterationId"`
+	Id                   string    `json:"id"`
+	ScenarioIterationId  string    `json:"scenarioIterationId"`
 	DisplayOrder         int       `json:"displayOrder"`
 	Name                 string    `json:"name"`
 	Description          string    `json:"description"`
@@ -51,8 +51,8 @@ func AdaptScenarioIterationRuleDto(rule models.Rule) (ScenarioIterationRuleDto, 
 	}
 
 	return ScenarioIterationRuleDto{
-		ID:                   rule.ID,
-		ScenarioIterationID:  rule.ScenarioIterationID,
+		Id:                   rule.Id,
+		ScenarioIterationId:  rule.ScenarioIterationId,
 		DisplayOrder:         rule.DisplayOrder,
 		Name:                 rule.Name,
 		Description:          rule.Description,
@@ -88,8 +88,8 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 
 	return ScenarioIterationWithBodyDto{
 		ScenarioIterationDto: ScenarioIterationDto{
-			ID:         si.ID,
-			ScenarioID: si.ScenarioID,
+			Id:         si.Id,
+			ScenarioId: si.ScenarioId,
 			Version:    si.Version,
 			CreatedAt:  si.CreatedAt,
 			UpdatedAt:  si.UpdatedAt,

@@ -33,8 +33,8 @@ func (usecase *ScenarioUsecase) ListScenarios() ([]models.Scenario, error) {
 	return scenarios, nil
 }
 
-func (usecase *ScenarioUsecase) GetScenario(scenarioID string) (models.Scenario, error) {
-	scenario, err := usecase.scenarioReadRepository.GetScenarioById(nil, scenarioID)
+func (usecase *ScenarioUsecase) GetScenario(scenarioId string) (models.Scenario, error) {
+	scenario, err := usecase.scenarioReadRepository.GetScenarioById(nil, scenarioId)
 	if err != nil {
 		return models.Scenario{}, err
 	}
@@ -52,7 +52,7 @@ func (usecase *ScenarioUsecase) UpdateScenario(scenarioInput models.UpdateScenar
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) (models.Scenario, error) {
 
-			scenario, err := usecase.scenarioReadRepository.GetScenarioById(tx, scenarioInput.ID)
+			scenario, err := usecase.scenarioReadRepository.GetScenarioById(tx, scenarioInput.Id)
 			if err != nil {
 				return models.Scenario{}, err
 			}
@@ -64,7 +64,7 @@ func (usecase *ScenarioUsecase) UpdateScenario(scenarioInput models.UpdateScenar
 			if err != nil {
 				return models.Scenario{}, err
 			}
-			return usecase.scenarioReadRepository.GetScenarioById(tx, scenario.ID)
+			return usecase.scenarioReadRepository.GetScenarioById(tx, scenario.Id)
 		},
 	)
 }
@@ -74,10 +74,10 @@ func (usecase *ScenarioUsecase) CreateScenario(scenario models.CreateScenarioInp
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) (models.Scenario, error) {
-			if err := usecase.enforceSecurity.CreateScenario(scenario.OrganizationID); err != nil {
+			if err := usecase.enforceSecurity.CreateScenario(scenario.OrganizationId); err != nil {
 				return models.Scenario{}, err
 			}
-			newScenarioId := utils.NewPrimaryKey(scenario.OrganizationID)
+			newScenarioId := utils.NewPrimaryKey(scenario.OrganizationId)
 			err := usecase.scenarioWriteRepository.CreateScenario(nil, scenario, newScenarioId)
 			if err != nil {
 				return models.Scenario{}, err

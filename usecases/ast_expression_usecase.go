@@ -209,11 +209,11 @@ func (usecase *AstExpressionUsecase) EditorIdentifiers(scenarioId string) (Edito
 		return EditorIdentifiers{}, err
 	}
 
-	if err := usecase.EnforceSecurity.ReadOrganization(scenario.OrganizationID); err != nil {
+	if err := usecase.EnforceSecurity.ReadOrganization(scenario.OrganizationId); err != nil {
 		return EditorIdentifiers{}, err
 	}
 
-	dataModel, err := usecase.DataModelRepository.GetDataModel(nil, scenario.OrganizationID)
+	dataModel, err := usecase.DataModelRepository.GetDataModel(nil, scenario.OrganizationId)
 	if err != nil {
 		return EditorIdentifiers{}, err
 	}
@@ -228,7 +228,7 @@ func (usecase *AstExpressionUsecase) EditorIdentifiers(scenarioId string) (Edito
 		return EditorIdentifiers{}, err
 	}
 
-	customListAccessors, err := usecase.getCustomListIdentifiers(scenario.OrganizationID)
+	customListAccessors, err := usecase.getCustomListIdentifiers(scenario.OrganizationId)
 	if err != nil {
 		return EditorIdentifiers{}, err
 	}
@@ -256,7 +256,7 @@ func (usecase *AstExpressionUsecase) SaveRuleWithAstExpression(ruleId string, ex
 		return err
 	}
 
-	err = usecase.RuleRepository.UpdateRuleWithAstExpression(nil, rule.ID, expression)
+	err = usecase.RuleRepository.UpdateRuleWithAstExpression(nil, rule.Id, expression)
 	if err != nil {
 		return err
 	}

@@ -1,7 +1,7 @@
 package models
 
 type Organization struct {
-	ID                         string
+	Id                         string
 	Name                       string
 	DatabaseName               string
 	ExportScheduledExecutionS3 string
@@ -13,7 +13,7 @@ type CreateOrganizationInput struct {
 }
 
 type UpdateOrganizationInput struct {
-	ID                         string
+	Id                         string
 	Name                       *string
 	DatabaseName               *string
 	ExportScheduledExecutionS3 *string

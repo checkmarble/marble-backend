@@ -25,7 +25,7 @@ func (e *EnforceSecurityScenarioImpl) ReadScenario(scenario models.Scenario) err
 
 	return errors.Join(
 		e.Permission(models.SCENARIO_READ),
-		e.ReadOrganization(scenario.OrganizationID),
+		e.ReadOrganization(scenario.OrganizationId),
 	)
 }
 
@@ -39,14 +39,14 @@ func (e *EnforceSecurityScenarioImpl) ReadScenarioIteration(scenarioIteration mo
 func (e *EnforceSecurityScenarioImpl) ReadScenarioPublication(scenarioPublication models.ScenarioPublication) error {
 	return errors.Join(
 		e.Permission(models.SCENARIO_READ),
-		e.ReadOrganization(scenarioPublication.OrgID),
+		e.ReadOrganization(scenarioPublication.OrganizationId),
 	)
 }
 
 func (e *EnforceSecurityScenarioImpl) PublishScenario(scenario models.Scenario) error {
 	return errors.Join(
 		e.Permission(models.SCENARIO_PUBLISH),
-		e.ReadOrganization(scenario.OrganizationID),
+		e.ReadOrganization(scenario.OrganizationId),
 	)
 }
 
@@ -60,7 +60,7 @@ func (e *EnforceSecurityScenarioImpl) ListScenarios(organizationId string) error
 func (e *EnforceSecurityScenarioImpl) UpdateScenario(scenario models.Scenario) error {
 	return errors.Join(
 		e.Permission(models.SCENARIO_CREATE),
-		e.ReadOrganization(scenario.OrganizationID),
+		e.ReadOrganization(scenario.OrganizationId),
 	)
 }
 

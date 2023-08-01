@@ -48,11 +48,11 @@ func (repo *ScenarioPublicationRepositoryPostgresql) ListScenarioPublicationsOfO
 		Where(squirrel.Eq{"org_id": organizationId}).
 		OrderBy("rank ASC")
 
-	if filters.ScenarioID != nil {
-		query = query.Where(squirrel.Eq{"scenario_id": *filters.ScenarioID})
+	if filters.ScenarioId != nil {
+		query = query.Where(squirrel.Eq{"scenario_id": *filters.ScenarioId})
 	}
-	if filters.ScenarioIterationID != nil {
-		query = query.Where(squirrel.Eq{"scenario_iteration_id": *filters.ScenarioIterationID})
+	if filters.ScenarioIterationId != nil {
+		query = query.Where(squirrel.Eq{"scenario_iteration_id": *filters.ScenarioIterationId})
 	}
 
 	return SqlToListOfModels(

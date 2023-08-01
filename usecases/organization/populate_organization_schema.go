@@ -22,14 +22,14 @@ func (p *PopulateOrganizationSchema) CreateOrganizationSchema(marbleTx repositor
 	}
 	// create entry in organizations_schema
 	err := p.OrganizationSchemaRepository.CreateOrganizationSchema(marbleTx, models.OrganizationSchema{
-		OrganizationId: organization.ID,
+		OrganizationId: organization.Id,
 		DatabaseSchema: orgDatabaseSchema,
 	})
 	if err != nil {
 		return err
 	}
 
-	dataModel, err := p.DataModelRepository.GetDataModel(marbleTx, organization.ID)
+	dataModel, err := p.DataModelRepository.GetDataModel(marbleTx, organization.Id)
 	if err != nil {
 		return err
 	}

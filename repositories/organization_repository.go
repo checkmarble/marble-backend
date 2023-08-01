@@ -7,10 +7,10 @@ import (
 
 type OrganizationRepository interface {
 	AllOrganizations(tx Transaction) ([]models.Organization, error)
-	GetOrganizationById(tx Transaction, organizationID string) (models.Organization, error)
+	GetOrganizationById(tx Transaction, organizationId string) (models.Organization, error)
 	CreateOrganization(tx Transaction, createOrganization models.CreateOrganizationInput, newOrganizationId string) error
 	UpdateOrganization(tx Transaction, updateOrganization models.UpdateOrganizationInput) error
-	DeleteOrganization(tx Transaction, organizationID string) error
+	DeleteOrganization(tx Transaction, organizationId string) error
 }
 
 type OrganizationRepositoryPostgresql struct {
@@ -29,7 +29,7 @@ func (repo *OrganizationRepositoryPostgresql) AllOrganizations(tx Transaction) (
 		dbmodels.AdaptOrganization,
 	)
 }
-func (repo *OrganizationRepositoryPostgresql) GetOrganizationById(tx Transaction, organizationID string) (models.Organization, error) {
+func (repo *OrganizationRepositoryPostgresql) GetOrganizationById(tx Transaction, organizationId string) (models.Organization, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	return SqlToModel(
@@ -37,7 +37,7 @@ func (repo *OrganizationRepositoryPostgresql) GetOrganizationById(tx Transaction
 		NewQueryBuilder().
 			Select(dbmodels.ColumnsSelectOrganization...).
 			From(dbmodels.TABLE_ORGANIZATION).
-			Where("id = ?", organizationID),
+			Where("id = ?", organizationId),
 		dbmodels.AdaptOrganization,
 	)
 }
@@ -76,15 +76,15 @@ func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(tx Transaction,
 		updateRequest = updateRequest.Set("export_scheduled_execution_s3", *updateOrganization.ExportScheduledExecutionS3)
 	}
 
-	updateRequest = updateRequest.Where("id = ?", updateOrganization.ID)
+	updateRequest = updateRequest.Where("id = ?", updateOrganization.Id)
 
 	_, err := pgTx.ExecBuilder(updateRequest)
 	return err
 }
 
-func (repo *OrganizationRepositoryPostgresql) DeleteOrganization(tx Transaction, organizationID string) error {
+func (repo *OrganizationRepositoryPostgresql) DeleteOrganization(tx Transaction, organizationId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	_, err := pgTx.ExecBuilder(NewQueryBuilder().Delete(dbmodels.TABLE_ORGANIZATION).Where("id = ?", organizationID))
+	_, err := pgTx.ExecBuilder(NewQueryBuilder().Delete(dbmodels.TABLE_ORGANIZATION).Where("id = ?", organizationId))
 	return err
 }

@@ -59,9 +59,9 @@ func (repo *ScheduledExecutionRepositoryPostgresql) CreateScheduledExecution(tx 
 			).
 			Values(
 				newScheduledExecutionId,
-				createScheduledEx.OrganizationID,
-				createScheduledEx.ScenarioID,
-				createScheduledEx.ScenarioIterationID,
+				createScheduledEx.OrganizationId,
+				createScheduledEx.ScenarioId,
+				createScheduledEx.ScenarioIterationId,
 				models.ScheduledExecutionPending.String(),
 			),
 	)
@@ -71,7 +71,7 @@ func (repo *ScheduledExecutionRepositoryPostgresql) CreateScheduledExecution(tx 
 func (repo *ScheduledExecutionRepositoryPostgresql) UpdateScheduledExecution(tx Transaction, updateScheduledEx models.UpdateScheduledExecutionInput) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 	query := NewQueryBuilder().Update(dbmodels.TABLE_SCHEDULED_EXECUTIONS).
-		Where("id = ?", updateScheduledEx.ID)
+		Where("id = ?", updateScheduledEx.Id)
 
 	if updateScheduledEx.Status != nil {
 		query = query.Set("status", updateScheduledEx.Status.String())

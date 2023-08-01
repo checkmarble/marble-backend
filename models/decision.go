@@ -19,7 +19,7 @@ type Decision struct {
 }
 
 type ScenarioExecution struct {
-	ScenarioID          string
+	ScenarioId          string
 	ScenarioName        string
 	ScenarioDescription string
 	ScenarioVersion     int

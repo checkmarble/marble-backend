@@ -12,9 +12,9 @@ import (
 const TABLE_SCENARIO_ITERATIONS = "scenario_iterations"
 
 type DBScenarioIteration struct {
-	ID                            string      `db:"id"`
-	OrgID                         string      `db:"org_id"`
-	ScenarioID                    string      `db:"scenario_id"`
+	Id                            string      `db:"id"`
+	OrganizationId                string      `db:"org_id"`
+	ScenarioId                    string      `db:"scenario_id"`
 	Version                       pgtype.Int2 `db:"version"`
 	CreatedAt                     time.Time   `db:"created_at"`
 	UpdatedAt                     time.Time   `db:"updated_at"`
@@ -35,9 +35,9 @@ var SelectScenarioIterationColumn = utils.ColumnList[DBScenarioIteration]()
 
 func AdaptScenarioIteration(dto DBScenarioIteration) (models.ScenarioIteration, error) {
 	scenarioIteration := models.ScenarioIteration{
-		ID:             dto.ID,
-		OrganizationId: dto.OrgID,
-		ScenarioID:     dto.ScenarioID,
+		Id:             dto.Id,
+		OrganizationId: dto.OrganizationId,
+		ScenarioId:     dto.ScenarioId,
 		CreatedAt:      dto.CreatedAt,
 		UpdatedAt:      dto.UpdatedAt,
 		Body: models.ScenarioIterationBody{

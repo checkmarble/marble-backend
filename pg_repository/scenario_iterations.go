@@ -14,9 +14,9 @@ import (
 )
 
 type dbScenarioIteration struct {
-	ID                            string      `db:"id"`
-	OrgID                         string      `db:"org_id"`
-	ScenarioID                    string      `db:"scenario_id"`
+	Id                            string      `db:"id"`
+	OrganizationId                string      `db:"org_id"`
+	ScenarioId                    string      `db:"scenario_id"`
 	Version                       pgtype.Int2 `db:"version"`
 	CreatedAt                     time.Time   `db:"created_at"`
 	UpdatedAt                     time.Time   `db:"updated_at"`
@@ -30,8 +30,8 @@ type dbScenarioIteration struct {
 
 func (si *dbScenarioIteration) toDomain() (models.ScenarioIteration, error) {
 	siDTO := models.ScenarioIteration{
-		ID:         si.ID,
-		ScenarioID: si.ScenarioID,
+		Id:         si.Id,
+		ScenarioId: si.ScenarioId,
 		CreatedAt:  si.CreatedAt,
 		UpdatedAt:  si.UpdatedAt,
 		Body: models.ScenarioIterationBody{
@@ -64,8 +64,8 @@ func (si *dbScenarioIteration) toDomain() (models.ScenarioIteration, error) {
 
 type dbCreateScenarioIteration struct {
 	Id                            string  `db:"id"`
-	OrgID                         string  `db:"org_id"`
-	ScenarioID                    string  `db:"scenario_id"`
+	OrganizationId                string  `db:"org_id"`
+	ScenarioId                    string  `db:"scenario_id"`
 	ScoreReviewThreshold          *int    `db:"score_review_threshold"`
 	ScoreRejectThreshold          *int    `db:"score_reject_threshold"`
 	TriggerConditionAstExpression *[]byte `db:"trigger_condition_ast_expression"`
@@ -73,11 +73,11 @@ type dbCreateScenarioIteration struct {
 	Schedule                      string  `db:"schedule"`
 }
 
-func (r *PGRepository) CreateScenarioIteration(ctx context.Context, orgID string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error) {
+func (r *PGRepository) CreateScenarioIteration(ctx context.Context, organizationId string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error) {
 	createScenarioIteration := dbCreateScenarioIteration{
-		Id:         utils.NewPrimaryKey(orgID),
-		OrgID:      orgID,
-		ScenarioID: scenarioIteration.ScenarioID,
+		Id:             utils.NewPrimaryKey(organizationId),
+		OrganizationId: organizationId,
+		ScenarioId:     scenarioIteration.ScenarioId,
 	}
 
 	if scenarioIteration.Body != nil {
@@ -119,7 +119,7 @@ func (r *PGRepository) CreateScenarioIteration(ctx context.Context, orgID string
 	}
 
 	if scenarioIteration.Body != nil {
-		createdRules, err := r.createScenarioIterationRules(ctx, tx, orgID, createdScenarioIteration.ID, scenarioIteration.Body.Rules)
+		createdRules, err := r.createScenarioIterationRules(ctx, tx, organizationId, createdScenarioIteration.Id, scenarioIteration.Body.Rules)
 		if err != nil {
 			return models.ScenarioIteration{}, fmt.Errorf("unable to create scenario iteration rules: %w", err)
 		}
@@ -142,7 +142,7 @@ type dbUpdateScenarioIterationInput struct {
 	Schedule                      *string `db:"schedule"`
 }
 
-func (r *PGRepository) UpdateScenarioIteration(ctx context.Context, orgID string, scenarioIteration models.UpdateScenarioIterationInput) (models.ScenarioIteration, error) {
+func (r *PGRepository) UpdateScenarioIteration(ctx context.Context, organizationId string, scenarioIteration models.UpdateScenarioIterationInput) (models.ScenarioIteration, error) {
 	if scenarioIteration.Body == nil {
 		return models.ScenarioIteration{}, fmt.Errorf("nothing to update")
 	}
@@ -168,8 +168,8 @@ func (r *PGRepository) UpdateScenarioIteration(ctx context.Context, orgID string
 	sql, args, err := r.queryBuilder.
 		Select("version IS NULL").
 		From("scenario_iterations").
-		Where("id = ?", scenarioIteration.ID).
-		Where("org_id = ?", orgID).
+		Where("id = ?", scenarioIteration.Id).
+		Where("org_id = ?", organizationId).
 		ToSql()
 	if err != nil {
 		return models.ScenarioIteration{}, fmt.Errorf("unable to build scenario iteration query: %w", err)
@@ -190,8 +190,8 @@ func (r *PGRepository) UpdateScenarioIteration(ctx context.Context, orgID string
 	sql, args, err = r.queryBuilder.
 		Update("scenario_iterations").
 		SetMap(ColumnValueMap(updateScenarioIterationInput)).
-		Where("id = ?", scenarioIteration.ID).
-		Where("org_id = ?", orgID).
+		Where("id = ?", scenarioIteration.Id).
+		Where("org_id = ?", organizationId).
 		Suffix("RETURNING *").ToSql()
 	if err != nil {
 		return models.ScenarioIteration{}, fmt.Errorf("unable to build scenario iteration query: %w", err)

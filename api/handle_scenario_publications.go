@@ -11,20 +11,20 @@ import (
 )
 
 type APIScenarioPublication struct {
-	ID                  string    `json:"id"`
+	Id                  string    `json:"id"`
 	Rank                int32     `json:"rank"`
-	ScenarioID          string    `json:"scenarioID"`
-	ScenarioIterationID string    `json:"scenarioIterationID"`
+	ScenarioId          string    `json:"scenarioID"`
+	ScenarioIterationId string    `json:"scenarioIterationID"`
 	PublicationAction   string    `json:"publicationAction"`
 	CreatedAt           time.Time `json:"createdAt"`
 }
 
 func NewAPIScenarioPublication(sp models.ScenarioPublication) APIScenarioPublication {
 	return APIScenarioPublication{
-		ID:                  sp.ID,
+		Id:                  sp.Id,
 		Rank:                sp.Rank,
-		ScenarioID:          sp.ScenarioID,
-		ScenarioIterationID: sp.ScenarioIterationID,
+		ScenarioId:          sp.ScenarioId,
+		ScenarioIterationId: sp.ScenarioIterationId,
 		PublicationAction:   sp.PublicationAction.String(),
 		CreatedAt:           sp.CreatedAt,
 	}
@@ -37,8 +37,8 @@ func (api *API) ListScenarioPublications() http.HandlerFunc {
 		options := &utils.PtrToOptions{OmitZero: true}
 		usecase := api.UsecasesWithCreds(r).NewScenarioPublicationUsecase()
 		scenarioPublications, err := usecase.ListScenarioPublications(models.ListScenarioPublicationsFilters{
-			ScenarioID:          utils.PtrTo(input.ScenarioID, options),
-			ScenarioIterationID: utils.PtrTo(input.ScenarioIterationID, options),
+			ScenarioId:          utils.PtrTo(input.ScenarioId, options),
+			ScenarioIterationId: utils.PtrTo(input.ScenarioIterationId, options),
 		})
 		if presentError(w, r, err) {
 			return
@@ -54,7 +54,7 @@ func (api *API) CreateScenarioPublication() http.HandlerFunc {
 
 		usecase := api.UsecasesWithCreds(r).NewScenarioPublicationUsecase()
 		scenarioPublications, err := usecase.ExecuteScenarioPublicationAction(ctx, models.PublishScenarioIterationInput{
-			ScenarioIterationId: input.Body.ScenarioIterationID,
+			ScenarioIterationId: input.Body.ScenarioIterationId,
 			PublicationAction:   models.PublicationActionFrom(input.Body.PublicationAction),
 		})
 		if presentError(w, r, err) {

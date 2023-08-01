@@ -8,16 +8,16 @@ import (
 )
 
 func TestNewPrimaryKey(t *testing.T) {
-	orgId := "86d9b92d-e654-4de3-8d3f-81830246c891"
+	organizationId := "86d9b92d-e654-4de3-8d3f-81830246c891"
 
-	newId := NewPrimaryKey(orgId)
+	newId := NewPrimaryKey(organizationId)
 
-	log.Println(orgId)
+	log.Println(organizationId)
 	log.Println(newId)
 
 	asserts := assert.New(t)
-	asserts.Equal(orgId[:8], newId[:8])
-	asserts.NotEqual(orgId, newId)
+	asserts.Equal(organizationId[:8], newId[:8])
+	asserts.NotEqual(organizationId, newId)
 
 }
 

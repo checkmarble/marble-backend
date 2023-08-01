@@ -28,7 +28,7 @@ func (repo *ApiKeyRepositoryImpl) GetApiKeyByKey(tx Transaction, key string) (mo
 	)
 }
 
-func (repo *ApiKeyRepositoryImpl) GetApiKeysOfOrganization(tx Transaction, orgID string) ([]models.ApiKey, error) {
+func (repo *ApiKeyRepositoryImpl) GetApiKeysOfOrganization(tx Transaction, organizationId string) ([]models.ApiKey, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	return SqlToListOfModels(
@@ -36,7 +36,7 @@ func (repo *ApiKeyRepositoryImpl) GetApiKeysOfOrganization(tx Transaction, orgID
 		NewQueryBuilder().
 			Select(dbmodels.ApiKeyFields...).
 			From(dbmodels.TABLE_APIKEYS).
-			Where("org_id = ?", orgID),
+			Where("org_id = ?", organizationId),
 		dbmodels.AdaptApikey,
 	)
 

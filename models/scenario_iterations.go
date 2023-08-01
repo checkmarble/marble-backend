@@ -6,9 +6,9 @@ import (
 )
 
 type ScenarioIteration struct {
-	ID             string
+	Id             string
 	OrganizationId string
-	ScenarioID     string
+	ScenarioId     string
 	Version        *int
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
@@ -25,11 +25,11 @@ type ScenarioIterationBody struct {
 }
 
 type GetScenarioIterationFilters struct {
-	ScenarioID *string
+	ScenarioId *string
 }
 
 type CreateScenarioIterationInput struct {
-	ScenarioID string
+	ScenarioId string
 	Body       *CreateScenarioIterationBody
 }
 
@@ -43,7 +43,7 @@ type CreateScenarioIterationBody struct {
 }
 
 type UpdateScenarioIterationInput struct {
-	ID   string
+	Id   string
 	Body *UpdateScenarioIterationBody
 }
 
