@@ -22,7 +22,7 @@ func (fetcher *ScenarioFetcher) FetchScenarioAndIteration(tx repositories.Transa
 		return ScenarioAndIteration{}, err
 	}
 
-	result.Scenario, err = fetcher.ScenarioReadRepository.GetScenarioById(tx, result.Iteration.ScenarioID)
+	result.Scenario, err = fetcher.ScenarioReadRepository.GetScenarioById(tx, result.Iteration.ScenarioId)
 	if err != nil {
 		return ScenarioAndIteration{}, err
 	}
