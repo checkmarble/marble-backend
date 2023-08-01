@@ -12,7 +12,6 @@ import {
   adaptSingleScenarioApiResult,
 } from "@/models/ScenarioDto";
 import {
-  adapAstValidateSchemaResult,
   adaptAstNodeDto,
 } from "@/models/AstExpressionDto";
 import { adaptRuleApiResult } from "@/models/RuleDto";
@@ -42,19 +41,6 @@ export async function fetchScenario(
 ): Promise<Scenario> {
   return adaptSingleScenarioApiResult(
     await repository.marbleApi.scenariosById(scenarioId)
-  );
-}
-
-export async function validateAstExpression(
-  repository: ScenariosRepository,
-  organizationId: string,
-  expression: AstNode
-) {
-  return adapAstValidateSchemaResult(
-    await repository.marbleApi.validateAstExpression(
-      organizationId,
-      adaptAstNodeDto(expression)
-    )
   );
 }
 

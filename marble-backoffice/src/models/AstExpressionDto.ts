@@ -1,5 +1,4 @@
 import * as yup from "yup";
-import { adaptDtoWithYup } from "@/infra/adaptDtoWithYup";
 import {
   type AstNode,
   type ConstantOptional,
@@ -58,20 +57,6 @@ export function adaptAstNodeDto(model: AstNode): AstNodeDto {
     constant: model.constant === NoConstant ? undefined : model.constant,
     children: (model.children || []).map((child) => adaptAstNodeDto(child)),
     named_children: MapToObject(MapMap(model.namedChildren, adaptAstNodeDto)),
-  };
-}
-export function adapAstValidateSchemaResult(json: unknown) {
-  const dto = adaptDtoWithYup(
-    json,
-    yup.object({
-      expression: AstNodeSchema,
-      validation_errors: yup.array().of(yup.string().defined()).optional(),
-    })
-  );
-
-  return {
-    expression: adaptAstNode(dto.expression),
-    validationErrors: dto.validation_errors || [],
   };
 }
 

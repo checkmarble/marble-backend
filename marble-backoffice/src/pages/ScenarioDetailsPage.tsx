@@ -50,8 +50,6 @@ export default function ScenarioDetailsPage() {
   const {
     editor,
     // expressionAstNode,
-    validate,
-    validationErrors,
     dryRunResult,
     run,
     identifiers,
@@ -60,10 +58,6 @@ export default function ScenarioDetailsPage() {
     scenarioId,
     pageLoadingDispatcher
   );
-
-  const handleValidateScenario = async () => {
-    validate();
-  };
 
   const handleRunScenario = async () => {
     run();
@@ -124,26 +118,6 @@ export default function ScenarioDetailsPage() {
             editor={nodeEditor}
             node={editor.expressionViewModel.rootNode}
           /> */}
-
-          <Button onClick={handleValidateScenario}>Validate</Button>
-          {validationErrors.length > 0 && (
-            <Card>
-              <CardContent>
-                <Typography
-                  sx={{ fontSize: 14 }}
-                  color="text.secondary"
-                  gutterBottom
-                >
-                  Validation errors
-                </Typography>
-                {validationErrors.map((error, i) => (
-                  <Alert key={i} severity="error">
-                    {error}
-                  </Alert>
-                ))}
-              </CardContent>
-            </Card>
-          )}
 
           <Button onClick={handleRunScenario}>Run (Ingestion required)</Button>
           {dryRunResult && (
