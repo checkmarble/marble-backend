@@ -77,7 +77,7 @@ func (validator *ValidateScenarioIterationImpl) Validate(si ScenarioAndIteration
 
 func (validator *ValidateScenarioIterationImpl) makeDryRunEnvironment(si ScenarioAndIteration) (ast_eval.AstEvaluationEnvironment, error) {
 
-	organizationId := si.Scenario.OrganizationID
+	organizationId := si.Scenario.OrganizationId
 
 	dataModel, err := validator.DataModelRepository.GetDataModel(nil, organizationId)
 	if err != nil {

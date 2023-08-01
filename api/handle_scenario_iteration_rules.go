@@ -121,7 +121,11 @@ func (api *API) GetScenarioIterationRule() http.HandlerFunc {
 		if presentError(w, r, err) {
 			return
 		}
-		PresentModel(w, apiRule)
+		PresentModel(w, struct {
+			Rule dto.ScenarioIterationRuleDto `json:"rule"`
+		}{
+			Rule: apiRule,
+		})
 	}
 }
 
@@ -164,7 +168,7 @@ func (api *API) UpdateScenarioIterationRule() http.HandlerFunc {
 		}
 
 		usecase := api.usecases.NewScenarioIterationRuleUsecase()
-		updatedRule, err := usecase.UpdateScenarioIterationRule(ctx, organizationId, updateRuleInput)
+		updatedRule, scenarioValidation, err := usecase.UpdateScenarioIterationRule(ctx, organizationId, updateRuleInput)
 		if presentError(w, r, err) {
 			return
 		}
@@ -174,6 +178,12 @@ func (api *API) UpdateScenarioIterationRule() http.HandlerFunc {
 			return
 		}
 
-		PresentModel(w, apiRule)
+		PresentModel(w, struct {
+			Rule               dto.ScenarioIterationRuleDto `json:"rule"`
+			ScenarioValidation dto.ScenarioValidationDto    `json:"scenario_validation"`
+		}{
+			Rule:               apiRule,
+			ScenarioValidation: dto.AdaptScenarioValidationDto(scenarioValidation),
+		})
 	}
 }
