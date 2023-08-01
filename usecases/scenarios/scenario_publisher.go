@@ -9,33 +9,31 @@ import (
 
 type ScenarioPublisher struct {
 	ScenarioPublicationsRepository  repositories.ScenarioPublicationRepository
-	ScenarioReadRepository          repositories.ScenarioReadRepository
 	ScenarioWriteRepository         repositories.ScenarioWriteRepository
 	ScenarioIterationReadRepository repositories.ScenarioIterationReadRepository
 	ValidateScenarioIteration       ValidateScenarioIteration
 }
 
-func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(tx repositories.Transaction, organizationId string, input models.PublishScenarioIterationInput) ([]models.ScenarioPublication, error) {
+func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(
+	tx repositories.Transaction,
+	scenarioAndIteration ScenarioAndIteration,
+	publicationAction models.PublicationAction,
+) ([]models.ScenarioPublication, error) {
 	var scenarioPublications []models.ScenarioPublication
 
-	scenarioIteration, err := publisher.ScenarioIterationReadRepository.GetScenarioIteration(tx, input.ScenarioIterationId)
-	if err != nil {
-		return nil, err
-	}
+	organizationId := scenarioAndIteration.Scenario.OrganizationId
+	scenariosId := scenarioAndIteration.Scenario.Id
+	iterationId := scenarioAndIteration.Iteration.Id
+	liveVersionId := scenarioAndIteration.Scenario.LiveVersionID
 
-	scenario, err := publisher.ScenarioReadRepository.GetScenarioById(tx, scenarioIteration.ScenarioId)
-	if err != nil {
-		return nil, err
-	}
-
-	switch input.PublicationAction {
+	switch publicationAction {
 	case models.Unpublish:
 		{
-			if scenario.LiveVersionID == nil || *scenario.LiveVersionID != input.ScenarioIterationId {
-				return nil, fmt.Errorf("unable to unpublish: scenario iteration %s is not currently live %w", input.ScenarioIterationId, models.BadParameterError)
+			if liveVersionId == nil || *liveVersionId != iterationId {
+				return nil, fmt.Errorf("unable to unpublish: scenario iteration %s is not currently live %w", iterationId, models.BadParameterError)
 			}
 
-			if sps, err := publisher.unpublishOldIteration(tx, organizationId, scenarioIteration.ScenarioId, &input.ScenarioIterationId); err != nil {
+			if sps, err := publisher.unpublishOldIteration(tx, organizationId, scenariosId, &iterationId); err != nil {
 				return nil, err
 			} else {
 				scenarioPublications = append(scenarioPublications, sps...)
@@ -43,34 +41,31 @@ func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(tx repositories.
 		}
 	case models.Publish:
 		{
-			if scenario.LiveVersionID != nil && *scenario.LiveVersionID == input.ScenarioIterationId {
+			if liveVersionId != nil && *liveVersionId == iterationId {
 				return []models.ScenarioPublication{}, nil
 			}
-			if err := publisher.ValidateScenarioIteration.Validate(ScenarioAndIteration{
-				scenario:  scenario,
-				iteration: scenarioIteration,
-			}); err != nil {
+			if err := ScenarioValidationToError(publisher.ValidateScenarioIteration.Validate(scenarioAndIteration)); err != nil {
 				return nil, err
 			}
 
-			newVersion, err := publisher.getNewVersion(tx, organizationId, scenarioIteration.ScenarioId)
+			newVersion, err := publisher.getNewVersion(tx, organizationId, scenariosId)
 			if err != nil {
 				return nil, err
 			}
 
 			// FIXME Just temporarily placed here, will be moved to scenario iteration write repo
-			err = publisher.ScenarioPublicationsRepository.UpdateScenarioIterationVersion(tx, input.ScenarioIterationId, newVersion)
+			err = publisher.ScenarioPublicationsRepository.UpdateScenarioIterationVersion(tx, iterationId, newVersion)
 			if err != nil {
 				return nil, err
 			}
 
-			if sps, err := publisher.unpublishOldIteration(tx, organizationId, scenarioIteration.ScenarioId, scenario.LiveVersionID); err != nil {
+			if sps, err := publisher.unpublishOldIteration(tx, organizationId, scenariosId, liveVersionId); err != nil {
 				return nil, err
 			} else {
 				scenarioPublications = append(scenarioPublications, sps...)
 			}
 
-			if sp, err := publisher.publishNewIteration(tx, organizationId, scenarioIteration.ScenarioId, input.ScenarioIterationId); err != nil {
+			if sp, err := publisher.publishNewIteration(tx, organizationId, scenariosId, iterationId); err != nil {
 				return nil, err
 			} else {
 				scenarioPublications = append(scenarioPublications, sp)
