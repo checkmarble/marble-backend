@@ -53,7 +53,7 @@ func (usecase *SeedUseCase) SeedZorgOrganization(zorgOrganizationId string) erro
 	// assign test s3 bucket name to zorg organization
 	var testBucketName = "marble-backend-export-scheduled-execution-test"
 	err = usecase.organizationRepository.UpdateOrganization(nil, models.UpdateOrganizationInput{
-		ID:                         zorgOrganizationId,
+		Id:                         zorgOrganizationId,
 		ExportScheduledExecutionS3: &testBucketName,
 	})
 

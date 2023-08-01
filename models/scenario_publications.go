@@ -7,11 +7,11 @@ import (
 )
 
 type ScenarioPublication struct {
-	ID                  string
+	Id                  string
 	Rank                int32
-	OrgID               string
-	ScenarioID          string
-	ScenarioIterationID string
+	OrganizationId      string
+	ScenarioId          string
+	ScenarioIterationId string
 	PublicationAction   PublicationAction
 	CreatedAt           time.Time
 }
@@ -49,8 +49,8 @@ func PublicationActionFrom(s string) PublicationAction {
 }
 
 type PublishedScenarioIteration struct {
-	ID         string
-	ScenarioID string
+	Id         string
+	ScenarioId string
 	Version    int
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
@@ -68,8 +68,8 @@ type PublishedScenarioIterationBody struct {
 
 func NewPublishedScenarioIteration(si ScenarioIteration) (PublishedScenarioIteration, error) {
 	result := PublishedScenarioIteration{
-		ID:         si.ID,
-		ScenarioID: si.ScenarioID,
+		Id:         si.Id,
+		ScenarioId: si.ScenarioId,
 		CreatedAt:  si.CreatedAt,
 		UpdatedAt:  si.UpdatedAt,
 	}
@@ -123,8 +123,8 @@ func (si ScenarioIteration) IsValidForPublication() error {
 }
 
 type ListScenarioPublicationsFilters struct {
-	ScenarioID          *string
-	ScenarioIterationID *string
+	ScenarioId          *string
+	ScenarioIterationId *string
 }
 
 type PublishScenarioIterationInput struct {

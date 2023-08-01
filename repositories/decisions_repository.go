@@ -12,7 +12,7 @@ import (
 type DecisionRepository interface {
 	DecisionById(transaction Transaction, decisionId string) (models.Decision, error)
 	DecisionsOfScheduledExecution(scheduledExecutionId string) (<-chan models.Decision, <-chan error)
-	StoreDecision(tx Transaction, decision models.Decision, organizationID string, newDecisionId string) error
+	StoreDecision(tx Transaction, decision models.Decision, organizationId string, newDecisionId string) error
 	DecisionsOfOrganization(transaction Transaction, organizationId string, limit int) ([]models.Decision, error)
 }
 
@@ -78,7 +78,7 @@ func adaptDecisionError(err error) models.DecisionError {
 	return 1
 }
 
-func (repo *DecisionRepositoryImpl) StoreDecision(tx Transaction, decision models.Decision, organizationID string, newDecisionId string) error {
+func (repo *DecisionRepositoryImpl) StoreDecision(tx Transaction, decision models.Decision, organizationId string, newDecisionId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	_, err := pgTx.ExecBuilder(
@@ -98,7 +98,7 @@ func (repo *DecisionRepositoryImpl) StoreDecision(tx Transaction, decision model
 			).
 			Values(
 				newDecisionId,
-				organizationID,
+				organizationId,
 				decision.Outcome.String(),
 				decision.ScenarioId,
 				decision.ScenarioName,
@@ -130,8 +130,8 @@ func (repo *DecisionRepositoryImpl) StoreDecision(tx Transaction, decision model
 	for _, ruleExecution := range decision.RuleExecutions {
 		builderForRules = builderForRules.
 			Values(
-				utils.NewPrimaryKey(organizationID),
-				organizationID,
+				utils.NewPrimaryKey(organizationId),
+				organizationId,
 				newDecisionId,
 				ruleExecution.Rule.Name,
 				ruleExecution.Rule.Description,
@@ -184,7 +184,7 @@ func (repo *DecisionRepositoryImpl) rulesOfDecisionsBatch(transaction Transactio
 
 	// dispatch rules to their corresponding decision
 	for _, dbRule := range allRules {
-		rulesOfDecision := decisionsRulesMap[dbRule.DecisionID]
+		rulesOfDecision := decisionsRulesMap[dbRule.DecisionId]
 		rulesOfDecision.rules = append(rulesOfDecision.rules, dbmodels.AdaptRuleExecution(dbRule))
 	}
 
@@ -209,7 +209,7 @@ func (repo *DecisionRepositoryImpl) channelOfDecisions(tx TransactionPostgres, q
 
 		// Let's keep the non optimized version
 		// for dbDecision := range dbDecisionsChannel {
-		// 	rules, err := repo.rulesOfDecision(tx, dbDecision.ID)
+		// 	rules, err := repo.rulesOfDecision(tx, dbDecision.Id)
 		// 	if err != nil {
 		// 		allErrors = append(allErrors, err)
 		// 		// do not send invalid decisions
@@ -224,7 +224,7 @@ func (repo *DecisionRepositoryImpl) channelOfDecisions(tx TransactionPostgres, q
 			// fetch rules of all decisions
 			rules, err := repo.rulesOfDecisionsBatch(
 				nil,
-				utils.Map(dbDecisions, func(d dbmodels.DbDecision) string { return d.ID }),
+				utils.Map(dbDecisions, func(d dbmodels.DbDecision) string { return d.Id }),
 			)
 
 			if err != nil {

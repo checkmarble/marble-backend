@@ -44,13 +44,13 @@ func (exporter *ExportScheduleExecutionImpl) ExportScheduledExecutionToS3(scenar
 
 func (exporter *ExportScheduleExecutionImpl) exportScenarioToS3(scenario models.Scenario, scheduledExecution models.ScheduledExecution, s3Bucket string, numberOfDecision int64) error {
 
-	filename := fmt.Sprintf("scheduled_scenario_execution_%s.json", scheduledExecution.ID)
+	filename := fmt.Sprintf("scheduled_scenario_execution_%s.json", scheduledExecution.Id)
 
 	encoded, err := json.Marshal(map[string]any{
-		"scheduled_execution_id": scheduledExecution.ID,
+		"scheduled_execution_id": scheduledExecution.Id,
 		"started_at":             scheduledExecution.StartedAt,
 		"scenario": map[string]any{
-			"scenario_id": scenario.ID,
+			"scenario_id": scenario.Id,
 			"name":        scenario.Name,
 			"description": scenario.Description,
 			// "version":     scenario.LiveVersionID,
@@ -71,7 +71,7 @@ func (exporter *ExportScheduleExecutionImpl) exportDecisionsToS3(scheduledExecut
 	uploadErrorChan := exporter.uploadDecisions(pipeReader, scheduledExecution, s3Bucket)
 
 	// write everything. No need to create a second goroutine, the write can be synchronous.
-	number_of_exported_decisions, exportErr := exporter.exportDecisions(pipeWriter, scheduledExecution.ID)
+	number_of_exported_decisions, exportErr := exporter.exportDecisions(pipeWriter, scheduledExecution.Id)
 
 	// close the pipe when done
 	pipeWriter.Close()
@@ -84,7 +84,7 @@ func (exporter *ExportScheduleExecutionImpl) exportDecisionsToS3(scheduledExecut
 
 func (exporter *ExportScheduleExecutionImpl) uploadDecisions(src *io.PipeReader, scheduledExecution models.ScheduledExecution, s3Bucket string) <-chan error {
 
-	filename := fmt.Sprintf("scheduled_scenario_execution_%s_decisions.ndjson", scheduledExecution.ID)
+	filename := fmt.Sprintf("scheduled_scenario_execution_%s_decisions.ndjson", scheduledExecution.Id)
 
 	// run immediately a goroutine that consume the pipeReader until the pipeWriter is closed
 	uploadErrorChan := make(chan error, 1)

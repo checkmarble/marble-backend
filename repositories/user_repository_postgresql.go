@@ -29,9 +29,9 @@ func (repo *UserRepositoryPostgresql) CreateUser(tx Transaction, createUser mode
 
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	var orgId *string
+	var organizationId *string
 	if len(createUser.OrganizationId) != 0 {
-		orgId = &createUser.OrganizationId
+		organizationId = &createUser.OrganizationId
 	}
 
 	_, err := pgTx.ExecBuilder(
@@ -48,7 +48,7 @@ func (repo *UserRepositoryPostgresql) CreateUser(tx Transaction, createUser mode
 				createUser.Email,
 				"",
 				int(createUser.Role),
-				orgId,
+				organizationId,
 			),
 	)
 	return userId, err

@@ -11,12 +11,12 @@ import (
 
 // TODO(data_model): handle versionning + status / change db schema if it's useless
 type DbDataModel struct {
-	ID        string      `db:"id"`
-	OrgID     string      `db:"org_id"`
-	Version   string      `db:"version"`
-	Status    string      `db:"status"`
-	Tables    []byte      `db:"tables"`
-	DeletedAt pgtype.Time `db:"deleted_at"`
+	Id             string      `db:"id"`
+	OrganizationId string      `db:"org_id"`
+	Version        string      `db:"version"`
+	Status         string      `db:"status"`
+	Tables         []byte      `db:"tables"`
+	DeletedAt      pgtype.Time `db:"deleted_at"`
 }
 
 const TABLE_DATA_MODELS = "data_models"

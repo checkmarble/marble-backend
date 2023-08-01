@@ -16,19 +16,19 @@ import (
 func (api *API) handleIngestion() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		orgID, err := utils.OrgIDFromCtx(ctx, r)
+		organizationId, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(w, r, err) {
 			return
 		}
 
-		logger := api.logger.With(slog.String("orgId", orgID))
+		logger := api.logger.With(slog.String("organizationId", organizationId))
 
 		usecase := api.usecases.NewIngestionUseCase()
 
 		organizationUsecase := api.usecases.NewOrganizationUseCase()
-		dataModel, err := organizationUsecase.GetDataModel(orgID)
+		dataModel, err := organizationUsecase.GetDataModel(organizationId)
 		if err != nil {
-			logger.ErrorCtx(ctx, fmt.Sprintf("Unable to find datamodel by orgId for ingestion: %v", err))
+			logger.ErrorCtx(ctx, fmt.Sprintf("Unable to find datamodel by organizationId for ingestion: %v", err))
 			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
@@ -60,7 +60,7 @@ func (api *API) handleIngestion() http.HandlerFunc {
 			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
-		err = usecase.IngestObjects(orgID, []models.PayloadReader{payload}, table, logger)
+		err = usecase.IngestObjects(organizationId, []models.PayloadReader{payload}, table, logger)
 		if err != nil {
 			logger.ErrorCtx(ctx, fmt.Sprintf("Error while ingesting object: %v", err))
 			http.Error(w, "", http.StatusInternalServerError)

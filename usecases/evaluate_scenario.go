@@ -44,7 +44,7 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 		}
 	}()
 
-	logger.InfoCtx(ctx, "Evaluting scenario", "scenarioId", params.scenario.ID)
+	logger.InfoCtx(ctx, "Evaluting scenario", "scenarioId", params.scenario.Id)
 
 	// If the scenario has no live version, don't try to Eval() it, return early
 	if params.scenario.LiveVersionID == nil {
@@ -70,7 +70,7 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 		DataModel:                  params.dataModel,
 		Payload:                    params.payload,
 		orgTransactionFactory:      repositories.orgTransactionFactory,
-		organizationId:             params.scenario.OrganizationID,
+		organizationId:             params.scenario.OrganizationId,
 		ingestedDataReadRepository: repositories.ingestedDataReadRepository,
 		customListRepository:       repositories.customListRepository,
 	}
@@ -118,7 +118,7 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 
 	// Build ScenarioExecution as result
 	se = models.ScenarioExecution{
-		ScenarioID:          params.scenario.ID,
+		ScenarioId:          params.scenario.Id,
 		ScenarioName:        params.scenario.Name,
 		ScenarioDescription: params.scenario.Description,
 		ScenarioVersion:     publishedVersion.Version,
@@ -161,7 +161,7 @@ func evalScenarioRule(repositories scenarioEvaluationRepositories, rule models.R
 		ruleExecution.Error = err
 		repositories.logger.Info("Rule had an error",
 			slog.String("ruleName", rule.Name),
-			slog.String("ruleId", rule.ID),
+			slog.String("ruleId", rule.Id),
 			slog.String("error", ruleExecution.Error.Error()),
 		)
 	}

@@ -15,22 +15,22 @@ import (
 )
 
 type GetDecisionInput struct {
-	DecisionID string `in:"path=decisionID"`
+	DecisionId string `in:"path=decisionId"`
 }
 
 func (api *API) handleGetDecision() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := utils.OrgIDFromCtx(ctx, r)
+		organizationId, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(w, r, err) {
 			return
 		}
 		input := ctx.Value(httpin.Input).(*GetDecisionInput)
-		decisionID := input.DecisionID
+		decisionId := input.DecisionId
 
 		usecase := api.usecases.NewDecisionUsecase()
-		decision, err := usecase.GetDecision(utils.CredentialsFromCtx(ctx), orgID, decisionID)
+		decision, err := usecase.GetDecision(utils.CredentialsFromCtx(ctx), organizationId, decisionId)
 
 		if presentError(w, r, err) {
 			return
@@ -43,14 +43,14 @@ func (api *API) handleListDecisions() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := utils.OrgIDFromCtx(ctx, r)
+		organizationId, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(w, r, err) {
 			return
 		}
-		logger := api.logger.With(slog.String("orgID", orgID))
+		logger := api.logger.With(slog.String("organizationId", organizationId))
 
 		usecase := api.usecases.NewDecisionUsecase()
-		decisions, err := usecase.ListDecisionsOfOrganization(orgID)
+		decisions, err := usecase.ListDecisionsOfOrganization(organizationId)
 		if presentError(w, r, err) {
 			return
 		}
@@ -69,7 +69,7 @@ func (api *API) handleListDecisions() http.HandlerFunc {
 }
 
 type CreateDecisionBody struct {
-	ScenarioID        string          `json:"scenario_id"`
+	ScenarioId        string          `json:"scenario_id"`
 	TriggerObjectRaw  json.RawMessage `json:"trigger_object"`
 	TriggerObjectType string          `json:"object_type"`
 }
@@ -82,19 +82,19 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := utils.OrgIDFromCtx(ctx, r)
+		organizationId, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(w, r, err) {
 			return
 		}
 
 		input := ctx.Value(httpin.Input).(*CreateDecisionInputDto)
 		requestData := input.Body
-		logger := api.logger.With(slog.String("scenarioId", requestData.ScenarioID), slog.String("objectType", requestData.TriggerObjectType), slog.String("orgId", orgID))
+		logger := api.logger.With(slog.String("scenarioId", requestData.ScenarioId), slog.String("objectType", requestData.TriggerObjectType), slog.String("organizationId", organizationId))
 
 		organizationUsecase := api.usecases.NewOrganizationUseCase()
-		dataModel, err := organizationUsecase.GetDataModel(orgID)
+		dataModel, err := organizationUsecase.GetDataModel(organizationId)
 		if err != nil {
-			logger.ErrorCtx(ctx, "Unable to find datamodel by orgId for ingestion: \n"+err.Error())
+			logger.ErrorCtx(ctx, "Unable to find datamodel by organizationId for ingestion: \n"+err.Error())
 			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
@@ -128,9 +128,9 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 		ClientObject := models.ClientObject{TableName: models.TableName(requestData.TriggerObjectType), Data: triggerObjectMap}
 		decisionUsecase := api.usecases.NewDecisionUsecase()
 		decision, err := decisionUsecase.CreateDecision(ctx, models.CreateDecisionInput{
-			ScenarioID:              requestData.ScenarioID,
+			ScenarioId:              requestData.ScenarioId,
 			ClientObject:            ClientObject,
-			OrganizationID:          orgID,
+			OrganizationId:          organizationId,
 			PayloadStructWithReader: payload,
 		}, logger)
 		if errors.Is(err, models.NotFoundError) || errors.Is(err, models.BadParameterError) {

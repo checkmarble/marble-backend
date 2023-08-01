@@ -19,14 +19,14 @@ type APIError struct {
 }
 
 type APIDecisionScenario struct {
-	ID          string `json:"id"`
+	Id          string `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Version     int    `json:"version"`
 }
 
 type APIDecision struct {
-	ID                   string              `json:"id"`
+	Id                   string              `json:"id"`
 	CreatedAt            time.Time           `json:"created_at"`
 	TriggerObject        map[string]any      `json:"trigger_object"`
 	TriggerObjectType    string              `json:"trigger_object_type"`
@@ -40,13 +40,13 @@ type APIDecision struct {
 
 func NewAPIDecision(decision models.Decision) APIDecision {
 	apiDecision := APIDecision{
-		ID:                decision.DecisionId,
+		Id:                decision.DecisionId,
 		CreatedAt:         decision.CreatedAt,
 		TriggerObjectType: string(decision.ClientObject.TableName),
 		TriggerObject:     decision.ClientObject.Data,
 		Outcome:           decision.Outcome.String(),
 		Scenario: APIDecisionScenario{
-			ID:          decision.ScenarioId,
+			Id:          decision.ScenarioId,
 			Name:        decision.ScenarioName,
 			Description: decision.ScenarioDescription,
 			Version:     decision.ScenarioVersion,

@@ -25,8 +25,8 @@ type DecisionUsecase struct {
 	evaluateRuleAstExpression       ast_eval.EvaluateRuleAstExpression
 }
 
-func (usecase *DecisionUsecase) GetDecision(creds models.Credentials, orgID string, decisionID string) (models.Decision, error) {
-	decision, err := usecase.decisionRepository.DecisionById(nil, decisionID)
+func (usecase *DecisionUsecase) GetDecision(creds models.Credentials, organizationId string, decisionId string) (models.Decision, error) {
+	decision, err := usecase.decisionRepository.DecisionById(nil, decisionId)
 
 	if err != nil {
 		return models.Decision{}, err
@@ -34,30 +34,30 @@ func (usecase *DecisionUsecase) GetDecision(creds models.Credentials, orgID stri
 	return decision, utils.EnforceOrganizationAccess(creds, decision.OrganizationId)
 }
 
-func (usecase *DecisionUsecase) ListDecisionsOfOrganization(orgID string) ([]models.Decision, error) {
+func (usecase *DecisionUsecase) ListDecisionsOfOrganization(organizationId string) ([]models.Decision, error) {
 	return repositories.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) ([]models.Decision, error) {
-			return usecase.decisionRepository.DecisionsOfOrganization(tx, orgID, 1000)
+			return usecase.decisionRepository.DecisionsOfOrganization(tx, organizationId, 1000)
 		},
 	)
 }
 
 func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models.CreateDecisionInput, logger *slog.Logger) (models.Decision, error) {
-	if err := utils.EnforceOrganizationAccess(utils.CredentialsFromCtx(ctx), input.OrganizationID); err != nil {
+	if err := utils.EnforceOrganizationAccess(utils.CredentialsFromCtx(ctx), input.OrganizationId); err != nil {
 		return models.Decision{}, err
 	}
 
 	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Decision, error) {
-		scenario, err := usecase.scenarioReadRepository.GetScenarioById(tx, input.ScenarioID)
+		scenario, err := usecase.scenarioReadRepository.GetScenarioById(tx, input.ScenarioId)
 		if errors.Is(err, models.NotFoundInRepositoryError) {
 			return models.Decision{}, fmt.Errorf("scenario not found: %w", models.NotFoundError)
 		} else if err != nil {
 			return models.Decision{}, fmt.Errorf("error getting scenario: %w", err)
 		}
 
-		dm, err := usecase.datamodelRepository.GetDataModel(tx, input.OrganizationID)
+		dm, err := usecase.datamodelRepository.GetDataModel(tx, input.OrganizationId)
 		if errors.Is(err, models.NotFoundInRepositoryError) {
 			return models.Decision{}, fmt.Errorf("data model not found: %w", models.NotFoundError)
 		} else if err != nil {
@@ -80,19 +80,19 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 			return models.Decision{}, fmt.Errorf("error evaluating scenario: %w", err)
 		}
 
-		newDecisionId := utils.NewPrimaryKey(input.OrganizationID)
+		newDecisionId := utils.NewPrimaryKey(input.OrganizationId)
 		decision := models.Decision{
 			ClientObject:        input.ClientObject,
 			Outcome:             scenarioExecution.Outcome,
 			RuleExecutions:      scenarioExecution.RuleExecutions,
 			ScenarioDescription: scenarioExecution.ScenarioDescription,
-			ScenarioId:          scenarioExecution.ScenarioID,
+			ScenarioId:          scenarioExecution.ScenarioId,
 			ScenarioName:        scenarioExecution.ScenarioName,
 			ScenarioVersion:     scenarioExecution.ScenarioVersion,
 			Score:               scenarioExecution.Score,
 		}
 
-		err = usecase.decisionRepository.StoreDecision(tx, decision, input.OrganizationID, newDecisionId)
+		err = usecase.decisionRepository.StoreDecision(tx, decision, input.OrganizationId, newDecisionId)
 		if err != nil {
 			return models.Decision{}, fmt.Errorf("error storing decision: %w", err)
 		}

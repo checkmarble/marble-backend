@@ -11,14 +11,14 @@ import (
 )
 
 type ListScenarioIterationRulesInput struct {
-	ScenarioIterationID string `in:"query=scenarioIterationId"`
+	ScenarioIterationId string `in:"query=scenarioIterationId"`
 }
 
 func (api *API) ListScenarioIterationRules() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := utils.OrgIDFromCtx(ctx, r)
+		organizationId, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(w, r, err) {
 			return
 		}
@@ -27,8 +27,8 @@ func (api *API) ListScenarioIterationRules() http.HandlerFunc {
 
 		options := &utils.PtrToOptions{OmitZero: true}
 		usecase := api.usecases.NewScenarioIterationRuleUsecase()
-		rules, err := usecase.ListScenarioIterationRules(ctx, orgID, models.GetScenarioIterationRulesFilters{
-			ScenarioIterationID: utils.PtrTo(input.ScenarioIterationID, options),
+		rules, err := usecase.ListScenarioIterationRules(ctx, organizationId, models.GetScenarioIterationRulesFilters{
+			ScenarioIterationId: utils.PtrTo(input.ScenarioIterationId, options),
 		})
 		if presentError(w, r, err) {
 			return
@@ -46,7 +46,7 @@ func (api *API) ListScenarioIterationRules() http.HandlerFunc {
 func adaptCreateRuleInput(body dto.CreateScenarioIterationRuleInputBody) (models.CreateRuleInput, error) {
 
 	createRuleInput := models.CreateRuleInput{
-		ScenarioIterationID:  body.ScenarioIterationID,
+		ScenarioIterationId:  body.ScenarioIterationId,
 		DisplayOrder:         body.DisplayOrder,
 		Name:                 body.Name,
 		Description:          body.Description,
@@ -69,7 +69,7 @@ func (api *API) CreateScenarioIterationRule() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := utils.OrgIDFromCtx(ctx, r)
+		organizationId, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(w, r, err) {
 			return
 		}
@@ -82,7 +82,7 @@ func (api *API) CreateScenarioIterationRule() http.HandlerFunc {
 		}
 
 		usecase := api.usecases.NewScenarioIterationRuleUsecase()
-		rule, err := usecase.CreateScenarioIterationRule(ctx, orgID, createInputRule)
+		rule, err := usecase.CreateScenarioIterationRule(ctx, organizationId, createInputRule)
 		if presentError(w, r, err) {
 			return
 		}
@@ -104,7 +104,7 @@ func (api *API) GetScenarioIterationRule() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := utils.OrgIDFromCtx(ctx, r)
+		organizationId, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(w, r, err) {
 			return
 		}
@@ -112,7 +112,7 @@ func (api *API) GetScenarioIterationRule() http.HandlerFunc {
 		input := ctx.Value(httpin.Input).(*GetScenarioIterationRuleInput)
 
 		usecase := api.usecases.NewScenarioIterationRuleUsecase()
-		rule, err := usecase.GetScenarioIterationRule(ctx, orgID, input.RuleID)
+		rule, err := usecase.GetScenarioIterationRule(ctx, organizationId, input.RuleID)
 		if presentError(w, r, err) {
 			return
 		}
@@ -128,7 +128,7 @@ func (api *API) GetScenarioIterationRule() http.HandlerFunc {
 func adaptUpdateScenarioIterationRule(ruleId string, body dto.UpdateScenarioIterationRuleBody) (models.UpdateRuleInput, error) {
 
 	updateRuleInput := models.UpdateRuleInput{
-		ID:                   ruleId,
+		Id:                   ruleId,
 		DisplayOrder:         body.DisplayOrder,
 		Name:                 body.Name,
 		Description:          body.Description,
@@ -151,7 +151,7 @@ func (api *API) UpdateScenarioIterationRule() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := utils.OrgIDFromCtx(ctx, r)
+		organizationId, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(w, r, err) {
 			return
 		}
@@ -164,7 +164,7 @@ func (api *API) UpdateScenarioIterationRule() http.HandlerFunc {
 		}
 
 		usecase := api.usecases.NewScenarioIterationRuleUsecase()
-		updatedRule, err := usecase.UpdateScenarioIterationRule(ctx, orgID, updateRuleInput)
+		updatedRule, err := usecase.UpdateScenarioIterationRule(ctx, organizationId, updateRuleInput)
 		if presentError(w, r, err) {
 			return
 		}

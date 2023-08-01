@@ -20,7 +20,7 @@ var ColumnsSelectOrganization = utils.ColumnList[DBOrganizationResult]()
 func AdaptOrganization(db DBOrganizationResult) models.Organization {
 
 	return models.Organization{
-		ID:                         db.Id,
+		Id:                         db.Id,
 		Name:                       db.Name,
 		DatabaseName:               db.DatabaseName,
 		ExportScheduledExecutionS3: db.ExportScheduledExecutionS3,

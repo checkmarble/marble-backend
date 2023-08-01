@@ -9,7 +9,7 @@ import (
 func (api *API) handleGetEditorIdentifiers() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		scenarioId, err := requiredUuidUrlParam(r, "scenarioID")
+		scenarioId, err := requiredUuidUrlParam(r, "scenarioId")
 		if presentError(w, r, err) {
 			return
 		}
@@ -53,13 +53,13 @@ func (api *API) handleGetEditorOperators() http.HandlerFunc {
 
 		var functions []dto.FuncAttributesDto
 
-		for _, attributes := range result.OperatorAccessors {			
+		for _, attributes := range result.OperatorAccessors {
 			functions = append(functions, dto.AdaptFuncAttributesDto(attributes))
 		}
 		PresentModel(w, struct {
-			OperatorAccessors   []dto.FuncAttributesDto `json:"operators_accessors"`
+			OperatorAccessors []dto.FuncAttributesDto `json:"operators_accessors"`
 		}{
-			OperatorAccessors:   functions,
+			OperatorAccessors: functions,
 		})
 	}
 }

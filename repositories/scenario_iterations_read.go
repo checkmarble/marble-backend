@@ -11,7 +11,7 @@ import (
 )
 
 type ScenarioIterationReadRepository interface {
-	GetScenarioIteration(tx Transaction, scenarioIterationID string) (
+	GetScenarioIteration(tx Transaction, scenarioIterationId string) (
 		models.ScenarioIteration, error,
 	)
 	ListScenarioIterations(tx Transaction, organizationId string, filters models.GetScenarioIterationFilters) (
@@ -25,13 +25,13 @@ type ScenarioIterationReadRepositoryPostgresql struct {
 
 func (repository *ScenarioIterationReadRepositoryPostgresql) GetScenarioIteration(
 	tx Transaction,
-	scenarioIterationID string,
+	scenarioIterationId string,
 ) (models.ScenarioIteration, error) {
 	pgTx := repository.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	return SqlToModelAdapterWithErr(
 		pgTx,
-		selectScenarioIterations().Where(squirrel.Eq{"si.id": scenarioIterationID}),
+		selectScenarioIterations().Where(squirrel.Eq{"si.id": scenarioIterationId}),
 		dbmodels.AdaptScenarioIterationWithRules,
 	)
 }
@@ -44,8 +44,8 @@ func (repository *ScenarioIterationReadRepositoryPostgresql) ListScenarioIterati
 	pgTx := repository.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	sql := selectScenarioIterations().Where(squirrel.Eq{"si.org_id": organizationId})
-	if filters.ScenarioID != nil {
-		sql = sql.Where(squirrel.Eq{"si.scenario_id": *filters.ScenarioID})
+	if filters.ScenarioId != nil {
+		sql = sql.Where(squirrel.Eq{"si.scenario_id": *filters.ScenarioId})
 	}
 
 	return SqlToListOfModelsAdapterWithErr(

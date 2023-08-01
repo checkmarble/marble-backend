@@ -8,8 +8,8 @@ import (
 
 type OrganizationShortId [4]byte
 
-func NewOrganizationShortId(orgId string) OrganizationShortId {
-	orgUuid := uuid.MustParse(orgId)
+func NewOrganizationShortId(organizationId string) OrganizationShortId {
+	orgUuid := uuid.MustParse(organizationId)
 	return (OrganizationShortId)(orgUuid[:4])
 }
 

@@ -49,7 +49,7 @@ func CredentialsFromCtx(ctx context.Context) models.Credentials {
 	return creds
 }
 
-func OrganizationIdFromRequest(request *http.Request) (organizationID string, err error) {
+func OrganizationIdFromRequest(request *http.Request) (organizationId string, err error) {
 
 	creds := CredentialsFromCtx(request.Context())
 
@@ -63,7 +63,7 @@ func OrganizationIdFromRequest(request *http.Request) (organizationID string, er
 		}
 	}
 
-	// allow orgId to be passed in query param
+	// allow organizationId to be passed in query param
 	if requestOrganizationId != "" {
 		if err := EnforceOrganizationAccess(creds, requestOrganizationId); err != nil {
 			return "", err
@@ -83,7 +83,7 @@ func OrganizationIdFromRequest(request *http.Request) (organizationID string, er
 }
 
 // TODO: replace me with OrganizationIdFromContext
-func OrgIDFromCtx(ctx context.Context, request *http.Request) (organizationID string, err error) {
+func OrgIDFromCtx(ctx context.Context, request *http.Request) (organizationId string, err error) {
 	return OrganizationIdFromRequest(request)
 }
 

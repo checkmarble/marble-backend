@@ -10,9 +10,9 @@ import (
 )
 
 type DBRule struct {
-	ID                   string      `db:"id"`
-	OrgID                string      `db:"org_id"`
-	ScenarioIterationID  string      `db:"scenario_iteration_id"`
+	Id                   string      `db:"id"`
+	OrganizationId       string      `db:"org_id"`
+	ScenarioIterationId  string      `db:"scenario_iteration_id"`
 	DisplayOrder         int         `db:"display_order"`
 	Name                 string      `db:"name"`
 	Description          string      `db:"description"`
@@ -30,9 +30,9 @@ func AdaptRule(db DBRule) (models.Rule, error) {
 	}
 
 	return models.Rule{
-		ID:                   db.ID,
-		ScenarioIterationID:  db.ScenarioIterationID,
-		OrganizationId:       db.OrgID,
+		Id:                   db.Id,
+		ScenarioIterationId:  db.ScenarioIterationId,
+		OrganizationId:       db.OrganizationId,
 		DisplayOrder:         db.DisplayOrder,
 		Name:                 db.Name,
 		Description:          db.Description,

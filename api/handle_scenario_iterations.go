@@ -15,7 +15,7 @@ import (
 )
 
 type ListScenarioIterationsInput struct {
-	ScenarioID string `in:"query=scenarioId"`
+	ScenarioId string `in:"query=scenarioId"`
 }
 
 func (api *API) ListScenarioIterations() http.HandlerFunc {
@@ -24,7 +24,7 @@ func (api *API) ListScenarioIterations() http.HandlerFunc {
 
 		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
 		scenarioIterations, err := usecase.ListScenarioIterations(models.GetScenarioIterationFilters{
-			ScenarioID: utils.PtrTo(input.ScenarioID, &utils.PtrToOptions{OmitZero: true}),
+			ScenarioId: utils.PtrTo(input.ScenarioId, &utils.PtrToOptions{OmitZero: true}),
 		})
 		if presentError(w, r, err) {
 			return
@@ -46,16 +46,16 @@ func (api *API) CreateScenarioIteration() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := utils.OrgIDFromCtx(ctx, r)
+		organizationId, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(w, r, err) {
 			return
 		}
 
 		input := ctx.Value(httpin.Input).(*dto.CreateScenarioIterationInput)
-		logger := api.logger.With(slog.String("scenarioId", input.Payload.ScenarioID), slog.String("orgId", orgID))
+		logger := api.logger.With(slog.String("scenarioId", input.Payload.ScenarioId), slog.String("organizationId", organizationId))
 
 		createScenarioIterationInput := models.CreateScenarioIterationInput{
-			ScenarioID: input.Payload.ScenarioID,
+			ScenarioId: input.Payload.ScenarioId,
 		}
 
 		if input.Payload.Body != nil {
@@ -98,7 +98,7 @@ func (api *API) CreateScenarioIteration() http.HandlerFunc {
 		}
 
 		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
-		si, err := usecase.CreateScenarioIteration(ctx, orgID, createScenarioIterationInput)
+		si, err := usecase.CreateScenarioIteration(ctx, organizationId, createScenarioIterationInput)
 		if err != nil {
 			logger.ErrorCtx(ctx, "Error creating scenario iteration: \n"+err.Error())
 			http.Error(w, "", http.StatusInternalServerError)
@@ -121,7 +121,7 @@ func (api *API) CreateScenarioIteration() http.HandlerFunc {
 }
 
 type GetScenarioIterationInput struct {
-	ScenarioIterationID string `in:"path=scenarioIterationID"`
+	ScenarioIterationId string `in:"path=scenarioIterationId"`
 }
 
 func (api *API) GetScenarioIteration() http.HandlerFunc {
@@ -129,7 +129,7 @@ func (api *API) GetScenarioIteration() http.HandlerFunc {
 		input := r.Context().Value(httpin.Input).(*GetScenarioIterationInput)
 
 		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
-		si, err := usecase.GetScenarioIteration(input.ScenarioIterationID)
+		si, err := usecase.GetScenarioIteration(input.ScenarioIterationId)
 		if presentError(w, r, err) {
 			return
 		}
@@ -146,13 +146,13 @@ func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := utils.OrgIDFromCtx(ctx, r)
+		organizationId, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(w, r, err) {
 			return
 		}
 
 		input := ctx.Value(httpin.Input).(*dto.UpdateScenarioIterationInput)
-		logger := api.logger.With(slog.String("scenarioIterationId", input.ScenarioIterationID), slog.String("orgId", orgID))
+		logger := api.logger.With(slog.String("scenarioIterationId", input.ScenarioIterationId), slog.String("organizationId", organizationId))
 
 		if input.Payload.Body == nil {
 			http.Error(w, "", http.StatusNoContent)
@@ -160,7 +160,7 @@ func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 		}
 
 		updateScenarioIterationInput := models.UpdateScenarioIterationInput{
-			ID: input.ScenarioIterationID,
+			Id: input.ScenarioIterationId,
 			Body: &models.UpdateScenarioIterationBody{
 				ScoreReviewThreshold: input.Payload.Body.ScoreReviewThreshold,
 				ScoreRejectThreshold: input.Payload.Body.ScoreRejectThreshold,
@@ -178,7 +178,7 @@ func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 		}
 
 		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
-		updatedSI, err := usecase.UpdateScenarioIteration(ctx, orgID, updateScenarioIterationInput)
+		updatedSI, err := usecase.UpdateScenarioIteration(ctx, organizationId, updateScenarioIterationInput)
 		if errors.Is(err, models.ErrScenarioIterationNotDraft) {
 			logger.WarnCtx(ctx, "Cannot update scenario iteration that is not in draft state: \n"+err.Error())
 			http.Error(w, "", http.StatusForbidden)

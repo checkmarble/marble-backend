@@ -35,7 +35,7 @@ func (repo *ScenarioWriteRepositoryPostgresql) CreateScenario(tx Transaction, sc
 			).
 			Values(
 				newScenarioId,
-				scenario.OrganizationID,
+				scenario.OrganizationId,
 				scenario.Name,
 				scenario.Description,
 				scenario.TriggerObjectType,
@@ -53,7 +53,7 @@ func (repo *ScenarioWriteRepositoryPostgresql) UpdateScenario(tx Transaction, sc
 
 	sql := NewQueryBuilder().
 		Update(dbmodels.TABLE_SCENARIOS).
-		Where("id = ?", scenario.ID)
+		Where("id = ?", scenario.Id)
 
 	if scenario.Name != nil {
 		sql = sql.Set("name", scenario.Name)

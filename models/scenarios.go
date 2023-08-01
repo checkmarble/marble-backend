@@ -3,8 +3,8 @@ package models
 import "time"
 
 type Scenario struct {
-	ID                string
-	OrganizationID    string
+	Id                string
+	OrganizationId    string
 	Name              string
 	Description       string
 	TriggerObjectType string
@@ -13,14 +13,14 @@ type Scenario struct {
 }
 
 type CreateScenarioInput struct {
-	OrganizationID    string
+	OrganizationId    string
 	Name              string
 	Description       string
 	TriggerObjectType string
 }
 
 type UpdateScenarioInput struct {
-	ID          string
+	Id          string
 	Name        *string
 	Description *string
 }

@@ -42,18 +42,18 @@ func (api *API) handlePostOrganization() http.HandlerFunc {
 }
 
 func requiredOrgIdUrlParam(r *http.Request) (string, error) {
-	return requiredUuidUrlParam(r, "orgID")
+	return requiredUuidUrlParam(r, "organizationId")
 }
 
 func (api *API) handleGetOrganizationUsers() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := requiredOrgIdUrlParam(r)
+		organizationId, err := requiredOrgIdUrlParam(r)
 		if presentError(w, r, err) {
 			return
 		}
 
 		usecase := api.usecases.NewOrganizationUseCase()
-		users, err := usecase.GetUsersOfOrganization(orgID)
+		users, err := usecase.GetUsersOfOrganization(organizationId)
 		if presentError(w, r, err) {
 			return
 		}
@@ -66,13 +66,13 @@ func (api *API) handleGetOrganization() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID, err := requiredOrgIdUrlParam(r)
+		organizationId, err := requiredOrgIdUrlParam(r)
 		if presentError(w, r, err) {
 			return
 		}
 
 		usecase := api.usecases.NewOrganizationUseCase()
-		organization, err := usecase.GetOrganization(ctx, orgID)
+		organization, err := usecase.GetOrganization(ctx, organizationId)
 
 		if presentError(w, r, err) {
 			return
@@ -88,11 +88,11 @@ func (api *API) handlePatchOrganization() http.HandlerFunc {
 
 		input := ctx.Value(httpin.Input).(*dto.UpdateOrganizationInputDto)
 		requestData := input.Body
-		orgID := input.OrgID
+		organizationId := input.OrganizationId
 
 		usecase := api.usecases.NewOrganizationUseCase()
 		organization, err := usecase.UpdateOrganization(ctx, models.UpdateOrganizationInput{
-			ID:                         orgID,
+			Id:                         organizationId,
 			Name:                       requestData.Name,
 			DatabaseName:               requestData.DatabaseName,
 			ExportScheduledExecutionS3: requestData.ExportScheduledExecutionS3,
@@ -110,10 +110,10 @@ func (api *API) handleDeleteOrganization() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		orgID := ctx.Value(httpin.Input).(*dto.DeleteOrganizationInput).OrgID
+		organizationId := ctx.Value(httpin.Input).(*dto.DeleteOrganizationInput).OrganizationId
 
 		usecase := api.usecases.NewOrganizationUseCase()
-		err := usecase.DeleteOrganization(ctx, orgID)
+		err := usecase.DeleteOrganization(ctx, organizationId)
 		if presentError(w, r, err) {
 			return
 		}

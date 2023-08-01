@@ -51,14 +51,14 @@ func NewOrganizationSeeder(
 	}
 }
 
-func (o *organizationSeederImpl) Seed(orgId string) error {
+func (o *organizationSeederImpl) Seed(organizationId string) error {
 
 	///////////////////////////////
 	// Tokens
 	///////////////////////////////
 
 	err := o.ApiKeyRepository.CreateApiKey(nil, models.CreateApiKeyInput{
-		OrganizationId: orgId,
+		OrganizationId: organizationId,
 		Key:            randomAPiKey(),
 	})
 	if err != nil {
@@ -72,7 +72,7 @@ func (o *organizationSeederImpl) Seed(orgId string) error {
 	newCustomListId := uuid.NewString()
 
 	err = o.CustomListRepository.CreateCustomList(nil, models.CreateCustomListInput{
-		OrgId:       orgId,
+		OrgId:       organizationId,
 		Name:        "Welcome to Marble",
 		Description: "Need a whitelist or blacklist ? The list is your friend :)",
 	}, newCustomListId)
@@ -81,7 +81,7 @@ func (o *organizationSeederImpl) Seed(orgId string) error {
 	}
 
 	addCustomListValueInput := models.AddCustomListValueInput{
-		OrgId:        orgId,
+		OrgId:        organizationId,
 		CustomListId: newCustomListId,
 		Value:        "Welcome",
 	}

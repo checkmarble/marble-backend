@@ -20,7 +20,6 @@ You may also need to [install the gcloud CLI](https://cloud.google.com/sdk/docs/
 
 ### Deployment
 
-
 #### Prerequisites
 
 Install firebase-tools (`npm install -g firebase-tools`)
@@ -51,9 +50,7 @@ Connect in the frontend using: `jbe@zorg.com`
 - Exit the emulator
 - commit
 
-
 #### Export local data
-
 
 ### Lauch the project
 
@@ -93,7 +90,7 @@ See [our API docs](https://docs.checkmarble.com/reference/introduction-1) for pu
 
 ## curl calls
 
-`POST` a decision. Get TokenID and ScenarioID from startup log (cf `seed.go`).
+`POST` a decision. Get TokenID and ScenarioId from startup log (cf `seed.go`).
 Token value is hardcoded to `token12345` for convenience.
 
 ```sh
@@ -120,7 +117,7 @@ display result, store created id in .last_id file
 curl -XPOST -H "Content-type: application/json" -H "Authorization: Bearer $TOKEN" -d "$(jq -n --arg scenario_id "$SCENARIO_ID" '{"scenario_id": $scenario_id, "trigger_object":{"type": "tx", "amount": 5.0} }')" 'http://localhost:8080/decisions' | tee >(jq) | jq -r '.id' > .last_id
 ```
 
-`GET` a decision. Replace the ID by one you created.
+`GET` a decision. Replace the Id by one you created.
 
 ```sh
 curl -XGET -H "Content-type: application/json" -H "Authorization: Bearer $TOKEN" 'http://localhost:8080/decisions/9a2b5c9d-ac12-45b3-8f52-0eda979d5853'

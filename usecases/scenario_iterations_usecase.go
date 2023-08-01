@@ -34,8 +34,8 @@ func (usecase *ScenarioIterationUsecase) ListScenarioIterations(filters models.G
 	return scenarioIterations, nil
 }
 
-func (usecase *ScenarioIterationUsecase) GetScenarioIteration(scenarioIterationID string) (models.ScenarioIteration, error) {
-	si, err := usecase.scenarioIterationsReadRepository.GetScenarioIteration(nil, scenarioIterationID)
+func (usecase *ScenarioIterationUsecase) GetScenarioIteration(scenarioIterationId string) (models.ScenarioIteration, error) {
+	si, err := usecase.scenarioIterationsReadRepository.GetScenarioIteration(nil, scenarioIterationId)
 	if err != nil {
 		return models.ScenarioIteration{}, err
 	}
@@ -45,7 +45,7 @@ func (usecase *ScenarioIterationUsecase) GetScenarioIteration(scenarioIterationI
 	return si, nil
 }
 
-func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(ctx context.Context, organizationID string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error) {
+func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(ctx context.Context, organizationId string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error) {
 	body := scenarioIteration.Body
 	if body != nil && body.Schedule != "" {
 		gron := gronx.New()
@@ -54,10 +54,10 @@ func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(ctx context.Con
 			return models.ScenarioIteration{}, fmt.Errorf("invalid schedule: %w", models.BadParameterError)
 		}
 	}
-	return usecase.scenarioIterationsWriteRepository.CreateScenarioIteration(ctx, organizationID, scenarioIteration)
+	return usecase.scenarioIterationsWriteRepository.CreateScenarioIteration(ctx, organizationId, scenarioIteration)
 }
 
-func (usecase *ScenarioIterationUsecase) UpdateScenarioIteration(ctx context.Context, organizationID string, scenarioIteration models.UpdateScenarioIterationInput) (models.ScenarioIteration, error) {
+func (usecase *ScenarioIterationUsecase) UpdateScenarioIteration(ctx context.Context, organizationId string, scenarioIteration models.UpdateScenarioIterationInput) (models.ScenarioIteration, error) {
 	body := scenarioIteration.Body
 	if body != nil && body.Schedule != nil && *body.Schedule != "" {
 		gron := gronx.New()
@@ -66,5 +66,5 @@ func (usecase *ScenarioIterationUsecase) UpdateScenarioIteration(ctx context.Con
 			return models.ScenarioIteration{}, fmt.Errorf("invalid schedule: %w", models.BadParameterError)
 		}
 	}
-	return usecase.scenarioIterationsWriteRepository.UpdateScenarioIteration(ctx, organizationID, scenarioIteration)
+	return usecase.scenarioIterationsWriteRepository.UpdateScenarioIteration(ctx, organizationId, scenarioIteration)
 }

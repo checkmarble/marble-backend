@@ -16,11 +16,11 @@ const TABLE_DECISION_RULES = "decision_rules"
 // var ColumnsSelectDecision = utils.ColumnList[DBDecision]()
 
 type DbDecision struct {
-	ID                   string      `db:"id"`
-	OrgID                string      `db:"org_id"`
+	Id                   string      `db:"id"`
+	OrganizationId       string      `db:"org_id"`
 	CreatedAt            time.Time   `db:"created_at"`
 	Outcome              string      `db:"outcome"`
-	ScenarioID           string      `db:"scenario_id"`
+	ScenarioId           string      `db:"scenario_id"`
 	ScenarioName         string      `db:"scenario_name"`
 	ScenarioDescription  string      `db:"scenario_description"`
 	ScenarioVersion      int         `db:"scenario_version"`
@@ -43,12 +43,12 @@ func AdaptDecision(db DbDecision, ruleExecutions []models.RuleExecution) models.
 	}
 
 	return models.Decision{
-		DecisionId:           db.ID,
-		OrganizationId:       db.OrgID,
+		DecisionId:           db.Id,
+		OrganizationId:       db.OrganizationId,
 		CreatedAt:            db.CreatedAt,
 		ClientObject:         models.ClientObject{TableName: models.TableName(db.TriggerObjectType), Data: triggerObject},
 		Outcome:              models.OutcomeFrom(db.Outcome),
-		ScenarioId:           db.ScenarioID,
+		ScenarioId:           db.ScenarioId,
 		ScenarioName:         db.ScenarioName,
 		ScenarioDescription:  db.ScenarioDescription,
 		ScenarioVersion:      db.ScenarioVersion,
@@ -60,13 +60,13 @@ func AdaptDecision(db DbDecision, ruleExecutions []models.RuleExecution) models.
 }
 
 type DBDecisionRule struct {
-	ID            string      `db:"id"`
-	OrgID         string      `db:"org_id"`
-	DecisionID    string      `db:"decision_id"`
-	Name          string      `db:"name"`
-	Description   string      `db:"description"`
-	ScoreModifier int         `db:"score_modifier"`
-	Result        bool        `db:"result"`
-	ErrorCode     int         `db:"error_code"`
-	DeletedAt     pgtype.Time `db:"deleted_at"`
+	Id             string      `db:"id"`
+	OrganizationId string      `db:"org_id"`
+	DecisionId     string      `db:"decision_id"`
+	Name           string      `db:"name"`
+	Description    string      `db:"description"`
+	ScoreModifier  int         `db:"score_modifier"`
+	Result         bool        `db:"result"`
+	ErrorCode      int         `db:"error_code"`
+	DeletedAt      pgtype.Time `db:"deleted_at"`
 }

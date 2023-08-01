@@ -3,7 +3,7 @@ package dto
 import "marble/marble-backend/models"
 
 type APIOrganization struct {
-	ID                         string `json:"id"`
+	Id                         string `json:"id"`
 	Name                       string `json:"name"`
 	DatabaseName               string `json:"database_name"`
 	ExportScheduledExecutionS3 string `json:"export_scheduled_execution_s3"`
@@ -11,7 +11,7 @@ type APIOrganization struct {
 
 func AdaptOrganizationDto(org models.Organization) APIOrganization {
 	return APIOrganization{
-		ID:                         org.ID,
+		Id:                         org.Id,
 		Name:                       org.Name,
 		DatabaseName:               org.DatabaseName,
 		ExportScheduledExecutionS3: org.ExportScheduledExecutionS3,
@@ -34,10 +34,10 @@ type UpdateOrganizationBodyDto struct {
 }
 
 type UpdateOrganizationInputDto struct {
-	OrgID string                     `in:"path=orgID"`
-	Body  *UpdateOrganizationBodyDto `in:"body=json"`
+	OrganizationId string                     `in:"path=organizationId"`
+	Body           *UpdateOrganizationBodyDto `in:"body=json"`
 }
 
 type DeleteOrganizationInput struct {
-	OrgID string `in:"path=orgID"`
+	OrganizationId string `in:"path=organizationId"`
 }

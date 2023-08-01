@@ -9,8 +9,8 @@ import (
 )
 
 type DBScenario struct {
-	ID                string      `db:"id"`
-	OrgID             string      `db:"org_id"`
+	Id                string      `db:"id"`
+	OrganizationId    string      `db:"org_id"`
 	Name              string      `db:"name"`
 	Description       string      `db:"description"`
 	TriggerObjectType string      `db:"trigger_object_type"`
@@ -25,8 +25,8 @@ var SelectScenarioColumn = utils.ColumnList[DBScenario]()
 
 func AdaptScenario(dto DBScenario) models.Scenario {
 	scenario := models.Scenario{
-		ID:                dto.ID,
-		OrganizationID:    dto.OrgID,
+		Id:                dto.Id,
+		OrganizationId:    dto.OrganizationId,
 		Name:              dto.Name,
 		Description:       dto.Description,
 		TriggerObjectType: dto.TriggerObjectType,

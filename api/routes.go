@@ -42,7 +42,7 @@ func (api *API) routes() {
 
 			decisionsRouter.Get("/", api.handleListDecisions())
 			decisionsRouter.With(httpin.NewInput(GetDecisionInput{})).
-				Get("/{decisionID:"+UUIDRegExp+"}", api.handleGetDecision())
+				Get("/{decisionId:"+UUIDRegExp+"}", api.handleGetDecision())
 
 			decisionsRouter.With(
 				api.enforcePermissionMiddleware(models.DECISION_CREATE),
@@ -66,7 +66,7 @@ func (api *API) routes() {
 				httpin.NewInput(dto.CreateScenarioInput{}),
 			).Post("/", api.CreateScenario())
 
-			scenariosRouter.Route("/{scenarioID:"+UUIDRegExp+"}", func(r chi.Router) {
+			scenariosRouter.Route("/{scenarioId:"+UUIDRegExp+"}", func(r chi.Router) {
 				r.With(httpin.NewInput(GetScenarioInput{})).
 					Get("/", api.GetScenario())
 
@@ -95,7 +95,7 @@ func (api *API) routes() {
 				httpin.NewInput(dto.CreateScenarioIterationInput{}),
 			).Post("/", api.CreateScenarioIteration())
 
-			scenarIterRouter.Route("/{scenarioIterationID:"+UUIDRegExp+"}", func(r chi.Router) {
+			scenarIterRouter.Route("/{scenarioIterationId:"+UUIDRegExp+"}", func(r chi.Router) {
 				r.With(httpin.NewInput(GetScenarioIterationInput{})).
 					Get("/", api.GetScenarioIteration())
 
@@ -220,7 +220,7 @@ func (api *API) routes() {
 			})
 		})
 
-		authedRouter.Route("/editor/{scenarioID}", func(builderRouter chi.Router) {
+		authedRouter.Route("/editor/{scenarioId}", func(builderRouter chi.Router) {
 			builderRouter.Use(api.enforcePermissionMiddleware(models.SCENARIO_CREATE))
 
 			builderRouter.Get("/identifiers", api.handleGetEditorIdentifiers())
@@ -257,7 +257,7 @@ func (api *API) routes() {
 					httpin.NewInput(dto.CreateOrganizationInputDto{}),
 				).Post("/", api.handlePostOrganization())
 
-				r.Route("/{orgID}", func(r chi.Router) {
+				r.Route("/{organizationId}", func(r chi.Router) {
 					r.Get("/", api.handleGetOrganization())
 					r.Get("/users", api.handleGetOrganizationUsers())
 

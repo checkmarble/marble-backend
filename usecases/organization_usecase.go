@@ -32,8 +32,8 @@ func (usecase *OrganizationUseCase) CreateOrganization(ctx context.Context, crea
 	return usecase.organizationCreator.CreateOrganizationWithId(newOrganizationId, createOrga)
 }
 
-func (usecase *OrganizationUseCase) GetOrganization(ctx context.Context, organizationID string) (models.Organization, error) {
-	return usecase.organizationRepository.GetOrganizationById(nil, organizationID)
+func (usecase *OrganizationUseCase) GetOrganization(ctx context.Context, organizationId string) (models.Organization, error) {
+	return usecase.organizationRepository.GetOrganizationById(nil, organizationId)
 }
 
 func (usecase *OrganizationUseCase) UpdateOrganization(ctx context.Context, organization models.UpdateOrganizationInput) (models.Organization, error) {
@@ -42,21 +42,21 @@ func (usecase *OrganizationUseCase) UpdateOrganization(ctx context.Context, orga
 		if err != nil {
 			return models.Organization{}, err
 		}
-		return usecase.organizationRepository.GetOrganizationById(tx, organization.ID)
+		return usecase.organizationRepository.GetOrganizationById(tx, organization.Id)
 	})
 }
 
-func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, organizationID string) error {
+func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, organizationId string) error {
 
 	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
 		// delete all users
-		err := usecase.userRepository.DeleteUsersOfOrganization(tx, organizationID)
+		err := usecase.userRepository.DeleteUsersOfOrganization(tx, organizationId)
 		if err != nil {
 			return err
 		}
 
 		// fetch client tables to get schema name, then delete schema
-		schema, err := usecase.organizationSchemaRepository.OrganizationSchemaOfOrganization(tx, organizationID)
+		schema, err := usecase.organizationSchemaRepository.OrganizationSchemaOfOrganization(tx, organizationId)
 
 		schemaFound := err == nil
 
@@ -71,7 +71,7 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 
 		if schemaFound {
 			// another transaction in client's database to delete client's schema:
-			err = usecase.orgTransactionFactory.TransactionInOrgSchema(organizationID, func(clientTx repositories.Transaction) error {
+			err = usecase.orgTransactionFactory.TransactionInOrgSchema(organizationId, func(clientTx repositories.Transaction) error {
 				return usecase.organizationSchemaRepository.DeleteSchema(clientTx, schema.DatabaseSchema.Schema)
 			})
 			if err != nil {
@@ -79,35 +79,35 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 			}
 		}
 
-		return usecase.organizationRepository.DeleteOrganization(nil, organizationID)
+		return usecase.organizationRepository.DeleteOrganization(nil, organizationId)
 	})
 }
 
-func (usecase *OrganizationUseCase) GetDataModel(organizationID string) (models.DataModel, error) {
-	return usecase.datamodelRepository.GetDataModel(nil, organizationID)
+func (usecase *OrganizationUseCase) GetDataModel(organizationId string) (models.DataModel, error) {
+	return usecase.datamodelRepository.GetDataModel(nil, organizationId)
 }
 
-func (usecase *OrganizationUseCase) ReplaceDataModel(organizationID string, newDataModel models.DataModel) (models.DataModel, error) {
+func (usecase *OrganizationUseCase) ReplaceDataModel(organizationId string, newDataModel models.DataModel) (models.DataModel, error) {
 
 	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.DataModel, error) {
 
 		var zeroDataModel models.DataModel
 		// delete data model
-		if err := usecase.datamodelRepository.DeleteDataModel(tx, organizationID); err != nil {
+		if err := usecase.datamodelRepository.DeleteDataModel(tx, organizationId); err != nil {
 			return zeroDataModel, err
 		}
 
 		// create data model
-		if err := usecase.datamodelRepository.CreateDataModel(tx, organizationID, newDataModel); err != nil {
+		if err := usecase.datamodelRepository.CreateDataModel(tx, organizationId, newDataModel); err != nil {
 			return zeroDataModel, err
 		}
 
 		// delete and recreate postgres schema
-		if err := usecase.populateOrganizationSchema.WipeAndCreateOrganizationSchema(tx, organizationID, newDataModel); err != nil {
+		if err := usecase.populateOrganizationSchema.WipeAndCreateOrganizationSchema(tx, organizationId, newDataModel); err != nil {
 			return zeroDataModel, err
 		}
 
-		return usecase.datamodelRepository.GetDataModel(tx, organizationID)
+		return usecase.datamodelRepository.GetDataModel(tx, organizationId)
 	})
 
 }

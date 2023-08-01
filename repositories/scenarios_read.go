@@ -9,7 +9,7 @@ import (
 
 type ScenarioReadRepository interface {
 	GetScenarioById(tx Transaction, scenarioId string) (models.Scenario, error)
-	ListScenariosOfOrganization(tx Transaction, organizationID string) ([]models.Scenario, error)
+	ListScenariosOfOrganization(tx Transaction, organizationId string) ([]models.Scenario, error)
 	ListAllScenarios(tx Transaction) ([]models.Scenario, error)
 }
 
@@ -39,12 +39,12 @@ func (repo *ScenarioReadRepositoryPostgresql) GetScenarioById(tx Transaction, sc
 	)
 }
 
-func (repo *ScenarioReadRepositoryPostgresql) ListScenariosOfOrganization(tx Transaction, organizationID string) ([]models.Scenario, error) {
+func (repo *ScenarioReadRepositoryPostgresql) ListScenariosOfOrganization(tx Transaction, organizationId string) ([]models.Scenario, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	return SqlToListOfModels(
 		pgTx,
-		selectScenarios().Where(squirrel.Eq{"org_id": organizationID}),
+		selectScenarios().Where(squirrel.Eq{"org_id": organizationId}),
 		dbmodels.AdaptScenario,
 	)
 }

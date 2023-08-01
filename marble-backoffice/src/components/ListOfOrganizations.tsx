@@ -1,6 +1,10 @@
 import { Organization } from "@/models";
 import { DataGrid } from "@mui/x-data-grid/DataGrid/DataGrid";
-import type { GridRowsProp, GridColDef, GridRowParams } from "@mui/x-data-grid/models";
+import type {
+  GridRowsProp,
+  GridColDef,
+  GridRowParams,
+} from "@mui/x-data-grid/models";
 import { GridActionsCellItem } from "@mui/x-data-grid/components/cell/GridActionsCellItem";
 import NorthEastIcon from "@mui/icons-material/NorthEast";
 

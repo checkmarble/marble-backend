@@ -20,7 +20,7 @@ type UpdateScenarioBody struct {
 }
 
 type UpdateScenarioInput struct {
-	ScenarioID string              `in:"path=scenarioID"`
+	ScenarioId string              `in:"path=scenarioId"`
 	Body       *UpdateScenarioBody `in:"body=json"`
 }
 
@@ -37,12 +37,12 @@ type UpdateScenarioIterationBody struct {
 }
 
 type UpdateScenarioIterationInput struct {
-	ScenarioIterationID string                       `in:"path=scenarioIterationID"`
+	ScenarioIterationId string                       `in:"path=scenarioIterationId"`
 	Payload             *UpdateScenarioIterationBody `in:"body=json"`
 }
 
 type CreateScenarioIterationBody struct {
-	ScenarioID string `json:"scenarioId"`
+	ScenarioId string `json:"scenarioId"`
 	Body       *struct {
 		TriggerConditionAstExpression *NodeDto                               `json:"trigger_condition_ast_expression"`
 		Rules                         []CreateScenarioIterationRuleInputBody `json:"rules"`
@@ -60,7 +60,7 @@ type CreateScenarioIterationInput struct {
 // rules
 
 type CreateScenarioIterationRuleInputBody struct {
-	ScenarioIterationID  string   `json:"scenarioIterationId"`
+	ScenarioIterationId  string   `json:"scenarioIterationId"`
 	DisplayOrder         int      `json:"displayOrder"`
 	Name                 string   `json:"name"`
 	Description          string   `json:"description"`
@@ -88,7 +88,7 @@ type UpdateScenarioIterationRuleInput struct {
 // scenario publications
 
 type CreateScenarioPublicationBody struct {
-	ScenarioIterationID string `json:"scenarioIterationID"`
+	ScenarioIterationId string `json:"scenarioIterationID"`
 	PublicationAction   string `json:"publicationAction"`
 }
 
@@ -97,13 +97,13 @@ type CreateScenarioPublicationInput struct {
 }
 
 type ListScenarioPublicationsInput struct {
-	ScenarioID          string `in:"query=scenarioID"`
-	ScenarioIterationID string `in:"query=scenarioIterationID"`
+	ScenarioId          string `in:"query=scenarioID"`
+	ScenarioIterationId string `in:"query=scenarioIterationID"`
 }
 
-func AdaptCreateScenario(input *CreateScenarioInput, orgID string) models.CreateScenarioInput {
+func AdaptCreateScenario(input *CreateScenarioInput, organizationId string) models.CreateScenarioInput {
 	return models.CreateScenarioInput{
-		OrganizationID:    orgID,
+		OrganizationId:    organizationId,
 		Name:              input.Body.Name,
 		Description:       input.Body.Description,
 		TriggerObjectType: input.Body.TriggerObjectType,

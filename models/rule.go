@@ -10,8 +10,8 @@ import (
 ///////////////////////////////
 
 type Rule struct {
-	ID                   string
-	ScenarioIterationID  string
+	Id                   string
+	ScenarioIterationId  string
 	OrganizationId       string
 	DisplayOrder         int
 	Name                 string
@@ -22,11 +22,11 @@ type Rule struct {
 }
 
 type GetScenarioIterationRulesFilters struct {
-	ScenarioIterationID *string
+	ScenarioIterationId *string
 }
 
 type CreateRuleInput struct {
-	ScenarioIterationID  string
+	ScenarioIterationId  string
 	DisplayOrder         int
 	Name                 string
 	Description          string
@@ -35,7 +35,7 @@ type CreateRuleInput struct {
 }
 
 type UpdateRuleInput struct {
-	ID                   string
+	Id                   string
 	DisplayOrder         *int
 	Name                 *string
 	Description          *string

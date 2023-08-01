@@ -13,8 +13,8 @@ type CustomListUseCase struct {
 	CustomListRepository repositories.CustomListRepository
 }
 
-func (usecase *CustomListUseCase) GetCustomLists(ctx context.Context, orgId string) ([]models.CustomList, error) {
-	return usecase.CustomListRepository.AllCustomLists(nil, orgId)
+func (usecase *CustomListUseCase) GetCustomLists(ctx context.Context, organizationId string) ([]models.CustomList, error) {
+	return usecase.CustomListRepository.AllCustomLists(nil, organizationId)
 }
 
 func (usecase *CustomListUseCase) CreateCustomList(ctx context.Context, createCustomList models.CreateCustomListInput) (models.CustomList, error) {

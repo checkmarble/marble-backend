@@ -9,15 +9,15 @@ import (
 )
 
 type DbDecisionRule struct {
-	ID            string      `db:"id"`
-	OrgID         string      `db:"org_id"`
-	DecisionID    string      `db:"decision_id"`
-	Name          string      `db:"name"`
-	Description   string      `db:"description"`
-	ScoreModifier int         `db:"score_modifier"`
-	Result        bool        `db:"result"`
-	ErrorCode     int         `db:"error_code"`
-	DeletedAt     pgtype.Time `db:"deleted_at"`
+	Id             string      `db:"id"`
+	OrganizationId string      `db:"org_id"`
+	DecisionId     string      `db:"decision_id"`
+	Name           string      `db:"name"`
+	Description    string      `db:"description"`
+	ScoreModifier  int         `db:"score_modifier"`
+	Result         bool        `db:"result"`
+	ErrorCode      int         `db:"error_code"`
+	DeletedAt      pgtype.Time `db:"deleted_at"`
 }
 
 const TABLE_DECISION_RULE = "decision_rules"

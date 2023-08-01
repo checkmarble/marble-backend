@@ -19,10 +19,10 @@ func ExecuteAllScheduledScenarios(ctx context.Context, usecases usecases.Usecase
 	}
 	logger := utils.LoggerFromContext(ctx)
 	for _, scenario := range scenarios {
-		logger.DebugCtx(ctx, "Executing scenario: "+scenario.ID, "scenarioID", scenario.ID)
-		err := usecase.ExecuteScheduledScenarioIfDue(ctx, scenario.OrganizationID, scenario.ID)
+		logger.DebugCtx(ctx, "Executing scenario: "+scenario.Id, "scenarioId", scenario.Id)
+		err := usecase.ExecuteScheduledScenarioIfDue(ctx, scenario.OrganizationId, scenario.Id)
 		if err != nil {
-			logger.ErrorCtx(ctx, "Error executing scheduled scenario: "+scenario.ID, "scenarioId", scenario.ID, " Error: ", err)
+			logger.ErrorCtx(ctx, "Error executing scheduled scenario: "+scenario.Id, "scenarioId", scenario.Id, " Error: ", err)
 		}
 	}
 	logger.InfoCtx(ctx, "Done executing all scheduled scenarios")

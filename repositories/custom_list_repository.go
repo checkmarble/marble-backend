@@ -8,7 +8,7 @@ import (
 )
 
 type CustomListRepository interface {
-	AllCustomLists(tx Transaction, orgId string) ([]models.CustomList, error)
+	AllCustomLists(tx Transaction, organizationId string) ([]models.CustomList, error)
 	GetCustomListById(tx Transaction, id string) (models.CustomList, error)
 	GetCustomListValues(tx Transaction, getCustomList models.GetCustomListValuesInput) ([]models.CustomListValue, error)
 	GetCustomListValueById(tx Transaction, id string) (models.CustomListValue, error)
@@ -23,7 +23,7 @@ type CustomListRepositoryPostgresql struct {
 	transactionFactory TransactionFactory
 }
 
-func (repo *CustomListRepositoryPostgresql) AllCustomLists(tx Transaction, orgId string) ([]models.CustomList, error) {
+func (repo *CustomListRepositoryPostgresql) AllCustomLists(tx Transaction, organizationId string) ([]models.CustomList, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	return SqlToListOfModels(
@@ -31,7 +31,7 @@ func (repo *CustomListRepositoryPostgresql) AllCustomLists(tx Transaction, orgId
 		NewQueryBuilder().
 			Select(dbmodels.ColumnsSelectCustomList...).
 			From(dbmodels.TABLE_CUSTOM_LIST).
-			Where("organization_id = ? AND deleted_at IS NULL", orgId).
+			Where("organization_id = ? AND deleted_at IS NULL", organizationId).
 			OrderBy("id"),
 		dbmodels.AdaptCustomList,
 	)
