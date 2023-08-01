@@ -8,13 +8,12 @@ import (
 )
 
 type ScenarioPublicationUsecase struct {
-	transactionFactory              repositories.TransactionFactory
-	scenarioPublicationsRepository  repositories.ScenarioPublicationRepository
-	scenarioReadRepository          repositories.ScenarioReadRepository
-	scenarioIterationReadRepository repositories.ScenarioIterationReadRepository
-	OrganizationIdOfContext         func() (string, error)
-	enforceSecurity                 security.EnforceSecurityScenario
-	scenarioPublisher               scenarios.ScenarioPublisher
+	transactionFactory             repositories.TransactionFactory
+	scenarioPublicationsRepository repositories.ScenarioPublicationRepository
+	OrganizationIdOfContext        func() (string, error)
+	enforceSecurity                security.EnforceSecurityScenario
+	scenarioFetcher                scenarios.ScenarioFetcher
+	scenarioPublisher              scenarios.ScenarioPublisher
 }
 
 func (usecase *ScenarioPublicationUsecase) GetScenarioPublication(scenarioPublicationID string) (models.ScenarioPublication, error) {
@@ -46,22 +45,17 @@ func (usecase *ScenarioPublicationUsecase) ListScenarioPublications(filters mode
 
 func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(input models.PublishScenarioIterationInput) ([]models.ScenarioPublication, error) {
 	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) ([]models.ScenarioPublication, error) {
-		scenarioIteration, err := usecase.scenarioIterationReadRepository.GetScenarioIteration(tx, input.ScenarioIterationId)
+
+		scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(tx, input.ScenarioIterationId)
 		if err != nil {
 			return []models.ScenarioPublication{}, err
 		}
 
-		scenario, err := usecase.scenarioReadRepository.GetScenarioById(tx, scenarioIteration.ScenarioId)
-		if err != nil {
+		if err := usecase.enforceSecurity.PublishScenario(scenarioAndIteration.Scenario); err != nil {
 			return []models.ScenarioPublication{}, err
 		}
 
-		// Enforce permissions
-		if err := usecase.enforceSecurity.PublishScenario(scenario); err != nil {
-			return []models.ScenarioPublication{}, err
-		}
-
-		return usecase.scenarioPublisher.PublishOrUnpublishIteration(tx, scenario.OrganizationId, input)
+		return usecase.scenarioPublisher.PublishOrUnpublishIteration(tx, scenarioAndIteration, input.PublicationAction)
 	})
 
 }
