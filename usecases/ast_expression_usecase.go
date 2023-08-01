@@ -1,65 +1,18 @@
 package usecases
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
-	"marble/marble-backend/app"
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 	"marble/marble-backend/repositories"
-	"marble/marble-backend/usecases/ast_eval"
-	"marble/marble-backend/usecases/org_transaction"
 	"marble/marble-backend/usecases/security"
 )
 
 type AstExpressionUsecase struct {
-	EnforceSecurity            security.EnforceSecurity
-	OrganizationIdOfContext    func() (string, error)
-	CustomListRepository       repositories.CustomListRepository
-	OrgTransactionFactory      org_transaction.Factory
-	IngestedDataReadRepository repositories.IngestedDataReadRepository
-	DataModelRepository        repositories.DataModelRepository
-	ScenarioRepository         repositories.ScenarioReadRepository
-	// ScenarioIterationReadLegacyRepository repositories.ScenarioIterationReadLegacyRepository
-	RuleRepository                  repositories.RuleRepository
-	ScenarioIterationRuleUsecase    repositories.ScenarioIterationRuleRepositoryLegacy
-	AstEvaluationEnvironmentFactory func(organizationId string, payload models.PayloadReader) ast_eval.AstEvaluationEnvironment
-}
-
-func (usecase *AstExpressionUsecase) DryRun(expression ast.Node, payloadType string, payloadRaw json.RawMessage) (ast.NodeEvaluation, error) {
-
-	var evaluation ast.NodeEvaluation
-
-	organizationId, err := usecase.OrganizationIdOfContext()
-	if err != nil {
-		return evaluation, err
-	}
-
-	if err := usecase.EnforceSecurity.ReadOrganization(organizationId); err != nil {
-		return evaluation, err
-	}
-
-	dataModel, err := usecase.DataModelRepository.GetDataModel(nil, organizationId)
-	if err != nil {
-		return evaluation, err
-	}
-
-	tables := dataModel.Tables
-	table, ok := tables[models.TableName(payloadType)]
-	if !ok {
-		return evaluation, fmt.Errorf("table %s not found in data model  %w", payloadType, models.NotFoundError)
-	}
-
-	payload, err := app.ParseToDataModelObject(table, payloadRaw)
-	if err != nil {
-		return evaluation, err
-	}
-
-	environment := usecase.AstEvaluationEnvironmentFactory(organizationId, payload)
-	evaluation = ast_eval.EvaluateAst(environment, expression)
-
-	return evaluation, nil
+	EnforceSecurity      security.EnforceSecurity
+	CustomListRepository repositories.CustomListRepository
+	DataModelRepository  repositories.DataModelRepository
+	ScenarioRepository   repositories.ScenarioReadRepository
 }
 
 func NodeLocation(expression ast.Node, target *ast.Node) (string, error) {
@@ -204,29 +157,6 @@ func (usecase *AstExpressionUsecase) EditorIdentifiers(scenarioId string) (Edito
 		PayloadAccessors:    payloadAccessors,
 		DatabaseAccessors:   databaseAccessors,
 	}, nil
-}
-
-func (usecase *AstExpressionUsecase) SaveRuleWithAstExpression(ruleId string, expression ast.Node) error {
-
-	organizationId, err := usecase.OrganizationIdOfContext()
-	if err != nil {
-		return err
-	}
-
-	rule, err := usecase.ScenarioIterationRuleUsecase.GetScenarioIterationRule(context.Background(), organizationId, ruleId)
-	if err != nil {
-		return err
-	}
-
-	if err := usecase.EnforceSecurity.ReadOrganization(rule.OrganizationId); err != nil {
-		return err
-	}
-
-	err = usecase.RuleRepository.UpdateRuleWithAstExpression(nil, rule.Id, expression)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (usecase *AstExpressionUsecase) EditorOperators() EditorOperators {

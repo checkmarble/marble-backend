@@ -18,12 +18,6 @@ func (api *API) routes() {
 	api.router.Post("/token", api.handlePostFirebaseIdToken())
 
 	api.router.With(api.credentialsMiddleware).Route("/ast-expression", func(astRouter chi.Router) {
-		astRouter.
-			With(httpin.NewInput(PatchRuleWithAstExpression{})).
-			Patch("/save-rule", api.handleSaveRuleWithAstExpression())
-		astRouter.
-			With(httpin.NewInput(PostRunAstExpression{})).
-			Post("/dry-run", api.handleDryRunAstExpression())
 		astRouter.Get("/available-functions", api.handleAvailableFunctions())
 	})
 
@@ -123,13 +117,6 @@ func (api *API) routes() {
 			scenarIterRulesRouter.Route("/{ruleID:"+UUIDRegExp+"}", func(r chi.Router) {
 				r.With(httpin.NewInput(GetScenarioIterationRuleInput{})).
 					Get("/", api.GetScenarioIterationRule())
-
-				// Deprecated: use PATCH instead
-				r.With(
-					api.enforcePermissionMiddleware(models.SCENARIO_CREATE),
-					httpin.NewInput(dto.UpdateScenarioIterationRuleInput{}),
-				).Put("/", api.UpdateScenarioIterationRule())
-
 				r.With(
 					api.enforcePermissionMiddleware(models.SCENARIO_CREATE),
 					httpin.NewInput(dto.UpdateScenarioIterationRuleInput{}),
