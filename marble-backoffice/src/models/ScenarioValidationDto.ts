@@ -1,11 +1,13 @@
 import * as yup from "yup";
-import { adaptDtoWithYup } from "@/infra/adaptDtoWithYup";
 import { type ConstantType } from "./AstExpression";
 import {
   ConstantOptionalSchema,
   adaptConstantOptional,
 } from "./AstExpressionDto";
-import { type AstNodeEvaluation } from "./AstEvaluation";
+import type {
+  ScenarioValidation,
+  AstNodeEvaluation,
+} from "./ScenarioValidation";
 import { MapObjectValues } from "@/MapUtils";
 
 // Yup can't infer typescript type from recursive schema, let's declare it manually
@@ -32,6 +34,14 @@ export const AstNodeEvaluationSchema = yup.object({
   }),
 }) as yup.Schema<AstNodeEvaluationDto>; // Can't use lazy schema as array().of argument in TypeScript: https://github.com/jquense/yup/issues/1190
 
+export const ScenarioValidationSchema = yup.object({
+  errors: yup.array().defined().of(yup.string().defined()),
+  trigger_evaluation: AstNodeEvaluationSchema,
+  rules_evaluations: yup.array().defined().of(AstNodeEvaluationSchema),
+});
+
+type ScenarioValidationDto = yup.InferType<typeof ScenarioValidationSchema>;
+
 export function adaptNodeEvaluation(
   dto: AstNodeEvaluationDto
 ): AstNodeEvaluation {
@@ -46,13 +56,12 @@ export function adaptNodeEvaluation(
   };
 }
 
-export function adaptDryRunResult(json: unknown): AstNodeEvaluation {
-  const dto = adaptDtoWithYup(
-    json,
-    yup.object({
-      evaluation: AstNodeEvaluationSchema,
-    })
-  );
-
-  return adaptNodeEvaluation(dto.evaluation);
+export function adaptScenariosValidation(
+  dto: ScenarioValidationDto
+): ScenarioValidation {
+  return {
+    errors: dto.errors,
+    triggerEvaluation: adaptNodeEvaluation(dto.trigger_evaluation),
+    rulesEvaluations: dto.rules_evaluations.map(adaptNodeEvaluation),
+  };
 }

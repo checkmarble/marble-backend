@@ -2,6 +2,11 @@ import * as yup from "yup";
 import { adaptDtoWithYup } from "@/infra/adaptDtoWithYup";
 import type { Rule } from "./Rule";
 import { adaptAstNode, AstNodeSchemaNullable } from "./AstExpressionDto";
+import {
+  adaptScenariosValidation,
+  ScenarioValidationSchema,
+} from "./ScenarioValidationDto";
+import { type ScenarioValidation } from "./ScenarioValidation";
 
 // {
 //     "id": "13617a88-a382-4985-9783-49053d0e8b3b",
@@ -44,6 +49,23 @@ export function adaptRule(dto: RuleSchemaDto): Rule {
 }
 
 export function adaptRuleApiResult(json: unknown): Rule {
-  const dto = adaptDtoWithYup(json, RuleSchema);
-  return adaptRule(dto);
+  const dto = adaptDtoWithYup(json, yup.object({ rule: RuleSchema }));
+  return adaptRule(dto.rule);
+}
+
+export function adaptUpdateRuleApiResult(json: unknown): {
+  rule: Rule;
+  scenarioValidation: ScenarioValidation;
+} {
+  const dto = adaptDtoWithYup(
+    json,
+    yup.object({
+      rule: RuleSchema,
+      scenario_validation: ScenarioValidationSchema,
+    })
+  );
+  return {
+    rule: adaptRule(dto.rule),
+    scenarioValidation: adaptScenariosValidation(dto.scenario_validation),
+  };
 }

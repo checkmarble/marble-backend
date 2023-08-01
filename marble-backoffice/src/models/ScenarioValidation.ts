@@ -6,3 +6,9 @@ export interface AstNodeEvaluation {
   children: AstNodeEvaluation[];
   namedChildren: Record<string, AstNodeEvaluation>;
 }
+
+export interface ScenarioValidation {
+  errors: string[];
+  triggerEvaluation: AstNodeEvaluation;
+  rulesEvaluations: AstNodeEvaluation[];
+}
