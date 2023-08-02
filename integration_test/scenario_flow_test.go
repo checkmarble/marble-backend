@@ -254,8 +254,11 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 	// Now get the iteration and check it has a version
 	scenarioIteration, err = scenarioIterationUsecase.GetScenarioIteration(scenarioIterationId)
 	assert.NoError(t, err, "Could not get scenario iteration")
+
 	assert.NotNil(t, scenarioIteration.Version, "Expected scenario iteration to have a version")
-	assert.Equal(t, 1, *scenarioIteration.Version, "Expected scenario iteration to have version 1, got %d", *scenarioIteration.Version)
+	if assert.NotNil(t, scenarioIteration.Version) {
+		assert.Equal(t, 1, *scenarioIteration.Version, "Expected scenario iteration to have version")
+	}
 	fmt.Printf("Updated scenario iteration %+v\n", scenarioIteration)
 
 	return scenarioId
