@@ -15,31 +15,34 @@ import (
 func buildDynamicStruct(fields map[models.FieldName]models.Field) dynamicstruct.DynamicStruct {
 	custom_type := dynamicstruct.NewStruct()
 
-	var f float64
-	var i int64
+	var f = new(float64)
+	var i = new(int64)
+	var b = new(bool)
+	var s = new(string)
+	var t = new(time.Time)
 
 	// those fields are mandatory for all tables
-	custom_type.AddField("Object_id", "", `validate:"required"`)
-	custom_type.AddField("Updated_at", time.Time{}, `validate:"required"`)
+	custom_type.AddField("Object_id", s, `validate:"required",json:"object_id"`)
+	custom_type.AddField("Updated_at", t, `validate:"required",json:"updated_at"`)
 
 	for fieldName, field := range fields {
 		name := string(fieldName)
 		switch strings.ToLower(name) {
 		case "object_id", "updated_at":
 			// already added above, with a different validation tag
-			break
 		default:
+			tag := fmt.Sprintf(`json:"%s"`, name)
 			switch field.DataType {
 			case models.Bool:
-				custom_type.AddField(pure_utils.Capitalize(name), true, "")
+				custom_type.AddField(pure_utils.Capitalize(name), b, tag)
 			case models.Int:
-				custom_type.AddField(pure_utils.Capitalize(name), i, "")
+				custom_type.AddField(pure_utils.Capitalize(name), i, tag)
 			case models.Float:
-				custom_type.AddField(pure_utils.Capitalize(name), f, "")
+				custom_type.AddField(pure_utils.Capitalize(name), f, tag)
 			case models.String:
-				custom_type.AddField(pure_utils.Capitalize(name), "", "")
+				custom_type.AddField(pure_utils.Capitalize(name), s, tag)
 			case models.Timestamp:
-				custom_type.AddField(pure_utils.Capitalize(name), time.Time{}, "")
+				custom_type.AddField(pure_utils.Capitalize(name), t, tag)
 			}
 		}
 	}
@@ -70,7 +73,7 @@ func validateParsedJson(instance interface{}) error {
 	return nil
 }
 
-func ParseToDataModelObject(table models.Table, jsonBody []byte) (models.Payload, error) {
+func ParseToDataModelObject(table models.Table, jsonBody []byte) (models.PayloadReader, error) {
 	fields := table.Fields
 
 	custom_type := buildDynamicStruct(fields)
@@ -87,7 +90,7 @@ func ParseToDataModelObject(table models.Table, jsonBody []byte) (models.Payload
 	decoder.DisallowUnknownFields()
 
 	if err := decoder.Decode(&dynamicStructInstance); err != nil {
-		return models.Payload{}, fmt.Errorf("%w: %w", models.FormatValidationError, err)
+		return models.ClientObject{}, fmt.Errorf("%w: %w", models.FormatValidationError, err)
 	}
 
 	// If the data has been successfully parsed, we can validate it
@@ -95,8 +98,51 @@ func ParseToDataModelObject(table models.Table, jsonBody []byte) (models.Payload
 	// There are two possible cases of error
 	err := validateParsedJson(dynamicStructInstance)
 	if err != nil {
-		return models.Payload{}, err
+		return models.ClientObject{}, err
 	}
 
-	return models.Payload{Reader: dynamicStructReader, TableName: table.Name}, nil
+	dataAsMap, err := adaptReaderToMap(dynamicStructReader, table)
+	if err != nil {
+		return models.ClientObject{}, err
+	}
+
+	return models.ClientObject{Data: dataAsMap, TableName: table.Name}, nil
+}
+
+func adaptReaderToMap(reader dynamicstruct.Reader, table models.Table) (map[string]any, error) {
+	var out = make(map[string]any)
+
+	for fieldName, field := range table.Fields {
+		stringFieldName := string(fieldName)
+		switch field.DataType {
+		case models.Bool:
+			if value := reader.GetField(pure_utils.Capitalize(stringFieldName)).PointerBool(); value != nil {
+				out[stringFieldName] = *value
+			}
+		case models.Int:
+			if value := reader.GetField(pure_utils.Capitalize(stringFieldName)).PointerInt64(); value != nil {
+				out[stringFieldName] = *value
+			}
+		case models.Float:
+			if value := reader.GetField(pure_utils.Capitalize(stringFieldName)).PointerFloat64(); value != nil {
+				out[stringFieldName] = *value
+			}
+		case models.String:
+			if value := reader.GetField(pure_utils.Capitalize(stringFieldName)).PointerString(); value != nil {
+				out[stringFieldName] = *value
+			}
+		case models.Timestamp:
+			if value := reader.GetField(pure_utils.Capitalize(stringFieldName)).PointerTime(); value != nil {
+				out[stringFieldName] = *value
+			}
+		default:
+			return nil, fmt.Errorf("unknown data type %v", field.DataType)
+		}
+		// if the value was null in the json, add it here to the map
+		if _, ok := out[stringFieldName]; !ok {
+			out[stringFieldName] = nil
+		}
+	}
+
+	return out, nil
 }

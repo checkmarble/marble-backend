@@ -145,7 +145,7 @@ func newDataModel() models.DataModel {
 					"company_id": {DataType: models.String, Nullable: true},
 					"name":       {DataType: models.String, Nullable: true},
 					"currency":   {DataType: models.String, Nullable: true},
-					"is_frozen":  {DataType: models.Bool},
+					"is_frozen":  {DataType: models.Bool, Nullable: true},
 				},
 				LinksToSingle: map[models.LinkName]models.LinkToSingle{
 					"company": {
