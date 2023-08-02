@@ -62,5 +62,5 @@ type CreateDecisionInput struct {
 	OrganizationId          string
 	ScenarioId              string
 	ClientObject            ClientObject
-	PayloadStructWithReader Payload
+	PayloadStructWithReader PayloadReader
 }
