@@ -1,18 +1,19 @@
 package scenarios
 
 import (
+	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 	"marble/marble-backend/usecases/ast_eval"
 	"time"
 )
 
-func DryRunValue(table models.Field) any {
-	switch table.DataType {
+func DryRunValue(fieldName models.FieldName, field models.Field) any {
+	switch field.DataType {
 	case models.Bool:
 		return true
 	case models.String:
-		return "dummy"
+		return fmt.Sprintf("fake payload value for %s", fieldName)
 	case models.Int:
 		return 1
 	case models.Float:
@@ -29,7 +30,7 @@ func DryRunPayload(table models.Table) map[string]any {
 
 	result := make(map[string]any)
 	for fieldName, field := range table.Fields {
-		result[string(fieldName)] = DryRunValue(field)
+		result[models.AdaptPayloadFieldName(fieldName)] = DryRunValue(fieldName, field)
 	}
 
 	return result

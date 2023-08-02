@@ -145,13 +145,13 @@ func (usecases *Usecases) NewPopulateOrganizationSchema() organization.PopulateO
 	}
 }
 
-func (usecases *Usecases) AstEvaluationEnvironment(organizationId string, payload models.PayloadReader) ast_eval.AstEvaluationEnvironment {
+func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.EvaluationEnvironmentFactoryParams) ast_eval.AstEvaluationEnvironment {
 	environment := ast_eval.NewAstEvaluationEnvironment()
 
 	// execution of a scenario with a dedicated security context
 	enforceSecurity := &security.EnforceSecurityImpl{
 		Credentials: models.Credentials{
-			OrganizationId: organizationId,
+			OrganizationId: params.OrganizationId,
 		},
 	}
 
@@ -163,20 +163,23 @@ func (usecases *Usecases) AstEvaluationEnvironment(organizationId string, payloa
 	)
 
 	environment.AddEvaluator(ast.FUNC_DB_ACCESS,
-		evaluate.NewDatabaseAccess(
-			usecases.NewOrgTransactionFactory(),
-			usecases.Repositories.IngestedDataReadRepository,
-			usecases.Repositories.DataModelRepository,
-			payload,
-			organizationId,
-		))
-	environment.AddEvaluator(ast.FUNC_PAYLOAD, evaluate.NewPayload(ast.FUNC_PAYLOAD, payload))
+		evaluate.DatabaseAccess{
+			OrganizationId:             params.OrganizationId,
+			DataModel:                  params.DataModel,
+			Payload:                    params.Payload,
+			OrgTransactionFactory:      usecases.NewOrgTransactionFactory(),
+			IngestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
+			ReturnFakeValue:            params.DatabaseAccessReturnFakeValue,
+		},
+	)
+
+	environment.AddEvaluator(ast.FUNC_PAYLOAD, evaluate.NewPayload(ast.FUNC_PAYLOAD, params.Payload))
 	return environment
 }
 
 func (usecases *Usecases) NewEvaluateRuleAstExpression() ast_eval.EvaluateRuleAstExpression {
 	return ast_eval.EvaluateRuleAstExpression{
-		AstEvaluationEnvironmentFactory: usecases.AstEvaluationEnvironment,
+		AstEvaluationEnvironmentFactory: usecases.AstEvaluationEnvironmentFactory,
 	}
 }
 
@@ -192,7 +195,7 @@ func (usecases *Usecases) NewScenarioPublisher() scenarios.ScenarioPublisher {
 func (usecases *Usecases) NewValidateScenarioIteration() scenarios.ValidateScenarioIteration {
 	return &scenarios.ValidateScenarioIterationImpl{
 		DataModelRepository:             usecases.Repositories.DataModelRepository,
-		AstEvaluationEnvironmentFactory: usecases.AstEvaluationEnvironment,
+		AstEvaluationEnvironmentFactory: usecases.AstEvaluationEnvironmentFactory,
 	}
 }
 

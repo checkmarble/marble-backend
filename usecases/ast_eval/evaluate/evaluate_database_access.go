@@ -1,32 +1,21 @@
 package evaluate
 
 import (
-	"errors"
 	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/org_transaction"
+	"strings"
 )
 
 type DatabaseAccess struct {
-	OrganizationIdOfContext    string
-	DataModelRepository        repositories.DataModelRepository
+	OrganizationId             string
+	DataModel                  models.DataModel
 	Payload                    models.PayloadReader
 	OrgTransactionFactory      org_transaction.Factory
 	IngestedDataReadRepository repositories.IngestedDataReadRepository
-}
-
-func NewDatabaseAccess(otf org_transaction.Factory, idrr repositories.IngestedDataReadRepository,
-	dm repositories.DataModelRepository, payload models.PayloadReader,
-	organizationIdOfContext string) DatabaseAccess {
-	return DatabaseAccess{
-		OrganizationIdOfContext:    organizationIdOfContext,
-		DataModelRepository:        dm,
-		Payload:                    payload,
-		OrgTransactionFactory:      otf,
-		IngestedDataReadRepository: idrr,
-	}
+	ReturnFakeValue            bool
 }
 
 func (d DatabaseAccess) Evaluate(arguments ast.Arguments) (any, error) {
@@ -52,6 +41,7 @@ func (d DatabaseAccess) Evaluate(arguments ast.Arguments) (any, error) {
 	}
 
 	fieldValue, err := d.getDbField(tableName, fieldName, pathStringArr)
+
 	if err != nil {
 		errorMsg := fmt.Sprintf("tableName: %s, fieldName: %s, path: %v", tableName, fieldName, path)
 		return nil, fmt.Errorf("DatabaseAccess: value not found: %s %w %w", errorMsg, err, ErrRuntimeExpression)
@@ -61,22 +51,20 @@ func (d DatabaseAccess) Evaluate(arguments ast.Arguments) (any, error) {
 
 func (d DatabaseAccess) getDbField(tableName string, fieldName string, path []string) (interface{}, error) {
 
-	dm, err := d.DataModelRepository.GetDataModel(nil, d.OrganizationIdOfContext)
-	if errors.Is(err, models.NotFoundInRepositoryError) {
-		return models.Decision{}, fmt.Errorf("data model not found: %w", models.NotFoundError)
-	} else if err != nil {
-		return models.Decision{}, fmt.Errorf("error getting data model: %w", err)
+	if d.ReturnFakeValue {
+		// TODO: How to find the value type?
+		return fmt.Sprintf("fake db value for %s.%s.%s", tableName, strings.Join(path, "."), fieldName), nil
 	}
 
 	return org_transaction.InOrganizationSchema(
 		d.OrgTransactionFactory,
-		d.OrganizationIdOfContext,
+		d.OrganizationId,
 		func(tx repositories.Transaction) (interface{}, error) {
 			return d.IngestedDataReadRepository.GetDbField(tx, models.DbFieldReadParams{
 				TriggerTableName: models.TableName(tableName),
 				Path:             models.ToLinkNames(path),
 				FieldName:        models.FieldName(fieldName),
-				DataModel:        dm,
+				DataModel:        d.DataModel,
 				Payload:          d.Payload,
 			})
 		})
