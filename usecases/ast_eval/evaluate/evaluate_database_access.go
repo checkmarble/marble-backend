@@ -6,7 +6,6 @@ import (
 	"marble/marble-backend/models/ast"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/org_transaction"
-	"strings"
 )
 
 type DatabaseAccess struct {
@@ -20,14 +19,18 @@ type DatabaseAccess struct {
 
 func (d DatabaseAccess) Evaluate(arguments ast.Arguments) (any, error) {
 	var pathStringArr []string
-	tableName, ok := arguments.NamedArgs["tableName"].(string)
+	tableNameStr, ok := (arguments.NamedArgs["tableName"].(string))
 	if !ok {
 		return nil, fmt.Errorf("tableName is not a string %w", ErrRuntimeExpression)
 	}
-	fieldName, ok := arguments.NamedArgs["fieldName"].(string)
+	tableName := models.TableName(tableNameStr)
+
+	fieldNameStr, ok := arguments.NamedArgs["fieldName"].(string)
 	if !ok {
 		return nil, fmt.Errorf("fieldName is not a string %w", ErrRuntimeExpression)
 	}
+	fieldName := models.FieldName(fieldNameStr)
+
 	path, ok := arguments.NamedArgs["path"].([]any)
 	if !ok {
 		return nil, fmt.Errorf("path is not a string %w", ErrRuntimeExpression)
@@ -49,11 +52,10 @@ func (d DatabaseAccess) Evaluate(arguments ast.Arguments) (any, error) {
 	return fieldValue, nil
 }
 
-func (d DatabaseAccess) getDbField(tableName string, fieldName string, path []string) (interface{}, error) {
+func (d DatabaseAccess) getDbField(tableName models.TableName, fieldName models.FieldName, path []string) (interface{}, error) {
 
 	if d.ReturnFakeValue {
-		// TODO: How to find the value type?
-		return fmt.Sprintf("fake db value for %s.%s.%s", tableName, strings.Join(path, "."), fieldName), nil
+		return DryRunGetDbField(d.DataModel, tableName, path, fieldName)
 	}
 
 	return org_transaction.InOrganizationSchema(
