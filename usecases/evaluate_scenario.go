@@ -80,6 +80,7 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 		publishedVersion.Body.TriggerConditionAstExpression,
 		dataAccessor.organizationId,
 		dataAccessor.Payload,
+		params.dataModel,
 	)
 
 	if err != nil {
@@ -94,7 +95,7 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 	ruleExecutions := make([]models.RuleExecution, 0)
 	for _, rule := range publishedVersion.Body.Rules {
 
-		scoreModifier, ruleExecution, err := evalScenarioRule(repositories, rule, dataAccessor)
+		scoreModifier, ruleExecution, err := evalScenarioRule(repositories, rule, dataAccessor, params.dataModel)
 
 		if err != nil {
 			return models.ScenarioExecution{}, fmt.Errorf("error evaluating rule in eval scenario: %w", err)
@@ -132,13 +133,14 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 	return se, nil
 }
 
-func evalScenarioRule(repositories scenarioEvaluationRepositories, rule models.Rule, dataAccessor DataAccessor) (int, models.RuleExecution, error) {
+func evalScenarioRule(repositories scenarioEvaluationRepositories, rule models.Rule, dataAccessor DataAccessor, dataModel models.DataModel) (int, models.RuleExecution, error) {
 	// Evaluate single rule
 
 	ruleReturnValue, err := repositories.evaluateRuleAstExpression.EvaluateRuleAstExpression(
 		*rule.FormulaAstExpression,
 		dataAccessor.organizationId,
 		dataAccessor.Payload,
+		dataModel,
 	)
 
 	if err != nil {

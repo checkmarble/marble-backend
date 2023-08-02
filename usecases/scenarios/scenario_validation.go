@@ -24,7 +24,7 @@ type ValidateScenarioIteration interface {
 
 type ValidateScenarioIterationImpl struct {
 	DataModelRepository             repositories.DataModelRepository
-	AstEvaluationEnvironmentFactory func(organizationId string, payload models.PayloadReader) ast_eval.AstEvaluationEnvironment
+	AstEvaluationEnvironmentFactory ast_eval.AstEvaluationEnvironmentFactory
 }
 
 func (validator *ValidateScenarioIterationImpl) Validate(si ScenarioAndIteration) (result models.ScenarioValidation) {
@@ -89,11 +89,16 @@ func (validator *ValidateScenarioIterationImpl) makeDryRunEnvironment(si Scenari
 		return ast_eval.AstEvaluationEnvironment{}, fmt.Errorf("table %s not found in data model  %w", si.Scenario.TriggerObjectType, models.NotFoundError)
 	}
 
-	// si.scenario.TriggerObjectType
-	payload := models.Payload{
+	payload := models.ClientObject{
 		TableName: table.Name,
-		Reader:    DryRunPayload(table),
+		Data:      evaluate.DryRunPayload(table),
 	}
 
-	return validator.AstEvaluationEnvironmentFactory(organizationId, payload), nil
+	env := validator.AstEvaluationEnvironmentFactory(ast_eval.EvaluationEnvironmentFactoryParams{
+		OrganizationId:                organizationId,
+		Payload:                       payload,
+		DataModel:                     dataModel,
+		DatabaseAccessReturnFakeValue: true,
+	})
+	return env, nil
 }

@@ -9,11 +9,17 @@ import (
 )
 
 type EvaluateRuleAstExpression struct {
-	AstEvaluationEnvironmentFactory func(organizationId string, payload models.PayloadReader) AstEvaluationEnvironment
+	AstEvaluationEnvironmentFactory AstEvaluationEnvironmentFactory
 }
 
-func (evaluator *EvaluateRuleAstExpression) EvaluateRuleAstExpression(ruleAstExpression ast.Node, organizationId string, payload models.PayloadReader) (bool, error) {
-	environment := evaluator.AstEvaluationEnvironmentFactory(organizationId, payload)
+func (evaluator *EvaluateRuleAstExpression) EvaluateRuleAstExpression(ruleAstExpression ast.Node, organizationId string, payload models.PayloadReader, dataModel models.DataModel) (bool, error) {
+
+	environment := evaluator.AstEvaluationEnvironmentFactory(EvaluationEnvironmentFactoryParams{
+		OrganizationId:                organizationId,
+		Payload:                       payload,
+		DataModel:                     dataModel,
+		DatabaseAccessReturnFakeValue: false,
+	})
 
 	evaluation := EvaluateAst(environment, ruleAstExpression)
 
