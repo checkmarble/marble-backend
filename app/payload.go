@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/pure_utils"
+	"reflect"
 	"strings"
 	"time"
 
@@ -112,35 +113,18 @@ func ParseToDataModelObject(table models.Table, jsonBody []byte) (models.Payload
 func adaptReaderToMap(reader dynamicstruct.Reader, table models.Table) (map[string]any, error) {
 	var out = make(map[string]any)
 
-	for fieldName, field := range table.Fields {
+	for fieldName := range table.Fields {
 		stringFieldName := string(fieldName)
-		switch field.DataType {
-		case models.Bool:
-			if value := reader.GetField(pure_utils.Capitalize(stringFieldName)).PointerBool(); value != nil {
-				out[stringFieldName] = *value
-			}
-		case models.Int:
-			if value := reader.GetField(pure_utils.Capitalize(stringFieldName)).PointerInt64(); value != nil {
-				out[stringFieldName] = *value
-			}
-		case models.Float:
-			if value := reader.GetField(pure_utils.Capitalize(stringFieldName)).PointerFloat64(); value != nil {
-				out[stringFieldName] = *value
-			}
-		case models.String:
-			if value := reader.GetField(pure_utils.Capitalize(stringFieldName)).PointerString(); value != nil {
-				out[stringFieldName] = *value
-			}
-		case models.Timestamp:
-			if value := reader.GetField(pure_utils.Capitalize(stringFieldName)).PointerTime(); value != nil {
-				out[stringFieldName] = *value
-			}
-		default:
-			return nil, fmt.Errorf("unknown data type %v", field.DataType)
-		}
-		// if the value was null in the json, add it here to the map
-		if _, ok := out[stringFieldName]; !ok {
+
+		// dynamicstruct return pointers (*time.Time)
+		pointer := reader.GetField(pure_utils.Capitalize(stringFieldName)).Interface()
+
+		reflectValue := reflect.ValueOf(pointer)
+		if reflectValue.IsNil() {
 			out[stringFieldName] = nil
+		} else {
+			// dereference the pointer (Indirect) then take the value
+			out[stringFieldName] = reflect.Indirect(reflectValue).Interface()
 		}
 	}
 
