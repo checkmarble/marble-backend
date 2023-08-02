@@ -6,7 +6,8 @@ package models
 type DataType int
 
 const (
-	Bool DataType = iota
+	UnknownDataType DataType = iota
+	Bool
 	Int
 	Float
 	String
@@ -42,7 +43,7 @@ func DataTypeFrom(s string) DataType {
 	case "Timestamp":
 		return Timestamp
 	}
-	return -1
+	return UnknownDataType
 }
 
 // /////////////////////////////
