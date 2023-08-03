@@ -92,7 +92,11 @@ func (api *API) CreateScenarioIterationRule() http.HandlerFunc {
 			return
 		}
 
-		PresentModel(w, apiRule)
+		PresentModel(w, struct {
+			Rule dto.ScenarioIterationRuleDto `json:"rule"`
+		}{
+			Rule: apiRule,
+		})
 	}
 }
 
