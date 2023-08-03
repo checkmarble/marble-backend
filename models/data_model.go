@@ -5,8 +5,9 @@ package models
 // /////////////////////////////
 type DataType int
 
+// Careful: DataType is serialized in database, it's also a dto
 const (
-	UnknownDataType DataType = iota
+	UnknownDataType DataType = iota - 1
 	Bool
 	Int
 	Float
