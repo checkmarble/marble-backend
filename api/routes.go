@@ -90,12 +90,6 @@ func (api *API) routes() {
 				r.With(httpin.NewInput(GetScenarioIterationInput{})).
 					Get("/", api.GetScenarioIteration())
 
-				// Deprecated: use PATCH instead
-				r.With(
-					api.enforcePermissionMiddleware(models.SCENARIO_CREATE),
-					httpin.NewInput(dto.UpdateScenarioIterationInput{}),
-				).Put("/", api.UpdateScenarioIteration())
-
 				r.With(
 					api.enforcePermissionMiddleware(models.SCENARIO_CREATE),
 					httpin.NewInput(dto.UpdateScenarioIterationInput{}),
