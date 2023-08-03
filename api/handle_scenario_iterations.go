@@ -155,7 +155,7 @@ func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 		logger := api.logger.With(slog.String("scenarioIterationId", input.ScenarioIterationId), slog.String("organizationId", organizationId))
 
 		if input.Payload.Body == nil {
-			http.Error(w, "", http.StatusNoContent)
+			PresentNothing(w)
 			return
 		}
 
@@ -178,31 +178,28 @@ func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 		}
 
 		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
-		updatedSI, err := usecase.UpdateScenarioIteration(ctx, organizationId, updateScenarioIterationInput)
+		updatedSI, scenarioValidation, err := usecase.UpdateScenarioIteration(ctx, organizationId, updateScenarioIterationInput)
 		if errors.Is(err, models.ErrScenarioIterationNotDraft) {
 			logger.WarnCtx(ctx, "Cannot update scenario iteration that is not in draft state: \n"+err.Error())
 			http.Error(w, "", http.StatusForbidden)
 			return
-		} else if errors.Is(err, models.NotFoundInRepositoryError) {
-			http.Error(w, "", http.StatusNotFound)
-			return
-		} else if err != nil {
-			logger.ErrorCtx(ctx, "Error updating scenario iteration: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
+		}
+
+		if presentError(w, r, err) {
 			return
 		}
 
-		apiRule, err := dto.AdaptScenarioIterationWithBodyDto(updatedSI)
-		if err != nil {
-			logger.ErrorCtx(ctx, "Error marshalling API scenario iteration: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
+		iteration, err := dto.AdaptScenarioIterationWithBodyDto(updatedSI)
+		if presentError(w, r, err) {
 			return
 		}
-		err = json.NewEncoder(w).Encode(apiRule)
-		if err != nil {
-			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
+
+		PresentModel(w, struct {
+			Iteration          dto.ScenarioIterationWithBodyDto `json:"iteration"`
+			ScenarioValidation dto.ScenarioValidationDto        `json:"scenario_validation"`
+		}{
+			Iteration:          iteration,
+			ScenarioValidation: dto.AdaptScenarioValidationDto(scenarioValidation),
+		})
 	}
 }

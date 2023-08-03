@@ -8,6 +8,7 @@ import (
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 	"marble/marble-backend/usecases"
+	"marble/marble-backend/usecases/scenarios"
 	"marble/marble-backend/utils"
 	"os"
 	"testing"
@@ -228,12 +229,14 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 
 	// Actually, modify the scenario iteration
 	threshold = 20
-	updatedScenarioIteration, err := scenarioIterationUsecase.UpdateScenarioIteration(usecasesWithCreds.Context, organizationId, models.UpdateScenarioIterationInput{
+	updatedScenarioIteration, validation, err := scenarioIterationUsecase.UpdateScenarioIteration(usecasesWithCreds.Context, organizationId, models.UpdateScenarioIterationInput{
 		Id: scenarioIterationId,
 		Body: &models.UpdateScenarioIterationBody{
 			ScoreReviewThreshold: &threshold,
 		},
 	})
+
+	assert.NoError(t, scenarios.ScenarioValidationToError(validation))
 	assert.NoError(t, err, "Could not update scenario iteration")
 	assert.Equal(
 		t,
