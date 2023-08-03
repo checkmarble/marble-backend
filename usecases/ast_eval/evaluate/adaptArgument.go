@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"marble/marble-backend/models/ast"
 	"marble/marble-backend/utils"
+	"time"
 )
 
 func promoteArgumentToInt64(function ast.Function, argument any) (int64, error) {
@@ -37,6 +38,41 @@ func adaptArgumentToString(function ast.Function, argument any) (string, error) 
 	}
 	return "", fmt.Errorf(
 		"function %s can't promote argument %v to string %w",
+		function.DebugString(),
+		argument,
+		ErrRuntimeExpression,
+	)
+}
+
+func adaptArgumentToTime(function ast.Function, argument any) (time.Time, error) {
+	if result, ok := argument.(time.Time); ok {
+		return result, nil
+	}
+	return time.Time{}, fmt.Errorf(
+		"function %s can't promote argument %v to time %w",
+		function.DebugString(),
+		argument,
+		ErrRuntimeExpression,
+	)
+}
+
+func adaptArgumentToDuration(function ast.Function, argument any) (time.Duration, error) {
+	if result, ok := argument.(time.Duration); ok {
+		return result, nil
+	}
+
+	if str, ok := argument.(string); ok {
+		if result, err := time.ParseDuration(str); err == nil {
+			return result, nil
+		}
+	}
+
+	if result, err := ToInt64(argument); err == nil {
+		return time.Duration(result), nil
+	}
+
+	return 0, fmt.Errorf(
+		"function %s can't promote argument %v to duration %w",
 		function.DebugString(),
 		argument,
 		ErrRuntimeExpression,
