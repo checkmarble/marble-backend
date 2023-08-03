@@ -140,28 +140,22 @@ export const demoRules: ExampleRule[] = [
   },
 ];
 
-export const exampleTriggerCondition = NewAstNode({
+export const exampleTriggerCondition = adaptLitteralAstNode({
   name: "And",
   children: [
-    NewAstNode({
+    {
       name: "=",
       children: [
-        NewAstNode({
-          name: "Payload",
-          children: [NewAstNode({ constant: "direction" })],
-        }),
-        NewAstNode({ constant: "payout" }),
+        { name: "Payload", children: [{ constant: "direction" }] },
+        { constant: "payout" },
       ],
-    }),
-    NewAstNode({
+    },
+    {
       name: "=",
       children: [
-        NewAstNode({
-          name: "Payload",
-          children: [NewAstNode({ constant: "status" })],
-        }),
-        NewAstNode({ constant: "pending" }),
+        { name: "Payload", children: [{ constant: "status" }] },
+        { constant: "pending" },
       ],
-    }),
+    },
   ],
 });
