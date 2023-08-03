@@ -11,13 +11,13 @@ import (
 )
 
 type BlankDataReadRepository interface {
-	GetFirstTransactionTimestamp(transaction Transaction, accountId string) (any, error)
-	SumTransactionsAmount(transaction Transaction, accountId string, direction string, createdFrom time.Time, createdTo time.Time) (any, error)
+	GetFirstTransactionTimestamp(transaction Transaction, accountId string) (time.Time, error)
+	SumTransactionsAmount(transaction Transaction, accountId string, direction string, createdFrom time.Time, createdTo time.Time) (float64, error)
 }
 
 type BlankDataReadRepositoryImpl struct{}
 
-func (repo *BlankDataReadRepositoryImpl) GetFirstTransactionTimestamp(transaction Transaction, accountId string) (any, error) {
+func (repo *BlankDataReadRepositoryImpl) GetFirstTransactionTimestamp(transaction Transaction, accountId string) (time.Time, error) {
 	tx := adaptClientDatabaseTransaction(transaction)
 
 	tableName := tableNameWithSchema(tx, models.TableName("transactions"))
@@ -29,21 +29,21 @@ func (repo *BlankDataReadRepositoryImpl) GetFirstTransactionTimestamp(transactio
 
 	sql, args, err := query.ToSql()
 	if err != nil {
-		return nil, err
+		return time.Time{}, err
 	}
 	row := tx.exec.QueryRow(tx.ctx, sql, args...)
 
 	var output time.Time
 	err = row.Scan(&output)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, fmt.Errorf("no rows scanned while reading DB: %w", models.NotFoundError)
+		return time.Time{}, fmt.Errorf("no rows scanned while reading DB: %w", models.NotFoundError)
 	} else if err != nil {
-		return nil, err
+		return time.Time{}, err
 	}
 	return output, nil
 }
 
-func (repo *BlankDataReadRepositoryImpl) SumTransactionsAmount(transaction Transaction, accountId string, direction string, createdFrom time.Time, createdTo time.Time) (any, error) {
+func (repo *BlankDataReadRepositoryImpl) SumTransactionsAmount(transaction Transaction, accountId string, direction string, createdFrom time.Time, createdTo time.Time) (float64, error) {
 	tx := adaptClientDatabaseTransaction(transaction)
 
 	tableName := tableNameWithSchema(tx, models.TableName("transactions"))
@@ -58,16 +58,16 @@ func (repo *BlankDataReadRepositoryImpl) SumTransactionsAmount(transaction Trans
 
 	sql, args, err := query.ToSql()
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	row := tx.exec.QueryRow(tx.ctx, sql, args...)
 
 	var output float64
 	err = row.Scan(&output)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, fmt.Errorf("no rows scanned while reading DB: %w", models.NotFoundError)
+		return 0, fmt.Errorf("no rows scanned while reading DB: %w", models.NotFoundError)
 	} else if err != nil {
-		return nil, err
+		return 0, err
 	}
 	return output, nil
 }
