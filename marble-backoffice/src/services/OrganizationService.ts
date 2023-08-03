@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import {
+import type {
+  AstNodeEvaluation,
   DataModel,
   Organization,
-  PageLink,
   Scenario,
+  ScenarioValidation,
 } from "@/models";
+import { PageLink } from "@/models";
 import {
   type OrganizationRepository,
   type ScenariosRepository,
@@ -172,6 +174,28 @@ export function useSingleScenario(
   };
 }
 
+function nodeEvaluationErrors(node: AstNodeEvaluation): string[] {
+  return [
+    node.evaluationError,
+    ...node.children.flatMap(nodeEvaluationErrors),
+    ...Object.values(node.namedChildren).flatMap(nodeEvaluationErrors),
+  ].filter((v) => v !== "");
+}
+
+function scenarioValidationErrors(validation: ScenarioValidation): string[] {
+  const errors: string[] = [
+    ...validation.errors.map((e) => `Error: ${e}`),
+    ...nodeEvaluationErrors(validation.triggerEvaluation).map(
+      (e) => `Trigger: ${e}`
+    ),
+    ...validation.rulesEvaluations
+      .flatMap(nodeEvaluationErrors)
+      .map((e) => `Rule: ${e}`),
+  ];
+
+  return errors;
+}
+
 export function useAddScenarios(
   service: OrganizationService,
   loadingDispatcher: LoadingDispatcher,
@@ -202,7 +226,7 @@ export function useAddScenarios(
         ).iterationId;
 
         // patch the iteration
-        await patchIteration(
+        const { scenarioValidation } = await patchIteration(
           service.scenariosRepository,
           organizationId,
           iterationId,
@@ -214,6 +238,14 @@ export function useAddScenarios(
           }
         );
 
+        // check for errors in trigger evaluation
+        const errors = nodeEvaluationErrors(
+          scenarioValidation.triggerEvaluation
+        );
+        if (errors.length > 0) {
+          throw new Error(errors.join("\n"));
+        }
+
         const createExampleRule = async (exampleRule: ExampleRule) => {
           const rule = await postRule(
             service.scenariosRepository,
@@ -221,7 +253,7 @@ export function useAddScenarios(
             iterationId
           );
 
-          await updateRule(
+          const { scenarioValidation } = await updateRule(
             service.scenariosRepository,
             organizationId,
             rule.ruleId,
@@ -229,10 +261,17 @@ export function useAddScenarios(
               ...exampleRule,
             }
           );
+
+          const errors = scenarioValidationErrors(scenarioValidation);
+          if (errors.length > 0) {
+            throw new Error(errors.join("\n"));
+          }
         };
 
         // post a rules
-        await Promise.all(demoRules.map(createExampleRule));
+        for (const exampleRule of demoRules) {
+          await createExampleRule(exampleRule);
+        }
 
         await publishIteration(
           service.scenariosRepository,

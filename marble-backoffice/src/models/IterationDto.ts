@@ -3,6 +3,10 @@ import { adaptDtoWithYup } from "@/infra/adaptDtoWithYup";
 import type { Iteration } from "./Iteration";
 import { AstNodeSchemaNullable, adaptAstNode } from "./AstExpressionDto";
 import { RuleSchema, adaptRule } from "./RuleDto";
+import {
+  ScenarioValidationSchema,
+  adaptScenariosValidation,
+} from "./ScenarioValidationDto";
 
 const IterationSchema = yup.object({
   id: yup.string().required(),
@@ -21,7 +25,7 @@ const IterationSchema = yup.object({
   }),
 });
 
-export type IterationSchemaDto = yup.InferType<typeof IterationSchema>
+export type IterationSchemaDto = yup.InferType<typeof IterationSchema>;
 
 export function adaptIteration(dto: IterationSchemaDto): Iteration {
   return {
@@ -45,6 +49,20 @@ export function adaptIteration(dto: IterationSchemaDto): Iteration {
 export function adaptIterationApiResult(json: unknown): Iteration {
   const dto = adaptDtoWithYup(json, IterationSchema);
   return adaptIteration(dto);
+}
+
+export function adaptIterationWithValidationApiResult(json: unknown) {
+  const dto = adaptDtoWithYup(
+    json,
+    yup.object({
+      iteration: IterationSchema,
+      scenario_validation: ScenarioValidationSchema,
+    })
+  );
+  return {
+    iteration: adaptIteration(dto.iteration),
+    scenarioValidation: adaptScenariosValidation(dto.scenario_validation),
+  };
 }
 
 export function adaptListIterationsApiResult(json: unknown): Iteration[] {
