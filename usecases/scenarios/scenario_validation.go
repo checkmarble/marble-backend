@@ -32,6 +32,8 @@ func (validator *ValidateScenarioIterationImpl) Validate(si ScenarioAndIteration
 
 	iteration := si.Iteration
 
+	result.Errs = make([]error, 0)
+
 	addError := func(err error) {
 		result.Errs = append(result.Errs, err)
 	}

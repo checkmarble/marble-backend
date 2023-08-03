@@ -45,7 +45,7 @@ func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(
 				return []models.ScenarioPublication{}, nil
 			}
 			if err := ScenarioValidationToError(publisher.ValidateScenarioIteration.Validate(scenarioAndIteration)); err != nil {
-				return nil, err
+				return nil, fmt.Errorf("Can't validate scenario %w %w", err, models.BadParameterError)
 			}
 
 			newVersion, err := publisher.getNewVersion(tx, organizationId, scenariosId)
