@@ -24,7 +24,7 @@ func (repo *BlankDataReadRepositoryImpl) GetFirstTransactionTimestamp(transactio
 	query := NewQueryBuilder().
 		Select("MIN(created_at) AS first_transaction_at").
 		From(tableName).
-		Where(squirrel.Eq{"accountId": accountId}).
+		Where(squirrel.Eq{"account_id": accountId}).
 		Where(rowIsValid(tableName))
 
 	sql, args, err := query.ToSql()
@@ -48,9 +48,9 @@ func (repo *BlankDataReadRepositoryImpl) SumTransactionsAmount(transaction Trans
 
 	tableName := tableNameWithSchema(tx, models.TableName("transactions"))
 	query := NewQueryBuilder().
-		Select("SUM(amount) AS amount").
+		Select("SUM(txn_amount)").
 		From(tableName).
-		Where(squirrel.Eq{"accountId": accountId}).
+		Where(squirrel.Eq{"account_id": accountId}).
 		Where(squirrel.Eq{"direction": direction}).
 		Where(squirrel.GtOrEq{"created_at": createdFrom}).
 		Where(squirrel.LtOrEq{"created_at": createdTo}).

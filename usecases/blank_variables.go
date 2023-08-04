@@ -7,11 +7,19 @@ import (
 )
 
 func addBlankVariableEvaluators(environment *ast_eval.AstEvaluationEnvironment, usecases *Usecases, organizationId string, returnFakeValue bool) {
-	environment.AddEvaluator(ast.FUNC_BLANK_FIRST_TRANSACTION_DATE, evaluate.NewBlankDatabaseAccess(
-		usecases.NewOrgTransactionFactory(),
-		usecases.Repositories.BlankDataReadRepository,
-		organizationId,
-		ast.FUNC_BLANK_FIRST_TRANSACTION_DATE,
-		returnFakeValue,
-	))
+	blankDbAccess := evaluate.BlankDatabaseAccess{
+		OrganizationIdOfContext: organizationId,
+		OrgTransactionFactory:   usecases.NewOrgTransactionFactory(),
+		BlankDataReadRepository: usecases.Repositories.BlankDataReadRepository,
+		ReturnFakeValue:         returnFakeValue,
+		// Function:                specified below
+	}
+
+	environment.AddEvaluator(ast.FUNC_BLANK_FIRST_TRANSACTION_DATE, newBlankDbAccessWithFunction(blankDbAccess, ast.FUNC_BLANK_FIRST_TRANSACTION_DATE))
+	environment.AddEvaluator(ast.FUNC_BLANK_SUM_TRANSACTIONS_AMOUNT, newBlankDbAccessWithFunction(blankDbAccess, ast.FUNC_BLANK_SUM_TRANSACTIONS_AMOUNT))
+}
+
+func newBlankDbAccessWithFunction(dbAccess evaluate.BlankDatabaseAccess, function ast.Function) evaluate.BlankDatabaseAccess {
+	dbAccess.Function = function
+	return dbAccess
 }

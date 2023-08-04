@@ -1,7 +1,6 @@
 package dbmodels
 
 import (
-	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
 
@@ -32,6 +31,6 @@ func AdaptRuleExecution(db DbDecisionRule) models.RuleExecution {
 		},
 		Result:              db.Result,
 		ResultScoreModifier: db.ScoreModifier,
-		Error:               fmt.Errorf("unknown error during execution"),
+		Error:               nil, // TODO put error handling by rule back in place
 	}
 }

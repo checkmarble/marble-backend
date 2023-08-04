@@ -11,6 +11,8 @@ import (
 	"marble/marble-backend/usecases/scenarios"
 	"marble/marble-backend/usecases/scheduledexecution"
 	"marble/marble-backend/usecases/security"
+
+	"golang.org/x/exp/slices"
 )
 
 type Usecases struct {
@@ -176,7 +178,7 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 	environment.AddEvaluator(ast.FUNC_PAYLOAD, evaluate.NewPayload(ast.FUNC_PAYLOAD, params.Payload))
 
 	// Custom evaluators for the Blank organization
-	if params.OrganizationId == models.BLANK_ORGANIZATION_ID {
+	if slices.Contains(models.GetBlankOrganizationIds(), params.OrganizationId) {
 		addBlankVariableEvaluators(&environment, usecases, params.OrganizationId, params.DatabaseAccessReturnFakeValue)
 	}
 	return environment
