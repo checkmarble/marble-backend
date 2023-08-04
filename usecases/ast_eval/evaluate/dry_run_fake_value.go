@@ -12,7 +12,7 @@ func DryRunPayload(table models.Table) map[string]any {
 	result := make(map[string]any)
 	for fieldName, field := range table.Fields {
 		fullFieldName := fmt.Sprintf("%s.%s", table.Name, fieldName)
-		result[string(fieldName)] = DryRunValue(fullFieldName, field)
+		result[string(fieldName)] = DryRunValue("Payload", fullFieldName, field)
 	}
 
 	return result
@@ -43,15 +43,15 @@ func DryRunGetDbField(dataModel models.DataModel, triggerTableName models.TableN
 	}
 
 	fullFieldName := fmt.Sprintf("%s.%s.%s", triggerTableName, strings.Join(path, "."), fieldName)
-	return DryRunValue(fullFieldName, field), nil
+	return DryRunValue("DbAccess", fullFieldName, field), nil
 }
 
-func DryRunValue(fieldName string, field models.Field) any {
+func DryRunValue(prefix string, fieldName string, field models.Field) any {
 	switch field.DataType {
 	case models.Bool:
 		return true
 	case models.String:
-		return fmt.Sprintf("fake payload value for %s", fieldName)
+		return fmt.Sprintf("fake value for %s:%s", prefix, fieldName)
 	case models.Int:
 		return 1
 	case models.Float:
