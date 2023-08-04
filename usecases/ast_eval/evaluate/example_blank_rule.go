@@ -1,6 +1,10 @@
 package evaluate
 
-import "marble/marble-backend/models/ast"
+import (
+	"encoding/json"
+	"marble/marble-backend/dto"
+	"marble/marble-backend/models/ast"
+)
 
 func ReturnExampleBlankRuleAstNode() ast.Node {
 	node := ast.Node{
@@ -115,6 +119,10 @@ func ReturnExampleBlankRuleAstNode() ast.Node {
 			},
 		},
 	}
+
+	dto, _ := dto.AdaptNodeDto(node)
+	str, _ := json.Marshal(dto)
+	println(string(str))
 	return node
 }
 
@@ -126,4 +134,124 @@ Or in pseudo code:
 "sum value transaction" (direction Debit, from "first transaction date", to "first transaction date" + 10 days)
 	> 90% * "sum value transaction" (direction Credit, from "first transaction date", to "first transaction date" + 10 days)
 )
+*/
+
+/*
+Or in json format:
+{
+  "name": "And",
+  "children": [
+    {
+      "name": "\u003e",
+      "children": [
+        {
+          "name": "BlankSumTransactionsAmount",
+          "children": [
+            { "name": "Payload", "children": [{ "constant": "accountId" }] }
+          ],
+          "named_children": {
+            "created_from": {
+              "name": "BlankFirstTransactionDate",
+              "children": [
+                { "name": "Payload", "children": [{ "constant": "accountId" }] }
+              ]
+            },
+            "created_to": {
+              "name": "AddTime",
+              "children": [
+                {
+                  "name": "BlankFirstTransactionDate",
+                  "children": [
+                    {
+                      "name": "Payload",
+                      "children": [{ "constant": "accountId" }]
+                    }
+                  ]
+                },
+                { "constant": "240h" }
+              ]
+            },
+            "direction": { "constant": "Debit" }
+          }
+        },
+        { "constant": 1000 }
+      ]
+    },
+    {
+      "name": "\u003e",
+      "children": [
+        {
+          "name": "BlankSumTransactionsAmount",
+          "children": [
+            { "name": "Payload", "children": [{ "constant": "accountId" }] }
+          ],
+          "named_children": {
+            "created_from": {
+              "name": "BlankFirstTransactionDate",
+              "children": [
+                { "name": "Payload", "children": [{ "constant": "accountId" }] }
+              ]
+            },
+            "created_to": {
+              "name": "AddTime",
+              "children": [
+                {
+                  "name": "BlankFirstTransactionDate",
+                  "children": [
+                    {
+                      "name": "Payload",
+                      "children": [{ "constant": "accountId" }]
+                    }
+                  ]
+                },
+                { "constant": "240h" }
+              ]
+            },
+            "direction": { "constant": "Debit" }
+          }
+        },
+        {
+          "name": "*",
+          "children": [
+            {
+              "name": "BlankSumTransactionsAmount",
+              "children": [
+                { "name": "Payload", "children": [{ "constant": "accountId" }] }
+              ],
+              "named_children": {
+                "created_from": {
+                  "name": "BlankFirstTransactionDate",
+                  "children": [
+                    {
+                      "name": "Payload",
+                      "children": [{ "constant": "accountId" }]
+                    }
+                  ]
+                },
+                "created_to": {
+                  "name": "AddTime",
+                  "children": [
+                    {
+                      "name": "BlankFirstTransactionDate",
+                      "children": [
+                        {
+                          "name": "Payload",
+                          "children": [{ "constant": "accountId" }]
+                        }
+                      ]
+                    },
+                    { "constant": "240h" }
+                  ]
+                },
+                "direction": { "constant": "Credit" }
+              }
+            },
+            { "constant": 0.9 }
+          ]
+        }
+      ]
+    }
+  ]
+}
+
 */
