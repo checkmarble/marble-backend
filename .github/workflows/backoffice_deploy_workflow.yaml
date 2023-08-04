@@ -1,0 +1,31 @@
+name: Deploy BackOffice
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        description: 'Github environment to use'
+        required: true
+
+jobs:
+  build_backoffice:
+    name: Build BackOffice
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - name: Install dependencies using yarn --frozen-lockfile
+        uses: bahmutov/npm-install@v1 
+        with:
+          working-directory: marble-backoffice        
+      - name: 'Build ${{ inputs.environment }}'
+        run: 'yarn build-${{ inputs.environment }}'
+        working-directory: marble-backoffice
+      - name: Deploy to Firebase
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.GCP_SA_KEY }}'
+          projectId: '${{ inputs.environment }}'
+          channelId: live

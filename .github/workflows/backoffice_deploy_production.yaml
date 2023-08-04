@@ -1,0 +1,26 @@
+name: Deploy Production
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/backoffice_test_workflow.yaml
+
+  build_and_deploy:
+    needs: test
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/backoffice_deploy_workflow.yaml
+    with:
+      environment: 'production'
