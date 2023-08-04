@@ -1,5 +1,13 @@
 import { AstNode } from "./AstExpression";
 
+export interface Identifier {
+  name: string;
+  description: string;
+  node: AstNode;
+}
+
 export interface EditorIdentifiers {
-  dataAccessors: AstNode[];
+  databaseAccessors: Identifier[];
+  payloadAccessors: Identifier[];
+  customListAccessors: Identifier[];
 }
