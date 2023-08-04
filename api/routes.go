@@ -61,12 +61,6 @@ func (api *API) routes() {
 				r.With(httpin.NewInput(GetScenarioInput{})).
 					Get("/", api.GetScenario())
 
-				// Deprecated: use PATCH instead
-				r.With(
-					api.enforcePermissionMiddleware(models.SCENARIO_CREATE),
-					httpin.NewInput(dto.UpdateScenarioInput{}),
-				).Put("/", api.UpdateScenario())
-
 				r.With(
 					api.enforcePermissionMiddleware(models.SCENARIO_CREATE),
 					httpin.NewInput(dto.UpdateScenarioInput{}),
@@ -245,12 +239,6 @@ func (api *API) routes() {
 				r.Route("/{organizationId}", func(r chi.Router) {
 					r.Get("/", api.handleGetOrganization())
 					r.Get("/users", api.handleGetOrganizationUsers())
-
-					// Deprecated: use PATCH instead
-					r.With(
-						api.enforcePermissionMiddleware(models.ORGANIZATIONS_CREATE),
-						httpin.NewInput(dto.UpdateOrganizationInputDto{}),
-					).Put("/", api.handlePatchOrganization())
 
 					r.With(
 						api.enforcePermissionMiddleware(models.ORGANIZATIONS_CREATE),
