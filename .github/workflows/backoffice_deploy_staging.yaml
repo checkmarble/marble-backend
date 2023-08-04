@@ -1,0 +1,27 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches:
+      - master
+      - vivien/backoffice-ci
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/backoffice_test_workflow.yaml
+
+  build_and_deploy:
+    needs: test
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/backoffice_deploy_workflow.yaml
+    with:
+      environment: 'staging'
