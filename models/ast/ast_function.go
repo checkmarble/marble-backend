@@ -37,6 +37,7 @@ const (
 	FUNC_IS_NOT_IN_LIST
 	FUNC_BLANK_FIRST_TRANSACTION_DATE
 	FUNC_BLANK_SUM_TRANSACTIONS_AMOUNT
+	FUNC_BLANK_SEPA_OUT_FRACTIONATED
 	FUNC_UNKNOWN Function = -1
 )
 
@@ -136,6 +137,12 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		NumberOfArguments: 1,
 		// Or pass them as a single map ? To be discussed.
 		NamedArguments: []string{"direction", "created_from", "created_to"},
+	},
+	FUNC_BLANK_SEPA_OUT_FRACTIONATED: {
+		DebugName:         "FUNC_BLANK_SEPA_OUT_FRACTIONATED",
+		AstName:           "BlankSepaOutFractionated",
+		NumberOfArguments: 1,
+		NamedArguments:    []string{"amountThreshold", "numberThreshold"},
 	},
 }
 
