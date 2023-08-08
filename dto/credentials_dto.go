@@ -1,6 +1,9 @@
 package dto
 
-import "marble/marble-backend/models"
+import (
+	"marble/marble-backend/models"
+	"marble/marble-backend/utils"
+)
 
 type Identity struct {
 	UserId     string `json:"user_id,omitempty"`
@@ -12,9 +15,12 @@ type Credentials struct {
 	OrganizationId string   `json:"organization_id"`
 	Role           string   `json:"role"`
 	ActorIdentity  Identity `json:"actor_identity"`
+	Permissions    []string `json:"permissions"`
 }
 
 func AdaptCredentialDto(creds models.Credentials) Credentials {
+	permissions := utils.Map(creds.Role.Permissions(), func(p models.Permission) string { return p.String() })
+
 	return Credentials{
 		OrganizationId: creds.OrganizationId,
 		Role:           creds.Role.String(),
@@ -23,6 +29,7 @@ func AdaptCredentialDto(creds models.Credentials) Credentials {
 			Email:      creds.ActorIdentity.Email,
 			ApiKeyName: creds.ActorIdentity.ApiKeyName,
 		},
+		Permissions: permissions,
 	}
 }
 
