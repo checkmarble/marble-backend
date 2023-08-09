@@ -28,18 +28,20 @@ func (f BooleanArithmetic) Evaluate(arguments ast.Arguments) (any, error) {
 }
 
 func (f BooleanArithmetic) booleanArithmeticEval(arr []bool) (bool, error) {
-	result := true
 	switch f.Function {
 	case ast.FUNC_AND:
+		result := true
 		for _, val := range arr {
 			result = result && val
 		}
 		return result, nil
 	case ast.FUNC_OR:
 		for _, val := range arr {
-			result = result || val
+			if val {
+				return true, nil
+			}
 		}
-		return result, nil
+		return false, nil
 	default:
 		return false, fmt.Errorf("Arithmetic does not support %s function", f.Function.DebugString())
 	}
