@@ -30,7 +30,7 @@ type EditorOperators struct {
 }
 
 func (usecase *AstExpressionUsecase) getLinkedDatabaseIdentifiers(scenario models.Scenario, dataModel models.DataModel) ([]ast.Identifier, error) {
-	var dataAccessors []ast.Identifier
+	dataAccessors := []ast.Identifier{}
 	var recursiveDatabaseAccessor func(path []string, links map[models.LinkName]models.LinkToSingle) error
 
 	triggerObjectTable, found := dataModel.Tables[models.TableName(scenario.TriggerObjectType)]
@@ -81,7 +81,7 @@ func (usecase *AstExpressionUsecase) getLinkedDatabaseIdentifiers(scenario model
 }
 
 func (usecase *AstExpressionUsecase) getPayloadIdentifiers(scenario models.Scenario, dataModel models.DataModel) ([]ast.Identifier, error) {
-	var dataAccessors []ast.Identifier
+	dataAccessors := []ast.Identifier{}
 
 	triggerObjectTable, found := dataModel.Tables[models.TableName(scenario.TriggerObjectType)]
 	if !found {
@@ -105,7 +105,7 @@ func (usecase *AstExpressionUsecase) getPayloadIdentifiers(scenario models.Scena
 }
 
 func (usecase *AstExpressionUsecase) getCustomListIdentifiers(organizationId string) ([]ast.Identifier, error) {
-	var dataAccessors []ast.Identifier
+	dataAccessors := []ast.Identifier{}
 
 	customLists, err := usecase.CustomListRepository.AllCustomLists(nil, organizationId)
 	if err != nil {
