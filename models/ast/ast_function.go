@@ -44,6 +44,7 @@ type FuncAttributes struct {
 	NamedArguments    []string
 }
 
+// If number of arguments -1 the function can take any number of arguments
 var FuncAttributesMap = map[Function]FuncAttributes{
 	FUNC_CONSTANT: {
 		DebugName: "CONSTANT",
@@ -92,12 +93,12 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 	FUNC_AND: {
 		DebugName:         "FUNC_AND",
 		AstName:           "And",
-		NumberOfArguments: 2,
+		NumberOfArguments: -1,
 	},
 	FUNC_OR: {
 		DebugName:         "FUNC_OR",
 		AstName:           "Or",
-		NumberOfArguments: 2,
+		NumberOfArguments: -1,
 	},
 	FUNC_PAYLOAD:           {
 		DebugName: "FUNC_PAYLOAD",

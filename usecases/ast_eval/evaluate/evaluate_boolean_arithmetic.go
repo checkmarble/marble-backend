@@ -3,6 +3,7 @@ package evaluate
 import (
 	"fmt"
 	"marble/marble-backend/models/ast"
+	"marble/marble-backend/utils"
 )
 
 type BooleanArithmetic struct {
@@ -16,29 +17,29 @@ func NewBooleanArithmetic(f ast.Function) BooleanArithmetic {
 }
 
 func (f BooleanArithmetic) Evaluate(arguments ast.Arguments) (any, error) {
-
-	leftAny, rightAny, err := leftAndRight(f.Function, arguments.Args)
+	arr, err := utils.MapErrWithParam(arguments.Args, f.Function, adaptArgumentToBool)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf(
+			"all argments of function %s must be booleans %w",
+			f.Function.DebugString(), ErrRuntimeExpression,
+		)
 	}
-	// promote to bnool
-	if left, right, err := adaptLeftAndRight(f.Function, leftAny, rightAny, adaptArgumentToBool); err == nil {
-		return f.booleanArithmeticEval(left, right)
-	}
-
-	return nil, fmt.Errorf(
-		"all argments of function %s must be booleans %w",
-		f.Function.DebugString(), ErrRuntimeExpression,
-	)
+	return f.booleanArithmeticEval(arr)
 }
 
-func (f BooleanArithmetic) booleanArithmeticEval(l, r bool) (bool, error) {
-
+func (f BooleanArithmetic) booleanArithmeticEval(arr []bool) (bool, error) {
+	result := true
 	switch f.Function {
 	case ast.FUNC_AND:
-		return l && r, nil
+		for _, val := range arr {
+			result = result && val
+		}
+		return result, nil
 	case ast.FUNC_OR:
-		return l || r, nil
+		for _, val := range arr {
+			result = result || val
+		}
+		return result, nil
 	default:
 		return false, fmt.Errorf("Arithmetic does not support %s function", f.Function.DebugString())
 	}
