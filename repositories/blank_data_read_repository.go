@@ -13,7 +13,7 @@ import (
 type BlankDataReadRepository interface {
 	GetFirstTransactionTimestamp(transaction Transaction, accountId string) (time.Time, error)
 	SumTransactionsAmount(transaction Transaction, accountId string, direction string, createdFrom time.Time, createdTo time.Time) (float64, error)
-	RetrieveTransactions(transaction Transaction, accountId string, createdFrom time.Time) ([]map[string]any, error)
+	RetrieveTransactions(transaction Transaction, filters map[string]any, createdFrom time.Time) ([]map[string]any, error)
 }
 
 type BlankDataReadRepositoryImpl struct{}
@@ -73,20 +73,23 @@ func (repo *BlankDataReadRepositoryImpl) SumTransactionsAmount(transaction Trans
 	return output, nil
 }
 
-func (repo *BlankDataReadRepositoryImpl) RetrieveTransactions(transaction Transaction, accountId string, createdFrom time.Time) ([]map[string]any, error) {
+func (repo *BlankDataReadRepositoryImpl) RetrieveTransactions(transaction Transaction, filters map[string]any, createdFrom time.Time) ([]map[string]any, error) {
 	tx := adaptClientDatabaseTransaction(transaction)
 
 	tableName := tableNameWithSchema(tx, models.TableName("transactions"))
 	query := NewQueryBuilder().
 		Select("txn_amount, created_at, counterparty_iban").
 		From(tableName).
-		Where(squirrel.Eq{"account_id": accountId}).
-		Where(squirrel.Eq{"direction": "Debit"}).
-		Where(squirrel.Eq{"type": "virement sortant"}).
-		Where(squirrel.Eq{"cleared": true}).
+		// Where(squirrel.Eq{"account_id": accountId}).
+		// Where(squirrel.Eq{"direction": "Debit"}).
+		// Where(squirrel.Eq{"type": "virement sortant"}).
+		// Where(squirrel.Eq{"cleared": true}).
 		Where(squirrel.GtOrEq{"created_at": createdFrom}).
 		Where(rowIsValid(tableName)).
 		OrderBy("created_at DESC")
+	for k, v := range filters {
+		query = query.Where(squirrel.Eq{k: v})
+	}
 
 	sql, args, err := query.ToSql()
 	if err != nil {
@@ -101,9 +104,7 @@ func (repo *BlankDataReadRepositoryImpl) RetrieveTransactions(transaction Transa
 	var output []map[string]any
 
 	for rows.Next() {
-		var txnAmount float64
-		var createdAt time.Time
-		var counterpartyIban string
+		var txnAmount, createdAt, counterpartyIban any
 		err := rows.Scan(&txnAmount, &createdAt, &counterpartyIban)
 		if err != nil {
 			return nil, err

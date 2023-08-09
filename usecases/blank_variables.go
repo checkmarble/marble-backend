@@ -18,6 +18,9 @@ func addBlankVariableEvaluators(environment *ast_eval.AstEvaluationEnvironment, 
 	environment.AddEvaluator(ast.FUNC_BLANK_FIRST_TRANSACTION_DATE, newBlankDbAccessWithFunction(blankDbAccess, ast.FUNC_BLANK_FIRST_TRANSACTION_DATE))
 	environment.AddEvaluator(ast.FUNC_BLANK_SUM_TRANSACTIONS_AMOUNT, newBlankDbAccessWithFunction(blankDbAccess, ast.FUNC_BLANK_SUM_TRANSACTIONS_AMOUNT))
 	environment.AddEvaluator(ast.FUNC_BLANK_SEPA_OUT_FRACTIONATED, newBlankDbAccessWithFunction(blankDbAccess, ast.FUNC_BLANK_SEPA_OUT_FRACTIONATED))
+	environment.AddEvaluator(ast.FUNC_BLANK_SEPA_NON_FR_IN_WINDOW, newBlankDbAccessWithFunction(blankDbAccess, ast.FUNC_BLANK_SEPA_NON_FR_IN_WINDOW))
+	environment.AddEvaluator(ast.FUNC_BLANK_SEPA_NON_FR_OUT_WINDOW, newBlankDbAccessWithFunction(blankDbAccess, ast.FUNC_BLANK_SEPA_NON_FR_OUT_WINDOW))
+
 }
 
 func newBlankDbAccessWithFunction(dbAccess evaluate.BlankDatabaseAccess, function ast.Function) evaluate.BlankDatabaseAccess {

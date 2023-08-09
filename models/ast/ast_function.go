@@ -38,6 +38,8 @@ const (
 	FUNC_BLANK_FIRST_TRANSACTION_DATE
 	FUNC_BLANK_SUM_TRANSACTIONS_AMOUNT
 	FUNC_BLANK_SEPA_OUT_FRACTIONATED
+	FUNC_BLANK_SEPA_NON_FR_IN_WINDOW
+	FUNC_BLANK_SEPA_NON_FR_OUT_WINDOW
 	FUNC_UNKNOWN Function = -1
 )
 
@@ -141,6 +143,18 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 	FUNC_BLANK_SEPA_OUT_FRACTIONATED: {
 		DebugName:         "FUNC_BLANK_SEPA_OUT_FRACTIONATED",
 		AstName:           "BlankSepaOutFractionated",
+		NumberOfArguments: 1,
+		NamedArguments:    []string{"amountThreshold", "numberThreshold"},
+	},
+	FUNC_BLANK_SEPA_NON_FR_IN_WINDOW: {
+		DebugName:         "FUNC_BLANK_SEPA_NON_FR_IN_WINDOW",
+		AstName:           "BlankSepaNonFrInWindow",
+		NumberOfArguments: 1,
+		NamedArguments:    []string{"amountThreshold", "numberThreshold"},
+	},
+	FUNC_BLANK_SEPA_NON_FR_OUT_WINDOW: {
+		DebugName:         "FUNC_BLANK_SEPA_NON_FR_OUT_WINDOW",
+		AstName:           "BlankSepaNonFrOutWindow",
 		NumberOfArguments: 1,
 		NamedArguments:    []string{"amountThreshold", "numberThreshold"},
 	},
