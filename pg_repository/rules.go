@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func (r *PGRepository) GetScenarioIterationRule(ctx context.Context, organizationId string, ruleID string) (models.Rule, error) {
+func (r *PGRepository) GetRule(ctx context.Context, organizationId string, ruleID string) (models.Rule, error) {
 	sql, args, err := r.queryBuilder.
 		Select(utils.ColumnList[dbmodels.DBRule]()...).
 		From("scenario_iteration_rules").
@@ -39,16 +39,16 @@ func (r *PGRepository) GetScenarioIterationRule(ctx context.Context, organizatio
 	return ruleDTO, err
 }
 
-type ListScenarioIterationRulesFilters struct {
-	ScenarioIterationId *string `db:"scenario_iteration_id"`
+type ListRulesFilters struct {
+	ScenarioIterationId string `db:"scenario_iteration_id"`
 }
 
-func (r *PGRepository) ListScenarioIterationRules(ctx context.Context, organizationId string, filters models.GetScenarioIterationRulesFilters) ([]models.Rule, error) {
+func (r *PGRepository) ListRules(ctx context.Context, organizationId string, filters models.GetRulesFilters) ([]models.Rule, error) {
 	sql, args, err := r.queryBuilder.
 		Select(utils.ColumnList[dbmodels.DBRule]()...).
 		From("scenario_iteration_rules").
 		Where("org_id = ?", organizationId).
-		Where(sq.Eq(ColumnValueMap(ListScenarioIterationRulesFilters{
+		Where(sq.Eq(ColumnValueMap(ListRulesFilters{
 			ScenarioIterationId: filters.ScenarioIterationId,
 		}))).
 		ToSql()
@@ -85,7 +85,7 @@ type dbCreateScenarioIterationRuleInput struct {
 	FormulaAstExpression *[]byte `db:"formula_ast_expression"`
 }
 
-func (r *PGRepository) CreateScenarioIterationRule(ctx context.Context, organizationId string, rule models.CreateRuleInput) (models.Rule, error) {
+func (r *PGRepository) CreateRule(ctx context.Context, organizationId string, rule models.CreateRuleInput) (models.Rule, error) {
 	dbCreateRuleInput := dbCreateScenarioIterationRuleInput{
 		Id:                  utils.NewPrimaryKey(organizationId),
 		OrganizationId:      organizationId,
@@ -241,7 +241,7 @@ type dbUpdateScenarioIterationRuleInput struct {
 	FormulaAstExpression *[]byte `db:"formula_ast_expression"`
 }
 
-func (r *PGRepository) UpdateScenarioIterationRule(ctx context.Context, organizationId string, rule models.UpdateRuleInput) (models.Rule, error) {
+func (r *PGRepository) UpdateRule(ctx context.Context, organizationId string, rule models.UpdateRuleInput) (models.Rule, error) {
 	dbUpdateRuleInput := dbUpdateScenarioIterationRuleInput{
 		Id:            rule.Id,
 		DisplayOrder:  rule.DisplayOrder,

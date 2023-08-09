@@ -21,8 +21,8 @@ type Rule struct {
 	CreatedAt            time.Time
 }
 
-type GetScenarioIterationRulesFilters struct {
-	ScenarioIterationId *string
+type GetRulesFilters struct {
+	ScenarioIterationId string
 }
 
 type CreateRuleInput struct {

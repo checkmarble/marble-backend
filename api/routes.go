@@ -100,21 +100,25 @@ func (api *API) routes() {
 		authedRouter.Route("/scenario-iteration-rules", func(scenarIterRulesRouter chi.Router) {
 			scenarIterRulesRouter.Use(api.enforcePermissionMiddleware(models.SCENARIO_READ))
 
-			scenarIterRulesRouter.With(httpin.NewInput(ListScenarioIterationRulesInput{})).
-				Get("/", api.ListScenarioIterationRules())
+			scenarIterRulesRouter.With(httpin.NewInput(dto.ListRulesInput{})).
+				Get("/", api.ListRules())
 
 			scenarIterRulesRouter.With(
 				api.enforcePermissionMiddleware(models.SCENARIO_CREATE),
-				httpin.NewInput(dto.CreateScenarioIterationRuleInput{}),
-			).Post("/", api.CreateScenarioIterationRule())
+				httpin.NewInput(dto.CreateRuleInput{}),
+			).Post("/", api.CreateRule())
 
 			scenarIterRulesRouter.Route("/{ruleID:"+UUIDRegExp+"}", func(r chi.Router) {
-				r.With(httpin.NewInput(GetScenarioIterationRuleInput{})).
-					Get("/", api.GetScenarioIterationRule())
+				r.With(httpin.NewInput(dto.GetRuleInput{})).
+					Get("/", api.GetRule())
 				r.With(
 					api.enforcePermissionMiddleware(models.SCENARIO_CREATE),
-					httpin.NewInput(dto.UpdateScenarioIterationRuleInput{}),
-				).Patch("/", api.UpdateScenarioIterationRule())
+					httpin.NewInput(dto.UpdateRuleInput{}),
+				).Patch("/", api.UpdateRule())
+				r.With(
+					api.enforcePermissionMiddleware(models.SCENARIO_CREATE),
+					httpin.NewInput(dto.DeleteRuleInput{}),
+				).Delete("/", api.DeleteRule())
 			})
 		})
 

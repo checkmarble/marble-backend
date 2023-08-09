@@ -50,6 +50,16 @@ func (usecases *UsecasesWithCreds) NewScenarioIterationUsecase() ScenarioIterati
 	}
 }
 
+func (usecases *UsecasesWithCreds) NewRuleUsecase() RuleUsecase {
+	return RuleUsecase{
+		enforceSecurity:           usecases.NewEnforceScenarioSecurity(),
+		repositoryLegacy:          usecases.Repositories.ScenarioIterationRuleRepositoryLegacy,
+		repository:                usecases.Repositories.RuleRepository,
+		scenarioFetcher:           usecases.NewScenarioFetcher(),
+		validateScenarioIteration: usecases.NewValidateScenarioIteration(),
+	}
+}
+
 func (usecases *UsecasesWithCreds) AstExpressionUsecase() AstExpressionUsecase {
 	return AstExpressionUsecase{
 		EnforceSecurity:      usecases.NewEnforceSecurity(),

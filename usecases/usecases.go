@@ -105,14 +105,6 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 	}
 }
 
-func (usecases *Usecases) NewScenarioIterationRuleUsecase() ScenarioIterationRuleUsecase {
-	return ScenarioIterationRuleUsecase{
-		repository:                usecases.Repositories.ScenarioIterationRuleRepositoryLegacy,
-		scenarioFetcher:           usecases.NewScenarioFetcher(),
-		validateScenarioIteration: usecases.NewValidateScenarioIteration(),
-	}
-}
-
 func (usecases *Usecases) NewScheduledExecutionUsecase() ScheduledExecutionUsecase {
 	return ScheduledExecutionUsecase{
 		scenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,
