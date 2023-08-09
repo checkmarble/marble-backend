@@ -16,6 +16,12 @@ const (
 	sepaOut
 )
 
+type blankWindowFnParams struct {
+	accountId       string
+	amountThreshold float64
+	numberThreshold int
+}
+
 type BlankDatabaseAccess struct {
 	OrganizationIdOfContext string
 	OrgTransactionFactory   org_transaction.Factory
@@ -115,24 +121,11 @@ func (blank BlankDatabaseAccess) sumTransactionsAmount(arguments ast.Arguments) 
 }
 
 func (blank BlankDatabaseAccess) sepaOutFractionated(arguments ast.Arguments) (bool, error) {
-	if err := verifyNumberOfArguments(blank.Function, arguments.Args, 1); err != nil {
+	params, err := adaptArgumentsBlankWindowVariable(arguments, blank.Function)
+	if err != nil {
 		return false, err
 	}
 
-	accountId, err := adaptArgumentToString(blank.Function, arguments.Args[0])
-	if err != nil {
-		return false, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_SEPA_OUT_FRACTIONATED): error reading accountId from arguments: %w", err)
-	}
-	amountThreshold, err := promoteArgumentToFloat64(blank.Function, arguments.NamedArgs["amountThreshold"])
-	if err != nil {
-		return false, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_SEPA_OUT_FRACTIONATED): error reading amountThreshold from named arguments: %w", err)
-	}
-	// NB: this is a float64, not an int64 because of json decoding
-	numberThresholdFloat, err := promoteArgumentToFloat64(blank.Function, arguments.NamedArgs["numberThreshold"])
-	if err != nil {
-		return false, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_SEPA_OUT_FRACTIONATED): error reading numberThreshold from named arguments: %w", err)
-	}
-	numberThreshold := int(math.Round(numberThresholdFloat))
 	nbDaysWindow := 1
 	nbDaysPeriod := 7
 
@@ -148,7 +141,7 @@ func (blank BlankDatabaseAccess) sepaOutFractionated(arguments ast.Arguments) (b
 		func(dbTx repositories.Transaction) ([]map[string]any, error) {
 			return blank.BlankDataReadRepository.RetrieveTransactions(
 				dbTx,
-				map[string]any{"account_id": accountId, "direction": "Debit", "type": "virement sortant", "cleared": true},
+				map[string]any{"account_id": params.accountId, "direction": "Debit", "type": "virement sortant", "cleared": true},
 				transactionsToRetrievePeriodStart,
 			)
 		})
@@ -156,21 +149,68 @@ func (blank BlankDatabaseAccess) sepaOutFractionated(arguments ast.Arguments) (b
 		return false, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_SEPA_OUT_FRACTIONATED): error reading transactions from DB: %w", err)
 	}
 
-	for i := range txSlice {
+	return executeWindowFunctionSearch(txSlice, transactionsToCheckPeriodStart, nbDaysWindow, params.numberThreshold, params.amountThreshold, walkWindowFindFractionated)
+}
+
+func (blank BlankDatabaseAccess) severalSepaNonFrWindow(arguments ast.Arguments, direction sepaDirection) (bool, error) {
+	params, err := adaptArgumentsBlankWindowVariable(arguments, blank.Function)
+	if err != nil {
+		return false, err
+	}
+
+	nbDaysWindow := 2
+	nbDaysPeriod := 7
+
+	if blank.ReturnFakeValue {
+		return true, nil
+	}
+
+	filters := map[string]any{"account_id": params.accountId, "cleared": true}
+	if direction == sepaIn {
+		filters["direction"] = "Credit"
+		filters["type"] = "virement entrant"
+	}
+	if direction == sepaOut {
+		filters["direction"] = "Debit"
+		filters["type"] = "virement sortant"
+	}
+
+	transactionsToRetrievePeriodStart := time.Now().AddDate(0, -nbDaysPeriod-nbDaysWindow, 0)
+	transactionsToCheckPeriodStart := time.Now().AddDate(0, -nbDaysPeriod, 0)
+	txSlice, err := org_transaction.InOrganizationSchema(
+		blank.OrgTransactionFactory,
+		blank.OrganizationIdOfContext,
+		func(dbTx repositories.Transaction) ([]map[string]any, error) {
+			return blank.BlankDataReadRepository.RetrieveTransactions(dbTx, filters, transactionsToRetrievePeriodStart)
+		})
+	if err != nil {
+		return false, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_SEPA_NON_FR_WINDOW): error reading transactions from DB: %w", err)
+	}
+
+	return executeWindowFunctionSearch(txSlice, transactionsToCheckPeriodStart, nbDaysWindow, params.numberThreshold, params.amountThreshold, walkWindowFindMultipleNonFrTransfers)
+}
+
+func executeWindowFunctionSearch(
+	transactions []map[string]any,
+	periodStart time.Time,
+	nbDaysWindow, numberThreshold int,
+	amountThreshold float64,
+	fn func(transactions []map[string]any, numberThreshold int, amountThreshold float64, nbDaysWindow int) (bool, error),
+) (bool, error) {
+	for i := range transactions {
 		// only check the transactions that are in the period to check (not the buffer added on top that is only necessary
 		// to compute the aggregates)
-		if windowStart, ok := txSlice[i]["created_at"].(time.Time); !ok {
-			return false, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_SEPA_OUT_FRACTIONATED): error reading created_at from transaction")
-		} else if windowStart.Before(transactionsToCheckPeriodStart) {
+		if windowStart, ok := transactions[i]["created_at"].(time.Time); !ok {
+			return false, fmt.Errorf("BlankDatabaseAccess: error reading created_at from transaction")
+		} else if windowStart.Before(periodStart) {
 			break
 		}
-		if found, err := walkWindowFindFractionated(txSlice[i:], numberThreshold, amountThreshold, nbDaysWindow); err != nil {
-			return false, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_SEPA_OUT_FRACTIONATED): error walking window: %w", err)
+		if found, err := fn(transactions[i:], numberThreshold, amountThreshold, nbDaysWindow); err != nil {
+			return false, fmt.Errorf("BlankDatabaseAccess: error walking window: %w", err)
 		} else if found {
 			return true, nil
 		}
 	}
-
 	return false, nil
 }
 
@@ -215,72 +255,6 @@ func walkWindowFindFractionated(transactions []map[string]any, numberThreshold i
 	if nbSameIban >= numberThreshold && totalSameIban >= amountThreshold {
 		return true, nil
 	}
-	return false, nil
-}
-
-func (blank BlankDatabaseAccess) severalSepaNonFrWindow(arguments ast.Arguments, direction sepaDirection) (bool, error) {
-	if err := verifyNumberOfArguments(blank.Function, arguments.Args, 1); err != nil {
-		return false, err
-	}
-
-	accountId, err := adaptArgumentToString(blank.Function, arguments.Args[0])
-	if err != nil {
-		return false, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_SEPA_NON_FR_WINDOW): error reading accountId from arguments: %w", err)
-	}
-	amountThreshold, err := promoteArgumentToFloat64(blank.Function, arguments.NamedArgs["amountThreshold"])
-	if err != nil {
-		return false, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_SEPA_NON_FR_WINDOW): error reading amountThreshold from named arguments: %w", err)
-	}
-	// NB: this is a float64, not an int64 because of json decoding
-	numberThresholdFloat, err := promoteArgumentToFloat64(blank.Function, arguments.NamedArgs["numberThreshold"])
-	if err != nil {
-		return false, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_SEPA_NON_FR_WINDOW): error reading numberThreshold from named arguments: %w", err)
-	}
-	numberThreshold := int(math.Round(numberThresholdFloat))
-	nbDaysWindow := 2
-	nbDaysPeriod := 7
-
-	if blank.ReturnFakeValue {
-		return true, nil
-	}
-
-	filters := map[string]any{"account_id": accountId, "cleared": true}
-	if direction == sepaIn {
-		filters["direction"] = "Credit"
-		filters["type"] = "virement entrant"
-	}
-	if direction == sepaOut {
-		filters["direction"] = "Debit"
-		filters["type"] = "virement sortant"
-	}
-
-	transactionsToRetrievePeriodStart := time.Now().AddDate(0, -nbDaysPeriod-nbDaysWindow, 0)
-	transactionsToCheckPeriodStart := time.Now().AddDate(0, -nbDaysPeriod, 0)
-	txSlice, err := org_transaction.InOrganizationSchema(
-		blank.OrgTransactionFactory,
-		blank.OrganizationIdOfContext,
-		func(dbTx repositories.Transaction) ([]map[string]any, error) {
-			return blank.BlankDataReadRepository.RetrieveTransactions(dbTx, filters, transactionsToRetrievePeriodStart)
-		})
-	if err != nil {
-		return false, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_SEPA_NON_FR_WINDOW): error reading transactions from DB: %w", err)
-	}
-
-	for i := range txSlice {
-		// only check the transactions that are in the period to check (not the buffer added on top that is only necessary
-		// to compute the aggregates)
-		if windowStart, ok := txSlice[i]["created_at"].(time.Time); !ok {
-			return false, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_SEPA_NON_FR_WINDOW): error reading created_at from transaction")
-		} else if windowStart.Before(transactionsToCheckPeriodStart) {
-			break
-		}
-		if found, err := walkWindowFindMultipleNonFrTransfers(txSlice[i:], numberThreshold, amountThreshold, nbDaysWindow); err != nil {
-			return false, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_SEPA_NON_FR_WINDOW): error walking window: %w", err)
-		} else if found {
-			return true, nil
-		}
-	}
-
 	return false, nil
 }
 
@@ -330,4 +304,31 @@ func walkWindowFindMultipleNonFrTransfers(transactions []map[string]any, numberT
 		return true, nil
 	}
 	return false, nil
+}
+
+func adaptArgumentsBlankWindowVariable(arguments ast.Arguments, fn ast.Function) (blankWindowFnParams, error) {
+	if err := verifyNumberOfArguments(fn, arguments.Args, 1); err != nil {
+		return blankWindowFnParams{}, err
+	}
+
+	accountId, err := adaptArgumentToString(fn, arguments.Args[0])
+	if err != nil {
+		return blankWindowFnParams{}, fmt.Errorf("BlankDatabaseAccess: error reading accountId from arguments: %w", err)
+	}
+	amountThreshold, err := promoteArgumentToFloat64(fn, arguments.NamedArgs["amountThreshold"])
+	if err != nil {
+		return blankWindowFnParams{}, fmt.Errorf("BlankDatabaseAccess: error reading amountThreshold from named arguments: %w", err)
+	}
+	// NB: this is a float64, not an int64 because of json decoding
+	numberThresholdFloat, err := promoteArgumentToFloat64(fn, arguments.NamedArgs["numberThreshold"])
+	if err != nil {
+		return blankWindowFnParams{}, fmt.Errorf("BlankDatabaseAccess: error reading numberThreshold from named arguments: %w", err)
+	}
+	numberThreshold := int(math.Round(numberThresholdFloat))
+
+	return blankWindowFnParams{
+		accountId:       accountId,
+		amountThreshold: amountThreshold,
+		numberThreshold: numberThreshold,
+	}, nil
 }
