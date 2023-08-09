@@ -8,9 +8,10 @@ import (
 )
 
 func TestWalkWindowFindFractionated(t *testing.T) {
-	numberThreshold := 2.0
+	numberThreshold := 2
 	amountThreshold := 1000.0
 
+	// test valid return cases
 	type testCase struct {
 		transactions []map[string]any
 		expected     bool
@@ -45,4 +46,11 @@ func TestWalkWindowFindFractionated(t *testing.T) {
 			assert.Equal(t, c.expected, found)
 		})
 	}
+
+	// Test no panic on missing fields
+	transactions := []map[string]any{
+		{"txn_amount": 1000.0},
+	}
+	_, err := walkWindowFindFractionated(transactions, numberThreshold, amountThreshold, 1)
+	assert.Error(t, err)
 }

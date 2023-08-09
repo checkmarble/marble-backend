@@ -5,6 +5,7 @@ import (
 	"marble/marble-backend/models/ast"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/org_transaction"
+	"math"
 	"time"
 )
 
@@ -116,10 +117,11 @@ func (blank BlankDatabaseAccess) sepaOutFractionated(arguments ast.Arguments) (b
 		return false, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_SEPA_OUT_FRACTIONATED): error reading amountThreshold from named arguments: %w", err)
 	}
 	// TODO FIXME: this is a float64, not an int64 because of json decoding
-	numberThreshold, err := promoteArgumentToFloat64(blank.Function, arguments.NamedArgs["numberThreshold"])
+	numberThresholdFloat, err := promoteArgumentToFloat64(blank.Function, arguments.NamedArgs["numberThreshold"])
 	if err != nil {
 		return false, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_SEPA_OUT_FRACTIONATED): error reading numberThreshold from named arguments: %w", err)
 	}
+	numberThreshold := int(math.Round(numberThresholdFloat))
 	nbDaysWindow := 1
 	nbDaysPeriod := 7
 
@@ -142,7 +144,9 @@ func (blank BlankDatabaseAccess) sepaOutFractionated(arguments ast.Arguments) (b
 	for i := range txSlice {
 		// only check the transactions that are in the period to check (not the buffer added on top that is only necessary
 		// to compute the aggregates)
-		if txSlice[i]["created_at"].(time.Time).Before(transactinsToCheckPeriodStart) {
+		if windowStart, ok := txSlice[i]["created_at"].(time.Time); !ok {
+			return false, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_SEPA_OUT_FRACTIONATED): error reading created_at from transaction")
+		} else if windowStart.Before(transactinsToCheckPeriodStart) {
 			break
 		}
 		if found, err := walkWindowFindFractionated(txSlice[i:], numberThreshold, amountThreshold, nbDaysWindow); err != nil {
@@ -155,22 +159,41 @@ func (blank BlankDatabaseAccess) sepaOutFractionated(arguments ast.Arguments) (b
 	return false, nil
 }
 
-func walkWindowFindFractionated(transactions []map[string]any, numberThreshold, amountThreshold float64, nbDaysWindow int) (bool, error) {
-	// The implementation assumes that the transactions are sorted by date, descending and contain maps with keys "counterparty_iban" (string),
-	//  "created_at" (time.Time) and "txn_amount" (float64)
-	// Verifying the assumptions would make the code extremely verbose
+func walkWindowFindFractionated(transactions []map[string]any, numberThreshold int, amountThreshold float64, nbDaysWindow int) (bool, error) {
+	// The implementation assumes that the transactions are sorted by date, descending
 	if len(transactions) == 0 {
 		return false, nil
 	}
-	iban := transactions[0]["counterparty_iban"].(string)
-	timeWindowEnd := transactions[0]["created_at"].(time.Time)
+	iban, ok := transactions[0]["counterparty_iban"].(string)
+	if !ok {
+		return false, fmt.Errorf("walkWindowFindFractionated: error reading iban from transaction")
+	}
+	timeWindowEnd, ok := transactions[0]["created_at"].(time.Time)
+	if !ok {
+		return false, fmt.Errorf("walkWindowFindFractionated: error reading created_at from transaction")
+	}
 	timeWindowStart := timeWindowEnd.AddDate(0, 0, -nbDaysWindow)
 
 	var totalSameIban float64 = 0
-	var nbSameIban float64 = 0
-	for i := 0; i < len(transactions) && transactions[i]["created_at"].(time.Time).After(timeWindowStart); i++ {
-		if iban == transactions[i]["counterparty_iban"].(string) {
-			totalSameIban += transactions[i]["txn_amount"].(float64)
+	nbSameIban := 0
+	for i := 0; i < len(transactions); i++ {
+		thisCreatedAt, ok := transactions[i]["created_at"].(time.Time)
+		if !ok {
+			return false, fmt.Errorf("walkWindowFindFractionated: error reading created_at from transaction")
+		}
+		if thisCreatedAt.Before(timeWindowStart) {
+			break // outside of for loop because of type assertion
+		}
+		thisIban, ok := transactions[i]["counterparty_iban"].(string)
+		if !ok {
+			return false, fmt.Errorf("walkWindowFindFractionated: error reading iban from transaction")
+		}
+		if iban == thisIban {
+			amount, ok := transactions[i]["txn_amount"].(float64)
+			if !ok {
+				return false, fmt.Errorf("walkWindowFindFractionated: error reading txn_amount from transaction")
+			}
+			totalSameIban += amount
 			nbSameIban++
 		}
 	}
