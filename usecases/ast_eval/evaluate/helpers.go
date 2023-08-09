@@ -32,7 +32,9 @@ func adaptLeftAndRight[T any](function ast.Function, left any, right any, adapt 
 }
 
 func verifyNumberOfArguments(function ast.Function, args []any, requiredNumberOfArguments int) error {
-
+	if (requiredNumberOfArguments == -1) {
+		return nil
+	}
 	numberOfOperands := len(args)
 	if numberOfOperands != requiredNumberOfArguments {
 		return fmt.Errorf(
