@@ -54,8 +54,12 @@ func (usecase *RuleUsecase) GetRule(ctx context.Context, organizationId string, 
 	return rule, nil
 }
 
-func (usecase *RuleUsecase) UpdateRule(ctx context.Context, organizationId string, rule models.UpdateRuleInput) (updatedRule models.Rule, validation models.ScenarioValidation, err error) {
-	scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(nil, updatedRule.ScenarioIterationId)
+func (usecase *RuleUsecase) UpdateRule(ctx context.Context, organizationId string, updateRule models.UpdateRuleInput) (updatedRule models.Rule, validation models.ScenarioValidation, err error) {
+	rule, err := usecase.repositoryLegacy.GetRule(ctx, organizationId, updateRule.Id)
+	if err != nil {
+		return updatedRule, validation, err
+	}
+	scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(nil, rule.ScenarioIterationId)
 	if err != nil {
 		return updatedRule, validation, err
 	}
@@ -63,7 +67,7 @@ func (usecase *RuleUsecase) UpdateRule(ctx context.Context, organizationId strin
 		return updatedRule, validation, err
 	}
 
-	updatedRule, err = usecase.repositoryLegacy.UpdateRule(ctx, organizationId, rule)
+	updatedRule, err = usecase.repositoryLegacy.UpdateRule(ctx, organizationId, updateRule)
 	if err != nil {
 		return updatedRule, validation, err
 	}
