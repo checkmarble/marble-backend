@@ -17,7 +17,7 @@ const (
 )
 
 type blankWindowFnArguments struct {
-	accountId       string
+	ownerBusinessId string
 	referenceTime   time.Time
 	amountThreshold float64
 	numberThreshold int
@@ -79,9 +79,9 @@ func (blank BlankDatabaseAccess) getFirstTransactionDate(arguments ast.Arguments
 		return time.Time{}, err
 	}
 
-	accountId, err := adaptArgumentToString(blank.Function, arguments.Args[0])
+	ownerBusinessId, err := adaptArgumentToString(blank.Function, arguments.Args[0])
 	if err != nil {
-		return time.Time{}, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_FIRST_TRANSACTION_DATE): error reading accountId from arguments: %w", err)
+		return time.Time{}, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_FIRST_TRANSACTION_DATE): error reading ownerBusinessId from arguments: %w", err)
 	}
 
 	if blank.ReturnFakeValue {
@@ -92,7 +92,7 @@ func (blank BlankDatabaseAccess) getFirstTransactionDate(arguments ast.Arguments
 		blank.OrgTransactionFactory,
 		blank.OrganizationIdOfContext,
 		func(tx repositories.Transaction) (time.Time, error) {
-			return blank.BlankDataReadRepository.GetFirstTransactionTimestamp(tx, accountId)
+			return blank.BlankDataReadRepository.GetFirstTransactionTimestamp(tx, ownerBusinessId)
 		})
 }
 
@@ -101,9 +101,9 @@ func (blank BlankDatabaseAccess) sumTransactionsAmount(arguments ast.Arguments) 
 		return 0, err
 	}
 
-	accountId, err := adaptArgumentToString(blank.Function, arguments.Args[0])
+	ownerBusinessId, err := adaptArgumentToString(blank.Function, arguments.Args[0])
 	if err != nil {
-		return 0, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_SUM_TRANSACTIONS_AMOUNT): error reading accountId from arguments: %w", err)
+		return 0, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_SUM_TRANSACTIONS_AMOUNT): error reading ownerBusinessId from arguments: %w", err)
 	}
 	direction, err := adaptArgumentToString(blank.Function, arguments.NamedArgs["direction"])
 	if err != nil {
@@ -126,7 +126,7 @@ func (blank BlankDatabaseAccess) sumTransactionsAmount(arguments ast.Arguments) 
 		blank.OrgTransactionFactory,
 		blank.OrganizationIdOfContext,
 		func(tx repositories.Transaction) (float64, error) {
-			return blank.BlankDataReadRepository.SumTransactionsAmount(tx, accountId, direction, createdFrom, createdTo)
+			return blank.BlankDataReadRepository.SumTransactionsAmount(tx, ownerBusinessId, direction, createdFrom, createdTo)
 		})
 }
 
@@ -151,7 +151,7 @@ func (blank BlankDatabaseAccess) sepaOutFractionated(arguments ast.Arguments) (b
 		func(dbTx repositories.Transaction) ([]map[string]any, error) {
 			return blank.BlankDataReadRepository.RetrieveTransactions(
 				dbTx,
-				map[string]any{"account_id": args.accountId, "direction": "Debit", "type": "virement sortant", "cleared": true},
+				map[string]any{"owner_business_id": args.ownerBusinessId, "direction": "Debit", "type": "virement sortant", "cleared": true},
 				transactionsToRetrievePeriodStart,
 			)
 		})
@@ -182,7 +182,7 @@ func (blank BlankDatabaseAccess) severalSepaNonFrWindow(arguments ast.Arguments,
 	var windowDuration time.Duration
 	periodDuration := time.Duration(24*7) * time.Hour
 
-	filters := map[string]any{"account_id": args.accountId, "cleared": true}
+	filters := map[string]any{"owner_business_id": args.ownerBusinessId, "cleared": true}
 	if direction == sepaIn {
 		windowDuration = time.Duration(24) * time.Hour
 		filters["direction"] = "Credit"
@@ -230,7 +230,7 @@ func (blank BlankDatabaseAccess) fractionatedTransferReceived(arguments ast.Argu
 	windowDuration := time.Duration(5) * time.Minute
 	periodDuration := time.Duration(24*7) * time.Hour
 
-	filters := map[string]any{"account_id": args.accountId, "cleared": true, "direction": "Credit", "type": "virement entrant"}
+	filters := map[string]any{"owner_business_id": args.ownerBusinessId, "cleared": true, "direction": "Credit", "type": "virement entrant"}
 
 	transactionsToRetrievePeriodStart := args.referenceTime.Add(-windowDuration - periodDuration)
 	transactionsToCheckPeriodStart := args.referenceTime.Add(-periodDuration)
@@ -374,9 +374,9 @@ func adaptArgumentsBlankWindowVariable(arguments ast.Arguments, fn ast.Function)
 		return blankWindowFnArguments{}, err
 	}
 
-	accountId, err := adaptArgumentToString(fn, arguments.Args[0])
+	ownerBusinessId, err := adaptArgumentToString(fn, arguments.Args[0])
 	if err != nil {
-		return blankWindowFnArguments{}, fmt.Errorf("BlankDatabaseAccess: error reading accountId from arguments: %w", err)
+		return blankWindowFnArguments{}, fmt.Errorf("BlankDatabaseAccess: error reading ownerBusinessId from arguments: %w", err)
 	}
 	referenceTime, err := adaptArgumentToTime(fn, arguments.Args[1])
 	if err != nil {
@@ -394,7 +394,7 @@ func adaptArgumentsBlankWindowVariable(arguments ast.Arguments, fn ast.Function)
 	numberThreshold := int(math.Round(numberThresholdFloat))
 
 	return blankWindowFnArguments{
-		accountId:       accountId,
+		ownerBusinessId: ownerBusinessId,
 		referenceTime:   referenceTime,
 		amountThreshold: amountThreshold,
 		numberThreshold: numberThreshold,

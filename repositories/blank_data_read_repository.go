@@ -11,21 +11,21 @@ import (
 )
 
 type BlankDataReadRepository interface {
-	GetFirstTransactionTimestamp(transaction Transaction, accountId string) (time.Time, error)
-	SumTransactionsAmount(transaction Transaction, accountId string, direction string, createdFrom time.Time, createdTo time.Time) (float64, error)
+	GetFirstTransactionTimestamp(transaction Transaction, ownerBusinessId string) (time.Time, error)
+	SumTransactionsAmount(transaction Transaction, ownerBusinessId string, direction string, createdFrom time.Time, createdTo time.Time) (float64, error)
 	RetrieveTransactions(transaction Transaction, filters map[string]any, createdFrom time.Time) ([]map[string]any, error)
 }
 
 type BlankDataReadRepositoryImpl struct{}
 
-func (repo *BlankDataReadRepositoryImpl) GetFirstTransactionTimestamp(transaction Transaction, accountId string) (time.Time, error) {
+func (repo *BlankDataReadRepositoryImpl) GetFirstTransactionTimestamp(transaction Transaction, ownerBusinessId string) (time.Time, error) {
 	tx := adaptClientDatabaseTransaction(transaction)
 
 	tableName := tableNameWithSchema(tx, models.TableName("transactions"))
 	query := NewQueryBuilder().
 		Select("MIN(created_at) AS first_transaction_at").
 		From(tableName).
-		Where(squirrel.Eq{"account_id": accountId}).
+		Where(squirrel.Eq{"owner_business_id": ownerBusinessId}).
 		Where(rowIsValid(tableName))
 
 	sql, args, err := query.ToSql()
@@ -44,14 +44,14 @@ func (repo *BlankDataReadRepositoryImpl) GetFirstTransactionTimestamp(transactio
 	return output, nil
 }
 
-func (repo *BlankDataReadRepositoryImpl) SumTransactionsAmount(transaction Transaction, accountId string, direction string, createdFrom time.Time, createdTo time.Time) (float64, error) {
+func (repo *BlankDataReadRepositoryImpl) SumTransactionsAmount(transaction Transaction, ownerBusinessId string, direction string, createdFrom time.Time, createdTo time.Time) (float64, error) {
 	tx := adaptClientDatabaseTransaction(transaction)
 
 	tableName := tableNameWithSchema(tx, models.TableName("transactions"))
 	query := NewQueryBuilder().
 		Select("SUM(txn_amount)").
 		From(tableName).
-		Where(squirrel.Eq{"account_id": accountId}).
+		Where(squirrel.Eq{"owner_business_id": ownerBusinessId}).
 		Where(squirrel.Eq{"direction": direction}).
 		Where(squirrel.GtOrEq{"created_at": createdFrom}).
 		Where(squirrel.LtOrEq{"created_at": createdTo}).
