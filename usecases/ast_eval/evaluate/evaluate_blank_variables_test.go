@@ -41,7 +41,7 @@ func TestWalkWindowFindFractionated(t *testing.T) {
 	}
 	for _, c := range testCases {
 		t.Run(c.name, func(t *testing.T) {
-			found, err := walkWindowFindFractionated(c.transactions, numberThreshold, amountThreshold, 1)
+			found, err := walkWindowFindFractionated(c.transactions, windowFunctionParams{amountThreshold: amountThreshold, numberThreshold: numberThreshold, windowDuration: time.Duration(24) * time.Hour})
 			assert.NoError(t, err)
 			assert.Equal(t, c.expected, found)
 		})
@@ -51,7 +51,7 @@ func TestWalkWindowFindFractionated(t *testing.T) {
 	transactions := []map[string]any{
 		{"txn_amount": 1000.0},
 	}
-	_, err := walkWindowFindFractionated(transactions, numberThreshold, amountThreshold, 1)
+	_, err := walkWindowFindFractionated(transactions, windowFunctionParams{amountThreshold: amountThreshold, numberThreshold: numberThreshold, windowDuration: time.Duration(24) * time.Hour})
 	assert.Error(t, err)
 }
 
@@ -96,7 +96,7 @@ func TestWalkWindowFindMultipleNonFrTransfers(t *testing.T) {
 	}
 	for _, c := range testCases {
 		t.Run(c.name, func(t *testing.T) {
-			found, err := walkWindowFindMultipleNonFrTransfers(c.transactions, numberThreshold, amountThreshold, 2)
+			found, err := walkWindowFindMultipleNonFrTransfers(c.transactions, windowFunctionParams{amountThreshold: amountThreshold, numberThreshold: numberThreshold, windowDuration: time.Duration(2*24) * time.Hour})
 			assert.NoError(t, err)
 			assert.Equal(t, c.expected, found)
 		})
@@ -106,6 +106,6 @@ func TestWalkWindowFindMultipleNonFrTransfers(t *testing.T) {
 	transactions := []map[string]any{
 		{"txn_amount": 1000.0},
 	}
-	_, err := walkWindowFindMultipleNonFrTransfers(transactions, numberThreshold, amountThreshold, 2)
+	_, err := walkWindowFindMultipleNonFrTransfers(transactions, windowFunctionParams{amountThreshold: amountThreshold, numberThreshold: numberThreshold, windowDuration: time.Duration(2*24) * time.Hour})
 	assert.Error(t, err)
 }

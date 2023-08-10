@@ -80,10 +80,6 @@ func (repo *BlankDataReadRepositoryImpl) RetrieveTransactions(transaction Transa
 	query := NewQueryBuilder().
 		Select("txn_amount, created_at, counterparty_iban").
 		From(tableName).
-		// Where(squirrel.Eq{"account_id": accountId}).
-		// Where(squirrel.Eq{"direction": "Debit"}).
-		// Where(squirrel.Eq{"type": "virement sortant"}).
-		// Where(squirrel.Eq{"cleared": true}).
 		Where(squirrel.GtOrEq{"created_at": createdFrom}).
 		Where(rowIsValid(tableName)).
 		OrderBy("created_at DESC")

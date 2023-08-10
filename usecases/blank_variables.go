@@ -20,6 +20,7 @@ func addBlankVariableEvaluators(environment *ast_eval.AstEvaluationEnvironment, 
 	environment.AddEvaluator(ast.FUNC_BLANK_SEPA_OUT_FRACTIONATED, newBlankDbAccessWithFunction(blankDbAccess, ast.FUNC_BLANK_SEPA_OUT_FRACTIONATED))
 	environment.AddEvaluator(ast.FUNC_BLANK_SEPA_NON_FR_IN_WINDOW, newBlankDbAccessWithFunction(blankDbAccess, ast.FUNC_BLANK_SEPA_NON_FR_IN_WINDOW))
 	environment.AddEvaluator(ast.FUNC_BLANK_SEPA_NON_FR_OUT_WINDOW, newBlankDbAccessWithFunction(blankDbAccess, ast.FUNC_BLANK_SEPA_NON_FR_OUT_WINDOW))
+	environment.AddEvaluator(ast.FUNC_BLANK_QUICK_FRACTIONATED_TRANSFERS_RECEIVED_WINDOW, newBlankDbAccessWithFunction(blankDbAccess, ast.FUNC_BLANK_QUICK_FRACTIONATED_TRANSFERS_RECEIVED_WINDOW))
 
 }
 
