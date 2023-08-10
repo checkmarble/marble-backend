@@ -18,6 +18,7 @@ const (
 
 type blankWindowFnArguments struct {
 	accountId       string
+	referenceTime   time.Time
 	amountThreshold float64
 	numberThreshold int
 }
@@ -135,15 +136,15 @@ func (blank BlankDatabaseAccess) sepaOutFractionated(arguments ast.Arguments) (b
 		return false, err
 	}
 
-	windowDuration := time.Duration(24) * time.Hour
-	periodDuration := time.Duration(24*7) * time.Hour
-
 	if blank.ReturnFakeValue {
 		return true, nil
 	}
 
-	transactionsToRetrievePeriodStart := time.Now().Add(-windowDuration - periodDuration)
-	transactionsToCheckPeriodStart := time.Now().Add(-periodDuration)
+	windowDuration := time.Duration(24) * time.Hour
+	periodDuration := time.Duration(24*7) * time.Hour
+
+	transactionsToRetrievePeriodStart := args.referenceTime.Add(-windowDuration - periodDuration)
+	transactionsToCheckPeriodStart := args.referenceTime.Add(-periodDuration)
 	txSlice, err := org_transaction.InOrganizationSchema(
 		blank.OrgTransactionFactory,
 		blank.OrganizationIdOfContext,
@@ -174,25 +175,27 @@ func (blank BlankDatabaseAccess) severalSepaNonFrWindow(arguments ast.Arguments,
 		return false, err
 	}
 
-	windowDuration := time.Duration(24) * time.Hour
-	periodDuration := time.Duration(24*7) * time.Hour
-
 	if blank.ReturnFakeValue {
 		return true, nil
 	}
 
+	var windowDuration time.Duration
+	periodDuration := time.Duration(24*7) * time.Hour
+
 	filters := map[string]any{"account_id": args.accountId, "cleared": true}
 	if direction == sepaIn {
+		windowDuration = time.Duration(24) * time.Hour
 		filters["direction"] = "Credit"
 		filters["type"] = "virement entrant"
 	}
 	if direction == sepaOut {
+		windowDuration = time.Duration(2*24) * time.Hour
 		filters["direction"] = "Debit"
 		filters["type"] = "virement sortant"
 	}
 
-	transactionsToRetrievePeriodStart := time.Now().Add(-windowDuration - periodDuration)
-	transactionsToCheckPeriodStart := time.Now().Add(-periodDuration)
+	transactionsToRetrievePeriodStart := args.referenceTime.Add(-windowDuration - periodDuration)
+	transactionsToCheckPeriodStart := args.referenceTime.Add(-periodDuration)
 	txSlice, err := org_transaction.InOrganizationSchema(
 		blank.OrgTransactionFactory,
 		blank.OrganizationIdOfContext,
@@ -220,17 +223,17 @@ func (blank BlankDatabaseAccess) fractionatedTransferReceived(arguments ast.Argu
 		return false, err
 	}
 
-	windowDuration := time.Duration(5) * time.Minute
-	periodDuration := time.Duration(24*7) * time.Hour
-
 	if blank.ReturnFakeValue {
 		return true, nil
 	}
 
+	windowDuration := time.Duration(5) * time.Minute
+	periodDuration := time.Duration(24*7) * time.Hour
+
 	filters := map[string]any{"account_id": args.accountId, "cleared": true, "direction": "Credit", "type": "virement entrant"}
 
-	transactionsToRetrievePeriodStart := time.Now().Add(-windowDuration - periodDuration)
-	transactionsToCheckPeriodStart := time.Now().Add(-periodDuration)
+	transactionsToRetrievePeriodStart := args.referenceTime.Add(-windowDuration - periodDuration)
+	transactionsToCheckPeriodStart := args.referenceTime.Add(-periodDuration)
 	txSlice, err := org_transaction.InOrganizationSchema(
 		blank.OrgTransactionFactory,
 		blank.OrganizationIdOfContext,
@@ -367,13 +370,17 @@ func walkWindowFindMultipleNonFrTransfers(transactions []map[string]any, params 
 }
 
 func adaptArgumentsBlankWindowVariable(arguments ast.Arguments, fn ast.Function) (blankWindowFnArguments, error) {
-	if err := verifyNumberOfArguments(fn, arguments.Args, 1); err != nil {
+	if err := verifyNumberOfArguments(fn, arguments.Args, 2); err != nil {
 		return blankWindowFnArguments{}, err
 	}
 
 	accountId, err := adaptArgumentToString(fn, arguments.Args[0])
 	if err != nil {
 		return blankWindowFnArguments{}, fmt.Errorf("BlankDatabaseAccess: error reading accountId from arguments: %w", err)
+	}
+	referenceTime, err := adaptArgumentToTime(fn, arguments.Args[1])
+	if err != nil {
+		return blankWindowFnArguments{}, fmt.Errorf("BlankDatabaseAccess: error reading time from arguments: %w", err)
 	}
 	amountThreshold, err := promoteArgumentToFloat64(fn, arguments.NamedArgs["amountThreshold"])
 	if err != nil {
@@ -388,6 +395,7 @@ func adaptArgumentsBlankWindowVariable(arguments ast.Arguments, fn ast.Function)
 
 	return blankWindowFnArguments{
 		accountId:       accountId,
+		referenceTime:   referenceTime,
 		amountThreshold: amountThreshold,
 		numberThreshold: numberThreshold,
 	}, nil

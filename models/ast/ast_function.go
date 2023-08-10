@@ -30,6 +30,7 @@ const (
 	FUNC_AND
 	FUNC_OR
 	FUNC_ADD_TIME
+	FUNC_TIME_NOW
 	FUNC_PAYLOAD
 	FUNC_DB_ACCESS
 	FUNC_CUSTOM_LIST_ACCESS
@@ -111,6 +112,11 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		DebugName:         "FUNC_ADD_TIME",
 		AstName:           "AddTime",
 		NumberOfArguments: 2,
+	},
+	FUNC_TIME_NOW: {
+		DebugName:         "FUNC_TIME_NOW",
+		AstName:           "TimeNow",
+		NumberOfArguments: 0,
 	},
 	FUNC_PAYLOAD: {
 		DebugName:         "FUNC_PAYLOAD",

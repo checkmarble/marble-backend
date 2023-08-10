@@ -43,5 +43,6 @@ func NewAstEvaluationEnvironment() AstEvaluationEnvironment {
 	environment.AddEvaluator(ast.FUNC_IS_IN_LIST, evaluate.NewStringInList(ast.FUNC_IS_IN_LIST))
 	environment.AddEvaluator(ast.FUNC_IS_NOT_IN_LIST, evaluate.NewStringInList(ast.FUNC_IS_NOT_IN_LIST))
 	environment.AddEvaluator(ast.FUNC_ADD_TIME, evaluate.NewTimeArithmetic(ast.FUNC_ADD_TIME))
+	environment.AddEvaluator(ast.FUNC_TIME_NOW, evaluate.NewTimeFunctions(ast.FUNC_TIME_NOW))
 	return environment
 }
