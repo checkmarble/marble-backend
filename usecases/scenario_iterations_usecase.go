@@ -49,6 +49,9 @@ func (usecase *ScenarioIterationUsecase) GetScenarioIteration(scenarioIterationI
 }
 
 func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(ctx context.Context, organizationId string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error) {
+	if err := usecase.enforceSecurity.CreateScenario(organizationId); err != nil {
+		return models.ScenarioIteration{}, err
+	}
 	body := scenarioIteration.Body
 	if body != nil && body.Schedule != "" {
 		gron := gronx.New()
@@ -61,6 +64,9 @@ func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(ctx context.Con
 }
 
 func (usecase *ScenarioIterationUsecase) UpdateScenarioIteration(ctx context.Context, organizationId string, scenarioIteration models.UpdateScenarioIterationInput) (iteration models.ScenarioIteration, validation models.ScenarioValidation, err error) {
+	if err := usecase.enforceSecurity.CreateScenario(organizationId); err != nil {
+		return iteration, validation, err
+	}
 	body := scenarioIteration.Body
 	if body != nil && body.Schedule != nil && *body.Schedule != "" {
 		gron := gronx.New()
@@ -83,4 +89,36 @@ func (usecase *ScenarioIterationUsecase) UpdateScenarioIteration(ctx context.Con
 
 	validation = usecase.validateScenarioIteration.Validate(scenarioAndIteration)
 	return iteration, validation, err
+}
+
+func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(ctx context.Context, organizationId string, scenarioIterationId string) (models.ScenarioIteration, error) {
+	if err := usecase.enforceSecurity.CreateScenario(organizationId); err != nil {
+		return models.ScenarioIteration{}, err
+	}
+	si, err := usecase.scenarioIterationsReadRepository.GetScenarioIteration(nil, scenarioIterationId)
+	if err != nil {
+		return models.ScenarioIteration{}, err
+	}
+	createScenarioIterationInput := models.CreateScenarioIterationInput{
+		ScenarioId: si.ScenarioId,
+	}
+	createScenarioIterationInput.Body = &models.CreateScenarioIterationBody{
+		ScoreReviewThreshold:          si.ScoreReviewThreshold,
+		ScoreRejectThreshold:          si.ScoreRejectThreshold,
+		BatchTriggerSQL:               si.BatchTriggerSQL,
+		Schedule:                      si.Schedule,
+		Rules:                         make([]models.CreateRuleInput, len(si.Rules)),
+		TriggerConditionAstExpression: si.TriggerConditionAstExpression,
+	}
+
+	for i, rule := range si.Rules {
+		createScenarioIterationInput.Body.Rules[i] = models.CreateRuleInput{
+			DisplayOrder:         rule.DisplayOrder,
+			Name:                 rule.Name,
+			Description:          rule.Description,
+			FormulaAstExpression: rule.FormulaAstExpression,
+			ScoreModifier:        rule.ScoreModifier,
+		}
+	}
+	return usecase.scenarioIterationsWriteRepository.CreateScenarioIteration(ctx, organizationId, createScenarioIterationInput)
 }
