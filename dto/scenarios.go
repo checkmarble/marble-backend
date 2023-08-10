@@ -57,6 +57,10 @@ type CreateScenarioIterationInput struct {
 	Payload *CreateScenarioIterationBody `in:"body=json"`
 }
 
+type CreateDraftFromScenarioIterationInput struct {
+	ScenarioIterationId string `in:"path=scenarioIterationId"`
+}
+
 // scenario publications
 
 type CreateScenarioPublicationBody struct {

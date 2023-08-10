@@ -89,7 +89,10 @@ func (api *API) routes() {
 			scenarIterRouter.Route("/{scenarioIterationId:"+UUIDRegExp+"}", func(r chi.Router) {
 				r.With(httpin.NewInput(GetScenarioIterationInput{})).
 					Get("/", api.GetScenarioIteration())
-
+				r.With(
+					api.enforcePermissionMiddleware(models.SCENARIO_CREATE),
+					httpin.NewInput(dto.CreateDraftFromScenarioIterationInput{}),
+				).Post("/", api.CreateDraftFromIteration())
 				r.With(
 					api.enforcePermissionMiddleware(models.SCENARIO_CREATE),
 					httpin.NewInput(dto.UpdateScenarioIterationInput{}),
@@ -114,7 +117,7 @@ func (api *API) routes() {
 				r.With(
 					api.enforcePermissionMiddleware(models.SCENARIO_CREATE),
 					httpin.NewInput(dto.UpdateRuleInput{}),
-				).Patch("/", api.UpdateRule())
+				).Patch("/", api.UpdateRule())				
 				r.With(
 					api.enforcePermissionMiddleware(models.SCENARIO_CREATE),
 					httpin.NewInput(dto.DeleteRuleInput{}),
