@@ -36,3 +36,12 @@ var (
 var (
 	FormatValidationError = errors.New("The input object is not valid")
 )
+
+// Rule execution related errors
+var (
+	NullFieldReadError   = errors.New("Null field read")
+	NoRowsReadError      = errors.New("No row read")
+	DivisionByZeroError  = errors.New("Division by zero")
+)
+
+var RuleExecutionAuthorizedErrors = []error{NullFieldReadError, NoRowsReadError, DivisionByZeroError}

@@ -1,6 +1,7 @@
 package dbmodels
 
 import (
+	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
 
@@ -23,6 +24,19 @@ const TABLE_DECISION_RULE = "decision_rules"
 
 var SelectDecisionRuleColumn = utils.ColumnList[DbDecisionRule]()
 
+func adaptErrorCodeAsError(errCode models.RuleExecutionError) error {
+	switch errCode {
+	case models.NullFieldRead:
+		return models.NullFieldReadError
+	case models.NoRowsRead:
+		return models.NoRowsReadError
+	case models.DivisionByZero:
+		return models.DivisionByZeroError
+	default:
+		return fmt.Errorf("unknown error code")
+	}
+}
+
 func AdaptRuleExecution(db DbDecisionRule) models.RuleExecution {
 	return models.RuleExecution{
 		Rule: models.Rule{
@@ -31,6 +45,6 @@ func AdaptRuleExecution(db DbDecisionRule) models.RuleExecution {
 		},
 		Result:              db.Result,
 		ResultScoreModifier: db.ScoreModifier,
-		Error:               nil, // TODO put error handling by rule back in place
+		Error:               adaptErrorCodeAsError(models.RuleExecutionError(db.ErrorCode)),
 	}
 }

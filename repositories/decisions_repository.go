@@ -71,11 +71,19 @@ func (repo *DecisionRepositoryImpl) DecisionsOfScheduledExecution(scheduledExecu
 	)
 }
 
-func adaptDecisionError(err error) models.DecisionError {
-	if err == nil {
+func adaptRuleExecutionError(err error) models.RuleExecutionError {
+	switch {
+	case err == nil:
 		return 0
+	case errors.Is(err, models.NullFieldReadError):
+		return models.NullFieldRead
+	case errors.Is(err, models.NoRowsReadError):
+		return models.NoRowsRead
+	case errors.Is(err, models.DivisionByZeroError):
+		return models.DivisionByZero
+	default:
+		return models.Unknown
 	}
-	return 1
 }
 
 func (repo *DecisionRepositoryImpl) StoreDecision(tx Transaction, decision models.Decision, organizationId string, newDecisionId string) error {
@@ -139,7 +147,7 @@ func (repo *DecisionRepositoryImpl) StoreDecision(tx Transaction, decision model
 				ruleExecution.Rule.Description,
 				ruleExecution.ResultScoreModifier,
 				ruleExecution.Result,
-				adaptDecisionError(ruleExecution.Error),
+				adaptRuleExecutionError(ruleExecution.Error),
 			)
 	}
 	_, err = pgTx.ExecBuilder(builderForRules)

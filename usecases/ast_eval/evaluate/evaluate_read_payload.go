@@ -23,9 +23,14 @@ func (p Payload) Evaluate(arguments ast.Arguments) (any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("payload field name is not a string %w", ErrRuntimeExpression)
 	}
-	value, err := p.Payload.ReadFieldFromPayload(models.FieldName(payloadFieldName)); 
+	value, err := p.Payload.ReadFieldFromPayload(models.FieldName(payloadFieldName));
 	if err != nil {
 		return nil, fmt.Errorf("payload var does not exist: %s", payloadFieldName)
 	}
+
+	if value == nil {
+		return nil, fmt.Errorf("value is null in payload field %s, %w", payloadFieldName, models.NullFieldReadError)
+	}
+
 	return value, nil
 }
