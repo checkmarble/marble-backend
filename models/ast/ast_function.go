@@ -15,7 +15,7 @@ var FuncOperators = []Function{
 	FUNC_LESS,
 	FUNC_EQUAL,
 	FUNC_IS_IN_LIST,
-} 
+}
 
 const (
 	FUNC_CONSTANT Function = iota
@@ -29,11 +29,19 @@ const (
 	FUNC_NOT
 	FUNC_AND
 	FUNC_OR
+	FUNC_ADD_TIME
+	FUNC_TIME_NOW
 	FUNC_PAYLOAD
 	FUNC_DB_ACCESS
 	FUNC_CUSTOM_LIST_ACCESS
 	FUNC_IS_IN_LIST
 	FUNC_IS_NOT_IN_LIST
+	FUNC_BLANK_FIRST_TRANSACTION_DATE
+	FUNC_BLANK_SUM_TRANSACTIONS_AMOUNT
+	FUNC_BLANK_SEPA_OUT_FRACTIONATED
+	FUNC_BLANK_SEPA_NON_FR_IN_WINDOW
+	FUNC_BLANK_SEPA_NON_FR_OUT_WINDOW
+	FUNC_BLANK_QUICK_FRACTIONATED_TRANSFERS_RECEIVED_WINDOW
 	FUNC_UNKNOWN Function = -1
 )
 
@@ -100,9 +108,19 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		AstName:           "Or",
 		NumberOfArguments: -1,
 	},
-	FUNC_PAYLOAD:           {
-		DebugName: "FUNC_PAYLOAD",
-		AstName:   "Payload",
+	FUNC_ADD_TIME: {
+		DebugName:         "FUNC_ADD_TIME",
+		AstName:           "AddTime",
+		NumberOfArguments: 2,
+	},
+	FUNC_TIME_NOW: {
+		DebugName:         "FUNC_TIME_NOW",
+		AstName:           "TimeNow",
+		NumberOfArguments: 0,
+	},
+	FUNC_PAYLOAD: {
+		DebugName:         "FUNC_PAYLOAD",
+		AstName:           "Payload",
 		NumberOfArguments: 1,
 	},
 	FUNC_DB_ACCESS:          AttributeFuncDbAccess.FuncAttributes,
@@ -116,6 +134,42 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		DebugName:         "FUNC_IS_NOT_IN_LIST",
 		AstName:           "IsNotInList",
 		NumberOfArguments: 2,
+	},
+	FUNC_BLANK_FIRST_TRANSACTION_DATE: {
+		DebugName:         "FUNC_BLANK_FIRST_TRANSACTION_DATE",
+		AstName:           "BlankFirstTransactionDate",
+		NumberOfArguments: 1,
+	},
+	FUNC_BLANK_SUM_TRANSACTIONS_AMOUNT: {
+		DebugName:         "FUNC_BLANK_SUM_TRANSACTIONS_AMOUNT",
+		AstName:           "BlankSumTransactionsAmount",
+		NumberOfArguments: 1,
+		// Or pass them as a single map ? To be discussed.
+		NamedArguments: []string{"direction", "created_from", "created_to"},
+	},
+	FUNC_BLANK_SEPA_OUT_FRACTIONATED: {
+		DebugName:         "FUNC_BLANK_SEPA_OUT_FRACTIONATED",
+		AstName:           "BlankSepaOutFractionated",
+		NumberOfArguments: 1,
+		NamedArguments:    []string{"amountThreshold", "numberThreshold"},
+	},
+	FUNC_BLANK_SEPA_NON_FR_IN_WINDOW: {
+		DebugName:         "FUNC_BLANK_SEPA_NON_FR_IN_WINDOW",
+		AstName:           "BlankSepaNonFrInWindow",
+		NumberOfArguments: 1,
+		NamedArguments:    []string{"amountThreshold", "numberThreshold"},
+	},
+	FUNC_BLANK_SEPA_NON_FR_OUT_WINDOW: {
+		DebugName:         "FUNC_BLANK_SEPA_NON_FR_OUT_WINDOW",
+		AstName:           "BlankSepaNonFrOutWindow",
+		NumberOfArguments: 1,
+		NamedArguments:    []string{"amountThreshold", "numberThreshold"},
+	},
+	FUNC_BLANK_QUICK_FRACTIONATED_TRANSFERS_RECEIVED_WINDOW: {
+		DebugName:         "FUNC_BLANK_QUICK_FRACTIONATED_TRANSFERS_RECEIVED_WINDOW",
+		AstName:           "BlankQuickFractionatedTransfersReceivedWindow",
+		NumberOfArguments: 1,
+		NamedArguments:    []string{"amountThreshold", "numberThreshold"},
 	},
 }
 

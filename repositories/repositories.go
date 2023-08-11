@@ -21,6 +21,7 @@ type Repositories struct {
 	IngestionRepository                   IngestionRepository
 	DataModelRepository                   DataModelRepository
 	IngestedDataReadRepository            IngestedDataReadRepository
+	BlankDataReadRepository               BlankDataReadRepository
 	DecisionRepository                    DecisionRepository
 	RuleRepository                        RuleRepository
 	ScenarioReadRepository                ScenarioReadRepository
@@ -88,6 +89,7 @@ func NewRepositories(
 			transactionFactory: transactionFactory,
 		},
 		IngestedDataReadRepository: &IngestedDataReadRepositoryImpl{},
+		BlankDataReadRepository:    &BlankDataReadRepositoryImpl{},
 		DecisionRepository: &DecisionRepositoryImpl{
 			transactionFactory: transactionFactory,
 		},

@@ -9,6 +9,7 @@ import (
 	"marble/marble-backend/usecases/ast_eval"
 	"marble/marble-backend/usecases/org_transaction"
 	"runtime/debug"
+	"time"
 
 	"golang.org/x/exp/slog"
 )
@@ -25,11 +26,10 @@ type scenarioEvaluationRepositories struct {
 	ingestedDataReadRepository      repositories.IngestedDataReadRepository
 	customListRepository            repositories.CustomListRepository
 	evaluateRuleAstExpression       ast_eval.EvaluateRuleAstExpression
-	logger                          *slog.Logger
 }
 
 func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repositories scenarioEvaluationRepositories, logger *slog.Logger) (se models.ScenarioExecution, err error) {
-
+	start := time.Now()
 	///////////////////////////////
 	// Recover in case the evaluation panicked.
 	// Even if there is a "recoverer" middleware in our stack, this allows a sentinel error to be used and to catch the failure early
@@ -95,7 +95,7 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 	ruleExecutions := make([]models.RuleExecution, 0)
 	for _, rule := range publishedVersion.Body.Rules {
 
-		scoreModifier, ruleExecution, err := evalScenarioRule(repositories, rule, dataAccessor, params.dataModel)
+		scoreModifier, ruleExecution, err := evalScenarioRule(repositories, rule, dataAccessor, params.dataModel, logger)
 
 		if err != nil {
 			return models.ScenarioExecution{}, fmt.Errorf("error evaluating rule in eval scenario: %w", err)
@@ -130,10 +130,13 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 
 	logger.InfoCtx(ctx, "Evaluated scenario", "score", score, "outcome", o)
 
+	// print duration
+	elapsed := time.Since(start)
+	logger.InfoCtx(ctx, "Evaluated scenario", "duration", elapsed.Milliseconds())
 	return se, nil
 }
 
-func evalScenarioRule(repositories scenarioEvaluationRepositories, rule models.Rule, dataAccessor DataAccessor, dataModel models.DataModel) (int, models.RuleExecution, error) {
+func evalScenarioRule(repositories scenarioEvaluationRepositories, rule models.Rule, dataAccessor DataAccessor, dataModel models.DataModel, logger *slog.Logger) (int, models.RuleExecution, error) {
 	// Evaluate single rule
 
 	ruleReturnValue, err := repositories.evaluateRuleAstExpression.EvaluateRuleAstExpression(
@@ -161,7 +164,7 @@ func evalScenarioRule(repositories scenarioEvaluationRepositories, rule models.R
 	if err != nil {
 		ruleExecution.Rule = rule
 		ruleExecution.Error = err
-		repositories.logger.Info("Rule had an error",
+		logger.Info("Rule had an error",
 			slog.String("ruleName", rule.Name),
 			slog.String("ruleId", rule.Id),
 			slog.String("error", ruleExecution.Error.Error()),
@@ -170,7 +173,7 @@ func evalScenarioRule(repositories scenarioEvaluationRepositories, rule models.R
 
 	// Increment scenario score when rule is true
 	if ruleExecution.Result {
-		repositories.logger.Info("Rule executed",
+		logger.Info("Rule executed",
 			slog.Int("score_modifier", rule.ScoreModifier),
 			slog.String("ruleName", rule.Name),
 			slog.Bool("result", ruleExecution.Result),

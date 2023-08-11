@@ -18,20 +18,60 @@ func TestEval(t *testing.T) {
 func TestEvalAndOrFunction(t *testing.T) {
 	environment := NewAstEvaluationEnvironment()
 
-	evaluation := EvaluateAst(environment, ast.NewAstAndTrue())
+	evaluation := EvaluateAst(environment, NewAstAndTrue())
 	assert.NoError(t, evaluation.EvaluationError)
 	assert.Equal(t, true, evaluation.ReturnValue)
 
-	evaluation = EvaluateAst(environment, ast.NewAstAndFalse())
+	evaluation = EvaluateAst(environment, NewAstAndFalse())
 	assert.NoError(t, evaluation.EvaluationError)
 	assert.Equal(t, false, evaluation.ReturnValue)
 
-	evaluation = EvaluateAst(environment, ast.NewAstOrTrue())
+	evaluation = EvaluateAst(environment, NewAstOrTrue())
 	assert.NoError(t, evaluation.EvaluationError)
 	assert.Equal(t, true, evaluation.ReturnValue)
 
-	evaluation = EvaluateAst(environment, ast.NewAstOrFalse())
+	evaluation = EvaluateAst(environment, NewAstOrFalse())
 	assert.NoError(t, evaluation.EvaluationError)
 	assert.Equal(t, false, evaluation.ReturnValue)
 
+}
+
+func NewAstAndTrue() ast.Node {
+	return ast.Node{Function: ast.FUNC_AND}.
+		AddChild(ast.Node{Constant: true}).
+		AddChild(ast.Node{Constant: true}).
+		AddChild(ast.Node{Constant: true}).
+		AddChild(ast.Node{Constant: true}).
+		AddChild(ast.Node{Constant: true}).
+		AddChild(ast.Node{Constant: true})
+}
+
+func NewAstAndFalse() ast.Node {
+	return ast.Node{Function: ast.FUNC_AND}.
+		AddChild(ast.Node{Constant: true}).
+		AddChild(ast.Node{Constant: true}).
+		AddChild(ast.Node{Constant: false}).
+		AddChild(ast.Node{Constant: true}).
+		AddChild(ast.Node{Constant: true}).
+		AddChild(ast.Node{Constant: true})
+}
+
+func NewAstOrTrue() ast.Node {
+	return ast.Node{Function: ast.FUNC_OR}.
+		AddChild(ast.Node{Constant: false}).
+		AddChild(ast.Node{Constant: false}).
+		AddChild(ast.Node{Constant: true}).
+		AddChild(ast.Node{Constant: false}).
+		AddChild(ast.Node{Constant: false}).
+		AddChild(ast.Node{Constant: false})
+}
+
+func NewAstOrFalse() ast.Node {
+	return ast.Node{Function: ast.FUNC_OR}.
+		AddChild(ast.Node{Constant: false}).
+		AddChild(ast.Node{Constant: false}).
+		AddChild(ast.Node{Constant: false}).
+		AddChild(ast.Node{Constant: false}).
+		AddChild(ast.Node{Constant: false}).
+		AddChild(ast.Node{Constant: false})
 }
