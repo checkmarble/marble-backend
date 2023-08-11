@@ -47,8 +47,13 @@ func (d DatabaseAccess) Evaluate(arguments ast.Arguments) (any, error) {
 
 	if err != nil {
 		errorMsg := fmt.Sprintf("tableName: %s, fieldName: %s, path: %v", tableName, fieldName, path)
-		return nil, fmt.Errorf("DatabaseAccess: value not found: %s %w %w", errorMsg, err, ErrRuntimeExpression)
+		return nil, fmt.Errorf("DatabaseAccess: value not found: %s %w %w", errorMsg, err, models.NoRowsReadError)
 	}
+
+	if fieldValue == nil {
+		return nil, fmt.Errorf("value is null in tableName: %s, fieldName: %s, path: %v, %w", tableName, fieldName, path, models.NullFieldReadError)
+	}
+
 	return fieldValue, nil
 }
 

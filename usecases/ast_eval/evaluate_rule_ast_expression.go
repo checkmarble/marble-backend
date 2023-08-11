@@ -24,8 +24,10 @@ func (evaluator *EvaluateRuleAstExpression) EvaluateRuleAstExpression(ruleAstExp
 	evaluation := EvaluateAst(environment, ruleAstExpression)
 
 	result := evaluation.ReturnValue
-	if result == nil {
-		return false, errors.Join(evaluation.AllErrors()...)
+
+	allErrors := evaluation.AllErrors()
+	if allErrors != nil {
+		return false, errors.Join(allErrors...)
 	}
 
 	if value, ok := result.(bool); ok {
