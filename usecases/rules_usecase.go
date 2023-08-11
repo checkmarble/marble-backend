@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/scenarios"
@@ -85,6 +86,9 @@ func (usecase *RuleUsecase) DeleteRule(ctx context.Context, organizationId strin
 	scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(nil, rule.ScenarioIterationId)
 	if err != nil {
 		return err
+	}
+	if (scenarioAndIteration.Iteration.Version != nil) {
+		return fmt.Errorf("Can't delete rule as iteration %s is not in draft", scenarioAndIteration.Iteration.Id)
 	}
 	if err := usecase.enforceSecurity.CreateRule(scenarioAndIteration.Iteration); err != nil {
 		return err
