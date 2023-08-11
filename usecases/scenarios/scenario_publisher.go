@@ -125,11 +125,14 @@ func (publisher *ScenarioPublisher) getNewVersion(tx repositories.Transaction, o
 	if err != nil {
 		return 0, err
 	}
-	newVersion := 1
+
+	var latestVersion int
 	for _, scenarioIteration := range scenarioIterations {
-		if scenarioIteration.Version != nil {
-			newVersion = *scenarioIteration.Version + 1
+		if scenarioIteration.Version != nil && *scenarioIteration.Version > latestVersion {
+			latestVersion = *scenarioIteration.Version
 		}
 	}
+	newVersion := latestVersion + 1
+
 	return newVersion, nil
 }
