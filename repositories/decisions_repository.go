@@ -95,6 +95,7 @@ func (repo *DecisionRepositoryImpl) StoreDecision(tx Transaction, decision model
 				"error_code",
 				"trigger_object",
 				"trigger_object_type",
+				"scheduled_execution_id",
 			).
 			Values(
 				newDecisionId,
@@ -108,6 +109,7 @@ func (repo *DecisionRepositoryImpl) StoreDecision(tx Transaction, decision model
 				decision.DecisionError,
 				decision.ClientObject.Data,
 				decision.ClientObject.TableName,
+				decision.ScheduledExecutionId,
 			),
 	)
 	if err != nil {

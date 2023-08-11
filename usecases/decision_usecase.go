@@ -74,7 +74,6 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 			ingestedDataReadRepository:      usecase.ingestedDataReadRepository,
 			customListRepository:            usecase.customListRepository,
 			evaluateRuleAstExpression:       usecase.evaluateRuleAstExpression,
-			logger:                          logger,
 		}, logger)
 		if err != nil {
 			return models.Decision{}, fmt.Errorf("error evaluating scenario: %w", err)
