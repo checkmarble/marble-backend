@@ -2,6 +2,7 @@ package evaluate
 
 import (
 	"fmt"
+	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 )
 
@@ -24,11 +25,17 @@ func (f Arithmetic) Evaluate(arguments ast.Arguments) (any, error) {
 
 	// try to promote to int64
 	if left, right, err := adaptLeftAndRight(f.Function, leftAny, rightAny, promoteArgumentToInt64); err == nil {
+		if f.Function == ast.FUNC_DIVIDE && right == 0 {
+			return nil, fmt.Errorf("Division by zero, %w", models.DivisionByZeroError)
+		}
 		return arithmeticEval(f.Function, left, right)
 	}
 
 	// try to promote to float64
 	if left, right, err := adaptLeftAndRight(f.Function, leftAny, rightAny, promoteArgumentToFloat64); err == nil {
+		if f.Function == ast.FUNC_DIVIDE && right == 0.0 {
+			return nil, fmt.Errorf("Division by zero, %w", models.DivisionByZeroError)
+		}
 		return arithmeticEval(f.Function, left, right)
 	}
 

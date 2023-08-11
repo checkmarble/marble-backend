@@ -41,6 +41,7 @@ const (
 	DivisionByZero RuleExecutionError = 100
 	NullFieldRead  RuleExecutionError = 200
 	NoRowsRead     RuleExecutionError = 201
+	Unknown        RuleExecutionError = 1
 )
 
 func (r RuleExecutionError) String() string {
@@ -51,6 +52,8 @@ func (r RuleExecutionError) String() string {
 		return "A field read in a rule is null"
 	case NoRowsRead:
 		return "No rows were read from db in a rule"
+	case Unknown:
+		return "Unknown error"
 	}
 	return ""
 }

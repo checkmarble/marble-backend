@@ -44,7 +44,7 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 		}
 	}()
 
-	logger.InfoCtx(ctx, "Evaluting scenario", "scenarioId", params.scenario.Id)
+	logger.InfoCtx(ctx, "Evaluating scenario", "scenarioId", params.scenario.Id)
 
 	// If the scenario has no live version, don't try to Eval() it, return early
 	if params.scenario.LiveVersionID == nil {
@@ -146,7 +146,16 @@ func evalScenarioRule(repositories scenarioEvaluationRepositories, rule models.R
 		dataModel,
 	)
 
-	if err != nil {
+	isAuthorizedError := func(err error) bool {
+		for _, authorizedError := range models.RuleExecutionAuthorizedErrors {
+			if errors.Is(err, authorizedError) {
+				return true
+			}
+		}
+		return false
+	}
+
+	if err != nil && !isAuthorizedError(err) {
 		return 0, models.RuleExecution{}, fmt.Errorf("error while evaluating rule %s: %w", rule.Name, err)
 	}
 
