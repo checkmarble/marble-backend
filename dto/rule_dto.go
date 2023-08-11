@@ -7,7 +7,7 @@ import (
 )
 
 type ListRulesInput struct {
-	ScenarioIterationId string `in:"query=scenarioIterationId"`
+	ScenarioIterationId string `in:"query=scenarioIterationId;required"`
 }
 
 type GetRuleInput struct {
