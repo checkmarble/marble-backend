@@ -25,7 +25,7 @@ func NewCustomListValuesAccess(clr repositories.CustomListRepository, enforceSec
 func (clva CustomListValuesAccess) Evaluate(arguments ast.Arguments) (any, error) {
 	listId, ok := arguments.NamedArgs["customListId"].((string))
 	if !ok {
-		return nil, fmt.Errorf("customListId is not a string %w", ErrRuntimeExpression)
+		return nil, fmt.Errorf("customListId is not a string %w", models.ErrRuntimeExpression)
 	}
 
 	list, err := clva.CustomListRepository.GetCustomListById(nil, listId)

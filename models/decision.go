@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 type Decision struct {
 	DecisionId           string
@@ -41,7 +44,7 @@ const (
 	DivisionByZero RuleExecutionError = 100
 	NullFieldRead  RuleExecutionError = 200
 	NoRowsRead     RuleExecutionError = 201
-	Unknown        RuleExecutionError = 1
+	Unknown        RuleExecutionError = -1
 )
 
 func (r RuleExecutionError) String() string {
@@ -56,4 +59,19 @@ func (r RuleExecutionError) String() string {
 		return "Unknown error"
 	}
 	return ""
+}
+
+func AdaptRuleExecutionError(err error) RuleExecutionError {
+	switch {
+	case err == nil:
+		return 0
+	case errors.Is(err, NullFieldReadError):
+		return NullFieldRead
+	case errors.Is(err, NoRowsReadError):
+		return NoRowsRead
+	case errors.Is(err, DivisionByZeroError):
+		return DivisionByZero
+	default:
+		return Unknown
+	}
 }

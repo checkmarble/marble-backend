@@ -21,7 +21,7 @@ func NewPayload(f ast.Function, payload models.PayloadReader) Payload {
 func (p Payload) Evaluate(arguments ast.Arguments) (any, error) {
 	payloadFieldName, err := adaptArgumentToString(p.Function, arguments.Args[0])
 	if err != nil {
-		return nil, fmt.Errorf("payload field name is not a string %w", ErrRuntimeExpression)
+		return nil, fmt.Errorf("payload field name is not a string %w", models.ErrRuntimeExpression)
 	}
 	value, err := p.Payload.ReadFieldFromPayload(models.FieldName(payloadFieldName));
 	if err != nil {

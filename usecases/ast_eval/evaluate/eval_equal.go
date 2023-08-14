@@ -2,6 +2,7 @@ package evaluate
 
 import (
 	"fmt"
+	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 )
 
@@ -34,7 +35,7 @@ func (f Equal) Evaluate(arguments ast.Arguments) (any, error) {
 
 	return nil, fmt.Errorf(
 		"all argments of function %s must be string, boolean, int64 or float64 %w",
-		function.DebugString(), ErrRuntimeExpression,
+		function.DebugString(), models.ErrRuntimeExpression,
 	)
 
 }

@@ -71,21 +71,6 @@ func (repo *DecisionRepositoryImpl) DecisionsOfScheduledExecution(scheduledExecu
 	)
 }
 
-func adaptRuleExecutionError(err error) models.RuleExecutionError {
-	switch {
-	case err == nil:
-		return 0
-	case errors.Is(err, models.NullFieldReadError):
-		return models.NullFieldRead
-	case errors.Is(err, models.NoRowsReadError):
-		return models.NoRowsRead
-	case errors.Is(err, models.DivisionByZeroError):
-		return models.DivisionByZero
-	default:
-		return models.Unknown
-	}
-}
-
 func (repo *DecisionRepositoryImpl) StoreDecision(tx Transaction, decision models.Decision, organizationId string, newDecisionId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
@@ -147,7 +132,7 @@ func (repo *DecisionRepositoryImpl) StoreDecision(tx Transaction, decision model
 				ruleExecution.Rule.Description,
 				ruleExecution.ResultScoreModifier,
 				ruleExecution.Result,
-				adaptRuleExecutionError(ruleExecution.Error),
+				models.AdaptRuleExecutionError(ruleExecution.Error),
 			)
 	}
 	_, err = pgTx.ExecBuilder(builderForRules)
