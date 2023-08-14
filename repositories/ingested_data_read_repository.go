@@ -30,7 +30,7 @@ func (repo *IngestedDataReadRepositoryImpl) GetDbField(transaction Transaction, 
 	var output any
 	err = row.Scan(&output)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, fmt.Errorf("no rows scanned while reading DB: %w", models.NotFoundError)
+		return nil, fmt.Errorf("no rows scanned while reading DB: %w", models.NoRowsReadError)
 	} else if err != nil {
 		return nil, err
 	}

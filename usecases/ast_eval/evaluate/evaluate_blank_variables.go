@@ -2,6 +2,7 @@ package evaluate
 
 import (
 	"fmt"
+	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/org_transaction"
@@ -70,7 +71,7 @@ func (blank BlankDatabaseAccess) Evaluate(arguments ast.Arguments) (any, error) 
 	case ast.FUNC_BLANK_QUICK_FRACTIONATED_TRANSFERS_RECEIVED_WINDOW:
 		return blank.fractionatedTransferReceived(arguments)
 	default:
-		return nil, fmt.Errorf("BlankDatabaseAccess: value not found: %w", ErrRuntimeExpression)
+		return nil, fmt.Errorf("BlankDatabaseAccess: value not found: %w", models.ErrRuntimeExpression)
 	}
 }
 

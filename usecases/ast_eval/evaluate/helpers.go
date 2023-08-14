@@ -3,10 +3,9 @@ package evaluate
 import (
 	"errors"
 	"fmt"
+	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 )
-
-var ErrRuntimeExpression = errors.New("expression runtime error")
 
 func leftAndRight(function ast.Function, args []any) (any, any, error) {
 
@@ -36,7 +35,7 @@ func verifyNumberOfArguments(function ast.Function, args []any, requiredNumberOf
 	if numberOfOperands != requiredNumberOfArguments {
 		return fmt.Errorf(
 			"function %s expects %d operands, got %d %w",
-			function.DebugString(), requiredNumberOfArguments, numberOfOperands, ErrRuntimeExpression,
+			function.DebugString(), requiredNumberOfArguments, numberOfOperands, models.ErrRuntimeExpression,
 		)
 	}
 	return nil

@@ -2,6 +2,7 @@ package evaluate
 
 import (
 	"fmt"
+	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 	"marble/marble-backend/utils"
 	"time"
@@ -11,7 +12,7 @@ func promoteArgumentToInt64(function ast.Function, argument any) (int64, error) 
 	result, err := ToInt64(argument)
 	if err != nil {
 		return 0, fmt.Errorf("function %s can't promote argument %v to int64 %w %w",
-			function.DebugString(), argument, err, ErrRuntimeExpression,
+			function.DebugString(), argument, err, models.ErrRuntimeExpression,
 		)
 	}
 	return result, nil
@@ -25,7 +26,7 @@ func promoteArgumentToFloat64(function ast.Function, argument any) (float64, err
 			function.DebugString(),
 			argument,
 			err,
-			ErrRuntimeExpression,
+			models.ErrRuntimeExpression,
 		)
 
 	}
@@ -40,7 +41,7 @@ func adaptArgumentToString(function ast.Function, argument any) (string, error) 
 		"function %s can't promote argument %v to string %w",
 		function.DebugString(),
 		argument,
-		ErrRuntimeExpression,
+		models.ErrRuntimeExpression,
 	)
 }
 
@@ -52,7 +53,7 @@ func adaptArgumentToTime(function ast.Function, argument any) (time.Time, error)
 		"function %s can't promote argument %v to time %w",
 		function.DebugString(),
 		argument,
-		ErrRuntimeExpression,
+		models.ErrRuntimeExpression,
 	)
 }
 
@@ -75,7 +76,7 @@ func adaptArgumentToDuration(function ast.Function, argument any) (time.Duration
 		"function %s can't promote argument %v to duration %w",
 		function.DebugString(),
 		argument,
-		ErrRuntimeExpression,
+		models.ErrRuntimeExpression,
 	)
 }
 
@@ -95,7 +96,7 @@ func adaptArgumentToListOfStrings(function ast.Function, argument any) ([]string
 		"function %s can't promote argument %v to []string %w",
 		function.DebugString(),
 		argument,
-		ErrRuntimeExpression,
+		models.ErrRuntimeExpression,
 	)
 }
 
@@ -109,6 +110,6 @@ func adaptArgumentToBool(function ast.Function, argument any) (bool, error) {
 		"function %s can't promote argument %v to bool %w",
 		function.DebugString(),
 		argument,
-		ErrRuntimeExpression,
+		models.ErrRuntimeExpression,
 	)
 }

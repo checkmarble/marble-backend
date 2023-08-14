@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
-	"marble/marble-backend/usecases/ast_eval/evaluate"
 )
 
 type EvaluateRuleAstExpression struct {
@@ -25,14 +24,14 @@ func (evaluator *EvaluateRuleAstExpression) EvaluateRuleAstExpression(ruleAstExp
 
 	result := evaluation.ReturnValue
 
-	allErrors := evaluation.AllErrors()
+	allErrors := errors.Join(evaluation.AllErrors()...)
 	if allErrors != nil {
-		return false, errors.Join(allErrors...)
+		return false, allErrors
 	}
 
 	if value, ok := result.(bool); ok {
 		return value, nil
 	}
 
-	return false, fmt.Errorf("rule ast expression does not return a boolean, '%v' instead %w", result, evaluate.ErrRuntimeExpression)
+	return false, fmt.Errorf("rule ast expression does not return a boolean, '%v' instead %w", result, models.ErrRuntimeExpression)
 }
