@@ -26,7 +26,7 @@ func (f Arithmetic) Evaluate(arguments ast.Arguments) (any, error) {
 	// try to promote to int64
 	if left, right, err := adaptLeftAndRight(f.Function, leftAny, rightAny, promoteArgumentToInt64); err == nil {
 		if f.Function == ast.FUNC_DIVIDE && right == 0 {
-			return nil, fmt.Errorf("Division by zero, %w", models.DivisionByZeroError)
+			return nil, models.DivisionByZeroError
 		}
 		return arithmeticEval(f.Function, left, right)
 	}
@@ -34,14 +34,14 @@ func (f Arithmetic) Evaluate(arguments ast.Arguments) (any, error) {
 	// try to promote to float64
 	if left, right, err := adaptLeftAndRight(f.Function, leftAny, rightAny, promoteArgumentToFloat64); err == nil {
 		if f.Function == ast.FUNC_DIVIDE && right == 0.0 {
-			return nil, fmt.Errorf("Division by zero, %w", models.DivisionByZeroError)
+			return nil, models.DivisionByZeroError
 		}
 		return arithmeticEval(f.Function, left, right)
 	}
 
 	return nil, fmt.Errorf(
 		"all argments of function %s must be int64 or float64 %w",
-		f.Function.DebugString(), ErrRuntimeExpression,
+		f.Function.DebugString(), models.ErrRuntimeExpression,
 	)
 }
 

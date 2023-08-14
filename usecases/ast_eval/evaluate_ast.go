@@ -18,9 +18,10 @@ func EvaluateAst(environment AstEvaluationEnvironment, node ast.Node) ast.NodeEv
 
 	evalChild := func(child ast.Node) ast.NodeEvaluation {
 		childEval := EvaluateAst(environment, child)
-		if childEval.EvaluationError != nil {
+		if childEval.EvaluationError != nil || childEval.ReturnValue == nil {
 			childEvaluationFail = true
 		}
+
 		return childEval
 	}
 
