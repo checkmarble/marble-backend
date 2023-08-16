@@ -60,7 +60,7 @@ func (validator *ValidateScenarioIterationImpl) Validate(si ScenarioAndIteration
 	if trigger == nil {
 		addError(fmt.Errorf("scenario iteration has no trigger condition ast expression %w", models.BadParameterError))
 	} else {
-		result.TriggerEvaluation = ast_eval.EvaluateAst(dryRunEnvironment, *trigger)
+		result.TriggerEvaluation, _ = ast_eval.EvaluateAst(dryRunEnvironment, *trigger)
 	}
 
 	// validate each rule
@@ -71,7 +71,7 @@ func (validator *ValidateScenarioIterationImpl) Validate(si ScenarioAndIteration
 		if formula == nil {
 			addError(fmt.Errorf("scenario iteration rule has no formula ast expression %w", models.BadParameterError))
 		} else {
-			result.RulesEvaluations[ruleIndex] = ast_eval.EvaluateAst(dryRunEnvironment, *formula)
+			result.RulesEvaluations[ruleIndex], _ = ast_eval.EvaluateAst(dryRunEnvironment, *formula)
 		}
 	}
 

@@ -10,7 +10,8 @@ import (
 func TestEval(t *testing.T) {
 	environment := NewAstEvaluationEnvironment()
 	root := ast.NewAstCompareBalance()
-	evaluation := EvaluateAst(environment, root)
+	evaluation, ok := EvaluateAst(environment, root)
+	assert.True(t, ok)
 	assert.NoError(t, evaluation.EvaluationError)
 	assert.Equal(t, true, evaluation.ReturnValue)
 }
@@ -18,19 +19,23 @@ func TestEval(t *testing.T) {
 func TestEvalAndOrFunction(t *testing.T) {
 	environment := NewAstEvaluationEnvironment()
 
-	evaluation := EvaluateAst(environment, NewAstAndTrue())
+	evaluation, ok := EvaluateAst(environment, NewAstAndTrue())
+	assert.True(t, ok)
 	assert.NoError(t, evaluation.EvaluationError)
 	assert.Equal(t, true, evaluation.ReturnValue)
 
-	evaluation = EvaluateAst(environment, NewAstAndFalse())
+	evaluation, ok = EvaluateAst(environment, NewAstAndFalse())
+	assert.True(t, ok)
 	assert.NoError(t, evaluation.EvaluationError)
 	assert.Equal(t, false, evaluation.ReturnValue)
 
-	evaluation = EvaluateAst(environment, NewAstOrTrue())
+	evaluation, ok = EvaluateAst(environment, NewAstOrTrue())
+	assert.True(t, ok)
 	assert.NoError(t, evaluation.EvaluationError)
 	assert.Equal(t, true, evaluation.ReturnValue)
 
-	evaluation = EvaluateAst(environment, NewAstOrFalse())
+	evaluation, ok = EvaluateAst(environment, NewAstOrFalse())
+	assert.True(t, ok)
 	assert.NoError(t, evaluation.EvaluationError)
 	assert.Equal(t, false, evaluation.ReturnValue)
 

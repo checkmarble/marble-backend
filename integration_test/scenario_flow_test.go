@@ -314,7 +314,7 @@ func ingestAccounts(t *testing.T, table models.Table, ussecases usecases.Usecase
 	assert.NoError(t, err, "Could not ingest data")
 }
 
-func createTransactionPayload(transactionPayloadJson []byte, triggerObjectMap map[string]interface{}, t *testing.T, table models.Table) (models.PayloadReader) {
+func createTransactionPayload(transactionPayloadJson []byte, triggerObjectMap map[string]interface{}, t *testing.T, table models.Table) models.PayloadReader {
 	if err := json.Unmarshal(transactionPayloadJson, &triggerObjectMap); err != nil {
 		t.Fatalf("Could not unmarshal json: %s", err)
 	}
@@ -323,7 +323,7 @@ func createTransactionPayload(transactionPayloadJson []byte, triggerObjectMap ma
 	return transactionPayload
 }
 
-func createTransactionPayloadAndClientObject(transactionPayloadJson []byte,t *testing.T, table models.Table) (models.PayloadReader, models.ClientObject) {
+func createTransactionPayloadAndClientObject(transactionPayloadJson []byte, t *testing.T, table models.Table) (models.PayloadReader, models.ClientObject) {
 	triggerObjectMap := make(map[string]interface{})
 	ClientObject := models.ClientObject{TableName: table.Name, Data: triggerObjectMap}
 	transactionPayload := createTransactionPayload(transactionPayloadJson, triggerObjectMap, t, table)
@@ -394,8 +394,11 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 	}, logger)
 	assert.NoError(t, err, "Could not create decision")
 	assert.Equal(t, models.Approve, approveNoNameDecision.Outcome, "Expected decision to be Approve, got %s", approveNoNameDecision.Outcome)
-	ruleExecution := approveNoNameDecision.RuleExecutions[0]
-	assert.ErrorIs(t, ruleExecution.Error, models.NullFieldReadError, "Expected error to be A field read in a rule is null, got %s", ruleExecution.Error)
+
+	if assert.NotEmpty(t, approveNoNameDecision.RuleExecutions) {
+		ruleExecution := approveNoNameDecision.RuleExecutions[0]
+		assert.ErrorIs(t, ruleExecution.Error, models.NullFieldReadError, "Expected error to be A field read in a rule is null, got %s", ruleExecution.Error)
+	}
 	fmt.Println("Created decision", approveNoNameDecision.DecisionId)
 
 	// Create a decision [APPROVE] without a record in db (no row read)
@@ -415,8 +418,10 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 	}, logger)
 	assert.NoError(t, err, "Could not create decision")
 	assert.Equal(t, models.Approve, approveNoRecordDecision.Outcome, "Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
-	ruleExecution = approveNoRecordDecision.RuleExecutions[0]
-	assert.ErrorIs(t, ruleExecution.Error, models.NoRowsReadError, "Expected error to be No rows were read from db in a rule, got %s", ruleExecution.Error)
+	if assert.NotEmpty(t, approveNoNameDecision.RuleExecutions) {
+		ruleExecution := approveNoRecordDecision.RuleExecutions[0]
+		assert.ErrorIs(t, ruleExecution.Error, models.NoRowsReadError, "Expected error to be No rows were read from db in a rule, got %s", ruleExecution.Error)
+	}
 	fmt.Println("Created decision", approveNoRecordDecision.DecisionId)
 
 	// // Create a decision [APPROVE] without a field in payload (null field read)
@@ -436,8 +441,10 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 	}, logger)
 	assert.NoError(t, err, "Could not create decision")
 	assert.Equal(t, models.Approve, approveMissingFieldInPayloadDecision.Outcome, "Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
-	ruleExecution = approveMissingFieldInPayloadDecision.RuleExecutions[0]
-	assert.ErrorIs(t, ruleExecution.Error, models.NullFieldReadError, "Expected error to be A field read in a rule is null, got %s", ruleExecution.Error)
+	if assert.NotEmpty(t, approveNoNameDecision.RuleExecutions) {
+		ruleExecution := approveMissingFieldInPayloadDecision.RuleExecutions[0]
+		assert.ErrorIs(t, ruleExecution.Error, models.NullFieldReadError, "Expected error to be A field read in a rule is null, got %s", ruleExecution.Error)
+	}
 	fmt.Println("Created decision", approveMissingFieldInPayloadDecision.DecisionId)
 
 	// Create a decision [APPROVE] with a division by zero
@@ -458,7 +465,9 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 	}, logger)
 	assert.NoError(t, err, "Could not create decision")
 	assert.Equal(t, models.Approve, approveDivisionByZeroDecision.Outcome, "Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
-	ruleExecution = approveDivisionByZeroDecision.RuleExecutions[0]
-	assert.ErrorIs(t, ruleExecution.Error, models.DivisionByZeroError, "Expected error to be A division by zero occurred in a rule, got %s", ruleExecution.Error)
+	if assert.NotEmpty(t, approveNoNameDecision.RuleExecutions) {
+		ruleExecution := approveDivisionByZeroDecision.RuleExecutions[0]
+		assert.ErrorIs(t, ruleExecution.Error, models.DivisionByZeroError, "Expected error to be A division by zero occurred in a rule, got %s", ruleExecution.Error)
+	}
 	fmt.Println("Created decision", approveNoNameDecision.DecisionId)
 }
