@@ -323,83 +323,42 @@ func createTransactionPayload(transactionPayloadJson []byte, triggerObjectMap ma
 	return transactionPayload
 }
 
-func createTransactionPayloadAndClientObject(transactionPayloadJson []byte, t *testing.T, table models.Table) (models.PayloadReader, models.ClientObject) {
-	triggerObjectMap := make(map[string]interface{})
-	ClientObject := models.ClientObject{TableName: table.Name, Data: triggerObjectMap}
-	transactionPayload := createTransactionPayload(transactionPayloadJson, triggerObjectMap, t, table)
-
-	return transactionPayload, ClientObject
-}
-
 func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecases.UsecasesWithCreds, organizationId, scenarioId string, logger *slog.Logger) {
 	decisionUsecase := testUsecases.NewDecisionUsecase()
 
 	// Create a decision [REJECT]
-	// First, create all the parts of the payload
-	// TODO: refacto this usecase to move all of the business logic into the usecase
 	transactionPayloadJson := []byte(`{
 		"object_id": "{transaction_id}",
 		"updated_at": "2020-01-01T00:00:00Z",
 		"account_id": "{account_id_reject}",
 		"amount": 100
 	}`)
-	transactionPayload, ClientObject := createTransactionPayloadAndClientObject(transactionPayloadJson, t, table)
-
-	// Then, create the decision
-	rejectDecision, err := decisionUsecase.CreateDecision(usecasesWithCreds.Context, models.CreateDecisionInput{
-		ScenarioId:              scenarioId,
-		ClientObject:            ClientObject,
-		OrganizationId:          organizationId,
-		PayloadStructWithReader: transactionPayload,
-	}, logger)
-	assert.NoError(t, err, "Could not create decision")
+	rejectDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
 	assert.Equal(t, models.Reject, rejectDecision.Outcome, "Expected decision to be Reject, got %s", rejectDecision.Outcome)
-	fmt.Println("Created decision", rejectDecision.DecisionId)
 
-	// Create a decision [APROVE]
-	// First, create all the parts of the payload
+	// Create a decision [APPROVE]
 	transactionPayloadJson = []byte(`{
 		"object_id": "{transaction_id}",
 		"updated_at": "2020-01-01T00:00:00Z",
 		"account_id": "{account_id_approve}",
 		"amount": 100
 	}`)
-	transactionPayload, ClientObject = createTransactionPayloadAndClientObject(transactionPayloadJson, t, table)
-
-	// Then, create the decision
-	approveDecision, err := decisionUsecase.CreateDecision(usecasesWithCreds.Context, models.CreateDecisionInput{
-		ScenarioId:              scenarioId,
-		ClientObject:            ClientObject,
-		OrganizationId:          organizationId,
-		PayloadStructWithReader: transactionPayload,
-	}, logger)
-	assert.NoError(t, err, "Could not create decision")
+	approveDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
 	assert.Equal(t, models.Approve, approveDecision.Outcome, "Expected decision to be Approve, got %s", approveDecision.Outcome)
-	fmt.Println("Created decision", approveDecision.DecisionId)
 
-	// // Create a decision [APPROVE] with a null field value (null field read)
+	// Create a decision [APPROVE] with a null field value (null field read)
 	transactionPayloadJson = []byte(`{
 		"object_id": "{transaction_id}",
 		"updated_at": "2020-01-01T00:00:00Z",
 		"account_id": "{account_id_approve_no_name}",
 		"amount": 100
 	}`)
-	transactionPayload, ClientObject = createTransactionPayloadAndClientObject(transactionPayloadJson, t, table)
-
-	approveNoNameDecision, err := decisionUsecase.CreateDecision(usecasesWithCreds.Context, models.CreateDecisionInput{
-		ScenarioId:              scenarioId,
-		ClientObject:            ClientObject,
-		OrganizationId:          organizationId,
-		PayloadStructWithReader: transactionPayload,
-	}, logger)
-	assert.NoError(t, err, "Could not create decision")
+	approveNoNameDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
 	assert.Equal(t, models.Approve, approveNoNameDecision.Outcome, "Expected decision to be Approve, got %s", approveNoNameDecision.Outcome)
-
 	if assert.NotEmpty(t, approveNoNameDecision.RuleExecutions) {
 		ruleExecution := approveNoNameDecision.RuleExecutions[0]
 		assert.ErrorIs(t, ruleExecution.Error, models.NullFieldReadError, "Expected error to be A field read in a rule is null, got %s", ruleExecution.Error)
 	}
-	fmt.Println("Created decision", approveNoNameDecision.DecisionId)
 
 	// Create a decision [APPROVE] without a record in db (no row read)
 	transactionPayloadJson = []byte(`{
@@ -408,44 +367,25 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"account_id": "{account_id_approve_no_record}",
 		"amount": 100
 	}`)
-	transactionPayload, ClientObject = createTransactionPayloadAndClientObject(transactionPayloadJson, t, table)
-
-	approveNoRecordDecision, err := decisionUsecase.CreateDecision(usecasesWithCreds.Context, models.CreateDecisionInput{
-		ScenarioId:              scenarioId,
-		ClientObject:            ClientObject,
-		OrganizationId:          organizationId,
-		PayloadStructWithReader: transactionPayload,
-	}, logger)
-	assert.NoError(t, err, "Could not create decision")
+	approveNoRecordDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
 	assert.Equal(t, models.Approve, approveNoRecordDecision.Outcome, "Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
-	if assert.NotEmpty(t, approveNoNameDecision.RuleExecutions) {
+	if assert.NotEmpty(t, approveNoRecordDecision.RuleExecutions) {
 		ruleExecution := approveNoRecordDecision.RuleExecutions[0]
 		assert.ErrorIs(t, ruleExecution.Error, models.NoRowsReadError, "Expected error to be No rows were read from db in a rule, got %s", ruleExecution.Error)
 	}
-	fmt.Println("Created decision", approveNoRecordDecision.DecisionId)
 
-	// // Create a decision [APPROVE] without a field in payload (null field read)
+	// Create a decision [APPROVE] without a field in payload (null field read)
 	transactionPayloadJson = []byte(`{
 		"object_id": "{transaction_id}",
 		"updated_at": "2020-01-01T00:00:00Z",
 		"account_id": "{account_id_approve}"
 	}`)
-
-	transactionPayload, ClientObject = createTransactionPayloadAndClientObject(transactionPayloadJson, t, table)
-
-	approveMissingFieldInPayloadDecision, err := decisionUsecase.CreateDecision(usecasesWithCreds.Context, models.CreateDecisionInput{
-		ScenarioId:              scenarioId,
-		ClientObject:            ClientObject,
-		OrganizationId:          organizationId,
-		PayloadStructWithReader: transactionPayload,
-	}, logger)
-	assert.NoError(t, err, "Could not create decision")
+	approveMissingFieldInPayloadDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
 	assert.Equal(t, models.Approve, approveMissingFieldInPayloadDecision.Outcome, "Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
-	if assert.NotEmpty(t, approveNoNameDecision.RuleExecutions) {
+	if assert.NotEmpty(t, approveMissingFieldInPayloadDecision.RuleExecutions) {
 		ruleExecution := approveMissingFieldInPayloadDecision.RuleExecutions[0]
 		assert.ErrorIs(t, ruleExecution.Error, models.NullFieldReadError, "Expected error to be A field read in a rule is null, got %s", ruleExecution.Error)
 	}
-	fmt.Println("Created decision", approveMissingFieldInPayloadDecision.DecisionId)
 
 	// Create a decision [APPROVE] with a division by zero
 	transactionPayloadJson = []byte(`{
@@ -454,20 +394,33 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"account_id": "{account_id_approve}",
 		"amount": 0
 	}`)
+	approveDivisionByZeroDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
+	assert.Equal(t, models.Approve, approveDivisionByZeroDecision.Outcome, "Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
+	if assert.NotEmpty(t, approveDivisionByZeroDecision.RuleExecutions) {
+		ruleExecution := approveDivisionByZeroDecision.RuleExecutions[0]
+		assert.ErrorIs(t, ruleExecution.Error, models.DivisionByZeroError, "Expected error to be A division by zero occurred in a rule, got %s", ruleExecution.Error)
+	}
+}
 
-	transactionPayload, ClientObject = createTransactionPayloadAndClientObject(transactionPayloadJson, t, table)
+func createTransactionPayloadAndClientObject(transactionPayloadJson []byte,t *testing.T, table models.Table) (models.PayloadReader, models.ClientObject) {
+	triggerObjectMap := make(map[string]interface{})
+	ClientObject := models.ClientObject{TableName: table.Name, Data: triggerObjectMap}
+	transactionPayload := createTransactionPayload(transactionPayloadJson, triggerObjectMap, t, table)
 
-	approveDivisionByZeroDecision, err := decisionUsecase.CreateDecision(usecasesWithCreds.Context, models.CreateDecisionInput{
+	return transactionPayload, ClientObject
+}
+
+func createAndTestDecision(t *testing.T, transactionPayloadJson []byte,table models.Table, decisionUsecase usecases.DecisionUsecase, usecasesWithCreds usecases.UsecasesWithCreds, organizationId, scenarioId string, logger *slog.Logger) (models.Decision) {
+	transactionPayload, ClientObject := createTransactionPayloadAndClientObject(transactionPayloadJson, t, table)
+
+	decision, err := decisionUsecase.CreateDecision(usecasesWithCreds.Context, models.CreateDecisionInput{
 		ScenarioId:              scenarioId,
 		ClientObject:            ClientObject,
 		OrganizationId:          organizationId,
 		PayloadStructWithReader: transactionPayload,
 	}, logger)
 	assert.NoError(t, err, "Could not create decision")
-	assert.Equal(t, models.Approve, approveDivisionByZeroDecision.Outcome, "Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
-	if assert.NotEmpty(t, approveNoNameDecision.RuleExecutions) {
-		ruleExecution := approveDivisionByZeroDecision.RuleExecutions[0]
-		assert.ErrorIs(t, ruleExecution.Error, models.DivisionByZeroError, "Expected error to be A division by zero occurred in a rule, got %s", ruleExecution.Error)
-	}
-	fmt.Println("Created decision", approveNoNameDecision.DecisionId)
+	fmt.Println("Created decision", decision.DecisionId)
+
+	return decision
 }
