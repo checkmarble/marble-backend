@@ -10,17 +10,17 @@ import (
 func TestComparison_comparisonFunction_int_true(t *testing.T) {
 	r, err := NewComparison(ast.FUNC_GREATER).Evaluate(ast.Arguments{Args: []any{2, 1}})
 	assert.NoError(t, err)
-	assert.True(t, r.(bool))
+	assert.Equal(t, r, true)
 }
 
 func TestComparison_comparisonFunction_mixed_int_float_false(t *testing.T) {
 	r, err := NewComparison(ast.FUNC_GREATER).Evaluate(ast.Arguments{Args: []any{(1), float64(2)}})
 	assert.NoError(t, err)
-	assert.False(t, r.(bool))
+	assert.Equal(t, r, false)
 }
 
 func TestComparison_comparisonFunction_less(t *testing.T) {
 	r, err := NewComparison(ast.FUNC_LESS).Evaluate(ast.Arguments{Args: []any{1, 2}})
 	assert.NoError(t, err)
-	assert.True(t, r.(bool))
+	assert.Equal(t, r, true)
 }
