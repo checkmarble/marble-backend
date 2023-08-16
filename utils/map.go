@@ -35,21 +35,6 @@ func MapErr[T, U any](src []T, f func(T) (U, error)) ([]U, error) {
 	return us, nil
 }
 
-func MapErrWithParam[T, K, U any](src []T, param K, f func(K, T) (U, error)) ([]U, error) {
-	if src == nil {
-		return nil, nil
-	}
-	us := make([]U, len(src))
-	for i := range src {
-		var err error
-		us[i], err = f(param, src[i])
-		if err != nil {
-			return us, err
-		}
-	}
-	return us, nil
-}
-
 // MapMap return a new map with the same keys as src, but with values transformed by f
 func MapMap[Key comparable, T any, U any](src map[Key]T, f func(T) U) map[Key]U {
 	if src == nil {
