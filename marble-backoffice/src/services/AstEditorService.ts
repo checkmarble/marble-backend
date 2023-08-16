@@ -67,7 +67,7 @@ export function useAstEditor(
 
     const { astNode, errorMessage } = validateAstText(astText);
     if (errorMessage) {
-      setErrorMessage(errorMessage);
+      setErrorMessages([errorMessage]);
     }
 
     if (!astNode) {
