@@ -20,14 +20,12 @@ func (evaluator *EvaluateRuleAstExpression) EvaluateRuleAstExpression(ruleAstExp
 		DatabaseAccessReturnFakeValue: false,
 	})
 
-	evaluation := EvaluateAst(environment, ruleAstExpression)
+	evaluation, ok := EvaluateAst(environment, ruleAstExpression)
 
-	result := evaluation.ReturnValue
-
-	allErrors := errors.Join(evaluation.AllErrors()...)
-	if allErrors != nil {
-		return false, allErrors
+	if !ok {
+		return false, errors.Join(evaluation.AllErrors()...)
 	}
+	result := evaluation.ReturnValue
 
 	if value, ok := result.(bool); ok {
 		return value, nil
