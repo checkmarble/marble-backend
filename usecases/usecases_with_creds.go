@@ -41,12 +41,13 @@ func (usecases *UsecasesWithCreds) NewScenarioUsecase() ScenarioUsecase {
 
 func (usecases *UsecasesWithCreds) NewScenarioIterationUsecase() ScenarioIterationUsecase {
 	return ScenarioIterationUsecase{
-		scenarioIterationsReadRepository:  usecases.Repositories.ScenarioIterationReadRepository,
-		scenarioIterationsWriteRepository: usecases.Repositories.ScenarioIterationWriteRepository,
-		enforceSecurity:                   usecases.NewEnforceScenarioSecurity(),
-		organizationIdOfContext:           usecases.OrganizationIdOfContext,
-		scenarioFetcher:                   usecases.NewScenarioFetcher(),
-		validateScenarioIteration:         usecases.NewValidateScenarioIteration(),
+		organizationIdOfContext:                 usecases.OrganizationIdOfContext,
+		scenarioIterationsReadRepository:        usecases.Repositories.ScenarioIterationReadRepository,
+		scenarioIterationsWriteRepositoryLegacy: usecases.Repositories.ScenarioIterationWriteRepositoryLegacy,
+		scenarioIterationsWriteRepository:       usecases.Repositories.ScenarioIterationWriteRepository,
+		enforceSecurity:                         usecases.NewEnforceScenarioSecurity(),
+		scenarioFetcher:                         usecases.NewScenarioFetcher(),
+		validateScenarioIteration:               usecases.NewValidateScenarioIteration(),
 	}
 }
 

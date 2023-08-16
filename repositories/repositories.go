@@ -11,30 +11,31 @@ import (
 )
 
 type Repositories struct {
-	DatabaseConnectionPoolRepository      DatabaseConnectionPoolRepository
-	TransactionFactory                    TransactionFactory
-	FirebaseTokenRepository               FireBaseTokenRepository
-	MarbleJwtRepository                   func() MarbleJwtRepository
-	UserRepository                        UserRepository
-	ApiKeyRepository                      ApiKeyRepository
-	OrganizationRepository                OrganizationRepository
-	IngestionRepository                   IngestionRepository
-	DataModelRepository                   DataModelRepository
-	IngestedDataReadRepository            IngestedDataReadRepository
-	BlankDataReadRepository               BlankDataReadRepository
-	DecisionRepository                    DecisionRepository
-	RuleRepository                        RuleRepository
-	ScenarioReadRepository                ScenarioReadRepository
-	ScenarioWriteRepository               ScenarioWriteRepository
-	ScenarioIterationReadRepository       ScenarioIterationReadRepository
-	ScenarioIterationWriteRepository      ScenarioIterationWriteRepository
-	ScenarioIterationRuleRepositoryLegacy ScenarioIterationRuleRepositoryLegacy
-	ScenarioPublicationRepository         ScenarioPublicationRepository
-	ScheduledExecutionRepository          ScheduledExecutionRepository
-	OrganizationSchemaRepository          OrganizationSchemaRepository
-	AwsS3Repository                       AwsS3Repository
-	GcsRepository                         GcsRepository
-	CustomListRepository                  CustomListRepository
+	DatabaseConnectionPoolRepository       DatabaseConnectionPoolRepository
+	TransactionFactory                     TransactionFactory
+	FirebaseTokenRepository                FireBaseTokenRepository
+	MarbleJwtRepository                    func() MarbleJwtRepository
+	UserRepository                         UserRepository
+	ApiKeyRepository                       ApiKeyRepository
+	OrganizationRepository                 OrganizationRepository
+	IngestionRepository                    IngestionRepository
+	DataModelRepository                    DataModelRepository
+	IngestedDataReadRepository             IngestedDataReadRepository
+	BlankDataReadRepository                BlankDataReadRepository
+	DecisionRepository                     DecisionRepository
+	RuleRepository                         RuleRepository
+	ScenarioReadRepository                 ScenarioReadRepository
+	ScenarioWriteRepository                ScenarioWriteRepository
+	ScenarioIterationReadRepository        ScenarioIterationReadRepository
+	ScenarioIterationWriteRepository       ScenarioIterationWriteRepository
+	ScenarioIterationWriteRepositoryLegacy ScenarioIterationWriteRepositoryLegacy
+	ScenarioIterationRuleRepositoryLegacy  ScenarioIterationRuleRepositoryLegacy
+	ScenarioPublicationRepository          ScenarioPublicationRepository
+	ScheduledExecutionRepository           ScheduledExecutionRepository
+	OrganizationSchemaRepository           OrganizationSchemaRepository
+	AwsS3Repository                        AwsS3Repository
+	GcsRepository                          GcsRepository
+	CustomListRepository                   CustomListRepository
 }
 
 func NewQueryBuilder() squirrel.StatementBuilderType {
@@ -47,7 +48,7 @@ func NewRepositories(
 	firebaseClient *auth.Client,
 	marbleConnectionPool *pgxpool.Pool,
 	appLogger *slog.Logger,
-	scenarioIterationWriteRepository ScenarioIterationWriteRepository,
+	scenarioIterationWriteRepository ScenarioIterationWriteRepositoryLegacy,
 	ScenarioIterationRuleRepositoryLegacy ScenarioIterationRuleRepositoryLegacy,
 
 ) (*Repositories, error) {
@@ -105,8 +106,11 @@ func NewRepositories(
 		ScenarioIterationReadRepository: &ScenarioIterationReadRepositoryPostgresql{
 			transactionFactory: transactionFactory,
 		},
-		ScenarioIterationWriteRepository:      scenarioIterationWriteRepository,
-		ScenarioIterationRuleRepositoryLegacy: ScenarioIterationRuleRepositoryLegacy,
+		ScenarioIterationWriteRepository: &ScenarioIterationWriteRepositoryPostgresql{
+			transactionFactory: transactionFactory,
+		},
+		ScenarioIterationWriteRepositoryLegacy: scenarioIterationWriteRepository,
+		ScenarioIterationRuleRepositoryLegacy:  ScenarioIterationRuleRepositoryLegacy,
 		ScenarioPublicationRepository: NewScenarioPublicationRepositoryPostgresql(
 			transactionFactory,
 		),
