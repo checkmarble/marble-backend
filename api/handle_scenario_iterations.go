@@ -52,7 +52,6 @@ func (api *API) CreateScenarioIteration() http.HandlerFunc {
 		}
 
 		input := ctx.Value(httpin.Input).(*dto.CreateScenarioIterationInput)
-		logger := api.logger.With(slog.String("scenarioId", input.Payload.ScenarioId), slog.String("organizationId", organizationId))
 
 		createScenarioIterationInput := models.CreateScenarioIterationInput{
 			ScenarioId: input.Payload.ScenarioId,
@@ -99,22 +98,44 @@ func (api *API) CreateScenarioIteration() http.HandlerFunc {
 
 		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
 		si, err := usecase.CreateScenarioIteration(ctx, organizationId, createScenarioIterationInput)
-		if err != nil {
-			logger.ErrorCtx(ctx, "Error creating scenario iteration: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
+		if presentError(w, r, err) {
 			return
 		}
 
 		apiScenarioIterationWithBody, err := dto.AdaptScenarioIterationWithBodyDto(si)
-		if err != nil {
-			logger.ErrorCtx(ctx, "Error marshalling scenario iteration: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
+		if presentError(w, r, err) {
 			return
 		}
 		err = json.NewEncoder(w).Encode(apiScenarioIterationWithBody)
-		if err != nil {
-			logger.ErrorCtx(ctx, "Could not encode response JSON: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
+		if presentError(w, r, err) {
+			return
+		}
+	}
+}
+
+func (api *API) CreateDraftFromIteration() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		organizationId, err := utils.OrgIDFromCtx(ctx, r)
+		if presentError(w, r, err) {
+			return
+		}
+
+		input := ctx.Value(httpin.Input).(*dto.CreateDraftFromScenarioIterationInput)
+
+		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
+		si, err := usecase.CreateDraftFromScenarioIteration(ctx, organizationId, input.ScenarioIterationId)
+		if presentError(w, r, err) {
+			return
+		}
+
+		apiScenarioIterationWithBody, err := dto.AdaptScenarioIterationWithBodyDto(si)
+		if presentError(w, r, err) {
+			return
+		}
+		err = json.NewEncoder(w).Encode(apiScenarioIterationWithBody)
+		if presentError(w, r, err) {
 			return
 		}
 	}

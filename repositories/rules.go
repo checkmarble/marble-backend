@@ -10,14 +10,15 @@ import (
 )
 
 type ScenarioIterationRuleRepositoryLegacy interface {
-	ListScenarioIterationRules(ctx context.Context, organizationId string, filters models.GetScenarioIterationRulesFilters) ([]models.Rule, error)
-	CreateScenarioIterationRule(ctx context.Context, organizationId string, rule models.CreateRuleInput) (models.Rule, error)
-	GetScenarioIterationRule(ctx context.Context, organizationId string, ruleID string) (models.Rule, error)
-	UpdateScenarioIterationRule(ctx context.Context, organizationId string, rule models.UpdateRuleInput) (models.Rule, error)
+	ListRules(ctx context.Context, organizationId string, filters models.GetRulesFilters) ([]models.Rule, error)
+	CreateRule(ctx context.Context, organizationId string, rule models.CreateRuleInput) (models.Rule, error)
+	GetRule(ctx context.Context, organizationId string, ruleID string) (models.Rule, error)
+	UpdateRule(ctx context.Context, organizationId string, rule models.UpdateRuleInput) (models.Rule, error)
 }
 
 type RuleRepository interface {
 	UpdateRuleWithAstExpression(tx Transaction, ruleId string, expression ast.Node) error
+	DeleteRule(ctx context.Context, ruleID string) error
 }
 
 type RuleRepositoryPostgresql struct {
@@ -41,5 +42,12 @@ func (repo *RuleRepositoryPostgresql) UpdateRuleWithAstExpression(tx Transaction
 	updateRequest = updateRequest.Where("id = ?", ruleId)
 
 	_, err = pgTx.ExecBuilder(updateRequest)
+	return err
+}
+
+func (repo *RuleRepositoryPostgresql) DeleteRule(ctx context.Context, ruleID string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(nil)
+
+	_, err := pgTx.ExecBuilder(NewQueryBuilder().Delete(dbmodels.TABLE_RULES).Where("id = ?", ruleID))
 	return err
 }

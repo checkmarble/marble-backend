@@ -14,6 +14,7 @@ type EnforceSecurityScenario interface {
 	UpdateScenario(scenario models.Scenario) error
 	ListScenarios(organizationId string) error
 	CreateScenario(organizationId string) error
+	CreateRule(scenarioIteration models.ScenarioIteration) error
 }
 
 type EnforceSecurityScenarioImpl struct {
@@ -32,6 +33,13 @@ func (e *EnforceSecurityScenarioImpl) ReadScenario(scenario models.Scenario) err
 func (e *EnforceSecurityScenarioImpl) ReadScenarioIteration(scenarioIteration models.ScenarioIteration) error {
 	return errors.Join(
 		e.Permission(models.SCENARIO_READ),
+		e.ReadOrganization(scenarioIteration.OrganizationId),
+	)
+}
+
+func (e *EnforceSecurityScenarioImpl) CreateRule(scenarioIteration models.ScenarioIteration) error {
+	return errors.Join(
+		e.Permission(models.SCENARIO_CREATE),
 		e.ReadOrganization(scenarioIteration.OrganizationId),
 	)
 }

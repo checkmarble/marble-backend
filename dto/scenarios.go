@@ -44,12 +44,12 @@ type UpdateScenarioIterationInput struct {
 type CreateScenarioIterationBody struct {
 	ScenarioId string `json:"scenarioId"`
 	Body       *struct {
-		TriggerConditionAstExpression *NodeDto                               `json:"trigger_condition_ast_expression"`
-		Rules                         []CreateScenarioIterationRuleInputBody `json:"rules"`
-		ScoreReviewThreshold          *int                                   `json:"scoreReviewThreshold,omitempty"`
-		ScoreRejectThreshold          *int                                   `json:"scoreRejectThreshold,omitempty"`
-		Schedule                      string                                 `json:"schedule"`
-		BatchTriggerSQL               string                                 `json:"batchTriggerSQL"`
+		TriggerConditionAstExpression *NodeDto              `json:"trigger_condition_ast_expression"`
+		Rules                         []CreateRuleInputBody `json:"rules"`
+		ScoreReviewThreshold          *int                  `json:"scoreReviewThreshold,omitempty"`
+		ScoreRejectThreshold          *int                  `json:"scoreRejectThreshold,omitempty"`
+		Schedule                      string                `json:"schedule"`
+		BatchTriggerSQL               string                `json:"batchTriggerSQL"`
 	} `json:"body,omitempty"`
 }
 
@@ -57,32 +57,8 @@ type CreateScenarioIterationInput struct {
 	Payload *CreateScenarioIterationBody `in:"body=json"`
 }
 
-// rules
-
-type CreateScenarioIterationRuleInputBody struct {
-	ScenarioIterationId  string   `json:"scenarioIterationId"`
-	DisplayOrder         int      `json:"displayOrder"`
-	Name                 string   `json:"name"`
-	Description          string   `json:"description"`
-	FormulaAstExpression *NodeDto `json:"formula_ast_expression"`
-	ScoreModifier        int      `json:"scoreModifier"`
-}
-
-type CreateScenarioIterationRuleInput struct {
-	Body *CreateScenarioIterationRuleInputBody `in:"body=json"`
-}
-
-type UpdateScenarioIterationRuleBody struct {
-	DisplayOrder         *int     `json:"displayOrder,omitempty"`
-	Name                 *string  `json:"name,omitempty"`
-	Description          *string  `json:"description,omitempty"`
-	FormulaAstExpression *NodeDto `json:"formula_ast_expression"`
-	ScoreModifier        *int     `json:"scoreModifier,omitempty"`
-}
-
-type UpdateScenarioIterationRuleInput struct {
-	RuleID string                           `in:"path=ruleID"`
-	Body   *UpdateScenarioIterationRuleBody `in:"body=json"`
+type CreateDraftFromScenarioIterationInput struct {
+	ScenarioIterationId string `in:"path=scenarioIterationId"`
 }
 
 // scenario publications
