@@ -5,22 +5,23 @@ import (
 	"marble/marble-backend/utils"
 )
 
-func EvaluateAst(environment AstEvaluationEnvironment, node ast.Node) ast.NodeEvaluation {
+func EvaluateAst(environment AstEvaluationEnvironment, node ast.Node) (ast.NodeEvaluation, bool) {
 
 	// Early exit for constant, because it should have no children.
 	if node.Function == ast.FUNC_CONSTANT {
 		return ast.NodeEvaluation{
 			ReturnValue: node.Constant,
-		}
+		}, true
 	}
 
 	childEvaluationFail := false
 
 	evalChild := func(child ast.Node) ast.NodeEvaluation {
-		childEval := EvaluateAst(environment, child)
-		if childEval.ReturnValue == nil {
+		childEval, ok := EvaluateAst(environment, child)
+		if !ok {
 			childEvaluationFail = true
 		}
+
 		return childEval
 	}
 
@@ -32,7 +33,7 @@ func EvaluateAst(environment AstEvaluationEnvironment, node ast.Node) ast.NodeEv
 
 	if childEvaluationFail {
 		// an error occured in at least one of the children. Stop the evaluation.
-		return evaluation
+		return evaluation, false
 	}
 
 	getReturnValue := func(e ast.NodeEvaluation) any { return e.ReturnValue }
@@ -44,9 +45,10 @@ func EvaluateAst(environment AstEvaluationEnvironment, node ast.Node) ast.NodeEv
 	evaluator, err := environment.GetEvaluator(node.Function)
 	if err != nil {
 		evaluation.EvaluationError = err
-		return evaluation
+		return evaluation, false
 	}
 
 	evaluation.ReturnValue, evaluation.EvaluationError = evaluator.Evaluate(arguments)
-	return evaluation
+	ok := evaluation.EvaluationError == nil
+	return evaluation, ok
 }

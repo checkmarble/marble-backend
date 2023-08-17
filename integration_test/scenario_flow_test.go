@@ -200,16 +200,39 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 			Rules: []models.CreateRuleInput{
 				{
 					FormulaAstExpression: &ast.Node{
-						Function: ast.FUNC_EQUAL,
+						Function: ast.FUNC_AND,
 						Children: []ast.Node{
 							{
-								Function: ast.FUNC_DB_ACCESS,
-								NamedChildren: map[string]ast.Node{
-									"tableName": {Constant: "transactions"},
-									"fieldName": {Constant: "name"},
-									"path":      {Constant: []string{"account"}}},
+								Function: ast.FUNC_EQUAL,
+								Children: []ast.Node{
+									{
+										Function: ast.FUNC_DB_ACCESS,
+										NamedChildren: map[string]ast.Node{
+											"tableName": {Constant: "transactions"},
+											"fieldName": {Constant: "name"},
+											"path":      {Constant: []string{"account"}}},
+									},
+									{Constant: "Reject test account"},
+								},
 							},
-							{Constant: "Reject test account"},
+							{
+								Function: ast.FUNC_EQUAL,
+								Children: []ast.Node{
+									{Constant: 1},
+									{
+										Function: ast.FUNC_DIVIDE,
+										Children: []ast.Node{
+											{Constant: 100},
+											{
+												Function: ast.FUNC_PAYLOAD,
+												Children: []ast.Node{
+													{Constant: "amount"},
+												},
+											},
+										},
+									},
+								},
+							},
 						},
 					},
 					ScoreModifier: 100,
@@ -279,68 +302,125 @@ func ingestAccounts(t *testing.T, table models.Table, ussecases usecases.Usecase
 		"updated_at": "2020-01-01T00:00:00Z",
 		"name": "Approve test account"
 	}`)
+	accountPayloadJson3 := []byte(`{
+		"object_id": "{account_id_approve_no_name}",
+		"updated_at": "2020-01-01T00:00:00Z"
+	}`)
 	accountPayload1, err := app.ParseToDataModelObject(table, accountPayloadJson1)
 	assert.NoError(t, err, "Could not parse payload")
 	accountPayload2, _ := app.ParseToDataModelObject(table, accountPayloadJson2)
-	err = ingestionUsecase.IngestObjects(organizationId, []models.PayloadReader{accountPayload1, accountPayload2}, table, logger)
+	accountPayload3, _ := app.ParseToDataModelObject(table, accountPayloadJson3)
+	err = ingestionUsecase.IngestObjects(organizationId, []models.PayloadReader{accountPayload1, accountPayload2, accountPayload3}, table, logger)
 	assert.NoError(t, err, "Could not ingest data")
+}
+
+func createTransactionPayload(transactionPayloadJson []byte, triggerObjectMap map[string]interface{}, t *testing.T, table models.Table) models.PayloadReader {
+	if err := json.Unmarshal(transactionPayloadJson, &triggerObjectMap); err != nil {
+		t.Fatalf("Could not unmarshal json: %s", err)
+	}
+	transactionPayload, err := app.ParseToDataModelObject(table, transactionPayloadJson)
+	assert.NoError(t, err, "Could not parse payload")
+	return transactionPayload
 }
 
 func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecases.UsecasesWithCreds, organizationId, scenarioId string, logger *slog.Logger) {
 	decisionUsecase := testUsecases.NewDecisionUsecase()
 
 	// Create a decision [REJECT]
-	// First, create all the parts of the payload
-	// TODO: refacto this usecase to move all of the business logic into the usecase
 	transactionPayloadJson := []byte(`{
 		"object_id": "{transaction_id}",
 		"updated_at": "2020-01-01T00:00:00Z",
 		"account_id": "{account_id_reject}",
 		"amount": 100
 	}`)
-	triggerObjectMap := make(map[string]interface{})
-	if err := json.Unmarshal(transactionPayloadJson, &triggerObjectMap); err != nil {
-		t.Fatalf("Could not unmarshal json: %s", err)
-	}
-	ClientObject := models.ClientObject{TableName: table.Name, Data: triggerObjectMap}
-	transactionPayload, err := app.ParseToDataModelObject(table, transactionPayloadJson)
-	assert.NoError(t, err, "Could not parse payload")
-
-	// Then, create the decision
-	rejectDecision, err := decisionUsecase.CreateDecision(usecasesWithCreds.Context, models.CreateDecisionInput{
-		ScenarioId:              scenarioId,
-		ClientObject:            ClientObject,
-		OrganizationId:          organizationId,
-		PayloadStructWithReader: transactionPayload,
-	}, logger)
-	assert.NoError(t, err, "Could not create decision")
+	rejectDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
 	assert.Equal(t, models.Reject, rejectDecision.Outcome, "Expected decision to be Reject, got %s", rejectDecision.Outcome)
-	fmt.Println("Created decision", rejectDecision.DecisionId)
 
-	// Create a decision [APROVE]
-	// First, create all the parts of the payload
+	// Create a decision [APPROVE]
 	transactionPayloadJson = []byte(`{
 		"object_id": "{transaction_id}",
 		"updated_at": "2020-01-01T00:00:00Z",
 		"account_id": "{account_id_approve}",
 		"amount": 100
 	}`)
-	triggerObjectMap = make(map[string]interface{})
-	if err := json.Unmarshal(transactionPayloadJson, &triggerObjectMap); err != nil {
-		t.Fatalf("Could not unmarshal json: %s", err)
-	}
-	ClientObject = models.ClientObject{TableName: table.Name, Data: triggerObjectMap}
-	transactionPayload, err = app.ParseToDataModelObject(table, transactionPayloadJson)
-	assert.NoError(t, err, "Could not parse payload")
+	approveDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
+	assert.Equal(t, models.Approve, approveDecision.Outcome, "Expected decision to be Approve, got %s", approveDecision.Outcome)
 
-	// Then, create the decision
-	approveDecision, err := decisionUsecase.CreateDecision(usecasesWithCreds.Context, models.CreateDecisionInput{
+	// Create a decision [APPROVE] with a null field value (null field read)
+	transactionPayloadJson = []byte(`{
+		"object_id": "{transaction_id}",
+		"updated_at": "2020-01-01T00:00:00Z",
+		"account_id": "{account_id_approve_no_name}",
+		"amount": 100
+	}`)
+	approveNoNameDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
+	assert.Equal(t, models.Approve, approveNoNameDecision.Outcome, "Expected decision to be Approve, got %s", approveNoNameDecision.Outcome)
+	if assert.NotEmpty(t, approveNoNameDecision.RuleExecutions) {
+		ruleExecution := approveNoNameDecision.RuleExecutions[0]
+		assert.ErrorIs(t, ruleExecution.Error, models.NullFieldReadError, "Expected error to be A field read in a rule is null, got %s", ruleExecution.Error)
+	}
+
+	// Create a decision [APPROVE] without a record in db (no row read)
+	transactionPayloadJson = []byte(`{
+		"object_id": "{transaction_id}",
+		"updated_at": "2020-01-01T00:00:00Z",
+		"account_id": "{account_id_approve_no_record}",
+		"amount": 100
+	}`)
+	approveNoRecordDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
+	assert.Equal(t, models.Approve, approveNoRecordDecision.Outcome, "Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
+	if assert.NotEmpty(t, approveNoRecordDecision.RuleExecutions) {
+		ruleExecution := approveNoRecordDecision.RuleExecutions[0]
+		assert.ErrorIs(t, ruleExecution.Error, models.NoRowsReadError, "Expected error to be No rows were read from db in a rule, got %s", ruleExecution.Error)
+	}
+
+	// Create a decision [APPROVE] without a field in payload (null field read)
+	transactionPayloadJson = []byte(`{
+		"object_id": "{transaction_id}",
+		"updated_at": "2020-01-01T00:00:00Z",
+		"account_id": "{account_id_approve}"
+	}`)
+	approveMissingFieldInPayloadDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
+	assert.Equal(t, models.Approve, approveMissingFieldInPayloadDecision.Outcome, "Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
+	if assert.NotEmpty(t, approveMissingFieldInPayloadDecision.RuleExecutions) {
+		ruleExecution := approveMissingFieldInPayloadDecision.RuleExecutions[0]
+		assert.ErrorIs(t, ruleExecution.Error, models.NullFieldReadError, "Expected error to be A field read in a rule is null, got %s", ruleExecution.Error)
+	}
+
+	// Create a decision [APPROVE] with a division by zero
+	transactionPayloadJson = []byte(`{
+		"object_id": "{transaction_id}",
+		"updated_at": "2020-01-01T00:00:00Z",
+		"account_id": "{account_id_approve}",
+		"amount": 0
+	}`)
+	approveDivisionByZeroDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
+	assert.Equal(t, models.Approve, approveDivisionByZeroDecision.Outcome, "Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
+	if assert.NotEmpty(t, approveDivisionByZeroDecision.RuleExecutions) {
+		ruleExecution := approveDivisionByZeroDecision.RuleExecutions[0]
+		assert.ErrorIs(t, ruleExecution.Error, models.DivisionByZeroError, "Expected error to be A division by zero occurred in a rule, got %s", ruleExecution.Error)
+	}
+}
+
+func createTransactionPayloadAndClientObject(transactionPayloadJson []byte,t *testing.T, table models.Table) (models.PayloadReader, models.ClientObject) {
+	triggerObjectMap := make(map[string]interface{})
+	ClientObject := models.ClientObject{TableName: table.Name, Data: triggerObjectMap}
+	transactionPayload := createTransactionPayload(transactionPayloadJson, triggerObjectMap, t, table)
+
+	return transactionPayload, ClientObject
+}
+
+func createAndTestDecision(t *testing.T, transactionPayloadJson []byte,table models.Table, decisionUsecase usecases.DecisionUsecase, usecasesWithCreds usecases.UsecasesWithCreds, organizationId, scenarioId string, logger *slog.Logger) (models.Decision) {
+	transactionPayload, ClientObject := createTransactionPayloadAndClientObject(transactionPayloadJson, t, table)
+
+	decision, err := decisionUsecase.CreateDecision(usecasesWithCreds.Context, models.CreateDecisionInput{
 		ScenarioId:              scenarioId,
 		ClientObject:            ClientObject,
 		OrganizationId:          organizationId,
 		PayloadStructWithReader: transactionPayload,
 	}, logger)
 	assert.NoError(t, err, "Could not create decision")
-	assert.Equal(t, models.Approve, approveDecision.Outcome, "Expected decision to be Approve, got %s", approveDecision.Outcome)
-	fmt.Println("Created decision", approveDecision.DecisionId)
+	fmt.Println("Created decision", decision.DecisionId)
+
+	return decision
 }

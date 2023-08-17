@@ -2,6 +2,7 @@ package evaluate
 
 import (
 	"fmt"
+	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 )
 
@@ -33,7 +34,7 @@ func (f TimeArithmetic) Evaluate(arguments ast.Arguments) (any, error) {
 		return t.Add(d), nil
 	default:
 		return nil, fmt.Errorf(
-			"function %s not implemented: %w", f.Function.DebugString(), ErrRuntimeExpression,
+			"function %s not implemented: %w", f.Function.DebugString(), models.ErrRuntimeExpression,
 		)
 	}
 }

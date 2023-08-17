@@ -2,6 +2,7 @@ package evaluate
 
 import (
 	"fmt"
+	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 	"marble/marble-backend/utils"
 )
@@ -21,7 +22,7 @@ func (f BooleanArithmetic) Evaluate(arguments ast.Arguments) (any, error) {
 	if err != nil {
 		return nil, fmt.Errorf(
 			"all argments of function %s must be booleans %w",
-			f.Function.DebugString(), ErrRuntimeExpression,
+			f.Function.DebugString(), models.ErrRuntimeExpression,
 		)
 	}
 	return f.booleanArithmeticEval(arr)

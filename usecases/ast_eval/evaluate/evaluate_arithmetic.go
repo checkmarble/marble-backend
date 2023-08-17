@@ -2,6 +2,7 @@ package evaluate
 
 import (
 	"fmt"
+	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 )
 
@@ -34,11 +35,16 @@ func (f Arithmetic) Evaluate(arguments ast.Arguments) (any, error) {
 
 	return nil, fmt.Errorf(
 		"all argments of function %s must be int64 or float64 %w",
-		f.Function.DebugString(), ErrRuntimeExpression,
+		f.Function.DebugString(), models.ErrRuntimeExpression,
 	)
 }
 
 func arithmeticEval[T int64 | float64](function ast.Function, l, r T) (T, error) {
+
+	var zero T
+	if function == ast.FUNC_DIVIDE && r == zero {
+		return zero, models.DivisionByZeroError
+	}
 
 	switch function {
 	case ast.FUNC_ADD:
