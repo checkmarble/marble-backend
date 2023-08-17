@@ -41,6 +41,7 @@ type RuleExecution struct {
 type RuleExecutionError int
 
 const (
+	NoError        RuleExecutionError = 0
 	DivisionByZero RuleExecutionError = 100
 	NullFieldRead  RuleExecutionError = 200
 	NoRowsRead     RuleExecutionError = 201
@@ -64,7 +65,7 @@ func (r RuleExecutionError) String() string {
 func AdaptRuleExecutionError(err error) RuleExecutionError {
 	switch {
 	case err == nil:
-		return 0
+		return NoError
 	case errors.Is(err, NullFieldReadError):
 		return NullFieldRead
 	case errors.Is(err, NoRowsReadError):
