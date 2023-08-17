@@ -8,71 +8,8 @@ import (
 	"marble/marble-backend/repositories/dbmodels"
 	"marble/marble-backend/utils"
 
-	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 )
-
-func (r *PGRepository) GetRule(ctx context.Context, organizationId string, ruleID string) (models.Rule, error) {
-	sql, args, err := r.queryBuilder.
-		Select(utils.ColumnList[dbmodels.DBRule]()...).
-		From("scenario_iteration_rules").
-		Where("org_id = ?", organizationId).
-		Where("id= ?", ruleID).
-		ToSql()
-	if err != nil {
-		return models.Rule{}, fmt.Errorf("unable to build rule query: %w", err)
-	}
-
-	rows, _ := r.db.Query(ctx, sql, args...)
-	rule, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dbmodels.DBRule])
-	if errors.Is(err, pgx.ErrNoRows) {
-		return models.Rule{}, models.NotFoundInRepositoryError
-	} else if err != nil {
-		return models.Rule{}, fmt.Errorf("unable to get rule: %w", err)
-	}
-
-	ruleDTO, err := dbmodels.AdaptRule(rule)
-	if err != nil {
-		return models.Rule{}, fmt.Errorf("dto issue: %w", err)
-	}
-
-	return ruleDTO, err
-}
-
-type ListRulesFilters struct {
-	ScenarioIterationId string `db:"scenario_iteration_id"`
-}
-
-func (r *PGRepository) ListRules(ctx context.Context, organizationId string, filters models.GetRulesFilters) ([]models.Rule, error) {
-	sql, args, err := r.queryBuilder.
-		Select(utils.ColumnList[dbmodels.DBRule]()...).
-		From("scenario_iteration_rules").
-		Where("org_id = ?", organizationId).
-		Where(sq.Eq(ColumnValueMap(ListRulesFilters{
-			ScenarioIterationId: filters.ScenarioIterationId,
-		}))).
-		ToSql()
-	if err != nil {
-		return nil, fmt.Errorf("unable to build rule query: %w", err)
-	}
-
-	rows, _ := r.db.Query(ctx, sql, args...)
-	rules, err := pgx.CollectRows(rows, pgx.RowToStructByName[dbmodels.DBRule])
-	if err != nil {
-		return nil, fmt.Errorf("unable to get rules: %w", err)
-	}
-
-	ruleDTOs := make([]models.Rule, 0)
-	for _, rule := range rules {
-		ruleDTO, err := dbmodels.AdaptRule(rule)
-		if err != nil {
-			return nil, fmt.Errorf("dto issue: %w", err)
-		}
-		ruleDTOs = append(ruleDTOs, ruleDTO)
-	}
-
-	return ruleDTOs, err
-}
 
 type dbCreateScenarioIterationRuleInput struct {
 	Id                   string  `db:"id"`

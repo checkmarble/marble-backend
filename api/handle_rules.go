@@ -2,7 +2,6 @@ package api
 
 import (
 	"marble/marble-backend/dto"
-	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
 	"net/http"
 
@@ -21,9 +20,7 @@ func (api *API) ListRules() http.HandlerFunc {
 		input := ctx.Value(httpin.Input).(*dto.ListRulesInput)
 
 		usecase := api.UsecasesWithCreds(r).NewRuleUsecase()
-		rules, err := usecase.ListRules(ctx, organizationId, models.GetRulesFilters{
-			ScenarioIterationId: input.ScenarioIterationId,
-		})
+		rules, err := usecase.ListRules(ctx, organizationId, input.ScenarioIterationId)
 		if presentError(w, r, err) {
 			return
 		}
@@ -76,15 +73,10 @@ func (api *API) GetRule() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		organizationId, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
-			return
-		}
-
 		input := ctx.Value(httpin.Input).(*dto.GetRuleInput)
 
 		usecase := api.UsecasesWithCreds(r).NewRuleUsecase()
-		rule, err := usecase.GetRule(ctx, organizationId, input.RuleID)
+		rule, err := usecase.GetRule(ctx, input.RuleID)
 		if presentError(w, r, err) {
 			return
 		}
@@ -140,15 +132,10 @@ func (api *API) DeleteRule() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		organizationId, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
-			return
-		}
-
 		input := ctx.Value(httpin.Input).(*dto.DeleteRuleInput)
 
 		usecase := api.UsecasesWithCreds(r).NewRuleUsecase()
-		err = usecase.DeleteRule(ctx, organizationId, input.RuleID)
+		err := usecase.DeleteRule(input.RuleID)
 		if presentError(w, r, err) {
 			return
 		}

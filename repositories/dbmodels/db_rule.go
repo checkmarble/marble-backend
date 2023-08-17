@@ -42,6 +42,26 @@ func AdaptRule(db DBRule) (models.Rule, error) {
 	}, nil
 }
 
+type DBCreateRuleInput struct {
+	Id                   string  `db:"id"`
+	OrganizationId       string  `db:"org_id"`
+	ScenarioIterationId  string  `db:"scenario_iteration_id"`
+	DisplayOrder         int     `db:"display_order"`
+	Name                 string  `db:"name"`
+	Description          string  `db:"description"`
+	ScoreModifier        int     `db:"score_modifier"`
+	FormulaAstExpression *[]byte `db:"formula_ast_expression"`
+}
+
+type DBUpdateRuleInput struct {
+	Id                   string  `db:"id"`
+	DisplayOrder         *int    `db:"display_order"`
+	Name                 *string `db:"name"`
+	Description          *string `db:"description"`
+	ScoreModifier        *int    `db:"score_modifier"`
+	FormulaAstExpression *[]byte `db:"formula_ast_expression"`
+}
+
 const TABLE_RULES = "scenario_iteration_rules"
 
 var SelectRulesColumn = utils.ColumnList[DBRule]()

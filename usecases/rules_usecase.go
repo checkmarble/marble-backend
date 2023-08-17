@@ -10,21 +10,27 @@ import (
 )
 
 type RuleUsecase struct {
-	enforceSecurity  security.EnforceSecurityScenario
-	repositoryLegacy repositories.ScenarioIterationRuleRepositoryLegacy
-	repository       repositories.RuleRepository
-	scenarioFetcher  scenarios.ScenarioFetcher
+	enforceSecurity    security.EnforceSecurityScenario
+	repositoryLegacy   repositories.ScenarioIterationRuleRepositoryLegacy
+	repository         repositories.RuleRepository
+	scenarioFetcher    scenarios.ScenarioFetcher
+	transactionFactory repositories.TransactionFactory
 }
 
-func (usecase *RuleUsecase) ListRules(ctx context.Context, organizationId string, filters models.GetRulesFilters) ([]models.Rule, error) {
-	scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(nil, filters.ScenarioIterationId)
-	if err != nil {
-		return nil, err
-	}
-	if err := usecase.enforceSecurity.ReadScenarioIteration(scenarioAndIteration.Iteration); err != nil {
-		return nil, err
-	}
-	return usecase.repositoryLegacy.ListRules(ctx, organizationId, filters)
+func (usecase *RuleUsecase) ListRules(ctx context.Context, organizationId string, iterationId string) ([]models.Rule, error) {
+	return repositories.TransactionReturnValue(
+		usecase.transactionFactory,
+		models.DATABASE_MARBLE_SCHEMA,
+		func(tx repositories.Transaction) ([]models.Rule, error) {
+			scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(tx, iterationId)
+			if err != nil {
+				return nil, err
+			}
+			if err := usecase.enforceSecurity.ReadScenarioIteration(scenarioAndIteration.Iteration); err != nil {
+				return nil, err
+			}
+			return usecase.repository.ListRulesByIterationId(tx, iterationId)
+		})
 }
 
 func (usecase *RuleUsecase) CreateRule(ctx context.Context, organizationId string, rule models.CreateRuleInput) (models.Rule, error) {
@@ -38,24 +44,29 @@ func (usecase *RuleUsecase) CreateRule(ctx context.Context, organizationId strin
 	return usecase.repositoryLegacy.CreateRule(ctx, organizationId, rule)
 }
 
-func (usecase *RuleUsecase) GetRule(ctx context.Context, organizationId string, ruleID string) (models.Rule, error) {
-	rule, err := usecase.repositoryLegacy.GetRule(ctx, organizationId, ruleID)
-	if err != nil {
-		return models.Rule{}, err
-	}
+func (usecase *RuleUsecase) GetRule(ctx context.Context, ruleId string) (models.Rule, error) {
+	return repositories.TransactionReturnValue(
+		usecase.transactionFactory,
+		models.DATABASE_MARBLE_SCHEMA,
+		func(tx repositories.Transaction) (models.Rule, error) {
+			rule, err := usecase.repository.GetRuleById(tx, ruleId)
+			if err != nil {
+				return models.Rule{}, err
+			}
 
-	scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(nil, rule.ScenarioIterationId)
-	if err != nil {
-		return models.Rule{}, err
-	}
-	if err := usecase.enforceSecurity.ReadScenarioIteration(scenarioAndIteration.Iteration); err != nil {
-		return models.Rule{}, err
-	}
-	return rule, nil
+			scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(tx, rule.ScenarioIterationId)
+			if err != nil {
+				return models.Rule{}, err
+			}
+			if err := usecase.enforceSecurity.ReadScenarioIteration(scenarioAndIteration.Iteration); err != nil {
+				return models.Rule{}, err
+			}
+			return rule, nil
+		})
 }
 
 func (usecase *RuleUsecase) UpdateRule(ctx context.Context, organizationId string, updateRule models.UpdateRuleInput) (updatedRule models.Rule, err error) {
-	rule, err := usecase.repositoryLegacy.GetRule(ctx, organizationId, updateRule.Id)
+	rule, err := usecase.repository.GetRuleById(nil, updateRule.Id)
 	if err != nil {
 		return updatedRule, err
 	}
@@ -75,21 +86,23 @@ func (usecase *RuleUsecase) UpdateRule(ctx context.Context, organizationId strin
 	return updatedRule, err
 }
 
-func (usecase *RuleUsecase) DeleteRule(ctx context.Context, organizationId string, ruleID string) error {
-	rule, err := usecase.repositoryLegacy.GetRule(ctx, organizationId, ruleID)
-	if err != nil {
-		return err
-	}
+func (usecase *RuleUsecase) DeleteRule(ruleId string) error {
+	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+		rule, err := usecase.repository.GetRuleById(tx, ruleId)
+		if err != nil {
+			return err
+		}
 
-	scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(nil, rule.ScenarioIterationId)
-	if err != nil {
-		return err
-	}
-	if scenarioAndIteration.Iteration.Version != nil {
-		return fmt.Errorf("can't delete rule as iteration %s is not in draft", scenarioAndIteration.Iteration.Id)
-	}
-	if err := usecase.enforceSecurity.CreateRule(scenarioAndIteration.Iteration); err != nil {
-		return err
-	}
-	return usecase.repository.DeleteRule(ctx, ruleID)
+		scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(tx, rule.ScenarioIterationId)
+		if err != nil {
+			return err
+		}
+		if scenarioAndIteration.Iteration.Version != nil {
+			return fmt.Errorf("can't delete rule as iteration %s is not in draft", scenarioAndIteration.Iteration.Id)
+		}
+		if err := usecase.enforceSecurity.CreateRule(scenarioAndIteration.Iteration); err != nil {
+			return err
+		}
+		return usecase.repository.DeleteRule(tx, ruleId)
+	})
 }
