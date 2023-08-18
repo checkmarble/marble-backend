@@ -56,16 +56,22 @@ export function adaptIterationWithValidationApiResult(json: unknown) {
     json,
     yup.object({
       iteration: IterationSchema,
-      scenario_validation: ScenarioValidationSchema,
     })
   );
-  return {
-    iteration: adaptIteration(dto.iteration),
-    scenarioValidation: adaptScenariosValidation(dto.scenario_validation),
-  };
+  return adaptIteration(dto.iteration);
 }
 
 export function adaptListIterationsApiResult(json: unknown): Iteration[] {
   const dto = adaptDtoWithYup(json, yup.array().defined().of(IterationSchema));
   return dto.map(adaptIteration);
+}
+
+export function adaptValidateIterationApiResult(json: unknown) {
+  const dto = adaptDtoWithYup(
+    json,
+    yup.object({
+      scenario_validation: ScenarioValidationSchema,
+    })
+  );
+  return adaptScenariosValidation(dto.scenario_validation);
 }

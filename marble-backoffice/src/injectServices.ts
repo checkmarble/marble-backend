@@ -5,6 +5,7 @@ import type {
   UserService,
   ApiKeyService,
   AstExpressionService,
+  AstEditorService,
 } from "./services";
 
 export interface Services {
@@ -13,6 +14,7 @@ export interface Services {
   userService: UserService;
   apiKeyService: ApiKeyService;
   astExpressionService: AstExpressionService;
+  astEditorService: AstEditorService;
 }
 
 let globalServices: Services | null;
@@ -39,6 +41,9 @@ export function initializeServices(repositories: Repositories) {
     },
     astExpressionService: {
       scenarioRepository: repositories.scenarioRepository,
+    },
+    astEditorService: {
+      scenariosRepository: repositories.scenarioRepository,
     },
   };
 }

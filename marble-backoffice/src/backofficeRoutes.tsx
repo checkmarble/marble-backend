@@ -12,6 +12,7 @@ import IngestionPage from "./pages/IngestionPage";
 import UserDetailPage from "./pages/UserDetailPage";
 import DecisionsPage from "./pages/DecisionsPage";
 import ScenarioDetailsPage from "./pages/ScenarioDetailsPage";
+import AstEditorPage from "./pages/AstEditorPage";
 
 export function backofficeRoutes() {
   return createRoutesFromElements(
@@ -46,6 +47,14 @@ export function backofficeRoutes() {
       <Route
         path={`/${PathFragment.Scenarios}/:scenarioId`}
         element={<ScenarioDetailsPage />}
+      />
+      <Route
+        path={`/${PathFragment.AstEditor}/:scenarioId/:iterationId/trigger`}
+        element={<AstEditorPage />}
+      />
+      <Route
+        path={`/${PathFragment.AstEditor}/:scenarioId/:iterationId/rule/:ruleId`}
+        element={<AstEditorPage />}
       />
     </Route>
   );

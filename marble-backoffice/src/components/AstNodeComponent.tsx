@@ -73,9 +73,12 @@ export function AstNodeComponent({
             ⚠️ Invalid Node: Not a constant, not a function
           </Typography>
         )}
-        {evaluation?.evaluationError && (
-          <Alert severity="error">{evaluation.evaluationError}</Alert>
-        )}
+        {evaluation?.errors &&
+          evaluation.errors.map((e) => (
+            <Alert severity="error">
+              {e.error} : {e.message}
+            </Alert>
+          ))}
         {node.children.map((child, i) => (
           <AstNodeComponent
             key={i}

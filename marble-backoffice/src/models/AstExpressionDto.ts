@@ -52,11 +52,15 @@ export function adaptAstNode(dto: AstNodeDto): AstNode {
 }
 
 export function adaptAstNodeDto(model: AstNode): AstNodeDto {
+
+  const children = (model.children || []).map((child) => adaptAstNodeDto(child))
+  const namedChildren = MapMap(model.namedChildren, adaptAstNodeDto)
+
   return {
     name: model.name === "" ? undefined : model.name,
     constant: model.constant === NoConstant ? undefined : model.constant,
-    children: (model.children || []).map((child) => adaptAstNodeDto(child)),
-    named_children: MapToObject(MapMap(model.namedChildren, adaptAstNodeDto)),
+    children: children.length === 0 ? undefined : children,
+    named_children: namedChildren.size === 0 ? undefined : MapToObject(namedChildren),
   };
 }
 

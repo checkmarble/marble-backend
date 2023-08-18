@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type {
   AstNodeEvaluation,
   DataModel,
+  Iteration,
   Organization,
   Scenario,
   ScenarioValidation,
@@ -27,6 +28,8 @@ import {
   postRule,
   updateRule,
   publishIteration,
+  validateIteration,
+  fetchIterationsOfScenario,
 } from "@/repositories";
 import { useSimpleLoader } from "@/hooks/SimpleLoader";
 import { showLoader, type LoadingDispatcher } from "@/hooks/Loading";
@@ -135,51 +138,73 @@ export function useScenarios(
   };
 }
 
-export function useSingleScenario(
-  service: OrganizationService,
-  loadingDispatcher: LoadingDispatcher,
-  scenarioId: string
-) {
+// function findDraft(iterations: Iteration[]): Iteration | null {
+//   return iterations.find((iteration) => iteration.version === null) ?? null;
+// }
+
+export function useSingleScenario({
+  service,
+  loadingDispatcher,
+  scenarioId,
+  iterationId,
+}: {
+  service: OrganizationService;
+  loadingDispatcher: LoadingDispatcher;
+  scenarioId: string;
+  iterationId: string | null;
+}) {
   const loadScenario = useCallback(async () => {
     const scenario = await fetchScenario(
       service.scenariosRepository,
       scenarioId
     );
 
-    if (scenario.liveVersionId !== null) {
-      scenario.liveIteration = await fetchIteration(
-        service.scenariosRepository,
-        scenario.organizationId,
-        scenario.liveVersionId
-      );
-    }
-
-    // const iterations = fetchIterationsOfScenario(
-    //   service.scenariosRepository,
-    //   scenario.organizationId,
-    //   scenarioId
-    // );
+    scenario.allIterations = await fetchIterationsOfScenario(
+      service.scenariosRepository,
+      scenario.organizationId,
+      scenarioId
+    );
 
     return scenario;
-  }, [service, scenarioId]);
+  }, [service.scenariosRepository, scenarioId]);
 
   const [scenario, refreshScenario] = useSimpleLoader<Scenario>(
     loadingDispatcher,
     loadScenario
   );
 
+  const loadIteration = useCallback(async () => {
+    if (scenario === null || iterationId === null) {
+      return null;
+    }
+    return await fetchIteration(
+      service.scenariosRepository,
+      scenario.organizationId,
+      iterationId
+    );
+  }, [iterationId, scenario, service.scenariosRepository]);
+
+  const [iteration, refreshIteration] = useSimpleLoader<Iteration>(
+    loadingDispatcher,
+    loadIteration
+  );
+
   return {
     scenario,
-    refreshScenario,
+    iteration,
+    refreshScenario: async () => {
+      await refreshScenario();
+      await refreshIteration();
+    },
   };
 }
 
 function nodeEvaluationErrors(node: AstNodeEvaluation): string[] {
   return [
-    node.evaluationError,
+    ...(node.errors ?? []).map((e) => e.message),
     ...node.children.flatMap(nodeEvaluationErrors),
     ...Object.values(node.namedChildren).flatMap(nodeEvaluationErrors),
-  ].filter((v) => v !== "");
+  ];
 }
 
 function scenarioValidationErrors(validation: ScenarioValidation): string[] {
@@ -188,9 +213,10 @@ function scenarioValidationErrors(validation: ScenarioValidation): string[] {
     ...nodeEvaluationErrors(validation.triggerEvaluation).map(
       (e) => `Trigger: ${e}`
     ),
-    ...validation.rulesEvaluations
-      .flatMap(nodeEvaluationErrors)
-      .map((e) => `Rule: ${e}`),
+    ...Object.values(validation.rulesEvaluations)
+      .map(nodeEvaluationErrors)
+      .flat()
+      .map((e: string) => `Rule: ${e}`),
   ];
 
   return errors;
@@ -226,7 +252,7 @@ export function useAddScenarios(
         ).iterationId;
 
         // patch the iteration
-        const { scenarioValidation } = await patchIteration(
+        await patchIteration(
           service.scenariosRepository,
           organizationId,
           iterationId,
@@ -238,10 +264,13 @@ export function useAddScenarios(
           }
         );
 
-        // check for errors in trigger evaluation
-        const errors = nodeEvaluationErrors(
-          scenarioValidation.triggerEvaluation
+        const validation = await validateIteration(
+          service.scenariosRepository,
+          iterationId
         );
+
+        // check for errors in trigger evaluation
+        const errors = nodeEvaluationErrors(validation.triggerEvaluation);
         if (errors.length > 0) {
           throw new Error(errors.join("\n"));
         }
@@ -253,7 +282,7 @@ export function useAddScenarios(
             iterationId
           );
 
-          const { scenarioValidation } = await updateRule(
+          await updateRule(
             service.scenariosRepository,
             organizationId,
             rule.ruleId,
@@ -262,7 +291,12 @@ export function useAddScenarios(
             }
           );
 
-          const errors = scenarioValidationErrors(scenarioValidation);
+          const validation = await validateIteration(
+            service.scenariosRepository,
+            iterationId
+          );
+
+          const errors = scenarioValidationErrors(validation);
           if (errors.length > 0) {
             throw new Error(errors.join("\n"));
           }

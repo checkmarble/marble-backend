@@ -6,6 +6,7 @@ export enum PathFragment {
   Ingestion = "ingestion",
   Decisions = "decisions",
   Scenarios = "scenarios",
+  AstEditor = "ast-editor",
 }
 
 export const PageLink = {
@@ -22,9 +23,20 @@ export const PageLink = {
     `/${PathFragment.Organizations}/${organizationId}/edit`,
   Users: `/${PathFragment.Users}`,
   userDetails: (userId: string) => `/${PathFragment.Users}/${userId}`,
-  ingestion: (organizationId: string) => `/${PathFragment.Ingestion}/${organizationId}`,
-  decisions: (organizationId: string) => `/${PathFragment.Decisions}/${organizationId}`,
-  scenarioDetailsPage: (scenarioId: string) => `/${PathFragment.Scenarios}/${scenarioId}`,
+  ingestion: (organizationId: string) =>
+    `/${PathFragment.Ingestion}/${organizationId}`,
+  decisions: (organizationId: string) =>
+    `/${PathFragment.Decisions}/${organizationId}`,
+  scenarioDetailsPage: (scenarioId: string, iterationId: string | null) => {
+    const queryParams = iterationId
+      ? `?${new URLSearchParams({ "iteration-id": iterationId })}`
+      : "";
+    return `/${PathFragment.Scenarios}/${scenarioId}${queryParams}`;
+  },
+  editTrigger: (scenarioId: string, iterationId: string) =>
+    `/${PathFragment.AstEditor}/${scenarioId}/${iterationId}/trigger`,
+  editRule: (scenarioId: string, iterationId: string, ruleId: string) =>
+    `/${PathFragment.AstEditor}/${scenarioId}/${iterationId}/rule/${ruleId}`,
 };
 
 export function isRouteRequireAuthenticatedUser(path: string) {

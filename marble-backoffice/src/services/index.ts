@@ -5,3 +5,4 @@ export * from "./IngestionService";
 export * from "./DecisionService";
 export * from "./ApiKeyService";
 export * from "./AstExpressionService";
+export * from "./AstEditorService";

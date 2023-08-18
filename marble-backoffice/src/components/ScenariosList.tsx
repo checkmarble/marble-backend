@@ -57,7 +57,7 @@ export default function ScenariosList({
       <ListOfScenarios
         scenarios={scenarios}
         onScenarioDetailClick={(scenarioId) => {
-          navigate(PageLink.scenarioDetailsPage(scenarioId));
+          navigate(PageLink.scenarioDetailsPage(scenarioId, null));
         }}
       />
     </>
