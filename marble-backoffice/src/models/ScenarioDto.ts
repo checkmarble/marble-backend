@@ -23,7 +23,7 @@ export function adaptScenario(dto: ScenarioDto): Scenario {
     triggerObjectType: dto.triggerObjectType,
     createdAt: dto.createdAt,
     liveVersionId: dto.liveVersionId === undefined ? null : dto.liveVersionId,
-    liveIteration: null,
+    allIterations: [],
   };
 }
 

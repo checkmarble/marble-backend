@@ -326,6 +326,13 @@ export class MarbleApi {
     });
   }
 
+  async validateIteration(iterationId: string) {
+    const iterationsIdParam = encodeURIComponent(iterationId);
+    return this.getAuthorizedJson(
+      `${SCENARIO_ITERATIONS_URL_PATH}/${iterationsIdParam}/validate`
+    );
+  }
+
   async postScenarioIterationPublication(
     organizationId: string,
     iterationId: string,

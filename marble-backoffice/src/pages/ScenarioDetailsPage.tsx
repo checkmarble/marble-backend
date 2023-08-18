@@ -2,10 +2,14 @@ import services from "@/injectServices";
 import Container from "@mui/material/Container";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
+import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
+import ListItemText from "@mui/material/ListItemText";
+import ListItemButton from "@mui/material/ListItemButton";
 import Typography from "@mui/material/Typography";
 import { useLoading } from "@/hooks/Loading";
 import DelayedLinearProgress from "@/components/DelayedLinearProgress";
-import { type AstNode, Rule } from "@/models";
+import { type AstNode, Rule, PageLink } from "@/models";
 import Paper from "@mui/material/Paper";
 import TextField from "@mui/material/TextField";
 import AddIcon from "@mui/icons-material/Add";
@@ -20,7 +24,7 @@ import {
   type NodeViewModel,
 } from "@/services/AstExpressionService";
 import { useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useSingleScenario } from "@/services";
 import {
   AstNodeComponent,
@@ -29,6 +33,7 @@ import {
 
 export default function ScenarioDetailsPage() {
   const { scenarioId } = useParams();
+  const [searchParams] = useSearchParams();
 
   if (!scenarioId) {
     throw Error("scenarioId is required");
@@ -36,12 +41,14 @@ export default function ScenarioDetailsPage() {
   // const navigate = useNavigate();
 
   const [pageLoading, pageLoadingDispatcher] = useLoading();
+  const iterationId = searchParams.get("iteration-id");
 
-  const { scenario } = useSingleScenario(
-    services().organizationService,
-    pageLoadingDispatcher,
-    scenarioId
-  );
+  const { scenario, iteration } = useSingleScenario({
+    service: services().organizationService,
+    loadingDispatcher: pageLoadingDispatcher,
+    scenarioId,
+    iterationId,
+  });
 
   const {
     editor,
@@ -93,6 +100,34 @@ export default function ScenarioDetailsPage() {
     // handleDeleteAstNode,
   };
 
+  const navigate = useNavigate();
+
+  const handleEditTrigger = useCallback(() => {
+    if (iterationId === null) {
+      throw Error("iterationId is required");
+    }
+    navigate(PageLink.editTrigger(scenarioId, iterationId));
+  }, [iterationId, navigate, scenarioId]);
+
+  const handleEditRule = useCallback(
+    (ruleId: string) => {
+      if (iterationId === null) {
+        throw Error("iterationId is required");
+      }
+      navigate(PageLink.editRule(scenarioId, iterationId, ruleId));
+    },
+    [iterationId, navigate, scenarioId]
+  );
+
+  const handleIterationClick = useCallback(
+    (iterationId: string) => {
+      navigate(PageLink.scenarioDetailsPage(scenarioId, iterationId));
+    },
+    [navigate, scenarioId]
+  );
+
+  const iterationEditable = iteration?.version === null || false;
+
   return (
     <>
       <DelayedLinearProgress loading={pageLoading} />
@@ -102,13 +137,67 @@ export default function ScenarioDetailsPage() {
         }}
       >
         <Stack direction="column" spacing={2}>
+          {scenario && iterationId == null && (
+            <>
+              <Typography variant="h5">
+                {scenario.allIterations.length} iterations
+              </Typography>
+              <List>
+                {scenario.allIterations.map((iteration) => (
+                  <ListItem>
+                    <ListItemButton
+                      onClick={() =>
+                        handleIterationClick(iteration.iterationId)
+                      }
+                    >
+                      <ListItemText>
+                        {iteration.version === null
+                          ? "Draft Iteration"
+                          : `Live Iteration version ${iteration.version}`}
+                      </ListItemText>
+                    </ListItemButton>
+                  </ListItem>
+                ))}
+              </List>
+            </>
+          )}
+
+          {/* Iteration */}
+          {iteration && (
+            <>
+              <Typography variant="h5">
+                {iteration.version ? (
+                  <>Live Iteration version {iteration.version}</>
+                ) : (
+                  <>Draft Iteration</>
+                )}
+              </Typography>
+              <TriggerCondition
+                onEditTrigger={iterationEditable ? handleEditTrigger : null}
+                triggerCondition={iteration.triggerCondition}
+              />
+              {iteration.rules.map((rule) => (
+                <RuleComponent
+                  onEditRule={
+                    iterationEditable ? () => handleEditRule(rule.ruleId) : null
+                  }
+                  key={rule.ruleId}
+                  rule={rule}
+                />
+              ))}
+            </>
+          )}
+          {/* {iteration != null && (
+            <>
+
+            </>
+          )} */}
           {/* <Typography variant="h5">Expression Editor</Typography>
 
           <AstEditor
             editor={nodeEditor}
             node={editor.expressionViewModel.rootNode}
           /> */}
-
           {identifiers && (
             <>
               <Typography variant="h5">Builder Identifiers</Typography>
@@ -123,17 +212,6 @@ export default function ScenarioDetailsPage() {
           )}
           {/* <Typography variant="h5">Simple rendering of the AST</Typography>
           <AstNodeComponent node={expressionAstNode} evaluation={dryRunResult} /> */}
-
-          {scenario?.liveIteration && (
-            <>
-              <TriggerCondition
-                triggerCondition={scenario.liveIteration.triggerCondition}
-              />
-              {scenario.liveIteration.rules.map((rule) => (
-                <RuleComponent key={rule.ruleId} rule={rule} />
-              ))}
-            </>
-          )}
         </Stack>
       </Container>
     </>
@@ -141,24 +219,39 @@ export default function ScenarioDetailsPage() {
 }
 
 function TriggerCondition({
+  onEditTrigger,
   triggerCondition,
 }: {
+  onEditTrigger: (() => void) | null;
   triggerCondition: AstNode | null;
 }) {
-  if (triggerCondition === null) {
-    return <>No trigger condition</>;
-  }
-
   return (
     <>
       <Typography variant="h6">Trigger condition</Typography>
-      <AstNodeTextComponent node={triggerCondition} />
-      <AstNodeComponent node={triggerCondition} />
+      {triggerCondition === null ? (
+        <>No trigger condition</>
+      ) : (
+        <>
+          {onEditTrigger && (
+            <Button onClick={onEditTrigger} color="secondary">
+              Edit trigger
+            </Button>
+          )}
+          <AstNodeTextComponent node={triggerCondition} />
+          <AstNodeComponent node={triggerCondition} />
+        </>
+      )}
     </>
   );
 }
 
-function RuleComponent({ rule }: { rule: Rule }) {
+function RuleComponent({
+  rule,
+  onEditRule,
+}: {
+  rule: Rule;
+  onEditRule: (() => void) | null;
+}) {
   return (
     <>
       <Typography variant="h6">Rule {rule.name}</Typography>
@@ -167,6 +260,11 @@ function RuleComponent({ rule }: { rule: Rule }) {
         <>No formula</>
       ) : (
         <>
+          {onEditRule && (
+            <Button onClick={onEditRule} color="secondary">
+              Edit Rule
+            </Button>
+          )}
           <AstNodeTextComponent node={rule.formulaAstExpression} />
           <AstNodeComponent node={rule.formulaAstExpression} />
         </>

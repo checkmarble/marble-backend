@@ -15,6 +15,7 @@ import {
   adaptIterationApiResult,
   adaptIterationWithValidationApiResult,
   adaptListIterationsApiResult,
+  adaptValidateIterationApiResult,
 } from "@/models/IterationDto";
 import { adaptEditorIdentifiers } from "@/models/EditorIdentifiersDto";
 
@@ -122,6 +123,15 @@ export async function updateRule(
 ) {
   return adaptUpdateRuleApiResult(
     await repository.marbleApi.patchRule(organizationId, ruleId, changes)
+  );
+}
+
+export async function validateIteration(
+  repository: ScenariosRepository,
+  iterationId: string
+) {
+  return adaptValidateIterationApiResult(
+    await repository.marbleApi.validateIteration(iterationId)
   );
 }
 

@@ -8,8 +8,7 @@ export interface Scenario {
   triggerObjectType: string;
   createdAt: Date;
   liveVersionId: string | null;
-
-  liveIteration: Iteration | null;
+  allIterations: Iteration[];
 }
 
 export interface CreateScenario {
