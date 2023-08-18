@@ -54,6 +54,10 @@ type FuncAttributes struct {
 
 // If number of arguments -1 the function can take any number of arguments
 var FuncAttributesMap = map[Function]FuncAttributes{
+	FUNC_UNKNOWN: {
+		DebugName: "UNKNOWN",
+		AstName:   "Unknown",
+	},
 	FUNC_CONSTANT: {
 		DebugName: "CONSTANT",
 		AstName:   "",
