@@ -17,7 +17,7 @@ type RuleUsecase struct {
 	transactionFactory repositories.TransactionFactory
 }
 
-func (usecase *RuleUsecase) ListRules(ctx context.Context, organizationId string, iterationId string) ([]models.Rule, error) {
+func (usecase *RuleUsecase) ListRules(iterationId string) ([]models.Rule, error) {
 	return repositories.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
@@ -44,7 +44,7 @@ func (usecase *RuleUsecase) CreateRule(ctx context.Context, organizationId strin
 	return usecase.repositoryLegacy.CreateRule(ctx, organizationId, rule)
 }
 
-func (usecase *RuleUsecase) GetRule(ctx context.Context, ruleId string) (models.Rule, error) {
+func (usecase *RuleUsecase) GetRule(ruleId string) (models.Rule, error) {
 	return repositories.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
@@ -65,24 +65,32 @@ func (usecase *RuleUsecase) GetRule(ctx context.Context, ruleId string) (models.
 		})
 }
 
-func (usecase *RuleUsecase) UpdateRule(ctx context.Context, organizationId string, updateRule models.UpdateRuleInput) (updatedRule models.Rule, err error) {
-	rule, err := usecase.repository.GetRuleById(nil, updateRule.Id)
-	if err != nil {
-		return updatedRule, err
-	}
-	scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(nil, rule.ScenarioIterationId)
-	if err != nil {
-		return updatedRule, err
-	}
-	if err := usecase.enforceSecurity.CreateRule(scenarioAndIteration.Iteration); err != nil {
-		return updatedRule, err
-	}
+func (usecase *RuleUsecase) UpdateRule(updateRule models.UpdateRuleInput) (updatedRule models.Rule, err error) {
+	err = usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+		rule, err := usecase.repository.GetRuleById(tx, updateRule.Id)
+		if err != nil {
+			return err
+		}
+		scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(tx, rule.ScenarioIterationId)
+		if err != nil {
+			return err
+		}
+		if err := usecase.enforceSecurity.CreateRule(scenarioAndIteration.Iteration); err != nil {
+			return err
+		}
+		// check if iteration is draft
+		if scenarioAndIteration.Iteration.Version != nil {
+			return fmt.Errorf("can't update rule as iteration %s is not in draft %w", scenarioAndIteration.Iteration.Id, models.ErrScenarioIterationNotDraft)
+		}
 
-	updatedRule, err = usecase.repositoryLegacy.UpdateRule(ctx, organizationId, updateRule)
-	if err != nil {
-		return updatedRule, err
-	}
+		err = usecase.repository.UpdateRule(tx, updateRule)
+		if err != nil {
+			return err
+		}
 
+		updatedRule, err = usecase.repository.GetRuleById(tx, updateRule.Id)
+		return err
+	})
 	return updatedRule, err
 }
 

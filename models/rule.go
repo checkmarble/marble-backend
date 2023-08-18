@@ -21,10 +21,6 @@ type Rule struct {
 	CreatedAt            time.Time
 }
 
-// type GetRulesFilters struct {
-// 	ScenarioIterationId string
-// }
-
 type CreateRuleInput struct {
 	ScenarioIterationId  string
 	DisplayOrder         int

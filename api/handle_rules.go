@@ -12,15 +12,10 @@ func (api *API) ListRules() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		organizationId, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
-			return
-		}
-
 		input := ctx.Value(httpin.Input).(*dto.ListRulesInput)
 
 		usecase := api.UsecasesWithCreds(r).NewRuleUsecase()
-		rules, err := usecase.ListRules(ctx, organizationId, input.ScenarioIterationId)
+		rules, err := usecase.ListRules(input.ScenarioIterationId)
 		if presentError(w, r, err) {
 			return
 		}
@@ -76,7 +71,7 @@ func (api *API) GetRule() http.HandlerFunc {
 		input := ctx.Value(httpin.Input).(*dto.GetRuleInput)
 
 		usecase := api.UsecasesWithCreds(r).NewRuleUsecase()
-		rule, err := usecase.GetRule(ctx, input.RuleID)
+		rule, err := usecase.GetRule(input.RuleID)
 		if presentError(w, r, err) {
 			return
 		}
@@ -97,11 +92,6 @@ func (api *API) UpdateRule() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		organizationId, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
-			return
-		}
-
 		input := ctx.Value(httpin.Input).(*dto.UpdateRuleInput)
 
 		updateRuleInput, err := dto.AdaptUpdateRule(input.RuleID, *input.Body)
@@ -110,7 +100,7 @@ func (api *API) UpdateRule() http.HandlerFunc {
 		}
 
 		usecase := api.UsecasesWithCreds(r).NewRuleUsecase()
-		updatedRule, err := usecase.UpdateRule(ctx, organizationId, updateRuleInput)
+		updatedRule, err := usecase.UpdateRule(updateRuleInput)
 		if presentError(w, r, err) {
 			return
 		}

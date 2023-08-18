@@ -2,24 +2,21 @@ package repositories
 
 import (
 	"context"
-	"encoding/json"
-	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
-	"marble/marble-backend/models/ast"
 	"marble/marble-backend/repositories/dbmodels"
+	"marble/marble-backend/utils"
 
 	"github.com/Masterminds/squirrel"
 )
 
 type ScenarioIterationRuleRepositoryLegacy interface {
 	CreateRule(ctx context.Context, organizationId string, rule models.CreateRuleInput) (models.Rule, error)
-	UpdateRule(ctx context.Context, organizationId string, rule models.UpdateRuleInput) (models.Rule, error)
 }
 
 type RuleRepository interface {
 	GetRuleById(tx Transaction, ruleId string) (models.Rule, error)
 	ListRulesByIterationId(tx Transaction, iterationId string) ([]models.Rule, error)
-	UpdateRuleWithAstExpression(tx Transaction, ruleId string, expression ast.Node) error
+	UpdateRule(tx Transaction, rule models.UpdateRuleInput) error
 	DeleteRule(tx Transaction, ruleID string) error
 }
 
@@ -53,21 +50,18 @@ func (repo *RuleRepositoryPostgresql) ListRulesByIterationId(tx Transaction, ite
 	)
 }
 
-func (repo *RuleRepositoryPostgresql) UpdateRuleWithAstExpression(tx Transaction, ruleId string, expression ast.Node) error {
+func (repo *RuleRepositoryPostgresql) UpdateRule(tx Transaction, rule models.UpdateRuleInput) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	nodeDto, err := dto.AdaptNodeDto(expression)
-	if err != nil {
-		return err
-	}
-	serializedExpression, err := json.Marshal(nodeDto)
+	dbUpdateRuleInput, err := dbmodels.AdaptDBUpdateRuleInput(rule)
 	if err != nil {
 		return err
 	}
 
-	var updateRequest = NewQueryBuilder().Update(dbmodels.TABLE_RULES)
-	updateRequest = updateRequest.Set("formula_ast_expression", serializedExpression)
-	updateRequest = updateRequest.Where("id = ?", ruleId)
+	var updateRequest = NewQueryBuilder().
+		Update(dbmodels.TABLE_RULES).
+		SetMap(utils.ColumnValueMap(dbUpdateRuleInput)).
+		Where("id = ?", rule.Id)
 
 	_, err = pgTx.ExecBuilder(updateRequest)
 	return err

@@ -62,6 +62,22 @@ type DBUpdateRuleInput struct {
 	FormulaAstExpression *[]byte `db:"formula_ast_expression"`
 }
 
+func AdaptDBUpdateRuleInput(rule models.UpdateRuleInput) (DBUpdateRuleInput, error) {
+	formulaAstExpression, err := SerializeFormulaAstExpression(rule.FormulaAstExpression)
+	if err != nil {
+		return DBUpdateRuleInput{}, fmt.Errorf("unable to marshal expression formula: %w", err)
+	}
+
+	return DBUpdateRuleInput{
+		Id:                   rule.Id,
+		DisplayOrder:         rule.DisplayOrder,
+		Name:                 rule.Name,
+		Description:          rule.Description,
+		ScoreModifier:        rule.ScoreModifier,
+		FormulaAstExpression: formulaAstExpression,
+	}, nil
+}
+
 const TABLE_RULES = "scenario_iteration_rules"
 
 var SelectRulesColumn = utils.ColumnList[DBRule]()
