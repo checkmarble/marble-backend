@@ -137,3 +137,18 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(ctx co
 	}
 	return usecase.scenarioIterationsWriteRepositoryLegacy.CreateScenarioIteration(ctx, organizationId, createScenarioIterationInput)
 }
+
+func (usecase *ScenarioIterationUsecase) ValidateScenarioIteration(iterationId string) (validation models.ScenarioValidation, err error) {
+
+	scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(nil, iterationId)
+	if err != nil {
+		return validation, err
+	}
+
+	if err := usecase.enforceSecurity.CreateScenario(scenarioAndIteration.Scenario.OrganizationId); err != nil {
+		return validation, err
+	}
+
+	validation = usecase.validateScenarioIteration.Validate(scenarioAndIteration)
+	return validation, err
+}
