@@ -402,7 +402,7 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 	}
 }
 
-func createTransactionPayloadAndClientObject(transactionPayloadJson []byte,t *testing.T, table models.Table) (models.PayloadReader, models.ClientObject) {
+func createTransactionPayloadAndClientObject(transactionPayloadJson []byte, t *testing.T, table models.Table) (models.PayloadReader, models.ClientObject) {
 	triggerObjectMap := make(map[string]interface{})
 	ClientObject := models.ClientObject{TableName: table.Name, Data: triggerObjectMap}
 	transactionPayload := createTransactionPayload(transactionPayloadJson, triggerObjectMap, t, table)
@@ -410,7 +410,7 @@ func createTransactionPayloadAndClientObject(transactionPayloadJson []byte,t *te
 	return transactionPayload, ClientObject
 }
 
-func createAndTestDecision(t *testing.T, transactionPayloadJson []byte,table models.Table, decisionUsecase usecases.DecisionUsecase, usecasesWithCreds usecases.UsecasesWithCreds, organizationId, scenarioId string, logger *slog.Logger) (models.Decision) {
+func createAndTestDecision(t *testing.T, transactionPayloadJson []byte, table models.Table, decisionUsecase usecases.DecisionUsecase, usecasesWithCreds usecases.UsecasesWithCreds, organizationId, scenarioId string, logger *slog.Logger) models.Decision {
 	transactionPayload, ClientObject := createTransactionPayloadAndClientObject(transactionPayloadJson, t, table)
 
 	decision, err := decisionUsecase.CreateDecision(usecasesWithCreds.Context, models.CreateDecisionInput{

@@ -9,15 +9,15 @@ type CustomList struct {
 	Description string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
-	DeletedAt *time.Time
+	DeletedAt   *time.Time
 }
 
 type CustomListValue struct {
-	Id        string
-	CustomListId    string
-	Value     string
-	CreatedAt time.Time
-	DeletedAt *time.Time
+	Id           string
+	CustomListId string
+	Value        string
+	CreatedAt    time.Time
+	DeletedAt    *time.Time
 }
 
 type CreateCustomListInput struct {
@@ -44,13 +44,13 @@ type GetCustomListValuesInput struct {
 }
 
 type AddCustomListValueInput struct {
-	OrgId  string
+	OrgId        string
 	CustomListId string
-	Value  string
+	Value        string
 }
 
 type DeleteCustomListValueInput struct {
-	Id     string
+	Id           string
 	CustomListId string
-	OrgId  string
+	OrgId        string
 }

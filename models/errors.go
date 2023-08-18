@@ -40,9 +40,9 @@ var (
 // Rule execution related errors
 var ErrRuntimeExpression = errors.New("expression runtime error")
 var (
-	NullFieldReadError   = fmt.Errorf("Null field read %w", ErrRuntimeExpression)
-	NoRowsReadError      = fmt.Errorf("No rows read %w", ErrRuntimeExpression)
-	DivisionByZeroError  = fmt.Errorf("Division by zero %w", ErrRuntimeExpression)
+	NullFieldReadError  = fmt.Errorf("Null field read %w", ErrRuntimeExpression)
+	NoRowsReadError     = fmt.Errorf("No rows read %w", ErrRuntimeExpression)
+	DivisionByZeroError = fmt.Errorf("Division by zero %w", ErrRuntimeExpression)
 )
 
 var RuleExecutionAuthorizedErrors = []error{NullFieldReadError, NoRowsReadError, DivisionByZeroError}
