@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
-	"marble/marble-backend/models/ast"
 	"marble/marble-backend/utils"
 	"net/http"
 
@@ -67,22 +66,9 @@ func (api *API) CreateScenarioIteration() http.HandlerFunc {
 			}
 
 			for i, rule := range input.Payload.Body.Rules {
-
-				var formulaAstExpression *ast.Node
-				if rule.FormulaAstExpression != nil {
-					f, err := dto.AdaptASTNode(*rule.FormulaAstExpression)
-					if err != nil {
-						presentError(w, r, fmt.Errorf("could not unmarshal formula ast expression: %w %w", err, models.BadParameterError))
-					}
-					formulaAstExpression = &f
-				}
-
-				createScenarioIterationInput.Body.Rules[i] = models.CreateRuleInput{
-					DisplayOrder:         rule.DisplayOrder,
-					Name:                 rule.Name,
-					Description:          rule.Description,
-					FormulaAstExpression: formulaAstExpression,
-					ScoreModifier:        rule.ScoreModifier,
+				createScenarioIterationInput.Body.Rules[i], err = dto.AdaptCreateRuleInput(rule, organizationId)
+				if err != nil {
+					presentError(w, r, err)
 				}
 			}
 

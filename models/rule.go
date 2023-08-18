@@ -22,6 +22,8 @@ type Rule struct {
 }
 
 type CreateRuleInput struct {
+	Id                   string
+	OrganizationId       string
 	ScenarioIterationId  string
 	DisplayOrder         int
 	Name                 string

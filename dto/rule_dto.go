@@ -77,9 +77,10 @@ func AdaptRuleDto(rule models.Rule) (RuleDto, error) {
 	}, nil
 }
 
-func AdaptCreateRuleInput(body CreateRuleInputBody) (models.CreateRuleInput, error) {
+func AdaptCreateRuleInput(body CreateRuleInputBody, organizationId string) (models.CreateRuleInput, error) {
 
 	createRuleInput := models.CreateRuleInput{
+		OrganizationId:       organizationId,
 		ScenarioIterationId:  body.ScenarioIterationId,
 		DisplayOrder:         body.DisplayOrder,
 		Name:                 body.Name,

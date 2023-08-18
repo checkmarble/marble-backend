@@ -40,13 +40,13 @@ func (api *API) CreateRule() http.HandlerFunc {
 
 		input := ctx.Value(httpin.Input).(*dto.CreateRuleInput)
 
-		createInputRule, err := dto.AdaptCreateRuleInput(*input.Body)
+		createInputRule, err := dto.AdaptCreateRuleInput(*input.Body, organizationId)
 		if presentError(w, r, err) {
 			return
 		}
 
 		usecase := api.UsecasesWithCreds(r).NewRuleUsecase()
-		rule, err := usecase.CreateRule(ctx, organizationId, createInputRule)
+		rule, err := usecase.CreateRule(createInputRule)
 		if presentError(w, r, err) {
 			return
 		}
