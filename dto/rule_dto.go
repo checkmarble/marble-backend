@@ -51,7 +51,7 @@ type UpdateRuleInput struct {
 	Body   *UpdateRuleBody `in:"body=json"`
 }
 type DeleteRuleInput struct {
-	RuleID string          `in:"path=ruleID"`
+	RuleID string `in:"path=ruleID"`
 }
 
 func AdaptRuleDto(rule models.Rule) (RuleDto, error) {

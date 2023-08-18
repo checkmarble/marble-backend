@@ -49,6 +49,7 @@ func MapErrWithParam[T, K, U any](src []T, param K, f func(K, T) (U, error)) ([]
 	}
 	return us, nil
 }
+
 // MapMap return a new map with the same keys as src, but with values transformed by f
 func MapMap[Key comparable, T any, U any](src map[Key]T, f func(T) U) map[Key]U {
 	if src == nil {

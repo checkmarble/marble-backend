@@ -87,7 +87,7 @@ func (usecase *RuleUsecase) DeleteRule(ctx context.Context, organizationId strin
 	if err != nil {
 		return err
 	}
-	if (scenarioAndIteration.Iteration.Version != nil) {
+	if scenarioAndIteration.Iteration.Version != nil {
 		return fmt.Errorf("Can't delete rule as iteration %s is not in draft", scenarioAndIteration.Iteration.Id)
 	}
 	if err := usecase.enforceSecurity.CreateRule(scenarioAndIteration.Iteration); err != nil {
