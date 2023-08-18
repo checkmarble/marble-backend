@@ -224,3 +224,27 @@ func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 		})
 	}
 }
+func (api *API) ValidateScenarioIteration() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		iterationId := r.Context().Value(httpin.Input).(*GetScenarioIterationInput).ScenarioIterationId
+
+		err := utils.ValidateUuid(iterationId)
+		if presentError(w, r, err) {
+			return
+		}
+
+		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
+		scenarioValidation, err := usecase.ValidateScenarioIteration(iterationId)
+
+		if presentError(w, r, err) {
+			return
+		}
+
+		PresentModel(w, struct {
+			ScenarioValidation dto.ScenarioValidationDto `json:"scenario_validation"`
+		}{
+			ScenarioValidation: dto.AdaptScenarioValidationDto(scenarioValidation),
+		})
+	}
+}
