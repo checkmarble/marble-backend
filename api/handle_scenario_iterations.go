@@ -199,7 +199,7 @@ func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 		}
 
 		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
-		updatedSI, scenarioValidation, err := usecase.UpdateScenarioIteration(ctx, organizationId, updateScenarioIterationInput)
+		updatedSI, err := usecase.UpdateScenarioIteration(ctx, organizationId, updateScenarioIterationInput)
 		if errors.Is(err, models.ErrScenarioIterationNotDraft) {
 			logger.WarnCtx(ctx, "Cannot update scenario iteration that is not in draft state: \n"+err.Error())
 			http.Error(w, "", http.StatusForbidden)
@@ -216,11 +216,9 @@ func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 		}
 
 		PresentModel(w, struct {
-			Iteration          dto.ScenarioIterationWithBodyDto `json:"iteration"`
-			ScenarioValidation dto.ScenarioValidationDto        `json:"scenario_validation"`
+			Iteration dto.ScenarioIterationWithBodyDto `json:"iteration"`
 		}{
-			Iteration:          iteration,
-			ScenarioValidation: dto.AdaptScenarioValidationDto(scenarioValidation),
+			Iteration: iteration,
 		})
 	}
 }

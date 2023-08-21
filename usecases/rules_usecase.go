@@ -10,11 +10,10 @@ import (
 )
 
 type RuleUsecase struct {
-	enforceSecurity           security.EnforceSecurityScenario
-	repositoryLegacy          repositories.ScenarioIterationRuleRepositoryLegacy
-	repository                repositories.RuleRepository
-	scenarioFetcher           scenarios.ScenarioFetcher
-	validateScenarioIteration scenarios.ValidateScenarioIteration
+	enforceSecurity  security.EnforceSecurityScenario
+	repositoryLegacy repositories.ScenarioIterationRuleRepositoryLegacy
+	repository       repositories.RuleRepository
+	scenarioFetcher  scenarios.ScenarioFetcher
 }
 
 func (usecase *RuleUsecase) ListRules(ctx context.Context, organizationId string, filters models.GetRulesFilters) ([]models.Rule, error) {
@@ -55,26 +54,25 @@ func (usecase *RuleUsecase) GetRule(ctx context.Context, organizationId string, 
 	return rule, nil
 }
 
-func (usecase *RuleUsecase) UpdateRule(ctx context.Context, organizationId string, updateRule models.UpdateRuleInput) (updatedRule models.Rule, validation models.ScenarioValidation, err error) {
+func (usecase *RuleUsecase) UpdateRule(ctx context.Context, organizationId string, updateRule models.UpdateRuleInput) (updatedRule models.Rule, err error) {
 	rule, err := usecase.repositoryLegacy.GetRule(ctx, organizationId, updateRule.Id)
 	if err != nil {
-		return updatedRule, validation, err
+		return updatedRule, err
 	}
 	scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(nil, rule.ScenarioIterationId)
 	if err != nil {
-		return updatedRule, validation, err
+		return updatedRule, err
 	}
 	if err := usecase.enforceSecurity.CreateRule(scenarioAndIteration.Iteration); err != nil {
-		return updatedRule, validation, err
+		return updatedRule, err
 	}
 
 	updatedRule, err = usecase.repositoryLegacy.UpdateRule(ctx, organizationId, updateRule)
 	if err != nil {
-		return updatedRule, validation, err
+		return updatedRule, err
 	}
 
-	validation = usecase.validateScenarioIteration.Validate(scenarioAndIteration)
-	return updatedRule, validation, err
+	return updatedRule, err
 }
 
 func (usecase *RuleUsecase) DeleteRule(ctx context.Context, organizationId string, ruleID string) error {
@@ -88,7 +86,7 @@ func (usecase *RuleUsecase) DeleteRule(ctx context.Context, organizationId strin
 		return err
 	}
 	if scenarioAndIteration.Iteration.Version != nil {
-		return fmt.Errorf("Can't delete rule as iteration %s is not in draft", scenarioAndIteration.Iteration.Id)
+		return fmt.Errorf("can't delete rule as iteration %s is not in draft", scenarioAndIteration.Iteration.Id)
 	}
 	if err := usecase.enforceSecurity.CreateRule(scenarioAndIteration.Iteration); err != nil {
 		return err

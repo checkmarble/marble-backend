@@ -6,9 +6,8 @@ import (
 )
 
 type NodeEvaluationDto struct {
-	ReturnValue any                  `json:"return_value,omitempty"`
-	Errors      []EvaluationErrorDto `json:"errors,omitempty"`
-
+	ReturnValue   any                          `json:"return_value"`
+	Errors        []EvaluationErrorDto         `json:"errors"`
 	Children      []NodeEvaluationDto          `json:"children,omitempty"`
 	NamedChildren map[string]NodeEvaluationDto `json:"named_children,omitempty"`
 }

@@ -64,32 +64,29 @@ func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(ctx context.Con
 	return usecase.scenarioIterationsWriteRepositoryLegacy.CreateScenarioIteration(ctx, organizationId, scenarioIteration)
 }
 
-func (usecase *ScenarioIterationUsecase) UpdateScenarioIteration(ctx context.Context, organizationId string, scenarioIteration models.UpdateScenarioIterationInput) (iteration models.ScenarioIteration, validation models.ScenarioValidation, err error) {
+func (usecase *ScenarioIterationUsecase) UpdateScenarioIteration(ctx context.Context, organizationId string, scenarioIteration models.UpdateScenarioIterationInput) (iteration models.ScenarioIteration, err error) {
 	if err := usecase.enforceSecurity.CreateScenario(organizationId); err != nil {
-		return iteration, validation, err
+		return iteration, err
 	}
 	body := scenarioIteration.Body
 	if body != nil && body.Schedule != nil && *body.Schedule != "" {
 		gron := gronx.New()
 		ok := gron.IsValid(*body.Schedule)
 		if !ok {
-			return iteration, validation, fmt.Errorf("invalid schedule: %w", models.BadParameterError)
+			return iteration, fmt.Errorf("invalid schedule: %w", models.BadParameterError)
 		}
 	}
 
-	if iteration, err = usecase.scenarioIterationsWriteRepositoryLegacy.UpdateScenarioIteration(ctx, organizationId, scenarioIteration); err != nil {
-
-		return iteration, validation, err
+	if _, err = usecase.scenarioIterationsWriteRepositoryLegacy.UpdateScenarioIteration(ctx, organizationId, scenarioIteration); err != nil {
+		return iteration, err
 	}
 
-	// result ScenarioAndIteration, err error
-	scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(nil, iteration.Id)
+	scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(nil, scenarioIteration.Id)
 	if err != nil {
-		return iteration, validation, err
+		return iteration, err
 	}
 
-	validation = usecase.validateScenarioIteration.Validate(scenarioAndIteration)
-	return iteration, validation, err
+	return scenarioAndIteration.Iteration, err
 }
 
 func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(ctx context.Context, organizationId string, scenarioIterationId string) (models.ScenarioIteration, error) {
@@ -108,7 +105,7 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(ctx co
 	}
 	for _, iteration := range iterations {
 		if iteration.Version == nil {
-			err = usecase.scenarioIterationsWriteRepository.DeleteScenarioIteration(ctx, iteration.Id)
+			err = usecase.scenarioIterationsWriteRepository.DeleteScenarioIteration(nil, iteration.Id)
 			if err != nil {
 				return models.ScenarioIteration{}, err
 			}
@@ -149,6 +146,5 @@ func (usecase *ScenarioIterationUsecase) ValidateScenarioIteration(iterationId s
 		return validation, err
 	}
 
-	validation = usecase.validateScenarioIteration.Validate(scenarioAndIteration)
-	return validation, err
+	return usecase.validateScenarioIteration.Validate(scenarioAndIteration), nil
 }

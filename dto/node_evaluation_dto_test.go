@@ -1,19 +1,41 @@
 package dto
 
 import (
-	"fmt"
+	"encoding/json"
 	"marble/marble-backend/models/ast"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAdaptEvaluationErrorDto(t *testing.T) {
+func encodeDecodeNodeEvaluation(t *testing.T, evaluation ast.NodeEvaluation) NodeEvaluationDto {
 
-	err := fmt.Errorf("test error %w", ast.ErrWrongNumberOfArgument)
+	jsonData, err := json.Marshal(AdaptNodeEvaluationDto(evaluation))
+	assert.NoError(t, err)
 
-	evaluationError := AdaptEvaluationErrorDto(err)
+	var result NodeEvaluationDto
+	err = json.Unmarshal(jsonData, &result)
+	assert.NoError(t, err)
 
-	assert.Equal(t, evaluationError.EvaluationError, WRONG_NUMBER_OF_ARGUMENTS)
-	assert.Equal(t, evaluationError.Message, "test error wrong number of arguments")
+	return result
+}
+
+func TestAdaptAdaptNodeEvaluationDto_noerror(t *testing.T) {
+
+	// evaluation succeded -> errors is encoded as en empty array
+	result := encodeDecodeNodeEvaluation(t, ast.NodeEvaluation{
+		Errors: []error{},
+	})
+
+	assert.NotNil(t, result.Errors)
+	assert.Len(t, result.Errors, 0)
+}
+
+func TestAdaptAdaptNodeEvaluationDto_noevaluation(t *testing.T) {
+
+	// no evaluation -> errors is encoded as nil
+	result := encodeDecodeNodeEvaluation(t, ast.NodeEvaluation{
+		Errors: nil,
+	})
+	assert.Nil(t, result.Errors)
 }

@@ -64,14 +64,16 @@ func (validator *ValidateScenarioIterationImpl) Validate(si ScenarioAndIteration
 	}
 
 	// validate each rule
-	result.RulesEvaluations = make([]ast.NodeEvaluation, len(iteration.Rules))
-	for ruleIndex, rule := range iteration.Rules {
+	result.RulesEvaluations = make(map[string]ast.NodeEvaluation)
+	for _, rule := range iteration.Rules {
 
 		formula := rule.FormulaAstExpression
 		if formula == nil {
-			addError(fmt.Errorf("scenario iteration rule has no formula ast expression %w", models.BadParameterError))
+			result.RulesEvaluations[rule.Id] = ast.NodeEvaluation{
+				Errors: []error{fmt.Errorf("rule has no formula ast expression %w", models.BadParameterError)},
+			}
 		} else {
-			result.RulesEvaluations[ruleIndex], _ = ast_eval.EvaluateAst(dryRunEnvironment, *formula)
+			result.RulesEvaluations[rule.Id], _ = ast_eval.EvaluateAst(dryRunEnvironment, *formula)
 		}
 	}
 
