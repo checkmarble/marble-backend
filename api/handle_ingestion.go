@@ -4,13 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"marble/marble-backend/app"
 	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"golang.org/x/exp/slog"
 )
 
 func (api *API) handleIngestion() http.HandlerFunc {
@@ -28,7 +28,7 @@ func (api *API) handleIngestion() http.HandlerFunc {
 		organizationUsecase := api.usecases.NewOrganizationUseCase()
 		dataModel, err := organizationUsecase.GetDataModel(organizationId)
 		if err != nil {
-			logger.ErrorCtx(ctx, fmt.Sprintf("Unable to find datamodel by organizationId for ingestion: %v", err))
+			logger.ErrorContext(ctx, fmt.Sprintf("Unable to find datamodel by organizationId for ingestion: %v", err))
 			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
@@ -36,7 +36,7 @@ func (api *API) handleIngestion() http.HandlerFunc {
 		object_type := chi.URLParam(r, "object_type")
 		object_body, err := io.ReadAll(r.Body)
 		if err != nil {
-			logger.ErrorCtx(ctx, fmt.Sprintf("Error while reading request body bytes in api handle_ingestion: %v", err))
+			logger.ErrorContext(ctx, fmt.Sprintf("Error while reading request body bytes in api handle_ingestion: %v", err))
 			http.Error(w, "", http.StatusUnprocessableEntity)
 			return
 		}
@@ -45,24 +45,24 @@ func (api *API) handleIngestion() http.HandlerFunc {
 		tables := dataModel.Tables
 		table, ok := tables[models.TableName(object_type)]
 		if !ok {
-			logger.ErrorCtx(ctx, "Table not found in data model for organization")
+			logger.ErrorContext(ctx, "Table not found in data model for organization")
 			http.Error(w, "", http.StatusNotFound)
 			return
 		}
 
 		payload, err := app.ParseToDataModelObject(table, object_body)
 		if errors.Is(err, models.FormatValidationError) {
-			logger.ErrorCtx(ctx, fmt.Sprintf("format validation error while parsing to data model object: %v", err))
+			logger.ErrorContext(ctx, fmt.Sprintf("format validation error while parsing to data model object: %v", err))
 			http.Error(w, "", http.StatusUnprocessableEntity)
 			return
 		} else if err != nil {
-			logger.ErrorCtx(ctx, fmt.Sprintf("Unexpected error while parsing to data model object: %v", err))
+			logger.ErrorContext(ctx, fmt.Sprintf("Unexpected error while parsing to data model object: %v", err))
 			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 		err = usecase.IngestObjects(organizationId, []models.PayloadReader{payload}, table, logger)
 		if err != nil {
-			logger.ErrorCtx(ctx, fmt.Sprintf("Error while ingesting object: %v", err))
+			logger.ErrorContext(ctx, fmt.Sprintf("Error while ingesting object: %v", err))
 			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"marble/marble-backend/app"
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
@@ -15,7 +16,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/exp/slog"
 )
 
 func TestScenarioEndToEnd(t *testing.T) {
@@ -37,7 +37,8 @@ func TestScenarioEndToEnd(t *testing.T) {
 	ctx := context.Background()
 
 	// Initialize a logger and store it in the context
-	textHandler := slog.HandlerOptions{ReplaceAttr: utils.LoggerAttributeReplacer}.NewTextHandler(os.Stderr)
+	textHandler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{ReplaceAttr: utils.LoggerAttributeReplacer})
+
 	logger := slog.New(textHandler)
 	ctx = utils.StoreLoggerInContext(ctx, logger)
 

@@ -4,14 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/ast_eval"
 	"marble/marble-backend/usecases/org_transaction"
 	"runtime/debug"
 	"time"
-
-	"golang.org/x/exp/slog"
 )
 
 type scenarioEvaluationParameters struct {
@@ -36,15 +35,15 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 	///////////////////////////////
 	defer func() {
 		if r := recover(); r != nil {
-			logger.WarnCtx(ctx, "recovered from panic during Eval. stacktrace from panic: ")
-			logger.WarnCtx(ctx, string(debug.Stack()))
+			logger.WarnContext(ctx, "recovered from panic during Eval. stacktrace from panic: ")
+			logger.WarnContext(ctx, string(debug.Stack()))
 
 			err = models.PanicInScenarioEvalutionError
 			se = models.ScenarioExecution{}
 		}
 	}()
 
-	logger.InfoCtx(ctx, "Evaluating scenario", "scenarioId", params.scenario.Id)
+	logger.InfoContext(ctx, "Evaluating scenario", "scenarioId", params.scenario.Id)
 
 	// If the scenario has no live version, don't try to Eval() it, return early
 	if params.scenario.LiveVersionID == nil {
@@ -128,11 +127,11 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 		Outcome:             o,
 	}
 
-	logger.InfoCtx(ctx, "Evaluated scenario", "score", score, "outcome", o)
+	logger.InfoContext(ctx, "Evaluated scenario", "score", score, "outcome", o)
 
 	// print duration
 	elapsed := time.Since(start)
-	logger.InfoCtx(ctx, "Evaluated scenario", "duration", elapsed.Milliseconds())
+	logger.InfoContext(ctx, "Evaluated scenario", "duration", elapsed.Milliseconds())
 	return se, nil
 }
 

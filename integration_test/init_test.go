@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"marble/marble-backend/infra"
 	"marble/marble-backend/models"
 	"marble/marble-backend/pg_repository"
@@ -17,7 +18,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
-	"golang.org/x/exp/slog"
 )
 
 const (
@@ -87,7 +87,7 @@ func TestMain(m *testing.M) {
 	}
 
 	pgConfig := pg_repository.PGConfig{ConnectionString: databaseURL}
-	logger := slog.New(slog.NewTextHandler(os.Stderr))
+	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	pg_repository.RunMigrations("DEV", pgConfig, logger)
 
 	// Need to declare this after the migrations, to have the correct search path

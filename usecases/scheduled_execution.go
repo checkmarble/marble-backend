@@ -70,8 +70,8 @@ func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx cont
 	defer func() {
 		if r := recover(); r != nil {
 			logger := utils.LoggerFromContext(ctx)
-			logger.ErrorCtx(ctx, "recovered from panic during scheduled scenario execution. Stacktrace from panic: ")
-			logger.ErrorCtx(ctx, string(debug.Stack()))
+			logger.ErrorContext(ctx, "recovered from panic during scheduled scenario execution. Stacktrace from panic: ")
+			logger.ErrorContext(ctx, string(debug.Stack()))
 			err = fmt.Errorf("recovered from panic during scheduled scenario execution")
 		}
 	}()
@@ -109,7 +109,7 @@ func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx cont
 
 	if isDue || true {
 		logger := utils.LoggerFromContext(ctx)
-		logger.DebugCtx(ctx, fmt.Sprintf("Scenario iteration %s is due", publishedVersion.Id))
+		logger.DebugContext(ctx, fmt.Sprintf("Scenario iteration %s is due", publishedVersion.Id))
 
 		scheduledExecution, err := repositories.TransactionReturnValue(
 			usecase.transactionFactory,
@@ -143,7 +143,7 @@ func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx cont
 					return models.ScheduledExecution{}, err
 				}
 				// Mark the scheduled scenario as sucess
-				logger.DebugCtx(ctx, fmt.Sprintf("Scenario iteration %s executed successfully", publishedVersion.Id))
+				logger.DebugContext(ctx, fmt.Sprintf("Scenario iteration %s executed successfully", publishedVersion.Id))
 
 				return usecase.scheduledExecutionRepository.GetScheduledExecution(tx, organizationId, scheduledExecutionId)
 			},

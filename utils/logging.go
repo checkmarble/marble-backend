@@ -1,6 +1,6 @@
 package utils
 
-import "golang.org/x/exp/slog"
+import "log/slog"
 
 func LoggerAttributeReplacer(groups []string, a slog.Attr) slog.Attr {
 	// Rename "msg" to "message" so that stackdriver logging can parse it as the main message

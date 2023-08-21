@@ -3,10 +3,11 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"log/slog"
+
 	"marble/marble-backend/models"
 
 	"cloud.google.com/go/storage"
-	"golang.org/x/exp/slog"
 	"google.golang.org/api/iterator"
 )
 

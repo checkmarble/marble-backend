@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"log/slog"
 	"marble/marble-backend/api"
 	"marble/marble-backend/infra"
 	"marble/marble-backend/jobs"
@@ -18,8 +19,6 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-
-	"golang.org/x/exp/slog"
 )
 
 func runServer(ctx context.Context, usecases usecases.Usecases, port string, devEnv bool) {
@@ -63,9 +62,9 @@ func runServer(ctx context.Context, usecases usecases.Usecases, port string, dev
 	go func() {
 		log.Printf("starting server on port %v\n", port)
 		if err := api.ListenAndServe(); err != nil {
-			logger.ErrorCtx(ctx, "error serving the app: \n"+err.Error())
+			logger.ErrorContext(ctx, "error serving the app: \n"+err.Error())
 		}
-		logger.InfoCtx(ctx, "server returned")
+		logger.InfoContext(ctx, "server returned")
 	}()
 
 	// Block until we receive our signal.
@@ -107,11 +106,12 @@ func main() {
 	var logger *slog.Logger
 
 	devEnv := appConfig.env == "DEV"
+	slogOption := slog.HandlerOptions{ReplaceAttr: utils.LoggerAttributeReplacer}
 	if devEnv {
-		textHandler := slog.HandlerOptions{ReplaceAttr: utils.LoggerAttributeReplacer}.NewTextHandler(os.Stderr)
+		textHandler := slog.NewTextHandler(os.Stderr, &slogOption)
 		logger = slog.New(textHandler)
 	} else {
-		jsonHandler := slog.HandlerOptions{ReplaceAttr: utils.LoggerAttributeReplacer}.NewJSONHandler(os.Stderr)
+		jsonHandler := slog.NewJSONHandler(os.Stderr, &slogOption)
 		logger = slog.New(jsonHandler)
 	}
 
@@ -120,7 +120,8 @@ func main() {
 	shouldRunScheduledScenarios := flag.Bool("scheduler", false, "Run scheduled scenarios")
 	shouldRunBatchIngestion := flag.Bool("batch-ingestion", false, "Run batch ingestion")
 	flag.Parse()
-	logger.DebugCtx(context.Background(), "shouldRunMigrations", *shouldRunMigrations, "shouldRunServer", *shouldRunServer)
+
+	logger.Info("Flags", "shouldRunMigrations", *shouldRunMigrations, "shouldRunServer", *shouldRunServer)
 
 	if *shouldRunMigrations {
 		pg_repository.RunMigrations(appConfig.env, appConfig.pgConfig, logger)

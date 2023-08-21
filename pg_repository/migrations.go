@@ -5,9 +5,9 @@ import (
 	"embed"
 	"fmt"
 	"log"
+	"log/slog"
 
 	"github.com/pressly/goose/v3"
-	"golang.org/x/exp/slog"
 )
 
 // embed migrations sql folder

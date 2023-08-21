@@ -4,12 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
 	"net/http"
 	"strings"
-
-	"golang.org/x/exp/slog"
 )
 
 func ParseApiKeyHeader(header http.Header) string {
@@ -88,7 +87,7 @@ func (api *API) enforcePermissionMiddleware(permission models.Permission) func(n
 				next.ServeHTTP(w, r)
 			} else {
 				errorMessage := fmt.Sprintf("Missing permission %s", permission.String())
-				api.logger.WarnCtx(ctx, errorMessage)
+				api.logger.WarnContext(ctx, errorMessage)
 				http.Error(w, errorMessage, http.StatusForbidden)
 			}
 		})
