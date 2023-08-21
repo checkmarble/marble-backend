@@ -3,11 +3,11 @@ package utils
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"marble/marble-backend/models"
 	"net/http"
 
 	"github.com/gofrs/uuid"
-	"golang.org/x/exp/slog"
 )
 
 type ContextKey int
@@ -40,7 +40,7 @@ func LoggerFromContext(ctx context.Context) *slog.Logger {
 
 func LogRequestError(r *http.Request, msg string, args ...any) {
 	ctx := r.Context()
-	LoggerFromContext(ctx).ErrorCtx(ctx, msg, args...)
+	LoggerFromContext(ctx).ErrorContext(ctx, msg, args...)
 }
 
 func CredentialsFromCtx(ctx context.Context) models.Credentials {

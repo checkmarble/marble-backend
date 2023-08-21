@@ -3,17 +3,16 @@ package api
 import (
 	"context"
 	"fmt"
-	"net/http"
-	"time"
-
+	"log/slog"
 	"marble/marble-backend/models"
 	"marble/marble-backend/usecases"
 	"marble/marble-backend/utils"
+	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	"golang.org/x/exp/slog"
 )
 
 type API struct {

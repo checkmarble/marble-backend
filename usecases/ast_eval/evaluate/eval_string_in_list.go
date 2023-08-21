@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"marble/marble-backend/models/ast"
 
-	"golang.org/x/exp/slices"
+	"slices"
 )
 
 type StringInList struct {

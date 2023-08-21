@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
 	"net/http"
 
 	"github.com/ggicci/httpin"
-	"golang.org/x/exp/slog"
 )
 
 type ListScenarioIterationsInput struct {
@@ -187,7 +187,7 @@ func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
 		updatedSI, err := usecase.UpdateScenarioIteration(ctx, organizationId, updateScenarioIterationInput)
 		if errors.Is(err, models.ErrScenarioIterationNotDraft) {
-			logger.WarnCtx(ctx, "Cannot update scenario iteration that is not in draft state: \n"+err.Error())
+			logger.WarnContext(ctx, "Cannot update scenario iteration that is not in draft state: \n"+err.Error())
 			http.Error(w, "", http.StatusForbidden)
 			return
 		}

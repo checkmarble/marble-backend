@@ -2,12 +2,12 @@ package repositories
 
 import (
 	"crypto/rsa"
+	"log/slog"
 	"marble/marble-backend/models"
 
 	"firebase.google.com/go/v4/auth"
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"golang.org/x/exp/slog"
 )
 
 type Repositories struct {

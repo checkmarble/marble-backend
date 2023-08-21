@@ -1,6 +1,6 @@
 package models
 
-import "golang.org/x/exp/slices"
+import "slices"
 
 type Role int
 

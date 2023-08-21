@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"marble/marble-backend/app"
@@ -11,7 +12,6 @@ import (
 	"marble/marble-backend/utils"
 
 	"github.com/ggicci/httpin"
-	"golang.org/x/exp/slog"
 )
 
 type GetDecisionInput struct {
@@ -61,7 +61,7 @@ func (api *API) handleListDecisions() http.HandlerFunc {
 
 		err = json.NewEncoder(w).Encode(apiDecisions)
 		if err != nil {
-			logger.ErrorCtx(ctx, "error encoding response JSON: \n"+err.Error())
+			logger.ErrorContext(ctx, "error encoding response JSON: \n"+err.Error())
 			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
@@ -94,7 +94,7 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 		organizationUsecase := api.usecases.NewOrganizationUseCase()
 		dataModel, err := organizationUsecase.GetDataModel(organizationId)
 		if err != nil {
-			logger.ErrorCtx(ctx, "Unable to find datamodel by organizationId for ingestion: \n"+err.Error())
+			logger.ErrorContext(ctx, "Unable to find datamodel by organizationId for ingestion: \n"+err.Error())
 			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
@@ -102,7 +102,7 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 		tables := dataModel.Tables
 		table, ok := tables[models.TableName(requestData.TriggerObjectType)]
 		if !ok {
-			logger.ErrorCtx(ctx, "Table not found in data model for organization")
+			logger.ErrorContext(ctx, "Table not found in data model for organization")
 			http.Error(w, "", http.StatusNotFound)
 			return
 		}
@@ -112,7 +112,7 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 			http.Error(w, "Format validation error", http.StatusUnprocessableEntity) // 422
 			return
 		} else if err != nil {
-			logger.ErrorCtx(ctx, "Unexpected error while parsing to data model object:\n"+err.Error())
+			logger.ErrorContext(ctx, "Unexpected error while parsing to data model object:\n"+err.Error())
 			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
@@ -121,7 +121,7 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 		triggerObjectMap := make(map[string]interface{})
 		err = json.Unmarshal(requestData.TriggerObjectRaw, &triggerObjectMap)
 		if err != nil {
-			logger.ErrorCtx(ctx, "Could not unmarshal trigger object: \n"+err.Error())
+			logger.ErrorContext(ctx, "Could not unmarshal trigger object: \n"+err.Error())
 			http.Error(w, "", http.StatusUnprocessableEntity)
 			return
 		}
@@ -137,14 +137,14 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 			presentError(w, r, err)
 			return
 		} else if err != nil {
-			logger.ErrorCtx(ctx, "Could not create a decision: \n"+err.Error())
+			logger.ErrorContext(ctx, "Could not create a decision: \n"+err.Error())
 			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 
 		err = json.NewEncoder(w).Encode(dto.NewAPIDecision(decision))
 		if err != nil {
-			logger.ErrorCtx(ctx, "error encoding response JSON: \n"+err.Error())
+			logger.ErrorContext(ctx, "error encoding response JSON: \n"+err.Error())
 			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}

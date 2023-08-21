@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"log/slog"
 	"marble/marble-backend/models"
 	"marble/marble-backend/pure_utils"
 	"marble/marble-backend/repositories"
@@ -12,8 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"golang.org/x/exp/slog"
 )
 
 const (
@@ -50,7 +49,7 @@ func (usecase *IngestionUseCase) IngestFilesFromStorageCsv(ctx context.Context, 
 		}
 	}
 
-	logger.InfoCtx(ctx, fmt.Sprintf("Found %d CSVs of data to ingest", len(filteredFiles)))
+	logger.InfoContext(ctx, fmt.Sprintf("Found %d CSVs of data to ingest", len(filteredFiles)))
 
 	for _, file := range filteredFiles {
 		if err = usecase.readFileIngestObjects(ctx, file, logger); err != nil {
@@ -62,7 +61,7 @@ func (usecase *IngestionUseCase) IngestFilesFromStorageCsv(ctx context.Context, 
 
 func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file models.GCSFile, logger *slog.Logger) error {
 	fullFileName := file.FileName
-	logger.InfoCtx(ctx, fmt.Sprintf("Ingesting data from CSV %s", fullFileName))
+	logger.InfoContext(ctx, fmt.Sprintf("Ingesting data from CSV %s", fullFileName))
 
 	// full filename is path/to/file/{filename}.csv
 	fullFileNameElements := strings.Split(fullFileName, "/")
@@ -128,7 +127,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 		if err != nil {
 			return err
 		}
-		logger.DebugCtx(ctx, fmt.Sprintf("Object to ingest %d: %+v", i, object))
+		logger.DebugContext(ctx, fmt.Sprintf("Object to ingest %d: %+v", i, object))
 		clientObject := models.ClientObject{
 			TableName: table.Name,
 			Data:      object,
@@ -158,7 +157,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 	duration := end.Sub(start)
 	// divide by 1e6 convert to milliseconds (base is nanoseconds)
 	avgDuration := float64(duration) / float64(i*1e6)
-	logger.InfoCtx(ctx, fmt.Sprintf("Ingested %d objects in %s, average %vms", i, duration, avgDuration))
+	logger.InfoContext(ctx, fmt.Sprintf("Ingested %d objects in %s, average %vms", i, duration, avgDuration))
 
 	return nil
 }

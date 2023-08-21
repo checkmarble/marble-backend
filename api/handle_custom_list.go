@@ -1,13 +1,13 @@
 package api
 
 import (
+	"log/slog"
 	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
 	"net/http"
 
 	"github.com/ggicci/httpin"
-	"golang.org/x/exp/slog"
 )
 
 func (api *API) handleGetAllCustomLists() http.HandlerFunc {
@@ -22,7 +22,7 @@ func (api *API) handleGetAllCustomLists() http.HandlerFunc {
 		usecase := api.usecases.NewCustomListUseCase()
 		lists, err := usecase.GetCustomLists(ctx, organizationId)
 		if presentError(w, r, err) {
-			logger.ErrorCtx(ctx, "error getting lists: \n"+err.Error())
+			logger.ErrorContext(ctx, "error getting lists: \n"+err.Error())
 			return
 		}
 
@@ -48,7 +48,7 @@ func (api *API) handlePostCustomList() http.HandlerFunc {
 			Description: inputDto.Description,
 		})
 		if presentError(w, r, err) {
-			logger.ErrorCtx(ctx, "error creating a list: \n"+err.Error())
+			logger.ErrorContext(ctx, "error creating a list: \n"+err.Error())
 			return
 		}
 		PresentModelWithNameStatusCode(w, "custom_list", dto.AdaptCustomListDto(customList), http.StatusCreated)
@@ -69,7 +69,7 @@ func (api *API) handleGetCustomListWithValues() http.HandlerFunc {
 		usecase := api.usecases.NewCustomListUseCase()
 		CustomList, err := usecase.GetCustomListById(ctx, inputDto.CustomListID)
 		if presentError(w, r, err) {
-			logger.ErrorCtx(ctx, "error getting a list: \n"+err.Error())
+			logger.ErrorContext(ctx, "error getting a list: \n"+err.Error())
 			return
 		}
 		CustomListValues, err := usecase.GetCustomListValues(ctx, models.GetCustomListValuesInput{
@@ -78,7 +78,7 @@ func (api *API) handleGetCustomListWithValues() http.HandlerFunc {
 		})
 
 		if presentError(w, r, err) {
-			logger.ErrorCtx(ctx, "error getting a list values: \n"+err.Error())
+			logger.ErrorContext(ctx, "error getting a list values: \n"+err.Error())
 			return
 		}
 		PresentModelWithName(w, "custom_list", dto.AdaptCustomListWithValuesDto(CustomList, CustomListValues))
@@ -107,7 +107,7 @@ func (api *API) handlePatchCustomList() http.HandlerFunc {
 		})
 
 		if presentError(w, r, err) {
-			logger.ErrorCtx(ctx, "error updating a list: \n"+err.Error())
+			logger.ErrorContext(ctx, "error updating a list: \n"+err.Error())
 			return
 		}
 
@@ -132,7 +132,7 @@ func (api *API) handleDeleteCustomList() http.HandlerFunc {
 			OrgId: organizationId,
 		})
 		if presentError(w, r, err) {
-			logger.ErrorCtx(ctx, "error deleting a list: \n"+err.Error())
+			logger.ErrorContext(ctx, "error deleting a list: \n"+err.Error())
 			return
 		}
 		PresentNothing(w)
@@ -159,7 +159,7 @@ func (api *API) handlePostCustomListValue() http.HandlerFunc {
 			Value:        requestData.Value,
 		})
 		if presentError(w, r, err) {
-			logger.ErrorCtx(ctx, "error adding a value to a list: \n"+err.Error())
+			logger.ErrorContext(ctx, "error adding a value to a list: \n"+err.Error())
 			return
 		}
 
@@ -187,7 +187,7 @@ func (api *API) handleDeleteCustomListValue() http.HandlerFunc {
 		})
 
 		if presentError(w, r, err) {
-			logger.ErrorCtx(ctx, "error deleting a value to a list: \n"+err.Error())
+			logger.ErrorContext(ctx, "error deleting a value to a list: \n"+err.Error())
 			return
 		}
 
