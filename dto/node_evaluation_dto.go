@@ -6,23 +6,19 @@ import (
 )
 
 type NodeEvaluationDto struct {
-	ReturnValue     any    `json:"return_value,omitempty"`
-	EvaluationError string `json:"evaluation_error,omitempty"`
+	ReturnValue any                  `json:"return_value,omitempty"`
+	Errors      []EvaluationErrorDto `json:"errors,omitempty"`
 
 	Children      []NodeEvaluationDto          `json:"children,omitempty"`
 	NamedChildren map[string]NodeEvaluationDto `json:"named_children,omitempty"`
 }
 
-func AdaptNodeEvaluationDto(nodeError ast.NodeEvaluation) NodeEvaluationDto {
+func AdaptNodeEvaluationDto(evaluation ast.NodeEvaluation) NodeEvaluationDto {
 
-	evaluationError := ""
-	if nodeError.EvaluationError != nil {
-		evaluationError = nodeError.EvaluationError.Error()
-	}
 	return NodeEvaluationDto{
-		ReturnValue:     nodeError.ReturnValue,
-		EvaluationError: evaluationError,
-		Children:        utils.Map(nodeError.Children, AdaptNodeEvaluationDto),
-		NamedChildren:   utils.MapMap(nodeError.NamedChildren, AdaptNodeEvaluationDto),
+		ReturnValue:   evaluation.ReturnValue,
+		Errors:        utils.Map(evaluation.Errors, AdaptEvaluationErrorDto),
+		Children:      utils.Map(evaluation.Children, AdaptNodeEvaluationDto),
+		NamedChildren: utils.MapMap(evaluation.NamedChildren, AdaptNodeEvaluationDto),
 	}
 }

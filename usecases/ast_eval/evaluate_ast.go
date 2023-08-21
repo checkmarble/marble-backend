@@ -44,11 +44,22 @@ func EvaluateAst(environment AstEvaluationEnvironment, node ast.Node) (ast.NodeE
 
 	evaluator, err := environment.GetEvaluator(node.Function)
 	if err != nil {
-		evaluation.EvaluationError = err
+		evaluation.Errors = append(evaluation.Errors, err)
 		return evaluation, false
 	}
 
-	evaluation.ReturnValue, evaluation.EvaluationError = evaluator.Evaluate(arguments)
-	ok := evaluation.EvaluationError == nil
+	returnValue, evaluationError := evaluator.Evaluate(arguments)
+
+	evaluation.ReturnValue = returnValue
+
+	// Assign an empty array to indicate that the evaluation occured.
+	evaluation.Errors = make([]error, 0)
+
+	// TODO unwrap multiple errors or return multiple errors from evaluator.Evaluate
+	if evaluationError != nil {
+		evaluation.Errors = append(evaluation.Errors, evaluationError)
+	}
+
+	ok := len(evaluation.Errors) == 0
 	return evaluation, ok
 }

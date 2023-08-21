@@ -1,8 +1,8 @@
 package ast
 
 type NodeEvaluation struct {
-	ReturnValue     any
-	EvaluationError error
+	ReturnValue any
+	Errors      []error
 
 	Children      []NodeEvaluation
 	NamedChildren map[string]NodeEvaluation
@@ -13,8 +13,8 @@ func (root NodeEvaluation) AllErrors() (errs []error) {
 	var addEvaluationErrors func(NodeEvaluation)
 
 	addEvaluationErrors = func(child NodeEvaluation) {
-		if child.EvaluationError != nil {
-			errs = append(errs, child.EvaluationError)
+		if child.Errors != nil {
+			errs = append(errs, child.Errors...)
 		}
 
 		for _, child := range child.Children {

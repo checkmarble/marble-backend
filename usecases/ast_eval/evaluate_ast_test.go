@@ -12,8 +12,18 @@ func TestEval(t *testing.T) {
 	root := ast.NewAstCompareBalance()
 	evaluation, ok := EvaluateAst(environment, root)
 	assert.True(t, ok)
-	assert.NoError(t, evaluation.EvaluationError)
+	assert.Len(t, evaluation.Errors, 0)
 	assert.Equal(t, true, evaluation.ReturnValue)
+}
+
+func TestEvalUnknownFunction(t *testing.T) {
+	environment := NewAstEvaluationEnvironment()
+	root := ast.Node{Function: ast.FUNC_UNKNOWN}
+	evaluation, ok := EvaluateAst(environment, root)
+	assert.False(t, ok)
+	if assert.Len(t, evaluation.Errors, 1) {
+		assert.ErrorIs(t, evaluation.Errors[0], ast.ErrUnknownFunction)
+	}
 }
 
 func TestEvalAndOrFunction(t *testing.T) {
@@ -21,22 +31,22 @@ func TestEvalAndOrFunction(t *testing.T) {
 
 	evaluation, ok := EvaluateAst(environment, NewAstAndTrue())
 	assert.True(t, ok)
-	assert.NoError(t, evaluation.EvaluationError)
+	assert.Len(t, evaluation.Errors, 0)
 	assert.Equal(t, true, evaluation.ReturnValue)
 
 	evaluation, ok = EvaluateAst(environment, NewAstAndFalse())
 	assert.True(t, ok)
-	assert.NoError(t, evaluation.EvaluationError)
+	assert.Len(t, evaluation.Errors, 0)
 	assert.Equal(t, false, evaluation.ReturnValue)
 
 	evaluation, ok = EvaluateAst(environment, NewAstOrTrue())
 	assert.True(t, ok)
-	assert.NoError(t, evaluation.EvaluationError)
+	assert.Len(t, evaluation.Errors, 0)
 	assert.Equal(t, true, evaluation.ReturnValue)
 
 	evaluation, ok = EvaluateAst(environment, NewAstOrFalse())
 	assert.True(t, ok)
-	assert.NoError(t, evaluation.EvaluationError)
+	assert.Len(t, evaluation.Errors, 0)
 	assert.Equal(t, false, evaluation.ReturnValue)
 
 }

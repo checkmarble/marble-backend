@@ -83,5 +83,5 @@ func adaptFunctionName(f string) (ast.Function, error) {
 		return f, nil
 	}
 
-	return ast.FUNC_UNKNOWN, fmt.Errorf("Unknown function: %v", f)
+	return ast.FUNC_UNKNOWN, fmt.Errorf("unknown function: %v", f)
 }
