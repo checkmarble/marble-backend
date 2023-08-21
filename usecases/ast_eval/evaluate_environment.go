@@ -34,7 +34,7 @@ func NewAstEvaluationEnvironment() AstEvaluationEnvironment {
 	environment.AddEvaluator(ast.FUNC_ADD, evaluate.NewArithmetic(ast.FUNC_ADD))
 	environment.AddEvaluator(ast.FUNC_SUBTRACT, evaluate.NewArithmetic(ast.FUNC_SUBTRACT))
 	environment.AddEvaluator(ast.FUNC_MULTIPLY, evaluate.NewArithmetic(ast.FUNC_MULTIPLY))
-	environment.AddEvaluator(ast.FUNC_DIVIDE, evaluate.NewArithmetic(ast.FUNC_DIVIDE))
+	environment.AddEvaluator(ast.FUNC_DIVIDE, evaluate.ArithmeticDivide{})
 	environment.AddEvaluator(ast.FUNC_GREATER, evaluate.NewComparison(ast.FUNC_GREATER))
 	environment.AddEvaluator(ast.FUNC_LESS, evaluate.NewComparison(ast.FUNC_LESS))
 	environment.AddEvaluator(ast.FUNC_EQUAL, evaluate.Equal{})
