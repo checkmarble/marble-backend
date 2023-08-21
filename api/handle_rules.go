@@ -118,7 +118,7 @@ func (api *API) UpdateRule() http.HandlerFunc {
 		}
 
 		usecase := api.UsecasesWithCreds(r).NewRuleUsecase()
-		updatedRule, scenarioValidation, err := usecase.UpdateRule(ctx, organizationId, updateRuleInput)
+		updatedRule, err := usecase.UpdateRule(ctx, organizationId, updateRuleInput)
 		if presentError(w, r, err) {
 			return
 		}
@@ -129,11 +129,9 @@ func (api *API) UpdateRule() http.HandlerFunc {
 		}
 
 		PresentModel(w, struct {
-			Rule               dto.RuleDto               `json:"rule"`
-			ScenarioValidation dto.ScenarioValidationDto `json:"scenario_validation"`
+			Rule dto.RuleDto `json:"rule"`
 		}{
-			Rule:               apiRule,
-			ScenarioValidation: dto.AdaptScenarioValidationDto(scenarioValidation),
+			Rule: apiRule,
 		})
 	}
 }

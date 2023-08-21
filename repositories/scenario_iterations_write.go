@@ -12,15 +12,15 @@ type ScenarioIterationWriteRepositoryLegacy interface {
 }
 
 type ScenarioIterationWriteRepository interface {
-	DeleteScenarioIteration(ctx context.Context, scenarioIterationId string) error
+	DeleteScenarioIteration(transaction Transaction, scenarioIterationId string) error
 }
 
 type ScenarioIterationWriteRepositoryPostgresql struct {
 	transactionFactory TransactionFactory
 }
 
-func (repo *ScenarioIterationWriteRepositoryPostgresql) DeleteScenarioIteration(ctx context.Context, scenarioIterationId string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(nil)
+func (repo *ScenarioIterationWriteRepositoryPostgresql) DeleteScenarioIteration(transaction Transaction, scenarioIterationId string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(transaction)
 
 	_, err := pgTx.ExecBuilder(NewQueryBuilder().Delete(dbmodels.TABLE_SCENARIO_ITERATIONS).Where("id = ?", scenarioIterationId))
 	return err

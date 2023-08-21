@@ -252,20 +252,27 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 
 	// Actually, modify the scenario iteration
 	threshold = 20
-	updatedScenarioIteration, validation, err := scenarioIterationUsecase.UpdateScenarioIteration(usecasesWithCreds.Context, organizationId, models.UpdateScenarioIterationInput{
+	updatedScenarioIteration, err := scenarioIterationUsecase.UpdateScenarioIteration(usecasesWithCreds.Context, organizationId, models.UpdateScenarioIterationInput{
 		Id: scenarioIterationId,
 		Body: &models.UpdateScenarioIterationBody{
 			ScoreReviewThreshold: &threshold,
 		},
 	})
+	assert.NoError(t, err)
+
+	validation, err := scenarioIterationUsecase.ValidateScenarioIteration(scenarioIterationId)
+	assert.NoError(t, err)
 
 	assert.NoError(t, scenarios.ScenarioValidationToError(validation))
 	assert.NoError(t, err, "Could not update scenario iteration")
-	assert.Equal(
-		t,
-		threshold, *updatedScenarioIteration.ScoreReviewThreshold,
-		"Expected score review threshold to be %d, got %d", threshold, *updatedScenarioIteration.ScoreReviewThreshold,
-	)
+
+	if assert.NotNil(t, updatedScenarioIteration.ScoreReviewThreshold) {
+		assert.Equal(
+			t,
+			threshold, *updatedScenarioIteration.ScoreReviewThreshold,
+			"Expected score review threshold to be %d, got %d", threshold, *updatedScenarioIteration.ScoreReviewThreshold,
+		)
+	}
 
 	// Publish the iteration to make it live
 	scenarioPublicationUsecase := usecasesWithCreds.NewScenarioPublicationUsecase()
