@@ -89,12 +89,19 @@ func (blank BlankDatabaseAccess) getFirstTransactionDate(arguments ast.Arguments
 		return time.Now(), nil
 	}
 
-	return org_transaction.InOrganizationSchema(
+	firstTransaction, err := org_transaction.InOrganizationSchema(
 		blank.OrgTransactionFactory,
 		blank.OrganizationIdOfContext,
-		func(tx repositories.Transaction) (time.Time, error) {
+		func(tx repositories.Transaction) (*time.Time, error) {
 			return blank.BlankDataReadRepository.GetFirstTransactionTimestamp(tx, ownerBusinessId)
 		})
+	if err != nil {
+		return time.Time{}, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_FIRST_TRANSACTION_DATE): error reading first transaction from DB: %w", err)
+	}
+	if firstTransaction == nil {
+		return time.Time{}, fmt.Errorf("first transaction date is null for owner_business_id %s: %w", ownerBusinessId, models.NullFieldReadError)
+	}
+	return *firstTransaction, nil
 }
 
 func (blank BlankDatabaseAccess) sumTransactionsAmount(arguments ast.Arguments) (float64, error) {
