@@ -41,11 +41,6 @@ func (f Arithmetic) Evaluate(arguments ast.Arguments) (any, error) {
 
 func arithmeticEval[T int64 | float64](function ast.Function, l, r T) (T, error) {
 
-	var zero T
-	if function == ast.FUNC_DIVIDE && r == zero {
-		return zero, models.DivisionByZeroError
-	}
-
 	switch function {
 	case ast.FUNC_ADD:
 		return l + r, nil
@@ -53,8 +48,6 @@ func arithmeticEval[T int64 | float64](function ast.Function, l, r T) (T, error)
 		return l - r, nil
 	case ast.FUNC_MULTIPLY:
 		return l * r, nil
-	case ast.FUNC_DIVIDE:
-		return l / r, nil
 	default:
 		return 0, fmt.Errorf("Arithmetic does not support %s function", function.DebugString())
 	}

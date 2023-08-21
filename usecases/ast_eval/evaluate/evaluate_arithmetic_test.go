@@ -1,7 +1,6 @@
 package evaluate
 
 import (
-	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 	"testing"
 
@@ -20,16 +19,4 @@ func TestNewArithmetic_basic(t *testing.T) {
 
 	helperTestArithmetic(t, ast.FUNC_SUBTRACT, []any{11, 2}, int64(9))
 	helperTestArithmetic(t, ast.FUNC_MULTIPLY, []any{4, 3}, int64(12))
-	helperTestArithmetic(t, ast.FUNC_DIVIDE, []any{10, 3}, int64(3))
-	helperTestArithmetic(t, ast.FUNC_DIVIDE, []any{10.0, 3}, float64(3.3333333333333335))
-}
-
-func TestNewArithmeticFunction_int_divide_by_zero(t *testing.T) {
-	_, err := NewArithmetic(ast.FUNC_DIVIDE).Evaluate(ast.Arguments{Args: []any{1, 0}})
-	assert.ErrorIs(t, err, models.DivisionByZeroError)
-}
-
-func TestNewArithmeticFunction_float_divide_by_zero(t *testing.T) {
-	_, err := NewArithmetic(ast.FUNC_DIVIDE).Evaluate(ast.Arguments{Args: []any{1.0, 0.0}})
-	assert.ErrorIs(t, err, models.DivisionByZeroError)
 }
