@@ -3,7 +3,6 @@ package evaluate
 import (
 	"errors"
 	"fmt"
-	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 )
 
@@ -35,7 +34,7 @@ func verifyNumberOfArguments(function ast.Function, args []any, requiredNumberOf
 	if numberOfOperands != requiredNumberOfArguments {
 		return fmt.Errorf(
 			"function %s expects %d operands, got %d %w",
-			function.DebugString(), requiredNumberOfArguments, numberOfOperands, models.ErrRuntimeExpression,
+			function.DebugString(), requiredNumberOfArguments, numberOfOperands, ast.ErrWrongNumberOfArgument,
 		)
 	}
 	return nil
