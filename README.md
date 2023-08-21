@@ -10,7 +10,7 @@ This repo is the Marble backend implementation:
 
 ### Requirements
 
-[Install Go](https://go.dev/doc/install) on your laptop. For now, there is no fixed version in the project, but according to `go.mod` we all use a `1.20` version.
+[Install Go](https://go.dev/doc/install) on your laptop. For now, there is no fixed version in the project, but according to `go.mod` we all use a `1.21` version.
 
 > NB: To handle different version, you can look at [Managing Go installations](https://go.dev/doc/manage-install) or use a version manager tool like [asdf](https://github.com/kennyp/asdf-golang)
 
