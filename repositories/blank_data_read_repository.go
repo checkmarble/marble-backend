@@ -11,14 +11,14 @@ import (
 )
 
 type BlankDataReadRepository interface {
-	GetFirstTransactionTimestamp(transaction Transaction, ownerBusinessId string) (time.Time, error)
+	GetFirstTransactionTimestamp(transaction Transaction, ownerBusinessId string) (*time.Time, error)
 	SumTransactionsAmount(transaction Transaction, ownerBusinessId string, direction string, createdFrom time.Time, createdTo time.Time) (float64, error)
 	RetrieveTransactions(transaction Transaction, filters map[string]any, createdFrom time.Time) ([]map[string]any, error)
 }
 
 type BlankDataReadRepositoryImpl struct{}
 
-func (repo *BlankDataReadRepositoryImpl) GetFirstTransactionTimestamp(transaction Transaction, ownerBusinessId string) (time.Time, error) {
+func (repo *BlankDataReadRepositoryImpl) GetFirstTransactionTimestamp(transaction Transaction, ownerBusinessId string) (*time.Time, error) {
 	tx := adaptClientDatabaseTransaction(transaction)
 
 	tableName := tableNameWithSchema(tx, models.TableName("transactions"))
@@ -30,16 +30,16 @@ func (repo *BlankDataReadRepositoryImpl) GetFirstTransactionTimestamp(transactio
 
 	sql, args, err := query.ToSql()
 	if err != nil {
-		return time.Time{}, err
+		return &time.Time{}, err
 	}
 	row := tx.exec.QueryRow(tx.ctx, sql, args...)
 
-	var output time.Time
+	var output *time.Time
 	err = row.Scan(&output)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return time.Time{}, fmt.Errorf("no rows scanned while reading DB: %w", models.NotFoundError)
+		return &time.Time{}, fmt.Errorf("no rows scanned while reading DB: %w", models.NotFoundError)
 	} else if err != nil {
-		return time.Time{}, err
+		return &time.Time{}, err
 	}
 	return output, nil
 }
@@ -49,7 +49,7 @@ func (repo *BlankDataReadRepositoryImpl) SumTransactionsAmount(transaction Trans
 
 	tableName := tableNameWithSchema(tx, models.TableName("transactions"))
 	query := NewQueryBuilder().
-		Select("SUM(txn_amount)").
+		Select("COALESCE(SUM(txn_amount), 0)").
 		From(tableName).
 		Where(squirrel.Eq{"owner_business_id": ownerBusinessId}).
 		Where(squirrel.Eq{"direction": direction}).
