@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"marble/marble-backend/infra"
 	"marble/marble-backend/models"
-	"marble/marble-backend/pg_repository"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases"
 	"marble/marble-backend/utils"
@@ -86,19 +85,14 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not connect to db: %s", err)
 	}
 
-	pgConfig := pg_repository.PGConfig{ConnectionString: databaseURL}
+	pgConfig := utils.PGConfig{ConnectionString: databaseURL}
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	pg_repository.RunMigrations("DEV", pgConfig, logger)
+	repositories.RunMigrations("DEV", pgConfig, logger)
 
 	// Need to declare this after the migrations, to have the correct search path
 	dbPool, err := infra.NewPostgresConnectionPool(pgConfig.GetConnectionString("DEV"))
 	if err != nil {
 		log.Fatalf("Could not create connection pool: %s", err)
-	}
-
-	pgRepository, err := pg_repository.New(dbPool)
-	if err != nil {
-		panic(fmt.Errorf("error creating pg repository %w", err))
 	}
 
 	appContext := utils.StoreLoggerInContext(ctx, logger)
@@ -109,7 +103,6 @@ func TestMain(m *testing.M) {
 		nil,
 		dbPool,
 		utils.LoggerFromContext(appContext),
-		pgRepository,
 	)
 	if err != nil {
 		panic(err)

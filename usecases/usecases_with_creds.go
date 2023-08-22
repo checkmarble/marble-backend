@@ -42,7 +42,6 @@ func (usecases *UsecasesWithCreds) NewScenarioIterationUsecase() ScenarioIterati
 	return ScenarioIterationUsecase{
 		organizationIdOfContext:                 usecases.OrganizationIdOfContext,
 		scenarioIterationsReadRepository:        usecases.Repositories.ScenarioIterationReadRepository,
-		scenarioIterationsWriteRepositoryLegacy: usecases.Repositories.ScenarioIterationWriteRepositoryLegacy,
 		scenarioIterationsWriteRepository:       usecases.Repositories.ScenarioIterationWriteRepository,
 		enforceSecurity:                         usecases.NewEnforceScenarioSecurity(),
 		scenarioFetcher:                         usecases.NewScenarioFetcher(),

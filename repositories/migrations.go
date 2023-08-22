@@ -1,4 +1,4 @@
-package pg_repository
+package repositories
 
 import (
 	"database/sql"
@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"marble/marble-backend/utils"
 
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 )
 
@@ -21,7 +23,7 @@ type migrationParams struct {
 	allowMissing bool
 }
 
-func setupDbConnection(env string, pgConfig PGConfig) (*sql.DB, error) {
+func setupDbConnection(env string, pgConfig utils.PGConfig) (*sql.DB, error) {
 	connectionString := pgConfig.GetConnectionString(env)
 
 	migrationDB, err := sql.Open("pgx", connectionString)
@@ -37,7 +39,7 @@ func setupDbConnection(env string, pgConfig PGConfig) (*sql.DB, error) {
 	return migrationDB, nil
 }
 
-func RunMigrations(env string, pgConfig PGConfig, logger *slog.Logger) {
+func RunMigrations(env string, pgConfig utils.PGConfig, logger *slog.Logger) {
 	db, err := setupDbConnection(env, pgConfig)
 	if err != nil {
 		log.Fatalln(err)
