@@ -35,29 +35,34 @@ func (repo *ScenarioIterationWriteRepositoryPostgresql) CreateScenarioIteration(
 			"id",
 			"org_id",
 			"scenario_id",
-		).Values(
-		utils.NewPrimaryKey(organizationId),
-		organizationId,
-		scenarioIteration.ScenarioId,
-	).Suffix("RETURNING *")
+		).Suffix("RETURNING *")
 
 	if scenarioIteration.Body != nil {
 		triggerCondition, err := dbmodels.SerializeFormulaAstExpression(scenarioIteration.Body.TriggerConditionAstExpression)
 		if err != nil {
 			return models.ScenarioIteration{}, fmt.Errorf("unable to marshal trigger condition ast expression: %w", err)
 		}
-		query.Columns(
+		query = query.Columns(
 			"score_review_threshold",
 			"score_reject_threshold",
 			"trigger_condition_ast_expression",
 			"batch_trigger_sql",
 			"schedule",
 		).Values(
+			utils.NewPrimaryKey(organizationId),
+			organizationId,
+			scenarioIteration.ScenarioId,
 			scenarioIteration.Body.ScoreReviewThreshold,
 			scenarioIteration.Body.ScoreRejectThreshold,
 			triggerCondition,
 			scenarioIteration.Body.BatchTriggerSQL,
 			scenarioIteration.Body.Schedule,
+		)
+	} else {
+		query = query.Values(
+			utils.NewPrimaryKey(organizationId),
+			organizationId,
+			scenarioIteration.ScenarioId,
 		)
 	}
 
