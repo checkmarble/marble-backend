@@ -71,6 +71,11 @@ func (repo *ScenarioIterationWriteRepositoryPostgresql) CreateScenarioIteration(
 	}
 
 	if scenarioIteration.Body != nil {
+		for i, _ := range scenarioIteration.Body.Rules {
+			scenarioIteration.Body.Rules[i].Id = utils.NewPrimaryKey(organizationId)
+			scenarioIteration.Body.Rules[i].OrganizationId = organizationId
+			scenarioIteration.Body.Rules[i].ScenarioIterationId = createdIteration.Id
+		}
 		createdRules, err := repo.ruleRepository.CreateRules(tx, scenarioIteration.Body.Rules)
 		if err != nil {
 			return models.ScenarioIteration{}, fmt.Errorf("unable to create scenario iteration rules: %w", err)
