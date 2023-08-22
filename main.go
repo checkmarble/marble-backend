@@ -4,14 +4,12 @@ import (
 	"context"
 	"crypto/rsa"
 	"flag"
-	"fmt"
 	"log"
 	"log/slog"
 	"marble/marble-backend/api"
 	"marble/marble-backend/infra"
 	"marble/marble-backend/jobs"
 	"marble/marble-backend/models"
-	"marble/marble-backend/pg_repository"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases"
 	"marble/marble-backend/utils"
@@ -77,7 +75,7 @@ func runServer(ctx context.Context, usecases usecases.Usecases, port string, dev
 type AppConfiguration struct {
 	env      string
 	port     string
-	pgConfig pg_repository.PGConfig
+	pgConfig utils.PGConfig
 	config   models.GlobalConfiguration
 }
 
@@ -86,7 +84,7 @@ func main() {
 	appConfig := AppConfiguration{
 		env:  utils.GetStringEnv("ENV", "DEV"),
 		port: utils.GetRequiredStringEnv("PORT"),
-		pgConfig: pg_repository.PGConfig{
+		pgConfig: utils.PGConfig{
 			Hostname: utils.GetRequiredStringEnv("PG_HOSTNAME"),
 			Port:     utils.GetStringEnv("PG_PORT", "5432"),
 			User:     utils.GetRequiredStringEnv("PG_USER"),
@@ -124,7 +122,7 @@ func main() {
 	logger.Info("Flags", "shouldRunMigrations", *shouldRunMigrations, "shouldRunServer", *shouldRunServer)
 
 	if *shouldRunMigrations {
-		pg_repository.RunMigrations(appConfig.env, appConfig.pgConfig, logger)
+		repositories.RunMigrations(appConfig.env, appConfig.pgConfig, logger)
 	}
 
 	appContext := utils.StoreLoggerInContext(context.Background(), logger)
@@ -157,18 +155,12 @@ func NewUseCases(ctx context.Context, appConfiguration AppConfiguration, marbleJ
 		log.Fatal("error creating postgres connection to marble database", err.Error())
 	}
 
-	pgRepository, err := pg_repository.New(marbleConnectionPool)
-	if err != nil {
-		panic(fmt.Errorf("error creating pg repository %w", err))
-	}
-
 	repositories, err := repositories.NewRepositories(
 		appConfiguration.config,
 		marbleJwtSigningKey,
 		infra.IntializeFirebase(ctx),
 		marbleConnectionPool,
 		utils.LoggerFromContext(ctx),
-		pgRepository,
 	)
 	if err != nil {
 		panic(err)

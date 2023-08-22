@@ -56,7 +56,7 @@ func (usecase *RuleUsecase) CreateRule(ruleInput models.CreateRuleInput) (models
 			}
 
 			ruleInput.Id = utils.NewPrimaryKey(organizationId)
-			err = usecase.repository.CreateRule(tx, ruleInput)
+			_, err = usecase.repository.CreateRule(tx, ruleInput)
 			if err != nil {
 				return models.Rule{}, err
 			}

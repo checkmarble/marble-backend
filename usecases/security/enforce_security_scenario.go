@@ -2,6 +2,7 @@ package security
 
 import (
 	"errors"
+	"fmt"
 	"marble/marble-backend/models"
 )
 
@@ -14,6 +15,7 @@ type EnforceSecurityScenario interface {
 	UpdateScenario(scenario models.Scenario) error
 	ListScenarios(organizationId string) error
 	CreateScenario(organizationId string) error
+	UpdateScenarioIteration(organizationId string, scenarioIteration models.ScenarioIteration) error
 	CreateRule(scenarioIteration models.ScenarioIteration) error
 }
 
@@ -73,6 +75,18 @@ func (e *EnforceSecurityScenarioImpl) UpdateScenario(scenario models.Scenario) e
 }
 
 func (e *EnforceSecurityScenarioImpl) CreateScenario(organizationId string) error {
+	return errors.Join(
+		e.Permission(models.SCENARIO_CREATE),
+		e.ReadOrganization(organizationId),
+	)
+}
+func (e *EnforceSecurityScenarioImpl) UpdateScenarioIteration(organizationId string, scenarioIteration models.ScenarioIteration) error {
+	if scenarioIteration.Version != nil {
+		return fmt.Errorf("iteration is not a draft: %w", models.ErrScenarioIterationNotDraft)
+	}
+	if scenarioIteration.OrganizationId != organizationId {
+		return fmt.Errorf("incorrect organization: %w", models.ForbiddenError)
+	}
 	return errors.Join(
 		e.Permission(models.SCENARIO_CREATE),
 		e.ReadOrganization(organizationId),

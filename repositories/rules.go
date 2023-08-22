@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories/dbmodels"
 	"marble/marble-backend/utils"
@@ -13,8 +14,8 @@ type RuleRepository interface {
 	ListRulesByIterationId(tx Transaction, iterationId string) ([]models.Rule, error)
 	UpdateRule(tx Transaction, rule models.UpdateRuleInput) error
 	DeleteRule(tx Transaction, ruleID string) error
-	CreateRules(tx Transaction, rules []models.CreateRuleInput) error
-	CreateRule(tx Transaction, rule models.CreateRuleInput) error
+	CreateRules(tx Transaction, rules []models.CreateRuleInput) ([]models.Rule, error)
+	CreateRule(tx Transaction, rule models.CreateRuleInput) (models.Rule, error)
 }
 
 type RuleRepositoryPostgresql struct {
@@ -71,20 +72,20 @@ func (repo *RuleRepositoryPostgresql) DeleteRule(tx Transaction, ruleID string) 
 	return err
 }
 
-func (repo *RuleRepositoryPostgresql) CreateRules(tx Transaction, rules []models.CreateRuleInput) error {
+func (repo *RuleRepositoryPostgresql) CreateRules(tx Transaction, rules []models.CreateRuleInput) ([]models.Rule, error) {
 	if len(rules) == 0 {
-		return nil
+		return []models.Rule{}, fmt.Errorf("No rule found")
 	}
 
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	dbCreateRuleInputs, err := utils.MapErr(rules, dbmodels.AdaptDBCreateRuleInput)
 	if err != nil {
-		return err
+		return []models.Rule{}, err
 	}
 
 	query := NewQueryBuilder().
-		Insert("scenario_iteration_rules").
+		Insert(dbmodels.TABLE_RULES).
 		Columns(
 			"id",
 			"scenario_iteration_id",
@@ -93,7 +94,8 @@ func (repo *RuleRepositoryPostgresql) CreateRules(tx Transaction, rules []models
 			"name",
 			"description",
 			"formula_ast_expression",
-			"score_modifier")
+			"score_modifier").
+		Suffix("RETURNING *")
 	for _, rule := range dbCreateRuleInputs {
 		query = query.Values(
 			rule.Id,
@@ -107,10 +109,17 @@ func (repo *RuleRepositoryPostgresql) CreateRules(tx Transaction, rules []models
 		)
 	}
 
-	_, err = pgTx.ExecBuilder(query)
-	return err
+	return SqlToListOfModelsAdapterWithErr(
+		pgTx,
+		query,
+		dbmodels.AdaptRule,
+	)
 }
 
-func (repo *RuleRepositoryPostgresql) CreateRule(tx Transaction, rule models.CreateRuleInput) error {
-	return repo.CreateRules(tx, []models.CreateRuleInput{rule})
+func (repo *RuleRepositoryPostgresql) CreateRule(tx Transaction, rule models.CreateRuleInput) (models.Rule, error) {
+	rules, err := repo.CreateRules(tx, []models.CreateRuleInput{rule})
+	if err != nil || len(rules) != 1 {
+		return models.Rule{}, nil
+	}
+	return rules[0], nil
 }
