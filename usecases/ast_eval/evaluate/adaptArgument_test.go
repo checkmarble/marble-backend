@@ -31,3 +31,24 @@ func TestAdaptArgumentToListOfStrings_list_of_any_fail(t *testing.T) {
 	_, err := adaptArgumentToListOfStrings([]any{"33", 43})
 	assert.Error(t, err)
 }
+
+func TestAdaptArgumentToListOfThings_list_of_same_type(t *testing.T) {
+	type Thing struct {
+		name string
+	}
+	things := []Thing{Thing{name: "Wednesday"}, Thing{name: "Pugsley"}}
+
+	list, err := adaptArgumentToListOfThings[Thing](things)
+	assert.NoError(t, err)
+	assert.Equal(t, things, list)
+}
+
+func TestAdaptArgumentToListOfThings_list_of_different_types(t *testing.T) {
+	type Thing struct {
+		name string
+	}
+	things := []any{Thing{name: "Wednesday"}, "Addams"}
+
+	_, err := adaptArgumentToListOfThings[Thing](things)
+	assert.Error(t, err)
+}

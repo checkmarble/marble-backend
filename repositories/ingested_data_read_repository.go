@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"marble/marble-backend/models"
+	"marble/marble-backend/models/ast"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -12,6 +13,7 @@ import (
 type IngestedDataReadRepository interface {
 	GetDbField(transaction Transaction, readParams models.DbFieldReadParams) (any, error)
 	ListAllObjectsFromTable(transaction Transaction, table models.Table) ([]models.ClientObject, error)
+	QueryAggregatedValue(transaction Transaction, tableName models.TableName, fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter) (any, error)
 }
 
 type IngestedDataReadRepositoryImpl struct{}
@@ -186,6 +188,7 @@ func queryWithDynamicColumnList(tx TransactionPostgres, qualifiedTableName strin
 		From(qualifiedTableName).
 		Where(rowIsValid(qualifiedTableName)).
 		ToSql()
+
 	if err != nil {
 		return nil, fmt.Errorf("error while building SQL query: %w", err)
 	}
@@ -213,4 +216,61 @@ func queryWithDynamicColumnList(tx TransactionPostgres, qualifiedTableName strin
 	}
 
 	return output, nil
+}
+
+func (repo *IngestedDataReadRepositoryImpl) QueryAggregatedValue(transaction Transaction, tableName models.TableName, fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter) (any, error) {
+	tx := adaptClientDatabaseTransaction(transaction)
+
+	var selectExpression string
+	if aggregator == ast.AGGREGATOR_COUNT_DISTINCT {
+		selectExpression = fmt.Sprintf("COUNT(DISTINCT %s)", fieldName)
+	} else {
+		selectExpression = fmt.Sprintf("%s(%s)", aggregator, fieldName)
+	}
+
+	qualifiedTableName := tableNameWithSchema(tx, tableName)
+
+	query := NewQueryBuilder().
+		Select(selectExpression).
+		From(qualifiedTableName).
+		Where(rowIsValid(qualifiedTableName))
+
+	var err error
+	for _, filter := range filters {
+		query, err = addConditionForOperator(query, qualifiedTableName, filter.FieldName, filter.Operator, filter.Value)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("error while building SQL query: %w", err)
+	}
+	var result any
+	err = tx.exec.QueryRow(tx.ctx, sql, args...).Scan(&result)
+	if err != nil {
+		return nil, fmt.Errorf("error while querying DB: %w", err)
+	}
+
+	return result, nil
+}
+
+func addConditionForOperator(query squirrel.SelectBuilder, tableName string, fieldName string, operator ast.FilterOperator, value any) (squirrel.SelectBuilder, error) {
+	switch operator {
+	case ast.FILTER_EQUAL:
+		return query.Where(squirrel.Eq{fmt.Sprintf("%s.%s", tableName, fieldName): value}), nil
+	case ast.FILTER_NOT_EQUAL:
+		return query.Where(squirrel.NotEq{fmt.Sprintf("%s.%s", tableName, fieldName): value}), nil
+	case ast.FILTER_GREATER:
+		return query.Where(squirrel.Gt{fmt.Sprintf("%s.%s", tableName, fieldName): value}), nil
+	case ast.FILTER_GREATER_OR_EQUAL:
+		return query.Where(squirrel.GtOrEq{fmt.Sprintf("%s.%s", tableName, fieldName): value}), nil
+	case ast.FILTER_LESSER:
+		return query.Where(squirrel.Lt{fmt.Sprintf("%s.%s", tableName, fieldName): value}), nil
+	case ast.FILTER_LESSER_OR_EQUAL:
+		return query.Where(squirrel.LtOrEq{fmt.Sprintf("%s.%s", tableName, fieldName): value}), nil
+	default:
+		return query, fmt.Errorf("unknown operator %s: %w", operator, models.BadParameterError)
+	}
 }

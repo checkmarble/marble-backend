@@ -12,6 +12,7 @@ import (
 	"marble/marble-backend/usecases/scenarios"
 	"marble/marble-backend/utils"
 	"os"
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -201,6 +202,7 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 			Rules: []models.CreateRuleInput{
 				{
 					FormulaAstExpression: &ast.Node{
+
 						Function: ast.FUNC_AND,
 						Children: []ast.Node{
 							{
@@ -239,6 +241,44 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 					ScoreModifier: 100,
 					Name:          "Check on account name",
 					Description:   "Check on account name",
+				},
+				{
+					FormulaAstExpression: &ast.Node{
+						Function: ast.FUNC_GREATER,
+						Children: []ast.Node{
+							{Constant: 500},
+							{
+								Function: ast.FUNC_AGGREGATOR,
+								NamedChildren: map[string]ast.Node{
+									"tableName":  {Constant: "transactions"},
+									"fieldName":  {Constant: "amount"},
+									"aggregator": {Constant: ast.AGGREGATOR_SUM},
+									"filters": {
+										Function: ast.FUNC_LIST,
+										Children: []ast.Node{
+											{
+												Function: ast.FUNC_FILTER,
+												NamedChildren: map[string]ast.Node{
+													"tableName": {Constant: "transactions"},
+													"fieldName": {Constant: "amount"},
+													"operator":  {Constant: ast.FILTER_EQUAL},
+													"value": {
+														Function: ast.FUNC_PAYLOAD,
+														Children: []ast.Node{
+															{Constant: "amount"},
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+					ScoreModifier: 10,
+					Name:          "Check on aggregated value",
+					Description:   "Check on aggregated value",
 				},
 			},
 			TriggerConditionAstExpression: &ast.Node{Function: ast.FUNC_EQUAL, Children: []ast.Node{{Constant: "transactions"}, {Constant: "transactions"}}},
@@ -364,7 +404,7 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 	approveNoNameDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
 	assert.Equal(t, models.Approve, approveNoNameDecision.Outcome, "Expected decision to be Approve, got %s", approveNoNameDecision.Outcome)
 	if assert.NotEmpty(t, approveNoNameDecision.RuleExecutions) {
-		ruleExecution := approveNoNameDecision.RuleExecutions[0]
+		ruleExecution := findRuleExecutionByName(approveNoNameDecision.RuleExecutions, "Check on account name")
 		assert.ErrorIs(t, ruleExecution.Error, models.NullFieldReadError, "Expected error to be A field read in a rule is null, got %s", ruleExecution.Error)
 	}
 
@@ -378,7 +418,7 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 	approveNoRecordDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
 	assert.Equal(t, models.Approve, approveNoRecordDecision.Outcome, "Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
 	if assert.NotEmpty(t, approveNoRecordDecision.RuleExecutions) {
-		ruleExecution := approveNoRecordDecision.RuleExecutions[0]
+		ruleExecution := findRuleExecutionByName(approveNoRecordDecision.RuleExecutions, "Check on account name")
 		assert.ErrorIs(t, ruleExecution.Error, models.NoRowsReadError, "Expected error to be No rows were read from db in a rule, got %s", ruleExecution.Error)
 	}
 
@@ -391,7 +431,7 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 	approveMissingFieldInPayloadDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
 	assert.Equal(t, models.Approve, approveMissingFieldInPayloadDecision.Outcome, "Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
 	if assert.NotEmpty(t, approveMissingFieldInPayloadDecision.RuleExecutions) {
-		ruleExecution := approveMissingFieldInPayloadDecision.RuleExecutions[0]
+		ruleExecution := findRuleExecutionByName(approveMissingFieldInPayloadDecision.RuleExecutions, "Check on account name")
 		assert.ErrorIs(t, ruleExecution.Error, models.NullFieldReadError, "Expected error to be A field read in a rule is null, got %s", ruleExecution.Error)
 	}
 
@@ -405,7 +445,7 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 	approveDivisionByZeroDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
 	assert.Equal(t, models.Approve, approveDivisionByZeroDecision.Outcome, "Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
 	if assert.NotEmpty(t, approveDivisionByZeroDecision.RuleExecutions) {
-		ruleExecution := approveDivisionByZeroDecision.RuleExecutions[0]
+		ruleExecution := findRuleExecutionByName(approveDivisionByZeroDecision.RuleExecutions, "Check on account name")
 		assert.ErrorIs(t, ruleExecution.Error, models.DivisionByZeroError, "Expected error to be A division by zero occurred in a rule, got %s", ruleExecution.Error)
 	}
 }
@@ -431,4 +471,9 @@ func createAndTestDecision(t *testing.T, transactionPayloadJson []byte, table mo
 	fmt.Println("Created decision", decision.DecisionId)
 
 	return decision
+}
+
+func findRuleExecutionByName(ruleExecutions []models.RuleExecution, name string) models.RuleExecution {
+	index := slices.IndexFunc(ruleExecutions, func(re models.RuleExecution) bool { return re.Rule.Name == name })
+	return ruleExecutions[index]
 }

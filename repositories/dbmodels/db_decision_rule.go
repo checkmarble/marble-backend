@@ -26,6 +26,8 @@ var SelectDecisionRuleColumn = utils.ColumnList[DbDecisionRule]()
 
 func adaptErrorCodeAsError(errCode models.RuleExecutionError) error {
 	switch errCode {
+	case models.NoError:
+		return nil
 	case models.NullFieldRead:
 		return models.NullFieldReadError
 	case models.NoRowsRead:
