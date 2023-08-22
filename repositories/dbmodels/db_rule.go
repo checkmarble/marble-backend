@@ -9,6 +9,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const TABLE_RULES = "scenario_iteration_rules"
+
+var SelectRulesColumn = utils.ColumnList[DBRule]()
+
 type DBRule struct {
 	Id                   string      `db:"id"`
 	OrganizationId       string      `db:"org_id"`
@@ -42,6 +46,56 @@ func AdaptRule(db DBRule) (models.Rule, error) {
 	}, nil
 }
 
-const TABLE_RULES = "scenario_iteration_rules"
+type DBCreateRuleInput struct {
+	Id                   string  `db:"id"`
+	OrganizationId       string  `db:"org_id"`
+	ScenarioIterationId  string  `db:"scenario_iteration_id"`
+	DisplayOrder         int     `db:"display_order"`
+	Name                 string  `db:"name"`
+	Description          string  `db:"description"`
+	ScoreModifier        int     `db:"score_modifier"`
+	FormulaAstExpression *[]byte `db:"formula_ast_expression"`
+}
 
-var SelectRulesColumn = utils.ColumnList[DBRule]()
+func AdaptDBCreateRuleInput(rule models.CreateRuleInput) (DBCreateRuleInput, error) {
+	formulaAstExpression, err := SerializeFormulaAstExpression(rule.FormulaAstExpression)
+	if err != nil {
+		return DBCreateRuleInput{}, fmt.Errorf("unable to marshal expression formula: %w", err)
+	}
+
+	return DBCreateRuleInput{
+		Id:                   utils.NewPrimaryKey(rule.OrganizationId),
+		OrganizationId:       rule.OrganizationId,
+		ScenarioIterationId:  rule.ScenarioIterationId,
+		DisplayOrder:         rule.DisplayOrder,
+		Name:                 rule.Name,
+		Description:          rule.Description,
+		ScoreModifier:        rule.ScoreModifier,
+		FormulaAstExpression: formulaAstExpression,
+	}, nil
+}
+
+type DBUpdateRuleInput struct {
+	Id                   string  `db:"id"`
+	DisplayOrder         *int    `db:"display_order"`
+	Name                 *string `db:"name"`
+	Description          *string `db:"description"`
+	ScoreModifier        *int    `db:"score_modifier"`
+	FormulaAstExpression *[]byte `db:"formula_ast_expression"`
+}
+
+func AdaptDBUpdateRuleInput(rule models.UpdateRuleInput) (DBUpdateRuleInput, error) {
+	formulaAstExpression, err := SerializeFormulaAstExpression(rule.FormulaAstExpression)
+	if err != nil {
+		return DBUpdateRuleInput{}, fmt.Errorf("unable to marshal expression formula: %w", err)
+	}
+
+	return DBUpdateRuleInput{
+		Id:                   rule.Id,
+		DisplayOrder:         rule.DisplayOrder,
+		Name:                 rule.Name,
+		Description:          rule.Description,
+		ScoreModifier:        rule.ScoreModifier,
+		FormulaAstExpression: formulaAstExpression,
+	}, nil
+}

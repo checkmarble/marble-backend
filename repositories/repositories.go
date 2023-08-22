@@ -29,7 +29,6 @@ type Repositories struct {
 	ScenarioIterationReadRepository        ScenarioIterationReadRepository
 	ScenarioIterationWriteRepository       ScenarioIterationWriteRepository
 	ScenarioIterationWriteRepositoryLegacy ScenarioIterationWriteRepositoryLegacy
-	ScenarioIterationRuleRepositoryLegacy  ScenarioIterationRuleRepositoryLegacy
 	ScenarioPublicationRepository          ScenarioPublicationRepository
 	ScheduledExecutionRepository           ScheduledExecutionRepository
 	OrganizationSchemaRepository           OrganizationSchemaRepository
@@ -49,7 +48,6 @@ func NewRepositories(
 	marbleConnectionPool *pgxpool.Pool,
 	appLogger *slog.Logger,
 	scenarioIterationWriteRepository ScenarioIterationWriteRepositoryLegacy,
-	ScenarioIterationRuleRepositoryLegacy ScenarioIterationRuleRepositoryLegacy,
 
 ) (*Repositories, error) {
 
@@ -110,7 +108,6 @@ func NewRepositories(
 			transactionFactory: transactionFactory,
 		},
 		ScenarioIterationWriteRepositoryLegacy: scenarioIterationWriteRepository,
-		ScenarioIterationRuleRepositoryLegacy:  ScenarioIterationRuleRepositoryLegacy,
 		ScenarioPublicationRepository: NewScenarioPublicationRepositoryPostgresql(
 			transactionFactory,
 		),

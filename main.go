@@ -168,7 +168,6 @@ func NewUseCases(ctx context.Context, appConfiguration AppConfiguration, marbleJ
 		marbleConnectionPool,
 		utils.LoggerFromContext(ctx),
 		pgRepository,
-		pgRepository,
 	)
 	if err != nil {
 		panic(err)

@@ -2,7 +2,6 @@ package api
 
 import (
 	"marble/marble-backend/dto"
-	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
 	"net/http"
 
@@ -13,17 +12,10 @@ func (api *API) ListRules() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		organizationId, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
-			return
-		}
-
 		input := ctx.Value(httpin.Input).(*dto.ListRulesInput)
 
 		usecase := api.UsecasesWithCreds(r).NewRuleUsecase()
-		rules, err := usecase.ListRules(ctx, organizationId, models.GetRulesFilters{
-			ScenarioIterationId: input.ScenarioIterationId,
-		})
+		rules, err := usecase.ListRules(input.ScenarioIterationId)
 		if presentError(w, r, err) {
 			return
 		}
@@ -48,13 +40,13 @@ func (api *API) CreateRule() http.HandlerFunc {
 
 		input := ctx.Value(httpin.Input).(*dto.CreateRuleInput)
 
-		createInputRule, err := dto.AdaptCreateRuleInput(*input.Body)
+		createInputRule, err := dto.AdaptCreateRuleInput(*input.Body, organizationId)
 		if presentError(w, r, err) {
 			return
 		}
 
 		usecase := api.UsecasesWithCreds(r).NewRuleUsecase()
-		rule, err := usecase.CreateRule(ctx, organizationId, createInputRule)
+		rule, err := usecase.CreateRule(createInputRule)
 		if presentError(w, r, err) {
 			return
 		}
@@ -76,15 +68,10 @@ func (api *API) GetRule() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		organizationId, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
-			return
-		}
-
 		input := ctx.Value(httpin.Input).(*dto.GetRuleInput)
 
 		usecase := api.UsecasesWithCreds(r).NewRuleUsecase()
-		rule, err := usecase.GetRule(ctx, organizationId, input.RuleID)
+		rule, err := usecase.GetRule(input.RuleID)
 		if presentError(w, r, err) {
 			return
 		}
@@ -105,11 +92,6 @@ func (api *API) UpdateRule() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		organizationId, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
-			return
-		}
-
 		input := ctx.Value(httpin.Input).(*dto.UpdateRuleInput)
 
 		updateRuleInput, err := dto.AdaptUpdateRule(input.RuleID, *input.Body)
@@ -118,7 +100,7 @@ func (api *API) UpdateRule() http.HandlerFunc {
 		}
 
 		usecase := api.UsecasesWithCreds(r).NewRuleUsecase()
-		updatedRule, err := usecase.UpdateRule(ctx, organizationId, updateRuleInput)
+		updatedRule, err := usecase.UpdateRule(updateRuleInput)
 		if presentError(w, r, err) {
 			return
 		}
@@ -140,15 +122,10 @@ func (api *API) DeleteRule() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		organizationId, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
-			return
-		}
-
 		input := ctx.Value(httpin.Input).(*dto.DeleteRuleInput)
 
 		usecase := api.UsecasesWithCreds(r).NewRuleUsecase()
-		err = usecase.DeleteRule(ctx, organizationId, input.RuleID)
+		err := usecase.DeleteRule(input.RuleID)
 		if presentError(w, r, err) {
 			return
 		}
