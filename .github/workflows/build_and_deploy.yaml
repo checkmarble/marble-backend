@@ -125,7 +125,9 @@ jobs:
             --service-account=marble-backend-cloud-run@${{ steps.get_env.outputs.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
             --set-env-vars=PG_HOSTNAME=/cloudsql/${{ steps.get_env.outputs.GCP_PROJECT_ID }}:${{ steps.get_env.outputs.DB_INSTANCE_REGION }}:${{ steps.get_env.outputs.DB_INSTANCE_NAME }},PG_USER=postgres,GOOGLE_CLOUD_PROJECT=${{ steps.get_env.outputs.GCP_PROJECT_ID }},ENV=${{ steps.get_env.outputs.ENV }},AWS_REGION=eu-west-3 \
             --set-secrets=PG_PASSWORD=POSTGRES_PASSWORD:latest,AWS_ACCESS_KEY=AWS_ACCESS_KEY:latest,AWS_SECRET_KEY=AWS_SECRET_KEY:latest \
-            --set-cloudsql-instances=${{ steps.get_env.outputs.GCP_PROJECT_ID }}:${{ steps.get_env.outputs.DB_INSTANCE_REGION }}:${{ steps.get_env.outputs.DB_INSTANCE_NAME }}
+            --set-cloudsql-instances=${{ steps.get_env.outputs.GCP_PROJECT_ID }}:${{ steps.get_env.outputs.DB_INSTANCE_REGION }}:${{ steps.get_env.outputs.DB_INSTANCE_NAME }} \
+            --task-timeout=2h \
+            --max-retries=0
 
       - name: Deploy csv ingestion job
         run: |
@@ -137,4 +139,6 @@ jobs:
             --service-account=marble-backend-cloud-run@${{ steps.get_env.outputs.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
             --set-env-vars=PG_HOSTNAME=/cloudsql/${{ steps.get_env.outputs.GCP_PROJECT_ID }}:${{ steps.get_env.outputs.DB_INSTANCE_REGION }}:${{ steps.get_env.outputs.DB_INSTANCE_NAME }},PG_USER=postgres,GOOGLE_CLOUD_PROJECT=${{ steps.get_env.outputs.GCP_PROJECT_ID }},ENV=${{ steps.get_env.outputs.ENV }},AWS_REGION=eu-west-3,GCS_INGESTION_BUCKET=${{ steps.get_env.outputs.GCS_INGESTION_BUCKET }} \
             --set-secrets=PG_PASSWORD=POSTGRES_PASSWORD:latest,AWS_ACCESS_KEY=AWS_ACCESS_KEY:latest,AWS_SECRET_KEY=AWS_SECRET_KEY:latest \
-            --set-cloudsql-instances=${{ steps.get_env.outputs.GCP_PROJECT_ID }}:${{ steps.get_env.outputs.DB_INSTANCE_REGION }}:${{ steps.get_env.outputs.DB_INSTANCE_NAME }}
+            --set-cloudsql-instances=${{ steps.get_env.outputs.GCP_PROJECT_ID }}:${{ steps.get_env.outputs.DB_INSTANCE_REGION }}:${{ steps.get_env.outputs.DB_INSTANCE_NAME }} \
+            --task-timeout=2h \
+            --max-retries=0
