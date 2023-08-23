@@ -118,8 +118,8 @@ func (repo *RuleRepositoryPostgresql) CreateRules(tx Transaction, rules []models
 
 func (repo *RuleRepositoryPostgresql) CreateRule(tx Transaction, rule models.CreateRuleInput) (models.Rule, error) {
 	rules, err := repo.CreateRules(tx, []models.CreateRuleInput{rule})
-	if err != nil || len(rules) != 1 {
-		return models.Rule{}, nil
+	if err != nil {
+		return models.Rule{}, err
 	}
 	return rules[0], nil
 }

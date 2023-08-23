@@ -11,7 +11,7 @@ import (
 
 type ScenarioIterationWriteRepository interface {
 	CreateScenarioIteration(tx Transaction, organizationId string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error)
-	UpdateScenarioIteration(tx Transaction, organizationId string, scenarioIteration models.UpdateScenarioIterationInput) (models.ScenarioIteration, error)
+	UpdateScenarioIteration(tx Transaction, scenarioIteration models.UpdateScenarioIterationInput) (models.ScenarioIteration, error)
 	DeleteScenarioIteration(tx Transaction, scenarioIterationId string) error
 }
 
@@ -91,7 +91,7 @@ func (repo *ScenarioIterationWriteRepositoryPostgresql) CreateScenarioIteration(
 	return createdIteration, nil
 }
 
-func (repo *ScenarioIterationWriteRepositoryPostgresql) UpdateScenarioIteration(tx Transaction, organizationId string, scenarioIteration models.UpdateScenarioIterationInput) (models.ScenarioIteration, error) {
+func (repo *ScenarioIterationWriteRepositoryPostgresql) UpdateScenarioIteration(tx Transaction, scenarioIteration models.UpdateScenarioIterationInput) (models.ScenarioIteration, error) {
 	if scenarioIteration.Body == nil {
 		return models.ScenarioIteration{}, fmt.Errorf("nothing to update")
 	}
