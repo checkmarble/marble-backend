@@ -66,10 +66,10 @@ func (usecase *ScheduledExecutionUsecase) UpdateScheduledExecution(ctx context.C
 }
 
 func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx context.Context, organizationId string, scenarioId string) (err error) {
+	logger := utils.LoggerFromContext(ctx)
 	// This is called by a cron job, for all scheduled scenarios. It is crucial that a panic on one scenario does not break all the others.
 	defer func() {
 		if r := recover(); r != nil {
-			logger := utils.LoggerFromContext(ctx)
 			logger.ErrorContext(ctx, "recovered from panic during scheduled scenario execution. Stacktrace from panic: ")
 			logger.ErrorContext(ctx, string(debug.Stack()))
 			err = fmt.Errorf("recovered from panic during scheduled scenario execution")
@@ -85,29 +85,17 @@ func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx cont
 	if err != nil {
 		return err
 	}
-
-	gron := gronx.New()
-	ok := gron.IsValid(publishedVersion.Body.Schedule)
-	if !ok {
-		return fmt.Errorf("invalid schedule: %w", models.BadParameterError)
+	if publishedVersion == nil {
+		logger.DebugContext(ctx, fmt.Sprintf("scenario %s has no published version", scenarioId))
+		return nil
 	}
-	previousExecutions, err := usecase.ListScheduledExecutions(ctx, organizationId, scenarioId)
+
+	isDue, err := usecase.scenarioIsDue(ctx, *publishedVersion, scenario)
 	if err != nil {
 		return err
 	}
 
-	publications, err := usecase.scenarioPublicationsRepository.ListScenarioPublicationsOfOrganization(nil, scenario.OrganizationId, models.ListScenarioPublicationsFilters{ScenarioId: &scenario.Id})
-	if err != nil {
-		return err
-	}
-
-	tz, _ := time.LoadLocation("Europe/Paris")
-	isDue, err := executionIsDue(publishedVersion.Body.Schedule, previousExecutions, publications, tz)
-	if err != nil {
-		return err
-	}
-
-	if isDue || true {
+	if isDue {
 		logger := utils.LoggerFromContext(ctx)
 		logger.DebugContext(ctx, fmt.Sprintf("Scenario iteration %s is due", publishedVersion.Id))
 
@@ -160,7 +148,32 @@ func (usecase *ScheduledExecutionUsecase) ExecuteScheduledScenarioIfDue(ctx cont
 	return nil
 }
 
-func executionIsDue(schedule string, previousExecutions []models.ScheduledExecution, publications []models.ScenarioPublication, tz *time.Location) (bool, error) {
+func (usecase *ScheduledExecutionUsecase) scenarioIsDue(ctx context.Context, publishedVersion models.PublishedScenarioIteration, scenario models.Scenario) (bool, error) {
+	logger := utils.LoggerFromContext(ctx)
+	if publishedVersion.Body.Schedule == "" {
+		logger.DebugContext(ctx, fmt.Sprintf("Scenario iteration %s has no schedule", publishedVersion.Id))
+		return false, nil
+	}
+	gron := gronx.New()
+	ok := gron.IsValid(publishedVersion.Body.Schedule)
+	if !ok {
+		return false, fmt.Errorf("invalid schedule: %w", models.BadParameterError)
+	}
+	previousExecutions, err := usecase.ListScheduledExecutions(ctx, scenario.OrganizationId, scenario.Id)
+	if err != nil {
+		return false, fmt.Errorf("error listing scheduled executions: %w", err)
+	}
+
+	publications, err := usecase.scenarioPublicationsRepository.ListScenarioPublicationsOfOrganization(nil, scenario.OrganizationId, models.ListScenarioPublicationsFilters{ScenarioId: &scenario.Id})
+	if err != nil {
+		return false, err
+	}
+
+	tz, _ := time.LoadLocation("Europe/Paris")
+	return executionIsDueNow(publishedVersion.Body.Schedule, previousExecutions, publications, tz)
+}
+
+func executionIsDueNow(schedule string, previousExecutions []models.ScheduledExecution, publications []models.ScenarioPublication, tz *time.Location) (bool, error) {
 	var referenceTime time.Time
 	if len(previousExecutions) > 0 {
 		referenceTime = previousExecutions[0].StartedAt.In(tz)
@@ -248,25 +261,18 @@ func (usecase *ScheduledExecutionUsecase) executeScheduledScenario(ctx context.C
 	return err
 }
 
-func (usecase *ScheduledExecutionUsecase) getPublishedScenarioIteration(scenario models.Scenario) (models.PublishedScenarioIteration, error) {
+func (usecase *ScheduledExecutionUsecase) getPublishedScenarioIteration(scenario models.Scenario) (*models.PublishedScenarioIteration, error) {
 	if scenario.LiveVersionID == nil {
-		return models.PublishedScenarioIteration{}, fmt.Errorf("scenario has no live version %w", models.BadParameterError)
-	}
-	scenarioIteration, err := usecase.scenarioIterationReadRepository.GetScenarioIteration(nil, *scenario.LiveVersionID)
-	if err != nil {
-		return models.PublishedScenarioIteration{}, err
-	}
-	if scenarioIteration.Schedule == "" {
-		return models.PublishedScenarioIteration{}, fmt.Errorf("scenario is not scheduled %w", models.BadParameterError)
+		return nil, nil
 	}
 
 	liveVersion, err := usecase.scenarioIterationReadRepository.GetScenarioIteration(nil, *scenario.LiveVersionID)
 	if err != nil {
-		return models.PublishedScenarioIteration{}, err
+		return nil, err
 	}
 	publishedVersion, err := models.NewPublishedScenarioIteration(liveVersion)
 	if err != nil {
-		return models.PublishedScenarioIteration{}, err
+		return nil, err
 	}
-	return publishedVersion, nil
+	return &publishedVersion, nil
 }
