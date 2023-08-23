@@ -27,7 +27,7 @@ import { type CreateUser, Role, PageLink } from "@/models";
 import ListOfUsers from "@/components/ListOfUsers";
 import IconButton from "@mui/material/IconButton";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import TextareaAutosize from "@mui/base/TextareaAutosize";
+import TextareaAutosize from "@mui/material/TextareaAutosize";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Paper from "@mui/material/Paper";
