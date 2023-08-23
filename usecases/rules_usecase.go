@@ -33,7 +33,7 @@ func (usecase *RuleUsecase) ListRules(iterationId string) ([]models.Rule, error)
 		})
 }
 
-func (usecase *RuleUsecase) CreateRule(rule models.CreateRuleInput) (models.Rule, error) {
+func (usecase *RuleUsecase) CreateRule(ruleInput models.CreateRuleInput) (models.Rule, error) {
 	return repositories.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
@@ -43,7 +43,7 @@ func (usecase *RuleUsecase) CreateRule(rule models.CreateRuleInput) (models.Rule
 				return models.Rule{}, err
 			}
 
-			scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(tx, rule.ScenarioIterationId)
+			scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(tx, ruleInput.ScenarioIterationId)
 			if err != nil {
 				return models.Rule{}, err
 			}
@@ -55,12 +55,12 @@ func (usecase *RuleUsecase) CreateRule(rule models.CreateRuleInput) (models.Rule
 				return models.Rule{}, fmt.Errorf("can't update rule as iteration %s is not in draft %w", scenarioAndIteration.Iteration.Id, models.ErrScenarioIterationNotDraft)
 			}
 
-			rule.Id = utils.NewPrimaryKey(organizationId)
-			err = usecase.repository.CreateRule(tx, rule)
+			ruleInput.Id = utils.NewPrimaryKey(organizationId)
+			err = usecase.repository.CreateRule(tx, ruleInput)
 			if err != nil {
 				return models.Rule{}, err
 			}
-			return usecase.repository.GetRuleById(tx, rule.Id)
+			return usecase.repository.GetRuleById(tx, ruleInput.Id)
 		})
 }
 

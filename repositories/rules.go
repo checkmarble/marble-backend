@@ -78,13 +78,9 @@ func (repo *RuleRepositoryPostgresql) CreateRules(tx Transaction, rules []models
 
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	var dbCreateRuleInputs []dbmodels.DBCreateRuleInput
-	for _, rule := range rules {
-		dbCreateRuleInput, err := dbmodels.AdaptDBCreateRuleInput(rule)
-		if err != nil {
-			return err
-		}
-		dbCreateRuleInputs = append(dbCreateRuleInputs, dbCreateRuleInput)
+	dbCreateRuleInputs, err := utils.MapErr(rules, dbmodels.AdaptDBCreateRuleInput)
+	if err != nil {
+		return err
 	}
 
 	query := NewQueryBuilder().
@@ -111,7 +107,7 @@ func (repo *RuleRepositoryPostgresql) CreateRules(tx Transaction, rules []models
 		)
 	}
 
-	_, err := pgTx.ExecBuilder(query)
+	_, err = pgTx.ExecBuilder(query)
 	return err
 }
 
