@@ -22,18 +22,18 @@ export default function AstEditorPage() {
   const [pageLoading, pageLoadingDispatcher] = useLoading();
 
   const { scenario, iteration } = useSingleScenario({
-    service: services().organizationService,
+    service: services().scenarioService,
     loadingDispatcher: pageLoadingDispatcher,
     scenarioId,
     iterationId,
   });
 
-  const { astText, setAstText, errorMessage } = useAstEditor(
+  const { astText, setAstText, errorMessages } = useAstEditor(
     services().astEditorService,
     pageLoadingDispatcher,
     scenario,
     iteration,
-    ruleId === undefined ? null : ruleId
+    ruleId ?? null
   );
 
   return (
@@ -59,7 +59,11 @@ export default function AstEditorPage() {
             onChange={(e) => setAstText(e.target.value)}
           />
         )}
-        {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
+        {errorMessages.map((error, i) => (
+          <Alert key={i} severity="error">
+            {error}
+          </Alert>
+        ))}
       </Container>
     </>
   );

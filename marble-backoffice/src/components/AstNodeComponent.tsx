@@ -39,9 +39,11 @@ export function AstNodeTextComponent({ node }: { node: AstNode }) {
 export function AstNodeComponent({
   node,
   evaluation,
+  displaySuccess,
 }: {
   node: AstNode;
-  evaluation?: AstNodeEvaluation;
+  evaluation?: AstNodeEvaluation | null;
+  displaySuccess: boolean;
 }) {
   return (
     <>
@@ -56,7 +58,8 @@ export function AstNodeComponent({
           <Typography variant="subtitle1">name: {node.name}</Typography>
         )}
         {evaluation &&
-          evaluation?.returnValue !== NoConstant &&
+          displaySuccess &&
+          evaluation.returnValue !== NoConstant &&
           node.constant === NoConstant && (
             <Alert severity="success">
               Evaluation success:{" "}
@@ -65,7 +68,10 @@ export function AstNodeComponent({
           )}
         {node.constant !== NoConstant && (
           <Typography>
-            Constant: <AstConstantComponent constant={node.constant} />
+            Constant:{" "}
+            <AstConstantComponent
+              constant={node.constant}
+            />
           </Typography>
         )}
         {!node.name && node.constant === NoConstant && (
@@ -74,8 +80,8 @@ export function AstNodeComponent({
           </Typography>
         )}
         {evaluation?.errors &&
-          evaluation.errors.map((e) => (
-            <Alert severity="error">
+          evaluation.errors.map((e, i) => (
+            <Alert key={i} severity="error">
               {e.error} : {e.message}
             </Alert>
           ))}
@@ -83,7 +89,8 @@ export function AstNodeComponent({
           <AstNodeComponent
             key={i}
             node={child}
-            evaluation={evaluation ? evaluation.children[i] : undefined}
+            evaluation={evaluation?.children[i]}
+            displaySuccess={displaySuccess}
           />
         ))}
         <div>
@@ -92,9 +99,8 @@ export function AstNodeComponent({
               <Typography variant="subtitle2">{name}</Typography>{" "}
               <AstNodeComponent
                 node={child}
-                evaluation={
-                  evaluation ? evaluation.namedChildren[name] : undefined
-                }
+                evaluation={evaluation?.namedChildren[name]}
+                displaySuccess={displaySuccess}
               />
             </div>
           ))}

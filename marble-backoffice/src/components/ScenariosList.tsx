@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import Stack from "@mui/material/Stack";
 import AddIcon from "@mui/icons-material/Add";
 import Button from "@mui/material/Button";
-import { useScenarios, useAddScenarios } from "@/services";
+import { useScenarios, useAddDemoScenarios } from "@/services";
 import { type LoadingDispatcher } from "@/hooks/Loading";
 import services from "@/injectServices";
 import ListOfScenarios from "./ListOfScenarios";
@@ -16,15 +16,15 @@ export default function ScenariosList({
   organizationId: string;
 }) {
   const { scenarios, refreshScenarios } = useScenarios(
-    services().organizationService,
+    services().scenarioService,
     pageLoadingDispatcher,
     organizationId
   );
 
   const navigate = useNavigate();
 
-  const { addDemoScenario } = useAddScenarios(
-    services().organizationService,
+  const { addDemoScenario } = useAddDemoScenarios(
+    services().demoScenarioService,
     pageLoadingDispatcher,
     organizationId,
     refreshScenarios

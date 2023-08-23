@@ -7,7 +7,13 @@ import {
   patchIteration,
   validateIteration,
 } from "@/repositories";
-import type { AstNode, AstNodeEvaluation, EvaluationError, Iteration, Scenario } from "@/models";
+import type {
+  AstNode,
+  AstNodeEvaluation,
+  EvaluationError,
+  Iteration,
+  Scenario,
+} from "@/models";
 import {
   adaptAstNodeDto,
   adaptLitteralAstNode,
@@ -25,8 +31,10 @@ export function useAstEditor(
   ruleId: string | null
 ) {
   const [astText, setAstText] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [errorMessages, setErrorMessages] = useState<string[]>([]);
+  const [validation, setValidation] = useState<AstNodeEvaluation | null>(null);
 
+  // set initial value of astText
   useEffect(() => {
     if (astText !== null || iteration === null) {
       return;
@@ -48,6 +56,7 @@ export function useAstEditor(
   //   debounce()
   // }, [])
 
+  // save rule/trigger and validate
   useEffect(() => {
     if (astText === null) {
       return;
@@ -61,61 +70,61 @@ export function useAstEditor(
       setErrorMessage(errorMessage);
     }
 
-    if (astNode) {
-      showLoader(
-        loadingDispatcher,
-        (async () => {
-          if (ruleId === null) {
-            await patchIteration(
-              service.scenariosRepository,
-              scenario.organizationId,
-              iteration.iterationId,
-              {
-                triggerCondition: astNode,
-              }
-            );
-          } else {
-            await updateRule(
-              service.scenariosRepository,
-              scenario.organizationId,
-              ruleId,
-              {
-                formula: astNode,
-              }
-            );
-          }
-          const validation = await validateIteration(
-            service.scenariosRepository,
-            iteration.iterationId
-          );
-
-          const flattenNodeEvaluation = (
-            validation: AstNodeEvaluation
-          ): AstNodeEvaluation[] => {
-            return [
-              validation,
-              ...validation.children.map(flattenNodeEvaluation).flat(),
-              ...Object.values(validation.namedChildren)
-                .map(flattenNodeEvaluation)
-                .flat(),
-            ];
-          };
-          const numberofErrors =
-            validation.errors.length +
-            flattenNodeEvaluation(validation.triggerEvaluation).length +
-            Object.values(validation.rulesEvaluations)
-              .map(flattenNodeEvaluation)
-              .flat().length;
-          setErrorMessage(`${numberofErrors} validation errors`);
-        })()
-      );
+    if (!astNode) {
+      return;
     }
+
+    showLoader(
+      loadingDispatcher,
+      (async () => {
+        if (ruleId === null) {
+          await patchIteration(
+            service.scenariosRepository,
+            scenario.organizationId,
+            iteration.iterationId,
+            {
+              triggerCondition: astNode,
+            }
+          );
+        } else {
+          await updateRule(
+            service.scenariosRepository,
+            scenario.organizationId,
+            ruleId,
+            {
+              formula: astNode,
+            }
+          );
+        }
+
+        const validation = await validateIteration(
+          service.scenariosRepository,
+          iteration.iterationId
+        );
+
+        setValidation(
+          ruleId === null
+            ? validation.triggerEvaluation
+            : validation.rulesEvaluations[ruleId]
+        );
+      })()
+    );
   }, [service, scenario, iteration, loadingDispatcher, ruleId, astText]);
+
+  // update error message
+  useEffect(() => {
+    if (validation === null) {
+      return;
+    }
+
+    setErrorMessages(flattenNodeEvaluationErrors(validation).map((e) => e.message));
+  }, [validation]);
 
   return {
     astText,
     setAstText: setAstText,
-    errorMessage,
+    errorMessages,
+    validation,
   };
 }
 

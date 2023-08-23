@@ -34,7 +34,7 @@ function DecisionsPage() {
   );
 
   const { scenarios } = useScenarios(
-    services().organizationService,
+    services().scenarioService,
     pageLoadingDispatcher,
     organizationId
   );

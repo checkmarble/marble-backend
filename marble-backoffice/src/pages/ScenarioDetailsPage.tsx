@@ -9,7 +9,7 @@ import ListItemButton from "@mui/material/ListItemButton";
 import Typography from "@mui/material/Typography";
 import { useLoading } from "@/hooks/Loading";
 import DelayedLinearProgress from "@/components/DelayedLinearProgress";
-import { type AstNode, Rule, PageLink } from "@/models";
+import { type AstNode, Rule, PageLink, AstNodeEvaluation } from "@/models";
 import Paper from "@mui/material/Paper";
 import TextField from "@mui/material/TextField";
 import AddIcon from "@mui/icons-material/Add";
@@ -25,15 +25,20 @@ import {
 } from "@/services/AstExpressionService";
 import { useCallback } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { useSingleScenario } from "@/services";
+import { useIterationValidation, useSingleScenario } from "@/services";
 import {
   AstNodeComponent,
   AstNodeTextComponent,
 } from "@/components/AstNodeComponent";
+import Box from "@mui/material/Box";
+import ListItemAvatar from "@mui/material/ListItemAvatar";
+import Avatar from "@mui/material/Avatar";
+import MovieIcon from "@mui/icons-material/Movie";
 
 export default function ScenarioDetailsPage() {
   const { scenarioId } = useParams();
   const [searchParams] = useSearchParams();
+  const iterationId = searchParams.get("iteration-id");
 
   if (!scenarioId) {
     throw Error("scenarioId is required");
@@ -41,10 +46,9 @@ export default function ScenarioDetailsPage() {
   // const navigate = useNavigate();
 
   const [pageLoading, pageLoadingDispatcher] = useLoading();
-  const iterationId = searchParams.get("iteration-id");
 
   const { scenario, iteration } = useSingleScenario({
-    service: services().organizationService,
+    service: services().scenarioService,
     loadingDispatcher: pageLoadingDispatcher,
     scenarioId,
     iterationId,
@@ -92,6 +96,8 @@ export default function ScenarioDetailsPage() {
   //   [editor]
   // );
 
+  const navigate = useNavigate();
+
   //@ts-ignore
   const nodeEditor: NodeEditor = {
     handleOperatorNameChange,
@@ -99,8 +105,6 @@ export default function ScenarioDetailsPage() {
     handleAddAstNodeOperand,
     // handleDeleteAstNode,
   };
-
-  const navigate = useNavigate();
 
   const handleEditTrigger = useCallback(() => {
     if (iterationId === null) {
@@ -128,6 +132,12 @@ export default function ScenarioDetailsPage() {
 
   const iterationEditable = iteration?.version === null || false;
 
+  const { iterationValidation } = useIterationValidation({
+    service: services().scenarioService,
+    loadingDispatcher: pageLoadingDispatcher,
+    iterationId,
+  });
+
   return (
     <>
       <DelayedLinearProgress loading={pageLoading} />
@@ -136,29 +146,46 @@ export default function ScenarioDetailsPage() {
           maxWidth: "md",
         }}
       >
+        {/* List of iterations */}
         <Stack direction="column" spacing={2}>
           {scenario && iterationId == null && (
             <>
               <Typography variant="h5">
                 {scenario.allIterations.length} iterations
               </Typography>
-              <List>
-                {scenario.allIterations.map((iteration) => (
-                  <ListItem>
-                    <ListItemButton
-                      onClick={() =>
-                        handleIterationClick(iteration.iterationId)
-                      }
-                    >
-                      <ListItemText>
-                        {iteration.version === null
-                          ? "Draft Iteration"
-                          : `Live Iteration version ${iteration.version}`}
-                      </ListItemText>
-                    </ListItemButton>
-                  </ListItem>
-                ))}
-              </List>
+              <Box
+                sx={{
+                  bgcolor: "background.paper",
+                }}
+              >
+                <List>
+                  {scenario.allIterations.map((iteration) => (
+                    <ListItem key={iteration.iterationId} disablePadding>
+                      <ListItemButton
+                        onClick={() =>
+                          handleIterationClick(iteration.iterationId)
+                        }
+                      >
+                        <ListItemAvatar>
+                          <Avatar>
+                            <MovieIcon />
+                          </Avatar>
+                        </ListItemAvatar>
+                        <ListItemText
+                          primary={
+                            iteration.version === null
+                              ? "Draft"
+                              : `Live (version ${iteration.version})`
+                          }
+                          secondary={`Updated: ${detailedDateFormat.format(
+                            iteration.updatedAt
+                          )}`}
+                        ></ListItemText>
+                      </ListItemButton>
+                    </ListItem>
+                  ))}
+                </List>
+              </Box>
             </>
           )}
 
@@ -167,7 +194,7 @@ export default function ScenarioDetailsPage() {
             <>
               <Typography variant="h5">
                 {iteration.version ? (
-                  <>Live Iteration version {iteration.version}</>
+                  <>Live Iteration (version {iteration.version})</>
                 ) : (
                   <>Draft Iteration</>
                 )}
@@ -175,25 +202,30 @@ export default function ScenarioDetailsPage() {
               <TriggerCondition
                 onEditTrigger={iterationEditable ? handleEditTrigger : null}
                 triggerCondition={iteration.triggerCondition}
+                validation={
+                  iterationValidation
+                    ? iterationValidation.triggerEvaluation
+                    : null
+                }
               />
               {iteration.rules.map((rule) => (
                 <RuleComponent
+                  key={rule.ruleId}
                   onEditRule={
                     iterationEditable ? () => handleEditRule(rule.ruleId) : null
                   }
-                  key={rule.ruleId}
                   rule={rule}
+                  validation={
+                    iterationValidation
+                      ? iterationValidation.rulesEvaluations[rule.ruleId]
+                      : null
+                  }
                 />
               ))}
             </>
           )}
-          {/* {iteration != null && (
-            <>
 
-            </>
-          )} */}
-          {/* <Typography variant="h5">Expression Editor</Typography>
-
+          {/* 
           <AstEditor
             editor={nodeEditor}
             node={editor.expressionViewModel.rootNode}
@@ -221,9 +253,11 @@ export default function ScenarioDetailsPage() {
 function TriggerCondition({
   onEditTrigger,
   triggerCondition,
+  validation,
 }: {
   onEditTrigger: (() => void) | null;
   triggerCondition: AstNode | null;
+  validation: AstNodeEvaluation | null;
 }) {
   return (
     <>
@@ -238,7 +272,11 @@ function TriggerCondition({
             </Button>
           )}
           <AstNodeTextComponent node={triggerCondition} />
-          <AstNodeComponent node={triggerCondition} />
+          <AstNodeComponent
+            node={triggerCondition}
+            evaluation={validation}
+            displaySuccess={false}
+          />
         </>
       )}
     </>
@@ -248,9 +286,11 @@ function TriggerCondition({
 function RuleComponent({
   rule,
   onEditRule,
+  validation,
 }: {
   rule: Rule;
   onEditRule: (() => void) | null;
+  validation: AstNodeEvaluation | null;
 }) {
   return (
     <>
@@ -266,7 +306,11 @@ function RuleComponent({
             </Button>
           )}
           <AstNodeTextComponent node={rule.formulaAstExpression} />
-          <AstNodeComponent node={rule.formulaAstExpression} />
+          <AstNodeComponent
+            node={rule.formulaAstExpression}
+            evaluation={validation}
+            displaySuccess={false}
+          />
         </>
       )}
     </>
@@ -345,3 +389,8 @@ function AstEditor({
     </Paper>
   );
 }
+
+// "fr-FR"
+const detailedDateFormat = new Intl.DateTimeFormat(undefined, {
+  dateStyle: "full",
+});
