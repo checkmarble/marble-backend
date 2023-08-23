@@ -12,12 +12,12 @@ import (
 )
 
 type ScenarioIterationUsecase struct {
-	organizationIdOfContext                 func() (string, error)
-	scenarioIterationsReadRepository        repositories.ScenarioIterationReadRepository
-	scenarioIterationsWriteRepository       repositories.ScenarioIterationWriteRepository
-	enforceSecurity                         security.EnforceSecurityScenario
-	scenarioFetcher                         scenarios.ScenarioFetcher
-	validateScenarioIteration               scenarios.ValidateScenarioIteration
+	organizationIdOfContext           func() (string, error)
+	scenarioIterationsReadRepository  repositories.ScenarioIterationReadRepository
+	scenarioIterationsWriteRepository repositories.ScenarioIterationWriteRepository
+	enforceSecurity                   security.EnforceSecurityScenario
+	scenarioFetcher                   scenarios.ScenarioFetcher
+	validateScenarioIteration         scenarios.ValidateScenarioIteration
 }
 
 func (usecase *ScenarioIterationUsecase) ListScenarioIterations(filters models.GetScenarioIterationFilters) ([]models.ScenarioIteration, error) {
@@ -64,7 +64,11 @@ func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(ctx context.Con
 }
 
 func (usecase *ScenarioIterationUsecase) UpdateScenarioIteration(ctx context.Context, organizationId string, scenarioIteration models.UpdateScenarioIterationInput) (iteration models.ScenarioIteration, err error) {
-	if err := usecase.enforceSecurity.CreateScenario(organizationId); err != nil {
+	scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(nil, scenarioIteration.Id)
+	if err != nil {
+		return iteration, err
+	}
+	if err := usecase.enforceSecurity.UpdateScenario(scenarioAndIteration.Scenario); err != nil {
 		return iteration, err
 	}
 	body := scenarioIteration.Body
@@ -75,23 +79,10 @@ func (usecase *ScenarioIterationUsecase) UpdateScenarioIteration(ctx context.Con
 			return iteration, fmt.Errorf("invalid schedule: %w", models.BadParameterError)
 		}
 	}
-	si, err := usecase.scenarioIterationsReadRepository.GetScenarioIteration(nil, scenarioIteration.Id)
-	if err != nil {
-		return models.ScenarioIteration{}, err
+	if scenarioAndIteration.Iteration.Version != nil {
+		return iteration, fmt.Errorf("iteration is not a draft: %w", models.ErrScenarioIterationNotDraft)
 	}
-	if err := usecase.enforceSecurity.UpdateScenarioIteration(organizationId, si); err != nil {
-		return models.ScenarioIteration{}, err
-	}
-	if _, err = usecase.scenarioIterationsWriteRepository.UpdateScenarioIteration(nil, organizationId, scenarioIteration); err != nil {
-		return iteration, err
-	}
-
-	scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(nil, scenarioIteration.Id)
-	if err != nil {
-		return iteration, err
-	}
-
-	return scenarioAndIteration.Iteration, err
+	return usecase.scenarioIterationsWriteRepository.UpdateScenarioIteration(nil, scenarioIteration)
 }
 
 func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(ctx context.Context, organizationId string, scenarioIterationId string) (models.ScenarioIteration, error) {
