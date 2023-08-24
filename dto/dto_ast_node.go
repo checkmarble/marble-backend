@@ -46,6 +46,10 @@ func adaptDtoFunctionName(f ast.Function) (string, error) {
 
 func AdaptASTNode(dto NodeDto) (ast.Node, error) {
 
+	if dto.FuncName == "Unknown" {
+		dto.FuncName = "Undefined"
+	}
+
 	function, err := adaptFunctionName(dto.FuncName)
 	if err != nil {
 		return ast.Node{}, err
