@@ -18,10 +18,6 @@ export const EvaluationErrorSchema = yup.object({
 
 type EvaluationErrorDto = yup.InferType<typeof EvaluationErrorSchema>;
 
-// UNEXPECTED_ERROR          EvaluationErrorCodeDto = "UNEXPECTED_ERROR"
-// UNKNOWN_FUNCTION          EvaluationErrorCodeDto = "UNKNOWN_FUNCTION"
-// WRONG_NUMBER_OF_ARGUMENTS EvaluationErrorCodeDto = "WRONG_NUMBER_OF_ARGUMENTS"
-
 // Yup can't infer typescript type from recursive schema, let's declare it manually
 export interface AstNodeEvaluationDto {
   return_value?: ConstantType;

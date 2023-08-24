@@ -2,7 +2,7 @@ package evaluate
 
 import (
 	"fmt"
-	"marble/marble-backend/models"
+	"marble/marble-backend/models/ast"
 	"marble/marble-backend/utils"
 	"time"
 )
@@ -11,7 +11,7 @@ func promoteArgumentToInt64(argument any) (int64, error) {
 	result, err := ToInt64(argument)
 	if err != nil {
 		return 0, fmt.Errorf("can't promote argument %v to int64 %w %w",
-			argument, err, models.ErrRuntimeExpression,
+			argument, err, ast.ErrArgumentMustBeInt,
 		)
 	}
 	return result, nil
@@ -24,7 +24,7 @@ func promoteArgumentToFloat64(argument any) (float64, error) {
 			"can't promote argument %v to float64 %w %w",
 			argument,
 			err,
-			models.ErrRuntimeExpression,
+			ast.ErrArgumentMustBeIntOrFloat,
 		)
 
 	}
@@ -38,7 +38,7 @@ func adaptArgumentToString(argument any) (string, error) {
 	return "", fmt.Errorf(
 		"can't promote argument %v to string %w",
 		argument,
-		models.ErrRuntimeExpression,
+		ast.ErrArgumentMustBeString,
 	)
 }
 
@@ -49,7 +49,7 @@ func adaptArgumentToTime(argument any) (time.Time, error) {
 	return time.Time{}, fmt.Errorf(
 		"can't promote argument %v to time %w",
 		argument,
-		models.ErrRuntimeExpression,
+		ast.ErrArgumentCantBeTime,
 	)
 }
 
@@ -71,7 +71,7 @@ func adaptArgumentToDuration(argument any) (time.Duration, error) {
 	return 0, fmt.Errorf(
 		"can't promote argument %v to duration %w",
 		argument,
-		models.ErrRuntimeExpression,
+		ast.ErrArgumentCantBeConvertedToDuration,
 	)
 }
 
@@ -90,7 +90,7 @@ func adaptArgumentToListOfStrings(argument any) ([]string, error) {
 	return nil, fmt.Errorf(
 		"can't promote argument %v to []string %w",
 		argument,
-		models.ErrRuntimeExpression,
+		ast.ErrArgumentMustBeList,
 	)
 }
 
@@ -103,6 +103,6 @@ func adaptArgumentToBool(argument any) (bool, error) {
 	return false, fmt.Errorf(
 		"can't promote argument %v to bool %w",
 		argument,
-		models.ErrRuntimeExpression,
+		ast.ErrArgumentMustBeBool,
 	)
 }
