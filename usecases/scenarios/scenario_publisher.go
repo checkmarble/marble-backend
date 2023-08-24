@@ -48,13 +48,13 @@ func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(
 				return nil, fmt.Errorf("Can't validate scenario %w %w", err, models.BadParameterError)
 			}
 
-			newVersion, err := publisher.getNewVersion(tx, organizationId, scenariosId)
+			scenarioVersion, err := publisher.getScenarioVersion(tx, organizationId, scenariosId, iterationId)
 			if err != nil {
 				return nil, err
 			}
 
 			// FIXME Just temporarily placed here, will be moved to scenario iteration write repo
-			err = publisher.ScenarioPublicationsRepository.UpdateScenarioIterationVersion(tx, iterationId, newVersion)
+			err = publisher.ScenarioPublicationsRepository.UpdateScenarioIterationVersion(tx, iterationId, scenarioVersion)
 			if err != nil {
 				return nil, err
 			}
@@ -120,10 +120,16 @@ func (publisher *ScenarioPublisher) publishNewIteration(tx repositories.Transact
 	return scenarioPublication, nil
 }
 
-func (publisher *ScenarioPublisher) getNewVersion(tx repositories.Transaction, organizationId, scenarioId string) (int, error) {
+func (publisher *ScenarioPublisher) getScenarioVersion(tx repositories.Transaction, organizationId, scenarioId, iterationId string) (int, error) {
 	scenarioIterations, err := publisher.ScenarioIterationReadRepository.ListScenarioIterations(tx, organizationId, models.GetScenarioIterationFilters{ScenarioId: &scenarioId})
 	if err != nil {
 		return 0, err
+	}
+
+	for _, scenarioIteration := range scenarioIterations {
+		if scenarioIteration.Id == iterationId && scenarioIteration.Version != nil {
+			return *scenarioIteration.Version, nil
+		}
 	}
 
 	var latestVersion int
