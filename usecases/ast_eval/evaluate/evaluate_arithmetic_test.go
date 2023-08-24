@@ -8,8 +8,8 @@ import (
 )
 
 func helperTestArithmetic[T int64 | float64](t *testing.T, f ast.Function, args []any, expected T) {
-	r, err := NewArithmetic(f).Evaluate(ast.Arguments{Args: args})
-	assert.NoError(t, err)
+	r, errs := NewArithmetic(f).Evaluate(ast.Arguments{Args: args})
+	assert.Empty(t, errs)
 	assert.Equal(t, r, expected)
 }
 

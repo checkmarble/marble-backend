@@ -3,27 +3,25 @@ package evaluate
 import (
 	"fmt"
 	"marble/marble-backend/models"
-	"marble/marble-backend/models/ast"
 	"marble/marble-backend/utils"
 	"time"
 )
 
-func promoteArgumentToInt64(function ast.Function, argument any) (int64, error) {
+func promoteArgumentToInt64(argument any) (int64, error) {
 	result, err := ToInt64(argument)
 	if err != nil {
-		return 0, fmt.Errorf("function %s can't promote argument %v to int64 %w %w",
-			function.DebugString(), argument, err, models.ErrRuntimeExpression,
+		return 0, fmt.Errorf("can't promote argument %v to int64 %w %w",
+			argument, err, models.ErrRuntimeExpression,
 		)
 	}
 	return result, nil
 }
 
-func promoteArgumentToFloat64(function ast.Function, argument any) (float64, error) {
+func promoteArgumentToFloat64(argument any) (float64, error) {
 	result, err := ToFloat64(argument)
 	if err != nil {
 		return 0, fmt.Errorf(
-			"function %s can't promote argument %v to float64 %w %w",
-			function.DebugString(),
+			"can't promote argument %v to float64 %w %w",
 			argument,
 			err,
 			models.ErrRuntimeExpression,
@@ -33,31 +31,29 @@ func promoteArgumentToFloat64(function ast.Function, argument any) (float64, err
 	return result, nil
 }
 
-func adaptArgumentToString(function ast.Function, argument any) (string, error) {
+func adaptArgumentToString(argument any) (string, error) {
 	if result, ok := argument.(string); ok {
 		return result, nil
 	}
 	return "", fmt.Errorf(
-		"function %s can't promote argument %v to string %w",
-		function.DebugString(),
+		"can't promote argument %v to string %w",
 		argument,
 		models.ErrRuntimeExpression,
 	)
 }
 
-func adaptArgumentToTime(function ast.Function, argument any) (time.Time, error) {
+func adaptArgumentToTime(argument any) (time.Time, error) {
 	if result, ok := argument.(time.Time); ok {
 		return result, nil
 	}
 	return time.Time{}, fmt.Errorf(
-		"function %s can't promote argument %v to time %w",
-		function.DebugString(),
+		"can't promote argument %v to time %w",
 		argument,
 		models.ErrRuntimeExpression,
 	)
 }
 
-func adaptArgumentToDuration(function ast.Function, argument any) (time.Duration, error) {
+func adaptArgumentToDuration(argument any) (time.Duration, error) {
 	if result, ok := argument.(time.Duration); ok {
 		return result, nil
 	}
@@ -73,14 +69,13 @@ func adaptArgumentToDuration(function ast.Function, argument any) (time.Duration
 	}
 
 	return 0, fmt.Errorf(
-		"function %s can't promote argument %v to duration %w",
-		function.DebugString(),
+		"can't promote argument %v to duration %w",
 		argument,
 		models.ErrRuntimeExpression,
 	)
 }
 
-func adaptArgumentToListOfStrings(function ast.Function, argument any) ([]string, error) {
+func adaptArgumentToListOfStrings(argument any) ([]string, error) {
 
 	if strings, ok := argument.([]string); ok {
 		return strings, nil
@@ -88,27 +83,25 @@ func adaptArgumentToListOfStrings(function ast.Function, argument any) ([]string
 
 	if list, ok := argument.([]any); ok {
 		return utils.MapErr(list, func(item any) (string, error) {
-			return adaptArgumentToString(function, item)
+			return adaptArgumentToString(item)
 		})
 	}
 
 	return nil, fmt.Errorf(
-		"function %s can't promote argument %v to []string %w",
-		function.DebugString(),
+		"can't promote argument %v to []string %w",
 		argument,
 		models.ErrRuntimeExpression,
 	)
 }
 
-func adaptArgumentToBool(function ast.Function, argument any) (bool, error) {
+func adaptArgumentToBool(argument any) (bool, error) {
 
 	if value, ok := argument.(bool); ok {
 		return value, nil
 	}
 
 	return false, fmt.Errorf(
-		"function %s can't promote argument %v to bool %w",
-		function.DebugString(),
+		"can't promote argument %v to bool %w",
 		argument,
 		models.ErrRuntimeExpression,
 	)

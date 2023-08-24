@@ -2,7 +2,6 @@ package evaluate
 
 import (
 	"fmt"
-	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 )
 
@@ -16,27 +15,24 @@ func NewArithmetic(f ast.Function) Arithmetic {
 	}
 }
 
-func (f Arithmetic) Evaluate(arguments ast.Arguments) (any, error) {
+func (f Arithmetic) Evaluate(arguments ast.Arguments) (any, []error) {
 
-	leftAny, rightAny, err := leftAndRight(f.Function, arguments.Args)
+	leftAny, rightAny, err := leftAndRight(arguments.Args)
 	if err != nil {
-		return nil, err
+		return MakeEvaluateError(err)
 	}
 
 	// try to promote to int64
-	if left, right, err := adaptLeftAndRight(f.Function, leftAny, rightAny, promoteArgumentToInt64); err == nil {
-		return arithmeticEval(f.Function, left, right)
+	if left, right, errs := adaptLeftAndRight(leftAny, rightAny, promoteArgumentToInt64); len(errs) == 0 {
+		return MakeEvaluateResult(arithmeticEval(f.Function, left, right))
 	}
 
 	// try to promote to float64
-	if left, right, err := adaptLeftAndRight(f.Function, leftAny, rightAny, promoteArgumentToFloat64); err == nil {
-		return arithmeticEval(f.Function, left, right)
+	if left, right, errs := adaptLeftAndRight(leftAny, rightAny, promoteArgumentToFloat64); len(errs) == 0 {
+		return MakeEvaluateResult(arithmeticEval(f.Function, left, right))
 	}
 
-	return nil, fmt.Errorf(
-		"all argments of function %s must be int64 or float64 %w",
-		f.Function.DebugString(), models.ErrRuntimeExpression,
-	)
+	return MakeEvaluateError(fmt.Errorf("all argments must be int or float"))
 }
 
 func arithmeticEval[T int64 | float64](function ast.Function, l, r T) (T, error) {

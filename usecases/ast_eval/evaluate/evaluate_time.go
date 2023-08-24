@@ -2,7 +2,6 @@ package evaluate
 
 import (
 	"fmt"
-	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 	"time"
 )
@@ -17,31 +16,28 @@ func NewTimeFunctions(f ast.Function) TimeFunctions {
 	}
 }
 
-func (f TimeFunctions) Evaluate(arguments ast.Arguments) (any, error) {
+func (f TimeFunctions) Evaluate(arguments ast.Arguments) (any, []error) {
 	switch f.Function {
 	case ast.FUNC_TIME_NOW:
-		if err := verifyNumberOfArguments(f.Function, arguments.Args, 0); err != nil {
-			return nil, err
+		if err := verifyNumberOfArguments(arguments.Args, 0); err != nil {
+			return MakeEvaluateError(err)
 		}
-
 		return time.Now(), nil
+
 	case ast.FUNC_PARSE_TIME:
-		if err := verifyNumberOfArguments(f.Function, arguments.Args, 1); err != nil {
-			return nil, err
+		if err := verifyNumberOfArguments(arguments.Args, 1); err != nil {
+			return MakeEvaluateError(err)
 		}
 
-		timeString, err := adaptArgumentToString(f.Function, arguments.Args[0])
+		timeString, err := adaptArgumentToString(arguments.Args[0])
 		if err != nil {
-			return nil, fmt.Errorf("TimeFunctions (FUNC_PARSE_TIME): error reading time from payload: %w", err)
+			return MakeEvaluateError(err)
 		}
-		t, err := time.Parse(time.RFC3339, timeString)
-		if err != nil {
-			return nil, fmt.Errorf("TimeFunctions (FUNC_PARSE_TIME): error parsing time: %w", err)
-		}
-		return t, nil
+
+		return MakeEvaluateResult(time.Parse(time.RFC3339, timeString))
 	default:
-		return nil, fmt.Errorf(
-			"function %s not implemented: %w", f.Function.DebugString(), models.ErrRuntimeExpression,
-		)
+		return MakeEvaluateError(fmt.Errorf(
+			"function %s not implemented", f.Function.DebugString(),
+		))
 	}
 }

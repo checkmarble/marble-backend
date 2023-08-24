@@ -1,7 +1,6 @@
 package evaluate
 
 import (
-	"errors"
 	"fmt"
 	"marble/marble-backend/models/ast"
 
@@ -18,19 +17,19 @@ func NewStringInList(f ast.Function) StringInList {
 	}
 }
 
-func (f StringInList) Evaluate(arguments ast.Arguments) (any, error) {
+func (f StringInList) Evaluate(arguments ast.Arguments) (any, []error) {
 
-	leftAny, rightAny, err := leftAndRight(f.Function, arguments.Args)
+	leftAny, rightAny, err := leftAndRight(arguments.Args)
 	if err != nil {
-		return nil, err
+		return MakeEvaluateError(err)
 	}
 
-	left, errLeft := adaptArgumentToString(f.Function, leftAny)
+	left, errLeft := adaptArgumentToString(leftAny)
+	right, errRight := adaptArgumentToListOfStrings(rightAny)
 
-	right, errRight := adaptArgumentToListOfStrings(f.Function, rightAny)
-
-	if err := errors.Join(errLeft, errRight); err != nil {
-		return nil, err
+	errs := MakeAdaptedArgsErrors([]error{errLeft, errRight})
+	if len(errs) > 0 {
+		return nil, errs
 	}
 
 	if f.Function == ast.FUNC_IS_IN_LIST {
@@ -38,7 +37,7 @@ func (f StringInList) Evaluate(arguments ast.Arguments) (any, error) {
 	} else if f.Function == ast.FUNC_IS_NOT_IN_LIST {
 		return !stringInList(left, right), nil
 	} else {
-		return false, fmt.Errorf("StringInList does not support %s function", f.Function.DebugString())
+		return MakeEvaluateError(fmt.Errorf("StringInList does not support %s function", f.Function.DebugString()))
 	}
 }
 

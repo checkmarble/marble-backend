@@ -8,6 +8,6 @@ import (
 )
 
 func TestUnknown(t *testing.T) {
-	_, err := Unknown{}.Evaluate(ast.Arguments{})
-	assert.Error(t, err)
+	_, errs := Unknown{}.Evaluate(ast.Arguments{})
+	assert.Len(t, errs, 1)
 }

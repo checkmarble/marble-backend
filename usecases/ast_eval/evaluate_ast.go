@@ -48,18 +48,20 @@ func EvaluateAst(environment AstEvaluationEnvironment, node ast.Node) (ast.NodeE
 		return evaluation, false
 	}
 
-	returnValue, evaluationError := evaluator.Evaluate(arguments)
+	evaluation.ReturnValue, evaluation.Errors = evaluator.Evaluate(arguments)
 
-	evaluation.ReturnValue = returnValue
-
-	// Assign an empty array to indicate that the evaluation occured.
-	evaluation.Errors = make([]error, 0)
-
-	// TODO unwrap multiple errors or return multiple errors from evaluator.Evaluate
-	if evaluationError != nil {
-		evaluation.Errors = append(evaluation.Errors, evaluationError)
+	if evaluation.Errors == nil {
+		// Assign an empty array to indicate that the evaluation occured.
+		// Operator is not supposed to return nil array of errors, but let's be nice.
+		evaluation.Errors = make([]error, 0)
 	}
 
 	ok := len(evaluation.Errors) == 0
+
+	if !ok {
+		// Operator is supposed to return nil when an error is present.
+		evaluation.ReturnValue = nil
+	}
+
 	return evaluation, ok
 }

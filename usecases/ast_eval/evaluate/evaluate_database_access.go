@@ -17,28 +17,28 @@ type DatabaseAccess struct {
 	ReturnFakeValue            bool
 }
 
-func (d DatabaseAccess) Evaluate(arguments ast.Arguments) (any, error) {
-	var pathStringArr []string
-	tableNameStr, ok := (arguments.NamedArgs["tableName"].(string))
-	if !ok {
-		return nil, fmt.Errorf("tableName is not a string %w", models.ErrRuntimeExpression)
-	}
-	tableName := models.TableName(tableNameStr)
+func (d DatabaseAccess) Evaluate(arguments ast.Arguments) (any, []error) {
 
-	fieldNameStr, ok := arguments.NamedArgs["fieldName"].(string)
-	if !ok {
-		return nil, fmt.Errorf("fieldName is not a string %w", models.ErrRuntimeExpression)
+	tableNameStr, tableNameErr := AdaptNamedArgument(arguments.NamedArgs, "tableName", adaptArgumentToString)
+	fieldNameStr, fieldNameErr := AdaptNamedArgument(arguments.NamedArgs, "fieldName", adaptArgumentToString)
+
+	errs := MakeAdaptedNamedArgsErrors(tableNameErr, fieldNameErr)
+	if len(errs) > 0 {
+		return nil, errs
 	}
+
+	var pathStringArr []string
+	tableName := models.TableName(tableNameStr)
 	fieldName := models.FieldName(fieldNameStr)
 
 	path, ok := arguments.NamedArgs["path"].([]any)
 	if !ok {
-		return nil, fmt.Errorf("path is not a string %w", models.ErrRuntimeExpression)
+		return MakeEvaluateError(fmt.Errorf("path is not a string"))
 	}
 	for _, v := range path {
 		str, ok := v.(string)
 		if !ok {
-			return nil, fmt.Errorf("path value is not a string %w", models.ErrRuntimeExpression)
+			return MakeEvaluateError(fmt.Errorf("path value is not a string"))
 		}
 		pathStringArr = append(pathStringArr, str)
 	}
@@ -47,13 +47,13 @@ func (d DatabaseAccess) Evaluate(arguments ast.Arguments) (any, error) {
 
 	if err != nil {
 		errorMsg := fmt.Sprintf("tableName: %s, fieldName: %s, path: %v", tableName, fieldName, path)
-		return nil, fmt.Errorf("DatabaseAccess: value not found: %s %w %w", errorMsg, err, models.ErrRuntimeExpression)
+		return MakeEvaluateError(fmt.Errorf("DatabaseAccess: value not found: %s %w", errorMsg, err))
 	}
 
 	if fieldValue == nil {
 		errorMsg := fmt.Sprintf("tableName: %s, fieldName: %s, path: %v", tableName, fieldName, path)
 		objectId, _ := d.getDbField(tableName, "object_id", pathStringArr)
-		return nil, fmt.Errorf("value is null for object_id %s, in %s %w", objectId, errorMsg, models.NullFieldReadError)
+		return MakeEvaluateError(fmt.Errorf("value is null for object_id %s, in %s %w", objectId, errorMsg, models.NullFieldReadError))
 	}
 
 	return fieldValue, nil

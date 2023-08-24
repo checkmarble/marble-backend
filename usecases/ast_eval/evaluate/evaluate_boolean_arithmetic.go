@@ -2,36 +2,34 @@ package evaluate
 
 import (
 	"fmt"
-	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
-	"marble/marble-backend/utils"
 )
 
 type BooleanArithmetic struct {
 	Function ast.Function
 }
 
-func (f BooleanArithmetic) Evaluate(arguments ast.Arguments) (any, error) {
+func NewBooleanArithmetic(f ast.Function) BooleanArithmetic {
+	return BooleanArithmetic{
+		Function: f,
+	}
+}
+
+func (f BooleanArithmetic) Evaluate(arguments ast.Arguments) (any, []error) {
 
 	numberOfOperands := len(arguments.Args)
 	if numberOfOperands < 1 {
-		return false, fmt.Errorf(
-			"function %s expects at least %d operands, got %d %w",
-			f.Function.DebugString(), 2, numberOfOperands, ast.ErrWrongNumberOfArgument,
-		)
+		return MakeEvaluateError(fmt.Errorf(
+			"expects at least 1 operand, got %d %w",
+			numberOfOperands, ast.ErrWrongNumberOfArgument,
+		))
 	}
 
-	args, err := utils.MapErr(arguments.Args, func(arg any) (bool, error) {
-		return adaptArgumentToBool(f.Function, arg)
-	})
-
-	if err != nil {
-		return nil, fmt.Errorf(
-			"all argments of function %s must be booleans %w",
-			f.Function.DebugString(), models.ErrRuntimeExpression,
-		)
+	values, errs := AdaptArguments(arguments.Args, adaptArgumentToBool)
+	if len(errs) > 0 {
+		return nil, errs
 	}
-	return f.booleanArithmeticEval(args)
+	return MakeEvaluateResult(f.booleanArithmeticEval(values))
 }
 
 func (f BooleanArithmetic) booleanArithmeticEval(args []bool) (bool, error) {
