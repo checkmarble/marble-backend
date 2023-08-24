@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"marble/marble-backend/app"
 	"marble/marble-backend/models"
+	"marble/marble-backend/usecases/payload_parser"
 	"marble/marble-backend/utils"
 	"net/http"
 
@@ -50,7 +50,7 @@ func (api *API) handleIngestion() http.HandlerFunc {
 			return
 		}
 
-		payload, err := app.ParseToDataModelObject(table, object_body)
+		payload, err := payload_parser.ParseToDataModelObject(table, object_body)
 		if errors.Is(err, models.FormatValidationError) {
 			logger.ErrorContext(ctx, fmt.Sprintf("format validation error while parsing to data model object: %v", err))
 			http.Error(w, "", http.StatusUnprocessableEntity)

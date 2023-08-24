@@ -64,7 +64,7 @@ func AdaptDBCreateRuleInput(rule models.CreateRuleInput) (DBCreateRuleInput, err
 	}
 
 	return DBCreateRuleInput{
-		Id:                   utils.NewPrimaryKey(rule.OrganizationId),
+		Id:                   rule.Id,
 		OrganizationId:       rule.OrganizationId,
 		ScenarioIterationId:  rule.ScenarioIterationId,
 		DisplayOrder:         rule.DisplayOrder,

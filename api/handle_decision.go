@@ -6,9 +6,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	"marble/marble-backend/app"
 	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
+	"marble/marble-backend/usecases/payload_parser"
 	"marble/marble-backend/utils"
 
 	"github.com/ggicci/httpin"
@@ -107,7 +107,7 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 			return
 		}
 
-		payload, err := app.ParseToDataModelObject(table, requestData.TriggerObjectRaw)
+		payload, err := payload_parser.ParseToDataModelObject(table, requestData.TriggerObjectRaw)
 		if errors.Is(err, models.FormatValidationError) {
 			http.Error(w, "Format validation error", http.StatusUnprocessableEntity) // 422
 			return

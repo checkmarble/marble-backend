@@ -1,4 +1,4 @@
-package app
+package payload_parser
 
 import (
 	"encoding/json"

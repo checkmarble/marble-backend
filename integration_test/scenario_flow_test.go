@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"marble/marble-backend/app"
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 	"marble/marble-backend/usecases"
+	"marble/marble-backend/usecases/payload_parser"
 	"marble/marble-backend/usecases/scenarios"
 	"marble/marble-backend/utils"
 	"os"
@@ -314,10 +314,10 @@ func ingestAccounts(t *testing.T, table models.Table, ussecases usecases.Usecase
 		"object_id": "{account_id_approve_no_name}",
 		"updated_at": "2020-01-01T00:00:00Z"
 	}`)
-	accountPayload1, err := app.ParseToDataModelObject(table, accountPayloadJson1)
+	accountPayload1, err := payload_parser.ParseToDataModelObject(table, accountPayloadJson1)
 	assert.NoError(t, err, "Could not parse payload")
-	accountPayload2, _ := app.ParseToDataModelObject(table, accountPayloadJson2)
-	accountPayload3, _ := app.ParseToDataModelObject(table, accountPayloadJson3)
+	accountPayload2, _ := payload_parser.ParseToDataModelObject(table, accountPayloadJson2)
+	accountPayload3, _ := payload_parser.ParseToDataModelObject(table, accountPayloadJson3)
 	err = ingestionUsecase.IngestObjects(organizationId, []models.PayloadReader{accountPayload1, accountPayload2, accountPayload3}, table, logger)
 	assert.NoError(t, err, "Could not ingest data")
 }
@@ -326,7 +326,7 @@ func createTransactionPayload(transactionPayloadJson []byte, triggerObjectMap ma
 	if err := json.Unmarshal(transactionPayloadJson, &triggerObjectMap); err != nil {
 		t.Fatalf("Could not unmarshal json: %s", err)
 	}
-	transactionPayload, err := app.ParseToDataModelObject(table, transactionPayloadJson)
+	transactionPayload, err := payload_parser.ParseToDataModelObject(table, transactionPayloadJson)
 	assert.NoError(t, err, "Could not parse payload")
 	return transactionPayload
 }
