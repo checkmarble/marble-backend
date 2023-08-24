@@ -30,7 +30,7 @@ func NewAstEvaluationEnvironment() AstEvaluationEnvironment {
 	}
 
 	// add pure functions that to not rely on any context
-	environment.AddEvaluator(ast.FUNC_UNKNOWN, evaluate.Unknown{})
+	environment.AddEvaluator(ast.FUNC_UNDEFINED, evaluate.Undefined{})
 	environment.AddEvaluator(ast.FUNC_ADD, evaluate.NewArithmetic(ast.FUNC_ADD))
 	environment.AddEvaluator(ast.FUNC_SUBTRACT, evaluate.NewArithmetic(ast.FUNC_SUBTRACT))
 	environment.AddEvaluator(ast.FUNC_MULTIPLY, evaluate.NewArithmetic(ast.FUNC_MULTIPLY))
