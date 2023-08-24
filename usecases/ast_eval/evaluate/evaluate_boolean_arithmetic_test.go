@@ -8,8 +8,8 @@ import (
 )
 
 func helperTestBooleanArithmetic(t *testing.T, function ast.Function, args []any, expected bool) {
-	r, err := BooleanArithmetic{Function: function}.Evaluate(ast.Arguments{Args: args})
-	assert.NoError(t, err)
+	r, errs := BooleanArithmetic{Function: function}.Evaluate(ast.Arguments{Args: args})
+	assert.Empty(t, errs)
 	assert.Equal(t, expected, r)
 }
 
@@ -31,7 +31,7 @@ func TestBooleanArithmetic_two_operands(t *testing.T) {
 	helperTestBooleanArithmetic(t, ast.FUNC_OR, []any{true, false}, true)
 }
 
-func TestBooleanArithmetic_and_three_operands(t *testing.T) {
+func TestBooleanArithmetic_three_operands(t *testing.T) {
 	helperTestBooleanArithmetic(t, ast.FUNC_AND, []any{true, true, true}, true)
 	helperTestBooleanArithmetic(t, ast.FUNC_AND, []any{true, true, false}, false)
 
@@ -40,6 +40,8 @@ func TestBooleanArithmetic_and_three_operands(t *testing.T) {
 }
 
 func TestBooleanArithmetic_zero_operator(t *testing.T) {
-	_, err := BooleanArithmetic{Function: ast.FUNC_AND}.Evaluate(ast.Arguments{Args: []any{}})
-	assert.ErrorIs(t, err, ast.ErrWrongNumberOfArgument)
+	_, errs := BooleanArithmetic{Function: ast.FUNC_AND}.Evaluate(ast.Arguments{Args: []any{}})
+	if assert.Len(t, errs, 1) {
+		assert.ErrorIs(t, errs[0], ast.ErrWrongNumberOfArgument)
+	}
 }

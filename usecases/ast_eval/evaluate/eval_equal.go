@@ -2,40 +2,33 @@ package evaluate
 
 import (
 	"fmt"
-	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 )
 
 type Equal struct{}
 
-func (f Equal) Evaluate(arguments ast.Arguments) (any, error) {
+func (f Equal) Evaluate(arguments ast.Arguments) (any, []error) {
 
-	function := ast.FUNC_EQUAL
-
-	leftAny, rightAny, err := leftAndRight(function, arguments.Args)
+	leftAny, rightAny, err := leftAndRight(arguments.Args)
 	if err != nil {
-		return nil, err
+		return MakeEvaluateError(err)
 	}
 
-	if left, right, err := adaptLeftAndRight(function, leftAny, rightAny, adaptArgumentToString); err == nil {
-		return left == right, nil
+	if left, right, errs := adaptLeftAndRight(leftAny, rightAny, adaptArgumentToString); len(errs) == 0 {
+		return MakeEvaluateResult(left == right)
 	}
 
-	if left, right, err := adaptLeftAndRight(function, leftAny, rightAny, adaptArgumentToBool); err == nil {
-		return left == right, nil
+	if left, right, errs := adaptLeftAndRight(leftAny, rightAny, adaptArgumentToBool); len(errs) == 0 {
+		return MakeEvaluateResult(left == right)
 	}
 
-	if left, right, err := adaptLeftAndRight(function, leftAny, rightAny, promoteArgumentToInt64); err == nil {
-		return left == right, nil
+	if left, right, errs := adaptLeftAndRight(leftAny, rightAny, promoteArgumentToInt64); len(errs) == 0 {
+		return MakeEvaluateResult(left == right)
 	}
 
-	if left, right, err := adaptLeftAndRight(function, leftAny, rightAny, promoteArgumentToFloat64); err == nil {
-		return left == right, nil
+	if left, right, errs := adaptLeftAndRight(leftAny, rightAny, promoteArgumentToFloat64); len(errs) == 0 {
+		return MakeEvaluateResult(left == right)
 	}
 
-	return nil, fmt.Errorf(
-		"all argments of function %s must be string, boolean, int64 or float64 %w",
-		function.DebugString(), models.ErrRuntimeExpression,
-	)
-
+	return MakeEvaluateError(fmt.Errorf("all argments must be string, boolean, int or float"))
 }

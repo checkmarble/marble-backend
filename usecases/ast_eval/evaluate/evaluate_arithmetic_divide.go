@@ -1,7 +1,6 @@
 package evaluate
 
 import (
-	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 )
@@ -9,26 +8,22 @@ import (
 type ArithmeticDivide struct {
 }
 
-func (f ArithmeticDivide) Evaluate(arguments ast.Arguments) (any, error) {
+func (f ArithmeticDivide) Evaluate(arguments ast.Arguments) (any, []error) {
 
-	leftAny, rightAny, err := leftAndRight(ast.FUNC_DIVIDE, arguments.Args)
+	leftAny, rightAny, err := leftAndRight(arguments.Args)
 	if err != nil {
-		return nil, err
+		return MakeEvaluateError(err)
 	}
 
-	// try to promote to float64
-	if left, right, err := adaptLeftAndRight(ast.FUNC_DIVIDE, leftAny, rightAny, promoteArgumentToFloat64); err == nil {
-
-		if right == 0.0 {
-			return 0.0, models.DivisionByZeroError
-		}
-
-		return left / right, nil
-
+	// promote to float64
+	left, right, errs := adaptLeftAndRight(leftAny, rightAny, promoteArgumentToFloat64)
+	if len(errs) > 0 {
+		return nil, errs
 	}
 
-	return nil, fmt.Errorf(
-		"all argments of function %s must be float64 %w",
-		ast.FUNC_DIVIDE.DebugString(), models.ErrRuntimeExpression,
-	)
+	if right == 0.0 {
+		return MakeEvaluateError(models.DivisionByZeroError)
+	}
+
+	return MakeEvaluateResult(left / right)
 }

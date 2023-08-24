@@ -11,6 +11,7 @@ const (
 	UNEXPECTED_ERROR          EvaluationErrorCodeDto = "UNEXPECTED_ERROR"
 	UNKNOWN_FUNCTION          EvaluationErrorCodeDto = "UNKNOWN_FUNCTION"
 	WRONG_NUMBER_OF_ARGUMENTS EvaluationErrorCodeDto = "WRONG_NUMBER_OF_ARGUMENTS"
+	MISSING_NAMED_ARGUMENT    EvaluationErrorCodeDto = "MISSING_NAMED_ARGUMENT"
 )
 
 type EvaluationErrorDto struct {
@@ -25,6 +26,7 @@ type errorAndCode struct {
 
 var evaluationErrorDtoMap = []errorAndCode{
 	{ast.ErrWrongNumberOfArgument, WRONG_NUMBER_OF_ARGUMENTS},
+	{ast.ErrMissingNamedArgument, MISSING_NAMED_ARGUMENT},
 	{ast.ErrUnknownFunction, UNKNOWN_FUNCTION},
 }
 

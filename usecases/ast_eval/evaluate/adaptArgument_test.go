@@ -1,7 +1,6 @@
 package evaluate
 
 import (
-	"marble/marble-backend/models/ast"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,26 +8,26 @@ import (
 
 func TestAdaptArgumentToListOfStrings_list_of_strings(t *testing.T) {
 
-	strings, err := adaptArgumentToListOfStrings(ast.FUNC_UNKNOWN, []string{"aa"})
+	strings, err := adaptArgumentToListOfStrings([]string{"aa"})
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"aa"}, strings)
 }
 
 func TestAdaptArgumentToListOfStrings_list_of_any(t *testing.T) {
 
-	strings, err := adaptArgumentToListOfStrings(ast.FUNC_UNKNOWN, []any{"aa"})
+	strings, err := adaptArgumentToListOfStrings([]any{"aa"})
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"aa"}, strings)
 }
 
 func TestAdaptArgumentToListOfStrings_list_of_int_fail(t *testing.T) {
 
-	_, err := adaptArgumentToListOfStrings(ast.FUNC_UNKNOWN, []int{44})
+	_, err := adaptArgumentToListOfStrings([]int{44})
 	assert.Error(t, err)
 }
 
 func TestAdaptArgumentToListOfStrings_list_of_any_fail(t *testing.T) {
 
-	_, err := adaptArgumentToListOfStrings(ast.FUNC_UNKNOWN, []any{"33", 43})
+	_, err := adaptArgumentToListOfStrings([]any{"33", 43})
 	assert.Error(t, err)
 }

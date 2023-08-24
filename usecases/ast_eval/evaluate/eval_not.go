@@ -5,18 +5,18 @@ import (
 )
 
 type Not struct {
-	Function ast.Function
 }
 
-func (f Not) Evaluate(arguments ast.Arguments) (any, error) {
+func (f Not) Evaluate(arguments ast.Arguments) (any, []error) {
 
-	if err := verifyNumberOfArguments(f.Function, arguments.Args, 1); err != nil {
-		return nil, err
+	if err := verifyNumberOfArguments(arguments.Args, 1); err != nil {
+		return MakeEvaluateError(err)
 	}
 
-	v, err := adaptArgumentToBool(f.Function, arguments.Args[0])
-	if err != nil {
-		return false, err
+	v, err := adaptArgumentToBool(arguments.Args[0])
+	errs := MakeAdaptedArgsErrors([]error{err})
+	if len(errs) > 0 {
+		return nil, errs
 	}
 
 	return !v, nil

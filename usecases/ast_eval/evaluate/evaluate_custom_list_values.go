@@ -2,7 +2,6 @@ package evaluate
 
 import (
 	"errors"
-	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 	"marble/marble-backend/repositories"
@@ -22,25 +21,26 @@ func NewCustomListValuesAccess(clr repositories.CustomListRepository, enforceSec
 	}
 }
 
-func (clva CustomListValuesAccess) Evaluate(arguments ast.Arguments) (any, error) {
-	listId, ok := arguments.NamedArgs["customListId"].((string))
-	if !ok {
-		return nil, fmt.Errorf("customListId is not a string %w", models.ErrRuntimeExpression)
+func (clva CustomListValuesAccess) Evaluate(arguments ast.Arguments) (any, []error) {
+	listId, err := AdaptNamedArgument(arguments.NamedArgs, "customListId", adaptArgumentToString)
+
+	if err != nil {
+		return MakeEvaluateError(err)
 	}
 
 	list, err := clva.CustomListRepository.GetCustomListById(nil, listId)
 	if err != nil {
-		return nil, errors.New("list not found")
+		return MakeEvaluateError(errors.New("list not found"))
 	}
 	if err := clva.EnforceSecurity.ReadOrganization(list.OrgId); err != nil {
-		return nil, err
+		return MakeEvaluateError(err)
 	}
 
 	listValues, err := clva.CustomListRepository.GetCustomListValues(nil, models.GetCustomListValuesInput{
 		Id: listId,
 	})
 	if err != nil {
-		return nil, err
+		return MakeEvaluateError(err)
 	}
 
 	return utils.Map(

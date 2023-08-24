@@ -8,6 +8,6 @@ import (
 type Unknown struct {
 }
 
-func (f Unknown) Evaluate(arguments ast.Arguments) (any, error) {
-	return nil, fmt.Errorf("function Unknown %w", ast.ErrUnknownFunction)
+func (f Unknown) Evaluate(arguments ast.Arguments) (any, []error) {
+	return MakeEvaluateError(fmt.Errorf("function Unknown %w", ast.ErrUnknownFunction))
 }

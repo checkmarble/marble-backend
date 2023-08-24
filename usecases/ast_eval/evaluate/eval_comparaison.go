@@ -15,19 +15,19 @@ func NewComparison(f ast.Function) Comparison {
 	}
 }
 
-func (f Comparison) Evaluate(arguments ast.Arguments) (any, error) {
+func (f Comparison) Evaluate(arguments ast.Arguments) (any, []error) {
 
-	leftAny, rightAny, err := leftAndRight(f.Function, arguments.Args)
+	leftAny, rightAny, err := leftAndRight(arguments.Args)
 	if err != nil {
-		return nil, err
+		return MakeEvaluateError(err)
 	}
 
-	left, right, err := adaptLeftAndRight(f.Function, leftAny, rightAny, promoteArgumentToFloat64)
-	if err != nil {
-		return nil, err
+	left, right, errs := adaptLeftAndRight(leftAny, rightAny, promoteArgumentToFloat64)
+	if len(errs) != 0 {
+		return nil, errs
 	}
 
-	return f.comparisonFunction(left, right)
+	return MakeEvaluateResult(f.comparisonFunction(left, right))
 }
 
 func (f Comparison) comparisonFunction(l, r float64) (bool, error) {

@@ -55,32 +55,32 @@ func NewBlankDatabaseAccess(
 	}
 }
 
-func (blank BlankDatabaseAccess) Evaluate(arguments ast.Arguments) (any, error) {
+func (blank BlankDatabaseAccess) Evaluate(arguments ast.Arguments) (any, []error) {
 
 	switch blank.Function {
 	case ast.FUNC_BLANK_FIRST_TRANSACTION_DATE:
-		return blank.getFirstTransactionDate(arguments)
+		return MakeEvaluateResult(blank.getFirstTransactionDate(arguments))
 	case ast.FUNC_BLANK_SUM_TRANSACTIONS_AMOUNT:
-		return blank.sumTransactionsAmount(arguments)
+		return MakeEvaluateResult(blank.sumTransactionsAmount(arguments))
 	case ast.FUNC_BLANK_SEPA_OUT_FRACTIONATED:
-		return blank.sepaOutFractionated(arguments)
+		return MakeEvaluateResult(blank.sepaOutFractionated(arguments))
 	case ast.FUNC_BLANK_SEPA_NON_FR_IN_WINDOW:
-		return blank.severalSepaNonFrWindow(arguments, sepaIn)
+		return MakeEvaluateResult(blank.severalSepaNonFrWindow(arguments, sepaIn))
 	case ast.FUNC_BLANK_SEPA_NON_FR_OUT_WINDOW:
-		return blank.severalSepaNonFrWindow(arguments, sepaOut)
+		return MakeEvaluateResult(blank.severalSepaNonFrWindow(arguments, sepaOut))
 	case ast.FUNC_BLANK_QUICK_FRACTIONATED_TRANSFERS_RECEIVED_WINDOW:
-		return blank.fractionatedTransferReceived(arguments)
+		return MakeEvaluateResult(blank.fractionatedTransferReceived(arguments))
 	default:
-		return nil, fmt.Errorf("BlankDatabaseAccess: value not found: %w", models.ErrRuntimeExpression)
+		return MakeEvaluateError(fmt.Errorf("BlankDatabaseAccess: value not found: %w", models.ErrRuntimeExpression))
 	}
 }
 
 func (blank BlankDatabaseAccess) getFirstTransactionDate(arguments ast.Arguments) (time.Time, error) {
-	if err := verifyNumberOfArguments(blank.Function, arguments.Args, 1); err != nil {
+	if err := verifyNumberOfArguments(arguments.Args, 1); err != nil {
 		return time.Time{}, err
 	}
 
-	ownerBusinessId, err := adaptArgumentToString(blank.Function, arguments.Args[0])
+	ownerBusinessId, err := adaptArgumentToString(arguments.Args[0])
 	if err != nil {
 		return time.Time{}, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_FIRST_TRANSACTION_DATE): error reading ownerBusinessId from arguments: %w", err)
 	}
@@ -105,23 +105,23 @@ func (blank BlankDatabaseAccess) getFirstTransactionDate(arguments ast.Arguments
 }
 
 func (blank BlankDatabaseAccess) sumTransactionsAmount(arguments ast.Arguments) (float64, error) {
-	if err := verifyNumberOfArguments(blank.Function, arguments.Args, 1); err != nil {
+	if err := verifyNumberOfArguments(arguments.Args, 1); err != nil {
 		return 0, err
 	}
 
-	ownerBusinessId, err := adaptArgumentToString(blank.Function, arguments.Args[0])
+	ownerBusinessId, err := adaptArgumentToString(arguments.Args[0])
 	if err != nil {
 		return 0, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_SUM_TRANSACTIONS_AMOUNT): error reading ownerBusinessId from arguments: %w", err)
 	}
-	direction, err := adaptArgumentToString(blank.Function, arguments.NamedArgs["direction"])
+	direction, err := adaptArgumentToString(arguments.NamedArgs["direction"])
 	if err != nil {
 		return 0, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_SUM_TRANSACTIONS_AMOUNT): error reading direction from arguments: %w", err)
 	}
-	createdFrom, err := adaptArgumentToTime(blank.Function, arguments.NamedArgs["created_from"])
+	createdFrom, err := adaptArgumentToTime(arguments.NamedArgs["created_from"])
 	if err != nil {
 		return 0, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_SUM_TRANSACTIONS_AMOUNT): error reading created_from from arguments: %w", err)
 	}
-	createdTo, err := adaptArgumentToTime(blank.Function, arguments.NamedArgs["created_to"])
+	createdTo, err := adaptArgumentToTime(arguments.NamedArgs["created_to"])
 	if err != nil {
 		return 0, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_SUM_TRANSACTIONS_AMOUNT): error reading created_to from arguments: %w", err)
 	}
@@ -139,7 +139,7 @@ func (blank BlankDatabaseAccess) sumTransactionsAmount(arguments ast.Arguments) 
 }
 
 func (blank BlankDatabaseAccess) sepaOutFractionated(arguments ast.Arguments) (bool, error) {
-	args, err := adaptArgumentsBlankWindowVariable(arguments, blank.Function)
+	args, err := adaptArgumentsBlankWindowVariable(arguments)
 	if err != nil {
 		return false, err
 	}
@@ -178,7 +178,7 @@ func (blank BlankDatabaseAccess) sepaOutFractionated(arguments ast.Arguments) (b
 }
 
 func (blank BlankDatabaseAccess) severalSepaNonFrWindow(arguments ast.Arguments, direction sepaDirection) (bool, error) {
-	args, err := adaptArgumentsBlankWindowVariable(arguments, blank.Function)
+	args, err := adaptArgumentsBlankWindowVariable(arguments)
 	if err != nil {
 		return false, err
 	}
@@ -226,7 +226,7 @@ func (blank BlankDatabaseAccess) severalSepaNonFrWindow(arguments ast.Arguments,
 }
 
 func (blank BlankDatabaseAccess) fractionatedTransferReceived(arguments ast.Arguments) (bool, error) {
-	args, err := adaptArgumentsBlankWindowVariable(arguments, blank.Function)
+	args, err := adaptArgumentsBlankWindowVariable(arguments)
 	if err != nil {
 		return false, err
 	}
@@ -377,25 +377,25 @@ func walkWindowFindMultipleNonFrTransfers(transactions []map[string]any, params 
 	return false, nil
 }
 
-func adaptArgumentsBlankWindowVariable(arguments ast.Arguments, fn ast.Function) (blankWindowFnArguments, error) {
-	if err := verifyNumberOfArguments(fn, arguments.Args, 2); err != nil {
+func adaptArgumentsBlankWindowVariable(arguments ast.Arguments) (blankWindowFnArguments, error) {
+	if err := verifyNumberOfArguments(arguments.Args, 2); err != nil {
 		return blankWindowFnArguments{}, err
 	}
 
-	ownerBusinessId, err := adaptArgumentToString(fn, arguments.Args[0])
+	ownerBusinessId, err := adaptArgumentToString(arguments.Args[0])
 	if err != nil {
 		return blankWindowFnArguments{}, fmt.Errorf("BlankDatabaseAccess: error reading ownerBusinessId from arguments: %w", err)
 	}
-	referenceTime, err := adaptArgumentToTime(fn, arguments.Args[1])
+	referenceTime, err := adaptArgumentToTime(arguments.Args[1])
 	if err != nil {
 		return blankWindowFnArguments{}, fmt.Errorf("BlankDatabaseAccess: error reading time from arguments: %w", err)
 	}
-	amountThreshold, err := promoteArgumentToFloat64(fn, arguments.NamedArgs["amountThreshold"])
+	amountThreshold, err := promoteArgumentToFloat64(arguments.NamedArgs["amountThreshold"])
 	if err != nil {
 		return blankWindowFnArguments{}, fmt.Errorf("BlankDatabaseAccess: error reading amountThreshold from named arguments: %w", err)
 	}
 	// NB: this is a float64, not an int64 because of json decoding
-	numberThresholdFloat, err := promoteArgumentToFloat64(fn, arguments.NamedArgs["numberThreshold"])
+	numberThresholdFloat, err := promoteArgumentToFloat64(arguments.NamedArgs["numberThreshold"])
 	if err != nil {
 		return blankWindowFnArguments{}, fmt.Errorf("BlankDatabaseAccess: error reading numberThreshold from named arguments: %w", err)
 	}
