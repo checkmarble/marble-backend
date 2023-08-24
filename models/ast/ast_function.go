@@ -43,7 +43,8 @@ const (
 	FUNC_BLANK_SEPA_NON_FR_IN_WINDOW
 	FUNC_BLANK_SEPA_NON_FR_OUT_WINDOW
 	FUNC_BLANK_QUICK_FRACTIONATED_TRANSFERS_RECEIVED_WINDOW
-	FUNC_UNKNOWN Function = -1
+	FUNC_UNDEFINED Function = -1
+	FUNC_UNKNOWN   Function = -2
 )
 
 type FuncAttributes struct {
@@ -55,9 +56,9 @@ type FuncAttributes struct {
 
 // If number of arguments -1 the function can take any number of arguments
 var FuncAttributesMap = map[Function]FuncAttributes{
-	FUNC_UNKNOWN: {
-		DebugName: "UNKNOWN",
-		AstName:   "Unknown",
+	FUNC_UNDEFINED: {
+		DebugName: "UNDEFINED",
+		AstName:   "Undefined",
 	},
 	FUNC_CONSTANT: {
 		DebugName: "CONSTANT",

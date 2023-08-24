@@ -9,7 +9,7 @@ type EvaluationErrorCodeDto string
 
 const (
 	UNEXPECTED_ERROR          EvaluationErrorCodeDto = "UNEXPECTED_ERROR"
-	UNKNOWN_FUNCTION          EvaluationErrorCodeDto = "UNKNOWN_FUNCTION"
+	UNDEFINED_FUNCTION        EvaluationErrorCodeDto = "UNDEFINED_FUNCTION"
 	WRONG_NUMBER_OF_ARGUMENTS EvaluationErrorCodeDto = "WRONG_NUMBER_OF_ARGUMENTS"
 	MISSING_NAMED_ARGUMENT    EvaluationErrorCodeDto = "MISSING_NAMED_ARGUMENT"
 )
@@ -27,7 +27,7 @@ type errorAndCode struct {
 var evaluationErrorDtoMap = []errorAndCode{
 	{ast.ErrWrongNumberOfArgument, WRONG_NUMBER_OF_ARGUMENTS},
 	{ast.ErrMissingNamedArgument, MISSING_NAMED_ARGUMENT},
-	{ast.ErrUnknownFunction, UNKNOWN_FUNCTION},
+	{ast.ErrUndefinedFunction, UNDEFINED_FUNCTION},
 }
 
 func AdaptEvaluationErrorDto(err error) EvaluationErrorDto {

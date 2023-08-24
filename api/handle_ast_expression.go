@@ -12,7 +12,7 @@ func (api *API) handleAvailableFunctions() http.HandlerFunc {
 		functions := make(map[string]dto.FuncAttributesDto)
 
 		for f, attributes := range ast.FuncAttributesMap {
-			if f == ast.FUNC_CONSTANT || f == ast.FUNC_UNKNOWN {
+			if f == ast.FUNC_CONSTANT || f == ast.FUNC_UNDEFINED {
 				continue
 			}
 			functions[attributes.AstName] = dto.AdaptFuncAttributesDto(attributes)

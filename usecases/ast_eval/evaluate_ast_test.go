@@ -16,13 +16,13 @@ func TestEval(t *testing.T) {
 	assert.Equal(t, true, evaluation.ReturnValue)
 }
 
-func TestEvalUnknownFunction(t *testing.T) {
+func TestEvalUndefinedFunction(t *testing.T) {
 	environment := NewAstEvaluationEnvironment()
-	root := ast.Node{Function: ast.FUNC_UNKNOWN}
+	root := ast.Node{Function: ast.FUNC_UNDEFINED}
 	evaluation, ok := EvaluateAst(environment, root)
 	assert.False(t, ok)
 	if assert.Len(t, evaluation.Errors, 1) {
-		assert.ErrorIs(t, evaluation.Errors[0], ast.ErrUnknownFunction)
+		assert.ErrorIs(t, evaluation.Errors[0], ast.ErrUndefinedFunction)
 	}
 }
 
