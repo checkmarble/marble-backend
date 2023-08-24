@@ -14,6 +14,6 @@ func TestAdaptEvaluationErrorDto_an_error(t *testing.T) {
 
 	evaluationError := AdaptEvaluationErrorDto(err)
 
-	assert.Equal(t, evaluationError.EvaluationError, WRONG_NUMBER_OF_ARGUMENTS)
+	assert.Equal(t, evaluationError.EvaluationError, "WRONG_NUMBER_OF_ARGUMENTS")
 	assert.Equal(t, evaluationError.Message, "test error wrong number of arguments")
 }

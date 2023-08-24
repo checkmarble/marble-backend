@@ -24,3 +24,12 @@ func TestComparison_comparisonFunction_less(t *testing.T) {
 	assert.Empty(t, errs)
 	assert.True(t, r.(bool))
 }
+
+func TestComparison_fail(t *testing.T) {
+	_, errs := NewComparison(ast.FUNC_ADD).Evaluate(ast.Arguments{Args: []any{"toto", false}})
+	if assert.Len(t, errs, 2) {
+		assert.ErrorIs(t, errs[0], ast.ErrArgumentMustBeIntOrFloat)
+		assert.ErrorIs(t, errs[1], ast.ErrArgumentMustBeIntOrFloat)
+	}
+
+}

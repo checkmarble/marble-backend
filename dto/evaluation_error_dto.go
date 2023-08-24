@@ -5,36 +5,34 @@ import (
 	"marble/marble-backend/models/ast"
 )
 
-type EvaluationErrorCodeDto string
-
-const (
-	UNEXPECTED_ERROR          EvaluationErrorCodeDto = "UNEXPECTED_ERROR"
-	UNDEFINED_FUNCTION        EvaluationErrorCodeDto = "UNDEFINED_FUNCTION"
-	WRONG_NUMBER_OF_ARGUMENTS EvaluationErrorCodeDto = "WRONG_NUMBER_OF_ARGUMENTS"
-	MISSING_NAMED_ARGUMENT    EvaluationErrorCodeDto = "MISSING_NAMED_ARGUMENT"
-)
-
 type EvaluationErrorDto struct {
-	EvaluationError EvaluationErrorCodeDto `json:"error"`
-	Message         string                 `json:"message"`
+	EvaluationError string `json:"error"`
+	Message         string `json:"message"`
 }
 
 type errorAndCode struct {
 	err  error
-	code EvaluationErrorCodeDto
+	code string
 }
 
 var evaluationErrorDtoMap = []errorAndCode{
-	{ast.ErrWrongNumberOfArgument, WRONG_NUMBER_OF_ARGUMENTS},
-	{ast.ErrMissingNamedArgument, MISSING_NAMED_ARGUMENT},
-	{ast.ErrUndefinedFunction, UNDEFINED_FUNCTION},
+	{ast.ErrUndefinedFunction, "UNDEFINED_FUNCTION"},
+	{ast.ErrWrongNumberOfArgument, "WRONG_NUMBER_OF_ARGUMENTS"},
+	{ast.ErrMissingNamedArgument, "MISSING_NAMED_ARGUMENT"},
+	{ast.ErrArgumentMustBeIntOrFloat, "ARGUMENTS_MUST_BE_INT_OR_FLOAT"},
+	{ast.ErrArgumentMustBeInt, "ARGUMENT_MUST_BE_INTEGER"},
+	{ast.ErrArgumentMustBeString, "ARGUMENT_MUST_BE_STRING"},
+	{ast.ErrArgumentMustBeBool, "ARGUMENT_MUST_BE_BOOLEAN"},
+	{ast.ErrArgumentMustBeList, "ARGUMENT_MUST_BE_LIST"},
+	{ast.ErrArgumentCantBeConvertedToDuration, "ARGUMENT_MUST_BE_CONVERTIBLE_TO_DURATION"},
+	{ast.ErrArgumentCantBeTime, "ARGUMENT_MUST_BE_TIME"},
 }
 
 func AdaptEvaluationErrorDto(err error) EvaluationErrorDto {
 
 	if err == nil {
 		return EvaluationErrorDto{
-			EvaluationError: UNEXPECTED_ERROR,
+			EvaluationError: "UNEXPECTED_ERROR",
 			Message:         "Internal Error: err is not supposed to be nil",
 		}
 	}
@@ -49,7 +47,7 @@ func AdaptEvaluationErrorDto(err error) EvaluationErrorDto {
 	}
 
 	return EvaluationErrorDto{
-		EvaluationError: UNEXPECTED_ERROR,
+		EvaluationError: "UNEXPECTED_ERROR",
 		Message:         err.Error(),
 	}
 }

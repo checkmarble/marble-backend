@@ -20,3 +20,19 @@ func TestNewArithmetic_basic(t *testing.T) {
 	helperTestArithmetic(t, ast.FUNC_SUBTRACT, []any{11, 2}, int64(9))
 	helperTestArithmetic(t, ast.FUNC_MULTIPLY, []any{4, 3}, int64(12))
 }
+
+func TestNewArithmetic_fail(t *testing.T) {
+	_, errs := NewArithmetic(ast.FUNC_ADD).Evaluate(ast.Arguments{Args: []any{2, "totally not an int or a float"}})
+	if assert.Len(t, errs, 1) {
+		assert.ErrorIs(t, errs[0], ast.ErrArgumentMustBeIntOrFloat)
+	}
+
+}
+
+func TestNewArithmetic_ErrWrongNumberOfArgument(t *testing.T) {
+	_, errs := NewArithmetic(ast.FUNC_ADD).Evaluate(ast.Arguments{Args: []any{}})
+	if assert.Len(t, errs, 1) {
+		assert.ErrorIs(t, errs[0], ast.ErrWrongNumberOfArgument)
+	}
+
+}
