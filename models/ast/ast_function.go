@@ -37,6 +37,9 @@ const (
 	FUNC_CUSTOM_LIST_ACCESS
 	FUNC_IS_IN_LIST
 	FUNC_IS_NOT_IN_LIST
+	FUNC_AGGREGATOR
+	FUNC_LIST
+	FUNC_FILTER
 	FUNC_BLANK_FIRST_TRANSACTION_DATE
 	FUNC_BLANK_SUM_TRANSACTIONS_AMOUNT
 	FUNC_BLANK_SEPA_OUT_FRACTIONATED
@@ -146,6 +149,12 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		AstName:           "IsNotInList",
 		NumberOfArguments: 2,
 	},
+	FUNC_AGGREGATOR: FuncAggregatorAttributes,
+	FUNC_LIST: {
+		DebugName: "FUNC_LIST",
+		AstName:   "List",
+	},
+	FUNC_FILTER: FuncFilterAttributes,
 	FUNC_BLANK_FIRST_TRANSACTION_DATE: {
 		DebugName:         "FUNC_BLANK_FIRST_TRANSACTION_DATE",
 		AstName:           "BlankFirstTransactionDate",

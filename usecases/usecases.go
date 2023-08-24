@@ -169,6 +169,19 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 
 	environment.AddEvaluator(ast.FUNC_PAYLOAD, evaluate.NewPayload(ast.FUNC_PAYLOAD, params.Payload))
 
+	environment.AddEvaluator(ast.FUNC_AGGREGATOR, evaluate.AggregatorEvaluator{
+		OrganizationId:             params.OrganizationId,
+		DataModel:                  params.DataModel,
+		Payload:                    params.Payload,
+		OrgTransactionFactory:      usecases.NewOrgTransactionFactory(),
+		IngestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
+		ReturnFakeValue:            params.DatabaseAccessReturnFakeValue,
+	})
+
+	environment.AddEvaluator(ast.FUNC_FILTER, evaluate.FilterEvaluator{
+		DataModel: params.DataModel,
+	})
+
 	// Custom evaluators for the Blank organization
 	if slices.Contains(models.GetBlankOrganizationIds(), params.OrganizationId) {
 		addBlankVariableEvaluators(&environment, usecases, params.OrganizationId, params.DatabaseAccessReturnFakeValue)

@@ -3,6 +3,7 @@ package evaluate
 import (
 	"fmt"
 	"marble/marble-backend/models"
+	"marble/marble-backend/models/ast"
 	"strings"
 	"time"
 )
@@ -61,5 +62,26 @@ func DryRunValue(prefix string, fieldName string, field models.Field) any {
 		return t
 	default:
 		return nil
+	}
+}
+
+func DryRunQueryAggregatedValue(datamodel models.DataModel, tableName models.TableName, fieldName models.FieldName, aggregator ast.Aggregator) (any, error) {
+	table, ok := datamodel.Tables[tableName]
+	if !ok {
+		return nil, fmt.Errorf("table %s not found in data model", tableName)
+	}
+
+	field, ok := table.Fields[fieldName]
+	if !ok {
+		return nil, fmt.Errorf("field %s not found in table %s", fieldName, table.Name)
+	}
+
+	switch aggregator {
+	case ast.AGGREGATOR_COUNT, ast.AGGREGATOR_COUNT_DISTINCT:
+		return 10, nil
+	case ast.AGGREGATOR_SUM, ast.AGGREGATOR_AVG, ast.AGGREGATOR_MAX, ast.AGGREGATOR_MIN:
+		return DryRunValue("Aggregator", fmt.Sprintf("%s.%s", tableName, fieldName), field), nil
+	default:
+		return nil, fmt.Errorf("aggregator %s not supported", aggregator)
 	}
 }

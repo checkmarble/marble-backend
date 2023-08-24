@@ -2,6 +2,7 @@ package evaluate
 
 import (
 	"fmt"
+	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 )
 
@@ -107,4 +108,24 @@ func MakeEvaluateResult(result any, errs ...error) (any, []error) {
 
 func MakeEvaluateError(err error) (any, []error) {
 	return nil, []error{err}
+}
+
+func getFieldType(dataModel models.DataModel, tableName models.TableName, fieldName models.FieldName) (models.DataType, error) {
+	table, ok := dataModel.Tables[tableName]
+	if !ok {
+		return models.UnknownDataType, fmt.Errorf(
+			"couldn't find table %s in data model %w",
+			tableName, models.ErrRuntimeExpression,
+		)
+	}
+
+	field, ok := table.Fields[fieldName]
+	if !ok {
+		return models.UnknownDataType, fmt.Errorf(
+			"couldn't find field %s in table %s %w",
+			fieldName, tableName, models.ErrRuntimeExpression,
+		)
+	}
+
+	return field.DataType, nil
 }

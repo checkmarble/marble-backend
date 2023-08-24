@@ -2,6 +2,7 @@ package evaluate
 
 import (
 	"fmt"
+	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 	"marble/marble-backend/utils"
 	"time"
@@ -75,24 +76,35 @@ func adaptArgumentToDuration(argument any) (time.Duration, error) {
 	)
 }
 
-func adaptArgumentToListOfStrings(argument any) ([]string, error) {
+func adaptArgumentToListOfThings[T any](argument any) ([]T, error) {
+	var zero T
 
-	if strings, ok := argument.([]string); ok {
-		return strings, nil
+	if things, ok := argument.([]T); ok {
+		return things, nil
 	}
 
 	if list, ok := argument.([]any); ok {
-		return utils.MapErr(list, func(item any) (string, error) {
-			return adaptArgumentToString(item)
+		return utils.MapErr(list, func(item any) (T, error) {
+			i, ok := item.(T)
+			if !ok {
+				return zero, fmt.Errorf("Couldn't cast argument to %T", zero)
+			}
+			return i, nil
 		})
 	}
 
 	return nil, fmt.Errorf(
-		"can't promote argument %v to []string %w",
+		"can't promote argument %v to []%T %w",
 		argument,
-		ast.ErrArgumentMustBeList,
+		zero,
+		ast.ErrArgumentMustBeBool,
 	)
 }
+
+func adaptArgumentToListOfStrings(argument any) ([]string, error) {
+	return adaptArgumentToListOfThings[string](argument)
+}
+
 
 func adaptArgumentToBool(argument any) (bool, error) {
 
@@ -105,4 +117,21 @@ func adaptArgumentToBool(argument any) (bool, error) {
 		argument,
 		ast.ErrArgumentMustBeBool,
 	)
+}
+
+func promoteArgumentToDataType(argument any, datatype models.DataType) (any, error) {
+	switch datatype {
+	case models.Bool:
+		return adaptArgumentToBool(argument)
+	case models.Int:
+		return promoteArgumentToInt64(argument)
+	case models.Float:
+		return promoteArgumentToFloat64(argument)
+	case models.String:
+		return adaptArgumentToString(argument)
+	case models.Timestamp:
+		return adaptArgumentToTime(argument)
+	default:
+		return nil, fmt.Errorf("datatype %s not supported", datatype)
+	}
 }
