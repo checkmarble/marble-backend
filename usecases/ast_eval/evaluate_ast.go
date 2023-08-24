@@ -33,6 +33,12 @@ func EvaluateAst(environment AstEvaluationEnvironment, node ast.Node) (ast.NodeE
 
 	if childEvaluationFail {
 		// an error occured in at least one of the children. Stop the evaluation.
+
+		// the frontend expects an ErrUndefinedFunction error to be present even when no evaluation happend.
+		if node.Function == ast.FUNC_UNDEFINED {
+			evaluation.Errors = append(evaluation.Errors, ast.ErrUndefinedFunction)
+		}
+
 		return evaluation, false
 	}
 
