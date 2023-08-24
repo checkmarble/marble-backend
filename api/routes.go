@@ -207,8 +207,12 @@ func (api *API) routes() {
 			})
 		})
 
+		// TODO(API): change routing for clarity
+		// Context https://github.com/checkmarble/marble-backend/pull/206
 		authedRouter.Route("/editor/{scenarioId}", func(builderRouter chi.Router) {
-			builderRouter.Use(api.enforcePermissionMiddleware(models.SCENARIO_CREATE))
+			// Even if the user has no permission to edit scenarios,
+			// he should be able to fetch the identifiers and operators to display an AST (used in both viewer and editor)
+			builderRouter.Use(api.enforcePermissionMiddleware(models.SCENARIO_READ))
 
 			builderRouter.Get("/identifiers", api.handleGetEditorIdentifiers())
 			builderRouter.Get("/operators", api.handleGetEditorOperators())
