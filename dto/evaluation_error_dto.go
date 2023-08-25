@@ -6,8 +6,10 @@ import (
 )
 
 type EvaluationErrorDto struct {
-	EvaluationError string `json:"error"`
-	Message         string `json:"message"`
+	EvaluationError string  `json:"error"`
+	Message         string  `json:"message"`
+	ArgumentIndex   *int    `json:"argument_index,omitempty"`
+	ArgumentName    *string `json:"argument_name,omitempty"`
 }
 
 type errorAndCode struct {
@@ -37,17 +39,29 @@ func AdaptEvaluationErrorDto(err error) EvaluationErrorDto {
 		}
 	}
 
-	for _, errorAndCode := range evaluationErrorDtoMap {
-		if errors.Is(err, errorAndCode.err) {
-			return EvaluationErrorDto{
-				EvaluationError: errorAndCode.code,
-				Message:         err.Error(),
-			}
+	dto := EvaluationErrorDto{
+		Message: err.Error(),
+	}
+
+	// extract argument index or name fron err
+	var argumentError ast.ArgumentError
+	if errors.As(err, &argumentError) {
+		if argumentError.ArgumentIndex >= 0 {
+			dto.ArgumentIndex = &argumentError.ArgumentIndex
+		}
+		if argumentError.ArgumentName != "" {
+			dto.ArgumentName = &argumentError.ArgumentName
 		}
 	}
 
-	return EvaluationErrorDto{
-		EvaluationError: "UNEXPECTED_ERROR",
-		Message:         err.Error(),
+	// find the corresponding error code
+	for _, errorAndCode := range evaluationErrorDtoMap {
+		if errors.Is(err, errorAndCode.err) {
+			dto.EvaluationError = errorAndCode.code
+			return dto
+		}
 	}
+
+	dto.EvaluationError = "UNEXPECTED_ERROR"
+	return dto
 }

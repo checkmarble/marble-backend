@@ -11,6 +11,7 @@ func EvaluateAst(environment AstEvaluationEnvironment, node ast.Node) (ast.NodeE
 	if node.Function == ast.FUNC_CONSTANT {
 		return ast.NodeEvaluation{
 			ReturnValue: node.Constant,
+			Errors:      []error{},
 		}, true
 	}
 
@@ -21,7 +22,6 @@ func EvaluateAst(environment AstEvaluationEnvironment, node ast.Node) (ast.NodeE
 		if !ok {
 			childEvaluationFail = true
 		}
-
 		return childEval
 	}
 
@@ -34,7 +34,7 @@ func EvaluateAst(environment AstEvaluationEnvironment, node ast.Node) (ast.NodeE
 	if childEvaluationFail {
 		// an error occured in at least one of the children. Stop the evaluation.
 
-		// the frontend expects an ErrUndefinedFunction error to be present even when no evaluation happend.
+		// the frontend expects an ErrUndefinedFunction error to be present even when no evaluation happened.
 		if node.Function == ast.FUNC_UNDEFINED {
 			evaluation.Errors = append(evaluation.Errors, ast.ErrUndefinedFunction)
 		}
@@ -58,14 +58,14 @@ func EvaluateAst(environment AstEvaluationEnvironment, node ast.Node) (ast.NodeE
 
 	if evaluation.Errors == nil {
 		// Assign an empty array to indicate that the evaluation occured.
-		// Operator is not supposed to return nil array of errors, but let's be nice.
-		evaluation.Errors = make([]error, 0)
+		// The evaluator is not supposed to return a nil array of errors, but let's be nice.
+		evaluation.Errors = []error{}
 	}
 
 	ok := len(evaluation.Errors) == 0
 
 	if !ok {
-		// Operator is supposed to return nil when an error is present.
+		// The evaluator is supposed to return nil ReturnValue when an error is present.
 		evaluation.ReturnValue = nil
 	}
 
