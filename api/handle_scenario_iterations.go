@@ -67,8 +67,8 @@ func (api *API) CreateScenarioIteration() http.HandlerFunc {
 
 			for i, rule := range input.Payload.Body.Rules {
 				createScenarioIterationInput.Body.Rules[i], err = dto.AdaptCreateRuleInput(rule, organizationId)
-				if err != nil {
-					presentError(w, r, err)
+				if presentError(w, r, err) {
+					return
 				}
 			}
 
@@ -76,6 +76,7 @@ func (api *API) CreateScenarioIteration() http.HandlerFunc {
 				trigger, err := dto.AdaptASTNode(*input.Payload.Body.TriggerConditionAstExpression)
 				if err != nil {
 					presentError(w, r, fmt.Errorf("could not unmarshal trigger condition ast expression: %w %w", err, models.BadParameterError))
+					return
 				}
 				createScenarioIterationInput.Body.TriggerConditionAstExpression = &trigger
 			}
@@ -180,6 +181,7 @@ func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 			trigger, err := dto.AdaptASTNode(*input.Payload.Body.TriggerConditionAstExpression)
 			if err != nil {
 				presentError(w, r, fmt.Errorf("could not unmarshal trigger condition ast expression: %w %w", err, models.BadParameterError))
+				return
 			}
 			updateScenarioIterationInput.Body.TriggerConditionAstExpression = &trigger
 		}
