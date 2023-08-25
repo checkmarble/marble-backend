@@ -11,7 +11,8 @@
       "mode": "auto",
       "program": "${workspaceFolder}/main.go",
       "envFile": "${workspaceFolder}/.env.local",
-      "args": ["--server", "--migrations"]
+      "args": ["--server", "--migrations"],
+      "console": "integratedTerminal"
     },
     {
       "name": "Launch scheduled jobs (.env.local)",
