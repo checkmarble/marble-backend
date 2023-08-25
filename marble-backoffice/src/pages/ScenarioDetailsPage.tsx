@@ -34,6 +34,7 @@ import Box from "@mui/material/Box";
 import ListItemAvatar from "@mui/material/ListItemAvatar";
 import Avatar from "@mui/material/Avatar";
 import MovieIcon from "@mui/icons-material/Movie";
+import { MapMap } from "@/MapUtils";
 
 export default function ScenarioDetailsPage() {
   const { scenarioId } = useParams();
@@ -379,7 +380,7 @@ function AstEditor({
         <AddIcon />
         Operand
       </Button>
-      {Object.entries(node.namedChildren).map(([name, child]) => (
+      {MapMap(node.namedChildren, (name, child) => (
         <>
           {name} <AstEditor key={child.id} editor={editor} node={child} />
         </>

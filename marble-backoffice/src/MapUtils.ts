@@ -9,7 +9,7 @@ export function MapObjectValues<ValueIn, ValueOut>(
   return Object.fromEntries(p);
 }
 
-export function MapMap<ValueIn, ValueOut>(
+export function TranformMap<ValueIn, ValueOut>(
   mapIn: ReadonlyMap<string, ValueIn>,
   fn: (value: ValueIn) => ValueOut | undefined
 ): Map<string, ValueOut> {
@@ -34,4 +34,11 @@ export function MapToObject<Value>(map: Map<string, Value>): {
   [key: string]: Value;
 } {
   return Object.fromEntries(map.entries());
+}
+
+export function MapMap<ValueIn, ValueOut>(
+  map: Map<string, ValueIn>,
+  fn: (key: string, value: ValueIn) => ValueOut
+): ValueOut[] {
+  return Array.from(map.entries()).map(([key, value]) => fn(key, value));
 }

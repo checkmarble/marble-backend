@@ -1,8 +1,11 @@
 import Typography from "@mui/material/Typography";
-import { type AstNode, type AstNodeEvaluation, NoConstant } from "@/models";
+import { NoConstant } from "@/models";
+import type { AstNode, AstNodeEvaluation, EvaluationError } from "@/models";
 import { AstConstantComponent } from "./AstConstantComponent";
 import Paper from "@mui/material/Paper";
 import Alert from "@mui/material/Alert";
+import Chip from "@mui/material/Chip";
+import { MapMap } from "@/MapUtils";
 
 function stringifyAst(node: AstNode): string {
   if (node.constant !== NoConstant) {
@@ -26,7 +29,7 @@ function stringifyAst(node: AstNode): string {
       namedChildren.push(`${name}: ${stringifyAst(child)}`);
     });
 
-    children.push(`{ ${namedChildren.join(", ")} }`);
+    children.push(` {${namedChildren.join(", ")}} `);
   }
 
   return `${node.name}(${children.join(", ")})`;
@@ -40,11 +43,21 @@ export function AstNodeComponent({
   node,
   evaluation,
   displaySuccess,
+  argumentError,
 }: {
   node: AstNode;
   evaluation?: AstNodeEvaluation | null;
   displaySuccess: boolean;
+  argumentError?: string;
 }) {
+  const chipColor = !evaluation
+    ? "info"
+    : evaluation.errors === null
+    ? "default"
+    : evaluation.errors.length == 0
+    ? "success"
+    : "error";
+
   return (
     <>
       <Paper
@@ -54,8 +67,9 @@ export function AstNodeComponent({
           border: 1,
         }}
       >
-        {node.name && (
-          <Typography variant="subtitle1">name: {node.name}</Typography>
+        {node.name && <Chip label={node.name} color={chipColor} />}
+        {argumentError && (
+          <Chip label={`argument Error: ${argumentError}`} color="warning" />
         )}
         {evaluation &&
           displaySuccess &&
@@ -68,10 +82,7 @@ export function AstNodeComponent({
           )}
         {node.constant !== NoConstant && (
           <Typography>
-            Constant:{" "}
-            <AstConstantComponent
-              constant={node.constant}
-            />
+            Constant: <AstConstantComponent constant={node.constant} />
           </Typography>
         )}
         {!node.name && node.constant === NoConstant && (
@@ -91,16 +102,26 @@ export function AstNodeComponent({
             node={child}
             evaluation={evaluation?.children[i]}
             displaySuccess={displaySuccess}
+            argumentError={
+              evaluation?.errors
+                ? findChildArgumentError(evaluation.errors, { index: i })
+                : undefined
+            }
           />
         ))}
         <div>
-          {Object.entries(node.namedChildren).map(([name, child], i) => (
-            <div key={i}>
-              <Typography variant="subtitle2">{name}</Typography>{" "}
+          {MapMap(node.namedChildren, (name, child) => (
+            <div key={name}>
+              <Typography variant="subtitle2">{name}</Typography>
               <AstNodeComponent
                 node={child}
                 evaluation={evaluation?.namedChildren[name]}
                 displaySuccess={displaySuccess}
+                argumentError={
+                  evaluation?.errors
+                    ? findChildArgumentError(evaluation.errors, { name })
+                    : undefined
+                }
               />
             </div>
           ))}
@@ -108,4 +129,13 @@ export function AstNodeComponent({
       </Paper>
     </>
   );
+}
+
+function findChildArgumentError(
+  errors: EvaluationError[],
+  { index, name }: { index?: number; name?: string }
+): string | undefined {
+  return errors.find(
+    (e) => e.argumentIndex === index || e.argumentName === name
+  )?.error;
 }

@@ -7,7 +7,7 @@ import {
   type ConstantType,
   type Scenario,
 } from "@/models";
-import { MapMap } from "@/MapUtils";
+import { TranformMap } from "@/MapUtils";
 import {
   type ScenariosRepository,
   fetchEditorIdentifiers,
@@ -56,7 +56,7 @@ function makeExpressionViewModel(node: AstNode): ExpressionViewModel {
       name: node.name,
       constant: jsonifyConstant(node.constant),
       children: node.children.map(makeNodeViewModel),
-      namedChildren: MapMap(node.namedChildren, makeNodeViewModel),
+      namedChildren: TranformMap(node.namedChildren, makeNodeViewModel),
     };
     // nodes.set(newNode.id, newNode);
 
@@ -151,7 +151,7 @@ function replaceOneNode(
     // Possible optimization: copy just the parent of the target node.
     // but I want to avoid early optimization.
     const children = node.children.map(replaceNode);
-    const namedChildren = MapMap(node.namedChildren, replaceNode);
+    const namedChildren = TranformMap(node.namedChildren, replaceNode);
     return {
       ...node,
       children,

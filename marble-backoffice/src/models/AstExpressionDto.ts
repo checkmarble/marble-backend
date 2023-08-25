@@ -5,7 +5,7 @@ import {
   type ConstantType,
   NoConstant,
 } from "./AstExpression";
-import { MapObjectValues, ObjectToMap, MapMap, MapToObject } from "@/MapUtils";
+import { MapObjectValues, ObjectToMap, TranformMap, MapToObject } from "@/MapUtils";
 
 export const ConstantOptionalSchema = yup.mixed().nullable().optional(); // {}, null or undefined
 
@@ -47,14 +47,14 @@ export function adaptAstNode(dto: AstNodeDto): AstNode {
     name: dto.name || "",
     constant: adaptConstantOptional(dto.constant),
     children: (dto.children || []).map((child) => adaptAstNode(child)),
-    namedChildren: MapMap(ObjectToMap(dto.named_children || {}), adaptAstNode),
+    namedChildren: TranformMap(ObjectToMap(dto.named_children || {}), adaptAstNode),
   };
 }
 
 export function adaptAstNodeDto(model: AstNode): AstNodeDto {
 
   const children = (model.children || []).map((child) => adaptAstNodeDto(child))
-  const namedChildren = MapMap(model.namedChildren, adaptAstNodeDto)
+  const namedChildren = TranformMap(model.namedChildren, adaptAstNodeDto)
 
   return {
     name: model.name === "" ? undefined : model.name,
