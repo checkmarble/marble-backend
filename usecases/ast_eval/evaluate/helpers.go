@@ -1,6 +1,7 @@
 package evaluate
 
 import (
+	"errors"
 	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
@@ -46,11 +47,10 @@ func AdaptArguments[T any](args []any, adapter func(any) (T, error)) ([]T, []err
 	values := make([]T, 0, len(args))
 	errs := make([]error, 0, len(args))
 
-	for _, arg := range args {
+	for argumentIndex, arg := range args {
 		value, err := adapter(arg)
 		if err != nil {
-			// TODO: make an error with child index
-			errs = append(errs, err)
+			errs = append(errs, errors.Join(err, ast.NewArgumentError(argumentIndex)))
 		}
 		values = append(values, value)
 	}
@@ -59,51 +59,33 @@ func AdaptArguments[T any](args []any, adapter func(any) (T, error)) ([]T, []err
 }
 
 func AdaptNamedArgument[T any](namedArgs map[string]any, name string, adapter func(any) (T, error)) (T, error) {
+
 	value, ok := namedArgs[name]
 	if !ok {
-		// TODO: make an error with child name
 		var zero T
-		return zero, fmt.Errorf("missing named argument %s not found %w", name, ast.ErrMissingNamedArgument)
+		return zero, fmt.Errorf("missing named argument %s not found %w %w", name, ast.ErrMissingNamedArgument, ast.NewNamedArgumentError(name))
 	}
 
-	// TODO: make an error with child name
-	return adapter(value)
-}
-
-func MakeAdaptedNamedArgsErrors(errs ...error) []error {
-	result := make([]error, 0, len(errs))
-	for _, err := range errs {
-		if err != nil {
-			result = append(result, err)
-		}
+	result, err := adapter(value)
+	if err != nil {
+		err = errors.Join(err, ast.NewNamedArgumentError(name))
 	}
-	return result
+	return result, err
 }
 
 func MakeAdaptedArgsErrors(errs []error) []error {
 
 	result := make([]error, 0, len(errs))
-	for _, err := range errs {
+	for argumentIndex, err := range errs {
 		if err != nil {
-			// TODO: make an error with child index
-			result = append(result, err)
-		}
-	}
-	return result
-}
-
-func filterNilErrors(errs []error) []error {
-	result := make([]error, 0, len(errs))
-	for _, err := range errs {
-		if err != nil {
-			result = append(result, err)
+			result = append(result, errors.Join(err, ast.NewArgumentError(argumentIndex)))
 		}
 	}
 	return result
 }
 
 func MakeEvaluateResult(result any, errs ...error) (any, []error) {
-	return result, filterNilErrors(errs)
+	return result, filterNilErrors(errs...)
 }
 
 func MakeEvaluateError(err error) (any, []error) {
@@ -128,4 +110,14 @@ func getFieldType(dataModel models.DataModel, tableName models.TableName, fieldN
 	}
 
 	return field.DataType, nil
+}
+
+func filterNilErrors(errs ...error) []error {
+	result := make([]error, 0, len(errs))
+	for _, err := range errs {
+		if err != nil {
+			result = append(result, err)
+		}
+	}
+	return result
 }

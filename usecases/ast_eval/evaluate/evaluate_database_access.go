@@ -22,7 +22,7 @@ func (d DatabaseAccess) Evaluate(arguments ast.Arguments) (any, []error) {
 	tableNameStr, tableNameErr := AdaptNamedArgument(arguments.NamedArgs, "tableName", adaptArgumentToString)
 	fieldNameStr, fieldNameErr := AdaptNamedArgument(arguments.NamedArgs, "fieldName", adaptArgumentToString)
 
-	errs := MakeAdaptedNamedArgsErrors(tableNameErr, fieldNameErr)
+	errs := filterNilErrors(tableNameErr, fieldNameErr)
 	if len(errs) > 0 {
 		return nil, errs
 	}

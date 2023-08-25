@@ -36,7 +36,7 @@ func TestAdaptArgumentToListOfThings_list_of_same_type(t *testing.T) {
 	type Thing struct {
 		name string
 	}
-	things := []Thing{Thing{name: "Wednesday"}, Thing{name: "Pugsley"}}
+	things := []Thing{{name: "Wednesday"}, {name: "Pugsley"}}
 
 	list, err := adaptArgumentToListOfThings[Thing](things)
 	assert.NoError(t, err)

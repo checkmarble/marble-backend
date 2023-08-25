@@ -87,7 +87,7 @@ func adaptArgumentToListOfThings[T any](argument any) ([]T, error) {
 		return utils.MapErr(list, func(item any) (T, error) {
 			i, ok := item.(T)
 			if !ok {
-				return zero, fmt.Errorf("Couldn't cast argument to %T", zero)
+				return zero, fmt.Errorf("couldn't cast argument to %T", zero)
 			}
 			return i, nil
 		})
@@ -104,7 +104,6 @@ func adaptArgumentToListOfThings[T any](argument any) ([]T, error) {
 func adaptArgumentToListOfStrings(argument any) ([]string, error) {
 	return adaptArgumentToListOfThings[string](argument)
 }
-
 
 func adaptArgumentToBool(argument any) (bool, error) {
 
