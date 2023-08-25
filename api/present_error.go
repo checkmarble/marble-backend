@@ -35,8 +35,8 @@ func presentError(w http.ResponseWriter, r *http.Request, err error) bool {
 		http.Error(w, err.Error(), http.StatusConflict)
 
 	} else {
-		utils.LogRequestError(r, fmt.Sprintf("Unexpected Error: %v", err))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.LogRequestError(r, fmt.Sprintf("Unexpected Error: %+v", err))
+		http.Error(w, "", http.StatusInternalServerError)
 	}
 	return true
 }

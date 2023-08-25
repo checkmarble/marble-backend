@@ -5,6 +5,8 @@ import (
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/security"
 	"marble/marble-backend/utils"
+
+	"github.com/cockroachdb/errors"
 )
 
 type ScenarioUsecase struct {
@@ -22,7 +24,7 @@ func (usecase *ScenarioUsecase) ListScenarios() ([]models.Scenario, error) {
 	}
 	scenarios, err := usecase.scenarioReadRepository.ListScenariosOfOrganization(nil, organizationId)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Error listing scenarios in repository")
 	}
 
 	for _, scenario := range scenarios {
