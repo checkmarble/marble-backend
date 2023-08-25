@@ -46,3 +46,4 @@ docker-compose.dev.yml
 marble-backoffice/node_modules
 
 /.firebase
+__debug_bin*

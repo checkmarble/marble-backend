@@ -18,6 +18,7 @@ import {
   adaptAstNodeDto,
   adaptLitteralAstNode,
 } from "@/models/AstExpressionDto";
+import { HttpError } from "@/infra/fetchUtils";
 
 export interface AstEditorService {
   scenariosRepository: ScenariosRepository;
@@ -77,24 +78,34 @@ export function useAstEditor(
     showLoader(
       loadingDispatcher,
       (async () => {
-        if (ruleId === null) {
-          await patchIteration(
-            service.scenariosRepository,
-            scenario.organizationId,
-            iteration.iterationId,
-            {
-              triggerCondition: astNode,
+        try {
+          if (ruleId === null) {
+            await patchIteration(
+              service.scenariosRepository,
+              scenario.organizationId,
+              iteration.iterationId,
+              {
+                triggerCondition: astNode,
+              }
+            );
+          } else {
+            await updateRule(
+              service.scenariosRepository,
+              scenario.organizationId,
+              ruleId,
+              {
+                formula: astNode,
+              }
+            );
+          }
+        } catch (e) {
+          if (e instanceof HttpError) {
+            if (e.statusCode >= 400 && e.statusCode < 500) {
+              const message = (await e.response.text()).split("\n")[0]
+              setErrorMessages([message]);
             }
-          );
-        } else {
-          await updateRule(
-            service.scenariosRepository,
-            scenario.organizationId,
-            ruleId,
-            {
-              formula: astNode,
-            }
-          );
+          }
+          throw e;
         }
 
         const validation = await validateIteration(
@@ -117,7 +128,9 @@ export function useAstEditor(
       return;
     }
 
-    setErrorMessages(flattenNodeEvaluationErrors(validation).map((e) => e.message));
+    setErrorMessages(
+      flattenNodeEvaluationErrors(validation).map((e) => e.message)
+    );
   }, [validation]);
 
   return {

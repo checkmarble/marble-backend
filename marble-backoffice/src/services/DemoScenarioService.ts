@@ -18,11 +18,11 @@ export interface DemoScenarioService {
   scenariosRepository: ScenariosRepository;
 }
 
-function nodeEvaluationErrors(node: AstNodeEvaluation): string[] {
+function nodeEvaluationErrors(evaluation: AstNodeEvaluation): string[] {
   return [
-    ...(node.errors ?? []).map((e) => e.message),
-    ...node.children.flatMap(nodeEvaluationErrors),
-    ...Object.values(node.namedChildren).flatMap(nodeEvaluationErrors),
+    ...(evaluation.errors ?? []).map((e) => e.message),
+    ...evaluation.children.flatMap(nodeEvaluationErrors),
+    ...Object.values(evaluation.namedChildren).flatMap(nodeEvaluationErrors),
   ];
 }
 

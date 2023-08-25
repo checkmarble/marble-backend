@@ -14,6 +14,8 @@ import { MapObjectValues } from "@/MapUtils";
 export const EvaluationErrorSchema = yup.object({
   error: yup.string().defined(),
   message: yup.string().defined(),
+  argument_index: yup.number(),
+  argument_name: yup.string(),
 });
 
 type EvaluationErrorDto = yup.InferType<typeof EvaluationErrorSchema>;
@@ -61,6 +63,8 @@ export function adaptEvaluationError(dto: EvaluationErrorDto): EvaluationError {
   return {
     error: dto.error,
     message: dto.message,
+    argumentIndex: dto.argument_index ?? null,
+    argumentName: dto.argument_name ?? null,
   };
 }
 

@@ -3,6 +3,8 @@ import type { ConstantOptional } from "./AstExpression";
 export interface EvaluationError {
   error: string;
   message: string;
+  argumentIndex: number | null;
+  argumentName: string | null;
 }
 
 export interface AstNodeEvaluation {
