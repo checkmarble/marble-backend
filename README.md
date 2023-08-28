@@ -82,6 +82,14 @@ You can choose to launch the application locally, using the provided debug task 
 - in dev or staging environments, -server additionally runs the seed script from pg_repository/seed.go.
 - in the cloud staging environment, two Cloud Run jobs exist to take the migrations/wipe actions
 
+## Mock
+
+To be able to generate mock you need to first install the mock library localy:
+`go install go.uber.org/mock/mockgen`
+
+And to run the all the generator:
+`go generate ./...`
+
 ## API
 
 The rooting of the application is defined inside `api/routes.go`
