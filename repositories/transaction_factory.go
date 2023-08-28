@@ -2,8 +2,9 @@ package repositories
 
 import (
 	"context"
-	"errors"
 	"marble/marble-backend/models"
+
+	"github.com/cockroachdb/errors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -83,7 +84,7 @@ func (repo *TransactionFactoryPosgresql) Transaction(databaseSchema models.Datab
 		return nil
 	}
 
-	return err
+	return errors.Wrap(err, "Error executing transaction")
 }
 
 // Helper for TransactionFactory.Transaction that return something and an error:

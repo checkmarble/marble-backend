@@ -1,8 +1,9 @@
 package utils
 
 import (
-	"fmt"
 	"marble/marble-backend/models"
+
+	"github.com/cockroachdb/errors"
 )
 
 func EnforceOrganizationAccess(creds models.Credentials, organizationId string) error {
@@ -13,15 +14,15 @@ func EnforceOrganizationAccess(creds models.Credentials, organizationId string) 
 	}
 
 	if organizationId == "" {
-		return fmt.Errorf("no organization Id: %w", models.BadParameterError)
+		return errors.Wrap(models.BadParameterError, "no organization Id")
 	}
 
 	if creds.OrganizationId == "" {
-		return fmt.Errorf("credentials does not grant access to any organization: %w", models.ForbiddenError)
+		return errors.Wrap(models.ForbiddenError, "credentials does not grant access to any organization")
 	}
 
 	if creds.OrganizationId != organizationId {
-		return fmt.Errorf("credentials does not grant access to organization %s: %w", organizationId, models.ForbiddenError)
+		return errors.Wrap(models.ForbiddenError, "credentials does not grant access to organization %s"+organizationId)
 	}
 
 	return nil

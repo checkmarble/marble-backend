@@ -2,11 +2,12 @@ package repositories
 
 import (
 	"context"
-	"fmt"
 	"marble/marble-backend/models"
 	"sync"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/cockroachdb/errors"
 )
 
 type DatabaseConnectionPoolRepository interface {
@@ -52,7 +53,7 @@ func (repo *DatabaseConnectionPoolRepositoryImpl) newClientDatabaseConnectionPoo
 
 	dbpool, err := pgxpool.New(context.Background(), string(connection))
 	if err != nil {
-		return nil, fmt.Errorf("unable to create connection pool: %w", err)
+		return nil, errors.Wrap(err, "unable to create connection pool")
 	}
 
 	return dbpool, nil

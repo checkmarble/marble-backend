@@ -7,6 +7,8 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
+
+	"github.com/cockroachdb/errors"
 )
 
 func SqlToChannelOfDbModel[DBModel any](tx TransactionPostgres, query squirrel.Sqlizer) (<-chan DBModel, <-chan error) {
@@ -23,7 +25,7 @@ func SqlToChannelOfDbModel[DBModel any](tx TransactionPostgres, query squirrel.S
 		err := ForEachRow(tx, query, func(row pgx.CollectableRow) error {
 			dbModel, err := pgx.RowToStructByName[DBModel](row)
 			if err != nil {
-				return err
+				return errors.Wrap(err, fmt.Sprintf("Error scanning row to struct %T", dbModel))
 			} else {
 				modelsChannel <- dbModel
 			}
@@ -41,12 +43,12 @@ func ForEachRow(transaction TransactionPostgres, query squirrel.Sqlizer, fn func
 
 	sql, args, err := query.ToSql()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Error building sql query")
 	}
 
 	rows, err := transaction.exec.Query(transaction.ctx, sql, args...)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Error executing sql query")
 	}
 
 	defer rows.Close()
@@ -58,7 +60,7 @@ func ForEachRow(transaction TransactionPostgres, query squirrel.Sqlizer, fn func
 		}
 	}
 
-	return rows.Err()
+	return errors.Wrap(rows.Err(), "Error iterating over rows")
 }
 
 // executes the sql query with the given transaction and returns a list of models using the provided adapter
@@ -66,18 +68,18 @@ func SqlToListOfModels[DBModel, Model any](transaction TransactionPostgres, quer
 
 	sql, args, err := query.ToSql()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Error building sql query")
 	}
 
 	rows, err := transaction.exec.Query(transaction.ctx, sql, args...)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Error executing sql query")
 	}
 	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (Model, error) {
 		dbModel, err := pgx.RowToStructByName[DBModel](row)
 		if err != nil {
 			var zeroModel Model
-			return zeroModel, err
+			return zeroModel, errors.Wrap(err, fmt.Sprintf("Error scanning row to struct %T", dbModel))
 		}
 		return adapter(dbModel), nil
 	})
@@ -98,7 +100,7 @@ func SqlToOptionalModel[DBModel, Model any](transaction TransactionPostgres, s s
 	}
 	var model Model = modelslist[0]
 	if numberOfTesults > 1 {
-		return nil, fmt.Errorf("except 1 or 0 %v, %d rows in the result", reflect.TypeOf(model), numberOfTesults)
+		return nil, errors.New(fmt.Sprintf("except 1 or 0 %v, %d rows in the result", reflect.TypeOf(model), numberOfTesults))
 	}
 	return &model, nil
 }
@@ -113,7 +115,7 @@ func SqlToModel[DBModel, Model any](transaction TransactionPostgres, s squirrel.
 		return zeroModel, err
 	}
 	if model == nil {
-		return zeroModel, fmt.Errorf("%v %w", reflect.TypeOf(zeroModel).Name(), models.NotFoundError)
+		return zeroModel, errors.Wrap(models.NotFoundError, fmt.Sprintf("Found no object of type %T", zeroModel))
 	}
 	return *model, nil
 }
@@ -127,18 +129,18 @@ func SqlToListOfModelsAdapterWithErr[DBModel, Model any](transaction Transaction
 
 	sql, args, err := query.ToSql()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Error building sql query")
 	}
 
 	rows, err := transaction.exec.Query(transaction.ctx, sql, args...)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Error executing sql query")
 	}
 	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (Model, error) {
 		dbModel, err := pgx.RowToStructByName[DBModel](row)
 		if err != nil {
 			var zeroModel Model
-			return zeroModel, err
+			return zeroModel, errors.Wrap(err, fmt.Sprintf("Error scanning row to struct %T", dbModel))
 		}
 		return adapter(dbModel)
 	})
@@ -159,7 +161,7 @@ func SqlToOptionalModelAdapterWithErr[DBModel, Model any](transaction Transactio
 	}
 	var model Model = modelslist[0]
 	if numberOfTesults > 1 {
-		return nil, fmt.Errorf("except 1 or 0 %v, %d rows in the result", reflect.TypeOf(model), numberOfTesults)
+		return nil, errors.New(fmt.Sprintf("except 1 or 0 %v, %d rows in the result", reflect.TypeOf(model), numberOfTesults))
 	}
 	return &model, nil
 }
@@ -174,7 +176,7 @@ func SqlToModelAdapterWithErr[DBModel, Model any](transaction TransactionPostgre
 		return zeroModel, err
 	}
 	if model == nil {
-		return zeroModel, fmt.Errorf("%v %w", reflect.TypeOf(zeroModel).Name(), models.NotFoundError)
+		return zeroModel, errors.Wrap(models.NotFoundError, fmt.Sprintf("Found no object of type %T", zeroModel))
 	}
 	return *model, nil
 }

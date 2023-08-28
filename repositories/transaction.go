@@ -2,9 +2,9 @@ package repositories
 
 import (
 	"context"
-	"errors"
 	"marble/marble-backend/models"
 
+	"github.com/cockroachdb/errors"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -42,9 +42,9 @@ func (transaction *TransactionPostgres) SqlExec(query string, args ...any) (rows
 
 	tag, err := transaction.exec.Exec(transaction.ctx, query, args...)
 	if err != nil {
-		return 0, err
+		return 0, errors.Wrap(err, "Error executing sql query")
 	}
-	return tag.RowsAffected(), err
+	return tag.RowsAffected(), nil
 }
 
 type AnyBuilder interface {
@@ -54,7 +54,7 @@ type AnyBuilder interface {
 func (transaction *TransactionPostgres) ExecBuilder(builder AnyBuilder) (rowsAffected int64, err error) {
 	query, args, err := builder.ToSql()
 	if err != nil {
-		return 0, err
+		return 0, errors.Wrap(err, "Error building sql query")
 	}
 
 	return transaction.SqlExec(query, args...)

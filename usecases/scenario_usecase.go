@@ -24,7 +24,7 @@ func (usecase *ScenarioUsecase) ListScenarios() ([]models.Scenario, error) {
 	}
 	scenarios, err := usecase.scenarioReadRepository.ListScenariosOfOrganization(nil, organizationId)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error listing scenarios in repository")
+		return nil, err
 	}
 
 	for _, scenario := range scenarios {
@@ -66,7 +66,8 @@ func (usecase *ScenarioUsecase) UpdateScenario(scenarioInput models.UpdateScenar
 			if err != nil {
 				return models.Scenario{}, err
 			}
-			return usecase.scenarioReadRepository.GetScenarioById(tx, scenario.Id)
+			scenario, err = usecase.scenarioReadRepository.GetScenarioById(tx, scenario.Id)
+			return scenario, errors.HandledWithMessage(err, "Error getting scenario after update")
 		},
 	)
 }
@@ -84,7 +85,8 @@ func (usecase *ScenarioUsecase) CreateScenario(scenario models.CreateScenarioInp
 			if err != nil {
 				return models.Scenario{}, err
 			}
-			return usecase.scenarioReadRepository.GetScenarioById(tx, newScenarioId)
+			scenario, err := usecase.scenarioReadRepository.GetScenarioById(tx, newScenarioId)
+			return scenario, errors.HandledWithMessage(err, "Error getting scenario after update")
 		},
 	)
 }

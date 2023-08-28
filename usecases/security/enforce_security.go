@@ -1,9 +1,10 @@
 package security
 
 import (
-	"fmt"
 	"marble/marble-backend/models"
 	"marble/marble-backend/utils"
+
+	"github.com/cockroachdb/errors"
 )
 
 type EnforceSecurity interface {
@@ -21,7 +22,7 @@ func (e *EnforceSecurityImpl) ReadOrganization(organizationId string) error {
 
 func (e *EnforceSecurityImpl) Permission(permission models.Permission) error {
 	if !e.Credentials.Role.HasPermission(permission) {
-		return fmt.Errorf("missing permission %s %w", permission.String(), models.ForbiddenError)
+		return errors.Wrap(models.ForbiddenError, "missing permission %s"+permission.String())
 	}
 	return nil
 }
