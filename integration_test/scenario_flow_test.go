@@ -253,6 +253,7 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 									"tableName":  {Constant: "transactions"},
 									"fieldName":  {Constant: "amount"},
 									"aggregator": {Constant: ast.AGGREGATOR_SUM},
+									"label":      {Constant: "An aggregator function"},
 									"filters": {
 										Function: ast.FUNC_LIST,
 										Children: []ast.Node{
