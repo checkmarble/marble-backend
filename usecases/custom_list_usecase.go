@@ -136,4 +136,5 @@ func (usecase *CustomListUseCase) DeleteCustomListValue(deleteCustomListValue mo
 			return err
 		}
 		return usecase.CustomListRepository.DeleteCustomListValue(tx, deleteCustomListValue)
-	})}
+	})
+}
