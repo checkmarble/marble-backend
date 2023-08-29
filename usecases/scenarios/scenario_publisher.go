@@ -8,10 +8,11 @@ import (
 )
 
 type ScenarioPublisher struct {
-	ScenarioPublicationsRepository  repositories.ScenarioPublicationRepository
-	ScenarioWriteRepository         repositories.ScenarioWriteRepository
-	ScenarioIterationReadRepository repositories.ScenarioIterationReadRepository
-	ValidateScenarioIteration       ValidateScenarioIteration
+	ScenarioPublicationsRepository   repositories.ScenarioPublicationRepository
+	ScenarioWriteRepository          repositories.ScenarioWriteRepository
+	ScenarioIterationReadRepository  repositories.ScenarioIterationReadRepository
+	ScenarioIterationWriteRepository repositories.ScenarioIterationWriteRepository
+	ValidateScenarioIteration        ValidateScenarioIteration
 }
 
 func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(
@@ -53,8 +54,7 @@ func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(
 				return nil, err
 			}
 
-			// FIXME Just temporarily placed here, will be moved to scenario iteration write repo
-			err = publisher.ScenarioPublicationsRepository.UpdateScenarioIterationVersion(tx, iterationId, scenarioVersion)
+			err = publisher.ScenarioIterationWriteRepository.UpdateScenarioIterationVersion(tx, iterationId, scenarioVersion)
 			if err != nil {
 				return nil, err
 			}

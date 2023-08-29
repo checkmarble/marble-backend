@@ -9,6 +9,7 @@ import (
 	"marble/marble-backend/usecases/ast_eval"
 	"marble/marble-backend/usecases/org_transaction"
 	"marble/marble-backend/usecases/scheduledexecution"
+	"marble/marble-backend/usecases/security"
 	"marble/marble-backend/utils"
 	"runtime/debug"
 	"time"
@@ -17,6 +18,7 @@ import (
 )
 
 type ScheduledExecutionUsecase struct {
+	enforceSecurity                 security.EnforceSecurityDecision
 	scenarioReadRepository          repositories.ScenarioReadRepository
 	scenarioIterationReadRepository repositories.ScenarioIterationReadRepository
 	scenarioPublicationsRepository  repositories.ScenarioPublicationRepository

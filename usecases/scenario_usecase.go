@@ -81,8 +81,7 @@ func (usecase *ScenarioUsecase) CreateScenario(scenario models.CreateScenarioInp
 				return models.Scenario{}, err
 			}
 			newScenarioId := utils.NewPrimaryKey(scenario.OrganizationId)
-			err := usecase.scenarioWriteRepository.CreateScenario(nil, scenario, newScenarioId)
-			if err != nil {
+			if err := usecase.scenarioWriteRepository.CreateScenario(nil, scenario, newScenarioId); err != nil {
 				return models.Scenario{}, err
 			}
 			scenario, err := usecase.scenarioReadRepository.GetScenarioById(tx, newScenarioId)

@@ -12,6 +12,7 @@ import (
 type ScenarioIterationWriteRepository interface {
 	CreateScenarioIteration(tx Transaction, organizationId string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error)
 	UpdateScenarioIteration(tx Transaction, scenarioIteration models.UpdateScenarioIterationInput) (models.ScenarioIteration, error)
+	UpdateScenarioIterationVersion(tx Transaction, scenarioIterationId string, newVersion int) error
 	DeleteScenarioIteration(tx Transaction, scenarioIterationId string) error
 }
 
@@ -127,4 +128,15 @@ func (repo *ScenarioIterationWriteRepositoryPostgresql) UpdateScenarioIteration(
 		return models.ScenarioIteration{}, err
 	}
 	return updatedIteration, nil
+}
+
+func (repo *ScenarioIterationWriteRepositoryPostgresql) UpdateScenarioIterationVersion(tx Transaction, scenarioIterationId string, newVersion int) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	_, err := pgTx.ExecBuilder(
+		NewQueryBuilder().Update(dbmodels.TABLE_SCENARIO_ITERATIONS).
+			Set("version", newVersion).
+			Where(squirrel.Eq{"id": scenarioIterationId}),
+	)
+	return err
 }

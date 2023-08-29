@@ -9,10 +9,12 @@ import (
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/ast_eval"
 	"marble/marble-backend/usecases/org_transaction"
+	"marble/marble-backend/usecases/security"
 	"marble/marble-backend/utils"
 )
 
 type DecisionUsecase struct {
+	enforceSecurity                 security.EnforceSecurityDecision
 	transactionFactory              repositories.TransactionFactory
 	orgTransactionFactory           org_transaction.Factory
 	ingestedDataReadRepository      repositories.IngestedDataReadRepository
@@ -24,13 +26,15 @@ type DecisionUsecase struct {
 	evaluateRuleAstExpression       ast_eval.EvaluateRuleAstExpression
 }
 
-func (usecase *DecisionUsecase) GetDecision(creds models.Credentials, organizationId string, decisionId string) (models.Decision, error) {
+func (usecase *DecisionUsecase) GetDecision(decisionId string) (models.Decision, error) {
 	decision, err := usecase.decisionRepository.DecisionById(nil, decisionId)
-
 	if err != nil {
 		return models.Decision{}, err
 	}
-	return decision, utils.EnforceOrganizationAccess(creds, decision.OrganizationId)
+	if err := usecase.enforceSecurity.ReadDecision(decision); err != nil {
+		return models.Decision{}, err
+	}
+	return decision, nil
 }
 
 func (usecase *DecisionUsecase) ListDecisionsOfOrganization(organizationId string) ([]models.Decision, error) {
@@ -38,16 +42,24 @@ func (usecase *DecisionUsecase) ListDecisionsOfOrganization(organizationId strin
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) ([]models.Decision, error) {
-			return usecase.decisionRepository.DecisionsOfOrganization(tx, organizationId, 1000)
+			decisions, err := usecase.decisionRepository.DecisionsOfOrganization(tx, organizationId, 1000)
+			if err != nil {
+				return []models.Decision{}, err
+			}
+			for _, decision := range decisions {
+				if err := usecase.enforceSecurity.ReadDecision(decision); err != nil {
+					return []models.Decision{}, err
+				}
+			}
+			return decisions, nil
 		},
 	)
 }
 
 func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models.CreateDecisionInput, logger *slog.Logger) (models.Decision, error) {
-	if err := utils.EnforceOrganizationAccess(utils.CredentialsFromCtx(ctx), input.OrganizationId); err != nil {
+	if err := usecase.enforceSecurity.CreateDecision(input.OrganizationId); err != nil {
 		return models.Decision{}, err
 	}
-
 	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Decision, error) {
 		scenario, err := usecase.scenarioReadRepository.GetScenarioById(tx, input.ScenarioId)
 		if errors.Is(err, models.NotFoundInRepositoryError) {

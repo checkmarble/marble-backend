@@ -23,12 +23,12 @@ var ColumnsSelectCustomList = utils.ColumnList[DBCustomListResult]()
 func AdaptCustomList(db DBCustomListResult) models.CustomList {
 
 	return models.CustomList{
-		Id:          db.Id,
-		OrgId:       db.OrgId,
-		Name:        db.Name,
-		Description: db.Description,
-		CreatedAt:   db.CreatedAt,
-		UpdatedAt:   db.UpdatedAt,
-		DeletedAt:   db.DeletedAt,
+		Id:             db.Id,
+		OrganizationId: db.OrgId,
+		Name:           db.Name,
+		Description:    db.Description,
+		CreatedAt:      db.CreatedAt,
+		UpdatedAt:      db.UpdatedAt,
+		DeletedAt:      db.DeletedAt,
 	}
 }

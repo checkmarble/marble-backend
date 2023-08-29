@@ -51,31 +51,10 @@ func (usecases *Usecases) NewIngestionUseCase() IngestionUseCase {
 	}
 }
 
-func (usecases *Usecases) NewDecisionUsecase() DecisionUsecase {
-	return DecisionUsecase{
-		transactionFactory:              usecases.Repositories.TransactionFactory,
-		orgTransactionFactory:           usecases.NewOrgTransactionFactory(),
-		ingestedDataReadRepository:      usecases.Repositories.IngestedDataReadRepository,
-		decisionRepository:              usecases.Repositories.DecisionRepository,
-		datamodelRepository:             usecases.Repositories.DataModelRepository,
-		scenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,
-		scenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
-		customListRepository:            usecases.Repositories.CustomListRepository,
-		evaluateRuleAstExpression:       usecases.NewEvaluateRuleAstExpression(),
-	}
-}
-
 func (usecases *Usecases) NewUserUseCase() UserUseCase {
 	return UserUseCase{
 		transactionFactory: usecases.Repositories.TransactionFactory,
 		userRepository:     usecases.Repositories.UserRepository,
-	}
-}
-
-func (usecases *Usecases) NewCustomListUseCase() CustomListUseCase {
-	return CustomListUseCase{
-		transactionFactory:   usecases.Repositories.TransactionFactory,
-		CustomListRepository: usecases.Repositories.CustomListRepository,
 	}
 }
 
@@ -197,10 +176,11 @@ func (usecases *Usecases) NewEvaluateRuleAstExpression() ast_eval.EvaluateRuleAs
 
 func (usecases *Usecases) NewScenarioPublisher() scenarios.ScenarioPublisher {
 	return scenarios.ScenarioPublisher{
-		ScenarioPublicationsRepository:  usecases.Repositories.ScenarioPublicationRepository,
-		ScenarioWriteRepository:         usecases.Repositories.ScenarioWriteRepository,
-		ScenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
-		ValidateScenarioIteration:       usecases.NewValidateScenarioIteration(),
+		ScenarioPublicationsRepository:   usecases.Repositories.ScenarioPublicationRepository,
+		ScenarioWriteRepository:          usecases.Repositories.ScenarioWriteRepository,
+		ScenarioIterationReadRepository:  usecases.Repositories.ScenarioIterationReadRepository,
+		ScenarioIterationWriteRepository: usecases.Repositories.ScenarioIterationWriteRepository,
+		ValidateScenarioIteration:        usecases.NewValidateScenarioIteration(),
 	}
 }
 

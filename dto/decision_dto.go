@@ -1,9 +1,24 @@
 package dto
 
 import (
+	"encoding/json"
 	"marble/marble-backend/models"
 	"time"
 )
+
+type GetDecisionInput struct {
+	DecisionId string `in:"path=decisionId"`
+}
+
+type CreateDecisionBody struct {
+	ScenarioId        string          `json:"scenario_id"`
+	TriggerObjectRaw  json.RawMessage `json:"trigger_object"`
+	TriggerObjectType string          `json:"object_type"`
+}
+
+type CreateDecisionInputDto struct {
+	Body *CreateDecisionBody `in:"body=json"`
+}
 
 type APIDecisionRule struct {
 	Name          string    `json:"name"`

@@ -28,6 +28,35 @@ func (usecases *UsecasesWithCreds) NewEnforceScenarioSecurity() security.Enforce
 	}
 }
 
+func (usecases *UsecasesWithCreds) NewEnforceDecisionSecurity() security.EnforceSecurityDecision {
+	return &security.EnforceSecurityDecisionImpl{
+		EnforceSecurity: usecases.NewEnforceSecurity(),
+		Credentials:     usecases.Credentials,
+	}
+}
+
+func (usecases *UsecasesWithCreds) NewEnforceCustomListSecurity() security.EnforceSecurityCustomList {
+	return &security.EnforceSecurityCustomListImpl{
+		EnforceSecurity: usecases.NewEnforceSecurity(),
+		Credentials:     usecases.Credentials,
+	}
+}
+
+func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
+	return DecisionUsecase{
+		enforceSecurity:                 usecases.NewEnforceDecisionSecurity(),
+		transactionFactory:              usecases.Repositories.TransactionFactory,
+		orgTransactionFactory:           usecases.NewOrgTransactionFactory(),
+		ingestedDataReadRepository:      usecases.Repositories.IngestedDataReadRepository,
+		decisionRepository:              usecases.Repositories.DecisionRepository,
+		datamodelRepository:             usecases.Repositories.DataModelRepository,
+		scenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,
+		scenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
+		customListRepository:            usecases.Repositories.CustomListRepository,
+		evaluateRuleAstExpression:       usecases.NewEvaluateRuleAstExpression(),
+	}
+}
+
 func (usecases *UsecasesWithCreds) NewScenarioUsecase() ScenarioUsecase {
 	return ScenarioUsecase{
 		transactionFactory:      usecases.Repositories.TransactionFactory,
@@ -40,12 +69,12 @@ func (usecases *UsecasesWithCreds) NewScenarioUsecase() ScenarioUsecase {
 
 func (usecases *UsecasesWithCreds) NewScenarioIterationUsecase() ScenarioIterationUsecase {
 	return ScenarioIterationUsecase{
-		organizationIdOfContext:                 usecases.OrganizationIdOfContext,
-		scenarioIterationsReadRepository:        usecases.Repositories.ScenarioIterationReadRepository,
-		scenarioIterationsWriteRepository:       usecases.Repositories.ScenarioIterationWriteRepository,
-		enforceSecurity:                         usecases.NewEnforceScenarioSecurity(),
-		scenarioFetcher:                         usecases.NewScenarioFetcher(),
-		validateScenarioIteration:               usecases.NewValidateScenarioIteration(),
+		organizationIdOfContext:           usecases.OrganizationIdOfContext,
+		scenarioIterationsReadRepository:  usecases.Repositories.ScenarioIterationReadRepository,
+		scenarioIterationsWriteRepository: usecases.Repositories.ScenarioIterationWriteRepository,
+		enforceSecurity:                   usecases.NewEnforceScenarioSecurity(),
+		scenarioFetcher:                   usecases.NewScenarioFetcher(),
+		validateScenarioIteration:         usecases.NewValidateScenarioIteration(),
 	}
 }
 
@@ -65,6 +94,14 @@ func (usecases *UsecasesWithCreds) AstExpressionUsecase() AstExpressionUsecase {
 		CustomListRepository: usecases.Repositories.CustomListRepository,
 		DataModelRepository:  usecases.Repositories.DataModelRepository,
 		ScenarioRepository:   usecases.Repositories.ScenarioReadRepository,
+	}
+}
+
+func (usecases *UsecasesWithCreds) NewCustomListUseCase() CustomListUseCase {
+	return CustomListUseCase{
+		enforceSecurity:      usecases.NewEnforceCustomListSecurity(),
+		transactionFactory:   usecases.Repositories.TransactionFactory,
+		CustomListRepository: usecases.Repositories.CustomListRepository,
 	}
 }
 

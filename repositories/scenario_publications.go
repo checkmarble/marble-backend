@@ -11,8 +11,6 @@ type ScenarioPublicationRepository interface {
 	ListScenarioPublicationsOfOrganization(tx Transaction, organizationId string, filters models.ListScenarioPublicationsFilters) ([]models.ScenarioPublication, error)
 	CreateScenarioPublication(tx Transaction, input models.CreateScenarioPublicationInput, newScenarioPublicationId string) error
 	GetScenarioPublicationById(tx Transaction, scenarioPublicationID string) (models.ScenarioPublication, error)
-	// FIXME Just temporarily placed here, will be moved to scenario iteration write repo
-	UpdateScenarioIterationVersion(tx Transaction, scenarioIterationId string, newVersion int) error
 }
 
 type ScenarioPublicationRepositoryPostgresql struct {
@@ -81,18 +79,6 @@ func (repo *ScenarioPublicationRepositoryPostgresql) CreateScenarioPublication(t
 				input.ScenarioIterationId,
 				input.PublicationAction.String(),
 			),
-	)
-	return err
-}
-
-// FIXME Just temporarily placed here, will be moved to scenario iteration write repo
-func (repo *ScenarioPublicationRepositoryPostgresql) UpdateScenarioIterationVersion(tx Transaction, scenarioIterationId string, newVersion int) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
-
-	_, err := pgTx.ExecBuilder(
-		NewQueryBuilder().Update(dbmodels.TABLE_SCENARIO_ITERATIONS).
-			Set("version", newVersion).
-			Where(squirrel.Eq{"id": scenarioIterationId}),
 	)
 	return err
 }
