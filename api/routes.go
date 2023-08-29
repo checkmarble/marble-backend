@@ -83,11 +83,11 @@ func (api *API) routes() {
 
 			iterationsReadRouter.Route("/{scenarioIterationId:"+UUIDRegExp+"}", func(iterationDetailReadRouter chi.Router) {
 
-				iterationDetailReadRouter.With(httpin.NewInput(GetScenarioIterationInput{})).
-					Get("/", api.GetScenarioIteration())
+				iterationDetailReadRouter.Get("/", api.GetScenarioIteration())
 
-				iterationDetailReadRouter.With(httpin.NewInput(GetScenarioIterationInput{})).
-					Get("/validate", api.ValidateScenarioIteration())
+				iterationDetailReadRouter.Get("/validate", api.ValidateScenarioIteration())
+				iterationDetailReadRouter.With(httpin.NewInput(PostScenarioValidationInput{})).
+					Post("/validate", api.ValidateScenarioIteration())
 
 				iterationDetailCreateRouter := iterationDetailReadRouter.With(api.enforcePermissionMiddleware(models.SCENARIO_CREATE))
 

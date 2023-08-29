@@ -301,7 +301,7 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 	})
 	assert.NoError(t, err)
 
-	validation, err := scenarioIterationUsecase.ValidateScenarioIteration(scenarioIterationId)
+	validation, err := scenarioIterationUsecase.ValidateScenarioIteration(scenarioIterationId, nil, nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, scenarios.ScenarioValidationToError(validation))

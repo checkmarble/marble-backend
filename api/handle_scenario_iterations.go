@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"marble/marble-backend/dto"
 	"marble/marble-backend/models"
+	"marble/marble-backend/models/ast"
 	"marble/marble-backend/utils"
 	"net/http"
 
@@ -75,7 +76,7 @@ func (api *API) CreateScenarioIteration() http.HandlerFunc {
 			if input.Payload.Body.TriggerConditionAstExpression != nil {
 				trigger, err := dto.AdaptASTNode(*input.Payload.Body.TriggerConditionAstExpression)
 				if err != nil {
-					presentError(w, r, fmt.Errorf("could not unmarshal trigger condition ast expression: %w %w", err, models.BadParameterError))
+					presentError(w, r, fmt.Errorf("invalid trigger: %w %w", err, models.BadParameterError))
 					return
 				}
 				createScenarioIterationInput.Body.TriggerConditionAstExpression = &trigger
@@ -128,16 +129,20 @@ func (api *API) CreateDraftFromIteration() http.HandlerFunc {
 	}
 }
 
-type GetScenarioIterationInput struct {
-	ScenarioIterationId string `in:"path=scenarioIterationId"`
+func requiredIterationParam(r *http.Request) (string, error) {
+	return requiredUuidUrlParam(r, "scenarioIterationId")
 }
 
 func (api *API) GetScenarioIteration() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		input := r.Context().Value(httpin.Input).(*GetScenarioIterationInput)
+
+		iterationId, err := requiredIterationParam(r)
+		if presentError(w, r, err) {
+			return
+		}
 
 		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
-		si, err := usecase.GetScenarioIteration(input.ScenarioIterationId)
+		si, err := usecase.GetScenarioIteration(iterationId)
 		if presentError(w, r, err) {
 			return
 		}
@@ -180,7 +185,7 @@ func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 		if input.Payload.Body.TriggerConditionAstExpression != nil {
 			trigger, err := dto.AdaptASTNode(*input.Payload.Body.TriggerConditionAstExpression)
 			if err != nil {
-				presentError(w, r, fmt.Errorf("could not unmarshal trigger condition ast expression: %w %w", err, models.BadParameterError))
+				presentError(w, r, fmt.Errorf("invalid trigger: %w %w", err, models.BadParameterError))
 				return
 			}
 			updateScenarioIterationInput.Body.TriggerConditionAstExpression = &trigger
@@ -210,18 +215,46 @@ func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 		})
 	}
 }
+
+type PostScenarioValidationInput struct {
+	Body *struct {
+		TriggerOrRule *dto.NodeDto `json:"trigger_or_rule"`
+		RuleId        *string      `json:"rule_id"`
+	} `in:"body=json"`
+}
+
+func adaptTriggerAndRuleIdFromInput(input *PostScenarioValidationInput) (triggerOrRule *ast.Node, ruleId *string, err error) {
+
+	// body is optional
+	if input != nil && input.Body != nil && input.Body.TriggerOrRule != nil {
+		ruleId = input.Body.RuleId
+		node, err := dto.AdaptASTNode(*input.Body.TriggerOrRule)
+		if err != nil {
+			return triggerOrRule, ruleId, fmt.Errorf("invalid rule or trigger: %w %w", err, models.BadParameterError)
+		}
+		triggerOrRule = &node
+	}
+
+	return triggerOrRule, ruleId, err
+}
+
 func (api *API) ValidateScenarioIteration() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		iterationId := r.Context().Value(httpin.Input).(*GetScenarioIterationInput).ScenarioIterationId
+		iterationId, err := requiredIterationParam(r)
+		if presentError(w, r, err) {
+			return
+		}
 
-		err := utils.ValidateUuid(iterationId)
+		input, _ := r.Context().Value(httpin.Input).(*PostScenarioValidationInput)
+
+		triggerOrRuleToReplace, ruleIdToReplace, err := adaptTriggerAndRuleIdFromInput(input)
 		if presentError(w, r, err) {
 			return
 		}
 
 		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
-		scenarioValidation, err := usecase.ValidateScenarioIteration(iterationId)
+		scenarioValidation, err := usecase.ValidateScenarioIteration(iterationId, triggerOrRuleToReplace, ruleIdToReplace)
 
 		if presentError(w, r, err) {
 			return

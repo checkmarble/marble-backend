@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"marble/marble-backend/models"
+	"marble/marble-backend/models/ast"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/scenarios"
 	"marble/marble-backend/usecases/security"
@@ -131,7 +132,11 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(ctx co
 	return usecase.scenarioIterationsWriteRepository.CreateScenarioIteration(nil, organizationId, createScenarioIterationInput)
 }
 
-func (usecase *ScenarioIterationUsecase) ValidateScenarioIteration(iterationId string) (validation models.ScenarioValidation, err error) {
+// Return a validation by running the scenario using fake data
+// If `triggerOrRuleToReplace` is provided, it is used during the validation.
+// If `replaceRuleId` is provided, the corresponding rule is replaced.
+// if `replaceRuleId` is nil, the trigger is replaced.
+func (usecase *ScenarioIterationUsecase) ValidateScenarioIteration(iterationId string, triggerOrRuleToReplace *ast.Node, ruleIdToReplace *string) (validation models.ScenarioValidation, err error) {
 
 	scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(nil, iterationId)
 	if err != nil {
@@ -142,5 +147,32 @@ func (usecase *ScenarioIterationUsecase) ValidateScenarioIteration(iterationId s
 		return validation, err
 	}
 
+	scenarioAndIteration, err = replaceTriggerOrRule(scenarioAndIteration, triggerOrRuleToReplace, ruleIdToReplace)
+	if err != nil {
+		return validation, err
+	}
 	return usecase.validateScenarioIteration.Validate(scenarioAndIteration), nil
+}
+
+func replaceTriggerOrRule(scenarioAndIteration scenarios.ScenarioAndIteration, triggerOrRuleToReplace *ast.Node, ruleIdToReplace *string) (scenarios.ScenarioAndIteration, error) {
+
+	if triggerOrRuleToReplace != nil {
+		if ruleIdToReplace != nil {
+			var found bool
+			for index, rule := range scenarioAndIteration.Iteration.Rules {
+				if rule.Id == *ruleIdToReplace {
+					scenarioAndIteration.Iteration.Rules[index].FormulaAstExpression = triggerOrRuleToReplace
+					found = true
+					break
+				}
+			}
+			if !found {
+				return scenarioAndIteration, fmt.Errorf("rule not found: %w", models.NotFoundError)
+			}
+		} else {
+			scenarioAndIteration.Iteration.TriggerConditionAstExpression = triggerOrRuleToReplace
+		}
+	}
+
+	return scenarioAndIteration, nil
 }
