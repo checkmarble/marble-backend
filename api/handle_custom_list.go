@@ -20,8 +20,8 @@ func (api *API) handleGetAllCustomLists() http.HandlerFunc {
 		}
 		logger = logger.With(slog.String("organizationId", organizationId))
 
-		usecase := api.usecases.NewCustomListUseCase()
-		lists, err := usecase.GetCustomLists(ctx, organizationId)
+		usecase := api.UsecasesWithCreds(r).NewCustomListUseCase()
+		lists, err := usecase.GetCustomLists(organizationId)
 		if presentError(w, r, err) {
 			logger.ErrorContext(ctx, "error getting lists: \n"+err.Error())
 			return
@@ -43,11 +43,11 @@ func (api *API) handlePostCustomList() http.HandlerFunc {
 
 		inputDto := ctx.Value(httpin.Input).(*dto.CreateCustomListInputDto).Body
 
-		usecase := api.usecases.NewCustomListUseCase()
-		customList, err := usecase.CreateCustomList(ctx, models.CreateCustomListInput{
-			OrgId:       organizationId,
-			Name:        inputDto.Name,
-			Description: inputDto.Description,
+		usecase := api.UsecasesWithCreds(r).NewCustomListUseCase()
+		customList, err := usecase.CreateCustomList(models.CreateCustomListInput{
+			OrganizationId: organizationId,
+			Name:           inputDto.Name,
+			Description:    inputDto.Description,
 		})
 		if presentError(w, r, err) {
 			logger.ErrorContext(ctx, "error creating a list: \n"+err.Error())
@@ -69,15 +69,15 @@ func (api *API) handleGetCustomListWithValues() http.HandlerFunc {
 		logger = logger.With(slog.String("organizationId", organizationId))
 		inputDto := ctx.Value(httpin.Input).(*dto.GetCustomListInputDto)
 
-		usecase := api.usecases.NewCustomListUseCase()
-		CustomList, err := usecase.GetCustomListById(ctx, inputDto.CustomListID)
+		usecase := api.UsecasesWithCreds(r).NewCustomListUseCase()
+		CustomList, err := usecase.GetCustomListById(inputDto.CustomListID)
 		if presentError(w, r, err) {
 			logger.ErrorContext(ctx, "error getting a list: \n"+err.Error())
 			return
 		}
-		CustomListValues, err := usecase.GetCustomListValues(ctx, models.GetCustomListValuesInput{
-			Id:    inputDto.CustomListID,
-			OrgId: organizationId,
+		CustomListValues, err := usecase.GetCustomListValues(models.GetCustomListValuesInput{
+			Id:             inputDto.CustomListID,
+			OrganizationId: organizationId,
 		})
 
 		if presentError(w, r, err) {
@@ -102,12 +102,12 @@ func (api *API) handlePatchCustomList() http.HandlerFunc {
 		listId := inputDto.CustomListID
 		requestData := inputDto.Body
 
-		usecase := api.usecases.NewCustomListUseCase()
-		CustomList, err := usecase.UpdateCustomList(ctx, models.UpdateCustomListInput{
-			Id:          listId,
-			OrgId:       organizationId,
-			Name:        &requestData.Name,
-			Description: &requestData.Description,
+		usecase := api.UsecasesWithCreds(r).NewCustomListUseCase()
+		CustomList, err := usecase.UpdateCustomList(models.UpdateCustomListInput{
+			Id:             listId,
+			OrganizationId: organizationId,
+			Name:           &requestData.Name,
+			Description:    &requestData.Description,
 		})
 
 		if presentError(w, r, err) {
@@ -131,10 +131,10 @@ func (api *API) handleDeleteCustomList() http.HandlerFunc {
 		logger = logger.With(slog.String("organizationId", organizationId))
 		inputDto := ctx.Value(httpin.Input).(*dto.DeleteCustomListInputDto)
 
-		usecase := api.usecases.NewCustomListUseCase()
-		err = usecase.SoftDeleteCustomList(ctx, models.DeleteCustomListInput{
-			Id:    inputDto.CustomListID,
-			OrgId: organizationId,
+		usecase := api.UsecasesWithCreds(r).NewCustomListUseCase()
+		err = usecase.SoftDeleteCustomList(models.DeleteCustomListInput{
+			Id:             inputDto.CustomListID,
+			OrganizationId: organizationId,
 		})
 		if presentError(w, r, err) {
 			logger.ErrorContext(ctx, "error deleting a list: \n"+err.Error())
@@ -158,11 +158,11 @@ func (api *API) handlePostCustomListValue() http.HandlerFunc {
 		listId := inputDto.CustomListID
 		requestData := inputDto.Body
 
-		usecase := api.usecases.NewCustomListUseCase()
-		customListValue, err := usecase.AddCustomListValue(ctx, models.AddCustomListValueInput{
-			CustomListId: listId,
-			OrgId:        organizationId,
-			Value:        requestData.Value,
+		usecase := api.UsecasesWithCreds(r).NewCustomListUseCase()
+		customListValue, err := usecase.AddCustomListValue(models.AddCustomListValueInput{
+			CustomListId:   listId,
+			OrganizationId: organizationId,
+			Value:          requestData.Value,
 		})
 		if presentError(w, r, err) {
 			logger.ErrorContext(ctx, "error adding a value to a list: \n"+err.Error())
@@ -186,11 +186,11 @@ func (api *API) handleDeleteCustomListValue() http.HandlerFunc {
 		inputDto := ctx.Value(httpin.Input).(*dto.DeleteCustomListValueInputDto)
 		listId := inputDto.CustomListID
 
-		usecase := api.usecases.NewCustomListUseCase()
-		err = usecase.DeleteCustomListValue(ctx, models.DeleteCustomListValueInput{
-			Id:           inputDto.Body.Id,
-			CustomListId: listId,
-			OrgId:        organizationId,
+		usecase := api.UsecasesWithCreds(r).NewCustomListUseCase()
+		err = usecase.DeleteCustomListValue(models.DeleteCustomListValueInput{
+			Id:             inputDto.Body.Id,
+			CustomListId:   listId,
+			OrganizationId: organizationId,
 		})
 
 		if presentError(w, r, err) {

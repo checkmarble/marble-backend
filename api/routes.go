@@ -30,16 +30,13 @@ func (api *API) routes() {
 		// Decision API subrouter
 		// matches all /decisions routes
 		authedRouter.Route("/decisions", func(decisionsRouter chi.Router) {
-			decisionsRouter.Use(api.enforcePermissionMiddleware(models.DECISION_READ))
-
 			decisionsRouter.Get("/", api.handleListDecisions())
-			decisionsRouter.With(httpin.NewInput(GetDecisionInput{})).
+			
+			decisionsRouter.With(httpin.NewInput(dto.GetDecisionInput{})).
 				Get("/{decisionId:"+UUIDRegExp+"}", api.handleGetDecision())
 
-			decisionsRouter.With(
-				api.enforcePermissionMiddleware(models.DECISION_CREATE),
-				httpin.NewInput(CreateDecisionInputDto{}),
-			).Post("/", api.handlePostDecision())
+			decisionsRouter.With(httpin.NewInput(dto.CreateDecisionInputDto{})).
+				Post("/", api.handlePostDecision())
 		})
 
 		authedRouter.Route("/ingestion", func(r chi.Router) {
@@ -49,40 +46,31 @@ func (api *API) routes() {
 		})
 
 		authedRouter.Route("/scenarios", func(scenariosRouter chi.Router) {
-			scenariosRouter.Use(api.enforcePermissionMiddleware(models.SCENARIO_READ))
 
 			scenariosRouter.Get("/", api.ListScenarios())
 
-			scenariosRouter.With(
-				api.enforcePermissionMiddleware(models.SCENARIO_CREATE),
-				httpin.NewInput(dto.CreateScenarioInput{}),
-			).Post("/", api.CreateScenario())
+			scenariosRouter.With(httpin.NewInput(dto.CreateScenarioInput{})).
+				Post("/", api.CreateScenario())
 
 			scenariosRouter.Route("/{scenarioId:"+UUIDRegExp+"}", func(r chi.Router) {
 				r.With(httpin.NewInput(GetScenarioInput{})).
 					Get("/", api.GetScenario())
 
-				r.With(
-					api.enforcePermissionMiddleware(models.SCENARIO_CREATE),
-					httpin.NewInput(dto.UpdateScenarioInput{}),
-				).Patch("/", api.UpdateScenario())
+				r.With(httpin.NewInput(dto.UpdateScenarioInput{})).
+					Patch("/", api.UpdateScenario())
 			})
 
 		})
 
-		authedRouter.Route("/scenario-iterations", func(scenarIterationRouter chi.Router) {
+		authedRouter.Route("/scenario-iterations", func(iterationRouter chi.Router) {
 
-			iterationsReadRouter := scenarIterationRouter.With(api.enforcePermissionMiddleware(models.SCENARIO_READ))
-
-			iterationsReadRouter.With(httpin.NewInput(ListScenarioIterationsInput{})).
+			iterationRouter.With(httpin.NewInput(ListScenarioIterationsInput{})).
 				Get("/", api.ListScenarioIterations())
 
-			iterationsReadRouter.With(
-				api.enforcePermissionMiddleware(models.SCENARIO_CREATE),
-				httpin.NewInput(dto.CreateScenarioIterationInput{}),
-			).Post("/", api.CreateScenarioIteration())
+				iterationRouter.With(httpin.NewInput(dto.CreateScenarioIterationInput{})).
+					Post("/", api.CreateScenarioIteration())
 
-			iterationsReadRouter.Route("/{scenarioIterationId:"+UUIDRegExp+"}", func(iterationDetailReadRouter chi.Router) {
+			iterationRouter.Route("/{scenarioIterationId:"+UUIDRegExp+"}", func(iterationDetailReadRouter chi.Router) {
 
 				iterationDetailReadRouter.Get("/", api.GetScenarioIteration())
 
@@ -90,13 +78,11 @@ func (api *API) routes() {
 				iterationDetailReadRouter.With(httpin.NewInput(PostScenarioValidationInput{})).
 					Post("/validate", api.ValidateScenarioIteration())
 
-				iterationDetailCreateRouter := iterationDetailReadRouter.With(api.enforcePermissionMiddleware(models.SCENARIO_CREATE))
-
-				iterationDetailCreateRouter.With(
+				iterationDetailReadRouter.With(
 					httpin.NewInput(dto.CreateDraftFromScenarioIterationInput{}),
 				).Post("/", api.CreateDraftFromIteration())
 
-				iterationDetailCreateRouter.With(
+				iterationDetailReadRouter.With(
 					httpin.NewInput(dto.UpdateScenarioIterationInput{}),
 				).Patch("/", api.UpdateScenarioIteration())
 
@@ -104,40 +90,30 @@ func (api *API) routes() {
 		})
 
 		authedRouter.Route("/scenario-iteration-rules", func(scenarIterRulesRouter chi.Router) {
-			scenarIterRulesRouter.Use(api.enforcePermissionMiddleware(models.SCENARIO_READ))
 
 			scenarIterRulesRouter.With(httpin.NewInput(dto.ListRulesInput{})).
 				Get("/", api.ListRules())
 
-			scenarIterRulesRouter.With(
-				api.enforcePermissionMiddleware(models.SCENARIO_CREATE),
-				httpin.NewInput(dto.CreateRuleInput{}),
-			).Post("/", api.CreateRule())
+			scenarIterRulesRouter.With(httpin.NewInput(dto.CreateRuleInput{})).
+			Post("/", api.CreateRule())
 
 			scenarIterRulesRouter.Route("/{ruleID:"+UUIDRegExp+"}", func(r chi.Router) {
 				r.With(httpin.NewInput(dto.GetRuleInput{})).
 					Get("/", api.GetRule())
-				r.With(
-					api.enforcePermissionMiddleware(models.SCENARIO_CREATE),
-					httpin.NewInput(dto.UpdateRuleInput{}),
-				).Patch("/", api.UpdateRule())
-				r.With(
-					api.enforcePermissionMiddleware(models.SCENARIO_CREATE),
-					httpin.NewInput(dto.DeleteRuleInput{}),
-				).Delete("/", api.DeleteRule())
+				r.With(httpin.NewInput(dto.UpdateRuleInput{})).
+					Patch("/", api.UpdateRule())
+				r.With(httpin.NewInput(dto.DeleteRuleInput{})).
+					Delete("/", api.DeleteRule())
 			})
 		})
 
 		authedRouter.Route("/scenario-publications", func(scenarPublicationsRouter chi.Router) {
-			scenarPublicationsRouter.Use(api.enforcePermissionMiddleware(models.SCENARIO_READ))
 
 			scenarPublicationsRouter.With(httpin.NewInput(dto.ListScenarioPublicationsInput{})).
 				Get("/", api.ListScenarioPublications())
 
-			scenarPublicationsRouter.With(
-				api.enforcePermissionMiddleware(models.SCENARIO_PUBLISH),
-				httpin.NewInput(dto.CreateScenarioPublicationInput{}),
-			).Post("/", api.CreateScenarioPublication())
+			scenarPublicationsRouter.With(httpin.NewInput(dto.CreateScenarioPublicationInput{})).
+				Post("/", api.CreateScenarioPublication())
 
 			scenarPublicationsRouter.Route("/{scenarioPublicationID:"+UUIDRegExp+"}", func(r chi.Router) {
 				r.With(httpin.NewInput(GetScenarioPublicationInput{})).
@@ -172,38 +148,26 @@ func (api *API) routes() {
 		})
 
 		authedRouter.Route("/custom-lists", func(r chi.Router) {
-			r.With(api.enforcePermissionMiddleware(models.CUSTOM_LISTS_READ)).Get("/", api.handleGetAllCustomLists())
-			r.With(
-				api.enforcePermissionMiddleware(models.CUSTOM_LISTS_CREATE),
-				httpin.NewInput(dto.CreateCustomListInputDto{}),
-			).Post("/", api.handlePostCustomList())
+			r.Get("/", api.handleGetAllCustomLists())
+			r.With(httpin.NewInput(dto.CreateCustomListInputDto{})).
+				Post("/", api.handlePostCustomList())
 
 			r.Route("/{customListId}", func(r chi.Router) {
-				r.With(
-					api.enforcePermissionMiddleware(models.CUSTOM_LISTS_READ),
-					httpin.NewInput(dto.GetCustomListInputDto{}),
-				).Get("/", api.handleGetCustomListWithValues())
+				r.With(httpin.NewInput(dto.GetCustomListInputDto{})).
+					Get("/", api.handleGetCustomListWithValues())
 
-				r.With(
-					api.enforcePermissionMiddleware(models.CUSTOM_LISTS_CREATE),
-					httpin.NewInput(dto.UpdateCustomListInputDto{}),
-				).Patch("/", api.handlePatchCustomList())
+				r.With(httpin.NewInput(dto.UpdateCustomListInputDto{})).
+					Patch("/", api.handlePatchCustomList())
 
-				r.With(
-					api.enforcePermissionMiddleware(models.CUSTOM_LISTS_CREATE),
-					httpin.NewInput(dto.DeleteCustomListInputDto{}),
-				).Delete("/", api.handleDeleteCustomList())
+				r.With(httpin.NewInput(dto.DeleteCustomListInputDto{})).
+					Delete("/", api.handleDeleteCustomList())
 
 				r.Route("/values", func(r chi.Router) {
-					r.With(
-						api.enforcePermissionMiddleware(models.CUSTOM_LISTS_CREATE),
-						httpin.NewInput(dto.CreateCustomListValueInputDto{}),
-					).Post("/", api.handlePostCustomListValue())
+					r.With(httpin.NewInput(dto.CreateCustomListValueInputDto{})).
+						Post("/", api.handlePostCustomListValue())
 
-					r.With(
-						api.enforcePermissionMiddleware(models.CUSTOM_LISTS_CREATE),
-						httpin.NewInput(dto.DeleteCustomListValueInputDto{}),
-					).Delete("/", api.handleDeleteCustomListValue())
+					r.With(httpin.NewInput(dto.DeleteCustomListValueInputDto{})).
+						Delete("/", api.handleDeleteCustomListValue())
 				})
 			})
 		})

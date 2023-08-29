@@ -73,8 +73,8 @@ type CreateScenarioPublicationInput struct {
 }
 
 type ListScenarioPublicationsInput struct {
-	ScenarioId          string `in:"query=scenarioID"`
-	ScenarioIterationId string `in:"query=scenarioIterationID"`
+	ScenarioId          *string `in:"query=scenarioID"`
+	ScenarioIterationId *string `in:"query=scenarioIterationID"`
 }
 
 func AdaptCreateScenario(input *CreateScenarioInput, organizationId string) models.CreateScenarioInput {

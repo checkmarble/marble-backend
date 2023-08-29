@@ -14,24 +14,15 @@ import (
 	"github.com/ggicci/httpin"
 )
 
-type GetDecisionInput struct {
-	DecisionId string `in:"path=decisionId"`
-}
-
 func (api *API) handleGetDecision() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		organizationId, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
-			return
-		}
-		input := ctx.Value(httpin.Input).(*GetDecisionInput)
+		input := ctx.Value(httpin.Input).(*dto.GetDecisionInput)
 		decisionId := input.DecisionId
 
-		usecase := api.usecases.NewDecisionUsecase()
-		decision, err := usecase.GetDecision(utils.CredentialsFromCtx(ctx), organizationId, decisionId)
-
+		usecase := api.UsecasesWithCreds(r).NewDecisionUsecase()
+		decision, err := usecase.GetDecision(decisionId)
 		if presentError(w, r, err) {
 			return
 		}
@@ -50,7 +41,7 @@ func (api *API) handleListDecisions() http.HandlerFunc {
 		}
 		logger = logger.With(slog.String("organizationId", organizationId))
 
-		usecase := api.usecases.NewDecisionUsecase()
+		usecase := api.UsecasesWithCreds(r).NewDecisionUsecase()
 		decisions, err := usecase.ListDecisionsOfOrganization(organizationId)
 		if presentError(w, r, err) {
 			return
@@ -69,16 +60,6 @@ func (api *API) handleListDecisions() http.HandlerFunc {
 	}
 }
 
-type CreateDecisionBody struct {
-	ScenarioId        string          `json:"scenario_id"`
-	TriggerObjectRaw  json.RawMessage `json:"trigger_object"`
-	TriggerObjectType string          `json:"object_type"`
-}
-
-type CreateDecisionInputDto struct {
-	Body *CreateDecisionBody `in:"body=json"`
-}
-
 func (api *API) handlePostDecision() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -89,7 +70,7 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 			return
 		}
 
-		input := ctx.Value(httpin.Input).(*CreateDecisionInputDto)
+		input := ctx.Value(httpin.Input).(*dto.CreateDecisionInputDto)
 		requestData := input.Body
 		logger = logger.With(slog.String("scenarioId", requestData.ScenarioId), slog.String("objectType", requestData.TriggerObjectType), slog.String("organizationId", organizationId))
 
@@ -128,7 +109,8 @@ func (api *API) handlePostDecision() http.HandlerFunc {
 			return
 		}
 		ClientObject := models.ClientObject{TableName: models.TableName(requestData.TriggerObjectType), Data: triggerObjectMap}
-		decisionUsecase := api.usecases.NewDecisionUsecase()
+		decisionUsecase := api.UsecasesWithCreds(r).NewDecisionUsecase()
+
 		decision, err := decisionUsecase.CreateDecision(ctx, models.CreateDecisionInput{
 			ScenarioId:              requestData.ScenarioId,
 			ClientObject:            ClientObject,

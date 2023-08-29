@@ -34,11 +34,10 @@ func (api *API) ListScenarioPublications() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		input := r.Context().Value(httpin.Input).(*dto.ListScenarioPublicationsInput)
 
-		options := &utils.PtrToOptions{OmitZero: true}
 		usecase := api.UsecasesWithCreds(r).NewScenarioPublicationUsecase()
 		scenarioPublications, err := usecase.ListScenarioPublications(models.ListScenarioPublicationsFilters{
-			ScenarioId:          utils.PtrTo(input.ScenarioId, options),
-			ScenarioIterationId: utils.PtrTo(input.ScenarioIterationId, options),
+			ScenarioId:          input.ScenarioId,
+			ScenarioIterationId: input.ScenarioIterationId,
 		})
 		if presentError(w, r, err) {
 			return

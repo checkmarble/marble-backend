@@ -56,8 +56,8 @@ func (d *DataAccessor) GetDbHandle() (db *pgxpool.Pool, schema string, err error
 func (d *DataAccessor) GetDbCustomListValues(ctx context.Context, customListId string) ([]string, error) {
 	var customListValues []string
 	values, err := d.customListRepository.GetCustomListValues(nil, models.GetCustomListValuesInput{
-		Id:    customListId,
-		OrgId: d.organizationId,
+		Id:             customListId,
+		OrganizationId: d.organizationId,
 	})
 	if err != nil {
 		return nil, err

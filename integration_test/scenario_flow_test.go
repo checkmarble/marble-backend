@@ -376,7 +376,7 @@ func createTransactionPayload(transactionPayloadJson []byte, triggerObjectMap ma
 }
 
 func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecases.UsecasesWithCreds, organizationId, scenarioId string, logger *slog.Logger) {
-	decisionUsecase := testUsecases.NewDecisionUsecase()
+	decisionUsecase := usecasesWithCreds.NewDecisionUsecase()
 
 	// Create a decision [REJECT]
 	transactionPayloadJson := []byte(`{

@@ -32,7 +32,7 @@ func (clva CustomListValuesAccess) Evaluate(arguments ast.Arguments) (any, []err
 	if err != nil {
 		return MakeEvaluateError(errors.New("list not found"))
 	}
-	if err := clva.EnforceSecurity.ReadOrganization(list.OrgId); err != nil {
+	if err := clva.EnforceSecurity.ReadOrganization(list.OrganizationId); err != nil {
 		return MakeEvaluateError(err)
 	}
 
