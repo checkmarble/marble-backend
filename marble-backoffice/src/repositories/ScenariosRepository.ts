@@ -5,6 +5,7 @@ import type {
   CreateScenario,
   UpdateRule,
   UpdateIteration,
+  AstNode,
 } from "@/models";
 import {
   adaptScenariosApiResult,
@@ -132,6 +133,21 @@ export async function validateIteration(
 ) {
   return adaptValidateIterationApiResult(
     await repository.marbleApi.validateIteration(iterationId)
+  );
+}
+
+export async function validateIterationWithGivenTriggerOrRule(
+  repository: ScenariosRepository,
+  iterationId: string,
+  triggerOrRule: AstNode,
+  ruleId: string | null
+) {
+  return adaptValidateIterationApiResult(
+    await repository.marbleApi.validateScenarioIterationWithGivenTriggerOrRule(
+      iterationId,
+      triggerOrRule,
+      ruleId
+    )
   );
 }
 

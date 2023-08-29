@@ -6,6 +6,7 @@ import type {
   CreateScenario,
   UpdateRule,
   UpdateIteration,
+  AstNode,
 } from "@/models";
 import { HttpMethod } from "./fetchUtils";
 import type { AuthorizedFetcher } from "./AuthorizedFetcher";
@@ -326,11 +327,28 @@ export class MarbleApi {
     });
   }
 
-  async validateIteration(iterationId: string) {
+  validateIterationPath(iterationId: string) {
     const iterationsIdParam = encodeURIComponent(iterationId);
-    return this.getAuthorizedJson(
-      `${SCENARIO_ITERATIONS_URL_PATH}/${iterationsIdParam}/validate`
-    );
+    return `${SCENARIO_ITERATIONS_URL_PATH}/${iterationsIdParam}/validate`;
+  }
+
+  async validateIteration(iterationId: string) {
+    return this.getAuthorizedJson(this.validateIterationPath(iterationId));
+  }
+
+  async validateScenarioIterationWithGivenTriggerOrRule(
+    iterationId: string,
+    triggerOrRule: AstNode,
+    ruleId: string | null
+  ) {
+    return this.sendAuthorizedJson({
+      method: HttpMethod.Post,
+      path: this.validateIterationPath(iterationId),
+      body: {
+        trigger_or_rule: adaptAstNodeDto(triggerOrRule),
+        rule_id: ruleId,
+      },
+    });
   }
 
   async postScenarioIterationPublication(

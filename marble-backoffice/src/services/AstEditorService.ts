@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 // import debounce from "@mui/material/utils/debounce";
 import { showLoader, type LoadingDispatcher } from "@/hooks/Loading";
 import {
@@ -6,13 +6,15 @@ import {
   type ScenariosRepository,
   patchIteration,
   validateIteration,
+  validateIterationWithGivenTriggerOrRule,
 } from "@/repositories";
-import type {
-  AstNode,
-  AstNodeEvaluation,
-  EvaluationError,
-  Iteration,
-  Scenario,
+import {
+  type AstNode,
+  type AstNodeEvaluation,
+  type EvaluationError,
+  type Iteration,
+  type Scenario,
+  type ScenarioValidation,
 } from "@/models";
 import {
   adaptAstNodeDto,
@@ -57,10 +59,9 @@ export function useAstEditor(
   //   debounce()
   // }, [])
 
-  // save rule/trigger and validate
-  useEffect(() => {
+  const validateAstNode = useCallback((): AstNode | null => {
     if (astText === null) {
-      return;
+      return null;
     }
     if (scenario === null || iteration === null) {
       throw Error("can't update rule/trigger, Scenario or Iteration is null");
@@ -70,7 +71,12 @@ export function useAstEditor(
     if (errorMessage) {
       setErrorMessages([errorMessage]);
     }
+    return astNode ?? null;
+  }, [astText, iteration, scenario]);
 
+  // save rule/trigger and validate
+  useEffect(() => {
+    const astNode = validateAstNode();
     if (!astNode) {
       return;
     }
@@ -78,40 +84,26 @@ export function useAstEditor(
     showLoader(
       loadingDispatcher,
       (async () => {
+        if (iteration === null) {
+          throw Error("can't validate rule/trigger, Iteration is null");
+        }
+        let validation: ScenarioValidation | null = null;
         try {
-          if (ruleId === null) {
-            await patchIteration(
-              service.scenariosRepository,
-              scenario.organizationId,
-              iteration.iterationId,
-              {
-                triggerCondition: astNode,
-              }
-            );
-          } else {
-            await updateRule(
-              service.scenariosRepository,
-              scenario.organizationId,
-              ruleId,
-              {
-                formula: astNode,
-              }
-            );
-          }
+          validation = await validateIterationWithGivenTriggerOrRule(
+            service.scenariosRepository,
+            iteration.iterationId,
+            astNode,
+            ruleId
+          );
         } catch (e) {
           if (e instanceof HttpError) {
             if (e.statusCode >= 400 && e.statusCode < 500) {
-              const message = (await e.response.text()).split("\n")[0]
+              const message = (await e.response.text()).split("\n")[0];
               setErrorMessages([message]);
             }
           }
           throw e;
         }
-
-        const validation = await validateIteration(
-          service.scenariosRepository,
-          iteration.iterationId
-        );
 
         setValidation(
           ruleId === null
@@ -120,7 +112,14 @@ export function useAstEditor(
         );
       })()
     );
-  }, [service, scenario, iteration, loadingDispatcher, ruleId, astText]);
+  }, [
+    service,
+    scenario,
+    iteration,
+    loadingDispatcher,
+    ruleId,
+    validateAstNode,
+  ]);
 
   // update error message
   useEffect(() => {
@@ -133,11 +132,69 @@ export function useAstEditor(
     );
   }, [validation]);
 
+  const saveTriggerOrRule = useCallback(async (): Promise<boolean> => {
+    const astNode = validateAstNode();
+    if (!astNode) {
+      return false;
+    }
+    if (scenario === null || iteration === null) {
+      throw Error("can't save rule/trigger, Scenario or Iteration is null");
+    }
+
+    return showLoader(
+      loadingDispatcher,
+      (async () => {
+        if (ruleId === null) {
+          await patchIteration(
+            service.scenariosRepository,
+            scenario.organizationId,
+            iteration.iterationId,
+            {
+              triggerCondition: astNode,
+            }
+          );
+        } else {
+          await updateRule(
+            service.scenariosRepository,
+            scenario.organizationId,
+            ruleId,
+            {
+              formula: astNode,
+            }
+          );
+        }
+        const validation = await validateIteration(
+          service.scenariosRepository,
+          iteration.iterationId
+        );
+
+        const triggerOrRuleValidation =
+          ruleId === null
+            ? validation.triggerEvaluation
+            : validation.rulesEvaluations[ruleId];
+
+        setValidation(triggerOrRuleValidation);
+        return (
+          triggerOrRuleValidation.errors !== null &&
+          triggerOrRuleValidation.errors.length === 0
+        );
+      })()
+    );
+  }, [
+    iteration,
+    loadingDispatcher,
+    ruleId,
+    scenario,
+    service.scenariosRepository,
+    validateAstNode,
+  ]);
+
   return {
     astText,
     setAstText: setAstText,
     errorMessages,
     validation,
+    saveTriggerOrRule,
   };
 }
 
