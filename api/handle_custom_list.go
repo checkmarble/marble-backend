@@ -17,7 +17,6 @@ func (api *API) handleGetAllCustomLists() http.HandlerFunc {
 		if presentError(w, r, err) {
 			return
 		}
-
 		PresentModelWithName(w, "custom_lists", utils.Map(lists, dto.AdaptCustomListDto))
 	}
 }
