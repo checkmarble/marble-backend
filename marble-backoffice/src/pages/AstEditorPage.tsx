@@ -5,8 +5,10 @@ import Typography from "@mui/material/Typography";
 import { useLoading } from "@/hooks/Loading";
 import services from "@/injectServices";
 import { useAstEditor, useSingleScenario } from "@/services";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import Alert from "@mui/material/Alert";
+import { Button } from "@mui/material";
+import { PageLink } from "@/models";
 
 export default function AstEditorPage() {
   const { scenarioId, iterationId, ruleId } = useParams();
@@ -19,6 +21,8 @@ export default function AstEditorPage() {
     throw Error("iterationId is required");
   }
 
+  const navigate = useNavigate();
+
   const [pageLoading, pageLoadingDispatcher] = useLoading();
 
   const { scenario, iteration } = useSingleScenario({
@@ -28,13 +32,20 @@ export default function AstEditorPage() {
     iterationId,
   });
 
-  const { astText, setAstText, errorMessages } = useAstEditor(
-    services().astEditorService,
-    pageLoadingDispatcher,
-    scenario,
-    iteration,
-    ruleId ?? null
-  );
+  const { astText, setAstText, errorMessages, saveTriggerOrRule } =
+    useAstEditor(
+      services().astEditorService,
+      pageLoadingDispatcher,
+      scenario,
+      iteration,
+      ruleId ?? null
+    );
+
+  const handleSaveTriggerOrRule = async () => {
+    if (await saveTriggerOrRule()) {
+      navigate(PageLink.scenarioDetailsPage(scenarioId, iterationId));
+    }
+  };
 
   return (
     <>
@@ -64,6 +75,9 @@ export default function AstEditorPage() {
             {error}
           </Alert>
         ))}
+        <Button disabled={pageLoading} onClick={handleSaveTriggerOrRule}>
+          Save
+        </Button>
       </Container>
     </>
   );
