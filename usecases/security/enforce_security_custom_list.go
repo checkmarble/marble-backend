@@ -8,7 +8,8 @@ import (
 type EnforceSecurityCustomList interface {
 	EnforceSecurity
 	ReadCustomList(customList models.CustomList) error
-	CreateCustomList(organizationId string) error
+	ModifyCustomList(customList models.CustomList) error
+	CreateCustomList() error
 }
 
 type EnforceSecurityCustomListImpl struct {
@@ -18,14 +19,20 @@ type EnforceSecurityCustomListImpl struct {
 
 func (e *EnforceSecurityCustomListImpl) ReadCustomList(customList models.CustomList) error {
 	return errors.Join(
-		e.Permission(models.DECISION_READ),
+		e.Permission(models.CUSTOM_LISTS_READ),
 		e.ReadOrganization(customList.OrganizationId),
 	)
 }
 
-func (e *EnforceSecurityCustomListImpl) CreateCustomList(organizationId string) error {
+func (e *EnforceSecurityCustomListImpl) CreateCustomList() error {
 	return errors.Join(
-		e.Permission(models.DECISION_CREATE),
-		e.ReadOrganization(organizationId),
+		e.Permission(models.CUSTOM_LISTS_CREATE),
+	)
+}
+
+func (e *EnforceSecurityCustomListImpl) ModifyCustomList(customList models.CustomList) error {
+	return errors.Join(
+		e.Permission(models.CUSTOM_LISTS_CREATE),
+		e.ReadOrganization(customList.OrganizationId),
 	)
 }

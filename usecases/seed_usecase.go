@@ -77,15 +77,13 @@ func (usecase *SeedUseCase) SeedZorgOrganization(zorgOrganizationId string) erro
 	newCustomListId := "d6643d7e-c973-4899-a9a8-805f868ef90a"
 
 	err = usecase.customListRepository.CreateCustomList(nil, models.CreateCustomListInput{
-		OrganizationId: zorgOrganizationId,
 		Name:           "zorg custom list",
 		Description:    "Need a whitelist or blacklist ? The list is your friend :)",
-	}, newCustomListId)
+	}, zorgOrganizationId, newCustomListId)
 
 	if err == nil {
 		// add some values to the hardcoded custom list
 		addCustomListValueInput := models.AddCustomListValueInput{
-			OrganizationId: zorgOrganizationId,
 			CustomListId:   newCustomListId,
 			Value:          "Welcome",
 		}

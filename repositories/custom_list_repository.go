@@ -12,7 +12,7 @@ type CustomListRepository interface {
 	GetCustomListById(tx Transaction, id string) (models.CustomList, error)
 	GetCustomListValues(tx Transaction, getCustomList models.GetCustomListValuesInput) ([]models.CustomListValue, error)
 	GetCustomListValueById(tx Transaction, id string) (models.CustomListValue, error)
-	CreateCustomList(tx Transaction, createCustomList models.CreateCustomListInput, newCustomListId string) error
+	CreateCustomList(tx Transaction, createCustomList models.CreateCustomListInput, organizationId string, newCustomListId string) error
 	UpdateCustomList(tx Transaction, updateCustomList models.UpdateCustomListInput) error
 	SoftDeleteCustomList(tx Transaction, deleteCustomList models.DeleteCustomListInput) error
 	AddCustomListValue(tx Transaction, addCustomListValue models.AddCustomListValueInput, newCustomListId string) error
@@ -74,7 +74,7 @@ func (repo *CustomListRepositoryPostgresql) GetCustomListValueById(tx Transactio
 	)
 }
 
-func (repo *CustomListRepositoryPostgresql) CreateCustomList(tx Transaction, createCustomList models.CreateCustomListInput, newCustomListId string) error {
+func (repo *CustomListRepositoryPostgresql) CreateCustomList(tx Transaction, createCustomList models.CreateCustomListInput, organizationId string, newCustomListId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	_, err := pgTx.ExecBuilder(
@@ -87,7 +87,7 @@ func (repo *CustomListRepositoryPostgresql) CreateCustomList(tx Transaction, cre
 			).
 			Values(
 				newCustomListId,
-				createCustomList.OrganizationId,
+				organizationId,
 				createCustomList.Name,
 				createCustomList.Description,
 			),
@@ -108,7 +108,7 @@ func (repo *CustomListRepositoryPostgresql) UpdateCustomList(tx Transaction, upd
 	}
 	updateRequest = updateRequest.Set("updated_at", squirrel.Expr("NOW()"))
 
-	updateRequest = updateRequest.Where("id = ? AND organization_id = ?", updateCustomList.Id, updateCustomList.OrganizationId)
+	updateRequest = updateRequest.Where("id = ?", updateCustomList.Id)
 
 	_, err := pgTx.ExecBuilder(updateRequest)
 	return err
@@ -119,7 +119,7 @@ func (repo *CustomListRepositoryPostgresql) SoftDeleteCustomList(tx Transaction,
 	var softDeleteRequest = NewQueryBuilder().Update(dbmodels.TABLE_CUSTOM_LIST)
 	softDeleteRequest = softDeleteRequest.Set("deleted_at", squirrel.Expr("NOW()"))
 	softDeleteRequest = softDeleteRequest.Set("updated_at", squirrel.Expr("NOW()"))
-	softDeleteRequest = softDeleteRequest.Where("id = ? AND organization_id = ?", deleteCustomList.Id, deleteCustomList.OrganizationId)
+	softDeleteRequest = softDeleteRequest.Where("id = ?", deleteCustomList.Id)
 
 	_, err := pgTx.ExecBuilder(softDeleteRequest)
 	return err

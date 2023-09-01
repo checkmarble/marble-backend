@@ -59,15 +59,33 @@ func TestScenarioEndToEnd(t *testing.T) {
 		OrganizationIdOfContext: func() (string, error) { return organizationId, nil },
 		Context:                 ctx,
 	}
-
 	// Scenario setup
 	scenarioId := setupScenarioAndPublish(t, usecasesWithCreds, organizationId)
 
 	// Ingest two accounts (parent of a transaction) to execute a full scenario: one to be rejected, one to be approved
 	ingestAccounts(t, dataModel.Tables["accounts"], testUsecases, organizationId, logger)
 
+	apiCreds := getApiCreds(ctx, t, usecasesWithCreds, organizationId)
+	usecasesWithApiCreds := usecases.UsecasesWithCreds{
+		Usecases:                testUsecases,
+		Credentials:             apiCreds,
+		Logger:                  utils.LoggerFromContext(ctx),
+		OrganizationIdOfContext: func() (string, error) { return organizationId, nil },
+		Context:                 ctx,
+	}
 	// Create a pair of decision and check that the outcome matches the expectation
-	createDecisions(t, dataModel.Tables["transactions"], usecasesWithCreds, organizationId, scenarioId, logger)
+	createDecisions(t, dataModel.Tables["transactions"], usecasesWithApiCreds, organizationId, scenarioId, logger)
+}
+
+func getApiCreds(ctx context.Context, t *testing.T, usecasesWithCreds usecases.UsecasesWithCreds, organizationId string) models.Credentials {
+	orgUsecase := usecasesWithCreds.NewOrganizationUseCase()
+	apiKeys, err := orgUsecase.GetApiKeysOfOrganization(ctx, organizationId)
+	assert.NoError(t, err, "Could not get api keys of organization")
+	assert.Equal(t, 1, len(apiKeys), "Expected 1 api key, got %d", len(apiKeys))
+	marbleTokenUsecase := usecasesWithCreds.NewMarbleTokenUseCase()
+	creds, err := marbleTokenUsecase.ValidateCredentials("", apiKeys[0].Key)
+	assert.NoError(t, err, "Could not generate creds from api key")
+	return creds
 }
 
 func setupOrgAndCreds(ctx context.Context, t *testing.T) (models.Credentials, models.DataModel) {
