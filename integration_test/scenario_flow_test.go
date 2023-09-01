@@ -38,9 +38,12 @@ func TestScenarioEndToEnd(t *testing.T) {
 	ctx := context.Background()
 
 	// Initialize a logger and store it in the context
-	textHandler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{ReplaceAttr: utils.LoggerAttributeReplacer})
+	logHandler := utils.LocalDevHandlerOptions{
+		SlogOpts: slog.HandlerOptions{Level: slog.LevelDebug},
+		UseColor: true,
+	}.NewLocalDevHandler(os.Stderr)
+	logger := slog.New(logHandler)
 
-	logger := slog.New(textHandler)
 	ctx = utils.StoreLoggerInContext(ctx, logger)
 
 	// Setup an organization and user credentials

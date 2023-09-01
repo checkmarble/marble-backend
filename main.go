@@ -104,11 +104,14 @@ func main() {
 	var logger *slog.Logger
 
 	devEnv := appConfig.env == "DEV"
-	slogOption := slog.HandlerOptions{ReplaceAttr: utils.LoggerAttributeReplacer}
 	if devEnv {
-		textHandler := slog.NewTextHandler(os.Stderr, &slogOption)
-		logger = slog.New(textHandler)
+		logHandler := utils.LocalDevHandlerOptions{
+			SlogOpts: slog.HandlerOptions{Level: slog.LevelDebug},
+			UseColor: true,
+		}.NewLocalDevHandler(os.Stderr)
+		logger = slog.New(logHandler)
 	} else {
+		slogOption := slog.HandlerOptions{ReplaceAttr: utils.GCPLoggerAttributeReplacer}
 		jsonHandler := slog.NewJSONHandler(os.Stderr, &slogOption)
 		logger = slog.New(jsonHandler)
 	}

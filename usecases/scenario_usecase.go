@@ -5,6 +5,8 @@ import (
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/security"
 	"marble/marble-backend/utils"
+
+	"github.com/cockroachdb/errors"
 )
 
 type ScenarioUsecase struct {
@@ -64,7 +66,8 @@ func (usecase *ScenarioUsecase) UpdateScenario(scenarioInput models.UpdateScenar
 			if err != nil {
 				return models.Scenario{}, err
 			}
-			return usecase.scenarioReadRepository.GetScenarioById(tx, scenario.Id)
+			scenario, err = usecase.scenarioReadRepository.GetScenarioById(tx, scenario.Id)
+			return scenario, errors.HandledWithMessage(err, "Error getting scenario after update")
 		},
 	)
 }
@@ -82,7 +85,8 @@ func (usecase *ScenarioUsecase) CreateScenario(scenario models.CreateScenarioInp
 			if err != nil {
 				return models.Scenario{}, err
 			}
-			return usecase.scenarioReadRepository.GetScenarioById(tx, newScenarioId)
+			scenario, err := usecase.scenarioReadRepository.GetScenarioById(tx, newScenarioId)
+			return scenario, errors.HandledWithMessage(err, "Error getting scenario after update")
 		},
 	)
 }

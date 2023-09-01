@@ -16,6 +16,7 @@ const UUIDRegExp = "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-
 func (api *API) routes() {
 
 	api.router.Post("/token", api.handlePostFirebaseIdToken())
+	api.router.Post("/crash", api.handleCrash())
 
 	api.router.With(api.credentialsMiddleware).Route("/ast-expression", func(astRouter chi.Router) {
 		astRouter.Get("/available-functions", api.handleAvailableFunctions())
