@@ -3,13 +3,13 @@ package models
 import "time"
 
 type CustomList struct {
-	Id            string
+	Id             string
 	OrganizationId string
-	Name          string
-	Description   string
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	DeletedAt     *time.Time
+	Name           string
+	Description    string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	DeletedAt      *time.Time
 }
 
 type CustomListValue struct {
@@ -21,36 +21,30 @@ type CustomListValue struct {
 }
 
 type CreateCustomListInput struct {
-	OrganizationId string
-	Name          string
-	Description   string
+	Name        string
+	Description string
 }
 
 type UpdateCustomListInput struct {
-	Id            string
-	OrganizationId string
-	Name          *string
-	Description   *string
+	Id          string
+	Name        *string
+	Description *string
 }
 
 type DeleteCustomListInput struct {
-	Id            string
-	OrganizationId string
+	Id string
 }
 
 type GetCustomListValuesInput struct {
-	Id            string
-	OrganizationId string
+	Id string
 }
 
 type AddCustomListValueInput struct {
-	OrganizationId string
-	CustomListId  string
-	Value         string
+	CustomListId string
+	Value        string
 }
 
 type DeleteCustomListValueInput struct {
-	Id            string
-	CustomListId  string
-	OrganizationId string
+	Id           string
+	CustomListId string
 }

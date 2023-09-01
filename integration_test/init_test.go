@@ -2,6 +2,8 @@ package integration_test
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"fmt"
 	"log"
 	"log/slog"
@@ -96,10 +98,13 @@ func TestMain(m *testing.M) {
 	}
 
 	appContext := utils.StoreLoggerInContext(ctx, logger)
-
+	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	if err != nil {
+		log.Fatalf("Could not create private key: %s", err)
+	}
 	repositories, err := repositories.NewRepositories(
 		models.GlobalConfiguration{},
-		nil,
+		privateKey,
 		nil,
 		dbPool,
 		utils.LoggerFromContext(appContext),

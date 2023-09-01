@@ -99,9 +99,10 @@ func (usecases *UsecasesWithCreds) AstExpressionUsecase() AstExpressionUsecase {
 
 func (usecases *UsecasesWithCreds) NewCustomListUseCase() CustomListUseCase {
 	return CustomListUseCase{
-		enforceSecurity:      usecases.NewEnforceCustomListSecurity(),
-		transactionFactory:   usecases.Repositories.TransactionFactory,
-		CustomListRepository: usecases.Repositories.CustomListRepository,
+		enforceSecurity:         usecases.NewEnforceCustomListSecurity(),
+		organizationIdOfContext: usecases.OrganizationIdOfContext,
+		transactionFactory:      usecases.Repositories.TransactionFactory,
+		CustomListRepository:    usecases.Repositories.CustomListRepository,
 	}
 }
 

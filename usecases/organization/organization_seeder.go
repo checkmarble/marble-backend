@@ -54,16 +54,14 @@ func (o *OrganizationSeederImpl) Seed(organizationId string) error {
 	newCustomListId := uuid.NewString()
 
 	err = o.CustomListRepository.CreateCustomList(nil, models.CreateCustomListInput{
-		OrganizationId: organizationId,
 		Name:           "Welcome to Marble",
 		Description:    "Need a whitelist or blacklist ? The list is your friend :)",
-	}, newCustomListId)
+	}, organizationId, newCustomListId)
 	if err != nil {
 		return err
 	}
 
 	addCustomListValueInput := models.AddCustomListValueInput{
-		OrganizationId: organizationId,
 		CustomListId:   newCustomListId,
 		Value:          "Welcome",
 	}
