@@ -21,14 +21,13 @@ var ValidTypeForFilterOperators = map[ast.FilterOperator][]models.DataType{
 }
 
 func (f FilterEvaluator) Evaluate(arguments ast.Arguments) (any, []error) {
-	tableNameStr, err := adaptArgumentToString(arguments.NamedArgs["tableName"])
-	if err != nil {
-		return MakeEvaluateError(err)
-	}
+	tableNameStr, tableNameErr := AdaptNamedArgument(arguments.NamedArgs, "tableName", adaptArgumentToString)
+	fieldNameStr, fieldNameErr := AdaptNamedArgument(arguments.NamedArgs, "fieldName", adaptArgumentToString)
+	operatorStr, operatorErr := AdaptNamedArgument(arguments.NamedArgs, "operator", adaptArgumentToString)
 
-	fieldNameStr, err := adaptArgumentToString(arguments.NamedArgs["fieldName"])
-	if err != nil {
-		return MakeEvaluateError(err)
+	errs := filterNilErrors(tableNameErr, fieldNameErr, operatorErr)
+	if len(errs) > 0 {
+		return nil, errs
 	}
 
 	fieldType, err := getFieldType(f.DataModel, models.TableName(tableNameStr), models.FieldName(fieldNameStr))
@@ -37,10 +36,6 @@ func (f FilterEvaluator) Evaluate(arguments ast.Arguments) (any, []error) {
 	}
 
 	// Operator validation
-	operatorStr, err := adaptArgumentToString(arguments.NamedArgs["operator"])
-	if err != nil {
-		return MakeEvaluateError(err)
-	}
 	operator := ast.FilterOperator(operatorStr)
 	validTypes, isValid := ValidTypeForFilterOperators[operator]
 	if !isValid {

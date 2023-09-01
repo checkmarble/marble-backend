@@ -28,24 +28,22 @@ var ValidTypesForAggregator = map[ast.Aggregator][]models.DataType{
 }
 
 func (a AggregatorEvaluator) Evaluate(arguments ast.Arguments) (any, []error) {
-	tableNameStr, err := adaptArgumentToString(arguments.NamedArgs["tableName"])
-	if err != nil {
-		return MakeEvaluateError(err)
-	}
-	tableName := models.TableName(tableNameStr)
+	tableNameStr, tableNameErr := AdaptNamedArgument(arguments.NamedArgs, "tableName", adaptArgumentToString)
+	fieldNameStr, fieldNameErr := AdaptNamedArgument(arguments.NamedArgs, "fieldName", adaptArgumentToString)
+	_, labelErr := AdaptNamedArgument(arguments.NamedArgs, "label", adaptArgumentToString)
+	aggregatorStr, aggregatorErr := AdaptNamedArgument(arguments.NamedArgs, "aggregator", adaptArgumentToString)
+	filters, filtersErr := AdaptNamedArgument(arguments.NamedArgs, "filters", adaptArgumentToListOfThings[ast.Filter])
 
-	fieldNameStr, err := adaptArgumentToString(arguments.NamedArgs["fieldName"])
-	if err != nil {
-		return MakeEvaluateError(err)
+	errs := filterNilErrors(tableNameErr, fieldNameErr, labelErr, aggregatorErr, filtersErr)
+	if len(errs) > 0 {
+		return nil, errs
 	}
+
+	tableName := models.TableName(tableNameStr)
 	fieldName := models.FieldName(fieldNameStr)
+	aggregator := ast.Aggregator(aggregatorStr)
 
 	// Aggregator validation
-	aggregatorStr, err := adaptArgumentToString(arguments.NamedArgs["aggregator"])
-	if err != nil {
-		return MakeEvaluateError(err)
-	}
-	aggregator := ast.Aggregator(aggregatorStr)
 	validTypes, isValid := ValidTypesForAggregator[aggregator]
 	if !isValid {
 		return MakeEvaluateError(fmt.Errorf("%s is not a valid aggregator %w", aggregator, models.ErrRuntimeExpression))
@@ -61,10 +59,6 @@ func (a AggregatorEvaluator) Evaluate(arguments ast.Arguments) (any, []error) {
 	}
 
 	// Filters validation
-	filters, err := adaptArgumentToListOfThings[ast.Filter](arguments.NamedArgs["filters"])
-	if err != nil {
-		return MakeEvaluateError(err)
-	}
 	if len(filters) > 0 {
 		for _, filter := range filters {
 			if filter.TableName != tableNameStr {
