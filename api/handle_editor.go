@@ -33,14 +33,21 @@ func (api *API) handleGetEditorIdentifiers() http.HandlerFunc {
 		if presentError(w, r, err) {
 			return
 		}
+		aggregatorNodes, err := utils.MapErr(result.AggregatorAccessors, dto.AdaptIdentifierDto)
+		if presentError(w, r, err) {
+			return
+		}
+
 		PresentModel(w, struct {
 			DatabaseAccessors   []dto.IdentifierDto `json:"database_accessors"`
 			PayloadAccessors    []dto.IdentifierDto `json:"payload_accessors"`
 			CustomListAccessors []dto.IdentifierDto `json:"custom_list_accessors"`
+			AggregatorAccessors []dto.IdentifierDto `json:"aggregator_accessors"`
 		}{
 			DatabaseAccessors:   databaseNodes,
 			PayloadAccessors:    payloadbaseNodes,
 			CustomListAccessors: customListNodes,
+			AggregatorAccessors: aggregatorNodes,
 		})
 	}
 }

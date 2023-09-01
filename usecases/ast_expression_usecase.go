@@ -23,6 +23,7 @@ type EditorIdentifiers struct {
 	CustomListAccessors []ast.Identifier `json:"custom_list_accessors"`
 	PayloadAccessors    []ast.Identifier `json:"payload_accessors"`
 	DatabaseAccessors   []ast.Identifier `json:"database_accessors"`
+	AggregatorAccessors []ast.Identifier `json:"aggregator_accessors"`
 }
 
 type EditorOperators struct {
@@ -121,6 +122,20 @@ func (usecase *AstExpressionUsecase) getCustomListIdentifiers(organizationId str
 	return dataAccessors, nil
 }
 
+func (usecase *AstExpressionUsecase) getAggregatorIdentifiers() ([]ast.Identifier, error) {
+	aggregatorAccessors := []ast.Identifier{}
+	aggregatorList := ast.GetAllAggregators()
+
+	for _, aggregator := range aggregatorList {
+		aggregatorAccessors = append(aggregatorAccessors, ast.Identifier{
+			Name:        string(aggregator),
+			Description: "",
+			Node:        ast.NewNodeAggregator(aggregator),
+		})
+	}
+	return aggregatorAccessors, nil
+}
+
 func (usecase *AstExpressionUsecase) EditorIdentifiers(scenarioId string) (EditorIdentifiers, error) {
 
 	scenario, err := usecase.ScenarioRepository.GetScenarioById(nil, scenarioId)
@@ -152,10 +167,16 @@ func (usecase *AstExpressionUsecase) EditorIdentifiers(scenarioId string) (Edito
 		return EditorIdentifiers{}, err
 	}
 
+	aggregatorAccessors, err := usecase.getAggregatorIdentifiers()
+	if err != nil {
+		return EditorIdentifiers{}, err
+	}
+
 	return EditorIdentifiers{
 		CustomListAccessors: customListAccessors,
 		PayloadAccessors:    payloadAccessors,
 		DatabaseAccessors:   databaseAccessors,
+		AggregatorAccessors: aggregatorAccessors,
 	}, nil
 }
 
