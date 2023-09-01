@@ -23,8 +23,6 @@ func runServer(ctx context.Context, usecases usecases.Usecases, port string, dev
 
 	logger := utils.LoggerFromContext(ctx)
 
-	corsAllowLocalhost := devEnv
-
 	////////////////////////////////////////////////////////////
 	// Seed the database
 	////////////////////////////////////////////////////////////
@@ -47,7 +45,7 @@ func runServer(ctx context.Context, usecases usecases.Usecases, port string, dev
 		}
 	}
 
-	api, _ := api.New(ctx, port, usecases, corsAllowLocalhost)
+	api, _ := api.New(ctx, port, usecases, devEnv)
 
 	////////////////////////////////////////////////////////////
 	// Start serving the app
