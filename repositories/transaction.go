@@ -54,7 +54,7 @@ type AnyBuilder interface {
 func (transaction *TransactionPostgres) ExecBuilder(builder AnyBuilder) (rowsAffected int64, err error) {
 	query, args, err := builder.ToSql()
 	if err != nil {
-		return 0, errors.Wrap(err, "Error building sql query")
+		return 0, errors.Wrap(err, "can't build sql query")
 	}
 
 	return transaction.SqlExec(query, args...)
