@@ -22,7 +22,7 @@ type API struct {
 	logger   *slog.Logger
 }
 
-func New(ctx context.Context, port string, usecases usecases.Usecases, corsAllowLocalhost bool) (*http.Server, error) {
+func New(ctx context.Context, port string, usecases usecases.Usecases, devEnv bool) (*http.Server, error) {
 
 	///////////////////////////////
 	// Setup a router
@@ -34,17 +34,18 @@ func New(ctx context.Context, port string, usecases usecases.Usecases, corsAllow
 	////////////////////////////////////////////////////////////
 	// Middleware
 	////////////////////////////////////////////////////////////
-	r.Use(middleware.RequestID)
-	r.Use(middleware.Logger)
+	if devEnv {
+		// GCP already does that when server is running on Cloud Run
+		r.Use(middleware.RequestID)
+		r.Use(middleware.Logger)
+	}
+	corsAllowLocalhost := devEnv
+
 	r.Use(middleware.Recoverer)
 	r.Use(utils.StoreLoggerInContextMiddleware(logger))
+	r.Use(utils.AddStackdriverKeysToLoggerMiddleware)
 	r.Use(cors.Handler(corsOption(corsAllowLocalhost)))
-	r.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			next.ServeHTTP(w, r)
-		})
-	})
+	r.Use(setContentTypeMiddleware)
 
 	s := &API{
 		port:     port,
@@ -105,4 +106,11 @@ func (api *API) UsecasesWithCreds(r *http.Request) *usecases.UsecasesWithCreds {
 		},
 		Context: ctx,
 	}
+}
+
+func setContentTypeMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		next.ServeHTTP(w, r)
+	})
 }
