@@ -19,7 +19,7 @@ type API struct {
 	usecases usecases.Usecases
 }
 
-func New(ctx context.Context, port string, usecases usecases.Usecases, devEnv bool, projectId string) (*http.Server, error) {
+func New(ctx context.Context, port string, usecases usecases.Usecases, isDevEnv bool, projectId string) (*http.Server, error) {
 
 	///////////////////////////////
 	// Setup a router
@@ -31,17 +31,16 @@ func New(ctx context.Context, port string, usecases usecases.Usecases, devEnv bo
 	////////////////////////////////////////////////////////////
 	// Middleware
 	////////////////////////////////////////////////////////////
-	if devEnv {
+	if isDevEnv {
 		// GCP already does that when server is running on Cloud Run
 		r.Use(middleware.RequestID)
 		r.Use(middleware.Logger)
 	}
-	corsAllowLocalhost := devEnv
 
 	r.Use(middleware.Recoverer)
 	r.Use(utils.StoreLoggerInContextMiddleware(logger))
-	r.Use(utils.AddStackdriverKeysToLoggerMiddleware(devEnv, projectId))
-	r.Use(cors.Handler(corsOption(corsAllowLocalhost)))
+	r.Use(utils.AddStackdriverKeysToLoggerMiddleware(isDevEnv, projectId))
+	r.Use(cors.Handler(corsOption(isDevEnv)))
 	r.Use(setContentTypeMiddleware)
 
 	s := &API{

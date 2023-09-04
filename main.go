@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-func runServer(ctx context.Context, usecases usecases.Usecases, port string, devEnv bool, projectId string) {
+func runServer(ctx context.Context, usecases usecases.Usecases, port string, isDevEnv bool, projectId string) {
 
 	logger := utils.LoggerFromContext(ctx)
 
@@ -36,7 +36,7 @@ func runServer(ctx context.Context, usecases usecases.Usecases, port string, dev
 		}
 	}
 
-	if devEnv {
+	if isDevEnv {
 		zorgOrganizationId := "13617a88-56f5-4baa-8d11-ce102f7da907"
 		err := seedUsecase.SeedZorgOrganization(zorgOrganizationId)
 		if err != nil {
@@ -44,7 +44,7 @@ func runServer(ctx context.Context, usecases usecases.Usecases, port string, dev
 		}
 	}
 
-	api, _ := api.New(ctx, port, usecases, devEnv, projectId)
+	api, _ := api.New(ctx, port, usecases, isDevEnv, projectId)
 
 	////////////////////////////////////////////////////////////
 	// Start serving the app
@@ -93,7 +93,7 @@ func main() {
 			FakeAwsS3Repository: utils.GetBoolEnv("FAKE_AWS_S3", false),
 		},
 	}
-	devEnv := appConfig.env == "DEV"
+	isDevEnv := appConfig.env == "DEV"
 
 	////////////////////////////////////////////////////////////
 	// Setup dependencies
@@ -117,7 +117,7 @@ func main() {
 		marbleJwtSigningKey := infra.MustParseSigningKey(utils.GetRequiredStringEnv("AUTHENTICATION_JWT_SIGNING_KEY"))
 
 		usecases := NewUseCases(appContext, appConfig, &marbleJwtSigningKey)
-		runServer(appContext, usecases, appConfig.port, devEnv, os.Getenv("GCLOUD_PROJECT"))
+		runServer(appContext, usecases, appConfig.port, isDevEnv, os.Getenv("GCLOUD_PROJECT"))
 	}
 
 	if *shouldRunScheduledScenarios {
