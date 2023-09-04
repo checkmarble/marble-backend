@@ -13,11 +13,12 @@ import (
 func (api *API) handleGetAllCustomLists() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+		logger := utils.LoggerFromContext(ctx)
 		organizationId, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(w, r, err) {
 			return
 		}
-		logger := api.logger.With(slog.String("organizationId", organizationId))
+		logger = logger.With(slog.String("organizationId", organizationId))
 
 		usecase := api.usecases.NewCustomListUseCase()
 		lists, err := usecase.GetCustomLists(ctx, organizationId)
@@ -33,11 +34,12 @@ func (api *API) handleGetAllCustomLists() http.HandlerFunc {
 func (api *API) handlePostCustomList() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+		logger := utils.LoggerFromContext(ctx)
 		organizationId, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(w, r, err) {
 			return
 		}
-		logger := api.logger.With(slog.String("organizationId", organizationId))
+		logger = logger.With(slog.String("organizationId", organizationId))
 
 		inputDto := ctx.Value(httpin.Input).(*dto.CreateCustomListInputDto).Body
 
@@ -58,12 +60,13 @@ func (api *API) handlePostCustomList() http.HandlerFunc {
 func (api *API) handleGetCustomListWithValues() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+		logger := utils.LoggerFromContext(ctx)
 
 		organizationId, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(w, r, err) {
 			return
 		}
-		logger := api.logger.With(slog.String("organizationId", organizationId))
+		logger = logger.With(slog.String("organizationId", organizationId))
 		inputDto := ctx.Value(httpin.Input).(*dto.GetCustomListInputDto)
 
 		usecase := api.usecases.NewCustomListUseCase()
@@ -88,12 +91,13 @@ func (api *API) handleGetCustomListWithValues() http.HandlerFunc {
 func (api *API) handlePatchCustomList() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+		logger := utils.LoggerFromContext(ctx)
 
 		organizationId, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(w, r, err) {
 			return
 		}
-		logger := api.logger.With(slog.String("organizationId", organizationId))
+		logger = logger.With(slog.String("organizationId", organizationId))
 		inputDto := ctx.Value(httpin.Input).(*dto.UpdateCustomListInputDto)
 		listId := inputDto.CustomListID
 		requestData := inputDto.Body
@@ -118,12 +122,13 @@ func (api *API) handlePatchCustomList() http.HandlerFunc {
 func (api *API) handleDeleteCustomList() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+		logger := utils.LoggerFromContext(ctx)
 
 		organizationId, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(w, r, err) {
 			return
 		}
-		logger := api.logger.With(slog.String("organizationId", organizationId))
+		logger = logger.With(slog.String("organizationId", organizationId))
 		inputDto := ctx.Value(httpin.Input).(*dto.DeleteCustomListInputDto)
 
 		usecase := api.usecases.NewCustomListUseCase()
@@ -142,12 +147,13 @@ func (api *API) handleDeleteCustomList() http.HandlerFunc {
 func (api *API) handlePostCustomListValue() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+		logger := utils.LoggerFromContext(ctx)
 
 		organizationId, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(w, r, err) {
 			return
 		}
-		logger := api.logger.With(slog.String("organizationId", organizationId))
+		logger = logger.With(slog.String("organizationId", organizationId))
 		inputDto := ctx.Value(httpin.Input).(*dto.CreateCustomListValueInputDto)
 		listId := inputDto.CustomListID
 		requestData := inputDto.Body
@@ -170,12 +176,13 @@ func (api *API) handlePostCustomListValue() http.HandlerFunc {
 func (api *API) handleDeleteCustomListValue() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+		logger := utils.LoggerFromContext(ctx)
 
 		organizationId, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(w, r, err) {
 			return
 		}
-		logger := api.logger.With(slog.String("organizationId", organizationId))
+		logger = logger.With(slog.String("organizationId", organizationId))
 		inputDto := ctx.Value(httpin.Input).(*dto.DeleteCustomListValueInputDto)
 		listId := inputDto.CustomListID
 

@@ -158,6 +158,7 @@ func (api *API) GetScenarioIteration() http.HandlerFunc {
 func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+		logger := utils.LoggerFromContext(ctx)
 
 		organizationId, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(w, r, err) {
@@ -165,7 +166,7 @@ func (api *API) UpdateScenarioIteration() http.HandlerFunc {
 		}
 
 		input := ctx.Value(httpin.Input).(*dto.UpdateScenarioIterationInput)
-		logger := api.logger.With(slog.String("scenarioIterationId", input.ScenarioIterationId), slog.String("organizationId", organizationId))
+		logger = logger.With(slog.String("scenarioIterationId", input.ScenarioIterationId), slog.String("organizationId", organizationId))
 
 		if input.Payload.Body == nil {
 			PresentNothing(w)

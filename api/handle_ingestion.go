@@ -16,12 +16,13 @@ import (
 func (api *API) handleIngestion() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+		logger := utils.LoggerFromContext(ctx)
 		organizationId, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(w, r, err) {
 			return
 		}
 
-		logger := api.logger.With(slog.String("organizationId", organizationId))
+		logger = logger.With(slog.String("organizationId", organizationId))
 
 		usecase := api.usecases.NewIngestionUseCase()
 
