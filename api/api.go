@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"marble/marble-backend/models"
 	"marble/marble-backend/usecases"
 	"marble/marble-backend/utils"
@@ -18,7 +17,6 @@ import (
 type API struct {
 	router   *chi.Mux
 	usecases usecases.Usecases
-	logger   *slog.Logger
 }
 
 func New(ctx context.Context, port string, usecases usecases.Usecases, devEnv bool, projectId string) (*http.Server, error) {
@@ -49,7 +47,6 @@ func New(ctx context.Context, port string, usecases usecases.Usecases, devEnv bo
 	s := &API{
 		router:   r,
 		usecases: usecases,
-		logger:   logger,
 	}
 
 	// Setup the routes

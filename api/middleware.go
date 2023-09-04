@@ -80,6 +80,7 @@ func (api *API) enforcePermissionMiddleware(permission models.Permission) func(n
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 			ctx := r.Context()
+			logger := utils.LoggerFromContext(ctx)
 			creds := utils.CredentialsFromCtx(ctx)
 			allowed := creds.Role.HasPermission(permission)
 
@@ -87,7 +88,7 @@ func (api *API) enforcePermissionMiddleware(permission models.Permission) func(n
 				next.ServeHTTP(w, r)
 			} else {
 				errorMessage := fmt.Sprintf("Missing permission %s", permission.String())
-				api.logger.WarnContext(ctx, errorMessage)
+				logger.WarnContext(ctx, errorMessage)
 				http.Error(w, errorMessage, http.StatusForbidden)
 			}
 		})
