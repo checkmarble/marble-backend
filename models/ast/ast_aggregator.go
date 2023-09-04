@@ -18,20 +18,3 @@ var FuncAggregatorAttributes = FuncAttributes{
 	NumberOfArguments: 4,
 	NamedArguments:    []string{"tableName", "fieldName", "aggregator", "filters", "label"},
 }
-
-func GetAllAggregators() []Aggregator {
-	return []Aggregator{
-		AGGREGATOR_AVG,
-		AGGREGATOR_COUNT,
-		AGGREGATOR_COUNT_DISTINCT,
-		AGGREGATOR_MAX,
-		AGGREGATOR_MIN,
-		AGGREGATOR_SUM,
-	}
-}
-
-func NewNodeAggregator(aggregator Aggregator) Node {
-	return Node{Function: FUNC_AGGREGATOR}.
-		AddNamedChild("aggregator", NewNodeConstant(aggregator)).
-		AddNamedChild("filters", Node{Function: FUNC_LIST})
-}
