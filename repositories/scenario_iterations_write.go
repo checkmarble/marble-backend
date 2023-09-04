@@ -75,7 +75,7 @@ func (repo *ScenarioIterationWriteRepositoryPostgresql) CreateScenarioIteration(
 		return models.ScenarioIteration{}, err
 	}
 
-	if scenarioIteration.Body != nil {
+	if scenarioIteration.Body != nil && len(scenarioIteration.Body.Rules) > 0 {
 		for i := range scenarioIteration.Body.Rules {
 			scenarioIteration.Body.Rules[i].Id = utils.NewPrimaryKey(organizationId)
 			scenarioIteration.Body.Rules[i].OrganizationId = organizationId
