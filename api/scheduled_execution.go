@@ -16,13 +16,9 @@ func (api *API) handleGetScheduledExecution() http.HandlerFunc {
 		if presentError(w, r, err) {
 			return
 		}
-		organizationId, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
-			return
-		}
 
-		usecase := api.usecases.NewScheduledExecutionUsecase()
-		execution, err := usecase.GetScheduledExecution(ctx, organizationId, id)
+		usecase := api.UsecasesWithCreds(r).NewScheduledExecutionUsecase()
+		execution, err := usecase.GetScheduledExecution(ctx, id)
 
 		if presentError(w, r, err) {
 			return
@@ -44,7 +40,7 @@ func (api *API) handleListScheduledExecution() http.HandlerFunc {
 			return
 		}
 
-		usecase := api.usecases.NewScheduledExecutionUsecase()
+		usecase := api.UsecasesWithCreds(r).NewScheduledExecutionUsecase()
 		executions, err := usecase.ListScheduledExecutions(ctx, organizationId, scenarioId)
 
 		if presentError(w, r, err) {

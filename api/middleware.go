@@ -74,23 +74,3 @@ func identityAttr(identity models.Identity) (attr slog.Attr, ok bool) {
 	}
 	return slog.Attr{}, false
 }
-
-func (api *API) enforcePermissionMiddleware(permission models.Permission) func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-			ctx := r.Context()
-			logger := utils.LoggerFromContext(ctx)
-			creds := utils.CredentialsFromCtx(ctx)
-			allowed := creds.Role.HasPermission(permission)
-
-			if allowed {
-				next.ServeHTTP(w, r)
-			} else {
-				errorMessage := fmt.Sprintf("Missing permission %s", permission.String())
-				logger.WarnContext(ctx, errorMessage)
-				http.Error(w, errorMessage, http.StatusForbidden)
-			}
-		})
-	}
-}

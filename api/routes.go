@@ -3,7 +3,6 @@ package api
 import (
 	"log"
 	"marble/marble-backend/dto"
-	"marble/marble-backend/models"
 	"net/http"
 
 	"github.com/ggicci/httpin"
@@ -31,7 +30,7 @@ func (api *API) routes() {
 		// matches all /decisions routes
 		authedRouter.Route("/decisions", func(decisionsRouter chi.Router) {
 			decisionsRouter.Get("/", api.handleListDecisions())
-			
+
 			decisionsRouter.With(httpin.NewInput(dto.GetDecisionInput{})).
 				Get("/{decisionId:"+UUIDRegExp+"}", api.handleGetDecision())
 
@@ -40,8 +39,6 @@ func (api *API) routes() {
 		})
 
 		authedRouter.Route("/ingestion", func(r chi.Router) {
-			r.Use(api.enforcePermissionMiddleware(models.INGESTION))
-
 			r.Post("/{object_type}", api.handleIngestion())
 		})
 
@@ -67,8 +64,8 @@ func (api *API) routes() {
 			iterationRouter.With(httpin.NewInput(ListScenarioIterationsInput{})).
 				Get("/", api.ListScenarioIterations())
 
-				iterationRouter.With(httpin.NewInput(dto.CreateScenarioIterationInput{})).
-					Post("/", api.CreateScenarioIteration())
+			iterationRouter.With(httpin.NewInput(dto.CreateScenarioIterationInput{})).
+				Post("/", api.CreateScenarioIteration())
 
 			iterationRouter.Route("/{scenarioIterationId:"+UUIDRegExp+"}", func(iterationDetailReadRouter chi.Router) {
 
@@ -95,7 +92,7 @@ func (api *API) routes() {
 				Get("/", api.ListRules())
 
 			scenarIterRulesRouter.With(httpin.NewInput(dto.CreateRuleInput{})).
-			Post("/", api.CreateRule())
+				Post("/", api.CreateRule())
 
 			scenarIterRulesRouter.Route("/{ruleID:"+UUIDRegExp+"}", func(r chi.Router) {
 				r.With(httpin.NewInput(dto.GetRuleInput{})).
@@ -122,8 +119,6 @@ func (api *API) routes() {
 		})
 
 		authedRouter.Route("/scheduled-executions", func(r chi.Router) {
-			r.Use(api.enforcePermissionMiddleware(models.DECISION_READ))
-
 			r.With(httpin.NewInput(dto.ListScheduledExecutionInput{})).
 				Get("/", api.handleListScheduledExecution())
 
@@ -133,17 +128,13 @@ func (api *API) routes() {
 		})
 
 		authedRouter.Route("/data-model", func(dataModelRouter chi.Router) {
-			dataModelRouter.Use(api.enforcePermissionMiddleware(models.DATA_MODEL_READ))
 			dataModelRouter.Get("/", api.handleGetDataModel())
 
-			dataModelRouter.With(
-				api.enforcePermissionMiddleware(models.DATA_MODEL_WRITE),
-				httpin.NewInput(dto.PostDataModel{}),
-			).Post("/", api.handlePostDataModel())
+			dataModelRouter.With(httpin.NewInput(dto.PostDataModel{})).
+				Post("/", api.handlePostDataModel())
 		})
 
 		authedRouter.Route("/apikeys", func(dataModelRouter chi.Router) {
-			dataModelRouter.Use(api.enforcePermissionMiddleware(models.APIKEY_READ))
 			dataModelRouter.Get("/", api.handleGetApiKey())
 		})
 
@@ -175,57 +166,41 @@ func (api *API) routes() {
 		// TODO(API): change routing for clarity
 		// Context https://github.com/checkmarble/marble-backend/pull/206
 		authedRouter.Route("/editor/{scenarioId}", func(builderRouter chi.Router) {
-			// Even if the user has no permission to edit scenarios,
-			// he should be able to fetch the identifiers and operators to display an AST (used in both viewer and editor)
-			builderRouter.Use(api.enforcePermissionMiddleware(models.SCENARIO_READ))
-
 			builderRouter.Get("/identifiers", api.handleGetEditorIdentifiers())
 			builderRouter.Get("/operators", api.handleGetEditorOperators())
 		})
 
 		// Group all admin endpoints
 		authedRouter.Group(func(routerAdmin chi.Router) {
-			routerAdmin.Use(api.enforcePermissionMiddleware(models.ORGANIZATIONS_LIST))
-
 			routerAdmin.Route("/users", func(r chi.Router) {
 				r.Get("/", api.handleGetAllUsers())
 
-				r.With(
-					api.enforcePermissionMiddleware(models.MARBLE_USER_CREATE),
-					httpin.NewInput(dto.PostCreateUser{}),
-				).Post("/", api.handlePostUser())
+				r.With(httpin.NewInput(dto.PostCreateUser{})).
+					Post("/", api.handlePostUser())
 
 				r.Route("/{userID}", func(r chi.Router) {
 					r.With(httpin.NewInput(dto.GetUser{})).
 						Get("/", api.handleGetUser())
 
-					r.With(
-						api.enforcePermissionMiddleware(models.MARBLE_USER_DELETE),
-						httpin.NewInput(dto.DeleteUser{}),
-					).Delete("/", api.handleDeleteUser())
+					r.With(httpin.NewInput(dto.DeleteUser{})).
+						Delete("/", api.handleDeleteUser())
 				})
 			})
 			routerAdmin.Route("/organizations", func(r chi.Router) {
 				r.Get("/", api.handleGetOrganizations())
 
-				r.With(
-					api.enforcePermissionMiddleware(models.ORGANIZATIONS_CREATE),
-					httpin.NewInput(dto.CreateOrganizationInputDto{}),
-				).Post("/", api.handlePostOrganization())
+				r.With(httpin.NewInput(dto.CreateOrganizationInputDto{})).
+					Post("/", api.handlePostOrganization())
 
 				r.Route("/{organizationId}", func(r chi.Router) {
 					r.Get("/", api.handleGetOrganization())
 					r.Get("/users", api.handleGetOrganizationUsers())
 
-					r.With(
-						api.enforcePermissionMiddleware(models.ORGANIZATIONS_CREATE),
-						httpin.NewInput(dto.UpdateOrganizationInputDto{}),
-					).Patch("/", api.handlePatchOrganization())
+					r.With(httpin.NewInput(dto.UpdateOrganizationInputDto{})).
+						Patch("/", api.handlePatchOrganization())
 
-					r.With(
-						api.enforcePermissionMiddleware(models.ORGANIZATIONS_DELETE),
-						httpin.NewInput(dto.DeleteOrganizationInput{}),
-					).Delete("/", api.handleDeleteOrganization())
+					r.With(httpin.NewInput(dto.DeleteOrganizationInput{})).
+						Delete("/", api.handleDeleteOrganization())
 				})
 			})
 		})

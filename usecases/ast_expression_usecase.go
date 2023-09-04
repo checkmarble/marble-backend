@@ -9,7 +9,7 @@ import (
 )
 
 type AstExpressionUsecase struct {
-	EnforceSecurity      security.EnforceSecurity
+	EnforceSecurity      security.EnforceSecurityScenario
 	CustomListRepository repositories.CustomListRepository
 	DataModelRepository  repositories.DataModelRepository
 	ScenarioRepository   repositories.ScenarioReadRepository
@@ -143,7 +143,7 @@ func (usecase *AstExpressionUsecase) EditorIdentifiers(scenarioId string) (Edito
 		return EditorIdentifiers{}, err
 	}
 
-	if err := usecase.EnforceSecurity.ReadOrganization(scenario.OrganizationId); err != nil {
+	if err := usecase.EnforceSecurity.ReadScenario(scenario); err != nil {
 		return EditorIdentifiers{}, err
 	}
 
@@ -181,6 +181,10 @@ func (usecase *AstExpressionUsecase) EditorIdentifiers(scenarioId string) (Edito
 }
 
 func (usecase *AstExpressionUsecase) EditorOperators() EditorOperators {
+	if err := usecase.EnforceSecurity.Permission(models.SCENARIO_READ); err != nil {
+		return EditorOperators{}
+	}
+
 	var operatorAccessors []ast.FuncAttributes
 	for _, functionType := range ast.FuncOperators {
 		operatorAccessors = append(operatorAccessors, ast.FuncAttributesMap[ast.Function(functionType)])

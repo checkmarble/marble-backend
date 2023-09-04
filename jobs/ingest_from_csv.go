@@ -8,7 +8,8 @@ import (
 )
 
 func IngestDataFromStorageCSVs(ctx context.Context, usecases usecases.Usecases, bucketName string) {
-	usecase := usecases.NewIngestionUseCase()
+	usecasesWithCreds := GenerateUsecaseWithCredForMarbleAdmin(ctx, usecases)
+	usecase := usecasesWithCreds.NewIngestionUseCase()
 	logger := utils.LoggerFromContext(ctx)
 	logger.InfoContext(ctx, "Start ingesting data from storage CSVs")
 	err := usecase.IngestFilesFromStorageCsv(ctx, bucketName, logger)

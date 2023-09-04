@@ -62,9 +62,6 @@ func TestScenarioEndToEnd(t *testing.T) {
 	// Scenario setup
 	scenarioId := setupScenarioAndPublish(t, usecasesWithCreds, organizationId)
 
-	// Ingest two accounts (parent of a transaction) to execute a full scenario: one to be rejected, one to be approved
-	ingestAccounts(t, dataModel.Tables["accounts"], testUsecases, organizationId, logger)
-
 	apiCreds := getApiCreds(ctx, t, usecasesWithCreds, organizationId)
 	usecasesWithApiCreds := usecases.UsecasesWithCreds{
 		Usecases:                testUsecases,
@@ -73,6 +70,10 @@ func TestScenarioEndToEnd(t *testing.T) {
 		OrganizationIdOfContext: func() (string, error) { return organizationId, nil },
 		Context:                 ctx,
 	}
+
+	// Ingest two accounts (parent of a transaction) to execute a full scenario: one to be rejected, one to be approved
+	ingestAccounts(t, dataModel.Tables["accounts"], usecasesWithApiCreds, organizationId, logger)
+
 	// Create a pair of decision and check that the outcome matches the expectation
 	createDecisions(t, dataModel.Tables["transactions"], usecasesWithApiCreds, organizationId, scenarioId, logger)
 }
@@ -90,7 +91,8 @@ func getApiCreds(ctx context.Context, t *testing.T, usecasesWithCreds usecases.U
 
 func setupOrgAndCreds(ctx context.Context, t *testing.T) (models.Credentials, models.DataModel) {
 	// Create a new organization
-	orgUsecase := testUsecases.NewOrganizationUseCase()
+	testAdminUsecase := GenerateUsecaseWithCredForMarbleAdmin(ctx, testUsecases)
+	orgUsecase := testAdminUsecase.NewOrganizationUseCase()
 	organization, err := orgUsecase.CreateOrganization(ctx, models.CreateOrganizationInput{
 		Name:         "Test org n°42",
 		DatabaseName: "test_org_42",
@@ -105,7 +107,7 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T) (models.Credentials, mo
 	assert.Equal(t, 0, len(users), "Expected 0 users, got %d", len(users))
 
 	// Create a new admin user on the organization
-	userUsecase := testUsecases.NewUserUseCase()
+	userUsecase := testAdminUsecase.NewUserUseCase()
 	adminUser, err := userUsecase.AddUser(models.CreateUser{
 		Email:          "test@testmarble.com",
 		OrganizationId: organizationId,
@@ -360,8 +362,8 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 	return scenarioId
 }
 
-func ingestAccounts(t *testing.T, table models.Table, ussecases usecases.Usecases, organizationId string, logger *slog.Logger) {
-	ingestionUsecase := testUsecases.NewIngestionUseCase()
+func ingestAccounts(t *testing.T, table models.Table, usecases usecases.UsecasesWithCreds, organizationId string, logger *slog.Logger) {
+	ingestionUsecase := usecases.NewIngestionUseCase()
 	accountPayloadJson1 := []byte(`{
 		"object_id": "{account_id_reject}",
 		"updated_at": "2020-01-01T00:00:00Z",

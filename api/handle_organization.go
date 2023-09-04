@@ -13,7 +13,7 @@ func (api *API) handleGetOrganizations() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		usecase := api.usecases.NewOrganizationUseCase()
+		usecase := api.UsecasesWithCreds(r).NewOrganizationUseCase()
 		organizations, err := usecase.GetOrganizations(ctx)
 		if presentError(w, r, err) {
 			return
@@ -29,7 +29,7 @@ func (api *API) handlePostOrganization() http.HandlerFunc {
 
 		inputDto := ctx.Value(httpin.Input).(*dto.CreateOrganizationInputDto).Body
 
-		usecase := api.usecases.NewOrganizationUseCase()
+		usecase := api.UsecasesWithCreds(r).NewOrganizationUseCase()
 		organization, err := usecase.CreateOrganization(ctx, models.CreateOrganizationInput{
 			Name:         inputDto.Name,
 			DatabaseName: inputDto.DatabaseName,
@@ -52,7 +52,7 @@ func (api *API) handleGetOrganizationUsers() http.HandlerFunc {
 			return
 		}
 
-		usecase := api.usecases.NewOrganizationUseCase()
+		usecase := api.UsecasesWithCreds(r).NewOrganizationUseCase()
 		users, err := usecase.GetUsersOfOrganization(organizationId)
 		if presentError(w, r, err) {
 			return
@@ -71,7 +71,7 @@ func (api *API) handleGetOrganization() http.HandlerFunc {
 			return
 		}
 
-		usecase := api.usecases.NewOrganizationUseCase()
+		usecase := api.UsecasesWithCreds(r).NewOrganizationUseCase()
 		organization, err := usecase.GetOrganization(ctx, organizationId)
 
 		if presentError(w, r, err) {
@@ -90,7 +90,7 @@ func (api *API) handlePatchOrganization() http.HandlerFunc {
 		requestData := input.Body
 		organizationId := input.OrganizationId
 
-		usecase := api.usecases.NewOrganizationUseCase()
+		usecase := api.UsecasesWithCreds(r).NewOrganizationUseCase()
 		organization, err := usecase.UpdateOrganization(ctx, models.UpdateOrganizationInput{
 			Id:                         organizationId,
 			Name:                       requestData.Name,
@@ -112,7 +112,7 @@ func (api *API) handleDeleteOrganization() http.HandlerFunc {
 
 		organizationId := ctx.Value(httpin.Input).(*dto.DeleteOrganizationInput).OrganizationId
 
-		usecase := api.usecases.NewOrganizationUseCase()
+		usecase := api.UsecasesWithCreds(r).NewOrganizationUseCase()
 		err := usecase.DeleteOrganization(ctx, organizationId)
 		if presentError(w, r, err) {
 			return

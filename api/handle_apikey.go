@@ -14,8 +14,7 @@ func (api *API) handleGetApiKey() http.HandlerFunc {
 		if presentError(w, r, err) {
 			return
 		}
-
-		usecase := api.usecases.NewOrganizationUseCase()
+		usecase := api.UsecasesWithCreds(r).NewOrganizationUseCase()
 		apiKeys, err := usecase.GetApiKeysOfOrganization(ctx, organizationId)
 		if presentError(w, r, err) {
 			return

@@ -11,7 +11,7 @@ import (
 func (api *API) handleGetAllUsers() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		usecase := api.usecases.NewUserUseCase()
+		usecase := api.UsecasesWithCreds(r).NewUserUseCase()
 		users, err := usecase.GetAllUsers()
 		if presentError(w, r, err) {
 			return
@@ -27,7 +27,7 @@ func (api *API) handlePostUser() http.HandlerFunc {
 
 		createUser := dto.AdaptCreateUser(*ctx.Value(httpin.Input).(*dto.PostCreateUser))
 
-		usecase := api.usecases.NewUserUseCase()
+		usecase := api.UsecasesWithCreds(r).NewUserUseCase()
 		createdUser, err := usecase.AddUser(createUser)
 		if presentError(w, r, err) {
 			return
@@ -42,7 +42,7 @@ func (api *API) handleGetUser() http.HandlerFunc {
 
 		userID := ctx.Value(httpin.Input).(*dto.GetUser).UserID
 
-		usecase := api.usecases.NewUserUseCase()
+		usecase := api.UsecasesWithCreds(r).NewUserUseCase()
 		user, err := usecase.GetUser(userID)
 		if presentError(w, r, err) {
 			return
@@ -58,7 +58,7 @@ func (api *API) handleDeleteUser() http.HandlerFunc {
 
 		userID := ctx.Value(httpin.Input).(*dto.DeleteUser).UserID
 
-		usecase := api.usecases.NewUserUseCase()
+		usecase := api.UsecasesWithCreds(r).NewUserUseCase()
 		err := usecase.DeleteUser(userID)
 		if presentError(w, r, err) {
 			return

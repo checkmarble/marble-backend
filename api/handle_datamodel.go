@@ -17,7 +17,7 @@ func (api *API) handleGetDataModel() http.HandlerFunc {
 			return
 		}
 
-		usecase := api.usecases.NewOrganizationUseCase()
+		usecase := api.UsecasesWithCreds(r).NewOrganizationUseCase()
 		dataModel, err := usecase.GetDataModel(organizationId)
 		if presentError(w, r, err) {
 			return
@@ -37,7 +37,7 @@ func (api *API) handlePostDataModel() http.HandlerFunc {
 			return
 		}
 
-		usecase := api.usecases.NewOrganizationUseCase()
+		usecase := api.UsecasesWithCreds(r).NewOrganizationUseCase()
 		dataModel, err := usecase.ReplaceDataModel(organizationId, dto.AdaptDataModel(input.Body.DataModel))
 		if presentError(w, r, err) {
 			return
