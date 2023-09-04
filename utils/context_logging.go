@@ -5,8 +5,27 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"regexp"
 )
+
+func NewLogger(env string) *slog.Logger {
+	var logger *slog.Logger
+
+	devEnv := env == "DEV"
+	if devEnv {
+		logHandler := LocalDevHandlerOptions{
+			SlogOpts: slog.HandlerOptions{Level: slog.LevelDebug},
+			UseColor: true,
+		}.NewLocalDevHandler(os.Stderr)
+		logger = slog.New(logHandler)
+	} else {
+		slogOption := slog.HandlerOptions{ReplaceAttr: GCPLoggerAttributeReplacer}
+		jsonHandler := slog.NewJSONHandler(os.Stderr, &slogOption)
+		logger = slog.New(jsonHandler)
+	}
+	return logger
+}
 
 func StoreLoggerInContext(ctx context.Context, logger *slog.Logger) context.Context {
 	return context.WithValue(ctx, ContextKeyLogger, logger)
@@ -112,7 +131,8 @@ func deconstructXCloudTraceContext(s string) (traceID, spanID string, traceSampl
 func LoggerFromContext(ctx context.Context) *slog.Logger {
 	logger, found := ctx.Value(ContextKeyLogger).(*slog.Logger)
 	if !found {
-		panic(fmt.Errorf("logger not found context"))
+		logger := NewLogger("")
+		logger.ErrorContext(ctx, "logger not found in context. Falling back to a new logger, but it will be missing context keys")
 	}
 	return logger
 }

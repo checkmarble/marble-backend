@@ -5,7 +5,6 @@ import (
 	"crypto/rsa"
 	"flag"
 	"log"
-	"log/slog"
 	"marble/marble-backend/api"
 	"marble/marble-backend/infra"
 	"marble/marble-backend/jobs"
@@ -94,42 +93,27 @@ func main() {
 			FakeAwsS3Repository: utils.GetBoolEnv("FAKE_AWS_S3", false),
 		},
 	}
+	devEnv := appConfig.env == "DEV"
 
 	////////////////////////////////////////////////////////////
 	// Setup dependencies
 	////////////////////////////////////////////////////////////
 
-	var logger *slog.Logger
-
-	devEnv := appConfig.env == "DEV"
-	if devEnv {
-		logHandler := utils.LocalDevHandlerOptions{
-			SlogOpts: slog.HandlerOptions{Level: slog.LevelDebug},
-			UseColor: true,
-		}.NewLocalDevHandler(os.Stderr)
-		logger = slog.New(logHandler)
-	} else {
-		slogOption := slog.HandlerOptions{ReplaceAttr: utils.GCPLoggerAttributeReplacer}
-		jsonHandler := slog.NewJSONHandler(os.Stderr, &slogOption)
-		logger = slog.New(jsonHandler)
-	}
+	logger := utils.NewLogger(appConfig.env)
+	appContext := utils.StoreLoggerInContext(context.Background(), logger)
 
 	shouldRunMigrations := flag.Bool("migrations", false, "Run migrations")
 	shouldRunServer := flag.Bool("server", false, "Run server")
 	shouldRunScheduledScenarios := flag.Bool("scheduler", false, "Run scheduled scenarios")
 	shouldRunBatchIngestion := flag.Bool("batch-ingestion", false, "Run batch ingestion")
 	flag.Parse()
-
 	logger.Info("Flags", "shouldRunMigrations", *shouldRunMigrations, "shouldRunServer", *shouldRunServer)
 
 	if *shouldRunMigrations {
 		repositories.RunMigrations(appConfig.env, appConfig.pgConfig, logger)
 	}
 
-	appContext := utils.StoreLoggerInContext(context.Background(), logger)
-
 	if *shouldRunServer {
-
 		marbleJwtSigningKey := infra.MustParseSigningKey(utils.GetRequiredStringEnv("AUTHENTICATION_JWT_SIGNING_KEY"))
 
 		usecases := NewUseCases(appContext, appConfig, &marbleJwtSigningKey)
