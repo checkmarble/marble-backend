@@ -8,7 +8,7 @@ import (
 )
 
 type ScheduledExecutionRepository interface {
-	GetScheduledExecution(tx Transaction, organizationId, id string) (models.ScheduledExecution, error)
+	GetScheduledExecution(tx Transaction, id string) (models.ScheduledExecution, error)
 	ListScheduledExecutions(tx Transaction, organizationId, scenarioId string) ([]models.ScheduledExecution, error)
 	CreateScheduledExecution(tx Transaction, input models.CreateScheduledExecutionInput, newScheduledExecutionId string) error
 	UpdateScheduledExecution(tx Transaction, updateScheduledEx models.UpdateScheduledExecutionInput) error
@@ -18,14 +18,13 @@ type ScheduledExecutionRepositoryPostgresql struct {
 	transactionFactory TransactionFactory
 }
 
-func (repo *ScheduledExecutionRepositoryPostgresql) GetScheduledExecution(tx Transaction, organizationId, id string) (models.ScheduledExecution, error) {
+func (repo *ScheduledExecutionRepositoryPostgresql) GetScheduledExecution(tx Transaction, id string) (models.ScheduledExecution, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 	return SqlToModel(
 		pgTx,
 		NewQueryBuilder().
 			Select(dbmodels.ScheduledExecutionFields...).
 			From(dbmodels.TABLE_SCHEDULED_EXECUTIONS).
-			Where(squirrel.Eq{"organization_id": organizationId}).
 			Where(squirrel.Eq{"id": id}),
 		dbmodels.AdaptScheduledExecution,
 	)

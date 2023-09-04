@@ -20,41 +20,11 @@ type Usecases struct {
 	Configuration models.GlobalConfiguration
 }
 
-func (usecases *Usecases) NewOrganizationUseCase() OrganizationUseCase {
-	return OrganizationUseCase{
-		transactionFactory:           usecases.Repositories.TransactionFactory,
-		orgTransactionFactory:        usecases.NewOrgTransactionFactory(),
-		organizationRepository:       usecases.Repositories.OrganizationRepository,
-		datamodelRepository:          usecases.Repositories.DataModelRepository,
-		apiKeyRepository:             usecases.Repositories.ApiKeyRepository,
-		userRepository:               usecases.Repositories.UserRepository,
-		organizationCreator:          usecases.NewOrganizationCreator(),
-		organizationSchemaRepository: usecases.Repositories.OrganizationSchemaRepository,
-		populateOrganizationSchema:   usecases.NewPopulateOrganizationSchema(),
-	}
-}
-
 func (usecases *Usecases) NewOrgTransactionFactory() org_transaction.Factory {
 	return &org_transaction.FactoryImpl{
 		OrganizationSchemaRepository:     usecases.Repositories.OrganizationSchemaRepository,
 		TransactionFactory:               usecases.Repositories.TransactionFactory,
 		DatabaseConnectionPoolRepository: usecases.Repositories.DatabaseConnectionPoolRepository,
-	}
-}
-
-func (usecases *Usecases) NewIngestionUseCase() IngestionUseCase {
-	return IngestionUseCase{
-		orgTransactionFactory: usecases.NewOrgTransactionFactory(),
-		ingestionRepository:   usecases.Repositories.IngestionRepository,
-		gcsRepository:         usecases.Repositories.GcsRepository,
-		datamodelRepository:   usecases.Repositories.DataModelRepository,
-	}
-}
-
-func (usecases *Usecases) NewUserUseCase() UserUseCase {
-	return UserUseCase{
-		transactionFactory: usecases.Repositories.TransactionFactory,
-		userRepository:     usecases.Repositories.UserRepository,
 	}
 }
 
@@ -81,23 +51,6 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 			ScenarioPublisher:                usecases.NewScenarioPublisher(),
 		},
 		PopulateOrganizationSchema: usecases.NewPopulateOrganizationSchema(),
-	}
-}
-
-func (usecases *Usecases) NewScheduledExecutionUsecase() ScheduledExecutionUsecase {
-	return ScheduledExecutionUsecase{
-		scenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,
-		scenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
-		scheduledExecutionRepository:    usecases.Repositories.ScheduledExecutionRepository,
-		transactionFactory:              usecases.Repositories.TransactionFactory,
-		orgTransactionFactory:           usecases.NewOrgTransactionFactory(),
-		dataModelRepository:             usecases.Repositories.DataModelRepository,
-		ingestedDataReadRepository:      usecases.Repositories.IngestedDataReadRepository,
-		decisionRepository:              usecases.Repositories.DecisionRepository,
-		scenarioPublicationsRepository:  usecases.Repositories.ScenarioPublicationRepository,
-		customListRepository:            usecases.Repositories.CustomListRepository,
-		exportScheduleExecution:         usecases.NewExportScheduleExecution(),
-		evaluateRuleAstExpression:       usecases.NewEvaluateRuleAstExpression(),
 	}
 }
 

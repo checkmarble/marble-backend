@@ -3,16 +3,20 @@ package usecases
 import (
 	"marble/marble-backend/models"
 	"marble/marble-backend/repositories"
+	"marble/marble-backend/usecases/security"
 	"strings"
 )
 
 type UserUseCase struct {
-	transactionFactory repositories.TransactionFactory
-	userRepository     repositories.UserRepository
+	enforceAdminSecurity security.EnforceSecurityAdmin
+	transactionFactory   repositories.TransactionFactory
+	userRepository       repositories.UserRepository
 }
 
 func (usecase *UserUseCase) AddUser(createUser models.CreateUser) (models.User, error) {
-
+	if err := usecase.enforceAdminSecurity.CreateUser(); err != nil {
+		return models.User{}, err
+	}
 	return repositories.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
@@ -33,6 +37,9 @@ func (usecase *UserUseCase) AddUser(createUser models.CreateUser) (models.User, 
 }
 
 func (usecase *UserUseCase) DeleteUser(userID string) error {
+	if err := usecase.enforceAdminSecurity.DeleteUser(); err != nil {
+		return err
+	}
 	return usecase.transactionFactory.Transaction(
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) error {
@@ -42,6 +49,9 @@ func (usecase *UserUseCase) DeleteUser(userID string) error {
 }
 
 func (usecase *UserUseCase) GetAllUsers() ([]models.User, error) {
+	if err := usecase.enforceAdminSecurity.ListUser(); err != nil {
+		return []models.User{}, err
+	}
 	return repositories.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
@@ -52,6 +62,9 @@ func (usecase *UserUseCase) GetAllUsers() ([]models.User, error) {
 }
 
 func (usecase *UserUseCase) GetUser(userID string) (models.User, error) {
+	if err := usecase.enforceAdminSecurity.ListUser(); err != nil {
+		return models.User{}, err
+	}
 	return repositories.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,

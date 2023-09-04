@@ -10,6 +10,7 @@ import (
 	"marble/marble-backend/pure_utils"
 	"marble/marble-backend/repositories"
 	"marble/marble-backend/usecases/org_transaction"
+	"marble/marble-backend/usecases/security"
 	"strconv"
 	"strings"
 	"time"
@@ -22,6 +23,7 @@ const (
 )
 
 type IngestionUseCase struct {
+	enforceSecurity       security.EnforceSecurityIngestion
 	orgTransactionFactory org_transaction.Factory
 	ingestionRepository   repositories.IngestionRepository
 	gcsRepository         repositories.GcsRepository
@@ -29,7 +31,9 @@ type IngestionUseCase struct {
 }
 
 func (usecase *IngestionUseCase) IngestObjects(organizationId string, payloads []models.PayloadReader, table models.Table, logger *slog.Logger) error {
-
+	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
+		return err
+	}
 	return usecase.orgTransactionFactory.TransactionInOrgSchema(organizationId, func(tx repositories.Transaction) error {
 		return usecase.ingestionRepository.IngestObjects(tx, payloads, table, logger)
 	})
@@ -76,6 +80,12 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file
 	organizationId := elements[0]
 	tableName := elements[1]
 
+	// It make more sense to have a CanIngest function for job without the OrgId now
+	// but at least having a check with orgId here make it future proof in case
+	// we want to allow a user to use this functionality
+	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
+		return err
+	}
 	dataModel, err := usecase.datamodelRepository.GetDataModel(nil, organizationId)
 	if err != nil {
 		return fmt.Errorf("error getting data model for organization %s: %w", organizationId, err)

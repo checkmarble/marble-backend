@@ -13,7 +13,8 @@ func ExecuteAllScheduledScenarios(ctx context.Context, usecases usecases.Usecase
 	fmt.Println("Executing all scheduled scenarios")
 	scenarios, err := usecases.Repositories.ScenarioReadRepository.ListAllScenarios(nil)
 
-	usecase := usecases.NewScheduledExecutionUsecase()
+	usecasesWithCreds := GenerateUsecaseWithCredForMarbleAdmin(ctx, usecases)
+	usecase := usecasesWithCreds.NewScheduledExecutionUsecase()
 	if err != nil {
 		log.Fatal(err)
 	}

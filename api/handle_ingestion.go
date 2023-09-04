@@ -24,9 +24,9 @@ func (api *API) handleIngestion() http.HandlerFunc {
 
 		logger = logger.With(slog.String("organizationId", organizationId))
 
-		usecase := api.usecases.NewIngestionUseCase()
+		usecase := api.UsecasesWithCreds(r).NewIngestionUseCase()
 
-		organizationUsecase := api.usecases.NewOrganizationUseCase()
+		organizationUsecase := api.UsecasesWithCreds(r).NewOrganizationUseCase()
 		dataModel, err := organizationUsecase.GetDataModel(organizationId)
 		if err != nil {
 			logger.ErrorContext(ctx, fmt.Sprintf("Unable to find datamodel by organizationId for ingestion: %v", err))
