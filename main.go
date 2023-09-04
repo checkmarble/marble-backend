@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-func runServer(ctx context.Context, usecases usecases.Usecases, port string, devEnv bool) {
+func runServer(ctx context.Context, usecases usecases.Usecases, port string, devEnv bool, projectId string) {
 
 	logger := utils.LoggerFromContext(ctx)
 
@@ -45,7 +45,7 @@ func runServer(ctx context.Context, usecases usecases.Usecases, port string, dev
 		}
 	}
 
-	api, _ := api.New(ctx, port, usecases, devEnv)
+	api, _ := api.New(ctx, port, usecases, devEnv, projectId)
 
 	////////////////////////////////////////////////////////////
 	// Start serving the app
@@ -133,7 +133,7 @@ func main() {
 		marbleJwtSigningKey := infra.MustParseSigningKey(utils.GetRequiredStringEnv("AUTHENTICATION_JWT_SIGNING_KEY"))
 
 		usecases := NewUseCases(appContext, appConfig, &marbleJwtSigningKey)
-		runServer(appContext, usecases, appConfig.port, devEnv)
+		runServer(appContext, usecases, appConfig.port, devEnv, os.Getenv("GCLOUD_PROJECT"))
 	}
 
 	if *shouldRunScheduledScenarios {

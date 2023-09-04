@@ -16,13 +16,12 @@ import (
 )
 
 type API struct {
-	port     string
 	router   *chi.Mux
 	usecases usecases.Usecases
 	logger   *slog.Logger
 }
 
-func New(ctx context.Context, port string, usecases usecases.Usecases, devEnv bool) (*http.Server, error) {
+func New(ctx context.Context, port string, usecases usecases.Usecases, devEnv bool, projectId string) (*http.Server, error) {
 
 	///////////////////////////////
 	// Setup a router
@@ -43,12 +42,11 @@ func New(ctx context.Context, port string, usecases usecases.Usecases, devEnv bo
 
 	r.Use(middleware.Recoverer)
 	r.Use(utils.StoreLoggerInContextMiddleware(logger))
-	r.Use(utils.AddStackdriverKeysToLoggerMiddleware)
+	r.Use(utils.AddStackdriverKeysToLoggerMiddleware(devEnv, projectId))
 	r.Use(cors.Handler(corsOption(corsAllowLocalhost)))
 	r.Use(setContentTypeMiddleware)
 
 	s := &API{
-		port:     port,
 		router:   r,
 		usecases: usecases,
 		logger:   logger,
@@ -74,7 +72,7 @@ func New(ctx context.Context, port string, usecases usecases.Usecases, devEnv bo
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
 
-		// Instance of gorilla router
+		// Instance of chi router
 		Handler: r,
 	}
 
