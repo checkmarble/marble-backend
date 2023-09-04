@@ -12,8 +12,8 @@ import (
 func NewLogger(env string) *slog.Logger {
 	var logger *slog.Logger
 
-	devEnv := env == "DEV"
-	if devEnv {
+	isDevEnv := env == "DEV"
+	if isDevEnv {
 		logHandler := LocalDevHandlerOptions{
 			SlogOpts: slog.HandlerOptions{Level: slog.LevelDebug},
 			UseColor: true,
@@ -40,7 +40,7 @@ func StoreLoggerInContextMiddleware(logger *slog.Logger) func(next http.Handler)
 	}
 }
 
-func AddStackdriverKeysToLoggerMiddleware(devEnv bool, projectId string) func(next http.Handler) http.Handler {
+func AddStackdriverKeysToLoggerMiddleware(isDevEnv bool, projectId string) func(next http.Handler) http.Handler {
 	// Returns a middleware that adds the trace and logName keys to the logger, if the projectId is found
 	// and the trace header is present
 	return func(next http.Handler) http.Handler {
@@ -70,7 +70,7 @@ func AddStackdriverKeysToLoggerMiddleware(devEnv bool, projectId string) func(ne
 			if projectId != "" {
 				if traceId != "" {
 					logger = logger.With("trace", fmt.Sprintf("projects/%s/traces/%s", projectId, traceId))
-				} else if !devEnv {
+				} else if !isDevEnv {
 					logger.DebugContext(ctx, "no trace id found in request")
 				}
 
