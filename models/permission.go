@@ -21,6 +21,7 @@ const (
 	ANY_ORGANIZATION_ID_IN_CONTEXT
 	CUSTOM_LISTS_READ
 	CUSTOM_LISTS_CREATE
+	MARBLE_USER_LIST
 )
 
 func (r Permission) String() string {
@@ -43,5 +44,6 @@ func (r Permission) String() string {
 		"ANY_ORGANIZATION_ID_IN_CONTEXT",
 		"CUSTOM_LISTS_READ",
 		"CUSTOM_LISTS_PUBLISH",
+		"MARBLE_USER_LIST",
 	}[r]
 }

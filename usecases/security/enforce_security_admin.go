@@ -31,6 +31,6 @@ func (e *EnforceSecurityAdminImpl) DeleteUser() error {
 
 func (e *EnforceSecurityAdminImpl) ListUser() error {
 	return errors.Join(
-		e.Permission(models.MARBLE_USER_CREATE),
+		e.Permission(models.MARBLE_USER_LIST),
 	)
 }
