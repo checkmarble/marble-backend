@@ -5,8 +5,8 @@ import { type Scenario } from "./Scenario";
 const ScenarioSchema = yup.object({
   id: yup.string().required(),
   organization_id: yup.string().required(),
-  name: yup.string().required(),
-  description: yup.string().required(),
+  name: yup.string().defined(),
+  description: yup.string().defined(),
   triggerObjectType: yup.string().required(),
   createdAt: yup.date().required(),
   liveVersionId: yup.string().nullable(),

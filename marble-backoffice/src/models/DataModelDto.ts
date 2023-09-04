@@ -3,7 +3,7 @@ import { adaptDtoWithYup } from "@/infra/adaptDtoWithYup";
 import type { DataModel } from "./DataModel";
 import { MapObjectValues } from "@/MapUtils";
 
-const DataModelLinkToSingle = yup.object({
+const DataModelLinkToSingleSchema = yup.object({
   linked_table_name: yup.string().defined(),
   parent_field_name: yup.string().defined(),
   child_field_name: yup.string().defined(),
@@ -32,7 +32,7 @@ const DataModelTableSchema = yup.object({
     return yup
       .object(
         MapObjectValues(obj || {}, () => {
-          return DataModelLinkToSingle;
+          return DataModelLinkToSingleSchema;
         })
       )
       .nullable();
@@ -78,7 +78,7 @@ export function adaptDataModelApiResult(json: unknown): DataModel {
           ),
           linksToSingle: MapObjectValues(
             table.links_to_single || {},
-            (field: yup.InferType<typeof DataModelLinkToSingle>) => ({
+            (field: yup.InferType<typeof DataModelLinkToSingleSchema>) => ({
               linkedTableName: field.linked_table_name,
               parentFieldName: field.parent_field_name,
               childFieldName: field.child_field_name,
