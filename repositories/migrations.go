@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
-	"marble/marble-backend/utils"
+
+	"github.com/checkmarble/marble-backend/utils"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"

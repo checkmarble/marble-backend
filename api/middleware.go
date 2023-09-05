@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 	"log/slog"
-	"marble/marble-backend/models"
-	"marble/marble-backend/utils"
 	"net/http"
 	"strings"
 )

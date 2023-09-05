@@ -2,12 +2,13 @@ package evaluate
 
 import (
 	"fmt"
-	"marble/marble-backend/models"
-	"marble/marble-backend/models/ast"
-	"marble/marble-backend/repositories"
-	"marble/marble-backend/usecases/org_transaction"
 	"math"
 	"time"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/org_transaction"
 )
 
 type sepaDirection int

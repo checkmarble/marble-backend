@@ -2,8 +2,9 @@ package ast_eval
 
 import (
 	"fmt"
-	"marble/marble-backend/models/ast"
-	"marble/marble-backend/usecases/ast_eval/evaluate"
+
+	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/usecases/ast_eval/evaluate"
 )
 
 type AstEvaluationEnvironment struct {

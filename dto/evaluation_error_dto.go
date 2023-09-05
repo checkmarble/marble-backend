@@ -2,7 +2,8 @@ package dto
 
 import (
 	"errors"
-	"marble/marble-backend/models/ast"
+
+	"github.com/checkmarble/marble-backend/models/ast"
 )
 
 type EvaluationErrorDto struct {

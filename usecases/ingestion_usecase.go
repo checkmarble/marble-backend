@@ -6,14 +6,15 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"marble/marble-backend/models"
-	"marble/marble-backend/pure_utils"
-	"marble/marble-backend/repositories"
-	"marble/marble-backend/usecases/org_transaction"
-	"marble/marble-backend/usecases/security"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/org_transaction"
+	"github.com/checkmarble/marble-backend/usecases/security"
 )
 
 const (

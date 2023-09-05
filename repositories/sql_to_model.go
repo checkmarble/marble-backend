@@ -2,8 +2,9 @@ package repositories
 
 import (
 	"fmt"
-	"marble/marble-backend/models"
 	"reflect"
+
+	"github.com/checkmarble/marble-backend/models"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"

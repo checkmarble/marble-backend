@@ -1,8 +1,8 @@
 package api
 
 import (
-	"marble/marble-backend/dto"
-	"marble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models/ast"
 	"net/http"
 )
 

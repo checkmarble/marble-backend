@@ -2,8 +2,9 @@ package organization
 
 import (
 	"fmt"
-	"marble/marble-backend/models"
-	"marble/marble-backend/repositories"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories"
 )
 
 type PopulateOrganizationSchema struct {

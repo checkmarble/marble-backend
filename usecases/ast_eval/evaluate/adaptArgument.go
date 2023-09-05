@@ -2,10 +2,11 @@ package evaluate
 
 import (
 	"fmt"
-	"marble/marble-backend/models"
-	"marble/marble-backend/models/ast"
-	"marble/marble-backend/utils"
 	"time"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 func promoteArgumentToInt64(argument any) (int64, error) {

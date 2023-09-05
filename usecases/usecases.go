@@ -1,16 +1,16 @@
 package usecases
 
 import (
-	"marble/marble-backend/models"
-	"marble/marble-backend/models/ast"
-	"marble/marble-backend/repositories"
-	"marble/marble-backend/usecases/ast_eval"
-	"marble/marble-backend/usecases/ast_eval/evaluate"
-	"marble/marble-backend/usecases/org_transaction"
-	"marble/marble-backend/usecases/organization"
-	"marble/marble-backend/usecases/scenarios"
-	"marble/marble-backend/usecases/scheduledexecution"
-	"marble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/ast_eval"
+	"github.com/checkmarble/marble-backend/usecases/ast_eval/evaluate"
+	"github.com/checkmarble/marble-backend/usecases/org_transaction"
+	"github.com/checkmarble/marble-backend/usecases/organization"
+	"github.com/checkmarble/marble-backend/usecases/scenarios"
+	"github.com/checkmarble/marble-backend/usecases/scheduledexecution"
+	"github.com/checkmarble/marble-backend/usecases/security"
 
 	"slices"
 )

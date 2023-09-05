@@ -3,9 +3,10 @@ package usecases
 import (
 	"context"
 	"fmt"
-	"marble/marble-backend/models"
-	"marble/marble-backend/repositories"
 	"time"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories"
 )
 
 type MarbleTokenUseCase struct {

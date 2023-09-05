@@ -2,8 +2,9 @@ package dto
 
 import (
 	"encoding/json"
-	"marble/marble-backend/models"
 	"time"
+
+	"github.com/checkmarble/marble-backend/models"
 )
 
 type GetDecisionInput struct {

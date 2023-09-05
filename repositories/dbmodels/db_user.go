@@ -1,7 +1,7 @@
 package dbmodels
 
 import (
-	"marble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models"
 )
 
 type DBUserResult struct {

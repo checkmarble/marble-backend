@@ -2,7 +2,7 @@ package api
 
 import (
 	"fmt"
-	"marble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models"
 	"net/http"
 	"strings"
 )

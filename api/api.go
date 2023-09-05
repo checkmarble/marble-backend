@@ -3,15 +3,16 @@ package api
 import (
 	"context"
 	"fmt"
-	"marble/marble-backend/models"
-	"marble/marble-backend/usecases"
-	"marble/marble-backend/utils"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type API struct {

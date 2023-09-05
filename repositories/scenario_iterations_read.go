@@ -2,10 +2,11 @@ package repositories
 
 import (
 	"fmt"
-	"marble/marble-backend/models"
-	"marble/marble-backend/pure_utils"
-	"marble/marble-backend/repositories/dbmodels"
 	"strings"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 
 	"github.com/Masterminds/squirrel"
 )

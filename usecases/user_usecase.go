@@ -1,10 +1,11 @@
 package usecases
 
 import (
-	"marble/marble-backend/models"
-	"marble/marble-backend/repositories"
-	"marble/marble-backend/usecases/security"
 	"strings"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/security"
 )
 
 type UserUseCase struct {

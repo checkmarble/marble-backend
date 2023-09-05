@@ -1,8 +1,9 @@
 package utils
 
 import (
-	"marble/marble-backend/models"
 	"testing"
+
+	"github.com/checkmarble/marble-backend/models"
 
 	"github.com/stretchr/testify/assert"
 )

@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"marble/marble-backend/usecases"
-	"marble/marble-backend/utils"
+
+	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 func ExecuteAllScheduledScenarios(ctx context.Context, usecases usecases.Usecases) {

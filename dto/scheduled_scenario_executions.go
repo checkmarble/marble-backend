@@ -1,8 +1,9 @@
 package dto
 
 import (
-	"marble/marble-backend/models"
 	"time"
+
+	"github.com/checkmarble/marble-backend/models"
 )
 
 type APIScheduledExecution struct {

@@ -1,11 +1,32 @@
-module marble/marble-backend
+module github.com/checkmarble/marble-backend
 
 go 1.21
 
 require (
+	cloud.google.com/go/storage v1.32.0
+	firebase.google.com/go/v4 v4.12.0
+	github.com/Masterminds/squirrel v1.5.4
+	github.com/adhocore/gronx v1.6.5
+	github.com/aws/aws-sdk-go-v2 v1.21.0
+	github.com/aws/aws-sdk-go-v2/config v1.18.36
+	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.80
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.38.5
+	github.com/cockroachdb/errors v1.11.0
+	github.com/ggicci/httpin v0.11.0
 	github.com/go-chi/chi/v5 v5.0.10
+	github.com/go-chi/cors v1.2.1
+	github.com/go-playground/validator v9.31.0+incompatible
+	github.com/gofrs/uuid v4.4.0+incompatible
+	github.com/golang-jwt/jwt/v4 v4.5.0
+	github.com/google/uuid v1.3.1
+	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
+	github.com/jackc/pgx/v5 v5.4.3
+	github.com/ompluscator/dynamic-struct v1.4.0
+	github.com/ory/dockertest/v3 v3.10.0
+	github.com/pkg/errors v0.9.1
 	github.com/pressly/goose/v3 v3.15.0
-
+	github.com/stretchr/testify v1.8.4
+	google.golang.org/api v0.138.0
 )
 
 require (
@@ -35,7 +56,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.21.5 // indirect
 	github.com/aws/smithy-go v1.14.2 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
-	github.com/cockroachdb/errors v1.11.0 // indirect
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
 	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/containerd/continuity v0.4.1 // indirect
@@ -73,6 +93,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
+	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
@@ -97,28 +118,4 @@ require (
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-)
-
-require (
-	cloud.google.com/go/storage v1.32.0
-	firebase.google.com/go/v4 v4.12.0
-	github.com/Masterminds/squirrel v1.5.4
-	github.com/adhocore/gronx v1.6.5
-	github.com/aws/aws-sdk-go-v2 v1.21.0
-	github.com/aws/aws-sdk-go-v2/config v1.18.36
-	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.80
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.38.5
-	github.com/ggicci/httpin v0.11.0
-	github.com/go-chi/cors v1.2.1
-	github.com/go-playground/validator v9.31.0+incompatible
-	github.com/gofrs/uuid v4.4.0+incompatible
-	github.com/golang-jwt/jwt/v4 v4.5.0
-	github.com/google/uuid v1.3.1
-	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
-	github.com/jackc/pgx/v5 v5.4.3
-	github.com/ompluscator/dynamic-struct v1.4.0
-	github.com/ory/dockertest/v3 v3.10.0
-	github.com/pkg/errors v0.9.1
-	github.com/stretchr/testify v1.8.4
-	google.golang.org/api v0.138.0
 )

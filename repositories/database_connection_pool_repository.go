@@ -2,8 +2,9 @@ package repositories
 
 import (
 	"context"
-	"marble/marble-backend/models"
 	"sync"
+
+	"github.com/checkmarble/marble-backend/models"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 

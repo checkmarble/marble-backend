@@ -1,22 +1,23 @@
-package integration_test
+package integration
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"marble/marble-backend/models"
-	"marble/marble-backend/models/ast"
-	"marble/marble-backend/usecases"
-	"marble/marble-backend/usecases/payload_parser"
-	"marble/marble-backend/usecases/scenarios"
-	"marble/marble-backend/utils"
 	"os"
 	"slices"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/usecases/payload_parser"
+	"github.com/checkmarble/marble-backend/usecases/scenarios"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 func TestScenarioEndToEnd(t *testing.T) {

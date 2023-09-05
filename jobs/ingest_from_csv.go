@@ -3,8 +3,9 @@ package jobs
 import (
 	"context"
 	"fmt"
-	"marble/marble-backend/usecases"
-	"marble/marble-backend/utils"
+
+	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 func IngestDataFromStorageCSVs(ctx context.Context, usecases usecases.Usecases, bucketName string) {

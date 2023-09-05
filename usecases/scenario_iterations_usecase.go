@@ -3,11 +3,12 @@ package usecases
 import (
 	"context"
 	"fmt"
-	"marble/marble-backend/models"
-	"marble/marble-backend/models/ast"
-	"marble/marble-backend/repositories"
-	"marble/marble-backend/usecases/scenarios"
-	"marble/marble-backend/usecases/security"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/scenarios"
+	"github.com/checkmarble/marble-backend/usecases/security"
 
 	"github.com/adhocore/gronx"
 )

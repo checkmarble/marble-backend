@@ -1,7 +1,7 @@
 package dto
 
 import (
-	"marble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/models/ast"
 )
 
 type FuncAttributesDto struct {

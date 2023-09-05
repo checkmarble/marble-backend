@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"marble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models"
 
 	"firebase.google.com/go/v4/auth"
 )

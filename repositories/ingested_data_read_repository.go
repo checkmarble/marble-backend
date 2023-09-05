@@ -3,8 +3,9 @@ package repositories
 import (
 	"errors"
 	"fmt"
-	"marble/marble-backend/models"
-	"marble/marble-backend/models/ast"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
