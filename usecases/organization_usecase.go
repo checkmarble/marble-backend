@@ -153,7 +153,7 @@ func (usecase *OrganizationUseCase) GetApiKeysOfOrganization(ctx context.Context
 			return []models.ApiKey{}, err
 		}
 		for _, ak := range apiKeys {
-			if err := usecase.enforceSecurity.ReadOrganizationApiKeys(ak.OrganizationId); err != nil {
+			if err := usecase.enforceSecurity.ReadOrganizationApiKeys(ak); err != nil {
 				return []models.ApiKey{}, err
 			}
 		}

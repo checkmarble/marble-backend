@@ -10,7 +10,7 @@ type EnforceSecurityOrganization interface {
 	ListOrganization() error
 	CreateOrganization() error
 	DeleteOrganization() error
-	ReadOrganizationApiKeys(organizationId string) error
+	ReadOrganizationApiKeys(apiKey models.ApiKey) error
 	ReadDataModel() error
 	WriteDataModel() error
 }
@@ -38,10 +38,10 @@ func (e *EnforceSecurityOrganizationImpl) DeleteOrganization() error {
 	)
 }
 
-func (e *EnforceSecurityOrganizationImpl) ReadOrganizationApiKeys(organizationId string) error {
+func (e *EnforceSecurityOrganizationImpl) ReadOrganizationApiKeys(apiKey models.ApiKey) error {
 	return errors.Join(
 		e.Permission(models.APIKEY_READ),
-		e.ReadOrganization(organizationId),
+		e.ReadOrganization(apiKey.OrganizationId),
 	)
 }
 
