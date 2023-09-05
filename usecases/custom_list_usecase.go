@@ -56,12 +56,16 @@ func (usecase *CustomListUseCase) CreateCustomList(createCustomList models.Creat
 }
 
 func (usecase *CustomListUseCase) UpdateCustomList(updateCustomList models.UpdateCustomListInput) (models.CustomList, error) {
-	if err := usecase.enforceSecurity.CreateCustomList(); err != nil {
-		return models.CustomList{}, err
-	}
 	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.CustomList, error) {
 		if updateCustomList.Name != nil || updateCustomList.Description != nil {
-			err := usecase.CustomListRepository.UpdateCustomList(tx, updateCustomList)
+			customList, err := usecase.CustomListRepository.GetCustomListById(tx, updateCustomList.Id)
+			if err != nil {
+				return models.CustomList{}, err
+			}
+			if err := usecase.enforceSecurity.ModifyCustomList(customList); err != nil {
+				return models.CustomList{}, err
+			}
+			err = usecase.CustomListRepository.UpdateCustomList(tx, updateCustomList)
 			if err != nil {
 				return models.CustomList{}, err
 			}
