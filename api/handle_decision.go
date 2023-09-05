@@ -6,10 +6,10 @@ import (
 	"log/slog"
 	"net/http"
 
-	"marble/marble-backend/dto"
-	"marble/marble-backend/models"
-	"marble/marble-backend/usecases/payload_parser"
-	"marble/marble-backend/utils"
+	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/usecases/payload_parser"
+	"github.com/checkmarble/marble-backend/utils"
 
 	"github.com/ggicci/httpin"
 )

@@ -44,6 +44,8 @@ docker-compose.dev.yml
 
 # backoffice is not merged in master
 marble-backoffice/node_modules
+marble-backend
 
+.idea
 /.firebase
 __debug_bin*

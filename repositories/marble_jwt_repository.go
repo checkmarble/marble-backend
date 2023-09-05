@@ -3,9 +3,10 @@ package repositories
 import (
 	"crypto/rsa"
 	"fmt"
-	"marble/marble-backend/dto"
-	"marble/marble-backend/models"
 	"time"
+
+	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models"
 
 	"github.com/golang-jwt/jwt/v4"
 )

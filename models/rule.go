@@ -1,8 +1,9 @@
 package models
 
 import (
-	"marble/marble-backend/models/ast"
 	"time"
+
+	"github.com/checkmarble/marble-backend/models/ast"
 )
 
 ///////////////////////////////

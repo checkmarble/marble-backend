@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"marble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models"
 
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/iterator"

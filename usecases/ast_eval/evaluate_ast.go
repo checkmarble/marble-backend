@@ -1,8 +1,8 @@
 package ast_eval
 
 import (
-	"marble/marble-backend/models/ast"
-	"marble/marble-backend/utils"
+	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 func EvaluateAst(environment AstEvaluationEnvironment, node ast.Node) (ast.NodeEvaluation, bool) {
@@ -32,7 +32,7 @@ func EvaluateAst(environment AstEvaluationEnvironment, node ast.Node) (ast.NodeE
 	}
 
 	if childEvaluationFail {
-		// an error occured in at least one of the children. Stop the evaluation.
+		// an error occurred in at least one of the children. Stop the evaluation.
 
 		// the frontend expects an ErrUndefinedFunction error to be present even when no evaluation happened.
 		if node.Function == ast.FUNC_UNDEFINED {

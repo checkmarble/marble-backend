@@ -1,7 +1,7 @@
 package api
 
 import (
-	"marble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models"
 	"net/http"
 	"testing"
 

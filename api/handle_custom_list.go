@@ -1,10 +1,10 @@
 package api
 
 import (
+	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 	"log/slog"
-	"marble/marble-backend/dto"
-	"marble/marble-backend/models"
-	"marble/marble-backend/utils"
 	"net/http"
 
 	"github.com/ggicci/httpin"

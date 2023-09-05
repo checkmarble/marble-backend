@@ -3,7 +3,8 @@ package repositories
 import (
 	"crypto/rsa"
 	"log/slog"
-	"marble/marble-backend/models"
+
+	"github.com/checkmarble/marble-backend/models"
 
 	"firebase.google.com/go/v4/auth"
 	"github.com/Masterminds/squirrel"

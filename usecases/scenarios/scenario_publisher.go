@@ -2,9 +2,10 @@ package scenarios
 
 import (
 	"fmt"
-	"marble/marble-backend/models"
-	"marble/marble-backend/repositories"
-	"marble/marble-backend/utils"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type ScenarioPublisher struct {
@@ -91,7 +92,7 @@ func (publisher *ScenarioPublisher) unpublishOldIteration(tx repositories.Transa
 		return nil, err
 	}
 
-	if err := publisher.ScenarioWriteRepository.UpdateScenarioLiveItereationId(tx, scenarioId, nil); err != nil {
+	if err := publisher.ScenarioWriteRepository.UpdateScenarioLiveIterationId(tx, scenarioId, nil); err != nil {
 		return nil, err
 	}
 	scenarioPublication, err := publisher.ScenarioPublicationsRepository.GetScenarioPublicationById(tx, newScenarioPublicationId)
@@ -114,7 +115,7 @@ func (publisher *ScenarioPublisher) publishNewIteration(tx repositories.Transact
 		return models.ScenarioPublication{}, err
 	}
 
-	if err = publisher.ScenarioWriteRepository.UpdateScenarioLiveItereationId(tx, scenarioId, &scenarioIterationId); err != nil {
+	if err = publisher.ScenarioWriteRepository.UpdateScenarioLiveIterationId(tx, scenarioId, &scenarioIterationId); err != nil {
 		return models.ScenarioPublication{}, err
 	}
 	return scenarioPublication, nil

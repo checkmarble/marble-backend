@@ -200,7 +200,6 @@ func (f Function) Attributes() (FuncAttributes, error) {
 	}
 
 	unknown := fmt.Sprintf("Unknown function: %v", f)
-
 	return FuncAttributes{
 		DebugName: unknown,
 		AstName:   unknown,

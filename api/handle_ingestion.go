@@ -3,11 +3,11 @@ package api
 import (
 	"errors"
 	"fmt"
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/usecases/payload_parser"
+	"github.com/checkmarble/marble-backend/utils"
 	"io"
 	"log/slog"
-	"marble/marble-backend/models"
-	"marble/marble-backend/usecases/payload_parser"
-	"marble/marble-backend/utils"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"

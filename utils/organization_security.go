@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"marble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models"
 
 	"github.com/cockroachdb/errors"
 )

@@ -1,10 +1,11 @@
-package integration_test
+package integration
 
 import (
 	"context"
-	"marble/marble-backend/models"
-	"marble/marble-backend/usecases"
-	"marble/marble-backend/utils"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 const TEST_ADMIN_ORG_ID string = "admin_test"

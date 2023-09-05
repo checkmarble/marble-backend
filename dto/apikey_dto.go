@@ -1,6 +1,6 @@
 package dto
 
-import "marble/marble-backend/models"
+import "github.com/checkmarble/marble-backend/models"
 
 type ApiKey struct {
 	ApiKeyId       string `json:"api_key_id"`

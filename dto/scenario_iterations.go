@@ -2,8 +2,9 @@ package dto
 
 import (
 	"fmt"
-	"marble/marble-backend/models"
 	"time"
+
+	"github.com/checkmarble/marble-backend/models"
 )
 
 type ScenarioIterationBodyDto struct {

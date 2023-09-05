@@ -2,11 +2,12 @@ package evaluate
 
 import (
 	"errors"
-	"marble/marble-backend/models"
-	"marble/marble-backend/models/ast"
-	"marble/marble-backend/repositories"
-	"marble/marble-backend/usecases/security"
-	"marble/marble-backend/utils"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type CustomListValuesAccess struct {

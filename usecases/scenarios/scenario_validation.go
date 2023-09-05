@@ -3,11 +3,12 @@ package scenarios
 import (
 	"errors"
 	"fmt"
-	"marble/marble-backend/models"
-	"marble/marble-backend/models/ast"
-	"marble/marble-backend/repositories"
-	"marble/marble-backend/usecases/ast_eval"
-	"marble/marble-backend/usecases/ast_eval/evaluate"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/ast_eval"
+	"github.com/checkmarble/marble-backend/usecases/ast_eval/evaluate"
 )
 
 func ScenarioValidationToError(validation models.ScenarioValidation) error {

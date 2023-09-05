@@ -1,8 +1,8 @@
 package repositories
 
 import (
-	"marble/marble-backend/models"
-	"marble/marble-backend/repositories/dbmodels"
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 
 	"github.com/google/uuid"
 )

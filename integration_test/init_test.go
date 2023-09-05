@@ -1,4 +1,4 @@
-package integration_test
+package integration
 
 import (
 	"context"
@@ -7,11 +7,6 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
-	"marble/marble-backend/infra"
-	"marble/marble-backend/models"
-	"marble/marble-backend/repositories"
-	"marble/marble-backend/usecases"
-	"marble/marble-backend/utils"
 	"os"
 	"testing"
 	"time"
@@ -19,6 +14,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
+
+	"github.com/checkmarble/marble-backend/infra"
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 const (

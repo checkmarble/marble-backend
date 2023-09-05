@@ -3,10 +3,10 @@ package api
 import (
 	"errors"
 	"fmt"
-
-	"marble/marble-backend/models"
-	"marble/marble-backend/utils"
 	"net/http"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 func presentError(w http.ResponseWriter, r *http.Request, err error) bool {

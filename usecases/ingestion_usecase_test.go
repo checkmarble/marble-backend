@@ -1,8 +1,9 @@
 package usecases
 
 import (
-	"marble/marble-backend/models"
 	"testing"
+
+	"github.com/checkmarble/marble-backend/models"
 )
 
 func TestParseStringValuesToMap(t *testing.T) {

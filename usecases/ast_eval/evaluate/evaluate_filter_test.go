@@ -1,9 +1,10 @@
 package evaluate
 
 import (
-	"marble/marble-backend/models"
-	"marble/marble-backend/models/ast"
 	"testing"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 
 	"github.com/stretchr/testify/assert"
 )

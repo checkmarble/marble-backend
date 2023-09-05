@@ -2,8 +2,9 @@ package dto
 
 import (
 	"fmt"
-	"marble/marble-backend/models/ast"
-	"marble/marble-backend/utils"
+
+	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type NodeDto struct {

@@ -2,13 +2,13 @@ package security
 
 import (
 	"errors"
-	"marble/marble-backend/models"
+
+	"github.com/checkmarble/marble-backend/models"
 )
 
 type EnforceSecurityIngestion interface {
 	EnforceSecurity
 	CanIngest(organizationId string) error
-
 }
 
 type EnforceSecurityIngestionImpl struct {

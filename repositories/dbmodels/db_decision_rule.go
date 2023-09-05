@@ -2,8 +2,9 @@ package dbmodels
 
 import (
 	"fmt"
-	"marble/marble-backend/models"
-	"marble/marble-backend/utils"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )

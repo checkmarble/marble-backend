@@ -5,17 +5,18 @@ import (
 	"crypto/rsa"
 	"flag"
 	"log"
-	"marble/marble-backend/api"
-	"marble/marble-backend/infra"
-	"marble/marble-backend/jobs"
-	"marble/marble-backend/models"
-	"marble/marble-backend/repositories"
-	"marble/marble-backend/usecases"
-	"marble/marble-backend/utils"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/checkmarble/marble-backend/api"
+	"github.com/checkmarble/marble-backend/infra"
+	"github.com/checkmarble/marble-backend/jobs"
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 func runServer(ctx context.Context, usecases usecases.Usecases, port string, isDevEnv bool, projectId string) {

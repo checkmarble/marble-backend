@@ -3,11 +3,12 @@ package payload_parser
 import (
 	"encoding/json"
 	"fmt"
-	"marble/marble-backend/models"
-	"marble/marble-backend/pure_utils"
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 
 	"github.com/go-playground/validator"
 	dynamicstruct "github.com/ompluscator/dynamic-struct"

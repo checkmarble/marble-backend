@@ -3,8 +3,8 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"marble/marble-backend/models"
-	"marble/marble-backend/utils"
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"

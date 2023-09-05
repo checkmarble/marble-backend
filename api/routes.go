@@ -2,11 +2,12 @@ package api
 
 import (
 	"log"
-	"marble/marble-backend/dto"
 	"net/http"
 
 	"github.com/ggicci/httpin"
 	"github.com/go-chi/chi/v5"
+
+	"github.com/checkmarble/marble-backend/dto"
 )
 
 // RegExp that matches UUIDv4 format

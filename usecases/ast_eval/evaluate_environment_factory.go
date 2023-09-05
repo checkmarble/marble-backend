@@ -1,6 +1,6 @@
 package ast_eval
 
-import "marble/marble-backend/models"
+import "github.com/checkmarble/marble-backend/models"
 
 type EvaluationEnvironmentFactoryParams struct {
 	OrganizationId                string

@@ -3,10 +3,11 @@ package utils
 import (
 	"context"
 	"fmt"
-	"marble/marble-backend/models"
 	"net/http"
 
 	"github.com/gofrs/uuid"
+
+	"github.com/checkmarble/marble-backend/models"
 )
 
 type ContextKey int

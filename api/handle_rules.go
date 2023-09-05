@@ -1,11 +1,12 @@
 package api
 
 import (
-	"marble/marble-backend/dto"
-	"marble/marble-backend/utils"
 	"net/http"
 
 	"github.com/ggicci/httpin"
+
+	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 func (api *API) ListRules() http.HandlerFunc {

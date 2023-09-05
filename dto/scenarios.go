@@ -1,7 +1,7 @@
 package dto
 
 import (
-	"marble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models"
 )
 
 type CreateScenarioBody struct {

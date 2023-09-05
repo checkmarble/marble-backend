@@ -4,8 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"marble/marble-backend/models"
 	"time"
+
+	"github.com/checkmarble/marble-backend/models"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/google/uuid"

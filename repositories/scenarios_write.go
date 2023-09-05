@@ -1,14 +1,14 @@
 package repositories
 
 import (
-	"marble/marble-backend/models"
-	"marble/marble-backend/repositories/dbmodels"
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
 type ScenarioWriteRepository interface {
 	CreateScenario(tx Transaction, scenario models.CreateScenarioInput, newScenarioId string) error
 	UpdateScenario(tx Transaction, scenario models.UpdateScenarioInput) error
-	UpdateScenarioLiveItereationId(tx Transaction, scenarioId string, scenarioIterationId *string) error
+	UpdateScenarioLiveIterationId(tx Transaction, scenarioId string, scenarioIterationId *string) error
 }
 
 type ScenarioWriteRepositoryPostgresql struct {
@@ -69,7 +69,7 @@ func (repo *ScenarioWriteRepositoryPostgresql) UpdateScenario(tx Transaction, sc
 	return nil
 }
 
-func (repo *ScenarioWriteRepositoryPostgresql) UpdateScenarioLiveItereationId(tx Transaction, scenarioId string, scenarioIterationId *string) error {
+func (repo *ScenarioWriteRepositoryPostgresql) UpdateScenarioLiveIterationId(tx Transaction, scenarioId string, scenarioIterationId *string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	sql := NewQueryBuilder().

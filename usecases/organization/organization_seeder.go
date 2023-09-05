@@ -5,9 +5,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
-	"marble/marble-backend/models"
-	"marble/marble-backend/repositories"
-	"marble/marble-backend/usecases/scenarios"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/scenarios"
 
 	"github.com/google/uuid"
 )

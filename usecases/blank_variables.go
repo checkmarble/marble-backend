@@ -1,9 +1,9 @@
 package usecases
 
 import (
-	"marble/marble-backend/models/ast"
-	"marble/marble-backend/usecases/ast_eval"
-	"marble/marble-backend/usecases/ast_eval/evaluate"
+	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/usecases/ast_eval"
+	"github.com/checkmarble/marble-backend/usecases/ast_eval/evaluate"
 )
 
 func addBlankVariableEvaluators(environment *ast_eval.AstEvaluationEnvironment, usecases *Usecases, organizationId string, returnFakeValue bool) {

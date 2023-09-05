@@ -2,8 +2,9 @@ package dto
 
 import (
 	"encoding/json"
-	"marble/marble-backend/models/ast"
 	"testing"
+
+	"github.com/checkmarble/marble-backend/models/ast"
 
 	"github.com/stretchr/testify/assert"
 )

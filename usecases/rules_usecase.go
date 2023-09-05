@@ -2,11 +2,12 @@ package usecases
 
 import (
 	"fmt"
-	"marble/marble-backend/models"
-	"marble/marble-backend/repositories"
-	"marble/marble-backend/usecases/scenarios"
-	"marble/marble-backend/usecases/security"
-	"marble/marble-backend/utils"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/scenarios"
+	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type RuleUsecase struct {

@@ -1,16 +1,17 @@
 package dbmodels
 
 import (
-	"marble/marble-backend/models"
-	"marble/marble-backend/utils"
 	"time"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type DBCustomListValueResult struct {
-	Id           string    `db:"id"`
-	CustomListId string    `db:"custom_list_id"`
-	Value        string    `db:"value"`
-	CreatedAt    time.Time `db:"created_at"`
+	Id           string     `db:"id"`
+	CustomListId string     `db:"custom_list_id"`
+	Value        string     `db:"value"`
+	CreatedAt    time.Time  `db:"created_at"`
 	DeletedAt    *time.Time `db:"deleted_at"`
 }
 

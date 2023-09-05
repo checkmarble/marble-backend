@@ -1,6 +1,6 @@
 package dto
 
-import "marble/marble-backend/models"
+import "github.com/checkmarble/marble-backend/models"
 
 type APIOrganization struct {
 	Id                         string `json:"id"`

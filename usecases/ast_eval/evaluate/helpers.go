@@ -3,8 +3,9 @@ package evaluate
 import (
 	"errors"
 	"fmt"
-	"marble/marble-backend/models"
-	"marble/marble-backend/models/ast"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 )
 
 func leftAndRight(args []any) (any, any, error) {

@@ -3,8 +3,9 @@ package usecases
 import (
 	"context"
 	"log/slog"
-	"marble/marble-backend/models"
-	"marble/marble-backend/usecases/security"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/usecases/security"
 )
 
 type UsecasesWithCreds struct {

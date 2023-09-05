@@ -1,7 +1,7 @@
 package evaluate
 
 import (
-	"marble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/models/ast"
 )
 
 type List struct{}

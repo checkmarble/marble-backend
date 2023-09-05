@@ -1,11 +1,11 @@
 package usecases
 
 import (
-	"marble/marble-backend/models"
-	"marble/marble-backend/repositories"
-	"marble/marble-backend/usecases/security"
-
 	"github.com/google/uuid"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/security"
 )
 
 type CustomListUseCase struct {

@@ -2,10 +2,11 @@ package evaluate
 
 import (
 	"fmt"
-	"marble/marble-backend/models"
-	"marble/marble-backend/models/ast"
 	"strings"
 	"time"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 )
 
 func DryRunPayload(table models.Table) map[string]any {

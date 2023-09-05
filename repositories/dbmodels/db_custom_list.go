@@ -1,9 +1,10 @@
 package dbmodels
 
 import (
-	"marble/marble-backend/models"
-	"marble/marble-backend/utils"
 	"time"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type DBCustomListResult struct {

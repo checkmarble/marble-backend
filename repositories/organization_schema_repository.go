@@ -2,8 +2,9 @@ package repositories
 
 import (
 	"fmt"
-	"marble/marble-backend/models"
-	"marble/marble-backend/repositories/dbmodels"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
