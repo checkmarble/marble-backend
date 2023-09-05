@@ -41,7 +41,7 @@ func TestScenarioEndToEnd(t *testing.T) {
 	logHandler := utils.LocalDevHandlerOptions{
 		SlogOpts: slog.HandlerOptions{Level: slog.LevelDebug},
 		UseColor: true,
-	}.NewLocalDevHandler(os.Stderr)
+	}.NewLocalDevHandler(os.Stdout)
 	logger := slog.New(logHandler)
 
 	ctx = utils.StoreLoggerInContext(ctx, logger)

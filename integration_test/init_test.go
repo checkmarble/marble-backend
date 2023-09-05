@@ -86,7 +86,7 @@ func TestMain(m *testing.M) {
 	}
 
 	pgConfig := utils.PGConfig{ConnectionString: databaseURL}
-	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	repositories.RunMigrations("DEV", pgConfig, logger)
 
 	// Need to declare this after the migrations, to have the correct search path
