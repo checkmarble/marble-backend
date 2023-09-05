@@ -56,9 +56,6 @@ func (usecase *AstExpressionUsecase) getLinkedDatabaseIdentifiers(scenario model
 
 			for fieldName := range table.Fields {
 				dataAccessors = append(dataAccessors, ast.Identifier{
-					Name: baseAccessorName + string(linkName) + "." + string(fieldName),
-					// TODO fill this in a better way
-					Description: "",
 					Node: ast.NewNodeDatabaseAccess(
 						scenario.TriggerObjectType,
 						string(fieldName),
@@ -91,8 +88,6 @@ func (usecase *AstExpressionUsecase) getPayloadIdentifiers(scenario models.Scena
 	}
 	for fieldName := range triggerObjectTable.Fields {
 		dataAccessors = append(dataAccessors, ast.Identifier{
-			Name:        string(fieldName),
-			Description: "",
 			Node: ast.Node{
 				Function: ast.FUNC_PAYLOAD,
 				Constant: nil,
@@ -114,9 +109,7 @@ func (usecase *AstExpressionUsecase) getCustomListIdentifiers(organizationId str
 	}
 	for _, customList := range customLists {
 		dataAccessors = append(dataAccessors, ast.Identifier{
-			Name:        customList.Name,
-			Description: customList.Description,
-			Node:        ast.NewNodeCustomListAccess(customList.Id),
+			Node: ast.NewNodeCustomListAccess(customList.Id),
 		})
 	}
 	return dataAccessors, nil
@@ -128,9 +121,7 @@ func (usecase *AstExpressionUsecase) getAggregatorIdentifiers() ([]ast.Identifie
 
 	for _, aggregator := range aggregatorList {
 		aggregatorAccessors = append(aggregatorAccessors, ast.Identifier{
-			Name:        string(aggregator),
-			Description: "",
-			Node:        ast.NewNodeAggregator(aggregator),
+			Node: ast.NewNodeAggregator(aggregator),
 		})
 	}
 	return aggregatorAccessors, nil

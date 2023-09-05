@@ -5,9 +5,7 @@ import (
 )
 
 type IdentifierDto struct {
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	Node        NodeDto `json:"node"`
+	Node NodeDto `json:"node"`
 }
 
 func AdaptIdentifierDto(identifier ast.Identifier) (IdentifierDto, error) {
@@ -16,8 +14,6 @@ func AdaptIdentifierDto(identifier ast.Identifier) (IdentifierDto, error) {
 		return IdentifierDto{}, err
 	}
 	return IdentifierDto{
-		Name:        identifier.Name,
-		Description: identifier.Description,
-		Node:        nodeDto,
+		Node: nodeDto,
 	}, nil
 }
