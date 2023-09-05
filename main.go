@@ -117,7 +117,7 @@ func main() {
 		marbleJwtSigningKey := infra.MustParseSigningKey(utils.GetRequiredStringEnv("AUTHENTICATION_JWT_SIGNING_KEY"))
 
 		usecases := NewUseCases(appContext, appConfig, &marbleJwtSigningKey)
-		runServer(appContext, usecases, appConfig.port, isDevEnv, os.Getenv("GCLOUD_PROJECT"))
+		runServer(appContext, usecases, appConfig.port, isDevEnv, os.Getenv("GOOGLE_CLOUD_PROJECT"))
 	}
 
 	if *shouldRunScheduledScenarios {
