@@ -17,11 +17,11 @@ func NewLogger(env string) *slog.Logger {
 		logHandler := LocalDevHandlerOptions{
 			SlogOpts: slog.HandlerOptions{Level: slog.LevelDebug},
 			UseColor: true,
-		}.NewLocalDevHandler(os.Stderr)
+		}.NewLocalDevHandler(os.Stdout)
 		logger = slog.New(logHandler)
 	} else {
 		slogOption := slog.HandlerOptions{ReplaceAttr: GCPLoggerAttributeReplacer}
-		jsonHandler := slog.NewJSONHandler(os.Stderr, &slogOption)
+		jsonHandler := slog.NewJSONHandler(os.Stdout, &slogOption)
 		logger = slog.New(jsonHandler)
 	}
 	return logger
@@ -40,8 +40,8 @@ func StoreLoggerInContextMiddleware(logger *slog.Logger) func(next http.Handler)
 	}
 }
 
-func AddStackdriverKeysToLoggerMiddleware(isDevEnv bool, projectId string) func(next http.Handler) http.Handler {
-	// Returns a middleware that adds the trace and logName keys to the logger, if the projectId is found
+func AddTraceIdToLoggerMiddleware(isDevEnv bool, projectId string) func(next http.Handler) http.Handler {
+	// Returns a middleware that adds the trace key to the logger, if the projectId is found
 	// and the trace header is present
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -69,12 +69,10 @@ func AddStackdriverKeysToLoggerMiddleware(isDevEnv bool, projectId string) func(
 			traceId := findTraceId()
 			if projectId != "" {
 				if traceId != "" {
-					logger = logger.With("trace", fmt.Sprintf("projects/%s/traces/%s", projectId, traceId))
+					logger = logger.With("logging.googleapis.com/trace", fmt.Sprintf("projects/%s/traces/%s", projectId, traceId))
 				} else if !isDevEnv {
 					logger.DebugContext(ctx, "no trace id found in request")
 				}
-
-				logger = logger.With("logName", fmt.Sprintf("projects/%s/logs/%s", projectId, "marble-backend"))
 			}
 
 			next.ServeHTTP(w, r.WithContext(context.WithValue(ctx, ContextKeyLogger, logger)))

@@ -39,7 +39,7 @@ func New(ctx context.Context, port string, usecases usecases.Usecases, isDevEnv 
 
 	r.Use(middleware.Recoverer)
 	r.Use(utils.StoreLoggerInContextMiddleware(logger))
-	r.Use(utils.AddStackdriverKeysToLoggerMiddleware(isDevEnv, projectId))
+	r.Use(utils.AddTraceIdToLoggerMiddleware(isDevEnv, projectId))
 	r.Use(cors.Handler(corsOption(isDevEnv)))
 	r.Use(setContentTypeMiddleware)
 
