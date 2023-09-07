@@ -30,7 +30,6 @@ type ValidateScenarioIterationImpl struct {
 }
 
 func (validator *ValidateScenarioIterationImpl) Validate(si ScenarioAndIteration) (result models.ScenarioValidation) {
-
 	iteration := si.Iteration
 
 	result.Errs = make([]error, 0)
@@ -67,7 +66,6 @@ func (validator *ValidateScenarioIterationImpl) Validate(si ScenarioAndIteration
 	// validate each rule
 	result.RulesEvaluations = make(map[string]ast.NodeEvaluation)
 	for _, rule := range iteration.Rules {
-
 		formula := rule.FormulaAstExpression
 		if formula == nil {
 			result.RulesEvaluations[rule.Id] = ast.NodeEvaluation{
@@ -77,12 +75,10 @@ func (validator *ValidateScenarioIterationImpl) Validate(si ScenarioAndIteration
 			result.RulesEvaluations[rule.Id], _ = ast_eval.EvaluateAst(dryRunEnvironment, *formula)
 		}
 	}
-
 	return result
 }
 
 func (validator *ValidateScenarioIterationImpl) makeDryRunEnvironment(si ScenarioAndIteration) (ast_eval.AstEvaluationEnvironment, error) {
-
 	organizationId := si.Scenario.OrganizationId
 
 	dataModel, err := validator.DataModelRepository.GetDataModel(nil, organizationId)

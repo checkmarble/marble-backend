@@ -1,0 +1,99 @@
+package scenarios
+
+import (
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+
+	"github.com/checkmarble/marble-backend/mocks"
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/usecases/ast_eval"
+	"github.com/checkmarble/marble-backend/utils"
+)
+
+func TestValidateScenarioIterationImpl_Validate(t *testing.T) {
+	scenario := models.Scenario{
+		Id:                uuid.New().String(),
+		OrganizationId:    uuid.New().String(),
+		Name:              "scenario_name",
+		Description:       "description",
+		TriggerObjectType: "object_type",
+		CreatedAt:         time.Now(),
+		LiveVersionID:     utils.Ptr(uuid.New().String()),
+	}
+
+	scenarioIterationID := uuid.New().String()
+	scenarioIteration := models.ScenarioIteration{
+		Id:             scenarioIterationID,
+		OrganizationId: scenario.OrganizationId,
+		ScenarioId:     scenario.Id,
+		Version:        utils.Ptr(1),
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+		TriggerConditionAstExpression: utils.Ptr(ast.Node{
+			Constant: utils.Ptr(100),
+		}),
+		Rules: []models.Rule{
+			{
+				Id:                  "rule",
+				ScenarioIterationId: scenarioIterationID,
+				OrganizationId:      scenario.OrganizationId,
+				DisplayOrder:        0,
+				Name:                "rule",
+				Description:         "description",
+				FormulaAstExpression: utils.Ptr(ast.Node{
+					Function: ast.FUNC_GREATER,
+					Constant: nil,
+					Children: []ast.Node{
+						{
+							Constant: 10,
+						},
+						{
+							Constant: 100,
+						},
+					},
+				}),
+				ScoreModifier: 10,
+				CreatedAt:     time.Now(),
+			},
+		},
+		ScoreReviewThreshold: utils.Ptr(100),
+		ScoreRejectThreshold: utils.Ptr(1000),
+		BatchTriggerSQL:      "trigger",
+		Schedule:             "schedule",
+	}
+
+	mdmr := new(mocks.DataModelRepository)
+	mdmr.On("GetDataModel", nil, scenario.OrganizationId).
+		Return(models.DataModel{
+			Version: "version",
+			Status:  models.Live,
+			Tables: map[models.TableName]models.Table{
+				"object_type": {
+					Name: "object_type",
+					Fields: map[models.FieldName]models.Field{
+						"id": {
+							DataType: models.Int,
+						},
+					},
+					LinksToSingle: nil,
+				},
+			},
+		}, nil)
+
+	validator := ValidateScenarioIterationImpl{
+		DataModelRepository: mdmr,
+		AstEvaluationEnvironmentFactory: func(params ast_eval.EvaluationEnvironmentFactoryParams) ast_eval.AstEvaluationEnvironment {
+			return ast_eval.NewAstEvaluationEnvironment()
+		},
+	}
+
+	result := validator.Validate(ScenarioAndIteration{
+		Scenario:  scenario,
+		Iteration: scenarioIteration,
+	})
+	assert.Empty(t, result.Errs)
+}
