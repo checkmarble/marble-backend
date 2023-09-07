@@ -47,23 +47,23 @@ func (a AggregatorEvaluator) Evaluate(arguments ast.Arguments) (any, []error) {
 	// Aggregator validation
 	validTypes, isValid := ValidTypesForAggregator[aggregator]
 	if !isValid {
-		return MakeEvaluateError(fmt.Errorf("%s is not a valid aggregator %w", aggregator, models.ErrRuntimeExpression))
+		return MakeEvaluateError(fmt.Errorf("%s is not a valid aggregator %w %w", aggregator, models.ErrRuntimeExpression, ast.NewNamedArgumentError("aggregator")))
 	}
 
 	fieldType, err := getFieldType(a.DataModel, tableName, fieldName)
 	if err != nil {
-		return MakeEvaluateError(fmt.Errorf("field type for %s.%s not found in data model %w %w", tableName, fieldName, err, models.ErrRuntimeExpression))
+		return MakeEvaluateError(fmt.Errorf("field type for %s.%s not found in data model %w %w", tableName, fieldName, err, ast.NewNamedArgumentError("fieldName")))
 	}
 	isValidFieldType := slices.Contains(validTypes, fieldType)
 	if !isValidFieldType {
-		return MakeEvaluateError(fmt.Errorf("field type %s is not valid for aggregator %s %w", fieldType, aggregator, models.ErrRuntimeExpression))
+		return MakeEvaluateError(fmt.Errorf("field type %s is not valid for aggregator %s %w %w", fieldType, aggregator, models.ErrRuntimeExpression, ast.NewNamedArgumentError("fieldName")))
 	}
 
 	// Filters validation
 	if len(filters) > 0 {
 		for _, filter := range filters {
 			if filter.TableName != tableNameStr {
-				return MakeEvaluateError(fmt.Errorf("filters must be applied on the same table %w", models.ErrRuntimeExpression))
+				return MakeEvaluateError(fmt.Errorf("filters must be applied on the same table %w %w", models.ErrRuntimeExpression, ast.NewNamedArgumentError("filters")))
 			}
 		}
 	}
