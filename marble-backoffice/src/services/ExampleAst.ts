@@ -148,12 +148,18 @@ export const demoRules: ExampleRule[] = [
     scoreModifier: 100,
     formula: adaptLitteralAnds([
       {
-        name: "DatabaseAccess",
-        named_children: {
-          tableName: { constant: "transactions" },
-          fieldName: { constant: "is_frozen" },
-          path: { constant: ["account"] },
-        },
+        name: "=",
+        children: [
+          {
+            name: "DatabaseAccess",
+            named_children: {
+              tableName: { constant: "transactions" },
+              fieldName: { constant: "is_frozen" },
+              path: { constant: ["account"] },
+            },
+          },
+          { constant: true },
+        ],
       },
     ]),
   },
