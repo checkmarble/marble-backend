@@ -21,33 +21,21 @@ func (api *API) handleGetEditorIdentifiers() http.HandlerFunc {
 			return
 		}
 
-		databaseNodes, err := utils.MapErr(result.DatabaseAccessors, dto.AdaptIdentifierDto)
+		databaseNodes, err := utils.MapErr(result.DatabaseAccessors, dto.AdaptNodeDto)
 		if presentError(w, r, err) {
 			return
 		}
-		payloadbaseNodes, err := utils.MapErr(result.PayloadAccessors, dto.AdaptIdentifierDto)
-		if presentError(w, r, err) {
-			return
-		}
-		customListNodes, err := utils.MapErr(result.CustomListAccessors, dto.AdaptIdentifierDto)
-		if presentError(w, r, err) {
-			return
-		}
-		aggregatorNodes, err := utils.MapErr(result.AggregatorAccessors, dto.AdaptIdentifierDto)
+		payloadbaseNodes, err := utils.MapErr(result.PayloadAccessors, dto.AdaptNodeDto)
 		if presentError(w, r, err) {
 			return
 		}
 
 		PresentModel(w, struct {
-			DatabaseAccessors   []dto.IdentifierDto `json:"database_accessors"`
-			PayloadAccessors    []dto.IdentifierDto `json:"payload_accessors"`
-			CustomListAccessors []dto.IdentifierDto `json:"custom_list_accessors"`
-			AggregatorAccessors []dto.IdentifierDto `json:"aggregator_accessors"`
+			DatabaseAccessors []dto.NodeDto `json:"database_accessors"`
+			PayloadAccessors  []dto.NodeDto `json:"payload_accessors"`
 		}{
-			DatabaseAccessors:   databaseNodes,
-			PayloadAccessors:    payloadbaseNodes,
-			CustomListAccessors: customListNodes,
-			AggregatorAccessors: aggregatorNodes,
+			DatabaseAccessors: databaseNodes,
+			PayloadAccessors:  payloadbaseNodes,
 		})
 	}
 }

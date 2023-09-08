@@ -111,10 +111,9 @@ func (usecases *UsecasesWithCreds) NewRuleUsecase() RuleUsecase {
 
 func (usecases *UsecasesWithCreds) AstExpressionUsecase() AstExpressionUsecase {
 	return AstExpressionUsecase{
-		EnforceSecurity:      usecases.NewEnforceScenarioSecurity(),
-		CustomListRepository: usecases.Repositories.CustomListRepository,
-		DataModelRepository:  usecases.Repositories.DataModelRepository,
-		ScenarioRepository:   usecases.Repositories.ScenarioReadRepository,
+		EnforceSecurity:     usecases.NewEnforceScenarioSecurity(),
+		DataModelRepository: usecases.Repositories.DataModelRepository,
+		ScenarioRepository:  usecases.Repositories.ScenarioReadRepository,
 	}
 }
 
@@ -176,7 +175,6 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 		datamodelRepository:   usecases.Repositories.DataModelRepository,
 	}
 }
-
 
 func (usecases *UsecasesWithCreds) NewScheduledExecutionUsecase() ScheduledExecutionUsecase {
 	return ScheduledExecutionUsecase{
