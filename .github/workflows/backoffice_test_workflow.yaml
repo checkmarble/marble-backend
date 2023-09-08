@@ -1,7 +1,6 @@
 name: Test Backoffice
 
-on:
-  workflow_call:
+on: [pull_request]
 
 jobs:
   test_backoffice:
@@ -9,11 +8,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: bahmutov/npm-install@v1 
+      - uses: bahmutov/npm-install@v1
         with:
           working-directory: marble-backoffice
       - name: typecheck
-        run: yarn tsc --noEmit 
+        run: yarn tsc --noEmit
         working-directory: marble-backoffice
       - name: Test
         run: yarn test
