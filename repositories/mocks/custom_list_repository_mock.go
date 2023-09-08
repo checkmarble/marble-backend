@@ -65,17 +65,17 @@ func (mr *MockCustomListRepositoryMockRecorder) AllCustomLists(arg0, arg1 interf
 }
 
 // CreateCustomList mocks base method.
-func (m *MockCustomListRepository) CreateCustomList(arg0 repositories.Transaction, arg1 models.CreateCustomListInput, arg2 string) error {
+func (m *MockCustomListRepository) CreateCustomList(arg0 repositories.Transaction, arg1 models.CreateCustomListInput, arg2, arg3 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateCustomList", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "CreateCustomList", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateCustomList indicates an expected call of CreateCustomList.
-func (mr *MockCustomListRepositoryMockRecorder) CreateCustomList(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockCustomListRepositoryMockRecorder) CreateCustomList(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateCustomList", reflect.TypeOf((*MockCustomListRepository)(nil).CreateCustomList), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateCustomList", reflect.TypeOf((*MockCustomListRepository)(nil).CreateCustomList), arg0, arg1, arg2, arg3)
 }
 
 // DeleteCustomListValue mocks base method.

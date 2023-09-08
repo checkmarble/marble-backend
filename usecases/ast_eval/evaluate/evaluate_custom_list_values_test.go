@@ -1,9 +1,10 @@
-package evaluate
+package evaluate_test
 
 import (
 	"marble/marble-backend/models"
 	"marble/marble-backend/models/ast"
 	"marble/marble-backend/repositories/mocks"
+	"marble/marble-backend/usecases/ast_eval/evaluate"
 	"marble/marble-backend/usecases/security"
 	"testing"
 
@@ -12,7 +13,7 @@ import (
 )
 
 func TestCustomListValuesWrongArg(t *testing.T) {
-	customListEval := NewCustomListValuesAccess(nil, nil)
+	customListEval := evaluate.NewCustomListValuesAccess(nil, nil)
 	_, errs := customListEval.Evaluate(ast.Arguments{Args: []any{true}})
 	if assert.Len(t, errs, 1) {
 		assert.ErrorIs(t, errs[0], ast.ErrMissingNamedArgument)
@@ -24,17 +25,17 @@ func TestCustomListValues(t *testing.T) {
 	defer ctrl.Finish()
 	mockCustomListRepo := mocks.NewMockCustomListRepository(ctrl)
 	mockEnforceSecurity := security.NewMockEnforceSecurity(ctrl)
-	customListEval := NewCustomListValuesAccess(mockCustomListRepo, mockEnforceSecurity)
+	customListEval := evaluate.NewCustomListValuesAccess(mockCustomListRepo, mockEnforceSecurity)
 
 	testCustomListValues := []models.CustomListValue{{Value: "test"}, {Value: "test2"}}
 
-	mockCustomListRepo.EXPECT().GetCustomListById(nil, TestListId).Return(TestList, nil)
+	mockCustomListRepo.EXPECT().GetCustomListById(nil, testListId).Return(testList, nil)
 	mockCustomListRepo.EXPECT().GetCustomListValues(nil, models.GetCustomListValuesInput{
-		Id: TestListId,
+		Id: testListId,
 	}).Return(testCustomListValues, nil)
-	mockEnforceSecurity.EXPECT().ReadOrganization(TestListOrgId).Return(nil)
+	mockEnforceSecurity.EXPECT().ReadOrganization(testListOrgId).Return(nil)
 
-	result, errs := customListEval.Evaluate(ast.Arguments{NamedArgs: TestNamedArgs})
+	result, errs := customListEval.Evaluate(ast.Arguments{NamedArgs: testCustomListNamedArgs})
 	assert.Len(t, errs, 0)
 	if assert.Len(t, result, 2) {
 		assert.Equal(t, result.([]string)[0], testCustomListValues[0].Value)
@@ -47,12 +48,12 @@ func TestCustomListValuesNoAccess(t *testing.T) {
 	defer ctrl.Finish()
 	mockCustomListRepo := mocks.NewMockCustomListRepository(ctrl)
 	mockEnforceSecurity := security.NewMockEnforceSecurity(ctrl)
-	customListEval := NewCustomListValuesAccess(mockCustomListRepo, mockEnforceSecurity)
+	customListEval := evaluate.NewCustomListValuesAccess(mockCustomListRepo, mockEnforceSecurity)
 
-	mockCustomListRepo.EXPECT().GetCustomListById(nil, TestListId).Return(TestList, nil)
-	mockEnforceSecurity.EXPECT().ReadOrganization(TestListOrgId).Return(models.ForbiddenError)
+	mockCustomListRepo.EXPECT().GetCustomListById(nil, testListId).Return(testList, nil)
+	mockEnforceSecurity.EXPECT().ReadOrganization(testListOrgId).Return(models.ForbiddenError)
 
-	_, errs := customListEval.Evaluate(ast.Arguments{NamedArgs: TestNamedArgs})
+	_, errs := customListEval.Evaluate(ast.Arguments{NamedArgs: testCustomListNamedArgs})
 	if assert.Len(t, errs, 1) {
 		assert.ErrorIs(t, errs[0], models.ForbiddenError)
 	}
