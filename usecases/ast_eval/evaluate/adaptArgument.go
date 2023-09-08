@@ -9,7 +9,18 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
+func argumentNotNil(argument any) error {
+	if argument == nil {
+		return ast.ErrArgumentRequired
+	}
+	return nil
+}
+
 func promoteArgumentToInt64(argument any) (int64, error) {
+	if err := argumentNotNil(argument); err != nil {
+		return 0, err
+	}
+
 	result, err := ToInt64(argument)
 	if err != nil {
 		return 0, fmt.Errorf("can't promote argument %v to int64 %w %w",
@@ -20,6 +31,10 @@ func promoteArgumentToInt64(argument any) (int64, error) {
 }
 
 func promoteArgumentToFloat64(argument any) (float64, error) {
+	if err := argumentNotNil(argument); err != nil {
+		return 0, err
+	}
+
 	result, err := ToFloat64(argument)
 	if err != nil {
 		return 0, fmt.Errorf(
@@ -34,9 +49,18 @@ func promoteArgumentToFloat64(argument any) (float64, error) {
 }
 
 func adaptArgumentToString(argument any) (string, error) {
+
+	if err := argumentNotNil(argument); err != nil {
+		return "", err
+	}
+
 	if result, ok := argument.(string); ok {
+		if result == "" {
+			return "", ast.ErrArgumentRequired
+		}
 		return result, nil
 	}
+
 	return "", fmt.Errorf(
 		"can't promote argument %v to string %w",
 		argument,
@@ -45,6 +69,10 @@ func adaptArgumentToString(argument any) (string, error) {
 }
 
 func adaptArgumentToTime(argument any) (time.Time, error) {
+	if err := argumentNotNil(argument); err != nil {
+		return time.Time{}, err
+	}
+
 	if result, ok := argument.(time.Time); ok {
 		return result, nil
 	}
@@ -56,6 +84,10 @@ func adaptArgumentToTime(argument any) (time.Time, error) {
 }
 
 func adaptArgumentToDuration(argument any) (time.Duration, error) {
+	if err := argumentNotNil(argument); err != nil {
+		return 0, err
+	}
+
 	if result, ok := argument.(time.Duration); ok {
 		return result, nil
 	}
@@ -94,6 +126,10 @@ func adaptArgumentToListOfThings[T any](argument any) ([]T, error) {
 		})
 	}
 
+	if err := argumentNotNil(argument); err != nil {
+		return nil, err
+	}
+
 	return nil, fmt.Errorf(
 		"can't promote argument %v to []%T %w",
 		argument,
@@ -107,6 +143,9 @@ func adaptArgumentToListOfStrings(argument any) ([]string, error) {
 }
 
 func adaptArgumentToBool(argument any) (bool, error) {
+	if err := argumentNotNil(argument); err != nil {
+		return false, err
+	}
 
 	if value, ok := argument.(bool); ok {
 		return value, nil
