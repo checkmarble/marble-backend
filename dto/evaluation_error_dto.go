@@ -29,6 +29,7 @@ var evaluationErrorDtoMap = []errorAndCode{
 	{ast.ErrArgumentMustBeList, "ARGUMENT_MUST_BE_LIST"},
 	{ast.ErrArgumentCantBeConvertedToDuration, "ARGUMENT_MUST_BE_CONVERTIBLE_TO_DURATION"},
 	{ast.ErrArgumentCantBeTime, "ARGUMENT_MUST_BE_TIME"},
+	{ast.ErrArgumentRequired, "ARGUMENT_REQUIRED"},
 }
 
 func AdaptEvaluationErrorDto(err error) EvaluationErrorDto {
