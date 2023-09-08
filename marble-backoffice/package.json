@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3002",
+    "build-development": "tsc && vite build --mode development",
     "build-staging": "tsc && vite build --mode staging",
     "build-production": "tsc && vite build --mode production",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "yarn build-development && vite preview --port=3002",
     "test": "vitest"
   },
   "dependencies": {

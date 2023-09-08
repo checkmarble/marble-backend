@@ -1,0 +1,10 @@
+{
+  "name": "ui_integration_test",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.37.1"
+  },
+  "scripts": {}
+}

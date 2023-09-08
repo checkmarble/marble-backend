@@ -66,6 +66,7 @@ function LoginPage() {
               fullWidth
               variant="contained"
               sx={{ m: 2 }}
+              data-testid="login-button"
             >
               Sign in using Google
             </Button>
