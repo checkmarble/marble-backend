@@ -7,7 +7,6 @@ import (
 	"github.com/Masterminds/squirrel"
 )
 
-//go:generate mockgen -destination=./mocks/custom_list_repository_mock.go -package=mocks marble/marble-backend/repositories CustomListRepository
 type CustomListRepository interface {
 	AllCustomLists(tx Transaction, organizationId string) ([]models.CustomList, error)
 	GetCustomListById(tx Transaction, id string) (models.CustomList, error)

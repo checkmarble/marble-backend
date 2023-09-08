@@ -2,13 +2,12 @@ package evaluate_test
 
 import (
 	"fmt"
-	"marble/marble-backend/models/ast"
-	"marble/marble-backend/usecases/ast_eval/evaluate"
+	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/usecases/ast_eval/evaluate"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/mock/gomock"
 )
 
 func TestDatabaseAccessValuesWrongArg(t *testing.T) {
@@ -20,8 +19,6 @@ func TestDatabaseAccessValuesWrongArg(t *testing.T) {
 }
 
 func TestDatabaseAccessValuesDryRun(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 	databaseAccessEval := evaluate.DatabaseAccess{
 		DataModel:       getTestFirstDataModel(),
 		ReturnFakeValue: true,

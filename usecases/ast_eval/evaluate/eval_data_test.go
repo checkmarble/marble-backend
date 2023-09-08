@@ -1,12 +1,10 @@
 package evaluate_test
 
 import (
-	"marble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models"
 )
 
-//
 // For Custom List Evaluator
-//
 const testListId string = "1"
 const testListOrgId string = "2"
 
@@ -19,9 +17,7 @@ var testCustomListNamedArgs = map[string]any{
 	"customListId": testListId,
 }
 
-//
 // For Database Access Evaluator
-//
 const testTableNameFirst models.TableName = "first"
 const testTableNameSecond models.TableName = "second"
 
@@ -44,12 +40,12 @@ func getTestFirstDataModel() models.DataModel {
 		DataType: 2,
 		Nullable: false,
 	}
-	
+
 	var testFieldString models.Field = models.Field{
 		DataType: 3,
 		Nullable: false,
 	}
-		
+
 	var testFieldTimestamp models.Field = models.Field{
 		DataType: 4,
 		Nullable: false,
@@ -62,35 +58,35 @@ func getTestFirstDataModel() models.DataModel {
 			ChildFieldName:  testFieldNameId,
 		},
 	}
-	
+
 	var testFieldsFirst map[models.FieldName]models.Field = map[models.FieldName]models.Field{
 		testFieldNameId: testFieldString,
 	}
-	
+
 	var testFieldsSecond map[models.FieldName]models.Field = map[models.FieldName]models.Field{
-		testFieldNameId: testFieldString,
-		testFieldNameForInt: testFieldInt,
-		testFieldNameForFloat: testFieldFloat,
-		testFieldNameForBool: testFieldBool,
-		testFieldNameForTimestamp: testFieldTimestamp, 
+		testFieldNameId:           testFieldString,
+		testFieldNameForInt:       testFieldInt,
+		testFieldNameForFloat:     testFieldFloat,
+		testFieldNameForBool:      testFieldBool,
+		testFieldNameForTimestamp: testFieldTimestamp,
 	}
-	
+
 	var testDataModelFirstTable models.Table = models.Table{
 		Name:          testTableNameFirst,
 		Fields:        testFieldsFirst,
 		LinksToSingle: testFirstLinkToSingle,
 	}
-	
+
 	var testDataModelSecondTable models.Table = models.Table{
-		Name:          testTableNameSecond,
-		Fields:        testFieldsSecond,
+		Name:   testTableNameSecond,
+		Fields: testFieldsSecond,
 	}
 
 	return models.DataModel{
 		Version: "1",
 		Status:  0,
-		Tables:  map[models.TableName]models.Table{
-			testTableNameFirst: testDataModelFirstTable,
+		Tables: map[models.TableName]models.Table{
+			testTableNameFirst:  testDataModelFirstTable,
 			testTableNameSecond: testDataModelSecondTable,
 		},
 	}
