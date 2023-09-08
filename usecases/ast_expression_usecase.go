@@ -10,10 +10,9 @@ import (
 )
 
 type AstExpressionUsecase struct {
-	EnforceSecurity      security.EnforceSecurityScenario
-	CustomListRepository repositories.CustomListRepository
-	DataModelRepository  repositories.DataModelRepository
-	ScenarioRepository   repositories.ScenarioReadRepository
+	EnforceSecurity     security.EnforceSecurityScenario
+	DataModelRepository repositories.DataModelRepository
+	ScenarioRepository  repositories.ScenarioReadRepository
 }
 
 func NodeLocation(expression ast.Node, target *ast.Node) (string, error) {
@@ -21,18 +20,16 @@ func NodeLocation(expression ast.Node, target *ast.Node) (string, error) {
 }
 
 type EditorIdentifiers struct {
-	CustomListAccessors []ast.Identifier `json:"custom_list_accessors"`
-	PayloadAccessors    []ast.Identifier `json:"payload_accessors"`
-	DatabaseAccessors   []ast.Identifier `json:"database_accessors"`
-	AggregatorAccessors []ast.Identifier `json:"aggregator_accessors"`
+	PayloadAccessors  []ast.Node `json:"payload_accessors"`
+	DatabaseAccessors []ast.Node `json:"database_accessors"`
 }
 
 type EditorOperators struct {
 	OperatorAccessors []ast.FuncAttributes `json:"operator_accessors"`
 }
 
-func (usecase *AstExpressionUsecase) getLinkedDatabaseIdentifiers(scenario models.Scenario, dataModel models.DataModel) ([]ast.Identifier, error) {
-	dataAccessors := []ast.Identifier{}
+func (usecase *AstExpressionUsecase) getLinkedDatabaseIdentifiers(scenario models.Scenario, dataModel models.DataModel) ([]ast.Node, error) {
+	dataAccessors := []ast.Node{}
 	var recursiveDatabaseAccessor func(path []string, links map[models.LinkName]models.LinkToSingle) error
 
 	triggerObjectTable, found := dataModel.Tables[models.TableName(scenario.TriggerObjectType)]
@@ -56,13 +53,13 @@ func (usecase *AstExpressionUsecase) getLinkedDatabaseIdentifiers(scenario model
 			path = append(path, string(linkName))
 
 			for fieldName := range table.Fields {
-				dataAccessors = append(dataAccessors, ast.Identifier{
-					Node: ast.NewNodeDatabaseAccess(
+				dataAccessors = append(dataAccessors,
+					ast.NewNodeDatabaseAccess(
 						scenario.TriggerObjectType,
 						string(fieldName),
 						path,
 					),
-				})
+				)
 			}
 
 			if err := recursiveDatabaseAccessor(path, table.LinksToSingle); err != nil {
@@ -79,8 +76,8 @@ func (usecase *AstExpressionUsecase) getLinkedDatabaseIdentifiers(scenario model
 	return dataAccessors, nil
 }
 
-func (usecase *AstExpressionUsecase) getPayloadIdentifiers(scenario models.Scenario, dataModel models.DataModel) ([]ast.Identifier, error) {
-	dataAccessors := []ast.Identifier{}
+func (usecase *AstExpressionUsecase) getPayloadIdentifiers(scenario models.Scenario, dataModel models.DataModel) ([]ast.Node, error) {
+	dataAccessors := []ast.Node{}
 
 	triggerObjectTable, found := dataModel.Tables[models.TableName(scenario.TriggerObjectType)]
 	if !found {
@@ -88,44 +85,17 @@ func (usecase *AstExpressionUsecase) getPayloadIdentifiers(scenario models.Scena
 		return nil, fmt.Errorf("triggerObjectTable %s not found in data model", scenario.TriggerObjectType)
 	}
 	for fieldName := range triggerObjectTable.Fields {
-		dataAccessors = append(dataAccessors, ast.Identifier{
-			Node: ast.Node{
+		dataAccessors = append(dataAccessors,
+			ast.Node{
 				Function: ast.FUNC_PAYLOAD,
 				Constant: nil,
 				Children: []ast.Node{
 					ast.NewNodeConstant(fieldName),
 				},
 			},
-		})
+		)
 	}
 	return dataAccessors, nil
-}
-
-func (usecase *AstExpressionUsecase) getCustomListIdentifiers(organizationId string) ([]ast.Identifier, error) {
-	dataAccessors := []ast.Identifier{}
-
-	customLists, err := usecase.CustomListRepository.AllCustomLists(nil, organizationId)
-	if err != nil {
-		return nil, err
-	}
-	for _, customList := range customLists {
-		dataAccessors = append(dataAccessors, ast.Identifier{
-			Node: ast.NewNodeCustomListAccess(customList.Id),
-		})
-	}
-	return dataAccessors, nil
-}
-
-func (usecase *AstExpressionUsecase) getAggregatorIdentifiers() ([]ast.Identifier, error) {
-	aggregatorAccessors := []ast.Identifier{}
-	aggregatorList := ast.GetAllAggregators()
-
-	for _, aggregator := range aggregatorList {
-		aggregatorAccessors = append(aggregatorAccessors, ast.Identifier{
-			Node: ast.NewNodeAggregator(aggregator),
-		})
-	}
-	return aggregatorAccessors, nil
 }
 
 func (usecase *AstExpressionUsecase) EditorIdentifiers(scenarioId string) (EditorIdentifiers, error) {
@@ -154,21 +124,9 @@ func (usecase *AstExpressionUsecase) EditorIdentifiers(scenarioId string) (Edito
 		return EditorIdentifiers{}, err
 	}
 
-	customListAccessors, err := usecase.getCustomListIdentifiers(scenario.OrganizationId)
-	if err != nil {
-		return EditorIdentifiers{}, err
-	}
-
-	aggregatorAccessors, err := usecase.getAggregatorIdentifiers()
-	if err != nil {
-		return EditorIdentifiers{}, err
-	}
-
 	return EditorIdentifiers{
-		CustomListAccessors: customListAccessors,
-		PayloadAccessors:    payloadAccessors,
-		DatabaseAccessors:   databaseAccessors,
-		AggregatorAccessors: aggregatorAccessors,
+		PayloadAccessors:  payloadAccessors,
+		DatabaseAccessors: databaseAccessors,
 	}, nil
 }
 
