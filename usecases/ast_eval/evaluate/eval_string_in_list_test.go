@@ -2,9 +2,10 @@ package evaluate_test
 
 import (
 	"fmt"
-	"marble/marble-backend/models/ast"
-	"marble/marble-backend/usecases/ast_eval/evaluate"
 	"testing"
+
+	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/usecases/ast_eval/evaluate"
 
 	"github.com/stretchr/testify/assert"
 )

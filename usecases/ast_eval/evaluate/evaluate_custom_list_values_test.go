@@ -1,15 +1,14 @@
 package evaluate_test
 
 import (
-	"marble/marble-backend/models"
-	"marble/marble-backend/models/ast"
-	"marble/marble-backend/repositories/mocks"
-	"marble/marble-backend/usecases/ast_eval/evaluate"
-	"marble/marble-backend/usecases/security"
 	"testing"
 
+	"github.com/checkmarble/marble-backend/mocks"
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/usecases/ast_eval/evaluate"
+
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/mock/gomock"
 )
 
 func TestCustomListValuesWrongArg(t *testing.T) {
@@ -21,40 +20,42 @@ func TestCustomListValuesWrongArg(t *testing.T) {
 }
 
 func TestCustomListValues(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	mockCustomListRepo := mocks.NewMockCustomListRepository(ctrl)
-	mockEnforceSecurity := security.NewMockEnforceSecurity(ctrl)
-	customListEval := evaluate.NewCustomListValuesAccess(mockCustomListRepo, mockEnforceSecurity)
+	clr := new(mocks.CustomListRepository)
+	er := new(mocks.EnforceSecurity)
+
+	customListEval := evaluate.NewCustomListValuesAccess(clr, er)
 
 	testCustomListValues := []models.CustomListValue{{Value: "test"}, {Value: "test2"}}
 
-	mockCustomListRepo.EXPECT().GetCustomListById(nil, testListId).Return(testList, nil)
-	mockCustomListRepo.EXPECT().GetCustomListValues(nil, models.GetCustomListValuesInput{
-		Id: testListId,
-	}).Return(testCustomListValues, nil)
-	mockEnforceSecurity.EXPECT().ReadOrganization(testListOrgId).Return(nil)
+	clr.On("GetCustomListById", nil, testListId).Return(testList, nil)
+	clr.On("GetCustomListValues", nil, models.GetCustomListValuesInput{Id: testListId}).Return(testCustomListValues, nil)
 
+	er.On("ReadOrganization", testListOrgId).Return(nil)
 	result, errs := customListEval.Evaluate(ast.Arguments{NamedArgs: testCustomListNamedArgs})
 	assert.Len(t, errs, 0)
 	if assert.Len(t, result, 2) {
 		assert.Equal(t, result.([]string)[0], testCustomListValues[0].Value)
 		assert.Equal(t, result.([]string)[1], testCustomListValues[1].Value)
 	}
+
+	clr.AssertExpectations(t)
+	er.AssertExpectations(t)
 }
 
 func TestCustomListValuesNoAccess(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	mockCustomListRepo := mocks.NewMockCustomListRepository(ctrl)
-	mockEnforceSecurity := security.NewMockEnforceSecurity(ctrl)
-	customListEval := evaluate.NewCustomListValuesAccess(mockCustomListRepo, mockEnforceSecurity)
+	clr := new(mocks.CustomListRepository)
+	er := new(mocks.EnforceSecurity)
 
-	mockCustomListRepo.EXPECT().GetCustomListById(nil, testListId).Return(testList, nil)
-	mockEnforceSecurity.EXPECT().ReadOrganization(testListOrgId).Return(models.ForbiddenError)
+	customListEval := evaluate.NewCustomListValuesAccess(clr, er)
+
+	clr.On("GetCustomListById", nil, testListId).Return(testList, nil)
+	er.On("ReadOrganization", testListOrgId).Return(models.ForbiddenError)
 
 	_, errs := customListEval.Evaluate(ast.Arguments{NamedArgs: testCustomListNamedArgs})
 	if assert.Len(t, errs, 1) {
 		assert.ErrorIs(t, errs[0], models.ForbiddenError)
 	}
+
+	clr.AssertExpectations(t)
+	er.AssertExpectations(t)
 }

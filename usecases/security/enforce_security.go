@@ -6,7 +6,6 @@ import (
 
 	"github.com/cockroachdb/errors"
 )
-//go:generate mockgen -destination=./enforce_security_mock.go -package=security marble/marble-backend/usecases/security EnforceSecurity
 type EnforceSecurity interface {
 	Permission(permission models.Permission) error
 	ReadOrganization(organizationId string) error
