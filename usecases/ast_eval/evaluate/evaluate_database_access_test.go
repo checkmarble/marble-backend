@@ -13,8 +13,9 @@ import (
 func TestDatabaseAccessValuesWrongArg(t *testing.T) {
 	databaseAccessEval := evaluate.DatabaseAccess{}
 	_, errs := databaseAccessEval.Evaluate(ast.Arguments{Args: []any{}})
-	if assert.Len(t, errs, 1) {
+	if assert.Len(t, errs, 2) {
 		assert.ErrorIs(t, errs[0], ast.ErrMissingNamedArgument)
+		assert.ErrorIs(t, errs[1], ast.ErrMissingNamedArgument)
 	}
 }
 
