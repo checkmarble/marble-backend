@@ -1,10 +1,9 @@
-name: Deploy Staging
+name: Deploy Production
 
 on:
   push:
-    branches:
-      - master
-      - vivien/backoffice-ci
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -24,4 +23,6 @@ jobs:
       actions: read
     uses: ./.github/workflows/backoffice_deploy_workflow.yaml
     with:
-      environment: 'staging'
+      environment: "production"
+    secrets:
+      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY_PRODUCTION }}
