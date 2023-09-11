@@ -1,20 +1,9 @@
-name: Build and test go app
+name: Build and test back-end repo
 
 on: [pull_request]
 
 jobs:
-  build_and_test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version-file: ./go.mod
-
-      - name: Build
-        run: go build -v ./...
-
-      - name: Test
-        run: go test -v ./...
+  test_backoffice:
+    uses: ./.github/workflows/backoffice_test_workflow.yaml
+  test_backend:
+    uses: ./.github/workflows/backend_test_workflow.yml
