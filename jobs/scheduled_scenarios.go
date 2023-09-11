@@ -2,7 +2,6 @@ package jobs
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"github.com/checkmarble/marble-backend/usecases"
@@ -10,8 +9,9 @@ import (
 )
 
 func ExecuteAllScheduledScenarios(ctx context.Context, usecases usecases.Usecases) {
+	logger := utils.LoggerFromContext(ctx)
 
-	fmt.Println("Executing all scheduled scenarios")
+	logger.InfoContext(ctx, "Executing all scheduled scenarios")
 	scenarios, err := usecases.Repositories.ScenarioReadRepository.ListAllScenarios(nil)
 
 	usecasesWithCreds := GenerateUsecaseWithCredForMarbleAdmin(ctx, usecases)
@@ -19,7 +19,6 @@ func ExecuteAllScheduledScenarios(ctx context.Context, usecases usecases.Usecase
 	if err != nil {
 		log.Fatal(err)
 	}
-	logger := utils.LoggerFromContext(ctx)
 	for _, scenario := range scenarios {
 		logger.DebugContext(ctx, "Executing scenario: "+scenario.Id, "scenarioId", scenario.Id)
 		err := usecase.ExecuteScheduledScenarioIfDue(ctx, scenario.OrganizationId, scenario.Id)

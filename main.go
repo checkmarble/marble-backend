@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"flag"
 	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -19,7 +20,10 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func runServer(ctx context.Context, usecases usecases.Usecases, port string, isDevEnv bool, projectId string) {
+func runServer(ctx context.Context, appConfig AppConfiguration, isDevEnv bool, projectId string) {
+	marbleJwtSigningKey := infra.MustParseSigningKey(utils.GetRequiredStringEnv("AUTHENTICATION_JWT_SIGNING_KEY"))
+
+	uc := NewUseCases(ctx, appConfig, &marbleJwtSigningKey)
 
 	logger := utils.LoggerFromContext(ctx)
 
@@ -27,7 +31,7 @@ func runServer(ctx context.Context, usecases usecases.Usecases, port string, isD
 	// Seed the database
 	////////////////////////////////////////////////////////////
 
-	seedUsecase := usecases.NewSeedUseCase()
+	seedUsecase := uc.NewSeedUseCase()
 
 	marbleAdminEmail, _ := os.LookupEnv("MARBLE_ADMIN_EMAIL")
 	if marbleAdminEmail != "" {
@@ -45,7 +49,8 @@ func runServer(ctx context.Context, usecases usecases.Usecases, port string, isD
 		}
 	}
 
-	api, _ := api.New(ctx, port, usecases, isDevEnv, projectId)
+	router := initRouter(ctx, isDevEnv, projectId)
+	server := api.New(router, appConfig.port, uc)
 
 	////////////////////////////////////////////////////////////
 	// Start serving the app
@@ -56,8 +61,8 @@ func runServer(ctx context.Context, usecases usecases.Usecases, port string, isD
 	defer stop()
 
 	go func() {
-		log.Printf("starting server on port %v\n", port)
-		if err := api.ListenAndServe(); err != nil {
+		log.Printf("starting server on port %v\n", appConfig.port)
+		if err := server.ListenAndServe(); err != nil {
 			logger.ErrorContext(ctx, "error serving the app: \n"+err.Error())
 		}
 		logger.InfoContext(ctx, "server returned")
@@ -67,7 +72,10 @@ func runServer(ctx context.Context, usecases usecases.Usecases, port string, isD
 	<-notify.Done()
 	shutdownCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	api.Shutdown(shutdownCtx)
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		logger.ErrorContext(ctx, "server.Shutdown error", slog.String("error", err.Error()))
+	}
 }
 
 type AppConfiguration struct {
@@ -78,7 +86,6 @@ type AppConfiguration struct {
 }
 
 func main() {
-
 	appConfig := AppConfiguration{
 		env:  utils.GetStringEnv("ENV", "DEV"),
 		port: utils.GetRequiredStringEnv("PORT"),
@@ -115,10 +122,7 @@ func main() {
 	}
 
 	if *shouldRunServer {
-		marbleJwtSigningKey := infra.MustParseSigningKey(utils.GetRequiredStringEnv("AUTHENTICATION_JWT_SIGNING_KEY"))
-
-		usecases := NewUseCases(appContext, appConfig, &marbleJwtSigningKey)
-		runServer(appContext, usecases, appConfig.port, isDevEnv, os.Getenv("GOOGLE_CLOUD_PROJECT"))
+		runServer(appContext, appConfig, isDevEnv, os.Getenv("GOOGLE_CLOUD_PROJECT"))
 	}
 
 	if *shouldRunScheduledScenarios {

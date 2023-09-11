@@ -1,14 +1,11 @@
 package api
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/cors"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases"
@@ -20,32 +17,9 @@ type API struct {
 	usecases usecases.Usecases
 }
 
-func New(ctx context.Context, port string, usecases usecases.Usecases, isDevEnv bool, projectId string) (*http.Server, error) {
-
-	///////////////////////////////
-	// Setup a router
-	///////////////////////////////
-	r := chi.NewRouter()
-
-	logger := utils.LoggerFromContext(ctx)
-
-	////////////////////////////////////////////////////////////
-	// Middleware
-	////////////////////////////////////////////////////////////
-	if isDevEnv {
-		// GCP already does that when server is running on Cloud Run
-		r.Use(middleware.RequestID)
-		r.Use(middleware.Logger)
-	}
-
-	r.Use(middleware.Recoverer)
-	r.Use(utils.StoreLoggerInContextMiddleware(logger))
-	r.Use(utils.AddTraceIdToLoggerMiddleware(isDevEnv, projectId))
-	r.Use(cors.Handler(corsOption(isDevEnv)))
-	r.Use(setContentTypeMiddleware)
-
+func New(router *chi.Mux, port string, usecases usecases.Usecases) *http.Server {
 	s := &API{
-		router:   r,
+		router:   router,
 		usecases: usecases,
 	}
 
@@ -61,7 +35,7 @@ func New(ctx context.Context, port string, usecases usecases.Usecases, isDevEnv 
 
 	// create a go router instance
 	srv := &http.Server{
-		// adress
+		// address
 		Addr: fmt.Sprintf("0.0.0.0:%s", port),
 
 		// Good practice to set timeouts to avoid Slowloris attacks.
@@ -70,10 +44,9 @@ func New(ctx context.Context, port string, usecases usecases.Usecases, isDevEnv 
 		IdleTimeout:  time.Second * 60,
 
 		// Instance of chi router
-		Handler: r,
+		Handler: router,
 	}
-
-	return srv, nil
+	return srv
 }
 
 func (api *API) UsecasesWithCreds(r *http.Request) *usecases.UsecasesWithCreds {
@@ -101,11 +74,4 @@ func (api *API) UsecasesWithCreds(r *http.Request) *usecases.UsecasesWithCreds {
 		},
 		Context: ctx,
 	}
-}
-
-func setContentTypeMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		next.ServeHTTP(w, r)
-	})
 }
