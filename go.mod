@@ -23,6 +23,7 @@ require (
 	github.com/jackc/pgx/v5 v5.4.3
 	github.com/ompluscator/dynamic-struct v1.4.0
 	github.com/ory/dockertest/v3 v3.10.0
+	github.com/pashagolub/pgxmock/v2 v2.12.0
 	github.com/pkg/errors v0.9.1
 	github.com/pressly/goose/v3 v3.15.0
 	github.com/stretchr/testify v1.8.4
