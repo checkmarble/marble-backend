@@ -50,9 +50,23 @@ Connect in the frontend using: `jbe@zorg.com`
 - Exit the emulator
 - commit
 
-#### Export local data
+### Execute e2e test locally
 
-### Lauch the project
+prerequisites:
+
+- backoffice accessible on http://localhost:3002 
+- frontend accessible on http://localhost:3000
+- backend accessible on http://localhost:8080
+- firebase authentication emulator on http://127.0.0.1:9099
+- db is up accessible on 5432 (docker compose up -d db)
+
+#### Run
+
+```
+cd e2e_test
+yarn
+yarn playwright test --ui
+```
 
 #### Docker
 
