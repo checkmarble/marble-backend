@@ -2,8 +2,12 @@ name: Build and test back-end repo
 
 on: [pull_request]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test_backoffice:
     uses: ./.github/workflows/backoffice_test_workflow.yaml
   test_backend:
-    uses: ./.github/workflows/backend_test_workflow.yml
+    uses: ./.github/workflows/backend_test_workflow.yaml

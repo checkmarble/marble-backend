@@ -1,4 +1,4 @@
-name: Deploy BackOffice
+name: Deploy Back-office
 
 on:
   workflow_call:
@@ -14,7 +14,7 @@ on:
 
 jobs:
   build_backoffice:
-    name: Build BackOffice
+    name: Build Back-office
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
