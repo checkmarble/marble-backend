@@ -1,10 +1,10 @@
-name: Test Backoffice
+name: Test back-office
 
 on: [workflow_call]
 
 jobs:
   test_backoffice:
-    name: Test BackOffice
+    name: Test back-office
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
