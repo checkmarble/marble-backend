@@ -70,7 +70,7 @@ export const demoRules: ExampleRule[] = [
     scoreModifier: 10,
     formula: adaptLitteralAnds([
       {
-        name: ">",
+        name: ">=",
         children: [
           { name: "Payload", children: [{ constant: "amount" }] },
           { constant: 10000 },
@@ -91,10 +91,10 @@ export const demoRules: ExampleRule[] = [
     scoreModifier: 20,
     formula: adaptLitteralAnds([
       {
-        name: ">",
+        name: ">=",
         children: [
           { name: "Payload", children: [{ constant: "amount" }] },
-          { constant: 100000 - 1 },
+          { constant: 100000 },
         ],
       },
     ]),
