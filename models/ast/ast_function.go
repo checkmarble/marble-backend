@@ -12,7 +12,9 @@ var FuncOperators = []Function{
 	FUNC_MULTIPLY,
 	FUNC_DIVIDE,
 	FUNC_GREATER,
+	FUNC_GREATER_OR_EQUAL,
 	FUNC_LESS,
+	FUNC_LESS_OR_EQUAL,
 	FUNC_EQUAL,
 	FUNC_IS_IN_LIST,
 }
@@ -24,7 +26,9 @@ const (
 	FUNC_MULTIPLY
 	FUNC_DIVIDE
 	FUNC_GREATER
+	FUNC_GREATER_OR_EQUAL
 	FUNC_LESS
+	FUNC_LESS_OR_EQUAL
 	FUNC_EQUAL
 	FUNC_NOT
 	FUNC_AND
@@ -92,9 +96,19 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		AstName:           ">",
 		NumberOfArguments: 2,
 	},
+	FUNC_GREATER_OR_EQUAL: {
+		DebugName:         "FUNC_GREATER_OR_EQUAL",
+		AstName:           ">=",
+		NumberOfArguments: 2,
+	},
 	FUNC_LESS: {
 		DebugName:         "FUNC_LESS",
 		AstName:           "<",
+		NumberOfArguments: 2,
+	},
+	FUNC_LESS_OR_EQUAL: {
+		DebugName:         "FUNC_LESS_OR_EQUAL",
+		AstName:           "<=",
 		NumberOfArguments: 2,
 	},
 	FUNC_EQUAL: {
