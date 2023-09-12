@@ -4,8 +4,6 @@ import (
 	"crypto/rsa"
 	"log/slog"
 
-	"github.com/checkmarble/marble-backend/models"
-
 	"firebase.google.com/go/v4/auth"
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -42,7 +40,6 @@ func NewQueryBuilder() squirrel.StatementBuilderType {
 }
 
 func NewRepositories(
-	configuration models.GlobalConfiguration,
 	marbleJwtSigningKey *rsa.PrivateKey,
 	firebaseClient *auth.Client,
 	marbleConnectionPool *pgxpool.Pool,
@@ -121,16 +118,10 @@ func NewRepositories(
 		CustomListRepository: &CustomListRepositoryPostgresql{
 			transactionFactory: transactionFactory,
 		},
-		AwsS3Repository: func() AwsS3Repository {
-			if configuration.FakeAwsS3Repository {
-				return &AwsS3RepositoryFake{}
-			}
-
-			return &AwsS3RepositoryImpl{
-				s3Client: NewS3Client(),
-				logger:   appLogger,
-			}
-		}(),
+		AwsS3Repository: AwsS3Repository{
+			s3Client: NewS3Client(),
+			logger:   appLogger,
+		},
 		GcsRepository: &GcsRepositoryImpl{logger: appLogger},
 	}, nil
 }

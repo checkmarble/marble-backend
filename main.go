@@ -142,7 +142,6 @@ func NewUseCases(ctx context.Context, appConfiguration AppConfiguration, marbleJ
 	}
 
 	repositories, err := repositories.NewRepositories(
-		appConfiguration.config,
 		marbleJwtSigningKey,
 		infra.IntializeFirebase(ctx),
 		marbleConnectionPool,

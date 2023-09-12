@@ -13,11 +13,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type AwsS3Repository interface {
-	StoreInBucket(ctx context.Context, bucketName string, key string, body io.Reader) error
-}
-
-type AwsS3RepositoryImpl struct {
+type AwsS3Repository struct {
 	// You can create goroutines that concurrently use the same service client to send multiple requests.
 	// source: https://aws.github.io/aws-sdk-go-v2/docs/making-requests/
 	s3Client *s3.Client
@@ -36,7 +32,7 @@ func NewS3Client() *s3.Client {
 	return s3.NewFromConfig(conf)
 }
 
-func (repo *AwsS3RepositoryImpl) StoreInBucket(ctx context.Context, bucketName string, key string, body io.Reader) error {
+func (repo *AwsS3Repository) StoreInBucket(ctx context.Context, bucketName string, key string, body io.Reader) error {
 
 	uploader := manager.NewUploader(repo.s3Client)
 
