@@ -13,21 +13,17 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 )
 
-type ExportScheduleExecution interface {
-	ExportScheduledExecutionToS3(scenario models.Scenario, scheduledExecution models.ScheduledExecution) error
-}
-
 type AwsS3Repository interface {
 	StoreInBucket(ctx context.Context, bucketName string, key string, body io.Reader) error
 }
 
-type ExportScheduleExecutionImpl struct {
+type ExportScheduleExecution struct {
 	AwsS3Repository        AwsS3Repository
 	DecisionRepository     repositories.DecisionRepository
 	OrganizationRepository repositories.OrganizationRepository
 }
 
-func (exporter *ExportScheduleExecutionImpl) ExportScheduledExecutionToS3(scenario models.Scenario, scheduledExecution models.ScheduledExecution) error {
+func (exporter *ExportScheduleExecution) ExportScheduledExecutionToS3(scenario models.Scenario, scheduledExecution models.ScheduledExecution) error {
 
 	organization, err := exporter.OrganizationRepository.GetOrganizationById(nil, scheduledExecution.OrganizationId)
 	if err != nil {
@@ -47,7 +43,7 @@ func (exporter *ExportScheduleExecutionImpl) ExportScheduledExecutionToS3(scenar
 	return exporter.exportScenarioToS3(scenario, scheduledExecution, organization.ExportScheduledExecutionS3, numberOfDecision)
 }
 
-func (exporter *ExportScheduleExecutionImpl) exportScenarioToS3(scenario models.Scenario, scheduledExecution models.ScheduledExecution, s3Bucket string, numberOfDecision int64) error {
+func (exporter *ExportScheduleExecution) exportScenarioToS3(scenario models.Scenario, scheduledExecution models.ScheduledExecution, s3Bucket string, numberOfDecision int64) error {
 
 	filename := fmt.Sprintf("scheduled_scenario_execution_%s.json", scheduledExecution.Id)
 
@@ -69,7 +65,7 @@ func (exporter *ExportScheduleExecutionImpl) exportScenarioToS3(scenario models.
 	return exporter.AwsS3Repository.StoreInBucket(context.Background(), s3Bucket, filename, bytes.NewReader(encoded))
 }
 
-func (exporter *ExportScheduleExecutionImpl) exportDecisionsToS3(scheduledExecution models.ScheduledExecution, s3Bucket string) (int64, error) {
+func (exporter *ExportScheduleExecution) exportDecisionsToS3(scheduledExecution models.ScheduledExecution, s3Bucket string) (int64, error) {
 
 	pipeReader, pipeWriter := io.Pipe()
 
@@ -87,7 +83,7 @@ func (exporter *ExportScheduleExecutionImpl) exportDecisionsToS3(scheduledExecut
 	return number_of_exported_decisions, errors.Join(exportErr, uploadErr)
 }
 
-func (exporter *ExportScheduleExecutionImpl) uploadDecisions(src *io.PipeReader, scheduledExecution models.ScheduledExecution, s3Bucket string) <-chan error {
+func (exporter *ExportScheduleExecution) uploadDecisions(src *io.PipeReader, scheduledExecution models.ScheduledExecution, s3Bucket string) <-chan error {
 
 	filename := fmt.Sprintf("scheduled_scenario_execution_%s_decisions.ndjson", scheduledExecution.Id)
 
@@ -105,7 +101,7 @@ func (exporter *ExportScheduleExecutionImpl) uploadDecisions(src *io.PipeReader,
 	return uploadErrorChan
 }
 
-func (exporter *ExportScheduleExecutionImpl) exportDecisions(dest *io.PipeWriter, scheduledExecutionId string) (int64, error) {
+func (exporter *ExportScheduleExecution) exportDecisions(dest *io.PipeWriter, scheduledExecutionId string) (int64, error) {
 
 	decisionChan, errorChan := exporter.DecisionRepository.DecisionsOfScheduledExecution(scheduledExecutionId)
 

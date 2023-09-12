@@ -63,7 +63,7 @@ func (usecases *Usecases) NewExportScheduleExecution() scheduledexecution.Export
 		awsS3Repository = &usecases.Repositories.AwsS3Repository
 	}
 
-	return &scheduledexecution.ExportScheduleExecutionImpl{
+	return scheduledexecution.ExportScheduleExecution{
 		AwsS3Repository:        awsS3Repository,
 		DecisionRepository:     usecases.Repositories.DecisionRepository,
 		OrganizationRepository: usecases.Repositories.OrganizationRepository,
