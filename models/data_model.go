@@ -110,13 +110,15 @@ func ToLinkNames(arr []string) []LinkName {
 
 type Table struct {
 	Name          TableName                 `json:"name"`
+	Description   string                    `json:"description"`
 	Fields        map[FieldName]Field       `json:"fields"`
 	LinksToSingle map[LinkName]LinkToSingle `json:"linksToSingle"`
 }
 
 type Field struct {
-	DataType DataType `json:"dataType"`
-	Nullable bool     `json:"nullable"`
+	Description string   `json:"description"`
+	DataType    DataType `json:"dataType"`
+	Nullable    bool     `json:"nullable"`
 }
 
 type LinkToSingle struct {

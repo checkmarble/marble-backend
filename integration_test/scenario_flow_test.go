@@ -139,10 +139,12 @@ func newDataModel() models.DataModel {
 	return models.DataModel{
 		Tables: map[models.TableName]models.Table{
 			"transactions": {
-				Name: "transactions",
+				Name:        "transactions",
+				Description: "description for transactions table",
 				Fields: map[models.FieldName]models.Field{
 					"object_id": {
-						DataType: models.String,
+						Description: "description for object_id field",
+						DataType:    models.String,
 					},
 					"updated_at":  {DataType: models.Timestamp},
 					"account_id":  {DataType: models.String, Nullable: true},
@@ -162,10 +164,12 @@ func newDataModel() models.DataModel {
 				},
 			},
 			"accounts": {
-				Name: "accounts",
+				Name:        "accounts",
+				Description: "description for accounts table",
 				Fields: map[models.FieldName]models.Field{
 					"object_id": {
-						DataType: models.String,
+						Description: "description for object_id field",
+						DataType:    models.String,
 					},
 					"updated_at": {DataType: models.Timestamp},
 					"balance":    {DataType: models.Float, Nullable: true},
@@ -182,10 +186,12 @@ func newDataModel() models.DataModel {
 				},
 			},
 			"companies": {
-				Name: "companies",
+				Name:        "companies",
+				Description: "description for companies table",
 				Fields: map[models.FieldName]models.Field{
 					"object_id": {
-						DataType: models.String,
+						Description: "description for object_id field",
+						DataType:    models.String,
 					},
 					"updated_at": {DataType: models.Timestamp},
 					"name":       {DataType: models.String, Nullable: true},

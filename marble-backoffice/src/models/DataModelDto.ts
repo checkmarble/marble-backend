@@ -15,6 +15,7 @@ const DataModelFieldSchema = yup.object({
     .oneOf(["Bool", "Int", "Float", "String", "Timestamp", "unknown"])
     .required(),
   nullable: yup.boolean().required(),
+  description: yup.string().defined(),
 });
 
 const DataModelTableSchema = yup.object({
@@ -37,6 +38,7 @@ const DataModelTableSchema = yup.object({
       )
       .nullable();
   }),
+  description: yup.string().defined(),
 });
 
 const DataModelSchema = yup.object({
@@ -74,6 +76,7 @@ export function adaptDataModelApiResult(json: unknown): DataModel {
             (field: yup.InferType<typeof DataModelFieldSchema>) => ({
               dataType: field.data_type,
               nullable: field.nullable,
+              description: field.description,
             })
           ),
           linksToSingle: MapObjectValues(
@@ -84,6 +87,7 @@ export function adaptDataModelApiResult(json: unknown): DataModel {
               childFieldName: field.child_field_name,
             })
           ),
+          description: table.description,
         };
       }
     ),
@@ -99,12 +103,14 @@ export function adaptDataModelDto(model: DataModel) {
       fields: MapObjectValues(table.fields, (field) => ({
         data_type: field.dataType,
         nullable: field.nullable,
+        description: field.description,
       })),
       links_to_single: MapObjectValues(table.linksToSingle, (field) => ({
         linked_table_name: field.linkedTableName,
         parent_field_name: field.parentFieldName,
         child_field_name: field.childFieldName,
       })),
+      description: table.description,
     })),
   };
 }

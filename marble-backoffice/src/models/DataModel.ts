@@ -7,12 +7,14 @@ export interface LinkToSingle {
 export interface DataModelField {
   dataType: "Bool" | "Int" | "Float" | "String" | "Timestamp" | "unknown";
   nullable: boolean;
+  description: string;
 }
 
 export interface DataModelTable {
   name: string;
   fields: Record<string, DataModelField>;
   linksToSingle: Record<string, LinkToSingle>;
+  description: string;
 }
 
 export interface DataModel {
