@@ -33,26 +33,26 @@ func (f FilterEvaluator) Evaluate(arguments ast.Arguments) (any, []error) {
 
 	fieldType, err := getFieldType(f.DataModel, models.TableName(tableNameStr), models.FieldName(fieldNameStr))
 	if err != nil {
-		return MakeEvaluateError(fmt.Errorf("field type for %s.%s not found in data model %w %w", tableNameStr, fieldNameStr, err, models.ErrRuntimeExpression))
+		return MakeEvaluateError(fmt.Errorf("field type for %s.%s not found in data model %w %w", tableNameStr, fieldNameStr, err, ast.NewNamedArgumentError("fieldName")))
 	}
 
 	// Operator validation
 	operator := ast.FilterOperator(operatorStr)
 	validTypes, isValid := ValidTypeForFilterOperators[operator]
 	if !isValid {
-		return MakeEvaluateError(fmt.Errorf("operator is not a valid operator %w", models.ErrRuntimeExpression))
+		return MakeEvaluateError(fmt.Errorf("operator is not a valid operator %w %w", models.ErrRuntimeExpression, ast.NewNamedArgumentError("operator")))
 	}
 
 	isValidFieldType := slices.Contains(validTypes, fieldType)
 	if !isValidFieldType {
-		return MakeEvaluateError(fmt.Errorf("field type %s is not valid for operator %s %w", fieldType.String(), operator, models.ErrRuntimeExpression))
+		return MakeEvaluateError(fmt.Errorf("field type %s is not valid for operator %s %w %w", fieldType.String(), operator, models.ErrRuntimeExpression, ast.NewNamedArgumentError("fieldName")))
 	}
 
 	// Value validation
 	value := arguments.NamedArgs["value"]
 	promotedValue, err := promoteArgumentToDataType(value, fieldType)
 	if err != nil {
-		return MakeEvaluateError(err)
+		return MakeEvaluateError(fmt.Errorf("value is not compatible with selected field %w %w", err, ast.NewNamedArgumentError("value")))
 	}
 
 	returnValue := ast.Filter{
