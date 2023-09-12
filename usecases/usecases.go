@@ -43,7 +43,7 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 		TransactionFactory:     usecases.Repositories.TransactionFactory,
 		OrganizationRepository: usecases.Repositories.OrganizationRepository,
 		DataModelRepository:    usecases.Repositories.DataModelRepository,
-		OrganizationSeeder: &organization.OrganizationSeederImpl{
+		OrganizationSeeder: organization.OrganizationSeeder{
 			CustomListRepository:             usecases.Repositories.CustomListRepository,
 			ApiKeyRepository:                 usecases.Repositories.ApiKeyRepository,
 			ScenarioWriteRepository:          usecases.Repositories.ScenarioWriteRepository,
