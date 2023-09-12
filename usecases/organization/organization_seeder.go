@@ -22,11 +22,7 @@ func randomAPiKey() string {
 	return hex.EncodeToString(key)
 }
 
-type OrganizationSeeder interface {
-	Seed(organizationId string) error
-}
-
-type OrganizationSeederImpl struct {
+type OrganizationSeeder struct {
 	CustomListRepository             repositories.CustomListRepository
 	ApiKeyRepository                 repositories.ApiKeyRepository
 	ScenarioWriteRepository          repositories.ScenarioWriteRepository
@@ -34,7 +30,7 @@ type OrganizationSeederImpl struct {
 	ScenarioPublisher                scenarios.ScenarioPublisher
 }
 
-func (o *OrganizationSeederImpl) Seed(organizationId string) error {
+func (o *OrganizationSeeder) Seed(organizationId string) error {
 
 	///////////////////////////////
 	// Tokens
@@ -55,16 +51,16 @@ func (o *OrganizationSeederImpl) Seed(organizationId string) error {
 	newCustomListId := uuid.NewString()
 
 	err = o.CustomListRepository.CreateCustomList(nil, models.CreateCustomListInput{
-		Name:           "Welcome to Marble",
-		Description:    "Need a whitelist or blacklist ? The list is your friend :)",
+		Name:        "Welcome to Marble",
+		Description: "Need a whitelist or blacklist ? The list is your friend :)",
 	}, organizationId, newCustomListId)
 	if err != nil {
 		return err
 	}
 
 	addCustomListValueInput := models.AddCustomListValueInput{
-		CustomListId:   newCustomListId,
-		Value:          "Welcome",
+		CustomListId: newCustomListId,
+		Value:        "Welcome",
 	}
 	o.CustomListRepository.AddCustomListValue(nil, addCustomListValueInput, uuid.NewString())
 	addCustomListValueInput.Value = "to"
