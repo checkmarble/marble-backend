@@ -17,8 +17,12 @@ type ExportScheduleExecution interface {
 	ExportScheduledExecutionToS3(scenario models.Scenario, scheduledExecution models.ScheduledExecution) error
 }
 
+type AwsS3Repository interface {
+	StoreInBucket(ctx context.Context, bucketName string, key string, body io.Reader) error
+}
+
 type ExportScheduleExecutionImpl struct {
-	AwsS3Repository        repositories.AwsS3Repository
+	AwsS3Repository        AwsS3Repository
 	DecisionRepository     repositories.DecisionRepository
 	OrganizationRepository repositories.OrganizationRepository
 }

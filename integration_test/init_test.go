@@ -16,7 +16,6 @@ import (
 	"github.com/ory/dockertest/v3/docker"
 
 	"github.com/checkmarble/marble-backend/infra"
-	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
@@ -104,7 +103,6 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not create private key: %s", err)
 	}
 	repositories, err := repositories.NewRepositories(
-		models.GlobalConfiguration{},
 		privateKey,
 		nil,
 		dbPool,
