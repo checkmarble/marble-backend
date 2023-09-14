@@ -40,30 +40,30 @@ func (repo *IngestedDataReadRepositoryImpl) GetDbField(transaction Transaction, 
 	return output, nil
 }
 
-func (repo *IngestedDataReadRepositoryImpl) queryDbForField(tx TransactionPostgres, readParams models.DbFieldReadParams) (pgx.Row, error) {
+func createQueryDbForField(tx Transaction, readParams models.DbFieldReadParams) (squirrel.SelectBuilder, error)  {
 	triggerTable, ok := readParams.DataModel.Tables[readParams.TriggerTableName]
 	if !ok {
-		return nil, fmt.Errorf("table %s not found in data model", readParams.TriggerTableName)
+		return squirrel.SelectBuilder{}, fmt.Errorf("table %s not found in data model", readParams.TriggerTableName)
 	}
 	link, ok := triggerTable.LinksToSingle[readParams.Path[0]]
 	if !ok {
-		return nil, fmt.Errorf("no link with name %s: %w", readParams.Path[0], models.NotFoundError)
+		return squirrel.SelectBuilder{}, fmt.Errorf("no link with name %s: %w", readParams.Path[0], models.NotFoundError)
 	}
 
 	firstTableObjectId, err := getFirstTableObjectIdFromPayload(readParams.Payload, link.ChildFieldName)
 	if err != nil {
-		return nil, fmt.Errorf("error while getting first path table object id from payload: %w", err)
+		return squirrel.SelectBuilder{}, fmt.Errorf("error while getting first path table object id from payload: %w", err)
 	}
 
 	// "first table" is the first table reached starting from the trigger table and following the path
 	firstTable, ok := readParams.DataModel.Tables[link.LinkedTableName]
 	if !ok {
-		return nil, fmt.Errorf("no table with name %s: %w", link.LinkedTableName, models.NotFoundError)
+		return squirrel.SelectBuilder{}, fmt.Errorf("no table with name %s: %w", link.LinkedTableName, models.NotFoundError)
 	}
 	// "last table" is the last table reached starting from the trigger table and following the path, from which the field is selected
 	lastTable, err := getLastTableFromPath(readParams, firstTable)
 	if err != nil {
-		return nil, err
+		return squirrel.SelectBuilder{}, err
 	}
 
 	firstTableName := tableNameWithSchema(tx, firstTable.Name)
@@ -76,9 +76,13 @@ func (repo *IngestedDataReadRepositoryImpl) queryDbForField(tx TransactionPostgr
 		Where(squirrel.Eq{fmt.Sprintf("%s.object_id", firstTableName): firstTableObjectId}).
 		Where(rowIsValid(firstTableName))
 
-	query, err = addJoinsOnIntermediateTables(tx, query, readParams, firstTable)
+	return addJoinsOnIntermediateTables(tx, query, readParams, firstTable)
+} 
+
+func (repo *IngestedDataReadRepositoryImpl) queryDbForField(tx TransactionPostgres, readParams models.DbFieldReadParams) (pgx.Row, error) {
+	query, err := createQueryDbForField(tx, readParams)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error while building SQL query: %w", err)
 	}
 
 	sql, args, err := query.ToSql()
@@ -104,7 +108,7 @@ func getFirstTableObjectIdFromPayload(payload models.PayloadReader, fieldName mo
 	return parentObjectId, nil
 }
 
-func addJoinsOnIntermediateTables(tx TransactionPostgres, query squirrel.SelectBuilder, readParams models.DbFieldReadParams, firstTable models.Table) (squirrel.SelectBuilder, error) {
+func addJoinsOnIntermediateTables(tx Transaction, query squirrel.SelectBuilder, readParams models.DbFieldReadParams, firstTable models.Table) (squirrel.SelectBuilder, error) {
 	currentTable := firstTable
 	// ignore the first element of the path, as it is the starting table of the query
 	for _, linkName := range readParams.Path[1:] {
@@ -219,9 +223,7 @@ func queryWithDynamicColumnList(tx TransactionPostgres, qualifiedTableName strin
 	return output, nil
 }
 
-func (repo *IngestedDataReadRepositoryImpl) QueryAggregatedValue(transaction Transaction, tableName models.TableName, fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter) (any, error) {
-	tx := adaptClientDatabaseTransaction(transaction)
-
+func createQueryAggregated(transaction Transaction, tableName models.TableName, fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter) (squirrel.SelectBuilder, error) {
 	var selectExpression string
 	if aggregator == ast.AGGREGATOR_COUNT_DISTINCT {
 		selectExpression = fmt.Sprintf("COUNT(DISTINCT %s)", fieldName)
@@ -229,7 +231,7 @@ func (repo *IngestedDataReadRepositoryImpl) QueryAggregatedValue(transaction Tra
 		selectExpression = fmt.Sprintf("%s(%s)", aggregator, fieldName)
 	}
 
-	qualifiedTableName := tableNameWithSchema(tx, tableName)
+	qualifiedTableName := tableNameWithSchema(transaction, tableName)
 
 	query := NewQueryBuilder().
 		Select(selectExpression).
@@ -240,10 +242,19 @@ func (repo *IngestedDataReadRepositoryImpl) QueryAggregatedValue(transaction Tra
 	for _, filter := range filters {
 		query, err = addConditionForOperator(query, qualifiedTableName, filter.FieldName, filter.Operator, filter.Value)
 		if err != nil {
-			return nil, err
+			return squirrel.SelectBuilder{}, err
 		}
 	}
+	return query, nil
+}
 
+func (repo *IngestedDataReadRepositoryImpl) QueryAggregatedValue(transaction Transaction, tableName models.TableName, fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter) (any, error) {
+	tx := adaptClientDatabaseTransaction(transaction)
+
+	query, err := createQueryAggregated(tx, tableName, fieldName, aggregator, filters)
+	if err != nil {
+		return nil, fmt.Errorf("error while building SQL query: %w", err)
+	}
 	sql, args, err := query.ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("error while building SQL query: %w", err)

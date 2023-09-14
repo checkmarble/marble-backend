@@ -11,6 +11,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+
+// For Custom List Evaluator
+const testListId string = "1"
+const testListOrgId string = "2"
+
+var testList models.CustomList = models.CustomList{
+	Id:             testListId,
+	OrganizationId: testListOrgId,
+}
+
+var testCustomListNamedArgs = map[string]any{
+	"customListId": testListId,
+}
+
 func TestCustomListValuesWrongArg(t *testing.T) {
 	customListEval := evaluate.NewCustomListValuesAccess(nil, nil)
 	_, errs := customListEval.Evaluate(ast.Arguments{Args: []any{true}})

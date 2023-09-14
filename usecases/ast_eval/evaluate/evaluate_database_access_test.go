@@ -2,10 +2,12 @@ package evaluate_test
 
 import (
 	"fmt"
-	"github.com/checkmarble/marble-backend/models/ast"
-	"github.com/checkmarble/marble-backend/usecases/ast_eval/evaluate"
 	"testing"
 	"time"
+
+	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/usecases/ast_eval/evaluate"
+	"github.com/checkmarble/marble-backend/utils"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -21,12 +23,12 @@ func TestDatabaseAccessValuesWrongArg(t *testing.T) {
 
 func TestDatabaseAccessValuesDryRun(t *testing.T) {
 	databaseAccessEval := evaluate.DatabaseAccess{
-		DataModel:       getTestFirstDataModel(),
+		DataModel:       utils.GetDummyDataModel(),
 		ReturnFakeValue: true,
 	}
 	var testDatabaseAccessNamedArgs = map[string]any{
-		"tableName": string(testTableNameFirst),
-		"fieldName": string(testFieldNameId),
+		"tableName": string(utils.DummyTableNameFirst),
+		"fieldName": string(utils.DummyFieldNameId),
 		"path":      []any{},
 	}
 
@@ -34,23 +36,23 @@ func TestDatabaseAccessValuesDryRun(t *testing.T) {
 	assert.Len(t, errs, 0)
 	assert.Equal(t, fmt.Sprintf("fake value for DbAccess:%s..%s", testDatabaseAccessNamedArgs["tableName"], testDatabaseAccessNamedArgs["fieldName"]), value)
 
-	testDatabaseAccessNamedArgs["fieldName"] = string(testFieldNameForBool)
-	testDatabaseAccessNamedArgs["path"] = []any{string(testTableNameSecond)}
+	testDatabaseAccessNamedArgs["fieldName"] = string(utils.DummyFieldNameForBool)
+	testDatabaseAccessNamedArgs["path"] = []any{string(utils.DummyTableNameSecond)}
 	value, errs = databaseAccessEval.Evaluate(ast.Arguments{NamedArgs: testDatabaseAccessNamedArgs})
 	assert.Len(t, errs, 0)
 	assert.Equal(t, true, value)
 
-	testDatabaseAccessNamedArgs["fieldName"] = string(testFieldNameForInt)
+	testDatabaseAccessNamedArgs["fieldName"] = string(utils.DummyFieldNameForInt)
 	value, errs = databaseAccessEval.Evaluate(ast.Arguments{NamedArgs: testDatabaseAccessNamedArgs})
 	assert.Len(t, errs, 0)
 	assert.Equal(t, 1, value)
 
-	testDatabaseAccessNamedArgs["fieldName"] = string(testFieldNameForFloat)
+	testDatabaseAccessNamedArgs["fieldName"] = string(utils.DummyFieldNameForFloat)
 	value, errs = databaseAccessEval.Evaluate(ast.Arguments{NamedArgs: testDatabaseAccessNamedArgs})
 	assert.Len(t, errs, 0)
 	assert.Equal(t, 1.0, value)
 
-	testDatabaseAccessNamedArgs["fieldName"] = string(testFieldNameForTimestamp)
+	testDatabaseAccessNamedArgs["fieldName"] = string(utils.DummyFieldNameForTimestamp)
 	timestamp, _ := time.Parse(time.RFC3339, time.RFC3339)
 	value, errs = databaseAccessEval.Evaluate(ast.Arguments{NamedArgs: testDatabaseAccessNamedArgs})
 	assert.Len(t, errs, 0)
