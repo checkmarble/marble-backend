@@ -9,7 +9,7 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "program": "${workspaceFolder}/main.go",
+      "program": "${workspaceFolder}/.",
       "envFile": "${workspaceFolder}/.env.local",
       "args": ["--server", "--migrations"],
       "console": "integratedTerminal"
