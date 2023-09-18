@@ -123,8 +123,12 @@ func (api *API) routes() {
 			r.With(httpin.NewInput(dto.ListScheduledExecutionInput{})).
 				Get("/", api.handleListScheduledExecution())
 
-			r.Route("/{scheduledExecutionID:"+UUIDRegExp+"}", func(r chi.Router) {
+			r.Route("/{scheduledExecutionID}", func(r chi.Router) {
 				r.Get("/", api.handleGetScheduledExecution())
+			})
+
+			r.Route("/{scheduledExecutionID}/decisions", func(r chi.Router) {
+				r.Get("/", api.handleGetScheduledExecutionDecisions())
 			})
 		})
 

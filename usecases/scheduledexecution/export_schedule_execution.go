@@ -43,7 +43,7 @@ func (exporter *ExportScheduleExecution) ExportScheduledExecutionToS3(scenario m
 	return exporter.exportScenarioToS3(scenario, scheduledExecution, organization.ExportScheduledExecutionS3, numberOfDecision)
 }
 
-func (exporter *ExportScheduleExecution) exportScenarioToS3(scenario models.Scenario, scheduledExecution models.ScheduledExecution, s3Bucket string, numberOfDecision int64) error {
+func (exporter *ExportScheduleExecution) exportScenarioToS3(scenario models.Scenario, scheduledExecution models.ScheduledExecution, s3Bucket string, numberOfDecision int) error {
 
 	filename := fmt.Sprintf("scheduled_scenario_execution_%s.json", scheduledExecution.Id)
 
@@ -65,14 +65,14 @@ func (exporter *ExportScheduleExecution) exportScenarioToS3(scenario models.Scen
 	return exporter.AwsS3Repository.StoreInBucket(context.Background(), s3Bucket, filename, bytes.NewReader(encoded))
 }
 
-func (exporter *ExportScheduleExecution) exportDecisionsToS3(scheduledExecution models.ScheduledExecution, s3Bucket string) (int64, error) {
+func (exporter *ExportScheduleExecution) exportDecisionsToS3(scheduledExecution models.ScheduledExecution, s3Bucket string) (int, error) {
 
 	pipeReader, pipeWriter := io.Pipe()
 
 	uploadErrorChan := exporter.uploadDecisions(pipeReader, scheduledExecution, s3Bucket)
 
 	// write everything. No need to create a second goroutine, the write can be synchronous.
-	number_of_exported_decisions, exportErr := exporter.exportDecisions(pipeWriter, scheduledExecution.Id)
+	number_of_exported_decisions, exportErr := exporter.ExportDecisions(scheduledExecution.Id, pipeWriter)
 
 	// close the pipe when done
 	pipeWriter.Close()
@@ -101,7 +101,7 @@ func (exporter *ExportScheduleExecution) uploadDecisions(src *io.PipeReader, sch
 	return uploadErrorChan
 }
 
-func (exporter *ExportScheduleExecution) exportDecisions(dest *io.PipeWriter, scheduledExecutionId string) (int64, error) {
+func (exporter *ExportScheduleExecution) ExportDecisions(scheduledExecutionId string, dest io.Writer) (int, error) {
 
 	decisionChan, errorChan := exporter.DecisionRepository.DecisionsOfScheduledExecution(scheduledExecutionId)
 
@@ -109,7 +109,7 @@ func (exporter *ExportScheduleExecution) exportDecisions(dest *io.PipeWriter, sc
 
 	var allErrors []error
 
-	var number_of_exported_decisions int64
+	var number_of_exported_decisions int
 
 	for decision := range decisionChan {
 		err := encoder.Encode(dto.NewAPIDecision(decision))
