@@ -42,7 +42,7 @@ func (usecase *OrganizationUseCase) CreateOrganization(ctx context.Context, crea
 }
 
 func (usecase *OrganizationUseCase) GetOrganization(ctx context.Context, organizationId string) (models.Organization, error) {
-	if err := usecase.enforceSecurity.ListOrganization(); err != nil {
+	if err := usecase.enforceSecurity.ReadOrganization(organizationId); err != nil {
 		return models.Organization{}, err
 	}
 	return usecase.organizationRepository.GetOrganizationById(nil, organizationId)
