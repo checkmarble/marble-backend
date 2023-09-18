@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"runtime/debug"
 	"time"
 
@@ -34,7 +35,7 @@ type ScheduledExecutionUsecase struct {
 	evaluateRuleAstExpression       ast_eval.EvaluateRuleAstExpression
 }
 
-func (usecase *ScheduledExecutionUsecase) GetScheduledExecution(ctx context.Context, id string) (models.ScheduledExecution, error) {
+func (usecase *ScheduledExecutionUsecase) GetScheduledExecution(id string) (models.ScheduledExecution, error) {
 	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.ScheduledExecution, error) {
 		execution, err := usecase.scheduledExecutionRepository.GetScheduledExecution(tx, id)
 		if err != nil {
@@ -47,7 +48,21 @@ func (usecase *ScheduledExecutionUsecase) GetScheduledExecution(ctx context.Cont
 	})
 }
 
-func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(ctx context.Context, organizationId string, scenarioId string) ([]models.ScheduledExecution, error) {
+func (usecase *ScheduledExecutionUsecase) ExportScheduledExecutionDecisions(scheduledExecutionID string, w io.Writer) (int, error) {
+	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (int, error) {
+		execution, err := usecase.scheduledExecutionRepository.GetScheduledExecution(tx, scheduledExecutionID)
+		if err != nil {
+			return 0, err
+		}
+		if err := usecase.enforceSecurity.ReadScheduledExecution(execution); err != nil {
+			return 0, err
+		}
+
+		return usecase.exportScheduleExecution.ExportDecisions(execution.Id, w)
+	})
+}
+
+func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(organizationId string, scenarioId string) ([]models.ScheduledExecution, error) {
 	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) ([]models.ScheduledExecution, error) {
 		executions, err := usecase.scheduledExecutionRepository.ListScheduledExecutions(tx, organizationId, scenarioId)
 		if err != nil {
@@ -62,7 +77,7 @@ func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(ctx context.Co
 	})
 }
 
-func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(ctx context.Context, input models.CreateScheduledExecutionInput) error {
+func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(input models.CreateScheduledExecutionInput) error {
 	if err := usecase.enforceSecurity.CreateScheduledExecution(input.OrganizationId); err != nil {
 		return err
 	}
@@ -180,7 +195,7 @@ func (usecase *ScheduledExecutionUsecase) scenarioIsDue(ctx context.Context, pub
 	if !ok {
 		return false, fmt.Errorf("invalid schedule: %w", models.BadParameterError)
 	}
-	previousExecutions, err := usecase.ListScheduledExecutions(ctx, scenario.OrganizationId, scenario.Id)
+	previousExecutions, err := usecase.ListScheduledExecutions(scenario.OrganizationId, scenario.Id)
 	if err != nil {
 		return false, fmt.Errorf("error listing scheduled executions: %w", err)
 	}
