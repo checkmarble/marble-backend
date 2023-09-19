@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
+	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
 	"github.com/checkmarble/marble-backend/usecases/org_transaction"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
@@ -76,16 +77,15 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 			return models.Decision{}, fmt.Errorf("error getting data model: %w", err)
 		}
 
-		scenarioExecution, err := evalScenario(ctx, scenarioEvaluationParameters{
-			scenario:  scenario,
-			payload:   input.PayloadStructWithReader,
-			dataModel: dm,
-		}, scenarioEvaluationRepositories{
-			scenarioIterationReadRepository: usecase.scenarioIterationReadRepository,
-			orgTransactionFactory:           usecase.orgTransactionFactory,
-			ingestedDataReadRepository:      usecase.ingestedDataReadRepository,
-			customListRepository:            usecase.customListRepository,
-			evaluateRuleAstExpression:       usecase.evaluateRuleAstExpression,
+		scenarioExecution, err := evaluate_scenario.EvalScenario(ctx, evaluate_scenario.ScenarioEvaluationParameters{
+			Scenario:  scenario,
+			Payload:   input.PayloadStructWithReader,
+			DataModel: dm,
+		}, evaluate_scenario.ScenarioEvaluationRepositories{
+			ScenarioIterationReadRepository: usecase.scenarioIterationReadRepository,
+			OrgTransactionFactory:           usecase.orgTransactionFactory,
+			IngestedDataReadRepository:      usecase.ingestedDataReadRepository,
+			EvaluateRuleAstExpression:       usecase.evaluateRuleAstExpression,
 		}, logger)
 		if err != nil {
 			return models.Decision{}, fmt.Errorf("error evaluating scenario: %w", err)
