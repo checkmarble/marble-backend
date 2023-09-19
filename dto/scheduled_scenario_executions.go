@@ -25,5 +25,5 @@ func AdaptScheduledExecutionDto(ExecutionBatch models.ScheduledExecution) APISch
 }
 
 type ListScheduledExecutionInput struct {
-	ScenarioId string `in:"query=scenario_id;required"`
+	ScenarioId string `in:"query=scenario_id"`
 }

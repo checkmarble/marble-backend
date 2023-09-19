@@ -179,6 +179,7 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 func (usecases *UsecasesWithCreds) NewScheduledExecutionUsecase() ScheduledExecutionUsecase {
 	return ScheduledExecutionUsecase{
 		enforceSecurity:                 usecases.NewEnforceDecisionSecurity(),
+		organizationIdOfContext:         usecases.OrganizationIdOfContext,
 		scenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,
 		scenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
 		scenarioPublicationsRepository:  usecases.Repositories.ScenarioPublicationRepository,
