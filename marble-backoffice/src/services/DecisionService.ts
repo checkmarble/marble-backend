@@ -2,10 +2,7 @@ import { type MarbleApi } from "@/infra/MarbleApi";
 import { type LoadingDispatcher, showLoader } from "@/hooks/Loading";
 import { useSimpleLoader } from "@/hooks/SimpleLoader";
 import { useCallback, useState } from "react";
-import {
-  fetchDecisions,
-  postDecision,
-} from "@/repositories/DecisionRepository";
+import { fetchDecisions, postDecision } from "@/repositories";
 import type { Decision } from "@/models";
 
 export function useDecisions(

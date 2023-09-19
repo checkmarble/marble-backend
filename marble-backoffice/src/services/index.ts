@@ -9,3 +9,4 @@ export * from "./AstEditorService";
 export * from "./ScenarioService";
 export * from "./DataModelService";
 export * from "./DemoScenarioService";
+export * from "./ScheduledExecutionService";

@@ -4,6 +4,7 @@ import {
   fetchJson,
   HttpError,
   setAuthorizationBearerHeader,
+  fetchBlob,
 } from "./fetchUtils";
 import { AuthorizedFetcher } from "./AuthorizedFetcher";
 
@@ -44,18 +45,29 @@ export class MarbleApiFetcher implements AuthorizedFetcher {
     return token;
   }
 
-  async authorizedApiFetch(request: Request): Promise<unknown> {
+  authorizedBlob(request: Request): Promise<Blob> {
+    return this.authorizedRequest(request, fetchBlob);
+  }
+
+  authorizedJson(request: Request): Promise<unknown> {
+    return this.authorizedRequest(request, fetchJson);
+  }
+
+  async authorizedRequest<T>(
+    request: Request,
+    fetch: (request: Request) => Promise<T>
+  ): Promise<T> {
     try {
       const marbleToken = await this.getCachedMarbleToken();
       setAuthorizationBearerHeader(request.headers, marbleToken);
-      return await fetchJson(request);
+      return await fetch(request);
     } catch (error) {
       if (error instanceof HttpError) {
         if (error.statusCode === 401) {
           // 401: let's try with a refreshed token
           const refreshedMarbleToken = await this.getCachedMarbleToken(true);
           setAuthorizationBearerHeader(request.headers, refreshedMarbleToken);
-          return await fetchJson(request);
+          return await fetch(request);
         }
       }
       throw error;
