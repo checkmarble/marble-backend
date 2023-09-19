@@ -8,15 +8,15 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/org_transaction"
 	"github.com/checkmarble/marble-backend/usecases/organization"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/usecases/transaction"
 )
 
 type OrganizationUseCase struct {
 	enforceSecurity              security.EnforceSecurityOrganization
-	transactionFactory           repositories.TransactionFactory
-	orgTransactionFactory        org_transaction.Factory
+	transactionFactory           transaction.TransactionFactory
+	orgTransactionFactory        transaction.Factory
 	organizationRepository       repositories.OrganizationRepository
 	datamodelRepository          repositories.DataModelRepository
 	apiKeyRepository             repositories.ApiKeyRepository
@@ -52,7 +52,7 @@ func (usecase *OrganizationUseCase) UpdateOrganization(ctx context.Context, orga
 	if err := usecase.enforceSecurity.CreateOrganization(); err != nil {
 		return models.Organization{}, err
 	}
-	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Organization, error) {
+	return transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Organization, error) {
 		err := usecase.organizationRepository.UpdateOrganization(tx, organization)
 		if err != nil {
 			return models.Organization{}, err
@@ -111,7 +111,7 @@ func (usecase *OrganizationUseCase) ReplaceDataModel(organizationId string, newD
 	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
 		return models.DataModel{}, err
 	}
-	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.DataModel, error) {
+	return transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.DataModel, error) {
 
 		var zeroDataModel models.DataModel
 		// delete data model
@@ -138,7 +138,7 @@ func (usecase *OrganizationUseCase) GetUsersOfOrganization(organizationIDFilter 
 	if err := usecase.enforceSecurity.ListOrganization(); err != nil {
 		return []models.User{}, err
 	}
-	return repositories.TransactionReturnValue(
+	return transaction.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) ([]models.User, error) {
@@ -148,7 +148,7 @@ func (usecase *OrganizationUseCase) GetUsersOfOrganization(organizationIDFilter 
 }
 
 func (usecase *OrganizationUseCase) GetApiKeysOfOrganization(ctx context.Context, organizationId string) ([]models.ApiKey, error) {
-	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) ([]models.ApiKey, error) {
+	return transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) ([]models.ApiKey, error) {
 		apiKeys, err := usecase.apiKeyRepository.GetApiKeysOfOrganization(tx, organizationId)
 		if err != nil {
 			return []models.ApiKey{}, err

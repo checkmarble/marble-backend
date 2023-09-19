@@ -11,7 +11,7 @@ import (
 
 type Repositories struct {
 	DatabaseConnectionPoolRepository DatabaseConnectionPoolRepository
-	TransactionFactory               TransactionFactory
+	TransactionFactoryPosgresql      TransactionFactoryPosgresql
 	FirebaseTokenRepository          FireBaseTokenRepository
 	MarbleJwtRepository              func() MarbleJwtRepository
 	UserRepository                   UserRepository
@@ -58,7 +58,7 @@ func NewRepositories(
 
 	return &Repositories{
 		DatabaseConnectionPoolRepository: databaseConnectionPoolRepository,
-		TransactionFactory:               transactionFactory,
+		TransactionFactoryPosgresql:      transactionFactory,
 		FirebaseTokenRepository: FireBaseTokenRepository{
 			firebaseClient: firebaseClient,
 		},

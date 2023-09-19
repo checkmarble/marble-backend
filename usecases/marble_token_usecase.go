@@ -7,10 +7,11 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/transaction"
 )
 
 type MarbleTokenUseCase struct {
-	transactionFactory      repositories.TransactionFactory
+	transactionFactory      transaction.TransactionFactory
 	marbleJwtRepository     repositories.MarbleJwtRepository
 	firebaseTokenRepository repositories.FireBaseTokenRepository
 	userRepository          repositories.UserRepository
@@ -69,7 +70,7 @@ func (usecase *MarbleTokenUseCase) NewMarbleToken(apiKey string, firebaseToken s
 			return "", time.Time{}, fmt.Errorf("firebase TokenID verification fail: %w", err)
 		}
 
-		user, err := repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.User, error) {
+		user, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.User, error) {
 
 			user, err := usecase.userRepository.UserByFirebaseUid(tx, identity.FirebaseUid)
 			if err != nil {

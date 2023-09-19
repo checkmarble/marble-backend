@@ -12,7 +12,7 @@ type ApiKeyRepository interface {
 }
 
 type ApiKeyRepositoryImpl struct {
-	transactionFactory TransactionFactory
+	transactionFactory TransactionFactoryPosgresql
 }
 
 func (repo *ApiKeyRepositoryImpl) GetApiKeyByKey(tx Transaction, key string) (models.ApiKey, error) {

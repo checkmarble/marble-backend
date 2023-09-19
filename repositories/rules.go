@@ -20,7 +20,7 @@ type RuleRepository interface {
 }
 
 type RuleRepositoryPostgresql struct {
-	transactionFactory TransactionFactory
+	transactionFactory TransactionFactoryPosgresql
 }
 
 func selectRules() squirrel.SelectBuilder {

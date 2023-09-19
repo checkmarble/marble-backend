@@ -20,7 +20,7 @@ type CustomListRepository interface {
 }
 
 type CustomListRepositoryPostgresql struct {
-	transactionFactory TransactionFactory
+	transactionFactory TransactionFactoryPosgresql
 }
 
 func (repo *CustomListRepositoryPostgresql) AllCustomLists(tx Transaction, organizationId string) ([]models.CustomList, error) {

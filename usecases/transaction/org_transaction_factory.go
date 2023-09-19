@@ -1,4 +1,4 @@
-package org_transaction
+package transaction
 
 import (
 	"github.com/checkmarble/marble-backend/models"
@@ -16,7 +16,7 @@ type Factory interface {
 
 type FactoryImpl struct {
 	OrganizationSchemaRepository     repositories.OrganizationSchemaRepository
-	TransactionFactory               repositories.TransactionFactory
+	TransactionFactory               TransactionFactory
 	DatabaseConnectionPoolRepository repositories.DatabaseConnectionPoolRepository
 }
 

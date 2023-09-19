@@ -21,7 +21,7 @@ type ScenarioIterationReadRepository interface {
 }
 
 type ScenarioIterationReadRepositoryPostgresql struct {
-	transactionFactory TransactionFactory
+	transactionFactory TransactionFactoryPosgresql
 }
 
 func (repository *ScenarioIterationReadRepositoryPostgresql) GetScenarioIteration(

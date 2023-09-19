@@ -18,7 +18,7 @@ type ScenarioIterationWriteRepository interface {
 }
 
 type ScenarioIterationWriteRepositoryPostgresql struct {
-	transactionFactory TransactionFactory
+	transactionFactory TransactionFactoryPosgresql
 	ruleRepository     RuleRepository
 }
 

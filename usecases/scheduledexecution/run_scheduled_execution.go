@@ -13,18 +13,18 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
-	"github.com/checkmarble/marble-backend/usecases/org_transaction"
+	"github.com/checkmarble/marble-backend/usecases/transaction"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
 type RunScheduledExecution struct {
 	ScenarioReadRepository          repositories.ScenarioReadRepository
-	TransactionFactory              repositories.TransactionFactory
+	TransactionFactory              transaction.TransactionFactory
 	ScheduledExecutionRepository    repositories.ScheduledExecutionRepository
 	ExportScheduleExecution         ExportScheduleExecution
 	ScenarioPublicationsRepository  repositories.ScenarioPublicationRepository
 	DataModelRepository             repositories.DataModelRepository
-	OrgTransactionFactory           org_transaction.Factory
+	OrgTransactionFactory           transaction.Factory
 	IngestedDataReadRepository      repositories.IngestedDataReadRepository
 	ScenarioIterationReadRepository repositories.ScenarioIterationReadRepository
 	EvaluateRuleAstExpression       ast_eval.EvaluateRuleAstExpression
@@ -65,7 +65,7 @@ func (usecase *RunScheduledExecution) ExecuteScheduledScenarioIfDue(ctx context.
 		logger := utils.LoggerFromContext(ctx)
 		logger.DebugContext(ctx, fmt.Sprintf("Scenario iteration %s is due", publishedVersion.Id))
 
-		scheduledExecution, err := repositories.TransactionReturnValue(
+		scheduledExecution, err := transaction.TransactionReturnValue(
 			usecase.TransactionFactory,
 			models.DATABASE_MARBLE_SCHEMA,
 			func(tx repositories.Transaction) (models.ScheduledExecution, error) {

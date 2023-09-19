@@ -6,11 +6,11 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval/evaluate"
-	"github.com/checkmarble/marble-backend/usecases/org_transaction"
 	"github.com/checkmarble/marble-backend/usecases/organization"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/scheduledexecution"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/usecases/transaction"
 
 	"slices"
 )
@@ -20,17 +20,17 @@ type Usecases struct {
 	Configuration models.GlobalConfiguration
 }
 
-func (usecases *Usecases) NewOrgTransactionFactory() org_transaction.Factory {
-	return &org_transaction.FactoryImpl{
+func (usecases *Usecases) NewOrgTransactionFactory() transaction.Factory {
+	return &transaction.FactoryImpl{
 		OrganizationSchemaRepository:     usecases.Repositories.OrganizationSchemaRepository,
-		TransactionFactory:               usecases.Repositories.TransactionFactory,
+		TransactionFactory:               &usecases.Repositories.TransactionFactoryPosgresql,
 		DatabaseConnectionPoolRepository: usecases.Repositories.DatabaseConnectionPoolRepository,
 	}
 }
 
 func (usecases *Usecases) NewSeedUseCase() SeedUseCase {
 	return SeedUseCase{
-		transactionFactory:     usecases.Repositories.TransactionFactory,
+		transactionFactory:     &usecases.Repositories.TransactionFactoryPosgresql,
 		userRepository:         usecases.Repositories.UserRepository,
 		organizationCreator:    usecases.NewOrganizationCreator(),
 		organizationRepository: usecases.Repositories.OrganizationRepository,
@@ -40,7 +40,7 @@ func (usecases *Usecases) NewSeedUseCase() SeedUseCase {
 
 func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCreator {
 	return organization.OrganizationCreator{
-		TransactionFactory:     usecases.Repositories.TransactionFactory,
+		TransactionFactory:     &usecases.Repositories.TransactionFactoryPosgresql,
 		OrganizationRepository: usecases.Repositories.OrganizationRepository,
 		DataModelRepository:    usecases.Repositories.DataModelRepository,
 		OrganizationSeeder: organization.OrganizationSeeder{
@@ -54,7 +54,7 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 	}
 }
 
-func (usecases *Usecases) NewExportScheduleExecution() scheduledexecution.ExportScheduleExecution {
+func (usecases *Usecases) NewExportScheduleExecution() *scheduledexecution.ExportScheduleExecution {
 
 	var awsS3Repository scheduledexecution.AwsS3Repository
 	if usecases.Configuration.FakeAwsS3Repository {
@@ -63,7 +63,7 @@ func (usecases *Usecases) NewExportScheduleExecution() scheduledexecution.Export
 		awsS3Repository = &usecases.Repositories.AwsS3Repository
 	}
 
-	return scheduledexecution.ExportScheduleExecution{
+	return &scheduledexecution.ExportScheduleExecution{
 		AwsS3Repository:        awsS3Repository,
 		DecisionRepository:     usecases.Repositories.DecisionRepository,
 		OrganizationRepository: usecases.Repositories.OrganizationRepository,
@@ -72,7 +72,7 @@ func (usecases *Usecases) NewExportScheduleExecution() scheduledexecution.Export
 
 func (usecases *Usecases) NewPopulateOrganizationSchema() organization.PopulateOrganizationSchema {
 	return organization.PopulateOrganizationSchema{
-		TransactionFactory:           usecases.Repositories.TransactionFactory,
+		TransactionFactory:           &usecases.Repositories.TransactionFactoryPosgresql,
 		OrganizationRepository:       usecases.Repositories.OrganizationRepository,
 		OrganizationSchemaRepository: usecases.Repositories.OrganizationSchemaRepository,
 		DataModelRepository:          usecases.Repositories.DataModelRepository,

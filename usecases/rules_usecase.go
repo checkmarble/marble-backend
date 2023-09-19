@@ -7,6 +7,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/usecases/transaction"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -15,11 +16,11 @@ type RuleUsecase struct {
 	enforceSecurity         security.EnforceSecurityScenario
 	repository              repositories.RuleRepository
 	scenarioFetcher         scenarios.ScenarioFetcher
-	transactionFactory      repositories.TransactionFactory
+	transactionFactory      transaction.TransactionFactory
 }
 
 func (usecase *RuleUsecase) ListRules(iterationId string) ([]models.Rule, error) {
-	return repositories.TransactionReturnValue(
+	return transaction.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) ([]models.Rule, error) {
@@ -35,7 +36,7 @@ func (usecase *RuleUsecase) ListRules(iterationId string) ([]models.Rule, error)
 }
 
 func (usecase *RuleUsecase) CreateRule(ruleInput models.CreateRuleInput) (models.Rule, error) {
-	return repositories.TransactionReturnValue(
+	return transaction.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) (models.Rule, error) {
@@ -66,7 +67,7 @@ func (usecase *RuleUsecase) CreateRule(ruleInput models.CreateRuleInput) (models
 }
 
 func (usecase *RuleUsecase) GetRule(ruleId string) (models.Rule, error) {
-	return repositories.TransactionReturnValue(
+	return transaction.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) (models.Rule, error) {

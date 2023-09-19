@@ -4,12 +4,13 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/organization"
+	"github.com/checkmarble/marble-backend/usecases/transaction"
 
 	"github.com/google/uuid"
 )
 
 type SeedUseCase struct {
-	transactionFactory     repositories.TransactionFactory
+	transactionFactory     transaction.TransactionFactory
 	userRepository         repositories.UserRepository
 	organizationCreator    organization.OrganizationCreator
 	organizationRepository repositories.OrganizationRepository
@@ -77,15 +78,15 @@ func (usecase *SeedUseCase) SeedZorgOrganization(zorgOrganizationId string) erro
 	newCustomListId := "d6643d7e-c973-4899-a9a8-805f868ef90a"
 
 	err = usecase.customListRepository.CreateCustomList(nil, models.CreateCustomListInput{
-		Name:           "zorg custom list",
-		Description:    "Need a whitelist or blacklist ? The list is your friend :)",
+		Name:        "zorg custom list",
+		Description: "Need a whitelist or blacklist ? The list is your friend :)",
 	}, zorgOrganizationId, newCustomListId)
 
 	if err == nil {
 		// add some values to the hardcoded custom list
 		addCustomListValueInput := models.AddCustomListValueInput{
-			CustomListId:   newCustomListId,
-			Value:          "Welcome",
+			CustomListId: newCustomListId,
+			Value:        "Welcome",
 		}
 		usecase.customListRepository.AddCustomListValue(nil, addCustomListValueInput, uuid.NewString())
 		addCustomListValueInput.Value = "to"

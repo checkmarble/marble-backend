@@ -14,10 +14,10 @@ type ScenarioPublicationRepository interface {
 }
 
 type ScenarioPublicationRepositoryPostgresql struct {
-	transactionFactory TransactionFactory
+	transactionFactory TransactionFactoryPosgresql
 }
 
-func NewScenarioPublicationRepositoryPostgresql(transactionFactory TransactionFactory) ScenarioPublicationRepository {
+func NewScenarioPublicationRepositoryPostgresql(transactionFactory TransactionFactoryPosgresql) ScenarioPublicationRepository {
 	return &ScenarioPublicationRepositoryPostgresql{
 		transactionFactory: transactionFactory,
 	}

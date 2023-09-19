@@ -11,11 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type TransactionFactory interface {
-	Transaction(databaseSchema models.DatabaseSchema, fn func(tx Transaction) error) error
-	adaptMarbleDatabaseTransaction(transaction Transaction) TransactionPostgres
-}
-
 type TransactionFactoryPosgresql struct {
 	databaseConnectionPoolRepository DatabaseConnectionPoolRepository
 	marbleConnectionPool             *pgxpool.Pool
@@ -24,8 +19,8 @@ type TransactionFactoryPosgresql struct {
 func NewTransactionFactoryPosgresql(
 	databaseConnectionPoolRepository DatabaseConnectionPoolRepository,
 	marbleConnectionPool *pgxpool.Pool,
-) TransactionFactory {
-	return &TransactionFactoryPosgresql{
+) TransactionFactoryPosgresql {
+	return TransactionFactoryPosgresql{
 		databaseConnectionPoolRepository: databaseConnectionPoolRepository,
 		marbleConnectionPool:             marbleConnectionPool,
 	}
@@ -41,12 +36,8 @@ func (factory *TransactionFactoryPosgresql) adaptMarbleDatabaseTransaction(trans
 		}
 	}
 
-	return adaptMarbleDatabaseTransaction(transaction)
-}
-
-func adaptMarbleDatabaseTransaction(transaction Transaction) TransactionPostgres {
-
 	tx := transaction.(TransactionPostgres)
+
 	if transaction.DatabaseSchema().SchemaType != models.DATABASE_SCHEMA_TYPE_MARBLE {
 		panic("can only handle transactions in Marble database.")
 	}
@@ -86,26 +77,4 @@ func (repo *TransactionFactoryPosgresql) Transaction(databaseSchema models.Datab
 	}
 
 	return errors.Wrap(err, "Error executing transaction")
-}
-
-// Helper for TransactionFactory.Transaction that return something and an error:
-// TransactionReturnValue and the callback fn returns (Model, error)
-// Example:
-// return repositories.TransactionReturnValue(
-//
-//	 usecase.transactionFactory,
-//	 models.DATABASE_MARBLE_SCHEMA,
-//	 func(tx repositories.Transaction) ([]models.User, error) {
-//		return usecase.userRepository.Users(tx)
-//	 },
-//
-// )
-func TransactionReturnValue[ReturnType any](factory TransactionFactory, databaseSchema models.DatabaseSchema, fn func(tx Transaction) (ReturnType, error)) (ReturnType, error) {
-	var value ReturnType
-	transactionErr := factory.Transaction(databaseSchema, func(tx Transaction) error {
-		var fnErr error
-		value, fnErr = fn(tx)
-		return fnErr
-	})
-	return value, transactionErr
 }

@@ -13,8 +13,8 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/org_transaction"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/usecases/transaction"
 )
 
 const (
@@ -25,7 +25,7 @@ const (
 
 type IngestionUseCase struct {
 	enforceSecurity       security.EnforceSecurityIngestion
-	orgTransactionFactory org_transaction.Factory
+	orgTransactionFactory transaction.Factory
 	ingestionRepository   repositories.IngestionRepository
 	gcsRepository         repositories.GcsRepository
 	datamodelRepository   repositories.DataModelRepository

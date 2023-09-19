@@ -6,21 +6,25 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/scheduledexecution"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/usecases/transaction"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
+type ExportDecisions interface {
+	ExportDecisions(scheduledExecutionId string, dest io.Writer) (int, error)
+}
+
 type ScheduledExecutionUsecase struct {
 	enforceSecurity              security.EnforceSecurityDecision
-	transactionFactory           repositories.TransactionFactory
+	transactionFactory           transaction.TransactionFactory
 	scheduledExecutionRepository repositories.ScheduledExecutionRepository
-	exportScheduleExecution      scheduledexecution.ExportScheduleExecution
+	exportScheduleExecution      ExportDecisions
 	organizationIdOfContext      func() (string, error)
 }
 
 func (usecase *ScheduledExecutionUsecase) GetScheduledExecution(id string) (models.ScheduledExecution, error) {
-	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.ScheduledExecution, error) {
+	return transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.ScheduledExecution, error) {
 		execution, err := usecase.scheduledExecutionRepository.GetScheduledExecution(tx, id)
 		if err != nil {
 			return models.ScheduledExecution{}, err
@@ -33,7 +37,7 @@ func (usecase *ScheduledExecutionUsecase) GetScheduledExecution(id string) (mode
 }
 
 func (usecase *ScheduledExecutionUsecase) ExportScheduledExecutionDecisions(scheduledExecutionID string, w io.Writer) (int, error) {
-	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (int, error) {
+	return transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (int, error) {
 		execution, err := usecase.scheduledExecutionRepository.GetScheduledExecution(tx, scheduledExecutionID)
 		if err != nil {
 			return 0, err
@@ -50,7 +54,7 @@ func (usecase *ScheduledExecutionUsecase) ExportScheduledExecutionDecisions(sche
 // The optional argument 'scenarioId' can be used to filter the returned list.
 func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(scenarioId string) ([]models.ScheduledExecution, error) {
 
-	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) ([]models.ScheduledExecution, error) {
+	return transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) ([]models.ScheduledExecution, error) {
 
 		var executions []models.ScheduledExecution
 		if scenarioId == "" {
