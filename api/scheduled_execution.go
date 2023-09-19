@@ -1,10 +1,12 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
 
 	"github.com/ggicci/httpin"
@@ -30,6 +32,7 @@ func (api *API) handleGetScheduledExecution() http.HandlerFunc {
 
 func (api *API) handleGetScheduledExecutionDecisions() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+
 		scheduledExecutionID, err := requiredUuidUrlParam(r, "scheduledExecutionID")
 		if presentError(w, r, err) {
 			return
@@ -39,7 +42,7 @@ func (api *API) handleGetScheduledExecutionDecisions() http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/x-ndjson")
 		// TODO: better filename
-		w.Header().Set("Content-Disposition", "attachment; filename=decisions.ndjson")
+		w.Header().Set("Content-Disposition", "attachment; filename=\"decisions.ndjson.zip\"")
 		number_of_exported_decisions, err := usecase.ExportScheduledExecutionDecisions(scheduledExecutionID, w)
 
 		if err != nil {
@@ -55,18 +58,18 @@ func (api *API) handleGetScheduledExecutionDecisions() http.HandlerFunc {
 
 func (api *API) handleListScheduledExecution() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
 
-		input := ctx.Value(httpin.Input).(*dto.ListScheduledExecutionInput)
+		input := r.Context().Value(httpin.Input).(*dto.ListScheduledExecutionInput)
 		scenarioId := input.ScenarioId
 
-		organizationId, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
-			return
+		if scenarioId != "" {
+			if err := utils.ValidateUuid(scenarioId); err != nil {
+				presentError(w, r, fmt.Errorf("search param 'scenarioId' is not a valid uuid: %w, %w", err, models.BadParameterError))
+			}
 		}
 
 		usecase := api.UsecasesWithCreds(r).NewScheduledExecutionUsecase()
-		executions, err := usecase.ListScheduledExecutions(organizationId, scenarioId)
+		executions, err := usecase.ListScheduledExecutions(scenarioId)
 
 		if presentError(w, r, err) {
 			return

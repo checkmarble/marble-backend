@@ -33,6 +33,7 @@ type ScheduledExecutionUsecase struct {
 	customListRepository            repositories.CustomListRepository
 	exportScheduleExecution         scheduledexecution.ExportScheduleExecution
 	evaluateRuleAstExpression       ast_eval.EvaluateRuleAstExpression
+	organizationIdOfContext         func() (string, error)
 }
 
 func (usecase *ScheduledExecutionUsecase) GetScheduledExecution(id string) (models.ScheduledExecution, error) {
@@ -62,12 +63,32 @@ func (usecase *ScheduledExecutionUsecase) ExportScheduledExecutionDecisions(sche
 	})
 }
 
-func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(organizationId string, scenarioId string) ([]models.ScheduledExecution, error) {
+// ListScheduledExecutions returns the list of scheduled executions of the current organization.
+// The optional argument 'scenarioId' can be used to filter the returned list.
+func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(scenarioId string) ([]models.ScheduledExecution, error) {
+
 	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) ([]models.ScheduledExecution, error) {
-		executions, err := usecase.scheduledExecutionRepository.ListScheduledExecutions(tx, organizationId, scenarioId)
-		if err != nil {
-			return []models.ScheduledExecution{}, err
+
+		var executions []models.ScheduledExecution
+		if scenarioId == "" {
+			organizationId, err := usecase.organizationIdOfContext()
+			if err != nil {
+				return nil, err
+			}
+
+			executions, err = usecase.scheduledExecutionRepository.ListScheduledExecutionsOfOrganization(tx, organizationId)
+			if err != nil {
+				return []models.ScheduledExecution{}, err
+			}
+		} else {
+			var err error
+			executions, err = usecase.scheduledExecutionRepository.ListScheduledExecutionsOfScenario(tx, scenarioId)
+			if err != nil {
+				return []models.ScheduledExecution{}, err
+			}
 		}
+
+		// security check
 		for _, execution := range executions {
 			if err := usecase.enforceSecurity.ReadScheduledExecution(execution); err != nil {
 				return []models.ScheduledExecution{}, err
@@ -195,7 +216,7 @@ func (usecase *ScheduledExecutionUsecase) scenarioIsDue(ctx context.Context, pub
 	if !ok {
 		return false, fmt.Errorf("invalid schedule: %w", models.BadParameterError)
 	}
-	previousExecutions, err := usecase.ListScheduledExecutions(scenario.OrganizationId, scenario.Id)
+	previousExecutions, err := usecase.ListScheduledExecutions(scenario.Id)
 	if err != nil {
 		return false, fmt.Errorf("error listing scheduled executions: %w", err)
 	}

@@ -9,7 +9,8 @@ import (
 
 type ScheduledExecutionRepository interface {
 	GetScheduledExecution(tx Transaction, id string) (models.ScheduledExecution, error)
-	ListScheduledExecutions(tx Transaction, organizationId, scenarioId string) ([]models.ScheduledExecution, error)
+	ListScheduledExecutionsOfScenario(tx Transaction, scenarioId string) ([]models.ScheduledExecution, error)
+	ListScheduledExecutionsOfOrganization(tx Transaction, organizationId string) ([]models.ScheduledExecution, error)
 	CreateScheduledExecution(tx Transaction, input models.CreateScheduledExecutionInput, newScheduledExecutionId string) error
 	UpdateScheduledExecution(tx Transaction, updateScheduledEx models.UpdateScheduledExecutionInput) error
 }
@@ -30,7 +31,20 @@ func (repo *ScheduledExecutionRepositoryPostgresql) GetScheduledExecution(tx Tra
 	)
 }
 
-func (repo *ScheduledExecutionRepositoryPostgresql) ListScheduledExecutions(tx Transaction, organizationId, scenarioId string) ([]models.ScheduledExecution, error) {
+func (repo *ScheduledExecutionRepositoryPostgresql) ListScheduledExecutionsOfScenario(tx Transaction, scenarioId string) ([]models.ScheduledExecution, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+	return SqlToListOfModels(
+		pgTx,
+		NewQueryBuilder().
+			Select(dbmodels.ScheduledExecutionFields...).
+			From(dbmodels.TABLE_SCHEDULED_EXECUTIONS).
+			Where(squirrel.Eq{"scenario_id": scenarioId}).
+			OrderBy("started_at DESC"),
+		dbmodels.AdaptScheduledExecution,
+	)
+}
+
+func (repo *ScheduledExecutionRepositoryPostgresql) ListScheduledExecutionsOfOrganization(tx Transaction, organizationId string) ([]models.ScheduledExecution, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 	return SqlToListOfModels(
 		pgTx,
@@ -38,7 +52,6 @@ func (repo *ScheduledExecutionRepositoryPostgresql) ListScheduledExecutions(tx T
 			Select(dbmodels.ScheduledExecutionFields...).
 			From(dbmodels.TABLE_SCHEDULED_EXECUTIONS).
 			Where(squirrel.Eq{"organization_id": organizationId}).
-			Where(squirrel.Eq{"scenario_id": scenarioId}).
 			OrderBy("started_at DESC"),
 		dbmodels.AdaptScheduledExecution,
 	)
