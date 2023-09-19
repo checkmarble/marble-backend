@@ -127,7 +127,7 @@ func (api *API) routes() {
 				r.Get("/", api.handleGetScheduledExecution())
 			})
 
-			r.Route("/{scheduledExecutionID}/decisions", func(r chi.Router) {
+			r.Route("/{scheduledExecutionID}/decisions.zip", func(r chi.Router) {
 				r.Get("/", api.handleGetScheduledExecutionDecisions())
 			})
 		})
