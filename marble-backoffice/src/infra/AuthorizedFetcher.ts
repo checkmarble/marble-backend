@@ -1,4 +1,5 @@
 
 export interface AuthorizedFetcher {
-  authorizedApiFetch(request: Request): Promise<unknown>;
+  authorizedJson(request: Request): Promise<unknown>;
+  authorizedBlob(request: Request): Promise<Blob>;
 }

@@ -9,6 +9,7 @@ import type {
   ScenarioService,
   DataModelService,
   DemoScenarioService,
+  ScheduledExecutionService,
 } from "./services";
 
 export interface Services {
@@ -21,6 +22,7 @@ export interface Services {
   apiKeyService: ApiKeyService;
   astExpressionService: AstExpressionService;
   astEditorService: AstEditorService;
+  scheduledExecutionService: ScheduledExecutionService;
 }
 
 let globalServices: Services | null;
@@ -60,6 +62,9 @@ export function initializeServices(repositories: Repositories) {
       organizationRepository: repositories.organizationRepository,
       scenariosRepository: repositories.scenarioRepository,
     },
+    scheduledExecutionService: {
+      scheduledExecutionRepository: repositories.organizationRepository
+    }
   };
 }
 

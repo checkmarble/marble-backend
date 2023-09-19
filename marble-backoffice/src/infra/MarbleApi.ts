@@ -22,6 +22,7 @@ const DATA_MODEL_URL_PATH = "data-model";
 const SCENARIO_ITERATIONS_URL_PATH = "scenario-iterations";
 const SCENARIO_ITERATIONS_RULES_URL_PATH = "scenario-iteration-rules";
 const SCENARIO_PUBLICATIONS_URL_PATH = "scenario-publications";
+const SCHEDULED_EXECUTIONS_URL_PATH = "scheduled-executions";
 
 export interface IngestObjects {
   tableName: string;
@@ -46,7 +47,7 @@ export class MarbleApi {
       method: HttpMethod.Get,
     });
 
-    return this.fetcher.authorizedApiFetch(request);
+    return this.fetcher.authorizedJson(request);
   }
 
   async sendAuthorizedJson(args: {
@@ -62,7 +63,7 @@ export class MarbleApi {
       },
     });
 
-    return this.fetcher.authorizedApiFetch(request);
+    return this.fetcher.authorizedJson(request);
   }
 
   async deleteAuthorizedJson(path: string): Promise<unknown> {
@@ -70,7 +71,7 @@ export class MarbleApi {
       method: HttpMethod.Delete,
     });
 
-    return this.fetcher.authorizedApiFetch(request);
+    return this.fetcher.authorizedJson(request);
   }
 
   async allOrganizations(): Promise<unknown> {
@@ -367,6 +368,36 @@ export class MarbleApi {
         publicationAction: publish,
       },
     });
+  }
+
+  async scheduleExecutionOfOrganization({
+    organizationId,
+  }: {
+    organizationId: string;
+  }) {
+    return this.getAuthorizedJson(
+      urlWithOrganizationId(SCHEDULED_EXECUTIONS_URL_PATH, organizationId)
+    );
+  }
+
+  decisionsOfScheduleExecution({
+    organizationId,
+    scheduleExecutionId,
+  }: {
+    organizationId: string;
+    scheduleExecutionId: string;
+  }): Promise<Blob> {
+    const scheduleExecutionIdParam = encodeURIComponent(scheduleExecutionId);
+    const path = urlWithOrganizationId(
+      `${SCHEDULED_EXECUTIONS_URL_PATH}/${scheduleExecutionIdParam}/decisions`,
+      organizationId
+    );
+
+    const request = new Request(this.apiUrl(path), {
+      method: HttpMethod.Get,
+    });
+
+    return this.fetcher.authorizedBlob(request);
   }
 }
 

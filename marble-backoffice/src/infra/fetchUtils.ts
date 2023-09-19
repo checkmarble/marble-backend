@@ -32,6 +32,15 @@ export async function fetchJson(request: Request): Promise<unknown> {
   return Promise.resolve({});
 }
 
+export async function fetchBlob(request: Request): Promise<Blob> {
+  const response = await fetch(request);
+  if (!response.ok) {
+    throw new HttpError(request, response);
+  }
+
+  return response.blob();
+}
+
 export async function makePostRequest(args: {
   url: URL;
   body: unknown;

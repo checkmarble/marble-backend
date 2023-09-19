@@ -7,7 +7,7 @@ import services from "@/injectServices";
 import { useAstEditor, useSingleScenario } from "@/services";
 import { useNavigate, useParams } from "react-router-dom";
 import Alert from "@mui/material/Alert";
-import { Button } from "@mui/material";
+import Button from "@mui/material/Button";
 import { PageLink } from "@/models";
 
 export default function AstEditorPage() {

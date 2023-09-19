@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router";
 import { useNavigate } from "react-router-dom";
 import Typography from "@mui/material/Typography";
@@ -15,15 +15,14 @@ import {
   useUsers,
   useCreateUser,
   useDeleteOrganization,
-  useDecisions,
-  useMarbleApiWithClientRoleApiKey,
   useDataModel,
   useEditDataModel,
+  downloadScheduledExecutionsDecisionsLink,
 } from "@/services";
 import DelayedLinearProgress from "@/components/DelayedLinearProgress";
 import AlertDialog from "@/components/AlertDialog";
 import AddUserDialog from "@/components/AddUserDialog";
-import { type CreateUser, Role, PageLink } from "@/models";
+import { type CreateUser, Role, PageLink, ScheduleExecution } from "@/models";
 import ListOfUsers from "@/components/ListOfUsers";
 import IconButton from "@mui/material/IconButton";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -31,9 +30,6 @@ import TextareaAutosize from "@mui/material/TextareaAutosize";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Paper from "@mui/material/Paper";
-import List from "@mui/material/List";
-import ListItem from "@mui/material/ListItem";
-import ListItemText from "@mui/material/ListItemText";
 import Container from "@mui/material/Container";
 import ScenariosList from "@/components/ScenariosList";
 import ReactJson from "react-json-view";
@@ -41,6 +37,11 @@ import NorthEastIcon from "@mui/icons-material/NorthEast";
 import Alert from "@mui/material/Alert";
 import Divider from "@mui/material/Divider";
 import DataModelAPIDoc from "@/components/DataModelAPIDoc";
+import { useScheduledExecutions } from "@/services";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/InputLabel";
+import CardActions from "@mui/material/CardActions";
+import LinearProgress from "@mui/material/LinearProgress";
 
 function OrganizationDetailsPage() {
   const { organizationId } = useParams();
@@ -332,34 +333,128 @@ function OrganizationDetailsDecisionsList({
   organizationId: string;
   pageLoadingDispatcher: LoadingDispatcher;
 }) {
-  const { marbleApiWithClientRoleApiKey } = useMarbleApiWithClientRoleApiKey(
-    services().apiKeyService,
-    pageLoadingDispatcher,
-    organizationId
-  );
+  const service = services().scheduledExecutionService;
+  const { scheduledExecutions } = useScheduledExecutions({
+    service,
+    organizationId,
+    loadingDispatcher: pageLoadingDispatcher,
+  });
 
-  const { decisions } = useDecisions(
-    marbleApiWithClientRoleApiKey,
-    pageLoadingDispatcher
-  );
+  // const { marbleApiWithClientRoleApiKey } = useMarbleApiWithClientRoleApiKey(
+  //   services().apiKeyService,
+  //   pageLoadingDispatcher,
+  //   organizationId
+  // );
 
-  if (decisions == null) {
-    return <Typography variant="subtitle1">No decisions</Typography>;
-  } else
-    return (
-      <>
-        <Typography variant="subtitle1">
-          {decisions?.length} Decisions
-        </Typography>
-        <List>
-          {(decisions || []).map((decision) => (
-            <ListItem key={decision.decisionId}>
-              <ListItemText primary={decision.decisionId} />
-            </ListItem>
+  // // const { decisions } = useDecisions(
+  // //   marbleApiWithClientRoleApiKey,
+  // //   pageLoadingDispatcher
+  // // );
+
+  return (
+    <>
+      {scheduledExecutions != null && (
+        <Stack spacing={4}>
+          <Typography variant="body2">
+            {scheduledExecutions.length} Scheduled Executions
+          </Typography>
+
+          {scheduledExecutions.map((execution) => (
+            <ScheduledExecutionCard
+              key={execution.id}
+              scheduledExecution={execution}
+              organizationId={organizationId}
+            />
           ))}
-        </List>
-      </>
-    );
+        </Stack>
+      )}
+    </>
+  );
+
+  /* <Card>
+        {decisions && (
+          <CardContent>
+            <Typography variant="h6">{decisions?.length} Decisions</Typography>
+            <List>
+              {(decisions || []).map((decision) => (
+                <ListItem key={decision.decisionId}>
+                  <ListItemText primary={decision.decisionId} />
+                </ListItem>
+              ))}
+            </List>
+          </CardContent>
+        )}
+      </Card> */
+}
+
+function ScheduledExecutionCard({
+  scheduledExecution,
+  organizationId
+}: {
+  scheduledExecution: ScheduleExecution;
+  organizationId: string;
+}) {
+  const service = services().scheduledExecutionService;
+
+  const [downloadDecisionsLink, setDownloadDecisionsLink] = useState("");
+  const downloadLinkRef = useRef<HTMLAnchorElement>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  useEffect(() => {
+    if (downloadDecisionsLink !== "" && downloadLinkRef.current) {
+      downloadLinkRef.current.click();
+      URL.revokeObjectURL(downloadDecisionsLink);
+      setDownloadDecisionsLink("");
+    }
+  }, [downloadDecisionsLink]);
+
+  const handleDownloadScheduledExecution = (scheduleExecutionId: string) => {
+    (async () => {
+      if (downloading) {
+        return;
+      }
+      setDownloading(true);
+      try {
+        const link = await downloadScheduledExecutionsDecisionsLink({
+          service,
+          organizationId,
+          scheduleExecutionId,
+        });
+        setDownloadDecisionsLink(link);
+      } finally {
+        setDownloading(false);
+      }
+    })();
+  };
+  return (
+    <>
+      <a
+        style={{ display: "none" }}
+        ref={downloadLinkRef}
+        href={downloadDecisionsLink}
+      >
+        {downloadDecisionsLink}
+      </a>
+      <Card>
+        <CardContent>
+          <Typography variant="h6">
+            {scheduledExecution.started_at.toISOString()}
+          </Typography>
+          {downloading && <LinearProgress />}
+        </CardContent>
+        <CardActions>
+          <Button
+            disabled={downloading}
+            onClick={() =>
+              handleDownloadScheduledExecution(scheduledExecution.id)
+            }
+          >
+            Export execution
+          </Button>
+        </CardActions>
+      </Card>
+    </>
+  );
 }
 
 function OrganizationDetailsDataModel({
