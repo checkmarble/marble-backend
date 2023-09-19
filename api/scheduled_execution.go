@@ -1,6 +1,7 @@
 package api
 
 import (
+	"archive/zip"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -40,10 +41,19 @@ func (api *API) handleGetScheduledExecutionDecisions() http.HandlerFunc {
 
 		usecase := api.UsecasesWithCreds(r).NewScheduledExecutionUsecase()
 
-		w.Header().Set("Content-Type", "application/x-ndjson")
-		// TODO: better filename
+		zipWriter := zip.NewWriter(w)
+
+		fileWriter, err := zipWriter.Create(fmt.Sprintf("decisions_of_execution_%s.ndjson", scheduledExecutionID))
+		if err != nil {
+			presentError(w, r, err)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/zip")
 		w.Header().Set("Content-Disposition", "attachment; filename=\"decisions.ndjson.zip\"")
-		number_of_exported_decisions, err := usecase.ExportScheduledExecutionDecisions(scheduledExecutionID, w)
+		number_of_exported_decisions, err := usecase.ExportScheduledExecutionDecisions(scheduledExecutionID, fileWriter)
+
+		zipWriter.Close()
 
 		if err != nil {
 			// note: un case of security error, the header has not been sent, so we can still send a 401

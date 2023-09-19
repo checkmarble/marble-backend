@@ -389,7 +389,7 @@ export class MarbleApi {
   }): Promise<Blob> {
     const scheduleExecutionIdParam = encodeURIComponent(scheduleExecutionId);
     const path = urlWithOrganizationId(
-      `${SCHEDULED_EXECUTIONS_URL_PATH}/${scheduleExecutionIdParam}/decisions`,
+      `${SCHEDULED_EXECUTIONS_URL_PATH}/${scheduleExecutionIdParam}/decisions.zip`,
       organizationId
     );
 
