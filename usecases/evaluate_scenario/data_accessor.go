@@ -1,4 +1,4 @@
-package usecases
+package evaluate_scenario
 
 import (
 	"context"
@@ -14,7 +14,6 @@ type DataAccessor struct {
 	orgTransactionFactory      org_transaction.Factory
 	organizationId             string
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
-	customListRepository       repositories.CustomListRepository
 }
 
 func (d *DataAccessor) GetDbField(ctx context.Context, triggerTableName string, path []string, fieldName string) (interface{}, error) {

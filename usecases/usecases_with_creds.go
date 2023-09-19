@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/usecases/scheduledexecution"
 	"github.com/checkmarble/marble-backend/usecases/security"
 )
 
@@ -176,22 +177,29 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 	}
 }
 
+func (usecases *UsecasesWithCreds) NewRunScheduledExecution() scheduledexecution.RunScheduledExecution {
+	return scheduledexecution.RunScheduledExecution{
+		ScenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,
+		TransactionFactory:              usecases.Repositories.TransactionFactory,
+		ScheduledExecutionRepository:    usecases.Repositories.ScheduledExecutionRepository,
+		ExportScheduleExecution:         usecases.NewExportScheduleExecution(),
+		ScenarioPublicationsRepository:  usecases.Repositories.ScenarioPublicationRepository,
+		DataModelRepository:             usecases.Repositories.DataModelRepository,
+		OrgTransactionFactory:           usecases.NewOrgTransactionFactory(),
+		IngestedDataReadRepository:      usecases.Repositories.IngestedDataReadRepository,
+		ScenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
+		EvaluateRuleAstExpression:       usecases.NewEvaluateRuleAstExpression(),
+		DecisionRepository:              usecases.Repositories.DecisionRepository,
+	}
+}
+
 func (usecases *UsecasesWithCreds) NewScheduledExecutionUsecase() ScheduledExecutionUsecase {
 	return ScheduledExecutionUsecase{
-		enforceSecurity:                 usecases.NewEnforceDecisionSecurity(),
-		organizationIdOfContext:         usecases.OrganizationIdOfContext,
-		scenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,
-		scenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
-		scenarioPublicationsRepository:  usecases.Repositories.ScenarioPublicationRepository,
-		scheduledExecutionRepository:    usecases.Repositories.ScheduledExecutionRepository,
-		dataModelRepository:             usecases.Repositories.DataModelRepository,
-		transactionFactory:              usecases.Repositories.TransactionFactory,
-		orgTransactionFactory:           usecases.NewOrgTransactionFactory(),
-		ingestedDataReadRepository:      usecases.Repositories.IngestedDataReadRepository,
-		decisionRepository:              usecases.Repositories.DecisionRepository,
-		customListRepository:            usecases.Repositories.CustomListRepository,
-		exportScheduleExecution:         usecases.NewExportScheduleExecution(),
-		evaluateRuleAstExpression:       usecases.NewEvaluateRuleAstExpression(),
+		enforceSecurity:              usecases.NewEnforceDecisionSecurity(),
+		transactionFactory:           usecases.Repositories.TransactionFactory,
+		scheduledExecutionRepository: usecases.Repositories.ScheduledExecutionRepository,
+		exportScheduleExecution:      usecases.NewExportScheduleExecution(),
+		organizationIdOfContext:      usecases.OrganizationIdOfContext,
 	}
 }
 

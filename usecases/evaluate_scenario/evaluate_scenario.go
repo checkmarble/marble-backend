@@ -1,4 +1,4 @@
-package usecases
+package evaluate_scenario
 
 import (
 	"context"
@@ -14,21 +14,20 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/org_transaction"
 )
 
-type scenarioEvaluationParameters struct {
-	scenario  models.Scenario
-	payload   models.PayloadReader
-	dataModel models.DataModel
+type ScenarioEvaluationParameters struct {
+	Scenario  models.Scenario
+	Payload   models.PayloadReader
+	DataModel models.DataModel
 }
 
-type scenarioEvaluationRepositories struct {
-	scenarioIterationReadRepository repositories.ScenarioIterationReadRepository
-	orgTransactionFactory           org_transaction.Factory
-	ingestedDataReadRepository      repositories.IngestedDataReadRepository
-	customListRepository            repositories.CustomListRepository
-	evaluateRuleAstExpression       ast_eval.EvaluateRuleAstExpression
+type ScenarioEvaluationRepositories struct {
+	ScenarioIterationReadRepository repositories.ScenarioIterationReadRepository
+	OrgTransactionFactory           org_transaction.Factory
+	IngestedDataReadRepository      repositories.IngestedDataReadRepository
+	EvaluateRuleAstExpression       ast_eval.EvaluateRuleAstExpression
 }
 
-func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repositories scenarioEvaluationRepositories, logger *slog.Logger) (se models.ScenarioExecution, err error) {
+func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repositories ScenarioEvaluationRepositories, logger *slog.Logger) (se models.ScenarioExecution, err error) {
 	start := time.Now()
 	///////////////////////////////
 	// Recover in case the evaluation panicked.
@@ -44,14 +43,14 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 		}
 	}()
 
-	logger.InfoContext(ctx, "Evaluating scenario", "scenarioId", params.scenario.Id)
+	logger.InfoContext(ctx, "Evaluating scenario", "scenarioId", params.Scenario.Id)
 
 	// If the scenario has no live version, don't try to Eval() it, return early
-	if params.scenario.LiveVersionID == nil {
+	if params.Scenario.LiveVersionID == nil {
 		return models.ScenarioExecution{}, errors.Join(models.ScenarioHasNoLiveVersionError, models.BadParameterError)
 	}
 
-	liveVersion, err := repositories.scenarioIterationReadRepository.GetScenarioIteration(nil, *params.scenario.LiveVersionID)
+	liveVersion, err := repositories.ScenarioIterationReadRepository.GetScenarioIteration(nil, *params.Scenario.LiveVersionID)
 	if err != nil {
 		return models.ScenarioExecution{}, fmt.Errorf("error getting scenario iteration in eval scenar: %w", err)
 	}
@@ -62,25 +61,24 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 	}
 
 	// Check the scenario & trigger_object's types
-	if params.scenario.TriggerObjectType != string(params.payload.ReadTableName()) {
+	if params.Scenario.TriggerObjectType != string(params.Payload.ReadTableName()) {
 		return models.ScenarioExecution{}, models.ScenarioTriggerTypeAndTiggerObjectTypeMismatchError
 	}
 
 	dataAccessor := DataAccessor{
-		DataModel:                  params.dataModel,
-		Payload:                    params.payload,
-		orgTransactionFactory:      repositories.orgTransactionFactory,
-		organizationId:             params.scenario.OrganizationId,
-		ingestedDataReadRepository: repositories.ingestedDataReadRepository,
-		customListRepository:       repositories.customListRepository,
+		DataModel:                  params.DataModel,
+		Payload:                    params.Payload,
+		orgTransactionFactory:      repositories.OrgTransactionFactory,
+		organizationId:             params.Scenario.OrganizationId,
+		ingestedDataReadRepository: repositories.IngestedDataReadRepository,
 	}
 
 	// Evaluate the trigger
-	triggerPassed, err := repositories.evaluateRuleAstExpression.EvaluateRuleAstExpression(
+	triggerPassed, err := repositories.EvaluateRuleAstExpression.EvaluateRuleAstExpression(
 		publishedVersion.Body.TriggerConditionAstExpression,
 		dataAccessor.organizationId,
 		dataAccessor.Payload,
-		params.dataModel,
+		params.DataModel,
 	)
 
 	if err != nil {
@@ -95,7 +93,7 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 	ruleExecutions := make([]models.RuleExecution, 0)
 	for _, rule := range publishedVersion.Body.Rules {
 
-		scoreModifier, ruleExecution, err := evalScenarioRule(repositories, rule, dataAccessor, params.dataModel, logger)
+		scoreModifier, ruleExecution, err := evalScenarioRule(repositories, rule, dataAccessor, params.DataModel, logger)
 
 		if err != nil {
 			return models.ScenarioExecution{}, fmt.Errorf("error evaluating rule in eval scenario: %w", err)
@@ -119,9 +117,9 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 
 	// Build ScenarioExecution as result
 	se = models.ScenarioExecution{
-		ScenarioId:          params.scenario.Id,
-		ScenarioName:        params.scenario.Name,
-		ScenarioDescription: params.scenario.Description,
+		ScenarioId:          params.Scenario.Id,
+		ScenarioName:        params.Scenario.Name,
+		ScenarioDescription: params.Scenario.Description,
 		ScenarioVersion:     publishedVersion.Version,
 		RuleExecutions:      ruleExecutions,
 		Score:               score,
@@ -136,10 +134,10 @@ func evalScenario(ctx context.Context, params scenarioEvaluationParameters, repo
 	return se, nil
 }
 
-func evalScenarioRule(repositories scenarioEvaluationRepositories, rule models.Rule, dataAccessor DataAccessor, dataModel models.DataModel, logger *slog.Logger) (int, models.RuleExecution, error) {
+func evalScenarioRule(repositories ScenarioEvaluationRepositories, rule models.Rule, dataAccessor DataAccessor, dataModel models.DataModel, logger *slog.Logger) (int, models.RuleExecution, error) {
 	// Evaluate single rule
 
-	ruleReturnValue, err := repositories.evaluateRuleAstExpression.EvaluateRuleAstExpression(
+	ruleReturnValue, err := repositories.EvaluateRuleAstExpression.EvaluateRuleAstExpression(
 		*rule.FormulaAstExpression,
 		dataAccessor.organizationId,
 		dataAccessor.Payload,
