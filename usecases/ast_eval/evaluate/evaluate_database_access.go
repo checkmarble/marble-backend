@@ -6,14 +6,14 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/org_transaction"
+	"github.com/checkmarble/marble-backend/usecases/transaction"
 )
 
 type DatabaseAccess struct {
 	OrganizationId             string
 	DataModel                  models.DataModel
 	Payload                    models.PayloadReader
-	OrgTransactionFactory      org_transaction.Factory
+	OrgTransactionFactory      transaction.Factory
 	IngestedDataReadRepository repositories.IngestedDataReadRepository
 	ReturnFakeValue            bool
 }
@@ -66,7 +66,7 @@ func (d DatabaseAccess) getDbField(tableName models.TableName, fieldName models.
 		return DryRunGetDbField(d.DataModel, tableName, path, fieldName)
 	}
 
-	return org_transaction.InOrganizationSchema(
+	return transaction.InOrganizationSchema(
 		d.OrgTransactionFactory,
 		d.OrganizationId,
 		func(tx repositories.Transaction) (interface{}, error) {

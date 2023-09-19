@@ -7,14 +7,14 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/org_transaction"
+	"github.com/checkmarble/marble-backend/usecases/transaction"
 )
 
 type AggregatorEvaluator struct {
 	OrganizationId             string
 	DataModel                  models.DataModel
 	Payload                    models.PayloadReader
-	OrgTransactionFactory      org_transaction.Factory
+	OrgTransactionFactory      transaction.Factory
 	IngestedDataReadRepository repositories.IngestedDataReadRepository
 	ReturnFakeValue            bool
 }
@@ -85,7 +85,7 @@ func (a AggregatorEvaluator) runQueryInRepository(tableName models.TableName, fi
 		return DryRunQueryAggregatedValue(a.DataModel, tableName, fieldName, aggregator)
 	}
 
-	return org_transaction.InOrganizationSchema(
+	return transaction.InOrganizationSchema(
 		a.OrgTransactionFactory,
 		a.OrganizationId,
 		func(tx repositories.Transaction) (any, error) {

@@ -5,10 +5,11 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/usecases/transaction"
 )
 
 type ScenarioPublicationUsecase struct {
-	transactionFactory             repositories.TransactionFactory
+	transactionFactory             transaction.TransactionFactory
 	scenarioPublicationsRepository repositories.ScenarioPublicationRepository
 	OrganizationIdOfContext        func() (string, error)
 	enforceSecurity                security.EnforceSecurityScenario
@@ -44,7 +45,7 @@ func (usecase *ScenarioPublicationUsecase) ListScenarioPublications(filters mode
 }
 
 func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(input models.PublishScenarioIterationInput) ([]models.ScenarioPublication, error) {
-	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) ([]models.ScenarioPublication, error) {
+	return transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) ([]models.ScenarioPublication, error) {
 
 		scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(tx, input.ScenarioIterationId)
 		if err != nil {

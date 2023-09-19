@@ -6,12 +6,13 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/usecases/transaction"
 )
 
 type CustomListUseCase struct {
 	organizationIdOfContext func() (string, error)
 	enforceSecurity         security.EnforceSecurityCustomList
-	transactionFactory      repositories.TransactionFactory
+	transactionFactory      transaction.TransactionFactory
 	CustomListRepository    repositories.CustomListRepository
 }
 
@@ -37,7 +38,7 @@ func (usecase *CustomListUseCase) CreateCustomList(createCustomList models.Creat
 		return models.CustomList{}, err
 	}
 
-	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.CustomList, error) {
+	return transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.CustomList, error) {
 		newCustomListId := uuid.NewString()
 		organizationId, err := usecase.organizationIdOfContext()
 		if err != nil {
@@ -56,7 +57,7 @@ func (usecase *CustomListUseCase) CreateCustomList(createCustomList models.Creat
 }
 
 func (usecase *CustomListUseCase) UpdateCustomList(updateCustomList models.UpdateCustomListInput) (models.CustomList, error) {
-	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.CustomList, error) {
+	return transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.CustomList, error) {
 		if updateCustomList.Name != nil || updateCustomList.Description != nil {
 			customList, err := usecase.CustomListRepository.GetCustomListById(tx, updateCustomList.Id)
 			if err != nil {
@@ -108,7 +109,7 @@ func (usecase *CustomListUseCase) GetCustomListValues(getCustomListValues models
 }
 
 func (usecase *CustomListUseCase) AddCustomListValue(addCustomListValue models.AddCustomListValueInput) (models.CustomListValue, error) {
-	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.CustomListValue, error) {
+	return transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.CustomListValue, error) {
 		customList, err := usecase.CustomListRepository.GetCustomListById(tx, addCustomListValue.CustomListId)
 		if err != nil {
 			return models.CustomListValue{}, err

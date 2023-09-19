@@ -5,20 +5,20 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/org_transaction"
+	"github.com/checkmarble/marble-backend/usecases/transaction"
 )
 
 type DataAccessor struct {
 	DataModel                  models.DataModel
 	Payload                    models.PayloadReader
-	orgTransactionFactory      org_transaction.Factory
+	orgTransactionFactory      transaction.Factory
 	organizationId             string
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
 }
 
 func (d *DataAccessor) GetDbField(ctx context.Context, triggerTableName string, path []string, fieldName string) (interface{}, error) {
 
-	return org_transaction.InOrganizationSchema(
+	return transaction.InOrganizationSchema(
 		d.orgTransactionFactory,
 		d.organizationId,
 		func(tx repositories.Transaction) (interface{}, error) {

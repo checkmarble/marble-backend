@@ -6,11 +6,12 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/usecases/transaction"
 )
 
 type UserUseCase struct {
 	enforceAdminSecurity security.EnforceSecurityAdmin
-	transactionFactory   repositories.TransactionFactory
+	transactionFactory   transaction.TransactionFactory
 	userRepository       repositories.UserRepository
 }
 
@@ -18,7 +19,7 @@ func (usecase *UserUseCase) AddUser(createUser models.CreateUser) (models.User, 
 	if err := usecase.enforceAdminSecurity.CreateUser(); err != nil {
 		return models.User{}, err
 	}
-	return repositories.TransactionReturnValue(
+	return transaction.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) (models.User, error) {
@@ -53,7 +54,7 @@ func (usecase *UserUseCase) GetAllUsers() ([]models.User, error) {
 	if err := usecase.enforceAdminSecurity.ListUser(); err != nil {
 		return []models.User{}, err
 	}
-	return repositories.TransactionReturnValue(
+	return transaction.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) ([]models.User, error) {
@@ -66,7 +67,7 @@ func (usecase *UserUseCase) GetUser(userID string) (models.User, error) {
 	if err := usecase.enforceAdminSecurity.ListUser(); err != nil {
 		return models.User{}, err
 	}
-	return repositories.TransactionReturnValue(
+	return transaction.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) (models.User, error) {

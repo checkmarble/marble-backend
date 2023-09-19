@@ -10,15 +10,15 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
-	"github.com/checkmarble/marble-backend/usecases/org_transaction"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/usecases/transaction"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
 type DecisionUsecase struct {
 	enforceSecurity                 security.EnforceSecurityDecision
-	transactionFactory              repositories.TransactionFactory
-	orgTransactionFactory           org_transaction.Factory
+	transactionFactory              transaction.TransactionFactory
+	orgTransactionFactory           transaction.Factory
 	ingestedDataReadRepository      repositories.IngestedDataReadRepository
 	customListRepository            repositories.CustomListRepository
 	decisionRepository              repositories.DecisionRepository
@@ -40,7 +40,7 @@ func (usecase *DecisionUsecase) GetDecision(decisionId string) (models.Decision,
 }
 
 func (usecase *DecisionUsecase) ListDecisionsOfOrganization(organizationId string) ([]models.Decision, error) {
-	return repositories.TransactionReturnValue(
+	return transaction.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) ([]models.Decision, error) {
@@ -62,7 +62,7 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 	if err := usecase.enforceSecurity.CreateDecision(input.OrganizationId); err != nil {
 		return models.Decision{}, err
 	}
-	return repositories.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Decision, error) {
+	return transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Decision, error) {
 		scenario, err := usecase.scenarioReadRepository.GetScenarioById(tx, input.ScenarioId)
 		if errors.Is(err, models.NotFoundInRepositoryError) {
 			return models.Decision{}, fmt.Errorf("scenario not found: %w", models.NotFoundError)

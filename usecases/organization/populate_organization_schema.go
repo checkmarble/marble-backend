@@ -5,10 +5,11 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/transaction"
 )
 
 type PopulateOrganizationSchema struct {
-	TransactionFactory           repositories.TransactionFactory
+	TransactionFactory           transaction.TransactionFactory
 	OrganizationRepository       repositories.OrganizationRepository
 	OrganizationSchemaRepository repositories.OrganizationSchemaRepository
 	DataModelRepository          repositories.DataModelRepository

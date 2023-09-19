@@ -4,13 +4,14 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/usecases/transaction"
 	"github.com/checkmarble/marble-backend/utils"
 
 	"github.com/cockroachdb/errors"
 )
 
 type ScenarioUsecase struct {
-	transactionFactory      repositories.TransactionFactory
+	transactionFactory      transaction.TransactionFactory
 	organizationIdOfContext func() (string, error)
 	enforceSecurity         security.EnforceSecurityScenario
 	scenarioReadRepository  repositories.ScenarioReadRepository
@@ -49,7 +50,7 @@ func (usecase *ScenarioUsecase) GetScenario(scenarioId string) (models.Scenario,
 }
 
 func (usecase *ScenarioUsecase) UpdateScenario(scenarioInput models.UpdateScenarioInput) (models.Scenario, error) {
-	return repositories.TransactionReturnValue(
+	return transaction.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) (models.Scenario, error) {
@@ -73,7 +74,7 @@ func (usecase *ScenarioUsecase) UpdateScenario(scenarioInput models.UpdateScenar
 }
 
 func (usecase *ScenarioUsecase) CreateScenario(scenario models.CreateScenarioInput) (models.Scenario, error) {
-	return repositories.TransactionReturnValue(
+	return transaction.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) (models.Scenario, error) {

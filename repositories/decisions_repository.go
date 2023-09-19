@@ -18,7 +18,7 @@ type DecisionRepository interface {
 }
 
 type DecisionRepositoryImpl struct {
-	transactionFactory TransactionFactory
+	transactionFactory TransactionFactoryPosgresql
 }
 
 func (repo *DecisionRepositoryImpl) DecisionById(transaction Transaction, decisionId string) (models.Decision, error) {

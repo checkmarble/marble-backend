@@ -8,7 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/org_transaction"
+	"github.com/checkmarble/marble-backend/usecases/transaction"
 )
 
 type sepaDirection int
@@ -34,14 +34,14 @@ type windowFunctionParams struct {
 
 type BlankDatabaseAccess struct {
 	OrganizationIdOfContext string
-	OrgTransactionFactory   org_transaction.Factory
+	OrgTransactionFactory   transaction.Factory
 	BlankDataReadRepository repositories.BlankDataReadRepository
 	Function                ast.Function
 	ReturnFakeValue         bool
 }
 
 func NewBlankDatabaseAccess(
-	otf org_transaction.Factory,
+	otf transaction.Factory,
 	bdrr repositories.BlankDataReadRepository,
 	organizationIdOfContext string,
 	f ast.Function,
@@ -90,7 +90,7 @@ func (blank BlankDatabaseAccess) getFirstTransactionDate(arguments ast.Arguments
 		return time.Now(), nil
 	}
 
-	firstTransaction, err := org_transaction.InOrganizationSchema(
+	firstTransaction, err := transaction.InOrganizationSchema(
 		blank.OrgTransactionFactory,
 		blank.OrganizationIdOfContext,
 		func(tx repositories.Transaction) (*time.Time, error) {
@@ -131,7 +131,7 @@ func (blank BlankDatabaseAccess) sumTransactionsAmount(arguments ast.Arguments) 
 		return 1000, nil
 	}
 
-	return org_transaction.InOrganizationSchema(
+	return transaction.InOrganizationSchema(
 		blank.OrgTransactionFactory,
 		blank.OrganizationIdOfContext,
 		func(tx repositories.Transaction) (float64, error) {
@@ -154,7 +154,7 @@ func (blank BlankDatabaseAccess) sepaOutFractionated(arguments ast.Arguments) (b
 
 	transactionsToRetrievePeriodStart := args.referenceTime.Add(-windowDuration - periodDuration)
 	transactionsToCheckPeriodStart := args.referenceTime.Add(-periodDuration)
-	txSlice, err := org_transaction.InOrganizationSchema(
+	txSlice, err := transaction.InOrganizationSchema(
 		blank.OrgTransactionFactory,
 		blank.OrganizationIdOfContext,
 		func(dbTx repositories.Transaction) ([]map[string]any, error) {
@@ -205,7 +205,7 @@ func (blank BlankDatabaseAccess) severalSepaNonFrWindow(arguments ast.Arguments,
 
 	transactionsToRetrievePeriodStart := args.referenceTime.Add(-windowDuration - periodDuration)
 	transactionsToCheckPeriodStart := args.referenceTime.Add(-periodDuration)
-	txSlice, err := org_transaction.InOrganizationSchema(
+	txSlice, err := transaction.InOrganizationSchema(
 		blank.OrgTransactionFactory,
 		blank.OrganizationIdOfContext,
 		func(dbTx repositories.Transaction) ([]map[string]any, error) {
@@ -243,7 +243,7 @@ func (blank BlankDatabaseAccess) fractionatedTransferReceived(arguments ast.Argu
 
 	transactionsToRetrievePeriodStart := args.referenceTime.Add(-windowDuration - periodDuration)
 	transactionsToCheckPeriodStart := args.referenceTime.Add(-periodDuration)
-	txSlice, err := org_transaction.InOrganizationSchema(
+	txSlice, err := transaction.InOrganizationSchema(
 		blank.OrgTransactionFactory,
 		blank.OrganizationIdOfContext,
 		func(dbTx repositories.Transaction) ([]map[string]any, error) {

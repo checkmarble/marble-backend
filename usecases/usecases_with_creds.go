@@ -67,7 +67,7 @@ func (usecases *UsecasesWithCreds) NewEnforceAdminSecurity() security.EnforceSec
 func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 	return DecisionUsecase{
 		enforceSecurity:                 usecases.NewEnforceDecisionSecurity(),
-		transactionFactory:              usecases.Repositories.TransactionFactory,
+		transactionFactory:              &usecases.Repositories.TransactionFactoryPosgresql,
 		orgTransactionFactory:           usecases.NewOrgTransactionFactory(),
 		ingestedDataReadRepository:      usecases.Repositories.IngestedDataReadRepository,
 		decisionRepository:              usecases.Repositories.DecisionRepository,
@@ -81,7 +81,7 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 
 func (usecases *UsecasesWithCreds) NewScenarioUsecase() ScenarioUsecase {
 	return ScenarioUsecase{
-		transactionFactory:      usecases.Repositories.TransactionFactory,
+		transactionFactory:      &usecases.Repositories.TransactionFactoryPosgresql,
 		organizationIdOfContext: usecases.OrganizationIdOfContext,
 		enforceSecurity:         usecases.NewEnforceScenarioSecurity(),
 		scenarioReadRepository:  usecases.Repositories.ScenarioReadRepository,
@@ -106,7 +106,7 @@ func (usecases *UsecasesWithCreds) NewRuleUsecase() RuleUsecase {
 		enforceSecurity:         usecases.NewEnforceScenarioSecurity(),
 		repository:              usecases.Repositories.RuleRepository,
 		scenarioFetcher:         usecases.NewScenarioFetcher(),
-		transactionFactory:      usecases.Repositories.TransactionFactory,
+		transactionFactory:      &usecases.Repositories.TransactionFactoryPosgresql,
 	}
 }
 
@@ -122,14 +122,14 @@ func (usecases *UsecasesWithCreds) NewCustomListUseCase() CustomListUseCase {
 	return CustomListUseCase{
 		enforceSecurity:         usecases.NewEnforceCustomListSecurity(),
 		organizationIdOfContext: usecases.OrganizationIdOfContext,
-		transactionFactory:      usecases.Repositories.TransactionFactory,
+		transactionFactory:      &usecases.Repositories.TransactionFactoryPosgresql,
 		CustomListRepository:    usecases.Repositories.CustomListRepository,
 	}
 }
 
 func (usecases *UsecasesWithCreds) NewScenarioPublicationUsecase() ScenarioPublicationUsecase {
 	return ScenarioPublicationUsecase{
-		transactionFactory:             usecases.Repositories.TransactionFactory,
+		transactionFactory:             &usecases.Repositories.TransactionFactoryPosgresql,
 		scenarioPublicationsRepository: usecases.Repositories.ScenarioPublicationRepository,
 		OrganizationIdOfContext:        usecases.OrganizationIdOfContext,
 		enforceSecurity:                usecases.NewEnforceScenarioSecurity(),
@@ -141,7 +141,7 @@ func (usecases *UsecasesWithCreds) NewScenarioPublicationUsecase() ScenarioPubli
 func (usecases *UsecasesWithCreds) NewMarbleTokenUseCase() MarbleTokenUseCase {
 	repositories := usecases.Repositories
 	return MarbleTokenUseCase{
-		transactionFactory:      repositories.TransactionFactory,
+		transactionFactory:      &usecases.Repositories.TransactionFactoryPosgresql,
 		firebaseTokenRepository: repositories.FirebaseTokenRepository,
 		marbleJwtRepository:     repositories.MarbleJwtRepository(),
 		userRepository:          repositories.UserRepository,
@@ -155,7 +155,7 @@ func (usecases *UsecasesWithCreds) NewMarbleTokenUseCase() MarbleTokenUseCase {
 func (usecases *UsecasesWithCreds) NewOrganizationUseCase() OrganizationUseCase {
 	return OrganizationUseCase{
 		enforceSecurity:              usecases.NewEnforceOrganizationSecurity(),
-		transactionFactory:           usecases.Repositories.TransactionFactory,
+		transactionFactory:           &usecases.Repositories.TransactionFactoryPosgresql,
 		orgTransactionFactory:        usecases.NewOrgTransactionFactory(),
 		organizationRepository:       usecases.Repositories.OrganizationRepository,
 		datamodelRepository:          usecases.Repositories.DataModelRepository,
@@ -180,9 +180,9 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 func (usecases *UsecasesWithCreds) NewRunScheduledExecution() scheduledexecution.RunScheduledExecution {
 	return scheduledexecution.RunScheduledExecution{
 		ScenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,
-		TransactionFactory:              usecases.Repositories.TransactionFactory,
+		TransactionFactory:              &usecases.Repositories.TransactionFactoryPosgresql,
 		ScheduledExecutionRepository:    usecases.Repositories.ScheduledExecutionRepository,
-		ExportScheduleExecution:         usecases.NewExportScheduleExecution(),
+		ExportScheduleExecution:         *usecases.NewExportScheduleExecution(),
 		ScenarioPublicationsRepository:  usecases.Repositories.ScenarioPublicationRepository,
 		DataModelRepository:             usecases.Repositories.DataModelRepository,
 		OrgTransactionFactory:           usecases.NewOrgTransactionFactory(),
@@ -196,7 +196,7 @@ func (usecases *UsecasesWithCreds) NewRunScheduledExecution() scheduledexecution
 func (usecases *UsecasesWithCreds) NewScheduledExecutionUsecase() ScheduledExecutionUsecase {
 	return ScheduledExecutionUsecase{
 		enforceSecurity:              usecases.NewEnforceDecisionSecurity(),
-		transactionFactory:           usecases.Repositories.TransactionFactory,
+		transactionFactory:           &usecases.Repositories.TransactionFactoryPosgresql,
 		scheduledExecutionRepository: usecases.Repositories.ScheduledExecutionRepository,
 		exportScheduleExecution:      usecases.NewExportScheduleExecution(),
 		organizationIdOfContext:      usecases.OrganizationIdOfContext,
@@ -206,7 +206,7 @@ func (usecases *UsecasesWithCreds) NewScheduledExecutionUsecase() ScheduledExecu
 func (usecases *UsecasesWithCreds) NewUserUseCase() UserUseCase {
 	return UserUseCase{
 		enforceAdminSecurity: usecases.NewEnforceAdminSecurity(),
-		transactionFactory:   usecases.Repositories.TransactionFactory,
+		transactionFactory:   &usecases.Repositories.TransactionFactoryPosgresql,
 		userRepository:       usecases.Repositories.UserRepository,
 	}
 }
