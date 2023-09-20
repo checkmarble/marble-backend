@@ -30,3 +30,13 @@ func (d *DataModelRepository) CreateDataModelTable(tx repositories.Transaction, 
 	args := d.Called(tx, organizationID, name, description)
 	return args.Error(0)
 }
+
+func (d *DataModelRepository) CreateDataModelField(tx repositories.Transaction, tableID string, field models.DataModelField) error {
+	args := d.Called(tx, tableID, field)
+	return args.Error(0)
+}
+
+func (d *DataModelRepository) GetDataModelTable(tx repositories.Transaction, tableID string) (models.DataModelTable, error) {
+	args := d.Called(tx, tableID)
+	return args.Get(0).(models.DataModelTable), args.Error(1)
+}

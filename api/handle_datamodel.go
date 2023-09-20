@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
 
 	"github.com/ggicci/httpin"
@@ -59,6 +60,28 @@ func (api *API) handleCreateTable(w http.ResponseWriter, r *http.Request) {
 
 	usecase := api.UsecasesWithCreds(r).NewOrganizationUseCase()
 	err = usecase.CreateDataModelTable(organizationId, input.Body.Name, input.Body.Description)
+	if presentError(w, r, err) {
+		return
+	}
+	PresentNothing(w)
+}
+
+func (api *API) handleCreateField(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	input := *ctx.Value(httpin.Input).(*dto.PostCreateField)
+
+	tableID, err := requiredUuidUrlParam(r, "tableID")
+	if presentError(w, r, err) {
+		return
+	}
+
+	usecase := api.UsecasesWithCreds(r).NewOrganizationUseCase()
+	err = usecase.CreateDataModelField(tableID, models.DataModelField{
+		Name:        input.Body.Name,
+		Description: input.Body.Description,
+		Type:        input.Body.Type,
+		Nullable:    input.Body.Nullable,
+	})
 	if presentError(w, r, err) {
 		return
 	}

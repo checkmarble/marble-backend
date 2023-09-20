@@ -40,6 +40,17 @@ type PostCreateTable struct {
 	Body *struct {
 		Name        string `json:"name"`
 		Description string `json:"description"`
+		Type        string `json:"type"`
+		Nullable    bool   `json:"nullable"`
+	} `in:"body=json"`
+}
+
+type PostCreateField struct {
+	Body *struct {
+		Name        string `json:"name"`
+		Description string `json:"description"`
+		Type        string `json:"type"`
+		Nullable    bool   `json:"nullable"`
 	} `in:"body=json"`
 }
 

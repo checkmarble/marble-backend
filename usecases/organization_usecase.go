@@ -147,6 +147,24 @@ func (usecase *OrganizationUseCase) CreateDataModelTable(organizationID, name, d
 	})
 }
 
+func (usecase *OrganizationUseCase) CreateDataModelField(tableID string, field models.DataModelField) error {
+	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
+		return err
+	}
+
+	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+		if err := usecase.datamodelRepository.CreateDataModelField(tx, tableID, field); err != nil {
+			return err
+		}
+
+		table, err := usecase.datamodelRepository.GetDataModelTable(tx, tableID)
+		if err != nil {
+			return err
+		}
+		return usecase.populateOrganizationSchema.CreateField(tx, table.OrganizationID, table.Name, field)
+	})
+}
+
 func (usecase *OrganizationUseCase) GetUsersOfOrganization(organizationIDFilter string) ([]models.User, error) {
 	if err := usecase.enforceSecurity.ListOrganization(); err != nil {
 		return []models.User{}, err

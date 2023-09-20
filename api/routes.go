@@ -140,6 +140,9 @@ func (api *API) routes() {
 
 			dataModelRouter.With(httpin.NewInput(dto.PostCreateTable{})).
 				Post("/tables", api.handleCreateTable)
+
+			dataModelRouter.With(httpin.NewInput(dto.PostCreateField{})).
+				Post("/tables/{tableID}/fields", api.handleCreateField)
 		})
 
 		authedRouter.Route("/apikeys", func(dataModelRouter chi.Router) {

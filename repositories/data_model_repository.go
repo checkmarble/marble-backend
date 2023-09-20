@@ -16,6 +16,8 @@ type DataModelRepository interface {
 	DeleteDataModel(tx Transaction, organizationId string) error
 	CreateDataModel(tx Transaction, organizationId string, dataModel models.DataModel) error
 	CreateDataModelTable(tx Transaction, organizationID, name, description string) error
+	GetDataModelTable(tx Transaction, tableID string) (models.DataModelTable, error)
+	CreateDataModelField(tx Transaction, tableID string, field models.DataModelField) error
 }
 
 type DataModelRepositoryPostgresql struct {
@@ -81,6 +83,30 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelTable(tx Transaction, 
 		NewQueryBuilder().Insert("data_model_tables").
 			Columns("organization_id", "name", "description").
 			Values(organizationID, name, description),
+	)
+	return err
+}
+
+func (repo *DataModelRepositoryPostgresql) GetDataModelTable(tx Transaction, tableID string) (models.DataModelTable, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	return SqlToModel(
+		pgTx,
+		NewQueryBuilder().
+			Select(dbmodels.SelectDataModelTableColumns...).
+			From(dbmodels.TableDataModelTable).
+			Where(squirrel.Eq{"id": tableID}),
+		dbmodels.AdaptDataModelTable,
+	)
+}
+
+func (repo *DataModelRepositoryPostgresql) CreateDataModelField(tx Transaction, tableID string, field models.DataModelField) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	_, err := pgTx.ExecBuilder(
+		NewQueryBuilder().Insert("data_model_fields").
+			Columns("table_id", "name", "type", "nullable", "description").
+			Values(tableID, field.Name, field.Type, field.Nullable, field.Description),
 	)
 	return err
 }

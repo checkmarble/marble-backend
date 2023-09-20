@@ -18,6 +18,7 @@ type OrganizationSchemaRepository interface {
 	DeleteSchema(tx Transaction, schema string) error
 	CreateTable(tx Transaction, schema string, table models.Table) error
 	CreateSimpleTable(tx Transaction, schema, tableName string) error
+	CreateSimpleField(tx Transaction, schema, tableName string, field models.DataModelField) error
 }
 
 type OrganizationSchemaRepositoryPostgresql struct {
@@ -35,7 +36,6 @@ func (repo *OrganizationSchemaRepositoryPostgresql) OrganizationSchemaOfOrganiza
 			Where(squirrel.Eq{"org_id": organizationId}),
 		dbmodels.AdaptOrganizationSchema,
 	)
-
 }
 
 func (repo *OrganizationSchemaRepositoryPostgresql) CreateSchema(tx Transaction, schema string) error {
@@ -61,6 +61,30 @@ func (repo *OrganizationSchemaRepositoryPostgresql) CreateSimpleTable(tx Transac
 
 	sanitizedTableName := pgx.Identifier.Sanitize([]string{schema, tableName})
 	createTableExpr := squirrel.Expr(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s ()", sanitizedTableName))
+
+	sql, args, err := createTableExpr.ToSql()
+	if err != nil {
+		return err
+	}
+
+	sql, err = squirrel.Dollar.ReplacePlaceholders(sql)
+	if err != nil {
+		return err
+	}
+
+	_, err = pgTx.SqlExec(sql, args...)
+	return err
+}
+
+func (repo *OrganizationSchemaRepositoryPostgresql) CreateSimpleField(tx Transaction, schema, tableName string, field models.DataModelField) error {
+	pgTx := adaptClientDatabaseTransaction(tx)
+
+	fieldType := toPgType(models.DataTypeFrom(field.Type))
+	sanitizedTableName := pgx.Identifier.Sanitize([]string{schema, tableName})
+	createTableExpr := squirrel.Expr(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", sanitizedTableName, field.Name, fieldType))
+	if !field.Nullable {
+		squirrel.ConcatExpr(createTableExpr, "NOT NULL")
+	}
 
 	sql, args, err := createTableExpr.ToSql()
 	if err != nil {
