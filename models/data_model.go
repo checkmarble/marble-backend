@@ -126,3 +126,17 @@ type LinkToSingle struct {
 	ParentFieldName FieldName `json:"parentFieldName"`
 	ChildFieldName  FieldName `json:"childFieldName"`
 }
+
+type DataModelTable struct {
+	ID             string `json:"id"`
+	OrganizationID string `json:"organization_id"`
+	Name           string `json:"name"`
+	Description    string `json:"description"`
+}
+
+type DataModelField struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Type        string `json:"dataType"`
+	Nullable    bool   `json:"nullable"`
+}

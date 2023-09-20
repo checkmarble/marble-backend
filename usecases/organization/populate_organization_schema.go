@@ -73,6 +73,18 @@ func (p *PopulateOrganizationSchema) CreateTable(marbleTx repositories.Transacti
 	})
 }
 
+func (p *PopulateOrganizationSchema) CreateField(marbleTx repositories.Transaction, organizationID, tableName string, field models.DataModelField) error {
+	orgSchema, err := p.OrganizationSchemaRepository.OrganizationSchemaOfOrganization(marbleTx, organizationID)
+	if err != nil {
+		return err
+	}
+
+	// delete and recreate the entire postgres schema
+	return p.TransactionFactory.Transaction(orgSchema.DatabaseSchema, func(orgSchemaTx repositories.Transaction) error {
+		return p.OrganizationSchemaRepository.CreateSimpleField(orgSchemaTx, orgSchema.DatabaseSchema.Schema, tableName, field)
+	})
+}
+
 func (p *PopulateOrganizationSchema) populate(orgSchemaTx repositories.Transaction, databaseSchema models.DatabaseSchema, dataModel models.DataModel) error {
 
 	err := p.OrganizationSchemaRepository.CreateSchema(orgSchemaTx, databaseSchema.Schema)

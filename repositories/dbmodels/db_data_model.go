@@ -37,3 +37,23 @@ func AdaptDataModel(dbDataModel DbDataModel) models.DataModel {
 		Tables:  tables,
 	}
 }
+
+type DbDataModelTable struct {
+	ID             string `db:"id"`
+	OrganizationID string `db:"organization_id"`
+	Name           string `db:"name"`
+	Description    string `db:"description"`
+}
+
+const TableDataModelTable = "data_model_tables"
+
+var SelectDataModelTableColumns = utils.ColumnList[DbDataModelTable]()
+
+func AdaptDataModelTable(dbDataModelTable DbDataModelTable) models.DataModelTable {
+	return models.DataModelTable{
+		ID:             dbDataModelTable.ID,
+		OrganizationID: dbDataModelTable.OrganizationID,
+		Name:           dbDataModelTable.Name,
+		Description:    dbDataModelTable.Description,
+	}
+}
