@@ -15,6 +15,7 @@ type DataModelRepository interface {
 	GetDataModel(tx Transaction, organizationId string) (models.DataModel, error)
 	DeleteDataModel(tx Transaction, organizationId string) error
 	CreateDataModel(tx Transaction, organizationId string, dataModel models.DataModel) error
+	CreateDataModelTable(tx Transaction, organizationID, name, description string) error
 }
 
 type DataModelRepositoryPostgresql struct {
@@ -69,6 +70,17 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModel(tx Transaction, organ
 				dataModel.Status.String(),
 				tables,
 			),
+	)
+	return err
+}
+
+func (repo *DataModelRepositoryPostgresql) CreateDataModelTable(tx Transaction, organizationID, name, description string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	_, err := pgTx.ExecBuilder(
+		NewQueryBuilder().Insert("data_model_tables").
+			Columns("organization_id", "name", "description").
+			Values(organizationID, name, description),
 	)
 	return err
 }

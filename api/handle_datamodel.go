@@ -1,9 +1,10 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/utils"
-	"net/http"
 
 	"github.com/ggicci/httpin"
 )
@@ -45,4 +46,21 @@ func (api *API) handlePostDataModel() http.HandlerFunc {
 
 		PresentModelWithName(w, "data_model", dto.AdaptDataModelDto(dataModel))
 	}
+}
+
+func (api *API) handleCreateTable(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	input := *ctx.Value(httpin.Input).(*dto.PostCreateTable)
+
+	organizationId, err := utils.OrgIDFromCtx(ctx, r)
+	if presentError(w, r, err) {
+		return
+	}
+
+	usecase := api.UsecasesWithCreds(r).NewOrganizationUseCase()
+	err = usecase.CreateDataModelTable(organizationId, input.Body.Name, input.Body.Description)
+	if presentError(w, r, err) {
+		return
+	}
+	PresentNothing(w)
 }

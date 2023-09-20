@@ -36,6 +36,13 @@ type PostDataModel struct {
 	} `in:"body=json"`
 }
 
+type PostCreateTable struct {
+	Body *struct {
+		Name        string `json:"name"`
+		Description string `json:"description"`
+	} `in:"body=json"`
+}
+
 func AdaptTableDto(table models.Table) Table {
 	return Table{
 		Name: string(table.Name),
