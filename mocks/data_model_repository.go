@@ -25,3 +25,8 @@ func (d *DataModelRepository) CreateDataModel(tx repositories.Transaction, organ
 	args := d.Called(tx, organizationId, dataModel)
 	return args.Error(0)
 }
+
+func (d *DataModelRepository) CreateDataModelTable(tx repositories.Transaction, organizationID, name, description string) error {
+	args := d.Called(tx, organizationID, name, description)
+	return args.Error(0)
+}

@@ -17,6 +17,7 @@ type OrganizationSchemaRepository interface {
 	CreateSchema(tx Transaction, schema string) error
 	DeleteSchema(tx Transaction, schema string) error
 	CreateTable(tx Transaction, schema string, table models.Table) error
+	CreateSimpleTable(tx Transaction, schema, tableName string) error
 }
 
 type OrganizationSchemaRepositoryPostgresql struct {
@@ -52,6 +53,26 @@ func (repo *OrganizationSchemaRepositoryPostgresql) DeleteSchema(tx Transaction,
 	sql := fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE", pgx.Identifier.Sanitize([]string{schema}))
 
 	_, err := pgTx.SqlExec(sql)
+	return err
+}
+
+func (repo *OrganizationSchemaRepositoryPostgresql) CreateSimpleTable(tx Transaction, schema, tableName string) error {
+	pgTx := adaptClientDatabaseTransaction(tx)
+
+	sanitizedTableName := pgx.Identifier.Sanitize([]string{schema, tableName})
+	createTableExpr := squirrel.Expr(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s ()", sanitizedTableName))
+
+	sql, args, err := createTableExpr.ToSql()
+	if err != nil {
+		return err
+	}
+
+	sql, err = squirrel.Dollar.ReplacePlaceholders(sql)
+	if err != nil {
+		return err
+	}
+
+	_, err = pgTx.SqlExec(sql, args...)
 	return err
 }
 
