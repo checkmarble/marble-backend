@@ -32,10 +32,7 @@ func (usecase *DataModelUseCase) UpdateDataModelTable(tableID, description strin
 	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
 		return err
 	}
-
-	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
-		return usecase.dataModelRepository.UpdateDataModelTable(tx, tableID, description)
-	})
+	return usecase.dataModelRepository.UpdateDataModelTable(nil, tableID, description)
 }
 
 func (usecase *DataModelUseCase) CreateDataModelField(tableID string, field models.DataModelField) error {
@@ -56,12 +53,16 @@ func (usecase *DataModelUseCase) CreateDataModelField(tableID string, field mode
 	})
 }
 
+func (usecase *DataModelUseCase) UpdateDataModelField(fieldID, description string) error {
+	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
+		return err
+	}
+	return usecase.dataModelRepository.UpdateDataModelField(nil, fieldID, description)
+}
+
 func (usecase *DataModelUseCase) CreateDataModelLink(link models.DataModelLink) error {
 	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
 		return err
 	}
-
-	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
-		return usecase.dataModelRepository.CreateDataModelLink(tx, link)
-	})
+	return usecase.dataModelRepository.CreateDataModelLink(nil, link)
 }

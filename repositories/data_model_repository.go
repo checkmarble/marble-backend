@@ -19,6 +19,7 @@ type DataModelRepository interface {
 	UpdateDataModelTable(tx Transaction, tableID, description string) error
 	GetDataModelTable(tx Transaction, tableID string) (models.DataModelTable, error)
 	CreateDataModelField(tx Transaction, tableID string, field models.DataModelField) error
+	UpdateDataModelField(tx Transaction, field, description string) error
 	CreateDataModelLink(tx Transaction, link models.DataModelLink) error
 }
 
@@ -121,6 +122,18 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelField(tx Transaction, 
 		NewQueryBuilder().Insert("data_model_fields").
 			Columns("table_id", "name", "type", "nullable", "description").
 			Values(tableID, field.Name, field.Type, field.Nullable, field.Description),
+	)
+	return err
+}
+
+func (repo *DataModelRepositoryPostgresql) UpdateDataModelField(tx Transaction, fieldID, description string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	_, err := pgTx.ExecBuilder(
+		NewQueryBuilder().
+			Update(dbmodels.TableDataModelFields).
+			Set("description", description).
+			Where(squirrel.Eq{"id": fieldID}),
 	)
 	return err
 }

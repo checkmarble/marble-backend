@@ -67,7 +67,6 @@ func (p *PopulateOrganizationSchema) CreateTable(marbleTx repositories.Transacti
 		return err
 	}
 
-	// delete and recreate the entire postgres schema
 	return p.TransactionFactory.Transaction(orgSchema.DatabaseSchema, func(orgSchemaTx repositories.Transaction) error {
 		return p.OrganizationSchemaRepository.CreateSimpleTable(orgSchemaTx, orgSchema.DatabaseSchema.Schema, tableName)
 	})
@@ -79,7 +78,6 @@ func (p *PopulateOrganizationSchema) CreateField(marbleTx repositories.Transacti
 		return err
 	}
 
-	// delete and recreate the entire postgres schema
 	return p.TransactionFactory.Transaction(orgSchema.DatabaseSchema, func(orgSchemaTx repositories.Transaction) error {
 		return p.OrganizationSchemaRepository.CreateSimpleField(orgSchemaTx, orgSchema.DatabaseSchema.Schema, tableName, field)
 	})

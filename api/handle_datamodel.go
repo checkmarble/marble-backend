@@ -105,6 +105,23 @@ func (api *API) handleCreateField(w http.ResponseWriter, r *http.Request) {
 	PresentNothing(w)
 }
 
+func (api *API) handleUpdateField(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	input := *ctx.Value(httpin.Input).(*dto.PostCreateField)
+
+	tableID, err := requiredUuidUrlParam(r, "fieldID")
+	if presentError(w, r, err) {
+		return
+	}
+
+	usecase := api.UsecasesWithCreds(r).NewDataModelUseCase()
+	err = usecase.UpdateDataModelField(tableID, input.Body.Description)
+	if presentError(w, r, err) {
+		return
+	}
+	PresentNothing(w)
+}
+
 func (api *API) handleCreateLink(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	input := *ctx.Value(httpin.Input).(*dto.PostCreateLink)

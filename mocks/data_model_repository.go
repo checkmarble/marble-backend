@@ -50,3 +50,8 @@ func (d *DataModelRepository) CreateDataModelLink(tx repositories.Transaction, l
 	args := d.Called(tx, link)
 	return args.Error(0)
 }
+
+func (d *DataModelRepository) UpdateDataModelField(tx repositories.Transaction, fieldID, description string) error {
+	args := d.Called(tx, fieldID, description)
+	return args.Error(0)
+}

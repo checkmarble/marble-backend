@@ -147,6 +147,9 @@ func (api *API) routes() {
 			dataModelRouter.With(httpin.NewInput(dto.PostCreateField{})).
 				Post("/tables/{tableID}/fields", api.handleCreateField)
 
+			dataModelRouter.With(httpin.NewInput(dto.PostCreateField{})).
+				Patch("/fields/{fieldID}", api.handleUpdateField)
+
 			dataModelRouter.With(httpin.NewInput(dto.PostCreateLink{})).
 				Post("/links", api.handleCreateLink)
 		})
