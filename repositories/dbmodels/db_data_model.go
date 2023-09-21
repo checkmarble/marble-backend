@@ -46,6 +46,7 @@ type DbDataModelTable struct {
 }
 
 const TableDataModelTable = "data_model_tables"
+const TableDataModelFields = "data_model_fields"
 
 var SelectDataModelTableColumns = utils.ColumnList[DbDataModelTable]()
 
