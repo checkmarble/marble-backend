@@ -14,6 +14,8 @@ import (
 	"github.com/ggicci/httpin"
 )
 
+const defaultDecisionslimit = 10000
+
 func (api *API) handleGetDecision() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -42,7 +44,7 @@ func (api *API) handleListDecisions() http.HandlerFunc {
 		logger = logger.With(slog.String("organizationId", organizationId))
 
 		usecase := api.UsecasesWithCreds(r).NewDecisionUsecase()
-		decisions, err := usecase.ListDecisionsOfOrganization(organizationId)
+		decisions, err := usecase.ListDecisionsOfOrganization(organizationId, defaultDecisionslimit)
 		if presentError(w, r, err) {
 			return
 		}

@@ -39,12 +39,12 @@ func (usecase *DecisionUsecase) GetDecision(decisionId string) (models.Decision,
 	return decision, nil
 }
 
-func (usecase *DecisionUsecase) ListDecisionsOfOrganization(organizationId string) ([]models.Decision, error) {
+func (usecase *DecisionUsecase) ListDecisionsOfOrganization(organizationId string, limit int) ([]models.Decision, error) {
 	return transaction.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) ([]models.Decision, error) {
-			decisions, err := usecase.decisionRepository.DecisionsOfOrganization(tx, organizationId, 1000)
+			decisions, err := usecase.decisionRepository.DecisionsOfOrganization(tx, organizationId, limit)
 			if err != nil {
 				return []models.Decision{}, err
 			}

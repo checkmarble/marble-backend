@@ -21,6 +21,9 @@ type DecisionRepositoryImpl struct {
 	transactionFactory TransactionFactoryPosgresql
 }
 
+// the size of the batch is chosen without any benchmark
+const decisionRulesBatchSize = 1000
+
 func (repo *DecisionRepositoryImpl) DecisionById(transaction Transaction, decisionId string) (models.Decision, error) {
 	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(transaction)
 
@@ -214,8 +217,7 @@ func (repo *DecisionRepositoryImpl) channelOfDecisions(tx TransactionPostgres, q
 		// 	decisionsChannel <- dbmodels.AdaptDecision(dbDecision, rules)
 		// }
 
-		// the size of the batch is choose randomly.
-		for dbDecisions := range BatchChannel(dbDecisionsChannel, 1000) {
+		for dbDecisions := range BatchChannel(dbDecisionsChannel, decisionRulesBatchSize) {
 
 			// fetch rules of all decisions
 			rules, err := repo.rulesOfDecisionsBatch(
