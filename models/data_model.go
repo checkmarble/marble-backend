@@ -140,3 +140,11 @@ type DataModelField struct {
 	Type        string `json:"dataType"`
 	Nullable    bool   `json:"nullable"`
 }
+
+type DataModelLink struct {
+	Name          string `json:"name"`
+	ParentTableID string `json:"parent_table_id"`
+	ParentFieldID string `json:"parent_field_id"`
+	ChildTableID  string `json:"child_table_id"`
+	ChildFieldID  string `json:"child_field_id"`
+}

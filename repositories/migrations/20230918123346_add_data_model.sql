@@ -28,6 +28,7 @@ CREATE TABLE data_model_fields (
 
 CREATE TABLE data_model_links (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    organization_id UUID REFERENCES organizations NOT NULL,
     name            TEXT NOT NULL,
     parent_table_id UUID REFERENCES data_model_tables ON DELETE CASCADE NOT NULL,
     parent_field_id UUID REFERENCES data_model_fields ON DELETE CASCADE NOT NULL,

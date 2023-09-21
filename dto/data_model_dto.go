@@ -54,6 +54,16 @@ type PostCreateField struct {
 	} `in:"body=json"`
 }
 
+type PostCreateLink struct {
+	Body *struct {
+		Name          string `json:"name"`
+		ParentTableID string `json:"parent_table_id"`
+		ParentFieldID string `json:"parent_field_id"`
+		ChildTableID  string `json:"child_table_id"`
+		ChildFieldID  string `json:"child_field_id"`
+	} `in:"body=json"`
+}
+
 func AdaptTableDto(table models.Table) Table {
 	return Table{
 		Name: string(table.Name),

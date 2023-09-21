@@ -58,8 +58,25 @@ func (api *API) handleCreateTable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(r).NewOrganizationUseCase()
+	usecase := api.UsecasesWithCreds(r).NewDataModelUseCase()
 	err = usecase.CreateDataModelTable(organizationId, input.Body.Name, input.Body.Description)
+	if presentError(w, r, err) {
+		return
+	}
+	PresentNothing(w)
+}
+
+func (api *API) handleUpdateTable(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	input := *ctx.Value(httpin.Input).(*dto.PostCreateTable)
+
+	tableID, err := requiredUuidUrlParam(r, "tableID")
+	if presentError(w, r, err) {
+		return
+	}
+
+	usecase := api.UsecasesWithCreds(r).NewDataModelUseCase()
+	err = usecase.UpdateDataModelTable(tableID, input.Body.Description)
 	if presentError(w, r, err) {
 		return
 	}
@@ -75,12 +92,30 @@ func (api *API) handleCreateField(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(r).NewOrganizationUseCase()
+	usecase := api.UsecasesWithCreds(r).NewDataModelUseCase()
 	err = usecase.CreateDataModelField(tableID, models.DataModelField{
 		Name:        input.Body.Name,
 		Description: input.Body.Description,
 		Type:        input.Body.Type,
 		Nullable:    input.Body.Nullable,
+	})
+	if presentError(w, r, err) {
+		return
+	}
+	PresentNothing(w)
+}
+
+func (api *API) handleCreateLink(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	input := *ctx.Value(httpin.Input).(*dto.PostCreateLink)
+
+	usecase := api.UsecasesWithCreds(r).NewDataModelUseCase()
+	err := usecase.CreateDataModelLink(models.DataModelLink{
+		Name:          input.Body.Name,
+		ParentTableID: input.Body.ParentTableID,
+		ParentFieldID: input.Body.ParentFieldID,
+		ChildTableID:  input.Body.ChildTableID,
+		ChildFieldID:  input.Body.ChildFieldID,
 	})
 	if presentError(w, r, err) {
 		return

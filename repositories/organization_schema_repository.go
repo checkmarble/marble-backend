@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
@@ -81,22 +82,13 @@ func (repo *OrganizationSchemaRepositoryPostgresql) CreateSimpleField(tx Transac
 
 	fieldType := toPgType(models.DataTypeFrom(field.Type))
 	sanitizedTableName := pgx.Identifier.Sanitize([]string{schema, tableName})
-	createTableExpr := squirrel.Expr(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", sanitizedTableName, field.Name, fieldType))
+
+	builder := strings.Builder{}
+	builder.WriteString(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", sanitizedTableName, field.Name, fieldType))
 	if !field.Nullable {
-		squirrel.ConcatExpr(createTableExpr, "NOT NULL")
+		builder.WriteString(" NOT NULL")
 	}
-
-	sql, args, err := createTableExpr.ToSql()
-	if err != nil {
-		return err
-	}
-
-	sql, err = squirrel.Dollar.ReplacePlaceholders(sql)
-	if err != nil {
-		return err
-	}
-
-	_, err = pgTx.SqlExec(sql, args...)
+	_, err := pgTx.SqlExec(builder.String())
 	return err
 }
 
