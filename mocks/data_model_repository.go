@@ -31,6 +31,11 @@ func (d *DataModelRepository) CreateDataModelTable(tx repositories.Transaction, 
 	return args.Error(0)
 }
 
+func (d *DataModelRepository) UpdateDataModelTable(tx repositories.Transaction, tableID, description string) error {
+	args := d.Called(tx, tableID, description)
+	return args.Error(0)
+}
+
 func (d *DataModelRepository) CreateDataModelField(tx repositories.Transaction, tableID string, field models.DataModelField) error {
 	args := d.Called(tx, tableID, field)
 	return args.Error(0)
@@ -39,4 +44,9 @@ func (d *DataModelRepository) CreateDataModelField(tx repositories.Transaction, 
 func (d *DataModelRepository) GetDataModelTable(tx repositories.Transaction, tableID string) (models.DataModelTable, error) {
 	args := d.Called(tx, tableID)
 	return args.Get(0).(models.DataModelTable), args.Error(1)
+}
+
+func (d *DataModelRepository) CreateDataModelLink(tx repositories.Transaction, link models.DataModelLink) error {
+	args := d.Called(tx, link)
+	return args.Error(0)
 }

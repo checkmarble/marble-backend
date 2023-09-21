@@ -167,6 +167,15 @@ func (usecases *UsecasesWithCreds) NewOrganizationUseCase() OrganizationUseCase 
 	}
 }
 
+func (usecases *UsecasesWithCreds) NewDataModelUseCase() DataModelUseCase {
+	return DataModelUseCase{
+		enforceSecurity:            usecases.NewEnforceOrganizationSecurity(),
+		transactionFactory:         &usecases.Repositories.TransactionFactoryPosgresql,
+		dataModelRepository:        usecases.Repositories.DataModelRepository,
+		populateOrganizationSchema: usecases.NewPopulateOrganizationSchema(),
+	}
+}
+
 func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 	return IngestionUseCase{
 		enforceSecurity:       usecases.NewEnforceIngestionSecurity(),
