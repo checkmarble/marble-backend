@@ -40,7 +40,7 @@ func (repo *IngestedDataReadRepositoryImpl) GetDbField(transaction Transaction, 
 	return output, nil
 }
 
-func createQueryDbForField(tx Transaction, readParams models.DbFieldReadParams) (squirrel.SelectBuilder, error)  {
+func createQueryDbForField(tx Transaction, readParams models.DbFieldReadParams) (squirrel.SelectBuilder, error) {
 	triggerTable, ok := readParams.DataModel.Tables[readParams.TriggerTableName]
 	if !ok {
 		return squirrel.SelectBuilder{}, fmt.Errorf("table %s not found in data model", readParams.TriggerTableName)
@@ -77,7 +77,7 @@ func createQueryDbForField(tx Transaction, readParams models.DbFieldReadParams) 
 		Where(rowIsValid(firstTableName))
 
 	return addJoinsOnIntermediateTables(tx, query, readParams, firstTable)
-} 
+}
 
 func (repo *IngestedDataReadRepositoryImpl) queryDbForField(tx TransactionPostgres, readParams models.DbFieldReadParams) (pgx.Row, error) {
 	query, err := createQueryDbForField(tx, readParams)

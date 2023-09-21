@@ -1,13 +1,14 @@
 package api
 
 import (
-	"github.com/checkmarble/marble-backend/dto"
-	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/utils"
 	"log/slog"
 	"net/http"
 
 	"github.com/ggicci/httpin"
+
+	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 func (api *API) handleGetAllCustomLists() http.HandlerFunc {
@@ -73,9 +74,9 @@ func (api *API) handlePatchCustomList() http.HandlerFunc {
 
 		usecase := api.UsecasesWithCreds(r).NewCustomListUseCase()
 		CustomList, err := usecase.UpdateCustomList(models.UpdateCustomListInput{
-			Id:             listId,
-			Name:           &requestData.Name,
-			Description:    &requestData.Description,
+			Id:          listId,
+			Name:        &requestData.Name,
+			Description: &requestData.Description,
 		})
 
 		if presentError(w, r, err) {
@@ -101,7 +102,7 @@ func (api *API) handleDeleteCustomList() http.HandlerFunc {
 
 		usecase := api.UsecasesWithCreds(r).NewCustomListUseCase()
 		err = usecase.SoftDeleteCustomList(models.DeleteCustomListInput{
-			Id:             inputDto.CustomListID,
+			Id: inputDto.CustomListID,
 		})
 		if presentError(w, r, err) {
 			logger.ErrorContext(ctx, "error deleting a list: \n"+err.Error())
@@ -127,8 +128,8 @@ func (api *API) handlePostCustomListValue() http.HandlerFunc {
 
 		usecase := api.UsecasesWithCreds(r).NewCustomListUseCase()
 		customListValue, err := usecase.AddCustomListValue(models.AddCustomListValueInput{
-			CustomListId:   listId,
-			Value:          requestData.Value,
+			CustomListId: listId,
+			Value:        requestData.Value,
 		})
 		if presentError(w, r, err) {
 			logger.ErrorContext(ctx, "error adding a value to a list: \n"+err.Error())
@@ -154,8 +155,8 @@ func (api *API) handleDeleteCustomListValue() http.HandlerFunc {
 
 		usecase := api.UsecasesWithCreds(r).NewCustomListUseCase()
 		err = usecase.DeleteCustomListValue(models.DeleteCustomListValueInput{
-			Id:             inputDto.Body.Id,
-			CustomListId:   listId,
+			Id:           inputDto.Body.Id,
+			CustomListId: listId,
 		})
 
 		if presentError(w, r, err) {

@@ -29,6 +29,20 @@ func (api *API) handleGetDataModel() http.HandlerFunc {
 	}
 }
 
+func (api *API) handleGetDataModelV2(w http.ResponseWriter, r *http.Request) {
+	organizationId, err := utils.OrgIDFromCtx(r.Context(), r)
+	if presentError(w, r, err) {
+		return
+	}
+
+	usecase := api.UsecasesWithCreds(r).NewDataModelUseCase()
+	dataModel, err := usecase.GetDataModel(organizationId)
+	if presentError(w, r, err) {
+		return
+	}
+	PresentModelWithName(w, "data_model", dto.AdaptDataModelDto(dataModel))
+}
+
 func (api *API) handlePostDataModel() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -126,13 +140,19 @@ func (api *API) handleCreateLink(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	input := *ctx.Value(httpin.Input).(*dto.PostCreateLink)
 
+	organizationID, err := utils.OrgIDFromCtx(r.Context(), r)
+	if presentError(w, r, err) {
+		return
+	}
+
 	usecase := api.UsecasesWithCreds(r).NewDataModelUseCase()
-	err := usecase.CreateDataModelLink(models.DataModelLink{
-		Name:          input.Body.Name,
-		ParentTableID: input.Body.ParentTableID,
-		ParentFieldID: input.Body.ParentFieldID,
-		ChildTableID:  input.Body.ChildTableID,
-		ChildFieldID:  input.Body.ChildFieldID,
+	err = usecase.CreateDataModelLink(models.DataModelLink{
+		Name:           models.LinkName(input.Body.Name),
+		OrganizationID: organizationID,
+		ParentTableID:  models.TableName(input.Body.ParentTableID),
+		ParentFieldID:  models.FieldName(input.Body.ParentFieldID),
+		ChildTableID:   models.TableName(input.Body.ChildTableID),
+		ChildFieldID:   models.FieldName(input.Body.ChildFieldID),
 	})
 	if presentError(w, r, err) {
 		return

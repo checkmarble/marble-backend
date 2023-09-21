@@ -6,6 +6,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 )
+
 type EnforceSecurity interface {
 	Permission(permission models.Permission) error
 	ReadOrganization(organizationId string) error

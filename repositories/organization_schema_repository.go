@@ -152,6 +152,8 @@ func (repo *OrganizationSchemaRepositoryPostgresql) CreateOrganizationSchema(tx 
 
 func toPgType(dataType models.DataType) string {
 	switch dataType {
+	case models.Int:
+		return "INTEGER"
 	case models.String:
 		return "TEXT"
 	case models.Timestamp:

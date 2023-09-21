@@ -58,3 +58,55 @@ func AdaptDataModelTable(dbDataModelTable DbDataModelTable) models.DataModelTabl
 		Description:    dbDataModelTable.Description,
 	}
 }
+
+type DbDataModelField struct {
+	TableID          string `db:"data_model_tables.id"`
+	OrganizationID   string `db:"data_model_tables.organization_id"`
+	TableName        string `db:"data_model_tables.name"`
+	TableDescription string `db:"data_model_tables.description"`
+	FieldID          string `db:"data_model_fields.id"`
+	FieldName        string `db:"data_model_fields.name"`
+	FieldType        string `db:"data_model_fields.type"`
+	FieldNullable    bool   `db:"data_model_fields.nullable"`
+	FieldDescription string `db:"data_model_fields.description"`
+}
+
+var SelectDataModelFieldColumns = utils.ColumnList[DbDataModelField]()
+
+func AdaptDataModelTableField(dbDataModelTableField DbDataModelField) models.DataModelTableField {
+	return models.DataModelTableField{
+		TableID:          dbDataModelTableField.TableID,
+		OrganizationID:   dbDataModelTableField.OrganizationID,
+		TableName:        dbDataModelTableField.TableName,
+		TableDescription: dbDataModelTableField.TableDescription,
+		FieldID:          dbDataModelTableField.FieldID,
+		FieldName:        dbDataModelTableField.FieldName,
+		FieldType:        dbDataModelTableField.FieldType,
+		FieldNullable:    dbDataModelTableField.FieldNullable,
+		FieldDescription: dbDataModelTableField.FieldDescription,
+	}
+}
+
+type DataModelLink struct {
+	ID            string
+	Name          string
+	ParentTableID string
+	ParentTable   string
+	ParentFieldID string
+	ParentField   string
+	ChildTableID  string
+	ChildTable    string
+	ChildFieldID  string
+	ChildField    string
+}
+
+func AdaptDataModelLink(dbDataModelLink DataModelLink) models.DataModelLink {
+	return models.DataModelLink{
+		ID:          dbDataModelLink.ID,
+		Name:        models.LinkName(dbDataModelLink.Name),
+		ParentTable: models.TableName(dbDataModelLink.ParentTable),
+		ParentField: models.FieldName(dbDataModelLink.ParentField),
+		ChildTable:  models.TableName(dbDataModelLink.ChildTable),
+		ChildField:  models.FieldName(dbDataModelLink.ChildField),
+	}
+}
