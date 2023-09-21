@@ -66,7 +66,6 @@ func ForEachRow(transaction TransactionPostgres, query squirrel.Sqlizer, fn func
 
 // executes the sql query with the given transaction and returns a list of models using the provided adapter
 func SqlToListOfModels[DBModel, Model any](transaction TransactionPostgres, query squirrel.Sqlizer, adapter func(dbModel DBModel) Model) ([]Model, error) {
-
 	return SqlToListOfModelsAdapterWithErr(transaction, query, func(dbModel DBModel) (Model, error) {
 		return adapter(dbModel), nil
 	})

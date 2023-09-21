@@ -18,10 +18,10 @@ const expectedQueryDbFieldWithJoin string = "SELECT test_schema.third.int_var " 
 	"FROM test_schema.second JOIN test_schema.third ON test_schema.second.id = test_schema.third.id " +
 	"WHERE test_schema.second.object_id = $1 AND test_schema.second.valid_until = $2 AND test_schema.third.valid_until = $3"
 
-const expectedQueryAggregatedWithoutFilter string = "SELECT AVG(int_var) FROM test_schema.first "+
+const expectedQueryAggregatedWithoutFilter string = "SELECT AVG(int_var) FROM test_schema.first " +
 	"WHERE test_schema.first.valid_until = $1"
 
-const expectedQueryAggregatedWithFilter string = "SELECT AVG(int_var) FROM test_schema.first "+
+const expectedQueryAggregatedWithFilter string = "SELECT AVG(int_var) FROM test_schema.first " +
 	"WHERE test_schema.first.valid_until = $1 AND test_schema.first.int_var = $2 AND test_schema.first.bool_var <> $3"
 
 type TransactionTest struct{}
@@ -84,7 +84,6 @@ func TestIngestedDataGetDbFieldWithJoin(t *testing.T) {
 	}
 	assert.Equal(t, strings.ReplaceAll(sql, "\"", ""), expectedQueryDbFieldWithJoin)
 }
-
 
 func TestIngestedDataQueryAggregatedValueWithoutFilter(t *testing.T) {
 	query, err := createQueryAggregated(TransactionTest{}, utils.DummyTableNameFirst, utils.DummyFieldNameForInt, ast.AGGREGATOR_AVG, []ast.Filter{})

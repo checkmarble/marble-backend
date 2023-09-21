@@ -1,6 +1,5 @@
 package ast
 
-
 // ======= CustomListAccess =======
 
 var AttributeFuncCustomListAccess = struct {

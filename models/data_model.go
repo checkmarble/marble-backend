@@ -109,6 +109,7 @@ func ToLinkNames(arr []string) []LinkName {
 }
 
 type Table struct {
+	ID            string                    `json:"id,omitempty"`
 	Name          TableName                 `json:"name"`
 	Description   string                    `json:"description"`
 	Fields        map[FieldName]Field       `json:"fields"`
@@ -116,6 +117,7 @@ type Table struct {
 }
 
 type Field struct {
+	ID          string   `json:"id,omitempty"`
 	Description string   `json:"description"`
 	DataType    DataType `json:"dataType"`
 	Nullable    bool     `json:"nullable"`
@@ -141,10 +143,28 @@ type DataModelField struct {
 	Nullable    bool   `json:"nullable"`
 }
 
+type DataModelTableField struct {
+	TableID          string
+	OrganizationID   string
+	TableName        string
+	TableDescription string
+	FieldID          string
+	FieldName        string
+	FieldType        string
+	FieldNullable    bool
+	FieldDescription string
+}
+
 type DataModelLink struct {
-	Name          string `json:"name"`
-	ParentTableID string `json:"parent_table_id"`
-	ParentFieldID string `json:"parent_field_id"`
-	ChildTableID  string `json:"child_table_id"`
-	ChildFieldID  string `json:"child_field_id"`
+	ID             string    `json:"id"`
+	OrganizationID string    `json:"organization_id"`
+	Name           LinkName  `json:"name"`
+	ParentTableID  TableName `json:"parent_table_id"`
+	ParentTable    TableName `json:"parent_table"`
+	ParentFieldID  FieldName `json:"parent_field_id"`
+	ParentField    FieldName `json:"parent_field"`
+	ChildTableID   TableName `json:"child_table_id"`
+	ChildTable     TableName `json:"child_table"`
+	ChildFieldID   FieldName `json:"child_field_id"`
+	ChildField     FieldName `json:"child_field"`
 }

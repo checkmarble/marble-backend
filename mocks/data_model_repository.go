@@ -16,6 +16,16 @@ func (d *DataModelRepository) GetDataModel(tx repositories.Transaction, organiza
 	return args.Get(0).(models.DataModel), args.Error(1)
 }
 
+func (d *DataModelRepository) GetTables(tx repositories.Transaction, organizationID string) ([]models.DataModelTableField, error) {
+	args := d.Called(tx, organizationID)
+	return args.Get(0).([]models.DataModelTableField), args.Error(1)
+}
+
+func (d *DataModelRepository) GetLinks(tx repositories.Transaction, organizationID string) ([]models.DataModelLink, error) {
+	args := d.Called(tx, organizationID)
+	return args.Get(0).([]models.DataModelLink), args.Error(1)
+}
+
 func (d *DataModelRepository) DeleteDataModel(tx repositories.Transaction, organizationId string) error {
 	args := d.Called(tx, organizationId)
 	return args.Error(0)

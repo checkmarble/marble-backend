@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-
 // For Custom List Evaluator
 const testListId string = "1"
 const testListOrgId string = "2"

@@ -12,12 +12,14 @@ type LinkToSingle struct {
 }
 
 type Field struct {
+	ID          string `json:"id,omitempty"`
 	Description string `json:"description"`
 	DataType    string `json:"data_type"`
 	Nullable    bool   `json:"nullable"`
 }
 
 type Table struct {
+	ID            string                           `json:"id,omitempty"`
 	Name          string                           `json:"name"`
 	Description   string                           `json:"description"`
 	Fields        map[models.FieldName]Field       `json:"fields"`
@@ -67,8 +69,10 @@ type PostCreateLink struct {
 func AdaptTableDto(table models.Table) Table {
 	return Table{
 		Name: string(table.Name),
+		ID:   table.ID,
 		Fields: utils.MapMap(table.Fields, func(field models.Field) Field {
 			return Field{
+				ID:          field.ID,
 				DataType:    field.DataType.String(),
 				Nullable:    field.Nullable,
 				Description: field.Description,
