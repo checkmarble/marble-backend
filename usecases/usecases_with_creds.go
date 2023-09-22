@@ -76,6 +76,7 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 		scenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
 		customListRepository:            usecases.Repositories.CustomListRepository,
 		evaluateRuleAstExpression:       usecases.NewEvaluateRuleAstExpression(),
+		organizationIdOfContext:         usecases.OrganizationIdOfContext,
 	}
 }
 
