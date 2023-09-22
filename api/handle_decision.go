@@ -34,31 +34,14 @@ func (api *API) handleGetDecision() http.HandlerFunc {
 
 func (api *API) handleListDecisions() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		logger := utils.LoggerFromContext(ctx)
-
-		organizationId, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
-			return
-		}
-		logger = logger.With(slog.String("organizationId", organizationId))
 
 		usecase := api.UsecasesWithCreds(r).NewDecisionUsecase()
-		decisions, err := usecase.ListDecisionsOfOrganization(organizationId, defaultDecisionslimit)
+		decisions, err := usecase.ListDecisions(defaultDecisionslimit)
 		if presentError(w, r, err) {
 			return
 		}
-		apiDecisions := make([]dto.APIDecision, len(decisions))
-		for i, decision := range decisions {
-			apiDecisions[i] = dto.NewAPIDecision(decision)
-		}
 
-		err = json.NewEncoder(w).Encode(apiDecisions)
-		if err != nil {
-			logger.ErrorContext(ctx, "error encoding response JSON: \n"+err.Error())
-			http.Error(w, "", http.StatusInternalServerError)
-			return
-		}
+		PresentModel(w, utils.Map(decisions, dto.NewAPIDecision))
 	}
 }
 

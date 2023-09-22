@@ -26,6 +26,7 @@ type DecisionUsecase struct {
 	scenarioReadRepository          repositories.ScenarioReadRepository
 	scenarioIterationReadRepository repositories.ScenarioIterationReadRepository
 	evaluateRuleAstExpression       ast_eval.EvaluateRuleAstExpression
+	organizationIdOfContext         func() (string, error)
 }
 
 func (usecase *DecisionUsecase) GetDecision(decisionId string) (models.Decision, error) {
@@ -39,7 +40,12 @@ func (usecase *DecisionUsecase) GetDecision(decisionId string) (models.Decision,
 	return decision, nil
 }
 
-func (usecase *DecisionUsecase) ListDecisionsOfOrganization(organizationId string, limit int) ([]models.Decision, error) {
+func (usecase *DecisionUsecase) ListDecisions(limit int) ([]models.Decision, error) {
+	organizationId, err := usecase.organizationIdOfContext()
+	if err != nil {
+		return nil, err
+	}
+
 	return transaction.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
@@ -59,6 +65,7 @@ func (usecase *DecisionUsecase) ListDecisionsOfOrganization(organizationId strin
 }
 
 func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models.CreateDecisionInput, logger *slog.Logger) (models.Decision, error) {
+
 	if err := usecase.enforceSecurity.CreateDecision(input.OrganizationId); err != nil {
 		return models.Decision{}, err
 	}
