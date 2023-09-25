@@ -77,9 +77,8 @@ type ListScenarioPublicationsInput struct {
 	ScenarioIterationId *string `in:"query=scenarioIterationID"`
 }
 
-func AdaptCreateScenario(input *CreateScenarioInput, organizationId string) models.CreateScenarioInput {
+func AdaptCreateScenario(input *CreateScenarioInput) models.CreateScenarioInput {
 	return models.CreateScenarioInput{
-		OrganizationId:    organizationId,
 		Name:              input.Body.Name,
 		Description:       input.Body.Description,
 		TriggerObjectType: input.Body.TriggerObjectType,

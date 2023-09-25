@@ -11,8 +11,8 @@ type ScenarioWriteRepository struct {
 	mock.Mock
 }
 
-func (s *ScenarioWriteRepository) CreateScenario(tx repositories.Transaction, scenario models.CreateScenarioInput, newScenarioId string) error {
-	args := s.Called(tx, scenario, newScenarioId)
+func (s *ScenarioWriteRepository) CreateScenario(tx repositories.Transaction, organizationId string, scenario models.CreateScenarioInput, newScenarioId string) error {
+	args := s.Called(tx, organizationId, scenario, newScenarioId)
 	return args.Error(0)
 }
 

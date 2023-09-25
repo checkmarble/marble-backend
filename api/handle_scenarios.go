@@ -1,11 +1,12 @@
 package api
 
 import (
+	"net/http"
+	"time"
+
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
-	"net/http"
-	"time"
 
 	"github.com/ggicci/httpin"
 )
@@ -47,16 +48,10 @@ func (api *API) ListScenarios() http.HandlerFunc {
 
 func (api *API) CreateScenario() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		organizationId, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
-			return
-		}
-
-		input := ctx.Value(httpin.Input).(*dto.CreateScenarioInput)
+		input := r.Context().Value(httpin.Input).(*dto.CreateScenarioInput)
 
 		usecase := api.UsecasesWithCreds(r).NewScenarioUsecase()
-		scenario, err := usecase.CreateScenario(dto.AdaptCreateScenario(input, organizationId))
+		scenario, err := usecase.CreateScenario(dto.AdaptCreateScenario(input))
 		if presentError(w, r, err) {
 			return
 		}
