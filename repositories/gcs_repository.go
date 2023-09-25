@@ -1,9 +1,12 @@
 package repositories
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 
@@ -14,6 +17,10 @@ import (
 type GcsRepository interface {
 	ListFiles(ctx context.Context, bucketName, prefix string) ([]models.GCSFile, error)
 	MoveFile(ctx context.Context, bucketName, source, destination string) error
+	OpenStream(ctx context.Context, bucketName, fileName string) *storage.Writer
+	WriteIntoStream(writer *storage.Writer, content []byte) error
+	CloseStream(writer *storage.Writer) error
+	UpdateFileMetadata(ctx context.Context, bucketName, fileName string, metadata map[string]string) error
 }
 
 type GcsRepositoryImpl struct {
@@ -88,5 +95,57 @@ func (repository *GcsRepositoryImpl) MoveFile(ctx context.Context, bucketName, s
 	if err := src.Delete(ctx); err != nil {
 		return fmt.Errorf("Object(%q).Delete: %w", srcName, err)
 	}
+	return nil
+}
+
+func (repository *GcsRepositoryImpl) OpenStream(ctx context.Context, bucketName, fileName string) *storage.Writer {
+	gcsClient := repository.getGCSClient(ctx)
+	defer gcsClient.Close()
+
+	writer := gcsClient.Bucket(bucketName).Object(fileName).NewWriter(ctx)
+	writer.ChunkSize = 0 // note retries are not supported for chunk size 0.
+	return writer
+}
+
+func (repository *GcsRepositoryImpl) WriteIntoStream(writer *storage.Writer, content []byte) error {
+	buf := bytes.NewBuffer(content)
+
+	if _, err := io.Copy(writer, buf); err != nil {
+		return fmt.Errorf("io.Copy: %w", err)
+	}
+	return nil
+}
+
+func (repository *GcsRepositoryImpl) CloseStream(writer *storage.Writer) error {
+	if err := writer.Close(); err != nil {
+		return fmt.Errorf("Writer.Close: %w", err)
+	}
+	return nil
+}
+
+func (repository *GcsRepositoryImpl) UpdateFileMetadata(ctx context.Context, bucketName, fileName string, metadata map[string]string) error {
+	gcsClient := repository.getGCSClient(ctx)
+	defer gcsClient.Close()
+
+	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
+
+	object := gcsClient.Bucket(bucketName).Object(fileName)
+
+	// Optional: set a metageneration-match precondition to avoid potential race
+	// conditions and data corruptions. The request to update is aborted if the
+	// object's metageneration does not match your precondition.
+	attrs, err := object.Attrs(ctx)
+	if err != nil {
+		return fmt.Errorf("object.Attrs: %w", err)
+	}
+	object = object.If(storage.Conditions{MetagenerationMatch: attrs.Metageneration})
+
+	objectAttrsToUpdate := storage.ObjectAttrsToUpdate{Metadata: metadata}
+
+	if _, err := object.Update(ctx, objectAttrsToUpdate); err != nil {
+		return fmt.Errorf("ObjectHandle(%q).Update: %w", fileName, err)
+	}
+
 	return nil
 }

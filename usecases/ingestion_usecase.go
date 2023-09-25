@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"bufio"
 	"context"
 	"encoding/csv"
 	"fmt"
@@ -15,6 +16,8 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/transaction"
+	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 const (
@@ -26,9 +29,11 @@ const (
 type IngestionUseCase struct {
 	enforceSecurity       security.EnforceSecurityIngestion
 	orgTransactionFactory transaction.Factory
+	transactionFactory    transaction.TransactionFactory
 	ingestionRepository   repositories.IngestionRepository
 	gcsRepository         repositories.GcsRepository
 	datamodelRepository   repositories.DataModelRepository
+	uploadLogRepository   repositories.UploadLogRepository
 }
 
 func (usecase *IngestionUseCase) IngestObjects(organizationId string, payloads []models.PayloadReader, table models.Table, logger *slog.Logger) error {
@@ -62,6 +67,90 @@ func (usecase *IngestionUseCase) IngestFilesFromStorageCsv(ctx context.Context, 
 		}
 	}
 	return nil
+}
+
+func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Context, organizationId, userId, objectType string, fileScanner *bufio.Scanner) (models.UploadLog, error) {
+	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
+		return models.UploadLog{}, err
+	}
+	dataModel, err := usecase.datamodelRepository.GetDataModel(nil, organizationId)
+	if err != nil {
+		return models.UploadLog{}, err
+	}
+
+	table, ok := dataModel.Tables[models.TableName(objectType)]
+	if !ok {
+		return models.UploadLog{}, fmt.Errorf("Table %s not found on data model", objectType)
+	}
+
+	if !fileScanner.Scan() {
+		return models.UploadLog{}, fmt.Errorf("error reading first row of CSV: %w", fileScanner.Err())
+	}
+
+	bucketName := utils.GetRequiredStringEnv("GCS_INGESTION_BUCKET")
+	fileName := computeFileName(organizationId, string(table.Name))
+	writer := usecase.gcsRepository.OpenStream(ctx, bucketName, fileName)
+
+	firstRow := fileScanner.Text()
+	headers := strings.Split(firstRow, ",")
+	for name, field := range table.Fields {
+		if !field.Nullable {
+			if !containsString(headers, string(name)) {
+				return models.UploadLog{}, fmt.Errorf("missing required field %s in CSV", name)
+			}
+		}
+	}
+
+	if err := usecase.gcsRepository.WriteIntoStream(writer, []byte(firstRow)); err != nil {
+		return models.UploadLog{}, err
+	}
+
+	payloadReaders := make([]models.PayloadReader, 0)
+	var i int
+	for i = 0; ; i++ {
+		if !fileScanner.Scan() {
+			break
+		}
+
+		row := fileScanner.Text()
+		data := strings.Split(row, ",")
+		object, err := parseStringValuesToMap(headers, data, table)
+		if err != nil {
+			return models.UploadLog{}, fmt.Errorf("Error found at line %d in CSV %w", i, err)
+		}
+		clientObject := models.ClientObject{
+			TableName: table.Name,
+			Data:      object,
+		}
+
+		if err := usecase.gcsRepository.WriteIntoStream(writer, []byte(row)); err != nil {
+			return models.UploadLog{}, err
+		}
+
+		payloadReader := models.PayloadReader(clientObject)
+		payloadReaders = append(payloadReaders, payloadReader)
+	}
+
+	if err := usecase.gcsRepository.CloseStream(writer); err != nil {
+		return models.UploadLog{}, err
+	}
+	if err := usecase.gcsRepository.UpdateFileMetadata(ctx, bucketName, fileName, map[string]string{"processed": "true"}); err != nil {
+		return models.UploadLog{}, err
+	}
+
+	return transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.UploadLog, error) {
+		newUploadListId := uuid.NewString()
+		newUploadLoad := models.UploadLog{
+			Id:             newUploadListId,
+			UploadStatus:   models.UploadPending,
+			OrganizationId: organizationId,
+			UserId:         userId,
+			StartedAt:      time.Now(),
+			LinesProcessed: 0,
+		}
+		usecase.uploadLogRepository.CreateUploadLog(tx, newUploadLoad)
+		return usecase.uploadLogRepository.UploadLogById(tx, newUploadListId)
+	})
 }
 
 func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file models.GCSFile, logger *slog.Logger) error {
@@ -239,4 +328,8 @@ func parseStringValuesToMap(headers []string, values []string, table models.Tabl
 
 	}
 	return result, nil
+}
+
+func computeFileName(organizationId, tableName string) string {
+	return organizationId + "/" + tableName + ":" + strconv.FormatInt(time.Now().Unix(), 10) + ".csv"
 }

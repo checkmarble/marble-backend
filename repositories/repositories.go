@@ -33,6 +33,7 @@ type Repositories struct {
 	AwsS3Repository                  AwsS3Repository
 	GcsRepository                    GcsRepository
 	CustomListRepository             CustomListRepository
+	UploadLogRepository              UploadLogRepository
 }
 
 func NewQueryBuilder() squirrel.StatementBuilderType {
@@ -116,6 +117,9 @@ func NewRepositories(
 			transactionFactory: transactionFactory,
 		},
 		CustomListRepository: &CustomListRepositoryPostgresql{
+			transactionFactory: transactionFactory,
+		},
+		UploadLogRepository: &UploadLogRepositoryImpl{
 			transactionFactory: transactionFactory,
 		},
 		AwsS3Repository: AwsS3Repository{
