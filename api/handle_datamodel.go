@@ -3,24 +3,22 @@ package api
 import (
 	"net/http"
 
+	"github.com/ggicci/httpin"
+
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
-
-	"github.com/ggicci/httpin"
 )
 
 func (api *API) handleGetDataModel() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-
-		organizationId, err := utils.OrgIDFromCtx(ctx, r)
+		organizationID, err := api.UsecasesWithCreds(r).OrganizationIdOfContext()
 		if presentError(w, r, err) {
 			return
 		}
 
 		usecase := api.UsecasesWithCreds(r).NewOrganizationUseCase()
-		dataModel, err := usecase.GetDataModel(organizationId)
+		dataModel, err := usecase.GetDataModel(organizationID)
 		if presentError(w, r, err) {
 			return
 		}
@@ -30,13 +28,13 @@ func (api *API) handleGetDataModel() http.HandlerFunc {
 }
 
 func (api *API) handleGetDataModelV2(w http.ResponseWriter, r *http.Request) {
-	organizationId, err := utils.OrgIDFromCtx(r.Context(), r)
+	organizationID, err := api.UsecasesWithCreds(r).OrganizationIdOfContext()
 	if presentError(w, r, err) {
 		return
 	}
 
 	usecase := api.UsecasesWithCreds(r).NewDataModelUseCase()
-	dataModel, err := usecase.GetDataModel(organizationId)
+	dataModel, err := usecase.GetDataModel(organizationID)
 	if presentError(w, r, err) {
 		return
 	}
@@ -48,13 +46,13 @@ func (api *API) handlePostDataModel() http.HandlerFunc {
 		ctx := r.Context()
 		input := *ctx.Value(httpin.Input).(*dto.PostDataModel)
 
-		organizationId, err := utils.OrgIDFromCtx(ctx, r)
+		organizationID, err := utils.OrgIDFromCtx(ctx, r)
 		if presentError(w, r, err) {
 			return
 		}
 
 		usecase := api.UsecasesWithCreds(r).NewOrganizationUseCase()
-		dataModel, err := usecase.ReplaceDataModel(organizationId, dto.AdaptDataModel(input.Body.DataModel))
+		dataModel, err := usecase.ReplaceDataModel(organizationID, dto.AdaptDataModel(input.Body.DataModel))
 		if presentError(w, r, err) {
 			return
 		}
@@ -67,13 +65,13 @@ func (api *API) handleCreateTable(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	input := *ctx.Value(httpin.Input).(*dto.PostCreateTable)
 
-	organizationId, err := utils.OrgIDFromCtx(ctx, r)
+	organizationID, err := api.UsecasesWithCreds(r).OrganizationIdOfContext()
 	if presentError(w, r, err) {
 		return
 	}
 
 	usecase := api.UsecasesWithCreds(r).NewDataModelUseCase()
-	err = usecase.CreateDataModelTable(organizationId, input.Body.Name, input.Body.Description)
+	err = usecase.CreateDataModelTable(organizationID, input.Body.Name, input.Body.Description)
 	if presentError(w, r, err) {
 		return
 	}
@@ -140,7 +138,7 @@ func (api *API) handleCreateLink(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	input := *ctx.Value(httpin.Input).(*dto.PostCreateLink)
 
-	organizationID, err := utils.OrgIDFromCtx(r.Context(), r)
+	organizationID, err := api.UsecasesWithCreds(r).OrganizationIdOfContext()
 	if presentError(w, r, err) {
 		return
 	}
