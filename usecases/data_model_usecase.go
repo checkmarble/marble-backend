@@ -162,3 +162,17 @@ func (usecase *DataModelUseCase) CreateDataModelLink(link models.DataModelLink) 
 	}
 	return usecase.dataModelRepository.CreateDataModelLink(nil, link)
 }
+
+func (usecase *DataModelUseCase) DeleteSchema(organizationID string) error {
+	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
+		return err
+	}
+
+	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+		err := usecase.dataModelRepository.DeleteDataModel(tx, organizationID)
+		if err != nil {
+			return err
+		}
+		return usecase.populateOrganizationSchema.OrganizationSchemaRepository.DeleteSchema(tx, organizationID)
+	})
+}

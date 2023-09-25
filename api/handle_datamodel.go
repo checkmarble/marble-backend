@@ -157,3 +157,17 @@ func (api *API) handleCreateLink(w http.ResponseWriter, r *http.Request) {
 	}
 	PresentNothing(w)
 }
+
+func (api *API) handleDeleteDataModel(w http.ResponseWriter, r *http.Request) {
+	organizationID, err := api.UsecasesWithCreds(r).OrganizationIdOfContext()
+	if presentError(w, r, err) {
+		return
+	}
+
+	usecase := api.UsecasesWithCreds(r).NewDataModelUseCase()
+	err = usecase.DeleteSchema(organizationID)
+	if presentError(w, r, err) {
+		return
+	}
+	PresentNothing(w)
+}
