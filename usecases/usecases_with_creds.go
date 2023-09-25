@@ -186,6 +186,7 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 		gcsRepository:         usecases.Repositories.GcsRepository,
 		datamodelRepository:   usecases.Repositories.DataModelRepository,
 		uploadLogRepository:   usecases.Repositories.UploadLogRepository,
+		GcsIngestionBucket:    usecases.Configuration.GcsIngestionBucket,
 	}
 }
 

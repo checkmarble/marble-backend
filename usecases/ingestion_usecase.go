@@ -1,7 +1,6 @@
 package usecases
 
 import (
-	"bufio"
 	"context"
 	"encoding/csv"
 	"fmt"
@@ -16,7 +15,6 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/transaction"
-	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 )
 
@@ -34,6 +32,7 @@ type IngestionUseCase struct {
 	gcsRepository         repositories.GcsRepository
 	datamodelRepository   repositories.DataModelRepository
 	uploadLogRepository   repositories.UploadLogRepository
+	GcsIngestionBucket    string
 }
 
 func (usecase *IngestionUseCase) IngestObjects(organizationId string, payloads []models.PayloadReader, table models.Table, logger *slog.Logger) error {
@@ -69,7 +68,7 @@ func (usecase *IngestionUseCase) IngestFilesFromStorageCsv(ctx context.Context, 
 	return nil
 }
 
-func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Context, organizationId, userId, objectType string, fileScanner *bufio.Scanner) (models.UploadLog, error) {
+func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Context, organizationId, userId, objectType string, fileReader *csv.Reader) (models.UploadLog, error) {
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
 		return models.UploadLog{}, err
 	}
@@ -83,16 +82,14 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 		return models.UploadLog{}, fmt.Errorf("Table %s not found on data model", objectType)
 	}
 
-	if !fileScanner.Scan() {
-		return models.UploadLog{}, fmt.Errorf("error reading first row of CSV: %w", fileScanner.Err())
+	headers, err := fileReader.Read()
+	if err != nil {
+		return models.UploadLog{}, fmt.Errorf("error reading first row of CSV: %w", err)
 	}
 
-	bucketName := utils.GetRequiredStringEnv("GCS_INGESTION_BUCKET")
 	fileName := computeFileName(organizationId, string(table.Name))
-	writer := usecase.gcsRepository.OpenStream(ctx, bucketName, fileName)
+	writer := usecase.gcsRepository.OpenStream(ctx, usecase.GcsIngestionBucket, fileName)
 
-	firstRow := fileScanner.Text()
-	headers := strings.Split(firstRow, ",")
 	for name, field := range table.Fields {
 		if !field.Nullable {
 			if !containsString(headers, string(name)) {
@@ -101,20 +98,22 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 		}
 	}
 
-	if err := usecase.gcsRepository.WriteIntoStream(writer, []byte(firstRow)); err != nil {
+	if err := usecase.gcsRepository.WriteIntoStream(writer, []byte(strings.Join(headers, ",")+"\n")); err != nil {
 		return models.UploadLog{}, err
 	}
 
 	payloadReaders := make([]models.PayloadReader, 0)
 	var i int
 	for i = 0; ; i++ {
-		if !fileScanner.Scan() {
+		row, err := fileReader.Read()
+		if err == io.EOF {
 			break
 		}
+		if err != nil {
+			return models.UploadLog{}, err
+		}
 
-		row := fileScanner.Text()
-		data := strings.Split(row, ",")
-		object, err := parseStringValuesToMap(headers, data, table)
+		object, err := parseStringValuesToMap(headers, row, table)
 		if err != nil {
 			return models.UploadLog{}, fmt.Errorf("Error found at line %d in CSV %w", i, err)
 		}
@@ -123,7 +122,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 			Data:      object,
 		}
 
-		if err := usecase.gcsRepository.WriteIntoStream(writer, []byte(row)); err != nil {
+		if err := usecase.gcsRepository.WriteIntoStream(writer, []byte(strings.Join(row, ",")+"\n")); err != nil {
 			return models.UploadLog{}, err
 		}
 
@@ -134,7 +133,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 	if err := usecase.gcsRepository.CloseStream(writer); err != nil {
 		return models.UploadLog{}, err
 	}
-	if err := usecase.gcsRepository.UpdateFileMetadata(ctx, bucketName, fileName, map[string]string{"processed": "true"}); err != nil {
+	if err := usecase.gcsRepository.UpdateFileMetadata(ctx, usecase.GcsIngestionBucket, fileName, map[string]string{"processed": "true"}); err != nil {
 		return models.UploadLog{}, err
 	}
 
@@ -144,11 +143,14 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 			Id:             newUploadListId,
 			UploadStatus:   models.UploadPending,
 			OrganizationId: organizationId,
+			FileName:       fileName,
 			UserId:         userId,
 			StartedAt:      time.Now(),
 			LinesProcessed: 0,
 		}
-		usecase.uploadLogRepository.CreateUploadLog(tx, newUploadLoad)
+		if err := usecase.uploadLogRepository.CreateUploadLog(tx, newUploadLoad); err != nil {
+			return models.UploadLog{}, err
+		}
 		return usecase.uploadLogRepository.UploadLogById(tx, newUploadListId)
 	})
 }

@@ -101,6 +101,7 @@ func main() {
 		config: models.GlobalConfiguration{
 			TokenLifetimeMinute: utils.GetIntEnv("TOKEN_LIFETIME_MINUTE", 60*2),
 			FakeAwsS3Repository: utils.GetBoolEnv("FAKE_AWS_S3", false),
+			GcsIngestionBucket: utils.GetRequiredStringEnv("GCS_INGESTION_BUCKET"),
 		},
 	}
 	isDevEnv := appConfig.env == "DEV"
@@ -133,7 +134,7 @@ func main() {
 	}
 
 	if *shouldRunBatchIngestion {
-		bucketName := utils.GetRequiredStringEnv("GCS_INGESTION_BUCKET")
+		bucketName := appConfig.config.GcsIngestionBucket
 		usecases := NewUseCases(appContext, appConfig, nil)
 		jobs.IngestDataFromStorageCSVs(appContext, usecases, bucketName)
 	}

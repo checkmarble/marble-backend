@@ -9,7 +9,7 @@ type UploadLog struct {
 	FileName       string
 	UploadStatus   UploadStatus
 	StartedAt      time.Time
-	FinishedAt     time.Time
+	FinishedAt     *time.Time
 	LinesProcessed int
 }
 

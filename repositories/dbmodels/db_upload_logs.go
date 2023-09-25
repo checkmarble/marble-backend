@@ -8,14 +8,14 @@ import (
 )
 
 type DBUploadLog struct {
-	Id             string    `db:"id"`
-	OrganizationId string    `db:"org_id"`
-	UserId         string    `db:"user_id"`
-	FileName       string    `db:"file_name"`
-	Status         string    `db:"status"`
-	StartedAt      time.Time `db:"started_at"`
-	FinishedAt     time.Time `db:"finished_at"`
-	LinesProcessed int       `db:"lines_processed"`
+	Id             string     `db:"id"`
+	OrganizationId string     `db:"org_id"`
+	UserId         string     `db:"user_id"`
+	FileName       string     `db:"file_name"`
+	Status         string     `db:"status"`
+	StartedAt      time.Time  `db:"started_at"`
+	FinishedAt     *time.Time `db:"finished_at"`
+	LinesProcessed int        `db:"lines_processed"`
 }
 
 const TABLE_UPLOAD_LOGS = "upload_logs"

@@ -1,7 +1,7 @@
 package api
 
 import (
-	"bufio"
+	"encoding/csv"
 	"errors"
 	"fmt"
 	"io"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
 	"github.com/checkmarble/marble-backend/utils"
 
@@ -90,13 +91,11 @@ func (api *API) handleCsvIngestion() http.HandlerFunc {
 		}
 		defer file.Close()
 
-		fileScanner := bufio.NewScanner(file)
-		fileScanner.Split(bufio.ScanLines)
-
+		fileReader := csv.NewReader(pure_utils.NewReaderWithoutBom(file))
 		objectType := chi.URLParam(r, "objectType")
 
 		ingestionUseCase := api.UsecasesWithCreds(r).NewIngestionUseCase()
-		uploadLog, err := ingestionUseCase.ValidateAndUploadIngestionCsv(ctx, creds.OrganizationId, userId, objectType, fileScanner)
+		uploadLog, err := ingestionUseCase.ValidateAndUploadIngestionCsv(ctx, creds.OrganizationId, userId, objectType, fileReader)
 
 		if presentError(w, r, err) {
 			return
