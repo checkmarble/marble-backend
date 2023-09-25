@@ -6,7 +6,7 @@ import (
 )
 
 type ScenarioWriteRepository interface {
-	CreateScenario(tx Transaction, scenario models.CreateScenarioInput, newScenarioId string) error
+	CreateScenario(tx Transaction, organizationId string, scenario models.CreateScenarioInput, newScenarioId string) error
 	UpdateScenario(tx Transaction, scenario models.UpdateScenarioInput) error
 	UpdateScenarioLiveIterationId(tx Transaction, scenarioId string, scenarioIterationId *string) error
 }
@@ -21,7 +21,7 @@ func NewScenarioWriteRepositoryPostgresql(transactionFactory TransactionFactoryP
 	}
 }
 
-func (repo *ScenarioWriteRepositoryPostgresql) CreateScenario(tx Transaction, scenario models.CreateScenarioInput, newScenarioId string) error {
+func (repo *ScenarioWriteRepositoryPostgresql) CreateScenario(tx Transaction, organizationId string, scenario models.CreateScenarioInput, newScenarioId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	_, err := pgTx.ExecBuilder(
@@ -35,7 +35,7 @@ func (repo *ScenarioWriteRepositoryPostgresql) CreateScenario(tx Transaction, sc
 			).
 			Values(
 				newScenarioId,
-				scenario.OrganizationId,
+				organizationId,
 				scenario.Name,
 				scenario.Description,
 				scenario.TriggerObjectType,

@@ -9,7 +9,6 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -205,7 +204,6 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 	// Create a new empty scenario
 	scenarioUsecase := usecasesWithCreds.NewScenarioUsecase()
 	scenario, err := scenarioUsecase.CreateScenario(models.CreateScenarioInput{
-		OrganizationId:    organizationId,
 		Name:              "Test scenario",
 		Description:       "Test scenario description",
 		TriggerObjectType: "transactions",
@@ -214,14 +212,7 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 	scenarioId := scenario.Id
 	fmt.Println("Created scenario", scenarioId)
 
-	// Security: check that creating a scenario on the wrong organization fails
-	_, err = scenarioUsecase.CreateScenario(models.CreateScenarioInput{
-		OrganizationId:    uuid.New().String(),
-		Name:              "Test scenario",
-		Description:       "Test scenario description",
-		TriggerObjectType: "transactions",
-	})
-	assert.Error(t, err, "Expected error creating scenario on wrong organization, got nil")
+	assert.Equal(t, scenario.OrganizationId, organizationId)
 
 	// Now, create a scenario iteration, with a rule
 	scenarioIterationUsecase := usecasesWithCreds.NewScenarioIterationUsecase()

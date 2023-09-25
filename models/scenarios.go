@@ -13,7 +13,6 @@ type Scenario struct {
 }
 
 type CreateScenarioInput struct {
-	OrganizationId    string
 	Name              string
 	Description       string
 	TriggerObjectType string

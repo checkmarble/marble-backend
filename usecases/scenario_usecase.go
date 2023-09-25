@@ -74,15 +74,21 @@ func (usecase *ScenarioUsecase) UpdateScenario(scenarioInput models.UpdateScenar
 }
 
 func (usecase *ScenarioUsecase) CreateScenario(scenario models.CreateScenarioInput) (models.Scenario, error) {
+	organizationId, err := usecase.organizationIdOfContext()
+	if err != nil {
+		return models.Scenario{}, err
+	}
+
+	if err := usecase.enforceSecurity.CreateScenario(organizationId); err != nil {
+		return models.Scenario{}, err
+	}
+
 	return transaction.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) (models.Scenario, error) {
-			if err := usecase.enforceSecurity.CreateScenario(scenario.OrganizationId); err != nil {
-				return models.Scenario{}, err
-			}
-			newScenarioId := utils.NewPrimaryKey(scenario.OrganizationId)
-			if err := usecase.scenarioWriteRepository.CreateScenario(nil, scenario, newScenarioId); err != nil {
+			newScenarioId := utils.NewPrimaryKey(organizationId)
+			if err := usecase.scenarioWriteRepository.CreateScenario(tx, organizationId, scenario, newScenarioId); err != nil {
 				return models.Scenario{}, err
 			}
 			scenario, err := usecase.scenarioReadRepository.GetScenarioById(tx, newScenarioId)

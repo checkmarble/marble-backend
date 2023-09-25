@@ -11,13 +11,6 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-var scenarioId = "some scenario id"
-var scheduledExecutions = []models.ScheduledExecution{
-	{
-		Id: "some ScheduledExecution id",
-	},
-}
-
 type ScheduledExecutionsTestSuite struct {
 	suite.Suite
 	transaction                  *mocks.Transaction
@@ -25,14 +18,25 @@ type ScheduledExecutionsTestSuite struct {
 	transactionFactory           *mocks.TransactionFactory
 	scheduledExecutionRepository *mocks.ScheduledExecutionRepository
 	exportScheduleExecution      *mocks.ExportDecisionsMock
+
+	scenarioId          string
+	scheduledExecutions []models.ScheduledExecution
 }
 
 func (suite *ScheduledExecutionsTestSuite) SetupTest() {
+
 	suite.transaction = new(mocks.Transaction)
 	suite.enforceSecurity = new(mocks.EnforceSecurity)
 	suite.transactionFactory = &mocks.TransactionFactory{TxMock: suite.transaction}
 	suite.scheduledExecutionRepository = new(mocks.ScheduledExecutionRepository)
 	suite.exportScheduleExecution = new(mocks.ExportDecisionsMock)
+
+	suite.scenarioId = "some scenario id"
+	suite.scheduledExecutions = []models.ScheduledExecution{
+		{
+			Id: "some ScheduledExecution id",
+		},
+	}
 }
 
 func (suite *ScheduledExecutionsTestSuite) makeUsecase() *ScheduledExecutionUsecase {
@@ -49,6 +53,7 @@ func (suite *ScheduledExecutionsTestSuite) makeUsecase() *ScheduledExecutionUsec
 
 func (suite *ScheduledExecutionsTestSuite) AssertExpectations() {
 	t := suite.T()
+	suite.transaction.AssertExpectations(t)
 	suite.enforceSecurity.AssertExpectations(t)
 	suite.transactionFactory.AssertExpectations(t)
 	suite.scheduledExecutionRepository.AssertExpectations(t)
@@ -58,14 +63,14 @@ func (suite *ScheduledExecutionsTestSuite) AssertExpectations() {
 func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutions_ListScheduledExecutions_of_organization() {
 
 	suite.transactionFactory.On("Transaction", models.DATABASE_MARBLE_SCHEMA, mock.Anything).Return(nil)
-	suite.scheduledExecutionRepository.On("ListScheduledExecutionsOfOrganization", suite.transaction, "some org id").Return(scheduledExecutions, nil)
-	suite.enforceSecurity.On("ReadScheduledExecution", scheduledExecutions[0]).Return(nil)
+	suite.scheduledExecutionRepository.On("ListScheduledExecutionsOfOrganization", suite.transaction, "some org id").Return(suite.scheduledExecutions, nil)
+	suite.enforceSecurity.On("ReadScheduledExecution", suite.scheduledExecutions[0]).Return(nil)
 
 	result, err := suite.makeUsecase().ListScheduledExecutions("")
 
 	t := suite.T()
 	assert.NoError(t, err)
-	assert.Equal(t, scheduledExecutions, result)
+	assert.Equal(t, suite.scheduledExecutions, result)
 
 	suite.AssertExpectations()
 }
@@ -73,14 +78,14 @@ func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutions_ListSched
 func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutions_ListScheduledExecutions_of_scenario() {
 
 	suite.transactionFactory.On("Transaction", models.DATABASE_MARBLE_SCHEMA, mock.Anything).Return(nil)
-	suite.scheduledExecutionRepository.On("ListScheduledExecutionsOfScenario", suite.transaction, scenarioId).Return(scheduledExecutions, nil)
-	suite.enforceSecurity.On("ReadScheduledExecution", scheduledExecutions[0]).Return(nil)
+	suite.scheduledExecutionRepository.On("ListScheduledExecutionsOfScenario", suite.transaction, suite.scenarioId).Return(suite.scheduledExecutions, nil)
+	suite.enforceSecurity.On("ReadScheduledExecution", suite.scheduledExecutions[0]).Return(nil)
 
-	result, err := suite.makeUsecase().ListScheduledExecutions(scenarioId)
+	result, err := suite.makeUsecase().ListScheduledExecutions(suite.scenarioId)
 
 	t := suite.T()
 	assert.NoError(t, err)
-	assert.Equal(t, scheduledExecutions, result)
+	assert.Equal(t, suite.scheduledExecutions, result)
 
 	suite.AssertExpectations()
 }
@@ -90,14 +95,14 @@ func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutions_ListSched
 	securityError := errors.New("some security error")
 
 	suite.transactionFactory.On("Transaction", models.DATABASE_MARBLE_SCHEMA, mock.Anything).Return(nil)
-	suite.scheduledExecutionRepository.On("ListScheduledExecutionsOfScenario", suite.transaction, scenarioId).Return(scheduledExecutions, nil)
-	suite.enforceSecurity.On("ReadScheduledExecution", scheduledExecutions[0]).Return(securityError)
+	suite.scheduledExecutionRepository.On("ListScheduledExecutionsOfScenario", suite.transaction, suite.scenarioId).Return(suite.scheduledExecutions, nil)
+	suite.enforceSecurity.On("ReadScheduledExecution", suite.scheduledExecutions[0]).Return(securityError)
 
-	result, err := suite.makeUsecase().ListScheduledExecutions(scenarioId)
+	result, err := suite.makeUsecase().ListScheduledExecutions(suite.scenarioId)
 
 	t := suite.T()
 	assert.ErrorIs(t, err, securityError)
-	assert.Empty(t, result, scheduledExecutions)
+	assert.Empty(t, result, suite.scheduledExecutions)
 
 	suite.AssertExpectations()
 }
