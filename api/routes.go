@@ -43,6 +43,10 @@ func (api *API) routes() {
 			r.Post("/{object_type}", api.handleIngestion())
 		})
 
+		authedRouter.Route("/csv-ingestion", func(csvIngestionRouter chi.Router) {
+			csvIngestionRouter.Post("/{objectType}", api.handleCsvIngestion())
+		})
+
 		authedRouter.Route("/scenarios", func(scenariosRouter chi.Router) {
 
 			scenariosRouter.Get("/", api.ListScenarios())
