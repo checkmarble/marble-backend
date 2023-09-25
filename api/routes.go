@@ -154,6 +154,8 @@ func (api *API) routes() {
 
 			dataModelRouter.With(httpin.NewInput(dto.PostCreateLink{})).
 				Post("/links", api.handleCreateLink)
+
+			dataModelRouter.Delete("/", api.handleDeleteDataModel)
 		})
 
 		authedRouter.Route("/apikeys", func(dataModelRouter chi.Router) {
