@@ -15,23 +15,23 @@ func presentError(w http.ResponseWriter, r *http.Request, err error) bool {
 	}
 
 	if errors.Is(err, models.BadParameterError) {
-		utils.LogRequestError(r, fmt.Sprintf("BadParameterError: %v", err))
+		utils.LogRequestInfo(r, fmt.Sprintf("BadParameterError: %v", err))
 		http.Error(w, err.Error(), http.StatusBadRequest)
 
 	} else if errors.Is(err, models.UnAuthorizedError) {
-		utils.LogRequestError(r, fmt.Sprintf("UnAuthorizedError: %v", err))
+		utils.LogRequestInfo(r, fmt.Sprintf("UnAuthorizedError: %v", err))
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 
 	} else if errors.Is(err, models.ForbiddenError) {
-		utils.LogRequestError(r, fmt.Sprintf("ForbiddenError: %v", err))
+		utils.LogRequestInfo(r, fmt.Sprintf("ForbiddenError: %v", err))
 		http.Error(w, err.Error(), http.StatusForbidden)
 
 	} else if errors.Is(err, models.NotFoundError) {
-		utils.LogRequestError(r, fmt.Sprintf("NotFoundError: %v", err))
+		utils.LogRequestInfo(r, fmt.Sprintf("NotFoundError: %v", err))
 		http.Error(w, err.Error(), http.StatusNotFound)
 
 	} else if errors.Is(err, models.DuplicateValueError) {
-		utils.LogRequestError(r, fmt.Sprintf("DuplicateValueError: %v", err))
+		utils.LogRequestInfo(r, fmt.Sprintf("DuplicateValueError: %v", err))
 		http.Error(w, err.Error(), http.StatusConflict)
 
 	} else {

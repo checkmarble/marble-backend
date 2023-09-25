@@ -139,3 +139,8 @@ func LogRequestError(r *http.Request, msg string, args ...any) {
 	ctx := r.Context()
 	LoggerFromContext(ctx).ErrorContext(ctx, msg, args...)
 }
+
+func LogRequestInfo(r *http.Request, msg string, args ...any) {
+	ctx := r.Context()
+	LoggerFromContext(ctx).InfoContext(ctx, msg, args...)
+}

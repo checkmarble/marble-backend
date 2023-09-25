@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"crypto/rsa"
+	"errors"
 	"flag"
 	"log"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -62,7 +64,7 @@ func runServer(ctx context.Context, appConfig AppConfiguration, isDevEnv bool, p
 
 	go func() {
 		log.Printf("starting server on port %v\n", appConfig.port)
-		if err := server.ListenAndServe(); err != nil {
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.ErrorContext(ctx, "error serving the app: \n"+err.Error())
 		}
 		logger.InfoContext(ctx, "server returned")
