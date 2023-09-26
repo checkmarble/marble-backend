@@ -35,16 +35,14 @@ type DataModel struct {
 type PostDataModel struct {
 	Body *struct {
 		DataModel DataModel `json:"data_model"`
-	} `in:"body=json"`
+	} `in:"body=json;required"`
 }
 
 type PostCreateTable struct {
 	Body *struct {
 		Name        string `json:"name"`
 		Description string `json:"description"`
-		Type        string `json:"type"`
-		Nullable    bool   `json:"nullable"`
-	} `in:"body=json"`
+	} `in:"body=json;required"`
 }
 
 type PostCreateField struct {
@@ -53,7 +51,7 @@ type PostCreateField struct {
 		Description string `json:"description"`
 		Type        string `json:"type"`
 		Nullable    bool   `json:"nullable"`
-	} `in:"body=json"`
+	} `in:"body=json;required"`
 }
 
 type PostCreateLink struct {
