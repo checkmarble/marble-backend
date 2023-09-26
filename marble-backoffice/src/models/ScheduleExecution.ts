@@ -5,4 +5,5 @@ export interface ScheduleExecution {
     status: string;
     started_at: Date;
     finished_at: Date | null;
+    numberOfCreatedDecisions: number | null
 }

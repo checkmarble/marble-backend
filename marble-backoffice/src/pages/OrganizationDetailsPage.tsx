@@ -440,6 +440,9 @@ function ScheduledExecutionCard({
           <Typography variant="h6">
             {scheduledExecution.started_at.toISOString()}
           </Typography>
+          <Typography variant="body2">
+          Number of created decisions: {scheduledExecution.numberOfCreatedDecisions}
+          </Typography>
           {downloading && <LinearProgress />}
         </CardContent>
         <CardActions>

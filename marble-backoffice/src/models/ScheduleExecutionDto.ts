@@ -8,6 +8,7 @@ const ScheduleExecutionSchema = yup.object({
   status: yup.string().defined(),
   started_at: yup.date().defined(),
   finished_at: yup.date().defined().nullable(),
+  number_of_created_decisions: yup.number().defined(),
 });
 
 export function adaptScheduleExecution(
@@ -19,6 +20,7 @@ export function adaptScheduleExecution(
     status: dto.status,
     started_at: dto.started_at,
     finished_at: dto.finished_at,
+    numberOfCreatedDecisions: dto.number_of_created_decisions,
   };
 }
 
