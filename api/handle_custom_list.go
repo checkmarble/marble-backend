@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -153,9 +154,19 @@ func (api *API) handleDeleteCustomListValue() http.HandlerFunc {
 		inputDto := ctx.Value(httpin.Input).(*dto.DeleteCustomListValueInputDto)
 		listId := inputDto.CustomListID
 
+		if err := utils.ValidateUuid(inputDto.CustomListID); err != nil {
+			presentError(w, r, fmt.Errorf("param 'customListId' : %w", err))
+			return
+		}
+
+		if err := utils.ValidateUuid(inputDto.CustomListValueId); err != nil {
+			presentError(w, r, fmt.Errorf("param 'customListValueId': %w", err))
+			return
+		}
+
 		usecase := api.UsecasesWithCreds(r).NewCustomListUseCase()
 		err = usecase.DeleteCustomListValue(models.DeleteCustomListValueInput{
-			Id:           inputDto.Body.Id,
+			Id:           inputDto.CustomListValueId,
 			CustomListId: listId,
 		})
 
