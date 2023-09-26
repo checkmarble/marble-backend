@@ -184,7 +184,7 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 		orgTransactionFactory: usecases.NewOrgTransactionFactory(),
 		ingestionRepository:   usecases.Repositories.IngestionRepository,
 		gcsRepository:         usecases.Repositories.GcsRepository,
-		datamodelRepository:   usecases.Repositories.DataModelRepository,
+		dataModelUseCase:      usecases.NewDataModelUseCase(),
 		uploadLogRepository:   usecases.Repositories.UploadLogRepository,
 		GcsIngestionBucket:    usecases.Configuration.GcsIngestionBucket,
 	}

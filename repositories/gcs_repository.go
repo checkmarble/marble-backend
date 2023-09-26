@@ -1,10 +1,8 @@
 package repositories
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"time"
 
@@ -18,8 +16,6 @@ type GcsRepository interface {
 	ListFiles(ctx context.Context, bucketName, prefix string) ([]models.GCSFile, error)
 	MoveFile(ctx context.Context, bucketName, source, destination string) error
 	OpenStream(ctx context.Context, bucketName, fileName string) *storage.Writer
-	WriteIntoStream(writer *storage.Writer, content []byte) error
-	CloseStream(writer *storage.Writer) error
 	UpdateFileMetadata(ctx context.Context, bucketName, fileName string, metadata map[string]string) error
 }
 
@@ -100,27 +96,10 @@ func (repository *GcsRepositoryImpl) MoveFile(ctx context.Context, bucketName, s
 
 func (repository *GcsRepositoryImpl) OpenStream(ctx context.Context, bucketName, fileName string) *storage.Writer {
 	gcsClient := repository.getGCSClient(ctx)
-	defer gcsClient.Close()
 
 	writer := gcsClient.Bucket(bucketName).Object(fileName).NewWriter(ctx)
 	writer.ChunkSize = 0 // note retries are not supported for chunk size 0.
 	return writer
-}
-
-func (repository *GcsRepositoryImpl) WriteIntoStream(writer *storage.Writer, content []byte) error {
-	buf := bytes.NewBuffer(content)
-
-	if _, err := io.Copy(writer, buf); err != nil {
-		return fmt.Errorf("io.Copy: %w", err)
-	}
-	return nil
-}
-
-func (repository *GcsRepositoryImpl) CloseStream(writer *storage.Writer) error {
-	if err := writer.Close(); err != nil {
-		return fmt.Errorf("Writer.Close: %w", err)
-	}
-	return nil
 }
 
 func (repository *GcsRepositoryImpl) UpdateFileMetadata(ctx context.Context, bucketName, fileName string, metadata map[string]string) error {

@@ -52,9 +52,7 @@ func (repo *UploadLogRepositoryImpl) UploadLogById(tx Transaction, id string) (m
 			Select(dbmodels.SelectUploadLogColumn...).
 			From(dbmodels.TABLE_UPLOAD_LOGS).
 			Where(squirrel.Eq{"id": id}),
-		func(db dbmodels.DBUploadLog) models.UploadLog {
-			return dbmodels.AdaptUploadLog(db)
-		},
+		dbmodels.AdaptUploadLog,
 	)
 
 	if err != nil {

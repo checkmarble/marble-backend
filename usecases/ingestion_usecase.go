@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"bytes"
 	"context"
 	"encoding/csv"
 	"fmt"
@@ -31,6 +32,7 @@ type IngestionUseCase struct {
 	ingestionRepository   repositories.IngestionRepository
 	gcsRepository         repositories.GcsRepository
 	datamodelRepository   repositories.DataModelRepository
+	dataModelUseCase      DataModelUseCase
 	uploadLogRepository   repositories.UploadLogRepository
 	GcsIngestionBucket    string
 }
@@ -72,7 +74,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
 		return models.UploadLog{}, err
 	}
-	dataModel, err := usecase.datamodelRepository.GetDataModel(nil, organizationId)
+	dataModel, err := usecase.dataModelUseCase.GetDataModel(organizationId)
 	if err != nil {
 		return models.UploadLog{}, err
 	}
@@ -93,16 +95,15 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 	for name, field := range table.Fields {
 		if !field.Nullable {
 			if !containsString(headers, string(name)) {
-				return models.UploadLog{}, fmt.Errorf("missing required field %s in CSV", name)
+				return models.UploadLog{}, fmt.Errorf("missing required field %s in CSV: %w", name, models.BadParameterError)
 			}
 		}
 	}
 
-	if err := usecase.gcsRepository.WriteIntoStream(writer, []byte(strings.Join(headers, ",")+"\n")); err != nil {
+	if err := writeCsvRow(writer, headers); err != nil {
 		return models.UploadLog{}, err
 	}
 
-	payloadReaders := make([]models.PayloadReader, 0)
 	var i int
 	for i = 0; ; i++ {
 		row, err := fileReader.Read()
@@ -113,24 +114,17 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 			return models.UploadLog{}, err
 		}
 
-		object, err := parseStringValuesToMap(headers, row, table)
+		_, err = parseStringValuesToMap(headers, row, table)
 		if err != nil {
 			return models.UploadLog{}, fmt.Errorf("Error found at line %d in CSV %w", i, err)
 		}
-		clientObject := models.ClientObject{
-			TableName: table.Name,
-			Data:      object,
-		}
 
-		if err := usecase.gcsRepository.WriteIntoStream(writer, []byte(strings.Join(row, ",")+"\n")); err != nil {
+		if err := writeCsvRow(writer, row); err != nil {
 			return models.UploadLog{}, err
 		}
-
-		payloadReader := models.PayloadReader(clientObject)
-		payloadReaders = append(payloadReaders, payloadReader)
 	}
 
-	if err := usecase.gcsRepository.CloseStream(writer); err != nil {
+	if err := writer.Close(); err != nil {
 		return models.UploadLog{}, err
 	}
 	if err := usecase.gcsRepository.UpdateFileMetadata(ctx, usecase.GcsIngestionBucket, fileName, map[string]string{"processed": "true"}); err != nil {
@@ -332,6 +326,19 @@ func parseStringValuesToMap(headers []string, values []string, table models.Tabl
 	return result, nil
 }
 
+// TODO change to `organizationId/tableName/timestamp.csv once we get rid of the previous ingestion system
 func computeFileName(organizationId, tableName string) string {
 	return organizationId + "/" + tableName + ":" + strconv.FormatInt(time.Now().Unix(), 10) + ".csv"
+}
+
+func writeCsvRow(writer io.Writer, row []string) error {
+	var csvRow bytes.Buffer
+	csvWriter := csv.NewWriter(&csvRow)
+	csvWriter.Write(row)
+	csvWriter.Flush()
+
+	if _, err := io.Copy(writer, &csvRow); err != nil {
+		return err
+	}
+	return nil
 }
