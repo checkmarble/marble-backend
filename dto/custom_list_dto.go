@@ -94,10 +94,6 @@ type CreateCustomListValueBodyDto struct {
 }
 
 type DeleteCustomListValueInputDto struct {
-	CustomListID string                        `in:"path=customListId"`
-	Body         *DeleteCustomListValueBodyDto `in:"body=json"`
-}
-
-type DeleteCustomListValueBodyDto struct {
-	Id string `in:"path=id"`
+	CustomListID      string `in:"path=customListId"`
+	CustomListValueId string `in:"path=customListValueId"`
 }

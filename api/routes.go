@@ -178,8 +178,10 @@ func (api *API) routes() {
 					r.With(httpin.NewInput(dto.CreateCustomListValueInputDto{})).
 						Post("/", api.handlePostCustomListValue())
 
-					r.With(httpin.NewInput(dto.DeleteCustomListValueInputDto{})).
-						Delete("/", api.handleDeleteCustomListValue())
+					r.Route("/{customListValueId}", func(r chi.Router) {
+						r.With(httpin.NewInput(dto.DeleteCustomListValueInputDto{})).
+							Delete("/", api.handleDeleteCustomListValue())
+					})
 				})
 			})
 		})
