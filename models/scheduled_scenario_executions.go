@@ -3,13 +3,14 @@ package models
 import "time"
 
 type ScheduledExecution struct {
-	Id                  string
-	OrganizationId      string
-	ScenarioId          string
-	ScenarioIterationId string
-	Status              ScheduledExecutionStatus
-	StartedAt           time.Time
-	FinishedAt          *time.Time
+	Id                       string
+	OrganizationId           string
+	ScenarioId               string
+	ScenarioIterationId      string
+	Status                   ScheduledExecutionStatus
+	StartedAt                time.Time
+	FinishedAt               *time.Time
+	NumberOfCreatedDecisions int
 }
 
 type ScheduledExecutionStatus int
@@ -45,8 +46,9 @@ func ScheduledExecutionStatusFrom(s string) ScheduledExecutionStatus {
 }
 
 type UpdateScheduledExecutionInput struct {
-	Id     string
-	Status *ScheduledExecutionStatus
+	Id                       string
+	Status                   *ScheduledExecutionStatus
+	NumberOfCreatedDecisions *int
 }
 
 type CreateScheduledExecutionInput struct {
