@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -62,7 +63,7 @@ func (usecase *IngestionUseCase) IngestFilesFromStorageCsv(ctx context.Context, 
 	logger.InfoContext(ctx, fmt.Sprintf("Found %d CSVs of data to ingest", len(filteredFiles)))
 
 	for _, file := range filteredFiles {
-		if err = usecase.readFileIngestObjects(ctx, file, logger); err != nil {
+		if err = usecase.readFileIngestObjects(ctx, file, logger, true); err != nil {
 			return err
 		}
 	}
@@ -149,7 +150,70 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 	})
 }
 
-func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file models.GCSFile, logger *slog.Logger) error {
+func (usecase *IngestionUseCase) IngestDataFromUploadLogs(ctx context.Context, logger *slog.Logger) error {
+	pendingUploadLogs, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) ([]models.UploadLog, error) {
+		return usecase.uploadLogRepository.AllUploadLogsByStatus(tx, models.UploadPending)
+	})
+
+	if err != nil {
+		return err
+	}
+	logger.InfoContext(ctx, fmt.Sprintf("Found %d upload logs of data to ingest", len(pendingUploadLogs)))
+
+	var waitGroup sync.WaitGroup
+	uploadErrorChan := make(chan error)
+
+	startProcessUploadLog := func(uploadLog models.UploadLog) {
+		defer waitGroup.Done()
+		if err := usecase.processUploadLog(ctx, uploadLog, logger); err != nil {
+			uploadErrorChan <- err
+		}
+	}
+
+	for _, uploadLog := range pendingUploadLogs {
+		waitGroup.Add(1)
+		go startProcessUploadLog(uploadLog)
+	}
+
+	go func() {
+		waitGroup.Wait()
+		close(uploadErrorChan)
+	}()
+
+	uploadErr := <-uploadErrorChan
+	return uploadErr
+}
+
+func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog models.UploadLog, logger *slog.Logger) error {
+	err := usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+		uploadLog.UploadStatus = models.UploadProcessing
+		return usecase.uploadLogRepository.UpdateUploadLog(tx, uploadLog)
+	})
+
+	if err != nil {
+		return err
+	}
+
+	file, err := usecase.gcsRepository.GetFile(ctx, usecase.GcsIngestionBucket, uploadLog.FileName)
+	if err != nil {
+		return err
+	}
+
+	if err = usecase.readFileIngestObjects(ctx, file, logger, false); err != nil {
+		return err
+	}
+
+	err = usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+		uploadLog.UploadStatus = models.UploadSuccess
+		return usecase.uploadLogRepository.UpdateUploadLog(tx, uploadLog)
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file models.GCSFile, logger *slog.Logger, moveFile bool) error {
 	fullFileName := file.FileName
 	logger.InfoContext(ctx, fmt.Sprintf("Ingesting data from CSV %s", fullFileName))
 
@@ -186,8 +250,10 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file
 		return fmt.Errorf("error ingesting objects from CSV %s: %w", fullFileName, err)
 	}
 
-	if err = usecase.gcsRepository.MoveFile(ctx, file.BucketName, fullFileName, strings.Replace(fullFileName, pendingFilesFolder, doneFilesFolder, 1)); err != nil {
-		return fmt.Errorf("error moving file %s to done folder: %w", fullFileName, err)
+	if moveFile == true {
+		if err = usecase.gcsRepository.MoveFile(ctx, file.BucketName, fullFileName, strings.Replace(fullFileName, pendingFilesFolder, doneFilesFolder, 1)); err != nil {
+			return fmt.Errorf("error moving file %s to done folder: %w", fullFileName, err)
+		}
 	}
 	return nil
 }
@@ -328,5 +394,5 @@ func parseStringValuesToMap(headers []string, values []string, table models.Tabl
 
 // TODO change to `organizationId/tableName/timestamp.csv once we get rid of the previous ingestion system
 func computeFileName(organizationId, tableName string) string {
-	return organizationId + "/" + tableName + ":" + strconv.FormatInt(time.Now().Unix(), 10) + ".csv"
+	return organizationId + "/" + organizationId + ":" + tableName + ":" + strconv.FormatInt(time.Now().Unix(), 10) + ".csv"
 }

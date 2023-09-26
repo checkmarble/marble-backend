@@ -16,9 +16,10 @@ type UploadLog struct {
 type UploadStatus string
 
 const (
-	UploadPending UploadStatus = "pending"
-	UploadSuccess UploadStatus = "success"
-	UploadFailure UploadStatus = "failure"
+	UploadPending    UploadStatus = "pending"
+	UploadProcessing UploadStatus = "processing"
+	UploadSuccess    UploadStatus = "success"
+	UploadFailure    UploadStatus = "failure"
 )
 
 func UploadStatusFrom(s string) UploadStatus {

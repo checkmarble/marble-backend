@@ -117,6 +117,7 @@ func main() {
 	shouldRunServer := flag.Bool("server", false, "Run server")
 	shouldRunScheduledScenarios := flag.Bool("scheduler", false, "Run scheduled scenarios")
 	shouldRunBatchIngestion := flag.Bool("batch-ingestion", false, "Run batch ingestion")
+	shouldRunUploadIngestion := flag.Bool("upload-ingestion", false, "Run upload ingestion")
 	flag.Parse()
 	logger.Info("Flags", "shouldRunMigrations", *shouldRunMigrations, "shouldRunServer", *shouldRunServer)
 
@@ -137,6 +138,11 @@ func main() {
 		bucketName := appConfig.config.GcsIngestionBucket
 		usecases := NewUseCases(appContext, appConfig, nil)
 		jobs.IngestDataFromStorageCSVs(appContext, usecases, bucketName)
+	}
+
+	if *shouldRunUploadIngestion {
+		usecases := NewUseCases(appContext, appConfig, nil)
+		jobs.IngestDataFromUploadLogs(appContext, usecases)
 	}
 }
 
