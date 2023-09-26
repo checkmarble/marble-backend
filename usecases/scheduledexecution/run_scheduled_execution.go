@@ -86,13 +86,16 @@ func (usecase *RunScheduledExecution) ExecuteScheduledScenarioIfDue(ctx context.
 				}
 
 				// Actually execute the scheduled scenario
-				if err := usecase.executeScheduledScenario(ctx, scheduledExecutionId, scenario); err != nil {
+				numberOfCreatedDecisions, err := usecase.executeScheduledScenario(ctx, scheduledExecutionId, scenario)
+
+				if err != nil {
 					return models.ScheduledExecution{}, err
 				}
 
 				if err := usecase.ScheduledExecutionRepository.UpdateScheduledExecution(tx, models.UpdateScheduledExecutionInput{
-					Id:     scheduledExecutionId,
-					Status: utils.PtrTo(models.ScheduledExecutionSuccess, nil),
+					Id:                       scheduledExecutionId,
+					Status:                   utils.PtrTo(models.ScheduledExecutionSuccess, nil),
+					NumberOfCreatedDecisions: &numberOfCreatedDecisions,
 				}); err != nil {
 					return models.ScheduledExecution{}, err
 				}
@@ -159,18 +162,19 @@ func executionIsDueNow(schedule string, previousExecutions []models.ScheduledExe
 	return true, nil
 }
 
-func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Context, scheduledExecutionId string, scenario models.Scenario) error {
+func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Context, scheduledExecutionId string, scenario models.Scenario) (int, error) {
 	dataModel, err := usecase.DataModelRepository.GetDataModel(nil, scenario.OrganizationId)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	tables := dataModel.Tables
 	table, ok := tables[models.TableName(scenario.TriggerObjectType)]
 	if !ok {
-		return fmt.Errorf("trigger object type %s not found in data model: %w", scenario.TriggerObjectType, models.NotFoundError)
+		return 0, fmt.Errorf("trigger object type %s not found in data model: %w", scenario.TriggerObjectType, models.NotFoundError)
 	}
 
 	// list objects to score
+	numberOfCreatedDecisions := 0
 	err = usecase.TransactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
 		var objects []models.ClientObject
 		err = usecase.OrgTransactionFactory.TransactionInOrgSchema(scenario.OrganizationId, func(clientTx repositories.Transaction) error {
@@ -221,10 +225,11 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 			if err != nil {
 				return fmt.Errorf("error storing decision: %w", err)
 			}
+			numberOfCreatedDecisions += 1
 		}
 		return nil
 	})
-	return err
+	return numberOfCreatedDecisions, err
 }
 
 func (usecase *RunScheduledExecution) getPublishedScenarioIteration(scenario models.Scenario) (*models.PublishedScenarioIteration, error) {

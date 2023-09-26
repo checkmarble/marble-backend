@@ -92,6 +92,10 @@ func (repo *ScheduledExecutionRepositoryPostgresql) UpdateScheduledExecution(tx 
 		}
 	}
 
+	if updateScheduledEx.NumberOfCreatedDecisions != nil {
+		query = query.Set("number_of_created_decisions", *updateScheduledEx.NumberOfCreatedDecisions)
+	}
+
 	_, err := pgTx.ExecBuilder(query)
 	return err
 }
