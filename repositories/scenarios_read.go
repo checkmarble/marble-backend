@@ -35,7 +35,7 @@ func (repo *ScenarioReadRepositoryPostgresql) GetScenarioById(tx Transaction, sc
 	return SqlToModel(
 		pgTx,
 		selectScenarios().Where(squirrel.Eq{"id": scenarioId}),
-		dbmodels.AdaptScenario,
+		FuncReturnsNilError(dbmodels.AdaptScenario),
 	)
 }
 
@@ -45,7 +45,7 @@ func (repo *ScenarioReadRepositoryPostgresql) ListScenariosOfOrganization(tx Tra
 	return SqlToListOfModels(
 		pgTx,
 		selectScenarios().Where(squirrel.Eq{"org_id": organizationId}),
-		dbmodels.AdaptScenario,
+		FuncReturnsNilError(dbmodels.AdaptScenario),
 	)
 }
 
@@ -55,6 +55,6 @@ func (repo *ScenarioReadRepositoryPostgresql) ListAllScenarios(tx Transaction) (
 	return SqlToListOfModels(
 		pgTx,
 		selectScenarios().OrderBy("id"),
-		dbmodels.AdaptScenario,
+		FuncReturnsNilError(dbmodels.AdaptScenario),
 	)
 }

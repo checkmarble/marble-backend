@@ -32,7 +32,7 @@ func selectRules() squirrel.SelectBuilder {
 func (repo *RuleRepositoryPostgresql) GetRuleById(tx Transaction, ruleId string) (models.Rule, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	return SqlToModelAdapterWithErr(
+	return SqlToModel(
 		pgTx,
 		selectRules().Where(squirrel.Eq{"id": ruleId}),
 		dbmodels.AdaptRule,
@@ -42,7 +42,7 @@ func (repo *RuleRepositoryPostgresql) GetRuleById(tx Transaction, ruleId string)
 func (repo *RuleRepositoryPostgresql) ListRulesByIterationId(tx Transaction, iterationId string) ([]models.Rule, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	return SqlToListOfModelsAdapterWithErr(
+	return SqlToListOfModels(
 		pgTx,
 		selectRules().Where(squirrel.Eq{"scenario_iteration_id": iterationId}),
 		dbmodels.AdaptRule,
@@ -75,7 +75,7 @@ func (repo *RuleRepositoryPostgresql) DeleteRule(tx Transaction, ruleID string) 
 
 func (repo *RuleRepositoryPostgresql) CreateRules(tx Transaction, rules []models.CreateRuleInput) ([]models.Rule, error) {
 	if len(rules) == 0 {
-		return []models.Rule{}, fmt.Errorf("No rule found")
+		return []models.Rule{}, fmt.Errorf("no rule found")
 	}
 
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
@@ -97,6 +97,7 @@ func (repo *RuleRepositoryPostgresql) CreateRules(tx Transaction, rules []models
 			"formula_ast_expression",
 			"score_modifier").
 		Suffix("RETURNING *")
+
 	for _, rule := range dbCreateRuleInputs {
 		query = query.Values(
 			rule.Id,
@@ -110,7 +111,7 @@ func (repo *RuleRepositoryPostgresql) CreateRules(tx Transaction, rules []models
 		)
 	}
 
-	return SqlToListOfModelsAdapterWithErr(
+	return SqlToListOfModels(
 		pgTx,
 		query,
 		dbmodels.AdaptRule,

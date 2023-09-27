@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func SqlToChannelOfRow[Model any](tx TransactionPostgres, query squirrel.Sqlizer, adapter func(row pgx.CollectableRow) (Model, error)) (<-chan Model, <-chan error) {
+func SqlToChannelOfModels[Model any](tx TransactionPostgres, query squirrel.Sqlizer, adapter func(row pgx.CollectableRow) (Model, error)) (<-chan Model, <-chan error) {
 
 	modelsChannel := make(chan Model, 100)
 	errChannel := make(chan error, 1)

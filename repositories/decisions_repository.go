@@ -36,8 +36,8 @@ func (repo *DecisionRepositoryImpl) DecisionById(transaction Transaction, decisi
 	decision, err := SqlToModel(tx,
 		selectDecisions().
 			Where(squirrel.Eq{"id": decisionId}),
-		func(dbDecision dbmodels.DbDecision) models.Decision {
-			return dbmodels.AdaptDecision(dbDecision, rules)
+		func(dbDecision dbmodels.DbDecision) (models.Decision, error) {
+			return dbmodels.AdaptDecision(dbDecision, rules), nil
 		},
 	)
 
@@ -153,7 +153,7 @@ func (repo *DecisionRepositoryImpl) rulesOfDecision(transaction Transaction, dec
 			From(dbmodels.TABLE_DECISION_RULE).
 			Where(squirrel.Eq{"decision_id": decisionId}).
 			OrderBy("id"),
-		dbmodels.AdaptRuleExecution,
+		FuncReturnsNilError(dbmodels.AdaptRuleExecution),
 	)
 }
 
@@ -171,7 +171,7 @@ func (repo *DecisionRepositoryImpl) rulesOfDecisionsBatch(transaction Transactio
 			From(dbmodels.TABLE_DECISION_RULE).
 			Where(squirrel.Eq{"decision_id": decisionIds}).
 			OrderBy("decision_id"),
-		func(r dbmodels.DbDecisionRule) dbmodels.DbDecisionRule { return r },
+		func(r dbmodels.DbDecisionRule) (dbmodels.DbDecisionRule, error) { return r, nil },
 	)
 	if err != nil {
 		return nil, err
@@ -203,7 +203,7 @@ func (repo *DecisionRepositoryImpl) channelOfDecisions(tx TransactionPostgres, q
 		defer close(decisionsChannel)
 		defer close(errChannel)
 
-		dbDecisionsChannel, dbErrChannel := SqlToChannelOfRow(tx, query, func(row pgx.CollectableRow) (dbmodels.DbDecision, error) {
+		dbDecisionsChannel, dbErrChannel := SqlToChannelOfModels(tx, query, func(row pgx.CollectableRow) (dbmodels.DbDecision, error) {
 			return pgx.RowToStructByName[dbmodels.DbDecision](row)
 		})
 

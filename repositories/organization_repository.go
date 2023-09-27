@@ -26,7 +26,7 @@ func (repo *OrganizationRepositoryPostgresql) AllOrganizations(tx Transaction) (
 			Select(dbmodels.ColumnsSelectOrganization...).
 			From(dbmodels.TABLE_ORGANIZATION).
 			OrderBy("id"),
-		dbmodels.AdaptOrganization,
+		FuncReturnsNilError(dbmodels.AdaptOrganization),
 	)
 }
 func (repo *OrganizationRepositoryPostgresql) GetOrganizationById(tx Transaction, organizationId string) (models.Organization, error) {
@@ -38,7 +38,7 @@ func (repo *OrganizationRepositoryPostgresql) GetOrganizationById(tx Transaction
 			Select(dbmodels.ColumnsSelectOrganization...).
 			From(dbmodels.TABLE_ORGANIZATION).
 			Where("id = ?", organizationId),
-		dbmodels.AdaptOrganization,
+		FuncReturnsNilError(dbmodels.AdaptOrganization),
 	)
 }
 
