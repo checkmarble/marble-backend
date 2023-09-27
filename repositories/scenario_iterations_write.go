@@ -68,7 +68,7 @@ func (repo *ScenarioIterationWriteRepositoryPostgresql) CreateScenarioIteration(
 		)
 	}
 
-	createdIteration, err := SqlToModelAdapterWithErr(
+	createdIteration, err := SqlToModel(
 		pgTx,
 		query,
 		dbmodels.AdaptScenarioIteration,
@@ -124,7 +124,7 @@ func (repo *ScenarioIterationWriteRepositoryPostgresql) UpdateScenarioIteration(
 		}
 		sql = sql.Set("trigger_condition_ast_expression", triggerCondition)
 	}
-	updatedIteration, err := SqlToModelAdapterWithErr(pgTx, sql, dbmodels.AdaptScenarioIteration)
+	updatedIteration, err := SqlToModel(pgTx, sql, dbmodels.AdaptScenarioIteration)
 	if err != nil {
 		return models.ScenarioIteration{}, err
 	}

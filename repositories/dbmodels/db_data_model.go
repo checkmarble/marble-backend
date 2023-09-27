@@ -24,18 +24,17 @@ const TABLE_DATA_MODELS = "data_models"
 
 var SelectDataModelColumn = utils.ColumnList[DbDataModel]()
 
-func AdaptDataModel(dbDataModel DbDataModel) models.DataModel {
+func AdaptDataModel(dbDataModel DbDataModel) (models.DataModel, error) {
 	var tables map[models.TableName]models.Table
 	if err := json.Unmarshal(dbDataModel.Tables, &tables); err != nil {
-		// who want to recover from malformed data: let's panic
-		panic(fmt.Errorf("unable to unmarshal data model tables: %w", err))
+		return models.DataModel{}, fmt.Errorf("unable to unmarshal data model tables: %w", err)
 	}
 
 	return models.DataModel{
 		Version: dbDataModel.Version,
 		Status:  models.StatusFrom(dbDataModel.Status),
 		Tables:  tables,
-	}
+	}, nil
 }
 
 type DbDataModelTable struct {

@@ -30,7 +30,7 @@ func (repository *ScenarioIterationReadRepositoryPostgresql) GetScenarioIteratio
 ) (models.ScenarioIteration, error) {
 	pgTx := repository.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	return SqlToModelAdapterWithErr(
+	return SqlToModel(
 		pgTx,
 		selectScenarioIterations().Where(squirrel.Eq{"si.id": scenarioIterationId}),
 		dbmodels.AdaptScenarioIterationWithRules,
@@ -49,7 +49,7 @@ func (repository *ScenarioIterationReadRepositoryPostgresql) ListScenarioIterati
 		sql = sql.Where(squirrel.Eq{"si.scenario_id": *filters.ScenarioId})
 	}
 
-	return SqlToListOfModelsAdapterWithErr(
+	return SqlToListOfModels(
 		pgTx,
 		sql,
 		dbmodels.AdaptScenarioIterationWithRules,

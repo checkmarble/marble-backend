@@ -35,7 +35,7 @@ func (repo *OrganizationSchemaRepositoryPostgresql) OrganizationSchemaOfOrganiza
 			Select(dbmodels.OrganizationSchemaFields...).
 			From(dbmodels.ORGANIZATION_SCHEMA_TABLE).
 			Where(squirrel.Eq{"org_id": organizationId}),
-		dbmodels.AdaptOrganizationSchema,
+		FuncReturnsNilError(dbmodels.AdaptOrganizationSchema),
 	)
 }
 

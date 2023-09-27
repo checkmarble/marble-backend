@@ -82,7 +82,7 @@ func (repo *UserRepositoryPostgresql) UserByID(tx Transaction, userId models.Use
 			From(dbmodels.TABLE_USERS).
 			Where("id = ?", string(userId)).
 			OrderBy("id"),
-		dbmodels.AdaptUser,
+		FuncReturnsNilError(dbmodels.AdaptUser),
 	)
 }
 
@@ -97,7 +97,7 @@ func (repo *UserRepositoryPostgresql) UsersOfOrganization(tx Transaction, organi
 			From(dbmodels.TABLE_USERS).
 			Where("organization_id = ?", organizationIDFilter).
 			OrderBy("id"),
-		dbmodels.AdaptUser,
+		FuncReturnsNilError(dbmodels.AdaptUser),
 	)
 }
 
@@ -110,7 +110,7 @@ func (repo *UserRepositoryPostgresql) AllUsers(tx Transaction) ([]models.User, e
 			Select(dbmodels.UserFields...).
 			From(dbmodels.TABLE_USERS).
 			OrderBy("id"),
-		dbmodels.AdaptUser,
+		FuncReturnsNilError(dbmodels.AdaptUser),
 	)
 }
 
@@ -124,7 +124,7 @@ func (repo *UserRepositoryPostgresql) UserByFirebaseUid(tx Transaction, firebase
 			From(dbmodels.TABLE_USERS).
 			Where("firebase_uid = ?", firebaseUid).
 			OrderBy("id"),
-		dbmodels.AdaptUser,
+		FuncReturnsNilError(dbmodels.AdaptUser),
 	)
 }
 
@@ -138,7 +138,7 @@ func (repo *UserRepositoryPostgresql) UserByEmail(tx Transaction, email string) 
 			From(dbmodels.TABLE_USERS).
 			Where("email = ?", email).
 			OrderBy("id"),
-		dbmodels.AdaptUser,
+		FuncReturnsNilError(dbmodels.AdaptUser),
 	)
 }
 

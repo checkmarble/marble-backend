@@ -24,7 +24,7 @@ func (repo *ApiKeyRepositoryImpl) GetApiKeyByKey(tx Transaction, key string) (mo
 			Select(dbmodels.ApiKeyFields...).
 			From(dbmodels.TABLE_APIKEYS).
 			Where("key = ?", key),
-		dbmodels.AdaptApikey,
+		FuncReturnsNilError(dbmodels.AdaptApikey),
 	)
 }
 
@@ -37,7 +37,7 @@ func (repo *ApiKeyRepositoryImpl) GetApiKeysOfOrganization(tx Transaction, organ
 			Select(dbmodels.ApiKeyFields...).
 			From(dbmodels.TABLE_APIKEYS).
 			Where("org_id = ?", organizationId),
-		dbmodels.AdaptApikey,
+		FuncReturnsNilError(dbmodels.AdaptApikey),
 	)
 
 }
