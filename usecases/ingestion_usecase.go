@@ -1,7 +1,6 @@
 package usecases
 
 import (
-	"bytes"
 	"context"
 	"encoding/csv"
 	"fmt"
@@ -91,6 +90,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 
 	fileName := computeFileName(organizationId, string(table.Name))
 	writer := usecase.gcsRepository.OpenStream(ctx, usecase.GcsIngestionBucket, fileName)
+	csvWriter := csv.NewWriter(writer)
 
 	for name, field := range table.Fields {
 		if !field.Nullable {
@@ -100,7 +100,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 		}
 	}
 
-	if err := writeCsvRow(writer, headers); err != nil {
+	if err := csvWriter.WriteAll([][]string{headers}); err != nil {
 		return models.UploadLog{}, err
 	}
 
@@ -119,7 +119,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 			return models.UploadLog{}, fmt.Errorf("Error found at line %d in CSV %w", i, err)
 		}
 
-		if err := writeCsvRow(writer, row); err != nil {
+		if err := csvWriter.WriteAll([][]string{row}); err != nil {
 			return models.UploadLog{}, err
 		}
 	}
@@ -329,16 +329,4 @@ func parseStringValuesToMap(headers []string, values []string, table models.Tabl
 // TODO change to `organizationId/tableName/timestamp.csv once we get rid of the previous ingestion system
 func computeFileName(organizationId, tableName string) string {
 	return organizationId + "/" + tableName + ":" + strconv.FormatInt(time.Now().Unix(), 10) + ".csv"
-}
-
-func writeCsvRow(writer io.Writer, row []string) error {
-	var csvRow bytes.Buffer
-	csvWriter := csv.NewWriter(&csvRow)
-	csvWriter.Write(row)
-	csvWriter.Flush()
-
-	if _, err := io.Copy(writer, &csvRow); err != nil {
-		return err
-	}
-	return nil
 }
