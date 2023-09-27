@@ -21,7 +21,7 @@ const TABLE_SCHEDULED_EXECUTIONS = "scheduled_executions"
 
 var ScheduledExecutionFields = []string{"id", "organization_id", "scenario_id", "scenario_iteration_id", "status", "started_at", "finished_at", "number_of_created_decisions"}
 
-func AdaptScheduledExecution(db DBScheduledExecution) models.ScheduledExecution {
+func AdaptScheduledExecution(db DBScheduledExecution, scenario models.Scenario) models.ScheduledExecution {
 	return models.ScheduledExecution{
 		Id:                       db.Id,
 		OrganizationId:           db.OrganizationId,
@@ -31,9 +31,6 @@ func AdaptScheduledExecution(db DBScheduledExecution) models.ScheduledExecution 
 		StartedAt:                db.StartedAt,
 		FinishedAt:               db.FinishedAt,
 		NumberOfCreatedDecisions: db.NumberOfCreatedDecisions,
+		Scenario:                 scenario,
 	}
-}
-
-type UpdateScheduledExecutionDbBody struct {
-	Status *string
 }

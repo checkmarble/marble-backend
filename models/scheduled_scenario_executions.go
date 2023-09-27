@@ -11,6 +11,7 @@ type ScheduledExecution struct {
 	StartedAt                time.Time
 	FinishedAt               *time.Time
 	NumberOfCreatedDecisions int
+	Scenario                 Scenario
 }
 
 type ScheduledExecutionStatus int
