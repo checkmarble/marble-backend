@@ -43,5 +43,6 @@ CREATE TABLE data_model_links (
 DROP TABLE data_model_links;
 DROP TABLE data_model_fields;
 DROP TABLE data_model_tables;
+DROP TYPE data_model_types;
 
 -- +goose StatementEnd

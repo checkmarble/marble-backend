@@ -15,6 +15,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/transaction"
+	"github.com/google/uuid"
 )
 
 const (
@@ -26,9 +27,13 @@ const (
 type IngestionUseCase struct {
 	enforceSecurity       security.EnforceSecurityIngestion
 	orgTransactionFactory transaction.Factory
+	transactionFactory    transaction.TransactionFactory
 	ingestionRepository   repositories.IngestionRepository
 	gcsRepository         repositories.GcsRepository
 	datamodelRepository   repositories.DataModelRepository
+	dataModelUseCase      DataModelUseCase
+	uploadLogRepository   repositories.UploadLogRepository
+	GcsIngestionBucket    string
 }
 
 func (usecase *IngestionUseCase) IngestObjects(organizationId string, payloads []models.PayloadReader, table models.Table, logger *slog.Logger) error {
@@ -62,6 +67,86 @@ func (usecase *IngestionUseCase) IngestFilesFromStorageCsv(ctx context.Context, 
 		}
 	}
 	return nil
+}
+
+func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Context, organizationId, userId, objectType string, fileReader *csv.Reader) (models.UploadLog, error) {
+	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
+		return models.UploadLog{}, err
+	}
+	dataModel, err := usecase.dataModelUseCase.GetDataModel(organizationId)
+	if err != nil {
+		return models.UploadLog{}, err
+	}
+
+	table, ok := dataModel.Tables[models.TableName(objectType)]
+	if !ok {
+		return models.UploadLog{}, fmt.Errorf("Table %s not found on data model", objectType)
+	}
+
+	headers, err := fileReader.Read()
+	if err != nil {
+		return models.UploadLog{}, fmt.Errorf("error reading first row of CSV: %w", err)
+	}
+
+	fileName := computeFileName(organizationId, string(table.Name))
+	writer := usecase.gcsRepository.OpenStream(ctx, usecase.GcsIngestionBucket, fileName)
+	csvWriter := csv.NewWriter(writer)
+
+	for name, field := range table.Fields {
+		if !field.Nullable {
+			if !containsString(headers, string(name)) {
+				return models.UploadLog{}, fmt.Errorf("missing required field %s in CSV: %w", name, models.BadParameterError)
+			}
+		}
+	}
+
+	if err := csvWriter.WriteAll([][]string{headers}); err != nil {
+		return models.UploadLog{}, err
+	}
+
+	var i int
+	for i = 0; ; i++ {
+		row, err := fileReader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return models.UploadLog{}, err
+		}
+
+		_, err = parseStringValuesToMap(headers, row, table)
+		if err != nil {
+			return models.UploadLog{}, fmt.Errorf("Error found at line %d in CSV %w", i, err)
+		}
+
+		if err := csvWriter.WriteAll([][]string{row}); err != nil {
+			return models.UploadLog{}, err
+		}
+	}
+
+	if err := writer.Close(); err != nil {
+		return models.UploadLog{}, err
+	}
+	if err := usecase.gcsRepository.UpdateFileMetadata(ctx, usecase.GcsIngestionBucket, fileName, map[string]string{"processed": "true"}); err != nil {
+		return models.UploadLog{}, err
+	}
+
+	return transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.UploadLog, error) {
+		newUploadListId := uuid.NewString()
+		newUploadLoad := models.UploadLog{
+			Id:             newUploadListId,
+			UploadStatus:   models.UploadPending,
+			OrganizationId: organizationId,
+			FileName:       fileName,
+			UserId:         userId,
+			StartedAt:      time.Now(),
+			LinesProcessed: 0,
+		}
+		if err := usecase.uploadLogRepository.CreateUploadLog(tx, newUploadLoad); err != nil {
+			return models.UploadLog{}, err
+		}
+		return usecase.uploadLogRepository.UploadLogById(tx, newUploadListId)
+	})
 }
 
 func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file models.GCSFile, logger *slog.Logger) error {
@@ -239,4 +324,9 @@ func parseStringValuesToMap(headers []string, values []string, table models.Tabl
 
 	}
 	return result, nil
+}
+
+// TODO change to `organizationId/tableName/timestamp.csv once we get rid of the previous ingestion system
+func computeFileName(organizationId, tableName string) string {
+	return organizationId + "/" + tableName + ":" + strconv.FormatInt(time.Now().Unix(), 10) + ".csv"
 }

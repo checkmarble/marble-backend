@@ -1,14 +1,18 @@
 package api
 
 import (
+	"encoding/csv"
 	"errors"
 	"fmt"
-	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/usecases/payload_parser"
-	"github.com/checkmarble/marble-backend/utils"
 	"io"
 	"log/slog"
 	"net/http"
+
+	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/checkmarble/marble-backend/usecases/payload_parser"
+	"github.com/checkmarble/marble-backend/utils"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -70,4 +74,34 @@ func (api *API) handleIngestion() http.HandlerFunc {
 		PresentNothingStatusCode(w, http.StatusCreated)
 	}
 
+}
+
+func (api *API) handleCsvIngestion() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		creds := utils.CredentialsFromCtx(ctx)
+		userId := string(creds.ActorIdentity.UserId)
+
+		// Optional: check max size
+
+		file, _, err := r.FormFile("file")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		defer file.Close()
+
+		fileReader := csv.NewReader(pure_utils.NewReaderWithoutBom(file))
+		objectType := chi.URLParam(r, "objectType")
+
+		ingestionUseCase := api.UsecasesWithCreds(r).NewIngestionUseCase()
+		uploadLog, err := ingestionUseCase.ValidateAndUploadIngestionCsv(ctx, creds.OrganizationId, userId, objectType, fileReader)
+
+		if presentError(w, r, err) {
+			return
+		}
+
+		apiUploadLog := dto.AdaptUploadLogDto(uploadLog)
+		PresentModel(w, apiUploadLog)
+	}
 }
