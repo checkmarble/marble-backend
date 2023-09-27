@@ -101,6 +101,7 @@ func main() {
 		config: models.GlobalConfiguration{
 			TokenLifetimeMinute: utils.GetIntEnv("TOKEN_LIFETIME_MINUTE", 60*2),
 			FakeAwsS3Repository: utils.GetBoolEnv("FAKE_AWS_S3", false),
+			FakeGcsRepository: utils.GetBoolEnv("FAKE_GCS", false),
 			GcsIngestionBucket:  utils.GetRequiredStringEnv("GCS_INGESTION_BUCKET"),
 		},
 	}

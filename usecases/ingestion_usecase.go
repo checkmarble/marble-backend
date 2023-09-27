@@ -31,7 +31,6 @@ type IngestionUseCase struct {
 	transactionFactory    transaction.TransactionFactory
 	ingestionRepository   repositories.IngestionRepository
 	gcsRepository         repositories.GcsRepository
-	datamodelRepository   repositories.DataModelRepository
 	dataModelUseCase      DataModelUseCase
 	uploadLogRepository   repositories.UploadLogRepository
 	GcsIngestionBucket    string
@@ -227,7 +226,7 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
 		return err
 	}
-	dataModel, err := usecase.datamodelRepository.GetDataModel(nil, organizationId)
+	dataModel, err := usecase.dataModelUseCase.GetDataModel(organizationId)
 	if err != nil {
 		return fmt.Errorf("error getting data model for organization %s: %w", organizationId, err)
 	}

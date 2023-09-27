@@ -49,7 +49,7 @@ func (repo *UploadLogRepositoryImpl) CreateUploadLog(tx Transaction, log models.
 func (repo *UploadLogRepositoryImpl) UpdateUploadLog(tx Transaction, input models.UpdateUploadLogInput) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	var updateRequest = NewQueryBuilder().Update(dbmodels.TABLE_CUSTOM_LIST)
+	var updateRequest = NewQueryBuilder().Update(dbmodels.TABLE_UPLOAD_LOGS)
 
 	if input.UploadStatus != "" {
 		updateRequest = updateRequest.Set("status", input.UploadStatus)

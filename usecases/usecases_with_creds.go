@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/scheduledexecution"
 	"github.com/checkmarble/marble-backend/usecases/security"
 )
@@ -178,16 +179,25 @@ func (usecases *UsecasesWithCreds) NewDataModelUseCase() DataModelUseCase {
 }
 
 func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
+	var gcsRepository repositories.GcsRepository
+	if usecases.Configuration.FakeGcsRepository {
+		gcsRepository = &repositories.GcsRepositoryFake{}
+	} else {
+		gcsRepository = usecases.Repositories.GcsRepository
+	}
+
 	return IngestionUseCase{
 		enforceSecurity:       usecases.NewEnforceIngestionSecurity(),
 		transactionFactory:    &usecases.Repositories.TransactionFactoryPosgresql,
 		orgTransactionFactory: usecases.NewOrgTransactionFactory(),
 		ingestionRepository:   usecases.Repositories.IngestionRepository,
-		gcsRepository:         usecases.Repositories.GcsRepository,
+		gcsRepository:         gcsRepository,
 		dataModelUseCase:      usecases.NewDataModelUseCase(),
 		uploadLogRepository:   usecases.Repositories.UploadLogRepository,
 		GcsIngestionBucket:    usecases.Configuration.GcsIngestionBucket,
 	}
+
+
 }
 
 func (usecases *UsecasesWithCreds) NewRunScheduledExecution() scheduledexecution.RunScheduledExecution {

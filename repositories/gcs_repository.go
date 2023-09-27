@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"time"
 
@@ -16,7 +17,7 @@ type GcsRepository interface {
 	ListFiles(ctx context.Context, bucketName, prefix string) ([]models.GCSFile, error)
 	GetFile(ctx context.Context, bucketName, fileName string) (models.GCSFile, error)
 	MoveFile(ctx context.Context, bucketName, source, destination string) error
-	OpenStream(ctx context.Context, bucketName, fileName string) *storage.Writer
+	OpenStream(ctx context.Context, bucketName, fileName string) io.WriteCloser
 	UpdateFileMetadata(ctx context.Context, bucketName, fileName string, metadata map[string]string) error
 }
 
@@ -113,7 +114,7 @@ func (repository *GcsRepositoryImpl) MoveFile(ctx context.Context, bucketName, s
 	return nil
 }
 
-func (repository *GcsRepositoryImpl) OpenStream(ctx context.Context, bucketName, fileName string) *storage.Writer {
+func (repository *GcsRepositoryImpl) OpenStream(ctx context.Context, bucketName, fileName string) io.WriteCloser {
 	gcsClient := repository.getGCSClient(ctx)
 
 	writer := gcsClient.Bucket(bucketName).Object(fileName).NewWriter(ctx)
