@@ -1,6 +1,8 @@
 package usecases
 
 import (
+	"github.com/google/uuid"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/organization"
@@ -74,17 +76,23 @@ func (usecase *DataModelUseCase) GetDataModel(organizationID string) (models.Dat
 	return dataModel, nil
 }
 
-func (usecase *DataModelUseCase) CreateDataModelTable(organizationID, name, description string) error {
+func (usecase *DataModelUseCase) CreateDataModelTable(organizationID, name, description string) (string, error) {
 	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
-		return err
+		return "", err
 	}
 
-	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
-		if err := usecase.dataModelRepository.CreateDataModelTable(tx, organizationID, name, description); err != nil {
+	tableID := uuid.New().String()
+	err := usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+		err := usecase.dataModelRepository.CreateDataModelTable(tx, organizationID, tableID, name, description)
+		if err != nil {
 			return err
 		}
 		return usecase.populateOrganizationSchema.CreateTable(tx, organizationID, name)
 	})
+	if err != nil {
+		return "", err
+	}
+	return tableID, nil
 }
 
 func (usecase *DataModelUseCase) UpdateDataModelTable(tableID, description string) error {
@@ -94,13 +102,15 @@ func (usecase *DataModelUseCase) UpdateDataModelTable(tableID, description strin
 	return usecase.dataModelRepository.UpdateDataModelTable(nil, tableID, description)
 }
 
-func (usecase *DataModelUseCase) CreateDataModelField(tableID string, field models.DataModelField) error {
+func (usecase *DataModelUseCase) CreateDataModelField(tableID string, field models.DataModelField) (string, error) {
 	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
-		return err
+		return "", err
 	}
 
-	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
-		if err := usecase.dataModelRepository.CreateDataModelField(tx, tableID, field); err != nil {
+	fieldID := uuid.New().String()
+	err := usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+		err := usecase.dataModelRepository.CreateDataModelField(tx, tableID, fieldID, field)
+		if err != nil {
 			return err
 		}
 
@@ -110,6 +120,10 @@ func (usecase *DataModelUseCase) CreateDataModelField(tableID string, field mode
 		}
 		return usecase.populateOrganizationSchema.CreateField(tx, table.OrganizationID, table.Name, field)
 	})
+	if err != nil {
+		return "", err
+	}
+	return fieldID, nil
 }
 
 func (usecase *DataModelUseCase) UpdateDataModelField(fieldID, description string) error {

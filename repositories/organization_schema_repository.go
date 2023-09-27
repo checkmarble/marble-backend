@@ -42,7 +42,7 @@ func (repo *OrganizationSchemaRepositoryPostgresql) OrganizationSchemaOfOrganiza
 func (repo *OrganizationSchemaRepositoryPostgresql) CreateSchema(tx Transaction, schema string) error {
 	pgTx := adaptClientDatabaseTransaction(tx)
 
-	sql := fmt.Sprintf("CREATE SCHEMA %s", pgx.Identifier.Sanitize([]string{schema}))
+	sql := fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", pgx.Identifier.Sanitize([]string{schema}))
 
 	_, err := pgTx.SqlExec(sql)
 	return err
@@ -84,7 +84,7 @@ func (repo *OrganizationSchemaRepositoryPostgresql) CreateSimpleField(tx Transac
 	sanitizedTableName := pgx.Identifier.Sanitize([]string{schema, tableName})
 
 	builder := strings.Builder{}
-	builder.WriteString(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", sanitizedTableName, field.Name, fieldType))
+	builder.WriteString(fmt.Sprintf("ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s", sanitizedTableName, field.Name, fieldType))
 	if !field.Nullable {
 		builder.WriteString(" NOT NULL")
 	}

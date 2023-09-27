@@ -71,11 +71,11 @@ func (api *API) handleCreateTable(w http.ResponseWriter, r *http.Request) {
 	}
 
 	usecase := api.UsecasesWithCreds(r).NewDataModelUseCase()
-	err = usecase.CreateDataModelTable(organizationID, input.Body.Name, input.Body.Description)
+	tableID, err := usecase.CreateDataModelTable(organizationID, input.Body.Name, input.Body.Description)
 	if presentError(w, r, err) {
 		return
 	}
-	PresentNothing(w)
+	PresentModelWithName(w, "id", tableID)
 }
 
 func (api *API) handleUpdateTable(w http.ResponseWriter, r *http.Request) {
@@ -105,7 +105,7 @@ func (api *API) handleCreateField(w http.ResponseWriter, r *http.Request) {
 	}
 
 	usecase := api.UsecasesWithCreds(r).NewDataModelUseCase()
-	err = usecase.CreateDataModelField(tableID, models.DataModelField{
+	fieldID, err := usecase.CreateDataModelField(tableID, models.DataModelField{
 		Name:        input.Body.Name,
 		Description: input.Body.Description,
 		Type:        input.Body.Type,
@@ -114,7 +114,7 @@ func (api *API) handleCreateField(w http.ResponseWriter, r *http.Request) {
 	if presentError(w, r, err) {
 		return
 	}
-	PresentNothing(w)
+	PresentModelWithName(w, "id", fieldID)
 }
 
 func (api *API) handleUpdateField(w http.ResponseWriter, r *http.Request) {

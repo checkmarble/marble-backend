@@ -68,6 +68,10 @@ func (p *PopulateOrganizationSchema) CreateTable(marbleTx repositories.Transacti
 	}
 
 	return p.TransactionFactory.Transaction(orgSchema.DatabaseSchema, func(orgSchemaTx repositories.Transaction) error {
+		err := p.OrganizationSchemaRepository.CreateSchema(orgSchemaTx, orgSchema.DatabaseSchema.Schema)
+		if err != nil {
+			return err
+		}
 		return p.OrganizationSchemaRepository.CreateSimpleTable(orgSchemaTx, orgSchema.DatabaseSchema.Schema, tableName)
 	})
 }
