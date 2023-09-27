@@ -103,8 +103,9 @@ func SqlToListOfModelsAdapterWithErr[DBModel, Model any](transaction Transaction
 
 	rows, err := transaction.exec.Query(transaction.ctx, sql, args...)
 	if err != nil {
-		return nil, errors.Wrap(err, "error executing sql query")
+		return nil, errors.Wrap(err, fmt.Sprintf("error executing sql query: %s", sql))
 	}
+
 	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (Model, error) {
 		dbModel, err := pgx.RowToStructByName[DBModel](row)
 		if err != nil {
