@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
 
@@ -43,7 +44,7 @@ func (transaction *TransactionPostgres) SqlExec(query string, args ...any) (rows
 
 	tag, err := transaction.exec.Exec(transaction.ctx, query, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "Error executing sql query")
+		return 0, errors.Wrap(err, fmt.Sprintf("error executing sql query: %s", query))
 	}
 	return tag.RowsAffected(), nil
 }
