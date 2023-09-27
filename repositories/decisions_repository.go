@@ -153,7 +153,9 @@ func (repo *DecisionRepositoryImpl) rulesOfDecision(transaction Transaction, dec
 			From(dbmodels.TABLE_DECISION_RULE).
 			Where(squirrel.Eq{"decision_id": decisionId}).
 			OrderBy("id"),
-		FuncReturnsNilError(dbmodels.AdaptRuleExecution),
+		func(r dbmodels.DbDecisionRule) (models.RuleExecution, error) {
+			return dbmodels.AdaptRuleExecution(r), nil
+		},
 	)
 }
 

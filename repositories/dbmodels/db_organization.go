@@ -17,14 +17,14 @@ const TABLE_ORGANIZATION = "organizations"
 
 var ColumnsSelectOrganization = utils.ColumnList[DBOrganizationResult]()
 
-func AdaptOrganization(db DBOrganizationResult) models.Organization {
+func AdaptOrganization(db DBOrganizationResult) (models.Organization, error) {
 
 	return models.Organization{
 		Id:                         db.Id,
 		Name:                       db.Name,
 		DatabaseName:               db.DatabaseName,
 		ExportScheduledExecutionS3: db.ExportScheduledExecutionS3,
-	}
+	}, nil
 }
 
 type DBUpdateOrganization struct {

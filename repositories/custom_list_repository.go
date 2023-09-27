@@ -33,7 +33,7 @@ func (repo *CustomListRepositoryPostgresql) AllCustomLists(tx Transaction, organ
 			From(dbmodels.TABLE_CUSTOM_LIST).
 			Where("organization_id = ? AND deleted_at IS NULL", organizationId).
 			OrderBy("id"),
-		FuncReturnsNilError(dbmodels.AdaptCustomList),
+		dbmodels.AdaptCustomList,
 	)
 }
 func (repo *CustomListRepositoryPostgresql) GetCustomListById(tx Transaction, id string) (models.CustomList, error) {
@@ -45,7 +45,7 @@ func (repo *CustomListRepositoryPostgresql) GetCustomListById(tx Transaction, id
 			Select(dbmodels.ColumnsSelectCustomList...).
 			From(dbmodels.TABLE_CUSTOM_LIST).
 			Where("id = ? AND deleted_at IS NULL", id),
-		FuncReturnsNilError(dbmodels.AdaptCustomList),
+		dbmodels.AdaptCustomList,
 	)
 }
 
@@ -58,7 +58,7 @@ func (repo *CustomListRepositoryPostgresql) GetCustomListValues(tx Transaction, 
 			Select(dbmodels.ColumnsSelectCustomListValue...).
 			From(dbmodels.TABLE_CUSTOM_LIST_VALUE).
 			Where("custom_list_id = ? AND deleted_at IS NULL", getCustomList.Id),
-		FuncReturnsNilError(dbmodels.AdaptCustomListValue),
+		dbmodels.AdaptCustomListValue,
 	)
 }
 func (repo *CustomListRepositoryPostgresql) GetCustomListValueById(tx Transaction, id string) (models.CustomListValue, error) {
@@ -70,7 +70,7 @@ func (repo *CustomListRepositoryPostgresql) GetCustomListValueById(tx Transactio
 			Select(dbmodels.ColumnsSelectCustomListValue...).
 			From(dbmodels.TABLE_CUSTOM_LIST_VALUE).
 			Where("id = ? AND deleted_at IS NULL", id),
-		FuncReturnsNilError(dbmodels.AdaptCustomListValue),
+		dbmodels.AdaptCustomListValue,
 	)
 }
 

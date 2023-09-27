@@ -24,7 +24,7 @@ const TABLE_SCENARIOS = "scenarios"
 
 var SelectScenarioColumn = utils.ColumnList[DBScenario]()
 
-func AdaptScenario(dto DBScenario) models.Scenario {
+func AdaptScenario(dto DBScenario) (models.Scenario, error) {
 	scenario := models.Scenario{
 		Id:                dto.Id,
 		OrganizationId:    dto.OrganizationId,
@@ -36,5 +36,5 @@ func AdaptScenario(dto DBScenario) models.Scenario {
 	if dto.LiveVersionID.Valid {
 		scenario.LiveVersionID = &dto.LiveVersionID.String
 	}
-	return scenario
+	return scenario, nil
 }

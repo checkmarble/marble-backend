@@ -16,7 +16,7 @@ const TABLE_USERS = "users"
 
 var UserFields = []string{"id", "email", "firebase_uid", "role", "organization_id"}
 
-func AdaptUser(db DBUserResult) models.User {
+func AdaptUser(db DBUserResult) (models.User, error) {
 	var organizationId string
 	if db.OrganizationId != nil {
 		organizationId = *db.OrganizationId
@@ -27,5 +27,5 @@ func AdaptUser(db DBUserResult) models.User {
 		FirebaseUid:    db.FirebaseUid,
 		Role:           models.Role(db.Role),
 		OrganizationId: organizationId,
-	}
+	}, nil
 }

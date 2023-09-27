@@ -103,7 +103,7 @@ func (repo *DataModelRepositoryPostgresql) GetDataModelTable(tx Transaction, tab
 			Select(dbmodels.SelectDataModelTableColumns...).
 			From(dbmodels.TableDataModelTable).
 			Where(squirrel.Eq{"id": tableID}),
-		FuncReturnsNilError(dbmodels.AdaptDataModelTable),
+		dbmodels.AdaptDataModelTable,
 	)
 }
 

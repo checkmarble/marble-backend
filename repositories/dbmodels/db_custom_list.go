@@ -21,7 +21,7 @@ const TABLE_CUSTOM_LIST = "custom_lists"
 
 var ColumnsSelectCustomList = utils.ColumnList[DBCustomListResult]()
 
-func AdaptCustomList(db DBCustomListResult) models.CustomList {
+func AdaptCustomList(db DBCustomListResult) (models.CustomList, error) {
 
 	return models.CustomList{
 		Id:             db.Id,
@@ -31,5 +31,5 @@ func AdaptCustomList(db DBCustomListResult) models.CustomList {
 		CreatedAt:      db.CreatedAt,
 		UpdatedAt:      db.UpdatedAt,
 		DeletedAt:      db.DeletedAt,
-	}
+	}, nil
 }

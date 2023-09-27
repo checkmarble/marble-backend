@@ -60,7 +60,7 @@ func (suite *ScheduledExecutionsTestSuite) AssertExpectations() {
 	suite.exportScheduleExecution.AssertExpectations(t)
 }
 
-func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutions_ListScheduledExecutions_of_organization() {
+func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutionss_of_organization() {
 
 	suite.transactionFactory.On("Transaction", models.DATABASE_MARBLE_SCHEMA, mock.Anything).Return(nil)
 	suite.scheduledExecutionRepository.On("ListScheduledExecutionsOfOrganization", suite.transaction, "some org id").Return(suite.scheduledExecutions, nil)
@@ -75,7 +75,7 @@ func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutions_ListSched
 	suite.AssertExpectations()
 }
 
-func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutions_ListScheduledExecutions_of_scenario() {
+func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutions_of_scenario() {
 
 	suite.transactionFactory.On("Transaction", models.DATABASE_MARBLE_SCHEMA, mock.Anything).Return(nil)
 	suite.scheduledExecutionRepository.On("ListScheduledExecutionsOfScenario", suite.transaction, suite.scenarioId).Return(suite.scheduledExecutions, nil)
@@ -90,7 +90,7 @@ func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutions_ListSched
 	suite.AssertExpectations()
 }
 
-func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutions_ListScheduledExecutions_security() {
+func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutions_security() {
 
 	securityError := errors.New("some security error")
 

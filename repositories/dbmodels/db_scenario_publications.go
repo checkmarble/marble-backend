@@ -21,7 +21,7 @@ const TABLE_SCENARIOS_PUBLICATIONS = "scenario_publications"
 
 var SelectScenarioPublicationColumns = utils.ColumnList[DBScenarioPublication]()
 
-func AdaptScenarioPublication(dto DBScenarioPublication) models.ScenarioPublication {
+func AdaptScenarioPublication(dto DBScenarioPublication) (models.ScenarioPublication, error) {
 	scenarioPublication := models.ScenarioPublication{
 		Id:                  dto.Id,
 		OrganizationId:      dto.OrganizationId,
@@ -32,7 +32,7 @@ func AdaptScenarioPublication(dto DBScenarioPublication) models.ScenarioPublicat
 		PublicationAction:   models.PublicationActionFrom(dto.PublicationAction),
 	}
 
-	return scenarioPublication
+	return scenarioPublication, nil
 }
 
 type PublishScenarioIterationInput struct {

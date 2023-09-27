@@ -49,13 +49,13 @@ const TableDataModelFields = "data_model_fields"
 
 var SelectDataModelTableColumns = utils.ColumnList[DbDataModelTable]()
 
-func AdaptDataModelTable(dbDataModelTable DbDataModelTable) models.DataModelTable {
+func AdaptDataModelTable(dbDataModelTable DbDataModelTable) (models.DataModelTable, error) {
 	return models.DataModelTable{
 		ID:             dbDataModelTable.ID,
 		OrganizationID: dbDataModelTable.OrganizationID,
 		Name:           dbDataModelTable.Name,
 		Description:    dbDataModelTable.Description,
-	}
+	}, nil
 }
 
 type DbDataModelField struct {
