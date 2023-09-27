@@ -1,9 +1,11 @@
 package models
 
-import "io"
+import (
+	"io"
+)
 
 type GCSFile struct {
 	FileName   string
-	Reader     io.Reader
+	Reader     io.ReadCloser
 	BucketName string
 }

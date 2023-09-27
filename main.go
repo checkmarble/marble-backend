@@ -101,7 +101,7 @@ func main() {
 		config: models.GlobalConfiguration{
 			TokenLifetimeMinute: utils.GetIntEnv("TOKEN_LIFETIME_MINUTE", 60*2),
 			FakeAwsS3Repository: utils.GetBoolEnv("FAKE_AWS_S3", false),
-			GcsIngestionBucket: utils.GetRequiredStringEnv("GCS_INGESTION_BUCKET"),
+			GcsIngestionBucket:  utils.GetRequiredStringEnv("GCS_INGESTION_BUCKET"),
 		},
 	}
 	isDevEnv := appConfig.env == "DEV"
@@ -117,6 +117,7 @@ func main() {
 	shouldRunServer := flag.Bool("server", false, "Run server")
 	shouldRunScheduledScenarios := flag.Bool("scheduler", false, "Run scheduled scenarios")
 	shouldRunBatchIngestion := flag.Bool("batch-ingestion", false, "Run batch ingestion")
+	shouldRunDataIngestion := flag.Bool("data-ingestion", false, "Run data ingestion")
 	flag.Parse()
 	logger.Info("Flags", "shouldRunMigrations", *shouldRunMigrations, "shouldRunServer", *shouldRunServer)
 
@@ -137,6 +138,11 @@ func main() {
 		bucketName := appConfig.config.GcsIngestionBucket
 		usecases := NewUseCases(appContext, appConfig, nil)
 		jobs.IngestDataFromStorageCSVs(appContext, usecases, bucketName)
+	}
+
+	if *shouldRunDataIngestion {
+		usecases := NewUseCases(appContext, appConfig, nil)
+		jobs.IngestDataFromCsv(appContext, usecases)
 	}
 }
 

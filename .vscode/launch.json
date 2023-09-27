@@ -19,7 +19,7 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "program": "${workspaceFolder}/main.go",
+      "program": "${workspaceFolder}/.",
       "envFile": "${workspaceFolder}/.env.local",
       "args": ["--scheduler"]
     },
@@ -28,9 +28,18 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "program": "${workspaceFolder}/main.go",
+      "program": "${workspaceFolder}/.",
       "envFile": "${workspaceFolder}/.env.local",
       "args": ["--batch-ingestion"]
+    },
+    {
+      "name": "Launch data ingestion job (.env.local)",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/.",
+      "envFile": "${workspaceFolder}/.env.local",
+      "args": ["--data-ingestion"]
     }
   ]
 }

@@ -14,6 +14,7 @@ import (
 
 type GcsRepository interface {
 	ListFiles(ctx context.Context, bucketName, prefix string) ([]models.GCSFile, error)
+	GetFile(ctx context.Context, bucketName, fileName string) (models.GCSFile, error)
 	MoveFile(ctx context.Context, bucketName, source, destination string) error
 	OpenStream(ctx context.Context, bucketName, fileName string) *storage.Writer
 	UpdateFileMetadata(ctx context.Context, bucketName, fileName string, metadata map[string]string) error
@@ -71,6 +72,24 @@ func (repository *GcsRepositoryImpl) ListFiles(ctx context.Context, bucketName, 
 	}
 
 	return output, nil
+}
+
+func (repository *GcsRepositoryImpl) GetFile(ctx context.Context, bucketName, fileName string) (models.GCSFile, error) {
+	bucket := repository.getGCSClient(ctx).Bucket(bucketName)
+	_, err := bucket.Attrs(ctx)
+	if err != nil {
+		return models.GCSFile{}, fmt.Errorf("failed to get bucket %s: %w", bucketName, err)
+	}
+	reader, err := bucket.Object(fileName).NewReader(ctx)
+	if err != nil {
+		return models.GCSFile{}, fmt.Errorf("failed to read GCS object %s/%s: %v", bucketName, fileName, err)
+	}
+
+	return models.GCSFile{
+		FileName:   fileName,
+		Reader:     reader,
+		BucketName: bucketName,
+	}, nil
 }
 
 func (repository *GcsRepositoryImpl) MoveFile(ctx context.Context, bucketName, srcName, destName string) error {

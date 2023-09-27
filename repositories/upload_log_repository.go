@@ -8,7 +8,9 @@ import (
 
 type UploadLogRepository interface {
 	CreateUploadLog(tx Transaction, log models.UploadLog) error
+	UpdateUploadLog(tx Transaction, input models.UpdateUploadLogInput) error
 	UploadLogById(tx Transaction, id string) (models.UploadLog, error)
+	AllUploadLogsByStatus(tx Transaction, status models.UploadStatus) ([]models.UploadLog, error)
 }
 
 type UploadLogRepositoryImpl struct {
@@ -44,6 +46,23 @@ func (repo *UploadLogRepositoryImpl) CreateUploadLog(tx Transaction, log models.
 	return err
 }
 
+func (repo *UploadLogRepositoryImpl) UpdateUploadLog(tx Transaction, input models.UpdateUploadLogInput) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	var updateRequest = NewQueryBuilder().Update(dbmodels.TABLE_CUSTOM_LIST)
+
+	if input.UploadStatus != "" {
+		updateRequest = updateRequest.Set("status", input.UploadStatus)
+	}
+	if input.FinishedAt != nil {
+		updateRequest = updateRequest.Set("finished_at", *input.FinishedAt)
+	}
+	updateRequest = updateRequest.Where("id = ?", input.Id)
+
+	_, err := pgTx.ExecBuilder(updateRequest)
+	return err
+}
+
 func (repo *UploadLogRepositoryImpl) UploadLogById(tx Transaction, id string) (models.UploadLog, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
@@ -60,4 +79,18 @@ func (repo *UploadLogRepositoryImpl) UploadLogById(tx Transaction, id string) (m
 	}
 
 	return uploadLog, err
+}
+
+func (repo *UploadLogRepositoryImpl) AllUploadLogsByStatus(tx Transaction, status models.UploadStatus) ([]models.UploadLog, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	return SqlToListOfModels(
+		pgTx,
+		NewQueryBuilder().
+			Select(dbmodels.SelectUploadLogColumn...).
+			From(dbmodels.TABLE_UPLOAD_LOGS).
+			Where(squirrel.Eq{"status": status}).
+			OrderBy("started_at"),
+		dbmodels.AdaptUploadLog,
+	)
 }
