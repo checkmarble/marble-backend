@@ -12,58 +12,6 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-func SqlToChannelOfDbModel[DBModel any](tx TransactionPostgres, query squirrel.Sqlizer) (<-chan DBModel, <-chan error) {
-
-	modelsChannel := make(chan DBModel, 100)
-	errChannel := make(chan error, 1)
-
-	go func() {
-		defer close(modelsChannel)
-		defer close(errChannel)
-
-		// var err error
-		// for i := 0; i < 1e3; i++ {
-		err := ForEachRow(tx, query, func(row pgx.CollectableRow) error {
-			dbModel, err := pgx.RowToStructByName[DBModel](row)
-			if err != nil {
-				return errors.Wrap(err, fmt.Sprintf("error scanning row to struct %T", dbModel))
-			} else {
-				modelsChannel <- dbModel
-			}
-			return nil
-		})
-		// }
-		errChannel <- err
-
-	}()
-
-	return modelsChannel, errChannel
-}
-
-func ForEachRow(transaction TransactionPostgres, query squirrel.Sqlizer, fn func(row pgx.CollectableRow) error) error {
-
-	sql, args, err := query.ToSql()
-	if err != nil {
-		return errors.Wrap(err, "can't build sql query")
-	}
-
-	rows, err := transaction.exec.Query(transaction.ctx, sql, args...)
-	if err != nil {
-		return errors.Wrap(err, "error executing sql query")
-	}
-
-	defer rows.Close()
-
-	for rows.Next() {
-		err := fn(rows)
-		if err != nil {
-			return err
-		}
-	}
-
-	return errors.Wrap(rows.Err(), "error iterating over rows")
-}
-
 // executes the sql query with the given transaction and returns a list of models using the provided adapter
 func SqlToListOfModels[DBModel, Model any](transaction TransactionPostgres, query squirrel.Sqlizer, adapter func(dbModel DBModel) Model) ([]Model, error) {
 	return SqlToListOfModelsAdapterWithErr(transaction, query, func(dbModel DBModel) (Model, error) {
@@ -88,10 +36,6 @@ func SqlToModel[DBModel, Model any](transaction TransactionPostgres, s squirrel.
 		return adapter(dbModel), nil
 	})
 }
-
-////////////////
-// Below, copies of the same functions usable if the dto adapter can return an error (for instance, if it involves unmarshalling a json string)
-////////////////
 
 // executes the sql query with the given transaction and returns a list of models using the provided adapter
 func SqlToListOfModelsAdapterWithErr[DBModel, Model any](transaction TransactionPostgres, query squirrel.Sqlizer, adapter func(dbModel DBModel) (Model, error)) ([]Model, error) {
