@@ -389,7 +389,7 @@ function OrganizationDetailsDecisionsList({
 
 function ScheduledExecutionCard({
   scheduledExecution,
-  organizationId
+  organizationId,
 }: {
   scheduledExecution: ScheduleExecution;
   organizationId: string;
@@ -438,10 +438,14 @@ function ScheduledExecutionCard({
       <Card>
         <CardContent>
           <Typography variant="h6">
-            {scheduledExecution.started_at.toISOString()}
+            {scheduledExecution.scenarioName}
+          </Typography>
+          <Typography variant="body1">
+            {scheduledExecution.started_at.toISOString()}: {scheduledExecution.status}
           </Typography>
           <Typography variant="body2">
-          Number of created decisions: {scheduledExecution.numberOfCreatedDecisions}
+            {scheduledExecution.numberOfCreatedDecisions} decisions on{" "}
+            {scheduledExecution.scenarioTriggerObjectType}
           </Typography>
           {downloading && <LinearProgress />}
         </CardContent>
