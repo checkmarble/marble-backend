@@ -22,7 +22,7 @@ const TABLE_UPLOAD_LOGS = "upload_logs"
 
 var SelectUploadLogColumn = utils.ColumnList[DBUploadLog]()
 
-func AdaptUploadLog(db DBUploadLog) models.UploadLog {
+func AdaptUploadLog(db DBUploadLog) (models.UploadLog, error) {
 	return models.UploadLog{
 		Id:             db.Id,
 		OrganizationId: db.OrganizationId,
@@ -32,5 +32,5 @@ func AdaptUploadLog(db DBUploadLog) models.UploadLog {
 		StartedAt:      db.StartedAt,
 		FinishedAt:     db.FinishedAt,
 		LinesProcessed: db.LinesProcessed,
-	}
+	}, nil
 }

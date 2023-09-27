@@ -18,11 +18,11 @@ var ApiKeyFields = []string{"id", "org_id", "key", "deleted_at", "role"}
 
 const TABLE_APIKEYS = "apikeys"
 
-func AdaptApikey(db DBApiKey) models.ApiKey {
+func AdaptApikey(db DBApiKey) (models.ApiKey, error) {
 	return models.ApiKey{
 		ApiKeyId:       models.ApiKeyId(db.Id),
 		OrganizationId: db.OrganizationId,
 		Key:            db.Key,
 		Role:           models.Role(db.Role),
-	}
+	}, nil
 }

@@ -34,13 +34,6 @@ type dbJoinScheduledExecutionAndScenario struct {
 	dbmodels.DBScenario
 }
 
-var joinScheduledExecutionAndScenarioFields = func() []string {
-	var columns []string
-	columns = append(columns, columnsNames("se", dbmodels.ScheduledExecutionFields)...)
-	columns = append(columns, columnsNames("scenario", dbmodels.SelectScenarioColumn)...)
-	return columns
-}()
-
 func adaptJoinScheduledExecutionWithScenario(row pgx.CollectableRow) (models.ScheduledExecution, error) {
 
 	db, err := pgx.RowToStructByPos[dbJoinScheduledExecutionAndScenario](row)
@@ -48,13 +41,20 @@ func adaptJoinScheduledExecutionWithScenario(row pgx.CollectableRow) (models.Sch
 		return models.ScheduledExecution{}, err
 	}
 
-	scenario := dbmodels.AdaptScenario(db.DBScenario)
+	scenario, err := dbmodels.AdaptScenario(db.DBScenario)
+	if err != nil {
+		return models.ScheduledExecution{}, err
+	}
 	return dbmodels.AdaptScheduledExecution(db.DBScheduledExecution, scenario), nil
 }
 
 func selectJoinScheduledExecutionAndScenario() squirrel.SelectBuilder {
+	var columns []string
+	columns = append(columns, columnsNames("se", dbmodels.ScheduledExecutionFields)...)
+	columns = append(columns, columnsNames("scenario", dbmodels.SelectScenarioColumn)...)
+
 	return NewQueryBuilder().
-		Select(joinScheduledExecutionAndScenarioFields...).
+		Select(columns...).
 		From(fmt.Sprintf("%s AS se", dbmodels.TABLE_SCHEDULED_EXECUTIONS)).
 		LeftJoin(fmt.Sprintf("%s AS scenario ON scenario.id = se.scenario_id", dbmodels.TABLE_SCENARIOS))
 }

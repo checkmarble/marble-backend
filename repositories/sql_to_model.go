@@ -9,12 +9,6 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-func FuncReturnsNilError[DBModel any, Model any](fn func(db DBModel) Model) func(db DBModel) (Model, error) {
-	return func(db DBModel) (Model, error) {
-		return fn(db), nil
-	}
-}
-
 func adaptModelUsingRowToStruct[DBModel any, Model any](row pgx.CollectableRow, adapter func(dbModel DBModel) (Model, error)) (Model, error) {
 
 	dbModel, err := pgx.RowToStructByName[DBModel](row)

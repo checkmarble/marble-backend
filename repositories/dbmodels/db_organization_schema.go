@@ -15,7 +15,7 @@ const ORGANIZATION_SCHEMA_TABLE = "organizations_schema"
 
 var OrganizationSchemaFields = utils.ColumnList[DbOrganizationSchema]()
 
-func AdaptOrganizationSchema(db DbOrganizationSchema) models.OrganizationSchema {
+func AdaptOrganizationSchema(db DbOrganizationSchema) (models.OrganizationSchema, error) {
 	return models.OrganizationSchema{
 		OrganizationId: db.OrgId,
 		DatabaseSchema: models.DatabaseSchema{
@@ -23,5 +23,5 @@ func AdaptOrganizationSchema(db DbOrganizationSchema) models.OrganizationSchema 
 			Database:   models.DATABASE_MARBLE,
 			Schema:     db.SchemaName,
 		},
-	}
+	}, nil
 }

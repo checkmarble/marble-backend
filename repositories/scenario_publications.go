@@ -35,7 +35,7 @@ func (repo *ScenarioPublicationRepositoryPostgresql) GetScenarioPublicationById(
 	return SqlToModel(
 		pgTx,
 		selectScenarioPublications().Where(squirrel.Eq{"id": scenarioPublicationID}),
-		FuncReturnsNilError(dbmodels.AdaptScenarioPublication),
+		dbmodels.AdaptScenarioPublication,
 	)
 }
 
@@ -56,7 +56,7 @@ func (repo *ScenarioPublicationRepositoryPostgresql) ListScenarioPublicationsOfO
 	return SqlToListOfModels(
 		pgTx,
 		query,
-		FuncReturnsNilError(dbmodels.AdaptScenarioPublication),
+		dbmodels.AdaptScenarioPublication,
 	)
 }
 
