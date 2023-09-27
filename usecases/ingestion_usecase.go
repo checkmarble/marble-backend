@@ -105,8 +105,8 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 		return models.UploadLog{}, err
 	}
 
-	var i int
-	for i = 0; ; i++ {
+	var processedLinesCount int
+	for processedLinesCount = 1; ; processedLinesCount++ {
 		row, err := fileReader.Read()
 		if err == io.EOF {
 			break
@@ -117,7 +117,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 
 		_, err = parseStringValuesToMap(headers, row, table)
 		if err != nil {
-			return models.UploadLog{}, fmt.Errorf("Error found at line %d in CSV %w", i, err)
+			return models.UploadLog{}, fmt.Errorf("Error found at line %d in CSV %w", processedLinesCount, err)
 		}
 
 		if err := csvWriter.WriteAll([][]string{row}); err != nil {
@@ -141,7 +141,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 			FileName:       fileName,
 			UserId:         userId,
 			StartedAt:      time.Now(),
-			LinesProcessed: i,
+			LinesProcessed: processedLinesCount,
 		}
 		if err := usecase.uploadLogRepository.CreateUploadLog(tx, newUploadLoad); err != nil {
 			return models.UploadLog{}, err
