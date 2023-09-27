@@ -8,7 +8,7 @@ import (
 
 type UploadLogRepository interface {
 	CreateUploadLog(tx Transaction, log models.UploadLog) error
-	UpdateUploadLog(tx Transaction, log models.UploadLog) error
+	UpdateUploadLog(tx Transaction, input models.UpdateUploadLogInput) error
 	UploadLogById(tx Transaction, id string) (models.UploadLog, error)
 	AllUploadLogsByStatus(tx Transaction, status models.UploadStatus) ([]models.UploadLog, error)
 }
@@ -46,21 +46,20 @@ func (repo *UploadLogRepositoryImpl) CreateUploadLog(tx Transaction, log models.
 	return err
 }
 
-func (repo *UploadLogRepositoryImpl) UpdateUploadLog(tx Transaction, log models.UploadLog) error {
+func (repo *UploadLogRepositoryImpl) UpdateUploadLog(tx Transaction, input models.UpdateUploadLogInput) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	_, err := pgTx.ExecBuilder(
-		NewQueryBuilder().Update(dbmodels.TABLE_UPLOAD_LOGS).
-			SetMap(map[string]interface{}{
-				"org_id":          log.OrganizationId,
-				"user_id":         log.UserId,
-				"file_name":       log.FileName,
-				"status":          log.UploadStatus,
-				"started_at":      log.StartedAt,
-				"finished_at":     log.FinishedAt,
-				"lines_processed": log.LinesProcessed,
-			}).Where("id = ?", log.Id),
-	)
+	var updateRequest = NewQueryBuilder().Update(dbmodels.TABLE_CUSTOM_LIST)
+
+	if input.UploadStatus != "" {
+		updateRequest = updateRequest.Set("status", input.UploadStatus)
+	}
+	if input.FinishedAt != nil {
+		updateRequest = updateRequest.Set("finished_at", *input.FinishedAt)
+	}
+	updateRequest = updateRequest.Where("id = ?", input.Id)
+
+	_, err := pgTx.ExecBuilder(updateRequest)
 	return err
 }
 

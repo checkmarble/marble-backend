@@ -46,7 +46,7 @@ func (usecase *IngestionUseCase) IngestObjects(organizationId string, payloads [
 	})
 }
 
-func (usecase *IngestionUseCase) IngestFilesFromStorageCsv(ctx context.Context, bucketName string, logger *slog.Logger) error {
+func (usecase *IngestionUseCase) IngestFilesFromLegacyStorageCsv(ctx context.Context, bucketName string, logger *slog.Logger) error {
 	files, err := usecase.gcsRepository.ListFiles(ctx, bucketName, pendingFilesFolder)
 	if err != nil {
 		return err
@@ -141,7 +141,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 			FileName:       fileName,
 			UserId:         userId,
 			StartedAt:      time.Now(),
-			LinesProcessed: 0,
+			LinesProcessed: i,
 		}
 		if err := usecase.uploadLogRepository.CreateUploadLog(tx, newUploadLoad); err != nil {
 			return models.UploadLog{}, err
@@ -150,11 +150,8 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 	})
 }
 
-func (usecase *IngestionUseCase) IngestDataFromUploadLogs(ctx context.Context, logger *slog.Logger) error {
-	pendingUploadLogs, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) ([]models.UploadLog, error) {
-		return usecase.uploadLogRepository.AllUploadLogsByStatus(tx, models.UploadPending)
-	})
-
+func (usecase *IngestionUseCase) IngestDataFromCsv(ctx context.Context, logger *slog.Logger) error {
+	pendingUploadLogs, err := usecase.uploadLogRepository.AllUploadLogsByStatus(nil, models.UploadPending)
 	if err != nil {
 		return err
 	}
@@ -175,20 +172,15 @@ func (usecase *IngestionUseCase) IngestDataFromUploadLogs(ctx context.Context, l
 		go startProcessUploadLog(uploadLog)
 	}
 
-	go func() {
-		waitGroup.Wait()
-		close(uploadErrorChan)
-	}()
+	waitGroup.Wait()
+	close(uploadErrorChan)
 
 	uploadErr := <-uploadErrorChan
 	return uploadErr
 }
 
 func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog models.UploadLog, logger *slog.Logger) error {
-	err := usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
-		uploadLog.UploadStatus = models.UploadProcessing
-		return usecase.uploadLogRepository.UpdateUploadLog(tx, uploadLog)
-	})
+	err := usecase.uploadLogRepository.UpdateUploadLog(nil, models.UpdateUploadLogInput{Id: uploadLog.Id, UploadStatus: models.UploadProcessing})
 
 	if err != nil {
 		return err
@@ -198,16 +190,15 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 	if err != nil {
 		return err
 	}
+	defer file.Reader.Close()
 
 	if err = usecase.readFileIngestObjects(ctx, file, logger, false); err != nil {
 		return err
 	}
 
-	err = usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
-		uploadLog.UploadStatus = models.UploadSuccess
-		return usecase.uploadLogRepository.UpdateUploadLog(tx, uploadLog)
-	})
-	if err != nil {
+	currentTime := time.Now()
+	input := models.UpdateUploadLogInput{Id: uploadLog.Id, UploadStatus: models.UploadSuccess, FinishedAt: &currentTime}
+	if err = usecase.uploadLogRepository.UpdateUploadLog(nil, input); err != nil {
 		return err
 	}
 	return nil
@@ -250,7 +241,7 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file
 		return fmt.Errorf("error ingesting objects from CSV %s: %w", fullFileName, err)
 	}
 
-	if moveFile == true {
+	if moveFile {
 		if err = usecase.gcsRepository.MoveFile(ctx, file.BucketName, fullFileName, strings.Replace(fullFileName, pendingFilesFolder, doneFilesFolder, 1)); err != nil {
 			return fmt.Errorf("error moving file %s to done folder: %w", fullFileName, err)
 		}

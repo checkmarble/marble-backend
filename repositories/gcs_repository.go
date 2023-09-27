@@ -84,7 +84,6 @@ func (repository *GcsRepositoryImpl) GetFile(ctx context.Context, bucketName, fi
 	if err != nil {
 		return models.GCSFile{}, fmt.Errorf("failed to read GCS object %s/%s: %v", bucketName, fileName, err)
 	}
-	defer reader.Close()
 
 	return models.GCSFile{
 		FileName:   fileName,

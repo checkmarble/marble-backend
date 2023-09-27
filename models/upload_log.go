@@ -33,3 +33,9 @@ func UploadStatusFrom(s string) UploadStatus {
 	}
 	return UploadPending
 }
+
+type UpdateUploadLogInput struct {
+	Id           string
+	UploadStatus UploadStatus
+	FinishedAt   *time.Time
+}

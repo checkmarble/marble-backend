@@ -1,9 +1,11 @@
 package models
 
-import "io"
+import (
+	"cloud.google.com/go/storage"
+)
 
 type GCSFile struct {
 	FileName   string
-	Reader     io.Reader
+	Reader     *storage.Reader
 	BucketName string
 }
