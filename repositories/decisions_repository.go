@@ -6,6 +6,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/Masterminds/squirrel"
 )
@@ -202,7 +203,9 @@ func (repo *DecisionRepositoryImpl) channelOfDecisions(tx TransactionPostgres, q
 		defer close(decisionsChannel)
 		defer close(errChannel)
 
-		dbDecisionsChannel, dbErrChannel := SqlToChannelOfDbModel[dbmodels.DbDecision](tx, query)
+		dbDecisionsChannel, dbErrChannel := SqlToChannelOfRow(tx, query, func(row pgx.CollectableRow) (dbmodels.DbDecision, error) {
+			return pgx.RowToStructByName[dbmodels.DbDecision](row)
+		})
 
 		var allErrors []error
 
