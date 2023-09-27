@@ -36,8 +36,8 @@ func (d *DataModelRepository) CreateDataModel(tx repositories.Transaction, organ
 	return args.Error(0)
 }
 
-func (d *DataModelRepository) CreateDataModelTable(tx repositories.Transaction, organizationID, name, description string) error {
-	args := d.Called(tx, organizationID, name, description)
+func (d *DataModelRepository) CreateDataModelTable(tx repositories.Transaction, organizationID, tableID, name, description string) error {
+	args := d.Called(tx, organizationID, tableID, name, description)
 	return args.Error(0)
 }
 
@@ -46,8 +46,8 @@ func (d *DataModelRepository) UpdateDataModelTable(tx repositories.Transaction, 
 	return args.Error(0)
 }
 
-func (d *DataModelRepository) CreateDataModelField(tx repositories.Transaction, tableID string, field models.DataModelField) error {
-	args := d.Called(tx, tableID, field)
+func (d *DataModelRepository) CreateDataModelField(tx repositories.Transaction, tableID, fieldID string, field models.DataModelField) error {
+	args := d.Called(tx, tableID, fieldID, field)
 	return args.Error(0)
 }
 

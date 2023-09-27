@@ -42,7 +42,7 @@ type PostCreateTable struct {
 	Body *struct {
 		Name        string `json:"name"`
 		Description string `json:"description"`
-	} `in:"body=json;required"`
+	} `in:"body=json"`
 }
 
 type PostCreateField struct {
@@ -51,7 +51,7 @@ type PostCreateField struct {
 		Description string `json:"description"`
 		Type        string `json:"type"`
 		Nullable    bool   `json:"nullable"`
-	} `in:"body=json;required"`
+	} `in:"body=json"`
 }
 
 type PostCreateLink struct {

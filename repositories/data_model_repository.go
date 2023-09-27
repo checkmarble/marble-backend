@@ -19,10 +19,10 @@ type DataModelRepository interface {
 	GetLinks(tx Transaction, organizationID string) ([]models.DataModelLink, error)
 	DeleteDataModel(tx Transaction, organizationId string) error
 	CreateDataModel(tx Transaction, organizationId string, dataModel models.DataModel) error
-	CreateDataModelTable(tx Transaction, organizationID, name, description string) error
+	CreateDataModelTable(tx Transaction, organizationID, tableID, name, description string) error
 	UpdateDataModelTable(tx Transaction, tableID, description string) error
 	GetDataModelTable(tx Transaction, tableID string) (models.DataModelTable, error)
-	CreateDataModelField(tx Transaction, tableID string, field models.DataModelField) error
+	CreateDataModelField(tx Transaction, tableID, fieldID string, field models.DataModelField) error
 	UpdateDataModelField(tx Transaction, field, description string) error
 	CreateDataModelLink(tx Transaction, link models.DataModelLink) error
 }
@@ -83,14 +83,14 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModel(tx Transaction, organ
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) CreateDataModelTable(tx Transaction, organizationID, name, description string) error {
+func (repo *DataModelRepositoryPostgresql) CreateDataModelTable(tx Transaction, organizationID, tableID, name, description string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	_, err := pgTx.ExecBuilder(
-		NewQueryBuilder().Insert("data_model_tables").
-			Columns("organization_id", "name", "description").
-			Values(organizationID, name, description),
-	)
+	query := `
+		INSERT INTO data_model_tables (id, organization_id, name, description)
+		VALUES ($1, $2, $3, $4)`
+
+	_, err := pgTx.exec.Exec(pgTx.ctx, query, tableID, organizationID, name, description)
 	return err
 }
 
@@ -119,14 +119,15 @@ func (repo *DataModelRepositoryPostgresql) UpdateDataModelTable(tx Transaction, 
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) CreateDataModelField(tx Transaction, tableID string, field models.DataModelField) error {
+func (repo *DataModelRepositoryPostgresql) CreateDataModelField(tx Transaction, tableID, fieldID string, field models.DataModelField) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	_, err := pgTx.ExecBuilder(
-		NewQueryBuilder().Insert("data_model_fields").
-			Columns("table_id", "name", "type", "nullable", "description").
-			Values(tableID, field.Name, field.Type, field.Nullable, field.Description),
-	)
+	query := `
+		INSERT INTO data_model_fields (id, table_id, name, type, nullable, description)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id`
+
+	_, err := pgTx.exec.Exec(pgTx.ctx, query, fieldID, tableID, field.Name, field.Type, field.Nullable, field.Description)
 	return err
 }
 
