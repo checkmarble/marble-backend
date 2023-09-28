@@ -20,11 +20,15 @@ type ScenarioEvaluationParameters struct {
 	DataModel models.DataModel
 }
 
+type EvalScenarioRepository interface {
+	GetScenarioIteration(tx repositories.Transaction, scenarioIterationId string) (models.ScenarioIteration, error)
+}
+
 type ScenarioEvaluationRepositories struct {
-	ScenarioIterationReadRepository repositories.ScenarioIterationReadRepository
-	OrgTransactionFactory           transaction.Factory
-	IngestedDataReadRepository      repositories.IngestedDataReadRepository
-	EvaluateRuleAstExpression       ast_eval.EvaluateRuleAstExpression
+	EvalScenarioRepository     EvalScenarioRepository
+	OrgTransactionFactory      transaction.Factory
+	IngestedDataReadRepository repositories.IngestedDataReadRepository
+	EvaluateRuleAstExpression  ast_eval.EvaluateRuleAstExpression
 }
 
 func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repositories ScenarioEvaluationRepositories, logger *slog.Logger) (se models.ScenarioExecution, err error) {
@@ -50,7 +54,7 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repo
 		return models.ScenarioExecution{}, errors.Join(models.ScenarioHasNoLiveVersionError, models.BadParameterError)
 	}
 
-	liveVersion, err := repositories.ScenarioIterationReadRepository.GetScenarioIteration(nil, *params.Scenario.LiveVersionID)
+	liveVersion, err := repositories.EvalScenarioRepository.GetScenarioIteration(nil, *params.Scenario.LiveVersionID)
 	if err != nil {
 		return models.ScenarioExecution{}, fmt.Errorf("error getting scenario iteration in eval scenar: %w", err)
 	}

@@ -22,11 +22,7 @@ type Repositories struct {
 	IngestedDataReadRepository       IngestedDataReadRepository
 	BlankDataReadRepository          BlankDataReadRepository
 	DecisionRepository               DecisionRepository
-	RuleRepository                   RuleRepository
-	ScenarioReadRepository           ScenarioReadRepository
-	ScenarioWriteRepository          ScenarioWriteRepository
-	ScenarioIterationReadRepository  ScenarioIterationReadRepository
-	ScenarioIterationWriteRepository ScenarioIterationWriteRepository
+	MarbleDbRepository               MarbleDbRepository
 	ScenarioPublicationRepository    ScenarioPublicationRepository
 	ScheduledExecutionRepository     ScheduledExecutionRepository
 	OrganizationSchemaRepository     OrganizationSchemaRepository
@@ -89,23 +85,8 @@ func NewRepositories(
 		DecisionRepository: &DecisionRepositoryImpl{
 			transactionFactory: transactionFactory,
 		},
-		RuleRepository: &RuleRepositoryPostgresql{
+		MarbleDbRepository: MarbleDbRepository{
 			transactionFactory: transactionFactory,
-		},
-		ScenarioReadRepository: NewScenarioReadRepositoryPostgresql(
-			transactionFactory,
-		),
-		ScenarioWriteRepository: NewScenarioWriteRepositoryPostgresql(
-			transactionFactory,
-		),
-		ScenarioIterationReadRepository: &ScenarioIterationReadRepositoryPostgresql{
-			transactionFactory: transactionFactory,
-		},
-		ScenarioIterationWriteRepository: &ScenarioIterationWriteRepositoryPostgresql{
-			transactionFactory: transactionFactory,
-			ruleRepository: &RuleRepositoryPostgresql{
-				transactionFactory: transactionFactory,
-			},
 		},
 		ScenarioPublicationRepository: NewScenarioPublicationRepositoryPostgresql(
 			transactionFactory,

@@ -10,12 +10,18 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
+type ScenarioUsecaseRepository interface {
+	GetScenarioById(tx repositories.Transaction, scenarioId string) (models.Scenario, error)
+	ListScenariosOfOrganization(tx repositories.Transaction, organizationId string) ([]models.Scenario, error)
+	CreateScenario(tx repositories.Transaction, organizationId string, scenario models.CreateScenarioInput, newScenarioId string) error
+	UpdateScenario(tx repositories.Transaction, scenario models.UpdateScenarioInput) error
+}
+
 type ScenarioUsecase struct {
 	transactionFactory      transaction.TransactionFactory
 	organizationIdOfContext func() (string, error)
 	enforceSecurity         security.EnforceSecurityScenario
-	scenarioReadRepository  repositories.ScenarioReadRepository
-	scenarioWriteRepository repositories.ScenarioWriteRepository
+	repository              ScenarioUsecaseRepository
 }
 
 func (usecase *ScenarioUsecase) ListScenarios() ([]models.Scenario, error) {
@@ -23,7 +29,7 @@ func (usecase *ScenarioUsecase) ListScenarios() ([]models.Scenario, error) {
 	if err != nil {
 		return nil, err
 	}
-	scenarios, err := usecase.scenarioReadRepository.ListScenariosOfOrganization(nil, organizationId)
+	scenarios, err := usecase.repository.ListScenariosOfOrganization(nil, organizationId)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +43,7 @@ func (usecase *ScenarioUsecase) ListScenarios() ([]models.Scenario, error) {
 }
 
 func (usecase *ScenarioUsecase) GetScenario(scenarioId string) (models.Scenario, error) {
-	scenario, err := usecase.scenarioReadRepository.GetScenarioById(nil, scenarioId)
+	scenario, err := usecase.repository.GetScenarioById(nil, scenarioId)
 	if err != nil {
 		return models.Scenario{}, err
 	}
@@ -55,7 +61,7 @@ func (usecase *ScenarioUsecase) UpdateScenario(scenarioInput models.UpdateScenar
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) (models.Scenario, error) {
 
-			scenario, err := usecase.scenarioReadRepository.GetScenarioById(tx, scenarioInput.Id)
+			scenario, err := usecase.repository.GetScenarioById(tx, scenarioInput.Id)
 			if err != nil {
 				return models.Scenario{}, err
 			}
@@ -63,11 +69,11 @@ func (usecase *ScenarioUsecase) UpdateScenario(scenarioInput models.UpdateScenar
 				return models.Scenario{}, err
 			}
 
-			err = usecase.scenarioWriteRepository.UpdateScenario(tx, scenarioInput)
+			err = usecase.repository.UpdateScenario(tx, scenarioInput)
 			if err != nil {
 				return models.Scenario{}, err
 			}
-			scenario, err = usecase.scenarioReadRepository.GetScenarioById(tx, scenario.Id)
+			scenario, err = usecase.repository.GetScenarioById(tx, scenario.Id)
 			return scenario, errors.HandledWithMessage(err, "Error getting scenario after update")
 		},
 	)
@@ -88,10 +94,10 @@ func (usecase *ScenarioUsecase) CreateScenario(scenario models.CreateScenarioInp
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) (models.Scenario, error) {
 			newScenarioId := utils.NewPrimaryKey(organizationId)
-			if err := usecase.scenarioWriteRepository.CreateScenario(tx, organizationId, scenario, newScenarioId); err != nil {
+			if err := usecase.repository.CreateScenario(tx, organizationId, scenario, newScenarioId); err != nil {
 				return models.Scenario{}, err
 			}
-			scenario, err := usecase.scenarioReadRepository.GetScenarioById(tx, newScenarioId)
+			scenario, err := usecase.repository.GetScenarioById(tx, newScenarioId)
 			return scenario, errors.HandledWithMessage(err, "Error getting scenario after update")
 		},
 	)

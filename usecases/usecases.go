@@ -44,11 +44,8 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 		OrganizationRepository: usecases.Repositories.OrganizationRepository,
 		DataModelRepository:    usecases.Repositories.DataModelRepository,
 		OrganizationSeeder: organization.OrganizationSeeder{
-			CustomListRepository:             usecases.Repositories.CustomListRepository,
-			ApiKeyRepository:                 usecases.Repositories.ApiKeyRepository,
-			ScenarioWriteRepository:          usecases.Repositories.ScenarioWriteRepository,
-			ScenarioIterationWriteRepository: usecases.Repositories.ScenarioIterationWriteRepository,
-			ScenarioPublisher:                usecases.NewScenarioPublisher(),
+			CustomListRepository: usecases.Repositories.CustomListRepository,
+			ApiKeyRepository:     usecases.Repositories.ApiKeyRepository,
 		},
 		PopulateOrganizationSchema: usecases.NewPopulateOrganizationSchema(),
 	}
@@ -137,11 +134,9 @@ func (usecases *Usecases) NewEvaluateRuleAstExpression() ast_eval.EvaluateRuleAs
 
 func (usecases *Usecases) NewScenarioPublisher() scenarios.ScenarioPublisher {
 	return scenarios.ScenarioPublisher{
-		ScenarioPublicationsRepository:   usecases.Repositories.ScenarioPublicationRepository,
-		ScenarioWriteRepository:          usecases.Repositories.ScenarioWriteRepository,
-		ScenarioIterationReadRepository:  usecases.Repositories.ScenarioIterationReadRepository,
-		ScenarioIterationWriteRepository: usecases.Repositories.ScenarioIterationWriteRepository,
-		ValidateScenarioIteration:        usecases.NewValidateScenarioIteration(),
+		Repository:                     &usecases.Repositories.MarbleDbRepository,
+		ValidateScenarioIteration:      usecases.NewValidateScenarioIteration(),
+		ScenarioPublicationsRepository: usecases.Repositories.ScenarioPublicationRepository,
 	}
 }
 
@@ -154,7 +149,6 @@ func (usecases *Usecases) NewValidateScenarioIteration() scenarios.ValidateScena
 
 func (usecase *Usecases) NewScenarioFetcher() scenarios.ScenarioFetcher {
 	return scenarios.ScenarioFetcher{
-		ScenarioReadRepository:          usecase.Repositories.ScenarioReadRepository,
-		ScenarioIterationReadRepository: usecase.Repositories.ScenarioIterationReadRepository,
+		Repository: &usecase.Repositories.MarbleDbRepository,
 	}
 }

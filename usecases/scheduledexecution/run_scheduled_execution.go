@@ -17,18 +17,22 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
+type RunScheduledExecutionRepository interface {
+	GetScenarioById(tx repositories.Transaction, scenarioId string) (models.Scenario, error)
+	GetScenarioIteration(tx repositories.Transaction, scenarioIterationId string) (models.ScenarioIteration, error)
+}
+
 type RunScheduledExecution struct {
-	ScenarioReadRepository          repositories.ScenarioReadRepository
-	TransactionFactory              transaction.TransactionFactory
-	ScheduledExecutionRepository    repositories.ScheduledExecutionRepository
-	ExportScheduleExecution         ExportScheduleExecution
-	ScenarioPublicationsRepository  repositories.ScenarioPublicationRepository
-	DataModelRepository             repositories.DataModelRepository
-	OrgTransactionFactory           transaction.Factory
-	IngestedDataReadRepository      repositories.IngestedDataReadRepository
-	ScenarioIterationReadRepository repositories.ScenarioIterationReadRepository
-	EvaluateRuleAstExpression       ast_eval.EvaluateRuleAstExpression
-	DecisionRepository              repositories.DecisionRepository
+	Repository                     RunScheduledExecutionRepository
+	TransactionFactory             transaction.TransactionFactory
+	ScheduledExecutionRepository   repositories.ScheduledExecutionRepository
+	ExportScheduleExecution        ExportScheduleExecution
+	ScenarioPublicationsRepository repositories.ScenarioPublicationRepository
+	DataModelRepository            repositories.DataModelRepository
+	OrgTransactionFactory          transaction.Factory
+	IngestedDataReadRepository     repositories.IngestedDataReadRepository
+	EvaluateRuleAstExpression      ast_eval.EvaluateRuleAstExpression
+	DecisionRepository             repositories.DecisionRepository
 }
 
 func (usecase *RunScheduledExecution) ExecuteScheduledScenarioIfDue(ctx context.Context, organizationId string, scenarioId string) (err error) {
@@ -42,7 +46,7 @@ func (usecase *RunScheduledExecution) ExecuteScheduledScenarioIfDue(ctx context.
 		}
 	}()
 
-	scenario, err := usecase.ScenarioReadRepository.GetScenarioById(nil, scenarioId)
+	scenario, err := usecase.Repository.GetScenarioById(nil, scenarioId)
 	if err != nil {
 		return err
 	}
@@ -195,10 +199,10 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 					DataModel: dataModel,
 				},
 				evaluate_scenario.ScenarioEvaluationRepositories{
-					ScenarioIterationReadRepository: usecase.ScenarioIterationReadRepository,
-					OrgTransactionFactory:           usecase.OrgTransactionFactory,
-					IngestedDataReadRepository:      usecase.IngestedDataReadRepository,
-					EvaluateRuleAstExpression:       usecase.EvaluateRuleAstExpression,
+					EvalScenarioRepository:     usecase.Repository,
+					OrgTransactionFactory:      usecase.OrgTransactionFactory,
+					IngestedDataReadRepository: usecase.IngestedDataReadRepository,
+					EvaluateRuleAstExpression:  usecase.EvaluateRuleAstExpression,
 				},
 				utils.LoggerFromContext(ctx),
 			)
@@ -237,7 +241,7 @@ func (usecase *RunScheduledExecution) getPublishedScenarioIteration(scenario mod
 		return nil, nil
 	}
 
-	liveVersion, err := usecase.ScenarioIterationReadRepository.GetScenarioIteration(nil, *scenario.LiveVersionID)
+	liveVersion, err := usecase.Repository.GetScenarioIteration(nil, *scenario.LiveVersionID)
 	if err != nil {
 		return nil, err
 	}

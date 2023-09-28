@@ -13,11 +13,10 @@ import (
 
 type ScenarioUsecaseTestSuite struct {
 	suite.Suite
-	transaction             *mocks.Transaction
-	transactionFactory      *mocks.TransactionFactory
-	enforceSecurity         *mocks.EnforceSecurity
-	scenarioReadRepository  *mocks.ScenarioReadRepository
-	scenarioWriteRepository *mocks.ScenarioWriteRepository
+	transaction        *mocks.Transaction
+	transactionFactory *mocks.TransactionFactory
+	enforceSecurity    *mocks.EnforceSecurity
+	scenarioRepository *mocks.ScenarioRepository
 
 	organizationId string
 	scenarioId     string
@@ -29,8 +28,7 @@ func (suite *ScenarioUsecaseTestSuite) SetupTest() {
 	suite.transaction = new(mocks.Transaction)
 	suite.enforceSecurity = new(mocks.EnforceSecurity)
 	suite.transactionFactory = &mocks.TransactionFactory{TxMock: suite.transaction}
-	suite.scenarioReadRepository = new(mocks.ScenarioReadRepository)
-	suite.scenarioWriteRepository = new(mocks.ScenarioWriteRepository)
+	suite.scenarioRepository = new(mocks.ScenarioRepository)
 	suite.securityError = errors.New("some security error")
 
 	suite.organizationId = "25ab6323-1657-4a52-923a-ef6983fe4532"
@@ -48,9 +46,8 @@ func (suite *ScenarioUsecaseTestSuite) makeUsecase() *ScenarioUsecase {
 		organizationIdOfContext: func() (string, error) {
 			return suite.organizationId, nil
 		},
-		enforceSecurity:         suite.enforceSecurity,
-		scenarioReadRepository:  suite.scenarioReadRepository,
-		scenarioWriteRepository: suite.scenarioWriteRepository,
+		enforceSecurity: suite.enforceSecurity,
+		repository:      suite.scenarioRepository,
 	}
 }
 
@@ -59,14 +56,13 @@ func (suite *ScenarioUsecaseTestSuite) AssertExpectations() {
 	suite.transaction.AssertExpectations(t)
 	suite.enforceSecurity.AssertExpectations(t)
 	suite.transactionFactory.AssertExpectations(t)
-	suite.scenarioReadRepository.AssertExpectations(t)
-	suite.scenarioWriteRepository.AssertExpectations(t)
+	suite.scenarioRepository.AssertExpectations(t)
 }
 
 func (suite *ScenarioUsecaseTestSuite) TestListScenarios() {
 
 	var expected = []models.Scenario{suite.scenario}
-	suite.scenarioReadRepository.On("ListScenariosOfOrganization", nil, suite.organizationId).Return(expected, nil)
+	suite.scenarioRepository.On("ListScenariosOfOrganization", nil, suite.organizationId).Return(expected, nil)
 	suite.enforceSecurity.On("ReadScenario", suite.scenario).Return(nil)
 
 	result, err := suite.makeUsecase().ListScenarios()
@@ -80,7 +76,7 @@ func (suite *ScenarioUsecaseTestSuite) TestListScenarios() {
 
 func (suite *ScenarioUsecaseTestSuite) TestListScenarios_security() {
 
-	suite.scenarioReadRepository.On("ListScenariosOfOrganization", nil, suite.organizationId).Return([]models.Scenario{suite.scenario}, nil)
+	suite.scenarioRepository.On("ListScenariosOfOrganization", nil, suite.organizationId).Return([]models.Scenario{suite.scenario}, nil)
 	suite.enforceSecurity.On("ReadScenario", suite.scenario).Return(suite.securityError)
 
 	_, err := suite.makeUsecase().ListScenarios()
@@ -91,7 +87,7 @@ func (suite *ScenarioUsecaseTestSuite) TestListScenarios_security() {
 
 func (suite *ScenarioUsecaseTestSuite) TestGetScenario() {
 
-	suite.scenarioReadRepository.On("GetScenarioById", nil, suite.scenarioId).Return(suite.scenario, nil)
+	suite.scenarioRepository.On("GetScenarioById", nil, suite.scenarioId).Return(suite.scenario, nil)
 	suite.enforceSecurity.On("ReadScenario", suite.scenario).Return(nil)
 
 	result, err := suite.makeUsecase().GetScenario(suite.scenarioId)
@@ -105,7 +101,7 @@ func (suite *ScenarioUsecaseTestSuite) TestGetScenario() {
 
 func (suite *ScenarioUsecaseTestSuite) TestGetScenario_security() {
 
-	suite.scenarioReadRepository.On("GetScenarioById", nil, suite.scenarioId).Return(suite.scenario, nil)
+	suite.scenarioRepository.On("GetScenarioById", nil, suite.scenarioId).Return(suite.scenario, nil)
 	suite.enforceSecurity.On("ReadScenario", suite.scenario).Return(suite.securityError)
 
 	_, err := suite.makeUsecase().GetScenario(suite.scenarioId)
@@ -126,11 +122,11 @@ func (suite *ScenarioUsecaseTestSuite) TestUpdateScenario() {
 	}
 
 	suite.transactionFactory.On("Transaction", models.DATABASE_MARBLE_SCHEMA, mock.Anything).Return(nil)
-	suite.scenarioReadRepository.On("GetScenarioById", suite.transaction, suite.scenarioId).Return(suite.scenario, nil).Once()
+	suite.scenarioRepository.On("GetScenarioById", suite.transaction, suite.scenarioId).Return(suite.scenario, nil).Once()
 	suite.enforceSecurity.On("UpdateScenario", suite.scenario).Return(nil)
 
-	suite.scenarioWriteRepository.On("UpdateScenario", suite.transaction, scenarioInput).Return(nil)
-	suite.scenarioReadRepository.On("GetScenarioById", suite.transaction, suite.scenarioId).Return(updatedScenario, nil).Once()
+	suite.scenarioRepository.On("UpdateScenario", suite.transaction, scenarioInput).Return(nil)
+	suite.scenarioRepository.On("GetScenarioById", suite.transaction, suite.scenarioId).Return(updatedScenario, nil).Once()
 
 	result, err := suite.makeUsecase().UpdateScenario(scenarioInput)
 
@@ -148,7 +144,7 @@ func (suite *ScenarioUsecaseTestSuite) TestUpdateScenario_security() {
 	}
 
 	suite.transactionFactory.On("Transaction", models.DATABASE_MARBLE_SCHEMA, mock.Anything).Return(nil)
-	suite.scenarioReadRepository.On("GetScenarioById", suite.transaction, suite.scenarioId).Return(suite.scenario, nil).Once()
+	suite.scenarioRepository.On("GetScenarioById", suite.transaction, suite.scenarioId).Return(suite.scenario, nil).Once()
 	suite.enforceSecurity.On("UpdateScenario", suite.scenario).Return(suite.securityError)
 
 	_, err := suite.makeUsecase().UpdateScenario(scenarioInput)
@@ -166,8 +162,8 @@ func (suite *ScenarioUsecaseTestSuite) TestCreateScenario() {
 	suite.enforceSecurity.On("CreateScenario", suite.organizationId).Return(nil)
 
 	suite.transactionFactory.On("Transaction", models.DATABASE_MARBLE_SCHEMA, mock.Anything).Return(nil)
-	suite.scenarioWriteRepository.On("CreateScenario", suite.transaction, suite.organizationId, createScenarioInput, mock.Anything).Return(nil)
-	suite.scenarioReadRepository.On("GetScenarioById", suite.transaction, mock.Anything).Return(suite.scenario, nil).Once()
+	suite.scenarioRepository.On("CreateScenario", suite.transaction, suite.organizationId, createScenarioInput, mock.Anything).Return(nil)
+	suite.scenarioRepository.On("GetScenarioById", suite.transaction, mock.Anything).Return(suite.scenario, nil).Once()
 
 	result, err := suite.makeUsecase().CreateScenario(createScenarioInput)
 

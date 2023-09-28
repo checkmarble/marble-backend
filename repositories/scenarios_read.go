@@ -7,29 +7,13 @@ import (
 	"github.com/Masterminds/squirrel"
 )
 
-type ScenarioReadRepository interface {
-	GetScenarioById(tx Transaction, scenarioId string) (models.Scenario, error)
-	ListScenariosOfOrganization(tx Transaction, organizationId string) ([]models.Scenario, error)
-	ListAllScenarios(tx Transaction) ([]models.Scenario, error)
-}
-
-type ScenarioReadRepositoryPostgresql struct {
-	transactionFactory TransactionFactoryPosgresql
-}
-
-func NewScenarioReadRepositoryPostgresql(transactionFactory TransactionFactoryPosgresql) ScenarioReadRepository {
-	return &ScenarioReadRepositoryPostgresql{
-		transactionFactory: transactionFactory,
-	}
-}
-
 func selectScenarios() squirrel.SelectBuilder {
 	return NewQueryBuilder().
 		Select(dbmodels.SelectScenarioColumn...).
 		From(dbmodels.TABLE_SCENARIOS)
 }
 
-func (repo *ScenarioReadRepositoryPostgresql) GetScenarioById(tx Transaction, scenarioId string) (models.Scenario, error) {
+func (repo *MarbleDbRepository) GetScenarioById(tx Transaction, scenarioId string) (models.Scenario, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	return SqlToModel(
@@ -39,7 +23,7 @@ func (repo *ScenarioReadRepositoryPostgresql) GetScenarioById(tx Transaction, sc
 	)
 }
 
-func (repo *ScenarioReadRepositoryPostgresql) ListScenariosOfOrganization(tx Transaction, organizationId string) ([]models.Scenario, error) {
+func (repo *MarbleDbRepository) ListScenariosOfOrganization(tx Transaction, organizationId string) ([]models.Scenario, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	return SqlToListOfModels(
@@ -49,7 +33,7 @@ func (repo *ScenarioReadRepositoryPostgresql) ListScenariosOfOrganization(tx Tra
 	)
 }
 
-func (repo *ScenarioReadRepositoryPostgresql) ListAllScenarios(tx Transaction) ([]models.Scenario, error) {
+func (repo *MarbleDbRepository) ListAllScenarios(tx Transaction) ([]models.Scenario, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	return SqlToListOfModels(

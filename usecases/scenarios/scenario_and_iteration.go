@@ -5,24 +5,30 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 )
 
+type ScenarioFetcherRepository interface {
+	GetScenarioById(tx repositories.Transaction, scenarioId string) (models.Scenario, error)
+	GetScenarioIteration(tx repositories.Transaction, scenarioIterationId string) (
+		models.ScenarioIteration, error,
+	)
+}
+
 type ScenarioAndIteration struct {
 	Scenario  models.Scenario
 	Iteration models.ScenarioIteration
 }
 
 type ScenarioFetcher struct {
-	ScenarioReadRepository          repositories.ScenarioReadRepository
-	ScenarioIterationReadRepository repositories.ScenarioIterationReadRepository
+	Repository ScenarioFetcherRepository
 }
 
 func (fetcher *ScenarioFetcher) FetchScenarioAndIteration(tx repositories.Transaction, iterationId string) (result ScenarioAndIteration, err error) {
 
-	result.Iteration, err = fetcher.ScenarioIterationReadRepository.GetScenarioIteration(tx, iterationId)
+	result.Iteration, err = fetcher.Repository.GetScenarioIteration(tx, iterationId)
 	if err != nil {
 		return ScenarioAndIteration{}, err
 	}
 
-	result.Scenario, err = fetcher.ScenarioReadRepository.GetScenarioById(tx, result.Iteration.ScenarioId)
+	result.Scenario, err = fetcher.Repository.GetScenarioById(tx, result.Iteration.ScenarioId)
 	if err != nil {
 		return ScenarioAndIteration{}, err
 	}

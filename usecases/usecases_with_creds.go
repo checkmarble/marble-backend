@@ -67,17 +67,15 @@ func (usecases *UsecasesWithCreds) NewEnforceAdminSecurity() security.EnforceSec
 }
 func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 	return DecisionUsecase{
-		enforceSecurity:                 usecases.NewEnforceDecisionSecurity(),
-		transactionFactory:              &usecases.Repositories.TransactionFactoryPosgresql,
-		orgTransactionFactory:           usecases.NewOrgTransactionFactory(),
-		ingestedDataReadRepository:      usecases.Repositories.IngestedDataReadRepository,
-		decisionRepository:              usecases.Repositories.DecisionRepository,
-		datamodelRepository:             usecases.Repositories.DataModelRepository,
-		scenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,
-		scenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
-		customListRepository:            usecases.Repositories.CustomListRepository,
-		evaluateRuleAstExpression:       usecases.NewEvaluateRuleAstExpression(),
-		organizationIdOfContext:         usecases.OrganizationIdOfContext,
+		enforceSecurity:            usecases.NewEnforceDecisionSecurity(),
+		transactionFactory:         &usecases.Repositories.TransactionFactoryPosgresql,
+		orgTransactionFactory:      usecases.NewOrgTransactionFactory(),
+		ingestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
+		decisionRepository:         usecases.Repositories.DecisionRepository,
+		datamodelRepository:        usecases.Repositories.DataModelRepository,
+		repository:                 &usecases.Repositories.MarbleDbRepository,
+		evaluateRuleAstExpression:  usecases.NewEvaluateRuleAstExpression(),
+		organizationIdOfContext:    usecases.OrganizationIdOfContext,
 	}
 }
 
@@ -86,19 +84,17 @@ func (usecases *UsecasesWithCreds) NewScenarioUsecase() ScenarioUsecase {
 		transactionFactory:      &usecases.Repositories.TransactionFactoryPosgresql,
 		organizationIdOfContext: usecases.OrganizationIdOfContext,
 		enforceSecurity:         usecases.NewEnforceScenarioSecurity(),
-		scenarioReadRepository:  usecases.Repositories.ScenarioReadRepository,
-		scenarioWriteRepository: usecases.Repositories.ScenarioWriteRepository,
+		repository:              &usecases.Repositories.MarbleDbRepository,
 	}
 }
 
 func (usecases *UsecasesWithCreds) NewScenarioIterationUsecase() ScenarioIterationUsecase {
 	return ScenarioIterationUsecase{
-		organizationIdOfContext:           usecases.OrganizationIdOfContext,
-		scenarioIterationsReadRepository:  usecases.Repositories.ScenarioIterationReadRepository,
-		scenarioIterationsWriteRepository: usecases.Repositories.ScenarioIterationWriteRepository,
-		enforceSecurity:                   usecases.NewEnforceScenarioSecurity(),
-		scenarioFetcher:                   usecases.NewScenarioFetcher(),
-		validateScenarioIteration:         usecases.NewValidateScenarioIteration(),
+		repository:                &usecases.Repositories.MarbleDbRepository,
+		organizationIdOfContext:   usecases.OrganizationIdOfContext,
+		enforceSecurity:           usecases.NewEnforceScenarioSecurity(),
+		scenarioFetcher:           usecases.NewScenarioFetcher(),
+		validateScenarioIteration: usecases.NewValidateScenarioIteration(),
 	}
 }
 
@@ -106,7 +102,7 @@ func (usecases *UsecasesWithCreds) NewRuleUsecase() RuleUsecase {
 	return RuleUsecase{
 		organizationIdOfContext: usecases.OrganizationIdOfContext,
 		enforceSecurity:         usecases.NewEnforceScenarioSecurity(),
-		repository:              usecases.Repositories.RuleRepository,
+		repository:              &usecases.Repositories.MarbleDbRepository,
 		scenarioFetcher:         usecases.NewScenarioFetcher(),
 		transactionFactory:      &usecases.Repositories.TransactionFactoryPosgresql,
 	}
@@ -116,7 +112,7 @@ func (usecases *UsecasesWithCreds) AstExpressionUsecase() AstExpressionUsecase {
 	return AstExpressionUsecase{
 		EnforceSecurity:     usecases.NewEnforceScenarioSecurity(),
 		DataModelRepository: usecases.Repositories.DataModelRepository,
-		ScenarioRepository:  usecases.Repositories.ScenarioReadRepository,
+		Repository:          &usecases.Repositories.MarbleDbRepository,
 	}
 }
 
@@ -202,17 +198,16 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 
 func (usecases *UsecasesWithCreds) NewRunScheduledExecution() scheduledexecution.RunScheduledExecution {
 	return scheduledexecution.RunScheduledExecution{
-		ScenarioReadRepository:          usecases.Repositories.ScenarioReadRepository,
-		TransactionFactory:              &usecases.Repositories.TransactionFactoryPosgresql,
-		ScheduledExecutionRepository:    usecases.Repositories.ScheduledExecutionRepository,
-		ExportScheduleExecution:         *usecases.NewExportScheduleExecution(),
-		ScenarioPublicationsRepository:  usecases.Repositories.ScenarioPublicationRepository,
-		DataModelRepository:             usecases.Repositories.DataModelRepository,
-		OrgTransactionFactory:           usecases.NewOrgTransactionFactory(),
-		IngestedDataReadRepository:      usecases.Repositories.IngestedDataReadRepository,
-		ScenarioIterationReadRepository: usecases.Repositories.ScenarioIterationReadRepository,
-		EvaluateRuleAstExpression:       usecases.NewEvaluateRuleAstExpression(),
-		DecisionRepository:              usecases.Repositories.DecisionRepository,
+		Repository:                     &usecases.Repositories.MarbleDbRepository,
+		TransactionFactory:             &usecases.Repositories.TransactionFactoryPosgresql,
+		ScheduledExecutionRepository:   usecases.Repositories.ScheduledExecutionRepository,
+		ExportScheduleExecution:        *usecases.NewExportScheduleExecution(),
+		ScenarioPublicationsRepository: usecases.Repositories.ScenarioPublicationRepository,
+		DataModelRepository:            usecases.Repositories.DataModelRepository,
+		OrgTransactionFactory:          usecases.NewOrgTransactionFactory(),
+		IngestedDataReadRepository:     usecases.Repositories.IngestedDataReadRepository,
+		EvaluateRuleAstExpression:      usecases.NewEvaluateRuleAstExpression(),
+		DecisionRepository:             usecases.Repositories.DecisionRepository,
 	}
 }
 
