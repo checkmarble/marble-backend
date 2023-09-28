@@ -1,8 +1,6 @@
 package repositories
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
@@ -14,10 +12,9 @@ import (
 )
 
 type DataModelRepository interface {
-	GetDataModel(tx Transaction, organizationId string) (models.DataModel, error)
-	GetTables(tx Transaction, organizationID string) ([]models.DataModelTableField, error)
+	GetDataModel(organizationID string) (models.DataModel, error)
+	GetTablesAndFields(tx Transaction, organizationID string) ([]models.DataModelTableField, error)
 	GetLinks(tx Transaction, organizationID string) ([]models.DataModelLink, error)
-	CreateDataModel(tx Transaction, organizationId string, dataModel models.DataModel) error
 	CreateDataModelTable(tx Transaction, organizationID, tableID, name, description string) error
 	UpdateDataModelTable(tx Transaction, tableID, description string) error
 	GetDataModelTable(tx Transaction, tableID string) (models.DataModelTable, error)
@@ -31,47 +28,59 @@ type DataModelRepositoryPostgresql struct {
 	transactionFactory TransactionFactoryPosgresql
 }
 
-func (repo *DataModelRepositoryPostgresql) GetDataModel(tx Transaction, organizationId string) (models.DataModel, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
-
-	if organizationId == "" {
-		return models.DataModel{}, errors.New("organizationId is empty")
-	}
-
-	return SqlToModel(
-		pgTx,
-		NewQueryBuilder().
-			Select(dbmodels.SelectDataModelColumn...).
-			From(dbmodels.TABLE_DATA_MODELS).
-			Where(squirrel.Eq{"org_id": organizationId}),
-		dbmodels.AdaptDataModel,
-	)
-}
-
-func (repo *DataModelRepositoryPostgresql) CreateDataModel(tx Transaction, organizationId string, dataModel models.DataModel) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
-
-	tables, err := json.Marshal(dataModel.Tables)
+func (repo *DataModelRepositoryPostgresql) GetDataModel(organizationID string) (models.DataModel, error) {
+	fields, err := repo.GetTablesAndFields(nil, organizationID)
 	if err != nil {
-		return fmt.Errorf("unable to marshal tables: %w", err)
+		return models.DataModel{}, err
 	}
 
-	_, err = pgTx.ExecBuilder(
-		NewQueryBuilder().Insert(dbmodels.TABLE_DATA_MODELS).
-			Columns(
-				"org_id",
-				"version",
-				"status",
-				"tables",
-			).
-			Values(
-				organizationId,
-				dataModel.Version,
-				dataModel.Status.String(),
-				tables,
-			),
-	)
-	return err
+	links, err := repo.GetLinks(nil, organizationID)
+	if err != nil {
+		return models.DataModel{}, err
+	}
+
+	dataModel := models.DataModel{
+		Tables: make(map[models.TableName]models.Table),
+	}
+
+	for _, field := range fields {
+		tableName := models.TableName(field.TableName)
+		fieldName := models.FieldName(field.FieldName)
+
+		_, ok := dataModel.Tables[tableName]
+		if ok {
+			dataModel.Tables[tableName].Fields[fieldName] = models.Field{
+				ID:          field.FieldID,
+				Description: field.FieldDescription,
+				DataType:    models.DataTypeFrom(field.FieldType),
+				Nullable:    field.FieldNullable,
+			}
+		} else {
+			dataModel.Tables[tableName] = models.Table{
+				ID:          field.TableID,
+				Name:        tableName,
+				Description: field.TableDescription,
+				Fields: map[models.FieldName]models.Field{
+					fieldName: {
+						ID:          field.FieldID,
+						Description: field.FieldDescription,
+						DataType:    models.DataTypeFrom(field.FieldType),
+						Nullable:    field.FieldNullable,
+					},
+				},
+				LinksToSingle: make(map[models.LinkName]models.LinkToSingle),
+			}
+		}
+	}
+
+	for _, link := range links {
+		dataModel.Tables[link.ChildTable].LinksToSingle[link.Name] = models.LinkToSingle{
+			LinkedTableName: link.ParentTable,
+			ParentFieldName: link.ParentField,
+			ChildFieldName:  link.ChildField,
+		}
+	}
+	return dataModel, nil
 }
 
 func (repo *DataModelRepositoryPostgresql) CreateDataModelTable(tx Transaction, organizationID, tableID, name, description string) error {
@@ -146,7 +155,7 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelLink(tx Transaction, l
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) GetTables(tx Transaction, organizationID string) ([]models.DataModelTableField, error) {
+func (repo *DataModelRepositoryPostgresql) GetTablesAndFields(tx Transaction, organizationID string) ([]models.DataModelTableField, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	query, args, err := NewQueryBuilder().

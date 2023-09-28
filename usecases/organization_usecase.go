@@ -100,40 +100,6 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 	})
 }
 
-func (usecase *OrganizationUseCase) GetDataModel(organizationId string) (models.DataModel, error) {
-	if err := usecase.enforceSecurity.ReadDataModel(); err != nil {
-		return models.DataModel{}, err
-	}
-	return usecase.datamodelRepository.GetDataModel(nil, organizationId)
-}
-
-func (usecase *OrganizationUseCase) ReplaceDataModel(organizationId string, newDataModel models.DataModel) (models.DataModel, error) {
-	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
-		return models.DataModel{}, err
-	}
-	return transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.DataModel, error) {
-
-		var zeroDataModel models.DataModel
-		// delete data model
-		if err := usecase.datamodelRepository.DeleteDataModel(tx, organizationId); err != nil {
-			return zeroDataModel, err
-		}
-
-		// create data model
-		if err := usecase.datamodelRepository.CreateDataModel(tx, organizationId, newDataModel); err != nil {
-			return zeroDataModel, err
-		}
-
-		// delete and recreate postgres schema
-		if err := usecase.populateOrganizationSchema.WipeAndCreateOrganizationSchema(tx, organizationId, newDataModel); err != nil {
-			return zeroDataModel, err
-		}
-
-		return usecase.datamodelRepository.GetDataModel(tx, organizationId)
-	})
-
-}
-
 func (usecase *OrganizationUseCase) GetUsersOfOrganization(organizationIDFilter string) ([]models.User, error) {
 	if err := usecase.enforceSecurity.ListOrganization(); err != nil {
 		return []models.User{}, err

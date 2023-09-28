@@ -11,12 +11,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/transaction"
-	"github.com/google/uuid"
 )
 
 const (
@@ -226,6 +227,7 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
 		return err
 	}
+
 	dataModel, err := usecase.dataModelUseCase.GetDataModel(organizationId)
 	if err != nil {
 		return fmt.Errorf("error getting data model for organization %s: %w", organizationId, err)

@@ -24,56 +24,9 @@ func (usecase *DataModelUseCase) GetDataModel(organizationID string) (models.Dat
 		return models.DataModel{}, err
 	}
 
-	fields, err := usecase.dataModelRepository.GetTables(nil, organizationID)
+	dataModel, err := usecase.dataModelRepository.GetDataModel(organizationID)
 	if err != nil {
 		return models.DataModel{}, err
-	}
-
-	links, err := usecase.dataModelRepository.GetLinks(nil, organizationID)
-	if err != nil {
-		return models.DataModel{}, err
-	}
-
-	dataModel := models.DataModel{
-		Tables: make(map[models.TableName]models.Table),
-	}
-
-	for _, field := range fields {
-		tableName := models.TableName(field.TableName)
-		fieldName := models.FieldName(field.FieldName)
-
-		_, ok := dataModel.Tables[tableName]
-		if ok {
-			dataModel.Tables[tableName].Fields[fieldName] = models.Field{
-				ID:          field.FieldID,
-				Description: field.FieldDescription,
-				DataType:    models.DataTypeFrom(field.FieldType),
-				Nullable:    field.FieldNullable,
-			}
-		} else {
-			dataModel.Tables[tableName] = models.Table{
-				ID:          field.TableID,
-				Name:        tableName,
-				Description: field.TableDescription,
-				Fields: map[models.FieldName]models.Field{
-					fieldName: {
-						ID:          field.FieldID,
-						Description: field.FieldDescription,
-						DataType:    models.DataTypeFrom(field.FieldType),
-						Nullable:    field.FieldNullable,
-					},
-				},
-				LinksToSingle: make(map[models.LinkName]models.LinkToSingle),
-			}
-		}
-	}
-
-	for _, link := range links {
-		dataModel.Tables[link.ChildTable].LinksToSingle[link.Name] = models.LinkToSingle{
-			LinkedTableName: link.ParentTable,
-			ParentFieldName: link.ParentField,
-			ChildFieldName:  link.ChildField,
-		}
 	}
 	return dataModel, nil
 }

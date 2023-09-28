@@ -23,41 +23,9 @@ func (p *PopulateOrganizationSchema) CreateOrganizationSchema(marbleTx repositor
 		Schema:     fmt.Sprintf("org-%s", organization.DatabaseName),
 	}
 	// create entry in organizations_schema
-	err := p.OrganizationSchemaRepository.CreateOrganizationSchema(marbleTx, models.OrganizationSchema{
+	return p.OrganizationSchemaRepository.CreateOrganizationSchema(marbleTx, models.OrganizationSchema{
 		OrganizationId: organization.Id,
 		DatabaseSchema: orgDatabaseSchema,
-	})
-	if err != nil {
-		return err
-	}
-
-	dataModel, err := p.DataModelRepository.GetDataModel(marbleTx, organization.Id)
-	if err != nil {
-		return err
-	}
-
-	// Open a new transaction 'clientTx' to write in the client database.
-	// The client can be in another sql instance
-	// Note that the error is returned, so in case of a roolback in 'clientTx', 'marbleTx' will also be rolled back.
-	return p.TransactionFactory.Transaction(orgDatabaseSchema, func(orgSchemaTx repositories.Transaction) error {
-		return p.populate(orgSchemaTx, orgDatabaseSchema, dataModel)
-	})
-}
-
-func (p *PopulateOrganizationSchema) WipeAndCreateOrganizationSchema(marbleTx repositories.Transaction, organizationId string, newDataModel models.DataModel) error {
-
-	// fetch organization schema
-	orgSchema, err := p.OrganizationSchemaRepository.OrganizationSchemaOfOrganization(marbleTx, organizationId)
-	if err != nil {
-		return err
-	}
-
-	// delete and recreate the entire postgres schema
-	return p.TransactionFactory.Transaction(orgSchema.DatabaseSchema, func(orgSchemaTx repositories.Transaction) error {
-		if err := p.OrganizationSchemaRepository.DeleteSchema(orgSchemaTx, orgSchema.DatabaseSchema.Schema); err != nil {
-			return err
-		}
-		return p.populate(orgSchemaTx, orgSchema.DatabaseSchema, newDataModel)
 	})
 }
 
@@ -72,7 +40,7 @@ func (p *PopulateOrganizationSchema) CreateTable(marbleTx repositories.Transacti
 		if err != nil {
 			return err
 		}
-		return p.OrganizationSchemaRepository.CreateSimpleTable(orgSchemaTx, orgSchema.DatabaseSchema.Schema, tableName)
+		return p.OrganizationSchemaRepository.CreateTable(orgSchemaTx, orgSchema.DatabaseSchema.Schema, tableName)
 	})
 }
 
@@ -83,22 +51,6 @@ func (p *PopulateOrganizationSchema) CreateField(marbleTx repositories.Transacti
 	}
 
 	return p.TransactionFactory.Transaction(orgSchema.DatabaseSchema, func(orgSchemaTx repositories.Transaction) error {
-		return p.OrganizationSchemaRepository.CreateSimpleField(orgSchemaTx, orgSchema.DatabaseSchema.Schema, tableName, field)
+		return p.OrganizationSchemaRepository.CreateField(orgSchemaTx, orgSchema.DatabaseSchema.Schema, tableName, field)
 	})
-}
-
-func (p *PopulateOrganizationSchema) populate(orgSchemaTx repositories.Transaction, databaseSchema models.DatabaseSchema, dataModel models.DataModel) error {
-
-	err := p.OrganizationSchemaRepository.CreateSchema(orgSchemaTx, databaseSchema.Schema)
-	if err != nil {
-		return err
-	}
-
-	for _, table := range dataModel.Tables {
-		err := p.OrganizationSchemaRepository.CreateTable(orgSchemaTx, databaseSchema.Schema, table)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }

@@ -42,7 +42,7 @@ func (repo *IngestionRepositoryImpl) IngestObjects(transaction Transaction, payl
 		columnNames = append(columnNames, "id")
 		values = append(values, uuid.NewString())
 
-		sql := NewQueryBuilder().Insert(tableNameWithSchema(tx, table.Name)).Columns(columnNames...).Values(values...).Suffix("RETURNING \"id\"")
+		sql := NewQueryBuilder().Insert(tableNameWithSchema(tx, table.Name)).Columns(columnNames...).Values(values...)
 
 		_, err = tx.ExecBuilder(sql)
 		if err != nil {

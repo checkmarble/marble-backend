@@ -77,7 +77,7 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 			return models.Decision{}, fmt.Errorf("error getting scenario: %w", err)
 		}
 
-		dm, err := usecase.datamodelRepository.GetDataModel(tx, input.OrganizationId)
+		dm, err := usecase.datamodelRepository.GetDataModel(input.OrganizationId)
 		if errors.Is(err, models.NotFoundInRepositoryError) {
 			return models.Decision{}, fmt.Errorf("data model not found: %w", models.NotFoundError)
 		} else if err != nil {
