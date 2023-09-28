@@ -67,7 +67,7 @@ func (usecase *DataModelUseCase) GetDataModel(organizationID string) (models.Dat
 	}
 
 	for _, link := range links {
-		dataModel.Tables[link.ParentTable].LinksToSingle[link.Name] = models.LinkToSingle{
+		dataModel.Tables[link.ChildTable].LinksToSingle[link.Name] = models.LinkToSingle{
 			LinkedTableName: link.ParentTable,
 			ParentFieldName: link.ParentField,
 			ChildFieldName:  link.ChildField,
