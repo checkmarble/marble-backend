@@ -1,6 +1,8 @@
 package usecases
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -81,11 +83,32 @@ func (usecase *DataModelUseCase) CreateDataModelTable(organizationID, name, desc
 		return "", err
 	}
 
+	defaultFields := []models.DataModelField{
+		{
+			Name:        "object_id",
+			Description: fmt.Sprintf("required id on all objects in the %s table", name),
+			Type:        models.String.String(),
+		},
+		{
+			Name:        "updated_at",
+			Description: fmt.Sprintf("required timestamp on all objects in the %s table", name),
+			Type:        models.Timestamp.String(),
+		},
+	}
+
 	tableID := uuid.New().String()
 	err := usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
 		err := usecase.dataModelRepository.CreateDataModelTable(tx, organizationID, tableID, name, description)
 		if err != nil {
 			return err
+		}
+
+		for _, field := range defaultFields {
+			fieldID := uuid.New().String()
+			err := usecase.dataModelRepository.CreateDataModelField(tx, tableID, fieldID, field)
+			if err != nil {
+				return err
+			}
 		}
 		return usecase.populateOrganizationSchema.CreateTable(tx, organizationID, name)
 	})

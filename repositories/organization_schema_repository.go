@@ -61,7 +61,13 @@ func (repo *OrganizationSchemaRepositoryPostgresql) CreateSimpleTable(tx Transac
 	pgTx := adaptClientDatabaseTransaction(tx)
 
 	sanitizedTableName := pgx.Identifier.Sanitize([]string{schema, tableName})
-	createTableExpr := squirrel.Expr(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s ()", sanitizedTableName))
+	createTableExpr := squirrel.Expr(fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
+    	id UUID NOT NULL DEFAULT uuid_generate_v4(),
+    	object_id TEXT NOT NULL,
+    	updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    	valid_from TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    	valid_until TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT 'INFINITY'
+	)`, sanitizedTableName))
 
 	sql, args, err := createTableExpr.ToSql()
 	if err != nil {
