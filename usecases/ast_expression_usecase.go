@@ -9,10 +9,14 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/security"
 )
 
+type AstExpressionUsecaseRepository interface {
+	GetScenarioById(tx repositories.Transaction, scenarioId string) (models.Scenario, error)
+}
+
 type AstExpressionUsecase struct {
 	EnforceSecurity     security.EnforceSecurityScenario
 	DataModelRepository repositories.DataModelRepository
-	ScenarioRepository  repositories.ScenarioReadRepository
+	Repository          AstExpressionUsecaseRepository
 }
 
 func NodeLocation(expression ast.Node, target *ast.Node) (string, error) {
@@ -100,7 +104,7 @@ func (usecase *AstExpressionUsecase) getPayloadIdentifiers(scenario models.Scena
 
 func (usecase *AstExpressionUsecase) EditorIdentifiers(scenarioId string) (EditorIdentifiers, error) {
 
-	scenario, err := usecase.ScenarioRepository.GetScenarioById(nil, scenarioId)
+	scenario, err := usecase.Repository.GetScenarioById(nil, scenarioId)
 	if err != nil {
 		return EditorIdentifiers{}, err
 	}

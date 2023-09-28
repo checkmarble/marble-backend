@@ -8,7 +8,6 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/scenarios"
 
 	"github.com/google/uuid"
 )
@@ -23,11 +22,8 @@ func randomAPiKey() string {
 }
 
 type OrganizationSeeder struct {
-	CustomListRepository             repositories.CustomListRepository
-	ApiKeyRepository                 repositories.ApiKeyRepository
-	ScenarioWriteRepository          repositories.ScenarioWriteRepository
-	ScenarioIterationWriteRepository repositories.ScenarioIterationWriteRepository
-	ScenarioPublisher                scenarios.ScenarioPublisher
+	CustomListRepository repositories.CustomListRepository
+	ApiKeyRepository     repositories.ApiKeyRepository
 }
 
 func (o *OrganizationSeeder) Seed(organizationId string) error {

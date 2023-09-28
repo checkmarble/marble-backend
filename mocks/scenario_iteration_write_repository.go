@@ -11,7 +11,7 @@ type ScenarioIterationWriteRepository struct {
 	mock.Mock
 }
 
-func (s *ScenarioIterationWriteRepository) CreateScenarioIteration(tx repositories.Transaction, organizationId string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error) {
+func (s *ScenarioIterationWriteRepository) CreateScenarioIterationAndRules(tx repositories.Transaction, organizationId string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error) {
 	args := s.Called(tx, organizationId, scenarioIteration)
 	return args.Get(0).(models.ScenarioIteration), args.Error(1)
 }

@@ -11,20 +11,7 @@ import (
 	"github.com/Masterminds/squirrel"
 )
 
-type ScenarioIterationReadRepository interface {
-	GetScenarioIteration(tx Transaction, scenarioIterationId string) (
-		models.ScenarioIteration, error,
-	)
-	ListScenarioIterations(tx Transaction, organizationId string, filters models.GetScenarioIterationFilters) (
-		[]models.ScenarioIteration, error,
-	)
-}
-
-type ScenarioIterationReadRepositoryPostgresql struct {
-	transactionFactory TransactionFactoryPosgresql
-}
-
-func (repository *ScenarioIterationReadRepositoryPostgresql) GetScenarioIteration(
+func (repository *MarbleDbRepository) GetScenarioIteration(
 	tx Transaction,
 	scenarioIterationId string,
 ) (models.ScenarioIteration, error) {
@@ -37,7 +24,7 @@ func (repository *ScenarioIterationReadRepositoryPostgresql) GetScenarioIteratio
 	)
 }
 
-func (repository *ScenarioIterationReadRepositoryPostgresql) ListScenarioIterations(
+func (repository *MarbleDbRepository) ListScenarioIterations(
 	tx Transaction,
 	organizationId string,
 	filters models.GetScenarioIterationFilters,

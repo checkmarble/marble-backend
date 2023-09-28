@@ -11,10 +11,19 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
+type RuleUsecaseRepository interface {
+	GetRuleById(tx repositories.Transaction, ruleId string) (models.Rule, error)
+	ListRulesByIterationId(tx repositories.Transaction, iterationId string) ([]models.Rule, error)
+	UpdateRule(tx repositories.Transaction, rule models.UpdateRuleInput) error
+	DeleteRule(tx repositories.Transaction, ruleID string) error
+	CreateRules(tx repositories.Transaction, rules []models.CreateRuleInput) ([]models.Rule, error)
+	CreateRule(tx repositories.Transaction, rule models.CreateRuleInput) (models.Rule, error)
+}
+
 type RuleUsecase struct {
 	organizationIdOfContext func() (string, error)
 	enforceSecurity         security.EnforceSecurityScenario
-	repository              repositories.RuleRepository
+	repository              RuleUsecaseRepository
 	scenarioFetcher         scenarios.ScenarioFetcher
 	transactionFactory      transaction.TransactionFactory
 }

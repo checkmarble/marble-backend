@@ -4,10 +4,26 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories"
 )
+
+type ScenarioFetcherRepositoryMock struct {
+	mock.Mock
+}
+
+func (s *ScenarioFetcherRepositoryMock) GetScenarioById(tx repositories.Transaction, scenarioId string) (models.Scenario, error) {
+	args := s.Called(tx, scenarioId)
+	return args.Get(0).(models.Scenario), args.Error(1)
+}
+
+func (s *ScenarioFetcherRepositoryMock) GetScenarioIteration(tx repositories.Transaction, scenarioIterationId string) (models.ScenarioIteration, error) {
+	args := s.Called(tx, scenarioIterationId)
+	return args.Get(0).(models.ScenarioIteration), args.Error(1)
+}
 
 func TestScenarioFetcher_FetchScenarioAndIteration(t *testing.T) {
 	scenario := models.Scenario{
@@ -21,15 +37,12 @@ func TestScenarioFetcher_FetchScenarioAndIteration(t *testing.T) {
 
 	mt := new(mocks.Transaction)
 
-	mscirr := new(mocks.ScenarioIterationReadRepository)
-	mscirr.On("GetScenarioIteration", mt, scenarioIteration.Id).Return(scenarioIteration, nil)
-
-	mrr := new(mocks.ScenarioReadRepository)
-	mrr.On("GetScenarioById", mt, scenario.Id).Return(scenario, nil)
+	repo := new(ScenarioFetcherRepositoryMock)
+	repo.On("GetScenarioIteration", mt, scenarioIteration.Id).Return(scenarioIteration, nil)
+	repo.On("GetScenarioById", mt, scenario.Id).Return(scenario, nil)
 
 	fetcher := ScenarioFetcher{
-		ScenarioReadRepository:          mrr,
-		ScenarioIterationReadRepository: mscirr,
+		Repository: repo,
 	}
 
 	result, err := fetcher.FetchScenarioAndIteration(mt, scenarioIteration.Id)
@@ -40,25 +53,24 @@ func TestScenarioFetcher_FetchScenarioAndIteration(t *testing.T) {
 	}, result)
 
 	mt.AssertExpectations(t)
-	mrr.AssertExpectations(t)
-	mscirr.AssertExpectations(t)
+	repo.AssertExpectations(t)
 }
 
 func TestScenarioFetcher_FetchScenarioAndIteration_GetScenarioIteration_error(t *testing.T) {
 	mt := new(mocks.Transaction)
 
-	mscirr := new(mocks.ScenarioIterationReadRepository)
-	mscirr.On("GetScenarioIteration", mt, "scenario_iteration_id").Return(models.ScenarioIteration{}, assert.AnError)
+	repo := new(ScenarioFetcherRepositoryMock)
+	repo.On("GetScenarioIteration", mt, "scenario_iteration_id").Return(models.ScenarioIteration{}, assert.AnError)
 
 	fetcher := ScenarioFetcher{
-		ScenarioIterationReadRepository: mscirr,
+		Repository: repo,
 	}
 
 	_, err := fetcher.FetchScenarioAndIteration(mt, "scenario_iteration_id")
 	assert.Error(t, err)
 
 	mt.AssertExpectations(t)
-	mscirr.AssertExpectations(t)
+	repo.AssertExpectations(t)
 }
 
 func TestScenarioFetcher_FetchScenarioAndIteration_GetScenarioById_error(t *testing.T) {
@@ -73,21 +85,17 @@ func TestScenarioFetcher_FetchScenarioAndIteration_GetScenarioById_error(t *test
 
 	mt := new(mocks.Transaction)
 
-	mscirr := new(mocks.ScenarioIterationReadRepository)
-	mscirr.On("GetScenarioIteration", mt, scenarioIteration.Id).Return(scenarioIteration, nil)
-
-	mrr := new(mocks.ScenarioReadRepository)
-	mrr.On("GetScenarioById", mt, scenario.Id).Return(scenario, assert.AnError)
+	repo := new(ScenarioFetcherRepositoryMock)
+	repo.On("GetScenarioIteration", mt, scenarioIteration.Id).Return(scenarioIteration, nil)
+	repo.On("GetScenarioById", mt, scenario.Id).Return(scenario, assert.AnError)
 
 	fetcher := ScenarioFetcher{
-		ScenarioReadRepository:          mrr,
-		ScenarioIterationReadRepository: mscirr,
+		Repository: repo,
 	}
 
 	_, err := fetcher.FetchScenarioAndIteration(mt, scenarioIteration.Id)
 	assert.Error(t, err)
 
 	mt.AssertExpectations(t)
-	mrr.AssertExpectations(t)
-	mscirr.AssertExpectations(t)
+	repo.AssertExpectations(t)
 }

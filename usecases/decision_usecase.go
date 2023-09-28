@@ -15,18 +15,24 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
+type DecisionUsecaseRepository interface {
+	GetScenarioById(tx repositories.Transaction, scenarioId string) (models.Scenario, error)
+
+	GetScenarioIteration(tx repositories.Transaction, scenarioIterationId string) (
+		models.ScenarioIteration, error,
+	)
+}
+
 type DecisionUsecase struct {
-	enforceSecurity                 security.EnforceSecurityDecision
-	transactionFactory              transaction.TransactionFactory
-	orgTransactionFactory           transaction.Factory
-	ingestedDataReadRepository      repositories.IngestedDataReadRepository
-	customListRepository            repositories.CustomListRepository
-	decisionRepository              repositories.DecisionRepository
-	datamodelRepository             repositories.DataModelRepository
-	scenarioReadRepository          repositories.ScenarioReadRepository
-	scenarioIterationReadRepository repositories.ScenarioIterationReadRepository
-	evaluateRuleAstExpression       ast_eval.EvaluateRuleAstExpression
-	organizationIdOfContext         func() (string, error)
+	enforceSecurity            security.EnforceSecurityDecision
+	transactionFactory         transaction.TransactionFactory
+	orgTransactionFactory      transaction.Factory
+	ingestedDataReadRepository repositories.IngestedDataReadRepository
+	decisionRepository         repositories.DecisionRepository
+	datamodelRepository        repositories.DataModelRepository
+	repository                 DecisionUsecaseRepository
+	evaluateRuleAstExpression  ast_eval.EvaluateRuleAstExpression
+	organizationIdOfContext    func() (string, error)
 }
 
 func (usecase *DecisionUsecase) GetDecision(decisionId string) (models.Decision, error) {
@@ -70,7 +76,7 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 		return models.Decision{}, err
 	}
 	return transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Decision, error) {
-		scenario, err := usecase.scenarioReadRepository.GetScenarioById(tx, input.ScenarioId)
+		scenario, err := usecase.repository.GetScenarioById(tx, input.ScenarioId)
 		if errors.Is(err, models.NotFoundInRepositoryError) {
 			return models.Decision{}, fmt.Errorf("scenario not found: %w", models.NotFoundError)
 		} else if err != nil {
@@ -89,10 +95,10 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 			Payload:   input.PayloadStructWithReader,
 			DataModel: dm,
 		}, evaluate_scenario.ScenarioEvaluationRepositories{
-			ScenarioIterationReadRepository: usecase.scenarioIterationReadRepository,
-			OrgTransactionFactory:           usecase.orgTransactionFactory,
-			IngestedDataReadRepository:      usecase.ingestedDataReadRepository,
-			EvaluateRuleAstExpression:       usecase.evaluateRuleAstExpression,
+			EvalScenarioRepository:     usecase.repository,
+			OrgTransactionFactory:      usecase.orgTransactionFactory,
+			IngestedDataReadRepository: usecase.ingestedDataReadRepository,
+			EvaluateRuleAstExpression:  usecase.evaluateRuleAstExpression,
 		}, logger)
 		if err != nil {
 			return models.Decision{}, fmt.Errorf("error evaluating scenario: %w", err)

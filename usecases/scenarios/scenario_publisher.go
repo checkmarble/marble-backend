@@ -8,12 +8,16 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
+type ScenarioPublisherRepository interface {
+	UpdateScenarioLiveIterationId(tx repositories.Transaction, scenarioId string, scenarioIterationId *string) error
+	ListScenarioIterations(tx repositories.Transaction, organizationId string, filters models.GetScenarioIterationFilters) ([]models.ScenarioIteration, error)
+	UpdateScenarioIterationVersion(tx repositories.Transaction, scenarioIterationId string, newVersion int) error
+}
+
 type ScenarioPublisher struct {
-	ScenarioPublicationsRepository   repositories.ScenarioPublicationRepository
-	ScenarioWriteRepository          repositories.ScenarioWriteRepository
-	ScenarioIterationReadRepository  repositories.ScenarioIterationReadRepository
-	ScenarioIterationWriteRepository repositories.ScenarioIterationWriteRepository
-	ValidateScenarioIteration        ValidateScenarioIteration
+	Repository                     ScenarioPublisherRepository
+	ValidateScenarioIteration      ValidateScenarioIteration
+	ScenarioPublicationsRepository repositories.ScenarioPublicationRepository
 }
 
 func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(
@@ -55,7 +59,7 @@ func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(
 				return nil, err
 			}
 
-			err = publisher.ScenarioIterationWriteRepository.UpdateScenarioIterationVersion(tx, iterationId, scenarioVersion)
+			err = publisher.Repository.UpdateScenarioIterationVersion(tx, iterationId, scenarioVersion)
 			if err != nil {
 				return nil, err
 			}
@@ -92,7 +96,7 @@ func (publisher *ScenarioPublisher) unpublishOldIteration(tx repositories.Transa
 		return nil, err
 	}
 
-	if err := publisher.ScenarioWriteRepository.UpdateScenarioLiveIterationId(tx, scenarioId, nil); err != nil {
+	if err := publisher.Repository.UpdateScenarioLiveIterationId(tx, scenarioId, nil); err != nil {
 		return nil, err
 	}
 	scenarioPublication, err := publisher.ScenarioPublicationsRepository.GetScenarioPublicationById(tx, newScenarioPublicationId)
@@ -115,14 +119,14 @@ func (publisher *ScenarioPublisher) publishNewIteration(tx repositories.Transact
 		return models.ScenarioPublication{}, err
 	}
 
-	if err = publisher.ScenarioWriteRepository.UpdateScenarioLiveIterationId(tx, scenarioId, &scenarioIterationId); err != nil {
+	if err = publisher.Repository.UpdateScenarioLiveIterationId(tx, scenarioId, &scenarioIterationId); err != nil {
 		return models.ScenarioPublication{}, err
 	}
 	return scenarioPublication, nil
 }
 
 func (publisher *ScenarioPublisher) getScenarioVersion(tx repositories.Transaction, organizationId, scenarioId, iterationId string) (int, error) {
-	scenarioIterations, err := publisher.ScenarioIterationReadRepository.ListScenarioIterations(tx, organizationId, models.GetScenarioIterationFilters{ScenarioId: &scenarioId})
+	scenarioIterations, err := publisher.Repository.ListScenarioIterations(tx, organizationId, models.GetScenarioIterationFilters{ScenarioId: &scenarioId})
 	if err != nil {
 		return 0, err
 	}

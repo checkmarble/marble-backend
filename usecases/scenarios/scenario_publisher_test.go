@@ -48,6 +48,9 @@ func TestScenarioPublisher_PublishOrUnpublishIteration_unpublish_nominal(t *test
 
 	transaction := new(mocks.Transaction)
 
+	repo := new(mocks.ScenarioPublisherRepository)
+	repo.On("UpdateScenarioLiveIterationId", transaction, scenarioAndIteration.Scenario.Id, (*string)(nil)).Return(nil)
+
 	spr := new(mocks.ScenarioPublicationRepository)
 	spr.On("CreateScenarioPublication", transaction, createScenarioInput, mock.MatchedBy(func(id string) bool {
 		_, err := uuid.Parse(id)
@@ -59,13 +62,9 @@ func TestScenarioPublisher_PublishOrUnpublishIteration_unpublish_nominal(t *test
 		return err == nil
 	})).Return(scenarioPublication, nil)
 
-	swr := new(mocks.ScenarioWriteRepository)
-	swr.On("UpdateScenarioLiveIterationId", transaction, scenarioAndIteration.Scenario.Id, (*string)(nil)).
-		Return(nil)
-
 	publisher := ScenarioPublisher{
+		Repository:                     repo,
 		ScenarioPublicationsRepository: spr,
-		ScenarioWriteRepository:        swr,
 	}
 
 	publications, err := publisher.PublishOrUnpublishIteration(transaction, scenarioAndIteration, models.Unpublish)
@@ -73,7 +72,7 @@ func TestScenarioPublisher_PublishOrUnpublishIteration_unpublish_nominal(t *test
 	assert.Equal(t, []models.ScenarioPublication{scenarioPublication}, publications)
 
 	spr.AssertExpectations(t)
-	swr.AssertExpectations(t)
+	repo.AssertExpectations(t)
 }
 
 func TestScenarioPublisher_PublishOrUnpublishIteration_unpublish_CreateScenarioPublication_error(t *testing.T) {
@@ -107,11 +106,14 @@ func TestScenarioPublisher_PublishOrUnpublishIteration_unpublish_CreateScenarioP
 		return err == nil
 	})).Return(assert.AnError)
 
-	swr := new(mocks.ScenarioWriteRepository)
+	swr := new(mocks.ScenarioRepository)
+
+	repo := new(mocks.ScenarioPublisherRepository)
+	repo.On("UpdateScenarioLiveIterationId", transaction, scenarioAndIteration.Scenario.Id, (*string)(nil)).Return(nil)
 
 	publisher := ScenarioPublisher{
+		Repository:                     repo,
 		ScenarioPublicationsRepository: spr,
-		ScenarioWriteRepository:        swr,
 	}
 
 	_, err := publisher.PublishOrUnpublishIteration(transaction, scenarioAndIteration, models.Unpublish)

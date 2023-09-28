@@ -5,23 +5,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
-type ScenarioWriteRepository interface {
-	CreateScenario(tx Transaction, organizationId string, scenario models.CreateScenarioInput, newScenarioId string) error
-	UpdateScenario(tx Transaction, scenario models.UpdateScenarioInput) error
-	UpdateScenarioLiveIterationId(tx Transaction, scenarioId string, scenarioIterationId *string) error
-}
-
-type ScenarioWriteRepositoryPostgresql struct {
-	transactionFactory TransactionFactoryPosgresql
-}
-
-func NewScenarioWriteRepositoryPostgresql(transactionFactory TransactionFactoryPosgresql) ScenarioWriteRepository {
-	return &ScenarioWriteRepositoryPostgresql{
-		transactionFactory: transactionFactory,
-	}
-}
-
-func (repo *ScenarioWriteRepositoryPostgresql) CreateScenario(tx Transaction, organizationId string, scenario models.CreateScenarioInput, newScenarioId string) error {
+func (repo *MarbleDbRepository) CreateScenario(tx Transaction, organizationId string, scenario models.CreateScenarioInput, newScenarioId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	_, err := pgTx.ExecBuilder(
@@ -48,7 +32,7 @@ func (repo *ScenarioWriteRepositoryPostgresql) CreateScenario(tx Transaction, or
 	return nil
 }
 
-func (repo *ScenarioWriteRepositoryPostgresql) UpdateScenario(tx Transaction, scenario models.UpdateScenarioInput) error {
+func (repo *MarbleDbRepository) UpdateScenario(tx Transaction, scenario models.UpdateScenarioInput) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	sql := NewQueryBuilder().
@@ -69,7 +53,7 @@ func (repo *ScenarioWriteRepositoryPostgresql) UpdateScenario(tx Transaction, sc
 	return nil
 }
 
-func (repo *ScenarioWriteRepositoryPostgresql) UpdateScenarioLiveIterationId(tx Transaction, scenarioId string, scenarioIterationId *string) error {
+func (repo *MarbleDbRepository) UpdateScenarioLiveIterationId(tx Transaction, scenarioId string, scenarioIterationId *string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	sql := NewQueryBuilder().
