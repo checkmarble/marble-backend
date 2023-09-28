@@ -2,7 +2,6 @@ package dto
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -60,5 +59,4 @@ func TestAstToJson(t *testing.T) {
 	serialized, err := json.Marshal(dto)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, serialized)
-	fmt.Println(string(serialized))
 }

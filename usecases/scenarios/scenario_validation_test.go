@@ -67,7 +67,7 @@ func TestValidateScenarioIterationImpl_Validate(t *testing.T) {
 	}
 
 	mdmr := new(mocks.DataModelRepository)
-	mdmr.On("GetDataModel", nil, scenario.OrganizationId).
+	mdmr.On("GetDataModel", scenario.OrganizationId).
 		Return(models.DataModel{
 			Version: "version",
 			Status:  models.Live,

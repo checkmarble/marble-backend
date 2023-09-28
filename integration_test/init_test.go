@@ -25,9 +25,7 @@ const (
 	testDbLifetime = 120 // seconds
 	testUser       = "postgres"
 	testPassword   = "pwd"
-	testHost       = "localhost"
 	testDbName     = "marble"
-	testPort       = "5432"
 )
 
 var testUsecases usecases.Usecases

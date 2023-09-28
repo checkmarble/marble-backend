@@ -159,12 +159,12 @@ type DataModelLink struct {
 	ID             string    `json:"id"`
 	OrganizationID string    `json:"organization_id"`
 	Name           LinkName  `json:"name"`
-	ParentTableID  TableName `json:"parent_table_id"`
+	ParentTableID  string    `json:"parent_table_id"`
 	ParentTable    TableName `json:"parent_table"`
-	ParentFieldID  FieldName `json:"parent_field_id"`
+	ParentFieldID  string    `json:"parent_field_id"`
 	ParentField    FieldName `json:"parent_field"`
-	ChildTableID   TableName `json:"child_table_id"`
+	ChildTableID   string    `json:"child_table_id"`
 	ChildTable     TableName `json:"child_table"`
-	ChildFieldID   FieldName `json:"child_field_id"`
+	ChildFieldID   string    `json:"child_field_id"`
 	ChildField     FieldName `json:"child_field"`
 }

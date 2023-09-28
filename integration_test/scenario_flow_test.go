@@ -127,11 +127,80 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T) (models.Credentials, mo
 	}
 
 	// Create a data model for the organization
-	dataModel, err := orgUsecase.ReplaceDataModel(organizationId, newDataModel())
+	dataModel, err := createDataModel(t, organizationId)
 	assert.NoError(t, err, "Could not create data model")
 	fmt.Println("Created data model")
 
 	return creds, dataModel
+}
+
+func createDataModel(t *testing.T, organizationID string) (models.DataModel, error) {
+	testAdminUsecase := GenerateUsecaseWithCredForMarbleAdmin(context.Background(), testUsecases)
+
+	usecase := testAdminUsecase.NewDataModelUseCase()
+	transactionsTableID, err := usecase.CreateDataModelTable(organizationID, "transactions", "description")
+	assert.NoError(t, err)
+	transactionsFields := []models.DataModelField{
+		{Name: "account_id", Type: models.String.String(), Nullable: true},
+		{Name: "bic_country", Type: models.String.String(), Nullable: true},
+		{Name: "country", Type: models.String.String(), Nullable: true},
+		{Name: "description", Type: models.String.String(), Nullable: true},
+		{Name: "direction", Type: models.String.String(), Nullable: true},
+		{Name: "status", Type: models.String.String(), Nullable: true},
+		{Name: "title", Type: models.String.String(), Nullable: true},
+		{Name: "amount", Type: models.Float.String(), Nullable: true},
+	}
+	for _, field := range transactionsFields {
+		_, err = usecase.CreateDataModelField(transactionsTableID, field)
+		assert.NoError(t, err)
+	}
+
+	accountsTableID, err := usecase.CreateDataModelTable(organizationID, "accounts", "description")
+	assert.NoError(t, err)
+	accountsFields := []models.DataModelField{
+		{Name: "balance", Type: models.Float.String(), Nullable: true},
+		{Name: "company_id", Type: models.String.String(), Nullable: true},
+		{Name: "name", Type: models.String.String(), Nullable: true},
+		{Name: "currency", Type: models.String.String(), Nullable: true},
+		{Name: "is_frozen", Type: models.Bool.String(), Nullable: true},
+	}
+	for _, field := range accountsFields {
+		_, err = usecase.CreateDataModelField(accountsTableID, field)
+		assert.NoError(t, err)
+	}
+
+	companiesTableID, err := usecase.CreateDataModelTable(organizationID, "companies", "description")
+	assert.NoError(t, err)
+	companiesFields := []models.DataModelField{
+		{Name: "name", Type: models.Float.String(), Nullable: true},
+	}
+	for _, field := range companiesFields {
+		_, err = usecase.CreateDataModelField(companiesTableID, field)
+		assert.NoError(t, err)
+	}
+
+	dm, err := usecase.GetDataModel(organizationID)
+	assert.NoError(t, err)
+
+	err = usecase.CreateDataModelLink(models.DataModelLink{
+		Name:           "account",
+		OrganizationID: organizationID,
+		ParentTableID:  accountsTableID,
+		ParentFieldID:  dm.Tables["accounts"].Fields["object_id"].ID,
+		ChildTableID:   transactionsTableID,
+		ChildFieldID:   dm.Tables["transactions"].Fields["account_id"].ID,
+	})
+	assert.NoError(t, err)
+
+	err = usecase.CreateDataModelLink(models.DataModelLink{
+		Name:           "company",
+		OrganizationID: organizationID,
+		ParentTableID:  companiesTableID,
+		ParentFieldID:  dm.Tables["companies"].Fields["object_id"].ID,
+		ChildTableID:   accountsTableID,
+		ChildFieldID:   dm.Tables["accounts"].Fields["company_id"].ID,
+	})
+	return usecase.GetDataModel(organizationID)
 }
 
 func newDataModel() models.DataModel {

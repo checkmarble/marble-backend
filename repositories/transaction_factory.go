@@ -75,6 +75,5 @@ func (repo *TransactionFactoryPosgresql) Transaction(databaseSchema models.Datab
 	if errors.Is(err, ErrIgnoreRoolBackError) {
 		return nil
 	}
-
 	return errors.Wrap(err, "Error executing transaction")
 }

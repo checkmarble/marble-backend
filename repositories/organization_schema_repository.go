@@ -17,9 +17,8 @@ type OrganizationSchemaRepository interface {
 	CreateOrganizationSchema(tx Transaction, createOrganizationSchema models.OrganizationSchema) error
 	CreateSchema(tx Transaction, schema string) error
 	DeleteSchema(tx Transaction, schema string) error
-	CreateTable(tx Transaction, schema string, table models.Table) error
-	CreateSimpleTable(tx Transaction, schema, tableName string) error
-	CreateSimpleField(tx Transaction, schema, tableName string, field models.DataModelField) error
+	CreateTable(tx Transaction, schema, tableName string) error
+	CreateField(tx Transaction, schema, tableName string, field models.DataModelField) error
 }
 
 type OrganizationSchemaRepositoryPostgresql struct {
@@ -57,7 +56,7 @@ func (repo *OrganizationSchemaRepositoryPostgresql) DeleteSchema(tx Transaction,
 	return err
 }
 
-func (repo *OrganizationSchemaRepositoryPostgresql) CreateSimpleTable(tx Transaction, schema, tableName string) error {
+func (repo *OrganizationSchemaRepositoryPostgresql) CreateTable(tx Transaction, schema, tableName string) error {
 	pgTx := adaptClientDatabaseTransaction(tx)
 
 	sanitizedTableName := pgx.Identifier.Sanitize([]string{schema, tableName})
@@ -83,7 +82,7 @@ func (repo *OrganizationSchemaRepositoryPostgresql) CreateSimpleTable(tx Transac
 	return err
 }
 
-func (repo *OrganizationSchemaRepositoryPostgresql) CreateSimpleField(tx Transaction, schema, tableName string, field models.DataModelField) error {
+func (repo *OrganizationSchemaRepositoryPostgresql) CreateField(tx Transaction, schema, tableName string, field models.DataModelField) error {
 	pgTx := adaptClientDatabaseTransaction(tx)
 
 	fieldType := toPgType(models.DataTypeFrom(field.Type))
@@ -95,47 +94,6 @@ func (repo *OrganizationSchemaRepositoryPostgresql) CreateSimpleField(tx Transac
 		builder.WriteString(" NOT NULL")
 	}
 	_, err := pgTx.SqlExec(builder.String())
-	return err
-}
-
-func (repo *OrganizationSchemaRepositoryPostgresql) CreateTable(tx Transaction, schema string, table models.Table) error {
-	pgTx := adaptClientDatabaseTransaction(tx)
-
-	sanitizedTableName := pgx.Identifier.Sanitize([]string{schema, string(table.Name)})
-	createTableExpr := squirrel.Expr(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (", sanitizedTableName))
-
-	idColumn := squirrel.Expr("id uuid,")
-	createTableExpr = squirrel.ConcatExpr(createTableExpr, idColumn)
-
-	validFromColumn := squirrel.Expr("valid_from TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),")
-	createTableExpr = squirrel.ConcatExpr(createTableExpr, validFromColumn)
-
-	validUntilColumn := squirrel.Expr("valid_until TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT 'INFINITY',")
-	createTableExpr = squirrel.ConcatExpr(createTableExpr, validUntilColumn)
-
-	for fieldName, field := range table.Fields {
-		columnExpr := fmt.Sprintf("%s %s", pgx.Identifier.Sanitize([]string{string(fieldName)}), toPgType(field.DataType))
-		if !field.Nullable {
-			columnExpr = fmt.Sprintf("%s NOT NULL", columnExpr)
-		}
-		createTableExpr = squirrel.ConcatExpr(createTableExpr, columnExpr, ",")
-	}
-
-	createTableExpr = squirrel.ConcatExpr(createTableExpr, "PRIMARY KEY(id));")
-
-	createTableExpr = squirrel.ConcatExpr(createTableExpr, fmt.Sprintf("CREATE INDEX ON %s(object_id, valid_until DESC, valid_from, updated_at);", sanitizedTableName))
-
-	sql, args, err := createTableExpr.ToSql()
-	if err != nil {
-		return err
-	}
-
-	sql, err = squirrel.Dollar.ReplacePlaceholders(sql)
-	if err != nil {
-		return err
-	}
-
-	_, err = pgTx.SqlExec(sql, args...)
 	return err
 }
 

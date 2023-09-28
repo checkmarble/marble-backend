@@ -7,27 +7,9 @@ import (
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/utils"
 )
 
-func (api *API) handleGetDataModel() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		organizationID, err := api.UsecasesWithCreds(r).OrganizationIdOfContext()
-		if presentError(w, r, err) {
-			return
-		}
-
-		usecase := api.UsecasesWithCreds(r).NewOrganizationUseCase()
-		dataModel, err := usecase.GetDataModel(organizationID)
-		if presentError(w, r, err) {
-			return
-		}
-
-		PresentModelWithName(w, "data_model", dto.AdaptDataModelDto(dataModel))
-	}
-}
-
-func (api *API) handleGetDataModelV2(w http.ResponseWriter, r *http.Request) {
+func (api *API) handleGetDataModel(w http.ResponseWriter, r *http.Request) {
 	organizationID, err := api.UsecasesWithCreds(r).OrganizationIdOfContext()
 	if presentError(w, r, err) {
 		return
@@ -39,26 +21,6 @@ func (api *API) handleGetDataModelV2(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	PresentModelWithName(w, "data_model", dto.AdaptDataModelDto(dataModel))
-}
-
-func (api *API) handlePostDataModel() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		input := *ctx.Value(httpin.Input).(*dto.PostDataModel)
-
-		organizationID, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
-			return
-		}
-
-		usecase := api.UsecasesWithCreds(r).NewOrganizationUseCase()
-		dataModel, err := usecase.ReplaceDataModel(organizationID, dto.AdaptDataModel(input.Body.DataModel))
-		if presentError(w, r, err) {
-			return
-		}
-
-		PresentModelWithName(w, "data_model", dto.AdaptDataModelDto(dataModel))
-	}
 }
 
 func (api *API) handleCreateTable(w http.ResponseWriter, r *http.Request) {
@@ -147,10 +109,10 @@ func (api *API) handleCreateLink(w http.ResponseWriter, r *http.Request) {
 	err = usecase.CreateDataModelLink(models.DataModelLink{
 		Name:           models.LinkName(input.Body.Name),
 		OrganizationID: organizationID,
-		ParentTableID:  models.TableName(input.Body.ParentTableID),
-		ParentFieldID:  models.FieldName(input.Body.ParentFieldID),
-		ChildTableID:   models.TableName(input.Body.ChildTableID),
-		ChildFieldID:   models.FieldName(input.Body.ChildFieldID),
+		ParentTableID:  input.Body.ParentTableID,
+		ParentFieldID:  input.Body.ParentFieldID,
+		ChildTableID:   input.Body.ChildTableID,
+		ChildFieldID:   input.Body.ChildFieldID,
 	})
 	if presentError(w, r, err) {
 		return

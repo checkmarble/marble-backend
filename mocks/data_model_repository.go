@@ -11,12 +11,12 @@ type DataModelRepository struct {
 	mock.Mock
 }
 
-func (d *DataModelRepository) GetDataModel(tx repositories.Transaction, organizationId string) (models.DataModel, error) {
-	args := d.Called(tx, organizationId)
+func (d *DataModelRepository) GetDataModel(organizationId string) (models.DataModel, error) {
+	args := d.Called(organizationId)
 	return args.Get(0).(models.DataModel), args.Error(1)
 }
 
-func (d *DataModelRepository) GetTables(tx repositories.Transaction, organizationID string) ([]models.DataModelTableField, error) {
+func (d *DataModelRepository) GetTablesAndFields(tx repositories.Transaction, organizationID string) ([]models.DataModelTableField, error) {
 	args := d.Called(tx, organizationID)
 	return args.Get(0).([]models.DataModelTableField), args.Error(1)
 }
