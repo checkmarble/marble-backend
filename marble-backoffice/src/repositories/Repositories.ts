@@ -6,12 +6,14 @@ import { ScenariosRepository } from "./ScenariosRepository";
 import { MarbleApi } from "@/infra/MarbleApi";
 import { MarbleApiFetcher } from "@/infra/MarbleApiFetcher";
 import { setAuthorizationBearerHeader } from "@/infra/fetchUtils";
+import { DataModelRepository } from "./DataModelRepository";
 
 export interface Repositories {
   authenticationRepository: AuthenticationRepository;
   organizationRepository: OrganizationRepository;
   userRepository: UserRepository;
   scenarioRepository: ScenariosRepository;
+  dataModelRepository: DataModelRepository;
   marbleApiWithApiKeyFactory: (apiKey: string) => MarbleApi;
 }
 
@@ -43,6 +45,7 @@ export function makeRepositories(
     organizationRepository: { marbleApi: marbleApiWithFirebaseToken },
     userRepository: { marbleApi: marbleApiWithFirebaseToken },
     scenarioRepository: { marbleApi: marbleApiWithFirebaseToken },
+    dataModelRepository: { marbleApi: marbleApiWithFirebaseToken },
     marbleApiWithApiKeyFactory,
   };
 }

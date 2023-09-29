@@ -43,7 +43,7 @@ export function initializeServices(repositories: Repositories) {
       scenariosRepository: repositories.scenarioRepository,
     },
     dataModelService: {
-      organizationRepository: repositories.organizationRepository,
+      dataModelRepository: repositories.dataModelRepository,
     },
     userService: {
       userRepository: repositories.userRepository,

@@ -10,6 +10,7 @@ const DataModelLinkToSingleSchema = yup.object({
 });
 
 const DataModelFieldSchema = yup.object({
+  id: yup.string().required(),
   data_type: yup
     .string()
     .oneOf(["Bool", "Int", "Float", "String", "Timestamp", "unknown"])
@@ -19,6 +20,7 @@ const DataModelFieldSchema = yup.object({
 });
 
 const DataModelTableSchema = yup.object({
+  id: yup.string().required(),
   name: yup.string().required(),
   fields: yup.lazy((obj) => {
     return yup
@@ -70,10 +72,12 @@ export function adaptDataModelApiResult(json: unknown): DataModel {
       dto.tables || {},
       (table: yup.InferType<typeof DataModelTableSchema>) => {
         return {
+          tableId: table.id,
           name: table.name,
           fields: MapObjectValues(
             table.fields || {},
             (field: yup.InferType<typeof DataModelFieldSchema>) => ({
+              fieldId: field.id,
               dataType: field.data_type,
               nullable: field.nullable,
               description: field.description,

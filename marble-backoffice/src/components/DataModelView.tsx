@@ -1,9 +1,11 @@
 import { type LoadingDispatcher } from "@/hooks/Loading";
 import services from "@/injectServices";
-import { useDataModel, useDeleteDataModel } from "@/services";
+import { useDataModel, useEditDataModel } from "@/services";
 import DataModelAPIDoc from "@/components/DataModelAPIDoc";
 import Button from "@mui/material/Button";
-import Box from "@mui/material/Box";
+import Stack from "@mui/material/Stack";
+import AlertDialog from "./AlertDialog";
+import Typography from "@mui/material/Typography";
 
 export function DataModelView({
   pageLoadingDispatcher,
@@ -12,14 +14,20 @@ export function DataModelView({
   pageLoadingDispatcher: LoadingDispatcher;
   organizationId: string;
 }) {
+  const service = services().dataModelService;
   const { dataModel, refreshDataModel } = useDataModel(
-    services().organizationService,
+    service,
     pageLoadingDispatcher,
     organizationId
   );
 
-  const { cleanDataModel } = useDeleteDataModel({
-    service: services().organizationService,
+  const {
+    cleanDataModelConfirmed,
+    cleanDataModelAlertDialogOpen,
+    setCleanDataModelAlertDialogOpen,
+    createDemoDataModel,
+  } = useEditDataModel({
+    service,
     loadingDispatcher: pageLoadingDispatcher,
     organizationId,
     refreshDataModel,
@@ -34,17 +42,33 @@ export function DataModelView({
   //   dataModel
   // );
 
-  const handleCleanDataModel = () => {
-    void cleanDataModel();
-  };
-
   return (
     <>
-      <Box sx={{ my: 2 }}>
-        <Button variant="contained" onClick={handleCleanDataModel}>
+      {/* Dialog: Replace Data Nodel */}
+      <AlertDialog
+        title="Confirm client's data deletion"
+        open={cleanDataModelAlertDialogOpen}
+        handleClose={() => {
+          setCleanDataModelAlertDialogOpen(false);
+        }}
+        handleValidate={cleanDataModelConfirmed}
+      >
+        <Typography variant="body1">
+          Are you sure to remove the Data Model corresponding client's table? This action is destructive:
+          all the ingested data of this organization will be erased.
+        </Typography>
+      </AlertDialog>
+      <Stack sx={{ my: 2 }} gap={2}>
+        <Button variant="contained" color="warning" onClick={() => setCleanDataModelAlertDialogOpen(true)}>
           Clean Data Model and Organization Schema
         </Button>
-      </Box>
+        <Button
+          variant="contained"
+          onClick={createDemoDataModel}
+        >
+          Create Demo Data Model
+        </Button>
+      </Stack>
 
       <DataModelAPIDoc dataModel={dataModel} />
     </>
