@@ -15,8 +15,6 @@ import {
   useUsers,
   useCreateUser,
   useDeleteOrganization,
-  useDataModel,
-  useEditDataModel,
   downloadScheduledExecutionsDecisionsLink,
 } from "@/services";
 import DelayedLinearProgress from "@/components/DelayedLinearProgress";
@@ -26,7 +24,6 @@ import { type CreateUser, Role, PageLink, ScheduleExecution } from "@/models";
 import ListOfUsers from "@/components/ListOfUsers";
 import IconButton from "@mui/material/IconButton";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import TextareaAutosize from "@mui/material/TextareaAutosize";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Paper from "@mui/material/Paper";
@@ -34,14 +31,12 @@ import Container from "@mui/material/Container";
 import ScenariosList from "@/components/ScenariosList";
 import ReactJson from "react-json-view";
 import NorthEastIcon from "@mui/icons-material/NorthEast";
-import Alert from "@mui/material/Alert";
-import Divider from "@mui/material/Divider";
-import DataModelAPIDoc from "@/components/DataModelAPIDoc";
 import { useScheduledExecutions } from "@/services";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/InputLabel";
 import CardActions from "@mui/material/CardActions";
 import LinearProgress from "@mui/material/LinearProgress";
+import { DataModelView } from "../components/DataModelView";
 
 function OrganizationDetailsPage() {
   const { organizationId } = useParams();
@@ -237,7 +232,7 @@ function OrganizationDetailsPage() {
                 />
               )}
               {tabValue === 3 && (
-                <OrganizationDetailsDataModel
+                <DataModelView
                   organizationId={organizationId}
                   pageLoadingDispatcher={pageLoadingDispatcher}
                 />
@@ -461,89 +456,6 @@ function ScheduledExecutionCard({
         </CardActions>
       </Card>
     </>
-  );
-}
-
-function OrganizationDetailsDataModel({
-  pageLoadingDispatcher,
-  organizationId,
-}: {
-  pageLoadingDispatcher: LoadingDispatcher;
-  organizationId: string;
-}) {
-  const { dataModel } = useDataModel(
-    services().organizationService,
-    pageLoadingDispatcher,
-    organizationId
-  );
-
-  const {
-    dataModelString,
-    setDataModelString,
-    saveDataModel,
-    saveDataModelConfirmed,
-    dataModelError,
-    saveDataModelAlertDialogOpen,
-    setSaveDataModelAlertDialogOpen,
-    canSave,
-  } = useEditDataModel(
-    services().organizationService,
-    pageLoadingDispatcher,
-    organizationId,
-    dataModel
-  );
-
-  return dataModelString ? (
-    <>
-      {/* Dialog: Replace Data Nodel */}
-      <AlertDialog
-        title="Confirm organization deletion"
-        open={saveDataModelAlertDialogOpen}
-        handleClose={() => {
-          setSaveDataModelAlertDialogOpen(false);
-        }}
-        handleValidate={saveDataModelConfirmed}
-      >
-        <Typography variant="body1">
-          Are you sure to replace the Data Model ? This action is destructive:
-          all the ingested data of this organization will be erased.
-        </Typography>
-      </AlertDialog>
-      {dataModelString !== null && (
-        <Box
-          sx={{
-            mb: 4,
-          }}
-        >
-          <TextareaAutosize
-            minRows="5"
-            value={dataModelString}
-            style={{ width: "100%" }}
-            onChange={(e) => setDataModelString(e.target.value)}
-          />
-          {dataModelError && <Alert severity="error">{dataModelError}</Alert>}
-          <Button
-            onClick={saveDataModel}
-            variant="contained"
-            startIcon={<DeleteForever />}
-            color="warning"
-            disabled={!canSave}
-          >
-            Replace Data Model
-          </Button>
-
-          <Divider
-            sx={{
-              my: 2,
-            }}
-          ></Divider>
-
-          <DataModelAPIDoc dataModel={dataModel} />
-        </Box>
-      )}
-    </>
-  ) : (
-    false
   );
 }
 
