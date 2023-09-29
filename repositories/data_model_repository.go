@@ -17,7 +17,6 @@ type DataModelRepository interface {
 	GetDataModel(tx Transaction, organizationId string) (models.DataModel, error)
 	GetTables(tx Transaction, organizationID string) ([]models.DataModelTableField, error)
 	GetLinks(tx Transaction, organizationID string) ([]models.DataModelLink, error)
-	DeleteDataModel(tx Transaction, organizationId string) error
 	CreateDataModel(tx Transaction, organizationId string, dataModel models.DataModel) error
 	CreateDataModelTable(tx Transaction, organizationID, tableID, name, description string) error
 	UpdateDataModelTable(tx Transaction, tableID, description string) error
@@ -25,6 +24,7 @@ type DataModelRepository interface {
 	CreateDataModelField(tx Transaction, tableID, fieldID string, field models.DataModelField) error
 	UpdateDataModelField(tx Transaction, field, description string) error
 	CreateDataModelLink(tx Transaction, link models.DataModelLink) error
+	DeleteDataModel(tx Transaction, organizationID string) error
 }
 
 type DataModelRepositoryPostgresql struct {
@@ -46,15 +46,6 @@ func (repo *DataModelRepositoryPostgresql) GetDataModel(tx Transaction, organiza
 			Where(squirrel.Eq{"org_id": organizationId}),
 		dbmodels.AdaptDataModel,
 	)
-}
-
-func (repo *DataModelRepositoryPostgresql) DeleteDataModel(tx Transaction, organizationId string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
-
-	_, err := pgTx.ExecBuilder(
-		NewQueryBuilder().Delete(dbmodels.TABLE_DATA_MODELS).Where("org_id = ?", organizationId),
-	)
-	return err
 }
 
 func (repo *DataModelRepositoryPostgresql) CreateDataModel(tx Transaction, organizationId string, dataModel models.DataModel) error {
@@ -220,4 +211,27 @@ func (repo *DataModelRepositoryPostgresql) GetLinks(tx Transaction, organization
 		return dbmodels.AdaptDataModelLink(dbLinks), err
 	})
 	return links, nil
+}
+
+func (repo *DataModelRepositoryPostgresql) DeleteDataModel(tx Transaction, organizationID string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	_, err := pgTx.ExecBuilder(
+		NewQueryBuilder().
+			Delete(dbmodels.TableDataModelTable).
+			Where(squirrel.Eq{"organization_id": organizationID}),
+	)
+	if err != nil {
+		return err
+	}
+
+	_, err = pgTx.ExecBuilder(
+		NewQueryBuilder().
+			Delete(dbmodels.TABLE_DATA_MODELS).
+			Where(squirrel.Eq{"org_id": organizationID}),
+	)
+	if err != nil {
+		return err
+	}
+	return err
 }

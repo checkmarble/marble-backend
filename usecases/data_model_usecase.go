@@ -173,6 +173,14 @@ func (usecase *DataModelUseCase) DeleteSchema(organizationID string) error {
 		if err != nil {
 			return err
 		}
-		return usecase.populateOrganizationSchema.OrganizationSchemaRepository.DeleteSchema(tx, organizationID)
+
+		schema, err := usecase.populateOrganizationSchema.OrganizationSchemaRepository.OrganizationSchemaOfOrganization(tx, organizationID)
+		if err != nil {
+			return err
+		}
+
+		return usecase.transactionFactory.Transaction(schema.DatabaseSchema, func(tx repositories.Transaction) error {
+			return usecase.populateOrganizationSchema.OrganizationSchemaRepository.DeleteSchema(tx, schema.DatabaseSchema.Schema)
+		})
 	})
 }
