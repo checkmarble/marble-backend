@@ -98,7 +98,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 
 	headers, err := fileReader.Read()
 	if err != nil {
-		return models.UploadLog{}, fmt.Errorf("error reading first row of CSV: %w", err)
+		return models.UploadLog{}, fmt.Errorf("error reading first row of CSV (%w)", err)
 	}
 
 	fileName := computeFileName(organizationId, string(table.Name))
@@ -108,7 +108,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 	for name, field := range table.Fields {
 		if !field.Nullable {
 			if !containsString(headers, string(name)) {
-				return models.UploadLog{}, fmt.Errorf("missing required field %s in CSV: %w", name, models.BadParameterError)
+				return models.UploadLog{}, fmt.Errorf("missing required field %s in CSV (%w)", name, models.BadParameterError)
 			}
 		}
 	}
@@ -124,12 +124,12 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 			break
 		}
 		if err != nil {
-			return models.UploadLog{}, err
+			return models.UploadLog{}, fmt.Errorf("Error found at line %d in CSV (%w)", processedLinesCount, models.BadParameterError)
 		}
 
 		_, err = parseStringValuesToMap(headers, row, table)
 		if err != nil {
-			return models.UploadLog{}, fmt.Errorf("Error found at line %d in CSV %w", processedLinesCount, err)
+			return models.UploadLog{}, fmt.Errorf("Error found at line %d in CSV (%w)", processedLinesCount, models.BadParameterError)
 		}
 
 		if err := csvWriter.WriteAll([][]string{row}); err != nil {
