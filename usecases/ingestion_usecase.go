@@ -139,6 +139,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 			UploadStatus:   models.UploadPending,
 			OrganizationId: organizationId,
 			FileName:       fileName,
+			TableName:      objectType,
 			UserId:         userId,
 			StartedAt:      time.Now(),
 			LinesProcessed: processedLinesCount,

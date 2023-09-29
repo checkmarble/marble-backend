@@ -7,6 +7,7 @@ type UploadLog struct {
 	OrganizationId string
 	UserId         string
 	FileName       string
+	TableName      string
 	UploadStatus   UploadStatus
 	StartedAt      time.Time
 	FinishedAt     *time.Time
