@@ -29,13 +29,14 @@ export function useDataModel(
     return dataModel;
   }, [service, organizationId]);
 
-  const [dataModel] = useSimpleLoader<DataModel>(
+  const [dataModel, refreshDataModel] = useSimpleLoader<DataModel>(
     loadingDispatcher,
     loadDataModel
   );
 
   return {
     dataModel,
+    refreshDataModel,
   };
 }
 
@@ -117,5 +118,34 @@ export function useEditDataModel(
     saveDataModelAlertDialogOpen,
     setSaveDataModelAlertDialogOpen,
     canSave,
+  };
+}
+
+export function useDeleteDataModel({
+  service,
+  loadingDispatcher,
+  organizationId,
+  refreshDataModel,
+}: {
+  service: DataModelService;
+  loadingDispatcher: LoadingDispatcher;
+  organizationId: string;
+  refreshDataModel: () => Promise<void>;
+}) {
+  const cleanDataModel = useCallback(async () => {
+    await showLoader(
+      loadingDispatcher,
+      service.organizationRepository.marbleApi.deleteDataModel(organizationId)
+    );
+    await refreshDataModel();
+  }, [
+    loadingDispatcher,
+    organizationId,
+    service.organizationRepository.marbleApi,
+    refreshDataModel
+  ]);
+
+  return {
+    cleanDataModel,
   };
 }

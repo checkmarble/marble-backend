@@ -370,6 +370,15 @@ export class MarbleApi {
     });
   }
 
+  async deleteDataModel(organizationId: string) {
+    const url = urlWithOrganizationId(DATA_MODEL_URL_PATH, organizationId);
+    const request = new Request(this.apiUrl(url), {
+      method: HttpMethod.Delete,
+    });
+
+    return this.fetcher.authorizedJson(request);
+  }
+
   async scheduleExecutionOfOrganization({
     organizationId,
   }: {
