@@ -7,6 +7,9 @@ import type {
   UpdateRule,
   UpdateIteration,
   AstNode,
+  CreateDataModelTable,
+  CreateDataModelField,
+  CreateDataModelLink,
 } from "@/models";
 import { HttpMethod } from "./fetchUtils";
 import type { AuthorizedFetcher } from "./AuthorizedFetcher";
@@ -96,6 +99,63 @@ export class MarbleApi {
     });
   }
 
+  async postDataModelTable(
+    organizationId: string,
+    createDataModelTable: CreateDataModelTable
+  ): Promise<unknown> {
+    return this.sendAuthorizedJson({
+      method: HttpMethod.Post,
+      path: urlWithOrganizationId(
+        `${DATA_MODEL_URL_PATH}/tables`,
+        organizationId
+      ),
+      body: {
+        name: createDataModelTable.tableName,
+        description: createDataModelTable.description,
+      },
+    });
+  }
+
+  async postDataModelField(
+    organizationId: string,
+    createDataModelField: CreateDataModelField
+  ): Promise<unknown> {
+    const tableIdParam = encodeURIComponent(createDataModelField.tableId);
+    return this.sendAuthorizedJson({
+      method: HttpMethod.Post,
+      path: urlWithOrganizationId(
+        `${DATA_MODEL_URL_PATH}/tables/${tableIdParam}/fields`,
+        organizationId
+      ),
+      body: {
+        name: createDataModelField.fieldName,
+        description: createDataModelField.description,
+        type: createDataModelField.dataType,
+        nullable: createDataModelField.nullable,
+      },
+    });
+  }
+
+  async postDataModelLink(
+    organizationId: string,
+    createDataModelLink: CreateDataModelLink
+  ): Promise<unknown> {
+    return this.sendAuthorizedJson({
+      method: HttpMethod.Post,
+      path: urlWithOrganizationId(
+        `${DATA_MODEL_URL_PATH}/links`,
+        organizationId
+      ),
+      body: {
+        name: createDataModelLink.linkName,
+        parent_table_id: createDataModelLink.parentTableId,
+        parent_field_id: createDataModelLink.parentFieldId,
+        child_table_id: createDataModelLink.childTableId,
+        child_field_id: createDataModelLink.childFieldID,
+      },
+    });
+  }
+
   async deleteOrganization(organizationId: string): Promise<unknown> {
     const orgIdParam = encodeURIComponent(organizationId);
     return this.deleteAuthorizedJson(`${ORGANIZATION_URL_PATH}/${orgIdParam}`);
@@ -125,7 +185,7 @@ export class MarbleApi {
 
   async dataModelOfOrganization(organizationId: string): Promise<unknown> {
     return this.getAuthorizedJson(
-      urlWithOrganizationId(DATA_MODEL_URL_PATH, organizationId)
+      urlWithOrganizationId(`${DATA_MODEL_URL_PATH}`, organizationId)
     );
   }
 
