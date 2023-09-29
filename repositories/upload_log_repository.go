@@ -11,6 +11,7 @@ type UploadLogRepository interface {
 	UpdateUploadLog(tx Transaction, input models.UpdateUploadLogInput) error
 	UploadLogById(tx Transaction, id string) (models.UploadLog, error)
 	AllUploadLogsByStatus(tx Transaction, status models.UploadStatus) ([]models.UploadLog, error)
+	AllUploadLogsByTable(tx Transaction, organizationId, tableName string) ([]models.UploadLog, error)
 }
 
 type UploadLogRepositoryImpl struct {
@@ -93,6 +94,21 @@ func (repo *UploadLogRepositoryImpl) AllUploadLogsByStatus(tx Transaction, statu
 			From(dbmodels.TABLE_UPLOAD_LOGS).
 			Where(squirrel.Eq{"status": status}).
 			OrderBy("started_at"),
+		dbmodels.AdaptUploadLog,
+	)
+}
+
+func (repo *UploadLogRepositoryImpl) AllUploadLogsByTable(tx Transaction, organizationId, tableName string) ([]models.UploadLog, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	return SqlToListOfModels(
+		pgTx,
+		NewQueryBuilder().
+			Select(dbmodels.SelectUploadLogColumn...).
+			From(dbmodels.TABLE_UPLOAD_LOGS).
+			Where(squirrel.Eq{"org_id": organizationId}).
+			Where(squirrel.Eq{"table_name": tableName}).
+			OrderBy("started_at DESC"),
 		dbmodels.AdaptUploadLog,
 	)
 }

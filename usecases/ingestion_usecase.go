@@ -70,6 +70,18 @@ func (usecase *IngestionUseCase) IngestFilesFromLegacyStorageCsv(ctx context.Con
 	return nil
 }
 
+func (usecase *IngestionUseCase) ListUploadLogs(ctx context.Context, organizationId, objectType string) ([]models.UploadLog, error) {
+	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
+		return []models.UploadLog{}, err
+	}
+
+	uploadLogs, err := usecase.uploadLogRepository.AllUploadLogsByTable(nil, organizationId, objectType)
+	if err != nil {
+		return []models.UploadLog{}, err
+	}
+	return uploadLogs, nil
+}
+
 func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Context, organizationId, userId, objectType string, fileReader *csv.Reader) (models.UploadLog, error) {
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
 		return models.UploadLog{}, err

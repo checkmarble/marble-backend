@@ -30,3 +30,8 @@ func (r *UploadLogRepository) AllUploadLogsByStatus(tx repositories.Transaction,
 	args := r.Called(tx, status)
 	return args.Get(0).([]models.UploadLog), args.Error(1)
 }
+
+func (r *UploadLogRepository) AllUploadLogsByTable(tx repositories.Transaction, organizationId, tableName string) ([]models.UploadLog, error) {
+	args := r.Called(tx, organizationId, tableName)
+	return args.Get(0).([]models.UploadLog), args.Error(1)
+}

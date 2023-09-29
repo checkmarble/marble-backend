@@ -105,3 +105,19 @@ func (api *API) handleCsvIngestion() http.HandlerFunc {
 		PresentModel(w, apiUploadLog)
 	}
 }
+
+func (api *API) handleListUploadLogs() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		creds := utils.CredentialsFromCtx(ctx)
+
+		objectType := chi.URLParam(r, "objectType")
+		ingestionUseCase := api.UsecasesWithCreds(r).NewIngestionUseCase()
+		uploadLogs, err := ingestionUseCase.ListUploadLogs(ctx, creds.OrganizationId, objectType)
+
+		if presentError(w, r, err) {
+			return
+		}
+		PresentModel(w, utils.Map(uploadLogs, dto.AdaptUploadLogDto))
+	}
+}
