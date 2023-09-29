@@ -27,10 +27,16 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(tx Transaction, 
 			"scenario_id",
 		).Suffix("RETURNING *")
 
-	if scenarioIteration.Body != nil {
-		triggerCondition, err := dbmodels.SerializeFormulaAstExpression(scenarioIteration.Body.TriggerConditionAstExpression)
-		if err != nil {
-			return models.ScenarioIteration{}, fmt.Errorf("unable to marshal trigger condition ast expression: %w", err)
+	var scenarioIterationBodyInput = scenarioIteration.Body
+	if scenarioIterationBodyInput != nil {
+
+		var triggerCondition *[]byte
+		if scenarioIterationBodyInput != nil && scenarioIterationBodyInput.TriggerConditionAstExpression != nil {
+			var err error
+			triggerCondition, err = dbmodels.SerializeFormulaAstExpression(scenarioIterationBodyInput.TriggerConditionAstExpression)
+			if err != nil {
+				return models.ScenarioIteration{}, fmt.Errorf("unable to marshal trigger condition ast expression: %w", err)
+			}
 		}
 		query = query.Columns(
 			"score_review_threshold",
@@ -42,11 +48,11 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(tx Transaction, 
 			utils.NewPrimaryKey(organizationId),
 			organizationId,
 			scenarioIteration.ScenarioId,
-			scenarioIteration.Body.ScoreReviewThreshold,
-			scenarioIteration.Body.ScoreRejectThreshold,
+			scenarioIterationBodyInput.ScoreReviewThreshold,
+			scenarioIterationBodyInput.ScoreRejectThreshold,
 			triggerCondition,
-			scenarioIteration.Body.BatchTriggerSQL,
-			scenarioIteration.Body.Schedule,
+			scenarioIterationBodyInput.BatchTriggerSQL,
+			scenarioIterationBodyInput.Schedule,
 		)
 	} else {
 		query = query.Values(

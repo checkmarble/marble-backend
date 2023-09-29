@@ -75,6 +75,22 @@ func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(ctx context.Con
 			return models.ScenarioIteration{}, fmt.Errorf("invalid schedule: %w", models.BadParameterError)
 		}
 	}
+
+	if body == nil {
+		body = &models.CreateScenarioIterationBody{}
+		scenarioIteration.Body = body
+	}
+
+	if body.ScoreReviewThreshold == nil {
+		defaultReviewThreshold := 0
+		body.ScoreReviewThreshold = &defaultReviewThreshold
+	}
+
+	if body.ScoreRejectThreshold == nil {
+		defaultRejectThreshold := 10
+		body.ScoreRejectThreshold = &defaultRejectThreshold
+	}
+
 	return usecase.repository.CreateScenarioIterationAndRules(nil, organizationId, scenarioIteration)
 }
 
