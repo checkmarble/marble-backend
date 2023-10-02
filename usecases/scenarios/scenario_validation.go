@@ -46,10 +46,6 @@ func (validator *ValidateScenarioIterationImpl) Validate(si ScenarioAndIteration
 		addError(fmt.Errorf("scenario iteration has no ScoreRejectThreshold: \n%w", models.BadParameterError))
 	}
 
-	if len(iteration.Rules) < 1 {
-		addError(fmt.Errorf("scenario iteration has no rules: \n%w", models.BadParameterError))
-	}
-
 	dryRunEnvironment, err := validator.makeDryRunEnvironment(si)
 	if err != nil {
 		addError(err)
