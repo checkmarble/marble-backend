@@ -24,18 +24,18 @@ You may also need to [install the gcloud CLI](https://cloud.google.com/sdk/docs/
 
 Install firebase-tools (`npm install -g firebase-tools`)
 
-```
+```sh
 firebase login
 firebase init
 ```
 
 ### Firebase emulator suite for local development
 
-Installation: https://firebase.google.com/docs/emulator-suite
+[Install the emulator suite](https://firebase.google.com/docs/emulator-suite)
 
-Then start the emulator suite:
+Then start it using:
 
-```
+```sh
 firebase --project staging emulators:start --import=./firebase-local-data
 ```
 
