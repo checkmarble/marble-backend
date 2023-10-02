@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"runtime/debug"
 	"time"
 
 	"github.com/adhocore/gronx"
@@ -35,17 +34,8 @@ type RunScheduledExecution struct {
 	DecisionRepository             repositories.DecisionRepository
 }
 
-func (usecase *RunScheduledExecution) ExecuteScheduledScenarioIfDue(ctx context.Context, organizationId string, scenarioId string) (err error) {
+func (usecase *RunScheduledExecution) ExecuteScheduledScenarioIfDue(ctx context.Context, organizationId string, scenarioId string) error {
 	logger := utils.LoggerFromContext(ctx)
-	// This is called by a cron job, for all scheduled scenarios. It is crucial that a panic on one scenario does not break all the others.
-	defer func() {
-		if r := recover(); r != nil {
-			logger.ErrorContext(ctx, "recovered from panic during scheduled scenario execution. Stacktrace from panic: ")
-			logger.ErrorContext(ctx, string(debug.Stack()))
-			err = fmt.Errorf("recovered from panic during scheduled scenario execution")
-		}
-	}()
-
 	scenario, err := usecase.Repository.GetScenarioById(nil, scenarioId)
 	if err != nil {
 		return err
@@ -64,61 +54,51 @@ func (usecase *RunScheduledExecution) ExecuteScheduledScenarioIfDue(ctx context.
 	if err != nil {
 		return err
 	}
-
-	if isDue {
-		logger := utils.LoggerFromContext(ctx)
-		logger.DebugContext(ctx, fmt.Sprintf("Scenario iteration %s is due", publishedVersion.Id))
-
-		scheduledExecution, err := transaction.TransactionReturnValue(
-			usecase.TransactionFactory,
-			models.DATABASE_MARBLE_SCHEMA,
-			func(tx repositories.Transaction) (models.ScheduledExecution, error) {
-				scheduledExecutionId := utils.NewPrimaryKey(organizationId)
-				if err := usecase.ScheduledExecutionRepository.CreateScheduledExecution(tx, models.CreateScheduledExecutionInput{
-					OrganizationId:      organizationId,
-					ScenarioId:          scenarioId,
-					ScenarioIterationId: publishedVersion.Id,
-				}, scheduledExecutionId); err != nil {
-					return models.ScheduledExecution{}, err
-				}
-
-				if err := usecase.ScheduledExecutionRepository.UpdateScheduledExecution(tx, models.UpdateScheduledExecutionInput{
-					Id:     scheduledExecutionId,
-					Status: utils.PtrTo(models.ScheduledExecutionFailure, nil),
-				}); err != nil {
-					return models.ScheduledExecution{}, err
-				}
-
-				// Actually execute the scheduled scenario
-				numberOfCreatedDecisions, err := usecase.executeScheduledScenario(ctx, scheduledExecutionId, scenario)
-
-				if err != nil {
-					return models.ScheduledExecution{}, err
-				}
-
-				if err := usecase.ScheduledExecutionRepository.UpdateScheduledExecution(tx, models.UpdateScheduledExecutionInput{
-					Id:                       scheduledExecutionId,
-					Status:                   utils.PtrTo(models.ScheduledExecutionSuccess, nil),
-					NumberOfCreatedDecisions: &numberOfCreatedDecisions,
-				}); err != nil {
-					return models.ScheduledExecution{}, err
-				}
-				// Mark the scheduled scenario as sucess
-				logger.DebugContext(ctx, fmt.Sprintf("Scenario iteration %s executed successfully", publishedVersion.Id))
-
-				return usecase.ScheduledExecutionRepository.GetScheduledExecution(tx, scheduledExecutionId)
-			},
-		)
-
-		if err != nil {
-			return err
-		}
-
-		// export decisions
-		return usecase.ExportScheduleExecution.ExportScheduledExecutionToS3(scenario, scheduledExecution)
+	if !isDue {
+		return nil
 	}
 
-	return nil
+	logger.DebugContext(ctx, fmt.Sprintf("Scenario iteration %s is due", publishedVersion.Id))
+	scheduledExecution, err := transaction.TransactionReturnValue(
+		usecase.TransactionFactory,
+		models.DATABASE_MARBLE_SCHEMA,
+		func(tx repositories.Transaction) (models.ScheduledExecution, error) {
+			scheduledExecutionId := utils.NewPrimaryKey(organizationId)
+			if err := usecase.ScheduledExecutionRepository.CreateScheduledExecution(tx, models.CreateScheduledExecutionInput{
+				OrganizationId:      organizationId,
+				ScenarioId:          scenarioId,
+				ScenarioIterationId: publishedVersion.Id,
+			}, scheduledExecutionId); err != nil {
+				return models.ScheduledExecution{}, err
+			}
+
+			if err := usecase.ScheduledExecutionRepository.UpdateScheduledExecution(tx, models.UpdateScheduledExecutionInput{
+				Id:     scheduledExecutionId,
+				Status: utils.PtrTo(models.ScheduledExecutionFailure, nil),
+			}); err != nil {
+				return models.ScheduledExecution{}, err
+			}
+
+			numberOfCreatedDecisions, err := usecase.executeScheduledScenario(ctx, scheduledExecutionId, scenario)
+			if err != nil {
+				return models.ScheduledExecution{}, err
+			}
+
+			if err := usecase.ScheduledExecutionRepository.UpdateScheduledExecution(tx, models.UpdateScheduledExecutionInput{
+				Id:                       scheduledExecutionId,
+				Status:                   utils.PtrTo(models.ScheduledExecutionSuccess, nil),
+				NumberOfCreatedDecisions: &numberOfCreatedDecisions,
+			}); err != nil {
+				return models.ScheduledExecution{}, err
+			}
+			logger.DebugContext(ctx, fmt.Sprintf("Scenario iteration %s executed successfully", publishedVersion.Id))
+			return usecase.ScheduledExecutionRepository.GetScheduledExecution(tx, scheduledExecutionId)
+		},
+	)
+	if err != nil {
+		return err
+	}
+	return usecase.ExportScheduleExecution.ExportScheduledExecutionToS3(scenario, scheduledExecution)
 }
 
 func (usecase *RunScheduledExecution) scenarioIsDue(ctx context.Context, publishedVersion models.PublishedScenarioIteration, scenario models.Scenario) (bool, error) {

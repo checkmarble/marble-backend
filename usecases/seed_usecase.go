@@ -26,7 +26,7 @@ func (usecase *SeedUseCase) SeedMarbleAdmins(firstMarbleAdminEmail string) error
 		})
 
 		// ignore user already added
-		if repositories.IsIsUniqueViolationError(err) {
+		if repositories.IsUniqueViolationError(err) {
 			return repositories.ErrIgnoreRoolBackError
 		}
 		return err
@@ -43,7 +43,7 @@ func (usecase *SeedUseCase) SeedZorgOrganization(zorgOrganizationId string) erro
 			DatabaseName: "zorg",
 		},
 	)
-	if repositories.IsIsUniqueViolationError(err) {
+	if repositories.IsUniqueViolationError(err) {
 		err = nil
 	}
 
@@ -68,7 +68,7 @@ func (usecase *SeedUseCase) SeedZorgOrganization(zorgOrganizationId string) erro
 		Role:           models.ADMIN,
 		OrganizationId: zorgOrganizationId,
 	})
-	if repositories.IsIsUniqueViolationError(err) {
+	if repositories.IsUniqueViolationError(err) {
 		err = nil
 	}
 	if err != nil {
@@ -95,7 +95,7 @@ func (usecase *SeedUseCase) SeedZorgOrganization(zorgOrganizationId string) erro
 		usecase.customListRepository.AddCustomListValue(nil, addCustomListValueInput, uuid.NewString())
 	}
 
-	if repositories.IsIsUniqueViolationError(err) {
+	if repositories.IsUniqueViolationError(err) {
 		err = nil
 	}
 
@@ -104,8 +104,7 @@ func (usecase *SeedUseCase) SeedZorgOrganization(zorgOrganizationId string) erro
 	}
 
 	// reset firebase id of all users, so when the firebase emulator restarts
-	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, (func(tx repositories.Transaction) error {
-
+	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
 		users, err := usecase.userRepository.AllUsers(tx)
 		if err != nil {
 			return err
@@ -116,8 +115,7 @@ func (usecase *SeedUseCase) SeedZorgOrganization(zorgOrganizationId string) erro
 			if err != nil {
 				return err
 			}
-
 		}
 		return nil
-	}))
+	})
 }

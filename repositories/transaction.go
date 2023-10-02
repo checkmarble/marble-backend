@@ -35,7 +35,7 @@ func (tx TransactionPostgres) DatabaseSchema() models.DatabaseSchema {
 
 var ErrIgnoreRoolBackError = errors.New("ignore rollback error")
 
-func IsIsUniqueViolationError(err error) bool {
+func IsUniqueViolationError(err error) bool {
 	var pgxErr *pgconn.PgError
 	return errors.As(err, &pgxErr) && pgxErr.Code == pgerrcode.UniqueViolation
 }

@@ -6,19 +6,19 @@ import (
 )
 
 // BadParameterError is rendered with the http status code 400
-var BadParameterError = errors.New("Bad Parameter")
+var BadParameterError = errors.New("bad parameter")
 
 // UnAuthorizedError is rendered with the http status code 401
-var UnAuthorizedError = errors.New("UnAuthorized")
+var UnAuthorizedError = errors.New("unauthorized")
 
 // ForbiddenError is rendered with the http status code 403
-var ForbiddenError = errors.New("Forbidden")
+var ForbiddenError = errors.New("forbidden")
 
 // NotFoundError is rendered with the http status code 404
-var NotFoundError = errors.New("Not found")
+var NotFoundError = errors.New("not found")
 
-// DuplicateValue is rendered with the http status code 409
-var DuplicateValueError = errors.New("Duplicate value")
+// DuplicateValueError is rendered with the http status code 409
+var DuplicateValueError = errors.New("duplicate value")
 
 var (
 	PanicInScenarioEvalutionError = errors.New("panic during scenario evaluation")
