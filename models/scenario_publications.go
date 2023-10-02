@@ -78,10 +78,11 @@ func NewPublishedScenarioIteration(si ScenarioIteration) (PublishedScenarioItera
 	result.Body.ScoreReviewThreshold = *si.ScoreReviewThreshold
 	result.Body.ScoreRejectThreshold = *si.ScoreRejectThreshold
 	result.Body.Rules = si.Rules
-	result.Body.TriggerConditionAstExpression = *si.TriggerConditionAstExpression
 	result.Body.BatchTriggerSQL = si.BatchTriggerSQL
 	result.Body.Schedule = si.Schedule
-
+	if si.TriggerConditionAstExpression != nil {
+		result.Body.TriggerConditionAstExpression = *si.TriggerConditionAstExpression
+	}
 	return result, nil
 }
 
