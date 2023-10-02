@@ -114,6 +114,10 @@ func (repo *DecisionRepositoryImpl) StoreDecision(tx Transaction, decision model
 		return err
 	}
 
+	if len(decision.RuleExecutions) == 0 {
+		return nil
+	}
+
 	builderForRules := NewQueryBuilder().
 		Insert(dbmodels.TABLE_DECISION_RULES).
 		Columns(
