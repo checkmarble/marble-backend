@@ -3,12 +3,11 @@ package repositories
 import (
 	"fmt"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
-
-	"github.com/Masterminds/squirrel"
 )
 
 type DataModelRepository interface {
@@ -91,6 +90,9 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelTable(tx Transaction, 
 		VALUES ($1, $2, $3, $4)`
 
 	_, err := pgTx.exec.Exec(pgTx.ctx, query, tableID, organizationID, name, description)
+	if IsIsUniqueViolationError(err) {
+		return models.DuplicateValueError
+	}
 	return err
 }
 
@@ -128,6 +130,9 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelField(tx Transaction, 
 		RETURNING id`
 
 	_, err := pgTx.exec.Exec(pgTx.ctx, query, fieldID, tableID, field.Name, field.Type, field.Nullable, field.Description)
+	if IsIsUniqueViolationError(err) {
+		return models.DuplicateValueError
+	}
 	return err
 }
 
@@ -152,6 +157,9 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelLink(tx Transaction, l
 			Columns("organization_id", "name", "parent_table_id", "parent_field_id", "child_table_id", "child_field_id").
 			Values(link.OrganizationID, link.Name, link.ParentTableID, link.ParentFieldID, link.ChildTableID, link.ChildFieldID),
 	)
+	if IsIsUniqueViolationError(err) {
+		return models.DuplicateValueError
+	}
 	return err
 }
 
