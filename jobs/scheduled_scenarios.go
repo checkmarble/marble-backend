@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"log"
+	"log/slog"
 
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
@@ -20,10 +21,15 @@ func ExecuteAllScheduledScenarios(ctx context.Context, usecases usecases.Usecase
 		log.Fatal(err)
 	}
 	for _, scenario := range scenarios {
-		logger.DebugContext(ctx, "Executing scenario: "+scenario.Id, "scenarioId", scenario.Id)
+		logger.DebugContext(ctx, "executing scenario",
+			slog.String("scenario", scenario.Id),
+		)
 		err := runScheduledExecution.ExecuteScheduledScenarioIfDue(ctx, scenario.OrganizationId, scenario.Id)
 		if err != nil {
-			logger.ErrorContext(ctx, "Error executing scheduled scenario: "+scenario.Id, "scenarioId", scenario.Id, " Error: ", err)
+			logger.ErrorContext(ctx, "error executing scheduled scenario",
+				slog.String("scenario", scenario.Id),
+				slog.String("error", err.Error()),
+			)
 		}
 	}
 	logger.InfoContext(ctx, "Done executing all scheduled scenarios")

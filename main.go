@@ -101,7 +101,7 @@ func main() {
 		config: models.GlobalConfiguration{
 			TokenLifetimeMinute: utils.GetIntEnv("TOKEN_LIFETIME_MINUTE", 60*2),
 			FakeAwsS3Repository: utils.GetBoolEnv("FAKE_AWS_S3", false),
-			FakeGcsRepository: utils.GetBoolEnv("FAKE_GCS", false),
+			FakeGcsRepository:   utils.GetBoolEnv("FAKE_GCS", false),
 			GcsIngestionBucket:  utils.GetRequiredStringEnv("GCS_INGESTION_BUCKET"),
 		},
 	}
@@ -157,7 +157,7 @@ func NewUseCases(ctx context.Context, appConfiguration AppConfiguration, marbleJ
 
 	repositories, err := repositories.NewRepositories(
 		marbleJwtSigningKey,
-		infra.IntializeFirebase(ctx),
+		infra.InitializeFirebase(ctx),
 		marbleConnectionPool,
 		utils.LoggerFromContext(ctx),
 	)
