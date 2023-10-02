@@ -42,6 +42,7 @@ func (api *API) routes() {
 		authedRouter.Route("/ingestion", func(r chi.Router) {
 			r.Post("/{object_type}", api.handleIngestion())
 			r.Post("/{objectType}/batch", api.handleCsvIngestion())
+			r.Get("/{objectType}/upload-logs", api.handleListUploadLogs())
 		})
 
 		authedRouter.Route("/scenarios", func(scenariosRouter chi.Router) {

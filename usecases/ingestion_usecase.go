@@ -70,6 +70,18 @@ func (usecase *IngestionUseCase) IngestFilesFromLegacyStorageCsv(ctx context.Con
 	return nil
 }
 
+func (usecase *IngestionUseCase) ListUploadLogs(ctx context.Context, organizationId, objectType string) ([]models.UploadLog, error) {
+	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
+		return []models.UploadLog{}, err
+	}
+
+	uploadLogs, err := usecase.uploadLogRepository.AllUploadLogsByTable(nil, organizationId, objectType)
+	if err != nil {
+		return []models.UploadLog{}, err
+	}
+	return uploadLogs, nil
+}
+
 func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Context, organizationId, userId, objectType string, fileReader *csv.Reader) (models.UploadLog, error) {
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
 		return models.UploadLog{}, err
@@ -86,7 +98,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 
 	headers, err := fileReader.Read()
 	if err != nil {
-		return models.UploadLog{}, fmt.Errorf("error reading first row of CSV: %w", err)
+		return models.UploadLog{}, fmt.Errorf("error reading first row of CSV (%w)", err)
 	}
 
 	fileName := computeFileName(organizationId, string(table.Name))
@@ -96,7 +108,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 	for name, field := range table.Fields {
 		if !field.Nullable {
 			if !containsString(headers, string(name)) {
-				return models.UploadLog{}, fmt.Errorf("missing required field %s in CSV: %w", name, models.BadParameterError)
+				return models.UploadLog{}, fmt.Errorf("missing required field %s in CSV (%w)", name, models.BadParameterError)
 			}
 		}
 	}
@@ -112,12 +124,12 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 			break
 		}
 		if err != nil {
-			return models.UploadLog{}, err
+			return models.UploadLog{}, fmt.Errorf("Error found at line %d in CSV (%w)", processedLinesCount, models.BadParameterError)
 		}
 
 		_, err = parseStringValuesToMap(headers, row, table)
 		if err != nil {
-			return models.UploadLog{}, fmt.Errorf("Error found at line %d in CSV %w", processedLinesCount, err)
+			return models.UploadLog{}, fmt.Errorf("Error found at line %d in CSV (%w)", processedLinesCount, models.BadParameterError)
 		}
 
 		if err := csvWriter.WriteAll([][]string{row}); err != nil {
@@ -139,6 +151,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 			UploadStatus:   models.UploadPending,
 			OrganizationId: organizationId,
 			FileName:       fileName,
+			TableName:      objectType,
 			UserId:         userId,
 			StartedAt:      time.Now(),
 			LinesProcessed: processedLinesCount,
