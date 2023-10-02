@@ -40,7 +40,7 @@ func SqlToChannelOfModels[Model any](tx TransactionPostgres, query squirrel.Sqli
 
 func SqlToListOfRow[Model any](tx TransactionPostgres, query squirrel.Sqlizer, adapter func(row pgx.CollectableRow) (Model, error)) ([]Model, error) {
 
-	var models []Model
+	models := make([]Model, 0)
 	err := ForEachRow(tx, query, func(row pgx.CollectableRow) error {
 		model, err := adapter(row)
 		if err == nil {
