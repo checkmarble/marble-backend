@@ -290,7 +290,7 @@ func BatchChannel[Value any](inChannel <-chan Value, batchSize int) <-chan []Val
 }
 
 func ChanToSlice[Model any](channel <-chan Model) []Model {
-	var slice []Model
+	slice := make([]Model, 0)
 	for item := range channel {
 		slice = append(slice, item)
 	}
