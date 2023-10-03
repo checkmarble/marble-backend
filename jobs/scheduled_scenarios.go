@@ -14,6 +14,9 @@ func ExecuteAllScheduledScenarios(ctx context.Context, usecases usecases.Usecase
 
 	logger.InfoContext(ctx, "Executing all scheduled scenarios")
 	scenarios, err := usecases.Repositories.MarbleDbRepository.ListAllScenarios(nil)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	usecasesWithCreds := GenerateUsecaseWithCredForMarbleAdmin(ctx, usecases)
 	runScheduledExecution := usecasesWithCreds.NewRunScheduledExecution()
@@ -21,15 +24,17 @@ func ExecuteAllScheduledScenarios(ctx context.Context, usecases usecases.Usecase
 		log.Fatal(err)
 	}
 	for _, scenario := range scenarios {
-		logger = logger.With(
+		logger.DebugContext(ctx, "executing scenario",
 			slog.String("scenario", scenario.Id),
 			slog.String("organization", scenario.OrganizationId),
 		)
-
-		logger.DebugContext(ctx, "executing scenario")
 		err := runScheduledExecution.ExecuteScheduledScenarioIfDue(ctx, scenario.OrganizationId, scenario.Id)
 		if err != nil {
-			logger.ErrorContext(ctx, "error executing scheduled scenario", slog.String("error", err.Error()))
+			logger.ErrorContext(ctx, "error executing scheduled scenario",
+				slog.String("scenario", scenario.Id),
+				slog.String("organization", scenario.OrganizationId),
+				slog.String("error", err.Error()),
+			)
 		}
 	}
 	logger.InfoContext(ctx, "Done executing all scheduled scenarios")
