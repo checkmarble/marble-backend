@@ -7,7 +7,7 @@ import (
 	"log"
 )
 
-func MustParseSigningKey(privateKeyString string) rsa.PrivateKey {
+func MustParseSigningKey(privateKeyString string) *rsa.PrivateKey {
 	block, _ := pem.Decode([]byte(privateKeyString))
 	if block == nil || block.Type != "RSA PRIVATE KEY" {
 		log.Fatalf("failed to decode PEM block containing RSA private key")
@@ -17,6 +17,5 @@ func MustParseSigningKey(privateKeyString string) rsa.PrivateKey {
 	if err != nil {
 		log.Fatalf("Can't load AUTHENTICATION_JWT_SIGNING_KEY private key %s", err)
 	}
-
-	return *privateKey
+	return privateKey
 }

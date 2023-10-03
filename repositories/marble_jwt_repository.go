@@ -21,10 +21,9 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-var VALIDATION_ALGO = jwt.SigningMethodRS256
+var ValidationAlgo = jwt.SigningMethodRS256
 
 func (repo *MarbleJwtRepository) EncodeMarbleToken(expirationTime time.Time, creds models.Credentials) (string, error) {
-
 	claims := &Claims{
 		Credentials: dto.AdaptCredentialDto(creds),
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -33,32 +32,26 @@ func (repo *MarbleJwtRepository) EncodeMarbleToken(expirationTime time.Time, cre
 		},
 	}
 
-	token := jwt.NewWithClaims(VALIDATION_ALGO, claims)
-
-	tokenString, err := token.SignedString(&repo.jwtSigningPrivateKey)
-	if err != nil {
-		return "", err
-	}
-
-	return tokenString, nil
+	token := jwt.NewWithClaims(ValidationAlgo, claims)
+	return token.SignedString(&repo.jwtSigningPrivateKey)
 }
 
 func (repo *MarbleJwtRepository) ValidateMarbleToken(marbleToken string) (models.Credentials, error) {
-	token, err := jwt.ParseWithClaims(marbleToken, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+	keyFunc := func(token *jwt.Token) (interface{}, error) {
 		method, ok := token.Method.(*jwt.SigningMethodRSA)
-		if !ok || method != VALIDATION_ALGO {
+		if !ok || method != ValidationAlgo {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return &repo.jwtSigningPrivateKey.PublicKey, nil
-	})
+	}
 
+	token, err := jwt.ParseWithClaims(marbleToken, &Claims{}, keyFunc)
 	if err != nil {
 		return models.Credentials{}, err
 	}
 
 	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
 		return dto.AdaptCredential(claims.Credentials), nil
-	} else {
-		return models.Credentials{}, fmt.Errorf("invalid Marble Jwt Token")
 	}
+	return models.Credentials{}, fmt.Errorf("invalid Marble Jwt Token")
 }

@@ -32,16 +32,17 @@ func setContentTypeMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func initRouter(ctx context.Context, isDevEnv bool, projectID string) *chi.Mux {
+func initRouter(ctx context.Context, conf AppConfiguration) *chi.Mux {
 	r := chi.NewRouter()
 
+	isDevEnv := conf.env == "DEV"
 	if isDevEnv {
 		r.Use(middleware.RequestID)
 		r.Use(middleware.Logger)
 	}
 	r.Use(middleware.Recoverer)
 	r.Use(utils.StoreLoggerInContextMiddleware(utils.LoggerFromContext(ctx)))
-	r.Use(utils.AddTraceIdToLoggerMiddleware(isDevEnv, projectID))
+	r.Use(utils.AddTraceIdToLoggerMiddleware(isDevEnv, conf.gcpProject))
 	r.Use(cors.Handler(corsOption(isDevEnv)))
 	r.Use(setContentTypeMiddleware)
 	return r

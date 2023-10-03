@@ -30,13 +30,13 @@ func (api *API) routes() {
 		// Decision API subrouter
 		// matches all /decisions routes
 		authedRouter.Route("/decisions", func(decisionsRouter chi.Router) {
-			decisionsRouter.Get("/", api.handleListDecisions())
+			decisionsRouter.Get("/", api.handleListDecisions)
 
 			decisionsRouter.With(httpin.NewInput(dto.GetDecisionInput{})).
-				Get("/{decisionId:"+UUIDRegExp+"}", api.handleGetDecision())
+				Get("/{decisionId:"+UUIDRegExp+"}", api.handleGetDecision)
 
 			decisionsRouter.With(httpin.NewInput(dto.CreateDecisionInputDto{})).
-				Post("/", api.handlePostDecision())
+				Post("/", api.handlePostDecision)
 		})
 
 		authedRouter.Route("/ingestion", func(r chi.Router) {
@@ -190,8 +190,8 @@ func (api *API) routes() {
 		// TODO(API): change routing for clarity
 		// Context https://github.com/checkmarble/marble-backend/pull/206
 		authedRouter.Route("/editor/{scenarioId}", func(builderRouter chi.Router) {
-			builderRouter.Get("/identifiers", api.handleGetEditorIdentifiers())
-			builderRouter.Get("/operators", api.handleGetEditorOperators())
+			builderRouter.Get("/identifiers", api.handleGetEditorIdentifiers)
+			builderRouter.Get("/operators", api.handleGetEditorOperators)
 		})
 
 		// Group all admin endpoints

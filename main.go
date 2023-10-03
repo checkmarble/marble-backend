@@ -22,10 +22,10 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func runServer(ctx context.Context, appConfig AppConfiguration, isDevEnv bool, projectId string) {
-	marbleJwtSigningKey := infra.MustParseSigningKey(utils.GetRequiredStringEnv("AUTHENTICATION_JWT_SIGNING_KEY"))
+func runServer(ctx context.Context, appConfig AppConfiguration) {
+	marbleJwtSigningKey := infra.MustParseSigningKey(appConfig.jwtSigningKey)
 
-	uc := NewUseCases(ctx, appConfig, &marbleJwtSigningKey)
+	uc := NewUseCases(ctx, appConfig, marbleJwtSigningKey)
 
 	logger := utils.LoggerFromContext(ctx)
 
@@ -43,7 +43,7 @@ func runServer(ctx context.Context, appConfig AppConfiguration, isDevEnv bool, p
 		}
 	}
 
-	if isDevEnv {
+	if appConfig.env == "DEV" {
 		zorgOrganizationId := "13617a88-56f5-4baa-8d11-ce102f7da907"
 		err := seedUsecase.SeedZorgOrganization(zorgOrganizationId)
 		if err != nil {
@@ -51,7 +51,7 @@ func runServer(ctx context.Context, appConfig AppConfiguration, isDevEnv bool, p
 		}
 	}
 
-	router := initRouter(ctx, isDevEnv, projectId)
+	router := initRouter(ctx, appConfig)
 	server := api.New(router, appConfig.port, uc)
 
 	////////////////////////////////////////////////////////////
@@ -81,16 +81,20 @@ func runServer(ctx context.Context, appConfig AppConfiguration, isDevEnv bool, p
 }
 
 type AppConfiguration struct {
-	env      string
-	port     string
-	pgConfig utils.PGConfig
-	config   models.GlobalConfiguration
+	env           string
+	port          string
+	jwtSigningKey string
+	gcpProject    string
+	pgConfig      utils.PGConfig
+	config        models.GlobalConfiguration
 }
 
 func main() {
 	appConfig := AppConfiguration{
-		env:  utils.GetStringEnv("ENV", "DEV"),
-		port: utils.GetRequiredStringEnv("PORT"),
+		env:           utils.GetStringEnv("ENV", "DEV"),
+		port:          utils.GetRequiredStringEnv("PORT"),
+		jwtSigningKey: utils.GetRequiredStringEnv("AUTHENTICATION_JWT_SIGNING_KEY"),
+		gcpProject:    os.Getenv("GOOGLE_CLOUD_PROJECT"),
 		pgConfig: utils.PGConfig{
 			Hostname: utils.GetRequiredStringEnv("PG_HOSTNAME"),
 			Port:     utils.GetStringEnv("PG_PORT", "5432"),
@@ -105,7 +109,6 @@ func main() {
 			GcsIngestionBucket:  utils.GetRequiredStringEnv("GCS_INGESTION_BUCKET"),
 		},
 	}
-	isDevEnv := appConfig.env == "DEV"
 
 	////////////////////////////////////////////////////////////
 	// Setup dependencies
@@ -127,7 +130,7 @@ func main() {
 	}
 
 	if *shouldRunServer {
-		runServer(appContext, appConfig, isDevEnv, os.Getenv("GOOGLE_CLOUD_PROJECT"))
+		runServer(appContext, appConfig)
 	}
 
 	if *shouldRunScheduledScenarios {
@@ -169,5 +172,4 @@ func NewUseCases(ctx context.Context, appConfiguration AppConfiguration, marbleJ
 		Repositories:  *repositories,
 		Configuration: appConfiguration.config,
 	}
-
 }

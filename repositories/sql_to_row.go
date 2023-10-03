@@ -5,13 +5,13 @@ import (
 	"reflect"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/checkmarble/marble-backend/models"
 	"github.com/cockroachdb/errors"
 	"github.com/jackc/pgx/v5"
+
+	"github.com/checkmarble/marble-backend/models"
 )
 
 func SqlToChannelOfModels[Model any](tx TransactionPostgres, query squirrel.Sqlizer, adapter func(row pgx.CollectableRow) (Model, error)) (<-chan Model, <-chan error) {
-
 	modelsChannel := make(chan Model, 100)
 	errChannel := make(chan error, 1)
 
@@ -19,8 +19,6 @@ func SqlToChannelOfModels[Model any](tx TransactionPostgres, query squirrel.Sqli
 		defer close(modelsChannel)
 		defer close(errChannel)
 
-		// var err error
-		// for i := 0; i < 1e3; i++ {
 		err := ForEachRow(tx, query, func(row pgx.CollectableRow) error {
 			model, err := adapter(row)
 			if err != nil {
@@ -30,52 +28,44 @@ func SqlToChannelOfModels[Model any](tx TransactionPostgres, query squirrel.Sqli
 			}
 			return nil
 		})
-		// }
 		errChannel <- err
-
 	}()
 
 	return modelsChannel, errChannel
 }
 
 func SqlToListOfRow[Model any](tx TransactionPostgres, query squirrel.Sqlizer, adapter func(row pgx.CollectableRow) (Model, error)) ([]Model, error) {
-
 	models := make([]Model, 0)
 	err := ForEachRow(tx, query, func(row pgx.CollectableRow) error {
 		model, err := adapter(row)
-		if err == nil {
-			models = append(models, model)
+		if err != nil {
+			return err
 		}
-		return err
+		models = append(models, model)
+		return nil
 	})
-
-	if err != nil {
-		return nil, err
-	}
-	return models, nil
+	return models, err
 }
 
 func SqlToOptionalRow[Model any](transaction TransactionPostgres, s squirrel.Sqlizer, adapter func(row pgx.CollectableRow) (Model, error)) (*Model, error) {
-
 	models, err := SqlToListOfRow(transaction, s, adapter)
 	if err != nil {
 		return nil, err
 	}
 
-	numberOfTesults := len(models)
-	if numberOfTesults == 0 {
+	numberOfResults := len(models)
+	if numberOfResults == 0 {
 		return nil, nil
 	}
 
-	var model Model = models[0]
-	if numberOfTesults > 1 {
-		return nil, errors.New(fmt.Sprintf("except 1 or 0 %v, %d rows in the result", reflect.TypeOf(model), numberOfTesults))
+	model := models[0]
+	if numberOfResults > 1 {
+		return nil, errors.New(fmt.Sprintf("expect 1 or 0 %v, %d rows in the result", reflect.TypeOf(model), numberOfResults))
 	}
 	return &model, nil
 }
 
 func SqlToRow[Model any](transaction TransactionPostgres, s squirrel.Sqlizer, adapter func(row pgx.CollectableRow) (Model, error)) (Model, error) {
-
 	model, err := SqlToOptionalRow(transaction, s, adapter)
 	var zeroModel Model
 	if err != nil {
@@ -85,11 +75,9 @@ func SqlToRow[Model any](transaction TransactionPostgres, s squirrel.Sqlizer, ad
 		return zeroModel, errors.Wrap(models.NotFoundError, fmt.Sprintf("found no object of type %T", zeroModel))
 	}
 	return *model, nil
-
 }
 
 func ForEachRow(transaction TransactionPostgres, query squirrel.Sqlizer, fn func(row pgx.CollectableRow) error) error {
-
 	sql, args, err := query.ToSql()
 	if err != nil {
 		return errors.Wrap(err, "can't build sql query")
