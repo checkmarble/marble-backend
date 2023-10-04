@@ -3,6 +3,7 @@ package evaluate
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models/ast"
 
@@ -44,7 +45,7 @@ func TestEqual_Evaluate_int(t *testing.T) {
 			name:   "different types",
 			args:   []any{1, "1"},
 			want:   nil,
-			errors: []error{fmt.Errorf("all argments must be string, boolean, int or float")},
+			errors: []error{fmt.Errorf("all arguments must be string, boolean, time, int or float")},
 		},
 	}
 
@@ -75,6 +76,13 @@ func TestEqual_Evaluate_string(t *testing.T) {
 func TestEqual_Evaluate_bool(t *testing.T) {
 
 	r, errs := Equal{}.Evaluate(ast.Arguments{Args: []any{false, false}})
+	assert.Empty(t, errs)
+	assert.Equal(t, true, r)
+}
+
+func TestEqual_Evaluate_time(t *testing.T) {
+
+	r, errs := Equal{}.Evaluate(ast.Arguments{Args: []any{time.Date(2016, time.April, 29, 0, 0, 0, 0, time.UTC), time.Date(2016, time.April, 29, 0, 0, 0, 0, time.UTC)}})
 	assert.Empty(t, errs)
 	assert.Equal(t, true, r)
 }
