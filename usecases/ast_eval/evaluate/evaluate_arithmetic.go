@@ -33,7 +33,7 @@ func (f Arithmetic) Evaluate(arguments ast.Arguments) (any, []error) {
 		return MakeEvaluateResult(arithmeticEval(f.Function, left, right))
 	}
 
-	return MakeEvaluateError(fmt.Errorf("all argments must be int or float %w", ast.ErrArgumentMustBeIntOrFloat))
+	return MakeEvaluateError(fmt.Errorf("all arguments must be int or float %w", ast.ErrArgumentMustBeIntOrFloat))
 }
 
 func arithmeticEval[T int64 | float64](function ast.Function, l, r T) (T, error) {
