@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
-	"log"
 	"log/slog"
 
 	"github.com/checkmarble/marble-backend/utils"
@@ -40,16 +39,21 @@ func setupDbConnection(env string, pgConfig utils.PGConfig) (*sql.DB, error) {
 	return migrationDB, nil
 }
 
-func RunMigrations(env string, pgConfig utils.PGConfig, logger *slog.Logger) {
+func RunMigrations(env string, pgConfig utils.PGConfig, logger *slog.Logger) error {
 	db, err := setupDbConnection(env, pgConfig)
 	if err != nil {
-		log.Fatalln(err)
+		return fmt.Errorf("setupDbConnection error: %w", err)
 	}
 
-	// Run core migrations, then test ingestion db migrations
-	if err := runMigrationsWithFolder(db, migrationParams{fileSystem: embedMigrations, folderName: "migrations", allowMissing: false}, logger); err != nil {
-		log.Fatalln(err)
+	params := migrationParams{
+		fileSystem:   embedMigrations,
+		folderName:   "migrations",
+		allowMissing: false,
 	}
+	if err := runMigrationsWithFolder(db, params, logger); err != nil {
+		return fmt.Errorf("runMigrationsWithFolder error: %w", err)
+	}
+	return nil
 }
 
 func runMigrationsWithFolder(db *sql.DB, params migrationParams, logger *slog.Logger) error {
