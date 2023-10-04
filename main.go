@@ -123,10 +123,21 @@ func main() {
 	shouldRunBatchIngestion := flag.Bool("batch-ingestion", false, "Run batch ingestion")
 	shouldRunDataIngestion := flag.Bool("data-ingestion", false, "Run data ingestion")
 	flag.Parse()
-	logger.Info("Flags", "shouldRunMigrations", *shouldRunMigrations, "shouldRunServer", *shouldRunServer)
+	logger.Info("Flags",
+		slog.Bool("shouldRunMigrations", *shouldRunMigrations),
+		slog.Bool("shouldRunServer", *shouldRunServer),
+		slog.Bool("shouldRunScheduledScenarios", *shouldRunScheduledScenarios),
+		slog.Bool("shouldRunBatchIngestion", *shouldRunBatchIngestion),
+		slog.Bool("shouldRunDataIngestion", *shouldRunDataIngestion),
+	)
 
 	if *shouldRunMigrations {
-		repositories.RunMigrations(appConfig.env, appConfig.pgConfig, logger)
+		err := repositories.RunMigrations(appConfig.env, appConfig.pgConfig, logger)
+		if err != nil {
+			slog.Error("repositories.RunMigrations failed", slog.String("error", err.Error()))
+			os.Exit(1)
+			return
+		}
 	}
 
 	if *shouldRunServer {
@@ -135,18 +146,33 @@ func main() {
 
 	if *shouldRunScheduledScenarios {
 		usecases := NewUseCases(appContext, appConfig, nil)
-		jobs.ExecuteAllScheduledScenarios(appContext, usecases)
+		err := jobs.ExecuteAllScheduledScenarios(appContext, usecases)
+		if err != nil {
+			slog.Error("jobs.ExecuteAllScheduledScenarios failed", slog.String("error", err.Error()))
+			os.Exit(1)
+			return
+		}
 	}
 
 	if *shouldRunBatchIngestion {
 		bucketName := appConfig.config.GcsIngestionBucket
 		usecases := NewUseCases(appContext, appConfig, nil)
-		jobs.IngestDataFromStorageCSVs(appContext, usecases, bucketName)
+		err := jobs.IngestDataFromStorageCSVs(appContext, usecases, bucketName)
+		if err != nil {
+			slog.Error("jobs.IngestDataFromStorageCSVs failed", slog.String("error", err.Error()))
+			os.Exit(1)
+			return
+		}
 	}
 
 	if *shouldRunDataIngestion {
 		usecases := NewUseCases(appContext, appConfig, nil)
-		jobs.IngestDataFromCsv(appContext, usecases)
+		err := jobs.IngestDataFromCsv(appContext, usecases)
+		if err != nil {
+			slog.Error("jobs.IngestDataFromCsv failed", slog.String("error", err.Error()))
+			os.Exit(1)
+			return
+		}
 	}
 }
 
@@ -165,7 +191,8 @@ func NewUseCases(ctx context.Context, appConfiguration AppConfiguration, marbleJ
 		utils.LoggerFromContext(ctx),
 	)
 	if err != nil {
-		panic(err)
+		slog.Error("repositories.NewRepositories failed", slog.String("error", err.Error()))
+		os.Exit(1)
 	}
 
 	return usecases.Usecases{
