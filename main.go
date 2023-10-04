@@ -23,7 +23,8 @@ import (
 )
 
 func runServer(ctx context.Context, appConfig AppConfiguration) {
-	marbleJwtSigningKey := infra.MustParseSigningKey(appConfig.jwtSigningKey)
+	jwtSigningKey := utils.GetRequiredStringEnv("AUTHENTICATION_JWT_SIGNING_KEY")
+	marbleJwtSigningKey := infra.MustParseSigningKey(jwtSigningKey)
 
 	uc := NewUseCases(ctx, appConfig, marbleJwtSigningKey)
 
@@ -91,10 +92,9 @@ type AppConfiguration struct {
 
 func main() {
 	appConfig := AppConfiguration{
-		env:           utils.GetStringEnv("ENV", "DEV"),
-		port:          utils.GetRequiredStringEnv("PORT"),
-		jwtSigningKey: utils.GetRequiredStringEnv("AUTHENTICATION_JWT_SIGNING_KEY"),
-		gcpProject:    os.Getenv("GOOGLE_CLOUD_PROJECT"),
+		env:        utils.GetStringEnv("ENV", "DEV"),
+		port:       utils.GetRequiredStringEnv("PORT"),
+		gcpProject: os.Getenv("GOOGLE_CLOUD_PROJECT"),
 		pgConfig: utils.PGConfig{
 			Hostname: utils.GetRequiredStringEnv("PG_HOSTNAME"),
 			Port:     utils.GetStringEnv("PG_PORT", "5432"),
