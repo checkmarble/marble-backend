@@ -51,7 +51,6 @@ func (repo *OrganizationSchemaRepositoryPostgresql) DeleteSchema(tx Transaction,
 	pgTx := adaptClientDatabaseTransaction(tx)
 
 	sql := fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE", pgx.Identifier.Sanitize([]string{schema}))
-
 	_, err := pgTx.SqlExec(sql)
 	return err
 }

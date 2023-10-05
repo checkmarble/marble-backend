@@ -133,3 +133,20 @@ func (api *API) handleDeleteDataModel(w http.ResponseWriter, r *http.Request) {
 	}
 	PresentNothing(w)
 }
+
+func (api *API) handleReferences(w http.ResponseWriter, r *http.Request) {
+	organizationID, err := api.UsecasesWithCreds(r).OrganizationIdOfContext()
+	if presentError(w, r, err) {
+		return
+	}
+
+	usecase := api.UsecasesWithCreds(r).NewDataModelUseCase()
+	dataModel, err := usecase.GetDataModel(organizationID)
+	if presentError(w, r, err) {
+		return
+	}
+
+	reference := dto.OpenAPIFromDataModel(dataModel)
+
+	PresentModel(w, reference)
+}
