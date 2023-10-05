@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -40,7 +39,6 @@ func (repo *GcsRepositoryFake) ListFiles(ctx context.Context, bucketName, prefix
 }
 
 func (repo *GcsRepositoryFake) GetFile(ctx context.Context, bucketName, fileName string, logger *slog.Logger) (models.GCSFile, error) {
-	logger.InfoContext(ctx, fmt.Sprintf("Fake GCS Repository"))
 	cwd, _ := os.Getwd()
 	fileNameElements := strings.Split(fileName, "/")
 	path := filepath.Join(cwd, tempFilesDirectory, fileNameElements[len(fileNameElements)-1])

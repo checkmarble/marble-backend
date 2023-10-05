@@ -171,10 +171,10 @@ func (usecase *IngestionUseCase) IngestDataFromCsv(ctx context.Context, logger *
 	logger.InfoContext(ctx, fmt.Sprintf("Found %d upload logs of data to ingest", len(pendingUploadLogs)))
 
 	var waitGroup sync.WaitGroup
-	uploadErrorChan := make(chan error)
+	// The channel needs to be big enough to store any possible errors to avoid deadlock due to the presence of a waitGroup
+	uploadErrorChan := make(chan error, len(pendingUploadLogs))
 
 	startProcessUploadLog := func(uploadLog models.UploadLog) {
-		logger.InfoContext(ctx, fmt.Sprintf("Def goroutine"))
 		defer waitGroup.Done()
 		if err := usecase.processUploadLog(ctx, uploadLog, logger); err != nil {
 			uploadErrorChan <- err
@@ -194,7 +194,7 @@ func (usecase *IngestionUseCase) IngestDataFromCsv(ctx context.Context, logger *
 }
 
 func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog models.UploadLog, logger *slog.Logger) error {
-	logger.InfoContext(ctx, fmt.Sprintf("Start processUploadLog"))
+	logger.InfoContext(ctx, fmt.Sprintf("Start processing UploadLog %s", uploadLog.Id))
 	err := usecase.uploadLogRepository.UpdateUploadLog(nil, models.UpdateUploadLogInput{Id: uploadLog.Id, UploadStatus: models.UploadProcessing})
 
 	if err != nil {
