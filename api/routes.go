@@ -137,6 +137,7 @@ func (api *API) routes() {
 		authedRouter.Route("/data-model", func(dataModelRouter chi.Router) {
 			dataModelRouter.Get("/", api.handleGetDataModel)
 			dataModelRouter.Get("/v2", api.handleGetDataModel)
+			dataModelRouter.Get("/openapi", api.handleReferences)
 
 			dataModelRouter.With(httpin.NewInput(dto.PostCreateTable{})).
 				Post("/tables", api.handleCreateTable)
