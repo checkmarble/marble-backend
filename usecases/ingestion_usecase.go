@@ -174,6 +174,7 @@ func (usecase *IngestionUseCase) IngestDataFromCsv(ctx context.Context, logger *
 	uploadErrorChan := make(chan error)
 
 	startProcessUploadLog := func(uploadLog models.UploadLog) {
+		logger.InfoContext(ctx, fmt.Sprintf("Def goroutine"))
 		defer waitGroup.Done()
 		if err := usecase.processUploadLog(ctx, uploadLog, logger); err != nil {
 			uploadErrorChan <- err
@@ -193,13 +194,14 @@ func (usecase *IngestionUseCase) IngestDataFromCsv(ctx context.Context, logger *
 }
 
 func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog models.UploadLog, logger *slog.Logger) error {
+	logger.InfoContext(ctx, fmt.Sprintf("Start processUploadLog"))
 	err := usecase.uploadLogRepository.UpdateUploadLog(nil, models.UpdateUploadLogInput{Id: uploadLog.Id, UploadStatus: models.UploadProcessing})
 
 	if err != nil {
 		return err
 	}
 
-	file, err := usecase.gcsRepository.GetFile(ctx, usecase.GcsIngestionBucket, uploadLog.FileName)
+	file, err := usecase.gcsRepository.GetFile(ctx, usecase.GcsIngestionBucket, uploadLog.FileName, logger)
 	if err != nil {
 		return err
 	}
