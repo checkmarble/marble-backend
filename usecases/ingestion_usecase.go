@@ -118,18 +118,18 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 	}
 
 	var processedLinesCount int
-	for processedLinesCount = 1; ; processedLinesCount++ {
+	for processedLinesCount = 0; ; processedLinesCount++ {
 		row, err := fileReader.Read()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			return models.UploadLog{}, fmt.Errorf("Error found at line %d in CSV (%w)", processedLinesCount, models.BadParameterError)
+			return models.UploadLog{}, fmt.Errorf("Error found at line %d in CSV (%w)", processedLinesCount+1, models.BadParameterError)
 		}
 
 		_, err = parseStringValuesToMap(headers, row, table)
 		if err != nil {
-			return models.UploadLog{}, fmt.Errorf("Error found at line %d in CSV (%w)", processedLinesCount, models.BadParameterError)
+			return models.UploadLog{}, fmt.Errorf("Error found at line %d in CSV (%w)", processedLinesCount+1, models.BadParameterError)
 		}
 
 		if err := csvWriter.WriteAll([][]string{row}); err != nil {
