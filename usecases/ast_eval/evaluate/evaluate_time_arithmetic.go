@@ -18,7 +18,7 @@ func NewTimeArithmetic(f ast.Function) TimeArithmetic {
 
 func (f TimeArithmetic) Evaluate(arguments ast.Arguments) (any, []error) {
 	switch f.Function {
-	case ast.FUNC_ADD_TIME:
+	case ast.FUNC_TIME_ADD:
 		if err := verifyNumberOfArguments(arguments.Args, 2); err != nil {
 			return MakeEvaluateError(err)
 		}
