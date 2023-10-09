@@ -33,7 +33,7 @@ const (
 	FUNC_NOT
 	FUNC_AND
 	FUNC_OR
-	FUNC_ADD_TIME
+	FUNC_TIME_ADD
 	FUNC_TIME_NOW
 	FUNC_PARSE_TIME
 	FUNC_PAYLOAD
@@ -131,10 +131,11 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		AstName:           "Or",
 		NumberOfArguments: -1,
 	},
-	FUNC_ADD_TIME: {
-		DebugName:         "FUNC_ADD_TIME",
-		AstName:           "AddTime",
-		NumberOfArguments: 2,
+	FUNC_TIME_ADD: {
+		DebugName:         "FUNC_TIME_ADD",
+		AstName:           "TimeAdd",
+		NumberOfArguments: 3,
+		NamedArguments:    []string{"timestampField", "duration", "sign"},
 	},
 	FUNC_TIME_NOW: {
 		DebugName:         "FUNC_TIME_NOW",

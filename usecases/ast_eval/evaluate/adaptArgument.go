@@ -6,6 +6,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils/duration"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -93,6 +94,10 @@ func adaptArgumentToDuration(argument any) (time.Duration, error) {
 	}
 
 	if str, ok := argument.(string); ok {
+		if result, err := duration.Parse(str); err == nil {
+			return result.ToTimeDuration(), nil
+		}
+
 		if result, err := time.ParseDuration(str); err == nil {
 			return result, nil
 		}
