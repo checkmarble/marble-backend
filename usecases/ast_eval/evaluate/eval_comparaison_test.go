@@ -74,7 +74,7 @@ func TestComparison_comparisonFunction_less_or_equal(t *testing.T) {
 }
 
 func TestComparison_comparisonFunction_mixed_int_float_false(t *testing.T) {
-	r, errs := NewComparison(ast.FUNC_GREATER).Evaluate(ast.Arguments{Args: []any{(1), float64(2)}})
+	r, errs := NewComparison(ast.FUNC_GREATER).Evaluate(ast.Arguments{Args: []any{1, float64(2)}})
 	assert.Empty(t, errs)
 	assert.Equal(t, r, false)
 }

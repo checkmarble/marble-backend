@@ -13,30 +13,30 @@ const DummyFieldNameForFloat models.FieldName = "float_var"
 const DummyFieldNameForTimestamp models.FieldName = "time_var"
 
 func GetDummyDataModel() models.DataModel {
-	var dummyFieldBool models.Field = models.Field{
+	var dummyFieldBool = models.Field{
 		DataType: 0,
 		Nullable: false,
 	}
-	var dummyFieldInt models.Field = models.Field{
+	var dummyFieldInt = models.Field{
 		DataType: 1,
 		Nullable: false,
 	}
-	var dummyFieldFloat models.Field = models.Field{
+	var dummyFieldFloat = models.Field{
 		DataType: 2,
 		Nullable: false,
 	}
 
-	var dummyFieldString models.Field = models.Field{
+	var dummyFieldString = models.Field{
 		DataType: 3,
 		Nullable: false,
 	}
 
-	var dummyFieldTimestamp models.Field = models.Field{
+	var dummyFieldTimestamp = models.Field{
 		DataType: 4,
 		Nullable: false,
 	}
 
-	var dummyFirstLinkToSingle map[models.LinkName]models.LinkToSingle = map[models.LinkName]models.LinkToSingle{
+	var dummyFirstLinkToSingle = map[models.LinkName]models.LinkToSingle{
 		models.LinkName(DummyTableNameSecond): {
 			LinkedTableName: DummyTableNameSecond,
 			ParentFieldName: DummyFieldNameId,
@@ -44,7 +44,7 @@ func GetDummyDataModel() models.DataModel {
 		},
 	}
 
-	var dummySecondLinkToSingle map[models.LinkName]models.LinkToSingle = map[models.LinkName]models.LinkToSingle{
+	var dummySecondLinkToSingle = map[models.LinkName]models.LinkToSingle{
 		models.LinkName(DummyTableNameThird): {
 			LinkedTableName: DummyTableNameThird,
 			ParentFieldName: DummyFieldNameId,
@@ -52,11 +52,11 @@ func GetDummyDataModel() models.DataModel {
 		},
 	}
 
-	var dummyFieldsIdOnly map[models.FieldName]models.Field = map[models.FieldName]models.Field{
+	var dummyFieldsIdOnly = map[models.FieldName]models.Field{
 		DummyFieldNameId: dummyFieldString,
 	}
 
-	var dummyAllFields map[models.FieldName]models.Field = map[models.FieldName]models.Field{
+	var dummyAllFields = map[models.FieldName]models.Field{
 		DummyFieldNameId:           dummyFieldString,
 		DummyFieldNameForInt:       dummyFieldInt,
 		DummyFieldNameForFloat:     dummyFieldFloat,
@@ -64,19 +64,19 @@ func GetDummyDataModel() models.DataModel {
 		DummyFieldNameForTimestamp: dummyFieldTimestamp,
 	}
 
-	var dummyDataModelFirstTable models.Table = models.Table{
+	var dummyDataModelFirstTable = models.Table{
 		Name:          DummyTableNameFirst,
 		Fields:        dummyFieldsIdOnly,
 		LinksToSingle: dummyFirstLinkToSingle,
 	}
 
-	var dummyDataModelSecondTable models.Table = models.Table{
+	var dummyDataModelSecondTable = models.Table{
 		Name:          DummyTableNameSecond,
 		Fields:        dummyAllFields,
 		LinksToSingle: dummySecondLinkToSingle,
 	}
 
-	var dummyDataModelThirdTable models.Table = models.Table{
+	var dummyDataModelThirdTable = models.Table{
 		Name:   DummyTableNameThird,
 		Fields: dummyAllFields,
 	}

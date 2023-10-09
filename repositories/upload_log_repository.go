@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"github.com/Masterminds/squirrel"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )

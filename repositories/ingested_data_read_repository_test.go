@@ -4,10 +4,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/stretchr/testify/assert"
 )
 
 const expectedQueryDbFieldExpectedWithoutJoin string = "SELECT test_schema.second.int_var FROM test_schema.second " +

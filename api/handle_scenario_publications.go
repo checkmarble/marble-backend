@@ -1,13 +1,14 @@
 package api
 
 import (
-	"github.com/checkmarble/marble-backend/dto"
-	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/utils"
 	"net/http"
 	"time"
 
 	"github.com/ggicci/httpin"
+
+	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type APIScenarioPublication struct {

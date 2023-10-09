@@ -4,8 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/checkmarble/marble-backend/models/ast"
 )
 
 var timeArithmetic = TimeArithmetic{ast.FUNC_TIME_ADD}

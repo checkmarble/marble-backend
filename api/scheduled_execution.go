@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/ggicci/httpin"
+
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
-
-	"github.com/ggicci/httpin"
 )
 
 func (api *API) handleGetScheduledExecution() http.HandlerFunc {
@@ -42,6 +42,7 @@ func (api *API) handleGetScheduledExecutionDecisions() http.HandlerFunc {
 		usecase := api.UsecasesWithCreds(r).NewScheduledExecutionUsecase()
 
 		zipWriter := zip.NewWriter(w)
+		defer zipWriter.Close()
 
 		fileWriter, err := zipWriter.Create(fmt.Sprintf("decisions_of_execution_%s.ndjson", scheduledExecutionID))
 		if err != nil {
@@ -51,10 +52,7 @@ func (api *API) handleGetScheduledExecutionDecisions() http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/zip")
 		w.Header().Set("Content-Disposition", "attachment; filename=\"decisions.ndjson.zip\"")
-		number_of_exported_decisions, err := usecase.ExportScheduledExecutionDecisions(scheduledExecutionID, fileWriter)
-
-		zipWriter.Close()
-
+		numberOfExportedDecisions, err := usecase.ExportScheduledExecutionDecisions(scheduledExecutionID, fileWriter)
 		if err != nil {
 			// note: un case of security error, the header has not been sent, so we can still send a 401
 			presentError(w, r, err)
@@ -62,7 +60,7 @@ func (api *API) handleGetScheduledExecutionDecisions() http.HandlerFunc {
 		}
 
 		// nice trailer
-		w.Header().Set("X-NUMBER-OF-DECISIONS", strconv.Itoa(number_of_exported_decisions))
+		w.Header().Set("X-NUMBER-OF-DECISIONS", strconv.Itoa(numberOfExportedDecisions))
 	}
 }
 

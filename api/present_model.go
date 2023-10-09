@@ -3,11 +3,12 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/utils"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 func PresentModel(w http.ResponseWriter, model any) {
