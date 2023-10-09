@@ -3,12 +3,12 @@ package repositories
 import (
 	"fmt"
 
+	"github.com/Masterminds/squirrel"
+	"github.com/jackc/pgx/v5"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/jackc/pgx/v5"
-
-	"github.com/Masterminds/squirrel"
 )
 
 type ScheduledExecutionRepository interface {

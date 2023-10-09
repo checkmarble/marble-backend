@@ -94,30 +94,3 @@ func AdaptDataModelDto(dataModel models.DataModel) DataModel {
 		Tables:  utils.MapMap(dataModel.Tables, AdaptTableDto),
 	}
 }
-
-func AdaptDataModel(dataModelDto DataModel) models.DataModel {
-	return models.DataModel{
-		Version: dataModelDto.Version,
-		Status:  models.StatusFrom(dataModelDto.Status),
-		Tables: utils.MapMap(dataModelDto.Tables, func(tableDto Table) models.Table {
-			return models.Table{
-				Name:        models.TableName(tableDto.Name),
-				Description: tableDto.Description,
-				Fields: utils.MapMap(tableDto.Fields, func(fieldDto Field) models.Field {
-					return models.Field{
-						Description: fieldDto.Description,
-						DataType:    models.DataTypeFrom(fieldDto.DataType),
-						Nullable:    fieldDto.Nullable,
-					}
-				}),
-				LinksToSingle: utils.MapMap(tableDto.LinksToSingle, func(linkDto LinkToSingle) models.LinkToSingle {
-					return models.LinkToSingle{
-						LinkedTableName: linkDto.LinkedTableName,
-						ParentFieldName: linkDto.ParentFieldName,
-						ChildFieldName:  linkDto.ChildFieldName,
-					}
-				}),
-			}
-		}),
-	}
-}

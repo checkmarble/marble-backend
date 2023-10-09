@@ -1,9 +1,10 @@
 package mocks
 
 import (
+	"github.com/stretchr/testify/mock"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/stretchr/testify/mock"
 )
 
 type ScheduledExecutionRepository struct {

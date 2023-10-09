@@ -1,9 +1,10 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/utils"
-	"net/http"
 )
 
 func (api *API) handleGetApiKey() http.HandlerFunc {

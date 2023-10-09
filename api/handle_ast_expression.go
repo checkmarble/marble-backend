@@ -1,9 +1,10 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models/ast"
-	"net/http"
 )
 
 func (api *API) handleAvailableFunctions() http.HandlerFunc {

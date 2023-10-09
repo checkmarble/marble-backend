@@ -2,9 +2,10 @@ package api
 
 import (
 	"fmt"
-	"github.com/checkmarble/marble-backend/models"
 	"net/http"
 	"strings"
+
+	"github.com/checkmarble/marble-backend/models"
 )
 
 func ParseAuthorizationBearerHeader(header http.Header) (string, error) {

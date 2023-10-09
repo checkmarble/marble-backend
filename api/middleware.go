@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/utils"
 	"log/slog"
 	"net/http"
 	"strings"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 func ParseApiKeyHeader(header http.Header) string {

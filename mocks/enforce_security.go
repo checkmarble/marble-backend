@@ -1,8 +1,9 @@
 package mocks
 
 import (
-	"github.com/checkmarble/marble-backend/models"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/checkmarble/marble-backend/models"
 )
 
 type EnforceSecurity struct {

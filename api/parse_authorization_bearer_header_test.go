@@ -1,11 +1,12 @@
 package api
 
 import (
-	"github.com/checkmarble/marble-backend/models"
 	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/checkmarble/marble-backend/models"
 )
 
 func TestParseAuthorizationBearerHeader_Norminal(t *testing.T) {

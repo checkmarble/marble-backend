@@ -29,7 +29,7 @@ func (f Comparison) Evaluate(arguments ast.Arguments) (any, []error) {
 		return MakeEvaluateResult(f.comparisonFloatFunction(leftFloat, rightFloat))
 	}
 
-	leftTime, rightTime, errs := adaptLeftAndRight(leftAny, rightAny, adaptArgumentToTime);
+	leftTime, rightTime, errs := adaptLeftAndRight(leftAny, rightAny, adaptArgumentToTime)
 	if len(errs) == 0 {
 		return MakeEvaluateResult(f.comparisonTimeFunction(leftTime, rightTime))
 	}

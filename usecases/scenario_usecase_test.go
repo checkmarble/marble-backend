@@ -4,11 +4,12 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/checkmarble/marble-backend/mocks"
-	"github.com/checkmarble/marble-backend/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/checkmarble/marble-backend/mocks"
+	"github.com/checkmarble/marble-backend/models"
 )
 
 type ScenarioUsecaseTestSuite struct {

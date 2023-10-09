@@ -15,7 +15,7 @@ import (
 const testListId string = "1"
 const testListOrgId string = "2"
 
-var testList models.CustomList = models.CustomList{
+var testList = models.CustomList{
 	Id:             testListId,
 	OrganizationId: testListOrgId,
 }
