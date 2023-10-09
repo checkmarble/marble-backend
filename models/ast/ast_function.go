@@ -134,7 +134,8 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 	FUNC_TIME_ADD: {
 		DebugName:         "FUNC_TIME_ADD",
 		AstName:           "TimeAdd",
-		NumberOfArguments: 2,
+		NumberOfArguments: 3,
+		NamedArguments:    []string{"timestampField", "duration", "sign"},
 	},
 	FUNC_TIME_NOW: {
 		DebugName:         "FUNC_TIME_NOW",
