@@ -95,5 +95,5 @@ func TestValidateScenarioIterationImpl_Validate(t *testing.T) {
 		Scenario:  scenario,
 		Iteration: scenarioIteration,
 	})
-	assert.Empty(t, result.Errs)
+	assert.Empty(t, ScenarioValidationToError(result))
 }

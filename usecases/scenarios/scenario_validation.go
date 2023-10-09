@@ -5,18 +5,32 @@ import (
 	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval/evaluate"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 func ScenarioValidationToError(validation models.ScenarioValidation) error {
-	errs := validation.Errs
-	errs = append(errs, validation.TriggerEvaluation.AllErrors()...)
-	for _, ruleEvaluation := range validation.RulesEvaluations {
-		errs = append(errs, ruleEvaluation.AllErrors()...)
+	errs := make([]error, 0)
+
+	toError := func(err models.ScenarioValidationError) error {
+		return err.Error
 	}
+
+	errs = append(errs, utils.Map(validation.Errors, toError)...)
+
+	errs = append(errs, utils.Map(validation.Trigger.Errors, toError)...)
+	errs = append(errs, validation.Trigger.TriggerEvaluation.AllErrors()...)
+
+	errs = append(errs, utils.Map(validation.Rules.Errors, toError)...)
+	for _, rule := range validation.Rules.Rules {
+		errs = append(errs, utils.Map(rule.Errors, toError)...)
+		errs = append(errs, rule.RuleEvaluation.AllErrors()...)
+	}
+
+	errs = append(errs, utils.Map(validation.Decision.Errors, toError)...)
+
 	return errors.Join(errs...)
 }
 
@@ -29,62 +43,85 @@ type ValidateScenarioIterationImpl struct {
 	AstEvaluationEnvironmentFactory ast_eval.AstEvaluationEnvironmentFactory
 }
 
-func (validator *ValidateScenarioIterationImpl) Validate(si ScenarioAndIteration) (result models.ScenarioValidation) {
+func (validator *ValidateScenarioIterationImpl) Validate(si ScenarioAndIteration) models.ScenarioValidation {
 	iteration := si.Iteration
 
-	result.Errs = make([]error, 0)
+	result := models.NewScenarioValidation()
 
-	addError := func(err error) {
-		result.Errs = append(result.Errs, err)
-	}
-
+	// validate Decision
 	if iteration.ScoreReviewThreshold == nil {
-		addError(fmt.Errorf("scenario iteration has no ScoreReviewThreshold: \n%w", models.BadParameterError))
+		result.Decision.Errors = append(result.Trigger.Errors, models.ScenarioValidationError{
+			Error: fmt.Errorf("scenario iteration has no ScoreReviewThreshold: \n%w", models.BadParameterError),
+			Code:  models.ScoreReviewThresholdRequired,
+		})
 	}
 
 	if iteration.ScoreRejectThreshold == nil {
-		addError(fmt.Errorf("scenario iteration has no ScoreRejectThreshold: \n%w", models.BadParameterError))
+		result.Decision.Errors = append(result.Trigger.Errors, models.ScenarioValidationError{
+			Error: fmt.Errorf("scenario iteration has no ScoreRejectThreshold: \n%w", models.BadParameterError),
+			Code:  models.ScoreRejectThresholdRequired,
+		})
+	}
+
+	if *iteration.ScoreRejectThreshold < *iteration.ScoreReviewThreshold {
+		result.Decision.Errors = append(result.Trigger.Errors, models.ScenarioValidationError{
+			Error: fmt.Errorf("scenario iteration has ScoreRejectThreshold < ScoreReviewThreshold: \n%w", models.BadParameterError),
+			Code:  models.ScoreRejectReviewThresholdsMissmatch,
+		})
 	}
 
 	dryRunEnvironment, err := validator.makeDryRunEnvironment(si)
 	if err != nil {
-		addError(err)
+		result.Errors = append(result.Errors, *err)
+		return result
 	}
 
 	// validate trigger
 	trigger := iteration.TriggerConditionAstExpression
 	if trigger == nil {
-		addError(fmt.Errorf("scenario iteration has no trigger condition ast expression %w", models.BadParameterError))
+		result.Trigger.Errors = append(result.Trigger.Errors, models.ScenarioValidationError{
+			Error: fmt.Errorf("scenario iteration has no trigger condition ast expression %w", models.BadParameterError),
+			Code:  models.TriggerConditionRequired,
+		})
 	} else {
-		result.TriggerEvaluation, _ = ast_eval.EvaluateAst(dryRunEnvironment, *trigger)
+		result.Trigger.TriggerEvaluation, _ = ast_eval.EvaluateAst(dryRunEnvironment, *trigger)
 	}
 
 	// validate each rule
-	result.RulesEvaluations = make(map[string]ast.NodeEvaluation)
 	for _, rule := range iteration.Rules {
 		formula := rule.FormulaAstExpression
+		ruleValidation := models.NewRuleValidation()
 		if formula == nil {
-			result.RulesEvaluations[rule.Id] = ast.NodeEvaluation{
-				Errors: []error{fmt.Errorf("rule has no formula ast expression %w", models.BadParameterError)},
-			}
+			ruleValidation.Errors = append(ruleValidation.Errors, models.ScenarioValidationError{
+				Error: fmt.Errorf("rule has no formula ast expression %w", models.BadParameterError),
+				Code:  models.RuleFormulaRequired,
+			})
+			result.Rules.Rules[rule.Id] = ruleValidation
 		} else {
-			result.RulesEvaluations[rule.Id], _ = ast_eval.EvaluateAst(dryRunEnvironment, *formula)
+			ruleValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(dryRunEnvironment, *formula)
+			result.Rules.Rules[rule.Id] = ruleValidation
 		}
 	}
 	return result
 }
 
-func (validator *ValidateScenarioIterationImpl) makeDryRunEnvironment(si ScenarioAndIteration) (ast_eval.AstEvaluationEnvironment, error) {
+func (validator *ValidateScenarioIterationImpl) makeDryRunEnvironment(si ScenarioAndIteration) (ast_eval.AstEvaluationEnvironment, *models.ScenarioValidationError) {
 	organizationId := si.Scenario.OrganizationId
 
 	dataModel, err := validator.DataModelRepository.GetDataModel(organizationId)
 	if err != nil {
-		return ast_eval.AstEvaluationEnvironment{}, err
+		return ast_eval.AstEvaluationEnvironment{}, &models.ScenarioValidationError{
+			Error: fmt.Errorf("could not get data model: %w", err),
+			Code:  models.DataModelNotFound,
+		}
 	}
 
 	table, ok := dataModel.Tables[models.TableName(si.Scenario.TriggerObjectType)]
 	if !ok {
-		return ast_eval.AstEvaluationEnvironment{}, fmt.Errorf("table %s not found in data model  %w", si.Scenario.TriggerObjectType, models.NotFoundError)
+		return ast_eval.AstEvaluationEnvironment{}, &models.ScenarioValidationError{
+			Error: fmt.Errorf("table %s not found in data model  %w", si.Scenario.TriggerObjectType, models.NotFoundError),
+			Code:  models.TrigerObjectNotFound,
+		}
 	}
 
 	payload := models.ClientObject{
