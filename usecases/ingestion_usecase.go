@@ -129,7 +129,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 
 		_, err = parseStringValuesToMap(headers, row, table)
 		if err != nil {
-			return models.UploadLog{}, fmt.Errorf("Error found at line %d in CSV (%w)", processedLinesCount+1, models.BadParameterError)
+			return models.UploadLog{}, fmt.Errorf("Error found at line %d in CSV: %w (%w)", processedLinesCount+1, err, models.BadParameterError)
 		}
 
 		if err := csvWriter.WriteAll([][]string{row}); err != nil {
