@@ -33,12 +33,18 @@ func (repo *MarbleDbRepository) ListScenariosOfOrganization(tx Transaction, orga
 	)
 }
 
-func (repo *MarbleDbRepository) ListAllScenarios(tx Transaction) ([]models.Scenario, error) {
+func (repo *MarbleDbRepository) ListAllScenarios(tx Transaction, filters models.ListAllScenariosFilters) ([]models.Scenario, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	query := selectScenarios().OrderBy("id")
+
+	if filters.Live {
+		query = query.Where(squirrel.NotEq{"live_scenario_iteration_id": nil})
+	}
 
 	return SqlToListOfModels(
 		pgTx,
-		selectScenarios().OrderBy("id"),
+		query,
 		dbmodels.AdaptScenario,
 	)
 }

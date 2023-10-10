@@ -119,14 +119,15 @@ func main() {
 
 	shouldRunMigrations := flag.Bool("migrations", false, "Run migrations")
 	shouldRunServer := flag.Bool("server", false, "Run server")
-	shouldRunScheduledScenarios := flag.Bool("scheduler", false, "Run scheduled scenarios")
+	shouldRunScheduleScenarios := flag.Bool("scheduler", false, "Run schedule scenarios")
+	shouldRunExecuteScheduledScenarios := flag.Bool("scheduled-executer", false, "Run execute scheduled scenarios")
 	shouldRunBatchIngestion := flag.Bool("batch-ingestion", false, "Run batch ingestion")
 	shouldRunDataIngestion := flag.Bool("data-ingestion", false, "Run data ingestion")
 	flag.Parse()
 	logger.Info("Flags",
 		slog.Bool("shouldRunMigrations", *shouldRunMigrations),
 		slog.Bool("shouldRunServer", *shouldRunServer),
-		slog.Bool("shouldRunScheduledScenarios", *shouldRunScheduledScenarios),
+		slog.Bool("shouldRunScheduledScenarios", *shouldRunScheduleScenarios),
 		slog.Bool("shouldRunBatchIngestion", *shouldRunBatchIngestion),
 		slog.Bool("shouldRunDataIngestion", *shouldRunDataIngestion),
 	)
@@ -144,7 +145,17 @@ func main() {
 		runServer(appContext, appConfig)
 	}
 
-	if *shouldRunScheduledScenarios {
+	if *shouldRunScheduleScenarios {
+		usecases := NewUseCases(appContext, appConfig, nil)
+		err := jobs.ScheduleDueScenarios(appContext, usecases)
+		if err != nil {
+			slog.Error("jobs.ScheduleDueScenarios failed", slog.String("error", err.Error()))
+			os.Exit(1)
+			return
+		}
+	}
+
+	if *shouldRunExecuteScheduledScenarios {
 		usecases := NewUseCases(appContext, appConfig, nil)
 		err := jobs.ExecuteAllScheduledScenarios(appContext, usecases)
 		if err != nil {
