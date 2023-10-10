@@ -285,7 +285,7 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 
 	// Now, create a scenario iteration, with a rule
 	scenarioIterationUsecase := usecasesWithCreds.NewScenarioIterationUsecase()
-	threshold := 10
+	threshold := 20
 	scenarioIteration, err := scenarioIterationUsecase.CreateScenarioIteration(usecasesWithCreds.Context, organizationId, models.CreateScenarioIterationInput{
 		ScenarioId: scenarioId,
 		Body: &models.CreateScenarioIterationBody{
@@ -383,11 +383,11 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 	fmt.Println("Created scenario iteration", scenarioIterationId)
 
 	// Actually, modify the scenario iteration
-	threshold = 20
+	threshold = 30
 	updatedScenarioIteration, err := scenarioIterationUsecase.UpdateScenarioIteration(usecasesWithCreds.Context, organizationId, models.UpdateScenarioIterationInput{
 		Id: scenarioIterationId,
 		Body: &models.UpdateScenarioIterationBody{
-			ScoreReviewThreshold: &threshold,
+			ScoreRejectThreshold: &threshold,
 		},
 	})
 	assert.NoError(t, err)
@@ -398,11 +398,11 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 	assert.NoError(t, scenarios.ScenarioValidationToError(validation))
 	assert.NoError(t, err, "Could not update scenario iteration")
 
-	if assert.NotNil(t, updatedScenarioIteration.ScoreReviewThreshold) {
+	if assert.NotNil(t, updatedScenarioIteration.ScoreRejectThreshold) {
 		assert.Equal(
 			t,
-			threshold, *updatedScenarioIteration.ScoreReviewThreshold,
-			"Expected score review threshold to be %d, got %d", threshold, *updatedScenarioIteration.ScoreReviewThreshold,
+			threshold, *updatedScenarioIteration.ScoreRejectThreshold,
+			"Expected score review threshold to be %d, got %d", threshold, *updatedScenarioIteration.ScoreRejectThreshold,
 		)
 	}
 
