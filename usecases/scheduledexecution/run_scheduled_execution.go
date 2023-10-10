@@ -71,17 +71,12 @@ func (usecase *RunScheduledExecution) ScheduleScenarioIfDue(ctx context.Context,
 
 	logger.DebugContext(ctx, fmt.Sprintf("Scenario iteration %s is due", publishedVersion.Id))
 	scheduledExecutionId := utils.NewPrimaryKey(organizationId)
-	err = usecase.ScheduledExecutionRepository.CreateScheduledExecution(nil, models.CreateScheduledExecutionInput{
+	return usecase.ScheduledExecutionRepository.CreateScheduledExecution(nil, models.CreateScheduledExecutionInput{
 		OrganizationId:      organizationId,
 		ScenarioId:          scenarioId,
 		ScenarioIterationId: publishedVersion.Id,
 		Manual:              false,
 	}, scheduledExecutionId)
-
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (usecase *RunScheduledExecution) ExecuteAllScheduledScenarios(ctx context.Context) error {
