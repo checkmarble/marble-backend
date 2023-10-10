@@ -151,31 +151,3 @@ func (api *API) handleReferences(w http.ResponseWriter, r *http.Request) {
 
 	PresentModel(w, reference)
 }
-
-func (api *API) handleToggleIsEnum(w http.ResponseWriter, r *http.Request) {
-	fieldID, err := requiredUuidUrlParam(r, "fieldID")
-	if presentError(w, r, err) {
-		return
-	}
-
-	usecase := api.UsecasesWithCreds(r).NewDataModelUseCase()
-	err = usecase.ToggleFieldIsEnum(fieldID)
-	if presentError(w, r, err) {
-		return
-	}
-	PresentNothing(w)
-}
-
-func (api *API) handleGetEnumValues(w http.ResponseWriter, r *http.Request) {
-	fieldID, err := requiredUuidUrlParam(r, "fieldID")
-	if presentError(w, r, err) {
-		return
-	}
-
-	usecase := api.UsecasesWithCreds(r).NewDataModelUseCase()
-	values, err := usecase.GetEnumValues(fieldID)
-	if presentError(w, r, err) {
-		return
-	}
-	PresentModel(w, values)
-}

@@ -11,9 +11,8 @@ import (
 )
 
 type DataModelRepository interface {
-	GetDataModel(organizationID string) (models.DataModel, error)
+	GetDataModel(organizationID string, fetchEnumValues bool) (models.DataModel, error)
 	GetTablesAndFields(tx Transaction, organizationID string) ([]models.DataModelTableField, error)
-	GetLinks(tx Transaction, organizationID string) ([]models.DataModelLink, error)
 	CreateDataModelTable(tx Transaction, organizationID, tableID, name, description string) error
 	UpdateDataModelTable(tx Transaction, tableID, description string) error
 	GetDataModelTable(tx Transaction, tableID string) (models.DataModelTable, error)
@@ -21,15 +20,13 @@ type DataModelRepository interface {
 	UpdateDataModelField(tx Transaction, field, description string) error
 	CreateDataModelLink(tx Transaction, link models.DataModelLink) error
 	DeleteDataModel(tx Transaction, organizationID string) error
-	ToggleFieldIsEnum(tx Transaction, fieldID string) error
-	GetEnumValues(tx Transaction, fieldID string) ([]string, error)
 }
 
 type DataModelRepositoryPostgresql struct {
 	transactionFactory TransactionFactoryPosgresql
 }
 
-func (repo *DataModelRepositoryPostgresql) GetDataModel(organizationID string) (models.DataModel, error) {
+func (repo *DataModelRepositoryPostgresql) GetDataModel(organizationID string, fetchEnumValues bool) (models.DataModel, error) {
 	fields, err := repo.GetTablesAndFields(nil, organizationID)
 	if err != nil {
 		return models.DataModel{}, err
@@ -48,6 +45,14 @@ func (repo *DataModelRepositoryPostgresql) GetDataModel(organizationID string) (
 		tableName := models.TableName(field.TableName)
 		fieldName := models.FieldName(field.FieldName)
 
+		var values []string
+		if field.FieldIsEnum && fetchEnumValues {
+			values, err = repo.GetEnumValues(nil, field.FieldID)
+			if err != nil {
+				return models.DataModel{}, err
+			}
+		}
+
 		_, ok := dataModel.Tables[tableName]
 		if ok {
 			dataModel.Tables[tableName].Fields[fieldName] = models.Field{
@@ -56,6 +61,7 @@ func (repo *DataModelRepositoryPostgresql) GetDataModel(organizationID string) (
 				DataType:    models.DataTypeFrom(field.FieldType),
 				Nullable:    field.FieldNullable,
 				IsEnum:      field.FieldIsEnum,
+				Values:      values,
 			}
 		} else {
 			dataModel.Tables[tableName] = models.Table{
@@ -69,6 +75,7 @@ func (repo *DataModelRepositoryPostgresql) GetDataModel(organizationID string) (
 						DataType:    models.DataTypeFrom(field.FieldType),
 						Nullable:    field.FieldNullable,
 						IsEnum:      field.FieldIsEnum,
+						Values:      values,
 					},
 				},
 				LinksToSingle: make(map[models.LinkName]models.LinkToSingle),
@@ -259,21 +266,6 @@ func (repo *DataModelRepositoryPostgresql) DeleteDataModel(tx Transaction, organ
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) ToggleFieldIsEnum(tx Transaction, fieldID string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
-
-	query := `
-		UPDATE data_model_fields
-		SET is_enum = NOT is_enum
-		WHERE id = $1
-	`
-	_, err := pgTx.exec.Exec(pgTx.ctx, query, fieldID)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func (repo *DataModelRepositoryPostgresql) GetEnumValues(tx Transaction, fieldID string) ([]string, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
@@ -282,6 +274,7 @@ func (repo *DataModelRepositoryPostgresql) GetEnumValues(tx Transaction, fieldID
 		From("data_model_enum_values").
 		Where(squirrel.Eq{"field_id": fieldID}).
 		OrderBy("last_seen DESC").
+		Limit(100).
 		ToSql()
 	if err != nil {
 		return nil, err

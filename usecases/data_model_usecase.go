@@ -24,7 +24,7 @@ func (usecase *DataModelUseCase) GetDataModel(organizationID string) (models.Dat
 		return models.DataModel{}, err
 	}
 
-	dataModel, err := usecase.dataModelRepository.GetDataModel(organizationID)
+	dataModel, err := usecase.dataModelRepository.GetDataModel(organizationID, true)
 	if err != nil {
 		return models.DataModel{}, err
 	}
@@ -136,18 +136,4 @@ func (usecase *DataModelUseCase) DeleteSchema(organizationID string) error {
 			return usecase.populateOrganizationSchema.OrganizationSchemaRepository.DeleteSchema(tx, schema.DatabaseSchema.Schema)
 		})
 	})
-}
-
-func (usecase *DataModelUseCase) ToggleFieldIsEnum(fieldID string) error {
-	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
-		return err
-	}
-	return usecase.dataModelRepository.ToggleFieldIsEnum(nil, fieldID)
-}
-
-func (usecase *DataModelUseCase) GetEnumValues(fieldID string) ([]string, error) {
-	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
-		return nil, err
-	}
-	return usecase.dataModelRepository.GetEnumValues(nil, fieldID)
 }

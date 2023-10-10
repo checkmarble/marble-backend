@@ -12,11 +12,12 @@ type LinkToSingle struct {
 }
 
 type Field struct {
-	ID          string `json:"id,omitempty"`
-	Description string `json:"description"`
-	DataType    string `json:"data_type"`
-	Nullable    bool   `json:"nullable"`
-	IsEnum      bool   `json:"is_enum"`
+	ID          string   `json:"id,omitempty"`
+	Description string   `json:"description"`
+	DataType    string   `json:"data_type"`
+	Nullable    bool     `json:"nullable"`
+	IsEnum      bool     `json:"is_enum"`
+	Values      []string `json:"values,omitempty"`
 }
 
 type Table struct {
@@ -83,6 +84,7 @@ func AdaptTableDto(table models.Table) Table {
 				Nullable:    field.Nullable,
 				Description: field.Description,
 				IsEnum:      field.IsEnum,
+				Values:      field.Values,
 			}
 		}),
 		LinksToSingle: utils.MapMap(table.LinksToSingle, func(linkToSingle models.LinkToSingle) LinkToSingle {

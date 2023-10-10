@@ -151,9 +151,6 @@ func (api *API) routes() {
 			dataModelRouter.With(httpin.NewInput(dto.PostCreateField{})).
 				Patch("/fields/{fieldID}", api.handleUpdateField)
 
-			dataModelRouter.Get("/fields/{fieldID}/enums", api.handleGetEnumValues)
-			dataModelRouter.Patch("/fields/{fieldID}/enums", api.handleToggleIsEnum)
-
 			dataModelRouter.With(httpin.NewInput(dto.PostCreateLink{})).
 				Post("/links", api.handleCreateLink)
 
