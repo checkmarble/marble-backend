@@ -60,10 +60,10 @@ func (suite *ScheduledExecutionsTestSuite) AssertExpectations() {
 	suite.exportScheduleExecution.AssertExpectations(t)
 }
 
-func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutionss_of_organization() {
+func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutions_with_OrganizationId() {
 
 	suite.transactionFactory.On("Transaction", models.DATABASE_MARBLE_SCHEMA, mock.Anything).Return(nil)
-	suite.scheduledExecutionRepository.On("ListScheduledExecutionsOfOrganization", suite.transaction, "some org id").Return(suite.scheduledExecutions, nil)
+	suite.scheduledExecutionRepository.On("ListScheduledExecutions", suite.transaction, models.ListScheduledExecutionsFilters{OrganizationId: "some org id"}).Return(suite.scheduledExecutions, nil)
 	suite.enforceSecurity.On("ReadScheduledExecution", suite.scheduledExecutions[0]).Return(nil)
 
 	result, err := suite.makeUsecase().ListScheduledExecutions("")
@@ -75,10 +75,10 @@ func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutionss_of_organ
 	suite.AssertExpectations()
 }
 
-func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutions_of_scenario() {
+func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutions_with_ScenarioId() {
 
 	suite.transactionFactory.On("Transaction", models.DATABASE_MARBLE_SCHEMA, mock.Anything).Return(nil)
-	suite.scheduledExecutionRepository.On("ListScheduledExecutionsOfScenario", suite.transaction, suite.scenarioId).Return(suite.scheduledExecutions, nil)
+	suite.scheduledExecutionRepository.On("ListScheduledExecutions", suite.transaction, models.ListScheduledExecutionsFilters{ScenarioId: suite.scenarioId}).Return(suite.scheduledExecutions, nil)
 	suite.enforceSecurity.On("ReadScheduledExecution", suite.scheduledExecutions[0]).Return(nil)
 
 	result, err := suite.makeUsecase().ListScheduledExecutions(suite.scenarioId)
@@ -95,7 +95,7 @@ func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutions_security(
 	securityError := errors.New("some security error")
 
 	suite.transactionFactory.On("Transaction", models.DATABASE_MARBLE_SCHEMA, mock.Anything).Return(nil)
-	suite.scheduledExecutionRepository.On("ListScheduledExecutionsOfScenario", suite.transaction, suite.scenarioId).Return(suite.scheduledExecutions, nil)
+	suite.scheduledExecutionRepository.On("ListScheduledExecutions", suite.transaction, models.ListScheduledExecutionsFilters{ScenarioId: suite.scenarioId}).Return(suite.scheduledExecutions, nil)
 	suite.enforceSecurity.On("ReadScheduledExecution", suite.scheduledExecutions[0]).Return(securityError)
 
 	result, err := suite.makeUsecase().ListScheduledExecutions(suite.scenarioId)

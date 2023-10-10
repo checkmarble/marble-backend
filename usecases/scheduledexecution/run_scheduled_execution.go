@@ -113,7 +113,7 @@ func (usecase *RunScheduledExecution) scenarioIsDue(ctx context.Context, publish
 		return false, fmt.Errorf("invalid schedule: %w", models.BadParameterError)
 	}
 
-	previousExecutions, err := usecase.ScheduledExecutionRepository.ListScheduledExecutionsOfScenario(nil, scenario.Id)
+	previousExecutions, err := usecase.ScheduledExecutionRepository.ListScheduledExecutions(nil, models.ListScheduledExecutionsFilters{ScenarioId: scenario.Id, ExcludeManual: true})
 	if err != nil {
 		return false, fmt.Errorf("error listing scheduled executions: %w", err)
 	}
