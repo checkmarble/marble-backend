@@ -17,6 +17,7 @@ func (api *API) routes() {
 
 	api.router.Post("/token", api.handlePostFirebaseIdToken())
 	api.router.Post("/crash", api.handleCrash())
+	api.router.Get("/liveness", api.handleLivenessProbe())
 
 	api.router.With(api.credentialsMiddleware).Route("/ast-expression", func(astRouter chi.Router) {
 		astRouter.Get("/available-functions", api.handleAvailableFunctions())
