@@ -23,7 +23,7 @@ resource "google_cloud_run_v2_job" "scheduler" {
 
         env {
           name  = "PG_HOSTNAME"
-          value = "/cloudsql/${data.google_project.project.project_id}:${google_sql_database_instance.marble.region}:${google_sql_database_instance.marble.name}"
+          value = "/cloudsql/${google_project.default.project_id}:${google_sql_database_instance.marble.region}:${google_sql_database_instance.marble.name}"
         }
 
         env {
@@ -84,7 +84,7 @@ resource "google_cloud_scheduler_job" "scheduler_cron" {
   http_target {
     http_method = "POST"
     // https://europe-west1-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/tokyo-country-381508/jobs/marble-backend-scheduler:run
-    uri = "https://${var.gcp_location}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${data.google_project.project.project_id}/jobs/${google_cloud_run_v2_job.scheduler.name}:run"
+    uri = "https://${var.gcp_location}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${google_project.default.project_id}/jobs/${google_cloud_run_v2_job.scheduler.name}:run"
 
     oauth_token {
       service_account_email = google_service_account.backend_service_account.email

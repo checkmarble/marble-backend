@@ -22,7 +22,7 @@ resource "google_cloud_run_v2_job" "migrations" {
 
         env {
           name  = "PG_HOSTNAME"
-          value = "/cloudsql/${data.google_project.project.project_id}:${google_sql_database_instance.marble.region}:${google_sql_database_instance.marble.name}"
+          value = "/cloudsql/${google_project.default.project_id}:${google_sql_database_instance.marble.region}:${google_sql_database_instance.marble.name}"
         }
 
         env {

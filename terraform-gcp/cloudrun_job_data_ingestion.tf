@@ -23,7 +23,7 @@ resource "google_cloud_run_v2_job" "data_ingestion" {
 
         env {
           name  = "PG_HOSTNAME"
-          value = "/cloudsql/${data.google_project.project.project_id}:${google_sql_database_instance.marble.region}:${google_sql_database_instance.marble.name}"
+          value = "/cloudsql/${google_project.default.project_id}:${google_sql_database_instance.marble.region}:${google_sql_database_instance.marble.name}"
         }
 
         env {
@@ -82,7 +82,7 @@ resource "google_cloud_scheduler_job" "data_ingestion_cron" {
 
   http_target {
     http_method = "POST"
-    uri         = "https://${var.gcp_location}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${data.google_project.project.project_id}/jobs/${google_cloud_run_v2_job.data_ingestion.name}:run"
+    uri         = "https://${var.gcp_location}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${google_project.default.project_id}/jobs/${google_cloud_run_v2_job.data_ingestion.name}:run"
 
     oauth_token {
       service_account_email = google_service_account.backend_service_account.email
@@ -90,19 +90,3 @@ resource "google_cloud_scheduler_job" "data_ingestion_cron" {
   }
   depends_on = [google_cloud_run_v2_job.data_ingestion, google_project_iam_member.backend_service_account_cron_run_invoker]
 }
-
-
-#   - name: Deploy data ingestion job
-#     run: |
-#       gcloud beta run jobs deploy marble-backend-data-ingestion \
-#         --quiet \
-#         --image="europe-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/marble/marble-backend:latest" \
-#         --region="europe-west1" \
-#         --args=-data-ingestion \
-#         --service-account=marble-backend-cloud-run@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
-#         --set-env-vars=PG_HOSTNAME=/cloudsql/${{ vars.GCP_PROJECT_ID }}:${{ vars.DB_INSTANCE_REGION }}:${{ vars.DB_INSTANCE_NAME }},PG_USER=postgres,GOOGLE_CLOUD_PROJECT=${{ vars.GCP_PROJECT_ID }},ENV=${{ inputs.environment }},AWS_REGION=eu-west-3,GCS_INGESTION_BUCKET=${{ vars.GCS_INGESTION_BUCKET }} \
-#         --set-secrets=PG_PASSWORD=POSTGRES_PASSWORD:latest,AWS_ACCESS_KEY=AWS_ACCESS_KEY:latest,AWS_SECRET_KEY=AWS_SECRET_KEY:latest \
-#         --set-cloudsql-instances=${{ vars.GCP_PROJECT_ID }}:${{ vars.DB_INSTANCE_REGION }}:${{ vars.DB_INSTANCE_NAME }} \
-#         --task-timeout=2h \
-#         --max-retries=0
-

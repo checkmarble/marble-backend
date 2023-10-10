@@ -1,12 +1,11 @@
 terraform {
   required_providers {
     google = {
-      source  = "hashicorp/google"
-      version = "4.51.0"
+      source  = "hashicorp/google-beta"
+      version = "~> 4.51"
     }
   }
 }
-
 
 provider "google" {
   credentials = file(var.service_account_key)
@@ -19,18 +18,19 @@ provider "google" {
 #   name = "terraform-network"
 # }
 
-data "google_project" "project" {
-}
-
 resource "google_project_service" "services" {
   for_each = toset([
     "cloudresourcemanager.googleapis.com",
-    "secretmanager.googleapis.com",  // to create secrets
-    "sqladmin.googleapis.com",       // to create cloud sql instances
-    "run.googleapis.com",            // to create cloud run services
-    "iam.googleapis.com",            // to create service accounts
-    "cloudscheduler.googleapis.com", // to create cloud scheduler jobs
+    "secretmanager.googleapis.com",   # to create secrets
+    "sqladmin.googleapis.com",        # to create cloud sql instances
+    "run.googleapis.com",             # to create cloud run services
+    "iam.googleapis.com",             # to create service accounts
+    "cloudscheduler.googleapis.com",  # to create cloud scheduler jobs
+    "firebase.googleapis.com",        # to create firebase projects
+    "identitytoolkit.googleapis.com", # to setup firebase authentication using google as an identity provider
   ])
-  project = data.google_project.project.project_id
-  service = each.value
+  project = google_project.default.project_id
+  service = each.key
+
+  disable_on_destroy = false
 }
