@@ -1,7 +1,6 @@
 package repositories
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -61,7 +60,6 @@ func TestIngestedDataGetDbFieldWithoutJoin(t *testing.T) {
 		assert.Equal(t, args[1], "Infinity")
 	}
 	assert.Equal(t, strings.ReplaceAll(sql, "\"", ""), expectedQueryDbFieldExpectedWithoutJoin)
-	fmt.Println(sql)
 }
 
 func TestIngestedDataGetDbFieldWithJoin(t *testing.T) {

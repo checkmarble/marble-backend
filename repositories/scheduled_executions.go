@@ -56,7 +56,7 @@ func selectJoinScheduledExecutionAndScenario() squirrel.SelectBuilder {
 	return NewQueryBuilder().
 		Select(columns...).
 		From(fmt.Sprintf("%s AS se", dbmodels.TABLE_SCHEDULED_EXECUTIONS)).
-		LeftJoin(fmt.Sprintf("%s AS scenario ON scenario.id = se.scenario_id", dbmodels.TABLE_SCENARIOS))
+		Join(fmt.Sprintf("%s AS scenario ON scenario.id = se.scenario_id", dbmodels.TABLE_SCENARIOS))
 }
 
 func (repo *ScheduledExecutionRepositoryPostgresql) GetScheduledExecution(tx Transaction, id string) (models.ScheduledExecution, error) {
