@@ -3,7 +3,6 @@ package api
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -38,7 +37,6 @@ func (api *API) handleListDecisions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println(decisions)
 	PresentModel(w, utils.Map(decisions, dto.NewAPIDecision))
 }
 
