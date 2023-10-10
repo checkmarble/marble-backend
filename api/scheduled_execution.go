@@ -86,3 +86,28 @@ func (api *API) handleListScheduledExecution() http.HandlerFunc {
 		PresentModelWithName(w, "scheduled_executions", utils.Map(executions, dto.AdaptScheduledExecutionDto))
 	}
 }
+
+func (api *API) handleCreateScheduledExecution() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		organizationId, err := utils.OrgIDFromCtx(ctx, r)
+		if presentError(w, r, err) {
+			return
+		}
+		scenarioIterationId, err := requiredIterationParam(r)
+		if presentError(w, r, err) {
+			return
+		}
+
+		usecase := api.UsecasesWithCreds(r).NewScheduledExecutionUsecase()
+		err = usecase.CreateScheduledExecution(models.CreateScheduledExecutionInput{
+			OrganizationId:      organizationId,
+			ScenarioIterationId: scenarioIterationId,
+		})
+
+		if presentError(w, r, err) {
+			return
+		}
+		PresentNothingStatusCode(w, http.StatusCreated)
+	}
+}

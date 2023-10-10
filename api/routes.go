@@ -86,6 +86,7 @@ func (api *API) routes() {
 					httpin.NewInput(dto.UpdateScenarioIterationInput{}),
 				).Patch("/", api.UpdateScenarioIteration())
 
+				iterationDetailReadRouter.Post("/schedule-execution", api.handleCreateScheduledExecution())
 			})
 		})
 

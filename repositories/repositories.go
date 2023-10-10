@@ -24,7 +24,6 @@ type Repositories struct {
 	DecisionRepository               DecisionRepository
 	MarbleDbRepository               MarbleDbRepository
 	ScenarioPublicationRepository    ScenarioPublicationRepository
-	ScheduledExecutionRepository     ScheduledExecutionRepository
 	OrganizationSchemaRepository     OrganizationSchemaRepository
 	AwsS3Repository                  AwsS3Repository
 	GcsRepository                    GcsRepository
@@ -91,9 +90,6 @@ func NewRepositories(
 		ScenarioPublicationRepository: NewScenarioPublicationRepositoryPostgresql(
 			transactionFactory,
 		),
-		ScheduledExecutionRepository: &ScheduledExecutionRepositoryPostgresql{
-			transactionFactory: transactionFactory,
-		},
 		OrganizationSchemaRepository: &OrganizationSchemaRepositoryPostgresql{
 			transactionFactory: transactionFactory,
 		},
