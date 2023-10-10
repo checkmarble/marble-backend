@@ -63,7 +63,7 @@ func (validator *ValidateScenarioIterationImpl) Validate(si ScenarioAndIteration
 		})
 	}
 
-	if *iteration.ScoreRejectThreshold < *iteration.ScoreReviewThreshold {
+	if iteration.ScoreReviewThreshold != nil && iteration.ScoreRejectThreshold != nil && *iteration.ScoreRejectThreshold < *iteration.ScoreReviewThreshold {
 		result.Decision.Errors = append(result.Trigger.Errors, models.ScenarioValidationError{
 			Error: fmt.Errorf("scenario iteration has ScoreRejectThreshold < ScoreReviewThreshold: \n%w", models.BadParameterError),
 			Code:  models.ScoreRejectReviewThresholdsMissmatch,
