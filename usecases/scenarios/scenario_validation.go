@@ -108,7 +108,7 @@ func (validator *ValidateScenarioIterationImpl) Validate(si ScenarioAndIteration
 func (validator *ValidateScenarioIterationImpl) makeDryRunEnvironment(si ScenarioAndIteration) (ast_eval.AstEvaluationEnvironment, *models.ScenarioValidationError) {
 	organizationId := si.Scenario.OrganizationId
 
-	dataModel, err := validator.DataModelRepository.GetDataModel(organizationId)
+	dataModel, err := validator.DataModelRepository.GetDataModel(organizationId, false)
 	if err != nil {
 		return ast_eval.AstEvaluationEnvironment{}, &models.ScenarioValidationError{
 			Error: fmt.Errorf("could not get data model: %w", err),

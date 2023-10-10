@@ -196,7 +196,7 @@ func executionIsDueNow(schedule string, previousExecutions []models.ScheduledExe
 }
 
 func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Context, scheduledExecutionId string, scenario models.Scenario) (int, error) {
-	dataModel, err := usecase.DataModelRepository.GetDataModel(scenario.OrganizationId)
+	dataModel, err := usecase.DataModelRepository.GetDataModel(scenario.OrganizationId, false)
 	if err != nil {
 		return 0, err
 	}

@@ -15,6 +15,8 @@ ALTER TABLE data_model_enum_values
 ADD CONSTRAINT unique_data_model_enum_values_field_id_value
 UNIQUE (field_id, value);
 
+CREATE INDEX data_model_enum_values_field_id_last_seen ON data_model_enum_values(field_id, last_seen DESC);
+
 -- +goose StatementEnd
 
 -- +goose Down

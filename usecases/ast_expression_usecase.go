@@ -113,7 +113,7 @@ func (usecase *AstExpressionUsecase) EditorIdentifiers(scenarioId string) (Edito
 		return EditorIdentifiers{}, err
 	}
 
-	dataModel, err := usecase.DataModelRepository.GetDataModel(scenario.OrganizationId)
+	dataModel, err := usecase.DataModelRepository.GetDataModel(scenario.OrganizationId, false)
 	if err != nil {
 		return EditorIdentifiers{}, err
 	}

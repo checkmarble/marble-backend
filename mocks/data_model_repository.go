@@ -11,8 +11,8 @@ type DataModelRepository struct {
 	mock.Mock
 }
 
-func (d *DataModelRepository) GetDataModel(organizationId string) (models.DataModel, error) {
-	args := d.Called(organizationId)
+func (d *DataModelRepository) GetDataModel(organizationId string, fetchEnumValues bool) (models.DataModel, error) {
+	args := d.Called(organizationId, fetchEnumValues)
 	return args.Get(0).(models.DataModel), args.Error(1)
 }
 
@@ -21,18 +21,8 @@ func (d *DataModelRepository) GetTablesAndFields(tx repositories.Transaction, or
 	return args.Get(0).([]models.DataModelTableField), args.Error(1)
 }
 
-func (d *DataModelRepository) GetLinks(tx repositories.Transaction, organizationID string) ([]models.DataModelLink, error) {
-	args := d.Called(tx, organizationID)
-	return args.Get(0).([]models.DataModelLink), args.Error(1)
-}
-
 func (d *DataModelRepository) DeleteDataModel(tx repositories.Transaction, organizationId string) error {
 	args := d.Called(tx, organizationId)
-	return args.Error(0)
-}
-
-func (d *DataModelRepository) CreateDataModel(tx repositories.Transaction, organizationId string, dataModel models.DataModel) error {
-	args := d.Called(tx, organizationId, dataModel)
 	return args.Error(0)
 }
 
@@ -64,14 +54,4 @@ func (d *DataModelRepository) CreateDataModelLink(tx repositories.Transaction, l
 func (d *DataModelRepository) UpdateDataModelField(tx repositories.Transaction, fieldID, description string) error {
 	args := d.Called(tx, fieldID, description)
 	return args.Error(0)
-}
-
-func (d *DataModelRepository) ToggleFieldIsEnum(tx repositories.Transaction, fieldID string) error {
-	args := d.Called(tx, fieldID)
-	return args.Error(0)
-}
-
-func (d *DataModelRepository) GetEnumValues(tx repositories.Transaction, fieldID string) ([]string, error) {
-	args := d.Called(tx, fieldID)
-	return args.Get(0).([]string), args.Error(1)
 }
