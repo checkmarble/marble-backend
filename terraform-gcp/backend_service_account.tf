@@ -8,7 +8,7 @@ resource "google_service_account" "backend_service_account" {
 # Allow backend service account to access any cloud sql instance
 resource "google_project_iam_binding" "backend_service_account_cloudsql_client" {
   role    = "roles/cloudsql.client"
-  project = data.google_project.project.project_id
+  project = google_project.default.project_id
 
   members = [
     google_service_account.backend_service_account.member
@@ -17,7 +17,7 @@ resource "google_project_iam_binding" "backend_service_account_cloudsql_client" 
 
 # Allow backend service account to invoke cloud run jobs
 resource "google_project_iam_member" "backend_service_account_cron_run_invoker" {
-  project = data.google_project.project.project_id
+  project = google_project.default.project_id
   role    = "roles/run.invoker"
   member  = google_service_account.backend_service_account.member
 }

@@ -5,7 +5,7 @@ resource "google_cloud_run_v2_service" "frontend" {
 
   template {
     scaling {
-      min_instance_count = 1
+      min_instance_count = 0
       max_instance_count = 1
     }
 
@@ -21,38 +21,33 @@ resource "google_cloud_run_v2_service" "frontend" {
       }
 
       env {
-        name = "FIREBASE_API_KEY"
-        # TODO: to vars
-        value = "AIzaSyAElc2shIKIrYzLSzWmWaZ1C7yEuoS-bBw"
+        name  = "FIREBASE_API_KEY"
+        value = data.google_firebase_web_app_config.frontend.api_key
       }
 
       env {
-        name = "FIREBASE_APP_ID"
-        # TODO: to vars
-        value = "1:1047691849054:web:a5b69dd2ac584c1160b3cf"
+        name  = "FIREBASE_APP_ID"
+        value = data.google_firebase_web_app_config.frontend.web_app_id
       }
 
       env {
-        name = "FIREBASE_AUTH_DOMAIN"
-        # TODO: to vars
-        value = "tokyo-country-381508.firebaseapp.com/"
+        name  = "FIREBASE_AUTH_DOMAIN"
+        value = data.google_firebase_web_app_config.frontend.auth_domain
       }
 
       env {
-        name = "FIREBASE_MESSAGING_SENDER_ID"
-        # TODO: to vars
-        value = "1047691849054"
+        name  = "FIREBASE_MESSAGING_SENDER_ID"
+        value = data.google_firebase_web_app_config.frontend.messaging_sender_id
       }
 
       env {
-        name = "FIREBASE_PROJECT_ID"
-        # TODO: to vars
-        value = "tokyo-country-381508"
+        name  = "FIREBASE_PROJECT_ID"
+        value = google_project.default.project_id
       }
+
       env {
-        name = "FIREBASE_STORAGE_BUCKET"
-        # TODO: to vars
-        value = "tokyo-country-381508.appspot.com"
+        name  = "FIREBASE_STORAGE_BUCKET"
+        value = data.google_firebase_web_app_config.frontend.storage_bucket
       }
       env {
         name  = "MARBLE_API_DOMAIN"
@@ -93,15 +88,10 @@ resource "google_cloud_run_v2_service" "frontend" {
     }
   }
 
-
   traffic {
     type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
     percent = 100
   }
-
-  depends_on = [
-    random_password.frontend_session_secret,
-  ]
 }
 
 resource "random_password" "frontend_session_secret" {

@@ -30,7 +30,7 @@ resource "google_cloud_run_v2_service" "backend" {
 
       env {
         name  = "PG_HOSTNAME"
-        value = "/cloudsql/${data.google_project.project.project_id}:${google_sql_database_instance.marble.region}:${google_sql_database_instance.marble.name}"
+        value = "/cloudsql/${google_project.default.project_id}:${google_sql_database_instance.marble.region}:${google_sql_database_instance.marble.name}"
       }
 
       env {
@@ -133,13 +133,10 @@ resource "google_cloud_run_v2_service" "backend" {
   }
 
   depends_on = [
-    google_sql_database_instance.marble,
-    google_sql_user.users,
     google_secret_manager_secret_iam_member.secret_access_postgres_password,
     google_secret_manager_secret_iam_member.secret_access_aws_secret_key,
     google_secret_manager_secret_iam_member.secret_access_aws_access_key,
     google_secret_manager_secret_iam_member.secret_access_authentication_jwt_signing_key,
-    google_storage_bucket.data_ingestion,
   ]
 }
 
