@@ -65,3 +65,13 @@ func (d *DataModelRepository) UpdateDataModelField(tx repositories.Transaction, 
 	args := d.Called(tx, fieldID, description)
 	return args.Error(0)
 }
+
+func (d *DataModelRepository) ToggleFieldIsEnum(tx repositories.Transaction, fieldID string) error {
+	args := d.Called(tx, fieldID)
+	return args.Error(0)
+}
+
+func (d *DataModelRepository) GetEnumValues(tx repositories.Transaction, fieldID string) ([]string, error) {
+	args := d.Called(tx, fieldID)
+	return args.Get(0).([]string), args.Error(1)
+}

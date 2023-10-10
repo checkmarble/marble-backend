@@ -21,6 +21,8 @@ type DataModelRepository interface {
 	UpdateDataModelField(tx Transaction, field, description string) error
 	CreateDataModelLink(tx Transaction, link models.DataModelLink) error
 	DeleteDataModel(tx Transaction, organizationID string) error
+	ToggleFieldIsEnum(tx Transaction, fieldID string) error
+	GetEnumValues(tx Transaction, fieldID string) ([]string, error)
 }
 
 type DataModelRepositoryPostgresql struct {
@@ -53,6 +55,7 @@ func (repo *DataModelRepositoryPostgresql) GetDataModel(organizationID string) (
 				Description: field.FieldDescription,
 				DataType:    models.DataTypeFrom(field.FieldType),
 				Nullable:    field.FieldNullable,
+				IsEnum:      field.FieldIsEnum,
 			}
 		} else {
 			dataModel.Tables[tableName] = models.Table{
@@ -65,6 +68,7 @@ func (repo *DataModelRepositoryPostgresql) GetDataModel(organizationID string) (
 						Description: field.FieldDescription,
 						DataType:    models.DataTypeFrom(field.FieldType),
 						Nullable:    field.FieldNullable,
+						IsEnum:      field.FieldIsEnum,
 					},
 				},
 				LinksToSingle: make(map[models.LinkName]models.LinkToSingle),
@@ -125,11 +129,11 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelField(tx Transaction, 
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	query := `
-		INSERT INTO data_model_fields (id, table_id, name, type, nullable, description)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO data_model_fields (id, table_id, name, type, nullable, description, is_enum)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id`
 
-	_, err := pgTx.exec.Exec(pgTx.ctx, query, fieldID, tableID, field.Name, field.Type, field.Nullable, field.Description)
+	_, err := pgTx.exec.Exec(pgTx.ctx, query, fieldID, tableID, field.Name, field.Type, field.Nullable, field.Description, field.IsEnum)
 	if IsUniqueViolationError(err) {
 		return models.DuplicateValueError
 	}
@@ -191,7 +195,9 @@ func (repo *DataModelRepositoryPostgresql) GetTablesAndFields(tx Transaction, or
 			&dbModel.FieldName,
 			&dbModel.FieldType,
 			&dbModel.FieldNullable,
-			&dbModel.FieldDescription); err != nil {
+			&dbModel.FieldDescription,
+			&dbModel.FieldIsEnum,
+		); err != nil {
 			return models.DataModelTableField{}, err
 		}
 		return dbmodels.AdaptDataModelTableField(dbModel), err
@@ -251,4 +257,47 @@ func (repo *DataModelRepositoryPostgresql) DeleteDataModel(tx Transaction, organ
 		return err
 	}
 	return err
+}
+
+func (repo *DataModelRepositoryPostgresql) ToggleFieldIsEnum(tx Transaction, fieldID string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	query := `
+		UPDATE data_model_fields
+		SET is_enum = NOT is_enum
+		WHERE id = $1
+	`
+	_, err := pgTx.exec.Exec(pgTx.ctx, query, fieldID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (repo *DataModelRepositoryPostgresql) GetEnumValues(tx Transaction, fieldID string) ([]string, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	query, args, err := NewQueryBuilder().
+		Select("value").
+		From("data_model_enum_values").
+		Where(squirrel.Eq{"field_id": fieldID}).
+		OrderBy("last_seen DESC").
+		ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := pgTx.exec.Query(pgTx.ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	values, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (string, error) {
+		var value string
+		if err := rows.Scan(&value); err != nil {
+			return "", err
+		}
+		return value, err
+	})
+	return values, nil
 }

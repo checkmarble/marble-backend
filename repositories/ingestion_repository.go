@@ -6,11 +6,11 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/checkmarble/marble-backend/models"
-
 	"github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+
+	"github.com/checkmarble/marble-backend/models"
 )
 
 type IngestionRepository interface {
@@ -38,7 +38,10 @@ func (repo *IngestionRepositoryImpl) IngestObjects(transaction Transaction, payl
 			continue
 		}
 
-		columnNames, values := generateInsertValues(table, payload)
+		columnNames, values, err := generateInsertValues(tx, table, payload)
+		if err != nil {
+			return fmt.Errorf("generateInsertValues error: %w", err)
+		}
 		columnNames = append(columnNames, "id")
 		values = append(values, uuid.NewString())
 
@@ -53,17 +56,38 @@ func (repo *IngestionRepositoryImpl) IngestObjects(transaction Transaction, payl
 	return nil
 }
 
-func generateInsertValues(table models.Table, payload models.PayloadReader) (columnNames []string, values []interface{}) {
+func generateInsertValues(tx TransactionPostgres, table models.Table, payload models.PayloadReader) ([]string, []interface{}, error) {
 	nbFields := len(table.Fields)
-	columnNames = make([]string, nbFields)
-	values = make([]interface{}, nbFields)
+	columnNames := make([]string, nbFields)
+	values := make([]interface{}, nbFields)
 	i := 0
 	for fieldName := range table.Fields {
 		columnNames[i] = string(fieldName)
 		values[i], _ = payload.ReadFieldFromPayload(fieldName)
+		if table.Fields[fieldName].IsEnum {
+			err := addEnumValue(tx, table.Fields[fieldName].ID, values[i])
+			if err != nil {
+				return nil, nil, fmt.Errorf("addEnumValue error: %w", err)
+			}
+		}
 		i++
 	}
-	return columnNames, values
+	return columnNames, values, nil
+}
+
+func addEnumValue(tx TransactionPostgres, fieldID string, value interface{}) error {
+	query := `
+		INSERT INTO data_model_enum_values (field_id, value)
+		VALUES ($1, $2)
+		ON CONFLICT ON CONSTRAINT unique_data_model_enum_values_field_id_value
+		DO UPDATE SET last_seen = NOW()
+	`
+
+	_, err := tx.exec.Exec(tx.ctx, query, fieldID, value)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func updateExistingVersionIfPresent(tx TransactionPostgres, objectId string, updatedAt time.Time, table models.Table) (bool, error) {

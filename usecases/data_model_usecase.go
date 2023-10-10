@@ -137,3 +137,17 @@ func (usecase *DataModelUseCase) DeleteSchema(organizationID string) error {
 		})
 	})
 }
+
+func (usecase *DataModelUseCase) ToggleFieldIsEnum(fieldID string) error {
+	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
+		return err
+	}
+	return usecase.dataModelRepository.ToggleFieldIsEnum(nil, fieldID)
+}
+
+func (usecase *DataModelUseCase) GetEnumValues(fieldID string) ([]string, error) {
+	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
+		return nil, err
+	}
+	return usecase.dataModelRepository.GetEnumValues(nil, fieldID)
+}
