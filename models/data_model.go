@@ -121,6 +121,7 @@ type Field struct {
 	Description string   `json:"description"`
 	DataType    DataType `json:"dataType"`
 	Nullable    bool     `json:"nullable"`
+	IsEnum      bool     `json:"is_enum"`
 }
 
 type LinkToSingle struct {
@@ -141,6 +142,7 @@ type DataModelField struct {
 	Description string `json:"description"`
 	Type        string `json:"dataType"`
 	Nullable    bool   `json:"nullable"`
+	IsEnum      bool   `json:"is_enum"`
 }
 
 type DataModelTableField struct {
@@ -153,6 +155,7 @@ type DataModelTableField struct {
 	FieldType        string
 	FieldNullable    bool
 	FieldDescription string
+	FieldIsEnum      bool
 }
 
 type DataModelLink struct {

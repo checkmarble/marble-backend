@@ -16,6 +16,7 @@ type Field struct {
 	Description string `json:"description"`
 	DataType    string `json:"data_type"`
 	Nullable    bool   `json:"nullable"`
+	IsEnum      bool   `json:"is_enum"`
 }
 
 type Table struct {
@@ -51,6 +52,7 @@ type PostCreateField struct {
 		Description string `json:"description"`
 		Type        string `json:"type"`
 		Nullable    bool   `json:"nullable"`
+		IsEnum      bool   `json:"is_enum"`
 	} `in:"body=json"`
 }
 
@@ -64,6 +66,12 @@ type PostCreateLink struct {
 	} `in:"body=json"`
 }
 
+type PostToggleIsEnum struct {
+	Body *struct {
+		FieldID string `json:"field_id"`
+	} `in:"body=json"`
+}
+
 func AdaptTableDto(table models.Table) Table {
 	return Table{
 		Name: string(table.Name),
@@ -74,6 +82,7 @@ func AdaptTableDto(table models.Table) Table {
 				DataType:    field.DataType.String(),
 				Nullable:    field.Nullable,
 				Description: field.Description,
+				IsEnum:      field.IsEnum,
 			}
 		}),
 		LinksToSingle: utils.MapMap(table.LinksToSingle, func(linkToSingle models.LinkToSingle) LinkToSingle {

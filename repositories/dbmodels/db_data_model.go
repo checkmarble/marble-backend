@@ -68,6 +68,7 @@ type DbDataModelField struct {
 	FieldType        string `db:"data_model_fields.type"`
 	FieldNullable    bool   `db:"data_model_fields.nullable"`
 	FieldDescription string `db:"data_model_fields.description"`
+	FieldIsEnum      bool   `db:"data_model_fields.is_enum"`
 }
 
 var SelectDataModelFieldColumns = utils.ColumnList[DbDataModelField]()
@@ -83,6 +84,7 @@ func AdaptDataModelTableField(dbDataModelTableField DbDataModelField) models.Dat
 		FieldType:        dbDataModelTableField.FieldType,
 		FieldNullable:    dbDataModelTableField.FieldNullable,
 		FieldDescription: dbDataModelTableField.FieldDescription,
+		FieldIsEnum:      dbDataModelTableField.FieldIsEnum,
 	}
 }
 
