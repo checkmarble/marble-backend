@@ -104,6 +104,7 @@ func (repo *ScheduledExecutionRepositoryPostgresql) CreateScheduledExecution(tx 
 				"scenario_id",
 				"scenario_iteration_id",
 				"status",
+				"manual",
 			).
 			Values(
 				newScheduledExecutionId,
@@ -111,6 +112,7 @@ func (repo *ScheduledExecutionRepositoryPostgresql) CreateScheduledExecution(tx 
 				createScheduledEx.ScenarioId,
 				createScheduledEx.ScenarioIterationId,
 				models.ScheduledExecutionPending.String(),
+				createScheduledEx.Manual,
 			),
 	)
 	return err
