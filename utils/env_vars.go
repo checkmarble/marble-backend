@@ -14,7 +14,7 @@ func GetIntEnv(envVarName string, defaultValue int) int {
 	}
 	intValue, err := strconv.Atoi(envValue)
 	if err != nil {
-		panic(fmt.Sprintf("Environment variable %s is not valid. '%s' is an integer", envVarName, envValue))
+		panic(fmt.Sprintf("Environment variable %s is not valid. '%s' is not an integer", envVarName, envValue))
 	}
 	return intValue
 }
@@ -22,7 +22,7 @@ func GetIntEnv(envVarName string, defaultValue int) int {
 func GetRequiredStringEnv(envVar string) string {
 	envValue, ok := os.LookupEnv(envVar)
 	if !ok || envValue == "" {
-		log.Fatalf("set %s environment variable", envVar)
+		log.Fatalf("%s environment variable is required", envVar)
 	}
 	return envValue
 }
@@ -30,7 +30,7 @@ func GetRequiredStringEnv(envVar string) string {
 func GetStringEnv(envVar string, defaultValue string) string {
 	envValue, ok := os.LookupEnv(envVar)
 	if !ok || envValue == "" {
-		log.Printf("no %s environment variable (default to %s)", envVar, defaultValue)
+		log.Printf("%s environment variable is not set, using default value '%s'", envVar, defaultValue)
 		return defaultValue
 	}
 	return envValue
@@ -39,7 +39,7 @@ func GetStringEnv(envVar string, defaultValue string) string {
 func GetRequiredBoolEnv(envVar string) bool {
 	envValue, err := strconv.ParseBool(GetRequiredStringEnv(envVar))
 	if err != nil {
-		log.Fatalf("set %s environment variable: %s", envVar, err)
+		log.Fatalf("%s environment variable is no valid. '%s' cannot be converted to bool", envVar, err)
 	}
 	return envValue
 }
@@ -51,7 +51,7 @@ func GetBoolEnv(envVar string, defaultValue bool) bool {
 	}
 	envValue, err := strconv.ParseBool(stringEnvValue)
 	if err != nil {
-		log.Fatalf("set %s environment variable: %s", envVar, err)
+		log.Fatalf("%s environment variable is not valid: '%s' cannot be converted to bool", envVar, err)
 	}
 	return envValue
 }
