@@ -15,7 +15,7 @@ type DBScheduledExecution struct {
 	StartedAt                time.Time  `db:"started_at"`
 	FinishedAt               *time.Time `db:"finished_at"`
 	NumberOfCreatedDecisions int        `db:"number_of_created_decisions"`
-	Manual                   *bool       `db:"manual"`
+	Manual                   bool       `db:"manual"`
 }
 
 const TABLE_SCHEDULED_EXECUTIONS = "scheduled_executions"

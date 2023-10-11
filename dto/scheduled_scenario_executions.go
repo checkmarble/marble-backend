@@ -16,7 +16,7 @@ type APIScheduledExecution struct {
 	ScenarioId                string     `json:"scenario_id"`
 	ScenarioName              string     `json:"scenario_name"`
 	ScenarioTriggerObjectType string     `json:"scenario_trigger_object_type"`
-	Manual                    *bool      `json:"manual"`
+	Manual                    bool       `json:"manual"`
 }
 
 func AdaptScheduledExecutionDto(ExecutionBatch models.ScheduledExecution) APIScheduledExecution {

@@ -12,7 +12,7 @@ type ScheduledExecution struct {
 	FinishedAt               *time.Time
 	NumberOfCreatedDecisions int
 	Scenario                 Scenario
-	Manual                   *bool
+	Manual                   bool
 }
 
 type ScheduledExecutionStatus int
