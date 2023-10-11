@@ -5,17 +5,20 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func ExecuteAllScheduledScenarios(ctx context.Context, usecases usecases.Usecases) error {
+// Runs every hour at past 10min
+func ScheduleDueScenarios(ctx context.Context, usecases usecases.Usecases) error {
 	logger := utils.LoggerFromContext(ctx)
 
-	logger.InfoContext(ctx, "Executing all scheduled scenarios")
-	scenarios, err := usecases.Repositories.MarbleDbRepository.ListAllScenarios(nil)
+	logger.InfoContext(ctx, "Start scheduling scenarios")
+
+	scenarios, err := usecases.Repositories.MarbleDbRepository.ListAllScenarios(nil, models.ListAllScenariosFilters{Live: true})
 	if err != nil {
-		return fmt.Errorf("ListAllScenarios error: %w", err)
+		return fmt.Errorf("Error while listing all live scenarios: %w", err)
 	}
 
 	usecasesWithCreds := GenerateUsecaseWithCredForMarbleAdmin(ctx, usecases)
@@ -29,15 +32,15 @@ func ExecuteAllScheduledScenarios(ctx context.Context, usecases usecases.Usecase
 			slog.String("scenario", scenario.Id),
 			slog.String("organization", scenario.OrganizationId),
 		)
-		err := runScheduledExecution.ExecuteScheduledScenarioIfDue(ctx, scenario.OrganizationId, scenario.Id)
+		err := runScheduledExecution.ScheduleScenarioIfDue(ctx, scenario.OrganizationId, scenario.Id)
 		if err != nil {
-			logger.ErrorContext(ctx, "error executing scheduled scenario",
+			logger.ErrorContext(ctx, "error scheduling scenario",
 				slog.String("scenario", scenario.Id),
 				slog.String("organization", scenario.OrganizationId),
 				slog.String("error", err.Error()),
 			)
 		}
 	}
-	logger.InfoContext(ctx, "Done executing all scheduled scenarios")
+	logger.InfoContext(ctx, "Done scheduling all due scenarios")
 	return nil
 }

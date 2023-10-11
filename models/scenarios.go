@@ -23,3 +23,7 @@ type UpdateScenarioInput struct {
 	Name        *string
 	Description *string
 }
+
+type ListAllScenariosFilters struct {
+	Live bool
+}

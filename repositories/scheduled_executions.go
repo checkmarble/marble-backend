@@ -13,8 +13,7 @@ import (
 
 type ScheduledExecutionRepository interface {
 	GetScheduledExecution(tx Transaction, id string) (models.ScheduledExecution, error)
-	ListScheduledExecutionsOfScenario(tx Transaction, scenarioId string) ([]models.ScheduledExecution, error)
-	ListScheduledExecutionsOfOrganization(tx Transaction, organizationId string) ([]models.ScheduledExecution, error)
+	ListScheduledExecutions(tx Transaction, filters models.ListScheduledExecutionsFilters) ([]models.ScheduledExecution, error)
 	CreateScheduledExecution(tx Transaction, input models.CreateScheduledExecutionInput, newScheduledExecutionId string) error
 	UpdateScheduledExecution(tx Transaction, updateScheduledEx models.UpdateScheduledExecutionInput) error
 }
@@ -69,27 +68,28 @@ func (repo *ScheduledExecutionRepositoryPostgresql) GetScheduledExecution(tx Tra
 	)
 }
 
-func (repo *ScheduledExecutionRepositoryPostgresql) ListScheduledExecutionsOfScenario(tx Transaction, scenarioId string) ([]models.ScheduledExecution, error) {
-
+func (repo *ScheduledExecutionRepositoryPostgresql) ListScheduledExecutions(tx Transaction, filters models.ListScheduledExecutionsFilters) ([]models.ScheduledExecution, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
-	return SqlToListOfRow(
-		pgTx,
-		selectJoinScheduledExecutionAndScenario().
-			Where(squirrel.Eq{"se.scenario_id": scenarioId}).
-			OrderBy("se.started_at DESC"),
-		adaptJoinScheduledExecutionWithScenario,
-	)
-}
+	query := selectJoinScheduledExecutionAndScenario().OrderBy("se.started_at DESC")
 
-func (repo *ScheduledExecutionRepositoryPostgresql) ListScheduledExecutionsOfOrganization(tx Transaction, organizationId string) ([]models.ScheduledExecution, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+	if filters.ScenarioId != "" {
+		query = query.Where(squirrel.Eq{"se.scenario_id": filters.ScenarioId})
+	}
+
+	if filters.OrganizationId != "" {
+		query = query.Where(squirrel.Eq{"se.organization_id": filters.OrganizationId})
+	}
+
+	if filters.Status != nil {
+		query = query.Where(squirrel.Eq{"se.status": filters.Status})
+	}
+
+	if filters.ExcludeManual {
+		query = query.Where(squirrel.NotEq{"se.manual": true})
+	}
 
 	return SqlToListOfRow(
-		pgTx,
-		selectJoinScheduledExecutionAndScenario().
-			Where(squirrel.Eq{"se.organization_id": organizationId}).
-			OrderBy("se.started_at DESC"),
-		adaptJoinScheduledExecutionWithScenario,
+		pgTx, query, adaptJoinScheduledExecutionWithScenario,
 	)
 }
 
@@ -104,6 +104,7 @@ func (repo *ScheduledExecutionRepositoryPostgresql) CreateScheduledExecution(tx 
 				"scenario_id",
 				"scenario_iteration_id",
 				"status",
+				"manual",
 			).
 			Values(
 				newScheduledExecutionId,
@@ -111,6 +112,7 @@ func (repo *ScheduledExecutionRepositoryPostgresql) CreateScheduledExecution(tx 
 				createScheduledEx.ScenarioId,
 				createScheduledEx.ScenarioIterationId,
 				models.ScheduledExecutionPending.String(),
+				createScheduledEx.Manual,
 			),
 	)
 	return err

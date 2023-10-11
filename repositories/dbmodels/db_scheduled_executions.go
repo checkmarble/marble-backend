@@ -15,11 +15,12 @@ type DBScheduledExecution struct {
 	StartedAt                time.Time  `db:"started_at"`
 	FinishedAt               *time.Time `db:"finished_at"`
 	NumberOfCreatedDecisions int        `db:"number_of_created_decisions"`
+	Manual                   bool       `db:"manual"`
 }
 
 const TABLE_SCHEDULED_EXECUTIONS = "scheduled_executions"
 
-var ScheduledExecutionFields = []string{"id", "organization_id", "scenario_id", "scenario_iteration_id", "status", "started_at", "finished_at", "number_of_created_decisions"}
+var ScheduledExecutionFields = []string{"id", "organization_id", "scenario_id", "scenario_iteration_id", "status", "started_at", "finished_at", "number_of_created_decisions", "manual"}
 
 func AdaptScheduledExecution(db DBScheduledExecution, scenario models.Scenario) models.ScheduledExecution {
 	return models.ScheduledExecution{
@@ -32,5 +33,6 @@ func AdaptScheduledExecution(db DBScheduledExecution, scenario models.Scenario) 
 		FinishedAt:               db.FinishedAt,
 		NumberOfCreatedDecisions: db.NumberOfCreatedDecisions,
 		Scenario:                 scenario,
+		Manual:                   db.Manual,
 	}
 }

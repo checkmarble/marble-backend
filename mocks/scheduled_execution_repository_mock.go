@@ -15,13 +15,8 @@ func (s *ScheduledExecutionRepository) GetScheduledExecution(tx repositories.Tra
 	return args.Get(0).(models.ScheduledExecution), args.Error(1)
 }
 
-func (s *ScheduledExecutionRepository) ListScheduledExecutionsOfScenario(tx repositories.Transaction, scenarioId string) ([]models.ScheduledExecution, error) {
-	args := s.Called(tx, scenarioId)
-	return args.Get(0).([]models.ScheduledExecution), args.Error(1)
-}
-
-func (s *ScheduledExecutionRepository) ListScheduledExecutionsOfOrganization(tx repositories.Transaction, organizationId string) ([]models.ScheduledExecution, error) {
-	args := s.Called(tx, organizationId)
+func (s *ScheduledExecutionRepository) ListScheduledExecutions(tx repositories.Transaction, filters models.ListScheduledExecutionsFilters) ([]models.ScheduledExecution, error) {
+	args := s.Called(tx, filters)
 	return args.Get(0).([]models.ScheduledExecution), args.Error(1)
 }
 

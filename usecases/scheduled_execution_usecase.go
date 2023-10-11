@@ -63,13 +63,13 @@ func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(scenarioId str
 				return nil, err
 			}
 
-			executions, err = usecase.scheduledExecutionRepository.ListScheduledExecutionsOfOrganization(tx, organizationId)
+			executions, err = usecase.scheduledExecutionRepository.ListScheduledExecutions(tx, models.ListScheduledExecutionsFilters{OrganizationId: organizationId})
 			if err != nil {
 				return []models.ScheduledExecution{}, err
 			}
 		} else {
 			var err error
-			executions, err = usecase.scheduledExecutionRepository.ListScheduledExecutionsOfScenario(tx, scenarioId)
+			executions, err = usecase.scheduledExecutionRepository.ListScheduledExecutions(tx, models.ListScheduledExecutionsFilters{ScenarioId: scenarioId})
 			if err != nil {
 				return []models.ScheduledExecution{}, err
 			}

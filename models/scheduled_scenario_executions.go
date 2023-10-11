@@ -12,12 +12,14 @@ type ScheduledExecution struct {
 	FinishedAt               *time.Time
 	NumberOfCreatedDecisions int
 	Scenario                 Scenario
+	Manual                   bool
 }
 
 type ScheduledExecutionStatus int
 
 const (
 	ScheduledExecutionPending ScheduledExecutionStatus = iota
+	ScheduledExecutionProcessing
 	ScheduledExecutionSuccess
 	ScheduledExecutionFailure
 )
@@ -26,6 +28,8 @@ func (s ScheduledExecutionStatus) String() string {
 	switch s {
 	case ScheduledExecutionPending:
 		return "pending"
+	case ScheduledExecutionProcessing:
+		return "processing"
 	case ScheduledExecutionSuccess:
 		return "success"
 	case ScheduledExecutionFailure:
@@ -56,4 +60,12 @@ type CreateScheduledExecutionInput struct {
 	OrganizationId      string
 	ScenarioId          string
 	ScenarioIterationId string
+	Manual              bool
+}
+
+type ListScheduledExecutionsFilters struct {
+	OrganizationId string
+	ScenarioId     string
+	Status         []ScheduledExecutionStatus
+	ExcludeManual  bool
 }
