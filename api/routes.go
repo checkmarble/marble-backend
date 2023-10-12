@@ -13,17 +13,13 @@ import (
 // RegExp that matches UUIDv4 format
 const UUIDRegExp = "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}"
 
-func (api *API) routes() {
-
-	api.router.Post("/token", api.handlePostFirebaseIdToken())
-	api.router.Post("/crash", api.handleCrash())
+func (api *API) routes(auth *Authentication) {
 	api.router.Get("/liveness", api.handleLivenessProbe())
-
-	api.router.With(api.credentialsMiddleware).Route("/ast-expression", func(astRouter chi.Router) {
+	api.router.With(auth.Middleware).Route("/ast-expression", func(astRouter chi.Router) {
 		astRouter.Get("/available-functions", api.handleAvailableFunctions())
 	})
 
-	api.router.With(api.credentialsMiddleware).Group(func(authedRouter chi.Router) {
+	api.router.With(auth.Middleware).Group(func(authedRouter chi.Router) {
 		// Authentication using marble token (JWT) or API Key required.
 
 		authedRouter.Get("/credentials", api.handleGetCredentials())
@@ -238,7 +234,6 @@ func init() {
 }
 
 func (api *API) displayRoutes() {
-
 	walkFunc := func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
 		log.Printf("Route setup: %s %s\n", method, route)
 		return nil
@@ -247,5 +242,4 @@ func (api *API) displayRoutes() {
 	if err := chi.Walk(api.router, walkFunc); err != nil {
 		log.Printf("Error describing routes: %v", err)
 	}
-
 }

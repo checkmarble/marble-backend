@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"errors"
 	"flag"
+	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
@@ -18,9 +19,41 @@ import (
 	"github.com/checkmarble/marble-backend/jobs"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/repositories/firebase"
+	"github.com/checkmarble/marble-backend/repositories/postgres"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/usecases/token"
 	"github.com/checkmarble/marble-backend/utils"
 )
+
+type dependencies struct {
+	Authentication *api.Authentication
+	TokenHandler   *api.TokenHandler
+}
+
+func initDependencies(conf AppConfiguration, signingKey *rsa.PrivateKey) (dependencies, error) {
+	database, err := postgres.New(postgres.Configuration{
+		Host:     conf.pgConfig.Hostname,
+		Port:     conf.pgConfig.Port,
+		User:     conf.pgConfig.User,
+		Password: conf.pgConfig.Password,
+		Database: conf.pgConfig.Database,
+	})
+	if err != nil {
+		return dependencies{}, fmt.Errorf("postgres.New error: %w", err)
+	}
+
+	auth := infra.InitializeFirebase(context.Background())
+	firebaseClient := firebase.New(auth)
+	jwtRepository := repositories.NewJWTRepository(signingKey)
+	validator := token.NewValidator(database, jwtRepository)
+	tokenGenerator := token.NewGenerator(database, jwtRepository, firebaseClient, conf.config.TokenLifetimeMinute)
+
+	return dependencies{
+		Authentication: api.NewAuthentication(validator),
+		TokenHandler:   api.NewTokenHandler(tokenGenerator),
+	}, nil
+}
 
 func runServer(ctx context.Context, appConfig AppConfiguration) {
 	jwtSigningKey := utils.GetRequiredStringEnv("AUTHENTICATION_JWT_SIGNING_KEY")
@@ -52,8 +85,13 @@ func runServer(ctx context.Context, appConfig AppConfiguration) {
 		}
 	}
 
-	router := initRouter(ctx, appConfig)
-	server := api.New(router, appConfig.port, uc)
+	deps, err := initDependencies(appConfig, marbleJwtSigningKey)
+	if err != nil {
+		panic(err)
+	}
+
+	router := initRouter(ctx, appConfig, deps)
+	server := api.New(router, appConfig.port, uc, deps.Authentication)
 
 	////////////////////////////////////////////////////////////
 	// Start serving the app

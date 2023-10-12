@@ -27,45 +27,6 @@ func wrapErrInUnAuthorizedError(err error) error {
 	return errors.Join(models.UnAuthorizedError, err)
 }
 
-// AuthCtx sets the organization Id in the context from the authorization header
-func (api *API) credentialsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		key := ParseApiKeyHeader(r.Header)
-
-		jwtToken, err := ParseAuthorizationBearerHeader(r.Header)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Authorization header: %s", err.Error()), http.StatusBadRequest)
-			return
-		}
-
-		usecase := api.UsecasesWithCreds(r).NewMarbleTokenUseCase()
-		creds, err := usecase.ValidateCredentials(jwtToken, key)
-		if err != nil {
-			err = wrapErrInUnAuthorizedError(err)
-		}
-
-		if presentError(w, r, err) {
-			return
-		}
-
-		newContext := context.WithValue(r.Context(), utils.ContextKeyCredentials, creds)
-
-		// Creds contain a userId or an Api key
-		// create a new logger with this useful information.
-
-		if attr, ok := identityAttr(creds.ActorIdentity); ok {
-			logger := utils.LoggerFromContext(newContext).
-				With(attr).
-				With(slog.String("Role", creds.Role.String()))
-			// store new logger in context
-			newContext = context.WithValue(newContext, utils.ContextKeyLogger, logger)
-		}
-
-		next.ServeHTTP(w, r.WithContext(newContext))
-	})
-}
-
 func identityAttr(identity models.Identity) (attr slog.Attr, ok bool) {
 	if identity.ApiKeyName != "" {
 		return slog.String("ApiKeyName", identity.ApiKeyName), true
@@ -74,4 +35,46 @@ func identityAttr(identity models.Identity) (attr slog.Attr, ok bool) {
 		return slog.String("Email", identity.Email), true
 	}
 	return slog.Attr{}, false
+}
+
+type validator interface {
+	Validate(ctx context.Context, marbleToken, apiKey string) (models.Credentials, error)
+}
+
+type Authentication struct {
+	validator validator
+}
+
+func (a *Authentication) Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		key := ParseApiKeyHeader(r.Header)
+		jwtToken, err := ParseAuthorizationBearerHeader(r.Header)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Authorization header: %s", err.Error()), http.StatusBadRequest)
+			return
+		}
+
+		credentials, err := a.validator.Validate(r.Context(), jwtToken, key)
+		if err != nil {
+			err = wrapErrInUnAuthorizedError(err)
+		}
+		if presentError(w, r, err) {
+			return
+		}
+
+		newContext := context.WithValue(r.Context(), utils.ContextKeyCredentials, credentials)
+		if attr, ok := identityAttr(credentials.ActorIdentity); ok {
+			logger := utils.LoggerFromContext(newContext).
+				With(attr).
+				With(slog.String("Role", credentials.Role.String()))
+			newContext = context.WithValue(newContext, utils.ContextKeyLogger, logger)
+		}
+		next.ServeHTTP(w, r.WithContext(newContext))
+	})
+}
+
+func NewAuthentication(validator validator) *Authentication {
+	return &Authentication{
+		validator: validator,
+	}
 }

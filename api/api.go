@@ -17,14 +17,14 @@ type API struct {
 	usecases usecases.Usecases
 }
 
-func New(router *chi.Mux, port string, usecases usecases.Usecases) *http.Server {
+func New(router *chi.Mux, port string, usecases usecases.Usecases, auth *Authentication) *http.Server {
 	s := &API{
 		router:   router,
 		usecases: usecases,
 	}
 
 	// Setup the routes
-	s.routes()
+	s.routes(auth)
 
 	// display routes for debugging
 	s.displayRoutes()
