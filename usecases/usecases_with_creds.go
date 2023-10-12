@@ -193,14 +193,12 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 		GcsIngestionBucket:    usecases.Configuration.GcsIngestionBucket,
 	}
 
-
 }
 
 func (usecases *UsecasesWithCreds) NewRunScheduledExecution() scheduledexecution.RunScheduledExecution {
 	return scheduledexecution.RunScheduledExecution{
 		Repository:                     &usecases.Repositories.MarbleDbRepository,
 		TransactionFactory:             &usecases.Repositories.TransactionFactoryPosgresql,
-		ScheduledExecutionRepository:   usecases.Repositories.ScheduledExecutionRepository,
 		ExportScheduleExecution:        *usecases.NewExportScheduleExecution(),
 		ScenarioPublicationsRepository: usecases.Repositories.ScenarioPublicationRepository,
 		DataModelRepository:            usecases.Repositories.DataModelRepository,
@@ -213,11 +211,11 @@ func (usecases *UsecasesWithCreds) NewRunScheduledExecution() scheduledexecution
 
 func (usecases *UsecasesWithCreds) NewScheduledExecutionUsecase() ScheduledExecutionUsecase {
 	return ScheduledExecutionUsecase{
-		enforceSecurity:              usecases.NewEnforceDecisionSecurity(),
-		transactionFactory:           &usecases.Repositories.TransactionFactoryPosgresql,
-		scheduledExecutionRepository: usecases.Repositories.ScheduledExecutionRepository,
-		exportScheduleExecution:      usecases.NewExportScheduleExecution(),
-		organizationIdOfContext:      usecases.OrganizationIdOfContext,
+		enforceSecurity:         usecases.NewEnforceDecisionSecurity(),
+		transactionFactory:      &usecases.Repositories.TransactionFactoryPosgresql,
+		repository:              &usecases.Repositories.MarbleDbRepository,
+		exportScheduleExecution: usecases.NewExportScheduleExecution(),
+		organizationIdOfContext: usecases.OrganizationIdOfContext,
 	}
 }
 

@@ -21,12 +21,16 @@ import (
 type RunScheduledExecutionRepository interface {
 	GetScenarioById(tx repositories.Transaction, scenarioId string) (models.Scenario, error)
 	GetScenarioIteration(tx repositories.Transaction, scenarioIterationId string) (models.ScenarioIteration, error)
+
+	ListScheduledExecutions(tx repositories.Transaction, filters models.ListScheduledExecutionsFilters) ([]models.ScheduledExecution, error)
+	CreateScheduledExecution(tx repositories.Transaction, input models.CreateScheduledExecutionInput, newScheduledExecutionId string) error
+	UpdateScheduledExecution(tx repositories.Transaction, updateScheduledEx models.UpdateScheduledExecutionInput) error
+	GetScheduledExecution(tx repositories.Transaction, id string) (models.ScheduledExecution, error)
 }
 
 type RunScheduledExecution struct {
 	Repository                     RunScheduledExecutionRepository
 	TransactionFactory             transaction.TransactionFactory
-	ScheduledExecutionRepository   repositories.ScheduledExecutionRepository
 	ExportScheduleExecution        ExportScheduleExecution
 	ScenarioPublicationsRepository repositories.ScenarioPublicationRepository
 	DataModelRepository            repositories.DataModelRepository
@@ -52,7 +56,7 @@ func (usecase *RunScheduledExecution) ScheduleScenarioIfDue(ctx context.Context,
 		return nil
 	}
 
-	previousExecutions, err := usecase.ScheduledExecutionRepository.ListScheduledExecutions(nil, models.ListScheduledExecutionsFilters{ScenarioId: scenarioId, Status: []models.ScheduledExecutionStatus{models.ScheduledExecutionPending, models.ScheduledExecutionProcessing}})
+	previousExecutions, err := usecase.Repository.ListScheduledExecutions(nil, models.ListScheduledExecutionsFilters{ScenarioId: scenarioId, Status: []models.ScheduledExecutionStatus{models.ScheduledExecutionPending, models.ScheduledExecutionProcessing}})
 	if err != nil {
 		return err
 	}
@@ -71,7 +75,7 @@ func (usecase *RunScheduledExecution) ScheduleScenarioIfDue(ctx context.Context,
 
 	logger.DebugContext(ctx, fmt.Sprintf("Scenario iteration %s is due", publishedVersion.Id))
 	scheduledExecutionId := utils.NewPrimaryKey(organizationId)
-	return usecase.ScheduledExecutionRepository.CreateScheduledExecution(nil, models.CreateScheduledExecutionInput{
+	return usecase.Repository.CreateScheduledExecution(nil, models.CreateScheduledExecutionInput{
 		OrganizationId:      organizationId,
 		ScenarioId:          scenarioId,
 		ScenarioIterationId: publishedVersion.Id,
@@ -82,7 +86,7 @@ func (usecase *RunScheduledExecution) ScheduleScenarioIfDue(ctx context.Context,
 func (usecase *RunScheduledExecution) ExecuteAllScheduledScenarios(ctx context.Context) error {
 	logger := utils.LoggerFromContext(ctx)
 
-	pendingScheduledExecutions, err := usecase.ScheduledExecutionRepository.ListScheduledExecutions(nil, models.ListScheduledExecutionsFilters{Status: []models.ScheduledExecutionStatus{models.ScheduledExecutionPending}})
+	pendingScheduledExecutions, err := usecase.Repository.ListScheduledExecutions(nil, models.ListScheduledExecutionsFilters{Status: []models.ScheduledExecutionStatus{models.ScheduledExecutionPending}})
 	if err != nil {
 		return fmt.Errorf("Error while listing pending ScheduledExecutions: %w", err)
 	}
@@ -114,7 +118,7 @@ func (usecase *RunScheduledExecution) ExecuteAllScheduledScenarios(ctx context.C
 func (usecase *RunScheduledExecution) ExecuteScheduledScenario(ctx context.Context, logger *slog.Logger, scheduledExecution models.ScheduledExecution) error {
 	logger.InfoContext(ctx, fmt.Sprintf("Start execution %s", scheduledExecution.Id))
 
-	if err := usecase.ScheduledExecutionRepository.UpdateScheduledExecution(nil, models.UpdateScheduledExecutionInput{
+	if err := usecase.Repository.UpdateScheduledExecution(nil, models.UpdateScheduledExecutionInput{
 		Id:     scheduledExecution.Id,
 		Status: utils.PtrTo(models.ScheduledExecutionProcessing, nil),
 	}); err != nil {
@@ -126,18 +130,18 @@ func (usecase *RunScheduledExecution) ExecuteScheduledScenario(ctx context.Conte
 		if err != nil {
 			return scheduledExecution, err
 		}
-		if err := usecase.ScheduledExecutionRepository.UpdateScheduledExecution(tx, models.UpdateScheduledExecutionInput{
+		if err := usecase.Repository.UpdateScheduledExecution(tx, models.UpdateScheduledExecutionInput{
 			Id:                       scheduledExecution.Id,
 			Status:                   utils.PtrTo(models.ScheduledExecutionSuccess, nil),
 			NumberOfCreatedDecisions: &numberOfCreatedDecisions,
 		}); err != nil {
 			return scheduledExecution, err
 		}
-		return usecase.ScheduledExecutionRepository.GetScheduledExecution(tx, scheduledExecution.Id)
+		return usecase.Repository.GetScheduledExecution(tx, scheduledExecution.Id)
 	})
 
 	if err != nil {
-		if err := usecase.ScheduledExecutionRepository.UpdateScheduledExecution(nil, models.UpdateScheduledExecutionInput{
+		if err := usecase.Repository.UpdateScheduledExecution(nil, models.UpdateScheduledExecutionInput{
 			Id:     scheduledExecution.Id,
 			Status: utils.PtrTo(models.ScheduledExecutionFailure, nil),
 		}); err != nil {
@@ -162,7 +166,7 @@ func (usecase *RunScheduledExecution) scenarioIsDue(ctx context.Context, publish
 		return false, fmt.Errorf("invalid schedule: %w", models.BadParameterError)
 	}
 
-	previousExecutions, err := usecase.ScheduledExecutionRepository.ListScheduledExecutions(nil, models.ListScheduledExecutionsFilters{ScenarioId: scenario.Id, ExcludeManual: true})
+	previousExecutions, err := usecase.Repository.ListScheduledExecutions(nil, models.ListScheduledExecutionsFilters{ScenarioId: scenario.Id, ExcludeManual: true})
 	if err != nil {
 		return false, fmt.Errorf("error listing scheduled executions: %w", err)
 	}
