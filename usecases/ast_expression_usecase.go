@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -38,22 +39,23 @@ func (usecase *AstExpressionUsecase) getLinkedDatabaseIdentifiers(scenario model
 
 	triggerObjectTable, found := dataModel.Tables[models.TableName(scenario.TriggerObjectType)]
 	if !found {
-		// unexpected error: must be a valid table
 		return nil, fmt.Errorf("triggerObjectTable %s not found in data model", scenario.TriggerObjectType)
 	}
 
+	var visited []string
 	recursiveDatabaseAccessor = func(path []string, links map[models.LinkName]models.LinkToSingle) error {
-		var baseAccessorName string
-		for _, tableName := range path {
-			baseAccessorName += tableName + "."
-		}
 		for linkName, link := range links {
 			table, found := dataModel.Tables[link.LinkedTableName]
 			if !found {
-				// unexpected error: must be a valid table
 				return fmt.Errorf("table %s not found in data model", scenario.TriggerObjectType)
 			}
 
+			relation := fmt.Sprintf("%s/%s", table.Name, linkName)
+			idx := slices.Index(visited, relation)
+			if idx != -1 {
+				continue
+			}
+			visited = append(visited, relation)
 			pathForLink := append(path, string(linkName))
 
 			for fieldName := range table.Fields {
@@ -141,7 +143,7 @@ func (usecase *AstExpressionUsecase) EditorOperators() EditorOperators {
 
 	var operatorAccessors []ast.FuncAttributes
 	for _, functionType := range ast.FuncOperators {
-		operatorAccessors = append(operatorAccessors, ast.FuncAttributesMap[ast.Function(functionType)])
+		operatorAccessors = append(operatorAccessors, ast.FuncAttributesMap[functionType])
 	}
 	return EditorOperators{
 		OperatorAccessors: operatorAccessors,
