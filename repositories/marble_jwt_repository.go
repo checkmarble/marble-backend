@@ -55,3 +55,9 @@ func (repo *MarbleJwtRepository) ValidateMarbleToken(marbleToken string) (models
 	}
 	return models.Credentials{}, fmt.Errorf("invalid Marble Jwt Token")
 }
+
+func NewJWTRepository(key *rsa.PrivateKey) *MarbleJwtRepository {
+	return &MarbleJwtRepository{
+		jwtSigningPrivateKey: *key,
+	}
+}

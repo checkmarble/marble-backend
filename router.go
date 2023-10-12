@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 
+	"github.com/checkmarble/marble-backend/api"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -32,7 +33,7 @@ func setContentTypeMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func initRouter(ctx context.Context, conf AppConfiguration) *chi.Mux {
+func initRouter(ctx context.Context, conf AppConfiguration, deps dependencies) *chi.Mux {
 	r := chi.NewRouter()
 
 	isDevEnv := conf.env == "DEV"
@@ -45,5 +46,9 @@ func initRouter(ctx context.Context, conf AppConfiguration) *chi.Mux {
 	r.Use(utils.AddTraceIdToLoggerMiddleware(isDevEnv, conf.gcpProject))
 	r.Use(cors.Handler(corsOption(isDevEnv)))
 	r.Use(setContentTypeMiddleware)
+
+	r.Post("/crash", api.HandleCrash)
+	r.Post("/token", deps.TokenHandler.GenerateToken)
+
 	return r
 }

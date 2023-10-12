@@ -129,7 +129,7 @@ func deconstructXCloudTraceContext(s string) (traceID, spanID string, traceSampl
 func LoggerFromContext(ctx context.Context) *slog.Logger {
 	logger, found := ctx.Value(ContextKeyLogger).(*slog.Logger)
 	if !found {
-		logger := NewLogger("")
+		logger = NewLogger("")
 		logger.ErrorContext(ctx, "logger not found in context. Falling back to a new logger, but it will be missing context keys")
 	}
 	return logger
