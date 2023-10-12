@@ -18,7 +18,6 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/transaction"
-	"github.com/checkmarble/marble-backend/utils"
 )
 
 const (
@@ -108,7 +107,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 
 	for name, field := range table.Fields {
 		if !field.Nullable {
-			if !containsString(utils.Map(headers, strings.ToLower), string(name)) {
+			if !containsString(headers, string(name)) {
 				return models.UploadLog{}, fmt.Errorf("missing required field %s in CSV (%w)", name, models.BadParameterError)
 			}
 		}
@@ -345,7 +344,7 @@ func parseStringValuesToMap(headers []string, values []string, table models.Tabl
 	result := make(map[string]any)
 
 	for i, value := range values {
-		fieldName := strings.ToLower(headers[i])
+		fieldName := headers[i]
 		field, ok := table.Fields[models.FieldName(fieldName)]
 		if !ok {
 			return nil, fmt.Errorf("field %s not found in table %s", fieldName, table.Name)
