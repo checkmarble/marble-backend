@@ -40,6 +40,7 @@ func (repository *GcsRepositoryImpl) getGCSClient(ctx context.Context) *storage.
 	return client
 }
 
+// Not used since legacy CSV ingestion has been removed
 func (repository *GcsRepositoryImpl) ListFiles(ctx context.Context, bucketName, prefix string) ([]models.GCSFile, error) {
 	bucket := repository.getGCSClient(ctx).Bucket(bucketName)
 	_, err := bucket.Attrs(ctx)
@@ -93,6 +94,7 @@ func (repository *GcsRepositoryImpl) GetFile(ctx context.Context, bucketName, fi
 	}, nil
 }
 
+// Not used since legacy CSV ingestion has been removed
 func (repository *GcsRepositoryImpl) MoveFile(ctx context.Context, bucketName, srcName, destName string) error {
 	gcsClient := repository.getGCSClient(ctx)
 	src := gcsClient.Bucket(bucketName).Object(srcName)

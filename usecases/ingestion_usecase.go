@@ -46,30 +46,6 @@ func (usecase *IngestionUseCase) IngestObjects(organizationId string, payloads [
 	})
 }
 
-func (usecase *IngestionUseCase) IngestFilesFromLegacyStorageCsv(ctx context.Context, bucketName string, logger *slog.Logger) error {
-	files, err := usecase.gcsRepository.ListFiles(ctx, bucketName, pendingFilesFolder)
-	if err != nil {
-		return err
-	}
-
-	filteredFiles := make([]models.GCSFile, 0)
-	for _, file := range files {
-		// "folder" itself lists as a GCS file, ignore it
-		if file.FileName != pendingFilesFolder+"/" && strings.HasSuffix(file.FileName, ".csv") {
-			filteredFiles = append(filteredFiles, file)
-		}
-	}
-
-	logger.InfoContext(ctx, fmt.Sprintf("Found %d CSVs of data to ingest", len(filteredFiles)))
-
-	for _, file := range filteredFiles {
-		if err = usecase.readFileIngestObjects(ctx, file, logger, true); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (usecase *IngestionUseCase) ListUploadLogs(ctx context.Context, organizationId, objectType string) ([]models.UploadLog, error) {
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
 		return []models.UploadLog{}, err
@@ -223,18 +199,12 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file
 	fullFileName := file.FileName
 	logger.InfoContext(ctx, fmt.Sprintf("Ingesting data from CSV %s", fullFileName))
 
-	// full filename is path/to/file/{filename}.csv
 	fullFileNameElements := strings.Split(fullFileName, "/")
-	fileName := fullFileNameElements[len(fullFileNameElements)-1]
-
-	// end of filename is organizationId:tableName:timestamp.csv
-	// (using : because _ can be present in table name, - is present in org id)
-	elements := strings.Split(fileName, ":")
-	if len(elements) != 3 {
-		return fmt.Errorf("invalid filename %s: expecting format organizationId:tableName:timestamp.csv", fileName)
+	if len(fullFileNameElements) != 3 {
+		return fmt.Errorf("invalid filename %s: expecting format organizationId/tableName/timestamp.csv", fullFileName)
 	}
-	organizationId := elements[0]
-	tableName := elements[1]
+	organizationId := fullFileNameElements[0]
+	tableName := fullFileNameElements[1]
 
 	// It make more sense to have a CanIngest function for job without the OrgId now
 	// but at least having a check with orgId here make it future proof in case
@@ -257,11 +227,6 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file
 		return fmt.Errorf("error ingesting objects from CSV %s: %w", fullFileName, err)
 	}
 
-	if moveFile {
-		if err = usecase.gcsRepository.MoveFile(ctx, file.BucketName, fullFileName, strings.Replace(fullFileName, pendingFilesFolder, doneFilesFolder, 1)); err != nil {
-			return fmt.Errorf("error moving file %s to done folder: %w", fullFileName, err)
-		}
-	}
 	return nil
 }
 
@@ -399,7 +364,6 @@ func parseStringValuesToMap(headers []string, values []string, table models.Tabl
 	return result, nil
 }
 
-// TODO change to `organizationId/tableName/timestamp.csv once we get rid of the previous ingestion system
 func computeFileName(organizationId, tableName string) string {
-	return organizationId + "/" + organizationId + ":" + tableName + ":" + strconv.FormatInt(time.Now().Unix(), 10) + ".csv"
+	return organizationId + "/" + tableName + "/" + strconv.FormatInt(time.Now().Unix(), 10) + ".csv"
 }

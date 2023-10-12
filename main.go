@@ -121,14 +121,12 @@ func main() {
 	shouldRunServer := flag.Bool("server", false, "Run server")
 	shouldRunScheduleScenarios := flag.Bool("scheduler", false, "Run schedule scenarios")
 	shouldRunExecuteScheduledScenarios := flag.Bool("scheduled-executer", false, "Run execute scheduled scenarios")
-	shouldRunBatchIngestion := flag.Bool("batch-ingestion", false, "Run batch ingestion")
 	shouldRunDataIngestion := flag.Bool("data-ingestion", false, "Run data ingestion")
 	flag.Parse()
 	logger.Info("Flags",
 		slog.Bool("shouldRunMigrations", *shouldRunMigrations),
 		slog.Bool("shouldRunServer", *shouldRunServer),
 		slog.Bool("shouldRunScheduledScenarios", *shouldRunScheduleScenarios),
-		slog.Bool("shouldRunBatchIngestion", *shouldRunBatchIngestion),
 		slog.Bool("shouldRunDataIngestion", *shouldRunDataIngestion),
 	)
 
@@ -160,17 +158,6 @@ func main() {
 		err := jobs.ExecuteAllScheduledScenarios(appContext, usecases)
 		if err != nil {
 			slog.Error("jobs.ExecuteAllScheduledScenarios failed", slog.String("error", err.Error()))
-			os.Exit(1)
-			return
-		}
-	}
-
-	if *shouldRunBatchIngestion {
-		bucketName := appConfig.config.GcsIngestionBucket
-		usecases := NewUseCases(appContext, appConfig, nil)
-		err := jobs.IngestDataFromStorageCSVs(appContext, usecases, bucketName)
-		if err != nil {
-			slog.Error("jobs.IngestDataFromStorageCSVs failed", slog.String("error", err.Error()))
 			os.Exit(1)
 			return
 		}
