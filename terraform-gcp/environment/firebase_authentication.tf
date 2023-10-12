@@ -8,7 +8,7 @@
 # So I used firebase console manually to enable google as an authentication provider
 
 resource "google_identity_platform_config" "auth" {
-  project = google_project.default.project_id
+  project = local.project_id
   #   autodelete_anonymous_users = true
 
   sign_in {
@@ -37,6 +37,6 @@ resource "google_identity_platform_config" "auth" {
 # }
 
 # import {
-#   id = "projects/${google_project.default.project_id}/config"
+#   id = "projects/${local.project_id}/config"
 #   to = google_identity_platform_config.auth
 # }

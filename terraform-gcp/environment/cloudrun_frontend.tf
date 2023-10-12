@@ -1,6 +1,6 @@
 resource "google_cloud_run_v2_service" "frontend" {
   name     = "marble-frontend"
-  location = var.gcp_location
+  location = local.location
   ingress  = "INGRESS_TRAFFIC_ALL"
 
   template {
@@ -42,7 +42,7 @@ resource "google_cloud_run_v2_service" "frontend" {
 
       env {
         name  = "FIREBASE_PROJECT_ID"
-        value = google_project.default.project_id
+        value = local.project_id
       }
 
       env {

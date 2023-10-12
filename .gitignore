@@ -52,3 +52,8 @@ __debug_bin*
 
 # Use by the Fake GcsRepository
 /tempFiles
+e2e_test
+terraform-gcp/service-account-key
+**/.terraform
+**/**.tfstate
+**/**.tfstate.backup
