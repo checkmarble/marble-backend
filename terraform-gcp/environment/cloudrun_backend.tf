@@ -1,6 +1,6 @@
 resource "google_cloud_run_v2_service" "backend" {
   name     = "marble-backend"
-  location = var.gcp_location
+  location = local.location
   ingress  = "INGRESS_TRAFFIC_ALL"
 
   template {
@@ -30,7 +30,7 @@ resource "google_cloud_run_v2_service" "backend" {
 
       env {
         name  = "PG_HOSTNAME"
-        value = "/cloudsql/${google_project.default.project_id}:${google_sql_database_instance.marble.region}:${google_sql_database_instance.marble.name}"
+        value = "/cloudsql/${local.project_id}:${google_sql_database_instance.marble.region}:${google_sql_database_instance.marble.name}"
       }
 
       env {

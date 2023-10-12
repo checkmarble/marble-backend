@@ -1,6 +1,6 @@
 resource "google_sql_database_instance" "marble" {
   name             = "marble"
-  region           = var.gcp_location
+  region           = local.location
   database_version = "POSTGRES_14"
   settings {
     tier = "db-f1-micro"

@@ -1,11 +1,12 @@
-resource "google_cloud_run_v2_job" "migrations" {
-  name     = "migrations"
-  location = var.gcp_location
+resource "google_cloud_run_v2_job" "data_ingestion" {
+  name     = "data-ingestion"
+  location = local.location
 
   template {
 
     template {
-      timeout = "3600s"
+      timeout = "7200s"
+      # max_retries = 0
 
       volumes {
         name = "cloudsql"
@@ -22,7 +23,7 @@ resource "google_cloud_run_v2_job" "migrations" {
 
         env {
           name  = "PG_HOSTNAME"
-          value = "/cloudsql/${google_project.default.project_id}:${google_sql_database_instance.marble.region}:${google_sql_database_instance.marble.name}"
+          value = "/cloudsql/${local.project_id}:${google_sql_database_instance.marble.region}:${google_sql_database_instance.marble.name}"
         }
 
         env {
@@ -60,7 +61,7 @@ resource "google_cloud_run_v2_job" "migrations" {
           mount_path = "/cloudsql"
         }
 
-        args = ["--migrations"]
+        args = ["--data-ingestion"]
       }
     }
   }
@@ -70,4 +71,22 @@ resource "google_cloud_run_v2_job" "migrations" {
       launch_stage,
     ]
   }
+}
+
+// source of inspiration: https://github.com/chainguard-dev/terraform-google-cron/blob/main/main.tf
+resource "google_cloud_scheduler_job" "data_ingestion_cron" {
+  name             = "data-ingestion-cron"
+  schedule         = "* * * * *"
+  time_zone        = "Etc/UTC"
+  attempt_deadline = "320s"
+
+  http_target {
+    http_method = "POST"
+    uri         = "https://${local.location}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${local.project_id}/jobs/${google_cloud_run_v2_job.data_ingestion.name}:run"
+
+    oauth_token {
+      service_account_email = google_service_account.backend_service_account.email
+    }
+  }
+  depends_on = [google_cloud_run_v2_job.data_ingestion, google_project_iam_member.backend_service_account_cron_run_invoker]
 }
