@@ -54,19 +54,19 @@ func (usecase *AstExpressionUsecase) getLinkedDatabaseIdentifiers(scenario model
 				return fmt.Errorf("table %s not found in data model", scenario.TriggerObjectType)
 			}
 
-			path = append(path, string(linkName))
+			pathForLink := append(path, string(linkName))
 
 			for fieldName := range table.Fields {
 				dataAccessors = append(dataAccessors,
 					ast.NewNodeDatabaseAccess(
 						scenario.TriggerObjectType,
 						string(fieldName),
-						path,
+						pathForLink,
 					),
 				)
 			}
 
-			if err := recursiveDatabaseAccessor(path, table.LinksToSingle); err != nil {
+			if err := recursiveDatabaseAccessor(pathForLink, table.LinksToSingle); err != nil {
 				return err
 			}
 		}
