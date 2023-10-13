@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3002",
+    "build-test-terraform": "tsc && vite build --mode test_terraform",
     "build-staging": "tsc && vite build --mode staging",
     "build-production": "tsc && vite build --mode production",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",

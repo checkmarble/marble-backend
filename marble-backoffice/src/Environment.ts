@@ -45,6 +45,19 @@ export const Environments: Record<string, Environment> = {
       appId: "1:280431296971:web:ff089aa051073474f8f64e",
     },
   },
+
+  test_terraform: {
+    authEmulator: false,
+    marbleBackend: new URL("https://marble-backend-ngbphj56ia-ew.a.run.app"),
+    firebaseOptions: {
+      apiKey: "AIzaSyDBX1gn8_ISZIe0MI2ZimE71zJN87T5fVc",
+      authDomain: "marble-test-terraform.firebaseapp.com",
+      projectId: "marble-test-terraform",
+      storageBucket: "marble-test-terraform.appspot.com",
+      messagingSenderId: "1055186671888",
+      appId: "1:1055186671888:web:04ccd4d77997ddf1b5ad95",
+    },
+  },
 };
 
 export function buildEnvironment(): Environment {
