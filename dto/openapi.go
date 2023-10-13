@@ -264,8 +264,9 @@ func OpenAPIFromDataModel(dataModel models.DataModel) Reference {
 		var required []string
 		properties := make(map[string]Property)
 		for name, field := range table.Fields {
+			description := field.Description
 			properties[string(name)] = Property{
-				Description: &field.Description,
+				Description: &description,
 				Type:        toSwaggerType(field.DataType),
 			}
 			if !field.Nullable {
