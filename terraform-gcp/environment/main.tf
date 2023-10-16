@@ -5,10 +5,14 @@ terraform {
       version = "~> 4.51"
     }
   }
+  backend "gcs" {
+    bucket = "marble_terraform_tfstate"
+    prefix = "environment"
+  }
 }
 
 provider "google" {
-  credentials = file(var.terraform_service_account_key)
+  credentials = file(local.environment.terraform_service_account_key)
   project     = local.project_id
   region      = local.location
 }

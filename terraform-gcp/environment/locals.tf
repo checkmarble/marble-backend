@@ -1,4 +1,6 @@
 locals {
-  location   = var.region
-  project_id = var.project_id
+  location    = "europe-west1"
+  environment = local.environments[terraform.workspace]
+  # shortcut
+  project_id  = local.environments[terraform.workspace].project_id
 }
