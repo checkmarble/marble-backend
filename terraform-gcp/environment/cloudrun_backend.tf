@@ -23,10 +23,11 @@ resource "google_cloud_run_v2_service" "backend" {
     containers {
       image = "europe-docker.pkg.dev/tokyo-country-381508/marble/marble-backend:latest"
 
-      env {
-        name  = "MARBLE_ADMIN_EMAIL"
-        value = "vivien@checkmarble.com"
-      }
+      # Uncomment and deploy to add an admin
+      # env {
+      #   name  = "MARBLE_ADMIN_EMAIL"
+      #   value = "pascal@checkmarble.com"
+      # }
 
       env {
         name  = "PG_HOSTNAME"
