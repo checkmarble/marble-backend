@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -100,7 +101,7 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelTable(tx Transaction, 
 		INSERT INTO data_model_tables (id, organization_id, name, description)
 		VALUES ($1, $2, $3, $4)`
 
-	_, err := pgTx.exec.Exec(pgTx.ctx, query, tableID, organizationID, name, description)
+	_, err := pgTx.exec.Exec(pgTx.ctx, query, tableID, organizationID, strings.ToLower(name), description)
 	if IsUniqueViolationError(err) {
 		return models.DuplicateValueError
 	}
@@ -140,7 +141,7 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelField(tx Transaction, 
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id`
 
-	_, err := pgTx.exec.Exec(pgTx.ctx, query, fieldID, tableID, field.Name, field.Type, field.Nullable, field.Description, field.IsEnum)
+	_, err := pgTx.exec.Exec(pgTx.ctx, query, fieldID, tableID, strings.ToLower(field.Name), field.Type, field.Nullable, field.Description, field.IsEnum)
 	if IsUniqueViolationError(err) {
 		return models.DuplicateValueError
 	}
@@ -166,7 +167,7 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelLink(tx Transaction, l
 		NewQueryBuilder().
 			Insert("data_model_links").
 			Columns("organization_id", "name", "parent_table_id", "parent_field_id", "child_table_id", "child_field_id").
-			Values(link.OrganizationID, link.Name, link.ParentTableID, link.ParentFieldID, link.ChildTableID, link.ChildFieldID),
+			Values(link.OrganizationID, strings.ToLower(string(link.Name)), link.ParentTableID, link.ParentFieldID, link.ChildTableID, link.ChildFieldID),
 	)
 	if IsUniqueViolationError(err) {
 		return models.DuplicateValueError
