@@ -6,18 +6,10 @@ terraform {
     }
   }
 
-  # backend "remote" {
-  #   organization = "marble"
-
-  #   workspaces {
-  #     name = "infra"
-  #   }
-  # }
-
-  # backend "gcs" {
-  #   bucket = "marble_terraform_tfstate"
-  #   prefix = "marble-infra"
-  # }
+  backend "gcs" {
+    bucket = "marble_terraform_tfstate"
+    prefix = "marble-infra"
+  }
 
 }
 
