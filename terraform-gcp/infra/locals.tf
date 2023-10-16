@@ -8,6 +8,4 @@ locals {
     "tokyo-country-381508"  = "1047691849054"
     "marble-prod-1"         = "280431296971"
   }
-
 }
-
