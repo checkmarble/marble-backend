@@ -139,7 +139,7 @@ func adaptArgumentToListOfThings[T any](argument any) ([]T, error) {
 		"can't promote argument %v to []%T %w",
 		argument,
 		zero,
-		ast.ErrArgumentMustBeBool,
+		ast.ErrArgumentMustBeList,
 	)
 }
 
