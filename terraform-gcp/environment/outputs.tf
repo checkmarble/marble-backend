@@ -6,6 +6,6 @@ output "backend_uri" {
   value = google_cloud_run_v2_service.backend.uri
 }
 
-output "backoffice_url" {
+output "backoffice_uri" {
   value = google_firebase_hosting_site.backoffice.default_url
 }
