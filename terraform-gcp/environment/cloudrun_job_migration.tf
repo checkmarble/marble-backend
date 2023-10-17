@@ -5,7 +5,9 @@ resource "google_cloud_run_v2_job" "migrations" {
   template {
 
     template {
-      timeout = "3600s"
+      timeout     = "3600s"
+      max_retries = 0
+
 
       volumes {
         name = "cloudsql"

@@ -19,7 +19,8 @@ resource "google_secret_manager_secret_iam_member" "secret_access_aws_access_key
 }
 
 resource "google_secret_manager_secret_iam_member" "secret_access_authentication_jwt_signing_key" {
-  secret_id = google_secret_manager_secret.authentication_jwt_signing_key.id
-  role      = "roles/secretmanager.secretAccessor"
-  member    = google_service_account.backend_service_account.member
+  secret_id  = google_secret_manager_secret.authentication_jwt_signing_key.id
+  role       = "roles/secretmanager.secretAccessor"
+  member     = google_service_account.backend_service_account.member
+  depends_on = [google_secret_manager_secret_version.authentication_jwt_signing_key_data]
 }

@@ -5,7 +5,6 @@ resource "google_service_account" "backend_service_account" {
   display_name = "Marble Backend Service Account"
 }
 
-
 # Allow backend service account to access any cloud sql instance
 resource "google_project_iam_binding" "backend_service_account_cloudsql_client" {
   role    = "roles/cloudsql.client"

@@ -5,7 +5,7 @@ resource "google_cloud_run_v2_service" "backend" {
 
   template {
     scaling {
-      min_instance_count = 0
+      min_instance_count = 1
       max_instance_count = 100
     }
 
@@ -57,7 +57,7 @@ resource "google_cloud_run_v2_service" "backend" {
       // we may get rid of this env variable
       env {
         name  = "ENV"
-        value = "?staging??"
+        value = local.environment.env_display_name
       }
 
       env {
@@ -118,12 +118,11 @@ resource "google_cloud_run_v2_service" "backend" {
         }
       }
 
-      # TODO: use decicated liveness endpoint when merged
-      # liveness_probe {
-      #   http_get {
-      #     # path = "/liveness"
-      #   }
-      # }
+      liveness_probe {
+        http_get {
+          path = "/liveness"
+        }
+      }
     }
   }
 

@@ -6,7 +6,7 @@ resource "google_cloud_run_v2_job" "scheduler" {
 
     template {
       timeout = "7200s"
-      # max_retries = 0
+      max_retries = 0
 
       volumes {
         name = "cloudsql"

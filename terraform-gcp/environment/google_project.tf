@@ -10,11 +10,6 @@ resource "google_project" "default" {
   }
 }
 
-# import {
-#   id = var.gcp_project
-#   to = google_project.default
-# }
-
 data "google_project" "project" {
   project_id = local.project_id
 }

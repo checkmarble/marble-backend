@@ -10,5 +10,4 @@ data "google_firebase_web_app_config" "backoffice" {
 
 resource "google_firebase_hosting_site" "backoffice" {
   site_id = "backoffice-${local.project_id}"
-  app_id  = google_firebase_web_app.backoffice.app_id
 }
