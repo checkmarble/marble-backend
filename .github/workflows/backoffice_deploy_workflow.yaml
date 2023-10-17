@@ -13,8 +13,8 @@ on:
         description: "GCP Service Account Key"
 
 jobs:
-  build_backoffice:
-    name: Build Back-office
+  build_and_deploy_backoffice:
+    name: Build and Deploy Back-office
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
@@ -27,7 +27,7 @@ jobs:
       - name: "Build ${{ inputs.environment }}"
         run: "yarn build-${{ inputs.environment }}"
         working-directory: marble-backoffice
-      - name: Deploy to Firebase
+      - name: "Deploy to ${{ inputs.environment }} using Firebase"
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: "${{ secrets.GITHUB_TOKEN }}"
