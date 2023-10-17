@@ -5,8 +5,8 @@ resource "google_cloud_run_v2_job" "data_ingestion" {
   template {
 
     template {
-      timeout = "7200s"
-      # max_retries = 0
+      timeout     = "7200s"
+      max_retries = 0
 
       volumes {
         name = "cloudsql"

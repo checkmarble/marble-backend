@@ -17,7 +17,7 @@ resource "google_cloud_run_v2_service" "frontend" {
 
       env {
         name  = "ENV"
-        value = "staging"
+        value = local.environment.env_display_name
       }
 
       env {
@@ -80,11 +80,6 @@ resource "google_cloud_run_v2_service" "frontend" {
         }
       }
 
-      # liveness_probe {
-      #   http_get {
-      #     # path = "/liveness"
-      #   }
-      # }
     }
   }
 
