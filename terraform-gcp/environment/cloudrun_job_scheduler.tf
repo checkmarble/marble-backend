@@ -5,7 +5,7 @@ resource "google_cloud_run_v2_job" "scheduler" {
   template {
 
     template {
-      timeout = "7200s"
+      timeout     = "7200s"
       max_retries = 0
 
       volumes {

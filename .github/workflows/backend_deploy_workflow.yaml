@@ -43,6 +43,10 @@ jobs:
         run: |
           docker push europe-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/marble/marble-backend:latest
 
+      - name: Push to marble-infra registry
+        run: |
+          docker push europe-docker.pkg.dev/marble-infra/marble/marble-backend:latest
+
       - name: Deploy migration job
         run: |
           gcloud beta run jobs deploy migrations \

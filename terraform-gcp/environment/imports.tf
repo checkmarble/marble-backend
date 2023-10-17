@@ -66,9 +66,14 @@ import {
   to = google_service_account.github_action_service_account
 }
 
+import {
+  id = "projects/${local.project_id}/config"
+  to = google_identity_platform_config.auth
+}
+
 # import {
-#     id = "projects/${local.project_id}/config"
-#     to = google_identity_platform_config.auth
+#   id = "projects/${local.project_id}/defaultSupportedIdpConfigs/google.com"
+#   to = google_identity_platform_default_supported_idp_config.google
 # }
 
 import {
