@@ -45,15 +45,10 @@ jobs:
 
       - name: Deploy migration job
         run: |
-          gcloud beta run jobs deploy marble-backend-db-migrations \
+          gcloud beta run jobs deploy migrations \
             --quiet \
             --image="europe-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/marble/marble-backend:latest" \
             --region="europe-west1" \
-            --args=-migrations \
-            --service-account=marble-backend-cloud-run@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
-            --set-env-vars=PG_HOSTNAME=/cloudsql/${{ vars.GCP_PROJECT_ID }}:${{ vars.DB_INSTANCE_REGION }}:${{ vars.DB_INSTANCE_NAME }},PG_USER=postgres,GOOGLE_CLOUD_PROJECT=${{ vars.GCP_PROJECT_ID }},ENV=${{ inputs.environment }},GCS_INGESTION_BUCKET=${{ vars.GCS_INGESTION_BUCKET }} \
-            --set-secrets=PG_PASSWORD=POSTGRES_PASSWORD:latest \
-            --set-cloudsql-instances=${{ vars.GCP_PROJECT_ID }}:${{ vars.DB_INSTANCE_REGION }}:${{ vars.DB_INSTANCE_NAME }} \
             --execute-now \
             --wait
 
@@ -62,54 +57,25 @@ jobs:
           gcloud run deploy marble-backend \
             --quiet \
             --image="europe-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/marble/marble-backend:latest" \
-            --region="europe-west1" \
-            --args=-server \
-            --allow-unauthenticated \
-            --service-account=marble-backend-cloud-run@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
-            --set-env-vars=PG_HOSTNAME=/cloudsql/${{ vars.GCP_PROJECT_ID }}:${{ vars.DB_INSTANCE_REGION }}:${{ vars.DB_INSTANCE_NAME }},PG_USER=postgres,GOOGLE_CLOUD_PROJECT=${{ vars.GCP_PROJECT_ID }},ENV=${{ inputs.environment }},AWS_REGION=eu-west-3,GCS_INGESTION_BUCKET=${{ vars.GCS_INGESTION_BUCKET }} \
-            --set-secrets=PG_PASSWORD=POSTGRES_PASSWORD:latest,AUTHENTICATION_JWT_SIGNING_KEY=AUTHENTICATION_JWT_SIGNING_KEY:latest,AWS_ACCESS_KEY=AWS_ACCESS_KEY:latest,AWS_SECRET_KEY=AWS_SECRET_KEY:latest \
-            --set-cloudsql-instances=${{ vars.GCP_PROJECT_ID }}:${{ vars.DB_INSTANCE_REGION }}:${{ vars.DB_INSTANCE_NAME }} \
-            --port=8080 \
-            --min-instances=1
+            --region="europe-west1"
 
       - name: Deploy scheduler job
         run: |
-          gcloud beta run jobs deploy marble-backend-scheduler \
+          gcloud beta run jobs deploy scheduler \
             --quiet \
             --image="europe-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/marble/marble-backend:latest" \
-            --region="europe-west1" \
-            --args=-scheduler \
-            --service-account=marble-backend-cloud-run@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
-            --set-env-vars=PG_HOSTNAME=/cloudsql/${{ vars.GCP_PROJECT_ID }}:${{ vars.DB_INSTANCE_REGION }}:${{ vars.DB_INSTANCE_NAME }},PG_USER=postgres,GOOGLE_CLOUD_PROJECT=${{ vars.GCP_PROJECT_ID }},ENV=${{ inputs.environment }},AWS_REGION=eu-west-3,GCS_INGESTION_BUCKET=${{ vars.GCS_INGESTION_BUCKET }} \
-            --set-secrets=PG_PASSWORD=POSTGRES_PASSWORD:latest,AWS_ACCESS_KEY=AWS_ACCESS_KEY:latest,AWS_SECRET_KEY=AWS_SECRET_KEY:latest \
-            --set-cloudsql-instances=${{ vars.GCP_PROJECT_ID }}:${{ vars.DB_INSTANCE_REGION }}:${{ vars.DB_INSTANCE_NAME }} \
-            --task-timeout=2h \
-            --max-retries=0
+            --region="europe-west1"
 
       - name: Deploy execute scheduled scenario job
         run: |
-          gcloud beta run jobs deploy marble-backend-scheduled-execution \
+          gcloud beta run jobs deploy scheduled-executer \
             --quiet \
             --image="europe-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/marble/marble-backend:latest" \
-            --region="europe-west1" \
-            --args=-scheduled-executer \
-            --service-account=marble-backend-cloud-run@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
-            --set-env-vars=PG_HOSTNAME=/cloudsql/${{ vars.GCP_PROJECT_ID }}:${{ vars.DB_INSTANCE_REGION }}:${{ vars.DB_INSTANCE_NAME }},PG_USER=postgres,GOOGLE_CLOUD_PROJECT=${{ vars.GCP_PROJECT_ID }},ENV=${{ inputs.environment }},AWS_REGION=eu-west-3,GCS_INGESTION_BUCKET=${{ vars.GCS_INGESTION_BUCKET }} \
-            --set-secrets=PG_PASSWORD=POSTGRES_PASSWORD:latest,AWS_ACCESS_KEY=AWS_ACCESS_KEY:latest,AWS_SECRET_KEY=AWS_SECRET_KEY:latest \
-            --set-cloudsql-instances=${{ vars.GCP_PROJECT_ID }}:${{ vars.DB_INSTANCE_REGION }}:${{ vars.DB_INSTANCE_NAME }} \
-            --task-timeout=2h \
-            --max-retries=0
+            --region="europe-west1"
 
       - name: Deploy data ingestion job
         run: |
-          gcloud beta run jobs deploy marble-backend-data-ingestion \
+          gcloud beta run jobs deploy data-ingestion \
             --quiet \
             --image="europe-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/marble/marble-backend:latest" \
             --region="europe-west1" \
-            --args=-data-ingestion \
-            --service-account=marble-backend-cloud-run@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
-            --set-env-vars=PG_HOSTNAME=/cloudsql/${{ vars.GCP_PROJECT_ID }}:${{ vars.DB_INSTANCE_REGION }}:${{ vars.DB_INSTANCE_NAME }},PG_USER=postgres,GOOGLE_CLOUD_PROJECT=${{ vars.GCP_PROJECT_ID }},ENV=${{ inputs.environment }},AWS_REGION=eu-west-3,GCS_INGESTION_BUCKET=${{ vars.GCS_INGESTION_BUCKET }} \
-            --set-secrets=PG_PASSWORD=POSTGRES_PASSWORD:latest,AWS_ACCESS_KEY=AWS_ACCESS_KEY:latest,AWS_SECRET_KEY=AWS_SECRET_KEY:latest \
-            --set-cloudsql-instances=${{ vars.GCP_PROJECT_ID }}:${{ vars.DB_INSTANCE_REGION }}:${{ vars.DB_INSTANCE_NAME }} \
-            --task-timeout=2h \
-            --max-retries=0
