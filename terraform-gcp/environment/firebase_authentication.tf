@@ -7,45 +7,30 @@
 # Unfortunately, both methods depends of manual actions, which is sad.
 # So I used firebase console manually to enable google as an authentication provider
 
-# resource "google_identity_platform_config" "auth" {
-#   project = local.project_id
-#   #   autodelete_anonymous_users = true
+resource "google_identity_platform_config" "auth" {
+  project = local.project_id
+  #   autodelete_anonymous_users = true
 
-#   sign_in {
-#     allow_duplicate_emails = false
+  sign_in {
+    allow_duplicate_emails = false
 
-#     anonymous {
-#       enabled = false
-#     }
-#   }
+    anonymous {
+      enabled = false
+    }
+  }
 
-#   authorized_domains = [
-#     # staging
-#     # "localhost",
-#     # "tokyo-country-381508.firebaseapp.com",
-#     # "tokyo-country-381508.web.app",
-#     # "marble-front-gsmyteqtsa-od.a.run.app",
-#     # "marble-backoffice-staging.web.app",
-#     # "app.staging.checkmarble.com",
-#     # "marble-frontend-ngbphj56ia-ew.a.run.app",
-
-#     # "localhost",
-#     # "marble-test-terraform.firebaseapp.com",
-#     # "marble-test-terraform.web.app",
-#     // TODO: small hack to extract domain, because binding of custom domain is not terraformed yet
-#     trimprefix(google_cloud_run_v2_service.frontend.uri, "https://"),
-#     trimprefix(google_firebase_hosting_site.backoffice.default_url, "https://"),
-#   ]
-# }
+  authorized_domains = [
+    "localhost",
+    local.environment.frontend_domain,
+    local.environment.backoffice_domain,
+    trimprefix(google_cloud_run_v2_service.frontend.uri, "https://"),
+    trimprefix(google_firebase_hosting_site.backoffice.default_url, "https://"),
+  ]
+}
 
 # resource "google_identity_platform_default_supported_idp_config" "google" {
-#   enabled = true
-#   idp_id  = "google.com"
-#   client_id     = "client-id"
-#   client_secret = "secret"
-# }
-
-# import {
-#   id = "projects/${local.project_id}/config"
-#   to = google_identity_platform_config.auth
+#   enabled       = true
+#   idp_id        = "google.com"
+#   client_id     = "" // ??
+#   client_secret = "" // ??
 # }

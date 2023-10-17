@@ -17,6 +17,9 @@ locals {
       }
 
       env_display_name = "staging"
+
+      backoffice_domain = ""
+      frontend_domain   = ""
     }
 
     staging = {
@@ -35,6 +38,9 @@ locals {
       }
 
       env_display_name = "staging"
+
+      backoffice_domain = "marble-backoffice-staging.web.app"
+      frontend_domain   = "app.staging.checkmarble.com"
     }
   }
 }
