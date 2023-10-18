@@ -18,6 +18,10 @@ locals {
 
       env_display_name = "staging"
 
+      backoffice = {
+        firebase_site_id = "backoffice-marble-test-terraform"
+      }
+
       backoffice_domain = ""
       frontend_domain   = ""
     }
@@ -38,6 +42,10 @@ locals {
       }
 
       env_display_name = "staging"
+
+      backoffice = {
+        firebase_site_id = "marble-backoffice-staging"
+      }
 
       backoffice_domain = "marble-backoffice-staging.web.app"
       frontend_domain   = "app.staging.checkmarble.com"
