@@ -33,7 +33,7 @@ func (f Comparison) Evaluate(arguments ast.Arguments) (any, []error) {
 	if len(errs) == 0 {
 		return MakeEvaluateResult(f.comparisonTimeFunction(leftTime, rightTime))
 	}
-	return MakeEvaluateError(fmt.Errorf("all arguments must be an integer, a float or a time"))
+	return MakeEvaluateError(fmt.Errorf("all arguments must be an integer, a float or a time %w", ast.ErrArgumentMustBeIntFloatOrTime))
 }
 
 func (f Comparison) comparisonFloatFunction(l, r float64) (bool, error) {

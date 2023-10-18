@@ -1,8 +1,6 @@
 package evaluate
 
 import (
-	"errors"
-
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -31,7 +29,7 @@ func (clva CustomListValuesAccess) Evaluate(arguments ast.Arguments) (any, []err
 
 	list, err := clva.CustomListRepository.GetCustomListById(nil, listId)
 	if err != nil {
-		return MakeEvaluateError(errors.New("list not found"))
+		return MakeEvaluateError(ast.ErrListNotFound)
 	}
 	if err := clva.EnforceSecurity.ReadOrganization(list.OrganizationId); err != nil {
 		return MakeEvaluateError(err)

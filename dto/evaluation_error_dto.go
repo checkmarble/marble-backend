@@ -23,6 +23,7 @@ var evaluationErrorDtoMap = []errorAndCode{
 	{ast.ErrWrongNumberOfArgument, "WRONG_NUMBER_OF_ARGUMENTS"},
 	{ast.ErrMissingNamedArgument, "MISSING_NAMED_ARGUMENT"},
 	{ast.ErrArgumentMustBeIntOrFloat, "ARGUMENTS_MUST_BE_INT_OR_FLOAT"},
+	{ast.ErrArgumentMustBeIntFloatOrTime, "ARGUMENTS_MUST_BE_INT_FLOAT_OR_TIME"},
 	{ast.ErrArgumentMustBeInt, "ARGUMENT_MUST_BE_INTEGER"},
 	{ast.ErrArgumentMustBeString, "ARGUMENT_MUST_BE_STRING"},
 	{ast.ErrArgumentMustBeBool, "ARGUMENT_MUST_BE_BOOLEAN"},
@@ -30,6 +31,10 @@ var evaluationErrorDtoMap = []errorAndCode{
 	{ast.ErrArgumentCantBeConvertedToDuration, "ARGUMENT_MUST_BE_CONVERTIBLE_TO_DURATION"},
 	{ast.ErrArgumentCantBeTime, "ARGUMENT_MUST_BE_TIME"},
 	{ast.ErrArgumentRequired, "ARGUMENT_REQUIRED"},
+	{ast.ErrArgumentInvalidType, "ARGUMENT_INVALID_TYPE"},
+	{ast.ErrListNotFound, "LIST_NOT_FOUND"},
+	{ast.ErrDatabaseAccessNotFound, "DATABASE_ACCESS_NOT_FOUND"},
+	{ast.ErrPayloadFieldNotFound, "PAYLOAD_FIELD_NOT_FOUND"},
 }
 
 func AdaptEvaluationErrorDto(err error) EvaluationErrorDto {

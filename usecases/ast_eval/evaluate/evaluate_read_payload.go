@@ -24,13 +24,10 @@ func (p Payload) Evaluate(arguments ast.Arguments) (any, []error) {
 	if err != nil {
 		return nil, MakeAdaptedArgsErrors([]error{err})
 	}
-	if err != nil {
-		return MakeEvaluateError(fmt.Errorf("payload field name is not a string"))
-	}
 
 	value, err := p.Payload.ReadFieldFromPayload(models.FieldName(payloadFieldName))
 	if err != nil {
-		return MakeEvaluateError(fmt.Errorf("payload var does not exist: %s", payloadFieldName))
+		return MakeEvaluateError(fmt.Errorf("payload var does not exist: %s %w", payloadFieldName, ast.ErrPayloadFieldNotFound))
 	}
 
 	if value == nil {
