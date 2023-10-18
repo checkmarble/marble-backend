@@ -18,13 +18,11 @@ const (
 )
 
 func CredentialsFromCtx(ctx context.Context) models.Credentials {
-
 	creds, _ := ctx.Value(ContextKeyCredentials).(models.Credentials)
 	return creds
 }
 
 func OrganizationIdFromRequest(request *http.Request) (organizationId string, err error) {
-
 	creds := CredentialsFromCtx(request.Context())
 
 	var requestOrganizationId string
