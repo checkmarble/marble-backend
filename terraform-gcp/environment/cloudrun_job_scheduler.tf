@@ -19,7 +19,7 @@ resource "google_cloud_run_v2_job" "scheduler" {
       service_account = google_service_account.backend_service_account.email
 
       containers {
-        image = "europe-docker.pkg.dev/tokyo-country-381508/marble/marble-backend:latest"
+        image = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:latest"
 
         env {
           name  = "PG_HOSTNAME"

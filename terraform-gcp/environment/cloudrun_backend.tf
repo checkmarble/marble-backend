@@ -21,7 +21,7 @@ resource "google_cloud_run_v2_service" "backend" {
     }
 
     containers {
-      image = "europe-docker.pkg.dev/tokyo-country-381508/marble/marble-backend:latest"
+      image = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:latest"
 
       # Uncomment and deploy to add an admin
       # env {

@@ -13,7 +13,7 @@ resource "google_cloud_run_v2_service" "frontend" {
     service_account                  = google_service_account.frontend_service_account.email
 
     containers {
-      image = "europe-docker.pkg.dev/tokyo-country-381508/marble/marble-frontend:latest"
+      image = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-frontend:latest"
 
       env {
         name  = "ENV"
