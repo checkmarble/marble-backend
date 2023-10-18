@@ -132,28 +132,6 @@ func (api *API) routes(auth *Authentication) {
 			})
 		})
 
-		authedRouter.Route("/data-model", func(dataModelRouter chi.Router) {
-			dataModelRouter.Get("/", api.handleGetDataModel)
-			dataModelRouter.Get("/openapi", api.handleReferences)
-
-			dataModelRouter.With(httpin.NewInput(dto.PostCreateTable{})).
-				Post("/tables", api.handleCreateTable)
-
-			dataModelRouter.With(httpin.NewInput(dto.PostCreateTable{})).
-				Patch("/tables/{tableID}", api.handleUpdateTable)
-
-			dataModelRouter.With(httpin.NewInput(dto.PostCreateField{})).
-				Post("/tables/{tableID}/fields", api.handleCreateField)
-
-			dataModelRouter.With(httpin.NewInput(dto.PostCreateField{})).
-				Patch("/fields/{fieldID}", api.handleUpdateField)
-
-			dataModelRouter.With(httpin.NewInput(dto.PostCreateLink{})).
-				Post("/links", api.handleCreateLink)
-
-			dataModelRouter.Delete("/", api.handleDeleteDataModel)
-		})
-
 		authedRouter.Route("/apikeys", func(dataModelRouter chi.Router) {
 			dataModelRouter.Get("/", api.handleGetApiKey())
 		})

@@ -50,5 +50,16 @@ func initRouter(ctx context.Context, conf AppConfiguration, deps dependencies) *
 	r.Post("/crash", api.HandleCrash)
 	r.Post("/token", deps.TokenHandler.GenerateToken)
 
+	router := r.With(deps.Authentication.Middleware)
+
+	router.Get("/data-model", deps.DataModelHandler.GetDataModel)
+	router.Post("/data-model/tables", deps.DataModelHandler.CreateTable)
+	router.Patch("/data-model/tables/{tableID}", deps.DataModelHandler.UpdateDataModelTable)
+	router.Post("/data-model/links", deps.DataModelHandler.CreateLink)
+	router.Post("/data-model/tables/{tableID}/fields", deps.DataModelHandler.CreateField)
+	router.Patch("/data-model/fields/{fieldID}", deps.DataModelHandler.UpdateDataModelField)
+	router.Delete("/data-model", deps.DataModelHandler.DeleteDataModel)
+	router.Get("/data-model/openapi", deps.DataModelHandler.OpenAPI)
+
 	return r
 }

@@ -7,7 +7,6 @@ import (
 )
 
 func EnforceOrganizationAccess(creds models.Credentials, organizationId string) error {
-
 	noOrgIdSecurity := creds.Role.HasPermission(models.ANY_ORGANIZATION_ID_IN_CONTEXT)
 	if noOrgIdSecurity {
 		return nil
@@ -22,8 +21,7 @@ func EnforceOrganizationAccess(creds models.Credentials, organizationId string) 
 	}
 
 	if creds.OrganizationId != organizationId {
-		return errors.Wrap(models.ForbiddenError, "credentials does not grant access to organization %s"+organizationId)
+		return errors.Wrapf(models.ForbiddenError, "credentials does not grant access to organization %s", organizationId)
 	}
-
 	return nil
 }

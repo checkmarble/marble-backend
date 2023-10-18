@@ -1,5 +1,7 @@
 package models
 
+import "fmt"
+
 // /////////////////////////////
 // Data types
 // /////////////////////////////
@@ -29,6 +31,23 @@ func (d DataType) String() string {
 		return "Timestamp"
 	}
 	return "unknown"
+}
+
+func (d DataType) ToPostgresType() string {
+	switch d {
+	case Int:
+		return "INTEGER"
+	case String:
+		return "TEXT"
+	case Timestamp:
+		return "TIMESTAMP WITH TIME ZONE"
+	case Float:
+		return "FLOAT"
+	case Bool:
+		return "BOOLEAN"
+	default:
+		panic(fmt.Errorf("unknown data type: %v", d))
+	}
 }
 
 func DataTypeFrom(s string) DataType {

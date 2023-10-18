@@ -1,153 +1,200 @@
 package api
 
 import (
+	"context"
+	"encoding/json"
 	"net/http"
 
-	"github.com/ggicci/httpin"
+	"github.com/go-chi/chi/v5"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
-func (api *API) handleGetDataModel(w http.ResponseWriter, r *http.Request) {
-	organizationID, err := api.UsecasesWithCreds(r).OrganizationIdOfContext()
+type dataModelUseCase interface {
+	GetDataModel(ctx context.Context, organizationID string) (models.DataModel, error)
+	CreateTable(ctx context.Context, organizationID, name, description string) (string, error)
+	UpdateDataModelTable(ctx context.Context, tableID, description string) error
+	CreateField(ctx context.Context, organizationID, tableID string, field models.DataModelField) (string, error)
+	UpdateDataModelField(ctx context.Context, fieldID, description string) error
+	DeleteDataModel(ctx context.Context, organizationID string) error
+	CreateDataModelLink(ctx context.Context, link models.DataModelLink) error
+}
+
+type DataModelHandler struct {
+	useCase dataModelUseCase
+}
+
+func (d *DataModelHandler) GetDataModel(w http.ResponseWriter, r *http.Request) {
+	organizationID, err := utils.OrganizationIdFromRequest(r)
 	if presentError(w, r, err) {
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(r).NewDataModelUseCase()
-	dataModel, err := usecase.GetDataModel(organizationID)
+	dataModel, err := d.useCase.GetDataModel(r.Context(), organizationID)
 	if presentError(w, r, err) {
 		return
 	}
 	PresentModelWithName(w, "data_model", dto.AdaptDataModelDto(dataModel))
 }
 
-func (api *API) handleCreateTable(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	input := *ctx.Value(httpin.Input).(*dto.PostCreateTable)
+type createTableInput struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
 
-	organizationID, err := api.UsecasesWithCreds(r).OrganizationIdOfContext()
+func (d *DataModelHandler) CreateTable(w http.ResponseWriter, r *http.Request) {
+	organizationID, err := utils.OrganizationIdFromRequest(r)
 	if presentError(w, r, err) {
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(r).NewDataModelUseCase()
-	tableID, err := usecase.CreateDataModelTable(organizationID, input.Body.Name, input.Body.Description)
+	var input createTableInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	tableID, err := d.useCase.CreateTable(r.Context(), organizationID, input.Name, input.Description)
 	if presentError(w, r, err) {
 		return
 	}
 	PresentModelWithName(w, "id", tableID)
 }
 
-func (api *API) handleUpdateTable(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	input := *ctx.Value(httpin.Input).(*dto.PostCreateTable)
-
-	tableID, err := requiredUuidUrlParam(r, "tableID")
-	if presentError(w, r, err) {
+func (d *DataModelHandler) UpdateDataModelTable(w http.ResponseWriter, r *http.Request) {
+	var input createFieldInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	tableID := chi.URLParam(r, "tableID")
 
-	usecase := api.UsecasesWithCreds(r).NewDataModelUseCase()
-	err = usecase.UpdateDataModelTable(tableID, input.Body.Description)
+	err := d.useCase.UpdateDataModelTable(r.Context(), tableID, input.Description)
 	if presentError(w, r, err) {
 		return
 	}
 	PresentNothing(w)
 }
 
-func (api *API) handleCreateField(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	input := *ctx.Value(httpin.Input).(*dto.PostCreateField)
+type createFieldInput struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Type        string `json:"type"`
+	Nullable    bool   `json:"nullable"`
+	IsEnum      bool   `json:"is_enum"`
+}
 
-	tableID, err := requiredUuidUrlParam(r, "tableID")
+func (d *DataModelHandler) CreateField(w http.ResponseWriter, r *http.Request) {
+	organizationID, err := utils.OrganizationIdFromRequest(r)
 	if presentError(w, r, err) {
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(r).NewDataModelUseCase()
-	fieldID, err := usecase.CreateDataModelField(tableID, models.DataModelField{
-		Name:        input.Body.Name,
-		Description: input.Body.Description,
-		Type:        input.Body.Type,
-		Nullable:    input.Body.Nullable,
-		IsEnum:      input.Body.IsEnum,
-	})
+	var input createFieldInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	tableID := chi.URLParam(r, "tableID")
+	field := models.DataModelField{
+		Name:        input.Name,
+		Description: input.Description,
+		Type:        input.Type,
+		Nullable:    input.Nullable,
+		IsEnum:      input.IsEnum,
+	}
+
+	fieldID, err := d.useCase.CreateField(r.Context(), organizationID, tableID, field)
 	if presentError(w, r, err) {
 		return
 	}
 	PresentModelWithName(w, "id", fieldID)
 }
 
-func (api *API) handleUpdateField(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	input := *ctx.Value(httpin.Input).(*dto.PostCreateField)
-
-	tableID, err := requiredUuidUrlParam(r, "fieldID")
-	if presentError(w, r, err) {
+func (d *DataModelHandler) UpdateDataModelField(w http.ResponseWriter, r *http.Request) {
+	var input createFieldInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	fieldID := chi.URLParam(r, "fieldID")
 
-	usecase := api.UsecasesWithCreds(r).NewDataModelUseCase()
-	err = usecase.UpdateDataModelField(tableID, input.Body.Description)
+	err := d.useCase.UpdateDataModelField(r.Context(), fieldID, input.Description)
 	if presentError(w, r, err) {
 		return
 	}
 	PresentNothing(w)
 }
 
-func (api *API) handleCreateLink(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	input := *ctx.Value(httpin.Input).(*dto.PostCreateLink)
+type createLinkInput struct {
+	Name          string `json:"name"`
+	ParentTableID string `json:"parent_table_id"`
+	ParentFieldID string `json:"parent_field_id"`
+	ChildTableID  string `json:"child_table_id"`
+	ChildFieldID  string `json:"child_field_id"`
+}
 
-	organizationID, err := api.UsecasesWithCreds(r).OrganizationIdOfContext()
+func (d *DataModelHandler) CreateLink(w http.ResponseWriter, r *http.Request) {
+	organizationID, err := utils.OrganizationIdFromRequest(r)
 	if presentError(w, r, err) {
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(r).NewDataModelUseCase()
-	err = usecase.CreateDataModelLink(models.DataModelLink{
-		Name:           models.LinkName(input.Body.Name),
+	var input createLinkInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	link := models.DataModelLink{
 		OrganizationID: organizationID,
-		ParentTableID:  input.Body.ParentTableID,
-		ParentFieldID:  input.Body.ParentFieldID,
-		ChildTableID:   input.Body.ChildTableID,
-		ChildFieldID:   input.Body.ChildFieldID,
-	})
+		Name:           models.LinkName(input.Name),
+		ParentTableID:  input.ParentTableID,
+		ParentFieldID:  input.ParentFieldID,
+		ChildTableID:   input.ChildTableID,
+		ChildFieldID:   input.ChildFieldID,
+	}
+
+	err = d.useCase.CreateDataModelLink(r.Context(), link)
 	if presentError(w, r, err) {
 		return
 	}
 	PresentNothing(w)
 }
 
-func (api *API) handleDeleteDataModel(w http.ResponseWriter, r *http.Request) {
-	organizationID, err := api.UsecasesWithCreds(r).OrganizationIdOfContext()
+func (d *DataModelHandler) DeleteDataModel(w http.ResponseWriter, r *http.Request) {
+	organizationID, err := utils.OrganizationIdFromRequest(r)
 	if presentError(w, r, err) {
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(r).NewDataModelUseCase()
-	err = usecase.DeleteSchema(organizationID)
+	err = d.useCase.DeleteDataModel(r.Context(), organizationID)
 	if presentError(w, r, err) {
 		return
 	}
 	PresentNothing(w)
 }
 
-func (api *API) handleReferences(w http.ResponseWriter, r *http.Request) {
-	organizationID, err := api.UsecasesWithCreds(r).OrganizationIdOfContext()
+func (d *DataModelHandler) OpenAPI(w http.ResponseWriter, r *http.Request) {
+	organizationID, err := utils.OrganizationIdFromRequest(r)
 	if presentError(w, r, err) {
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(r).NewDataModelUseCase()
-	dataModel, err := usecase.GetDataModel(organizationID)
+	dataModel, err := d.useCase.GetDataModel(r.Context(), organizationID)
 	if presentError(w, r, err) {
 		return
 	}
 
-	reference := dto.OpenAPIFromDataModel(dataModel)
+	openapi := dto.OpenAPIFromDataModel(dataModel)
+	PresentModel(w, openapi)
+}
 
-	PresentModel(w, reference)
+func NewDataModelHandler(u dataModelUseCase) *DataModelHandler {
+	return &DataModelHandler{
+		useCase: u,
+	}
 }

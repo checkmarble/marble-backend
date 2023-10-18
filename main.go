@@ -22,13 +22,15 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/firebase"
 	"github.com/checkmarble/marble-backend/repositories/postgres"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/usecases/datamodel"
 	"github.com/checkmarble/marble-backend/usecases/token"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
 type dependencies struct {
-	Authentication *api.Authentication
-	TokenHandler   *api.TokenHandler
+	Authentication   *api.Authentication
+	TokenHandler     *api.TokenHandler
+	DataModelHandler *api.DataModelHandler
 }
 
 func initDependencies(conf AppConfiguration, signingKey *rsa.PrivateKey) (dependencies, error) {
@@ -46,12 +48,14 @@ func initDependencies(conf AppConfiguration, signingKey *rsa.PrivateKey) (depend
 	auth := infra.InitializeFirebase(context.Background())
 	firebaseClient := firebase.New(auth)
 	jwtRepository := repositories.NewJWTRepository(signingKey)
-	validator := token.NewValidator(database, jwtRepository)
+	tokenValidator := token.NewValidator(database, jwtRepository)
 	tokenGenerator := token.NewGenerator(database, jwtRepository, firebaseClient, conf.config.TokenLifetimeMinute)
+	dataModelUseCase := datamodel.New(database)
 
 	return dependencies{
-		Authentication: api.NewAuthentication(validator),
-		TokenHandler:   api.NewTokenHandler(tokenGenerator),
+		Authentication:   api.NewAuthentication(tokenValidator),
+		TokenHandler:     api.NewTokenHandler(tokenGenerator),
+		DataModelHandler: api.NewDataModelHandler(dataModelUseCase),
 	}, nil
 }
 

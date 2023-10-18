@@ -33,7 +33,7 @@ func TestToken_GenerateToken(t *testing.T) {
 		mGenerator.On("GenerateToken", mock.Anything, "", "token").
 			Return(tok.AccessToken, tok.ExpiresAt, nil)
 
-		tokenHandler := Token{
+		tokenHandler := TokenHandler{
 			generator: mGenerator,
 		}
 
@@ -56,7 +56,7 @@ func TestToken_GenerateToken(t *testing.T) {
 		mGenerator.On("GenerateToken", mock.Anything, "", "token").
 			Return("", time.Time{}, assert.AnError)
 
-		tokenHandler := Token{
+		tokenHandler := TokenHandler{
 			generator: mGenerator,
 		}
 
@@ -72,7 +72,7 @@ func TestToken_GenerateToken(t *testing.T) {
 	})
 
 	t.Run("bad token", func(t *testing.T) {
-		tokenHandler := Token{}
+		tokenHandler := TokenHandler{}
 
 		req := httptest.NewRequest(http.MethodGet, "http://www.checkmarble.com", nil)
 		req.Header.Add("Authorization", "bad")
