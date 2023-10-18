@@ -5,7 +5,7 @@ import {
 }
 
 import {
-  id = "projects/${local.project_id}}"
+  id = "projects/${local.project_id}"
   to = google_firebase_project.default
 }
 
@@ -39,10 +39,10 @@ import {
   to = google_secret_manager_secret.aws_access_key
 }
 
-# import {
-#   id = "projects/${local.project_id}/secrets/AUTHENTICATION_JWT_SIGNING_KEY"
-#   to = google_secret_manager_secret.authentication_jwt_signing_key
-# }
+import {
+  id = "projects/${local.project_id}/secrets/AUTHENTICATION_JWT_SIGNING_KEY"
+  to = google_secret_manager_secret.authentication_jwt_signing_key
+}
 
 
 import {
@@ -55,6 +55,7 @@ import {
 #     id = "data-ingestion-${local.project_id}"
 #     to = google_storage_bucket.data_ingestion
 # }
+
 import {
   id = "projects/${local.project_id}/locations/${local.location}/services/marble-backend"
   to = google_cloud_run_v2_service.backend
@@ -80,7 +81,6 @@ import {
   id = "projects/${local.project_id}/webApps/${local.environment.firebase.backend_app_id}"
   to = google_firebase_web_app.backoffice
 }
-
 
 import {
   id = "projects/${local.project_id}/webApps/${local.environment.firebase.frontend_app_id}"

@@ -6,9 +6,11 @@ locals {
       terraform_service_account_key = "../service-account-key/marble-test-terraform-ecc0d390a523.json"
 
       marble_cloud_sql = {
-        name     = "marble"
-        location = local.location
-        tier     = "db-f1-micro"
+        name              = "marble"
+        location          = local.location
+        tier              = "db-f1-micro"
+        database_version  = "POSTGRES_14"
+        availability_type = "ZONAL"
       }
 
       firebase = {
@@ -31,9 +33,11 @@ locals {
       terraform_service_account_key = "../service-account-key/tokyo-country-381508-1aa0f843ec5b.json"
 
       marble_cloud_sql = {
-        name     = "marble-sandbox"
-        location = "europe-west9"
-        tier     = "db-custom-1-4096"
+        name              = "marble-sandbox"
+        location          = "europe-west9"
+        tier              = "db-custom-1-4096"
+        database_version  = "POSTGRES_14"
+        availability_type = "ZONAL"
       }
 
       firebase = {
@@ -50,5 +54,34 @@ locals {
       backoffice_domain = "marble-backoffice-staging.web.app"
       frontend_domain   = "app.staging.checkmarble.com"
     }
+
+
+    production = {
+      project_id                    = "marble-prod-1"
+      terraform_service_account_key = "../service-account-key/marble-prod-1-c66803ae2892.json"
+
+      marble_cloud_sql = {
+        name              = "marble-prod"
+        location          = local.location
+        tier              = "db-custom-2-8192"
+        database_version  = "POSTGRES_15"
+        availability_type = "REGIONAL"
+      }
+
+      firebase = {
+        backend_app_id  = "1:280431296971:web:ff089aa051073474f8f64e"
+        frontend_app_id = "1:280431296971:web:bbdcd68f21ce8ee7f8f64e"
+      }
+
+      env_display_name = "production"
+
+      backoffice = {
+        firebase_site_id = "marble-backoffice-production"
+      }
+
+      backoffice_domain = "marble-backoffice-production.web.app"
+      frontend_domain   = "app.checkmarble.com"
+    }
+
   }
 }

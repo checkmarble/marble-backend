@@ -1,9 +1,12 @@
 resource "google_sql_database_instance" "marble" {
   name             = local.environment.marble_cloud_sql.name
   region           = local.environment.marble_cloud_sql.location
-  database_version = "POSTGRES_14"
+  database_version = local.environment.marble_cloud_sql.database_version
+
   settings {
-    tier = local.environment.marble_cloud_sql.tier
+    tier              = local.environment.marble_cloud_sql.tier
+    availability_type = local.environment.marble_cloud_sql.availability_type
+
     maintenance_window {
       day  = 1
       hour = 0
