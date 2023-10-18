@@ -19,13 +19,13 @@ resource "google_identity_platform_config" "auth" {
     }
   }
 
-  authorized_domains = [
+  authorized_domains = compact([
     "localhost",
     local.environment.frontend_domain,
     local.environment.backoffice_domain,
     trimprefix(google_cloud_run_v2_service.frontend.uri, "https://"),
     trimprefix(google_firebase_hosting_site.backoffice.default_url, "https://"),
-  ]
+  ])
 }
 
 # resource "google_identity_platform_default_supported_idp_config" "google" {

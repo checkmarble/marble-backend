@@ -86,3 +86,8 @@ import {
   id = "projects/${local.project_id}/webApps/${local.environment.firebase.frontend_app_id}"
   to = google_firebase_web_app.frontend
 }
+
+import {
+  id = "projects/${local.project_id}/sites/${local.environment.backoffice.firebase_site_id}"
+  to = google_firebase_hosting_site.backoffice
+}
