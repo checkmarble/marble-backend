@@ -19,7 +19,7 @@ jobs:
     environment: ${{ inputs.environment }}
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Install dependencies using yarn --frozen-lockfile
         uses: bahmutov/npm-install@v1
         with:
