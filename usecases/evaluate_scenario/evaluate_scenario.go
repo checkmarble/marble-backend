@@ -84,7 +84,6 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repo
 		dataAccessor.Payload,
 		params.DataModel,
 	)
-
 	if err != nil {
 		return models.ScenarioExecution{}, fmt.Errorf("error evaluating trigger condition in eval scenario: %w", err)
 	}

@@ -1,55 +1,21 @@
 package payload_parser
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/go-playground/validator/v10"
+	dynamicstruct "github.com/ompluscator/dynamic-struct"
+	"github.com/tidwall/gjson"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
-
-	"github.com/go-playground/validator"
-	dynamicstruct "github.com/ompluscator/dynamic-struct"
 )
-
-func buildDynamicStruct(fields map[models.FieldName]models.Field) dynamicstruct.DynamicStruct {
-	custom_type := dynamicstruct.NewStruct()
-
-	var f = new(float64)
-	var i = new(int64)
-	var b = new(bool)
-	var s = new(string)
-	var t = new(time.Time)
-
-	// those fields are mandatory for all tables
-	custom_type.AddField("Object_id", s, `validate:"required",json:"object_id"`)
-	custom_type.AddField("Updated_at", t, `validate:"required",json:"updated_at"`)
-
-	for fieldName, field := range fields {
-		name := string(fieldName)
-		switch strings.ToLower(name) {
-		case "object_id", "updated_at":
-			// already added above, with a different validation tag
-		default:
-			tag := fmt.Sprintf(`json:"%s"`, name)
-			switch field.DataType {
-			case models.Bool:
-				custom_type.AddField(pure_utils.Capitalize(name), b, tag)
-			case models.Int:
-				custom_type.AddField(pure_utils.Capitalize(name), i, tag)
-			case models.Float:
-				custom_type.AddField(pure_utils.Capitalize(name), f, tag)
-			case models.String:
-				custom_type.AddField(pure_utils.Capitalize(name), s, tag)
-			case models.Timestamp:
-				custom_type.AddField(pure_utils.Capitalize(name), t, tag)
-			}
-		}
-	}
-	return custom_type.Build()
-}
 
 func validateParsedJson(instance interface{}) error {
 	validate := validator.New()
@@ -75,19 +41,56 @@ func validateParsedJson(instance interface{}) error {
 	return nil
 }
 
+func buildDynamicStruct(fields map[models.FieldName]models.Field) dynamicstruct.DynamicStruct {
+	customType := dynamicstruct.NewStruct()
+
+	var f = new(float64)
+	var i = new(int64)
+	var b = new(bool)
+	var s = new(string)
+	var t = new(time.Time)
+
+	// those fields are mandatory for all tables
+	customType.AddField("Object_id", s, `validate:"required",json:"object_id"`)
+	customType.AddField("Updated_at", t, `validate:"required",json:"updated_at"`)
+
+	for fieldName, field := range fields {
+		name := string(fieldName)
+		switch strings.ToLower(name) {
+		case "object_id", "updated_at":
+			// already added above, with a different validation tag
+		default:
+			tag := fmt.Sprintf(`json:"%s"`, name)
+			switch field.DataType {
+			case models.Bool:
+				customType.AddField(pure_utils.Capitalize(name), b, tag)
+			case models.Int:
+				customType.AddField(pure_utils.Capitalize(name), i, tag)
+			case models.Float:
+				customType.AddField(pure_utils.Capitalize(name), f, tag)
+			case models.String:
+				customType.AddField(pure_utils.Capitalize(name), s, tag)
+			case models.Timestamp:
+				customType.AddField(pure_utils.Capitalize(name), t, tag)
+			}
+		}
+	}
+	return customType.Build()
+}
+
 func ParseToDataModelObject(table models.Table, jsonBody []byte) (models.PayloadReader, error) {
 	fields := table.Fields
 
-	custom_type := buildDynamicStruct(fields)
+	customType := buildDynamicStruct(fields)
 
-	dynamicStructInstance := custom_type.New()
+	dynamicStructInstance := customType.New()
 	dynamicStructReader := dynamicstruct.NewReader(dynamicStructInstance)
 
 	// This is where errors can happen while parson the json. We could for instance have badly formatted
 	// json, or timestamps.
 	// We could also have more serious errors, like a non-capitalized field in the dynamic struct that
 	// causes a panic. We should manage the errors accordingly.
-	decoder := json.NewDecoder(strings.NewReader(string(jsonBody)))
+	decoder := json.NewDecoder(bytes.NewReader(jsonBody))
 	// Reject fields that are not present in the data model/the dynamic struct
 	decoder.DisallowUnknownFields()
 
@@ -107,7 +110,6 @@ func ParseToDataModelObject(table models.Table, jsonBody []byte) (models.Payload
 	if err != nil {
 		return models.ClientObject{}, err
 	}
-
 	return models.ClientObject{Data: dataAsMap, TableName: table.Name}, nil
 }
 
@@ -130,4 +132,91 @@ func adaptReaderToMap(reader dynamicstruct.Reader, table models.Table) (map[stri
 	}
 
 	return out, nil
+}
+
+type fieldValidator map[models.DataType]func(result gjson.Result) error
+
+type Parser struct {
+	validators fieldValidator
+}
+
+var errIsInvalidJSON = fmt.Errorf("json is invalid")
+var errIsNotNullable = fmt.Errorf("is not nullable")
+var errIsInvalidTimestamp = fmt.Errorf("is not a valid timestamp")
+var errIsInvalidInteger = fmt.Errorf("is not a valid integer")
+var errIsInvalidFloat = fmt.Errorf("is not a valid float")
+var errIsInvalidBoolean = fmt.Errorf("is not a valid boolean")
+var errIsInvalidString = fmt.Errorf("is not a valid string")
+var errIsInvalidDataType = fmt.Errorf("invalid type")
+
+func (p *Parser) ValidatePayload(table models.Table, json []byte) (map[models.FieldName]string, error) {
+	if !gjson.ValidBytes(json) {
+		return nil, errIsInvalidJSON
+	}
+
+	errors := make(map[models.FieldName]string)
+	result := gjson.ParseBytes(json)
+	for name, field := range table.Fields {
+		value := result.Get(string(name))
+		if !value.Exists() {
+			if !field.Nullable {
+				errors[name] = errIsNotNullable.Error()
+			}
+			continue
+		}
+
+		validateField, ok := p.validators[field.DataType]
+		if !ok {
+			return nil, fmt.Errorf("%w: %s", errIsInvalidDataType, field.DataType.String())
+		}
+		if err := validateField(value); err != nil {
+			errors[name] = err.Error()
+		}
+	}
+	if len(errors) > 0 {
+		return errors, nil
+	}
+	return nil, nil
+}
+
+func NewParser() *Parser {
+	validators := fieldValidator{
+		models.Timestamp: func(result gjson.Result) error {
+			_, err := time.Parse(time.RFC3339, result.String())
+			if err != nil {
+				return errIsInvalidTimestamp
+			}
+			return nil
+		},
+		models.Int: func(result gjson.Result) error {
+			_, err := strconv.ParseInt(result.Raw, 10, 64)
+			if err != nil {
+				return errIsInvalidInteger
+			}
+			return nil
+		},
+		models.Float: func(result gjson.Result) error {
+			_, err := strconv.ParseFloat(result.Raw, 64)
+			if err != nil {
+				return errIsInvalidFloat
+			}
+			return nil
+		},
+		models.String: func(result gjson.Result) error {
+			if result.Type != gjson.String {
+				return errIsInvalidString
+			}
+			return nil
+		},
+		models.Bool: func(result gjson.Result) error {
+			if !result.IsBool() {
+				return errIsInvalidBoolean
+			}
+			return nil
+		},
+	}
+
+	return &Parser{
+		validators: validators,
+	}
 }
