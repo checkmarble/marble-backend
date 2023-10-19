@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -38,24 +39,36 @@ func (api *API) handleIngestion() http.HandlerFunc {
 			return
 		}
 
-		object_type := chi.URLParam(r, "object_type")
-		object_body, err := io.ReadAll(r.Body)
+		objectType := chi.URLParam(r, "object_type")
+		objectBody, err := io.ReadAll(r.Body)
 		if err != nil {
 			logger.ErrorContext(ctx, fmt.Sprintf("Error while reading request body bytes in api handle_ingestion: %v", err))
 			http.Error(w, "", http.StatusUnprocessableEntity)
 			return
 		}
-		logger = logger.With(slog.String("object_type", object_type))
+		logger = logger.With(slog.String("object_type", objectType))
 
 		tables := dataModel.Tables
-		table, ok := tables[models.TableName(object_type)]
+		table, ok := tables[models.TableName(objectType)]
 		if !ok {
 			logger.ErrorContext(ctx, "Table not found in data model for organization")
 			http.Error(w, "", http.StatusNotFound)
 			return
 		}
 
-		payload, err := payload_parser.ParseToDataModelObject(table, object_body)
+		parser := payload_parser.NewParser()
+		validationErrors, err := parser.ValidatePayload(table, objectBody)
+		if err != nil {
+			http.Error(w, "", http.StatusUnprocessableEntity)
+			return
+		}
+		if len(validationErrors) > 0 {
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(validationErrors)
+			return
+		}
+
+		payload, err := payload_parser.ParseToDataModelObject(table, objectBody)
 		if errors.Is(err, models.FormatValidationError) {
 			logger.ErrorContext(ctx, fmt.Sprintf("format validation error while parsing to data model object: %v", err))
 			http.Error(w, "", http.StatusUnprocessableEntity)

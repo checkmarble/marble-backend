@@ -46,3 +46,23 @@ var (
 )
 
 var RuleExecutionAuthorizedErrors = []error{NullFieldReadError, NoRowsReadError, DivisionByZeroError}
+
+type PayloadValidationErrors struct {
+	message string
+	errors  map[string]string
+}
+
+func (p PayloadValidationErrors) Error() string {
+	return p.message
+}
+
+func (p PayloadValidationErrors) Errors() map[string]string {
+	return p.errors
+}
+
+func NewPayloadValidationErrors(message string, errors map[string]string) PayloadValidationErrors {
+	return PayloadValidationErrors{
+		message: message,
+		errors:  errors,
+	}
+}

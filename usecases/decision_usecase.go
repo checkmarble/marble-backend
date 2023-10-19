@@ -90,16 +90,20 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 			return models.Decision{}, fmt.Errorf("error getting data model: %w", err)
 		}
 
-		scenarioExecution, err := evaluate_scenario.EvalScenario(ctx, evaluate_scenario.ScenarioEvaluationParameters{
+		evaluationParameters := evaluate_scenario.ScenarioEvaluationParameters{
 			Scenario:  scenario,
 			Payload:   input.PayloadStructWithReader,
 			DataModel: dm,
-		}, evaluate_scenario.ScenarioEvaluationRepositories{
+		}
+
+		evaluationRepositories := evaluate_scenario.ScenarioEvaluationRepositories{
 			EvalScenarioRepository:     usecase.repository,
 			OrgTransactionFactory:      usecase.orgTransactionFactory,
 			IngestedDataReadRepository: usecase.ingestedDataReadRepository,
 			EvaluateRuleAstExpression:  usecase.evaluateRuleAstExpression,
-		}, logger)
+		}
+
+		scenarioExecution, err := evaluate_scenario.EvalScenario(ctx, evaluationParameters, evaluationRepositories, logger)
 		if err != nil {
 			return models.Decision{}, fmt.Errorf("error evaluating scenario: %w", err)
 		}

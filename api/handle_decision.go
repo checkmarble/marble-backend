@@ -51,6 +51,7 @@ func (api *API) handlePostDecision(w http.ResponseWriter, r *http.Request) {
 
 	input := ctx.Value(httpin.Input).(*dto.CreateDecisionInputDto)
 	requestData := input.Body
+
 	logger = logger.With(slog.String("scenarioId", requestData.ScenarioId), slog.String("objectType", requestData.TriggerObjectType), slog.String("organizationId", organizationId))
 
 	dataModelUseCase := api.UsecasesWithCreds(r).NewDataModelUseCase()
@@ -69,9 +70,21 @@ func (api *API) handlePostDecision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	parser := payload_parser.NewParser()
+	validationErrors, err := parser.ValidatePayload(table, requestData.TriggerObjectRaw)
+	if err != nil {
+		http.Error(w, "", http.StatusUnprocessableEntity)
+		return
+	}
+	if len(validationErrors) > 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(validationErrors)
+		return
+	}
+
 	payload, err := payload_parser.ParseToDataModelObject(table, requestData.TriggerObjectRaw)
 	if errors.Is(err, models.FormatValidationError) {
-		http.Error(w, "Format validation error", http.StatusUnprocessableEntity) // 422
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	} else if err != nil {
 		logger.ErrorContext(ctx, "Unexpected error while parsing to data model object:\n"+err.Error())
