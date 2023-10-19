@@ -29,5 +29,6 @@ jobs:
     uses: ./.github/workflows/backend_deploy_workflow.yaml
     with:
       environment: "staging"
+      version: latest
     secrets:
       GCP_SA_KEY: ${{ secrets.GCP_SA_KEY_STAGING }}
