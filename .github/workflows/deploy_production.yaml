@@ -29,6 +29,6 @@ jobs:
     uses: ./.github/workflows/backend_deploy_workflow.yaml
     with:
       environment: "production"
-      version: ${{ github.ref_name }}"
+      version: ${{ github.ref_name }}
     secrets:
       GCP_SA_KEY: ${{ secrets.GCP_SA_KEY_PRODUCTION }}
