@@ -1,5 +1,5 @@
 resource "google_firebase_web_app" "backoffice" {
-  display_name = "backoffice"
+  display_name = "Marble BackOffice"
 
   deletion_policy = "DELETE"
 }
