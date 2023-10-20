@@ -25,7 +25,7 @@ export const Environments: Record<string, Environment> = {
     marbleBackend: new URL("https://api.staging.checkmarble.com"),
     firebaseOptions: {
       apiKey: "AIzaSyAElc2shIKIrYzLSzWmWaZ1C7yEuoS-bBw",
-      authDomain: "marble-backoffice-staging.web.app",
+      authDomain: "backoffice.staging.checkmarble.com",
       projectId: "tokyo-country-381508",
       storageBucket: "tokyo-country-381508.appspot.com",
       messagingSenderId: "1047691849054",

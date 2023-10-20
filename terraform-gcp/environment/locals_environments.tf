@@ -22,10 +22,12 @@ locals {
 
       backoffice = {
         firebase_site_id = "backoffice-marble-test-terraform"
+        domain           = ""
       }
 
-      backoffice_domain = ""
-      frontend_domain   = ""
+      frontend = {
+        domain = ""
+      }
     }
 
     staging = {
@@ -49,10 +51,12 @@ locals {
 
       backoffice = {
         firebase_site_id = "marble-backoffice-staging"
+        domain           = "backoffice.staging.checkmarble.com"
       }
 
-      backoffice_domain = "marble-backoffice-staging.web.app"
-      frontend_domain   = "app.staging.checkmarble.com"
+      frontend = {
+        domain = "app.staging.checkmarble.com"
+      }
     }
 
 
@@ -77,10 +81,13 @@ locals {
 
       backoffice = {
         firebase_site_id = "marble-backoffice-production"
+        domain           = "marble-backoffice-production.web.app"
       }
 
-      backoffice_domain = "marble-backoffice-production.web.app"
-      frontend_domain   = "app.checkmarble.com"
+      frontend = {
+        domain = "app.checkmarble.com"
+      }
+
     }
 
   }
