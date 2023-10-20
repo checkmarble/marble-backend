@@ -1,5 +1,5 @@
 resource "google_firebase_web_app" "frontend" {
-  display_name = "frontend"
+  display_name = "Marble"
 
   deletion_policy = "DELETE"
 }
