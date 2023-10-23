@@ -1,34 +1,6 @@
 locals {
 
   environments = {
-    default = {
-      project_id                    = "marble-test-terraform"
-      terraform_service_account_key = "../service-account-key/marble-test-terraform-ecc0d390a523.json"
-
-      marble_cloud_sql = {
-        name              = "marble"
-        location          = local.location
-        tier              = "db-f1-micro"
-        database_version  = "POSTGRES_14"
-        availability_type = "ZONAL"
-      }
-
-      firebase = {
-        backend_app_id  = "1:1055186671888:web:04ccd4d77997ddf1b5ad95"
-        frontend_app_id = "1:1055186671888:web:cea23ba6e9d095edb5ad95"
-      }
-
-      env_display_name = "staging"
-
-      backoffice = {
-        firebase_site_id = "backoffice-marble-test-terraform"
-        domain           = ""
-      }
-
-      frontend = {
-        domain = ""
-      }
-    }
 
     staging = {
       project_id                    = "tokyo-country-381508"
