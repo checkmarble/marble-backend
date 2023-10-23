@@ -5,7 +5,7 @@ export * from "./IngestionService";
 export * from "./DecisionService";
 export * from "./ApiKeyService";
 export * from "./AstExpressionService";
-export * from "./AstEditorService";
+// export * from "./AstEditorService";
 export * from "./ScenarioService";
 export * from "./DataModelService";
 export * from "./DemoScenarioService";

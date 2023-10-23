@@ -4,11 +4,11 @@ import { useSimpleLoader } from "@/hooks/SimpleLoader";
 import type {
   Iteration,
   Scenario,
-  ScenarioValidation,
+  // ScenarioValidation
 } from "@/models";
 import {
   type ScenariosRepository,
-  validateIteration,
+  // validateIteration,
   fetchScenario,
   fetchIterationsOfScenario,
   fetchIteration,
@@ -99,29 +99,29 @@ export function useSingleScenario({
   };
 }
 
-export function useIterationValidation({
-  service,
-  loadingDispatcher,
-  iterationId,
-}: {
-  service: ScenarioService;
-  loadingDispatcher: LoadingDispatcher;
-  iterationId: string | null;
-}) {
-  const loadIteration = useCallback(async () => {
-    if (iterationId === null) {
-      return null;
-    }
+// export function useIterationValidation({
+//   service,
+//   loadingDispatcher,
+//   iterationId,
+// }: {
+//   service: ScenarioService;
+//   loadingDispatcher: LoadingDispatcher;
+//   iterationId: string | null;
+// }) {
+//   const loadIteration = useCallback(async () => {
+//     if (iterationId === null) {
+//       return null;
+//     }
 
-    return await validateIteration(service.scenariosRepository, iterationId);
-  }, [iterationId, service.scenariosRepository]);
+//     return await validateIteration(service.scenariosRepository, iterationId);
+//   }, [iterationId, service.scenariosRepository]);
 
-  const [iterationValidation] = useSimpleLoader<ScenarioValidation>(
-    loadingDispatcher,
-    loadIteration
-  );
+//   const [iterationValidation] = useSimpleLoader<ScenarioValidation>(
+//     loadingDispatcher,
+//     loadIteration
+//   );
 
-  return {
-    iterationValidation,
-  };
-}
+//   return {
+//     iterationValidation,
+//   };
+// }
