@@ -181,12 +181,14 @@ async function _createDemoDataModel({
     dataType,
     description,
     nullable,
+    isEnum,
   }: {
     parent: string;
     name: string;
     dataType?: DataModelType;
     description?: string;
     nullable?: boolean;
+    isEnum?: boolean;
   }) =>
     createDataModelField(repository, organizationId, {
       tableId: parent,
@@ -194,6 +196,7 @@ async function _createDemoDataModel({
       dataType: dataType ?? "String",
       description: description ?? "",
       nullable: nullable ?? true,
+      isEnum: isEnum ?? false,
     });
 
   // transactions
@@ -202,60 +205,192 @@ async function _createDemoDataModel({
     organizationId,
     {
       tableName: "transactions",
-      description: "Transactions of all companies",
+      description: "All transactions linked to an account or a company",
     }
   );
 
   const fieldTransactionAccountId = await createField({
     parent: transactionTableId,
+    dataType: "String",
     name: "account_id",
-    description: "Account that received the transaction",
+    description: "Account that sent or received the transaction",
   });
-  await createField({ parent: transactionTableId, name: "bic_country" });
-  await createField({ parent: transactionTableId, name: "country" });
-  await createField({ parent: transactionTableId, name: "description" });
-  await createField({ parent: transactionTableId, name: "direction" });
-  await createField({ parent: transactionTableId, name: "status" });
-  await createField({ parent: transactionTableId, name: "title" });
   await createField({
     parent: transactionTableId,
-    name: "amount",
+    dataType: "Bool",
+    name: "card_is_3DS",
+    description:
+      "Flag indicates if the card transaction has been secured by 3DS",
+  });
+  await createField({
+    parent: transactionTableId,
+    dataType: "String",
+    name: "card_merchant_id",
+    description: "Merchant code of a transaction",
+  });
+  await createField({
+    parent: transactionTableId,
+    dataType: "String",
+    name: "card_merchant_name",
+    description: "Merchant name provided by the card scheme",
+  });
+  await createField({
+    parent: transactionTableId,
+    dataType: "String",
+    name: "card_merchant_country",
+    description: "Country of the merchant, for card transaction only",
+  });
+  await createField({
+    parent: transactionTableId,
+    dataType: "String",
+    name: "card_payment_currency",
+    description: "ISO code of the currency used for a card transaction",
+    isEnum: true,
+  });
+  await createField({
+    parent: transactionTableId,
+    dataType: "String",
+    name: "card_payment_type",
+    description:
+      "Indicates how the card transaction was processed and valided. Allow to separate online and physical transactions, as well as reccuring ones",
+    isEnum: true,
+  });
+  await createField({
+    parent: transactionTableId,
+    dataType: "String",
+    name: "category",
+    description:
+      "MCC code of a card transaction. Empty for transfers and direct debit",
+    isEnum: true,
+  });
+  const fieldTransactionCompanyId = await createField({
+    parent: transactionTableId,
+    dataType: "String",
+    name: "company_id",
+    description: "Company linked to the transaction (sender or receiver)",
+  });
+  await createField({
+    parent: transactionTableId,
+    dataType: "String",
+    name: "counterparty_iban",
+    description:
+      "IBAN of a counterparty (sender of beneficiary), used for transfers only",
+  });
+  await createField({
+    parent: transactionTableId,
+    dataType: "String",
+    name: "counterparty_bic",
+    description:
+      "BIC of a counterparty (sender of beneficiary), used for transfers only",
+  });
+  await createField({
+    parent: transactionTableId,
+    dataType: "Timestamp",
+    name: "created_at",
+    description: "Date of creation of the transaction in the system",
+  });
+  await createField({
+    parent: transactionTableId,
+    dataType: "String",
+    name: "creditor_identifier",
+    description:
+      "Information provided by the creditor when sending a direct debit to the account",
+  });
+  await createField({
+    parent: transactionTableId,
+    dataType: "String",
+    name: "direction",
+    description: "Direction of the transaction. Can be PAYIN or PAYOUT",
+    isEnum: true,
+  });
+  await createField({
+    parent: transactionTableId,
+    dataType: "Bool",
+    name: "is_recurring",
+    description:
+      "Flag used for direct debit mandates, indicates if a direct debit is indicated as being recuring",
+  });
+  await createField({
+    parent: transactionTableId,
+    dataType: "String",
+    name: "payment_method",
+    description:
+      "Type of transaction. Can be : TRANSFER, CARD, DIRECT_DEBIT, WALLET_TRANSFER",
+    isEnum: true,
+  });
+  await createField({
+    parent: transactionTableId,
+    dataType: "String",
+    name: "scheme",
+    description:
+      "Indicates the type of direct debit received. Can be B2B or CORE",
+    isEnum: true,
+  });
+  await createField({
+    parent: transactionTableId,
+    dataType: "String",
+    name: "status",
+    description:
+      "Status of the transaction. Can be : PENDING, VALIDATED, CANCELED",
+    isEnum: true,
+  });
+  await createField({
+    parent: transactionTableId,
+    dataType: "Timestamp",
+    name: "transaction_at",
+    description: "Timestamp of the transaction",
+  });
+  await createField({
+    parent: transactionTableId,
     dataType: "Int",
+    name: "value",
+    description: "Amount of the transaction in EUR cents (no decimals)",
   });
 
   // accounts
-
-  // "balance":    {DataType: models.Float, Nullable: true},
-  // "company_id": {DataType: models.String, Nullable: true},
-  // "name":       {DataType: models.String, Nullable: true},
-  // "currency":   {DataType: models.String, Nullable: true},
-  // "is_frozen":  {DataType: models.Bool},
-
   const accountTableId = await createDataModelTable(
     repository,
     organizationId,
     {
       tableName: "accounts",
-      description: "accounts of the clients",
+      description: "Bank accounts owned by the company",
     }
   );
-
-  await createField({
-    parent: accountTableId,
-    name: "balance",
-    dataType: "Int",
-  });
 
   const fieldAccountCompanyId = await createField({
     parent: accountTableId,
     name: "company_id",
+    description: "Company owning the account",
   });
-  await createField({ parent: accountTableId, name: "name" });
-  await createField({ parent: accountTableId, name: "currency" });
   await createField({
     parent: accountTableId,
-    name: "is_frozen",
-    nullable: false,
+    name: "BIC",
+    dataType: "String",
+    description: "BIC of the company's account",
+  });
+  await createField({
+    parent: accountTableId,
+    name: "IBAN",
+    dataType: "String",
+    description: "IBAN of the company's account",
+  });
+  await createField({
+    parent: accountTableId,
+    name: "past_balalnce",
+    dataType: "Int",
+    description: "Balance before the last update",
+  });
+  await createField({
+    parent: accountTableId,
+    name: "balance",
+    dataType: "Int",
+    description: "Account balance in EUR cents (no decimals)",
+  });
+  await createField({
+    parent: accountTableId,
+    name: "created_at",
+    dataType: "Timestamp",
+    description: "Account date of creation",
   });
 
   // companies
@@ -264,13 +399,150 @@ async function _createDemoDataModel({
     organizationId,
     {
       tableName: "companies",
-      description: "",
+      description: "Contains the info on the company details",
     }
   );
-  await createField({ parent: compagnyTableId, name: "name" });
+  await createField({
+    parent: compagnyTableId,
+    dataType: "Int",
+    name: "AML_score",
+    description: "Sensitivy score to money laundering risks",
+  });
+  await createField({
+    parent: compagnyTableId,
+    dataType: "String",
+    name: "zip",
+    description: "Zip code used for the company main office",
+  });
+  await createField({
+    parent: compagnyTableId,
+    dataType: "String",
+    name: "activity_type",
+    description: "NAF code. Main activity declared for the company",
+  });
+  await createField({
+    parent: compagnyTableId,
+    dataType: "String",
+    name: "city",
+    description: "City where the company main office is registered",
+  });
+  await createField({
+    parent: compagnyTableId,
+    dataType: "String",
+    name: "country",
+    description: "Country of incorporation",
+  });
+  await createField({
+    parent: compagnyTableId,
+    dataType: "Timestamp",
+    name: "created_at",
+    description: "Date of creation in the system",
+  });
+  await createField({
+    parent: compagnyTableId,
+    dataType: "String",
+    name: "legal_form",
+    description: "Legal form registered for the company",
+  });
+  await createField({
+    parent: compagnyTableId,
+    dataType: "String",
+    name: "name",
+    description: "Company legal name",
+  });
+  await createField({
+    parent: compagnyTableId,
+    dataType: "Timestamp",
+    name: "registration_month",
+    description: "Date of registration of the company",
+  });
+  await createField({
+    parent: compagnyTableId,
+    dataType: "String",
+    name: "registration_number",
+    description: "Identification in the local commercial register",
+  });
+
+  // users
+  const userTableId = await createDataModelTable(repository, organizationId, {
+    tableName: "users",
+    description: "Information on the users attached to each Company",
+  });
+
+  await createField({
+    parent: userTableId,
+    dataType: "String",
+    name: "city",
+    description: "City of residence",
+  });
+  const fieldUserCompanyId = await createField({
+    parent: userTableId,
+    dataType: "String",
+    name: "company_id",
+    description: "Link to parent company",
+  });
+  await createField({
+    parent: userTableId,
+    dataType: "Timestamp",
+    name: "created_at",
+    description: "Date of creation in the system",
+  });
+  await createField({
+    parent: userTableId,
+    dataType: "String",
+    name: "device_token",
+    description: "Device otken associated with the user",
+  });
+  await createField({
+    parent: userTableId,
+    dataType: "String",
+    name: "email",
+    description: "Email address of the user",
+  });
+  await createField({
+    parent: userTableId,
+    dataType: "Bool",
+    name: "is_frozen",
+    description: "Flag for users frozen by the system",
+  });
+  await createField({
+    parent: userTableId,
+    dataType: "Bool",
+    name: "is_pep",
+    description: "Flat for users identified as PEP",
+  });
+  await createField({
+    parent: userTableId,
+    dataType: "Bool",
+    name: "is_under_sanctions",
+    description: "Flag for users under sanctions",
+  });
+  await createField({
+    parent: userTableId,
+    dataType: "String",
+    name: "name",
+    description: "Name of the user",
+  });
+  await createField({
+    parent: userTableId,
+    dataType: "String",
+    name: "phone",
+    description: "Phone number of the user",
+  });
+  await createField({
+    parent: userTableId,
+    dataType: "String",
+    name: "zip",
+    description: "Zip of residence of the user",
+  });
+  await createField({
+    parent: userTableId,
+    dataType: "String",
+    name: "country",
+    description: "ISO code of the country of residence of the user",
+  });
 
   // links
-
   const datamodel = await fetchDataModelOfOrganization(
     repository,
     organizationId
@@ -280,6 +552,7 @@ async function _createDemoDataModel({
   const fieldCompaniesObjectId =
     datamodel.tables["companies"].fields["object_id"].fieldId;
 
+  // links on transactions
   await createDataModelLink(repository, organizationId, {
     linkName: "account",
     parentTableId: accountTableId,
@@ -287,12 +560,29 @@ async function _createDemoDataModel({
     childTableId: transactionTableId,
     childFieldID: fieldTransactionAccountId,
   });
+  await createDataModelLink(repository, organizationId, {
+    linkName: "company",
+    parentTableId: compagnyTableId,
+    parentFieldId: fieldCompaniesObjectId,
+    childTableId: transactionTableId,
+    childFieldID: fieldTransactionCompanyId,
+  });
 
+  // links on accounts
   await createDataModelLink(repository, organizationId, {
     linkName: "company",
     parentTableId: compagnyTableId,
     parentFieldId: fieldCompaniesObjectId,
     childTableId: accountTableId,
     childFieldID: fieldAccountCompanyId,
+  });
+
+  // links on users
+  await createDataModelLink(repository, organizationId, {
+    linkName: "company",
+    parentTableId: compagnyTableId,
+    parentFieldId: fieldCompaniesObjectId,
+    childTableId: userTableId,
+    childFieldID: fieldUserCompanyId,
   });
 }

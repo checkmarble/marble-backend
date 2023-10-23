@@ -30,7 +30,7 @@ export interface AstNodeEvaluationDto {
 
 export const AstNodeEvaluationSchema = yup.object({
   return_value: ConstantOptionalSchema,
-  errors: yup.array().defined().nullable().of(EvaluationErrorSchema),
+  errors: yup.array().nullable().of(EvaluationErrorSchema),
   children: yup
     .array()
     .of(yup.lazy(() => AstNodeEvaluationSchema.default(null)))
@@ -52,9 +52,9 @@ function lazyObjectOf<Schema extends yup.Schema>(schema: () => Schema) {
 }
 
 export const ScenarioValidationSchema = yup.object({
-  errors: yup.array().defined().of(yup.string().defined()),
-  trigger_evaluation: AstNodeEvaluationSchema,
-  rules_evaluations: lazyObjectOf(() => AstNodeEvaluationSchema),
+  decision: yup.array().of(yup.string().defined()),
+  trigger: AstNodeEvaluationSchema,
+  // rules: lazyObjectOf(() => AstNodeEvaluationSchema),
 });
 
 type ScenarioValidationDto = yup.InferType<typeof ScenarioValidationSchema>;
@@ -73,7 +73,10 @@ export function adaptNodeEvaluation(
 ): AstNodeEvaluation {
   return {
     returnValue: adaptConstantOptional(dto.return_value),
-    errors: dto.errors === null ? null : dto.errors.map(adaptEvaluationError),
+    errors:
+      dto.errors === null || dto.errors === undefined
+        ? null
+        : dto.errors.map(adaptEvaluationError),
     children: (dto.children || []).map(adaptNodeEvaluation),
     namedChildren: MapObjectValues(
       dto.named_children || {},
