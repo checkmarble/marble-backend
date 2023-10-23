@@ -83,16 +83,16 @@ export function useAddDemoScenarios(
           }
         );
 
-        const validation = await validateIteration(
-          service.scenariosRepository,
-          iterationId
-        );
+        // const validation = await validateIteration(
+        //   service.scenariosRepository,
+        //   iterationId
+        // );
 
-        // check for errors in trigger evaluation
-        const errors = nodeEvaluationErrors(validation.triggerEvaluation);
-        if (errors.length > 0) {
-          throw new Error(errors.join("\n"));
-        }
+        // // check for errors in trigger evaluation
+        // const errors = nodeEvaluationErrors(validation.triggerEvaluation);
+        // if (errors.length > 0) {
+        //   throw new Error(errors.join("\n"));
+        // }
 
         const createExampleRule = async (exampleRule: ExampleRule) => {
           const rule = await postRule(
@@ -110,18 +110,18 @@ export function useAddDemoScenarios(
             }
           );
 
-          const validation = await validateIteration(
-            service.scenariosRepository,
-            iterationId
-          );
+          // const validation = await validateIteration(
+          //   service.scenariosRepository,
+          //   iterationId
+          // );
 
-          const errors = scenarioValidationErrors(validation);
-          if (errors.length > 0) {
-            throw new Error(errors.join("\n"));
-          }
+          // const errors = scenarioValidationErrors(validation);
+          // if (errors.length > 0) {
+          //   throw new Error(errors.join("\n"));
+          // }
         };
 
-        // post a rules
+        // post a rule
         for (const exampleRule of demoRules) {
           await createExampleRule(exampleRule);
         }

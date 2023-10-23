@@ -4,7 +4,13 @@ export interface LinkToSingle {
   childFieldName: string;
 }
 
-export type DataModelType = "Bool" | "Int" | "Float" | "String" | "Timestamp" | "unknown"
+export type DataModelType =
+  | "Bool"
+  | "Int"
+  | "Float"
+  | "String"
+  | "Timestamp"
+  | "unknown";
 
 export interface DataModelField {
   fieldId: string;
@@ -38,6 +44,7 @@ export interface CreateDataModelField {
   description: string;
   dataType: DataModelType;
   nullable: boolean;
+  isEnum: boolean;
 }
 
 export interface CreateDataModelLink {
@@ -45,5 +52,5 @@ export interface CreateDataModelLink {
   parentTableId: string;
   parentFieldId: string;
   childTableId: string;
-  childFieldID: string
+  childFieldID: string;
 }
