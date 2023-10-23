@@ -1,10 +1,10 @@
 import { LoadingDispatcher, showLoader } from "@/hooks/Loading";
-import type { AstNodeEvaluation, ScenarioValidation } from "@/models";
+// import type { AstNodeEvaluation, ScenarioValidation } from "@/models";
 import {
   postScenario,
   postIteration,
   patchIteration,
-  validateIteration,
+  // validateIteration,
   postRule,
   updateRule,
   publishIteration,
@@ -18,28 +18,28 @@ export interface DemoScenarioService {
   scenariosRepository: ScenariosRepository;
 }
 
-function nodeEvaluationErrors(evaluation: AstNodeEvaluation): string[] {
-  return [
-    ...(evaluation.errors ?? []).map((e) => e.message),
-    ...evaluation.children.flatMap(nodeEvaluationErrors),
-    ...Object.values(evaluation.namedChildren).flatMap(nodeEvaluationErrors),
-  ];
-}
+// function nodeEvaluationErrors(evaluation: AstNodeEvaluation): string[] {
+//   return [
+//     ...(evaluation.errors ?? []).map((e) => e.message),
+//     ...evaluation.children.flatMap(nodeEvaluationErrors),
+//     ...Object.values(evaluation.namedChildren).flatMap(nodeEvaluationErrors),
+//   ];
+// }
 
-function scenarioValidationErrors(validation: ScenarioValidation): string[] {
-  const errors: string[] = [
-    ...validation.errors.map((e) => `Error: ${e}`),
-    ...nodeEvaluationErrors(validation.triggerEvaluation).map(
-      (e) => `Trigger: ${e}`
-    ),
-    ...Object.values(validation.rulesEvaluations)
-      .map(nodeEvaluationErrors)
-      .flat()
-      .map((e: string) => `Rule: ${e}`),
-  ];
+// function scenarioValidationErrors(validation: ScenarioValidation): string[] {
+//   const errors: string[] = [
+//     ...validation.errors.map((e) => `Error: ${e}`),
+//     ...nodeEvaluationErrors(validation.triggerEvaluation).map(
+//       (e) => `Trigger: ${e}`
+//     ),
+//     ...Object.values(validation.rulesEvaluations)
+//       .map(nodeEvaluationErrors)
+//       .flat()
+//       .map((e: string) => `Rule: ${e}`),
+//   ];
 
-  return errors;
-}
+//   return errors;
+// }
 
 export function useAddDemoScenarios(
   service: DemoScenarioService,

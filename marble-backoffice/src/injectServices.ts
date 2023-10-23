@@ -5,7 +5,7 @@ import type {
   UserService,
   ApiKeyService,
   AstExpressionService,
-  AstEditorService,
+  // AstEditorService,
   ScenarioService,
   DataModelService,
   DemoScenarioService,
@@ -21,7 +21,7 @@ export interface Services {
   userService: UserService;
   apiKeyService: ApiKeyService;
   astExpressionService: AstExpressionService;
-  astEditorService: AstEditorService;
+  // astEditorService: AstEditorService;
   scheduledExecutionService: ScheduledExecutionService;
 }
 
@@ -55,16 +55,16 @@ export function initializeServices(repositories: Repositories) {
     astExpressionService: {
       scenarioRepository: repositories.scenarioRepository,
     },
-    astEditorService: {
-      scenariosRepository: repositories.scenarioRepository,
-    },
+    // astEditorService: {
+    //   scenariosRepository: repositories.scenarioRepository,
+    // },
     demoScenarioService: {
       organizationRepository: repositories.organizationRepository,
       scenariosRepository: repositories.scenarioRepository,
     },
     scheduledExecutionService: {
-      scheduledExecutionRepository: repositories.organizationRepository
-    }
+      scheduledExecutionRepository: repositories.organizationRepository,
+    },
   };
 }
 

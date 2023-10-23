@@ -5,7 +5,7 @@ import type {
   CreateScenario,
   UpdateRule,
   UpdateIteration,
-  AstNode,
+  // AstNode,
 } from "@/models";
 import {
   adaptScenariosApiResult,
@@ -16,7 +16,7 @@ import {
   adaptIterationApiResult,
   adaptIterationWithValidationApiResult,
   adaptListIterationsApiResult,
-  adaptValidateIterationApiResult,
+  // adaptValidateIterationApiResult,
 } from "@/models/IterationDto";
 import { adaptEditorIdentifiers } from "@/models/EditorIdentifiersDto";
 
@@ -127,29 +127,29 @@ export async function updateRule(
   );
 }
 
-export async function validateIteration(
-  repository: ScenariosRepository,
-  iterationId: string
-) {
-  return adaptValidateIterationApiResult(
-    await repository.marbleApi.validateIteration(iterationId)
-  );
-}
+// export async function validateIteration(
+//   repository: ScenariosRepository,
+//   iterationId: string
+// ) {
+//   return adaptValidateIterationApiResult(
+//     await repository.marbleApi.validateIteration(iterationId)
+//   );
+// }
 
-export async function validateIterationWithGivenTriggerOrRule(
-  repository: ScenariosRepository,
-  iterationId: string,
-  triggerOrRule: AstNode,
-  ruleId: string | null
-) {
-  return adaptValidateIterationApiResult(
-    await repository.marbleApi.validateScenarioIterationWithGivenTriggerOrRule(
-      iterationId,
-      triggerOrRule,
-      ruleId
-    )
-  );
-}
+// export async function validateIterationWithGivenTriggerOrRule(
+//   repository: ScenariosRepository,
+//   iterationId: string,
+//   triggerOrRule: AstNode,
+//   ruleId: string | null
+// ) {
+//   return adaptValidateIterationApiResult(
+//     await repository.marbleApi.validateScenarioIterationWithGivenTriggerOrRule(
+//       iterationId,
+//       triggerOrRule,
+//       ruleId
+//     )
+//   );
+// }
 
 export async function publishIteration(
   repository: ScenariosRepository,

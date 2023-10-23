@@ -5,7 +5,7 @@ import {
   adaptConstantOptional,
 } from "./AstExpressionDto";
 import type {
-  ScenarioValidation,
+  // ScenarioValidation,
   AstNodeEvaluation,
   EvaluationError,
 } from "./ScenarioValidation";
@@ -54,10 +54,10 @@ function lazyObjectOf<Schema extends yup.Schema>(schema: () => Schema) {
 export const ScenarioValidationSchema = yup.object({
   decision: yup.array().of(yup.string().defined()),
   trigger: AstNodeEvaluationSchema,
-  // rules: lazyObjectOf(() => AstNodeEvaluationSchema),
+  rules: lazyObjectOf(() => AstNodeEvaluationSchema),
 });
 
-type ScenarioValidationDto = yup.InferType<typeof ScenarioValidationSchema>;
+// type ScenarioValidationDto = yup.InferType<typeof ScenarioValidationSchema>;
 
 export function adaptEvaluationError(dto: EvaluationErrorDto): EvaluationError {
   return {
@@ -73,10 +73,7 @@ export function adaptNodeEvaluation(
 ): AstNodeEvaluation {
   return {
     returnValue: adaptConstantOptional(dto.return_value),
-    errors:
-      dto.errors === null || dto.errors === undefined
-        ? null
-        : dto.errors.map(adaptEvaluationError),
+    errors: dto.errors === null ? null : dto.errors.map(adaptEvaluationError),
     children: (dto.children || []).map(adaptNodeEvaluation),
     namedChildren: MapObjectValues(
       dto.named_children || {},
@@ -85,15 +82,15 @@ export function adaptNodeEvaluation(
   };
 }
 
-export function adaptScenariosValidation(
-  dto: ScenarioValidationDto
-): ScenarioValidation {
-  return {
-    errors: dto.errors,
-    triggerEvaluation: adaptNodeEvaluation(dto.trigger_evaluation),
-    rulesEvaluations: MapObjectValues(
-      dto.rules_evaluations,
-      adaptNodeEvaluation
-    ),
-  };
-}
+// export function adaptScenariosValidation(
+//   dto: ScenarioValidationDto
+// ): ScenarioValidation {
+//   return {
+//     errors: dto.errors,
+//     triggerEvaluation: adaptNodeEvaluation(dto.trigger_evaluation),
+//     rulesEvaluations: MapObjectValues(
+//       dto.rules_evaluations,
+//       adaptNodeEvaluation
+//     ),
+//   };
+// }

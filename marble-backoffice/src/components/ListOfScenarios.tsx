@@ -3,8 +3,8 @@ import { DataGrid } from "@mui/x-data-grid/DataGrid/DataGrid";
 import type { GridRowsProp, GridColDef } from "@mui/x-data-grid/models";
 import GridCellWithHover from "./GridCellWithHover";
 import ListNoData from "./ListNoData";
-import { GridActionsCellItem } from "@mui/x-data-grid/components/cell/GridActionsCellItem";
-import NorthEastIcon from "@mui/icons-material/NorthEast";
+// import { GridActionsCellItem } from "@mui/x-data-grid/components/cell/GridActionsCellItem";
+// import NorthEastIcon from "@mui/icons-material/NorthEast";
 
 interface ListOfScenariosProps {
   scenarios: Scenario[] | null;
@@ -62,24 +62,24 @@ function ListOfScenarios(props: ListOfScenariosProps) {
       flex: 1,
       renderCell: GridCellWithHover,
     },
-    {
-      field: "actions",
-      type: "actions",
-      getActions: (params) => [
-        // only add the item if(props.onUserDetailClick) : see https://stackoverflow.com/questions/44908159/how-to-define-an-array-with-conditional-elements
-        ...(props.onScenarioDetailClick
-          ? [
-              <GridActionsCellItem
-                icon={<NorthEastIcon />}
-                onClick={() =>
-                  props.onScenarioDetailClick(params.row.scenarioId)
-                }
-                label="Details"
-              />,
-            ]
-          : []),
-      ],
-    },
+    // {
+    //   field: "actions",
+    //   type: "actions",
+    //   getActions: (params) => [
+    //     // only add the item if(props.onUserDetailClick) : see https://stackoverflow.com/questions/44908159/how-to-define-an-array-with-conditional-elements
+    //     ...(props.onScenarioDetailClick
+    //       ? [
+    //           <GridActionsCellItem
+    //             icon={<NorthEastIcon />}
+    //             onClick={() =>
+    //               props.onScenarioDetailClick(params.row.scenarioId)
+    //             }
+    //             label="Details"
+    //           />,
+    //         ]
+    //       : []),
+    //   ],
+    // },
   ];
 
   return (
