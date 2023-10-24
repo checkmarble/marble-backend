@@ -27,7 +27,10 @@ locals {
       }
 
       frontend = {
-        domain = "app.staging.checkmarble.com"
+        # fix login popup that open another login popup
+        # domain = "app.staging.checkmarble.com"
+        domain         = "tokyo-country-381508.firebaseapp.com"
+        another_domain = "app.staging.checkmarble.com"
       }
 
       backend = {
