@@ -32,8 +32,8 @@ func (m *DataModelUseCase) CreateField(ctx context.Context, organizationID, tabl
 	return args.String(0), args.Error(1)
 }
 
-func (m *DataModelUseCase) UpdateDataModelField(ctx context.Context, fieldID, description string) error {
-	args := m.Called(ctx, fieldID, description)
+func (m *DataModelUseCase) UpdateDataModelField(ctx context.Context, fieldID string, input models.UpdateDataModelFieldInput) error {
+	args := m.Called(ctx, fieldID, input)
 	return args.Error(0)
 }
 

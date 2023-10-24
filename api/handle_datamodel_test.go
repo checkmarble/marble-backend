@@ -396,7 +396,7 @@ func TestDataModelHandler_UpdateDataModelField(t *testing.T) {
 			WithContext(ctx)
 
 		mockUseCase := new(mocks.DataModelUseCase)
-		mockUseCase.On("UpdateDataModelField", mock.Anything, fieldID, description).
+		mockUseCase.On("UpdateDataModelField", mock.Anything, fieldID, models.UpdateDataModelFieldInput{Description: &description, IsEnum: nil}).
 			Return(nil)
 
 		dataModelHandler := DataModelHandler{
@@ -422,7 +422,7 @@ func TestDataModelHandler_UpdateDataModelField(t *testing.T) {
 			WithContext(ctx)
 
 		mockUseCase := new(mocks.DataModelUseCase)
-		mockUseCase.On("UpdateDataModelField", mock.Anything, fieldID, description).
+		mockUseCase.On("UpdateDataModelField", mock.Anything, fieldID, models.UpdateDataModelFieldInput{Description: &description, IsEnum: nil}).
 			Return(assert.AnError)
 
 		dataModelHandler := DataModelHandler{
