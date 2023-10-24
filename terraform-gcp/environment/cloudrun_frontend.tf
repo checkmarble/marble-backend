@@ -50,8 +50,8 @@ resource "google_cloud_run_v2_service" "frontend" {
         value = data.google_firebase_web_app_config.frontend.storage_bucket
       }
       env {
-        name  = "MARBLE_API_DOMAIN"
-        value = google_cloud_run_v2_service.backend.uri
+        name = "MARBLE_API_DOMAIN"
+        value = local.environment.backend.url
       }
 
       env {
