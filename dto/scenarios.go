@@ -25,15 +25,16 @@ type UpdateScenarioInput struct {
 }
 
 // Scenario iterations
+type UpdateScenarioIterationData struct {
+	TriggerConditionAstExpression *NodeDto `json:"trigger_condition_ast_expression"`
+	ScoreReviewThreshold          *int     `json:"scoreReviewThreshold,omitempty"`
+	ScoreRejectThreshold          *int     `json:"scoreRejectThreshold,omitempty"`
+	Schedule                      *string  `json:"schedule"`
+	BatchTriggerSQL               *string  `json:"batchTriggerSQL"`
+}
 
 type UpdateScenarioIterationBody struct {
-	Body *struct {
-		TriggerConditionAstExpression *NodeDto `json:"trigger_condition_ast_expression"`
-		ScoreReviewThreshold          *int     `json:"scoreReviewThreshold,omitempty"`
-		ScoreRejectThreshold          *int     `json:"scoreRejectThreshold,omitempty"`
-		Schedule                      *string  `json:"schedule"`
-		BatchTriggerSQL               *string  `json:"batchTriggerSQL"`
-	} `json:"body,omitempty"`
+	Body *UpdateScenarioIterationData `json:"body,omitempty"`
 }
 
 type UpdateScenarioIterationInput struct {
@@ -77,10 +78,10 @@ type ListScenarioPublicationsInput struct {
 	ScenarioIterationId *string `in:"query=scenarioIterationID"`
 }
 
-func AdaptCreateScenario(input *CreateScenarioInput) models.CreateScenarioInput {
+func AdaptCreateScenario(input CreateScenarioBody) models.CreateScenarioInput {
 	return models.CreateScenarioInput{
-		Name:              input.Body.Name,
-		Description:       input.Body.Description,
-		TriggerObjectType: input.Body.TriggerObjectType,
+		Name:              input.Name,
+		Description:       input.Description,
+		TriggerObjectType: input.TriggerObjectType,
 	}
 }

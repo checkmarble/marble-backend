@@ -3,12 +3,9 @@ package api
 import (
 	"net/http"
 
-	"github.com/cockroachdb/errors"
+	"github.com/gin-gonic/gin"
 )
 
-func HandleCrash(w http.ResponseWriter, r *http.Request) {
-	err := errors.New("Voluntary crash for test endpoint")
-	if presentError(w, r, err) {
-		return
-	}
+func HandleCrash(c *gin.Context) {
+	c.Status(http.StatusInternalServerError)
 }
