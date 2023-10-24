@@ -29,6 +29,10 @@ locals {
       frontend = {
         domain = "app.staging.checkmarble.com"
       }
+
+      backend = {
+        url = "https://api.staging.checkmarble.com"
+      }
     }
 
 
@@ -60,6 +64,9 @@ locals {
         domain = "app.checkmarble.com"
       }
 
+      backend = {
+        url = "https://api.checkmarble.com"
+      }
     }
 
   }
