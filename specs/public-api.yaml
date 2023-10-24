@@ -1,0 +1,193 @@
+openapi: 3.0.3
+info:
+  title: Marble Public API
+  description: Public API
+  version: 1.0.0
+servers:
+  - url: 'https'
+tags:
+  - name: Authentication
+    description: Route for authentication
+  - name: Ingestion
+    description: Route for ingestion
+  - name: Decision
+    description: Route for decision
+paths:
+  /token:
+    post:
+      tags:
+        - Authentication
+      description: route used to generate a token to be used on the public API endpoints.
+      parameters:
+        - in: header
+          name: X-API-Key
+          schema:
+            type: string
+            format: uuid
+          required: true
+      responses:
+        200:
+          description: A token was successfully generated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/token'
+        400:
+          description: The request did not contain an api key.
+        401:
+          description: The provided api key is invalid.
+        500:
+          description: An error happened while generating the token.
+
+  /ingestion/{object_type}:
+    post:
+      tags:
+        - Ingestion
+      security:
+        - BearerAuth: []
+      description: ingestion endpoint
+      parameters:
+        - in: path
+          name: object_type
+          schema:
+            type: string
+            example: transactions
+          required: true
+          description: name of the object type used for ingestion.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              description: The schema of the object should follow the provided data model.
+      responses:
+        200:
+          description: The object was successfully ingested.
+        400:
+          description: The provided object is invalid.
+        500:
+          description: An error happened while ingesting the object.
+
+  /decision:
+    post:
+      tags:
+        - Decision
+      security:
+        - BearerAuth: []
+      description: decision endpoint
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/decisions_input'
+      responses:
+        200:
+          description: A decision was successfully taken.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/decisions'
+        400:
+          description: The input is invalid.
+        500:
+          description: An error happened while taking a decision.
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    token:
+      type: object
+      properties:
+        access_token:
+          description: The access token.
+          type: string
+          example: <json web token>
+        token_type:
+          description: Type of the token.
+          type: string
+          example: Bearer
+        expires_at:
+          description: Expiration date of the token.
+          type: string
+          format: date-time
+    decisions_input:
+      type: object
+      properties:
+        object_type:
+          description: object type
+          type: string
+          example: transactions
+        scenario_id:
+          description: scenario id
+          type: string
+          format: uuid
+        trigger_object:
+          description: trigger object
+          type: object
+    decisions:
+      type: object
+      properties:
+        created_at:
+          description: Date the decision was taken.
+          type: string
+          format: date-time
+        error:
+          $ref: '#/components/schemas/error'
+        id:
+          description: ID of the returned decision.
+          type: string
+        object_type:
+          description: Object type used to take a decision.
+          type: string
+        outcome:
+          description: Object type used to take a decision.
+          type: string
+        rules:
+          description: ''
+          type: array
+          items:
+            $ref: '#/components/schemas/decision_rule'
+        scenario:
+          $ref: '#/components/schemas/scenario'
+        scheduled_execution_id:
+          description: ''
+          type: string
+        score:
+          description: Score of the decision.
+          type: integer
+        trigger_object:
+          description: Object used to take a decision.
+          type: object
+    scenario:
+      type: object
+      properties:
+        description:
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+        version:
+          type: integer
+    decision_rule:
+      type: object
+      properties:
+        description:
+          type: string
+        error:
+          $ref: '#/components/schemas/error'
+        name:
+          type: string
+        result:
+          type: boolean
+        score_modifier:
+          type: integer
+    error:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
