@@ -78,7 +78,7 @@ import {
 # }
 
 import {
-  id = "projects/${local.project_id}/webApps/${local.environment.firebase.backend_app_id}"
+  id = "projects/${local.project_id}/webApps/${local.environment.firebase.backoffice_app_id}"
   to = google_firebase_web_app.backoffice
 }
 
