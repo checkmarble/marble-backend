@@ -15,8 +15,8 @@ locals {
       }
 
       firebase = {
-        backend_app_id  = "1:1047691849054:web:59e5df4b6dbdacbe60b3cf"
-        frontend_app_id = "1:1047691849054:web:a5b69dd2ac584c1160b3cf"
+        backoffice_app_id = "1:1047691849054:web:59e5df4b6dbdacbe60b3cf"
+        frontend_app_id   = "1:1047691849054:web:a5b69dd2ac584c1160b3cf"
       }
 
       env_display_name = "staging"
@@ -45,8 +45,8 @@ locals {
       }
 
       firebase = {
-        backend_app_id  = "1:280431296971:web:ff089aa051073474f8f64e"
-        frontend_app_id = "1:280431296971:web:bbdcd68f21ce8ee7f8f64e"
+        backoffice_app_id = "1:280431296971:web:ff089aa051073474f8f64e"
+        frontend_app_id   = "1:280431296971:web:bbdcd68f21ce8ee7f8f64e"
       }
 
       env_display_name = "production"
