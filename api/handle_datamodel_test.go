@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-chi/chi/v5"
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -60,13 +60,9 @@ func TestDataModelHandler_GetDataModel(t *testing.T) {
 			},
 		},
 	}
+	ctx := context.WithValue(context.Background(), utils.ContextKeyCredentials, credentials)
 
 	t.Run("nominal", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "http://www.checkmarble.com", nil).
-			WithContext(context.WithValue(context.Background(), utils.ContextKeyCredentials, credentials))
-
-		res := httptest.NewRecorder()
-
 		mockUseCase := new(mocks.DataModelUseCase)
 		mockUseCase.On("GetDataModel", mock.Anything, organizationID).
 			Return(dataModel, nil)
@@ -74,24 +70,26 @@ func TestDataModelHandler_GetDataModel(t *testing.T) {
 		dataModelHandler := DataModelHandler{
 			useCase: mockUseCase,
 		}
-		handler := http.HandlerFunc(dataModelHandler.GetDataModel)
-		handler.ServeHTTP(res, req)
+
+		gin.SetMode(gin.TestMode)
+		router := gin.New()
+		router.GET("/datamodel", dataModelHandler.GetDataModel)
+		request := httptest.NewRequest(http.MethodGet, "https://checkmarble.com/datamodel", nil).
+			WithContext(ctx)
+
+		r := httptest.NewRecorder()
+		router.ServeHTTP(r, request)
 
 		data := map[string]interface{}{
 			"data_model": dto.AdaptDataModelDto(dataModel),
 		}
 		expected, _ := json.Marshal(data)
-		assert.Equal(t, http.StatusOK, res.Code)
-		assert.JSONEq(t, string(expected), res.Body.String())
+		assert.Equal(t, http.StatusOK, r.Code)
+		assert.JSONEq(t, string(expected), r.Body.String())
 		mockUseCase.AssertExpectations(t)
 	})
 
 	t.Run("GetDataModel error", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "http://www.checkmarble.com", nil).
-			WithContext(context.WithValue(context.Background(), utils.ContextKeyCredentials, credentials))
-
-		res := httptest.NewRecorder()
-
 		mockUseCase := new(mocks.DataModelUseCase)
 		mockUseCase.On("GetDataModel", mock.Anything, organizationID).
 			Return(models.DataModel{}, assert.AnError)
@@ -99,10 +97,17 @@ func TestDataModelHandler_GetDataModel(t *testing.T) {
 		dataModelHandler := DataModelHandler{
 			useCase: mockUseCase,
 		}
-		handler := http.HandlerFunc(dataModelHandler.GetDataModel)
-		handler.ServeHTTP(res, req)
 
-		assert.Equal(t, http.StatusInternalServerError, res.Code)
+		gin.SetMode(gin.TestMode)
+		router := gin.New()
+		router.GET("/datamodel", dataModelHandler.GetDataModel)
+		request := httptest.NewRequest(http.MethodGet, "https://checkmarble.com/datamodel", nil).
+			WithContext(ctx)
+
+		r := httptest.NewRecorder()
+		router.ServeHTTP(r, request)
+
+		assert.Equal(t, http.StatusInternalServerError, r.Code)
 		mockUseCase.AssertExpectations(t)
 	})
 }
@@ -115,13 +120,9 @@ func TestDataModelHandler_CreateTable(t *testing.T) {
 		Role:           models.ADMIN,
 	}
 	body := `{"name": "name", "description": "description"}`
+	ctx := context.WithValue(context.Background(), utils.ContextKeyCredentials, credentials)
 
 	t.Run("nominal", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "http://www.checkmarble.com", strings.NewReader(body)).
-			WithContext(context.WithValue(context.Background(), utils.ContextKeyCredentials, credentials))
-
-		res := httptest.NewRecorder()
-
 		mockUseCase := new(mocks.DataModelUseCase)
 		mockUseCase.On("CreateTable", mock.Anything, organizationID, "name", "description").
 			Return(tableID, nil)
@@ -129,21 +130,23 @@ func TestDataModelHandler_CreateTable(t *testing.T) {
 		dataModelHandler := DataModelHandler{
 			useCase: mockUseCase,
 		}
-		handler := http.HandlerFunc(dataModelHandler.CreateTable)
-		handler.ServeHTTP(res, req)
+
+		gin.SetMode(gin.TestMode)
+		router := gin.New()
+		router.POST("/datamodel/tables", dataModelHandler.CreateTable)
+		request := httptest.NewRequest(http.MethodPost, "https://checkmarble.com/datamodel/tables", strings.NewReader(body)).
+			WithContext(ctx)
+
+		r := httptest.NewRecorder()
+		router.ServeHTTP(r, request)
 
 		expected := fmt.Sprintf(`{"id": "%s"}`, tableID)
-		assert.Equal(t, http.StatusOK, res.Code)
-		assert.JSONEq(t, expected, res.Body.String())
+		assert.Equal(t, http.StatusOK, r.Code)
+		assert.JSONEq(t, expected, r.Body.String())
 		mockUseCase.AssertExpectations(t)
 	})
 
 	t.Run("CreateTable error", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "http://www.checkmarble.com", strings.NewReader(body)).
-			WithContext(context.WithValue(context.Background(), utils.ContextKeyCredentials, credentials))
-
-		res := httptest.NewRecorder()
-
 		mockUseCase := new(mocks.DataModelUseCase)
 		mockUseCase.On("CreateTable", mock.Anything, organizationID, "name", "description").
 			Return("", assert.AnError)
@@ -151,24 +154,33 @@ func TestDataModelHandler_CreateTable(t *testing.T) {
 		dataModelHandler := DataModelHandler{
 			useCase: mockUseCase,
 		}
-		handler := http.HandlerFunc(dataModelHandler.CreateTable)
-		handler.ServeHTTP(res, req)
 
-		assert.Equal(t, http.StatusInternalServerError, res.Code)
+		gin.SetMode(gin.TestMode)
+		router := gin.New()
+		router.POST("/datamodel/tables", dataModelHandler.CreateTable)
+		request := httptest.NewRequest(http.MethodPost, "https://checkmarble.com/datamodel/tables", strings.NewReader(body)).
+			WithContext(ctx)
+
+		r := httptest.NewRecorder()
+		router.ServeHTTP(r, request)
+
+		assert.Equal(t, http.StatusInternalServerError, r.Code)
 		mockUseCase.AssertExpectations(t)
 	})
 
 	t.Run("bad data", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "http://www.checkmarble.com", strings.NewReader(`{bad}`)).
-			WithContext(context.WithValue(context.Background(), utils.ContextKeyCredentials, credentials))
-
-		res := httptest.NewRecorder()
-
 		dataModelHandler := DataModelHandler{}
-		handler := http.HandlerFunc(dataModelHandler.CreateTable)
-		handler.ServeHTTP(res, req)
 
-		assert.Equal(t, http.StatusBadRequest, res.Code)
+		gin.SetMode(gin.TestMode)
+		router := gin.New()
+		router.POST("/datamodel/tables", dataModelHandler.CreateTable)
+		request := httptest.NewRequest(http.MethodPost, "https://checkmarble.com/datamodel/tables", strings.NewReader(`{bad}`)).
+			WithContext(ctx)
+
+		r := httptest.NewRecorder()
+		router.ServeHTTP(r, request)
+
+		assert.Equal(t, http.StatusBadRequest, r.Code)
 	})
 }
 
@@ -187,18 +199,9 @@ func TestDataModelHandler_CreateField(t *testing.T) {
 		Nullable:    true,
 		IsEnum:      true,
 	}
+	ctx := context.WithValue(context.Background(), utils.ContextKeyCredentials, credentials)
 
 	t.Run("nominal", func(t *testing.T) {
-		rctx := chi.NewRouteContext()
-		rctx.URLParams.Add("tableID", tableID)
-
-		ctx := context.WithValue(context.Background(), utils.ContextKeyCredentials, credentials)
-		ctx = context.WithValue(ctx, chi.RouteCtxKey, rctx)
-
-		body := `{"name": "name", "description": "description", "type": "Int", "nullable": true, "is_enum": true}`
-		req := httptest.NewRequest(http.MethodGet, "http://www.checkmarble.com/{tableID}", strings.NewReader(body)).
-			WithContext(ctx)
-
 		mockUseCase := new(mocks.DataModelUseCase)
 		mockUseCase.On("CreateField", mock.Anything, organizationID, tableID, field).
 			Return(fieldID, nil)
@@ -206,28 +209,26 @@ func TestDataModelHandler_CreateField(t *testing.T) {
 		dataModelHandler := DataModelHandler{
 			useCase: mockUseCase,
 		}
-		handler := http.HandlerFunc(dataModelHandler.CreateField)
 
-		res := httptest.NewRecorder()
-		handler.ServeHTTP(res, req)
+		gin.SetMode(gin.TestMode)
+		router := gin.New()
+		router.POST("/tables/:tableID/fields", dataModelHandler.CreateField)
+
+		body := strings.NewReader(`{"name": "name", "description": "description", "type": "Int", "nullable": true, "is_enum": true}`)
+		endpoint := fmt.Sprintf("https://checkmarble.com/tables/%s/fields", tableID)
+		request := httptest.NewRequest(http.MethodPost, endpoint, body).
+			WithContext(ctx)
+
+		r := httptest.NewRecorder()
+		router.ServeHTTP(r, request)
 
 		expected := fmt.Sprintf(`{"id": "%s"}`, fieldID)
-		assert.Equal(t, http.StatusOK, res.Code)
-		assert.JSONEq(t, expected, res.Body.String())
+		assert.Equal(t, http.StatusOK, r.Code)
+		assert.JSONEq(t, expected, r.Body.String())
 		mockUseCase.AssertExpectations(t)
 	})
 
 	t.Run("CreateField error", func(t *testing.T) {
-		rctx := chi.NewRouteContext()
-		rctx.URLParams.Add("tableID", tableID)
-
-		ctx := context.WithValue(context.Background(), utils.ContextKeyCredentials, credentials)
-		ctx = context.WithValue(ctx, chi.RouteCtxKey, rctx)
-
-		body := `{"name": "name", "description": "description", "type": "Int", "nullable": true, "is_enum": true}`
-		req := httptest.NewRequest(http.MethodGet, "http://www.checkmarble.com/{tableID}", strings.NewReader(body)).
-			WithContext(ctx)
-
 		mockUseCase := new(mocks.DataModelUseCase)
 		mockUseCase.On("CreateField", mock.Anything, organizationID, tableID, field).
 			Return("", assert.AnError)
@@ -235,13 +236,41 @@ func TestDataModelHandler_CreateField(t *testing.T) {
 		dataModelHandler := DataModelHandler{
 			useCase: mockUseCase,
 		}
-		handler := http.HandlerFunc(dataModelHandler.CreateField)
 
-		res := httptest.NewRecorder()
-		handler.ServeHTTP(res, req)
+		gin.SetMode(gin.TestMode)
+		router := gin.New()
+		router.POST("/tables/:tableID/fields", dataModelHandler.CreateField)
 
-		assert.Equal(t, http.StatusInternalServerError, res.Code)
+		body := strings.NewReader(`{"name": "name", "description": "description", "type": "Int", "nullable": true, "is_enum": true}`)
+		endpoint := fmt.Sprintf("https://checkmarble.com/tables/%s/fields", tableID)
+
+		request := httptest.NewRequest(http.MethodPost, endpoint, body).
+			WithContext(ctx)
+
+		r := httptest.NewRecorder()
+		router.ServeHTTP(r, request)
+
+		assert.Equal(t, http.StatusInternalServerError, r.Code)
 		mockUseCase.AssertExpectations(t)
+	})
+
+	t.Run("bad body", func(t *testing.T) {
+		dataModelHandler := DataModelHandler{}
+
+		gin.SetMode(gin.TestMode)
+		router := gin.New()
+		router.POST("/tables/:tableID/fields", dataModelHandler.CreateField)
+
+		body := strings.NewReader(`{bad}`)
+		endpoint := fmt.Sprintf("https://checkmarble.com/tables/%s/fields", tableID)
+
+		request := httptest.NewRequest(http.MethodPost, endpoint, body).
+			WithContext(ctx)
+
+		r := httptest.NewRecorder()
+		router.ServeHTTP(r, request)
+
+		assert.Equal(t, http.StatusBadRequest, r.Code)
 	})
 }
 
@@ -267,12 +296,9 @@ func TestDataModelHandler_CreateLink(t *testing.T) {
 		link.ChildFieldID,
 	)
 
+	ctx := context.WithValue(context.Background(), utils.ContextKeyCredentials, credentials)
+
 	t.Run("nominal", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), utils.ContextKeyCredentials, credentials)
-
-		req := httptest.NewRequest(http.MethodGet, "http://www.checkmarble.com/{tableID}", strings.NewReader(body)).
-			WithContext(ctx)
-
 		mockUseCase := new(mocks.DataModelUseCase)
 		mockUseCase.On("CreateDataModelLink", mock.Anything, link).
 			Return(nil)
@@ -280,21 +306,22 @@ func TestDataModelHandler_CreateLink(t *testing.T) {
 		dataModelHandler := DataModelHandler{
 			useCase: mockUseCase,
 		}
-		handler := http.HandlerFunc(dataModelHandler.CreateLink)
 
-		res := httptest.NewRecorder()
-		handler.ServeHTTP(res, req)
+		gin.SetMode(gin.TestMode)
+		router := gin.New()
+		router.POST("/datamodel/links", dataModelHandler.CreateLink)
 
-		assert.Equal(t, http.StatusNoContent, res.Code)
+		request := httptest.NewRequest(http.MethodPost, "https://checkmarble.com/datamodel/links", strings.NewReader(body)).
+			WithContext(ctx)
+
+		r := httptest.NewRecorder()
+		router.ServeHTTP(r, request)
+
+		assert.Equal(t, http.StatusNoContent, r.Code)
 		mockUseCase.AssertExpectations(t)
 	})
 
-	t.Run("nominal", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), utils.ContextKeyCredentials, credentials)
-
-		req := httptest.NewRequest(http.MethodGet, "http://www.checkmarble.com/{tableID}", strings.NewReader(body)).
-			WithContext(ctx)
-
+	t.Run("CreateDataModelLink error", func(t *testing.T) {
 		mockUseCase := new(mocks.DataModelUseCase)
 		mockUseCase.On("CreateDataModelLink", mock.Anything, link).
 			Return(assert.AnError)
@@ -302,13 +329,35 @@ func TestDataModelHandler_CreateLink(t *testing.T) {
 		dataModelHandler := DataModelHandler{
 			useCase: mockUseCase,
 		}
-		handler := http.HandlerFunc(dataModelHandler.CreateLink)
 
-		res := httptest.NewRecorder()
-		handler.ServeHTTP(res, req)
+		gin.SetMode(gin.TestMode)
+		router := gin.New()
+		router.POST("/datamodel/links", dataModelHandler.CreateLink)
 
-		assert.Equal(t, http.StatusInternalServerError, res.Code)
+		request := httptest.NewRequest(http.MethodPost, "https://checkmarble.com/datamodel/links", strings.NewReader(body)).
+			WithContext(ctx)
+
+		r := httptest.NewRecorder()
+		router.ServeHTTP(r, request)
+
+		assert.Equal(t, http.StatusInternalServerError, r.Code)
 		mockUseCase.AssertExpectations(t)
+	})
+
+	t.Run("bad body", func(t *testing.T) {
+		dataModelHandler := DataModelHandler{}
+
+		gin.SetMode(gin.TestMode)
+		router := gin.New()
+		router.POST("/datamodel/links", dataModelHandler.CreateLink)
+
+		request := httptest.NewRequest(http.MethodPost, "https://checkmarble.com/datamodel/links", strings.NewReader(`{bad}`)).
+			WithContext(ctx)
+
+		r := httptest.NewRecorder()
+		router.ServeHTTP(r, request)
+
+		assert.Equal(t, http.StatusBadRequest, r.Code)
 	})
 }
 
@@ -321,17 +370,9 @@ func TestDataModelHandler_UpdateDataModelTable(t *testing.T) {
 	tableID := uuid.NewString()
 	description := "new description"
 	body := fmt.Sprintf(`{"description": "%s"}`, description)
+	ctx := context.WithValue(context.Background(), utils.ContextKeyCredentials, credentials)
 
 	t.Run("nominal", func(t *testing.T) {
-		rctx := chi.NewRouteContext()
-		rctx.URLParams.Add("tableID", tableID)
-
-		ctx := context.WithValue(context.Background(), utils.ContextKeyCredentials, credentials)
-		ctx = context.WithValue(ctx, chi.RouteCtxKey, rctx)
-
-		req := httptest.NewRequest(http.MethodGet, "http://www.checkmarble.com/{tableID}", strings.NewReader(body)).
-			WithContext(ctx)
-
 		mockUseCase := new(mocks.DataModelUseCase)
 		mockUseCase.On("UpdateDataModelTable", mock.Anything, tableID, description).
 			Return(nil)
@@ -339,25 +380,23 @@ func TestDataModelHandler_UpdateDataModelTable(t *testing.T) {
 		dataModelHandler := DataModelHandler{
 			useCase: mockUseCase,
 		}
-		handler := http.HandlerFunc(dataModelHandler.UpdateDataModelTable)
 
-		res := httptest.NewRecorder()
-		handler.ServeHTTP(res, req)
+		gin.SetMode(gin.TestMode)
+		router := gin.New()
+		router.PATCH("/datamodel/tables/:tableID", dataModelHandler.UpdateDataModelTable)
 
-		assert.Equal(t, http.StatusNoContent, res.Code)
+		endpoint := fmt.Sprintf("https://checkmarble.com/datamodel/tables/%s", tableID)
+		request := httptest.NewRequest(http.MethodPatch, endpoint, strings.NewReader(body)).
+			WithContext(ctx)
+
+		r := httptest.NewRecorder()
+		router.ServeHTTP(r, request)
+
+		assert.Equal(t, http.StatusNoContent, r.Code)
 		mockUseCase.AssertExpectations(t)
 	})
 
 	t.Run("UpdateDataModelTable error", func(t *testing.T) {
-		rctx := chi.NewRouteContext()
-		rctx.URLParams.Add("tableID", tableID)
-
-		ctx := context.WithValue(context.Background(), utils.ContextKeyCredentials, credentials)
-		ctx = context.WithValue(ctx, chi.RouteCtxKey, rctx)
-
-		req := httptest.NewRequest(http.MethodGet, "http://www.checkmarble.com/{tableID}", strings.NewReader(body)).
-			WithContext(ctx)
-
 		mockUseCase := new(mocks.DataModelUseCase)
 		mockUseCase.On("UpdateDataModelTable", mock.Anything, tableID, description).
 			Return(assert.AnError)
@@ -365,13 +404,37 @@ func TestDataModelHandler_UpdateDataModelTable(t *testing.T) {
 		dataModelHandler := DataModelHandler{
 			useCase: mockUseCase,
 		}
-		handler := http.HandlerFunc(dataModelHandler.UpdateDataModelTable)
 
-		res := httptest.NewRecorder()
-		handler.ServeHTTP(res, req)
+		gin.SetMode(gin.TestMode)
+		router := gin.New()
+		router.PATCH("/datamodel/tables/:tableID", dataModelHandler.UpdateDataModelTable)
 
-		assert.Equal(t, http.StatusInternalServerError, res.Code)
+		endpoint := fmt.Sprintf("https://checkmarble.com/datamodel/tables/%s", tableID)
+		request := httptest.NewRequest(http.MethodPatch, endpoint, strings.NewReader(body)).
+			WithContext(ctx)
+
+		r := httptest.NewRecorder()
+		router.ServeHTTP(r, request)
+
+		assert.Equal(t, http.StatusInternalServerError, r.Code)
 		mockUseCase.AssertExpectations(t)
+	})
+
+	t.Run("bad body", func(t *testing.T) {
+		dataModelHandler := DataModelHandler{}
+
+		gin.SetMode(gin.TestMode)
+		router := gin.New()
+		router.PATCH("/datamodel/tables/:tableID", dataModelHandler.UpdateDataModelTable)
+
+		endpoint := fmt.Sprintf("https://checkmarble.com/datamodel/tables/%s", tableID)
+		request := httptest.NewRequest(http.MethodPatch, endpoint, strings.NewReader(`{bad}`)).
+			WithContext(ctx)
+
+		r := httptest.NewRecorder()
+		router.ServeHTTP(r, request)
+
+		assert.Equal(t, http.StatusBadRequest, r.Code)
 	})
 }
 
@@ -384,17 +447,9 @@ func TestDataModelHandler_UpdateDataModelField(t *testing.T) {
 	fieldID := uuid.NewString()
 	description := "new description"
 	body := fmt.Sprintf(`{"description": "%s"}`, description)
+	ctx := context.WithValue(context.Background(), utils.ContextKeyCredentials, credentials)
 
 	t.Run("nominal", func(t *testing.T) {
-		rctx := chi.NewRouteContext()
-		rctx.URLParams.Add("fieldID", fieldID)
-
-		ctx := context.WithValue(context.Background(), utils.ContextKeyCredentials, credentials)
-		ctx = context.WithValue(ctx, chi.RouteCtxKey, rctx)
-
-		req := httptest.NewRequest(http.MethodGet, "http://www.checkmarble.com/{tableID}", strings.NewReader(body)).
-			WithContext(ctx)
-
 		mockUseCase := new(mocks.DataModelUseCase)
 		mockUseCase.On("UpdateDataModelField", mock.Anything, fieldID, models.UpdateDataModelFieldInput{Description: &description, IsEnum: nil}).
 			Return(nil)
@@ -402,25 +457,23 @@ func TestDataModelHandler_UpdateDataModelField(t *testing.T) {
 		dataModelHandler := DataModelHandler{
 			useCase: mockUseCase,
 		}
-		handler := http.HandlerFunc(dataModelHandler.UpdateDataModelField)
 
-		res := httptest.NewRecorder()
-		handler.ServeHTTP(res, req)
+		gin.SetMode(gin.TestMode)
+		router := gin.New()
+		router.PATCH("/datamodel/fields/:fieldID", dataModelHandler.UpdateDataModelField)
 
-		assert.Equal(t, http.StatusNoContent, res.Code)
+		endpoint := fmt.Sprintf("https://checkmarble.com/datamodel/fields/%s", fieldID)
+		request := httptest.NewRequest(http.MethodPatch, endpoint, strings.NewReader(body)).
+			WithContext(ctx)
+
+		r := httptest.NewRecorder()
+		router.ServeHTTP(r, request)
+
+		assert.Equal(t, http.StatusNoContent, r.Code)
 		mockUseCase.AssertExpectations(t)
 	})
 
 	t.Run("UpdateDataModelField error", func(t *testing.T) {
-		rctx := chi.NewRouteContext()
-		rctx.URLParams.Add("fieldID", fieldID)
-
-		ctx := context.WithValue(context.Background(), utils.ContextKeyCredentials, credentials)
-		ctx = context.WithValue(ctx, chi.RouteCtxKey, rctx)
-
-		req := httptest.NewRequest(http.MethodGet, "http://www.checkmarble.com/{tableID}", strings.NewReader(body)).
-			WithContext(ctx)
-
 		mockUseCase := new(mocks.DataModelUseCase)
 		mockUseCase.On("UpdateDataModelField", mock.Anything, fieldID, models.UpdateDataModelFieldInput{Description: &description, IsEnum: nil}).
 			Return(assert.AnError)
@@ -428,12 +481,36 @@ func TestDataModelHandler_UpdateDataModelField(t *testing.T) {
 		dataModelHandler := DataModelHandler{
 			useCase: mockUseCase,
 		}
-		handler := http.HandlerFunc(dataModelHandler.UpdateDataModelField)
 
-		res := httptest.NewRecorder()
-		handler.ServeHTTP(res, req)
+		gin.SetMode(gin.TestMode)
+		router := gin.New()
+		router.PATCH("/datamodel/fields/:fieldID", dataModelHandler.UpdateDataModelField)
 
-		assert.Equal(t, http.StatusInternalServerError, res.Code)
+		endpoint := fmt.Sprintf("https://checkmarble.com/datamodel/fields/%s", fieldID)
+		request := httptest.NewRequest(http.MethodPatch, endpoint, strings.NewReader(body)).
+			WithContext(ctx)
+
+		r := httptest.NewRecorder()
+		router.ServeHTTP(r, request)
+
+		assert.Equal(t, http.StatusInternalServerError, r.Code)
 		mockUseCase.AssertExpectations(t)
+	})
+
+	t.Run("bad body", func(t *testing.T) {
+		dataModelHandler := DataModelHandler{}
+
+		gin.SetMode(gin.TestMode)
+		router := gin.New()
+		router.PATCH("/datamodel/fields/:fieldID", dataModelHandler.UpdateDataModelField)
+
+		endpoint := fmt.Sprintf("https://checkmarble.com/datamodel/fields/%s", fieldID)
+		request := httptest.NewRequest(http.MethodPatch, endpoint, strings.NewReader(`{bad}`)).
+			WithContext(ctx)
+
+		r := httptest.NewRecorder()
+		router.ServeHTTP(r, request)
+
+		assert.Equal(t, http.StatusBadRequest, r.Code)
 	})
 }

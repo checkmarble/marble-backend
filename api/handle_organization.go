@@ -3,121 +3,105 @@ package api
 import (
 	"net/http"
 
-	"github.com/ggicci/httpin"
+	"github.com/gin-gonic/gin"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func (api *API) handleGetOrganizations() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
+func (api *API) handleGetOrganizations(c *gin.Context) {
+	ctx := c.Request.Context()
 
-		usecase := api.UsecasesWithCreds(r).NewOrganizationUseCase()
-		organizations, err := usecase.GetOrganizations(ctx)
-		if presentError(w, r, err) {
-			return
-		}
-
-		PresentModelWithName(w, "organizations", utils.Map(organizations, dto.AdaptOrganizationDto))
+	usecase := api.UsecasesWithCreds(c.Request).NewOrganizationUseCase()
+	organizations, err := usecase.GetOrganizations(ctx)
+	if presentError(c.Writer, c.Request, err) {
+		return
 	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"organizations": utils.Map(organizations, dto.AdaptOrganizationDto),
+	})
 }
 
-func (api *API) handlePostOrganization() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-
-		inputDto := ctx.Value(httpin.Input).(*dto.CreateOrganizationInputDto).Body
-
-		usecase := api.UsecasesWithCreds(r).NewOrganizationUseCase()
-		organization, err := usecase.CreateOrganization(ctx, models.CreateOrganizationInput{
-			Name:         inputDto.Name,
-			DatabaseName: inputDto.DatabaseName,
-		})
-		if presentError(w, r, err) {
-			return
-		}
-		PresentModelWithName(w, "organization", dto.AdaptOrganizationDto(organization))
+func (api *API) handlePostOrganization(c *gin.Context) {
+	var data dto.CreateOrganizationBodyDto
+	if err := c.ShouldBindJSON(&data); err != nil {
+		c.Status(http.StatusBadRequest)
+		return
 	}
+
+	usecase := api.UsecasesWithCreds(c.Request).NewOrganizationUseCase()
+	organization, err := usecase.CreateOrganization(c.Request.Context(), models.CreateOrganizationInput{
+		Name:         data.Name,
+		DatabaseName: data.DatabaseName,
+	})
+	if presentError(c.Writer, c.Request, err) {
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"organization": dto.AdaptOrganizationDto(organization),
+	})
 }
 
-func requiredOrgIdUrlParam(r *http.Request) (string, error) {
-	return requiredUuidUrlParam(r, "organizationId")
+func (api *API) handleGetOrganizationUsers(c *gin.Context) {
+	organizationID := c.Param("organization_id")
+
+	usecase := api.UsecasesWithCreds(c.Request).NewOrganizationUseCase()
+	users, err := usecase.GetUsersOfOrganization(organizationID)
+	if presentError(c.Writer, c.Request, err) {
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"users": utils.Map(users, dto.AdaptUserDto),
+	})
 }
 
-func (api *API) handleGetOrganizationUsers() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		organizationId, err := requiredOrgIdUrlParam(r)
-		if presentError(w, r, err) {
-			return
-		}
+func (api *API) handleGetOrganization(c *gin.Context) {
+	organizationID := c.Param("organization_id")
 
-		usecase := api.UsecasesWithCreds(r).NewOrganizationUseCase()
-		users, err := usecase.GetUsersOfOrganization(organizationId)
-		if presentError(w, r, err) {
-			return
-		}
+	usecase := api.UsecasesWithCreds(c.Request).NewOrganizationUseCase()
+	organization, err := usecase.GetOrganization(c.Request.Context(), organizationID)
 
-		PresentModelWithName(w, "users", utils.Map(users, dto.AdaptUserDto))
+	if presentError(c.Writer, c.Request, err) {
+		return
 	}
+	c.JSON(http.StatusOK, gin.H{
+		"organization": dto.AdaptOrganizationDto(organization),
+	})
 }
 
-func (api *API) handleGetOrganization() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-
-		organizationId, err := requiredOrgIdUrlParam(r)
-		if presentError(w, r, err) {
-			return
-		}
-
-		usecase := api.UsecasesWithCreds(r).NewOrganizationUseCase()
-		organization, err := usecase.GetOrganization(ctx, organizationId)
-
-		if presentError(w, r, err) {
-			return
-		}
-
-		PresentModelWithName(w, "organization", dto.AdaptOrganizationDto(organization))
+func (api *API) handlePatchOrganization(c *gin.Context) {
+	organizationID := c.Param("organization_id")
+	var data dto.UpdateOrganizationBodyDto
+	if err := c.ShouldBindJSON(&data); err != nil {
+		c.Status(http.StatusBadRequest)
+		return
 	}
+
+	usecase := api.UsecasesWithCreds(c.Request).NewOrganizationUseCase()
+	organization, err := usecase.UpdateOrganization(c.Request.Context(), models.UpdateOrganizationInput{
+		Id:                         organizationID,
+		Name:                       data.Name,
+		DatabaseName:               data.DatabaseName,
+		ExportScheduledExecutionS3: data.ExportScheduledExecutionS3,
+	})
+
+	if presentError(c.Writer, c.Request, err) {
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"organization": dto.AdaptOrganizationDto(organization),
+	})
 }
 
-func (api *API) handlePatchOrganization() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
+func (api *API) handleDeleteOrganization(c *gin.Context) {
+	organizationID := c.Param("organization_id")
 
-		input := ctx.Value(httpin.Input).(*dto.UpdateOrganizationInputDto)
-		requestData := input.Body
-		organizationId := input.OrganizationId
-
-		usecase := api.UsecasesWithCreds(r).NewOrganizationUseCase()
-		organization, err := usecase.UpdateOrganization(ctx, models.UpdateOrganizationInput{
-			Id:                         organizationId,
-			Name:                       requestData.Name,
-			DatabaseName:               requestData.DatabaseName,
-			ExportScheduledExecutionS3: requestData.ExportScheduledExecutionS3,
-		})
-
-		if presentError(w, r, err) {
-			return
-		}
-
-		PresentModelWithName(w, "organization", dto.AdaptOrganizationDto(organization))
+	usecase := api.UsecasesWithCreds(c.Request).NewOrganizationUseCase()
+	err := usecase.DeleteOrganization(c.Request.Context(), organizationID)
+	if presentError(c.Writer, c.Request, err) {
+		return
 	}
-}
-
-func (api *API) handleDeleteOrganization() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-
-		organizationId := ctx.Value(httpin.Input).(*dto.DeleteOrganizationInput).OrganizationId
-
-		usecase := api.UsecasesWithCreds(r).NewOrganizationUseCase()
-		err := usecase.DeleteOrganization(ctx, organizationId)
-		if presentError(w, r, err) {
-			return
-		}
-		PresentNothing(w)
-	}
+	c.Status(http.StatusNoContent)
 }
