@@ -67,7 +67,7 @@ func (m *Database) UpdateDataModelTable(ctx context.Context, tableID, descriptio
 	return args.Error(0)
 }
 
-func (m *Database) UpdateDataModelField(ctx context.Context, fieldID, description string) error {
-	args := m.Called(ctx, fieldID, description)
+func (m *Database) UpdateDataModelField(ctx context.Context, fieldID string, input models.UpdateDataModelFieldInput) error {
+	args := m.Called(ctx, fieldID, input)
 	return args.Error(0)
 }

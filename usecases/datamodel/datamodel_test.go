@@ -268,28 +268,28 @@ func TestUseCase_UpdateDataModelField(t *testing.T) {
 
 	t.Run("nominal", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
-		mockRepository.On("UpdateDataModelField", mock.Anything, fieldID, description).
+		mockRepository.On("UpdateDataModelField", mock.Anything, fieldID, models.UpdateDataModelFieldInput{Description: &description, IsEnum: nil}).
 			Return(nil)
 
 		useCase := UseCase{
 			repository: mockRepository,
 		}
 
-		err := useCase.UpdateDataModelField(context.Background(), fieldID, description)
+		err := useCase.UpdateDataModelField(context.Background(), fieldID, models.UpdateDataModelFieldInput{Description: &description, IsEnum: nil})
 		assert.NoError(t, err)
 		mockRepository.AssertExpectations(t)
 	})
 
 	t.Run("UpdateDataModelField error", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
-		mockRepository.On("UpdateDataModelField", mock.Anything, fieldID, description).
+		mockRepository.On("UpdateDataModelField", mock.Anything, fieldID, models.UpdateDataModelFieldInput{Description: &description, IsEnum: nil}).
 			Return(assert.AnError)
 
 		useCase := UseCase{
 			repository: mockRepository,
 		}
 
-		err := useCase.UpdateDataModelField(context.Background(), fieldID, description)
+		err := useCase.UpdateDataModelField(context.Background(), fieldID, models.UpdateDataModelFieldInput{Description: &description, IsEnum: nil})
 		assert.Error(t, err)
 		mockRepository.AssertExpectations(t)
 	})
