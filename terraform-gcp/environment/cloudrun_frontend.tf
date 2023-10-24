@@ -32,7 +32,7 @@ resource "google_cloud_run_v2_service" "frontend" {
 
       env {
         name  = "FIREBASE_AUTH_DOMAIN"
-        value = data.google_firebase_web_app_config.frontend.auth_domain
+        value = local.environment.frontend.domain
       }
 
       env {
