@@ -165,6 +165,11 @@ type DataModelField struct {
 	IsEnum      bool   `json:"is_enum"`
 }
 
+type UpdateDataModelFieldInput struct {
+	Description *string
+	IsEnum      *bool
+}
+
 type DataModelTableField struct {
 	TableID          string
 	OrganizationID   string

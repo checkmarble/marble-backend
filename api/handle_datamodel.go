@@ -17,7 +17,7 @@ type dataModelUseCase interface {
 	CreateTable(ctx context.Context, organizationID, name, description string) (string, error)
 	UpdateDataModelTable(ctx context.Context, tableID, description string) error
 	CreateField(ctx context.Context, organizationID, tableID string, field models.DataModelField) (string, error)
-	UpdateDataModelField(ctx context.Context, fieldID, description string) error
+	UpdateDataModelField(ctx context.Context, fieldID string, input models.UpdateDataModelFieldInput) error
 	DeleteDataModel(ctx context.Context, organizationID string) error
 	CreateDataModelLink(ctx context.Context, link models.DataModelLink) error
 }
@@ -86,6 +86,11 @@ type createFieldInput struct {
 	IsEnum      bool   `json:"is_enum"`
 }
 
+type updateFieldInput struct {
+	Description *string `json:"description"`
+	IsEnum      *bool   `json:"is_enum"`
+}
+
 func (d *DataModelHandler) CreateField(w http.ResponseWriter, r *http.Request) {
 	organizationID, err := utils.OrganizationIdFromRequest(r)
 	if presentError(w, r, err) {
@@ -115,14 +120,17 @@ func (d *DataModelHandler) CreateField(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *DataModelHandler) UpdateDataModelField(w http.ResponseWriter, r *http.Request) {
-	var input createFieldInput
+	var input updateFieldInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	fieldID := chi.URLParam(r, "fieldID")
 
-	err := d.useCase.UpdateDataModelField(r.Context(), fieldID, input.Description)
+	err := d.useCase.UpdateDataModelField(r.Context(), fieldID, models.UpdateDataModelFieldInput{
+		Description: input.Description,
+		IsEnum:      input.IsEnum,
+	})
 	if presentError(w, r, err) {
 		return
 	}

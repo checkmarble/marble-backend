@@ -12,7 +12,7 @@ type dataModelRepository interface {
 	CreateDataModelTable(ctx context.Context, organizationID, name, description string, defaultFields []models.DataModelField) (string, error)
 	UpdateDataModelTable(ctx context.Context, tableID, description string) error
 	CreateDataModelField(ctx context.Context, organizationID, tableID string, field models.DataModelField) (string, error)
-	UpdateDataModelField(ctx context.Context, fieldID, description string) error
+	UpdateDataModelField(ctx context.Context, fieldID string, input models.UpdateDataModelFieldInput) error
 	CreateDataModelLink(ctx context.Context, link models.DataModelLink) error
 	DeleteDataModel(ctx context.Context, organizationID string) error
 }
@@ -58,8 +58,8 @@ func (u *UseCase) CreateField(ctx context.Context, organizationID, tableID strin
 	return fieldID, nil
 }
 
-func (u *UseCase) UpdateDataModelField(ctx context.Context, fieldID, description string) error {
-	err := u.repository.UpdateDataModelField(ctx, fieldID, description)
+func (u *UseCase) UpdateDataModelField(ctx context.Context, fieldID string, input models.UpdateDataModelFieldInput) error {
+	err := u.repository.UpdateDataModelField(ctx, fieldID, input)
 	if err != nil {
 		return fmt.Errorf("repository.UpdateDataModelField error: %w", err)
 	}

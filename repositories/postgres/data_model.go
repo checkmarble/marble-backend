@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -180,14 +181,22 @@ func (db *Database) CreateDataModelField(ctx context.Context, organizationID, ta
 	return fieldID, nil
 }
 
-func (db *Database) UpdateDataModelField(ctx context.Context, fieldID, description string) error {
-	query := `
-		UPDATE data_model_fields
-		SET description = $2
-		WHERE id = $1
-	`
+func (db *Database) UpdateDataModelField(ctx context.Context, fieldID string, input models.UpdateDataModelFieldInput) error {
+	query := NewQueryBuilder().
+		Update("data_model_fields").
+		Where(squirrel.Eq{"id": fieldID})
+	if input.Description != nil {
+		query = query.Set("description", *input.Description)
+	}
+	if input.IsEnum != nil {
+		query = query.Set("is_enum", *input.IsEnum)
+	}
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return fmt.Errorf("query.ToSql error: %w", err)
+	}
 
-	_, err := db.pool.Exec(ctx, query, fieldID, description)
+	_, err = db.pool.Exec(ctx, sql, args...)
 	if err != nil {
 		return fmt.Errorf("pool.Exec error: %w", err)
 	}
