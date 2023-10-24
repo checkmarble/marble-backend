@@ -36,6 +36,7 @@ resource "google_project_service" "services" {
     "cloudscheduler.googleapis.com", # to create cloud scheduler jobs
     "firebase.googleapis.com",       # to create firebase projects
     # "firebasehosting.googleapis.com", # to create firebase hosting sites (unused)
+    "cloudidentity.googleapis.com",   # to create identity sources
     "identitytoolkit.googleapis.com", # to setup firebase authentication using google as an identity provider
   ])
   project = local.project_id

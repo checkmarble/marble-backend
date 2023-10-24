@@ -2,7 +2,7 @@
   "projects": {
     "default": "tokyo-country-381508",
     "staging": "tokyo-country-381508",
-    "production": "marble-prod-1",
+    "production": "marble-prod-1"
   },
   "targets": {
     "tokyo-country-381508": {
