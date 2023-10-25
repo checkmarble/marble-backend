@@ -16,6 +16,11 @@ resource "google_identity_platform_config" "auth" {
     anonymous {
       enabled = false
     }
+
+    email {
+      enabled           = true
+      password_required = true
+    }
   }
 
   authorized_domains = compact([
