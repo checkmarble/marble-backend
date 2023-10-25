@@ -5,7 +5,6 @@ locals {
   }
 
   environments = {
-
     staging = {
       project_id                    = "tokyo-country-381508"
       terraform_service_account_key = "../service-account-key/tokyo-country-381508-1aa0f843ec5b.json"
@@ -31,14 +30,16 @@ locals {
       }
 
       frontend = {
+        image = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-frontend:latest"
         # fix login popup that open another login popup
         # domain = "app.staging.checkmarble.com"
-        domain         = "tokyo-country-381508.firebaseapp.com"
-        another_domain = "app.staging.checkmarble.com"
+        domain                    = "tokyo-country-381508.firebaseapp.com"
+        another_authorized_domain = "app.staging.checkmarble.com"
       }
 
       backend = {
-        url = "https://api.staging.checkmarble.com"
+        image = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:latest"
+        url   = "https://api.staging.checkmarble.com"
       }
     }
 
@@ -68,11 +69,14 @@ locals {
       }
 
       frontend = {
-        domain = "app.checkmarble.com"
+        image                     = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-frontend:v0.0.7"
+        domain                    = "marble-prod-1.firebaseapp.com"
+        another_authorized_domain = "app.checkmarble.com"
       }
 
       backend = {
-        url = "https://api.checkmarble.com"
+        image = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:v0.0.19"
+        url   = "https://api.checkmarble.com"
       }
     }
 
