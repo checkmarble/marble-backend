@@ -51,13 +51,13 @@ resource "google_cloud_run_v2_service" "frontend" {
       }
 
       env {
-        name = "MARBLE_API_DOMAIN"
+        name  = "MARBLE_API_DOMAIN"
         value = local.environment.backend.url
       }
 
       env {
         name  = "MARBLE_APP_DOMAIN"
-        value = local.environment.frontend_domain
+        value = local.environment.frontend.domain
       }
 
       env {
@@ -66,12 +66,12 @@ resource "google_cloud_run_v2_service" "frontend" {
       }
 
       env {
-        name = "SENTRY_DSN"
+        name  = "SENTRY_DSN"
         value = local.sentry_auth.dsn
       }
 
       env {
-        name = "SENTRY_ENVIRONMENT"
+        name  = "SENTRY_ENVIRONMENT"
         value = local.environment.env_display_name
       }
 
