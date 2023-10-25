@@ -54,6 +54,8 @@ func initRouter(ctx context.Context, conf AppConfiguration, deps dependencies) *
 
 	router := r.Use(deps.Authentication.Middleware)
 
+	router.GET("/apikeys", api.HasPermission(models.APIKEY_READ), deps.ApiKeysHandler.GetApiKeys)
+
 	router.GET("/data-model", api.HasPermission(models.DATA_MODEL_READ), deps.DataModelHandler.GetDataModel)
 	router.POST("/data-model/tables", api.HasPermission(models.DATA_MODEL_WRITE), deps.DataModelHandler.CreateTable)
 	router.PATCH("/data-model/tables/:tableID", api.HasPermission(models.DATA_MODEL_WRITE), deps.DataModelHandler.UpdateDataModelTable)

@@ -5,20 +5,19 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang-jwt/jwt/v4"
+
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
-
-	"github.com/golang-jwt/jwt/v4"
 )
 
 type MarbleJwtRepository struct {
 	jwtSigningPrivateKey rsa.PrivateKey
 }
 
-// We add jwt.RegisteredClaims as an embedded type, to provide fields like expiry time
 type Claims struct {
-	Credentials dto.Credentials `json:"credentials"`
 	jwt.RegisteredClaims
+	Credentials dto.Credentials `json:"credentials"`
 }
 
 var ValidationAlgo = jwt.SigningMethodRS256
