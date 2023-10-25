@@ -16,6 +16,7 @@ var FuncOperators = []Function{
 	FUNC_LESS,
 	FUNC_LESS_OR_EQUAL,
 	FUNC_EQUAL,
+	FUNC_NOT_EQUAL,
 	FUNC_IS_IN_LIST,
 	FUNC_IS_NOT_IN_LIST,
 }
@@ -31,6 +32,7 @@ const (
 	FUNC_LESS
 	FUNC_LESS_OR_EQUAL
 	FUNC_EQUAL
+	FUNC_NOT_EQUAL
 	FUNC_NOT
 	FUNC_AND
 	FUNC_OR
@@ -115,6 +117,11 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 	FUNC_EQUAL: {
 		DebugName:         "FUNC_EQUAL",
 		AstName:           "=",
+		NumberOfArguments: 2,
+	},
+	FUNC_NOT_EQUAL: {
+		DebugName:         "FUNC_NOT_EQUAL",
+		AstName:           "≠",
 		NumberOfArguments: 2,
 	},
 	FUNC_NOT: {

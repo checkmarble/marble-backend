@@ -41,6 +41,7 @@ func NewAstEvaluationEnvironment() AstEvaluationEnvironment {
 	environment.AddEvaluator(ast.FUNC_LESS, evaluate.NewComparison(ast.FUNC_LESS))
 	environment.AddEvaluator(ast.FUNC_LESS_OR_EQUAL, evaluate.NewComparison(ast.FUNC_LESS_OR_EQUAL))
 	environment.AddEvaluator(ast.FUNC_EQUAL, evaluate.Equal{})
+	environment.AddEvaluator(ast.FUNC_NOT_EQUAL, evaluate.NotEqual{})
 	environment.AddEvaluator(ast.FUNC_NOT, evaluate.Not{})
 	environment.AddEvaluator(ast.FUNC_AND, evaluate.BooleanArithmetic{Function: ast.FUNC_AND})
 	environment.AddEvaluator(ast.FUNC_OR, evaluate.BooleanArithmetic{Function: ast.FUNC_OR})
