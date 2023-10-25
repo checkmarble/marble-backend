@@ -9,7 +9,6 @@
 
 resource "google_identity_platform_config" "auth" {
   project = local.project_id
-  #   autodelete_anonymous_users = true
 
   sign_in {
     allow_duplicate_emails = false
