@@ -20,7 +20,7 @@ resource "google_cloud_run_v2_job" "migrations" {
       service_account = google_service_account.backend_service_account.email
 
       containers {
-        image = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:latest"
+        image = local.environment.backend.image
 
         env {
           name  = "PG_HOSTNAME"

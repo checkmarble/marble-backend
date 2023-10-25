@@ -19,7 +19,7 @@ resource "google_cloud_run_v2_job" "data_ingestion" {
       service_account = google_service_account.backend_service_account.email
 
       containers {
-        image = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:latest"
+        image = local.environment.backend.image
 
         env {
           name  = "PG_HOSTNAME"
@@ -68,7 +68,7 @@ resource "google_cloud_run_v2_job" "data_ingestion" {
 
   lifecycle {
     ignore_changes = [
-      launch_stage,
+      launch_stage
     ]
   }
 }

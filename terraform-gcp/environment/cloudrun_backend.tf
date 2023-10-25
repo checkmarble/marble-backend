@@ -21,7 +21,7 @@ resource "google_cloud_run_v2_service" "backend" {
     }
 
     containers {
-      image = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:latest"
+      image = local.environment.backend.image
 
       # Uncomment and deploy to add an admin
       # env {
@@ -125,8 +125,6 @@ resource "google_cloud_run_v2_service" "backend" {
       }
     }
   }
-
-
   traffic {
     type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
     percent = 100
@@ -138,6 +136,10 @@ resource "google_cloud_run_v2_service" "backend" {
     google_secret_manager_secret_iam_member.secret_access_aws_access_key,
     google_secret_manager_secret_iam_member.secret_access_authentication_jwt_signing_key,
   ]
+
+  # lifecycle {
+  #   ignore_changes = [template[0].containers[0].image]
+  # }
 }
 
 # Allow unauthenticated invocations of cloud run service

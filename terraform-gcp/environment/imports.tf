@@ -91,9 +91,3 @@ import {
   id = "projects/${local.project_id}/sites/${local.environment.backoffice.firebase_site_id}"
   to = google_firebase_hosting_site.backoffice
 }
-
-
-# import {
-#   id = "projects/${local.project_id}/sites/${local.environment.frontend.firebase_site_id}/customDomains/${local.environment.frontend.domain}"
-#   to = google_firebase_hosting_custom_domain.frontend
-# }
