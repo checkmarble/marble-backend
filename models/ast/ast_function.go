@@ -17,6 +17,7 @@ var FuncOperators = []Function{
 	FUNC_LESS_OR_EQUAL,
 	FUNC_EQUAL,
 	FUNC_IS_IN_LIST,
+	FUNC_IS_NOT_IN_LIST,
 }
 
 const (
