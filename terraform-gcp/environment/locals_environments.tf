@@ -1,5 +1,9 @@
 locals {
 
+  sentry_auth = {
+    dsn = "https://aca3c26a7cb6d88c8317dfccba4726a0@o4506060675088384.ingest.sentry.io/4506060678037504"
+  }
+
   environments = {
 
     staging = {

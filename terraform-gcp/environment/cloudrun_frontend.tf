@@ -49,14 +49,30 @@ resource "google_cloud_run_v2_service" "frontend" {
         name  = "FIREBASE_STORAGE_BUCKET"
         value = data.google_firebase_web_app_config.frontend.storage_bucket
       }
+
       env {
         name = "MARBLE_API_DOMAIN"
         value = local.environment.backend.url
       }
 
       env {
+        name  = "MARBLE_APP_DOMAIN"
+        value = local.environment.frontend_domain
+      }
+
+      env {
         name  = "NODE_ENV"
         value = "production"
+      }
+
+      env {
+        name = "SENTRY_DSN"
+        value = local.sentry_auth.dsn
+      }
+
+      env {
+        name = "SENTRY_ENVIRONMENT"
+        value = local.environment.env_display_name
       }
 
       env {
