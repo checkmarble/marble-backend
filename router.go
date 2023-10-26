@@ -22,7 +22,7 @@ func corsOption(env string) cors.Config {
 
 	return cors.Config{
 		AllowOrigins:     allowedOrigins,
-		AllowMethods:     []string{http.MethodHead, http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodPost},
+		AllowMethods:     []string{http.MethodOptions, http.MethodHead, http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodPost},
 		AllowHeaders:     []string{"Authorization", "Content-Type", "X-Api-Key"},
 		AllowCredentials: false,
 		MaxAge:           12 * time.Hour,
