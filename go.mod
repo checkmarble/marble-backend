@@ -5,6 +5,8 @@ go 1.21
 require (
 	cloud.google.com/go/storage v1.32.0
 	firebase.google.com/go/v4 v4.12.0
+	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.20.0
+	github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.44.0
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/adhocore/gronx v1.6.5
 	github.com/aws/aws-sdk-go-v2 v1.21.0
@@ -12,6 +14,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.80
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.38.5
 	github.com/cockroachdb/errors v1.11.0
+	github.com/exaring/otelpgx v0.5.2
 	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-playground/validator/v10 v10.14.0
@@ -26,6 +29,10 @@ require (
 	github.com/pressly/goose/v3 v3.15.0
 	github.com/stretchr/testify v1.8.4
 	github.com/tidwall/gjson v1.17.0
+	go.opentelemetry.io/contrib/detectors/gcp v1.20.0
+	go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin v0.45.0
+	go.opentelemetry.io/otel v1.19.0
+	go.opentelemetry.io/otel/sdk v1.19.0
 	google.golang.org/api v0.138.0
 )
 
@@ -36,7 +43,10 @@ require (
 	cloud.google.com/go/firestore v1.12.0 // indirect
 	cloud.google.com/go/iam v1.1.2 // indirect
 	cloud.google.com/go/longrunning v0.5.1 // indirect
+	cloud.google.com/go/trace v1.10.1 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
+	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.19.1 // indirect
+	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.44.0 // indirect
 	github.com/MicahParks/keyfunc v1.9.0 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
@@ -69,6 +79,8 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
 	github.com/getsentry/sentry-go v0.18.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
+	github.com/go-logr/logr v1.2.4 // indirect
+	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
@@ -113,14 +125,16 @@ require (
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
+	go.opentelemetry.io/otel/metric v1.19.0 // indirect
+	go.opentelemetry.io/otel/trace v1.19.0 // indirect
 	golang.org/x/arch v0.3.0 // indirect
-	golang.org/x/crypto v0.12.0 // indirect
+	golang.org/x/crypto v0.13.0 // indirect
 	golang.org/x/mod v0.12.0 // indirect
-	golang.org/x/net v0.14.0 // indirect
+	golang.org/x/net v0.15.0 // indirect
 	golang.org/x/oauth2 v0.11.0 // indirect
 	golang.org/x/sync v0.3.0 // indirect
-	golang.org/x/sys v0.11.0 // indirect
-	golang.org/x/text v0.12.0 // indirect
+	golang.org/x/sys v0.12.0 // indirect
+	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.12.1-0.20230815132531-74c255bcf846 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect

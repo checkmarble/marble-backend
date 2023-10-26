@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -47,8 +48,13 @@ func New(conf Configuration) (*Database, error) {
 		conf.Password,
 		conf.Database,
 	)
+	cfg, err := pgxpool.ParseConfig(connectionString)
+	if err != nil {
+		return nil, fmt.Errorf("create connection pool: %w", err)
+	}
+	cfg.ConnConfig.Tracer = otelpgx.NewTracer()
 
-	pool, err := pgxpool.New(context.Background(), connectionString)
+	pool, err := pgxpool.NewWithConfig(context.Background(), cfg)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create connection pool: %w", err)
 	}

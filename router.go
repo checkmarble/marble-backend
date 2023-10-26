@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 
 	"github.com/checkmarble/marble-backend/api"
 	"github.com/checkmarble/marble-backend/api/middleware"
@@ -37,15 +38,17 @@ func initRouter(ctx context.Context, conf AppConfiguration, deps dependencies) *
 	if conf.env != "DEV" {
 		gin.SetMode(gin.ReleaseMode)
 	}
-
 	logger := utils.LoggerFromContext(ctx)
 	loggingMiddleware := middleware.NewLogging(logger, middleware.WithIgnorePath([]string{"/liveness"}))
+	storeLoggerMiddleware := utils.StoreLoggerInContextMiddleware(logger)
 
 	r := gin.New()
 
 	r.Use(gin.Recovery())
 	r.Use(cors.New(corsOption(conf.env)))
 	r.Use(loggingMiddleware)
+	r.Use(storeLoggerMiddleware)
+	r.Use(otelgin.Middleware("marble-backend"))
 	r.Use(utils.StoreLoggerInContextMiddleware(logger))
 
 	r.GET("/liveness", api.HandleLivenessProbe)
