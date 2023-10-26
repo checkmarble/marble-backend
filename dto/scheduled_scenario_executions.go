@@ -33,7 +33,3 @@ func AdaptScheduledExecutionDto(ExecutionBatch models.ScheduledExecution) APISch
 		Manual:                    ExecutionBatch.Manual,
 	}
 }
-
-type ListScheduledExecutionInput struct {
-	ScenarioId string `in:"query=scenario_id"`
-}

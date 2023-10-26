@@ -76,24 +76,6 @@ type UpdateCustomListInputDto struct {
 	Body         *UpdateCustomListBodyDto `in:"body=json"`
 }
 
-type GetCustomListInputDto struct {
-	CustomListID string `in:"path=customListId"`
-}
-
-type DeleteCustomListInputDto struct {
-	CustomListID string `in:"path=customListId"`
-}
-
-type CreateCustomListValueInputDto struct {
-	CustomListID string                        `in:"path=customListId"`
-	Body         *CreateCustomListValueBodyDto `in:"body=json"`
-}
-
 type CreateCustomListValueBodyDto struct {
 	Value string `json:"value"`
-}
-
-type DeleteCustomListValueInputDto struct {
-	CustomListID      string `in:"path=customListId"`
-	CustomListValueId string `in:"path=customListValueId"`
 }

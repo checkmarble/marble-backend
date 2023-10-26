@@ -17,10 +17,6 @@ type CreateDecisionBody struct {
 	TriggerObjectType string          `json:"object_type"`
 }
 
-type CreateDecisionInputDto struct {
-	Body *CreateDecisionBody `in:"body=json"`
-}
-
 type APIDecisionRule struct {
 	Name          string    `json:"name"`
 	Description   string    `json:"description"`

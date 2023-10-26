@@ -10,18 +10,9 @@ type CreateScenarioBody struct {
 	TriggerObjectType string `json:"triggerObjectType"`
 }
 
-type CreateScenarioInput struct {
-	Body *CreateScenarioBody `in:"body=json"`
-}
-
 type UpdateScenarioBody struct {
 	Name        *string `json:"name,omitempty"`
 	Description *string `json:"description,omitempty"`
-}
-
-type UpdateScenarioInput struct {
-	ScenarioId string              `in:"path=scenarioId"`
-	Body       *UpdateScenarioBody `in:"body=json"`
 }
 
 // Scenario iterations
@@ -37,11 +28,6 @@ type UpdateScenarioIterationBody struct {
 	Body *UpdateScenarioIterationData `json:"body,omitempty"`
 }
 
-type UpdateScenarioIterationInput struct {
-	ScenarioIterationId string                       `in:"path=scenarioIterationId"`
-	Payload             *UpdateScenarioIterationBody `in:"body=json"`
-}
-
 type CreateScenarioIterationBody struct {
 	ScenarioId string `json:"scenarioId"`
 	Body       *struct {
@@ -54,28 +40,11 @@ type CreateScenarioIterationBody struct {
 	} `json:"body,omitempty"`
 }
 
-type CreateScenarioIterationInput struct {
-	Payload *CreateScenarioIterationBody `in:"body=json"`
-}
-
-type CreateDraftFromScenarioIterationInput struct {
-	ScenarioIterationId string `in:"path=scenarioIterationId"`
-}
-
 // scenario publications
 
 type CreateScenarioPublicationBody struct {
 	ScenarioIterationId string `json:"scenarioIterationID"`
 	PublicationAction   string `json:"publicationAction"`
-}
-
-type CreateScenarioPublicationInput struct {
-	Body *CreateScenarioPublicationBody `in:"body=json"`
-}
-
-type ListScenarioPublicationsInput struct {
-	ScenarioId          *string `in:"query=scenarioID"`
-	ScenarioIterationId *string `in:"query=scenarioIterationID"`
 }
 
 func AdaptCreateScenario(input CreateScenarioBody) models.CreateScenarioInput {

@@ -7,14 +7,6 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 )
 
-type ListRulesInput struct {
-	ScenarioIterationId string `in:"query=scenarioIterationId;required"`
-}
-
-type GetRuleInput struct {
-	RuleID string `in:"path=ruleID"`
-}
-
 type RuleDto struct {
 	Id                   string    `json:"id"`
 	ScenarioIterationId  string    `json:"scenarioIterationId"`
@@ -35,24 +27,12 @@ type CreateRuleInputBody struct {
 	ScoreModifier        int      `json:"scoreModifier"`
 }
 
-type CreateRuleInput struct {
-	Body *CreateRuleInputBody `in:"body=json"`
-}
-
 type UpdateRuleBody struct {
 	DisplayOrder         *int     `json:"displayOrder,omitempty"`
 	Name                 *string  `json:"name,omitempty"`
 	Description          *string  `json:"description,omitempty"`
 	FormulaAstExpression *NodeDto `json:"formula_ast_expression"`
 	ScoreModifier        *int     `json:"scoreModifier,omitempty"`
-}
-
-type UpdateRuleInput struct {
-	RuleID string          `in:"path=ruleID"`
-	Body   *UpdateRuleBody `in:"body=json"`
-}
-type DeleteRuleInput struct {
-	RuleID string `in:"path=ruleID"`
 }
 
 func AdaptRuleDto(rule models.Rule) (RuleDto, error) {

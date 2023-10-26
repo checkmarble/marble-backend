@@ -23,21 +23,8 @@ type CreateOrganizationBodyDto struct {
 	DatabaseName string `json:"databaseName"`
 }
 
-type CreateOrganizationInputDto struct {
-	Body *CreateOrganizationBodyDto `in:"body=json"`
-}
-
 type UpdateOrganizationBodyDto struct {
 	Name                       *string `json:"name,omitempty"`
 	DatabaseName               *string `json:"databaseName,omitempty"`
 	ExportScheduledExecutionS3 *string `json:"export_scheduled_execution_s3,omitempty"`
-}
-
-type UpdateOrganizationInputDto struct {
-	OrganizationId string                     `in:"path=organizationId"`
-	Body           *UpdateOrganizationBodyDto `in:"body=json"`
-}
-
-type DeleteOrganizationInput struct {
-	OrganizationId string `in:"path=organizationId"`
 }
