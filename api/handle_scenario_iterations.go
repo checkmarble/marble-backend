@@ -1,13 +1,13 @@
 package api
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"github.com/ggicci/httpin"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -15,218 +15,257 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func (api *API) ListScenarioIterations(c *gin.Context) {
-	scenarioID := c.Query("scenarioId")
-
-	usecase := api.UsecasesWithCreds(c.Request).NewScenarioIterationUsecase()
-	scenarioIterations, err := usecase.ListScenarioIterations(models.GetScenarioIterationFilters{
-		ScenarioId: utils.PtrTo(scenarioID, &utils.PtrToOptions{OmitZero: true}),
-	})
-	if presentError(c.Writer, c.Request, err) {
-		return
-	}
-
-	scenarioIterationsDtos := make([]dto.ScenarioIterationWithBodyDto, len(scenarioIterations))
-	for i, si := range scenarioIterations {
-		scenarioIterationDTO, err := dto.AdaptScenarioIterationWithBodyDto(si)
-		if err != nil {
-			presentError(c.Writer, c.Request, err)
-			return
-		}
-		scenarioIterationsDtos[i] = scenarioIterationDTO
-	}
-	c.JSON(http.StatusOK, scenarioIterationsDtos)
+type ListScenarioIterationsInput struct {
+	ScenarioId string `in:"query=scenarioId"`
 }
 
-func (api *API) CreateScenarioIteration(c *gin.Context) {
-	ctx := c.Request.Context()
+func (api *API) ListScenarioIterations() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		input := r.Context().Value(httpin.Input).(*ListScenarioIterationsInput)
 
-	organizationId, err := utils.OrgIDFromCtx(ctx, c.Request)
-	if presentError(c.Writer, c.Request, err) {
-		return
-	}
-
-	var input dto.CreateScenarioIterationBody
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.Status(http.StatusBadRequest)
-		return
-	}
-
-	createScenarioIterationInput := models.CreateScenarioIterationInput{
-		ScenarioId: input.ScenarioId,
-	}
-
-	if input.Body != nil {
-		createScenarioIterationInput.Body = &models.CreateScenarioIterationBody{
-			ScoreReviewThreshold: input.Body.ScoreReviewThreshold,
-			ScoreRejectThreshold: input.Body.ScoreRejectThreshold,
-			BatchTriggerSQL:      input.Body.BatchTriggerSQL,
-			Schedule:             input.Body.Schedule,
-			Rules:                make([]models.CreateRuleInput, len(input.Body.Rules)),
+		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
+		scenarioIterations, err := usecase.ListScenarioIterations(models.GetScenarioIterationFilters{
+			ScenarioId: utils.PtrTo(input.ScenarioId, &utils.PtrToOptions{OmitZero: true}),
+		})
+		if presentError(w, r, err) {
+			return
 		}
-
-		for i, rule := range input.Body.Rules {
-			createScenarioIterationInput.Body.Rules[i], err = dto.AdaptCreateRuleInput(rule, organizationId)
-			if presentError(c.Writer, c.Request, err) {
+		scenarioIterationsDtos := make([]dto.ScenarioIterationWithBodyDto, len(scenarioIterations))
+		for i, si := range scenarioIterations {
+			if dto, err := dto.AdaptScenarioIterationWithBodyDto(si); presentError(w, r, err) {
 				return
+			} else {
+				scenarioIterationsDtos[i] = dto
 			}
 		}
+		PresentModel(w, scenarioIterationsDtos)
 
-		if input.Body.TriggerConditionAstExpression != nil {
-			trigger, err := dto.AdaptASTNode(*input.Body.TriggerConditionAstExpression)
+	}
+}
+
+func (api *API) CreateScenarioIteration() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		organizationId, err := utils.OrgIDFromCtx(ctx, r)
+		if presentError(w, r, err) {
+			return
+		}
+
+		input := ctx.Value(httpin.Input).(*dto.CreateScenarioIterationInput)
+
+		createScenarioIterationInput := models.CreateScenarioIterationInput{
+			ScenarioId: input.Payload.ScenarioId,
+		}
+
+		if input.Payload.Body != nil {
+			createScenarioIterationInput.Body = &models.CreateScenarioIterationBody{
+				ScoreReviewThreshold: input.Payload.Body.ScoreReviewThreshold,
+				ScoreRejectThreshold: input.Payload.Body.ScoreRejectThreshold,
+				BatchTriggerSQL:      input.Payload.Body.BatchTriggerSQL,
+				Schedule:             input.Payload.Body.Schedule,
+				Rules:                make([]models.CreateRuleInput, len(input.Payload.Body.Rules)),
+			}
+
+			for i, rule := range input.Payload.Body.Rules {
+				createScenarioIterationInput.Body.Rules[i], err = dto.AdaptCreateRuleInput(rule, organizationId)
+				if presentError(w, r, err) {
+					return
+				}
+			}
+
+			if input.Payload.Body.TriggerConditionAstExpression != nil {
+				trigger, err := dto.AdaptASTNode(*input.Payload.Body.TriggerConditionAstExpression)
+				if err != nil {
+					presentError(w, r, fmt.Errorf("invalid trigger: %w %w", err, models.BadParameterError))
+					return
+				}
+				createScenarioIterationInput.Body.TriggerConditionAstExpression = &trigger
+			}
+
+		}
+
+		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
+		si, err := usecase.CreateScenarioIteration(ctx, organizationId, createScenarioIterationInput)
+		if presentError(w, r, err) {
+			return
+		}
+
+		apiScenarioIterationWithBody, err := dto.AdaptScenarioIterationWithBodyDto(si)
+		if presentError(w, r, err) {
+			return
+		}
+		err = json.NewEncoder(w).Encode(apiScenarioIterationWithBody)
+		if presentError(w, r, err) {
+			return
+		}
+	}
+}
+
+func (api *API) CreateDraftFromIteration() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		organizationId, err := utils.OrgIDFromCtx(ctx, r)
+		if presentError(w, r, err) {
+			return
+		}
+
+		input := ctx.Value(httpin.Input).(*dto.CreateDraftFromScenarioIterationInput)
+
+		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
+		si, err := usecase.CreateDraftFromScenarioIteration(ctx, organizationId, input.ScenarioIterationId)
+		if presentError(w, r, err) {
+			return
+		}
+
+		apiScenarioIterationWithBody, err := dto.AdaptScenarioIterationWithBodyDto(si)
+		if presentError(w, r, err) {
+			return
+		}
+		err = json.NewEncoder(w).Encode(apiScenarioIterationWithBody)
+		if presentError(w, r, err) {
+			return
+		}
+	}
+}
+
+func requiredIterationParam(r *http.Request) (string, error) {
+	return requiredUuidUrlParam(r, "scenarioIterationId")
+}
+
+func (api *API) GetScenarioIteration() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		iterationId, err := requiredIterationParam(r)
+		if presentError(w, r, err) {
+			return
+		}
+
+		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
+		si, err := usecase.GetScenarioIteration(iterationId)
+		if presentError(w, r, err) {
+			return
+		}
+
+		scenarioIterationDto, err := dto.AdaptScenarioIterationWithBodyDto(si)
+		if presentError(w, r, err) {
+			return
+		}
+		PresentModel(w, scenarioIterationDto)
+	}
+}
+
+func (api *API) UpdateScenarioIteration() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		logger := utils.LoggerFromContext(ctx)
+
+		organizationId, err := utils.OrgIDFromCtx(ctx, r)
+		if presentError(w, r, err) {
+			return
+		}
+
+		input := ctx.Value(httpin.Input).(*dto.UpdateScenarioIterationInput)
+		logger = logger.With(slog.String("scenarioIterationId", input.ScenarioIterationId), slog.String("organizationId", organizationId))
+
+		if input.Payload.Body == nil {
+			PresentNothing(w)
+			return
+		}
+
+		updateScenarioIterationInput := models.UpdateScenarioIterationInput{
+			Id: input.ScenarioIterationId,
+			Body: &models.UpdateScenarioIterationBody{
+				ScoreReviewThreshold: input.Payload.Body.ScoreReviewThreshold,
+				ScoreRejectThreshold: input.Payload.Body.ScoreRejectThreshold,
+				Schedule:             input.Payload.Body.Schedule,
+				BatchTriggerSQL:      input.Payload.Body.BatchTriggerSQL,
+			},
+		}
+
+		if input.Payload.Body.TriggerConditionAstExpression != nil {
+			trigger, err := dto.AdaptASTNode(*input.Payload.Body.TriggerConditionAstExpression)
 			if err != nil {
-				presentError(c.Writer, c.Request, fmt.Errorf("invalid trigger: %w %w", err, models.BadParameterError))
+				presentError(w, r, fmt.Errorf("invalid trigger: %w %w", err, models.BadParameterError))
 				return
 			}
-			createScenarioIterationInput.Body.TriggerConditionAstExpression = &trigger
+			updateScenarioIterationInput.Body.TriggerConditionAstExpression = &trigger
 		}
 
-	}
-
-	usecase := api.UsecasesWithCreds(c.Request).NewScenarioIterationUsecase()
-	si, err := usecase.CreateScenarioIteration(ctx, organizationId, createScenarioIterationInput)
-	if presentError(c.Writer, c.Request, err) {
-		return
-	}
-
-	apiScenarioIterationWithBody, err := dto.AdaptScenarioIterationWithBodyDto(si)
-	if presentError(c.Writer, c.Request, err) {
-		return
-	}
-	c.JSON(http.StatusOK, apiScenarioIterationWithBody)
-}
-
-func (api *API) CreateDraftFromIteration(c *gin.Context) {
-	ctx := c.Request.Context()
-
-	organizationId, err := utils.OrgIDFromCtx(ctx, c.Request)
-	if presentError(c.Writer, c.Request, err) {
-		return
-	}
-
-	iterationID := c.Param("iteration_id")
-
-	usecase := api.UsecasesWithCreds(c.Request).NewScenarioIterationUsecase()
-	si, err := usecase.CreateDraftFromScenarioIteration(ctx, organizationId, iterationID)
-	if presentError(c.Writer, c.Request, err) {
-		return
-	}
-
-	apiScenarioIterationWithBody, err := dto.AdaptScenarioIterationWithBodyDto(si)
-	if presentError(c.Writer, c.Request, err) {
-		return
-	}
-	c.JSON(http.StatusOK, apiScenarioIterationWithBody)
-}
-
-func (api *API) GetScenarioIteration(c *gin.Context) {
-	iterationID := c.Param("iteration_id")
-
-	usecase := api.UsecasesWithCreds(c.Request).NewScenarioIterationUsecase()
-	si, err := usecase.GetScenarioIteration(iterationID)
-	if presentError(c.Writer, c.Request, err) {
-		return
-	}
-
-	scenarioIterationDto, err := dto.AdaptScenarioIterationWithBodyDto(si)
-	if presentError(c.Writer, c.Request, err) {
-		return
-	}
-	c.JSON(http.StatusOK, scenarioIterationDto)
-}
-
-func (api *API) UpdateScenarioIteration(c *gin.Context) {
-	ctx := c.Request.Context()
-	logger := utils.LoggerFromContext(ctx)
-
-	organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-	if presentError(c.Writer, c.Request, err) {
-		return
-	}
-
-	iterationID := c.Param("iteration_id")
-	var data dto.UpdateScenarioIterationBody
-	if err := c.ShouldBindJSON(&data); err != nil {
-		c.Status(http.StatusBadRequest)
-		return
-	}
-
-	logger = logger.With(slog.String("scenarioIterationId", iterationID), slog.String("organizationId", organizationId))
-
-	updateScenarioIterationInput := models.UpdateScenarioIterationInput{
-		Id: iterationID,
-		Body: &models.UpdateScenarioIterationBody{
-			ScoreReviewThreshold: data.Body.ScoreReviewThreshold,
-			ScoreRejectThreshold: data.Body.ScoreRejectThreshold,
-			Schedule:             data.Body.Schedule,
-			BatchTriggerSQL:      data.Body.BatchTriggerSQL,
-		},
-	}
-
-	if data.Body.TriggerConditionAstExpression != nil {
-		trigger, err := dto.AdaptASTNode(*data.Body.TriggerConditionAstExpression)
-		if err != nil {
-			presentError(c.Writer, c.Request, fmt.Errorf("invalid trigger: %w %w", err, models.BadParameterError))
+		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
+		updatedSI, err := usecase.UpdateScenarioIteration(ctx, organizationId, updateScenarioIterationInput)
+		if errors.Is(err, models.ErrScenarioIterationNotDraft) {
+			logger.WarnContext(ctx, "Cannot update scenario iteration that is not in draft state: \n"+err.Error())
+			http.Error(w, "", http.StatusForbidden)
 			return
 		}
-		updateScenarioIterationInput.Body.TriggerConditionAstExpression = &trigger
-	}
 
-	usecase := api.UsecasesWithCreds(c.Request).NewScenarioIterationUsecase()
-	updatedSI, err := usecase.UpdateScenarioIteration(ctx, organizationId, updateScenarioIterationInput)
-	if errors.Is(err, models.ErrScenarioIterationNotDraft) {
-		logger.WarnContext(ctx, "Cannot update scenario iteration that is not in draft state: \n"+err.Error())
-		http.Error(c.Writer, "", http.StatusForbidden)
-		return
-	}
-
-	if presentError(c.Writer, c.Request, err) {
-		return
-	}
-
-	iteration, err := dto.AdaptScenarioIterationWithBodyDto(updatedSI)
-	if presentError(c.Writer, c.Request, err) {
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"iteration": iteration,
-	})
-}
-
-type PostScenarioValidationInputBody struct {
-	TriggerOrRule *dto.NodeDto `json:"trigger_or_rule"`
-	RuleId        *string      `json:"rule_id"`
-}
-
-func (api *API) ValidateScenarioIteration(c *gin.Context) {
-	var input PostScenarioValidationInputBody
-	err := c.ShouldBindJSON(&input)
-	if err != nil && err != io.EOF {
-		c.Status(http.StatusBadRequest)
-		return
-	}
-
-	scenarioIterationID := c.Param("iteration_id")
-
-	var triggerOrRule *ast.Node
-	if input.TriggerOrRule != nil {
-		node, err := dto.AdaptASTNode(*input.TriggerOrRule)
-		if err != nil {
-			c.Status(http.StatusInternalServerError)
+		if presentError(w, r, err) {
 			return
+		}
+
+		iteration, err := dto.AdaptScenarioIterationWithBodyDto(updatedSI)
+		if presentError(w, r, err) {
+			return
+		}
+
+		PresentModel(w, struct {
+			Iteration dto.ScenarioIterationWithBodyDto `json:"iteration"`
+		}{
+			Iteration: iteration,
+		})
+	}
+}
+
+type PostScenarioValidationInput struct {
+	Body *struct {
+		TriggerOrRule *dto.NodeDto `json:"trigger_or_rule"`
+		RuleId        *string      `json:"rule_id"`
+	} `in:"body=json"`
+}
+
+func adaptTriggerAndRuleIdFromInput(input *PostScenarioValidationInput) (triggerOrRule *ast.Node, ruleId *string, err error) {
+
+	// body is optional
+	if input != nil && input.Body != nil && input.Body.TriggerOrRule != nil {
+		ruleId = input.Body.RuleId
+		node, err := dto.AdaptASTNode(*input.Body.TriggerOrRule)
+		if err != nil {
+			return triggerOrRule, ruleId, fmt.Errorf("invalid rule or trigger: %w %w", err, models.BadParameterError)
 		}
 		triggerOrRule = &node
 	}
 
-	usecase := api.UsecasesWithCreds(c.Request).NewScenarioIterationUsecase()
-	scenarioValidation, err := usecase.ValidateScenarioIteration(scenarioIterationID, triggerOrRule, input.RuleId)
+	return triggerOrRule, ruleId, err
+}
 
-	if presentError(c.Writer, c.Request, err) {
-		return
+func (api *API) ValidateScenarioIteration() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		iterationId, err := requiredIterationParam(r)
+		if presentError(w, r, err) {
+			return
+		}
+
+		input, _ := r.Context().Value(httpin.Input).(*PostScenarioValidationInput)
+
+		triggerOrRuleToReplace, ruleIdToReplace, err := adaptTriggerAndRuleIdFromInput(input)
+		if presentError(w, r, err) {
+			return
+		}
+
+		usecase := api.UsecasesWithCreds(r).NewScenarioIterationUsecase()
+		scenarioValidation, err := usecase.ValidateScenarioIteration(iterationId, triggerOrRuleToReplace, ruleIdToReplace)
+
+		if presentError(w, r, err) {
+			return
+		}
+
+		PresentModel(w, struct {
+			ScenarioValidation dto.ScenarioValidationDto `json:"scenario_validation"`
+		}{
+			ScenarioValidation: dto.AdaptScenarioValidationDto(scenarioValidation),
+		})
 	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"scenario_validation": dto.AdaptScenarioValidationDto(scenarioValidation),
-	})
 }

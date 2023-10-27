@@ -26,7 +26,7 @@ export async function fetchJson(request: Request): Promise<unknown> {
   }
   // test if the response content type is json
   const contentType = response.headers.get("content-type");
-  if (contentType?.includes("application/json")) {
+  if (contentType == "application/json") {
     return await response.json();
   }
   return Promise.resolve({});

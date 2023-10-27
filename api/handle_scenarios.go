@@ -4,11 +4,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
-
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+
+	"github.com/ggicci/httpin"
 )
 
 type APIScenario struct {
@@ -33,58 +33,64 @@ func NewAPIScenario(scenario models.Scenario) APIScenario {
 	}
 }
 
-func (api *API) ListScenarios(c *gin.Context) {
-	usecase := api.UsecasesWithCreds(c.Request).NewScenarioUsecase()
-	scenarios, err := usecase.ListScenarios()
-	if presentError(c.Writer, c.Request, err) {
-		return
+func (api *API) ListScenarios() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		usecase := api.UsecasesWithCreds(r).NewScenarioUsecase()
+		scenarios, err := usecase.ListScenarios()
+		if presentError(w, r, err) {
+			return
+		}
+
+		PresentModel(w, utils.Map(scenarios, NewAPIScenario))
 	}
-	c.JSON(http.StatusOK, utils.Map(scenarios, NewAPIScenario))
 }
 
-func (api *API) CreateScenario(c *gin.Context) {
-	var input dto.CreateScenarioBody
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.Status(http.StatusBadRequest)
-		return
-	}
+func (api *API) CreateScenario() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		input := r.Context().Value(httpin.Input).(*dto.CreateScenarioInput)
 
-	usecase := api.UsecasesWithCreds(c.Request).NewScenarioUsecase()
-	scenario, err := usecase.CreateScenario(dto.AdaptCreateScenario(input))
-	if presentError(c.Writer, c.Request, err) {
-		return
+		usecase := api.UsecasesWithCreds(r).NewScenarioUsecase()
+		scenario, err := usecase.CreateScenario(dto.AdaptCreateScenario(input))
+		if presentError(w, r, err) {
+			return
+		}
+		PresentModel(w, NewAPIScenario(scenario))
 	}
-	c.JSON(http.StatusOK, NewAPIScenario(scenario))
 }
 
-func (api *API) GetScenario(c *gin.Context) {
-	id := c.Param("scenario_id")
-
-	usecase := api.UsecasesWithCreds(c.Request).NewScenarioUsecase()
-	scenario, err := usecase.GetScenario(id)
-
-	if presentError(c.Writer, c.Request, err) {
-		return
-	}
-	c.JSON(http.StatusOK, NewAPIScenario(scenario))
+type GetScenarioInput struct {
+	ScenarioId string `in:"path=scenarioId"`
 }
 
-func (api *API) UpdateScenario(c *gin.Context) {
-	var input dto.UpdateScenarioBody
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.Status(http.StatusBadRequest)
-		return
-	}
-	scenarioID := c.Param("scenario_id")
+func (api *API) GetScenario() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 
-	usecase := api.UsecasesWithCreds(c.Request).NewScenarioUsecase()
-	scenario, err := usecase.UpdateScenario(models.UpdateScenarioInput{
-		Id:          scenarioID,
-		Name:        input.Name,
-		Description: input.Description,
-	})
-	if presentError(c.Writer, c.Request, err) {
-		return
+		input := r.Context().Value(httpin.Input).(*GetScenarioInput)
+
+		usecase := api.UsecasesWithCreds(r).NewScenarioUsecase()
+		scenario, err := usecase.GetScenario(input.ScenarioId)
+
+		if presentError(w, r, err) {
+			return
+		}
+		PresentModel(w, NewAPIScenario(scenario))
 	}
-	c.JSON(http.StatusOK, NewAPIScenario(scenario))
+}
+
+func (api *API) UpdateScenario() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		input := r.Context().Value(httpin.Input).(*dto.UpdateScenarioInput)
+		usecase := api.UsecasesWithCreds(r).NewScenarioUsecase()
+		scenario, err := usecase.UpdateScenario(models.UpdateScenarioInput{
+			Id:          input.ScenarioId,
+			Name:        input.Body.Name,
+			Description: input.Body.Description,
+		})
+		if presentError(w, r, err) {
+			return
+		}
+
+		PresentModel(w, NewAPIScenario(scenario))
+	}
 }

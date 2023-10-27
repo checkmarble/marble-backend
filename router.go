@@ -3,62 +3,63 @@ package main
 import (
 	"context"
 	"net/http"
-	"time"
 
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 
 	"github.com/checkmarble/marble-backend/api"
-	"github.com/checkmarble/marble-backend/api/middleware"
-	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func corsOption(env string) cors.Config {
-	allowedOrigins := []string{"*"}
-
-	if env == "DEV" {
+func corsOption(corsAllowLocalhost bool) cors.Options {
+	allowedOrigins := []string{"https://*"}
+	if corsAllowLocalhost {
 		allowedOrigins = append(allowedOrigins, "http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:5173")
 	}
-
-	return cors.Config{
-		AllowOrigins:     allowedOrigins,
-		AllowMethods:     []string{http.MethodOptions, http.MethodHead, http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodPost},
-		AllowHeaders:     []string{"Authorization", "Content-Type", "X-Api-Key"},
+	return cors.Options{
+		AllowedOrigins:   allowedOrigins,
+		AllowedMethods:   []string{"GET", "PATCH", "POST", "PUT", "DELETE"},
+		AllowedHeaders:   []string{"Authorization", "Content-Type", "X-Api-Key"},
 		AllowCredentials: false,
-		MaxAge:           12 * time.Hour,
+		MaxAge:           7200, // Maximum value not ignored by any of major browsers
 	}
 }
 
-func initRouter(ctx context.Context, conf AppConfiguration, deps dependencies) *gin.Engine {
-	if conf.env != "DEV" {
-		gin.SetMode(gin.ReleaseMode)
+func setContentTypeMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		next.ServeHTTP(w, r)
+	})
+}
+
+func initRouter(ctx context.Context, conf AppConfiguration, deps dependencies) *chi.Mux {
+	r := chi.NewRouter()
+
+	isDevEnv := conf.env == "DEV"
+	if isDevEnv {
+		r.Use(middleware.RequestID)
+		r.Use(middleware.Logger)
 	}
+	r.Use(middleware.Recoverer)
+	r.Use(utils.StoreLoggerInContextMiddleware(utils.LoggerFromContext(ctx)))
+	r.Use(utils.AddTraceIdToLoggerMiddleware(isDevEnv, conf.gcpProject))
+	r.Use(cors.Handler(corsOption(isDevEnv)))
+	r.Use(setContentTypeMiddleware)
 
-	logger := utils.LoggerFromContext(ctx)
-	loggingMiddleware := middleware.NewLogging(logger, middleware.WithIgnorePath([]string{"/liveness"}))
+	r.Post("/crash", api.HandleCrash)
+	r.Post("/token", deps.TokenHandler.GenerateToken)
 
-	r := gin.New()
+	router := r.With(deps.Authentication.Middleware)
 
-	r.Use(gin.Recovery())
-	r.Use(cors.New(corsOption(conf.env)))
-	r.Use(loggingMiddleware)
-	r.Use(utils.StoreLoggerInContextMiddleware(logger))
-
-	r.GET("/liveness", api.HandleLivenessProbe)
-	r.POST("/crash", api.HandleCrash)
-	r.POST("/token", deps.TokenHandler.GenerateToken)
-
-	router := r.Use(deps.Authentication.Middleware)
-
-	router.GET("/data-model", api.HasPermission(models.DATA_MODEL_READ), deps.DataModelHandler.GetDataModel)
-	router.POST("/data-model/tables", api.HasPermission(models.DATA_MODEL_WRITE), deps.DataModelHandler.CreateTable)
-	router.PATCH("/data-model/tables/:tableID", api.HasPermission(models.DATA_MODEL_WRITE), deps.DataModelHandler.UpdateDataModelTable)
-	router.POST("/data-model/links", api.HasPermission(models.DATA_MODEL_WRITE), deps.DataModelHandler.CreateLink)
-	router.POST("/data-model/tables/:tableID/fields", api.HasPermission(models.DATA_MODEL_WRITE), deps.DataModelHandler.CreateField)
-	router.PATCH("/data-model/fields/:fieldID", api.HasPermission(models.DATA_MODEL_WRITE), deps.DataModelHandler.UpdateDataModelField)
-	router.DELETE("/data-model", api.HasPermission(models.DATA_MODEL_WRITE), deps.DataModelHandler.DeleteDataModel)
-	router.GET("/data-model/openapi", api.HasPermission(models.DATA_MODEL_READ), deps.DataModelHandler.OpenAPI)
+	router.Get("/data-model", deps.DataModelHandler.GetDataModel)
+	router.Post("/data-model/tables", deps.DataModelHandler.CreateTable)
+	router.Patch("/data-model/tables/{tableID}", deps.DataModelHandler.UpdateDataModelTable)
+	router.Post("/data-model/links", deps.DataModelHandler.CreateLink)
+	router.Post("/data-model/tables/{tableID}/fields", deps.DataModelHandler.CreateField)
+	router.Patch("/data-model/fields/{fieldID}", deps.DataModelHandler.UpdateDataModelField)
+	router.Delete("/data-model", deps.DataModelHandler.DeleteDataModel)
+	router.Get("/data-model/openapi", deps.DataModelHandler.OpenAPI)
 
 	return r
 }

@@ -20,6 +20,10 @@ type AstExpressionUsecase struct {
 	Repository          AstExpressionUsecaseRepository
 }
 
+func NodeLocation(expression ast.Node, target *ast.Node) (string, error) {
+	return "", nil
+}
+
 type EditorIdentifiers struct {
 	PayloadAccessors  []ast.Node `json:"payload_accessors"`
 	DatabaseAccessors []ast.Node `json:"database_accessors"`

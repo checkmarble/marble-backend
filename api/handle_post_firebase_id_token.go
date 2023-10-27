@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-
-	"github.com/gin-gonic/gin"
 )
 
 type tokenGenerator interface {
@@ -23,23 +21,23 @@ type token struct {
 	ExpiresAt   time.Time `json:"expires_at"`
 }
 
-func (t *TokenHandler) GenerateToken(c *gin.Context) {
-	key := ParseApiKeyHeader(c.Request.Header)
-	bearerToken, err := ParseAuthorizationBearerHeader(c.Request.Header)
+func (t *TokenHandler) GenerateToken(w http.ResponseWriter, request *http.Request) {
+	key := ParseApiKeyHeader(request.Header)
+	bearerToken, err := ParseAuthorizationBearerHeader(request.Header)
 	if err != nil {
-		_ = c.Error(fmt.Errorf("could not parse authorization header: %w", err))
-		c.Status(http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("Authorization header: %s", err.Error()), http.StatusBadRequest)
 		return
 	}
 
-	marbleToken, expirationTime, err := t.generator.GenerateToken(c.Request.Context(), key, bearerToken)
+	marbleToken, expirationTime, err := t.generator.GenerateToken(request.Context(), key, bearerToken)
 	if err != nil {
-		_ = c.Error(fmt.Errorf("generator.GenerateToken error: %w", err))
-		c.Status(http.StatusUnauthorized)
+		err = wrapErrInUnAuthorizedError(err)
+	}
+	if presentError(w, request, err) {
 		return
 	}
 
-	c.JSON(http.StatusOK, token{
+	PresentModel(w, token{
 		AccessToken: marbleToken,
 		TokenType:   "Bearer",
 		ExpiresAt:   expirationTime,

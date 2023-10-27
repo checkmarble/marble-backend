@@ -67,8 +67,8 @@ type CreateCustomListInputDto struct {
 }
 
 type UpdateCustomListBodyDto struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	Name        string `in:"path=name"`
+	Description string `in:"path=description"`
 }
 
 type UpdateCustomListInputDto struct {
@@ -90,7 +90,7 @@ type CreateCustomListValueInputDto struct {
 }
 
 type CreateCustomListValueBodyDto struct {
-	Value string `json:"value"`
+	Value string `in:"path=value"`
 }
 
 type DeleteCustomListValueInputDto struct {

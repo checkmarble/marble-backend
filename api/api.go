@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/go-chi/chi/v5"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases"
@@ -13,25 +13,40 @@ import (
 )
 
 type API struct {
-	router   *gin.Engine
+	router   *chi.Mux
 	usecases usecases.Usecases
 }
 
-func New(router *gin.Engine, port string, usecases usecases.Usecases, auth *Authentication) *http.Server {
+func New(router *chi.Mux, port string, usecases usecases.Usecases, auth *Authentication) *http.Server {
 	s := &API{
 		router:   router,
 		usecases: usecases,
 	}
 
+	// Setup the routes
 	s.routes(auth)
 
-	return &http.Server{
-		Addr:         fmt.Sprintf("0.0.0.0:%s", port),
+	// display routes for debugging
+	s.displayRoutes()
+
+	////////////////////////////////////////////////////////////
+	// Setup a go http.Server
+	////////////////////////////////////////////////////////////
+
+	// create a go router instance
+	srv := &http.Server{
+		// address
+		Addr: fmt.Sprintf("0.0.0.0:%s", port),
+
+		// Good practice to set timeouts to avoid Slowloris attacks.
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler:      router,
+
+		// Instance of chi router
+		Handler: router,
 	}
+	return srv
 }
 
 func (api *API) UsecasesWithCreds(r *http.Request) *usecases.UsecasesWithCreds {

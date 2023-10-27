@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -38,19 +37,17 @@ func TestToken_GenerateToken(t *testing.T) {
 			generator: mGenerator,
 		}
 
-		gin.SetMode(gin.TestMode)
-		router := gin.New()
-		router.POST("/token", tokenHandler.GenerateToken)
-
-		req := httptest.NewRequest(http.MethodPost, "https://www.checkmarble.com/token", nil)
+		req := httptest.NewRequest(http.MethodGet, "http://www.checkmarble.com", nil)
 		req.Header.Add("Authorization", "Bearer token")
 
-		r := httptest.NewRecorder()
-		router.ServeHTTP(r, req)
+		res := httptest.NewRecorder()
+
+		handler := http.HandlerFunc(tokenHandler.GenerateToken)
+		handler.ServeHTTP(res, req)
 
 		data, _ := json.Marshal(&tok)
-		assert.Equal(t, http.StatusOK, r.Code)
-		assert.JSONEq(t, string(data), r.Body.String())
+		assert.Equal(t, http.StatusOK, res.Code)
+		assert.JSONEq(t, string(data), res.Body.String())
 		mGenerator.AssertExpectations(t)
 	})
 
@@ -63,33 +60,27 @@ func TestToken_GenerateToken(t *testing.T) {
 			generator: mGenerator,
 		}
 
-		gin.SetMode(gin.TestMode)
-		router := gin.New()
-		router.POST("/token", tokenHandler.GenerateToken)
-
-		req := httptest.NewRequest(http.MethodPost, "https://www.checkmarble.com/token", nil)
+		req := httptest.NewRequest(http.MethodGet, "http://www.checkmarble.com", nil)
 		req.Header.Add("Authorization", "Bearer token")
 
-		r := httptest.NewRecorder()
-		router.ServeHTTP(r, req)
+		res := httptest.NewRecorder()
 
-		assert.Equal(t, http.StatusUnauthorized, r.Code)
+		handler := http.HandlerFunc(tokenHandler.GenerateToken)
+		handler.ServeHTTP(res, req)
+		assert.Equal(t, http.StatusUnauthorized, res.Code)
 		mGenerator.AssertExpectations(t)
 	})
 
 	t.Run("bad token", func(t *testing.T) {
 		tokenHandler := TokenHandler{}
 
-		gin.SetMode(gin.TestMode)
-		router := gin.New()
-		router.POST("/token", tokenHandler.GenerateToken)
-
-		req := httptest.NewRequest(http.MethodPost, "http://www.checkmarble.com/token", nil)
+		req := httptest.NewRequest(http.MethodGet, "http://www.checkmarble.com", nil)
 		req.Header.Add("Authorization", "bad")
 
-		r := httptest.NewRecorder()
-		router.ServeHTTP(r, req)
+		res := httptest.NewRecorder()
 
-		assert.Equal(t, http.StatusBadRequest, r.Code)
+		handler := http.HandlerFunc(tokenHandler.GenerateToken)
+		handler.ServeHTTP(res, req)
+		assert.Equal(t, http.StatusBadRequest, res.Code)
 	})
 }

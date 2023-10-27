@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -24,6 +23,10 @@ func (m *mockValidator) Validate(ctx context.Context, marbleToken, apiKey string
 }
 
 func TestAuthentication_Middleware(t *testing.T) {
+	okHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
 	t.Run("nominal", func(t *testing.T) {
 		credentials := models.Credentials{
 			OrganizationId: "organization",
@@ -34,32 +37,26 @@ func TestAuthentication_Middleware(t *testing.T) {
 			},
 		}
 
-		okHandlerValidateCredentials := func(c *gin.Context) {
-			creds := c.Request.Context().Value(utils.ContextKeyCredentials).(models.Credentials)
+		okHandlerValidateCredentials := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			creds := r.Context().Value(utils.ContextKeyCredentials).(models.Credentials)
 			assert.Equal(t, credentials, creds)
-			c.Status(http.StatusOK)
-		}
+			w.WriteHeader(http.StatusOK)
+		})
 
 		mValidator := new(mockValidator)
 		mValidator.On("Validate", mock.Anything, "token", "").
 			Return(credentials, nil)
+
+		req := httptest.NewRequest(http.MethodGet, "http://www.checkmarble.com", nil)
+		req.Header.Add("Authorization", "Bearer token")
 
 		res := httptest.NewRecorder()
 
 		m := Authentication{
 			validator: mValidator,
 		}
-
-		gin.SetMode(gin.TestMode)
-		router := gin.New()
-		router.GET("/test", m.Middleware, okHandlerValidateCredentials)
-
-		req := httptest.NewRequest(http.MethodGet, "https://checkmarble.com/test", nil)
-		req.Header.Add("Authorization", "Bearer token")
-
-		r := httptest.NewRecorder()
-		router.ServeHTTP(r, req)
-
+		handler := m.Middleware(okHandlerValidateCredentials)
+		handler.ServeHTTP(res, req)
 		assert.Equal(t, http.StatusOK, res.Code)
 		mValidator.AssertExpectations(t)
 	})
@@ -69,37 +66,29 @@ func TestAuthentication_Middleware(t *testing.T) {
 		mValidator.On("Validate", mock.Anything, "token", "").
 			Return(models.Credentials{}, assert.AnError)
 
+		req := httptest.NewRequest(http.MethodGet, "http://www.checkmarble.com", nil)
+		req.Header.Add("Authorization", "Bearer token")
+
+		res := httptest.NewRecorder()
+
 		m := Authentication{
 			validator: mValidator,
 		}
-
-		gin.SetMode(gin.TestMode)
-		router := gin.New()
-		router.GET("/test", m.Middleware)
-
-		req := httptest.NewRequest(http.MethodGet, "https://checkmarble.com/test", nil)
-		req.Header.Add("Authorization", "Bearer token")
-
-		r := httptest.NewRecorder()
-		router.ServeHTTP(r, req)
-
-		assert.Equal(t, http.StatusUnauthorized, r.Code)
+		handler := m.Middleware(okHandler)
+		handler.ServeHTTP(res, req)
+		assert.Equal(t, http.StatusUnauthorized, res.Code)
 		mValidator.AssertExpectations(t)
 	})
 
 	t.Run("bad token", func(t *testing.T) {
-		m := Authentication{}
-
-		gin.SetMode(gin.TestMode)
-		router := gin.New()
-		router.GET("/test", m.Middleware)
-
-		req := httptest.NewRequest(http.MethodGet, "https://checkmarble.com/test", nil)
+		req := httptest.NewRequest(http.MethodGet, "http://www.checkmarble.com", nil)
 		req.Header.Add("Authorization", "bad")
 
-		r := httptest.NewRecorder()
-		router.ServeHTTP(r, req)
+		res := httptest.NewRecorder()
 
-		assert.Equal(t, http.StatusBadRequest, r.Code)
+		m := Authentication{}
+		handler := m.Middleware(okHandler)
+		handler.ServeHTTP(res, req)
+		assert.Equal(t, http.StatusBadRequest, res.Code)
 	})
 }

@@ -18,16 +18,28 @@ func AdaptUserDto(user models.User) User {
 	}
 }
 
+type PostCreateUser struct {
+	Body *CreateUser `in:"body=json"`
+}
+
 type CreateUser struct {
 	Email          string `json:"email"`
 	Role           string `json:"role"`
 	OrganizationId string `json:"organization_id"`
 }
 
-func AdaptCreateUser(dto CreateUser) models.CreateUser {
+func AdaptCreateUser(dto PostCreateUser) models.CreateUser {
 	return models.CreateUser{
-		Email:          dto.Email,
-		Role:           models.RoleFromString(dto.Role),
-		OrganizationId: dto.OrganizationId,
+		Email:          dto.Body.Email,
+		Role:           models.RoleFromString(dto.Body.Role),
+		OrganizationId: dto.Body.OrganizationId,
 	}
+}
+
+type GetUser struct {
+	UserID string `in:"path=userID"`
+}
+
+type DeleteUser struct {
+	UserID string `in:"path=userID"`
 }

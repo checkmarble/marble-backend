@@ -97,17 +97,23 @@ func runServer(ctx context.Context, appConfig AppConfiguration) {
 	router := initRouter(ctx, appConfig, deps)
 	server := api.New(router, appConfig.port, uc, deps.Authentication)
 
+	////////////////////////////////////////////////////////////
+	// Start serving the app
+	////////////////////////////////////////////////////////////
+
+	// Intercept SIGxxx signals
 	notify, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	go func() {
-		logger.Info("starting server", slog.String("port", appConfig.port))
+		log.Printf("starting server on port %v\n", appConfig.port)
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.ErrorContext(ctx, "error serving the app: \n"+err.Error())
 		}
 		logger.InfoContext(ctx, "server returned")
 	}()
 
+	// Block until we receive our signal.
 	<-notify.Done()
 	shutdownCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
