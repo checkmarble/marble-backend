@@ -2,12 +2,15 @@ package api
 
 import (
 	"net/http"
-
-	"github.com/gin-gonic/gin"
 )
 
-func HandleLivenessProbe(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"mood": "Feu flammes !",
-	})
+func (api *API) handleLivenessProbe() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		PresentModel(w, struct {
+			Mood string `json:"mood"`
+		}{
+			Mood: "Feu flammes !",
+		})
+	}
 }

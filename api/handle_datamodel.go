@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"github.com/go-chi/chi/v5"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -26,19 +26,17 @@ type DataModelHandler struct {
 	useCase dataModelUseCase
 }
 
-func (d *DataModelHandler) GetDataModel(c *gin.Context) {
-	organizationID, err := utils.OrganizationIdFromRequest(c.Request)
-	if presentError(c.Writer, c.Request, err) {
+func (d *DataModelHandler) GetDataModel(w http.ResponseWriter, r *http.Request) {
+	organizationID, err := utils.OrganizationIdFromRequest(r)
+	if presentError(w, r, err) {
 		return
 	}
 
-	dataModel, err := d.useCase.GetDataModel(c.Request.Context(), organizationID)
-	if presentError(c.Writer, c.Request, err) {
+	dataModel, err := d.useCase.GetDataModel(r.Context(), organizationID)
+	if presentError(w, r, err) {
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"data_model": dto.AdaptDataModelDto(dataModel),
-	})
+	PresentModelWithName(w, "data_model", dto.AdaptDataModelDto(dataModel))
 }
 
 type createTableInput struct {
@@ -46,40 +44,38 @@ type createTableInput struct {
 	Description string `json:"description"`
 }
 
-func (d *DataModelHandler) CreateTable(c *gin.Context) {
-	organizationID, err := utils.OrganizationIdFromRequest(c.Request)
-	if presentError(c.Writer, c.Request, err) {
+func (d *DataModelHandler) CreateTable(w http.ResponseWriter, r *http.Request) {
+	organizationID, err := utils.OrganizationIdFromRequest(r)
+	if presentError(w, r, err) {
 		return
 	}
 
 	var input createTableInput
-	if err := json.NewDecoder(c.Request.Body).Decode(&input); err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	tableID, err := d.useCase.CreateTable(c.Request.Context(), organizationID, input.Name, input.Description)
-	if presentError(c.Writer, c.Request, err) {
+	tableID, err := d.useCase.CreateTable(r.Context(), organizationID, input.Name, input.Description)
+	if presentError(w, r, err) {
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"id": tableID,
-	})
+	PresentModelWithName(w, "id", tableID)
 }
 
-func (d *DataModelHandler) UpdateDataModelTable(c *gin.Context) {
+func (d *DataModelHandler) UpdateDataModelTable(w http.ResponseWriter, r *http.Request) {
 	var input createFieldInput
-	if err := json.NewDecoder(c.Request.Body).Decode(&input); err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	tableID := c.Param("tableID")
+	tableID := chi.URLParam(r, "tableID")
 
-	err := d.useCase.UpdateDataModelTable(c.Request.Context(), tableID, input.Description)
-	if presentError(c.Writer, c.Request, err) {
+	err := d.useCase.UpdateDataModelTable(r.Context(), tableID, input.Description)
+	if presentError(w, r, err) {
 		return
 	}
-	c.Status(http.StatusNoContent)
+	PresentNothing(w)
 }
 
 type createFieldInput struct {
@@ -90,19 +86,24 @@ type createFieldInput struct {
 	IsEnum      bool   `json:"is_enum"`
 }
 
-func (d *DataModelHandler) CreateField(c *gin.Context) {
-	organizationID, err := utils.OrganizationIdFromRequest(c.Request)
-	if presentError(c.Writer, c.Request, err) {
+type updateFieldInput struct {
+	Description *string `json:"description"`
+	IsEnum      *bool   `json:"is_enum"`
+}
+
+func (d *DataModelHandler) CreateField(w http.ResponseWriter, r *http.Request) {
+	organizationID, err := utils.OrganizationIdFromRequest(r)
+	if presentError(w, r, err) {
 		return
 	}
 
 	var input createFieldInput
-	if err := json.NewDecoder(c.Request.Body).Decode(&input); err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	tableID := c.Param("tableID")
+	tableID := chi.URLParam(r, "tableID")
 	field := models.DataModelField{
 		Name:        input.Name,
 		Description: input.Description,
@@ -111,36 +112,29 @@ func (d *DataModelHandler) CreateField(c *gin.Context) {
 		IsEnum:      input.IsEnum,
 	}
 
-	fieldID, err := d.useCase.CreateField(c.Request.Context(), organizationID, tableID, field)
-	if presentError(c.Writer, c.Request, err) {
+	fieldID, err := d.useCase.CreateField(r.Context(), organizationID, tableID, field)
+	if presentError(w, r, err) {
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"id": fieldID,
-	})
+	PresentModelWithName(w, "id", fieldID)
 }
 
-type updateFieldInput struct {
-	Description *string `json:"description"`
-	IsEnum      *bool   `json:"is_enum"`
-}
-
-func (d *DataModelHandler) UpdateDataModelField(c *gin.Context) {
+func (d *DataModelHandler) UpdateDataModelField(w http.ResponseWriter, r *http.Request) {
 	var input updateFieldInput
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.Status(http.StatusBadRequest)
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	fieldID := c.Param("fieldID")
+	fieldID := chi.URLParam(r, "fieldID")
 
-	err := d.useCase.UpdateDataModelField(c.Request.Context(), fieldID, models.UpdateDataModelFieldInput{
+	err := d.useCase.UpdateDataModelField(r.Context(), fieldID, models.UpdateDataModelFieldInput{
 		Description: input.Description,
 		IsEnum:      input.IsEnum,
 	})
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(w, r, err) {
 		return
 	}
-	c.Status(http.StatusNoContent)
+	PresentNothing(w)
 }
 
 type createLinkInput struct {
@@ -151,15 +145,15 @@ type createLinkInput struct {
 	ChildFieldID  string `json:"child_field_id"`
 }
 
-func (d *DataModelHandler) CreateLink(c *gin.Context) {
-	organizationID, err := utils.OrganizationIdFromRequest(c.Request)
-	if presentError(c.Writer, c.Request, err) {
+func (d *DataModelHandler) CreateLink(w http.ResponseWriter, r *http.Request) {
+	organizationID, err := utils.OrganizationIdFromRequest(r)
+	if presentError(w, r, err) {
 		return
 	}
 
 	var input createLinkInput
-	if err := json.NewDecoder(c.Request.Body).Decode(&input); err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -172,39 +166,39 @@ func (d *DataModelHandler) CreateLink(c *gin.Context) {
 		ChildFieldID:   input.ChildFieldID,
 	}
 
-	err = d.useCase.CreateDataModelLink(c.Request.Context(), link)
-	if presentError(c.Writer, c.Request, err) {
+	err = d.useCase.CreateDataModelLink(r.Context(), link)
+	if presentError(w, r, err) {
 		return
 	}
-	c.Status(http.StatusNoContent)
+	PresentNothing(w)
 }
 
-func (d *DataModelHandler) DeleteDataModel(c *gin.Context) {
-	organizationID, err := utils.OrganizationIdFromRequest(c.Request)
-	if presentError(c.Writer, c.Request, err) {
+func (d *DataModelHandler) DeleteDataModel(w http.ResponseWriter, r *http.Request) {
+	organizationID, err := utils.OrganizationIdFromRequest(r)
+	if presentError(w, r, err) {
 		return
 	}
 
-	err = d.useCase.DeleteDataModel(c.Request.Context(), organizationID)
-	if presentError(c.Writer, c.Request, err) {
+	err = d.useCase.DeleteDataModel(r.Context(), organizationID)
+	if presentError(w, r, err) {
 		return
 	}
-	c.Status(http.StatusNoContent)
+	PresentNothing(w)
 }
 
-func (d *DataModelHandler) OpenAPI(c *gin.Context) {
-	organizationID, err := utils.OrganizationIdFromRequest(c.Request)
-	if presentError(c.Writer, c.Request, err) {
+func (d *DataModelHandler) OpenAPI(w http.ResponseWriter, r *http.Request) {
+	organizationID, err := utils.OrganizationIdFromRequest(r)
+	if presentError(w, r, err) {
 		return
 	}
 
-	dataModel, err := d.useCase.GetDataModel(c.Request.Context(), organizationID)
-	if presentError(c.Writer, c.Request, err) {
+	dataModel, err := d.useCase.GetDataModel(r.Context(), organizationID)
+	if presentError(w, r, err) {
 		return
 	}
 
 	openapi := dto.OpenAPIFromDataModel(dataModel)
-	c.JSON(http.StatusOK, openapi)
+	PresentModel(w, openapi)
 }
 
 func NewDataModelHandler(u dataModelUseCase) *DataModelHandler {

@@ -3,72 +3,92 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
-
-	"github.com/gin-gonic/gin"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
 	"github.com/checkmarble/marble-backend/utils"
+
+	"github.com/ggicci/httpin"
 )
 
-const defaultDecisionsLimit = 10000
+const defaultDecisionslimit = 10000
 
-func (api *API) handleGetDecision(c *gin.Context) {
-	decisionID := c.Param("decision_id")
+func (api *API) handleGetDecision(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
-	usecase := api.UsecasesWithCreds(c.Request).NewDecisionUsecase()
-	decision, err := usecase.GetDecision(decisionID)
-	if presentError(c.Writer, c.Request, err) {
+	input := ctx.Value(httpin.Input).(*dto.GetDecisionInput)
+	decisionId := input.DecisionId
+
+	usecase := api.UsecasesWithCreds(r).NewDecisionUsecase()
+	decision, err := usecase.GetDecision(decisionId)
+	if presentError(w, r, err) {
 		return
 	}
-	c.JSON(http.StatusOK, dto.NewAPIDecision(decision))
+	PresentModel(w, dto.NewAPIDecision(decision))
 }
 
-func (api *API) handleListDecisions(c *gin.Context) {
-	usecase := api.UsecasesWithCreds(c.Request).NewDecisionUsecase()
-	decisions, err := usecase.ListDecisions(defaultDecisionsLimit)
-	if presentError(c.Writer, c.Request, err) {
+func (api *API) handleListDecisions(w http.ResponseWriter, r *http.Request) {
+	usecase := api.UsecasesWithCreds(r).NewDecisionUsecase()
+	decisions, err := usecase.ListDecisions(defaultDecisionslimit)
+	if presentError(w, r, err) {
 		return
 	}
-	c.JSON(http.StatusOK, utils.Map(decisions, dto.NewAPIDecision))
+
+	PresentModel(w, utils.Map(decisions, dto.NewAPIDecision))
 }
 
-func (api *API) handlePostDecision(c *gin.Context) {
-	logger := utils.LoggerFromContext(c.Request.Context())
+func (api *API) handlePostDecision(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	logger := utils.LoggerFromContext(ctx)
 
-	organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
-	if presentError(c.Writer, c.Request, err) {
+	organizationId, err := utils.OrgIDFromCtx(ctx, r)
+	if presentError(w, r, err) {
 		return
 	}
 
-	var requestData dto.CreateDecisionBody
-	if err := c.ShouldBindJSON(&requestData); err != nil {
-		c.Status(http.StatusBadRequest)
-		return
-	}
+	input := ctx.Value(httpin.Input).(*dto.CreateDecisionInputDto)
+	requestData := input.Body
 
-	dataModelUseCase := api.UsecasesWithCreds(c.Request).NewDataModelUseCase()
+	logger = logger.With(slog.String("scenarioId", requestData.ScenarioId), slog.String("objectType", requestData.TriggerObjectType), slog.String("organizationId", organizationId))
+
+	dataModelUseCase := api.UsecasesWithCreds(r).NewDataModelUseCase()
 	dataModel, err := dataModelUseCase.GetDataModel(organizationId)
 	if err != nil {
-		http.Error(c.Writer, "", http.StatusInternalServerError)
+		logger.ErrorContext(ctx, "Unable to find datamodel by organizationId for ingestion: \n"+err.Error())
+		http.Error(w, "", http.StatusInternalServerError)
 		return
 	}
 
 	tables := dataModel.Tables
 	table, ok := tables[models.TableName(requestData.TriggerObjectType)]
 	if !ok {
-		http.Error(c.Writer, "", http.StatusNotFound)
+		logger.ErrorContext(ctx, "Table not found in data model for organization")
+		http.Error(w, "", http.StatusNotFound)
+		return
+	}
+
+	parser := payload_parser.NewParser()
+	validationErrors, err := parser.ValidatePayload(table, requestData.TriggerObjectRaw)
+	if err != nil {
+		http.Error(w, "", http.StatusUnprocessableEntity)
+		return
+	}
+	if len(validationErrors) > 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(validationErrors)
 		return
 	}
 
 	payload, err := payload_parser.ParseToDataModelObject(table, requestData.TriggerObjectRaw)
 	if errors.Is(err, models.FormatValidationError) {
-		http.Error(c.Writer, "Format validation error", http.StatusUnprocessableEntity) // 422
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	} else if err != nil {
-		http.Error(c.Writer, "", http.StatusInternalServerError)
+		logger.ErrorContext(ctx, "Unexpected error while parsing to data model object:\n"+err.Error())
+		http.Error(w, "", http.StatusInternalServerError)
 		return
 	}
 
@@ -76,25 +96,32 @@ func (api *API) handlePostDecision(c *gin.Context) {
 	triggerObjectMap := make(map[string]interface{})
 	err = json.Unmarshal(requestData.TriggerObjectRaw, &triggerObjectMap)
 	if err != nil {
-		http.Error(c.Writer, "", http.StatusUnprocessableEntity)
+		logger.ErrorContext(ctx, "Could not unmarshal trigger object: \n"+err.Error())
+		http.Error(w, "", http.StatusUnprocessableEntity)
 		return
 	}
 	ClientObject := models.ClientObject{TableName: models.TableName(requestData.TriggerObjectType), Data: triggerObjectMap}
-	decisionUsecase := api.UsecasesWithCreds(c.Request).NewDecisionUsecase()
+	decisionUsecase := api.UsecasesWithCreds(r).NewDecisionUsecase()
 
-	decision, err := decisionUsecase.CreateDecision(c.Request.Context(), models.CreateDecisionInput{
+	decision, err := decisionUsecase.CreateDecision(ctx, models.CreateDecisionInput{
 		ScenarioId:              requestData.ScenarioId,
 		ClientObject:            ClientObject,
 		OrganizationId:          organizationId,
 		PayloadStructWithReader: payload,
 	}, logger)
 	if errors.Is(err, models.NotFoundError) || errors.Is(err, models.BadParameterError) {
-		presentError(c.Writer, c.Request, err)
+		presentError(w, r, err)
 		return
 	} else if err != nil {
-		logger.ErrorContext(c.Request.Context(), "Could not create a decision: \n"+err.Error())
-		http.Error(c.Writer, "", http.StatusInternalServerError)
+		logger.ErrorContext(ctx, "Could not create a decision: \n"+err.Error())
+		http.Error(w, "", http.StatusInternalServerError)
 		return
 	}
-	c.JSON(http.StatusOK, dto.NewAPIDecision(decision))
+
+	err = json.NewEncoder(w).Encode(dto.NewAPIDecision(decision))
+	if err != nil {
+		logger.ErrorContext(ctx, "error encoding response JSON: \n"+err.Error())
+		http.Error(w, "", http.StatusInternalServerError)
+		return
+	}
 }

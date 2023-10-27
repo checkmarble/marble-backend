@@ -3,39 +3,43 @@ package api
 import (
 	"net/http"
 
-	"github.com/gin-gonic/gin"
-
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func (api *API) handleGetEditorIdentifiers(c *gin.Context) {
-	scenarioID := c.Param("scenario_id")
+func (api *API) handleGetEditorIdentifiers(w http.ResponseWriter, r *http.Request) {
+	scenarioId, err := requiredUuidUrlParam(r, "scenarioId")
+	if presentError(w, r, err) {
+		return
+	}
 
-	usecase := api.UsecasesWithCreds(c.Request).AstExpressionUsecase()
-	result, err := usecase.EditorIdentifiers(scenarioID)
+	usecase := api.UsecasesWithCreds(r).AstExpressionUsecase()
+	result, err := usecase.EditorIdentifiers(scenarioId)
 
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(w, r, err) {
 		return
 	}
 
 	databaseNodes, err := utils.MapErr(result.DatabaseAccessors, dto.AdaptNodeDto)
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(w, r, err) {
 		return
 	}
 	payloadbaseNodes, err := utils.MapErr(result.PayloadAccessors, dto.AdaptNodeDto)
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(w, r, err) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"database_accessors": databaseNodes,
-		"payload_accessors":  payloadbaseNodes,
+	PresentModel(w, struct {
+		DatabaseAccessors []dto.NodeDto `json:"database_accessors"`
+		PayloadAccessors  []dto.NodeDto `json:"payload_accessors"`
+	}{
+		DatabaseAccessors: databaseNodes,
+		PayloadAccessors:  payloadbaseNodes,
 	})
 }
 
-func (api *API) handleGetEditorOperators(c *gin.Context) {
-	usecase := api.UsecasesWithCreds(c.Request).AstExpressionUsecase()
+func (api *API) handleGetEditorOperators(w http.ResponseWriter, r *http.Request) {
+	usecase := api.UsecasesWithCreds(r).AstExpressionUsecase()
 	result := usecase.EditorOperators()
 
 	var functions []dto.FuncAttributesDto
@@ -43,7 +47,9 @@ func (api *API) handleGetEditorOperators(c *gin.Context) {
 	for _, attributes := range result.OperatorAccessors {
 		functions = append(functions, dto.AdaptFuncAttributesDto(attributes))
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"operators_accessors": functions,
+	PresentModel(w, struct {
+		OperatorAccessors []dto.FuncAttributesDto `json:"operators_accessors"`
+	}{
+		OperatorAccessors: functions,
 	})
 }
