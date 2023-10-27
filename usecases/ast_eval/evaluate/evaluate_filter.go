@@ -2,6 +2,7 @@ package evaluate
 
 import (
 	"fmt"
+	"reflect"
 	"slices"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -50,9 +51,15 @@ func (f FilterEvaluator) Evaluate(arguments ast.Arguments) (any, []error) {
 
 	// Value validation
 	value := arguments.NamedArgs["value"]
-	promotedValue, err := promoteArgumentToDataType(value, fieldType)
-	if err != nil {
-		return MakeEvaluateError(fmt.Errorf("value is not compatible with selected field %w %w", err, ast.NewNamedArgumentError("value")))
+	var promotedValue any
+	// When value is a float, it cannot be cast to int but SQL can handle the comparision, so no casting is required
+	if fieldType == models.Int && reflect.TypeOf(value) == reflect.TypeOf(float64(0)) {
+		promotedValue = value
+	} else {
+		promotedValue, err = promoteArgumentToDataType(value, fieldType)
+		if err != nil {
+			return MakeEvaluateError(fmt.Errorf("value is not compatible with selected field %w %w", err, ast.NewNamedArgumentError("value")))
+		}
 	}
 
 	returnValue := ast.Filter{

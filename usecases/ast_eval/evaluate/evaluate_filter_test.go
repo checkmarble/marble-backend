@@ -135,3 +135,40 @@ func TestFilter_value_incompatible(t *testing.T) {
 	_, errs := filter.Evaluate(arguments)
 	assert.NotEmpty(t, errs)
 }
+
+var dataModelWithInt = models.DataModel{
+	Tables: map[models.TableName]models.Table{
+		"table1": {
+			Name: "table1",
+			Fields: map[models.FieldName]models.Field{
+				"field1": {
+					DataType: models.Int,
+					Nullable: false,
+				},
+			},
+		},
+	},
+}
+var filterWithInt = FilterEvaluator{DataModel: dataModelWithInt}
+
+func TestFilter_value_float(t *testing.T) {
+	arguments := ast.Arguments{
+		NamedArgs: map[string]any{
+			"tableName": "table1",
+			"fieldName": "field1",
+			"operator":  "=",
+			"value":     10.1,
+		},
+	}
+
+	expectedResult := ast.Filter{
+		TableName: "table1",
+		FieldName: "field1",
+		Operator:  ast.FILTER_EQUAL,
+		Value:     10.1,
+	}
+	result, errs := filterWithInt.Evaluate(arguments)
+	assert.Empty(t, errs)
+
+	assert.ObjectsAreEqualValues(expectedResult, result)
+}
