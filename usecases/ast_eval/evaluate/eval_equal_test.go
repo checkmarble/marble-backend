@@ -45,7 +45,7 @@ func TestEqual_Evaluate_int(t *testing.T) {
 			name:   "different types",
 			args:   []any{1, "1"},
 			want:   nil,
-			errors: []error{fmt.Errorf("all arguments must be string, boolean, time, int or float")},
+			errors: []error{fmt.Errorf("all arguments must be string, boolean, time, int or float %w", ast.ErrArgumentInvalidType)},
 		},
 	}
 

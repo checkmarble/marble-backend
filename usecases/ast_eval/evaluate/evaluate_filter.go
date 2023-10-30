@@ -46,7 +46,7 @@ func (f FilterEvaluator) Evaluate(arguments ast.Arguments) (any, []error) {
 
 	isValidFieldType := slices.Contains(validTypes, fieldType)
 	if !isValidFieldType {
-		return MakeEvaluateError(fmt.Errorf("field type %s is not valid for operator %s %w %w", fieldType.String(), operator, models.ErrRuntimeExpression, ast.NewNamedArgumentError("fieldName")))
+		return MakeEvaluateError(fmt.Errorf("field type %s is not valid for operator %s %w %w", fieldType.String(), operator, ast.ErrArgumentInvalidType, ast.NewNamedArgumentError("fieldName")))
 	}
 
 	// Value validation
@@ -58,7 +58,7 @@ func (f FilterEvaluator) Evaluate(arguments ast.Arguments) (any, []error) {
 	} else {
 		promotedValue, err = promoteArgumentToDataType(value, fieldType)
 		if err != nil {
-			return MakeEvaluateError(fmt.Errorf("value is not compatible with selected field %w %w", err, ast.NewNamedArgumentError("value")))
+			return MakeEvaluateError(fmt.Errorf("value is not compatible with selected field %w %w", ast.ErrArgumentInvalidType, ast.NewNamedArgumentError("value")))
 		}
 	}
 

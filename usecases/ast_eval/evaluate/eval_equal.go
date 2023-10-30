@@ -35,5 +35,5 @@ func (f Equal) Evaluate(arguments ast.Arguments) (any, []error) {
 		return MakeEvaluateResult(left.Equal(right))
 	}
 
-	return MakeEvaluateError(fmt.Errorf("all arguments must be string, boolean, time, int or float"))
+	return MakeEvaluateError(fmt.Errorf("all arguments must be string, boolean, time, int or float %w", ast.ErrArgumentInvalidType))
 }

@@ -81,7 +81,7 @@ func TestComparison_comparisonFunction_mixed_int_float_false(t *testing.T) {
 
 func TestComparison_fail(t *testing.T) {
 	_, errs := NewComparison(ast.FUNC_ADD).Evaluate(ast.Arguments{Args: []any{"toto", false}})
-	assert.Equal(t, errs, []error{fmt.Errorf("all arguments must be an integer, a float or a time")})
+	assert.Equal(t, errs, []error{fmt.Errorf("all arguments must be an integer, a float or a time %w", ast.ErrArgumentMustBeIntFloatOrTime)})
 }
 
 func TestComparison_wrongnumber_of_argument(t *testing.T) {
@@ -93,5 +93,5 @@ func TestComparison_wrongnumber_of_argument(t *testing.T) {
 
 func TestComparison_required(t *testing.T) {
 	_, errs := NewComparison(ast.FUNC_ADD).Evaluate(ast.Arguments{Args: []any{4, nil}})
-	assert.Equal(t, errs, []error{fmt.Errorf("all arguments must be an integer, a float or a time")})
+	assert.Equal(t, errs, []error{fmt.Errorf("all arguments must be an integer, a float or a time %w", ast.ErrArgumentMustBeIntFloatOrTime)})
 }

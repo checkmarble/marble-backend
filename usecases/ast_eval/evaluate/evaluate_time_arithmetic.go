@@ -12,7 +12,7 @@ type TimeArithmetic struct {
 }
 
 const (
-	PlusSign = "+"
+	PlusSign  = "+"
 	MinusSign = "-"
 )
 

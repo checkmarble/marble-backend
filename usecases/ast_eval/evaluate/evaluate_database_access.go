@@ -34,12 +34,12 @@ func (d DatabaseAccess) Evaluate(arguments ast.Arguments) (any, []error) {
 
 	path, ok := arguments.NamedArgs["path"].([]any)
 	if !ok {
-		return MakeEvaluateError(fmt.Errorf("path is not a string"))
+		return MakeEvaluateError(fmt.Errorf("path is not a string %w", ast.ErrArgumentMustBeString))
 	}
 	for _, v := range path {
 		str, ok := v.(string)
 		if !ok {
-			return MakeEvaluateError(fmt.Errorf("path value is not a string"))
+			return MakeEvaluateError(fmt.Errorf("path value is not a string %w", ast.ErrArgumentMustBeString))
 		}
 		pathStringArr = append(pathStringArr, str)
 	}
@@ -48,7 +48,7 @@ func (d DatabaseAccess) Evaluate(arguments ast.Arguments) (any, []error) {
 
 	if err != nil {
 		errorMsg := fmt.Sprintf("tableName: %s, fieldName: %s, path: %v", tableName, fieldName, path)
-		return MakeEvaluateError(fmt.Errorf("DatabaseAccess: value not found: %s %w", errorMsg, err))
+		return MakeEvaluateError(fmt.Errorf("DatabaseAccess: value not found: %s %w %w", errorMsg, err, ast.ErrDatabaseAccessNotFound))
 	}
 
 	if fieldValue == nil {
