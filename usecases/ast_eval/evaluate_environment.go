@@ -47,6 +47,7 @@ func NewAstEvaluationEnvironment() AstEvaluationEnvironment {
 	environment.AddEvaluator(ast.FUNC_OR, evaluate.BooleanArithmetic{Function: ast.FUNC_OR})
 	environment.AddEvaluator(ast.FUNC_IS_IN_LIST, evaluate.NewStringInList(ast.FUNC_IS_IN_LIST))
 	environment.AddEvaluator(ast.FUNC_IS_NOT_IN_LIST, evaluate.NewStringInList(ast.FUNC_IS_NOT_IN_LIST))
+	environment.AddEvaluator(ast.FUNC_STRING_CONTAINS, evaluate.StringContains{})
 	environment.AddEvaluator(ast.FUNC_TIME_ADD, evaluate.NewTimeArithmetic(ast.FUNC_TIME_ADD))
 	environment.AddEvaluator(ast.FUNC_TIME_NOW, evaluate.NewTimeFunctions(ast.FUNC_TIME_NOW))
 	environment.AddEvaluator(ast.FUNC_PARSE_TIME, evaluate.NewTimeFunctions(ast.FUNC_PARSE_TIME))
