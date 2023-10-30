@@ -116,7 +116,7 @@ func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(input models.
 		return fmt.Errorf("scenario iteration is not live %w", models.BadParameterError)
 	}
 
-	pendingExecutions, err := usecase.repository.ListScheduledExecutions(nil, models.ListScheduledExecutionsFilters{ScenarioId: input.ScenarioId, Status: []models.ScheduledExecutionStatus{models.ScheduledExecutionPending, models.ScheduledExecutionProcessing}})
+	pendingExecutions, err := usecase.repository.ListScheduledExecutions(nil, models.ListScheduledExecutionsFilters{ScenarioId: scenario.Id, Status: []models.ScheduledExecutionStatus{models.ScheduledExecutionPending, models.ScheduledExecutionProcessing}})
 	if err != nil {
 		return err
 	}
