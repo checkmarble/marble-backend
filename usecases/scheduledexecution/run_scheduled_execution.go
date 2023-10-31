@@ -240,8 +240,12 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 				utils.LoggerFromContext(ctx),
 			)
 
-			if errors.Is(err, models.ScenarioTriggerConditionAndTriggerObjectMismatchError) || err != nil {
+			if errors.Is(err, models.ScenarioTriggerConditionAndTriggerObjectMismatchError) {
+				logger := utils.LoggerFromContext(ctx)
+				logger.Info(fmt.Sprintf("Trigger condition and trigger object mismatch: %s", err.Error()), "scenarioId", scenario.Id, "triggerObjectType", scenario.TriggerObjectType, "object", object)
 				continue
+			} else if err != nil {
+				return fmt.Errorf("error evaluating scenario: %w", err)
 			}
 
 			decisionInput := models.Decision{
