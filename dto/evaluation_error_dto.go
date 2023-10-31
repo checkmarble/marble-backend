@@ -34,7 +34,6 @@ var evaluationErrorDtoMap = []errorAndCode{
 	{ast.ErrArgumentInvalidType, "ARGUMENT_INVALID_TYPE"},
 	{ast.ErrListNotFound, "LIST_NOT_FOUND"},
 	{ast.ErrDatabaseAccessNotFound, "DATABASE_ACCESS_NOT_FOUND"},
-	{ast.ErrPayloadFieldNotFound, "PAYLOAD_FIELD_NOT_FOUND"},
 }
 
 func AdaptEvaluationErrorDto(err error) EvaluationErrorDto {

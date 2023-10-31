@@ -41,11 +41,12 @@ type RuleExecution struct {
 type RuleExecutionError int
 
 const (
-	NoError        RuleExecutionError = 0
-	DivisionByZero RuleExecutionError = 100
-	NullFieldRead  RuleExecutionError = 200
-	NoRowsRead     RuleExecutionError = 201
-	Unknown        RuleExecutionError = -1
+	NoError              RuleExecutionError = 0
+	DivisionByZero       RuleExecutionError = 100
+	NullFieldRead        RuleExecutionError = 200
+	NoRowsRead           RuleExecutionError = 201
+	PayloadFieldNotFound RuleExecutionError = 202
+	Unknown              RuleExecutionError = -1
 )
 
 func (r RuleExecutionError) String() string {
@@ -56,6 +57,8 @@ func (r RuleExecutionError) String() string {
 		return "A field read in a rule is null"
 	case NoRowsRead:
 		return "No rows were read from db in a rule"
+	case PayloadFieldNotFound:
+		return "A payload field was not found in a rule"
 	case Unknown:
 		return "Unknown error"
 	}
@@ -72,6 +75,8 @@ func AdaptRuleExecutionError(err error) RuleExecutionError {
 		return NoRowsRead
 	case errors.Is(err, DivisionByZeroError):
 		return DivisionByZero
+	case errors.Is(err, PayloadFieldNotFoundError):
+		return PayloadFieldNotFound
 	default:
 		return Unknown
 	}

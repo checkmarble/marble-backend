@@ -35,6 +35,8 @@ func adaptErrorCodeAsError(errCode models.RuleExecutionError) error {
 		return models.NoRowsReadError
 	case models.DivisionByZero:
 		return models.DivisionByZeroError
+	case models.PayloadFieldNotFound:
+		return models.PayloadFieldNotFoundError
 	default:
 		return fmt.Errorf("unknown error code")
 	}
