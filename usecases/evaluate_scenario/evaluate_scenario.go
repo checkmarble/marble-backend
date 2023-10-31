@@ -84,10 +84,12 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repo
 		dataAccessor.Payload,
 		params.DataModel,
 	)
-	if err != nil {
+
+	isAuthorizedError := models.IsAuthorizedError(err)
+	if err != nil && !isAuthorizedError {
 		return models.ScenarioExecution{}, fmt.Errorf("error evaluating trigger condition in eval scenario: %w", err)
 	}
-	if !triggerPassed {
+	if !triggerPassed || isAuthorizedError {
 		return models.ScenarioExecution{}, fmt.Errorf("error: scenario trigger object does not match payload %w; %w", models.BadParameterError, models.ScenarioTriggerConditionAndTriggerObjectMismatchError)
 	}
 
@@ -147,16 +149,7 @@ func evalScenarioRule(repositories ScenarioEvaluationRepositories, rule models.R
 		dataModel,
 	)
 
-	isAuthorizedError := func(err error) bool {
-		for _, authorizedError := range models.RuleExecutionAuthorizedErrors {
-			if errors.Is(err, authorizedError) {
-				return true
-			}
-		}
-		return false
-	}
-
-	if err != nil && !isAuthorizedError(err) {
+	if err != nil && !models.IsAuthorizedError(err) {
 		return 0, models.RuleExecution{}, fmt.Errorf("error while evaluating rule %s: %w", rule.Name, err)
 	}
 

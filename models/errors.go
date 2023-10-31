@@ -47,6 +47,15 @@ var (
 
 var RuleExecutionAuthorizedErrors = []error{NullFieldReadError, NoRowsReadError, DivisionByZeroError}
 
+func IsAuthorizedError(err error) bool {
+	for _, authorizedError := range RuleExecutionAuthorizedErrors {
+		if errors.Is(err, authorizedError) {
+			return true
+		}
+	}
+	return false
+}
+
 type PayloadValidationErrors struct {
 	message string
 	errors  map[string]string
