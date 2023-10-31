@@ -27,7 +27,7 @@ func (p Payload) Evaluate(arguments ast.Arguments) (any, []error) {
 
 	value, err := p.Payload.ReadFieldFromPayload(models.FieldName(payloadFieldName))
 	if err != nil {
-		return MakeEvaluateError(fmt.Errorf("payload var does not exist: %s %w", payloadFieldName, ast.ErrPayloadFieldNotFound))
+		return MakeEvaluateError(fmt.Errorf("payload var does not exist: %s %w", payloadFieldName, models.PayloadFieldNotFoundError))
 	}
 
 	if value == nil {
