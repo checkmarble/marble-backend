@@ -5,176 +5,181 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/ggicci/httpin"
+	"github.com/gin-gonic/gin"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func (api *API) handleGetAllCustomLists() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		usecase := api.UsecasesWithCreds(r).NewCustomListUseCase()
-		lists, err := usecase.GetCustomLists()
-		if presentError(w, r, err) {
-			return
-		}
-		PresentModelWithName(w, "custom_lists", utils.Map(lists, dto.AdaptCustomListDto))
+func (api *API) handleGetAllCustomLists(c *gin.Context) {
+	usecase := api.UsecasesWithCreds(c.Request).NewCustomListUseCase()
+	lists, err := usecase.GetCustomLists()
+	if presentError(c.Writer, c.Request, err) {
+		return
 	}
+	c.JSON(http.StatusOK, gin.H{
+		"custom_lists": utils.Map(lists, dto.AdaptCustomListDto),
+	})
 }
 
-func (api *API) handlePostCustomList() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		inputDto := r.Context().Value(httpin.Input).(*dto.CreateCustomListInputDto).Body
-
-		usecase := api.UsecasesWithCreds(r).NewCustomListUseCase()
-		customList, err := usecase.CreateCustomList(models.CreateCustomListInput{
-			Name:        inputDto.Name,
-			Description: inputDto.Description,
-		})
-		if presentError(w, r, err) {
-			return
-		}
-		PresentModelWithNameStatusCode(w, "custom_list", dto.AdaptCustomListDto(customList), http.StatusCreated)
+func (api *API) handlePostCustomList(c *gin.Context) {
+	var data dto.CreateCustomListBodyDto
+	if err := c.ShouldBindJSON(&data); err != nil {
+		c.Status(http.StatusBadRequest)
+		return
 	}
+
+	usecase := api.UsecasesWithCreds(c.Request).NewCustomListUseCase()
+	customList, err := usecase.CreateCustomList(models.CreateCustomListInput{
+		Name:        data.Name,
+		Description: data.Description,
+	})
+	if presentError(c.Writer, c.Request, err) {
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{
+		"custom_list": dto.AdaptCustomListDto(customList),
+	})
 }
 
-func (api *API) handleGetCustomListWithValues() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		inputDto := r.Context().Value(httpin.Input).(*dto.GetCustomListInputDto)
+func (api *API) handleGetCustomListWithValues(c *gin.Context) {
+	customListID := c.Param("list_id")
 
-		usecase := api.UsecasesWithCreds(r).NewCustomListUseCase()
-		CustomList, err := usecase.GetCustomListById(inputDto.CustomListID)
-		if presentError(w, r, err) {
-			return
-		}
-		CustomListValues, err := usecase.GetCustomListValues(models.GetCustomListValuesInput{
-			Id: inputDto.CustomListID,
-		})
-
-		if presentError(w, r, err) {
-			return
-		}
-		PresentModelWithName(w, "custom_list", dto.AdaptCustomListWithValuesDto(CustomList, CustomListValues))
+	usecase := api.UsecasesWithCreds(c.Request).NewCustomListUseCase()
+	CustomList, err := usecase.GetCustomListById(customListID)
+	if presentError(c.Writer, c.Request, err) {
+		return
 	}
+	CustomListValues, err := usecase.GetCustomListValues(models.GetCustomListValuesInput{
+		Id: customListID,
+	})
+
+	if presentError(c.Writer, c.Request, err) {
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"custom_list": dto.AdaptCustomListWithValuesDto(CustomList, CustomListValues),
+	})
 }
 
-func (api *API) handlePatchCustomList() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		logger := utils.LoggerFromContext(ctx)
+func (api *API) handlePatchCustomList(c *gin.Context) {
+	ctx := c.Request.Context()
+	logger := utils.LoggerFromContext(ctx)
 
-		organizationId, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
-			return
-		}
-		logger = logger.With(slog.String("organizationId", organizationId))
-		inputDto := ctx.Value(httpin.Input).(*dto.UpdateCustomListInputDto)
-		listId := inputDto.CustomListID
-		requestData := inputDto.Body
-
-		usecase := api.UsecasesWithCreds(r).NewCustomListUseCase()
-		CustomList, err := usecase.UpdateCustomList(models.UpdateCustomListInput{
-			Id:          listId,
-			Name:        &requestData.Name,
-			Description: &requestData.Description,
-		})
-
-		if presentError(w, r, err) {
-			logger.ErrorContext(ctx, "error updating a list: \n"+err.Error())
-			return
-		}
-
-		PresentModelWithName(w, "lists", dto.AdaptCustomListDto(CustomList))
+	organizationId, err := utils.OrgIDFromCtx(ctx, c.Request)
+	if presentError(c.Writer, c.Request, err) {
+		return
 	}
+	logger = logger.With(slog.String("organizationId", organizationId))
+
+	customListID := c.Param("list_id")
+	var data dto.UpdateCustomListBodyDto
+	if err := c.ShouldBindJSON(&data); err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
+	usecase := api.UsecasesWithCreds(c.Request).NewCustomListUseCase()
+	CustomList, err := usecase.UpdateCustomList(models.UpdateCustomListInput{
+		Id:          customListID,
+		Name:        &data.Name,
+		Description: &data.Description,
+	})
+
+	if presentError(c.Writer, c.Request, err) {
+		logger.ErrorContext(ctx, "error updating a list: \n"+err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"lists": dto.AdaptCustomListDto(CustomList),
+	})
 }
 
-func (api *API) handleDeleteCustomList() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		logger := utils.LoggerFromContext(ctx)
+func (api *API) handleDeleteCustomList(c *gin.Context) {
+	ctx := c.Request.Context()
+	logger := utils.LoggerFromContext(ctx)
 
-		organizationId, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
-			return
-		}
-		logger = logger.With(slog.String("organizationId", organizationId))
-		inputDto := ctx.Value(httpin.Input).(*dto.DeleteCustomListInputDto)
-
-		usecase := api.UsecasesWithCreds(r).NewCustomListUseCase()
-		err = usecase.SoftDeleteCustomList(models.DeleteCustomListInput{
-			Id: inputDto.CustomListID,
-		})
-		if presentError(w, r, err) {
-			logger.ErrorContext(ctx, "error deleting a list: \n"+err.Error())
-			return
-		}
-		PresentNothing(w)
+	organizationId, err := utils.OrgIDFromCtx(ctx, c.Request)
+	if presentError(c.Writer, c.Request, err) {
+		return
 	}
+	logger = logger.With(slog.String("organizationId", organizationId))
+	customListID := c.Param("list_id")
+
+	usecase := api.UsecasesWithCreds(c.Request).NewCustomListUseCase()
+	err = usecase.SoftDeleteCustomList(models.DeleteCustomListInput{
+		Id: customListID,
+	})
+	if presentError(c.Writer, c.Request, err) {
+		logger.ErrorContext(ctx, "error deleting a list: \n"+err.Error())
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
-func (api *API) handlePostCustomListValue() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		logger := utils.LoggerFromContext(ctx)
+func (api *API) handlePostCustomListValue(c *gin.Context) {
+	ctx := c.Request.Context()
+	logger := utils.LoggerFromContext(ctx)
 
-		organizationId, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
-			return
-		}
-		logger = logger.With(slog.String("organizationId", organizationId))
-		inputDto := ctx.Value(httpin.Input).(*dto.CreateCustomListValueInputDto)
-		listId := inputDto.CustomListID
-		requestData := inputDto.Body
-
-		usecase := api.UsecasesWithCreds(r).NewCustomListUseCase()
-		customListValue, err := usecase.AddCustomListValue(models.AddCustomListValueInput{
-			CustomListId: listId,
-			Value:        requestData.Value,
-		})
-		if presentError(w, r, err) {
-			logger.ErrorContext(ctx, "error adding a value to a list: \n"+err.Error())
-			return
-		}
-
-		PresentModelWithNameStatusCode(w, "custom_list_value", dto.AdaptCustomListValueDto(customListValue), http.StatusCreated)
+	organizationId, err := utils.OrgIDFromCtx(ctx, c.Request)
+	if presentError(c.Writer, c.Request, err) {
+		return
 	}
+	logger = logger.With(slog.String("organizationId", organizationId))
+
+	customListID := c.Param("list_id")
+	var data dto.CreateCustomListValueBodyDto
+	if err := c.ShouldBindJSON(&data); err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
+	usecase := api.UsecasesWithCreds(c.Request).NewCustomListUseCase()
+	customListValue, err := usecase.AddCustomListValue(models.AddCustomListValueInput{
+		CustomListId: customListID,
+		Value:        data.Value,
+	})
+	if presentError(c.Writer, c.Request, err) {
+		logger.ErrorContext(ctx, "error adding a value to a list: \n"+err.Error())
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{
+		"custom_list_value": dto.AdaptCustomListValueDto(customListValue),
+	})
 }
 
-func (api *API) handleDeleteCustomListValue() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		logger := utils.LoggerFromContext(ctx)
+func (api *API) handleDeleteCustomListValue(c *gin.Context) {
+	ctx := c.Request.Context()
+	logger := utils.LoggerFromContext(ctx)
 
-		organizationId, err := utils.OrgIDFromCtx(ctx, r)
-		if presentError(w, r, err) {
-			return
-		}
-		logger = logger.With(slog.String("organizationId", organizationId))
-		inputDto := ctx.Value(httpin.Input).(*dto.DeleteCustomListValueInputDto)
-		listId := inputDto.CustomListID
-
-		if err := utils.ValidateUuid(inputDto.CustomListID); err != nil {
-			presentError(w, r, fmt.Errorf("param 'customListId' : %w", err))
-			return
-		}
-
-		if err := utils.ValidateUuid(inputDto.CustomListValueId); err != nil {
-			presentError(w, r, fmt.Errorf("param 'customListValueId': %w", err))
-			return
-		}
-
-		usecase := api.UsecasesWithCreds(r).NewCustomListUseCase()
-		err = usecase.DeleteCustomListValue(models.DeleteCustomListValueInput{
-			Id:           inputDto.CustomListValueId,
-			CustomListId: listId,
-		})
-
-		if presentError(w, r, err) {
-			logger.ErrorContext(ctx, "error deleting a value to a list: \n"+err.Error())
-			return
-		}
-
-		PresentNothing(w)
+	organizationId, err := utils.OrgIDFromCtx(ctx, c.Request)
+	if presentError(c.Writer, c.Request, err) {
+		return
 	}
+	logger = logger.With(slog.String("organizationId", organizationId))
+	customListID := c.Param("list_id")
+	valueID := c.Param("value_id")
+
+	if err := utils.ValidateUuid(customListID); err != nil {
+		presentError(c.Writer, c.Request, fmt.Errorf("param 'customListId' : %w", err))
+		return
+	}
+
+	if err := utils.ValidateUuid(valueID); err != nil {
+		presentError(c.Writer, c.Request, fmt.Errorf("param 'customListValueId': %w", err))
+		return
+	}
+
+	usecase := api.UsecasesWithCreds(c.Request).NewCustomListUseCase()
+	err = usecase.DeleteCustomListValue(models.DeleteCustomListValueInput{
+		Id:           valueID,
+		CustomListId: customListID,
+	})
+
+	if presentError(c.Writer, c.Request, err) {
+		logger.ErrorContext(ctx, "error deleting a value to a list: \n"+err.Error())
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
