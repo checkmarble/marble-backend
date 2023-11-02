@@ -342,9 +342,9 @@ async function _createDemoDataModel({
   });
   await createField({
     parent: transactionTableId,
-    dataType: "Int",
+    dataType: "Float",
     name: "value",
-    description: "Amount of the transaction in EUR cents (no decimals)",
+    description: "Amount of the transaction in EUR",
   });
 
   // accounts
@@ -377,14 +377,14 @@ async function _createDemoDataModel({
   await createField({
     parent: accountTableId,
     name: "past_balalnce",
-    dataType: "Int",
+    dataType: "Float",
     description: "Balance before the last update",
   });
   await createField({
     parent: accountTableId,
     name: "balance",
-    dataType: "Int",
-    description: "Account balance in EUR cents (no decimals)",
+    dataType: "Float",
+    description: "Account balance in EUR",
   });
   await createField({
     parent: accountTableId,
@@ -404,7 +404,7 @@ async function _createDemoDataModel({
   );
   await createField({
     parent: compagnyTableId,
-    dataType: "Int",
+    dataType: "String",
     name: "AML_score",
     description: "Sensitivy score to money laundering risks",
   });
