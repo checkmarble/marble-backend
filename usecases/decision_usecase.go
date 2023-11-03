@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 
+	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
@@ -17,6 +19,7 @@ import (
 
 type DecisionUsecaseRepository interface {
 	GetScenarioById(tx repositories.Transaction, scenarioId string) (models.Scenario, error)
+	ListScenariosOfOrganization(tx repositories.Transaction, organizationId string) ([]models.Scenario, error)
 
 	GetScenarioIteration(tx repositories.Transaction, scenarioIterationId string) (
 		models.ScenarioIteration, error,
@@ -46,17 +49,36 @@ func (usecase *DecisionUsecase) GetDecision(decisionId string) (models.Decision,
 	return decision, nil
 }
 
-func (usecase *DecisionUsecase) ListDecisions(limit int) ([]models.Decision, error) {
-	organizationId, err := usecase.organizationIdOfContext()
+func (usecase *DecisionUsecase) ListDecisions(organizationId string, filters dto.DecisionFilters, limit int) ([]models.Decision, error) {
+	if err := usecase.validateScenarioIds(filters.ScenarioIds, organizationId); err != nil {
+		return []models.Decision{}, err
+	}
+
+	outcomes, err := usecase.validateOutcomes(filters.Outcomes)
 	if err != nil {
-		return nil, err
+		return []models.Decision{}, err
+	}
+
+	if !filters.StartDate.IsZero() && !filters.EndDate.IsZero() && filters.StartDate.After(filters.EndDate) {
+		return []models.Decision{}, fmt.Errorf("start date must be before end date: %w", models.BadParameterError)
+	}
+
+	triggerObjectTypes, err := usecase.validateTriggerObjects(filters.TriggerObjects, organizationId)
+	if err != nil {
+		return []models.Decision{}, err
 	}
 
 	return transaction.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) ([]models.Decision, error) {
-			decisions, err := usecase.decisionRepository.DecisionsOfOrganization(tx, organizationId, limit)
+			decisions, err := usecase.decisionRepository.DecisionsOfOrganization(tx, organizationId, limit, models.DecisionFilters{
+				ScenarioIds:    filters.ScenarioIds,
+				StartDate:      filters.StartDate,
+				EndDate:        filters.EndDate,
+				Outcomes:       outcomes,
+				TriggerObjects: triggerObjectTypes,
+			})
 			if err != nil {
 				return []models.Decision{}, err
 			}
@@ -68,6 +90,50 @@ func (usecase *DecisionUsecase) ListDecisions(limit int) ([]models.Decision, err
 			return decisions, nil
 		},
 	)
+}
+
+func (usecase *DecisionUsecase) validateScenarioIds(scenarioIds []string, organizationId string) error {
+	scenarios, err := usecase.repository.ListScenariosOfOrganization(nil, organizationId)
+	if err != nil {
+		return err
+	}
+	organizationScenarioIds := make([]string, len(scenarios))
+	for i, scenario := range scenarios {
+		organizationScenarioIds[i] = scenario.Id
+	}
+
+	for _, scenarioId := range scenarioIds {
+		if !slices.Contains(organizationScenarioIds, scenarioId) {
+			return fmt.Errorf("scenario id %s not found in organization %s: %w", scenarioId, organizationId, models.BadParameterError)
+		}
+	}
+	return nil
+}
+
+func (usecase *DecisionUsecase) validateOutcomes(filtersOutcomes []string) ([]models.Outcome, error) {
+	outcomes := make([]models.Outcome, len(filtersOutcomes))
+	for i, outcome := range filtersOutcomes {
+		outcomes[i] = models.OutcomeFrom(outcome)
+		if outcomes[i] == models.UnknownOutcome || outcomes[i] == models.None {
+			return []models.Outcome{}, fmt.Errorf("invalid outcome: %s, %w", outcome, models.BadParameterError)
+		}
+	}
+	return outcomes, nil
+}
+
+func (usecase *DecisionUsecase) validateTriggerObjects(filtersTriggerObjects []string, organizationId string) ([]models.TableName, error) {
+	dataModel, err := usecase.datamodelRepository.GetDataModel(organizationId, true)
+	if err != nil {
+		return []models.TableName{}, err
+	}
+	triggerObjectTypes := make([]models.TableName, len(filtersTriggerObjects))
+	for i, triggerObject := range filtersTriggerObjects {
+		triggerObjectTypes[i] = models.TableName(triggerObject)
+		if _, ok := dataModel.Tables[triggerObjectTypes[i]]; !ok {
+			return []models.TableName{}, fmt.Errorf("table %s not found on data model: %w", triggerObject, models.BadParameterError)
+		}
+	}
+	return triggerObjectTypes, nil
 }
 
 func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models.CreateDecisionInput, logger *slog.Logger) (models.Decision, error) {

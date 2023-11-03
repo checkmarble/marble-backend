@@ -11,6 +11,14 @@ type GetDecisionInput struct {
 	DecisionId string `in:"path=decisionId"`
 }
 
+type DecisionFilters struct {
+	ScenarioIds    []string  `form:"scenarioId[]"`
+	StartDate      time.Time `form:"startDate" time_format:"2006-01-02T15:04:05"`
+	EndDate        time.Time `form:"endDate" time_format:"2006-01-02T15:04:05"`
+	Outcomes       []string  `form:"outcome[]"`
+	TriggerObjects []string  `form:"triggerObject[]"`
+}
+
 type CreateDecisionBody struct {
 	ScenarioId        string          `json:"scenario_id"`
 	TriggerObjectRaw  json.RawMessage `json:"trigger_object"`
