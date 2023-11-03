@@ -27,8 +27,19 @@ func (api *API) handleGetDecision(c *gin.Context) {
 }
 
 func (api *API) handleListDecisions(c *gin.Context) {
+	organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+	if presentError(c.Writer, c.Request, err) {
+		return
+	}
+
+	var filters dto.DecisionFilters
+	if err := c.ShouldBind(&filters); err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
 	usecase := api.UsecasesWithCreds(c.Request).NewDecisionUsecase()
-	decisions, err := usecase.ListDecisions(defaultDecisionsLimit)
+	decisions, err := usecase.ListDecisions(organizationId, filters, defaultDecisionsLimit)
 	if presentError(c.Writer, c.Request, err) {
 		return
 	}

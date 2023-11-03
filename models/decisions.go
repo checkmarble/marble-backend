@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type Outcome int
 
 const (
@@ -63,4 +65,12 @@ type CreateDecisionInput struct {
 	ScenarioId              string
 	ClientObject            ClientObject
 	PayloadStructWithReader PayloadReader
+}
+
+type DecisionFilters struct {
+	ScenarioIds    []string
+	StartDate      time.Time
+	EndDate        time.Time
+	Outcomes       []Outcome
+	TriggerObjects []TableName
 }

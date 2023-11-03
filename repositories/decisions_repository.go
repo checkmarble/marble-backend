@@ -15,7 +15,7 @@ type DecisionRepository interface {
 	DecisionById(transaction Transaction, decisionId string) (models.Decision, error)
 	DecisionsOfScheduledExecution(scheduledExecutionId string) (<-chan models.Decision, <-chan error)
 	StoreDecision(tx Transaction, decision models.Decision, organizationId string, newDecisionId string) error
-	DecisionsOfOrganization(transaction Transaction, organizationId string, limit int) ([]models.Decision, error)
+	DecisionsOfOrganization(transaction Transaction, organizationId string, limit int, filters models.DecisionFilters) ([]models.Decision, error)
 }
 
 type DecisionRepositoryImpl struct {
@@ -48,15 +48,30 @@ func (repo *DecisionRepositoryImpl) DecisionById(transaction Transaction, decisi
 	return decision, err
 }
 
-func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(transaction Transaction, organizationId string, limit int) ([]models.Decision, error) {
+func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(transaction Transaction, organizationId string, limit int, filters models.DecisionFilters) ([]models.Decision, error) {
 	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(transaction)
+	query := selectDecisions().
+		Where(squirrel.Eq{"org_id": organizationId}).
+		OrderBy("created_at DESC").
+		Limit(uint64(limit))
 
-	decisionsChan, errChan := repo.channelOfDecisions(tx,
-		selectDecisions().
-			Where(squirrel.Eq{"org_id": organizationId}).
-			OrderBy("created_at DESC").
-			Limit(uint64(limit)),
-	)
+	if len(filters.ScenarioIds) > 0 {
+		query = query.Where(squirrel.Eq{"scenario_id": filters.ScenarioIds})
+	}
+	if len(filters.Outcomes) > 0 {
+		query = query.Where(squirrel.Eq{"outcome": filters.Outcomes})
+	}
+	if len(filters.TriggerObjects) > 0 {
+		query = query.Where(squirrel.Eq{"trigger_object_type": filters.TriggerObjects})
+	}
+	if !filters.StartDate.IsZero() {
+		query = query.Where(squirrel.GtOrEq{"created_at": filters.StartDate})
+	}
+	if !filters.EndDate.IsZero() {
+		query = query.Where(squirrel.LtOrEq{"created_at": filters.EndDate})
+	}
+
+	decisionsChan, errChan := repo.channelOfDecisions(tx, query)
 
 	decisions := ChanToSlice(decisionsChan)
 	err := <-errChan
