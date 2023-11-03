@@ -18,6 +18,5 @@ func ParseAuthorizationBearerHeader(header http.Header) (string, error) {
 	if len(authHeader) != 2 {
 		return "", fmt.Errorf("malformed token: %w", models.UnAuthorizedError)
 	}
-
 	return authHeader[1], nil
 }

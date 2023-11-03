@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+
+	"github.com/gin-gonic/gin"
 )
 
 func NewLogger(env string) *slog.Logger {
@@ -31,12 +33,10 @@ func StoreLoggerInContext(ctx context.Context, logger *slog.Logger) context.Cont
 	return context.WithValue(ctx, ContextKeyLogger, logger)
 }
 
-func StoreLoggerInContextMiddleware(logger *slog.Logger) func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctxWithLogger := StoreLoggerInContext(r.Context(), logger)
-			next.ServeHTTP(w, r.WithContext(ctxWithLogger))
-		})
+func StoreLoggerInContextMiddleware(logger *slog.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctxWithLogger := StoreLoggerInContext(c.Request.Context(), logger)
+		c.Request = c.Request.WithContext(ctxWithLogger)
 	}
 }
 
