@@ -24,6 +24,8 @@ locals {
 
       env_display_name = "staging"
 
+      segment_write_key = "ansHLeOAaKAU50Hu6euGrJ6mhcKomveC"
+
       backoffice = {
         firebase_site_id = "marble-backoffice-staging"
         domain           = "backoffice.staging.checkmarble.com"
@@ -63,19 +65,21 @@ locals {
 
       env_display_name = "production"
 
+      segment_write_key = "bEDdodQ5CBrUFeaHvVClSf0BfuWYyzeN"
+
       backoffice = {
         firebase_site_id = "marble-backoffice-production"
         domain           = "marble-backoffice-production.web.app"
       }
 
       frontend = {
-        image                     = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-frontend:v0.0.7"
+        image                     = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-frontend:v0.0.10"
         domain                    = "marble-prod-1.firebaseapp.com"
         another_authorized_domain = "app.checkmarble.com"
       }
 
       backend = {
-        image = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:v0.0.19"
+        image = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:v0.0.23"
         url   = "https://api.checkmarble.com"
       }
     }

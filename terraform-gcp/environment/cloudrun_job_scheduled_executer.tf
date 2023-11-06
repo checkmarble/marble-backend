@@ -61,7 +61,7 @@ resource "google_cloud_run_v2_job" "scheduled_executer" {
           mount_path = "/cloudsql"
         }
 
-        args = ["--scheduler"]
+        args = ["--scheduled-executer"]
       }
     }
   }
