@@ -76,6 +76,11 @@ resource "google_cloud_run_v2_service" "frontend" {
       }
 
       env {
+        name  = "SEGMENT_WRITE_KEY"
+        value = local.environment.segment_write_key
+      }
+
+      env {
         name  = "SESSION_MAX_AGE"
         value = "43200"
       }
