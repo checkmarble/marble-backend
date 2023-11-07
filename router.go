@@ -42,7 +42,10 @@ func initRouter(ctx context.Context, conf AppConfiguration, deps dependencies) *
 
 	r.Use(gin.Recovery())
 	r.Use(cors.New(corsOption(conf.env)))
-	r.Use(loggingMiddleware)
+	if conf.env == "DEV" {
+		// GCP already logs those elements
+		r.Use(loggingMiddleware)
+	}
 	r.Use(utils.StoreLoggerInContextMiddleware(logger))
 
 	r.GET("/liveness", api.HandleLivenessProbe)
