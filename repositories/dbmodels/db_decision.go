@@ -55,7 +55,6 @@ func AdaptDecision(db DbDecision, ruleExecutions []models.RuleExecution) models.
 		ScenarioVersion:      db.ScenarioVersion,
 		RuleExecutions:       ruleExecutions,
 		Score:                db.Score,
-		DecisionError:        models.DecisionError(db.ErrorCode),
 		ScheduledExecutionId: db.ScheduledExecutionId,
 	}
 }

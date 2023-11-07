@@ -46,20 +46,6 @@ func OutcomeFrom(s string) Outcome {
 	return UnknownOutcome
 }
 
-type DecisionError int
-
-const (
-	PlaceholderDecisionError DecisionError = 100
-)
-
-func (d DecisionError) String() string {
-	switch d {
-	case PlaceholderDecisionError:
-		return "Actual decision error types will go here"
-	}
-	return ""
-}
-
 type CreateDecisionInput struct {
 	OrganizationId          string
 	ScenarioId              string

@@ -1,51 +1,24 @@
 openapi: 3.0.3
 info:
   title: Marble Public API
-  description: Public API
+  description: Public API on decisions and data ingestion.
   version: 1.0.0
 servers:
-  - url: 'https'
+  - url: "api.checkmarble.com"
 tags:
-  - name: Authentication
-    description: Route for authentication
   - name: Ingestion
-    description: Route for ingestion
+    description: Routes for data ingestion
   - name: Decision
-    description: Route for decision
+    description: Routes for creating and reading decisions
 paths:
-  /token:
-    post:
-      tags:
-        - Authentication
-      description: route used to generate a token to be used on the public API endpoints.
-      parameters:
-        - in: header
-          name: X-API-Key
-          schema:
-            type: string
-            format: uuid
-          required: true
-      responses:
-        200:
-          description: A token was successfully generated.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/token'
-        400:
-          description: The request did not contain an api key.
-        401:
-          description: The provided api key is invalid.
-        500:
-          description: An error happened while generating the token.
-
   /ingestion/{object_type}:
     post:
+      summary: Ingest a new object
       tags:
         - Ingestion
       security:
-        - BearerAuth: []
-      description: ingestion endpoint
+        - ApiKeyAuth: []
+      description: Ingest a new object from the data model
       parameters:
         - in: path
           name: object_type
@@ -58,8 +31,7 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              description: The schema of the object should follow the provided data model.
+              $ref: "#/components/schemas/data_model_object"
       responses:
         200:
           description: The object was successfully ingested.
@@ -68,73 +40,118 @@ paths:
         500:
           description: An error happened while ingesting the object.
 
-  /decision:
+  /decisions:
     post:
       tags:
         - Decision
       security:
-        - BearerAuth: []
-      description: decision endpoint
+        - ApiKeyAuth: []
+      description: Request a decision, executing a scenario against the input object.
+      summary: Create a decision
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/decisions_input'
+              $ref: "#/components/schemas/decisions_input"
       responses:
         200:
           description: A decision was successfully taken.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/decisions'
+                $ref: "#/components/schemas/decision"
+        400:
+          description: The input is invalid.
+        500:
+          description: An error happened while taking a decision.
+    get:
+      tags:
+        - Decision
+      security:
+        - ApiKeyAuth: []
+      description: List existing decisions for the organization.
+      summary: Query a list of decisions
+      responses:
+        200:
+          description: A decision was successfully taken.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/decisions"
+        400:
+          description: The input is invalid.
+        500:
+          description: An error happened while taking a decision.
+  /decisions/{decision_id}:
+    get:
+      tags:
+        - Decision
+      security:
+        - ApiKeyAuth: []
+      description: Request a decision, executing a scenario against the input object.
+      summary: Retrieve a decision
+      parameters:
+        - in: path
+          name: decision_id
+          schema:
+            type: string
+          required: true
+          description: Id of the decision to retrieve.
+      responses:
+        200:
+          description: A decision was successfully taken.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/decision"
         400:
           description: The input is invalid.
         500:
           description: An error happened while taking a decision.
 components:
   securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-KEY
+
   schemas:
-    token:
+    data_model_object:
       type: object
+      description: The schema of the object should follow the provided data model, including all additional properties from the data model.
       properties:
-        access_token:
-          description: The access token.
+        object_id:
+          description: Client side ID of the object to ingest.
           type: string
-          example: <json web token>
-        token_type:
-          description: Type of the token.
-          type: string
-          example: Bearer
-        expires_at:
-          description: Expiration date of the token.
+        updated_at:
+          description: Date the object was last updated.
           type: string
           format: date-time
+      required:
+        - object_id
+        - updated_at
+      additionalProperties: true
     decisions_input:
       type: object
       properties:
         object_type:
-          description: object type
+          description: Object type, as per the data model
           type: string
           example: transactions
         scenario_id:
-          description: scenario id
+          description: Id of the scenario to execute
           type: string
           format: uuid
         trigger_object:
-          description: trigger object
-          type: object
-    decisions:
+          description: The object to execute the scenario on, as per the client data model
+          $ref: "#/components/schemas/data_model_object"
+    decision:
       type: object
       properties:
         created_at:
-          description: Date the decision was taken.
+          description: Date at which the decision was taken.
           type: string
           format: date-time
-        error:
-          $ref: '#/components/schemas/error'
         id:
           description: ID of the returned decision.
           type: string
@@ -142,48 +159,67 @@ components:
           description: Object type used to take a decision.
           type: string
         outcome:
-          description: Object type used to take a decision.
+          description: Outcome of the decision.
           type: string
+          enum:
+            - approve
+            - review
+            - decline
         rules:
-          description: ''
+          description: Rules executed to take the decision.
           type: array
           items:
-            $ref: '#/components/schemas/decision_rule'
+            $ref: "#/components/schemas/decision_rule"
         scenario:
-          $ref: '#/components/schemas/scenario'
+          description: Scenario on which the decision was taken.
+          $ref: "#/components/schemas/scenario"
         scheduled_execution_id:
-          description: ''
+          description: Id of the scheduled execution (only in the case of scheduled executions or manual batches).
           type: string
+          format: uuid
         score:
           description: Score of the decision.
           type: integer
         trigger_object:
-          description: Object used to take a decision.
+          description: Raw object used to take a decision.
           type: object
+    decisions:
+      type: array
+      items:
+        $ref: "#/components/schemas/decision"
     scenario:
       type: object
       properties:
         description:
           type: string
+          description: Description of the scenario.
         id:
           type: string
+          format: uuid
+          description: Id of the scenario.
         name:
           type: string
+          description: Name of the scenario.
         version:
           type: integer
+          description: Version of the scenario used for this decision.
     decision_rule:
       type: object
       properties:
         description:
           type: string
+          description: Description of the rule.
         error:
-          $ref: '#/components/schemas/error'
+          $ref: "#/components/schemas/error"
         name:
           type: string
+          description: Name of the rule.
         result:
           type: boolean
+          description: Execution result of the rule (true or false).
         score_modifier:
           type: integer
+          description: Score modifier applied to the decision.
     error:
       type: object
       properties:
