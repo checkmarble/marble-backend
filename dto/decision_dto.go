@@ -58,7 +58,6 @@ type APIDecision struct {
 	Scenario             APIDecisionScenario `json:"scenario"`
 	Rules                []APIDecisionRule   `json:"rules"`
 	Score                int                 `json:"score"`
-	Error                *APIError           `json:"error"`
 	ScheduledExecutionId *string             `json:"scheduled_execution_id,omitempty"`
 }
 
@@ -82,12 +81,6 @@ func NewAPIDecision(decision models.Decision) APIDecision {
 
 	for i, ruleExecution := range decision.RuleExecutions {
 		apiDecision.Rules[i] = NewAPIDecisionRule(ruleExecution)
-	}
-
-	// Error added here to make sure it does not appear if empty
-	// Otherwise, by default it will generate an empty APIError{}
-	if int(decision.DecisionError) != 0 {
-		apiDecision.Error = &APIError{int(decision.DecisionError), decision.DecisionError.String()}
 	}
 
 	return apiDecision

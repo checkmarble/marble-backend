@@ -17,7 +17,6 @@ type Decision struct {
 	ScenarioVersion      int
 	RuleExecutions       []RuleExecution
 	Score                int
-	DecisionError        DecisionError
 	ScheduledExecutionId *string
 }
 
