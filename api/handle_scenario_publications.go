@@ -54,7 +54,7 @@ func (api *API) CreateScenarioPublication(c *gin.Context) {
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewScenarioPublicationUsecase()
-	scenarioPublications, err := usecase.ExecuteScenarioPublicationAction(models.PublishScenarioIterationInput{
+	scenarioPublications, err := usecase.ExecuteScenarioPublicationAction(c.Request.Context(), models.PublishScenarioIterationInput{
 		ScenarioIterationId: data.ScenarioIterationId,
 		PublicationAction:   models.PublicationActionFrom(data.PublicationAction),
 	})

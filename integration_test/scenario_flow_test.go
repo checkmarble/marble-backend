@@ -9,6 +9,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/segmentio/analytics-go/v3"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -45,6 +46,7 @@ func TestScenarioEndToEnd(t *testing.T) {
 	logger := slog.New(logHandler)
 
 	ctx = utils.StoreLoggerInContext(ctx, logger)
+	ctx = utils.StoreSegmentClientInContext(ctx, analytics.New("dummy key"))
 
 	// Setup an organization and user credentials
 	creds, dataModel := setupOrgAndCreds(ctx, t)
@@ -60,7 +62,7 @@ func TestScenarioEndToEnd(t *testing.T) {
 		Context:                 ctx,
 	}
 	// Scenario setup
-	scenarioId := setupScenarioAndPublish(t, usecasesWithCreds, organizationId)
+	scenarioId := setupScenarioAndPublish(t, ctx, usecasesWithCreds, organizationId)
 
 	apiCreds := getApiCreds(ctx, t, usecasesWithCreds, organizationId)
 	usecasesWithApiCreds := usecases.UsecasesWithCreds{
@@ -200,13 +202,14 @@ func createDataModel(t *testing.T, organizationID string) (models.DataModel, err
 		ChildTableID:   accountsTableID,
 		ChildFieldID:   dm.Tables["accounts"].Fields["company_id"].ID,
 	})
+	assert.NoError(t, err)
 	return usecase.GetDataModel(organizationID)
 }
 
-func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWithCreds, organizationId string) string {
+func setupScenarioAndPublish(t *testing.T, ctx context.Context, usecasesWithCreds usecases.UsecasesWithCreds, organizationId string) string {
 	// Create a new empty scenario
 	scenarioUsecase := usecasesWithCreds.NewScenarioUsecase()
-	scenario, err := scenarioUsecase.CreateScenario(models.CreateScenarioInput{
+	scenario, err := scenarioUsecase.CreateScenario(ctx, models.CreateScenarioInput{
 		Name:              "Test scenario",
 		Description:       "Test scenario description",
 		TriggerObjectType: "transactions",
@@ -342,7 +345,7 @@ func setupScenarioAndPublish(t *testing.T, usecasesWithCreds usecases.UsecasesWi
 
 	// Publish the iteration to make it live
 	scenarioPublicationUsecase := usecasesWithCreds.NewScenarioPublicationUsecase()
-	scenarioPublications, err := scenarioPublicationUsecase.ExecuteScenarioPublicationAction(models.PublishScenarioIterationInput{
+	scenarioPublications, err := scenarioPublicationUsecase.ExecuteScenarioPublicationAction(ctx, models.PublishScenarioIterationInput{
 		ScenarioIterationId: scenarioIterationId,
 		PublicationAction:   models.Publish,
 	})

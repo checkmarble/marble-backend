@@ -1,6 +1,8 @@
 package usecases
 
 import (
+	"context"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
@@ -44,7 +46,7 @@ func (usecase *ScenarioPublicationUsecase) ListScenarioPublications(filters mode
 	return usecase.scenarioPublicationsRepository.ListScenarioPublicationsOfOrganization(nil, organizationId, filters)
 }
 
-func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(input models.PublishScenarioIterationInput) ([]models.ScenarioPublication, error) {
+func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(ctx context.Context, input models.PublishScenarioIterationInput) ([]models.ScenarioPublication, error) {
 	return transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) ([]models.ScenarioPublication, error) {
 
 		scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(tx, input.ScenarioIterationId)
@@ -56,7 +58,7 @@ func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(inpu
 			return []models.ScenarioPublication{}, err
 		}
 
-		return usecase.scenarioPublisher.PublishOrUnpublishIteration(tx, scenarioAndIteration, input.PublicationAction)
+		return usecase.scenarioPublisher.PublishOrUnpublishIteration(ctx, tx, scenarioAndIteration, input.PublicationAction)
 	})
 
 }

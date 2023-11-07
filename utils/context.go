@@ -20,13 +20,16 @@ const (
 	ContextKeySegmentClient
 )
 
-func CredentialsFromCtx(ctx context.Context) models.Credentials {
-	creds, _ := ctx.Value(ContextKeyCredentials).(models.Credentials)
-	return creds
+func CredentialsFromCtx(ctx context.Context) (models.Credentials, bool) {
+	creds, ok := ctx.Value(ContextKeyCredentials).(models.Credentials)
+	return creds, ok
 }
 
 func OrganizationIdFromRequest(request *http.Request) (organizationId string, err error) {
-	creds := CredentialsFromCtx(request.Context())
+	creds, found := CredentialsFromCtx(request.Context())
+	if !found {
+		return "", fmt.Errorf("no credentials in context: %w", models.ForbiddenError)
+	}
 
 	var requestOrganizationId string
 	if request != nil {
@@ -70,14 +73,9 @@ func ValidateUuid(uuidParam string) error {
 	return err
 }
 
-func SegmentClientFromContext(ctx context.Context) analytics.Client {
+func SegmentClientFromContext(ctx context.Context) (analytics.Client, bool) {
 	client, found := ctx.Value(ContextKeySegmentClient).(analytics.Client)
-	if !found {
-		logger := LoggerFromContext(ctx)
-		logger.ErrorContext(ctx, "Segment client not found in context: creating a new one to avoid nil pointer panic but it will not work")
-		client = analytics.New("")
-	}
-	return client
+	return client, found
 }
 
 func StoreSegmentClientInContext(ctx context.Context, client analytics.Client) context.Context {
@@ -88,5 +86,6 @@ func StoreSegmentClientInContextMiddleware(client analytics.Client) gin.HandlerF
 	return func(c *gin.Context) {
 		ctxWithSegment := StoreSegmentClientInContext(c.Request.Context(), client)
 		c.Request = c.Request.WithContext(ctxWithSegment)
+		c.Next()
 	}
 }

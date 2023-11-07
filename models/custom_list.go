@@ -31,10 +31,6 @@ type UpdateCustomListInput struct {
 	Description *string
 }
 
-type DeleteCustomListInput struct {
-	Id string
-}
-
 type GetCustomListValuesInput struct {
 	Id string
 }

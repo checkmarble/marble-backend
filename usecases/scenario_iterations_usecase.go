@@ -7,6 +7,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/analytics"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
 
@@ -91,7 +92,14 @@ func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(ctx context.Con
 		body.ScoreRejectThreshold = &defaultRejectThreshold
 	}
 
-	return usecase.repository.CreateScenarioIterationAndRules(nil, organizationId, scenarioIteration)
+	si, err := usecase.repository.CreateScenarioIterationAndRules(nil, organizationId, scenarioIteration)
+	if err != nil {
+		return models.ScenarioIteration{}, err
+	}
+
+	analytics.TrackEvent(ctx, models.AnalyticsScenarioIterationCreated, map[string]interface{}{"scenario_iteration_id": si.Id})
+
+	return si, nil
 }
 
 func (usecase *ScenarioIterationUsecase) UpdateScenarioIteration(ctx context.Context, organizationId string, scenarioIteration models.UpdateScenarioIterationInput) (iteration models.ScenarioIteration, err error) {
@@ -159,7 +167,14 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(ctx co
 			ScoreModifier:        rule.ScoreModifier,
 		}
 	}
-	return usecase.repository.CreateScenarioIterationAndRules(nil, organizationId, createScenarioIterationInput)
+	newScenarioIteration, err := usecase.repository.CreateScenarioIterationAndRules(nil, organizationId, createScenarioIterationInput)
+	if err != nil {
+		return models.ScenarioIteration{}, err
+	}
+
+	analytics.TrackEvent(ctx, models.AnalyticsScenarioIterationCreated, map[string]interface{}{"scenario_iteration_id": newScenarioIteration.Id})
+
+	return newScenarioIteration, nil
 }
 
 // Return a validation by running the scenario using fake data

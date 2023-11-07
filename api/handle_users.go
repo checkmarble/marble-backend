@@ -1,11 +1,13 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -64,7 +66,11 @@ func (api *API) handleDeleteUser(c *gin.Context) {
 }
 
 func (api *API) handleGetCredentials(c *gin.Context) {
-	creds := utils.CredentialsFromCtx(c.Request.Context())
+	creds, found := utils.CredentialsFromCtx(c.Request.Context())
+	if !found {
+		presentError(c.Writer, c.Request, fmt.Errorf("no credentials in context %w", models.NotFoundError))
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"credentials": dto.AdaptCredentialDto(creds),

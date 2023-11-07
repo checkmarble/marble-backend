@@ -31,7 +31,7 @@ func (api *API) handlePostCustomList(c *gin.Context) {
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewCustomListUseCase()
-	customList, err := usecase.CreateCustomList(models.CreateCustomListInput{
+	customList, err := usecase.CreateCustomList(c.Request.Context(), models.CreateCustomListInput{
 		Name:        data.Name,
 		Description: data.Description,
 	})
@@ -81,7 +81,7 @@ func (api *API) handlePatchCustomList(c *gin.Context) {
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewCustomListUseCase()
-	CustomList, err := usecase.UpdateCustomList(models.UpdateCustomListInput{
+	CustomList, err := usecase.UpdateCustomList(c.Request.Context(), models.UpdateCustomListInput{
 		Id:          customListID,
 		Name:        &data.Name,
 		Description: &data.Description,
@@ -105,12 +105,9 @@ func (api *API) handleDeleteCustomList(c *gin.Context) {
 		return
 	}
 	logger = logger.With(slog.String("organizationId", organizationId))
-	customListID := c.Param("list_id")
 
 	usecase := api.UsecasesWithCreds(c.Request).NewCustomListUseCase()
-	err = usecase.SoftDeleteCustomList(models.DeleteCustomListInput{
-		Id: customListID,
-	})
+	err = usecase.SoftDeleteCustomList(c.Request.Context(), c.Param("list_id"))
 	if presentError(c.Writer, c.Request, err) {
 		logger.ErrorContext(ctx, "error deleting a list: \n"+err.Error())
 		return
@@ -136,7 +133,7 @@ func (api *API) handlePostCustomListValue(c *gin.Context) {
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewCustomListUseCase()
-	customListValue, err := usecase.AddCustomListValue(models.AddCustomListValueInput{
+	customListValue, err := usecase.AddCustomListValue(c.Request.Context(), models.AddCustomListValueInput{
 		CustomListId: customListID,
 		Value:        data.Value,
 	})
@@ -172,7 +169,7 @@ func (api *API) handleDeleteCustomListValue(c *gin.Context) {
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewCustomListUseCase()
-	err = usecase.DeleteCustomListValue(models.DeleteCustomListValueInput{
+	err = usecase.DeleteCustomListValue(c.Request.Context(), models.DeleteCustomListValueInput{
 		Id:           valueID,
 		CustomListId: customListID,
 	})

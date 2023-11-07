@@ -1,10 +1,12 @@
 package scenarios
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/analytics"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -21,6 +23,7 @@ type ScenarioPublisher struct {
 }
 
 func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(
+	ctx context.Context,
 	tx repositories.Transaction,
 	scenarioAndIteration ScenarioAndIteration,
 	publicationAction models.PublicationAction,
@@ -51,7 +54,7 @@ func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(
 				return []models.ScenarioPublication{}, nil
 			}
 			if err := ScenarioValidationToError(publisher.ValidateScenarioIteration.Validate(scenarioAndIteration)); err != nil {
-				return nil, fmt.Errorf("Can't validate scenario %w %w", err, models.BadParameterError)
+				return nil, fmt.Errorf("can't validate scenario %w %w", err, models.BadParameterError)
 			}
 
 			scenarioVersion, err := publisher.getScenarioVersion(tx, organizationId, scenariosId, iterationId)
@@ -75,6 +78,8 @@ func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(
 			} else {
 				scenarioPublications = append(scenarioPublications, sp)
 			}
+
+			analytics.TrackEvent(ctx, models.AnalyticsScenarioIterationPublished, map[string]interface{}{"scenario_iteration_id": iterationId})
 		}
 	}
 

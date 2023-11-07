@@ -116,6 +116,7 @@ func runServer(ctx context.Context, appConfig AppConfiguration) {
 	<-notify.Done()
 	shutdownCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
+	deps.SegmentClient.Close()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		logger.ErrorContext(ctx, "server.Shutdown error", slog.String("error", err.Error()))

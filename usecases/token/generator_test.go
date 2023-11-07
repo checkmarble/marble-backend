@@ -155,6 +155,8 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 		mockRepository := new(mocks.Database)
 		mockRepository.On("UserByFirebaseUid", mock.Anything, firebaseIdentity.FirebaseUid).
 			Return(user, nil)
+		mockRepository.On("GetOrganizationByID", mock.Anything, "organization_id").
+			Return(models.Organization{}, nil)
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", mock.Anything, models.Credentials{
@@ -196,6 +198,8 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 			Return(user, nil)
 		mockRepository.On("UpdateUserFirebaseUID", mock.Anything, user.UserId, firebaseIdentity.FirebaseUid).
 			Return(nil)
+		mockRepository.On("GetOrganizationByID", mock.Anything, "organization_id").
+			Return(models.Organization{}, nil)
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", mock.Anything, models.Credentials{
