@@ -14,6 +14,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/segmentio/analytics-go/v3"
+
 	"github.com/checkmarble/marble-backend/api"
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/jobs"
@@ -31,6 +33,7 @@ type dependencies struct {
 	Authentication   *api.Authentication
 	TokenHandler     *api.TokenHandler
 	DataModelHandler *api.DataModelHandler
+	SegmentClient    analytics.Client
 }
 
 func initDependencies(conf AppConfiguration, signingKey *rsa.PrivateKey) (dependencies, error) {
@@ -51,11 +54,13 @@ func initDependencies(conf AppConfiguration, signingKey *rsa.PrivateKey) (depend
 	tokenValidator := token.NewValidator(database, jwtRepository)
 	tokenGenerator := token.NewGenerator(database, jwtRepository, firebaseClient, conf.config.TokenLifetimeMinute)
 	dataModelUseCase := datamodel.New(database)
+	segmentClient := analytics.New(conf.config.SegmentWriteKey)
 
 	return dependencies{
 		Authentication:   api.NewAuthentication(tokenValidator),
 		TokenHandler:     api.NewTokenHandler(tokenGenerator),
 		DataModelHandler: api.NewDataModelHandler(dataModelUseCase),
+		SegmentClient:    segmentClient,
 	}, nil
 }
 
@@ -118,12 +123,11 @@ func runServer(ctx context.Context, appConfig AppConfiguration) {
 }
 
 type AppConfiguration struct {
-	env           string
-	port          string
-	jwtSigningKey string
-	gcpProject    string
-	pgConfig      utils.PGConfig
-	config        models.GlobalConfiguration
+	env        string
+	port       string
+	gcpProject string
+	pgConfig   utils.PGConfig
+	config     models.GlobalConfiguration
 }
 
 func main() {
@@ -143,6 +147,7 @@ func main() {
 			FakeAwsS3Repository: utils.GetBoolEnv("FAKE_AWS_S3", false),
 			FakeGcsRepository:   utils.GetBoolEnv("FAKE_GCS", false),
 			GcsIngestionBucket:  utils.GetRequiredStringEnv("GCS_INGESTION_BUCKET"),
+			SegmentWriteKey:     utils.GetRequiredStringEnv("SEGMENT_WRITE_KEY"),
 		},
 	}
 

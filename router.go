@@ -47,6 +47,7 @@ func initRouter(ctx context.Context, conf AppConfiguration, deps dependencies) *
 		r.Use(loggingMiddleware)
 	}
 	r.Use(utils.StoreLoggerInContextMiddleware(logger))
+	r.Use(utils.StoreSegmentClientInContextMiddleware(deps.SegmentClient))
 
 	r.GET("/liveness", api.HandleLivenessProbe)
 	r.POST("/crash", api.HandleCrash)

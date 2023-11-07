@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -16,17 +15,6 @@ import (
 
 func ParseApiKeyHeader(header http.Header) string {
 	return strings.TrimSpace(header.Get("X-API-Key"))
-}
-
-func wrapErrInUnAuthorizedError(err error) error {
-	// Follow auth0 recommandation: (source https://auth0.com/blog/forbidden-unauthorized-http-status-codes)
-	// When to Use 401 Unauthorized?
-	// - An access token is missing.
-	// - An access token is expired, revoked, malformed, or invalid for other reasons.
-	if errors.Is(err, models.UnAuthorizedError) {
-		return err
-	}
-	return errors.Join(models.UnAuthorizedError, err)
 }
 
 func identityAttr(identity models.Identity) (attr slog.Attr, ok bool) {
