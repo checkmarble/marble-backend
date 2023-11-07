@@ -47,7 +47,7 @@ func (api *API) CreateRule(c *gin.Context) {
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewRuleUsecase()
-	rule, err := usecase.CreateRule(createInputRule)
+	rule, err := usecase.CreateRule(c.Request.Context(), createInputRule)
 	if presentError(c.Writer, c.Request, err) {
 		return
 	}
@@ -96,7 +96,7 @@ func (api *API) UpdateRule(c *gin.Context) {
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewRuleUsecase()
-	updatedRule, err := usecase.UpdateRule(updateRuleInput)
+	updatedRule, err := usecase.UpdateRule(c.Request.Context(), updateRuleInput)
 	if presentError(c.Writer, c.Request, err) {
 		return
 	}
@@ -115,7 +115,7 @@ func (api *API) DeleteRule(c *gin.Context) {
 	ruleID := c.Param("rule_id")
 
 	usecase := api.UsecasesWithCreds(c.Request).NewRuleUsecase()
-	err := usecase.DeleteRule(ruleID)
+	err := usecase.DeleteRule(c.Request.Context(), ruleID)
 	if presentError(c.Writer, c.Request, err) {
 		return
 	}

@@ -1,8 +1,11 @@
 package usecases
 
 import (
+	"context"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/analytics"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/transaction"
 	"github.com/checkmarble/marble-backend/utils"
@@ -79,7 +82,7 @@ func (usecase *ScenarioUsecase) UpdateScenario(scenarioInput models.UpdateScenar
 	)
 }
 
-func (usecase *ScenarioUsecase) CreateScenario(scenario models.CreateScenarioInput) (models.Scenario, error) {
+func (usecase *ScenarioUsecase) CreateScenario(ctx context.Context, scenario models.CreateScenarioInput) (models.Scenario, error) {
 	organizationId, err := usecase.organizationIdOfContext()
 	if err != nil {
 		return models.Scenario{}, err
@@ -89,7 +92,7 @@ func (usecase *ScenarioUsecase) CreateScenario(scenario models.CreateScenarioInp
 		return models.Scenario{}, err
 	}
 
-	return transaction.TransactionReturnValue(
+	cratedScenario, err := transaction.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) (models.Scenario, error) {
@@ -101,4 +104,10 @@ func (usecase *ScenarioUsecase) CreateScenario(scenario models.CreateScenarioInp
 			return scenario, errors.HandledWithMessage(err, "Error getting scenario after update")
 		},
 	)
+	if err != nil {
+		return models.Scenario{}, err
+	}
+
+	analytics.TrackEvent(ctx, models.AnalyticsScenarioCreated, map[string]interface{}{"scenario_id": cratedScenario.Id})
+	return cratedScenario, nil
 }

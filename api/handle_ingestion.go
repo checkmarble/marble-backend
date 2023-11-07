@@ -74,7 +74,11 @@ func (api *API) handleIngestion(c *gin.Context) {
 
 func (api *API) handleCsvIngestion(c *gin.Context) {
 	ctx := c.Request.Context()
-	creds := utils.CredentialsFromCtx(ctx)
+	creds, found := utils.CredentialsFromCtx(ctx)
+	if !found {
+		presentError(c.Writer, c.Request, fmt.Errorf("no credentials in context"))
+		return
+	}
 	userId := string(creds.ActorIdentity.UserId)
 
 	file, _, err := c.Request.FormFile("file")
@@ -100,7 +104,11 @@ func (api *API) handleCsvIngestion(c *gin.Context) {
 
 func (api *API) handleListUploadLogs(c *gin.Context) {
 	ctx := c.Request.Context()
-	creds := utils.CredentialsFromCtx(ctx)
+	creds, found := utils.CredentialsFromCtx(ctx)
+	if !found {
+		presentError(c.Writer, c.Request, fmt.Errorf("no credentials in context"))
+		return
+	}
 
 	objectType := c.Param("object_type")
 	ingestionUseCase := api.UsecasesWithCreds(c.Request).NewIngestionUseCase()

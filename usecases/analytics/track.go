@@ -1,0 +1,109 @@
+package analytics
+
+import (
+	"context"
+
+	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
+
+	"github.com/segmentio/analytics-go/v3"
+)
+
+func TrackEvent(ctx context.Context, event models.AnalyticsEvent, properties map[string]interface{}) {
+	credentials, segmentClient, found := getCredentialsAndAnalyticsClientFromContext(ctx)
+	if !found {
+		return
+	}
+
+	segmentProperties := analytics.NewProperties()
+	for k, v := range properties {
+		segmentProperties.Set(k, v)
+	}
+
+	segmentClient.Enqueue(analytics.Track{
+		Event:      string(event),
+		UserId:     string(credentials.ActorIdentity.UserId),
+		Properties: segmentProperties,
+	})
+}
+
+func TrackEventWithUserId(ctx context.Context, event models.AnalyticsEvent, userId models.UserId, properties map[string]interface{}) {
+	segmentClient, found := getAnalyticsClientFromContext(ctx)
+	if !found {
+		return
+	}
+
+	segmentProperties := analytics.NewProperties()
+	for k, v := range properties {
+		segmentProperties.Set(k, v)
+	}
+
+	segmentClient.Enqueue(analytics.Track{
+		Event:      string(event),
+		UserId:     string(userId),
+		Properties: segmentProperties,
+	})
+}
+
+func Identify(ctx context.Context, userId models.UserId, traits map[string]interface{}) {
+	logger := utils.LoggerFromContext(ctx)
+	segmentClient, found := utils.SegmentClientFromContext(ctx)
+	if !found || segmentClient == nil {
+		logger.ErrorContext(ctx, "Segment client not found in context")
+		return
+	}
+
+	segmentTraits := analytics.NewTraits()
+	for k, v := range traits {
+		segmentTraits.Set(k, v)
+	}
+
+	segmentClient.Enqueue(analytics.Identify{
+		UserId: string(userId),
+		Traits: segmentTraits,
+	})
+}
+
+func Group(ctx context.Context, userId models.UserId, organizationId string, traits map[string]interface{}) {
+	logger := utils.LoggerFromContext(ctx)
+	segmentClient, found := utils.SegmentClientFromContext(ctx)
+	if !found || segmentClient == nil {
+		logger.ErrorContext(ctx, "Segment client not found in context")
+		return
+	}
+
+	segmentTraits := analytics.NewTraits()
+	for k, v := range traits {
+		segmentTraits.Set(k, v)
+	}
+
+	segmentClient.Enqueue(analytics.Group{
+		UserId:  string(userId),
+		GroupId: organizationId,
+		Traits:  segmentTraits,
+	})
+}
+
+func getCredentialsAndAnalyticsClientFromContext(ctx context.Context) (models.Credentials, analytics.Client, bool) {
+	logger := utils.LoggerFromContext(ctx)
+	credentials, found := utils.CredentialsFromCtx(ctx)
+	if !found {
+		logger.ErrorContext(ctx, "Credentials not found in context")
+		return models.Credentials{}, nil, false
+	}
+	segmentClient, found := getAnalyticsClientFromContext(ctx)
+	if !found {
+		return credentials, nil, false
+	}
+	return credentials, segmentClient, true
+}
+
+func getAnalyticsClientFromContext(ctx context.Context) (analytics.Client, bool) {
+	logger := utils.LoggerFromContext(ctx)
+	segmentClient, found := utils.SegmentClientFromContext(ctx)
+	if !found || segmentClient == nil {
+		logger.ErrorContext(ctx, "Segment client not found in context")
+		return nil, false
+	}
+	return segmentClient, true
+}

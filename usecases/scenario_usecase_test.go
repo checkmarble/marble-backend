@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -166,7 +167,7 @@ func (suite *ScenarioUsecaseTestSuite) TestCreateScenario() {
 	suite.scenarioRepository.On("CreateScenario", suite.transaction, suite.organizationId, createScenarioInput, mock.Anything).Return(nil)
 	suite.scenarioRepository.On("GetScenarioById", suite.transaction, mock.Anything).Return(suite.scenario, nil).Once()
 
-	result, err := suite.makeUsecase().CreateScenario(createScenarioInput)
+	result, err := suite.makeUsecase().CreateScenario(context.Background(), createScenarioInput)
 
 	t := suite.T()
 	assert.NoError(t, err)
@@ -179,7 +180,7 @@ func (suite *ScenarioUsecaseTestSuite) TestCreateScenario_security() {
 
 	suite.enforceSecurity.On("CreateScenario", suite.organizationId).Return(suite.securityError)
 
-	_, err := suite.makeUsecase().CreateScenario(models.CreateScenarioInput{})
+	_, err := suite.makeUsecase().CreateScenario(context.Background(), models.CreateScenarioInput{})
 	assert.ErrorIs(suite.T(), err, suite.securityError)
 
 	suite.AssertExpectations()

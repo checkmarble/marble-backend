@@ -1,10 +1,12 @@
 package usecases
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/analytics"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/transaction"
@@ -44,8 +46,8 @@ func (usecase *RuleUsecase) ListRules(iterationId string) ([]models.Rule, error)
 		})
 }
 
-func (usecase *RuleUsecase) CreateRule(ruleInput models.CreateRuleInput) (models.Rule, error) {
-	return transaction.TransactionReturnValue(
+func (usecase *RuleUsecase) CreateRule(ctx context.Context, ruleInput models.CreateRuleInput) (models.Rule, error) {
+	rule, err := transaction.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) (models.Rule, error) {
@@ -73,6 +75,13 @@ func (usecase *RuleUsecase) CreateRule(ruleInput models.CreateRuleInput) (models
 			}
 			return usecase.repository.GetRuleById(tx, ruleInput.Id)
 		})
+	if err != nil {
+		return models.Rule{}, err
+	}
+
+	analytics.TrackEvent(ctx, models.AnalyticsRuleCreated, map[string]interface{}{"rule_id": ruleInput.Id})
+
+	return rule, nil
 }
 
 func (usecase *RuleUsecase) GetRule(ruleId string) (models.Rule, error) {
@@ -96,7 +105,7 @@ func (usecase *RuleUsecase) GetRule(ruleId string) (models.Rule, error) {
 		})
 }
 
-func (usecase *RuleUsecase) UpdateRule(updateRule models.UpdateRuleInput) (updatedRule models.Rule, err error) {
+func (usecase *RuleUsecase) UpdateRule(ctx context.Context, updateRule models.UpdateRuleInput) (updatedRule models.Rule, err error) {
 	err = usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
 		rule, err := usecase.repository.GetRuleById(tx, updateRule.Id)
 		if err != nil {
@@ -122,11 +131,18 @@ func (usecase *RuleUsecase) UpdateRule(updateRule models.UpdateRuleInput) (updat
 		updatedRule, err = usecase.repository.GetRuleById(tx, updateRule.Id)
 		return err
 	})
+
+	if err != nil {
+		return models.Rule{}, err
+	}
+
+	analytics.TrackEvent(ctx, models.AnalyticsRuleUpdated, map[string]interface{}{"rule_id": updateRule.Id})
+
 	return updatedRule, err
 }
 
-func (usecase *RuleUsecase) DeleteRule(ruleId string) error {
-	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+func (usecase *RuleUsecase) DeleteRule(ctx context.Context, ruleId string) error {
+	err := usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
 		rule, err := usecase.repository.GetRuleById(tx, ruleId)
 		if err != nil {
 			return err
@@ -144,4 +160,11 @@ func (usecase *RuleUsecase) DeleteRule(ruleId string) error {
 		}
 		return usecase.repository.DeleteRule(tx, ruleId)
 	})
+	if err != nil {
+		return err
+	}
+
+	analytics.TrackEvent(ctx, models.AnalyticsRuleDeleted, map[string]interface{}{"rule_id": ruleId})
+
+	return nil
 }

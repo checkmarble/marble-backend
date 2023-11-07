@@ -41,8 +41,8 @@ func (cl *CustomListRepository) UpdateCustomList(tx repositories.Transaction, up
 	return args.Error(0)
 }
 
-func (cl *CustomListRepository) SoftDeleteCustomList(tx repositories.Transaction, deleteCustomList models.DeleteCustomListInput) error {
-	args := cl.Called(tx, deleteCustomList)
+func (cl *CustomListRepository) SoftDeleteCustomList(tx repositories.Transaction, listId string) error {
+	args := cl.Called(tx, listId)
 	return args.Error(0)
 }
 

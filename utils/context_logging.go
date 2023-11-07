@@ -37,6 +37,7 @@ func StoreLoggerInContextMiddleware(logger *slog.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctxWithLogger := StoreLoggerInContext(c.Request.Context(), logger)
 		c.Request = c.Request.WithContext(ctxWithLogger)
+		c.Next()
 	}
 }
 

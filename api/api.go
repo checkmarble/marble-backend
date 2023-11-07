@@ -37,7 +37,10 @@ func New(router *gin.Engine, port string, usecases usecases.Usecases, auth *Auth
 func (api *API) UsecasesWithCreds(r *http.Request) *usecases.UsecasesWithCreds {
 	ctx := r.Context()
 
-	creds := utils.CredentialsFromCtx(ctx)
+	creds, found := utils.CredentialsFromCtx(ctx)
+	if !found {
+		panic("no credentials in context")
+	}
 
 	// marble admin can specify on which organization to operate
 	// Ignore error, empty organizationId is fine, this is not the place to enforce security
