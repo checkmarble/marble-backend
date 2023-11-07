@@ -7,7 +7,7 @@ locals {
   environments = {
     staging = {
       project_id                    = "tokyo-country-381508"
-      terraform_service_account_key = "../service-account-key/tokyo-country-381508-1aa0f843ec5b.json"
+      terraform_service_account_key = "../service-account-key/tokyo-country-381508-a874069971f2.json"
 
       marble_cloud_sql = {
         name              = "marble-sandbox"
@@ -48,7 +48,7 @@ locals {
 
     production = {
       project_id                    = "marble-prod-1"
-      terraform_service_account_key = "../service-account-key/marble-prod-1-c66803ae2892.json"
+      terraform_service_account_key = "../service-account-key/marble-prod-1-4b852e26c8b3.json"
 
       marble_cloud_sql = {
         name              = "marble-prod"
