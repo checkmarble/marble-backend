@@ -74,6 +74,18 @@ func (api *API) handlePostDecision(c *gin.Context) {
 		return
 	}
 
+	parser := payload_parser.NewParser()
+	validationErrors, err := parser.ValidatePayload(table, requestData.TriggerObjectRaw)
+	if err != nil {
+		http.Error(c.Writer, "", http.StatusUnprocessableEntity)
+		return
+	}
+	if len(validationErrors) > 0 {
+		c.Writer.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(c.Writer).Encode(validationErrors)
+		return
+	}
+
 	payload, err := payload_parser.ParseToDataModelObject(table, requestData.TriggerObjectRaw)
 	if errors.Is(err, models.FormatValidationError) {
 		http.Error(c.Writer, "Format validation error", http.StatusUnprocessableEntity) // 422
