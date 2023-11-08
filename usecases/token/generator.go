@@ -107,7 +107,7 @@ func (g *Generator) GenerateToken(ctx context.Context, key string, firebaseToken
 
 	analytics.Identify(ctx, credentials.ActorIdentity.UserId, map[string]any{"email": credentials.ActorIdentity.Email})
 	analytics.Group(ctx, credentials.ActorIdentity.UserId, credentials.OrganizationId, map[string]any{"name": organization.Name})
-	analytics.TrackEventWithUserId(ctx, models.AnalyticsLoggedIn, credentials.ActorIdentity.UserId, map[string]any{"organization_id": credentials.OrganizationId})
+	analytics.TrackEventWithUserId(ctx, models.AnalyticsTokenCreated, credentials.ActorIdentity.UserId, map[string]any{"organization_id": credentials.OrganizationId})
 
 	return token, expirationTime, nil
 }

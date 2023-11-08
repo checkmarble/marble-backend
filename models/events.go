@@ -3,7 +3,7 @@ package models
 type AnalyticsEvent string
 
 const (
-	AnalyticsLoggedIn                   AnalyticsEvent = "Logged In"
+	AnalyticsTokenCreated               AnalyticsEvent = "Created a Token"
 	AnalyticsScenarioCreated            AnalyticsEvent = "Created a Scenario"
 	AnalyticsScenarioIterationCreated   AnalyticsEvent = "Created a Scenario Iteration"
 	AnalyticsScenarioIterationPublished AnalyticsEvent = "Published a Scenario Iteration"
