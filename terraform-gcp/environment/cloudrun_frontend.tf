@@ -5,8 +5,8 @@ resource "google_cloud_run_v2_service" "frontend" {
 
   template {
     scaling {
-      min_instance_count = 0
-      max_instance_count = 1
+      min_instance_count = 1
+      max_instance_count = 10
     }
 
     max_instance_request_concurrency = 80
