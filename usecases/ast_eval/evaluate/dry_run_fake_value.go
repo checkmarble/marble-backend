@@ -59,8 +59,7 @@ func DryRunValue(prefix string, fieldName string, field models.Field) any {
 	case models.Float:
 		return 1.0
 	case models.Timestamp:
-		t, _ := time.Parse(time.RFC3339, time.RFC3339)
-		return t
+		return time.Now()
 	default:
 		return nil
 	}
