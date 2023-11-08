@@ -53,8 +53,8 @@ func TestDatabaseAccessValuesDryRun(t *testing.T) {
 	assert.Equal(t, 1.0, value)
 
 	testDatabaseAccessNamedArgs["fieldName"] = string(utils.DummyFieldNameForTimestamp)
-	timestamp, _ := time.Parse(time.RFC3339, time.RFC3339)
+	timestamp := time.Now()
 	value, errs = databaseAccessEval.Evaluate(ast.Arguments{NamedArgs: testDatabaseAccessNamedArgs})
 	assert.Len(t, errs, 0)
-	assert.Equal(t, timestamp, value)
+	assert.WithinDuration(t, timestamp, value.(time.Time), 1*time.Millisecond)
 }
