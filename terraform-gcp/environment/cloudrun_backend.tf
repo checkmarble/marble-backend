@@ -100,6 +100,11 @@ resource "google_cloud_run_v2_service" "backend" {
         }
       }
 
+      env {
+        name  = "SEGMENT_WRITE_KEY"
+        value = local.environment.segment_write_key
+      }
+
       volume_mounts {
         name       = "cloudsql"
         mount_path = "/cloudsql"

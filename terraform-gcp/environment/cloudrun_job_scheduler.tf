@@ -56,6 +56,11 @@ resource "google_cloud_run_v2_job" "scheduler" {
           value = google_storage_bucket.data_ingestion.name
         }
 
+        env {
+          name  = "SEGMENT_WRITE_KEY"
+          value = local.environment.segment_write_key
+        }
+
         volume_mounts {
           name       = "cloudsql"
           mount_path = "/cloudsql"
