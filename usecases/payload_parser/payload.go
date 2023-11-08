@@ -184,21 +184,21 @@ func NewParser() *Parser {
 		models.Timestamp: func(result gjson.Result) error {
 			_, err := time.Parse(time.RFC3339, result.String())
 			if err != nil {
-				return errIsInvalidTimestamp
+				return fmt.Errorf("%w: expected format YYYY-MM-DDThh:mm:ss[+optional decimals]Z, got %s", errIsInvalidTimestamp, result.String())
 			}
 			return nil
 		},
 		models.Int: func(result gjson.Result) error {
 			_, err := strconv.ParseInt(result.Raw, 10, 64)
 			if err != nil {
-				return errIsInvalidInteger
+				return fmt.Errorf("%w: expected an integer, got %s", errIsInvalidInteger, result.Raw)
 			}
 			return nil
 		},
 		models.Float: func(result gjson.Result) error {
 			_, err := strconv.ParseFloat(result.Raw, 64)
 			if err != nil {
-				return errIsInvalidFloat
+				return fmt.Errorf("%w: expected a float, got %s", errIsInvalidFloat, result.Raw)
 			}
 			return nil
 		},
@@ -210,7 +210,7 @@ func NewParser() *Parser {
 		},
 		models.Bool: func(result gjson.Result) error {
 			if !result.IsBool() {
-				return errIsInvalidBoolean
+				return fmt.Errorf("%w: expected a boolean, got %s", errIsInvalidBoolean, result.Raw)
 			}
 			return nil
 		},

@@ -82,10 +82,10 @@ func TestParser_ValidatePayload(t *testing.T) {
 			}`),
 			want: map[models.FieldName]string{
 				"string":    errIsInvalidString.Error(),
-				"integer":   errIsInvalidInteger.Error(),
-				"float":     errIsInvalidFloat.Error(),
-				"timestamp": errIsInvalidTimestamp.Error(),
-				"boolean":   errIsInvalidBoolean.Error(),
+				"integer":   "is not a valid integer: expected an integer, got \"string\"",
+				"float":     "is not a valid float: expected a float, got \"string\"",
+				"timestamp": "is not a valid timestamp: expected format YYYY-MM-DDThh:mm:ss[+optional decimals]Z, got not a timestamp",
+				"boolean":   "is not a valid boolean: expected a boolean, got \"true\"",
 			},
 		},
 		{
