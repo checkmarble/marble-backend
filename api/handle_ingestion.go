@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -50,6 +51,18 @@ func (api *API) handleIngestion(c *gin.Context) {
 	if !ok {
 		logger.ErrorContext(c.Request.Context(), "Table not found in data model for organization")
 		http.Error(c.Writer, "", http.StatusNotFound)
+		return
+	}
+
+	parser := payload_parser.NewParser()
+	validationErrors, err := parser.ValidatePayload(table, objectBody)
+	if err != nil {
+		http.Error(c.Writer, "", http.StatusUnprocessableEntity)
+		return
+	}
+	if len(validationErrors) > 0 {
+		c.Writer.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(c.Writer).Encode(validationErrors)
 		return
 	}
 
