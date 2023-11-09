@@ -20,6 +20,9 @@ var FuncOperators = []Function{
 	FUNC_IS_IN_LIST,
 	FUNC_IS_NOT_IN_LIST,
 	FUNC_STRING_CONTAINS,
+	FUNC_STRING_NOT_CONTAIN,
+	FUNC_CONTAINS_ANY,
+	FUNC_CONTAINS_NONE,
 }
 
 const (
@@ -46,6 +49,9 @@ const (
 	FUNC_IS_IN_LIST
 	FUNC_IS_NOT_IN_LIST
 	FUNC_STRING_CONTAINS
+	FUNC_STRING_NOT_CONTAIN
+	FUNC_CONTAINS_ANY
+	FUNC_CONTAINS_NONE
 	FUNC_AGGREGATOR
 	FUNC_LIST
 	FUNC_FILTER
@@ -177,6 +183,21 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 	FUNC_STRING_CONTAINS: {
 		DebugName:         "FUNC_STRING_CONTAINS",
 		AstName:           "StringContains",
+		NumberOfArguments: 2,
+	},
+	FUNC_STRING_NOT_CONTAIN: {
+		DebugName:         "FUNC_STRING_NOT_CONTAIN",
+		AstName:           "StringNotContain",
+		NumberOfArguments: 2,
+	},
+	FUNC_CONTAINS_ANY: {
+		DebugName:         "FUNC_CONTAINS_ANY",
+		AstName:           "ContainsAnyOf",
+		NumberOfArguments: 2,
+	},
+	FUNC_CONTAINS_NONE: {
+		DebugName:         "FUNC_CONTAINS_NONE",
+		AstName:           "ContainsNoneOf",
 		NumberOfArguments: 2,
 	},
 	FUNC_AGGREGATOR: FuncAggregatorAttributes,

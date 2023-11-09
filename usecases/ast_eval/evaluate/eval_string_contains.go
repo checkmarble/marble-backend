@@ -1,12 +1,21 @@
 package evaluate
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/checkmarble/marble-backend/models/ast"
 )
 
-type StringContains struct{}
+type StringContains struct {
+	Function ast.Function
+}
+
+func NewStringContains(f ast.Function) StringContains {
+	return StringContains{
+		Function: f,
+	}
+}
 
 func (f StringContains) Evaluate(arguments ast.Arguments) (any, []error) {
 	leftAny, rightAny, err := leftAndRight(arguments.Args)
@@ -20,5 +29,11 @@ func (f StringContains) Evaluate(arguments ast.Arguments) (any, []error) {
 		return nil, errs
 	}
 
-	return strings.Contains(strings.ToLower(left), strings.ToLower(right)), nil
+	if f.Function == ast.FUNC_STRING_CONTAINS {
+		return strings.Contains(strings.ToLower(left), strings.ToLower(right)), nil
+	} else if f.Function == ast.FUNC_STRING_NOT_CONTAIN {
+		return !strings.Contains(strings.ToLower(left), strings.ToLower(right)), nil
+	} else {
+		return MakeEvaluateError(fmt.Errorf("StringContains does not support %s function", f.Function.DebugString()))
+	}
 }
