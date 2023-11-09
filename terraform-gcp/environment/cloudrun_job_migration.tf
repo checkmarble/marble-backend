@@ -59,7 +59,7 @@ resource "google_cloud_run_v2_job" "migrations" {
 
         env {
           name  = "SEGMENT_WRITE_KEY"
-          value = local.environment.segment_write_key
+          value = local.environment.segment_write_key.backend
         }
 
         volume_mounts {
