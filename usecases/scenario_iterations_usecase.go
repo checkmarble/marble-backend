@@ -188,7 +188,7 @@ func (usecase *ScenarioIterationUsecase) ValidateScenarioIteration(iterationId s
 		return validation, err
 	}
 
-	if err := usecase.enforceSecurity.CreateScenario(scenarioAndIteration.Scenario.OrganizationId); err != nil {
+	if err := usecase.enforceSecurity.ReadScenarioIteration(scenarioAndIteration.Iteration); err != nil {
 		return validation, err
 	}
 
