@@ -24,7 +24,10 @@ locals {
 
       env_display_name = "staging"
 
-      segment_write_key = "ansHLeOAaKAU50Hu6euGrJ6mhcKomveC"
+      segment_write_key = {
+        frontend = "ansHLeOAaKAU50Hu6euGrJ6mhcKomveC"
+        backend  = "DD4qD8Usg1zfsjnLweSCYYrXQRLzYiGB"
+      }
 
       backoffice = {
         firebase_site_id = "marble-backoffice-staging"
@@ -65,7 +68,10 @@ locals {
 
       env_display_name = "production"
 
-      segment_write_key = "bEDdodQ5CBrUFeaHvVClSf0BfuWYyzeN"
+      segment_write_key = {
+        frontend = "bEDdodQ5CBrUFeaHvVClSf0BfuWYyzeN"
+        backend  = "JeAT8VCKjBs7gVrFY23PG7aSMPqcvNFE"
+      }
 
       backoffice = {
         firebase_site_id = "marble-backoffice-production"
