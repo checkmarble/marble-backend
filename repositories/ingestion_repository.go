@@ -64,7 +64,7 @@ func generateInsertValues(tx TransactionPostgres, table models.Table, payload mo
 	for fieldName := range table.Fields {
 		columnNames[i] = string(fieldName)
 		values[i], _ = payload.ReadFieldFromPayload(fieldName)
-		if table.Fields[fieldName].IsEnum {
+		if table.Fields[fieldName].IsEnum && values[i] != nil {
 			err := addEnumValue(tx, table.Fields[fieldName].ID, values[i])
 			if err != nil {
 				return nil, nil, fmt.Errorf("addEnumValue error: %w", err)
