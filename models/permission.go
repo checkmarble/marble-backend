@@ -23,6 +23,7 @@ const (
 	CUSTOM_LISTS_CREATE
 	MARBLE_USER_LIST
 	CASE_READ
+	CASE_CREATE
 )
 
 func (r Permission) String() string {
@@ -47,5 +48,6 @@ func (r Permission) String() string {
 		"CUSTOM_LISTS_PUBLISH",
 		"MARBLE_USER_LIST",
 		"CASE_READ",
+		"CASE_CREATE",
 	}[r]
 }

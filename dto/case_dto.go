@@ -23,3 +23,8 @@ func AdaptCaseDto(c models.Case) APICase {
 		Status:      string(c.Status),
 	}
 }
+
+type CreateCaseBody struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}

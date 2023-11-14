@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -47,4 +48,31 @@ func (api *API) handleGetCase(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, dto.AdaptCaseDto(c))
+}
+
+func (api *API) handlePostCase(ctx *gin.Context) {
+	var data dto.CreateCaseBody
+	if err := ctx.ShouldBindJSON(&data); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		return
+	}
+
+	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
+	organizationId, err := utils.OrgIDFromCtx(ctx.Request.Context(), ctx.Request)
+	if presentError(ctx.Writer, ctx.Request, err) {
+		return
+	}
+
+	c, err := usecase.CreateCase(models.CreateCaseAttributes{
+		Name:           data.Name,
+		Description:    data.Description,
+		OrganizationId: organizationId,
+	})
+
+	if presentError(ctx.Writer, ctx.Request, err) {
+		return
+	}
+	ctx.JSON(http.StatusCreated, gin.H{
+		"case": dto.AdaptCaseDto(c),
+	})
 }

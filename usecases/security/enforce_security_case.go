@@ -9,6 +9,7 @@ import (
 type EnforceSecurityCase interface {
 	EnforceSecurity
 	ReadCase(c models.Case) error
+	CreateCase() error
 }
 
 type EnforceSecurityCaseImpl struct {
@@ -18,4 +19,8 @@ type EnforceSecurityCaseImpl struct {
 
 func (e *EnforceSecurityCaseImpl) ReadCase(c models.Case) error {
 	return errors.Join(e.Permission(models.CASE_READ), e.ReadOrganization(c.OrganizationId))
+}
+
+func (e *EnforceSecurityCaseImpl) CreateCase() error {
+	return errors.Join(e.Permission(models.CASE_CREATE))
 }
