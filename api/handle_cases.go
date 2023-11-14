@@ -21,11 +21,23 @@ func (api *API) handleListCases(ctx *gin.Context) {
 	// 	return
 	// }
 
-	usecase := api.UsecasesWithCreds(c.Request).NewCaseUseCase()
+	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
 	cases, err := usecase.ListCases(organizationId)
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err) {
 		return
 	}
 
-	c.JSON(http.StatusOK, utils.Map(cases, dto.AdaptCaseDto))
+	ctx.JSON(http.StatusOK, utils.Map(cases, dto.AdaptCaseDto))
+}
+
+func (api *API) handleGetCase(ctx *gin.Context) {
+	caseId := ctx.Param("case_id")
+
+	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
+	c, err := usecase.GetCase(caseId)
+	if presentError(ctx.Writer, ctx.Request, err) {
+		return
+	}
+
+	ctx.JSON(http.StatusOK, dto.AdaptCaseDto(c))
 }

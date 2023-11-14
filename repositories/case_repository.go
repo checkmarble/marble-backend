@@ -21,3 +21,20 @@ func (repo *MarbleDbRepository) ListOrganizationCases(tx Transaction, organizati
 		dbmodels.AdaptCase,
 	)
 }
+
+func (repo *MarbleDbRepository) GetCaseById(tx Transaction, caseId string) (models.Case, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	c, err := SqlToModel(pgTx,
+		NewQueryBuilder().
+			Select(dbmodels.SelectCaseColumn...).
+			From(dbmodels.TABLE_CASES).
+			Where(squirrel.Eq{"id": caseId}),
+		dbmodels.AdaptCase,
+	)
+
+	if err != nil {
+		return models.Case{}, err
+	}
+	return c, nil
+}

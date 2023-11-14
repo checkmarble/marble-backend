@@ -69,4 +69,5 @@ func (api *API) routes(auth *Authentication) {
 	router.GET("/organizations/:organization_id/users", api.handleGetOrganizationUsers)
 
 	router.GET("/cases", api.handleListCases)
+	router.GET("/cases/:case_id", api.handleGetCase)
 }

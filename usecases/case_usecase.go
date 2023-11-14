@@ -9,6 +9,7 @@ import (
 
 type CaseUseCaseRepository interface {
 	ListOrganizationCases(tx repositories.Transaction, organizationId string) ([]models.Case, error)
+	GetCaseById(tx repositories.Transaction, caseId string) (models.Case, error)
 }
 
 type CaseUseCase struct {
@@ -34,4 +35,15 @@ func (usecase *CaseUseCase) ListCases(organizationId string) ([]models.Case, err
 			return cases, nil
 		},
 	)
+}
+
+func (usecase *CaseUseCase) GetCase(caseId string) (models.Case, error) {
+	c, err := usecase.repository.GetCaseById(nil, caseId)
+	if err != nil {
+		return models.Case{}, err
+	}
+	if err := usecase.enforceSecurity.ReadCase(c); err != nil {
+		return models.Case{}, err
+	}
+	return c, nil
 }
