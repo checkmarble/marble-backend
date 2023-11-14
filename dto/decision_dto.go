@@ -13,8 +13,8 @@ type GetDecisionInput struct {
 
 type DecisionFilters struct {
 	ScenarioIds    []string  `form:"scenarioId[]"`
-	StartDate      time.Time `form:"startDate" time_format:"2006-01-02T15:04:05"`
-	EndDate        time.Time `form:"endDate" time_format:"2006-01-02T15:04:05"`
+	StartDate      time.Time `form:"startDate" time_format`
+	EndDate        time.Time `form:"endDate" time_format`
 	Outcomes       []string  `form:"outcome[]"`
 	TriggerObjects []string  `form:"triggerObject[]"`
 }
