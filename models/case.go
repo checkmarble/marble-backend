@@ -5,19 +5,19 @@ import "time"
 type Case struct {
 	Id             string
 	OrganizationId string
-	CreatedAt 		time.Time
+	CreatedAt      time.Time
 	Name           string
-	Description    *string
-	Status				 CaseStatus
+	Description    string
+	Status         CaseStatus
 }
 
 type CaseStatus string
 
 const (
-	CaseOpen CaseStatus = "open"
+	CaseOpen          CaseStatus = "open"
 	CaseInvestigating CaseStatus = "investigating"
-	CaseDiscarded CaseStatus = "discarded"
-	CaseResolved CaseStatus = "resolved"
+	CaseDiscarded     CaseStatus = "discarded"
+	CaseResolved      CaseStatus = "resolved"
 )
 
 func CaseStatusFrom(s string) CaseStatus {

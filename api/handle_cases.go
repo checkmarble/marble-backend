@@ -30,11 +30,18 @@ func (api *API) handleListCases(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Map(cases, dto.AdaptCaseDto))
 }
 
-func (api *API) handleGetCase(ctx *gin.Context) {
-	caseId := ctx.Param("case_id")
+type Case struct {
+	Id string `uri:"case_id" binding:"required,uuid"`
+}
 
+func (api *API) handleGetCase(ctx *gin.Context) {
+	var caseInput Case
+	if err := ctx.ShouldBindUri(&caseInput); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		return
+	}
 	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
-	c, err := usecase.GetCase(caseId)
+	c, err := usecase.GetCase(caseInput.Id)
 	if presentError(ctx.Writer, ctx.Request, err) {
 		return
 	}

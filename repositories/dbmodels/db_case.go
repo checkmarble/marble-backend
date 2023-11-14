@@ -8,12 +8,12 @@ import (
 )
 
 type DBCase struct {
-	Id             string     `db:"id"`
-	OrganizationId string     `db:"org_id"`
-	CreatedAt      time.Time  `db:"created_at"`
-	Name           string     `db:"name"`
-	Description    *string    `db:"description"`
-	Status         string     `db:"status"`
+	Id             string    `db:"id"`
+	OrganizationId string    `db:"org_id"`
+	CreatedAt      time.Time `db:"created_at"`
+	Name           string    `db:"name"`
+	Description    string    `db:"description"`
+	Status         string    `db:"status"`
 }
 
 const TABLE_CASES = "cases"

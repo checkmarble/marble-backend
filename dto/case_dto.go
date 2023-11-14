@@ -9,7 +9,7 @@ import (
 type APICase struct {
 	Id          string    `json:"id"`
 	CreatedAt   time.Time `json:"created_at"`
-	Description *string   `json:"description"`
+	Description string    `json:"description"`
 	Name        string    `json:"name"`
 	Status      string    `json:"status"`
 }
