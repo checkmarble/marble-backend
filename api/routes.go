@@ -27,7 +27,7 @@ func (api *API) routes(auth *Authentication) {
 	router.PATCH("/scenario-iterations/:iteration_id", api.UpdateScenarioIteration)
 	router.POST("/scenario-iterations/:iteration_id/validate", api.ValidateScenarioIteration)
 	router.GET("/scenario-iterations/:iteration_id/validate", api.ValidateScenarioIteration)
-	router.GET("/scenario-iterations/:iteration_id/schedule-execution", api.handleCreateScheduledExecution)
+	router.POST("/scenario-iterations/:iteration_id/schedule-execution", api.handleCreateScheduledExecution)
 
 	router.GET("/scenario-iteration-rules", api.ListRules)
 	router.POST("/scenario-iteration-rules", api.CreateRule)
