@@ -67,6 +67,7 @@ func (api *API) handlePostCase(ctx *gin.Context) {
 		Name:           data.Name,
 		Description:    data.Description,
 		OrganizationId: organizationId,
+		DecisionIds:    data.DecisionIds,
 	})
 
 	if presentError(ctx.Writer, ctx.Request, err) {

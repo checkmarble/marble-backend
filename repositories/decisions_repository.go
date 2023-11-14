@@ -13,9 +13,11 @@ import (
 
 type DecisionRepository interface {
 	DecisionById(transaction Transaction, decisionId string) (models.Decision, error)
+	DecisionsById(transaction Transaction, decisionIds []string) ([]models.Decision, error)
 	DecisionsOfScheduledExecution(scheduledExecutionId string) (<-chan models.Decision, <-chan error)
 	StoreDecision(tx Transaction, decision models.Decision, organizationId string, newDecisionId string) error
 	DecisionsOfOrganization(transaction Transaction, organizationId string, limit int, filters models.DecisionFilters) ([]models.Decision, error)
+	UpdateDecisionCaseId(transaction Transaction, decisionsIds []string, caseId string) error
 }
 
 type DecisionRepositoryImpl struct {
@@ -46,6 +48,21 @@ func (repo *DecisionRepositoryImpl) DecisionById(transaction Transaction, decisi
 	}
 
 	return decision, err
+}
+
+func (repo *DecisionRepositoryImpl) DecisionsById(transaction Transaction, decisionIds []string) ([]models.Decision, error) {
+	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(transaction)
+
+	query := selectDecisions().
+		Where(squirrel.Eq{"id": decisionIds}).
+		OrderBy("created_at DESC")
+
+	decisionsChan, errChan := repo.channelOfDecisions(tx, query)
+
+	decisions := ChanToSlice(decisionsChan)
+	err := <-errChan
+
+	return decisions, err
 }
 
 func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(transaction Transaction, organizationId string, limit int, filters models.DecisionFilters) ([]models.Decision, error) {
@@ -160,6 +177,17 @@ func (repo *DecisionRepositoryImpl) StoreDecision(tx Transaction, decision model
 			)
 	}
 	_, err = pgTx.ExecBuilder(builderForRules)
+	return err
+}
+
+func (repo *DecisionRepositoryImpl) UpdateDecisionCaseId(transaction Transaction, decisionIds []string, caseId string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(transaction)
+	var query = NewQueryBuilder().
+		Update(dbmodels.TABLE_DECISIONS).
+		Set("case_id", caseId).
+		Where(squirrel.Eq{"id": decisionIds})
+
+	_, err := pgTx.ExecBuilder(query)
 	return err
 }
 
