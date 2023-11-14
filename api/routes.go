@@ -67,4 +67,6 @@ func (api *API) routes(auth *Authentication) {
 	router.PATCH("/organizations/:organization_id", api.handlePatchOrganization)
 	router.DELETE("/organizations/:organization_id", api.handleDeleteOrganization)
 	router.GET("/organizations/:organization_id/users", api.handleGetOrganizationUsers)
+
+	router.GET("/cases", api.handleListCases)
 }

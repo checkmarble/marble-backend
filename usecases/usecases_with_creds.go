@@ -65,6 +65,14 @@ func (usecases *UsecasesWithCreds) NewEnforceAdminSecurity() security.EnforceSec
 		Credentials:     usecases.Credentials,
 	}
 }
+
+func (usecases *UsecasesWithCreds) NewEnforceCaseSecurity() security.EnforceSecurityCase {
+	return &security.EnforceSecurityCaseImpl{
+		EnforceSecurity: usecases.NewEnforceSecurity(),
+		Credentials:     usecases.Credentials,
+	}
+}
+
 func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 	return DecisionUsecase{
 		enforceSecurity:            usecases.NewEnforceDecisionSecurity(),
@@ -224,5 +232,13 @@ func (usecases *UsecasesWithCreds) NewUserUseCase() UserUseCase {
 		enforceAdminSecurity: usecases.NewEnforceAdminSecurity(),
 		transactionFactory:   &usecases.Repositories.TransactionFactoryPosgresql,
 		userRepository:       usecases.Repositories.UserRepository,
+	}
+}
+
+func (usecases *UsecasesWithCreds) NewCaseUseCase() CaseUseCase {
+	return CaseUseCase{
+		enforceSecurity:    usecases.NewEnforceCaseSecurity(),
+		transactionFactory: &usecases.Repositories.TransactionFactoryPosgresql,
+		repository:         &usecases.Repositories.MarbleDbRepository,
 	}
 }
