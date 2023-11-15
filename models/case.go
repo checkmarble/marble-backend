@@ -33,3 +33,10 @@ func CaseStatusFrom(s string) CaseStatus {
 	}
 	return CaseOpen
 }
+
+type CreateCaseAttributes struct {
+	Name           string
+	Description    string
+	OrganizationId string
+	DecisionIds    []string
+}

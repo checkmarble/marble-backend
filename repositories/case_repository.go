@@ -38,3 +38,24 @@ func (repo *MarbleDbRepository) GetCaseById(tx Transaction, caseId string) (mode
 	}
 	return c, nil
 }
+
+func (repo *MarbleDbRepository) CreateCase(tx Transaction, createCaseAttributes models.CreateCaseAttributes, newCaseId string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	_, err := pgTx.ExecBuilder(
+		NewQueryBuilder().Insert(dbmodels.TABLE_CASES).
+			Columns(
+				"id",
+				"org_id",
+				"name",
+				"description",
+			).
+			Values(
+				newCaseId,
+				createCaseAttributes.OrganizationId,
+				createCaseAttributes.Name,
+				createCaseAttributes.Description,
+			),
+	)
+	return err
+}

@@ -19,6 +19,7 @@ const TABLE_DECISION_RULES = "decision_rules"
 type DbDecision struct {
 	Id                   string      `db:"id"`
 	OrganizationId       string      `db:"org_id"`
+	CaseId               *string     `db:"case_id"`
 	CreatedAt            time.Time   `db:"created_at"`
 	Outcome              string      `db:"outcome"`
 	ScenarioId           string      `db:"scenario_id"`
@@ -46,6 +47,7 @@ func AdaptDecision(db DbDecision, ruleExecutions []models.RuleExecution) models.
 	return models.Decision{
 		DecisionId:           db.Id,
 		OrganizationId:       db.OrganizationId,
+		CaseId:               db.CaseId,
 		CreatedAt:            db.CreatedAt,
 		ClientObject:         models.ClientObject{TableName: models.TableName(db.TriggerObjectType), Data: triggerObject},
 		Outcome:              models.OutcomeFrom(db.Outcome),

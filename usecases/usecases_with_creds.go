@@ -240,5 +240,6 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() CaseUseCase {
 		enforceSecurity:    usecases.NewEnforceCaseSecurity(),
 		transactionFactory: &usecases.Repositories.TransactionFactoryPosgresql,
 		repository:         &usecases.Repositories.MarbleDbRepository,
+		decisionRepository: usecases.Repositories.DecisionRepository,
 	}
 }

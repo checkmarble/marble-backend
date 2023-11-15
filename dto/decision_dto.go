@@ -51,6 +51,7 @@ type APIDecisionScenario struct {
 
 type APIDecision struct {
 	Id                   string              `json:"id"`
+	CaseId               *string             `json:"case_id,omitempty"`
 	CreatedAt            time.Time           `json:"created_at"`
 	TriggerObject        map[string]any      `json:"trigger_object"`
 	TriggerObjectType    string              `json:"trigger_object_type"`
