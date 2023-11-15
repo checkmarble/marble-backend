@@ -1,17 +1,20 @@
 package usecases
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/analytics"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/transaction"
 	"github.com/google/uuid"
 )
 
 type CaseUseCaseRepository interface {
-	ListOrganizationCases(tx repositories.Transaction, organizationId string) ([]models.Case, error)
+	ListOrganizationCases(tx repositories.Transaction, organizationId string, filters models.CaseFilters) ([]models.Case, error)
 	GetCaseById(tx repositories.Transaction, caseId string) (models.Case, error)
 	CreateCase(tx repositories.Transaction, createCaseAttributes models.CreateCaseAttributes, newCaseId string) error
 }
@@ -23,12 +26,24 @@ type CaseUseCase struct {
 	decisionRepository repositories.DecisionRepository
 }
 
-func (usecase *CaseUseCase) ListCases(organizationId string) ([]models.Case, error) {
+func (usecase *CaseUseCase) ListCases(organizationId string, filters dto.CaseFilters) ([]models.Case, error) {
+	if !filters.StartDate.IsZero() && !filters.EndDate.IsZero() && filters.StartDate.After(filters.EndDate) {
+		return []models.Case{}, fmt.Errorf("start date must be before end date: %w", models.BadParameterError)
+	}
+	statuses, err := models.ValidateCaseStatuses(filters.Statuses)
+	if err != nil {
+		return []models.Case{}, err
+	}
+
 	return transaction.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) ([]models.Case, error) {
-			cases, err := usecase.repository.ListOrganizationCases(tx, organizationId)
+			cases, err := usecase.repository.ListOrganizationCases(tx, organizationId, models.CaseFilters{
+				StartDate: filters.StartDate,
+				EndDate:   filters.EndDate,
+				Statuses:  statuses,
+			})
 			if err != nil {
 				return []models.Case{}, err
 			}
@@ -43,7 +58,7 @@ func (usecase *CaseUseCase) ListCases(organizationId string) ([]models.Case, err
 }
 
 func (usecase *CaseUseCase) GetCase(caseId string) (models.Case, error) {
-	c, err := usecase.repository.GetCaseById(nil, caseId)
+	c, err := usecase.getCaseWithDecisions(nil, caseId)
 	if err != nil {
 		return models.Case{}, err
 	}
@@ -53,7 +68,7 @@ func (usecase *CaseUseCase) GetCase(caseId string) (models.Case, error) {
 	return c, nil
 }
 
-func (usecase *CaseUseCase) CreateCase(createCaseAttributes models.CreateCaseAttributes) (models.Case, error) {
+func (usecase *CaseUseCase) CreateCase(ctx context.Context, createCaseAttributes models.CreateCaseAttributes) (models.Case, error) {
 	if err := usecase.enforceSecurity.CreateCase(); err != nil {
 		return models.Case{}, err
 	}
@@ -61,7 +76,7 @@ func (usecase *CaseUseCase) CreateCase(createCaseAttributes models.CreateCaseAtt
 		return models.Case{}, err
 	}
 
-	return transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
+	c, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
 		newCaseId := uuid.NewString()
 		err := usecase.repository.CreateCase(tx, createCaseAttributes, newCaseId)
 		if err != nil {
@@ -73,8 +88,32 @@ func (usecase *CaseUseCase) CreateCase(createCaseAttributes models.CreateCaseAtt
 			}
 		}
 
-		return usecase.repository.GetCaseById(tx, newCaseId)
+		return usecase.getCaseWithDecisions(tx, newCaseId)
 	})
+
+	if err != nil {
+		return models.Case{}, err
+	}
+
+	analytics.TrackEvent(ctx, models.AnalyticsCaseCreated, map[string]interface{}{"case_id": c.Id})
+
+	return c, err
+}
+
+func (usecase *CaseUseCase) getCaseWithDecisions(tx repositories.Transaction, caseId string) (models.Case, error) {
+	c, err := usecase.repository.GetCaseById(nil, caseId)
+	if err != nil {
+		return models.Case{}, err
+	}
+
+	decisions, err := usecase.decisionRepository.DecisionsByCaseId(nil, caseId)
+	if err != nil {
+		return models.Case{}, err
+	}
+
+	c.Decisions = decisions
+
+	return c, nil
 }
 
 func (usecase *CaseUseCase) validateDecisions(decisionIds []string) error {

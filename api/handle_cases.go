@@ -16,14 +16,14 @@ func (api *API) handleListCases(ctx *gin.Context) {
 		return
 	}
 
-	// var filters dto.CaseFilters
-	// if err := c.ShouldBind(&filters); err != nil {
-	// 	c.Status(http.StatusBadRequest)
-	// 	return
-	// }
+	var filters dto.CaseFilters
+	if err := ctx.ShouldBind(&filters); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		return
+	}
 
 	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
-	cases, err := usecase.ListCases(organizationId)
+	cases, err := usecase.ListCases(organizationId, filters)
 	if presentError(ctx.Writer, ctx.Request, err) {
 		return
 	}
@@ -63,7 +63,7 @@ func (api *API) handlePostCase(ctx *gin.Context) {
 		return
 	}
 
-	c, err := usecase.CreateCase(models.CreateCaseAttributes{
+	c, err := usecase.CreateCase(ctx, models.CreateCaseAttributes{
 		Name:           data.Name,
 		Description:    data.Description,
 		OrganizationId: organizationId,

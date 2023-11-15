@@ -14,6 +14,7 @@ import (
 type DecisionRepository interface {
 	DecisionById(transaction Transaction, decisionId string) (models.Decision, error)
 	DecisionsById(transaction Transaction, decisionIds []string) ([]models.Decision, error)
+	DecisionsByCaseId(transaction Transaction, caseId string) ([]models.Decision, error)
 	DecisionsOfScheduledExecution(scheduledExecutionId string) (<-chan models.Decision, <-chan error)
 	StoreDecision(tx Transaction, decision models.Decision, organizationId string, newDecisionId string) error
 	DecisionsOfOrganization(transaction Transaction, organizationId string, limit int, filters models.DecisionFilters) ([]models.Decision, error)
@@ -55,6 +56,21 @@ func (repo *DecisionRepositoryImpl) DecisionsById(transaction Transaction, decis
 
 	query := selectDecisions().
 		Where(squirrel.Eq{"id": decisionIds}).
+		OrderBy("created_at DESC")
+
+	decisionsChan, errChan := repo.channelOfDecisions(tx, query)
+
+	decisions := ChanToSlice(decisionsChan)
+	err := <-errChan
+
+	return decisions, err
+}
+
+func (repo *DecisionRepositoryImpl) DecisionsByCaseId(transaction Transaction, caseId string) ([]models.Decision, error) {
+	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(transaction)
+
+	query := selectDecisions().
+		Where(squirrel.Eq{"case_id": caseId}).
 		OrderBy("created_at DESC")
 
 	decisionsChan, errChan := repo.channelOfDecisions(tx, query)
