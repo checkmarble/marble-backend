@@ -28,7 +28,7 @@ func (repo *MarbleDbRepository) ListScenariosOfOrganization(tx Transaction, orga
 
 	return SqlToListOfModels(
 		pgTx,
-		selectScenarios().Where(squirrel.Eq{"org_id": organizationId}),
+		selectScenarios().Where(squirrel.Eq{"org_id": organizationId}).OrderBy("created_at DESC"),
 		dbmodels.AdaptScenario,
 	)
 }
