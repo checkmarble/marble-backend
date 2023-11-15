@@ -30,3 +30,15 @@ func AdaptCase(db DBCase) (models.Case, error) {
 		Status:         models.CaseStatusFrom(db.Status),
 	}, nil
 }
+
+func AdaptCaseExtended(db DBCase, decisions []models.Decision) (models.Case) {
+	return models.Case{
+		Id:             db.Id,
+		OrganizationId: db.OrganizationId,
+		CreatedAt:      db.CreatedAt,
+		Name:           db.Name,
+		Description:    db.Description,
+		Status:         models.CaseStatusFrom(db.Status),
+		Decisions:      decisions,
+	}
+}

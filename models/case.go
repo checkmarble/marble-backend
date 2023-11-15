@@ -9,6 +9,7 @@ type Case struct {
 	Name           string
 	Description    string
 	Status         CaseStatus
+	Decisions      []Decision
 }
 
 type CaseStatus string
