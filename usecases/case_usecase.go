@@ -30,7 +30,7 @@ func (usecase *CaseUseCase) ListCases(organizationId string, filters dto.CaseFil
 	if !filters.StartDate.IsZero() && !filters.EndDate.IsZero() && filters.StartDate.After(filters.EndDate) {
 		return []models.Case{}, fmt.Errorf("start date must be before end date: %w", models.BadParameterError)
 	}
-	statuses, err := usecase.validateStatuses(filters.Statuses)
+	statuses, err := models.ValidateCaseStatuses(filters.Statuses)
 	if err != nil {
 		return []models.Case{}, err
 	}
@@ -57,19 +57,8 @@ func (usecase *CaseUseCase) ListCases(organizationId string, filters dto.CaseFil
 	)
 }
 
-func (usecase *CaseUseCase) validateStatuses(filterStatuses []string) ([]models.CaseStatus, error) {
-	statuses := make([]models.CaseStatus, len(filterStatuses))
-	for i, status := range filterStatuses {
-		statuses[i] = models.CaseStatusFrom(status)
-		if statuses[i] == models.CaseUnknownStatus {
-			return []models.CaseStatus{}, fmt.Errorf("invalid status: %s %w", status, models.BadParameterError)
-		}
-	}
-	return statuses, nil
-}
-
 func (usecase *CaseUseCase) GetCase(caseId string) (models.Case, error) {
-	c, err := usecase.repository.GetCaseById(nil, caseId)
+	c, err := usecase.getCaseWithDecisions(nil, caseId)
 	if err != nil {
 		return models.Case{}, err
 	}
@@ -99,7 +88,7 @@ func (usecase *CaseUseCase) CreateCase(ctx context.Context, createCaseAttributes
 			}
 		}
 
-		return usecase.repository.GetCaseById(tx, newCaseId)
+		return usecase.getCaseWithDecisions(tx, newCaseId)
 	})
 
 	if err != nil {
@@ -109,6 +98,22 @@ func (usecase *CaseUseCase) CreateCase(ctx context.Context, createCaseAttributes
 	analytics.TrackEvent(ctx, models.AnalyticsCaseCreated, map[string]interface{}{"case_id": c.Id})
 
 	return c, err
+}
+
+func (usecase *CaseUseCase) getCaseWithDecisions(tx repositories.Transaction, caseId string) (models.Case, error) {
+	c, err := usecase.repository.GetCaseById(nil, caseId)
+	if err != nil {
+		return models.Case{}, err
+	}
+
+	decisions, err := usecase.decisionRepository.DecisionsByCaseId(nil, caseId)
+	if err != nil {
+		return models.Case{}, err
+	}
+
+	c.Decisions = decisions
+
+	return c, nil
 }
 
 func (usecase *CaseUseCase) validateDecisions(decisionIds []string) error {

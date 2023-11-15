@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type Case struct {
 	Id             string
@@ -47,4 +50,15 @@ type CaseFilters struct {
 	StartDate time.Time
 	EndDate   time.Time
 	Statuses  []CaseStatus
+}
+
+func ValidateCaseStatuses(statuses []string) ([]CaseStatus, error) {
+	sanitizedStatuses := make([]CaseStatus, len(statuses))
+	for i, status := range statuses {
+		sanitizedStatuses[i] = CaseStatusFrom(status)
+		if sanitizedStatuses[i] == CaseUnknownStatus {
+			return []CaseStatus{}, fmt.Errorf("invalid status: %s %w", status, BadParameterError)
+		}
+	}
+	return sanitizedStatuses, nil
 }
