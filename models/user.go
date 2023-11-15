@@ -8,10 +8,14 @@ type User struct {
 	FirebaseUid    string
 	Role           Role
 	OrganizationId string
+	FirstName      string
+	LastName       string
 }
 
 type CreateUser struct {
 	Email          string
 	Role           Role
 	OrganizationId string
+	FirstName      string
+	LastName       string
 }

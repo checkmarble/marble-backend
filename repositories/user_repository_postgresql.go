@@ -42,6 +42,8 @@ func (repo *UserRepositoryPostgresql) CreateUser(tx Transaction, createUser mode
 				"firebase_uid",
 				"role",
 				"organization_id",
+				"first_name",
+				"last_name",
 			).
 			Values(
 				string(userId),
@@ -49,6 +51,8 @@ func (repo *UserRepositoryPostgresql) CreateUser(tx Transaction, createUser mode
 				"",
 				int(createUser.Role),
 				organizationId,
+				createUser.FirstName,
+				createUser.LastName,
 			),
 	)
 	return userId, err
