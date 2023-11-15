@@ -11,7 +11,7 @@ type CaseRepository struct {
 	mock.Mock
 }
 
-func (r *CaseRepository) ListCases(tx repositories.Transaction, organizationId string) ([]models.Case, error) {
+func (r *CaseRepository) ListCases(tx repositories.Transaction, organizationId string, filters models.CaseFilters) ([]models.Case, error) {
 	args := r.Called(tx, organizationId)
 	return args.Get(0).([]models.Case), args.Error(1)
 }

@@ -19,6 +19,7 @@ const (
 	CaseInvestigating CaseStatus = "investigating"
 	CaseDiscarded     CaseStatus = "discarded"
 	CaseResolved      CaseStatus = "resolved"
+	CaseUnknownStatus CaseStatus = "unknown"
 )
 
 func CaseStatusFrom(s string) CaseStatus {
@@ -32,7 +33,7 @@ func CaseStatusFrom(s string) CaseStatus {
 	case "resolved":
 		return CaseResolved
 	}
-	return CaseOpen
+	return CaseUnknownStatus
 }
 
 type CreateCaseAttributes struct {
@@ -40,4 +41,10 @@ type CreateCaseAttributes struct {
 	Description    string
 	OrganizationId string
 	DecisionIds    []string
+}
+
+type CaseFilters struct {
+	StartDate time.Time
+	EndDate   time.Time
+	Statuses  []CaseStatus
 }

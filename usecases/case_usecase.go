@@ -1,17 +1,20 @@
 package usecases
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/analytics"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/transaction"
 	"github.com/google/uuid"
 )
 
 type CaseUseCaseRepository interface {
-	ListOrganizationCases(tx repositories.Transaction, organizationId string) ([]models.Case, error)
+	ListOrganizationCases(tx repositories.Transaction, organizationId string, filters models.CaseFilters) ([]models.Case, error)
 	GetCaseById(tx repositories.Transaction, caseId string) (models.Case, error)
 	CreateCase(tx repositories.Transaction, createCaseAttributes models.CreateCaseAttributes, newCaseId string) error
 }
@@ -23,12 +26,24 @@ type CaseUseCase struct {
 	decisionRepository repositories.DecisionRepository
 }
 
-func (usecase *CaseUseCase) ListCases(organizationId string) ([]models.Case, error) {
+func (usecase *CaseUseCase) ListCases(organizationId string, filters dto.CaseFilters) ([]models.Case, error) {
+	if !filters.StartDate.IsZero() && !filters.EndDate.IsZero() && filters.StartDate.After(filters.EndDate) {
+		return []models.Case{}, fmt.Errorf("start date must be before end date: %w", models.BadParameterError)
+	}
+	statuses, err := usecase.validateStatuses(filters.Statuses)
+	if err != nil {
+		return []models.Case{}, err
+	}
+
 	return transaction.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) ([]models.Case, error) {
-			cases, err := usecase.repository.ListOrganizationCases(tx, organizationId)
+			cases, err := usecase.repository.ListOrganizationCases(tx, organizationId, models.CaseFilters{
+				StartDate: filters.StartDate,
+				EndDate:   filters.EndDate,
+				Statuses:  statuses,
+			})
 			if err != nil {
 				return []models.Case{}, err
 			}
@@ -40,6 +55,17 @@ func (usecase *CaseUseCase) ListCases(organizationId string) ([]models.Case, err
 			return cases, nil
 		},
 	)
+}
+
+func (usecase *CaseUseCase) validateStatuses(filterStatuses []string) ([]models.CaseStatus, error) {
+	statuses := make([]models.CaseStatus, len(filterStatuses))
+	for i, status := range filterStatuses {
+		statuses[i] = models.CaseStatusFrom(status)
+		if statuses[i] == models.CaseUnknownStatus {
+			return []models.CaseStatus{}, fmt.Errorf("invalid status: %s %w", status, models.BadParameterError)
+		}
+	}
+	return statuses, nil
 }
 
 func (usecase *CaseUseCase) GetCase(caseId string) (models.Case, error) {
