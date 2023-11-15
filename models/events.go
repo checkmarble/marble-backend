@@ -15,4 +15,5 @@ const (
 	AnalyticsListDeleted                AnalyticsEvent = "Deleted a List"
 	AnalyticsListValueCreated           AnalyticsEvent = "Created a List Value"
 	AnalyticsListValueDeleted           AnalyticsEvent = "Deleted a List Value"
+	AnalyticsCaseCreated                AnalyticsEvent = "Created a Case"
 )

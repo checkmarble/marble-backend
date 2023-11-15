@@ -63,7 +63,7 @@ func (api *API) handlePostCase(ctx *gin.Context) {
 		return
 	}
 
-	c, err := usecase.CreateCase(models.CreateCaseAttributes{
+	c, err := usecase.CreateCase(ctx, models.CreateCaseAttributes{
 		Name:           data.Name,
 		Description:    data.Description,
 		OrganizationId: organizationId,

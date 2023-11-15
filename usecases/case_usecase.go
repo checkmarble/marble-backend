@@ -79,7 +79,7 @@ func (usecase *CaseUseCase) GetCase(caseId string) (models.Case, error) {
 	return c, nil
 }
 
-func (usecase *CaseUseCase) CreateCase(createCaseAttributes models.CreateCaseAttributes) (models.Case, error) {
+func (usecase *CaseUseCase) CreateCase(ctx context.Context, createCaseAttributes models.CreateCaseAttributes) (models.Case, error) {
 	if err := usecase.enforceSecurity.CreateCase(); err != nil {
 		return models.Case{}, err
 	}
@@ -87,7 +87,7 @@ func (usecase *CaseUseCase) CreateCase(createCaseAttributes models.CreateCaseAtt
 		return models.Case{}, err
 	}
 
-	return transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
+	c, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
 		newCaseId := uuid.NewString()
 		err := usecase.repository.CreateCase(tx, createCaseAttributes, newCaseId)
 		if err != nil {
@@ -101,6 +101,14 @@ func (usecase *CaseUseCase) CreateCase(createCaseAttributes models.CreateCaseAtt
 
 		return usecase.repository.GetCaseById(tx, newCaseId)
 	})
+
+	if err != nil {
+		return models.Case{}, err
+	}
+
+	analytics.TrackEvent(ctx, models.AnalyticsCaseCreated, map[string]interface{}{"case_id": c.Id})
+
+	return c, err
 }
 
 func (usecase *CaseUseCase) validateDecisions(decisionIds []string) error {
