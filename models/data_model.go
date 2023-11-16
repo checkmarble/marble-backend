@@ -141,7 +141,7 @@ type Field struct {
 	DataType    DataType `json:"dataType"`
 	Nullable    bool     `json:"nullable"`
 	IsEnum      bool     `json:"is_enum"`
-	Values      []string `json:"values,omitempty"`
+	Values      []any    `json:"values,omitempty"`
 }
 
 type LinkToSingle struct {
