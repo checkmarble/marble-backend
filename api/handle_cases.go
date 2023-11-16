@@ -32,12 +32,12 @@ func (api *API) handleListCases(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Map(cases, dto.AdaptCaseDto))
 }
 
-type Case struct {
+type CaseInput struct {
 	Id string `uri:"case_id" binding:"required,uuid"`
 }
 
 func (api *API) handleGetCase(ctx *gin.Context) {
-	var caseInput Case
+	var caseInput CaseInput
 	if err := ctx.ShouldBindUri(&caseInput); err != nil {
 		ctx.Status(http.StatusBadRequest)
 		return
@@ -81,6 +81,42 @@ func (api *API) handlePostCase(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusCreated, gin.H{
+		"case": dto.AdaptCaseDto(c),
+	})
+}
+
+func (api *API) handlePatchCase(ctx *gin.Context) {
+	creds, found := utils.CredentialsFromCtx(ctx.Request.Context())
+	if !found {
+		presentError(ctx.Writer, ctx.Request, fmt.Errorf("no credentials in context"))
+		return
+	}
+	userId := string(creds.ActorIdentity.UserId)
+
+	var caseInput CaseInput
+	if err := ctx.ShouldBindUri(&caseInput); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		return
+	}
+
+	var data dto.UpdateCaseBody
+	if err := ctx.ShouldBindJSON(&data); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		return
+	}
+
+	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
+	c, err := usecase.UpdateCase(ctx, userId, models.UpdateCaseAttributes{
+		Id:          caseInput.Id,
+		Name:        data.Name,
+		DecisionIds: data.DecisionIds,
+		Status:      models.CaseStatus(data.Status),
+	})
+
+	if presentError(ctx.Writer, ctx.Request, err) {
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{
 		"case": dto.AdaptCaseDto(c),
 	})
 }

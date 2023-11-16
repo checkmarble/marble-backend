@@ -31,6 +31,13 @@ type CreateCaseAttributes struct {
 	DecisionIds    []string
 }
 
+type UpdateCaseAttributes struct {
+	Id          string
+	Name        string
+	DecisionIds []string
+	Status      CaseStatus
+}
+
 type CaseFilters struct {
 	StartDate time.Time
 	EndDate   time.Time

@@ -68,3 +68,20 @@ func (repo *MarbleDbRepository) CreateCase(tx Transaction, createCaseAttributes 
 	)
 	return err
 }
+
+func (repo *MarbleDbRepository) UpdateCase(tx Transaction, updateCaseAttributes models.UpdateCaseAttributes) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	query := NewQueryBuilder().Update(dbmodels.TABLE_CASES).Where(squirrel.Eq{"id": updateCaseAttributes.Id})
+
+	if updateCaseAttributes.Name != "" {
+		query = query.Set("name", updateCaseAttributes.Name)
+	}
+
+	if updateCaseAttributes.Status != "" {
+		query = query.Set("status", updateCaseAttributes.Status)
+	}
+
+	_, err := pgTx.ExecBuilder(query)
+	return err
+}

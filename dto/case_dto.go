@@ -40,6 +40,12 @@ type CreateCaseBody struct {
 	DecisionIds []string `json:"decision_ids"`
 }
 
+type UpdateCaseBody struct {
+	Name        string   `json:"name"`
+	DecisionIds []string `json:"decision_ids"`
+	Status      string   `json:"status"`
+}
+
 type CaseFilters struct {
 	StartDate time.Time `form:"startDate" time_format`
 	EndDate   time.Time `form:"endDate" time_format`
