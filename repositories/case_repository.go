@@ -59,13 +59,11 @@ func (repo *MarbleDbRepository) CreateCase(tx Transaction, createCaseAttributes 
 				"id",
 				"org_id",
 				"name",
-				"description",
 			).
 			Values(
 				newCaseId,
 				createCaseAttributes.OrganizationId,
 				createCaseAttributes.Name,
-				createCaseAttributes.Description,
 			),
 	)
 	return err
