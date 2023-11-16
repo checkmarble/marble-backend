@@ -46,10 +46,10 @@ func AdaptCaseEvent(caseEvent DBCaseEvent, user models.User) models.CaseEvent {
 		CaseId:         caseEvent.CaseId,
 		User:           user,
 		CreatedAt:      caseEvent.CreatedAt,
-		EventType:      models.CaseEventTypeFrom(caseEvent.EventType),
+		EventType:      models.CaseEventType(caseEvent.EventType),
 		AdditionalNote: additionalNote,
 		ResourceId:     resourceId,
-		ResourceType:   models.CaseEventResourceTypeFrom(resourceType),
+		ResourceType:   models.CaseEventResourceType(resourceType),
 		NewValue:       newValue,
 		PreviousValue:  previousValue,
 	}

@@ -53,33 +53,7 @@ func adaptCaseEventAndUser(row pgx.CollectableRow) (models.CaseEvent, error) {
 }
 
 func (repo *MarbleDbRepository) CreateCaseEvent(tx Transaction, createCaseEventAttributes models.CreateCaseEventAttributes) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
-
-	_, err := pgTx.ExecBuilder(
-		NewQueryBuilder().Insert(dbmodels.TABLE_CASE_EVENTS).
-			Columns(
-				"id",
-				"case_id",
-				"user_id",
-				"event_type",
-				"resource_id",
-				"resource_type",
-				"new_value",
-				"previous_value",
-			).
-			Values(
-				uuid.NewString(),
-				createCaseEventAttributes.CaseId,
-				createCaseEventAttributes.UserId,
-				createCaseEventAttributes.EventType,
-				createCaseEventAttributes.ResourceId,
-				createCaseEventAttributes.ResourceType,
-				createCaseEventAttributes.NewValue,
-				createCaseEventAttributes.PreviousValue,
-			),
-	)
-
-	return err
+	return repo.BatchCreateCaseEvents(tx, []models.CreateCaseEventAttributes{createCaseEventAttributes})
 }
 
 func (repo *MarbleDbRepository) BatchCreateCaseEvents(tx Transaction, createCaseEventAttributes []models.CreateCaseEventAttributes) error {

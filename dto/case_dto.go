@@ -38,7 +38,7 @@ func AdaptCaseDto(c models.Case) APICase {
 }
 
 type CreateCaseBody struct {
-	Name        string   `json:"name"`
+	Name        string   `json:"name" binding:"required"`
 	Description string   `json:"description"`
 	DecisionIds []string `json:"decision_ids"`
 }

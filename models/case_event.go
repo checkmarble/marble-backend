@@ -27,36 +27,12 @@ const (
 	UnknownEvent  CaseEventType = "unknown_event"
 )
 
-func CaseEventTypeFrom(s string) CaseEventType {
-	switch s {
-	case "case_created":
-		return CaseCreated
-	case "status_updated":
-		return StatusUpdated
-	case "decision_added":
-		return DecisionAdded
-	case "comment_added":
-		return CommentAdded
-	default:
-		return UnknownEvent
-	}
-}
-
 type CaseEventResourceType string
 
 const (
 	DecisionResourceType CaseEventResourceType = "decision"
 	UnknownResourceType  CaseEventResourceType = "unknown"
 )
-
-func CaseEventResourceTypeFrom(s string) CaseEventResourceType {
-	switch s {
-	case "decision":
-		return DecisionResourceType
-	default:
-		return UnknownResourceType
-	}
-}
 
 type CreateCaseEventAttributes struct {
 	CaseId         string
