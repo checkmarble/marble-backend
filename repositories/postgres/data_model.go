@@ -303,6 +303,40 @@ func (db *Database) GetEnumValues(ctx context.Context, fieldID string) ([]any, e
 	})
 }
 
+func (db *Database) GetDataModelField(ctx context.Context, fieldId string) (models.Field, error) {
+	query := `
+		SELECT
+			data_model_fields.id,
+			data_model_fields.name,
+			data_model_fields.type,
+			data_model_fields.nullable,
+			data_model_fields.description,
+			data_model_fields.is_enum
+		FROM data_model_fields
+		WHERE id = $1
+	`
+
+	rows, err := db.pool.Query(ctx, query, fieldId)
+	if err != nil {
+		return models.Field{}, err
+	}
+
+	var field models.Field
+	var dataType string
+	if err := rows.Scan(
+		&field.ID,
+		&dataType,
+		&field.Nullable,
+		&field.Description,
+		&field.IsEnum,
+	); err != nil {
+		return models.Field{}, err
+	}
+	field.DataType = models.DataTypeFrom(dataType)
+
+	return field, nil
+}
+
 func (db *Database) GetDataModel(ctx context.Context, organizationID string, fetchEnumValues bool) (models.DataModel, error) {
 	fields, err := db.GetTablesAndFields(ctx, organizationID)
 	if err != nil {

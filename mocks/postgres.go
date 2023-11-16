@@ -42,6 +42,11 @@ func (m *Database) GetDataModel(ctx context.Context, organizationID string, fetc
 	return args.Get(0).(models.DataModel), args.Error(1)
 }
 
+func (m *Database) GetDataModelField(ctx context.Context, fieldID string) (models.Field, error) {
+	args := m.Called(ctx, fieldID)
+	return args.Get(0).(models.Field), args.Error(1)
+}
+
 func (m *Database) CreateDataModelTable(ctx context.Context, organizationID, name, description string, defaultFields []models.DataModelField) (string, error) {
 	args := m.Called(ctx, organizationID, name, description, defaultFields)
 	return args.String(0), args.Error(1)

@@ -9,6 +9,7 @@ import (
 
 type dataModelRepository interface {
 	GetDataModel(ctx context.Context, organizationID string, fetchEnumValues bool) (models.DataModel, error)
+	GetDataModelField(ctx context.Context, fieldID string) (models.Field, error)
 	CreateDataModelTable(ctx context.Context, organizationID, name, description string, defaultFields []models.DataModelField) (string, error)
 	UpdateDataModelTable(ctx context.Context, tableID, description string) error
 	CreateDataModelField(ctx context.Context, organizationID, tableID string, field models.DataModelField) (string, error)
@@ -51,6 +52,11 @@ func (u *UseCase) UpdateDataModelTable(ctx context.Context, tableID, description
 }
 
 func (u *UseCase) CreateField(ctx context.Context, organizationID, tableID string, field models.DataModelField) (string, error) {
+	if field.IsEnum &&
+		(field.Type != models.String.String() && field.Type != models.Int.String() && field.Type != models.Float.String()) {
+		return "", fmt.Errorf("enum fields can only be of type string or numeric: %w", models.BadParameterError)
+	}
+
 	fieldID, err := u.repository.CreateDataModelField(ctx, organizationID, tableID, field)
 	if err != nil {
 		return "", fmt.Errorf("repository.CreateDataModelField error: %w", err)
@@ -59,11 +65,16 @@ func (u *UseCase) CreateField(ctx context.Context, organizationID, tableID strin
 }
 
 func (u *UseCase) UpdateDataModelField(ctx context.Context, fieldID string, input models.UpdateDataModelFieldInput) error {
-	err := u.repository.UpdateDataModelField(ctx, fieldID, input)
+	field, err := u.repository.GetDataModelField(ctx, fieldID)
 	if err != nil {
-		return fmt.Errorf("repository.UpdateDataModelField error: %w", err)
+		return fmt.Errorf("repository.GetDataModelField error: %w", err)
 	}
-	return nil
+	if input.IsEnum != nil && *input.IsEnum &&
+		(field.DataType != models.String && field.DataType != models.Int && field.DataType != models.Float) {
+		return fmt.Errorf("enum fields can only be of type string or numeric: %w", models.BadParameterError)
+	}
+
+	return u.repository.UpdateDataModelField(ctx, fieldID, input)
 }
 
 func (u *UseCase) CreateDataModelLink(ctx context.Context, link models.DataModelLink) error {
