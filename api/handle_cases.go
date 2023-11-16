@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -51,6 +52,13 @@ func (api *API) handleGetCase(ctx *gin.Context) {
 }
 
 func (api *API) handlePostCase(ctx *gin.Context) {
+	creds, found := utils.CredentialsFromCtx(ctx.Request.Context())
+	if !found {
+		presentError(ctx.Writer, ctx.Request, fmt.Errorf("no credentials in context"))
+		return
+	}
+	userId := string(creds.ActorIdentity.UserId)
+
 	var data dto.CreateCaseBody
 	if err := ctx.ShouldBindJSON(&data); err != nil {
 		ctx.Status(http.StatusBadRequest)
@@ -63,7 +71,7 @@ func (api *API) handlePostCase(ctx *gin.Context) {
 		return
 	}
 
-	c, err := usecase.CreateCase(ctx, models.CreateCaseAttributes{
+	c, err := usecase.CreateCase(ctx, userId, models.CreateCaseAttributes{
 		Name:           data.Name,
 		Description:    data.Description,
 		OrganizationId: organizationId,

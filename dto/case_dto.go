@@ -7,12 +7,13 @@ import (
 )
 
 type APICase struct {
-	Id          string        `json:"id"`
-	CreatedAt   time.Time     `json:"created_at"`
-	Description string        `json:"description"`
-	Name        string        `json:"name"`
-	Status      string        `json:"status"`
-	Decisions   []APIDecision `json:"decisions"`
+	Id          string         `json:"id"`
+	CreatedAt   time.Time      `json:"created_at"`
+	Description string         `json:"description"`
+	Name        string         `json:"name"`
+	Status      string         `json:"status"`
+	Decisions   []APIDecision  `json:"decisions"`
+	Events      []APICaseEvent `json:"events"`
 }
 
 func AdaptCaseDto(c models.Case) APICase {
@@ -23,10 +24,14 @@ func AdaptCaseDto(c models.Case) APICase {
 		Name:        c.Name,
 		Status:      string(c.Status),
 		Decisions:   make([]APIDecision, len(c.Decisions)),
+		Events:      make([]APICaseEvent, len(c.Events)),
 	}
 
 	for i, decision := range c.Decisions {
 		apiCase.Decisions[i] = NewAPIDecision(decision)
+	}
+	for i, event := range c.Events {
+		apiCase.Events[i] = NewAPICaseEvent(event)
 	}
 
 	return apiCase
