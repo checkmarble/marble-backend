@@ -101,12 +101,12 @@ func (usecase *CaseUseCase) CreateCase(ctx context.Context, createCaseAttributes
 }
 
 func (usecase *CaseUseCase) getCaseWithDecisions(tx repositories.Transaction, caseId string) (models.Case, error) {
-	c, err := usecase.repository.GetCaseById(nil, caseId)
+	c, err := usecase.repository.GetCaseById(tx, caseId)
 	if err != nil {
 		return models.Case{}, err
 	}
 
-	decisions, err := usecase.decisionRepository.DecisionsByCaseId(nil, caseId)
+	decisions, err := usecase.decisionRepository.DecisionsByCaseId(tx, caseId)
 	if err != nil {
 		return models.Case{}, err
 	}

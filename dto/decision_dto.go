@@ -65,6 +65,7 @@ type APIDecision struct {
 func NewAPIDecision(decision models.Decision) APIDecision {
 	apiDecision := APIDecision{
 		Id:                decision.DecisionId,
+		CaseId:            decision.CaseId,
 		CreatedAt:         decision.CreatedAt,
 		TriggerObjectType: string(decision.ClientObject.TableName),
 		TriggerObject:     decision.ClientObject.Data,
