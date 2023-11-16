@@ -64,8 +64,9 @@ func generateInsertValues(tx TransactionPostgres, table models.Table, payload mo
 	for fieldName := range table.Fields {
 		columnNames[i] = string(fieldName)
 		values[i], _ = payload.ReadFieldFromPayload(fieldName)
-		if table.Fields[fieldName].IsEnum && values[i] != nil {
-			err := addEnumValue(tx, table.Fields[fieldName].ID, values[i])
+		dataType := table.Fields[fieldName].DataType
+		if table.Fields[fieldName].IsEnum && values[i] != nil && (dataType == models.String || dataType == models.Float) {
+			err := addEnumValue(tx, table.Fields[fieldName].ID, dataType, values[i])
 			if err != nil {
 				return nil, nil, fmt.Errorf("addEnumValue error: %w", err)
 			}
@@ -75,13 +76,27 @@ func generateInsertValues(tx TransactionPostgres, table models.Table, payload mo
 	return columnNames, values, nil
 }
 
-func addEnumValue(tx TransactionPostgres, fieldID string, value interface{}) error {
-	query := `
-		INSERT INTO data_model_enum_values (field_id, value)
+func addEnumValue(tx TransactionPostgres, fieldID string, dataType models.DataType, value interface{}) error {
+	dataTypeEnumColumnMap := map[models.DataType]string{
+		models.String: "text_value",
+		models.Float:  "float_value",
+	}
+	dataTypeEnumColumnConstraintMap := map[models.DataType]string{
+		models.String: "unique_data_model_enum_text_values_field_id_value",
+		models.Float:  "unique_data_model_enum_float_values_field_id_value",
+	}
+	column, ok1 := dataTypeEnumColumnMap[dataType]
+	constraint, ok2 := dataTypeEnumColumnConstraintMap[dataType]
+	if !ok1 || !ok2 {
+		return fmt.Errorf("addEnumValue error: data type %s can't handle enum values", dataType.String())
+	}
+
+	query := fmt.Sprintf(`
+		INSERT INTO data_model_enum_values (field_id, %s)
 		VALUES ($1, $2)
-		ON CONFLICT ON CONSTRAINT unique_data_model_enum_values_field_id_value
+		ON CONFLICT ON CONSTRAINT %s
 		DO UPDATE SET last_seen = NOW()
-	`
+	`, column, constraint)
 
 	_, err := tx.exec.Exec(tx.ctx, query, fieldID, value)
 	if err != nil {

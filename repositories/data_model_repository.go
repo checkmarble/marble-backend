@@ -46,7 +46,7 @@ func (repo *DataModelRepositoryPostgresql) GetDataModel(organizationID string, f
 		tableName := models.TableName(field.TableName)
 		fieldName := models.FieldName(field.FieldName)
 
-		var values []string
+		var values []any
 		if field.FieldIsEnum && fetchEnumValues {
 			values, err = repo.GetEnumValues(nil, field.FieldID)
 			if err != nil {
@@ -267,13 +267,14 @@ func (repo *DataModelRepositoryPostgresql) DeleteDataModel(tx Transaction, organ
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) GetEnumValues(tx Transaction, fieldID string) ([]string, error) {
+func (repo *DataModelRepositoryPostgresql) GetEnumValues(tx Transaction, fieldID string) ([]any, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	query, args, err := NewQueryBuilder().
-		Select("value").
+		Select("text_value", "float_value").
 		From("data_model_enum_values").
 		Where(squirrel.Eq{"field_id": fieldID}).
+		Where("(text_value IS NOT NULL OR float_value IS NOT NULL)").
 		OrderBy("last_seen DESC").
 		Limit(100).
 		ToSql()
@@ -286,12 +287,16 @@ func (repo *DataModelRepositoryPostgresql) GetEnumValues(tx Transaction, fieldID
 		return nil, err
 	}
 
-	values, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (string, error) {
-		var value string
-		if err := rows.Scan(&value); err != nil {
+	values, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (any, error) {
+		var valueString, valueFloat any
+		if err := rows.Scan(&valueString, &valueFloat); err != nil {
 			return "", err
 		}
-		return value, err
+		// presumably if there is a row, one of the values should be non-nil
+		if valueString != nil {
+			return valueString, nil
+		}
+		return valueFloat, err
 	})
 	return values, nil
 }

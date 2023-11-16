@@ -261,7 +261,7 @@ func (db *Database) GetLinks(ctx context.Context, organizationID string) ([]mode
 		return nil, fmt.Errorf("pgx.Query error: %w", err)
 	}
 
-	links, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.DataModelLink, error) {
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.DataModelLink, error) {
 		var link models.DataModelLink
 		if err := rows.Scan(&link.ID,
 			&link.Name,
@@ -273,14 +273,14 @@ func (db *Database) GetLinks(ctx context.Context, organizationID string) ([]mode
 		}
 		return link, nil
 	})
-	return links, nil
 }
 
-func (db *Database) GetEnumValues(ctx context.Context, fieldID string) ([]string, error) {
+func (db *Database) GetEnumValues(ctx context.Context, fieldID string) ([]any, error) {
 	query := `
-		SELECT value
+		SELECT text_value, float_value
 		FROM data_model_enum_values
 		WHERE field_id = $1
+		AND (text_value IS NOT NULL OR float_value IS NOT NULL)
 		ORDER BY last_seen DESC
 		LIMIT 100
 	`
@@ -290,17 +290,17 @@ func (db *Database) GetEnumValues(ctx context.Context, fieldID string) ([]string
 		return nil, err
 	}
 
-	values, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (string, error) {
-		var value string
-		if err := rows.Scan(&value); err != nil {
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (any, error) {
+		var valueString, valueFloat any
+		if err := rows.Scan(&valueString, &valueFloat); err != nil {
 			return "", err
 		}
-		return value, err
+		// presumably if there is a row, one of the values should be non-nil
+		if valueString != nil {
+			return valueString, nil
+		}
+		return valueFloat, err
 	})
-	if err != nil {
-
-	}
-	return values, nil
 }
 
 func (db *Database) GetDataModel(ctx context.Context, organizationID string, fetchEnumValues bool) (models.DataModel, error) {
@@ -322,7 +322,7 @@ func (db *Database) GetDataModel(ctx context.Context, organizationID string, fet
 		tableName := models.TableName(field.TableName)
 		fieldName := models.FieldName(field.FieldName)
 
-		var values []string
+		var values []any
 		if field.FieldIsEnum && fetchEnumValues {
 			values, err = db.GetEnumValues(ctx, field.FieldID)
 			if err != nil {

@@ -12,12 +12,12 @@ type LinkToSingle struct {
 }
 
 type Field struct {
-	ID          string   `json:"id,omitempty"`
-	Description string   `json:"description"`
-	DataType    string   `json:"data_type"`
-	Nullable    bool     `json:"nullable"`
-	IsEnum      bool     `json:"is_enum"`
-	Values      []string `json:"values,omitempty"`
+	ID          string `json:"id,omitempty"`
+	Description string `json:"description"`
+	DataType    string `json:"data_type"`
+	Nullable    bool   `json:"nullable"`
+	IsEnum      bool   `json:"is_enum"`
+	Values      []any  `json:"values,omitempty"`
 }
 
 type Table struct {
