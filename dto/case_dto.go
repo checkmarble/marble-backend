@@ -7,24 +7,22 @@ import (
 )
 
 type APICase struct {
-	Id          string         `json:"id"`
-	CreatedAt   time.Time      `json:"created_at"`
-	Description string         `json:"description"`
-	Name        string         `json:"name"`
-	Status      string         `json:"status"`
-	Decisions   []APIDecision  `json:"decisions"`
-	Events      []APICaseEvent `json:"events"`
+	Id        string         `json:"id"`
+	CreatedAt time.Time      `json:"created_at"`
+	Name      string         `json:"name"`
+	Status    string         `json:"status"`
+	Decisions []APIDecision  `json:"decisions"`
+	Events    []APICaseEvent `json:"events"`
 }
 
 func AdaptCaseDto(c models.Case) APICase {
 	apiCase := APICase{
-		Id:          c.Id,
-		CreatedAt:   c.CreatedAt,
-		Description: c.Description,
-		Name:        c.Name,
-		Status:      string(c.Status),
-		Decisions:   make([]APIDecision, len(c.Decisions)),
-		Events:      make([]APICaseEvent, len(c.Events)),
+		Id:        c.Id,
+		CreatedAt: c.CreatedAt,
+		Name:      c.Name,
+		Status:    string(c.Status),
+		Decisions: make([]APIDecision, len(c.Decisions)),
+		Events:    make([]APICaseEvent, len(c.Events)),
 	}
 
 	for i, decision := range c.Decisions {
@@ -39,8 +37,13 @@ func AdaptCaseDto(c models.Case) APICase {
 
 type CreateCaseBody struct {
 	Name        string   `json:"name" binding:"required"`
-	Description string   `json:"description"`
 	DecisionIds []string `json:"decision_ids"`
+}
+
+type UpdateCaseBody struct {
+	Name        string   `json:"name"`
+	DecisionIds []string `json:"decision_ids"`
+	Status      string   `json:"status"`
 }
 
 type CaseFilters struct {

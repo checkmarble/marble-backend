@@ -12,7 +12,6 @@ type DBCase struct {
 	OrganizationId string    `db:"org_id"`
 	CreatedAt      time.Time `db:"created_at"`
 	Name           string    `db:"name"`
-	Description    string    `db:"description"`
 	Status         string    `db:"status"`
 }
 
@@ -26,7 +25,6 @@ func AdaptCase(db DBCase) (models.Case, error) {
 		OrganizationId: db.OrganizationId,
 		CreatedAt:      db.CreatedAt,
 		Name:           db.Name,
-		Description:    db.Description,
 		Status:         models.CaseStatus(db.Status),
 	}, nil
 }

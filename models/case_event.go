@@ -20,11 +20,12 @@ type CaseEvent struct {
 type CaseEventType string
 
 const (
-	CaseCreated   CaseEventType = "case_created"
-	StatusUpdated CaseEventType = "status_updated"
-	DecisionAdded CaseEventType = "decision_added"
-	CommentAdded  CaseEventType = "comment_added"
-	UnknownEvent  CaseEventType = "unknown_event"
+	CaseCreated       CaseEventType = "case_created"
+	CaseStatusUpdated CaseEventType = "status_updated"
+	DecisionAdded     CaseEventType = "decision_added"
+	CaseCommentAdded  CaseEventType = "comment_added"
+	CaseNameUpdated   CaseEventType = "name_updated"
+	UnknownEvent      CaseEventType = "unknown_event"
 )
 
 type CaseEventResourceType string

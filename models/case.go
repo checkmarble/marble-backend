@@ -10,7 +10,6 @@ type Case struct {
 	OrganizationId string
 	CreatedAt      time.Time
 	Name           string
-	Description    string
 	Status         CaseStatus
 	Decisions      []Decision
 	Events         []CaseEvent
@@ -28,9 +27,15 @@ const (
 
 type CreateCaseAttributes struct {
 	Name           string
-	Description    string
 	OrganizationId string
 	DecisionIds    []string
+}
+
+type UpdateCaseAttributes struct {
+	Id          string
+	Name        string
+	DecisionIds []string
+	Status      CaseStatus
 }
 
 type CaseFilters struct {
