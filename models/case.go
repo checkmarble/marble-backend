@@ -38,6 +38,11 @@ type UpdateCaseAttributes struct {
 	Status      CaseStatus
 }
 
+type CreateCaseCommentAttributes struct {
+	Id      string
+	Comment string
+}
+
 type CaseFilters struct {
 	StartDate time.Time
 	EndDate   time.Time

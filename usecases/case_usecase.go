@@ -114,9 +114,6 @@ func (usecase *CaseUseCase) CreateCase(ctx context.Context, userId string, creat
 }
 
 func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string, updateCaseAttributes models.UpdateCaseAttributes) (models.Case, error) {
-	if err := usecase.enforceSecurity.CreateCase(); err != nil {
-		return models.Case{}, err
-	}
 	if err := usecase.validateDecisions(updateCaseAttributes.DecisionIds); err != nil {
 		return models.Case{}, err
 	}
@@ -124,6 +121,10 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string, updat
 	updatedCase, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
 		c, err := usecase.repository.GetCaseById(tx, updateCaseAttributes.Id)
 		if err != nil {
+			return models.Case{}, err
+		}
+
+		if err := usecase.enforceSecurity.UpdateCase(c); err != nil {
 			return models.Case{}, err
 		}
 
@@ -171,6 +172,37 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string, updat
 	}
 
 	analytics.TrackEvent(ctx, models.AnalyticsCaseUpdated, map[string]interface{}{"case_id": updatedCase.Id})
+	return updatedCase, nil
+}
+
+func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string, caseCommentAttributes models.CreateCaseCommentAttributes) (models.Case, error) {
+	updatedCase, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
+		c, err := usecase.repository.GetCaseById(tx, caseCommentAttributes.Id)
+		if err != nil {
+			return models.Case{}, err
+		}
+
+		if err := usecase.enforceSecurity.CreateCaseComment(c); err != nil {
+			return models.Case{}, err
+		}
+
+		err = usecase.repository.CreateCaseEvent(tx, models.CreateCaseEventAttributes{
+			CaseId:         caseCommentAttributes.Id,
+			UserId:         userId,
+			EventType:      models.CaseCommentAdded,
+			AdditionalNote: &caseCommentAttributes.Comment,
+		})
+		if err != nil {
+			return models.Case{}, err
+		}
+		return usecase.getCaseWithDetails(tx, caseCommentAttributes.Id)
+	})
+
+	if err != nil {
+		return models.Case{}, err
+	}
+
+	analytics.TrackEvent(ctx, models.AnalyticsCaseCommentCreated, map[string]interface{}{"case_id": updatedCase.Id})
 	return updatedCase, nil
 }
 
