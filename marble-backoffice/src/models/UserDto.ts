@@ -8,6 +8,8 @@ const UserSchema = yup.object({
   email: yup.string().required(),
   role: yup.string().required(),
   organization_id: yup.string().defined(),
+  first_name: yup.string().defined(),
+  last_name: yup.string().defined(),
 });
 
 export type UserDto = yup.InferType<typeof UserSchema>;
@@ -18,6 +20,8 @@ export function adaptUser(dto: UserDto): User {
     email: dto.email,
     role: adaptRole(dto.role),
     organizationId: dto.organization_id,
+    firstName: dto.first_name,
+    lastName: dto.last_name,
   };
 }
 

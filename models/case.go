@@ -13,6 +13,7 @@ type Case struct {
 	Description    string
 	Status         CaseStatus
 	Decisions      []Decision
+	Events         []CaseEvent
 }
 
 type CaseStatus string
@@ -24,20 +25,6 @@ const (
 	CaseResolved      CaseStatus = "resolved"
 	CaseUnknownStatus CaseStatus = "unknown"
 )
-
-func CaseStatusFrom(s string) CaseStatus {
-	switch s {
-	case "open":
-		return CaseOpen
-	case "investigating":
-		return CaseInvestigating
-	case "discarded":
-		return CaseDiscarded
-	case "resolved":
-		return CaseResolved
-	}
-	return CaseUnknownStatus
-}
 
 type CreateCaseAttributes struct {
 	Name           string
@@ -55,7 +42,7 @@ type CaseFilters struct {
 func ValidateCaseStatuses(statuses []string) ([]CaseStatus, error) {
 	sanitizedStatuses := make([]CaseStatus, len(statuses))
 	for i, status := range statuses {
-		sanitizedStatuses[i] = CaseStatusFrom(status)
+		sanitizedStatuses[i] = CaseStatus(status)
 		if sanitizedStatuses[i] == CaseUnknownStatus {
 			return []CaseStatus{}, fmt.Errorf("invalid status: %s %w", status, BadParameterError)
 		}

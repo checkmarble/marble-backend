@@ -5,12 +5,14 @@ export interface User {
   email: string;
   role: Role;
   organizationId: string;
+  firstName: string;
+  lastName: string;
 }
-
 
 export interface CreateUser {
   email: string;
   role: Role;
   organizationId: string;
+  firstName: string;
+  lastName: string;
 }
-

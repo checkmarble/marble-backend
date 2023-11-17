@@ -28,6 +28,7 @@ export default function ListOfUsers(props: ListOfUsersProps) {
   // Enrich the 'user' to build a 'row'
   const rows: GridRowsProp = users.map((user) => ({
     id: user.userId, // needed for datagrid
+    fullName: `${user.firstName ?? ''} ${user.lastName ?? ''}`,
     ...user, // keep all user data intact
   }));
 
@@ -35,6 +36,12 @@ export default function ListOfUsers(props: ListOfUsersProps) {
     {
       field: "email",
       headerName: "email",
+      flex: 1,
+      renderCell: GridCellWithHover,
+    },
+    {
+      field: "fullName",
+      headerName: "full name",
       flex: 1,
       renderCell: GridCellWithHover,
     },

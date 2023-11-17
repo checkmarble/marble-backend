@@ -27,6 +27,6 @@ func AdaptCase(db DBCase) (models.Case, error) {
 		CreatedAt:      db.CreatedAt,
 		Name:           db.Name,
 		Description:    db.Description,
-		Status:         models.CaseStatusFrom(db.Status),
+		Status:         models.CaseStatus(db.Status),
 	}, nil
 }

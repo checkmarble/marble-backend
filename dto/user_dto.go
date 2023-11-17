@@ -7,6 +7,8 @@ type User struct {
 	Email          string `json:"email"`
 	Role           string `json:"role"`
 	OrganizationId string `json:"organization_id"`
+	FirstName      string `json:"first_name"`
+	LastName       string `json:"last_name"`
 }
 
 func AdaptUserDto(user models.User) User {
@@ -15,6 +17,8 @@ func AdaptUserDto(user models.User) User {
 		Email:          user.Email,
 		Role:           user.Role.String(),
 		OrganizationId: user.OrganizationId,
+		FirstName:      user.FirstName,
+		LastName:       user.LastName,
 	}
 }
 
@@ -22,6 +26,8 @@ type CreateUser struct {
 	Email          string `json:"email"`
 	Role           string `json:"role"`
 	OrganizationId string `json:"organization_id"`
+	FirstName      string `json:"first_name"`
+	LastName       string `json:"last_name"`
 }
 
 func AdaptCreateUser(dto CreateUser) models.CreateUser {
@@ -29,5 +35,7 @@ func AdaptCreateUser(dto CreateUser) models.CreateUser {
 		Email:          dto.Email,
 		Role:           models.RoleFromString(dto.Role),
 		OrganizationId: dto.OrganizationId,
+		FirstName:      dto.FirstName,
+		LastName:       dto.LastName,
 	}
 }

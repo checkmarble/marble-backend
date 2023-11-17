@@ -17,6 +17,9 @@ type CaseUseCaseRepository interface {
 	ListOrganizationCases(tx repositories.Transaction, organizationId string, filters models.CaseFilters) ([]models.Case, error)
 	GetCaseById(tx repositories.Transaction, caseId string) (models.Case, error)
 	CreateCase(tx repositories.Transaction, createCaseAttributes models.CreateCaseAttributes, newCaseId string) error
+	CreateCaseEvent(tx repositories.Transaction, createCaseEventAttributes models.CreateCaseEventAttributes) error
+	BatchCreateCaseEvents(tx repositories.Transaction, createCaseEventAttributes []models.CreateCaseEventAttributes) error
+	ListCaseEvents(tx repositories.Transaction, caseId string) ([]models.CaseEvent, error)
 }
 
 type CaseUseCase struct {
@@ -58,7 +61,7 @@ func (usecase *CaseUseCase) ListCases(organizationId string, filters dto.CaseFil
 }
 
 func (usecase *CaseUseCase) GetCase(caseId string) (models.Case, error) {
-	c, err := usecase.getCaseWithDecisions(nil, caseId)
+	c, err := usecase.getCaseWithDetails(nil, caseId)
 	if err != nil {
 		return models.Case{}, err
 	}
@@ -68,7 +71,7 @@ func (usecase *CaseUseCase) GetCase(caseId string) (models.Case, error) {
 	return c, nil
 }
 
-func (usecase *CaseUseCase) CreateCase(ctx context.Context, createCaseAttributes models.CreateCaseAttributes) (models.Case, error) {
+func (usecase *CaseUseCase) CreateCase(ctx context.Context, userId string, createCaseAttributes models.CreateCaseAttributes) (models.Case, error) {
 	if err := usecase.enforceSecurity.CreateCase(); err != nil {
 		return models.Case{}, err
 	}
@@ -82,13 +85,38 @@ func (usecase *CaseUseCase) CreateCase(ctx context.Context, createCaseAttributes
 		if err != nil {
 			return models.Case{}, err
 		}
+
+		err = usecase.repository.CreateCaseEvent(tx, models.CreateCaseEventAttributes{
+			CaseId:    newCaseId,
+			UserId:    userId,
+			EventType: models.CaseCreated,
+		})
+		if err != nil {
+			return models.Case{}, err
+		}
+
 		if len(createCaseAttributes.DecisionIds) > 0 {
 			if err := usecase.decisionRepository.UpdateDecisionCaseId(tx, createCaseAttributes.DecisionIds, newCaseId); err != nil {
 				return models.Case{}, err
 			}
+
+			createCaseEventAttributes := make([]models.CreateCaseEventAttributes, len(createCaseAttributes.DecisionIds))
+			resourceType := models.DecisionResourceType
+			for i, decisionId := range createCaseAttributes.DecisionIds {
+				createCaseEventAttributes[i] = models.CreateCaseEventAttributes{
+					CaseId:       newCaseId,
+					UserId:       userId,
+					EventType:    models.DecisionAdded,
+					ResourceId:   &decisionId,
+					ResourceType: &resourceType,
+				}
+			}
+			if err := usecase.repository.BatchCreateCaseEvents(tx, createCaseEventAttributes); err != nil {
+				return models.Case{}, err
+			}
 		}
 
-		return usecase.getCaseWithDecisions(tx, newCaseId)
+		return usecase.getCaseWithDetails(tx, newCaseId)
 	})
 
 	if err != nil {
@@ -100,18 +128,23 @@ func (usecase *CaseUseCase) CreateCase(ctx context.Context, createCaseAttributes
 	return c, err
 }
 
-func (usecase *CaseUseCase) getCaseWithDecisions(tx repositories.Transaction, caseId string) (models.Case, error) {
-	c, err := usecase.repository.GetCaseById(nil, caseId)
+func (usecase *CaseUseCase) getCaseWithDetails(tx repositories.Transaction, caseId string) (models.Case, error) {
+	c, err := usecase.repository.GetCaseById(tx, caseId)
 	if err != nil {
 		return models.Case{}, err
 	}
 
-	decisions, err := usecase.decisionRepository.DecisionsByCaseId(nil, caseId)
+	decisions, err := usecase.decisionRepository.DecisionsByCaseId(tx, caseId)
 	if err != nil {
 		return models.Case{}, err
 	}
-
 	c.Decisions = decisions
+
+	events, err := usecase.repository.ListCaseEvents(tx, caseId)
+	if err != nil {
+		return models.Case{}, err
+	}
+	c.Events = events
 
 	return c, nil
 }

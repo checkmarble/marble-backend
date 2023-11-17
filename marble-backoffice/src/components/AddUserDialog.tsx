@@ -27,6 +27,8 @@ export default function AddUserFormDialog(
   const initialUserViewModel = useMemo<CreateUser>(
     () => ({
       email: "",
+      firstName: "",
+      lastName: "",
       role: props.availableRoles[0],
       organizationId: props.organizationId,
     }),
@@ -81,13 +83,45 @@ export default function AddUserFormDialog(
           sx={{ mb: 4 }}
           autoFocus
           margin="dense"
-          id="name"
+          id="email"
           label="User's email"
           type="email"
           fullWidth
           variant="standard"
           value={userViewModel.email}
           onChange={handleEmailChange}
+          disabled={formDisable}
+        />
+
+        <TextField
+          sx={{ mb: 4 }}
+          autoFocus
+          margin="dense"
+          id="firstName"
+          label="First Name"
+          type="text"
+          fullWidth
+          variant="standard"
+          value={userViewModel.firstName}
+          onChange={(e) =>
+            setUserViewModel({ ...userViewModel, firstName: e.target.value })
+          }
+          disabled={formDisable}
+        />
+
+        <TextField
+          sx={{ mb: 4 }}
+          autoFocus
+          margin="dense"
+          id="lastName"
+          label="Last Name"
+          type="text"
+          fullWidth
+          variant="standard"
+          value={userViewModel.lastName}
+          onChange={(e) =>
+            setUserViewModel({ ...userViewModel, lastName: e.target.value })
+          }
           disabled={formDisable}
         />
 

@@ -226,6 +226,8 @@ export class MarbleApi {
         email: createUser.email,
         role: createUser.role,
         organization_id: createUser.organizationId,
+        first_name: createUser.firstName,
+        last_name: createUser.lastName,
       },
     });
   }

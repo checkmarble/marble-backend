@@ -67,6 +67,8 @@ func (usecase *SeedUseCase) SeedZorgOrganization(zorgOrganizationId string) erro
 		Email:          "jbe@zorg.com", // Jean-Baptiste Emanuel Zorg
 		Role:           models.ADMIN,
 		OrganizationId: zorgOrganizationId,
+		FirstName:      "Jean-Baptiste Emanuel",
+		LastName:       "Zorg",
 	})
 	if repositories.IsUniqueViolationError(err) {
 		err = nil
