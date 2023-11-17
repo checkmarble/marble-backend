@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Masterminds/squirrel"
@@ -307,7 +308,6 @@ func (db *Database) GetDataModelField(ctx context.Context, fieldId string) (mode
 	query := `
 		SELECT
 			data_model_fields.id,
-			data_model_fields.name,
 			data_model_fields.type,
 			data_model_fields.nullable,
 			data_model_fields.description,
@@ -316,20 +316,19 @@ func (db *Database) GetDataModelField(ctx context.Context, fieldId string) (mode
 		WHERE id = $1
 	`
 
-	rows, err := db.pool.Query(ctx, query, fieldId)
-	if err != nil {
-		return models.Field{}, err
-	}
+	row := db.pool.QueryRow(ctx, query, fieldId)
 
 	var field models.Field
 	var dataType string
-	if err := rows.Scan(
+	if err := row.Scan(
 		&field.ID,
 		&dataType,
 		&field.Nullable,
 		&field.Description,
 		&field.IsEnum,
-	); err != nil {
+	); errors.Is(err, pgx.ErrNoRows) {
+		return models.Field{}, fmt.Errorf("error in GetDataModelField: %w", models.NotFoundError)
+	} else if err != nil {
 		return models.Field{}, err
 	}
 	field.DataType = models.DataTypeFrom(dataType)
