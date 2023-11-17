@@ -103,7 +103,15 @@ func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(transaction Transact
 	if !filters.EndDate.IsZero() {
 		query = query.Where(squirrel.LtOrEq{"created_at": filters.EndDate})
 	}
-
+	if filters.WithCase != nil && *filters.WithCase {
+		query = query.Where(squirrel.NotEq{"case_id": nil})
+	}
+	if filters.WithCase != nil && !*filters.WithCase {
+		query = query.Where(squirrel.Eq{"case_id": nil})
+	}
+	if len(filters.CaseIds) > 0 {
+		query = query.Where(squirrel.Eq{"case_id": filters.CaseIds})
+	}
 	decisionsChan, errChan := repo.channelOfDecisions(tx, query)
 
 	decisions := ChanToSlice(decisionsChan)

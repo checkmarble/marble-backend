@@ -89,6 +89,8 @@ func (usecase *DecisionUsecase) ListDecisions(organizationId string, filters dto
 				EndDate:        filters.EndDate,
 				Outcomes:       outcomes,
 				TriggerObjects: triggerObjectTypes,
+				WithCase:       filters.WithCase,
+				CaseIds:        filters.CaseIds,
 			})
 			if err != nil {
 				return []models.Decision{}, err
