@@ -52,6 +52,7 @@ type APIDecisionScenario struct {
 type APIDecision struct {
 	Id                   string              `json:"id"`
 	CaseId               *string             `json:"case_id,omitempty"`
+	Case                 *APICase            `json:"case,omitempty"`
 	CreatedAt            time.Time           `json:"created_at"`
 	TriggerObject        map[string]any      `json:"trigger_object"`
 	TriggerObjectType    string              `json:"trigger_object_type"`
@@ -65,6 +66,7 @@ type APIDecision struct {
 func NewAPIDecision(decision models.Decision) APIDecision {
 	apiDecision := APIDecision{
 		Id:                decision.DecisionId,
+		CaseId:            decision.CaseId,
 		CreatedAt:         decision.CreatedAt,
 		TriggerObjectType: string(decision.ClientObject.TableName),
 		TriggerObject:     decision.ClientObject.Data,
@@ -82,6 +84,10 @@ func NewAPIDecision(decision models.Decision) APIDecision {
 
 	for i, ruleExecution := range decision.RuleExecutions {
 		apiDecision.Rules[i] = NewAPIDecisionRule(ruleExecution)
+	}
+	if decision.Case != nil {
+		c := AdaptCaseDto(*decision.Case)
+		apiDecision.Case = &c
 	}
 
 	return apiDecision
