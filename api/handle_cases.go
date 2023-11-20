@@ -120,3 +120,37 @@ func (api *API) handlePatchCase(ctx *gin.Context) {
 		"case": dto.AdaptCaseDto(c),
 	})
 }
+
+func (api *API) handlePostCaseComment(ctx *gin.Context) {
+	creds, found := utils.CredentialsFromCtx(ctx.Request.Context())
+	if !found {
+		presentError(ctx.Writer, ctx.Request, fmt.Errorf("no credentials in context"))
+		return
+	}
+	userId := string(creds.ActorIdentity.UserId)
+
+	var caseInput CaseInput
+	if err := ctx.ShouldBindUri(&caseInput); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		return
+	}
+
+	var data dto.CreateCaseCommentBody
+	if err := ctx.ShouldBindJSON(&data); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		return
+	}
+
+	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
+	c, err := usecase.CreateCaseComment(ctx, userId, models.CreateCaseCommentAttributes{
+		Id:      caseInput.Id,
+		Comment: data.Comment,
+	})
+
+	if presentError(ctx.Writer, ctx.Request, err) {
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{
+		"case": dto.AdaptCaseDto(c),
+	})
+}

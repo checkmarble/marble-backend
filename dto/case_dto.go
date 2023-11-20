@@ -46,6 +46,10 @@ type UpdateCaseBody struct {
 	Status      string   `json:"status"`
 }
 
+type CreateCaseCommentBody struct {
+	Comment string `json:"comment" binding:"required"`
+}
+
 type CaseFilters struct {
 	StartDate time.Time `form:"startDate" time_format`
 	EndDate   time.Time `form:"endDate" time_format`

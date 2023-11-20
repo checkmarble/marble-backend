@@ -11,6 +11,7 @@ type EnforceSecurityCase interface {
 	ReadCase(c models.Case) error
 	CreateCase() error
 	UpdateCase(c models.Case) error
+	CreateCaseComment(c models.Case) error
 }
 
 type EnforceSecurityCaseImpl struct {
@@ -28,4 +29,8 @@ func (e *EnforceSecurityCaseImpl) CreateCase() error {
 
 func (e *EnforceSecurityCaseImpl) UpdateCase(c models.Case) error {
 	return errors.Join(e.Permission(models.CASE_CREATE), e.ReadOrganization(c.OrganizationId))
+}
+
+func (e *EnforceSecurityCaseImpl) CreateCaseComment(c models.Case) error {
+	return errors.Join(e.Permission(models.CASE_READ), e.ReadOrganization(c.OrganizationId))
 }
