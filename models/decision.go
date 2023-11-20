@@ -8,7 +8,6 @@ import (
 type Decision struct {
 	DecisionId           string
 	OrganizationId       string
-	CaseId               *string
 	Case                 *Case
 	CreatedAt            time.Time
 	ClientObject         ClientObject

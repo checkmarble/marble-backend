@@ -237,9 +237,8 @@ func (usecase *CaseUseCase) validateDecisions(decisionIds []string) error {
 	}
 
 	for _, decision := range decisions {
-		if decision.CaseId != nil {
-			caseId := *decision.CaseId
-			return fmt.Errorf("decision %s already belongs to a case %s %w", decision.DecisionId, caseId, models.BadParameterError)
+		if decision.Case.Id != "" {
+			return fmt.Errorf("decision %s already belongs to a case %s %w", decision.DecisionId, (*decision.Case).Id, models.BadParameterError)
 		}
 	}
 	return nil

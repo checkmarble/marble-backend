@@ -49,14 +49,6 @@ func (usecase *DecisionUsecase) GetDecision(decisionId string) (models.Decision,
 		return models.Decision{}, err
 	}
 
-	if decision.CaseId != nil {
-		decisionCase, err := usecase.repository.GetCaseById(nil, *decision.CaseId)
-		if err != nil {
-			return models.Decision{}, err
-		}
-
-		decision.Case = &decisionCase
-	}
 	return decision, nil
 }
 

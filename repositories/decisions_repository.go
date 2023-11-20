@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -36,34 +37,30 @@ func (repo *DecisionRepositoryImpl) DecisionById(transaction Transaction, decisi
 		return models.Decision{}, err
 	}
 
-	decision, err := SqlToModel(tx,
-		selectDecisions().
-			Where(squirrel.Eq{"id": decisionId}),
-		func(dbDecision dbmodels.DbDecision) (models.Decision, error) {
-			return dbmodels.AdaptDecision(dbDecision, rules), nil
+	return SqlToRow(tx,
+		selectJoinDecisionAndCase().
+			Where(squirrel.Eq{"d.id": decisionId}),
+		func(row pgx.CollectableRow) (models.Decision, error) {
+			db, err := pgx.RowToStructByPos[dbJoinDecisionAndCase](row)
+			if err != nil {
+				return models.Decision{}, err
+			}
+
+			decisionCase, err := dbmodels.AdaptCase(db.DBCase)
+			if err != nil {
+				return models.Decision{}, err
+			}
+			return dbmodels.AdaptDecision(db.DbDecision, rules, &decisionCase), nil
 		},
 	)
-
-	if err != nil {
-		return models.Decision{}, err
-	}
-
-	return decision, err
 }
 
 func (repo *DecisionRepositoryImpl) DecisionsById(transaction Transaction, decisionIds []string) ([]models.Decision, error) {
 	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(transaction)
 
-	query := selectDecisions().
-		Where(squirrel.Eq{"id": decisionIds}).
-		OrderBy("created_at DESC")
+	query := selectJoinDecisionAndCase().Where(squirrel.Eq{"d.id": decisionIds})
 
-	decisionsChan, errChan := repo.channelOfDecisions(tx, query)
-
-	decisions := ChanToSlice(decisionsChan)
-	err := <-errChan
-
-	return decisions, err
+	return sqlToDecisionsWithCase(tx, query, []models.RuleExecution{})
 }
 
 func (repo *DecisionRepositoryImpl) DecisionsByCaseId(transaction Transaction, caseId string) ([]models.Decision, error) {
@@ -83,9 +80,8 @@ func (repo *DecisionRepositoryImpl) DecisionsByCaseId(transaction Transaction, c
 
 func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(transaction Transaction, organizationId string, limit int, filters models.DecisionFilters) ([]models.Decision, error) {
 	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(transaction)
-	query := selectDecisions().
-		Where(squirrel.Eq{"org_id": organizationId}).
-		OrderBy("created_at DESC").
+	query := selectJoinDecisionAndCase().
+		Where(squirrel.Eq{"d.org_id": organizationId}).
 		Limit(uint64(limit))
 
 	if len(filters.ScenarioIds) > 0 {
@@ -112,12 +108,8 @@ func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(transaction Transact
 	if len(filters.CaseIds) > 0 {
 		query = query.Where(squirrel.Eq{"case_id": filters.CaseIds})
 	}
-	decisionsChan, errChan := repo.channelOfDecisions(tx, query)
 
-	decisions := ChanToSlice(decisionsChan)
-	err := <-errChan
-
-	return decisions, err
+	return sqlToDecisionsWithCase(tx, query, []models.RuleExecution{})
 }
 
 func (repo *DecisionRepositoryImpl) DecisionsOfScheduledExecution(scheduledExecutionId string) (<-chan models.Decision, <-chan error) {
@@ -215,6 +207,40 @@ func (repo *DecisionRepositoryImpl) UpdateDecisionCaseId(transaction Transaction
 	return err
 }
 
+type dbJoinDecisionAndCase struct {
+	dbmodels.DbDecision
+	dbmodels.DBCase
+}
+
+func selectJoinDecisionAndCase() squirrel.SelectBuilder {
+	var columns []string
+	columns = append(columns, columnsNames("d", dbmodels.SelectDecisionColumn)...)
+	columns = append(columns, columnsNames("c", dbmodels.SelectCaseColumn)...)
+	return NewQueryBuilder().
+		Select(columns...).
+		From(fmt.Sprintf("%s AS d", dbmodels.TABLE_DECISIONS)).
+		LeftJoin(fmt.Sprintf("%s AS c ON c.id = d.case_id", dbmodels.TABLE_CASES)).
+		OrderBy("d.created_at DESC")
+}
+
+func sqlToDecisionsWithCase(tx TransactionPostgres, query squirrel.SelectBuilder, rules []models.RuleExecution) ([]models.Decision, error) {
+	return SqlToListOfRow(tx, query, func(row pgx.CollectableRow) (models.Decision, error) {
+		db, err := pgx.RowToStructByPos[dbJoinDecisionAndCase](row)
+		if err != nil {
+			return models.Decision{}, err
+		}
+
+		var decisionCase models.Case
+		if db.DbDecision.CaseId != nil {
+			decisionCase, err = dbmodels.AdaptCase(db.DBCase)
+			if err != nil {
+				return models.Decision{}, err
+			}
+		}
+		return dbmodels.AdaptDecision(db.DbDecision, rules, &decisionCase), nil
+	})
+}
+
 func (repo *DecisionRepositoryImpl) rulesOfDecision(transaction Transaction, decisionId string) ([]models.RuleExecution, error) {
 	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(transaction)
 
@@ -308,7 +334,7 @@ func (repo *DecisionRepositoryImpl) channelOfDecisions(tx TransactionPostgres, q
 			}
 
 			for i := 0; i < len(dbDecisions); i++ {
-				decisionsChannel <- dbmodels.AdaptDecision(dbDecisions[i], rules[i].rules)
+				decisionsChannel <- dbmodels.AdaptDecision(dbDecisions[i], rules[i].rules, nil)
 			}
 		}
 
