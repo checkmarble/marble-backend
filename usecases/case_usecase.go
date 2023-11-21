@@ -21,6 +21,8 @@ type CaseUseCaseRepository interface {
 	CreateCaseEvent(tx repositories.Transaction, createCaseEventAttributes models.CreateCaseEventAttributes) error
 	BatchCreateCaseEvents(tx repositories.Transaction, createCaseEventAttributes []models.CreateCaseEventAttributes) error
 	ListCaseEvents(tx repositories.Transaction, caseId string) ([]models.CaseEvent, error)
+	GetCaseContributor(tx repositories.Transaction, caseId, userId string) (*models.CaseContributor, error)
+	CreateCaseContributor(tx repositories.Transaction, caseId, userId string) error
 }
 
 type CaseUseCase struct {
@@ -95,6 +97,9 @@ func (usecase *CaseUseCase) CreateCase(ctx context.Context, userId string, creat
 		if err != nil {
 			return models.Case{}, err
 		}
+		if err := usecase.createCaseContributor(tx, newCaseId, userId); err != nil {
+			return models.Case{}, err
+		}
 
 		err = usecase.updateDecisionsWithEvents(tx, newCaseId, userId, createCaseAttributes.DecisionIds)
 		if err != nil {
@@ -130,6 +135,9 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string, updat
 
 		err = usecase.repository.UpdateCase(tx, updateCaseAttributes)
 		if err != nil {
+			return models.Case{}, err
+		}
+		if err := usecase.createCaseContributor(tx, updateCaseAttributes.Id, userId); err != nil {
 			return models.Case{}, err
 		}
 
@@ -183,6 +191,9 @@ func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string
 		}
 
 		if err := usecase.enforceSecurity.CreateCaseComment(c); err != nil {
+			return models.Case{}, err
+		}
+		if err := usecase.createCaseContributor(tx, caseCommentAttributes.Id, userId); err != nil {
 			return models.Case{}, err
 		}
 
@@ -266,4 +277,15 @@ func (usecase *CaseUseCase) updateDecisionsWithEvents(tx repositories.Transactio
 		}
 	}
 	return nil
+}
+
+func (usecase *CaseUseCase) createCaseContributor(tx repositories.Transaction, caseId, userId string) error {
+	contributor, err := usecase.repository.GetCaseContributor(tx, caseId, userId)
+	if err != nil {
+		return err
+	}
+	if contributor != nil {
+		return nil
+	}
+	return usecase.repository.CreateCaseContributor(tx, caseId, userId)
 }

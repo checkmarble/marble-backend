@@ -14,6 +14,11 @@ type DBCase struct {
 	Status         pgtype.Text      `db:"status"`
 }
 
+type DBCaseWithContributors struct {
+	DBCase
+	Contributors []DBCaseContributor `db:"contributors"`
+}
+
 const TABLE_CASES = "cases"
 
 var SelectCaseColumn = utils.ColumnList[DBCase]()
@@ -26,4 +31,21 @@ func AdaptCase(db DBCase) (models.Case, error) {
 		Name:           db.Name.String,
 		Status:         models.CaseStatus(db.Status.String),
 	}, nil
+}
+
+func AdaptCasewithContributors(db DBCaseWithContributors) (models.Case, error) {
+	caseModel, err := AdaptCase(db.DBCase)
+	if err != nil {
+		return models.Case{}, err
+	}
+
+	caseModel.Contributors = make([]models.CaseContributor, len(db.Contributors))
+	for i, contributor := range db.Contributors {
+		caseModel.Contributors[i], err = AdaptCaseContributor(contributor)
+		if err != nil {
+			return models.Case{}, err
+		}
+	}
+
+	return caseModel, nil
 }

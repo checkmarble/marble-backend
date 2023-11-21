@@ -1,19 +1,20 @@
 package repositories
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
 func (repo *MarbleDbRepository) ListOrganizationCases(tx Transaction, organizationId string, filters models.CaseFilters) ([]models.Case, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	query := NewQueryBuilder().
-		Select(dbmodels.SelectCaseColumn...).
-		From(dbmodels.TABLE_CASES).
-		Where(squirrel.Eq{"org_id": organizationId}).
-		OrderBy("created_at DESC")
+	query := selectJoinCaseAndContributors().
+		Where(squirrel.Eq{"org_id": organizationId})
 
 	if len(filters.Statuses) > 0 {
 		query = query.Where(squirrel.Eq{"status": filters.Statuses})
@@ -29,25 +30,17 @@ func (repo *MarbleDbRepository) ListOrganizationCases(tx Transaction, organizati
 	return SqlToListOfModels(
 		pgTx,
 		query,
-		dbmodels.AdaptCase,
+		dbmodels.AdaptCasewithContributors,
 	)
 }
 
 func (repo *MarbleDbRepository) GetCaseById(tx Transaction, caseId string) (models.Case, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	c, err := SqlToModel(pgTx,
-		NewQueryBuilder().
-			Select(dbmodels.SelectCaseColumn...).
-			From(dbmodels.TABLE_CASES).
-			Where(squirrel.Eq{"id": caseId}),
-		dbmodels.AdaptCase,
+	return SqlToModel(pgTx,
+		selectJoinCaseAndContributors().Where(squirrel.Eq{"c.id": caseId}),
+		dbmodels.AdaptCasewithContributors,
 	)
-
-	if err != nil {
-		return models.Case{}, err
-	}
-	return c, nil
 }
 
 func (repo *MarbleDbRepository) CreateCase(tx Transaction, createCaseAttributes models.CreateCaseAttributes, newCaseId string) error {
@@ -84,4 +77,19 @@ func (repo *MarbleDbRepository) UpdateCase(tx Transaction, updateCaseAttributes 
 
 	_, err := pgTx.ExecBuilder(query)
 	return err
+}
+
+func selectJoinCaseAndContributors() squirrel.SelectBuilder {
+	return NewQueryBuilder().
+		Select(pure_utils.WithPrefix(dbmodels.SelectCaseColumn, "c")...).
+		Column(
+			fmt.Sprintf(
+				"array_agg(row(%s) ORDER BY cc.created_at) FILTER (WHERE cc.id IS NOT NULL) as contributors",
+				strings.Join(pure_utils.WithPrefix(dbmodels.SelectCaseContributorColumn, "cc"), ","),
+			),
+		).
+		From(dbmodels.TABLE_CASES + " AS c").
+		LeftJoin(dbmodels.TABLE_CASE_CONTRIBUTORS + " AS cc ON cc.case_id = c.id").
+		GroupBy("c.id").
+		OrderBy("c.created_at DESC")
 }
