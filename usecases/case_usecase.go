@@ -133,6 +133,8 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string, updat
 			return models.Case{}, err
 		}
 
+		newDecisionCount := len(updateCaseAttributes.DecisionIds) + c.DecisionsCount
+		updateCaseAttributes.DecisionsCount = &newDecisionCount
 		err = usecase.repository.UpdateCase(tx, updateCaseAttributes)
 		if err != nil {
 			return models.Case{}, err

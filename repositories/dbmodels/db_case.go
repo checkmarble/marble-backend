@@ -12,6 +12,7 @@ type DBCase struct {
 	CreatedAt      pgtype.Timestamp `db:"created_at"`
 	Name           pgtype.Text      `db:"name"`
 	Status         pgtype.Text      `db:"status"`
+	DecisionsCount pgtype.Int4      `db:"decisions_count"`
 }
 
 type DBCaseWithContributors struct {
@@ -30,6 +31,7 @@ func AdaptCase(db DBCase) (models.Case, error) {
 		CreatedAt:      db.CreatedAt.Time,
 		Name:           db.Name.String,
 		Status:         models.CaseStatus(db.Status.String),
+		DecisionsCount: int(db.DecisionsCount.Int32),
 	}, nil
 }
 

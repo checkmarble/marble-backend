@@ -11,6 +11,7 @@ type Case struct {
 	CreatedAt      time.Time
 	Name           string
 	Status         CaseStatus
+	DecisionsCount int
 	Decisions      []Decision
 	Events         []CaseEvent
 	Contributors   []CaseContributor
@@ -30,13 +31,15 @@ type CreateCaseAttributes struct {
 	Name           string
 	OrganizationId string
 	DecisionIds    []string
+	DecisionsCount int
 }
 
 type UpdateCaseAttributes struct {
-	Id          string
-	Name        string
-	DecisionIds []string
-	Status      CaseStatus
+	Id             string
+	Name           string
+	DecisionIds    []string
+	Status         CaseStatus
+	DecisionsCount *int
 }
 
 type CreateCaseCommentAttributes struct {

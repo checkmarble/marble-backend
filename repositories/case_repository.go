@@ -52,11 +52,13 @@ func (repo *MarbleDbRepository) CreateCase(tx Transaction, createCaseAttributes 
 				"id",
 				"org_id",
 				"name",
+				"decisions_count",
 			).
 			Values(
 				newCaseId,
 				createCaseAttributes.OrganizationId,
 				createCaseAttributes.Name,
+				createCaseAttributes.DecisionsCount,
 			),
 	)
 	return err
@@ -73,6 +75,10 @@ func (repo *MarbleDbRepository) UpdateCase(tx Transaction, updateCaseAttributes 
 
 	if updateCaseAttributes.Status != "" {
 		query = query.Set("status", updateCaseAttributes.Status)
+	}
+
+	if updateCaseAttributes.DecisionsCount != nil {
+		query = query.Set("decisions_count", updateCaseAttributes.DecisionsCount)
 	}
 
 	_, err := pgTx.ExecBuilder(query)

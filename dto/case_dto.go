@@ -7,24 +7,26 @@ import (
 )
 
 type APICase struct {
-	Id           string               `json:"id"`
-	CreatedAt    time.Time            `json:"created_at"`
-	Name         string               `json:"name"`
-	Status       string               `json:"status"`
-	Decisions    []APIDecision        `json:"decisions"`
-	Events       []APICaseEvent       `json:"events"`
-	Contributors []APICaseContributor `json:"contributors"`
+	Id             string               `json:"id"`
+	CreatedAt      time.Time            `json:"created_at"`
+	Name           string               `json:"name"`
+	Status         string               `json:"status"`
+	DecisionsCount int                  `json:"decisions_count"`
+	Decisions      []APIDecision        `json:"decisions"`
+	Events         []APICaseEvent       `json:"events"`
+	Contributors   []APICaseContributor `json:"contributors"`
 }
 
 func AdaptCaseDto(c models.Case) APICase {
 	apiCase := APICase{
-		Id:           c.Id,
-		CreatedAt:    c.CreatedAt,
-		Name:         c.Name,
-		Status:       string(c.Status),
-		Decisions:    make([]APIDecision, len(c.Decisions)),
-		Events:       make([]APICaseEvent, len(c.Events)),
-		Contributors: make([]APICaseContributor, len(c.Contributors)),
+		Id:             c.Id,
+		CreatedAt:      c.CreatedAt,
+		Name:           c.Name,
+		Status:         string(c.Status),
+		DecisionsCount: c.DecisionsCount,
+		Decisions:      make([]APIDecision, len(c.Decisions)),
+		Events:         make([]APICaseEvent, len(c.Events)),
+		Contributors:   make([]APICaseContributor, len(c.Contributors)),
 	}
 
 	for i, decision := range c.Decisions {
