@@ -7,7 +7,7 @@ import (
 type CaseEvent struct {
 	Id             string
 	CaseId         string
-	User           User
+	UserId         string
 	CreatedAt      time.Time
 	EventType      CaseEventType
 	AdditionalNote string

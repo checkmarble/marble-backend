@@ -24,7 +24,7 @@ const TABLE_CASE_EVENTS = "case_events"
 
 var SelectCaseEventColumn = utils.ColumnList[DBCaseEvent]()
 
-func AdaptCaseEvent(caseEvent DBCaseEvent, user models.User) models.CaseEvent {
+func AdaptCaseEvent(caseEvent DBCaseEvent) (models.CaseEvent, error) {
 	var additionalNote, resourceId, resourceType, newValue, previousValue string
 	if caseEvent.AdditionalNote != nil {
 		additionalNote = *caseEvent.AdditionalNote
@@ -44,7 +44,7 @@ func AdaptCaseEvent(caseEvent DBCaseEvent, user models.User) models.CaseEvent {
 	return models.CaseEvent{
 		Id:             caseEvent.Id,
 		CaseId:         caseEvent.CaseId,
-		User:           user,
+		UserId:         caseEvent.UserId,
 		CreatedAt:      caseEvent.CreatedAt,
 		EventType:      models.CaseEventType(caseEvent.EventType),
 		AdditionalNote: additionalNote,
@@ -52,5 +52,5 @@ func AdaptCaseEvent(caseEvent DBCaseEvent, user models.User) models.CaseEvent {
 		ResourceType:   models.CaseEventResourceType(resourceType),
 		NewValue:       newValue,
 		PreviousValue:  previousValue,
-	}
+	}, nil
 }
