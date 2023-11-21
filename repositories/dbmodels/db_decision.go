@@ -14,8 +14,6 @@ import (
 const TABLE_DECISIONS = "decisions"
 const TABLE_DECISION_RULES = "decision_rules"
 
-// var ColumnsSelectDecision = utils.ColumnList[DBDecision]()
-
 type DbDecision struct {
 	Id                   string      `db:"id"`
 	OrganizationId       string      `db:"org_id"`
