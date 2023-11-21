@@ -243,3 +243,13 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() CaseUseCase {
 		decisionRepository: usecases.Repositories.DecisionRepository,
 	}
 }
+
+func (usecases *UsecasesWithCreds) NewInboxUsecase() InboxUsecase {
+	return InboxUsecase{
+		enforceSecurity: security.EnforceSecurityInboxes{
+			EnforceSecurity: usecases.NewEnforceSecurity(),
+			Credentials:     usecases.Credentials,
+		},
+		repository: &usecases.Repositories.MarbleDbRepository,
+	}
+}
