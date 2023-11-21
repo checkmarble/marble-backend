@@ -14,8 +14,6 @@ import (
 const TABLE_DECISIONS = "decisions"
 const TABLE_DECISION_RULES = "decision_rules"
 
-// var ColumnsSelectDecision = utils.ColumnList[DBDecision]()
-
 type DbDecision struct {
 	Id                   string      `db:"id"`
 	OrganizationId       string      `db:"org_id"`
@@ -36,7 +34,7 @@ type DbDecision struct {
 
 var SelectDecisionColumn = utils.ColumnList[DbDecision]()
 
-func AdaptDecision(db DbDecision, ruleExecutions []models.RuleExecution) models.Decision {
+func AdaptDecision(db DbDecision, ruleExecutions []models.RuleExecution, decisionCase *models.Case) models.Decision {
 
 	triggerObject := make(map[string]any)
 	err := json.Unmarshal(db.TriggerObjectRaw, &triggerObject)
@@ -47,7 +45,7 @@ func AdaptDecision(db DbDecision, ruleExecutions []models.RuleExecution) models.
 	return models.Decision{
 		DecisionId:           db.Id,
 		OrganizationId:       db.OrganizationId,
-		CaseId:               db.CaseId,
+		Case:                 decisionCase,
 		CreatedAt:            db.CreatedAt,
 		ClientObject:         models.ClientObject{TableName: models.TableName(db.TriggerObjectType), Data: triggerObject},
 		Outcome:              models.OutcomeFrom(db.Outcome),

@@ -24,6 +24,8 @@ type DecisionUsecaseRepository interface {
 	GetScenarioIteration(tx repositories.Transaction, scenarioIterationId string) (
 		models.ScenarioIteration, error,
 	)
+
+	GetCaseById(tx repositories.Transaction, caseId string) (models.Case, error)
 }
 
 type DecisionUsecase struct {
@@ -46,6 +48,7 @@ func (usecase *DecisionUsecase) GetDecision(decisionId string) (models.Decision,
 	if err := usecase.enforceSecurity.ReadDecision(decision); err != nil {
 		return models.Decision{}, err
 	}
+
 	return decision, nil
 }
 
@@ -78,6 +81,8 @@ func (usecase *DecisionUsecase) ListDecisions(organizationId string, filters dto
 				EndDate:        filters.EndDate,
 				Outcomes:       outcomes,
 				TriggerObjects: triggerObjectTypes,
+				WithCase:       filters.WithCase,
+				CaseIds:        filters.CaseIds,
 			})
 			if err != nil {
 				return []models.Decision{}, err

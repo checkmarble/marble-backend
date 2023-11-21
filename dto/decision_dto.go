@@ -17,6 +17,8 @@ type DecisionFilters struct {
 	EndDate        time.Time `form:"endDate" time_format`
 	Outcomes       []string  `form:"outcome[]"`
 	TriggerObjects []string  `form:"triggerObject[]"`
+	WithCase       *bool     `form:"withCase"`
+	CaseIds        []string  `form:"caseId[]"`
 }
 
 type CreateDecisionBody struct {
@@ -51,7 +53,7 @@ type APIDecisionScenario struct {
 
 type APIDecision struct {
 	Id                   string              `json:"id"`
-	CaseId               *string             `json:"case_id,omitempty"`
+	Case                 *APICase            `json:"case,omitempty"`
 	CreatedAt            time.Time           `json:"created_at"`
 	TriggerObject        map[string]any      `json:"trigger_object"`
 	TriggerObjectType    string              `json:"trigger_object_type"`
@@ -82,6 +84,10 @@ func NewAPIDecision(decision models.Decision) APIDecision {
 
 	for i, ruleExecution := range decision.RuleExecutions {
 		apiDecision.Rules[i] = NewAPIDecisionRule(ruleExecution)
+	}
+	if decision.Case != nil {
+		c := AdaptCaseDto(*decision.Case)
+		apiDecision.Case = &c
 	}
 
 	return apiDecision
