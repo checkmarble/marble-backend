@@ -73,4 +73,11 @@ func (api *API) routes(auth *Authentication) {
 	router.GET("/cases/:case_id", api.handleGetCase)
 	router.PATCH("/cases/:case_id", api.handlePatchCase)
 	router.POST("/cases/:case_id/comments", api.handlePostCaseComment)
+
+	router.GET("/inboxes/:inbox_id", api.handleGetInboxById)
+	router.GET("/inboxes", api.handleListInboxes)
+	router.POST("/inboxes", api.handlePostInbox)
+	router.GET("/inboxes/users/:inbox_user_id", api.handleGetInboxUserById)
+	router.GET("/inboxes/:inbox_id/users", api.handleListInboxUsers)
+	router.POST("/inboxes/:inbox_id/users", api.handlePostInboxUser)
 }

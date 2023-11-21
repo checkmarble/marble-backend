@@ -13,7 +13,7 @@ func EnforceOrganizationAccess(creds models.Credentials, organizationId string) 
 	}
 
 	if organizationId == "" {
-		return errors.Wrap(models.BadParameterError, "no organization Id")
+		return errors.New("Empty organization Id passed to EnforceOrganizationAccess")
 	}
 
 	if creds.OrganizationId == "" {
