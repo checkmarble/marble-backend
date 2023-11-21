@@ -42,7 +42,7 @@ func (e *EnforceSecurityInboxes) ReadInboxUser(
 
 	// any other user can read an inbox user if he is a member of the inbox
 	for _, user := range actorInboxUsers {
-		if user.Id == inboxUser.Id {
+		if user.InboxId == inboxUser.InboxId {
 			return nil
 		}
 	}
@@ -50,8 +50,12 @@ func (e *EnforceSecurityInboxes) ReadInboxUser(
 }
 
 func (e *EnforceSecurityInboxes) CreateInboxUser(
-	i models.CreateInboxUserInput, actorInboxUsers []models.InboxUser, organizationId string,
+	i models.CreateInboxUserInput, actorInboxUsers []models.InboxUser, organizationId string, targetUser models.User,
 ) error {
+	if targetUser.OrganizationId != organizationId {
+		return errors.Wrap(models.ForbiddenError, "Target user does not belong to the right organization")
+	}
+
 	// org admins can create users in all inboxes
 	err := e.Permission(models.INBOX_EDITOR)
 	if err == nil {

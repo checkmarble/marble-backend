@@ -7,6 +7,8 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
+
+	"github.com/cockroachdb/errors"
 )
 
 type InboxRepository interface {
@@ -21,7 +23,8 @@ type InboxRepository interface {
 type InboxUsecase struct {
 	enforceSecurity security.EnforceSecurityInboxes
 	// transactionFactory transaction.TransactionFactory
-	repository InboxRepository
+	repository     InboxRepository
+	userRepository repositories.UserRepository
 }
 
 func (usecase *InboxUsecase) GetInboxById(ctx context.Context, inboxId string) (models.Inbox, error) {
@@ -64,7 +67,12 @@ func (usecase *InboxUsecase) ListInboxes(ctx context.Context, organizationId str
 func (usecase *InboxUsecase) getAvailableInboxes(ctx context.Context) ([]string, error) {
 	// return a slice of the inbox ids that the user has access to (can be empty)
 	// or return nil if the user has access to all inboxes because he is an org admin
-	var availableInboxIds []string
+	availableInboxIds := make([]string, 0)
+
+	if usecase.enforceSecurity.Credentials.Role == models.ADMIN {
+		return nil, nil
+	}
+
 	userId := usecase.enforceSecurity.Credentials.ActorIdentity.UserId
 	inboxUsers, err := usecase.repository.ListInboxUsers(nil, models.InboxUserFilterInput{UserId: userId})
 	if err != nil {
@@ -145,13 +153,21 @@ func (usecase *InboxUsecase) CreateInboxUser(ctx context.Context, input models.C
 		return models.InboxUser{}, err
 	}
 
-	err = usecase.enforceSecurity.CreateInboxUser(input, thisUsersInboxes, usecase.enforceSecurity.Credentials.OrganizationId)
+	targetUser, err := usecase.userRepository.UserByID(nil, models.UserId(input.UserId))
+	if err != nil {
+		return models.InboxUser{}, err
+	}
+
+	err = usecase.enforceSecurity.CreateInboxUser(input, thisUsersInboxes, usecase.enforceSecurity.Credentials.OrganizationId, targetUser)
 	if err != nil {
 		return models.InboxUser{}, err
 	}
 
 	newInboxUserId := utils.NewPrimaryKey(input.InboxId)
 	if err := usecase.repository.CreateInboxUser(nil, input, newInboxUserId); err != nil {
+		if repositories.IsUniqueViolationError(err) {
+			return models.InboxUser{}, errors.Wrap(models.DuplicateValueError, "This combination of user_id and inbox_user_id already exists")
+		}
 		return models.InboxUser{}, err
 	}
 
