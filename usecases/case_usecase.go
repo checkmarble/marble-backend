@@ -97,7 +97,7 @@ func (usecase *CaseUseCase) CreateCase(ctx context.Context, userId string, creat
 		if err != nil {
 			return models.Case{}, err
 		}
-		if err := usecase.createCaseContributor(tx, newCaseId, userId); err != nil {
+		if err := usecase.createCaseContributorIfNotExist(tx, newCaseId, userId); err != nil {
 			return models.Case{}, err
 		}
 
@@ -137,7 +137,7 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string, updat
 		if err != nil {
 			return models.Case{}, err
 		}
-		if err := usecase.createCaseContributor(tx, updateCaseAttributes.Id, userId); err != nil {
+		if err := usecase.createCaseContributorIfNotExist(tx, updateCaseAttributes.Id, userId); err != nil {
 			return models.Case{}, err
 		}
 
@@ -193,7 +193,7 @@ func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string
 		if err := usecase.enforceSecurity.CreateCaseComment(c); err != nil {
 			return models.Case{}, err
 		}
-		if err := usecase.createCaseContributor(tx, caseCommentAttributes.Id, userId); err != nil {
+		if err := usecase.createCaseContributorIfNotExist(tx, caseCommentAttributes.Id, userId); err != nil {
 			return models.Case{}, err
 		}
 
@@ -279,7 +279,7 @@ func (usecase *CaseUseCase) updateDecisionsWithEvents(tx repositories.Transactio
 	return nil
 }
 
-func (usecase *CaseUseCase) createCaseContributor(tx repositories.Transaction, caseId, userId string) error {
+func (usecase *CaseUseCase) createCaseContributorIfNotExist(tx repositories.Transaction, caseId, userId string) error {
 	contributor, err := usecase.repository.GetCaseContributor(tx, caseId, userId)
 	if err != nil {
 		return err
