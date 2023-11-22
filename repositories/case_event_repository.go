@@ -4,7 +4,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
-	"github.com/google/uuid"
 )
 
 func (repo *MarbleDbRepository) ListCaseEvents(tx Transaction, caseId string) ([]models.CaseEvent, error) {
@@ -32,7 +31,6 @@ func (repo *MarbleDbRepository) BatchCreateCaseEvents(tx Transaction, createCase
 
 	query := NewQueryBuilder().Insert(dbmodels.TABLE_CASE_EVENTS).
 		Columns(
-			"id",
 			"case_id",
 			"user_id",
 			"event_type",
@@ -45,7 +43,6 @@ func (repo *MarbleDbRepository) BatchCreateCaseEvents(tx Transaction, createCase
 
 	for _, createCaseEventAttribute := range createCaseEventAttributes {
 		query = query.Values(
-			uuid.NewString(),
 			createCaseEventAttribute.CaseId,
 			createCaseEventAttribute.UserId,
 			createCaseEventAttribute.EventType,
