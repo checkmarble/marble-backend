@@ -46,11 +46,15 @@ func (repo *DecisionRepositoryImpl) DecisionById(transaction Transaction, decisi
 				return models.Decision{}, err
 			}
 
-			decisionCase, err := dbmodels.AdaptCase(db.DBCase)
-			if err != nil {
-				return models.Decision{}, err
+			var decisionCase *models.Case
+			if db.DbDecision.CaseId != nil {
+				decisionCaseValue, err := dbmodels.AdaptCase(db.DBCase)
+				if err != nil {
+					return models.Decision{}, err
+				}
+				decisionCase = &decisionCaseValue
 			}
-			return dbmodels.AdaptDecision(db.DbDecision, rules, &decisionCase), nil
+			return dbmodels.AdaptDecision(db.DbDecision, rules, decisionCase), nil
 		},
 	)
 }
@@ -230,14 +234,15 @@ func sqlToDecisionsWithCase(tx TransactionPostgres, query squirrel.SelectBuilder
 			return models.Decision{}, err
 		}
 
-		var decisionCase models.Case
+		var decisionCase *models.Case
 		if db.DbDecision.CaseId != nil {
-			decisionCase, err = dbmodels.AdaptCase(db.DBCase)
+			decisionCaseValue, err := dbmodels.AdaptCase(db.DBCase)
 			if err != nil {
 				return models.Decision{}, err
 			}
+			decisionCase = &decisionCaseValue
 		}
-		return dbmodels.AdaptDecision(db.DbDecision, rules, &decisionCase), nil
+		return dbmodels.AdaptDecision(db.DbDecision, rules, decisionCase), nil
 	})
 }
 
