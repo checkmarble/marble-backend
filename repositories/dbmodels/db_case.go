@@ -2,7 +2,6 @@ package dbmodels
 
 import (
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/utils"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -16,12 +15,13 @@ type DBCase struct {
 
 type DBCaseWithContributors struct {
 	DBCase
-	Contributors []DBCaseContributor `db:"contributors"`
+	Contributors   []DBCaseContributor `db:"contributors"`
+	DecisionsCount int                 `db:"decisions_count"`
 }
 
 const TABLE_CASES = "cases"
 
-var SelectCaseColumn = utils.ColumnList[DBCase]()
+var SelectCaseColumn = []string{"id", "org_id", "created_at", "name", "status"}
 
 func AdaptCase(db DBCase) (models.Case, error) {
 	return models.Case{
@@ -33,11 +33,12 @@ func AdaptCase(db DBCase) (models.Case, error) {
 	}, nil
 }
 
-func AdaptCasewithContributors(db DBCaseWithContributors) (models.Case, error) {
+func AdaptCaseWithContributors(db DBCaseWithContributors) (models.Case, error) {
 	caseModel, err := AdaptCase(db.DBCase)
 	if err != nil {
 		return models.Case{}, err
 	}
+	caseModel.DecisionsCount = db.DecisionsCount
 
 	caseModel.Contributors = make([]models.CaseContributor, len(db.Contributors))
 	for i, contributor := range db.Contributors {

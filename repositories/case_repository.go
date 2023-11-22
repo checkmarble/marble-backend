@@ -14,23 +14,23 @@ func (repo *MarbleDbRepository) ListOrganizationCases(tx Transaction, organizati
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	query := selectJoinCaseAndContributors().
-		Where(squirrel.Eq{"org_id": organizationId})
+		Where(squirrel.Eq{"c.org_id": organizationId})
 
 	if len(filters.Statuses) > 0 {
-		query = query.Where(squirrel.Eq{"status": filters.Statuses})
+		query = query.Where(squirrel.Eq{"c.status": filters.Statuses})
 	}
 
 	if !filters.StartDate.IsZero() {
-		query = query.Where(squirrel.GtOrEq{"created_at": filters.StartDate})
+		query = query.Where(squirrel.GtOrEq{"c.created_at": filters.StartDate})
 	}
 	if !filters.EndDate.IsZero() {
-		query = query.Where(squirrel.LtOrEq{"created_at": filters.EndDate})
+		query = query.Where(squirrel.LtOrEq{"c.created_at": filters.EndDate})
 	}
 
 	return SqlToListOfModels(
 		pgTx,
 		query,
-		dbmodels.AdaptCasewithContributors,
+		dbmodels.AdaptCaseWithContributors,
 	)
 }
 
@@ -39,7 +39,7 @@ func (repo *MarbleDbRepository) GetCaseById(tx Transaction, caseId string) (mode
 
 	return SqlToModel(pgTx,
 		selectJoinCaseAndContributors().Where(squirrel.Eq{"c.id": caseId}),
-		dbmodels.AdaptCasewithContributors,
+		dbmodels.AdaptCaseWithContributors,
 	)
 }
 
@@ -88,8 +88,10 @@ func selectJoinCaseAndContributors() squirrel.SelectBuilder {
 				strings.Join(pure_utils.WithPrefix(dbmodels.SelectCaseContributorColumn, "cc"), ","),
 			),
 		).
+		Column("count(distinct d.id) as decisions_count").
 		From(dbmodels.TABLE_CASES + " AS c").
 		LeftJoin(dbmodels.TABLE_CASE_CONTRIBUTORS + " AS cc ON cc.case_id = c.id").
+		LeftJoin(dbmodels.TABLE_DECISIONS + " AS d ON d.case_id = c.id").
 		GroupBy("c.id").
 		OrderBy("c.created_at DESC")
 }

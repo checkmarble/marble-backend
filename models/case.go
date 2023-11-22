@@ -11,6 +11,7 @@ type Case struct {
 	CreatedAt      time.Time
 	Name           string
 	Status         CaseStatus
+	DecisionsCount int
 	Decisions      []Decision
 	Events         []CaseEvent
 	Contributors   []CaseContributor
