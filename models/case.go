@@ -13,6 +13,7 @@ type Case struct {
 	Status         CaseStatus
 	Decisions      []Decision
 	Events         []CaseEvent
+	Contributors   []CaseContributor
 }
 
 type CaseStatus string

@@ -101,7 +101,7 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 }
 
 func (usecase *OrganizationUseCase) GetUsersOfOrganization(organizationIDFilter string) ([]models.User, error) {
-	if err := usecase.enforceSecurity.ListOrganization(); err != nil {
+	if err := usecase.enforceSecurity.ReadOrganization(organizationIDFilter); err != nil {
 		return []models.User{}, err
 	}
 	return transaction.TransactionReturnValue(
