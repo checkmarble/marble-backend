@@ -31,15 +31,13 @@ type CreateCaseAttributes struct {
 	Name           string
 	OrganizationId string
 	DecisionIds    []string
-	DecisionsCount int
 }
 
 type UpdateCaseAttributes struct {
-	Id             string
-	Name           string
-	DecisionIds    []string
-	Status         CaseStatus
-	DecisionsCount *int
+	Id          string
+	Name        string
+	DecisionIds []string
+	Status      CaseStatus
 }
 
 type CreateCaseCommentAttributes struct {
