@@ -84,6 +84,7 @@ func (usecase *CaseUseCase) CreateCase(ctx context.Context, userId string, creat
 
 	c, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
 		newCaseId := uuid.NewString()
+		createCaseAttributes.DecisionsCount = len(createCaseAttributes.DecisionIds)
 		err := usecase.repository.CreateCase(tx, createCaseAttributes, newCaseId)
 		if err != nil {
 			return models.Case{}, err
