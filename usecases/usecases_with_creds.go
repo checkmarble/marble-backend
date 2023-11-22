@@ -250,7 +250,9 @@ func (usecases *UsecasesWithCreds) NewInboxUsecase() InboxUsecase {
 			EnforceSecurity: usecases.NewEnforceSecurity(),
 			Credentials:     usecases.Credentials,
 		},
-		repository:     &usecases.Repositories.MarbleDbRepository,
-		userRepository: usecases.Repositories.UserRepository,
+		inboxRepository:         &usecases.Repositories.MarbleDbRepository,
+		userRepository:          usecases.Repositories.UserRepository,
+		credentials:             usecases.Credentials,
+		organizationIdOfContext: usecases.OrganizationIdOfContext,
 	}
 }

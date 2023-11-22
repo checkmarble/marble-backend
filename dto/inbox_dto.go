@@ -4,14 +4,16 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type InboxDto struct {
-	Id        string    `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Name      string    `json:"name"`
-	Status    string    `json:"status"`
+	Id        string         `json:"id"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	Name      string         `json:"name"`
+	Status    string         `json:"status"`
+	Users     []InboxUserDto `json:"users"`
 }
 
 func AdaptInboxDto(i models.Inbox) InboxDto {
@@ -21,6 +23,7 @@ func AdaptInboxDto(i models.Inbox) InboxDto {
 		UpdatedAt: i.UpdatedAt,
 		Name:      i.Name,
 		Status:    string(i.Status),
+		Users:     utils.Map(i.InboxUsers, AdaptInboxUserDto),
 	}
 
 }

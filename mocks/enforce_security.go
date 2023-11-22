@@ -79,3 +79,23 @@ func (e *EnforceSecurity) CreateRule(scenarioIteration models.ScenarioIteration)
 	args := e.Called(scenarioIteration)
 	return args.Error(0)
 }
+
+func (e *EnforceSecurity) ReadInbox(i models.Inbox) error {
+	args := e.Called(i)
+	return args.Error(0)
+}
+
+func (e *EnforceSecurity) CreateInbox(i models.CreateInboxInput) error {
+	args := e.Called(i)
+	return args.Error(0)
+}
+
+func (e *EnforceSecurity) ReadInboxUser(inboxUser models.InboxUser, actorInboxUsers []models.InboxUser) error {
+	args := e.Called(inboxUser, actorInboxUsers)
+	return args.Error(0)
+}
+
+func (e *EnforceSecurity) CreateInboxUser(i models.CreateInboxUserInput, actorInboxUsers []models.InboxUser, targetInbox models.Inbox, targetUser models.User) error {
+	args := e.Called(i, actorInboxUsers, targetInbox, targetUser)
+	return args.Error(0)
+}

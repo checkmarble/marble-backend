@@ -25,12 +25,13 @@ type CreateInboxInput struct {
 }
 
 type InboxUser struct {
-	Id        string
-	InboxId   string
-	UserId    string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Role      InboxUserRole
+	Id             string
+	InboxId        string
+	UserId         string
+	OrganizationId string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	Role           InboxUserRole
 }
 
 type CreateInboxUserInput struct {
