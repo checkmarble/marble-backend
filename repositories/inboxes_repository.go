@@ -71,36 +71,40 @@ func (repo *MarbleDbRepository) CreateInbox(tx Transaction, input models.CreateI
 	return err
 }
 
+func selectInboxUsers() squirrel.SelectBuilder {
+	return NewQueryBuilder().
+		Select(pure_utils.WithPrefix(dbmodels.SelectInboxUserWithOrgIdColumn, "u")...).
+		Column("i.organization_id").
+		From(dbmodels.TABLE_INBOX_USERS + " AS u").
+		Join(dbmodels.TABLE_INBOXES + " AS i ON i.id = inbox_id")
+}
+
 func (repo *MarbleDbRepository) GetInboxUserById(tx Transaction, inboxUserId string) (models.InboxUser, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	return SqlToModel(pgTx,
-		NewQueryBuilder().
-			Select(dbmodels.SelectInboxUserColumn...).
-			From(dbmodels.TABLE_INBOX_USERS).
-			Where(squirrel.Eq{"id": inboxUserId}),
-		dbmodels.AdaptInboxUser,
+		selectInboxUsers().
+			Where(squirrel.Eq{"u.id": inboxUserId}),
+		dbmodels.AdaptInboxUserWithOrgId,
 	)
 }
 
 func (repo *MarbleDbRepository) ListInboxUsers(tx Transaction, filters models.InboxUserFilterInput) ([]models.InboxUser, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	query := NewQueryBuilder().
-		Select(dbmodels.SelectInboxUserColumn...).
-		From(dbmodels.TABLE_INBOX_USERS)
+	query := selectInboxUsers()
 
 	if filters.InboxId != "" {
-		query = query.Where(squirrel.Eq{"inbox_id": filters.InboxId})
+		query = query.Where(squirrel.Eq{"u.inbox_id": filters.InboxId})
 	} else if filters.UserId != "" {
-		query = query.Where(squirrel.Eq{"user_id": filters.UserId})
+		query = query.Where(squirrel.Eq{"u.user_id": filters.UserId})
 	} else {
 		return []models.InboxUser{}, errors.New("must define either inbox_id or user_id as a filter in repositories/ListInboxUsers")
 	}
 
 	return SqlToListOfModels(pgTx,
 		query,
-		dbmodels.AdaptInboxUser,
+		dbmodels.AdaptInboxUserWithOrgId,
 	)
 }
 

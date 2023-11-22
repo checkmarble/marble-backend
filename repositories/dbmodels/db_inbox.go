@@ -1,6 +1,7 @@
 package dbmodels
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -44,9 +45,15 @@ type DBInboxUser struct {
 	Role      string    `db:"role"`
 }
 
+type DBInboxUserWithOrgId struct {
+	DBInboxUser
+	OrganizationId string `db:"organization_id"`
+}
+
 const TABLE_INBOX_USERS = "inbox_users"
 
 var SelectInboxUserColumn = utils.ColumnList[DBInboxUser]()
+var SelectInboxUserWithOrgIdColumn = utils.ColumnList[DBInboxUser]()
 
 func AdaptInboxUser(db DBInboxUser) (models.InboxUser, error) {
 	return models.InboxUser{
@@ -59,12 +66,19 @@ func AdaptInboxUser(db DBInboxUser) (models.InboxUser, error) {
 	}, nil
 }
 
+func AdaptInboxUserWithOrgId(db DBInboxUserWithOrgId) (models.InboxUser, error) {
+	inboxUser, _ := AdaptInboxUser(db.DBInboxUser)
+	inboxUser.OrganizationId = db.OrganizationId
+	return inboxUser, nil
+}
+
 type DBInboxWithUsers struct {
 	DBInbox
 	InboxUsers []DBInboxUser `db:"inbox_users"`
 }
 
 func AdaptInboxWithUsers(db DBInboxWithUsers) (models.Inbox, error) {
+	fmt.Println(db)
 	inbox, err := AdaptInbox(db.DBInbox)
 	if err != nil {
 		return models.Inbox{}, err
@@ -73,6 +87,7 @@ func AdaptInboxWithUsers(db DBInboxWithUsers) (models.Inbox, error) {
 	inboxUsers := make([]models.InboxUser, len(db.InboxUsers))
 	for i, inboxUser := range db.InboxUsers {
 		inboxUsers[i], err = AdaptInboxUser(inboxUser)
+		inboxUsers[i].OrganizationId = inbox.OrganizationId
 		if err != nil {
 			return models.Inbox{}, err
 		}

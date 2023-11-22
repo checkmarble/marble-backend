@@ -31,13 +31,8 @@ func (api *API) handleGetInboxById(ctx *gin.Context) {
 }
 
 func (api *API) handleListInboxes(ctx *gin.Context) {
-	organizationId, err := utils.OrgIDFromCtx(ctx.Request.Context(), ctx.Request)
-	if presentError(ctx.Writer, ctx.Request, err) {
-		return
-	}
-
 	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
-	inboxes, err := usecase.ListInboxes(ctx.Request.Context(), organizationId)
+	inboxes, err := usecase.ListInboxes(ctx.Request.Context())
 	if presentError(ctx.Writer, ctx.Request, err) {
 		return
 	}

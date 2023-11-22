@@ -2,10 +2,10 @@ package usecases
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
 
 	"github.com/cockroachdb/errors"
@@ -20,15 +20,23 @@ type InboxRepository interface {
 	CreateInboxUser(tx repositories.Transaction, createInboxUserAttributes models.CreateInboxUserInput, newInboxUserId string) error
 }
 
+type EnforceSecurityInboxes interface {
+	ReadInbox(i models.Inbox) error
+	CreateInbox(i models.CreateInboxInput) error
+	ReadInboxUser(inboxUser models.InboxUser, actorInboxUsers []models.InboxUser) error
+	CreateInboxUser(i models.CreateInboxUserInput, actorInboxUsers []models.InboxUser, targetInbox models.Inbox, targetUser models.User) error
+}
+
 type InboxUsecase struct {
-	enforceSecurity security.EnforceSecurityInboxes
-	// transactionFactory transaction.TransactionFactory
-	repository     InboxRepository
-	userRepository repositories.UserRepository
+	enforceSecurity         EnforceSecurityInboxes
+	organizationIdOfContext func() (string, error)
+	inboxRepository         InboxRepository
+	userRepository          repositories.UserRepository
+	credentials             models.Credentials
 }
 
 func (usecase *InboxUsecase) GetInboxById(ctx context.Context, inboxId string) (models.Inbox, error) {
-	inbox, err := usecase.repository.GetInboxById(nil, inboxId)
+	inbox, err := usecase.inboxRepository.GetInboxById(nil, inboxId)
 	if err != nil {
 		return models.Inbox{}, err
 	}
@@ -40,7 +48,7 @@ func (usecase *InboxUsecase) GetInboxById(ctx context.Context, inboxId string) (
 	return inbox, err
 }
 
-func (usecase *InboxUsecase) ListInboxes(ctx context.Context, organizationId string) ([]models.Inbox, error) {
+func (usecase *InboxUsecase) ListInboxes(ctx context.Context) ([]models.Inbox, error) {
 	availableInboxIds, err := usecase.getAvailableInboxes(ctx)
 	if err != nil {
 		return []models.Inbox{}, err
@@ -50,7 +58,12 @@ func (usecase *InboxUsecase) ListInboxes(ctx context.Context, organizationId str
 		return []models.Inbox{}, nil
 	}
 
-	inboxes, err := usecase.repository.ListInboxes(nil, organizationId, availableInboxIds)
+	organizationId, err := usecase.organizationIdOfContext()
+	fmt.Println(organizationId)
+	if err != nil {
+		return []models.Inbox{}, err
+	}
+	inboxes, err := usecase.inboxRepository.ListInboxes(nil, organizationId, availableInboxIds)
 	if err != nil {
 		return []models.Inbox{}, err
 	}
@@ -69,12 +82,12 @@ func (usecase *InboxUsecase) getAvailableInboxes(ctx context.Context) ([]string,
 	// or return nil if the user has access to all inboxes because he is an org admin
 	availableInboxIds := make([]string, 0)
 
-	if usecase.enforceSecurity.Credentials.Role == models.ADMIN {
+	if usecase.credentials.Role == models.ADMIN || usecase.credentials.Role == models.MARBLE_ADMIN {
 		return nil, nil
 	}
 
-	userId := usecase.enforceSecurity.Credentials.ActorIdentity.UserId
-	inboxUsers, err := usecase.repository.ListInboxUsers(nil, models.InboxUserFilterInput{UserId: userId})
+	userId := usecase.credentials.ActorIdentity.UserId
+	inboxUsers, err := usecase.inboxRepository.ListInboxUsers(nil, models.InboxUserFilterInput{UserId: userId})
 	if err != nil {
 		return []string{}, err
 	}
@@ -91,29 +104,29 @@ func (usecase *InboxUsecase) CreateInbox(ctx context.Context, input models.Creat
 	}
 
 	newInboxId := utils.NewPrimaryKey(input.OrganizationId)
-	if err := usecase.repository.CreateInbox(nil, input, newInboxId); err != nil {
+	if err := usecase.inboxRepository.CreateInbox(nil, input, newInboxId); err != nil {
 		return models.Inbox{}, err
 	}
 
-	inbox, err := usecase.repository.GetInboxById(nil, newInboxId)
+	inbox, err := usecase.inboxRepository.GetInboxById(nil, newInboxId)
 
 	return inbox, err
 }
 
 func (usecase *InboxUsecase) GetInboxUserById(ctx context.Context, inboxUserId string) (models.InboxUser, error) {
-	inboxUser, err := usecase.repository.GetInboxUserById(nil, inboxUserId)
+	inboxUser, err := usecase.inboxRepository.GetInboxUserById(nil, inboxUserId)
 	if err != nil {
 		return models.InboxUser{}, err
 	}
 
-	thisUsersInboxes, err := usecase.repository.ListInboxUsers(nil, models.InboxUserFilterInput{
-		UserId: usecase.enforceSecurity.Credentials.ActorIdentity.UserId,
+	thisUsersInboxes, err := usecase.inboxRepository.ListInboxUsers(nil, models.InboxUserFilterInput{
+		UserId: usecase.credentials.ActorIdentity.UserId,
 	})
 	if err != nil {
 		return models.InboxUser{}, err
 	}
 
-	err = usecase.enforceSecurity.ReadInboxUser(inboxUser, thisUsersInboxes, usecase.enforceSecurity.Credentials.OrganizationId)
+	err = usecase.enforceSecurity.ReadInboxUser(inboxUser, thisUsersInboxes)
 	if err != nil {
 		return models.InboxUser{}, err
 	}
@@ -122,14 +135,14 @@ func (usecase *InboxUsecase) GetInboxUserById(ctx context.Context, inboxUserId s
 }
 
 func (usecase *InboxUsecase) ListInboxUsers(ctx context.Context, inboxId string) ([]models.InboxUser, error) {
-	thisUsersInboxes, err := usecase.repository.ListInboxUsers(nil, models.InboxUserFilterInput{
-		UserId: usecase.enforceSecurity.Credentials.ActorIdentity.UserId,
+	thisUsersInboxes, err := usecase.inboxRepository.ListInboxUsers(nil, models.InboxUserFilterInput{
+		UserId: usecase.credentials.ActorIdentity.UserId,
 	})
 	if err != nil {
 		return []models.InboxUser{}, err
 	}
 
-	inboxUsers, err := usecase.repository.ListInboxUsers(nil, models.InboxUserFilterInput{
+	inboxUsers, err := usecase.inboxRepository.ListInboxUsers(nil, models.InboxUserFilterInput{
 		InboxId: inboxId,
 	})
 	if err != nil {
@@ -137,7 +150,7 @@ func (usecase *InboxUsecase) ListInboxUsers(ctx context.Context, inboxId string)
 	}
 
 	for _, inboxUser := range inboxUsers {
-		err = usecase.enforceSecurity.ReadInboxUser(inboxUser, thisUsersInboxes, usecase.enforceSecurity.Credentials.OrganizationId)
+		err = usecase.enforceSecurity.ReadInboxUser(inboxUser, thisUsersInboxes)
 		if err != nil {
 			return []models.InboxUser{}, err
 		}
@@ -146,8 +159,8 @@ func (usecase *InboxUsecase) ListInboxUsers(ctx context.Context, inboxId string)
 }
 
 func (usecase *InboxUsecase) CreateInboxUser(ctx context.Context, input models.CreateInboxUserInput) (models.InboxUser, error) {
-	thisUsersInboxes, err := usecase.repository.ListInboxUsers(nil, models.InboxUserFilterInput{
-		UserId: usecase.enforceSecurity.Credentials.ActorIdentity.UserId,
+	thisUsersInboxes, err := usecase.inboxRepository.ListInboxUsers(nil, models.InboxUserFilterInput{
+		UserId: usecase.credentials.ActorIdentity.UserId,
 	})
 	if err != nil {
 		return models.InboxUser{}, err
@@ -157,21 +170,25 @@ func (usecase *InboxUsecase) CreateInboxUser(ctx context.Context, input models.C
 	if err != nil {
 		return models.InboxUser{}, err
 	}
+	targetInbox, err := usecase.inboxRepository.GetInboxById(nil, input.InboxId)
+	if err != nil {
+		return models.InboxUser{}, err
+	}
 
-	err = usecase.enforceSecurity.CreateInboxUser(input, thisUsersInboxes, usecase.enforceSecurity.Credentials.OrganizationId, targetUser)
+	err = usecase.enforceSecurity.CreateInboxUser(input, thisUsersInboxes, targetInbox, targetUser)
 	if err != nil {
 		return models.InboxUser{}, err
 	}
 
 	newInboxUserId := utils.NewPrimaryKey(input.InboxId)
-	if err := usecase.repository.CreateInboxUser(nil, input, newInboxUserId); err != nil {
+	if err := usecase.inboxRepository.CreateInboxUser(nil, input, newInboxUserId); err != nil {
 		if repositories.IsUniqueViolationError(err) {
 			return models.InboxUser{}, errors.Wrap(models.DuplicateValueError, "This combination of user_id and inbox_user_id already exists")
 		}
 		return models.InboxUser{}, err
 	}
 
-	inboxUser, err := usecase.repository.GetInboxUserById(nil, newInboxUserId)
+	inboxUser, err := usecase.inboxRepository.GetInboxUserById(nil, newInboxUserId)
 
 	return inboxUser, err
 }
