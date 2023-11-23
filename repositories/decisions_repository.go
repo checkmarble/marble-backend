@@ -18,7 +18,7 @@ type DecisionRepository interface {
 	DecisionsByCaseId(transaction Transaction, caseId string) ([]models.Decision, error)
 	DecisionsOfScheduledExecution(scheduledExecutionId string) (<-chan models.Decision, <-chan error)
 	StoreDecision(tx Transaction, decision models.Decision, organizationId string, newDecisionId string) error
-	DecisionsOfOrganization(transaction Transaction, organizationId string, limit int, filters models.DecisionFilters) ([]models.Decision, error)
+	DecisionsOfOrganization(transaction Transaction, organizationId string, paginationAndSorting models.DecisionPaginationAndSorting, filters models.DecisionFilters) ([]models.DecisionWithRank, error)
 	UpdateDecisionCaseId(transaction Transaction, decisionsIds []string, caseId string) error
 }
 
@@ -41,7 +41,7 @@ func (repo *DecisionRepositoryImpl) DecisionById(transaction Transaction, decisi
 		selectJoinDecisionAndCase().
 			Where(squirrel.Eq{"d.id": decisionId}),
 		func(row pgx.CollectableRow) (models.Decision, error) {
-			db, err := pgx.RowToStructByPos[dbJoinDecisionAndCase](row)
+			db, err := pgx.RowToStructByPos[dbmodels.DbJoinDecisionAndCase](row)
 			if err != nil {
 				return models.Decision{}, err
 			}
@@ -64,7 +64,22 @@ func (repo *DecisionRepositoryImpl) DecisionsById(transaction Transaction, decis
 
 	query := selectJoinDecisionAndCase().Where(squirrel.Eq{"d.id": decisionIds})
 
-	return sqlToDecisionsWithCase(tx, query, []models.RuleExecution{})
+	return SqlToListOfRow(tx, query, func(row pgx.CollectableRow) (models.Decision, error) {
+		db, err := pgx.RowToStructByPos[dbmodels.DbJoinDecisionAndCase](row)
+		if err != nil {
+			return models.Decision{}, err
+		}
+
+		var decisionCase *models.Case
+		if db.DbDecision.CaseId != nil {
+			decisionCaseValue, err := dbmodels.AdaptCase(db.DBCase)
+			if err != nil {
+				return models.Decision{}, err
+			}
+			decisionCase = &decisionCaseValue
+		}
+		return dbmodels.AdaptDecision(db.DbDecision, []models.RuleExecution{}, decisionCase), nil
+	})
 }
 
 func (repo *DecisionRepositoryImpl) DecisionsByCaseId(transaction Transaction, caseId string) ([]models.Decision, error) {
@@ -82,12 +97,42 @@ func (repo *DecisionRepositoryImpl) DecisionsByCaseId(transaction Transaction, c
 	return decisions, err
 }
 
-func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(transaction Transaction, organizationId string, limit int, filters models.DecisionFilters) ([]models.Decision, error) {
+func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(transaction Transaction, organizationId string, paginationAndSorting models.DecisionPaginationAndSorting, filters models.DecisionFilters) ([]models.DecisionWithRank, error) {
 	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(transaction)
-	query := selectJoinDecisionAndCase().
-		Where(squirrel.Eq{"d.org_id": organizationId}).
-		Limit(uint64(limit))
+	sorting := string(paginationAndSorting.Sorting)
+	order := string(paginationAndSorting.Order)
 
+	subquery := selectDecisionsWithRank(sorting, order).Where(squirrel.Eq{"d.org_id": organizationId})
+	subquery = applyDecisionFilters(subquery, filters)
+
+	query := NewQueryBuilder().Select(decisionsWithRankColumns()...).
+		FromSelect(subquery, "s").
+		Limit(uint64(paginationAndSorting.Limit))
+
+	query, err := applyDecisionPagination(query, paginationAndSorting)
+	if err != nil {
+		return []models.DecisionWithRank{}, err
+	}
+
+	return SqlToListOfRow(tx, query, func(row pgx.CollectableRow) (models.DecisionWithRank, error) {
+		db, err := pgx.RowToStructByPos[dbmodels.DBPaginatedDecisions](row)
+		if err != nil {
+			return models.DecisionWithRank{}, err
+		}
+
+		var decisionCase *models.Case
+		if db.DbDecision.CaseId != nil {
+			decisionCaseValue, err := dbmodels.AdaptCase(db.DBCase)
+			if err != nil {
+				return models.DecisionWithRank{}, err
+			}
+			decisionCase = &decisionCaseValue
+		}
+		return dbmodels.AdaptDecisionWithRank(db.DbDecision, decisionCase, db.RankNumber, db.Total), nil
+	})
+}
+
+func applyDecisionFilters(query squirrel.SelectBuilder, filters models.DecisionFilters) squirrel.SelectBuilder {
 	if len(filters.ScenarioIds) > 0 {
 		query = query.Where(squirrel.Eq{"scenario_id": filters.ScenarioIds})
 	}
@@ -112,8 +157,55 @@ func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(transaction Transact
 	if len(filters.CaseIds) > 0 {
 		query = query.Where(squirrel.Eq{"case_id": filters.CaseIds})
 	}
+	return query
+}
 
-	return sqlToDecisionsWithCase(tx, query, []models.RuleExecution{})
+func selectDecisionsWithRank(sorting, order string) squirrel.SelectBuilder {
+	var columns []string
+	columns = append(columns, columnsNamesWithAlias("d", dbmodels.SelectDecisionColumn)...)
+	columns = append(columns, columnsNamesWithAlias("c", dbmodels.SelectCaseColumn)...)
+
+	orderCondition := fmt.Sprintf("d.%s %s, d.id", sorting, order)
+
+	return NewQueryBuilder().
+		Select(columns...).
+		Column(fmt.Sprintf("RANK() OVER (ORDER BY %s) as rank_number", orderCondition)).
+		Column("COUNT(*) OVER() AS total").
+		From(fmt.Sprintf("%s AS d", dbmodels.TABLE_DECISIONS)).
+		LeftJoin(fmt.Sprintf("%s AS c ON c.id = d.case_id", dbmodels.TABLE_CASES)).
+		OrderBy(orderCondition)
+}
+
+func decisionsWithRankColumns() []string {
+	var columnAlias []string
+	columnAlias = append(columnAlias, columnsAlias("d", dbmodels.SelectDecisionColumn)...)
+	columnAlias = append(columnAlias, columnsAlias("c", dbmodels.SelectCaseColumn)...)
+
+	columns := columnsNames("s", columnAlias)
+	columns = append(columns, "rank_number", "total")
+	return columns
+}
+
+func applyDecisionPagination(query squirrel.SelectBuilder, pagination models.DecisionPaginationAndSorting) (squirrel.SelectBuilder, error) {
+	if pagination.OffsetId != "" {
+		sorting := string(pagination.Sorting)
+		order := string(pagination.Order)
+
+		// Find a way to prevent sql injections
+		offsetSubquery, _, err := NewQueryBuilder().Select("id, org_id, " + sorting).From(dbmodels.TABLE_DECISIONS).Where(fmt.Sprintf("id = '%s'", pagination.OffsetId)).ToSql()
+		if err != nil {
+			return query, err
+		}
+		query = query.Join("(" + offsetSubquery + ") AS cursorRecord ON cursorRecord.org_id = s.d_org_id")
+
+		if (order == "DESC" && pagination.Previous) || (order == "ASC" && pagination.Next) {
+			query = query.Where(fmt.Sprintf("s.d_%s > cursorRecord.%s OR (s.d_%s = cursorRecord.%s AND s.d_id > cursorRecord.id)", sorting, sorting, sorting, sorting))
+		}
+		if (order == "DESC" && pagination.Next) || (order == "ASC" && pagination.Previous) {
+			query = query.Where(fmt.Sprintf("s.d_%s < cursorRecord.%s OR (s.d_%s = cursorRecord.%s AND s.d_id < cursorRecord.id)", sorting, sorting, sorting, sorting))
+		}
+	}
+	return query, nil
 }
 
 func (repo *DecisionRepositoryImpl) DecisionsOfScheduledExecution(scheduledExecutionId string) (<-chan models.Decision, <-chan error) {
@@ -211,11 +303,6 @@ func (repo *DecisionRepositoryImpl) UpdateDecisionCaseId(transaction Transaction
 	return err
 }
 
-type dbJoinDecisionAndCase struct {
-	dbmodels.DbDecision
-	dbmodels.DBCase
-}
-
 func selectJoinDecisionAndCase() squirrel.SelectBuilder {
 	var columns []string
 	columns = append(columns, columnsNames("d", dbmodels.SelectDecisionColumn)...)
@@ -225,25 +312,6 @@ func selectJoinDecisionAndCase() squirrel.SelectBuilder {
 		From(fmt.Sprintf("%s AS d", dbmodels.TABLE_DECISIONS)).
 		LeftJoin(fmt.Sprintf("%s AS c ON c.id = d.case_id", dbmodels.TABLE_CASES)).
 		OrderBy("d.created_at DESC")
-}
-
-func sqlToDecisionsWithCase(tx TransactionPostgres, query squirrel.SelectBuilder, rules []models.RuleExecution) ([]models.Decision, error) {
-	return SqlToListOfRow(tx, query, func(row pgx.CollectableRow) (models.Decision, error) {
-		db, err := pgx.RowToStructByPos[dbJoinDecisionAndCase](row)
-		if err != nil {
-			return models.Decision{}, err
-		}
-
-		var decisionCase *models.Case
-		if db.DbDecision.CaseId != nil {
-			decisionCaseValue, err := dbmodels.AdaptCase(db.DBCase)
-			if err != nil {
-				return models.Decision{}, err
-			}
-			decisionCase = &decisionCaseValue
-		}
-		return dbmodels.AdaptDecision(db.DbDecision, rules, decisionCase), nil
-	})
 }
 
 func (repo *DecisionRepositoryImpl) rulesOfDecision(transaction Transaction, decisionId string) ([]models.RuleExecution, error) {

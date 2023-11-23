@@ -32,6 +32,18 @@ type DbDecision struct {
 	ScheduledExecutionId *string     `db:"scheduled_execution_id"`
 }
 
+type DbJoinDecisionAndCase struct {
+	DbDecision
+	DBCase
+}
+
+type DBPaginatedDecisions struct {
+	DbDecision
+	DBCase
+	RankNumber int
+	Total      int
+}
+
 var SelectDecisionColumn = utils.ColumnList[DbDecision]()
 
 func AdaptDecision(db DbDecision, ruleExecutions []models.RuleExecution, decisionCase *models.Case) models.Decision {
@@ -57,6 +69,11 @@ func AdaptDecision(db DbDecision, ruleExecutions []models.RuleExecution, decisio
 		Score:                db.Score,
 		ScheduledExecutionId: db.ScheduledExecutionId,
 	}
+}
+
+func AdaptDecisionWithRank(db DbDecision, decisionCase *models.Case, rankNumber, total int) models.DecisionWithRank {
+	decision := AdaptDecision(db, nil, decisionCase)
+	return models.DecisionWithRank{Decision: decision, RankNumber: rankNumber, Total: total}
 }
 
 type DBDecisionRule struct {

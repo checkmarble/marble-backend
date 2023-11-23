@@ -52,30 +52,39 @@ func (usecase *DecisionUsecase) GetDecision(decisionId string) (models.Decision,
 	return decision, nil
 }
 
-func (usecase *DecisionUsecase) ListDecisions(organizationId string, filters dto.DecisionFilters, limit int) ([]models.Decision, error) {
+func (usecase *DecisionUsecase) ListDecisions(organizationId string, paginationAndSorting models.DecisionPaginationAndSorting, filters dto.DecisionFilters) ([]models.DecisionWithRank, error) {
 	if err := usecase.validateScenarioIds(filters.ScenarioIds, organizationId); err != nil {
-		return []models.Decision{}, err
+		return []models.DecisionWithRank{}, err
 	}
 
 	outcomes, err := usecase.validateOutcomes(filters.Outcomes)
 	if err != nil {
-		return []models.Decision{}, err
+		return []models.DecisionWithRank{}, err
 	}
 
 	if !filters.StartDate.IsZero() && !filters.EndDate.IsZero() && filters.StartDate.After(filters.EndDate) {
-		return []models.Decision{}, fmt.Errorf("start date must be before end date: %w", models.BadParameterError)
+		return []models.DecisionWithRank{}, fmt.Errorf("start date must be before end date: %w", models.BadParameterError)
 	}
 
 	triggerObjectTypes, err := usecase.validateTriggerObjects(filters.TriggerObjects, organizationId)
 	if err != nil {
-		return []models.Decision{}, err
+		return []models.DecisionWithRank{}, err
+	}
+
+	if paginationAndSorting.OffsetId != "" {
+		if paginationAndSorting.Previous && paginationAndSorting.Next {
+			return []models.DecisionWithRank{}, fmt.Errorf("invalid pagination: both previous and next are true: %w", models.BadParameterError)
+		}
+		if !paginationAndSorting.Previous && !paginationAndSorting.Next {
+			return []models.DecisionWithRank{}, fmt.Errorf("invalid pagination: both previous and next are false: %w", models.BadParameterError)
+		}
 	}
 
 	return transaction.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction) ([]models.Decision, error) {
-			decisions, err := usecase.decisionRepository.DecisionsOfOrganization(tx, organizationId, limit, models.DecisionFilters{
+		func(tx repositories.Transaction) ([]models.DecisionWithRank, error) {
+			decisions, err := usecase.decisionRepository.DecisionsOfOrganization(tx, organizationId, paginationAndSorting, models.DecisionFilters{
 				ScenarioIds:    filters.ScenarioIds,
 				StartDate:      filters.StartDate,
 				EndDate:        filters.EndDate,
@@ -85,11 +94,11 @@ func (usecase *DecisionUsecase) ListDecisions(organizationId string, filters dto
 				CaseIds:        filters.CaseIds,
 			})
 			if err != nil {
-				return []models.Decision{}, err
+				return []models.DecisionWithRank{}, err
 			}
 			for _, decision := range decisions {
-				if err := usecase.enforceSecurity.ReadDecision(decision); err != nil {
-					return []models.Decision{}, err
+				if err := usecase.enforceSecurity.ReadDecision(decision.Decision); err != nil {
+					return []models.DecisionWithRank{}, err
 				}
 			}
 			return decisions, nil

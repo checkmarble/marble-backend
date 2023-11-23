@@ -13,7 +13,9 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-const defaultDecisionsLimit = 10000
+const defaultDecisionsLimit = 25
+const defaultDecisionsSorting = "created_at"
+const defaultDecisionsOrder = "DESC"
 
 func (api *API) handleGetDecision(c *gin.Context) {
 	decisionID := c.Param("decision_id")
@@ -24,6 +26,15 @@ func (api *API) handleGetDecision(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, dto.NewAPIDecision(decision))
+}
+
+type PaginationAndSortingParams struct {
+	OffsetId string `form:"offsetId"`
+	Previous bool   `form:"previous"`
+	Next     bool   `form:"next"`
+	Sorting  string `form:"sorting"`
+	Order    string `form:"order"`
+	Limit    int    `form:"limit"`
 }
 
 func (api *API) handleListDecisions(c *gin.Context) {
@@ -38,12 +49,43 @@ func (api *API) handleListDecisions(c *gin.Context) {
 		return
 	}
 
+	var paginationAndSorting PaginationAndSortingParams
+	if err := c.ShouldBind(&paginationAndSorting); err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
+	if paginationAndSorting.Sorting == "" {
+		paginationAndSorting.Sorting = defaultDecisionsSorting
+	}
+
+	if paginationAndSorting.Order == "" {
+		paginationAndSorting.Order = defaultDecisionsOrder
+	}
+
+	if paginationAndSorting.Limit == 0 {
+		paginationAndSorting.Limit = defaultDecisionsLimit
+	}
+
 	usecase := api.UsecasesWithCreds(c.Request).NewDecisionUsecase()
-	decisions, err := usecase.ListDecisions(organizationId, filters, defaultDecisionsLimit)
+	decisions, err := usecase.ListDecisions(organizationId, models.DecisionPaginationAndSorting{
+		OffsetId: paginationAndSorting.OffsetId,
+		Sorting:  models.DecisionSorting(paginationAndSorting.Sorting),
+		Order:    models.DecisionOrder(paginationAndSorting.Order),
+		Limit:    paginationAndSorting.Limit,
+		Previous: paginationAndSorting.Previous,
+		Next:     paginationAndSorting.Next,
+	}, filters)
 	if presentError(c.Writer, c.Request, err) {
 		return
 	}
-	c.JSON(http.StatusOK, utils.Map(decisions, dto.NewAPIDecision))
+
+	c.JSON(http.StatusOK, gin.H{
+		"total":      decisions[0].Total,
+		"startIndex": decisions[0].RankNumber,
+		"endIndex":   decisions[len(decisions)-1].RankNumber,
+		"decisions":  utils.Map(decisions, func(d models.DecisionWithRank) dto.APIDecision { return dto.NewAPIDecision(d.Decision) }),
+	})
 }
 
 func (api *API) handlePostDecision(c *gin.Context) {
