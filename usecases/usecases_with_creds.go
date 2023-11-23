@@ -254,5 +254,6 @@ func (usecases *UsecasesWithCreds) NewInboxUsecase() InboxUsecase {
 		userRepository:          usecases.Repositories.UserRepository,
 		credentials:             usecases.Credentials,
 		organizationIdOfContext: usecases.OrganizationIdOfContext,
+		transactionFactory:      &usecases.Repositories.TransactionFactoryPosgresql,
 	}
 }

@@ -1,7 +1,6 @@
 package dbmodels
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -78,7 +77,6 @@ type DBInboxWithUsers struct {
 }
 
 func AdaptInboxWithUsers(db DBInboxWithUsers) (models.Inbox, error) {
-	fmt.Println(db)
 	inbox, err := AdaptInbox(db.DBInbox)
 	if err != nil {
 		return models.Inbox{}, err

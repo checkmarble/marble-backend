@@ -77,7 +77,7 @@ func (api *API) routes(auth *Authentication) {
 	router.GET("/inboxes/:inbox_id", api.handleGetInboxById)
 	router.GET("/inboxes", api.handleListInboxes)
 	router.POST("/inboxes", api.handlePostInbox)
-	router.GET("/inboxes/users/:inbox_user_id", api.handleGetInboxUserById)
+	router.GET("/inbox_users/:inbox_user_id", api.handleGetInboxUserById)
 	router.GET("/inboxes/:inbox_id/users", api.handleListInboxUsers)
 	router.POST("/inboxes/:inbox_id/users", api.handlePostInboxUser)
 }
