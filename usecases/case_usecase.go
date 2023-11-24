@@ -179,8 +179,20 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string, updat
 		return models.Case{}, err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsCaseUpdated, map[string]interface{}{"case_id": updatedCase.Id})
+	trackCaseUpdatedEvents(ctx, updatedCase.Id, updateCaseAttributes)
 	return updatedCase, nil
+}
+
+func trackCaseUpdatedEvents(ctx context.Context, caseId string, updateCaseAttributes models.UpdateCaseAttributes) {
+	if len(updateCaseAttributes.DecisionIds) > 0 {
+		analytics.TrackEvent(ctx, models.AnalyticsDecisionsAdded, map[string]interface{}{"case_id": caseId})
+	}
+	if updateCaseAttributes.Status != "" {
+		analytics.TrackEvent(ctx, models.AnalyticsCaseStatusUpdated, map[string]interface{}{"case_id": caseId})
+	}
+	if updateCaseAttributes.Name != "" {
+		analytics.TrackEvent(ctx, models.AnalyticsCaseUpdated, map[string]interface{}{"case_id": caseId})
+	}
 }
 
 func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string, caseCommentAttributes models.CreateCaseCommentAttributes) (models.Case, error) {
