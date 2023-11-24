@@ -102,7 +102,7 @@ func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(transaction Transact
 	sorting := string(paginationAndSorting.Sorting)
 	order := string(paginationAndSorting.Order)
 
-	subquery := selectDecisionsWithRank(sorting, order).Where(squirrel.Eq{"d.org_id": organizationId})
+	subquery := selectDecisionsWithRank(sorting, order).Where(fmt.Sprintf("d.org_id = '%s'", organizationId))
 	subquery = applyDecisionFilters(subquery, filters)
 
 	query := NewQueryBuilder().Select(decisionsWithRankColumns()...).
@@ -191,12 +191,11 @@ func applyDecisionPagination(query squirrel.SelectBuilder, pagination models.Dec
 		sorting := string(pagination.Sorting)
 		order := string(pagination.Order)
 
-		// Find a way to prevent sql injections
-		offsetSubquery, _, err := NewQueryBuilder().Select("id, org_id, " + sorting).From(dbmodels.TABLE_DECISIONS).Where(fmt.Sprintf("id = '%s'", pagination.OffsetId)).ToSql()
+		offsetSubquery, args, err := NewQueryBuilder().Select("id, org_id, " + sorting).From(dbmodels.TABLE_DECISIONS).Where(squirrel.Eq{"id": pagination.OffsetId}).ToSql()
 		if err != nil {
 			return query, err
 		}
-		query = query.Join("(" + offsetSubquery + ") AS cursorRecord ON cursorRecord.org_id = s.d_org_id")
+		query = query.Join("("+offsetSubquery+") AS cursorRecord ON cursorRecord.org_id = s.d_org_id", args)
 
 		if (order == "DESC" && pagination.Previous) || (order == "ASC" && pagination.Next) {
 			query = query.Where(fmt.Sprintf("s.d_%s > cursorRecord.%s OR (s.d_%s = cursorRecord.%s AND s.d_id > cursorRecord.id)", sorting, sorting, sorting, sorting))
