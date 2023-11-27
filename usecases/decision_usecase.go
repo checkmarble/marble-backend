@@ -52,7 +52,7 @@ func (usecase *DecisionUsecase) GetDecision(decisionId string) (models.Decision,
 	return decision, nil
 }
 
-func (usecase *DecisionUsecase) ListDecisions(organizationId string, paginationAndSorting models.DecisionPaginationAndSorting, filters dto.DecisionFilters) ([]models.DecisionWithRank, error) {
+func (usecase *DecisionUsecase) ListDecisions(organizationId string, paginationAndSorting models.PaginationAndSorting, filters dto.DecisionFilters) ([]models.DecisionWithRank, error) {
 	if err := usecase.validateScenarioIds(filters.ScenarioIds, organizationId); err != nil {
 		return []models.DecisionWithRank{}, err
 	}
@@ -72,6 +72,10 @@ func (usecase *DecisionUsecase) ListDecisions(organizationId string, paginationA
 	}
 
 	if paginationAndSorting.OffsetId != "" {
+		if err := usecase.validateOffsetId(paginationAndSorting.OffsetId); err != nil {
+			return []models.DecisionWithRank{}, err
+		}
+
 		if paginationAndSorting.Previous && paginationAndSorting.Next {
 			return []models.DecisionWithRank{}, fmt.Errorf("invalid pagination: both previous and next are true: %w", models.BadParameterError)
 		}
@@ -148,6 +152,17 @@ func (usecase *DecisionUsecase) validateTriggerObjects(filtersTriggerObjects []s
 		}
 	}
 	return triggerObjectTypes, nil
+}
+
+func (usecase *DecisionUsecase) validateOffsetId(offsetId string) error {
+	decision, err := usecase.decisionRepository.DecisionById(nil, offsetId)
+	if err != nil {
+		return err
+	}
+	if err := usecase.enforceSecurity.ReadDecision(decision); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models.CreateDecisionInput, logger *slog.Logger) (models.Decision, error) {

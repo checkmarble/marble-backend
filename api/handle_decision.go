@@ -14,8 +14,8 @@ import (
 )
 
 const defaultDecisionsLimit = 25
-const defaultDecisionsSorting = "created_at"
-const defaultDecisionsOrder = "DESC"
+const defaultDecisionsSorting = models.DecisionSortingCreatedAt
+const defaultDecisionsOrder = models.SortingOrderDesc
 
 func (api *API) handleGetDecision(c *gin.Context) {
 	decisionID := c.Param("decision_id")
@@ -26,15 +26,6 @@ func (api *API) handleGetDecision(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, dto.NewAPIDecision(decision))
-}
-
-type PaginationAndSortingParams struct {
-	OffsetId string `form:"offsetId"`
-	Previous bool   `form:"previous"`
-	Next     bool   `form:"next"`
-	Sorting  string `form:"sorting"`
-	Order    string `form:"order"`
-	Limit    int    `form:"limit"`
 }
 
 func (api *API) handleListDecisions(c *gin.Context) {
@@ -49,14 +40,14 @@ func (api *API) handleListDecisions(c *gin.Context) {
 		return
 	}
 
-	var paginationAndSorting PaginationAndSortingParams
+	var paginationAndSorting models.PaginationAndSortingInput
 	if err := c.ShouldBind(&paginationAndSorting); err != nil {
 		c.Status(http.StatusBadRequest)
 		return
 	}
 
 	if paginationAndSorting.Sorting == "" {
-		paginationAndSorting.Sorting = defaultDecisionsSorting
+		paginationAndSorting.Sorting = models.SortingField(defaultDecisionsSorting)
 	}
 
 	if paginationAndSorting.Order == "" {
@@ -68,14 +59,7 @@ func (api *API) handleListDecisions(c *gin.Context) {
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewDecisionUsecase()
-	decisions, err := usecase.ListDecisions(organizationId, models.DecisionPaginationAndSorting{
-		OffsetId: paginationAndSorting.OffsetId,
-		Sorting:  models.DecisionSorting(paginationAndSorting.Sorting),
-		Order:    models.DecisionOrder(paginationAndSorting.Order),
-		Limit:    paginationAndSorting.Limit,
-		Previous: paginationAndSorting.Previous,
-		Next:     paginationAndSorting.Next,
-	}, filters)
+	decisions, err := usecase.ListDecisions(organizationId, models.AdaptPaginationAndSortingInput(paginationAndSorting), filters)
 	if presentError(c.Writer, c.Request, err) {
 		return
 	}

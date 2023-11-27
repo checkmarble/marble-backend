@@ -63,24 +63,8 @@ type DecisionFilters struct {
 	CaseIds        []string
 }
 
-type DecisionPaginationAndSorting struct {
-	OffsetId string
-	Sorting  DecisionSorting
-	Order    DecisionOrder
-	Limit    int
-	Previous bool
-	Next     bool
-}
-
-type DecisionSorting string
+type DecisionSorting SortingField
 
 const (
 	DecisionSortingCreatedAt DecisionSorting = "created_at"
-)
-
-type DecisionOrder string
-
-const (
-	DecisionOrderAsc  DecisionOrder = "ASC"
-	DecisionOrderDesc DecisionOrder = "DESC"
 )

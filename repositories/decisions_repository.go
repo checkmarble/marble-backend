@@ -18,7 +18,7 @@ type DecisionRepository interface {
 	DecisionsByCaseId(transaction Transaction, caseId string) ([]models.Decision, error)
 	DecisionsOfScheduledExecution(scheduledExecutionId string) (<-chan models.Decision, <-chan error)
 	StoreDecision(tx Transaction, decision models.Decision, organizationId string, newDecisionId string) error
-	DecisionsOfOrganization(transaction Transaction, organizationId string, paginationAndSorting models.DecisionPaginationAndSorting, filters models.DecisionFilters) ([]models.DecisionWithRank, error)
+	DecisionsOfOrganization(transaction Transaction, organizationId string, paginationAndSorting models.PaginationAndSorting, filters models.DecisionFilters) ([]models.DecisionWithRank, error)
 	UpdateDecisionCaseId(transaction Transaction, decisionsIds []string, caseId string) error
 }
 
@@ -97,12 +97,12 @@ func (repo *DecisionRepositoryImpl) DecisionsByCaseId(transaction Transaction, c
 	return decisions, err
 }
 
-func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(transaction Transaction, organizationId string, paginationAndSorting models.DecisionPaginationAndSorting, filters models.DecisionFilters) ([]models.DecisionWithRank, error) {
+func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(transaction Transaction, organizationId string, paginationAndSorting models.PaginationAndSorting, filters models.DecisionFilters) ([]models.DecisionWithRank, error) {
 	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(transaction)
 	sorting := string(paginationAndSorting.Sorting)
 	order := string(paginationAndSorting.Order)
 
-	subquery := selectDecisionsWithRank(sorting, order).Where(fmt.Sprintf("d.org_id = '%s'", organizationId))
+	subquery := selectDecisionsWithRank(sorting, order).Where(squirrel.Eq{"d.org_id": organizationId})
 	subquery = applyDecisionFilters(subquery, filters)
 
 	query := NewQueryBuilder().Select(decisionsWithRankColumns()...).
@@ -186,23 +186,23 @@ func decisionsWithRankColumns() []string {
 	return columns
 }
 
-func applyDecisionPagination(query squirrel.SelectBuilder, pagination models.DecisionPaginationAndSorting) (squirrel.SelectBuilder, error) {
-	if pagination.OffsetId != "" {
-		sorting := string(pagination.Sorting)
-		order := string(pagination.Order)
+func applyDecisionPagination(query squirrel.SelectBuilder, pagination models.PaginationAndSorting) (squirrel.SelectBuilder, error) {
+	if pagination.OffsetId == "" {
+		return query, nil
+	}
 
-		offsetSubquery, args, err := NewQueryBuilder().Select("id, org_id, " + sorting).From(dbmodels.TABLE_DECISIONS).Where(squirrel.Eq{"id": pagination.OffsetId}).ToSql()
-		if err != nil {
-			return query, err
-		}
-		query = query.Join("("+offsetSubquery+") AS cursorRecord ON cursorRecord.org_id = s.d_org_id", args)
+	sorting := string(pagination.Sorting)
+	order := string(pagination.Order)
 
-		if (order == "DESC" && pagination.Previous) || (order == "ASC" && pagination.Next) {
-			query = query.Where(fmt.Sprintf("s.d_%s > cursorRecord.%s OR (s.d_%s = cursorRecord.%s AND s.d_id > cursorRecord.id)", sorting, sorting, sorting, sorting))
-		}
-		if (order == "DESC" && pagination.Next) || (order == "ASC" && pagination.Previous) {
-			query = query.Where(fmt.Sprintf("s.d_%s < cursorRecord.%s OR (s.d_%s = cursorRecord.%s AND s.d_id < cursorRecord.id)", sorting, sorting, sorting, sorting))
-		}
+	// This is vulnerable to SQL injection but OffsetId is validated behorehand
+	offsetSubquery := fmt.Sprintf("SELECT id, org_id, %s FROM %s WHERE id = '%s'", sorting, dbmodels.TABLE_DECISIONS, pagination.OffsetId)
+	query = query.Join(fmt.Sprintf("(%s) AS cursorRecord ON cursorRecord.org_id = s.d_org_id", offsetSubquery))
+
+	if (order == "DESC" && pagination.Previous) || (order == "ASC" && pagination.Next) {
+		query = query.Where(fmt.Sprintf("s.d_%s > cursorRecord.%s OR (s.d_%s = cursorRecord.%s AND s.d_id > cursorRecord.id)", sorting, sorting, sorting, sorting))
+	}
+	if (order == "DESC" && pagination.Next) || (order == "ASC" && pagination.Previous) {
+		query = query.Where(fmt.Sprintf("s.d_%s < cursorRecord.%s OR (s.d_%s = cursorRecord.%s AND s.d_id < cursorRecord.id)", sorting, sorting, sorting, sorting))
 	}
 	return query, nil
 }
