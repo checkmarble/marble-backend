@@ -194,15 +194,17 @@ func applyDecisionPagination(query squirrel.SelectBuilder, pagination models.Pag
 	sorting := string(pagination.Sorting)
 	order := string(pagination.Order)
 
-	// This is vulnerable to SQL injection but OffsetId is validated behorehand
-	offsetSubquery := fmt.Sprintf("SELECT id, org_id, %s FROM %s WHERE id = '%s'", sorting, dbmodels.TABLE_DECISIONS, pagination.OffsetId)
-	query = query.Join(fmt.Sprintf("(%s) AS cursorRecord ON cursorRecord.org_id = s.d_org_id", offsetSubquery))
+	offsetSubquery, args, err := squirrel.Select("id", "org_id", sorting).From(dbmodels.TABLE_DECISIONS).Where(squirrel.Eq{"id": pagination.OffsetId}).ToSql()
+	if err != nil {
+		return query, err
+	}
+	query = query.Join(fmt.Sprintf("(%s) AS cursorRecord ON cursorRecord.org_id = s.d_org_id", offsetSubquery), args...)
 
 	if (order == "DESC" && pagination.Previous) || (order == "ASC" && pagination.Next) {
-		query = query.Where(fmt.Sprintf("s.d_%s > cursorRecord.%s OR (s.d_%s = cursorRecord.%s AND s.d_id > cursorRecord.id)", sorting, sorting, sorting, sorting))
+		query = query.Where(fmt.Sprintf("s.d_%s > cursorRecord.%s OR (s.d_%s = cursorRecord.%s AND s.d_id < cursorRecord.id)", sorting, sorting, sorting, sorting))
 	}
 	if (order == "DESC" && pagination.Next) || (order == "ASC" && pagination.Previous) {
-		query = query.Where(fmt.Sprintf("s.d_%s < cursorRecord.%s OR (s.d_%s = cursorRecord.%s AND s.d_id < cursorRecord.id)", sorting, sorting, sorting, sorting))
+		query = query.Where(fmt.Sprintf("s.d_%s < cursorRecord.%s OR (s.d_%s = cursorRecord.%s AND s.d_id > cursorRecord.id)", sorting, sorting, sorting, sorting))
 	}
 	return query, nil
 }
