@@ -237,11 +237,21 @@ func (usecases *UsecasesWithCreds) NewUserUseCase() UserUseCase {
 }
 
 func (usecases *UsecasesWithCreds) NewCaseUseCase() CaseUseCase {
+	sec := security.EnforceSecurityInboxes{
+		EnforceSecurity: usecases.NewEnforceSecurity(),
+		Credentials:     usecases.Credentials,
+	}
 	return CaseUseCase{
 		enforceSecurity:    usecases.NewEnforceCaseSecurity(),
 		transactionFactory: &usecases.Repositories.TransactionFactoryPosgresql,
 		repository:         &usecases.Repositories.MarbleDbRepository,
 		decisionRepository: usecases.Repositories.DecisionRepository,
+		inboxReader: inboxes.InboxReader{
+			EnforceSecurity:         sec,
+			OrganizationIdOfContext: usecases.OrganizationIdOfContext,
+			InboxRepository:         &usecases.Repositories.MarbleDbRepository,
+			Credentials:             usecases.Credentials,
+		},
 	}
 }
 

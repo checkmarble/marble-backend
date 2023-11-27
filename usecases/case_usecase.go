@@ -8,6 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/analytics"
+	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/transaction"
 	"github.com/google/uuid"
@@ -30,6 +31,7 @@ type CaseUseCase struct {
 	transactionFactory transaction.TransactionFactory
 	repository         CaseUseCaseRepository
 	decisionRepository repositories.DecisionRepository
+	inboxReader        inboxes.InboxReader
 }
 
 func (usecase *CaseUseCase) ListCases(organizationId string, filters dto.CaseFilters) ([]models.Case, error) {
@@ -71,11 +73,20 @@ func (usecase *CaseUseCase) GetCase(caseId string) (models.Case, error) {
 	if err := usecase.enforceSecurity.ReadCase(c); err != nil {
 		return models.Case{}, err
 	}
+
+	_, err = usecase.inboxReader.GetInboxById(context.TODO(), c.InboxId)
+	if err != nil {
+		return models.Case{}, err
+	}
+
 	return c, nil
 }
 
 func (usecase *CaseUseCase) CreateCase(ctx context.Context, userId string, createCaseAttributes models.CreateCaseAttributes) (models.Case, error) {
 	if err := usecase.enforceSecurity.CreateCase(); err != nil {
+		return models.Case{}, err
+	}
+	if _, err := usecase.inboxReader.GetInboxById(ctx, createCaseAttributes.InboxId); err != nil {
 		return models.Case{}, err
 	}
 	if err := usecase.validateDecisions(createCaseAttributes.DecisionIds); err != nil {
@@ -121,6 +132,13 @@ func (usecase *CaseUseCase) CreateCase(ctx context.Context, userId string, creat
 func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string, updateCaseAttributes models.UpdateCaseAttributes) (models.Case, error) {
 	if err := usecase.validateDecisions(updateCaseAttributes.DecisionIds); err != nil {
 		return models.Case{}, err
+	}
+	if c, err := usecase.repository.GetCaseById(nil, updateCaseAttributes.Id); err != nil {
+		return models.Case{}, err
+	} else {
+		if _, err := usecase.inboxReader.GetInboxById(ctx, c.InboxId); err != nil {
+			return models.Case{}, err
+		}
 	}
 
 	updatedCase, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
@@ -199,6 +217,9 @@ func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string
 	updatedCase, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
 		c, err := usecase.repository.GetCaseById(tx, caseCommentAttributes.Id)
 		if err != nil {
+			return models.Case{}, err
+		}
+		if _, err := usecase.inboxReader.GetInboxById(ctx, c.InboxId); err != nil {
 			return models.Case{}, err
 		}
 
