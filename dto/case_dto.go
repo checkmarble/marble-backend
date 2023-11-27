@@ -8,25 +8,27 @@ import (
 
 type APICase struct {
 	Id             string               `json:"id"`
+	Contributors   []APICaseContributor `json:"contributors"`
 	CreatedAt      time.Time            `json:"created_at"`
+	Decisions      []APIDecision        `json:"decisions"`
+	DecisionsCount int                  `json:"decisions_count"`
+	Events         []APICaseEvent       `json:"events"`
+	InboxId        string               `json:"inbox_id"`
 	Name           string               `json:"name"`
 	Status         string               `json:"status"`
-	DecisionsCount int                  `json:"decisions_count"`
-	Decisions      []APIDecision        `json:"decisions"`
-	Events         []APICaseEvent       `json:"events"`
-	Contributors   []APICaseContributor `json:"contributors"`
 }
 
 func AdaptCaseDto(c models.Case) APICase {
 	apiCase := APICase{
 		Id:             c.Id,
+		Contributors:   make([]APICaseContributor, len(c.Contributors)),
 		CreatedAt:      c.CreatedAt,
+		Decisions:      make([]APIDecision, len(c.Decisions)),
+		DecisionsCount: c.DecisionsCount,
+		Events:         make([]APICaseEvent, len(c.Events)),
+		InboxId:        c.InboxId,
 		Name:           c.Name,
 		Status:         string(c.Status),
-		DecisionsCount: c.DecisionsCount,
-		Decisions:      make([]APIDecision, len(c.Decisions)),
-		Events:         make([]APICaseEvent, len(c.Events)),
-		Contributors:   make([]APICaseContributor, len(c.Contributors)),
 	}
 
 	for i, decision := range c.Decisions {
@@ -43,13 +45,15 @@ func AdaptCaseDto(c models.Case) APICase {
 }
 
 type CreateCaseBody struct {
-	Name        string   `json:"name" binding:"required"`
 	DecisionIds []string `json:"decision_ids"`
+	InboxId     string   `json:"inbox_id" binding:"required"`
+	Name        string   `json:"name" binding:"required"`
 }
 
 type UpdateCaseBody struct {
-	Name        string   `json:"name"`
 	DecisionIds []string `json:"decision_ids"`
+	InboxId     string   `json:"inbox_id"`
+	Name        string   `json:"name"`
 	Status      string   `json:"status"`
 }
 

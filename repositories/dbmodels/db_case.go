@@ -7,9 +7,10 @@ import (
 
 type DBCase struct {
 	Id             pgtype.Text      `db:"id"`
-	OrganizationId pgtype.Text      `db:"org_id"`
 	CreatedAt      pgtype.Timestamp `db:"created_at"`
+	InboxId        pgtype.Text      `db:"inbox_id"`
 	Name           pgtype.Text      `db:"name"`
+	OrganizationId pgtype.Text      `db:"org_id"`
 	Status         pgtype.Text      `db:"status"`
 }
 
@@ -21,14 +22,15 @@ type DBCaseWithContributors struct {
 
 const TABLE_CASES = "cases"
 
-var SelectCaseColumn = []string{"id", "org_id", "created_at", "name", "status"}
+var SelectCaseColumn = []string{"id", "created_at", "inbox_id", "name", "org_id", "status"}
 
 func AdaptCase(db DBCase) (models.Case, error) {
 	return models.Case{
 		Id:             db.Id.String,
-		OrganizationId: db.OrganizationId.String,
 		CreatedAt:      db.CreatedAt.Time,
+		InboxId:        db.InboxId.String,
 		Name:           db.Name.String,
+		OrganizationId: db.OrganizationId.String,
 		Status:         models.CaseStatus(db.Status.String),
 	}, nil
 }

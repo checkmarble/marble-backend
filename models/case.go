@@ -7,14 +7,15 @@ import (
 
 type Case struct {
 	Id             string
-	OrganizationId string
+	Contributors   []CaseContributor
 	CreatedAt      time.Time
+	Decisions      []Decision
+	DecisionsCount int
+	Events         []CaseEvent
+	InboxId        string
+	OrganizationId string
 	Name           string
 	Status         CaseStatus
-	DecisionsCount int
-	Decisions      []Decision
-	Events         []CaseEvent
-	Contributors   []CaseContributor
 }
 
 type CaseStatus string
@@ -28,15 +29,17 @@ const (
 )
 
 type CreateCaseAttributes struct {
+	DecisionIds    []string
+	InboxId        string
 	Name           string
 	OrganizationId string
-	DecisionIds    []string
 }
 
 type UpdateCaseAttributes struct {
 	Id          string
-	Name        string
 	DecisionIds []string
+	InboxId     string
+	Name        string
 	Status      CaseStatus
 }
 
