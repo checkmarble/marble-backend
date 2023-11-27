@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/transaction"
 	"github.com/checkmarble/marble-backend/utils"
 
@@ -34,72 +35,15 @@ type InboxUsecase struct {
 	inboxRepository         InboxRepository
 	userRepository          repositories.UserRepository
 	credentials             models.Credentials
+	inboxReader             inboxes.InboxReader
 }
 
 func (usecase *InboxUsecase) GetInboxById(ctx context.Context, inboxId string) (models.Inbox, error) {
-	inbox, err := usecase.inboxRepository.GetInboxById(nil, inboxId)
-	if err != nil {
-		return models.Inbox{}, err
-	}
-
-	if err = usecase.enforceSecurity.ReadInbox(inbox); err != nil {
-		return models.Inbox{}, err
-	}
-
-	return inbox, err
+	return usecase.inboxReader.GetInboxById(ctx, inboxId)
 }
 
 func (usecase *InboxUsecase) ListInboxes(ctx context.Context) ([]models.Inbox, error) {
-	organizationId, err := usecase.organizationIdOfContext()
-	if err != nil {
-		return []models.Inbox{}, err
-	}
-
-	var inboxes []models.Inbox
-	if usecase.isAdminHasAccessToAllInboxes(ctx) {
-		inboxes, err = usecase.inboxRepository.ListInboxes(nil, organizationId, nil)
-	} else {
-		availableInboxIds, err := usecase.getAvailableInboxes(ctx)
-		if err != nil {
-			return []models.Inbox{}, err
-		} else if len(availableInboxIds) == 0 {
-			return []models.Inbox{}, nil
-		}
-		inboxes, err = usecase.inboxRepository.ListInboxes(nil, organizationId, availableInboxIds)
-		if err != nil {
-			return []models.Inbox{}, err
-		}
-	}
-	if err != nil {
-		return []models.Inbox{}, err
-	}
-
-	for _, inbox := range inboxes {
-		if err = usecase.enforceSecurity.ReadInbox(inbox); err != nil {
-			return []models.Inbox{}, err
-		}
-	}
-
-	return inboxes, nil
-}
-
-func (usecase *InboxUsecase) isAdminHasAccessToAllInboxes(ctx context.Context) bool {
-	return usecase.credentials.Role == models.ADMIN || usecase.credentials.Role == models.MARBLE_ADMIN
-}
-
-func (usecase *InboxUsecase) getAvailableInboxes(ctx context.Context) ([]string, error) {
-	availableInboxIds := make([]string, 0)
-
-	userId := usecase.credentials.ActorIdentity.UserId
-	inboxUsers, err := usecase.inboxRepository.ListInboxUsers(nil, models.InboxUserFilterInput{UserId: userId})
-	if err != nil {
-		return []string{}, err
-	}
-
-	for _, inboxUser := range inboxUsers {
-		availableInboxIds = append(availableInboxIds, inboxUser.InboxId)
-	}
-	return availableInboxIds, nil
+	return usecase.inboxReader.ListInboxes(ctx)
 }
 
 func (usecase *InboxUsecase) CreateInbox(ctx context.Context, input models.CreateInboxInput) (models.Inbox, error) {
