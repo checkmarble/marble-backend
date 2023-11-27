@@ -72,9 +72,10 @@ func (api *API) handlePostCase(ctx *gin.Context) {
 	}
 
 	c, err := usecase.CreateCase(ctx, userId, models.CreateCaseAttributes{
+		DecisionIds:    data.DecisionIds,
+		InboxId:        data.InboxId,
 		Name:           data.Name,
 		OrganizationId: organizationId,
-		DecisionIds:    data.DecisionIds,
 	})
 
 	if presentError(ctx.Writer, ctx.Request, err) {

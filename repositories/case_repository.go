@@ -50,13 +50,15 @@ func (repo *MarbleDbRepository) CreateCase(tx Transaction, createCaseAttributes 
 		NewQueryBuilder().Insert(dbmodels.TABLE_CASES).
 			Columns(
 				"id",
-				"org_id",
+				"inbox_id",
 				"name",
+				"org_id",
 			).
 			Values(
 				newCaseId,
-				createCaseAttributes.OrganizationId,
+				createCaseAttributes.InboxId,
 				createCaseAttributes.Name,
+				createCaseAttributes.OrganizationId,
 			),
 	)
 	return err
@@ -66,6 +68,10 @@ func (repo *MarbleDbRepository) UpdateCase(tx Transaction, updateCaseAttributes 
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	query := NewQueryBuilder().Update(dbmodels.TABLE_CASES).Where(squirrel.Eq{"id": updateCaseAttributes.Id})
+
+	if updateCaseAttributes.InboxId != "" {
+		query = query.Set("inbox_id", updateCaseAttributes.InboxId)
+	}
 
 	if updateCaseAttributes.Name != "" {
 		query = query.Set("name", updateCaseAttributes.Name)
