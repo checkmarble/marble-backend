@@ -6,6 +6,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/scheduledexecution"
 	"github.com/checkmarble/marble-backend/usecases/security"
 )
@@ -245,15 +246,22 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() CaseUseCase {
 }
 
 func (usecases *UsecasesWithCreds) NewInboxUsecase() InboxUsecase {
+	sec := security.EnforceSecurityInboxes{
+		EnforceSecurity: usecases.NewEnforceSecurity(),
+		Credentials:     usecases.Credentials,
+	}
 	return InboxUsecase{
-		enforceSecurity: security.EnforceSecurityInboxes{
-			EnforceSecurity: usecases.NewEnforceSecurity(),
-			Credentials:     usecases.Credentials,
-		},
+		enforceSecurity:         sec,
 		inboxRepository:         &usecases.Repositories.MarbleDbRepository,
 		userRepository:          usecases.Repositories.UserRepository,
 		credentials:             usecases.Credentials,
 		organizationIdOfContext: usecases.OrganizationIdOfContext,
 		transactionFactory:      &usecases.Repositories.TransactionFactoryPosgresql,
+		inboxReader: inboxes.InboxReader{
+			EnforceSecurity:         sec,
+			OrganizationIdOfContext: usecases.OrganizationIdOfContext,
+			InboxRepository:         &usecases.Repositories.MarbleDbRepository,
+			Credentials:             usecases.Credentials,
+		},
 	}
 }
