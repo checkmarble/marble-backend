@@ -200,13 +200,39 @@ func applyDecisionPagination(query squirrel.SelectBuilder, pagination models.Pag
 	}
 	query = query.Join(fmt.Sprintf("(%s) AS cursorRecord ON cursorRecord.org_id = s.d_org_id", offsetSubquery), args...)
 
-	if (order == "DESC" && pagination.Previous) || (order == "ASC" && pagination.Next) {
-		query = query.Where(fmt.Sprintf("s.d_%s > cursorRecord.%s OR (s.d_%s = cursorRecord.%s AND s.d_id < cursorRecord.id)", sorting, sorting, sorting, sorting))
+	if pagination.Previous {
+		if order == "DESC" {
+			query = query.Where(fmt.Sprintf("s.d_%s > cursorRecord.%s OR (s.d_%s = cursorRecord.%s AND s.d_id < cursorRecord.id)", sorting, sorting, sorting, sorting))
+		} else {
+			query = query.Where(fmt.Sprintf("s.d_%s < cursorRecord.%s OR (s.d_%s = cursorRecord.%s AND s.d_id < cursorRecord.id)", sorting, sorting, sorting, sorting))
+		}
+		query = selectDecisionsInReverseOrder(query, sorting, order)
 	}
-	if (order == "DESC" && pagination.Next) || (order == "ASC" && pagination.Previous) {
-		query = query.Where(fmt.Sprintf("s.d_%s < cursorRecord.%s OR (s.d_%s = cursorRecord.%s AND s.d_id > cursorRecord.id)", sorting, sorting, sorting, sorting))
+
+	if pagination.Next {
+		if order == "DESC" {
+			query = query.Where(fmt.Sprintf("s.d_%s < cursorRecord.%s OR (s.d_%s = cursorRecord.%s AND s.d_id > cursorRecord.id)", sorting, sorting, sorting, sorting))
+		} else {
+			query = query.Where(fmt.Sprintf("s.d_%s > cursorRecord.%s OR (s.d_%s = cursorRecord.%s AND s.d_id > cursorRecord.id)", sorting, sorting, sorting, sorting))
+		}
 	}
+
 	return query, nil
+}
+
+// When fetching the previous page, we want the "last xx decisions", so wee need to reverse the order of the query,
+// select the xx items, then reverse again to put them back in the right order
+func selectDecisionsInReverseOrder(query squirrel.SelectBuilder, sorting, order string) squirrel.SelectBuilder {
+	var reverseOrder string
+	if order == "DESC" {
+		reverseOrder = "ASC"
+	} else {
+		reverseOrder = "DESC"
+	}
+	query = query.OrderBy(fmt.Sprintf("s.d_%s %s, s.d_id DESC", sorting, reverseOrder))
+	query = NewQueryBuilder().Select("*").FromSelect(query, "inv").OrderBy(fmt.Sprintf("d_%s %s, d_id", sorting, order))
+
+	return query
 }
 
 func (repo *DecisionRepositoryImpl) DecisionsOfScheduledExecution(scheduledExecutionId string) (<-chan models.Decision, <-chan error) {

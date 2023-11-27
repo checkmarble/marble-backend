@@ -68,7 +68,7 @@ func (api *API) handleListDecisions(c *gin.Context) {
 		"total":      decisions[0].Total,
 		"startIndex": decisions[0].RankNumber,
 		"endIndex":   decisions[len(decisions)-1].RankNumber,
-		"decisions":  utils.Map(decisions, func(d models.DecisionWithRank) dto.APIDecision { return dto.NewAPIDecision(d.Decision) }),
+		"items":  utils.Map(decisions, func(d models.DecisionWithRank) dto.APIDecision { return dto.NewAPIDecision(d.Decision) }),
 	})
 }
 
