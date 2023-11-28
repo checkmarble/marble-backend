@@ -27,7 +27,9 @@ func (api *API) handleGetInboxById(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, dto.AdaptInboxDto(inbox))
+	ctx.JSON(http.StatusOK, gin.H{
+		"inbox": dto.AdaptInboxDto(inbox),
+	})
 }
 
 func (api *API) handleListInboxes(ctx *gin.Context) {
@@ -37,7 +39,7 @@ func (api *API) handleListInboxes(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, utils.Map(inboxes, dto.AdaptInboxDto))
+	ctx.JSON(http.StatusOK, gin.H{"inboxes": utils.Map(inboxes, dto.AdaptInboxDto)})
 }
 
 type CreateInboxInput struct {
@@ -62,7 +64,9 @@ func (api *API) handlePostInbox(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, dto.AdaptInboxDto(inbox))
+	ctx.JSON(http.StatusOK, gin.H{
+		"inbox": dto.AdaptInboxDto(inbox),
+	})
 }
 
 type GetInboxUserInput struct {
@@ -82,7 +86,7 @@ func (api *API) handleGetInboxUserById(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, dto.AdaptInboxUserDto(inboxUser))
+	ctx.JSON(http.StatusOK, gin.H{"inbox_user": dto.AdaptInboxUserDto(inboxUser)})
 }
 
 func (api *API) handleListInboxUsers(ctx *gin.Context) {
@@ -98,7 +102,7 @@ func (api *API) handleListInboxUsers(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, utils.Map(inboxUsers, dto.AdaptInboxUserDto))
+	ctx.JSON(http.StatusOK, gin.H{"inbox_users": utils.Map(inboxUsers, dto.AdaptInboxUserDto)})
 }
 
 type CreateInboxUserInput struct {
@@ -133,5 +137,5 @@ func (api *API) handlePostInboxUser(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, dto.AdaptInboxUserDto(inboxUser))
+	ctx.JSON(http.StatusOK, gin.H{"inbox_user": dto.AdaptInboxUserDto(inboxUser)})
 }
