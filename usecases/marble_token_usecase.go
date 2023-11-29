@@ -100,7 +100,7 @@ func (usecase *MarbleTokenUseCase) NewMarbleToken(apiKey string, firebaseToken s
 			return "", time.Time{}, err
 		}
 
-		return usecase.encodeMarbleToken(models.NewCredentialWithUser(user.OrganizationId, user.Role, user.UserId, user.Email))
+		return usecase.encodeMarbleToken(models.NewCredentialWithUser(user))
 	}
 
 	return "", time.Time{}, fmt.Errorf("API key or Firebase JWT token required: %w", models.UnAuthorizedError)

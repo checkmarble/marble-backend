@@ -69,7 +69,7 @@ func (g *Generator) fromFirebaseToken(ctx context.Context, firebaseToken string)
 
 	user, err := g.repository.UserByFirebaseUid(ctx, identity.FirebaseUid)
 	if err == nil {
-		credentials := models.NewCredentialWithUser(user.OrganizationId, user.Role, user.UserId, user.Email)
+		credentials := models.NewCredentialWithUser(user)
 		return g.encodeToken(credentials)
 	}
 	if err != nil && !errors.Is(err, models.NotFoundError) {
@@ -85,7 +85,7 @@ func (g *Generator) fromFirebaseToken(ctx context.Context, firebaseToken string)
 		return "", time.Time{}, models.Credentials{}, fmt.Errorf("repository.UpdateUserFirebaseUID error: %w", err)
 	}
 
-	credentials := models.NewCredentialWithUser(user.OrganizationId, user.Role, user.UserId, user.Email)
+	credentials := models.NewCredentialWithUser(user)
 	return g.encodeToken(credentials)
 }
 
