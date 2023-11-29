@@ -10,10 +10,7 @@ import (
 type InboxRepository interface {
 	GetInboxById(tx repositories.Transaction, inboxId string) (models.Inbox, error)
 	ListInboxes(tx repositories.Transaction, organizationId string, inboxIds []string) ([]models.Inbox, error)
-	CreateInbox(tx repositories.Transaction, createInboxAttributes models.CreateInboxInput, newInboxId string) error
-	GetInboxUserById(tx repositories.Transaction, inboxUserId string) (models.InboxUser, error)
 	ListInboxUsers(tx repositories.Transaction, filters models.InboxUserFilterInput) ([]models.InboxUser, error)
-	CreateInboxUser(tx repositories.Transaction, createInboxUserAttributes models.CreateInboxUserInput, newInboxUserId string) error
 }
 
 type EnforceSecurityInboxes interface {
