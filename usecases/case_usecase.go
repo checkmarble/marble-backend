@@ -34,7 +34,7 @@ type CaseUseCase struct {
 	inboxReader        inboxes.InboxReader
 }
 
-func (usecase *CaseUseCase) ListCases(organizationId string, filters dto.CaseFilters) ([]models.Case, error) {
+func (usecase *CaseUseCase) ListCases(ctx context.Context, organizationId string, filters dto.CaseFilters) ([]models.Case, error) {
 	if !filters.StartDate.IsZero() && !filters.EndDate.IsZero() && filters.StartDate.After(filters.EndDate) {
 		return []models.Case{}, fmt.Errorf("start date must be before end date: %w", models.BadParameterError)
 	}
@@ -65,7 +65,7 @@ func (usecase *CaseUseCase) ListCases(organizationId string, filters dto.CaseFil
 	)
 }
 
-func (usecase *CaseUseCase) GetCase(caseId string) (models.Case, error) {
+func (usecase *CaseUseCase) GetCase(ctx context.Context, caseId string) (models.Case, error) {
 	c, err := usecase.getCaseWithDetails(nil, caseId)
 	if err != nil {
 		return models.Case{}, err
@@ -74,7 +74,7 @@ func (usecase *CaseUseCase) GetCase(caseId string) (models.Case, error) {
 		return models.Case{}, err
 	}
 
-	_, err = usecase.inboxReader.GetInboxById(context.TODO(), c.InboxId)
+	_, err = usecase.inboxReader.GetInboxById(ctx, c.InboxId)
 	if err != nil {
 		return models.Case{}, err
 	}

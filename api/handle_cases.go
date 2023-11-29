@@ -24,7 +24,7 @@ func (api *API) handleListCases(ctx *gin.Context) {
 	}
 
 	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
-	cases, err := usecase.ListCases(organizationId, filters)
+	cases, err := usecase.ListCases(ctx.Request.Context(), organizationId, filters)
 	if presentError(ctx.Writer, ctx.Request, err) {
 		return
 	}
@@ -43,7 +43,7 @@ func (api *API) handleGetCase(ctx *gin.Context) {
 		return
 	}
 	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
-	c, err := usecase.GetCase(caseInput.Id)
+	c, err := usecase.GetCase(ctx.Request.Context(), caseInput.Id)
 	if presentError(ctx.Writer, ctx.Request, err) {
 		return
 	}
