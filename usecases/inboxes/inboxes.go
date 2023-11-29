@@ -40,7 +40,7 @@ func (i *InboxReader) GetInboxById(ctx context.Context, inboxId string) (models.
 	return inbox, err
 }
 
-func (i *InboxReader) ListInboxes(ctx context.Context) ([]models.Inbox, error) {
+func (i *InboxReader) ListInboxes(ctx context.Context, tx repositories.Transaction) ([]models.Inbox, error) {
 	organizationId, err := i.OrganizationIdOfContext()
 	if err != nil {
 		return []models.Inbox{}, err
@@ -48,15 +48,15 @@ func (i *InboxReader) ListInboxes(ctx context.Context) ([]models.Inbox, error) {
 
 	var inboxes []models.Inbox
 	if i.isAdminHasAccessToAllInboxes(ctx) {
-		inboxes, err = i.InboxRepository.ListInboxes(nil, organizationId, nil)
+		inboxes, err = i.InboxRepository.ListInboxes(tx, organizationId, nil)
 	} else {
-		availableInboxIds, err := i.getAvailableInboxes(ctx)
+		availableInboxIds, err := i.getAvailableInboxes(ctx, tx)
 		if err != nil {
 			return []models.Inbox{}, err
 		} else if len(availableInboxIds) == 0 {
 			return []models.Inbox{}, nil
 		}
-		inboxes, err = i.InboxRepository.ListInboxes(nil, organizationId, availableInboxIds)
+		inboxes, err = i.InboxRepository.ListInboxes(tx, organizationId, availableInboxIds)
 		if err != nil {
 			return []models.Inbox{}, err
 		}
@@ -78,11 +78,11 @@ func (i *InboxReader) isAdminHasAccessToAllInboxes(ctx context.Context) bool {
 	return i.Credentials.Role == models.ADMIN || i.Credentials.Role == models.MARBLE_ADMIN
 }
 
-func (i *InboxReader) getAvailableInboxes(ctx context.Context) ([]string, error) {
+func (i *InboxReader) getAvailableInboxes(ctx context.Context, tx repositories.Transaction) ([]string, error) {
 	availableInboxIds := make([]string, 0)
 
 	userId := i.Credentials.ActorIdentity.UserId
-	inboxUsers, err := i.InboxRepository.ListInboxUsers(nil, models.InboxUserFilterInput{UserId: userId})
+	inboxUsers, err := i.InboxRepository.ListInboxUsers(tx, models.InboxUserFilterInput{UserId: userId})
 	if err != nil {
 		return []string{}, err
 	}

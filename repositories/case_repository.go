@@ -26,6 +26,9 @@ func (repo *MarbleDbRepository) ListOrganizationCases(tx Transaction, organizati
 	if !filters.EndDate.IsZero() {
 		query = query.Where(squirrel.LtOrEq{"c.created_at": filters.EndDate})
 	}
+	if len(filters.InboxIds) > 0 {
+		query = query.Where(squirrel.Eq{"c.inbox_id": filters.InboxIds})
+	}
 
 	return SqlToListOfModels(
 		pgTx,

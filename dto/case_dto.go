@@ -70,4 +70,5 @@ type CaseFilters struct {
 	StartDate time.Time `form:"startDate" time_format`
 	EndDate   time.Time `form:"endDate" time_format`
 	Statuses  []string  `form:"statuses[]"`
+	InboxIds  []string  `form:"inbox_id"`
 }

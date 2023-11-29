@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -11,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/transaction"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -51,16 +53,39 @@ func (usecase *CaseUseCase) ListCases(ctx context.Context, organizationId string
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) ([]models.Case, error) {
-			cases, err := usecase.repository.ListOrganizationCases(tx, organizationId, models.CaseFilters{
+			inboxes, err := usecase.inboxReader.ListInboxes(ctx, tx)
+			if err != nil {
+				return []models.Case{}, errors.Wrap(err, "failed to list available inboxes in usecase")
+			}
+			availableInboxIds := make([]string, len(inboxes))
+			for i, inbox := range inboxes {
+				availableInboxIds[i] = inbox.Id
+			}
+			if len(filters.InboxIds) > 0 {
+				for _, inboxId := range filters.InboxIds {
+					if !slices.Contains(availableInboxIds, inboxId) {
+						return []models.Case{}, errors.Wrap(models.ForbiddenError, fmt.Sprintf("inbox %s is not accessible", inboxId))
+					}
+				}
+			}
+
+			repoFilters := models.CaseFilters{
 				StartDate: filters.StartDate,
 				EndDate:   filters.EndDate,
 				Statuses:  statuses,
-			})
+			}
+			if len(filters.InboxIds) > 0 {
+				repoFilters.InboxIds = filters.InboxIds
+			} else {
+				repoFilters.InboxIds = availableInboxIds
+			}
+
+			cases, err := usecase.repository.ListOrganizationCases(tx, organizationId, repoFilters)
 			if err != nil {
 				return []models.Case{}, err
 			}
 			for _, c := range cases {
-				if err := usecase.enforceSecurity.ReadCase(c); err != nil {
+				if err := usecase.enforceSecurity.ReadCase(c, availableInboxIds); err != nil {
 					return []models.Case{}, err
 				}
 			}
@@ -74,10 +99,13 @@ func (usecase *CaseUseCase) GetCase(ctx context.Context, caseId string) (models.
 	if err != nil {
 		return models.Case{}, err
 	}
-	if err := usecase.enforceSecurity.ReadCase(c); err != nil {
+
+	// passing c.InboxId directly here because the security is already checked below in GetInboxById
+	if err := usecase.enforceSecurity.ReadCase(c, []string{c.InboxId}); err != nil {
 		return models.Case{}, err
 	}
 
+	// access check on the case's inbox
 	_, err = usecase.inboxReader.GetInboxById(ctx, c.InboxId)
 	if err != nil {
 		return models.Case{}, err

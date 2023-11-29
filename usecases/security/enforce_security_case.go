@@ -8,7 +8,7 @@ import (
 
 type EnforceSecurityCase interface {
 	EnforceSecurity
-	ReadCase(c models.Case) error
+	ReadCase(c models.Case, availableInboxIds []string) error
 	CreateCase() error
 	UpdateCase(c models.Case) error
 	CreateCaseComment(c models.Case) error
@@ -19,7 +19,7 @@ type EnforceSecurityCaseImpl struct {
 	Credentials models.Credentials
 }
 
-func (e *EnforceSecurityCaseImpl) ReadCase(c models.Case) error {
+func (e *EnforceSecurityCaseImpl) ReadCase(c models.Case, availableInboxIds []string) error {
 	return errors.Join(e.Permission(models.CASE_READ), e.ReadOrganization(c.OrganizationId))
 }
 

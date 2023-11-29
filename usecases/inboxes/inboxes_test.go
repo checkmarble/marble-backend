@@ -137,7 +137,7 @@ func (suite *InboxReaderTestSuite) Test_ListInboxes_nominal_admin() {
 	suite.inboxRepository.On("ListInboxes", nil, suite.organizationId, mock.MatchedBy(func(s []string) bool { return s == nil })).Return([]models.Inbox{suite.inbox}, nil)
 	suite.enforceSecurity.On("ReadInbox", suite.inbox).Return(nil)
 
-	result, err := suite.makeUsecaseAdmin().ListInboxes(context.Background())
+	result, err := suite.makeUsecaseAdmin().ListInboxes(context.Background(), nil)
 
 	t := suite.T()
 	assert.NoError(t, err)
@@ -151,7 +151,7 @@ func (suite *InboxReaderTestSuite) Test_ListInboxes_nominal_non_admin() {
 	suite.inboxRepository.On("ListInboxes", nil, suite.organizationId, []string{suite.inboxId}).Return([]models.Inbox{suite.inbox}, nil)
 	suite.enforceSecurity.On("ReadInbox", suite.inbox).Return(nil)
 
-	result, err := suite.makeUsecase().ListInboxes(context.Background())
+	result, err := suite.makeUsecase().ListInboxes(context.Background(), nil)
 
 	t := suite.T()
 	assert.NoError(t, err)
@@ -163,7 +163,7 @@ func (suite *InboxReaderTestSuite) Test_ListInboxes_nominal_non_admin() {
 func (suite *InboxReaderTestSuite) Test_ListInboxes_nominal_no_inboxes() {
 	suite.inboxRepository.On("ListInboxUsers", nil, models.InboxUserFilterInput{UserId: suite.nonAdminUserId}).Return([]models.InboxUser{}, nil)
 
-	result, err := suite.makeUsecase().ListInboxes(context.Background())
+	result, err := suite.makeUsecase().ListInboxes(context.Background(), nil)
 
 	t := suite.T()
 	assert.NoError(t, err)
@@ -176,7 +176,7 @@ func (suite *InboxReaderTestSuite) Test_ListInboxes_repository_error() {
 	suite.inboxRepository.On("ListInboxUsers", nil, models.InboxUserFilterInput{UserId: suite.nonAdminUserId}).Return([]models.InboxUser{{InboxId: suite.inboxId}}, nil)
 	suite.inboxRepository.On("ListInboxes", nil, suite.organizationId, []string{suite.inboxId}).Return([]models.Inbox{}, suite.repositoryError)
 
-	_, err := suite.makeUsecase().ListInboxes(context.Background())
+	_, err := suite.makeUsecase().ListInboxes(context.Background(), nil)
 
 	t := suite.T()
 	assert.ErrorIs(t, err, suite.repositoryError)
@@ -189,7 +189,7 @@ func (suite *InboxReaderTestSuite) Test_ListInboxes_security_error() {
 	suite.inboxRepository.On("ListInboxes", nil, suite.organizationId, []string{suite.inboxId}).Return([]models.Inbox{suite.inbox}, nil)
 	suite.enforceSecurity.On("ReadInbox", suite.inbox).Return(suite.securityError)
 
-	_, err := suite.makeUsecase().ListInboxes(context.Background())
+	_, err := suite.makeUsecase().ListInboxes(context.Background(), nil)
 
 	t := suite.T()
 	assert.ErrorIs(t, err, suite.securityError)
