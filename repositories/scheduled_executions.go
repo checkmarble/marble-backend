@@ -8,14 +8,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
-	"github.com/checkmarble/marble-backend/utils"
 )
-
-func columnsNames(tablename string, fields []string) []string {
-	return utils.Map(fields, func(f string) string {
-		return fmt.Sprintf("%s.%s", tablename, f)
-	})
-}
 
 type dbJoinScheduledExecutionAndScenario struct {
 	dbmodels.DBScheduledExecution

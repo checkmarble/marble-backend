@@ -62,3 +62,9 @@ type DecisionFilters struct {
 	WithCase       *bool
 	CaseIds        []string
 }
+
+type DecisionSorting SortingField
+
+const (
+	DecisionSortingCreatedAt DecisionSorting = "created_at"
+)

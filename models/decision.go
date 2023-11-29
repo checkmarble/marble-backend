@@ -21,6 +21,12 @@ type Decision struct {
 	ScheduledExecutionId *string
 }
 
+type DecisionWithRank struct {
+	Decision
+	RankNumber int
+	Total      int
+}
+
 type ScenarioExecution struct {
 	ScenarioId          string
 	ScenarioName        string

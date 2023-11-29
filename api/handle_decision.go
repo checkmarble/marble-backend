@@ -13,7 +13,9 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-const defaultDecisionsLimit = 10000
+const defaultDecisionsLimit = 25
+const defaultDecisionsSorting = models.DecisionSortingCreatedAt
+const defaultDecisionsOrder = models.SortingOrderDesc
 
 func (api *API) handleGetDecision(c *gin.Context) {
 	decisionID := c.Param("decision_id")
@@ -38,12 +40,36 @@ func (api *API) handleListDecisions(c *gin.Context) {
 		return
 	}
 
+	var paginationAndSorting models.PaginationAndSortingInput
+	if err := c.ShouldBind(&paginationAndSorting); err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
+	if paginationAndSorting.Sorting == "" {
+		paginationAndSorting.Sorting = models.SortingField(defaultDecisionsSorting)
+	}
+
+	if paginationAndSorting.Order == "" {
+		paginationAndSorting.Order = defaultDecisionsOrder
+	}
+
+	if paginationAndSorting.Limit == 0 {
+		paginationAndSorting.Limit = defaultDecisionsLimit
+	}
+
 	usecase := api.UsecasesWithCreds(c.Request).NewDecisionUsecase()
-	decisions, err := usecase.ListDecisions(organizationId, filters, defaultDecisionsLimit)
+	decisions, err := usecase.ListDecisions(organizationId, models.AdaptPaginationAndSortingInput(paginationAndSorting), filters)
 	if presentError(c.Writer, c.Request, err) {
 		return
 	}
-	c.JSON(http.StatusOK, utils.Map(decisions, dto.NewAPIDecision))
+
+	c.JSON(http.StatusOK, gin.H{
+		"total":      decisions[0].Total,
+		"startIndex": decisions[0].RankNumber,
+		"endIndex":   decisions[len(decisions)-1].RankNumber,
+		"items":  utils.Map(decisions, func(d models.DecisionWithRank) dto.APIDecision { return dto.NewAPIDecision(d.Decision) }),
+	})
 }
 
 func (api *API) handlePostDecision(c *gin.Context) {
