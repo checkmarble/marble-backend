@@ -53,6 +53,7 @@ type CaseFilters struct {
 	StartDate time.Time
 	EndDate   time.Time
 	Statuses  []CaseStatus
+	InboxIds  []string
 }
 
 func ValidateCaseStatuses(statuses []string) ([]CaseStatus, error) {

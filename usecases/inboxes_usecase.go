@@ -43,7 +43,7 @@ func (usecase *InboxUsecase) GetInboxById(ctx context.Context, inboxId string) (
 }
 
 func (usecase *InboxUsecase) ListInboxes(ctx context.Context) ([]models.Inbox, error) {
-	return usecase.inboxReader.ListInboxes(ctx)
+	return usecase.inboxReader.ListInboxes(ctx, nil)
 }
 
 func (usecase *InboxUsecase) CreateInbox(ctx context.Context, input models.CreateInboxInput) (models.Inbox, error) {
