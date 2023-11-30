@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/checkmarble/marble-backend/models"
 )
@@ -19,15 +20,22 @@ func (db *Database) UserByFirebaseUid(ctx context.Context, firebaseUID string) (
 
 	var user models.User
 	var organizationID *string
+	var firstName, lastName pgtype.Text
 	err := db.pool.QueryRow(ctx, query, firebaseUID).
 		Scan(&user.UserId,
 			&user.Email,
-			&user.FirstName,
-			&user.LastName,
+			&firstName,
+			&lastName,
 			&user.FirebaseUid,
 			&user.Role,
 			&organizationID,
 		)
+	if firstName.Valid {
+		user.FirstName = firstName.String
+	}
+	if lastName.Valid {
+		user.LastName = lastName.String
+	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		return models.User{}, models.NotFoundError
 	}
@@ -49,15 +57,22 @@ func (db *Database) UserByEmail(ctx context.Context, email string) (models.User,
 
 	var user models.User
 	var organizationID *string
+	var firstName, lastName pgtype.Text
 	err := db.pool.QueryRow(ctx, query, email).
 		Scan(&user.UserId,
 			&user.Email,
-			&user.FirstName,
-			&user.LastName,
+			&firstName,
+			&lastName,
 			&user.FirebaseUid,
 			&user.Role,
 			&organizationID,
 		)
+	if firstName.Valid {
+		user.FirstName = firstName.String
+	}
+	if lastName.Valid {
+		user.LastName = lastName.String
+	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		return models.User{}, models.NotFoundError
 	}

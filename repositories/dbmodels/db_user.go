@@ -3,16 +3,17 @@ package dbmodels
 import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type DBUserResult struct {
-	Id             string  `db:"id"`
-	Email          string  `db:"email"`
-	FirebaseUid    string  `db:"firebase_uid"`
-	Role           int     `db:"role"`
-	OrganizationId *string `db:"organization_id"`
-	FirstName      *string  `db:"first_name"`
-	LastName       *string  `db:"last_name"`
+	Id             string      `db:"id"`
+	Email          string      `db:"email"`
+	FirebaseUid    string      `db:"firebase_uid"`
+	Role           int         `db:"role"`
+	OrganizationId *string     `db:"organization_id"`
+	FirstName      pgtype.Text `db:"first_name"`
+	LastName       pgtype.Text `db:"last_name"`
 }
 
 const TABLE_USERS = "users"
@@ -24,11 +25,11 @@ func AdaptUser(db DBUserResult) (models.User, error) {
 	if db.OrganizationId != nil {
 		organizationId = *db.OrganizationId
 	}
-	if db.FirstName != nil {
-		firstName = *db.FirstName
+	if db.FirstName.Valid {
+		firstName = db.FirstName.String
 	}
-	if db.LastName != nil {
-		lastName = *db.LastName
+	if db.LastName.Valid {
+		lastName = db.LastName.String
 	}
 	return models.User{
 		UserId:         models.UserId(db.Id),
