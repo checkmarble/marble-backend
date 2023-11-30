@@ -1,14 +1,10 @@
 package models
 
-import (
-	"fmt"
-)
+import "fmt"
 
 type Identity struct {
 	UserId     UserId
 	Email      string
-	FirstName  string
-	LastName   string
 	ApiKeyName string
 }
 
@@ -22,15 +18,13 @@ func (c Credentials) ActorIdentityDescription() string {
 	return fmt.Sprintf("%s%s (%s)", c.ActorIdentity.Email, c.ActorIdentity.ApiKeyName, c.Role.String())
 }
 
-func NewCredentialWithUser(user User) Credentials {
+func NewCredentialWithUser(organizationId string, role Role, userId UserId, userEmail string) Credentials {
 	return Credentials{
-		OrganizationId: user.OrganizationId,
-		Role:           user.Role,
+		OrganizationId: organizationId,
+		Role:           role,
 		ActorIdentity: Identity{
-			UserId:    user.UserId,
-			Email:     user.Email,
-			FirstName: user.FirstName,
-			LastName:  user.LastName,
+			UserId: userId,
+			Email:  userEmail,
 		},
 	}
 }

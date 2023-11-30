@@ -12,7 +12,7 @@ import (
 
 func (db *Database) UserByFirebaseUid(ctx context.Context, firebaseUID string) (models.User, error) {
 	query := `
-		SELECT id, email, first_name, last_name, firebase_uid, role, organization_id
+		SELECT id, email, firebase_uid, role, organization_id
 		FROM users
 		WHERE firebase_uid = $1
 	`
@@ -22,8 +22,6 @@ func (db *Database) UserByFirebaseUid(ctx context.Context, firebaseUID string) (
 	err := db.pool.QueryRow(ctx, query, firebaseUID).
 		Scan(&user.UserId,
 			&user.Email,
-			&user.FirstName,
-			&user.LastName,
 			&user.FirebaseUid,
 			&user.Role,
 			&organizationID,
@@ -42,7 +40,7 @@ func (db *Database) UserByFirebaseUid(ctx context.Context, firebaseUID string) (
 
 func (db *Database) UserByEmail(ctx context.Context, email string) (models.User, error) {
 	query := `
-		SELECT id, email, first_name, last_name, firebase_uid, role, organization_id
+		SELECT id, email, firebase_uid, role, organization_id
 		FROM users
 		WHERE email = $1
 	`
@@ -52,8 +50,6 @@ func (db *Database) UserByEmail(ctx context.Context, email string) (models.User,
 	err := db.pool.QueryRow(ctx, query, email).
 		Scan(&user.UserId,
 			&user.Email,
-			&user.FirstName,
-			&user.LastName,
 			&user.FirebaseUid,
 			&user.Role,
 			&organizationID,
