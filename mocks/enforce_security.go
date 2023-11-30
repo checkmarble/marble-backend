@@ -85,8 +85,8 @@ func (e *EnforceSecurity) ReadInbox(i models.Inbox) error {
 	return args.Error(0)
 }
 
-func (e *EnforceSecurity) CreateInbox(i models.CreateInboxInput) error {
-	args := e.Called(i)
+func (e *EnforceSecurity) CreateInbox(organizationId string) error {
+	args := e.Called(organizationId)
 	return args.Error(0)
 }
 

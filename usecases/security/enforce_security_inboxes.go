@@ -26,9 +26,9 @@ func (e EnforceSecurityInboxes) ReadInbox(i models.Inbox) error {
 	return errors.Wrap(models.ForbiddenError, "User does not have access to this inbox")
 }
 
-func (e EnforceSecurityInboxes) CreateInbox(i models.CreateInboxInput) error {
+func (e EnforceSecurityInboxes) CreateInbox(organizationId string) error {
 	// Only org admins can create inboxes
-	return errors.Join(e.Permission(models.INBOX_EDITOR), e.ReadOrganization(i.OrganizationId))
+	return errors.Join(e.Permission(models.INBOX_EDITOR), e.ReadOrganization(organizationId))
 }
 
 func (e EnforceSecurityInboxes) ReadInboxUser(inboxUser models.InboxUser, actorInboxUsers []models.InboxUser) error {

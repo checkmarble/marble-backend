@@ -275,3 +275,21 @@ func (usecases *UsecasesWithCreds) NewInboxUsecase() InboxUsecase {
 		},
 	}
 }
+
+func (usecases *UsecasesWithCreds) NewTagUseCase() TagUseCase {
+	sec := security.EnforceSecurityInboxes{
+		EnforceSecurity: usecases.NewEnforceSecurity(),
+		Credentials:     usecases.Credentials,
+	}
+	return TagUseCase{
+		enforceSecurity:    sec,
+		transactionFactory: &usecases.Repositories.TransactionFactoryPosgresql,
+		repository:         &usecases.Repositories.MarbleDbRepository,
+		inboxReader: inboxes.InboxReader{
+			EnforceSecurity:         sec,
+			OrganizationIdOfContext: usecases.OrganizationIdOfContext,
+			InboxRepository:         &usecases.Repositories.MarbleDbRepository,
+			Credentials:             usecases.Credentials,
+		},
+	}
+}

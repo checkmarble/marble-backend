@@ -15,7 +15,7 @@ type InboxRepository interface {
 
 type EnforceSecurityInboxes interface {
 	ReadInbox(i models.Inbox) error
-	CreateInbox(i models.CreateInboxInput) error
+	CreateInbox(organizationId string) error
 	ReadInboxUser(inboxUser models.InboxUser, actorInboxUsers []models.InboxUser) error
 	CreateInboxUser(i models.CreateInboxUserInput, actorInboxUsers []models.InboxUser, targetInbox models.Inbox, targetUser models.User) error
 }
