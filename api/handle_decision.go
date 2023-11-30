@@ -64,6 +64,16 @@ func (api *API) handleListDecisions(c *gin.Context) {
 		return
 	}
 
+	if len(decisions) == 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"total":      0,
+			"startIndex": 0,
+			"endIndex":   0,
+			"items":      []dto.APIDecision{},
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"total":      decisions[0].Total,
 		"startIndex": decisions[0].RankNumber,
