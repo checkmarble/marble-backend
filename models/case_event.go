@@ -25,6 +25,7 @@ const (
 	DecisionAdded     CaseEventType = "decision_added"
 	CaseCommentAdded  CaseEventType = "comment_added"
 	CaseNameUpdated   CaseEventType = "name_updated"
+	CaseTagAdded      CaseEventType = "tag_added"
 	UnknownEvent      CaseEventType = "unknown_event"
 )
 
@@ -32,6 +33,7 @@ type CaseEventResourceType string
 
 const (
 	DecisionResourceType CaseEventResourceType = "decision"
+	CaseTagResourceType  CaseEventResourceType = "case_tag"
 	UnknownResourceType  CaseEventResourceType = "unknown"
 )
 

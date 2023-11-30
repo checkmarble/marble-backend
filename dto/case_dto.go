@@ -16,6 +16,7 @@ type APICase struct {
 	InboxId        string               `json:"inbox_id"`
 	Name           string               `json:"name"`
 	Status         string               `json:"status"`
+	Tags           []APICaseTag         `json:"tags"`
 }
 
 func AdaptCaseDto(c models.Case) APICase {
@@ -29,6 +30,7 @@ func AdaptCaseDto(c models.Case) APICase {
 		InboxId:        c.InboxId,
 		Name:           c.Name,
 		Status:         string(c.Status),
+		Tags:           make([]APICaseTag, len(c.Tags)),
 	}
 
 	for i, decision := range c.Decisions {
@@ -39,6 +41,9 @@ func AdaptCaseDto(c models.Case) APICase {
 	}
 	for i, contributor := range c.Contributors {
 		apiCase.Contributors[i] = NewAPICaseContributor(contributor)
+	}
+	for i, tag := range c.Tags {
+		apiCase.Tags[i] = NewAPICaseTag(tag)
 	}
 
 	return apiCase

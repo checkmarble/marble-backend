@@ -155,3 +155,35 @@ func (api *API) handlePostCaseComment(ctx *gin.Context) {
 		"case": dto.AdaptCaseDto(c),
 	})
 }
+
+func (api *API) handlePostCaseTag(ctx *gin.Context) {
+	creds, found := utils.CredentialsFromCtx(ctx.Request.Context())
+	if !found {
+		presentError(ctx.Writer, ctx.Request, fmt.Errorf("no credentials in context"))
+		return
+	}
+	userId := string(creds.ActorIdentity.UserId)
+
+	var caseInput CaseInput
+	if err := ctx.ShouldBindUri(&caseInput); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		return
+	}
+
+	var data dto.CreateCaseTagBody
+	if err := ctx.ShouldBindJSON(&data); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		return
+	}
+
+	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
+	c, err := usecase.CreateCaseTag(ctx, userId, models.CreateCaseTagAttributes{
+		CaseId: caseInput.Id,
+		TagId:  data.TagId,
+	})
+
+	if presentError(ctx.Writer, ctx.Request, err) {
+		return
+	}
+	ctx.JSON(http.StatusCreated, gin.H{"case": dto.AdaptCaseDto(c)})
+}
