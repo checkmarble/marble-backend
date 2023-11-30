@@ -24,6 +24,8 @@ type CaseUseCaseRepository interface {
 	ListCaseEvents(tx repositories.Transaction, caseId string) ([]models.CaseEvent, error)
 	GetCaseContributor(tx repositories.Transaction, caseId, userId string) (*models.CaseContributor, error)
 	CreateCaseContributor(tx repositories.Transaction, caseId, userId string) error
+	GetTagById(tx repositories.Transaction, tagId string) (models.Tag, error)
+	CreateCaseTag(tx repositories.Transaction, newCaseTagId string, createCaseTagAttributes models.CreateCaseTagAttributes) error
 }
 
 type CaseUseCase struct {
@@ -201,18 +203,6 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string, updat
 	return updatedCase, nil
 }
 
-func trackCaseUpdatedEvents(ctx context.Context, caseId string, updateCaseAttributes models.UpdateCaseAttributes) {
-	if len(updateCaseAttributes.DecisionIds) > 0 {
-		analytics.TrackEvent(ctx, models.AnalyticsDecisionsAdded, map[string]interface{}{"case_id": caseId})
-	}
-	if updateCaseAttributes.Status != "" {
-		analytics.TrackEvent(ctx, models.AnalyticsCaseStatusUpdated, map[string]interface{}{"case_id": caseId})
-	}
-	if updateCaseAttributes.Name != "" {
-		analytics.TrackEvent(ctx, models.AnalyticsCaseUpdated, map[string]interface{}{"case_id": caseId})
-	}
-}
-
 func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string, caseCommentAttributes models.CreateCaseCommentAttributes) (models.Case, error) {
 	updatedCase, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
 		c, err := usecase.repository.GetCaseById(tx, caseCommentAttributes.Id)
@@ -247,6 +237,61 @@ func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string
 	}
 
 	analytics.TrackEvent(ctx, models.AnalyticsCaseCommentCreated, map[string]interface{}{"case_id": updatedCase.Id})
+	return updatedCase, nil
+}
+
+func (usecase *CaseUseCase) CreateCaseTag(ctx context.Context, userId string, caseTagAttributes models.CreateCaseTagAttributes) (models.Case, error) {
+	updatedCase, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
+		c, err := usecase.repository.GetCaseById(tx, caseTagAttributes.CaseId)
+		if err != nil {
+			return models.Case{}, err
+		}
+		if err := usecase.enforceSecurity.UpdateCase(c); err != nil {
+			return models.Case{}, err
+		}
+		tag, err := usecase.repository.GetTagById(tx, caseTagAttributes.TagId)
+		if err != nil {
+			return models.Case{}, err
+		}
+		if err := usecase.enforceSecurity.ReadOrganization(tag.OrganizationId); err != nil {
+			return models.Case{}, err
+		}
+
+		if tag.DeletedAt != nil {
+			return models.Case{}, fmt.Errorf("tag %s is deleted %w", tag.Id, models.BadParameterError)
+		}
+
+		newCaseTagId := uuid.NewString()
+		if err = usecase.repository.CreateCaseTag(tx, newCaseTagId, caseTagAttributes); err != nil {
+			if repositories.IsUniqueViolationError(err) {
+				return models.Case{}, fmt.Errorf("tag %s already added to case %s %w", tag.Id, c.Id, models.DuplicateValueError)
+			}
+			return models.Case{}, err
+		}
+
+		resourceType := models.CaseTagResourceType
+		err = usecase.repository.CreateCaseEvent(tx, models.CreateCaseEventAttributes{
+			CaseId:       caseTagAttributes.CaseId,
+			UserId:       userId,
+			EventType:    models.CaseTagAdded,
+			ResourceId:   &newCaseTagId,
+			ResourceType: &resourceType,
+		})
+		if err != nil {
+			return models.Case{}, err
+		}
+		if err := usecase.createCaseContributorIfNotExist(tx, caseTagAttributes.CaseId, userId); err != nil {
+			return models.Case{}, err
+		}
+
+		return usecase.getCaseWithDetails(tx, caseTagAttributes.CaseId)
+	})
+
+	if err != nil {
+		return models.Case{}, err
+	}
+
+	analytics.TrackEvent(ctx, models.AnalyticsCaseTagAdded, map[string]interface{}{"case_id": updatedCase.Id})
 	return updatedCase, nil
 }
 
@@ -321,4 +366,16 @@ func (usecase *CaseUseCase) createCaseContributorIfNotExist(tx repositories.Tran
 		return nil
 	}
 	return usecase.repository.CreateCaseContributor(tx, caseId, userId)
+}
+
+func trackCaseUpdatedEvents(ctx context.Context, caseId string, updateCaseAttributes models.UpdateCaseAttributes) {
+	if len(updateCaseAttributes.DecisionIds) > 0 {
+		analytics.TrackEvent(ctx, models.AnalyticsDecisionsAdded, map[string]interface{}{"case_id": caseId})
+	}
+	if updateCaseAttributes.Status != "" {
+		analytics.TrackEvent(ctx, models.AnalyticsCaseStatusUpdated, map[string]interface{}{"case_id": caseId})
+	}
+	if updateCaseAttributes.Name != "" {
+		analytics.TrackEvent(ctx, models.AnalyticsCaseUpdated, map[string]interface{}{"case_id": caseId})
+	}
 }

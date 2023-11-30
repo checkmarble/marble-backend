@@ -13,7 +13,7 @@ import (
 func (repo *MarbleDbRepository) ListOrganizationCases(tx Transaction, organizationId string, filters models.CaseFilters) ([]models.Case, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	query := selectJoinCaseAndContributors().
+	query := selectCase().
 		Where(squirrel.Eq{"c.org_id": organizationId})
 
 	if len(filters.Statuses) > 0 {
@@ -30,7 +30,7 @@ func (repo *MarbleDbRepository) ListOrganizationCases(tx Transaction, organizati
 	return SqlToListOfModels(
 		pgTx,
 		query,
-		dbmodels.AdaptCaseWithContributors,
+		dbmodels.AdaptCaseWithContributorsAndTags,
 	)
 }
 
@@ -38,8 +38,8 @@ func (repo *MarbleDbRepository) GetCaseById(tx Transaction, caseId string) (mode
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	return SqlToModel(pgTx,
-		selectJoinCaseAndContributors().Where(squirrel.Eq{"c.id": caseId}),
-		dbmodels.AdaptCaseWithContributors,
+		selectCase().Where(squirrel.Eq{"c.id": caseId}),
+		dbmodels.AdaptCaseWithContributorsAndTags,
 	)
 }
 
@@ -85,7 +85,28 @@ func (repo *MarbleDbRepository) UpdateCase(tx Transaction, updateCaseAttributes 
 	return err
 }
 
-func selectJoinCaseAndContributors() squirrel.SelectBuilder {
+func (repo *MarbleDbRepository) CreateCaseTag(tx Transaction, newCaseTagId string, createCaseTagAttributes models.CreateCaseTagAttributes) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	_, err := pgTx.ExecBuilder(
+		NewQueryBuilder().Insert(dbmodels.TABLE_CASE_TAGS).
+			Columns(
+				"id",
+				"case_id",
+				"tag_id",
+				"deleted_at",
+			).
+			Values(
+				newCaseTagId,
+				createCaseTagAttributes.CaseId,
+				createCaseTagAttributes.TagId,
+				nil,
+			),
+	)
+	return err
+}
+
+func selectCase() squirrel.SelectBuilder {
 	return NewQueryBuilder().
 		Select(pure_utils.WithPrefix(dbmodels.SelectCaseColumn, "c")...).
 		Column(
@@ -94,9 +115,16 @@ func selectJoinCaseAndContributors() squirrel.SelectBuilder {
 				strings.Join(pure_utils.WithPrefix(dbmodels.SelectCaseContributorColumn, "cc"), ","),
 			),
 		).
+		Column(
+			fmt.Sprintf(
+				"array_agg(row(%s) ORDER BY ct.created_at) FILTER (WHERE ct.id IS NOT NULL) as tags",
+				strings.Join(pure_utils.WithPrefix(dbmodels.SelectCaseTagColumn, "ct"), ","),
+			),
+		).
 		Column("count(distinct d.id) as decisions_count").
 		From(dbmodels.TABLE_CASES + " AS c").
 		LeftJoin(dbmodels.TABLE_CASE_CONTRIBUTORS + " AS cc ON cc.case_id = c.id").
+		LeftJoin(dbmodels.TABLE_CASE_TAGS + " AS ct ON ct.case_id = c.id AND ct.deleted_at IS NULL").
 		LeftJoin(dbmodels.TABLE_DECISIONS + " AS d ON d.case_id = c.id").
 		GroupBy("c.id").
 		OrderBy("c.created_at DESC")
