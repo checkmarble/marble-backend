@@ -74,6 +74,7 @@ func (api *API) routes(auth *Authentication) {
 	router.PATCH("/cases/:case_id", api.handlePatchCase)
 	router.POST("/cases/:case_id/comments", api.handlePostCaseComment)
 	router.POST("/cases/:case_id/tags", api.handlePostCaseTag)
+	router.DELETE("/cases/:case_id/tags/:tag_id", api.handleDeleteCaseTag)
 
 	router.GET("/inboxes/:inbox_id", api.handleGetInboxById)
 	router.GET("/inboxes", api.handleListInboxes)
@@ -83,10 +84,9 @@ func (api *API) routes(auth *Authentication) {
 	router.POST("/inboxes/:inbox_id/users", api.handlePostInboxUser)
 	router.GET("/inboxes/:inbox_id/tags", api.handleListTagsPerInbox)
 
-	router.DELETE("/inboxes/:inbox_id/tags/:tag_id", api.handleDeleteTag)
-
 	router.GET("/tags", api.handleListTags)
 	router.POST("/tags", api.handlePostTag)
 	router.GET("/tags/:tag_id", api.handleGetTag)
 	router.PATCH("/tags/:tag_id", api.handlePatchTag)
+	router.DELETE("/tags/:tag_id", api.handleDeleteTag)
 }

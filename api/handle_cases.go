@@ -187,3 +187,31 @@ func (api *API) handlePostCaseTag(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusCreated, gin.H{"case": dto.AdaptCaseDto(c)})
 }
+
+type CaseTagInput struct {
+	CaseId string `uri:"case_id" binding:"required,uuid"`
+	TagId  string `uri:"tag_id" binding:"required,uuid"`
+}
+
+func (api *API) handleDeleteCaseTag(ctx *gin.Context) {
+	creds, found := utils.CredentialsFromCtx(ctx.Request.Context())
+	if !found {
+		presentError(ctx.Writer, ctx.Request, fmt.Errorf("no credentials in context"))
+		return
+	}
+	userId := string(creds.ActorIdentity.UserId)
+
+	var caseInput CaseTagInput
+	if err := ctx.ShouldBindUri(&caseInput); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		return
+	}
+
+	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
+	c, err := usecase.DeleteCaseTag(ctx, userId, caseInput.CaseId, caseInput.TagId)
+
+	if presentError(ctx.Writer, ctx.Request, err) {
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{"case": dto.AdaptCaseDto(c)})
+}

@@ -26,6 +26,7 @@ const (
 	CaseCommentAdded  CaseEventType = "comment_added"
 	CaseNameUpdated   CaseEventType = "name_updated"
 	CaseTagAdded      CaseEventType = "tag_added"
+	CaseTagDeleted    CaseEventType = "tag_deleted"
 	UnknownEvent      CaseEventType = "unknown_event"
 )
 

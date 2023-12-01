@@ -118,14 +118,19 @@ func (api *API) handlePatchTag(ctx *gin.Context) {
 }
 
 func (api *API) handleDeleteTag(ctx *gin.Context) {
-	var inboxTagInput InboxTagIdUriInput
-	if err := ctx.ShouldBindUri(&inboxTagInput); err != nil {
+	organizationId, err := utils.OrgIDFromCtx(ctx.Request.Context(), ctx.Request)
+	if presentError(ctx.Writer, ctx.Request, err) {
+		return
+	}
+
+	var tagInput TagUriInput
+	if err := ctx.ShouldBindUri(&tagInput); err != nil {
 		ctx.Status(http.StatusBadRequest)
 		return
 	}
 
 	usecase := api.UsecasesWithCreds(ctx.Request).NewTagUseCase()
-	err := usecase.DeleteTag(ctx, inboxTagInput.InboxId, inboxTagInput.TagId)
+	err = usecase.DeleteTag(ctx, organizationId, tagInput.TagId)
 
 	if presentError(ctx.Writer, ctx.Request, err) {
 		return

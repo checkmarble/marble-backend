@@ -87,8 +87,8 @@ func (usecase *TagUseCase) UpdateTag(ctx context.Context, organizationId string,
 	return tag, err
 }
 
-func (usecase *TagUseCase) DeleteTag(ctx context.Context, inboxId, tagId string) error {
-	if err := usecase.canManageInbox(inboxId); err != nil {
+func (usecase *TagUseCase) DeleteTag(ctx context.Context, organizationId, tagId string) error {
+	if err := usecase.inboxReader.EnforceSecurity.CreateInbox(organizationId); err != nil {
 		return err
 	}
 
