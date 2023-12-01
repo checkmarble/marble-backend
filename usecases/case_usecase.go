@@ -26,6 +26,7 @@ type CaseUseCaseRepository interface {
 	CreateCaseContributor(tx repositories.Transaction, caseId, userId string) error
 	GetTagById(tx repositories.Transaction, tagId string) (models.Tag, error)
 	CreateCaseTag(tx repositories.Transaction, newCaseTagId string, createCaseTagAttributes models.CreateCaseTagAttributes) error
+	GetCaseTagById(tx repositories.Transaction, caseTagId string) (models.CaseTag, error)
 	SoftDeleteCaseTag(tx repositories.Transaction, tagId string) error
 }
 
@@ -296,7 +297,7 @@ func (usecase *CaseUseCase) CreateCaseTag(ctx context.Context, userId string, ca
 	return updatedCase, nil
 }
 
-func (usecase *CaseUseCase) DeleteCaseTag(ctx context.Context, userId, caseId, tagId string) (models.Case, error) {
+func (usecase *CaseUseCase) DeleteCaseTag(ctx context.Context, userId, caseId, casetagId string) (models.Case, error) {
 	updatedCase, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
 		c, err := usecase.repository.GetCaseById(tx, caseId)
 		if err != nil {
@@ -306,7 +307,12 @@ func (usecase *CaseUseCase) DeleteCaseTag(ctx context.Context, userId, caseId, t
 			return models.Case{}, err
 		}
 
-		if err = usecase.repository.SoftDeleteCaseTag(tx, tagId); err != nil {
+		// Zoé check what happens if no case
+		_, err = usecase.repository.GetCaseTagById(tx, casetagId)
+		if err != nil {
+			return models.Case{}, err
+		}
+		if err = usecase.repository.SoftDeleteCaseTag(tx, casetagId); err != nil {
 			return models.Case{}, err
 		}
 
@@ -315,7 +321,7 @@ func (usecase *CaseUseCase) DeleteCaseTag(ctx context.Context, userId, caseId, t
 			CaseId:       caseId,
 			UserId:       userId,
 			EventType:    models.CaseTagDeleted,
-			ResourceId:   &tagId,
+			ResourceId:   &casetagId,
 			ResourceType: &resourceType,
 		})
 		if err != nil {

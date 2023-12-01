@@ -190,7 +190,7 @@ func (api *API) handlePostCaseTag(ctx *gin.Context) {
 
 type CaseTagInput struct {
 	CaseId string `uri:"case_id" binding:"required,uuid"`
-	TagId  string `uri:"tag_id" binding:"required,uuid"`
+	CaseTagId  string `uri:"case_tag_id" binding:"required,uuid"`
 }
 
 func (api *API) handleDeleteCaseTag(ctx *gin.Context) {
@@ -208,7 +208,7 @@ func (api *API) handleDeleteCaseTag(ctx *gin.Context) {
 	}
 
 	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
-	c, err := usecase.DeleteCaseTag(ctx, userId, caseInput.CaseId, caseInput.TagId)
+	c, err := usecase.DeleteCaseTag(ctx, userId, caseInput.CaseId, caseInput.CaseTagId)
 
 	if presentError(ctx.Writer, ctx.Request, err) {
 		return
