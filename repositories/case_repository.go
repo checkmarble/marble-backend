@@ -106,6 +106,16 @@ func (repo *MarbleDbRepository) CreateCaseTag(tx Transaction, newCaseTagId strin
 	return err
 }
 
+func (repo *MarbleDbRepository) SoftDeleteCaseTag(tx Transaction, tagId string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	query := NewQueryBuilder().Update(dbmodels.TABLE_CASE_TAGS).Where(squirrel.Eq{"id": tagId})
+	query = query.Set("deleted_at", squirrel.Expr("NOW()"))
+
+	_, err := pgTx.ExecBuilder(query)
+	return err
+}
+
 func selectCase() squirrel.SelectBuilder {
 	return NewQueryBuilder().
 		Select(pure_utils.WithPrefix(dbmodels.SelectCaseColumn, "c")...).

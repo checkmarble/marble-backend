@@ -7,6 +7,7 @@ type CaseTag struct {
 	CaseId    string
 	TagId     string
 	CreatedAt time.Time
+	DeletedAt *time.Time
 }
 
 type CreateCaseTagAttributes struct {

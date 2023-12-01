@@ -26,6 +26,7 @@ type CaseUseCaseRepository interface {
 	CreateCaseContributor(tx repositories.Transaction, caseId, userId string) error
 	GetTagById(tx repositories.Transaction, tagId string) (models.Tag, error)
 	CreateCaseTag(tx repositories.Transaction, newCaseTagId string, createCaseTagAttributes models.CreateCaseTagAttributes) error
+	SoftDeleteCaseTag(tx repositories.Transaction, tagId string) error
 }
 
 type CaseUseCase struct {
@@ -292,6 +293,46 @@ func (usecase *CaseUseCase) CreateCaseTag(ctx context.Context, userId string, ca
 	}
 
 	analytics.TrackEvent(ctx, models.AnalyticsCaseTagAdded, map[string]interface{}{"case_id": updatedCase.Id})
+	return updatedCase, nil
+}
+
+func (usecase *CaseUseCase) DeleteCaseTag(ctx context.Context, userId, caseId, tagId string) (models.Case, error) {
+	updatedCase, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
+		c, err := usecase.repository.GetCaseById(tx, caseId)
+		if err != nil {
+			return models.Case{}, err
+		}
+		if err := usecase.enforceSecurity.UpdateCase(c); err != nil {
+			return models.Case{}, err
+		}
+
+		if err = usecase.repository.SoftDeleteCaseTag(tx, tagId); err != nil {
+			return models.Case{}, err
+		}
+
+		resourceType := models.CaseTagResourceType
+		err = usecase.repository.CreateCaseEvent(tx, models.CreateCaseEventAttributes{
+			CaseId:       caseId,
+			UserId:       userId,
+			EventType:    models.CaseTagDeleted,
+			ResourceId:   &tagId,
+			ResourceType: &resourceType,
+		})
+		if err != nil {
+			return models.Case{}, err
+		}
+		if err := usecase.createCaseContributorIfNotExist(tx, caseId, userId); err != nil {
+			return models.Case{}, err
+		}
+
+		return usecase.getCaseWithDetails(tx, caseId)
+	})
+
+	if err != nil {
+		return models.Case{}, err
+	}
+
+	analytics.TrackEvent(ctx, models.AnalyticsCaseTagDeleted, map[string]interface{}{"case_id": updatedCase.Id})
 	return updatedCase, nil
 }
 

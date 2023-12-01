@@ -74,6 +74,7 @@ func (api *API) routes(auth *Authentication) {
 	router.PATCH("/cases/:case_id", api.handlePatchCase)
 	router.POST("/cases/:case_id/comments", api.handlePostCaseComment)
 	router.POST("/cases/:case_id/tags", api.handlePostCaseTag)
+	router.DELETE("/cases/:case_id/tags/:tag_id", api.handleDeleteCaseTag)
 
 	router.GET("/inboxes/:inbox_id", api.handleGetInboxById)
 	router.GET("/inboxes", api.handleListInboxes)
