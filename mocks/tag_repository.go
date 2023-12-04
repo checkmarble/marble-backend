@@ -10,7 +10,7 @@ type TagUseCaseRepository struct {
 	mock.Mock
 }
 
-func (_m *TagUseCaseRepository) ListOrganizationTags(tx Transaction, organizationId string) ([]models.Tag, error) {
+func (_m *TagUseCaseRepository) ListOrganizationTags(tx repositories.Transaction, organizationId string) ([]models.Tag, error) {
 	args := _m.Called(tx, organizationId)
 	return args.Get(0).([]models.Tag), args.Error(1)
 }

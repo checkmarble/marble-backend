@@ -49,6 +49,9 @@ func (usecase *TagUseCase) CreateTag(ctx context.Context, attributes models.Crea
 		}
 		return usecase.repository.GetTagById(tx, newTagId)
 	})
+	if err != nil {
+		return models.Tag{}, err
+	}
 
 	analytics.TrackEvent(ctx, models.AnalyticsTagCreated, map[string]interface{}{"tag_id": tag.Id})
 
@@ -69,6 +72,9 @@ func (usecase *TagUseCase) UpdateTag(ctx context.Context, organizationId string,
 		}
 		return usecase.repository.GetTagById(tx, attributes.TagId)
 	})
+	if err != nil {
+		return models.Tag{}, err
+	}
 
 	analytics.TrackEvent(ctx, models.AnalyticsTagUpdated, map[string]interface{}{"tag_id": tag.Id})
 

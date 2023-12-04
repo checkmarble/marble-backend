@@ -25,7 +25,7 @@ func (api *API) handleListTags(ctx *gin.Context) {
 	if presentError(ctx.Writer, ctx.Request, err) {
 		return
 	}
-	ctx.JSON(http.StatusOK, utils.Map(tags, dto.AdaptTagDto))
+	ctx.JSON(http.StatusOK, gin.H{"tags": utils.Map(tags, dto.AdaptTagDto)})
 }
 
 func (api *API) handlePostTag(ctx *gin.Context) {
@@ -49,7 +49,7 @@ func (api *API) handlePostTag(ctx *gin.Context) {
 	if presentError(ctx.Writer, ctx.Request, err) {
 		return
 	}
-	ctx.JSON(http.StatusCreated, dto.AdaptTagDto(tag))
+	ctx.JSON(http.StatusCreated, gin.H{"tag": dto.AdaptTagDto(tag)})
 }
 
 type TagUriInput struct {
@@ -69,7 +69,7 @@ func (api *API) handleGetTag(ctx *gin.Context) {
 	if presentError(ctx.Writer, ctx.Request, err) {
 		return
 	}
-	ctx.JSON(http.StatusOK, dto.AdaptTagDto(tag))
+	ctx.JSON(http.StatusOK, gin.H{"tag": dto.AdaptTagDto(tag)})
 }
 
 func (api *API) handlePatchTag(ctx *gin.Context) {
@@ -99,7 +99,7 @@ func (api *API) handlePatchTag(ctx *gin.Context) {
 	if presentError(ctx.Writer, ctx.Request, err) {
 		return
 	}
-	ctx.JSON(http.StatusOK, dto.AdaptTagDto(tag))
+	ctx.JSON(http.StatusOK, gin.H{"tag": dto.AdaptTagDto(tag)})
 }
 
 func (api *API) handleDeleteTag(ctx *gin.Context) {

@@ -57,6 +57,7 @@ func (repo *MarbleDbRepository) GetTagById(tx Transaction, tagId string) (models
 	return SqlToModel(pgTx,
 		NewQueryBuilder().Select(dbmodels.SelectTagColumn...).
 			From(dbmodels.TABLE_TAGS).
+			Where(squirrel.Eq{"deleted_at": nil}).
 			Where(squirrel.Eq{"id": tagId}),
 		dbmodels.AdaptTag,
 	)
