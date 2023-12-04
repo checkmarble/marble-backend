@@ -297,9 +297,13 @@ func (usecase *CaseUseCase) CreateCaseTag(ctx context.Context, userId string, ca
 	return updatedCase, nil
 }
 
-func (usecase *CaseUseCase) DeleteCaseTag(ctx context.Context, userId, caseId, casetagId string) (models.Case, error) {
+func (usecase *CaseUseCase) DeleteCaseTag(ctx context.Context, userId, caseTagId string) (models.Case, error) {
 	updatedCase, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
-		c, err := usecase.repository.GetCaseById(tx, caseId)
+		caseTag, err := usecase.repository.GetCaseTagById(tx, caseTagId)
+		if err != nil {
+			return models.Case{}, err
+		}
+		c, err := usecase.repository.GetCaseById(tx, caseTag.CaseId)
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -307,31 +311,26 @@ func (usecase *CaseUseCase) DeleteCaseTag(ctx context.Context, userId, caseId, c
 			return models.Case{}, err
 		}
 
-		// Zoé check what happens if no case
-		_, err = usecase.repository.GetCaseTagById(tx, casetagId)
-		if err != nil {
-			return models.Case{}, err
-		}
-		if err = usecase.repository.SoftDeleteCaseTag(tx, casetagId); err != nil {
+		if err = usecase.repository.SoftDeleteCaseTag(tx, caseTagId); err != nil {
 			return models.Case{}, err
 		}
 
 		resourceType := models.CaseTagResourceType
 		err = usecase.repository.CreateCaseEvent(tx, models.CreateCaseEventAttributes{
-			CaseId:       caseId,
+			CaseId:       caseTag.CaseId,
 			UserId:       userId,
 			EventType:    models.CaseTagDeleted,
-			ResourceId:   &casetagId,
+			ResourceId:   &caseTagId,
 			ResourceType: &resourceType,
 		})
 		if err != nil {
 			return models.Case{}, err
 		}
-		if err := usecase.createCaseContributorIfNotExist(tx, caseId, userId); err != nil {
+		if err := usecase.createCaseContributorIfNotExist(tx, caseTag.CaseId, userId); err != nil {
 			return models.Case{}, err
 		}
 
-		return usecase.getCaseWithDetails(tx, caseId)
+		return usecase.getCaseWithDetails(tx, caseTag.CaseId)
 	})
 
 	if err != nil {
