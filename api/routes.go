@@ -80,4 +80,10 @@ func (api *API) routes(auth *Authentication) {
 	router.GET("/inbox_users/:inbox_user_id", api.handleGetInboxUserById)
 	router.GET("/inboxes/:inbox_id/users", api.handleListInboxUsers)
 	router.POST("/inboxes/:inbox_id/users", api.handlePostInboxUser)
+
+	router.GET("/tags", api.handleListTags)
+	router.POST("/tags", api.handlePostTag)
+	router.GET("/tags/:tag_id", api.handleGetTag)
+	router.PATCH("/tags/:tag_id", api.handlePatchTag)
+	router.DELETE("/tags/:tag_id", api.handleDeleteTag)
 }

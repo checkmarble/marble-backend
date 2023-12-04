@@ -95,13 +95,13 @@ func Test_CreateInbox(t *testing.T) {
 		}
 
 		t.Run("creating an inbox in the same org should succeed", func(t *testing.T) {
-			err := sec.CreateInbox(models.CreateInboxInput{OrganizationId: organizationId})
+			err := sec.CreateInbox(organizationId)
 			if err != nil {
 				t.Errorf("Expected no error, got %v", err)
 			}
 		})
 		t.Run("creating an inbox in a different org should fail", func(t *testing.T) {
-			err := sec.CreateInbox(models.CreateInboxInput{OrganizationId: anotherOrganizationId})
+			err := sec.CreateInbox(anotherOrganizationId)
 			if err == nil {
 				t.Errorf("Expected error, got nil")
 			}
@@ -115,7 +115,7 @@ func Test_CreateInbox(t *testing.T) {
 			Credentials:     creds,
 		}
 
-		err := sec.CreateInbox(models.CreateInboxInput{OrganizationId: organizationId})
+		err := sec.CreateInbox(organizationId)
 		if err == nil {
 			t.Errorf("Expected error, got nil")
 		}

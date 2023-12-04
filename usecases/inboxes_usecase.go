@@ -23,7 +23,7 @@ type InboxRepository interface {
 
 type EnforceSecurityInboxes interface {
 	ReadInbox(i models.Inbox) error
-	CreateInbox(i models.CreateInboxInput) error
+	CreateInbox(organizationId string) error
 	ReadInboxUser(inboxUser models.InboxUser, actorInboxUsers []models.InboxUser) error
 	CreateInboxUser(i models.CreateInboxUserInput, actorInboxUsers []models.InboxUser, targetInbox models.Inbox, targetUser models.User) error
 }
@@ -51,7 +51,7 @@ func (usecase *InboxUsecase) CreateInbox(ctx context.Context, input models.Creat
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) (models.Inbox, error) {
-			if err := usecase.enforceSecurity.CreateInbox(input); err != nil {
+			if err := usecase.enforceSecurity.CreateInbox(input.OrganizationId); err != nil {
 				return models.Inbox{}, err
 			}
 

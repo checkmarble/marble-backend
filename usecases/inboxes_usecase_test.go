@@ -102,7 +102,7 @@ func (suite *InboxUsecaseTestSuite) AssertExpectations() {
 func (suite *InboxUsecaseTestSuite) Test_CreateInbox_nominal() {
 	input := models.CreateInboxInput{Name: "test inbox", OrganizationId: suite.organizationId}
 	suite.transactionFactory.On("Transaction", models.DATABASE_MARBLE_SCHEMA, mock.Anything).Return(nil)
-	suite.enforceSecurity.On("CreateInbox", input).Return(nil)
+	suite.enforceSecurity.On("CreateInbox", suite.organizationId).Return(nil)
 	suite.inboxRepository.On("CreateInbox", suite.transaction, input, mock.AnythingOfType("string")).Return(nil)
 	suite.inboxRepository.On("GetInboxById", suite.transaction, mock.AnythingOfType("string")).Return(suite.inbox, nil)
 
@@ -118,7 +118,7 @@ func (suite *InboxUsecaseTestSuite) Test_CreateInbox_nominal() {
 func (suite *InboxUsecaseTestSuite) Test_CreateInbox_security_error() {
 	input := models.CreateInboxInput{Name: "test inbox", OrganizationId: suite.organizationId}
 	suite.transactionFactory.On("Transaction", models.DATABASE_MARBLE_SCHEMA, mock.Anything).Return(nil)
-	suite.enforceSecurity.On("CreateInbox", input).Return(suite.securityError)
+	suite.enforceSecurity.On("CreateInbox", suite.organizationId).Return(suite.securityError)
 
 	_, err := suite.makeUsecase().CreateInbox(context.Background(), input)
 
@@ -131,7 +131,7 @@ func (suite *InboxUsecaseTestSuite) Test_CreateInbox_security_error() {
 func (suite *InboxUsecaseTestSuite) Test_CreateInbox_repository_error() {
 	input := models.CreateInboxInput{Name: "test inbox", OrganizationId: suite.organizationId}
 	suite.transactionFactory.On("Transaction", models.DATABASE_MARBLE_SCHEMA, mock.Anything).Return(nil)
-	suite.enforceSecurity.On("CreateInbox", input).Return(nil)
+	suite.enforceSecurity.On("CreateInbox", suite.organizationId).Return(nil)
 	suite.inboxRepository.On("CreateInbox", suite.transaction, input, mock.AnythingOfType("string")).Return(suite.repositoryError)
 
 	_, err := suite.makeUsecaseAdmin().CreateInbox(context.Background(), input)
