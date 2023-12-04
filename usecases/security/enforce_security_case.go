@@ -1,9 +1,9 @@
 package security
 
 import (
-	"errors"
-
 	"github.com/checkmarble/marble-backend/models"
+
+	"github.com/cockroachdb/errors"
 )
 
 type EnforceSecurityCase interface {
@@ -20,7 +20,14 @@ type EnforceSecurityCaseImpl struct {
 }
 
 func (e *EnforceSecurityCaseImpl) ReadCase(c models.Case, availableInboxIds []string) error {
-	return errors.Join(e.Permission(models.CASE_READ), e.ReadOrganization(c.OrganizationId))
+	err := errors.Wrap(models.ForbiddenError, "User does not have access to cases' inbox")
+	for _, inboxId := range availableInboxIds {
+		if inboxId == c.InboxId {
+			err = nil
+			break
+		}
+	}
+	return errors.Join(e.Permission(models.CASE_READ), e.ReadOrganization(c.OrganizationId), err)
 }
 
 func (e *EnforceSecurityCaseImpl) CreateCase() error {
