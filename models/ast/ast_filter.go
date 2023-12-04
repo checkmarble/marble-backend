@@ -9,6 +9,8 @@ const (
 	FILTER_GREATER_OR_EQUAL  FilterOperator = ">="
 	FILTER_LESSER            FilterOperator = "<"
 	FILTER_LESSER_OR_EQUAL   FilterOperator = "<="
+	FILTER_IS_IN_LIST        FilterOperator = "IsInList"
+	FILTER_IS_NOT_IN_LIST    FilterOperator = "IsNotInList"
 	FILTER_UNKNOWN_OPERATION FilterOperator = "FILTER_UNKNOWN_OPERATION"
 )
 
