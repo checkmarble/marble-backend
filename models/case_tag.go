@@ -1,0 +1,16 @@
+package models
+
+import "time"
+
+type CaseTag struct {
+	Id        string
+	CaseId    string
+	TagId     string
+	CreatedAt time.Time
+	DeletedAt *time.Time
+}
+
+type CreateCaseTagAttributes struct {
+	CaseId string
+	TagId  string
+}

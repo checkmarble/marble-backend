@@ -14,9 +14,10 @@ type DBCase struct {
 	Status         pgtype.Text      `db:"status"`
 }
 
-type DBCaseWithContributors struct {
+type DBCaseWithContributorsAndTags struct {
 	DBCase
 	Contributors   []DBCaseContributor `db:"contributors"`
+	Tags           []DBCaseTag         `db:"tags"`
 	DecisionsCount int                 `db:"decisions_count"`
 }
 
@@ -35,7 +36,7 @@ func AdaptCase(db DBCase) (models.Case, error) {
 	}, nil
 }
 
-func AdaptCaseWithContributors(db DBCaseWithContributors) (models.Case, error) {
+func AdaptCaseWithContributorsAndTags(db DBCaseWithContributorsAndTags) (models.Case, error) {
 	caseModel, err := AdaptCase(db.DBCase)
 	if err != nil {
 		return models.Case{}, err
@@ -45,6 +46,14 @@ func AdaptCaseWithContributors(db DBCaseWithContributors) (models.Case, error) {
 	caseModel.Contributors = make([]models.CaseContributor, len(db.Contributors))
 	for i, contributor := range db.Contributors {
 		caseModel.Contributors[i], err = AdaptCaseContributor(contributor)
+		if err != nil {
+			return models.Case{}, err
+		}
+	}
+
+	caseModel.Tags = make([]models.CaseTag, len(db.Tags))
+	for i, tag := range db.Tags {
+		caseModel.Tags[i], err = AdaptCaseTag(tag)
 		if err != nil {
 			return models.Case{}, err
 		}

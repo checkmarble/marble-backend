@@ -16,6 +16,7 @@ type Case struct {
 	OrganizationId string
 	Name           string
 	Status         CaseStatus
+	Tags           []CaseTag
 }
 
 type CaseStatus string
