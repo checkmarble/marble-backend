@@ -270,9 +270,9 @@ func (repo *IngestedDataReadRepositoryImpl) QueryAggregatedValue(transaction Tra
 
 func addConditionForOperator(query squirrel.SelectBuilder, tableName string, fieldName string, operator ast.FilterOperator, value any) (squirrel.SelectBuilder, error) {
 	switch operator {
-	case ast.FILTER_EQUAL:
+	case ast.FILTER_EQUAL, ast.FILTER_IS_IN_LIST:
 		return query.Where(squirrel.Eq{fmt.Sprintf("%s.%s", tableName, fieldName): value}), nil
-	case ast.FILTER_NOT_EQUAL:
+	case ast.FILTER_NOT_EQUAL, ast.FILTER_IS_NOT_IN_LIST:
 		return query.Where(squirrel.NotEq{fmt.Sprintf("%s.%s", tableName, fieldName): value}), nil
 	case ast.FILTER_GREATER:
 		return query.Where(squirrel.Gt{fmt.Sprintf("%s.%s", tableName, fieldName): value}), nil

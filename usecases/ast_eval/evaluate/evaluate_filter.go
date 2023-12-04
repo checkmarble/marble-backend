@@ -20,6 +20,8 @@ var ValidTypeForFilterOperators = map[ast.FilterOperator][]models.DataType{
 	ast.FILTER_GREATER_OR_EQUAL: {models.Int, models.Float, models.String, models.Timestamp},
 	ast.FILTER_LESSER:           {models.Int, models.Float, models.String, models.Timestamp},
 	ast.FILTER_LESSER_OR_EQUAL:  {models.Int, models.Float, models.String, models.Timestamp},
+	ast.FILTER_IS_IN_LIST:       {models.String},
+	ast.FILTER_IS_NOT_IN_LIST:   {models.String},
 }
 
 func (f FilterEvaluator) Evaluate(arguments ast.Arguments) (any, []error) {
@@ -56,7 +58,11 @@ func (f FilterEvaluator) Evaluate(arguments ast.Arguments) (any, []error) {
 	if fieldType == models.Int && reflect.TypeOf(value) == reflect.TypeOf(float64(0)) {
 		promotedValue = value
 	} else {
-		promotedValue, err = promoteArgumentToDataType(value, fieldType)
+		if operator == ast.FILTER_IS_IN_LIST || operator == ast.FILTER_IS_NOT_IN_LIST {
+			promotedValue, err = adaptArgumentToListOfStrings(value)
+		} else {
+			promotedValue, err = promoteArgumentToDataType(value, fieldType)
+		}
 		if err != nil {
 			return MakeEvaluateError(fmt.Errorf("value is not compatible with selected field %w %w", ast.ErrArgumentInvalidType, ast.NewNamedArgumentError("value")))
 		}

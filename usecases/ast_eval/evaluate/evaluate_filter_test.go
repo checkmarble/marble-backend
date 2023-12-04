@@ -172,3 +172,90 @@ func TestFilter_value_float(t *testing.T) {
 
 	assert.ObjectsAreEqualValues(expectedResult, result)
 }
+
+var dataModelWithString = models.DataModel{
+	Tables: map[models.TableName]models.Table{
+		"table1": {
+			Name: "table1",
+			Fields: map[models.FieldName]models.Field{
+				"field1": {
+					DataType: models.String,
+					Nullable: false,
+				},
+			},
+		},
+	},
+}
+var filterWithString = FilterEvaluator{DataModel: dataModelWithString}
+
+func TestFilter_is_in_list(t *testing.T) {
+	arguments := ast.Arguments{
+		NamedArgs: map[string]any{
+			"tableName": "table1",
+			"fieldName": "field1",
+			"operator":  "IsInList",
+			"value":     []string{"a", "b"},
+		},
+	}
+
+	expectedResult := ast.Filter{
+		TableName: "table1",
+		FieldName: "field1",
+		Operator:  ast.FILTER_IS_IN_LIST,
+		Value:     []string{"a", "b"},
+	}
+	result, errs := filterWithString.Evaluate(arguments)
+	assert.Empty(t, errs)
+
+	assert.ObjectsAreEqualValues(expectedResult, result)
+}
+
+func TestFilter_is_not_in_list(t *testing.T) {
+	arguments := ast.Arguments{
+		NamedArgs: map[string]any{
+			"tableName": "table1",
+			"fieldName": "field1",
+			"operator":  "IsNotInList",
+			"value":     []string{"a", "b"},
+		},
+	}
+
+	expectedResult := ast.Filter{
+		TableName: "table1",
+		FieldName: "field1",
+		// Operator:  ast.FILTER_IS_NOT_IN_LIST,
+		Value:     []string{"a", "b"},
+	}
+	result, errs := filterWithString.Evaluate(arguments)
+	assert.Empty(t, errs)
+
+	assert.ObjectsAreEqualValues(expectedResult, result)
+}
+
+func TestFilter_is_in_list_invalid_value_type(t *testing.T) {
+	arguments := ast.Arguments{
+		NamedArgs: map[string]any{
+			"tableName": "table1",
+			"fieldName": "field1",
+			"operator":  "IsInList",
+			"value":     []int{1, 2},
+		},
+	}
+
+	_, errs := filterWithString.Evaluate(arguments)
+	assert.NotEmpty(t, errs)
+}
+
+func TestFilter_is_in_list_invalid_field_type(t *testing.T) {
+	arguments := ast.Arguments{
+		NamedArgs: map[string]any{
+			"tableName": "table1",
+			"fieldName": "field1",
+			"operator":  "IsInList",
+			"value":     []string{"a", "b"},
+		},
+	}
+
+	_, errs := filterWithInt.Evaluate(arguments)
+	assert.NotEmpty(t, errs)
+}
