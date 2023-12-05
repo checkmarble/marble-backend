@@ -146,11 +146,10 @@ func selectCase() squirrel.SelectBuilder {
 				strings.Join(pure_utils.WithPrefix(dbmodels.SelectCaseTagColumn, "ct"), ","),
 			),
 		).
-		Column("count(distinct d.id) as decisions_count").
+		Column(fmt.Sprintf("(SELECT count(distinct d.id) FROM %s AS d WHERE d.case_id = c.id) AS decisions_count", dbmodels.TABLE_DECISIONS)).
 		From(dbmodels.TABLE_CASES + " AS c").
 		LeftJoin(dbmodels.TABLE_CASE_CONTRIBUTORS + " AS cc ON cc.case_id = c.id").
 		LeftJoin(dbmodels.TABLE_CASE_TAGS + " AS ct ON ct.case_id = c.id AND ct.deleted_at IS NULL").
-		LeftJoin(dbmodels.TABLE_DECISIONS + " AS d ON d.case_id = c.id").
 		GroupBy("c.id").
 		OrderBy("c.created_at DESC")
 }
