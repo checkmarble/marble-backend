@@ -56,10 +56,13 @@ type CreateCaseBody struct {
 }
 
 type UpdateCaseBody struct {
-	DecisionIds []string `json:"decision_ids"`
-	InboxId     string   `json:"inbox_id"`
-	Name        string   `json:"name"`
-	Status      string   `json:"status"`
+	InboxId string `json:"inbox_id"`
+	Name    string `json:"name"`
+	Status  string `json:"status"`
+}
+
+type AddDecisionToCaseBody struct {
+	DecisionIds []string `json:"decision_ids" binding:"required"`
 }
 
 type CreateCaseCommentBody struct {
