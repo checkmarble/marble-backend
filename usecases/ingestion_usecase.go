@@ -152,6 +152,7 @@ func (usecase *IngestionUseCase) IngestDataFromCsv(ctx context.Context, logger *
 
 	startProcessUploadLog := func(uploadLog models.UploadLog) {
 		defer waitGroup.Done()
+		logger := logger.With("uploadLogId", uploadLog.Id).With("organization_id", uploadLog.OrganizationId)
 		if err := usecase.processUploadLog(ctx, uploadLog, logger); err != nil {
 			uploadErrorChan <- err
 		}
@@ -171,8 +172,8 @@ func (usecase *IngestionUseCase) IngestDataFromCsv(ctx context.Context, logger *
 
 func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog models.UploadLog, logger *slog.Logger) error {
 	logger.InfoContext(ctx, fmt.Sprintf("Start processing UploadLog %s", uploadLog.Id))
-	err := usecase.uploadLogRepository.UpdateUploadLog(nil, models.UpdateUploadLogInput{Id: uploadLog.Id, UploadStatus: models.UploadProcessing})
 
+	err := usecase.uploadLogRepository.UpdateUploadLog(nil, models.UpdateUploadLogInput{Id: uploadLog.Id, UploadStatus: models.UploadProcessing})
 	if err != nil {
 		return err
 	}
@@ -250,18 +251,18 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 	payloadReaders := make([]models.PayloadReader, 0)
 	var i int
 	for i = 0; ; i++ {
+		logger.InfoContext(ctx, fmt.Sprintf("Start reading line %v", i))
 		record, err := r.Read()
 		if err == io.EOF {
 			break
-		}
-		if err != nil {
+		} else if err != nil {
 			return err
 		}
 		object, err := parseStringValuesToMap(firstRow, record, table)
 		if err != nil {
 			return err
 		}
-		logger.DebugContext(ctx, fmt.Sprintf("Object to ingest %d: %+v", i, object))
+		logger.InfoContext(ctx, fmt.Sprintf("Object to ingest %d: %+v", i, object))
 		clientObject := models.ClientObject{
 			TableName: table.Name,
 			Data:      object,
@@ -271,9 +272,11 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 		payloadReaders = append(payloadReaders, payloadReader)
 	}
 	numRows := i
+	logger.InfoContext(ctx, fmt.Sprintf("Read %d lines", numRows))
 
 	// ingest by batches of 'batchSize'
 	for windowStart := 0; windowStart < numRows; windowStart += batchSize {
+		logger.InfoContext(ctx, fmt.Sprintf("Starting batch : %d of %d", windowStart/batchSize+1, numRows/batchSize+1))
 		windowEnd := windowStart + batchSize
 		if windowEnd > numRows {
 			windowEnd = numRows
