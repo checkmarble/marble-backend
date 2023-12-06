@@ -50,10 +50,17 @@ type CreateCaseCommentAttributes struct {
 }
 
 type CaseFilters struct {
-	StartDate time.Time
-	EndDate   time.Time
-	Statuses  []CaseStatus
-	InboxIds  []string
+	OrganizationId string
+	StartDate      time.Time
+	EndDate        time.Time
+	Statuses       []CaseStatus
+	InboxIds       []string
+}
+
+type CaseWithRank struct {
+	Case
+	RankNumber int
+	Total      int
 }
 
 const (

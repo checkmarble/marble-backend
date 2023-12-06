@@ -71,13 +71,8 @@ func (usecase *DecisionUsecase) ListDecisions(organizationId string, paginationA
 		return []models.DecisionWithRank{}, err
 	}
 
-	if paginationAndSorting.OffsetId != "" {
-		if paginationAndSorting.Previous && paginationAndSorting.Next {
-			return []models.DecisionWithRank{}, fmt.Errorf("invalid pagination: both previous and next are true: %w", models.BadParameterError)
-		}
-		if !paginationAndSorting.Previous && !paginationAndSorting.Next {
-			return []models.DecisionWithRank{}, fmt.Errorf("invalid pagination: both previous and next are false: %w", models.BadParameterError)
-		}
+	if err := models.ValidatePaginationOffset(paginationAndSorting); err != nil {
+		return []models.DecisionWithRank{}, err
 	}
 
 	return transaction.TransactionReturnValue(

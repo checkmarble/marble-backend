@@ -21,6 +21,12 @@ type DBCaseWithContributorsAndTags struct {
 	DecisionsCount int                 `db:"decisions_count"`
 }
 
+type DBPaginatedCases struct {
+	DBCaseWithContributorsAndTags
+	RankNumber int `db:"rank_number"`
+	Total      int `db:"total"`
+}
+
 const TABLE_CASES = "cases"
 
 var SelectCaseColumn = []string{"id", "created_at", "inbox_id", "name", "org_id", "status"}
@@ -60,4 +66,16 @@ func AdaptCaseWithContributorsAndTags(db DBCaseWithContributorsAndTags) (models.
 	}
 
 	return caseModel, nil
+}
+
+func AdaptCaseWithRank(db DBCaseWithContributorsAndTags, rankNumber int, total int) (models.CaseWithRank, error) {
+	c, err := AdaptCaseWithContributorsAndTags(db)
+	if err != nil {
+		return models.CaseWithRank{}, err
+	}
+	return models.CaseWithRank{
+		Case:       c,
+		RankNumber: rankNumber,
+		Total:      total,
+	}, nil
 }

@@ -42,7 +42,22 @@ func (api *API) handleListCases(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, utils.Map(cases, dto.AdaptCaseDto))
+	if len(cases) == 0 {
+		ctx.JSON(http.StatusOK, gin.H{
+			"total":      0,
+			"startIndex": 0,
+			"endIndex":   0,
+			"items":      []dto.APICase{},
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"total":      cases[0].Total,
+		"startIndex": cases[0].RankNumber,
+		"endIndex":   cases[len(cases)-1].RankNumber,
+		"items":      utils.Map(cases, func(c models.CaseWithRank) dto.APICase { return dto.AdaptCaseDto(c.Case) }),
+	})
 }
 
 type CaseInput struct {

@@ -17,7 +17,7 @@ import (
 )
 
 type CaseUseCaseRepository interface {
-	ListOrganizationCases(tx repositories.Transaction, organizationId string, filters models.CaseFilters) ([]models.Case, error)
+	ListOrganizationCases(tx repositories.Transaction, filters models.CaseFilters, pagination models.PaginationAndSorting) ([]models.CaseWithRank, error)
 	GetCaseById(tx repositories.Transaction, caseId string) (models.Case, error)
 	CreateCase(tx repositories.Transaction, createCaseAttributes models.CreateCaseAttributes, newCaseId string) error
 	UpdateCase(tx repositories.Transaction, updateCaseAttributes models.UpdateCaseAttributes) error
@@ -40,22 +40,31 @@ type CaseUseCase struct {
 	inboxReader        inboxes.InboxReader
 }
 
-func (usecase *CaseUseCase) ListCases(ctx context.Context, organizationId string, filters dto.CaseFilters) ([]models.Case, error) {
+func (usecase *CaseUseCase) ListCases(
+	ctx context.Context,
+	organizationId string,
+	pagination models.PaginationAndSorting,
+	filters dto.CaseFilters,
+) ([]models.CaseWithRank, error) {
 	if !filters.StartDate.IsZero() && !filters.EndDate.IsZero() && filters.StartDate.After(filters.EndDate) {
-		return []models.Case{}, fmt.Errorf("start date must be before end date: %w", models.BadParameterError)
+		return []models.CaseWithRank{}, fmt.Errorf("start date must be before end date: %w", models.BadParameterError)
 	}
 	statuses, err := models.ValidateCaseStatuses(filters.Statuses)
 	if err != nil {
-		return []models.Case{}, err
+		return []models.CaseWithRank{}, err
+	}
+
+	if err := models.ValidatePaginationOffset(pagination); err != nil {
+		return []models.CaseWithRank{}, err
 	}
 
 	return transaction.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction) ([]models.Case, error) {
+		func(tx repositories.Transaction) ([]models.CaseWithRank, error) {
 			inboxes, err := usecase.inboxReader.ListInboxes(ctx, tx)
 			if err != nil {
-				return []models.Case{}, errors.Wrap(err, "failed to list available inboxes in usecase")
+				return []models.CaseWithRank{}, errors.Wrap(err, "failed to list available inboxes in usecase")
 			}
 			availableInboxIds := make([]string, len(inboxes))
 			for i, inbox := range inboxes {
@@ -64,15 +73,16 @@ func (usecase *CaseUseCase) ListCases(ctx context.Context, organizationId string
 			if len(filters.InboxIds) > 0 {
 				for _, inboxId := range filters.InboxIds {
 					if !slices.Contains(availableInboxIds, inboxId) {
-						return []models.Case{}, errors.Wrap(models.ForbiddenError, fmt.Sprintf("inbox %s is not accessible", inboxId))
+						return []models.CaseWithRank{}, errors.Wrap(models.ForbiddenError, fmt.Sprintf("inbox %s is not accessible", inboxId))
 					}
 				}
 			}
 
 			repoFilters := models.CaseFilters{
-				StartDate: filters.StartDate,
-				EndDate:   filters.EndDate,
-				Statuses:  statuses,
+				StartDate:      filters.StartDate,
+				EndDate:        filters.EndDate,
+				Statuses:       statuses,
+				OrganizationId: organizationId,
 			}
 			if len(filters.InboxIds) > 0 {
 				repoFilters.InboxIds = filters.InboxIds
@@ -80,13 +90,13 @@ func (usecase *CaseUseCase) ListCases(ctx context.Context, organizationId string
 				repoFilters.InboxIds = availableInboxIds
 			}
 
-			cases, err := usecase.repository.ListOrganizationCases(tx, organizationId, repoFilters)
+			cases, err := usecase.repository.ListOrganizationCases(tx, repoFilters, pagination)
 			if err != nil {
-				return []models.Case{}, err
+				return []models.CaseWithRank{}, err
 			}
 			for _, c := range cases {
-				if err := usecase.enforceSecurity.ReadCase(c, availableInboxIds); err != nil {
-					return []models.Case{}, err
+				if err := usecase.enforceSecurity.ReadCase(c.Case, availableInboxIds); err != nil {
+					return []models.CaseWithRank{}, err
 				}
 			}
 			return cases, nil
