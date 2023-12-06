@@ -16,23 +16,3 @@ const (
 	SortingOrderAsc  SortingOrder = "ASC"
 	SortingOrderDesc SortingOrder = "DESC"
 )
-
-type PaginationAndSortingInput struct {
-	OffsetId string       `form:"offsetId"`
-	Previous bool         `form:"previous"`
-	Next     bool         `form:"next"`
-	Sorting  SortingField `form:"sorting"`
-	Order    SortingOrder `form:"order"`
-	Limit    int          `form:"limit" binding:"max=100"`
-}
-
-func AdaptPaginationAndSortingInput(input PaginationAndSortingInput) PaginationAndSorting {
-	return PaginationAndSorting{
-		OffsetId: input.OffsetId,
-		Previous: input.Previous,
-		Next:     input.Next,
-		Sorting:  input.Sorting,
-		Order:    input.Order,
-		Limit:    input.Limit,
-	}
-}

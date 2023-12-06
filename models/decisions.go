@@ -63,8 +63,6 @@ type DecisionFilters struct {
 	CaseIds        []string
 }
 
-type DecisionSorting SortingField
-
 const (
-	DecisionSortingCreatedAt DecisionSorting = "created_at"
+	DecisionSortingCreatedAt SortingField = "created_at"
 )
