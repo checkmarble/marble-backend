@@ -121,11 +121,11 @@ func (usecase *CaseUseCase) CreateCase(ctx context.Context, userId string, creat
 	if _, err := usecase.inboxReader.GetInboxById(ctx, createCaseAttributes.InboxId); err != nil {
 		return models.Case{}, err
 	}
-	if err := usecase.validateDecisions(createCaseAttributes.DecisionIds); err != nil {
-		return models.Case{}, err
-	}
 
 	c, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
+		if err := usecase.validateDecisions(tx, createCaseAttributes.DecisionIds); err != nil {
+			return models.Case{}, err
+		}
 		newCaseId := uuid.NewString()
 		err := usecase.repository.CreateCase(tx, createCaseAttributes, newCaseId)
 		if err != nil {
@@ -162,20 +162,12 @@ func (usecase *CaseUseCase) CreateCase(ctx context.Context, userId string, creat
 }
 
 func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string, updateCaseAttributes models.UpdateCaseAttributes) (models.Case, error) {
-	if err := usecase.validateDecisions(updateCaseAttributes.DecisionIds); err != nil {
-		return models.Case{}, err
-	}
-	if c, err := usecase.repository.GetCaseById(nil, updateCaseAttributes.Id); err != nil {
-		return models.Case{}, err
-	} else {
-		if _, err := usecase.inboxReader.GetInboxById(ctx, c.InboxId); err != nil {
-			return models.Case{}, err
-		}
-	}
-
 	updatedCase, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
 		c, err := usecase.repository.GetCaseById(tx, updateCaseAttributes.Id)
 		if err != nil {
+			return models.Case{}, err
+		}
+		if _, err := usecase.inboxReader.GetInboxById(ctx, c.InboxId); err != nil {
 			return models.Case{}, err
 		}
 
@@ -230,6 +222,37 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string, updat
 	}
 
 	trackCaseUpdatedEvents(ctx, updatedCase.Id, updateCaseAttributes)
+	return updatedCase, nil
+}
+
+func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, caseId string, decisionIds []string) (models.Case, error) {
+	updatedCase, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
+		c, err := usecase.repository.GetCaseById(tx, caseId)
+		if err != nil {
+			return models.Case{}, err
+		}
+		if err := usecase.enforceSecurity.UpdateCase(c); err != nil {
+			return models.Case{}, err
+		}
+		if err := usecase.validateDecisions(tx, decisionIds); err != nil {
+			return models.Case{}, err
+		}
+		err = usecase.updateDecisionsWithEvents(tx, caseId, userId, decisionIds)
+		if err != nil {
+			return models.Case{}, err
+		}
+		if err := usecase.createCaseContributorIfNotExist(tx, caseId, userId); err != nil {
+			return models.Case{}, err
+		}
+
+		return usecase.getCaseWithDetails(tx, caseId)
+	})
+
+	if err != nil {
+		return models.Case{}, err
+	}
+
+	analytics.TrackEvent(ctx, models.AnalyticsDecisionsAdded, map[string]interface{}{"case_id": updatedCase.Id})
 	return updatedCase, nil
 }
 
@@ -390,11 +413,11 @@ func (usecase *CaseUseCase) getCaseWithDetails(tx repositories.Transaction, case
 	return c, nil
 }
 
-func (usecase *CaseUseCase) validateDecisions(decisionIds []string) error {
+func (usecase *CaseUseCase) validateDecisions(tx repositories.Transaction, decisionIds []string) error {
 	if len(decisionIds) == 0 {
 		return nil
 	}
-	decisions, err := usecase.decisionRepository.DecisionsById(nil, decisionIds)
+	decisions, err := usecase.decisionRepository.DecisionsById(tx, decisionIds)
 	if err != nil {
 		return err
 	}
@@ -443,9 +466,6 @@ func (usecase *CaseUseCase) createCaseContributorIfNotExist(tx repositories.Tran
 }
 
 func trackCaseUpdatedEvents(ctx context.Context, caseId string, updateCaseAttributes models.UpdateCaseAttributes) {
-	if len(updateCaseAttributes.DecisionIds) > 0 {
-		analytics.TrackEvent(ctx, models.AnalyticsDecisionsAdded, map[string]interface{}{"case_id": caseId})
-	}
 	if updateCaseAttributes.Status != "" {
 		analytics.TrackEvent(ctx, models.AnalyticsCaseStatusUpdated, map[string]interface{}{"case_id": caseId})
 	}

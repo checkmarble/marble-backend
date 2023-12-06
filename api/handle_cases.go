@@ -110,7 +110,6 @@ func (api *API) handlePatchCase(ctx *gin.Context) {
 	c, err := usecase.UpdateCase(ctx, userId, models.UpdateCaseAttributes{
 		Id:          caseInput.Id,
 		Name:        data.Name,
-		DecisionIds: data.DecisionIds,
 		Status:      models.CaseStatus(data.Status),
 	})
 
@@ -120,6 +119,35 @@ func (api *API) handlePatchCase(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{
 		"case": dto.AdaptCaseDto(c),
 	})
+}
+
+func (api *API) handlePostCaseDecisions(ctx *gin.Context) {
+	creds, found := utils.CredentialsFromCtx(ctx.Request.Context())
+	if !found {
+		presentError(ctx.Writer, ctx.Request, fmt.Errorf("no credentials in context"))
+		return
+	}
+	userId := string(creds.ActorIdentity.UserId)
+
+	var caseInput CaseInput
+	if err := ctx.ShouldBindUri(&caseInput); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		return
+	}
+
+	var data dto.AddDecisionToCaseBody
+	if err := ctx.ShouldBindJSON(&data); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		return
+	}
+
+	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
+	c, err := usecase.AddDecisionsToCase(ctx, userId, caseInput.Id, data.DecisionIds)
+
+	if presentError(ctx.Writer, ctx.Request, err) {
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{"case": dto.AdaptCaseDto(c)})
 }
 
 func (api *API) handlePostCaseComment(ctx *gin.Context) {
