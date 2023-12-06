@@ -54,7 +54,7 @@ func (usecase *CaseUseCase) ListCases(
 		return []models.CaseWithRank{}, err
 	}
 
-	if err := models.ValidatePaginationOffset(pagination); err != nil {
+	if err := models.ValidatePagination(pagination); err != nil {
 		return []models.CaseWithRank{}, err
 	}
 
