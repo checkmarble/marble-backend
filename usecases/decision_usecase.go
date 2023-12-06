@@ -71,7 +71,7 @@ func (usecase *DecisionUsecase) ListDecisions(organizationId string, paginationA
 		return []models.DecisionWithRank{}, err
 	}
 
-	if err := models.ValidatePaginationOffset(paginationAndSorting); err != nil {
+	if err := models.ValidatePagination(paginationAndSorting); err != nil {
 		return []models.DecisionWithRank{}, err
 	}
 

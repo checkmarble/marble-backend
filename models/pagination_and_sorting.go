@@ -19,7 +19,7 @@ const (
 	SortingOrderDesc SortingOrder = "DESC"
 )
 
-func ValidatePaginationOffset(pagination PaginationAndSorting) error {
+func ValidatePagination(pagination PaginationAndSorting) error {
 	if pagination.OffsetId != "" {
 		if pagination.Previous && pagination.Next {
 			return fmt.Errorf("invalid pagination: both previous and next are true: %w", BadParameterError)
@@ -27,6 +27,9 @@ func ValidatePaginationOffset(pagination PaginationAndSorting) error {
 		if !pagination.Previous && !pagination.Next {
 			return fmt.Errorf("invalid pagination: both previous and next are false: %w", BadParameterError)
 		}
+	}
+	if pagination.Order != SortingOrderAsc && pagination.Order != SortingOrderDesc {
+		return fmt.Errorf("invalid pagination: order must be either ASC or DESC: %w", BadParameterError)
 	}
 	return nil
 }

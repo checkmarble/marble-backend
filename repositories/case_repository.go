@@ -163,6 +163,8 @@ func casesCoreQueryWithRank(pagination models.PaginationAndSorting) squirrel.Sel
 		Column("COUNT(*) OVER() AS total").
 		From(dbmodels.TABLE_CASES + " AS c")
 
+	// When fetching the previous page, we want the "last xx cases", so we need to reverse the order of the query,
+	// select the xx items, then reverse again to put them back in the right order
 	if pagination.OffsetId != "" && pagination.Previous {
 		query = query.OrderBy(fmt.Sprintf("c.%s %s, c.id %s", pagination.Sorting, reverseOrder(pagination.Order), reverseOrder(pagination.Order)))
 	} else {
@@ -220,21 +222,9 @@ func applyCasesPagination(query squirrel.SelectBuilder, p models.PaginationAndSo
 		} else {
 			query = query.Where(queryConditionBefore)
 		}
-		query = selectCasesInReverseOrder(query, p)
 	}
 
 	return query, nil
-}
-
-// When fetching the previous page, we want the "last xx cases", so wee need to reverse the order of the query,
-// select the xx items, then reverse again to put them back in the right order
-func selectCasesInReverseOrder(query squirrel.SelectBuilder, p models.PaginationAndSorting) squirrel.SelectBuilder {
-	query = NewQueryBuilder().
-		Select("*").
-		FromSelect(query, "inv").
-		OrderBy(fmt.Sprintf("inv.%s %s, inv.id %s", p.Sorting, reverseOrder(p.Order), reverseOrder(p.Order)))
-
-	return query
 }
 
 /*
@@ -251,31 +241,27 @@ SELECT
 
 FROM (
 
-	SELECT *
+	SELECT
+		s.id, s.created_at, s.inbox_id, s.name, s.org_id, s.status, rank_number, total
 	FROM (
-	      SELECT
-	            s.id, s.created_at, s.inbox_id, s.name, s.org_id, s.status, rank_number, total
-	      FROM (
-	            SELECT
-	                  id, created_at, inbox_id, name, org_id, status,
-	                  RANK() OVER (ORDER BY c.created_at DESC, c.id DESC) as rank_number,
-	                  COUNT(*) OVER() AS total
-	            FROM cases AS c
-	            WHERE c.org_id = $1
-	                  AND c.inbox_id IN ($2,$3,$4,$5,$6,$7)
-	            ORDER BY c.created_at ASC, c.id ASC
-	      ) AS s
-	      JOIN (
-	            SELECT
-	                  id, org_id, created_at
-	            FROM cases
-	            WHERE id = $8
-	      ) AS cursorRecord ON cursorRecord.org_id = s.org_id
-	      WHERE s.created_at > cursorRecord.created_at
-	            OR (s.created_at = cursorRecord.created_at AND s.id > cursorRecord.id)
-	      LIMIT 25
-	) AS inv
-	ORDER BY c.created_at ASC, c.id ASC
+		SELECT
+			id, created_at, inbox_id, name, org_id, status,
+			RANK() OVER (ORDER BY c.created_at DESC, c.id DESC) as rank_number,
+			COUNT(*) OVER() AS total
+		FROM cases AS c
+		WHERE c.org_id = $1
+			AND c.inbox_id IN ($2,$3,$4,$5,$6,$7)
+		ORDER BY c.created_at ASC, c.id ASC
+	) AS s
+	JOIN (
+		SELECT
+			id, org_id, created_at
+		FROM cases
+		WHERE id = $8
+	) AS cursorRecord ON cursorRecord.org_id = s.org_id
+	WHERE s.created_at > cursorRecord.created_at
+		OR (s.created_at = cursorRecord.created_at AND s.id > cursorRecord.id)
+	LIMIT 25
 
 ) AS c
 LEFT JOIN case_contributors AS cc ON cc.case_id = c.id
