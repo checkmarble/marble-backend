@@ -56,6 +56,10 @@ type CaseFilters struct {
 	InboxIds  []string
 }
 
+const (
+	CasesSortingCreatedAt SortingField = "created_at"
+)
+
 func ValidateCaseStatuses(statuses []string) ([]CaseStatus, error) {
 	sanitizedStatuses := make([]CaseStatus, len(statuses))
 	for i, status := range statuses {

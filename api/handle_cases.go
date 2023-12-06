@@ -11,6 +11,12 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
+var casesPaginationDefaults = dto.PaginationDefaults{
+	Limit:  25,
+	SortBy: models.CasesSortingCreatedAt,
+	Order:  models.SortingOrderDesc,
+}
+
 func (api *API) handleListCases(ctx *gin.Context) {
 	organizationId, err := utils.OrgIDFromCtx(ctx.Request.Context(), ctx.Request)
 	if presentError(ctx.Writer, ctx.Request, err) {
@@ -23,8 +29,15 @@ func (api *API) handleListCases(ctx *gin.Context) {
 		return
 	}
 
+	var paginationAndSorting dto.PaginationAndSortingInput
+	if err := ctx.ShouldBind(&paginationAndSorting); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		return
+	}
+	paginationAndSorting = dto.WithPaginationDefaults(paginationAndSorting, casesPaginationDefaults)
+
 	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
-	cases, err := usecase.ListCases(ctx.Request.Context(), organizationId, filters)
+	cases, err := usecase.ListCases(ctx.Request.Context(), organizationId, dto.AdaptPaginationAndSortingInput(paginationAndSorting), filters)
 	if presentError(ctx.Writer, ctx.Request, err) {
 		return
 	}

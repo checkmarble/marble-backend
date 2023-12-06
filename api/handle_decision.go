@@ -13,9 +13,11 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-const defaultDecisionsLimit = 25
-const defaultDecisionsSorting = models.DecisionSortingCreatedAt
-const defaultDecisionsOrder = models.SortingOrderDesc
+var decisionPaginationDefaults = dto.PaginationDefaults{
+	Limit:  25,
+	SortBy: models.DecisionSortingCreatedAt,
+	Order:  models.SortingOrderDesc,
+}
 
 func (api *API) handleGetDecision(c *gin.Context) {
 	decisionID := c.Param("decision_id")
@@ -40,26 +42,15 @@ func (api *API) handleListDecisions(c *gin.Context) {
 		return
 	}
 
-	var paginationAndSorting models.PaginationAndSortingInput
+	var paginationAndSorting dto.PaginationAndSortingInput
 	if err := c.ShouldBind(&paginationAndSorting); err != nil {
 		c.Status(http.StatusBadRequest)
 		return
 	}
-
-	if paginationAndSorting.Sorting == "" {
-		paginationAndSorting.Sorting = models.SortingField(defaultDecisionsSorting)
-	}
-
-	if paginationAndSorting.Order == "" {
-		paginationAndSorting.Order = defaultDecisionsOrder
-	}
-
-	if paginationAndSorting.Limit == 0 {
-		paginationAndSorting.Limit = defaultDecisionsLimit
-	}
+	paginationAndSorting = dto.WithPaginationDefaults(paginationAndSorting, decisionPaginationDefaults)
 
 	usecase := api.UsecasesWithCreds(c.Request).NewDecisionUsecase()
-	decisions, err := usecase.ListDecisions(organizationId, models.AdaptPaginationAndSortingInput(paginationAndSorting), filters)
+	decisions, err := usecase.ListDecisions(organizationId, dto.AdaptPaginationAndSortingInput(paginationAndSorting), filters)
 	if presentError(c.Writer, c.Request, err) {
 		return
 	}
@@ -78,7 +69,7 @@ func (api *API) handleListDecisions(c *gin.Context) {
 		"total":      decisions[0].Total,
 		"startIndex": decisions[0].RankNumber,
 		"endIndex":   decisions[len(decisions)-1].RankNumber,
-		"items":  utils.Map(decisions, func(d models.DecisionWithRank) dto.APIDecision { return dto.NewAPIDecision(d.Decision) }),
+		"items":      utils.Map(decisions, func(d models.DecisionWithRank) dto.APIDecision { return dto.NewAPIDecision(d.Decision) }),
 	})
 }
 
