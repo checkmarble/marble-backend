@@ -11,9 +11,9 @@ type CaseRepository struct {
 	mock.Mock
 }
 
-func (r *CaseRepository) ListOrganizationCases(tx repositories.Transaction, organizationId string, filters models.CaseFilters) ([]models.Case, error) {
+func (r *CaseRepository) ListOrganizationCases(tx repositories.Transaction, organizationId string, filters models.CaseFilters, pagination models.PaginationAndSorting) ([]models.CaseWithRank, error) {
 	args := r.Called(tx, organizationId)
-	return args.Get(0).([]models.Case), args.Error(1)
+	return args.Get(0).([]models.CaseWithRank), args.Error(1)
 }
 
 func (r *CaseRepository) GetCaseById(tx repositories.Transaction, caseId string) (models.Case, error) {

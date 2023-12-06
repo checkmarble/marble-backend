@@ -1,5 +1,7 @@
 package models
 
+import "fmt"
+
 type PaginationAndSorting struct {
 	OffsetId string
 	Sorting  SortingField
@@ -16,3 +18,15 @@ const (
 	SortingOrderAsc  SortingOrder = "ASC"
 	SortingOrderDesc SortingOrder = "DESC"
 )
+
+func ValidatePaginationOffset(pagination PaginationAndSorting) error {
+	if pagination.OffsetId != "" {
+		if pagination.Previous && pagination.Next {
+			return fmt.Errorf("invalid pagination: both previous and next are true: %w", BadParameterError)
+		}
+		if !pagination.Previous && !pagination.Next {
+			return fmt.Errorf("invalid pagination: both previous and next are false: %w", BadParameterError)
+		}
+	}
+	return nil
+}

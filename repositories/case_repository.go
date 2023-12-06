@@ -8,40 +8,54 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/jackc/pgx/v5"
 )
 
-func (repo *MarbleDbRepository) ListOrganizationCases(tx Transaction, organizationId string, filters models.CaseFilters) ([]models.Case, error) {
+func reverseOrder(order models.SortingOrder) models.SortingOrder {
+	if order == "DESC" {
+		return "ASC"
+	}
+	return "DESC"
+}
+
+func (repo *MarbleDbRepository) ListOrganizationCases(
+	tx Transaction,
+	filters models.CaseFilters,
+	pagination models.PaginationAndSorting,
+) ([]models.CaseWithRank, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	query := selectCase().
-		Where(squirrel.Eq{"c.org_id": organizationId})
+	coreQuery := casesCoreQueryWithRank(pagination)
+	filteredCoreQuery := applyCaseFilters(coreQuery, filters)
 
-	if len(filters.Statuses) > 0 {
-		query = query.Where(squirrel.Eq{"c.status": filters.Statuses})
-	}
+	subquery := squirrel.StatementBuilder.
+		Select(casesWithRankColumns()...).
+		FromSelect(filteredCoreQuery, "s").
+		Limit(uint64(pagination.Limit))
 
-	if !filters.StartDate.IsZero() {
-		query = query.Where(squirrel.GtOrEq{"c.created_at": filters.StartDate})
+	paginatedSubquery, err := applyCasesPagination(subquery, pagination)
+	if err != nil {
+		return []models.CaseWithRank{}, err
 	}
-	if !filters.EndDate.IsZero() {
-		query = query.Where(squirrel.LtOrEq{"c.created_at": filters.EndDate})
-	}
-	if len(filters.InboxIds) > 0 {
-		query = query.Where(squirrel.Eq{"c.inbox_id": filters.InboxIds})
-	}
+	queryWithJoinedFields := selectCasesWithJoinedFields(paginatedSubquery, pagination, true)
 
-	return SqlToListOfModels(
-		pgTx,
-		query,
-		dbmodels.AdaptCaseWithContributorsAndTags,
-	)
+	return SqlToListOfRow(pgTx, queryWithJoinedFields, func(row pgx.CollectableRow) (models.CaseWithRank, error) {
+		db, err := pgx.RowToStructByPos[dbmodels.DBPaginatedCases](row)
+		if err != nil {
+			return models.CaseWithRank{}, err
+		}
+
+		return dbmodels.AdaptCaseWithRank(db.DBCaseWithContributorsAndTags, db.RankNumber, db.Total)
+	})
 }
 
 func (repo *MarbleDbRepository) GetCaseById(tx Transaction, caseId string) (models.Case, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	return SqlToModel(pgTx,
-		selectCase().Where(squirrel.Eq{"c.id": caseId}),
+	return SqlToModel(
+		pgTx,
+		selectCasesWithJoinedFields(squirrel.SelectBuilder(NewQueryBuilder()), models.PaginationAndSorting{Sorting: models.CasesSortingCreatedAt}, false).
+			Where(squirrel.Eq{"c.id": caseId}),
 		dbmodels.AdaptCaseWithContributorsAndTags,
 	)
 }
@@ -131,8 +145,152 @@ func (repo *MarbleDbRepository) SoftDeleteCaseTag(tx Transaction, tagId string) 
 	return err
 }
 
-func selectCase() squirrel.SelectBuilder {
-	return NewQueryBuilder().
+func casesWithRankColumns() []string {
+	var columnAlias []string
+	columnAlias = append(columnAlias, dbmodels.SelectCaseColumn...)
+
+	columns := columnsNames("s", columnAlias)
+	columns = append(columns, "rank_number", "total")
+	return columns
+}
+
+func casesCoreQueryWithRank(pagination models.PaginationAndSorting) squirrel.SelectBuilder {
+	orderCondition := fmt.Sprintf("c.%s %s, c.id %s", pagination.Sorting, pagination.Order, pagination.Order)
+
+	query := squirrel.StatementBuilder.
+		Select(dbmodels.SelectCaseColumn...).
+		Column(fmt.Sprintf("RANK() OVER (ORDER BY %s) as rank_number", orderCondition)).
+		Column("COUNT(*) OVER() AS total").
+		From(dbmodels.TABLE_CASES + " AS c")
+
+	if pagination.OffsetId != "" && pagination.Previous {
+		query = query.OrderBy(fmt.Sprintf("c.%s %s, c.id %s", pagination.Sorting, reverseOrder(pagination.Order), reverseOrder(pagination.Order)))
+	} else {
+		query = query.OrderBy(orderCondition)
+	}
+	return query
+}
+
+func applyCaseFilters(query squirrel.SelectBuilder, filters models.CaseFilters) squirrel.SelectBuilder {
+	query = query.Where(squirrel.Eq{"c.org_id": filters.OrganizationId})
+
+	if len(filters.Statuses) > 0 {
+		query = query.Where(squirrel.Eq{"c.status": filters.Statuses})
+	}
+	if !filters.StartDate.IsZero() {
+		query = query.Where(squirrel.GtOrEq{"c.created_at": filters.StartDate})
+	}
+	if !filters.EndDate.IsZero() {
+		query = query.Where(squirrel.LtOrEq{"c.created_at": filters.EndDate})
+	}
+	if len(filters.InboxIds) > 0 {
+		query = query.Where(squirrel.Eq{"c.inbox_id": filters.InboxIds})
+	}
+	return query
+}
+
+func applyCasesPagination(query squirrel.SelectBuilder, p models.PaginationAndSorting) (squirrel.SelectBuilder, error) {
+	if p.OffsetId == "" {
+		return query, nil
+	}
+
+	offsetSubquery, args, err := squirrel.
+		Select("id", "org_id", string(p.Sorting)).
+		From(dbmodels.TABLE_CASES).
+		Where(squirrel.Eq{"id": p.OffsetId}).
+		ToSql()
+	if err != nil {
+		return query, err
+	}
+	query = query.Join(fmt.Sprintf("(%s) AS cursorRecord ON cursorRecord.org_id = s.org_id", offsetSubquery), args...)
+
+	queryConditionBefore := fmt.Sprintf("s.%s < cursorRecord.%s OR (s.%s = cursorRecord.%s AND s.id < cursorRecord.id)", p.Sorting, p.Sorting, p.Sorting, p.Sorting)
+	queryConditionAfter := fmt.Sprintf("s.%s > cursorRecord.%s OR (s.%s = cursorRecord.%s AND s.id > cursorRecord.id)", p.Sorting, p.Sorting, p.Sorting, p.Sorting)
+	if p.Next {
+		if p.Order == "DESC" {
+			query = query.Where(queryConditionBefore)
+		} else {
+			query = query.Where(queryConditionAfter)
+		}
+	}
+
+	if p.Previous {
+		if p.Order == "DESC" {
+			query = query.Where(queryConditionAfter)
+		} else {
+			query = query.Where(queryConditionBefore)
+		}
+		query = selectCasesInReverseOrder(query, p)
+	}
+
+	return query, nil
+}
+
+// When fetching the previous page, we want the "last xx cases", so wee need to reverse the order of the query,
+// select the xx items, then reverse again to put them back in the right order
+func selectCasesInReverseOrder(query squirrel.SelectBuilder, p models.PaginationAndSorting) squirrel.SelectBuilder {
+	query = NewQueryBuilder().
+		Select("*").
+		FromSelect(query, "inv").
+		OrderBy(fmt.Sprintf("inv.%s %s, inv.id %s", p.Sorting, reverseOrder(p.Order), reverseOrder(p.Order)))
+
+	return query
+}
+
+/*
+The most complex end query is like (case DESC, previous with offset)
+
+SELECT
+
+	c.id, c.created_at, c.inbox_id, c.name, c.org_id, c.status,
+	array_agg(row(cc.id,cc.case_id,cc.user_id,cc.created_at) ORDER BY cc.created_at) FILTER (WHERE cc.id IS NOT NULL) as contributors,
+	array_agg(row(ct.id,ct.case_id,ct.tag_id,ct.created_at,ct.deleted_at) ORDER BY ct.created_at) FILTER (WHERE ct.id IS NOT NULL) as tags,
+	count(distinct d.id) as decisions_count,
+	rank_number,
+	total
+
+FROM (
+
+	SELECT *
+	FROM (
+	      SELECT
+	            s.id, s.created_at, s.inbox_id, s.name, s.org_id, s.status, rank_number, total
+	      FROM (
+	            SELECT
+	                  id, created_at, inbox_id, name, org_id, status,
+	                  RANK() OVER (ORDER BY c.created_at DESC, c.id DESC) as rank_number,
+	                  COUNT(*) OVER() AS total
+	            FROM cases AS c
+	            WHERE c.org_id = $1
+	                  AND c.inbox_id IN ($2,$3,$4,$5,$6,$7)
+	            ORDER BY c.created_at ASC, c.id ASC
+	      ) AS s
+	      JOIN (
+	            SELECT
+	                  id, org_id, created_at
+	            FROM cases
+	            WHERE id = $8
+	      ) AS cursorRecord ON cursorRecord.org_id = s.org_id
+	      WHERE s.created_at > cursorRecord.created_at
+	            OR (s.created_at = cursorRecord.created_at AND s.id > cursorRecord.id)
+	      LIMIT 25
+	) AS inv
+	ORDER BY c.created_at ASC, c.id ASC
+
+) AS c
+LEFT JOIN case_contributors AS cc ON cc.case_id = c.id
+LEFT JOIN case_tags AS ct ON ct.case_id = c.id AND ct.deleted_at IS NULL
+LEFT JOIN decisions AS d ON d.case_id = c.id
+GROUP BY c.id, c.created_at, c.inbox_id, c.name, c.org_id, c.status, rank_number, total
+ORDER BY c.created_at DESC, c.id DESC
+*/
+func selectCasesWithJoinedFields(query squirrel.SelectBuilder, p models.PaginationAndSorting, fromSubquery bool) squirrel.SelectBuilder {
+	groupBy := columnsNames("c", dbmodels.SelectCaseColumn)
+	if fromSubquery {
+		groupBy = append(groupBy, "rank_number", "total")
+	}
+
+	q := squirrel.StatementBuilder.
 		Select(pure_utils.WithPrefix(dbmodels.SelectCaseColumn, "c")...).
 		Column(
 			fmt.Sprintf(
@@ -146,10 +304,22 @@ func selectCase() squirrel.SelectBuilder {
 				strings.Join(pure_utils.WithPrefix(dbmodels.SelectCaseTagColumn, "ct"), ","),
 			),
 		).
-		Column(fmt.Sprintf("(SELECT count(distinct d.id) FROM %s AS d WHERE d.case_id = c.id) AS decisions_count", dbmodels.TABLE_DECISIONS)).
-		From(dbmodels.TABLE_CASES + " AS c").
+		Column(fmt.Sprintf("(SELECT count(distinct d.id) FROM %s AS d WHERE d.case_id = c.id) AS decisions_count", dbmodels.TABLE_DECISIONS))
+	if fromSubquery {
+		q = q.Column("rank_number").Column("total")
+	}
+
+	if fromSubquery {
+		q = q.FromSelect(query, "c")
+	} else {
+		q = q.From(dbmodels.TABLE_CASES + " AS c")
+	}
+
+	return q.
 		LeftJoin(dbmodels.TABLE_CASE_CONTRIBUTORS + " AS cc ON cc.case_id = c.id").
 		LeftJoin(dbmodels.TABLE_CASE_TAGS + " AS ct ON ct.case_id = c.id AND ct.deleted_at IS NULL").
-		GroupBy("c.id").
-		OrderBy("c.created_at DESC")
+		GroupBy(groupBy...).
+		OrderBy(fmt.Sprintf("c.%s %s, c.id %s", p.Sorting, p.Order, p.Order)).
+		PlaceholderFormat(squirrel.Dollar)
+
 }
