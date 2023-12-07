@@ -11,6 +11,8 @@ resource "google_project_iam_binding" "backend_service_account_cloudsql_client" 
   project = local.project_id
 
   members = [
+    "user:augustin@checkmarble.com",
+    "user:zoe@checkmarble.com",
     google_service_account.backend_service_account.member
   ]
 }

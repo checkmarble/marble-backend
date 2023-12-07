@@ -113,7 +113,7 @@ resource "google_cloud_run_v2_service" "backend" {
       args = ["--server"]
 
       ports {
-        name           = "http1"
+        name           = "h2c"
         container_port = 80
       }
 
