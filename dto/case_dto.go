@@ -10,7 +10,6 @@ type APICase struct {
 	Id             string               `json:"id"`
 	Contributors   []APICaseContributor `json:"contributors"`
 	CreatedAt      time.Time            `json:"created_at"`
-	Decisions      []APIDecision        `json:"decisions"`
 	DecisionsCount int                  `json:"decisions_count"`
 	Events         []APICaseEvent       `json:"events"`
 	InboxId        string               `json:"inbox_id"`
@@ -19,12 +18,16 @@ type APICase struct {
 	Tags           []APICaseTag         `json:"tags"`
 }
 
+type APICaseWithDecisions struct {
+	APICase
+	Decisions []APIDecision `json:"decisions"`
+}
+
 func AdaptCaseDto(c models.Case) APICase {
 	apiCase := APICase{
 		Id:             c.Id,
 		Contributors:   make([]APICaseContributor, len(c.Contributors)),
 		CreatedAt:      c.CreatedAt,
-		Decisions:      make([]APIDecision, len(c.Decisions)),
 		DecisionsCount: c.DecisionsCount,
 		Events:         make([]APICaseEvent, len(c.Events)),
 		InboxId:        c.InboxId,
@@ -33,9 +36,6 @@ func AdaptCaseDto(c models.Case) APICase {
 		Tags:           make([]APICaseTag, len(c.Tags)),
 	}
 
-	for i, decision := range c.Decisions {
-		apiCase.Decisions[i] = NewAPIDecision(decision)
-	}
 	for i, event := range c.Events {
 		apiCase.Events[i] = NewAPICaseEvent(event)
 	}
@@ -47,6 +47,13 @@ func AdaptCaseDto(c models.Case) APICase {
 	}
 
 	return apiCase
+}
+
+func AdaptCaseWithDecisionsDto(c models.Case) APICaseWithDecisions {
+	return APICaseWithDecisions{
+		APICase:   AdaptCaseDto(c),
+		Decisions: make([]APIDecision, len(c.Decisions)),
+	}
 }
 
 type CreateCaseBody struct {

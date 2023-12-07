@@ -76,7 +76,7 @@ func (api *API) handleGetCase(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, dto.AdaptCaseDto(c))
+	ctx.JSON(http.StatusOK, dto.AdaptCaseWithDecisionsDto(c))
 }
 
 func (api *API) handlePostCase(ctx *gin.Context) {
@@ -110,7 +110,7 @@ func (api *API) handlePostCase(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusCreated, gin.H{
-		"case": dto.AdaptCaseDto(c),
+		"case": dto.AdaptCaseWithDecisionsDto(c),
 	})
 }
 
@@ -136,16 +136,16 @@ func (api *API) handlePatchCase(ctx *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
 	c, err := usecase.UpdateCase(ctx, userId, models.UpdateCaseAttributes{
-		Id:          caseInput.Id,
-		Name:        data.Name,
-		Status:      models.CaseStatus(data.Status),
+		Id:     caseInput.Id,
+		Name:   data.Name,
+		Status: models.CaseStatus(data.Status),
 	})
 
 	if presentError(ctx.Writer, ctx.Request, err) {
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{
-		"case": dto.AdaptCaseDto(c),
+		"case": dto.AdaptCaseWithDecisionsDto(c),
 	})
 }
 
@@ -175,7 +175,7 @@ func (api *API) handlePostCaseDecisions(ctx *gin.Context) {
 	if presentError(ctx.Writer, ctx.Request, err) {
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{"case": dto.AdaptCaseDto(c)})
+	ctx.JSON(http.StatusOK, gin.H{"case": dto.AdaptCaseWithDecisionsDto(c)})
 }
 
 func (api *API) handlePostCaseComment(ctx *gin.Context) {
@@ -208,7 +208,7 @@ func (api *API) handlePostCaseComment(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{
-		"case": dto.AdaptCaseDto(c),
+		"case": dto.AdaptCaseWithDecisionsDto(c),
 	})
 }
 
@@ -241,7 +241,7 @@ func (api *API) handlePostCaseTag(ctx *gin.Context) {
 	if presentError(ctx.Writer, ctx.Request, err) {
 		return
 	}
-	ctx.JSON(http.StatusCreated, gin.H{"case": dto.AdaptCaseDto(c)})
+	ctx.JSON(http.StatusCreated, gin.H{"case": dto.AdaptCaseWithDecisionsDto(c)})
 }
 
 type CaseTagInput struct {
@@ -268,5 +268,5 @@ func (api *API) handleDeleteCaseTag(ctx *gin.Context) {
 	if presentError(ctx.Writer, ctx.Request, err) {
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{"case": dto.AdaptCaseDto(c)})
+	ctx.JSON(http.StatusOK, gin.H{"case": dto.AdaptCaseWithDecisionsDto(c)})
 }
