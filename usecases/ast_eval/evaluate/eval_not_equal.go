@@ -2,6 +2,7 @@ package evaluate
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/checkmarble/marble-backend/models/ast"
 )
@@ -28,7 +29,7 @@ func (f NotEqual) Evaluate(arguments ast.Arguments) (any, []error) {
 	}
 
 	if left, right, errs := adaptLeftAndRight(leftAny, rightAny, promoteArgumentToFloat64); len(errs) == 0 {
-		return MakeEvaluateResult(left != right)
+		return MakeEvaluateResult(math.Abs(left-right) > floatEqualityThreshold)
 	}
 
 	if left, right, errs := adaptLeftAndRight(leftAny, rightAny, adaptArgumentToTime); len(errs) == 0 {
