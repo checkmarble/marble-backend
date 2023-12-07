@@ -2,11 +2,14 @@ package evaluate
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/checkmarble/marble-backend/models/ast"
 )
 
 type Equal struct{}
+
+const floatEqualityThreshold = 1e-8
 
 func (f Equal) Evaluate(arguments ast.Arguments) (any, []error) {
 
@@ -28,7 +31,7 @@ func (f Equal) Evaluate(arguments ast.Arguments) (any, []error) {
 	}
 
 	if left, right, errs := adaptLeftAndRight(leftAny, rightAny, promoteArgumentToFloat64); len(errs) == 0 {
-		return MakeEvaluateResult(left == right)
+		return MakeEvaluateResult(math.Abs(left-right) < floatEqualityThreshold)
 	}
 
 	if left, right, errs := adaptLeftAndRight(leftAny, rightAny, adaptArgumentToTime); len(errs) == 0 {

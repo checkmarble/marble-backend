@@ -47,6 +47,18 @@ func TestNotEqual_Evaluate_int(t *testing.T) {
 			want:   nil,
 			errors: []error{fmt.Errorf("all arguments must be string, boolean, time, int or float")},
 		},
+		{
+			name:   "Close floats",
+			args:   []any{0.3, 0.2 + 0.1},
+			want:   false,
+			errors: []error{},
+		},
+		{
+			name:   "'Regularly' close floats",
+			args:   []any{0.3, 0.300001},
+			want:   true,
+			errors: []error{},
+		},
 	}
 
 	for _, tt := range tests {

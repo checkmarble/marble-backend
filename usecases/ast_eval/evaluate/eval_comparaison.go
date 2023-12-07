@@ -39,13 +39,13 @@ func (f Comparison) Evaluate(arguments ast.Arguments) (any, []error) {
 func (f Comparison) comparisonFloatFunction(l, r float64) (bool, error) {
 	switch f.Function {
 	case ast.FUNC_GREATER:
-		return l > r, nil
+		return l > r+floatEqualityThreshold, nil
 	case ast.FUNC_GREATER_OR_EQUAL:
-		return l >= r, nil
+		return l >= r-floatEqualityThreshold, nil
 	case ast.FUNC_LESS:
-		return l < r, nil
+		return l < r-floatEqualityThreshold, nil
 	case ast.FUNC_LESS_OR_EQUAL:
-		return l <= r, nil
+		return l <= r+floatEqualityThreshold, nil
 	default:
 		return false, fmt.Errorf("Comparison does not support %s function", f.Function.DebugString())
 	}
