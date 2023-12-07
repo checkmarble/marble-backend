@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 
 	"github.com/Masterminds/squirrel"
@@ -46,11 +45,11 @@ func (repository *MarbleDbRepository) ListScenarioIterations(
 
 func selectScenarioIterations() squirrel.SelectBuilder {
 	return NewQueryBuilder().
-		Select(pure_utils.WithPrefix(dbmodels.SelectScenarioIterationColumn, "si")...).
+		Select(columnsNames("si", dbmodels.SelectScenarioIterationColumn)...).
 		Column(
 			fmt.Sprintf(
 				"array_agg(row(%s) ORDER BY sir.created_at) FILTER (WHERE sir.id IS NOT NULL) as rules",
-				strings.Join(pure_utils.WithPrefix(dbmodels.SelectRulesColumn, "sir"), ","),
+				strings.Join(columnsNames("sir", dbmodels.SelectRulesColumn), ","),
 			),
 		).
 		From(dbmodels.TABLE_SCENARIO_ITERATIONS + " AS si").
