@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 
 	"github.com/Masterminds/squirrel"
@@ -39,11 +38,11 @@ func (repo *MarbleDbRepository) ListInboxes(tx Transaction, organizationId strin
 
 func selectInboxesJoinUsers() squirrel.SelectBuilder {
 	return NewQueryBuilder().
-		Select(pure_utils.WithPrefix(dbmodels.SelectInboxColumn, "i")...).
+		Select(columnsNames("i", dbmodels.SelectInboxColumn)...).
 		Column(
 			fmt.Sprintf(
 				"array_agg(row(%s) ORDER BY u.created_at) FILTER (WHERE u.id IS NOT NULL) as inbox_users",
-				strings.Join(pure_utils.WithPrefix(dbmodels.SelectInboxUserColumn, "u"), ","),
+				strings.Join(columnsNames("u", dbmodels.SelectInboxUserColumn), ","),
 			),
 		).
 		From(dbmodels.TABLE_INBOXES + " AS i").
@@ -73,7 +72,7 @@ func (repo *MarbleDbRepository) CreateInbox(tx Transaction, input models.CreateI
 
 func selectInboxUsers() squirrel.SelectBuilder {
 	return NewQueryBuilder().
-		Select(pure_utils.WithPrefix(dbmodels.SelectInboxUserWithOrgIdColumn, "u")...).
+		Select(columnsNames("u", dbmodels.SelectInboxUserWithOrgIdColumn)...).
 		Column("i.organization_id").
 		From(dbmodels.TABLE_INBOX_USERS + " AS u").
 		Join(dbmodels.TABLE_INBOXES + " AS i ON i.id = inbox_id")

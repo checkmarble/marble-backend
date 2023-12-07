@@ -6,7 +6,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/jackc/pgx/v5"
 )
@@ -270,17 +269,17 @@ func selectCasesWithJoinedFields(query squirrel.SelectBuilder, p models.Paginati
 	}
 
 	q := squirrel.StatementBuilder.
-		Select(pure_utils.WithPrefix(dbmodels.SelectCaseColumn, "c")...).
+		Select(columnsNames("c", dbmodels.SelectCaseColumn)...).
 		Column(
 			fmt.Sprintf(
 				"array_agg(row(%s) ORDER BY cc.created_at) FILTER (WHERE cc.id IS NOT NULL) as contributors",
-				strings.Join(pure_utils.WithPrefix(dbmodels.SelectCaseContributorColumn, "cc"), ","),
+				strings.Join(columnsNames("cc", dbmodels.SelectCaseContributorColumn), ","),
 			),
 		).
 		Column(
 			fmt.Sprintf(
 				"array_agg(row(%s) ORDER BY ct.created_at) FILTER (WHERE ct.id IS NOT NULL) as tags",
-				strings.Join(pure_utils.WithPrefix(dbmodels.SelectCaseTagColumn, "ct"), ","),
+				strings.Join(columnsNames("ct", dbmodels.SelectCaseTagColumn), ","),
 			),
 		).
 		Column(fmt.Sprintf("(SELECT count(distinct d.id) FROM %s AS d WHERE d.case_id = c.id) AS decisions_count", dbmodels.TABLE_DECISIONS))
