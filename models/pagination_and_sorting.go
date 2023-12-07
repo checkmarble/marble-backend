@@ -33,3 +33,10 @@ func ValidatePagination(pagination PaginationAndSorting) error {
 	}
 	return nil
 }
+
+func ReverseOrder(order SortingOrder) SortingOrder {
+	if order == "DESC" {
+		return "ASC"
+	}
+	return "DESC"
+}

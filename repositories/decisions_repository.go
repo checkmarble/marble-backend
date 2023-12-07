@@ -97,22 +97,28 @@ func (repo *DecisionRepositoryImpl) DecisionsByCaseId(transaction Transaction, c
 	return decisions, err
 }
 
-func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(transaction Transaction, organizationId string, paginationAndSorting models.PaginationAndSorting, filters models.DecisionFilters) ([]models.DecisionWithRank, error) {
+func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(
+	transaction Transaction,
+	organizationId string,
+	pagination models.PaginationAndSorting,
+	filters models.DecisionFilters,
+) ([]models.DecisionWithRank, error) {
 	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(transaction)
-	sorting := string(paginationAndSorting.Sorting)
-	order := string(paginationAndSorting.Order)
 
-	subquery := selectDecisionsWithRank(sorting, order).Where(squirrel.Eq{"d.org_id": organizationId})
+	subquery := selectDecisionsWithRank(pagination).
+		Where(squirrel.Eq{"d.org_id": organizationId})
 	subquery = applyDecisionFilters(subquery, filters)
 
-	query := NewQueryBuilder().Select(decisionsWithRankColumns()...).
+	paginatedQuery := NewQueryBuilder().
+		Select(decisionsWithRankColumns()...).
 		FromSelect(subquery, "s").
-		Limit(uint64(paginationAndSorting.Limit))
+		Limit(uint64(pagination.Limit))
 
-	query, err := applyDecisionPagination(query, paginationAndSorting)
+	paginatedQuery, err := applyDecisionPagination(paginatedQuery, pagination)
 	if err != nil {
 		return []models.DecisionWithRank{}, err
 	}
+	query := selectDecisionsWithJoinedFields(paginatedQuery, pagination)
 
 	return SqlToListOfRow(tx, query, func(row pgx.CollectableRow) (models.DecisionWithRank, error) {
 		db, err := pgx.RowToStructByPos[dbmodels.DBPaginatedDecisions](row)
@@ -160,79 +166,82 @@ func applyDecisionFilters(query squirrel.SelectBuilder, filters models.DecisionF
 	return query
 }
 
-func selectDecisionsWithRank(sorting, order string) squirrel.SelectBuilder {
-	var columns []string
-	columns = append(columns, columnsNamesWithAlias("d", dbmodels.SelectDecisionColumn)...)
-	columns = append(columns, columnsNamesWithAlias("c", dbmodels.SelectCaseColumn)...)
+func selectDecisionsWithRank(p models.PaginationAndSorting) squirrel.SelectBuilder {
+	orderCondition := fmt.Sprintf("d.%s %s, d.id %s", p.Sorting, p.Order, p.Order)
 
-	orderCondition := fmt.Sprintf("d.%s %s, d.id", sorting, order)
-
-	return NewQueryBuilder().
-		Select(columns...).
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectDecisionColumn...).
 		Column(fmt.Sprintf("RANK() OVER (ORDER BY %s) as rank_number", orderCondition)).
 		Column("COUNT(*) OVER() AS total").
-		From(fmt.Sprintf("%s AS d", dbmodels.TABLE_DECISIONS)).
-		LeftJoin(fmt.Sprintf("%s AS c ON c.id = d.case_id", dbmodels.TABLE_CASES)).
-		OrderBy(orderCondition)
+		From(fmt.Sprintf("%s AS d", dbmodels.TABLE_DECISIONS))
+
+	// When fetching the previous page, we want the "last xx decisions", so we need to reverse the order of the query,
+	// select the xx items, then reverse again to put them back in the right order
+	if p.OffsetId != "" && p.Previous {
+		query = query.OrderBy(fmt.Sprintf("d.%s %s, d.id %s", p.Sorting, models.ReverseOrder(p.Order), models.ReverseOrder(p.Order)))
+	} else {
+		query = query.OrderBy(orderCondition)
+	}
+
+	return query
 }
 
-func decisionsWithRankColumns() []string {
-	var columnAlias []string
-	columnAlias = append(columnAlias, columnsAlias("d", dbmodels.SelectDecisionColumn)...)
-	columnAlias = append(columnAlias, columnsAlias("c", dbmodels.SelectCaseColumn)...)
+func decisionsWithRankColumns() (columns []string) {
+	columns = append(columns, dbmodels.SelectDecisionColumn...)
 
-	columns := columnsNames("s", columnAlias)
+	columns = columnsNames("s", columns)
 	columns = append(columns, "rank_number", "total")
 	return columns
 }
 
-func applyDecisionPagination(query squirrel.SelectBuilder, pagination models.PaginationAndSorting) (squirrel.SelectBuilder, error) {
-	if pagination.OffsetId == "" {
+func applyDecisionPagination(query squirrel.SelectBuilder, p models.PaginationAndSorting) (squirrel.SelectBuilder, error) {
+	if p.OffsetId == "" {
 		return query, nil
 	}
 
-	sorting := string(pagination.Sorting)
-	order := string(pagination.Order)
-
-	offsetSubquery, args, err := squirrel.Select("id", "org_id", sorting).From(dbmodels.TABLE_DECISIONS).Where(squirrel.Eq{"id": pagination.OffsetId}).ToSql()
+	offsetSubquery, args, err := squirrel.
+		Select("id", "org_id", string(p.Sorting)).
+		From(dbmodels.TABLE_DECISIONS).
+		Where(squirrel.Eq{"id": p.OffsetId}).
+		ToSql()
 	if err != nil {
 		return query, err
 	}
-	query = query.Join(fmt.Sprintf("(%s) AS cursorRecord ON cursorRecord.org_id = s.d_org_id", offsetSubquery), args...)
+	query = query.Join(fmt.Sprintf("(%s) AS cursorRecord ON cursorRecord.org_id = s.org_id", offsetSubquery), args...)
 
-	if pagination.Previous {
-		if order == "DESC" {
-			query = query.Where(fmt.Sprintf("s.d_%s > cursorRecord.%s OR (s.d_%s = cursorRecord.%s AND s.d_id < cursorRecord.id)", sorting, sorting, sorting, sorting))
+	queryConditionBefore := fmt.Sprintf("s.%s < cursorRecord.%s OR (s.%s = cursorRecord.%s AND s.id < cursorRecord.id)", p.Sorting, p.Sorting, p.Sorting, p.Sorting)
+	queryConditionAfter := fmt.Sprintf("s.%s > cursorRecord.%s OR (s.%s = cursorRecord.%s AND s.id > cursorRecord.id)", p.Sorting, p.Sorting, p.Sorting, p.Sorting)
+
+	if p.Next {
+		if p.Order == "DESC" {
+			query = query.Where(queryConditionBefore)
 		} else {
-			query = query.Where(fmt.Sprintf("s.d_%s < cursorRecord.%s OR (s.d_%s = cursorRecord.%s AND s.d_id < cursorRecord.id)", sorting, sorting, sorting, sorting))
+			query = query.Where(queryConditionAfter)
 		}
-		query = selectDecisionsInReverseOrder(query, sorting, order)
 	}
-
-	if pagination.Next {
-		if order == "DESC" {
-			query = query.Where(fmt.Sprintf("s.d_%s < cursorRecord.%s OR (s.d_%s = cursorRecord.%s AND s.d_id > cursorRecord.id)", sorting, sorting, sorting, sorting))
+	if p.Previous {
+		if p.Order == "DESC" {
+			query = query.Where(queryConditionAfter)
 		} else {
-			query = query.Where(fmt.Sprintf("s.d_%s > cursorRecord.%s OR (s.d_%s = cursorRecord.%s AND s.d_id > cursorRecord.id)", sorting, sorting, sorting, sorting))
+			query = query.Where(queryConditionBefore)
 		}
 	}
 
 	return query, nil
 }
 
-// When fetching the previous page, we want the "last xx decisions", so wee need to reverse the order of the query,
-// select the xx items, then reverse again to put them back in the right order
-func selectDecisionsInReverseOrder(query squirrel.SelectBuilder, sorting, order string) squirrel.SelectBuilder {
-	var reverseOrder string
-	if order == "DESC" {
-		reverseOrder = "ASC"
-	} else {
-		reverseOrder = "DESC"
-	}
-	query = query.OrderBy(fmt.Sprintf("s.d_%s %s, s.d_id DESC", sorting, reverseOrder))
-	query = NewQueryBuilder().Select("*").FromSelect(query, "inv").OrderBy(fmt.Sprintf("d_%s %s, d_id", sorting, order))
-
-	return query
+func selectDecisionsWithJoinedFields(query squirrel.SelectBuilder, p models.PaginationAndSorting) squirrel.SelectBuilder {
+	var columns []string
+	columns = append(columns, columnsNames("d", dbmodels.SelectDecisionColumn)...)
+	columns = append(columns, columnsNames("c", dbmodels.SelectCaseColumn)...)
+	return squirrel.
+		Select(columns...).
+		Column("rank_number").
+		Column("total").
+		FromSelect(query, "d").
+		LeftJoin(fmt.Sprintf("%s AS c ON c.id = d.case_id", dbmodels.TABLE_CASES)).
+		OrderBy(fmt.Sprintf("d.%s %s, d.id %s", p.Sorting, p.Order, p.Order)).
+		PlaceholderFormat(squirrel.Dollar)
 }
 
 func (repo *DecisionRepositoryImpl) DecisionsOfScheduledExecution(scheduledExecutionId string) (<-chan models.Decision, <-chan error) {

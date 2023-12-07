@@ -11,13 +11,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func reverseOrder(order models.SortingOrder) models.SortingOrder {
-	if order == "DESC" {
-		return "ASC"
-	}
-	return "DESC"
-}
-
 func (repo *MarbleDbRepository) ListOrganizationCases(
 	tx Transaction,
 	filters models.CaseFilters,
@@ -166,7 +159,7 @@ func casesCoreQueryWithRank(pagination models.PaginationAndSorting) squirrel.Sel
 	// When fetching the previous page, we want the "last xx cases", so we need to reverse the order of the query,
 	// select the xx items, then reverse again to put them back in the right order
 	if pagination.OffsetId != "" && pagination.Previous {
-		query = query.OrderBy(fmt.Sprintf("c.%s %s, c.id %s", pagination.Sorting, reverseOrder(pagination.Order), reverseOrder(pagination.Order)))
+		query = query.OrderBy(fmt.Sprintf("c.%s %s, c.id %s", pagination.Sorting, models.ReverseOrder(pagination.Order), models.ReverseOrder(pagination.Order)))
 	} else {
 		query = query.OrderBy(orderCondition)
 	}
