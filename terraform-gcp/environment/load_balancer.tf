@@ -88,7 +88,6 @@ resource "google_compute_target_https_proxy" "default" {
 
   url_map = google_compute_url_map.default.id
   ssl_certificates = [
-    "projects/marble-prod-1/global/sslCertificates/marble-load-balancer-v2",
     google_compute_managed_ssl_certificate.default.id,
   ]
 }
