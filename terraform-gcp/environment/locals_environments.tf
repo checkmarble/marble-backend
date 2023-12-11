@@ -46,6 +46,10 @@ locals {
         image = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:latest"
         url   = "https://api.staging.checkmarble.com"
       }
+
+      frontend_domain = "app.staging.checkmarble.com"
+      backend_domain  = "api.staging.checkmarble.com"
+
     }
 
 
@@ -88,6 +92,9 @@ locals {
         image = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:v0.0.28"
         url   = "https://api.checkmarble.com"
       }
+
+      frontend_domain = "app.checkmarble.com"
+      backend_domain  = "api.checkmarble.com"
     }
 
   }
