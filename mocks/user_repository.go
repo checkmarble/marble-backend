@@ -15,6 +15,11 @@ func (r *UserRepository) CreateUser(tx repositories.Transaction, createUser mode
 	return args.Get(0).(models.UserId), args.Error(1)
 }
 
+func (r *UserRepository) UpdateUser(tx repositories.Transaction, updateUser models.UpdateUser) error {
+	args := r.Called(tx, updateUser)
+	return args.Error(0)
+}
+
 func (r *UserRepository) DeleteUser(tx repositories.Transaction, userID models.UserId) error {
 	args := r.Called(tx, userID)
 	return args.Error(0)

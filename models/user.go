@@ -19,3 +19,11 @@ type CreateUser struct {
 	FirstName      string
 	LastName       string
 }
+
+type UpdateUser struct {
+	UserId    UserId
+	Email     string
+	Role      Role
+	FirstName string
+	LastName  string
+}

@@ -59,6 +59,7 @@ func (api *API) routes(auth *Authentication) {
 	router.GET("/users", api.handleGetAllUsers)
 	router.POST("/users", api.handlePostUser)
 	router.GET("/users/:user_id", api.handleGetUser)
+	router.PATCH("/users/:user_id", api.handlePatchUser)
 	router.DELETE("/users/:user_id", api.handleDeleteUser)
 
 	router.GET("/organizations", api.handleGetOrganizations)

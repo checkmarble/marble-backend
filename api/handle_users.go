@@ -54,6 +54,31 @@ func (api *API) handleGetUser(c *gin.Context) {
 	})
 }
 
+func (api *API) handlePatchUser(c *gin.Context) {
+	userID := c.Param("user_id")
+
+	var data dto.UpdateUser
+	if err := c.ShouldBindJSON(&data); err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
+	usecase := api.UsecasesWithCreds(c.Request).NewUserUseCase()
+	createdUser, err := usecase.UpdateUser(c, models.UpdateUser{
+		UserId:    models.UserId(userID),
+		Email:     data.Email,
+		Role:      models.RoleFromString(data.Role),
+		FirstName: data.FirstName,
+		LastName:  data.LastName,
+	})
+	if presentError(c.Writer, c.Request, err) {
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"user": dto.AdaptUserDto(createdUser),
+	})
+}
+
 func (api *API) handleDeleteUser(c *gin.Context) {
 	userID := c.Param("user_id")
 

@@ -25,4 +25,7 @@ const (
 	AnalyticsTagCreated                 AnalyticsEvent = "Created a Tag"
 	AnalyticsTagUpdated                 AnalyticsEvent = "Updated a Tag"
 	AnalyticsTagDeleted                 AnalyticsEvent = "Deleted a Tag"
+	AnalyticsUserCreated                AnalyticsEvent = "Created a User"
+	AnalyticsUserUpdated                AnalyticsEvent = "Updated a User"
+	AnalyticsUserDeleted                AnalyticsEvent = "Deleted a User"
 )
