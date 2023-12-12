@@ -89,6 +89,16 @@ func (api *API) handleGetInboxUserById(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"inbox_user": dto.AdaptInboxUserDto(inboxUser)})
 }
 
+func (api *API) handleListAllInboxUsers(ctx *gin.Context) {
+	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
+	inboxUsers, err := usecase.ListAllInboxUsers()
+	if presentError(ctx.Writer, ctx.Request, err) {
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"inbox_users": utils.Map(inboxUsers, dto.AdaptInboxUserDto)})
+}
+
 func (api *API) handleListInboxUsers(ctx *gin.Context) {
 	var listInboxUserInput GetInboxIdUriInput
 	if err := ctx.ShouldBindUri(&listInboxUserInput); err != nil {

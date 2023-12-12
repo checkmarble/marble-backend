@@ -8,7 +8,6 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/cockroachdb/errors"
 )
 
 func (repo *MarbleDbRepository) GetInboxById(tx Transaction, inboxId string) (models.Inbox, error) {
@@ -95,10 +94,9 @@ func (repo *MarbleDbRepository) ListInboxUsers(tx Transaction, filters models.In
 
 	if filters.InboxId != "" {
 		query = query.Where(squirrel.Eq{"u.inbox_id": filters.InboxId})
-	} else if filters.UserId != "" {
+	}
+	if filters.UserId != "" {
 		query = query.Where(squirrel.Eq{"u.user_id": filters.UserId})
-	} else {
-		return []models.InboxUser{}, errors.New("must define either inbox_id or user_id as a filter in repositories/ListInboxUsers")
 	}
 
 	return SqlToListOfModels(pgTx,

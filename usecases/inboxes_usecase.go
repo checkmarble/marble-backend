@@ -110,6 +110,14 @@ func (usecase *InboxUsecase) ListInboxUsers(ctx context.Context, inboxId string)
 	return inboxUsers, nil
 }
 
+func (usecase *InboxUsecase) ListAllInboxUsers() ([]models.InboxUser, error) {
+	if usecase.credentials.Role != models.ADMIN && usecase.credentials.Role != models.MARBLE_ADMIN {
+		return []models.InboxUser{}, errors.New("only admins can list all inbox users")
+	}
+
+	return usecase.inboxRepository.ListInboxUsers(nil, models.InboxUserFilterInput{})
+}
+
 func (usecase *InboxUsecase) CreateInboxUser(ctx context.Context, input models.CreateInboxUserInput) (models.InboxUser, error) {
 	return transaction.TransactionReturnValue(
 		usecase.transactionFactory,
