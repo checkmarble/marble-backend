@@ -10,7 +10,7 @@ type CaseTag struct {
 	DeletedAt *time.Time
 }
 
-type CreateCaseTagAttributes struct {
+type CreateCaseTagsAttributes struct {
 	CaseId string
-	TagId  string
+	TagIds []string
 }

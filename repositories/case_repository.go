@@ -94,35 +94,34 @@ func (repo *MarbleDbRepository) UpdateCase(tx Transaction, updateCaseAttributes 
 	return err
 }
 
-func (repo *MarbleDbRepository) CreateCaseTag(tx Transaction, newCaseTagId string, createCaseTagAttributes models.CreateCaseTagAttributes) error {
+func (repo *MarbleDbRepository) CreateCaseTag(tx Transaction, caseId, tagId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	_, err := pgTx.ExecBuilder(
 		NewQueryBuilder().Insert(dbmodels.TABLE_CASE_TAGS).
 			Columns(
-				"id",
 				"case_id",
 				"tag_id",
 				"deleted_at",
 			).
 			Values(
-				newCaseTagId,
-				createCaseTagAttributes.CaseId,
-				createCaseTagAttributes.TagId,
+				caseId,
+				tagId,
 				nil,
 			),
 	)
 	return err
 }
 
-func (repo *MarbleDbRepository) GetCaseTagById(tx Transaction, caseTagId string) (models.CaseTag, error) {
+func (repo *MarbleDbRepository) ListCaseTagsByCaseId(tx Transaction, caseId string) ([]models.CaseTag, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
-	return SqlToModel(pgTx,
+	return SqlToListOfModels(pgTx,
 		NewQueryBuilder().
 			Select(dbmodels.SelectCaseTagColumn...).
 			From(dbmodels.TABLE_CASE_TAGS).
-			Where(squirrel.Eq{"id": caseTagId}),
+			Where(squirrel.Eq{"case_id": caseId}).
+			Where(squirrel.Expr("deleted_at IS NULL")),
 		dbmodels.AdaptCaseTag,
 	)
 }

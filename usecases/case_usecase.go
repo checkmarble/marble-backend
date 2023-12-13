@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -12,6 +13,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/transaction"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
@@ -27,8 +29,8 @@ type CaseUseCaseRepository interface {
 	GetCaseContributor(tx repositories.Transaction, caseId, userId string) (*models.CaseContributor, error)
 	CreateCaseContributor(tx repositories.Transaction, caseId, userId string) error
 	GetTagById(tx repositories.Transaction, tagId string) (models.Tag, error)
-	CreateCaseTag(tx repositories.Transaction, newCaseTagId string, createCaseTagAttributes models.CreateCaseTagAttributes) error
-	GetCaseTagById(tx repositories.Transaction, caseTagId string) (models.CaseTag, error)
+	CreateCaseTag(tx repositories.Transaction, caseId, tagId string) error
+	ListCaseTagsByCaseId(tx repositories.Transaction, caseId string) ([]models.CaseTag, error)
 	SoftDeleteCaseTag(tx repositories.Transaction, tagId string) error
 }
 
@@ -303,7 +305,7 @@ func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string
 	return updatedCase, nil
 }
 
-func (usecase *CaseUseCase) CreateCaseTag(ctx context.Context, userId string, caseTagAttributes models.CreateCaseTagAttributes) (models.Case, error) {
+func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string, caseTagAttributes models.CreateCaseTagsAttributes) (models.Case, error) {
 	updatedCase, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
 		c, err := usecase.repository.GetCaseById(tx, caseTagAttributes.CaseId)
 		if err != nil {
@@ -312,33 +314,37 @@ func (usecase *CaseUseCase) CreateCaseTag(ctx context.Context, userId string, ca
 		if err := usecase.enforceSecurity.UpdateCase(c); err != nil {
 			return models.Case{}, err
 		}
-		tag, err := usecase.repository.GetTagById(tx, caseTagAttributes.TagId)
+
+		previousCaseTags, err := usecase.repository.ListCaseTagsByCaseId(tx, caseTagAttributes.CaseId)
 		if err != nil {
 			return models.Case{}, err
 		}
-		if err := usecase.enforceSecurity.ReadOrganization(tag.OrganizationId); err != nil {
-			return models.Case{}, err
-		}
+		previousTagIds := utils.Map(previousCaseTags, func(caseTag models.CaseTag) string { return caseTag.TagId })
 
-		if tag.DeletedAt != nil {
-			return models.Case{}, fmt.Errorf("tag %s is deleted %w", tag.Id, models.BadParameterError)
-		}
-
-		newCaseTagId := uuid.NewString()
-		if err = usecase.repository.CreateCaseTag(tx, newCaseTagId, caseTagAttributes); err != nil {
-			if repositories.IsUniqueViolationError(err) {
-				return models.Case{}, fmt.Errorf("tag %s already added to case %s %w", tag.Id, c.Id, models.DuplicateValueError)
+		for _, tagId := range caseTagAttributes.TagIds {
+			if !slices.Contains(previousTagIds, tagId) {
+				if err := usecase.createCaseTag(tx, caseTagAttributes.CaseId, tagId); err != nil {
+					return models.Case{}, err
+				}
 			}
-			return models.Case{}, err
 		}
 
-		resourceType := models.CaseTagResourceType
+		for _, caseTag := range previousCaseTags {
+			if !slices.Contains(caseTagAttributes.TagIds, caseTag.TagId) {
+				if err = usecase.repository.SoftDeleteCaseTag(tx, caseTag.Id); err != nil {
+					return models.Case{}, err
+				}
+			}
+		}
+
+		previousValue := strings.Join(previousTagIds, ",")
+		newValue := strings.Join(caseTagAttributes.TagIds, ",")
 		err = usecase.repository.CreateCaseEvent(tx, models.CreateCaseEventAttributes{
-			CaseId:       caseTagAttributes.CaseId,
-			UserId:       userId,
-			EventType:    models.CaseTagAdded,
-			ResourceId:   &newCaseTagId,
-			ResourceType: &resourceType,
+			CaseId:        caseTagAttributes.CaseId,
+			UserId:        userId,
+			EventType:     models.CaseTagsUpdated,
+			PreviousValue: &previousValue,
+			NewValue:      &newValue,
 		})
 		if err != nil {
 			return models.Case{}, err
@@ -354,52 +360,28 @@ func (usecase *CaseUseCase) CreateCaseTag(ctx context.Context, userId string, ca
 		return models.Case{}, err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsCaseTagAdded, map[string]interface{}{"case_id": updatedCase.Id})
+	analytics.TrackEvent(ctx, models.AnalyticsCaseTagsUpdated, map[string]interface{}{"case_id": updatedCase.Id})
 	return updatedCase, nil
 }
 
-func (usecase *CaseUseCase) DeleteCaseTag(ctx context.Context, userId, caseTagId string) (models.Case, error) {
-	updatedCase, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
-		caseTag, err := usecase.repository.GetCaseTagById(tx, caseTagId)
-		if err != nil {
-			return models.Case{}, err
-		}
-		c, err := usecase.repository.GetCaseById(tx, caseTag.CaseId)
-		if err != nil {
-			return models.Case{}, err
-		}
-		if err := usecase.enforceSecurity.UpdateCase(c); err != nil {
-			return models.Case{}, err
-		}
-
-		if err = usecase.repository.SoftDeleteCaseTag(tx, caseTagId); err != nil {
-			return models.Case{}, err
-		}
-
-		resourceType := models.CaseTagResourceType
-		err = usecase.repository.CreateCaseEvent(tx, models.CreateCaseEventAttributes{
-			CaseId:       caseTag.CaseId,
-			UserId:       userId,
-			EventType:    models.CaseTagDeleted,
-			ResourceId:   &caseTagId,
-			ResourceType: &resourceType,
-		})
-		if err != nil {
-			return models.Case{}, err
-		}
-		if err := usecase.createCaseContributorIfNotExist(tx, caseTag.CaseId, userId); err != nil {
-			return models.Case{}, err
-		}
-
-		return usecase.getCaseWithDetails(tx, caseTag.CaseId)
-	})
-
+func (usecase *CaseUseCase) createCaseTag(tx repositories.Transaction, caseId, tagId string) error {
+	tag, err := usecase.repository.GetTagById(tx, tagId)
 	if err != nil {
-		return models.Case{}, err
+		return err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsCaseTagDeleted, map[string]interface{}{"case_id": updatedCase.Id})
-	return updatedCase, nil
+	if tag.DeletedAt != nil {
+		return fmt.Errorf("tag %s is deleted %w", tag.Id, models.BadParameterError)
+	}
+
+	if err = usecase.repository.CreateCaseTag(tx, caseId, tagId); err != nil {
+		if repositories.IsUniqueViolationError(err) {
+			return fmt.Errorf("tag %s already added to case %s %w", tag.Id, caseId, models.DuplicateValueError)
+		}
+		return err
+	}
+
+	return nil
 }
 
 func (usecase *CaseUseCase) getCaseWithDetails(tx repositories.Transaction, caseId string) (models.Case, error) {
