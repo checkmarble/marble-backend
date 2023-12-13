@@ -19,8 +19,16 @@ func (api *API) handleListTags(ctx *gin.Context) {
 		return
 	}
 
+	withCaseCountFilter := struct {
+		WithCaseCount bool `form:"withCaseCount"`
+	}{}
+	if err := ctx.ShouldBind(&withCaseCountFilter); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		return
+	}
+
 	usecase := api.UsecasesWithCreds(ctx.Request).NewTagUseCase()
-	tags, err := usecase.ListAllTags(ctx, organizationId)
+	tags, err := usecase.ListAllTags(ctx, organizationId, withCaseCountFilter.WithCaseCount)
 
 	if presentError(ctx.Writer, ctx.Request, err) {
 		return

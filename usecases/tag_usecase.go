@@ -14,7 +14,7 @@ import (
 )
 
 type TagUseCaseRepository interface {
-	ListOrganizationTags(tx repositories.Transaction, organizationId string) ([]models.Tag, error)
+	ListOrganizationTags(tx repositories.Transaction, organizationId string, withCaseCount bool) ([]models.Tag, error)
 	CreateTag(tx repositories.Transaction, attributes models.CreateTagAttributes, newTagId string) error
 	UpdateTag(tx repositories.Transaction, attributes models.UpdateTagAttributes) error
 	GetTagById(tx repositories.Transaction, tagId string) (models.Tag, error)
@@ -30,8 +30,8 @@ type TagUseCase struct {
 	inboxReader        inboxes.InboxReader
 }
 
-func (usecase *TagUseCase) ListAllTags(ctx context.Context, organizationId string) ([]models.Tag, error) {
-	return usecase.repository.ListOrganizationTags(nil, organizationId)
+func (usecase *TagUseCase) ListAllTags(ctx context.Context, organizationId string, withCaseCount bool) ([]models.Tag, error) {
+	return usecase.repository.ListOrganizationTags(nil, organizationId, withCaseCount)
 }
 
 func (usecase *TagUseCase) CreateTag(ctx context.Context, attributes models.CreateTagAttributes) (models.Tag, error) {

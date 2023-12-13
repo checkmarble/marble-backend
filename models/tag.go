@@ -10,6 +10,7 @@ type Tag struct {
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	DeletedAt      *time.Time
+	CasesCount     *int
 }
 
 type CreateTagAttributes struct {

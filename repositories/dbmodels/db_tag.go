@@ -18,6 +18,11 @@ type DBTag struct {
 	DeletedAt      pgtype.Timestamp `db:"deleted_at"`
 }
 
+type DBTagWithCasesCount struct {
+	DBTag
+	CasesCount int `db:"cases_count"`
+}
+
 const TABLE_TAGS = "tags"
 
 var SelectTagColumn = utils.ColumnList[DBTag]()
@@ -31,4 +36,13 @@ func AdaptTag(db DBTag) (models.Tag, error) {
 		CreatedAt:      db.CreatedAt,
 		UpdatedAt:      db.UpdatedAt,
 	}, nil
+}
+
+func AdaptTagWithCasesCount(db DBTagWithCasesCount) (models.Tag, error) {
+	tag, err := AdaptTag(db.DBTag)
+	if err != nil {
+		return models.Tag{}, err
+	}
+	tag.CasesCount = &db.CasesCount
+	return tag, nil
 }
