@@ -19,6 +19,7 @@ type TagUseCaseRepository interface {
 	UpdateTag(tx repositories.Transaction, attributes models.UpdateTagAttributes) error
 	GetTagById(tx repositories.Transaction, tagId string) (models.Tag, error)
 	SoftDeleteTag(tx repositories.Transaction, tagId string) error
+	ListCaseTagsByTagId(tx repositories.Transaction, tagId string) ([]models.CaseTag, error)
 
 	GetInboxById(tx repositories.Transaction, inboxId string) (models.Inbox, error)
 }
@@ -88,6 +89,13 @@ func (usecase *TagUseCase) DeleteTag(ctx context.Context, organizationId, tagId 
 	err := transaction.TransactionFactory.Transaction(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
 		if _, err := usecase.repository.GetTagById(tx, tagId); err != nil {
 			return err
+		}
+		caseTags, err := usecase.repository.ListCaseTagsByTagId(tx, tagId)
+		if err != nil {
+			return err
+		}
+		if len(caseTags) > 0 {
+			return errors.Wrap(models.ForbiddenError, "Cannot delete tag that is still in use")
 		}
 		if err := usecase.repository.SoftDeleteTag(tx, tagId); err != nil {
 			return err
