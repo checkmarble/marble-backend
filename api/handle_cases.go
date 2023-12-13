@@ -136,9 +136,10 @@ func (api *API) handlePatchCase(ctx *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
 	c, err := usecase.UpdateCase(ctx, userId, models.UpdateCaseAttributes{
-		Id:     caseInput.Id,
-		Name:   data.Name,
-		Status: models.CaseStatus(data.Status),
+		Id:      caseInput.Id,
+		Name:    data.Name,
+		Status:  models.CaseStatus(data.Status),
+		InboxId: data.InboxId,
 	})
 
 	if presentError(ctx.Writer, ctx.Request, err) {

@@ -190,6 +190,12 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string, updat
 		if err != nil {
 			return models.Case{}, err
 		}
+		if updateCaseAttributes.InboxId != "" {
+			// access check on the case's new requested inbox
+			if _, err := usecase.inboxReader.GetInboxById(ctx, updateCaseAttributes.InboxId); err != nil {
+				return models.Case{}, errors.Wrap(err, fmt.Sprintf("User does not have access the new inbox %s", updateCaseAttributes.InboxId))
+			}
+		}
 		if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
 			return models.Case{}, err
 		}
