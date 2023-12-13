@@ -313,3 +313,7 @@ func selectCasesWithJoinedFields(query squirrel.SelectBuilder, p models.Paginati
 		PlaceholderFormat(squirrel.Dollar)
 
 }
+
+func (repo *MarbleDbRepository) CreateDbCaseFile(tx Transaction, createCaseFileAttributes models.CreateDbCaseFileInput) error {
+	return nil
+}

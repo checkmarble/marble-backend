@@ -78,3 +78,7 @@ func (repo *GcsRepositoryFake) OpenStream(ctx context.Context, bucketName, fileN
 func (repo *GcsRepositoryFake) UpdateFileMetadata(ctx context.Context, bucketName, fileName string, metadata map[string]string) error {
 	return nil
 }
+
+func (repo *GcsRepositoryFake) DeleteFile(ctx context.Context, bucketName, fileName string) error {
+	return nil
+}
