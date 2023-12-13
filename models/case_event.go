@@ -25,8 +25,8 @@ const (
 	DecisionAdded     CaseEventType = "decision_added"
 	CaseCommentAdded  CaseEventType = "comment_added"
 	CaseNameUpdated   CaseEventType = "name_updated"
-	CaseTagsUpdated    CaseEventType = "tags_updated"
-	UnknownEvent      CaseEventType = "unknown_event"
+	CaseTagsUpdated   CaseEventType = "tags_updated"
+	CaseFileAdded     CaseEventType = "file_added"
 )
 
 type CaseEventResourceType string
@@ -34,7 +34,7 @@ type CaseEventResourceType string
 const (
 	DecisionResourceType CaseEventResourceType = "decision"
 	CaseTagResourceType  CaseEventResourceType = "case_tag"
-	UnknownResourceType  CaseEventResourceType = "unknown"
+	CaseFileResourceType CaseEventResourceType = "case_file"
 )
 
 type CreateCaseEventAttributes struct {

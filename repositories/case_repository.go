@@ -315,5 +315,22 @@ func selectCasesWithJoinedFields(query squirrel.SelectBuilder, p models.Paginati
 }
 
 func (repo *MarbleDbRepository) CreateDbCaseFile(tx Transaction, createCaseFileAttributes models.CreateDbCaseFileInput) error {
-	return nil
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	_, err := pgTx.ExecBuilder(
+		NewQueryBuilder().Insert(dbmodels.TABLE_CASE_FILES).
+			Columns(
+				"id",
+				"case_id",
+				"bucket_name",
+				"file_reference",
+			).
+			Values(
+				createCaseFileAttributes.Id,
+				createCaseFileAttributes.CaseId,
+				createCaseFileAttributes.BucketName,
+				createCaseFileAttributes.FileReference,
+			),
+	)
+	return err
 }
