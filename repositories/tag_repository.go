@@ -1,19 +1,26 @@
 package repositories
 
 import (
+	"fmt"
+
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
-func (repo *MarbleDbRepository) ListOrganizationTags(tx Transaction, organizationId string) ([]models.Tag, error) {
+func (repo *MarbleDbRepository) ListOrganizationTags(tx Transaction, organizationId string, withCaseCount bool) ([]models.Tag, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 	query := NewQueryBuilder().
 		Select(dbmodels.SelectTagColumn...).
-		From(dbmodels.TABLE_TAGS).
+		From(fmt.Sprintf("%s AS t", dbmodels.TABLE_TAGS)).
 		Where(squirrel.Eq{"org_id": organizationId}).
 		Where(squirrel.Eq{"deleted_at": nil}).
 		OrderBy("created_at DESC")
+
+	if withCaseCount {
+		query = query.Column("(SELECT count(distinct ct.case_id) FROM " + dbmodels.TABLE_CASE_TAGS + " AS ct WHERE ct.tag_id = t.id) AS cases_count")
+		return SqlToListOfModels(pgTx, query, dbmodels.AdaptTagWithCasesCount)
+	}
 
 	return SqlToListOfModels(pgTx, query, dbmodels.AdaptTag)
 }

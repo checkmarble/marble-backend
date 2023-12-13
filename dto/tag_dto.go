@@ -12,6 +12,7 @@ type APITag struct {
 	Color          string    `json:"color"`
 	OrganizationId string    `json:"organization_id"`
 	CreatedAt      time.Time `json:"created_at"`
+	CasesCount     *int      `json:"cases_count"`
 }
 
 func AdaptTagDto(t models.Tag) APITag {
@@ -21,6 +22,7 @@ func AdaptTagDto(t models.Tag) APITag {
 		Color:          t.Color,
 		OrganizationId: t.OrganizationId,
 		CreatedAt:      t.CreatedAt,
+		CasesCount:     t.CasesCount,
 	}
 }
 
