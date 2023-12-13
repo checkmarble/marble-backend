@@ -540,10 +540,23 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 			return models.Case{}, err
 		}
 
+		newCaseFileId := uuid.NewString()
 		if err := usecase.repository.CreateDbCaseFile(
 			tx,
-			models.CreateDbCaseFileInput{CaseId: input.CaseId, BucketName: usecase.GcsCaseManagerBucket, FileReference: newFileReference, Id: uuid.NewString()},
+			models.CreateDbCaseFileInput{CaseId: input.CaseId, BucketName: usecase.GcsCaseManagerBucket, FileReference: newFileReference, Id: newCaseFileId},
 		); err != nil {
+			return models.Case{}, err
+		}
+
+		resourceType := models.CaseFileResourceType
+		err = usecase.repository.CreateCaseEvent(tx, models.CreateCaseEventAttributes{
+			CaseId:       input.CaseId,
+			UserId:       userId,
+			EventType:    models.CaseFileAdded,
+			ResourceType: &resourceType,
+			ResourceId:   &newCaseFileId,
+		})
+		if err != nil {
 			return models.Case{}, err
 		}
 
