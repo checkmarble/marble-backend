@@ -64,13 +64,9 @@ func (usecase *CaseUseCase) ListCases(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) ([]models.CaseWithRank, error) {
-			inboxes, err := usecase.inboxReader.ListInboxes(ctx, tx)
+			availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx)
 			if err != nil {
-				return []models.CaseWithRank{}, errors.Wrap(err, "failed to list available inboxes in usecase")
-			}
-			availableInboxIds := make([]string, len(inboxes))
-			for i, inbox := range inboxes {
-				availableInboxIds[i] = inbox.Id
+				return []models.CaseWithRank{}, err
 			}
 			if len(filters.InboxIds) > 0 {
 				for _, inboxId := range filters.InboxIds {
@@ -97,7 +93,7 @@ func (usecase *CaseUseCase) ListCases(
 				return []models.CaseWithRank{}, err
 			}
 			for _, c := range cases {
-				if err := usecase.enforceSecurity.ReadCase(c.Case, availableInboxIds); err != nil {
+				if err := usecase.enforceSecurity.ReadOrUpdateCase(c.Case, availableInboxIds); err != nil {
 					return []models.CaseWithRank{}, err
 				}
 			}
@@ -106,20 +102,29 @@ func (usecase *CaseUseCase) ListCases(
 	)
 }
 
+func (usecase *CaseUseCase) getAvailableInboxIds(ctx context.Context, tx repositories.Transaction) ([]string, error) {
+	inboxes, err := usecase.inboxReader.ListInboxes(ctx, tx)
+	if err != nil {
+		return []string{}, errors.Wrap(err, "failed to list available inboxes in usecase")
+	}
+	availableInboxIds := make([]string, len(inboxes))
+	for i, inbox := range inboxes {
+		availableInboxIds[i] = inbox.Id
+	}
+	return availableInboxIds, nil
+}
+
 func (usecase *CaseUseCase) GetCase(ctx context.Context, caseId string) (models.Case, error) {
 	c, err := usecase.getCaseWithDetails(nil, caseId)
 	if err != nil {
 		return models.Case{}, err
 	}
 
-	// passing c.InboxId directly here because the security is already checked below in GetInboxById
-	if err := usecase.enforceSecurity.ReadCase(c, []string{c.InboxId}); err != nil {
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, nil)
+	if err != nil {
 		return models.Case{}, err
 	}
-
-	// access check on the case's inbox
-	_, err = usecase.inboxReader.GetInboxById(ctx, c.InboxId)
-	if err != nil {
+	if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
 		return models.Case{}, err
 	}
 
@@ -127,19 +132,20 @@ func (usecase *CaseUseCase) GetCase(ctx context.Context, caseId string) (models.
 }
 
 func (usecase *CaseUseCase) CreateCase(ctx context.Context, userId string, createCaseAttributes models.CreateCaseAttributes) (models.Case, error) {
-	if err := usecase.enforceSecurity.CreateCase(); err != nil {
-		return models.Case{}, err
-	}
-	if _, err := usecase.inboxReader.GetInboxById(ctx, createCaseAttributes.InboxId); err != nil {
-		return models.Case{}, err
-	}
-
 	c, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
+		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx)
+		if err != nil {
+			return models.Case{}, err
+		}
+		if err := usecase.enforceSecurity.CreateCase(createCaseAttributes, availableInboxIds); err != nil {
+			return models.Case{}, err
+		}
+
 		if err := usecase.validateDecisions(tx, createCaseAttributes.DecisionIds); err != nil {
 			return models.Case{}, err
 		}
 		newCaseId := uuid.NewString()
-		err := usecase.repository.CreateCase(tx, createCaseAttributes, newCaseId)
+		err = usecase.repository.CreateCase(tx, createCaseAttributes, newCaseId)
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -179,11 +185,12 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string, updat
 		if err != nil {
 			return models.Case{}, err
 		}
-		if _, err := usecase.inboxReader.GetInboxById(ctx, c.InboxId); err != nil {
+
+		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, nil)
+		if err != nil {
 			return models.Case{}, err
 		}
-
-		if err := usecase.enforceSecurity.UpdateCase(c); err != nil {
+		if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
 			return models.Case{}, err
 		}
 
@@ -243,12 +250,17 @@ func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, case
 		if err != nil {
 			return models.Case{}, err
 		}
-		if err := usecase.enforceSecurity.UpdateCase(c); err != nil {
+		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, nil)
+		if err != nil {
+			return models.Case{}, err
+		}
+		if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
 			return models.Case{}, err
 		}
 		if err := usecase.validateDecisions(tx, decisionIds); err != nil {
 			return models.Case{}, err
 		}
+
 		err = usecase.updateDecisionsWithEvents(tx, caseId, userId, decisionIds)
 		if err != nil {
 			return models.Case{}, err
@@ -274,13 +286,15 @@ func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string
 		if err != nil {
 			return models.Case{}, err
 		}
-		if _, err := usecase.inboxReader.GetInboxById(ctx, c.InboxId); err != nil {
+
+		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, nil)
+		if err != nil {
+			return models.Case{}, err
+		}
+		if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
 			return models.Case{}, err
 		}
 
-		if err := usecase.enforceSecurity.CreateCaseComment(c); err != nil {
-			return models.Case{}, err
-		}
 		if err := usecase.createCaseContributorIfNotExist(tx, caseCommentAttributes.Id, userId); err != nil {
 			return models.Case{}, err
 		}
@@ -311,7 +325,12 @@ func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string, c
 		if err != nil {
 			return models.Case{}, err
 		}
-		if err := usecase.enforceSecurity.UpdateCase(c); err != nil {
+
+		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, nil)
+		if err != nil {
+			return models.Case{}, err
+		}
+		if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
 			return models.Case{}, err
 		}
 
