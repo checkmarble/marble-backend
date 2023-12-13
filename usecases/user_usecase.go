@@ -1,25 +1,27 @@
 package usecases
 
 import (
+	"context"
 	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/analytics"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/transaction"
 )
 
 type UserUseCase struct {
-	enforceAdminSecurity security.EnforceSecurityAdmin
-	transactionFactory   transaction.TransactionFactory
-	userRepository       repositories.UserRepository
+	enforceUserSecurity security.EnforceSecurityUser
+	transactionFactory  transaction.TransactionFactory
+	userRepository      repositories.UserRepository
 }
 
 func (usecase *UserUseCase) AddUser(createUser models.CreateUser) (models.User, error) {
-	if err := usecase.enforceAdminSecurity.CreateUser(); err != nil {
+	if err := usecase.enforceUserSecurity.CreateUser(createUser.OrganizationId); err != nil {
 		return models.User{}, err
 	}
-	return transaction.TransactionReturnValue(
+	createdUser, err := transaction.TransactionReturnValue(
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) (models.User, error) {
@@ -36,22 +38,65 @@ func (usecase *UserUseCase) AddUser(createUser models.CreateUser) (models.User, 
 			return usecase.userRepository.UserByID(tx, createdUserUuid)
 		},
 	)
+	if err != nil {
+		return models.User{}, err
+	}
+	analytics.TrackEvent(context.Background(), models.AnalyticsUserCreated, map[string]interface{}{"user_id": createdUser.UserId})
+
+	return createdUser, nil
+}
+
+func (usecase *UserUseCase) UpdateUser(ctx context.Context, updateUser models.UpdateUser) (models.User, error) {
+	updatedUser, err := transaction.TransactionReturnValue(
+		usecase.transactionFactory,
+		models.DATABASE_MARBLE_SCHEMA,
+		func(tx repositories.Transaction) (models.User, error) {
+			user, err := usecase.userRepository.UserByID(tx, updateUser.UserId)
+			if err != nil {
+				return models.User{}, err
+			}
+			if err := usecase.enforceUserSecurity.UpdateUser(user); err != nil {
+				return models.User{}, err
+			}
+			if err := usecase.userRepository.UpdateUser(tx, updateUser); err != nil {
+				return models.User{}, err
+			}
+			return usecase.userRepository.UserByID(tx, updateUser.UserId)
+		},
+	)
+
+	if err != nil {
+		return models.User{}, err
+	}
+	analytics.TrackEvent(ctx, models.AnalyticsUserUpdated, map[string]interface{}{"user_id": updatedUser.UserId})
+
+	return updatedUser, nil
 }
 
 func (usecase *UserUseCase) DeleteUser(userID string) error {
-	if err := usecase.enforceAdminSecurity.DeleteUser(); err != nil {
-		return err
-	}
-	return usecase.transactionFactory.Transaction(
+	err := usecase.transactionFactory.Transaction(
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) error {
+			user, err := usecase.userRepository.UserByID(tx, models.UserId(userID))
+			if err != nil {
+				return err
+			}
+			if err := usecase.enforceUserSecurity.DeleteUser(user); err != nil {
+				return err
+			}
 			return usecase.userRepository.DeleteUser(tx, models.UserId(userID))
 		},
 	)
+	if err != nil {
+		return err
+	}
+	analytics.TrackEvent(context.Background(), models.AnalyticsUserDeleted, map[string]interface{}{"user_id": userID})
+
+	return nil
 }
 
 func (usecase *UserUseCase) GetAllUsers() ([]models.User, error) {
-	if err := usecase.enforceAdminSecurity.ListUser(); err != nil {
+	if err := usecase.enforceUserSecurity.ListUser(); err != nil {
 		return []models.User{}, err
 	}
 	return transaction.TransactionReturnValue(
@@ -64,7 +109,7 @@ func (usecase *UserUseCase) GetAllUsers() ([]models.User, error) {
 }
 
 func (usecase *UserUseCase) GetUser(userID string) (models.User, error) {
-	if err := usecase.enforceAdminSecurity.ListUser(); err != nil {
+	if err := usecase.enforceUserSecurity.ListUser(); err != nil {
 		return models.User{}, err
 	}
 	return transaction.TransactionReturnValue(

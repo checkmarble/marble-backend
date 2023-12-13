@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 
@@ -9,6 +10,7 @@ import (
 
 type UserRepository interface {
 	CreateUser(tx Transaction, createUser models.CreateUser) (models.UserId, error)
+	UpdateUser(tx Transaction, updateUser models.UpdateUser) error
 	DeleteUser(tx Transaction, userID models.UserId) error
 	DeleteUsersOfOrganization(tx Transaction, organizationId string) error
 	UserByID(tx Transaction, userId models.UserId) (models.User, error)
@@ -56,6 +58,28 @@ func (repo *UserRepositoryPostgresql) CreateUser(tx Transaction, createUser mode
 			),
 	)
 	return userId, err
+}
+
+func (repo *UserRepositoryPostgresql) UpdateUser(tx Transaction, updateUser models.UpdateUser) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	query := NewQueryBuilder().Update(dbmodels.TABLE_USERS).Where(squirrel.Eq{"id": updateUser.UserId})
+
+	if updateUser.Email != "" {
+		query = query.Set("email", updateUser.Email)
+	}
+	if updateUser.Role != models.Role(0) {
+		query = query.Set("role", int(updateUser.Role))
+	}
+	if updateUser.FirstName != "" {
+		query = query.Set("first_name", updateUser.FirstName)
+	}
+	if updateUser.LastName != "" {
+		query = query.Set("last_name", updateUser.LastName)
+	}
+
+	_, err := pgTx.ExecBuilder(query)
+	return err
 }
 
 func (repo *UserRepositoryPostgresql) DeleteUser(tx Transaction, userID models.UserId) error {

@@ -60,8 +60,8 @@ func (usecases *UsecasesWithCreds) NewEnforceIngestionSecurity() security.Enforc
 	}
 }
 
-func (usecases *UsecasesWithCreds) NewEnforceAdminSecurity() security.EnforceSecurityAdmin {
-	return &security.EnforceSecurityAdminImpl{
+func (usecases *UsecasesWithCreds) NewEnforceUserSecurity() security.EnforceSecurityUser {
+	return &security.EnforceSecurityUserImpl{
 		EnforceSecurity: usecases.NewEnforceSecurity(),
 		Credentials:     usecases.Credentials,
 	}
@@ -230,9 +230,9 @@ func (usecases *UsecasesWithCreds) NewScheduledExecutionUsecase() ScheduledExecu
 
 func (usecases *UsecasesWithCreds) NewUserUseCase() UserUseCase {
 	return UserUseCase{
-		enforceAdminSecurity: usecases.NewEnforceAdminSecurity(),
-		transactionFactory:   &usecases.Repositories.TransactionFactoryPosgresql,
-		userRepository:       usecases.Repositories.UserRepository,
+		enforceUserSecurity: usecases.NewEnforceUserSecurity(),
+		transactionFactory:  &usecases.Repositories.TransactionFactoryPosgresql,
+		userRepository:      usecases.Repositories.UserRepository,
 	}
 }
 
