@@ -69,7 +69,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 
 	table, ok := dataModel.Tables[models.TableName(objectType)]
 	if !ok {
-		return models.UploadLog{}, fmt.Errorf("Table %s not found on data model", objectType)
+		return models.UploadLog{}, fmt.Errorf("table %s not found on data model", objectType)
 	}
 
 	headers, err := fileReader.Read()
@@ -100,12 +100,12 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 			break
 		}
 		if err != nil {
-			return models.UploadLog{}, fmt.Errorf("Error found at line %d in CSV (%w)", processedLinesCount+1, models.BadParameterError)
+			return models.UploadLog{}, fmt.Errorf("error found at line %d in CSV (%w)", processedLinesCount+1, models.BadParameterError)
 		}
 
 		_, err = parseStringValuesToMap(headers, row, table)
 		if err != nil {
-			return models.UploadLog{}, fmt.Errorf("Error found at line %d in CSV: %w (%w)", processedLinesCount+1, err, models.BadParameterError)
+			return models.UploadLog{}, fmt.Errorf("error found at line %d in CSV: %w (%w)", processedLinesCount+1, err, models.BadParameterError)
 		}
 
 		if err := csvWriter.WriteAll([][]string{row}); err != nil {

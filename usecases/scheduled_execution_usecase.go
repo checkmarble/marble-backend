@@ -121,7 +121,7 @@ func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(input models.
 		return err
 	}
 	if len(pendingExecutions) > 0 {
-		return fmt.Errorf("A pending execution already exists for this scenario %w", models.BadParameterError)
+		return fmt.Errorf("a pending execution already exists for this scenario %w", models.BadParameterError)
 	}
 
 	id := utils.NewPrimaryKey(input.OrganizationId)

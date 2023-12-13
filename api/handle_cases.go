@@ -2,8 +2,10 @@ package api
 
 import (
 	"fmt"
+	"mime/multipart"
 	"net/http"
 
+	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -243,4 +245,31 @@ func (api *API) handlePostCaseTags(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusCreated, gin.H{"case": dto.AdaptCaseWithDecisionsDto(c)})
+}
+
+type FileForm struct {
+	File *multipart.FileHeader `form:"file" binding:"required"`
+}
+
+func (api *API) handlePostCaseFile(c *gin.Context) {
+	var caseInput CaseInput
+	if err := c.ShouldBindUri(&caseInput); presentError(c.Writer, c.Request, errors.Wrap(models.BadParameterError, err.Error())) {
+		return
+	}
+
+	var form FileForm
+	if err := c.ShouldBind(&form); presentError(c.Writer, c.Request, errors.Wrap(models.BadParameterError, err.Error())) {
+		return
+	}
+
+	usecase := api.UsecasesWithCreds(c.Request).NewCaseUseCase()
+	cs, err := usecase.CreateCaseFile(c, models.CreateCaseFileInput{
+		CaseId: caseInput.Id,
+		File:   form.File,
+	})
+	if presentError(c.Writer, c.Request, err) {
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"case": dto.AdaptCaseWithDecisionsDto(cs)})
 }
