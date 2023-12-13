@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"fmt"
+	"io"
 	"slices"
 	"strings"
 
@@ -23,23 +24,30 @@ type CaseUseCaseRepository interface {
 	GetCaseById(tx repositories.Transaction, caseId string) (models.Case, error)
 	CreateCase(tx repositories.Transaction, createCaseAttributes models.CreateCaseAttributes, newCaseId string) error
 	UpdateCase(tx repositories.Transaction, updateCaseAttributes models.UpdateCaseAttributes) error
+
 	CreateCaseEvent(tx repositories.Transaction, createCaseEventAttributes models.CreateCaseEventAttributes) error
 	BatchCreateCaseEvents(tx repositories.Transaction, createCaseEventAttributes []models.CreateCaseEventAttributes) error
 	ListCaseEvents(tx repositories.Transaction, caseId string) ([]models.CaseEvent, error)
+
 	GetCaseContributor(tx repositories.Transaction, caseId, userId string) (*models.CaseContributor, error)
 	CreateCaseContributor(tx repositories.Transaction, caseId, userId string) error
+
 	GetTagById(tx repositories.Transaction, tagId string) (models.Tag, error)
 	CreateCaseTag(tx repositories.Transaction, caseId, tagId string) error
 	ListCaseTagsByCaseId(tx repositories.Transaction, caseId string) ([]models.CaseTag, error)
 	SoftDeleteCaseTag(tx repositories.Transaction, tagId string) error
+
+	CreateDbCaseFile(tx repositories.Transaction, createCaseFileInput models.CreateDbCaseFileInput) error
 }
 
 type CaseUseCase struct {
-	enforceSecurity    security.EnforceSecurityCase
-	transactionFactory transaction.TransactionFactory
-	repository         CaseUseCaseRepository
-	decisionRepository repositories.DecisionRepository
-	inboxReader        inboxes.InboxReader
+	enforceSecurity      security.EnforceSecurityCase
+	transactionFactory   transaction.TransactionFactory
+	repository           CaseUseCaseRepository
+	decisionRepository   repositories.DecisionRepository
+	inboxReader          inboxes.InboxReader
+	gcsRepository        repositories.GcsRepository
+	GcsCaseManagerBucket string
 }
 
 func (usecase *CaseUseCase) ListCases(
@@ -489,4 +497,70 @@ func trackCaseUpdatedEvents(ctx context.Context, caseId string, updateCaseAttrib
 	if updateCaseAttributes.Name != "" {
 		analytics.TrackEvent(ctx, models.AnalyticsCaseUpdated, map[string]interface{}{"case_id": caseId})
 	}
+}
+
+func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.CreateCaseFileInput) (models.Case, error) {
+	logger := utils.LoggerFromContext(ctx)
+	creds, found := utils.CredentialsFromCtx(ctx)
+	if !found {
+		return models.Case{}, errors.New("no credentials in context")
+	}
+	userId := string(creds.ActorIdentity.UserId)
+
+	newFileReference := uuid.NewString()
+	writer := usecase.gcsRepository.OpenStream(ctx, usecase.GcsCaseManagerBucket, newFileReference)
+	file, err := input.File.Open()
+	if err != nil {
+		return models.Case{}, errors.Wrap(models.BadParameterError, err.Error())
+	}
+	if _, err := io.Copy(writer, file); err != nil {
+		return models.Case{}, err
+	}
+	if err := writer.Close(); err != nil {
+		return models.Case{}, err
+	}
+	if err := usecase.gcsRepository.UpdateFileMetadata(ctx, usecase.GcsCaseManagerBucket, newFileReference, map[string]string{"processed": "true"}); err != nil {
+		return models.Case{}, err
+	}
+
+	updatedCase, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
+		c, err := usecase.repository.GetCaseById(tx, input.CaseId)
+		if err != nil {
+			return models.Case{}, err
+		}
+		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx)
+		if err != nil {
+			return models.Case{}, err
+		}
+		if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
+			return models.Case{}, err
+		}
+
+		if err := usecase.createCaseContributorIfNotExist(tx, input.CaseId, userId); err != nil {
+			return models.Case{}, err
+		}
+
+		if err := usecase.repository.CreateDbCaseFile(
+			tx,
+			models.CreateDbCaseFileInput{CaseId: input.CaseId, BucketName: usecase.GcsCaseManagerBucket, FileReference: newFileReference, Id: uuid.NewString()},
+		); err != nil {
+			return models.Case{}, err
+		}
+
+		return usecase.getCaseWithDetails(tx, input.CaseId)
+	})
+
+	if err != nil {
+		if deleteErr := usecase.gcsRepository.DeleteFile(ctx, usecase.GcsCaseManagerBucket, newFileReference); deleteErr != nil {
+			logger.WarnContext(ctx, fmt.Sprintf("failed to clean up GCS object %s after case file creation failed", newFileReference),
+				"bucket", usecase.GcsCaseManagerBucket,
+				"file_reference", newFileReference,
+				"error", deleteErr)
+			return models.Case{}, errors.Wrap(err, deleteErr.Error())
+		}
+		return models.Case{}, err
+	}
+
+	analytics.TrackEvent(ctx, models.AnalyticsCaseFileCreated, map[string]interface{}{"case_id": updatedCase.Id})
+	return updatedCase, nil
 }

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/cockroachdb/errors"
 
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/iterator"
@@ -18,6 +19,7 @@ type GcsRepository interface {
 	GetFile(ctx context.Context, bucketName, fileName string, logger *slog.Logger) (models.GCSFile, error)
 	MoveFile(ctx context.Context, bucketName, source, destination string) error
 	OpenStream(ctx context.Context, bucketName, fileName string) io.WriteCloser
+	DeleteFile(ctx context.Context, bucketName, fileName string) error
 	UpdateFileMetadata(ctx context.Context, bucketName, fileName string, metadata map[string]string) error
 }
 
@@ -146,6 +148,22 @@ func (repository *GcsRepositoryImpl) UpdateFileMetadata(ctx context.Context, buc
 
 	if _, err := object.Update(ctx, objectAttrsToUpdate); err != nil {
 		return fmt.Errorf("ObjectHandle(%q).Update: %w", fileName, err)
+	}
+
+	return nil
+}
+
+func (repository *GcsRepositoryImpl) DeleteFile(ctx context.Context, bucketName, fileName string) error {
+	gcsClient := repository.getGCSClient(ctx)
+	defer gcsClient.Close()
+
+	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
+
+	object := gcsClient.Bucket(bucketName).Object(fileName)
+
+	if err := object.Delete(ctx); err != nil {
+		return errors.Wrap(err, fmt.Sprintf("Error deleting file: %s", fileName))
 	}
 
 	return nil

@@ -76,6 +76,7 @@ func (api *API) routes(auth *Authentication) {
 	router.POST("/cases/:case_id/decisions", api.handlePostCaseDecisions)
 	router.POST("/cases/:case_id/comments", api.handlePostCaseComment)
 	router.POST("/cases/:case_id/case_tags", api.handlePostCaseTags)
+	router.POST("/cases/:case_id/files", api.handlePostCaseFile)
 
 	router.GET("/inboxes/:inbox_id", api.handleGetInboxById)
 	router.GET("/inboxes", api.handleListInboxes)

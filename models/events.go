@@ -20,6 +20,7 @@ const (
 	AnalyticsCaseStatusUpdated          AnalyticsEvent = "Updated Case Status"
 	AnalyticsCaseCommentCreated         AnalyticsEvent = "Created a Case Comment"
 	AnalyticsCaseTagsUpdated            AnalyticsEvent = "Updated Case Tags on Case"
+	AnalyticsCaseFileCreated            AnalyticsEvent = "Created a Case File"
 	AnalyticsDecisionsAdded             AnalyticsEvent = "Added Decisions to Case"
 	AnalyticsTagCreated                 AnalyticsEvent = "Created a Tag"
 	AnalyticsTagUpdated                 AnalyticsEvent = "Updated a Tag"
