@@ -25,5 +25,5 @@ func NewAPICaseTag(t models.CaseTag) APICaseTag {
 }
 
 type CreateCaseTagBody struct {
-	TagId string `json:"tag_id" binding:"required"`
+	TagIds []string `json:"tag_ids" binding:"required"`
 }

@@ -31,14 +31,14 @@ func (r *CaseRepository) UpdateCase(tx repositories.Transaction, caseId string, 
 	return args.Error(0)
 }
 
-func (r *CaseRepository) CreateCaseTag(tx repositories.Transaction, newCaseTagId string, createCaseTagAttributes models.CreateCaseTagAttributes) error {
+func (r *CaseRepository) CreateCaseTag(tx repositories.Transaction, newCaseTagId string, createCaseTagAttributes models.CreateCaseTagsAttributes) error {
 	args := r.Called(tx, newCaseTagId, createCaseTagAttributes)
 	return args.Error(0)
 }
 
-func (r *CaseRepository) GetCaseTagById(tx repositories.Transaction, caseTagId string) (models.CaseTag, error) {
-	args := r.Called(tx, caseTagId)
-	return args.Get(0).(models.CaseTag), args.Error(1)
+func (r *CaseRepository) ListCaseTagsByCaseId(tx repositories.Transaction, caseId string) ([]models.CaseTag, error) {
+	args := r.Called(tx, caseId)
+	return args.Get(0).([]models.CaseTag), args.Error(1)
 }
 
 func (r *CaseRepository) SoftDeleteCaseTag(tx repositories.Transaction, tagId string) error {

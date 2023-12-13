@@ -212,7 +212,7 @@ func (api *API) handlePostCaseComment(ctx *gin.Context) {
 	})
 }
 
-func (api *API) handlePostCaseTag(ctx *gin.Context) {
+func (api *API) handlePostCaseTags(ctx *gin.Context) {
 	creds, found := utils.CredentialsFromCtx(ctx.Request.Context())
 	if !found {
 		presentError(ctx.Writer, ctx.Request, fmt.Errorf("no credentials in context"))
@@ -233,40 +233,13 @@ func (api *API) handlePostCaseTag(ctx *gin.Context) {
 	}
 
 	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
-	c, err := usecase.CreateCaseTag(ctx, userId, models.CreateCaseTagAttributes{
+	c, err := usecase.CreateCaseTags(ctx, userId, models.CreateCaseTagsAttributes{
 		CaseId: caseInput.Id,
-		TagId:  data.TagId,
+		TagIds: data.TagIds,
 	})
 
 	if presentError(ctx.Writer, ctx.Request, err) {
 		return
 	}
 	ctx.JSON(http.StatusCreated, gin.H{"case": dto.AdaptCaseWithDecisionsDto(c)})
-}
-
-type CaseTagInput struct {
-	CaseTagId string `uri:"case_tag_id" binding:"required,uuid"`
-}
-
-func (api *API) handleDeleteCaseTag(ctx *gin.Context) {
-	creds, found := utils.CredentialsFromCtx(ctx.Request.Context())
-	if !found {
-		presentError(ctx.Writer, ctx.Request, fmt.Errorf("no credentials in context"))
-		return
-	}
-	userId := string(creds.ActorIdentity.UserId)
-
-	var caseTagInput CaseTagInput
-	if err := ctx.ShouldBindUri(&caseTagInput); err != nil {
-		ctx.Status(http.StatusBadRequest)
-		return
-	}
-
-	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
-	c, err := usecase.DeleteCaseTag(ctx, userId, caseTagInput.CaseTagId)
-
-	if presentError(ctx.Writer, ctx.Request, err) {
-		return
-	}
-	ctx.JSON(http.StatusOK, gin.H{"case": dto.AdaptCaseWithDecisionsDto(c)})
 }
