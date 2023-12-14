@@ -237,6 +237,12 @@ func (usecases *UsecasesWithCreds) NewUserUseCase() UserUseCase {
 }
 
 func (usecases *UsecasesWithCreds) NewCaseUseCase() CaseUseCase {
+	var gcsRepository repositories.GcsRepository
+	if usecases.Configuration.FakeGcsRepository {
+		gcsRepository = &repositories.GcsRepositoryFake{}
+	} else {
+		gcsRepository = usecases.Repositories.GcsRepository
+	}
 	sec := security.EnforceSecurityInboxes{
 		EnforceSecurity: usecases.NewEnforceSecurity(),
 		Credentials:     usecases.Credentials,
@@ -252,6 +258,8 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() CaseUseCase {
 			InboxRepository:         &usecases.Repositories.MarbleDbRepository,
 			Credentials:             usecases.Credentials,
 		},
+		gcsCaseManagerBucket: usecases.Configuration.GcsCaseManagerBucket,
+		gcsRepository:        gcsRepository,
 	}
 }
 

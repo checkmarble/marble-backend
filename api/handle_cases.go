@@ -137,7 +137,7 @@ func (api *API) handlePatchCase(ctx *gin.Context) {
 	}
 
 	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
-	c, err := usecase.UpdateCase(ctx, userId, models.UpdateCaseAttributes{
+	c, err := usecase.UpdateCase(ctx.Request.Context(), userId, models.UpdateCaseAttributes{
 		Id:      caseInput.Id,
 		Name:    data.Name,
 		Status:  models.CaseStatus(data.Status),
@@ -173,7 +173,7 @@ func (api *API) handlePostCaseDecisions(ctx *gin.Context) {
 	}
 
 	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
-	c, err := usecase.AddDecisionsToCase(ctx, userId, caseInput.Id, data.DecisionIds)
+	c, err := usecase.AddDecisionsToCase(ctx.Request.Context(), userId, caseInput.Id, data.DecisionIds)
 
 	if presentError(ctx.Writer, ctx.Request, err) {
 		return
@@ -236,7 +236,7 @@ func (api *API) handlePostCaseTags(ctx *gin.Context) {
 	}
 
 	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
-	c, err := usecase.CreateCaseTags(ctx, userId, models.CreateCaseTagsAttributes{
+	c, err := usecase.CreateCaseTags(ctx.Request.Context(), userId, models.CreateCaseTagsAttributes{
 		CaseId: caseInput.Id,
 		TagIds: data.TagIds,
 	})
@@ -253,17 +253,19 @@ type FileForm struct {
 
 func (api *API) handlePostCaseFile(c *gin.Context) {
 	var caseInput CaseInput
-	if err := c.ShouldBindUri(&caseInput); presentError(c.Writer, c.Request, errors.Wrap(models.BadParameterError, err.Error())) {
+	if err := c.ShouldBindUri(&caseInput); err != nil {
+		presentError(c.Writer, c.Request, errors.Wrap(models.BadParameterError, err.Error()))
 		return
 	}
 
 	var form FileForm
-	if err := c.ShouldBind(&form); presentError(c.Writer, c.Request, errors.Wrap(models.BadParameterError, err.Error())) {
+	if err := c.ShouldBind(&form); err != nil {
+		presentError(c.Writer, c.Request, errors.Wrap(models.BadParameterError, err.Error()))
 		return
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewCaseUseCase()
-	cs, err := usecase.CreateCaseFile(c, models.CreateCaseFileInput{
+	cs, err := usecase.CreateCaseFile(c.Request.Context(), models.CreateCaseFileInput{
 		CaseId: caseInput.Id,
 		File:   form.File,
 	})
