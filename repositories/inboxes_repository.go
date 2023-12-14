@@ -19,7 +19,7 @@ func (repo *MarbleDbRepository) GetInboxById(tx Transaction, inboxId string) (mo
 	)
 }
 
-func (repo *MarbleDbRepository) ListInboxes(tx Transaction, organizationId string, inboxIds []string) ([]models.Inbox, error) {
+func (repo *MarbleDbRepository) ListInboxes(tx Transaction, organizationId string, inboxIds []string, withCaseCount bool) ([]models.Inbox, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	query := selectInboxesJoinUsers().
@@ -27,6 +27,11 @@ func (repo *MarbleDbRepository) ListInboxes(tx Transaction, organizationId strin
 
 	if len(inboxIds) > 0 {
 		query = query.Where(squirrel.Eq{"i.id": inboxIds})
+	}
+
+	if withCaseCount {
+		query = query.Column("(SELECT count(distinct c.id) FROM " + dbmodels.TABLE_CASES + " AS c WHERE c.inbox_id = i.id) AS cases_count")
+		return SqlToListOfModels(pgTx, query, dbmodels.AdaptInboxWithCasesCount)
 	}
 
 	return SqlToListOfModels(pgTx,

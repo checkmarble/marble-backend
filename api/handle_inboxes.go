@@ -33,8 +33,16 @@ func (api *API) handleGetInboxById(ctx *gin.Context) {
 }
 
 func (api *API) handleListInboxes(ctx *gin.Context) {
+	withCaseCountFilter := struct {
+		WithCaseCount bool `form:"withCaseCount"`
+	}{}
+	if err := ctx.ShouldBind(&withCaseCountFilter); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		return
+	}
+
 	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
-	inboxes, err := usecase.ListInboxes(ctx.Request.Context())
+	inboxes, err := usecase.ListInboxes(ctx.Request.Context(), withCaseCountFilter.WithCaseCount)
 	if presentError(ctx.Writer, ctx.Request, err) {
 		return
 	}

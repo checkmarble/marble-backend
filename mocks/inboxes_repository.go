@@ -11,7 +11,7 @@ type InboxRepository struct {
 	mock.Mock
 }
 
-func (r *InboxRepository) ListInboxes(tx repositories.Transaction, organizationId string, inboxIds []string) ([]models.Inbox, error) {
+func (r *InboxRepository) ListInboxes(tx repositories.Transaction, organizationId string, inboxIds []string, withCaseCount bool) ([]models.Inbox, error) {
 	args := r.Called(tx, organizationId, inboxIds)
 	return args.Get(0).([]models.Inbox), args.Error(1)
 }

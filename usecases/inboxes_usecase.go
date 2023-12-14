@@ -14,7 +14,7 @@ import (
 
 type InboxRepository interface {
 	GetInboxById(tx repositories.Transaction, inboxId string) (models.Inbox, error)
-	ListInboxes(tx repositories.Transaction, organizationId string, inboxIds []string) ([]models.Inbox, error)
+	ListInboxes(tx repositories.Transaction, organizationId string, inboxIds []string, withCaseCount bool) ([]models.Inbox, error)
 	CreateInbox(tx repositories.Transaction, createInboxAttributes models.CreateInboxInput, newInboxId string) error
 	GetInboxUserById(tx repositories.Transaction, inboxUserId string) (models.InboxUser, error)
 	ListInboxUsers(tx repositories.Transaction, filters models.InboxUserFilterInput) ([]models.InboxUser, error)
@@ -42,8 +42,8 @@ func (usecase *InboxUsecase) GetInboxById(ctx context.Context, inboxId string) (
 	return usecase.inboxReader.GetInboxById(ctx, inboxId)
 }
 
-func (usecase *InboxUsecase) ListInboxes(ctx context.Context) ([]models.Inbox, error) {
-	return usecase.inboxReader.ListInboxes(ctx, nil)
+func (usecase *InboxUsecase) ListInboxes(ctx context.Context, withCaseCount bool) ([]models.Inbox, error) {
+	return usecase.inboxReader.ListInboxes(ctx, nil, withCaseCount)
 }
 
 func (usecase *InboxUsecase) CreateInbox(ctx context.Context, input models.CreateInboxInput) (models.Inbox, error) {

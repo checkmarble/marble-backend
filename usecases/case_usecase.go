@@ -114,7 +114,7 @@ func (usecase *CaseUseCase) ListCases(
 }
 
 func (usecase *CaseUseCase) getAvailableInboxIds(ctx context.Context, tx repositories.Transaction) ([]string, error) {
-	inboxes, err := usecase.inboxReader.ListInboxes(ctx, tx)
+	inboxes, err := usecase.inboxReader.ListInboxes(ctx, tx, false)
 	if err != nil {
 		return []string{}, errors.Wrap(err, "failed to list available inboxes in usecase")
 	}
