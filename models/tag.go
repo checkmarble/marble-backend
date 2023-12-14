@@ -21,5 +21,6 @@ type CreateTagAttributes struct {
 
 type UpdateTagAttributes struct {
 	Color string
+	Name  string
 	TagId string
 }

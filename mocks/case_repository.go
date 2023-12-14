@@ -41,6 +41,11 @@ func (r *CaseRepository) ListCaseTagsByCaseId(tx repositories.Transaction, caseI
 	return args.Get(0).([]models.CaseTag), args.Error(1)
 }
 
+func (r *CaseRepository) ListCaseTagsByTagId(tx repositories.Transaction, tagId string) ([]models.CaseTag, error) {
+	args := r.Called(tx, tagId)
+	return args.Get(0).([]models.CaseTag), args.Error(1)
+}
+
 func (r *CaseRepository) SoftDeleteCaseTag(tx repositories.Transaction, tagId string) error {
 	args := r.Called(tx, tagId)
 	return args.Error(0)

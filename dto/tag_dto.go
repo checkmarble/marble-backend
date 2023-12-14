@@ -32,5 +32,6 @@ type CreateTagBody struct {
 }
 
 type UpdateTagBody struct {
+	Name  string `json:"name"`
 	Color string `json:"color" binding:"hexcolor"`
 }

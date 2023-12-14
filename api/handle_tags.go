@@ -102,6 +102,7 @@ func (api *API) handlePatchTag(ctx *gin.Context) {
 	tag, err := usecase.UpdateTag(ctx, organizationId, models.UpdateTagAttributes{
 		TagId: tagInput.TagId,
 		Color: data.Color,
+		Name:  data.Name,
 	})
 
 	if presentError(ctx.Writer, ctx.Request, err) {

@@ -126,6 +126,19 @@ func (repo *MarbleDbRepository) ListCaseTagsByCaseId(tx Transaction, caseId stri
 	)
 }
 
+func (repo *MarbleDbRepository) ListCaseTagsByTagId(tx Transaction, tagId string) ([]models.CaseTag, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	return SqlToListOfModels(pgTx,
+		NewQueryBuilder().
+			Select(dbmodels.SelectCaseTagColumn...).
+			From(dbmodels.TABLE_CASE_TAGS).
+			Where(squirrel.Eq{"tag_id": tagId}).
+			Where(squirrel.Expr("deleted_at IS NULL")),
+		dbmodels.AdaptCaseTag,
+	)
+}
+
 func (repo *MarbleDbRepository) SoftDeleteCaseTag(tx Transaction, tagId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 

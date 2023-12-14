@@ -18,7 +18,7 @@ func (repo *MarbleDbRepository) ListOrganizationTags(tx Transaction, organizatio
 		OrderBy("created_at DESC")
 
 	if withCaseCount {
-		query = query.Column("(SELECT count(distinct ct.case_id) FROM " + dbmodels.TABLE_CASE_TAGS + " AS ct WHERE ct.tag_id = t.id) AS cases_count")
+		query = query.Column("(SELECT count(distinct ct.case_id) FROM " + dbmodels.TABLE_CASE_TAGS + " AS ct WHERE ct.tag_id = t.id AND ct.deleted_at IS NULL) AS cases_count")
 		return SqlToListOfModels(pgTx, query, dbmodels.AdaptTagWithCasesCount)
 	}
 
@@ -53,6 +53,9 @@ func (repo *MarbleDbRepository) UpdateTag(tx Transaction, attributes models.Upda
 
 	if attributes.Color != "" {
 		query = query.Set("color", attributes.Color)
+	}
+	if attributes.Name != "" {
+		query = query.Set("name", attributes.Name)
 	}
 	_, err := pgTx.ExecBuilder(query)
 	return err
