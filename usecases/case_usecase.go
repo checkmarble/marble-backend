@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"slices"
 	"strings"
 
@@ -47,7 +48,7 @@ type CaseUseCase struct {
 	decisionRepository   repositories.DecisionRepository
 	inboxReader          inboxes.InboxReader
 	gcsRepository        repositories.GcsRepository
-	GcsCaseManagerBucket string
+	gcsCaseManagerBucket string
 }
 
 func (usecase *CaseUseCase) ListCases(
@@ -507,8 +508,12 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 	}
 	userId := string(creds.ActorIdentity.UserId)
 
+	// if err := validateFileType(input.File); err != nil {
+	// 	return models.Case{}, err
+	// }
+
 	newFileReference := uuid.NewString()
-	writer := usecase.gcsRepository.OpenStream(ctx, usecase.GcsCaseManagerBucket, newFileReference)
+	writer := usecase.gcsRepository.OpenStream(ctx, usecase.gcsCaseManagerBucket, newFileReference)
 	file, err := input.File.Open()
 	if err != nil {
 		return models.Case{}, errors.Wrap(models.BadParameterError, err.Error())
@@ -519,7 +524,7 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 	if err := writer.Close(); err != nil {
 		return models.Case{}, err
 	}
-	if err := usecase.gcsRepository.UpdateFileMetadata(ctx, usecase.GcsCaseManagerBucket, newFileReference, map[string]string{"processed": "true"}); err != nil {
+	if err := usecase.gcsRepository.UpdateFileMetadata(ctx, usecase.gcsCaseManagerBucket, newFileReference, map[string]string{"processed": "true"}); err != nil {
 		return models.Case{}, err
 	}
 
@@ -543,7 +548,7 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 		newCaseFileId := uuid.NewString()
 		if err := usecase.repository.CreateDbCaseFile(
 			tx,
-			models.CreateDbCaseFileInput{CaseId: input.CaseId, BucketName: usecase.GcsCaseManagerBucket, FileReference: newFileReference, Id: newCaseFileId},
+			models.CreateDbCaseFileInput{CaseId: input.CaseId, BucketName: usecase.gcsCaseManagerBucket, FileReference: newFileReference, Id: newCaseFileId},
 		); err != nil {
 			return models.Case{}, err
 		}
@@ -564,9 +569,9 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 	})
 
 	if err != nil {
-		if deleteErr := usecase.gcsRepository.DeleteFile(ctx, usecase.GcsCaseManagerBucket, newFileReference); deleteErr != nil {
+		if deleteErr := usecase.gcsRepository.DeleteFile(ctx, usecase.gcsCaseManagerBucket, newFileReference); deleteErr != nil {
 			logger.WarnContext(ctx, fmt.Sprintf("failed to clean up GCS object %s after case file creation failed", newFileReference),
-				"bucket", usecase.GcsCaseManagerBucket,
+				"bucket", usecase.gcsCaseManagerBucket,
 				"file_reference", newFileReference,
 				"error", deleteErr)
 			return models.Case{}, errors.Wrap(err, deleteErr.Error())
@@ -576,4 +581,11 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 
 	analytics.TrackEvent(ctx, models.AnalyticsCaseFileCreated, map[string]interface{}{"case_id": updatedCase.Id})
 	return updatedCase, nil
+}
+
+func validateFileType(file *multipart.FileHeader) error {
+	if !strings.HasPrefix(file.Header.Get("Content-Type"), "application/pdf") {
+		return fmt.Errorf("file must be a pdf %w", models.BadParameterError)
+	}
+	return nil
 }
