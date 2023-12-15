@@ -321,14 +321,16 @@ func (repo *MarbleDbRepository) CreateDbCaseFile(tx Transaction, createCaseFileA
 		NewQueryBuilder().Insert(dbmodels.TABLE_CASE_FILES).
 			Columns(
 				"id",
-				"case_id",
 				"bucket_name",
+				"case_id",
+				"file_name",
 				"file_reference",
 			).
 			Values(
 				createCaseFileAttributes.Id,
-				createCaseFileAttributes.CaseId,
 				createCaseFileAttributes.BucketName,
+				createCaseFileAttributes.CaseId,
+				createCaseFileAttributes.FileName,
 				createCaseFileAttributes.FileReference,
 			),
 	)
