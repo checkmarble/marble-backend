@@ -11,6 +11,7 @@ type CaseFile struct {
 	CreatedAt     time.Time
 	BucketName    string
 	FileReference string
+	FileName      string
 }
 
 type CreateCaseFileInput struct {
@@ -19,8 +20,9 @@ type CreateCaseFileInput struct {
 }
 
 type CreateDbCaseFileInput struct {
+	Id            string
 	BucketName    string
 	CaseId        string
+	FileName      string
 	FileReference string
-	Id            string
 }

@@ -508,9 +508,9 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 	}
 	userId := string(creds.ActorIdentity.UserId)
 
-	// if err := validateFileType(input.File); err != nil {
-	// 	return models.Case{}, err
-	// }
+	if err := validateFileType(input.File); err != nil {
+		return models.Case{}, err
+	}
 
 	newFileReference := uuid.NewString()
 	writer := usecase.gcsRepository.OpenStream(ctx, usecase.gcsCaseManagerBucket, newFileReference)
@@ -548,18 +548,25 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 		newCaseFileId := uuid.NewString()
 		if err := usecase.repository.CreateDbCaseFile(
 			tx,
-			models.CreateDbCaseFileInput{CaseId: input.CaseId, BucketName: usecase.gcsCaseManagerBucket, FileReference: newFileReference, Id: newCaseFileId},
+			models.CreateDbCaseFileInput{
+				Id:            newCaseFileId,
+				BucketName:    usecase.gcsCaseManagerBucket,
+				CaseId:        input.CaseId,
+				FileName:      input.File.Filename,
+				FileReference: newFileReference,
+			},
 		); err != nil {
 			return models.Case{}, err
 		}
 
 		resourceType := models.CaseFileResourceType
 		err = usecase.repository.CreateCaseEvent(tx, models.CreateCaseEventAttributes{
-			CaseId:       input.CaseId,
-			UserId:       userId,
-			EventType:    models.CaseFileAdded,
-			ResourceType: &resourceType,
-			ResourceId:   &newCaseFileId,
+			CaseId:         input.CaseId,
+			UserId:         userId,
+			EventType:      models.CaseFileAdded,
+			ResourceType:   &resourceType,
+			ResourceId:     &newCaseFileId,
+			AdditionalNote: &input.File.Filename,
 		})
 		if err != nil {
 			return models.Case{}, err
@@ -584,8 +591,21 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 }
 
 func validateFileType(file *multipart.FileHeader) error {
-	if !strings.HasPrefix(file.Header.Get("Content-Type"), "application/pdf") {
-		return fmt.Errorf("file must be a pdf %w", models.BadParameterError)
+	supportedFileTypes := []string{
+		"text/",
+		"application/vnd.ms-excel",
+		"application/vnd.openxmlformats-officedocument.",
+		"application/msword",
+		"application/zip",
+		"application/pdf",
+		"image/",
 	}
-	return nil
+	errFileType := errors.Wrap(models.BadParameterError, fmt.Sprintf("file type not supported: %s", file.Header.Get("Content-Type")))
+	for _, supportedFileType := range supportedFileTypes {
+		if strings.HasPrefix(file.Header.Get("Content-Type"), supportedFileType) {
+			return nil
+		}
+	}
+
+	return errFileType
 }
