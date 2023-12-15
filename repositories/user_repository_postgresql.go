@@ -86,7 +86,10 @@ func (repo *UserRepositoryPostgresql) DeleteUser(tx Transaction, userID models.U
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
 
 	_, err := pgTx.ExecBuilder(
-		NewQueryBuilder().Delete(dbmodels.TABLE_USERS).Where("id = ?", string(userID)),
+		NewQueryBuilder().
+			Update(dbmodels.TABLE_USERS).
+			Where(squirrel.Eq{"id": userID}).
+			Set("deleted_at", squirrel.Expr("NOW()")),
 	)
 	return err
 }
@@ -108,7 +111,8 @@ func (repo *UserRepositoryPostgresql) UserByID(tx Transaction, userId models.Use
 		NewQueryBuilder().
 			Select(dbmodels.UserFields...).
 			From(dbmodels.TABLE_USERS).
-			Where("id = ?", string(userId)).
+			Where(squirrel.Eq{"id": userId}).
+			Where("deleted_at IS NULL").
 			OrderBy("id"),
 		dbmodels.AdaptUser,
 	)
@@ -124,6 +128,7 @@ func (repo *UserRepositoryPostgresql) UsersOfOrganization(tx Transaction, organi
 			Select(dbmodels.UserFields...).
 			From(dbmodels.TABLE_USERS).
 			Where("organization_id = ?", organizationIDFilter).
+			Where("deleted_at IS NULL").
 			OrderBy("id"),
 		dbmodels.AdaptUser,
 	)
@@ -165,6 +170,7 @@ func (repo *UserRepositoryPostgresql) UserByEmail(tx Transaction, email string) 
 			Select(dbmodels.UserFields...).
 			From(dbmodels.TABLE_USERS).
 			Where("email = ?", email).
+			Where("deleted_at IS NULL").
 			OrderBy("id"),
 		dbmodels.AdaptUser,
 	)

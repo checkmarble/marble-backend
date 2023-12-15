@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type UserId string
 
 type User struct {
@@ -10,6 +12,7 @@ type User struct {
 	OrganizationId string
 	FirstName      string
 	LastName       string
+	DeletedAt      *time.Time
 }
 
 type CreateUser struct {

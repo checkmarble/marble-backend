@@ -7,13 +7,14 @@ import (
 )
 
 type DBUserResult struct {
-	Id             string      `db:"id"`
-	Email          string      `db:"email"`
-	FirebaseUid    string      `db:"firebase_uid"`
-	Role           int         `db:"role"`
-	OrganizationId *string     `db:"organization_id"`
-	FirstName      pgtype.Text `db:"first_name"`
-	LastName       pgtype.Text `db:"last_name"`
+	Id             string             `db:"id"`
+	Email          string             `db:"email"`
+	FirebaseUid    string             `db:"firebase_uid"`
+	Role           int                `db:"role"`
+	OrganizationId *string            `db:"organization_id"`
+	FirstName      pgtype.Text        `db:"first_name"`
+	LastName       pgtype.Text        `db:"last_name"`
+	DeletedAt      pgtype.Timestamptz `db:"deleted_at"`
 }
 
 const TABLE_USERS = "users"
