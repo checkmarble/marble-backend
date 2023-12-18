@@ -11,6 +11,8 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/cockroachdb/errors"
 
+	credentials "cloud.google.com/go/iam/credentials/apiv1"
+	"cloud.google.com/go/iam/credentials/apiv1/credentialspb"
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/iterator"
 )
@@ -175,11 +177,11 @@ func (repository *GcsRepositoryImpl) DeleteFile(ctx context.Context, bucketName,
 
 func (repo *GcsRepositoryImpl) GenerateSignedUrl(ctx context.Context, bucketName, fileName string) (string, error) {
 	// serviceAccount := "admintest@tokyo-country-381508.iam.gserviceaccount.com"
-	// serviceAccount := "marble-backend-cloud-run@tokyo-country-381508.iam.gserviceaccount.com"
-	// c, err := credentials.NewIamCredentialsClient(ctx)
-	// if err != nil {
-	// 	panic(err)
-	// }
+	serviceAccount := "marble-backend-cloud-run@tokyo-country-381508.iam.gserviceaccount.com"
+	c, err := credentials.NewIamCredentialsClient(ctx)
+	if err != nil {
+		panic(err)
+	}
 
 	// This code will typically not run locally if if you target the real GCS repository, because SignedURL only works with service account credentials (not end user credentials)
 	// Hence, run the code locally with the fake GCS repository always
@@ -188,19 +190,19 @@ func (repo *GcsRepositoryImpl) GenerateSignedUrl(ctx context.Context, bucketName
 		SignedURL(
 			fileName,
 			&storage.SignedURLOptions{
-				Method: http.MethodGet,
-				// GoogleAccessID: serviceAccount,
-				// SignBytes: func(b []byte) ([]byte, error) {
-				// 	req := &credentialspb.SignBlobRequest{
-				// 		Payload: b,
-				// 		Name:    serviceAccount,
-				// 	}
-				// 	resp, err := c.SignBlob(ctx, req)
-				// 	if err != nil {
-				// 		panic(err)
-				// 	}
-				// 	return resp.SignedBlob, err
-				// },
+				Method:         http.MethodGet,
+				GoogleAccessID: serviceAccount,
+				SignBytes: func(b []byte) ([]byte, error) {
+					req := &credentialspb.SignBlobRequest{
+						Payload: b,
+						Name:    serviceAccount,
+					}
+					resp, err := c.SignBlob(ctx, req)
+					if err != nil {
+						panic(err)
+					}
+					return resp.SignedBlob, err
+				},
 				Expires: time.Now().Add(signedUrlExpiryHours * time.Hour),
 			},
 		)
