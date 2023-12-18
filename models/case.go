@@ -17,7 +17,6 @@ type Case struct {
 	Name           string
 	Status         CaseStatus
 	Tags           []CaseTag
-	Files          []CaseFile
 }
 
 type CaseStatus string
