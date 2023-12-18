@@ -512,6 +512,19 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 		return models.Case{}, err
 	}
 
+	// permissions check
+	c, err := usecase.repository.GetCaseById(nil, input.CaseId)
+	if err != nil {
+		return models.Case{}, err
+	}
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, nil)
+	if err != nil {
+		return models.Case{}, err
+	}
+	if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
+		return models.Case{}, err
+	}
+
 	newFileReference := uuid.NewString()
 	writer := usecase.gcsRepository.OpenStream(ctx, usecase.gcsCaseManagerBucket, newFileReference)
 	file, err := input.File.Open()
@@ -529,18 +542,6 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 	}
 
 	updatedCase, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
-		c, err := usecase.repository.GetCaseById(tx, input.CaseId)
-		if err != nil {
-			return models.Case{}, err
-		}
-		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx)
-		if err != nil {
-			return models.Case{}, err
-		}
-		if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
-			return models.Case{}, err
-		}
-
 		if err := usecase.createCaseContributorIfNotExist(tx, input.CaseId, userId); err != nil {
 			return models.Case{}, err
 		}
