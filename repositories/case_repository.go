@@ -336,29 +336,3 @@ func (repo *MarbleDbRepository) CreateDbCaseFile(tx Transaction, createCaseFileA
 	)
 	return err
 }
-
-func (repo *MarbleDbRepository) GetCaseFileById(tx Transaction, caseFileId string) (models.CaseFile, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
-
-	return SqlToModel(
-		pgTx,
-		NewQueryBuilder().
-			Select(dbmodels.SelectCaseFileColumn...).
-			From(dbmodels.TABLE_CASE_FILES).
-			Where(squirrel.Eq{"id": caseFileId}),
-		dbmodels.AdaptCaseFile,
-	)
-}
-
-func (repo *MarbleDbRepository) GetCasesFileByCaseId(tx Transaction, caseId string) ([]models.CaseFile, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
-
-	return SqlToListOfModels(
-		pgTx,
-		NewQueryBuilder().
-			Select(dbmodels.SelectCaseFileColumn...).
-			From(dbmodels.TABLE_CASE_FILES).
-			Where(squirrel.Eq{"case_id": caseId}),
-		dbmodels.AdaptCaseFile,
-	)
-}

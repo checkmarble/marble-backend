@@ -82,8 +82,3 @@ func (repo *GcsRepositoryFake) UpdateFileMetadata(ctx context.Context, bucketNam
 func (repo *GcsRepositoryFake) DeleteFile(ctx context.Context, bucketName, fileName string) error {
 	return nil
 }
-
-func (repo *GcsRepositoryFake) GenerateSignedUrl(ctx context.Context, bucketName, fileName string) (string, error) {
-	// dummy file, url valid for 3 years from 2023/12/15
-	return "https://storage.googleapis.com/data-ingestion-tokyo-country-381508/test.csv?Expires=1797266654&GoogleAccessId=admintest%40tokyo-country-381508.iam.gserviceaccount.com&Signature=YAVmUMWzR9sQBg9pZiDI%2FOnjRmun%2BT3Mkn84cGb%2FzYdd%2FGovpm6BNV928rAlFF33LnbmEr6JpdnW1SnA72dEOaWqOhRSWuw9pIPkxyZerD9NJyHXCmRSoSSwX7TDHKZZ0lIxz%2FxE8Wtu2Y7Q1Wn83tpigH1y8FNguSX8Zz4OjMKCSSbEXY5PsazNl12yj%2Bp8loqRwG9XIYXstLp0wKpdryz7WkqzORays7OuPs0uPoNFpTgEZtUhaoHTzRV%2FHEHnvEQ0FVFxNYnuTBPyeA%2FADlaSwDxRfGZbt65E4k73XgS1oMgdboPeCEopKAZ0Iikg7th1wdzrfetipvTucWpKOg%3D%3D", nil
-}
