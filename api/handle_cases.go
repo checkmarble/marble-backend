@@ -275,3 +275,23 @@ func (api *API) handlePostCaseFile(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{"case": dto.AdaptCaseWithDecisionsDto(cs)})
 }
+
+type CaseFileInput struct {
+	Id string `uri:"case_file_id" binding:"required,uuid"`
+}
+
+func (api *API) handleDownloadCaseFile(c *gin.Context) {
+	var caseFileInput CaseFileInput
+	if err := c.ShouldBindUri(&caseFileInput); err != nil {
+		presentError(c.Writer, c.Request, errors.Wrap(models.BadParameterError, err.Error()))
+		return
+	}
+
+	usecase := api.UsecasesWithCreds(c.Request).NewCaseUseCase()
+	url, err := usecase.GetCaseFileUrl(c.Request.Context(), caseFileInput.Id)
+	if presentError(c.Writer, c.Request, err) {
+		return
+	}
+
+	c.Redirect(http.StatusMovedPermanently, url)
+}

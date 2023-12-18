@@ -39,6 +39,8 @@ type CaseUseCaseRepository interface {
 	SoftDeleteCaseTag(tx repositories.Transaction, tagId string) error
 
 	CreateDbCaseFile(tx repositories.Transaction, createCaseFileInput models.CreateDbCaseFileInput) error
+	GetCaseFileById(tx repositories.Transaction, caseFileId string) (models.CaseFile, error)
+	GetCasesFileByCaseId(tx repositories.Transaction, caseId string) ([]models.CaseFile, error)
 }
 
 type CaseUseCase struct {
@@ -430,6 +432,12 @@ func (usecase *CaseUseCase) getCaseWithDetails(tx repositories.Transaction, case
 	}
 	c.Decisions = decisions
 
+	caseFiles, err := usecase.repository.GetCasesFileByCaseId(tx, caseId)
+	if err != nil {
+		return models.Case{}, err
+	}
+	c.Files = caseFiles
+
 	events, err := usecase.repository.ListCaseEvents(tx, caseId)
 	if err != nil {
 		return models.Case{}, err
@@ -609,4 +617,25 @@ func validateFileType(file *multipart.FileHeader) error {
 	}
 
 	return errFileType
+}
+
+func (usecase *CaseUseCase) GetCaseFileUrl(ctx context.Context, caseFileId string) (string, error) {
+	cf, err := usecase.repository.GetCaseFileById(nil, caseFileId)
+	if err != nil {
+		return "", err
+	}
+
+	c, err := usecase.getCaseWithDetails(nil, cf.CaseId)
+	if err != nil {
+		return "", err
+	}
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, nil)
+	if err != nil {
+		return "", err
+	}
+	if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
+		return "", err
+	}
+
+	return usecase.gcsRepository.GenerateSignedUrl(ctx, usecase.gcsCaseManagerBucket, cf.FileReference)
 }
