@@ -16,6 +16,7 @@ type APICase struct {
 	Name           string               `json:"name"`
 	Status         string               `json:"status"`
 	Tags           []APICaseTag         `json:"tags"`
+	Files          []APICaseFile        `json:"files"`
 }
 
 type APICaseWithDecisions struct {
@@ -34,6 +35,7 @@ func AdaptCaseDto(c models.Case) APICase {
 		Name:           c.Name,
 		Status:         string(c.Status),
 		Tags:           make([]APICaseTag, len(c.Tags)),
+		Files:          make([]APICaseFile, len(c.Files)),
 	}
 
 	for i, event := range c.Events {
@@ -44,6 +46,9 @@ func AdaptCaseDto(c models.Case) APICase {
 	}
 	for i, tag := range c.Tags {
 		apiCase.Tags[i] = NewAPICaseTag(tag)
+	}
+	for i, file := range c.Files {
+		apiCase.Files[i] = NewAPICaseFile(file)
 	}
 
 	return apiCase
