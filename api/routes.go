@@ -86,10 +86,14 @@ func (api *API) routes(auth *Authentication) {
 	router.GET("/cases/files/:case_file_id/download_link", api.handleDownloadCaseFile)
 
 	router.GET("/inboxes/:inbox_id", api.handleGetInboxById)
+	router.PATCH("/inboxes/:inbox_id", api.handlePatchInbox)
+	router.DELETE("/inboxes/:inbox_id", api.handleDeleteInbox)
 	router.GET("/inboxes", api.handleListInboxes)
 	router.POST("/inboxes", api.handlePostInbox)
 	router.GET("/inbox_users", api.handleListAllInboxUsers)
 	router.GET("/inbox_users/:inbox_user_id", api.handleGetInboxUserById)
+	router.PATCH("/inbox_users/:inbox_user_id", api.handlePatchInboxUser)
+	router.DELETE("/inbox_users/:inbox_user_id", api.handleDeleteInboxUser)
 	router.GET("/inboxes/:inbox_id/users", api.handleListInboxUsers)
 	router.POST("/inboxes/:inbox_id/users", api.handlePostInboxUser)
 

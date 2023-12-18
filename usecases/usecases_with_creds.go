@@ -281,6 +281,13 @@ func (usecases *UsecasesWithCreds) NewInboxUsecase() InboxUsecase {
 			InboxRepository:         &usecases.Repositories.MarbleDbRepository,
 			Credentials:             usecases.Credentials,
 		},
+		inboxUsers: inboxes.InboxUsers{
+			EnforceSecurity:     sec,
+			InboxUserRepository: &usecases.Repositories.MarbleDbRepository,
+			Credentials:         usecases.Credentials,
+			TransactionFactory:  &usecases.Repositories.TransactionFactoryPosgresql,
+			UserRepository:      usecases.Repositories.UserRepository,
+		},
 	}
 }
 

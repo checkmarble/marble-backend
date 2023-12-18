@@ -24,3 +24,8 @@ type CreateInboxInput struct {
 	Name           string
 	OrganizationId string
 }
+
+type UpdateInboxInput struct {
+	Id   string
+	Name string
+}

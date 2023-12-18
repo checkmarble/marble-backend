@@ -95,12 +95,12 @@ func AdaptInboxWithUsers(db DBInboxWithUsers) (models.Inbox, error) {
 	return inbox, nil
 }
 
-type DBInboxWithUsersAndCaseCount struct {
+type DBInboxWithDetails struct {
 	DBInboxWithUsers
 	CasesCount int `db:"cases_count"`
 }
 
-func AdaptInboxWithCasesCount(db DBInboxWithUsersAndCaseCount) (models.Inbox, error) {
+func AdaptInboxWithCasesCount(db DBInboxWithDetails) (models.Inbox, error) {
 	inbox, err := AdaptInboxWithUsers(db.DBInboxWithUsers)
 	if err != nil {
 		return models.Inbox{}, err

@@ -11,6 +11,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/usecases/inboxes"
 )
 
 type InboxUsecaseTestSuite struct {
@@ -76,6 +77,13 @@ func (suite *InboxUsecaseTestSuite) makeUsecase() *InboxUsecase {
 		userRepository:     suite.userRepository,
 		credentials:        suite.credentials,
 		transactionFactory: suite.transactionFactory,
+		inboxUsers: inboxes.InboxUsers{
+			EnforceSecurity:     suite.enforceSecurity,
+			InboxUserRepository: suite.inboxRepository,
+			Credentials:         suite.credentials,
+			TransactionFactory:  suite.transactionFactory,
+			UserRepository:      suite.userRepository,
+		},
 	}
 }
 
@@ -89,6 +97,13 @@ func (suite *InboxUsecaseTestSuite) makeUsecaseAdmin() *InboxUsecase {
 		userRepository:     suite.userRepository,
 		credentials:        suite.adminCredentials,
 		transactionFactory: suite.transactionFactory,
+		inboxUsers: inboxes.InboxUsers{
+			EnforceSecurity:     suite.enforceSecurity,
+			InboxUserRepository: suite.inboxRepository,
+			Credentials:         suite.credentials,
+			TransactionFactory:  suite.transactionFactory,
+			UserRepository:      suite.userRepository,
+		},
 	}
 }
 

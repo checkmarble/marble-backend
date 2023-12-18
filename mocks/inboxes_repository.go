@@ -26,17 +26,42 @@ func (r *InboxRepository) CreateInbox(tx repositories.Transaction, input models.
 	return args.Error(0)
 }
 
+func (r *InboxRepository) UpdateInbox(tx repositories.Transaction, inboxId, name string) error {
+	args := r.Called(tx, inboxId, name)
+	return args.Error(0)
+}
+
+func (r *InboxRepository) SoftDeleteInbox(tx repositories.Transaction, inboxId string) error {
+	args := r.Called(tx, inboxId)
+	return args.Error(0)
+}
+
+func (r *InboxRepository) ListOrganizationCases(tx repositories.Transaction, filters models.CaseFilters, pagination models.PaginationAndSorting) ([]models.CaseWithRank, error) {
+	args := r.Called(tx, filters, pagination)
+	return args.Get(0).([]models.CaseWithRank), args.Error(1)
+}
+
+func (r *InboxRepository) ListInboxUsers(tx repositories.Transaction, filters models.InboxUserFilterInput) ([]models.InboxUser, error) {
+	args := r.Called(tx, filters)
+	return args.Get(0).([]models.InboxUser), args.Error(1)
+}
+
 func (repo *InboxRepository) GetInboxUserById(tx repositories.Transaction, inboxUserId string) (models.InboxUser, error) {
 	args := repo.Called(tx, inboxUserId)
 	return args.Get(0).(models.InboxUser), args.Error(1)
 }
 
-func (repo *InboxRepository) ListInboxUsers(tx repositories.Transaction, filters models.InboxUserFilterInput) ([]models.InboxUser, error) {
-	args := repo.Called(tx, filters)
-	return args.Get(0).([]models.InboxUser), args.Error(1)
-}
-
 func (repo *InboxRepository) CreateInboxUser(tx repositories.Transaction, input models.CreateInboxUserInput, newInboxUserId string) error {
 	args := repo.Called(tx, input, newInboxUserId)
+	return args.Error(0)
+}
+
+func (repo *InboxRepository) UpdateInboxUser(tx repositories.Transaction, inboxUserId string, role models.InboxUserRole) error {
+	args := repo.Called(tx, inboxUserId, role)
+	return args.Error(0)
+}
+
+func (repo *InboxRepository) DeleteInboxUser(tx repositories.Transaction, inboxUserId string) error {
+	args := repo.Called(tx, inboxUserId)
 	return args.Error(0)
 }
