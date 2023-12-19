@@ -358,7 +358,8 @@ func (repo *MarbleDbRepository) GetCasesFileByCaseId(tx Transaction, caseId stri
 		NewQueryBuilder().
 			Select(dbmodels.SelectCaseFileColumn...).
 			From(dbmodels.TABLE_CASE_FILES).
-			Where(squirrel.Eq{"case_id": caseId}),
+			Where(squirrel.Eq{"case_id": caseId}).
+			OrderBy("created_at DESC"),
 		dbmodels.AdaptCaseFile,
 	)
 }

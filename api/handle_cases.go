@@ -293,5 +293,5 @@ func (api *API) handleDownloadCaseFile(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusFound, url)
+	c.JSON(http.StatusOK, gin.H{"url": url})
 }
