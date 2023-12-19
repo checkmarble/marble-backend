@@ -58,6 +58,11 @@ resource "google_cloud_run_v2_job" "migrations" {
         }
 
         env {
+          name  = "GCS_CASE_MANAGER_BUCKET"
+          value = google_storage_bucket.case_manager.name
+        }
+
+        env {
           name  = "SEGMENT_WRITE_KEY"
           value = local.environment.segment_write_key.backend
         }

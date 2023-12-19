@@ -91,6 +91,11 @@ resource "google_cloud_run_v2_service" "backend" {
       }
 
       env {
+        name  = "GCS_CASE_MANAGER_BUCKET"
+        value = google_storage_bucket.case_manager.name
+      }
+
+      env {
         name = "AUTHENTICATION_JWT_SIGNING_KEY"
         value_source {
           secret_key_ref {
