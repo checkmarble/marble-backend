@@ -9,13 +9,13 @@ resource "google_storage_bucket" "case_manager" {
 }
 
 resource "google_storage_bucket_iam_member" "backend_service_account_case_manager_object_admin" {
-  bucket = google_storage_bucket.data_ingestion.name
+  bucket = google_storage_bucket.case_manager.name
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${google_service_account.backend_service_account.email}"
 }
 
 resource "google_storage_bucket_iam_member" "backend_service_account_case_manager_bucket_reader" {
-  bucket = google_storage_bucket.data_ingestion.name
+  bucket = google_storage_bucket.case_manager.name
   role   = "roles/storage.legacyBucketReader"
   member = "serviceAccount:${google_service_account.backend_service_account.email}"
 }
