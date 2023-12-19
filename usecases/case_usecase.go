@@ -618,3 +618,24 @@ func validateFileType(file *multipart.FileHeader) error {
 
 	return errFileType
 }
+
+func (usecase *CaseUseCase) GetCaseFileUrl(ctx context.Context, caseFileId string) (string, error) {
+	cf, err := usecase.repository.GetCaseFileById(nil, caseFileId)
+	if err != nil {
+		return "", err
+	}
+
+	c, err := usecase.getCaseWithDetails(nil, cf.CaseId)
+	if err != nil {
+		return "", err
+	}
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, nil)
+	if err != nil {
+		return "", err
+	}
+	if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
+		return "", err
+	}
+
+	return usecase.gcsRepository.GenerateSignedUrl(ctx, usecase.gcsCaseManagerBucket, cf.FileReference)
+}
