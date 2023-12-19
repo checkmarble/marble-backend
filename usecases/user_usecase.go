@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/analytics"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/transaction"
+	"github.com/cockroachdb/errors"
 )
 
 type UserUseCase struct {
@@ -73,24 +74,27 @@ func (usecase *UserUseCase) UpdateUser(ctx context.Context, updateUser models.Up
 	return updatedUser, nil
 }
 
-func (usecase *UserUseCase) DeleteUser(userID string) error {
+func (usecase *UserUseCase) DeleteUser(userId, currentUserId string) error {
+	if userId == currentUserId {
+		return errors.Wrap(models.ForbiddenError, "cannot delete yourself")
+	}
 	err := usecase.transactionFactory.Transaction(
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) error {
-			user, err := usecase.userRepository.UserByID(tx, models.UserId(userID))
+			user, err := usecase.userRepository.UserByID(tx, models.UserId(userId))
 			if err != nil {
 				return err
 			}
 			if err := usecase.enforceUserSecurity.DeleteUser(user); err != nil {
 				return err
 			}
-			return usecase.userRepository.DeleteUser(tx, models.UserId(userID))
+			return usecase.userRepository.DeleteUser(tx, models.UserId(userId))
 		},
 	)
 	if err != nil {
 		return err
 	}
-	analytics.TrackEvent(context.Background(), models.AnalyticsUserDeleted, map[string]interface{}{"user_id": userID})
+	analytics.TrackEvent(context.Background(), models.AnalyticsUserDeleted, map[string]interface{}{"user_id": userId})
 
 	return nil
 }
