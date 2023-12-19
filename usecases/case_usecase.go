@@ -39,6 +39,8 @@ type CaseUseCaseRepository interface {
 	SoftDeleteCaseTag(tx repositories.Transaction, tagId string) error
 
 	CreateDbCaseFile(tx repositories.Transaction, createCaseFileInput models.CreateDbCaseFileInput) error
+	GetCaseFileById(tx repositories.Transaction, caseFileId string) (models.CaseFile, error)
+	GetCasesFileByCaseId(tx repositories.Transaction, caseId string) ([]models.CaseFile, error)
 }
 
 type CaseUseCase struct {
@@ -429,6 +431,12 @@ func (usecase *CaseUseCase) getCaseWithDetails(tx repositories.Transaction, case
 		return models.Case{}, err
 	}
 	c.Decisions = decisions
+
+	caseFiles, err := usecase.repository.GetCasesFileByCaseId(tx, caseId)
+	if err != nil {
+		return models.Case{}, err
+	}
+	c.Files = caseFiles
 
 	events, err := usecase.repository.ListCaseEvents(tx, caseId)
 	if err != nil {
