@@ -174,7 +174,7 @@ func (repository *GcsRepositoryImpl) DeleteFile(ctx context.Context, bucketName,
 }
 
 func (repo *GcsRepositoryImpl) GenerateSignedUrl(ctx context.Context, bucketName, fileName string) (string, error) {
-	// This code will typically not run locally if if you target the real GCS repository, because SignedURL only works with service account credentials (not end user credentials)
+	// This code will typically not run locally if you target the real GCS repository, because SignedURL only works with service account credentials (not end user credentials)
 	// Hence, run the code locally with the fake GCS repository always
 	bucket := repo.getGCSClient(ctx).Bucket(bucketName)
 	return bucket.
