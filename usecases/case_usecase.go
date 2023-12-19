@@ -545,7 +545,14 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 	if err := writer.Close(); err != nil {
 		return models.Case{}, err
 	}
-	if err := usecase.gcsRepository.UpdateFileMetadata(ctx, usecase.gcsCaseManagerBucket, newFileReference, map[string]string{"processed": "true"}); err != nil {
+	if err := usecase.gcsRepository.UpdateFileMetadata(
+		ctx,
+		usecase.gcsCaseManagerBucket,
+		newFileReference,
+		map[string]string{
+			"processed":           "true",
+			"content-disposition": fmt.Sprintf("attachment; filename=\"%s\"", input.File.Filename)},
+	); err != nil {
 		return models.Case{}, err
 	}
 
