@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net/http"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -14,6 +15,8 @@ import (
 	"google.golang.org/api/iterator"
 )
 
+const signedUrlExpiryHours = 1
+
 type GcsRepository interface {
 	ListFiles(ctx context.Context, bucketName, prefix string) ([]models.GCSFile, error)
 	GetFile(ctx context.Context, bucketName, fileName string, logger *slog.Logger) (models.GCSFile, error)
@@ -21,6 +24,7 @@ type GcsRepository interface {
 	OpenStream(ctx context.Context, bucketName, fileName string) io.WriteCloser
 	DeleteFile(ctx context.Context, bucketName, fileName string) error
 	UpdateFileMetadata(ctx context.Context, bucketName, fileName string, metadata map[string]string) error
+	GenerateSignedUrl(ctx context.Context, bucketName, fileName string) (string, error)
 }
 
 type GcsRepositoryImpl struct {
@@ -167,4 +171,18 @@ func (repository *GcsRepositoryImpl) DeleteFile(ctx context.Context, bucketName,
 	}
 
 	return nil
+}
+
+func (repo *GcsRepositoryImpl) GenerateSignedUrl(ctx context.Context, bucketName, fileName string) (string, error) {
+	// This code will typically not run locally if if you target the real GCS repository, because SignedURL only works with service account credentials (not end user credentials)
+	// Hence, run the code locally with the fake GCS repository always
+	bucket := repo.getGCSClient(ctx).Bucket(bucketName)
+	return bucket.
+		SignedURL(
+			fileName,
+			&storage.SignedURLOptions{
+				Method:  http.MethodGet,
+				Expires: time.Now().Add(signedUrlExpiryHours * time.Hour),
+			},
+		)
 }
