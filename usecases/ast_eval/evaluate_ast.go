@@ -61,7 +61,7 @@ func EvaluateAst(environment AstEvaluationEnvironment, node ast.Node) (ast.NodeE
 
 	b = time.Now()
 	evaluation.ReturnValue, evaluation.Errors = evaluator.Evaluate(arguments)
-	fmt.Println("EvaluateAst evaluator.Evaluate", time.Since(b))
+	fmt.Println("EvaluateAst evaluator.Evaluate", node.Function, time.Since(b))
 
 	if evaluation.Errors == nil {
 		// Assign an empty array to indicate that the evaluation occured.
