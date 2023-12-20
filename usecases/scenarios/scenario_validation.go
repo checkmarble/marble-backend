@@ -3,6 +3,7 @@ package scenarios
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -44,6 +45,7 @@ type ValidateScenarioIterationImpl struct {
 }
 
 func (validator *ValidateScenarioIterationImpl) Validate(si ScenarioAndIteration) models.ScenarioValidation {
+	a := time.Now()
 	iteration := si.Iteration
 
 	result := models.NewScenarioValidation()
@@ -70,7 +72,9 @@ func (validator *ValidateScenarioIterationImpl) Validate(si ScenarioAndIteration
 		})
 	}
 
+	b := time.Now()
 	dryRunEnvironment, err := validator.makeDryRunEnvironment(si)
+	fmt.Println("dryRunEnvironment", time.Since(b))
 	if err != nil {
 		result.Errors = append(result.Errors, *err)
 		return result
@@ -84,7 +88,9 @@ func (validator *ValidateScenarioIterationImpl) Validate(si ScenarioAndIteration
 			Code:  models.TriggerConditionRequired,
 		})
 	} else {
+		b := time.Now()
 		result.Trigger.TriggerEvaluation, _ = ast_eval.EvaluateAst(dryRunEnvironment, *trigger)
+		fmt.Println("trigger", time.Since(b))
 	}
 
 	// validate each rule
@@ -98,17 +104,22 @@ func (validator *ValidateScenarioIterationImpl) Validate(si ScenarioAndIteration
 			})
 			result.Rules.Rules[rule.Id] = ruleValidation
 		} else {
+			b := time.Now()
 			ruleValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(dryRunEnvironment, *formula)
+			fmt.Println("rule", time.Since(b))
 			result.Rules.Rules[rule.Id] = ruleValidation
 		}
 	}
+	fmt.Println("validate", time.Since(a))
 	return result
 }
 
 func (validator *ValidateScenarioIterationImpl) makeDryRunEnvironment(si ScenarioAndIteration) (ast_eval.AstEvaluationEnvironment, *models.ScenarioValidationError) {
 	organizationId := si.Scenario.OrganizationId
 
+	a := time.Now()
 	dataModel, err := validator.DataModelRepository.GetDataModel(organizationId, false)
+	fmt.Println("dataModel", time.Since(a))
 	if err != nil {
 		return ast_eval.AstEvaluationEnvironment{}, &models.ScenarioValidationError{
 			Error: fmt.Errorf("could not get data model: %w", err),

@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -182,21 +183,30 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(ctx co
 // If `replaceRuleId` is provided, the corresponding rule is replaced.
 // if `replaceRuleId` is nil, the trigger is replaced.
 func (usecase *ScenarioIterationUsecase) ValidateScenarioIteration(iterationId string, triggerOrRuleToReplace *ast.Node, ruleIdToReplace *string) (validation models.ScenarioValidation, err error) {
+	a := time.Now()
 
+	b := time.Now()
 	scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(nil, iterationId)
+	fmt.Println("FetchScenarioAndIteration", time.Since(b))
 	if err != nil {
 		return validation, err
 	}
 
+	b = time.Now()
 	if err := usecase.enforceSecurity.ReadScenarioIteration(scenarioAndIteration.Iteration); err != nil {
 		return validation, err
 	}
+	fmt.Println("enforceSecurity", time.Since(b))
 
+	b = time.Now()
 	scenarioAndIteration, err = replaceTriggerOrRule(scenarioAndIteration, triggerOrRuleToReplace, ruleIdToReplace)
+	fmt.Println("replaceTriggerOrRule", time.Since(b))
 	if err != nil {
 		return validation, err
 	}
-	return usecase.validateScenarioIteration.Validate(scenarioAndIteration), nil
+	validation, err = usecase.validateScenarioIteration.Validate(scenarioAndIteration), nil
+	fmt.Println("validateScenarioIteration", time.Since(a))
+	return validation, err
 }
 
 func replaceTriggerOrRule(scenarioAndIteration scenarios.ScenarioAndIteration, triggerOrRuleToReplace *ast.Node, ruleIdToReplace *string) (scenarios.ScenarioAndIteration, error) {
