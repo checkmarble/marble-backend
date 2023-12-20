@@ -80,10 +80,17 @@ func (api *API) handlePatchUser(c *gin.Context) {
 }
 
 func (api *API) handleDeleteUser(c *gin.Context) {
-	userID := c.Param("user_id")
+	creds, found := utils.CredentialsFromCtx(c.Request.Context())
+	if !found {
+		presentError(c.Writer, c.Request, fmt.Errorf("no credentials in context"))
+		return
+	}
+	currentUserId := string(creds.ActorIdentity.UserId)
+
+	userId := c.Param("user_id")
 
 	usecase := api.UsecasesWithCreds(c.Request).NewUserUseCase()
-	err := usecase.DeleteUser(userID)
+	err := usecase.DeleteUser(userId, currentUserId)
 	if presentError(c.Writer, c.Request, err) {
 		return
 	}
