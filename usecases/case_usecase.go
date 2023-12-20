@@ -219,31 +219,8 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string, updat
 			return models.Case{}, err
 		}
 
-		if updateCaseAttributes.Name != "" && updateCaseAttributes.Name != c.Name {
-			err = usecase.repository.CreateCaseEvent(tx, models.CreateCaseEventAttributes{
-				CaseId:        updateCaseAttributes.Id,
-				UserId:        userId,
-				EventType:     models.CaseNameUpdated,
-				NewValue:      &updateCaseAttributes.Name,
-				PreviousValue: &c.Name,
-			})
-			if err != nil {
-				return models.Case{}, err
-			}
-		}
-
-		if updateCaseAttributes.Status != "" && updateCaseAttributes.Status != c.Status {
-			newStatus := string(updateCaseAttributes.Status)
-			err = usecase.repository.CreateCaseEvent(tx, models.CreateCaseEventAttributes{
-				CaseId:        updateCaseAttributes.Id,
-				UserId:        userId,
-				EventType:     models.CaseStatusUpdated,
-				NewValue:      &newStatus,
-				PreviousValue: (*string)(&c.Status),
-			})
-			if err != nil {
-				return models.Case{}, err
-			}
+		if err := usecase.updateCaseCreateEvents(tx, updateCaseAttributes, c, userId); err != nil {
+			return models.Case{}, err
 		}
 
 		err = usecase.updateDecisionsWithEvents(tx, updateCaseAttributes.Id, userId, updateCaseAttributes.DecisionIds)
@@ -259,6 +236,50 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string, updat
 
 	trackCaseUpdatedEvents(ctx, updatedCase.Id, updateCaseAttributes)
 	return updatedCase, nil
+}
+
+func (usecase *CaseUseCase) updateCaseCreateEvents(tx repositories.Transaction, updateCaseAttributes models.UpdateCaseAttributes, oldCase models.Case, userId string) error {
+	var err error
+	if updateCaseAttributes.Name != "" && updateCaseAttributes.Name != oldCase.Name {
+		err = usecase.repository.CreateCaseEvent(tx, models.CreateCaseEventAttributes{
+			CaseId:        updateCaseAttributes.Id,
+			UserId:        userId,
+			EventType:     models.CaseNameUpdated,
+			NewValue:      &updateCaseAttributes.Name,
+			PreviousValue: &oldCase.Name,
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	if updateCaseAttributes.Status != "" && updateCaseAttributes.Status != oldCase.Status {
+		newStatus := string(updateCaseAttributes.Status)
+		err = usecase.repository.CreateCaseEvent(tx, models.CreateCaseEventAttributes{
+			CaseId:        updateCaseAttributes.Id,
+			UserId:        userId,
+			EventType:     models.CaseStatusUpdated,
+			NewValue:      &newStatus,
+			PreviousValue: (*string)(&oldCase.Status),
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	if updateCaseAttributes.InboxId != "" && updateCaseAttributes.InboxId != oldCase.InboxId {
+		err = usecase.repository.CreateCaseEvent(tx, models.CreateCaseEventAttributes{
+			CaseId:        updateCaseAttributes.Id,
+			UserId:        userId,
+			EventType:     models.CaseInboxChanged,
+			NewValue:      &updateCaseAttributes.InboxId,
+			PreviousValue: &oldCase.InboxId,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, caseId string, decisionIds []string) (models.Case, error) {

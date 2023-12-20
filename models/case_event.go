@@ -27,6 +27,7 @@ const (
 	CaseNameUpdated   CaseEventType = "name_updated"
 	CaseTagsUpdated   CaseEventType = "tags_updated"
 	CaseFileAdded     CaseEventType = "file_added"
+	CaseInboxChanged  CaseEventType = "inbox_changed"
 )
 
 type CaseEventResourceType string
