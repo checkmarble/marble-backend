@@ -33,8 +33,16 @@ func (api *API) handleGetInboxById(ctx *gin.Context) {
 }
 
 func (api *API) handleListInboxes(ctx *gin.Context) {
+	withCaseCountFilter := struct {
+		WithCaseCount bool `form:"withCaseCount"`
+	}{}
+	if err := ctx.ShouldBind(&withCaseCountFilter); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		return
+	}
+
 	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
-	inboxes, err := usecase.ListInboxes(ctx.Request.Context())
+	inboxes, err := usecase.ListInboxes(ctx.Request.Context(), withCaseCountFilter.WithCaseCount)
 	if presentError(ctx.Writer, ctx.Request, err) {
 		return
 	}
@@ -67,6 +75,46 @@ func (api *API) handlePostInbox(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{
 		"inbox": dto.AdaptInboxDto(inbox),
 	})
+}
+
+func (api *API) handlePatchInbox(ctx *gin.Context) {
+	var getInboxInput GetInboxIdUriInput
+	if err := ctx.ShouldBindUri(&getInboxInput); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		return
+	}
+
+	var data struct {
+		Name string `json:"name" binding:"required"`
+	}
+	if err := ctx.ShouldBind(&data); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		return
+	}
+
+	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
+	inbox, err := usecase.UpdateInbox(ctx.Request.Context(), getInboxInput.InboxId, data.Name)
+	if presentError(ctx.Writer, ctx.Request, err) {
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"inbox": dto.AdaptInboxDto(inbox)})
+}
+
+func (api *API) handleDeleteInbox(ctx *gin.Context) {
+	var getInboxInput GetInboxIdUriInput
+	if err := ctx.ShouldBindUri(&getInboxInput); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		return
+	}
+
+	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
+	err := usecase.DeleteInbox(ctx.Request.Context(), getInboxInput.InboxId)
+	if presentError(ctx.Writer, ctx.Request, err) {
+		return
+	}
+
+	ctx.Status(http.StatusOK)
 }
 
 type GetInboxUserInput struct {
@@ -148,4 +196,44 @@ func (api *API) handlePostInboxUser(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{"inbox_user": dto.AdaptInboxUserDto(inboxUser)})
+}
+
+func (api *API) handlePatchInboxUser(ctx *gin.Context) {
+	var getInboxUserInput GetInboxUserInput
+	if err := ctx.ShouldBindUri(&getInboxUserInput); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		return
+	}
+
+	var data struct {
+		Role string `json:"role" binding:"required"`
+	}
+	if err := ctx.ShouldBind(&data); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		return
+	}
+
+	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
+	inboxUser, err := usecase.UpdateInboxUser(ctx.Request.Context(), getInboxUserInput.Id, models.InboxUserRole(data.Role))
+	if presentError(ctx.Writer, ctx.Request, err) {
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"inbox_user": dto.AdaptInboxUserDto(inboxUser)})
+}
+
+func (api *API) handleDeleteInboxUser(ctx *gin.Context) {
+	var getInboxUserInput GetInboxUserInput
+	if err := ctx.ShouldBindUri(&getInboxUserInput); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		return
+	}
+
+	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
+	err := usecase.DeleteInboxUser(ctx.Request.Context(), getInboxUserInput.Id)
+	if presentError(ctx.Writer, ctx.Request, err) {
+		return
+	}
+
+	ctx.Status(http.StatusOK)
 }

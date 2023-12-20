@@ -17,9 +17,15 @@ type Inbox struct {
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	InboxUsers     []InboxUser
+	CasesCount     *int
 }
 
 type CreateInboxInput struct {
 	Name           string
 	OrganizationId string
+}
+
+type UpdateInboxInput struct {
+	Id   string
+	Name string
 }

@@ -28,4 +28,10 @@ const (
 	AnalyticsUserCreated                AnalyticsEvent = "Created a User"
 	AnalyticsUserUpdated                AnalyticsEvent = "Updated a User"
 	AnalyticsUserDeleted                AnalyticsEvent = "Deleted a User"
+	AnalyticsInboxCreated               AnalyticsEvent = "Created an Inbox"
+	AnalyticsInboxUpdated               AnalyticsEvent = "Updated an Inbox"
+	AnalyticsInboxDeleted               AnalyticsEvent = "Deleted an Inbox"
+	AnalyticsInboxUserCreated           AnalyticsEvent = "Created an Inbox User"
+	AnalyticsInboxUserUpdated           AnalyticsEvent = "Updated an Inbox User"
+	AnalyticsInboxUserDeleted           AnalyticsEvent = "Deleted an Inbox User"
 )

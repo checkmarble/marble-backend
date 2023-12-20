@@ -72,3 +72,19 @@ func (e EnforceSecurityInboxes) CreateInboxUser(
 	}
 	return errors.Wrap(models.ForbiddenError, "User cannot create a new member in this inbox")
 }
+
+func (e EnforceSecurityInboxes) UpdateInboxUser(inboxUser models.InboxUser, actorInboxUsers []models.InboxUser) error {
+	// org admins can update all inbox users
+	err := e.Permission(models.INBOX_EDITOR)
+	if err == nil {
+		return errors.Join(err, e.ReadOrganization(inboxUser.OrganizationId))
+	}
+
+	// any other user can update an inbox user if he is an admin of the inbox
+	for _, user := range actorInboxUsers {
+		if user.InboxId == inboxUser.InboxId && user.Role == models.InboxUserRoleAdmin {
+			return nil
+		}
+	}
+	return errors.Wrap(models.ForbiddenError, "User cannot update this inbox user")
+}

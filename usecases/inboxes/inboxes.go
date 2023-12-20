@@ -9,7 +9,7 @@ import (
 
 type InboxRepository interface {
 	GetInboxById(tx repositories.Transaction, inboxId string) (models.Inbox, error)
-	ListInboxes(tx repositories.Transaction, organizationId string, inboxIds []string) ([]models.Inbox, error)
+	ListInboxes(tx repositories.Transaction, organizationId string, inboxIds []string, withCaseCount bool) ([]models.Inbox, error)
 	ListInboxUsers(tx repositories.Transaction, filters models.InboxUserFilterInput) ([]models.InboxUser, error)
 }
 
@@ -40,7 +40,7 @@ func (i *InboxReader) GetInboxById(ctx context.Context, inboxId string) (models.
 	return inbox, err
 }
 
-func (i *InboxReader) ListInboxes(ctx context.Context, tx repositories.Transaction) ([]models.Inbox, error) {
+func (i *InboxReader) ListInboxes(ctx context.Context, tx repositories.Transaction, withCaseCount bool) ([]models.Inbox, error) {
 	organizationId, err := i.OrganizationIdOfContext()
 	if err != nil {
 		return []models.Inbox{}, err
@@ -48,7 +48,7 @@ func (i *InboxReader) ListInboxes(ctx context.Context, tx repositories.Transacti
 
 	var inboxes []models.Inbox
 	if i.isAdminHasAccessToAllInboxes(ctx) {
-		inboxes, err = i.InboxRepository.ListInboxes(tx, organizationId, nil)
+		inboxes, err = i.InboxRepository.ListInboxes(tx, organizationId, nil, withCaseCount)
 	} else {
 		availableInboxIds, err := i.getAvailableInboxes(ctx, tx)
 		if err != nil {
@@ -56,7 +56,7 @@ func (i *InboxReader) ListInboxes(ctx context.Context, tx repositories.Transacti
 		} else if len(availableInboxIds) == 0 {
 			return []models.Inbox{}, nil
 		}
-		inboxes, err = i.InboxRepository.ListInboxes(tx, organizationId, availableInboxIds)
+		inboxes, err = i.InboxRepository.ListInboxes(tx, organizationId, availableInboxIds, withCaseCount)
 		if err != nil {
 			return []models.Inbox{}, err
 		}
