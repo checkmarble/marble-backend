@@ -1,12 +1,15 @@
 package ast_eval
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
 func EvaluateAst(environment AstEvaluationEnvironment, node ast.Node) (ast.NodeEvaluation, bool) {
-
+	a := time.Now()
 	// Early exit for constant, because it should have no children.
 	if node.Function == ast.FUNC_CONSTANT {
 		return ast.NodeEvaluation{
@@ -25,11 +28,13 @@ func EvaluateAst(environment AstEvaluationEnvironment, node ast.Node) (ast.NodeE
 		return childEval
 	}
 
+	b := time.Now()
 	// eval each child
 	evaluation := ast.NodeEvaluation{
 		Children:      utils.Map(node.Children, evalChild),
 		NamedChildren: utils.MapMap(node.NamedChildren, evalChild),
 	}
+	fmt.Println("EvaluateAst evalChild", time.Since(b))
 
 	if childEvaluationFail {
 		// an error occurred in at least one of the children. Stop the evaluation.
@@ -54,7 +59,9 @@ func EvaluateAst(environment AstEvaluationEnvironment, node ast.Node) (ast.NodeE
 		return evaluation, false
 	}
 
+	b = time.Now()
 	evaluation.ReturnValue, evaluation.Errors = evaluator.Evaluate(arguments)
+	fmt.Println("EvaluateAst evaluator.Evaluate", time.Since(b))
 
 	if evaluation.Errors == nil {
 		// Assign an empty array to indicate that the evaluation occured.
@@ -69,5 +76,6 @@ func EvaluateAst(environment AstEvaluationEnvironment, node ast.Node) (ast.NodeE
 		evaluation.ReturnValue = nil
 	}
 
+	fmt.Println("EvaluateAst", time.Since(a))
 	return evaluation, ok
 }
