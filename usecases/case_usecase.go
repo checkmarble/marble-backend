@@ -197,6 +197,10 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string, updat
 			return models.Case{}, err
 		}
 
+		if isIdenticalCaseUpdate(updateCaseAttributes, c) {
+			return usecase.getCaseWithDetails(tx, updateCaseAttributes.Id)
+		}
+
 		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, nil)
 		if err != nil {
 			return models.Case{}, err
@@ -236,6 +240,17 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string, updat
 
 	trackCaseUpdatedEvents(ctx, updatedCase.Id, updateCaseAttributes)
 	return updatedCase, nil
+}
+
+func isIdenticalCaseUpdate(updateCaseAttributes models.UpdateCaseAttributes, c models.Case) bool {
+	var oldDecisionIds []string
+	for _, decision := range c.Decisions {
+		oldDecisionIds = append(oldDecisionIds, decision.DecisionId)
+	}
+	return (updateCaseAttributes.Name == "" || updateCaseAttributes.Name == c.Name) &&
+		(updateCaseAttributes.Status == "" || updateCaseAttributes.Status == c.Status) &&
+		(updateCaseAttributes.InboxId == "" || updateCaseAttributes.InboxId == c.InboxId) &&
+		(updateCaseAttributes.DecisionIds == nil || slices.Equal(updateCaseAttributes.DecisionIds, oldDecisionIds))
 }
 
 func (usecase *CaseUseCase) updateCaseCreateEvents(tx repositories.Transaction, updateCaseAttributes models.UpdateCaseAttributes, oldCase models.Case, userId string) error {
