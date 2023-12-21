@@ -21,59 +21,152 @@ type IngestionRepositoryImpl struct {
 }
 
 func (repo *IngestionRepositoryImpl) IngestObjects(transaction Transaction, payloads []models.PayloadReader, table models.Table, logger *slog.Logger) (err error) {
-
 	tx := adaptClientDatabaseTransaction(transaction)
 
-	for _, payload := range payloads {
-		objectIdItf, _ := payload.ReadFieldFromPayload("object_id")
-		updatedAtItf, _ := payload.ReadFieldFromPayload("updated_at")
-		objectId := objectIdItf.(string)
-		updatedAt := updatedAtItf.(time.Time)
+	// Iterate over payloads to keep only most recent records
+	recentObjectIds, recentPayloads := repo.filterMostRecentPayloads(payloads)
 
-		previousIsMoreRecent, err := updateExistingVersionIfPresent(tx, objectId, updatedAt, table)
-		if err != nil {
-			return fmt.Errorf("error updating existing version: %w", err)
-		} else if previousIsMoreRecent {
-			logger.Debug(fmt.Sprintf("Previous version was more recent than %v, skipping", updatedAt), slog.String("type", tableNameWithSchema(tx, table.Name)), slog.String("id", objectId))
-			continue
-		}
-
-		columnNames, values, err := generateInsertValues(tx, table, payload)
-		if err != nil {
-			return fmt.Errorf("generateInsertValues error: %w", err)
-		}
-		columnNames = append(columnNames, "id")
-		values = append(values, uuid.NewString())
-
-		sql := NewQueryBuilder().Insert(tableNameWithSchema(tx, table.Name)).Columns(columnNames...).Values(values...)
-
-		_, err = tx.ExecBuilder(sql)
-		if err != nil {
-			return err
-		}
-		logger.Debug("Created object in db", slog.String("type", tableNameWithSchema(tx, table.Name)), slog.String("id", objectId))
+	// Load all previously ingested objects
+	previouslyIngestedObjects, err := repo.loadPreviouslyIngestedObjects(tx, recentObjectIds, table.Name)
+	if err != nil {
+		return err
 	}
+
+	// Iterate over payloads and compare with previously ingested objects
+	payloadsToInsert, obsoleteIngestedObjectIds := repo.comparePayloadsToIngestedObjects(recentPayloads, previouslyIngestedObjects)
+
+	// Batch update valid_until for obsolete objects
+	if err := repo.batchUpdateValidUntilOnObsoleteObjects(tx, table.Name, obsoleteIngestedObjectIds); err != nil {
+		return err
+	}
+
+	// Batch insert the new payloads
+	if err := repo.batchInsertPayloads(tx, payloadsToInsert, table); err != nil {
+		return err
+	}
+
+	logger.Debug("Inserted objects in db", slog.String("type", tableNameWithSchema(tx, table.Name)), slog.Int("nb_objects", len(payloadsToInsert)))
+
 	return nil
 }
 
-func generateInsertValues(tx TransactionPostgres, table models.Table, payload models.PayloadReader) ([]string, []interface{}, error) {
-	nbFields := len(table.Fields)
-	columnNames := make([]string, nbFields)
-	values := make([]interface{}, nbFields)
+func objectIdAndUpdatedAtFromPayload(payload models.PayloadReader) (string, time.Time) {
+	objectIdItf, _ := payload.ReadFieldFromPayload("object_id")
+	updatedAtItf, _ := payload.ReadFieldFromPayload("updated_at")
+	objectId := objectIdItf.(string)
+	updatedAt := updatedAtItf.(time.Time)
+
+	return objectId, updatedAt
+}
+
+func (repo *IngestionRepositoryImpl) filterMostRecentPayloads(payloads []models.PayloadReader) ([]string, []models.PayloadReader) {
+	recentMap := make(map[string]models.PayloadReader)
+	for _, payload := range payloads {
+		objectId, updatedAt := objectIdAndUpdatedAtFromPayload(payload)
+
+		if seen, ok := recentMap[objectId]; ok {
+			_, seenUpdatedAt := objectIdAndUpdatedAtFromPayload(seen)
+			if updatedAt.After(seenUpdatedAt) {
+				recentMap[objectId] = payload
+			}
+		} else {
+			recentMap[objectId] = payload
+		}
+	}
+
+	recentPayloads := make([]models.PayloadReader, 0, len(recentMap))
+	recentObjectIds := make([]string, 0, len(recentMap))
+	for key, obj := range recentMap {
+		recentObjectIds = append(recentObjectIds, key)
+		recentPayloads = append(recentPayloads, obj)
+	}
+
+	return recentObjectIds, recentPayloads
+}
+
+type DBObject struct {
+	Id        string    `db:"id"`
+	ObjectId  string    `db:"object_id"`
+	UpdatedAt time.Time `db:"updated_at"`
+}
+type IngestedObject struct {
+	Id        string
+	ObjectId  string
+	UpdatedAt time.Time
+}
+
+func (repo *IngestionRepositoryImpl) loadPreviouslyIngestedObjects(tx TransactionPostgres, objectIds []string, tableName models.TableName) ([]IngestedObject, error) {
+	query := NewQueryBuilder().
+		Select("id, object_id, updated_at").
+		From(tableNameWithSchema(tx, tableName)).
+		Where(squirrel.Eq{"object_id": objectIds}).
+		Where(squirrel.Eq{"valid_until": "Infinity"})
+
+	previouslyIngestedObjects, err := SqlToListOfModels(tx, query, func(db DBObject) (IngestedObject, error) { return IngestedObject(db), nil })
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, err
+	}
+
+	return previouslyIngestedObjects, nil
+}
+
+func (repo *IngestionRepositoryImpl) comparePayloadsToIngestedObjects(payloads []models.PayloadReader, previouslyIngestedObjects []IngestedObject) ([]models.PayloadReader, []string) {
+	previouslyIngestedMap := make(map[string]IngestedObject)
+	for _, obj := range previouslyIngestedObjects {
+		previouslyIngestedMap[obj.ObjectId] = obj
+	}
+
+	payloadsToInsert := make([]models.PayloadReader, 0, len(payloads))
+	obsoleteIngestedObjectIds := make([]string, 0, len(previouslyIngestedMap))
+
+	for _, payload := range payloads {
+		objectId, updatedAt := objectIdAndUpdatedAtFromPayload(payload)
+
+		existingObject, exists := previouslyIngestedMap[objectId]
+		if !exists {
+			payloadsToInsert = append(payloadsToInsert, payload)
+		} else if updatedAt.After(existingObject.UpdatedAt) {
+			payloadsToInsert = append(payloadsToInsert, payload)
+			obsoleteIngestedObjectIds = append(obsoleteIngestedObjectIds, existingObject.Id)
+		}
+	}
+
+	return payloadsToInsert, obsoleteIngestedObjectIds
+}
+
+func (repo *IngestionRepositoryImpl) batchUpdateValidUntilOnObsoleteObjects(tx TransactionPostgres, tableName models.TableName, obsoleteIngestedObjectIds []string) error {
+	sql, args, err := NewQueryBuilder().
+		Update(tableNameWithSchema(tx, tableName)).
+		Set("valid_until", "now()").
+		Where(squirrel.Eq{"id": obsoleteIngestedObjectIds}).
+		ToSql()
+	if err != nil {
+		return err
+	}
+	_, err = tx.SqlExec(sql, args...)
+
+	return err
+}
+
+// TODO refacto the insertion of enum values into one db commit
+func generateInsertValues(tx TransactionPostgres, table models.Table, payload models.PayloadReader, columnNames []string) ([]interface{}, error) {
+	insertValues := make([]interface{}, len(columnNames))
 	i := 0
-	for fieldName := range table.Fields {
-		columnNames[i] = string(fieldName)
-		values[i], _ = payload.ReadFieldFromPayload(fieldName)
+	for _, columnName := range columnNames {
+		fieldName := models.FieldName(columnName)
+		insertValues[i], _ = payload.ReadFieldFromPayload(fieldName)
+
+		// Check for enum values
 		dataType := table.Fields[fieldName].DataType
-		if table.Fields[fieldName].IsEnum && values[i] != nil && (dataType == models.String || dataType == models.Float) {
-			err := addEnumValue(tx, table.Fields[fieldName].ID, dataType, values[i])
+		if table.Fields[fieldName].IsEnum && insertValues[i] != nil && (dataType == models.String || dataType == models.Float) {
+			err := addEnumValue(tx, table.Fields[fieldName].ID, dataType, insertValues[i])
 			if err != nil {
-				return nil, nil, fmt.Errorf("addEnumValue error: %w", err)
+				return nil, fmt.Errorf("addEnumValue error: %w", err)
 			}
 		}
 		i++
 	}
-	return columnNames, values, nil
+	return insertValues, nil
 }
 
 func addEnumValue(tx TransactionPostgres, fieldID string, dataType models.DataType, value interface{}) error {
@@ -105,43 +198,26 @@ func addEnumValue(tx TransactionPostgres, fieldID string, dataType models.DataTy
 	return nil
 }
 
-func updateExistingVersionIfPresent(tx TransactionPostgres, objectId string, updatedAt time.Time, table models.Table) (bool, error) {
-	sql, args, err := NewQueryBuilder().
-		Select("id, updated_at").
-		From(tableNameWithSchema(tx, table.Name)).
-		Where(squirrel.Eq{"object_id": objectId}).
-		Where(squirrel.Eq{"valid_until": "Infinity"}).
-		ToSql()
+func (repo *IngestionRepositoryImpl) batchInsertPayloads(tx TransactionPostgres, payloads []models.PayloadReader, table models.Table) error {
+	columnNames := models.ColumnNames(table)
+	query := NewQueryBuilder().Insert(tableNameWithSchema(tx, table.Name))
+
+	for _, payload := range payloads {
+		insertValues, err := generateInsertValues(tx, table, payload, columnNames)
+		if err != nil {
+			return fmt.Errorf("generateInsertValues error: %w", err)
+		}
+		insertValues = append(insertValues, uuid.NewString())
+		query = query.Values(insertValues...)
+	}
+
+	columnNames = append(columnNames, "id")
+	query = query.Columns(columnNames...)
+
+	_, err := tx.ExecBuilder(query)
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	var id string
-	var prevUpdatedAt time.Time
-	err = tx.exec.QueryRow(tx.ctx, sql, args...).Scan(&id, &prevUpdatedAt)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return false, nil
-	} else if err != nil {
-		return false, err
-	}
-
-	// "time.Before" is a strict inequality: if the timestamps are the same, proceed to update
-	if updatedAt.Before(prevUpdatedAt) {
-		return true, nil
-	}
-
-	sql, args, err = NewQueryBuilder().
-		Update(tableNameWithSchema(tx, table.Name)).
-		Set("valid_until", "now()").
-		Where(squirrel.Eq{"id": id}).
-		ToSql()
-	if err != nil {
-		return false, err
-	}
-	_, err = tx.SqlExec(sql, args...)
-	if err != nil {
-		return false, err
-	}
-
-	return false, nil
+	return nil
 }

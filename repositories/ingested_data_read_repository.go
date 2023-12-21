@@ -163,12 +163,7 @@ func getLastTableFromPath(params models.DbFieldReadParams, firstTable models.Tab
 func (repo *IngestedDataReadRepositoryImpl) ListAllObjectsFromTable(transaction Transaction, table models.Table) ([]models.ClientObject, error) {
 	tx := adaptClientDatabaseTransaction(transaction)
 
-	columnNames := make([]string, len(table.Fields))
-	i := 0
-	for fieldName := range table.Fields {
-		columnNames[i] = string(fieldName)
-		i++
-	}
+	columnNames := models.ColumnNames(table)
 
 	objectsAsMap, err := queryWithDynamicColumnList(tx, tableNameWithSchema(tx, table.Name), columnNames)
 	if err != nil {

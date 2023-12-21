@@ -85,5 +85,3 @@ func (repo *MarbleDbRepository) DeleteInboxUser(tx Transaction, inboxUserId stri
 	)
 	return err
 }
-
-// Zoéé update mocks
