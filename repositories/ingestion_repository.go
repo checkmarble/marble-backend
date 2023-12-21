@@ -21,14 +21,14 @@ type IngestionRepositoryImpl struct {
 func (repo *IngestionRepositoryImpl) IngestObjects(transaction Transaction, payloads []models.PayloadReader, table models.Table, logger *slog.Logger) (err error) {
 	tx := adaptClientDatabaseTransaction(transaction)
 
-	recentObjectIds, recentPayloads := repo.mostRecentPayloadsByObjectId(payloads)
+	mostRecentObjectIds, mostRecentPayloads := repo.mostRecentPayloadsByObjectId(payloads)
 
-	previouslyIngestedObjects, err := repo.loadPreviouslyIngestedObjects(tx, recentObjectIds, table.Name)
+	previouslyIngestedObjects, err := repo.loadPreviouslyIngestedObjects(tx, mostRecentObjectIds, table.Name)
 	if err != nil {
 		return err
 	}
 
-	payloadsToInsert, obsoleteIngestedObjectIds := repo.comparePayloadsToIngestedObjects(recentPayloads, previouslyIngestedObjects)
+	payloadsToInsert, obsoleteIngestedObjectIds := repo.comparePayloadsToIngestedObjects(mostRecentPayloads, previouslyIngestedObjects)
 
 	if err := repo.batchUpdateValidUntilOnObsoleteObjects(tx, table.Name, obsoleteIngestedObjectIds); err != nil {
 		return err
@@ -67,14 +67,14 @@ func (repo *IngestionRepositoryImpl) mostRecentPayloadsByObjectId(payloads []mod
 		}
 	}
 
-	recentPayloads := make([]models.PayloadReader, 0, len(recentMap))
-	recentObjectIds := make([]string, 0, len(recentMap))
+	mostRecentPayloads := make([]models.PayloadReader, 0, len(recentMap))
+	mostRecentObjectIds := make([]string, 0, len(recentMap))
 	for key, obj := range recentMap {
-		recentObjectIds = append(recentObjectIds, key)
-		recentPayloads = append(recentPayloads, obj)
+		mostRecentObjectIds = append(mostRecentObjectIds, key)
+		mostRecentPayloads = append(mostRecentPayloads, obj)
 	}
 
-	return recentObjectIds, recentPayloads
+	return mostRecentObjectIds, mostRecentPayloads
 }
 
 type DBObject struct {
