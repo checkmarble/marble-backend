@@ -30,12 +30,16 @@ func (repo *IngestionRepositoryImpl) IngestObjects(transaction Transaction, payl
 
 	payloadsToInsert, obsoleteIngestedObjectIds := repo.comparePayloadsToIngestedObjects(mostRecentPayloads, previouslyIngestedObjects)
 
-	if err := repo.batchUpdateValidUntilOnObsoleteObjects(tx, table.Name, obsoleteIngestedObjectIds); err != nil {
-		return err
+	if len(obsoleteIngestedObjectIds) > 0 {
+		if err := repo.batchUpdateValidUntilOnObsoleteObjects(tx, table.Name, obsoleteIngestedObjectIds); err != nil {
+			return err
+		}
 	}
 
-	if err := repo.batchInsertPayloadsAndEnumValues(tx, payloadsToInsert, table); err != nil {
-		return err
+	if len(payloadsToInsert) > 0 {
+		if err := repo.batchInsertPayloadsAndEnumValues(tx, payloadsToInsert, table); err != nil {
+			return err
+		}
 	}
 
 	logger.Info("Inserted objects in db", slog.String("type", tableNameWithSchema(tx, table.Name)), slog.Int("nb_objects", len(payloadsToInsert)))
@@ -212,7 +216,7 @@ func (repo *IngestionRepositoryImpl) batchInsertEnumValues(tx TransactionPostgre
 		Columns("field_id", "float_value").
 		Suffix("ON CONFLICT ON CONSTRAINT unique_data_model_enum_float_values_field_id_value DO UPDATE SET last_seen = NOW()")
 
-	// Hack to avoid empty query, which would cause an executiong error
+	// Hack to avoid empty query, which would cause an execution error
 	var shouldInsertTextValues bool
 	var shouldInsertFloatValues bool
 
@@ -223,14 +227,10 @@ func (repo *IngestionRepositoryImpl) batchInsertEnumValues(tx TransactionPostgre
 		for value := range values {
 			if dataType == models.String {
 				textQuery = textQuery.Values(fieldId, value)
-				if !shouldInsertTextValues {
-					shouldInsertTextValues = true
-				}
+				shouldInsertTextValues = true
 			} else if dataType == models.Float {
 				floatQuery = floatQuery.Values(fieldId, value)
-				if !shouldInsertFloatValues {
-					shouldInsertFloatValues = true
-				}
+				shouldInsertFloatValues = true
 			}
 		}
 	}
