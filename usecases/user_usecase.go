@@ -32,6 +32,23 @@ func (usecase *UserUseCase) AddUser(createUser models.CreateUser) (models.User, 
 			// lowercase email to maintain uniqueness
 			createUser.Email = strings.ToLower(createUser.Email)
 
+			existingUser, err := usecase.userRepository.DeletedUserByEmail(tx, createUser.Email)
+			if err != nil && !errors.Is(err, models.NotFoundError) {
+				return models.User{}, err
+			}
+			if existingUser != nil {
+				if err := usecase.userRepository.UpdateUser(tx, models.UpdateUser{
+					Reactivated: true,
+					UserId:      existingUser.UserId,
+					Role:        createUser.Role,
+					FirstName:   createUser.FirstName,
+					LastName:    createUser.LastName,
+				}); err != nil {
+					return models.User{}, err
+				}
+				return usecase.userRepository.UserByID(tx, existingUser.UserId)
+			}
+
 			createdUserUuid, err := usecase.userRepository.CreateUser(tx, createUser)
 			if err != nil {
 				return models.User{}, err

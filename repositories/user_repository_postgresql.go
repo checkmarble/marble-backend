@@ -19,6 +19,7 @@ type UserRepository interface {
 	UserByFirebaseUid(tx Transaction, firebaseUid string) (*models.User, error)
 	UserByEmail(tx Transaction, email string) (*models.User, error)
 	UpdateFirebaseId(tx Transaction, userId models.UserId, firebaseUid string) error
+	DeletedUserByEmail(tx Transaction, email string) (*models.User, error)
 }
 
 type UserRepositoryPostgresql struct {
@@ -76,6 +77,9 @@ func (repo *UserRepositoryPostgresql) UpdateUser(tx Transaction, updateUser mode
 	}
 	if updateUser.LastName != "" {
 		query = query.Set("last_name", updateUser.LastName)
+	}
+	if updateUser.Reactivated {
+		query = query.Set("deleted_at", nil)
 	}
 
 	_, err := pgTx.ExecBuilder(query)
@@ -171,6 +175,21 @@ func (repo *UserRepositoryPostgresql) UserByEmail(tx Transaction, email string) 
 			From(dbmodels.TABLE_USERS).
 			Where("email = ?", email).
 			Where("deleted_at IS NULL").
+			OrderBy("id"),
+		dbmodels.AdaptUser,
+	)
+}
+
+func (repo *UserRepositoryPostgresql) DeletedUserByEmail(tx Transaction, email string) (*models.User, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+
+	return SqlToOptionalModel(
+		pgTx,
+		NewQueryBuilder().
+			Select(dbmodels.UserFields...).
+			From(dbmodels.TABLE_USERS).
+			Where("email = ?", email).
+			Where("deleted_at IS NOT NULL").
 			OrderBy("id"),
 		dbmodels.AdaptUser,
 	)

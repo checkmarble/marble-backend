@@ -9,6 +9,8 @@ import (
 	"github.com/google/uuid"
 )
 
+const FakeOrganizationIdForUnicity = "35a86cbc-166b-46fb-93b9-074944a7a5b0"
+
 type SeedUseCase struct {
 	transactionFactory     transaction.TransactionFactory
 	userRepository         repositories.UserRepository
@@ -21,8 +23,9 @@ func (usecase *SeedUseCase) SeedMarbleAdmins(firstMarbleAdminEmail string) error
 
 	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
 		_, err := usecase.userRepository.CreateUser(tx, models.CreateUser{
-			Email: firstMarbleAdminEmail,
-			Role:  models.MARBLE_ADMIN,
+			Email:          firstMarbleAdminEmail,
+			Role:           models.MARBLE_ADMIN,
+			OrganizationId: FakeOrganizationIdForUnicity,
 		})
 
 		// ignore user already added

@@ -24,9 +24,10 @@ type CreateUser struct {
 }
 
 type UpdateUser struct {
-	UserId    UserId
-	Email     string
-	Role      Role
-	FirstName string
-	LastName  string
+	UserId      UserId
+	Email       string
+	Role        Role
+	FirstName   string
+	LastName    string
+	Reactivated bool
 }
