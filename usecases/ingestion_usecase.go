@@ -255,6 +255,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 
 	for keepParsingFile {
 		windowEnd := windowStart + batchSize
+		payloadReaders = make([]models.PayloadReader, 0)
 		for ; windowStart < windowEnd; windowStart++ {
 			logger.InfoContext(ctx, fmt.Sprintf("Start reading line %v", windowStart))
 			record, err := r.Read()
