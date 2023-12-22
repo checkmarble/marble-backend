@@ -83,13 +83,13 @@ locals {
       }
 
       frontend = {
-        image                     = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-frontend:v0.0.14"
+        image                     = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-frontend:v0.0.16"
         domain                    = "marble-prod-1.firebaseapp.com"
         another_authorized_domain = "app.checkmarble.com"
       }
 
       backend = {
-        image = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:v0.0.28"
+        image = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:v0.0.30"
         url   = "https://api.checkmarble.com"
       }
 

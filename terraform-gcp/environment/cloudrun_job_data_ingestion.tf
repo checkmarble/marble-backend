@@ -21,6 +21,13 @@ resource "google_cloud_run_v2_job" "data_ingestion" {
       containers {
         image = local.environment.backend.image
 
+        resources {
+          limits = {
+            cpu    = "1"
+            memory = "1024Mi"
+          }
+        }
+
         env {
           name  = "PG_HOSTNAME"
           value = "/cloudsql/${local.project_id}:${google_sql_database_instance.marble.region}:${google_sql_database_instance.marble.name}"
