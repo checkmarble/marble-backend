@@ -33,6 +33,7 @@ func (repo *MarbleDbRepository) ListRulesByIterationId(tx Transaction, iteration
 		pgTx,
 		selectRules().
 			Where(squirrel.Eq{"scenario_iteration_id": iterationId}).
+			OrderBy("name ASC").
 			OrderBy("created_at DESC"),
 		dbmodels.AdaptRule,
 	)
