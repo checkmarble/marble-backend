@@ -135,6 +135,16 @@ type Table struct {
 	LinksToSingle map[LinkName]LinkToSingle `json:"linksToSingle"`
 }
 
+func ColumnNames(table Table) []string {
+	columnNames := make([]string, len(table.Fields))
+	i := 0
+	for fieldName := range table.Fields {
+		columnNames[i] = string(fieldName)
+		i++
+	}
+	return columnNames
+}
+
 type Field struct {
 	ID          string   `json:"id,omitempty"`
 	Description string   `json:"description"`

@@ -184,7 +184,7 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 	}
 	defer file.Reader.Close()
 
-	if err = usecase.readFileIngestObjects(ctx, file, logger, false); err != nil {
+	if err = usecase.readFileIngestObjects(ctx, file, logger); err != nil {
 		return err
 	}
 
@@ -196,7 +196,7 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 	return nil
 }
 
-func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file models.GCSFile, logger *slog.Logger, moveFile bool) error {
+func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file models.GCSFile, logger *slog.Logger) error {
 	fullFileName := file.FileName
 	logger.InfoContext(ctx, fmt.Sprintf("Ingesting data from CSV %s", fullFileName))
 
