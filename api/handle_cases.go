@@ -19,33 +19,33 @@ var casesPaginationDefaults = dto.PaginationDefaults{
 	Order:  models.SortingOrderDesc,
 }
 
-func (api *API) handleListCases(ctx *gin.Context) {
-	organizationId, err := utils.OrgIDFromCtx(ctx.Request.Context(), ctx.Request)
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+func (api *API) handleListCases(c *gin.Context) {
+	organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
 	var filters dto.CaseFilters
-	if err := ctx.ShouldBind(&filters); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBind(&filters); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
 	var paginationAndSorting dto.PaginationAndSortingInput
-	if err := ctx.ShouldBind(&paginationAndSorting); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBind(&paginationAndSorting); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 	paginationAndSorting = dto.WithPaginationDefaults(paginationAndSorting, casesPaginationDefaults)
 
-	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
-	cases, err := usecase.ListCases(ctx.Request.Context(), organizationId, dto.AdaptPaginationAndSortingInput(paginationAndSorting), filters)
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+	usecase := api.UsecasesWithCreds(c.Request).NewCaseUseCase()
+	cases, err := usecase.ListCases(c.Request.Context(), organizationId, dto.AdaptPaginationAndSortingInput(paginationAndSorting), filters)
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
 	if len(cases) == 0 {
-		ctx.JSON(http.StatusOK, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"total":      0,
 			"startIndex": 0,
 			"endIndex":   0,
@@ -54,7 +54,7 @@ func (api *API) handleListCases(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"total":      cases[0].Total,
 		"startIndex": cases[0].RankNumber,
 		"endIndex":   cases[len(cases)-1].RankNumber,
@@ -66,185 +66,185 @@ type CaseInput struct {
 	Id string `uri:"case_id" binding:"required,uuid"`
 }
 
-func (api *API) handleGetCase(ctx *gin.Context) {
+func (api *API) handleGetCase(c *gin.Context) {
 	var caseInput CaseInput
-	if err := ctx.ShouldBindUri(&caseInput); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBindUri(&caseInput); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
-	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
-	c, err := usecase.GetCase(ctx.Request.Context(), caseInput.Id)
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+	usecase := api.UsecasesWithCreds(c.Request).NewCaseUseCase()
+	inboxCase, err := usecase.GetCase(c.Request.Context(), caseInput.Id)
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, dto.AdaptCaseWithDecisionsDto(c))
+	c.JSON(http.StatusOK, dto.AdaptCaseWithDecisionsDto(inboxCase))
 }
 
-func (api *API) handlePostCase(ctx *gin.Context) {
-	creds, found := utils.CredentialsFromCtx(ctx.Request.Context())
+func (api *API) handlePostCase(c *gin.Context) {
+	creds, found := utils.CredentialsFromCtx(c.Request.Context())
 	if !found {
-		presentError(ctx.Writer, ctx.Request, fmt.Errorf("no credentials in context"), ctx)
+		presentError(c.Writer, c.Request, fmt.Errorf("no credentials in context"), c)
 		return
 	}
 	userId := string(creds.ActorIdentity.UserId)
 
 	var data dto.CreateCaseBody
-	if err := ctx.ShouldBindJSON(&data); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBindJSON(&data); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
-	organizationId, err := utils.OrgIDFromCtx(ctx.Request.Context(), ctx.Request)
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+	usecase := api.UsecasesWithCreds(c.Request).NewCaseUseCase()
+	organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
-	c, err := usecase.CreateCase(ctx, userId, models.CreateCaseAttributes{
+	inboxCase, err := usecase.CreateCase(c.Request.Context(), userId, models.CreateCaseAttributes{
 		DecisionIds:    data.DecisionIds,
 		InboxId:        data.InboxId,
 		Name:           data.Name,
 		OrganizationId: organizationId,
 	})
 
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
-	ctx.JSON(http.StatusCreated, gin.H{
-		"case": dto.AdaptCaseWithDecisionsDto(c),
+	c.JSON(http.StatusCreated, gin.H{
+		"case": dto.AdaptCaseWithDecisionsDto(inboxCase),
 	})
 }
 
-func (api *API) handlePatchCase(ctx *gin.Context) {
-	creds, found := utils.CredentialsFromCtx(ctx.Request.Context())
+func (api *API) handlePatchCase(c *gin.Context) {
+	creds, found := utils.CredentialsFromCtx(c.Request.Context())
 	if !found {
-		presentError(ctx.Writer, ctx.Request, fmt.Errorf("no credentials in context"), ctx)
+		presentError(c.Writer, c.Request, fmt.Errorf("no credentials in context"), c)
 		return
 	}
 	userId := string(creds.ActorIdentity.UserId)
 
 	var caseInput CaseInput
-	if err := ctx.ShouldBindUri(&caseInput); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBindUri(&caseInput); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
 	var data dto.UpdateCaseBody
-	if err := ctx.ShouldBindJSON(&data); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBindJSON(&data); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
-	c, err := usecase.UpdateCase(ctx.Request.Context(), userId, models.UpdateCaseAttributes{
+	usecase := api.UsecasesWithCreds(c.Request).NewCaseUseCase()
+	inboxCase, err := usecase.UpdateCase(c.Request.Context(), userId, models.UpdateCaseAttributes{
 		Id:      caseInput.Id,
 		Name:    data.Name,
 		Status:  models.CaseStatus(data.Status),
 		InboxId: data.InboxId,
 	})
 
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{
-		"case": dto.AdaptCaseWithDecisionsDto(c),
+	c.JSON(http.StatusOK, gin.H{
+		"case": dto.AdaptCaseWithDecisionsDto(inboxCase),
 	})
 }
 
-func (api *API) handlePostCaseDecisions(ctx *gin.Context) {
-	creds, found := utils.CredentialsFromCtx(ctx.Request.Context())
+func (api *API) handlePostCaseDecisions(c *gin.Context) {
+	creds, found := utils.CredentialsFromCtx(c.Request.Context())
 	if !found {
-		presentError(ctx.Writer, ctx.Request, fmt.Errorf("no credentials in context"), ctx)
+		presentError(c.Writer, c.Request, fmt.Errorf("no credentials in context"), c)
 		return
 	}
 	userId := string(creds.ActorIdentity.UserId)
 
 	var caseInput CaseInput
-	if err := ctx.ShouldBindUri(&caseInput); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBindUri(&caseInput); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
 	var data dto.AddDecisionToCaseBody
-	if err := ctx.ShouldBindJSON(&data); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBindJSON(&data); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
-	c, err := usecase.AddDecisionsToCase(ctx.Request.Context(), userId, caseInput.Id, data.DecisionIds)
+	usecase := api.UsecasesWithCreds(c.Request).NewCaseUseCase()
+	inboxCase, err := usecase.AddDecisionsToCase(c.Request.Context(), userId, caseInput.Id, data.DecisionIds)
 
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{"case": dto.AdaptCaseWithDecisionsDto(c)})
+	c.JSON(http.StatusOK, gin.H{"case": dto.AdaptCaseWithDecisionsDto(inboxCase)})
 }
 
-func (api *API) handlePostCaseComment(ctx *gin.Context) {
-	creds, found := utils.CredentialsFromCtx(ctx.Request.Context())
+func (api *API) handlePostCaseComment(c *gin.Context) {
+	creds, found := utils.CredentialsFromCtx(c.Request.Context())
 	if !found {
-		presentError(ctx.Writer, ctx.Request, fmt.Errorf("no credentials in context"), ctx)
+		presentError(c.Writer, c.Request, fmt.Errorf("no credentials in context"), c)
 		return
 	}
 	userId := string(creds.ActorIdentity.UserId)
 
 	var caseInput CaseInput
-	if err := ctx.ShouldBindUri(&caseInput); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBindUri(&caseInput); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
 	var data dto.CreateCaseCommentBody
-	if err := ctx.ShouldBindJSON(&data); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBindJSON(&data); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
-	c, err := usecase.CreateCaseComment(ctx, userId, models.CreateCaseCommentAttributes{
+	usecase := api.UsecasesWithCreds(c.Request).NewCaseUseCase()
+	inboxCase, err := usecase.CreateCaseComment(c.Request.Context(), userId, models.CreateCaseCommentAttributes{
 		Id:      caseInput.Id,
 		Comment: data.Comment,
 	})
 
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{
-		"case": dto.AdaptCaseWithDecisionsDto(c),
+	c.JSON(http.StatusOK, gin.H{
+		"case": dto.AdaptCaseWithDecisionsDto(inboxCase),
 	})
 }
 
-func (api *API) handlePostCaseTags(ctx *gin.Context) {
-	creds, found := utils.CredentialsFromCtx(ctx.Request.Context())
+func (api *API) handlePostCaseTags(c *gin.Context) {
+	creds, found := utils.CredentialsFromCtx(c.Request.Context())
 	if !found {
-		presentError(ctx.Writer, ctx.Request, fmt.Errorf("no credentials in context"), ctx)
+		presentError(c.Writer, c.Request, fmt.Errorf("no credentials in context"), c)
 		return
 	}
 	userId := string(creds.ActorIdentity.UserId)
 
 	var caseInput CaseInput
-	if err := ctx.ShouldBindUri(&caseInput); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBindUri(&caseInput); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
 	var data dto.CreateCaseTagBody
-	if err := ctx.ShouldBindJSON(&data); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBindJSON(&data); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
-	c, err := usecase.CreateCaseTags(ctx.Request.Context(), userId, models.CreateCaseTagsAttributes{
+	usecase := api.UsecasesWithCreds(c.Request).NewCaseUseCase()
+	inboxCase, err := usecase.CreateCaseTags(c.Request.Context(), userId, models.CreateCaseTagsAttributes{
 		CaseId: caseInput.Id,
 		TagIds: data.TagIds,
 	})
 
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
-	ctx.JSON(http.StatusCreated, gin.H{"case": dto.AdaptCaseWithDecisionsDto(c)})
+	c.JSON(http.StatusCreated, gin.H{"case": dto.AdaptCaseWithDecisionsDto(inboxCase)})
 }
 
 type FileForm struct {

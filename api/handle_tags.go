@@ -13,121 +13,121 @@ type InboxIdUriInput struct {
 	InboxId string `uri:"inbox_id" binding:"required,uuid"`
 }
 
-func (api *API) handleListTags(ctx *gin.Context) {
-	organizationId, err := utils.OrgIDFromCtx(ctx.Request.Context(), ctx.Request)
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+func (api *API) handleListTags(c *gin.Context) {
+	organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
 	withCaseCountFilter := struct {
 		WithCaseCount bool `form:"withCaseCount"`
 	}{}
-	if err := ctx.ShouldBind(&withCaseCountFilter); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBind(&withCaseCountFilter); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(ctx.Request).NewTagUseCase()
-	tags, err := usecase.ListAllTags(ctx, organizationId, withCaseCountFilter.WithCaseCount)
+	usecase := api.UsecasesWithCreds(c.Request).NewTagUseCase()
+	tags, err := usecase.ListAllTags(c.Request.Context(), organizationId, withCaseCountFilter.WithCaseCount)
 
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{"tags": utils.Map(tags, dto.AdaptTagDto)})
+	c.JSON(http.StatusOK, gin.H{"tags": utils.Map(tags, dto.AdaptTagDto)})
 }
 
-func (api *API) handlePostTag(ctx *gin.Context) {
-	organizationId, err := utils.OrgIDFromCtx(ctx.Request.Context(), ctx.Request)
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+func (api *API) handlePostTag(c *gin.Context) {
+	organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 	var data dto.CreateTagBody
-	if err := ctx.ShouldBindJSON(&data); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBindJSON(&data); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(ctx.Request).NewTagUseCase()
-	tag, err := usecase.CreateTag(ctx, models.CreateTagAttributes{
+	usecase := api.UsecasesWithCreds(c.Request).NewTagUseCase()
+	tag, err := usecase.CreateTag(c.Request.Context(), models.CreateTagAttributes{
 		OrganizationId: organizationId,
 		Name:           data.Name,
 		Color:          data.Color,
 	})
 
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
-	ctx.JSON(http.StatusCreated, gin.H{"tag": dto.AdaptTagDto(tag)})
+	c.JSON(http.StatusCreated, gin.H{"tag": dto.AdaptTagDto(tag)})
 }
 
 type TagUriInput struct {
 	TagId string `uri:"tag_id" binding:"required,uuid"`
 }
 
-func (api *API) handleGetTag(ctx *gin.Context) {
+func (api *API) handleGetTag(c *gin.Context) {
 	var tagInput TagUriInput
-	if err := ctx.ShouldBindUri(&tagInput); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBindUri(&tagInput); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(ctx.Request).NewTagUseCase()
+	usecase := api.UsecasesWithCreds(c.Request).NewTagUseCase()
 	tag, err := usecase.GetTagById(tagInput.TagId)
 
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{"tag": dto.AdaptTagDto(tag)})
+	c.JSON(http.StatusOK, gin.H{"tag": dto.AdaptTagDto(tag)})
 }
 
-func (api *API) handlePatchTag(ctx *gin.Context) {
-	organizationId, err := utils.OrgIDFromCtx(ctx.Request.Context(), ctx.Request)
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+func (api *API) handlePatchTag(c *gin.Context) {
+	organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
 	var tagInput TagUriInput
-	if err := ctx.ShouldBindUri(&tagInput); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBindUri(&tagInput); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
 	var data dto.UpdateTagBody
-	if err := ctx.ShouldBindJSON(&data); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBindJSON(&data); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(ctx.Request).NewTagUseCase()
-	tag, err := usecase.UpdateTag(ctx, organizationId, models.UpdateTagAttributes{
+	usecase := api.UsecasesWithCreds(c.Request).NewTagUseCase()
+	tag, err := usecase.UpdateTag(c.Request.Context(), organizationId, models.UpdateTagAttributes{
 		TagId: tagInput.TagId,
 		Color: data.Color,
 		Name:  data.Name,
 	})
 
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{"tag": dto.AdaptTagDto(tag)})
+	c.JSON(http.StatusOK, gin.H{"tag": dto.AdaptTagDto(tag)})
 }
 
-func (api *API) handleDeleteTag(ctx *gin.Context) {
-	organizationId, err := utils.OrgIDFromCtx(ctx.Request.Context(), ctx.Request)
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+func (api *API) handleDeleteTag(c *gin.Context) {
+	organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
 	var tagInput TagUriInput
-	if err := ctx.ShouldBindUri(&tagInput); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBindUri(&tagInput); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(ctx.Request).NewTagUseCase()
-	err = usecase.DeleteTag(ctx, organizationId, tagInput.TagId)
+	usecase := api.UsecasesWithCreds(c.Request).NewTagUseCase()
+	err = usecase.DeleteTag(c.Request.Context(), organizationId, tagInput.TagId)
 
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
-	ctx.Status(http.StatusNoContent)
+	c.Status(http.StatusNoContent)
 }

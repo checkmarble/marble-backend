@@ -14,153 +14,153 @@ type GetInboxIdUriInput struct {
 	InboxId string `uri:"inbox_id" binding:"required,uuid"`
 }
 
-func (api *API) handleGetInboxById(ctx *gin.Context) {
+func (api *API) handleGetInboxById(c *gin.Context) {
 	var getInboxInput GetInboxIdUriInput
-	if err := ctx.ShouldBindUri(&getInboxInput); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBindUri(&getInboxInput); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
-	inbox, err := usecase.GetInboxById(ctx.Request.Context(), getInboxInput.InboxId)
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+	usecase := api.UsecasesWithCreds(c.Request).NewInboxUsecase()
+	inbox, err := usecase.GetInboxById(c.Request.Context(), getInboxInput.InboxId)
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"inbox": dto.AdaptInboxDto(inbox),
 	})
 }
 
-func (api *API) handleListInboxes(ctx *gin.Context) {
+func (api *API) handleListInboxes(c *gin.Context) {
 	withCaseCountFilter := struct {
 		WithCaseCount bool `form:"withCaseCount"`
 	}{}
-	if err := ctx.ShouldBind(&withCaseCountFilter); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBind(&withCaseCountFilter); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
-	inboxes, err := usecase.ListInboxes(ctx.Request.Context(), withCaseCountFilter.WithCaseCount)
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+	usecase := api.UsecasesWithCreds(c.Request).NewInboxUsecase()
+	inboxes, err := usecase.ListInboxes(c.Request.Context(), withCaseCountFilter.WithCaseCount)
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"inboxes": utils.Map(inboxes, dto.AdaptInboxDto)})
+	c.JSON(http.StatusOK, gin.H{"inboxes": utils.Map(inboxes, dto.AdaptInboxDto)})
 }
 
 type CreateInboxInput struct {
 	Name string `json:"name" binding:"required"`
 }
 
-func (api *API) handlePostInbox(ctx *gin.Context) {
-	organizationId, err := utils.OrgIDFromCtx(ctx.Request.Context(), ctx.Request)
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+func (api *API) handlePostInbox(c *gin.Context) {
+	organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
 	var createInboxInput CreateInboxInput
-	if err := ctx.ShouldBind(&createInboxInput); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBind(&createInboxInput); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
-	inbox, err := usecase.CreateInbox(ctx.Request.Context(), models.CreateInboxInput{Name: createInboxInput.Name, OrganizationId: organizationId})
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+	usecase := api.UsecasesWithCreds(c.Request).NewInboxUsecase()
+	inbox, err := usecase.CreateInbox(c.Request.Context(), models.CreateInboxInput{Name: createInboxInput.Name, OrganizationId: organizationId})
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"inbox": dto.AdaptInboxDto(inbox),
 	})
 }
 
-func (api *API) handlePatchInbox(ctx *gin.Context) {
+func (api *API) handlePatchInbox(c *gin.Context) {
 	var getInboxInput GetInboxIdUriInput
-	if err := ctx.ShouldBindUri(&getInboxInput); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBindUri(&getInboxInput); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
 	var data struct {
 		Name string `json:"name" binding:"required"`
 	}
-	if err := ctx.ShouldBind(&data); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBind(&data); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
-	inbox, err := usecase.UpdateInbox(ctx.Request.Context(), getInboxInput.InboxId, data.Name)
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+	usecase := api.UsecasesWithCreds(c.Request).NewInboxUsecase()
+	inbox, err := usecase.UpdateInbox(c.Request.Context(), getInboxInput.InboxId, data.Name)
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"inbox": dto.AdaptInboxDto(inbox)})
+	c.JSON(http.StatusOK, gin.H{"inbox": dto.AdaptInboxDto(inbox)})
 }
 
-func (api *API) handleDeleteInbox(ctx *gin.Context) {
+func (api *API) handleDeleteInbox(c *gin.Context) {
 	var getInboxInput GetInboxIdUriInput
-	if err := ctx.ShouldBindUri(&getInboxInput); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBindUri(&getInboxInput); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
-	err := usecase.DeleteInbox(ctx.Request.Context(), getInboxInput.InboxId)
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+	usecase := api.UsecasesWithCreds(c.Request).NewInboxUsecase()
+	err := usecase.DeleteInbox(c.Request.Context(), getInboxInput.InboxId)
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
-	ctx.Status(http.StatusOK)
+	c.Status(http.StatusOK)
 }
 
 type GetInboxUserInput struct {
 	Id string `uri:"inbox_user_id" binding:"required,uuid"`
 }
 
-func (api *API) handleGetInboxUserById(ctx *gin.Context) {
+func (api *API) handleGetInboxUserById(c *gin.Context) {
 	var getInboxUserInput GetInboxUserInput
-	if err := ctx.ShouldBindUri(&getInboxUserInput); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBindUri(&getInboxUserInput); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
-	inboxUser, err := usecase.GetInboxUserById(ctx.Request.Context(), getInboxUserInput.Id)
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+	usecase := api.UsecasesWithCreds(c.Request).NewInboxUsecase()
+	inboxUser, err := usecase.GetInboxUserById(c.Request.Context(), getInboxUserInput.Id)
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"inbox_user": dto.AdaptInboxUserDto(inboxUser)})
+	c.JSON(http.StatusOK, gin.H{"inbox_user": dto.AdaptInboxUserDto(inboxUser)})
 }
 
-func (api *API) handleListAllInboxUsers(ctx *gin.Context) {
-	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
+func (api *API) handleListAllInboxUsers(c *gin.Context) {
+	usecase := api.UsecasesWithCreds(c.Request).NewInboxUsecase()
 	inboxUsers, err := usecase.ListAllInboxUsers()
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"inbox_users": utils.Map(inboxUsers, dto.AdaptInboxUserDto)})
+	c.JSON(http.StatusOK, gin.H{"inbox_users": utils.Map(inboxUsers, dto.AdaptInboxUserDto)})
 }
 
-func (api *API) handleListInboxUsers(ctx *gin.Context) {
+func (api *API) handleListInboxUsers(c *gin.Context) {
 	var listInboxUserInput GetInboxIdUriInput
-	if err := ctx.ShouldBindUri(&listInboxUserInput); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBindUri(&listInboxUserInput); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
-	inboxUsers, err := usecase.ListInboxUsers(ctx.Request.Context(), listInboxUserInput.InboxId)
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+	usecase := api.UsecasesWithCreds(c.Request).NewInboxUsecase()
+	inboxUsers, err := usecase.ListInboxUsers(c.Request.Context(), listInboxUserInput.InboxId)
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"inbox_users": utils.Map(inboxUsers, dto.AdaptInboxUserDto)})
+	c.JSON(http.StatusOK, gin.H{"inbox_users": utils.Map(inboxUsers, dto.AdaptInboxUserDto)})
 }
 
 type CreateInboxUserInput struct {
@@ -173,67 +173,67 @@ type CreateInboxUserInput struct {
 	}
 }
 
-func (api *API) handlePostInboxUser(ctx *gin.Context) {
+func (api *API) handlePostInboxUser(c *gin.Context) {
 	var input CreateInboxUserInput
-	if err := ctx.ShouldBindUri(&input.Uri); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBindUri(&input.Uri); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	if err := ctx.ShouldBind(&input.Body); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBind(&input.Body); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
-	inboxUser, err := usecase.CreateInboxUser(ctx.Request.Context(), models.CreateInboxUserInput{
+	usecase := api.UsecasesWithCreds(c.Request).NewInboxUsecase()
+	inboxUser, err := usecase.CreateInboxUser(c.Request.Context(), models.CreateInboxUserInput{
 		InboxId: input.Uri.InboxId,
 		UserId:  input.Body.UserId,
 		Role:    models.InboxUserRole(input.Body.Role),
 	})
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"inbox_user": dto.AdaptInboxUserDto(inboxUser)})
+	c.JSON(http.StatusOK, gin.H{"inbox_user": dto.AdaptInboxUserDto(inboxUser)})
 }
 
-func (api *API) handlePatchInboxUser(ctx *gin.Context) {
+func (api *API) handlePatchInboxUser(c *gin.Context) {
 	var getInboxUserInput GetInboxUserInput
-	if err := ctx.ShouldBindUri(&getInboxUserInput); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBindUri(&getInboxUserInput); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
 	var data struct {
 		Role string `json:"role" binding:"required"`
 	}
-	if err := ctx.ShouldBind(&data); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBind(&data); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
-	inboxUser, err := usecase.UpdateInboxUser(ctx.Request.Context(), getInboxUserInput.Id, models.InboxUserRole(data.Role))
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+	usecase := api.UsecasesWithCreds(c.Request).NewInboxUsecase()
+	inboxUser, err := usecase.UpdateInboxUser(c.Request.Context(), getInboxUserInput.Id, models.InboxUserRole(data.Role))
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"inbox_user": dto.AdaptInboxUserDto(inboxUser)})
+	c.JSON(http.StatusOK, gin.H{"inbox_user": dto.AdaptInboxUserDto(inboxUser)})
 }
 
-func (api *API) handleDeleteInboxUser(ctx *gin.Context) {
+func (api *API) handleDeleteInboxUser(c *gin.Context) {
 	var getInboxUserInput GetInboxUserInput
-	if err := ctx.ShouldBindUri(&getInboxUserInput); err != nil {
-		ctx.Status(http.StatusBadRequest)
+	if err := c.ShouldBindUri(&getInboxUserInput); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
-	err := usecase.DeleteInboxUser(ctx.Request.Context(), getInboxUserInput.Id)
-	if presentError(ctx.Writer, ctx.Request, err, ctx) {
+	usecase := api.UsecasesWithCreds(c.Request).NewInboxUsecase()
+	err := usecase.DeleteInboxUser(c.Request.Context(), getInboxUserInput.Id)
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
-	ctx.Status(http.StatusOK)
+	c.Status(http.StatusOK)
 }
