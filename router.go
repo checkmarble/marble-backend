@@ -9,6 +9,7 @@ import (
 	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 
 	"github.com/checkmarble/marble-backend/api"
 	"github.com/checkmarble/marble-backend/api/middleware"
@@ -74,6 +75,7 @@ func initRouter(ctx context.Context, conf AppConfiguration, deps dependencies) *
 		// GCP already logs those elements
 		r.Use(loggingMiddleware)
 	}
+	r.Use(otelgin.Middleware("marble-backend"))
 	r.Use(utils.StoreLoggerInContextMiddleware(logger))
 	r.Use(utils.StoreSegmentClientInContextMiddleware(deps.SegmentClient))
 

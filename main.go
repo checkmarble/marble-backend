@@ -23,6 +23,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/repositories/firebase"
 	"github.com/checkmarble/marble-backend/repositories/postgres"
+	"github.com/checkmarble/marble-backend/tracing"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/datamodel"
 	"github.com/checkmarble/marble-backend/usecases/token"
@@ -37,6 +38,14 @@ type dependencies struct {
 }
 
 func initDependencies(conf AppConfiguration, signingKey *rsa.PrivateKey) (dependencies, error) {
+	err := tracing.Init(tracing.Configuration{
+		Enabled:         conf.env != "development",
+		ApplicationName: "marble-backend",
+		ProjectID:       conf.gcpProject,
+	})
+	if err != nil {
+		return dependencies{}, fmt.Errorf("tracing.Init error: %w", err)
+	}
 	database, err := postgres.New(postgres.Configuration{
 		Host:     conf.pgConfig.Hostname,
 		Port:     conf.pgConfig.Port,
