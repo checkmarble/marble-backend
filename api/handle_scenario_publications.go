@@ -40,7 +40,7 @@ func (api *API) ListScenarioPublications(c *gin.Context) {
 		ScenarioId:          utils.PtrTo(scenarioID, &utils.PtrToOptions{OmitZero: true}),
 		ScenarioIterationId: utils.PtrTo(scenarioIterationID, &utils.PtrToOptions{OmitZero: true}),
 	})
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 	c.JSON(http.StatusOK, utils.Map(scenarioPublications, NewAPIScenarioPublication))
@@ -58,7 +58,7 @@ func (api *API) CreateScenarioPublication(c *gin.Context) {
 		ScenarioIterationId: data.ScenarioIterationId,
 		PublicationAction:   models.PublicationActionFrom(data.PublicationAction),
 	})
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 	c.JSON(http.StatusOK, utils.Map(scenarioPublications, NewAPIScenarioPublication))
@@ -69,7 +69,7 @@ func (api *API) GetScenarioPublication(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewScenarioPublicationUsecase()
 	scenarioPublication, err := usecase.GetScenarioPublication(scenarioPublicationID)
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 	c.JSON(http.StatusOK, NewAPIScenarioPublication(scenarioPublication))
