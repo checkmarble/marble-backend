@@ -87,10 +87,10 @@ func TestMain(m *testing.M) {
 
 	pgConfig := utils.PGConfig{ConnectionString: databaseURL}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	repositories.RunMigrations("DEV", pgConfig, logger)
+	repositories.RunMigrations("development", pgConfig, logger)
 
 	// Need to declare this after the migrations, to have the correct search path
-	dbPool, err := infra.NewPostgresConnectionPool(pgConfig.GetConnectionString("DEV"))
+	dbPool, err := infra.NewPostgresConnectionPool(pgConfig.GetConnectionString("development"))
 	if err != nil {
 		log.Fatalf("Could not create connection pool: %s", err)
 	}
