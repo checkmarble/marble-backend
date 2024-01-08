@@ -129,6 +129,7 @@ type AppConfiguration struct {
 	gcpProject string
 	pgConfig   utils.PGConfig
 	config     models.GlobalConfiguration
+	sentryDsn  string
 }
 
 func main() {
@@ -151,6 +152,7 @@ func main() {
 			GcsCaseManagerBucket: utils.GetRequiredStringEnv("GCS_CASE_MANAGER_BUCKET"),
 			SegmentWriteKey:      utils.GetRequiredStringEnv("SEGMENT_WRITE_KEY"),
 		},
+		sentryDsn: utils.GetStringEnv("SENTRY_DSN", ""),
 	}
 
 	////////////////////////////////////////////////////////////
