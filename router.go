@@ -17,7 +17,7 @@ import (
 func corsOption(env string) cors.Config {
 	allowedOrigins := []string{"*"}
 
-	if env == "DEV" {
+	if env == "development" {
 		allowedOrigins = append(allowedOrigins, "http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:5173")
 	}
 
@@ -31,7 +31,7 @@ func corsOption(env string) cors.Config {
 }
 
 func initRouter(ctx context.Context, conf AppConfiguration, deps dependencies) *gin.Engine {
-	if conf.env != "DEV" {
+	if conf.env != "development" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
@@ -42,7 +42,7 @@ func initRouter(ctx context.Context, conf AppConfiguration, deps dependencies) *
 
 	r.Use(gin.Recovery())
 	r.Use(cors.New(corsOption(conf.env)))
-	if conf.env == "DEV" {
+	if conf.env == "development" {
 		// GCP already logs those elements
 		r.Use(loggingMiddleware)
 	}

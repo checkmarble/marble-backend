@@ -86,7 +86,7 @@ func runServer(ctx context.Context, appConfig AppConfiguration) {
 		}
 	}
 
-	if appConfig.env == "DEV" {
+	if appConfig.env == "development" {
 		zorgOrganizationId := "13617a88-56f5-4baa-8d11-ce102f7da907"
 		err := seedUsecase.SeedZorgOrganization(zorgOrganizationId)
 		if err != nil {
@@ -133,7 +133,7 @@ type AppConfiguration struct {
 
 func main() {
 	appConfig := AppConfiguration{
-		env:        utils.GetStringEnv("ENV", "DEV"),
+		env:        utils.GetStringEnv("ENV", "development"),
 		port:       utils.GetRequiredStringEnv("PORT"),
 		gcpProject: os.Getenv("GOOGLE_CLOUD_PROJECT"),
 		pgConfig: utils.PGConfig{

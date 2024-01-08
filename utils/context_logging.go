@@ -14,7 +14,7 @@ import (
 func NewLogger(env string) *slog.Logger {
 	var logger *slog.Logger
 
-	isDevEnv := env == "DEV"
+	isDevEnv := env == "development"
 	if isDevEnv {
 		logHandler := LocalDevHandlerOptions{
 			SlogOpts: slog.HandlerOptions{Level: slog.LevelDebug},
