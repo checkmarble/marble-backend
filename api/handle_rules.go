@@ -18,12 +18,12 @@ func (api *API) ListRules(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewRuleUsecase()
 	rules, err := usecase.ListRules(iterationID)
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
 	apiRules, err := utils.MapErr(rules, dto.AdaptRuleDto)
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 	c.JSON(http.StatusOK, apiRules)
@@ -31,7 +31,7 @@ func (api *API) ListRules(c *gin.Context) {
 
 func (api *API) CreateRule(c *gin.Context) {
 	organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
@@ -42,18 +42,18 @@ func (api *API) CreateRule(c *gin.Context) {
 	}
 
 	createInputRule, err := dto.AdaptCreateRuleInput(data, organizationId)
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewRuleUsecase()
 	rule, err := usecase.CreateRule(c.Request.Context(), createInputRule)
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
 	apiRule, err := dto.AdaptRuleDto(rule)
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
@@ -67,12 +67,12 @@ func (api *API) GetRule(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewRuleUsecase()
 	rule, err := usecase.GetRule(ruleID)
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
 	apiRule, err := dto.AdaptRuleDto(rule)
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
@@ -91,18 +91,18 @@ func (api *API) UpdateRule(c *gin.Context) {
 	}
 
 	updateRuleInput, err := dto.AdaptUpdateRule(ruleID, data)
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewRuleUsecase()
 	updatedRule, err := usecase.UpdateRule(c.Request.Context(), updateRuleInput)
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
 	apiRule, err := dto.AdaptRuleDto(updatedRule)
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
@@ -116,7 +116,7 @@ func (api *API) DeleteRule(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewRuleUsecase()
 	err := usecase.DeleteRule(c.Request.Context(), ruleID)
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 	c.Status(http.StatusNoContent)

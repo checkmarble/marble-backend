@@ -7,9 +7,12 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/getsentry/sentry-go"
+	sentrygin "github.com/getsentry/sentry-go/gin"
+	"github.com/gin-gonic/gin"
 )
 
-func presentError(w http.ResponseWriter, r *http.Request, err error) bool {
+func presentError(w http.ResponseWriter, r *http.Request, err error, c *gin.Context) bool {
 	if err == nil {
 		return false
 	}
@@ -36,6 +39,11 @@ func presentError(w http.ResponseWriter, r *http.Request, err error) bool {
 
 	} else {
 		utils.LogRequestError(r, fmt.Sprintf("Unexpected Error: %+v", err))
+		if hub := sentrygin.GetHubFromContext(c); hub != nil {
+			hub.CaptureException(err)
+		} else {
+			sentry.CaptureException(err)
+		}
 		http.Error(w, "", http.StatusInternalServerError)
 	}
 	return true

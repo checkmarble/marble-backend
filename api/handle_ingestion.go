@@ -21,7 +21,7 @@ import (
 func (api *API) handleIngestion(c *gin.Context) {
 	logger := utils.LoggerFromContext(c.Request.Context())
 	organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
@@ -89,7 +89,7 @@ func (api *API) handleCsvIngestion(c *gin.Context) {
 	ctx := c.Request.Context()
 	creds, found := utils.CredentialsFromCtx(ctx)
 	if !found {
-		presentError(c.Writer, c.Request, fmt.Errorf("no credentials in context"))
+		presentError(c.Writer, c.Request, fmt.Errorf("no credentials in context"), c)
 		return
 	}
 	userId := string(creds.ActorIdentity.UserId)
@@ -107,7 +107,7 @@ func (api *API) handleCsvIngestion(c *gin.Context) {
 	ingestionUseCase := api.UsecasesWithCreds(c.Request).NewIngestionUseCase()
 	uploadLog, err := ingestionUseCase.ValidateAndUploadIngestionCsv(ctx, creds.OrganizationId, userId, objectType, fileReader)
 
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
@@ -119,7 +119,7 @@ func (api *API) handleListUploadLogs(c *gin.Context) {
 	ctx := c.Request.Context()
 	creds, found := utils.CredentialsFromCtx(ctx)
 	if !found {
-		presentError(c.Writer, c.Request, fmt.Errorf("no credentials in context"))
+		presentError(c.Writer, c.Request, fmt.Errorf("no credentials in context"), c)
 		return
 	}
 
@@ -127,7 +127,7 @@ func (api *API) handleListUploadLogs(c *gin.Context) {
 	ingestionUseCase := api.UsecasesWithCreds(c.Request).NewIngestionUseCase()
 	uploadLogs, err := ingestionUseCase.ListUploadLogs(ctx, creds.OrganizationId, objectType)
 
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 	c.JSON(http.StatusOK, utils.Map(uploadLogs, dto.AdaptUploadLogDto))
