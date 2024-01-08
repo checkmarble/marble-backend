@@ -64,7 +64,7 @@ func (f FilterEvaluator) Evaluate(arguments ast.Arguments) (any, []error) {
 			promotedValue, err = promoteArgumentToDataType(value, fieldType)
 		}
 		if err != nil {
-			return MakeEvaluateError(fmt.Errorf("value is not compatible with selected field %w %w", ast.ErrArgumentInvalidType, ast.NewNamedArgumentError("value")))
+			return MakeEvaluateError(fmt.Errorf("value is not compatible with selected field %w %w: %w", ast.ErrArgumentInvalidType, ast.NewNamedArgumentError("value"), err))
 		}
 	}
 
