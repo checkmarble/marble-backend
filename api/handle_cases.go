@@ -21,7 +21,7 @@ var casesPaginationDefaults = dto.PaginationDefaults{
 
 func (api *API) handleListCases(ctx *gin.Context) {
 	organizationId, err := utils.OrgIDFromCtx(ctx.Request.Context(), ctx.Request)
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 
@@ -40,7 +40,7 @@ func (api *API) handleListCases(ctx *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
 	cases, err := usecase.ListCases(ctx.Request.Context(), organizationId, dto.AdaptPaginationAndSortingInput(paginationAndSorting), filters)
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 
@@ -74,7 +74,7 @@ func (api *API) handleGetCase(ctx *gin.Context) {
 	}
 	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
 	c, err := usecase.GetCase(ctx.Request.Context(), caseInput.Id)
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 
@@ -84,7 +84,7 @@ func (api *API) handleGetCase(ctx *gin.Context) {
 func (api *API) handlePostCase(ctx *gin.Context) {
 	creds, found := utils.CredentialsFromCtx(ctx.Request.Context())
 	if !found {
-		presentError(ctx.Writer, ctx.Request, fmt.Errorf("no credentials in context"))
+		presentError(ctx.Writer, ctx.Request, fmt.Errorf("no credentials in context"), ctx)
 		return
 	}
 	userId := string(creds.ActorIdentity.UserId)
@@ -97,7 +97,7 @@ func (api *API) handlePostCase(ctx *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
 	organizationId, err := utils.OrgIDFromCtx(ctx.Request.Context(), ctx.Request)
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 
@@ -108,7 +108,7 @@ func (api *API) handlePostCase(ctx *gin.Context) {
 		OrganizationId: organizationId,
 	})
 
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 	ctx.JSON(http.StatusCreated, gin.H{
@@ -119,7 +119,7 @@ func (api *API) handlePostCase(ctx *gin.Context) {
 func (api *API) handlePatchCase(ctx *gin.Context) {
 	creds, found := utils.CredentialsFromCtx(ctx.Request.Context())
 	if !found {
-		presentError(ctx.Writer, ctx.Request, fmt.Errorf("no credentials in context"))
+		presentError(ctx.Writer, ctx.Request, fmt.Errorf("no credentials in context"), ctx)
 		return
 	}
 	userId := string(creds.ActorIdentity.UserId)
@@ -144,7 +144,7 @@ func (api *API) handlePatchCase(ctx *gin.Context) {
 		InboxId: data.InboxId,
 	})
 
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{
@@ -155,7 +155,7 @@ func (api *API) handlePatchCase(ctx *gin.Context) {
 func (api *API) handlePostCaseDecisions(ctx *gin.Context) {
 	creds, found := utils.CredentialsFromCtx(ctx.Request.Context())
 	if !found {
-		presentError(ctx.Writer, ctx.Request, fmt.Errorf("no credentials in context"))
+		presentError(ctx.Writer, ctx.Request, fmt.Errorf("no credentials in context"), ctx)
 		return
 	}
 	userId := string(creds.ActorIdentity.UserId)
@@ -175,7 +175,7 @@ func (api *API) handlePostCaseDecisions(ctx *gin.Context) {
 	usecase := api.UsecasesWithCreds(ctx.Request).NewCaseUseCase()
 	c, err := usecase.AddDecisionsToCase(ctx.Request.Context(), userId, caseInput.Id, data.DecisionIds)
 
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{"case": dto.AdaptCaseWithDecisionsDto(c)})
@@ -184,7 +184,7 @@ func (api *API) handlePostCaseDecisions(ctx *gin.Context) {
 func (api *API) handlePostCaseComment(ctx *gin.Context) {
 	creds, found := utils.CredentialsFromCtx(ctx.Request.Context())
 	if !found {
-		presentError(ctx.Writer, ctx.Request, fmt.Errorf("no credentials in context"))
+		presentError(ctx.Writer, ctx.Request, fmt.Errorf("no credentials in context"), ctx)
 		return
 	}
 	userId := string(creds.ActorIdentity.UserId)
@@ -207,7 +207,7 @@ func (api *API) handlePostCaseComment(ctx *gin.Context) {
 		Comment: data.Comment,
 	})
 
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{
@@ -218,7 +218,7 @@ func (api *API) handlePostCaseComment(ctx *gin.Context) {
 func (api *API) handlePostCaseTags(ctx *gin.Context) {
 	creds, found := utils.CredentialsFromCtx(ctx.Request.Context())
 	if !found {
-		presentError(ctx.Writer, ctx.Request, fmt.Errorf("no credentials in context"))
+		presentError(ctx.Writer, ctx.Request, fmt.Errorf("no credentials in context"), ctx)
 		return
 	}
 	userId := string(creds.ActorIdentity.UserId)
@@ -241,7 +241,7 @@ func (api *API) handlePostCaseTags(ctx *gin.Context) {
 		TagIds: data.TagIds,
 	})
 
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 	ctx.JSON(http.StatusCreated, gin.H{"case": dto.AdaptCaseWithDecisionsDto(c)})
@@ -254,13 +254,13 @@ type FileForm struct {
 func (api *API) handlePostCaseFile(c *gin.Context) {
 	var caseInput CaseInput
 	if err := c.ShouldBindUri(&caseInput); err != nil {
-		presentError(c.Writer, c.Request, errors.Wrap(models.BadParameterError, err.Error()))
+		presentError(c.Writer, c.Request, errors.Wrap(models.BadParameterError, err.Error()), c)
 		return
 	}
 
 	var form FileForm
 	if err := c.ShouldBind(&form); err != nil {
-		presentError(c.Writer, c.Request, errors.Wrap(models.BadParameterError, err.Error()))
+		presentError(c.Writer, c.Request, errors.Wrap(models.BadParameterError, err.Error()), c)
 		return
 	}
 
@@ -269,7 +269,7 @@ func (api *API) handlePostCaseFile(c *gin.Context) {
 		CaseId: caseInput.Id,
 		File:   form.File,
 	})
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
@@ -283,13 +283,13 @@ type CaseFileInput struct {
 func (api *API) handleDownloadCaseFile(c *gin.Context) {
 	var caseFileInput CaseFileInput
 	if err := c.ShouldBindUri(&caseFileInput); err != nil {
-		presentError(c.Writer, c.Request, errors.Wrap(models.BadParameterError, err.Error()))
+		presentError(c.Writer, c.Request, errors.Wrap(models.BadParameterError, err.Error()), c)
 		return
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewCaseUseCase()
 	url, err := usecase.GetCaseFileUrl(c.Request.Context(), caseFileInput.Id)
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 

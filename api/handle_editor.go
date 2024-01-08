@@ -15,16 +15,16 @@ func (api *API) handleGetEditorIdentifiers(c *gin.Context) {
 	usecase := api.UsecasesWithCreds(c.Request).AstExpressionUsecase()
 	result, err := usecase.EditorIdentifiers(scenarioID)
 
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 
 	databaseNodes, err := utils.MapErr(result.DatabaseAccessors, dto.AdaptNodeDto)
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 	payloadbaseNodes, err := utils.MapErr(result.PayloadAccessors, dto.AdaptNodeDto)
-	if presentError(c.Writer, c.Request, err) {
+	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
 

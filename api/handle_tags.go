@@ -15,7 +15,7 @@ type InboxIdUriInput struct {
 
 func (api *API) handleListTags(ctx *gin.Context) {
 	organizationId, err := utils.OrgIDFromCtx(ctx.Request.Context(), ctx.Request)
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 
@@ -30,7 +30,7 @@ func (api *API) handleListTags(ctx *gin.Context) {
 	usecase := api.UsecasesWithCreds(ctx.Request).NewTagUseCase()
 	tags, err := usecase.ListAllTags(ctx, organizationId, withCaseCountFilter.WithCaseCount)
 
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{"tags": utils.Map(tags, dto.AdaptTagDto)})
@@ -38,7 +38,7 @@ func (api *API) handleListTags(ctx *gin.Context) {
 
 func (api *API) handlePostTag(ctx *gin.Context) {
 	organizationId, err := utils.OrgIDFromCtx(ctx.Request.Context(), ctx.Request)
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 	var data dto.CreateTagBody
@@ -54,7 +54,7 @@ func (api *API) handlePostTag(ctx *gin.Context) {
 		Color:          data.Color,
 	})
 
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 	ctx.JSON(http.StatusCreated, gin.H{"tag": dto.AdaptTagDto(tag)})
@@ -74,7 +74,7 @@ func (api *API) handleGetTag(ctx *gin.Context) {
 	usecase := api.UsecasesWithCreds(ctx.Request).NewTagUseCase()
 	tag, err := usecase.GetTagById(tagInput.TagId)
 
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{"tag": dto.AdaptTagDto(tag)})
@@ -82,7 +82,7 @@ func (api *API) handleGetTag(ctx *gin.Context) {
 
 func (api *API) handlePatchTag(ctx *gin.Context) {
 	organizationId, err := utils.OrgIDFromCtx(ctx.Request.Context(), ctx.Request)
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 
@@ -105,7 +105,7 @@ func (api *API) handlePatchTag(ctx *gin.Context) {
 		Name:  data.Name,
 	})
 
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{"tag": dto.AdaptTagDto(tag)})
@@ -113,7 +113,7 @@ func (api *API) handlePatchTag(ctx *gin.Context) {
 
 func (api *API) handleDeleteTag(ctx *gin.Context) {
 	organizationId, err := utils.OrgIDFromCtx(ctx.Request.Context(), ctx.Request)
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 
@@ -126,7 +126,7 @@ func (api *API) handleDeleteTag(ctx *gin.Context) {
 	usecase := api.UsecasesWithCreds(ctx.Request).NewTagUseCase()
 	err = usecase.DeleteTag(ctx, organizationId, tagInput.TagId)
 
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 	ctx.Status(http.StatusNoContent)

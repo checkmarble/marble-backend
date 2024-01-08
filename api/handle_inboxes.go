@@ -23,7 +23,7 @@ func (api *API) handleGetInboxById(ctx *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
 	inbox, err := usecase.GetInboxById(ctx.Request.Context(), getInboxInput.InboxId)
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 
@@ -43,7 +43,7 @@ func (api *API) handleListInboxes(ctx *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
 	inboxes, err := usecase.ListInboxes(ctx.Request.Context(), withCaseCountFilter.WithCaseCount)
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 
@@ -56,7 +56,7 @@ type CreateInboxInput struct {
 
 func (api *API) handlePostInbox(ctx *gin.Context) {
 	organizationId, err := utils.OrgIDFromCtx(ctx.Request.Context(), ctx.Request)
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 
@@ -68,7 +68,7 @@ func (api *API) handlePostInbox(ctx *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
 	inbox, err := usecase.CreateInbox(ctx.Request.Context(), models.CreateInboxInput{Name: createInboxInput.Name, OrganizationId: organizationId})
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 
@@ -94,7 +94,7 @@ func (api *API) handlePatchInbox(ctx *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
 	inbox, err := usecase.UpdateInbox(ctx.Request.Context(), getInboxInput.InboxId, data.Name)
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 
@@ -110,7 +110,7 @@ func (api *API) handleDeleteInbox(ctx *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
 	err := usecase.DeleteInbox(ctx.Request.Context(), getInboxInput.InboxId)
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 
@@ -130,7 +130,7 @@ func (api *API) handleGetInboxUserById(ctx *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
 	inboxUser, err := usecase.GetInboxUserById(ctx.Request.Context(), getInboxUserInput.Id)
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 
@@ -140,7 +140,7 @@ func (api *API) handleGetInboxUserById(ctx *gin.Context) {
 func (api *API) handleListAllInboxUsers(ctx *gin.Context) {
 	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
 	inboxUsers, err := usecase.ListAllInboxUsers()
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 
@@ -156,7 +156,7 @@ func (api *API) handleListInboxUsers(ctx *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
 	inboxUsers, err := usecase.ListInboxUsers(ctx.Request.Context(), listInboxUserInput.InboxId)
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 
@@ -191,7 +191,7 @@ func (api *API) handlePostInboxUser(ctx *gin.Context) {
 		UserId:  input.Body.UserId,
 		Role:    models.InboxUserRole(input.Body.Role),
 	})
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 
@@ -215,7 +215,7 @@ func (api *API) handlePatchInboxUser(ctx *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
 	inboxUser, err := usecase.UpdateInboxUser(ctx.Request.Context(), getInboxUserInput.Id, models.InboxUserRole(data.Role))
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 
@@ -231,7 +231,7 @@ func (api *API) handleDeleteInboxUser(ctx *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(ctx.Request).NewInboxUsecase()
 	err := usecase.DeleteInboxUser(ctx.Request.Context(), getInboxUserInput.Id)
-	if presentError(ctx.Writer, ctx.Request, err) {
+	if presentError(ctx.Writer, ctx.Request, err, ctx) {
 		return
 	}
 
