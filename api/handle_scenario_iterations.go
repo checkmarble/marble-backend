@@ -6,7 +6,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -201,7 +200,6 @@ type PostScenarioValidationInputBody struct {
 }
 
 func (api *API) ValidateScenarioIteration(c *gin.Context) {
-	a := time.Now()
 	var input PostScenarioValidationInputBody
 	err := c.ShouldBindJSON(&input)
 	if err != nil && err != io.EOF {
@@ -228,7 +226,6 @@ func (api *API) ValidateScenarioIteration(c *gin.Context) {
 		return
 	}
 
-	fmt.Println("validation handler took", time.Since(a))
 	c.JSON(http.StatusOK, gin.H{
 		"scenario_validation": dto.AdaptScenarioValidationDto(scenarioValidation),
 	})
