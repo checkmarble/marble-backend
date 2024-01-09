@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/Masterminds/squirrel"
@@ -40,18 +41,19 @@ func selectJoinScheduledExecutionAndScenario() squirrel.SelectBuilder {
 		Join(fmt.Sprintf("%s AS scenario ON scenario.id = se.scenario_id", dbmodels.TABLE_SCENARIOS))
 }
 
-func (repo *MarbleDbRepository) GetScheduledExecution(tx Transaction, id string) (models.ScheduledExecution, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *MarbleDbRepository) GetScheduledExecution(ctx context.Context, tx Transaction, id string) (models.ScheduledExecution, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToRow(
+		ctx,
 		pgTx,
 		selectJoinScheduledExecutionAndScenario().Where(squirrel.Eq{"se.id": id}),
 		adaptJoinScheduledExecutionWithScenario,
 	)
 }
 
-func (repo *MarbleDbRepository) ListScheduledExecutions(tx Transaction, filters models.ListScheduledExecutionsFilters) ([]models.ScheduledExecution, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *MarbleDbRepository) ListScheduledExecutions(ctx context.Context, tx Transaction, filters models.ListScheduledExecutionsFilters) ([]models.ScheduledExecution, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 	query := selectJoinScheduledExecutionAndScenario().OrderBy("se.started_at DESC")
 
 	if filters.ScenarioId != "" {
@@ -71,14 +73,18 @@ func (repo *MarbleDbRepository) ListScheduledExecutions(tx Transaction, filters 
 	}
 
 	return SqlToListOfRow(
-		pgTx, query, adaptJoinScheduledExecutionWithScenario,
+		ctx,
+		pgTx,
+		query,
+		adaptJoinScheduledExecutionWithScenario,
 	)
 }
 
-func (repo *MarbleDbRepository) CreateScheduledExecution(tx Transaction, createScheduledEx models.CreateScheduledExecutionInput, newScheduledExecutionId string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *MarbleDbRepository) CreateScheduledExecution(ctx context.Context, tx Transaction, createScheduledEx models.CreateScheduledExecutionInput, newScheduledExecutionId string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
+		ctx,
 		NewQueryBuilder().Insert(dbmodels.TABLE_SCHEDULED_EXECUTIONS).
 			Columns(
 				"id",
@@ -100,8 +106,8 @@ func (repo *MarbleDbRepository) CreateScheduledExecution(tx Transaction, createS
 	return err
 }
 
-func (repo *MarbleDbRepository) UpdateScheduledExecution(tx Transaction, updateScheduledEx models.UpdateScheduledExecutionInput) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *MarbleDbRepository) UpdateScheduledExecution(ctx context.Context, tx Transaction, updateScheduledEx models.UpdateScheduledExecutionInput) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 	query := NewQueryBuilder().Update(dbmodels.TABLE_SCHEDULED_EXECUTIONS).
 		Where("id = ?", updateScheduledEx.Id)
 
@@ -116,6 +122,6 @@ func (repo *MarbleDbRepository) UpdateScheduledExecution(tx Transaction, updateS
 		query = query.Set("number_of_created_decisions", *updateScheduledEx.NumberOfCreatedDecisions)
 	}
 
-	_, err := pgTx.ExecBuilder(query)
+	_, err := pgTx.ExecBuilder(ctx, query)
 	return err
 }

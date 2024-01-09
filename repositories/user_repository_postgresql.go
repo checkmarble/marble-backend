@@ -1,6 +1,8 @@
 package repositories
 
 import (
+	"context"
+
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
@@ -9,27 +11,27 @@ import (
 )
 
 type UserRepository interface {
-	CreateUser(tx Transaction, createUser models.CreateUser) (models.UserId, error)
-	UpdateUser(tx Transaction, updateUser models.UpdateUser) error
-	DeleteUser(tx Transaction, userID models.UserId) error
-	DeleteUsersOfOrganization(tx Transaction, organizationId string) error
-	UserByID(tx Transaction, userId models.UserId) (models.User, error)
-	UsersOfOrganization(tx Transaction, organizationIDFilter string) ([]models.User, error)
-	AllUsers(tx Transaction) ([]models.User, error)
-	UserByFirebaseUid(tx Transaction, firebaseUid string) (*models.User, error)
-	UserByEmail(tx Transaction, email string) (*models.User, error)
-	UpdateFirebaseId(tx Transaction, userId models.UserId, firebaseUid string) error
+	CreateUser(ctx context.Context, tx Transaction, createUser models.CreateUser) (models.UserId, error)
+	UpdateUser(ctx context.Context, tx Transaction, updateUser models.UpdateUser) error
+	DeleteUser(ctx context.Context, tx Transaction, userID models.UserId) error
+	DeleteUsersOfOrganization(ctx context.Context, tx Transaction, organizationId string) error
+	UserByID(ctx context.Context, tx Transaction, userId models.UserId) (models.User, error)
+	UsersOfOrganization(ctx context.Context, tx Transaction, organizationIDFilter string) ([]models.User, error)
+	AllUsers(ctx context.Context, tx Transaction) ([]models.User, error)
+	UserByFirebaseUid(ctx context.Context, tx Transaction, firebaseUid string) (*models.User, error)
+	UserByEmail(ctx context.Context, tx Transaction, email string) (*models.User, error)
+	UpdateFirebaseId(ctx context.Context, tx Transaction, userId models.UserId, firebaseUid string) error
 }
 
 type UserRepositoryPostgresql struct {
 	transactionFactory TransactionFactoryPosgresql
 }
 
-func (repo *UserRepositoryPostgresql) CreateUser(tx Transaction, createUser models.CreateUser) (models.UserId, error) {
+func (repo *UserRepositoryPostgresql) CreateUser(ctx context.Context, tx Transaction, createUser models.CreateUser) (models.UserId, error) {
 
 	userId := models.UserId(uuid.NewString())
 
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	var organizationId *string
 	if len(createUser.OrganizationId) != 0 {
@@ -37,6 +39,7 @@ func (repo *UserRepositoryPostgresql) CreateUser(tx Transaction, createUser mode
 	}
 
 	_, err := pgTx.ExecBuilder(
+		ctx,
 		NewQueryBuilder().Insert(dbmodels.TABLE_USERS).
 			Columns(
 				"id",
@@ -60,8 +63,8 @@ func (repo *UserRepositoryPostgresql) CreateUser(tx Transaction, createUser mode
 	return userId, err
 }
 
-func (repo *UserRepositoryPostgresql) UpdateUser(tx Transaction, updateUser models.UpdateUser) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *UserRepositoryPostgresql) UpdateUser(ctx context.Context, tx Transaction, updateUser models.UpdateUser) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query := NewQueryBuilder().Update(dbmodels.TABLE_USERS).Where(squirrel.Eq{"id": updateUser.UserId})
 
@@ -78,14 +81,15 @@ func (repo *UserRepositoryPostgresql) UpdateUser(tx Transaction, updateUser mode
 		query = query.Set("last_name", updateUser.LastName)
 	}
 
-	_, err := pgTx.ExecBuilder(query)
+	_, err := pgTx.ExecBuilder(ctx, query)
 	return err
 }
 
-func (repo *UserRepositoryPostgresql) DeleteUser(tx Transaction, userID models.UserId) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *UserRepositoryPostgresql) DeleteUser(ctx context.Context, tx Transaction, userID models.UserId) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
+		ctx,
 		NewQueryBuilder().
 			Update(dbmodels.TABLE_USERS).
 			Where(squirrel.Eq{"id": userID}).
@@ -94,19 +98,21 @@ func (repo *UserRepositoryPostgresql) DeleteUser(tx Transaction, userID models.U
 	return err
 }
 
-func (repo *UserRepositoryPostgresql) DeleteUsersOfOrganization(tx Transaction, organizationId string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *UserRepositoryPostgresql) DeleteUsersOfOrganization(ctx context.Context, tx Transaction, organizationId string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
+		ctx,
 		NewQueryBuilder().Delete(dbmodels.TABLE_USERS).Where("organization_id = ?", string(organizationId)),
 	)
 	return err
 }
 
-func (repo *UserRepositoryPostgresql) UserByID(tx Transaction, userId models.UserId) (models.User, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *UserRepositoryPostgresql) UserByID(ctx context.Context, tx Transaction, userId models.UserId) (models.User, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToModel(
+		ctx,
 		pgTx,
 		NewQueryBuilder().
 			Select(dbmodels.UserFields...).
@@ -118,11 +124,12 @@ func (repo *UserRepositoryPostgresql) UserByID(tx Transaction, userId models.Use
 	)
 }
 
-func (repo *UserRepositoryPostgresql) UsersOfOrganization(tx Transaction, organizationIDFilter string) ([]models.User, error) {
+func (repo *UserRepositoryPostgresql) UsersOfOrganization(ctx context.Context, tx Transaction, organizationIDFilter string) ([]models.User, error) {
 
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToListOfModels(
+		ctx,
 		pgTx,
 		NewQueryBuilder().
 			Select(dbmodels.UserFields...).
@@ -134,10 +141,11 @@ func (repo *UserRepositoryPostgresql) UsersOfOrganization(tx Transaction, organi
 	)
 }
 
-func (repo *UserRepositoryPostgresql) AllUsers(tx Transaction) ([]models.User, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *UserRepositoryPostgresql) AllUsers(ctx context.Context, tx Transaction) ([]models.User, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToListOfModels(
+		ctx,
 		pgTx,
 		NewQueryBuilder().
 			Select(dbmodels.UserFields...).
@@ -147,10 +155,11 @@ func (repo *UserRepositoryPostgresql) AllUsers(tx Transaction) ([]models.User, e
 	)
 }
 
-func (repo *UserRepositoryPostgresql) UserByFirebaseUid(tx Transaction, firebaseUid string) (*models.User, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *UserRepositoryPostgresql) UserByFirebaseUid(ctx context.Context, tx Transaction, firebaseUid string) (*models.User, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToOptionalModel(
+		ctx,
 		pgTx,
 		NewQueryBuilder().
 			Select(dbmodels.UserFields...).
@@ -161,10 +170,11 @@ func (repo *UserRepositoryPostgresql) UserByFirebaseUid(tx Transaction, firebase
 	)
 }
 
-func (repo *UserRepositoryPostgresql) UserByEmail(tx Transaction, email string) (*models.User, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *UserRepositoryPostgresql) UserByEmail(ctx context.Context, tx Transaction, email string) (*models.User, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToOptionalModel(
+		ctx,
 		pgTx,
 		NewQueryBuilder().
 			Select(dbmodels.UserFields...).
@@ -176,13 +186,15 @@ func (repo *UserRepositoryPostgresql) UserByEmail(tx Transaction, email string) 
 	)
 }
 
-func (repo *UserRepositoryPostgresql) UpdateFirebaseId(tx Transaction, userId models.UserId, firebaseUid string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *UserRepositoryPostgresql) UpdateFirebaseId(ctx context.Context, tx Transaction, userId models.UserId, firebaseUid string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
-	_, err := pgTx.ExecBuilder(NewQueryBuilder().
-		Update(dbmodels.TABLE_USERS).
-		Set("firebase_uid", firebaseUid).
-		Where("id = ?", string(userId)),
+	_, err := pgTx.ExecBuilder(
+		ctx,
+		NewQueryBuilder().
+			Update(dbmodels.TABLE_USERS).
+			Set("firebase_uid", firebaseUid).
+			Where("id = ?", string(userId)),
 	)
 	return err
 }

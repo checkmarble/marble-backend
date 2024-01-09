@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -67,7 +68,7 @@ func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutions_with_Orga
 	suite.repository.On("ListScheduledExecutions", suite.transaction, models.ListScheduledExecutionsFilters{OrganizationId: "some org id"}).Return(suite.scheduledExecutions, nil)
 	suite.enforceSecurity.On("ReadScheduledExecution", suite.scheduledExecutions[0]).Return(nil)
 
-	result, err := suite.makeUsecase().ListScheduledExecutions("")
+	result, err := suite.makeUsecase().ListScheduledExecutions(context.TODO(), "")
 
 	t := suite.T()
 	assert.NoError(t, err)
@@ -82,7 +83,7 @@ func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutions_with_Scen
 	suite.repository.On("ListScheduledExecutions", suite.transaction, models.ListScheduledExecutionsFilters{ScenarioId: suite.scenarioId}).Return(suite.scheduledExecutions, nil)
 	suite.enforceSecurity.On("ReadScheduledExecution", suite.scheduledExecutions[0]).Return(nil)
 
-	result, err := suite.makeUsecase().ListScheduledExecutions(suite.scenarioId)
+	result, err := suite.makeUsecase().ListScheduledExecutions(context.TODO(), suite.scenarioId)
 
 	t := suite.T()
 	assert.NoError(t, err)
@@ -99,7 +100,7 @@ func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutions_security(
 	suite.repository.On("ListScheduledExecutions", suite.transaction, models.ListScheduledExecutionsFilters{ScenarioId: suite.scenarioId}).Return(suite.scheduledExecutions, nil)
 	suite.enforceSecurity.On("ReadScheduledExecution", suite.scheduledExecutions[0]).Return(securityError)
 
-	result, err := suite.makeUsecase().ListScheduledExecutions(suite.scenarioId)
+	result, err := suite.makeUsecase().ListScheduledExecutions(context.TODO(), suite.scenarioId)
 
 	t := suite.T()
 	assert.ErrorIs(t, err, securityError)

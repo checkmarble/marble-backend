@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/Masterminds/squirrel"
@@ -20,27 +21,27 @@ func adaptModelUsingRowToStruct[DBModel any, Model any](row pgx.CollectableRow, 
 }
 
 // executes the sql query with the given transaction and returns a list of models using the provided adapter
-func SqlToListOfModels[DBModel, Model any](transaction TransactionPostgres, query squirrel.Sqlizer, adapter func(dbModel DBModel) (Model, error)) ([]Model, error) {
+func SqlToListOfModels[DBModel, Model any](ctx context.Context, transaction TransactionPostgres, query squirrel.Sqlizer, adapter func(dbModel DBModel) (Model, error)) ([]Model, error) {
 
-	return SqlToListOfRow(transaction, query, func(row pgx.CollectableRow) (Model, error) {
+	return SqlToListOfRow(ctx, transaction, query, func(row pgx.CollectableRow) (Model, error) {
 		return adaptModelUsingRowToStruct(row, adapter)
 	})
 }
 
 // executes the sql query with the given transaction and returns a models using the provided adapter
 // If no result is returned by the query, returns nil
-func SqlToOptionalModel[DBModel, Model any](transaction TransactionPostgres, s squirrel.Sqlizer, adapter func(dbModel DBModel) (Model, error)) (*Model, error) {
+func SqlToOptionalModel[DBModel, Model any](ctx context.Context, transaction TransactionPostgres, s squirrel.Sqlizer, adapter func(dbModel DBModel) (Model, error)) (*Model, error) {
 
-	return SqlToOptionalRow(transaction, s, func(row pgx.CollectableRow) (Model, error) {
+	return SqlToOptionalRow(ctx, transaction, s, func(row pgx.CollectableRow) (Model, error) {
 		return adaptModelUsingRowToStruct(row, adapter)
 	})
 }
 
 // executes the sql query with the given transaction and returns a models using the provided adapter
 // if no result is returned by the query, returns a NotFoundError
-func SqlToModel[DBModel, Model any](transaction TransactionPostgres, s squirrel.Sqlizer, adapter func(dbModel DBModel) (Model, error)) (Model, error) {
+func SqlToModel[DBModel, Model any](ctx context.Context, transaction TransactionPostgres, s squirrel.Sqlizer, adapter func(dbModel DBModel) (Model, error)) (Model, error) {
 
-	return SqlToRow(transaction, s, func(row pgx.CollectableRow) (Model, error) {
+	return SqlToRow(ctx, transaction, s, func(row pgx.CollectableRow) (Model, error) {
 		return adaptModelUsingRowToStruct(row, adapter)
 	})
 }

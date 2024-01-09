@@ -18,14 +18,14 @@ import (
 )
 
 type DecisionUsecaseRepository interface {
-	GetScenarioById(tx repositories.Transaction, scenarioId string) (models.Scenario, error)
-	ListScenariosOfOrganization(tx repositories.Transaction, organizationId string) ([]models.Scenario, error)
+	GetScenarioById(ctx context.Context, tx repositories.Transaction, scenarioId string) (models.Scenario, error)
+	ListScenariosOfOrganization(ctx context.Context, tx repositories.Transaction, organizationId string) ([]models.Scenario, error)
 
-	GetScenarioIteration(tx repositories.Transaction, scenarioIterationId string) (
+	GetScenarioIteration(ctx context.Context, tx repositories.Transaction, scenarioIterationId string) (
 		models.ScenarioIteration, error,
 	)
 
-	GetCaseById(tx repositories.Transaction, caseId string) (models.Case, error)
+	GetCaseById(ctx context.Context, tx repositories.Transaction, caseId string) (models.Case, error)
 }
 
 type DecisionUsecase struct {
@@ -40,8 +40,8 @@ type DecisionUsecase struct {
 	organizationIdOfContext    func() (string, error)
 }
 
-func (usecase *DecisionUsecase) GetDecision(decisionId string) (models.Decision, error) {
-	decision, err := usecase.decisionRepository.DecisionById(nil, decisionId)
+func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId string) (models.Decision, error) {
+	decision, err := usecase.decisionRepository.DecisionById(ctx, nil, decisionId)
 	if err != nil {
 		return models.Decision{}, err
 	}
@@ -52,12 +52,12 @@ func (usecase *DecisionUsecase) GetDecision(decisionId string) (models.Decision,
 	return decision, nil
 }
 
-func (usecase *DecisionUsecase) ListDecisions(organizationId string, paginationAndSorting models.PaginationAndSorting, filters dto.DecisionFilters) ([]models.DecisionWithRank, error) {
-	if err := usecase.validateScenarioIds(filters.ScenarioIds, organizationId); err != nil {
+func (usecase *DecisionUsecase) ListDecisions(ctx context.Context, organizationId string, paginationAndSorting models.PaginationAndSorting, filters dto.DecisionFilters) ([]models.DecisionWithRank, error) {
+	if err := usecase.validateScenarioIds(ctx, filters.ScenarioIds, organizationId); err != nil {
 		return []models.DecisionWithRank{}, err
 	}
 
-	outcomes, err := usecase.validateOutcomes(filters.Outcomes)
+	outcomes, err := usecase.validateOutcomes(ctx, filters.Outcomes)
 	if err != nil {
 		return []models.DecisionWithRank{}, err
 	}
@@ -66,7 +66,7 @@ func (usecase *DecisionUsecase) ListDecisions(organizationId string, paginationA
 		return []models.DecisionWithRank{}, fmt.Errorf("start date must be before end date: %w", models.BadParameterError)
 	}
 
-	triggerObjectTypes, err := usecase.validateTriggerObjects(filters.TriggerObjects, organizationId)
+	triggerObjectTypes, err := usecase.validateTriggerObjects(ctx, filters.TriggerObjects, organizationId)
 	if err != nil {
 		return []models.DecisionWithRank{}, err
 	}
@@ -76,10 +76,11 @@ func (usecase *DecisionUsecase) ListDecisions(organizationId string, paginationA
 	}
 
 	return transaction.TransactionReturnValue(
+		ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) ([]models.DecisionWithRank, error) {
-			decisions, err := usecase.decisionRepository.DecisionsOfOrganization(tx, organizationId, paginationAndSorting, models.DecisionFilters{
+			decisions, err := usecase.decisionRepository.DecisionsOfOrganization(ctx, tx, organizationId, paginationAndSorting, models.DecisionFilters{
 				ScenarioIds:    filters.ScenarioIds,
 				StartDate:      filters.StartDate,
 				EndDate:        filters.EndDate,
@@ -101,8 +102,8 @@ func (usecase *DecisionUsecase) ListDecisions(organizationId string, paginationA
 	)
 }
 
-func (usecase *DecisionUsecase) validateScenarioIds(scenarioIds []string, organizationId string) error {
-	scenarios, err := usecase.repository.ListScenariosOfOrganization(nil, organizationId)
+func (usecase *DecisionUsecase) validateScenarioIds(ctx context.Context, scenarioIds []string, organizationId string) error {
+	scenarios, err := usecase.repository.ListScenariosOfOrganization(ctx, nil, organizationId)
 	if err != nil {
 		return err
 	}
@@ -119,7 +120,7 @@ func (usecase *DecisionUsecase) validateScenarioIds(scenarioIds []string, organi
 	return nil
 }
 
-func (usecase *DecisionUsecase) validateOutcomes(filtersOutcomes []string) ([]models.Outcome, error) {
+func (usecase *DecisionUsecase) validateOutcomes(ctx context.Context, filtersOutcomes []string) ([]models.Outcome, error) {
 	outcomes := make([]models.Outcome, len(filtersOutcomes))
 	for i, outcome := range filtersOutcomes {
 		outcomes[i] = models.OutcomeFrom(outcome)
@@ -130,8 +131,8 @@ func (usecase *DecisionUsecase) validateOutcomes(filtersOutcomes []string) ([]mo
 	return outcomes, nil
 }
 
-func (usecase *DecisionUsecase) validateTriggerObjects(filtersTriggerObjects []string, organizationId string) ([]models.TableName, error) {
-	dataModel, err := usecase.datamodelRepository.GetDataModel(organizationId, true)
+func (usecase *DecisionUsecase) validateTriggerObjects(ctx context.Context, filtersTriggerObjects []string, organizationId string) ([]models.TableName, error) {
+	dataModel, err := usecase.datamodelRepository.GetDataModel(ctx, organizationId, true)
 	if err != nil {
 		return []models.TableName{}, err
 	}
@@ -150,15 +151,15 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 	if err := usecase.enforceSecurity.CreateDecision(input.OrganizationId); err != nil {
 		return models.Decision{}, err
 	}
-	return transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Decision, error) {
-		scenario, err := usecase.repository.GetScenarioById(tx, input.ScenarioId)
+	return transaction.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Decision, error) {
+		scenario, err := usecase.repository.GetScenarioById(ctx, tx, input.ScenarioId)
 		if errors.Is(err, models.NotFoundInRepositoryError) {
 			return models.Decision{}, fmt.Errorf("scenario not found: %w", models.NotFoundError)
 		} else if err != nil {
 			return models.Decision{}, fmt.Errorf("error getting scenario: %w", err)
 		}
 
-		dm, err := usecase.datamodelRepository.GetDataModel(input.OrganizationId, false)
+		dm, err := usecase.datamodelRepository.GetDataModel(ctx, input.OrganizationId, false)
 		if errors.Is(err, models.NotFoundInRepositoryError) {
 			return models.Decision{}, fmt.Errorf("data model not found: %w", models.NotFoundError)
 		} else if err != nil {
@@ -195,10 +196,10 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 			Score:               scenarioExecution.Score,
 		}
 
-		err = usecase.decisionRepository.StoreDecision(tx, decision, input.OrganizationId, newDecisionId)
+		err = usecase.decisionRepository.StoreDecision(ctx, tx, decision, input.OrganizationId, newDecisionId)
 		if err != nil {
 			return models.Decision{}, fmt.Errorf("error storing decision: %w", err)
 		}
-		return usecase.decisionRepository.DecisionById(tx, newDecisionId)
+		return usecase.decisionRepository.DecisionById(ctx, tx, newDecisionId)
 	})
 }

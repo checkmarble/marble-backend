@@ -1,6 +1,8 @@
 package evaluate
 
 import (
+	"context"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 )
@@ -8,7 +10,7 @@ import (
 type ArithmeticDivide struct {
 }
 
-func (f ArithmeticDivide) Evaluate(arguments ast.Arguments) (any, []error) {
+func (f ArithmeticDivide) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 
 	leftAny, rightAny, err := leftAndRight(arguments.Args)
 	if err != nil {

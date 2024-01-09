@@ -30,7 +30,7 @@ func (api *API) handleIngestion(c *gin.Context) {
 	usecase := api.UsecasesWithCreds(c.Request).NewIngestionUseCase()
 
 	dataModelUseCase := api.UsecasesWithCreds(c.Request).NewDataModelUseCase()
-	dataModel, err := dataModelUseCase.GetDataModel(organizationId)
+	dataModel, err := dataModelUseCase.GetDataModel(c.Request.Context(), organizationId)
 	if err != nil {
 		logger.ErrorContext(c.Request.Context(), fmt.Sprintf("Unable to find datamodel by organizationId for ingestion: %v", err))
 		http.Error(c.Writer, "", http.StatusInternalServerError)
@@ -76,7 +76,7 @@ func (api *API) handleIngestion(c *gin.Context) {
 		http.Error(c.Writer, "", http.StatusInternalServerError)
 		return
 	}
-	err = usecase.IngestObjects(organizationId, []models.PayloadReader{payload}, table, logger)
+	err = usecase.IngestObjects(c.Request.Context(), organizationId, []models.PayloadReader{payload}, table, logger)
 	if err != nil {
 		logger.ErrorContext(c.Request.Context(), fmt.Sprintf("Error while ingesting object: %v", err))
 		http.Error(c.Writer, "", http.StatusInternalServerError)

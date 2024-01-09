@@ -35,7 +35,7 @@ func NewAPIScenario(scenario models.Scenario) APIScenario {
 
 func (api *API) ListScenarios(c *gin.Context) {
 	usecase := api.UsecasesWithCreds(c.Request).NewScenarioUsecase()
-	scenarios, err := usecase.ListScenarios()
+	scenarios, err := usecase.ListScenarios(c.Request.Context())
 	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
@@ -61,7 +61,7 @@ func (api *API) GetScenario(c *gin.Context) {
 	id := c.Param("scenario_id")
 
 	usecase := api.UsecasesWithCreds(c.Request).NewScenarioUsecase()
-	scenario, err := usecase.GetScenario(id)
+	scenario, err := usecase.GetScenario(c.Request.Context(), id)
 
 	if presentError(c.Writer, c.Request, err, c) {
 		return
@@ -78,7 +78,7 @@ func (api *API) UpdateScenario(c *gin.Context) {
 	scenarioID := c.Param("scenario_id")
 
 	usecase := api.UsecasesWithCreds(c.Request).NewScenarioUsecase()
-	scenario, err := usecase.UpdateScenario(models.UpdateScenarioInput{
+	scenario, err := usecase.UpdateScenario(c.Request.Context(), models.UpdateScenarioInput{
 		Id:          scenarioID,
 		Name:        input.Name,
 		Description: input.Description,

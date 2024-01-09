@@ -1,13 +1,15 @@
 package evaluate
 
 import (
+	"context"
+
 	"github.com/checkmarble/marble-backend/models/ast"
 )
 
 type Not struct {
 }
 
-func (f Not) Evaluate(arguments ast.Arguments) (any, []error) {
+func (f Not) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 
 	if err := verifyNumberOfArguments(arguments.Args, 1); err != nil {
 		return MakeEvaluateError(err)

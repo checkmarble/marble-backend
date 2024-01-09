@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"context"
 	"fmt"
 	"slices"
 
@@ -11,7 +12,7 @@ import (
 )
 
 type AstExpressionUsecaseRepository interface {
-	GetScenarioById(tx repositories.Transaction, scenarioId string) (models.Scenario, error)
+	GetScenarioById(ctx context.Context, tx repositories.Transaction, scenarioId string) (models.Scenario, error)
 }
 
 type AstExpressionUsecase struct {
@@ -100,9 +101,9 @@ func (usecase *AstExpressionUsecase) getPayloadIdentifiers(scenario models.Scena
 	return dataAccessors, nil
 }
 
-func (usecase *AstExpressionUsecase) EditorIdentifiers(scenarioId string) (EditorIdentifiers, error) {
+func (usecase *AstExpressionUsecase) EditorIdentifiers(ctx context.Context, scenarioId string) (EditorIdentifiers, error) {
 
-	scenario, err := usecase.Repository.GetScenarioById(nil, scenarioId)
+	scenario, err := usecase.Repository.GetScenarioById(ctx, nil, scenarioId)
 	if err != nil {
 		return EditorIdentifiers{}, err
 	}
@@ -111,7 +112,7 @@ func (usecase *AstExpressionUsecase) EditorIdentifiers(scenarioId string) (Edito
 		return EditorIdentifiers{}, err
 	}
 
-	dataModel, err := usecase.DataModelRepository.GetDataModel(scenario.OrganizationId, false)
+	dataModel, err := usecase.DataModelRepository.GetDataModel(ctx, scenario.OrganizationId, false)
 	if err != nil {
 		return EditorIdentifiers{}, err
 	}

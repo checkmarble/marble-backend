@@ -1,6 +1,7 @@
 package evaluate
 
 import (
+	"context"
 	"fmt"
 	"slices"
 
@@ -17,7 +18,7 @@ func NewStringInList(f ast.Function) StringInList {
 	}
 }
 
-func (f StringInList) Evaluate(arguments ast.Arguments) (any, []error) {
+func (f StringInList) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 
 	leftAny, rightAny, err := leftAndRight(arguments.Args)
 	if err != nil {

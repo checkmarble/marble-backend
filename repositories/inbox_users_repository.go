@@ -1,6 +1,8 @@
 package repositories
 
 import (
+	"context"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 
@@ -15,18 +17,20 @@ func selectInboxUsers() squirrel.SelectBuilder {
 		Join(dbmodels.TABLE_INBOXES + " AS i ON i.id = inbox_id")
 }
 
-func (repo *MarbleDbRepository) GetInboxUserById(tx Transaction, inboxUserId string) (models.InboxUser, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *MarbleDbRepository) GetInboxUserById(ctx context.Context, tx Transaction, inboxUserId string) (models.InboxUser, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
-	return SqlToModel(pgTx,
+	return SqlToModel(
+		ctx,
+		pgTx,
 		selectInboxUsers().
 			Where(squirrel.Eq{"u.id": inboxUserId}),
 		dbmodels.AdaptInboxUserWithOrgId,
 	)
 }
 
-func (repo *MarbleDbRepository) ListInboxUsers(tx Transaction, filters models.InboxUserFilterInput) ([]models.InboxUser, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *MarbleDbRepository) ListInboxUsers(ctx context.Context, tx Transaction, filters models.InboxUserFilterInput) ([]models.InboxUser, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query := selectInboxUsers()
 
@@ -37,16 +41,19 @@ func (repo *MarbleDbRepository) ListInboxUsers(tx Transaction, filters models.In
 		query = query.Where(squirrel.Eq{"u.user_id": filters.UserId})
 	}
 
-	return SqlToListOfModels(pgTx,
+	return SqlToListOfModels(
+		ctx,
+		pgTx,
 		query,
 		dbmodels.AdaptInboxUserWithOrgId,
 	)
 }
 
-func (repo *MarbleDbRepository) CreateInboxUser(tx Transaction, input models.CreateInboxUserInput, newInboxUserId string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *MarbleDbRepository) CreateInboxUser(ctx context.Context, tx Transaction, input models.CreateInboxUserInput, newInboxUserId string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
+		ctx,
 		NewQueryBuilder().Insert(dbmodels.TABLE_INBOX_USERS).
 			Columns(
 				"id",
@@ -64,10 +71,11 @@ func (repo *MarbleDbRepository) CreateInboxUser(tx Transaction, input models.Cre
 	return err
 }
 
-func (repo *MarbleDbRepository) UpdateInboxUser(tx Transaction, inboxUserId string, role models.InboxUserRole) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *MarbleDbRepository) UpdateInboxUser(ctx context.Context, tx Transaction, inboxUserId string, role models.InboxUserRole) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
+		ctx,
 		NewQueryBuilder().Update(dbmodels.TABLE_INBOX_USERS).
 			Set("role", role).
 			Set("updated_at", "NOW()").
@@ -76,10 +84,11 @@ func (repo *MarbleDbRepository) UpdateInboxUser(tx Transaction, inboxUserId stri
 	return err
 }
 
-func (repo *MarbleDbRepository) DeleteInboxUser(tx Transaction, inboxUserId string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *MarbleDbRepository) DeleteInboxUser(ctx context.Context, tx Transaction, inboxUserId string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
+		ctx,
 		NewQueryBuilder().Delete(dbmodels.TABLE_INBOX_USERS).
 			Where(squirrel.Eq{"id": inboxUserId}),
 	)

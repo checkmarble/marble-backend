@@ -19,9 +19,10 @@ func (api *API) ListScenarioIterations(c *gin.Context) {
 	scenarioID := c.Query("scenarioId")
 
 	usecase := api.UsecasesWithCreds(c.Request).NewScenarioIterationUsecase()
-	scenarioIterations, err := usecase.ListScenarioIterations(models.GetScenarioIterationFilters{
-		ScenarioId: utils.PtrTo(scenarioID, &utils.PtrToOptions{OmitZero: true}),
-	})
+	scenarioIterations, err := usecase.ListScenarioIterations(c.Request.Context(),
+		models.GetScenarioIterationFilters{
+			ScenarioId: utils.PtrTo(scenarioID, &utils.PtrToOptions{OmitZero: true}),
+		})
 	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
@@ -123,7 +124,7 @@ func (api *API) GetScenarioIteration(c *gin.Context) {
 	iterationID := c.Param("iteration_id")
 
 	usecase := api.UsecasesWithCreds(c.Request).NewScenarioIterationUsecase()
-	si, err := usecase.GetScenarioIteration(iterationID)
+	si, err := usecase.GetScenarioIteration(c.Request.Context(), iterationID)
 	if presentError(c.Writer, c.Request, err, c) {
 		return
 	}
@@ -220,7 +221,7 @@ func (api *API) ValidateScenarioIteration(c *gin.Context) {
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewScenarioIterationUsecase()
-	scenarioValidation, err := usecase.ValidateScenarioIteration(scenarioIterationID, triggerOrRule, input.RuleId)
+	scenarioValidation, err := usecase.ValidateScenarioIteration(c.Request.Context(), scenarioIterationID, triggerOrRule, input.RuleId)
 
 	if presentError(c.Writer, c.Request, err, c) {
 		return

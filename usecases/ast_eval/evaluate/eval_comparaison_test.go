@@ -1,6 +1,7 @@
 package evaluate
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -11,17 +12,17 @@ import (
 )
 
 func helperFloatComparison(t *testing.T, f ast.Function, left, right float64, expected bool) {
-	r, errs := NewComparison(f).Evaluate(ast.Arguments{Args: []any{left, right}})
+	r, errs := NewComparison(f).Evaluate(context.TODO(), ast.Arguments{Args: []any{left, right}})
 	assert.Empty(t, errs)
 	assert.Equal(t, expected, r)
 }
 func helperIntComparison(t *testing.T, f ast.Function, left, right int, expected bool) {
-	r, errs := NewComparison(f).Evaluate(ast.Arguments{Args: []any{left, right}})
+	r, errs := NewComparison(f).Evaluate(context.TODO(), ast.Arguments{Args: []any{left, right}})
 	assert.Empty(t, errs)
 	assert.Equal(t, expected, r)
 }
 func helperTimeComparison(t *testing.T, f ast.Function, left, right time.Time, expected bool) {
-	r, errs := NewComparison(f).Evaluate(ast.Arguments{Args: []any{left, right}})
+	r, errs := NewComparison(f).Evaluate(context.TODO(), ast.Arguments{Args: []any{left, right}})
 	assert.Empty(t, errs)
 	assert.Equal(t, expected, r)
 }
@@ -79,7 +80,7 @@ func TestComparison_comparisonFunction_less_or_equal(t *testing.T) {
 }
 
 func TestComparison_comparisonFunction_mixed_int_float_false(t *testing.T) {
-	r, errs := NewComparison(ast.FUNC_GREATER).Evaluate(ast.Arguments{Args: []any{1, float64(2)}})
+	r, errs := NewComparison(ast.FUNC_GREATER).Evaluate(context.TODO(), ast.Arguments{Args: []any{1, float64(2)}})
 	assert.Empty(t, errs)
 	assert.Equal(t, r, false)
 }
@@ -96,18 +97,18 @@ func TestComparison_comparisonFunction_Float(t *testing.T) {
 }
 
 func TestComparison_fail(t *testing.T) {
-	_, errs := NewComparison(ast.FUNC_ADD).Evaluate(ast.Arguments{Args: []any{"toto", false}})
+	_, errs := NewComparison(ast.FUNC_ADD).Evaluate(context.TODO(), ast.Arguments{Args: []any{"toto", false}})
 	assert.Equal(t, errs, []error{fmt.Errorf("all arguments must be an integer, a float or a time %w", ast.ErrArgumentMustBeIntFloatOrTime)})
 }
 
 func TestComparison_wrongnumber_of_argument(t *testing.T) {
-	_, errs := NewComparison(ast.FUNC_ADD).Evaluate(ast.Arguments{Args: []any{nil}})
+	_, errs := NewComparison(ast.FUNC_ADD).Evaluate(context.TODO(), ast.Arguments{Args: []any{nil}})
 	if assert.Len(t, errs, 1) {
 		assert.ErrorIs(t, errs[0], ast.ErrWrongNumberOfArgument)
 	}
 }
 
 func TestComparison_required(t *testing.T) {
-	_, errs := NewComparison(ast.FUNC_ADD).Evaluate(ast.Arguments{Args: []any{4, nil}})
+	_, errs := NewComparison(ast.FUNC_ADD).Evaluate(context.TODO(), ast.Arguments{Args: []any{4, nil}})
 	assert.Equal(t, errs, []error{fmt.Errorf("all arguments must be an integer, a float or a time %w", ast.ErrArgumentMustBeIntFloatOrTime)})
 }

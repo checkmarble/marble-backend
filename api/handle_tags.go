@@ -72,7 +72,7 @@ func (api *API) handleGetTag(c *gin.Context) {
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewTagUseCase()
-	tag, err := usecase.GetTagById(tagInput.TagId)
+	tag, err := usecase.GetTagById(c.Request.Context(), tagInput.TagId)
 
 	if presentError(c.Writer, c.Request, err, c) {
 		return

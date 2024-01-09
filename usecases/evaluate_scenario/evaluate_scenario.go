@@ -21,7 +21,7 @@ type ScenarioEvaluationParameters struct {
 }
 
 type EvalScenarioRepository interface {
-	GetScenarioIteration(tx repositories.Transaction, scenarioIterationId string) (models.ScenarioIteration, error)
+	GetScenarioIteration(ctx context.Context, tx repositories.Transaction, scenarioIterationId string) (models.ScenarioIteration, error)
 }
 
 type ScenarioEvaluationRepositories struct {
@@ -54,7 +54,7 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repo
 		return models.ScenarioExecution{}, errors.Join(models.ScenarioHasNoLiveVersionError, models.BadParameterError)
 	}
 
-	liveVersion, err := repositories.EvalScenarioRepository.GetScenarioIteration(nil, *params.Scenario.LiveVersionID)
+	liveVersion, err := repositories.EvalScenarioRepository.GetScenarioIteration(ctx, nil, *params.Scenario.LiveVersionID)
 	if err != nil {
 		return models.ScenarioExecution{}, fmt.Errorf("error getting scenario iteration in eval scenar: %w", err)
 	}
@@ -79,6 +79,7 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repo
 
 	// Evaluate the trigger
 	triggerPassed, err := repositories.EvaluateRuleAstExpression.EvaluateRuleAstExpression(
+		ctx,
 		publishedVersion.Body.TriggerConditionAstExpression,
 		dataAccessor.organizationId,
 		dataAccessor.Payload,
@@ -98,7 +99,7 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repo
 	ruleExecutions := make([]models.RuleExecution, 0)
 	for _, rule := range publishedVersion.Body.Rules {
 
-		scoreModifier, ruleExecution, err := evalScenarioRule(repositories, rule, dataAccessor, params.DataModel, logger)
+		scoreModifier, ruleExecution, err := evalScenarioRule(ctx, repositories, rule, dataAccessor, params.DataModel, logger)
 
 		if err != nil {
 			return models.ScenarioExecution{}, fmt.Errorf("error evaluating rule in eval scenario: %w", err)
@@ -131,18 +132,17 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repo
 		Outcome:             o,
 	}
 
-	logger.InfoContext(ctx, "Evaluated scenario", "score", score, "outcome", o)
-
-	// print duration
 	elapsed := time.Since(start)
-	logger.InfoContext(ctx, "Evaluated scenario", "duration", elapsed.Milliseconds())
+	logger.InfoContext(ctx, fmt.Sprintf("Evaluated scenario in %dms", elapsed.Milliseconds()), "score", score, "outcome", o)
+
 	return se, nil
 }
 
-func evalScenarioRule(repositories ScenarioEvaluationRepositories, rule models.Rule, dataAccessor DataAccessor, dataModel models.DataModel, logger *slog.Logger) (int, models.RuleExecution, error) {
+func evalScenarioRule(ctx context.Context, repositories ScenarioEvaluationRepositories, rule models.Rule, dataAccessor DataAccessor, dataModel models.DataModel, logger *slog.Logger) (int, models.RuleExecution, error) {
 	// Evaluate single rule
 
 	ruleReturnValue, err := repositories.EvaluateRuleAstExpression.EvaluateRuleAstExpression(
+		ctx,
 		*rule.FormulaAstExpression,
 		dataAccessor.organizationId,
 		dataAccessor.Payload,

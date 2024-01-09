@@ -18,11 +18,12 @@ type UserUseCase struct {
 	userRepository      repositories.UserRepository
 }
 
-func (usecase *UserUseCase) AddUser(createUser models.CreateUser) (models.User, error) {
+func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.CreateUser) (models.User, error) {
 	if err := usecase.enforceUserSecurity.CreateUser(createUser.OrganizationId); err != nil {
 		return models.User{}, err
 	}
 	createdUser, err := transaction.TransactionReturnValue(
+		ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) (models.User, error) {
@@ -32,11 +33,11 @@ func (usecase *UserUseCase) AddUser(createUser models.CreateUser) (models.User, 
 			// lowercase email to maintain uniqueness
 			createUser.Email = strings.ToLower(createUser.Email)
 
-			createdUserUuid, err := usecase.userRepository.CreateUser(tx, createUser)
+			createdUserUuid, err := usecase.userRepository.CreateUser(ctx, tx, createUser)
 			if err != nil {
 				return models.User{}, err
 			}
-			return usecase.userRepository.UserByID(tx, createdUserUuid)
+			return usecase.userRepository.UserByID(ctx, tx, createdUserUuid)
 		},
 	)
 	if err != nil {
@@ -49,20 +50,21 @@ func (usecase *UserUseCase) AddUser(createUser models.CreateUser) (models.User, 
 
 func (usecase *UserUseCase) UpdateUser(ctx context.Context, updateUser models.UpdateUser) (models.User, error) {
 	updatedUser, err := transaction.TransactionReturnValue(
+		ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) (models.User, error) {
-			user, err := usecase.userRepository.UserByID(tx, updateUser.UserId)
+			user, err := usecase.userRepository.UserByID(ctx, tx, updateUser.UserId)
 			if err != nil {
 				return models.User{}, err
 			}
 			if err := usecase.enforceUserSecurity.UpdateUser(user); err != nil {
 				return models.User{}, err
 			}
-			if err := usecase.userRepository.UpdateUser(tx, updateUser); err != nil {
+			if err := usecase.userRepository.UpdateUser(ctx, tx, updateUser); err != nil {
 				return models.User{}, err
 			}
-			return usecase.userRepository.UserByID(tx, updateUser.UserId)
+			return usecase.userRepository.UserByID(ctx, tx, updateUser.UserId)
 		},
 	)
 
@@ -74,21 +76,22 @@ func (usecase *UserUseCase) UpdateUser(ctx context.Context, updateUser models.Up
 	return updatedUser, nil
 }
 
-func (usecase *UserUseCase) DeleteUser(userId, currentUserId string) error {
+func (usecase *UserUseCase) DeleteUser(ctx context.Context, userId, currentUserId string) error {
 	if userId == currentUserId {
 		return errors.Wrap(models.ForbiddenError, "cannot delete yourself")
 	}
 	err := usecase.transactionFactory.Transaction(
+		ctx,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) error {
-			user, err := usecase.userRepository.UserByID(tx, models.UserId(userId))
+			user, err := usecase.userRepository.UserByID(ctx, tx, models.UserId(userId))
 			if err != nil {
 				return err
 			}
 			if err := usecase.enforceUserSecurity.DeleteUser(user); err != nil {
 				return err
 			}
-			return usecase.userRepository.DeleteUser(tx, models.UserId(userId))
+			return usecase.userRepository.DeleteUser(ctx, tx, models.UserId(userId))
 		},
 	)
 	if err != nil {
@@ -99,28 +102,30 @@ func (usecase *UserUseCase) DeleteUser(userId, currentUserId string) error {
 	return nil
 }
 
-func (usecase *UserUseCase) GetAllUsers() ([]models.User, error) {
+func (usecase *UserUseCase) GetAllUsers(ctx context.Context) ([]models.User, error) {
 	if err := usecase.enforceUserSecurity.ListUser(); err != nil {
 		return []models.User{}, err
 	}
 	return transaction.TransactionReturnValue(
+		ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) ([]models.User, error) {
-			return usecase.userRepository.AllUsers(tx)
+			return usecase.userRepository.AllUsers(ctx, tx)
 		},
 	)
 }
 
-func (usecase *UserUseCase) GetUser(userID string) (models.User, error) {
+func (usecase *UserUseCase) GetUser(ctx context.Context, userID string) (models.User, error) {
 	if err := usecase.enforceUserSecurity.ListUser(); err != nil {
 		return models.User{}, err
 	}
 	return transaction.TransactionReturnValue(
+		ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) (models.User, error) {
-			return usecase.userRepository.UserByID(tx, models.UserId(userID))
+			return usecase.userRepository.UserByID(ctx, tx, models.UserId(userID))
 		},
 	)
 }

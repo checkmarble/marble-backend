@@ -1,6 +1,7 @@
 package evaluate
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -63,7 +64,7 @@ func TestNotEqual_Evaluate_int(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r, errs := NotEqual{}.Evaluate(ast.Arguments{Args: tt.args})
+			r, errs := NotEqual{}.Evaluate(context.TODO(), ast.Arguments{Args: tt.args})
 			assert.Equal(t, tt.errors, errs)
 			assert.Equal(t, tt.want, r)
 		})
@@ -99,7 +100,7 @@ func TestNotEqual_Evaluate_float(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r, errs := NotEqual{}.Evaluate(ast.Arguments{Args: tt.args})
+			r, errs := NotEqual{}.Evaluate(context.TODO(), ast.Arguments{Args: tt.args})
 			assert.Equal(t, tt.errors, errs)
 			assert.Equal(t, tt.want, r)
 		})
@@ -129,7 +130,7 @@ func TestNotEqual_Evaluate_string(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r, errs := NotEqual{}.Evaluate(ast.Arguments{Args: tt.args})
+			r, errs := NotEqual{}.Evaluate(context.TODO(), ast.Arguments{Args: tt.args})
 			assert.Equal(t, tt.errors, errs)
 			assert.Equal(t, tt.want, r)
 		})
@@ -159,7 +160,7 @@ func TestNotEqual_Evaluate_bool(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r, errs := NotEqual{}.Evaluate(ast.Arguments{Args: tt.args})
+			r, errs := NotEqual{}.Evaluate(context.TODO(), ast.Arguments{Args: tt.args})
 			assert.Equal(t, tt.errors, errs)
 			assert.Equal(t, tt.want, r)
 		})
@@ -189,7 +190,7 @@ func TestNotEqual_Evaluate_time(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r, errs := NotEqual{}.Evaluate(ast.Arguments{Args: tt.args})
+			r, errs := NotEqual{}.Evaluate(context.TODO(), ast.Arguments{Args: tt.args})
 			assert.Equal(t, tt.errors, errs)
 			assert.Equal(t, tt.want, r)
 		})

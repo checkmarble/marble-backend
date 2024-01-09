@@ -1,6 +1,7 @@
 package evaluate
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -21,7 +22,7 @@ func TestTimeArithmetic(t *testing.T) {
 	}
 	expectedResult := time.Date(2021, 7, 7, 1, 0, 0, 0, time.UTC)
 
-	result, errs := timeArithmetic.Evaluate(arguments)
+	result, errs := timeArithmetic.Evaluate(context.TODO(), arguments)
 	assert.Empty(t, errs)
 	assert.Equal(t, expectedResult, result.(time.Time))
 }
@@ -36,7 +37,7 @@ func TestTimeArithmetic_minus(t *testing.T) {
 	}
 	expectedResult := time.Date(2021, 7, 7, 0, 0, 0, 0, time.UTC)
 
-	result, errs := timeArithmetic.Evaluate(arguments)
+	result, errs := timeArithmetic.Evaluate(context.TODO(), arguments)
 	assert.Empty(t, errs)
 	assert.Equal(t, expectedResult, result.(time.Time))
 }
@@ -50,7 +51,7 @@ func TestTimeArithmetic_invalid_sign(t *testing.T) {
 		},
 	}
 
-	_, errs := timeArithmetic.Evaluate(arguments)
+	_, errs := timeArithmetic.Evaluate(context.TODO(), arguments)
 	if assert.Len(t, errs, 1) {
 		assert.Error(t, errs[0])
 	}
@@ -65,7 +66,7 @@ func TestTimeArithmetic_invalid_timestampField(t *testing.T) {
 		},
 	}
 
-	_, errs := timeArithmetic.Evaluate(arguments)
+	_, errs := timeArithmetic.Evaluate(context.TODO(), arguments)
 	if assert.Len(t, errs, 1) {
 		assert.Error(t, errs[0])
 	}
@@ -80,7 +81,7 @@ func TestTimeArithmetic_invalid_duration(t *testing.T) {
 		},
 	}
 
-	_, errs := timeArithmetic.Evaluate(arguments)
+	_, errs := timeArithmetic.Evaluate(context.TODO(), arguments)
 	if assert.Len(t, errs, 1) {
 		assert.Error(t, errs[0])
 	}
@@ -94,7 +95,7 @@ func TestTimeArithmetic_missing_timestampField(t *testing.T) {
 		},
 	}
 
-	_, errs := timeArithmetic.Evaluate(arguments)
+	_, errs := timeArithmetic.Evaluate(context.TODO(), arguments)
 	if assert.Len(t, errs, 1) {
 		assert.Error(t, errs[0])
 	}
@@ -108,7 +109,7 @@ func TestTimeArithmetic_missing_duration(t *testing.T) {
 		},
 	}
 
-	_, errs := timeArithmetic.Evaluate(arguments)
+	_, errs := timeArithmetic.Evaluate(context.TODO(), arguments)
 	if assert.Len(t, errs, 1) {
 		assert.Error(t, errs[0])
 	}
@@ -122,7 +123,7 @@ func TestTimeArithmetic_missing_sign(t *testing.T) {
 		},
 	}
 
-	_, errs := timeArithmetic.Evaluate(arguments)
+	_, errs := timeArithmetic.Evaluate(context.TODO(), arguments)
 	if assert.Len(t, errs, 1) {
 		assert.Error(t, errs[0])
 	}
@@ -139,7 +140,7 @@ func TestTimeArithmetic_invalid_function(t *testing.T) {
 		},
 	}
 
-	_, errs := invalidTimeArithmetic.Evaluate(arguments)
+	_, errs := invalidTimeArithmetic.Evaluate(context.TODO(), arguments)
 	if assert.Len(t, errs, 1) {
 		assert.Error(t, errs[0])
 	}

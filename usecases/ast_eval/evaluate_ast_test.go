@@ -1,6 +1,7 @@
 package ast_eval
 
 import (
+	"context"
 	"testing"
 
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -11,7 +12,7 @@ import (
 func TestEval(t *testing.T) {
 	environment := NewAstEvaluationEnvironment()
 	root := ast.NewAstCompareBalance()
-	evaluation, ok := EvaluateAst(environment, root)
+	evaluation, ok := EvaluateAst(context.TODO(), environment, root)
 	assert.True(t, ok)
 	assert.Len(t, evaluation.Errors, 0)
 	assert.Equal(t, true, evaluation.ReturnValue)
@@ -20,7 +21,7 @@ func TestEval(t *testing.T) {
 func TestEvalUndefinedFunction(t *testing.T) {
 	environment := NewAstEvaluationEnvironment()
 	root := ast.Node{Function: ast.FUNC_UNDEFINED}
-	evaluation, ok := EvaluateAst(environment, root)
+	evaluation, ok := EvaluateAst(context.TODO(), environment, root)
 	assert.False(t, ok)
 	if assert.Len(t, evaluation.Errors, 1) {
 		assert.ErrorIs(t, evaluation.Errors[0], ast.ErrUndefinedFunction)
@@ -30,22 +31,22 @@ func TestEvalUndefinedFunction(t *testing.T) {
 func TestEvalAndOrFunction(t *testing.T) {
 	environment := NewAstEvaluationEnvironment()
 
-	evaluation, ok := EvaluateAst(environment, NewAstAndTrue())
+	evaluation, ok := EvaluateAst(context.TODO(), environment, NewAstAndTrue())
 	assert.True(t, ok)
 	assert.Len(t, evaluation.Errors, 0)
 	assert.Equal(t, true, evaluation.ReturnValue)
 
-	evaluation, ok = EvaluateAst(environment, NewAstAndFalse())
+	evaluation, ok = EvaluateAst(context.TODO(), environment, NewAstAndFalse())
 	assert.True(t, ok)
 	assert.Len(t, evaluation.Errors, 0)
 	assert.Equal(t, false, evaluation.ReturnValue)
 
-	evaluation, ok = EvaluateAst(environment, NewAstOrTrue())
+	evaluation, ok = EvaluateAst(context.TODO(), environment, NewAstOrTrue())
 	assert.True(t, ok)
 	assert.Len(t, evaluation.Errors, 0)
 	assert.Equal(t, true, evaluation.ReturnValue)
 
-	evaluation, ok = EvaluateAst(environment, NewAstOrFalse())
+	evaluation, ok = EvaluateAst(context.TODO(), environment, NewAstOrFalse())
 	assert.True(t, ok)
 	assert.Len(t, evaluation.Errors, 0)
 	assert.Equal(t, false, evaluation.ReturnValue)

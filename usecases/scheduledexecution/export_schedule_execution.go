@@ -23,9 +23,9 @@ type ExportScheduleExecution struct {
 	OrganizationRepository repositories.OrganizationRepository
 }
 
-func (exporter *ExportScheduleExecution) ExportScheduledExecutionToS3(scenario models.Scenario, scheduledExecution models.ScheduledExecution) error {
+func (exporter *ExportScheduleExecution) ExportScheduledExecutionToS3(ctx context.Context, scenario models.Scenario, scheduledExecution models.ScheduledExecution) error {
 
-	organization, err := exporter.OrganizationRepository.GetOrganizationById(nil, scheduledExecution.OrganizationId)
+	organization, err := exporter.OrganizationRepository.GetOrganizationById(ctx, nil, scheduledExecution.OrganizationId)
 	if err != nil {
 		return err
 	}
@@ -35,7 +35,7 @@ func (exporter *ExportScheduleExecution) ExportScheduledExecutionToS3(scenario m
 		return nil
 	}
 
-	numberOfDecision, err := exporter.exportDecisionsToS3(scheduledExecution, organization.ExportScheduledExecutionS3)
+	numberOfDecision, err := exporter.exportDecisionsToS3(ctx, scheduledExecution, organization.ExportScheduledExecutionS3)
 	if err != nil {
 		return err
 	}
@@ -65,14 +65,14 @@ func (exporter *ExportScheduleExecution) exportScenarioToS3(scenario models.Scen
 	return exporter.AwsS3Repository.StoreInBucket(context.Background(), s3Bucket, filename, bytes.NewReader(encoded))
 }
 
-func (exporter *ExportScheduleExecution) exportDecisionsToS3(scheduledExecution models.ScheduledExecution, s3Bucket string) (int, error) {
+func (exporter *ExportScheduleExecution) exportDecisionsToS3(ctx context.Context, scheduledExecution models.ScheduledExecution, s3Bucket string) (int, error) {
 
 	pipeReader, pipeWriter := io.Pipe()
 
 	uploadErrorChan := exporter.uploadDecisions(pipeReader, scheduledExecution, s3Bucket)
 
 	// write everything. No need to create a second goroutine, the write can be synchronous.
-	number_of_exported_decisions, exportErr := exporter.ExportDecisions(scheduledExecution.Id, pipeWriter)
+	number_of_exported_decisions, exportErr := exporter.ExportDecisions(ctx, scheduledExecution.Id, pipeWriter)
 
 	// close the pipe when done
 	pipeWriter.Close()
@@ -101,9 +101,9 @@ func (exporter *ExportScheduleExecution) uploadDecisions(src *io.PipeReader, sch
 	return uploadErrorChan
 }
 
-func (exporter *ExportScheduleExecution) ExportDecisions(scheduledExecutionId string, dest io.Writer) (int, error) {
+func (exporter *ExportScheduleExecution) ExportDecisions(ctx context.Context, scheduledExecutionId string, dest io.Writer) (int, error) {
 
-	decisionChan, errorChan := exporter.DecisionRepository.DecisionsOfScheduledExecution(scheduledExecutionId)
+	decisionChan, errorChan := exporter.DecisionRepository.DecisionsOfScheduledExecution(ctx, scheduledExecutionId)
 
 	encoder := json.NewEncoder(dest)
 

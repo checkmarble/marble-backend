@@ -17,7 +17,7 @@ func (api *API) handleGetScheduledExecution(c *gin.Context) {
 	scheduledExecutionID := c.Param("execution_id")
 
 	usecase := api.UsecasesWithCreds(c.Request).NewScheduledExecutionUsecase()
-	execution, err := usecase.GetScheduledExecution(scheduledExecutionID)
+	execution, err := usecase.GetScheduledExecution(c.Request.Context(), scheduledExecutionID)
 
 	if presentError(c.Writer, c.Request, err, c) {
 		return
@@ -43,7 +43,7 @@ func (api *API) handleGetScheduledExecutionDecisions(c *gin.Context) {
 
 	c.Writer.Header().Set("Content-Type", "application/zip")
 	c.Writer.Header().Set("Content-Disposition", "attachment; filename=\"decisions.ndjson.zip\"")
-	numberOfExportedDecisions, err := usecase.ExportScheduledExecutionDecisions(scheduledExecutionID, fileWriter)
+	numberOfExportedDecisions, err := usecase.ExportScheduledExecutionDecisions(c.Request.Context(), scheduledExecutionID, fileWriter)
 	if err != nil {
 		// note: un case of security error, the header has not been sent, so we can still send a 401
 		presentError(c.Writer, c.Request, err, c)
@@ -57,7 +57,7 @@ func (api *API) handleListScheduledExecution(c *gin.Context) {
 	scenarioID := c.Query("scenario_id")
 
 	usecase := api.UsecasesWithCreds(c.Request).NewScheduledExecutionUsecase()
-	executions, err := usecase.ListScheduledExecutions(scenarioID)
+	executions, err := usecase.ListScheduledExecutions(c.Request.Context(), scenarioID)
 
 	if presentError(c.Writer, c.Request, err, c) {
 		return
@@ -78,7 +78,7 @@ func (api *API) handleCreateScheduledExecution(c *gin.Context) {
 	iterationID := c.Param("iteration_id")
 
 	usecase := api.UsecasesWithCreds(c.Request).NewScheduledExecutionUsecase()
-	err = usecase.CreateScheduledExecution(models.CreateScheduledExecutionInput{
+	err = usecase.CreateScheduledExecution(c.Request.Context(), models.CreateScheduledExecutionInput{
 		OrganizationId:      organizationId,
 		ScenarioIterationId: iterationID,
 	})

@@ -1,6 +1,7 @@
 package evaluate
 
 import (
+	"context"
 	"fmt"
 	"slices"
 
@@ -28,7 +29,7 @@ var ValidTypesForAggregator = map[ast.Aggregator][]models.DataType{
 	ast.AGGREGATOR_SUM:            {models.Int, models.Float},
 }
 
-func (a AggregatorEvaluator) Evaluate(arguments ast.Arguments) (any, []error) {
+func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 	tableNameStr, tableNameErr := AdaptNamedArgument(arguments.NamedArgs, "tableName", adaptArgumentToString)
 	fieldNameStr, fieldNameErr := AdaptNamedArgument(arguments.NamedArgs, "fieldName", adaptArgumentToString)
 	_, labelErr := AdaptNamedArgument(arguments.NamedArgs, "label", adaptArgumentToString)
@@ -68,7 +69,7 @@ func (a AggregatorEvaluator) Evaluate(arguments ast.Arguments) (any, []error) {
 		}
 	}
 
-	result, err := a.runQueryInRepository(tableName, fieldName, aggregator, filters)
+	result, err := a.runQueryInRepository(ctx, tableName, fieldName, aggregator, filters)
 	if err != nil {
 		return MakeEvaluateError(err)
 	}
@@ -80,16 +81,17 @@ func (a AggregatorEvaluator) Evaluate(arguments ast.Arguments) (any, []error) {
 	return result, nil
 }
 
-func (a AggregatorEvaluator) runQueryInRepository(tableName models.TableName, fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter) (any, error) {
+func (a AggregatorEvaluator) runQueryInRepository(ctx context.Context, tableName models.TableName, fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter) (any, error) {
 	if a.ReturnFakeValue {
 		return DryRunQueryAggregatedValue(a.DataModel, tableName, fieldName, aggregator)
 	}
 
 	return transaction.InOrganizationSchema(
+		ctx,
 		a.OrgTransactionFactory,
 		a.OrganizationId,
 		func(tx repositories.Transaction) (any, error) {
-			result, err := a.IngestedDataReadRepository.QueryAggregatedValue(tx, tableName, fieldName, aggregator, filters)
+			result, err := a.IngestedDataReadRepository.QueryAggregatedValue(ctx, tx, tableName, fieldName, aggregator, filters)
 			if err != nil {
 				return nil, err
 			}

@@ -8,9 +8,9 @@ import (
 )
 
 type InboxRepository interface {
-	GetInboxById(tx repositories.Transaction, inboxId string) (models.Inbox, error)
-	ListInboxes(tx repositories.Transaction, organizationId string, inboxIds []string, withCaseCount bool) ([]models.Inbox, error)
-	ListInboxUsers(tx repositories.Transaction, filters models.InboxUserFilterInput) ([]models.InboxUser, error)
+	GetInboxById(ctx context.Context, tx repositories.Transaction, inboxId string) (models.Inbox, error)
+	ListInboxes(ctx context.Context, tx repositories.Transaction, organizationId string, inboxIds []string, withCaseCount bool) ([]models.Inbox, error)
+	ListInboxUsers(ctx context.Context, tx repositories.Transaction, filters models.InboxUserFilterInput) ([]models.InboxUser, error)
 }
 
 type EnforceSecurityInboxes interface {
@@ -28,7 +28,7 @@ type InboxReader struct {
 }
 
 func (i *InboxReader) GetInboxById(ctx context.Context, inboxId string) (models.Inbox, error) {
-	inbox, err := i.InboxRepository.GetInboxById(nil, inboxId)
+	inbox, err := i.InboxRepository.GetInboxById(ctx, nil, inboxId)
 	if err != nil {
 		return models.Inbox{}, err
 	}
@@ -48,7 +48,7 @@ func (i *InboxReader) ListInboxes(ctx context.Context, tx repositories.Transacti
 
 	var inboxes []models.Inbox
 	if i.isAdminHasAccessToAllInboxes(ctx) {
-		inboxes, err = i.InboxRepository.ListInboxes(tx, organizationId, nil, withCaseCount)
+		inboxes, err = i.InboxRepository.ListInboxes(ctx, tx, organizationId, nil, withCaseCount)
 	} else {
 		availableInboxIds, err := i.getAvailableInboxes(ctx, tx)
 		if err != nil {
@@ -56,7 +56,7 @@ func (i *InboxReader) ListInboxes(ctx context.Context, tx repositories.Transacti
 		} else if len(availableInboxIds) == 0 {
 			return []models.Inbox{}, nil
 		}
-		inboxes, err = i.InboxRepository.ListInboxes(tx, organizationId, availableInboxIds, withCaseCount)
+		inboxes, err = i.InboxRepository.ListInboxes(ctx, tx, organizationId, availableInboxIds, withCaseCount)
 		if err != nil {
 			return []models.Inbox{}, err
 		}
@@ -82,7 +82,7 @@ func (i *InboxReader) getAvailableInboxes(ctx context.Context, tx repositories.T
 	availableInboxIds := make([]string, 0)
 
 	userId := i.Credentials.ActorIdentity.UserId
-	inboxUsers, err := i.InboxRepository.ListInboxUsers(tx, models.InboxUserFilterInput{UserId: userId})
+	inboxUsers, err := i.InboxRepository.ListInboxUsers(ctx, tx, models.InboxUserFilterInput{UserId: userId})
 	if err != nil {
 		return []string{}, err
 	}

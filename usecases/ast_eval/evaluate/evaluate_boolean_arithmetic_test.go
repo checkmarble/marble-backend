@@ -1,6 +1,7 @@
 package evaluate
 
 import (
+	"context"
 	"testing"
 
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -9,7 +10,7 @@ import (
 )
 
 func helperTestBooleanArithmetic(t *testing.T, function ast.Function, args []any, expected bool) {
-	r, errs := BooleanArithmetic{Function: function}.Evaluate(ast.Arguments{Args: args})
+	r, errs := BooleanArithmetic{Function: function}.Evaluate(context.TODO(), ast.Arguments{Args: args})
 	assert.Empty(t, errs)
 	assert.Equal(t, expected, r)
 }
@@ -41,7 +42,7 @@ func TestBooleanArithmetic_three_operands(t *testing.T) {
 }
 
 func TestBooleanArithmetic_zero_operator(t *testing.T) {
-	_, errs := BooleanArithmetic{Function: ast.FUNC_AND}.Evaluate(ast.Arguments{Args: []any{}})
+	_, errs := BooleanArithmetic{Function: ast.FUNC_AND}.Evaluate(context.TODO(), ast.Arguments{Args: []any{}})
 	if assert.Len(t, errs, 1) {
 		assert.ErrorIs(t, errs[0], ast.ErrWrongNumberOfArgument)
 	}

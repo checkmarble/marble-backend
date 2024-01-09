@@ -14,14 +14,14 @@ import (
 )
 
 type TagUseCaseRepository interface {
-	ListOrganizationTags(tx repositories.Transaction, organizationId string, withCaseCount bool) ([]models.Tag, error)
-	CreateTag(tx repositories.Transaction, attributes models.CreateTagAttributes, newTagId string) error
-	UpdateTag(tx repositories.Transaction, attributes models.UpdateTagAttributes) error
-	GetTagById(tx repositories.Transaction, tagId string) (models.Tag, error)
-	SoftDeleteTag(tx repositories.Transaction, tagId string) error
-	ListCaseTagsByTagId(tx repositories.Transaction, tagId string) ([]models.CaseTag, error)
+	ListOrganizationTags(ctx context.Context, tx repositories.Transaction, organizationId string, withCaseCount bool) ([]models.Tag, error)
+	CreateTag(ctx context.Context, tx repositories.Transaction, attributes models.CreateTagAttributes, newTagId string) error
+	UpdateTag(ctx context.Context, tx repositories.Transaction, attributes models.UpdateTagAttributes) error
+	GetTagById(ctx context.Context, tx repositories.Transaction, tagId string) (models.Tag, error)
+	SoftDeleteTag(ctx context.Context, tx repositories.Transaction, tagId string) error
+	ListCaseTagsByTagId(ctx context.Context, tx repositories.Transaction, tagId string) ([]models.CaseTag, error)
 
-	GetInboxById(tx repositories.Transaction, inboxId string) (models.Inbox, error)
+	GetInboxById(ctx context.Context, tx repositories.Transaction, inboxId string) (models.Inbox, error)
 }
 
 type TagUseCase struct {
@@ -32,7 +32,7 @@ type TagUseCase struct {
 }
 
 func (usecase *TagUseCase) ListAllTags(ctx context.Context, organizationId string, withCaseCount bool) ([]models.Tag, error) {
-	return usecase.repository.ListOrganizationTags(nil, organizationId, withCaseCount)
+	return usecase.repository.ListOrganizationTags(ctx, nil, organizationId, withCaseCount)
 }
 
 func (usecase *TagUseCase) CreateTag(ctx context.Context, attributes models.CreateTagAttributes) (models.Tag, error) {
@@ -40,16 +40,17 @@ func (usecase *TagUseCase) CreateTag(ctx context.Context, attributes models.Crea
 		return models.Tag{}, err
 	}
 
-	tag, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Tag, error) {
-		newTagId := uuid.NewString()
-		if err := usecase.repository.CreateTag(tx, attributes, newTagId); err != nil {
-			if repositories.IsUniqueViolationError(err) {
-				return models.Tag{}, errors.Wrap(models.DuplicateValueError, "There is already a tag by this name")
+	tag, err := transaction.TransactionReturnValue(ctx,
+		usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Tag, error) {
+			newTagId := uuid.NewString()
+			if err := usecase.repository.CreateTag(ctx, tx, attributes, newTagId); err != nil {
+				if repositories.IsUniqueViolationError(err) {
+					return models.Tag{}, errors.Wrap(models.DuplicateValueError, "There is already a tag by this name")
+				}
+				return models.Tag{}, err
 			}
-			return models.Tag{}, err
-		}
-		return usecase.repository.GetTagById(tx, newTagId)
-	})
+			return usecase.repository.GetTagById(ctx, tx, newTagId)
+		})
 	if err != nil {
 		return models.Tag{}, err
 	}
@@ -59,19 +60,19 @@ func (usecase *TagUseCase) CreateTag(ctx context.Context, attributes models.Crea
 	return tag, err
 }
 
-func (usecase *TagUseCase) GetTagById(tagId string) (models.Tag, error) {
-	return usecase.repository.GetTagById(nil, tagId)
+func (usecase *TagUseCase) GetTagById(ctx context.Context, tagId string) (models.Tag, error) {
+	return usecase.repository.GetTagById(ctx, nil, tagId)
 }
 
 func (usecase *TagUseCase) UpdateTag(ctx context.Context, organizationId string, attributes models.UpdateTagAttributes) (models.Tag, error) {
 	if err := usecase.inboxReader.EnforceSecurity.CreateInbox(organizationId); err != nil {
 		return models.Tag{}, err
 	}
-	tag, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Tag, error) {
-		if err := usecase.repository.UpdateTag(tx, attributes); err != nil {
+	tag, err := transaction.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Tag, error) {
+		if err := usecase.repository.UpdateTag(ctx, tx, attributes); err != nil {
 			return models.Tag{}, err
 		}
-		return usecase.repository.GetTagById(tx, attributes.TagId)
+		return usecase.repository.GetTagById(ctx, tx, attributes.TagId)
 	})
 	if err != nil {
 		return models.Tag{}, err
@@ -86,18 +87,18 @@ func (usecase *TagUseCase) DeleteTag(ctx context.Context, organizationId, tagId 
 	if err := usecase.inboxReader.EnforceSecurity.CreateInbox(organizationId); err != nil {
 		return err
 	}
-	err := transaction.TransactionFactory.Transaction(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
-		if _, err := usecase.repository.GetTagById(tx, tagId); err != nil {
+	err := transaction.TransactionFactory.Transaction(usecase.transactionFactory, ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+		if _, err := usecase.repository.GetTagById(ctx, tx, tagId); err != nil {
 			return err
 		}
-		caseTags, err := usecase.repository.ListCaseTagsByTagId(tx, tagId)
+		caseTags, err := usecase.repository.ListCaseTagsByTagId(ctx, tx, tagId)
 		if err != nil {
 			return err
 		}
 		if len(caseTags) > 0 {
 			return errors.Wrap(models.ForbiddenError, "Cannot delete tag that is still in use")
 		}
-		if err := usecase.repository.SoftDeleteTag(tx, tagId); err != nil {
+		if err := usecase.repository.SoftDeleteTag(ctx, tx, tagId); err != nil {
 			return err
 		}
 		return nil

@@ -14,10 +14,10 @@ import (
 )
 
 type ScenarioUsecaseRepository interface {
-	GetScenarioById(tx repositories.Transaction, scenarioId string) (models.Scenario, error)
-	ListScenariosOfOrganization(tx repositories.Transaction, organizationId string) ([]models.Scenario, error)
-	CreateScenario(tx repositories.Transaction, organizationId string, scenario models.CreateScenarioInput, newScenarioId string) error
-	UpdateScenario(tx repositories.Transaction, scenario models.UpdateScenarioInput) error
+	GetScenarioById(ctx context.Context, tx repositories.Transaction, scenarioId string) (models.Scenario, error)
+	ListScenariosOfOrganization(ctx context.Context, tx repositories.Transaction, organizationId string) ([]models.Scenario, error)
+	CreateScenario(ctx context.Context, tx repositories.Transaction, organizationId string, scenario models.CreateScenarioInput, newScenarioId string) error
+	UpdateScenario(ctx context.Context, tx repositories.Transaction, scenario models.UpdateScenarioInput) error
 }
 
 type ScenarioUsecase struct {
@@ -27,12 +27,12 @@ type ScenarioUsecase struct {
 	repository              ScenarioUsecaseRepository
 }
 
-func (usecase *ScenarioUsecase) ListScenarios() ([]models.Scenario, error) {
+func (usecase *ScenarioUsecase) ListScenarios(ctx context.Context) ([]models.Scenario, error) {
 	organizationId, err := usecase.organizationIdOfContext()
 	if err != nil {
 		return nil, err
 	}
-	scenarios, err := usecase.repository.ListScenariosOfOrganization(nil, organizationId)
+	scenarios, err := usecase.repository.ListScenariosOfOrganization(ctx, nil, organizationId)
 	if err != nil {
 		return nil, err
 	}
@@ -45,8 +45,8 @@ func (usecase *ScenarioUsecase) ListScenarios() ([]models.Scenario, error) {
 	return scenarios, nil
 }
 
-func (usecase *ScenarioUsecase) GetScenario(scenarioId string) (models.Scenario, error) {
-	scenario, err := usecase.repository.GetScenarioById(nil, scenarioId)
+func (usecase *ScenarioUsecase) GetScenario(ctx context.Context, scenarioId string) (models.Scenario, error) {
+	scenario, err := usecase.repository.GetScenarioById(ctx, nil, scenarioId)
 	if err != nil {
 		return models.Scenario{}, err
 	}
@@ -58,13 +58,14 @@ func (usecase *ScenarioUsecase) GetScenario(scenarioId string) (models.Scenario,
 	return scenario, nil
 }
 
-func (usecase *ScenarioUsecase) UpdateScenario(scenarioInput models.UpdateScenarioInput) (models.Scenario, error) {
+func (usecase *ScenarioUsecase) UpdateScenario(ctx context.Context, scenarioInput models.UpdateScenarioInput) (models.Scenario, error) {
 	return transaction.TransactionReturnValue(
+		ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) (models.Scenario, error) {
 
-			scenario, err := usecase.repository.GetScenarioById(tx, scenarioInput.Id)
+			scenario, err := usecase.repository.GetScenarioById(ctx, tx, scenarioInput.Id)
 			if err != nil {
 				return models.Scenario{}, err
 			}
@@ -72,11 +73,11 @@ func (usecase *ScenarioUsecase) UpdateScenario(scenarioInput models.UpdateScenar
 				return models.Scenario{}, err
 			}
 
-			err = usecase.repository.UpdateScenario(tx, scenarioInput)
+			err = usecase.repository.UpdateScenario(ctx, tx, scenarioInput)
 			if err != nil {
 				return models.Scenario{}, err
 			}
-			scenario, err = usecase.repository.GetScenarioById(tx, scenario.Id)
+			scenario, err = usecase.repository.GetScenarioById(ctx, tx, scenario.Id)
 			return scenario, errors.HandledWithMessage(err, "Error getting scenario after update")
 		},
 	)
@@ -93,14 +94,15 @@ func (usecase *ScenarioUsecase) CreateScenario(ctx context.Context, scenario mod
 	}
 
 	cratedScenario, err := transaction.TransactionReturnValue(
+		ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) (models.Scenario, error) {
 			newScenarioId := utils.NewPrimaryKey(organizationId)
-			if err := usecase.repository.CreateScenario(tx, organizationId, scenario, newScenarioId); err != nil {
+			if err := usecase.repository.CreateScenario(ctx, tx, organizationId, scenario, newScenarioId); err != nil {
 				return models.Scenario{}, err
 			}
-			scenario, err := usecase.repository.GetScenarioById(tx, newScenarioId)
+			scenario, err := usecase.repository.GetScenarioById(ctx, tx, newScenarioId)
 			return scenario, errors.HandledWithMessage(err, "Error getting scenario after update")
 		},
 	)

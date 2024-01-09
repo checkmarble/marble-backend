@@ -86,7 +86,7 @@ func getApiCreds(ctx context.Context, t *testing.T, usecasesWithCreds usecases.U
 	assert.NoError(t, err, "Could not get api keys of organization")
 	assert.Equal(t, 1, len(apiKeys), "Expected 1 api key, got %d", len(apiKeys))
 	marbleTokenUsecase := usecasesWithCreds.NewMarbleTokenUseCase()
-	creds, err := marbleTokenUsecase.ValidateCredentials("", apiKeys[0].Key)
+	creds, err := marbleTokenUsecase.ValidateCredentials(ctx, "", apiKeys[0].Key)
 	assert.NoError(t, err, "Could not generate creds from api key")
 	return creds
 }
@@ -104,13 +104,13 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T) (models.Credentials, mo
 	fmt.Println("Created organization", organizationId)
 
 	// Check that there are no users on the organization yet
-	users, err := orgUsecase.GetUsersOfOrganization(organizationId)
+	users, err := orgUsecase.GetUsersOfOrganization(ctx, organizationId)
 	assert.NoError(t, err, "Could not get users of organization")
 	assert.Equal(t, 0, len(users), "Expected 0 users, got %d", len(users))
 
 	// Create a new admin user on the organization
 	userUsecase := testAdminUsecase.NewUserUseCase()
-	adminUser, err := userUsecase.AddUser(models.CreateUser{
+	adminUser, err := userUsecase.AddUser(ctx, models.CreateUser{
 		Email:          "test@testmarble.com",
 		OrganizationId: organizationId,
 		Role:           models.ADMIN,
@@ -138,9 +138,10 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T) (models.Credentials, mo
 
 func createDataModel(t *testing.T, organizationID string) (models.DataModel, error) {
 	testAdminUsecase := GenerateUsecaseWithCredForMarbleAdmin(context.Background(), testUsecases)
+	ctx := context.TODO()
 
 	usecase := testAdminUsecase.NewDataModelUseCase()
-	transactionsTableID, err := usecase.CreateDataModelTable(organizationID, "transactions", "description")
+	transactionsTableID, err := usecase.CreateDataModelTable(ctx, organizationID, "transactions", "description")
 	assert.NoError(t, err)
 	transactionsFields := []models.DataModelField{
 		{Name: "account_id", Type: models.String.String(), Nullable: true},
@@ -153,11 +154,11 @@ func createDataModel(t *testing.T, organizationID string) (models.DataModel, err
 		{Name: "amount", Type: models.Float.String(), Nullable: true},
 	}
 	for _, field := range transactionsFields {
-		_, err = usecase.CreateDataModelField(transactionsTableID, field)
+		_, err = usecase.CreateDataModelField(ctx, transactionsTableID, field)
 		assert.NoError(t, err)
 	}
 
-	accountsTableID, err := usecase.CreateDataModelTable(organizationID, "accounts", "description")
+	accountsTableID, err := usecase.CreateDataModelTable(ctx, organizationID, "accounts", "description")
 	assert.NoError(t, err)
 	accountsFields := []models.DataModelField{
 		{Name: "balance", Type: models.Float.String(), Nullable: true},
@@ -167,24 +168,24 @@ func createDataModel(t *testing.T, organizationID string) (models.DataModel, err
 		{Name: "is_frozen", Type: models.Bool.String(), Nullable: true},
 	}
 	for _, field := range accountsFields {
-		_, err = usecase.CreateDataModelField(accountsTableID, field)
+		_, err = usecase.CreateDataModelField(ctx, accountsTableID, field)
 		assert.NoError(t, err)
 	}
 
-	companiesTableID, err := usecase.CreateDataModelTable(organizationID, "companies", "description")
+	companiesTableID, err := usecase.CreateDataModelTable(ctx, organizationID, "companies", "description")
 	assert.NoError(t, err)
 	companiesFields := []models.DataModelField{
 		{Name: "name", Type: models.Float.String(), Nullable: true},
 	}
 	for _, field := range companiesFields {
-		_, err = usecase.CreateDataModelField(companiesTableID, field)
+		_, err = usecase.CreateDataModelField(ctx, companiesTableID, field)
 		assert.NoError(t, err)
 	}
 
-	dm, err := usecase.GetDataModel(organizationID)
+	dm, err := usecase.GetDataModel(ctx, organizationID)
 	assert.NoError(t, err)
 
-	err = usecase.CreateDataModelLink(models.DataModelLink{
+	err = usecase.CreateDataModelLink(ctx, models.DataModelLink{
 		Name:           "account",
 		OrganizationID: organizationID,
 		ParentTableID:  accountsTableID,
@@ -194,7 +195,7 @@ func createDataModel(t *testing.T, organizationID string) (models.DataModel, err
 	})
 	assert.NoError(t, err)
 
-	err = usecase.CreateDataModelLink(models.DataModelLink{
+	err = usecase.CreateDataModelLink(ctx, models.DataModelLink{
 		Name:           "company",
 		OrganizationID: organizationID,
 		ParentTableID:  companiesTableID,
@@ -203,7 +204,7 @@ func createDataModel(t *testing.T, organizationID string) (models.DataModel, err
 		ChildFieldID:   dm.Tables["accounts"].Fields["company_id"].ID,
 	})
 	assert.NoError(t, err)
-	return usecase.GetDataModel(organizationID)
+	return usecase.GetDataModel(ctx, organizationID)
 }
 
 func setupScenarioAndPublish(t *testing.T, ctx context.Context, usecasesWithCreds usecases.UsecasesWithCreds, organizationId string) string {
@@ -329,7 +330,7 @@ func setupScenarioAndPublish(t *testing.T, ctx context.Context, usecasesWithCred
 	})
 	assert.NoError(t, err)
 
-	validation, err := scenarioIterationUsecase.ValidateScenarioIteration(scenarioIterationId, nil, nil)
+	validation, err := scenarioIterationUsecase.ValidateScenarioIteration(ctx, scenarioIterationId, nil, nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, scenarios.ScenarioValidationToError(validation))
@@ -354,7 +355,7 @@ func setupScenarioAndPublish(t *testing.T, ctx context.Context, usecasesWithCred
 	fmt.Println("Published scenario iteration")
 
 	// Now get the iteration and check it has a version
-	scenarioIteration, err = scenarioIterationUsecase.GetScenarioIteration(scenarioIterationId)
+	scenarioIteration, err = scenarioIterationUsecase.GetScenarioIteration(ctx, scenarioIterationId)
 	assert.NoError(t, err, "Could not get scenario iteration")
 
 	assert.NotNil(t, scenarioIteration.Version, "Expected scenario iteration to have a version")
@@ -386,7 +387,7 @@ func ingestAccounts(t *testing.T, table models.Table, usecases usecases.Usecases
 	assert.NoError(t, err, "Could not parse payload")
 	accountPayload2, _ := payload_parser.ParseToDataModelObject(table, accountPayloadJson2)
 	accountPayload3, _ := payload_parser.ParseToDataModelObject(table, accountPayloadJson3)
-	err = ingestionUsecase.IngestObjects(organizationId, []models.PayloadReader{accountPayload1, accountPayload2, accountPayload3}, table, logger)
+	err = ingestionUsecase.IngestObjects(context.TODO(), organizationId, []models.PayloadReader{accountPayload1, accountPayload2, accountPayload3}, table, logger)
 	assert.NoError(t, err, "Could not ingest data")
 }
 

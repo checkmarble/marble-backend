@@ -13,7 +13,7 @@ func (api *API) handleGetEditorIdentifiers(c *gin.Context) {
 	scenarioID := c.Param("scenario_id")
 
 	usecase := api.UsecasesWithCreds(c.Request).AstExpressionUsecase()
-	result, err := usecase.EditorIdentifiers(scenarioID)
+	result, err := usecase.EditorIdentifiers(c.Request.Context(), scenarioID)
 
 	if presentError(c.Writer, c.Request, err, c) {
 		return

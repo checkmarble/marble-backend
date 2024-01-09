@@ -1,6 +1,7 @@
 package evaluate
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -9,6 +10,6 @@ import (
 type Undefined struct {
 }
 
-func (f Undefined) Evaluate(arguments ast.Arguments) (any, []error) {
+func (f Undefined) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 	return MakeEvaluateError(fmt.Errorf("function Undefined %w", ast.ErrUndefinedFunction))
 }

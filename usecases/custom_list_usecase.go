@@ -19,12 +19,12 @@ type CustomListUseCase struct {
 	CustomListRepository    repositories.CustomListRepository
 }
 
-func (usecase *CustomListUseCase) GetCustomLists() ([]models.CustomList, error) {
+func (usecase *CustomListUseCase) GetCustomLists(ctx context.Context) ([]models.CustomList, error) {
 	organizationId, err := usecase.organizationIdOfContext()
 	if err != nil {
 		return []models.CustomList{}, err
 	}
-	customLists, err := usecase.CustomListRepository.AllCustomLists(nil, organizationId)
+	customLists, err := usecase.CustomListRepository.AllCustomLists(ctx, nil, organizationId)
 	if err != nil {
 		return []models.CustomList{}, err
 	}
@@ -41,21 +41,21 @@ func (usecase *CustomListUseCase) CreateCustomList(ctx context.Context, createCu
 		return models.CustomList{}, err
 	}
 
-	list, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.CustomList, error) {
+	list, err := transaction.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.CustomList, error) {
 		newCustomListId := uuid.NewString()
 		organizationId, err := usecase.organizationIdOfContext()
 		if err != nil {
 			return models.CustomList{}, err
 		}
 
-		err = usecase.CustomListRepository.CreateCustomList(tx, createCustomList, organizationId, newCustomListId)
+		err = usecase.CustomListRepository.CreateCustomList(ctx, tx, createCustomList, organizationId, newCustomListId)
 		if repositories.IsUniqueViolationError(err) {
 			return models.CustomList{}, models.DuplicateValueError
 		}
 		if err != nil {
 			return models.CustomList{}, err
 		}
-		return usecase.CustomListRepository.GetCustomListById(tx, newCustomListId)
+		return usecase.CustomListRepository.GetCustomListById(ctx, tx, newCustomListId)
 	})
 	if err != nil {
 		return models.CustomList{}, err
@@ -67,21 +67,21 @@ func (usecase *CustomListUseCase) CreateCustomList(ctx context.Context, createCu
 }
 
 func (usecase *CustomListUseCase) UpdateCustomList(ctx context.Context, updateCustomList models.UpdateCustomListInput) (models.CustomList, error) {
-	list, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.CustomList, error) {
+	list, err := transaction.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.CustomList, error) {
 		if updateCustomList.Name != nil || updateCustomList.Description != nil {
-			customList, err := usecase.CustomListRepository.GetCustomListById(tx, updateCustomList.Id)
+			customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, updateCustomList.Id)
 			if err != nil {
 				return models.CustomList{}, err
 			}
 			if err := usecase.enforceSecurity.ModifyCustomList(customList); err != nil {
 				return models.CustomList{}, err
 			}
-			err = usecase.CustomListRepository.UpdateCustomList(tx, updateCustomList)
+			err = usecase.CustomListRepository.UpdateCustomList(ctx, tx, updateCustomList)
 			if err != nil {
 				return models.CustomList{}, err
 			}
 		}
-		return usecase.CustomListRepository.GetCustomListById(tx, updateCustomList.Id)
+		return usecase.CustomListRepository.GetCustomListById(ctx, tx, updateCustomList.Id)
 	})
 	if err != nil {
 		return models.CustomList{}, err
@@ -93,15 +93,15 @@ func (usecase *CustomListUseCase) UpdateCustomList(ctx context.Context, updateCu
 }
 
 func (usecase *CustomListUseCase) SoftDeleteCustomList(ctx context.Context, listId string) error {
-	err := usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
-		customList, err := usecase.CustomListRepository.GetCustomListById(tx, listId)
+	err := usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+		customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, listId)
 		if err != nil {
 			return err
 		}
 		if err := usecase.enforceSecurity.ModifyCustomList(customList); err != nil {
 			return err
 		}
-		return usecase.CustomListRepository.SoftDeleteCustomList(tx, listId)
+		return usecase.CustomListRepository.SoftDeleteCustomList(ctx, tx, listId)
 	})
 	if err != nil {
 		return err
@@ -111,8 +111,8 @@ func (usecase *CustomListUseCase) SoftDeleteCustomList(ctx context.Context, list
 	return nil
 }
 
-func (usecase *CustomListUseCase) GetCustomListById(id string) (models.CustomList, error) {
-	customList, err := usecase.CustomListRepository.GetCustomListById(nil, id)
+func (usecase *CustomListUseCase) GetCustomListById(ctx context.Context, id string) (models.CustomList, error) {
+	customList, err := usecase.CustomListRepository.GetCustomListById(ctx, nil, id)
 	if err != nil {
 		return models.CustomList{}, err
 	}
@@ -122,18 +122,18 @@ func (usecase *CustomListUseCase) GetCustomListById(id string) (models.CustomLis
 	return customList, nil
 }
 
-func (usecase *CustomListUseCase) GetCustomListValues(getCustomListValues models.GetCustomListValuesInput) ([]models.CustomListValue, error) {
+func (usecase *CustomListUseCase) GetCustomListValues(ctx context.Context, getCustomListValues models.GetCustomListValuesInput) ([]models.CustomListValue, error) {
 	// CustomListValues doesn't know the OrganizationId of the list
 	// so we call GetCustomListById so that it check if we are allowed to read it
-	if _, err := usecase.GetCustomListById(getCustomListValues.Id); err != nil {
+	if _, err := usecase.GetCustomListById(ctx, getCustomListValues.Id); err != nil {
 		return []models.CustomListValue{}, err
 	}
-	return usecase.CustomListRepository.GetCustomListValues(nil, getCustomListValues)
+	return usecase.CustomListRepository.GetCustomListValues(ctx, nil, getCustomListValues)
 }
 
 func (usecase *CustomListUseCase) AddCustomListValue(ctx context.Context, addCustomListValue models.AddCustomListValueInput) (models.CustomListValue, error) {
-	value, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.CustomListValue, error) {
-		customList, err := usecase.CustomListRepository.GetCustomListById(tx, addCustomListValue.CustomListId)
+	value, err := transaction.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.CustomListValue, error) {
+		customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, addCustomListValue.CustomListId)
 		if err != nil {
 			return models.CustomListValue{}, err
 		}
@@ -142,11 +142,11 @@ func (usecase *CustomListUseCase) AddCustomListValue(ctx context.Context, addCus
 		}
 		newCustomListValueId := uuid.NewString()
 
-		err = usecase.CustomListRepository.AddCustomListValue(tx, addCustomListValue, newCustomListValueId)
+		err = usecase.CustomListRepository.AddCustomListValue(ctx, tx, addCustomListValue, newCustomListValueId)
 		if err != nil {
 			return models.CustomListValue{}, err
 		}
-		return usecase.CustomListRepository.GetCustomListValueById(tx, newCustomListValueId)
+		return usecase.CustomListRepository.GetCustomListValueById(ctx, tx, newCustomListValueId)
 	})
 	if err != nil {
 		return models.CustomListValue{}, err
@@ -158,15 +158,15 @@ func (usecase *CustomListUseCase) AddCustomListValue(ctx context.Context, addCus
 }
 
 func (usecase *CustomListUseCase) DeleteCustomListValue(ctx context.Context, deleteCustomListValue models.DeleteCustomListValueInput) error {
-	err := usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
-		customList, err := usecase.CustomListRepository.GetCustomListById(tx, deleteCustomListValue.CustomListId)
+	err := usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+		customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, deleteCustomListValue.CustomListId)
 		if err != nil {
 			return err
 		}
 		if err := usecase.enforceSecurity.ModifyCustomList(customList); err != nil {
 			return err
 		}
-		return usecase.CustomListRepository.DeleteCustomListValue(tx, deleteCustomListValue)
+		return usecase.CustomListRepository.DeleteCustomListValue(ctx, tx, deleteCustomListValue)
 	})
 
 	if err != nil {

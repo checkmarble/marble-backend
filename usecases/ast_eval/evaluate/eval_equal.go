@@ -1,6 +1,7 @@
 package evaluate
 
 import (
+	"context"
 	"fmt"
 	"math"
 
@@ -11,7 +12,7 @@ type Equal struct{}
 
 const floatEqualityThreshold = 1e-8
 
-func (f Equal) Evaluate(arguments ast.Arguments) (any, []error) {
+func (f Equal) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 
 	leftAny, rightAny, err := leftAndRight(arguments.Args)
 	if err != nil {
