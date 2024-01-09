@@ -1,6 +1,8 @@
 package transaction
 
 import (
+	"context"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 
@@ -8,8 +10,8 @@ import (
 )
 
 type Factory interface {
-	OrganizationDatabaseSchema(organizationId string) (models.DatabaseSchema, error)
-	TransactionInOrgSchema(organizationId string, f func(tx repositories.Transaction) error) error
+	OrganizationDatabaseSchema(ctx context.Context, organizationId string) (models.DatabaseSchema, error)
+	TransactionInOrgSchema(ctx context.Context, organizationId string, f func(tx repositories.Transaction) error) error
 	// used by legacy code that didn't support transactions
 	OrganizationDbPool(dbSchema models.DatabaseSchema) (*pgxpool.Pool, error)
 }
@@ -20,8 +22,8 @@ type FactoryImpl struct {
 	DatabaseConnectionPoolRepository repositories.DatabaseConnectionPoolRepository
 }
 
-func (factory *FactoryImpl) OrganizationDatabaseSchema(organizationId string) (models.DatabaseSchema, error) {
-	organizationSchema, err := factory.OrganizationSchemaRepository.OrganizationSchemaOfOrganization(nil, organizationId)
+func (factory *FactoryImpl) OrganizationDatabaseSchema(ctx context.Context, organizationId string) (models.DatabaseSchema, error) {
+	organizationSchema, err := factory.OrganizationSchemaRepository.OrganizationSchemaOfOrganization(ctx, nil, organizationId)
 	if err != nil {
 		return models.DatabaseSchema{}, err
 	}
@@ -33,14 +35,14 @@ func (factory *FactoryImpl) OrganizationDatabaseSchema(organizationId string) (m
 	}, nil
 }
 
-func (factory *FactoryImpl) TransactionInOrgSchema(organizationId string, f func(tx repositories.Transaction) error) error {
+func (factory *FactoryImpl) TransactionInOrgSchema(ctx context.Context, organizationId string, f func(tx repositories.Transaction) error) error {
 
-	dbSchema, err := factory.OrganizationDatabaseSchema(organizationId)
+	dbSchema, err := factory.OrganizationDatabaseSchema(ctx, organizationId)
 	if err != nil {
 		return err
 	}
 
-	return factory.TransactionFactory.Transaction(dbSchema, f)
+	return factory.TransactionFactory.Transaction(ctx, dbSchema, f)
 }
 
 func (factory *FactoryImpl) OrganizationDbPool(dbSchema models.DatabaseSchema) (*pgxpool.Pool, error) {
@@ -50,12 +52,13 @@ func (factory *FactoryImpl) OrganizationDbPool(dbSchema models.DatabaseSchema) (
 
 // helper
 func InOrganizationSchema[ReturnType any](
+	ctx context.Context,
 	factory Factory,
 	organizationId string,
 	fn func(tx repositories.Transaction) (ReturnType, error),
 ) (ReturnType, error) {
 	var value ReturnType
-	transactionErr := factory.TransactionInOrgSchema(organizationId, func(tx repositories.Transaction) error {
+	transactionErr := factory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Transaction) error {
 		var fnErr error
 		value, fnErr = fn(tx)
 		return fnErr

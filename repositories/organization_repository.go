@@ -1,26 +1,29 @@
 package repositories
 
 import (
+	"context"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
 type OrganizationRepository interface {
-	AllOrganizations(tx Transaction) ([]models.Organization, error)
-	GetOrganizationById(tx Transaction, organizationId string) (models.Organization, error)
-	CreateOrganization(tx Transaction, createOrganization models.CreateOrganizationInput, newOrganizationId string) error
-	UpdateOrganization(tx Transaction, updateOrganization models.UpdateOrganizationInput) error
-	DeleteOrganization(tx Transaction, organizationId string) error
+	AllOrganizations(ctx context.Context, tx Transaction) ([]models.Organization, error)
+	GetOrganizationById(ctx context.Context, tx Transaction, organizationId string) (models.Organization, error)
+	CreateOrganization(ctx context.Context, tx Transaction, createOrganization models.CreateOrganizationInput, newOrganizationId string) error
+	UpdateOrganization(ctx context.Context, tx Transaction, updateOrganization models.UpdateOrganizationInput) error
+	DeleteOrganization(ctx context.Context, tx Transaction, organizationId string) error
 }
 
 type OrganizationRepositoryPostgresql struct {
 	transactionFactory TransactionFactoryPosgresql
 }
 
-func (repo *OrganizationRepositoryPostgresql) AllOrganizations(tx Transaction) ([]models.Organization, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *OrganizationRepositoryPostgresql) AllOrganizations(ctx context.Context, tx Transaction) ([]models.Organization, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToListOfModels(
+		ctx,
 		pgTx,
 		NewQueryBuilder().
 			Select(dbmodels.ColumnsSelectOrganization...).
@@ -29,10 +32,11 @@ func (repo *OrganizationRepositoryPostgresql) AllOrganizations(tx Transaction) (
 		dbmodels.AdaptOrganization,
 	)
 }
-func (repo *OrganizationRepositoryPostgresql) GetOrganizationById(tx Transaction, organizationId string) (models.Organization, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *OrganizationRepositoryPostgresql) GetOrganizationById(ctx context.Context, tx Transaction, organizationId string) (models.Organization, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToModel(
+		ctx,
 		pgTx,
 		NewQueryBuilder().
 			Select(dbmodels.ColumnsSelectOrganization...).
@@ -42,10 +46,11 @@ func (repo *OrganizationRepositoryPostgresql) GetOrganizationById(tx Transaction
 	)
 }
 
-func (repo *OrganizationRepositoryPostgresql) CreateOrganization(tx Transaction, createOrganization models.CreateOrganizationInput, newOrganizationId string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *OrganizationRepositoryPostgresql) CreateOrganization(ctx context.Context, tx Transaction, createOrganization models.CreateOrganizationInput, newOrganizationId string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
+		ctx,
 		NewQueryBuilder().Insert(dbmodels.TABLE_ORGANIZATION).
 			Columns(
 				"id",
@@ -61,8 +66,8 @@ func (repo *OrganizationRepositoryPostgresql) CreateOrganization(tx Transaction,
 	return err
 }
 
-func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(tx Transaction, updateOrganization models.UpdateOrganizationInput) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(ctx context.Context, tx Transaction, updateOrganization models.UpdateOrganizationInput) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	var updateRequest = NewQueryBuilder().Update(dbmodels.TABLE_ORGANIZATION)
 
@@ -78,13 +83,13 @@ func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(tx Transaction,
 
 	updateRequest = updateRequest.Where("id = ?", updateOrganization.Id)
 
-	_, err := pgTx.ExecBuilder(updateRequest)
+	_, err := pgTx.ExecBuilder(ctx, updateRequest)
 	return err
 }
 
-func (repo *OrganizationRepositoryPostgresql) DeleteOrganization(tx Transaction, organizationId string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *OrganizationRepositoryPostgresql) DeleteOrganization(ctx context.Context, tx Transaction, organizationId string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
-	_, err := pgTx.ExecBuilder(NewQueryBuilder().Delete(dbmodels.TABLE_ORGANIZATION).Where("id = ?", organizationId))
+	_, err := pgTx.ExecBuilder(ctx, NewQueryBuilder().Delete(dbmodels.TABLE_ORGANIZATION).Where("id = ?", organizationId))
 	return err
 }

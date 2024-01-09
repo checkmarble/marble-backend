@@ -1,24 +1,27 @@
 package repositories
 
 import (
+	"context"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
 type ApiKeyRepository interface {
-	GetApiKeysOfOrganization(tx Transaction, organizationId string) ([]models.ApiKey, error)
-	GetApiKeyByKey(tx Transaction, apiKey string) (models.ApiKey, error)
-	CreateApiKey(tx Transaction, apiKey models.CreateApiKeyInput) error
+	GetApiKeysOfOrganization(ctx context.Context, tx Transaction, organizationId string) ([]models.ApiKey, error)
+	GetApiKeyByKey(ctx context.Context, tx Transaction, apiKey string) (models.ApiKey, error)
+	CreateApiKey(ctx context.Context, tx Transaction, apiKey models.CreateApiKeyInput) error
 }
 
 type ApiKeyRepositoryImpl struct {
 	transactionFactory TransactionFactoryPosgresql
 }
 
-func (repo *ApiKeyRepositoryImpl) GetApiKeyByKey(tx Transaction, key string) (models.ApiKey, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *ApiKeyRepositoryImpl) GetApiKeyByKey(ctx context.Context, tx Transaction, key string) (models.ApiKey, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToModel(
+		ctx,
 		pgTx,
 		NewQueryBuilder().
 			Select(dbmodels.ApiKeyFields...).
@@ -28,10 +31,11 @@ func (repo *ApiKeyRepositoryImpl) GetApiKeyByKey(tx Transaction, key string) (mo
 	)
 }
 
-func (repo *ApiKeyRepositoryImpl) GetApiKeysOfOrganization(tx Transaction, organizationId string) ([]models.ApiKey, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *ApiKeyRepositoryImpl) GetApiKeysOfOrganization(ctx context.Context, tx Transaction, organizationId string) ([]models.ApiKey, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToListOfModels(
+		ctx,
 		pgTx,
 		NewQueryBuilder().
 			Select(dbmodels.ApiKeyFields...).
@@ -42,10 +46,11 @@ func (repo *ApiKeyRepositoryImpl) GetApiKeysOfOrganization(tx Transaction, organ
 
 }
 
-func (repo *ApiKeyRepositoryImpl) CreateApiKey(tx Transaction, apiKey models.CreateApiKeyInput) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *ApiKeyRepositoryImpl) CreateApiKey(ctx context.Context, tx Transaction, apiKey models.CreateApiKeyInput) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
+		ctx,
 		NewQueryBuilder().
 			Insert(dbmodels.TABLE_APIKEYS).
 			Columns(

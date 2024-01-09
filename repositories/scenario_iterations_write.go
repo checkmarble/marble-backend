@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -10,15 +11,15 @@ import (
 	"github.com/Masterminds/squirrel"
 )
 
-func (repo *MarbleDbRepository) DeleteScenarioIteration(tx Transaction, scenarioIterationId string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *MarbleDbRepository) DeleteScenarioIteration(ctx context.Context, tx Transaction, scenarioIterationId string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
-	_, err := pgTx.ExecBuilder(NewQueryBuilder().Delete(dbmodels.TABLE_SCENARIO_ITERATIONS).Where("id = ?", scenarioIterationId))
+	_, err := pgTx.ExecBuilder(ctx, NewQueryBuilder().Delete(dbmodels.TABLE_SCENARIO_ITERATIONS).Where("id = ?", scenarioIterationId))
 	return err
 }
 
-func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(tx Transaction, organizationId string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Context, tx Transaction, organizationId string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query := NewQueryBuilder().Insert(dbmodels.TABLE_SCENARIO_ITERATIONS).
 		Columns(
@@ -63,6 +64,7 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(tx Transaction, 
 	}
 
 	createdIteration, err := SqlToModel(
+		ctx,
 		pgTx,
 		query,
 		dbmodels.AdaptScenarioIteration,
@@ -77,7 +79,7 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(tx Transaction, 
 			scenarioIteration.Body.Rules[i].OrganizationId = organizationId
 			scenarioIteration.Body.Rules[i].ScenarioIterationId = createdIteration.Id
 		}
-		createdRules, err := repo.CreateRules(tx, scenarioIteration.Body.Rules)
+		createdRules, err := repo.CreateRules(ctx, tx, scenarioIteration.Body.Rules)
 		if err != nil {
 			return models.ScenarioIteration{}, fmt.Errorf("unable to create scenario iteration rules: %w", err)
 		}
@@ -87,12 +89,12 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(tx Transaction, 
 	return createdIteration, nil
 }
 
-func (repo *MarbleDbRepository) UpdateScenarioIteration(tx Transaction, scenarioIteration models.UpdateScenarioIterationInput) (models.ScenarioIteration, error) {
+func (repo *MarbleDbRepository) UpdateScenarioIteration(ctx context.Context, tx Transaction, scenarioIteration models.UpdateScenarioIterationInput) (models.ScenarioIteration, error) {
 	if scenarioIteration.Body == nil {
 		return models.ScenarioIteration{}, fmt.Errorf("nothing to update")
 	}
 
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	sql := NewQueryBuilder().
 		Update(dbmodels.TABLE_SCENARIO_ITERATIONS).
@@ -118,17 +120,18 @@ func (repo *MarbleDbRepository) UpdateScenarioIteration(tx Transaction, scenario
 		}
 		sql = sql.Set("trigger_condition_ast_expression", triggerCondition)
 	}
-	updatedIteration, err := SqlToModel(pgTx, sql, dbmodels.AdaptScenarioIteration)
+	updatedIteration, err := SqlToModel(ctx, pgTx, sql, dbmodels.AdaptScenarioIteration)
 	if err != nil {
 		return models.ScenarioIteration{}, err
 	}
 	return updatedIteration, nil
 }
 
-func (repo *MarbleDbRepository) UpdateScenarioIterationVersion(tx Transaction, scenarioIterationId string, newVersion int) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *MarbleDbRepository) UpdateScenarioIterationVersion(ctx context.Context, tx Transaction, scenarioIterationId string, newVersion int) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
+		ctx,
 		NewQueryBuilder().Update(dbmodels.TABLE_SCENARIO_ITERATIONS).
 			Set("version", newVersion).
 			Where(squirrel.Eq{"id": scenarioIterationId}),

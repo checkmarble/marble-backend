@@ -67,7 +67,7 @@ func (suite *ScenarioUsecaseTestSuite) TestListScenarios() {
 	suite.scenarioRepository.On("ListScenariosOfOrganization", nil, suite.organizationId).Return(expected, nil)
 	suite.enforceSecurity.On("ReadScenario", suite.scenario).Return(nil)
 
-	result, err := suite.makeUsecase().ListScenarios()
+	result, err := suite.makeUsecase().ListScenarios(context.TODO())
 
 	t := suite.T()
 	assert.NoError(t, err)
@@ -81,7 +81,7 @@ func (suite *ScenarioUsecaseTestSuite) TestListScenarios_security() {
 	suite.scenarioRepository.On("ListScenariosOfOrganization", nil, suite.organizationId).Return([]models.Scenario{suite.scenario}, nil)
 	suite.enforceSecurity.On("ReadScenario", suite.scenario).Return(suite.securityError)
 
-	_, err := suite.makeUsecase().ListScenarios()
+	_, err := suite.makeUsecase().ListScenarios(context.TODO())
 
 	assert.ErrorIs(suite.T(), err, suite.securityError)
 	suite.AssertExpectations()
@@ -92,7 +92,7 @@ func (suite *ScenarioUsecaseTestSuite) TestGetScenario() {
 	suite.scenarioRepository.On("GetScenarioById", nil, suite.scenarioId).Return(suite.scenario, nil)
 	suite.enforceSecurity.On("ReadScenario", suite.scenario).Return(nil)
 
-	result, err := suite.makeUsecase().GetScenario(suite.scenarioId)
+	result, err := suite.makeUsecase().GetScenario(context.TODO(), suite.scenarioId)
 
 	t := suite.T()
 	assert.NoError(t, err)
@@ -106,7 +106,7 @@ func (suite *ScenarioUsecaseTestSuite) TestGetScenario_security() {
 	suite.scenarioRepository.On("GetScenarioById", nil, suite.scenarioId).Return(suite.scenario, nil)
 	suite.enforceSecurity.On("ReadScenario", suite.scenario).Return(suite.securityError)
 
-	_, err := suite.makeUsecase().GetScenario(suite.scenarioId)
+	_, err := suite.makeUsecase().GetScenario(context.TODO(), suite.scenarioId)
 
 	assert.ErrorIs(suite.T(), err, suite.securityError)
 	suite.AssertExpectations()
@@ -130,7 +130,7 @@ func (suite *ScenarioUsecaseTestSuite) TestUpdateScenario() {
 	suite.scenarioRepository.On("UpdateScenario", suite.transaction, scenarioInput).Return(nil)
 	suite.scenarioRepository.On("GetScenarioById", suite.transaction, suite.scenarioId).Return(updatedScenario, nil).Once()
 
-	result, err := suite.makeUsecase().UpdateScenario(scenarioInput)
+	result, err := suite.makeUsecase().UpdateScenario(context.TODO(), scenarioInput)
 
 	t := suite.T()
 	assert.NoError(t, err)
@@ -149,7 +149,7 @@ func (suite *ScenarioUsecaseTestSuite) TestUpdateScenario_security() {
 	suite.scenarioRepository.On("GetScenarioById", suite.transaction, suite.scenarioId).Return(suite.scenario, nil).Once()
 	suite.enforceSecurity.On("UpdateScenario", suite.scenario).Return(suite.securityError)
 
-	_, err := suite.makeUsecase().UpdateScenario(scenarioInput)
+	_, err := suite.makeUsecase().UpdateScenario(context.TODO(), scenarioInput)
 
 	assert.ErrorIs(suite.T(), err, suite.securityError)
 	suite.AssertExpectations()

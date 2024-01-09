@@ -21,26 +21,26 @@ import (
 )
 
 type CaseUseCaseRepository interface {
-	ListOrganizationCases(tx repositories.Transaction, filters models.CaseFilters, pagination models.PaginationAndSorting) ([]models.CaseWithRank, error)
-	GetCaseById(tx repositories.Transaction, caseId string) (models.Case, error)
-	CreateCase(tx repositories.Transaction, createCaseAttributes models.CreateCaseAttributes, newCaseId string) error
-	UpdateCase(tx repositories.Transaction, updateCaseAttributes models.UpdateCaseAttributes) error
+	ListOrganizationCases(ctx context.Context, tx repositories.Transaction, filters models.CaseFilters, pagination models.PaginationAndSorting) ([]models.CaseWithRank, error)
+	GetCaseById(ctx context.Context, tx repositories.Transaction, caseId string) (models.Case, error)
+	CreateCase(ctx context.Context, tx repositories.Transaction, createCaseAttributes models.CreateCaseAttributes, newCaseId string) error
+	UpdateCase(ctx context.Context, tx repositories.Transaction, updateCaseAttributes models.UpdateCaseAttributes) error
 
-	CreateCaseEvent(tx repositories.Transaction, createCaseEventAttributes models.CreateCaseEventAttributes) error
-	BatchCreateCaseEvents(tx repositories.Transaction, createCaseEventAttributes []models.CreateCaseEventAttributes) error
-	ListCaseEvents(tx repositories.Transaction, caseId string) ([]models.CaseEvent, error)
+	CreateCaseEvent(ctx context.Context, tx repositories.Transaction, createCaseEventAttributes models.CreateCaseEventAttributes) error
+	BatchCreateCaseEvents(ctx context.Context, tx repositories.Transaction, createCaseEventAttributes []models.CreateCaseEventAttributes) error
+	ListCaseEvents(ctx context.Context, tx repositories.Transaction, caseId string) ([]models.CaseEvent, error)
 
-	GetCaseContributor(tx repositories.Transaction, caseId, userId string) (*models.CaseContributor, error)
-	CreateCaseContributor(tx repositories.Transaction, caseId, userId string) error
+	GetCaseContributor(ctx context.Context, tx repositories.Transaction, caseId, userId string) (*models.CaseContributor, error)
+	CreateCaseContributor(ctx context.Context, tx repositories.Transaction, caseId, userId string) error
 
-	GetTagById(tx repositories.Transaction, tagId string) (models.Tag, error)
-	CreateCaseTag(tx repositories.Transaction, caseId, tagId string) error
-	ListCaseTagsByCaseId(tx repositories.Transaction, caseId string) ([]models.CaseTag, error)
-	SoftDeleteCaseTag(tx repositories.Transaction, tagId string) error
+	GetTagById(ctx context.Context, tx repositories.Transaction, tagId string) (models.Tag, error)
+	CreateCaseTag(ctx context.Context, tx repositories.Transaction, caseId, tagId string) error
+	ListCaseTagsByCaseId(ctx context.Context, tx repositories.Transaction, caseId string) ([]models.CaseTag, error)
+	SoftDeleteCaseTag(ctx context.Context, tx repositories.Transaction, tagId string) error
 
-	CreateDbCaseFile(tx repositories.Transaction, createCaseFileInput models.CreateDbCaseFileInput) error
-	GetCaseFileById(tx repositories.Transaction, caseFileId string) (models.CaseFile, error)
-	GetCasesFileByCaseId(tx repositories.Transaction, caseId string) ([]models.CaseFile, error)
+	CreateDbCaseFile(ctx context.Context, tx repositories.Transaction, createCaseFileInput models.CreateDbCaseFileInput) error
+	GetCaseFileById(ctx context.Context, tx repositories.Transaction, caseFileId string) (models.CaseFile, error)
+	GetCasesFileByCaseId(ctx context.Context, tx repositories.Transaction, caseId string) ([]models.CaseFile, error)
 }
 
 type CaseUseCase struct {
@@ -72,6 +72,7 @@ func (usecase *CaseUseCase) ListCases(
 	}
 
 	return transaction.TransactionReturnValue(
+		ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) ([]models.CaseWithRank, error) {
@@ -99,7 +100,7 @@ func (usecase *CaseUseCase) ListCases(
 				repoFilters.InboxIds = availableInboxIds
 			}
 
-			cases, err := usecase.repository.ListOrganizationCases(tx, repoFilters, pagination)
+			cases, err := usecase.repository.ListOrganizationCases(ctx, tx, repoFilters, pagination)
 			if err != nil {
 				return []models.CaseWithRank{}, err
 			}
@@ -126,7 +127,7 @@ func (usecase *CaseUseCase) getAvailableInboxIds(ctx context.Context, tx reposit
 }
 
 func (usecase *CaseUseCase) GetCase(ctx context.Context, caseId string) (models.Case, error) {
-	c, err := usecase.getCaseWithDetails(nil, caseId)
+	c, err := usecase.getCaseWithDetails(ctx, nil, caseId)
 	if err != nil {
 		return models.Case{}, err
 	}
@@ -143,7 +144,7 @@ func (usecase *CaseUseCase) GetCase(ctx context.Context, caseId string) (models.
 }
 
 func (usecase *CaseUseCase) CreateCase(ctx context.Context, userId string, createCaseAttributes models.CreateCaseAttributes) (models.Case, error) {
-	c, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
+	c, err := transaction.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
 		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx)
 		if err != nil {
 			return models.Case{}, err
@@ -152,16 +153,16 @@ func (usecase *CaseUseCase) CreateCase(ctx context.Context, userId string, creat
 			return models.Case{}, err
 		}
 
-		if err := usecase.validateDecisions(tx, createCaseAttributes.DecisionIds); err != nil {
+		if err := usecase.validateDecisions(ctx, tx, createCaseAttributes.DecisionIds); err != nil {
 			return models.Case{}, err
 		}
 		newCaseId := uuid.NewString()
-		err = usecase.repository.CreateCase(tx, createCaseAttributes, newCaseId)
+		err = usecase.repository.CreateCase(ctx, tx, createCaseAttributes, newCaseId)
 		if err != nil {
 			return models.Case{}, err
 		}
 
-		err = usecase.repository.CreateCaseEvent(tx, models.CreateCaseEventAttributes{
+		err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			CaseId:    newCaseId,
 			UserId:    userId,
 			EventType: models.CaseCreated,
@@ -169,16 +170,16 @@ func (usecase *CaseUseCase) CreateCase(ctx context.Context, userId string, creat
 		if err != nil {
 			return models.Case{}, err
 		}
-		if err := usecase.createCaseContributorIfNotExist(tx, newCaseId, userId); err != nil {
+		if err := usecase.createCaseContributorIfNotExist(ctx, tx, newCaseId, userId); err != nil {
 			return models.Case{}, err
 		}
 
-		err = usecase.updateDecisionsWithEvents(tx, newCaseId, userId, createCaseAttributes.DecisionIds)
+		err = usecase.updateDecisionsWithEvents(ctx, tx, newCaseId, userId, createCaseAttributes.DecisionIds)
 		if err != nil {
 			return models.Case{}, err
 		}
 
-		return usecase.getCaseWithDetails(tx, newCaseId)
+		return usecase.getCaseWithDetails(ctx, tx, newCaseId)
 	})
 
 	if err != nil {
@@ -191,14 +192,14 @@ func (usecase *CaseUseCase) CreateCase(ctx context.Context, userId string, creat
 }
 
 func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string, updateCaseAttributes models.UpdateCaseAttributes) (models.Case, error) {
-	updatedCase, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
-		c, err := usecase.repository.GetCaseById(tx, updateCaseAttributes.Id)
+	updatedCase, err := transaction.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
+		c, err := usecase.repository.GetCaseById(ctx, tx, updateCaseAttributes.Id)
 		if err != nil {
 			return models.Case{}, err
 		}
 
 		if isIdenticalCaseUpdate(updateCaseAttributes, c) {
-			return usecase.getCaseWithDetails(tx, updateCaseAttributes.Id)
+			return usecase.getCaseWithDetails(ctx, tx, updateCaseAttributes.Id)
 		}
 
 		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, nil)
@@ -215,24 +216,24 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string, updat
 			return models.Case{}, err
 		}
 
-		err = usecase.repository.UpdateCase(tx, updateCaseAttributes)
+		err = usecase.repository.UpdateCase(ctx, tx, updateCaseAttributes)
 		if err != nil {
 			return models.Case{}, err
 		}
-		if err := usecase.createCaseContributorIfNotExist(tx, updateCaseAttributes.Id, userId); err != nil {
+		if err := usecase.createCaseContributorIfNotExist(ctx, tx, updateCaseAttributes.Id, userId); err != nil {
 			return models.Case{}, err
 		}
 
-		if err := usecase.updateCaseCreateEvents(tx, updateCaseAttributes, c, userId); err != nil {
+		if err := usecase.updateCaseCreateEvents(ctx, tx, updateCaseAttributes, c, userId); err != nil {
 			return models.Case{}, err
 		}
 
-		err = usecase.updateDecisionsWithEvents(tx, updateCaseAttributes.Id, userId, updateCaseAttributes.DecisionIds)
+		err = usecase.updateDecisionsWithEvents(ctx, tx, updateCaseAttributes.Id, userId, updateCaseAttributes.DecisionIds)
 		if err != nil {
 			return models.Case{}, err
 		}
 
-		return usecase.getCaseWithDetails(tx, updateCaseAttributes.Id)
+		return usecase.getCaseWithDetails(ctx, tx, updateCaseAttributes.Id)
 	})
 	if err != nil {
 		return models.Case{}, err
@@ -253,10 +254,10 @@ func isIdenticalCaseUpdate(updateCaseAttributes models.UpdateCaseAttributes, c m
 		(updateCaseAttributes.DecisionIds == nil || slices.Equal(updateCaseAttributes.DecisionIds, oldDecisionIds))
 }
 
-func (usecase *CaseUseCase) updateCaseCreateEvents(tx repositories.Transaction, updateCaseAttributes models.UpdateCaseAttributes, oldCase models.Case, userId string) error {
+func (usecase *CaseUseCase) updateCaseCreateEvents(ctx context.Context, tx repositories.Transaction, updateCaseAttributes models.UpdateCaseAttributes, oldCase models.Case, userId string) error {
 	var err error
 	if updateCaseAttributes.Name != "" && updateCaseAttributes.Name != oldCase.Name {
-		err = usecase.repository.CreateCaseEvent(tx, models.CreateCaseEventAttributes{
+		err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			CaseId:        updateCaseAttributes.Id,
 			UserId:        userId,
 			EventType:     models.CaseNameUpdated,
@@ -270,7 +271,7 @@ func (usecase *CaseUseCase) updateCaseCreateEvents(tx repositories.Transaction, 
 
 	if updateCaseAttributes.Status != "" && updateCaseAttributes.Status != oldCase.Status {
 		newStatus := string(updateCaseAttributes.Status)
-		err = usecase.repository.CreateCaseEvent(tx, models.CreateCaseEventAttributes{
+		err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			CaseId:        updateCaseAttributes.Id,
 			UserId:        userId,
 			EventType:     models.CaseStatusUpdated,
@@ -283,7 +284,7 @@ func (usecase *CaseUseCase) updateCaseCreateEvents(tx repositories.Transaction, 
 	}
 
 	if updateCaseAttributes.InboxId != "" && updateCaseAttributes.InboxId != oldCase.InboxId {
-		err = usecase.repository.CreateCaseEvent(tx, models.CreateCaseEventAttributes{
+		err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			CaseId:        updateCaseAttributes.Id,
 			UserId:        userId,
 			EventType:     models.CaseInboxChanged,
@@ -298,8 +299,8 @@ func (usecase *CaseUseCase) updateCaseCreateEvents(tx repositories.Transaction, 
 }
 
 func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, caseId string, decisionIds []string) (models.Case, error) {
-	updatedCase, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
-		c, err := usecase.repository.GetCaseById(tx, caseId)
+	updatedCase, err := transaction.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
+		c, err := usecase.repository.GetCaseById(ctx, tx, caseId)
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -310,19 +311,19 @@ func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, case
 		if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
 			return models.Case{}, err
 		}
-		if err := usecase.validateDecisions(tx, decisionIds); err != nil {
+		if err := usecase.validateDecisions(ctx, tx, decisionIds); err != nil {
 			return models.Case{}, err
 		}
 
-		err = usecase.updateDecisionsWithEvents(tx, caseId, userId, decisionIds)
+		err = usecase.updateDecisionsWithEvents(ctx, tx, caseId, userId, decisionIds)
 		if err != nil {
 			return models.Case{}, err
 		}
-		if err := usecase.createCaseContributorIfNotExist(tx, caseId, userId); err != nil {
+		if err := usecase.createCaseContributorIfNotExist(ctx, tx, caseId, userId); err != nil {
 			return models.Case{}, err
 		}
 
-		return usecase.getCaseWithDetails(tx, caseId)
+		return usecase.getCaseWithDetails(ctx, tx, caseId)
 	})
 
 	if err != nil {
@@ -334,8 +335,8 @@ func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, case
 }
 
 func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string, caseCommentAttributes models.CreateCaseCommentAttributes) (models.Case, error) {
-	updatedCase, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
-		c, err := usecase.repository.GetCaseById(tx, caseCommentAttributes.Id)
+	updatedCase, err := transaction.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
+		c, err := usecase.repository.GetCaseById(ctx, tx, caseCommentAttributes.Id)
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -348,11 +349,11 @@ func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string
 			return models.Case{}, err
 		}
 
-		if err := usecase.createCaseContributorIfNotExist(tx, caseCommentAttributes.Id, userId); err != nil {
+		if err := usecase.createCaseContributorIfNotExist(ctx, tx, caseCommentAttributes.Id, userId); err != nil {
 			return models.Case{}, err
 		}
 
-		err = usecase.repository.CreateCaseEvent(tx, models.CreateCaseEventAttributes{
+		err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			CaseId:         caseCommentAttributes.Id,
 			UserId:         userId,
 			EventType:      models.CaseCommentAdded,
@@ -361,7 +362,7 @@ func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string
 		if err != nil {
 			return models.Case{}, err
 		}
-		return usecase.getCaseWithDetails(tx, caseCommentAttributes.Id)
+		return usecase.getCaseWithDetails(ctx, tx, caseCommentAttributes.Id)
 	})
 
 	if err != nil {
@@ -373,8 +374,8 @@ func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string
 }
 
 func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string, caseTagAttributes models.CreateCaseTagsAttributes) (models.Case, error) {
-	updatedCase, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
-		c, err := usecase.repository.GetCaseById(tx, caseTagAttributes.CaseId)
+	updatedCase, err := transaction.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
+		c, err := usecase.repository.GetCaseById(ctx, tx, caseTagAttributes.CaseId)
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -387,7 +388,7 @@ func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string, c
 			return models.Case{}, err
 		}
 
-		previousCaseTags, err := usecase.repository.ListCaseTagsByCaseId(tx, caseTagAttributes.CaseId)
+		previousCaseTags, err := usecase.repository.ListCaseTagsByCaseId(ctx, tx, caseTagAttributes.CaseId)
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -395,7 +396,7 @@ func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string, c
 
 		for _, tagId := range caseTagAttributes.TagIds {
 			if !slices.Contains(previousTagIds, tagId) {
-				if err := usecase.createCaseTag(tx, caseTagAttributes.CaseId, tagId); err != nil {
+				if err := usecase.createCaseTag(ctx, tx, caseTagAttributes.CaseId, tagId); err != nil {
 					return models.Case{}, err
 				}
 			}
@@ -403,7 +404,7 @@ func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string, c
 
 		for _, caseTag := range previousCaseTags {
 			if !slices.Contains(caseTagAttributes.TagIds, caseTag.TagId) {
-				if err = usecase.repository.SoftDeleteCaseTag(tx, caseTag.Id); err != nil {
+				if err = usecase.repository.SoftDeleteCaseTag(ctx, tx, caseTag.Id); err != nil {
 					return models.Case{}, err
 				}
 			}
@@ -411,7 +412,7 @@ func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string, c
 
 		previousValue := strings.Join(previousTagIds, ",")
 		newValue := strings.Join(caseTagAttributes.TagIds, ",")
-		err = usecase.repository.CreateCaseEvent(tx, models.CreateCaseEventAttributes{
+		err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			CaseId:        caseTagAttributes.CaseId,
 			UserId:        userId,
 			EventType:     models.CaseTagsUpdated,
@@ -421,11 +422,11 @@ func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string, c
 		if err != nil {
 			return models.Case{}, err
 		}
-		if err := usecase.createCaseContributorIfNotExist(tx, caseTagAttributes.CaseId, userId); err != nil {
+		if err := usecase.createCaseContributorIfNotExist(ctx, tx, caseTagAttributes.CaseId, userId); err != nil {
 			return models.Case{}, err
 		}
 
-		return usecase.getCaseWithDetails(tx, caseTagAttributes.CaseId)
+		return usecase.getCaseWithDetails(ctx, tx, caseTagAttributes.CaseId)
 	})
 
 	if err != nil {
@@ -436,8 +437,8 @@ func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string, c
 	return updatedCase, nil
 }
 
-func (usecase *CaseUseCase) createCaseTag(tx repositories.Transaction, caseId, tagId string) error {
-	tag, err := usecase.repository.GetTagById(tx, tagId)
+func (usecase *CaseUseCase) createCaseTag(ctx context.Context, tx repositories.Transaction, caseId, tagId string) error {
+	tag, err := usecase.repository.GetTagById(ctx, tx, tagId)
 	if err != nil {
 		return err
 	}
@@ -446,7 +447,7 @@ func (usecase *CaseUseCase) createCaseTag(tx repositories.Transaction, caseId, t
 		return fmt.Errorf("tag %s is deleted %w", tag.Id, models.BadParameterError)
 	}
 
-	if err = usecase.repository.CreateCaseTag(tx, caseId, tagId); err != nil {
+	if err = usecase.repository.CreateCaseTag(ctx, tx, caseId, tagId); err != nil {
 		if repositories.IsUniqueViolationError(err) {
 			return fmt.Errorf("tag %s already added to case %s %w", tag.Id, caseId, models.DuplicateValueError)
 		}
@@ -456,25 +457,25 @@ func (usecase *CaseUseCase) createCaseTag(tx repositories.Transaction, caseId, t
 	return nil
 }
 
-func (usecase *CaseUseCase) getCaseWithDetails(tx repositories.Transaction, caseId string) (models.Case, error) {
-	c, err := usecase.repository.GetCaseById(tx, caseId)
+func (usecase *CaseUseCase) getCaseWithDetails(ctx context.Context, tx repositories.Transaction, caseId string) (models.Case, error) {
+	c, err := usecase.repository.GetCaseById(ctx, tx, caseId)
 	if err != nil {
 		return models.Case{}, err
 	}
 
-	decisions, err := usecase.decisionRepository.DecisionsByCaseId(tx, caseId)
+	decisions, err := usecase.decisionRepository.DecisionsByCaseId(ctx, tx, caseId)
 	if err != nil {
 		return models.Case{}, err
 	}
 	c.Decisions = decisions
 
-	caseFiles, err := usecase.repository.GetCasesFileByCaseId(tx, caseId)
+	caseFiles, err := usecase.repository.GetCasesFileByCaseId(ctx, tx, caseId)
 	if err != nil {
 		return models.Case{}, err
 	}
 	c.Files = caseFiles
 
-	events, err := usecase.repository.ListCaseEvents(tx, caseId)
+	events, err := usecase.repository.ListCaseEvents(ctx, tx, caseId)
 	if err != nil {
 		return models.Case{}, err
 	}
@@ -483,11 +484,11 @@ func (usecase *CaseUseCase) getCaseWithDetails(tx repositories.Transaction, case
 	return c, nil
 }
 
-func (usecase *CaseUseCase) validateDecisions(tx repositories.Transaction, decisionIds []string) error {
+func (usecase *CaseUseCase) validateDecisions(ctx context.Context, tx repositories.Transaction, decisionIds []string) error {
 	if len(decisionIds) == 0 {
 		return nil
 	}
-	decisions, err := usecase.decisionRepository.DecisionsById(tx, decisionIds)
+	decisions, err := usecase.decisionRepository.DecisionsById(ctx, tx, decisionIds)
 	if err != nil {
 		return err
 	}
@@ -500,9 +501,9 @@ func (usecase *CaseUseCase) validateDecisions(tx repositories.Transaction, decis
 	return nil
 }
 
-func (usecase *CaseUseCase) updateDecisionsWithEvents(tx repositories.Transaction, caseId, userId string, decisionIds []string) error {
+func (usecase *CaseUseCase) updateDecisionsWithEvents(ctx context.Context, tx repositories.Transaction, caseId, userId string, decisionIds []string) error {
 	if len(decisionIds) > 0 {
-		if err := usecase.decisionRepository.UpdateDecisionCaseId(tx, decisionIds, caseId); err != nil {
+		if err := usecase.decisionRepository.UpdateDecisionCaseId(ctx, tx, decisionIds, caseId); err != nil {
 			return err
 		}
 
@@ -517,22 +518,22 @@ func (usecase *CaseUseCase) updateDecisionsWithEvents(tx repositories.Transactio
 				ResourceType: &resourceType,
 			}
 		}
-		if err := usecase.repository.BatchCreateCaseEvents(tx, createCaseEventAttributes); err != nil {
+		if err := usecase.repository.BatchCreateCaseEvents(ctx, tx, createCaseEventAttributes); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (usecase *CaseUseCase) createCaseContributorIfNotExist(tx repositories.Transaction, caseId, userId string) error {
-	contributor, err := usecase.repository.GetCaseContributor(tx, caseId, userId)
+func (usecase *CaseUseCase) createCaseContributorIfNotExist(ctx context.Context, tx repositories.Transaction, caseId, userId string) error {
+	contributor, err := usecase.repository.GetCaseContributor(ctx, tx, caseId, userId)
 	if err != nil {
 		return err
 	}
 	if contributor != nil {
 		return nil
 	}
-	return usecase.repository.CreateCaseContributor(tx, caseId, userId)
+	return usecase.repository.CreateCaseContributor(ctx, tx, caseId, userId)
 }
 
 func trackCaseUpdatedEvents(ctx context.Context, caseId string, updateCaseAttributes models.UpdateCaseAttributes) {
@@ -557,7 +558,7 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 	}
 
 	// permissions check
-	c, err := usecase.repository.GetCaseById(nil, input.CaseId)
+	c, err := usecase.repository.GetCaseById(ctx, nil, input.CaseId)
 	if err != nil {
 		return models.Case{}, err
 	}
@@ -592,13 +593,14 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 		return models.Case{}, err
 	}
 
-	updatedCase, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
-		if err := usecase.createCaseContributorIfNotExist(tx, input.CaseId, userId); err != nil {
+	updatedCase, err := transaction.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Case, error) {
+		if err := usecase.createCaseContributorIfNotExist(ctx, tx, input.CaseId, userId); err != nil {
 			return models.Case{}, err
 		}
 
 		newCaseFileId := uuid.NewString()
 		if err := usecase.repository.CreateDbCaseFile(
+			ctx,
 			tx,
 			models.CreateDbCaseFileInput{
 				Id:            newCaseFileId,
@@ -612,7 +614,7 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 		}
 
 		resourceType := models.CaseFileResourceType
-		err = usecase.repository.CreateCaseEvent(tx, models.CreateCaseEventAttributes{
+		err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			CaseId:         input.CaseId,
 			UserId:         userId,
 			EventType:      models.CaseFileAdded,
@@ -624,7 +626,7 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 			return models.Case{}, err
 		}
 
-		return usecase.getCaseWithDetails(tx, input.CaseId)
+		return usecase.getCaseWithDetails(ctx, tx, input.CaseId)
 	})
 
 	if err != nil {
@@ -663,12 +665,12 @@ func validateFileType(file *multipart.FileHeader) error {
 }
 
 func (usecase *CaseUseCase) GetCaseFileUrl(ctx context.Context, caseFileId string) (string, error) {
-	cf, err := usecase.repository.GetCaseFileById(nil, caseFileId)
+	cf, err := usecase.repository.GetCaseFileById(ctx, nil, caseFileId)
 	if err != nil {
 		return "", err
 	}
 
-	c, err := usecase.getCaseWithDetails(nil, cf.CaseId)
+	c, err := usecase.getCaseWithDetails(ctx, nil, cf.CaseId)
 	if err != nil {
 		return "", err
 	}

@@ -26,12 +26,11 @@ func NewTransactionFactoryPosgresql(
 	}
 }
 
-func (factory *TransactionFactoryPosgresql) adaptMarbleDatabaseTransaction(transaction Transaction) TransactionPostgres {
+func (factory *TransactionFactoryPosgresql) adaptMarbleDatabaseTransaction(ctx context.Context, transaction Transaction) TransactionPostgres {
 
 	if transaction == nil {
 		transaction = TransactionPostgres{
 			databaseShema: models.DATABASE_MARBLE_SCHEMA,
-			ctx:           context.Background(),
 			exec:          factory.marbleConnectionPool,
 		}
 	}
@@ -53,19 +52,15 @@ func adaptClientDatabaseTransaction(transaction Transaction) TransactionPostgres
 	return tx
 }
 
-func (repo *TransactionFactoryPosgresql) Transaction(databaseSchema models.DatabaseSchema, fn func(tx Transaction) error) error {
+func (repo *TransactionFactoryPosgresql) Transaction(ctx context.Context, databaseSchema models.DatabaseSchema, fn func(tx Transaction) error) error {
 	connPool, err := repo.databaseConnectionPoolRepository.DatabaseConnectionPool(databaseSchema.Database.Connection)
 	if err != nil {
 		return err
 	}
 
-	// context.Background: I suppose we don't need cancellation at the sql request level.
-	ctx := context.Background()
-
 	err = pgx.BeginFunc(ctx, connPool, func(tx pgx.Tx) error {
 		return fn(TransactionPostgres{
 			databaseShema: databaseSchema,
-			ctx:           ctx,
 			exec:          tx,
 		})
 	})

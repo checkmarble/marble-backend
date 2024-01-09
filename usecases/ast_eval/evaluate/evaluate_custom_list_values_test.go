@@ -1,6 +1,7 @@
 package evaluate_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/checkmarble/marble-backend/mocks"
@@ -26,7 +27,7 @@ var testCustomListNamedArgs = map[string]any{
 
 func TestCustomListValuesWrongArg(t *testing.T) {
 	customListEval := evaluate.NewCustomListValuesAccess(nil, nil)
-	_, errs := customListEval.Evaluate(ast.Arguments{Args: []any{true}})
+	_, errs := customListEval.Evaluate(context.TODO(), ast.Arguments{Args: []any{true}})
 	if assert.Len(t, errs, 1) {
 		assert.ErrorIs(t, errs[0], ast.ErrMissingNamedArgument)
 	}
@@ -44,7 +45,7 @@ func TestCustomListValues(t *testing.T) {
 	clr.On("GetCustomListValues", nil, models.GetCustomListValuesInput{Id: testListId}).Return(testCustomListValues, nil)
 
 	er.On("ReadOrganization", testListOrgId).Return(nil)
-	result, errs := customListEval.Evaluate(ast.Arguments{NamedArgs: testCustomListNamedArgs})
+	result, errs := customListEval.Evaluate(context.TODO(), ast.Arguments{NamedArgs: testCustomListNamedArgs})
 	assert.Len(t, errs, 0)
 	if assert.Len(t, result, 2) {
 		assert.Equal(t, result.([]string)[0], testCustomListValues[0].Value)
@@ -64,7 +65,7 @@ func TestCustomListValuesNoAccess(t *testing.T) {
 	clr.On("GetCustomListById", nil, testListId).Return(testList, nil)
 	er.On("ReadOrganization", testListOrgId).Return(models.ForbiddenError)
 
-	_, errs := customListEval.Evaluate(ast.Arguments{NamedArgs: testCustomListNamedArgs})
+	_, errs := customListEval.Evaluate(context.TODO(), ast.Arguments{NamedArgs: testCustomListNamedArgs})
 	if assert.Len(t, errs, 1) {
 		assert.ErrorIs(t, errs[0], models.ForbiddenError)
 	}

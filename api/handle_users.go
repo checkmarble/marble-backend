@@ -13,7 +13,7 @@ import (
 
 func (api *API) handleGetAllUsers(c *gin.Context) {
 	usecase := api.UsecasesWithCreds(c.Request).NewUserUseCase()
-	users, err := usecase.GetAllUsers()
+	users, err := usecase.GetAllUsers(c.Request.Context())
 	if presentError(c, err) {
 		return
 	}
@@ -32,7 +32,7 @@ func (api *API) handlePostUser(c *gin.Context) {
 	createUser := dto.AdaptCreateUser(data)
 
 	usecase := api.UsecasesWithCreds(c.Request).NewUserUseCase()
-	createdUser, err := usecase.AddUser(createUser)
+	createdUser, err := usecase.AddUser(c.Request.Context(), createUser)
 	if presentError(c, err) {
 		return
 	}
@@ -45,7 +45,7 @@ func (api *API) handleGetUser(c *gin.Context) {
 	userID := c.Param("user_id")
 
 	usecase := api.UsecasesWithCreds(c.Request).NewUserUseCase()
-	user, err := usecase.GetUser(userID)
+	user, err := usecase.GetUser(c.Request.Context(), userID)
 	if presentError(c, err) {
 		return
 	}
@@ -90,7 +90,7 @@ func (api *API) handleDeleteUser(c *gin.Context) {
 	userId := c.Param("user_id")
 
 	usecase := api.UsecasesWithCreds(c.Request).NewUserUseCase()
-	err := usecase.DeleteUser(userId, currentUserId)
+	err := usecase.DeleteUser(c.Request.Context(), userId, currentUserId)
 	if presentError(c, err) {
 		return
 	}

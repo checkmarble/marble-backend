@@ -1,6 +1,7 @@
 package evaluate
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -18,7 +19,7 @@ type DatabaseAccess struct {
 	ReturnFakeValue            bool
 }
 
-func (d DatabaseAccess) Evaluate(arguments ast.Arguments) (any, []error) {
+func (d DatabaseAccess) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 
 	tableNameStr, tableNameErr := AdaptNamedArgument(arguments.NamedArgs, "tableName", adaptArgumentToString)
 	fieldNameStr, fieldNameErr := AdaptNamedArgument(arguments.NamedArgs, "fieldName", adaptArgumentToString)
@@ -44,7 +45,7 @@ func (d DatabaseAccess) Evaluate(arguments ast.Arguments) (any, []error) {
 		pathStringArr = append(pathStringArr, str)
 	}
 
-	fieldValue, err := d.getDbField(tableName, fieldName, pathStringArr)
+	fieldValue, err := d.getDbField(ctx, tableName, fieldName, pathStringArr)
 
 	if err != nil {
 		errorMsg := fmt.Sprintf("tableName: %s, fieldName: %s, path: %v", tableName, fieldName, path)
@@ -53,24 +54,25 @@ func (d DatabaseAccess) Evaluate(arguments ast.Arguments) (any, []error) {
 
 	if fieldValue == nil {
 		errorMsg := fmt.Sprintf("tableName: %s, fieldName: %s, path: %v", tableName, fieldName, path)
-		objectId, _ := d.getDbField(tableName, "object_id", pathStringArr)
+		objectId, _ := d.getDbField(ctx, tableName, "object_id", pathStringArr)
 		return MakeEvaluateError(fmt.Errorf("value is null for object_id %s, in %s %w", objectId, errorMsg, models.NullFieldReadError))
 	}
 
 	return fieldValue, nil
 }
 
-func (d DatabaseAccess) getDbField(tableName models.TableName, fieldName models.FieldName, path []string) (interface{}, error) {
+func (d DatabaseAccess) getDbField(ctx context.Context, tableName models.TableName, fieldName models.FieldName, path []string) (interface{}, error) {
 
 	if d.ReturnFakeValue {
 		return DryRunGetDbField(d.DataModel, tableName, path, fieldName)
 	}
 
 	return transaction.InOrganizationSchema(
+		ctx,
 		d.OrgTransactionFactory,
 		d.OrganizationId,
 		func(tx repositories.Transaction) (interface{}, error) {
-			return d.IngestedDataReadRepository.GetDbField(tx, models.DbFieldReadParams{
+			return d.IngestedDataReadRepository.GetDbField(ctx, tx, models.DbFieldReadParams{
 				TriggerTableName: models.TableName(tableName),
 				Path:             models.ToLinkNames(path),
 				FieldName:        models.FieldName(fieldName),

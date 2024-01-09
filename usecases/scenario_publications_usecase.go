@@ -19,8 +19,8 @@ type ScenarioPublicationUsecase struct {
 	scenarioPublisher              scenarios.ScenarioPublisher
 }
 
-func (usecase *ScenarioPublicationUsecase) GetScenarioPublication(scenarioPublicationID string) (models.ScenarioPublication, error) {
-	scenarioPublication, err := usecase.scenarioPublicationsRepository.GetScenarioPublicationById(nil, scenarioPublicationID)
+func (usecase *ScenarioPublicationUsecase) GetScenarioPublication(ctx context.Context, scenarioPublicationID string) (models.ScenarioPublication, error) {
+	scenarioPublication, err := usecase.scenarioPublicationsRepository.GetScenarioPublicationById(ctx, nil, scenarioPublicationID)
 	if err != nil {
 		return models.ScenarioPublication{}, err
 	}
@@ -32,7 +32,7 @@ func (usecase *ScenarioPublicationUsecase) GetScenarioPublication(scenarioPublic
 	return scenarioPublication, nil
 }
 
-func (usecase *ScenarioPublicationUsecase) ListScenarioPublications(filters models.ListScenarioPublicationsFilters) ([]models.ScenarioPublication, error) {
+func (usecase *ScenarioPublicationUsecase) ListScenarioPublications(ctx context.Context, filters models.ListScenarioPublicationsFilters) ([]models.ScenarioPublication, error) {
 	organizationId, err := usecase.OrganizationIdOfContext()
 	if err != nil {
 		return nil, err
@@ -43,13 +43,13 @@ func (usecase *ScenarioPublicationUsecase) ListScenarioPublications(filters mode
 		return nil, err
 	}
 
-	return usecase.scenarioPublicationsRepository.ListScenarioPublicationsOfOrganization(nil, organizationId, filters)
+	return usecase.scenarioPublicationsRepository.ListScenarioPublicationsOfOrganization(ctx, nil, organizationId, filters)
 }
 
 func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(ctx context.Context, input models.PublishScenarioIterationInput) ([]models.ScenarioPublication, error) {
-	return transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) ([]models.ScenarioPublication, error) {
+	return transaction.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) ([]models.ScenarioPublication, error) {
 
-		scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(tx, input.ScenarioIterationId)
+		scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, tx, input.ScenarioIterationId)
 		if err != nil {
 			return []models.ScenarioPublication{}, err
 		}

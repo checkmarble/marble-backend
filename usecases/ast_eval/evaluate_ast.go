@@ -1,11 +1,13 @@
 package ast_eval
 
 import (
+	"context"
+
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func EvaluateAst(environment AstEvaluationEnvironment, node ast.Node) (ast.NodeEvaluation, bool) {
+func EvaluateAst(ctx context.Context, environment AstEvaluationEnvironment, node ast.Node) (ast.NodeEvaluation, bool) {
 	// Early exit for constant, because it should have no children.
 	if node.Function == ast.FUNC_CONSTANT {
 		return ast.NodeEvaluation{
@@ -17,7 +19,7 @@ func EvaluateAst(environment AstEvaluationEnvironment, node ast.Node) (ast.NodeE
 	childEvaluationFail := false
 
 	evalChild := func(child ast.Node) ast.NodeEvaluation {
-		childEval, ok := EvaluateAst(environment, child)
+		childEval, ok := EvaluateAst(ctx, environment, child)
 		if !ok {
 			childEvaluationFail = true
 		}
@@ -53,7 +55,7 @@ func EvaluateAst(environment AstEvaluationEnvironment, node ast.Node) (ast.NodeE
 		return evaluation, false
 	}
 
-	evaluation.ReturnValue, evaluation.Errors = evaluator.Evaluate(arguments)
+	evaluation.ReturnValue, evaluation.Errors = evaluator.Evaluate(ctx, arguments)
 
 	if evaluation.Errors == nil {
 		// Assign an empty array to indicate that the evaluation occured.

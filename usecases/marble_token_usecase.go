@@ -28,24 +28,24 @@ func (usecase *MarbleTokenUseCase) encodeMarbleToken(creds models.Credentials) (
 	return token, expirationTime, err
 }
 
-func (usecase *MarbleTokenUseCase) adaptCredentialFromApiKey(key string) (models.Credentials, error) {
+func (usecase *MarbleTokenUseCase) adaptCredentialFromApiKey(ctx context.Context, key string) (models.Credentials, error) {
 
-	apiKey, err := usecase.apiKeyRepository.GetApiKeyByKey(nil, key)
+	apiKey, err := usecase.apiKeyRepository.GetApiKeyByKey(ctx, nil, key)
 	if err != nil {
 		return models.Credentials{}, err
 	}
 
 	// Build a token name from the organization name because
 	// We don't want to log the apiKey itself.
-	apiKeyName, err := usecase.makeTokenName(apiKey.OrganizationId)
+	apiKeyName, err := usecase.makeTokenName(ctx, apiKey.OrganizationId)
 	if err != nil {
 		return models.Credentials{}, err
 	}
 	return models.NewCredentialWithApiKey(apiKey.OrganizationId, apiKey.Role, apiKeyName), nil
 }
 
-func (usecase *MarbleTokenUseCase) makeTokenName(organizationId string) (string, error) {
-	organizationName, err := usecase.organizationRepository.GetOrganizationById(nil, organizationId)
+func (usecase *MarbleTokenUseCase) makeTokenName(ctx context.Context, organizationId string) (string, error) {
+	organizationName, err := usecase.organizationRepository.GetOrganizationById(ctx, nil, organizationId)
 	if err != nil {
 		return "", err
 	}
@@ -53,9 +53,9 @@ func (usecase *MarbleTokenUseCase) makeTokenName(organizationId string) (string,
 	return fmt.Sprintf("ApiKey Of %s", organizationName.Name), nil
 }
 
-func (usecase *MarbleTokenUseCase) NewMarbleToken(apiKey string, firebaseToken string) (string, time.Time, error) {
+func (usecase *MarbleTokenUseCase) NewMarbleToken(ctx context.Context, apiKey string, firebaseToken string) (string, time.Time, error) {
 	if apiKey != "" {
-		credentials, err := usecase.adaptCredentialFromApiKey(apiKey)
+		credentials, err := usecase.adaptCredentialFromApiKey(ctx, apiKey)
 		if err != nil {
 			return "", time.Time{}, err
 		}
@@ -70,9 +70,9 @@ func (usecase *MarbleTokenUseCase) NewMarbleToken(apiKey string, firebaseToken s
 			return "", time.Time{}, fmt.Errorf("firebase TokenID verification fail: %w", err)
 		}
 
-		user, err := transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.User, error) {
+		user, err := transaction.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.User, error) {
 
-			user, err := usecase.userRepository.UserByFirebaseUid(tx, identity.FirebaseUid)
+			user, err := usecase.userRepository.UserByFirebaseUid(ctx, tx, identity.FirebaseUid)
 			if err != nil {
 				return models.User{}, err
 			}
@@ -81,16 +81,16 @@ func (usecase *MarbleTokenUseCase) NewMarbleToken(apiKey string, firebaseToken s
 			}
 
 			// first connection
-			user, err = usecase.userRepository.UserByEmail(tx, identity.Email)
+			user, err = usecase.userRepository.UserByEmail(ctx, tx, identity.Email)
 			if err != nil {
 				return models.User{}, err
 			}
 			if user != nil {
 				// store firebase Id
-				if err := usecase.userRepository.UpdateFirebaseId(tx, user.UserId, identity.FirebaseUid); err != nil {
+				if err := usecase.userRepository.UpdateFirebaseId(ctx, tx, user.UserId, identity.FirebaseUid); err != nil {
 					return models.User{}, err
 				}
-				return usecase.userRepository.UserByID(tx, user.UserId)
+				return usecase.userRepository.UserByID(ctx, tx, user.UserId)
 			}
 
 			return models.User{}, fmt.Errorf("unknown user %s: %w", identity.Email, models.NotFoundError)
@@ -107,9 +107,9 @@ func (usecase *MarbleTokenUseCase) NewMarbleToken(apiKey string, firebaseToken s
 }
 
 // ValidateCredentials returns the credentials associated with the given marbleToken or apiKey
-func (usecase *MarbleTokenUseCase) ValidateCredentials(marbleToken string, apiKey string) (models.Credentials, error) {
+func (usecase *MarbleTokenUseCase) ValidateCredentials(ctx context.Context, marbleToken string, apiKey string) (models.Credentials, error) {
 	if apiKey != "" {
-		return usecase.adaptCredentialFromApiKey(apiKey)
+		return usecase.adaptCredentialFromApiKey(ctx, apiKey)
 	}
 
 	if marbleToken != "" {

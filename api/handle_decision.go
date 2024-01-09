@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -23,7 +24,7 @@ func (api *API) handleGetDecision(c *gin.Context) {
 	decisionID := c.Param("decision_id")
 
 	usecase := api.UsecasesWithCreds(c.Request).NewDecisionUsecase()
-	decision, err := usecase.GetDecision(decisionID)
+	decision, err := usecase.GetDecision(c.Request.Context(), decisionID)
 	if presentError(c, err) {
 		return
 	}
@@ -50,7 +51,7 @@ func (api *API) handleListDecisions(c *gin.Context) {
 	paginationAndSorting = dto.WithPaginationDefaults(paginationAndSorting, decisionPaginationDefaults)
 
 	usecase := api.UsecasesWithCreds(c.Request).NewDecisionUsecase()
-	decisions, err := usecase.ListDecisions(organizationId, dto.AdaptPaginationAndSortingInput(paginationAndSorting), filters)
+	decisions, err := usecase.ListDecisions(c.Request.Context(), organizationId, dto.AdaptPaginationAndSortingInput(paginationAndSorting), filters)
 	if presentError(c, err) {
 		return
 	}
@@ -88,16 +89,16 @@ func (api *API) handlePostDecision(c *gin.Context) {
 	}
 
 	dataModelUseCase := api.UsecasesWithCreds(c.Request).NewDataModelUseCase()
-	dataModel, err := dataModelUseCase.GetDataModel(organizationId)
+	dataModel, err := dataModelUseCase.GetDataModel(c.Request.Context(), organizationId)
 	if err != nil {
-		http.Error(c.Writer, "", http.StatusInternalServerError)
+		http.Error(c.Writer, "No data model found for organization", http.StatusInternalServerError)
 		return
 	}
 
 	tables := dataModel.Tables
 	table, ok := tables[models.TableName(requestData.TriggerObjectType)]
 	if !ok {
-		http.Error(c.Writer, "", http.StatusNotFound)
+		http.Error(c.Writer, fmt.Sprintf("Table %s not found", requestData.TriggerObjectType), http.StatusNotFound)
 		return
 	}
 

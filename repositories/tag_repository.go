@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/Masterminds/squirrel"
@@ -8,8 +9,8 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
-func (repo *MarbleDbRepository) ListOrganizationTags(tx Transaction, organizationId string, withCaseCount bool) ([]models.Tag, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *MarbleDbRepository) ListOrganizationTags(ctx context.Context, tx Transaction, organizationId string, withCaseCount bool) ([]models.Tag, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 	query := NewQueryBuilder().
 		Select(dbmodels.SelectTagColumn...).
 		From(fmt.Sprintf("%s AS t", dbmodels.TABLE_TAGS)).
@@ -19,16 +20,17 @@ func (repo *MarbleDbRepository) ListOrganizationTags(tx Transaction, organizatio
 
 	if withCaseCount {
 		query = query.Column("(SELECT count(distinct ct.case_id) FROM " + dbmodels.TABLE_CASE_TAGS + " AS ct WHERE ct.tag_id = t.id AND ct.deleted_at IS NULL) AS cases_count")
-		return SqlToListOfModels(pgTx, query, dbmodels.AdaptTagWithCasesCount)
+		return SqlToListOfModels(ctx, pgTx, query, dbmodels.AdaptTagWithCasesCount)
 	}
 
-	return SqlToListOfModels(pgTx, query, dbmodels.AdaptTag)
+	return SqlToListOfModels(ctx, pgTx, query, dbmodels.AdaptTag)
 }
 
-func (repo *MarbleDbRepository) CreateTag(tx Transaction, attributes models.CreateTagAttributes, newTagId string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *MarbleDbRepository) CreateTag(ctx context.Context, tx Transaction, attributes models.CreateTagAttributes, newTagId string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
+		ctx,
 		NewQueryBuilder().Insert(dbmodels.TABLE_TAGS).
 			Columns(
 				"id",
@@ -46,8 +48,8 @@ func (repo *MarbleDbRepository) CreateTag(tx Transaction, attributes models.Crea
 	return err
 }
 
-func (repo *MarbleDbRepository) UpdateTag(tx Transaction, attributes models.UpdateTagAttributes) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *MarbleDbRepository) UpdateTag(ctx context.Context, tx Transaction, attributes models.UpdateTagAttributes) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query := NewQueryBuilder().Update(dbmodels.TABLE_TAGS).Where(squirrel.Eq{"id": attributes.TagId}).Set("updated_at", squirrel.Expr("NOW()"))
 
@@ -57,14 +59,16 @@ func (repo *MarbleDbRepository) UpdateTag(tx Transaction, attributes models.Upda
 	if attributes.Name != "" {
 		query = query.Set("name", attributes.Name)
 	}
-	_, err := pgTx.ExecBuilder(query)
+	_, err := pgTx.ExecBuilder(ctx, query)
 	return err
 }
 
-func (repo *MarbleDbRepository) GetTagById(tx Transaction, tagId string) (models.Tag, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *MarbleDbRepository) GetTagById(ctx context.Context, tx Transaction, tagId string) (models.Tag, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
-	return SqlToModel(pgTx,
+	return SqlToModel(
+		ctx,
+		pgTx,
 		NewQueryBuilder().Select(dbmodels.SelectTagColumn...).
 			From(dbmodels.TABLE_TAGS).
 			Where(squirrel.Eq{"deleted_at": nil}).
@@ -73,12 +77,12 @@ func (repo *MarbleDbRepository) GetTagById(tx Transaction, tagId string) (models
 	)
 }
 
-func (repo *MarbleDbRepository) SoftDeleteTag(tx Transaction, tagId string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *MarbleDbRepository) SoftDeleteTag(ctx context.Context, tx Transaction, tagId string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 	query := NewQueryBuilder().Update(dbmodels.TABLE_TAGS).Where(squirrel.Eq{"id": tagId})
 	query = query.Set("deleted_at", squirrel.Expr("NOW()"))
 	query = query.Set("updated_at", squirrel.Expr("NOW()"))
 
-	_, err := pgTx.ExecBuilder(query)
+	_, err := pgTx.ExecBuilder(ctx, query)
 	return err
 }

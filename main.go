@@ -89,7 +89,7 @@ func runServer(ctx context.Context, appConfig AppConfiguration) {
 
 	marbleAdminEmail, _ := os.LookupEnv("MARBLE_ADMIN_EMAIL")
 	if marbleAdminEmail != "" {
-		err := seedUsecase.SeedMarbleAdmins(marbleAdminEmail)
+		err := seedUsecase.SeedMarbleAdmins(ctx, marbleAdminEmail)
 		if err != nil {
 			panic(err)
 		}
@@ -97,7 +97,7 @@ func runServer(ctx context.Context, appConfig AppConfiguration) {
 
 	if appConfig.env == "development" {
 		zorgOrganizationId := "13617a88-56f5-4baa-8d11-ce102f7da907"
-		err := seedUsecase.SeedZorgOrganization(zorgOrganizationId)
+		err := seedUsecase.SeedZorgOrganization(ctx, zorgOrganizationId)
 		if err != nil {
 			panic(err)
 		}

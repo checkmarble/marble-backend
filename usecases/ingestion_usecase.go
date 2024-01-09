@@ -37,12 +37,12 @@ type IngestionUseCase struct {
 	GcsIngestionBucket    string
 }
 
-func (usecase *IngestionUseCase) IngestObjects(organizationId string, payloads []models.PayloadReader, table models.Table, logger *slog.Logger) error {
+func (usecase *IngestionUseCase) IngestObjects(ctx context.Context, organizationId string, payloads []models.PayloadReader, table models.Table, logger *slog.Logger) error {
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
 		return err
 	}
-	return usecase.orgTransactionFactory.TransactionInOrgSchema(organizationId, func(tx repositories.Transaction) error {
-		return usecase.ingestionRepository.IngestObjects(tx, payloads, table, logger)
+	return usecase.orgTransactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Transaction) error {
+		return usecase.ingestionRepository.IngestObjects(ctx, tx, payloads, table, logger)
 	})
 }
 
@@ -51,7 +51,7 @@ func (usecase *IngestionUseCase) ListUploadLogs(ctx context.Context, organizatio
 		return []models.UploadLog{}, err
 	}
 
-	uploadLogs, err := usecase.uploadLogRepository.AllUploadLogsByTable(nil, organizationId, objectType)
+	uploadLogs, err := usecase.uploadLogRepository.AllUploadLogsByTable(ctx, nil, organizationId, objectType)
 	if err != nil {
 		return []models.UploadLog{}, err
 	}
@@ -62,7 +62,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
 		return models.UploadLog{}, err
 	}
-	dataModel, err := usecase.dataModelUseCase.GetDataModel(organizationId)
+	dataModel, err := usecase.dataModelUseCase.GetDataModel(ctx, organizationId)
 	if err != nil {
 		return models.UploadLog{}, err
 	}
@@ -120,27 +120,28 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 		return models.UploadLog{}, err
 	}
 
-	return transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.UploadLog, error) {
-		newUploadListId := uuid.NewString()
-		newUploadLoad := models.UploadLog{
-			Id:             newUploadListId,
-			UploadStatus:   models.UploadPending,
-			OrganizationId: organizationId,
-			FileName:       fileName,
-			TableName:      objectType,
-			UserId:         userId,
-			StartedAt:      time.Now(),
-			LinesProcessed: processedLinesCount,
-		}
-		if err := usecase.uploadLogRepository.CreateUploadLog(tx, newUploadLoad); err != nil {
-			return models.UploadLog{}, err
-		}
-		return usecase.uploadLogRepository.UploadLogById(tx, newUploadListId)
-	})
+	return transaction.TransactionReturnValue(ctx,
+		usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.UploadLog, error) {
+			newUploadListId := uuid.NewString()
+			newUploadLoad := models.UploadLog{
+				Id:             newUploadListId,
+				UploadStatus:   models.UploadPending,
+				OrganizationId: organizationId,
+				FileName:       fileName,
+				TableName:      objectType,
+				UserId:         userId,
+				StartedAt:      time.Now(),
+				LinesProcessed: processedLinesCount,
+			}
+			if err := usecase.uploadLogRepository.CreateUploadLog(ctx, tx, newUploadLoad); err != nil {
+				return models.UploadLog{}, err
+			}
+			return usecase.uploadLogRepository.UploadLogById(ctx, tx, newUploadListId)
+		})
 }
 
 func (usecase *IngestionUseCase) IngestDataFromCsv(ctx context.Context, logger *slog.Logger) error {
-	pendingUploadLogs, err := usecase.uploadLogRepository.AllUploadLogsByStatus(nil, models.UploadPending)
+	pendingUploadLogs, err := usecase.uploadLogRepository.AllUploadLogsByStatus(ctx, nil, models.UploadPending)
 	if err != nil {
 		return err
 	}
@@ -173,7 +174,7 @@ func (usecase *IngestionUseCase) IngestDataFromCsv(ctx context.Context, logger *
 func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog models.UploadLog, logger *slog.Logger) error {
 	logger.InfoContext(ctx, fmt.Sprintf("Start processing UploadLog %s", uploadLog.Id))
 
-	err := usecase.uploadLogRepository.UpdateUploadLog(nil, models.UpdateUploadLogInput{Id: uploadLog.Id, UploadStatus: models.UploadProcessing})
+	err := usecase.uploadLogRepository.UpdateUploadLog(ctx, nil, models.UpdateUploadLogInput{Id: uploadLog.Id, UploadStatus: models.UploadProcessing})
 	if err != nil {
 		return err
 	}
@@ -190,7 +191,7 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 
 	currentTime := time.Now()
 	input := models.UpdateUploadLogInput{Id: uploadLog.Id, UploadStatus: models.UploadSuccess, FinishedAt: &currentTime}
-	if err = usecase.uploadLogRepository.UpdateUploadLog(nil, input); err != nil {
+	if err = usecase.uploadLogRepository.UpdateUploadLog(ctx, nil, input); err != nil {
 		return err
 	}
 	return nil
@@ -214,7 +215,7 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file
 		return err
 	}
 
-	dataModel, err := usecase.dataModelUseCase.GetDataModel(organizationId)
+	dataModel, err := usecase.dataModelUseCase.GetDataModel(ctx, organizationId)
 	if err != nil {
 		return fmt.Errorf("error getting data model for organization %s: %w", organizationId, err)
 	}
@@ -280,8 +281,8 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 			payloadReaders = append(payloadReaders, payloadReader)
 		}
 
-		if err := usecase.orgTransactionFactory.TransactionInOrgSchema(organizationId, func(tx repositories.Transaction) error {
-			return usecase.ingestionRepository.IngestObjects(tx, payloadReaders, table, logger)
+		if err := usecase.orgTransactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Transaction) error {
+			return usecase.ingestionRepository.IngestObjects(ctx, tx, payloadReaders, table, logger)
 		}); err != nil {
 			return err
 		}

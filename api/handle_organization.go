@@ -48,7 +48,7 @@ func (api *API) handleGetOrganizationUsers(c *gin.Context) {
 	organizationID := c.Param("organization_id")
 
 	usecase := api.UsecasesWithCreds(c.Request).NewOrganizationUseCase()
-	users, err := usecase.GetUsersOfOrganization(organizationID)
+	users, err := usecase.GetUsersOfOrganization(c.Request.Context(), organizationID)
 	if presentError(c, err) {
 		return
 	}

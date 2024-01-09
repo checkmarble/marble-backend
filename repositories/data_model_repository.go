@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -12,28 +13,28 @@ import (
 )
 
 type DataModelRepository interface {
-	GetDataModel(organizationID string, fetchEnumValues bool) (models.DataModel, error)
-	GetTablesAndFields(tx Transaction, organizationID string) ([]models.DataModelTableField, error)
-	CreateDataModelTable(tx Transaction, organizationID, tableID, name, description string) error
-	UpdateDataModelTable(tx Transaction, tableID, description string) error
-	GetDataModelTable(tx Transaction, tableID string) (models.DataModelTable, error)
-	CreateDataModelField(tx Transaction, tableID, fieldID string, field models.DataModelField) error
-	UpdateDataModelField(tx Transaction, field, description string) error
-	CreateDataModelLink(tx Transaction, link models.DataModelLink) error
-	DeleteDataModel(tx Transaction, organizationID string) error
+	GetDataModel(ctx context.Context, organizationID string, fetchEnumValues bool) (models.DataModel, error)
+	GetTablesAndFields(ctx context.Context, tx Transaction, organizationID string) ([]models.DataModelTableField, error)
+	CreateDataModelTable(ctx context.Context, tx Transaction, organizationID, tableID, name, description string) error
+	UpdateDataModelTable(ctx context.Context, tx Transaction, tableID, description string) error
+	GetDataModelTable(ctx context.Context, tx Transaction, tableID string) (models.DataModelTable, error)
+	CreateDataModelField(ctx context.Context, tx Transaction, tableID, fieldID string, field models.DataModelField) error
+	UpdateDataModelField(ctx context.Context, tx Transaction, field, description string) error
+	CreateDataModelLink(ctx context.Context, tx Transaction, link models.DataModelLink) error
+	DeleteDataModel(ctx context.Context, tx Transaction, organizationID string) error
 }
 
 type DataModelRepositoryPostgresql struct {
 	transactionFactory TransactionFactoryPosgresql
 }
 
-func (repo *DataModelRepositoryPostgresql) GetDataModel(organizationID string, fetchEnumValues bool) (models.DataModel, error) {
-	fields, err := repo.GetTablesAndFields(nil, organizationID)
+func (repo *DataModelRepositoryPostgresql) GetDataModel(ctx context.Context, organizationID string, fetchEnumValues bool) (models.DataModel, error) {
+	fields, err := repo.GetTablesAndFields(ctx, nil, organizationID)
 	if err != nil {
 		return models.DataModel{}, err
 	}
 
-	links, err := repo.GetLinks(nil, organizationID)
+	links, err := repo.GetLinks(ctx, nil, organizationID)
 	if err != nil {
 		return models.DataModel{}, err
 	}
@@ -48,7 +49,7 @@ func (repo *DataModelRepositoryPostgresql) GetDataModel(organizationID string, f
 
 		var values []any
 		if field.FieldIsEnum && fetchEnumValues {
-			values, err = repo.GetEnumValues(nil, field.FieldID)
+			values, err = repo.GetEnumValues(ctx, nil, field.FieldID)
 			if err != nil {
 				return models.DataModel{}, err
 			}
@@ -94,24 +95,25 @@ func (repo *DataModelRepositoryPostgresql) GetDataModel(organizationID string, f
 	return dataModel, nil
 }
 
-func (repo *DataModelRepositoryPostgresql) CreateDataModelTable(tx Transaction, organizationID, tableID, name, description string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *DataModelRepositoryPostgresql) CreateDataModelTable(ctx context.Context, tx Transaction, organizationID, tableID, name, description string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query := `
 		INSERT INTO data_model_tables (id, organization_id, name, description)
 		VALUES ($1, $2, $3, $4)`
 
-	_, err := pgTx.exec.Exec(pgTx.ctx, query, tableID, organizationID, strings.ToLower(name), description)
+	_, err := pgTx.exec.Exec(ctx, query, tableID, organizationID, strings.ToLower(name), description)
 	if IsUniqueViolationError(err) {
 		return models.DuplicateValueError
 	}
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) GetDataModelTable(tx Transaction, tableID string) (models.DataModelTable, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *DataModelRepositoryPostgresql) GetDataModelTable(ctx context.Context, tx Transaction, tableID string) (models.DataModelTable, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToModel(
+		ctx,
 		pgTx,
 		NewQueryBuilder().
 			Select(dbmodels.SelectDataModelTableColumns...).
@@ -121,10 +123,11 @@ func (repo *DataModelRepositoryPostgresql) GetDataModelTable(tx Transaction, tab
 	)
 }
 
-func (repo *DataModelRepositoryPostgresql) UpdateDataModelTable(tx Transaction, tableID, description string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *DataModelRepositoryPostgresql) UpdateDataModelTable(ctx context.Context, tx Transaction, tableID, description string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
+		ctx,
 		NewQueryBuilder().
 			Update(dbmodels.TableDataModelTable).
 			Set("description", description).
@@ -133,25 +136,26 @@ func (repo *DataModelRepositoryPostgresql) UpdateDataModelTable(tx Transaction, 
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) CreateDataModelField(tx Transaction, tableID, fieldID string, field models.DataModelField) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *DataModelRepositoryPostgresql) CreateDataModelField(ctx context.Context, tx Transaction, tableID, fieldID string, field models.DataModelField) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query := `
 		INSERT INTO data_model_fields (id, table_id, name, type, nullable, description, is_enum)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id`
 
-	_, err := pgTx.exec.Exec(pgTx.ctx, query, fieldID, tableID, strings.ToLower(field.Name), field.Type, field.Nullable, field.Description, field.IsEnum)
+	_, err := pgTx.exec.Exec(ctx, query, fieldID, tableID, strings.ToLower(field.Name), field.Type, field.Nullable, field.Description, field.IsEnum)
 	if IsUniqueViolationError(err) {
 		return models.DuplicateValueError
 	}
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) UpdateDataModelField(tx Transaction, fieldID, description string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *DataModelRepositoryPostgresql) UpdateDataModelField(ctx context.Context, tx Transaction, fieldID, description string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
+		ctx,
 		NewQueryBuilder().
 			Update(dbmodels.TableDataModelFields).
 			Set("description", description).
@@ -160,10 +164,11 @@ func (repo *DataModelRepositoryPostgresql) UpdateDataModelField(tx Transaction, 
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) CreateDataModelLink(tx Transaction, link models.DataModelLink) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *DataModelRepositoryPostgresql) CreateDataModelLink(ctx context.Context, tx Transaction, link models.DataModelLink) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
+		ctx,
 		NewQueryBuilder().
 			Insert("data_model_links").
 			Columns("organization_id", "name", "parent_table_id", "parent_field_id", "child_table_id", "child_field_id").
@@ -175,8 +180,8 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelLink(tx Transaction, l
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) GetTablesAndFields(tx Transaction, organizationID string) ([]models.DataModelTableField, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *DataModelRepositoryPostgresql) GetTablesAndFields(ctx context.Context, tx Transaction, organizationID string) ([]models.DataModelTableField, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query, args, err := NewQueryBuilder().
 		Select(dbmodels.SelectDataModelFieldColumns...).
@@ -188,7 +193,7 @@ func (repo *DataModelRepositoryPostgresql) GetTablesAndFields(tx Transaction, or
 		return nil, err
 	}
 
-	rows, err := pgTx.exec.Query(pgTx.ctx, query, args...)
+	rows, err := pgTx.exec.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -213,8 +218,8 @@ func (repo *DataModelRepositoryPostgresql) GetTablesAndFields(tx Transaction, or
 	return fields, err
 }
 
-func (repo *DataModelRepositoryPostgresql) GetLinks(tx Transaction, organizationID string) ([]models.DataModelLink, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *DataModelRepositoryPostgresql) GetLinks(ctx context.Context, tx Transaction, organizationID string) ([]models.DataModelLink, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query := `
 		SELECT data_model_links.id, data_model_links.name, parent_table.name, parent_field.name, child_table.name, child_field.name FROM data_model_links
@@ -224,7 +229,7 @@ func (repo *DataModelRepositoryPostgresql) GetLinks(tx Transaction, organization
     	JOIN data_model_fields AS child_field ON (data_model_links.child_field_id = child_field.id)
     	WHERE data_model_links.organization_id = $1`
 
-	rows, err := pgTx.exec.Query(pgTx.ctx, query, organizationID)
+	rows, err := pgTx.exec.Query(ctx, query, organizationID)
 	if err != nil {
 		return nil, err
 	}
@@ -244,10 +249,11 @@ func (repo *DataModelRepositoryPostgresql) GetLinks(tx Transaction, organization
 	return links, nil
 }
 
-func (repo *DataModelRepositoryPostgresql) DeleteDataModel(tx Transaction, organizationID string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *DataModelRepositoryPostgresql) DeleteDataModel(ctx context.Context, tx Transaction, organizationID string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
+		ctx,
 		NewQueryBuilder().
 			Delete(dbmodels.TableDataModelTable).
 			Where(squirrel.Eq{"organization_id": organizationID}),
@@ -257,6 +263,7 @@ func (repo *DataModelRepositoryPostgresql) DeleteDataModel(tx Transaction, organ
 	}
 
 	_, err = pgTx.ExecBuilder(
+		ctx,
 		NewQueryBuilder().
 			Delete(dbmodels.TABLE_DATA_MODELS).
 			Where(squirrel.Eq{"org_id": organizationID}),
@@ -267,8 +274,8 @@ func (repo *DataModelRepositoryPostgresql) DeleteDataModel(tx Transaction, organ
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) GetEnumValues(tx Transaction, fieldID string) ([]any, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *DataModelRepositoryPostgresql) GetEnumValues(ctx context.Context, tx Transaction, fieldID string) ([]any, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query, args, err := NewQueryBuilder().
 		Select("text_value", "float_value").
@@ -282,7 +289,7 @@ func (repo *DataModelRepositoryPostgresql) GetEnumValues(tx Transaction, fieldID
 		return nil, err
 	}
 
-	rows, err := pgTx.exec.Query(pgTx.ctx, query, args...)
+	rows, err := pgTx.exec.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

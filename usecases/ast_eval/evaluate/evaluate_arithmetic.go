@@ -1,6 +1,7 @@
 package evaluate
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -16,7 +17,7 @@ func NewArithmetic(f ast.Function) Arithmetic {
 	}
 }
 
-func (f Arithmetic) Evaluate(arguments ast.Arguments) (any, []error) {
+func (f Arithmetic) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 
 	leftAny, rightAny, err := leftAndRight(arguments.Args)
 	if err != nil {

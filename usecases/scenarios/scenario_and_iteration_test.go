@@ -1,6 +1,7 @@
 package scenarios
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,12 +16,12 @@ type ScenarioFetcherRepositoryMock struct {
 	mock.Mock
 }
 
-func (s *ScenarioFetcherRepositoryMock) GetScenarioById(tx repositories.Transaction, scenarioId string) (models.Scenario, error) {
+func (s *ScenarioFetcherRepositoryMock) GetScenarioById(ctx context.Context, tx repositories.Transaction, scenarioId string) (models.Scenario, error) {
 	args := s.Called(tx, scenarioId)
 	return args.Get(0).(models.Scenario), args.Error(1)
 }
 
-func (s *ScenarioFetcherRepositoryMock) GetScenarioIteration(tx repositories.Transaction, scenarioIterationId string) (models.ScenarioIteration, error) {
+func (s *ScenarioFetcherRepositoryMock) GetScenarioIteration(ctx context.Context, tx repositories.Transaction, scenarioIterationId string) (models.ScenarioIteration, error) {
 	args := s.Called(tx, scenarioIterationId)
 	return args.Get(0).(models.ScenarioIteration), args.Error(1)
 }
@@ -45,7 +46,7 @@ func TestScenarioFetcher_FetchScenarioAndIteration(t *testing.T) {
 		Repository: repo,
 	}
 
-	result, err := fetcher.FetchScenarioAndIteration(mt, scenarioIteration.Id)
+	result, err := fetcher.FetchScenarioAndIteration(context.TODO(), mt, scenarioIteration.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, ScenarioAndIteration{
 		Scenario:  scenario,
@@ -66,7 +67,7 @@ func TestScenarioFetcher_FetchScenarioAndIteration_GetScenarioIteration_error(t 
 		Repository: repo,
 	}
 
-	_, err := fetcher.FetchScenarioAndIteration(mt, "scenario_iteration_id")
+	_, err := fetcher.FetchScenarioAndIteration(context.TODO(), mt, "scenario_iteration_id")
 	assert.Error(t, err)
 
 	mt.AssertExpectations(t)
@@ -93,7 +94,7 @@ func TestScenarioFetcher_FetchScenarioAndIteration_GetScenarioById_error(t *test
 		Repository: repo,
 	}
 
-	_, err := fetcher.FetchScenarioAndIteration(mt, scenarioIteration.Id)
+	_, err := fetcher.FetchScenarioAndIteration(context.TODO(), mt, scenarioIteration.Id)
 	assert.Error(t, err)
 
 	mt.AssertExpectations(t)

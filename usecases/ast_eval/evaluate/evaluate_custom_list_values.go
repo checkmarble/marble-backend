@@ -1,6 +1,8 @@
 package evaluate
 
 import (
+	"context"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -20,14 +22,14 @@ func NewCustomListValuesAccess(clr repositories.CustomListRepository, enforceSec
 	}
 }
 
-func (clva CustomListValuesAccess) Evaluate(arguments ast.Arguments) (any, []error) {
+func (clva CustomListValuesAccess) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 	listId, err := AdaptNamedArgument(arguments.NamedArgs, "customListId", adaptArgumentToString)
 
 	if err != nil {
 		return MakeEvaluateError(err)
 	}
 
-	list, err := clva.CustomListRepository.GetCustomListById(nil, listId)
+	list, err := clva.CustomListRepository.GetCustomListById(ctx, nil, listId)
 	if err != nil {
 		return MakeEvaluateError(ast.ErrListNotFound)
 	}
@@ -35,7 +37,7 @@ func (clva CustomListValuesAccess) Evaluate(arguments ast.Arguments) (any, []err
 		return MakeEvaluateError(err)
 	}
 
-	listValues, err := clva.CustomListRepository.GetCustomListValues(nil, models.GetCustomListValuesInput{
+	listValues, err := clva.CustomListRepository.GetCustomListValues(ctx, nil, models.GetCustomListValuesInput{
 		Id: listId,
 	})
 	if err != nil {
