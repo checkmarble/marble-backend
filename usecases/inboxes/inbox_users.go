@@ -12,12 +12,12 @@ import (
 )
 
 type InboxUserRepository interface {
-	GetInboxById(tx repositories.Transaction, inboxId string) (models.Inbox, error)
-	GetInboxUserById(tx repositories.Transaction, inboxUserId string) (models.InboxUser, error)
-	ListInboxUsers(tx repositories.Transaction, filters models.InboxUserFilterInput) ([]models.InboxUser, error)
-	CreateInboxUser(tx repositories.Transaction, createInboxUserAttributes models.CreateInboxUserInput, newInboxUserId string) error
-	UpdateInboxUser(tx repositories.Transaction, inboxUserId string, role models.InboxUserRole) error
-	DeleteInboxUser(tx repositories.Transaction, inboxUserId string) error
+	GetInboxById(ctx context.Context, tx repositories.Transaction, inboxId string) (models.Inbox, error)
+	GetInboxUserById(ctx context.Context, tx repositories.Transaction, inboxUserId string) (models.InboxUser, error)
+	ListInboxUsers(ctx context.Context, tx repositories.Transaction, filters models.InboxUserFilterInput) ([]models.InboxUser, error)
+	CreateInboxUser(ctx context.Context, tx repositories.Transaction, createInboxUserAttributes models.CreateInboxUserInput, newInboxUserId string) error
+	UpdateInboxUser(ctx context.Context, tx repositories.Transaction, inboxUserId string, role models.InboxUserRole) error
+	DeleteInboxUser(ctx context.Context, tx repositories.Transaction, inboxUserId string) error
 }
 
 type EnforceSecurityInboxUsers interface {
@@ -35,12 +35,12 @@ type InboxUsers struct {
 }
 
 func (usecase *InboxUsers) GetInboxUserById(ctx context.Context, inboxUserId string) (models.InboxUser, error) {
-	inboxUser, err := usecase.InboxUserRepository.GetInboxUserById(nil, inboxUserId)
+	inboxUser, err := usecase.InboxUserRepository.GetInboxUserById(ctx, nil, inboxUserId)
 	if err != nil {
 		return models.InboxUser{}, err
 	}
 
-	thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(nil, models.InboxUserFilterInput{
+	thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(ctx, nil, models.InboxUserFilterInput{
 		UserId: usecase.Credentials.ActorIdentity.UserId,
 	})
 	if err != nil {
@@ -56,14 +56,14 @@ func (usecase *InboxUsers) GetInboxUserById(ctx context.Context, inboxUserId str
 }
 
 func (usecase *InboxUsers) ListInboxUsers(ctx context.Context, inboxId string) ([]models.InboxUser, error) {
-	thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(nil, models.InboxUserFilterInput{
+	thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(ctx, nil, models.InboxUserFilterInput{
 		UserId: usecase.Credentials.ActorIdentity.UserId,
 	})
 	if err != nil {
 		return []models.InboxUser{}, err
 	}
 
-	inboxUsers, err := usecase.InboxUserRepository.ListInboxUsers(nil, models.InboxUserFilterInput{
+	inboxUsers, err := usecase.InboxUserRepository.ListInboxUsers(ctx, nil, models.InboxUserFilterInput{
 		InboxId: inboxId,
 	})
 	if err != nil {
@@ -79,31 +79,32 @@ func (usecase *InboxUsers) ListInboxUsers(ctx context.Context, inboxId string) (
 	return inboxUsers, nil
 }
 
-func (usecase *InboxUsers) ListAllInboxUsers() ([]models.InboxUser, error) {
+func (usecase *InboxUsers) ListAllInboxUsers(ctx context.Context) ([]models.InboxUser, error) {
 	if usecase.Credentials.Role != models.ADMIN && usecase.Credentials.Role != models.MARBLE_ADMIN {
 		return []models.InboxUser{}, errors.New("only admins can list all inbox users")
 	}
 
-	return usecase.InboxUserRepository.ListInboxUsers(nil, models.InboxUserFilterInput{})
+	return usecase.InboxUserRepository.ListInboxUsers(ctx, nil, models.InboxUserFilterInput{})
 }
 
 func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.CreateInboxUserInput) (models.InboxUser, error) {
 	inboxUser, err := transaction.TransactionReturnValue(
+		ctx,
 		usecase.TransactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) (models.InboxUser, error) {
-			thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(tx, models.InboxUserFilterInput{
+			thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(ctx, tx, models.InboxUserFilterInput{
 				UserId: usecase.Credentials.ActorIdentity.UserId,
 			})
 			if err != nil {
 				return models.InboxUser{}, err
 			}
 
-			targetUser, err := usecase.UserRepository.UserByID(tx, models.UserId(input.UserId))
+			targetUser, err := usecase.UserRepository.UserByID(ctx, tx, models.UserId(input.UserId))
 			if err != nil {
 				return models.InboxUser{}, err
 			}
-			targetInbox, err := usecase.InboxUserRepository.GetInboxById(tx, input.InboxId)
+			targetInbox, err := usecase.InboxUserRepository.GetInboxById(ctx, tx, input.InboxId)
 			if err != nil {
 				return models.InboxUser{}, err
 			}
@@ -114,14 +115,14 @@ func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.Cre
 			}
 
 			newInboxUserId := utils.NewPrimaryKey(input.InboxId)
-			if err := usecase.InboxUserRepository.CreateInboxUser(tx, input, newInboxUserId); err != nil {
+			if err := usecase.InboxUserRepository.CreateInboxUser(ctx, tx, input, newInboxUserId); err != nil {
 				if repositories.IsUniqueViolationError(err) {
 					return models.InboxUser{}, errors.Wrap(models.DuplicateValueError, "This combination of user_id and inbox_user_id already exists")
 				}
 				return models.InboxUser{}, err
 			}
 
-			inboxUser, err := usecase.InboxUserRepository.GetInboxUserById(tx, newInboxUserId)
+			inboxUser, err := usecase.InboxUserRepository.GetInboxUserById(ctx, tx, newInboxUserId)
 
 			return inboxUser, err
 		})
@@ -136,17 +137,18 @@ func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.Cre
 
 func (usecase *InboxUsers) UpdateInboxUser(ctx context.Context, inboxUserId string, role models.InboxUserRole) (models.InboxUser, error) {
 	inboxUser, err := transaction.TransactionReturnValue(
+		ctx,
 		usecase.TransactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) (models.InboxUser, error) {
-			thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(tx, models.InboxUserFilterInput{
+			thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(ctx, tx, models.InboxUserFilterInput{
 				UserId: usecase.Credentials.ActorIdentity.UserId,
 			})
 			if err != nil {
 				return models.InboxUser{}, err
 			}
 
-			inboxUser, err := usecase.InboxUserRepository.GetInboxUserById(tx, inboxUserId)
+			inboxUser, err := usecase.InboxUserRepository.GetInboxUserById(ctx, tx, inboxUserId)
 			if err != nil {
 				return models.InboxUser{}, err
 			}
@@ -156,11 +158,11 @@ func (usecase *InboxUsers) UpdateInboxUser(ctx context.Context, inboxUserId stri
 				return models.InboxUser{}, err
 			}
 
-			if err := usecase.InboxUserRepository.UpdateInboxUser(tx, inboxUserId, role); err != nil {
+			if err := usecase.InboxUserRepository.UpdateInboxUser(ctx, tx, inboxUserId, role); err != nil {
 				return models.InboxUser{}, err
 			}
 
-			return usecase.InboxUserRepository.GetInboxUserById(tx, inboxUserId)
+			return usecase.InboxUserRepository.GetInboxUserById(ctx, tx, inboxUserId)
 		})
 
 	if err != nil {
@@ -173,14 +175,15 @@ func (usecase *InboxUsers) UpdateInboxUser(ctx context.Context, inboxUserId stri
 
 func (usecase *InboxUsers) DeleteInboxUser(ctx context.Context, inboxUserId string) error {
 	err := usecase.TransactionFactory.Transaction(
+		ctx,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) error {
-			inboxUser, err := usecase.InboxUserRepository.GetInboxUserById(tx, inboxUserId)
+			inboxUser, err := usecase.InboxUserRepository.GetInboxUserById(ctx, tx, inboxUserId)
 			if err != nil {
 				return err
 			}
 
-			thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(tx, models.InboxUserFilterInput{
+			thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(ctx, tx, models.InboxUserFilterInput{
 				UserId: usecase.Credentials.ActorIdentity.UserId,
 			})
 			if err != nil {
@@ -192,7 +195,7 @@ func (usecase *InboxUsers) DeleteInboxUser(ctx context.Context, inboxUserId stri
 				return err
 			}
 
-			return usecase.InboxUserRepository.DeleteInboxUser(tx, inboxUserId)
+			return usecase.InboxUserRepository.DeleteInboxUser(ctx, tx, inboxUserId)
 		})
 
 	if err != nil {

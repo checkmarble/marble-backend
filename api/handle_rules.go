@@ -17,7 +17,7 @@ func (api *API) ListRules(c *gin.Context) {
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewRuleUsecase()
-	rules, err := usecase.ListRules(iterationID)
+	rules, err := usecase.ListRules(c.Request.Context(), iterationID)
 	if presentError(c, err) {
 		return
 	}
@@ -66,7 +66,7 @@ func (api *API) GetRule(c *gin.Context) {
 	ruleID := c.Param("rule_id")
 
 	usecase := api.UsecasesWithCreds(c.Request).NewRuleUsecase()
-	rule, err := usecase.GetRule(ruleID)
+	rule, err := usecase.GetRule(c.Request.Context(), ruleID)
 	if presentError(c, err) {
 		return
 	}

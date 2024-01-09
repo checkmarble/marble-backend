@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -16,20 +17,22 @@ func selectRules() squirrel.SelectBuilder {
 		From(dbmodels.TABLE_RULES)
 }
 
-func (repo *MarbleDbRepository) GetRuleById(tx Transaction, ruleId string) (models.Rule, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *MarbleDbRepository) GetRuleById(ctx context.Context, tx Transaction, ruleId string) (models.Rule, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToModel(
+		ctx,
 		pgTx,
 		selectRules().Where(squirrel.Eq{"id": ruleId}),
 		dbmodels.AdaptRule,
 	)
 }
 
-func (repo *MarbleDbRepository) ListRulesByIterationId(tx Transaction, iterationId string) ([]models.Rule, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *MarbleDbRepository) ListRulesByIterationId(ctx context.Context, tx Transaction, iterationId string) ([]models.Rule, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToListOfModels(
+		ctx,
 		pgTx,
 		selectRules().
 			Where(squirrel.Eq{"scenario_iteration_id": iterationId}).
@@ -38,8 +41,8 @@ func (repo *MarbleDbRepository) ListRulesByIterationId(tx Transaction, iteration
 	)
 }
 
-func (repo *MarbleDbRepository) UpdateRule(tx Transaction, rule models.UpdateRuleInput) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *MarbleDbRepository) UpdateRule(ctx context.Context, tx Transaction, rule models.UpdateRuleInput) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	dbUpdateRuleInput, err := dbmodels.AdaptDBUpdateRuleInput(rule)
 	if err != nil {
@@ -51,23 +54,23 @@ func (repo *MarbleDbRepository) UpdateRule(tx Transaction, rule models.UpdateRul
 		SetMap(utils.ColumnValueMap(dbUpdateRuleInput)).
 		Where("id = ?", rule.Id)
 
-	_, err = pgTx.ExecBuilder(updateRequest)
+	_, err = pgTx.ExecBuilder(ctx, updateRequest)
 	return err
 }
 
-func (repo *MarbleDbRepository) DeleteRule(tx Transaction, ruleID string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *MarbleDbRepository) DeleteRule(ctx context.Context, tx Transaction, ruleID string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
-	_, err := pgTx.ExecBuilder(NewQueryBuilder().Delete(dbmodels.TABLE_RULES).Where("id = ?", ruleID))
+	_, err := pgTx.ExecBuilder(ctx, NewQueryBuilder().Delete(dbmodels.TABLE_RULES).Where("id = ?", ruleID))
 	return err
 }
 
-func (repo *MarbleDbRepository) CreateRules(tx Transaction, rules []models.CreateRuleInput) ([]models.Rule, error) {
+func (repo *MarbleDbRepository) CreateRules(ctx context.Context, tx Transaction, rules []models.CreateRuleInput) ([]models.Rule, error) {
 	if len(rules) == 0 {
 		return []models.Rule{}, fmt.Errorf("no rule found")
 	}
 
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	dbCreateRuleInputs, err := utils.MapErr(rules, dbmodels.AdaptDBCreateRuleInput)
 	if err != nil {
@@ -101,14 +104,15 @@ func (repo *MarbleDbRepository) CreateRules(tx Transaction, rules []models.Creat
 	}
 
 	return SqlToListOfModels(
+		ctx,
 		pgTx,
 		query,
 		dbmodels.AdaptRule,
 	)
 }
 
-func (repo *MarbleDbRepository) CreateRule(tx Transaction, rule models.CreateRuleInput) (models.Rule, error) {
-	rules, err := repo.CreateRules(tx, []models.CreateRuleInput{rule})
+func (repo *MarbleDbRepository) CreateRule(ctx context.Context, tx Transaction, rule models.CreateRuleInput) (models.Rule, error) {
+	rules, err := repo.CreateRules(ctx, tx, []models.CreateRuleInput{rule})
 	if err != nil {
 		return models.Rule{}, err
 	}

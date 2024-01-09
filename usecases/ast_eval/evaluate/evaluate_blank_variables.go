@@ -1,6 +1,7 @@
 package evaluate
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"time"
@@ -56,27 +57,27 @@ func NewBlankDatabaseAccess(
 	}
 }
 
-func (blank BlankDatabaseAccess) Evaluate(arguments ast.Arguments) (any, []error) {
+func (blank BlankDatabaseAccess) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 
 	switch blank.Function {
 	case ast.FUNC_BLANK_FIRST_TRANSACTION_DATE:
-		return MakeEvaluateResult(blank.getFirstTransactionDate(arguments))
+		return MakeEvaluateResult(blank.getFirstTransactionDate(ctx, arguments))
 	case ast.FUNC_BLANK_SUM_TRANSACTIONS_AMOUNT:
-		return MakeEvaluateResult(blank.sumTransactionsAmount(arguments))
+		return MakeEvaluateResult(blank.sumTransactionsAmount(ctx, arguments))
 	case ast.FUNC_BLANK_SEPA_OUT_FRACTIONATED:
-		return MakeEvaluateResult(blank.sepaOutFractionated(arguments))
+		return MakeEvaluateResult(blank.sepaOutFractionated(ctx, arguments))
 	case ast.FUNC_BLANK_SEPA_NON_FR_IN_WINDOW:
-		return MakeEvaluateResult(blank.severalSepaNonFrWindow(arguments, sepaIn))
+		return MakeEvaluateResult(blank.severalSepaNonFrWindow(ctx, arguments, sepaIn))
 	case ast.FUNC_BLANK_SEPA_NON_FR_OUT_WINDOW:
-		return MakeEvaluateResult(blank.severalSepaNonFrWindow(arguments, sepaOut))
+		return MakeEvaluateResult(blank.severalSepaNonFrWindow(ctx, arguments, sepaOut))
 	case ast.FUNC_BLANK_QUICK_FRACTIONATED_TRANSFERS_RECEIVED_WINDOW:
-		return MakeEvaluateResult(blank.fractionatedTransferReceived(arguments))
+		return MakeEvaluateResult(blank.fractionatedTransferReceived(ctx, arguments))
 	default:
 		return MakeEvaluateError(fmt.Errorf("BlankDatabaseAccess: value not found: %w", models.ErrRuntimeExpression))
 	}
 }
 
-func (blank BlankDatabaseAccess) getFirstTransactionDate(arguments ast.Arguments) (time.Time, error) {
+func (blank BlankDatabaseAccess) getFirstTransactionDate(ctx context.Context, arguments ast.Arguments) (time.Time, error) {
 	if err := verifyNumberOfArguments(arguments.Args, 1); err != nil {
 		return time.Time{}, err
 	}
@@ -91,10 +92,11 @@ func (blank BlankDatabaseAccess) getFirstTransactionDate(arguments ast.Arguments
 	}
 
 	firstTransaction, err := transaction.InOrganizationSchema(
+		ctx,
 		blank.OrgTransactionFactory,
 		blank.OrganizationIdOfContext,
 		func(tx repositories.Transaction) (*time.Time, error) {
-			return blank.BlankDataReadRepository.GetFirstTransactionTimestamp(tx, ownerBusinessId)
+			return blank.BlankDataReadRepository.GetFirstTransactionTimestamp(ctx, tx, ownerBusinessId)
 		})
 	if err != nil {
 		return time.Time{}, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_FIRST_TRANSACTION_DATE): error reading first transaction from DB: %w", err)
@@ -105,7 +107,7 @@ func (blank BlankDatabaseAccess) getFirstTransactionDate(arguments ast.Arguments
 	return *firstTransaction, nil
 }
 
-func (blank BlankDatabaseAccess) sumTransactionsAmount(arguments ast.Arguments) (float64, error) {
+func (blank BlankDatabaseAccess) sumTransactionsAmount(ctx context.Context, arguments ast.Arguments) (float64, error) {
 	if err := verifyNumberOfArguments(arguments.Args, 1); err != nil {
 		return 0, err
 	}
@@ -132,14 +134,15 @@ func (blank BlankDatabaseAccess) sumTransactionsAmount(arguments ast.Arguments) 
 	}
 
 	return transaction.InOrganizationSchema(
+		ctx,
 		blank.OrgTransactionFactory,
 		blank.OrganizationIdOfContext,
 		func(tx repositories.Transaction) (float64, error) {
-			return blank.BlankDataReadRepository.SumTransactionsAmount(tx, ownerBusinessId, direction, createdFrom, createdTo)
+			return blank.BlankDataReadRepository.SumTransactionsAmount(ctx, tx, ownerBusinessId, direction, createdFrom, createdTo)
 		})
 }
 
-func (blank BlankDatabaseAccess) sepaOutFractionated(arguments ast.Arguments) (bool, error) {
+func (blank BlankDatabaseAccess) sepaOutFractionated(ctx context.Context, arguments ast.Arguments) (bool, error) {
 	args, err := adaptArgumentsBlankWindowVariable(arguments)
 	if err != nil {
 		return false, err
@@ -155,10 +158,12 @@ func (blank BlankDatabaseAccess) sepaOutFractionated(arguments ast.Arguments) (b
 	transactionsToRetrievePeriodStart := args.referenceTime.Add(-windowDuration - periodDuration)
 	transactionsToCheckPeriodStart := args.referenceTime.Add(-periodDuration)
 	txSlice, err := transaction.InOrganizationSchema(
+		ctx,
 		blank.OrgTransactionFactory,
 		blank.OrganizationIdOfContext,
 		func(dbTx repositories.Transaction) ([]map[string]any, error) {
 			return blank.BlankDataReadRepository.RetrieveTransactions(
+				ctx,
 				dbTx,
 				map[string]any{"owner_business_id": args.ownerBusinessId, "direction": "Debit", "type": "virement sortant", "cleared": true},
 				transactionsToRetrievePeriodStart,
@@ -178,7 +183,7 @@ func (blank BlankDatabaseAccess) sepaOutFractionated(arguments ast.Arguments) (b
 	)
 }
 
-func (blank BlankDatabaseAccess) severalSepaNonFrWindow(arguments ast.Arguments, direction sepaDirection) (bool, error) {
+func (blank BlankDatabaseAccess) severalSepaNonFrWindow(ctx context.Context, arguments ast.Arguments, direction sepaDirection) (bool, error) {
 	args, err := adaptArgumentsBlankWindowVariable(arguments)
 	if err != nil {
 		return false, err
@@ -206,10 +211,11 @@ func (blank BlankDatabaseAccess) severalSepaNonFrWindow(arguments ast.Arguments,
 	transactionsToRetrievePeriodStart := args.referenceTime.Add(-windowDuration - periodDuration)
 	transactionsToCheckPeriodStart := args.referenceTime.Add(-periodDuration)
 	txSlice, err := transaction.InOrganizationSchema(
+		ctx,
 		blank.OrgTransactionFactory,
 		blank.OrganizationIdOfContext,
 		func(dbTx repositories.Transaction) ([]map[string]any, error) {
-			return blank.BlankDataReadRepository.RetrieveTransactions(dbTx, filters, transactionsToRetrievePeriodStart)
+			return blank.BlankDataReadRepository.RetrieveTransactions(ctx, dbTx, filters, transactionsToRetrievePeriodStart)
 		})
 	if err != nil {
 		return false, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_SEPA_NON_FR_WINDOW): error reading transactions from DB: %w", err)
@@ -226,7 +232,7 @@ func (blank BlankDatabaseAccess) severalSepaNonFrWindow(arguments ast.Arguments,
 	)
 }
 
-func (blank BlankDatabaseAccess) fractionatedTransferReceived(arguments ast.Arguments) (bool, error) {
+func (blank BlankDatabaseAccess) fractionatedTransferReceived(ctx context.Context, arguments ast.Arguments) (bool, error) {
 	args, err := adaptArgumentsBlankWindowVariable(arguments)
 	if err != nil {
 		return false, err
@@ -244,10 +250,11 @@ func (blank BlankDatabaseAccess) fractionatedTransferReceived(arguments ast.Argu
 	transactionsToRetrievePeriodStart := args.referenceTime.Add(-windowDuration - periodDuration)
 	transactionsToCheckPeriodStart := args.referenceTime.Add(-periodDuration)
 	txSlice, err := transaction.InOrganizationSchema(
+		ctx,
 		blank.OrgTransactionFactory,
 		blank.OrganizationIdOfContext,
 		func(dbTx repositories.Transaction) ([]map[string]any, error) {
-			return blank.BlankDataReadRepository.RetrieveTransactions(dbTx, filters, transactionsToRetrievePeriodStart)
+			return blank.BlankDataReadRepository.RetrieveTransactions(ctx, dbTx, filters, transactionsToRetrievePeriodStart)
 		})
 	if err != nil {
 		return false, fmt.Errorf("BlankDatabaseAccess (FUNC_BLANK_QUICK_FRACTIONATED_TRANSFERS_RECEIVED_WINDOW): error reading transactions from DB: %w", err)

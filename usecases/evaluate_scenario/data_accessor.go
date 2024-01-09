@@ -19,10 +19,11 @@ type DataAccessor struct {
 func (d *DataAccessor) GetDbField(ctx context.Context, triggerTableName string, path []string, fieldName string) (interface{}, error) {
 
 	return transaction.InOrganizationSchema(
+		ctx,
 		d.orgTransactionFactory,
 		d.organizationId,
 		func(tx repositories.Transaction) (interface{}, error) {
-			return d.ingestedDataReadRepository.GetDbField(tx, models.DbFieldReadParams{
+			return d.ingestedDataReadRepository.GetDbField(ctx, tx, models.DbFieldReadParams{
 				TriggerTableName: models.TableName(triggerTableName),
 				Path:             models.ToLinkNames(path),
 				FieldName:        models.FieldName(fieldName),

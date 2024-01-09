@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -12,14 +13,14 @@ import (
 )
 
 type BlankDataReadRepository interface {
-	GetFirstTransactionTimestamp(transaction Transaction, ownerBusinessId string) (*time.Time, error)
-	SumTransactionsAmount(transaction Transaction, ownerBusinessId string, direction string, createdFrom time.Time, createdTo time.Time) (float64, error)
-	RetrieveTransactions(transaction Transaction, filters map[string]any, createdFrom time.Time) ([]map[string]any, error)
+	GetFirstTransactionTimestamp(ctx context.Context, transaction Transaction, ownerBusinessId string) (*time.Time, error)
+	SumTransactionsAmount(ctx context.Context, transaction Transaction, ownerBusinessId string, direction string, createdFrom time.Time, createdTo time.Time) (float64, error)
+	RetrieveTransactions(ctx context.Context, transaction Transaction, filters map[string]any, createdFrom time.Time) ([]map[string]any, error)
 }
 
 type BlankDataReadRepositoryImpl struct{}
 
-func (repo *BlankDataReadRepositoryImpl) GetFirstTransactionTimestamp(transaction Transaction, ownerBusinessId string) (*time.Time, error) {
+func (repo *BlankDataReadRepositoryImpl) GetFirstTransactionTimestamp(ctx context.Context, transaction Transaction, ownerBusinessId string) (*time.Time, error) {
 	tx := adaptClientDatabaseTransaction(transaction)
 
 	tableName := tableNameWithSchema(tx, models.TableName("transactions"))
@@ -33,7 +34,7 @@ func (repo *BlankDataReadRepositoryImpl) GetFirstTransactionTimestamp(transactio
 	if err != nil {
 		return &time.Time{}, err
 	}
-	row := tx.exec.QueryRow(tx.ctx, sql, args...)
+	row := tx.exec.QueryRow(ctx, sql, args...)
 
 	var output *time.Time
 	err = row.Scan(&output)
@@ -45,7 +46,7 @@ func (repo *BlankDataReadRepositoryImpl) GetFirstTransactionTimestamp(transactio
 	return output, nil
 }
 
-func (repo *BlankDataReadRepositoryImpl) SumTransactionsAmount(transaction Transaction, ownerBusinessId string, direction string, createdFrom time.Time, createdTo time.Time) (float64, error) {
+func (repo *BlankDataReadRepositoryImpl) SumTransactionsAmount(ctx context.Context, transaction Transaction, ownerBusinessId string, direction string, createdFrom time.Time, createdTo time.Time) (float64, error) {
 	tx := adaptClientDatabaseTransaction(transaction)
 
 	tableName := tableNameWithSchema(tx, models.TableName("transactions"))
@@ -62,7 +63,7 @@ func (repo *BlankDataReadRepositoryImpl) SumTransactionsAmount(transaction Trans
 	if err != nil {
 		return 0, err
 	}
-	row := tx.exec.QueryRow(tx.ctx, sql, args...)
+	row := tx.exec.QueryRow(ctx, sql, args...)
 
 	var output float64
 	err = row.Scan(&output)
@@ -74,7 +75,7 @@ func (repo *BlankDataReadRepositoryImpl) SumTransactionsAmount(transaction Trans
 	return output, nil
 }
 
-func (repo *BlankDataReadRepositoryImpl) RetrieveTransactions(transaction Transaction, filters map[string]any, createdFrom time.Time) ([]map[string]any, error) {
+func (repo *BlankDataReadRepositoryImpl) RetrieveTransactions(ctx context.Context, transaction Transaction, filters map[string]any, createdFrom time.Time) ([]map[string]any, error) {
 	tx := adaptClientDatabaseTransaction(transaction)
 
 	tableName := tableNameWithSchema(tx, models.TableName("transactions"))
@@ -92,7 +93,7 @@ func (repo *BlankDataReadRepositoryImpl) RetrieveTransactions(transaction Transa
 	if err != nil {
 		return nil, err
 	}
-	rows, err := tx.exec.Query(tx.ctx, sql, args...)
+	rows, err := tx.exec.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, err
 	}

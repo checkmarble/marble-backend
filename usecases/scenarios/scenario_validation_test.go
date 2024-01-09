@@ -1,6 +1,7 @@
 package scenarios
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -91,7 +92,7 @@ func TestValidateScenarioIterationImpl_Validate(t *testing.T) {
 		},
 	}
 
-	result := validator.Validate(ScenarioAndIteration{
+	result := validator.Validate(context.TODO(), ScenarioAndIteration{
 		Scenario:  scenario,
 		Iteration: scenarioIteration,
 	})

@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -19,19 +20,19 @@ type DataModelUseCase struct {
 	populateOrganizationSchema organization.PopulateOrganizationSchema
 }
 
-func (usecase *DataModelUseCase) GetDataModel(organizationID string) (models.DataModel, error) {
+func (usecase *DataModelUseCase) GetDataModel(ctx context.Context, organizationID string) (models.DataModel, error) {
 	if err := usecase.enforceSecurity.ReadDataModel(); err != nil {
 		return models.DataModel{}, err
 	}
 
-	dataModel, err := usecase.dataModelRepository.GetDataModel(organizationID, true)
+	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, organizationID, true)
 	if err != nil {
 		return models.DataModel{}, err
 	}
 	return dataModel, nil
 }
 
-func (usecase *DataModelUseCase) CreateDataModelTable(organizationID, name, description string) (string, error) {
+func (usecase *DataModelUseCase) CreateDataModelTable(ctx context.Context, organizationID, name, description string) (string, error) {
 	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
 		return "", err
 	}
@@ -50,20 +51,20 @@ func (usecase *DataModelUseCase) CreateDataModelTable(organizationID, name, desc
 	}
 
 	tableID := uuid.New().String()
-	err := usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
-		err := usecase.dataModelRepository.CreateDataModelTable(tx, organizationID, tableID, name, description)
+	err := usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+		err := usecase.dataModelRepository.CreateDataModelTable(ctx, tx, organizationID, tableID, name, description)
 		if err != nil {
 			return err
 		}
 
 		for _, field := range defaultFields {
 			fieldID := uuid.New().String()
-			err := usecase.dataModelRepository.CreateDataModelField(tx, tableID, fieldID, field)
+			err := usecase.dataModelRepository.CreateDataModelField(ctx, tx, tableID, fieldID, field)
 			if err != nil {
 				return err
 			}
 		}
-		return usecase.populateOrganizationSchema.CreateTable(tx, organizationID, name)
+		return usecase.populateOrganizationSchema.CreateTable(ctx, tx, organizationID, name)
 	})
 	if err != nil {
 		return "", err
@@ -71,30 +72,30 @@ func (usecase *DataModelUseCase) CreateDataModelTable(organizationID, name, desc
 	return tableID, nil
 }
 
-func (usecase *DataModelUseCase) UpdateDataModelTable(tableID, description string) error {
+func (usecase *DataModelUseCase) UpdateDataModelTable(ctx context.Context, tableID, description string) error {
 	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
 		return err
 	}
-	return usecase.dataModelRepository.UpdateDataModelTable(nil, tableID, description)
+	return usecase.dataModelRepository.UpdateDataModelTable(ctx, nil, tableID, description)
 }
 
-func (usecase *DataModelUseCase) CreateDataModelField(tableID string, field models.DataModelField) (string, error) {
+func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, tableID string, field models.DataModelField) (string, error) {
 	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
 		return "", err
 	}
 
 	fieldID := uuid.New().String()
-	err := usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
-		err := usecase.dataModelRepository.CreateDataModelField(tx, tableID, fieldID, field)
+	err := usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+		err := usecase.dataModelRepository.CreateDataModelField(ctx, tx, tableID, fieldID, field)
 		if err != nil {
 			return err
 		}
 
-		table, err := usecase.dataModelRepository.GetDataModelTable(tx, tableID)
+		table, err := usecase.dataModelRepository.GetDataModelTable(ctx, tx, tableID)
 		if err != nil {
 			return err
 		}
-		return usecase.populateOrganizationSchema.CreateField(tx, table.OrganizationID, table.Name, field)
+		return usecase.populateOrganizationSchema.CreateField(ctx, tx, table.OrganizationID, table.Name, field)
 	})
 	if err != nil {
 		return "", err
@@ -102,38 +103,38 @@ func (usecase *DataModelUseCase) CreateDataModelField(tableID string, field mode
 	return fieldID, nil
 }
 
-func (usecase *DataModelUseCase) UpdateDataModelField(fieldID, description string) error {
+func (usecase *DataModelUseCase) UpdateDataModelField(ctx context.Context, fieldID, description string) error {
 	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
 		return err
 	}
-	return usecase.dataModelRepository.UpdateDataModelField(nil, fieldID, description)
+	return usecase.dataModelRepository.UpdateDataModelField(ctx, nil, fieldID, description)
 }
 
-func (usecase *DataModelUseCase) CreateDataModelLink(link models.DataModelLink) error {
+func (usecase *DataModelUseCase) CreateDataModelLink(ctx context.Context, link models.DataModelLink) error {
 	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
 		return err
 	}
-	return usecase.dataModelRepository.CreateDataModelLink(nil, link)
+	return usecase.dataModelRepository.CreateDataModelLink(ctx, nil, link)
 }
 
-func (usecase *DataModelUseCase) DeleteSchema(organizationID string) error {
+func (usecase *DataModelUseCase) DeleteSchema(ctx context.Context, organizationID string) error {
 	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
 		return err
 	}
 
-	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
-		err := usecase.dataModelRepository.DeleteDataModel(tx, organizationID)
+	return usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+		err := usecase.dataModelRepository.DeleteDataModel(ctx, tx, organizationID)
 		if err != nil {
 			return err
 		}
 
-		schema, err := usecase.populateOrganizationSchema.OrganizationSchemaRepository.OrganizationSchemaOfOrganization(tx, organizationID)
+		schema, err := usecase.populateOrganizationSchema.OrganizationSchemaRepository.OrganizationSchemaOfOrganization(ctx, tx, organizationID)
 		if err != nil {
 			return err
 		}
 
-		return usecase.transactionFactory.Transaction(schema.DatabaseSchema, func(tx repositories.Transaction) error {
-			return usecase.populateOrganizationSchema.OrganizationSchemaRepository.DeleteSchema(tx, schema.DatabaseSchema.Schema)
+		return usecase.transactionFactory.Transaction(ctx, schema.DatabaseSchema, func(tx repositories.Transaction) error {
+			return usecase.populateOrganizationSchema.OrganizationSchemaRepository.DeleteSchema(ctx, tx, schema.DatabaseSchema.Schema)
 		})
 	})
 }

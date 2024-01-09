@@ -14,7 +14,7 @@ import (
 
 func (api *API) handleGetAllCustomLists(c *gin.Context) {
 	usecase := api.UsecasesWithCreds(c.Request).NewCustomListUseCase()
-	lists, err := usecase.GetCustomLists()
+	lists, err := usecase.GetCustomLists(c.Request.Context())
 	if presentError(c, err) {
 		return
 	}
@@ -47,13 +47,14 @@ func (api *API) handleGetCustomListWithValues(c *gin.Context) {
 	customListID := c.Param("list_id")
 
 	usecase := api.UsecasesWithCreds(c.Request).NewCustomListUseCase()
-	CustomList, err := usecase.GetCustomListById(customListID)
+	CustomList, err := usecase.GetCustomListById(c.Request.Context(), customListID)
 	if presentError(c, err) {
 		return
 	}
-	CustomListValues, err := usecase.GetCustomListValues(models.GetCustomListValuesInput{
-		Id: customListID,
-	})
+	CustomListValues, err := usecase.GetCustomListValues(c.Request.Context(),
+		models.GetCustomListValuesInput{
+			Id: customListID,
+		})
 
 	if presentError(c, err) {
 		return

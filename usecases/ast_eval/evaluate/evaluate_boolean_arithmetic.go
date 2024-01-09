@@ -1,6 +1,7 @@
 package evaluate
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -16,7 +17,7 @@ func NewBooleanArithmetic(f ast.Function) BooleanArithmetic {
 	}
 }
 
-func (f BooleanArithmetic) Evaluate(arguments ast.Arguments) (any, []error) {
+func (f BooleanArithmetic) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 
 	numberOfOperands := len(arguments.Args)
 	if numberOfOperands < 1 {

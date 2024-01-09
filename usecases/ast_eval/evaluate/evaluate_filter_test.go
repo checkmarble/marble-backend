@@ -1,6 +1,7 @@
 package evaluate
 
 import (
+	"context"
 	"testing"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -40,7 +41,7 @@ func TestFilter(t *testing.T) {
 		Value:     1,
 	}
 
-	result, errs := filter.Evaluate(arguments)
+	result, errs := filter.Evaluate(context.TODO(), arguments)
 	assert.Empty(t, errs)
 	assert.ObjectsAreEqualValues(expectedResult, result)
 }
@@ -54,7 +55,7 @@ func TestFilter_tableName_not_string(t *testing.T) {
 			"value":     1,
 		},
 	}
-	_, errs := filter.Evaluate(arguments)
+	_, errs := filter.Evaluate(context.TODO(), arguments)
 	assert.NotEmpty(t, errs)
 }
 
@@ -67,7 +68,7 @@ func TestFilter_fieldName_not_string(t *testing.T) {
 			"value":     1,
 		},
 	}
-	_, errs := filter.Evaluate(arguments)
+	_, errs := filter.Evaluate(context.TODO(), arguments)
 	assert.NotEmpty(t, errs)
 }
 
@@ -80,7 +81,7 @@ func TestFilter_field_unknown(t *testing.T) {
 			"value":     1,
 		},
 	}
-	_, errs := filter.Evaluate(arguments)
+	_, errs := filter.Evaluate(context.TODO(), arguments)
 	assert.NotEmpty(t, errs)
 }
 
@@ -93,7 +94,7 @@ func TestFilter_operator_invalid(t *testing.T) {
 			"value":     1,
 		},
 	}
-	_, errs := filter.Evaluate(arguments)
+	_, errs := filter.Evaluate(context.TODO(), arguments)
 	assert.NotEmpty(t, errs)
 }
 
@@ -106,7 +107,7 @@ func TestFilter_operator_unknown(t *testing.T) {
 			"value":     1,
 		},
 	}
-	_, errs := filter.Evaluate(arguments)
+	_, errs := filter.Evaluate(context.TODO(), arguments)
 	assert.NotEmpty(t, errs)
 }
 
@@ -119,7 +120,7 @@ func TestFilter_fieldType_incompatible(t *testing.T) {
 			"value":     1,
 		},
 	}
-	_, errs := filter.Evaluate(arguments)
+	_, errs := filter.Evaluate(context.TODO(), arguments)
 	assert.NotEmpty(t, errs)
 }
 
@@ -132,7 +133,7 @@ func TestFilter_value_incompatible(t *testing.T) {
 			"value":     "incompatible_value",
 		},
 	}
-	_, errs := filter.Evaluate(arguments)
+	_, errs := filter.Evaluate(context.TODO(), arguments)
 	assert.NotEmpty(t, errs)
 }
 
@@ -167,7 +168,7 @@ func TestFilter_value_float(t *testing.T) {
 		Operator:  ast.FILTER_EQUAL,
 		Value:     10.1,
 	}
-	result, errs := filterWithInt.Evaluate(arguments)
+	result, errs := filterWithInt.Evaluate(context.TODO(), arguments)
 	assert.Empty(t, errs)
 
 	assert.ObjectsAreEqualValues(expectedResult, result)
@@ -204,7 +205,7 @@ func TestFilter_is_in_list(t *testing.T) {
 		Operator:  ast.FILTER_IS_IN_LIST,
 		Value:     []string{"a", "b"},
 	}
-	result, errs := filterWithString.Evaluate(arguments)
+	result, errs := filterWithString.Evaluate(context.TODO(), arguments)
 	assert.Empty(t, errs)
 
 	assert.ObjectsAreEqualValues(expectedResult, result)
@@ -224,9 +225,9 @@ func TestFilter_is_not_in_list(t *testing.T) {
 		TableName: "table1",
 		FieldName: "field1",
 		// Operator:  ast.FILTER_IS_NOT_IN_LIST,
-		Value:     []string{"a", "b"},
+		Value: []string{"a", "b"},
 	}
-	result, errs := filterWithString.Evaluate(arguments)
+	result, errs := filterWithString.Evaluate(context.TODO(), arguments)
 	assert.Empty(t, errs)
 
 	assert.ObjectsAreEqualValues(expectedResult, result)
@@ -242,7 +243,7 @@ func TestFilter_is_in_list_invalid_value_type(t *testing.T) {
 		},
 	}
 
-	_, errs := filterWithString.Evaluate(arguments)
+	_, errs := filterWithString.Evaluate(context.TODO(), arguments)
 	assert.NotEmpty(t, errs)
 }
 
@@ -256,6 +257,6 @@ func TestFilter_is_in_list_invalid_field_type(t *testing.T) {
 		},
 	}
 
-	_, errs := filterWithInt.Evaluate(arguments)
+	_, errs := filterWithInt.Evaluate(context.TODO(), arguments)
 	assert.NotEmpty(t, errs)
 }

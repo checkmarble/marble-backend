@@ -1,6 +1,7 @@
 package evaluate
 
 import (
+	"context"
 	"fmt"
 	"math"
 
@@ -9,7 +10,7 @@ import (
 
 type NotEqual struct{}
 
-func (f NotEqual) Evaluate(arguments ast.Arguments) (any, []error) {
+func (f NotEqual) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 
 	leftAny, rightAny, err := leftAndRight(arguments.Args)
 	if err != nil {

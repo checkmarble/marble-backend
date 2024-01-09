@@ -1,13 +1,15 @@
 package repositories
 
 import (
+	"context"
+
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
-func (repo *MarbleDbRepository) ListCaseEvents(tx Transaction, caseId string) ([]models.CaseEvent, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *MarbleDbRepository) ListCaseEvents(ctx context.Context, tx Transaction, caseId string) ([]models.CaseEvent, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query := NewQueryBuilder().
 		Select(dbmodels.SelectCaseEventColumn...).
@@ -16,18 +18,19 @@ func (repo *MarbleDbRepository) ListCaseEvents(tx Transaction, caseId string) ([
 		OrderBy("created_at DESC")
 
 	return SqlToListOfModels(
+		ctx,
 		pgTx,
 		query,
 		dbmodels.AdaptCaseEvent,
 	)
 }
 
-func (repo *MarbleDbRepository) CreateCaseEvent(tx Transaction, createCaseEventAttributes models.CreateCaseEventAttributes) error {
-	return repo.BatchCreateCaseEvents(tx, []models.CreateCaseEventAttributes{createCaseEventAttributes})
+func (repo *MarbleDbRepository) CreateCaseEvent(ctx context.Context, tx Transaction, createCaseEventAttributes models.CreateCaseEventAttributes) error {
+	return repo.BatchCreateCaseEvents(ctx, tx, []models.CreateCaseEventAttributes{createCaseEventAttributes})
 }
 
-func (repo *MarbleDbRepository) BatchCreateCaseEvents(tx Transaction, createCaseEventAttributes []models.CreateCaseEventAttributes) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *MarbleDbRepository) BatchCreateCaseEvents(ctx context.Context, tx Transaction, createCaseEventAttributes []models.CreateCaseEventAttributes) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query := NewQueryBuilder().Insert(dbmodels.TABLE_CASE_EVENTS).
 		Columns(
@@ -54,7 +57,7 @@ func (repo *MarbleDbRepository) BatchCreateCaseEvents(tx Transaction, createCase
 		)
 	}
 
-	_, err := pgTx.ExecBuilder(query)
+	_, err := pgTx.ExecBuilder(ctx, query)
 
 	return err
 }

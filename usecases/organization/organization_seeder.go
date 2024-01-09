@@ -1,6 +1,7 @@
 package organization
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -26,13 +27,13 @@ type OrganizationSeeder struct {
 	ApiKeyRepository     repositories.ApiKeyRepository
 }
 
-func (o *OrganizationSeeder) Seed(organizationId string) error {
+func (o *OrganizationSeeder) Seed(ctx context.Context, organizationId string) error {
 
 	///////////////////////////////
 	// Tokens
 	///////////////////////////////
 
-	err := o.ApiKeyRepository.CreateApiKey(nil, models.CreateApiKeyInput{
+	err := o.ApiKeyRepository.CreateApiKey(ctx, nil, models.CreateApiKeyInput{
 		OrganizationId: organizationId,
 		Key:            randomAPiKey(),
 	})
@@ -46,7 +47,7 @@ func (o *OrganizationSeeder) Seed(organizationId string) error {
 	///////////////////////////////
 	newCustomListId := uuid.NewString()
 
-	err = o.CustomListRepository.CreateCustomList(nil, models.CreateCustomListInput{
+	err = o.CustomListRepository.CreateCustomList(ctx, nil, models.CreateCustomListInput{
 		Name:        "Welcome to Marble",
 		Description: "Need a whitelist or blacklist ? The list is your friend :)",
 	}, organizationId, newCustomListId)
@@ -58,11 +59,11 @@ func (o *OrganizationSeeder) Seed(organizationId string) error {
 		CustomListId: newCustomListId,
 		Value:        "Welcome",
 	}
-	o.CustomListRepository.AddCustomListValue(nil, addCustomListValueInput, uuid.NewString())
+	o.CustomListRepository.AddCustomListValue(ctx, nil, addCustomListValueInput, uuid.NewString())
 	addCustomListValueInput.Value = "to"
-	o.CustomListRepository.AddCustomListValue(nil, addCustomListValueInput, uuid.NewString())
+	o.CustomListRepository.AddCustomListValue(ctx, nil, addCustomListValueInput, uuid.NewString())
 	addCustomListValueInput.Value = "marble"
-	o.CustomListRepository.AddCustomListValue(nil, addCustomListValueInput, uuid.NewString())
+	o.CustomListRepository.AddCustomListValue(ctx, nil, addCustomListValueInput, uuid.NewString())
 
 	log.Println("")
 	log.Println("Finish to Seed the DB")

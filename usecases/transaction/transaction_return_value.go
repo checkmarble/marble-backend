@@ -1,6 +1,8 @@
 package transaction
 
 import (
+	"context"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 )
@@ -17,9 +19,9 @@ import (
 //	 },
 //
 // )
-func TransactionReturnValue[ReturnType any](factory TransactionFactory, databaseSchema models.DatabaseSchema, fn func(tx repositories.Transaction) (ReturnType, error)) (ReturnType, error) {
+func TransactionReturnValue[ReturnType any](ctx context.Context, factory TransactionFactory, databaseSchema models.DatabaseSchema, fn func(tx repositories.Transaction) (ReturnType, error)) (ReturnType, error) {
 	var value ReturnType
-	transactionErr := factory.Transaction(databaseSchema, func(tx repositories.Transaction) error {
+	transactionErr := factory.Transaction(ctx, databaseSchema, func(tx repositories.Transaction) error {
 		var fnErr error
 		value, fnErr = fn(tx)
 		return fnErr

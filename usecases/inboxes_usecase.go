@@ -13,13 +13,13 @@ import (
 )
 
 type InboxRepository interface {
-	GetInboxById(tx repositories.Transaction, inboxId string) (models.Inbox, error)
-	ListInboxes(tx repositories.Transaction, organizationId string, inboxIds []string, withCaseCount bool) ([]models.Inbox, error)
-	CreateInbox(tx repositories.Transaction, createInboxAttributes models.CreateInboxInput, newInboxId string) error
-	UpdateInbox(tx repositories.Transaction, inboxId, name string) error
-	SoftDeleteInbox(tx repositories.Transaction, inboxId string) error
+	GetInboxById(ctx context.Context, tx repositories.Transaction, inboxId string) (models.Inbox, error)
+	ListInboxes(ctx context.Context, tx repositories.Transaction, organizationId string, inboxIds []string, withCaseCount bool) ([]models.Inbox, error)
+	CreateInbox(ctx context.Context, tx repositories.Transaction, createInboxAttributes models.CreateInboxInput, newInboxId string) error
+	UpdateInbox(ctx context.Context, tx repositories.Transaction, inboxId, name string) error
+	SoftDeleteInbox(ctx context.Context, tx repositories.Transaction, inboxId string) error
 
-	ListOrganizationCases(tx repositories.Transaction, filters models.CaseFilters, pagination models.PaginationAndSorting) ([]models.CaseWithRank, error)
+	ListOrganizationCases(ctx context.Context, tx repositories.Transaction, filters models.CaseFilters, pagination models.PaginationAndSorting) ([]models.CaseWithRank, error)
 }
 
 type EnforceSecurityInboxes interface {
@@ -48,6 +48,7 @@ func (usecase *InboxUsecase) ListInboxes(ctx context.Context, withCaseCount bool
 
 func (usecase *InboxUsecase) CreateInbox(ctx context.Context, input models.CreateInboxInput) (models.Inbox, error) {
 	inbox, err := transaction.TransactionReturnValue(
+		ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) (models.Inbox, error) {
@@ -56,11 +57,11 @@ func (usecase *InboxUsecase) CreateInbox(ctx context.Context, input models.Creat
 			}
 
 			newInboxId := utils.NewPrimaryKey(input.OrganizationId)
-			if err := usecase.inboxRepository.CreateInbox(tx, input, newInboxId); err != nil {
+			if err := usecase.inboxRepository.CreateInbox(ctx, tx, input, newInboxId); err != nil {
 				return models.Inbox{}, err
 			}
 
-			inbox, err := usecase.inboxRepository.GetInboxById(tx, newInboxId)
+			inbox, err := usecase.inboxRepository.GetInboxById(ctx, tx, newInboxId)
 			return inbox, err
 		})
 
@@ -74,10 +75,11 @@ func (usecase *InboxUsecase) CreateInbox(ctx context.Context, input models.Creat
 
 func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId, name string) (models.Inbox, error) {
 	inbox, err := transaction.TransactionReturnValue(
+		ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) (models.Inbox, error) {
-			inbox, err := usecase.inboxRepository.GetInboxById(tx, inboxId)
+			inbox, err := usecase.inboxRepository.GetInboxById(ctx, tx, inboxId)
 			if err != nil {
 				return models.Inbox{}, err
 			}
@@ -90,11 +92,11 @@ func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId, name stri
 				return models.Inbox{}, err
 			}
 
-			if err := usecase.inboxRepository.UpdateInbox(tx, inboxId, name); err != nil {
+			if err := usecase.inboxRepository.UpdateInbox(ctx, tx, inboxId, name); err != nil {
 				return models.Inbox{}, err
 			}
 
-			return usecase.inboxRepository.GetInboxById(tx, inboxId)
+			return usecase.inboxRepository.GetInboxById(ctx, tx, inboxId)
 		})
 
 	if err != nil {
@@ -107,9 +109,10 @@ func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId, name stri
 
 func (usecase *InboxUsecase) DeleteInbox(ctx context.Context, inboxId string) error {
 	err := usecase.transactionFactory.Transaction(
+		ctx,
 		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Transaction) error {
-			inbox, err := usecase.inboxRepository.GetInboxById(tx, inboxId)
+			inbox, err := usecase.inboxRepository.GetInboxById(ctx, tx, inboxId)
 			if err != nil {
 				return err
 			}
@@ -122,7 +125,7 @@ func (usecase *InboxUsecase) DeleteInbox(ctx context.Context, inboxId string) er
 				return err
 			}
 
-			cases, err := usecase.inboxRepository.ListOrganizationCases(tx,
+			cases, err := usecase.inboxRepository.ListOrganizationCases(ctx, tx,
 				models.CaseFilters{InboxIds: []string{inboxId}, OrganizationId: inbox.OrganizationId},
 				models.PaginationAndSorting{Limit: 1, Order: models.SortingOrderDesc, Sorting: models.CasesSortingCreatedAt},
 			)
@@ -133,7 +136,7 @@ func (usecase *InboxUsecase) DeleteInbox(ctx context.Context, inboxId string) er
 				return errors.Wrap(models.ForbiddenError, "This inbox is associated with cases and cannot be deleted")
 			}
 
-			return usecase.inboxRepository.SoftDeleteInbox(tx, inboxId)
+			return usecase.inboxRepository.SoftDeleteInbox(ctx, tx, inboxId)
 		})
 
 	if err != nil {
@@ -152,8 +155,8 @@ func (usecase *InboxUsecase) ListInboxUsers(ctx context.Context, inboxId string)
 	return usecase.inboxUsers.ListInboxUsers(ctx, inboxId)
 }
 
-func (usecase *InboxUsecase) ListAllInboxUsers() ([]models.InboxUser, error) {
-	return usecase.inboxUsers.ListAllInboxUsers()
+func (usecase *InboxUsecase) ListAllInboxUsers(ctx context.Context) ([]models.InboxUser, error) {
+	return usecase.inboxUsers.ListAllInboxUsers(ctx)
 }
 
 func (usecase *InboxUsecase) CreateInboxUser(ctx context.Context, input models.CreateInboxUserInput) (models.InboxUser, error) {

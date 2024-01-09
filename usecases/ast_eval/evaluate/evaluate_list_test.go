@@ -1,6 +1,7 @@
 package evaluate
 
 import (
+	"context"
 	"testing"
 
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -15,7 +16,7 @@ func TestList(t *testing.T) {
 		Args: []any{1, 2, 3},
 	}
 	expectedResult := []int{1, 2, 3}
-	result, errs := list.Evaluate(arguments)
+	result, errs := list.Evaluate(context.TODO(), arguments)
 	assert.Empty(t, errs)
 	assert.ObjectsAreEqualValues(expectedResult, result)
 }

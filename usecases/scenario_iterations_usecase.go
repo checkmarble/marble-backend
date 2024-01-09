@@ -15,17 +15,17 @@ import (
 )
 
 type IterationUsecaseRepository interface {
-	GetScenarioIteration(tx repositories.Transaction, scenarioIterationId string) (
+	GetScenarioIteration(ctx context.Context, tx repositories.Transaction, scenarioIterationId string) (
 		models.ScenarioIteration, error,
 	)
-	ListScenarioIterations(tx repositories.Transaction, organizationId string, filters models.GetScenarioIterationFilters) (
+	ListScenarioIterations(ctx context.Context, tx repositories.Transaction, organizationId string, filters models.GetScenarioIterationFilters) (
 		[]models.ScenarioIteration, error,
 	)
 
-	CreateScenarioIterationAndRules(tx repositories.Transaction, organizationId string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error)
-	UpdateScenarioIteration(tx repositories.Transaction, scenarioIteration models.UpdateScenarioIterationInput) (models.ScenarioIteration, error)
-	UpdateScenarioIterationVersion(tx repositories.Transaction, scenarioIterationId string, newVersion int) error
-	DeleteScenarioIteration(tx repositories.Transaction, scenarioIterationId string) error
+	CreateScenarioIterationAndRules(ctx context.Context, tx repositories.Transaction, organizationId string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error)
+	UpdateScenarioIteration(ctx context.Context, tx repositories.Transaction, scenarioIteration models.UpdateScenarioIterationInput) (models.ScenarioIteration, error)
+	UpdateScenarioIterationVersion(ctx context.Context, tx repositories.Transaction, scenarioIterationId string, newVersion int) error
+	DeleteScenarioIteration(ctx context.Context, tx repositories.Transaction, scenarioIterationId string) error
 }
 
 type ScenarioIterationUsecase struct {
@@ -36,12 +36,12 @@ type ScenarioIterationUsecase struct {
 	validateScenarioIteration scenarios.ValidateScenarioIteration
 }
 
-func (usecase *ScenarioIterationUsecase) ListScenarioIterations(filters models.GetScenarioIterationFilters) ([]models.ScenarioIteration, error) {
+func (usecase *ScenarioIterationUsecase) ListScenarioIterations(ctx context.Context, filters models.GetScenarioIterationFilters) ([]models.ScenarioIteration, error) {
 	organizationId, err := usecase.organizationIdOfContext()
 	if err != nil {
 		return nil, err
 	}
-	scenarioIterations, err := usecase.repository.ListScenarioIterations(nil, organizationId, filters)
+	scenarioIterations, err := usecase.repository.ListScenarioIterations(ctx, nil, organizationId, filters)
 	if err != nil {
 		return nil, err
 	}
@@ -53,8 +53,8 @@ func (usecase *ScenarioIterationUsecase) ListScenarioIterations(filters models.G
 	return scenarioIterations, nil
 }
 
-func (usecase *ScenarioIterationUsecase) GetScenarioIteration(scenarioIterationId string) (models.ScenarioIteration, error) {
-	si, err := usecase.repository.GetScenarioIteration(nil, scenarioIterationId)
+func (usecase *ScenarioIterationUsecase) GetScenarioIteration(ctx context.Context, scenarioIterationId string) (models.ScenarioIteration, error) {
+	si, err := usecase.repository.GetScenarioIteration(ctx, nil, scenarioIterationId)
 	if err != nil {
 		return models.ScenarioIteration{}, err
 	}
@@ -92,7 +92,7 @@ func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(ctx context.Con
 		body.ScoreRejectThreshold = &defaultRejectThreshold
 	}
 
-	si, err := usecase.repository.CreateScenarioIterationAndRules(nil, organizationId, scenarioIteration)
+	si, err := usecase.repository.CreateScenarioIterationAndRules(ctx, nil, organizationId, scenarioIteration)
 	if err != nil {
 		return models.ScenarioIteration{}, err
 	}
@@ -103,7 +103,7 @@ func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(ctx context.Con
 }
 
 func (usecase *ScenarioIterationUsecase) UpdateScenarioIteration(ctx context.Context, organizationId string, scenarioIteration models.UpdateScenarioIterationInput) (iteration models.ScenarioIteration, err error) {
-	scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(nil, scenarioIteration.Id)
+	scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, nil, scenarioIteration.Id)
 	if err != nil {
 		return iteration, err
 	}
@@ -121,18 +121,18 @@ func (usecase *ScenarioIterationUsecase) UpdateScenarioIteration(ctx context.Con
 	if scenarioAndIteration.Iteration.Version != nil {
 		return iteration, fmt.Errorf("iteration is not a draft: %w", models.ErrScenarioIterationNotDraft)
 	}
-	return usecase.repository.UpdateScenarioIteration(nil, scenarioIteration)
+	return usecase.repository.UpdateScenarioIteration(ctx, nil, scenarioIteration)
 }
 
 func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(ctx context.Context, organizationId string, scenarioIterationId string) (models.ScenarioIteration, error) {
 	if err := usecase.enforceSecurity.CreateScenario(organizationId); err != nil {
 		return models.ScenarioIteration{}, err
 	}
-	si, err := usecase.repository.GetScenarioIteration(nil, scenarioIterationId)
+	si, err := usecase.repository.GetScenarioIteration(ctx, nil, scenarioIterationId)
 	if err != nil {
 		return models.ScenarioIteration{}, err
 	}
-	iterations, err := usecase.repository.ListScenarioIterations(nil, organizationId, models.GetScenarioIterationFilters{
+	iterations, err := usecase.repository.ListScenarioIterations(ctx, nil, organizationId, models.GetScenarioIterationFilters{
 		ScenarioId: &si.ScenarioId,
 	})
 	if err != nil {
@@ -140,7 +140,7 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(ctx co
 	}
 	for _, iteration := range iterations {
 		if iteration.Version == nil {
-			err = usecase.repository.DeleteScenarioIteration(nil, iteration.Id)
+			err = usecase.repository.DeleteScenarioIteration(ctx, nil, iteration.Id)
 			if err != nil {
 				return models.ScenarioIteration{}, err
 			}
@@ -167,7 +167,7 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(ctx co
 			ScoreModifier:        rule.ScoreModifier,
 		}
 	}
-	newScenarioIteration, err := usecase.repository.CreateScenarioIterationAndRules(nil, organizationId, createScenarioIterationInput)
+	newScenarioIteration, err := usecase.repository.CreateScenarioIterationAndRules(ctx, nil, organizationId, createScenarioIterationInput)
 	if err != nil {
 		return models.ScenarioIteration{}, err
 	}
@@ -181,8 +181,8 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(ctx co
 // If `triggerOrRuleToReplace` is provided, it is used during the validation.
 // If `replaceRuleId` is provided, the corresponding rule is replaced.
 // if `replaceRuleId` is nil, the trigger is replaced.
-func (usecase *ScenarioIterationUsecase) ValidateScenarioIteration(iterationId string, triggerOrRuleToReplace *ast.Node, ruleIdToReplace *string) (validation models.ScenarioValidation, err error) {
-	scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(nil, iterationId)
+func (usecase *ScenarioIterationUsecase) ValidateScenarioIteration(ctx context.Context, iterationId string, triggerOrRuleToReplace *ast.Node, ruleIdToReplace *string) (validation models.ScenarioValidation, err error) {
+	scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, nil, iterationId)
 	if err != nil {
 		return validation, err
 	}
@@ -195,7 +195,7 @@ func (usecase *ScenarioIterationUsecase) ValidateScenarioIteration(iterationId s
 	if err != nil {
 		return validation, err
 	}
-	validation, err = usecase.validateScenarioIteration.Validate(scenarioAndIteration), nil
+	validation, err = usecase.validateScenarioIteration.Validate(ctx, scenarioAndIteration), nil
 	return validation, err
 }
 

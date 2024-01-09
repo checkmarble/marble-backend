@@ -1,6 +1,7 @@
 package scenarios
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -35,7 +36,7 @@ func ScenarioValidationToError(validation models.ScenarioValidation) error {
 }
 
 type ValidateScenarioIteration interface {
-	Validate(si ScenarioAndIteration) models.ScenarioValidation
+	Validate(ctx context.Context, si ScenarioAndIteration) models.ScenarioValidation
 }
 
 type ValidateScenarioIterationImpl struct {
@@ -43,7 +44,7 @@ type ValidateScenarioIterationImpl struct {
 	AstEvaluationEnvironmentFactory ast_eval.AstEvaluationEnvironmentFactory
 }
 
-func (validator *ValidateScenarioIterationImpl) Validate(si ScenarioAndIteration) models.ScenarioValidation {
+func (validator *ValidateScenarioIterationImpl) Validate(ctx context.Context, si ScenarioAndIteration) models.ScenarioValidation {
 	iteration := si.Iteration
 
 	result := models.NewScenarioValidation()
@@ -70,7 +71,7 @@ func (validator *ValidateScenarioIterationImpl) Validate(si ScenarioAndIteration
 		})
 	}
 
-	dryRunEnvironment, err := validator.makeDryRunEnvironment(si)
+	dryRunEnvironment, err := validator.makeDryRunEnvironment(ctx, si)
 	if err != nil {
 		result.Errors = append(result.Errors, *err)
 		return result
@@ -84,7 +85,7 @@ func (validator *ValidateScenarioIterationImpl) Validate(si ScenarioAndIteration
 			Code:  models.TriggerConditionRequired,
 		})
 	} else {
-		result.Trigger.TriggerEvaluation, _ = ast_eval.EvaluateAst(dryRunEnvironment, *trigger)
+		result.Trigger.TriggerEvaluation, _ = ast_eval.EvaluateAst(ctx, dryRunEnvironment, *trigger)
 	}
 
 	// validate each rule
@@ -98,17 +99,17 @@ func (validator *ValidateScenarioIterationImpl) Validate(si ScenarioAndIteration
 			})
 			result.Rules.Rules[rule.Id] = ruleValidation
 		} else {
-			ruleValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(dryRunEnvironment, *formula)
+			ruleValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, dryRunEnvironment, *formula)
 			result.Rules.Rules[rule.Id] = ruleValidation
 		}
 	}
 	return result
 }
 
-func (validator *ValidateScenarioIterationImpl) makeDryRunEnvironment(si ScenarioAndIteration) (ast_eval.AstEvaluationEnvironment, *models.ScenarioValidationError) {
+func (validator *ValidateScenarioIterationImpl) makeDryRunEnvironment(ctx context.Context, si ScenarioAndIteration) (ast_eval.AstEvaluationEnvironment, *models.ScenarioValidationError) {
 	organizationId := si.Scenario.OrganizationId
 
-	dataModel, err := validator.DataModelRepository.GetDataModel(organizationId, false)
+	dataModel, err := validator.DataModelRepository.GetDataModel(ctx, organizationId, false)
 	if err != nil {
 		return ast_eval.AstEvaluationEnvironment{}, &models.ScenarioValidationError{
 			Error: fmt.Errorf("could not get data model: %w", err),

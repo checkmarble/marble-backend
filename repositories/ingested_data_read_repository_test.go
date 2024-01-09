@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -46,7 +47,7 @@ func (pt PayloadTest) ReadTableName() models.TableName {
 func TestIngestedDataGetDbFieldWithoutJoin(t *testing.T) {
 	path := []models.LinkName{models.LinkName(utils.DummyTableNameSecond)}
 
-	query, err := createQueryDbForField(TransactionTest{}, models.DbFieldReadParams{
+	query, err := createQueryDbForField(context.TODO(), TransactionTest{}, models.DbFieldReadParams{
 		TriggerTableName: utils.DummyTableNameFirst,
 		Path:             path,
 		FieldName:        utils.DummyFieldNameForInt,
@@ -66,7 +67,7 @@ func TestIngestedDataGetDbFieldWithoutJoin(t *testing.T) {
 func TestIngestedDataGetDbFieldWithJoin(t *testing.T) {
 	path := []models.LinkName{models.LinkName(utils.DummyTableNameSecond), models.LinkName(utils.DummyTableNameThird)}
 
-	query, err := createQueryDbForField(TransactionTest{}, models.DbFieldReadParams{
+	query, err := createQueryDbForField(context.TODO(), TransactionTest{}, models.DbFieldReadParams{
 		TriggerTableName: utils.DummyTableNameFirst,
 		Path:             path,
 		FieldName:        utils.DummyFieldNameForInt,
@@ -85,7 +86,7 @@ func TestIngestedDataGetDbFieldWithJoin(t *testing.T) {
 }
 
 func TestIngestedDataQueryAggregatedValueWithoutFilter(t *testing.T) {
-	query, err := createQueryAggregated(TransactionTest{}, utils.DummyTableNameFirst, utils.DummyFieldNameForInt, ast.AGGREGATOR_AVG, []ast.Filter{})
+	query, err := createQueryAggregated(context.TODO(), TransactionTest{}, utils.DummyTableNameFirst, utils.DummyFieldNameForInt, ast.AGGREGATOR_AVG, []ast.Filter{})
 	assert.Empty(t, err)
 	sql, args, err := query.ToSql()
 	assert.Empty(t, err)
@@ -111,7 +112,7 @@ func TestIngestedDataQueryAggregatedValueWithFilter(t *testing.T) {
 		},
 	}
 
-	query, err := createQueryAggregated(TransactionTest{}, utils.DummyTableNameFirst, utils.DummyFieldNameForInt, ast.AGGREGATOR_AVG, filters)
+	query, err := createQueryAggregated(context.TODO(), TransactionTest{}, utils.DummyTableNameFirst, utils.DummyFieldNameForInt, ast.AGGREGATOR_AVG, filters)
 	assert.Empty(t, err)
 	sql, args, err := query.ToSql()
 	assert.Empty(t, err)

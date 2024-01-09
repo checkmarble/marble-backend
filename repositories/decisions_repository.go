@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -13,13 +14,13 @@ import (
 )
 
 type DecisionRepository interface {
-	DecisionById(transaction Transaction, decisionId string) (models.Decision, error)
-	DecisionsById(transaction Transaction, decisionIds []string) ([]models.Decision, error)
-	DecisionsByCaseId(transaction Transaction, caseId string) ([]models.Decision, error)
-	DecisionsOfScheduledExecution(scheduledExecutionId string) (<-chan models.Decision, <-chan error)
-	StoreDecision(tx Transaction, decision models.Decision, organizationId string, newDecisionId string) error
-	DecisionsOfOrganization(transaction Transaction, organizationId string, paginationAndSorting models.PaginationAndSorting, filters models.DecisionFilters) ([]models.DecisionWithRank, error)
-	UpdateDecisionCaseId(transaction Transaction, decisionsIds []string, caseId string) error
+	DecisionById(ctx context.Context, transaction Transaction, decisionId string) (models.Decision, error)
+	DecisionsById(ctx context.Context, transaction Transaction, decisionIds []string) ([]models.Decision, error)
+	DecisionsByCaseId(ctx context.Context, transaction Transaction, caseId string) ([]models.Decision, error)
+	DecisionsOfScheduledExecution(ctx context.Context, scheduledExecutionId string) (<-chan models.Decision, <-chan error)
+	StoreDecision(ctx context.Context, tx Transaction, decision models.Decision, organizationId string, newDecisionId string) error
+	DecisionsOfOrganization(ctx context.Context, transaction Transaction, organizationId string, paginationAndSorting models.PaginationAndSorting, filters models.DecisionFilters) ([]models.DecisionWithRank, error)
+	UpdateDecisionCaseId(ctx context.Context, transaction Transaction, decisionsIds []string, caseId string) error
 }
 
 type DecisionRepositoryImpl struct {
@@ -29,15 +30,17 @@ type DecisionRepositoryImpl struct {
 // the size of the batch is chosen without any benchmark
 const decisionRulesBatchSize = 1000
 
-func (repo *DecisionRepositoryImpl) DecisionById(transaction Transaction, decisionId string) (models.Decision, error) {
-	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(transaction)
+func (repo *DecisionRepositoryImpl) DecisionById(ctx context.Context, transaction Transaction, decisionId string) (models.Decision, error) {
+	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, transaction)
 
-	rules, err := repo.rulesOfDecision(tx, decisionId)
+	rules, err := repo.rulesOfDecision(ctx, tx, decisionId)
 	if err != nil {
 		return models.Decision{}, err
 	}
 
-	return SqlToRow(tx,
+	return SqlToRow(
+		ctx,
+		tx,
 		selectJoinDecisionAndCase().
 			Where(squirrel.Eq{"d.id": decisionId}),
 		func(row pgx.CollectableRow) (models.Decision, error) {
@@ -59,12 +62,12 @@ func (repo *DecisionRepositoryImpl) DecisionById(transaction Transaction, decisi
 	)
 }
 
-func (repo *DecisionRepositoryImpl) DecisionsById(transaction Transaction, decisionIds []string) ([]models.Decision, error) {
-	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(transaction)
+func (repo *DecisionRepositoryImpl) DecisionsById(ctx context.Context, transaction Transaction, decisionIds []string) ([]models.Decision, error) {
+	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, transaction)
 
 	query := selectJoinDecisionAndCase().Where(squirrel.Eq{"d.id": decisionIds})
 
-	return SqlToListOfRow(tx, query, func(row pgx.CollectableRow) (models.Decision, error) {
+	return SqlToListOfRow(ctx, tx, query, func(row pgx.CollectableRow) (models.Decision, error) {
 		db, err := pgx.RowToStructByPos[dbmodels.DbJoinDecisionAndCase](row)
 		if err != nil {
 			return models.Decision{}, err
@@ -82,14 +85,14 @@ func (repo *DecisionRepositoryImpl) DecisionsById(transaction Transaction, decis
 	})
 }
 
-func (repo *DecisionRepositoryImpl) DecisionsByCaseId(transaction Transaction, caseId string) ([]models.Decision, error) {
-	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(transaction)
+func (repo *DecisionRepositoryImpl) DecisionsByCaseId(ctx context.Context, transaction Transaction, caseId string) ([]models.Decision, error) {
+	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, transaction)
 
 	query := selectDecisions().
 		Where(squirrel.Eq{"case_id": caseId}).
 		OrderBy("created_at DESC")
 
-	decisionsChan, errChan := repo.channelOfDecisions(tx, query)
+	decisionsChan, errChan := repo.channelOfDecisions(ctx, tx, query)
 
 	decisions := ChanToSlice(decisionsChan)
 	err := <-errChan
@@ -98,12 +101,13 @@ func (repo *DecisionRepositoryImpl) DecisionsByCaseId(transaction Transaction, c
 }
 
 func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(
+	ctx context.Context,
 	transaction Transaction,
 	organizationId string,
 	pagination models.PaginationAndSorting,
 	filters models.DecisionFilters,
 ) ([]models.DecisionWithRank, error) {
-	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(transaction)
+	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, transaction)
 
 	subquery := selectDecisionsWithRank(pagination).
 		Where(squirrel.Eq{"d.org_id": organizationId})
@@ -120,7 +124,7 @@ func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(
 	}
 	query := selectDecisionsWithJoinedFields(paginatedQuery, pagination)
 
-	return SqlToListOfRow(tx, query, func(row pgx.CollectableRow) (models.DecisionWithRank, error) {
+	return SqlToListOfRow(ctx, tx, query, func(row pgx.CollectableRow) (models.DecisionWithRank, error) {
 		db, err := pgx.RowToStructByPos[dbmodels.DBPaginatedDecisions](row)
 		if err != nil {
 			return models.DecisionWithRank{}, err
@@ -244,11 +248,12 @@ func selectDecisionsWithJoinedFields(query squirrel.SelectBuilder, p models.Pagi
 		PlaceholderFormat(squirrel.Dollar)
 }
 
-func (repo *DecisionRepositoryImpl) DecisionsOfScheduledExecution(scheduledExecutionId string) (<-chan models.Decision, <-chan error) {
+func (repo *DecisionRepositoryImpl) DecisionsOfScheduledExecution(ctx context.Context, scheduledExecutionId string) (<-chan models.Decision, <-chan error) {
 
-	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(nil)
+	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, nil)
 
 	return repo.channelOfDecisions(
+		ctx,
 		tx,
 		selectDecisions().
 			Where(squirrel.Eq{"scheduled_execution_id": scheduledExecutionId}).
@@ -256,10 +261,11 @@ func (repo *DecisionRepositoryImpl) DecisionsOfScheduledExecution(scheduledExecu
 	)
 }
 
-func (repo *DecisionRepositoryImpl) StoreDecision(tx Transaction, decision models.Decision, organizationId string, newDecisionId string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *DecisionRepositoryImpl) StoreDecision(ctx context.Context, tx Transaction, decision models.Decision, organizationId string, newDecisionId string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
+		ctx,
 		NewQueryBuilder().Insert(dbmodels.TABLE_DECISIONS).
 			Columns(
 				"id",
@@ -324,18 +330,18 @@ func (repo *DecisionRepositoryImpl) StoreDecision(tx Transaction, decision model
 				models.AdaptRuleExecutionError(ruleExecution.Error),
 			)
 	}
-	_, err = pgTx.ExecBuilder(builderForRules)
+	_, err = pgTx.ExecBuilder(ctx, builderForRules)
 	return err
 }
 
-func (repo *DecisionRepositoryImpl) UpdateDecisionCaseId(transaction Transaction, decisionIds []string, caseId string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(transaction)
+func (repo *DecisionRepositoryImpl) UpdateDecisionCaseId(ctx context.Context, transaction Transaction, decisionIds []string, caseId string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, transaction)
 	var query = NewQueryBuilder().
 		Update(dbmodels.TABLE_DECISIONS).
 		Set("case_id", caseId).
 		Where(squirrel.Eq{"id": decisionIds})
 
-	_, err := pgTx.ExecBuilder(query)
+	_, err := pgTx.ExecBuilder(ctx, query)
 	return err
 }
 
@@ -350,10 +356,11 @@ func selectJoinDecisionAndCase() squirrel.SelectBuilder {
 		OrderBy("d.created_at DESC")
 }
 
-func (repo *DecisionRepositoryImpl) rulesOfDecision(transaction Transaction, decisionId string) ([]models.RuleExecution, error) {
-	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(transaction)
+func (repo *DecisionRepositoryImpl) rulesOfDecision(ctx context.Context, transaction Transaction, decisionId string) ([]models.RuleExecution, error) {
+	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, transaction)
 
 	return SqlToListOfModels(
+		ctx,
 		tx,
 		NewQueryBuilder().Select(dbmodels.SelectDecisionRuleColumn...).
 			From(dbmodels.TABLE_DECISION_RULE).
@@ -370,10 +377,11 @@ type RulesOfDecision struct {
 }
 
 // Return an array of RulesOfDecision that correspond to the decisionIds
-func (repo *DecisionRepositoryImpl) rulesOfDecisionsBatch(transaction Transaction, decisionIds []string) ([]RulesOfDecision, error) {
-	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(transaction)
+func (repo *DecisionRepositoryImpl) rulesOfDecisionsBatch(ctx context.Context, transaction Transaction, decisionIds []string) ([]RulesOfDecision, error) {
+	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, transaction)
 
 	allRules, err := SqlToListOfModels(
+		ctx,
 		tx,
 		NewQueryBuilder().Select(dbmodels.SelectDecisionRuleColumn...).
 			From(dbmodels.TABLE_DECISION_RULE).
@@ -402,7 +410,7 @@ func (repo *DecisionRepositoryImpl) rulesOfDecisionsBatch(transaction Transactio
 	}), nil
 }
 
-func (repo *DecisionRepositoryImpl) channelOfDecisions(tx TransactionPostgres, query squirrel.Sqlizer) (<-chan models.Decision, <-chan error) {
+func (repo *DecisionRepositoryImpl) channelOfDecisions(ctx context.Context, tx TransactionPostgres, query squirrel.Sqlizer) (<-chan models.Decision, <-chan error) {
 
 	decisionsChannel := make(chan models.Decision, 100)
 	errChannel := make(chan error, 1)
@@ -411,7 +419,7 @@ func (repo *DecisionRepositoryImpl) channelOfDecisions(tx TransactionPostgres, q
 		defer close(decisionsChannel)
 		defer close(errChannel)
 
-		dbDecisionsChannel, dbErrChannel := SqlToChannelOfModels(tx, query, func(row pgx.CollectableRow) (dbmodels.DbDecision, error) {
+		dbDecisionsChannel, dbErrChannel := SqlToChannelOfModels(ctx, tx, query, func(row pgx.CollectableRow) (dbmodels.DbDecision, error) {
 			return pgx.RowToStructByName[dbmodels.DbDecision](row)
 		})
 
@@ -432,6 +440,7 @@ func (repo *DecisionRepositoryImpl) channelOfDecisions(tx TransactionPostgres, q
 
 			// fetch rules of all decisions
 			rules, err := repo.rulesOfDecisionsBatch(
+				ctx,
 				nil,
 				utils.Map(dbDecisions, func(d dbmodels.DbDecision) string { return d.Id }),
 			)

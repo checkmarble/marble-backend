@@ -1,6 +1,7 @@
 package evaluate
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"slices"
@@ -24,7 +25,7 @@ var ValidTypeForFilterOperators = map[ast.FilterOperator][]models.DataType{
 	ast.FILTER_IS_NOT_IN_LIST:   {models.String},
 }
 
-func (f FilterEvaluator) Evaluate(arguments ast.Arguments) (any, []error) {
+func (f FilterEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 	tableNameStr, tableNameErr := AdaptNamedArgument(arguments.NamedArgs, "tableName", adaptArgumentToString)
 	fieldNameStr, fieldNameErr := AdaptNamedArgument(arguments.NamedArgs, "fieldName", adaptArgumentToString)
 	operatorStr, operatorErr := AdaptNamedArgument(arguments.NamedArgs, "operator", adaptArgumentToString)

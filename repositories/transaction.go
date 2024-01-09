@@ -19,7 +19,6 @@ type Transaction interface {
 
 type TransactionPostgres struct {
 	databaseShema models.DatabaseSchema
-	ctx           context.Context
 	exec          TransactionOrPool
 }
 
@@ -40,9 +39,9 @@ func IsUniqueViolationError(err error) bool {
 	return errors.As(err, &pgxErr) && pgxErr.Code == pgerrcode.UniqueViolation
 }
 
-func (transaction *TransactionPostgres) SqlExec(query string, args ...any) (rowsAffected int64, err error) {
+func (transaction *TransactionPostgres) SqlExec(ctx context.Context, query string, args ...any) (rowsAffected int64, err error) {
 
-	tag, err := transaction.exec.Exec(transaction.ctx, query, args...)
+	tag, err := transaction.exec.Exec(ctx, query, args...)
 	if err != nil {
 		return 0, errors.Wrap(err, fmt.Sprintf("error executing sql query: %s", query))
 	}
@@ -53,11 +52,11 @@ type AnyBuilder interface {
 	ToSql() (string, []interface{}, error)
 }
 
-func (transaction *TransactionPostgres) ExecBuilder(builder AnyBuilder) (rowsAffected int64, err error) {
+func (transaction *TransactionPostgres) ExecBuilder(ctx context.Context, builder AnyBuilder) (rowsAffected int64, err error) {
 	query, args, err := builder.ToSql()
 	if err != nil {
 		return 0, errors.Wrap(err, "can't build sql query")
 	}
 
-	return transaction.SqlExec(query, args...)
+	return transaction.SqlExec(ctx, query, args...)
 }

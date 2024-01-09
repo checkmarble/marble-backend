@@ -139,7 +139,7 @@ func (api *API) handleGetInboxUserById(c *gin.Context) {
 
 func (api *API) handleListAllInboxUsers(c *gin.Context) {
 	usecase := api.UsecasesWithCreds(c.Request).NewInboxUsecase()
-	inboxUsers, err := usecase.ListAllInboxUsers()
+	inboxUsers, err := usecase.ListAllInboxUsers(c.Request.Context())
 	if presentError(c, err) {
 		return
 	}

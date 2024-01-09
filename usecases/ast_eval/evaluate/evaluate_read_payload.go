@@ -1,6 +1,7 @@
 package evaluate
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -19,7 +20,7 @@ func NewPayload(f ast.Function, payload models.PayloadReader) Payload {
 	}
 }
 
-func (p Payload) Evaluate(arguments ast.Arguments) (any, []error) {
+func (p Payload) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 	payloadFieldName, err := adaptArgumentToString(arguments.Args[0])
 	if err != nil {
 		return nil, MakeAdaptedArgsErrors([]error{err})

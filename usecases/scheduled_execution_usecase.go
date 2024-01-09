@@ -13,19 +13,19 @@ import (
 )
 
 type ExportDecisions interface {
-	ExportDecisions(scheduledExecutionId string, dest io.Writer) (int, error)
+	ExportDecisions(ctx context.Context, scheduledExecutionId string, dest io.Writer) (int, error)
 }
 
 type ScheduledExecutionUsecaseRepository interface {
-	GetScenarioById(tx repositories.Transaction, scenarioId string) (models.Scenario, error)
-	GetScenarioIteration(tx repositories.Transaction, scenarioIterationId string) (
+	GetScenarioById(ctx context.Context, tx repositories.Transaction, scenarioId string) (models.Scenario, error)
+	GetScenarioIteration(ctx context.Context, tx repositories.Transaction, scenarioIterationId string) (
 		models.ScenarioIteration, error,
 	)
 
-	GetScheduledExecution(tx repositories.Transaction, id string) (models.ScheduledExecution, error)
-	ListScheduledExecutions(tx repositories.Transaction, filters models.ListScheduledExecutionsFilters) ([]models.ScheduledExecution, error)
-	CreateScheduledExecution(tx repositories.Transaction, input models.CreateScheduledExecutionInput, id string) error
-	UpdateScheduledExecution(tx repositories.Transaction, input models.UpdateScheduledExecutionInput) error
+	GetScheduledExecution(ctx context.Context, tx repositories.Transaction, id string) (models.ScheduledExecution, error)
+	ListScheduledExecutions(ctx context.Context, tx repositories.Transaction, filters models.ListScheduledExecutionsFilters) ([]models.ScheduledExecution, error)
+	CreateScheduledExecution(ctx context.Context, tx repositories.Transaction, input models.CreateScheduledExecutionInput, id string) error
+	UpdateScheduledExecution(ctx context.Context, tx repositories.Transaction, input models.UpdateScheduledExecutionInput) error
 }
 
 type ScheduledExecutionUsecase struct {
@@ -36,9 +36,9 @@ type ScheduledExecutionUsecase struct {
 	organizationIdOfContext func() (string, error)
 }
 
-func (usecase *ScheduledExecutionUsecase) GetScheduledExecution(id string) (models.ScheduledExecution, error) {
-	return transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.ScheduledExecution, error) {
-		execution, err := usecase.repository.GetScheduledExecution(tx, id)
+func (usecase *ScheduledExecutionUsecase) GetScheduledExecution(ctx context.Context, id string) (models.ScheduledExecution, error) {
+	return transaction.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.ScheduledExecution, error) {
+		execution, err := usecase.repository.GetScheduledExecution(ctx, tx, id)
 		if err != nil {
 			return models.ScheduledExecution{}, err
 		}
@@ -49,9 +49,9 @@ func (usecase *ScheduledExecutionUsecase) GetScheduledExecution(id string) (mode
 	})
 }
 
-func (usecase *ScheduledExecutionUsecase) ExportScheduledExecutionDecisions(scheduledExecutionID string, w io.Writer) (int, error) {
-	return transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (int, error) {
-		execution, err := usecase.repository.GetScheduledExecution(tx, scheduledExecutionID)
+func (usecase *ScheduledExecutionUsecase) ExportScheduledExecutionDecisions(ctx context.Context, scheduledExecutionID string, w io.Writer) (int, error) {
+	return transaction.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (int, error) {
+		execution, err := usecase.repository.GetScheduledExecution(ctx, tx, scheduledExecutionID)
 		if err != nil {
 			return 0, err
 		}
@@ -59,15 +59,15 @@ func (usecase *ScheduledExecutionUsecase) ExportScheduledExecutionDecisions(sche
 			return 0, err
 		}
 
-		return usecase.exportScheduleExecution.ExportDecisions(execution.Id, w)
+		return usecase.exportScheduleExecution.ExportDecisions(ctx, execution.Id, w)
 	})
 }
 
 // ListScheduledExecutions returns the list of scheduled executions of the current organization.
 // The optional argument 'scenarioId' can be used to filter the returned list.
-func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(scenarioId string) ([]models.ScheduledExecution, error) {
+func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(ctx context.Context, scenarioId string) ([]models.ScheduledExecution, error) {
 
-	return transaction.TransactionReturnValue(usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) ([]models.ScheduledExecution, error) {
+	return transaction.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) ([]models.ScheduledExecution, error) {
 
 		var executions []models.ScheduledExecution
 		if scenarioId == "" {
@@ -76,13 +76,13 @@ func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(scenarioId str
 				return nil, err
 			}
 
-			executions, err = usecase.repository.ListScheduledExecutions(tx, models.ListScheduledExecutionsFilters{OrganizationId: organizationId})
+			executions, err = usecase.repository.ListScheduledExecutions(ctx, tx, models.ListScheduledExecutionsFilters{OrganizationId: organizationId})
 			if err != nil {
 				return []models.ScheduledExecution{}, err
 			}
 		} else {
 			var err error
-			executions, err = usecase.repository.ListScheduledExecutions(tx, models.ListScheduledExecutionsFilters{ScenarioId: scenarioId})
+			executions, err = usecase.repository.ListScheduledExecutions(ctx, tx, models.ListScheduledExecutionsFilters{ScenarioId: scenarioId})
 			if err != nil {
 				return []models.ScheduledExecution{}, err
 			}
@@ -98,16 +98,16 @@ func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(scenarioId str
 	})
 }
 
-func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(input models.CreateScheduledExecutionInput) error {
+func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(ctx context.Context, input models.CreateScheduledExecutionInput) error {
 	if err := usecase.enforceSecurity.CreateScheduledExecution(input.OrganizationId); err != nil {
 		return err
 	}
 
-	scenarioIteration, err := usecase.repository.GetScenarioIteration(nil, input.ScenarioIterationId)
+	scenarioIteration, err := usecase.repository.GetScenarioIteration(ctx, nil, input.ScenarioIterationId)
 	if err != nil {
 		return err
 	}
-	scenario, err := usecase.repository.GetScenarioById(nil, scenarioIteration.ScenarioId)
+	scenario, err := usecase.repository.GetScenarioById(ctx, nil, scenarioIteration.ScenarioId)
 	if err != nil {
 		return err
 	}
@@ -116,7 +116,7 @@ func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(input models.
 		return fmt.Errorf("scenario iteration is not live %w", models.BadParameterError)
 	}
 
-	pendingExecutions, err := usecase.repository.ListScheduledExecutions(nil, models.ListScheduledExecutionsFilters{ScenarioId: scenario.Id, Status: []models.ScheduledExecutionStatus{models.ScheduledExecutionPending, models.ScheduledExecutionProcessing}})
+	pendingExecutions, err := usecase.repository.ListScheduledExecutions(ctx, nil, models.ListScheduledExecutionsFilters{ScenarioId: scenario.Id, Status: []models.ScheduledExecutionStatus{models.ScheduledExecutionPending, models.ScheduledExecutionProcessing}})
 	if err != nil {
 		return err
 	}
@@ -125,8 +125,8 @@ func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(input models.
 	}
 
 	id := utils.NewPrimaryKey(input.OrganizationId)
-	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
-		return usecase.repository.CreateScheduledExecution(tx, models.CreateScheduledExecutionInput{
+	return usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+		return usecase.repository.CreateScheduledExecution(ctx, tx, models.CreateScheduledExecutionInput{
 			OrganizationId:      input.OrganizationId,
 			ScenarioId:          scenario.Id,
 			ScenarioIterationId: input.ScenarioIterationId,
@@ -137,14 +137,14 @@ func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(input models.
 
 func (usecase *ScheduledExecutionUsecase) UpdateScheduledExecution(ctx context.Context, input models.UpdateScheduledExecutionInput) error {
 
-	return usecase.transactionFactory.Transaction(models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
-		execution, err := usecase.repository.GetScheduledExecution(tx, input.Id)
+	return usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+		execution, err := usecase.repository.GetScheduledExecution(ctx, tx, input.Id)
 		if err != nil {
 			return err
 		}
 		if err := usecase.enforceSecurity.CreateScheduledExecution(execution.OrganizationId); err != nil {
 			return err
 		}
-		return usecase.repository.UpdateScheduledExecution(tx, input)
+		return usecase.repository.UpdateScheduledExecution(ctx, tx, input)
 	})
 }

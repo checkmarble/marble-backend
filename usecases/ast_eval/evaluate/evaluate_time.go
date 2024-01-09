@@ -1,6 +1,7 @@
 package evaluate
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -17,7 +18,7 @@ func NewTimeFunctions(f ast.Function) TimeFunctions {
 	}
 }
 
-func (f TimeFunctions) Evaluate(arguments ast.Arguments) (any, []error) {
+func (f TimeFunctions) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 	switch f.Function {
 	case ast.FUNC_TIME_NOW:
 		if err := verifyNumberOfArguments(arguments.Args, 0); err != nil {

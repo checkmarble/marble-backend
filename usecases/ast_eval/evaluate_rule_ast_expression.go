@@ -1,6 +1,7 @@
 package ast_eval
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -12,7 +13,7 @@ type EvaluateRuleAstExpression struct {
 	AstEvaluationEnvironmentFactory AstEvaluationEnvironmentFactory
 }
 
-func (evaluator *EvaluateRuleAstExpression) EvaluateRuleAstExpression(ruleAstExpression ast.Node, organizationId string, payload models.PayloadReader, dataModel models.DataModel) (bool, error) {
+func (evaluator *EvaluateRuleAstExpression) EvaluateRuleAstExpression(ctx context.Context, ruleAstExpression ast.Node, organizationId string, payload models.PayloadReader, dataModel models.DataModel) (bool, error) {
 
 	environment := evaluator.AstEvaluationEnvironmentFactory(EvaluationEnvironmentFactoryParams{
 		OrganizationId:                organizationId,
@@ -21,7 +22,7 @@ func (evaluator *EvaluateRuleAstExpression) EvaluateRuleAstExpression(ruleAstExp
 		DatabaseAccessReturnFakeValue: false,
 	})
 
-	evaluation, ok := EvaluateAst(environment, ruleAstExpression)
+	evaluation, ok := EvaluateAst(ctx, environment, ruleAstExpression)
 
 	if !ok {
 		return false, errors.Join(evaluation.AllErrors()...)

@@ -1,12 +1,14 @@
 package repositories
 
 import (
+	"context"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
-func (repo *MarbleDbRepository) GetCaseContributor(tx Transaction, caseId, userId string) (*models.CaseContributor, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *MarbleDbRepository) GetCaseContributor(ctx context.Context, tx Transaction, caseId, userId string) (*models.CaseContributor, error) {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query := NewQueryBuilder().
 		Select(dbmodels.SelectCaseContributorColumn...).
@@ -15,14 +17,15 @@ func (repo *MarbleDbRepository) GetCaseContributor(tx Transaction, caseId, userI
 		Where("user_id = ?", userId)
 
 	return SqlToOptionalModel(
+		ctx,
 		pgTx,
 		query,
 		dbmodels.AdaptCaseContributor,
 	)
 }
 
-func (repo *MarbleDbRepository) CreateCaseContributor(tx Transaction, caseId, userId string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(tx)
+func (repo *MarbleDbRepository) CreateCaseContributor(ctx context.Context, tx Transaction, caseId, userId string) error {
+	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query := NewQueryBuilder().Insert(dbmodels.TABLE_CASE_CONTRIBUTORS).
 		Columns(
@@ -34,7 +37,7 @@ func (repo *MarbleDbRepository) CreateCaseContributor(tx Transaction, caseId, us
 			userId,
 		)
 
-	_, err := pgTx.ExecBuilder(query)
+	_, err := pgTx.ExecBuilder(ctx, query)
 
 	return err
 }

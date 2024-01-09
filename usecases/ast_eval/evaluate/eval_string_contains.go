@@ -1,6 +1,7 @@
 package evaluate
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -17,7 +18,7 @@ func NewStringContains(f ast.Function) StringContains {
 	}
 }
 
-func (f StringContains) Evaluate(arguments ast.Arguments) (any, []error) {
+func (f StringContains) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 	leftAny, rightAny, err := leftAndRight(arguments.Args)
 	if err != nil {
 		return MakeEvaluateError(err)
