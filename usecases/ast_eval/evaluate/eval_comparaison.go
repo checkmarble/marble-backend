@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cockroachdb/errors"
+
 	"github.com/checkmarble/marble-backend/models/ast"
 )
 
@@ -34,7 +36,7 @@ func (f Comparison) Evaluate(ctx context.Context, arguments ast.Arguments) (any,
 	if len(errs) == 0 {
 		return MakeEvaluateResult(f.comparisonTimeFunction(leftTime, rightTime))
 	}
-	return MakeEvaluateError(fmt.Errorf("all arguments must be an integer, a float or a time %w", ast.ErrArgumentMustBeIntFloatOrTime))
+	return MakeEvaluateError(errors.Wrap(ast.ErrArgumentMustBeIntFloatOrTime, "all arguments to Comparison Evaluate must be int, float or time"))
 }
 
 func (f Comparison) comparisonFloatFunction(l, r float64) (bool, error) {
@@ -48,7 +50,7 @@ func (f Comparison) comparisonFloatFunction(l, r float64) (bool, error) {
 	case ast.FUNC_LESS_OR_EQUAL:
 		return l <= r+floatEqualityThreshold, nil
 	default:
-		return false, fmt.Errorf("Comparison does not support %s function", f.Function.DebugString())
+		return false, errors.New(fmt.Sprintf("Comparison does not support %s function", f.Function.DebugString()))
 	}
 }
 
@@ -63,6 +65,6 @@ func (f Comparison) comparisonTimeFunction(l, r time.Time) (bool, error) {
 	case ast.FUNC_LESS_OR_EQUAL:
 		return l.Before(r) || l.Equal(r), nil
 	default:
-		return false, fmt.Errorf("Comparison does not support %s function", f.Function.DebugString())
+		return false, errors.New(fmt.Sprintf("Comparison does not support %s function", f.Function.DebugString()))
 	}
 }

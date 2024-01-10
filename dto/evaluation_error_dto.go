@@ -29,7 +29,7 @@ var evaluationErrorDtoMap = []errorAndCode{
 	{ast.ErrArgumentMustBeBool, "ARGUMENT_MUST_BE_BOOLEAN"},
 	{ast.ErrArgumentMustBeList, "ARGUMENT_MUST_BE_LIST"},
 	{ast.ErrArgumentCantBeConvertedToDuration, "ARGUMENT_MUST_BE_CONVERTIBLE_TO_DURATION"},
-	{ast.ErrArgumentCantBeTime, "ARGUMENT_MUST_BE_TIME"},
+	{ast.ErrArgumentMustBeTime, "ARGUMENT_MUST_BE_TIME"},
 	{ast.ErrArgumentRequired, "ARGUMENT_REQUIRED"},
 	{ast.ErrArgumentInvalidType, "ARGUMENT_INVALID_TYPE"},
 	{ast.ErrListNotFound, "LIST_NOT_FOUND"},

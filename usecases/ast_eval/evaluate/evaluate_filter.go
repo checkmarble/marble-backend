@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"slices"
 
+	"github.com/cockroachdb/errors"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 )
@@ -37,19 +39,28 @@ func (f FilterEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) 
 
 	fieldType, err := getFieldType(f.DataModel, models.TableName(tableNameStr), models.FieldName(fieldNameStr))
 	if err != nil {
-		return MakeEvaluateError(fmt.Errorf("field type for %s.%s not found in data model %w %w", tableNameStr, fieldNameStr, err, ast.NewNamedArgumentError("fieldName")))
+		return MakeEvaluateError(errors.Join(
+			errors.Wrap(err, fmt.Sprintf("field type for %s.%s not found in data model in Evaluate filter", tableNameStr, fieldNameStr)),
+			ast.NewNamedArgumentError("fieldName"),
+		))
 	}
 
 	// Operator validation
 	operator := ast.FilterOperator(operatorStr)
 	validTypes, isValid := ValidTypeForFilterOperators[operator]
 	if !isValid {
-		return MakeEvaluateError(fmt.Errorf("operator is not a valid operator %w %w", models.ErrRuntimeExpression, ast.NewNamedArgumentError("operator")))
+		return MakeEvaluateError(errors.Join(
+			errors.Wrap(models.ErrRuntimeExpression, fmt.Sprintf("operator %s is not valid in Evaluate filter", operator)),
+			ast.NewNamedArgumentError("operator"),
+		))
 	}
 
 	isValidFieldType := slices.Contains(validTypes, fieldType)
 	if !isValidFieldType {
-		return MakeEvaluateError(fmt.Errorf("field type %s is not valid for operator %s %w %w", fieldType.String(), operator, ast.ErrArgumentInvalidType, ast.NewNamedArgumentError("fieldName")))
+		return MakeEvaluateError(errors.Join(
+			errors.Wrap(ast.ErrArgumentInvalidType, fmt.Sprintf("field type %s is not valid for operator %s in Evaluate filter", fieldType.String(), operator)),
+			ast.NewNamedArgumentError("fieldName"),
+		))
 	}
 
 	// Value validation
@@ -65,7 +76,11 @@ func (f FilterEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) 
 			promotedValue, err = promoteArgumentToDataType(value, fieldType)
 		}
 		if err != nil {
-			return MakeEvaluateError(fmt.Errorf("value is not compatible with selected field %w %w: %w", ast.ErrArgumentInvalidType, ast.NewNamedArgumentError("value"), err))
+			return MakeEvaluateError(errors.Join(
+				errors.Wrap(ast.ErrArgumentInvalidType, fmt.Sprintf("value is not compatible with selected field %s.%s in Evaluate filter", tableNameStr, fieldNameStr)),
+				ast.NewNamedArgumentError("value"),
+				err,
+			))
 		}
 	}
 

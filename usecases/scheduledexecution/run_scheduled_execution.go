@@ -2,13 +2,13 @@ package scheduledexecution
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/adhocore/gronx"
+	"github.com/cockroachdb/errors"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -242,10 +242,10 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 
 			if errors.Is(err, models.ScenarioTriggerConditionAndTriggerObjectMismatchError) {
 				logger := utils.LoggerFromContext(ctx)
-				logger.Info(fmt.Sprintf("Trigger condition and trigger object mismatch: %s", err.Error()), "scenarioId", scenario.Id, "triggerObjectType", scenario.TriggerObjectType, "object", object)
+				logger.InfoContext(ctx, fmt.Sprintf("Trigger condition and trigger object mismatch: %s", err.Error()), "scenarioId", scenario.Id, "triggerObjectType", scenario.TriggerObjectType, "object", object)
 				continue
 			} else if err != nil {
-				return fmt.Errorf("error evaluating scenario: %w", err)
+				return errors.Wrap(err, fmt.Sprintf("error evaluating scenario in executeScheduledScenario %s", scenario.Id))
 			}
 
 			decisionInput := models.Decision{

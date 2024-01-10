@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/cockroachdb/errors"
+
 	"github.com/checkmarble/marble-backend/models/ast"
 )
 
@@ -22,7 +24,7 @@ func (f StringInList) Evaluate(ctx context.Context, arguments ast.Arguments) (an
 
 	leftAny, rightAny, err := leftAndRight(arguments.Args)
 	if err != nil {
-		return MakeEvaluateError(err)
+		return MakeEvaluateError(errors.Wrap(err, "Error in Evaluate function StringInList"))
 	}
 
 	left, errLeft := adaptArgumentToString(leftAny)
@@ -38,11 +40,10 @@ func (f StringInList) Evaluate(ctx context.Context, arguments ast.Arguments) (an
 	} else if f.Function == ast.FUNC_IS_NOT_IN_LIST {
 		return !stringInList(left, right), nil
 	} else {
-		return MakeEvaluateError(fmt.Errorf("StringInList does not support %s function", f.Function.DebugString()))
+		return MakeEvaluateError(errors.New(fmt.Sprintf("StringInList does not support %s function", f.Function.DebugString())))
 	}
 }
 
 func stringInList(str string, list []string) bool {
-
 	return slices.Contains(list, str)
 }

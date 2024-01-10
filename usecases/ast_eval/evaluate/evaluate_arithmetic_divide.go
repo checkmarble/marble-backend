@@ -3,6 +3,8 @@ package evaluate
 import (
 	"context"
 
+	"github.com/cockroachdb/errors"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 )
@@ -14,7 +16,7 @@ func (f ArithmeticDivide) Evaluate(ctx context.Context, arguments ast.Arguments)
 
 	leftAny, rightAny, err := leftAndRight(arguments.Args)
 	if err != nil {
-		return MakeEvaluateError(err)
+		return MakeEvaluateError(errors.Wrap(err, "Error in Evaluate function Divide"))
 	}
 
 	// promote to float64
@@ -24,7 +26,7 @@ func (f ArithmeticDivide) Evaluate(ctx context.Context, arguments ast.Arguments)
 	}
 
 	if right == 0.0 {
-		return MakeEvaluateError(models.DivisionByZeroError)
+		return MakeEvaluateError(errors.Wrap(models.DivisionByZeroError, "Zero division error in Evaluate function Divide"))
 	}
 
 	return MakeEvaluateResult(left / right)

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cockroachdb/errors"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils/duration"
@@ -24,8 +26,9 @@ func promoteArgumentToInt64(argument any) (int64, error) {
 
 	result, err := ToInt64(argument)
 	if err != nil {
-		return 0, fmt.Errorf("can't promote argument %v to int64 %w %w",
-			argument, err, ast.ErrArgumentMustBeInt,
+		return 0, errors.Join(
+			errors.Wrap(ast.ErrArgumentMustBeInt, fmt.Sprintf("can't promote argument %v to int64", argument)),
+			err,
 		)
 	}
 	return result, nil
@@ -38,13 +41,10 @@ func promoteArgumentToFloat64(argument any) (float64, error) {
 
 	result, err := ToFloat64(argument)
 	if err != nil {
-		return 0, fmt.Errorf(
-			"can't promote argument %v to float64 %w %w",
-			argument,
+		return 0, errors.Join(
+			errors.Wrap(ast.ErrArgumentMustBeIntOrFloat, fmt.Sprintf("can't promote argument %v to float64", argument)),
 			err,
-			ast.ErrArgumentMustBeIntOrFloat,
 		)
-
 	}
 	return result, nil
 }
@@ -56,17 +56,10 @@ func adaptArgumentToString(argument any) (string, error) {
 	}
 
 	if result, ok := argument.(string); ok {
-		if result == "" {
-			return "", ast.ErrArgumentRequired
-		}
 		return result, nil
 	}
 
-	return "", fmt.Errorf(
-		"can't promote argument %v to string %w",
-		argument,
-		ast.ErrArgumentMustBeString,
-	)
+	return "", errors.Wrap(ast.ErrArgumentMustBeString, fmt.Sprintf("can't promote argument %v to string", argument))
 }
 
 func adaptArgumentToTime(argument any) (time.Time, error) {
@@ -77,11 +70,7 @@ func adaptArgumentToTime(argument any) (time.Time, error) {
 	if result, ok := argument.(time.Time); ok {
 		return result, nil
 	}
-	return time.Time{}, fmt.Errorf(
-		"can't promote argument %v to time %w",
-		argument,
-		ast.ErrArgumentCantBeTime,
-	)
+	return time.Time{}, errors.Wrap(ast.ErrArgumentMustBeTime, fmt.Sprintf("can't promote argument %v to time", argument))
 }
 
 func adaptArgumentToDuration(argument any) (time.Duration, error) {
@@ -107,11 +96,7 @@ func adaptArgumentToDuration(argument any) (time.Duration, error) {
 		return time.Duration(result), nil
 	}
 
-	return 0, fmt.Errorf(
-		"can't promote argument %v to duration %w",
-		argument,
-		ast.ErrArgumentCantBeConvertedToDuration,
-	)
+	return 0, errors.Wrap(ast.ErrArgumentCantBeConvertedToDuration, fmt.Sprintf("can't promote argument %v to duration", argument))
 }
 
 func adaptArgumentToListOfThings[T any](argument any) ([]T, error) {
@@ -125,7 +110,7 @@ func adaptArgumentToListOfThings[T any](argument any) ([]T, error) {
 		return utils.MapErr(list, func(item any) (T, error) {
 			i, ok := item.(T)
 			if !ok {
-				return zero, fmt.Errorf("couldn't cast argument to %T", zero)
+				return zero, errors.New(fmt.Sprintf("couldn't cast argument to %T", zero))
 			}
 			return i, nil
 		})
@@ -135,12 +120,7 @@ func adaptArgumentToListOfThings[T any](argument any) ([]T, error) {
 		return nil, err
 	}
 
-	return nil, fmt.Errorf(
-		"can't promote argument %v to []%T %w",
-		argument,
-		zero,
-		ast.ErrArgumentMustBeList,
-	)
+	return nil, errors.Wrap(ast.ErrArgumentMustBeList, fmt.Sprintf("can't promote argument %v to []%T", argument, zero))
 }
 
 func adaptArgumentToListOfStrings(argument any) ([]string, error) {
@@ -156,11 +136,7 @@ func adaptArgumentToBool(argument any) (bool, error) {
 		return value, nil
 	}
 
-	return false, fmt.Errorf(
-		"can't promote argument %v to bool %w",
-		argument,
-		ast.ErrArgumentMustBeBool,
-	)
+	return false, errors.Wrap(ast.ErrArgumentMustBeBool, fmt.Sprintf("can't promote argument %v to bool", argument))
 }
 
 func promoteArgumentToDataType(argument any, datatype models.DataType) (any, error) {
@@ -176,6 +152,6 @@ func promoteArgumentToDataType(argument any, datatype models.DataType) (any, err
 	case models.Timestamp:
 		return adaptArgumentToTime(argument)
 	default:
-		return nil, fmt.Errorf("datatype %s not supported", datatype)
+		return nil, errors.New(fmt.Sprintf("datatype %s not supported", datatype))
 	}
 }

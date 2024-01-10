@@ -2,10 +2,11 @@ package api
 
 import (
 	"encoding/json"
-	"errors"
+
 	"fmt"
 	"net/http"
 
+	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -143,8 +144,7 @@ func (api *API) handlePostDecision(c *gin.Context) {
 		presentError(c, err)
 		return
 	} else if err != nil {
-		logger.ErrorContext(c.Request.Context(), "Could not create a decision: \n"+err.Error())
-		http.Error(c.Writer, "", http.StatusInternalServerError)
+		presentError(c, errors.Wrap(err, "Error creating decision in handlePostDecision"))
 		return
 	}
 	c.JSON(http.StatusOK, dto.NewAPIDecision(decision))

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/cockroachdb/errors"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -35,12 +37,12 @@ func (d DatabaseAccess) Evaluate(ctx context.Context, arguments ast.Arguments) (
 
 	path, ok := arguments.NamedArgs["path"].([]any)
 	if !ok {
-		return MakeEvaluateError(fmt.Errorf("path is not a string %w", ast.ErrArgumentMustBeString))
+		return MakeEvaluateError(errors.Wrap(ast.ErrArgumentInvalidType, "path is not a slice of any in Evaluate DatabaseAccess"))
 	}
 	for _, v := range path {
 		str, ok := v.(string)
 		if !ok {
-			return MakeEvaluateError(fmt.Errorf("path value is not a string %w", ast.ErrArgumentMustBeString))
+			return MakeEvaluateError(errors.Wrap(ast.ErrArgumentMustBeString, "path value is not a string in Evaluate DatabaseAccess"))
 		}
 		pathStringArr = append(pathStringArr, str)
 	}
@@ -48,14 +50,17 @@ func (d DatabaseAccess) Evaluate(ctx context.Context, arguments ast.Arguments) (
 	fieldValue, err := d.getDbField(ctx, tableName, fieldName, pathStringArr)
 
 	if err != nil {
-		errorMsg := fmt.Sprintf("tableName: %s, fieldName: %s, path: %v", tableName, fieldName, path)
-		return MakeEvaluateError(fmt.Errorf("DatabaseAccess: value not found: %s %w %w", errorMsg, err, ast.ErrDatabaseAccessNotFound))
+		errorMsg := fmt.Sprintf("Error readinv value in DatabaseAccess: tableName %s, fieldName %s, path %v", tableName, fieldName, path)
+		return MakeEvaluateError(errors.Join(
+			errors.Wrap(ast.ErrDatabaseAccessNotFound, errorMsg),
+			err,
+		))
 	}
 
 	if fieldValue == nil {
 		errorMsg := fmt.Sprintf("tableName: %s, fieldName: %s, path: %v", tableName, fieldName, path)
 		objectId, _ := d.getDbField(ctx, tableName, "object_id", pathStringArr)
-		return MakeEvaluateError(fmt.Errorf("value is null for object_id %s, in %s %w", objectId, errorMsg, models.NullFieldReadError))
+		return MakeEvaluateError(errors.Wrap(models.NullFieldReadError, fmt.Sprintf("value is null for object_id %s, in %s", objectId, errorMsg)))
 	}
 
 	return fieldValue, nil

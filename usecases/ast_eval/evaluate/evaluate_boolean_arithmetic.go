@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/cockroachdb/errors"
+
 	"github.com/checkmarble/marble-backend/models/ast"
 )
 
@@ -21,10 +23,7 @@ func (f BooleanArithmetic) Evaluate(ctx context.Context, arguments ast.Arguments
 
 	numberOfOperands := len(arguments.Args)
 	if numberOfOperands < 1 {
-		return MakeEvaluateError(fmt.Errorf(
-			"expects at least 1 operand, got %d %w",
-			numberOfOperands, ast.ErrWrongNumberOfArgument,
-		))
+		return MakeEvaluateError(errors.Wrap(ast.ErrWrongNumberOfArgument, fmt.Sprintf("Boolean arithmetic expects at least 1 operand, got %d", numberOfOperands)))
 	}
 
 	values, errs := AdaptArguments(arguments.Args, adaptArgumentToBool)
@@ -45,7 +44,7 @@ func (f BooleanArithmetic) booleanArithmeticEval(args []bool) (bool, error) {
 		case ast.FUNC_OR:
 			r = r || args[i]
 		default:
-			return false, fmt.Errorf("Arithmetic does not support %s function", f.Function.DebugString())
+			return false, errors.New(fmt.Sprintf("Arithmetic does not support %s function", f.Function.DebugString()))
 		}
 	}
 	return r, nil

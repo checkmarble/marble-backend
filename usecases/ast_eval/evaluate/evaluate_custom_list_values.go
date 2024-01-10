@@ -2,6 +2,9 @@ package evaluate
 
 import (
 	"context"
+	"fmt"
+
+	"github.com/cockroachdb/errors"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -24,7 +27,6 @@ func NewCustomListValuesAccess(clr repositories.CustomListRepository, enforceSec
 
 func (clva CustomListValuesAccess) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 	listId, err := AdaptNamedArgument(arguments.NamedArgs, "customListId", adaptArgumentToString)
-
 	if err != nil {
 		return MakeEvaluateError(err)
 	}
@@ -34,14 +36,14 @@ func (clva CustomListValuesAccess) Evaluate(ctx context.Context, arguments ast.A
 		return MakeEvaluateError(ast.ErrListNotFound)
 	}
 	if err := clva.EnforceSecurity.ReadOrganization(list.OrganizationId); err != nil {
-		return MakeEvaluateError(err)
+		return MakeEvaluateError(errors.Wrap(err, fmt.Sprintf("Organization in credentials is not allowed to read this list %s", list.Id)))
 	}
 
 	listValues, err := clva.CustomListRepository.GetCustomListValues(ctx, nil, models.GetCustomListValuesInput{
 		Id: listId,
 	})
 	if err != nil {
-		return MakeEvaluateError(err)
+		return MakeEvaluateError(errors.Wrap(err, fmt.Sprintf("Error reading values for list %s", list.Id)))
 	}
 
 	return utils.Map(

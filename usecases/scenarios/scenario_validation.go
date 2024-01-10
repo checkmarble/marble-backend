@@ -2,8 +2,9 @@ package scenarios
 
 import (
 	"context"
-	"errors"
 	"fmt"
+
+	"github.com/cockroachdb/errors"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -52,21 +53,21 @@ func (validator *ValidateScenarioIterationImpl) Validate(ctx context.Context, si
 	// validate Decision
 	if iteration.ScoreReviewThreshold == nil {
 		result.Decision.Errors = append(result.Trigger.Errors, models.ScenarioValidationError{
-			Error: fmt.Errorf("scenario iteration has no ScoreReviewThreshold: \n%w", models.BadParameterError),
+			Error: errors.Wrap(models.BadParameterError, "scenario iteration has no ScoreReviewThreshold"),
 			Code:  models.ScoreReviewThresholdRequired,
 		})
 	}
 
 	if iteration.ScoreRejectThreshold == nil {
 		result.Decision.Errors = append(result.Trigger.Errors, models.ScenarioValidationError{
-			Error: fmt.Errorf("scenario iteration has no ScoreRejectThreshold: \n%w", models.BadParameterError),
+			Error: errors.Wrap(models.BadParameterError, "scenario iteration has no ScoreRejectThreshold"),
 			Code:  models.ScoreRejectThresholdRequired,
 		})
 	}
 
 	if iteration.ScoreReviewThreshold != nil && iteration.ScoreRejectThreshold != nil && *iteration.ScoreRejectThreshold < *iteration.ScoreReviewThreshold {
 		result.Decision.Errors = append(result.Trigger.Errors, models.ScenarioValidationError{
-			Error: fmt.Errorf("scenario iteration has ScoreRejectThreshold < ScoreReviewThreshold: \n%w", models.BadParameterError),
+			Error: errors.Wrap(models.BadParameterError, "scenario iteration has ScoreRejectThreshold < ScoreReviewThreshold"),
 			Code:  models.ScoreRejectReviewThresholdsMissmatch,
 		})
 	}
@@ -81,7 +82,7 @@ func (validator *ValidateScenarioIterationImpl) Validate(ctx context.Context, si
 	trigger := iteration.TriggerConditionAstExpression
 	if trigger == nil {
 		result.Trigger.Errors = append(result.Trigger.Errors, models.ScenarioValidationError{
-			Error: fmt.Errorf("scenario iteration has no trigger condition ast expression %w", models.BadParameterError),
+			Error: errors.Wrap(models.BadParameterError, "scenario iteration has no trigger condition ast expression"),
 			Code:  models.TriggerConditionRequired,
 		})
 	} else {
@@ -94,7 +95,7 @@ func (validator *ValidateScenarioIterationImpl) Validate(ctx context.Context, si
 		ruleValidation := models.NewRuleValidation()
 		if formula == nil {
 			ruleValidation.Errors = append(ruleValidation.Errors, models.ScenarioValidationError{
-				Error: fmt.Errorf("rule has no formula ast expression %w", models.BadParameterError),
+				Error: errors.Wrap(models.BadParameterError, "rule has no formula ast expression"),
 				Code:  models.RuleFormulaRequired,
 			})
 			result.Rules.Rules[rule.Id] = ruleValidation
@@ -112,7 +113,7 @@ func (validator *ValidateScenarioIterationImpl) makeDryRunEnvironment(ctx contex
 	dataModel, err := validator.DataModelRepository.GetDataModel(ctx, organizationId, false)
 	if err != nil {
 		return ast_eval.AstEvaluationEnvironment{}, &models.ScenarioValidationError{
-			Error: fmt.Errorf("could not get data model: %w", err),
+			Error: errors.Wrap(err, "could not get data model for dry run"),
 			Code:  models.DataModelNotFound,
 		}
 	}
@@ -120,7 +121,7 @@ func (validator *ValidateScenarioIterationImpl) makeDryRunEnvironment(ctx contex
 	table, ok := dataModel.Tables[models.TableName(si.Scenario.TriggerObjectType)]
 	if !ok {
 		return ast_eval.AstEvaluationEnvironment{}, &models.ScenarioValidationError{
-			Error: fmt.Errorf("table %s not found in data model  %w", si.Scenario.TriggerObjectType, models.NotFoundError),
+			Error: errors.Wrap(models.NotFoundError, fmt.Sprintf("table %s not found in data model for dry run", si.Scenario.TriggerObjectType)),
 			Code:  models.TrigerObjectNotFound,
 		}
 	}

@@ -2,8 +2,9 @@ package evaluate
 
 import (
 	"context"
-	"fmt"
 	"math"
+
+	"github.com/cockroachdb/errors"
 
 	"github.com/checkmarble/marble-backend/models/ast"
 )
@@ -37,5 +38,5 @@ func (f NotEqual) Evaluate(ctx context.Context, arguments ast.Arguments) (any, [
 		return MakeEvaluateResult(!left.Equal(right))
 	}
 
-	return MakeEvaluateError(fmt.Errorf("all arguments must be string, boolean, time, int or float"))
+	return MakeEvaluateError(errors.Wrap(ast.ErrArgumentInvalidType, "all arguments to NotEqual Evaluate must be string, boolean, time, int or float"))
 }

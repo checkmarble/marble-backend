@@ -1,6 +1,6 @@
 package ast
 
-import "errors"
+import "github.com/cockroachdb/errors"
 
 var ErrUndefinedFunction = errors.New("undefined function")
 var ErrWrongNumberOfArgument = errors.New("wrong number of arguments")
@@ -12,7 +12,7 @@ var ErrArgumentMustBeString = errors.New("arguments must be a string")
 var ErrArgumentMustBeBool = errors.New("arguments must be a boolean")
 var ErrArgumentMustBeList = errors.New("arguments must be a list")
 var ErrArgumentCantBeConvertedToDuration = errors.New("argument cant be converted to duration")
-var ErrArgumentCantBeTime = errors.New("argument must be a time")
+var ErrArgumentMustBeTime = errors.New("argument must be a time")
 var ErrArgumentRequired = errors.New("argument is required")
 var ErrArgumentInvalidType = errors.New("argument has an invalid type")
 var ErrListNotFound = errors.New("list not found")
