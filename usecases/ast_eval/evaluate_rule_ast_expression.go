@@ -2,8 +2,9 @@ package ast_eval
 
 import (
 	"context"
-	"errors"
 	"fmt"
+
+	"github.com/cockroachdb/errors"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -33,5 +34,5 @@ func (evaluator *EvaluateRuleAstExpression) EvaluateRuleAstExpression(ctx contex
 		return value, nil
 	}
 
-	return false, fmt.Errorf("rule ast expression does not return a boolean, '%v' instead %w", result, models.ErrRuntimeExpression)
+	return false, errors.Wrap(models.ErrRuntimeExpression, fmt.Sprintf("rule ast expression does not return a boolean, '%v' instead", result))
 }

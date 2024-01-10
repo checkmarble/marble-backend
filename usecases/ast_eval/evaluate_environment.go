@@ -3,6 +3,8 @@ package ast_eval
 import (
 	"fmt"
 
+	"github.com/cockroachdb/errors"
+
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval/evaluate"
 )
@@ -13,7 +15,7 @@ type AstEvaluationEnvironment struct {
 
 func (environment *AstEvaluationEnvironment) AddEvaluator(function ast.Function, evaluator evaluate.Evaluator) {
 	if _, ok := environment.availableFunctions[function]; ok {
-		panic(fmt.Errorf("function '%s' is already registered", function.DebugString()))
+		panic(fmt.Sprintf("function '%s' is already registered", function.DebugString()))
 	}
 	environment.availableFunctions[function] = evaluator
 }
@@ -22,7 +24,7 @@ func (environment *AstEvaluationEnvironment) GetEvaluator(function ast.Function)
 	if funcClass, ok := environment.availableFunctions[function]; ok {
 		return funcClass, nil
 	}
-	return nil, fmt.Errorf("function '%s' is not available", function.DebugString())
+	return nil, errors.New(fmt.Sprintf("function '%s' is not available", function.DebugString()))
 }
 
 func NewAstEvaluationEnvironment() AstEvaluationEnvironment {

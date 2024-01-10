@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/cockroachdb/errors"
+
 	"github.com/checkmarble/marble-backend/models/ast"
 )
 
@@ -47,6 +49,6 @@ func arithmeticEval[T int64 | float64](function ast.Function, l, r T) (T, error)
 	case ast.FUNC_MULTIPLY:
 		return l * r, nil
 	default:
-		return 0, fmt.Errorf("Arithmetic does not support %s function", function.DebugString())
+		return 0, errors.New(fmt.Sprintf("Arithmetic does not support %s function", function.DebugString()))
 	}
 }

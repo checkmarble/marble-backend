@@ -1,8 +1,9 @@
 package evaluate
 
 import (
-	"errors"
 	"fmt"
+
+	"github.com/cockroachdb/errors"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -35,9 +36,9 @@ func adaptLeftAndRight[T any](left any, right any, adapt FuncAdaptArgument[T]) (
 func verifyNumberOfArguments(args []any, requiredNumberOfArguments int) error {
 	numberOfOperands := len(args)
 	if numberOfOperands != requiredNumberOfArguments {
-		return fmt.Errorf(
-			"expects %d operands, got %d %w",
-			requiredNumberOfArguments, numberOfOperands, ast.ErrWrongNumberOfArgument,
+		return errors.Wrap(
+			ast.ErrWrongNumberOfArgument,
+			fmt.Sprintf("expects %d operands, got %d", requiredNumberOfArguments, numberOfOperands),
 		)
 	}
 	return nil
@@ -64,7 +65,10 @@ func AdaptNamedArgument[T any](namedArgs map[string]any, name string, adapter fu
 	value, ok := namedArgs[name]
 	if !ok {
 		var zero T
-		return zero, fmt.Errorf("missing named argument %s not found %w %w", name, ast.ErrMissingNamedArgument, ast.NewNamedArgumentError(name))
+		return zero, errors.Join(
+			errors.Wrap(ast.NewNamedArgumentError(name), fmt.Sprintf("missing named argument %s not found", name)),
+			ast.ErrMissingNamedArgument,
+		)
 	}
 
 	result, err := adapter(value)
@@ -96,17 +100,17 @@ func MakeEvaluateError(err error) (any, []error) {
 func getFieldType(dataModel models.DataModel, tableName models.TableName, fieldName models.FieldName) (models.DataType, error) {
 	table, ok := dataModel.Tables[tableName]
 	if !ok {
-		return models.UnknownDataType, fmt.Errorf(
-			"couldn't find table %s in data model %w",
-			tableName, models.ErrRuntimeExpression,
+		return models.UnknownDataType, errors.Wrap(
+			models.ErrRuntimeExpression,
+			fmt.Sprintf("couldn't find table %s in data model", tableName),
 		)
 	}
 
 	field, ok := table.Fields[fieldName]
 	if !ok {
-		return models.UnknownDataType, fmt.Errorf(
-			"couldn't find field %s in table %s %w",
-			fieldName, tableName, models.ErrRuntimeExpression,
+		return models.UnknownDataType, errors.Wrap(
+			models.ErrRuntimeExpression,
+			fmt.Sprintf("couldn't find field %s in table %s", fieldName, tableName),
 		)
 	}
 

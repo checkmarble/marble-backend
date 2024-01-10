@@ -2,11 +2,12 @@ package evaluate_scenario
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"runtime/debug"
 	"time"
+
+	"github.com/cockroachdb/errors"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -39,8 +40,8 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repo
 	///////////////////////////////
 	defer func() {
 		if r := recover(); r != nil {
-			logger.WarnContext(ctx, "recovered from panic during Eval. stacktrace from panic: ")
-			logger.WarnContext(ctx, string(debug.Stack()))
+			logger.ErrorContext(ctx, "recovered from panic during Eval. stacktrace from panic: ")
+			logger.ErrorContext(ctx, string(debug.Stack()))
 
 			err = models.PanicInScenarioEvalutionError
 			se = models.ScenarioExecution{}
@@ -51,17 +52,17 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repo
 
 	// If the scenario has no live version, don't try to Eval() it, return early
 	if params.Scenario.LiveVersionID == nil {
-		return models.ScenarioExecution{}, errors.Join(models.ScenarioHasNoLiveVersionError, models.BadParameterError)
+		return models.ScenarioExecution{}, errors.Wrap(models.ScenarioHasNoLiveVersionError, "scenario has no live version in EvalScenario")
 	}
 
 	liveVersion, err := repositories.EvalScenarioRepository.GetScenarioIteration(ctx, nil, *params.Scenario.LiveVersionID)
 	if err != nil {
-		return models.ScenarioExecution{}, fmt.Errorf("error getting scenario iteration in eval scenar: %w", err)
+		return models.ScenarioExecution{}, errors.Wrap(err, "error getting scenario iteration in EvalScenario")
 	}
 
 	publishedVersion, err := models.NewPublishedScenarioIteration(liveVersion)
 	if err != nil {
-		return models.ScenarioExecution{}, fmt.Errorf("error mapping published scenario iteration in eval scenario: %w", err)
+		return models.ScenarioExecution{}, errors.Wrap(err, "error mapping published scenario iteration in eval scenario")
 	}
 
 	// Check the scenario & trigger_object's types
@@ -88,10 +89,10 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repo
 
 	isAuthorizedError := models.IsAuthorizedError(err)
 	if err != nil && !isAuthorizedError {
-		return models.ScenarioExecution{}, fmt.Errorf("error evaluating trigger condition in eval scenario: %w", err)
+		return models.ScenarioExecution{}, errors.Wrap(err, "Unexpected error evaluating trigger condition in EvalScenario")
 	}
 	if !triggerPassed || isAuthorizedError {
-		return models.ScenarioExecution{}, fmt.Errorf("error: scenario trigger object does not match payload %w; %w", models.BadParameterError, models.ScenarioTriggerConditionAndTriggerObjectMismatchError)
+		return models.ScenarioExecution{}, errors.Wrap(models.ScenarioTriggerConditionAndTriggerObjectMismatchError, "scenario trigger object does not match payload in EvalScenario")
 	}
 
 	// Evaluate all rules
@@ -102,7 +103,7 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repo
 		scoreModifier, ruleExecution, err := evalScenarioRule(ctx, repositories, rule, dataAccessor, params.DataModel, logger)
 
 		if err != nil {
-			return models.ScenarioExecution{}, fmt.Errorf("error evaluating rule in eval scenario: %w", err)
+			return models.ScenarioExecution{}, errors.Wrap(err, fmt.Sprintf("error evaluating rule %s (%s) in EvalScenario", rule.Name, rule.Id))
 		}
 		score += scoreModifier
 		ruleExecutions = append(ruleExecutions, ruleExecution)
@@ -150,7 +151,7 @@ func evalScenarioRule(ctx context.Context, repositories ScenarioEvaluationReposi
 	)
 
 	if err != nil && !models.IsAuthorizedError(err) {
-		return 0, models.RuleExecution{}, fmt.Errorf("error while evaluating rule %s: %w", rule.Name, err)
+		return 0, models.RuleExecution{}, errors.Wrap(err, fmt.Sprintf("error while evaluating rule %s (%s)", rule.Name, rule.Id))
 	}
 
 	score := 0
@@ -167,21 +168,19 @@ func evalScenarioRule(ctx context.Context, repositories ScenarioEvaluationReposi
 	if err != nil {
 		ruleExecution.Rule = rule
 		ruleExecution.Error = err
-		logger.Info("Rule had an error",
+		logger.InfoContext(ctx, fmt.Sprintf("%v", ruleExecution.Error), //"Rule had an error",
 			slog.String("ruleName", rule.Name),
 			slog.String("ruleId", rule.Id),
-			slog.String("error", ruleExecution.Error.Error()),
 		)
 	}
 
 	// Increment scenario score when rule is true
 	if ruleExecution.Result {
-		logger.Info("Rule executed",
+		logger.InfoContext(ctx, "Rule executed",
 			slog.Int("score_modifier", rule.ScoreModifier),
 			slog.String("ruleName", rule.Name),
 			slog.Bool("result", ruleExecution.Result),
 		)
-		fmt.Printf("rule score modifier: %d\n", ruleExecution.Rule.ScoreModifier)
 		score = ruleExecution.Rule.ScoreModifier
 	}
 	return score, ruleExecution, nil

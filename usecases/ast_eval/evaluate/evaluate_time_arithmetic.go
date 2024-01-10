@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/cockroachdb/errors"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 )
@@ -36,7 +38,10 @@ func (f TimeArithmetic) Evaluate(ctx context.Context, arguments ast.Arguments) (
 		}
 
 		if sign != PlusSign && sign != MinusSign {
-			return MakeEvaluateError(fmt.Errorf("sign is not a valid sign %w %w", models.ErrRuntimeExpression, ast.NewNamedArgumentError("sign")))
+			return MakeEvaluateError(errors.Join(
+				errors.Wrap(ast.NewNamedArgumentError("sign"), "sign is not a valid sign"),
+				models.ErrRuntimeExpression,
+			))
 		}
 
 		if sign == MinusSign {
@@ -44,8 +49,6 @@ func (f TimeArithmetic) Evaluate(ctx context.Context, arguments ast.Arguments) (
 		}
 		return time.Add(duration), nil
 	default:
-		return MakeEvaluateError(fmt.Errorf(
-			"function %s not implemented", f.Function.DebugString(),
-		))
+		return MakeEvaluateError(errors.New(fmt.Sprintf("function %s not implemented", f.Function.DebugString())))
 	}
 }

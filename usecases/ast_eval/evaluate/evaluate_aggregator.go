@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/cockroachdb/errors"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -48,30 +50,42 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 	// Aggregator validation
 	validTypes, isValid := ValidTypesForAggregator[aggregator]
 	if !isValid {
-		return MakeEvaluateError(fmt.Errorf("%s is not a valid aggregator %w %w", aggregator, models.ErrRuntimeExpression, ast.NewNamedArgumentError("aggregator")))
+		return MakeEvaluateError(errors.Join(
+			errors.Wrap(models.ErrRuntimeExpression, fmt.Sprintf("aggregator %s is not a valid aggregator in Evaluate aggregator", aggregator)),
+			ast.NewNamedArgumentError("aggregator"),
+		))
 	}
 
 	fieldType, err := getFieldType(a.DataModel, tableName, fieldName)
 	if err != nil {
-		return MakeEvaluateError(fmt.Errorf("field type for %s.%s not found in data model %w %w", tableName, fieldName, err, ast.NewNamedArgumentError("fieldName")))
+		return MakeEvaluateError(errors.Join(
+			errors.Wrap(err, fmt.Sprintf("field type for %s.%s not found in data model in Evaluate aggregator", tableName, fieldName)),
+			ast.NewNamedArgumentError("fieldName"),
+		))
 	}
 	isValidFieldType := slices.Contains(validTypes, fieldType)
 	if !isValidFieldType {
-		return MakeEvaluateError(fmt.Errorf("field type %s is not valid for aggregator %s %w %w", fieldType, aggregator, models.ErrRuntimeExpression, ast.NewNamedArgumentError("fieldName")))
+		return MakeEvaluateError(errors.Join(
+			errors.Wrap(models.ErrRuntimeExpression, fmt.Sprintf("field type %s is not valid for aggregator %s in Evaluate aggregator", fieldType.String(), aggregator)),
+			ast.NewNamedArgumentError("fieldName"),
+		))
 	}
 
 	// Filters validation
 	if len(filters) > 0 {
 		for _, filter := range filters {
 			if filter.TableName != tableNameStr {
-				return MakeEvaluateError(fmt.Errorf("filters must be applied on the same table %w %w", models.ErrRuntimeExpression, ast.NewNamedArgumentError("filters")))
+				return MakeEvaluateError(errors.Join(
+					errors.Wrap(models.ErrRuntimeExpression, "filters must be applied on the same table"),
+					ast.NewNamedArgumentError("filters"),
+				))
 			}
 		}
 	}
 
 	result, err := a.runQueryInRepository(ctx, tableName, fieldName, aggregator, filters)
 	if err != nil {
-		return MakeEvaluateError(err)
+		return MakeEvaluateError(errors.Wrap(err, "Error running aggregation query in repository"))
 	}
 
 	if result == nil {
@@ -107,8 +121,8 @@ func (a AggregatorEvaluator) defaultValueForAggregator(aggregator ast.Aggregator
 	case ast.AGGREGATOR_COUNT, ast.AGGREGATOR_COUNT_DISTINCT:
 		return 0, nil
 	case ast.AGGREGATOR_AVG, ast.AGGREGATOR_MAX, ast.AGGREGATOR_MIN:
-		return MakeEvaluateError(fmt.Errorf("aggregation %s returned null %w", aggregator, models.NullFieldReadError))
+		return MakeEvaluateError(errors.Wrap(models.NullFieldReadError, fmt.Sprintf("aggregation %s returned null", aggregator)))
 	default:
-		return MakeEvaluateError(fmt.Errorf("aggregation %s not supported %w", aggregator, models.ErrRuntimeExpression))
+		return MakeEvaluateError(errors.Wrap(models.ErrRuntimeExpression, fmt.Sprintf("aggregation %s not supported", aggregator)))
 	}
 }

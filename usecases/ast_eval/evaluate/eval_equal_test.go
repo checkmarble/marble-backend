@@ -2,7 +2,6 @@ package evaluate
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -46,7 +45,7 @@ func TestEqual_Evaluate_int(t *testing.T) {
 			name:   "different types",
 			args:   []any{1, "1"},
 			want:   nil,
-			errors: []error{fmt.Errorf("all arguments must be string, boolean, time, int or float %w", ast.ErrArgumentInvalidType)},
+			errors: []error{ast.ErrArgumentInvalidType},
 		},
 		{
 			name:   "Rounding error close floats",
@@ -65,7 +64,10 @@ func TestEqual_Evaluate_int(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r, errs := Equal{}.Evaluate(context.TODO(), ast.Arguments{Args: tt.args})
-			assert.Equal(t, tt.errors, errs)
+			assert.Equal(t, len(tt.errors), len(errs))
+			if len(errs) > 0 {
+				assert.ErrorIs(t, errs[0], tt.errors[0])
+			}
 			assert.Equal(t, tt.want, r)
 		})
 	}

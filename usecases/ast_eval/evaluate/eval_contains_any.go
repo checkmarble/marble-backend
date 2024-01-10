@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/cockroachdb/errors"
+
 	"github.com/checkmarble/marble-backend/models/ast"
 )
 
@@ -46,6 +48,6 @@ func (f ContainsAny) Evaluate(ctx context.Context, arguments ast.Arguments) (any
 	} else if f.Function == ast.FUNC_CONTAINS_NONE {
 		return !containsElement, nil
 	} else {
-		return MakeEvaluateError(fmt.Errorf("ContainsAny does not support %s function", f.Function.DebugString()))
+		return MakeEvaluateError(errors.New(fmt.Sprintf("ContainsAny does not support %s function", f.Function.DebugString())))
 	}
 }

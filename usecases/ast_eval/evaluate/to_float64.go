@@ -2,6 +2,8 @@ package evaluate
 
 import (
 	"fmt"
+
+	"github.com/cockroachdb/errors"
 )
 
 func ToFloat64(v any) (float64, error) {
@@ -35,6 +37,6 @@ func ToFloat64(v any) (float64, error) {
 		return v, nil
 
 	default:
-		return 0, fmt.Errorf("value %v cannot be converted to float64", v)
+		return 0, errors.New(fmt.Sprintf("value %v cannot be converted to float64", v))
 	}
 }

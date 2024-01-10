@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cockroachdb/errors"
+
 	"github.com/checkmarble/marble-backend/models/ast"
 )
 
@@ -38,8 +40,6 @@ func (f TimeFunctions) Evaluate(ctx context.Context, arguments ast.Arguments) (a
 
 		return MakeEvaluateResult(time.Parse(time.RFC3339, timeString))
 	default:
-		return MakeEvaluateError(fmt.Errorf(
-			"function %s not implemented", f.Function.DebugString(),
-		))
+		return MakeEvaluateError(errors.New(fmt.Sprintf("function %s not implemented", f.Function.DebugString())))
 	}
 }

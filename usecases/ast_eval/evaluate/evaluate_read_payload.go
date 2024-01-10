@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/cockroachdb/errors"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 )
@@ -28,11 +30,11 @@ func (p Payload) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []
 
 	value, err := p.Payload.ReadFieldFromPayload(models.FieldName(payloadFieldName))
 	if err != nil {
-		return MakeEvaluateError(fmt.Errorf("payload var does not exist: %s %w", payloadFieldName, models.PayloadFieldNotFoundError))
+		return MakeEvaluateError(errors.Wrap(models.PayloadFieldNotFoundError, fmt.Sprintf("payload var does not exist: %s", payloadFieldName)))
 	}
 
 	if value == nil {
-		return MakeEvaluateError(fmt.Errorf("value is null in payload field %s, %w", payloadFieldName, models.NullFieldReadError))
+		return MakeEvaluateError(errors.Wrap(models.NullFieldReadError, fmt.Sprintf("value is null in payload field '%s'", payloadFieldName)))
 	}
 
 	return value, nil

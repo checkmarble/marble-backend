@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cockroachdb/errors"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 )
@@ -30,18 +32,18 @@ func DryRunGetDbField(dataModel models.DataModel, triggerTableName models.TableN
 	for _, linkName := range path {
 		link, ok := table.LinksToSingle[models.LinkName(linkName)]
 		if !ok {
-			return nil, fmt.Errorf("link %s not found in table %s", linkName, table.Name)
+			return nil, errors.New(fmt.Sprintf("link %s not found in table %s", linkName, table.Name))
 		}
 
 		table, ok = dataModel.Tables[link.LinkedTableName]
 		if !ok {
-			return nil, fmt.Errorf("table %s not found in data model", triggerTableName)
+			return nil, errors.New(fmt.Sprintf("table %s not found in data model", triggerTableName))
 		}
 	}
 
 	field, ok := table.Fields[fieldName]
 	if !ok {
-		return nil, fmt.Errorf("field %s not found in table %s", fieldName, table.Name)
+		return nil, errors.New(fmt.Sprintf("field %s not found in table %s", fieldName, table.Name))
 	}
 
 	fullFieldName := fmt.Sprintf("%s.%s.%s", triggerTableName, strings.Join(path, "."), fieldName)
@@ -82,6 +84,6 @@ func DryRunQueryAggregatedValue(datamodel models.DataModel, tableName models.Tab
 	case ast.AGGREGATOR_SUM, ast.AGGREGATOR_AVG, ast.AGGREGATOR_MAX, ast.AGGREGATOR_MIN:
 		return DryRunValue("Aggregator", fmt.Sprintf("%s.%s", tableName, fieldName), field), nil
 	default:
-		return nil, fmt.Errorf("aggregator %s not supported", aggregator)
+		return nil, errors.New(fmt.Sprintf("aggregator %s not supported", aggregator))
 	}
 }
