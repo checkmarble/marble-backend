@@ -15,7 +15,7 @@ import (
 func (api *API) handleGetAllCustomLists(c *gin.Context) {
 	usecase := api.UsecasesWithCreds(c.Request).NewCustomListUseCase()
 	lists, err := usecase.GetCustomLists()
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -35,7 +35,7 @@ func (api *API) handlePostCustomList(c *gin.Context) {
 		Name:        data.Name,
 		Description: data.Description,
 	})
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{
@@ -48,14 +48,14 @@ func (api *API) handleGetCustomListWithValues(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewCustomListUseCase()
 	CustomList, err := usecase.GetCustomListById(customListID)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	CustomListValues, err := usecase.GetCustomListValues(models.GetCustomListValuesInput{
 		Id: customListID,
 	})
 
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -68,7 +68,7 @@ func (api *API) handlePatchCustomList(c *gin.Context) {
 	logger := utils.LoggerFromContext(ctx)
 
 	organizationId, err := utils.OrgIDFromCtx(ctx, c.Request)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	logger = logger.With(slog.String("organizationId", organizationId))
@@ -87,7 +87,7 @@ func (api *API) handlePatchCustomList(c *gin.Context) {
 		Description: &data.Description,
 	})
 
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		logger.ErrorContext(ctx, "error updating a list: \n"+err.Error())
 		return
 	}
@@ -101,14 +101,14 @@ func (api *API) handleDeleteCustomList(c *gin.Context) {
 	logger := utils.LoggerFromContext(ctx)
 
 	organizationId, err := utils.OrgIDFromCtx(ctx, c.Request)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	logger = logger.With(slog.String("organizationId", organizationId))
 
 	usecase := api.UsecasesWithCreds(c.Request).NewCustomListUseCase()
 	err = usecase.SoftDeleteCustomList(c.Request.Context(), c.Param("list_id"))
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		logger.ErrorContext(ctx, "error deleting a list: \n"+err.Error())
 		return
 	}
@@ -120,7 +120,7 @@ func (api *API) handlePostCustomListValue(c *gin.Context) {
 	logger := utils.LoggerFromContext(ctx)
 
 	organizationId, err := utils.OrgIDFromCtx(ctx, c.Request)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	logger = logger.With(slog.String("organizationId", organizationId))
@@ -137,7 +137,7 @@ func (api *API) handlePostCustomListValue(c *gin.Context) {
 		CustomListId: customListID,
 		Value:        data.Value,
 	})
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		logger.ErrorContext(ctx, "error adding a value to a list: \n"+err.Error())
 		return
 	}
@@ -151,7 +151,7 @@ func (api *API) handleDeleteCustomListValue(c *gin.Context) {
 	logger := utils.LoggerFromContext(ctx)
 
 	organizationId, err := utils.OrgIDFromCtx(ctx, c.Request)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	logger = logger.With(slog.String("organizationId", organizationId))
@@ -159,12 +159,12 @@ func (api *API) handleDeleteCustomListValue(c *gin.Context) {
 	valueID := c.Param("value_id")
 
 	if err := utils.ValidateUuid(customListID); err != nil {
-		presentError(c.Writer, c.Request, fmt.Errorf("param 'customListId' : %w", err), c)
+		presentError(c, fmt.Errorf("param 'customListId' : %w", err))
 		return
 	}
 
 	if err := utils.ValidateUuid(valueID); err != nil {
-		presentError(c.Writer, c.Request, fmt.Errorf("param 'customListValueId': %w", err), c)
+		presentError(c, fmt.Errorf("param 'customListValueId': %w", err))
 		return
 	}
 
@@ -174,7 +174,7 @@ func (api *API) handleDeleteCustomListValue(c *gin.Context) {
 		CustomListId: customListID,
 	})
 
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		logger.ErrorContext(ctx, "error deleting a value to a list: \n"+err.Error())
 		return
 	}

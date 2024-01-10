@@ -19,7 +19,7 @@ func (api *API) handleGetScheduledExecution(c *gin.Context) {
 	usecase := api.UsecasesWithCreds(c.Request).NewScheduledExecutionUsecase()
 	execution, err := usecase.GetScheduledExecution(scheduledExecutionID)
 
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -37,7 +37,7 @@ func (api *API) handleGetScheduledExecutionDecisions(c *gin.Context) {
 
 	fileWriter, err := zipWriter.Create(fmt.Sprintf("decisions_of_execution_%s.ndjson", scheduledExecutionID))
 	if err != nil {
-		presentError(c.Writer, c.Request, err, c)
+		presentError(c, err)
 		return
 	}
 
@@ -46,7 +46,7 @@ func (api *API) handleGetScheduledExecutionDecisions(c *gin.Context) {
 	numberOfExportedDecisions, err := usecase.ExportScheduledExecutionDecisions(scheduledExecutionID, fileWriter)
 	if err != nil {
 		// note: un case of security error, the header has not been sent, so we can still send a 401
-		presentError(c.Writer, c.Request, err, c)
+		presentError(c, err)
 		return
 	}
 	// nice trailer
@@ -59,7 +59,7 @@ func (api *API) handleListScheduledExecution(c *gin.Context) {
 	usecase := api.UsecasesWithCreds(c.Request).NewScheduledExecutionUsecase()
 	executions, err := usecase.ListScheduledExecutions(scenarioID)
 
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
@@ -71,7 +71,7 @@ func (api *API) handleListScheduledExecution(c *gin.Context) {
 func (api *API) handleCreateScheduledExecution(c *gin.Context) {
 	ctx := c.Request.Context()
 	organizationId, err := utils.OrgIDFromCtx(ctx, c.Request)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
@@ -83,7 +83,7 @@ func (api *API) handleCreateScheduledExecution(c *gin.Context) {
 		ScenarioIterationId: iterationID,
 	})
 
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.Status(http.StatusCreated)

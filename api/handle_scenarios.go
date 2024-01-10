@@ -36,7 +36,7 @@ func NewAPIScenario(scenario models.Scenario) APIScenario {
 func (api *API) ListScenarios(c *gin.Context) {
 	usecase := api.UsecasesWithCreds(c.Request).NewScenarioUsecase()
 	scenarios, err := usecase.ListScenarios()
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.JSON(http.StatusOK, utils.Map(scenarios, NewAPIScenario))
@@ -51,7 +51,7 @@ func (api *API) CreateScenario(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewScenarioUsecase()
 	scenario, err := usecase.CreateScenario(c.Request.Context(), dto.AdaptCreateScenario(input))
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.JSON(http.StatusOK, NewAPIScenario(scenario))
@@ -63,7 +63,7 @@ func (api *API) GetScenario(c *gin.Context) {
 	usecase := api.UsecasesWithCreds(c.Request).NewScenarioUsecase()
 	scenario, err := usecase.GetScenario(id)
 
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.JSON(http.StatusOK, NewAPIScenario(scenario))
@@ -83,7 +83,7 @@ func (api *API) UpdateScenario(c *gin.Context) {
 		Name:        input.Name,
 		Description: input.Description,
 	})
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.JSON(http.StatusOK, NewAPIScenario(scenario))

@@ -14,7 +14,7 @@ import (
 func (api *API) handleGetAllUsers(c *gin.Context) {
 	usecase := api.UsecasesWithCreds(c.Request).NewUserUseCase()
 	users, err := usecase.GetAllUsers()
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -33,7 +33,7 @@ func (api *API) handlePostUser(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewUserUseCase()
 	createdUser, err := usecase.AddUser(createUser)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -46,7 +46,7 @@ func (api *API) handleGetUser(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewUserUseCase()
 	user, err := usecase.GetUser(userID)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -71,7 +71,7 @@ func (api *API) handlePatchUser(c *gin.Context) {
 		FirstName: data.FirstName,
 		LastName:  data.LastName,
 	})
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -82,7 +82,7 @@ func (api *API) handlePatchUser(c *gin.Context) {
 func (api *API) handleDeleteUser(c *gin.Context) {
 	creds, found := utils.CredentialsFromCtx(c.Request.Context())
 	if !found {
-		presentError(c.Writer, c.Request, fmt.Errorf("no credentials in context"), c)
+		presentError(c, fmt.Errorf("no credentials in context"))
 		return
 	}
 	currentUserId := string(creds.ActorIdentity.UserId)
@@ -91,7 +91,7 @@ func (api *API) handleDeleteUser(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewUserUseCase()
 	err := usecase.DeleteUser(userId, currentUserId)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -100,7 +100,7 @@ func (api *API) handleDeleteUser(c *gin.Context) {
 func (api *API) handleGetCredentials(c *gin.Context) {
 	creds, found := utils.CredentialsFromCtx(c.Request.Context())
 	if !found {
-		presentError(c.Writer, c.Request, fmt.Errorf("no credentials in context %w", models.NotFoundError), c)
+		presentError(c, fmt.Errorf("no credentials in context %w", models.NotFoundError))
 		return
 	}
 

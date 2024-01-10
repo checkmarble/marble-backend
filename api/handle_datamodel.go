@@ -28,12 +28,12 @@ type DataModelHandler struct {
 
 func (d *DataModelHandler) GetDataModel(c *gin.Context) {
 	organizationID, err := utils.OrganizationIdFromRequest(c.Request)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
 	dataModel, err := d.useCase.GetDataModel(c.Request.Context(), organizationID)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -48,7 +48,7 @@ type createTableInput struct {
 
 func (d *DataModelHandler) CreateTable(c *gin.Context) {
 	organizationID, err := utils.OrganizationIdFromRequest(c.Request)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
@@ -59,7 +59,7 @@ func (d *DataModelHandler) CreateTable(c *gin.Context) {
 	}
 
 	tableID, err := d.useCase.CreateTable(c.Request.Context(), organizationID, input.Name, input.Description)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -76,7 +76,7 @@ func (d *DataModelHandler) UpdateDataModelTable(c *gin.Context) {
 	tableID := c.Param("tableID")
 
 	err := d.useCase.UpdateDataModelTable(c.Request.Context(), tableID, input.Description)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -92,7 +92,7 @@ type createFieldInput struct {
 
 func (d *DataModelHandler) CreateField(c *gin.Context) {
 	organizationID, err := utils.OrganizationIdFromRequest(c.Request)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
@@ -112,7 +112,7 @@ func (d *DataModelHandler) CreateField(c *gin.Context) {
 	}
 
 	fieldID, err := d.useCase.CreateField(c.Request.Context(), organizationID, tableID, field)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -137,7 +137,7 @@ func (d *DataModelHandler) UpdateDataModelField(c *gin.Context) {
 		Description: input.Description,
 		IsEnum:      input.IsEnum,
 	})
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -153,7 +153,7 @@ type createLinkInput struct {
 
 func (d *DataModelHandler) CreateLink(c *gin.Context) {
 	organizationID, err := utils.OrganizationIdFromRequest(c.Request)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
@@ -173,7 +173,7 @@ func (d *DataModelHandler) CreateLink(c *gin.Context) {
 	}
 
 	err = d.useCase.CreateDataModelLink(c.Request.Context(), link)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -181,12 +181,12 @@ func (d *DataModelHandler) CreateLink(c *gin.Context) {
 
 func (d *DataModelHandler) DeleteDataModel(c *gin.Context) {
 	organizationID, err := utils.OrganizationIdFromRequest(c.Request)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
 	err = d.useCase.DeleteDataModel(c.Request.Context(), organizationID)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -194,12 +194,12 @@ func (d *DataModelHandler) DeleteDataModel(c *gin.Context) {
 
 func (d *DataModelHandler) OpenAPI(c *gin.Context) {
 	organizationID, err := utils.OrganizationIdFromRequest(c.Request)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
 	dataModel, err := d.useCase.GetDataModel(c.Request.Context(), organizationID)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 

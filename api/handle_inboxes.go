@@ -23,7 +23,7 @@ func (api *API) handleGetInboxById(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewInboxUsecase()
 	inbox, err := usecase.GetInboxById(c.Request.Context(), getInboxInput.InboxId)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
@@ -43,7 +43,7 @@ func (api *API) handleListInboxes(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewInboxUsecase()
 	inboxes, err := usecase.ListInboxes(c.Request.Context(), withCaseCountFilter.WithCaseCount)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
@@ -56,7 +56,7 @@ type CreateInboxInput struct {
 
 func (api *API) handlePostInbox(c *gin.Context) {
 	organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
@@ -68,7 +68,7 @@ func (api *API) handlePostInbox(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewInboxUsecase()
 	inbox, err := usecase.CreateInbox(c.Request.Context(), models.CreateInboxInput{Name: createInboxInput.Name, OrganizationId: organizationId})
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
@@ -94,7 +94,7 @@ func (api *API) handlePatchInbox(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewInboxUsecase()
 	inbox, err := usecase.UpdateInbox(c.Request.Context(), getInboxInput.InboxId, data.Name)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
@@ -110,7 +110,7 @@ func (api *API) handleDeleteInbox(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewInboxUsecase()
 	err := usecase.DeleteInbox(c.Request.Context(), getInboxInput.InboxId)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
@@ -130,7 +130,7 @@ func (api *API) handleGetInboxUserById(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewInboxUsecase()
 	inboxUser, err := usecase.GetInboxUserById(c.Request.Context(), getInboxUserInput.Id)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
@@ -140,7 +140,7 @@ func (api *API) handleGetInboxUserById(c *gin.Context) {
 func (api *API) handleListAllInboxUsers(c *gin.Context) {
 	usecase := api.UsecasesWithCreds(c.Request).NewInboxUsecase()
 	inboxUsers, err := usecase.ListAllInboxUsers()
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
@@ -156,7 +156,7 @@ func (api *API) handleListInboxUsers(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewInboxUsecase()
 	inboxUsers, err := usecase.ListInboxUsers(c.Request.Context(), listInboxUserInput.InboxId)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
@@ -191,7 +191,7 @@ func (api *API) handlePostInboxUser(c *gin.Context) {
 		UserId:  input.Body.UserId,
 		Role:    models.InboxUserRole(input.Body.Role),
 	})
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
@@ -215,7 +215,7 @@ func (api *API) handlePatchInboxUser(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewInboxUsecase()
 	inboxUser, err := usecase.UpdateInboxUser(c.Request.Context(), getInboxUserInput.Id, models.InboxUserRole(data.Role))
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
@@ -231,7 +231,7 @@ func (api *API) handleDeleteInboxUser(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewInboxUsecase()
 	err := usecase.DeleteInboxUser(c.Request.Context(), getInboxUserInput.Id)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
