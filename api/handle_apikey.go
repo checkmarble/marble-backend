@@ -11,13 +11,13 @@ import (
 
 func (api *API) handleGetApiKey(c *gin.Context) {
 	organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewOrganizationUseCase()
 	apiKeys, err := usecase.GetApiKeysOfOrganization(c.Request.Context(), organizationId)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 

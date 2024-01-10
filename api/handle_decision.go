@@ -24,7 +24,7 @@ func (api *API) handleGetDecision(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewDecisionUsecase()
 	decision, err := usecase.GetDecision(decisionID)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.JSON(http.StatusOK, dto.NewAPIDecision(decision))
@@ -32,7 +32,7 @@ func (api *API) handleGetDecision(c *gin.Context) {
 
 func (api *API) handleListDecisions(c *gin.Context) {
 	organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
@@ -51,7 +51,7 @@ func (api *API) handleListDecisions(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewDecisionUsecase()
 	decisions, err := usecase.ListDecisions(organizationId, dto.AdaptPaginationAndSortingInput(paginationAndSorting), filters)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
@@ -77,7 +77,7 @@ func (api *API) handlePostDecision(c *gin.Context) {
 	logger := utils.LoggerFromContext(c.Request.Context())
 
 	organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
@@ -139,7 +139,7 @@ func (api *API) handlePostDecision(c *gin.Context) {
 		PayloadStructWithReader: payload,
 	}, logger)
 	if errors.Is(err, models.NotFoundError) || errors.Is(err, models.BadParameterError) {
-		presentError(c.Writer, c.Request, err, c)
+		presentError(c, err)
 		return
 	} else if err != nil {
 		logger.ErrorContext(c.Request.Context(), "Could not create a decision: \n"+err.Error())

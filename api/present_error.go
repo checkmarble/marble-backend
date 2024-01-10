@@ -12,39 +12,39 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func presentError(w http.ResponseWriter, r *http.Request, err error, c *gin.Context) bool {
+func presentError(c *gin.Context, err error) bool {
 	if err == nil {
 		return false
 	}
 
 	if errors.Is(err, models.BadParameterError) {
-		utils.LogRequestInfo(r, fmt.Sprintf("BadParameterError: %v", err))
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		utils.LogRequestInfo(c.Request, fmt.Sprintf("BadParameterError: %v", err))
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
 
 	} else if errors.Is(err, models.UnAuthorizedError) {
-		utils.LogRequestInfo(r, fmt.Sprintf("UnAuthorizedError: %v", err))
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		utils.LogRequestInfo(c.Request, fmt.Sprintf("UnAuthorizedError: %v", err))
+		http.Error(c.Writer, err.Error(), http.StatusUnauthorized)
 
 	} else if errors.Is(err, models.ForbiddenError) {
-		utils.LogRequestInfo(r, fmt.Sprintf("ForbiddenError: %v", err))
-		http.Error(w, err.Error(), http.StatusForbidden)
+		utils.LogRequestInfo(c.Request, fmt.Sprintf("ForbiddenError: %v", err))
+		http.Error(c.Writer, err.Error(), http.StatusForbidden)
 
 	} else if errors.Is(err, models.NotFoundError) {
-		utils.LogRequestInfo(r, fmt.Sprintf("NotFoundError: %v", err))
-		http.Error(w, err.Error(), http.StatusNotFound)
+		utils.LogRequestInfo(c.Request, fmt.Sprintf("NotFoundError: %v", err))
+		http.Error(c.Writer, err.Error(), http.StatusNotFound)
 
 	} else if errors.Is(err, models.DuplicateValueError) {
-		utils.LogRequestInfo(r, fmt.Sprintf("DuplicateValueError: %v", err))
-		http.Error(w, err.Error(), http.StatusConflict)
+		utils.LogRequestInfo(c.Request, fmt.Sprintf("DuplicateValueError: %v", err))
+		http.Error(c.Writer, err.Error(), http.StatusConflict)
 
 	} else {
-		utils.LogRequestError(r, fmt.Sprintf("Unexpected Error: %+v", err))
+		utils.LogRequestError(c.Request, fmt.Sprintf("Unexpected Error: %+v", err))
 		if hub := sentrygin.GetHubFromContext(c); hub != nil {
 			hub.CaptureException(err)
 		} else {
 			sentry.CaptureException(err)
 		}
-		http.Error(w, "", http.StatusInternalServerError)
+		http.Error(c.Writer, "", http.StatusInternalServerError)
 	}
 	return true
 }

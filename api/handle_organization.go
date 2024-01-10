@@ -15,7 +15,7 @@ func (api *API) handleGetOrganizations(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewOrganizationUseCase()
 	organizations, err := usecase.GetOrganizations(ctx)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
@@ -36,7 +36,7 @@ func (api *API) handlePostOrganization(c *gin.Context) {
 		Name:         data.Name,
 		DatabaseName: data.DatabaseName,
 	})
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -49,7 +49,7 @@ func (api *API) handleGetOrganizationUsers(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewOrganizationUseCase()
 	users, err := usecase.GetUsersOfOrganization(organizationID)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -63,7 +63,7 @@ func (api *API) handleGetOrganization(c *gin.Context) {
 	usecase := api.UsecasesWithCreds(c.Request).NewOrganizationUseCase()
 	organization, err := usecase.GetOrganization(c.Request.Context(), organizationID)
 
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -87,7 +87,7 @@ func (api *API) handlePatchOrganization(c *gin.Context) {
 		ExportScheduledExecutionS3: data.ExportScheduledExecutionS3,
 	})
 
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -100,7 +100,7 @@ func (api *API) handleDeleteOrganization(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewOrganizationUseCase()
 	err := usecase.DeleteOrganization(c.Request.Context(), organizationID)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.Status(http.StatusNoContent)

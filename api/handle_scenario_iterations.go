@@ -22,7 +22,7 @@ func (api *API) ListScenarioIterations(c *gin.Context) {
 	scenarioIterations, err := usecase.ListScenarioIterations(models.GetScenarioIterationFilters{
 		ScenarioId: utils.PtrTo(scenarioID, &utils.PtrToOptions{OmitZero: true}),
 	})
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
@@ -30,7 +30,7 @@ func (api *API) ListScenarioIterations(c *gin.Context) {
 	for i, si := range scenarioIterations {
 		scenarioIterationDTO, err := dto.AdaptScenarioIterationWithBodyDto(si)
 		if err != nil {
-			presentError(c.Writer, c.Request, err, c)
+			presentError(c, err)
 			return
 		}
 		scenarioIterationsDtos[i] = scenarioIterationDTO
@@ -42,7 +42,7 @@ func (api *API) CreateScenarioIteration(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	organizationId, err := utils.OrgIDFromCtx(ctx, c.Request)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
@@ -67,7 +67,7 @@ func (api *API) CreateScenarioIteration(c *gin.Context) {
 
 		for i, rule := range input.Body.Rules {
 			createScenarioIterationInput.Body.Rules[i], err = dto.AdaptCreateRuleInput(rule, organizationId)
-			if presentError(c.Writer, c.Request, err, c) {
+			if presentError(c, err) {
 				return
 			}
 		}
@@ -75,7 +75,7 @@ func (api *API) CreateScenarioIteration(c *gin.Context) {
 		if input.Body.TriggerConditionAstExpression != nil {
 			trigger, err := dto.AdaptASTNode(*input.Body.TriggerConditionAstExpression)
 			if err != nil {
-				presentError(c.Writer, c.Request, fmt.Errorf("invalid trigger: %w %w", err, models.BadParameterError), c)
+				presentError(c, fmt.Errorf("invalid trigger: %w %w", err, models.BadParameterError))
 				return
 			}
 			createScenarioIterationInput.Body.TriggerConditionAstExpression = &trigger
@@ -85,12 +85,12 @@ func (api *API) CreateScenarioIteration(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewScenarioIterationUsecase()
 	si, err := usecase.CreateScenarioIteration(ctx, organizationId, createScenarioIterationInput)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
 	apiScenarioIterationWithBody, err := dto.AdaptScenarioIterationWithBodyDto(si)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.JSON(http.StatusOK, apiScenarioIterationWithBody)
@@ -100,7 +100,7 @@ func (api *API) CreateDraftFromIteration(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	organizationId, err := utils.OrgIDFromCtx(ctx, c.Request)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
@@ -108,12 +108,12 @@ func (api *API) CreateDraftFromIteration(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewScenarioIterationUsecase()
 	si, err := usecase.CreateDraftFromScenarioIteration(ctx, organizationId, iterationID)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
 	apiScenarioIterationWithBody, err := dto.AdaptScenarioIterationWithBodyDto(si)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.JSON(http.StatusOK, apiScenarioIterationWithBody)
@@ -124,12 +124,12 @@ func (api *API) GetScenarioIteration(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewScenarioIterationUsecase()
 	si, err := usecase.GetScenarioIteration(iterationID)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
 	scenarioIterationDto, err := dto.AdaptScenarioIterationWithBodyDto(si)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 	c.JSON(http.StatusOK, scenarioIterationDto)
@@ -140,7 +140,7 @@ func (api *API) UpdateScenarioIteration(c *gin.Context) {
 	logger := utils.LoggerFromContext(ctx)
 
 	organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
@@ -166,7 +166,7 @@ func (api *API) UpdateScenarioIteration(c *gin.Context) {
 	if data.Body.TriggerConditionAstExpression != nil {
 		trigger, err := dto.AdaptASTNode(*data.Body.TriggerConditionAstExpression)
 		if err != nil {
-			presentError(c.Writer, c.Request, fmt.Errorf("invalid trigger: %w %w", err, models.BadParameterError), c)
+			presentError(c, fmt.Errorf("invalid trigger: %w %w", err, models.BadParameterError))
 			return
 		}
 		updateScenarioIterationInput.Body.TriggerConditionAstExpression = &trigger
@@ -180,12 +180,12 @@ func (api *API) UpdateScenarioIteration(c *gin.Context) {
 		return
 	}
 
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
 	iteration, err := dto.AdaptScenarioIterationWithBodyDto(updatedSI)
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
@@ -222,7 +222,7 @@ func (api *API) ValidateScenarioIteration(c *gin.Context) {
 	usecase := api.UsecasesWithCreds(c.Request).NewScenarioIterationUsecase()
 	scenarioValidation, err := usecase.ValidateScenarioIteration(scenarioIterationID, triggerOrRule, input.RuleId)
 
-	if presentError(c.Writer, c.Request, err, c) {
+	if presentError(c, err) {
 		return
 	}
 
