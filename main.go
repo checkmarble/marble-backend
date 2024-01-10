@@ -24,7 +24,6 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/repositories/firebase"
 	"github.com/checkmarble/marble-backend/repositories/postgres"
-	"github.com/checkmarble/marble-backend/tracing"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/datamodel"
 	"github.com/checkmarble/marble-backend/usecases/token"
