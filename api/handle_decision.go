@@ -106,12 +106,13 @@ func (api *API) handlePostDecision(c *gin.Context) {
 	parser := payload_parser.NewParser()
 	validationErrors, err := parser.ValidatePayload(table, requestData.TriggerObjectRaw)
 	if err != nil {
-		http.Error(c.Writer, "", http.StatusUnprocessableEntity)
+		presentError(c, errors.Wrap(models.BadParameterError, fmt.Sprintf("Error while validating payload: %v", err)))
 		return
 	}
 	if len(validationErrors) > 0 {
-		c.Writer.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(c.Writer).Encode(validationErrors)
+		encoded, _ := json.Marshal(validationErrors)
+		logger.InfoContext(c.Request.Context(), fmt.Sprintf("Validation errors on POST decisions: %s", string(encoded)))
+		http.Error(c.Writer, string(encoded), http.StatusBadRequest)
 		return
 	}
 
