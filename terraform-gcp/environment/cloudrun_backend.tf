@@ -161,3 +161,9 @@ resource "google_cloud_run_service_iam_binding" "backend_allow_unauthenticated_i
     "allUsers"
   ]
 }
+
+resource "google_project_iam_member" "cloud_run_tracing_agent" {
+  project = local.project_id
+  role    = "roles/cloudtrace.agent"
+  member  = google_service_account.backend_service_account.member
+}
