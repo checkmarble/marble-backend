@@ -34,6 +34,9 @@ func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.Creat
 			createUser.Email = strings.ToLower(createUser.Email)
 
 			createdUserUuid, err := usecase.userRepository.CreateUser(ctx, tx, createUser)
+			if repositories.IsUniqueViolationError(err) {
+				return models.User{}, models.DuplicateValueError
+			}
 			if err != nil {
 				return models.User{}, err
 			}
