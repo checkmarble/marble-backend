@@ -1,10 +1,27 @@
 package api
 
 import (
+	"net/http"
+	"time"
+
 	limits "github.com/gin-contrib/size"
+	"github.com/gin-contrib/timeout"
+	"github.com/gin-gonic/gin"
 )
 
 const maxCaseFileSize = 30 * 1024 * 1024 // 30MB
+
+func timeoutMiddleware(duration time.Duration) gin.HandlerFunc {
+	return timeout.New(
+		timeout.WithTimeout(duration),
+		timeout.WithHandler(func(c *gin.Context) {
+			c.Next()
+		}),
+		timeout.WithResponse(func(c *gin.Context) {
+			c.String(http.StatusRequestTimeout, "timeout")
+		}),
+	)
+}
 
 func (api *API) routes(auth *Authentication) {
 	router := api.router.Use(auth.Middleware)
@@ -14,7 +31,7 @@ func (api *API) routes(auth *Authentication) {
 	router.GET("/ast-expression/available-functions", api.handleAvailableFunctions)
 
 	router.GET("/decisions", api.handleListDecisions)
-	router.POST("/decisions", api.handlePostDecision)
+	router.POST("/decisions", timeoutMiddleware(10*time.Second), api.handlePostDecision)
 	router.GET("/decisions/:decision_id", api.handleGetDecision)
 
 	router.POST("/ingestion/:object_type", api.handleIngestion)

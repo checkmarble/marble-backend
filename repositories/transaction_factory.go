@@ -2,8 +2,10 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 
 	"github.com/cockroachdb/errors"
 
@@ -29,6 +31,9 @@ func NewTransactionFactoryPosgresql(
 func (factory *TransactionFactoryPosgresql) adaptMarbleDatabaseTransaction(ctx context.Context, transaction Transaction) TransactionPostgres {
 
 	if transaction == nil {
+		stats := factory.marbleConnectionPool.Stat()
+		logger := utils.LoggerFromContext(ctx)
+		logger.InfoContext(ctx, fmt.Sprintf("idle connections: %v total connections: %v\n", stats.IdleConns(), stats.TotalConns()))
 		transaction = TransactionPostgres{
 			databaseShema: models.DATABASE_MARBLE_SCHEMA,
 			exec:          factory.marbleConnectionPool,
