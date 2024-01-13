@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const MAX_CONNECTIONS = 50
+const MAX_CONNECTIONS = 100
 
 func NewPostgresConnectionPool(connectionString string) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(connectionString)
