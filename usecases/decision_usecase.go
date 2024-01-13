@@ -151,51 +151,51 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 	if err := usecase.enforceSecurity.CreateDecision(input.OrganizationId); err != nil {
 		return models.Decision{}, err
 	}
+	scenario, err := usecase.repository.GetScenarioById(ctx, nil, input.ScenarioId)
+	if errors.Is(err, models.NotFoundInRepositoryError) {
+		return models.Decision{}, fmt.Errorf("scenario not found: %w", models.NotFoundError)
+	} else if err != nil {
+		return models.Decision{}, fmt.Errorf("error getting scenario: %w", err)
+	}
+
+	dm, err := usecase.datamodelRepository.GetDataModel(ctx, input.OrganizationId, false)
+	if errors.Is(err, models.NotFoundInRepositoryError) {
+		return models.Decision{}, fmt.Errorf("data model not found: %w", models.NotFoundError)
+	} else if err != nil {
+		return models.Decision{}, fmt.Errorf("error getting data model: %w", err)
+	}
+
+	evaluationParameters := evaluate_scenario.ScenarioEvaluationParameters{
+		Scenario:  scenario,
+		Payload:   input.PayloadStructWithReader,
+		DataModel: dm,
+	}
+
+	evaluationRepositories := evaluate_scenario.ScenarioEvaluationRepositories{
+		EvalScenarioRepository:     usecase.repository,
+		OrgTransactionFactory:      usecase.orgTransactionFactory,
+		IngestedDataReadRepository: usecase.ingestedDataReadRepository,
+		EvaluateRuleAstExpression:  usecase.evaluateRuleAstExpression,
+	}
+
+	scenarioExecution, err := evaluate_scenario.EvalScenario(ctx, evaluationParameters, evaluationRepositories, logger)
+	if err != nil {
+		return models.Decision{}, fmt.Errorf("error evaluating scenario: %w", err)
+	}
+
+	newDecisionId := utils.NewPrimaryKey(input.OrganizationId)
+	decision := models.Decision{
+		ClientObject:        input.ClientObject,
+		Outcome:             scenarioExecution.Outcome,
+		RuleExecutions:      scenarioExecution.RuleExecutions,
+		ScenarioDescription: scenarioExecution.ScenarioDescription,
+		ScenarioId:          scenarioExecution.ScenarioId,
+		ScenarioName:        scenarioExecution.ScenarioName,
+		ScenarioVersion:     scenarioExecution.ScenarioVersion,
+		Score:               scenarioExecution.Score,
+	}
+
 	return transaction.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Decision, error) {
-		scenario, err := usecase.repository.GetScenarioById(ctx, tx, input.ScenarioId)
-		if errors.Is(err, models.NotFoundInRepositoryError) {
-			return models.Decision{}, fmt.Errorf("scenario not found: %w", models.NotFoundError)
-		} else if err != nil {
-			return models.Decision{}, fmt.Errorf("error getting scenario: %w", err)
-		}
-
-		dm, err := usecase.datamodelRepository.GetDataModel(ctx, input.OrganizationId, false)
-		if errors.Is(err, models.NotFoundInRepositoryError) {
-			return models.Decision{}, fmt.Errorf("data model not found: %w", models.NotFoundError)
-		} else if err != nil {
-			return models.Decision{}, fmt.Errorf("error getting data model: %w", err)
-		}
-
-		evaluationParameters := evaluate_scenario.ScenarioEvaluationParameters{
-			Scenario:  scenario,
-			Payload:   input.PayloadStructWithReader,
-			DataModel: dm,
-		}
-
-		evaluationRepositories := evaluate_scenario.ScenarioEvaluationRepositories{
-			EvalScenarioRepository:     usecase.repository,
-			OrgTransactionFactory:      usecase.orgTransactionFactory,
-			IngestedDataReadRepository: usecase.ingestedDataReadRepository,
-			EvaluateRuleAstExpression:  usecase.evaluateRuleAstExpression,
-		}
-
-		scenarioExecution, err := evaluate_scenario.EvalScenario(ctx, evaluationParameters, evaluationRepositories, logger)
-		if err != nil {
-			return models.Decision{}, fmt.Errorf("error evaluating scenario: %w", err)
-		}
-
-		newDecisionId := utils.NewPrimaryKey(input.OrganizationId)
-		decision := models.Decision{
-			ClientObject:        input.ClientObject,
-			Outcome:             scenarioExecution.Outcome,
-			RuleExecutions:      scenarioExecution.RuleExecutions,
-			ScenarioDescription: scenarioExecution.ScenarioDescription,
-			ScenarioId:          scenarioExecution.ScenarioId,
-			ScenarioName:        scenarioExecution.ScenarioName,
-			ScenarioVersion:     scenarioExecution.ScenarioVersion,
-			Score:               scenarioExecution.Score,
-		}
-
 		err = usecase.decisionRepository.StoreDecision(ctx, tx, decision, input.OrganizationId, newDecisionId)
 		if err != nil {
 			return models.Decision{}, fmt.Errorf("error storing decision: %w", err)
