@@ -77,8 +77,10 @@ func (g *Generator) fromFirebaseToken(ctx context.Context, firebaseToken string)
 	}
 
 	user, err = g.repository.UserByEmail(ctx, identity.Email)
-	if err != nil {
-		return "", time.Time{}, models.Credentials{}, fmt.Errorf("repository.UserByFirebaseUid error: %w", err)
+	if errors.Is(err, models.NotFoundError) {
+		return "", time.Time{}, models.Credentials{}, fmt.Errorf("%w: %w", models.ErrUnknownUser, err)
+	} else if err != nil {
+		return "", time.Time{}, models.Credentials{}, fmt.Errorf("repository.UserByEmail error: %w", err)
 	}
 
 	if err := g.repository.UpdateUserFirebaseUID(ctx, user.UserId, identity.FirebaseUid); err != nil {
