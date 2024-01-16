@@ -15,15 +15,16 @@ import (
 	"time"
 
 	"github.com/segmentio/analytics-go/v3"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/checkmarble/marble-backend/api"
-	"github.com/checkmarble/marble-backend/api/tracing"
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/jobs"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/repositories/firebase"
 	"github.com/checkmarble/marble-backend/repositories/postgres"
+	"github.com/checkmarble/marble-backend/tracing"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/datamodel"
 	"github.com/checkmarble/marble-backend/usecases/token"
@@ -31,14 +32,15 @@ import (
 )
 
 type dependencies struct {
-	Authentication   *api.Authentication
-	TokenHandler     *api.TokenHandler
-	DataModelHandler *api.DataModelHandler
-	SegmentClient    analytics.Client
+	Authentication      *api.Authentication
+	TokenHandler        *api.TokenHandler
+	DataModelHandler    *api.DataModelHandler
+	SegmentClient       analytics.Client
+	OpenTelemetryTracer trace.Tracer
 }
 
 func initDependencies(conf AppConfiguration, signingKey *rsa.PrivateKey) (dependencies, error) {
-	err := tracing.Init(tracing.Configuration{
+	tracer, err := tracing.Init(tracing.Configuration{
 		Enabled:         conf.env != "development",
 		ApplicationName: "marble-backend",
 		ProjectID:       conf.gcpProject,
@@ -66,10 +68,11 @@ func initDependencies(conf AppConfiguration, signingKey *rsa.PrivateKey) (depend
 	segmentClient := analytics.New(conf.config.SegmentWriteKey)
 
 	return dependencies{
-		Authentication:   api.NewAuthentication(tokenValidator),
-		TokenHandler:     api.NewTokenHandler(tokenGenerator),
-		DataModelHandler: api.NewDataModelHandler(dataModelUseCase),
-		SegmentClient:    segmentClient,
+		Authentication:      api.NewAuthentication(tokenValidator),
+		TokenHandler:        api.NewTokenHandler(tokenGenerator),
+		DataModelHandler:    api.NewDataModelHandler(dataModelUseCase),
+		SegmentClient:       segmentClient,
+		OpenTelemetryTracer: tracer,
 	}, nil
 }
 

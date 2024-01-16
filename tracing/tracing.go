@@ -6,12 +6,15 @@ import (
 
 	texporter "github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace"
 	gcppropagator "github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator"
+
 	"go.opentelemetry.io/contrib/detectors/gcp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
+	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 type Configuration struct {
@@ -20,14 +23,14 @@ type Configuration struct {
 	ProjectID       string
 }
 
-func Init(configuration Configuration) error {
+func Init(configuration Configuration) (trace.Tracer, error) {
 	if !configuration.Enabled {
-		return nil
+		return &noop.Tracer{}, nil
 	}
 
 	exporter, err := texporter.New(texporter.WithProjectID(configuration.ProjectID))
 	if err != nil {
-		return fmt.Errorf("texporter.New error: %v", err)
+		return nil, fmt.Errorf("texporter.New error: %v", err)
 	}
 
 	res, err := resource.New(context.Background(),
@@ -38,7 +41,7 @@ func Init(configuration Configuration) error {
 		),
 	)
 	if err != nil {
-		return fmt.Errorf("resource.New error: %w", err)
+		return nil, fmt.Errorf("resource.New error: %w", err)
 	}
 
 	tp := sdktrace.NewTracerProvider(
@@ -54,5 +57,8 @@ func Init(configuration Configuration) error {
 		),
 	)
 	otel.SetTracerProvider(tp)
-	return nil
+
+	tracer := tp.Tracer(configuration.ApplicationName)
+	return tracer, nil
+
 }

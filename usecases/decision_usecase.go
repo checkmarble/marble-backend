@@ -149,6 +149,10 @@ func (usecase *DecisionUsecase) validateTriggerObjects(ctx context.Context, filt
 
 func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models.CreateDecisionInput, logger *slog.Logger) (models.Decision, error) {
 
+	tracer := utils.OpenTelemetryTracerFromContext(ctx)
+	ctx, span := tracer.Start(ctx, "DecisionUsecase.CreateDecision")
+	defer span.End()
+
 	if err := usecase.enforceSecurity.CreateDecision(input.OrganizationId); err != nil {
 		return models.Decision{}, err
 	}
