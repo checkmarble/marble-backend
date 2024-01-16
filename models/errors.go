@@ -11,6 +11,10 @@ var BadParameterError = errors.New("bad parameter")
 // UnAuthorizedError is rendered with the http status code 401
 var UnAuthorizedError = errors.New("unauthorized")
 
+var (
+	ErrUnknownUser = errors.New("unknown user")
+)
+
 // ForbiddenError is rendered with the http status code 403
 var ForbiddenError = errors.New("forbidden")
 
