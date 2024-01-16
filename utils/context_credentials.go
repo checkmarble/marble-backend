@@ -5,19 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
-	"github.com/gofrs/uuid"
-	"github.com/segmentio/analytics-go/v3"
-
 	"github.com/checkmarble/marble-backend/models"
-)
-
-type ContextKey int
-
-const (
-	ContextKeyCredentials ContextKey = iota
-	ContextKeyLogger
-	ContextKeySegmentClient
 )
 
 func CredentialsFromCtx(ctx context.Context) (models.Credentials, bool) {
@@ -63,29 +51,4 @@ func OrganizationIdFromRequest(request *http.Request) (organizationId string, er
 // TODO: replace me with OrganizationIdFromContext
 func OrgIDFromCtx(ctx context.Context, request *http.Request) (organizationId string, err error) {
 	return OrganizationIdFromRequest(request)
-}
-
-func ValidateUuid(uuidParam string) error {
-	_, err := uuid.FromString(uuidParam)
-	if err != nil {
-		err = fmt.Errorf("'%s' is not a valid UUID: %w", uuidParam, models.BadParameterError)
-	}
-	return err
-}
-
-func SegmentClientFromContext(ctx context.Context) (analytics.Client, bool) {
-	client, found := ctx.Value(ContextKeySegmentClient).(analytics.Client)
-	return client, found
-}
-
-func StoreSegmentClientInContext(ctx context.Context, client analytics.Client) context.Context {
-	return context.WithValue(ctx, ContextKeySegmentClient, client)
-}
-
-func StoreSegmentClientInContextMiddleware(client analytics.Client) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		ctxWithSegment := StoreSegmentClientInContext(c.Request.Context(), client)
-		c.Request = c.Request.WithContext(ctxWithSegment)
-		c.Next()
-	}
 }

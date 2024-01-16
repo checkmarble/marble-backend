@@ -8,11 +8,15 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/transaction"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type ScenarioEvaluationParameters struct {
@@ -50,6 +54,10 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repo
 
 	logger.InfoContext(ctx, "Evaluating scenario", "scenarioId", params.Scenario.Id)
 
+	tracer := utils.OpenTelemetryTracerFromContext(ctx)
+	ctx, span := tracer.Start(ctx, "evaluate_scenario.EvalScenario")
+	defer span.End()
+
 	// If the scenario has no live version, don't try to Eval() it, return early
 	if params.Scenario.LiveVersionID == nil {
 		return models.ScenarioExecution{}, errors.Wrap(models.ScenarioHasNoLiveVersionError, "scenario has no live version in EvalScenario")
@@ -79,8 +87,9 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repo
 	}
 
 	// Evaluate the trigger
-	triggerPassed, err := repositories.EvaluateRuleAstExpression.EvaluateRuleAstExpression(
+	triggerPassed, err := evalScenarioTrigger(
 		ctx,
+		repositories,
 		publishedVersion.Body.TriggerConditionAstExpression,
 		dataAccessor.organizationId,
 		dataAccessor.Payload,
@@ -142,6 +151,10 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repo
 func evalScenarioRule(ctx context.Context, repositories ScenarioEvaluationRepositories, rule models.Rule, dataAccessor DataAccessor, dataModel models.DataModel, logger *slog.Logger) (int, models.RuleExecution, error) {
 	// Evaluate single rule
 
+	tracer := utils.OpenTelemetryTracerFromContext(ctx)
+	ctx, span := tracer.Start(ctx, "evaluate_scenario.evalScenarioRule", trace.WithAttributes(attribute.String("rule_id", rule.Id)))
+	defer span.End()
+
 	ruleReturnValue, err := repositories.EvaluateRuleAstExpression.EvaluateRuleAstExpression(
 		ctx,
 		*rule.FormulaAstExpression,
@@ -184,4 +197,19 @@ func evalScenarioRule(ctx context.Context, repositories ScenarioEvaluationReposi
 		score = ruleExecution.Rule.ScoreModifier
 	}
 	return score, ruleExecution, nil
+}
+
+func evalScenarioTrigger(ctx context.Context, repositories ScenarioEvaluationRepositories, ruleAstExpression ast.Node, organizationId string, payload models.PayloadReader, dataModel models.DataModel) (bool, error) {
+
+	tracer := utils.OpenTelemetryTracerFromContext(ctx)
+	ctx, span := tracer.Start(ctx, "evaluate_scenario.evalScenarioTrigger")
+	defer span.End()
+
+	return repositories.EvaluateRuleAstExpression.EvaluateRuleAstExpression(
+		ctx,
+		ruleAstExpression,
+		organizationId,
+		payload,
+		dataModel,
+	)
 }

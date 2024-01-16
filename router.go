@@ -78,6 +78,7 @@ func initRouter(ctx context.Context, conf AppConfiguration, deps dependencies) *
 	r.Use(otelgin.Middleware("marble-backend"))
 	r.Use(utils.StoreLoggerInContextMiddleware(logger))
 	r.Use(utils.StoreSegmentClientInContextMiddleware(deps.SegmentClient))
+	r.Use(utils.StoreOpenTelemetryTracerInContextMiddleware(deps.OpenTelemetryTracer))
 
 	r.GET("/liveness", api.HandleLivenessProbe)
 	r.POST("/crash", api.HandleCrash)
