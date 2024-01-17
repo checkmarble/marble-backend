@@ -4,7 +4,7 @@ package utils
 // The rational of why the Go team rejects it is explained in this wonderfull stack overflow answer.
 // https://stackoverflow.com/questions/71624828/is-there-a-way-to-map-an-array-of-objects-in-golang
 
-// MapErr returns a new slice with the same length as src, but with values transformed by f
+// Map returns a new slice with the same length as src, but with values transformed by f
 // if src is nil, returns nil
 func Map[T, U any](src []T, f func(T) U) []U {
 	if src == nil {

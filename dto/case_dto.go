@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type APICase struct {
@@ -25,39 +26,24 @@ type APICaseWithDecisions struct {
 }
 
 func AdaptCaseDto(c models.Case) APICase {
-	apiCase := APICase{
+	return APICase{
 		Id:             c.Id,
-		Contributors:   make([]APICaseContributor, len(c.Contributors)),
+		Contributors:   utils.Map(c.Contributors, NewAPICaseContributor),
 		CreatedAt:      c.CreatedAt,
 		DecisionsCount: c.DecisionsCount,
-		Events:         make([]APICaseEvent, len(c.Events)),
+		Events:         utils.Map(c.Events, NewAPICaseEvent),
 		InboxId:        c.InboxId,
 		Name:           c.Name,
 		Status:         string(c.Status),
-		Tags:           make([]APICaseTag, len(c.Tags)),
-		Files:          make([]APICaseFile, len(c.Files)),
+		Tags:           utils.Map(c.Tags, NewAPICaseTag),
+		Files:          utils.Map(c.Files, NewAPICaseFile),
 	}
-
-	for i, event := range c.Events {
-		apiCase.Events[i] = NewAPICaseEvent(event)
-	}
-	for i, contributor := range c.Contributors {
-		apiCase.Contributors[i] = NewAPICaseContributor(contributor)
-	}
-	for i, tag := range c.Tags {
-		apiCase.Tags[i] = NewAPICaseTag(tag)
-	}
-	for i, file := range c.Files {
-		apiCase.Files[i] = NewAPICaseFile(file)
-	}
-
-	return apiCase
 }
 
 func AdaptCaseWithDecisionsDto(c models.Case) APICaseWithDecisions {
 	return APICaseWithDecisions{
 		APICase:   AdaptCaseDto(c),
-		Decisions: make([]APIDecision, len(c.Decisions)),
+		Decisions: utils.Map(c.Decisions, NewAPIDecision),
 	}
 }
 
