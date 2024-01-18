@@ -265,7 +265,7 @@ func (f Function) DebugString() string {
 // ======= Constant =======
 
 func NewNodeConstant(value any) Node {
-	return Node{Function: FUNC_CONSTANT, Constant: value}
+	return Node{Function: FUNC_CONSTANT, Constant: value, Children: []Node{}, NamedChildren: map[string]Node{}}
 }
 
 // ======= DbAccess =======

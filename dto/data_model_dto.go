@@ -77,7 +77,7 @@ func AdaptTableDto(table models.Table) Table {
 	return Table{
 		Name: string(table.Name),
 		ID:   table.ID,
-		Fields: utils.MapMap(table.Fields, func(field models.Field) Field {
+		Fields: utils.MapValues(table.Fields, func(field models.Field) Field {
 			return Field{
 				ID:          field.ID,
 				DataType:    field.DataType.String(),
@@ -87,7 +87,7 @@ func AdaptTableDto(table models.Table) Table {
 				Values:      field.Values,
 			}
 		}),
-		LinksToSingle: utils.MapMap(table.LinksToSingle, func(linkToSingle models.LinkToSingle) LinkToSingle {
+		LinksToSingle: utils.MapValues(table.LinksToSingle, func(linkToSingle models.LinkToSingle) LinkToSingle {
 			return LinkToSingle{
 				LinkedTableName: linkToSingle.LinkedTableName,
 				ParentFieldName: linkToSingle.ParentFieldName,
@@ -102,6 +102,6 @@ func AdaptDataModelDto(dataModel models.DataModel) DataModel {
 	return DataModel{
 		Version: dataModel.Version,
 		Status:  dataModel.Status.String(),
-		Tables:  utils.MapMap(dataModel.Tables, AdaptTableDto),
+		Tables:  utils.MapValues(dataModel.Tables, AdaptTableDto),
 	}
 }

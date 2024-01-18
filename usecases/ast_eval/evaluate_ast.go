@@ -29,7 +29,7 @@ func EvaluateAst(ctx context.Context, environment AstEvaluationEnvironment, node
 	// eval each child
 	evaluation := ast.NodeEvaluation{
 		Children:      utils.Map(node.Children, evalChild),
-		NamedChildren: utils.MapMap(node.NamedChildren, evalChild),
+		NamedChildren: utils.MapValues(node.NamedChildren, evalChild),
 	}
 
 	if childEvaluationFail {
@@ -46,7 +46,7 @@ func EvaluateAst(ctx context.Context, environment AstEvaluationEnvironment, node
 	getReturnValue := func(e ast.NodeEvaluation) any { return e.ReturnValue }
 	arguments := ast.Arguments{
 		Args:      utils.Map(evaluation.Children, getReturnValue),
-		NamedArgs: utils.MapMap(evaluation.NamedChildren, getReturnValue),
+		NamedArgs: utils.MapValues(evaluation.NamedChildren, getReturnValue),
 	}
 
 	evaluator, err := environment.GetEvaluator(node.Function)

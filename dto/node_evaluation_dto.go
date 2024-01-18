@@ -18,6 +18,6 @@ func AdaptNodeEvaluationDto(evaluation ast.NodeEvaluation) NodeEvaluationDto {
 		ReturnValue:   evaluation.ReturnValue,
 		Errors:        utils.Map(evaluation.Errors, AdaptEvaluationErrorDto),
 		Children:      utils.Map(evaluation.Children, AdaptNodeEvaluationDto),
-		NamedChildren: utils.MapMap(evaluation.NamedChildren, AdaptNodeEvaluationDto),
+		NamedChildren: utils.MapValues(evaluation.NamedChildren, AdaptNodeEvaluationDto),
 	}
 }

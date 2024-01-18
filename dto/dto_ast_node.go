@@ -26,7 +26,7 @@ func AdaptNodeDto(node ast.Node) (NodeDto, error) {
 		return NodeDto{}, err
 	}
 
-	namedChildrenDto, err := utils.MapMapErr(node.NamedChildren, AdaptNodeDto)
+	namedChildrenDto, err := utils.MapValuesErr(node.NamedChildren, AdaptNodeDto)
 	if err != nil {
 		return NodeDto{}, err
 	}
@@ -61,7 +61,7 @@ func AdaptASTNode(dto NodeDto) (ast.Node, error) {
 		return ast.Node{}, err
 	}
 
-	namedChildren, err := utils.MapMapErr(dto.NamedChildren, AdaptASTNode)
+	namedChildren, err := utils.MapValuesErr(dto.NamedChildren, AdaptASTNode)
 	if err != nil {
 		return ast.Node{}, err
 	}

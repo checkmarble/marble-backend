@@ -50,7 +50,7 @@ func AdaptScenarioValidationDto(s models.ScenarioValidation) ScenarioValidationD
 		},
 		Rules: rulesValidationDto{
 			Errors: utils.Map(s.Rules.Errors, AdaptScenarioValidationErrorDto),
-			Rules: utils.MapMap(s.Rules.Rules, func(ruleValidation models.RuleValidation) ruleValidationDto {
+			Rules: utils.MapValues(s.Rules.Rules, func(ruleValidation models.RuleValidation) ruleValidationDto {
 				return ruleValidationDto{
 					Errors:         utils.Map(ruleValidation.Errors, AdaptScenarioValidationErrorDto),
 					RuleEvaluation: AdaptNodeEvaluationDto(ruleValidation.RuleEvaluation),
