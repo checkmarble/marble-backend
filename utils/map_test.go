@@ -16,11 +16,11 @@ func TestMap(t *testing.T) {
 	result := Map(values, func(v int) string {
 		return fmt.Sprintf("%d", v)
 	})
-	assert.Equal(t, result, []string{"1", "2"})
+	assert.Equal(t, []string{"1", "2"}, result)
 }
 
 func TestMap_Nil(t *testing.T) {
-	assert.Equal(t, []int{}, Map(nil, dummy), "should return nil when src is nil")
+	assert.Equal(t, Map(nil, dummy), []int{}, "should return nil when src is nil")
 }
 
 func TestMapErr(t *testing.T) {
@@ -49,7 +49,7 @@ func TestMapValues(t *testing.T) {
 	result := MapValues(values, func(v int) string {
 		return fmt.Sprintf("%d", v)
 	})
-	assert.Equal(t, result, map[string]string{"a": "1", "b": "2", "c": "3"})
+	assert.Equal(t, map[string]string{"a": "1", "b": "2", "c": "3"}, result)
 }
 
 func TestMapValues_Nil(t *testing.T) {
@@ -63,7 +63,7 @@ func TestMapValuesErr(t *testing.T) {
 		return fmt.Sprintf("%d", v), nil
 	})
 	assert.NoError(t, err)
-	assert.Equal(t, result, map[string]string{"a": "1", "b": "2", "c": "3"})
+	assert.Equal(t, map[string]string{"a": "1", "b": "2", "c": "3"}, result)
 }
 
 func TestMapValuesErr_WithError(t *testing.T) {
