@@ -10,6 +10,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -105,20 +106,19 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repo
 	}
 
 	// Evaluate all rules
-	score := 0
-	ruleExecutions := make([]models.RuleExecution, 0)
-	for _, rule := range publishedVersion.Body.Rules {
-
-		scoreModifier, ruleExecution, err := evalScenarioRule(ctx, repositories, rule, dataAccessor, params.DataModel, logger)
-
-		if err != nil {
-			return models.ScenarioExecution{}, errors.Wrap(err, fmt.Sprintf("error evaluating rule %s (%s) in EvalScenario", rule.Name, rule.Id))
-		}
-		score += scoreModifier
-		ruleExecutions = append(ruleExecutions, ruleExecution)
+	scoreModifiers, ruleExecutions, err := evalAllScenarioRules(ctx, repositories, publishedVersion.Body.Rules, dataAccessor, params.DataModel, logger)
+	if err != nil {
+		return models.ScenarioExecution{}, errors.Wrap(err, "error during concurrent rule evaluation")
 	}
 
-	// Compute outcome from score
+	//Compute outcome from score
+
+	// add all score modifiers
+	score := 0
+	for _, sm := range scoreModifiers {
+		score += sm
+	}
+
 	o := models.None
 
 	if score < publishedVersion.Body.ScoreReviewThreshold {
@@ -212,4 +212,52 @@ func evalScenarioTrigger(ctx context.Context, repositories ScenarioEvaluationRep
 		payload,
 		dataModel,
 	)
+}
+func evalAllScenarioRules(ctx context.Context, repositories ScenarioEvaluationRepositories, rules []models.Rule, dataAccessor DataAccessor, dataModel models.DataModel, logger *slog.Logger) ([]int, []models.RuleExecution, error) {
+
+	// Results
+	scoreModifiers := make([]int, len(rules))
+	ruleExecutions := make([]models.RuleExecution, len(rules))
+
+	// Set max number of concurrent rule executions
+	MAX_CONCURRENT_RULE_EXECUTIONS := 5
+	group, ctx := errgroup.WithContext(ctx)
+	group.SetLimit(MAX_CONCURRENT_RULE_EXECUTIONS)
+
+	// Launch rules concurrently
+	for i, rule := range rules {
+
+		// i, rule := i, rule avoids scoping issues.
+		// should be solved with go 1.22
+		i, rule := i, rule
+		group.Go(func() error {
+
+			// return early if ctx is done
+			// Unclear if this is handled automatically by errgroup.WithContext(ctx) ?
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
+
+			// Eval each rule
+			scoreModifier, ruleExecution, err := evalScenarioRule(ctx, repositories, rule, dataAccessor, dataModel, logger)
+
+			if err != nil {
+				return err // First err will cancel the ctx
+			}
+
+			scoreModifiers[i] = scoreModifier
+			ruleExecutions[i] = ruleExecution
+
+			return nil
+		})
+	}
+
+	if err := group.Wait(); err != nil {
+		return nil, nil, fmt.Errorf("at least one rule evaluation returned an error: %w", err)
+	}
+
+	return scoreModifiers, ruleExecutions, nil
+
 }
