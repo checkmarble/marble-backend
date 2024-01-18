@@ -38,5 +38,5 @@ func TestAdaptAdaptNodeEvaluationDto_noevaluation(t *testing.T) {
 	result := encodeDecodeNodeEvaluation(t, ast.NodeEvaluation{
 		Errors: nil,
 	})
-	assert.Nil(t, result.Errors)
+	assert.Equal(t, []EvaluationErrorDto{}, result.Errors)
 }

@@ -22,8 +22,8 @@ func TestAdaptNodeDto(t *testing.T) {
 		dto,
 		NodeDto{
 			FuncName:      ">",
-			Children:      []NodeDto{{Constant: 1}},
-			NamedChildren: map[string]NodeDto{"named": {Constant: 2}},
+			Children:      []NodeDto{{Constant: 1, Children: []NodeDto{}, NamedChildren: map[string]NodeDto{}}},
+			NamedChildren: map[string]NodeDto{"named": {Constant: 2, Children: []NodeDto{}, NamedChildren: map[string]NodeDto{}}},
 		},
 	)
 }
@@ -32,9 +32,9 @@ func TestAdaptASTNode(t *testing.T) {
 
 	dto := NodeDto{
 		FuncName: "+",
-		Children: []NodeDto{{Constant: 1}},
+		Children: []NodeDto{{Constant: 1, Children: []NodeDto{}, NamedChildren: map[string]NodeDto{}}},
 		NamedChildren: map[string]NodeDto{
-			"named": {Constant: 2},
+			"named": {Constant: 2, Children: []NodeDto{}, NamedChildren: map[string]NodeDto{}},
 		},
 	}
 
