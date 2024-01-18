@@ -242,8 +242,8 @@ The most complex end query is like (case DESC, previous with offset)
 SELECT
 
 	c.id, c.created_at, c.inbox_id, c.name, c.org_id, c.status,
-	array_agg(row(cc.id,cc.case_id,cc.user_id,cc.created_at) ORDER BY cc.created_at) FILTER (WHERE cc.id IS NOT NULL) as contributors,
-	array_agg(row(ct.id,ct.case_id,ct.tag_id,ct.created_at,ct.deleted_at) ORDER BY ct.created_at) FILTER (WHERE ct.id IS NOT NULL) as tags,
+	(SELECT array_agg(row(cc.id,cc.case_id,cc.user_id,cc.created_at) ORDER BY cc.created_at) as contributors FROM case_contributors WHERE cc.case_id=c.id),
+	(SELECT array_agg(row(ct.id,ct.case_id,ct.tag_id,ct.created_at,ct.deleted_at) ORDER BY ct.created_at) as tags FROM case_tags WHERE ct.case_id=c.id AND ct.deleted_at IS NULL),
 	count(distinct d.id) as decisions_count,
 	rank_number,
 	total
@@ -273,30 +273,25 @@ FROM (
 	LIMIT 25
 
 ) AS c
-LEFT JOIN case_contributors AS cc ON cc.case_id = c.id
-LEFT JOIN case_tags AS ct ON ct.case_id = c.id AND ct.deleted_at IS NULL
 LEFT JOIN decisions AS d ON d.case_id = c.id
 GROUP BY c.id, c.created_at, c.inbox_id, c.name, c.org_id, c.status, rank_number, total
 ORDER BY c.created_at DESC, c.id DESC
 */
 func selectCasesWithJoinedFields(query squirrel.SelectBuilder, p models.PaginationAndSorting, fromSubquery bool) squirrel.SelectBuilder {
-	groupBy := columnsNames("c", dbmodels.SelectCaseColumn)
-	if fromSubquery {
-		groupBy = append(groupBy, "rank_number", "total")
-	}
-
 	q := squirrel.StatementBuilder.
 		Select(columnsNames("c", dbmodels.SelectCaseColumn)...).
 		Column(
 			fmt.Sprintf(
-				"array_agg(row(%s) ORDER BY cc.created_at) FILTER (WHERE cc.id IS NOT NULL) as contributors",
+				"(SELECT array_agg(row(%s) ORDER BY cc.created_at) AS contributors FROM %s AS cc WHERE cc.case_id=c.id)",
 				strings.Join(columnsNames("cc", dbmodels.SelectCaseContributorColumn), ","),
+				dbmodels.TABLE_CASE_CONTRIBUTORS,
 			),
 		).
 		Column(
 			fmt.Sprintf(
-				"array_agg(row(%s) ORDER BY ct.created_at) FILTER (WHERE ct.id IS NOT NULL) as tags",
+				"(SELECT array_agg(row(%s) ORDER BY ct.created_at) AS tags FROM %s AS ct WHERE ct.case_id=c.id AND ct.deleted_at IS NULL)",
 				strings.Join(columnsNames("ct", dbmodels.SelectCaseTagColumn), ","),
+				dbmodels.TABLE_CASE_TAGS,
 			),
 		).
 		Column(fmt.Sprintf("(SELECT count(distinct d.id) FROM %s AS d WHERE d.case_id = c.id) AS decisions_count", dbmodels.TABLE_DECISIONS))
@@ -311,9 +306,6 @@ func selectCasesWithJoinedFields(query squirrel.SelectBuilder, p models.Paginati
 	}
 
 	return q.
-		LeftJoin(dbmodels.TABLE_CASE_CONTRIBUTORS + " AS cc ON cc.case_id = c.id").
-		LeftJoin(dbmodels.TABLE_CASE_TAGS + " AS ct ON ct.case_id = c.id AND ct.deleted_at IS NULL").
-		GroupBy(groupBy...).
 		OrderBy(fmt.Sprintf("c.%s %s, c.id %s", p.Sorting, p.Order, p.Order)).
 		PlaceholderFormat(squirrel.Dollar)
 
