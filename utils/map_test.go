@@ -20,7 +20,7 @@ func TestMap(t *testing.T) {
 }
 
 func TestMap_Nil(t *testing.T) {
-	assert.Equal(t, Map(nil, dummy), []int{}, "should return nil when src is nil")
+	assert.Empty(t, Map(nil, dummy), "should return empty slice when src is nil")
 }
 
 func TestMapErr(t *testing.T) {
@@ -28,19 +28,20 @@ func TestMapErr(t *testing.T) {
 	errorForTesting := errors.New("testing error")
 
 	values := []int{1, 2, 3}
-	_, err := MapErr(values, func(v int) (string, error) {
+	result, err := MapErr(values, func(v int) (string, error) {
 		if v == 1 {
 			return "1", nil
 		}
 		return "2", errorForTesting
 	})
+	assert.Empty(t, result)
 	assert.ErrorIs(t, err, errorForTesting)
 }
 
 func TestMapErr_Nil(t *testing.T) {
 	result, err := MapErr(nil, dummyErr)
 	assert.NoError(t, err)
-	assert.Equal(t, []int{}, result, "should return empty slice when src is nil")
+	assert.Empty(t, result, "should return empty slice when src is nil")
 }
 
 func TestMapValues(t *testing.T) {
@@ -53,7 +54,7 @@ func TestMapValues(t *testing.T) {
 }
 
 func TestMapValues_Nil(t *testing.T) {
-	assert.Equalf(t, map[int]int{}, MapValues[int](nil, dummy), "should return empty map when src is nil")
+	assert.Empty(t, MapValues[int](nil, dummy), "should return empty map when src is nil")
 }
 
 func TestMapValuesErr(t *testing.T) {
@@ -83,5 +84,5 @@ func TestMapValuesErr_WithError(t *testing.T) {
 func TestMapValuesErr_Nil(t *testing.T) {
 	result, err := MapValuesErr[int](nil, dummyErr)
 	assert.NoError(t, err)
-	assert.Equalf(t, map[int]int{}, result, "should return empty map when src is nil")
+	assert.Empty(t, result, "should return empty map when src is nil")
 }
