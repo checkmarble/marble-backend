@@ -44,34 +44,34 @@ func TestMapErr_Nil(t *testing.T) {
 	assert.Nil(t, result, "should return nil when src is nil")
 }
 
-func TestMapMap(t *testing.T) {
+func TestMapValues(t *testing.T) {
 
 	values := map[string]int{"a": 1, "b": 2, "c": 3}
-	result := MapMap(values, func(v int) string {
+	result := MapValues(values, func(v int) string {
 		return fmt.Sprintf("%d", v)
 	})
 	assert.Equal(t, result, map[string]string{"a": "1", "b": "2", "c": "3"})
 }
 
-func TestMapMap_Nil(t *testing.T) {
-	assert.Nilf(t, MapMap[int](nil, dummy), "should return nil when src is nil")
+func TestMapValues_Nil(t *testing.T) {
+	assert.Nilf(t, MapValues[int](nil, dummy), "should return nil when src is nil")
 }
 
-func TestMapMapErr(t *testing.T) {
+func TestMapValuesErr(t *testing.T) {
 
 	values := map[string]int{"a": 1, "b": 2, "c": 3}
-	result, err := MapMapErr(values, func(v int) (string, error) {
+	result, err := MapValuesErr(values, func(v int) (string, error) {
 		return fmt.Sprintf("%d", v), nil
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, result, map[string]string{"a": "1", "b": "2", "c": "3"})
 }
 
-func TestMapMapErr_WithError(t *testing.T) {
+func TestMapValuesErr_WithError(t *testing.T) {
 	errorForTesting := errors.New("testing error")
 
 	values := map[string]int{"a": 1, "b": 2, "c": 3}
-	result, err := MapMapErr(values, func(v int) (string, error) {
+	result, err := MapValuesErr(values, func(v int) (string, error) {
 		if v == 1 {
 			return "1", nil
 		}
@@ -81,8 +81,8 @@ func TestMapMapErr_WithError(t *testing.T) {
 	assert.ErrorIs(t, err, errorForTesting)
 }
 
-func TestMapMapErr_Nil(t *testing.T) {
-	result, err := MapMapErr[int](nil, dummyErr)
+func TestMapValuesErr_Nil(t *testing.T) {
+	result, err := MapValuesErr[int](nil, dummyErr)
 	assert.NoError(t, err)
 	assert.Nilf(t, result, "should return nil when src is nil")
 }

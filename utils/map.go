@@ -35,8 +35,8 @@ func MapErr[T, U any](src []T, f func(T) (U, error)) ([]U, error) {
 	return us, nil
 }
 
-// MapMap return a new map with the same keys as src, but with values transformed by f
-func MapMap[Key comparable, T any, U any](src map[Key]T, f func(T) U) map[Key]U {
+// MapValues return a new map with the same keys as src, but with values transformed by f
+func MapValues[Key comparable, T any, U any](src map[Key]T, f func(T) U) map[Key]U {
 	if src == nil {
 		return nil
 	}
@@ -47,9 +47,9 @@ func MapMap[Key comparable, T any, U any](src map[Key]T, f func(T) U) map[Key]U 
 	return result
 }
 
-// MapMapErr return a new map with the same keys as src, but with values transformed by f
+// MapValuesErr return a new map with the same keys as src, but with values transformed by f
 // If f returns an error, the function stops and returns the error.
-func MapMapErr[Key comparable, T any, U any](src map[Key]T, f func(T) (U, error)) (map[Key]U, error) {
+func MapValuesErr[Key comparable, T any, U any](src map[Key]T, f func(T) (U, error)) (map[Key]U, error) {
 	if src == nil {
 		return nil, nil
 	}
