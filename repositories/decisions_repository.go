@@ -118,7 +118,18 @@ func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(
 		FromSelect(subquery, "s").
 		Limit(uint64(pagination.Limit))
 
-	paginatedQuery, err := applyDecisionPagination(paginatedQuery, pagination)
+	var offsetDecision models.Decision
+	if pagination.OffsetId != "" {
+		var err error
+		offsetDecision, err = repo.DecisionById(ctx, tx, pagination.OffsetId)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return []models.DecisionWithRank{}, errors.Wrap(models.NotFoundError, "No row found matching the provided offsetId")
+		} else if err != nil {
+			return []models.DecisionWithRank{}, errors.Wrap(err, "failed to fetch decision corresponding to the provided offsetId")
+		}
+	}
+
+	paginatedQuery, err := applyDecisionPagination(paginatedQuery, pagination, offsetDecision)
 	if err != nil {
 		return []models.DecisionWithRank{}, err
 	}
@@ -227,36 +238,36 @@ func decisionsWithRankColumns() (columns []string) {
 	return columns
 }
 
-func applyDecisionPagination(query squirrel.SelectBuilder, p models.PaginationAndSorting) (squirrel.SelectBuilder, error) {
+func applyDecisionPagination(query squirrel.SelectBuilder, p models.PaginationAndSorting, offset models.Decision) (squirrel.SelectBuilder, error) {
 	if p.OffsetId == "" {
 		return query, nil
 	}
 
-	offsetSubquery, args, err := squirrel.
-		Select("id", "org_id", string(p.Sorting)).
-		From(dbmodels.TABLE_DECISIONS).
-		Where(squirrel.Eq{"id": p.OffsetId}).
-		ToSql()
-	if err != nil {
-		return query, err
+	var offsetField any
+	switch p.Sorting {
+	case models.DecisionSortingCreatedAt:
+		offsetField = offset.CreatedAt
+	default:
+		// only pagination by created_at is allowed for now
+		return query, fmt.Errorf("invalid sorting field: %w", models.BadParameterError)
 	}
-	query = query.Join(fmt.Sprintf("(%s) AS cursorRecord ON cursorRecord.org_id = s.org_id", offsetSubquery), args...)
 
-	queryConditionBefore := fmt.Sprintf("s.%s < cursorRecord.%s OR (s.%s = cursorRecord.%s AND s.id < cursorRecord.id)", p.Sorting, p.Sorting, p.Sorting, p.Sorting)
-	queryConditionAfter := fmt.Sprintf("s.%s > cursorRecord.%s OR (s.%s = cursorRecord.%s AND s.id > cursorRecord.id)", p.Sorting, p.Sorting, p.Sorting, p.Sorting)
+	queryConditionBefore := fmt.Sprintf("%s < ? OR (%s = ? AND id < ?)", p.Sorting, p.Sorting)
+	queryConditionAfter := fmt.Sprintf("%s > ? OR (%s = ? AND id > ?)", p.Sorting, p.Sorting)
 
+	args := []any{offsetField, offsetField, p.OffsetId}
 	if p.Next {
 		if p.Order == "DESC" {
-			query = query.Where(queryConditionBefore)
+			query = query.Where(queryConditionBefore, args...)
 		} else {
-			query = query.Where(queryConditionAfter)
+			query = query.Where(queryConditionAfter, args...)
 		}
 	}
 	if p.Previous {
 		if p.Order == "DESC" {
-			query = query.Where(queryConditionAfter)
+			query = query.Where(queryConditionAfter, args...)
 		} else {
-			query = query.Where(queryConditionBefore)
+			query = query.Where(queryConditionBefore, args...)
 		}
 	}
 
