@@ -35,21 +35,16 @@ locals {
       }
 
       frontend = {
-        image = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-frontend:latest"
-        # fix login popup that open another login popup
-        # domain = "app.staging.checkmarble.com"
-        domain                    = "tokyo-country-381508.firebaseapp.com"
-        another_authorized_domain = "app.staging.checkmarble.com"
+        image  = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-frontend:latest"
+        domain = "app.staging.checkmarble.com"
+        url    = "https://app.staging.checkmarble.com"
       }
 
       backend = {
-        image = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:latest"
-        url   = "https://api.staging.checkmarble.com"
+        image  = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:latest"
+        url    = "https://api.staging.checkmarble.com"
+        domain = "api.staging.checkmarble.com"
       }
-
-      frontend_domain = "app.staging.checkmarble.com"
-      backend_domain  = "api.staging.checkmarble.com"
-
     }
 
 
@@ -83,18 +78,16 @@ locals {
       }
 
       frontend = {
-        image                     = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-frontend:v0.0.18"
-        domain                    = "marble-prod-1.firebaseapp.com"
-        another_authorized_domain = "app.checkmarble.com"
+        image  = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-frontend:v0.0.18"
+        domain = "app.checkmarble.com"
+        url    = "https://app.checkmarble.com"
       }
 
       backend = {
-        image = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:v0.0.32"
-        url   = "https://api.checkmarble.com"
+        image  = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:v0.0.32"
+        url    = "https://api.checkmarble.com"
+        domain = "api.checkmarble.com"
       }
-
-      frontend_domain = "app.checkmarble.com"
-      backend_domain  = "api.checkmarble.com"
     }
 
   }

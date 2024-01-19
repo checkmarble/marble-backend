@@ -25,8 +25,8 @@ resource "google_identity_platform_config" "auth" {
 
   authorized_domains = compact([
     "localhost",
+    data.google_firebase_web_app_config.frontend.auth_domain,
     local.environment.frontend.domain,
-    local.environment.frontend.another_authorized_domain,
     local.environment.backoffice.domain,
     trimprefix(google_cloud_run_v2_service.frontend.uri, "https://"),
     trimprefix(google_firebase_hosting_site.backoffice.default_url, "https://"),
