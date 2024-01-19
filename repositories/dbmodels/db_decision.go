@@ -41,7 +41,6 @@ type DBPaginatedDecisions struct {
 	DbDecision
 	DBCase
 	RankNumber int
-	Total      int
 }
 
 var SelectDecisionColumn = utils.ColumnList[DbDecision]()
