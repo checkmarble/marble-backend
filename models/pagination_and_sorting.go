@@ -15,6 +15,7 @@ type SortingField string
 type SortingOrder string
 
 const (
+	COUNT_ROWS_LIMIT              = 9000
 	SortingOrderAsc  SortingOrder = "ASC"
 	SortingOrderDesc SortingOrder = "DESC"
 )
@@ -39,4 +40,9 @@ func ReverseOrder(order SortingOrder) SortingOrder {
 		return "ASC"
 	}
 	return "DESC"
+}
+
+type TotalCount struct {
+	Total      int
+	IsMaxCount bool
 }
