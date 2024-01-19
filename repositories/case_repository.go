@@ -6,9 +6,11 @@ import (
 	"strings"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/cockroachdb/errors"
+	"github.com/jackc/pgx/v5"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
-	"github.com/jackc/pgx/v5"
 )
 
 func (repo *MarbleDbRepository) ListOrganizationCases(
@@ -33,13 +35,18 @@ func (repo *MarbleDbRepository) ListOrganizationCases(
 	}
 	queryWithJoinedFields := selectCasesWithJoinedFields(paginatedSubquery, pagination, true)
 
+	count, err := countCases(ctx, pgTx, filters)
+	if err != nil {
+		return []models.CaseWithRank{}, errors.Wrap(err, "Error counting cases")
+	}
+
 	return SqlToListOfRow(ctx, pgTx, queryWithJoinedFields, func(row pgx.CollectableRow) (models.CaseWithRank, error) {
 		db, err := pgx.RowToStructByPos[dbmodels.DBPaginatedCases](row)
 		if err != nil {
 			return models.CaseWithRank{}, err
 		}
 
-		return dbmodels.AdaptCaseWithRank(db.DBCaseWithContributorsAndTags, db.RankNumber, db.Total)
+		return dbmodels.AdaptCaseWithRank(db.DBCaseWithContributorsAndTags, db.RankNumber, count)
 	})
 }
 
@@ -159,7 +166,7 @@ func casesWithRankColumns() []string {
 	columnAlias = append(columnAlias, dbmodels.SelectCaseColumn...)
 
 	columns := columnsNames("s", columnAlias)
-	columns = append(columns, "rank_number", "total")
+	columns = append(columns, "rank_number")
 	return columns
 }
 
@@ -169,7 +176,6 @@ func casesCoreQueryWithRank(pagination models.PaginationAndSorting) squirrel.Sel
 	query := squirrel.StatementBuilder.
 		Select(dbmodels.SelectCaseColumn...).
 		Column(fmt.Sprintf("RANK() OVER (ORDER BY %s) as rank_number", orderCondition)).
-		Column("COUNT(*) OVER() AS total").
 		From(dbmodels.TABLE_CASES + " AS c")
 
 	// When fetching the previous page, we want the "last xx cases", so we need to reverse the order of the query,
@@ -236,6 +242,26 @@ func applyCasesPagination(query squirrel.SelectBuilder, p models.PaginationAndSo
 	return query, nil
 }
 
+func countCases(ctx context.Context, tx TransactionPostgres, filters models.CaseFilters) (int, error) {
+	subquery := NewQueryBuilder().
+		Select("*").
+		From(fmt.Sprintf("%s AS c", dbmodels.TABLE_CASES)).
+		Limit(models.COUNT_ROWS_LIMIT)
+	subquery = applyCaseFilters(subquery, filters)
+	query := NewQueryBuilder().
+		Select("COUNT(*)").
+		FromSelect(subquery, "s")
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return 0, err
+	}
+
+	var count int
+	err = tx.exec.QueryRow(ctx, sql, args...).Scan(&count)
+	return count, err
+}
+
 /*
 The most complex end query is like (case DESC, previous with offset)
 
@@ -245,18 +271,16 @@ SELECT
 	(SELECT array_agg(row(cc.id,cc.case_id,cc.user_id,cc.created_at) ORDER BY cc.created_at) as contributors FROM case_contributors WHERE cc.case_id=c.id),
 	(SELECT array_agg(row(ct.id,ct.case_id,ct.tag_id,ct.created_at,ct.deleted_at) ORDER BY ct.created_at) as tags FROM case_tags WHERE ct.case_id=c.id AND ct.deleted_at IS NULL),
 	count(distinct d.id) as decisions_count,
-	rank_number,
-	total
+	rank_number
 
 FROM (
 
 	SELECT
-		s.id, s.created_at, s.inbox_id, s.name, s.org_id, s.status, rank_number, total
+		s.id, s.created_at, s.inbox_id, s.name, s.org_id, s.status, rank_number
 	FROM (
 		SELECT
 			id, created_at, inbox_id, name, org_id, status,
-			RANK() OVER (ORDER BY c.created_at DESC, c.id DESC) as rank_number,
-			COUNT(*) OVER() AS total
+			RANK() OVER (ORDER BY c.created_at DESC, c.id DESC) as rank_number
 		FROM cases AS c
 		WHERE c.org_id = $1
 			AND c.inbox_id IN ($2,$3,$4,$5,$6,$7)
@@ -274,7 +298,7 @@ FROM (
 
 ) AS c
 LEFT JOIN decisions AS d ON d.case_id = c.id
-GROUP BY c.id, c.created_at, c.inbox_id, c.name, c.org_id, c.status, rank_number, total
+GROUP BY c.id, c.created_at, c.inbox_id, c.name, c.org_id, c.status, rank_number
 ORDER BY c.created_at DESC, c.id DESC
 */
 func selectCasesWithJoinedFields(query squirrel.SelectBuilder, p models.PaginationAndSorting, fromSubquery bool) squirrel.SelectBuilder {
@@ -296,7 +320,7 @@ func selectCasesWithJoinedFields(query squirrel.SelectBuilder, p models.Paginati
 		).
 		Column(fmt.Sprintf("(SELECT count(distinct d.id) FROM %s AS d WHERE d.case_id = c.id) AS decisions_count", dbmodels.TABLE_DECISIONS))
 	if fromSubquery {
-		q = q.Column("rank_number").Column("total")
+		q = q.Column("rank_number")
 	}
 
 	if fromSubquery {

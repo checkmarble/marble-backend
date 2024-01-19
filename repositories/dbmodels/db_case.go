@@ -24,7 +24,6 @@ type DBCaseWithContributorsAndTags struct {
 type DBPaginatedCases struct {
 	DBCaseWithContributorsAndTags
 	RankNumber int `db:"rank_number"`
-	Total      int `db:"total"`
 }
 
 const TABLE_CASES = "cases"
