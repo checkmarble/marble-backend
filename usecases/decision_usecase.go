@@ -30,6 +30,7 @@ type DecisionUsecaseRepository interface {
 
 type DecisionUsecase struct {
 	enforceSecurity            security.EnforceSecurityDecision
+	enforceSecurityScenario    security.EnforceSecurityScenario
 	transactionFactory         transaction.TransactionFactory
 	orgTransactionFactory      transaction.Factory
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
@@ -156,6 +157,9 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 		return models.Decision{}, fmt.Errorf("scenario not found: %w", models.NotFoundError)
 	} else if err != nil {
 		return models.Decision{}, fmt.Errorf("error getting scenario: %w", err)
+	}
+	if err := usecase.enforceSecurityScenario.ReadScenario(scenario); err != nil {
+		return models.Decision{}, err
 	}
 
 	dm, err := usecase.datamodelRepository.GetDataModel(ctx, input.OrganizationId, false)

@@ -77,6 +77,7 @@ func (usecases *UsecasesWithCreds) NewEnforceCaseSecurity() security.EnforceSecu
 func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 	return DecisionUsecase{
 		enforceSecurity:            usecases.NewEnforceDecisionSecurity(),
+		enforceSecurityScenario:    usecases.NewEnforceScenarioSecurity(),
 		transactionFactory:         &usecases.Repositories.TransactionFactoryPosgresql,
 		orgTransactionFactory:      usecases.NewOrgTransactionFactory(),
 		ingestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
