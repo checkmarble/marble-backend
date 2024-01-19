@@ -20,6 +20,10 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
+// Maximum number of rules executed concurrently
+// TODO : set value from configuration/env instead
+var MAX_CONCURRENT_RULE_EXECUTIONS = 5
+
 type ScenarioEvaluationParameters struct {
 	Scenario  models.Scenario
 	Payload   models.PayloadReader
@@ -106,19 +110,12 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repo
 	}
 
 	// Evaluate all rules
-	scoreModifiers, ruleExecutions, err := evalAllScenarioRules(ctx, repositories, publishedVersion.Body.Rules, dataAccessor, params.DataModel, logger)
+	score, ruleExecutions, err := evalAllScenarioRules(ctx, repositories, publishedVersion.Body.Rules, dataAccessor, params.DataModel, logger)
 	if err != nil {
 		return models.ScenarioExecution{}, errors.Wrap(err, "error during concurrent rule evaluation")
 	}
 
 	//Compute outcome from score
-
-	// add all score modifiers
-	score := 0
-	for _, sm := range scoreModifiers {
-		score += sm
-	}
-
 	o := models.None
 
 	if score < publishedVersion.Body.ScoreReviewThreshold {
@@ -149,12 +146,19 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repo
 }
 
 func evalScenarioRule(ctx context.Context, repositories ScenarioEvaluationRepositories, rule models.Rule, dataAccessor DataAccessor, dataModel models.DataModel, logger *slog.Logger) (int, models.RuleExecution, error) {
-	// Evaluate single rule
 
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(ctx, "evaluate_scenario.evalScenarioRule", trace.WithAttributes(attribute.String("rule_id", rule.Id)))
 	defer span.End()
 
+	// return early if ctx is done
+	select {
+	case <-ctx.Done():
+		return 0, models.RuleExecution{}, errors.Wrap(ctx.Err(), fmt.Sprintf("error while evaluating rule %s (%s)", rule.Name, rule.Id))
+	default:
+	}
+
+	// Evaluate single rule
 	ruleReturnValue, err := repositories.EvaluateRuleAstExpression.EvaluateRuleAstExpression(
 		ctx,
 		*rule.FormulaAstExpression,
@@ -213,14 +217,14 @@ func evalScenarioTrigger(ctx context.Context, repositories ScenarioEvaluationRep
 		dataModel,
 	)
 }
-func evalAllScenarioRules(ctx context.Context, repositories ScenarioEvaluationRepositories, rules []models.Rule, dataAccessor DataAccessor, dataModel models.DataModel, logger *slog.Logger) ([]int, []models.RuleExecution, error) {
+
+func evalAllScenarioRules(ctx context.Context, repositories ScenarioEvaluationRepositories, rules []models.Rule, dataAccessor DataAccessor, dataModel models.DataModel, logger *slog.Logger) (int, []models.RuleExecution, error) {
 
 	// Results
-	scoreModifiers := make([]int, len(rules))
+	runningSumOfScores := 0
 	ruleExecutions := make([]models.RuleExecution, len(rules))
 
 	// Set max number of concurrent rule executions
-	MAX_CONCURRENT_RULE_EXECUTIONS := 5
 	group, ctx := errgroup.WithContext(ctx)
 	group.SetLimit(MAX_CONCURRENT_RULE_EXECUTIONS)
 
@@ -233,7 +237,6 @@ func evalAllScenarioRules(ctx context.Context, repositories ScenarioEvaluationRe
 		group.Go(func() error {
 
 			// return early if ctx is done
-			// Unclear if this is handled automatically by errgroup.WithContext(ctx) ?
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
@@ -247,7 +250,7 @@ func evalAllScenarioRules(ctx context.Context, repositories ScenarioEvaluationRe
 				return err // First err will cancel the ctx
 			}
 
-			scoreModifiers[i] = scoreModifier
+			runningSumOfScores += scoreModifier
 			ruleExecutions[i] = ruleExecution
 
 			return nil
@@ -255,9 +258,9 @@ func evalAllScenarioRules(ctx context.Context, repositories ScenarioEvaluationRe
 	}
 
 	if err := group.Wait(); err != nil {
-		return nil, nil, fmt.Errorf("at least one rule evaluation returned an error: %w", err)
+		return 0, nil, fmt.Errorf("at least one rule evaluation returned an error: %w", err)
 	}
 
-	return scoreModifiers, ruleExecutions, nil
+	return runningSumOfScores, ruleExecutions, nil
 
 }
