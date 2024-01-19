@@ -22,7 +22,7 @@ import (
 
 // Maximum number of rules executed concurrently
 // TODO : set value from configuration/env instead
-var MAX_CONCURRENT_RULE_EXECUTIONS = 5
+const MAX_CONCURRENT_RULE_EXECUTIONS = 5
 
 type ScenarioEvaluationParameters struct {
 	Scenario  models.Scenario
@@ -154,7 +154,7 @@ func evalScenarioRule(ctx context.Context, repositories ScenarioEvaluationReposi
 	// return early if ctx is done
 	select {
 	case <-ctx.Done():
-		return 0, models.RuleExecution{}, errors.Wrap(ctx.Err(), fmt.Sprintf("error while evaluating rule %s (%s)", rule.Name, rule.Id))
+		return 0, models.RuleExecution{}, errors.Wrap(ctx.Err(), fmt.Sprintf("context cancelled when evaluating rule %s (%s)", rule.Name, rule.Id))
 	default:
 	}
 
@@ -239,7 +239,7 @@ func evalAllScenarioRules(ctx context.Context, repositories ScenarioEvaluationRe
 			// return early if ctx is done
 			select {
 			case <-ctx.Done():
-				return ctx.Err()
+				return errors.Wrap(ctx.Err(), fmt.Sprintf("context cancelled before evaluating rule %s (%s)", rule.Name, rule.Id))
 			default:
 			}
 
