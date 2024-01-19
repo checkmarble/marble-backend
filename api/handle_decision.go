@@ -59,19 +59,19 @@ func (api *API) handleListDecisions(c *gin.Context) {
 
 	if len(decisions) == 0 {
 		c.JSON(http.StatusOK, gin.H{
-			"total":      0,
-			"startIndex": 0,
-			"endIndex":   0,
-			"items":      []dto.APIDecision{},
+			"total_count": map[string]any{"value": 0, "is_max_count": false},
+			"startIndex":  0,
+			"endIndex":    0,
+			"items":       []dto.APIDecision{},
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"total":      decisions[0].Total,
-		"startIndex": decisions[0].RankNumber,
-		"endIndex":   decisions[len(decisions)-1].RankNumber,
-		"items":      utils.Map(decisions, func(d models.DecisionWithRank) dto.APIDecision { return dto.NewAPIDecision(d.Decision) }),
+		"total_count": map[string]any{"value": decisions[0].TotalCount.Total, "is_max_count": decisions[0].TotalCount.IsMaxCount},
+		"startIndex":  decisions[0].RankNumber,
+		"endIndex":    decisions[len(decisions)-1].RankNumber,
+		"items":       utils.Map(decisions, func(d models.DecisionWithRank) dto.APIDecision { return dto.NewAPIDecision(d.Decision) }),
 	})
 }
 

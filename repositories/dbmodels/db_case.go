@@ -76,6 +76,6 @@ func AdaptCaseWithRank(db DBCaseWithContributorsAndTags, rankNumber int, total i
 	return models.CaseWithRank{
 		Case:       c,
 		RankNumber: rankNumber,
-		Total:      total,
+		TotalCount: models.TotalCount{Total: total, IsMaxCount: total == models.COUNT_ROWS_LIMIT},
 	}, nil
 }
