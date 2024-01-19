@@ -2,10 +2,10 @@ package repositories
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/cockroachdb/errors"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -124,7 +124,12 @@ func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(
 	}
 	query := selectDecisionsWithJoinedFields(paginatedQuery, pagination)
 
-	return SqlToListOfRow(ctx, tx, query, func(row pgx.CollectableRow) (models.DecisionWithRank, error) {
+	count, err := countDecisions(ctx, tx, organizationId, filters)
+	if err != nil {
+		return []models.DecisionWithRank{}, errors.Wrap(err, "failed to count decisions")
+	}
+
+	decision, err := SqlToListOfRow(ctx, tx, query, func(row pgx.CollectableRow) (models.DecisionWithRank, error) {
 		db, err := pgx.RowToStructByPos[dbmodels.DBPaginatedDecisions](row)
 		if err != nil {
 			return models.DecisionWithRank{}, err
@@ -138,8 +143,33 @@ func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(
 			}
 			decisionCase = &decisionCaseValue
 		}
-		return dbmodels.AdaptDecisionWithRank(db.DbDecision, decisionCase, db.RankNumber, db.Total), nil
+		return dbmodels.AdaptDecisionWithRank(db.DbDecision, decisionCase, db.RankNumber, count), nil
 	})
+	if err != nil {
+		return []models.DecisionWithRank{}, err
+	}
+	return decision, nil
+}
+
+func countDecisions(ctx context.Context, tx TransactionPostgres, organizationId string, filters models.DecisionFilters) (int, error) {
+	subquery := NewQueryBuilder().
+		Select("*").
+		From(dbmodels.TABLE_DECISIONS).
+		Where(squirrel.Eq{"org_id": organizationId}).
+		Limit(models.COUNT_ROWS_LIMIT)
+	subquery = applyDecisionFilters(subquery, filters)
+	query := NewQueryBuilder().
+		Select("COUNT(*)").
+		FromSelect(subquery, "s")
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return 0, err
+	}
+
+	var count int
+	err = tx.exec.QueryRow(ctx, sql, args...).Scan(&count)
+	return count, err
 }
 
 func applyDecisionFilters(query squirrel.SelectBuilder, filters models.DecisionFilters) squirrel.SelectBuilder {
@@ -176,7 +206,6 @@ func selectDecisionsWithRank(p models.PaginationAndSorting) squirrel.SelectBuild
 	query := NewQueryBuilder().
 		Select(dbmodels.SelectDecisionColumn...).
 		Column(fmt.Sprintf("RANK() OVER (ORDER BY %s) as rank_number", orderCondition)).
-		Column("COUNT(*) OVER() AS total").
 		From(fmt.Sprintf("%s AS d", dbmodels.TABLE_DECISIONS))
 
 	// When fetching the previous page, we want the "last xx decisions", so we need to reverse the order of the query,
@@ -194,7 +223,7 @@ func decisionsWithRankColumns() (columns []string) {
 	columns = append(columns, dbmodels.SelectDecisionColumn...)
 
 	columns = columnsNames("s", columns)
-	columns = append(columns, "rank_number", "total")
+	columns = append(columns, "rank_number")
 	return columns
 }
 
@@ -241,7 +270,6 @@ func selectDecisionsWithJoinedFields(query squirrel.SelectBuilder, p models.Pagi
 	return squirrel.
 		Select(columns...).
 		Column("rank_number").
-		Column("total").
 		FromSelect(query, "d").
 		LeftJoin(fmt.Sprintf("%s AS c ON c.id = d.case_id", dbmodels.TABLE_CASES)).
 		OrderBy(fmt.Sprintf("d.%s %s, d.id %s", p.Sorting, p.Order, p.Order)).
