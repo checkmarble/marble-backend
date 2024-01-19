@@ -8,7 +8,7 @@ resource "google_compute_managed_ssl_certificate" "default" {
   type        = "MANAGED"
 
   managed {
-    domains = [local.environment.frontend_domain, local.environment.backend_domain]
+    domains = [local.environment.frontend.domain, local.environment.backend.domain]
   }
 
   timeouts {}
@@ -66,7 +66,7 @@ resource "google_compute_url_map" "default" {
   default_service = google_compute_backend_service.frontend_service.id
 
   host_rule {
-    hosts        = [local.environment.backend_domain]
+    hosts        = [local.environment.backend.domain]
     path_matcher = "backend"
   }
   path_matcher {
@@ -74,7 +74,7 @@ resource "google_compute_url_map" "default" {
     default_service = google_compute_backend_service.backend_service.id
   }
   host_rule {
-    hosts        = [local.environment.frontend_domain]
+    hosts        = [local.environment.frontend.domain]
     path_matcher = "frontend"
   }
   path_matcher {
