@@ -6,6 +6,7 @@ import (
 
 	"firebase.google.com/go/v4/auth"
 	"github.com/Masterminds/squirrel"
+	"github.com/checkmarble/marble-backend/repositories/firebase"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -55,9 +56,7 @@ func NewRepositories(
 	return &Repositories{
 		DatabaseConnectionPoolRepository: databaseConnectionPoolRepository,
 		TransactionFactoryPosgresql:      transactionFactory,
-		FirebaseTokenRepository: FireBaseTokenRepository{
-			firebaseClient: firebaseClient,
-		},
+		FirebaseTokenRepository:          firebase.New(firebaseClient),
 		MarbleJwtRepository: func() MarbleJwtRepository {
 			if marbleJwtSigningKey == nil {
 				panic("Repositories does not contain a jwt signing key")

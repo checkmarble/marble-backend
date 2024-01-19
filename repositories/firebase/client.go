@@ -20,10 +20,17 @@ type Client struct {
 
 func (c *Client) verifyTokenOrCookie(ctx context.Context, firebaseToken string) (*auth.Token, error) {
 	token, err := c.verifier.VerifyIDToken(ctx, firebaseToken)
-	if err == nil {
-		return token, nil
+	if err != nil {
+		token, err = c.verifier.VerifySessionCookie(ctx, firebaseToken)
 	}
-	return c.verifier.VerifySessionCookie(ctx, firebaseToken)
+	if err != nil {
+		return nil, err
+	}
+	if token.Firebase.SignInProvider == "password" && token.Claims["email_verified"] == false {
+		return nil, fmt.Errorf("email not verified")
+	}
+
+	return token, nil
 }
 
 func (c *Client) VerifyFirebaseToken(ctx context.Context, firebaseToken string) (models.FirebaseIdentity, error) {
