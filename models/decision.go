@@ -24,7 +24,7 @@ type Decision struct {
 type DecisionWithRank struct {
 	Decision
 	RankNumber int
-	Total      int
+	TotalCount TotalCount
 }
 
 type ScenarioExecution struct {

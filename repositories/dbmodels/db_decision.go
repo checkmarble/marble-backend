@@ -73,7 +73,11 @@ func AdaptDecision(db DbDecision, ruleExecutions []models.RuleExecution, decisio
 
 func AdaptDecisionWithRank(db DbDecision, decisionCase *models.Case, rankNumber, total int) models.DecisionWithRank {
 	decision := AdaptDecision(db, nil, decisionCase)
-	return models.DecisionWithRank{Decision: decision, RankNumber: rankNumber, Total: total}
+	return models.DecisionWithRank{
+		Decision:   decision,
+		RankNumber: rankNumber,
+		TotalCount: models.TotalCount{Total: total, IsMaxCount: total == models.COUNT_ROWS_LIMIT},
+	}
 }
 
 type DBDecisionRule struct {

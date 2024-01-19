@@ -61,7 +61,7 @@ type CaseFilters struct {
 type CaseWithRank struct {
 	Case
 	RankNumber int
-	Total      int
+	TotalCount TotalCount
 }
 
 const (
