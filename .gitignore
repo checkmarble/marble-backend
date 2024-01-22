@@ -42,18 +42,12 @@ go.work
 docker-compose.dev.yml
 *.log
 
-# backoffice is not merged in master
-marble-backoffice/node_modules
-marble-backend
-
 .idea
 /.firebase
 __debug_bin*
 
 # Use by the Fake GcsRepository
 /tempFiles
+
 e2e_test
-terraform-gcp/service-account-key
-**/.terraform
-**/**.tfstate
-**/**.tfstate.backup
+
