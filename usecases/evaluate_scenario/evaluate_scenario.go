@@ -116,16 +116,14 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repo
 	}
 
 	//Compute outcome from score
-	o := models.None
+	outcome := models.None
 
 	if score < publishedVersion.Body.ScoreReviewThreshold {
-		o = models.Approve
-	}
-	if score >= publishedVersion.Body.ScoreReviewThreshold && score < publishedVersion.Body.ScoreRejectThreshold {
-		o = models.Review
-	}
-	if score > publishedVersion.Body.ScoreRejectThreshold {
-		o = models.Reject
+		outcome = models.Approve
+	} else if score < publishedVersion.Body.ScoreRejectThreshold {
+		outcome = models.Review
+	} else {
+		outcome = models.Reject
 	}
 
 	// Build ScenarioExecution as result
@@ -136,11 +134,11 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repo
 		ScenarioVersion:     publishedVersion.Version,
 		RuleExecutions:      ruleExecutions,
 		Score:               score,
-		Outcome:             o,
+		Outcome:             outcome,
 	}
 
 	elapsed := time.Since(start)
-	logger.InfoContext(ctx, fmt.Sprintf("Evaluated scenario in %dms", elapsed.Milliseconds()), "score", score, "outcome", o)
+	logger.InfoContext(ctx, fmt.Sprintf("Evaluated scenario in %dms", elapsed.Milliseconds()), "score", score, "outcome", outcome)
 
 	return se, nil
 }
