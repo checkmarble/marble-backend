@@ -43,6 +43,6 @@ func ReverseOrder(order SortingOrder) SortingOrder {
 }
 
 type TotalCount struct {
-	Total      int
+	Value      int
 	IsMaxCount bool
 }
