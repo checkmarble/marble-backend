@@ -47,8 +47,8 @@ func (api *API) handleListCases(c *gin.Context) {
 	if len(cases) == 0 {
 		c.JSON(http.StatusOK, gin.H{
 			"total_count": dto.AdaptTotalCount(models.TotalCount{}),
-			"startIndex":  0,
-			"endIndex":    0,
+			"start_index": 0,
+			"end_index":   0,
 			"items":       []dto.APICase{},
 		})
 		return
@@ -56,8 +56,8 @@ func (api *API) handleListCases(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"total_count": dto.AdaptTotalCount(cases[0].TotalCount),
-		"startIndex":  cases[0].RankNumber,
-		"endIndex":    cases[len(cases)-1].RankNumber,
+		"start_index": cases[0].RankNumber,
+		"end_index":   cases[len(cases)-1].RankNumber,
 		"items":       utils.Map(cases, func(c models.CaseWithRank) dto.APICase { return dto.AdaptCaseDto(c.Case) }),
 	})
 }

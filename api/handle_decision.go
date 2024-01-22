@@ -60,8 +60,8 @@ func (api *API) handleListDecisions(c *gin.Context) {
 	if len(decisions) == 0 {
 		c.JSON(http.StatusOK, gin.H{
 			"total_count": dto.AdaptTotalCount(models.TotalCount{}),
-			"startIndex":  0,
-			"endIndex":    0,
+			"start_index": 0,
+			"end_index":   0,
 			"items":       []dto.APIDecision{},
 		})
 		return
@@ -69,8 +69,8 @@ func (api *API) handleListDecisions(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"total_count": dto.AdaptTotalCount(decisions[0].TotalCount),
-		"startIndex":  decisions[0].RankNumber,
-		"endIndex":    decisions[len(decisions)-1].RankNumber,
+		"start_index": decisions[0].RankNumber,
+		"end_index":   decisions[len(decisions)-1].RankNumber,
 		"items":       utils.Map(decisions, func(d models.DecisionWithRank) dto.APIDecision { return dto.NewAPIDecision(d.Decision) }),
 	})
 }
