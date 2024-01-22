@@ -55,7 +55,7 @@ locals {
       marble_cloud_sql = {
         name              = "marble-prod"
         location          = local.location
-        tier              = "db-custom-2-8192"
+        tier              = "db-custom-4-16384"
         database_version  = "POSTGRES_15"
         availability_type = "REGIONAL"
       }
@@ -74,7 +74,7 @@ locals {
 
       backoffice = {
         firebase_site_id = "marble-backoffice-production"
-        domain           = "marble-backoffice-production.web.app"
+        domain           = "backoffice.checkmarble.com"
       }
 
       frontend = {
@@ -84,7 +84,7 @@ locals {
       }
 
       backend = {
-        image  = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:v0.0.32"
+        image  = "europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:v0.0.36"
         url    = "https://api.checkmarble.com"
         domain = "api.checkmarble.com"
       }
