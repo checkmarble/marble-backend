@@ -75,7 +75,7 @@ func AdaptDecisionWithRank(db DbDecision, decisionCase *models.Case, rankNumber,
 	return models.DecisionWithRank{
 		Decision:   decision,
 		RankNumber: rankNumber,
-		TotalCount: models.TotalCount{Total: total, IsMaxCount: total == models.COUNT_ROWS_LIMIT},
+		TotalCount: models.TotalCount{Value: total, IsMaxCount: total == models.COUNT_ROWS_LIMIT},
 	}
 }
 
