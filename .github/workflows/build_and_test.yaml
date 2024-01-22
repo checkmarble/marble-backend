@@ -7,7 +7,5 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test_backoffice:
-    uses: ./.github/workflows/backoffice_test_workflow.yaml
   test_backend:
     uses: ./.github/workflows/backend_test_workflow.yaml

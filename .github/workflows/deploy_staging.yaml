@@ -10,17 +10,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test_backoffice:
-    uses: ./.github/workflows/backoffice_test_workflow.yaml
-
-  build_and_deploy_backoffice:
-    needs: test_backoffice
-    uses: ./.github/workflows/backoffice_deploy_workflow.yaml
-    with:
-      environment: "staging"
-    secrets:
-      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY_STAGING }}
-
   test_backend:
     uses: ./.github/workflows/backend_test_workflow.yaml
 
