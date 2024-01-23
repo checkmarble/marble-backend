@@ -39,7 +39,6 @@ func initRouter(ctx context.Context, conf AppConfiguration, deps dependencies) *
 	}
 
 	logger := utils.LoggerFromContext(ctx)
-	loggingMiddleware := middleware.NewLogging(logger, middleware.WithIgnorePath([]string{"/liveness"}))
 
 	r := gin.New()
 
@@ -73,7 +72,7 @@ func initRouter(ctx context.Context, conf AppConfiguration, deps dependencies) *
 	r.Use(cors.New(corsOption(conf.env)))
 	if conf.env == "development" {
 		// GCP already logs those elements
-		r.Use(loggingMiddleware)
+		r.Use(middleware.NewLogging(logger))
 	}
 	r.Use(otelgin.Middleware("marble-backend"))
 	r.Use(utils.StoreLoggerInContextMiddleware(logger))
