@@ -79,7 +79,7 @@ func initRouter(ctx context.Context, conf AppConfiguration, deps dependencies) *
 	r.Use(utils.StoreSegmentClientInContextMiddleware(deps.SegmentClient))
 	r.Use(utils.StoreOpenTelemetryTracerInContextMiddleware(deps.OpenTelemetryTracer))
 
-	r.GET("/liveness", api.HandleLivenessProbe)
+	r.GET("/liveness", middleware.NewLogging(logger), api.HandleLivenessProbe)
 	r.POST("/crash", api.HandleCrash)
 	r.POST("/token", deps.TokenHandler.GenerateToken)
 
