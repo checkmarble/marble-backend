@@ -118,7 +118,7 @@ func (repo *IngestionRepositoryImpl) comparePayloadsToIngestedObjects(payloads [
 		existingObject, exists := previouslyIngestedMap[objectId]
 		if !exists {
 			payloadsToInsert = append(payloadsToInsert, payload)
-		} else if updatedAt.After(existingObject.UpdatedAt) {
+		} else if updatedAt.After(existingObject.UpdatedAt) || updatedAt.Equal(existingObject.UpdatedAt) {
 			payloadsToInsert = append(payloadsToInsert, payload)
 			obsoleteIngestedObjectIds = append(obsoleteIngestedObjectIds, existingObject.Id)
 		}
