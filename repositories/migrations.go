@@ -4,9 +4,11 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"io/fs"
 	"log/slog"
 
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
@@ -16,6 +18,11 @@ import (
 //
 //go:embed migrations/*.sql
 var embedMigrations embed.FS
+
+// embed analytics_views sql folder
+//
+//go:embed analytics_views/*.sql
+var embedAnalyticsViews embed.FS
 
 type migrationParams struct {
 	fileSystem   embed.FS
@@ -53,6 +60,10 @@ func RunMigrations(env string, pgConfig utils.PGConfig, logger *slog.Logger) err
 	if err := runMigrationsWithFolder(db, params, logger); err != nil {
 		return fmt.Errorf("runMigrationsWithFolder error: %w", err)
 	}
+
+	if err := migrateAnalyticsViews(db, embedAnalyticsViews); err != nil {
+		return errors.Wrap(err, "migrateAnalyticsViews error")
+	}
 	return nil
 }
 
@@ -75,5 +86,39 @@ func runMigrationsWithFolder(db *sql.DB, params migrationParams, logger *slog.Lo
 			return fmt.Errorf("unable to run migrations: %w", err)
 		}
 	}
+	return nil
+}
+
+func migrateAnalyticsViews(db *sql.DB, folder embed.FS) error {
+	if err := fs.WalkDir(
+		folder,
+		".",
+		func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+
+			if !d.IsDir() {
+				return createViewFromFile(db, folder, path)
+			}
+
+			return nil
+		},
+	); err != nil {
+		return errors.Wrap(err, "error while walking embedded analytics_views folder")
+	}
+	return nil
+}
+
+func createViewFromFile(db *sql.DB, folder embed.FS, path string) error {
+	s, err := folder.ReadFile(path)
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("unable to read file %s", path))
+	}
+
+	if _, err := db.Exec(string(s)); err != nil {
+		return errors.Wrap(err, fmt.Sprintf("unable to create view from file %s", path))
+	}
+	fmt.Printf("Successfully created view from %s\n", path)
 	return nil
 }
