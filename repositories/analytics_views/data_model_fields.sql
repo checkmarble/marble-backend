@@ -8,9 +8,9 @@ SELECT
       id,
       table_id,
       name,
-type,
-nullable,
-description,
-is_enum
+      nullable,
+      description,
+      is_enum,
+      "type" AS "type"
 FROM
       marble.data_model_fields

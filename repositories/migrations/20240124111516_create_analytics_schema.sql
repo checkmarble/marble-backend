@@ -1,12 +1,12 @@
 -- +goose Up
 -- +goose StatementBegin
--- create and make default the marble schema
+-- create the analytics schema and an analytics user
 CREATE SCHEMA IF NOT EXISTS analytics;
 
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA analytics TO postgres;
 
 DO $$ BEGIN
-      CREATE USER analytics WITH PASSWORD 'default';
+      CREATE USER analytics;
 
 EXCEPTION
       WHEN duplicate_object THEN RAISE NOTICE '%, skipping',
