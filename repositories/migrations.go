@@ -1,11 +1,11 @@
 package repositories
 
 import (
+	"context"
 	"database/sql"
 	"embed"
 	"fmt"
 	"io/fs"
-	"log/slog"
 
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
@@ -24,72 +24,65 @@ var embedMigrations embed.FS
 //go:embed analytics_views/*.sql
 var embedAnalyticsViews embed.FS
 
-type migrationParams struct {
-	fileSystem   embed.FS
-	folderName   string
-	allowMissing bool
+type Migrater struct {
+	dbMigrationsFileSystem   embed.FS
+	analyticsViewsFileSystem embed.FS
+	env                      string
+	pgConfig                 utils.PGConfig
+	db                       *sql.DB
 }
 
-func setupDbConnection(env string, pgConfig utils.PGConfig) (*sql.DB, error) {
-	connectionString := pgConfig.GetConnectionString(env)
-
-	migrationDB, err := sql.Open("pgx", connectionString)
-	if err != nil {
-		return nil, fmt.Errorf("unable to connect to database: %w", err)
+func NewMigrater(pgConfig utils.PGConfig, env string) *Migrater {
+	return &Migrater{
+		dbMigrationsFileSystem:   embedMigrations,
+		analyticsViewsFileSystem: embedAnalyticsViews,
+		env:                      env,
+		pgConfig:                 pgConfig,
 	}
-
-	err = migrationDB.Ping()
-	if err != nil {
-		return nil, fmt.Errorf("unable to ping database: %w", err)
-	}
-
-	return migrationDB, nil
 }
 
-func RunMigrations(env string, pgConfig utils.PGConfig, logger *slog.Logger) error {
-	db, err := setupDbConnection(env, pgConfig)
-	if err != nil {
-		return fmt.Errorf("setupDbConnection error: %w", err)
+func (m *Migrater) Run(ctx context.Context) error {
+	if err := m.openDb(); err != nil {
+		return errors.Wrap(err, "unable to open db in Migrater")
 	}
 
-	params := migrationParams{
-		fileSystem:   embedMigrations,
-		folderName:   "migrations",
-		allowMissing: false,
-	}
-	if err := runMigrationsWithFolder(db, params, logger); err != nil {
-		return fmt.Errorf("runMigrationsWithFolder error: %w", err)
+	// Now run the migrations
+	if err := m.runMarbleDbMigrations(ctx); err != nil {
+		return errors.Wrap(err, "runMarbleDbMigrations error")
 	}
 
-	if err := migrateAnalyticsViews(db, embedAnalyticsViews); err != nil {
+	if err := m.migrateAnalyticsViews(ctx, m.analyticsViewsFileSystem); err != nil {
 		return errors.Wrap(err, "migrateAnalyticsViews error")
+	}
+
+	return nil
+}
+
+func (m *Migrater) openDb() error {
+	connectionString := m.pgConfig.GetConnectionString(m.env)
+	db, err := sql.Open("pgx", connectionString)
+	if err != nil {
+		return errors.Wrap(err, "unable to create connection pool for migrations")
+	} else {
+		m.db = db
+	}
+	if err = m.db.Ping(); err != nil {
+		return errors.Wrap(err, "unable to ping database")
 	}
 	return nil
 }
 
-func runMigrationsWithFolder(db *sql.DB, params migrationParams, logger *slog.Logger) error {
-	// start goose migrations
-	logger.Info("Migrations starting to setup DB: " + params.folderName)
-	goose.SetBaseFS(params.fileSystem)
-
+func (m *Migrater) runMarbleDbMigrations(ctx context.Context) error {
+	logger := utils.LoggerFromContext(ctx)
+	logger.InfoContext(ctx, "Migrations starting to setup marble DB")
+	goose.SetBaseFS(m.dbMigrationsFileSystem)
 	if err := goose.SetDialect("postgres"); err != nil {
 		return err
 	}
-
-	// When running on the secondary folder containing the test org migrations, we allow missing migrations to allow out of order migrations with the main folder
-	if params.allowMissing {
-		if err := goose.Up(db, params.folderName, goose.WithAllowMissing()); err != nil {
-			return fmt.Errorf("unable to run migrations: %w", err)
-		}
-	} else {
-		if err := goose.Up(db, params.folderName); err != nil {
-			return fmt.Errorf("unable to run migrations: %w", err)
-		}
-	}
-	return nil
+	return goose.Up(m.db, "migrations")
 }
 
-func migrateAnalyticsViews(db *sql.DB, folder embed.FS) error {
+func (m *Migrater) migrateAnalyticsViews(ctx context.Context, folder embed.FS) error {
 	if err := fs.WalkDir(
 		folder,
 		".",
@@ -99,7 +92,7 @@ func migrateAnalyticsViews(db *sql.DB, folder embed.FS) error {
 			}
 
 			if !d.IsDir() {
-				return createViewFromFile(db, folder, path)
+				return m.createViewFromFile(ctx, folder, path)
 			}
 
 			return nil
@@ -110,15 +103,17 @@ func migrateAnalyticsViews(db *sql.DB, folder embed.FS) error {
 	return nil
 }
 
-func createViewFromFile(db *sql.DB, folder embed.FS, path string) error {
-	s, err := folder.ReadFile(path)
+func (m *Migrater) createViewFromFile(ctx context.Context, folder embed.FS, path string) error {
+	logger := utils.LoggerFromContext(ctx)
+	sql, err := folder.ReadFile(path)
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("unable to read file %s", path))
 	}
 
-	if _, err := db.Exec(string(s)); err != nil {
+	if _, err := m.db.Exec(string(sql)); err != nil {
 		return errors.Wrap(err, fmt.Sprintf("unable to create view from file %s", path))
 	}
-	fmt.Printf("Successfully created view from %s\n", path)
+
+	logger.InfoContext(ctx, fmt.Sprintf("Successfully created view from %s", path))
 	return nil
 }
