@@ -8,7 +8,6 @@ SELECT
       id,
       organization_id,
       email,
-      firebase_uid,
       role,
       deleted_at
 FROM
