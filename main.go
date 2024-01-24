@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"crypto/rsa"
-	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -14,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/cockroachdb/errors"
 	"github.com/segmentio/analytics-go/v3"
 	"go.opentelemetry.io/otel/trace"
 
@@ -180,7 +180,7 @@ func main() {
 	shouldRunExecuteScheduledScenarios := flag.Bool("scheduled-executer", false, "Run execute scheduled scenarios")
 	shouldRunDataIngestion := flag.Bool("data-ingestion", false, "Run data ingestion")
 	flag.Parse()
-	logger.Info("Flags",
+	logger.InfoContext(appContext, "Flags",
 		slog.Bool("shouldRunMigrations", *shouldRunMigrations),
 		slog.Bool("shouldRunServer", *shouldRunServer),
 		slog.Bool("shouldRunScheduledScenarios", *shouldRunScheduleScenarios),
@@ -188,9 +188,9 @@ func main() {
 	)
 
 	if *shouldRunMigrations {
-		err := repositories.RunMigrations(appConfig.env, appConfig.pgConfig, logger)
-		if err != nil {
-			slog.Error("repositories.RunMigrations failed", slog.String("error", err.Error()))
+		migrater := repositories.NewMigrater(appConfig.pgConfig, appConfig.env)
+		if err := migrater.Run(appContext); err != nil {
+			logger.ErrorContext(appContext, fmt.Sprintf("error while running migrations: %+v", err))
 			os.Exit(1)
 			return
 		}

@@ -12,8 +12,8 @@ EXCEPTION WHEN duplicate_object THEN RAISE NOTICE '%, skipping', SQLERRM USING E
 END
 $$;
 
-GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO analytics
-GRANT USAGE ON SCHEMA analytics TO analytics
+GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO analytics;
+GRANT USAGE ON SCHEMA analytics TO analytics;
 ALTER DEFAULT PRIVILEGES IN SCHEMA analytics GRANT SELECT ON TABLES TO analytics;
 
 ALTER ROLE analytics
