@@ -17,8 +17,8 @@ type DecisionFilters struct {
 	EndDate        time.Time `form:"endDate" time_format`
 	Outcomes       []string  `form:"outcome[]"`
 	TriggerObjects []string  `form:"triggerObject[]"`
-	WithCase       *bool     `form:"withCase"`
 	CaseIds        []string  `form:"caseId[]"`
+	HasCase        *bool     `form:"has_case"`
 }
 
 type CreateDecisionBody struct {

@@ -87,7 +87,7 @@ func (usecase *DecisionUsecase) ListDecisions(ctx context.Context, organizationI
 				EndDate:        filters.EndDate,
 				Outcomes:       outcomes,
 				TriggerObjects: triggerObjectTypes,
-				WithCase:       filters.WithCase,
+				HasCase:        filters.HasCase,
 				CaseIds:        filters.CaseIds,
 			})
 			if err != nil {

@@ -199,10 +199,10 @@ func applyDecisionFilters(query squirrel.SelectBuilder, filters models.DecisionF
 	if !filters.EndDate.IsZero() {
 		query = query.Where(squirrel.LtOrEq{"created_at": filters.EndDate})
 	}
-	if filters.WithCase != nil && *filters.WithCase {
+	if filters.HasCase != nil && *filters.HasCase {
 		query = query.Where(squirrel.NotEq{"case_id": nil})
 	}
-	if filters.WithCase != nil && !*filters.WithCase {
+	if filters.HasCase != nil && !*filters.HasCase {
 		query = query.Where(squirrel.Eq{"case_id": nil})
 	}
 	if len(filters.CaseIds) > 0 {
