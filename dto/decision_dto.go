@@ -18,7 +18,7 @@ type DecisionFilters struct {
 	Outcomes       []string  `form:"outcome[]"`
 	TriggerObjects []string  `form:"triggerObject[]"`
 	CaseIds        []string  `form:"caseId[]"`
-	HasCase        *bool     `form:"has_case"`
+	HasCase        []bool    `form:"has_case"`
 }
 
 type CreateDecisionBody struct {
