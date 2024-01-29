@@ -31,7 +31,6 @@ func HasPermission(permission models.Permission) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		credentials, ok := c.Request.Context().Value(utils.ContextKeyCredentials).(models.Credentials)
 		if !ok {
-			fmt.Println("hello")
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
