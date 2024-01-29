@@ -59,7 +59,7 @@ type DecisionFilters struct {
 	EndDate        time.Time
 	Outcomes       []Outcome
 	TriggerObjects []TableName
-	HasCase        []bool
+	HasCase        *bool
 	CaseIds        []string
 }
 

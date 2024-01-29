@@ -199,31 +199,16 @@ func applyDecisionFilters(query squirrel.SelectBuilder, filters models.DecisionF
 	if !filters.EndDate.IsZero() {
 		query = query.Where(squirrel.LtOrEq{"created_at": filters.EndDate})
 	}
-
-	hasCase := uniqueBool(filters.HasCase)
-	if len(hasCase) == 1 {
-		if hasCase[0] {
-			query = query.Where(squirrel.NotEq{"case_id": nil})
-		} else {
-			query = query.Where(squirrel.Eq{"case_id": nil})
-		}
+	if filters.HasCase != nil && *filters.HasCase {
+		query = query.Where(squirrel.NotEq{"case_id": nil})
+	}
+	if filters.HasCase != nil && !*filters.HasCase {
+		query = query.Where(squirrel.Eq{"case_id": nil})
 	}
 	if len(filters.CaseIds) > 0 {
 		query = query.Where(squirrel.Eq{"case_id": filters.CaseIds})
 	}
 	return query
-}
-
-func uniqueBool(bools []bool) []bool {
-	uniqueMap := make(map[bool]bool)
-	for _, b := range bools {
-		uniqueMap[b] = true
-	}
-	unique := []bool{}
-	for b := range uniqueMap {
-		unique = append(unique, b)
-	}
-	return unique
 }
 
 func selectDecisionsWithRank(p models.PaginationAndSorting) squirrel.SelectBuilder {
