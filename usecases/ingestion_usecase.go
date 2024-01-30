@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cockroachdb/errors"
+
 	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -102,8 +104,8 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 			break
 		}
 		if err != nil {
-			if parseError, ok := err.(*csv.ParseError); ok {
-				return models.UploadLog{}, fmt.Errorf("%w (%w)", parseError, models.BadParameterError)
+			if errors.As(err, &csv.ParseError{}) {
+				return models.UploadLog{}, fmt.Errorf("%w (%w)", err, models.BadParameterError)
 			}
 			return models.UploadLog{}, fmt.Errorf("error found at line %d in CSV (%w)", lineNumber, models.BadParameterError)
 		}
