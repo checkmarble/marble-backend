@@ -104,7 +104,8 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 			break
 		}
 		if err != nil {
-			if errors.As(err, &csv.ParseError{}) {
+			var parseError *csv.ParseError
+			if errors.As(err, &parseError) {
 				return models.UploadLog{}, fmt.Errorf("%w (%w)", err, models.BadParameterError)
 			}
 			return models.UploadLog{}, fmt.Errorf("error found at line %d in CSV (%w)", lineNumber, models.BadParameterError)
