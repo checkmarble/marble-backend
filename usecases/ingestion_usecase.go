@@ -107,8 +107,9 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 			var parseError *csv.ParseError
 			if errors.As(err, &parseError) {
 				return models.UploadLog{}, fmt.Errorf("%w (%w)", err, models.BadParameterError)
+			} else {
+				return models.UploadLog{}, fmt.Errorf("error found at line %d in CSV (%w)", lineNumber, models.BadParameterError)
 			}
-			return models.UploadLog{}, fmt.Errorf("error found at line %d in CSV (%w)", lineNumber, models.BadParameterError)
 		}
 
 		_, err = parseStringValuesToMap(headers, row, table)
