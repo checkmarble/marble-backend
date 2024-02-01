@@ -108,19 +108,5 @@ func (usecase *SeedUseCase) SeedZorgOrganization(ctx context.Context, zorgOrgani
 		return err
 	}
 
-	// reset firebase id of all users, so when the firebase emulator restarts
-	return usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
-		users, err := usecase.userRepository.AllUsers(ctx, tx)
-		if err != nil {
-			return err
-		}
-
-		for _, user := range users {
-			err = usecase.userRepository.UpdateFirebaseId(ctx, tx, user.UserId, "")
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	return nil
 }

@@ -47,8 +47,7 @@ func TestClient_VerifyFirebaseToken(t *testing.T) {
 		identity, err := c.VerifyFirebaseToken(context.Background(), "token")
 		assert.NoError(t, err)
 		assert.Equal(t, models.FirebaseIdentity{
-			Email:       "user@email.com",
-			FirebaseUid: "token_subject",
+			Email: "user@email.com",
 		}, identity)
 		mockVerifier.AssertExpectations(t)
 	})
@@ -67,8 +66,7 @@ func TestClient_VerifyFirebaseToken(t *testing.T) {
 		identity, err := c.VerifyFirebaseToken(context.Background(), "token")
 		assert.NoError(t, err)
 		assert.Equal(t, models.FirebaseIdentity{
-			Email:       "user@email.com",
-			FirebaseUid: "token_subject",
+			Email: "user@email.com",
 		}, identity)
 		mockVerifier.AssertExpectations(t)
 	})

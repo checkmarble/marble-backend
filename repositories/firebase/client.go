@@ -55,8 +55,7 @@ func (c *Client) VerifyFirebaseToken(ctx context.Context, firebaseToken string) 
 	}
 
 	return models.FirebaseIdentity{
-		Email:       email,
-		FirebaseUid: token.Subject,
+		Email: email,
 	}, nil
 }
 

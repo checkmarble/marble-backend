@@ -7,7 +7,6 @@ type UserId string
 type User struct {
 	UserId         UserId
 	Email          string
-	FirebaseUid    string
 	Role           Role
 	OrganizationId string
 	FirstName      string

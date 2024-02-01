@@ -14,9 +14,7 @@ import (
 type marbleRepository interface {
 	GetApiKeyByKey(ctx context.Context, key string) (models.ApiKey, error)
 	GetOrganizationByID(ctx context.Context, organizationID string) (models.Organization, error)
-	UserByFirebaseUid(ctx context.Context, firebaseUID string) (models.User, error)
 	UserByEmail(ctx context.Context, email string) (models.User, error)
-	UpdateUserFirebaseUID(ctx context.Context, userID models.UserId, firebaseUID string) error
 }
 
 type encoder interface {
@@ -67,24 +65,11 @@ func (g *Generator) fromFirebaseToken(ctx context.Context, firebaseToken string)
 		return "", time.Time{}, models.Credentials{}, fmt.Errorf("verifier.VerifyFirebaseToken error: %w", err)
 	}
 
-	user, err := g.repository.UserByFirebaseUid(ctx, identity.FirebaseUid)
-	if err == nil {
-		credentials := models.NewCredentialWithUser(user)
-		return g.encodeToken(credentials)
-	}
-	if err != nil && !errors.Is(err, models.NotFoundError) {
-		return "", time.Time{}, models.Credentials{}, fmt.Errorf("repository.UserByFirebaseUid error: %w", err)
-	}
-
-	user, err = g.repository.UserByEmail(ctx, identity.Email)
+	user, err := g.repository.UserByEmail(ctx, identity.Email)
 	if errors.Is(err, models.NotFoundError) {
 		return "", time.Time{}, models.Credentials{}, fmt.Errorf("%w: %w", models.ErrUnknownUser, err)
 	} else if err != nil {
 		return "", time.Time{}, models.Credentials{}, fmt.Errorf("repository.UserByEmail error: %w", err)
-	}
-
-	if err := g.repository.UpdateUserFirebaseUID(ctx, user.UserId, identity.FirebaseUid); err != nil {
-		return "", time.Time{}, models.Credentials{}, fmt.Errorf("repository.UpdateUserFirebaseUID error: %w", err)
 	}
 
 	credentials := models.NewCredentialWithUser(user)

@@ -18,9 +18,7 @@ type UserRepository interface {
 	UserByID(ctx context.Context, tx Transaction, userId models.UserId) (models.User, error)
 	UsersOfOrganization(ctx context.Context, tx Transaction, organizationIDFilter string) ([]models.User, error)
 	AllUsers(ctx context.Context, tx Transaction) ([]models.User, error)
-	UserByFirebaseUid(ctx context.Context, tx Transaction, firebaseUid string) (*models.User, error)
 	UserByEmail(ctx context.Context, tx Transaction, email string) (*models.User, error)
-	UpdateFirebaseId(ctx context.Context, tx Transaction, userId models.UserId, firebaseUid string) error
 }
 
 type UserRepositoryPostgresql struct {
@@ -44,7 +42,6 @@ func (repo *UserRepositoryPostgresql) CreateUser(ctx context.Context, tx Transac
 			Columns(
 				"id",
 				"email",
-				"firebase_uid",
 				"role",
 				"organization_id",
 				"first_name",
@@ -53,7 +50,6 @@ func (repo *UserRepositoryPostgresql) CreateUser(ctx context.Context, tx Transac
 			Values(
 				string(userId),
 				createUser.Email,
-				"",
 				int(createUser.Role),
 				organizationId,
 				createUser.FirstName,
@@ -155,21 +151,6 @@ func (repo *UserRepositoryPostgresql) AllUsers(ctx context.Context, tx Transacti
 	)
 }
 
-func (repo *UserRepositoryPostgresql) UserByFirebaseUid(ctx context.Context, tx Transaction, firebaseUid string) (*models.User, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
-
-	return SqlToOptionalModel(
-		ctx,
-		pgTx,
-		NewQueryBuilder().
-			Select(dbmodels.UserFields...).
-			From(dbmodels.TABLE_USERS).
-			Where("firebase_uid = ?", firebaseUid).
-			OrderBy("id"),
-		dbmodels.AdaptUser,
-	)
-}
-
 func (repo *UserRepositoryPostgresql) UserByEmail(ctx context.Context, tx Transaction, email string) (*models.User, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
@@ -184,17 +165,4 @@ func (repo *UserRepositoryPostgresql) UserByEmail(ctx context.Context, tx Transa
 			OrderBy("id"),
 		dbmodels.AdaptUser,
 	)
-}
-
-func (repo *UserRepositoryPostgresql) UpdateFirebaseId(ctx context.Context, tx Transaction, userId models.UserId, firebaseUid string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
-
-	_, err := pgTx.ExecBuilder(
-		ctx,
-		NewQueryBuilder().
-			Update(dbmodels.TABLE_USERS).
-			Set("firebase_uid", firebaseUid).
-			Where("id = ?", string(userId)),
-	)
-	return err
 }

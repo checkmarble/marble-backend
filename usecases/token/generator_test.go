@@ -133,8 +133,7 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 	firebaseToken := "firebaseToken"
 	firebaseIdentity := models.FirebaseIdentity{
-		Email:       "user@email.com",
-		FirebaseUid: "firebase_uid",
+		Email: "user@email.com",
 	}
 	token := "token"
 	now := time.Now()
@@ -142,7 +141,6 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 	user := models.User{
 		UserId:         "user_id",
 		Email:          "user@email.com",
-		FirebaseUid:    "firebase_uid",
 		Role:           models.ADMIN,
 		OrganizationId: "organization_id",
 	}
@@ -153,7 +151,7 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 			Return(firebaseIdentity, nil)
 
 		mockRepository := new(mocks.Database)
-		mockRepository.On("UserByFirebaseUid", mock.Anything, firebaseIdentity.FirebaseUid).
+		mockRepository.On("UserByEmail", mock.Anything, firebaseIdentity.Email).
 			Return(user, nil)
 		mockRepository.On("GetOrganizationByID", mock.Anything, "organization_id").
 			Return(models.Organization{}, nil)
@@ -192,12 +190,8 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 			Return(firebaseIdentity, nil)
 
 		mockRepository := new(mocks.Database)
-		mockRepository.On("UserByFirebaseUid", mock.Anything, firebaseIdentity.FirebaseUid).
-			Return(models.User{}, models.NotFoundError)
 		mockRepository.On("UserByEmail", mock.Anything, firebaseIdentity.Email).
 			Return(user, nil)
-		mockRepository.On("UpdateUserFirebaseUID", mock.Anything, user.UserId, firebaseIdentity.FirebaseUid).
-			Return(nil)
 		mockRepository.On("GetOrganizationByID", mock.Anything, "organization_id").
 			Return(models.Organization{}, nil)
 
@@ -243,34 +237,12 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 		mockVerifier.AssertExpectations(t)
 	})
 
-	t.Run("UserByFirebaseUid error", func(t *testing.T) {
-		mockVerifier := new(mocks.FirebaseTokenVerifier)
-		mockVerifier.On("VerifyFirebaseToken", mock.Anything, firebaseToken).
-			Return(firebaseIdentity, nil)
-
-		mockRepository := new(mocks.Database)
-		mockRepository.On("UserByFirebaseUid", mock.Anything, firebaseIdentity.FirebaseUid).
-			Return(models.User{}, assert.AnError)
-
-		generator := Generator{
-			repository: mockRepository,
-			verifier:   mockVerifier,
-		}
-
-		_, _, err := generator.GenerateToken(context.Background(), "", firebaseToken)
-		assert.Error(t, err)
-		mockRepository.AssertExpectations(t)
-		mockVerifier.AssertExpectations(t)
-	})
-
 	t.Run("UserByEmail error", func(t *testing.T) {
 		mockVerifier := new(mocks.FirebaseTokenVerifier)
 		mockVerifier.On("VerifyFirebaseToken", mock.Anything, firebaseToken).
 			Return(firebaseIdentity, nil)
 
 		mockRepository := new(mocks.Database)
-		mockRepository.On("UserByFirebaseUid", mock.Anything, firebaseIdentity.FirebaseUid).
-			Return(models.User{}, models.NotFoundError)
 		mockRepository.On("UserByEmail", mock.Anything, firebaseIdentity.Email).
 			Return(models.User{}, assert.AnError)
 
@@ -283,30 +255,6 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 		assert.Error(t, err)
 		mockRepository.AssertExpectations(t)
 		mockVerifier.AssertExpectations(t)
-	})
-
-	t.Run("UpdateUserFirebaseUID error", func(t *testing.T) {
-		mockVerifier := new(mocks.FirebaseTokenVerifier)
-		mockVerifier.On("VerifyFirebaseToken", mock.Anything, firebaseToken).
-			Return(firebaseIdentity, nil)
-
-		mockRepository := new(mocks.Database)
-		mockRepository.On("UserByFirebaseUid", mock.Anything, firebaseIdentity.FirebaseUid).
-			Return(models.User{}, models.NotFoundError)
-		mockRepository.On("UserByEmail", mock.Anything, firebaseIdentity.Email).
-			Return(user, nil)
-		mockRepository.On("UpdateUserFirebaseUID", mock.Anything, user.UserId, firebaseIdentity.FirebaseUid).
-			Return(assert.AnError)
-
-		generator := Generator{
-			repository: mockRepository,
-			verifier:   mockVerifier,
-		}
-
-		_, _, err := generator.GenerateToken(context.Background(), "", firebaseToken)
-		assert.Error(t, err)
-		mockVerifier.AssertExpectations(t)
-		mockRepository.AssertExpectations(t)
 	})
 
 	t.Run("EncodeMarbleToken error", func(t *testing.T) {
@@ -315,12 +263,8 @@ func TestGenerator_GenerateToken_FirebaseToken(t *testing.T) {
 			Return(firebaseIdentity, nil)
 
 		mockRepository := new(mocks.Database)
-		mockRepository.On("UserByFirebaseUid", mock.Anything, firebaseIdentity.FirebaseUid).
-			Return(models.User{}, models.NotFoundError)
 		mockRepository.On("UserByEmail", mock.Anything, firebaseIdentity.Email).
 			Return(user, nil)
-		mockRepository.On("UpdateUserFirebaseUID", mock.Anything, user.UserId, firebaseIdentity.FirebaseUid).
-			Return(nil)
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
 		mockEncoder.On("EncodeMarbleToken", mock.Anything, models.Credentials{
