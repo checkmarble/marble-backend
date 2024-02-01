@@ -37,20 +37,20 @@ func (usecase *MarbleTokenUseCase) adaptCredentialFromApiKey(ctx context.Context
 
 	// Build a token name from the organization name because
 	// We don't want to log the apiKey itself.
-	apiKeyName, err := usecase.makeTokenName(ctx, apiKey.OrganizationId)
+	apiKeyName, err := usecase.makeTokenName(ctx, apiKey)
 	if err != nil {
 		return models.Credentials{}, err
 	}
 	return models.NewCredentialWithApiKey(apiKey.OrganizationId, apiKey.Role, apiKeyName), nil
 }
 
-func (usecase *MarbleTokenUseCase) makeTokenName(ctx context.Context, organizationId string) (string, error) {
-	organizationName, err := usecase.organizationRepository.GetOrganizationById(ctx, nil, organizationId)
+func (usecase *MarbleTokenUseCase) makeTokenName(ctx context.Context, apiKey models.ApiKey) (string, error) {
+	organizationName, err := usecase.organizationRepository.GetOrganizationById(ctx, nil, apiKey.OrganizationId)
 	if err != nil {
 		return "", err
 	}
 
-	return fmt.Sprintf("ApiKey Of %s", organizationName.Name), nil
+	return fmt.Sprintf("ApiKey Of %s: %s", organizationName.Name, apiKey.Description), nil
 }
 
 func (usecase *MarbleTokenUseCase) NewMarbleToken(ctx context.Context, apiKey string, firebaseToken string) (string, time.Time, error) {
