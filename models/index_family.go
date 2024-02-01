@@ -55,30 +55,40 @@ func (f IndexFamily) Copy() IndexFamily {
 	}
 }
 
-func ExtractMinimalSetOfIdxFamilies(idxFamilies *set.HashSet[IndexFamily, string]) *set.HashSet[IndexFamily, string] {
+func ExtractMinimalSetOfIdxFamilies(idxFamiliesIn *set.HashSet[IndexFamily, string]) *set.HashSet[IndexFamily, string] {
 	// We iterate over the input set of families, and try to reduce the number in the ouput step by step by combining families
 	// or indexes where possible
-	output := set.NewHashSet[IndexFamily, string](0)
-	idxFamilies.ForEach(func(new IndexFamily) bool {
+	output := []IndexFamily{}
+	input := idxFamiliesIn.Slice()
+	slices.SortFunc(input, compareIdxFamily)
+
+	for _, idxIn := range input {
 		foundReplacement := false
-		output.ForEach(func(existing IndexFamily) bool {
-			combined, ok := RefineAndCombineIdxFamilies(existing, new)
+		for _, idxOut := range output {
+			combined, ok := RefineAndCombineIdxFamilies(idxOut, idxIn)
 			if ok {
-				output.Remove(existing)
-				output.Insert(combined)
+				output = append(output, combined)
 				foundReplacement = true
-				return false
+				break
 			}
-			return true
-		})
-		if !foundReplacement {
-			output.Insert(new)
 		}
-		return true
-	})
-	return output
+		if !foundReplacement {
+			output = append(output, idxIn)
+		}
+	}
+
+	return set.HashSetFrom(output)
 }
 
 func RefineAndCombineIdxFamilies(left, right IndexFamily) (IndexFamily, bool) {
 	return left, false // actual logic not yet implemented
+}
+
+func compareIdxFamily(a, b IndexFamily) int {
+	if a.Hash() < b.Hash() {
+		return -1
+	} else if a.Hash() == b.Hash() {
+		return 0
+	}
+	return 1
 }
