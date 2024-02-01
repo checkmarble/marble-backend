@@ -47,17 +47,7 @@ func (r *UserRepository) AllUsers(ctx context.Context, tx repositories.Transacti
 	return args.Get(0).([]models.User), args.Error(1)
 }
 
-func (r *UserRepository) UserByFirebaseUid(ctx context.Context, tx repositories.Transaction, firebaseUid string) (*models.User, error) {
-	args := r.Called(tx, firebaseUid)
-	return args.Get(0).(*models.User), args.Error(1)
-}
-
 func (r *UserRepository) UserByEmail(ctx context.Context, tx repositories.Transaction, email string) (*models.User, error) {
 	args := r.Called(tx, email)
 	return args.Get(0).(*models.User), args.Error(1)
-}
-
-func (r *UserRepository) UpdateFirebaseId(ctx context.Context, tx repositories.Transaction, userId models.UserId, firebaseUid string) error {
-	args := r.Called(tx, userId, firebaseUid)
-	return args.Error(0)
 }

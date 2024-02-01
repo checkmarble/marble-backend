@@ -71,29 +71,14 @@ func (usecase *MarbleTokenUseCase) NewMarbleToken(ctx context.Context, apiKey st
 		}
 
 		user, err := transaction.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.User, error) {
-
-			user, err := usecase.userRepository.UserByFirebaseUid(ctx, tx, identity.FirebaseUid)
+			user, err := usecase.userRepository.UserByEmail(ctx, tx, identity.Email)
 			if err != nil {
 				return models.User{}, err
 			}
-			if user != nil {
-				return *user, nil
+			if user == nil {
+				return models.User{}, fmt.Errorf("unknown user %s: %w", identity.Email, models.NotFoundError)
 			}
-
-			// first connection
-			user, err = usecase.userRepository.UserByEmail(ctx, tx, identity.Email)
-			if err != nil {
-				return models.User{}, err
-			}
-			if user != nil {
-				// store firebase Id
-				if err := usecase.userRepository.UpdateFirebaseId(ctx, tx, user.UserId, identity.FirebaseUid); err != nil {
-					return models.User{}, err
-				}
-				return usecase.userRepository.UserByID(ctx, tx, user.UserId)
-			}
-
-			return models.User{}, fmt.Errorf("unknown user %s: %w", identity.Email, models.NotFoundError)
+			return *user, nil
 		})
 
 		if err != nil {

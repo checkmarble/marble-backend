@@ -9,7 +9,6 @@ import (
 type DBUserResult struct {
 	Id             string             `db:"id"`
 	Email          string             `db:"email"`
-	FirebaseUid    string             `db:"firebase_uid"`
 	Role           int                `db:"role"`
 	OrganizationId *string            `db:"organization_id"`
 	FirstName      pgtype.Text        `db:"first_name"`
@@ -35,7 +34,6 @@ func AdaptUser(db DBUserResult) (models.User, error) {
 	return models.User{
 		UserId:         models.UserId(db.Id),
 		Email:          db.Email,
-		FirebaseUid:    db.FirebaseUid,
 		Role:           models.Role(db.Role),
 		OrganizationId: organizationId,
 		FirstName:      firstName,
