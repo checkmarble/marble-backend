@@ -17,13 +17,6 @@ type AggregateQueryFamily struct {
 	SelectOrOtherConditions *set.Set[FieldName]
 }
 
-type IndexFamily struct {
-	Fixed  []Field
-	Flex   *set.Set[FieldName]
-	Last   Field
-	Others *set.Set[FieldName]
-}
-
 func (family AggregateQueryFamily) Equal(other AggregateQueryFamily) bool {
 	return family.Table == other.Table &&
 		family.EqConditions.Equal(other.EqConditions) &&
@@ -172,4 +165,53 @@ func ExtractQueryFamiliesFromAstSlice(nodes []ast.Node) (*set.HashSet[AggregateQ
 	}
 
 	return families, nil
+}
+
+func (qFamily AggregateQueryFamily) ToIndexFamilies() *set.HashSet[IndexFamily, string] {
+	return aggregateQueryToIndexFamily(qFamily)
+}
+
+func aggregateQueryToIndexFamily(qFamily AggregateQueryFamily) *set.HashSet[IndexFamily, string] {
+	// we output a collection of index families, with the different combinations of "inequality filtering" at the end of the index.
+	// E.g. if we have a query with conditions a = 1, b = 2, c > 3, d > 4, e > 5, we output:
+	// { Flex: {a,b}, Last: c, Others: {d,e} }  +  { Flex: {a,b}, Last: d, Others: {c,e} }   +  { Flex: {a,b}, Last: e, Others: {c,d} }
+	output := set.NewHashSet[IndexFamily, string](0)
+
+	// first iterate on equality conditions and colunms to include anyway
+	base := NewIndexFamily()
+	if qFamily.EqConditions != nil {
+		qFamily.EqConditions.ForEach(func(f FieldName) bool {
+			base.Flex.Insert(f)
+			return true
+		})
+	}
+	if qFamily.SelectOrOtherConditions != nil {
+		qFamily.SelectOrOtherConditions.ForEach(func(f FieldName) bool {
+			base.Others.Insert(f)
+			return true
+		})
+	}
+	if qFamily.IneqConditions == nil || qFamily.IneqConditions.Size() == 0 {
+		output.Insert(base)
+		return output
+	}
+
+	// If inequality conditions are involved, we need to create a family for each column involved in the inequality conditions (and complete the "other" columns)
+	qFamily.IneqConditions.ForEach(func(f FieldName) bool {
+		// we create a copy of the base family
+		family := base.Copy()
+		// we add the current column as the "last" column
+		family.Last = f
+		// we add all the other columns as "other" columns
+		qFamily.IneqConditions.ForEach(func(o FieldName) bool {
+			if o != f {
+				family.Others.Insert(o)
+			}
+			return true
+		})
+		output.Insert(family)
+		return true
+	})
+
+	return output
 }
