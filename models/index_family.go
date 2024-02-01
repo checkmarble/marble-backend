@@ -54,3 +54,31 @@ func (f IndexFamily) Copy() IndexFamily {
 		Others: f.Others.Copy(),
 	}
 }
+
+func ExtractMinimalSetOfIdxFamilies(idxFamilies *set.HashSet[IndexFamily, string]) *set.HashSet[IndexFamily, string] {
+	// We iterate over the input set of families, and try to reduce the number in the ouput step by step by combining families
+	// or indexes where possible
+	output := set.NewHashSet[IndexFamily, string](0)
+	idxFamilies.ForEach(func(new IndexFamily) bool {
+		foundReplacement := false
+		output.ForEach(func(existing IndexFamily) bool {
+			combined, ok := RefineAndCombineIdxFamilies(existing, new)
+			if ok {
+				output.Remove(existing)
+				output.Insert(combined)
+				foundReplacement = true
+				return false
+			}
+			return true
+		})
+		if !foundReplacement {
+			output.Insert(new)
+		}
+		return true
+	})
+	return output
+}
+
+func RefineAndCombineIdxFamilies(left, right IndexFamily) (IndexFamily, bool) {
+	return left, false // actual logic not yet implemented
+}
