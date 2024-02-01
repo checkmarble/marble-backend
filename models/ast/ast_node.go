@@ -1,6 +1,10 @@
 package ast
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/cockroachdb/errors"
+)
 
 type Node struct {
 	// A node is a constant xOR a function
@@ -32,4 +36,16 @@ func (node Node) AddNamedChild(name string, child Node) Node {
 	}
 	node.NamedChildren[name] = child
 	return node
+}
+
+func (node Node) ReadConstantNamedChildString(name string) (string, error) {
+	child, ok := node.NamedChildren[name]
+	if !ok {
+		return "", errors.New(fmt.Sprintf("Node does not have a %s child", name))
+	}
+	value, ok := child.Constant.(string)
+	if !ok {
+		return "", errors.New(fmt.Sprintf("\"%s\" constant is not a string: takes value %v", name, child.Constant))
+	}
+	return value, nil
 }
