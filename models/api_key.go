@@ -1,15 +1,15 @@
 package models
 
-type ApiKeyId string
-
 type ApiKey struct {
-	ApiKeyId       ApiKeyId
+	Id             string
 	OrganizationId string
 	Key            string
+	Description    string
 	Role           Role
 }
 
 type CreateApiKeyInput struct {
 	OrganizationId string
 	Key            string
+	Description    string
 }

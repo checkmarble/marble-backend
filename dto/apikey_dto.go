@@ -3,17 +3,19 @@ package dto
 import "github.com/checkmarble/marble-backend/models"
 
 type ApiKey struct {
-	ApiKeyId       string `json:"api_key_id"`
+	Id             string `json:"id"`
 	OrganizationId string `json:"organization_id"`
 	Key            string `json:"key"`
+	Description    string `json:"description"`
 	Role           string `json:"role"`
 }
 
-func AdaptApiKeyDto(user models.ApiKey) ApiKey {
+func AdaptApiKeyDto(apiKey models.ApiKey) ApiKey {
 	return ApiKey{
-		ApiKeyId:       string(user.ApiKeyId),
-		OrganizationId: user.OrganizationId,
-		Key:            user.Key,
-		Role:           user.Role.String(),
+		Id:             apiKey.Id,
+		OrganizationId: apiKey.OrganizationId,
+		Key:            apiKey.Key,
+		Description:    apiKey.Description,
+		Role:           apiKey.Role.String(),
 	}
 }

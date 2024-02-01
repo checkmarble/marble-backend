@@ -26,7 +26,8 @@ func (repo *ApiKeyRepositoryImpl) GetApiKeyByKey(ctx context.Context, tx Transac
 		NewQueryBuilder().
 			Select(dbmodels.ApiKeyFields...).
 			From(dbmodels.TABLE_APIKEYS).
-			Where("key = ?", key),
+			Where("key = ?", key).
+			Where("deleted_at IS NULL"),
 		dbmodels.AdaptApikey,
 	)
 }
@@ -40,7 +41,8 @@ func (repo *ApiKeyRepositoryImpl) GetApiKeysOfOrganization(ctx context.Context, 
 		NewQueryBuilder().
 			Select(dbmodels.ApiKeyFields...).
 			From(dbmodels.TABLE_APIKEYS).
-			Where("org_id = ?", organizationId),
+			Where("org_id = ?", organizationId).
+			Where("deleted_at IS NULL"),
 		dbmodels.AdaptApikey,
 	)
 
@@ -56,10 +58,12 @@ func (repo *ApiKeyRepositoryImpl) CreateApiKey(ctx context.Context, tx Transacti
 			Columns(
 				"org_id",
 				"key",
+				"description",
 			).
 			Values(
 				apiKey.OrganizationId,
 				apiKey.Key,
+				apiKey.Description,
 			),
 	)
 	return err
