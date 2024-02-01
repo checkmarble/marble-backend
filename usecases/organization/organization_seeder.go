@@ -36,6 +36,7 @@ func (o *OrganizationSeeder) Seed(ctx context.Context, organizationId string) er
 	err := o.ApiKeyRepository.CreateApiKey(ctx, nil, models.CreateApiKeyInput{
 		OrganizationId: organizationId,
 		Key:            randomAPiKey(),
+		Description:    "Default API Key",
 	})
 	if err != nil {
 		log.Printf("error creating token: %v", err)

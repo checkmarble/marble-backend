@@ -16,7 +16,7 @@ import (
 func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 	apiKeyString := "api_key"
 	key := models.ApiKey{
-		ApiKeyId:       "api_key_id",
+		Id:             "api_key_id",
 		OrganizationId: "organization_id",
 		Key:            apiKeyString,
 		Role:           models.ADMIN,

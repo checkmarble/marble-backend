@@ -15,7 +15,7 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 	key := "api_key"
 
 	apiKey := models.ApiKey{
-		ApiKeyId:       "api_key_id",
+		Id:             "api_key_id",
 		OrganizationId: "organization_id",
 		Key:            key,
 		Role:           models.ADMIN,
