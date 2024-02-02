@@ -15,10 +15,12 @@ type MarbleTokenUseCase struct {
 	marbleJwtRepository     repositories.MarbleJwtRepository
 	firebaseTokenRepository repositories.FireBaseTokenRepository
 	userRepository          repositories.UserRepository
-	apiKeyRepository        repositories.ApiKeyRepository
-	organizationRepository  repositories.OrganizationRepository
-	tokenLifetimeMinute     int
-	context                 context.Context
+	apiKeyRepository        interface {
+		GetApiKeyByKey(ctx context.Context, tx repositories.Transaction, apiKey string) (models.ApiKey, error)
+	}
+	organizationRepository repositories.OrganizationRepository
+	tokenLifetimeMinute    int
+	context                context.Context
 }
 
 func (usecase *MarbleTokenUseCase) encodeMarbleToken(creds models.Credentials) (string, time.Time, error) {

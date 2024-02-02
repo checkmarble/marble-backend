@@ -45,7 +45,6 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 		DataModelRepository:    usecases.Repositories.DataModelRepository,
 		OrganizationSeeder: organization.OrganizationSeeder{
 			CustomListRepository: usecases.Repositories.CustomListRepository,
-			ApiKeyRepository:     usecases.Repositories.ApiKeyRepository,
 		},
 		PopulateOrganizationSchema: usecases.NewPopulateOrganizationSchema(),
 	}

@@ -19,7 +19,6 @@ type OrganizationUseCase struct {
 	orgTransactionFactory        transaction.Factory
 	organizationRepository       repositories.OrganizationRepository
 	datamodelRepository          repositories.DataModelRepository
-	apiKeyRepository             repositories.ApiKeyRepository
 	userRepository               repositories.UserRepository
 	organizationCreator          organization.OrganizationCreator
 	organizationSchemaRepository repositories.OrganizationSchemaRepository
@@ -112,20 +111,4 @@ func (usecase *OrganizationUseCase) GetUsersOfOrganization(ctx context.Context, 
 			return usecase.userRepository.UsersOfOrganization(ctx, tx, organizationIDFilter)
 		},
 	)
-}
-
-func (usecase *OrganizationUseCase) GetApiKeysOfOrganization(ctx context.Context, organizationId string) ([]models.ApiKey, error) {
-	return transaction.TransactionReturnValue(ctx,
-		usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) ([]models.ApiKey, error) {
-			apiKeys, err := usecase.apiKeyRepository.GetApiKeysOfOrganization(ctx, tx, organizationId)
-			if err != nil {
-				return []models.ApiKey{}, err
-			}
-			for _, ak := range apiKeys {
-				if err := usecase.enforceSecurity.ReadOrganizationApiKeys(ak); err != nil {
-					return []models.ApiKey{}, err
-				}
-			}
-			return apiKeys, nil
-		})
 }

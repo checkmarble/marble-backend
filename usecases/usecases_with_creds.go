@@ -153,7 +153,7 @@ func (usecases *UsecasesWithCreds) NewMarbleTokenUseCase() MarbleTokenUseCase {
 		firebaseTokenRepository: repositories.FirebaseTokenRepository,
 		marbleJwtRepository:     repositories.MarbleJwtRepository(),
 		userRepository:          repositories.UserRepository,
-		apiKeyRepository:        repositories.ApiKeyRepository,
+		apiKeyRepository:        &usecases.Repositories.MarbleDbRepository,
 		organizationRepository:  repositories.OrganizationRepository,
 		tokenLifetimeMinute:     usecases.Configuration.TokenLifetimeMinute,
 		context:                 usecases.Context,
@@ -167,7 +167,6 @@ func (usecases *UsecasesWithCreds) NewOrganizationUseCase() OrganizationUseCase 
 		orgTransactionFactory:        usecases.NewOrgTransactionFactory(),
 		organizationRepository:       usecases.Repositories.OrganizationRepository,
 		datamodelRepository:          usecases.Repositories.DataModelRepository,
-		apiKeyRepository:             usecases.Repositories.ApiKeyRepository,
 		userRepository:               usecases.Repositories.UserRepository,
 		organizationCreator:          usecases.NewOrganizationCreator(),
 		organizationSchemaRepository: usecases.Repositories.OrganizationSchemaRepository,
@@ -307,5 +306,17 @@ func (usecases *UsecasesWithCreds) NewTagUseCase() TagUseCase {
 			InboxRepository:         &usecases.Repositories.MarbleDbRepository,
 			Credentials:             usecases.Credentials,
 		},
+	}
+}
+
+func (usecases *UsecasesWithCreds) NewApiKeyUseCase() ApiKeyUseCase {
+	return ApiKeyUseCase{
+		transactionFactory:      &usecases.Repositories.TransactionFactoryPosgresql,
+		organizationIdOfContext: usecases.OrganizationIdOfContext,
+		enforceSecurity: &security.EnforceSecurityApiKeyImpl{
+			EnforceSecurity: usecases.NewEnforceSecurity(),
+			Credentials:     usecases.Credentials,
+		},
+		apiKeyRepository: &usecases.Repositories.MarbleDbRepository,
 	}
 }

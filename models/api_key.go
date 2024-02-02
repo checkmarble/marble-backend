@@ -3,13 +3,24 @@ package models
 type ApiKey struct {
 	Id             string
 	OrganizationId string
-	Key            string
+	Hash           string
 	Description    string
 	Role           Role
 }
 
+type CreatedApiKey struct {
+	ApiKey
+	Value string
+}
+
 type CreateApiKeyInput struct {
 	OrganizationId string
-	Key            string
 	Description    string
+	Role           Role
+}
+
+type CreateApiKey struct {
+	CreateApiKeyInput
+	Id   string
+	Hash string
 }

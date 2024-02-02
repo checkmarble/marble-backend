@@ -16,7 +16,6 @@ type Repositories struct {
 	FirebaseTokenRepository          FireBaseTokenRepository
 	MarbleJwtRepository              func() MarbleJwtRepository
 	UserRepository                   UserRepository
-	ApiKeyRepository                 ApiKeyRepository
 	OrganizationRepository           OrganizationRepository
 	IngestionRepository              IngestionRepository
 	DataModelRepository              DataModelRepository
@@ -66,9 +65,6 @@ func NewRepositories(
 			}
 		},
 		UserRepository: &UserRepositoryPostgresql{
-			transactionFactory: transactionFactory,
-		},
-		ApiKeyRepository: &ApiKeyRepositoryImpl{
 			transactionFactory: transactionFactory,
 		},
 		OrganizationRepository: &OrganizationRepositoryPostgresql{
