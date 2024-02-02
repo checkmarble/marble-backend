@@ -37,3 +37,42 @@ func (i ConcreteIndex) isInstanceof(f IndexFamily) bool {
 
 	return true
 }
+
+func selectIdxFamiliesToCreate(idxFamilies set.Collection[IndexFamily], existing []ConcreteIndex) set.Collection[IndexFamily] {
+	toCreate := set.NewHashSet[IndexFamily](0)
+
+	for _, family := range idxFamilies.Slice() {
+		found := false
+		for _, concreteIndex := range existing {
+			if concreteIndex.isInstanceof(family) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			toCreate.Insert(family.copy())
+		}
+	}
+
+	return toCreate
+}
+
+func SelectConcreteIndexesToCreate(idxFamilies set.Collection[IndexFamily], existing []ConcreteIndex) []ConcreteIndex {
+	toCreateFamilies := selectIdxFamiliesToCreate(idxFamilies, existing)
+
+	toCreateIdx := make([]ConcreteIndex, 0, toCreateFamilies.Size())
+	toCreateFamilies.ForEach(func(family IndexFamily) bool {
+		indexed := family.Fixed
+		indexed = append(indexed, family.Flex.Slice()...)
+		if family.Last != "" {
+			indexed = append(indexed, family.Last)
+		}
+		toCreateIdx = append(toCreateIdx, ConcreteIndex{
+			Indexed:  indexed,
+			Included: family.Others.Slice(),
+		})
+		return true
+	})
+
+	return toCreateIdx
+}

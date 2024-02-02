@@ -215,3 +215,11 @@ func aggregateQueryToIndexFamily(qFamily AggregateQueryFamily) *set.HashSet[Inde
 
 	return output
 }
+
+func IndexesToCreateFromQueryFamilies(queryFamilies set.Collection[AggregateQueryFamily], existingIndexes []ConcreteIndex) []ConcreteIndex {
+	toCreateFamilies := set.NewHashSet[IndexFamily, string](0)
+	for _, q := range queryFamilies.Slice() {
+		toCreateFamilies = toCreateFamilies.Union(selectIdxFamiliesToCreate(q.ToIndexFamilies(), existingIndexes)).(*set.HashSet[IndexFamily, string])
+	}
+	return SelectConcreteIndexesToCreate(toCreateFamilies, existingIndexes)
+}
