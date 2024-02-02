@@ -199,7 +199,7 @@ func aggregateQueryToIndexFamily(qFamily AggregateQueryFamily) *set.HashSet[Inde
 	// If inequality conditions are involved, we need to create a family for each column involved in the inequality conditions (and complete the "other" columns)
 	qFamily.IneqConditions.ForEach(func(f FieldName) bool {
 		// we create a copy of the base family
-		family := base.Copy()
+		family := base.copy()
 		// we add the current column as the "last" column
 		family.Last = f
 		// we add all the other columns as "other" columns
