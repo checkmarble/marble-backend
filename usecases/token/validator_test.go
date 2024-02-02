@@ -12,12 +12,12 @@ import (
 )
 
 func TestValidator_Validate_APIKey(t *testing.T) {
-	key := "api_key"
+	apiKeyHash := "api_key"
 
 	apiKey := models.ApiKey{
 		Id:             "api_key_id",
 		OrganizationId: "organization_id",
-		Key:            key,
+		Hash:           apiKeyHash,
 		Role:           models.ADMIN,
 	}
 
@@ -36,7 +36,7 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 
 	t.Run("nominal", func(t *testing.T) {
 		mockKeyAndOrganizationGetter := new(mocks.Database)
-		mockKeyAndOrganizationGetter.On("GetApiKeyByKey", mock.Anything, key).
+		mockKeyAndOrganizationGetter.On("GetApiKeyByKey", mock.Anything, apiKeyHash).
 			Return(apiKey, nil)
 		mockKeyAndOrganizationGetter.On("GetOrganizationByID", mock.Anything, apiKey.OrganizationId).
 			Return(organization, nil)
@@ -45,7 +45,7 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 			getter: mockKeyAndOrganizationGetter,
 		}
 
-		credentials, err := v.Validate(context.Background(), "", key)
+		credentials, err := v.Validate(context.Background(), "", apiKeyHash)
 		assert.NoError(t, err)
 		assert.Equal(t, creds, credentials)
 		mockKeyAndOrganizationGetter.AssertExpectations(t)
@@ -53,21 +53,21 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 
 	t.Run("GetApiKeyByKey error", func(t *testing.T) {
 		mockKeyAndOrganizationGetter := new(mocks.Database)
-		mockKeyAndOrganizationGetter.On("GetApiKeyByKey", mock.Anything, key).
+		mockKeyAndOrganizationGetter.On("GetApiKeyByKey", mock.Anything, apiKeyHash).
 			Return(models.ApiKey{}, assert.AnError)
 
 		v := Validator{
 			getter: mockKeyAndOrganizationGetter,
 		}
 
-		_, err := v.Validate(context.Background(), "", key)
+		_, err := v.Validate(context.Background(), "", apiKeyHash)
 		assert.Error(t, err)
 		mockKeyAndOrganizationGetter.AssertExpectations(t)
 	})
 
 	t.Run("nominal", func(t *testing.T) {
 		mockKeyAndOrganizationGetter := new(mocks.Database)
-		mockKeyAndOrganizationGetter.On("GetApiKeyByKey", mock.Anything, key).
+		mockKeyAndOrganizationGetter.On("GetApiKeyByKey", mock.Anything, apiKeyHash).
 			Return(apiKey, nil)
 		mockKeyAndOrganizationGetter.On("GetOrganizationByID", mock.Anything, apiKey.OrganizationId).
 			Return(models.Organization{}, assert.AnError)
@@ -76,7 +76,7 @@ func TestValidator_Validate_APIKey(t *testing.T) {
 			getter: mockKeyAndOrganizationGetter,
 		}
 
-		_, err := v.Validate(context.Background(), "", key)
+		_, err := v.Validate(context.Background(), "", apiKeyHash)
 		assert.Error(t, err)
 		mockKeyAndOrganizationGetter.AssertExpectations(t)
 	})

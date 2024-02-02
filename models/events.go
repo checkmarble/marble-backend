@@ -34,4 +34,6 @@ const (
 	AnalyticsInboxUserCreated           AnalyticsEvent = "Created an Inbox User"
 	AnalyticsInboxUserUpdated           AnalyticsEvent = "Updated an Inbox User"
 	AnalyticsInboxUserDeleted           AnalyticsEvent = "Deleted an Inbox User"
+	AnalyticsApiKeyCreated              AnalyticsEvent = "Created an Api Key"
+	AnalyticsApiKeyDeleted              AnalyticsEvent = "Deleted an Api Key"
 )

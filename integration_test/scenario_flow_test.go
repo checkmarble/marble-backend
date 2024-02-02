@@ -64,7 +64,7 @@ func TestScenarioEndToEnd(t *testing.T) {
 	// Scenario setup
 	scenarioId := setupScenarioAndPublish(t, ctx, usecasesWithCreds, organizationId)
 
-	apiCreds := getApiCreds(ctx, t, usecasesWithCreds, organizationId)
+	apiCreds := setupApiCreds(ctx, t, usecasesWithCreds, organizationId)
 	usecasesWithApiCreds := usecases.UsecasesWithCreds{
 		Usecases:                testUsecases,
 		Credentials:             apiCreds,
@@ -80,13 +80,19 @@ func TestScenarioEndToEnd(t *testing.T) {
 	createDecisions(t, dataModel.Tables["transactions"], usecasesWithApiCreds, organizationId, scenarioId, logger)
 }
 
-func getApiCreds(ctx context.Context, t *testing.T, usecasesWithCreds usecases.UsecasesWithCreds, organizationId string) models.Credentials {
-	orgUsecase := usecasesWithCreds.NewOrganizationUseCase()
-	apiKeys, err := orgUsecase.GetApiKeysOfOrganization(ctx, organizationId)
-	assert.NoError(t, err, "Could not get api keys of organization")
-	assert.Equal(t, 1, len(apiKeys), "Expected 1 api key, got %d", len(apiKeys))
+func setupApiCreds(ctx context.Context, t *testing.T, usecasesWithCreds usecases.UsecasesWithCreds, organizationId string) models.Credentials {
+	// Create an API Key for this org
+	apiKeyUsecase := usecasesWithCreds.NewApiKeyUseCase()
+	apiKey, err := apiKeyUsecase.CreateApiKey(ctx, models.CreateApiKeyInput{
+		OrganizationId: organizationId,
+		Description:    "Test API key",
+		Role:           models.API_CLIENT,
+	})
+	assert.NoError(t, err, "Could not create api key")
+
+	// Generate creds from the created API Key
 	marbleTokenUsecase := usecasesWithCreds.NewMarbleTokenUseCase()
-	creds, err := marbleTokenUsecase.ValidateCredentials(ctx, "", apiKeys[0].Key)
+	creds, err := marbleTokenUsecase.ValidateCredentials(ctx, "", apiKey.Hash)
 	assert.NoError(t, err, "Could not generate creds from api key")
 	return creds
 }
