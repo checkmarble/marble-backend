@@ -71,6 +71,7 @@ func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_nominal() {
 	suite.enforceSecurity.On("CreateApiKey", suite.organizationId).Return(nil)
 	suite.apiKeyRepository.On("CreateApiKey", suite.transaction, mock.AnythingOfType("models.CreateApiKey")).Return(nil)
 	suite.apiKeyRepository.On("GetApiKeyById", suite.transaction, mock.AnythingOfType("string")).Return(suite.apiKey, nil)
+	suite.enforceSecurity.On("ReadApiKey", mock.AnythingOfType("string")).Return(nil)
 
 	createdApiKey, err := suite.makeUsecase().CreateApiKey(context.Background(), input)
 

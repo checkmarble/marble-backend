@@ -105,6 +105,11 @@ func (e *EnforceSecurity) UpdateInboxUser(inboxUser models.InboxUser, actorInbox
 	return args.Error(0)
 }
 
+func (e *EnforceSecurity) ReadApiKey(apiKey models.ApiKey) error {
+	args := e.Called()
+	return args.Error(0)
+}
+
 func (e *EnforceSecurity) CreateApiKey(organizationId string) error {
 	args := e.Called(organizationId)
 	return args.Error(0)
@@ -112,10 +117,5 @@ func (e *EnforceSecurity) CreateApiKey(organizationId string) error {
 
 func (e *EnforceSecurity) DeleteApiKey(apiKey models.ApiKey) error {
 	args := e.Called(apiKey)
-	return args.Error(0)
-}
-
-func (e *EnforceSecurity) ListApiKeys() error {
-	args := e.Called()
 	return args.Error(0)
 }

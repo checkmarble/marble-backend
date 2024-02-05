@@ -49,7 +49,7 @@ type ApiKeyUriInput struct {
 	ApiKeyId string `uri:"api_key_id" binding:"required,uuid"`
 }
 
-func (api *API) handleDeleteApiKey(c *gin.Context) {
+func (api *API) handleRevokeApiKey(c *gin.Context) {
 	var apiKeyUriInput ApiKeyUriInput
 	if err := c.ShouldBindUri(&apiKeyUriInput); err != nil {
 		c.Status(http.StatusBadRequest)

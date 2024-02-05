@@ -68,7 +68,7 @@ func (api *API) routes(auth *Authentication) {
 
 	router.GET("/apikeys", api.handleListApiKeys)
 	router.POST("/apikeys", api.handlePostApiKey)
-	router.DELETE("/apikeys/:api_key_id", api.handleDeleteApiKey)
+	router.DELETE("/apikeys/:api_key_id", api.handleRevokeApiKey)
 
 	router.GET("/custom-lists", api.handleGetAllCustomLists)
 	router.POST("/custom-lists", api.handlePostCustomList)
