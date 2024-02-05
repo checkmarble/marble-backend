@@ -11,6 +11,12 @@ type EnforceSecurityApiKeyImpl struct {
 	Credentials models.Credentials
 }
 
+func (e *EnforceSecurityApiKeyImpl) ReadApiKey(apiKey models.ApiKey) error {
+	return errors.Join(
+		e.Permission(models.APIKEY_READ), e.ReadOrganization(apiKey.OrganizationId),
+	)
+}
+
 func (e *EnforceSecurityApiKeyImpl) CreateApiKey(organizationId string) error {
 	return errors.Join(
 		e.Permission(models.APIKEY_CREATE), e.ReadOrganization(organizationId),
@@ -20,10 +26,4 @@ func (e *EnforceSecurityApiKeyImpl) CreateApiKey(organizationId string) error {
 func (e *EnforceSecurityApiKeyImpl) DeleteApiKey(apiKey models.ApiKey) error {
 	// For now, we don't have any specific permission for deleting an API key
 	return e.CreateApiKey(apiKey.OrganizationId)
-}
-
-func (e *EnforceSecurityApiKeyImpl) ListApiKeys() error {
-	return errors.Join(
-		e.Permission(models.APIKEY_READ),
-	)
 }

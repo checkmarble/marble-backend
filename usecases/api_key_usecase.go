@@ -21,9 +21,9 @@ type ApiKeyRepository interface {
 }
 
 type EnforceSecurityApiKey interface {
+	ReadApiKey(apiKey models.ApiKey) error
 	CreateApiKey(organizationId string) error
 	DeleteApiKey(apiKey models.ApiKey) error
-	ListApiKeys() error
 }
 
 type ApiKeyUseCase struct {
@@ -34,16 +34,32 @@ type ApiKeyUseCase struct {
 }
 
 func (usecase *ApiKeyUseCase) ListApiKeys(ctx context.Context) ([]models.ApiKey, error) {
-	if err := usecase.enforceSecurity.ListApiKeys(); err != nil {
-		return []models.ApiKey{}, err
-	}
-
 	organizationId, err := usecase.organizationIdOfContext()
 	if err != nil {
 		return []models.ApiKey{}, err
 	}
 
-	return usecase.apiKeyRepository.ListApiKeys(ctx, nil, organizationId)
+	apiKeys, err := usecase.apiKeyRepository.ListApiKeys(ctx, nil, organizationId)
+	if err != nil {
+		return []models.ApiKey{}, err
+	}
+	for _, apiKey := range apiKeys {
+		if err := usecase.enforceSecurity.ReadApiKey(apiKey); err != nil {
+			return []models.ApiKey{}, err
+		}
+	}
+	return apiKeys, nil
+}
+
+func (usecase *ApiKeyUseCase) getApiKey(ctx context.Context, tx repositories.Transaction, apiKeyId string) (models.ApiKey, error) {
+	apiKey, err := usecase.apiKeyRepository.GetApiKeyById(ctx, tx, apiKeyId)
+	if err != nil {
+		return models.ApiKey{}, err
+	}
+	if err := usecase.enforceSecurity.ReadApiKey(apiKey); err != nil {
+		return models.ApiKey{}, err
+	}
+	return apiKey, nil
 }
 
 func (usecase *ApiKeyUseCase) CreateApiKey(ctx context.Context, input models.CreateApiKeyInput) (models.CreatedApiKey, error) {
@@ -66,7 +82,7 @@ func (usecase *ApiKeyUseCase) CreateApiKey(ctx context.Context, input models.Cre
 				return models.CreatedApiKey{}, err
 			}
 
-			apiKey, err := usecase.apiKeyRepository.GetApiKeyById(ctx, tx, apiKeyId)
+			apiKey, err := usecase.getApiKey(ctx, tx, apiKeyId)
 			if err != nil {
 				return models.CreatedApiKey{}, err
 			}
@@ -94,23 +110,16 @@ func generateAPiKey() string {
 }
 
 func (usecase *ApiKeyUseCase) DeleteApiKey(ctx context.Context, apiKeyId string) error {
-	err := transaction.TransactionFactory.Transaction(
-		usecase.transactionFactory,
-		ctx,
-		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction) error {
-			apiKey, err := usecase.apiKeyRepository.GetApiKeyById(ctx, tx, apiKeyId)
-			if err != nil {
-				return err
-			}
+	apiKey, err := usecase.apiKeyRepository.GetApiKeyById(ctx, nil, apiKeyId)
+	if err != nil {
+		return err
+	}
 
-			if err := usecase.enforceSecurity.DeleteApiKey(apiKey); err != nil {
-				return err
-			}
+	if err := usecase.enforceSecurity.DeleteApiKey(apiKey); err != nil {
+		return err
+	}
 
-			return usecase.apiKeyRepository.SoftDeleteApiKey(ctx, tx, apiKey.Id)
-		})
-
+	err = usecase.apiKeyRepository.SoftDeleteApiKey(ctx, nil, apiKey.Id)
 	if err != nil {
 		return err
 	}
