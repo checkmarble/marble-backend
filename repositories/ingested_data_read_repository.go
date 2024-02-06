@@ -2,20 +2,23 @@ package repositories
 
 import (
 	"context"
-	"errors"
 	"fmt"
+
+	"github.com/Masterminds/squirrel"
+	"github.com/cockroachdb/errors"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
-
-	"github.com/Masterminds/squirrel"
-	"github.com/jackc/pgx/v5"
+	"github.com/checkmarble/marble-backend/repositories/pg_indexes"
 )
 
 type IngestedDataReadRepository interface {
 	GetDbField(ctx context.Context, transaction Transaction, readParams models.DbFieldReadParams) (any, error)
 	ListAllObjectsFromTable(ctx context.Context, transaction Transaction, table models.Table) ([]models.ClientObject, error)
 	QueryAggregatedValue(ctx context.Context, transaction Transaction, tableName models.TableName, fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter) (any, error)
+
+	ListTableIndexes(ctx context.Context, transaction Transaction, tableName models.TableName) ([]models.ConcreteIndex, error)
 }
 
 type IngestedDataReadRepositoryImpl struct{}
@@ -281,4 +284,68 @@ func addConditionForOperator(query squirrel.SelectBuilder, tableName string, fie
 	default:
 		return query, fmt.Errorf("unknown operator %s: %w", operator, models.BadParameterError)
 	}
+}
+
+// It might be better at its place in the data model repository... but that needs to be cleaned up first as it's in a mess
+// (part of the logic in Vivien's code, part in Chris's code). So for now I leave this here but it's probably not a long term solution
+func (repo *IngestedDataReadRepositoryImpl) ListTableIndexes(ctx context.Context, transaction Transaction, tableName models.TableName) ([]models.ConcreteIndex, error) {
+	tx := adaptClientDatabaseTransaction(transaction)
+
+	sql := `
+	SELECT
+		pg_get_indexdef(pg_class_idx.oid) AS indexdef,
+		pg_class_idx.relname AS indexname,
+		pgidx.indisvalid,
+		pgidx.indexrelid
+	FROM pg_namespace AS pgn
+	INNER JOIN pg_class AS pg_class_table ON (pgn.oid=pg_class_table.relnamespace)
+	INNER JOIN pg_index AS pgidx ON (pgidx.indrelid=pg_class_table.oid)
+	INNER JOIN pg_class AS pg_class_idx ON(pgidx.indexrelid=pg_class_idx.oid)
+	WHERE nspname=$1
+	AND pg_class_table.relname=$2
+`
+	rows, err := tx.exec.Query(ctx, sql, models.DATABASE_MARBLE_SCHEMA, tableName)
+	if err != nil {
+		return nil, errors.Wrap(err, "error while querying DB to read indexes")
+	}
+	pgIndexRows, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (pg_indexes.PGIndex, error) {
+		var index pg_indexes.PGIndex
+		err := row.Scan(&index.Definition, &index.IsValid, &index.Name, &index.RelationId)
+		return index, err
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "error while collecting rows for indexes")
+	}
+
+	// Now read indexes that are currently being created
+	rows, err = tx.exec.Query(ctx, "SELECT index_relid FROM pg_stat_progress_create_index")
+	if err != nil {
+		return nil, errors.Wrap(err, "error while querying DB to read indexes in creation")
+	}
+	creationInProgressIdxOids, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (int, error) {
+		var indexRelid int
+		err := row.Scan(&indexRelid)
+		return indexRelid, err
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "error while collecting rows for indexes in creation")
+	}
+
+	// Now update the list of indexes with their "in creation" status
+	for _, oid := range creationInProgressIdxOids {
+		for i, idx := range pgIndexRows {
+			if idx.RelationId == oid {
+				pgIndexRows[i].CreationInProgress = true
+			}
+		}
+	}
+
+	var validOrPendingIndexes []models.ConcreteIndex
+	for _, pgIndex := range pgIndexRows {
+		if pgIndex.IsValid || pgIndex.CreationInProgress {
+			validOrPendingIndexes = append(validOrPendingIndexes, pg_indexes.AdaptConcretIndex(pgIndex))
+		}
+	}
+
+	return validOrPendingIndexes, nil
 }
