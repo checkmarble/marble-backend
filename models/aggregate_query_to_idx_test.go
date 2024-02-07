@@ -14,7 +14,7 @@ func TestAggregateQueryToIndexFamily(t *testing.T) {
 		asserts := assert.New(t)
 
 		qFamily := AggregateQueryFamily{
-			Table:                   "table",
+			TableName:               "",
 			EqConditions:            set.From[FieldName]([]FieldName{FieldName("a"), FieldName("b")}),
 			IneqConditions:          set.From[FieldName]([]FieldName{FieldName("c"), FieldName("d")}),
 			SelectOrOtherConditions: set.From[FieldName]([]FieldName{FieldName("e"), FieldName("f")}),
@@ -43,7 +43,7 @@ func TestAggregateQueryToIndexFamily(t *testing.T) {
 		asserts := assert.New(t)
 
 		qFamily := AggregateQueryFamily{
-			Table:                   "table",
+			TableName:               "",
 			EqConditions:            set.From[FieldName]([]FieldName{FieldName("a"), FieldName("b")}),
 			IneqConditions:          set.From[FieldName]([]FieldName{FieldName("c")}),
 			SelectOrOtherConditions: set.From[FieldName]([]FieldName{FieldName("d"), FieldName("e")}),
@@ -71,7 +71,7 @@ func TestAggregateQueryToIndexFamily(t *testing.T) {
 		asserts := assert.New(t)
 
 		qFamily := AggregateQueryFamily{
-			Table:                   "table",
+			TableName:               "",
 			EqConditions:            set.From[FieldName]([]FieldName{FieldName("a"), FieldName("b")}),
 			IneqConditions:          set.New[FieldName](0),
 			SelectOrOtherConditions: set.From[FieldName]([]FieldName{FieldName("d"), FieldName("e")}),

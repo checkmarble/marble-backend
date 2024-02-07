@@ -76,3 +76,18 @@ func (api *API) GetScenarioPublication(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, NewAPIScenarioPublication(scenarioPublication))
 }
+
+func (api *API) ValidateIndexesForPublication(c *gin.Context) {
+	var data dto.CreateScenarioPublicationBody
+	if err := c.ShouldBindJSON(&data); err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
+	usecase := api.UsecasesWithCreds(c.Request).NewScenarioPublicationUsecase()
+	_, err := usecase.CreateDatamodelIndexesForScenarioPublication(c.Request.Context(), data.ScenarioIterationId)
+	if presentError(c, err) {
+		return
+	}
+	c.Status(http.StatusOK)
+}

@@ -25,7 +25,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 		}
 		aggregateFamily, err := AggregationNodeToQueryFamily(node)
 		asserts.NoError(err)
-		asserts.Equal(TableName("table"), aggregateFamily.Table, "table name should be input table name")
+		asserts.Equal(TableName("table"), aggregateFamily.TableName, "table name should be input table name")
 	})
 
 	t.Run("missing filters child", func(t *testing.T) {
@@ -67,7 +67,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 		}
 		aggregateFamily, err := AggregationNodeToQueryFamily(node)
 		asserts.NoError(err)
-		asserts.Equal(TableName("table"), aggregateFamily.Table)
+		asserts.Equal(TableName("table"), aggregateFamily.TableName)
 		asserts.Equal(1, aggregateFamily.EqConditions.Size())
 		asserts.True(aggregateFamily.EqConditions.Contains(FieldName("field")))
 		asserts.Equal(0, aggregateFamily.IneqConditions.Size())
@@ -105,7 +105,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 		}
 		aggregateFamily, err := AggregationNodeToQueryFamily(node)
 		asserts.NoError(err)
-		asserts.Equal(TableName("table"), aggregateFamily.Table)
+		asserts.Equal(TableName("table"), aggregateFamily.TableName)
 		asserts.Equal(1, aggregateFamily.EqConditions.Size())
 		asserts.True(aggregateFamily.EqConditions.Contains(FieldName("field")))
 		asserts.Equal(0, aggregateFamily.IneqConditions.Size())
@@ -143,7 +143,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 		}
 		aggregateFamily, err := AggregationNodeToQueryFamily(node)
 		asserts.NoError(err)
-		asserts.Equal(TableName("table"), aggregateFamily.Table)
+		asserts.Equal(TableName("table"), aggregateFamily.TableName)
 		asserts.Equal(1, aggregateFamily.EqConditions.Size())
 		asserts.True(aggregateFamily.EqConditions.Contains(FieldName("field 1")))
 		asserts.Equal(1, aggregateFamily.IneqConditions.Size())
@@ -223,7 +223,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 		}
 		aggregateFamily, err := AggregationNodeToQueryFamily(node)
 		asserts.NoError(err)
-		asserts.Equal(TableName("table"), aggregateFamily.Table)
+		asserts.Equal(TableName("table"), aggregateFamily.TableName)
 		asserts.Equal(2, aggregateFamily.EqConditions.Size(), "EqConditions should contain field 1 and field 2")
 		asserts.True(aggregateFamily.EqConditions.Contains(FieldName("field 1")), "EqConditions should contain field 1")
 		asserts.True(aggregateFamily.EqConditions.Contains(FieldName("field 2")), "EqConditions should contain field 2")
@@ -286,7 +286,7 @@ func TestAstNodeToQueryFamilies(t *testing.T) {
 		asserts.Equal(1, output.Size(), "There should be only 1 query family in the output set")
 		expected := set.NewHashSet[AggregateQueryFamily](0)
 		expected.Insert(AggregateQueryFamily{
-			Table:                   TableName("table"),
+			TableName:               TableName("table"),
 			EqConditions:            set.From[FieldName]([]FieldName{"field"}),
 			IneqConditions:          set.New[FieldName](0),
 			SelectOrOtherConditions: set.From[FieldName]([]FieldName{"field 0"}),
@@ -373,19 +373,19 @@ func TestAstNodeToQueryFamilies(t *testing.T) {
 		asserts.Equal(3, output.Size(), "There should be 2 query families in the output set")
 		expected := set.NewHashSet[AggregateQueryFamily](0)
 		expected.Insert(AggregateQueryFamily{
-			Table:                   TableName("table"),
+			TableName:               TableName("table"),
 			EqConditions:            set.From[FieldName]([]FieldName{"field"}),
 			IneqConditions:          set.New[FieldName](0),
 			SelectOrOtherConditions: set.From[FieldName]([]FieldName{"field 0"}),
 		})
 		expected.Insert(AggregateQueryFamily{
-			Table:                   TableName("table"),
+			TableName:               TableName("table"),
 			EqConditions:            set.New[FieldName](0),
 			IneqConditions:          set.From[FieldName]([]FieldName{"field"}),
 			SelectOrOtherConditions: set.From[FieldName]([]FieldName{"field 0"}),
 		})
 		expected.Insert(AggregateQueryFamily{
-			Table:                   TableName("table"),
+			TableName:               TableName("table"),
 			EqConditions:            set.From[FieldName]([]FieldName{"field 0"}),
 			IneqConditions:          set.New[FieldName](0),
 			SelectOrOtherConditions: set.From[FieldName]([]FieldName{"field 2", "field 3"}),
