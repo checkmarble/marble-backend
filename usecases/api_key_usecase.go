@@ -11,6 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/analytics"
 	"github.com/checkmarble/marble-backend/usecases/transaction"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 )
 
 type ApiKeyRepository interface {
@@ -70,6 +71,10 @@ func (usecase *ApiKeyUseCase) CreateApiKey(ctx context.Context, input models.Cre
 		func(tx repositories.Transaction) (models.CreatedApiKey, error) {
 			if err := usecase.enforceSecurity.CreateApiKey(input.OrganizationId); err != nil {
 				return models.CreatedApiKey{}, err
+			}
+
+			if input.Role != models.API_CLIENT {
+				return models.CreatedApiKey{}, errors.Wrap(models.BadParameterError, fmt.Sprintf("role %s is not supported", input.Role))
 			}
 
 			apiKeyId := uuid.NewString()
