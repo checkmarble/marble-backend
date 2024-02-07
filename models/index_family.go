@@ -8,10 +8,11 @@ import (
 )
 
 type IndexFamily struct {
-	Fixed  []FieldName
-	Flex   *set.Set[FieldName]
-	Last   FieldName
-	Others *set.Set[FieldName]
+	TableName TableName
+	Fixed     []FieldName
+	Flex      *set.Set[FieldName]
+	Last      FieldName
+	Others    *set.Set[FieldName]
 }
 
 func NewIndexFamily() IndexFamily {
@@ -43,15 +44,16 @@ func (f IndexFamily) Hash() string {
 		slices.Sort(s)
 		ot = fmt.Sprintf("%v", s)
 	}
-	return fmt.Sprintf("%v %s %s %s", f.Fixed, fl, f.Last, ot)
+	return fmt.Sprintf("%s - %v - %s - %s - %s", f.TableName, f.Fixed, fl, f.Last, ot)
 }
 
 func (f IndexFamily) copy() IndexFamily {
 	return IndexFamily{
-		Fixed:  slices.Clone(f.Fixed),
-		Flex:   f.Flex.Copy(),
-		Last:   f.Last,
-		Others: f.Others.Copy(),
+		TableName: f.TableName,
+		Fixed:     slices.Clone(f.Fixed),
+		Flex:      f.Flex.Copy(),
+		Last:      f.Last,
+		Others:    f.Others.Copy(),
 	}
 }
 
@@ -109,7 +111,18 @@ func (f *IndexFamily) setLast(last FieldName) {
 	}
 }
 
-func ExtractMinimalSetOfIdxFamilies(idxFamiliesIn *set.HashSet[IndexFamily, string]) *set.HashSet[IndexFamily, string] {
+func extractMinimalSetOfIdxFamilies(idxFamiliesIn *set.HashSet[IndexFamily, string]) *set.HashSet[IndexFamily, string] {
+	// We do the procedure once for every table, on every index required on that table
+	output := []IndexFamily{}
+	familiesByTable := groupIdxFamiliesByTable(idxFamiliesIn)
+	for _, families := range familiesByTable {
+		output = append(output, extractMinimalSetOfIdxFamiliesOneTable(families).Slice()...)
+	}
+
+	return set.HashSetFrom(output)
+}
+
+func extractMinimalSetOfIdxFamiliesOneTable(idxFamiliesIn *set.HashSet[IndexFamily, string]) *set.HashSet[IndexFamily, string] {
 	// We iterate over the input set of families, and try to reduce the number in the ouput step by step by combining families
 	// or indexes where possible
 	output := []IndexFamily{}
@@ -118,20 +131,38 @@ func ExtractMinimalSetOfIdxFamilies(idxFamiliesIn *set.HashSet[IndexFamily, stri
 
 	for _, idxIn := range input {
 		foundReplacement := false
-		for _, idxOut := range output {
-			combined, ok := refineIdxFamilies(idxOut, idxIn)
+		var combined IndexFamily
+		var matchIdx int
+		for i, idxOut := range output {
+			var ok bool
+			combined, ok = refineIdxFamilies(idxOut, idxIn)
 			if ok {
 				output = append(output, combined)
 				foundReplacement = true
+				matchIdx = i
 				break
 			}
 		}
-		if !foundReplacement {
+		if foundReplacement {
+			output = slices.Delete(output, matchIdx, matchIdx+1)
+			output = append(output, combined)
+		} else {
 			output = append(output, idxIn)
 		}
 	}
 
 	return set.HashSetFrom(output)
+}
+
+func groupIdxFamiliesByTable(idxFamilies *set.HashSet[IndexFamily, string]) map[TableName]*set.HashSet[IndexFamily, string] {
+	out := make(map[TableName]*set.HashSet[IndexFamily, string])
+	for _, idxFamily := range idxFamilies.Slice() {
+		if _, ok := out[idxFamily.TableName]; !ok {
+			out[idxFamily.TableName] = set.NewHashSet[IndexFamily, string](0)
+		}
+		out[idxFamily.TableName].Insert(idxFamily)
+	}
+	return out
 }
 
 func compareIdxFamily(a, b IndexFamily) int {
@@ -174,7 +205,7 @@ func refineIdxFamilies(left, right IndexFamily) (IndexFamily, bool) {
 		long = right
 	}
 
-	return refineIdxFamiliesShortHasNoFixed(short, long)
+	return refineIdxFamiliesFirstHasNoFixed(short, long)
 }
 
 func (f IndexFamily) mergeOthers(B IndexFamily) IndexFamily {
@@ -184,17 +215,20 @@ func (f IndexFamily) mergeOthers(B IndexFamily) IndexFamily {
 	return out
 }
 
-func refineIdxFamiliesShortHasNoFixed(A, B IndexFamily) (IndexFamily, bool) {
+func refineIdxFamiliesFirstHasNoFixed(A, B IndexFamily) (IndexFamily, bool) {
 	// we know by hypothesis that A.Fixed = []
 	if A.size() > B.size() {
 		// If some values in B are not in A, it's easy to see that there is no solution (A.Last comes after so can't be used)
-		if !A.allIndexedValues().Subset(B.Flex) {
+		if !A.allIndexedValues().Subset(B.allIndexedValues()) {
 			return IndexFamily{}, false
 		}
 
 		// We know that B's values are included in A.Flex
 		out := B.copy()
 		if B.Last != "" {
+			if B.Last == A.Last {
+				return IndexFamily{}, false
+			}
 			// Now we know that B.Last != "" so we'll need to make some choices
 			fixAppend := B.Flex.Slice()
 			slices.Sort(fixAppend)

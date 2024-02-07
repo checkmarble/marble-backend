@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/go-set/v2"
@@ -20,7 +21,7 @@ func TestExtractMinimalSetOfIdxFamilies(t *testing.T) {
 			},
 		})
 
-		minimalSet := ExtractMinimalSetOfIdxFamilies(idxFamilies)
+		minimalSet := extractMinimalSetOfIdxFamilies(idxFamilies)
 		asserts.Equal(1, minimalSet.Size(), "Keep just the one input family")
 		asserts.True(minimalSet.Equal(idxFamilies), "The input and output sets are the same")
 	})
@@ -42,7 +43,7 @@ func TestExtractMinimalSetOfIdxFamilies(t *testing.T) {
 			},
 		})
 
-		minimalSet := ExtractMinimalSetOfIdxFamilies(idxFamilies)
+		minimalSet := extractMinimalSetOfIdxFamilies(idxFamilies)
 		asserts.Equal(2, minimalSet.Size(), "Keep the two identical input families")
 		asserts.True(minimalSet.Equal(idxFamilies), "The input and output sets are the same")
 	})
@@ -64,7 +65,7 @@ func TestExtractMinimalSetOfIdxFamilies(t *testing.T) {
 			},
 		})
 
-		minimalSet := ExtractMinimalSetOfIdxFamilies(idxFamilies.Union(expected).(*set.HashSet[IndexFamily, string]))
+		minimalSet := extractMinimalSetOfIdxFamilies(idxFamilies.Union(expected).(*set.HashSet[IndexFamily, string]))
 		asserts.Equal(1, minimalSet.Size(), "Keep just one idx family")
 		asserts.True(minimalSet.Equal(expected), "Keep the second input idx families")
 	})
@@ -388,5 +389,32 @@ func TestRefineIdxFamiliesShortHasNoFixed(t *testing.T) {
 		expected.Flex.InsertSlice([]FieldName{"f", "g"})
 		expected.Others.InsertSlice([]FieldName{"x", "y", "z"})
 		asserts.True(output.Equal(expected), "Expected value")
+	})
+
+	t.Run("17", func(t *testing.T) {
+		A := NewIndexFamily()
+		B := NewIndexFamily()
+		A.Flex.InsertSlice([]FieldName{"a", "b"})
+		A.setLast("c")
+		B.Flex.InsertSlice([]FieldName{"a", "b", "d"})
+		B.setLast("c")
+
+		output, found := refineIdxFamilies(B, A)
+		fmt.Println(output)
+		asserts.False(found, "There is no solution to merge them")
+	})
+
+	t.Run("18", func(t *testing.T) {
+		A := NewIndexFamily()
+		B := NewIndexFamily()
+		A.Flex.InsertSlice([]FieldName{"a"})
+		A.Fixed = []FieldName{"e"}
+		A.setLast("c")
+		B.Flex.InsertSlice([]FieldName{"a", "b", "d"})
+		B.setLast("c")
+
+		output, found := refineIdxFamilies(B, A)
+		fmt.Println(output)
+		asserts.False(found, "There is no solution to merge them")
 	})
 }

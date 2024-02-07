@@ -2,13 +2,20 @@ package usecases
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/transaction"
+	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 )
+
+type scenarioListRepository interface {
+	ListScenariosOfOrganization(ctx context.Context, tx repositories.Transaction, organizationId string) ([]models.Scenario, error)
+}
 
 type ScenarioPublicationUsecase struct {
 	transactionFactory             transaction.TransactionFactory
@@ -17,6 +24,7 @@ type ScenarioPublicationUsecase struct {
 	enforceSecurity                security.EnforceSecurityScenario
 	scenarioFetcher                scenarios.ScenarioFetcher
 	scenarioPublisher              scenarios.ScenarioPublisher
+	scenarioListRepository         scenarioListRepository
 }
 
 func (usecase *ScenarioPublicationUsecase) GetScenarioPublication(ctx context.Context, scenarioPublicationID string) (models.ScenarioPublication, error) {
@@ -61,4 +69,41 @@ func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(ctx 
 		return usecase.scenarioPublisher.PublishOrUnpublishIteration(ctx, tx, scenarioAndIteration, input.PublicationAction)
 	})
 
+}
+
+func (usecase *ScenarioPublicationUsecase) CreateDatamodelIndexesForScenarioPublication(ctx context.Context, scenarioIterationId string) (bool, error) {
+	iterationToActivate, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, nil, scenarioIterationId)
+	if err != nil {
+		return false, err
+	}
+
+	organizationId, err := usecase.OrganizationIdOfContext()
+	if err != nil {
+		return false, err
+	}
+	scenarios, err := usecase.scenarioListRepository.ListScenariosOfOrganization(ctx, nil, organizationId)
+	if err != nil {
+		return false, err
+	}
+	liveScenarios := utils.Filter(scenarios, func(scenario models.Scenario) bool {
+		return scenario.LiveVersionID != nil
+	})
+	activeScenarioIterations, err := utils.MapErr(liveScenarios, func(scenario models.Scenario) (models.ScenarioIteration, error) {
+		it, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, nil, *scenario.LiveVersionID)
+		if err != nil {
+			return models.ScenarioIteration{}, err
+		}
+		return it.Iteration, nil
+	})
+	if err != nil {
+		return false, errors.Wrap(err, "Error while fetching active scenario iterations in CreateDatamodelIndexesForScenarioPublication")
+	}
+
+	indexesToCreate, err := models.IndexesToCreateFromScenarioIterations(append(activeScenarioIterations, iterationToActivate.Iteration), nil)
+	if err != nil {
+		return false, errors.Wrap(err, "Error while finding indexes to create from scenario iterations in CreateDatamodelIndexesForScenarioPublication")
+	}
+	fmt.Printf("indexesToCreate: %+v\n", indexesToCreate)
+
+	return false, nil
 }

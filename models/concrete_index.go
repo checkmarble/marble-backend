@@ -7,8 +7,9 @@ import (
 )
 
 type ConcreteIndex struct {
-	Indexed  []FieldName
-	Included []FieldName
+	TableName TableName
+	Indexed   []FieldName
+	Included  []FieldName
 }
 
 func (i ConcreteIndex) Equal(other ConcreteIndex) bool {
@@ -17,6 +18,10 @@ func (i ConcreteIndex) Equal(other ConcreteIndex) bool {
 }
 
 func (i ConcreteIndex) isInstanceof(f IndexFamily) bool {
+	if i.TableName != f.TableName {
+		return false
+	}
+
 	if len(i.Indexed) < len(f.Fixed) {
 		return false
 	}
@@ -57,7 +62,7 @@ func selectIdxFamiliesToCreate(idxFamilies set.Collection[IndexFamily], existing
 	return toCreate
 }
 
-func SelectConcreteIndexesToCreate(idxFamilies set.Collection[IndexFamily], existing []ConcreteIndex) []ConcreteIndex {
+func selectConcreteIndexesToCreate(idxFamilies set.Collection[IndexFamily], existing []ConcreteIndex) []ConcreteIndex {
 	toCreateFamilies := selectIdxFamiliesToCreate(idxFamilies, existing)
 
 	toCreateIdx := make([]ConcreteIndex, 0, toCreateFamilies.Size())
@@ -68,8 +73,9 @@ func SelectConcreteIndexesToCreate(idxFamilies set.Collection[IndexFamily], exis
 			indexed = append(indexed, family.Last)
 		}
 		toCreateIdx = append(toCreateIdx, ConcreteIndex{
-			Indexed:  indexed,
-			Included: family.Others.Slice(),
+			TableName: family.TableName,
+			Indexed:   indexed,
+			Included:  family.Others.Slice(),
 		})
 		return true
 	})

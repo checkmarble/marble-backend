@@ -11,14 +11,14 @@ import (
 )
 
 type AggregateQueryFamily struct {
-	Table                   TableName
+	TableName               TableName
 	EqConditions            *set.Set[FieldName]
 	IneqConditions          *set.Set[FieldName]
 	SelectOrOtherConditions *set.Set[FieldName]
 }
 
 func (family AggregateQueryFamily) Equal(other AggregateQueryFamily) bool {
-	return family.Table == other.Table &&
+	return family.TableName == other.TableName &&
 		family.EqConditions.Equal(other.EqConditions) &&
 		family.IneqConditions.Equal(other.IneqConditions) &&
 		family.SelectOrOtherConditions.Equal(other.SelectOrOtherConditions)
@@ -48,7 +48,7 @@ func (family AggregateQueryFamily) Hash() string {
 		slices.Sort(s)
 		other = fmt.Sprintf("%v", s)
 	}
-	return fmt.Sprintf("%s %s %s %s", family.Table, eq, ineq, other)
+	return fmt.Sprintf("%s - %s - %s - %s", family.TableName, eq, ineq, other)
 }
 
 func AggregationNodeToQueryFamily(node ast.Node) (AggregateQueryFamily, error) {
@@ -68,7 +68,7 @@ func AggregationNodeToQueryFamily(node ast.Node) (AggregateQueryFamily, error) {
 	aggregatedFieldName := FieldName(aggregatedFieldNameStr)
 
 	family := AggregateQueryFamily{
-		Table:                   TableName(queryTableName),
+		TableName:               TableName(queryTableName),
 		EqConditions:            set.New[FieldName](0),
 		IneqConditions:          set.New[FieldName](0),
 		SelectOrOtherConditions: set.New[FieldName](0),
@@ -153,7 +153,7 @@ func ExtractQueryFamiliesFromAst(node ast.Node) (*set.HashSet[AggregateQueryFami
 }
 
 // simple utility function using ExtractQueryFamiliesFromAst above
-func ExtractQueryFamiliesFromAstSlice(nodes []ast.Node) (*set.HashSet[AggregateQueryFamily, string], error) {
+func extractQueryFamiliesFromAstSlice(nodes []ast.Node) (*set.HashSet[AggregateQueryFamily, string], error) {
 	families := set.NewHashSet[AggregateQueryFamily, string](0)
 
 	for _, node := range nodes {
@@ -179,6 +179,7 @@ func aggregateQueryToIndexFamily(qFamily AggregateQueryFamily) *set.HashSet[Inde
 
 	// first iterate on equality conditions and colunms to include anyway
 	base := NewIndexFamily()
+	base.TableName = qFamily.TableName
 	if qFamily.EqConditions != nil {
 		qFamily.EqConditions.ForEach(func(f FieldName) bool {
 			base.Flex.Insert(f)
@@ -216,10 +217,28 @@ func aggregateQueryToIndexFamily(qFamily AggregateQueryFamily) *set.HashSet[Inde
 	return output
 }
 
-func IndexesToCreateFromQueryFamilies(queryFamilies set.Collection[AggregateQueryFamily], existingIndexes []ConcreteIndex) []ConcreteIndex {
-	toCreateFamilies := set.NewHashSet[IndexFamily, string](0)
+func indexesToCreateFromQueryFamilies(queryFamilies set.Collection[AggregateQueryFamily], existingIndexes []ConcreteIndex) []ConcreteIndex {
+	familiesToCreate := set.NewHashSet[IndexFamily, string](0)
 	for _, q := range queryFamilies.Slice() {
-		toCreateFamilies = toCreateFamilies.Union(selectIdxFamiliesToCreate(q.ToIndexFamilies(), existingIndexes)).(*set.HashSet[IndexFamily, string])
+		familiesToCreate = familiesToCreate.Union(selectIdxFamiliesToCreate(q.ToIndexFamilies(), existingIndexes)).(*set.HashSet[IndexFamily, string])
 	}
-	return SelectConcreteIndexesToCreate(toCreateFamilies, existingIndexes)
+	reducedFamiliesToCreate := extractMinimalSetOfIdxFamilies(familiesToCreate)
+	return selectConcreteIndexesToCreate(reducedFamiliesToCreate, existingIndexes)
+}
+
+func IndexesToCreateFromScenarioIterations(scenarioIterations []ScenarioIteration, existingIndexes []ConcreteIndex) ([]ConcreteIndex, error) {
+	var asts []ast.Node
+	for _, i := range scenarioIterations {
+		asts = append(asts, *i.TriggerConditionAstExpression)
+		for _, r := range i.Rules {
+			asts = append(asts, *r.FormulaAstExpression)
+		}
+	}
+
+	queryFamilies, err := extractQueryFamiliesFromAstSlice(asts)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error extracting query families from scenario iterations")
+	}
+
+	return indexesToCreateFromQueryFamilies(queryFamilies, existingIndexes), nil
 }

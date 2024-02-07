@@ -60,6 +60,7 @@ func (api *API) routes(auth *Authentication) {
 
 	router.GET("/scenario-publications", api.ListScenarioPublications)
 	router.POST("/scenario-publications", api.CreateScenarioPublication)
+	router.POST("/scenario-publications/validate-indexes", api.ValidateIndexesForPublication)
 	router.GET("/scenario-publications/:publication_id", api.GetScenarioPublication)
 
 	router.GET("/scheduled-executions", api.handleListScheduledExecution)
