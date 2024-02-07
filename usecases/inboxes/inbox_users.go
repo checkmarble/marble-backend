@@ -5,7 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/analytics"
+	"github.com/checkmarble/marble-backend/usecases/tracking"
 	"github.com/checkmarble/marble-backend/usecases/transaction"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/pkg/errors"
@@ -131,7 +131,7 @@ func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.Cre
 		return models.InboxUser{}, err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsInboxUserCreated, map[string]interface{}{"inbox_user_id": inboxUser.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsInboxUserCreated, map[string]interface{}{"inbox_user_id": inboxUser.Id})
 	return inboxUser, nil
 }
 
@@ -169,7 +169,7 @@ func (usecase *InboxUsers) UpdateInboxUser(ctx context.Context, inboxUserId stri
 		return models.InboxUser{}, err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsInboxUserUpdated, map[string]interface{}{"inbox_user_id": inboxUser.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsInboxUserUpdated, map[string]interface{}{"inbox_user_id": inboxUser.Id})
 	return inboxUser, nil
 }
 
@@ -202,6 +202,6 @@ func (usecase *InboxUsers) DeleteInboxUser(ctx context.Context, inboxUserId stri
 		return err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsInboxUserDeleted, map[string]interface{}{"inbox_user_id": inboxUserId})
+	tracking.TrackEvent(ctx, models.AnalyticsInboxUserDeleted, map[string]interface{}{"inbox_user_id": inboxUserId})
 	return nil
 }

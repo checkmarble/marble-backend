@@ -1,4 +1,4 @@
-package analytics
+package tracking
 
 import (
 	"context"

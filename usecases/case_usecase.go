@@ -12,9 +12,9 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/analytics"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/usecases/tracking"
 	"github.com/checkmarble/marble-backend/usecases/transaction"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
@@ -187,7 +187,7 @@ func (usecase *CaseUseCase) CreateCase(ctx context.Context, userId string, creat
 		return models.Case{}, err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsCaseCreated, map[string]interface{}{"case_id": c.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsCaseCreated, map[string]interface{}{"case_id": c.Id})
 
 	return c, err
 }
@@ -331,7 +331,7 @@ func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, case
 		return models.Case{}, err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsDecisionsAdded, map[string]interface{}{"case_id": updatedCase.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsDecisionsAdded, map[string]interface{}{"case_id": updatedCase.Id})
 	return updatedCase, nil
 }
 
@@ -370,7 +370,7 @@ func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string
 		return models.Case{}, err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsCaseCommentCreated, map[string]interface{}{"case_id": updatedCase.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsCaseCommentCreated, map[string]interface{}{"case_id": updatedCase.Id})
 	return updatedCase, nil
 }
 
@@ -434,7 +434,7 @@ func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string, c
 		return models.Case{}, err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsCaseTagsUpdated, map[string]interface{}{"case_id": updatedCase.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsCaseTagsUpdated, map[string]interface{}{"case_id": updatedCase.Id})
 	return updatedCase, nil
 }
 
@@ -539,10 +539,10 @@ func (usecase *CaseUseCase) createCaseContributorIfNotExist(ctx context.Context,
 
 func trackCaseUpdatedEvents(ctx context.Context, caseId string, updateCaseAttributes models.UpdateCaseAttributes) {
 	if updateCaseAttributes.Status != "" {
-		analytics.TrackEvent(ctx, models.AnalyticsCaseStatusUpdated, map[string]interface{}{"case_id": caseId})
+		tracking.TrackEvent(ctx, models.AnalyticsCaseStatusUpdated, map[string]interface{}{"case_id": caseId})
 	}
 	if updateCaseAttributes.Name != "" {
-		analytics.TrackEvent(ctx, models.AnalyticsCaseUpdated, map[string]interface{}{"case_id": caseId})
+		tracking.TrackEvent(ctx, models.AnalyticsCaseUpdated, map[string]interface{}{"case_id": caseId})
 	}
 }
 
@@ -641,7 +641,7 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 		return models.Case{}, err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsCaseFileCreated, map[string]interface{}{"case_id": updatedCase.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsCaseFileCreated, map[string]interface{}{"case_id": updatedCase.Id})
 	return updatedCase, nil
 }
 

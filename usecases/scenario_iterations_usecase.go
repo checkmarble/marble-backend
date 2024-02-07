@@ -7,9 +7,9 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/analytics"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/usecases/tracking"
 
 	"github.com/adhocore/gronx"
 )
@@ -97,7 +97,7 @@ func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(ctx context.Con
 		return models.ScenarioIteration{}, err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsScenarioIterationCreated, map[string]interface{}{"scenario_iteration_id": si.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsScenarioIterationCreated, map[string]interface{}{"scenario_iteration_id": si.Id})
 
 	return si, nil
 }
@@ -172,7 +172,7 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(ctx co
 		return models.ScenarioIteration{}, err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsScenarioIterationCreated, map[string]interface{}{"scenario_iteration_id": newScenarioIteration.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsScenarioIterationCreated, map[string]interface{}{"scenario_iteration_id": newScenarioIteration.Id})
 
 	return newScenarioIteration, nil
 }

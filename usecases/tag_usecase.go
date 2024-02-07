@@ -5,9 +5,9 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/analytics"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/usecases/tracking"
 	"github.com/checkmarble/marble-backend/usecases/transaction"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
@@ -55,7 +55,7 @@ func (usecase *TagUseCase) CreateTag(ctx context.Context, attributes models.Crea
 		return models.Tag{}, err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsTagCreated, map[string]interface{}{"tag_id": tag.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsTagCreated, map[string]interface{}{"tag_id": tag.Id})
 
 	return tag, err
 }
@@ -78,7 +78,7 @@ func (usecase *TagUseCase) UpdateTag(ctx context.Context, organizationId string,
 		return models.Tag{}, err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsTagUpdated, map[string]interface{}{"tag_id": tag.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsTagUpdated, map[string]interface{}{"tag_id": tag.Id})
 
 	return tag, err
 }
@@ -107,7 +107,7 @@ func (usecase *TagUseCase) DeleteTag(ctx context.Context, organizationId, tagId 
 		return err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsTagDeleted, map[string]interface{}{"tag_id": tagId})
+	tracking.TrackEvent(ctx, models.AnalyticsTagDeleted, map[string]interface{}{"tag_id": tagId})
 
 	return nil
 }

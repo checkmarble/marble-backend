@@ -6,9 +6,9 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/analytics"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/usecases/tracking"
 	"github.com/checkmarble/marble-backend/usecases/transaction"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -79,7 +79,7 @@ func (usecase *RuleUsecase) CreateRule(ctx context.Context, ruleInput models.Cre
 		return models.Rule{}, err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsRuleCreated, map[string]interface{}{"rule_id": ruleInput.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsRuleCreated, map[string]interface{}{"rule_id": ruleInput.Id})
 
 	return rule, nil
 }
@@ -136,7 +136,7 @@ func (usecase *RuleUsecase) UpdateRule(ctx context.Context, updateRule models.Up
 		return models.Rule{}, err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsRuleUpdated, map[string]interface{}{"rule_id": updateRule.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsRuleUpdated, map[string]interface{}{"rule_id": updateRule.Id})
 
 	return updatedRule, err
 }
@@ -164,7 +164,7 @@ func (usecase *RuleUsecase) DeleteRule(ctx context.Context, ruleId string) error
 		return err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsRuleDeleted, map[string]interface{}{"rule_id": ruleId})
+	tracking.TrackEvent(ctx, models.AnalyticsRuleDeleted, map[string]interface{}{"rule_id": ruleId})
 
 	return nil
 }
