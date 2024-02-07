@@ -6,7 +6,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/analytics"
+	"github.com/checkmarble/marble-backend/usecases/tracking"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -79,7 +79,7 @@ func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(
 				scenarioPublications = append(scenarioPublications, sp)
 			}
 
-			analytics.TrackEvent(ctx, models.AnalyticsScenarioIterationPublished, map[string]interface{}{"scenario_iteration_id": iterationId})
+			tracking.TrackEvent(ctx, models.AnalyticsScenarioIterationPublished, map[string]interface{}{"scenario_iteration_id": iterationId})
 		}
 	}
 

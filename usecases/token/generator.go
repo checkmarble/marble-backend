@@ -8,7 +8,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/clock"
-	"github.com/checkmarble/marble-backend/usecases/analytics"
+	"github.com/checkmarble/marble-backend/usecases/tracking"
 )
 
 type marbleRepository interface {
@@ -94,9 +94,9 @@ func (g *Generator) GenerateToken(ctx context.Context, key string, firebaseToken
 			return "", time.Time{}, fmt.Errorf("GetOrganizationByID error: %w", err)
 		}
 
-		analytics.Identify(ctx, credentials.ActorIdentity.UserId, map[string]any{"email": credentials.ActorIdentity.Email})
-		analytics.Group(ctx, credentials.ActorIdentity.UserId, credentials.OrganizationId, map[string]any{"name": organization.Name})
-		analytics.TrackEventWithUserId(ctx, models.AnalyticsTokenCreated, credentials.ActorIdentity.UserId, map[string]any{"organization_id": credentials.OrganizationId})
+		tracking.Identify(ctx, credentials.ActorIdentity.UserId, map[string]any{"email": credentials.ActorIdentity.Email})
+		tracking.Group(ctx, credentials.ActorIdentity.UserId, credentials.OrganizationId, map[string]any{"name": organization.Name})
+		tracking.TrackEventWithUserId(ctx, models.AnalyticsTokenCreated, credentials.ActorIdentity.UserId, map[string]any{"organization_id": credentials.OrganizationId})
 	}
 
 	return token, expirationTime, nil

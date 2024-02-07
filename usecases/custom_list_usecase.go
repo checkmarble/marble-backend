@@ -7,8 +7,8 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/analytics"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/usecases/tracking"
 	"github.com/checkmarble/marble-backend/usecases/transaction"
 )
 
@@ -61,7 +61,7 @@ func (usecase *CustomListUseCase) CreateCustomList(ctx context.Context, createCu
 		return models.CustomList{}, err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsListCreated, map[string]interface{}{"list_id": list.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsListCreated, map[string]interface{}{"list_id": list.Id})
 
 	return list, nil
 }
@@ -87,7 +87,7 @@ func (usecase *CustomListUseCase) UpdateCustomList(ctx context.Context, updateCu
 		return models.CustomList{}, err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsListUpdated, map[string]interface{}{"list_id": list.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsListUpdated, map[string]interface{}{"list_id": list.Id})
 
 	return list, nil
 }
@@ -107,7 +107,7 @@ func (usecase *CustomListUseCase) SoftDeleteCustomList(ctx context.Context, list
 		return err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsListDeleted, map[string]interface{}{"list_id": listId})
+	tracking.TrackEvent(ctx, models.AnalyticsListDeleted, map[string]interface{}{"list_id": listId})
 	return nil
 }
 
@@ -152,7 +152,7 @@ func (usecase *CustomListUseCase) AddCustomListValue(ctx context.Context, addCus
 		return models.CustomListValue{}, err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsListValueCreated, map[string]interface{}{"list_id": addCustomListValue.CustomListId})
+	tracking.TrackEvent(ctx, models.AnalyticsListValueCreated, map[string]interface{}{"list_id": addCustomListValue.CustomListId})
 
 	return value, nil
 }
@@ -173,7 +173,7 @@ func (usecase *CustomListUseCase) DeleteCustomListValue(ctx context.Context, del
 		return err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsListValueDeleted, map[string]interface{}{"list_id": deleteCustomListValue.CustomListId})
+	tracking.TrackEvent(ctx, models.AnalyticsListValueDeleted, map[string]interface{}{"list_id": deleteCustomListValue.CustomListId})
 
 	return nil
 }

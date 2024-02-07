@@ -5,8 +5,8 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/analytics"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/usecases/tracking"
 	"github.com/checkmarble/marble-backend/usecases/transaction"
 	"github.com/checkmarble/marble-backend/utils"
 
@@ -110,6 +110,6 @@ func (usecase *ScenarioUsecase) CreateScenario(ctx context.Context, scenario mod
 		return models.Scenario{}, err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsScenarioCreated, map[string]interface{}{"scenario_id": cratedScenario.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsScenarioCreated, map[string]interface{}{"scenario_id": cratedScenario.Id})
 	return cratedScenario, nil
 }

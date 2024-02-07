@@ -5,8 +5,8 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/analytics"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
+	"github.com/checkmarble/marble-backend/usecases/tracking"
 	"github.com/checkmarble/marble-backend/usecases/transaction"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
@@ -69,7 +69,7 @@ func (usecase *InboxUsecase) CreateInbox(ctx context.Context, input models.Creat
 		return models.Inbox{}, err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsInboxCreated, map[string]interface{}{"inbox_id": inbox.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsInboxCreated, map[string]interface{}{"inbox_id": inbox.Id})
 	return inbox, nil
 }
 
@@ -103,7 +103,7 @@ func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId, name stri
 		return models.Inbox{}, err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsInboxUpdated, map[string]interface{}{"inbox_id": inbox.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsInboxUpdated, map[string]interface{}{"inbox_id": inbox.Id})
 	return inbox, nil
 }
 
@@ -143,7 +143,7 @@ func (usecase *InboxUsecase) DeleteInbox(ctx context.Context, inboxId string) er
 		return err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsInboxDeleted, map[string]interface{}{"inbox_id": inboxId})
+	tracking.TrackEvent(ctx, models.AnalyticsInboxDeleted, map[string]interface{}{"inbox_id": inboxId})
 	return nil
 }
 

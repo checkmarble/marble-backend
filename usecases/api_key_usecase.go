@@ -8,7 +8,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/analytics"
+	"github.com/checkmarble/marble-backend/usecases/tracking"
 	"github.com/checkmarble/marble-backend/usecases/transaction"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -101,7 +101,7 @@ func (usecase *ApiKeyUseCase) CreateApiKey(ctx context.Context, input models.Cre
 		return models.CreatedApiKey{}, err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsApiKeyCreated, map[string]interface{}{"api_key_id": apiKey.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsApiKeyCreated, map[string]interface{}{"api_key_id": apiKey.Id})
 	return apiKey, nil
 }
 
@@ -129,6 +129,6 @@ func (usecase *ApiKeyUseCase) DeleteApiKey(ctx context.Context, apiKeyId string)
 		return err
 	}
 
-	analytics.TrackEvent(ctx, models.AnalyticsApiKeyDeleted, map[string]interface{}{"api_key_id": apiKeyId})
+	tracking.TrackEvent(ctx, models.AnalyticsApiKeyDeleted, map[string]interface{}{"api_key_id": apiKeyId})
 	return nil
 }
