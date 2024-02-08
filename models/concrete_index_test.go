@@ -20,7 +20,7 @@ func TestCovers(t *testing.T) {
 		family.Fixed = []FieldName{"a", "b"}
 		family.Flex.InsertSlice([]FieldName{"c", "d"})
 		family.setLast("e")
-		family.Others.InsertSlice([]FieldName{"f"})
+		family.Included.InsertSlice([]FieldName{"f"})
 
 		asserts.True(idx.covers(family), "The index is an instance of the family")
 	})
@@ -32,7 +32,7 @@ func TestCovers(t *testing.T) {
 		family.Fixed = []FieldName{"a", "b"}
 		family.Flex.InsertSlice([]FieldName{"c"})
 		family.setLast("X")
-		family.Others.InsertSlice([]FieldName{"f"})
+		family.Included.InsertSlice([]FieldName{"f"})
 
 		asserts.False(idx.covers(family), "The index not an instance of the family")
 	})
@@ -43,7 +43,7 @@ func TestCovers(t *testing.T) {
 		family.TableName = "table"
 		family.Fixed = []FieldName{"a", "b", "c"}
 		family.setLast("d")
-		family.Others.InsertSlice([]FieldName{"f"})
+		family.Included.InsertSlice([]FieldName{"f"})
 
 		asserts.True(idx.covers(family), "The index is an instance of the family")
 	})
@@ -54,7 +54,7 @@ func TestCovers(t *testing.T) {
 		family.TableName = "table"
 		family.Fixed = []FieldName{"a", "b", "c"}
 		family.setLast("e")
-		family.Others.InsertSlice([]FieldName{"f"})
+		family.Included.InsertSlice([]FieldName{"f"})
 
 		asserts.False(idx.covers(family), "The index is not an instance of the family")
 	})
@@ -64,7 +64,7 @@ func TestCovers(t *testing.T) {
 		family := NewIndexFamily()
 		family.TableName = "table"
 		family.Fixed = []FieldName{"a", "b", "c", "d"}
-		family.Others.InsertSlice([]FieldName{"f"})
+		family.Included.InsertSlice([]FieldName{"f"})
 
 		asserts.True(idx.covers(family), "The index is an instance of the family")
 	})
@@ -74,7 +74,7 @@ func TestCovers(t *testing.T) {
 		family := NewIndexFamily()
 		family.TableName = "table"
 		family.Fixed = []FieldName{"a", "b", "d"}
-		family.Others.InsertSlice([]FieldName{"f"})
+		family.Included.InsertSlice([]FieldName{"f"})
 
 		asserts.False(idx.covers(family), "The index is not an instance of the family")
 	})
@@ -85,7 +85,7 @@ func TestCovers(t *testing.T) {
 		family.TableName = "table"
 		family.Fixed = []FieldName{"a", "b"}
 		family.Flex.InsertSlice([]FieldName{"c", "d"})
-		family.Others.InsertSlice([]FieldName{"f"})
+		family.Included.InsertSlice([]FieldName{"f"})
 
 		asserts.True(idx.covers(family), "The index is an instance of the family")
 	})
@@ -96,7 +96,7 @@ func TestCovers(t *testing.T) {
 		family.TableName = "table"
 		family.Fixed = []FieldName{"a", "b"}
 		family.Flex.InsertSlice([]FieldName{"c"})
-		family.Others.InsertSlice([]FieldName{"f"})
+		family.Included.InsertSlice([]FieldName{"f"})
 
 		asserts.True(idx.covers(family), "The index is an instance of the family")
 	})
@@ -107,7 +107,7 @@ func TestCovers(t *testing.T) {
 		family.TableName = "table"
 		family.Fixed = []FieldName{"a", "b"}
 		family.Flex.InsertSlice([]FieldName{"c", "e"})
-		family.Others.InsertSlice([]FieldName{"f"})
+		family.Included.InsertSlice([]FieldName{"f"})
 
 		asserts.False(idx.covers(family), "The index is not an instance of the family")
 	})
@@ -118,7 +118,7 @@ func TestCovers(t *testing.T) {
 		family.TableName = "table"
 		family.Flex.InsertSlice([]FieldName{"a", "b"})
 		family.setLast("c")
-		family.Others.InsertSlice([]FieldName{"f"})
+		family.Included.InsertSlice([]FieldName{"f"})
 
 		asserts.True(idx.covers(family), "The index is an instance of the family")
 	})
@@ -129,7 +129,7 @@ func TestCovers(t *testing.T) {
 		family.TableName = "table"
 		family.Flex.InsertSlice([]FieldName{"a", "b"})
 		family.setLast("d")
-		family.Others.InsertSlice([]FieldName{"f"})
+		family.Included.InsertSlice([]FieldName{"f"})
 
 		asserts.False(idx.covers(family), "The index is not an instance of the family")
 	})
@@ -139,7 +139,7 @@ func TestCovers(t *testing.T) {
 		family := NewIndexFamily()
 		family.TableName = "table"
 		family.Flex.InsertSlice([]FieldName{"a", "b", "c"})
-		family.Others.InsertSlice([]FieldName{"f"})
+		family.Included.InsertSlice([]FieldName{"f"})
 
 		asserts.True(idx.covers(family), "The index is an instance of the family")
 	})
@@ -149,7 +149,7 @@ func TestCovers(t *testing.T) {
 		family := NewIndexFamily()
 		family.TableName = "table"
 		family.Flex.InsertSlice([]FieldName{"a", "b", "d"})
-		family.Others.InsertSlice([]FieldName{"f"})
+		family.Included.InsertSlice([]FieldName{"f"})
 
 		asserts.False(idx.covers(family), "The index is not an instance of the family")
 	})
@@ -159,7 +159,7 @@ func TestCovers(t *testing.T) {
 		family := NewIndexFamily()
 		family.TableName = "table"
 		family.Flex.InsertSlice([]FieldName{"a", "b", "c"})
-		family.Others.InsertSlice([]FieldName{"f", "h"})
+		family.Included.InsertSlice([]FieldName{"f", "h"})
 
 		asserts.False(idx.covers(family), "The index is not an instance of the family")
 	})
@@ -169,7 +169,7 @@ func TestCovers(t *testing.T) {
 		family := NewIndexFamily()
 		family.TableName = "table"
 		family.Flex.InsertSlice([]FieldName{"A", "B", "c"})
-		family.Others.InsertSlice([]FieldName{"f", "g"})
+		family.Included.InsertSlice([]FieldName{"f", "g"})
 		family.Last = "D"
 
 		asserts.True(idx.covers(family), "The index is an instance of the family")

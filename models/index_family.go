@@ -12,15 +12,15 @@ type IndexFamily struct {
 	Fixed     []FieldName
 	Flex      *set.Set[FieldName]
 	Last      FieldName
-	Others    *set.Set[FieldName]
+	Included  *set.Set[FieldName]
 }
 
 func NewIndexFamily() IndexFamily {
 	return IndexFamily{
-		Fixed:  make([]FieldName, 0),
-		Flex:   set.New[FieldName](0),
-		Last:   "",
-		Others: set.New[FieldName](0),
+		Fixed:    make([]FieldName, 0),
+		Flex:     set.New[FieldName](0),
+		Last:     "",
+		Included: set.New[FieldName](0),
 	}
 }
 
@@ -28,7 +28,7 @@ func (f IndexFamily) Equal(other IndexFamily) bool {
 	return slices.Equal(f.Fixed, other.Fixed) &&
 		f.Flex.Equal(other.Flex) &&
 		(f.Last == other.Last) &&
-		f.Others.Equal(other.Others)
+		f.Included.Equal(other.Included)
 }
 
 func (f IndexFamily) Hash() string {
@@ -39,8 +39,8 @@ func (f IndexFamily) Hash() string {
 		fl = fmt.Sprintf("%v", s)
 	}
 	ot := ""
-	if f.Others != nil {
-		s := f.Others.Slice()
+	if f.Included != nil {
+		s := f.Included.Slice()
 		slices.Sort(s)
 		ot = fmt.Sprintf("%v", s)
 	}
@@ -53,7 +53,7 @@ func (f IndexFamily) copy() IndexFamily {
 		Fixed:     slices.Clone(f.Fixed),
 		Flex:      f.Flex.Copy(),
 		Last:      f.Last,
-		Others:    f.Others.Copy(),
+		Included:  f.Included.Copy(),
 	}
 }
 
@@ -81,19 +81,19 @@ func (f IndexFamily) removeFixedPrefix(prefix []FieldName) IndexFamily {
 		return IndexFamily{}
 	}
 	return IndexFamily{
-		Fixed:  f.Fixed[len(prefix):],
-		Flex:   f.Flex.Copy(),
-		Last:   f.Last,
-		Others: f.Others.Copy(),
+		Fixed:    f.Fixed[len(prefix):],
+		Flex:     f.Flex.Copy(),
+		Last:     f.Last,
+		Included: f.Included.Copy(),
 	}
 }
 
 func (f IndexFamily) prependPrefix(prefix []FieldName) IndexFamily {
 	return IndexFamily{
-		Fixed:  append(prefix, f.Fixed...),
-		Flex:   f.Flex.Copy(),
-		Last:   f.Last,
-		Others: f.Others.Copy(),
+		Fixed:    append(prefix, f.Fixed...),
+		Flex:     f.Flex.Copy(),
+		Last:     f.Last,
+		Included: f.Included.Copy(),
 	}
 }
 
@@ -180,11 +180,18 @@ func refineIdxFamilies(left, right IndexFamily) (IndexFamily, bool) {
 	// is empty, by removing a common prefix from the Fixed values if necessary
 	prefixLen := min(len(left.Fixed), len(right.Fixed))
 	if prefixLen > 0 {
+		// idx L: {[x1, x2, x3, x4] {...}}
+		// idx R: {[x1, x3, x4, x5] {...}}
+		//              ^^
+		// mismatch: no possibility to have a common concrete index for both families
 		for i := 0; i < prefixLen; i++ {
 			if i < len(left.Fixed) && i < len(right.Fixed) && left.Fixed[i] != right.Fixed[i] {
 				return IndexFamily{}, false
 			}
 		}
+		// idx L: {[x1, x2, x3, x4] {x5, x6...}} => {[x3, x4] {x5, x6...}}
+		// idx R: {[x1, x2]         {x5...}    } => {[]       {x5...}    }
+		// this allows the following algo to be simpler without loss of generality
 		fixedPrefix := left.Fixed[:prefixLen]
 		out, ok := refineIdxFamilies(
 			left.removeFixedPrefix(fixedPrefix),
@@ -208,16 +215,19 @@ func refineIdxFamilies(left, right IndexFamily) (IndexFamily, bool) {
 	return refineIdxFamiliesFirstHasNoFixed(short, long)
 }
 
-func (f IndexFamily) mergeOthers(B IndexFamily) IndexFamily {
+func (f IndexFamily) mergeIncluded(B IndexFamily) IndexFamily {
 	out := f.copy()
-	out.Others = out.Others.Union(B.Others).(*set.Set[FieldName])
-	out.Others = out.Others.Difference(out.allIndexedValues()).(*set.Set[FieldName])
+	out.Included = out.Included.Union(B.Included).(*set.Set[FieldName])
+	out.Included = out.Included.Difference(out.allIndexedValues()).(*set.Set[FieldName])
 	return out
 }
 
 func refineIdxFamiliesFirstHasNoFixed(A, B IndexFamily) (IndexFamily, bool) {
 	// we know by hypothesis that A.Fixed = []
 	if A.size() > B.size() {
+		// A: {[] {x2, x3, x4, x5, x6, x7, x8} L_A? }
+		// B: {[] {x1, x2, x3, x4, x5} L_B?         }
+		//         ^^ missing x1 in A
 		// If some values in B are not in A, it's easy to see that there is no solution (A.Last comes after so can't be used)
 		if !A.allIndexedValues().Subset(B.allIndexedValues()) {
 			return IndexFamily{}, false
@@ -226,6 +236,9 @@ func refineIdxFamiliesFirstHasNoFixed(A, B IndexFamily) (IndexFamily, bool) {
 		// We know that B's values are included in A.Flex
 		out := B.copy()
 		if B.Last != "" {
+			// A: {[], {x2,   x3, x4, x5, x6, x7, x8} L_A }
+			// B: {[x1, x2], {x3, x4, x5} L_B             } with L_B=L_A
+			//                            ^^          ^^ same value L_A must be in different positions in A and B, no solution
 			if B.Last == A.Last {
 				return IndexFamily{}, false
 			}
@@ -238,85 +251,114 @@ func refineIdxFamiliesFirstHasNoFixed(A, B IndexFamily) (IndexFamily, bool) {
 		}
 		out.Flex = A.Flex.Difference(set.From(out.Fixed)).(*set.Set[FieldName])
 		out.setLast(A.Last)
-		out = out.mergeOthers(A)
+		out = out.mergeIncluded(A)
 		return out, true
 	}
 
 	if A.size() == B.size() {
 		// if they have the same size, it must be that the same columns are indexed (even if in different order)
+		// A: {[] {x1, x2, x3} x4 }
+		// B: {[] {x1, x2, x4} x5 }
+		// 	             ^^  ^^ no x4 in B and x3 in A: no solution
 		if !A.allIndexedValues().Equal(B.allIndexedValues()) {
 			return IndexFamily{}, false
 		}
 
 		// Now in the following, we know that the same columns are indexed
-
 		if B.Last != "" {
+			// A: {[], {x1, x2, x3} x4 }
+			// B: {[], {x1, x2, x3} x5 }
+			//                      ^^ x4!=x5, no solution
 			if A.Last != "" && A.Last != B.Last {
 				return IndexFamily{}, false
 			}
 			out := B.copy()
-			out = out.mergeOthers(A)
+			out = out.mergeIncluded(A)
 			return out, true
 		}
 
 		// So B.Last == ""
 		if A.Last == "" {
+			// A: {[], {x1, x2, x3} }
+			// B: {[x1, x2], {x3}   }
+			// trivially keep B which is more restrictive (adding included columns)
 			out := B.copy()
-			out = out.mergeOthers(A)
+			out = out.mergeIncluded(A)
 			return out, true
 		}
 
 		// So B.Last=="" and A.Last != ""
 		if B.Flex.Empty() {
+			// A: {[], {x1, x2 } x4         }
+			// B: {[    x1, x2,  x3], {}    }
+			//                   ^^ x3!=x4, no solution
 			if A.Last != B.Fixed[len(B.Fixed)-1] {
 				return IndexFamily{}, false
 			}
 			out := B.copy()
-			out = out.mergeOthers(A)
+			out = out.mergeIncluded(A)
 			return out, true
 		}
 
 		// Last case: B.Last=="" and B.Flex not empty and A.Last != ""
 		if !B.Flex.Contains(A.Last) {
+			// A: {[], {x1, x2,   x3 }  x5 }
+			// B: {[    x1, x2]  {x3,   x4}   }
+			//                    ^^^^^^^^ x5 is not in B.Flex, no solution
 			return IndexFamily{}, false
 		}
 		out := B.copy()
 		out.Flex.Remove(A.Last)
 		out.setLast(A.Last)
-		out = out.mergeOthers(A)
+		out = out.mergeIncluded(A)
 		return out, true
 	}
 
 	// So A.Size() < B.Size()
 	if A.size() <= len(B.Fixed) {
 		if A.Last == "" {
+			// ?? To check TODO
 			if A.Flex.Equal(set.From(B.Fixed[:A.size()])) {
 				out := B.copy()
 				out.Flex = B.Flex.Difference(set.From(B.Fixed[:A.size()])).(*set.Set[FieldName])
-				out = out.mergeOthers(A)
+				out = out.mergeIncluded(A)
 				return out, true
 			}
+			// A: {[], {x1, x4}        }
+			// B: {[    x1, x2, x3], {}}
+			//              ^^ x4 is not in the 2 first values of B.Fixed: no solution
 			return IndexFamily{}, false
 		}
 		// A.Last != ""
+		// A: {[], {x1, x2} x4 }
+		// B: {[    x1, x2, x3], {}}
+		//                  ^^ x4 is not in the 3rd value of B.Fixed: no solution
 		if B.Fixed[A.size()-1] != A.Last {
 			return IndexFamily{}, false
 		}
 		out := B.copy()
-		out = out.mergeOthers(A)
+		out = out.mergeIncluded(A)
 		return out, true
 	}
 	// so A.Size() > len(B.Fixed)
+	// A: {[], {x1, x2,  x3, x4} }
+	// B: {    [x4, x5] {x1, x2, x3} }
+	//              ^^ x5 is not in A.Flex: no solution
 	if !A.Flex.Subset(set.From(B.Fixed)) {
 		return IndexFamily{}, false
 	}
 	// So B.Fixed is included in A.Flex
+	// A: {[], {x1,  x2, x3, x4} }
+	// B: {    [x1] {x2, x3, x4, x5} }
 	if A.Last == "" {
 		out := B.copy()
-		out = out.mergeOthers(A)
+		out = out.mergeIncluded(A)
 		return out, true
 	}
 	// So A.Last != ""
+	// A: {[], {x1,  x2, x3} x5 }
+	// B: {    [x1] {x2, x3, x4} x6}
+	//               ^--------^ x5 is not in B.Flex: no solution
 	if !B.Flex.Contains(A.Last) {
 		return IndexFamily{}, false
 	}
@@ -327,6 +369,6 @@ func refineIdxFamiliesFirstHasNoFixed(A, B IndexFamily) (IndexFamily, bool) {
 	out.Fixed = append(out.Fixed, appendToFix...)
 	out.Fixed = append(out.Fixed, A.Last)
 	out.Flex = B.Flex.Difference(set.From(out.Fixed)).(*set.Set[FieldName])
-	out = out.mergeOthers(A)
+	out = out.mergeIncluded(A)
 	return out, true
 }

@@ -174,7 +174,7 @@ func (qFamily AggregateQueryFamily) ToIndexFamilies() *set.HashSet[IndexFamily, 
 func aggregateQueryToIndexFamily(qFamily AggregateQueryFamily) *set.HashSet[IndexFamily, string] {
 	// we output a collection of index families, with the different combinations of "inequality filtering" at the end of the index.
 	// E.g. if we have a query with conditions a = 1, b = 2, c > 3, d > 4, e > 5, we output:
-	// { Flex: {a,b}, Last: c, Others: {d,e} }  +  { Flex: {a,b}, Last: d, Others: {c,e} }   +  { Flex: {a,b}, Last: e, Others: {c,d} }
+	// { Flex: {a,b}, Last: c, Included: {d,e} }  +  { Flex: {a,b}, Last: d, Included: {c,e} }   +  { Flex: {a,b}, Last: e, Included: {c,d} }
 	output := set.NewHashSet[IndexFamily, string](0)
 
 	// first iterate on equality conditions and colunms to include anyway
@@ -188,7 +188,7 @@ func aggregateQueryToIndexFamily(qFamily AggregateQueryFamily) *set.HashSet[Inde
 	}
 	if qFamily.SelectOrOtherConditions != nil {
 		qFamily.SelectOrOtherConditions.ForEach(func(f FieldName) bool {
-			base.Others.Insert(f)
+			base.Included.Insert(f)
 			return true
 		})
 	}
@@ -206,7 +206,7 @@ func aggregateQueryToIndexFamily(qFamily AggregateQueryFamily) *set.HashSet[Inde
 		// we add all the other columns as "other" columns
 		qFamily.IneqConditions.ForEach(func(o FieldName) bool {
 			if o != f {
-				family.Others.Insert(o)
+				family.Included.Insert(o)
 			}
 			return true
 		})

@@ -24,16 +24,16 @@ func TestAggregateQueryToIndexFamily(t *testing.T) {
 		asserts.Equal(2, idxFamily.Size(), "Two possible inequality conditions, so 2 families are rendered")
 		expected := set.HashSetFrom[IndexFamily]([]IndexFamily{
 			{
-				Fixed:  []FieldName{},
-				Flex:   set.From([]FieldName{FieldName("a"), FieldName("b")}),
-				Last:   FieldName("c"),
-				Others: set.From[FieldName]([]FieldName{FieldName("d"), FieldName("e"), FieldName("f")}),
+				Fixed:    []FieldName{},
+				Flex:     set.From([]FieldName{FieldName("a"), FieldName("b")}),
+				Last:     FieldName("c"),
+				Included: set.From[FieldName]([]FieldName{FieldName("d"), FieldName("e"), FieldName("f")}),
 			},
 			{
-				Fixed:  []FieldName{},
-				Flex:   set.From([]FieldName{FieldName("a"), FieldName("b")}),
-				Last:   FieldName("d"),
-				Others: set.From[FieldName]([]FieldName{FieldName("c"), FieldName("e"), FieldName("f")}),
+				Fixed:    []FieldName{},
+				Flex:     set.From([]FieldName{FieldName("a"), FieldName("b")}),
+				Last:     FieldName("d"),
+				Included: set.From[FieldName]([]FieldName{FieldName("c"), FieldName("e"), FieldName("f")}),
 			},
 		})
 		asserts.True(expected.Equal(idxFamily), "The index families in the result are the expected ones")
@@ -58,10 +58,10 @@ func TestAggregateQueryToIndexFamily(t *testing.T) {
 		asserts.Equal(1, idxFamily.Size(), "Just one possible inequality condition, so 1 family is rendered")
 		expected := set.HashSetFrom[IndexFamily]([]IndexFamily{
 			{
-				Fixed:  []FieldName{},
-				Flex:   set.From([]FieldName{FieldName("a"), FieldName("b")}),
-				Last:   FieldName("c"),
-				Others: set.From[FieldName]([]FieldName{FieldName("d"), FieldName("e")}),
+				Fixed:    []FieldName{},
+				Flex:     set.From([]FieldName{FieldName("a"), FieldName("b")}),
+				Last:     FieldName("c"),
+				Included: set.From[FieldName]([]FieldName{FieldName("d"), FieldName("e")}),
 			},
 		})
 		asserts.True(expected.Equal(idxFamily), "The index families in the result are the expected ones")
@@ -86,10 +86,10 @@ func TestAggregateQueryToIndexFamily(t *testing.T) {
 		asserts.Equal(1, idxFamily.Size(), "No inequality condition, so 1 family is rendered")
 		expected := set.HashSetFrom[IndexFamily]([]IndexFamily{
 			{
-				Fixed:  []FieldName{},
-				Flex:   set.From([]FieldName{FieldName("a"), FieldName("b")}),
-				Last:   FieldName(""),
-				Others: set.From[FieldName]([]FieldName{FieldName("d"), FieldName("e")}),
+				Fixed:    []FieldName{},
+				Flex:     set.From([]FieldName{FieldName("a"), FieldName("b")}),
+				Last:     FieldName(""),
+				Included: set.From[FieldName]([]FieldName{FieldName("d"), FieldName("e")}),
 			},
 		})
 		asserts.True(expected.Equal(idxFamily), "The index families in the result are the expected ones")
