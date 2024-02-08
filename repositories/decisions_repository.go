@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -444,7 +445,7 @@ func (repo *DecisionRepositoryImpl) rulesOfDecisionsBatch(ctx context.Context, t
 	}
 
 	// return an array of RulesOfDecision that match the input array decisionIds
-	return utils.Map(decisionIds, func(decisionId string) RulesOfDecision {
+	return pure_utils.Map(decisionIds, func(decisionId string) RulesOfDecision {
 		return *decisionsRulesMap[decisionId]
 	}), nil
 }
@@ -481,7 +482,7 @@ func (repo *DecisionRepositoryImpl) channelOfDecisions(ctx context.Context, tx T
 			rules, err := repo.rulesOfDecisionsBatch(
 				ctx,
 				nil,
-				utils.Map(dbDecisions, func(d dbmodels.DbDecision) string { return d.Id }),
+				pure_utils.Map(dbDecisions, func(d dbmodels.DbDecision) string { return d.Id }),
 			)
 
 			if err != nil {

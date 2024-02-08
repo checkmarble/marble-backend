@@ -7,6 +7,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -18,7 +19,7 @@ func (api *API) handleListApiKeys(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"api_keys": utils.Map(apiKeys, dto.AdaptApiKeyDto),
+		"api_keys": pure_utils.Map(apiKeys, dto.AdaptApiKeyDto),
 	})
 }
 

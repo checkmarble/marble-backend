@@ -10,6 +10,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/analytics"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
@@ -392,7 +393,7 @@ func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string, c
 		if err != nil {
 			return models.Case{}, err
 		}
-		previousTagIds := utils.Map(previousCaseTags, func(caseTag models.CaseTag) string { return caseTag.TagId })
+		previousTagIds := pure_utils.Map(previousCaseTags, func(caseTag models.CaseTag) string { return caseTag.TagId })
 
 		for _, tagId := range caseTagAttributes.TagIds {
 			if !slices.Contains(previousTagIds, tagId) {

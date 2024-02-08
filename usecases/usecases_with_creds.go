@@ -138,12 +138,14 @@ func (usecases *UsecasesWithCreds) NewCustomListUseCase() CustomListUseCase {
 func (usecases *UsecasesWithCreds) NewScenarioPublicationUsecase() ScenarioPublicationUsecase {
 	return ScenarioPublicationUsecase{
 		transactionFactory:             &usecases.Repositories.TransactionFactoryPosgresql,
+		orgTransactionFactory:          usecases.NewOrgTransactionFactory(),
 		scenarioPublicationsRepository: usecases.Repositories.ScenarioPublicationRepository,
 		OrganizationIdOfContext:        usecases.OrganizationIdOfContext,
 		enforceSecurity:                usecases.NewEnforceScenarioSecurity(),
 		scenarioFetcher:                usecases.NewScenarioFetcher(),
 		scenarioPublisher:              usecases.NewScenarioPublisher(),
 		scenarioListRepository:         &usecases.Repositories.MarbleDbRepository,
+		IngestedDataReadRepository:     usecases.Repositories.IngestedDataReadRepository,
 	}
 }
 

@@ -8,8 +8,8 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/pure_utils/duration"
-	"github.com/checkmarble/marble-backend/utils"
 )
 
 func argumentNotNil(argument any) error {
@@ -107,7 +107,7 @@ func adaptArgumentToListOfThings[T any](argument any) ([]T, error) {
 	}
 
 	if list, ok := argument.([]any); ok {
-		return utils.MapErr(list, func(item any) (T, error) {
+		return pure_utils.MapErr(list, func(item any) (T, error) {
 			i, ok := item.(T)
 			if !ok {
 				return zero, errors.New(fmt.Sprintf("couldn't cast argument to %T", zero))

@@ -10,6 +10,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -58,7 +59,7 @@ func (api *API) handleListCases(c *gin.Context) {
 		"total_count": dto.AdaptTotalCount(cases[0].TotalCount),
 		"start_index": cases[0].RankNumber,
 		"end_index":   cases[len(cases)-1].RankNumber,
-		"items":       utils.Map(cases, func(c models.CaseWithRank) dto.APICase { return dto.AdaptCaseDto(c.Case) }),
+		"items":       pure_utils.Map(cases, func(c models.CaseWithRank) dto.APICase { return dto.AdaptCaseDto(c.Case) }),
 	})
 }
 

@@ -131,5 +131,5 @@ func (api *API) handleListUploadLogs(c *gin.Context) {
 	if presentError(c, err) {
 		return
 	}
-	c.JSON(http.StatusOK, utils.Map(uploadLogs, dto.AdaptUploadLogDto))
+	c.JSON(http.StatusOK, pure_utils.Map(uploadLogs, dto.AdaptUploadLogDto))
 }

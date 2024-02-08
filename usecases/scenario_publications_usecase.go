@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
@@ -19,12 +20,14 @@ type scenarioListRepository interface {
 
 type ScenarioPublicationUsecase struct {
 	transactionFactory             transaction.TransactionFactory
+	orgTransactionFactory          transaction.Factory
 	scenarioPublicationsRepository repositories.ScenarioPublicationRepository
 	OrganizationIdOfContext        func() (string, error)
 	enforceSecurity                security.EnforceSecurityScenario
 	scenarioFetcher                scenarios.ScenarioFetcher
 	scenarioPublisher              scenarios.ScenarioPublisher
 	scenarioListRepository         scenarioListRepository
+	IngestedDataReadRepository     repositories.IngestedDataReadRepository
 }
 
 func (usecase *ScenarioPublicationUsecase) GetScenarioPublication(ctx context.Context, scenarioPublicationID string) (models.ScenarioPublication, error) {
@@ -71,7 +74,8 @@ func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(ctx 
 
 }
 
-func (usecase *ScenarioPublicationUsecase) CreateDatamodelIndexesForScenarioPublication(ctx context.Context, scenarioIterationId string) (bool, error) {
+func (usecase *ScenarioPublicationUsecase) CreateDatamodelIndexesForScenarioPublication(ctx context.Context, scenarioIterationId string) (ready bool, err error) {
+	logger := utils.LoggerFromContext(ctx)
 	iterationToActivate, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, nil, scenarioIterationId)
 	if err != nil {
 		return false, err
@@ -88,7 +92,7 @@ func (usecase *ScenarioPublicationUsecase) CreateDatamodelIndexesForScenarioPubl
 	liveScenarios := utils.Filter(scenarios, func(scenario models.Scenario) bool {
 		return scenario.LiveVersionID != nil
 	})
-	activeScenarioIterations, err := utils.MapErr(liveScenarios, func(scenario models.Scenario) (models.ScenarioIteration, error) {
+	activeScenarioIterations, err := pure_utils.MapErr(liveScenarios, func(scenario models.Scenario) (models.ScenarioIteration, error) {
 		it, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, nil, *scenario.LiveVersionID)
 		if err != nil {
 			return models.ScenarioIteration{}, err
@@ -99,11 +103,34 @@ func (usecase *ScenarioPublicationUsecase) CreateDatamodelIndexesForScenarioPubl
 		return false, errors.Wrap(err, "Error while fetching active scenario iterations in CreateDatamodelIndexesForScenarioPublication")
 	}
 
-	indexesToCreate, err := models.IndexesToCreateFromScenarioIterations(append(activeScenarioIterations, iterationToActivate.Iteration), nil)
+	existingIndexes, err := transaction.InOrganizationSchema(
+		ctx,
+		usecase.orgTransactionFactory,
+		organizationId,
+		func(tx repositories.Transaction) ([]models.ConcreteIndex, error) {
+			return usecase.IngestedDataReadRepository.ListAllValidIndexes(ctx, tx)
+		})
+	if err != nil {
+		return false, errors.Wrap(err, "Error while fetching existing indexes in CreateDatamodelIndexesForScenarioPublication")
+	}
+
+	indexesToCreate, err := models.IndexesToCreateFromScenarioIterations(append(activeScenarioIterations, iterationToActivate.Iteration), existingIndexes)
 	if err != nil {
 		return false, errors.Wrap(err, "Error while finding indexes to create from scenario iterations in CreateDatamodelIndexesForScenarioPublication")
 	}
 	fmt.Printf("indexesToCreate: %+v\n", indexesToCreate)
 
-	return false, nil
+	num, err := transaction.InOrganizationSchema(
+		ctx,
+		usecase.orgTransactionFactory,
+		organizationId,
+		func(tx repositories.Transaction) (int, error) {
+			return usecase.IngestedDataReadRepository.CreateIndexesSync(ctx, tx, indexesToCreate)
+		})
+	if err != nil {
+		return false, errors.Wrap(err, "Error while creating indexes in CreateDatamodelIndexesForScenarioPublication")
+	}
+	logger.Info(fmt.Sprintf("%d indexes to create for org %s", num, organizationId), "org_id", organizationId)
+
+	return num == 0, nil
 }

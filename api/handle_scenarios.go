@@ -8,7 +8,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/utils"
+	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
 type APIScenario struct {
@@ -39,7 +39,7 @@ func (api *API) ListScenarios(c *gin.Context) {
 	if presentError(c, err) {
 		return
 	}
-	c.JSON(http.StatusOK, utils.Map(scenarios, NewAPIScenario))
+	c.JSON(http.StatusOK, pure_utils.Map(scenarios, NewAPIScenario))
 }
 
 func (api *API) CreateScenario(c *gin.Context) {

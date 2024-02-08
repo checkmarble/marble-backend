@@ -1,4 +1,4 @@
-package utils
+package pure_utils
 
 // Amazingly, the Go standard library to not provide the function 'map'
 // The rational of why the Go team rejects it is explained in this wonderfull stack overflow answer.

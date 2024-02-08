@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/checkmarble/marble-backend/models/ast"
-	"github.com/checkmarble/marble-backend/utils"
+	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
 type NodeDto struct {
@@ -21,12 +21,12 @@ func AdaptNodeDto(node ast.Node) (NodeDto, error) {
 		return NodeDto{}, err
 	}
 
-	childrenDto, err := utils.MapErr(node.Children, AdaptNodeDto)
+	childrenDto, err := pure_utils.MapErr(node.Children, AdaptNodeDto)
 	if err != nil {
 		return NodeDto{}, err
 	}
 
-	namedChildrenDto, err := utils.MapValuesErr(node.NamedChildren, AdaptNodeDto)
+	namedChildrenDto, err := pure_utils.MapValuesErr(node.NamedChildren, AdaptNodeDto)
 	if err != nil {
 		return NodeDto{}, err
 	}
@@ -56,12 +56,12 @@ func AdaptASTNode(dto NodeDto) (ast.Node, error) {
 		return ast.Node{}, err
 	}
 
-	children, err := utils.MapErr(dto.Children, AdaptASTNode)
+	children, err := pure_utils.MapErr(dto.Children, AdaptASTNode)
 	if err != nil {
 		return ast.Node{}, err
 	}
 
-	namedChildren, err := utils.MapValuesErr(dto.NamedChildren, AdaptASTNode)
+	namedChildren, err := pure_utils.MapValuesErr(dto.NamedChildren, AdaptASTNode)
 	if err != nil {
 		return ast.Node{}, err
 	}

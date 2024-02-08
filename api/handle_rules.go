@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -22,7 +23,7 @@ func (api *API) ListRules(c *gin.Context) {
 		return
 	}
 
-	apiRules, err := utils.MapErr(rules, dto.AdaptRuleDto)
+	apiRules, err := pure_utils.MapErr(rules, dto.AdaptRuleDto)
 	if presentError(c, err) {
 		return
 	}

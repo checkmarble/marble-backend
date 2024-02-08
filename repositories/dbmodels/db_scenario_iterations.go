@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -73,7 +74,7 @@ func AdaptScenarioIterationWithRules(dto DBScenarioIterationWithRules) (models.S
 		return models.ScenarioIteration{}, err
 	}
 
-	scenarioIteration.Rules, err = utils.MapErr(dto.Rules, AdaptRule)
+	scenarioIteration.Rules, err = pure_utils.MapErr(dto.Rules, AdaptRule)
 	if err != nil {
 		return models.ScenarioIteration{}, err
 	}

@@ -10,6 +10,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -64,7 +65,7 @@ func (api *API) handleListScheduledExecution(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"scheduled_executions": utils.Map(executions, dto.AdaptScheduledExecutionDto),
+		"scheduled_executions": pure_utils.Map(executions, dto.AdaptScheduledExecutionDto),
 	})
 }
 
