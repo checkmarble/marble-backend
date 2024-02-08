@@ -2,7 +2,9 @@ package models
 
 import (
 	"slices"
+	"strings"
 
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/hashicorp/go-set/v2"
 )
 
@@ -13,11 +15,27 @@ type ConcreteIndex struct {
 }
 
 func (i ConcreteIndex) Equal(other ConcreteIndex) bool {
-	return slices.Equal(i.Indexed, other.Indexed) &&
+	return i.TableName == other.TableName &&
+		slices.Equal(i.Indexed, other.Indexed) &&
 		slices.Equal(i.Included, other.Included)
 }
 
-func (i ConcreteIndex) isInstanceof(f IndexFamily) bool {
+func (i ConcreteIndex) covers(f IndexFamily) bool {
+	// We need to make a copy of f because we are going to modify it
+	// put all the identifiers to upper case, because postgres is not case sensitive as far as identifiers are concerned (unless quoted)
+	// and as such will return names will all lower case
+	f = f.copy()
+	f.TableName = TableName(strings.ToUpper(string(f.TableName)))
+	f.Last = fieldNameToUpper(f.Last)
+	f.Fixed = pure_utils.Map(f.Fixed, fieldNameToUpper)
+	f.Flex = set.From(pure_utils.Map(f.Flex.Slice(), fieldNameToUpper))
+	f.Others = set.From(pure_utils.Map(f.Others.Slice(), fieldNameToUpper))
+	i = ConcreteIndex{
+		TableName: TableName(strings.ToUpper(string(i.TableName))),
+		Indexed:   pure_utils.Map(i.Indexed, fieldNameToUpper),
+		Included:  pure_utils.Map(i.Included, fieldNameToUpper),
+	}
+
 	if i.TableName != f.TableName {
 		return false
 	}
@@ -26,21 +44,44 @@ func (i ConcreteIndex) isInstanceof(f IndexFamily) bool {
 		return false
 	}
 
-	if f.Last != "" {
-		if !set.From(i.Indexed[len(f.Fixed):]).Equal(f.Flex) {
+	lastVisited := -1
+	// N first items in i.Indexed must be equal to N first elements in f.Fixed (if not empty)
+	for n := 0; n < len(f.Fixed) && n < len(i.Indexed); n += 1 {
+		if i.Indexed[n] != f.Fixed[n] {
 			return false
 		}
-	} else {
-		if !set.From(i.Indexed[len(f.Fixed) : len(i.Indexed)-1]).Equal(f.Flex) {
+		lastVisited = n
+	}
+
+	// If there are no more elements in f.Fixed but there are some left in f to check, then carry on with the next values in i.Indexed
+	lenFlex := f.Flex.Size()
+	if lenFlex > 0 {
+		start := lastVisited + 1
+		if start+lenFlex > len(i.Indexed) {
+			return false
+		}
+		cp := f.Flex.Copy()
+		cp.RemoveSlice(i.Indexed[start : start+lenFlex])
+		if cp.Size() > 0 {
 			return false
 		}
 	}
 
-	if f.Last != "" && f.Last != i.Indexed[len(i.Indexed)-1] {
+	if f.Last != "" {
+		if f.size() > len(i.Indexed) || i.Indexed[f.size()-1] != f.Last {
+			return false
+		}
+	}
+
+	if !set.From(i.Included).Subset(f.Others) {
 		return false
 	}
 
 	return true
+}
+
+func fieldNameToUpper(f FieldName) FieldName {
+	return FieldName(strings.ToUpper(string(f)))
 }
 
 func selectIdxFamiliesToCreate(idxFamilies set.Collection[IndexFamily], existing []ConcreteIndex) set.Collection[IndexFamily] {
@@ -49,7 +90,7 @@ func selectIdxFamiliesToCreate(idxFamilies set.Collection[IndexFamily], existing
 	for _, family := range idxFamilies.Slice() {
 		found := false
 		for _, concreteIndex := range existing {
-			if concreteIndex.isInstanceof(family) {
+			if concreteIndex.covers(family) {
 				found = true
 				break
 			}

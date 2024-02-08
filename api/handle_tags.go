@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/gin-gonic/gin"
 )
@@ -33,7 +34,7 @@ func (api *API) handleListTags(c *gin.Context) {
 	if presentError(c, err) {
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"tags": utils.Map(tags, dto.AdaptTagDto)})
+	c.JSON(http.StatusOK, gin.H{"tags": pure_utils.Map(tags, dto.AdaptTagDto)})
 }
 
 func (api *API) handlePostTag(c *gin.Context) {

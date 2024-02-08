@@ -2,7 +2,7 @@ package dto
 
 import (
 	"github.com/checkmarble/marble-backend/models/ast"
-	"github.com/checkmarble/marble-backend/utils"
+	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
 type NodeEvaluationDto struct {
@@ -16,8 +16,8 @@ func AdaptNodeEvaluationDto(evaluation ast.NodeEvaluation) NodeEvaluationDto {
 
 	return NodeEvaluationDto{
 		ReturnValue:   evaluation.ReturnValue,
-		Errors:        utils.Map(evaluation.Errors, AdaptEvaluationErrorDto),
-		Children:      utils.Map(evaluation.Children, AdaptNodeEvaluationDto),
-		NamedChildren: utils.MapValues(evaluation.NamedChildren, AdaptNodeEvaluationDto),
+		Errors:        pure_utils.Map(evaluation.Errors, AdaptEvaluationErrorDto),
+		Children:      pure_utils.Map(evaluation.Children, AdaptNodeEvaluationDto),
+		NamedChildren: pure_utils.MapValues(evaluation.NamedChildren, AdaptNodeEvaluationDto),
 	}
 }

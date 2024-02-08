@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/utils"
+	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
 type APICase struct {
@@ -28,22 +28,22 @@ type APICaseWithDecisions struct {
 func AdaptCaseDto(c models.Case) APICase {
 	return APICase{
 		Id:             c.Id,
-		Contributors:   utils.Map(c.Contributors, NewAPICaseContributor),
+		Contributors:   pure_utils.Map(c.Contributors, NewAPICaseContributor),
 		CreatedAt:      c.CreatedAt,
 		DecisionsCount: c.DecisionsCount,
-		Events:         utils.Map(c.Events, NewAPICaseEvent),
+		Events:         pure_utils.Map(c.Events, NewAPICaseEvent),
 		InboxId:        c.InboxId,
 		Name:           c.Name,
 		Status:         string(c.Status),
-		Tags:           utils.Map(c.Tags, NewAPICaseTag),
-		Files:          utils.Map(c.Files, NewAPICaseFile),
+		Tags:           pure_utils.Map(c.Tags, NewAPICaseTag),
+		Files:          pure_utils.Map(c.Files, NewAPICaseFile),
 	}
 }
 
 func AdaptCaseWithDecisionsDto(c models.Case) APICaseWithDecisions {
 	return APICaseWithDecisions{
 		APICase:   AdaptCaseDto(c),
-		Decisions: utils.Map(c.Decisions, NewAPIDecision),
+		Decisions: pure_utils.Map(c.Decisions, NewAPIDecision),
 	}
 }
 

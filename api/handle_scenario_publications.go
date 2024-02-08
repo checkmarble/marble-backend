@@ -8,6 +8,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -45,7 +46,7 @@ func (api *API) ListScenarioPublications(c *gin.Context) {
 	if presentError(c, err) {
 		return
 	}
-	c.JSON(http.StatusOK, utils.Map(scenarioPublications, NewAPIScenarioPublication))
+	c.JSON(http.StatusOK, pure_utils.Map(scenarioPublications, NewAPIScenarioPublication))
 }
 
 func (api *API) CreateScenarioPublication(c *gin.Context) {
@@ -63,7 +64,7 @@ func (api *API) CreateScenarioPublication(c *gin.Context) {
 	if presentError(c, err) {
 		return
 	}
-	c.JSON(http.StatusOK, utils.Map(scenarioPublications, NewAPIScenarioPublication))
+	c.JSON(http.StatusOK, pure_utils.Map(scenarioPublications, NewAPIScenarioPublication))
 }
 
 func (api *API) GetScenarioPublication(c *gin.Context) {

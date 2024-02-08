@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/utils"
+	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
 type CustomList struct {
@@ -46,7 +46,7 @@ func AdaptCustomListWithValuesDto(list models.CustomList, values []models.Custom
 		Description: list.Description,
 		CreatedAt:   list.CreatedAt,
 		UpdatedAt:   list.UpdatedAt,
-		Values:      utils.Map(values, AdaptCustomListValueDto),
+		Values:      pure_utils.Map(values, AdaptCustomListValueDto),
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -19,7 +20,7 @@ func (api *API) handleGetAllCustomLists(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"custom_lists": utils.Map(lists, dto.AdaptCustomListDto),
+		"custom_lists": pure_utils.Map(lists, dto.AdaptCustomListDto),
 	})
 }
 

@@ -11,6 +11,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -71,7 +72,7 @@ func (api *API) handleListDecisions(c *gin.Context) {
 		"total_count": dto.AdaptTotalCount(decisions[0].TotalCount),
 		"start_index": decisions[0].RankNumber,
 		"end_index":   decisions[len(decisions)-1].RankNumber,
-		"items":       utils.Map(decisions, func(d models.DecisionWithRank) dto.APIDecision { return dto.NewAPIDecision(d.Decision) }),
+		"items":       pure_utils.Map(decisions, func(d models.DecisionWithRank) dto.APIDecision { return dto.NewAPIDecision(d.Decision) }),
 	})
 }
 

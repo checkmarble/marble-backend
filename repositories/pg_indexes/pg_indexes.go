@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/utils"
+	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
 var columnNamesRegex = regexp.MustCompile(`(\([a-zA-Z0-9,_\ ]+\))`)
@@ -15,7 +15,8 @@ type PGIndex struct {
 	Definition         string
 	IsValid            bool
 	Name               string
-	RelationId         int
+	RelationId         uint32
+	TableName          string
 }
 
 func parseCreateIndexStatement(sql string) models.ConcreteIndex {
@@ -29,7 +30,7 @@ func parseCreateIndexStatement(sql string) models.ConcreteIndex {
 
 	// len(matches) is expected to be > 0 because the sql statement is expected to be a proper CREATE INDEX statement
 	indexedColumnsRaw := strings.Split(strings.Trim(matches[0], "() "), ",")
-	indexedColumnNames := utils.Map(indexedColumnsRaw, func(s string) models.FieldName {
+	indexedColumnNames := pure_utils.Map(indexedColumnsRaw, func(s string) models.FieldName {
 		// We discard the order of the index (ASC/DESC) because this is not relevant or modelized (yet) for our purposes
 		parts := strings.Split(strings.Trim(s, " "), " ")
 		// the first part of the string must be the column name
@@ -40,7 +41,7 @@ func parseCreateIndexStatement(sql string) models.ConcreteIndex {
 	// if there is a second match, it is the list of included columns (optional)
 	if len(matches) > 1 {
 		names := strings.Split(strings.Trim(matches[1], "() "), ",")
-		includedColumnNames = utils.Map(names, func(s string) models.FieldName {
+		includedColumnNames = pure_utils.Map(names, func(s string) models.FieldName {
 			return models.FieldName(strings.Trim(s, " "))
 		})
 	}
@@ -51,6 +52,9 @@ func parseCreateIndexStatement(sql string) models.ConcreteIndex {
 	}
 }
 
-func AdaptConcretIndex(pgIndex PGIndex) models.ConcreteIndex {
-	return parseCreateIndexStatement(pgIndex.Definition)
+func (pgIndex PGIndex) AdaptConcreteIndex() models.ConcreteIndex {
+	idx := parseCreateIndexStatement(pgIndex.Definition)
+
+	idx.TableName = models.TableName(pgIndex.TableName)
+	return idx
 }

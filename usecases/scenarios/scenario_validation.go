@@ -7,10 +7,10 @@ import (
 	"github.com/cockroachdb/errors"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval/evaluate"
-	"github.com/checkmarble/marble-backend/utils"
 )
 
 func ScenarioValidationToError(validation models.ScenarioValidation) error {
@@ -20,18 +20,18 @@ func ScenarioValidationToError(validation models.ScenarioValidation) error {
 		return err.Error
 	}
 
-	errs = append(errs, utils.Map(validation.Errors, toError)...)
+	errs = append(errs, pure_utils.Map(validation.Errors, toError)...)
 
-	errs = append(errs, utils.Map(validation.Trigger.Errors, toError)...)
+	errs = append(errs, pure_utils.Map(validation.Trigger.Errors, toError)...)
 	errs = append(errs, validation.Trigger.TriggerEvaluation.AllErrors()...)
 
-	errs = append(errs, utils.Map(validation.Rules.Errors, toError)...)
+	errs = append(errs, pure_utils.Map(validation.Rules.Errors, toError)...)
 	for _, rule := range validation.Rules.Rules {
-		errs = append(errs, utils.Map(rule.Errors, toError)...)
+		errs = append(errs, pure_utils.Map(rule.Errors, toError)...)
 		errs = append(errs, rule.RuleEvaluation.AllErrors()...)
 	}
 
-	errs = append(errs, utils.Map(validation.Decision.Errors, toError)...)
+	errs = append(errs, pure_utils.Map(validation.Decision.Errors, toError)...)
 
 	return errors.Join(errs...)
 }

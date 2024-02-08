@@ -2,7 +2,7 @@ package dto
 
 import (
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/utils"
+	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
 type Identity struct {
@@ -21,7 +21,7 @@ type Credentials struct {
 }
 
 func AdaptCredentialDto(creds models.Credentials) Credentials {
-	permissions := utils.Map(creds.Role.Permissions(), func(p models.Permission) string { return p.String() })
+	permissions := pure_utils.Map(creds.Role.Permissions(), func(p models.Permission) string { return p.String() })
 
 	return Credentials{
 		OrganizationId: creds.OrganizationId,

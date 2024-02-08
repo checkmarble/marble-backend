@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/utils"
+	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
 type InboxDto struct {
@@ -24,7 +24,7 @@ func AdaptInboxDto(i models.Inbox) InboxDto {
 		UpdatedAt:  i.UpdatedAt,
 		Name:       i.Name,
 		Status:     string(i.Status),
-		Users:      utils.Map(i.InboxUsers, AdaptInboxUserDto),
+		Users:      pure_utils.Map(i.InboxUsers, AdaptInboxUserDto),
 		CasesCount: i.CasesCount,
 	}
 

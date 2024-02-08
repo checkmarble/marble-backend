@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/checkmarble/marble-backend/dto"
-	"github.com/checkmarble/marble-backend/utils"
+	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
 func (api *API) handleGetEditorIdentifiers(c *gin.Context) {
@@ -19,11 +19,11 @@ func (api *API) handleGetEditorIdentifiers(c *gin.Context) {
 		return
 	}
 
-	databaseNodes, err := utils.MapErr(result.DatabaseAccessors, dto.AdaptNodeDto)
+	databaseNodes, err := pure_utils.MapErr(result.DatabaseAccessors, dto.AdaptNodeDto)
 	if presentError(c, err) {
 		return
 	}
-	payloadbaseNodes, err := utils.MapErr(result.PayloadAccessors, dto.AdaptNodeDto)
+	payloadbaseNodes, err := pure_utils.MapErr(result.PayloadAccessors, dto.AdaptNodeDto)
 	if presentError(c, err) {
 		return
 	}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -18,7 +19,7 @@ func (api *API) handleGetAllUsers(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"users": utils.Map(users, dto.AdaptUserDto),
+		"users": pure_utils.Map(users, dto.AdaptUserDto),
 	})
 }
 

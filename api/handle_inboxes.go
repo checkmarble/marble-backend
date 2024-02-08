@@ -7,6 +7,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -47,7 +48,7 @@ func (api *API) handleListInboxes(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"inboxes": utils.Map(inboxes, dto.AdaptInboxDto)})
+	c.JSON(http.StatusOK, gin.H{"inboxes": pure_utils.Map(inboxes, dto.AdaptInboxDto)})
 }
 
 type CreateInboxInput struct {
@@ -144,7 +145,7 @@ func (api *API) handleListAllInboxUsers(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"inbox_users": utils.Map(inboxUsers, dto.AdaptInboxUserDto)})
+	c.JSON(http.StatusOK, gin.H{"inbox_users": pure_utils.Map(inboxUsers, dto.AdaptInboxUserDto)})
 }
 
 func (api *API) handleListInboxUsers(c *gin.Context) {
@@ -160,7 +161,7 @@ func (api *API) handleListInboxUsers(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"inbox_users": utils.Map(inboxUsers, dto.AdaptInboxUserDto)})
+	c.JSON(http.StatusOK, gin.H{"inbox_users": pure_utils.Map(inboxUsers, dto.AdaptInboxUserDto)})
 }
 
 type CreateInboxUserInput struct {

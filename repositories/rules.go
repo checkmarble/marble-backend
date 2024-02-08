@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
 
@@ -72,7 +73,7 @@ func (repo *MarbleDbRepository) CreateRules(ctx context.Context, tx Transaction,
 
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
-	dbCreateRuleInputs, err := utils.MapErr(rules, dbmodels.AdaptDBCreateRuleInput)
+	dbCreateRuleInputs, err := pure_utils.MapErr(rules, dbmodels.AdaptDBCreateRuleInput)
 	if err != nil {
 		return []models.Rule{}, err
 	}

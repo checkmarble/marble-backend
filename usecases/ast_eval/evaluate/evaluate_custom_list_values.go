@@ -8,9 +8,9 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/security"
-	"github.com/checkmarble/marble-backend/utils"
 )
 
 type CustomListValuesAccess struct {
@@ -46,7 +46,7 @@ func (clva CustomListValuesAccess) Evaluate(ctx context.Context, arguments ast.A
 		return MakeEvaluateError(errors.Wrap(err, fmt.Sprintf("Error reading values for list %s", list.Id)))
 	}
 
-	return utils.Map(
+	return pure_utils.Map(
 		listValues,
 		func(v models.CustomListValue) string { return v.Value },
 	), nil

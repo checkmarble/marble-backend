@@ -2,7 +2,7 @@ package dto
 
 import (
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/utils"
+	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
 type ScenarioValidationErrorDto struct {
@@ -45,20 +45,20 @@ type ScenarioValidationDto struct {
 func AdaptScenarioValidationDto(s models.ScenarioValidation) ScenarioValidationDto {
 	return ScenarioValidationDto{
 		Trigger: triggerValidationDto{
-			Errors:            utils.Map(s.Trigger.Errors, AdaptScenarioValidationErrorDto),
+			Errors:            pure_utils.Map(s.Trigger.Errors, AdaptScenarioValidationErrorDto),
 			TriggerEvaluation: AdaptNodeEvaluationDto(s.Trigger.TriggerEvaluation),
 		},
 		Rules: rulesValidationDto{
-			Errors: utils.Map(s.Rules.Errors, AdaptScenarioValidationErrorDto),
-			Rules: utils.MapValues(s.Rules.Rules, func(ruleValidation models.RuleValidation) ruleValidationDto {
+			Errors: pure_utils.Map(s.Rules.Errors, AdaptScenarioValidationErrorDto),
+			Rules: pure_utils.MapValues(s.Rules.Rules, func(ruleValidation models.RuleValidation) ruleValidationDto {
 				return ruleValidationDto{
-					Errors:         utils.Map(ruleValidation.Errors, AdaptScenarioValidationErrorDto),
+					Errors:         pure_utils.Map(ruleValidation.Errors, AdaptScenarioValidationErrorDto),
 					RuleEvaluation: AdaptNodeEvaluationDto(ruleValidation.RuleEvaluation),
 				}
 			}),
 		},
 		Decision: decisionValidationDto{
-			Errors: utils.Map(s.Decision.Errors, AdaptScenarioValidationErrorDto),
+			Errors: pure_utils.Map(s.Decision.Errors, AdaptScenarioValidationErrorDto),
 		},
 	}
 }
