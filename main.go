@@ -142,6 +142,7 @@ type AppConfiguration struct {
 	pgConfig   utils.PGConfig
 	config     models.GlobalConfiguration
 	sentryDsn  string
+	metabase   models.MetabaseConfiguration
 }
 
 func main() {
@@ -165,6 +166,11 @@ func main() {
 			SegmentWriteKey:      utils.GetRequiredStringEnv("SEGMENT_WRITE_KEY"),
 		},
 		sentryDsn: utils.GetStringEnv("SENTRY_DSN", ""),
+		metabase: models.MetabaseConfiguration{
+			SiteUrl:             utils.GetRequiredStringEnv("METABASE_SITE_URL"),
+			JwtSigningKey:       []byte(utils.GetRequiredStringEnv("METABASE_JWT_SIGNING_KEY")),
+			TokenLifetimeMinute: utils.GetIntEnv("METABASE_TOKEN_LIFETIME_MINUTE", 10),
+		},
 	}
 
 	////////////////////////////////////////////////////////////
@@ -243,6 +249,7 @@ func NewUseCases(ctx context.Context, appConfiguration AppConfiguration, marbleJ
 		marbleJwtSigningKey,
 		infra.InitializeFirebase(ctx),
 		marbleConnectionPool,
+		infra.InitializeMetabase(appConfiguration.metabase),
 	)
 	if err != nil {
 		slog.Error("repositories.NewRepositories failed", slog.String("error", err.Error()))

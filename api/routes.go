@@ -67,6 +67,8 @@ func (api *API) routes(auth *Authentication) {
 	router.GET("/scheduled-executions/:execution_id", api.handleGetScheduledExecution)
 	router.GET("/scheduled-executions/:execution_id/decisions.zip", api.handleGetScheduledExecutionDecisions)
 
+	router.GET("/analytics", api.handleListAnalytics)
+
 	router.GET("/apikeys", api.handleListApiKeys)
 	router.POST("/apikeys", api.handlePostApiKey)
 	router.DELETE("/apikeys/:api_key_id", api.handleRevokeApiKey)
