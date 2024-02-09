@@ -25,10 +25,11 @@ func NewIndexFamily() IndexFamily {
 }
 
 func (f IndexFamily) Equal(other IndexFamily) bool {
-	return slices.Equal(f.Fixed, other.Fixed) &&
+	return f.TableName == other.TableName &&
+		f.Included.Equal(other.Included) &&
+		slices.Equal(f.Fixed, other.Fixed) &&
 		f.Flex.Equal(other.Flex) &&
-		(f.Last == other.Last) &&
-		f.Included.Equal(other.Included)
+		(f.Last == other.Last)
 }
 
 func (f IndexFamily) Hash() string {
@@ -204,7 +205,7 @@ func refineIdxFamilies(left, right IndexFamily) (IndexFamily, bool) {
 	// Now we know that one of the families at least has an empty fixed values slice
 	var short, long IndexFamily
 	// if len(left.Fixed) < len(right.Fixed) {
-	if len(right.Fixed) == 0 && len(left.Fixed) > 0 {
+	if len(right.Fixed) == 0 {
 		short = right
 		long = left
 	} else {
@@ -314,7 +315,15 @@ func refineIdxFamiliesFirstHasNoFixed(A, B IndexFamily) (IndexFamily, bool) {
 		return out, true
 	}
 
-	// So A.Size() < B.Size()
+	// So we know that A.Size() < B.Size()
+	// A: {[] {x1, x2, x3, x4, x5} L_A?         }
+	// B: {[] {x2, x3, x4, x5, x6, x7, x8} L_B? }
+	//         ^^ missing x1 in B
+	// If some values in A are not in B, it's easy to see that there is no solution (B.Last comes after so can't be used)
+	if !B.allIndexedValues().Subset(A.allIndexedValues()) {
+		return IndexFamily{}, false
+	}
+
 	if A.size() <= len(B.Fixed) {
 		if A.Last == "" {
 			// ?? To check TODO
@@ -369,6 +378,9 @@ func refineIdxFamiliesFirstHasNoFixed(A, B IndexFamily) (IndexFamily, bool) {
 	out.Fixed = append(out.Fixed, appendToFix...)
 	out.Fixed = append(out.Fixed, A.Last)
 	out.Flex = B.Flex.Difference(set.From(out.Fixed)).(*set.Set[FieldName])
+	if out.Flex.Empty() {
+		out.setLast(B.Last)
+	}
 	out = out.mergeIncluded(A)
 	return out, true
 }
