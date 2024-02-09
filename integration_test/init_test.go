@@ -105,6 +105,7 @@ func TestMain(m *testing.M) {
 		privateKey,
 		nil,
 		dbPool,
+		nil,
 	)
 	if err != nil {
 		panic(err)

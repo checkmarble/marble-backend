@@ -324,3 +324,14 @@ func (usecases *UsecasesWithCreds) NewApiKeyUseCase() ApiKeyUseCase {
 		apiKeyRepository: &usecases.Repositories.MarbleDbRepository,
 	}
 }
+
+func (usecases *UsecasesWithCreds) NewAnalyticsUseCase() AnalyticsUseCase {
+	return AnalyticsUseCase{
+		organizationIdOfContext: usecases.OrganizationIdOfContext,
+		enforceSecurity: &security.EnforceSecurityAnalyticsImpl{
+			EnforceSecurity: usecases.NewEnforceSecurity(),
+			Credentials:     usecases.Credentials,
+		},
+		analyticsRepository: &usecases.Repositories.MarbleAnalyticsRepository,
+	}
+}

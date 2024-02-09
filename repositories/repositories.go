@@ -30,6 +30,7 @@ type Repositories struct {
 	GcsRepository                      GcsRepository
 	CustomListRepository               CustomListRepository
 	UploadLogRepository                UploadLogRepository
+	MarbleAnalyticsRepository          MarbleAnalyticsRepository
 }
 
 func NewQueryBuilder() squirrel.StatementBuilderType {
@@ -40,6 +41,7 @@ func NewRepositories(
 	marbleJwtSigningKey *rsa.PrivateKey,
 	firebaseClient *auth.Client,
 	marbleConnectionPool *pgxpool.Pool,
+	metabase Metabase,
 ) (*Repositories, error) {
 
 	databaseConnectionPoolRepository := db_connection_pool_repository.NewDatabaseConnectionPoolRepository(
@@ -98,5 +100,8 @@ func NewRepositories(
 		},
 		AwsS3Repository: AwsS3Repository{s3Client: NewS3Client()},
 		GcsRepository:   &GcsRepositoryImpl{},
+		MarbleAnalyticsRepository: MarbleAnalyticsRepository{
+			metabase: metabase,
+		},
 	}, nil
 }
