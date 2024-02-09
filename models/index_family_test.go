@@ -75,25 +75,36 @@ func TestExtractMinimalSetOfIdxFamilies(t *testing.T) {
 func TestRefineIdxFamiliesShortHasNoFixed(t *testing.T) {
 	asserts := assert.New(t)
 
-	t.Run("Simple case 1: no overlap", func(t *testing.T) {
-		fam1 := NewIndexFamily()
-		fam2 := NewIndexFamily()
-		fam1.Flex.Insert(FieldName("a"))
-		fam2.Flex.Insert(FieldName("b"))
+	t.Run("1: not the same columns indexed", func(t *testing.T) {
+		A := NewIndexFamily()
+		B := NewIndexFamily()
+		A.Flex.Insert(FieldName("a"))
+		B.Flex.Insert(FieldName("b"))
 
-		_, found := refineIdxFamilies(fam1, fam2)
+		_, found := refineIdxFamilies(A, B)
 		asserts.False(found, "No overlap expected")
 	})
 
-	t.Run("Simple case 1: identical", func(t *testing.T) {
-		fam1 := NewIndexFamily()
-		fam2 := NewIndexFamily()
-		fam1.Flex.Insert(FieldName("a"))
-		fam2.Flex.Insert(FieldName("a"))
+	t.Run("2: identical, no \"last\"", func(t *testing.T) {
+		A := NewIndexFamily()
+		B := NewIndexFamily()
+		A.Flex.Insert(FieldName("a"))
+		B.Flex.Insert(FieldName("a"))
 
-		output, found := refineIdxFamilies(fam1, fam2)
+		output, found := refineIdxFamilies(A, B)
 		asserts.True(found, "Expect identical output")
-		asserts.True(output.Equal(fam1), "Expect identical output")
+		asserts.True(output.Equal(A), "Expect identical output")
+	})
+
+	t.Run("3: A is like B without order, no \"last\"", func(t *testing.T) {
+		A := NewIndexFamily()
+		B := NewIndexFamily()
+		A.Flex.Insert(FieldName("a"))
+		B.Fixed = []FieldName{"a"}
+
+		output, found := refineIdxFamilies(A, B)
+		asserts.True(found, "Expect identical output")
+		asserts.True(output.Equal(B), "Expect identical output")
 	})
 
 	t.Run("Simple case 2: simple overlap", func(t *testing.T) {
@@ -219,7 +230,8 @@ func TestRefineIdxFamiliesShortHasNoFixed(t *testing.T) {
 		output, found := refineIdxFamilies(A, B)
 		asserts.True(found, "There is a solution to merge them")
 		expected := NewIndexFamily()
-		expected.Fixed = []FieldName{"a", "b", "c", "d", "e"}
+		expected.Fixed = []FieldName{"a", "b", "c", "d"}
+		expected.setLast("e")
 		asserts.True(output.Equal(expected), "Expect to keep the first one")
 	})
 
@@ -414,6 +426,82 @@ func TestRefineIdxFamiliesShortHasNoFixed(t *testing.T) {
 		B.setLast("c")
 
 		output, found := refineIdxFamilies(B, A)
+		fmt.Println(output)
+		asserts.False(found, "There is no solution to merge them")
+	})
+
+	t.Run("19", func(t *testing.T) {
+		A := NewIndexFamily()
+		B := NewIndexFamily()
+		A.Flex.InsertSlice([]FieldName{"a", "b", "c", "d", "e"})
+		// A.setLast("c")
+		B.Fixed = []FieldName{"a"}
+		B.Flex.InsertSlice([]FieldName{"b", "c"})
+		B.setLast("d")
+
+		output, found := refineIdxFamilies(A, B)
+		fmt.Println(output)
+		asserts.True(found, "There is a solution to merge them")
+	})
+
+	t.Run("20", func(t *testing.T) {
+		A := NewIndexFamily()
+		B := NewIndexFamily()
+		A.Flex.InsertSlice([]FieldName{"a", "b", "c", "d"})
+		A.setLast("e")
+		B.Fixed = []FieldName{"a"}
+		B.Flex.InsertSlice([]FieldName{"b", "c"})
+		B.setLast("e")
+
+		output, found := refineIdxFamilies(A, B)
+		fmt.Println(output)
+		asserts.False(found, "There is a solution to merge them")
+	})
+
+	t.Run("21", func(t *testing.T) {
+		A := NewIndexFamily()
+		B := NewIndexFamily()
+		A.Flex.InsertSlice([]FieldName{"a", "b", "c"})
+		A.setLast("d")
+		B.Fixed = []FieldName{"a"}
+		B.Flex.InsertSlice([]FieldName{"b", "c", "d"})
+
+		output, found := refineIdxFamilies(A, B)
+		fmt.Println(output)
+		asserts.True(found, "There is a solution to merge them")
+	})
+
+	t.Run("22", func(t *testing.T) {
+		A := NewIndexFamily()
+		B := NewIndexFamily()
+		A.Flex.InsertSlice([]FieldName{"a", "b", "c"})
+		B.Fixed = []FieldName{"a", "b", "d", "c"}
+
+		output, found := refineIdxFamilies(A, B)
+		fmt.Println(output)
+		asserts.False(found, "There is no solution to merge them")
+	})
+
+	t.Run("23", func(t *testing.T) {
+		A := NewIndexFamily()
+		B := NewIndexFamily()
+		A.Flex.InsertSlice([]FieldName{"a", "b"})
+		A.Last = "c"
+		B.Fixed = []FieldName{"a", "b", "d", "c"}
+
+		output, found := refineIdxFamilies(A, B)
+		fmt.Println(output)
+		asserts.False(found, "There is no solution to merge them")
+	})
+
+	t.Run("24", func(t *testing.T) {
+		A := NewIndexFamily()
+		B := NewIndexFamily()
+		A.Flex.InsertSlice([]FieldName{"a", "b", "c"})
+		B.Fixed = []FieldName{"a", "g"}
+		B.Flex.InsertSlice([]FieldName{"b", "c", "d", "e", "f", "g", "h"})
+
+		output, found := refineIdxFamilies(A, B)
 		fmt.Println(output)
 		asserts.False(found, "There is no solution to merge them")
 	})
