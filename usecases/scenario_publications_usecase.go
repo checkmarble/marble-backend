@@ -18,17 +18,21 @@ type scenarioListRepository interface {
 	ListScenariosOfOrganization(ctx context.Context, tx repositories.Transaction, organizationId string) ([]models.Scenario, error)
 }
 
+type IngestedDataIndexesRepository interface {
+	ListAllValidIndexes(ctx context.Context, exec *repositories.ExecutorPostgres) ([]models.ConcreteIndex, error)
+	CreateIndexesAsync(ctx context.Context, exec *repositories.ExecutorPostgres, indexes []models.ConcreteIndex) (numCreating int, err error)
+}
+
 type ScenarioPublicationUsecase struct {
 	transactionFactory             transaction.TransactionFactory
 	clientSchemaExecutorFactory    ClientSchemaExecutorFactory
-	orgTransactionFactory          transaction.Factory
 	scenarioPublicationsRepository repositories.ScenarioPublicationRepository
 	OrganizationIdOfContext        func() (string, error)
 	enforceSecurity                security.EnforceSecurityScenario
 	scenarioFetcher                scenarios.ScenarioFetcher
 	scenarioPublisher              scenarios.ScenarioPublisher
 	scenarioListRepository         scenarioListRepository
-	IngestedDataReadRepository     repositories.IngestedDataReadRepository
+	ingestedDataIndexesRepository  IngestedDataIndexesRepository
 }
 
 func (usecase *ScenarioPublicationUsecase) GetScenarioPublication(ctx context.Context, scenarioPublicationID string) (models.ScenarioPublication, error) {
@@ -108,7 +112,7 @@ func (usecase *ScenarioPublicationUsecase) CreateDatamodelIndexesForScenarioPubl
 	if err != nil {
 		return false, errors.Wrap(err, "Error while creating client schema executor in CreateDatamodelIndexesForScenarioPublication")
 	}
-	existingIndexes, err := usecase.IngestedDataReadRepository.ListAllValidIndexes(ctx, db)
+	existingIndexes, err := usecase.ingestedDataIndexesRepository.ListAllValidIndexes(ctx, db)
 	if err != nil {
 		return false, errors.Wrap(err, "Error while fetching existing indexes in CreateDatamodelIndexesForScenarioPublication")
 	}
@@ -119,7 +123,7 @@ func (usecase *ScenarioPublicationUsecase) CreateDatamodelIndexesForScenarioPubl
 	}
 	fmt.Printf("indexesToCreate: %+v\n", indexesToCreate)
 
-	num, err := usecase.IngestedDataReadRepository.CreateIndexesAsync(ctx, db, indexesToCreate)
+	num, err := usecase.ingestedDataIndexesRepository.CreateIndexesAsync(ctx, db, indexesToCreate)
 	if err != nil {
 		return false, errors.Wrap(err, "Error while creating indexes in CreateDatamodelIndexesForScenarioPublication")
 	}
