@@ -29,7 +29,7 @@ func (usecase *SeedUseCase) SeedMarbleAdmins(ctx context.Context, firstMarbleAdm
 
 		// ignore user already added
 		if repositories.IsUniqueViolationError(err) {
-			return repositories.ErrIgnoreRoolBackError
+			return repositories.ErrIgnoreRollBackError
 		}
 		return err
 	})

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"time"
 
@@ -19,7 +18,7 @@ const signedUrlExpiryHours = 1
 
 type GcsRepository interface {
 	ListFiles(ctx context.Context, bucketName, prefix string) ([]models.GCSFile, error)
-	GetFile(ctx context.Context, bucketName, fileName string, logger *slog.Logger) (models.GCSFile, error)
+	GetFile(ctx context.Context, bucketName, fileName string) (models.GCSFile, error)
 	MoveFile(ctx context.Context, bucketName, source, destination string) error
 	OpenStream(ctx context.Context, bucketName, fileName string) io.WriteCloser
 	DeleteFile(ctx context.Context, bucketName, fileName string) error
@@ -29,7 +28,6 @@ type GcsRepository interface {
 
 type GcsRepositoryImpl struct {
 	gcsClient *storage.Client
-	logger    *slog.Logger
 }
 
 func (repository *GcsRepositoryImpl) getGCSClient(ctx context.Context) *storage.Client {
@@ -82,7 +80,7 @@ func (repository *GcsRepositoryImpl) ListFiles(ctx context.Context, bucketName, 
 	return output, nil
 }
 
-func (repository *GcsRepositoryImpl) GetFile(ctx context.Context, bucketName, fileName string, logger *slog.Logger) (models.GCSFile, error) {
+func (repository *GcsRepositoryImpl) GetFile(ctx context.Context, bucketName, fileName string) (models.GCSFile, error) {
 	bucket := repository.getGCSClient(ctx).Bucket(bucketName)
 	_, err := bucket.Attrs(ctx)
 	if err != nil {
