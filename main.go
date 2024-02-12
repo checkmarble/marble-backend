@@ -243,7 +243,6 @@ func NewUseCases(ctx context.Context, appConfiguration AppConfiguration, marbleJ
 		marbleJwtSigningKey,
 		infra.InitializeFirebase(ctx),
 		marbleConnectionPool,
-		utils.LoggerFromContext(ctx),
 	)
 	if err != nil {
 		slog.Error("repositories.NewRepositories failed", slog.String("error", err.Error()))

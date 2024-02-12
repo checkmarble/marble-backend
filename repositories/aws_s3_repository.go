@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log/slog"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/pkg/errors"
 )
 
@@ -17,7 +17,6 @@ type AwsS3Repository struct {
 	// You can create goroutines that concurrently use the same service client to send multiple requests.
 	// source: https://aws.github.io/aws-sdk-go-v2/docs/making-requests/
 	s3Client *s3.Client
-	logger   *slog.Logger
 }
 
 func NewS3Client() *s3.Client {
@@ -33,7 +32,7 @@ func NewS3Client() *s3.Client {
 }
 
 func (repo *AwsS3Repository) StoreInBucket(ctx context.Context, bucketName string, key string, body io.Reader) error {
-
+	logger := utils.LoggerFromContext(ctx)
 	uploader := manager.NewUploader(repo.s3Client)
 
 	location, err := uploader.Upload(ctx, &s3.PutObjectInput{
@@ -45,6 +44,6 @@ func (repo *AwsS3Repository) StoreInBucket(ctx context.Context, bucketName strin
 		return errors.Errorf("Couldn't upload fileName to %v:%v. Here's why: %v\n", bucketName, key, err)
 	}
 
-	repo.logger.Info(fmt.Sprintf("Successfully uploaded to s3 to %v", location.Location))
+	logger.Info(fmt.Sprintf("Successfully uploaded to s3 to %v", location.Location))
 	return nil
 }

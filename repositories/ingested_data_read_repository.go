@@ -23,8 +23,8 @@ type IngestedDataReadRepository interface {
 	QueryAggregatedValue(ctx context.Context, transaction Transaction, tableName models.TableName, fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter) (any, error)
 
 	// Index creation
-	ListAllValidIndexes(ctx context.Context, transaction Transaction) ([]models.ConcreteIndex, error)
-	CreateIndexesSync(ctx context.Context, transaction Transaction, indexes []models.ConcreteIndex) (numCreating int, err error)
+	ListAllValidIndexes(ctx context.Context, exec *ExecutorPostgres) ([]models.ConcreteIndex, error)
+	CreateIndexesSync(ctx context.Context, exec *ExecutorPostgres, indexes []models.ConcreteIndex) (numCreating int, err error)
 }
 
 type IngestedDataReadRepositoryImpl struct{}
@@ -294,8 +294,8 @@ func addConditionForOperator(query squirrel.SelectBuilder, tableName string, fie
 
 // It might be better at its place in the data model repository... but that needs to be cleaned up first as it's in a mess
 // (part of the logic in Vivien's code, part in Chris's code). So for now I leave this here but it's probably not a long term solution
-func (repo *IngestedDataReadRepositoryImpl) ListAllValidIndexes(ctx context.Context, transaction Transaction) ([]models.ConcreteIndex, error) {
-	pgIndexes, err := repo.listAllIndexes(ctx, transaction)
+func (repo *IngestedDataReadRepositoryImpl) ListAllValidIndexes(ctx context.Context, exec *ExecutorPostgres) ([]models.ConcreteIndex, error) {
+	pgIndexes, err := repo.listAllIndexes(ctx, exec)
 	if err != nil {
 		return nil, errors.Wrap(err, "error while listing all indexes")
 	}
@@ -310,8 +310,11 @@ func (repo *IngestedDataReadRepositoryImpl) ListAllValidIndexes(ctx context.Cont
 	return validOrPendingIndexes, nil
 }
 
-func (repo *IngestedDataReadRepositoryImpl) listAllIndexes(ctx context.Context, transaction Transaction) ([]pg_indexes.PGIndex, error) {
-	tx := adaptClientDatabaseTransaction(transaction)
+func (repo *IngestedDataReadRepositoryImpl) listAllIndexes(ctx context.Context, exec *ExecutorPostgres) ([]pg_indexes.PGIndex, error) {
+	tx, err := validateClientDbExecutor(exec)
+	if err != nil {
+		return nil, err
+	}
 
 	sql := `
 	SELECT
@@ -365,10 +368,13 @@ func (repo *IngestedDataReadRepositoryImpl) listAllIndexes(ctx context.Context, 
 	return pgIndexRows, nil
 }
 
-func (repo *IngestedDataReadRepositoryImpl) CreateIndexesSync(ctx context.Context, transaction Transaction, indexes []models.ConcreteIndex) (int, error) {
-	tx := adaptClientDatabaseTransaction(transaction)
+func (repo *IngestedDataReadRepositoryImpl) CreateIndexesSync(ctx context.Context, exec *ExecutorPostgres, indexes []models.ConcreteIndex) (int, error) {
+	exec, err := validateClientDbExecutor(exec)
+	if err != nil {
+		return 0, err
+	}
 
-	existing, err := repo.listAllIndexes(ctx, tx)
+	existing, err := repo.listAllIndexes(ctx, exec)
 	if err != nil {
 		return 0, errors.Wrap(err, "error while listing all indexes")
 	}
@@ -376,7 +382,7 @@ func (repo *IngestedDataReadRepositoryImpl) CreateIndexesSync(ctx context.Contex
 	var numIndexesCreated int
 	for _, index := range indexes {
 		if !indexAlreadyExists(index, existing) {
-			err := createIndexSQL(ctx, tx, index)
+			err := createIndexSQL(ctx, exec, index)
 			if err != nil {
 				return numIndexesCreated, errors.Wrap(err, "error in CreateIndexesSync")
 			}
@@ -397,9 +403,9 @@ func indexAlreadyExists(index models.ConcreteIndex, existingIndexes []pg_indexes
 	return false
 }
 
-func createIndexSQL(ctx context.Context, tx TransactionPostgres, index models.ConcreteIndex) error {
+func createIndexSQL(ctx context.Context, exec *ExecutorPostgres, index models.ConcreteIndex) error {
 	logger := utils.LoggerFromContext(ctx)
-	qualifiedTableName := tableNameWithSchema(tx, index.TableName)
+	qualifiedTableName := tableNameWithSchema(exec, index.TableName)
 	indexName := indexToIndexName(index)
 	indexedColumns := index.Indexed
 	includedColumns := index.Included
@@ -407,8 +413,8 @@ func createIndexSQL(ctx context.Context, tx TransactionPostgres, index models.Co
 	if len(includedColumns) > 0 {
 		sql += fmt.Sprintf(" INCLUDE (%s)", strings.Join(pure_utils.Map(includedColumns, func(s models.FieldName) string { return string(s) }), ","))
 	}
-	if _, err := tx.exec.Exec(ctx, sql); err != nil {
-		errMessage := fmt.Sprintf("Error while creating index in schema %s with DDL \"%s\"", tx.databaseShema.Schema, sql)
+	if _, err := exec.Exec(ctx, sql); err != nil {
+		errMessage := fmt.Sprintf("Error while creating index in schema %s with DDL \"%s\"", exec.DatabaseSchema().Schema, sql)
 		logger.Error(errMessage)
 		return errors.Wrap(err, errMessage)
 	}

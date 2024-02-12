@@ -11,6 +11,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type DatabaseConnectionPoolRepository interface {
+	DatabaseConnectionPool(ctx context.Context, connection models.PostgresConnection) (*pgxpool.Pool, error)
+}
+
 type TransactionFactoryPosgresql struct {
 	databaseConnectionPoolRepository DatabaseConnectionPoolRepository
 	marbleConnectionPool             *pgxpool.Pool
@@ -52,8 +56,8 @@ func adaptClientDatabaseTransaction(transaction Transaction) TransactionPostgres
 	return tx
 }
 
-func (repo *TransactionFactoryPosgresql) Transaction(ctx context.Context, databaseSchema models.DatabaseSchema, fn func(tx Transaction) error) error {
-	connPool, err := repo.databaseConnectionPoolRepository.DatabaseConnectionPool(databaseSchema.Database.Connection)
+func (factory *TransactionFactoryPosgresql) Transaction(ctx context.Context, databaseSchema models.DatabaseSchema, fn func(tx Transaction) error) error {
+	connPool, err := factory.databaseConnectionPoolRepository.DatabaseConnectionPool(ctx, databaseSchema.Database.Connection)
 	if err != nil {
 		return err
 	}
@@ -65,9 +69,9 @@ func (repo *TransactionFactoryPosgresql) Transaction(ctx context.Context, databa
 		})
 	})
 
-	// helper: The callback can return ErrIgnoreRoolBackError
+	// helper: The callback can return ErrIgnoreRollBackError
 	// to explicitly specify that the error should be ignored.
-	if errors.Is(err, ErrIgnoreRoolBackError) {
+	if errors.Is(err, ErrIgnoreRollBackError) {
 		return nil
 	}
 	return errors.Wrap(err, "Error executing transaction")

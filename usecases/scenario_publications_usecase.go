@@ -20,6 +20,7 @@ type scenarioListRepository interface {
 
 type ScenarioPublicationUsecase struct {
 	transactionFactory             transaction.TransactionFactory
+	clientSchemaExecutorFactory    ClientSchemaExecutorFactory
 	orgTransactionFactory          transaction.Factory
 	scenarioPublicationsRepository repositories.ScenarioPublicationRepository
 	OrganizationIdOfContext        func() (string, error)
@@ -103,13 +104,11 @@ func (usecase *ScenarioPublicationUsecase) CreateDatamodelIndexesForScenarioPubl
 		return false, errors.Wrap(err, "Error while fetching active scenario iterations in CreateDatamodelIndexesForScenarioPublication")
 	}
 
-	existingIndexes, err := transaction.InOrganizationSchema(
-		ctx,
-		usecase.orgTransactionFactory,
-		organizationId,
-		func(tx repositories.Transaction) ([]models.ConcreteIndex, error) {
-			return usecase.IngestedDataReadRepository.ListAllValidIndexes(ctx, tx)
-		})
+	db, err := usecase.clientSchemaExecutorFactory.NewClientDbExecutor(ctx, organizationId)
+	if err != nil {
+		return false, errors.Wrap(err, "Error while creating client schema executor in CreateDatamodelIndexesForScenarioPublication")
+	}
+	existingIndexes, err := usecase.IngestedDataReadRepository.ListAllValidIndexes(ctx, db)
 	if err != nil {
 		return false, errors.Wrap(err, "Error while fetching existing indexes in CreateDatamodelIndexesForScenarioPublication")
 	}
@@ -120,13 +119,7 @@ func (usecase *ScenarioPublicationUsecase) CreateDatamodelIndexesForScenarioPubl
 	}
 	fmt.Printf("indexesToCreate: %+v\n", indexesToCreate)
 
-	num, err := transaction.InOrganizationSchema(
-		ctx,
-		usecase.orgTransactionFactory,
-		organizationId,
-		func(tx repositories.Transaction) (int, error) {
-			return usecase.IngestedDataReadRepository.CreateIndexesSync(ctx, tx, indexesToCreate)
-		})
+	num, err := usecase.IngestedDataReadRepository.CreateIndexesSync(ctx, db, indexesToCreate)
 	if err != nil {
 		return false, errors.Wrap(err, "Error while creating indexes in CreateDatamodelIndexesForScenarioPublication")
 	}

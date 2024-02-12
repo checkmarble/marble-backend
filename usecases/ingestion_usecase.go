@@ -188,7 +188,7 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 		return err
 	}
 
-	file, err := usecase.gcsRepository.GetFile(ctx, usecase.GcsIngestionBucket, uploadLog.FileName, logger)
+	file, err := usecase.gcsRepository.GetFile(ctx, usecase.GcsIngestionBucket, uploadLog.FileName)
 	if err != nil {
 		return err
 	}

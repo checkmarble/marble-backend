@@ -3,7 +3,6 @@ package repositories
 import (
 	"context"
 	"io"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,7 +37,7 @@ func (repo *GcsRepositoryFake) ListFiles(ctx context.Context, bucketName, prefix
 	return gcsFiles, nil
 }
 
-func (repo *GcsRepositoryFake) GetFile(ctx context.Context, bucketName, fileName string, logger *slog.Logger) (models.GCSFile, error) {
+func (repo *GcsRepositoryFake) GetFile(ctx context.Context, bucketName, fileName string) (models.GCSFile, error) {
 	cwd, _ := os.Getwd()
 	sanitizedFileName := strings.ReplaceAll(fileName, "/", ":") // Workaround because slashes are not allowed in file names
 	path := filepath.Join(cwd, tempFilesDirectory, sanitizedFileName)

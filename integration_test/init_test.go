@@ -6,7 +6,6 @@ import (
 	"crypto/rsa"
 	"fmt"
 	"log"
-	"log/slog"
 	"os"
 	"testing"
 	"time"
@@ -86,7 +85,6 @@ func TestMain(m *testing.M) {
 	}
 
 	pgConfig := utils.PGConfig{ConnectionString: databaseURL}
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	migrater := repositories.NewMigrater(pgConfig, "development")
 	err = migrater.Run(ctx)
 	if err != nil {
@@ -99,7 +97,6 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not create connection pool: %s", err)
 	}
 
-	appContext := utils.StoreLoggerInContext(ctx, logger)
 	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
 		log.Fatalf("Could not create private key: %s", err)
@@ -108,7 +105,6 @@ func TestMain(m *testing.M) {
 		privateKey,
 		nil,
 		dbPool,
-		utils.LoggerFromContext(appContext),
 	)
 	if err != nil {
 		panic(err)

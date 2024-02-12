@@ -1,4 +1,4 @@
-package repositories
+package db_connection_pool_repository
 
 import (
 	"context"
@@ -6,24 +6,19 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-
 	"github.com/cockroachdb/errors"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type DatabaseConnectionPoolRepository interface {
-	DatabaseConnectionPool(connection models.PostgresConnection) (*pgxpool.Pool, error)
-}
-
-type DatabaseConnectionPoolRepositoryImpl struct {
+type DatabaseConnectionPoolRepository struct {
 	marbleConnectionPool        *pgxpool.Pool
 	clientsConnectionPools      map[models.PostgresConnection]*pgxpool.Pool
 	clientsConnectionPoolsMutex sync.Mutex
 }
 
-func NewDatabaseConnectionPoolRepository(marbleConnectionPool *pgxpool.Pool) DatabaseConnectionPoolRepository {
+func NewDatabaseConnectionPoolRepository(marbleConnectionPool *pgxpool.Pool) *DatabaseConnectionPoolRepository {
 
-	repo := &DatabaseConnectionPoolRepositoryImpl{
+	repo := &DatabaseConnectionPoolRepository{
 		marbleConnectionPool:   marbleConnectionPool,
 		clientsConnectionPools: make(map[models.PostgresConnection]*pgxpool.Pool),
 	}
@@ -31,7 +26,7 @@ func NewDatabaseConnectionPoolRepository(marbleConnectionPool *pgxpool.Pool) Dat
 	return repo
 }
 
-func (repo *DatabaseConnectionPoolRepositoryImpl) DatabaseConnectionPool(connection models.PostgresConnection) (*pgxpool.Pool, error) {
+func (repo *DatabaseConnectionPoolRepository) DatabaseConnectionPool(ctx context.Context, connection models.PostgresConnection) (*pgxpool.Pool, error) {
 
 	repo.clientsConnectionPoolsMutex.Lock()
 	defer repo.clientsConnectionPoolsMutex.Unlock()
@@ -42,7 +37,7 @@ func (repo *DatabaseConnectionPoolRepositoryImpl) DatabaseConnectionPool(connect
 	}
 
 	// create and register new pool
-	newPool, err := repo.newClientDatabaseConnectionPool(connection)
+	newPool, err := repo.newClientDatabaseConnectionPool(ctx, connection)
 	if err != nil {
 		return nil, err
 	}
@@ -50,9 +45,9 @@ func (repo *DatabaseConnectionPoolRepositoryImpl) DatabaseConnectionPool(connect
 	return newPool, nil
 }
 
-func (repo *DatabaseConnectionPoolRepositoryImpl) newClientDatabaseConnectionPool(connection models.PostgresConnection) (*pgxpool.Pool, error) {
+func (repo *DatabaseConnectionPoolRepository) newClientDatabaseConnectionPool(ctx context.Context, connection models.PostgresConnection) (*pgxpool.Pool, error) {
 
-	dbpool, err := pgxpool.New(context.Background(), string(connection))
+	dbpool, err := pgxpool.New(ctx, string(connection))
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create connection pool")
 	}

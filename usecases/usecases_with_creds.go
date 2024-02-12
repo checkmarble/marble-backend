@@ -138,6 +138,7 @@ func (usecases *UsecasesWithCreds) NewCustomListUseCase() CustomListUseCase {
 func (usecases *UsecasesWithCreds) NewScenarioPublicationUsecase() ScenarioPublicationUsecase {
 	return ScenarioPublicationUsecase{
 		transactionFactory:             &usecases.Repositories.TransactionFactoryPosgresql,
+		clientSchemaExecutorFactory:    usecases.NewClientDbExecutorFactory(),
 		orgTransactionFactory:          usecases.NewOrgTransactionFactory(),
 		scenarioPublicationsRepository: usecases.Repositories.ScenarioPublicationRepository,
 		OrganizationIdOfContext:        usecases.OrganizationIdOfContext,

@@ -2,33 +2,33 @@ package repositories
 
 import (
 	"crypto/rsa"
-	"log/slog"
 
 	"firebase.google.com/go/v4/auth"
 	"github.com/Masterminds/squirrel"
+	"github.com/checkmarble/marble-backend/repositories/db_connection_pool_repository"
 	"github.com/checkmarble/marble-backend/repositories/firebase"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Repositories struct {
-	DatabaseConnectionPoolRepository DatabaseConnectionPoolRepository
-	TransactionFactoryPosgresql      TransactionFactoryPosgresql
-	FirebaseTokenRepository          FireBaseTokenRepository
-	MarbleJwtRepository              func() MarbleJwtRepository
-	UserRepository                   UserRepository
-	OrganizationRepository           OrganizationRepository
-	IngestionRepository              IngestionRepository
-	DataModelRepository              DataModelRepository
-	IngestedDataReadRepository       IngestedDataReadRepository
-	BlankDataReadRepository          BlankDataReadRepository
-	DecisionRepository               DecisionRepository
-	MarbleDbRepository               MarbleDbRepository
-	ScenarioPublicationRepository    ScenarioPublicationRepository
-	OrganizationSchemaRepository     OrganizationSchemaRepository
-	AwsS3Repository                  AwsS3Repository
-	GcsRepository                    GcsRepository
-	CustomListRepository             CustomListRepository
-	UploadLogRepository              UploadLogRepository
+	TransactionFactoryPosgresql   TransactionFactoryPosgresql
+	ExecutorGetter                ExecutorGetter
+	FirebaseTokenRepository       FireBaseTokenRepository
+	MarbleJwtRepository           func() MarbleJwtRepository
+	UserRepository                UserRepository
+	OrganizationRepository        OrganizationRepository
+	IngestionRepository           IngestionRepository
+	DataModelRepository           DataModelRepository
+	IngestedDataReadRepository    IngestedDataReadRepository
+	BlankDataReadRepository       BlankDataReadRepository
+	DecisionRepository            DecisionRepository
+	MarbleDbRepository            MarbleDbRepository
+	ScenarioPublicationRepository ScenarioPublicationRepository
+	OrganizationSchemaRepository  OrganizationSchemaRepository
+	AwsS3Repository               AwsS3Repository
+	GcsRepository                 GcsRepository
+	CustomListRepository          CustomListRepository
+	UploadLogRepository           UploadLogRepository
 }
 
 func NewQueryBuilder() squirrel.StatementBuilderType {
@@ -39,11 +39,9 @@ func NewRepositories(
 	marbleJwtSigningKey *rsa.PrivateKey,
 	firebaseClient *auth.Client,
 	marbleConnectionPool *pgxpool.Pool,
-	appLogger *slog.Logger,
-
 ) (*Repositories, error) {
 
-	databaseConnectionPoolRepository := NewDatabaseConnectionPoolRepository(
+	databaseConnectionPoolRepository := db_connection_pool_repository.NewDatabaseConnectionPoolRepository(
 		marbleConnectionPool,
 	)
 
@@ -52,10 +50,12 @@ func NewRepositories(
 		marbleConnectionPool,
 	)
 
+	executorGetter := NewExecutorGetter(marbleConnectionPool)
+
 	return &Repositories{
-		DatabaseConnectionPoolRepository: databaseConnectionPoolRepository,
-		TransactionFactoryPosgresql:      transactionFactory,
-		FirebaseTokenRepository:          firebase.New(firebaseClient),
+		TransactionFactoryPosgresql: transactionFactory,
+		ExecutorGetter:              executorGetter,
+		FirebaseTokenRepository:     firebase.New(firebaseClient),
 		MarbleJwtRepository: func() MarbleJwtRepository {
 			if marbleJwtSigningKey == nil {
 				panic("Repositories does not contain a jwt signing key")
@@ -94,10 +94,7 @@ func NewRepositories(
 		UploadLogRepository: &UploadLogRepositoryImpl{
 			transactionFactory: transactionFactory,
 		},
-		AwsS3Repository: AwsS3Repository{
-			s3Client: NewS3Client(),
-			logger:   appLogger,
-		},
-		GcsRepository: &GcsRepositoryImpl{logger: appLogger},
+		AwsS3Repository: AwsS3Repository{s3Client: NewS3Client()},
+		GcsRepository:   &GcsRepositoryImpl{},
 	}, nil
 }
