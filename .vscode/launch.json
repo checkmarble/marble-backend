@@ -5,40 +5,40 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Migrate and Launch (.env.local)",
+      "name": "Migrate and Launch (.env)",
       "type": "go",
       "request": "launch",
       "mode": "auto",
       "program": "${workspaceFolder}/.",
-      "envFile": "${workspaceFolder}/.env.local",
+      "envFile": "${workspaceFolder}/.env",
       "args": ["--server", "--migrations"],
       "console": "integratedTerminal"
     },
     {
-      "name": "Launch scenario scheduling job (.env.local)",
+      "name": "Launch scenario scheduling job (.env)",
       "type": "go",
       "request": "launch",
       "mode": "auto",
       "program": "${workspaceFolder}/.",
-      "envFile": "${workspaceFolder}/.env.local",
+      "envFile": "${workspaceFolder}/.env",
       "args": ["--scheduler"]
     },
     {
-      "name": "Launch execute scheduled scenario job (.env.local)",
+      "name": "Launch execute scheduled scenario job (.env)",
       "type": "go",
       "request": "launch",
       "mode": "auto",
       "program": "${workspaceFolder}/.",
-      "envFile": "${workspaceFolder}/.env.local",
+      "envFile": "${workspaceFolder}/.env",
       "args": ["--scheduled-executer"]
     },
     {
-      "name": "Launch data ingestion job (.env.local)",
+      "name": "Launch data ingestion job (.env)",
       "type": "go",
       "request": "launch",
       "mode": "auto",
       "program": "${workspaceFolder}/.",
-      "envFile": "${workspaceFolder}/.env.local",
+      "envFile": "${workspaceFolder}/.env",
       "args": ["--data-ingestion"]
     }
   ]
