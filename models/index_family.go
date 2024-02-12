@@ -58,8 +58,8 @@ func (f IndexFamily) copy() IndexFamily {
 	}
 }
 
-func (f IndexFamily) allIndexedValues() *set.Set[FieldName] {
-	out := f.Flex.Union(set.From(f.Fixed)).(*set.Set[FieldName])
+func (f IndexFamily) allIndexedValues() set.Collection[FieldName] {
+	out := f.Flex.Union(set.From(f.Fixed))
 	if f.Last != "" {
 		out.Insert(f.Last)
 	}
@@ -112,7 +112,7 @@ func (f *IndexFamily) setLast(last FieldName) {
 	}
 }
 
-func extractMinimalSetOfIdxFamilies(idxFamiliesIn *set.HashSet[IndexFamily, string]) *set.HashSet[IndexFamily, string] {
+func extractMinimalSetOfIdxFamilies(idxFamiliesIn *set.HashSet[IndexFamily, string]) set.Collection[IndexFamily] {
 	// We do the procedure once for every table, on every index required on that table
 	output := []IndexFamily{}
 	familiesByTable := groupIdxFamiliesByTable(idxFamiliesIn)
@@ -123,7 +123,7 @@ func extractMinimalSetOfIdxFamilies(idxFamiliesIn *set.HashSet[IndexFamily, stri
 	return set.HashSetFrom(output)
 }
 
-func extractMinimalSetOfIdxFamiliesOneTable(idxFamiliesIn *set.HashSet[IndexFamily, string]) *set.HashSet[IndexFamily, string] {
+func extractMinimalSetOfIdxFamiliesOneTable(idxFamiliesIn set.Collection[IndexFamily]) set.Collection[IndexFamily] {
 	// We iterate over the input set of families, and try to reduce the number in the ouput step by step by combining families
 	// or indexes where possible
 	output := []IndexFamily{}
@@ -155,8 +155,8 @@ func extractMinimalSetOfIdxFamiliesOneTable(idxFamiliesIn *set.HashSet[IndexFami
 	return set.HashSetFrom(output)
 }
 
-func groupIdxFamiliesByTable(idxFamilies *set.HashSet[IndexFamily, string]) map[TableName]*set.HashSet[IndexFamily, string] {
-	out := make(map[TableName]*set.HashSet[IndexFamily, string])
+func groupIdxFamiliesByTable(idxFamilies *set.HashSet[IndexFamily, string]) map[TableName]set.Collection[IndexFamily] {
+	out := make(map[TableName]set.Collection[IndexFamily])
 	for _, idxFamily := range idxFamilies.Slice() {
 		if _, ok := out[idxFamily.TableName]; !ok {
 			out[idxFamily.TableName] = set.NewHashSet[IndexFamily, string](0)
@@ -261,7 +261,7 @@ func refineIdxFamiliesFirstHasNoFixed(A, B IndexFamily) (IndexFamily, bool) {
 		// A: {[] {x1, x2, x3} x4 }
 		// B: {[] {x1, x2, x4} x5 }
 		// 	             ^^  ^^ no x4 in B and x3 in A: no solution
-		if !A.allIndexedValues().Equal(B.allIndexedValues()) {
+		if !A.allIndexedValues().EqualSet(B.allIndexedValues()) {
 			return IndexFamily{}, false
 		}
 

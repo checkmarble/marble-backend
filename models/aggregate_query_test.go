@@ -23,7 +23,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 				},
 			},
 		}
-		aggregateFamily, err := AggregationNodeToQueryFamily(node)
+		aggregateFamily, err := aggregationNodeToQueryFamily(node)
 		asserts.NoError(err)
 		asserts.Equal(TableName("table"), aggregateFamily.TableName, "table name should be input table name")
 	})
@@ -37,7 +37,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 				"fieldName": ast.NewNodeConstant("field 0"),
 			},
 		}
-		aggregateFamily, err := AggregationNodeToQueryFamily(node)
+		aggregateFamily, err := aggregationNodeToQueryFamily(node)
 		asserts.NoError(err)
 		asserts.Equal(0, aggregateFamily.EqConditions.Size(), "EqConditions should be empty")
 		asserts.Equal(0, aggregateFamily.IneqConditions.Size(), "IneqConditions should be empty")
@@ -65,7 +65,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 				},
 			},
 		}
-		aggregateFamily, err := AggregationNodeToQueryFamily(node)
+		aggregateFamily, err := aggregationNodeToQueryFamily(node)
 		asserts.NoError(err)
 		asserts.Equal(TableName("table"), aggregateFamily.TableName)
 		asserts.Equal(1, aggregateFamily.EqConditions.Size())
@@ -103,7 +103,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 				},
 			},
 		}
-		aggregateFamily, err := AggregationNodeToQueryFamily(node)
+		aggregateFamily, err := aggregationNodeToQueryFamily(node)
 		asserts.NoError(err)
 		asserts.Equal(TableName("table"), aggregateFamily.TableName)
 		asserts.Equal(1, aggregateFamily.EqConditions.Size())
@@ -141,7 +141,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 				},
 			},
 		}
-		aggregateFamily, err := AggregationNodeToQueryFamily(node)
+		aggregateFamily, err := aggregationNodeToQueryFamily(node)
 		asserts.NoError(err)
 		asserts.Equal(TableName("table"), aggregateFamily.TableName)
 		asserts.Equal(1, aggregateFamily.EqConditions.Size())
@@ -172,7 +172,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 				},
 			},
 		}
-		_, err := AggregationNodeToQueryFamily(node)
+		_, err := aggregationNodeToQueryFamily(node)
 		asserts.Error(err)
 	})
 
@@ -221,7 +221,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 				},
 			},
 		}
-		aggregateFamily, err := AggregationNodeToQueryFamily(node)
+		aggregateFamily, err := aggregationNodeToQueryFamily(node)
 		asserts.NoError(err)
 		asserts.Equal(TableName("table"), aggregateFamily.TableName)
 		asserts.Equal(2, aggregateFamily.EqConditions.Size(), "EqConditions should contain field 1 and field 2")
@@ -237,7 +237,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 func TestAstNodeToQueryFamilies(t *testing.T) {
 	t.Run("empty node", func(t *testing.T) {
 		asserts := assert.New(t)
-		output, err := ExtractQueryFamiliesFromAst(ast.Node{})
+		output, err := extractQueryFamiliesFromAst(ast.Node{})
 		asserts.NoError(err)
 		asserts.Equal(0, output.Size())
 	})
@@ -281,7 +281,7 @@ func TestAstNodeToQueryFamilies(t *testing.T) {
 				},
 			},
 		}
-		output, err := ExtractQueryFamiliesFromAst(ast)
+		output, err := extractQueryFamiliesFromAst(ast)
 		asserts.NoError(err)
 		asserts.Equal(1, output.Size(), "There should be only 1 query family in the output set")
 		expected := set.NewHashSet[AggregateQueryFamily](0)
@@ -291,7 +291,7 @@ func TestAstNodeToQueryFamilies(t *testing.T) {
 			IneqConditions:          set.New[FieldName](0),
 			SelectOrOtherConditions: set.From[FieldName]([]FieldName{"field 0"}),
 		})
-		asserts.True(output.Equal(expected), "The output set should contain the one query family (that was present twice)")
+		asserts.True(output.EqualSet(expected), "The output set should contain the one query family (that was present twice)")
 		fmt.Println(expected)
 		fmt.Println(output)
 	})
@@ -368,7 +368,7 @@ func TestAstNodeToQueryFamilies(t *testing.T) {
 				},
 			},
 		}
-		output, err := ExtractQueryFamiliesFromAst(ast)
+		output, err := extractQueryFamiliesFromAst(ast)
 		asserts.NoError(err)
 		asserts.Equal(3, output.Size(), "There should be 2 query families in the output set")
 		expected := set.NewHashSet[AggregateQueryFamily](0)
@@ -390,7 +390,7 @@ func TestAstNodeToQueryFamilies(t *testing.T) {
 			IneqConditions:          set.New[FieldName](0),
 			SelectOrOtherConditions: set.From[FieldName]([]FieldName{"field 2", "field 3"}),
 		})
-		asserts.True(output.Equal(expected), "The output set should contain the 2 query families")
+		asserts.True(output.EqualSet(expected), "The output set should contain the 2 query families")
 		fmt.Println(expected)
 		fmt.Println(output)
 	})

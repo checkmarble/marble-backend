@@ -51,7 +51,72 @@ func (family AggregateQueryFamily) Hash() string {
 	return fmt.Sprintf("%s - %s - %s - %s", family.TableName, eq, ineq, other)
 }
 
-func AggregationNodeToQueryFamily(node ast.Node) (AggregateQueryFamily, error) {
+func IndexesToCreateFromScenarioIterations(
+	scenarioIterations []ScenarioIteration,
+	existingIndexes []ConcreteIndex,
+) ([]ConcreteIndex, error) {
+	var asts []ast.Node
+	for _, i := range scenarioIterations {
+		asts = append(asts, *i.TriggerConditionAstExpression)
+		for _, r := range i.Rules {
+			asts = append(asts, *r.FormulaAstExpression)
+		}
+	}
+
+	queryFamilies, err := extractQueryFamiliesFromAstSlice(asts)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error extracting query families from scenario iterations")
+	}
+
+	return indexesToCreateFromQueryFamilies(queryFamilies, existingIndexes), nil
+}
+
+// simple utility function using extractQueryFamiliesFromAst above
+func extractQueryFamiliesFromAstSlice(nodes []ast.Node) (*set.HashSet[AggregateQueryFamily, string], error) {
+	families := set.NewHashSet[AggregateQueryFamily, string](0)
+
+	for _, node := range nodes {
+		nodeFamilies, err := extractQueryFamiliesFromAst(node)
+		if err != nil {
+			return nil, errors.Wrap(err, "Error getting query families from node")
+		}
+		families = families.Union(nodeFamilies).(*set.HashSet[AggregateQueryFamily, string])
+	}
+
+	return families, nil
+}
+
+func extractQueryFamiliesFromAst(node ast.Node) (set.Collection[AggregateQueryFamily], error) {
+	families := set.NewHashSet[AggregateQueryFamily, string](0)
+
+	if node.Function == ast.FUNC_AGGREGATOR {
+		family, err := aggregationNodeToQueryFamily(node)
+		if err != nil {
+			return nil, errors.Wrap(err, "Error converting aggregation node to query family")
+		}
+		families.Insert(family)
+	}
+
+	// union with query families from all children
+	for _, child := range node.Children {
+		childFamilies, err := extractQueryFamiliesFromAst(child)
+		if err != nil {
+			return nil, errors.Wrap(err, "Error getting query families from child")
+		}
+		families = families.Union(childFamilies).(*set.HashSet[AggregateQueryFamily, string])
+	}
+	for _, child := range node.NamedChildren {
+		childFamilies, err := extractQueryFamiliesFromAst(child)
+		if err != nil {
+			return nil, errors.Wrap(err, "Error getting query families from named child")
+		}
+		families = families.Union(childFamilies).(*set.HashSet[AggregateQueryFamily, string])
+	}
+
+	return families, nil
+}
+
+func aggregationNodeToQueryFamily(node ast.Node) (AggregateQueryFamily, error) {
 	if node.Function != ast.FUNC_AGGREGATOR {
 		return AggregateQueryFamily{}, errors.New("Node is not an aggregator")
 	}
@@ -122,57 +187,27 @@ func AggregationNodeToQueryFamily(node ast.Node) (AggregateQueryFamily, error) {
 	return family, nil
 }
 
-func ExtractQueryFamiliesFromAst(node ast.Node) (*set.HashSet[AggregateQueryFamily, string], error) {
-	families := set.NewHashSet[AggregateQueryFamily, string](0)
-
-	if node.Function == ast.FUNC_AGGREGATOR {
-		family, err := AggregationNodeToQueryFamily(node)
-		if err != nil {
-			return nil, errors.Wrap(err, "Error converting aggregation node to query family")
-		}
-		families.Insert(family)
+func indexesToCreateFromQueryFamilies(
+	queryFamilies set.Collection[AggregateQueryFamily],
+	existingIndexes []ConcreteIndex,
+) []ConcreteIndex {
+	familiesToCreate := set.NewHashSet[IndexFamily, string](0)
+	for _, q := range queryFamilies.Slice() {
+		familiesToCreate = familiesToCreate.Union(
+			selectIdxFamiliesToCreate(q.toIndexFamilies(), existingIndexes),
+		).(*set.HashSet[IndexFamily, string])
 	}
-
-	// union with query families from all children
-	for _, child := range node.Children {
-		childFamilies, err := ExtractQueryFamiliesFromAst(child)
-		if err != nil {
-			return nil, errors.Wrap(err, "Error getting query families from child")
-		}
-		families = families.Union(childFamilies).(*set.HashSet[AggregateQueryFamily, string])
-	}
-	for _, child := range node.NamedChildren {
-		childFamilies, err := ExtractQueryFamiliesFromAst(child)
-		if err != nil {
-			return nil, errors.Wrap(err, "Error getting query families from named child")
-		}
-		families = families.Union(childFamilies).(*set.HashSet[AggregateQueryFamily, string])
-	}
-
-	return families, nil
+	reducedFamiliesToCreate := extractMinimalSetOfIdxFamilies(familiesToCreate)
+	return selectConcreteIndexesToCreate(reducedFamiliesToCreate, existingIndexes)
 }
 
-// simple utility function using ExtractQueryFamiliesFromAst above
-func extractQueryFamiliesFromAstSlice(nodes []ast.Node) (*set.HashSet[AggregateQueryFamily, string], error) {
-	families := set.NewHashSet[AggregateQueryFamily, string](0)
-
-	for _, node := range nodes {
-		nodeFamilies, err := ExtractQueryFamiliesFromAst(node)
-		if err != nil {
-			return nil, errors.Wrap(err, "Error getting query families from node")
-		}
-		families = families.Union(nodeFamilies).(*set.HashSet[AggregateQueryFamily, string])
-	}
-
-	return families, nil
-}
-
-func (qFamily AggregateQueryFamily) ToIndexFamilies() *set.HashSet[IndexFamily, string] {
+func (qFamily AggregateQueryFamily) toIndexFamilies() *set.HashSet[IndexFamily, string] {
 	return aggregateQueryToIndexFamily(qFamily)
 }
 
 func aggregateQueryToIndexFamily(qFamily AggregateQueryFamily) *set.HashSet[IndexFamily, string] {
-	// we output a collection of index families, with the different combinations of "inequality filtering" at the end of the index.
+	// we output a collection of index families, with the different combinations of "inequality filtering"
+	//  at the end of the index.
 	// E.g. if we have a query with conditions a = 1, b = 2, c > 3, d > 4, e > 5, we output:
 	// { Flex: {a,b}, Last: c, Included: {d,e} }  +  { Flex: {a,b}, Last: d, Included: {c,e} }   +  { Flex: {a,b}, Last: e, Included: {c,d} }
 	output := set.NewHashSet[IndexFamily, string](0)
@@ -197,7 +232,8 @@ func aggregateQueryToIndexFamily(qFamily AggregateQueryFamily) *set.HashSet[Inde
 		return output
 	}
 
-	// If inequality conditions are involved, we need to create a family for each column involved in the inequality conditions (and complete the "other" columns)
+	// If inequality conditions are involved, we need to create a family for each column involved
+	// in the inequality conditions (and complete the "other" columns)
 	qFamily.IneqConditions.ForEach(func(f FieldName) bool {
 		// we create a copy of the base family
 		family := base.copy()
@@ -215,30 +251,4 @@ func aggregateQueryToIndexFamily(qFamily AggregateQueryFamily) *set.HashSet[Inde
 	})
 
 	return output
-}
-
-func indexesToCreateFromQueryFamilies(queryFamilies set.Collection[AggregateQueryFamily], existingIndexes []ConcreteIndex) []ConcreteIndex {
-	familiesToCreate := set.NewHashSet[IndexFamily, string](0)
-	for _, q := range queryFamilies.Slice() {
-		familiesToCreate = familiesToCreate.Union(selectIdxFamiliesToCreate(q.ToIndexFamilies(), existingIndexes)).(*set.HashSet[IndexFamily, string])
-	}
-	reducedFamiliesToCreate := extractMinimalSetOfIdxFamilies(familiesToCreate)
-	return selectConcreteIndexesToCreate(reducedFamiliesToCreate, existingIndexes)
-}
-
-func IndexesToCreateFromScenarioIterations(scenarioIterations []ScenarioIteration, existingIndexes []ConcreteIndex) ([]ConcreteIndex, error) {
-	var asts []ast.Node
-	for _, i := range scenarioIterations {
-		asts = append(asts, *i.TriggerConditionAstExpression)
-		for _, r := range i.Rules {
-			asts = append(asts, *r.FormulaAstExpression)
-		}
-	}
-
-	queryFamilies, err := extractQueryFamiliesFromAstSlice(asts)
-	if err != nil {
-		return nil, errors.Wrap(err, "Error extracting query families from scenario iterations")
-	}
-
-	return indexesToCreateFromQueryFamilies(queryFamilies, existingIndexes), nil
 }
