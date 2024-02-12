@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/cockroachdb/errors"
@@ -17,6 +18,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
+var INDEX_CREATION_TIMEOUT time.Duration = 60 * 4 // 4 hours
 type IngestedDataReadRepository interface {
 	GetDbField(ctx context.Context, transaction Transaction, readParams models.DbFieldReadParams) (any, error)
 	ListAllObjectsFromTable(ctx context.Context, transaction Transaction, table models.Table) ([]models.ClientObject, error)
@@ -24,7 +26,7 @@ type IngestedDataReadRepository interface {
 
 	// Index creation
 	ListAllValidIndexes(ctx context.Context, exec *ExecutorPostgres) ([]models.ConcreteIndex, error)
-	CreateIndexesSync(ctx context.Context, exec *ExecutorPostgres, indexes []models.ConcreteIndex) (numCreating int, err error)
+	CreateIndexesAsync(ctx context.Context, exec *ExecutorPostgres, indexes []models.ConcreteIndex) (numCreating int, err error)
 }
 
 type IngestedDataReadRepositoryImpl struct{}
@@ -374,7 +376,7 @@ func (repo *IngestedDataReadRepositoryImpl) listAllIndexes(
 	return pgIndexRows, nil
 }
 
-func (repo *IngestedDataReadRepositoryImpl) CreateIndexesSync(
+func (repo *IngestedDataReadRepositoryImpl) CreateIndexesAsync(
 	ctx context.Context,
 	exec *ExecutorPostgres,
 	indexes []models.ConcreteIndex,
@@ -389,18 +391,35 @@ func (repo *IngestedDataReadRepositoryImpl) CreateIndexesSync(
 		return 0, errors.Wrap(err, "error while listing all indexes")
 	}
 
-	var numIndexesCreated int
+	toCreate := make([]models.ConcreteIndex, 0)
 	for _, index := range indexes {
 		if !indexAlreadyExists(index, existing) {
-			err := createIndexSQL(ctx, exec, index)
-			if err != nil {
-				return numIndexesCreated, errors.Wrap(err, "error in CreateIndexesSync")
-			}
-			numIndexesCreated++
+			toCreate = append(toCreate, index)
 		}
 	}
 
-	return numIndexesCreated, nil
+	go asynchronouslyCreateIndexes(ctx, exec, toCreate)
+
+	return len(toCreate), nil
+}
+
+func asynchronouslyCreateIndexes(
+	ctx context.Context,
+	exec *ExecutorPostgres,
+	indexes []models.ConcreteIndex,
+) {
+	ctx = context.WithoutCancel(ctx)
+	ctx, _ = context.WithTimeout(ctx, INDEX_CREATION_TIMEOUT*time.Minute)
+	// The function is meant to be executed asynchronously and return way after the request was finished,
+	// so we don't return any error
+	// However the indexes are created one after the other to avoid a (probably) deadlock situation
+	for _, index := range indexes {
+		// We don't want the index creation to stop if for whatever reason the parent request fails or is stopped
+		// in particular, if it just finishes.
+		// We still put a high timeout on it to protect agains an index creation that takes probihitively long
+		// An error log is sent from within createIndexSQL and should be monitored
+		createIndexSQL(ctx, exec, index)
+	}
 }
 
 func indexAlreadyExists(index models.ConcreteIndex, existingIndexes []pg_indexes.PGIndex) bool {
@@ -440,9 +459,16 @@ func createIndexSQL(ctx context.Context, exec *ExecutorPostgres, index models.Co
 			exec.DatabaseSchema().Schema,
 			sql,
 		)
-		logger.Error(errMessage)
+		logger.ErrorContext(ctx, errMessage)
+		logger.ErrorContext(ctx, fmt.Sprintf("%+v", err))
 		return errors.Wrap(err, errMessage)
 	}
+	logger.InfoContext(ctx, fmt.Sprintf(
+		"Index %s created in schema %s with DDL \"%s\"",
+		indexName,
+		exec.DatabaseSchema().Schema,
+		sql,
+	))
 	return nil
 }
 

@@ -119,11 +119,11 @@ func (usecase *ScenarioPublicationUsecase) CreateDatamodelIndexesForScenarioPubl
 	}
 	fmt.Printf("indexesToCreate: %+v\n", indexesToCreate)
 
-	num, err := usecase.IngestedDataReadRepository.CreateIndexesSync(ctx, db, indexesToCreate)
+	num, err := usecase.IngestedDataReadRepository.CreateIndexesAsync(ctx, db, indexesToCreate)
 	if err != nil {
 		return false, errors.Wrap(err, "Error while creating indexes in CreateDatamodelIndexesForScenarioPublication")
 	}
-	logger.Info(fmt.Sprintf("%d indexes to create for org %s", num, organizationId), "org_id", organizationId)
+	logger.Info(fmt.Sprintf("%d indexes pending creation in org %s", num, organizationId), "org_id", organizationId)
 
 	return num == 0, nil
 }
