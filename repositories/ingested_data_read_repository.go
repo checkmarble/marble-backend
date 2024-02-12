@@ -294,7 +294,10 @@ func addConditionForOperator(query squirrel.SelectBuilder, tableName string, fie
 
 // It might be better at its place in the data model repository... but that needs to be cleaned up first as it's in a mess
 // (part of the logic in Vivien's code, part in Chris's code). So for now I leave this here but it's probably not a long term solution
-func (repo *IngestedDataReadRepositoryImpl) ListAllValidIndexes(ctx context.Context, exec *ExecutorPostgres) ([]models.ConcreteIndex, error) {
+func (repo *IngestedDataReadRepositoryImpl) ListAllValidIndexes(
+	ctx context.Context,
+	exec *ExecutorPostgres,
+) ([]models.ConcreteIndex, error) {
 	pgIndexes, err := repo.listAllIndexes(ctx, exec)
 	if err != nil {
 		return nil, errors.Wrap(err, "error while listing all indexes")
@@ -310,7 +313,10 @@ func (repo *IngestedDataReadRepositoryImpl) ListAllValidIndexes(ctx context.Cont
 	return validOrPendingIndexes, nil
 }
 
-func (repo *IngestedDataReadRepositoryImpl) listAllIndexes(ctx context.Context, exec *ExecutorPostgres) ([]pg_indexes.PGIndex, error) {
+func (repo *IngestedDataReadRepositoryImpl) listAllIndexes(
+	ctx context.Context,
+	exec *ExecutorPostgres,
+) ([]pg_indexes.PGIndex, error) {
 	tx, err := validateClientDbExecutor(exec)
 	if err != nil {
 		return nil, err
@@ -368,7 +374,11 @@ func (repo *IngestedDataReadRepositoryImpl) listAllIndexes(ctx context.Context, 
 	return pgIndexRows, nil
 }
 
-func (repo *IngestedDataReadRepositoryImpl) CreateIndexesSync(ctx context.Context, exec *ExecutorPostgres, indexes []models.ConcreteIndex) (int, error) {
+func (repo *IngestedDataReadRepositoryImpl) CreateIndexesSync(
+	ctx context.Context,
+	exec *ExecutorPostgres,
+	indexes []models.ConcreteIndex,
+) (int, error) {
 	exec, err := validateClientDbExecutor(exec)
 	if err != nil {
 		return 0, err
@@ -409,12 +419,27 @@ func createIndexSQL(ctx context.Context, exec *ExecutorPostgres, index models.Co
 	indexName := indexToIndexName(index)
 	indexedColumns := index.Indexed
 	includedColumns := index.Included
-	sql := fmt.Sprintf("CREATE INDEX %s ON %s USING btree (%s)", indexName, qualifiedTableName, strings.Join(pure_utils.Map(indexedColumns, withDesc), ","))
+	sql := fmt.Sprintf(
+		"CREATE INDEX CONCURRENTLY %s ON %s USING btree (%s)",
+		indexName,
+		qualifiedTableName,
+		strings.Join(pure_utils.Map(indexedColumns, withDesc), ","),
+	)
 	if len(includedColumns) > 0 {
-		sql += fmt.Sprintf(" INCLUDE (%s)", strings.Join(pure_utils.Map(includedColumns, func(s models.FieldName) string { return string(s) }), ","))
+		sql += fmt.Sprintf(
+			" INCLUDE (%s)",
+			strings.Join(
+				pure_utils.Map(includedColumns, func(s models.FieldName) string { return string(s) }),
+				",",
+			),
+		)
 	}
 	if _, err := exec.Exec(ctx, sql); err != nil {
-		errMessage := fmt.Sprintf("Error while creating index in schema %s with DDL \"%s\"", exec.DatabaseSchema().Schema, sql)
+		errMessage := fmt.Sprintf(
+			"Error while creating index in schema %s with DDL \"%s\"",
+			exec.DatabaseSchema().Schema,
+			sql,
+		)
 		logger.Error(errMessage)
 		return errors.Wrap(err, errMessage)
 	}
@@ -427,7 +452,13 @@ func withDesc(s models.FieldName) string {
 
 func indexToIndexName(index models.ConcreteIndex) string {
 	// postgresql enforces a 63 character length limit on all identifiers
-	indexedNames := strings.Join(pure_utils.Map(index.Indexed, func(s models.FieldName) string { return string(s) }), "-")
+	indexedNames := strings.Join(
+		pure_utils.Map(
+			index.Indexed,
+			func(s models.FieldName) string { return string(s) },
+		),
+		"-",
+	)
 	out := fmt.Sprintf("idx_%s_%s", index.TableName, indexedNames)
 	randomId := uuid.NewString()
 	return pgx.Identifier.Sanitize([]string{out[:min(len(out), 53)] + "_" + randomId})
