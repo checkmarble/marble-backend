@@ -20,7 +20,7 @@ func TestAggregateQueryToIndexFamily(t *testing.T) {
 			SelectOrOtherConditions: set.From[FieldName]([]FieldName{FieldName("e"), FieldName("f")}),
 		}
 
-		idxFamily := qFamily.ToIndexFamilies()
+		idxFamily := qFamily.toIndexFamilies()
 		asserts.Equal(2, idxFamily.Size(), "Two possible inequality conditions, so 2 families are rendered")
 		expected := set.HashSetFrom[IndexFamily]([]IndexFamily{
 			{
@@ -49,7 +49,7 @@ func TestAggregateQueryToIndexFamily(t *testing.T) {
 			SelectOrOtherConditions: set.From[FieldName]([]FieldName{FieldName("d"), FieldName("e")}),
 		}
 
-		idxFamily := qFamily.ToIndexFamilies()
+		idxFamily := qFamily.toIndexFamilies()
 
 		idxFamily.ForEach(func(family IndexFamily) bool {
 			fmt.Printf("%+v\n", family)
@@ -77,7 +77,7 @@ func TestAggregateQueryToIndexFamily(t *testing.T) {
 			SelectOrOtherConditions: set.From[FieldName]([]FieldName{FieldName("d"), FieldName("e")}),
 		}
 
-		idxFamily := qFamily.ToIndexFamilies()
+		idxFamily := qFamily.toIndexFamilies()
 
 		idxFamily.ForEach(func(family IndexFamily) bool {
 			fmt.Printf("%+v\n", family)
