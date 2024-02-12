@@ -23,6 +23,7 @@ type Repositories struct {
 	BlankDataReadRepository       BlankDataReadRepository
 	DecisionRepository            DecisionRepository
 	MarbleDbRepository            MarbleDbRepository
+	ClientDbRepository            ClientDbRepository
 	ScenarioPublicationRepository ScenarioPublicationRepository
 	OrganizationSchemaRepository  OrganizationSchemaRepository
 	AwsS3Repository               AwsS3Repository
@@ -82,6 +83,7 @@ func NewRepositories(
 		MarbleDbRepository: MarbleDbRepository{
 			transactionFactory: transactionFactory,
 		},
+		ClientDbRepository: ClientDbRepository{},
 		ScenarioPublicationRepository: NewScenarioPublicationRepositoryPostgresql(
 			transactionFactory,
 		),

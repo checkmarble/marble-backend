@@ -139,14 +139,13 @@ func (usecases *UsecasesWithCreds) NewScenarioPublicationUsecase() ScenarioPubli
 	return ScenarioPublicationUsecase{
 		transactionFactory:             &usecases.Repositories.TransactionFactoryPosgresql,
 		clientSchemaExecutorFactory:    usecases.NewClientDbExecutorFactory(),
-		orgTransactionFactory:          usecases.NewOrgTransactionFactory(),
 		scenarioPublicationsRepository: usecases.Repositories.ScenarioPublicationRepository,
 		OrganizationIdOfContext:        usecases.OrganizationIdOfContext,
 		enforceSecurity:                usecases.NewEnforceScenarioSecurity(),
 		scenarioFetcher:                usecases.NewScenarioFetcher(),
 		scenarioPublisher:              usecases.NewScenarioPublisher(),
 		scenarioListRepository:         &usecases.Repositories.MarbleDbRepository,
-		IngestedDataReadRepository:     usecases.Repositories.IngestedDataReadRepository,
+		ingestedDataIndexesRepository:  &usecases.Repositories.ClientDbRepository,
 	}
 }
 
