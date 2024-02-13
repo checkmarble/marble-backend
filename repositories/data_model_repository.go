@@ -14,18 +14,18 @@ import (
 
 type DataModelRepository interface {
 	GetDataModel(ctx context.Context, organizationID string, fetchEnumValues bool) (models.DataModel, error)
-	GetTablesAndFields(ctx context.Context, tx Transaction, organizationID string) ([]models.DataModelTableField, error)
-	CreateDataModelTable(ctx context.Context, tx Transaction, organizationID, tableID, name, description string) error
-	UpdateDataModelTable(ctx context.Context, tx Transaction, tableID, description string) error
-	GetDataModelTable(ctx context.Context, tx Transaction, tableID string) (models.DataModelTable, error)
-	CreateDataModelField(ctx context.Context, tx Transaction, tableID, fieldID string, field models.DataModelField) error
-	UpdateDataModelField(ctx context.Context, tx Transaction, field, description string) error
-	CreateDataModelLink(ctx context.Context, tx Transaction, link models.DataModelLink) error
-	DeleteDataModel(ctx context.Context, tx Transaction, organizationID string) error
+	GetTablesAndFields(ctx context.Context, tx Transaction_deprec, organizationID string) ([]models.DataModelTableField, error)
+	CreateDataModelTable(ctx context.Context, tx Transaction_deprec, organizationID, tableID, name, description string) error
+	UpdateDataModelTable(ctx context.Context, tx Transaction_deprec, tableID, description string) error
+	GetDataModelTable(ctx context.Context, tx Transaction_deprec, tableID string) (models.DataModelTable, error)
+	CreateDataModelField(ctx context.Context, tx Transaction_deprec, tableID, fieldID string, field models.DataModelField) error
+	UpdateDataModelField(ctx context.Context, tx Transaction_deprec, field, description string) error
+	CreateDataModelLink(ctx context.Context, tx Transaction_deprec, link models.DataModelLink) error
+	DeleteDataModel(ctx context.Context, tx Transaction_deprec, organizationID string) error
 }
 
 type DataModelRepositoryPostgresql struct {
-	transactionFactory TransactionFactoryPosgresql
+	transactionFactory TransactionFactoryPosgresql_deprec
 }
 
 func (repo *DataModelRepositoryPostgresql) GetDataModel(ctx context.Context, organizationID string, fetchEnumValues bool) (models.DataModel, error) {
@@ -95,7 +95,7 @@ func (repo *DataModelRepositoryPostgresql) GetDataModel(ctx context.Context, org
 	return dataModel, nil
 }
 
-func (repo *DataModelRepositoryPostgresql) CreateDataModelTable(ctx context.Context, tx Transaction, organizationID, tableID, name, description string) error {
+func (repo *DataModelRepositoryPostgresql) CreateDataModelTable(ctx context.Context, tx Transaction_deprec, organizationID, tableID, name, description string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query := `
@@ -109,7 +109,7 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelTable(ctx context.Cont
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) GetDataModelTable(ctx context.Context, tx Transaction, tableID string) (models.DataModelTable, error) {
+func (repo *DataModelRepositoryPostgresql) GetDataModelTable(ctx context.Context, tx Transaction_deprec, tableID string) (models.DataModelTable, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToModel(
@@ -123,7 +123,7 @@ func (repo *DataModelRepositoryPostgresql) GetDataModelTable(ctx context.Context
 	)
 }
 
-func (repo *DataModelRepositoryPostgresql) UpdateDataModelTable(ctx context.Context, tx Transaction, tableID, description string) error {
+func (repo *DataModelRepositoryPostgresql) UpdateDataModelTable(ctx context.Context, tx Transaction_deprec, tableID, description string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
@@ -136,7 +136,7 @@ func (repo *DataModelRepositoryPostgresql) UpdateDataModelTable(ctx context.Cont
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) CreateDataModelField(ctx context.Context, tx Transaction, tableID, fieldID string, field models.DataModelField) error {
+func (repo *DataModelRepositoryPostgresql) CreateDataModelField(ctx context.Context, tx Transaction_deprec, tableID, fieldID string, field models.DataModelField) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query := `
@@ -151,7 +151,7 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelField(ctx context.Cont
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) UpdateDataModelField(ctx context.Context, tx Transaction, fieldID, description string) error {
+func (repo *DataModelRepositoryPostgresql) UpdateDataModelField(ctx context.Context, tx Transaction_deprec, fieldID, description string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
@@ -164,7 +164,7 @@ func (repo *DataModelRepositoryPostgresql) UpdateDataModelField(ctx context.Cont
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) CreateDataModelLink(ctx context.Context, tx Transaction, link models.DataModelLink) error {
+func (repo *DataModelRepositoryPostgresql) CreateDataModelLink(ctx context.Context, tx Transaction_deprec, link models.DataModelLink) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
@@ -180,7 +180,7 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelLink(ctx context.Conte
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) GetTablesAndFields(ctx context.Context, tx Transaction, organizationID string) ([]models.DataModelTableField, error) {
+func (repo *DataModelRepositoryPostgresql) GetTablesAndFields(ctx context.Context, tx Transaction_deprec, organizationID string) ([]models.DataModelTableField, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query, args, err := NewQueryBuilder().
@@ -218,7 +218,7 @@ func (repo *DataModelRepositoryPostgresql) GetTablesAndFields(ctx context.Contex
 	return fields, err
 }
 
-func (repo *DataModelRepositoryPostgresql) GetLinks(ctx context.Context, tx Transaction, organizationID string) ([]models.DataModelLink, error) {
+func (repo *DataModelRepositoryPostgresql) GetLinks(ctx context.Context, tx Transaction_deprec, organizationID string) ([]models.DataModelLink, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query := `
@@ -249,7 +249,7 @@ func (repo *DataModelRepositoryPostgresql) GetLinks(ctx context.Context, tx Tran
 	return links, nil
 }
 
-func (repo *DataModelRepositoryPostgresql) DeleteDataModel(ctx context.Context, tx Transaction, organizationID string) error {
+func (repo *DataModelRepositoryPostgresql) DeleteDataModel(ctx context.Context, tx Transaction_deprec, organizationID string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
@@ -274,7 +274,7 @@ func (repo *DataModelRepositoryPostgresql) DeleteDataModel(ctx context.Context, 
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) GetEnumValues(ctx context.Context, tx Transaction, fieldID string) ([]any, error) {
+func (repo *DataModelRepositoryPostgresql) GetEnumValues(ctx context.Context, tx Transaction_deprec, fieldID string) ([]any, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query, args, err := NewQueryBuilder().

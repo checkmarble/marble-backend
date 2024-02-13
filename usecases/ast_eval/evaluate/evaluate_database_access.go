@@ -16,7 +16,7 @@ type DatabaseAccess struct {
 	OrganizationId             string
 	DataModel                  models.DataModel
 	Payload                    models.PayloadReader
-	OrgTransactionFactory      transaction.Factory
+	OrgTransactionFactory      transaction.Factory_deprec
 	IngestedDataReadRepository repositories.IngestedDataReadRepository
 	ReturnFakeValue            bool
 }
@@ -72,11 +72,11 @@ func (d DatabaseAccess) getDbField(ctx context.Context, tableName models.TableNa
 		return DryRunGetDbField(d.DataModel, tableName, path, fieldName)
 	}
 
-	return transaction.InOrganizationSchema(
+	return transaction.InOrganizationSchema_deprec(
 		ctx,
 		d.OrgTransactionFactory,
 		d.OrganizationId,
-		func(tx repositories.Transaction) (interface{}, error) {
+		func(tx repositories.Transaction_deprec) (interface{}, error) {
 			return d.IngestedDataReadRepository.GetDbField(ctx, tx, models.DbFieldReadParams{
 				TriggerTableName: models.TableName(tableName),
 				Path:             models.ToLinkNames(path),

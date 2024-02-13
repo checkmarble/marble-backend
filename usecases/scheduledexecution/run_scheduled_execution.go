@@ -19,22 +19,22 @@ import (
 )
 
 type RunScheduledExecutionRepository interface {
-	GetScenarioById(ctx context.Context, tx repositories.Transaction, scenarioId string) (models.Scenario, error)
-	GetScenarioIteration(ctx context.Context, tx repositories.Transaction, scenarioIterationId string) (models.ScenarioIteration, error)
+	GetScenarioById(ctx context.Context, tx repositories.Transaction_deprec, scenarioId string) (models.Scenario, error)
+	GetScenarioIteration(ctx context.Context, tx repositories.Transaction_deprec, scenarioIterationId string) (models.ScenarioIteration, error)
 
-	ListScheduledExecutions(ctx context.Context, tx repositories.Transaction, filters models.ListScheduledExecutionsFilters) ([]models.ScheduledExecution, error)
-	CreateScheduledExecution(ctx context.Context, tx repositories.Transaction, input models.CreateScheduledExecutionInput, newScheduledExecutionId string) error
-	UpdateScheduledExecution(ctx context.Context, tx repositories.Transaction, updateScheduledEx models.UpdateScheduledExecutionInput) error
-	GetScheduledExecution(ctx context.Context, tx repositories.Transaction, id string) (models.ScheduledExecution, error)
+	ListScheduledExecutions(ctx context.Context, tx repositories.Transaction_deprec, filters models.ListScheduledExecutionsFilters) ([]models.ScheduledExecution, error)
+	CreateScheduledExecution(ctx context.Context, tx repositories.Transaction_deprec, input models.CreateScheduledExecutionInput, newScheduledExecutionId string) error
+	UpdateScheduledExecution(ctx context.Context, tx repositories.Transaction_deprec, updateScheduledEx models.UpdateScheduledExecutionInput) error
+	GetScheduledExecution(ctx context.Context, tx repositories.Transaction_deprec, id string) (models.ScheduledExecution, error)
 }
 
 type RunScheduledExecution struct {
 	Repository                     RunScheduledExecutionRepository
-	TransactionFactory             transaction.TransactionFactory
+	TransactionFactory             transaction.TransactionFactory_deprec
 	ExportScheduleExecution        ExportScheduleExecution
 	ScenarioPublicationsRepository repositories.ScenarioPublicationRepository
 	DataModelRepository            repositories.DataModelRepository
-	OrgTransactionFactory          transaction.Factory
+	OrgTransactionFactory          transaction.Factory_deprec
 	IngestedDataReadRepository     repositories.IngestedDataReadRepository
 	EvaluateRuleAstExpression      ast_eval.EvaluateRuleAstExpression
 	DecisionRepository             repositories.DecisionRepository
@@ -125,7 +125,7 @@ func (usecase *RunScheduledExecution) ExecuteScheduledScenario(ctx context.Conte
 		return err
 	}
 
-	scheduledExecution, err := transaction.TransactionReturnValue(ctx, usecase.TransactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.ScheduledExecution, error) {
+	scheduledExecution, err := transaction.TransactionReturnValue_deprec(ctx, usecase.TransactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) (models.ScheduledExecution, error) {
 		numberOfCreatedDecisions, err := usecase.executeScheduledScenario(ctx, scheduledExecution.Id, scheduledExecution.Scenario)
 		if err != nil {
 			return scheduledExecution, err
@@ -212,9 +212,9 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 
 	// list objects to score
 	numberOfCreatedDecisions := 0
-	err = usecase.TransactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+	err = usecase.TransactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) error {
 		var objects []models.ClientObject
-		err = usecase.OrgTransactionFactory.TransactionInOrgSchema(ctx, scenario.OrganizationId, func(clientTx repositories.Transaction) error {
+		err = usecase.OrgTransactionFactory.TransactionInOrgSchema(ctx, scenario.OrganizationId, func(clientTx repositories.Transaction_deprec) error {
 			objects, err = usecase.IngestedDataReadRepository.ListAllObjectsFromTable(ctx, clientTx, table)
 			return err
 		})

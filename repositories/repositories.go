@@ -11,25 +11,25 @@ import (
 )
 
 type Repositories struct {
-	TransactionFactoryPosgresql   TransactionFactoryPosgresql
-	ExecutorGetter                ExecutorGetter
-	FirebaseTokenRepository       FireBaseTokenRepository
-	MarbleJwtRepository           func() MarbleJwtRepository
-	UserRepository                UserRepository
-	OrganizationRepository        OrganizationRepository
-	IngestionRepository           IngestionRepository
-	DataModelRepository           DataModelRepository
-	IngestedDataReadRepository    IngestedDataReadRepository
-	BlankDataReadRepository       BlankDataReadRepository
-	DecisionRepository            DecisionRepository
-	MarbleDbRepository            MarbleDbRepository
-	ClientDbRepository            ClientDbRepository
-	ScenarioPublicationRepository ScenarioPublicationRepository
-	OrganizationSchemaRepository  OrganizationSchemaRepository
-	AwsS3Repository               AwsS3Repository
-	GcsRepository                 GcsRepository
-	CustomListRepository          CustomListRepository
-	UploadLogRepository           UploadLogRepository
+	TransactionFactoryPosgresql_deprec TransactionFactoryPosgresql_deprec
+	ExecutorGetter                     ExecutorGetter
+	FirebaseTokenRepository            FireBaseTokenRepository
+	MarbleJwtRepository                func() MarbleJwtRepository
+	UserRepository                     UserRepository
+	OrganizationRepository             OrganizationRepository
+	IngestionRepository                IngestionRepository
+	DataModelRepository                DataModelRepository
+	IngestedDataReadRepository         IngestedDataReadRepository
+	BlankDataReadRepository            BlankDataReadRepository
+	DecisionRepository                 DecisionRepository
+	MarbleDbRepository                 MarbleDbRepository
+	ClientDbRepository                 ClientDbRepository
+	ScenarioPublicationRepository      ScenarioPublicationRepository
+	OrganizationSchemaRepository       OrganizationSchemaRepository
+	AwsS3Repository                    AwsS3Repository
+	GcsRepository                      GcsRepository
+	CustomListRepository               CustomListRepository
+	UploadLogRepository                UploadLogRepository
 }
 
 func NewQueryBuilder() squirrel.StatementBuilderType {
@@ -46,7 +46,7 @@ func NewRepositories(
 		marbleConnectionPool,
 	)
 
-	transactionFactory := NewTransactionFactoryPosgresql(
+	transactionFactory := NewTransactionFactoryPosgresql_deprec(
 		databaseConnectionPoolRepository,
 		marbleConnectionPool,
 	)
@@ -54,9 +54,9 @@ func NewRepositories(
 	executorGetter := NewExecutorGetter(marbleConnectionPool)
 
 	return &Repositories{
-		TransactionFactoryPosgresql: transactionFactory,
-		ExecutorGetter:              executorGetter,
-		FirebaseTokenRepository:     firebase.New(firebaseClient),
+		TransactionFactoryPosgresql_deprec: transactionFactory,
+		ExecutorGetter:                     executorGetter,
+		FirebaseTokenRepository:            firebase.New(firebaseClient),
 		MarbleJwtRepository: func() MarbleJwtRepository {
 			if marbleJwtSigningKey == nil {
 				panic("Repositories does not contain a jwt signing key")

@@ -8,7 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
-func (repo *MarbleDbRepository) GetApiKeyById(ctx context.Context, tx Transaction, apiKeyId string) (models.ApiKey, error) {
+func (repo *MarbleDbRepository) GetApiKeyById(ctx context.Context, tx Transaction_deprec, apiKeyId string) (models.ApiKey, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToModel(
@@ -23,7 +23,7 @@ func (repo *MarbleDbRepository) GetApiKeyById(ctx context.Context, tx Transactio
 	)
 }
 
-func (repo *MarbleDbRepository) GetApiKeyByKey(ctx context.Context, tx Transaction, key string) (models.ApiKey, error) {
+func (repo *MarbleDbRepository) GetApiKeyByKey(ctx context.Context, tx Transaction_deprec, key string) (models.ApiKey, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToModel(
@@ -38,7 +38,7 @@ func (repo *MarbleDbRepository) GetApiKeyByKey(ctx context.Context, tx Transacti
 	)
 }
 
-func (repo *MarbleDbRepository) ListApiKeys(ctx context.Context, tx Transaction, organizationId string) ([]models.ApiKey, error) {
+func (repo *MarbleDbRepository) ListApiKeys(ctx context.Context, tx Transaction_deprec, organizationId string) ([]models.ApiKey, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToListOfModels(
@@ -54,7 +54,7 @@ func (repo *MarbleDbRepository) ListApiKeys(ctx context.Context, tx Transaction,
 
 }
 
-func (repo *MarbleDbRepository) CreateApiKey(ctx context.Context, tx Transaction, apiKey models.CreateApiKey) error {
+func (repo *MarbleDbRepository) CreateApiKey(ctx context.Context, tx Transaction_deprec, apiKey models.CreateApiKey) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
@@ -79,7 +79,7 @@ func (repo *MarbleDbRepository) CreateApiKey(ctx context.Context, tx Transaction
 	return err
 }
 
-func (repo *MarbleDbRepository) SoftDeleteApiKey(ctx context.Context, tx Transaction, apiKeyId string) error {
+func (repo *MarbleDbRepository) SoftDeleteApiKey(ctx context.Context, tx Transaction_deprec, apiKeyId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(

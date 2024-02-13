@@ -12,7 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 )
 
-func SqlToChannelOfModels[Model any](ctx context.Context, tx TransactionPostgres, query squirrel.Sqlizer, adapter func(row pgx.CollectableRow) (Model, error)) (<-chan Model, <-chan error) {
+func SqlToChannelOfModels[Model any](ctx context.Context, tx TransactionPostgres_deprec, query squirrel.Sqlizer, adapter func(row pgx.CollectableRow) (Model, error)) (<-chan Model, <-chan error) {
 	modelsChannel := make(chan Model, 100)
 	errChannel := make(chan error, 1)
 
@@ -35,7 +35,7 @@ func SqlToChannelOfModels[Model any](ctx context.Context, tx TransactionPostgres
 	return modelsChannel, errChannel
 }
 
-func SqlToListOfRow[Model any](ctx context.Context, tx TransactionPostgres, query squirrel.Sqlizer, adapter func(row pgx.CollectableRow) (Model, error)) ([]Model, error) {
+func SqlToListOfRow[Model any](ctx context.Context, tx TransactionPostgres_deprec, query squirrel.Sqlizer, adapter func(row pgx.CollectableRow) (Model, error)) ([]Model, error) {
 	models := make([]Model, 0)
 	err := ForEachRow(ctx, tx, query, func(row pgx.CollectableRow) error {
 		model, err := adapter(row)
@@ -48,7 +48,7 @@ func SqlToListOfRow[Model any](ctx context.Context, tx TransactionPostgres, quer
 	return models, err
 }
 
-func SqlToOptionalRow[Model any](ctx context.Context, transaction TransactionPostgres, s squirrel.Sqlizer, adapter func(row pgx.CollectableRow) (Model, error)) (*Model, error) {
+func SqlToOptionalRow[Model any](ctx context.Context, transaction TransactionPostgres_deprec, s squirrel.Sqlizer, adapter func(row pgx.CollectableRow) (Model, error)) (*Model, error) {
 	models, err := SqlToListOfRow(ctx, transaction, s, adapter)
 	if err != nil {
 		return nil, err
@@ -66,7 +66,7 @@ func SqlToOptionalRow[Model any](ctx context.Context, transaction TransactionPos
 	return &model, nil
 }
 
-func SqlToRow[Model any](ctx context.Context, transaction TransactionPostgres, s squirrel.Sqlizer, adapter func(row pgx.CollectableRow) (Model, error)) (Model, error) {
+func SqlToRow[Model any](ctx context.Context, transaction TransactionPostgres_deprec, s squirrel.Sqlizer, adapter func(row pgx.CollectableRow) (Model, error)) (Model, error) {
 	model, err := SqlToOptionalRow(ctx, transaction, s, adapter)
 	var zeroModel Model
 	if err != nil {
@@ -78,7 +78,7 @@ func SqlToRow[Model any](ctx context.Context, transaction TransactionPostgres, s
 	return *model, nil
 }
 
-func ForEachRow(ctx context.Context, transaction TransactionPostgres, query squirrel.Sqlizer, fn func(row pgx.CollectableRow) error) error {
+func ForEachRow(ctx context.Context, transaction TransactionPostgres_deprec, query squirrel.Sqlizer, fn func(row pgx.CollectableRow) error) error {
 	sql, args, err := query.ToSql()
 	if err != nil {
 		return errors.Wrap(err, "can't build sql query")

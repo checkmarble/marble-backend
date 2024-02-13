@@ -18,7 +18,7 @@ func selectRules() squirrel.SelectBuilder {
 		From(dbmodels.TABLE_RULES)
 }
 
-func (repo *MarbleDbRepository) GetRuleById(ctx context.Context, tx Transaction, ruleId string) (models.Rule, error) {
+func (repo *MarbleDbRepository) GetRuleById(ctx context.Context, tx Transaction_deprec, ruleId string) (models.Rule, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToModel(
@@ -29,7 +29,7 @@ func (repo *MarbleDbRepository) GetRuleById(ctx context.Context, tx Transaction,
 	)
 }
 
-func (repo *MarbleDbRepository) ListRulesByIterationId(ctx context.Context, tx Transaction, iterationId string) ([]models.Rule, error) {
+func (repo *MarbleDbRepository) ListRulesByIterationId(ctx context.Context, tx Transaction_deprec, iterationId string) ([]models.Rule, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToListOfModels(
@@ -42,7 +42,7 @@ func (repo *MarbleDbRepository) ListRulesByIterationId(ctx context.Context, tx T
 	)
 }
 
-func (repo *MarbleDbRepository) UpdateRule(ctx context.Context, tx Transaction, rule models.UpdateRuleInput) error {
+func (repo *MarbleDbRepository) UpdateRule(ctx context.Context, tx Transaction_deprec, rule models.UpdateRuleInput) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	dbUpdateRuleInput, err := dbmodels.AdaptDBUpdateRuleInput(rule)
@@ -59,14 +59,14 @@ func (repo *MarbleDbRepository) UpdateRule(ctx context.Context, tx Transaction, 
 	return err
 }
 
-func (repo *MarbleDbRepository) DeleteRule(ctx context.Context, tx Transaction, ruleID string) error {
+func (repo *MarbleDbRepository) DeleteRule(ctx context.Context, tx Transaction_deprec, ruleID string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(ctx, NewQueryBuilder().Delete(dbmodels.TABLE_RULES).Where("id = ?", ruleID))
 	return err
 }
 
-func (repo *MarbleDbRepository) CreateRules(ctx context.Context, tx Transaction, rules []models.CreateRuleInput) ([]models.Rule, error) {
+func (repo *MarbleDbRepository) CreateRules(ctx context.Context, tx Transaction_deprec, rules []models.CreateRuleInput) ([]models.Rule, error) {
 	if len(rules) == 0 {
 		return []models.Rule{}, fmt.Errorf("no rule found")
 	}
@@ -112,7 +112,7 @@ func (repo *MarbleDbRepository) CreateRules(ctx context.Context, tx Transaction,
 	)
 }
 
-func (repo *MarbleDbRepository) CreateRule(ctx context.Context, tx Transaction, rule models.CreateRuleInput) (models.Rule, error) {
+func (repo *MarbleDbRepository) CreateRule(ctx context.Context, tx Transaction_deprec, rule models.CreateRuleInput) (models.Rule, error) {
 	rules, err := repo.CreateRules(ctx, tx, []models.CreateRuleInput{rule})
 	if err != nil {
 		return models.Rule{}, err

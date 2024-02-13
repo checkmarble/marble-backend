@@ -15,7 +15,7 @@ import (
 type CustomListUseCase struct {
 	organizationIdOfContext func() (string, error)
 	enforceSecurity         security.EnforceSecurityCustomList
-	transactionFactory      transaction.TransactionFactory
+	transactionFactory      transaction.TransactionFactory_deprec
 	CustomListRepository    repositories.CustomListRepository
 }
 
@@ -41,7 +41,7 @@ func (usecase *CustomListUseCase) CreateCustomList(ctx context.Context, createCu
 		return models.CustomList{}, err
 	}
 
-	list, err := transaction.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.CustomList, error) {
+	list, err := transaction.TransactionReturnValue_deprec(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) (models.CustomList, error) {
 		newCustomListId := uuid.NewString()
 		organizationId, err := usecase.organizationIdOfContext()
 		if err != nil {
@@ -67,7 +67,7 @@ func (usecase *CustomListUseCase) CreateCustomList(ctx context.Context, createCu
 }
 
 func (usecase *CustomListUseCase) UpdateCustomList(ctx context.Context, updateCustomList models.UpdateCustomListInput) (models.CustomList, error) {
-	list, err := transaction.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.CustomList, error) {
+	list, err := transaction.TransactionReturnValue_deprec(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) (models.CustomList, error) {
 		if updateCustomList.Name != nil || updateCustomList.Description != nil {
 			customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, updateCustomList.Id)
 			if err != nil {
@@ -93,7 +93,7 @@ func (usecase *CustomListUseCase) UpdateCustomList(ctx context.Context, updateCu
 }
 
 func (usecase *CustomListUseCase) SoftDeleteCustomList(ctx context.Context, listId string) error {
-	err := usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+	err := usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) error {
 		customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, listId)
 		if err != nil {
 			return err
@@ -132,7 +132,7 @@ func (usecase *CustomListUseCase) GetCustomListValues(ctx context.Context, getCu
 }
 
 func (usecase *CustomListUseCase) AddCustomListValue(ctx context.Context, addCustomListValue models.AddCustomListValueInput) (models.CustomListValue, error) {
-	value, err := transaction.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.CustomListValue, error) {
+	value, err := transaction.TransactionReturnValue_deprec(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) (models.CustomListValue, error) {
 		customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, addCustomListValue.CustomListId)
 		if err != nil {
 			return models.CustomListValue{}, err
@@ -158,7 +158,7 @@ func (usecase *CustomListUseCase) AddCustomListValue(ctx context.Context, addCus
 }
 
 func (usecase *CustomListUseCase) DeleteCustomListValue(ctx context.Context, deleteCustomListValue models.DeleteCustomListValueInput) error {
-	err := usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+	err := usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) error {
 		customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, deleteCustomListValue.CustomListId)
 		if err != nil {
 			return err

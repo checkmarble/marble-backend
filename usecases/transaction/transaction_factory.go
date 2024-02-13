@@ -7,6 +7,6 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 )
 
-type TransactionFactory interface {
-	Transaction(ctx context.Context, databaseSchema models.DatabaseSchema, fn func(tx repositories.Transaction) error) error
+type TransactionFactory_deprec interface {
+	Transaction(ctx context.Context, databaseSchema models.DatabaseSchema, fn func(tx repositories.Transaction_deprec) error) error
 }

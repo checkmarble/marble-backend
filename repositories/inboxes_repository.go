@@ -11,7 +11,7 @@ import (
 	"github.com/Masterminds/squirrel"
 )
 
-func (repo *MarbleDbRepository) GetInboxById(ctx context.Context, tx Transaction, inboxId string) (models.Inbox, error) {
+func (repo *MarbleDbRepository) GetInboxById(ctx context.Context, tx Transaction_deprec, inboxId string) (models.Inbox, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToModel(
@@ -22,7 +22,7 @@ func (repo *MarbleDbRepository) GetInboxById(ctx context.Context, tx Transaction
 	)
 }
 
-func (repo *MarbleDbRepository) ListInboxes(ctx context.Context, tx Transaction, organizationId string, inboxIds []string, withCaseCount bool) ([]models.Inbox, error) {
+func (repo *MarbleDbRepository) ListInboxes(ctx context.Context, tx Transaction_deprec, organizationId string, inboxIds []string, withCaseCount bool) ([]models.Inbox, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query := selectInboxesJoinUsers().
@@ -61,7 +61,7 @@ func selectInboxesJoinUsers() squirrel.SelectBuilder {
 		OrderBy("i.created_at DESC")
 }
 
-func (repo *MarbleDbRepository) CreateInbox(ctx context.Context, tx Transaction, input models.CreateInboxInput, newInboxId string) error {
+func (repo *MarbleDbRepository) CreateInbox(ctx context.Context, tx Transaction_deprec, input models.CreateInboxInput, newInboxId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
@@ -81,7 +81,7 @@ func (repo *MarbleDbRepository) CreateInbox(ctx context.Context, tx Transaction,
 	return err
 }
 
-func (repo *MarbleDbRepository) UpdateInbox(ctx context.Context, tx Transaction, inboxId, name string) error {
+func (repo *MarbleDbRepository) UpdateInbox(ctx context.Context, tx Transaction_deprec, inboxId, name string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
@@ -94,7 +94,7 @@ func (repo *MarbleDbRepository) UpdateInbox(ctx context.Context, tx Transaction,
 	return err
 }
 
-func (repo *MarbleDbRepository) SoftDeleteInbox(ctx context.Context, tx Transaction, inboxId string) error {
+func (repo *MarbleDbRepository) SoftDeleteInbox(ctx context.Context, tx Transaction_deprec, inboxId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(

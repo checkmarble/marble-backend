@@ -18,21 +18,21 @@ import (
 )
 
 type DecisionUsecaseRepository interface {
-	GetScenarioById(ctx context.Context, tx repositories.Transaction, scenarioId string) (models.Scenario, error)
-	ListScenariosOfOrganization(ctx context.Context, tx repositories.Transaction, organizationId string) ([]models.Scenario, error)
+	GetScenarioById(ctx context.Context, tx repositories.Transaction_deprec, scenarioId string) (models.Scenario, error)
+	ListScenariosOfOrganization(ctx context.Context, tx repositories.Transaction_deprec, organizationId string) ([]models.Scenario, error)
 
-	GetScenarioIteration(ctx context.Context, tx repositories.Transaction, scenarioIterationId string) (
+	GetScenarioIteration(ctx context.Context, tx repositories.Transaction_deprec, scenarioIterationId string) (
 		models.ScenarioIteration, error,
 	)
 
-	GetCaseById(ctx context.Context, tx repositories.Transaction, caseId string) (models.Case, error)
+	GetCaseById(ctx context.Context, tx repositories.Transaction_deprec, caseId string) (models.Case, error)
 }
 
 type DecisionUsecase struct {
 	enforceSecurity            security.EnforceSecurityDecision
 	enforceSecurityScenario    security.EnforceSecurityScenario
-	transactionFactory         transaction.TransactionFactory
-	orgTransactionFactory      transaction.Factory
+	transactionFactory         transaction.TransactionFactory_deprec
+	orgTransactionFactory      transaction.Factory_deprec
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
 	decisionRepository         repositories.DecisionRepository
 	datamodelRepository        repositories.DataModelRepository
@@ -76,11 +76,11 @@ func (usecase *DecisionUsecase) ListDecisions(ctx context.Context, organizationI
 		return []models.DecisionWithRank{}, err
 	}
 
-	return transaction.TransactionReturnValue(
+	return transaction.TransactionReturnValue_deprec(
 		ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction) ([]models.DecisionWithRank, error) {
+		func(tx repositories.Transaction_deprec) ([]models.DecisionWithRank, error) {
 			decisions, err := usecase.decisionRepository.DecisionsOfOrganization(ctx, tx, organizationId, paginationAndSorting, models.DecisionFilters{
 				ScenarioIds:    filters.ScenarioIds,
 				StartDate:      filters.StartDate,
@@ -203,7 +203,7 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 		Score:               scenarioExecution.Score,
 	}
 
-	return transaction.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Decision, error) {
+	return transaction.TransactionReturnValue_deprec(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) (models.Decision, error) {
 		err = usecase.decisionRepository.StoreDecision(ctx, tx, decision, input.OrganizationId, newDecisionId)
 		if err != nil {
 			return models.Decision{}, fmt.Errorf("error storing decision: %w", err)

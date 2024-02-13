@@ -9,7 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
-func (repo *MarbleDbRepository) ListOrganizationTags(ctx context.Context, tx Transaction, organizationId string, withCaseCount bool) ([]models.Tag, error) {
+func (repo *MarbleDbRepository) ListOrganizationTags(ctx context.Context, tx Transaction_deprec, organizationId string, withCaseCount bool) ([]models.Tag, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 	query := NewQueryBuilder().
 		Select(dbmodels.SelectTagColumn...).
@@ -26,7 +26,7 @@ func (repo *MarbleDbRepository) ListOrganizationTags(ctx context.Context, tx Tra
 	return SqlToListOfModels(ctx, pgTx, query, dbmodels.AdaptTag)
 }
 
-func (repo *MarbleDbRepository) CreateTag(ctx context.Context, tx Transaction, attributes models.CreateTagAttributes, newTagId string) error {
+func (repo *MarbleDbRepository) CreateTag(ctx context.Context, tx Transaction_deprec, attributes models.CreateTagAttributes, newTagId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
@@ -48,7 +48,7 @@ func (repo *MarbleDbRepository) CreateTag(ctx context.Context, tx Transaction, a
 	return err
 }
 
-func (repo *MarbleDbRepository) UpdateTag(ctx context.Context, tx Transaction, attributes models.UpdateTagAttributes) error {
+func (repo *MarbleDbRepository) UpdateTag(ctx context.Context, tx Transaction_deprec, attributes models.UpdateTagAttributes) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query := NewQueryBuilder().Update(dbmodels.TABLE_TAGS).Where(squirrel.Eq{"id": attributes.TagId}).Set("updated_at", squirrel.Expr("NOW()"))
@@ -63,7 +63,7 @@ func (repo *MarbleDbRepository) UpdateTag(ctx context.Context, tx Transaction, a
 	return err
 }
 
-func (repo *MarbleDbRepository) GetTagById(ctx context.Context, tx Transaction, tagId string) (models.Tag, error) {
+func (repo *MarbleDbRepository) GetTagById(ctx context.Context, tx Transaction_deprec, tagId string) (models.Tag, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToModel(
@@ -77,7 +77,7 @@ func (repo *MarbleDbRepository) GetTagById(ctx context.Context, tx Transaction, 
 	)
 }
 
-func (repo *MarbleDbRepository) SoftDeleteTag(ctx context.Context, tx Transaction, tagId string) error {
+func (repo *MarbleDbRepository) SoftDeleteTag(ctx context.Context, tx Transaction_deprec, tagId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 	query := NewQueryBuilder().Update(dbmodels.TABLE_TAGS).Where(squirrel.Eq{"id": tagId})
 	query = query.Set("deleted_at", squirrel.Expr("NOW()"))

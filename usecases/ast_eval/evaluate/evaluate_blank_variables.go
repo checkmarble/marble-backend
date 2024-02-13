@@ -35,14 +35,14 @@ type windowFunctionParams struct {
 
 type BlankDatabaseAccess struct {
 	OrganizationIdOfContext string
-	OrgTransactionFactory   transaction.Factory
+	OrgTransactionFactory   transaction.Factory_deprec
 	BlankDataReadRepository repositories.BlankDataReadRepository
 	Function                ast.Function
 	ReturnFakeValue         bool
 }
 
 func NewBlankDatabaseAccess(
-	otf transaction.Factory,
+	otf transaction.Factory_deprec,
 	bdrr repositories.BlankDataReadRepository,
 	organizationIdOfContext string,
 	f ast.Function,
@@ -91,11 +91,11 @@ func (blank BlankDatabaseAccess) getFirstTransactionDate(ctx context.Context, ar
 		return time.Now(), nil
 	}
 
-	firstTransaction, err := transaction.InOrganizationSchema(
+	firstTransaction, err := transaction.InOrganizationSchema_deprec(
 		ctx,
 		blank.OrgTransactionFactory,
 		blank.OrganizationIdOfContext,
-		func(tx repositories.Transaction) (*time.Time, error) {
+		func(tx repositories.Transaction_deprec) (*time.Time, error) {
 			return blank.BlankDataReadRepository.GetFirstTransactionTimestamp(ctx, tx, ownerBusinessId)
 		})
 	if err != nil {
@@ -133,11 +133,11 @@ func (blank BlankDatabaseAccess) sumTransactionsAmount(ctx context.Context, argu
 		return 1000, nil
 	}
 
-	return transaction.InOrganizationSchema(
+	return transaction.InOrganizationSchema_deprec(
 		ctx,
 		blank.OrgTransactionFactory,
 		blank.OrganizationIdOfContext,
-		func(tx repositories.Transaction) (float64, error) {
+		func(tx repositories.Transaction_deprec) (float64, error) {
 			return blank.BlankDataReadRepository.SumTransactionsAmount(ctx, tx, ownerBusinessId, direction, createdFrom, createdTo)
 		})
 }
@@ -157,11 +157,11 @@ func (blank BlankDatabaseAccess) sepaOutFractionated(ctx context.Context, argume
 
 	transactionsToRetrievePeriodStart := args.referenceTime.Add(-windowDuration - periodDuration)
 	transactionsToCheckPeriodStart := args.referenceTime.Add(-periodDuration)
-	txSlice, err := transaction.InOrganizationSchema(
+	txSlice, err := transaction.InOrganizationSchema_deprec(
 		ctx,
 		blank.OrgTransactionFactory,
 		blank.OrganizationIdOfContext,
-		func(dbTx repositories.Transaction) ([]map[string]any, error) {
+		func(dbTx repositories.Transaction_deprec) ([]map[string]any, error) {
 			return blank.BlankDataReadRepository.RetrieveTransactions(
 				ctx,
 				dbTx,
@@ -210,11 +210,11 @@ func (blank BlankDatabaseAccess) severalSepaNonFrWindow(ctx context.Context, arg
 
 	transactionsToRetrievePeriodStart := args.referenceTime.Add(-windowDuration - periodDuration)
 	transactionsToCheckPeriodStart := args.referenceTime.Add(-periodDuration)
-	txSlice, err := transaction.InOrganizationSchema(
+	txSlice, err := transaction.InOrganizationSchema_deprec(
 		ctx,
 		blank.OrgTransactionFactory,
 		blank.OrganizationIdOfContext,
-		func(dbTx repositories.Transaction) ([]map[string]any, error) {
+		func(dbTx repositories.Transaction_deprec) ([]map[string]any, error) {
 			return blank.BlankDataReadRepository.RetrieveTransactions(ctx, dbTx, filters, transactionsToRetrievePeriodStart)
 		})
 	if err != nil {
@@ -249,11 +249,11 @@ func (blank BlankDatabaseAccess) fractionatedTransferReceived(ctx context.Contex
 
 	transactionsToRetrievePeriodStart := args.referenceTime.Add(-windowDuration - periodDuration)
 	transactionsToCheckPeriodStart := args.referenceTime.Add(-periodDuration)
-	txSlice, err := transaction.InOrganizationSchema(
+	txSlice, err := transaction.InOrganizationSchema_deprec(
 		ctx,
 		blank.OrgTransactionFactory,
 		blank.OrganizationIdOfContext,
-		func(dbTx repositories.Transaction) ([]map[string]any, error) {
+		func(dbTx repositories.Transaction_deprec) ([]map[string]any, error) {
 			return blank.BlankDataReadRepository.RetrieveTransactions(ctx, dbTx, filters, transactionsToRetrievePeriodStart)
 		})
 	if err != nil {

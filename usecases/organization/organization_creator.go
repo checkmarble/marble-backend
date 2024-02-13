@@ -9,7 +9,7 @@ import (
 )
 
 type OrganizationCreator struct {
-	TransactionFactory         transaction.TransactionFactory
+	TransactionFactory         transaction.TransactionFactory_deprec
 	OrganizationRepository     repositories.OrganizationRepository
 	DataModelRepository        repositories.DataModelRepository
 	OrganizationSeeder         OrganizationSeeder
@@ -18,7 +18,7 @@ type OrganizationCreator struct {
 
 func (creator *OrganizationCreator) CreateOrganizationWithId(ctx context.Context, newOrganizationId string, createOrga models.CreateOrganizationInput) (models.Organization, error) {
 
-	organization, err := transaction.TransactionReturnValue(ctx, creator.TransactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Organization, error) {
+	organization, err := transaction.TransactionReturnValue_deprec(ctx, creator.TransactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) (models.Organization, error) {
 		if err := creator.OrganizationRepository.CreateOrganization(ctx, tx, createOrga, newOrganizationId); err != nil {
 			return models.Organization{}, err
 		}
@@ -37,7 +37,7 @@ func (creator *OrganizationCreator) CreateOrganizationWithId(ctx context.Context
 		return models.Organization{}, err
 	}
 
-	_, err = transaction.TransactionReturnValue(ctx, creator.TransactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (any, error) {
+	_, err = transaction.TransactionReturnValue_deprec(ctx, creator.TransactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) (any, error) {
 		// store client's data in marble DB
 		orgDatabase := models.DATABASE_MARBLE
 		err := creator.PopulateOrganizationSchema.CreateOrganizationSchema(ctx, tx, organization, orgDatabase)

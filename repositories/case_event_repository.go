@@ -8,7 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
-func (repo *MarbleDbRepository) ListCaseEvents(ctx context.Context, tx Transaction, caseId string) ([]models.CaseEvent, error) {
+func (repo *MarbleDbRepository) ListCaseEvents(ctx context.Context, tx Transaction_deprec, caseId string) ([]models.CaseEvent, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query := NewQueryBuilder().
@@ -25,11 +25,11 @@ func (repo *MarbleDbRepository) ListCaseEvents(ctx context.Context, tx Transacti
 	)
 }
 
-func (repo *MarbleDbRepository) CreateCaseEvent(ctx context.Context, tx Transaction, createCaseEventAttributes models.CreateCaseEventAttributes) error {
+func (repo *MarbleDbRepository) CreateCaseEvent(ctx context.Context, tx Transaction_deprec, createCaseEventAttributes models.CreateCaseEventAttributes) error {
 	return repo.BatchCreateCaseEvents(ctx, tx, []models.CreateCaseEventAttributes{createCaseEventAttributes})
 }
 
-func (repo *MarbleDbRepository) BatchCreateCaseEvents(ctx context.Context, tx Transaction, createCaseEventAttributes []models.CreateCaseEventAttributes) error {
+func (repo *MarbleDbRepository) BatchCreateCaseEvents(ctx context.Context, tx Transaction_deprec, createCaseEventAttributes []models.CreateCaseEventAttributes) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query := NewQueryBuilder().Insert(dbmodels.TABLE_CASE_EVENTS).

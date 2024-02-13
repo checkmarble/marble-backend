@@ -10,16 +10,16 @@ import (
 )
 
 type ScenarioPublicationRepository interface {
-	ListScenarioPublicationsOfOrganization(ctx context.Context, tx Transaction, organizationId string, filters models.ListScenarioPublicationsFilters) ([]models.ScenarioPublication, error)
-	CreateScenarioPublication(ctx context.Context, tx Transaction, input models.CreateScenarioPublicationInput, newScenarioPublicationId string) error
-	GetScenarioPublicationById(ctx context.Context, tx Transaction, scenarioPublicationID string) (models.ScenarioPublication, error)
+	ListScenarioPublicationsOfOrganization(ctx context.Context, tx Transaction_deprec, organizationId string, filters models.ListScenarioPublicationsFilters) ([]models.ScenarioPublication, error)
+	CreateScenarioPublication(ctx context.Context, tx Transaction_deprec, input models.CreateScenarioPublicationInput, newScenarioPublicationId string) error
+	GetScenarioPublicationById(ctx context.Context, tx Transaction_deprec, scenarioPublicationID string) (models.ScenarioPublication, error)
 }
 
 type ScenarioPublicationRepositoryPostgresql struct {
-	transactionFactory TransactionFactoryPosgresql
+	transactionFactory TransactionFactoryPosgresql_deprec
 }
 
-func NewScenarioPublicationRepositoryPostgresql(transactionFactory TransactionFactoryPosgresql) ScenarioPublicationRepository {
+func NewScenarioPublicationRepositoryPostgresql(transactionFactory TransactionFactoryPosgresql_deprec) ScenarioPublicationRepository {
 	return &ScenarioPublicationRepositoryPostgresql{
 		transactionFactory: transactionFactory,
 	}
@@ -31,7 +31,7 @@ func selectScenarioPublications() squirrel.SelectBuilder {
 		From(dbmodels.TABLE_SCENARIOS_PUBLICATIONS)
 }
 
-func (repo *ScenarioPublicationRepositoryPostgresql) GetScenarioPublicationById(ctx context.Context, tx Transaction, scenarioPublicationID string) (models.ScenarioPublication, error) {
+func (repo *ScenarioPublicationRepositoryPostgresql) GetScenarioPublicationById(ctx context.Context, tx Transaction_deprec, scenarioPublicationID string) (models.ScenarioPublication, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToModel(
@@ -42,7 +42,7 @@ func (repo *ScenarioPublicationRepositoryPostgresql) GetScenarioPublicationById(
 	)
 }
 
-func (repo *ScenarioPublicationRepositoryPostgresql) ListScenarioPublicationsOfOrganization(ctx context.Context, tx Transaction, organizationId string, filters models.ListScenarioPublicationsFilters) ([]models.ScenarioPublication, error) {
+func (repo *ScenarioPublicationRepositoryPostgresql) ListScenarioPublicationsOfOrganization(ctx context.Context, tx Transaction_deprec, organizationId string, filters models.ListScenarioPublicationsFilters) ([]models.ScenarioPublication, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query := selectScenarioPublications().
@@ -64,7 +64,7 @@ func (repo *ScenarioPublicationRepositoryPostgresql) ListScenarioPublicationsOfO
 	)
 }
 
-func (repo *ScenarioPublicationRepositoryPostgresql) CreateScenarioPublication(ctx context.Context, tx Transaction, input models.CreateScenarioPublicationInput, newScenarioPublicationId string) error {
+func (repo *ScenarioPublicationRepositoryPostgresql) CreateScenarioPublication(ctx context.Context, tx Transaction_deprec, input models.CreateScenarioPublicationInput, newScenarioPublicationId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(

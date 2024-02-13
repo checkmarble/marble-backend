@@ -8,8 +8,8 @@ import (
 )
 
 type ScenarioFetcherRepository interface {
-	GetScenarioById(ctx context.Context, tx repositories.Transaction, scenarioId string) (models.Scenario, error)
-	GetScenarioIteration(ctx context.Context, tx repositories.Transaction, scenarioIterationId string) (
+	GetScenarioById(ctx context.Context, tx repositories.Transaction_deprec, scenarioId string) (models.Scenario, error)
+	GetScenarioIteration(ctx context.Context, tx repositories.Transaction_deprec, scenarioIterationId string) (
 		models.ScenarioIteration, error,
 	)
 }
@@ -23,7 +23,7 @@ type ScenarioFetcher struct {
 	Repository ScenarioFetcherRepository
 }
 
-func (fetcher *ScenarioFetcher) FetchScenarioAndIteration(ctx context.Context, tx repositories.Transaction, iterationId string) (result ScenarioAndIteration, err error) {
+func (fetcher *ScenarioFetcher) FetchScenarioAndIteration(ctx context.Context, tx repositories.Transaction_deprec, iterationId string) (result ScenarioAndIteration, err error) {
 	result.Iteration, err = fetcher.Repository.GetScenarioIteration(ctx, tx, iterationId)
 	if err != nil {
 		return ScenarioAndIteration{}, err

@@ -11,12 +11,12 @@ type CaseContributorRepository struct {
 	mock.Mock
 }
 
-func (r *CaseContributorRepository) GetCaseContributor(tx repositories.Transaction, caseId, userId string) (models.CaseContributor, error) {
+func (r *CaseContributorRepository) GetCaseContributor(tx repositories.Transaction_deprec, caseId, userId string) (models.CaseContributor, error) {
 	args := r.Called(tx, caseId, userId)
 	return args.Get(0).(models.CaseContributor), args.Error(1)
 }
 
-func (r *CaseContributorRepository) CreateCaseContributor(tx repositories.Transaction, caseId, userId string) error {
+func (r *CaseContributorRepository) CreateCaseContributor(tx repositories.Transaction_deprec, caseId, userId string) error {
 	args := r.Called(tx, caseId, userId)
 	return args.Error(0)
 }

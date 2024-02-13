@@ -14,12 +14,12 @@ import (
 )
 
 type RuleUsecaseRepository interface {
-	GetRuleById(ctx context.Context, tx repositories.Transaction, ruleId string) (models.Rule, error)
-	ListRulesByIterationId(ctx context.Context, tx repositories.Transaction, iterationId string) ([]models.Rule, error)
-	UpdateRule(ctx context.Context, tx repositories.Transaction, rule models.UpdateRuleInput) error
-	DeleteRule(ctx context.Context, tx repositories.Transaction, ruleID string) error
-	CreateRules(ctx context.Context, tx repositories.Transaction, rules []models.CreateRuleInput) ([]models.Rule, error)
-	CreateRule(ctx context.Context, tx repositories.Transaction, rule models.CreateRuleInput) (models.Rule, error)
+	GetRuleById(ctx context.Context, tx repositories.Transaction_deprec, ruleId string) (models.Rule, error)
+	ListRulesByIterationId(ctx context.Context, tx repositories.Transaction_deprec, iterationId string) ([]models.Rule, error)
+	UpdateRule(ctx context.Context, tx repositories.Transaction_deprec, rule models.UpdateRuleInput) error
+	DeleteRule(ctx context.Context, tx repositories.Transaction_deprec, ruleID string) error
+	CreateRules(ctx context.Context, tx repositories.Transaction_deprec, rules []models.CreateRuleInput) ([]models.Rule, error)
+	CreateRule(ctx context.Context, tx repositories.Transaction_deprec, rule models.CreateRuleInput) (models.Rule, error)
 }
 
 type RuleUsecase struct {
@@ -27,14 +27,14 @@ type RuleUsecase struct {
 	enforceSecurity         security.EnforceSecurityScenario
 	repository              RuleUsecaseRepository
 	scenarioFetcher         scenarios.ScenarioFetcher
-	transactionFactory      transaction.TransactionFactory
+	transactionFactory      transaction.TransactionFactory_deprec
 }
 
 func (usecase *RuleUsecase) ListRules(ctx context.Context, iterationId string) ([]models.Rule, error) {
-	return transaction.TransactionReturnValue(ctx,
+	return transaction.TransactionReturnValue_deprec(ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction) ([]models.Rule, error) {
+		func(tx repositories.Transaction_deprec) ([]models.Rule, error) {
 			scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, tx, iterationId)
 			if err != nil {
 				return nil, err
@@ -47,10 +47,10 @@ func (usecase *RuleUsecase) ListRules(ctx context.Context, iterationId string) (
 }
 
 func (usecase *RuleUsecase) CreateRule(ctx context.Context, ruleInput models.CreateRuleInput) (models.Rule, error) {
-	rule, err := transaction.TransactionReturnValue(ctx,
+	rule, err := transaction.TransactionReturnValue_deprec(ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction) (models.Rule, error) {
+		func(tx repositories.Transaction_deprec) (models.Rule, error) {
 			organizationId, err := usecase.organizationIdOfContext()
 			if err != nil {
 				return models.Rule{}, err
@@ -85,10 +85,10 @@ func (usecase *RuleUsecase) CreateRule(ctx context.Context, ruleInput models.Cre
 }
 
 func (usecase *RuleUsecase) GetRule(ctx context.Context, ruleId string) (models.Rule, error) {
-	return transaction.TransactionReturnValue(ctx,
+	return transaction.TransactionReturnValue_deprec(ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction) (models.Rule, error) {
+		func(tx repositories.Transaction_deprec) (models.Rule, error) {
 			rule, err := usecase.repository.GetRuleById(ctx, tx, ruleId)
 			if err != nil {
 				return models.Rule{}, err
@@ -106,7 +106,7 @@ func (usecase *RuleUsecase) GetRule(ctx context.Context, ruleId string) (models.
 }
 
 func (usecase *RuleUsecase) UpdateRule(ctx context.Context, updateRule models.UpdateRuleInput) (updatedRule models.Rule, err error) {
-	err = usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+	err = usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) error {
 		rule, err := usecase.repository.GetRuleById(ctx, tx, updateRule.Id)
 		if err != nil {
 			return err
@@ -142,7 +142,7 @@ func (usecase *RuleUsecase) UpdateRule(ctx context.Context, updateRule models.Up
 }
 
 func (usecase *RuleUsecase) DeleteRule(ctx context.Context, ruleId string) error {
-	err := usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+	err := usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) error {
 		rule, err := usecase.repository.GetRuleById(ctx, tx, ruleId)
 		if err != nil {
 			return err

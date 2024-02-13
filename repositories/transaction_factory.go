@@ -11,35 +11,35 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type DatabaseConnectionPoolRepository interface {
+type DatabaseConnectionPoolRepository_deprec interface {
 	DatabaseConnectionPool(ctx context.Context, connection models.PostgresConnection) (*pgxpool.Pool, error)
 }
 
-type TransactionFactoryPosgresql struct {
-	databaseConnectionPoolRepository DatabaseConnectionPoolRepository
+type TransactionFactoryPosgresql_deprec struct {
+	databaseConnectionPoolRepository DatabaseConnectionPoolRepository_deprec
 	marbleConnectionPool             *pgxpool.Pool
 }
 
-func NewTransactionFactoryPosgresql(
-	databaseConnectionPoolRepository DatabaseConnectionPoolRepository,
+func NewTransactionFactoryPosgresql_deprec(
+	databaseConnectionPoolRepository DatabaseConnectionPoolRepository_deprec,
 	marbleConnectionPool *pgxpool.Pool,
-) TransactionFactoryPosgresql {
-	return TransactionFactoryPosgresql{
+) TransactionFactoryPosgresql_deprec {
+	return TransactionFactoryPosgresql_deprec{
 		databaseConnectionPoolRepository: databaseConnectionPoolRepository,
 		marbleConnectionPool:             marbleConnectionPool,
 	}
 }
 
-func (factory *TransactionFactoryPosgresql) adaptMarbleDatabaseTransaction(ctx context.Context, transaction Transaction) TransactionPostgres {
+func (factory *TransactionFactoryPosgresql_deprec) adaptMarbleDatabaseTransaction(ctx context.Context, transaction Transaction_deprec) TransactionPostgres_deprec {
 
 	if transaction == nil {
-		transaction = TransactionPostgres{
+		transaction = TransactionPostgres_deprec{
 			databaseShema: models.DATABASE_MARBLE_SCHEMA,
 			exec:          factory.marbleConnectionPool,
 		}
 	}
 
-	tx := transaction.(TransactionPostgres)
+	tx := transaction.(TransactionPostgres_deprec)
 
 	if transaction.DatabaseSchema().SchemaType != models.DATABASE_SCHEMA_TYPE_MARBLE {
 		panic("can only handle transactions in Marble database.")
@@ -47,23 +47,23 @@ func (factory *TransactionFactoryPosgresql) adaptMarbleDatabaseTransaction(ctx c
 	return tx
 }
 
-func adaptClientDatabaseTransaction(transaction Transaction) TransactionPostgres {
+func adaptClientDatabaseTransaction(transaction Transaction_deprec) TransactionPostgres_deprec {
 
-	tx := transaction.(TransactionPostgres)
+	tx := transaction.(TransactionPostgres_deprec)
 	if transaction.DatabaseSchema().SchemaType != models.DATABASE_SCHEMA_TYPE_CLIENT {
 		panic("can only handle transactions in Client database.")
 	}
 	return tx
 }
 
-func (factory *TransactionFactoryPosgresql) Transaction(ctx context.Context, databaseSchema models.DatabaseSchema, fn func(tx Transaction) error) error {
+func (factory *TransactionFactoryPosgresql_deprec) Transaction(ctx context.Context, databaseSchema models.DatabaseSchema, fn func(tx Transaction_deprec) error) error {
 	connPool, err := factory.databaseConnectionPoolRepository.DatabaseConnectionPool(ctx, databaseSchema.Database.Connection)
 	if err != nil {
 		return err
 	}
 
 	err = pgx.BeginFunc(ctx, connPool, func(tx pgx.Tx) error {
-		return fn(TransactionPostgres{
+		return fn(TransactionPostgres_deprec{
 			databaseShema: databaseSchema,
 			exec:          tx,
 		})
@@ -71,7 +71,7 @@ func (factory *TransactionFactoryPosgresql) Transaction(ctx context.Context, dat
 
 	// helper: The callback can return ErrIgnoreRollBackError
 	// to explicitly specify that the error should be ignored.
-	if errors.Is(err, ErrIgnoreRollBackError) {
+	if errors.Is(err, models.ErrIgnoreRollBackError) {
 		return nil
 	}
 	return errors.Wrap(err, "Error executing transaction")

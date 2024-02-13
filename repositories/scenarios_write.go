@@ -7,7 +7,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
-func (repo *MarbleDbRepository) CreateScenario(ctx context.Context, tx Transaction, organizationId string, scenario models.CreateScenarioInput, newScenarioId string) error {
+func (repo *MarbleDbRepository) CreateScenario(ctx context.Context, tx Transaction_deprec, organizationId string, scenario models.CreateScenarioInput, newScenarioId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
@@ -35,7 +35,7 @@ func (repo *MarbleDbRepository) CreateScenario(ctx context.Context, tx Transacti
 	return nil
 }
 
-func (repo *MarbleDbRepository) UpdateScenario(ctx context.Context, tx Transaction, scenario models.UpdateScenarioInput) error {
+func (repo *MarbleDbRepository) UpdateScenario(ctx context.Context, tx Transaction_deprec, scenario models.UpdateScenarioInput) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	sql := NewQueryBuilder().
@@ -56,7 +56,7 @@ func (repo *MarbleDbRepository) UpdateScenario(ctx context.Context, tx Transacti
 	return nil
 }
 
-func (repo *MarbleDbRepository) UpdateScenarioLiveIterationId(ctx context.Context, tx Transaction, scenarioId string, scenarioIterationId *string) error {
+func (repo *MarbleDbRepository) UpdateScenarioLiveIterationId(ctx context.Context, tx Transaction_deprec, scenarioId string, scenarioIterationId *string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	sql := NewQueryBuilder().

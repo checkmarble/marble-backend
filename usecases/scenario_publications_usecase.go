@@ -7,6 +7,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/indexes"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
@@ -16,16 +17,17 @@ import (
 )
 
 type scenarioListRepository interface {
-	ListScenariosOfOrganization(ctx context.Context, tx repositories.Transaction, organizationId string) ([]models.Scenario, error)
+	ListScenariosOfOrganization(ctx context.Context, tx repositories.Transaction_deprec, organizationId string) ([]models.Scenario, error)
 }
 
 type IngestedDataIndexesRepository interface {
-	ListAllValidIndexes(ctx context.Context, exec *repositories.ExecutorPostgres) ([]models.ConcreteIndex, error)
-	CreateIndexesAsync(ctx context.Context, exec *repositories.ExecutorPostgres, indexes []models.ConcreteIndex) (numCreating int, err error)
+	ListAllValidIndexes(ctx context.Context, exec repositories.Executor) ([]models.ConcreteIndex, error)
+	CreateIndexesAsync(ctx context.Context, exec repositories.Executor, indexes []models.ConcreteIndex) (numCreating int, err error)
 }
 
 type ScenarioPublicationUsecase struct {
-	transactionFactory             transaction.TransactionFactory
+	TransactionFactory_deprec      transaction.TransactionFactory_deprec
+	transactionFactory             executor_factory.TransactionFactory
 	clientSchemaExecutorFactory    ClientSchemaExecutorFactory
 	scenarioPublicationsRepository repositories.ScenarioPublicationRepository
 	OrganizationIdOfContext        func() (string, error)
@@ -64,7 +66,7 @@ func (usecase *ScenarioPublicationUsecase) ListScenarioPublications(ctx context.
 }
 
 func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(ctx context.Context, input models.PublishScenarioIterationInput) ([]models.ScenarioPublication, error) {
-	return transaction.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) ([]models.ScenarioPublication, error) {
+	return transaction.TransactionReturnValue_deprec(ctx, usecase.TransactionFactory_deprec, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) ([]models.ScenarioPublication, error) {
 
 		scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, tx, input.ScenarioIterationId)
 		if err != nil {
@@ -113,7 +115,19 @@ func (usecase *ScenarioPublicationUsecase) CreateDatamodelIndexesForScenarioPubl
 	if err != nil {
 		return false, errors.Wrap(err, "Error while creating client schema executor in CreateDatamodelIndexesForScenarioPublication")
 	}
+
 	existingIndexes, err := usecase.ingestedDataIndexesRepository.ListAllValidIndexes(ctx, db)
+	if err != nil {
+		return false, errors.Wrap(err, "Error while fetching existing indexes in CreateDatamodelIndexesForScenarioPublication")
+	}
+	existingIndexes, err = executor_factory.TransactionReturnValueInOrgSchema(
+		ctx,
+		usecase.transactionFactory,
+		organizationId,
+		func(tx repositories.Executor) ([]models.ConcreteIndex, error) {
+			return usecase.ingestedDataIndexesRepository.ListAllValidIndexes(ctx, tx)
+		},
+	)
 	if err != nil {
 		return false, errors.Wrap(err, "Error while fetching existing indexes in CreateDatamodelIndexesForScenarioPublication")
 	}

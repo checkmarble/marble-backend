@@ -11,21 +11,21 @@ import (
 )
 
 type UserRepository interface {
-	CreateUser(ctx context.Context, tx Transaction, createUser models.CreateUser) (models.UserId, error)
-	UpdateUser(ctx context.Context, tx Transaction, updateUser models.UpdateUser) error
-	DeleteUser(ctx context.Context, tx Transaction, userID models.UserId) error
-	DeleteUsersOfOrganization(ctx context.Context, tx Transaction, organizationId string) error
-	UserByID(ctx context.Context, tx Transaction, userId models.UserId) (models.User, error)
-	UsersOfOrganization(ctx context.Context, tx Transaction, organizationIDFilter string) ([]models.User, error)
-	AllUsers(ctx context.Context, tx Transaction) ([]models.User, error)
-	UserByEmail(ctx context.Context, tx Transaction, email string) (*models.User, error)
+	CreateUser(ctx context.Context, tx Transaction_deprec, createUser models.CreateUser) (models.UserId, error)
+	UpdateUser(ctx context.Context, tx Transaction_deprec, updateUser models.UpdateUser) error
+	DeleteUser(ctx context.Context, tx Transaction_deprec, userID models.UserId) error
+	DeleteUsersOfOrganization(ctx context.Context, tx Transaction_deprec, organizationId string) error
+	UserByID(ctx context.Context, tx Transaction_deprec, userId models.UserId) (models.User, error)
+	UsersOfOrganization(ctx context.Context, tx Transaction_deprec, organizationIDFilter string) ([]models.User, error)
+	AllUsers(ctx context.Context, tx Transaction_deprec) ([]models.User, error)
+	UserByEmail(ctx context.Context, tx Transaction_deprec, email string) (*models.User, error)
 }
 
 type UserRepositoryPostgresql struct {
-	transactionFactory TransactionFactoryPosgresql
+	transactionFactory TransactionFactoryPosgresql_deprec
 }
 
-func (repo *UserRepositoryPostgresql) CreateUser(ctx context.Context, tx Transaction, createUser models.CreateUser) (models.UserId, error) {
+func (repo *UserRepositoryPostgresql) CreateUser(ctx context.Context, tx Transaction_deprec, createUser models.CreateUser) (models.UserId, error) {
 
 	userId := models.UserId(uuid.NewString())
 
@@ -59,7 +59,7 @@ func (repo *UserRepositoryPostgresql) CreateUser(ctx context.Context, tx Transac
 	return userId, err
 }
 
-func (repo *UserRepositoryPostgresql) UpdateUser(ctx context.Context, tx Transaction, updateUser models.UpdateUser) error {
+func (repo *UserRepositoryPostgresql) UpdateUser(ctx context.Context, tx Transaction_deprec, updateUser models.UpdateUser) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query := NewQueryBuilder().Update(dbmodels.TABLE_USERS).Where(squirrel.Eq{"id": updateUser.UserId})
@@ -81,7 +81,7 @@ func (repo *UserRepositoryPostgresql) UpdateUser(ctx context.Context, tx Transac
 	return err
 }
 
-func (repo *UserRepositoryPostgresql) DeleteUser(ctx context.Context, tx Transaction, userID models.UserId) error {
+func (repo *UserRepositoryPostgresql) DeleteUser(ctx context.Context, tx Transaction_deprec, userID models.UserId) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
@@ -94,7 +94,7 @@ func (repo *UserRepositoryPostgresql) DeleteUser(ctx context.Context, tx Transac
 	return err
 }
 
-func (repo *UserRepositoryPostgresql) DeleteUsersOfOrganization(ctx context.Context, tx Transaction, organizationId string) error {
+func (repo *UserRepositoryPostgresql) DeleteUsersOfOrganization(ctx context.Context, tx Transaction_deprec, organizationId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
@@ -104,7 +104,7 @@ func (repo *UserRepositoryPostgresql) DeleteUsersOfOrganization(ctx context.Cont
 	return err
 }
 
-func (repo *UserRepositoryPostgresql) UserByID(ctx context.Context, tx Transaction, userId models.UserId) (models.User, error) {
+func (repo *UserRepositoryPostgresql) UserByID(ctx context.Context, tx Transaction_deprec, userId models.UserId) (models.User, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToModel(
@@ -120,7 +120,7 @@ func (repo *UserRepositoryPostgresql) UserByID(ctx context.Context, tx Transacti
 	)
 }
 
-func (repo *UserRepositoryPostgresql) UsersOfOrganization(ctx context.Context, tx Transaction, organizationIDFilter string) ([]models.User, error) {
+func (repo *UserRepositoryPostgresql) UsersOfOrganization(ctx context.Context, tx Transaction_deprec, organizationIDFilter string) ([]models.User, error) {
 
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
@@ -137,7 +137,7 @@ func (repo *UserRepositoryPostgresql) UsersOfOrganization(ctx context.Context, t
 	)
 }
 
-func (repo *UserRepositoryPostgresql) AllUsers(ctx context.Context, tx Transaction) ([]models.User, error) {
+func (repo *UserRepositoryPostgresql) AllUsers(ctx context.Context, tx Transaction_deprec) ([]models.User, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToListOfModels(
@@ -151,7 +151,7 @@ func (repo *UserRepositoryPostgresql) AllUsers(ctx context.Context, tx Transacti
 	)
 }
 
-func (repo *UserRepositoryPostgresql) UserByEmail(ctx context.Context, tx Transaction, email string) (*models.User, error) {
+func (repo *UserRepositoryPostgresql) UserByEmail(ctx context.Context, tx Transaction_deprec, email string) (*models.User, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToOptionalModel(

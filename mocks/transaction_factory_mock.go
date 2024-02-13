@@ -14,7 +14,7 @@ type TransactionFactory struct {
 	TxMock *Transaction
 }
 
-func (t *TransactionFactory) Transaction(ctx context.Context, databaseSchema models.DatabaseSchema, fn func(tx repositories.Transaction) error) error {
+func (t *TransactionFactory) Transaction(ctx context.Context, databaseSchema models.DatabaseSchema, fn func(tx repositories.Transaction_deprec) error) error {
 	args := t.Called(databaseSchema, fn)
 	err := fn(t.TxMock)
 	if err != nil {

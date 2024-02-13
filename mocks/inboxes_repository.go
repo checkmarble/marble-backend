@@ -13,57 +13,57 @@ type InboxRepository struct {
 	mock.Mock
 }
 
-func (r *InboxRepository) ListInboxes(ctx context.Context, tx repositories.Transaction, organizationId string, inboxIds []string, withCaseCount bool) ([]models.Inbox, error) {
+func (r *InboxRepository) ListInboxes(ctx context.Context, tx repositories.Transaction_deprec, organizationId string, inboxIds []string, withCaseCount bool) ([]models.Inbox, error) {
 	args := r.Called(tx, organizationId, inboxIds)
 	return args.Get(0).([]models.Inbox), args.Error(1)
 }
 
-func (r *InboxRepository) GetInboxById(ctx context.Context, tx repositories.Transaction, inboxId string) (models.Inbox, error) {
+func (r *InboxRepository) GetInboxById(ctx context.Context, tx repositories.Transaction_deprec, inboxId string) (models.Inbox, error) {
 	args := r.Called(tx, inboxId)
 	return args.Get(0).(models.Inbox), args.Error(1)
 }
 
-func (r *InboxRepository) CreateInbox(ctx context.Context, tx repositories.Transaction, input models.CreateInboxInput, newInboxId string) error {
+func (r *InboxRepository) CreateInbox(ctx context.Context, tx repositories.Transaction_deprec, input models.CreateInboxInput, newInboxId string) error {
 	args := r.Called(tx, input, newInboxId)
 	return args.Error(0)
 }
 
-func (r *InboxRepository) UpdateInbox(ctx context.Context, tx repositories.Transaction, inboxId, name string) error {
+func (r *InboxRepository) UpdateInbox(ctx context.Context, tx repositories.Transaction_deprec, inboxId, name string) error {
 	args := r.Called(tx, inboxId, name)
 	return args.Error(0)
 }
 
-func (r *InboxRepository) SoftDeleteInbox(ctx context.Context, tx repositories.Transaction, inboxId string) error {
+func (r *InboxRepository) SoftDeleteInbox(ctx context.Context, tx repositories.Transaction_deprec, inboxId string) error {
 	args := r.Called(tx, inboxId)
 	return args.Error(0)
 }
 
-func (r *InboxRepository) ListOrganizationCases(ctx context.Context, tx repositories.Transaction, filters models.CaseFilters, pagination models.PaginationAndSorting) ([]models.CaseWithRank, error) {
+func (r *InboxRepository) ListOrganizationCases(ctx context.Context, tx repositories.Transaction_deprec, filters models.CaseFilters, pagination models.PaginationAndSorting) ([]models.CaseWithRank, error) {
 	args := r.Called(tx, filters, pagination)
 	return args.Get(0).([]models.CaseWithRank), args.Error(1)
 }
 
-func (r *InboxRepository) ListInboxUsers(ctx context.Context, tx repositories.Transaction, filters models.InboxUserFilterInput) ([]models.InboxUser, error) {
+func (r *InboxRepository) ListInboxUsers(ctx context.Context, tx repositories.Transaction_deprec, filters models.InboxUserFilterInput) ([]models.InboxUser, error) {
 	args := r.Called(tx, filters)
 	return args.Get(0).([]models.InboxUser), args.Error(1)
 }
 
-func (repo *InboxRepository) GetInboxUserById(ctx context.Context, tx repositories.Transaction, inboxUserId string) (models.InboxUser, error) {
+func (repo *InboxRepository) GetInboxUserById(ctx context.Context, tx repositories.Transaction_deprec, inboxUserId string) (models.InboxUser, error) {
 	args := repo.Called(tx, inboxUserId)
 	return args.Get(0).(models.InboxUser), args.Error(1)
 }
 
-func (repo *InboxRepository) CreateInboxUser(ctx context.Context, tx repositories.Transaction, input models.CreateInboxUserInput, newInboxUserId string) error {
+func (repo *InboxRepository) CreateInboxUser(ctx context.Context, tx repositories.Transaction_deprec, input models.CreateInboxUserInput, newInboxUserId string) error {
 	args := repo.Called(tx, input, newInboxUserId)
 	return args.Error(0)
 }
 
-func (repo *InboxRepository) UpdateInboxUser(ctx context.Context, tx repositories.Transaction, inboxUserId string, role models.InboxUserRole) error {
+func (repo *InboxRepository) UpdateInboxUser(ctx context.Context, tx repositories.Transaction_deprec, inboxUserId string, role models.InboxUserRole) error {
 	args := repo.Called(tx, inboxUserId, role)
 	return args.Error(0)
 }
 
-func (repo *InboxRepository) DeleteInboxUser(ctx context.Context, tx repositories.Transaction, inboxUserId string) error {
+func (repo *InboxRepository) DeleteInboxUser(ctx context.Context, tx repositories.Transaction_deprec, inboxUserId string) error {
 	args := repo.Called(tx, inboxUserId)
 	return args.Error(0)
 }

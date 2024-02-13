@@ -10,13 +10,13 @@ import (
 )
 
 type PopulateOrganizationSchema struct {
-	TransactionFactory           transaction.TransactionFactory
+	TransactionFactory           transaction.TransactionFactory_deprec
 	OrganizationRepository       repositories.OrganizationRepository
 	OrganizationSchemaRepository repositories.OrganizationSchemaRepository
 	DataModelRepository          repositories.DataModelRepository
 }
 
-func (p *PopulateOrganizationSchema) CreateOrganizationSchema(ctx context.Context, marbleTx repositories.Transaction, organization models.Organization, database models.Database) error {
+func (p *PopulateOrganizationSchema) CreateOrganizationSchema(ctx context.Context, marbleTx repositories.Transaction_deprec, organization models.Organization, database models.Database) error {
 
 	orgDatabaseSchema := models.DatabaseSchema{
 		SchemaType: models.DATABASE_SCHEMA_TYPE_CLIENT,
@@ -30,13 +30,13 @@ func (p *PopulateOrganizationSchema) CreateOrganizationSchema(ctx context.Contex
 	})
 }
 
-func (p *PopulateOrganizationSchema) CreateTable(ctx context.Context, marbleTx repositories.Transaction, organizationId, tableName string) error {
+func (p *PopulateOrganizationSchema) CreateTable(ctx context.Context, marbleTx repositories.Transaction_deprec, organizationId, tableName string) error {
 	orgSchema, err := p.OrganizationSchemaRepository.OrganizationSchemaOfOrganization(ctx, marbleTx, organizationId)
 	if err != nil {
 		return err
 	}
 
-	return p.TransactionFactory.Transaction(ctx, orgSchema.DatabaseSchema, func(orgSchemaTx repositories.Transaction) error {
+	return p.TransactionFactory.Transaction(ctx, orgSchema.DatabaseSchema, func(orgSchemaTx repositories.Transaction_deprec) error {
 		err := p.OrganizationSchemaRepository.CreateSchema(ctx, orgSchemaTx, orgSchema.DatabaseSchema.Schema)
 		if err != nil {
 			return err
@@ -45,13 +45,13 @@ func (p *PopulateOrganizationSchema) CreateTable(ctx context.Context, marbleTx r
 	})
 }
 
-func (p *PopulateOrganizationSchema) CreateField(ctx context.Context, marbleTx repositories.Transaction, organizationID, tableName string, field models.DataModelField) error {
+func (p *PopulateOrganizationSchema) CreateField(ctx context.Context, marbleTx repositories.Transaction_deprec, organizationID, tableName string, field models.DataModelField) error {
 	orgSchema, err := p.OrganizationSchemaRepository.OrganizationSchemaOfOrganization(ctx, marbleTx, organizationID)
 	if err != nil {
 		return err
 	}
 
-	return p.TransactionFactory.Transaction(ctx, orgSchema.DatabaseSchema, func(orgSchemaTx repositories.Transaction) error {
+	return p.TransactionFactory.Transaction(ctx, orgSchema.DatabaseSchema, func(orgSchemaTx repositories.Transaction_deprec) error {
 		return p.OrganizationSchemaRepository.CreateField(ctx, orgSchemaTx, orgSchema.DatabaseSchema.Schema, tableName, field)
 	})
 }

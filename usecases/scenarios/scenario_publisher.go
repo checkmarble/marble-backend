@@ -11,9 +11,9 @@ import (
 )
 
 type ScenarioPublisherRepository interface {
-	UpdateScenarioLiveIterationId(ctx context.Context, tx repositories.Transaction, scenarioId string, scenarioIterationId *string) error
-	ListScenarioIterations(ctx context.Context, tx repositories.Transaction, organizationId string, filters models.GetScenarioIterationFilters) ([]models.ScenarioIteration, error)
-	UpdateScenarioIterationVersion(ctx context.Context, tx repositories.Transaction, scenarioIterationId string, newVersion int) error
+	UpdateScenarioLiveIterationId(ctx context.Context, tx repositories.Transaction_deprec, scenarioId string, scenarioIterationId *string) error
+	ListScenarioIterations(ctx context.Context, tx repositories.Transaction_deprec, organizationId string, filters models.GetScenarioIterationFilters) ([]models.ScenarioIteration, error)
+	UpdateScenarioIterationVersion(ctx context.Context, tx repositories.Transaction_deprec, scenarioIterationId string, newVersion int) error
 }
 
 type ScenarioPublisher struct {
@@ -24,7 +24,7 @@ type ScenarioPublisher struct {
 
 func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(
 	ctx context.Context,
-	tx repositories.Transaction,
+	tx repositories.Transaction_deprec,
 	scenarioAndIteration ScenarioAndIteration,
 	publicationAction models.PublicationAction,
 ) ([]models.ScenarioPublication, error) {
@@ -86,7 +86,7 @@ func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(
 	return scenarioPublications, nil
 }
 
-func (publisher *ScenarioPublisher) unpublishOldIteration(ctx context.Context, tx repositories.Transaction, organizationId, scenarioId string, liveVersionId *string) ([]models.ScenarioPublication, error) {
+func (publisher *ScenarioPublisher) unpublishOldIteration(ctx context.Context, tx repositories.Transaction_deprec, organizationId, scenarioId string, liveVersionId *string) ([]models.ScenarioPublication, error) {
 	if liveVersionId == nil {
 		return []models.ScenarioPublication{}, nil
 	}
@@ -108,7 +108,7 @@ func (publisher *ScenarioPublisher) unpublishOldIteration(ctx context.Context, t
 	return []models.ScenarioPublication{scenarioPublication}, err
 }
 
-func (publisher *ScenarioPublisher) publishNewIteration(ctx context.Context, tx repositories.Transaction, organizationId, scenarioId, scenarioIterationId string) (models.ScenarioPublication, error) {
+func (publisher *ScenarioPublisher) publishNewIteration(ctx context.Context, tx repositories.Transaction_deprec, organizationId, scenarioId, scenarioIterationId string) (models.ScenarioPublication, error) {
 	newScenarioPublicationId := utils.NewPrimaryKey(organizationId)
 	if err := publisher.ScenarioPublicationsRepository.CreateScenarioPublication(ctx, tx, models.CreateScenarioPublicationInput{
 		OrganizationId:      organizationId,
@@ -130,7 +130,7 @@ func (publisher *ScenarioPublisher) publishNewIteration(ctx context.Context, tx 
 	return scenarioPublication, nil
 }
 
-func (publisher *ScenarioPublisher) getScenarioVersion(ctx context.Context, tx repositories.Transaction, organizationId, scenarioId, iterationId string) (int, error) {
+func (publisher *ScenarioPublisher) getScenarioVersion(ctx context.Context, tx repositories.Transaction_deprec, organizationId, scenarioId, iterationId string) (int, error) {
 	scenarioIterations, err := publisher.Repository.ListScenarioIterations(ctx, tx, organizationId, models.GetScenarioIterationFilters{ScenarioId: &scenarioId})
 	if err != nil {
 		return 0, err

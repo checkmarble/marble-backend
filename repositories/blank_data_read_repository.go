@@ -13,14 +13,14 @@ import (
 )
 
 type BlankDataReadRepository interface {
-	GetFirstTransactionTimestamp(ctx context.Context, transaction Transaction, ownerBusinessId string) (*time.Time, error)
-	SumTransactionsAmount(ctx context.Context, transaction Transaction, ownerBusinessId string, direction string, createdFrom time.Time, createdTo time.Time) (float64, error)
-	RetrieveTransactions(ctx context.Context, transaction Transaction, filters map[string]any, createdFrom time.Time) ([]map[string]any, error)
+	GetFirstTransactionTimestamp(ctx context.Context, transaction Transaction_deprec, ownerBusinessId string) (*time.Time, error)
+	SumTransactionsAmount(ctx context.Context, transaction Transaction_deprec, ownerBusinessId string, direction string, createdFrom time.Time, createdTo time.Time) (float64, error)
+	RetrieveTransactions(ctx context.Context, transaction Transaction_deprec, filters map[string]any, createdFrom time.Time) ([]map[string]any, error)
 }
 
 type BlankDataReadRepositoryImpl struct{}
 
-func (repo *BlankDataReadRepositoryImpl) GetFirstTransactionTimestamp(ctx context.Context, transaction Transaction, ownerBusinessId string) (*time.Time, error) {
+func (repo *BlankDataReadRepositoryImpl) GetFirstTransactionTimestamp(ctx context.Context, transaction Transaction_deprec, ownerBusinessId string) (*time.Time, error) {
 	tx := adaptClientDatabaseTransaction(transaction)
 
 	tableName := tableNameWithSchema(tx, models.TableName("transactions"))
@@ -46,7 +46,7 @@ func (repo *BlankDataReadRepositoryImpl) GetFirstTransactionTimestamp(ctx contex
 	return output, nil
 }
 
-func (repo *BlankDataReadRepositoryImpl) SumTransactionsAmount(ctx context.Context, transaction Transaction, ownerBusinessId string, direction string, createdFrom time.Time, createdTo time.Time) (float64, error) {
+func (repo *BlankDataReadRepositoryImpl) SumTransactionsAmount(ctx context.Context, transaction Transaction_deprec, ownerBusinessId string, direction string, createdFrom time.Time, createdTo time.Time) (float64, error) {
 	tx := adaptClientDatabaseTransaction(transaction)
 
 	tableName := tableNameWithSchema(tx, models.TableName("transactions"))
@@ -75,7 +75,7 @@ func (repo *BlankDataReadRepositoryImpl) SumTransactionsAmount(ctx context.Conte
 	return output, nil
 }
 
-func (repo *BlankDataReadRepositoryImpl) RetrieveTransactions(ctx context.Context, transaction Transaction, filters map[string]any, createdFrom time.Time) ([]map[string]any, error) {
+func (repo *BlankDataReadRepositoryImpl) RetrieveTransactions(ctx context.Context, transaction Transaction_deprec, filters map[string]any, createdFrom time.Time) ([]map[string]any, error) {
 	tx := adaptClientDatabaseTransaction(transaction)
 
 	tableName := tableNameWithSchema(tx, models.TableName("transactions"))

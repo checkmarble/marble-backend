@@ -14,14 +14,14 @@ import (
 )
 
 type ScenarioUsecaseRepository interface {
-	GetScenarioById(ctx context.Context, tx repositories.Transaction, scenarioId string) (models.Scenario, error)
-	ListScenariosOfOrganization(ctx context.Context, tx repositories.Transaction, organizationId string) ([]models.Scenario, error)
-	CreateScenario(ctx context.Context, tx repositories.Transaction, organizationId string, scenario models.CreateScenarioInput, newScenarioId string) error
-	UpdateScenario(ctx context.Context, tx repositories.Transaction, scenario models.UpdateScenarioInput) error
+	GetScenarioById(ctx context.Context, tx repositories.Transaction_deprec, scenarioId string) (models.Scenario, error)
+	ListScenariosOfOrganization(ctx context.Context, tx repositories.Transaction_deprec, organizationId string) ([]models.Scenario, error)
+	CreateScenario(ctx context.Context, tx repositories.Transaction_deprec, organizationId string, scenario models.CreateScenarioInput, newScenarioId string) error
+	UpdateScenario(ctx context.Context, tx repositories.Transaction_deprec, scenario models.UpdateScenarioInput) error
 }
 
 type ScenarioUsecase struct {
-	transactionFactory      transaction.TransactionFactory
+	transactionFactory      transaction.TransactionFactory_deprec
 	organizationIdOfContext func() (string, error)
 	enforceSecurity         security.EnforceSecurityScenario
 	repository              ScenarioUsecaseRepository
@@ -59,11 +59,11 @@ func (usecase *ScenarioUsecase) GetScenario(ctx context.Context, scenarioId stri
 }
 
 func (usecase *ScenarioUsecase) UpdateScenario(ctx context.Context, scenarioInput models.UpdateScenarioInput) (models.Scenario, error) {
-	return transaction.TransactionReturnValue(
+	return transaction.TransactionReturnValue_deprec(
 		ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction) (models.Scenario, error) {
+		func(tx repositories.Transaction_deprec) (models.Scenario, error) {
 
 			scenario, err := usecase.repository.GetScenarioById(ctx, tx, scenarioInput.Id)
 			if err != nil {
@@ -93,11 +93,11 @@ func (usecase *ScenarioUsecase) CreateScenario(ctx context.Context, scenario mod
 		return models.Scenario{}, err
 	}
 
-	cratedScenario, err := transaction.TransactionReturnValue(
+	cratedScenario, err := transaction.TransactionReturnValue_deprec(
 		ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction) (models.Scenario, error) {
+		func(tx repositories.Transaction_deprec) (models.Scenario, error) {
 			newScenarioId := utils.NewPrimaryKey(organizationId)
 			if err := usecase.repository.CreateScenario(ctx, tx, organizationId, scenario, newScenarioId); err != nil {
 				return models.Scenario{}, err
