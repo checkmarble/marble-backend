@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/checkmarble/marble-backend/dto"
-	"github.com/checkmarble/marble-backend/utils"
+	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
 func (api *API) handleListAnalytics(c *gin.Context) {
@@ -17,6 +17,6 @@ func (api *API) handleListAnalytics(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"analytics": utils.Map(analytics, dto.AdaptAnalyticsDto),
+		"analytics": pure_utils.Map(analytics, dto.AdaptAnalyticsDto),
 	})
 }

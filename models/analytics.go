@@ -47,6 +47,6 @@ func (analytics GlobalDashboardAnalytics) GetEmbeddingType() EmbeddingType {
 
 func (analytics GlobalDashboardAnalytics) GetParams() map[string]interface{} {
 	return map[string]interface{}{
-		"organization": []string{analytics.OrganizationId},
+		"organization_id": []string{analytics.OrganizationId},
 	}
 }

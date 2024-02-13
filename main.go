@@ -77,7 +77,7 @@ func initDependencies(conf AppConfiguration, signingKey *rsa.PrivateKey) (depend
 }
 
 func runServer(ctx context.Context, appConfig AppConfiguration) {
-	jwtSigningKey := utils.GetRequiredStringEnv("AUTHENTICATION_JWT_SIGNING_KEY")
+	jwtSigningKey := utils.GetRequiredEnv[string]("AUTHENTICATION_JWT_SIGNING_KEY")
 	marbleJwtSigningKey := infra.MustParseSigningKey(jwtSigningKey)
 
 	uc := NewUseCases(ctx, appConfig, marbleJwtSigningKey)
@@ -147,31 +147,31 @@ type AppConfiguration struct {
 
 func main() {
 	appConfig := AppConfiguration{
-		env:        utils.GetStringEnv("ENV", "development"),
-		port:       utils.GetRequiredStringEnv("PORT"),
+		env:        utils.GetEnv("ENV", "development"),
+		port:       utils.GetRequiredEnv[string]("PORT"),
 		gcpProject: os.Getenv("GOOGLE_CLOUD_PROJECT"),
 		pgConfig: utils.PGConfig{
-			Hostname: utils.GetRequiredStringEnv("PG_HOSTNAME"),
-			Port:     utils.GetStringEnv("PG_PORT", "5432"),
-			User:     utils.GetRequiredStringEnv("PG_USER"),
-			Password: utils.GetRequiredStringEnv("PG_PASSWORD"),
+			Hostname: utils.GetRequiredEnv[string]("PG_HOSTNAME"),
+			Port:     utils.GetEnv("PG_PORT", "5432"),
+			User:     utils.GetRequiredEnv[string]("PG_USER"),
+			Password: utils.GetRequiredEnv[string]("PG_PASSWORD"),
 			Database: "marble",
 		},
 		config: models.GlobalConfiguration{
-			TokenLifetimeMinute:  utils.GetIntEnv("TOKEN_LIFETIME_MINUTE", 60*2),
-			FakeAwsS3Repository:  utils.GetBoolEnv("FAKE_AWS_S3", false),
-			FakeGcsRepository:    utils.GetBoolEnv("FAKE_GCS", false),
-			GcsIngestionBucket:   utils.GetRequiredStringEnv("GCS_INGESTION_BUCKET"),
-			GcsCaseManagerBucket: utils.GetRequiredStringEnv("GCS_CASE_MANAGER_BUCKET"),
-			SegmentWriteKey:      utils.GetRequiredStringEnv("SEGMENT_WRITE_KEY"),
+			TokenLifetimeMinute:  utils.GetEnv("TOKEN_LIFETIME_MINUTE", 60*2),
+			FakeAwsS3Repository:  utils.GetEnv("FAKE_AWS_S3", false),
+			FakeGcsRepository:    utils.GetEnv("FAKE_GCS", false),
+			GcsIngestionBucket:   utils.GetRequiredEnv[string]("GCS_INGESTION_BUCKET"),
+			GcsCaseManagerBucket: utils.GetRequiredEnv[string]("GCS_CASE_MANAGER_BUCKET"),
+			SegmentWriteKey:      utils.GetRequiredEnv[string]("SEGMENT_WRITE_KEY"),
 		},
-		sentryDsn: utils.GetStringEnv("SENTRY_DSN", ""),
+		sentryDsn: utils.GetEnv("SENTRY_DSN", ""),
 		metabase: models.MetabaseConfiguration{
-			SiteUrl:             utils.GetRequiredStringEnv("METABASE_SITE_URL"),
-			JwtSigningKey:       []byte(utils.GetRequiredStringEnv("METABASE_JWT_SIGNING_KEY")),
-			TokenLifetimeMinute: utils.GetIntEnv("METABASE_TOKEN_LIFETIME_MINUTE", 10),
+			SiteUrl:             utils.GetRequiredEnv[string]("METABASE_SITE_URL"),
+			JwtSigningKey:       []byte(utils.GetRequiredEnv[string]("METABASE_JWT_SIGNING_KEY")),
+			TokenLifetimeMinute: utils.GetEnv("METABASE_TOKEN_LIFETIME_MINUTE", 10),
 			Resources: map[models.EmbeddingType]int{
-				models.GlobalDashboard: utils.GetRequiredIntEnv("METABASE_GLOBAL_DASHBOARD_ID"),
+				models.GlobalDashboard: utils.GetRequiredEnv[int]("METABASE_GLOBAL_DASHBOARD_ID"),
 			},
 		},
 	}
