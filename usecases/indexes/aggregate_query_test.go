@@ -1,4 +1,4 @@
-package models
+package indexes
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/go-set/v2"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 )
 
@@ -25,7 +26,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 		}
 		aggregateFamily, err := aggregationNodeToQueryFamily(node)
 		asserts.NoError(err)
-		asserts.Equal(TableName("table"), aggregateFamily.TableName, "table name should be input table name")
+		asserts.Equal(models.TableName("table"), aggregateFamily.TableName, "table name should be input table name")
 	})
 
 	t.Run("missing filters child", func(t *testing.T) {
@@ -67,9 +68,9 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 		}
 		aggregateFamily, err := aggregationNodeToQueryFamily(node)
 		asserts.NoError(err)
-		asserts.Equal(TableName("table"), aggregateFamily.TableName)
+		asserts.Equal(models.TableName("table"), aggregateFamily.TableName)
 		asserts.Equal(1, aggregateFamily.EqConditions.Size())
-		asserts.True(aggregateFamily.EqConditions.Contains(FieldName("field")))
+		asserts.True(aggregateFamily.EqConditions.Contains(models.FieldName("field")))
 		asserts.Equal(0, aggregateFamily.IneqConditions.Size())
 		asserts.Equal(1, aggregateFamily.SelectOrOtherConditions.Size(), "SelectOrOtherConditions should contain field 0")
 	})
@@ -105,9 +106,9 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 		}
 		aggregateFamily, err := aggregationNodeToQueryFamily(node)
 		asserts.NoError(err)
-		asserts.Equal(TableName("table"), aggregateFamily.TableName)
+		asserts.Equal(models.TableName("table"), aggregateFamily.TableName)
 		asserts.Equal(1, aggregateFamily.EqConditions.Size())
-		asserts.True(aggregateFamily.EqConditions.Contains(FieldName("field")))
+		asserts.True(aggregateFamily.EqConditions.Contains(models.FieldName("field")))
 		asserts.Equal(0, aggregateFamily.IneqConditions.Size())
 		asserts.Equal(1, aggregateFamily.SelectOrOtherConditions.Size(), "SelectOrOtherConditions should contain field 0")
 	})
@@ -143,11 +144,11 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 		}
 		aggregateFamily, err := aggregationNodeToQueryFamily(node)
 		asserts.NoError(err)
-		asserts.Equal(TableName("table"), aggregateFamily.TableName)
+		asserts.Equal(models.TableName("table"), aggregateFamily.TableName)
 		asserts.Equal(1, aggregateFamily.EqConditions.Size())
-		asserts.True(aggregateFamily.EqConditions.Contains(FieldName("field 1")))
+		asserts.True(aggregateFamily.EqConditions.Contains(models.FieldName("field 1")))
 		asserts.Equal(1, aggregateFamily.IneqConditions.Size())
-		asserts.True(aggregateFamily.IneqConditions.Contains(FieldName("field 2")))
+		asserts.True(aggregateFamily.IneqConditions.Contains(models.FieldName("field 2")))
 		asserts.Equal(1, aggregateFamily.SelectOrOtherConditions.Size(), "SelectOrOtherConditions should contain field 0")
 	})
 
@@ -223,14 +224,14 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 		}
 		aggregateFamily, err := aggregationNodeToQueryFamily(node)
 		asserts.NoError(err)
-		asserts.Equal(TableName("table"), aggregateFamily.TableName)
+		asserts.Equal(models.TableName("table"), aggregateFamily.TableName)
 		asserts.Equal(2, aggregateFamily.EqConditions.Size(), "EqConditions should contain field 1 and field 2")
-		asserts.True(aggregateFamily.EqConditions.Contains(FieldName("field 1")), "EqConditions should contain field 1")
-		asserts.True(aggregateFamily.EqConditions.Contains(FieldName("field 2")), "EqConditions should contain field 2")
+		asserts.True(aggregateFamily.EqConditions.Contains(models.FieldName("field 1")), "EqConditions should contain field 1")
+		asserts.True(aggregateFamily.EqConditions.Contains(models.FieldName("field 2")), "EqConditions should contain field 2")
 		asserts.Equal(1, aggregateFamily.IneqConditions.Size(), "IneqConditions should contain field 3")
-		asserts.True(aggregateFamily.IneqConditions.Contains(FieldName("field 3")), "IneqConditions should contain field 3")
+		asserts.True(aggregateFamily.IneqConditions.Contains(models.FieldName("field 3")), "IneqConditions should contain field 3")
 		asserts.Equal(1, aggregateFamily.SelectOrOtherConditions.Size(), "SelectOrOtherConditions should contain 1 field")
-		asserts.True(aggregateFamily.SelectOrOtherConditions.Contains(FieldName("field 0")), "SelectOrOtherConditions should contain field 0")
+		asserts.True(aggregateFamily.SelectOrOtherConditions.Contains(models.FieldName("field 0")), "SelectOrOtherConditions should contain field 0")
 	})
 }
 
@@ -284,12 +285,12 @@ func TestAstNodeToQueryFamilies(t *testing.T) {
 		output, err := extractQueryFamiliesFromAst(ast)
 		asserts.NoError(err)
 		asserts.Equal(1, output.Size(), "There should be only 1 query family in the output set")
-		expected := set.NewHashSet[AggregateQueryFamily](0)
-		expected.Insert(AggregateQueryFamily{
-			TableName:               TableName("table"),
-			EqConditions:            set.From[FieldName]([]FieldName{"field"}),
-			IneqConditions:          set.New[FieldName](0),
-			SelectOrOtherConditions: set.From[FieldName]([]FieldName{"field 0"}),
+		expected := set.NewHashSet[models.AggregateQueryFamily](0)
+		expected.Insert(models.AggregateQueryFamily{
+			TableName:               models.TableName("table"),
+			EqConditions:            set.From[models.FieldName]([]models.FieldName{"field"}),
+			IneqConditions:          set.New[models.FieldName](0),
+			SelectOrOtherConditions: set.From[models.FieldName]([]models.FieldName{"field 0"}),
 		})
 		asserts.True(output.EqualSet(expected), "The output set should contain the one query family (that was present twice)")
 		fmt.Println(expected)
@@ -371,24 +372,24 @@ func TestAstNodeToQueryFamilies(t *testing.T) {
 		output, err := extractQueryFamiliesFromAst(ast)
 		asserts.NoError(err)
 		asserts.Equal(3, output.Size(), "There should be 2 query families in the output set")
-		expected := set.NewHashSet[AggregateQueryFamily](0)
-		expected.Insert(AggregateQueryFamily{
-			TableName:               TableName("table"),
-			EqConditions:            set.From[FieldName]([]FieldName{"field"}),
-			IneqConditions:          set.New[FieldName](0),
-			SelectOrOtherConditions: set.From[FieldName]([]FieldName{"field 0"}),
+		expected := set.NewHashSet[models.AggregateQueryFamily](0)
+		expected.Insert(models.AggregateQueryFamily{
+			TableName:               models.TableName("table"),
+			EqConditions:            set.From[models.FieldName]([]models.FieldName{"field"}),
+			IneqConditions:          set.New[models.FieldName](0),
+			SelectOrOtherConditions: set.From[models.FieldName]([]models.FieldName{"field 0"}),
 		})
-		expected.Insert(AggregateQueryFamily{
-			TableName:               TableName("table"),
-			EqConditions:            set.New[FieldName](0),
-			IneqConditions:          set.From[FieldName]([]FieldName{"field"}),
-			SelectOrOtherConditions: set.From[FieldName]([]FieldName{"field 0"}),
+		expected.Insert(models.AggregateQueryFamily{
+			TableName:               models.TableName("table"),
+			EqConditions:            set.New[models.FieldName](0),
+			IneqConditions:          set.From[models.FieldName]([]models.FieldName{"field"}),
+			SelectOrOtherConditions: set.From[models.FieldName]([]models.FieldName{"field 0"}),
 		})
-		expected.Insert(AggregateQueryFamily{
-			TableName:               TableName("table"),
-			EqConditions:            set.From[FieldName]([]FieldName{"field 0"}),
-			IneqConditions:          set.New[FieldName](0),
-			SelectOrOtherConditions: set.From[FieldName]([]FieldName{"field 2", "field 3"}),
+		expected.Insert(models.AggregateQueryFamily{
+			TableName:               models.TableName("table"),
+			EqConditions:            set.From[models.FieldName]([]models.FieldName{"field 0"}),
+			IneqConditions:          set.New[models.FieldName](0),
+			SelectOrOtherConditions: set.From[models.FieldName]([]models.FieldName{"field 2", "field 3"}),
 		})
 		asserts.True(output.EqualSet(expected), "The output set should contain the 2 query families")
 		fmt.Println(expected)

@@ -7,6 +7,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/indexes"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/transaction"
@@ -117,7 +118,7 @@ func (usecase *ScenarioPublicationUsecase) CreateDatamodelIndexesForScenarioPubl
 		return false, errors.Wrap(err, "Error while fetching existing indexes in CreateDatamodelIndexesForScenarioPublication")
 	}
 
-	indexesToCreate, err := models.IndexesToCreateFromScenarioIterations(append(activeScenarioIterations, iterationToActivate.Iteration), existingIndexes)
+	indexesToCreate, err := indexes.IndexesToCreateFromScenarioIterations(append(activeScenarioIterations, iterationToActivate.Iteration), existingIndexes)
 	if err != nil {
 		return false, errors.Wrap(err, "Error while finding indexes to create from scenario iterations in CreateDatamodelIndexesForScenarioPublication")
 	}

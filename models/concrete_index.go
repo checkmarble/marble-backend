@@ -20,12 +20,12 @@ func (i ConcreteIndex) Equal(other ConcreteIndex) bool {
 		set.From(i.Included).Equal(set.From(other.Included))
 }
 
-func (i ConcreteIndex) covers(f IndexFamily) bool {
+func (i ConcreteIndex) Covers(f IndexFamily) bool {
 	// We need to make a copy of f because we are going to modify it
 	// put all the identifiers to upper case, because postgres is not case sensitive as
 	// far as identifiers are concerned (unless quoted)
 	// and as such will return names will all lower case
-	f = f.copy()
+	f = f.Copy()
 	f.TableName = TableName(strings.ToUpper(string(f.TableName)))
 	f.Last = fieldNameToUpper(f.Last)
 	f.Fixed = pure_utils.Map(f.Fixed, fieldNameToUpper)
@@ -84,7 +84,7 @@ func (i ConcreteIndex) covers(f IndexFamily) bool {
 	//                                              ^^
 	// does not cover: x8 is not in the index family but comes before x9 in the concrete index
 	if f.Last != "" {
-		if f.size() > len(i.Indexed) || i.Indexed[f.size()-1] != f.Last {
+		if f.Size() > len(i.Indexed) || i.Indexed[f.Size()-1] != f.Last {
 			return false
 		}
 	}
@@ -99,50 +99,4 @@ func (i ConcreteIndex) covers(f IndexFamily) bool {
 
 func fieldNameToUpper(f FieldName) FieldName {
 	return FieldName(strings.ToUpper(string(f)))
-}
-
-func selectConcreteIndexesToCreate(
-	idxFamilies set.Collection[IndexFamily],
-	existing []ConcreteIndex,
-) []ConcreteIndex {
-	toCreateFamilies := selectIdxFamiliesToCreate(idxFamilies, existing)
-
-	toCreateIdx := make([]ConcreteIndex, 0, toCreateFamilies.Size())
-	toCreateFamilies.ForEach(func(family IndexFamily) bool {
-		indexed := family.Fixed
-		indexed = append(indexed, family.Flex.Slice()...)
-		if family.Last != "" {
-			indexed = append(indexed, family.Last)
-		}
-		toCreateIdx = append(toCreateIdx, ConcreteIndex{
-			TableName: family.TableName,
-			Indexed:   indexed,
-			Included:  family.Included.Slice(),
-		})
-		return true
-	})
-
-	return toCreateIdx
-}
-
-func selectIdxFamiliesToCreate(
-	idxFamilies set.Collection[IndexFamily],
-	existing []ConcreteIndex,
-) set.Collection[IndexFamily] {
-	toCreate := set.NewHashSet[IndexFamily](0)
-
-	for _, family := range idxFamilies.Slice() {
-		found := false
-		for _, concreteIndex := range existing {
-			if concreteIndex.covers(family) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			toCreate.Insert(family.copy())
-		}
-	}
-
-	return toCreate
 }
