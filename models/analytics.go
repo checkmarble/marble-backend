@@ -2,16 +2,27 @@ package models
 
 type EmbeddingType int
 
+// Look at GlobalDashboard to fill all places where it is used (no pattern matching enforced by the compilator in Go)
 const (
 	GlobalDashboard EmbeddingType = iota
 )
 
-func (id EmbeddingType) String() string {
-	switch id {
+func (embeddingType EmbeddingType) String() string {
+	switch embeddingType {
 	case GlobalDashboard:
 		return "global_dashboard"
 	default:
-		return "unknown_embedding_type"
+		panic("unknown embedding type")
+	}
+}
+
+// Metabase resource type used for embedding (e.g. dashboard, question...)
+func (embeddingType EmbeddingType) ResourceType() string {
+	switch embeddingType {
+	case GlobalDashboard:
+		return "dashboard"
+	default:
+		panic("unknown embedding type")
 	}
 }
 
@@ -21,7 +32,21 @@ type Analytics struct {
 	SignedEmbeddingURL string
 }
 
-type AnalyticsCustomClaims struct {
-	Resource map[string]interface{}
-	Params   map[string]interface{}
+type AnalyticsCustomClaims interface {
+	GetEmbeddingType() EmbeddingType
+	GetParams() map[string]interface{}
+}
+
+type GlobalDashboardAnalytics struct {
+	OrganizationId string
+}
+
+func (analytics GlobalDashboardAnalytics) GetEmbeddingType() EmbeddingType {
+	return GlobalDashboard
+}
+
+func (analytics GlobalDashboardAnalytics) GetParams() map[string]interface{} {
+	return map[string]interface{}{
+		"organization": []string{analytics.OrganizationId},
+	}
 }

@@ -7,6 +7,18 @@ import (
 	"strconv"
 )
 
+func GetRequiredIntEnv(envVarName string) int {
+	envValue, ok := os.LookupEnv(envVarName)
+	if !ok || envValue == "" {
+		log.Fatalf("%s environment variable is required", envVarName)
+	}
+	intValue, err := strconv.Atoi(envValue)
+	if err != nil {
+		panic(fmt.Sprintf("Environment variable %s is not valid. '%s' is not an integer", envVarName, envValue))
+	}
+	return intValue
+}
+
 func GetIntEnv(envVarName string, defaultValue int) int {
 	envValue, ok := os.LookupEnv(envVarName)
 	if !ok || envValue == "" {
