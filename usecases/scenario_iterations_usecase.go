@@ -15,17 +15,17 @@ import (
 )
 
 type IterationUsecaseRepository interface {
-	GetScenarioIteration(ctx context.Context, tx repositories.Transaction, scenarioIterationId string) (
+	GetScenarioIteration(ctx context.Context, tx repositories.Transaction_deprec, scenarioIterationId string) (
 		models.ScenarioIteration, error,
 	)
-	ListScenarioIterations(ctx context.Context, tx repositories.Transaction, organizationId string, filters models.GetScenarioIterationFilters) (
+	ListScenarioIterations(ctx context.Context, tx repositories.Transaction_deprec, organizationId string, filters models.GetScenarioIterationFilters) (
 		[]models.ScenarioIteration, error,
 	)
 
-	CreateScenarioIterationAndRules(ctx context.Context, tx repositories.Transaction, organizationId string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error)
-	UpdateScenarioIteration(ctx context.Context, tx repositories.Transaction, scenarioIteration models.UpdateScenarioIterationInput) (models.ScenarioIteration, error)
-	UpdateScenarioIterationVersion(ctx context.Context, tx repositories.Transaction, scenarioIterationId string, newVersion int) error
-	DeleteScenarioIteration(ctx context.Context, tx repositories.Transaction, scenarioIterationId string) error
+	CreateScenarioIterationAndRules(ctx context.Context, tx repositories.Transaction_deprec, organizationId string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error)
+	UpdateScenarioIteration(ctx context.Context, tx repositories.Transaction_deprec, scenarioIteration models.UpdateScenarioIterationInput) (models.ScenarioIteration, error)
+	UpdateScenarioIterationVersion(ctx context.Context, tx repositories.Transaction_deprec, scenarioIterationId string, newVersion int) error
+	DeleteScenarioIteration(ctx context.Context, tx repositories.Transaction_deprec, scenarioIterationId string) error
 }
 
 type ScenarioIterationUsecase struct {

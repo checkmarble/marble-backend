@@ -30,8 +30,8 @@ const (
 
 type IngestionUseCase struct {
 	enforceSecurity       security.EnforceSecurityIngestion
-	orgTransactionFactory transaction.Factory
-	transactionFactory    transaction.TransactionFactory
+	orgTransactionFactory transaction.Factory_deprec
+	transactionFactory    transaction.TransactionFactory_deprec
 	ingestionRepository   repositories.IngestionRepository
 	gcsRepository         repositories.GcsRepository
 	dataModelUseCase      DataModelUseCase
@@ -43,7 +43,7 @@ func (usecase *IngestionUseCase) IngestObjects(ctx context.Context, organization
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
 		return err
 	}
-	return usecase.orgTransactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Transaction) error {
+	return usecase.orgTransactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Transaction_deprec) error {
 		return usecase.ingestionRepository.IngestObjects(ctx, tx, payloads, table, logger)
 	})
 }
@@ -129,8 +129,8 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 		return models.UploadLog{}, err
 	}
 
-	return transaction.TransactionReturnValue(ctx,
-		usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.UploadLog, error) {
+	return transaction.TransactionReturnValue_deprec(ctx,
+		usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) (models.UploadLog, error) {
 			newUploadListId := uuid.NewString()
 			newUploadLoad := models.UploadLog{
 				Id:             newUploadListId,
@@ -290,7 +290,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 			payloadReaders = append(payloadReaders, payloadReader)
 		}
 
-		if err := usecase.orgTransactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Transaction) error {
+		if err := usecase.orgTransactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Transaction_deprec) error {
 			return usecase.ingestionRepository.IngestObjects(ctx, tx, payloadReaders, table, logger)
 		}); err != nil {
 			return err

@@ -15,23 +15,23 @@ import (
 )
 
 type DecisionRepository interface {
-	DecisionById(ctx context.Context, transaction Transaction, decisionId string) (models.Decision, error)
-	DecisionsById(ctx context.Context, transaction Transaction, decisionIds []string) ([]models.Decision, error)
-	DecisionsByCaseId(ctx context.Context, transaction Transaction, caseId string) ([]models.Decision, error)
+	DecisionById(ctx context.Context, transaction Transaction_deprec, decisionId string) (models.Decision, error)
+	DecisionsById(ctx context.Context, transaction Transaction_deprec, decisionIds []string) ([]models.Decision, error)
+	DecisionsByCaseId(ctx context.Context, transaction Transaction_deprec, caseId string) ([]models.Decision, error)
 	DecisionsOfScheduledExecution(ctx context.Context, scheduledExecutionId string) (<-chan models.Decision, <-chan error)
-	StoreDecision(ctx context.Context, tx Transaction, decision models.Decision, organizationId string, newDecisionId string) error
-	DecisionsOfOrganization(ctx context.Context, transaction Transaction, organizationId string, paginationAndSorting models.PaginationAndSorting, filters models.DecisionFilters) ([]models.DecisionWithRank, error)
-	UpdateDecisionCaseId(ctx context.Context, transaction Transaction, decisionsIds []string, caseId string) error
+	StoreDecision(ctx context.Context, tx Transaction_deprec, decision models.Decision, organizationId string, newDecisionId string) error
+	DecisionsOfOrganization(ctx context.Context, transaction Transaction_deprec, organizationId string, paginationAndSorting models.PaginationAndSorting, filters models.DecisionFilters) ([]models.DecisionWithRank, error)
+	UpdateDecisionCaseId(ctx context.Context, transaction Transaction_deprec, decisionsIds []string, caseId string) error
 }
 
 type DecisionRepositoryImpl struct {
-	transactionFactory TransactionFactoryPosgresql
+	transactionFactory TransactionFactoryPosgresql_deprec
 }
 
 // the size of the batch is chosen without any benchmark
 const decisionRulesBatchSize = 1000
 
-func (repo *DecisionRepositoryImpl) DecisionById(ctx context.Context, transaction Transaction, decisionId string) (models.Decision, error) {
+func (repo *DecisionRepositoryImpl) DecisionById(ctx context.Context, transaction Transaction_deprec, decisionId string) (models.Decision, error) {
 	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, transaction)
 
 	rules, err := repo.rulesOfDecision(ctx, tx, decisionId)
@@ -63,7 +63,7 @@ func (repo *DecisionRepositoryImpl) DecisionById(ctx context.Context, transactio
 	)
 }
 
-func (repo *DecisionRepositoryImpl) DecisionsById(ctx context.Context, transaction Transaction, decisionIds []string) ([]models.Decision, error) {
+func (repo *DecisionRepositoryImpl) DecisionsById(ctx context.Context, transaction Transaction_deprec, decisionIds []string) ([]models.Decision, error) {
 	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, transaction)
 
 	query := selectJoinDecisionAndCase().Where(squirrel.Eq{"d.id": decisionIds})
@@ -86,7 +86,7 @@ func (repo *DecisionRepositoryImpl) DecisionsById(ctx context.Context, transacti
 	})
 }
 
-func (repo *DecisionRepositoryImpl) DecisionsByCaseId(ctx context.Context, transaction Transaction, caseId string) ([]models.Decision, error) {
+func (repo *DecisionRepositoryImpl) DecisionsByCaseId(ctx context.Context, transaction Transaction_deprec, caseId string) ([]models.Decision, error) {
 	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, transaction)
 
 	query := selectDecisions().
@@ -103,7 +103,7 @@ func (repo *DecisionRepositoryImpl) DecisionsByCaseId(ctx context.Context, trans
 
 func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(
 	ctx context.Context,
-	transaction Transaction,
+	transaction Transaction_deprec,
 	organizationId string,
 	pagination models.PaginationAndSorting,
 	filters models.DecisionFilters,
@@ -163,7 +163,7 @@ func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(
 	return decision, nil
 }
 
-func countDecisions(ctx context.Context, tx TransactionPostgres, organizationId string, filters models.DecisionFilters) (int, error) {
+func countDecisions(ctx context.Context, tx TransactionPostgres_deprec, organizationId string, filters models.DecisionFilters) (int, error) {
 	subquery := NewQueryBuilder().
 		Select("*").
 		From(dbmodels.TABLE_DECISIONS).
@@ -301,7 +301,7 @@ func (repo *DecisionRepositoryImpl) DecisionsOfScheduledExecution(ctx context.Co
 	)
 }
 
-func (repo *DecisionRepositoryImpl) StoreDecision(ctx context.Context, tx Transaction, decision models.Decision, organizationId string, newDecisionId string) error {
+func (repo *DecisionRepositoryImpl) StoreDecision(ctx context.Context, tx Transaction_deprec, decision models.Decision, organizationId string, newDecisionId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
@@ -374,7 +374,7 @@ func (repo *DecisionRepositoryImpl) StoreDecision(ctx context.Context, tx Transa
 	return err
 }
 
-func (repo *DecisionRepositoryImpl) UpdateDecisionCaseId(ctx context.Context, transaction Transaction, decisionIds []string, caseId string) error {
+func (repo *DecisionRepositoryImpl) UpdateDecisionCaseId(ctx context.Context, transaction Transaction_deprec, decisionIds []string, caseId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, transaction)
 	var query = NewQueryBuilder().
 		Update(dbmodels.TABLE_DECISIONS).
@@ -396,7 +396,7 @@ func selectJoinDecisionAndCase() squirrel.SelectBuilder {
 		OrderBy("d.created_at DESC")
 }
 
-func (repo *DecisionRepositoryImpl) rulesOfDecision(ctx context.Context, transaction Transaction, decisionId string) ([]models.RuleExecution, error) {
+func (repo *DecisionRepositoryImpl) rulesOfDecision(ctx context.Context, transaction Transaction_deprec, decisionId string) ([]models.RuleExecution, error) {
 	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, transaction)
 
 	return SqlToListOfModels(
@@ -417,7 +417,7 @@ type RulesOfDecision struct {
 }
 
 // Return an array of RulesOfDecision that correspond to the decisionIds
-func (repo *DecisionRepositoryImpl) rulesOfDecisionsBatch(ctx context.Context, transaction Transaction, decisionIds []string) ([]RulesOfDecision, error) {
+func (repo *DecisionRepositoryImpl) rulesOfDecisionsBatch(ctx context.Context, transaction Transaction_deprec, decisionIds []string) ([]RulesOfDecision, error) {
 	tx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, transaction)
 
 	allRules, err := SqlToListOfModels(
@@ -450,7 +450,7 @@ func (repo *DecisionRepositoryImpl) rulesOfDecisionsBatch(ctx context.Context, t
 	}), nil
 }
 
-func (repo *DecisionRepositoryImpl) channelOfDecisions(ctx context.Context, tx TransactionPostgres, query squirrel.Sqlizer) (<-chan models.Decision, <-chan error) {
+func (repo *DecisionRepositoryImpl) channelOfDecisions(ctx context.Context, tx TransactionPostgres_deprec, query squirrel.Sqlizer) (<-chan models.Decision, <-chan error) {
 
 	decisionsChannel := make(chan models.Decision, 100)
 	errChannel := make(chan error, 1)

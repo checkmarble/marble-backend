@@ -15,7 +15,7 @@ import (
 
 type DataModelUseCase struct {
 	enforceSecurity            security.EnforceSecurityOrganization
-	transactionFactory         transaction.TransactionFactory
+	transactionFactory         transaction.TransactionFactory_deprec
 	dataModelRepository        repositories.DataModelRepository
 	populateOrganizationSchema organization.PopulateOrganizationSchema
 }
@@ -51,7 +51,7 @@ func (usecase *DataModelUseCase) CreateDataModelTable(ctx context.Context, organ
 	}
 
 	tableID := uuid.New().String()
-	err := usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+	err := usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) error {
 		err := usecase.dataModelRepository.CreateDataModelTable(ctx, tx, organizationID, tableID, name, description)
 		if err != nil {
 			return err
@@ -85,7 +85,7 @@ func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, table
 	}
 
 	fieldID := uuid.New().String()
-	err := usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+	err := usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) error {
 		err := usecase.dataModelRepository.CreateDataModelField(ctx, tx, tableID, fieldID, field)
 		if err != nil {
 			return err
@@ -122,7 +122,7 @@ func (usecase *DataModelUseCase) DeleteSchema(ctx context.Context, organizationI
 		return err
 	}
 
-	return usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+	return usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) error {
 		err := usecase.dataModelRepository.DeleteDataModel(ctx, tx, organizationID)
 		if err != nil {
 			return err
@@ -133,7 +133,7 @@ func (usecase *DataModelUseCase) DeleteSchema(ctx context.Context, organizationI
 			return err
 		}
 
-		return usecase.transactionFactory.Transaction(ctx, schema.DatabaseSchema, func(tx repositories.Transaction) error {
+		return usecase.transactionFactory.Transaction(ctx, schema.DatabaseSchema, func(tx repositories.Transaction_deprec) error {
 			return usecase.populateOrganizationSchema.OrganizationSchemaRepository.DeleteSchema(ctx, tx, schema.DatabaseSchema.Schema)
 		})
 	})

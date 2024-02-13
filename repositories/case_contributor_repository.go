@@ -7,7 +7,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
-func (repo *MarbleDbRepository) GetCaseContributor(ctx context.Context, tx Transaction, caseId, userId string) (*models.CaseContributor, error) {
+func (repo *MarbleDbRepository) GetCaseContributor(ctx context.Context, tx Transaction_deprec, caseId, userId string) (*models.CaseContributor, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query := NewQueryBuilder().
@@ -24,7 +24,7 @@ func (repo *MarbleDbRepository) GetCaseContributor(ctx context.Context, tx Trans
 	)
 }
 
-func (repo *MarbleDbRepository) CreateCaseContributor(ctx context.Context, tx Transaction, caseId, userId string) error {
+func (repo *MarbleDbRepository) CreateCaseContributor(ctx context.Context, tx Transaction_deprec, caseId, userId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query := NewQueryBuilder().Insert(dbmodels.TABLE_CASE_CONTRIBUTORS).

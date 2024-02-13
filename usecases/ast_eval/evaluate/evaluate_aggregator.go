@@ -17,7 +17,7 @@ type AggregatorEvaluator struct {
 	OrganizationId             string
 	DataModel                  models.DataModel
 	Payload                    models.PayloadReader
-	OrgTransactionFactory      transaction.Factory
+	OrgTransactionFactory      transaction.Factory_deprec
 	IngestedDataReadRepository repositories.IngestedDataReadRepository
 	ReturnFakeValue            bool
 }
@@ -100,11 +100,11 @@ func (a AggregatorEvaluator) runQueryInRepository(ctx context.Context, tableName
 		return DryRunQueryAggregatedValue(a.DataModel, tableName, fieldName, aggregator)
 	}
 
-	return transaction.InOrganizationSchema(
+	return transaction.InOrganizationSchema_deprec(
 		ctx,
 		a.OrgTransactionFactory,
 		a.OrganizationId,
-		func(tx repositories.Transaction) (any, error) {
+		func(tx repositories.Transaction_deprec) (any, error) {
 			result, err := a.IngestedDataReadRepository.QueryAggregatedValue(ctx, tx, tableName, fieldName, aggregator, filters)
 			if err != nil {
 				return nil, err

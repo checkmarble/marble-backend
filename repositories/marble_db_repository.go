@@ -1,5 +1,5 @@
 package repositories
 
 type MarbleDbRepository struct {
-	transactionFactory TransactionFactoryPosgresql
+	transactionFactory TransactionFactoryPosgresql_deprec
 }

@@ -15,10 +15,10 @@ import (
 )
 
 type ApiKeyRepository interface {
-	GetApiKeyById(ctx context.Context, tx repositories.Transaction, apiKeyId string) (models.ApiKey, error)
-	ListApiKeys(ctx context.Context, tx repositories.Transaction, organizationId string) ([]models.ApiKey, error)
-	CreateApiKey(ctx context.Context, tx repositories.Transaction, apiKey models.CreateApiKey) error
-	SoftDeleteApiKey(ctx context.Context, tx repositories.Transaction, apiKeyId string) error
+	GetApiKeyById(ctx context.Context, tx repositories.Transaction_deprec, apiKeyId string) (models.ApiKey, error)
+	ListApiKeys(ctx context.Context, tx repositories.Transaction_deprec, organizationId string) ([]models.ApiKey, error)
+	CreateApiKey(ctx context.Context, tx repositories.Transaction_deprec, apiKey models.CreateApiKey) error
+	SoftDeleteApiKey(ctx context.Context, tx repositories.Transaction_deprec, apiKeyId string) error
 }
 
 type EnforceSecurityApiKey interface {
@@ -28,7 +28,7 @@ type EnforceSecurityApiKey interface {
 }
 
 type ApiKeyUseCase struct {
-	transactionFactory      transaction.TransactionFactory
+	transactionFactory      transaction.TransactionFactory_deprec
 	organizationIdOfContext func() (string, error)
 	enforceSecurity         EnforceSecurityApiKey
 	apiKeyRepository        ApiKeyRepository
@@ -52,7 +52,7 @@ func (usecase *ApiKeyUseCase) ListApiKeys(ctx context.Context) ([]models.ApiKey,
 	return apiKeys, nil
 }
 
-func (usecase *ApiKeyUseCase) getApiKey(ctx context.Context, tx repositories.Transaction, apiKeyId string) (models.ApiKey, error) {
+func (usecase *ApiKeyUseCase) getApiKey(ctx context.Context, tx repositories.Transaction_deprec, apiKeyId string) (models.ApiKey, error) {
 	apiKey, err := usecase.apiKeyRepository.GetApiKeyById(ctx, tx, apiKeyId)
 	if err != nil {
 		return models.ApiKey{}, err
@@ -64,11 +64,11 @@ func (usecase *ApiKeyUseCase) getApiKey(ctx context.Context, tx repositories.Tra
 }
 
 func (usecase *ApiKeyUseCase) CreateApiKey(ctx context.Context, input models.CreateApiKeyInput) (models.CreatedApiKey, error) {
-	apiKey, err := transaction.TransactionReturnValue(
+	apiKey, err := transaction.TransactionReturnValue_deprec(
 		ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction) (models.CreatedApiKey, error) {
+		func(tx repositories.Transaction_deprec) (models.CreatedApiKey, error) {
 			if err := usecase.enforceSecurity.CreateApiKey(input.OrganizationId); err != nil {
 				return models.CreatedApiKey{}, err
 			}

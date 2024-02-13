@@ -12,7 +12,7 @@ import (
 )
 
 type SeedUseCase struct {
-	transactionFactory     transaction.TransactionFactory
+	transactionFactory     transaction.TransactionFactory_deprec
 	userRepository         repositories.UserRepository
 	organizationCreator    organization.OrganizationCreator
 	organizationRepository repositories.OrganizationRepository
@@ -21,7 +21,7 @@ type SeedUseCase struct {
 
 func (usecase *SeedUseCase) SeedMarbleAdmins(ctx context.Context, firstMarbleAdminEmail string) error {
 
-	return usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+	return usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) error {
 		_, err := usecase.userRepository.CreateUser(ctx, tx, models.CreateUser{
 			Email: firstMarbleAdminEmail,
 			Role:  models.MARBLE_ADMIN,
@@ -29,7 +29,7 @@ func (usecase *SeedUseCase) SeedMarbleAdmins(ctx context.Context, firstMarbleAdm
 
 		// ignore user already added
 		if repositories.IsUniqueViolationError(err) {
-			return repositories.ErrIgnoreRollBackError
+			return models.ErrIgnoreRollBackError
 		}
 		return err
 	})

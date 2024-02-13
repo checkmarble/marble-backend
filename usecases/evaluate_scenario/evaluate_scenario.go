@@ -31,12 +31,12 @@ type ScenarioEvaluationParameters struct {
 }
 
 type EvalScenarioRepository interface {
-	GetScenarioIteration(ctx context.Context, tx repositories.Transaction, scenarioIterationId string) (models.ScenarioIteration, error)
+	GetScenarioIteration(ctx context.Context, tx repositories.Transaction_deprec, scenarioIterationId string) (models.ScenarioIteration, error)
 }
 
 type ScenarioEvaluationRepositories struct {
 	EvalScenarioRepository     EvalScenarioRepository
-	OrgTransactionFactory      transaction.Factory
+	OrgTransactionFactory      transaction.Factory_deprec
 	IngestedDataReadRepository repositories.IngestedDataReadRepository
 	EvaluateRuleAstExpression  ast_eval.EvaluateRuleAstExpression
 }

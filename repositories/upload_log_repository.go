@@ -10,18 +10,18 @@ import (
 )
 
 type UploadLogRepository interface {
-	CreateUploadLog(ctx context.Context, tx Transaction, log models.UploadLog) error
-	UpdateUploadLog(ctx context.Context, tx Transaction, input models.UpdateUploadLogInput) error
-	UploadLogById(ctx context.Context, tx Transaction, id string) (models.UploadLog, error)
-	AllUploadLogsByStatus(ctx context.Context, tx Transaction, status models.UploadStatus) ([]models.UploadLog, error)
-	AllUploadLogsByTable(ctx context.Context, tx Transaction, organizationId, tableName string) ([]models.UploadLog, error)
+	CreateUploadLog(ctx context.Context, tx Transaction_deprec, log models.UploadLog) error
+	UpdateUploadLog(ctx context.Context, tx Transaction_deprec, input models.UpdateUploadLogInput) error
+	UploadLogById(ctx context.Context, tx Transaction_deprec, id string) (models.UploadLog, error)
+	AllUploadLogsByStatus(ctx context.Context, tx Transaction_deprec, status models.UploadStatus) ([]models.UploadLog, error)
+	AllUploadLogsByTable(ctx context.Context, tx Transaction_deprec, organizationId, tableName string) ([]models.UploadLog, error)
 }
 
 type UploadLogRepositoryImpl struct {
-	transactionFactory TransactionFactoryPosgresql
+	transactionFactory TransactionFactoryPosgresql_deprec
 }
 
-func (repo *UploadLogRepositoryImpl) CreateUploadLog(ctx context.Context, tx Transaction, log models.UploadLog) error {
+func (repo *UploadLogRepositoryImpl) CreateUploadLog(ctx context.Context, tx Transaction_deprec, log models.UploadLog) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
@@ -53,7 +53,7 @@ func (repo *UploadLogRepositoryImpl) CreateUploadLog(ctx context.Context, tx Tra
 	return err
 }
 
-func (repo *UploadLogRepositoryImpl) UpdateUploadLog(ctx context.Context, tx Transaction, input models.UpdateUploadLogInput) error {
+func (repo *UploadLogRepositoryImpl) UpdateUploadLog(ctx context.Context, tx Transaction_deprec, input models.UpdateUploadLogInput) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	var updateRequest = NewQueryBuilder().Update(dbmodels.TABLE_UPLOAD_LOGS)
@@ -70,7 +70,7 @@ func (repo *UploadLogRepositoryImpl) UpdateUploadLog(ctx context.Context, tx Tra
 	return err
 }
 
-func (repo *UploadLogRepositoryImpl) UploadLogById(ctx context.Context, tx Transaction, id string) (models.UploadLog, error) {
+func (repo *UploadLogRepositoryImpl) UploadLogById(ctx context.Context, tx Transaction_deprec, id string) (models.UploadLog, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	uploadLog, err := SqlToModel(
@@ -90,7 +90,7 @@ func (repo *UploadLogRepositoryImpl) UploadLogById(ctx context.Context, tx Trans
 	return uploadLog, err
 }
 
-func (repo *UploadLogRepositoryImpl) AllUploadLogsByStatus(ctx context.Context, tx Transaction, status models.UploadStatus) ([]models.UploadLog, error) {
+func (repo *UploadLogRepositoryImpl) AllUploadLogsByStatus(ctx context.Context, tx Transaction_deprec, status models.UploadStatus) ([]models.UploadLog, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToListOfModels(
@@ -105,7 +105,7 @@ func (repo *UploadLogRepositoryImpl) AllUploadLogsByStatus(ctx context.Context, 
 	)
 }
 
-func (repo *UploadLogRepositoryImpl) AllUploadLogsByTable(ctx context.Context, tx Transaction, organizationId, tableName string) ([]models.UploadLog, error) {
+func (repo *UploadLogRepositoryImpl) AllUploadLogsByTable(ctx context.Context, tx Transaction_deprec, organizationId, tableName string) ([]models.UploadLog, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToListOfModels(

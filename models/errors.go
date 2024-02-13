@@ -24,6 +24,8 @@ var NotFoundError = errors.New("not found")
 // DuplicateValueError is rendered with the http status code 409
 var DuplicateValueError = errors.New("duplicate value")
 
+var ErrIgnoreRollBackError = errors.New("ignore rollback error")
+
 var (
 	PanicInScenarioEvalutionError = errors.New("panic during scenario evaluation")
 	NotFoundInRepositoryError     = fmt.Errorf("item not found in repository: %w", NotFoundError)

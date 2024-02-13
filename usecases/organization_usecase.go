@@ -15,8 +15,8 @@ import (
 
 type OrganizationUseCase struct {
 	enforceSecurity              security.EnforceSecurityOrganization
-	transactionFactory           transaction.TransactionFactory
-	orgTransactionFactory        transaction.Factory
+	transactionFactory           transaction.TransactionFactory_deprec
+	orgTransactionFactory        transaction.Factory_deprec
 	organizationRepository       repositories.OrganizationRepository
 	datamodelRepository          repositories.DataModelRepository
 	userRepository               repositories.UserRepository
@@ -51,7 +51,7 @@ func (usecase *OrganizationUseCase) UpdateOrganization(ctx context.Context, orga
 	if err := usecase.enforceSecurity.CreateOrganization(); err != nil {
 		return models.Organization{}, err
 	}
-	return transaction.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) (models.Organization, error) {
+	return transaction.TransactionReturnValue_deprec(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) (models.Organization, error) {
 		err := usecase.organizationRepository.UpdateOrganization(ctx, tx, organization)
 		if err != nil {
 			return models.Organization{}, err
@@ -64,7 +64,7 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 	if err := usecase.enforceSecurity.DeleteOrganization(); err != nil {
 		return err
 	}
-	return usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction) error {
+	return usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) error {
 		// delete all users
 		err := usecase.userRepository.DeleteUsersOfOrganization(ctx, tx, organizationId)
 		if err != nil {
@@ -87,7 +87,7 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 
 		if schemaFound {
 			// another transaction in client's database to delete client's schema:
-			err = usecase.orgTransactionFactory.TransactionInOrgSchema(ctx, organizationId, func(clientTx repositories.Transaction) error {
+			err = usecase.orgTransactionFactory.TransactionInOrgSchema(ctx, organizationId, func(clientTx repositories.Transaction_deprec) error {
 				return usecase.organizationSchemaRepository.DeleteSchema(ctx, clientTx, schema.DatabaseSchema.Schema)
 			})
 			if err != nil {
@@ -103,11 +103,11 @@ func (usecase *OrganizationUseCase) GetUsersOfOrganization(ctx context.Context, 
 	if err := usecase.enforceSecurity.ReadOrganization(organizationIDFilter); err != nil {
 		return []models.User{}, err
 	}
-	return transaction.TransactionReturnValue(
+	return transaction.TransactionReturnValue_deprec(
 		ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction) ([]models.User, error) {
+		func(tx repositories.Transaction_deprec) ([]models.User, error) {
 			return usecase.userRepository.UsersOfOrganization(ctx, tx, organizationIDFilter)
 		},
 	)

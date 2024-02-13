@@ -11,18 +11,18 @@ import (
 type DataAccessor struct {
 	DataModel                  models.DataModel
 	Payload                    models.PayloadReader
-	orgTransactionFactory      transaction.Factory
+	orgTransactionFactory      transaction.Factory_deprec
 	organizationId             string
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
 }
 
 func (d *DataAccessor) GetDbField(ctx context.Context, triggerTableName string, path []string, fieldName string) (interface{}, error) {
 
-	return transaction.InOrganizationSchema(
+	return transaction.InOrganizationSchema_deprec(
 		ctx,
 		d.orgTransactionFactory,
 		d.organizationId,
-		func(tx repositories.Transaction) (interface{}, error) {
+		func(tx repositories.Transaction_deprec) (interface{}, error) {
 			return d.ingestedDataReadRepository.GetDbField(ctx, tx, models.DbFieldReadParams{
 				TriggerTableName: models.TableName(triggerTableName),
 				Path:             models.ToLinkNames(path),

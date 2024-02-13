@@ -15,7 +15,7 @@ import (
 
 func (repo *MarbleDbRepository) ListOrganizationCases(
 	ctx context.Context,
-	tx Transaction,
+	tx Transaction_deprec,
 	filters models.CaseFilters,
 	pagination models.PaginationAndSorting,
 ) ([]models.CaseWithRank, error) {
@@ -61,7 +61,7 @@ func (repo *MarbleDbRepository) ListOrganizationCases(
 	})
 }
 
-func (repo *MarbleDbRepository) GetCaseById(ctx context.Context, tx Transaction, caseId string) (models.Case, error) {
+func (repo *MarbleDbRepository) GetCaseById(ctx context.Context, tx Transaction_deprec, caseId string) (models.Case, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToModel(
@@ -73,7 +73,7 @@ func (repo *MarbleDbRepository) GetCaseById(ctx context.Context, tx Transaction,
 	)
 }
 
-func (repo *MarbleDbRepository) CreateCase(ctx context.Context, tx Transaction, createCaseAttributes models.CreateCaseAttributes, newCaseId string) error {
+func (repo *MarbleDbRepository) CreateCase(ctx context.Context, tx Transaction_deprec, createCaseAttributes models.CreateCaseAttributes, newCaseId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
@@ -95,7 +95,7 @@ func (repo *MarbleDbRepository) CreateCase(ctx context.Context, tx Transaction, 
 	return err
 }
 
-func (repo *MarbleDbRepository) UpdateCase(ctx context.Context, tx Transaction, updateCaseAttributes models.UpdateCaseAttributes) error {
+func (repo *MarbleDbRepository) UpdateCase(ctx context.Context, tx Transaction_deprec, updateCaseAttributes models.UpdateCaseAttributes) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query := NewQueryBuilder().Update(dbmodels.TABLE_CASES).Where(squirrel.Eq{"id": updateCaseAttributes.Id})
@@ -116,7 +116,7 @@ func (repo *MarbleDbRepository) UpdateCase(ctx context.Context, tx Transaction, 
 	return err
 }
 
-func (repo *MarbleDbRepository) CreateCaseTag(ctx context.Context, tx Transaction, caseId, tagId string) error {
+func (repo *MarbleDbRepository) CreateCaseTag(ctx context.Context, tx Transaction_deprec, caseId, tagId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
@@ -136,7 +136,7 @@ func (repo *MarbleDbRepository) CreateCaseTag(ctx context.Context, tx Transactio
 	return err
 }
 
-func (repo *MarbleDbRepository) ListCaseTagsByCaseId(ctx context.Context, tx Transaction, caseId string) ([]models.CaseTag, error) {
+func (repo *MarbleDbRepository) ListCaseTagsByCaseId(ctx context.Context, tx Transaction_deprec, caseId string) ([]models.CaseTag, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToListOfModels(ctx, pgTx,
@@ -149,7 +149,7 @@ func (repo *MarbleDbRepository) ListCaseTagsByCaseId(ctx context.Context, tx Tra
 	)
 }
 
-func (repo *MarbleDbRepository) ListCaseTagsByTagId(ctx context.Context, tx Transaction, tagId string) ([]models.CaseTag, error) {
+func (repo *MarbleDbRepository) ListCaseTagsByTagId(ctx context.Context, tx Transaction_deprec, tagId string) ([]models.CaseTag, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToListOfModels(ctx, pgTx,
@@ -162,7 +162,7 @@ func (repo *MarbleDbRepository) ListCaseTagsByTagId(ctx context.Context, tx Tran
 	)
 }
 
-func (repo *MarbleDbRepository) SoftDeleteCaseTag(ctx context.Context, tx Transaction, tagId string) error {
+func (repo *MarbleDbRepository) SoftDeleteCaseTag(ctx context.Context, tx Transaction_deprec, tagId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query := NewQueryBuilder().Update(dbmodels.TABLE_CASE_TAGS).Where(squirrel.Eq{"id": tagId})
@@ -253,7 +253,7 @@ func applyCasesPagination(query squirrel.SelectBuilder, p models.PaginationAndSo
 	return query, nil
 }
 
-func countCases(ctx context.Context, tx TransactionPostgres, filters models.CaseFilters) (int, error) {
+func countCases(ctx context.Context, tx TransactionPostgres_deprec, filters models.CaseFilters) (int, error) {
 	subquery := NewQueryBuilder().
 		Select("*").
 		From(fmt.Sprintf("%s AS c", dbmodels.TABLE_CASES)).
@@ -340,7 +340,7 @@ func selectCasesWithJoinedFields(query squirrel.SelectBuilder, p models.Paginati
 
 }
 
-func (repo *MarbleDbRepository) CreateDbCaseFile(ctx context.Context, tx Transaction, createCaseFileAttributes models.CreateDbCaseFileInput) error {
+func (repo *MarbleDbRepository) CreateDbCaseFile(ctx context.Context, tx Transaction_deprec, createCaseFileAttributes models.CreateDbCaseFileInput) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
@@ -364,7 +364,7 @@ func (repo *MarbleDbRepository) CreateDbCaseFile(ctx context.Context, tx Transac
 	return err
 }
 
-func (repo *MarbleDbRepository) GetCaseFileById(ctx context.Context, tx Transaction, caseFileId string) (models.CaseFile, error) {
+func (repo *MarbleDbRepository) GetCaseFileById(ctx context.Context, tx Transaction_deprec, caseFileId string) (models.CaseFile, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToModel(
@@ -378,7 +378,7 @@ func (repo *MarbleDbRepository) GetCaseFileById(ctx context.Context, tx Transact
 	)
 }
 
-func (repo *MarbleDbRepository) GetCasesFileByCaseId(ctx context.Context, tx Transaction, caseId string) ([]models.CaseFile, error) {
+func (repo *MarbleDbRepository) GetCasesFileByCaseId(ctx context.Context, tx Transaction_deprec, caseId string) ([]models.CaseFile, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToListOfModels(

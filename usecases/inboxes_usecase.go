@@ -13,13 +13,13 @@ import (
 )
 
 type InboxRepository interface {
-	GetInboxById(ctx context.Context, tx repositories.Transaction, inboxId string) (models.Inbox, error)
-	ListInboxes(ctx context.Context, tx repositories.Transaction, organizationId string, inboxIds []string, withCaseCount bool) ([]models.Inbox, error)
-	CreateInbox(ctx context.Context, tx repositories.Transaction, createInboxAttributes models.CreateInboxInput, newInboxId string) error
-	UpdateInbox(ctx context.Context, tx repositories.Transaction, inboxId, name string) error
-	SoftDeleteInbox(ctx context.Context, tx repositories.Transaction, inboxId string) error
+	GetInboxById(ctx context.Context, tx repositories.Transaction_deprec, inboxId string) (models.Inbox, error)
+	ListInboxes(ctx context.Context, tx repositories.Transaction_deprec, organizationId string, inboxIds []string, withCaseCount bool) ([]models.Inbox, error)
+	CreateInbox(ctx context.Context, tx repositories.Transaction_deprec, createInboxAttributes models.CreateInboxInput, newInboxId string) error
+	UpdateInbox(ctx context.Context, tx repositories.Transaction_deprec, inboxId, name string) error
+	SoftDeleteInbox(ctx context.Context, tx repositories.Transaction_deprec, inboxId string) error
 
-	ListOrganizationCases(ctx context.Context, tx repositories.Transaction, filters models.CaseFilters, pagination models.PaginationAndSorting) ([]models.CaseWithRank, error)
+	ListOrganizationCases(ctx context.Context, tx repositories.Transaction_deprec, filters models.CaseFilters, pagination models.PaginationAndSorting) ([]models.CaseWithRank, error)
 }
 
 type EnforceSecurityInboxes interface {
@@ -28,7 +28,7 @@ type EnforceSecurityInboxes interface {
 }
 
 type InboxUsecase struct {
-	transactionFactory      transaction.TransactionFactory
+	transactionFactory      transaction.TransactionFactory_deprec
 	enforceSecurity         EnforceSecurityInboxes
 	organizationIdOfContext func() (string, error)
 	inboxRepository         InboxRepository
@@ -47,11 +47,11 @@ func (usecase *InboxUsecase) ListInboxes(ctx context.Context, withCaseCount bool
 }
 
 func (usecase *InboxUsecase) CreateInbox(ctx context.Context, input models.CreateInboxInput) (models.Inbox, error) {
-	inbox, err := transaction.TransactionReturnValue(
+	inbox, err := transaction.TransactionReturnValue_deprec(
 		ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction) (models.Inbox, error) {
+		func(tx repositories.Transaction_deprec) (models.Inbox, error) {
 			if err := usecase.enforceSecurity.CreateInbox(input.OrganizationId); err != nil {
 				return models.Inbox{}, err
 			}
@@ -74,11 +74,11 @@ func (usecase *InboxUsecase) CreateInbox(ctx context.Context, input models.Creat
 }
 
 func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId, name string) (models.Inbox, error) {
-	inbox, err := transaction.TransactionReturnValue(
+	inbox, err := transaction.TransactionReturnValue_deprec(
 		ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction) (models.Inbox, error) {
+		func(tx repositories.Transaction_deprec) (models.Inbox, error) {
 			inbox, err := usecase.inboxRepository.GetInboxById(ctx, tx, inboxId)
 			if err != nil {
 				return models.Inbox{}, err
@@ -111,7 +111,7 @@ func (usecase *InboxUsecase) DeleteInbox(ctx context.Context, inboxId string) er
 	err := usecase.transactionFactory.Transaction(
 		ctx,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction) error {
+		func(tx repositories.Transaction_deprec) error {
 			inbox, err := usecase.inboxRepository.GetInboxById(ctx, tx, inboxId)
 			if err != nil {
 				return err

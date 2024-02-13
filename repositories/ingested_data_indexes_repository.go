@@ -19,7 +19,7 @@ var INDEX_CREATION_TIMEOUT time.Duration = 60 * 4 // 4 hours
 
 func (repo *ClientDbRepository) ListAllValidIndexes(
 	ctx context.Context,
-	exec *ExecutorPostgres,
+	exec Executor,
 ) ([]models.ConcreteIndex, error) {
 	pgIndexes, err := repo.listAllIndexes(ctx, exec)
 	if err != nil {
@@ -38,10 +38,9 @@ func (repo *ClientDbRepository) ListAllValidIndexes(
 
 func (repo *ClientDbRepository) listAllIndexes(
 	ctx context.Context,
-	exec *ExecutorPostgres,
+	exec Executor,
 ) ([]pg_indexes.PGIndex, error) {
-	tx, err := validateClientDbExecutor(exec)
-	if err != nil {
+	if err := validateClientDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
@@ -58,7 +57,7 @@ func (repo *ClientDbRepository) listAllIndexes(
 	INNER JOIN pg_class AS pg_class_idx ON(pgidx.indexrelid=pg_class_idx.oid)
 	WHERE nspname=$1
 `
-	rows, err := tx.exec.Query(ctx, sql, tx.databaseShema.Schema)
+	rows, err := exec.Query(ctx, sql, exec.DatabaseSchema().Schema)
 	if err != nil {
 		return nil, errors.Wrap(err, "error while querying DB to read indexes")
 	}
@@ -72,7 +71,7 @@ func (repo *ClientDbRepository) listAllIndexes(
 	}
 
 	// Now read indexes that are currently being created
-	rows, err = tx.exec.Query(ctx, "SELECT index_relid FROM pg_stat_progress_create_index")
+	rows, err = exec.Query(ctx, "SELECT index_relid FROM pg_stat_progress_create_index")
 	if err != nil {
 		return nil, errors.Wrap(err, "error while querying DB to read indexes in creation")
 	}
@@ -99,11 +98,10 @@ func (repo *ClientDbRepository) listAllIndexes(
 
 func (repo *ClientDbRepository) CreateIndexesAsync(
 	ctx context.Context,
-	exec *ExecutorPostgres,
+	exec Executor,
 	indexes []models.ConcreteIndex,
 ) (int, error) {
-	exec, err := validateClientDbExecutor(exec)
-	if err != nil {
+	if err := validateClientDbExecutor(exec); err != nil {
 		return 0, err
 	}
 
@@ -126,7 +124,7 @@ func (repo *ClientDbRepository) CreateIndexesAsync(
 
 func asynchronouslyCreateIndexes(
 	ctx context.Context,
-	exec *ExecutorPostgres,
+	exec Executor,
 	indexes []models.ConcreteIndex,
 ) {
 	ctx = context.WithoutCancel(ctx)
@@ -153,7 +151,7 @@ func indexAlreadyExists(index models.ConcreteIndex, existingIndexes []pg_indexes
 	return false
 }
 
-func createIndexSQL(ctx context.Context, exec *ExecutorPostgres, index models.ConcreteIndex) error {
+func createIndexSQL(ctx context.Context, exec Executor, index models.ConcreteIndex) error {
 	logger := utils.LoggerFromContext(ctx)
 	qualifiedTableName := tableNameWithSchema(exec, index.TableName)
 	indexName := indexToIndexName(index)

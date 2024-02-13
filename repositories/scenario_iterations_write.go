@@ -11,14 +11,14 @@ import (
 	"github.com/Masterminds/squirrel"
 )
 
-func (repo *MarbleDbRepository) DeleteScenarioIteration(ctx context.Context, tx Transaction, scenarioIterationId string) error {
+func (repo *MarbleDbRepository) DeleteScenarioIteration(ctx context.Context, tx Transaction_deprec, scenarioIterationId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(ctx, NewQueryBuilder().Delete(dbmodels.TABLE_SCENARIO_ITERATIONS).Where("id = ?", scenarioIterationId))
 	return err
 }
 
-func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Context, tx Transaction, organizationId string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error) {
+func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Context, tx Transaction_deprec, organizationId string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query := NewQueryBuilder().Insert(dbmodels.TABLE_SCENARIO_ITERATIONS).
@@ -89,7 +89,7 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Cont
 	return createdIteration, nil
 }
 
-func (repo *MarbleDbRepository) UpdateScenarioIteration(ctx context.Context, tx Transaction, scenarioIteration models.UpdateScenarioIterationInput) (models.ScenarioIteration, error) {
+func (repo *MarbleDbRepository) UpdateScenarioIteration(ctx context.Context, tx Transaction_deprec, scenarioIteration models.UpdateScenarioIterationInput) (models.ScenarioIteration, error) {
 	if scenarioIteration.Body == nil {
 		return models.ScenarioIteration{}, fmt.Errorf("nothing to update")
 	}
@@ -127,7 +127,7 @@ func (repo *MarbleDbRepository) UpdateScenarioIteration(ctx context.Context, tx 
 	return updatedIteration, nil
 }
 
-func (repo *MarbleDbRepository) UpdateScenarioIterationVersion(ctx context.Context, tx Transaction, scenarioIterationId string, newVersion int) error {
+func (repo *MarbleDbRepository) UpdateScenarioIterationVersion(ctx context.Context, tx Transaction_deprec, scenarioIterationId string, newVersion int) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(

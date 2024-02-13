@@ -17,7 +17,7 @@ func selectInboxUsers() squirrel.SelectBuilder {
 		Join(dbmodels.TABLE_INBOXES + " AS i ON i.id = inbox_id")
 }
 
-func (repo *MarbleDbRepository) GetInboxUserById(ctx context.Context, tx Transaction, inboxUserId string) (models.InboxUser, error) {
+func (repo *MarbleDbRepository) GetInboxUserById(ctx context.Context, tx Transaction_deprec, inboxUserId string) (models.InboxUser, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	return SqlToModel(
@@ -29,7 +29,7 @@ func (repo *MarbleDbRepository) GetInboxUserById(ctx context.Context, tx Transac
 	)
 }
 
-func (repo *MarbleDbRepository) ListInboxUsers(ctx context.Context, tx Transaction, filters models.InboxUserFilterInput) ([]models.InboxUser, error) {
+func (repo *MarbleDbRepository) ListInboxUsers(ctx context.Context, tx Transaction_deprec, filters models.InboxUserFilterInput) ([]models.InboxUser, error) {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	query := selectInboxUsers()
@@ -49,7 +49,7 @@ func (repo *MarbleDbRepository) ListInboxUsers(ctx context.Context, tx Transacti
 	)
 }
 
-func (repo *MarbleDbRepository) CreateInboxUser(ctx context.Context, tx Transaction, input models.CreateInboxUserInput, newInboxUserId string) error {
+func (repo *MarbleDbRepository) CreateInboxUser(ctx context.Context, tx Transaction_deprec, input models.CreateInboxUserInput, newInboxUserId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
@@ -71,7 +71,7 @@ func (repo *MarbleDbRepository) CreateInboxUser(ctx context.Context, tx Transact
 	return err
 }
 
-func (repo *MarbleDbRepository) UpdateInboxUser(ctx context.Context, tx Transaction, inboxUserId string, role models.InboxUserRole) error {
+func (repo *MarbleDbRepository) UpdateInboxUser(ctx context.Context, tx Transaction_deprec, inboxUserId string, role models.InboxUserRole) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(
@@ -84,7 +84,7 @@ func (repo *MarbleDbRepository) UpdateInboxUser(ctx context.Context, tx Transact
 	return err
 }
 
-func (repo *MarbleDbRepository) DeleteInboxUser(ctx context.Context, tx Transaction, inboxUserId string) error {
+func (repo *MarbleDbRepository) DeleteInboxUser(ctx context.Context, tx Transaction_deprec, inboxUserId string) error {
 	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
 
 	_, err := pgTx.ExecBuilder(

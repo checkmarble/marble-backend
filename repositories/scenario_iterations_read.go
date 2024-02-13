@@ -13,7 +13,7 @@ import (
 
 func (repository *MarbleDbRepository) GetScenarioIteration(
 	ctx context.Context,
-	tx Transaction,
+	tx Transaction_deprec,
 	scenarioIterationId string,
 ) (models.ScenarioIteration, error) {
 	pgTx := repository.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
@@ -28,7 +28,7 @@ func (repository *MarbleDbRepository) GetScenarioIteration(
 
 func (repository *MarbleDbRepository) ListScenarioIterations(
 	ctx context.Context,
-	tx Transaction,
+	tx Transaction_deprec,
 	organizationId string,
 	filters models.GetScenarioIterationFilters,
 ) ([]models.ScenarioIteration, error) {

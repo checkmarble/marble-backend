@@ -12,12 +12,12 @@ import (
 )
 
 type InboxUserRepository interface {
-	GetInboxById(ctx context.Context, tx repositories.Transaction, inboxId string) (models.Inbox, error)
-	GetInboxUserById(ctx context.Context, tx repositories.Transaction, inboxUserId string) (models.InboxUser, error)
-	ListInboxUsers(ctx context.Context, tx repositories.Transaction, filters models.InboxUserFilterInput) ([]models.InboxUser, error)
-	CreateInboxUser(ctx context.Context, tx repositories.Transaction, createInboxUserAttributes models.CreateInboxUserInput, newInboxUserId string) error
-	UpdateInboxUser(ctx context.Context, tx repositories.Transaction, inboxUserId string, role models.InboxUserRole) error
-	DeleteInboxUser(ctx context.Context, tx repositories.Transaction, inboxUserId string) error
+	GetInboxById(ctx context.Context, tx repositories.Transaction_deprec, inboxId string) (models.Inbox, error)
+	GetInboxUserById(ctx context.Context, tx repositories.Transaction_deprec, inboxUserId string) (models.InboxUser, error)
+	ListInboxUsers(ctx context.Context, tx repositories.Transaction_deprec, filters models.InboxUserFilterInput) ([]models.InboxUser, error)
+	CreateInboxUser(ctx context.Context, tx repositories.Transaction_deprec, createInboxUserAttributes models.CreateInboxUserInput, newInboxUserId string) error
+	UpdateInboxUser(ctx context.Context, tx repositories.Transaction_deprec, inboxUserId string, role models.InboxUserRole) error
+	DeleteInboxUser(ctx context.Context, tx repositories.Transaction_deprec, inboxUserId string) error
 }
 
 type EnforceSecurityInboxUsers interface {
@@ -27,7 +27,7 @@ type EnforceSecurityInboxUsers interface {
 }
 
 type InboxUsers struct {
-	TransactionFactory  transaction.TransactionFactory
+	TransactionFactory  transaction.TransactionFactory_deprec
 	EnforceSecurity     EnforceSecurityInboxUsers
 	InboxUserRepository InboxUserRepository
 	UserRepository      repositories.UserRepository
@@ -88,11 +88,11 @@ func (usecase *InboxUsers) ListAllInboxUsers(ctx context.Context) ([]models.Inbo
 }
 
 func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.CreateInboxUserInput) (models.InboxUser, error) {
-	inboxUser, err := transaction.TransactionReturnValue(
+	inboxUser, err := transaction.TransactionReturnValue_deprec(
 		ctx,
 		usecase.TransactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction) (models.InboxUser, error) {
+		func(tx repositories.Transaction_deprec) (models.InboxUser, error) {
 			thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(ctx, tx, models.InboxUserFilterInput{
 				UserId: usecase.Credentials.ActorIdentity.UserId,
 			})
@@ -136,11 +136,11 @@ func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.Cre
 }
 
 func (usecase *InboxUsers) UpdateInboxUser(ctx context.Context, inboxUserId string, role models.InboxUserRole) (models.InboxUser, error) {
-	inboxUser, err := transaction.TransactionReturnValue(
+	inboxUser, err := transaction.TransactionReturnValue_deprec(
 		ctx,
 		usecase.TransactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction) (models.InboxUser, error) {
+		func(tx repositories.Transaction_deprec) (models.InboxUser, error) {
 			thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(ctx, tx, models.InboxUserFilterInput{
 				UserId: usecase.Credentials.ActorIdentity.UserId,
 			})
@@ -177,7 +177,7 @@ func (usecase *InboxUsers) DeleteInboxUser(ctx context.Context, inboxUserId stri
 	err := usecase.TransactionFactory.Transaction(
 		ctx,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction) error {
+		func(tx repositories.Transaction_deprec) error {
 			inboxUser, err := usecase.InboxUserRepository.GetInboxUserById(ctx, tx, inboxUserId)
 			if err != nil {
 				return err
