@@ -1,23 +1,23 @@
 package models
 
-type EmbeddingId int
+type EmbeddingType int
 
 const (
-	GlobalDashboard EmbeddingId = iota
+	GlobalDashboard EmbeddingType = iota
 )
 
-func (id EmbeddingId) String() string {
+func (id EmbeddingType) String() string {
 	switch id {
 	case GlobalDashboard:
 		return "global_dashboard"
 	default:
-		return "unknown_embedding_id"
+		return "unknown_embedding_type"
 	}
 }
 
 type Analytics struct {
 	OrganizationId     string
-	EmbeddingId        EmbeddingId
+	EmbeddingType      EmbeddingType
 	SignedEmbeddingURL string
 }
 
