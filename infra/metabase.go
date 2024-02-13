@@ -19,13 +19,19 @@ func InitializeMetabase(config models.MetabaseConfiguration) Metabase {
 }
 
 func (metabase Metabase) GenerateSignedEmbeddingURL(analyticsCustomClaims models.AnalyticsCustomClaims) (string, error) {
-	claims := struct {
+	embeddingType := analyticsCustomClaims.GetEmbeddingType()
+	resourceType := embeddingType.ResourceType()
+
+	type Claims struct {
 		Resource map[string]interface{} `json:"resource"`
 		Params   map[string]interface{} `json:"params"`
 		jwt.RegisteredClaims
-	}{
-		Resource: analyticsCustomClaims.Resource,
-		Params:   analyticsCustomClaims.Params,
+	}
+	claims := Claims{
+		Resource: map[string]interface{}{
+			resourceType: metabase.config.Resources[embeddingType],
+		},
+		Params: analyticsCustomClaims.GetParams(),
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute * time.Duration(metabase.config.TokenLifetimeMinute))),
 			Issuer:    "marble",
@@ -38,16 +44,5 @@ func (metabase Metabase) GenerateSignedEmbeddingURL(analyticsCustomClaims models
 		return "", err
 	}
 
-	ressource := ""
-	if _, found := analyticsCustomClaims.Resource["dashboard"]; found {
-		ressource = "dashboard"
-	}
-	if _, found := analyticsCustomClaims.Resource["question"]; found {
-		ressource = "question"
-	}
-	if ressource == "" {
-		return "", fmt.Errorf("resource not found in analytics custom claims")
-	}
-
-	return fmt.Sprintf("%s/embed/%s/%s#theme=light&bordered=false&titled=false", metabase.config.SiteUrl, ressource, signedToken), nil
+	return fmt.Sprintf("%s/embed/%s/%s#theme=light&bordered=false&titled=false", metabase.config.SiteUrl, resourceType, signedToken), nil
 }

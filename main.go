@@ -170,6 +170,9 @@ func main() {
 			SiteUrl:             utils.GetRequiredStringEnv("METABASE_SITE_URL"),
 			JwtSigningKey:       []byte(utils.GetRequiredStringEnv("METABASE_JWT_SIGNING_KEY")),
 			TokenLifetimeMinute: utils.GetIntEnv("METABASE_TOKEN_LIFETIME_MINUTE", 10),
+			Resources: map[models.EmbeddingType]int{
+				models.GlobalDashboard: utils.GetRequiredIntEnv("METABASE_GLOBAL_DASHBOARD_ID"),
+			},
 		},
 	}
 
