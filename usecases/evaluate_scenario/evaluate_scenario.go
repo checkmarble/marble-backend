@@ -16,7 +16,7 @@ import (
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
-	"github.com/checkmarble/marble-backend/usecases/transaction"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -31,14 +31,14 @@ type ScenarioEvaluationParameters struct {
 }
 
 type EvalScenarioRepository interface {
-	GetScenarioIteration(ctx context.Context, tx repositories.Transaction_deprec, scenarioIterationId string) (models.ScenarioIteration, error)
+	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (models.ScenarioIteration, error)
 }
 
 type ScenarioEvaluationRepositories struct {
-	EvalScenarioRepository     EvalScenarioRepository
-	OrgTransactionFactory      transaction.Factory_deprec
-	IngestedDataReadRepository repositories.IngestedDataReadRepository
-	EvaluateRuleAstExpression  ast_eval.EvaluateRuleAstExpression
+	EvalScenarioRepository      EvalScenarioRepository
+	ClientSchemaExecutorFactory executor_factory.ClientSchemaExecutorFactory
+	IngestedDataReadRepository  repositories.IngestedDataReadRepository
+	EvaluateRuleAstExpression   ast_eval.EvaluateRuleAstExpression
 }
 
 func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repositories ScenarioEvaluationRepositories, logger *slog.Logger) (se models.ScenarioExecution, err error) {
@@ -84,11 +84,11 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repo
 	}
 
 	dataAccessor := DataAccessor{
-		DataModel:                  params.DataModel,
-		Payload:                    params.Payload,
-		orgTransactionFactory:      repositories.OrgTransactionFactory,
-		organizationId:             params.Scenario.OrganizationId,
-		ingestedDataReadRepository: repositories.IngestedDataReadRepository,
+		DataModel:                   params.DataModel,
+		Payload:                     params.Payload,
+		clientSchemaExecutorFactory: repositories.ClientSchemaExecutorFactory,
+		organizationId:              params.Scenario.OrganizationId,
+		ingestedDataReadRepository:  repositories.IngestedDataReadRepository,
 	}
 
 	// Evaluate the trigger

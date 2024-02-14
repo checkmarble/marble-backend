@@ -8,8 +8,8 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
-func (repo *MarbleDbRepository) ListCaseEvents(ctx context.Context, tx Transaction_deprec, caseId string) ([]models.CaseEvent, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *MarbleDbRepository) ListCaseEvents(ctx context.Context, exec Executor, caseId string) ([]models.CaseEvent, error) {
+	exec = repo.executorGetter.ifNil(exec)
 
 	query := NewQueryBuilder().
 		Select(dbmodels.SelectCaseEventColumn...).
@@ -19,18 +19,18 @@ func (repo *MarbleDbRepository) ListCaseEvents(ctx context.Context, tx Transacti
 
 	return SqlToListOfModels(
 		ctx,
-		pgTx,
+		exec,
 		query,
 		dbmodels.AdaptCaseEvent,
 	)
 }
 
-func (repo *MarbleDbRepository) CreateCaseEvent(ctx context.Context, tx Transaction_deprec, createCaseEventAttributes models.CreateCaseEventAttributes) error {
-	return repo.BatchCreateCaseEvents(ctx, tx, []models.CreateCaseEventAttributes{createCaseEventAttributes})
+func (repo *MarbleDbRepository) CreateCaseEvent(ctx context.Context, exec Executor, createCaseEventAttributes models.CreateCaseEventAttributes) error {
+	return repo.BatchCreateCaseEvents(ctx, exec, []models.CreateCaseEventAttributes{createCaseEventAttributes})
 }
 
-func (repo *MarbleDbRepository) BatchCreateCaseEvents(ctx context.Context, tx Transaction_deprec, createCaseEventAttributes []models.CreateCaseEventAttributes) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *MarbleDbRepository) BatchCreateCaseEvents(ctx context.Context, exec Executor, createCaseEventAttributes []models.CreateCaseEventAttributes) error {
+	exec = repo.executorGetter.ifNil(exec)
 
 	query := NewQueryBuilder().Insert(dbmodels.TABLE_CASE_EVENTS).
 		Columns(
@@ -57,7 +57,7 @@ func (repo *MarbleDbRepository) BatchCreateCaseEvents(ctx context.Context, tx Tr
 		)
 	}
 
-	_, err := pgTx.ExecBuilder(ctx, query)
+	_, err := ExecBuilder(ctx, exec, query)
 
 	return err
 }

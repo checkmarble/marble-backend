@@ -8,23 +8,23 @@ import (
 )
 
 type OrganizationRepository interface {
-	AllOrganizations(ctx context.Context, tx Transaction_deprec) ([]models.Organization, error)
-	GetOrganizationById(ctx context.Context, tx Transaction_deprec, organizationId string) (models.Organization, error)
-	CreateOrganization(ctx context.Context, tx Transaction_deprec, createOrganization models.CreateOrganizationInput, newOrganizationId string) error
-	UpdateOrganization(ctx context.Context, tx Transaction_deprec, updateOrganization models.UpdateOrganizationInput) error
-	DeleteOrganization(ctx context.Context, tx Transaction_deprec, organizationId string) error
+	AllOrganizations(ctx context.Context, exec Executor) ([]models.Organization, error)
+	GetOrganizationById(ctx context.Context, exec Executor, organizationId string) (models.Organization, error)
+	CreateOrganization(ctx context.Context, exec Executor, createOrganization models.CreateOrganizationInput, newOrganizationId string) error
+	UpdateOrganization(ctx context.Context, exec Executor, updateOrganization models.UpdateOrganizationInput) error
+	DeleteOrganization(ctx context.Context, exec Executor, organizationId string) error
 }
 
 type OrganizationRepositoryPostgresql struct {
-	transactionFactory TransactionFactoryPosgresql_deprec
+	executorGetter ExecutorGetter
 }
 
-func (repo *OrganizationRepositoryPostgresql) AllOrganizations(ctx context.Context, tx Transaction_deprec) ([]models.Organization, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *OrganizationRepositoryPostgresql) AllOrganizations(ctx context.Context, exec Executor) ([]models.Organization, error) {
+	exec = repo.executorGetter.ifNil(exec)
 
 	return SqlToListOfModels(
 		ctx,
-		pgTx,
+		exec,
 		NewQueryBuilder().
 			Select(dbmodels.ColumnsSelectOrganization...).
 			From(dbmodels.TABLE_ORGANIZATION).
@@ -32,12 +32,12 @@ func (repo *OrganizationRepositoryPostgresql) AllOrganizations(ctx context.Conte
 		dbmodels.AdaptOrganization,
 	)
 }
-func (repo *OrganizationRepositoryPostgresql) GetOrganizationById(ctx context.Context, tx Transaction_deprec, organizationId string) (models.Organization, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *OrganizationRepositoryPostgresql) GetOrganizationById(ctx context.Context, exec Executor, organizationId string) (models.Organization, error) {
+	exec = repo.executorGetter.ifNil(exec)
 
 	return SqlToModel(
 		ctx,
-		pgTx,
+		exec,
 		NewQueryBuilder().
 			Select(dbmodels.ColumnsSelectOrganization...).
 			From(dbmodels.TABLE_ORGANIZATION).
@@ -46,11 +46,12 @@ func (repo *OrganizationRepositoryPostgresql) GetOrganizationById(ctx context.Co
 	)
 }
 
-func (repo *OrganizationRepositoryPostgresql) CreateOrganization(ctx context.Context, tx Transaction_deprec, createOrganization models.CreateOrganizationInput, newOrganizationId string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *OrganizationRepositoryPostgresql) CreateOrganization(ctx context.Context, exec Executor, createOrganization models.CreateOrganizationInput, newOrganizationId string) error {
+	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := pgTx.ExecBuilder(
+	_, err := ExecBuilder(
 		ctx,
+		exec,
 		NewQueryBuilder().Insert(dbmodels.TABLE_ORGANIZATION).
 			Columns(
 				"id",
@@ -66,8 +67,8 @@ func (repo *OrganizationRepositoryPostgresql) CreateOrganization(ctx context.Con
 	return err
 }
 
-func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(ctx context.Context, tx Transaction_deprec, updateOrganization models.UpdateOrganizationInput) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(ctx context.Context, exec Executor, updateOrganization models.UpdateOrganizationInput) error {
+	exec = repo.executorGetter.ifNil(exec)
 
 	var updateRequest = NewQueryBuilder().Update(dbmodels.TABLE_ORGANIZATION)
 
@@ -83,13 +84,13 @@ func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(ctx context.Con
 
 	updateRequest = updateRequest.Where("id = ?", updateOrganization.Id)
 
-	_, err := pgTx.ExecBuilder(ctx, updateRequest)
+	_, err := ExecBuilder(ctx, exec, updateRequest)
 	return err
 }
 
-func (repo *OrganizationRepositoryPostgresql) DeleteOrganization(ctx context.Context, tx Transaction_deprec, organizationId string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *OrganizationRepositoryPostgresql) DeleteOrganization(ctx context.Context, exec Executor, organizationId string) error {
+	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := pgTx.ExecBuilder(ctx, NewQueryBuilder().Delete(dbmodels.TABLE_ORGANIZATION).Where("id = ?", organizationId))
+	_, err := ExecBuilder(ctx, exec, NewQueryBuilder().Delete(dbmodels.TABLE_ORGANIZATION).Where("id = ?", organizationId))
 	return err
 }

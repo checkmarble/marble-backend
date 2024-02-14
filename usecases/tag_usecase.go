@@ -5,28 +5,29 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
-	"github.com/checkmarble/marble-backend/usecases/transaction"
+
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
 type TagUseCaseRepository interface {
-	ListOrganizationTags(ctx context.Context, tx repositories.Transaction_deprec, organizationId string, withCaseCount bool) ([]models.Tag, error)
-	CreateTag(ctx context.Context, tx repositories.Transaction_deprec, attributes models.CreateTagAttributes, newTagId string) error
-	UpdateTag(ctx context.Context, tx repositories.Transaction_deprec, attributes models.UpdateTagAttributes) error
-	GetTagById(ctx context.Context, tx repositories.Transaction_deprec, tagId string) (models.Tag, error)
-	SoftDeleteTag(ctx context.Context, tx repositories.Transaction_deprec, tagId string) error
-	ListCaseTagsByTagId(ctx context.Context, tx repositories.Transaction_deprec, tagId string) ([]models.CaseTag, error)
+	ListOrganizationTags(ctx context.Context, exec repositories.Executor, organizationId string, withCaseCount bool) ([]models.Tag, error)
+	CreateTag(ctx context.Context, exec repositories.Executor, attributes models.CreateTagAttributes, newTagId string) error
+	UpdateTag(ctx context.Context, exec repositories.Executor, attributes models.UpdateTagAttributes) error
+	GetTagById(ctx context.Context, exec repositories.Executor, tagId string) (models.Tag, error)
+	SoftDeleteTag(ctx context.Context, exec repositories.Executor, tagId string) error
+	ListCaseTagsByTagId(ctx context.Context, exec repositories.Executor, tagId string) ([]models.CaseTag, error)
 
-	GetInboxById(ctx context.Context, tx repositories.Transaction_deprec, inboxId string) (models.Inbox, error)
+	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId string) (models.Inbox, error)
 }
 
 type TagUseCase struct {
 	enforceSecurity    security.EnforceSecurityInboxes
-	transactionFactory transaction.TransactionFactory_deprec
+	transactionFactory executor_factory.TransactionFactory
 	repository         TagUseCaseRepository
 	inboxReader        inboxes.InboxReader
 }
@@ -40,8 +41,8 @@ func (usecase *TagUseCase) CreateTag(ctx context.Context, attributes models.Crea
 		return models.Tag{}, err
 	}
 
-	tag, err := transaction.TransactionReturnValue_deprec(ctx,
-		usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) (models.Tag, error) {
+	tag, err := executor_factory.TransactionReturnValue(ctx,
+		usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Executor) (models.Tag, error) {
 			newTagId := uuid.NewString()
 			if err := usecase.repository.CreateTag(ctx, tx, attributes, newTagId); err != nil {
 				if repositories.IsUniqueViolationError(err) {
@@ -68,7 +69,7 @@ func (usecase *TagUseCase) UpdateTag(ctx context.Context, organizationId string,
 	if err := usecase.inboxReader.EnforceSecurity.CreateInbox(organizationId); err != nil {
 		return models.Tag{}, err
 	}
-	tag, err := transaction.TransactionReturnValue_deprec(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) (models.Tag, error) {
+	tag, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Executor) (models.Tag, error) {
 		if err := usecase.repository.UpdateTag(ctx, tx, attributes); err != nil {
 			return models.Tag{}, err
 		}
@@ -87,7 +88,7 @@ func (usecase *TagUseCase) DeleteTag(ctx context.Context, organizationId, tagId 
 	if err := usecase.inboxReader.EnforceSecurity.CreateInbox(organizationId); err != nil {
 		return err
 	}
-	err := transaction.TransactionFactory_deprec.Transaction(usecase.transactionFactory, ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) error {
+	err := executor_factory.TransactionFactory.Transaction(usecase.transactionFactory, ctx, func(tx repositories.Executor) error {
 		if _, err := usecase.repository.GetTagById(ctx, tx, tagId); err != nil {
 			return err
 		}

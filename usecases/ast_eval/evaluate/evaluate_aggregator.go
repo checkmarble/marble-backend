@@ -10,16 +10,16 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/transaction"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 )
 
 type AggregatorEvaluator struct {
-	OrganizationId             string
-	DataModel                  models.DataModel
-	Payload                    models.PayloadReader
-	OrgTransactionFactory      transaction.Factory_deprec
-	IngestedDataReadRepository repositories.IngestedDataReadRepository
-	ReturnFakeValue            bool
+	OrganizationId              string
+	DataModel                   models.DataModel
+	Payload                     models.PayloadReader
+	ClientSchemaExecutorFactory executor_factory.ClientSchemaExecutorFactory
+	IngestedDataReadRepository  repositories.IngestedDataReadRepository
+	ReturnFakeValue             bool
 }
 
 var ValidTypesForAggregator = map[ast.Aggregator][]models.DataType{
@@ -100,18 +100,11 @@ func (a AggregatorEvaluator) runQueryInRepository(ctx context.Context, tableName
 		return DryRunQueryAggregatedValue(a.DataModel, tableName, fieldName, aggregator)
 	}
 
-	return transaction.InOrganizationSchema_deprec(
-		ctx,
-		a.OrgTransactionFactory,
-		a.OrganizationId,
-		func(tx repositories.Transaction_deprec) (any, error) {
-			result, err := a.IngestedDataReadRepository.QueryAggregatedValue(ctx, tx, tableName, fieldName, aggregator, filters)
-			if err != nil {
-				return nil, err
-			}
-			return result, nil
-		},
-	)
+	if db, err := a.ClientSchemaExecutorFactory.NewClientDbExecutor(ctx, a.OrganizationId); err != nil {
+		return nil, err
+	} else {
+		return a.IngestedDataReadRepository.QueryAggregatedValue(ctx, db, tableName, fieldName, aggregator, filters)
+	}
 }
 
 func (a AggregatorEvaluator) defaultValueForAggregator(aggregator ast.Aggregator) (any, []error) {

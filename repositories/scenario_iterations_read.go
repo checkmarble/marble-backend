@@ -13,14 +13,14 @@ import (
 
 func (repository *MarbleDbRepository) GetScenarioIteration(
 	ctx context.Context,
-	tx Transaction_deprec,
+	exec Executor,
 	scenarioIterationId string,
 ) (models.ScenarioIteration, error) {
-	pgTx := repository.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+	exec = repository.executorGetter.ifNil(exec)
 
 	return SqlToModel(
 		ctx,
-		pgTx,
+		exec,
 		selectScenarioIterations().Where(squirrel.Eq{"si.id": scenarioIterationId}),
 		dbmodels.AdaptScenarioIterationWithRules,
 	)
@@ -28,11 +28,11 @@ func (repository *MarbleDbRepository) GetScenarioIteration(
 
 func (repository *MarbleDbRepository) ListScenarioIterations(
 	ctx context.Context,
-	tx Transaction_deprec,
+	exec Executor,
 	organizationId string,
 	filters models.GetScenarioIterationFilters,
 ) ([]models.ScenarioIteration, error) {
-	pgTx := repository.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+	exec = repository.executorGetter.ifNil(exec)
 
 	sql := selectScenarioIterations().Where(squirrel.Eq{"si.org_id": organizationId})
 	if filters.ScenarioId != nil {
@@ -41,7 +41,7 @@ func (repository *MarbleDbRepository) ListScenarioIterations(
 
 	return SqlToListOfModels(
 		ctx,
-		pgTx,
+		exec,
 		sql,
 		dbmodels.AdaptScenarioIterationWithRules,
 	)

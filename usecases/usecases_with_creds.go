@@ -76,22 +76,22 @@ func (usecases *UsecasesWithCreds) NewEnforceCaseSecurity() security.EnforceSecu
 
 func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 	return DecisionUsecase{
-		enforceSecurity:            usecases.NewEnforceDecisionSecurity(),
-		enforceSecurityScenario:    usecases.NewEnforceScenarioSecurity(),
-		transactionFactory:         &usecases.Repositories.TransactionFactoryPosgresql_deprec,
-		orgTransactionFactory:      usecases.NewOrgTransactionFactory(),
-		ingestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
-		decisionRepository:         usecases.Repositories.DecisionRepository,
-		datamodelRepository:        usecases.Repositories.DataModelRepository,
-		repository:                 &usecases.Repositories.MarbleDbRepository,
-		evaluateRuleAstExpression:  usecases.NewEvaluateRuleAstExpression(),
-		organizationIdOfContext:    usecases.OrganizationIdOfContext,
+		enforceSecurity:             usecases.NewEnforceDecisionSecurity(),
+		enforceSecurityScenario:     usecases.NewEnforceScenarioSecurity(),
+		clientSchemaExecutorFactory: usecases.NewClientDbExecutorFactory(),
+		transactionFactory:          usecases.NewTransactionFactory(),
+		ingestedDataReadRepository:  usecases.Repositories.IngestedDataReadRepository,
+		decisionRepository:          usecases.Repositories.DecisionRepository,
+		datamodelRepository:         usecases.Repositories.DataModelRepository,
+		repository:                  &usecases.Repositories.MarbleDbRepository,
+		evaluateRuleAstExpression:   usecases.NewEvaluateRuleAstExpression(),
+		organizationIdOfContext:     usecases.OrganizationIdOfContext,
 	}
 }
 
 func (usecases *UsecasesWithCreds) NewScenarioUsecase() ScenarioUsecase {
 	return ScenarioUsecase{
-		transactionFactory:      &usecases.Repositories.TransactionFactoryPosgresql_deprec,
+		transactionFactory:      usecases.NewTransactionFactory(),
 		organizationIdOfContext: usecases.OrganizationIdOfContext,
 		enforceSecurity:         usecases.NewEnforceScenarioSecurity(),
 		repository:              &usecases.Repositories.MarbleDbRepository,
@@ -114,7 +114,7 @@ func (usecases *UsecasesWithCreds) NewRuleUsecase() RuleUsecase {
 		enforceSecurity:         usecases.NewEnforceScenarioSecurity(),
 		repository:              &usecases.Repositories.MarbleDbRepository,
 		scenarioFetcher:         usecases.NewScenarioFetcher(),
-		transactionFactory:      &usecases.Repositories.TransactionFactoryPosgresql_deprec,
+		transactionFactory:      usecases.NewTransactionFactory(),
 	}
 }
 
@@ -130,14 +130,13 @@ func (usecases *UsecasesWithCreds) NewCustomListUseCase() CustomListUseCase {
 	return CustomListUseCase{
 		enforceSecurity:         usecases.NewEnforceCustomListSecurity(),
 		organizationIdOfContext: usecases.OrganizationIdOfContext,
-		transactionFactory:      &usecases.Repositories.TransactionFactoryPosgresql_deprec,
+		transactionFactory:      usecases.NewTransactionFactory(),
 		CustomListRepository:    usecases.Repositories.CustomListRepository,
 	}
 }
 
 func (usecases *UsecasesWithCreds) NewScenarioPublicationUsecase() ScenarioPublicationUsecase {
 	return ScenarioPublicationUsecase{
-		TransactionFactory_deprec:      &usecases.Repositories.TransactionFactoryPosgresql_deprec,
 		transactionFactory:             usecases.NewTransactionFactory(),
 		clientSchemaExecutorFactory:    usecases.NewClientDbExecutorFactory(),
 		scenarioPublicationsRepository: usecases.Repositories.ScenarioPublicationRepository,
@@ -153,7 +152,7 @@ func (usecases *UsecasesWithCreds) NewScenarioPublicationUsecase() ScenarioPubli
 func (usecases *UsecasesWithCreds) NewMarbleTokenUseCase() MarbleTokenUseCase {
 	repositories := usecases.Repositories
 	return MarbleTokenUseCase{
-		transactionFactory:      &usecases.Repositories.TransactionFactoryPosgresql_deprec,
+		transactionFactory:      usecases.NewTransactionFactory(),
 		firebaseTokenRepository: repositories.FirebaseTokenRepository,
 		marbleJwtRepository:     repositories.MarbleJwtRepository(),
 		userRepository:          repositories.UserRepository,
@@ -167,8 +166,8 @@ func (usecases *UsecasesWithCreds) NewMarbleTokenUseCase() MarbleTokenUseCase {
 func (usecases *UsecasesWithCreds) NewOrganizationUseCase() OrganizationUseCase {
 	return OrganizationUseCase{
 		enforceSecurity:              usecases.NewEnforceOrganizationSecurity(),
-		transactionFactory:           &usecases.Repositories.TransactionFactoryPosgresql_deprec,
-		orgTransactionFactory:        usecases.NewOrgTransactionFactory(),
+		clientSchemaExecutorFactory:  usecases.NewClientDbExecutorFactory(),
+		transactionFactory:           usecases.NewTransactionFactory(),
 		organizationRepository:       usecases.Repositories.OrganizationRepository,
 		datamodelRepository:          usecases.Repositories.DataModelRepository,
 		userRepository:               usecases.Repositories.UserRepository,
@@ -181,7 +180,7 @@ func (usecases *UsecasesWithCreds) NewOrganizationUseCase() OrganizationUseCase 
 func (usecases *UsecasesWithCreds) NewDataModelUseCase() DataModelUseCase {
 	return DataModelUseCase{
 		enforceSecurity:            usecases.NewEnforceOrganizationSecurity(),
-		transactionFactory:         &usecases.Repositories.TransactionFactoryPosgresql_deprec,
+		transactionFactory:         usecases.NewTransactionFactory(),
 		dataModelRepository:        usecases.Repositories.DataModelRepository,
 		populateOrganizationSchema: usecases.NewPopulateOrganizationSchema(),
 	}
@@ -196,14 +195,13 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 	}
 
 	return IngestionUseCase{
-		enforceSecurity:       usecases.NewEnforceIngestionSecurity(),
-		transactionFactory:    &usecases.Repositories.TransactionFactoryPosgresql_deprec,
-		orgTransactionFactory: usecases.NewOrgTransactionFactory(),
-		ingestionRepository:   usecases.Repositories.IngestionRepository,
-		gcsRepository:         gcsRepository,
-		dataModelUseCase:      usecases.NewDataModelUseCase(),
-		uploadLogRepository:   usecases.Repositories.UploadLogRepository,
-		GcsIngestionBucket:    usecases.Configuration.GcsIngestionBucket,
+		enforceSecurity:     usecases.NewEnforceIngestionSecurity(),
+		transactionFactory:  usecases.NewTransactionFactory(),
+		ingestionRepository: usecases.Repositories.IngestionRepository,
+		gcsRepository:       gcsRepository,
+		dataModelUseCase:    usecases.NewDataModelUseCase(),
+		uploadLogRepository: usecases.Repositories.UploadLogRepository,
+		GcsIngestionBucket:  usecases.Configuration.GcsIngestionBucket,
 	}
 
 }
@@ -211,11 +209,11 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 func (usecases *UsecasesWithCreds) NewRunScheduledExecution() scheduledexecution.RunScheduledExecution {
 	return scheduledexecution.RunScheduledExecution{
 		Repository:                     &usecases.Repositories.MarbleDbRepository,
-		TransactionFactory:             &usecases.Repositories.TransactionFactoryPosgresql_deprec,
+		ClientSchemaExecutorFactory:    usecases.NewClientDbExecutorFactory(),
+		TransactionFactory:             usecases.NewTransactionFactory(),
 		ExportScheduleExecution:        *usecases.NewExportScheduleExecution(),
 		ScenarioPublicationsRepository: usecases.Repositories.ScenarioPublicationRepository,
 		DataModelRepository:            usecases.Repositories.DataModelRepository,
-		OrgTransactionFactory:          usecases.NewOrgTransactionFactory(),
 		IngestedDataReadRepository:     usecases.Repositories.IngestedDataReadRepository,
 		EvaluateRuleAstExpression:      usecases.NewEvaluateRuleAstExpression(),
 		DecisionRepository:             usecases.Repositories.DecisionRepository,
@@ -225,7 +223,7 @@ func (usecases *UsecasesWithCreds) NewRunScheduledExecution() scheduledexecution
 func (usecases *UsecasesWithCreds) NewScheduledExecutionUsecase() ScheduledExecutionUsecase {
 	return ScheduledExecutionUsecase{
 		enforceSecurity:         usecases.NewEnforceDecisionSecurity(),
-		transactionFactory:      &usecases.Repositories.TransactionFactoryPosgresql_deprec,
+		transactionFactory:      usecases.NewTransactionFactory(),
 		repository:              &usecases.Repositories.MarbleDbRepository,
 		exportScheduleExecution: usecases.NewExportScheduleExecution(),
 		organizationIdOfContext: usecases.OrganizationIdOfContext,
@@ -235,7 +233,7 @@ func (usecases *UsecasesWithCreds) NewScheduledExecutionUsecase() ScheduledExecu
 func (usecases *UsecasesWithCreds) NewUserUseCase() UserUseCase {
 	return UserUseCase{
 		enforceUserSecurity: usecases.NewEnforceUserSecurity(),
-		transactionFactory:  &usecases.Repositories.TransactionFactoryPosgresql_deprec,
+		transactionFactory:  usecases.NewTransactionFactory(),
 		userRepository:      usecases.Repositories.UserRepository,
 	}
 }
@@ -253,7 +251,7 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() CaseUseCase {
 	}
 	return CaseUseCase{
 		enforceSecurity:    usecases.NewEnforceCaseSecurity(),
-		transactionFactory: &usecases.Repositories.TransactionFactoryPosgresql_deprec,
+		transactionFactory: usecases.NewTransactionFactory(),
 		repository:         &usecases.Repositories.MarbleDbRepository,
 		decisionRepository: usecases.Repositories.DecisionRepository,
 		inboxReader: inboxes.InboxReader{
@@ -278,7 +276,7 @@ func (usecases *UsecasesWithCreds) NewInboxUsecase() InboxUsecase {
 		userRepository:          usecases.Repositories.UserRepository,
 		credentials:             usecases.Credentials,
 		organizationIdOfContext: usecases.OrganizationIdOfContext,
-		transactionFactory:      &usecases.Repositories.TransactionFactoryPosgresql_deprec,
+		transactionFactory:      usecases.NewTransactionFactory(),
 		inboxReader: inboxes.InboxReader{
 			EnforceSecurity:         sec,
 			OrganizationIdOfContext: usecases.OrganizationIdOfContext,
@@ -289,7 +287,7 @@ func (usecases *UsecasesWithCreds) NewInboxUsecase() InboxUsecase {
 			EnforceSecurity:     sec,
 			InboxUserRepository: &usecases.Repositories.MarbleDbRepository,
 			Credentials:         usecases.Credentials,
-			TransactionFactory:  &usecases.Repositories.TransactionFactoryPosgresql_deprec,
+			TransactionFactory:  usecases.NewTransactionFactory(),
 			UserRepository:      usecases.Repositories.UserRepository,
 		},
 	}
@@ -302,7 +300,7 @@ func (usecases *UsecasesWithCreds) NewTagUseCase() TagUseCase {
 	}
 	return TagUseCase{
 		enforceSecurity:    sec,
-		transactionFactory: &usecases.Repositories.TransactionFactoryPosgresql_deprec,
+		transactionFactory: usecases.NewTransactionFactory(),
 		repository:         &usecases.Repositories.MarbleDbRepository,
 		inboxReader: inboxes.InboxReader{
 			EnforceSecurity:         sec,
@@ -315,7 +313,7 @@ func (usecases *UsecasesWithCreds) NewTagUseCase() TagUseCase {
 
 func (usecases *UsecasesWithCreds) NewApiKeyUseCase() ApiKeyUseCase {
 	return ApiKeyUseCase{
-		transactionFactory:      &usecases.Repositories.TransactionFactoryPosgresql_deprec,
+		transactionFactory:      usecases.NewTransactionFactory(),
 		organizationIdOfContext: usecases.OrganizationIdOfContext,
 		enforceSecurity: &security.EnforceSecurityApiKeyImpl{
 			EnforceSecurity: usecases.NewEnforceSecurity(),

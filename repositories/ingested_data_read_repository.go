@@ -13,20 +13,22 @@ import (
 )
 
 type IngestedDataReadRepository interface {
-	GetDbField(ctx context.Context, transaction Transaction_deprec, readParams models.DbFieldReadParams) (any, error)
-	ListAllObjectsFromTable(ctx context.Context, transaction Transaction_deprec, table models.Table) ([]models.ClientObject, error)
-	QueryAggregatedValue(ctx context.Context, transaction Transaction_deprec, tableName models.TableName, fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter) (any, error)
+	GetDbField(ctx context.Context, exec Executor, readParams models.DbFieldReadParams) (any, error)
+	ListAllObjectsFromTable(ctx context.Context, exec Executor, table models.Table) ([]models.ClientObject, error)
+	QueryAggregatedValue(ctx context.Context, exec Executor, tableName models.TableName, fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter) (any, error)
 }
 
 type IngestedDataReadRepositoryImpl struct{}
 
-func (repo *IngestedDataReadRepositoryImpl) GetDbField(ctx context.Context, transaction Transaction_deprec, readParams models.DbFieldReadParams) (any, error) {
-	tx := adaptClientDatabaseTransaction(transaction)
+func (repo *IngestedDataReadRepositoryImpl) GetDbField(ctx context.Context, exec Executor, readParams models.DbFieldReadParams) (any, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	if len(readParams.Path) == 0 {
 		return nil, fmt.Errorf("path is empty: %w", models.BadParameterError)
 	}
-	row, err := repo.queryDbForField(ctx, tx, readParams)
+	row, err := repo.queryDbForField(ctx, exec, readParams)
 	if err != nil {
 		return nil, fmt.Errorf("error while building query for DB field: %w", err)
 	}
@@ -41,7 +43,7 @@ func (repo *IngestedDataReadRepositoryImpl) GetDbField(ctx context.Context, tran
 	return output, nil
 }
 
-func createQueryDbForField(ctx context.Context, tx Transaction_deprec, readParams models.DbFieldReadParams) (squirrel.SelectBuilder, error) {
+func createQueryDbForField(ctx context.Context, exec Executor, readParams models.DbFieldReadParams) (squirrel.SelectBuilder, error) {
 	triggerTable, ok := readParams.DataModel.Tables[readParams.TriggerTableName]
 	if !ok {
 		return squirrel.SelectBuilder{}, fmt.Errorf("table %s not found in data model", readParams.TriggerTableName)
@@ -67,8 +69,8 @@ func createQueryDbForField(ctx context.Context, tx Transaction_deprec, readParam
 		return squirrel.SelectBuilder{}, err
 	}
 
-	firstTableName := tableNameWithSchema(tx, firstTable.Name)
-	lastTableName := tableNameWithSchema(tx, lastTable.Name)
+	firstTableName := tableNameWithSchema(exec, firstTable.Name)
+	lastTableName := tableNameWithSchema(exec, lastTable.Name)
 
 	// setup the end table we read the field from, the beginning table we join from, and relevant filters on the latter
 	query := NewQueryBuilder().
@@ -77,11 +79,11 @@ func createQueryDbForField(ctx context.Context, tx Transaction_deprec, readParam
 		Where(squirrel.Eq{fmt.Sprintf("%s.object_id", firstTableName): firstTableObjectId}).
 		Where(rowIsValid(firstTableName))
 
-	return addJoinsOnIntermediateTables(ctx, tx, query, readParams, firstTable)
+	return addJoinsOnIntermediateTables(ctx, exec, query, readParams, firstTable)
 }
 
-func (repo *IngestedDataReadRepositoryImpl) queryDbForField(ctx context.Context, tx TransactionPostgres_deprec, readParams models.DbFieldReadParams) (pgx.Row, error) {
-	query, err := createQueryDbForField(ctx, tx, readParams)
+func (repo *IngestedDataReadRepositoryImpl) queryDbForField(ctx context.Context, exec Executor, readParams models.DbFieldReadParams) (pgx.Row, error) {
+	query, err := createQueryDbForField(ctx, exec, readParams)
 	if err != nil {
 		return nil, fmt.Errorf("error while building SQL query: %w", err)
 	}
@@ -92,7 +94,7 @@ func (repo *IngestedDataReadRepositoryImpl) queryDbForField(ctx context.Context,
 		return nil, fmt.Errorf("error while building SQL query: %w", err)
 	}
 
-	row := tx.exec.QueryRow(ctx, sql, args...)
+	row := exec.QueryRow(ctx, sql, args...)
 	return row, nil
 }
 
@@ -109,7 +111,7 @@ func getFirstTableObjectIdFromPayload(payload models.PayloadReader, fieldName mo
 	return parentObjectId, nil
 }
 
-func addJoinsOnIntermediateTables(ctx context.Context, tx Transaction_deprec, query squirrel.SelectBuilder, readParams models.DbFieldReadParams, firstTable models.Table) (squirrel.SelectBuilder, error) {
+func addJoinsOnIntermediateTables(ctx context.Context, exec Executor, query squirrel.SelectBuilder, readParams models.DbFieldReadParams, firstTable models.Table) (squirrel.SelectBuilder, error) {
 	currentTable := firstTable
 	// ignore the first element of the path, as it is the starting table of the query
 	for _, linkName := range readParams.Path[1:] {
@@ -122,8 +124,8 @@ func addJoinsOnIntermediateTables(ctx context.Context, tx Transaction_deprec, qu
 			return squirrel.SelectBuilder{}, fmt.Errorf("no table with name %s: %w", link.LinkedTableName, models.NotFoundError)
 		}
 
-		currentTableName := tableNameWithSchema(tx, currentTable.Name)
-		nextTableName := tableNameWithSchema(tx, nextTable.Name)
+		currentTableName := tableNameWithSchema(exec, currentTable.Name)
+		nextTableName := tableNameWithSchema(exec, nextTable.Name)
 		joinClause := fmt.Sprintf(
 			"%s ON %s.%s = %s.%s",
 			nextTableName,
@@ -161,12 +163,14 @@ func getLastTableFromPath(params models.DbFieldReadParams, firstTable models.Tab
 	return currentTable, nil
 }
 
-func (repo *IngestedDataReadRepositoryImpl) ListAllObjectsFromTable(ctx context.Context, transaction Transaction_deprec, table models.Table) ([]models.ClientObject, error) {
-	tx := adaptClientDatabaseTransaction(transaction)
+func (repo *IngestedDataReadRepositoryImpl) ListAllObjectsFromTable(ctx context.Context, exec Executor, table models.Table) ([]models.ClientObject, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	columnNames := models.ColumnNames(table)
 
-	objectsAsMap, err := queryWithDynamicColumnList(ctx, tx, tableNameWithSchema(tx, table.Name), columnNames)
+	objectsAsMap, err := queryWithDynamicColumnList(ctx, exec, tableNameWithSchema(exec, table.Name), columnNames)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +187,7 @@ func (repo *IngestedDataReadRepositoryImpl) ListAllObjectsFromTable(ctx context.
 	return output, nil
 }
 
-func queryWithDynamicColumnList(ctx context.Context, tx TransactionPostgres_deprec, qualifiedTableName string, columnNames []string) ([]map[string]any, error) {
+func queryWithDynamicColumnList(ctx context.Context, exec Executor, qualifiedTableName string, columnNames []string) ([]map[string]any, error) {
 	sql, args, err := NewQueryBuilder().
 		Select(columnNames...).
 		From(qualifiedTableName).
@@ -193,7 +197,7 @@ func queryWithDynamicColumnList(ctx context.Context, tx TransactionPostgres_depr
 	if err != nil {
 		return nil, fmt.Errorf("error while building SQL query: %w", err)
 	}
-	rows, err := tx.exec.Query(ctx, sql, args...)
+	rows, err := exec.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, fmt.Errorf("error while querying DB: %w", err)
 	}
@@ -219,7 +223,7 @@ func queryWithDynamicColumnList(ctx context.Context, tx TransactionPostgres_depr
 	return output, nil
 }
 
-func createQueryAggregated(ctx context.Context, transaction Transaction_deprec, tableName models.TableName, fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter) (squirrel.SelectBuilder, error) {
+func createQueryAggregated(ctx context.Context, exec Executor, tableName models.TableName, fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter) (squirrel.SelectBuilder, error) {
 	var selectExpression string
 	if aggregator == ast.AGGREGATOR_COUNT_DISTINCT {
 		selectExpression = fmt.Sprintf("COUNT(DISTINCT %s)", fieldName)
@@ -227,7 +231,7 @@ func createQueryAggregated(ctx context.Context, transaction Transaction_deprec, 
 		selectExpression = fmt.Sprintf("%s(%s)", aggregator, fieldName)
 	}
 
-	qualifiedTableName := tableNameWithSchema(transaction, tableName)
+	qualifiedTableName := tableNameWithSchema(exec, tableName)
 
 	query := NewQueryBuilder().
 		Select(selectExpression).
@@ -244,10 +248,12 @@ func createQueryAggregated(ctx context.Context, transaction Transaction_deprec, 
 	return query, nil
 }
 
-func (repo *IngestedDataReadRepositoryImpl) QueryAggregatedValue(ctx context.Context, transaction Transaction_deprec, tableName models.TableName, fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter) (any, error) {
-	tx := adaptClientDatabaseTransaction(transaction)
+func (repo *IngestedDataReadRepositoryImpl) QueryAggregatedValue(ctx context.Context, exec Executor, tableName models.TableName, fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter) (any, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
-	query, err := createQueryAggregated(ctx, tx, tableName, fieldName, aggregator, filters)
+	query, err := createQueryAggregated(ctx, exec, tableName, fieldName, aggregator, filters)
 	if err != nil {
 		return nil, fmt.Errorf("error while building SQL query: %w", err)
 	}
@@ -256,7 +262,7 @@ func (repo *IngestedDataReadRepositoryImpl) QueryAggregatedValue(ctx context.Con
 		return nil, fmt.Errorf("error while building SQL query: %w", err)
 	}
 	var result any
-	err = tx.exec.QueryRow(ctx, sql, args...).Scan(&result)
+	err = exec.QueryRow(ctx, sql, args...).Scan(&result)
 	if err != nil {
 		return nil, fmt.Errorf("error while querying DB: %w", err)
 	}

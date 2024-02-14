@@ -8,9 +8,9 @@ import (
 )
 
 type InboxRepository interface {
-	GetInboxById(ctx context.Context, tx repositories.Transaction_deprec, inboxId string) (models.Inbox, error)
-	ListInboxes(ctx context.Context, tx repositories.Transaction_deprec, organizationId string, inboxIds []string, withCaseCount bool) ([]models.Inbox, error)
-	ListInboxUsers(ctx context.Context, tx repositories.Transaction_deprec, filters models.InboxUserFilterInput) ([]models.InboxUser, error)
+	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId string) (models.Inbox, error)
+	ListInboxes(ctx context.Context, exec repositories.Executor, organizationId string, inboxIds []string, withCaseCount bool) ([]models.Inbox, error)
+	ListInboxUsers(ctx context.Context, exec repositories.Executor, filters models.InboxUserFilterInput) ([]models.InboxUser, error)
 }
 
 type EnforceSecurityInboxes interface {
@@ -40,7 +40,7 @@ func (i *InboxReader) GetInboxById(ctx context.Context, inboxId string) (models.
 	return inbox, err
 }
 
-func (i *InboxReader) ListInboxes(ctx context.Context, tx repositories.Transaction_deprec, withCaseCount bool) ([]models.Inbox, error) {
+func (i *InboxReader) ListInboxes(ctx context.Context, exec repositories.Executor, withCaseCount bool) ([]models.Inbox, error) {
 	organizationId, err := i.OrganizationIdOfContext()
 	if err != nil {
 		return []models.Inbox{}, err
@@ -48,15 +48,15 @@ func (i *InboxReader) ListInboxes(ctx context.Context, tx repositories.Transacti
 
 	var inboxes []models.Inbox
 	if i.isAdminHasAccessToAllInboxes(ctx) {
-		inboxes, err = i.InboxRepository.ListInboxes(ctx, tx, organizationId, nil, withCaseCount)
+		inboxes, err = i.InboxRepository.ListInboxes(ctx, exec, organizationId, nil, withCaseCount)
 	} else {
-		availableInboxIds, err := i.getAvailableInboxes(ctx, tx)
+		availableInboxIds, err := i.getAvailableInboxes(ctx, exec)
 		if err != nil {
 			return []models.Inbox{}, err
 		} else if len(availableInboxIds) == 0 {
 			return []models.Inbox{}, nil
 		}
-		inboxes, err = i.InboxRepository.ListInboxes(ctx, tx, organizationId, availableInboxIds, withCaseCount)
+		inboxes, err = i.InboxRepository.ListInboxes(ctx, exec, organizationId, availableInboxIds, withCaseCount)
 		if err != nil {
 			return []models.Inbox{}, err
 		}
@@ -78,11 +78,11 @@ func (i *InboxReader) isAdminHasAccessToAllInboxes(ctx context.Context) bool {
 	return i.Credentials.Role == models.ADMIN || i.Credentials.Role == models.MARBLE_ADMIN
 }
 
-func (i *InboxReader) getAvailableInboxes(ctx context.Context, tx repositories.Transaction_deprec) ([]string, error) {
+func (i *InboxReader) getAvailableInboxes(ctx context.Context, exec repositories.Executor) ([]string, error) {
 	availableInboxIds := make([]string, 0)
 
 	userId := i.Credentials.ActorIdentity.UserId
-	inboxUsers, err := i.InboxRepository.ListInboxUsers(ctx, tx, models.InboxUserFilterInput{UserId: userId})
+	inboxUsers, err := i.InboxRepository.ListInboxUsers(ctx, exec, models.InboxUserFilterInput{UserId: userId})
 	if err != nil {
 		return []string{}, err
 	}

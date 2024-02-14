@@ -55,12 +55,6 @@ const (
 	FUNC_AGGREGATOR
 	FUNC_LIST
 	FUNC_FILTER
-	FUNC_BLANK_FIRST_TRANSACTION_DATE
-	FUNC_BLANK_SUM_TRANSACTIONS_AMOUNT
-	FUNC_BLANK_SEPA_OUT_FRACTIONATED
-	FUNC_BLANK_SEPA_NON_FR_IN_WINDOW
-	FUNC_BLANK_SEPA_NON_FR_OUT_WINDOW
-	FUNC_BLANK_QUICK_FRACTIONATED_TRANSFERS_RECEIVED_WINDOW
 	FUNC_UNDEFINED Function = -1
 	FUNC_UNKNOWN   Function = -2
 )
@@ -206,42 +200,6 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		AstName:   "List",
 	},
 	FUNC_FILTER: FuncFilterAttributes,
-	FUNC_BLANK_FIRST_TRANSACTION_DATE: {
-		DebugName:         "FUNC_BLANK_FIRST_TRANSACTION_DATE",
-		AstName:           "BlankFirstTransactionDate",
-		NumberOfArguments: 1,
-	},
-	FUNC_BLANK_SUM_TRANSACTIONS_AMOUNT: {
-		DebugName:         "FUNC_BLANK_SUM_TRANSACTIONS_AMOUNT",
-		AstName:           "BlankSumTransactionsAmount",
-		NumberOfArguments: 1,
-		// Or pass them as a single map ? To be discussed.
-		NamedArguments: []string{"direction", "created_from", "created_to"},
-	},
-	FUNC_BLANK_SEPA_OUT_FRACTIONATED: {
-		DebugName:         "FUNC_BLANK_SEPA_OUT_FRACTIONATED",
-		AstName:           "BlankSepaOutFractionated",
-		NumberOfArguments: 1,
-		NamedArguments:    []string{"amountThreshold", "numberThreshold"},
-	},
-	FUNC_BLANK_SEPA_NON_FR_IN_WINDOW: {
-		DebugName:         "FUNC_BLANK_SEPA_NON_FR_IN_WINDOW",
-		AstName:           "BlankSepaNonFrInWindow",
-		NumberOfArguments: 1,
-		NamedArguments:    []string{"amountThreshold", "numberThreshold"},
-	},
-	FUNC_BLANK_SEPA_NON_FR_OUT_WINDOW: {
-		DebugName:         "FUNC_BLANK_SEPA_NON_FR_OUT_WINDOW",
-		AstName:           "BlankSepaNonFrOutWindow",
-		NumberOfArguments: 1,
-		NamedArguments:    []string{"amountThreshold", "numberThreshold"},
-	},
-	FUNC_BLANK_QUICK_FRACTIONATED_TRANSFERS_RECEIVED_WINDOW: {
-		DebugName:         "FUNC_BLANK_QUICK_FRACTIONATED_TRANSFERS_RECEIVED_WINDOW",
-		AstName:           "BlankQuickFractionatedTransfersReceivedWindow",
-		NumberOfArguments: 1,
-		NamedArguments:    []string{"amountThreshold", "numberThreshold"},
-	},
 }
 
 func (f Function) Attributes() (FuncAttributes, error) {

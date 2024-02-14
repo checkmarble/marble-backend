@@ -14,24 +14,24 @@ import (
 )
 
 type OrganizationSchemaRepository interface {
-	OrganizationSchemaOfOrganization(ctx context.Context, tx Transaction_deprec, organizationId string) (models.OrganizationSchema, error)
-	CreateOrganizationSchema(ctx context.Context, tx Transaction_deprec, createOrganizationSchema models.OrganizationSchema) error
-	CreateSchema(ctx context.Context, tx Transaction_deprec, schema string) error
-	DeleteSchema(ctx context.Context, tx Transaction_deprec, schema string) error
-	CreateTable(ctx context.Context, tx Transaction_deprec, schema, tableName string) error
-	CreateField(ctx context.Context, tx Transaction_deprec, schema, tableName string, field models.DataModelField) error
+	OrganizationSchemaOfOrganization(ctx context.Context, exec Executor, organizationId string) (models.OrganizationSchema, error)
+	CreateOrganizationSchema(ctx context.Context, exec Executor, createOrganizationSchema models.OrganizationSchema) error
+	CreateSchema(ctx context.Context, exec Executor, schema string) error
+	DeleteSchema(ctx context.Context, exec Executor, schema string) error
+	CreateTable(ctx context.Context, exec Executor, schema, tableName string) error
+	CreateField(ctx context.Context, exec Executor, schema, tableName string, field models.DataModelField) error
 }
 
 type OrganizationSchemaRepositoryPostgresql struct {
-	transactionFactory TransactionFactoryPosgresql_deprec
+	executorGetter ExecutorGetter
 }
 
-func (repo *OrganizationSchemaRepositoryPostgresql) OrganizationSchemaOfOrganization(ctx context.Context, tx Transaction_deprec, organizationId string) (models.OrganizationSchema, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *OrganizationSchemaRepositoryPostgresql) OrganizationSchemaOfOrganization(ctx context.Context, exec Executor, organizationId string) (models.OrganizationSchema, error) {
+	exec = repo.executorGetter.ifNil(exec)
 
 	return SqlToModel(
 		ctx,
-		pgTx,
+		exec,
 		NewQueryBuilder().
 			Select(dbmodels.OrganizationSchemaFields...).
 			From(dbmodels.ORGANIZATION_SCHEMA_TABLE).
@@ -40,51 +40,49 @@ func (repo *OrganizationSchemaRepositoryPostgresql) OrganizationSchemaOfOrganiza
 	)
 }
 
-func (repo *OrganizationSchemaRepositoryPostgresql) CreateSchema(ctx context.Context, tx Transaction_deprec, schema string) error {
-	pgTx := adaptClientDatabaseTransaction(tx)
+func (repo *OrganizationSchemaRepositoryPostgresql) CreateSchema(ctx context.Context, exec Executor, schema string) error {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return err
+	}
 
 	sql := fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", pgx.Identifier.Sanitize([]string{schema}))
 
-	_, err := pgTx.SqlExec(ctx, sql)
+	_, err := exec.Exec(ctx, sql)
 	return err
 }
 
-func (repo *OrganizationSchemaRepositoryPostgresql) DeleteSchema(ctx context.Context, tx Transaction_deprec, schema string) error {
-	pgTx := adaptClientDatabaseTransaction(tx)
+func (repo *OrganizationSchemaRepositoryPostgresql) DeleteSchema(ctx context.Context, exec Executor, schema string) error {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return err
+	}
 
 	sql := fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE", pgx.Identifier.Sanitize([]string{schema}))
-	_, err := pgTx.SqlExec(ctx, sql)
+	_, err := exec.Exec(ctx, sql)
 	return err
 }
 
-func (repo *OrganizationSchemaRepositoryPostgresql) CreateTable(ctx context.Context, tx Transaction_deprec, schema, tableName string) error {
-	pgTx := adaptClientDatabaseTransaction(tx)
+func (repo *OrganizationSchemaRepositoryPostgresql) CreateTable(ctx context.Context, exec Executor, schema, tableName string) error {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return err
+	}
 
 	sanitizedTableName := pgx.Identifier.Sanitize([]string{schema, tableName})
-	createTableExpr := squirrel.Expr(fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
-    	id UUID NOT NULL DEFAULT uuid_generate_v4(),
-    	object_id TEXT NOT NULL,
-    	updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    	valid_from TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    	valid_until TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT 'INFINITY'
-	)`, sanitizedTableName))
+	sql := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
+		id UUID NOT NULL DEFAULT uuid_generate_v4(),
+		object_id TEXT NOT NULL,
+		updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+		valid_from TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+		valid_until TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT 'INFINITY'
+	  )`, sanitizedTableName)
 
-	sql, args, err := createTableExpr.ToSql()
-	if err != nil {
-		return err
-	}
-
-	sql, err = squirrel.Dollar.ReplacePlaceholders(sql)
-	if err != nil {
-		return err
-	}
-
-	_, err = pgTx.SqlExec(ctx, sql, args...)
+	_, err := exec.Exec(ctx, sql)
 	return err
 }
 
-func (repo *OrganizationSchemaRepositoryPostgresql) CreateField(ctx context.Context, tx Transaction_deprec, schema, tableName string, field models.DataModelField) error {
-	pgTx := adaptClientDatabaseTransaction(tx)
+func (repo *OrganizationSchemaRepositoryPostgresql) CreateField(ctx context.Context, exec Executor, schema, tableName string, field models.DataModelField) error {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return err
+	}
 
 	fieldType := toPgType(models.DataTypeFrom(field.Type))
 	sanitizedTableName := pgx.Identifier.Sanitize([]string{schema, tableName})
@@ -94,15 +92,16 @@ func (repo *OrganizationSchemaRepositoryPostgresql) CreateField(ctx context.Cont
 	if !field.Nullable {
 		builder.WriteString(" NOT NULL")
 	}
-	_, err := pgTx.SqlExec(ctx, builder.String())
+	_, err := exec.Exec(ctx, builder.String())
 	return err
 }
 
-func (repo *OrganizationSchemaRepositoryPostgresql) CreateOrganizationSchema(ctx context.Context, tx Transaction_deprec, createOrganizationSchema models.OrganizationSchema) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *OrganizationSchemaRepositoryPostgresql) CreateOrganizationSchema(ctx context.Context, exec Executor, createOrganizationSchema models.OrganizationSchema) error {
+	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := pgTx.ExecBuilder(
+	_, err := ExecBuilder(
 		ctx,
+		exec,
 		NewQueryBuilder().Insert(dbmodels.ORGANIZATION_SCHEMA_TABLE).
 			Columns(
 				dbmodels.OrganizationSchemaFields...,

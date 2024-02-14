@@ -12,33 +12,33 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
-	"github.com/checkmarble/marble-backend/usecases/transaction"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
 type DecisionUsecaseRepository interface {
-	GetScenarioById(ctx context.Context, tx repositories.Transaction_deprec, scenarioId string) (models.Scenario, error)
-	ListScenariosOfOrganization(ctx context.Context, tx repositories.Transaction_deprec, organizationId string) ([]models.Scenario, error)
+	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
+	ListScenariosOfOrganization(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.Scenario, error)
 
-	GetScenarioIteration(ctx context.Context, tx repositories.Transaction_deprec, scenarioIterationId string) (
+	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (
 		models.ScenarioIteration, error,
 	)
 
-	GetCaseById(ctx context.Context, tx repositories.Transaction_deprec, caseId string) (models.Case, error)
+	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)
 }
 
 type DecisionUsecase struct {
-	enforceSecurity            security.EnforceSecurityDecision
-	enforceSecurityScenario    security.EnforceSecurityScenario
-	transactionFactory         transaction.TransactionFactory_deprec
-	orgTransactionFactory      transaction.Factory_deprec
-	ingestedDataReadRepository repositories.IngestedDataReadRepository
-	decisionRepository         repositories.DecisionRepository
-	datamodelRepository        repositories.DataModelRepository
-	repository                 DecisionUsecaseRepository
-	evaluateRuleAstExpression  ast_eval.EvaluateRuleAstExpression
-	organizationIdOfContext    func() (string, error)
+	enforceSecurity             security.EnforceSecurityDecision
+	enforceSecurityScenario     security.EnforceSecurityScenario
+	transactionFactory          executor_factory.TransactionFactory
+	clientSchemaExecutorFactory executor_factory.ClientSchemaExecutorFactory
+	ingestedDataReadRepository  repositories.IngestedDataReadRepository
+	decisionRepository          repositories.DecisionRepository
+	datamodelRepository         repositories.DataModelRepository
+	repository                  DecisionUsecaseRepository
+	evaluateRuleAstExpression   ast_eval.EvaluateRuleAstExpression
+	organizationIdOfContext     func() (string, error)
 }
 
 func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId string) (models.Decision, error) {
@@ -76,11 +76,11 @@ func (usecase *DecisionUsecase) ListDecisions(ctx context.Context, organizationI
 		return []models.DecisionWithRank{}, err
 	}
 
-	return transaction.TransactionReturnValue_deprec(
+	return executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction_deprec) ([]models.DecisionWithRank, error) {
+		func(tx repositories.Executor) ([]models.DecisionWithRank, error) {
 			decisions, err := usecase.decisionRepository.DecisionsOfOrganization(ctx, tx, organizationId, paginationAndSorting, models.DecisionFilters{
 				ScenarioIds:    filters.ScenarioIds,
 				StartDate:      filters.StartDate,
@@ -180,10 +180,10 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 	}
 
 	evaluationRepositories := evaluate_scenario.ScenarioEvaluationRepositories{
-		EvalScenarioRepository:     usecase.repository,
-		OrgTransactionFactory:      usecase.orgTransactionFactory,
-		IngestedDataReadRepository: usecase.ingestedDataReadRepository,
-		EvaluateRuleAstExpression:  usecase.evaluateRuleAstExpression,
+		EvalScenarioRepository:      usecase.repository,
+		ClientSchemaExecutorFactory: usecase.clientSchemaExecutorFactory,
+		IngestedDataReadRepository:  usecase.ingestedDataReadRepository,
+		EvaluateRuleAstExpression:   usecase.evaluateRuleAstExpression,
 	}
 
 	scenarioExecution, err := evaluate_scenario.EvalScenario(ctx, evaluationParameters, evaluationRepositories, logger)
@@ -203,7 +203,7 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 		Score:               scenarioExecution.Score,
 	}
 
-	return transaction.TransactionReturnValue_deprec(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) (models.Decision, error) {
+	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Executor) (models.Decision, error) {
 		err = usecase.decisionRepository.StoreDecision(ctx, tx, decision, input.OrganizationId, newDecisionId)
 		if err != nil {
 			return models.Decision{}, fmt.Errorf("error storing decision: %w", err)

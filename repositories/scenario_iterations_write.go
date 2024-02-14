@@ -11,15 +11,15 @@ import (
 	"github.com/Masterminds/squirrel"
 )
 
-func (repo *MarbleDbRepository) DeleteScenarioIteration(ctx context.Context, tx Transaction_deprec, scenarioIterationId string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *MarbleDbRepository) DeleteScenarioIteration(ctx context.Context, exec Executor, scenarioIterationId string) error {
+	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := pgTx.ExecBuilder(ctx, NewQueryBuilder().Delete(dbmodels.TABLE_SCENARIO_ITERATIONS).Where("id = ?", scenarioIterationId))
+	_, err := ExecBuilder(ctx, exec, NewQueryBuilder().Delete(dbmodels.TABLE_SCENARIO_ITERATIONS).Where("id = ?", scenarioIterationId))
 	return err
 }
 
-func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Context, tx Transaction_deprec, organizationId string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Context, exec Executor, organizationId string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error) {
+	exec = repo.executorGetter.ifNil(exec)
 
 	query := NewQueryBuilder().Insert(dbmodels.TABLE_SCENARIO_ITERATIONS).
 		Columns(
@@ -65,7 +65,7 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Cont
 
 	createdIteration, err := SqlToModel(
 		ctx,
-		pgTx,
+		exec,
 		query,
 		dbmodels.AdaptScenarioIteration,
 	)
@@ -79,7 +79,7 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Cont
 			scenarioIteration.Body.Rules[i].OrganizationId = organizationId
 			scenarioIteration.Body.Rules[i].ScenarioIterationId = createdIteration.Id
 		}
-		createdRules, err := repo.CreateRules(ctx, tx, scenarioIteration.Body.Rules)
+		createdRules, err := repo.CreateRules(ctx, exec, scenarioIteration.Body.Rules)
 		if err != nil {
 			return models.ScenarioIteration{}, fmt.Errorf("unable to create scenario iteration rules: %w", err)
 		}
@@ -89,12 +89,12 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Cont
 	return createdIteration, nil
 }
 
-func (repo *MarbleDbRepository) UpdateScenarioIteration(ctx context.Context, tx Transaction_deprec, scenarioIteration models.UpdateScenarioIterationInput) (models.ScenarioIteration, error) {
+func (repo *MarbleDbRepository) UpdateScenarioIteration(ctx context.Context, exec Executor, scenarioIteration models.UpdateScenarioIterationInput) (models.ScenarioIteration, error) {
 	if scenarioIteration.Body == nil {
 		return models.ScenarioIteration{}, fmt.Errorf("nothing to update")
 	}
 
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+	exec = repo.executorGetter.ifNil(exec)
 
 	sql := NewQueryBuilder().
 		Update(dbmodels.TABLE_SCENARIO_ITERATIONS).
@@ -120,18 +120,19 @@ func (repo *MarbleDbRepository) UpdateScenarioIteration(ctx context.Context, tx 
 		}
 		sql = sql.Set("trigger_condition_ast_expression", triggerCondition)
 	}
-	updatedIteration, err := SqlToModel(ctx, pgTx, sql, dbmodels.AdaptScenarioIteration)
+	updatedIteration, err := SqlToModel(ctx, exec, sql, dbmodels.AdaptScenarioIteration)
 	if err != nil {
 		return models.ScenarioIteration{}, err
 	}
 	return updatedIteration, nil
 }
 
-func (repo *MarbleDbRepository) UpdateScenarioIterationVersion(ctx context.Context, tx Transaction_deprec, scenarioIterationId string, newVersion int) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *MarbleDbRepository) UpdateScenarioIterationVersion(ctx context.Context, exec Executor, scenarioIterationId string, newVersion int) error {
+	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := pgTx.ExecBuilder(
+	_, err := ExecBuilder(
 		ctx,
+		exec,
 		NewQueryBuilder().Update(dbmodels.TABLE_SCENARIO_ITERATIONS).
 			Set("version", newVersion).
 			Where(squirrel.Eq{"id": scenarioIterationId}),

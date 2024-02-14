@@ -11,17 +11,17 @@ type CaseEventRepository struct {
 	mock.Mock
 }
 
-func (r *CaseEventRepository) ListCaseEvents(tx repositories.Transaction_deprec, caseId string) ([]models.CaseEvent, error) {
-	args := r.Called(tx, caseId)
+func (r *CaseEventRepository) ListCaseEvents(exec repositories.Executor, caseId string) ([]models.CaseEvent, error) {
+	args := r.Called(exec, caseId)
 	return args.Get(0).([]models.CaseEvent), args.Error(1)
 }
 
-func (r *CaseEventRepository) CreateCaseEvent(tx repositories.Transaction_deprec, createCaseEventAttributes models.CreateCaseEventAttributes, newCaseEventId string) error {
-	args := r.Called(tx, createCaseEventAttributes, newCaseEventId)
+func (r *CaseEventRepository) CreateCaseEvent(exec repositories.Executor, createCaseEventAttributes models.CreateCaseEventAttributes, newCaseEventId string) error {
+	args := r.Called(exec, createCaseEventAttributes, newCaseEventId)
 	return args.Error(0)
 }
 
-func (r *CaseEventRepository) BatchCreateCaseEvents(tx repositories.Transaction_deprec, createCaseEventAttributes []models.CreateCaseEventAttributes) error {
-	args := r.Called(tx, createCaseEventAttributes)
+func (r *CaseEventRepository) BatchCreateCaseEvents(exec repositories.Executor, createCaseEventAttributes []models.CreateCaseEventAttributes) error {
+	args := r.Called(exec, createCaseEventAttributes)
 	return args.Error(0)
 }

@@ -8,21 +8,21 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/organization"
 	"github.com/checkmarble/marble-backend/usecases/security"
-	"github.com/checkmarble/marble-backend/usecases/transaction"
 )
 
 type OrganizationUseCase struct {
 	enforceSecurity              security.EnforceSecurityOrganization
-	transactionFactory           transaction.TransactionFactory_deprec
-	orgTransactionFactory        transaction.Factory_deprec
+	transactionFactory           executor_factory.TransactionFactory
 	organizationRepository       repositories.OrganizationRepository
 	datamodelRepository          repositories.DataModelRepository
 	userRepository               repositories.UserRepository
 	organizationCreator          organization.OrganizationCreator
 	organizationSchemaRepository repositories.OrganizationSchemaRepository
 	populateOrganizationSchema   organization.PopulateOrganizationSchema
+	clientSchemaExecutorFactory  executor_factory.ClientSchemaExecutorFactory
 }
 
 func (usecase *OrganizationUseCase) GetOrganizations(ctx context.Context) ([]models.Organization, error) {
@@ -51,7 +51,7 @@ func (usecase *OrganizationUseCase) UpdateOrganization(ctx context.Context, orga
 	if err := usecase.enforceSecurity.CreateOrganization(); err != nil {
 		return models.Organization{}, err
 	}
-	return transaction.TransactionReturnValue_deprec(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) (models.Organization, error) {
+	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Executor) (models.Organization, error) {
 		err := usecase.organizationRepository.UpdateOrganization(ctx, tx, organization)
 		if err != nil {
 			return models.Organization{}, err
@@ -64,7 +64,7 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 	if err := usecase.enforceSecurity.DeleteOrganization(); err != nil {
 		return err
 	}
-	return usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) error {
+	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
 		// delete all users
 		err := usecase.userRepository.DeleteUsersOfOrganization(ctx, tx, organizationId)
 		if err != nil {
@@ -86,16 +86,15 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 		}
 
 		if schemaFound {
-			// another transaction in client's database to delete client's schema:
-			err = usecase.orgTransactionFactory.TransactionInOrgSchema(ctx, organizationId, func(clientTx repositories.Transaction_deprec) error {
-				return usecase.organizationSchemaRepository.DeleteSchema(ctx, clientTx, schema.DatabaseSchema.Schema)
-			})
+			db, err := usecase.clientSchemaExecutorFactory.NewClientDbExecutor(ctx, organizationId)
 			if err != nil {
 				return err
 			}
+			// another transaction in client's database to delete client's schema:
+			return usecase.organizationSchemaRepository.DeleteSchema(ctx, db, schema.DatabaseSchema.Schema)
 		}
 
-		return usecase.organizationRepository.DeleteOrganization(ctx, nil, organizationId)
+		return usecase.organizationRepository.DeleteOrganization(ctx, tx, organizationId)
 	})
 }
 
@@ -103,11 +102,11 @@ func (usecase *OrganizationUseCase) GetUsersOfOrganization(ctx context.Context, 
 	if err := usecase.enforceSecurity.ReadOrganization(organizationIDFilter); err != nil {
 		return []models.User{}, err
 	}
-	return transaction.TransactionReturnValue_deprec(
+	return executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction_deprec) ([]models.User, error) {
+		func(tx repositories.Executor) ([]models.User, error) {
 			return usecase.userRepository.UsersOfOrganization(ctx, tx, organizationIDFilter)
 		},
 	)

@@ -6,20 +6,20 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
-	"github.com/checkmarble/marble-backend/usecases/transaction"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
 type RuleUsecaseRepository interface {
-	GetRuleById(ctx context.Context, tx repositories.Transaction_deprec, ruleId string) (models.Rule, error)
-	ListRulesByIterationId(ctx context.Context, tx repositories.Transaction_deprec, iterationId string) ([]models.Rule, error)
-	UpdateRule(ctx context.Context, tx repositories.Transaction_deprec, rule models.UpdateRuleInput) error
-	DeleteRule(ctx context.Context, tx repositories.Transaction_deprec, ruleID string) error
-	CreateRules(ctx context.Context, tx repositories.Transaction_deprec, rules []models.CreateRuleInput) ([]models.Rule, error)
-	CreateRule(ctx context.Context, tx repositories.Transaction_deprec, rule models.CreateRuleInput) (models.Rule, error)
+	GetRuleById(ctx context.Context, exec repositories.Executor, ruleId string) (models.Rule, error)
+	ListRulesByIterationId(ctx context.Context, exec repositories.Executor, iterationId string) ([]models.Rule, error)
+	UpdateRule(ctx context.Context, exec repositories.Executor, rule models.UpdateRuleInput) error
+	DeleteRule(ctx context.Context, exec repositories.Executor, ruleID string) error
+	CreateRules(ctx context.Context, exec repositories.Executor, rules []models.CreateRuleInput) ([]models.Rule, error)
+	CreateRule(ctx context.Context, exec repositories.Executor, rule models.CreateRuleInput) (models.Rule, error)
 }
 
 type RuleUsecase struct {
@@ -27,14 +27,14 @@ type RuleUsecase struct {
 	enforceSecurity         security.EnforceSecurityScenario
 	repository              RuleUsecaseRepository
 	scenarioFetcher         scenarios.ScenarioFetcher
-	transactionFactory      transaction.TransactionFactory_deprec
+	transactionFactory      executor_factory.TransactionFactory
 }
 
 func (usecase *RuleUsecase) ListRules(ctx context.Context, iterationId string) ([]models.Rule, error) {
-	return transaction.TransactionReturnValue_deprec(ctx,
+	return executor_factory.TransactionReturnValue(ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction_deprec) ([]models.Rule, error) {
+		func(tx repositories.Executor) ([]models.Rule, error) {
 			scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, tx, iterationId)
 			if err != nil {
 				return nil, err
@@ -47,10 +47,10 @@ func (usecase *RuleUsecase) ListRules(ctx context.Context, iterationId string) (
 }
 
 func (usecase *RuleUsecase) CreateRule(ctx context.Context, ruleInput models.CreateRuleInput) (models.Rule, error) {
-	rule, err := transaction.TransactionReturnValue_deprec(ctx,
+	rule, err := executor_factory.TransactionReturnValue(ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction_deprec) (models.Rule, error) {
+		func(tx repositories.Executor) (models.Rule, error) {
 			organizationId, err := usecase.organizationIdOfContext()
 			if err != nil {
 				return models.Rule{}, err
@@ -85,10 +85,10 @@ func (usecase *RuleUsecase) CreateRule(ctx context.Context, ruleInput models.Cre
 }
 
 func (usecase *RuleUsecase) GetRule(ctx context.Context, ruleId string) (models.Rule, error) {
-	return transaction.TransactionReturnValue_deprec(ctx,
+	return executor_factory.TransactionReturnValue(ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction_deprec) (models.Rule, error) {
+		func(tx repositories.Executor) (models.Rule, error) {
 			rule, err := usecase.repository.GetRuleById(ctx, tx, ruleId)
 			if err != nil {
 				return models.Rule{}, err
@@ -106,7 +106,7 @@ func (usecase *RuleUsecase) GetRule(ctx context.Context, ruleId string) (models.
 }
 
 func (usecase *RuleUsecase) UpdateRule(ctx context.Context, updateRule models.UpdateRuleInput) (updatedRule models.Rule, err error) {
-	err = usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) error {
+	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
 		rule, err := usecase.repository.GetRuleById(ctx, tx, updateRule.Id)
 		if err != nil {
 			return err
@@ -142,7 +142,7 @@ func (usecase *RuleUsecase) UpdateRule(ctx context.Context, updateRule models.Up
 }
 
 func (usecase *RuleUsecase) DeleteRule(ctx context.Context, ruleId string) error {
-	err := usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) error {
+	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
 		rule, err := usecase.repository.GetRuleById(ctx, tx, ruleId)
 		if err != nil {
 			return err

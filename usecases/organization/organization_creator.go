@@ -5,11 +5,11 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/transaction"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 )
 
 type OrganizationCreator struct {
-	TransactionFactory         transaction.TransactionFactory_deprec
+	TransactionFactory         executor_factory.TransactionFactory
 	OrganizationRepository     repositories.OrganizationRepository
 	DataModelRepository        repositories.DataModelRepository
 	OrganizationSeeder         OrganizationSeeder
@@ -18,7 +18,7 @@ type OrganizationCreator struct {
 
 func (creator *OrganizationCreator) CreateOrganizationWithId(ctx context.Context, newOrganizationId string, createOrga models.CreateOrganizationInput) (models.Organization, error) {
 
-	organization, err := transaction.TransactionReturnValue_deprec(ctx, creator.TransactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) (models.Organization, error) {
+	organization, err := executor_factory.TransactionReturnValue(ctx, creator.TransactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Executor) (models.Organization, error) {
 		if err := creator.OrganizationRepository.CreateOrganization(ctx, tx, createOrga, newOrganizationId); err != nil {
 			return models.Organization{}, err
 		}
@@ -37,7 +37,7 @@ func (creator *OrganizationCreator) CreateOrganizationWithId(ctx context.Context
 		return models.Organization{}, err
 	}
 
-	_, err = transaction.TransactionReturnValue_deprec(ctx, creator.TransactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) (any, error) {
+	_, err = executor_factory.TransactionReturnValue(ctx, creator.TransactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Executor) (any, error) {
 		// store client's data in marble DB
 		orgDatabase := models.DATABASE_MARBLE
 		err := creator.PopulateOrganizationSchema.CreateOrganizationSchema(ctx, tx, organization, orgDatabase)

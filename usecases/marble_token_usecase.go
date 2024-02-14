@@ -7,16 +7,16 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/transaction"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 )
 
 type MarbleTokenUseCase struct {
-	transactionFactory      transaction.TransactionFactory_deprec
+	transactionFactory      executor_factory.TransactionFactory
 	marbleJwtRepository     repositories.MarbleJwtRepository
 	firebaseTokenRepository repositories.FireBaseTokenRepository
 	userRepository          repositories.UserRepository
 	apiKeyRepository        interface {
-		GetApiKeyByKey(ctx context.Context, tx repositories.Transaction_deprec, apiKey string) (models.ApiKey, error)
+		GetApiKeyByKey(ctx context.Context, exec repositories.Executor, apiKey string) (models.ApiKey, error)
 	}
 	organizationRepository repositories.OrganizationRepository
 	tokenLifetimeMinute    int
@@ -72,7 +72,7 @@ func (usecase *MarbleTokenUseCase) NewMarbleToken(ctx context.Context, apiKey st
 			return "", time.Time{}, fmt.Errorf("firebase TokenID verification fail: %w", err)
 		}
 
-		user, err := transaction.TransactionReturnValue_deprec(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) (models.User, error) {
+		user, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Executor) (models.User, error) {
 			user, err := usecase.userRepository.UserByEmail(ctx, tx, identity.Email)
 			if err != nil {
 				return models.User{}, err

@@ -14,30 +14,30 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
-	"github.com/checkmarble/marble-backend/usecases/transaction"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
 type RunScheduledExecutionRepository interface {
-	GetScenarioById(ctx context.Context, tx repositories.Transaction_deprec, scenarioId string) (models.Scenario, error)
-	GetScenarioIteration(ctx context.Context, tx repositories.Transaction_deprec, scenarioIterationId string) (models.ScenarioIteration, error)
+	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
+	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (models.ScenarioIteration, error)
 
-	ListScheduledExecutions(ctx context.Context, tx repositories.Transaction_deprec, filters models.ListScheduledExecutionsFilters) ([]models.ScheduledExecution, error)
-	CreateScheduledExecution(ctx context.Context, tx repositories.Transaction_deprec, input models.CreateScheduledExecutionInput, newScheduledExecutionId string) error
-	UpdateScheduledExecution(ctx context.Context, tx repositories.Transaction_deprec, updateScheduledEx models.UpdateScheduledExecutionInput) error
-	GetScheduledExecution(ctx context.Context, tx repositories.Transaction_deprec, id string) (models.ScheduledExecution, error)
+	ListScheduledExecutions(ctx context.Context, exec repositories.Executor, filters models.ListScheduledExecutionsFilters) ([]models.ScheduledExecution, error)
+	CreateScheduledExecution(ctx context.Context, exec repositories.Executor, input models.CreateScheduledExecutionInput, newScheduledExecutionId string) error
+	UpdateScheduledExecution(ctx context.Context, exec repositories.Executor, updateScheduledEx models.UpdateScheduledExecutionInput) error
+	GetScheduledExecution(ctx context.Context, exec repositories.Executor, id string) (models.ScheduledExecution, error)
 }
 
 type RunScheduledExecution struct {
 	Repository                     RunScheduledExecutionRepository
-	TransactionFactory             transaction.TransactionFactory_deprec
+	ClientSchemaExecutorFactory    executor_factory.ClientSchemaExecutorFactory
 	ExportScheduleExecution        ExportScheduleExecution
 	ScenarioPublicationsRepository repositories.ScenarioPublicationRepository
 	DataModelRepository            repositories.DataModelRepository
-	OrgTransactionFactory          transaction.Factory_deprec
 	IngestedDataReadRepository     repositories.IngestedDataReadRepository
 	EvaluateRuleAstExpression      ast_eval.EvaluateRuleAstExpression
 	DecisionRepository             repositories.DecisionRepository
+	TransactionFactory             executor_factory.TransactionFactory
 }
 
 func (usecase *RunScheduledExecution) ScheduleScenarioIfDue(ctx context.Context, organizationId string, scenarioId string) error {
@@ -125,7 +125,7 @@ func (usecase *RunScheduledExecution) ExecuteScheduledScenario(ctx context.Conte
 		return err
 	}
 
-	scheduledExecution, err := transaction.TransactionReturnValue_deprec(ctx, usecase.TransactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) (models.ScheduledExecution, error) {
+	scheduledExecution, err := executor_factory.TransactionReturnValue(ctx, usecase.TransactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Executor) (models.ScheduledExecution, error) {
 		numberOfCreatedDecisions, err := usecase.executeScheduledScenario(ctx, scheduledExecution.Id, scheduledExecution.Scenario)
 		if err != nil {
 			return scheduledExecution, err
@@ -212,16 +212,17 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 
 	// list objects to score
 	numberOfCreatedDecisions := 0
-	err = usecase.TransactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) error {
-		var objects []models.ClientObject
-		err = usecase.OrgTransactionFactory.TransactionInOrgSchema(ctx, scenario.OrganizationId, func(clientTx repositories.Transaction_deprec) error {
-			objects, err = usecase.IngestedDataReadRepository.ListAllObjectsFromTable(ctx, clientTx, table)
-			return err
-		})
-		if err != nil {
-			return err
-		}
+	var objects []models.ClientObject
+	db, err := usecase.ClientSchemaExecutorFactory.NewClientDbExecutor(ctx, scenario.OrganizationId)
+	if err != nil {
+		return 0, err
+	}
+	objects, err = usecase.IngestedDataReadRepository.ListAllObjectsFromTable(ctx, db, table)
+	if err != nil {
+		return 0, err
+	}
 
+	err = usecase.TransactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
 		// execute scenario for each object
 		for _, object := range objects {
 			scenarioExecution, err := evaluate_scenario.EvalScenario(
@@ -232,10 +233,10 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 					DataModel: dataModel,
 				},
 				evaluate_scenario.ScenarioEvaluationRepositories{
-					EvalScenarioRepository:     usecase.Repository,
-					OrgTransactionFactory:      usecase.OrgTransactionFactory,
-					IngestedDataReadRepository: usecase.IngestedDataReadRepository,
-					EvaluateRuleAstExpression:  usecase.EvaluateRuleAstExpression,
+					EvalScenarioRepository:      usecase.Repository,
+					ClientSchemaExecutorFactory: usecase.ClientSchemaExecutorFactory,
+					IngestedDataReadRepository:  usecase.IngestedDataReadRepository,
+					EvaluateRuleAstExpression:   usecase.EvaluateRuleAstExpression,
 				},
 				utils.LoggerFromContext(ctx),
 			)

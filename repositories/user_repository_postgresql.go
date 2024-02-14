@@ -11,33 +11,33 @@ import (
 )
 
 type UserRepository interface {
-	CreateUser(ctx context.Context, tx Transaction_deprec, createUser models.CreateUser) (models.UserId, error)
-	UpdateUser(ctx context.Context, tx Transaction_deprec, updateUser models.UpdateUser) error
-	DeleteUser(ctx context.Context, tx Transaction_deprec, userID models.UserId) error
-	DeleteUsersOfOrganization(ctx context.Context, tx Transaction_deprec, organizationId string) error
-	UserByID(ctx context.Context, tx Transaction_deprec, userId models.UserId) (models.User, error)
-	UsersOfOrganization(ctx context.Context, tx Transaction_deprec, organizationIDFilter string) ([]models.User, error)
-	AllUsers(ctx context.Context, tx Transaction_deprec) ([]models.User, error)
-	UserByEmail(ctx context.Context, tx Transaction_deprec, email string) (*models.User, error)
+	CreateUser(ctx context.Context, exec Executor, createUser models.CreateUser) (models.UserId, error)
+	UpdateUser(ctx context.Context, exec Executor, updateUser models.UpdateUser) error
+	DeleteUser(ctx context.Context, exec Executor, userID models.UserId) error
+	DeleteUsersOfOrganization(ctx context.Context, exec Executor, organizationId string) error
+	UserByID(ctx context.Context, exec Executor, userId models.UserId) (models.User, error)
+	UsersOfOrganization(ctx context.Context, exec Executor, organizationIDFilter string) ([]models.User, error)
+	AllUsers(ctx context.Context, exec Executor) ([]models.User, error)
+	UserByEmail(ctx context.Context, exec Executor, email string) (*models.User, error)
 }
 
 type UserRepositoryPostgresql struct {
-	transactionFactory TransactionFactoryPosgresql_deprec
+	executorGetter ExecutorGetter
 }
 
-func (repo *UserRepositoryPostgresql) CreateUser(ctx context.Context, tx Transaction_deprec, createUser models.CreateUser) (models.UserId, error) {
-
+func (repo *UserRepositoryPostgresql) CreateUser(ctx context.Context, exec Executor, createUser models.CreateUser) (models.UserId, error) {
 	userId := models.UserId(uuid.NewString())
 
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+	exec = repo.executorGetter.ifNil(exec)
 
 	var organizationId *string
 	if len(createUser.OrganizationId) != 0 {
 		organizationId = &createUser.OrganizationId
 	}
 
-	_, err := pgTx.ExecBuilder(
+	_, err := ExecBuilder(
 		ctx,
+		exec,
 		NewQueryBuilder().Insert(dbmodels.TABLE_USERS).
 			Columns(
 				"id",
@@ -59,8 +59,8 @@ func (repo *UserRepositoryPostgresql) CreateUser(ctx context.Context, tx Transac
 	return userId, err
 }
 
-func (repo *UserRepositoryPostgresql) UpdateUser(ctx context.Context, tx Transaction_deprec, updateUser models.UpdateUser) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *UserRepositoryPostgresql) UpdateUser(ctx context.Context, exec Executor, updateUser models.UpdateUser) error {
+	exec = repo.executorGetter.ifNil(exec)
 
 	query := NewQueryBuilder().Update(dbmodels.TABLE_USERS).Where(squirrel.Eq{"id": updateUser.UserId})
 
@@ -77,15 +77,16 @@ func (repo *UserRepositoryPostgresql) UpdateUser(ctx context.Context, tx Transac
 		query = query.Set("last_name", updateUser.LastName)
 	}
 
-	_, err := pgTx.ExecBuilder(ctx, query)
+	_, err := ExecBuilder(ctx, exec, query)
 	return err
 }
 
-func (repo *UserRepositoryPostgresql) DeleteUser(ctx context.Context, tx Transaction_deprec, userID models.UserId) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *UserRepositoryPostgresql) DeleteUser(ctx context.Context, exec Executor, userID models.UserId) error {
+	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := pgTx.ExecBuilder(
+	_, err := ExecBuilder(
 		ctx,
+		exec,
 		NewQueryBuilder().
 			Update(dbmodels.TABLE_USERS).
 			Where(squirrel.Eq{"id": userID}).
@@ -94,22 +95,23 @@ func (repo *UserRepositoryPostgresql) DeleteUser(ctx context.Context, tx Transac
 	return err
 }
 
-func (repo *UserRepositoryPostgresql) DeleteUsersOfOrganization(ctx context.Context, tx Transaction_deprec, organizationId string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *UserRepositoryPostgresql) DeleteUsersOfOrganization(ctx context.Context, exec Executor, organizationId string) error {
+	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := pgTx.ExecBuilder(
+	_, err := ExecBuilder(
 		ctx,
+		exec,
 		NewQueryBuilder().Delete(dbmodels.TABLE_USERS).Where("organization_id = ?", string(organizationId)),
 	)
 	return err
 }
 
-func (repo *UserRepositoryPostgresql) UserByID(ctx context.Context, tx Transaction_deprec, userId models.UserId) (models.User, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *UserRepositoryPostgresql) UserByID(ctx context.Context, exec Executor, userId models.UserId) (models.User, error) {
+	exec = repo.executorGetter.ifNil(exec)
 
 	return SqlToModel(
 		ctx,
-		pgTx,
+		exec,
 		NewQueryBuilder().
 			Select(dbmodels.UserFields...).
 			From(dbmodels.TABLE_USERS).
@@ -120,13 +122,13 @@ func (repo *UserRepositoryPostgresql) UserByID(ctx context.Context, tx Transacti
 	)
 }
 
-func (repo *UserRepositoryPostgresql) UsersOfOrganization(ctx context.Context, tx Transaction_deprec, organizationIDFilter string) ([]models.User, error) {
+func (repo *UserRepositoryPostgresql) UsersOfOrganization(ctx context.Context, exec Executor, organizationIDFilter string) ([]models.User, error) {
 
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+	exec = repo.executorGetter.ifNil(exec)
 
 	return SqlToListOfModels(
 		ctx,
-		pgTx,
+		exec,
 		NewQueryBuilder().
 			Select(dbmodels.UserFields...).
 			From(dbmodels.TABLE_USERS).
@@ -137,12 +139,12 @@ func (repo *UserRepositoryPostgresql) UsersOfOrganization(ctx context.Context, t
 	)
 }
 
-func (repo *UserRepositoryPostgresql) AllUsers(ctx context.Context, tx Transaction_deprec) ([]models.User, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *UserRepositoryPostgresql) AllUsers(ctx context.Context, exec Executor) ([]models.User, error) {
+	exec = repo.executorGetter.ifNil(exec)
 
 	return SqlToListOfModels(
 		ctx,
-		pgTx,
+		exec,
 		NewQueryBuilder().
 			Select(dbmodels.UserFields...).
 			From(dbmodels.TABLE_USERS).
@@ -151,12 +153,12 @@ func (repo *UserRepositoryPostgresql) AllUsers(ctx context.Context, tx Transacti
 	)
 }
 
-func (repo *UserRepositoryPostgresql) UserByEmail(ctx context.Context, tx Transaction_deprec, email string) (*models.User, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *UserRepositoryPostgresql) UserByEmail(ctx context.Context, exec Executor, email string) (*models.User, error) {
+	exec = repo.executorGetter.ifNil(exec)
 
 	return SqlToOptionalModel(
 		ctx,
-		pgTx,
+		exec,
 		NewQueryBuilder().
 			Select(dbmodels.UserFields...).
 			From(dbmodels.TABLE_USERS).

@@ -14,7 +14,7 @@ type executorFactoryRepository interface {
 }
 
 type organizationSchemaReader interface {
-	OrganizationSchemaOfOrganization(ctx context.Context, tx repositories.Transaction_deprec, organizationId string) (models.OrganizationSchema, error)
+	OrganizationSchemaOfOrganization(ctx context.Context, exec repositories.Executor, organizationId string) (models.OrganizationSchema, error)
 }
 
 type DbExecutorFactory struct {

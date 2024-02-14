@@ -11,9 +11,6 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/scheduledexecution"
 	"github.com/checkmarble/marble-backend/usecases/security"
-	"github.com/checkmarble/marble-backend/usecases/transaction"
-
-	"slices"
 )
 
 type Usecases struct {
@@ -21,14 +18,7 @@ type Usecases struct {
 	Configuration models.GlobalConfiguration
 }
 
-func (usecases *Usecases) NewOrgTransactionFactory() transaction.Factory_deprec {
-	return &transaction.FactoryImpl_deprec{
-		OrganizationSchemaRepository: usecases.Repositories.OrganizationSchemaRepository,
-		TransactionFactory:           &usecases.Repositories.TransactionFactoryPosgresql_deprec,
-	}
-}
-
-func (usecases *Usecases) NewClientDbExecutorFactory() ClientSchemaExecutorFactory {
+func (usecases *Usecases) NewClientDbExecutorFactory() executor_factory.ClientSchemaExecutorFactory {
 	return executor_factory.NewDbExecutorFactory(
 		usecases.Repositories.OrganizationSchemaRepository,
 		usecases.Repositories.ExecutorGetter,
@@ -44,7 +34,7 @@ func (usecases *Usecases) NewTransactionFactory() executor_factory.TransactionFa
 
 func (usecases *Usecases) NewSeedUseCase() SeedUseCase {
 	return SeedUseCase{
-		transactionFactory:     &usecases.Repositories.TransactionFactoryPosgresql_deprec,
+		transactionFactory:     usecases.NewTransactionFactory(),
 		userRepository:         usecases.Repositories.UserRepository,
 		organizationCreator:    usecases.NewOrganizationCreator(),
 		organizationRepository: usecases.Repositories.OrganizationRepository,
@@ -54,7 +44,7 @@ func (usecases *Usecases) NewSeedUseCase() SeedUseCase {
 
 func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCreator {
 	return organization.OrganizationCreator{
-		TransactionFactory:     &usecases.Repositories.TransactionFactoryPosgresql_deprec,
+		TransactionFactory:     usecases.NewTransactionFactory(),
 		OrganizationRepository: usecases.Repositories.OrganizationRepository,
 		DataModelRepository:    usecases.Repositories.DataModelRepository,
 		OrganizationSeeder: organization.OrganizationSeeder{
@@ -82,7 +72,7 @@ func (usecases *Usecases) NewExportScheduleExecution() *scheduledexecution.Expor
 
 func (usecases *Usecases) NewPopulateOrganizationSchema() organization.PopulateOrganizationSchema {
 	return organization.PopulateOrganizationSchema{
-		TransactionFactory:           &usecases.Repositories.TransactionFactoryPosgresql_deprec,
+		ClientSchemaExecutorFactory:  usecases.NewClientDbExecutorFactory(),
 		OrganizationRepository:       usecases.Repositories.OrganizationRepository,
 		OrganizationSchemaRepository: usecases.Repositories.OrganizationSchemaRepository,
 		DataModelRepository:          usecases.Repositories.DataModelRepository,
@@ -108,34 +98,30 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 
 	environment.AddEvaluator(ast.FUNC_DB_ACCESS,
 		evaluate.DatabaseAccess{
-			OrganizationId:             params.OrganizationId,
-			DataModel:                  params.DataModel,
-			Payload:                    params.Payload,
-			OrgTransactionFactory:      usecases.NewOrgTransactionFactory(),
-			IngestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
-			ReturnFakeValue:            params.DatabaseAccessReturnFakeValue,
+			OrganizationId:              params.OrganizationId,
+			DataModel:                   params.DataModel,
+			Payload:                     params.Payload,
+			ClientSchemaExecutorFactory: usecases.NewClientDbExecutorFactory(),
+			IngestedDataReadRepository:  usecases.Repositories.IngestedDataReadRepository,
+			ReturnFakeValue:             params.DatabaseAccessReturnFakeValue,
 		},
 	)
 
 	environment.AddEvaluator(ast.FUNC_PAYLOAD, evaluate.NewPayload(ast.FUNC_PAYLOAD, params.Payload))
 
 	environment.AddEvaluator(ast.FUNC_AGGREGATOR, evaluate.AggregatorEvaluator{
-		OrganizationId:             params.OrganizationId,
-		DataModel:                  params.DataModel,
-		Payload:                    params.Payload,
-		OrgTransactionFactory:      usecases.NewOrgTransactionFactory(),
-		IngestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
-		ReturnFakeValue:            params.DatabaseAccessReturnFakeValue,
+		OrganizationId:              params.OrganizationId,
+		DataModel:                   params.DataModel,
+		Payload:                     params.Payload,
+		ClientSchemaExecutorFactory: usecases.NewClientDbExecutorFactory(),
+		IngestedDataReadRepository:  usecases.Repositories.IngestedDataReadRepository,
+		ReturnFakeValue:             params.DatabaseAccessReturnFakeValue,
 	})
 
 	environment.AddEvaluator(ast.FUNC_FILTER, evaluate.FilterEvaluator{
 		DataModel: params.DataModel,
 	})
 
-	// Custom evaluators for the Blank organization
-	if slices.Contains(models.GetBlankOrganizationIds(), params.OrganizationId) {
-		addBlankVariableEvaluators(&environment, usecases, params.OrganizationId, params.DatabaseAccessReturnFakeValue)
-	}
 	return environment
 }
 

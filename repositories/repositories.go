@@ -5,32 +5,29 @@ import (
 
 	"firebase.google.com/go/v4/auth"
 	"github.com/Masterminds/squirrel"
-	"github.com/checkmarble/marble-backend/repositories/db_connection_pool_repository"
 	"github.com/checkmarble/marble-backend/repositories/firebase"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Repositories struct {
-	TransactionFactoryPosgresql_deprec TransactionFactoryPosgresql_deprec
-	ExecutorGetter                     ExecutorGetter
-	FirebaseTokenRepository            FireBaseTokenRepository
-	MarbleJwtRepository                func() MarbleJwtRepository
-	UserRepository                     UserRepository
-	OrganizationRepository             OrganizationRepository
-	IngestionRepository                IngestionRepository
-	DataModelRepository                DataModelRepository
-	IngestedDataReadRepository         IngestedDataReadRepository
-	BlankDataReadRepository            BlankDataReadRepository
-	DecisionRepository                 DecisionRepository
-	MarbleDbRepository                 MarbleDbRepository
-	ClientDbRepository                 ClientDbRepository
-	ScenarioPublicationRepository      ScenarioPublicationRepository
-	OrganizationSchemaRepository       OrganizationSchemaRepository
-	AwsS3Repository                    AwsS3Repository
-	GcsRepository                      GcsRepository
-	CustomListRepository               CustomListRepository
-	UploadLogRepository                UploadLogRepository
-	MarbleAnalyticsRepository          MarbleAnalyticsRepository
+	ExecutorGetter                ExecutorGetter
+	FirebaseTokenRepository       FireBaseTokenRepository
+	MarbleJwtRepository           func() MarbleJwtRepository
+	UserRepository                UserRepository
+	OrganizationRepository        OrganizationRepository
+	IngestionRepository           IngestionRepository
+	DataModelRepository           DataModelRepository
+	IngestedDataReadRepository    IngestedDataReadRepository
+	DecisionRepository            DecisionRepository
+	MarbleDbRepository            MarbleDbRepository
+	ClientDbRepository            ClientDbRepository
+	ScenarioPublicationRepository ScenarioPublicationRepository
+	OrganizationSchemaRepository  OrganizationSchemaRepository
+	AwsS3Repository               AwsS3Repository
+	GcsRepository                 GcsRepository
+	CustomListRepository          CustomListRepository
+	UploadLogRepository           UploadLogRepository
+	MarbleAnalyticsRepository     MarbleAnalyticsRepository
 }
 
 func NewQueryBuilder() squirrel.StatementBuilderType {
@@ -44,21 +41,11 @@ func NewRepositories(
 	metabase Metabase,
 ) (*Repositories, error) {
 
-	databaseConnectionPoolRepository := db_connection_pool_repository.NewDatabaseConnectionPoolRepository(
-		marbleConnectionPool,
-	)
-
-	transactionFactory := NewTransactionFactoryPosgresql_deprec(
-		databaseConnectionPoolRepository,
-		marbleConnectionPool,
-	)
-
 	executorGetter := NewExecutorGetter(marbleConnectionPool)
 
 	return &Repositories{
-		TransactionFactoryPosgresql_deprec: transactionFactory,
-		ExecutorGetter:                     executorGetter,
-		FirebaseTokenRepository:            firebase.New(firebaseClient),
+		ExecutorGetter:          executorGetter,
+		FirebaseTokenRepository: firebase.New(firebaseClient),
 		MarbleJwtRepository: func() MarbleJwtRepository {
 			if marbleJwtSigningKey == nil {
 				panic("Repositories does not contain a jwt signing key")
@@ -68,35 +55,34 @@ func NewRepositories(
 			}
 		},
 		UserRepository: &UserRepositoryPostgresql{
-			transactionFactory: transactionFactory,
+			executorGetter: executorGetter,
 		},
 		OrganizationRepository: &OrganizationRepositoryPostgresql{
-			transactionFactory: transactionFactory,
+			executorGetter: executorGetter,
 		},
 		IngestionRepository: &IngestionRepositoryImpl{},
 		DataModelRepository: &DataModelRepositoryPostgresql{
-			transactionFactory: transactionFactory,
+			executorGetter: executorGetter,
 		},
 		IngestedDataReadRepository: &IngestedDataReadRepositoryImpl{},
-		BlankDataReadRepository:    &BlankDataReadRepositoryImpl{},
 		DecisionRepository: &DecisionRepositoryImpl{
-			transactionFactory: transactionFactory,
+			executorGetter: executorGetter,
 		},
 		MarbleDbRepository: MarbleDbRepository{
-			transactionFactory: transactionFactory,
+			executorGetter: executorGetter,
 		},
 		ClientDbRepository: ClientDbRepository{},
-		ScenarioPublicationRepository: NewScenarioPublicationRepositoryPostgresql(
-			transactionFactory,
-		),
+		ScenarioPublicationRepository: &ScenarioPublicationRepositoryPostgresql{
+			executorGetter: executorGetter,
+		},
 		OrganizationSchemaRepository: &OrganizationSchemaRepositoryPostgresql{
-			transactionFactory: transactionFactory,
+			executorGetter: executorGetter,
 		},
 		CustomListRepository: &CustomListRepositoryPostgresql{
-			transactionFactory: transactionFactory,
+			executorGetter: executorGetter,
 		},
 		UploadLogRepository: &UploadLogRepositoryImpl{
-			transactionFactory: transactionFactory,
+			executorGetter: executorGetter,
 		},
 		AwsS3Repository: AwsS3Repository{s3Client: NewS3Client()},
 		GcsRepository:   &GcsRepositoryImpl{},
