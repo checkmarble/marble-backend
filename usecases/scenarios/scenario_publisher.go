@@ -11,9 +11,9 @@ import (
 )
 
 type ScenarioPublisherRepository interface {
-	UpdateScenarioLiveIterationId(ctx context.Context, tx repositories.Transaction_deprec, scenarioId string, scenarioIterationId *string) error
-	ListScenarioIterations(ctx context.Context, tx repositories.Transaction_deprec, organizationId string, filters models.GetScenarioIterationFilters) ([]models.ScenarioIteration, error)
-	UpdateScenarioIterationVersion(ctx context.Context, tx repositories.Transaction_deprec, scenarioIterationId string, newVersion int) error
+	UpdateScenarioLiveIterationId(ctx context.Context, exec repositories.Executor, scenarioId string, scenarioIterationId *string) error
+	ListScenarioIterations(ctx context.Context, exec repositories.Executor, organizationId string, filters models.GetScenarioIterationFilters) ([]models.ScenarioIteration, error)
+	UpdateScenarioIterationVersion(ctx context.Context, exec repositories.Executor, scenarioIterationId string, newVersion int) error
 }
 
 type ScenarioPublisher struct {
@@ -24,7 +24,7 @@ type ScenarioPublisher struct {
 
 func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(
 	ctx context.Context,
-	tx repositories.Transaction_deprec,
+	exec repositories.Executor,
 	scenarioAndIteration ScenarioAndIteration,
 	publicationAction models.PublicationAction,
 ) ([]models.ScenarioPublication, error) {
@@ -42,7 +42,7 @@ func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(
 				return nil, fmt.Errorf("unable to unpublish: scenario iteration %s is not currently live %w", iterationId, models.BadParameterError)
 			}
 
-			if sps, err := publisher.unpublishOldIteration(ctx, tx, organizationId, scenariosId, &iterationId); err != nil {
+			if sps, err := publisher.unpublishOldIteration(ctx, exec, organizationId, scenariosId, &iterationId); err != nil {
 				return nil, err
 			} else {
 				scenarioPublications = append(scenarioPublications, sps...)
@@ -57,23 +57,23 @@ func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(
 				return nil, fmt.Errorf("can't validate scenario %w %w", err, models.BadParameterError)
 			}
 
-			scenarioVersion, err := publisher.getScenarioVersion(ctx, tx, organizationId, scenariosId, iterationId)
+			scenarioVersion, err := publisher.getScenarioVersion(ctx, exec, organizationId, scenariosId, iterationId)
 			if err != nil {
 				return nil, err
 			}
 
-			err = publisher.Repository.UpdateScenarioIterationVersion(ctx, tx, iterationId, scenarioVersion)
+			err = publisher.Repository.UpdateScenarioIterationVersion(ctx, exec, iterationId, scenarioVersion)
 			if err != nil {
 				return nil, err
 			}
 
-			if sps, err := publisher.unpublishOldIteration(ctx, tx, organizationId, scenariosId, liveVersionId); err != nil {
+			if sps, err := publisher.unpublishOldIteration(ctx, exec, organizationId, scenariosId, liveVersionId); err != nil {
 				return nil, err
 			} else {
 				scenarioPublications = append(scenarioPublications, sps...)
 			}
 
-			if sp, err := publisher.publishNewIteration(ctx, tx, organizationId, scenariosId, iterationId); err != nil {
+			if sp, err := publisher.publishNewIteration(ctx, exec, organizationId, scenariosId, iterationId); err != nil {
 				return nil, err
 			} else {
 				scenarioPublications = append(scenarioPublications, sp)
@@ -86,13 +86,13 @@ func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(
 	return scenarioPublications, nil
 }
 
-func (publisher *ScenarioPublisher) unpublishOldIteration(ctx context.Context, tx repositories.Transaction_deprec, organizationId, scenarioId string, liveVersionId *string) ([]models.ScenarioPublication, error) {
+func (publisher *ScenarioPublisher) unpublishOldIteration(ctx context.Context, exec repositories.Executor, organizationId, scenarioId string, liveVersionId *string) ([]models.ScenarioPublication, error) {
 	if liveVersionId == nil {
 		return []models.ScenarioPublication{}, nil
 	}
 
 	newScenarioPublicationId := utils.NewPrimaryKey(organizationId)
-	if err := publisher.ScenarioPublicationsRepository.CreateScenarioPublication(ctx, tx, models.CreateScenarioPublicationInput{
+	if err := publisher.ScenarioPublicationsRepository.CreateScenarioPublication(ctx, exec, models.CreateScenarioPublicationInput{
 		OrganizationId:      organizationId,
 		ScenarioIterationId: *liveVersionId,
 		ScenarioId:          scenarioId,
@@ -101,16 +101,16 @@ func (publisher *ScenarioPublisher) unpublishOldIteration(ctx context.Context, t
 		return nil, err
 	}
 
-	if err := publisher.Repository.UpdateScenarioLiveIterationId(ctx, tx, scenarioId, nil); err != nil {
+	if err := publisher.Repository.UpdateScenarioLiveIterationId(ctx, exec, scenarioId, nil); err != nil {
 		return nil, err
 	}
-	scenarioPublication, err := publisher.ScenarioPublicationsRepository.GetScenarioPublicationById(ctx, tx, newScenarioPublicationId)
+	scenarioPublication, err := publisher.ScenarioPublicationsRepository.GetScenarioPublicationById(ctx, exec, newScenarioPublicationId)
 	return []models.ScenarioPublication{scenarioPublication}, err
 }
 
-func (publisher *ScenarioPublisher) publishNewIteration(ctx context.Context, tx repositories.Transaction_deprec, organizationId, scenarioId, scenarioIterationId string) (models.ScenarioPublication, error) {
+func (publisher *ScenarioPublisher) publishNewIteration(ctx context.Context, exec repositories.Executor, organizationId, scenarioId, scenarioIterationId string) (models.ScenarioPublication, error) {
 	newScenarioPublicationId := utils.NewPrimaryKey(organizationId)
-	if err := publisher.ScenarioPublicationsRepository.CreateScenarioPublication(ctx, tx, models.CreateScenarioPublicationInput{
+	if err := publisher.ScenarioPublicationsRepository.CreateScenarioPublication(ctx, exec, models.CreateScenarioPublicationInput{
 		OrganizationId:      organizationId,
 		ScenarioIterationId: scenarioIterationId,
 		ScenarioId:          scenarioId,
@@ -119,19 +119,19 @@ func (publisher *ScenarioPublisher) publishNewIteration(ctx context.Context, tx 
 		return models.ScenarioPublication{}, err
 	}
 
-	scenarioPublication, err := publisher.ScenarioPublicationsRepository.GetScenarioPublicationById(ctx, tx, newScenarioPublicationId)
+	scenarioPublication, err := publisher.ScenarioPublicationsRepository.GetScenarioPublicationById(ctx, exec, newScenarioPublicationId)
 	if err != nil {
 		return models.ScenarioPublication{}, err
 	}
 
-	if err = publisher.Repository.UpdateScenarioLiveIterationId(ctx, tx, scenarioId, &scenarioIterationId); err != nil {
+	if err = publisher.Repository.UpdateScenarioLiveIterationId(ctx, exec, scenarioId, &scenarioIterationId); err != nil {
 		return models.ScenarioPublication{}, err
 	}
 	return scenarioPublication, nil
 }
 
-func (publisher *ScenarioPublisher) getScenarioVersion(ctx context.Context, tx repositories.Transaction_deprec, organizationId, scenarioId, iterationId string) (int, error) {
-	scenarioIterations, err := publisher.Repository.ListScenarioIterations(ctx, tx, organizationId, models.GetScenarioIterationFilters{ScenarioId: &scenarioId})
+func (publisher *ScenarioPublisher) getScenarioVersion(ctx context.Context, exec repositories.Executor, organizationId, scenarioId, iterationId string) (int, error) {
+	scenarioIterations, err := publisher.Repository.ListScenarioIterations(ctx, exec, organizationId, models.GetScenarioIterationFilters{ScenarioId: &scenarioId})
 	if err != nil {
 		return 0, err
 	}

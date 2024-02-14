@@ -7,11 +7,12 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
-func (repo *MarbleDbRepository) CreateScenario(ctx context.Context, tx Transaction_deprec, organizationId string, scenario models.CreateScenarioInput, newScenarioId string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *MarbleDbRepository) CreateScenario(ctx context.Context, exec Executor, organizationId string, scenario models.CreateScenarioInput, newScenarioId string) error {
+	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := pgTx.ExecBuilder(
+	_, err := ExecBuilder(
 		ctx,
+		exec,
 		NewQueryBuilder().Insert(dbmodels.TABLE_SCENARIOS).
 			Columns(
 				"id",
@@ -35,8 +36,8 @@ func (repo *MarbleDbRepository) CreateScenario(ctx context.Context, tx Transacti
 	return nil
 }
 
-func (repo *MarbleDbRepository) UpdateScenario(ctx context.Context, tx Transaction_deprec, scenario models.UpdateScenarioInput) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *MarbleDbRepository) UpdateScenario(ctx context.Context, exec Executor, scenario models.UpdateScenarioInput) error {
+	exec = repo.executorGetter.ifNil(exec)
 
 	sql := NewQueryBuilder().
 		Update(dbmodels.TABLE_SCENARIOS).
@@ -49,22 +50,22 @@ func (repo *MarbleDbRepository) UpdateScenario(ctx context.Context, tx Transacti
 		sql = sql.Set("description", scenario.Description)
 	}
 
-	if _, err := pgTx.ExecBuilder(ctx, sql); err != nil {
+	if _, err := ExecBuilder(ctx, exec, sql); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (repo *MarbleDbRepository) UpdateScenarioLiveIterationId(ctx context.Context, tx Transaction_deprec, scenarioId string, scenarioIterationId *string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *MarbleDbRepository) UpdateScenarioLiveIterationId(ctx context.Context, exec Executor, scenarioId string, scenarioIterationId *string) error {
+	exec = repo.executorGetter.ifNil(exec)
 
 	sql := NewQueryBuilder().
 		Update(dbmodels.TABLE_SCENARIOS).
 		Where("id = ?", scenarioId).
 		Set("live_scenario_iteration_id", scenarioIterationId)
 
-	if _, err := pgTx.ExecBuilder(ctx, sql); err != nil {
+	if _, err := ExecBuilder(ctx, exec, sql); err != nil {
 		return err
 	}
 	return nil

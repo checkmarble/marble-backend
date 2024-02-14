@@ -9,16 +9,16 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/transaction"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 )
 
 type DatabaseAccess struct {
-	OrganizationId             string
-	DataModel                  models.DataModel
-	Payload                    models.PayloadReader
-	OrgTransactionFactory      transaction.Factory_deprec
-	IngestedDataReadRepository repositories.IngestedDataReadRepository
-	ReturnFakeValue            bool
+	OrganizationId              string
+	DataModel                   models.DataModel
+	Payload                     models.PayloadReader
+	ClientSchemaExecutorFactory executor_factory.ClientSchemaExecutorFactory
+	IngestedDataReadRepository  repositories.IngestedDataReadRepository
+	ReturnFakeValue             bool
 }
 
 func (d DatabaseAccess) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
@@ -72,17 +72,15 @@ func (d DatabaseAccess) getDbField(ctx context.Context, tableName models.TableNa
 		return DryRunGetDbField(d.DataModel, tableName, path, fieldName)
 	}
 
-	return transaction.InOrganizationSchema_deprec(
-		ctx,
-		d.OrgTransactionFactory,
-		d.OrganizationId,
-		func(tx repositories.Transaction_deprec) (interface{}, error) {
-			return d.IngestedDataReadRepository.GetDbField(ctx, tx, models.DbFieldReadParams{
-				TriggerTableName: models.TableName(tableName),
-				Path:             models.ToLinkNames(path),
-				FieldName:        models.FieldName(fieldName),
-				DataModel:        d.DataModel,
-				Payload:          d.Payload,
-			})
+	if db, err := d.ClientSchemaExecutorFactory.NewClientDbExecutor(ctx, d.OrganizationId); err != nil {
+		return nil, err
+	} else {
+		return d.IngestedDataReadRepository.GetDbField(ctx, db, models.DbFieldReadParams{
+			TriggerTableName: models.TableName(tableName),
+			Path:             models.ToLinkNames(path),
+			FieldName:        models.FieldName(fieldName),
+			DataModel:        d.DataModel,
+			Payload:          d.Payload,
 		})
+	}
 }

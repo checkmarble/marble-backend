@@ -5,30 +5,30 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/transaction"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 )
 
 type DataAccessor struct {
-	DataModel                  models.DataModel
-	Payload                    models.PayloadReader
-	orgTransactionFactory      transaction.Factory_deprec
-	organizationId             string
-	ingestedDataReadRepository repositories.IngestedDataReadRepository
+	DataModel                   models.DataModel
+	Payload                     models.PayloadReader
+	clientSchemaExecutorFactory executor_factory.ClientSchemaExecutorFactory
+	organizationId              string
+	ingestedDataReadRepository  repositories.IngestedDataReadRepository
 }
 
 func (d *DataAccessor) GetDbField(ctx context.Context, triggerTableName string, path []string, fieldName string) (interface{}, error) {
-
-	return transaction.InOrganizationSchema_deprec(
+	db, err := d.clientSchemaExecutorFactory.NewClientDbExecutor(ctx, d.organizationId)
+	if err != nil {
+		return nil, err
+	}
+	return d.ingestedDataReadRepository.GetDbField(
 		ctx,
-		d.orgTransactionFactory,
-		d.organizationId,
-		func(tx repositories.Transaction_deprec) (interface{}, error) {
-			return d.ingestedDataReadRepository.GetDbField(ctx, tx, models.DbFieldReadParams{
-				TriggerTableName: models.TableName(triggerTableName),
-				Path:             models.ToLinkNames(path),
-				FieldName:        models.FieldName(fieldName),
-				DataModel:        d.DataModel,
-				Payload:          d.Payload,
-			})
+		db,
+		models.DbFieldReadParams{
+			TriggerTableName: models.TableName(triggerTableName),
+			Path:             models.ToLinkNames(path),
+			FieldName:        models.FieldName(fieldName),
+			DataModel:        d.DataModel,
+			Payload:          d.Payload,
 		})
 }

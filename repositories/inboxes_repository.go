@@ -11,19 +11,19 @@ import (
 	"github.com/Masterminds/squirrel"
 )
 
-func (repo *MarbleDbRepository) GetInboxById(ctx context.Context, tx Transaction_deprec, inboxId string) (models.Inbox, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *MarbleDbRepository) GetInboxById(ctx context.Context, exec Executor, inboxId string) (models.Inbox, error) {
+	exec = repo.executorGetter.ifNil(exec)
 
 	return SqlToModel(
 		ctx,
-		pgTx,
+		exec,
 		selectInboxesJoinUsers().Where(squirrel.Eq{"i.id": inboxId}),
 		dbmodels.AdaptInboxWithUsers,
 	)
 }
 
-func (repo *MarbleDbRepository) ListInboxes(ctx context.Context, tx Transaction_deprec, organizationId string, inboxIds []string, withCaseCount bool) ([]models.Inbox, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *MarbleDbRepository) ListInboxes(ctx context.Context, exec Executor, organizationId string, inboxIds []string, withCaseCount bool) ([]models.Inbox, error) {
+	exec = repo.executorGetter.ifNil(exec)
 
 	query := selectInboxesJoinUsers().
 		Where(squirrel.Eq{"i.status": models.InboxStatusActive}).
@@ -35,12 +35,12 @@ func (repo *MarbleDbRepository) ListInboxes(ctx context.Context, tx Transaction_
 
 	if withCaseCount {
 		query = query.Column("(SELECT count(distinct c.id) FROM " + dbmodels.TABLE_CASES + " AS c WHERE c.inbox_id = i.id) AS cases_count")
-		return SqlToListOfModels(ctx, pgTx, query, dbmodels.AdaptInboxWithCasesCount)
+		return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptInboxWithCasesCount)
 	}
 
 	return SqlToListOfModels(
 		ctx,
-		pgTx,
+		exec,
 		query,
 		dbmodels.AdaptInboxWithUsers,
 	)
@@ -61,11 +61,12 @@ func selectInboxesJoinUsers() squirrel.SelectBuilder {
 		OrderBy("i.created_at DESC")
 }
 
-func (repo *MarbleDbRepository) CreateInbox(ctx context.Context, tx Transaction_deprec, input models.CreateInboxInput, newInboxId string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *MarbleDbRepository) CreateInbox(ctx context.Context, exec Executor, input models.CreateInboxInput, newInboxId string) error {
+	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := pgTx.ExecBuilder(
+	_, err := ExecBuilder(
 		ctx,
+		exec,
 		NewQueryBuilder().Insert(dbmodels.TABLE_INBOXES).
 			Columns(
 				"id",
@@ -81,11 +82,12 @@ func (repo *MarbleDbRepository) CreateInbox(ctx context.Context, tx Transaction_
 	return err
 }
 
-func (repo *MarbleDbRepository) UpdateInbox(ctx context.Context, tx Transaction_deprec, inboxId, name string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *MarbleDbRepository) UpdateInbox(ctx context.Context, exec Executor, inboxId, name string) error {
+	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := pgTx.ExecBuilder(
+	_, err := ExecBuilder(
 		ctx,
+		exec,
 		NewQueryBuilder().Update(dbmodels.TABLE_INBOXES).
 			Set("name", name).
 			Set("updated_at", squirrel.Expr("NOW()")).
@@ -94,11 +96,12 @@ func (repo *MarbleDbRepository) UpdateInbox(ctx context.Context, tx Transaction_
 	return err
 }
 
-func (repo *MarbleDbRepository) SoftDeleteInbox(ctx context.Context, tx Transaction_deprec, inboxId string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *MarbleDbRepository) SoftDeleteInbox(ctx context.Context, exec Executor, inboxId string) error {
+	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := pgTx.ExecBuilder(
+	_, err := ExecBuilder(
 		ctx,
+		exec,
 		NewQueryBuilder().Update(dbmodels.TABLE_INBOXES).
 			Set("status", models.InboxStatusInactive).
 			Set("updated_at", squirrel.Expr("NOW()")).

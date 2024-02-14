@@ -15,30 +15,30 @@ func selectScenarios() squirrel.SelectBuilder {
 		From(dbmodels.TABLE_SCENARIOS)
 }
 
-func (repo *MarbleDbRepository) GetScenarioById(ctx context.Context, tx Transaction_deprec, scenarioId string) (models.Scenario, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *MarbleDbRepository) GetScenarioById(ctx context.Context, exec Executor, scenarioId string) (models.Scenario, error) {
+	exec = repo.executorGetter.ifNil(exec)
 
 	return SqlToModel(
 		ctx,
-		pgTx,
+		exec,
 		selectScenarios().Where(squirrel.Eq{"id": scenarioId}),
 		dbmodels.AdaptScenario,
 	)
 }
 
-func (repo *MarbleDbRepository) ListScenariosOfOrganization(ctx context.Context, tx Transaction_deprec, organizationId string) ([]models.Scenario, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *MarbleDbRepository) ListScenariosOfOrganization(ctx context.Context, exec Executor, organizationId string) ([]models.Scenario, error) {
+	exec = repo.executorGetter.ifNil(exec)
 
 	return SqlToListOfModels(
 		ctx,
-		pgTx,
+		exec,
 		selectScenarios().Where(squirrel.Eq{"org_id": organizationId}).OrderBy("created_at DESC"),
 		dbmodels.AdaptScenario,
 	)
 }
 
-func (repo *MarbleDbRepository) ListAllScenarios(ctx context.Context, tx Transaction_deprec, filters models.ListAllScenariosFilters) ([]models.Scenario, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *MarbleDbRepository) ListAllScenarios(ctx context.Context, exec Executor, filters models.ListAllScenariosFilters) ([]models.Scenario, error) {
+	exec = repo.executorGetter.ifNil(exec)
 
 	query := selectScenarios().OrderBy("id")
 
@@ -48,7 +48,7 @@ func (repo *MarbleDbRepository) ListAllScenarios(ctx context.Context, tx Transac
 
 	return SqlToListOfModels(
 		ctx,
-		pgTx,
+		exec,
 		query,
 		dbmodels.AdaptScenario,
 	)

@@ -13,18 +13,19 @@ import (
 )
 
 type IngestionRepository interface {
-	IngestObjects(ctx context.Context, transaction Transaction_deprec, payloads []models.PayloadReader, table models.Table, logger *slog.Logger) (err error)
+	IngestObjects(ctx context.Context, exec Executor, payloads []models.PayloadReader, table models.Table, logger *slog.Logger) (err error)
 }
 
-type IngestionRepositoryImpl struct {
-}
+type IngestionRepositoryImpl struct{}
 
-func (repo *IngestionRepositoryImpl) IngestObjects(ctx context.Context, transaction Transaction_deprec, payloads []models.PayloadReader, table models.Table, logger *slog.Logger) (err error) {
-	tx := adaptClientDatabaseTransaction(transaction)
+func (repo *IngestionRepositoryImpl) IngestObjects(ctx context.Context, exec Executor, payloads []models.PayloadReader, table models.Table, logger *slog.Logger) (err error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return err
+	}
 
 	mostRecentObjectIds, mostRecentPayloads := repo.mostRecentPayloadsByObjectId(payloads)
 
-	previouslyIngestedObjects, err := repo.loadPreviouslyIngestedObjects(ctx, tx, mostRecentObjectIds, table.Name)
+	previouslyIngestedObjects, err := repo.loadPreviouslyIngestedObjects(ctx, exec, mostRecentObjectIds, table.Name)
 	if err != nil {
 		return err
 	}
@@ -32,18 +33,18 @@ func (repo *IngestionRepositoryImpl) IngestObjects(ctx context.Context, transact
 	payloadsToInsert, obsoleteIngestedObjectIds := repo.comparePayloadsToIngestedObjects(mostRecentPayloads, previouslyIngestedObjects)
 
 	if len(obsoleteIngestedObjectIds) > 0 {
-		if err := repo.batchUpdateValidUntilOnObsoleteObjects(ctx, tx, table.Name, obsoleteIngestedObjectIds); err != nil {
+		if err := repo.batchUpdateValidUntilOnObsoleteObjects(ctx, exec, table.Name, obsoleteIngestedObjectIds); err != nil {
 			return err
 		}
 	}
 
 	if len(payloadsToInsert) > 0 {
-		if err := repo.batchInsertPayloadsAndEnumValues(ctx, tx, payloadsToInsert, table); err != nil {
+		if err := repo.batchInsertPayloadsAndEnumValues(ctx, exec, payloadsToInsert, table); err != nil {
 			return err
 		}
 	}
 
-	logger.Info("Inserted objects in db", slog.String("type", tableNameWithSchema(tx, table.Name)), slog.Int("nb_objects", len(payloadsToInsert)))
+	logger.Info("Inserted objects in db", slog.String("type", tableNameWithSchema(exec, table.Name)), slog.Int("nb_objects", len(payloadsToInsert)))
 
 	return nil
 }
@@ -93,14 +94,14 @@ type IngestedObject struct {
 	UpdatedAt time.Time
 }
 
-func (repo *IngestionRepositoryImpl) loadPreviouslyIngestedObjects(ctx context.Context, tx TransactionPostgres_deprec, objectIds []string, tableName models.TableName) ([]IngestedObject, error) {
+func (repo *IngestionRepositoryImpl) loadPreviouslyIngestedObjects(ctx context.Context, exec Executor, objectIds []string, tableName models.TableName) ([]IngestedObject, error) {
 	query := NewQueryBuilder().
 		Select("id, object_id, updated_at").
-		From(tableNameWithSchema(tx, tableName)).
+		From(tableNameWithSchema(exec, tableName)).
 		Where(squirrel.Eq{"object_id": objectIds}).
 		Where(squirrel.Eq{"valid_until": "Infinity"})
 
-	return SqlToListOfModels(ctx, tx, query, func(db DBObject) (IngestedObject, error) { return IngestedObject(db), nil })
+	return SqlToListOfModels(ctx, exec, query, func(db DBObject) (IngestedObject, error) { return IngestedObject(db), nil })
 }
 
 func (repo *IngestionRepositoryImpl) comparePayloadsToIngestedObjects(payloads []models.PayloadReader, previouslyIngestedObjects []IngestedObject) ([]models.PayloadReader, []string) {
@@ -127,23 +128,19 @@ func (repo *IngestionRepositoryImpl) comparePayloadsToIngestedObjects(payloads [
 	return payloadsToInsert, obsoleteIngestedObjectIds
 }
 
-func (repo *IngestionRepositoryImpl) batchUpdateValidUntilOnObsoleteObjects(ctx context.Context, tx TransactionPostgres_deprec, tableName models.TableName, obsoleteIngestedObjectIds []string) error {
-	sql, args, err := NewQueryBuilder().
-		Update(tableNameWithSchema(tx, tableName)).
+func (repo *IngestionRepositoryImpl) batchUpdateValidUntilOnObsoleteObjects(ctx context.Context, exec Executor, tableName models.TableName, obsoleteIngestedObjectIds []string) error {
+	sql := NewQueryBuilder().
+		Update(tableNameWithSchema(exec, tableName)).
 		Set("valid_until", "now()").
-		Where(squirrel.Eq{"id": obsoleteIngestedObjectIds}).
-		ToSql()
-	if err != nil {
-		return err
-	}
-	_, err = tx.SqlExec(ctx, sql, args...)
+		Where(squirrel.Eq{"id": obsoleteIngestedObjectIds})
+	_, err := ExecBuilder(ctx, exec, sql)
 
 	return err
 }
 
-func (repo *IngestionRepositoryImpl) batchInsertPayloadsAndEnumValues(ctx context.Context, tx TransactionPostgres_deprec, payloads []models.PayloadReader, table models.Table) error {
+func (repo *IngestionRepositoryImpl) batchInsertPayloadsAndEnumValues(ctx context.Context, exec Executor, payloads []models.PayloadReader, table models.Table) error {
 	columnNames := models.ColumnNames(table)
-	query := NewQueryBuilder().Insert(tableNameWithSchema(tx, table.Name))
+	query := NewQueryBuilder().Insert(tableNameWithSchema(exec, table.Name))
 
 	enumValues := repo.buildEnumValuesWithEnumFields(table)
 
@@ -158,7 +155,7 @@ func (repo *IngestionRepositoryImpl) batchInsertPayloadsAndEnumValues(ctx contex
 		query = query.Values(insertValues...)
 	}
 
-	err := repo.batchInsertEnumValues(ctx, tx, enumValues, table)
+	err := repo.batchInsertEnumValues(ctx, exec, enumValues, table)
 	if err != nil {
 		return fmt.Errorf("batchInsertEnumValues error: %w", err)
 	}
@@ -166,7 +163,7 @@ func (repo *IngestionRepositoryImpl) batchInsertPayloadsAndEnumValues(ctx contex
 	columnNames = append(columnNames, "id")
 	query = query.Columns(columnNames...)
 
-	_, err = tx.ExecBuilder(ctx, query)
+	_, err = ExecBuilder(ctx, exec, query)
 
 	return err
 }
@@ -206,7 +203,7 @@ func (repo *IngestionRepositoryImpl) collectEnumValues(payload models.PayloadRea
 }
 
 // This has to be done in 2 queries because there cannot be multiple ON CONFLICT clauses per query
-func (repo *IngestionRepositoryImpl) batchInsertEnumValues(ctx context.Context, tx TransactionPostgres_deprec, enumValues EnumValues, table models.Table) error {
+func (repo *IngestionRepositoryImpl) batchInsertEnumValues(ctx context.Context, exec Executor, enumValues EnumValues, table models.Table) error {
 	textQuery := NewQueryBuilder().
 		Insert("data_model_enum_values").
 		Columns("field_id", "text_value").
@@ -237,13 +234,13 @@ func (repo *IngestionRepositoryImpl) batchInsertEnumValues(ctx context.Context, 
 	}
 
 	if shouldInsertTextValues {
-		_, err := tx.ExecBuilder(ctx, textQuery)
+		_, err := ExecBuilder(ctx, exec, textQuery)
 		if err != nil {
 			return err
 		}
 	}
 	if shouldInsertFloatValues {
-		_, err := tx.ExecBuilder(ctx, floatQuery)
+		_, err := ExecBuilder(ctx, exec, floatQuery)
 		if err != nil {
 			return err
 		}

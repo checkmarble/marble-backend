@@ -10,27 +10,27 @@ import (
 )
 
 type CustomListRepository interface {
-	AllCustomLists(ctx context.Context, tx Transaction_deprec, organizationId string) ([]models.CustomList, error)
-	GetCustomListById(ctx context.Context, tx Transaction_deprec, id string) (models.CustomList, error)
-	GetCustomListValues(ctx context.Context, tx Transaction_deprec, getCustomList models.GetCustomListValuesInput) ([]models.CustomListValue, error)
-	GetCustomListValueById(ctx context.Context, tx Transaction_deprec, id string) (models.CustomListValue, error)
-	CreateCustomList(ctx context.Context, tx Transaction_deprec, createCustomList models.CreateCustomListInput, organizationId string, newCustomListId string) error
-	UpdateCustomList(ctx context.Context, tx Transaction_deprec, updateCustomList models.UpdateCustomListInput) error
-	SoftDeleteCustomList(ctx context.Context, tx Transaction_deprec, listId string) error
-	AddCustomListValue(ctx context.Context, tx Transaction_deprec, addCustomListValue models.AddCustomListValueInput, newCustomListId string) error
-	DeleteCustomListValue(ctx context.Context, tx Transaction_deprec, deleteCustomListValue models.DeleteCustomListValueInput) error
+	AllCustomLists(ctx context.Context, exec Executor, organizationId string) ([]models.CustomList, error)
+	GetCustomListById(ctx context.Context, exec Executor, id string) (models.CustomList, error)
+	GetCustomListValues(ctx context.Context, exec Executor, getCustomList models.GetCustomListValuesInput) ([]models.CustomListValue, error)
+	GetCustomListValueById(ctx context.Context, exec Executor, id string) (models.CustomListValue, error)
+	CreateCustomList(ctx context.Context, exec Executor, createCustomList models.CreateCustomListInput, organizationId string, newCustomListId string) error
+	UpdateCustomList(ctx context.Context, exec Executor, updateCustomList models.UpdateCustomListInput) error
+	SoftDeleteCustomList(ctx context.Context, exec Executor, listId string) error
+	AddCustomListValue(ctx context.Context, exec Executor, addCustomListValue models.AddCustomListValueInput, newCustomListId string) error
+	DeleteCustomListValue(ctx context.Context, exec Executor, deleteCustomListValue models.DeleteCustomListValueInput) error
 }
 
 type CustomListRepositoryPostgresql struct {
-	transactionFactory TransactionFactoryPosgresql_deprec
+	executorGetter ExecutorGetter
 }
 
-func (repo *CustomListRepositoryPostgresql) AllCustomLists(ctx context.Context, tx Transaction_deprec, organizationId string) ([]models.CustomList, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *CustomListRepositoryPostgresql) AllCustomLists(ctx context.Context, exec Executor, organizationId string) ([]models.CustomList, error) {
+	exec = repo.executorGetter.ifNil(exec)
 
 	return SqlToListOfModels(
 		ctx,
-		pgTx,
+		exec,
 		NewQueryBuilder().
 			Select(dbmodels.ColumnsSelectCustomList...).
 			From(dbmodels.TABLE_CUSTOM_LIST).
@@ -39,12 +39,12 @@ func (repo *CustomListRepositoryPostgresql) AllCustomLists(ctx context.Context, 
 		dbmodels.AdaptCustomList,
 	)
 }
-func (repo *CustomListRepositoryPostgresql) GetCustomListById(ctx context.Context, tx Transaction_deprec, id string) (models.CustomList, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *CustomListRepositoryPostgresql) GetCustomListById(ctx context.Context, exec Executor, id string) (models.CustomList, error) {
+	exec = repo.executorGetter.ifNil(exec)
 
 	return SqlToModel(
 		ctx,
-		pgTx,
+		exec,
 		NewQueryBuilder().
 			Select(dbmodels.ColumnsSelectCustomList...).
 			From(dbmodels.TABLE_CUSTOM_LIST).
@@ -53,12 +53,12 @@ func (repo *CustomListRepositoryPostgresql) GetCustomListById(ctx context.Contex
 	)
 }
 
-func (repo *CustomListRepositoryPostgresql) GetCustomListValues(ctx context.Context, tx Transaction_deprec, getCustomList models.GetCustomListValuesInput) ([]models.CustomListValue, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *CustomListRepositoryPostgresql) GetCustomListValues(ctx context.Context, exec Executor, getCustomList models.GetCustomListValuesInput) ([]models.CustomListValue, error) {
+	exec = repo.executorGetter.ifNil(exec)
 
 	return SqlToListOfModels(
 		ctx,
-		pgTx,
+		exec,
 		NewQueryBuilder().
 			Select(dbmodels.ColumnsSelectCustomListValue...).
 			From(dbmodels.TABLE_CUSTOM_LIST_VALUE).
@@ -66,12 +66,12 @@ func (repo *CustomListRepositoryPostgresql) GetCustomListValues(ctx context.Cont
 		dbmodels.AdaptCustomListValue,
 	)
 }
-func (repo *CustomListRepositoryPostgresql) GetCustomListValueById(ctx context.Context, tx Transaction_deprec, id string) (models.CustomListValue, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *CustomListRepositoryPostgresql) GetCustomListValueById(ctx context.Context, exec Executor, id string) (models.CustomListValue, error) {
+	exec = repo.executorGetter.ifNil(exec)
 
 	return SqlToModel(
 		ctx,
-		pgTx,
+		exec,
 		NewQueryBuilder().
 			Select(dbmodels.ColumnsSelectCustomListValue...).
 			From(dbmodels.TABLE_CUSTOM_LIST_VALUE).
@@ -82,15 +82,16 @@ func (repo *CustomListRepositoryPostgresql) GetCustomListValueById(ctx context.C
 
 func (repo *CustomListRepositoryPostgresql) CreateCustomList(
 	ctx context.Context,
-	tx Transaction_deprec,
+	exec Executor,
 	createCustomList models.CreateCustomListInput,
 	organizationId string,
 	newCustomListId string,
 ) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := pgTx.ExecBuilder(
+	_, err := ExecBuilder(
 		ctx,
+		exec,
 		NewQueryBuilder().Insert(dbmodels.TABLE_CUSTOM_LIST).
 			Columns(
 				"id",
@@ -108,8 +109,8 @@ func (repo *CustomListRepositoryPostgresql) CreateCustomList(
 	return err
 }
 
-func (repo *CustomListRepositoryPostgresql) UpdateCustomList(ctx context.Context, tx Transaction_deprec, updateCustomList models.UpdateCustomListInput) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *CustomListRepositoryPostgresql) UpdateCustomList(ctx context.Context, exec Executor, updateCustomList models.UpdateCustomListInput) error {
+	exec = repo.executorGetter.ifNil(exec)
 
 	var updateRequest = NewQueryBuilder().Update(dbmodels.TABLE_CUSTOM_LIST)
 
@@ -123,31 +124,32 @@ func (repo *CustomListRepositoryPostgresql) UpdateCustomList(ctx context.Context
 
 	updateRequest = updateRequest.Where("id = ?", updateCustomList.Id)
 
-	_, err := pgTx.ExecBuilder(ctx, updateRequest)
+	_, err := ExecBuilder(ctx, exec, updateRequest)
 	return err
 }
 
-func (repo *CustomListRepositoryPostgresql) SoftDeleteCustomList(ctx context.Context, tx Transaction_deprec, listId string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *CustomListRepositoryPostgresql) SoftDeleteCustomList(ctx context.Context, exec Executor, listId string) error {
+	exec = repo.executorGetter.ifNil(exec)
 	var softDeleteRequest = NewQueryBuilder().Update(dbmodels.TABLE_CUSTOM_LIST)
 	softDeleteRequest = softDeleteRequest.Set("deleted_at", squirrel.Expr("NOW()"))
 	softDeleteRequest = softDeleteRequest.Set("updated_at", squirrel.Expr("NOW()"))
 	softDeleteRequest = softDeleteRequest.Where("id = ?", listId)
 
-	_, err := pgTx.ExecBuilder(ctx, softDeleteRequest)
+	_, err := ExecBuilder(ctx, exec, softDeleteRequest)
 	return err
 }
 
 func (repo *CustomListRepositoryPostgresql) AddCustomListValue(
 	ctx context.Context,
-	tx Transaction_deprec,
+	exec Executor,
 	addCustomListValue models.AddCustomListValueInput,
 	newCustomListId string,
 ) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := pgTx.ExecBuilder(
+	_, err := ExecBuilder(
 		ctx,
+		exec,
 		NewQueryBuilder().Insert(dbmodels.TABLE_CUSTOM_LIST_VALUE).
 			Columns(
 				"id",
@@ -165,10 +167,10 @@ func (repo *CustomListRepositoryPostgresql) AddCustomListValue(
 
 func (repo *CustomListRepositoryPostgresql) DeleteCustomListValue(
 	ctx context.Context,
-	tx Transaction_deprec,
+	exec Executor,
 	deleteCustomListValue models.DeleteCustomListValueInput,
 ) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+	exec = repo.executorGetter.ifNil(exec)
 
 	var deleteRequest = NewQueryBuilder().Update(dbmodels.TABLE_CUSTOM_LIST_VALUE)
 
@@ -176,6 +178,6 @@ func (repo *CustomListRepositoryPostgresql) DeleteCustomListValue(
 
 	deleteRequest = deleteRequest.Where("id = ? AND custom_list_id = ?", deleteCustomListValue.Id, deleteCustomListValue.CustomListId)
 
-	_, err := pgTx.ExecBuilder(ctx, deleteRequest)
+	_, err := ExecBuilder(ctx, exec, deleteRequest)
 	return err
 }

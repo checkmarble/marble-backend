@@ -8,12 +8,12 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
-func (repo *MarbleDbRepository) GetApiKeyById(ctx context.Context, tx Transaction_deprec, apiKeyId string) (models.ApiKey, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *MarbleDbRepository) GetApiKeyById(ctx context.Context, exec Executor, apiKeyId string) (models.ApiKey, error) {
+	exec = repo.executorGetter.ifNil(exec)
 
 	return SqlToModel(
 		ctx,
-		pgTx,
+		exec,
 		NewQueryBuilder().
 			Select(dbmodels.ApiKeyFields...).
 			From(dbmodels.TABLE_APIKEYS).
@@ -23,12 +23,12 @@ func (repo *MarbleDbRepository) GetApiKeyById(ctx context.Context, tx Transactio
 	)
 }
 
-func (repo *MarbleDbRepository) GetApiKeyByKey(ctx context.Context, tx Transaction_deprec, key string) (models.ApiKey, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *MarbleDbRepository) GetApiKeyByKey(ctx context.Context, exec Executor, key string) (models.ApiKey, error) {
+	exec = repo.executorGetter.ifNil(exec)
 
 	return SqlToModel(
 		ctx,
-		pgTx,
+		exec,
 		NewQueryBuilder().
 			Select(dbmodels.ApiKeyFields...).
 			From(dbmodels.TABLE_APIKEYS).
@@ -38,12 +38,12 @@ func (repo *MarbleDbRepository) GetApiKeyByKey(ctx context.Context, tx Transacti
 	)
 }
 
-func (repo *MarbleDbRepository) ListApiKeys(ctx context.Context, tx Transaction_deprec, organizationId string) ([]models.ApiKey, error) {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *MarbleDbRepository) ListApiKeys(ctx context.Context, exec Executor, organizationId string) ([]models.ApiKey, error) {
+	exec = repo.executorGetter.ifNil(exec)
 
 	return SqlToListOfModels(
 		ctx,
-		pgTx,
+		exec,
 		NewQueryBuilder().
 			Select(dbmodels.ApiKeyFields...).
 			From(dbmodels.TABLE_APIKEYS).
@@ -54,11 +54,12 @@ func (repo *MarbleDbRepository) ListApiKeys(ctx context.Context, tx Transaction_
 
 }
 
-func (repo *MarbleDbRepository) CreateApiKey(ctx context.Context, tx Transaction_deprec, apiKey models.CreateApiKey) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *MarbleDbRepository) CreateApiKey(ctx context.Context, exec Executor, apiKey models.CreateApiKey) error {
+	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := pgTx.ExecBuilder(
+	_, err := ExecBuilder(
 		ctx,
+		exec,
 		NewQueryBuilder().
 			Insert(dbmodels.TABLE_APIKEYS).
 			Columns(
@@ -79,11 +80,12 @@ func (repo *MarbleDbRepository) CreateApiKey(ctx context.Context, tx Transaction
 	return err
 }
 
-func (repo *MarbleDbRepository) SoftDeleteApiKey(ctx context.Context, tx Transaction_deprec, apiKeyId string) error {
-	pgTx := repo.transactionFactory.adaptMarbleDatabaseTransaction(ctx, tx)
+func (repo *MarbleDbRepository) SoftDeleteApiKey(ctx context.Context, exec Executor, apiKeyId string) error {
+	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := pgTx.ExecBuilder(
+	_, err := ExecBuilder(
 		ctx,
+		exec,
 		NewQueryBuilder().
 			Update(dbmodels.TABLE_APIKEYS).
 			Where(squirrel.Eq{"id": apiKeyId}).

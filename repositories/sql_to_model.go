@@ -21,27 +21,27 @@ func adaptModelUsingRowToStruct[DBModel any, Model any](row pgx.CollectableRow, 
 }
 
 // executes the sql query with the given transaction and returns a list of models using the provided adapter
-func SqlToListOfModels[DBModel, Model any](ctx context.Context, transaction TransactionPostgres_deprec, query squirrel.Sqlizer, adapter func(dbModel DBModel) (Model, error)) ([]Model, error) {
+func SqlToListOfModels[DBModel, Model any](ctx context.Context, exec Executor, query squirrel.Sqlizer, adapter func(dbModel DBModel) (Model, error)) ([]Model, error) {
 
-	return SqlToListOfRow(ctx, transaction, query, func(row pgx.CollectableRow) (Model, error) {
+	return SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (Model, error) {
 		return adaptModelUsingRowToStruct(row, adapter)
 	})
 }
 
 // executes the sql query with the given transaction and returns a models using the provided adapter
 // If no result is returned by the query, returns nil
-func SqlToOptionalModel[DBModel, Model any](ctx context.Context, transaction TransactionPostgres_deprec, s squirrel.Sqlizer, adapter func(dbModel DBModel) (Model, error)) (*Model, error) {
+func SqlToOptionalModel[DBModel, Model any](ctx context.Context, exec Executor, s squirrel.Sqlizer, adapter func(dbModel DBModel) (Model, error)) (*Model, error) {
 
-	return SqlToOptionalRow(ctx, transaction, s, func(row pgx.CollectableRow) (Model, error) {
+	return SqlToOptionalRow(ctx, exec, s, func(row pgx.CollectableRow) (Model, error) {
 		return adaptModelUsingRowToStruct(row, adapter)
 	})
 }
 
 // executes the sql query with the given transaction and returns a models using the provided adapter
 // if no result is returned by the query, returns a NotFoundError
-func SqlToModel[DBModel, Model any](ctx context.Context, transaction TransactionPostgres_deprec, s squirrel.Sqlizer, adapter func(dbModel DBModel) (Model, error)) (Model, error) {
+func SqlToModel[DBModel, Model any](ctx context.Context, exec Executor, s squirrel.Sqlizer, adapter func(dbModel DBModel) (Model, error)) (Model, error) {
 
-	return SqlToRow(ctx, transaction, s, func(row pgx.CollectableRow) (Model, error) {
+	return SqlToRow(ctx, exec, s, func(row pgx.CollectableRow) (Model, error) {
 		return adaptModelUsingRowToStruct(row, adapter)
 	})
 }

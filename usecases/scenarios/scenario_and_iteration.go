@@ -8,8 +8,8 @@ import (
 )
 
 type ScenarioFetcherRepository interface {
-	GetScenarioById(ctx context.Context, tx repositories.Transaction_deprec, scenarioId string) (models.Scenario, error)
-	GetScenarioIteration(ctx context.Context, tx repositories.Transaction_deprec, scenarioIterationId string) (
+	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
+	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (
 		models.ScenarioIteration, error,
 	)
 }
@@ -23,13 +23,13 @@ type ScenarioFetcher struct {
 	Repository ScenarioFetcherRepository
 }
 
-func (fetcher *ScenarioFetcher) FetchScenarioAndIteration(ctx context.Context, tx repositories.Transaction_deprec, iterationId string) (result ScenarioAndIteration, err error) {
-	result.Iteration, err = fetcher.Repository.GetScenarioIteration(ctx, tx, iterationId)
+func (fetcher *ScenarioFetcher) FetchScenarioAndIteration(ctx context.Context, exec repositories.Executor, iterationId string) (result ScenarioAndIteration, err error) {
+	result.Iteration, err = fetcher.Repository.GetScenarioIteration(ctx, exec, iterationId)
 	if err != nil {
 		return ScenarioAndIteration{}, err
 	}
 
-	result.Scenario, err = fetcher.Repository.GetScenarioById(ctx, tx, result.Iteration.ScenarioId)
+	result.Scenario, err = fetcher.Repository.GetScenarioById(ctx, exec, result.Iteration.ScenarioId)
 	if err != nil {
 		return ScenarioAndIteration{}, err
 	}

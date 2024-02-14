@@ -5,21 +5,21 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
-	"github.com/checkmarble/marble-backend/usecases/transaction"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 )
 
 type InboxRepository interface {
-	GetInboxById(ctx context.Context, tx repositories.Transaction_deprec, inboxId string) (models.Inbox, error)
-	ListInboxes(ctx context.Context, tx repositories.Transaction_deprec, organizationId string, inboxIds []string, withCaseCount bool) ([]models.Inbox, error)
-	CreateInbox(ctx context.Context, tx repositories.Transaction_deprec, createInboxAttributes models.CreateInboxInput, newInboxId string) error
-	UpdateInbox(ctx context.Context, tx repositories.Transaction_deprec, inboxId, name string) error
-	SoftDeleteInbox(ctx context.Context, tx repositories.Transaction_deprec, inboxId string) error
+	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId string) (models.Inbox, error)
+	ListInboxes(ctx context.Context, exec repositories.Executor, organizationId string, inboxIds []string, withCaseCount bool) ([]models.Inbox, error)
+	CreateInbox(ctx context.Context, exec repositories.Executor, createInboxAttributes models.CreateInboxInput, newInboxId string) error
+	UpdateInbox(ctx context.Context, exec repositories.Executor, inboxId, name string) error
+	SoftDeleteInbox(ctx context.Context, exec repositories.Executor, inboxId string) error
 
-	ListOrganizationCases(ctx context.Context, tx repositories.Transaction_deprec, filters models.CaseFilters, pagination models.PaginationAndSorting) ([]models.CaseWithRank, error)
+	ListOrganizationCases(ctx context.Context, exec repositories.Executor, filters models.CaseFilters, pagination models.PaginationAndSorting) ([]models.CaseWithRank, error)
 }
 
 type EnforceSecurityInboxes interface {
@@ -28,7 +28,7 @@ type EnforceSecurityInboxes interface {
 }
 
 type InboxUsecase struct {
-	transactionFactory      transaction.TransactionFactory_deprec
+	transactionFactory      executor_factory.TransactionFactory
 	enforceSecurity         EnforceSecurityInboxes
 	organizationIdOfContext func() (string, error)
 	inboxRepository         InboxRepository
@@ -47,11 +47,11 @@ func (usecase *InboxUsecase) ListInboxes(ctx context.Context, withCaseCount bool
 }
 
 func (usecase *InboxUsecase) CreateInbox(ctx context.Context, input models.CreateInboxInput) (models.Inbox, error) {
-	inbox, err := transaction.TransactionReturnValue_deprec(
+	inbox, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction_deprec) (models.Inbox, error) {
+		func(tx repositories.Executor) (models.Inbox, error) {
 			if err := usecase.enforceSecurity.CreateInbox(input.OrganizationId); err != nil {
 				return models.Inbox{}, err
 			}
@@ -74,11 +74,11 @@ func (usecase *InboxUsecase) CreateInbox(ctx context.Context, input models.Creat
 }
 
 func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId, name string) (models.Inbox, error) {
-	inbox, err := transaction.TransactionReturnValue_deprec(
+	inbox, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction_deprec) (models.Inbox, error) {
+		func(tx repositories.Executor) (models.Inbox, error) {
 			inbox, err := usecase.inboxRepository.GetInboxById(ctx, tx, inboxId)
 			if err != nil {
 				return models.Inbox{}, err
@@ -110,8 +110,7 @@ func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId, name stri
 func (usecase *InboxUsecase) DeleteInbox(ctx context.Context, inboxId string) error {
 	err := usecase.transactionFactory.Transaction(
 		ctx,
-		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction_deprec) error {
+		func(tx repositories.Executor) error {
 			inbox, err := usecase.inboxRepository.GetInboxById(ctx, tx, inboxId)
 			if err != nil {
 				return err

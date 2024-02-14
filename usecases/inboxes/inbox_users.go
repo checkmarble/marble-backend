@@ -5,19 +5,19 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
-	"github.com/checkmarble/marble-backend/usecases/transaction"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/pkg/errors"
 )
 
 type InboxUserRepository interface {
-	GetInboxById(ctx context.Context, tx repositories.Transaction_deprec, inboxId string) (models.Inbox, error)
-	GetInboxUserById(ctx context.Context, tx repositories.Transaction_deprec, inboxUserId string) (models.InboxUser, error)
-	ListInboxUsers(ctx context.Context, tx repositories.Transaction_deprec, filters models.InboxUserFilterInput) ([]models.InboxUser, error)
-	CreateInboxUser(ctx context.Context, tx repositories.Transaction_deprec, createInboxUserAttributes models.CreateInboxUserInput, newInboxUserId string) error
-	UpdateInboxUser(ctx context.Context, tx repositories.Transaction_deprec, inboxUserId string, role models.InboxUserRole) error
-	DeleteInboxUser(ctx context.Context, tx repositories.Transaction_deprec, inboxUserId string) error
+	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId string) (models.Inbox, error)
+	GetInboxUserById(ctx context.Context, exec repositories.Executor, inboxUserId string) (models.InboxUser, error)
+	ListInboxUsers(ctx context.Context, exec repositories.Executor, filters models.InboxUserFilterInput) ([]models.InboxUser, error)
+	CreateInboxUser(ctx context.Context, exec repositories.Executor, createInboxUserAttributes models.CreateInboxUserInput, newInboxUserId string) error
+	UpdateInboxUser(ctx context.Context, exec repositories.Executor, inboxUserId string, role models.InboxUserRole) error
+	DeleteInboxUser(ctx context.Context, exec repositories.Executor, inboxUserId string) error
 }
 
 type EnforceSecurityInboxUsers interface {
@@ -27,7 +27,7 @@ type EnforceSecurityInboxUsers interface {
 }
 
 type InboxUsers struct {
-	TransactionFactory  transaction.TransactionFactory_deprec
+	TransactionFactory  executor_factory.TransactionFactory
 	EnforceSecurity     EnforceSecurityInboxUsers
 	InboxUserRepository InboxUserRepository
 	UserRepository      repositories.UserRepository
@@ -88,11 +88,11 @@ func (usecase *InboxUsers) ListAllInboxUsers(ctx context.Context) ([]models.Inbo
 }
 
 func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.CreateInboxUserInput) (models.InboxUser, error) {
-	inboxUser, err := transaction.TransactionReturnValue_deprec(
+	inboxUser, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.TransactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction_deprec) (models.InboxUser, error) {
+		func(tx repositories.Executor) (models.InboxUser, error) {
 			thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(ctx, tx, models.InboxUserFilterInput{
 				UserId: usecase.Credentials.ActorIdentity.UserId,
 			})
@@ -136,11 +136,11 @@ func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.Cre
 }
 
 func (usecase *InboxUsers) UpdateInboxUser(ctx context.Context, inboxUserId string, role models.InboxUserRole) (models.InboxUser, error) {
-	inboxUser, err := transaction.TransactionReturnValue_deprec(
+	inboxUser, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.TransactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction_deprec) (models.InboxUser, error) {
+		func(tx repositories.Executor) (models.InboxUser, error) {
 			thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(ctx, tx, models.InboxUserFilterInput{
 				UserId: usecase.Credentials.ActorIdentity.UserId,
 			})
@@ -176,8 +176,7 @@ func (usecase *InboxUsers) UpdateInboxUser(ctx context.Context, inboxUserId stri
 func (usecase *InboxUsers) DeleteInboxUser(ctx context.Context, inboxUserId string) error {
 	err := usecase.TransactionFactory.Transaction(
 		ctx,
-		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction_deprec) error {
+		func(tx repositories.Executor) error {
 			inboxUser, err := usecase.InboxUserRepository.GetInboxUserById(ctx, tx, inboxUserId)
 			if err != nil {
 				return err

@@ -5,14 +5,14 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/organization"
-	"github.com/checkmarble/marble-backend/usecases/transaction"
 
 	"github.com/google/uuid"
 )
 
 type SeedUseCase struct {
-	transactionFactory     transaction.TransactionFactory_deprec
+	transactionFactory     executor_factory.TransactionFactory
 	userRepository         repositories.UserRepository
 	organizationCreator    organization.OrganizationCreator
 	organizationRepository repositories.OrganizationRepository
@@ -21,7 +21,7 @@ type SeedUseCase struct {
 
 func (usecase *SeedUseCase) SeedMarbleAdmins(ctx context.Context, firstMarbleAdminEmail string) error {
 
-	return usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) error {
+	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
 		_, err := usecase.userRepository.CreateUser(ctx, tx, models.CreateUser{
 			Email: firstMarbleAdminEmail,
 			Role:  models.MARBLE_ADMIN,

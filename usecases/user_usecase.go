@@ -6,15 +6,16 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
-	"github.com/checkmarble/marble-backend/usecases/transaction"
+
 	"github.com/cockroachdb/errors"
 )
 
 type UserUseCase struct {
 	enforceUserSecurity security.EnforceSecurityUser
-	transactionFactory  transaction.TransactionFactory_deprec
+	transactionFactory  executor_factory.TransactionFactory
 	userRepository      repositories.UserRepository
 }
 
@@ -22,12 +23,11 @@ func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.Creat
 	if err := usecase.enforceUserSecurity.CreateUser(createUser.OrganizationId); err != nil {
 		return models.User{}, err
 	}
-	createdUser, err := transaction.TransactionReturnValue_deprec(
+	createdUser, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction_deprec) (models.User, error) {
-
+		func(tx repositories.Executor) (models.User, error) {
 			// cleanup spaces
 			createUser.Email = strings.TrimSpace(createUser.Email)
 			// lowercase email to maintain uniqueness
@@ -52,11 +52,11 @@ func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.Creat
 }
 
 func (usecase *UserUseCase) UpdateUser(ctx context.Context, updateUser models.UpdateUser) (models.User, error) {
-	updatedUser, err := transaction.TransactionReturnValue_deprec(
+	updatedUser, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction_deprec) (models.User, error) {
+		func(tx repositories.Executor) (models.User, error) {
 			user, err := usecase.userRepository.UserByID(ctx, tx, updateUser.UserId)
 			if err != nil {
 				return models.User{}, err
@@ -85,8 +85,7 @@ func (usecase *UserUseCase) DeleteUser(ctx context.Context, userId, currentUserI
 	}
 	err := usecase.transactionFactory.Transaction(
 		ctx,
-		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction_deprec) error {
+		func(tx repositories.Executor) error {
 			user, err := usecase.userRepository.UserByID(ctx, tx, models.UserId(userId))
 			if err != nil {
 				return err
@@ -109,11 +108,11 @@ func (usecase *UserUseCase) GetAllUsers(ctx context.Context) ([]models.User, err
 	if err := usecase.enforceUserSecurity.ListUser(); err != nil {
 		return []models.User{}, err
 	}
-	return transaction.TransactionReturnValue_deprec(
+	return executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction_deprec) ([]models.User, error) {
+		func(tx repositories.Executor) ([]models.User, error) {
 			return usecase.userRepository.AllUsers(ctx, tx)
 		},
 	)
@@ -123,11 +122,11 @@ func (usecase *UserUseCase) GetUser(ctx context.Context, userID string) (models.
 	if err := usecase.enforceUserSecurity.ListUser(); err != nil {
 		return models.User{}, err
 	}
-	return transaction.TransactionReturnValue_deprec(
+	return executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
 		models.DATABASE_MARBLE_SCHEMA,
-		func(tx repositories.Transaction_deprec) (models.User, error) {
+		func(tx repositories.Executor) (models.User, error) {
 			return usecase.userRepository.UserByID(ctx, tx, models.UserId(userID))
 		},
 	)

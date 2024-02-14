@@ -4,18 +4,17 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/organization"
 	"github.com/checkmarble/marble-backend/usecases/security"
-	"github.com/checkmarble/marble-backend/usecases/transaction"
+	"github.com/google/uuid"
 )
 
 type DataModelUseCase struct {
 	enforceSecurity            security.EnforceSecurityOrganization
-	transactionFactory         transaction.TransactionFactory_deprec
+	transactionFactory         executor_factory.TransactionFactory
 	dataModelRepository        repositories.DataModelRepository
 	populateOrganizationSchema organization.PopulateOrganizationSchema
 }
@@ -51,7 +50,7 @@ func (usecase *DataModelUseCase) CreateDataModelTable(ctx context.Context, organ
 	}
 
 	tableID := uuid.New().String()
-	err := usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) error {
+	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
 		err := usecase.dataModelRepository.CreateDataModelTable(ctx, tx, organizationID, tableID, name, description)
 		if err != nil {
 			return err
@@ -85,7 +84,7 @@ func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, table
 	}
 
 	fieldID := uuid.New().String()
-	err := usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) error {
+	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
 		err := usecase.dataModelRepository.CreateDataModelField(ctx, tx, tableID, fieldID, field)
 		if err != nil {
 			return err
@@ -122,7 +121,7 @@ func (usecase *DataModelUseCase) DeleteSchema(ctx context.Context, organizationI
 		return err
 	}
 
-	return usecase.transactionFactory.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) error {
+	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
 		err := usecase.dataModelRepository.DeleteDataModel(ctx, tx, organizationID)
 		if err != nil {
 			return err
@@ -133,8 +132,6 @@ func (usecase *DataModelUseCase) DeleteSchema(ctx context.Context, organizationI
 			return err
 		}
 
-		return usecase.transactionFactory.Transaction(ctx, schema.DatabaseSchema, func(tx repositories.Transaction_deprec) error {
-			return usecase.populateOrganizationSchema.OrganizationSchemaRepository.DeleteSchema(ctx, tx, schema.DatabaseSchema.Schema)
-		})
+		return usecase.populateOrganizationSchema.OrganizationSchemaRepository.DeleteSchema(ctx, tx, schema.DatabaseSchema.Schema)
 	})
 }

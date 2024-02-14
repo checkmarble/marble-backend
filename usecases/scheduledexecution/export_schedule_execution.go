@@ -103,7 +103,7 @@ func (exporter *ExportScheduleExecution) uploadDecisions(src *io.PipeReader, sch
 
 func (exporter *ExportScheduleExecution) ExportDecisions(ctx context.Context, scheduledExecutionId string, dest io.Writer) (int, error) {
 
-	decisionChan, errorChan := exporter.DecisionRepository.DecisionsOfScheduledExecution(ctx, scheduledExecutionId)
+	decisionChan, errorChan := exporter.DecisionRepository.DecisionsOfScheduledExecution(ctx, nil, scheduledExecutionId)
 
 	encoder := json.NewEncoder(dest)
 

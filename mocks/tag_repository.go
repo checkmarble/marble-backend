@@ -10,27 +10,27 @@ type TagUseCaseRepository struct {
 	mock.Mock
 }
 
-func (_m *TagUseCaseRepository) ListOrganizationTags(tx repositories.Transaction_deprec, organizationId string) ([]models.Tag, error) {
-	args := _m.Called(tx, organizationId)
+func (_m *TagUseCaseRepository) ListOrganizationTags(exec repositories.Executor, organizationId string) ([]models.Tag, error) {
+	args := _m.Called(exec, organizationId)
 	return args.Get(0).([]models.Tag), args.Error(1)
 }
 
-func (_m *TagUseCaseRepository) CreateTag(tx repositories.Transaction_deprec, attributes models.CreateTagAttributes, newTagId string) error {
-	args := _m.Called(tx, attributes, newTagId)
+func (_m *TagUseCaseRepository) CreateTag(exec repositories.Executor, attributes models.CreateTagAttributes, newTagId string) error {
+	args := _m.Called(exec, attributes, newTagId)
 	return args.Error(0)
 }
 
-func (_m *TagUseCaseRepository) UpdateTag(tx repositories.Transaction_deprec, attributes models.UpdateTagAttributes) error {
-	args := _m.Called(tx, attributes)
+func (_m *TagUseCaseRepository) UpdateTag(exec repositories.Executor, attributes models.UpdateTagAttributes) error {
+	args := _m.Called(exec, attributes)
 	return args.Error(0)
 }
 
-func (_m *TagUseCaseRepository) GetTagById(tx repositories.Transaction_deprec, tagId string) (models.Tag, error) {
-	args := _m.Called(tx, tagId)
+func (_m *TagUseCaseRepository) GetTagById(exec repositories.Executor, tagId string) (models.Tag, error) {
+	args := _m.Called(exec, tagId)
 	return args.Get(0).(models.Tag), args.Error(1)
 }
 
-func (_m *TagUseCaseRepository) SoftDeleteTag(tx repositories.Transaction_deprec, tagId string) error {
-	args := _m.Called(tx, tagId)
+func (_m *TagUseCaseRepository) SoftDeleteTag(exec repositories.Executor, tagId string) error {
+	args := _m.Called(exec, tagId)
 	return args.Error(0)
 }

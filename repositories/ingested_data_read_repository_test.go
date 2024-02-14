@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -32,6 +34,18 @@ func (tx TransactionTest) DatabaseSchema() models.DatabaseSchema {
 		SchemaType: models.DATABASE_SCHEMA_TYPE_CLIENT,
 		Schema:     "test_schema",
 	}
+}
+
+func (tx TransactionTest) QueryRow(ctx context.Context, query string, args ...interface{}) pgx.Row {
+	return nil
+}
+
+func (tx TransactionTest) Query(ctx context.Context, query string, args ...interface{}) (pgx.Rows, error) {
+	return nil, nil
+}
+
+func (tx TransactionTest) Exec(ctx context.Context, query string, args ...interface{}) (pgconn.CommandTag, error) {
+	return pgconn.CommandTag{}, nil
 }
 
 type PayloadTest struct{}

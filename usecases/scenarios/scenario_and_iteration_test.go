@@ -16,13 +16,13 @@ type ScenarioFetcherRepositoryMock struct {
 	mock.Mock
 }
 
-func (s *ScenarioFetcherRepositoryMock) GetScenarioById(ctx context.Context, tx repositories.Transaction_deprec, scenarioId string) (models.Scenario, error) {
-	args := s.Called(tx, scenarioId)
+func (s *ScenarioFetcherRepositoryMock) GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error) {
+	args := s.Called(exec, scenarioId)
 	return args.Get(0).(models.Scenario), args.Error(1)
 }
 
-func (s *ScenarioFetcherRepositoryMock) GetScenarioIteration(ctx context.Context, tx repositories.Transaction_deprec, scenarioIterationId string) (models.ScenarioIteration, error) {
-	args := s.Called(tx, scenarioIterationId)
+func (s *ScenarioFetcherRepositoryMock) GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (models.ScenarioIteration, error) {
+	args := s.Called(exec, scenarioIterationId)
 	return args.Get(0).(models.ScenarioIteration), args.Error(1)
 }
 

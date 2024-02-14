@@ -12,7 +12,7 @@ import (
 )
 
 type AstExpressionUsecaseRepository interface {
-	GetScenarioById(ctx context.Context, tx repositories.Transaction_deprec, scenarioId string) (models.Scenario, error)
+	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
 }
 
 type AstExpressionUsecase struct {

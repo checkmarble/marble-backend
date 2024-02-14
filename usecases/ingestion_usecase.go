@@ -18,8 +18,8 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
-	"github.com/checkmarble/marble-backend/usecases/transaction"
 )
 
 const (
@@ -29,21 +29,20 @@ const (
 )
 
 type IngestionUseCase struct {
-	enforceSecurity       security.EnforceSecurityIngestion
-	orgTransactionFactory transaction.Factory_deprec
-	transactionFactory    transaction.TransactionFactory_deprec
-	ingestionRepository   repositories.IngestionRepository
-	gcsRepository         repositories.GcsRepository
-	dataModelUseCase      DataModelUseCase
-	uploadLogRepository   repositories.UploadLogRepository
-	GcsIngestionBucket    string
+	transactionFactory  executor_factory.TransactionFactory
+	enforceSecurity     security.EnforceSecurityIngestion
+	ingestionRepository repositories.IngestionRepository
+	gcsRepository       repositories.GcsRepository
+	dataModelUseCase    DataModelUseCase
+	uploadLogRepository repositories.UploadLogRepository
+	GcsIngestionBucket  string
 }
 
 func (usecase *IngestionUseCase) IngestObjects(ctx context.Context, organizationId string, payloads []models.PayloadReader, table models.Table, logger *slog.Logger) error {
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
 		return err
 	}
-	return usecase.orgTransactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Transaction_deprec) error {
+	return usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Executor) error {
 		return usecase.ingestionRepository.IngestObjects(ctx, tx, payloads, table, logger)
 	})
 }
@@ -129,8 +128,8 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 		return models.UploadLog{}, err
 	}
 
-	return transaction.TransactionReturnValue_deprec(ctx,
-		usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Transaction_deprec) (models.UploadLog, error) {
+	return executor_factory.TransactionReturnValue(ctx,
+		usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Executor) (models.UploadLog, error) {
 			newUploadListId := uuid.NewString()
 			newUploadLoad := models.UploadLog{
 				Id:             newUploadListId,
@@ -290,7 +289,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 			payloadReaders = append(payloadReaders, payloadReader)
 		}
 
-		if err := usecase.orgTransactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Transaction_deprec) error {
+		if err := usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Executor) error {
 			return usecase.ingestionRepository.IngestObjects(ctx, tx, payloadReaders, table, logger)
 		}); err != nil {
 			return err
