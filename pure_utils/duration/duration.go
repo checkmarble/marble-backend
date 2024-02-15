@@ -39,10 +39,8 @@ const (
 	nsPerYear   = nsPerHour * hoursPerYear
 )
 
-var (
-	// ErrUnexpectedInput is returned when an input in the duration string does not match expectations
-	ErrUnexpectedInput = errors.New("unexpected input")
-)
+// ErrUnexpectedInput is returned when an input in the duration string does not match expectations
+var ErrUnexpectedInput = errors.New("unexpected input")
 
 // Parse attempts to parse the given duration string into a *Duration,
 // if parsing fails an error is returned instead

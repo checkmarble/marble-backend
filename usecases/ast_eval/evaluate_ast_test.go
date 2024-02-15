@@ -50,7 +50,6 @@ func TestEvalAndOrFunction(t *testing.T) {
 	assert.True(t, ok)
 	assert.Len(t, evaluation.Errors, 0)
 	assert.Equal(t, false, evaluation.ReturnValue)
-
 }
 
 func NewAstAndTrue() ast.Node {

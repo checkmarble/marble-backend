@@ -56,7 +56,7 @@ func (repo *MarbleDbRepository) UpdateRule(ctx context.Context, exec Executor, r
 		return err
 	}
 
-	var updateRequest = NewQueryBuilder().
+	updateRequest := NewQueryBuilder().
 		Update(dbmodels.TABLE_RULES).
 		SetMap(utils.ColumnValueMap(dbUpdateRuleInput)).
 		Where("id = ?", rule.Id)

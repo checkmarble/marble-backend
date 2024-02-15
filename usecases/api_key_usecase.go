@@ -82,7 +82,7 @@ func (usecase *ApiKeyUseCase) CreateApiKey(ctx context.Context, input models.Cre
 			if err := usecase.apiKeyRepository.CreateApiKey(ctx, tx, models.CreateApiKey{
 				CreateApiKeyInput: input,
 				Id:                apiKeyId,
-				Hash:              key, //TODO: hash the key
+				Hash:              key, // TODO: hash the key
 			}); err != nil {
 				return models.CreatedApiKey{}, err
 			}
@@ -96,7 +96,6 @@ func (usecase *ApiKeyUseCase) CreateApiKey(ctx context.Context, input models.Cre
 				Value:  key,
 			}, nil
 		})
-
 	if err != nil {
 		return models.CreatedApiKey{}, err
 	}
@@ -106,7 +105,7 @@ func (usecase *ApiKeyUseCase) CreateApiKey(ctx context.Context, input models.Cre
 }
 
 func generateAPiKey() string {
-	var key = make([]byte, 32)
+	key := make([]byte, 32)
 	_, err := rand.Read(key)
 	if err != nil {
 		panic(fmt.Errorf("randomAPiKey: %w", err))

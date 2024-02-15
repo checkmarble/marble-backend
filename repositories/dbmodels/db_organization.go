@@ -18,7 +18,6 @@ const TABLE_ORGANIZATION = "organizations"
 var ColumnsSelectOrganization = utils.ColumnList[DBOrganizationResult]()
 
 func AdaptOrganization(db DBOrganizationResult) (models.Organization, error) {
-
 	return models.Organization{
 		Id:                         db.Id,
 		Name:                       db.Name,

@@ -20,7 +20,6 @@ const TABLE_CUSTOM_LIST_VALUE = "custom_list_values"
 var ColumnsSelectCustomListValue = utils.ColumnList[DBCustomListValueResult]()
 
 func AdaptCustomListValue(db DBCustomListValueResult) (models.CustomListValue, error) {
-
 	return models.CustomListValue{
 		Id:           db.Id,
 		CustomListId: db.CustomListId,

@@ -128,7 +128,6 @@ func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.Cre
 
 			return inboxUser, err
 		})
-
 	if err != nil {
 		return models.InboxUser{}, err
 	}
@@ -165,7 +164,6 @@ func (usecase *InboxUsers) UpdateInboxUser(ctx context.Context, inboxUserId stri
 
 			return usecase.InboxUserRepository.GetInboxUserById(ctx, tx, inboxUserId)
 		})
-
 	if err != nil {
 		return models.InboxUser{}, err
 	}
@@ -197,7 +195,6 @@ func (usecase *InboxUsers) DeleteInboxUser(ctx context.Context, inboxUserId stri
 
 			return usecase.InboxUserRepository.DeleteInboxUser(ctx, tx, inboxUserId)
 		})
-
 	if err != nil {
 		return err
 	}

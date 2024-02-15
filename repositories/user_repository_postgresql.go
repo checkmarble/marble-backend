@@ -131,7 +131,6 @@ func (repo *UserRepositoryPostgresql) UserByID(ctx context.Context, exec Executo
 }
 
 func (repo *UserRepositoryPostgresql) UsersOfOrganization(ctx context.Context, exec Executor, organizationIDFilter string) ([]models.User, error) {
-
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}

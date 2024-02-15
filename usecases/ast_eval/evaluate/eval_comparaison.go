@@ -21,7 +21,6 @@ func NewComparison(f ast.Function) Comparison {
 }
 
 func (f Comparison) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
-
 	leftAny, rightAny, err := leftAndRight(arguments.Args)
 	if err != nil {
 		return MakeEvaluateError(err)

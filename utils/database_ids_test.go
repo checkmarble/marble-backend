@@ -18,7 +18,6 @@ func TestNewPrimaryKey(t *testing.T) {
 	asserts := assert.New(t)
 	asserts.Equal(organizationId[:8], newId[:8])
 	asserts.NotEqual(organizationId, newId)
-
 }
 
 func TestNewUUIDStartWithOrgId(t *testing.T) {

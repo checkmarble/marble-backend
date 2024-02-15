@@ -8,7 +8,7 @@ const (
 	// General
 	DataModelNotFound ScenarioValidationErrorCode = iota
 	TrigerObjectNotFound
-	//Trigger
+	// Trigger
 	TriggerConditionRequired
 	// Rule
 	RuleFormulaRequired

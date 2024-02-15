@@ -21,7 +21,6 @@ type SeedUseCase struct {
 }
 
 func (usecase *SeedUseCase) SeedMarbleAdmins(ctx context.Context, firstMarbleAdminEmail string) error {
-
 	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
 		_, err := usecase.userRepository.CreateUser(ctx, tx, models.CreateUser{
 			Email: firstMarbleAdminEmail,
@@ -34,7 +33,6 @@ func (usecase *SeedUseCase) SeedMarbleAdmins(ctx context.Context, firstMarbleAdm
 		}
 		return err
 	})
-
 }
 
 func (usecase *SeedUseCase) SeedZorgOrganization(ctx context.Context, zorgOrganizationId string) error {
@@ -56,12 +54,11 @@ func (usecase *SeedUseCase) SeedZorgOrganization(ctx context.Context, zorgOrgani
 	}
 
 	// assign test s3 bucket name to zorg organization
-	var testBucketName = "marble-backend-export-scheduled-execution-test"
+	testBucketName := "marble-backend-export-scheduled-execution-test"
 	err = usecase.organizationRepository.UpdateOrganization(ctx, exec, models.UpdateOrganizationInput{
 		Id:                         zorgOrganizationId,
 		ExportScheduledExecutionS3: &testBucketName,
 	})
-
 	if err != nil {
 		return err
 	}

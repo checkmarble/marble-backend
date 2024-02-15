@@ -68,7 +68,6 @@ func (usecase *UserUseCase) UpdateUser(ctx context.Context, updateUser models.Up
 			return usecase.userRepository.UserByID(ctx, tx, updateUser.UserId)
 		},
 	)
-
 	if err != nil {
 		return models.User{}, err
 	}

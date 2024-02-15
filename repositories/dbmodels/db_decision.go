@@ -11,8 +11,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const TABLE_DECISIONS = "decisions"
-const TABLE_DECISION_RULES = "decision_rules"
+const (
+	TABLE_DECISIONS      = "decisions"
+	TABLE_DECISION_RULES = "decision_rules"
+)
 
 type DbDecision struct {
 	Id                   string      `db:"id"`
@@ -46,7 +48,6 @@ type DBPaginatedDecisions struct {
 var SelectDecisionColumn = utils.ColumnList[DbDecision]()
 
 func AdaptDecision(db DbDecision, ruleExecutions []models.RuleExecution, decisionCase *models.Case) models.Decision {
-
 	triggerObject := make(map[string]any)
 	err := json.Unmarshal(db.TriggerObjectRaw, &triggerObject)
 	if err != nil {

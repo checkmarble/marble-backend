@@ -57,7 +57,6 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 }
 
 func (usecases *Usecases) NewExportScheduleExecution() *scheduledexecution.ExportScheduleExecution {
-
 	var awsS3Repository scheduledexecution.AwsS3Repository
 	if usecases.Configuration.FakeAwsS3Repository {
 		awsS3Repository = &repositories.AwsS3RepositoryFake{}

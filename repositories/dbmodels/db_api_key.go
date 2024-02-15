@@ -10,7 +10,7 @@ import (
 type DBApiKey struct {
 	Id             string             `db:"id"`
 	OrganizationId string             `db:"org_id"`
-	Hash           string             `db:"key"` //TODO(hash-key): alter column name to "hash"
+	Hash           string             `db:"key"` // TODO(hash-key): alter column name to "hash"
 	Description    string             `db:"description"`
 	DeletedAt      pgtype.Timestamptz `db:"deleted_at"`
 	Role           int                `db:"role"`

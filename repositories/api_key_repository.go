@@ -57,7 +57,6 @@ func (repo *MarbleDbRepository) ListApiKeys(ctx context.Context, exec Executor, 
 			Where("deleted_at IS NULL"),
 		dbmodels.AdaptApikey,
 	)
-
 }
 
 func (repo *MarbleDbRepository) CreateApiKey(ctx context.Context, exec Executor, apiKey models.CreateApiKey) error {

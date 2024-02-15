@@ -28,7 +28,6 @@ type DBRule struct {
 }
 
 func AdaptRule(db DBRule) (models.Rule, error) {
-
 	formulaAstExpression, err := AdaptSerializedAstExpression(db.FormulaAstExpression)
 	if err != nil {
 		return models.Rule{}, fmt.Errorf("unable to unmarshal formula ast expression: %w", err)

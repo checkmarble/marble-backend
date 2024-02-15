@@ -49,7 +49,7 @@ func AddTraceIdToLoggerMiddleware(isDevEnv bool, projectId string) func(next htt
 			ctx := r.Context()
 			logger := LoggerFromContext(ctx)
 
-			var findTraceId = func() string {
+			findTraceId := func() string {
 				header := r.Header.Get("Traceparent")
 				if header != "" {
 					traceId, _ := deconstructTraceParent(header)

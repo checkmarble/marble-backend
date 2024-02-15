@@ -13,7 +13,6 @@ type NodeEvaluationDto struct {
 }
 
 func AdaptNodeEvaluationDto(evaluation ast.NodeEvaluation) NodeEvaluationDto {
-
 	return NodeEvaluationDto{
 		ReturnValue:   evaluation.ReturnValue,
 		Errors:        pure_utils.Map(evaluation.Errors, AdaptEvaluationErrorDto),

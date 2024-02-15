@@ -13,14 +13,12 @@ import (
 const TEN_DIVIDE_BY_THREE = float64(3.3333333333333335)
 
 func TestNewArithmetic_divide_float64(t *testing.T) {
-
 	r, errs := ArithmeticDivide{}.Evaluate(context.TODO(), ast.Arguments{Args: []any{10.0, 3}})
 	assert.Empty(t, errs)
 	assert.Equal(t, r, TEN_DIVIDE_BY_THREE)
 }
 
 func TestNewArithmetic_divide_int(t *testing.T) {
-
 	// check that no integer division is performed
 	r, errs := ArithmeticDivide{}.Evaluate(context.TODO(), ast.Arguments{Args: []any{10, 3}})
 	assert.Empty(t, errs)

@@ -27,7 +27,7 @@ func TestDatabaseAccessValuesDryRun(t *testing.T) {
 		DataModel:       utils.GetDummyDataModel(),
 		ReturnFakeValue: true,
 	}
-	var testDatabaseAccessNamedArgs = map[string]any{
+	testDatabaseAccessNamedArgs := map[string]any{
 		"tableName": string(utils.DummyTableNameFirst),
 		"fieldName": string(utils.DummyFieldNameId),
 		"path":      []any{},

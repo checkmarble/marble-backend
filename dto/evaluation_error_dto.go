@@ -37,7 +37,6 @@ var evaluationErrorDtoMap = []errorAndCode{
 }
 
 func AdaptEvaluationErrorDto(err error) EvaluationErrorDto {
-
 	if err == nil {
 		return EvaluationErrorDto{
 			EvaluationError: "UNEXPECTED_ERROR",

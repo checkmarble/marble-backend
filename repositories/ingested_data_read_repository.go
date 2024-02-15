@@ -89,7 +89,6 @@ func (repo *IngestedDataReadRepositoryImpl) queryDbForField(ctx context.Context,
 	}
 
 	sql, args, err := query.ToSql()
-
 	if err != nil {
 		return nil, fmt.Errorf("error while building SQL query: %w", err)
 	}
@@ -193,7 +192,6 @@ func queryWithDynamicColumnList(ctx context.Context, exec Executor, qualifiedTab
 		From(qualifiedTableName).
 		Where(rowIsValid(qualifiedTableName)).
 		ToSql()
-
 	if err != nil {
 		return nil, fmt.Errorf("error while building SQL query: %w", err)
 	}

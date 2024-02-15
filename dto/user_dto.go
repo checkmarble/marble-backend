@@ -31,10 +31,10 @@ type CreateUser struct {
 }
 
 type UpdateUser struct {
-	Email          string `json:"email"`
-	Role           string `json:"role"`
-	FirstName      string `json:"first_name"`
-	LastName       string `json:"last_name"`
+	Email     string `json:"email"`
+	Role      string `json:"role"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
 }
 
 func AdaptCreateUser(dto CreateUser) models.CreateUser {

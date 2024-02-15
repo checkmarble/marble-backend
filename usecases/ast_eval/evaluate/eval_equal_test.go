@@ -71,32 +71,27 @@ func TestEqual_Evaluate_int(t *testing.T) {
 			assert.Equal(t, tt.want, r)
 		})
 	}
-
 }
 
 func TestEqual_Evaluate_float(t *testing.T) {
-
 	r, errs := Equal{}.Evaluate(context.TODO(), ast.Arguments{Args: []any{22.3, 22.3}})
 	assert.Empty(t, errs)
 	assert.Equal(t, true, r)
 }
 
 func TestEqual_Evaluate_string(t *testing.T) {
-
 	r, errs := Equal{}.Evaluate(context.TODO(), ast.Arguments{Args: []any{"a", "a"}})
 	assert.Empty(t, errs)
 	assert.Equal(t, true, r)
 }
 
 func TestEqual_Evaluate_bool(t *testing.T) {
-
 	r, errs := Equal{}.Evaluate(context.TODO(), ast.Arguments{Args: []any{false, false}})
 	assert.Empty(t, errs)
 	assert.Equal(t, true, r)
 }
 
 func TestEqual_Evaluate_time(t *testing.T) {
-
 	r, errs := Equal{}.Evaluate(context.TODO(), ast.Arguments{Args: []any{time.Date(2016, time.April, 29, 0, 0, 0, 0, time.UTC), time.Date(2016, time.April, 29, 0, 0, 0, 0, time.UTC)}})
 	assert.Empty(t, errs)
 	assert.Equal(t, true, r)

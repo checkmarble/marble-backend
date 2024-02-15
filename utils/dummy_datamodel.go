@@ -2,41 +2,45 @@ package utils
 
 import "github.com/checkmarble/marble-backend/models"
 
-const DummyTableNameFirst models.TableName = "first"
-const DummyTableNameSecond models.TableName = "second"
-const DummyTableNameThird models.TableName = "third"
+const (
+	DummyTableNameFirst  models.TableName = "first"
+	DummyTableNameSecond models.TableName = "second"
+	DummyTableNameThird  models.TableName = "third"
+)
 
-const DummyFieldNameId models.FieldName = "id"
-const DummyFieldNameForBool models.FieldName = "bool_var"
-const DummyFieldNameForInt models.FieldName = "int_var"
-const DummyFieldNameForFloat models.FieldName = "float_var"
-const DummyFieldNameForTimestamp models.FieldName = "time_var"
+const (
+	DummyFieldNameId           models.FieldName = "id"
+	DummyFieldNameForBool      models.FieldName = "bool_var"
+	DummyFieldNameForInt       models.FieldName = "int_var"
+	DummyFieldNameForFloat     models.FieldName = "float_var"
+	DummyFieldNameForTimestamp models.FieldName = "time_var"
+)
 
 func GetDummyDataModel() models.DataModel {
-	var dummyFieldBool = models.Field{
+	dummyFieldBool := models.Field{
 		DataType: 0,
 		Nullable: false,
 	}
-	var dummyFieldInt = models.Field{
+	dummyFieldInt := models.Field{
 		DataType: 1,
 		Nullable: false,
 	}
-	var dummyFieldFloat = models.Field{
+	dummyFieldFloat := models.Field{
 		DataType: 2,
 		Nullable: false,
 	}
 
-	var dummyFieldString = models.Field{
+	dummyFieldString := models.Field{
 		DataType: 3,
 		Nullable: false,
 	}
 
-	var dummyFieldTimestamp = models.Field{
+	dummyFieldTimestamp := models.Field{
 		DataType: 4,
 		Nullable: false,
 	}
 
-	var dummyFirstLinkToSingle = map[models.LinkName]models.LinkToSingle{
+	dummyFirstLinkToSingle := map[models.LinkName]models.LinkToSingle{
 		models.LinkName(DummyTableNameSecond): {
 			LinkedTableName: DummyTableNameSecond,
 			ParentFieldName: DummyFieldNameId,
@@ -44,7 +48,7 @@ func GetDummyDataModel() models.DataModel {
 		},
 	}
 
-	var dummySecondLinkToSingle = map[models.LinkName]models.LinkToSingle{
+	dummySecondLinkToSingle := map[models.LinkName]models.LinkToSingle{
 		models.LinkName(DummyTableNameThird): {
 			LinkedTableName: DummyTableNameThird,
 			ParentFieldName: DummyFieldNameId,
@@ -52,11 +56,11 @@ func GetDummyDataModel() models.DataModel {
 		},
 	}
 
-	var dummyFieldsIdOnly = map[models.FieldName]models.Field{
+	dummyFieldsIdOnly := map[models.FieldName]models.Field{
 		DummyFieldNameId: dummyFieldString,
 	}
 
-	var dummyAllFields = map[models.FieldName]models.Field{
+	dummyAllFields := map[models.FieldName]models.Field{
 		DummyFieldNameId:           dummyFieldString,
 		DummyFieldNameForInt:       dummyFieldInt,
 		DummyFieldNameForFloat:     dummyFieldFloat,
@@ -64,19 +68,19 @@ func GetDummyDataModel() models.DataModel {
 		DummyFieldNameForTimestamp: dummyFieldTimestamp,
 	}
 
-	var dummyDataModelFirstTable = models.Table{
+	dummyDataModelFirstTable := models.Table{
 		Name:          DummyTableNameFirst,
 		Fields:        dummyFieldsIdOnly,
 		LinksToSingle: dummyFirstLinkToSingle,
 	}
 
-	var dummyDataModelSecondTable = models.Table{
+	dummyDataModelSecondTable := models.Table{
 		Name:          DummyTableNameSecond,
 		Fields:        dummyAllFields,
 		LinksToSingle: dummySecondLinkToSingle,
 	}
 
-	var dummyDataModelThirdTable = models.Table{
+	dummyDataModelThirdTable := models.Table{
 		Name:   DummyTableNameThird,
 		Fields: dummyAllFields,
 	}

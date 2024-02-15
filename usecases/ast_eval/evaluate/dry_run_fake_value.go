@@ -12,7 +12,6 @@ import (
 )
 
 func DryRunPayload(table models.Table) map[string]any {
-
 	result := make(map[string]any)
 	for fieldName, field := range table.Fields {
 		fullFieldName := fmt.Sprintf("%s.%s", table.Name, fieldName)
@@ -23,7 +22,6 @@ func DryRunPayload(table models.Table) map[string]any {
 }
 
 func DryRunGetDbField(dataModel models.DataModel, triggerTableName models.TableName, path []string, fieldName models.FieldName) (any, error) {
-
 	table, ok := dataModel.Tables[triggerTableName]
 	if !ok {
 		return nil, fmt.Errorf("table %s not found in data model", triggerTableName)

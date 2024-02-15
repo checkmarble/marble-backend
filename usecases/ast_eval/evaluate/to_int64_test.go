@@ -8,7 +8,6 @@ import (
 )
 
 func TestToInt64(t *testing.T) {
-
 	expected := int64(13)
 
 	check := func(v any) {
@@ -32,7 +31,6 @@ func TestToInt64(t *testing.T) {
 }
 
 func TestInvalidNumbers(t *testing.T) {
-
 	checkErr := func(v interface{}) {
 		_, err := ToInt64(v)
 		assert.Error(t, err)

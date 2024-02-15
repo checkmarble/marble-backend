@@ -16,7 +16,6 @@ func ExecuteAllScheduledScenarios(ctx context.Context, usecases usecases.Usecase
 	usecasesWithCreds := GenerateUsecaseWithCredForMarbleAdmin(ctx, usecases)
 	runScheduledExecution := usecasesWithCreds.NewRunScheduledExecution()
 	err := runScheduledExecution.ExecuteAllScheduledScenarios(ctx)
-
 	if err != nil {
 		return fmt.Errorf("error executing scheduled scenarios: %w", err)
 	}

@@ -11,8 +11,10 @@ type PaginationAndSorting struct {
 	Next     bool
 }
 
-type SortingField string
-type SortingOrder string
+type (
+	SortingField string
+	SortingOrder string
+)
 
 const (
 	COUNT_ROWS_LIMIT              = 9000

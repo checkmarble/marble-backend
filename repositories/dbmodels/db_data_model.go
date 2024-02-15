@@ -44,8 +44,10 @@ type DbDataModelTable struct {
 	Description    string `db:"description"`
 }
 
-const TableDataModelTable = "data_model_tables"
-const TableDataModelFields = "data_model_fields"
+const (
+	TableDataModelTable  = "data_model_tables"
+	TableDataModelFields = "data_model_fields"
+)
 
 var SelectDataModelTableColumns = utils.ColumnList[DbDataModelTable]()
 

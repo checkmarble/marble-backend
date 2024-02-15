@@ -10,7 +10,6 @@ import (
 )
 
 func TestAggregateQueryToIndexFamily(t *testing.T) {
-
 	t.Run("Case with 2 inequality conditions", func(t *testing.T) {
 		asserts := assert.New(t)
 

@@ -355,7 +355,6 @@ func selectCasesWithJoinedFields(query squirrel.SelectBuilder, p models.Paginati
 	return q.
 		OrderBy(fmt.Sprintf("c.%s %s, c.id %s", p.Sorting, p.Order, p.Order)).
 		PlaceholderFormat(squirrel.Dollar)
-
 }
 
 func (repo *MarbleDbRepository) CreateDbCaseFile(ctx context.Context, exec Executor, createCaseFileAttributes models.CreateDbCaseFileInput) error {

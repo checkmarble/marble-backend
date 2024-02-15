@@ -19,7 +19,6 @@ func TestParseAuthorizationBearerHeader_Norminal(t *testing.T) {
 }
 
 func TestParseAuthorizationBearerHeader_EmptyHeader(t *testing.T) {
-
 	authorization, err := ParseAuthorizationBearerHeader(http.Header{})
 	assert.NoError(t, err)
 	assert.Empty(t, authorization)

@@ -204,7 +204,6 @@ func (usecase *ScenarioIterationUsecase) ValidateScenarioIteration(ctx context.C
 }
 
 func replaceTriggerOrRule(scenarioAndIteration scenarios.ScenarioAndIteration, triggerOrRuleToReplace *ast.Node, ruleIdToReplace *string) (scenarios.ScenarioAndIteration, error) {
-
 	if triggerOrRuleToReplace != nil {
 		if ruleIdToReplace != nil {
 			var found bool

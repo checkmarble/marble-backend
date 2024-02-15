@@ -27,7 +27,6 @@ func AdaptInboxDto(i models.Inbox) InboxDto {
 		Users:      pure_utils.Map(i.InboxUsers, AdaptInboxUserDto),
 		CasesCount: i.CasesCount,
 	}
-
 }
 
 type InboxUserDto struct {

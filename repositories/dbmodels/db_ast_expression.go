@@ -23,7 +23,6 @@ func SerializeFormulaAstExpression(formulaAstExpression *ast.Node) (*[]byte, err
 }
 
 func AdaptSerializedAstExpression(serializedAstExpression []byte) (*ast.Node, error) {
-
 	if len(serializedAstExpression) == 0 {
 		return nil, nil
 	}

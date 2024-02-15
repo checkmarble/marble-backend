@@ -43,7 +43,6 @@ func (suite *ScenarioUsecaseTestSuite) SetupTest() {
 		OrganizationId: suite.organizationId,
 	}
 	suite.ctx = context.Background()
-
 }
 
 func (suite *ScenarioUsecaseTestSuite) makeUsecase() *ScenarioUsecase {
@@ -67,7 +66,7 @@ func (suite *ScenarioUsecaseTestSuite) AssertExpectations() {
 }
 
 func (suite *ScenarioUsecaseTestSuite) TestListScenarios() {
-	var expected = []models.Scenario{suite.scenario}
+	expected := []models.Scenario{suite.scenario}
 	suite.executorFactory.On("NewExecutor").Once().Return(suite.transaction)
 	suite.scenarioRepository.On("ListScenariosOfOrganization", suite.transaction, suite.organizationId).Return(expected, nil)
 	suite.enforceSecurity.On("ReadScenario", suite.scenario).Return(nil)

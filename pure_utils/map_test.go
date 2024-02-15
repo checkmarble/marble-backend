@@ -8,8 +8,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var dummy = func(int) int { return 0 }
-var dummyErr = func(int) (int, error) { return 0, nil }
+var (
+	dummy    = func(int) int { return 0 }
+	dummyErr = func(int) (int, error) { return 0, nil }
+)
 
 func TestMap(t *testing.T) {
 	values := []int{1, 2}
@@ -24,7 +26,6 @@ func TestMap_Nil(t *testing.T) {
 }
 
 func TestMapErr(t *testing.T) {
-
 	errorForTesting := errors.New("testing error")
 
 	values := []int{1, 2, 3}
@@ -45,7 +46,6 @@ func TestMapErr_Nil(t *testing.T) {
 }
 
 func TestMapValues(t *testing.T) {
-
 	values := map[string]int{"a": 1, "b": 2, "c": 3}
 	result := MapValues(values, func(v int) string {
 		return fmt.Sprintf("%d", v)
@@ -58,7 +58,6 @@ func TestMapValues_Nil(t *testing.T) {
 }
 
 func TestMapValuesErr(t *testing.T) {
-
 	values := map[string]int{"a": 1, "b": 2, "c": 3}
 	result, err := MapValuesErr(values, func(v int) (string, error) {
 		return fmt.Sprintf("%d", v), nil
