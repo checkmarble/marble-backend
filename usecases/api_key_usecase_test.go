@@ -66,14 +66,15 @@ func (suite *ApiKeyUsecaseTestSuite) AssertExpectations() {
 }
 
 func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_nominal() {
+	ctx := context.Background()
 	input := models.CreateApiKeyInput{OrganizationId: suite.organizationId, Description: "test key", Role: models.API_CLIENT}
-	suite.transactionFactory.On("Transaction", models.DATABASE_MARBLE_SCHEMA, mock.Anything).Return(nil)
+	suite.transactionFactory.On("Transaction", ctx, mock.Anything).Return(nil)
 	suite.enforceSecurity.On("CreateApiKey", suite.organizationId).Return(nil)
 	suite.apiKeyRepository.On("CreateApiKey", suite.transaction, mock.AnythingOfType("models.CreateApiKey")).Return(nil)
 	suite.apiKeyRepository.On("GetApiKeyById", suite.transaction, mock.AnythingOfType("string")).Return(suite.apiKey, nil)
 	suite.enforceSecurity.On("ReadApiKey", mock.AnythingOfType("string")).Return(nil)
 
-	createdApiKey, err := suite.makeUsecase().CreateApiKey(context.Background(), input)
+	createdApiKey, err := suite.makeUsecase().CreateApiKey(ctx, input)
 
 	suite.NoError(err)
 	suite.Assert().NotEmpty(createdApiKey.Value)
@@ -84,11 +85,12 @@ func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_nominal() {
 }
 
 func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_security_error() {
+	ctx := context.Background()
 	input := models.CreateApiKeyInput{OrganizationId: suite.organizationId, Description: "test key", Role: models.API_CLIENT}
-	suite.transactionFactory.On("Transaction", models.DATABASE_MARBLE_SCHEMA, mock.Anything).Return(nil)
+	suite.transactionFactory.On("Transaction", ctx, mock.Anything).Return(nil)
 	suite.enforceSecurity.On("CreateApiKey", suite.organizationId).Return(suite.securityError)
 
-	_, err := suite.makeUsecase().CreateApiKey(context.Background(), input)
+	_, err := suite.makeUsecase().CreateApiKey(ctx, input)
 
 	t := suite.T()
 	assert.ErrorIs(t, err, suite.securityError)
@@ -97,12 +99,13 @@ func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_security_error() {
 }
 
 func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_repository_error() {
+	ctx := context.Background()
 	input := models.CreateApiKeyInput{OrganizationId: suite.organizationId, Description: "test key", Role: models.API_CLIENT}
-	suite.transactionFactory.On("Transaction", models.DATABASE_MARBLE_SCHEMA, mock.Anything).Return(nil)
+	suite.transactionFactory.On("Transaction", ctx, mock.Anything).Return(nil)
 	suite.enforceSecurity.On("CreateApiKey", suite.organizationId).Return(nil)
 	suite.apiKeyRepository.On("CreateApiKey", suite.transaction, mock.AnythingOfType("models.CreateApiKey")).Return(suite.repositoryError)
 
-	_, err := suite.makeUsecase().CreateApiKey(context.Background(), input)
+	_, err := suite.makeUsecase().CreateApiKey(ctx, input)
 
 	t := suite.T()
 	assert.ErrorIs(t, err, suite.repositoryError)

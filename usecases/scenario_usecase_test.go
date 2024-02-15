@@ -113,7 +113,7 @@ func (suite *ScenarioUsecaseTestSuite) TestGetScenario_security() {
 }
 
 func (suite *ScenarioUsecaseTestSuite) TestUpdateScenario() {
-
+	ctx := context.Background()
 	scenarioInput := models.UpdateScenarioInput{
 		Id: suite.scenarioId,
 	}
@@ -123,14 +123,14 @@ func (suite *ScenarioUsecaseTestSuite) TestUpdateScenario() {
 		Name: "updated scenario",
 	}
 
-	suite.transactionFactory.On("Transaction", models.DATABASE_MARBLE_SCHEMA, mock.Anything).Return(nil)
+	suite.transactionFactory.On("Transaction", ctx, mock.Anything).Return(nil)
 	suite.scenarioRepository.On("GetScenarioById", suite.transaction, suite.scenarioId).Return(suite.scenario, nil).Once()
 	suite.enforceSecurity.On("UpdateScenario", suite.scenario).Return(nil)
 
 	suite.scenarioRepository.On("UpdateScenario", suite.transaction, scenarioInput).Return(nil)
 	suite.scenarioRepository.On("GetScenarioById", suite.transaction, suite.scenarioId).Return(updatedScenario, nil).Once()
 
-	result, err := suite.makeUsecase().UpdateScenario(context.TODO(), scenarioInput)
+	result, err := suite.makeUsecase().UpdateScenario(ctx, scenarioInput)
 
 	t := suite.T()
 	assert.NoError(t, err)
@@ -140,34 +140,34 @@ func (suite *ScenarioUsecaseTestSuite) TestUpdateScenario() {
 }
 
 func (suite *ScenarioUsecaseTestSuite) TestUpdateScenario_security() {
-
+	ctx := context.Background()
 	scenarioInput := models.UpdateScenarioInput{
 		Id: suite.scenarioId,
 	}
 
-	suite.transactionFactory.On("Transaction", models.DATABASE_MARBLE_SCHEMA, mock.Anything).Return(nil)
+	suite.transactionFactory.On("Transaction", ctx, mock.Anything).Return(nil)
 	suite.scenarioRepository.On("GetScenarioById", suite.transaction, suite.scenarioId).Return(suite.scenario, nil).Once()
 	suite.enforceSecurity.On("UpdateScenario", suite.scenario).Return(suite.securityError)
 
-	_, err := suite.makeUsecase().UpdateScenario(context.TODO(), scenarioInput)
+	_, err := suite.makeUsecase().UpdateScenario(ctx, scenarioInput)
 
 	assert.ErrorIs(suite.T(), err, suite.securityError)
 	suite.AssertExpectations()
 }
 
 func (suite *ScenarioUsecaseTestSuite) TestCreateScenario() {
-
+	ctx := context.Background()
 	createScenarioInput := models.CreateScenarioInput{
 		Name: "new scenario",
 	}
 
 	suite.enforceSecurity.On("CreateScenario", suite.organizationId).Return(nil)
 
-	suite.transactionFactory.On("Transaction", models.DATABASE_MARBLE_SCHEMA, mock.Anything).Return(nil)
+	suite.transactionFactory.On("Transaction", ctx, mock.Anything).Return(nil)
 	suite.scenarioRepository.On("CreateScenario", suite.transaction, suite.organizationId, createScenarioInput, mock.Anything).Return(nil)
 	suite.scenarioRepository.On("GetScenarioById", suite.transaction, mock.Anything).Return(suite.scenario, nil).Once()
 
-	result, err := suite.makeUsecase().CreateScenario(context.Background(), createScenarioInput)
+	result, err := suite.makeUsecase().CreateScenario(ctx, createScenarioInput)
 
 	t := suite.T()
 	assert.NoError(t, err)
