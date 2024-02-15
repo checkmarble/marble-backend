@@ -27,11 +27,15 @@ func (repo *MarbleDbRepository) ListCaseEvents(ctx context.Context, exec Executo
 	)
 }
 
-func (repo *MarbleDbRepository) CreateCaseEvent(ctx context.Context, exec Executor, createCaseEventAttributes models.CreateCaseEventAttributes) error {
+func (repo *MarbleDbRepository) CreateCaseEvent(ctx context.Context, exec Executor,
+	createCaseEventAttributes models.CreateCaseEventAttributes,
+) error {
 	return repo.BatchCreateCaseEvents(ctx, exec, []models.CreateCaseEventAttributes{createCaseEventAttributes})
 }
 
-func (repo *MarbleDbRepository) BatchCreateCaseEvents(ctx context.Context, exec Executor, createCaseEventAttributes []models.CreateCaseEventAttributes) error {
+func (repo *MarbleDbRepository) BatchCreateCaseEvents(ctx context.Context, exec Executor,
+	createCaseEventAttributes []models.CreateCaseEventAttributes,
+) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}

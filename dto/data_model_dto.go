@@ -87,7 +87,9 @@ func AdaptTableDto(table models.Table) Table {
 				Values:      field.Values,
 			}
 		}),
-		LinksToSingle: pure_utils.MapValues(table.LinksToSingle, func(linkToSingle models.LinkToSingle) LinkToSingle {
+		LinksToSingle: pure_utils.MapValues(table.LinksToSingle, func(
+			linkToSingle models.LinkToSingle,
+		) LinkToSingle {
 			return LinkToSingle{
 				LinkedTableName: linkToSingle.LinkedTableName,
 				ParentFieldName: linkToSingle.ParentFieldName,

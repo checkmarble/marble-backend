@@ -41,7 +41,9 @@ func (repo *MarbleDbRepository) ListScenariosOfOrganization(ctx context.Context,
 	)
 }
 
-func (repo *MarbleDbRepository) ListAllScenarios(ctx context.Context, exec Executor, filters models.ListAllScenariosFilters) ([]models.Scenario, error) {
+func (repo *MarbleDbRepository) ListAllScenarios(ctx context.Context, exec Executor,
+	filters models.ListAllScenariosFilters,
+) ([]models.Scenario, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}

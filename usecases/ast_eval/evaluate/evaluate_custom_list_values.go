@@ -44,14 +44,16 @@ func (clva CustomListValuesAccess) Evaluate(ctx context.Context, arguments ast.A
 		return MakeEvaluateError(ast.ErrListNotFound)
 	}
 	if err := clva.EnforceSecurity.ReadOrganization(list.OrganizationId); err != nil {
-		return MakeEvaluateError(errors.Wrap(err, fmt.Sprintf("Organization in credentials is not allowed to read this list %s", list.Id)))
+		return MakeEvaluateError(errors.Wrap(err,
+			fmt.Sprintf("Organization in credentials is not allowed to read this list %s", list.Id)))
 	}
 
 	listValues, err := clva.CustomListRepository.GetCustomListValues(ctx, exec, models.GetCustomListValuesInput{
 		Id: listId,
 	})
 	if err != nil {
-		return MakeEvaluateError(errors.Wrap(err, fmt.Sprintf("Error reading values for list %s", list.Id)))
+		return MakeEvaluateError(errors.Wrap(err,
+			fmt.Sprintf("Error reading values for list %s", list.Id)))
 	}
 
 	return pure_utils.Map(

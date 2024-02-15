@@ -14,12 +14,15 @@ import (
 
 type InboxRepository interface {
 	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId string) (models.Inbox, error)
-	ListInboxes(ctx context.Context, exec repositories.Executor, organizationId string, inboxIds []string, withCaseCount bool) ([]models.Inbox, error)
-	CreateInbox(ctx context.Context, exec repositories.Executor, createInboxAttributes models.CreateInboxInput, newInboxId string) error
+	ListInboxes(ctx context.Context, exec repositories.Executor, organizationId string,
+		inboxIds []string, withCaseCount bool) ([]models.Inbox, error)
+	CreateInbox(ctx context.Context, exec repositories.Executor,
+		createInboxAttributes models.CreateInboxInput, newInboxId string) error
 	UpdateInbox(ctx context.Context, exec repositories.Executor, inboxId, name string) error
 	SoftDeleteInbox(ctx context.Context, exec repositories.Executor, inboxId string) error
 
-	ListOrganizationCases(ctx context.Context, exec repositories.Executor, filters models.CaseFilters, pagination models.PaginationAndSorting) ([]models.CaseWithRank, error)
+	ListOrganizationCases(ctx context.Context, exec repositories.Executor, filters models.CaseFilters,
+		pagination models.PaginationAndSorting) ([]models.CaseWithRank, error)
 }
 
 type EnforceSecurityInboxes interface {
@@ -68,7 +71,9 @@ func (usecase *InboxUsecase) CreateInbox(ctx context.Context, input models.Creat
 		return models.Inbox{}, err
 	}
 
-	tracking.TrackEvent(ctx, models.AnalyticsInboxCreated, map[string]interface{}{"inbox_id": inbox.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsInboxCreated, map[string]interface{}{
+		"inbox_id": inbox.Id,
+	})
 	return inbox, nil
 }
 
@@ -83,7 +88,8 @@ func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId, name stri
 			}
 
 			if inbox.Status != models.InboxStatusActive {
-				return models.Inbox{}, errors.Wrap(models.ForbiddenError, "This inbox is archived and cannot be updated")
+				return models.Inbox{}, errors.Wrap(models.ForbiddenError,
+					"This inbox is archived and cannot be updated")
 			}
 
 			if err := usecase.enforceSecurity.CreateInbox(inbox.OrganizationId); err != nil {
@@ -100,7 +106,9 @@ func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId, name stri
 		return models.Inbox{}, err
 	}
 
-	tracking.TrackEvent(ctx, models.AnalyticsInboxUpdated, map[string]interface{}{"inbox_id": inbox.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsInboxUpdated, map[string]interface{}{
+		"inbox_id": inbox.Id,
+	})
 	return inbox, nil
 }
 
@@ -129,7 +137,8 @@ func (usecase *InboxUsecase) DeleteInbox(ctx context.Context, inboxId string) er
 				return err
 			}
 			if len(cases) > 0 {
-				return errors.Wrap(models.ForbiddenError, "This inbox is associated with cases and cannot be deleted")
+				return errors.Wrap(models.ForbiddenError,
+					"This inbox is associated with cases and cannot be deleted")
 			}
 
 			return usecase.inboxRepository.SoftDeleteInbox(ctx, tx, inboxId)
@@ -138,7 +147,9 @@ func (usecase *InboxUsecase) DeleteInbox(ctx context.Context, inboxId string) er
 		return err
 	}
 
-	tracking.TrackEvent(ctx, models.AnalyticsInboxDeleted, map[string]interface{}{"inbox_id": inboxId})
+	tracking.TrackEvent(ctx, models.AnalyticsInboxDeleted, map[string]interface{}{
+		"inbox_id": inboxId,
+	})
 	return nil
 }
 

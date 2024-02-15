@@ -38,7 +38,8 @@ func (g *Generator) encodeToken(credentials models.Credentials) (string, time.Ti
 
 	token, err := g.encoder.EncodeMarbleToken(expirationTime, credentials)
 	if err != nil {
-		return "", time.Time{}, models.Credentials{}, fmt.Errorf("encoder.EncodeMarbleToken error: %w", err)
+		return "", time.Time{}, models.Credentials{},
+			fmt.Errorf("encoder.EncodeMarbleToken error: %w", err)
 	}
 	return token, expirationTime, credentials, nil
 }
@@ -46,12 +47,14 @@ func (g *Generator) encodeToken(credentials models.Credentials) (string, time.Ti
 func (g *Generator) fromAPIKey(ctx context.Context, apiKey string) (string, time.Time, models.Credentials, error) {
 	key, err := g.repository.GetApiKeyByKey(ctx, apiKey)
 	if err != nil {
-		return "", time.Time{}, models.Credentials{}, fmt.Errorf("GetApiKeyByKey error: %w", err)
+		return "", time.Time{}, models.Credentials{},
+			fmt.Errorf("GetApiKeyByKey error: %w", err)
 	}
 
 	organization, err := g.repository.GetOrganizationByID(ctx, key.OrganizationId)
 	if err != nil {
-		return "", time.Time{}, models.Credentials{}, fmt.Errorf("GetOrganizationByID error: %w", err)
+		return "", time.Time{}, models.Credentials{},
+			fmt.Errorf("GetOrganizationByID error: %w", err)
 	}
 
 	name := fmt.Sprintf("ApiKey Of %s", organization.Name)
@@ -62,14 +65,17 @@ func (g *Generator) fromAPIKey(ctx context.Context, apiKey string) (string, time
 func (g *Generator) fromFirebaseToken(ctx context.Context, firebaseToken string) (string, time.Time, models.Credentials, error) {
 	identity, err := g.verifier.VerifyFirebaseToken(ctx, firebaseToken)
 	if err != nil {
-		return "", time.Time{}, models.Credentials{}, fmt.Errorf("verifier.VerifyFirebaseToken error: %w", err)
+		return "", time.Time{}, models.Credentials{},
+			fmt.Errorf("verifier.VerifyFirebaseToken error: %w", err)
 	}
 
 	user, err := g.repository.UserByEmail(ctx, identity.Email)
 	if errors.Is(err, models.NotFoundError) {
-		return "", time.Time{}, models.Credentials{}, fmt.Errorf("%w: %w", models.ErrUnknownUser, err)
+		return "", time.Time{}, models.Credentials{},
+			fmt.Errorf("%w: %w", models.ErrUnknownUser, err)
 	} else if err != nil {
-		return "", time.Time{}, models.Credentials{}, fmt.Errorf("repository.UserByEmail error: %w", err)
+		return "", time.Time{}, models.Credentials{},
+			fmt.Errorf("repository.UserByEmail error: %w", err)
 	}
 
 	credentials := models.NewCredentialWithUser(user)
@@ -94,9 +100,16 @@ func (g *Generator) GenerateToken(ctx context.Context, key string, firebaseToken
 			return "", time.Time{}, fmt.Errorf("GetOrganizationByID error: %w", err)
 		}
 
-		tracking.Identify(ctx, credentials.ActorIdentity.UserId, map[string]any{"email": credentials.ActorIdentity.Email})
-		tracking.Group(ctx, credentials.ActorIdentity.UserId, credentials.OrganizationId, map[string]any{"name": organization.Name})
-		tracking.TrackEventWithUserId(ctx, models.AnalyticsTokenCreated, credentials.ActorIdentity.UserId, map[string]any{"organization_id": credentials.OrganizationId})
+		tracking.Identify(ctx, credentials.ActorIdentity.UserId, map[string]any{
+			"email": credentials.ActorIdentity.Email,
+		})
+		tracking.Group(ctx, credentials.ActorIdentity.UserId, credentials.OrganizationId, map[string]any{
+			"name": organization.Name,
+		})
+		tracking.TrackEventWithUserId(ctx, models.AnalyticsTokenCreated,
+			credentials.ActorIdentity.UserId, map[string]any{
+				"organization_id": credentials.OrganizationId,
+			})
 	}
 
 	return token, expirationTime, nil

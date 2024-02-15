@@ -68,7 +68,9 @@ func (api *API) handlePostInbox(c *gin.Context) {
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewInboxUsecase()
-	inbox, err := usecase.CreateInbox(c.Request.Context(), models.CreateInboxInput{Name: createInboxInput.Name, OrganizationId: organizationId})
+	inbox, err := usecase.CreateInbox(c.Request.Context(), models.CreateInboxInput{
+		Name: createInboxInput.Name, OrganizationId: organizationId,
+	})
 	if presentError(c, err) {
 		return
 	}

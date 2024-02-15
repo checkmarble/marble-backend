@@ -199,7 +199,8 @@ func main() {
 	if *shouldRunMigrations {
 		migrater := repositories.NewMigrater(appConfig.pgConfig, appConfig.env)
 		if err := migrater.Run(appContext); err != nil {
-			logger.ErrorContext(appContext, fmt.Sprintf("error while running migrations: %+v", err))
+			logger.ErrorContext(appContext, fmt.Sprintf(
+				"error while running migrations: %+v", err))
 			os.Exit(1)
 			return
 		}

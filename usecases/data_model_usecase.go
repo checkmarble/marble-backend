@@ -25,7 +25,8 @@ func (usecase *DataModelUseCase) GetDataModel(ctx context.Context, organizationI
 		return models.DataModel{}, err
 	}
 
-	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, usecase.executorFactory.NewExecutor(), organizationID, true)
+	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx,
+		usecase.executorFactory.NewExecutor(), organizationID, true)
 	if err != nil {
 		return models.DataModel{}, err
 	}
@@ -76,7 +77,8 @@ func (usecase *DataModelUseCase) UpdateDataModelTable(ctx context.Context, table
 	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
 		return err
 	}
-	return usecase.dataModelRepository.UpdateDataModelTable(ctx, usecase.executorFactory.NewExecutor(), tableID, description)
+	return usecase.dataModelRepository.UpdateDataModelTable(ctx,
+		usecase.executorFactory.NewExecutor(), tableID, description)
 }
 
 func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, tableID string, field models.DataModelField) (string, error) {
@@ -107,14 +109,16 @@ func (usecase *DataModelUseCase) UpdateDataModelField(ctx context.Context, field
 	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
 		return err
 	}
-	return usecase.dataModelRepository.UpdateDataModelField(ctx, usecase.executorFactory.NewExecutor(), fieldID, description)
+	return usecase.dataModelRepository.UpdateDataModelField(ctx,
+		usecase.executorFactory.NewExecutor(), fieldID, description)
 }
 
 func (usecase *DataModelUseCase) CreateDataModelLink(ctx context.Context, link models.DataModelLink) error {
 	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
 		return err
 	}
-	return usecase.dataModelRepository.CreateDataModelLink(ctx, usecase.executorFactory.NewExecutor(), link)
+	return usecase.dataModelRepository.CreateDataModelLink(ctx,
+		usecase.executorFactory.NewExecutor(), link)
 }
 
 func (usecase *DataModelUseCase) DeleteSchema(ctx context.Context, organizationID string) error {

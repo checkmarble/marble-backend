@@ -20,7 +20,10 @@ type DBScheduledExecution struct {
 
 const TABLE_SCHEDULED_EXECUTIONS = "scheduled_executions"
 
-var ScheduledExecutionFields = []string{"id", "organization_id", "scenario_id", "scenario_iteration_id", "status", "started_at", "finished_at", "number_of_created_decisions", "manual"}
+var ScheduledExecutionFields = []string{
+	"id", "organization_id", "scenario_id",
+	"scenario_iteration_id", "status", "started_at", "finished_at", "number_of_created_decisions", "manual",
+}
 
 func AdaptScheduledExecution(db DBScheduledExecution, scenario models.Scenario) models.ScheduledExecution {
 	return models.ScheduledExecution{

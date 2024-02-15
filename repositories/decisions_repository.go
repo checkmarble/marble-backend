@@ -20,7 +20,8 @@ type DecisionRepository interface {
 	DecisionsByCaseId(ctx context.Context, exec Executor, caseId string) ([]models.Decision, error)
 	DecisionsOfScheduledExecution(ctx context.Context, exec Executor, scheduledExecutionId string) (<-chan models.Decision, <-chan error)
 	StoreDecision(ctx context.Context, exec Executor, decision models.Decision, organizationId string, newDecisionId string) error
-	DecisionsOfOrganization(ctx context.Context, exec Executor, organizationId string, paginationAndSorting models.PaginationAndSorting, filters models.DecisionFilters) ([]models.DecisionWithRank, error)
+	DecisionsOfOrganization(ctx context.Context, exec Executor, organizationId string,
+		paginationAndSorting models.PaginationAndSorting, filters models.DecisionFilters) ([]models.DecisionWithRank, error)
 	UpdateDecisionCaseId(ctx context.Context, exec Executor, decisionsIds []string, caseId string) error
 }
 
@@ -130,9 +131,11 @@ func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(
 		var err error
 		offsetDecision, err = repo.DecisionById(ctx, exec, pagination.OffsetId)
 		if errors.Is(err, pgx.ErrNoRows) {
-			return []models.DecisionWithRank{}, errors.Wrap(models.NotFoundError, "No row found matching the provided offsetId")
+			return []models.DecisionWithRank{}, errors.Wrap(models.NotFoundError,
+				"No row found matching the provided offsetId")
 		} else if err != nil {
-			return []models.DecisionWithRank{}, errors.Wrap(err, "failed to fetch decision corresponding to the provided offsetId")
+			return []models.DecisionWithRank{}, errors.Wrap(err,
+				"failed to fetch decision corresponding to the provided offsetId")
 		}
 	}
 
@@ -229,7 +232,8 @@ func selectDecisionsWithRank(p models.PaginationAndSorting) squirrel.SelectBuild
 	// When fetching the previous page, we want the "last xx decisions", so we need to reverse the order of the query,
 	// select the xx items, then reverse again to put them back in the right order
 	if p.OffsetId != "" && p.Previous {
-		query = query.OrderBy(fmt.Sprintf("d.%s %s, d.id %s", p.Sorting, models.ReverseOrder(p.Order), models.ReverseOrder(p.Order)))
+		query = query.OrderBy(fmt.Sprintf("d.%s %s, d.id %s", p.Sorting,
+			models.ReverseOrder(p.Order), models.ReverseOrder(p.Order)))
 	} else {
 		query = query.OrderBy(orderCondition)
 	}
@@ -294,7 +298,9 @@ func selectDecisionsWithJoinedFields(query squirrel.SelectBuilder, p models.Pagi
 		PlaceholderFormat(squirrel.Dollar)
 }
 
-func (repo *DecisionRepositoryImpl) DecisionsOfScheduledExecution(ctx context.Context, exec Executor, scheduledExecutionId string) (<-chan models.Decision, <-chan error) {
+func (repo *DecisionRepositoryImpl) DecisionsOfScheduledExecution(ctx context.Context,
+	exec Executor, scheduledExecutionId string,
+) (<-chan models.Decision, <-chan error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		valChannel := make(chan models.Decision)
 		errChannel := make(chan error)
@@ -313,7 +319,9 @@ func (repo *DecisionRepositoryImpl) DecisionsOfScheduledExecution(ctx context.Co
 	)
 }
 
-func (repo *DecisionRepositoryImpl) StoreDecision(ctx context.Context, exec Executor, decision models.Decision, organizationId string, newDecisionId string) error {
+func (repo *DecisionRepositoryImpl) StoreDecision(ctx context.Context, exec Executor,
+	decision models.Decision, organizationId string, newDecisionId string,
+) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -471,7 +479,9 @@ func (repo *DecisionRepositoryImpl) rulesOfDecisionsBatch(ctx context.Context, e
 	}), nil
 }
 
-func (repo *DecisionRepositoryImpl) channelOfDecisions(ctx context.Context, exec Executor, query squirrel.Sqlizer) (<-chan models.Decision, <-chan error) {
+func (repo *DecisionRepositoryImpl) channelOfDecisions(ctx context.Context, exec Executor,
+	query squirrel.Sqlizer,
+) (<-chan models.Decision, <-chan error) {
 	decisionsChannel := make(chan models.Decision, 100)
 	errChannel := make(chan error, 1)
 
@@ -479,7 +489,9 @@ func (repo *DecisionRepositoryImpl) channelOfDecisions(ctx context.Context, exec
 		defer close(decisionsChannel)
 		defer close(errChannel)
 
-		dbDecisionsChannel, dbErrChannel := SqlToChannelOfModels(ctx, exec, query, func(row pgx.CollectableRow) (dbmodels.DbDecision, error) {
+		dbDecisionsChannel, dbErrChannel := SqlToChannelOfModels(ctx, exec, query, func(
+			row pgx.CollectableRow,
+		) (dbmodels.DbDecision, error) {
 			return pgx.RowToStructByName[dbmodels.DbDecision](row)
 		})
 

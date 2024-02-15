@@ -25,7 +25,8 @@ func (usecase *CustomListUseCase) GetCustomLists(ctx context.Context) ([]models.
 	if err != nil {
 		return []models.CustomList{}, err
 	}
-	customLists, err := usecase.CustomListRepository.AllCustomLists(ctx, usecase.executorFactory.NewExecutor(), organizationId)
+	customLists, err := usecase.CustomListRepository.AllCustomLists(ctx,
+		usecase.executorFactory.NewExecutor(), organizationId)
 	if err != nil {
 		return []models.CustomList{}, err
 	}
@@ -37,12 +38,16 @@ func (usecase *CustomListUseCase) GetCustomLists(ctx context.Context) ([]models.
 	return customLists, nil
 }
 
-func (usecase *CustomListUseCase) CreateCustomList(ctx context.Context, createCustomList models.CreateCustomListInput) (models.CustomList, error) {
+func (usecase *CustomListUseCase) CreateCustomList(ctx context.Context,
+	createCustomList models.CreateCustomListInput,
+) (models.CustomList, error) {
 	if err := usecase.enforceSecurity.CreateCustomList(); err != nil {
 		return models.CustomList{}, err
 	}
 
-	list, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Executor) (models.CustomList, error) {
+	list, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
+		tx repositories.Executor,
+	) (models.CustomList, error) {
 		newCustomListId := uuid.NewString()
 		organizationId, err := usecase.organizationIdOfContext()
 		if err != nil {
@@ -62,13 +67,19 @@ func (usecase *CustomListUseCase) CreateCustomList(ctx context.Context, createCu
 		return models.CustomList{}, err
 	}
 
-	tracking.TrackEvent(ctx, models.AnalyticsListCreated, map[string]interface{}{"list_id": list.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsListCreated, map[string]interface{}{
+		"list_id": list.Id,
+	})
 
 	return list, nil
 }
 
-func (usecase *CustomListUseCase) UpdateCustomList(ctx context.Context, updateCustomList models.UpdateCustomListInput) (models.CustomList, error) {
-	list, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Executor) (models.CustomList, error) {
+func (usecase *CustomListUseCase) UpdateCustomList(ctx context.Context,
+	updateCustomList models.UpdateCustomListInput,
+) (models.CustomList, error) {
+	list, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
+		tx repositories.Executor,
+	) (models.CustomList, error) {
 		if updateCustomList.Name != nil || updateCustomList.Description != nil {
 			customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, updateCustomList.Id)
 			if err != nil {
@@ -88,7 +99,9 @@ func (usecase *CustomListUseCase) UpdateCustomList(ctx context.Context, updateCu
 		return models.CustomList{}, err
 	}
 
-	tracking.TrackEvent(ctx, models.AnalyticsListUpdated, map[string]interface{}{"list_id": list.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsListUpdated, map[string]interface{}{
+		"list_id": list.Id,
+	})
 
 	return list, nil
 }
@@ -108,12 +121,15 @@ func (usecase *CustomListUseCase) SoftDeleteCustomList(ctx context.Context, list
 		return err
 	}
 
-	tracking.TrackEvent(ctx, models.AnalyticsListDeleted, map[string]interface{}{"list_id": listId})
+	tracking.TrackEvent(ctx, models.AnalyticsListDeleted, map[string]interface{}{
+		"list_id": listId,
+	})
 	return nil
 }
 
 func (usecase *CustomListUseCase) GetCustomListById(ctx context.Context, id string) (models.CustomList, error) {
-	customList, err := usecase.CustomListRepository.GetCustomListById(ctx, usecase.executorFactory.NewExecutor(), id)
+	customList, err := usecase.CustomListRepository.GetCustomListById(ctx,
+		usecase.executorFactory.NewExecutor(), id)
 	if err != nil {
 		return models.CustomList{}, err
 	}
@@ -123,17 +139,24 @@ func (usecase *CustomListUseCase) GetCustomListById(ctx context.Context, id stri
 	return customList, nil
 }
 
-func (usecase *CustomListUseCase) GetCustomListValues(ctx context.Context, getCustomListValues models.GetCustomListValuesInput) ([]models.CustomListValue, error) {
+func (usecase *CustomListUseCase) GetCustomListValues(ctx context.Context,
+	getCustomListValues models.GetCustomListValuesInput,
+) ([]models.CustomListValue, error) {
 	// CustomListValues doesn't know the OrganizationId of the list
 	// so we call GetCustomListById so that it check if we are allowed to read it
 	if _, err := usecase.GetCustomListById(ctx, getCustomListValues.Id); err != nil {
 		return []models.CustomListValue{}, err
 	}
-	return usecase.CustomListRepository.GetCustomListValues(ctx, usecase.executorFactory.NewExecutor(), getCustomListValues)
+	return usecase.CustomListRepository.GetCustomListValues(ctx,
+		usecase.executorFactory.NewExecutor(), getCustomListValues)
 }
 
-func (usecase *CustomListUseCase) AddCustomListValue(ctx context.Context, addCustomListValue models.AddCustomListValueInput) (models.CustomListValue, error) {
-	value, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Executor) (models.CustomListValue, error) {
+func (usecase *CustomListUseCase) AddCustomListValue(ctx context.Context,
+	addCustomListValue models.AddCustomListValueInput,
+) (models.CustomListValue, error) {
+	value, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
+		tx repositories.Executor,
+	) (models.CustomListValue, error) {
 		customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, addCustomListValue.CustomListId)
 		if err != nil {
 			return models.CustomListValue{}, err
@@ -153,12 +176,16 @@ func (usecase *CustomListUseCase) AddCustomListValue(ctx context.Context, addCus
 		return models.CustomListValue{}, err
 	}
 
-	tracking.TrackEvent(ctx, models.AnalyticsListValueCreated, map[string]interface{}{"list_id": addCustomListValue.CustomListId})
+	tracking.TrackEvent(ctx, models.AnalyticsListValueCreated, map[string]interface{}{
+		"list_id": addCustomListValue.CustomListId,
+	})
 
 	return value, nil
 }
 
-func (usecase *CustomListUseCase) DeleteCustomListValue(ctx context.Context, deleteCustomListValue models.DeleteCustomListValueInput) error {
+func (usecase *CustomListUseCase) DeleteCustomListValue(ctx context.Context,
+	deleteCustomListValue models.DeleteCustomListValueInput,
+) error {
 	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
 		customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, deleteCustomListValue.CustomListId)
 		if err != nil {
@@ -173,7 +200,9 @@ func (usecase *CustomListUseCase) DeleteCustomListValue(ctx context.Context, del
 		return err
 	}
 
-	tracking.TrackEvent(ctx, models.AnalyticsListValueDeleted, map[string]interface{}{"list_id": deleteCustomListValue.CustomListId})
+	tracking.TrackEvent(ctx, models.AnalyticsListValueDeleted, map[string]interface{}{
+		"list_id": deleteCustomListValue.CustomListId,
+	})
 
 	return nil
 }

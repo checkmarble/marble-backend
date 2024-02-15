@@ -68,7 +68,8 @@ func (suite *ScenarioUsecaseTestSuite) AssertExpectations() {
 func (suite *ScenarioUsecaseTestSuite) TestListScenarios() {
 	expected := []models.Scenario{suite.scenario}
 	suite.executorFactory.On("NewExecutor").Once().Return(suite.transaction)
-	suite.scenarioRepository.On("ListScenariosOfOrganization", suite.transaction, suite.organizationId).Return(expected, nil)
+	suite.scenarioRepository.On("ListScenariosOfOrganization", suite.transaction,
+		suite.organizationId).Return(expected, nil)
 	suite.enforceSecurity.On("ReadScenario", suite.scenario).Return(nil)
 
 	result, err := suite.makeUsecase().ListScenarios(suite.ctx)
@@ -82,7 +83,8 @@ func (suite *ScenarioUsecaseTestSuite) TestListScenarios() {
 
 func (suite *ScenarioUsecaseTestSuite) TestListScenarios_security() {
 	suite.executorFactory.On("NewExecutor").Once().Return(suite.transaction)
-	suite.scenarioRepository.On("ListScenariosOfOrganization", suite.transaction, suite.organizationId).Return([]models.Scenario{suite.scenario}, nil)
+	suite.scenarioRepository.On("ListScenariosOfOrganization", suite.transaction,
+		suite.organizationId).Return([]models.Scenario{suite.scenario}, nil)
 	suite.enforceSecurity.On("ReadScenario", suite.scenario).Return(suite.securityError)
 
 	_, err := suite.makeUsecase().ListScenarios(suite.ctx)
@@ -165,7 +167,8 @@ func (suite *ScenarioUsecaseTestSuite) TestCreateScenario() {
 	suite.enforceSecurity.On("CreateScenario", suite.organizationId).Return(nil)
 
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
-	suite.scenarioRepository.On("CreateScenario", suite.transaction, suite.organizationId, createScenarioInput, mock.Anything).Return(nil)
+	suite.scenarioRepository.On("CreateScenario", suite.transaction, suite.organizationId,
+		createScenarioInput, mock.Anything).Return(nil)
 	suite.scenarioRepository.On("GetScenarioById", suite.transaction, mock.Anything).Return(suite.scenario, nil).Once()
 
 	result, err := suite.makeUsecase().CreateScenario(suite.ctx, createScenarioInput)

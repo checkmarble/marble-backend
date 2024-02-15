@@ -23,7 +23,9 @@ type ScenarioFetcher struct {
 	Repository ScenarioFetcherRepository
 }
 
-func (fetcher *ScenarioFetcher) FetchScenarioAndIteration(ctx context.Context, exec repositories.Executor, iterationId string) (result ScenarioAndIteration, err error) {
+func (fetcher *ScenarioFetcher) FetchScenarioAndIteration(ctx context.Context,
+	exec repositories.Executor, iterationId string,
+) (result ScenarioAndIteration, err error) {
 	result.Iteration, err = fetcher.Repository.GetScenarioIteration(ctx, exec, iterationId)
 	if err != nil {
 		return ScenarioAndIteration{}, err

@@ -33,8 +33,9 @@ func (metabase Metabase) GenerateSignedEmbeddingURL(analyticsCustomClaims models
 		},
 		Params: analyticsCustomClaims.GetParams(),
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute * time.Duration(metabase.config.TokenLifetimeMinute))),
-			Issuer:    "marble",
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute *
+				time.Duration(metabase.config.TokenLifetimeMinute))),
+			Issuer: "marble",
 		},
 	}
 
@@ -44,5 +45,6 @@ func (metabase Metabase) GenerateSignedEmbeddingURL(analyticsCustomClaims models
 		return "", err
 	}
 
-	return fmt.Sprintf("%s/embed/%s/%s#theme=light&bordered=false&titled=false", metabase.config.SiteUrl, resourceType, signedToken), nil
+	return fmt.Sprintf("%s/embed/%s/%s#theme=light&bordered=false&titled=false",
+		metabase.config.SiteUrl, resourceType, signedToken), nil
 }

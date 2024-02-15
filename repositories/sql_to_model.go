@@ -10,7 +10,9 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-func adaptModelUsingRowToStruct[DBModel any, Model any](row pgx.CollectableRow, adapter func(dbModel DBModel) (Model, error)) (Model, error) {
+func adaptModelUsingRowToStruct[DBModel any, Model any](row pgx.CollectableRow,
+	adapter func(dbModel DBModel) (Model, error),
+) (Model, error) {
 	dbModel, err := pgx.RowToStructByName[DBModel](row)
 	if err != nil {
 		var zeroModel Model
@@ -20,7 +22,9 @@ func adaptModelUsingRowToStruct[DBModel any, Model any](row pgx.CollectableRow, 
 }
 
 // executes the sql query with the given transaction and returns a list of models using the provided adapter
-func SqlToListOfModels[DBModel, Model any](ctx context.Context, exec Executor, query squirrel.Sqlizer, adapter func(dbModel DBModel) (Model, error)) ([]Model, error) {
+func SqlToListOfModels[DBModel, Model any](ctx context.Context, exec Executor,
+	query squirrel.Sqlizer, adapter func(dbModel DBModel) (Model, error),
+) ([]Model, error) {
 	return SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (Model, error) {
 		return adaptModelUsingRowToStruct(row, adapter)
 	})
@@ -28,7 +32,9 @@ func SqlToListOfModels[DBModel, Model any](ctx context.Context, exec Executor, q
 
 // executes the sql query with the given transaction and returns a models using the provided adapter
 // If no result is returned by the query, returns nil
-func SqlToOptionalModel[DBModel, Model any](ctx context.Context, exec Executor, s squirrel.Sqlizer, adapter func(dbModel DBModel) (Model, error)) (*Model, error) {
+func SqlToOptionalModel[DBModel, Model any](ctx context.Context, exec Executor, s squirrel.Sqlizer,
+	adapter func(dbModel DBModel) (Model, error),
+) (*Model, error) {
 	return SqlToOptionalRow(ctx, exec, s, func(row pgx.CollectableRow) (Model, error) {
 		return adaptModelUsingRowToStruct(row, adapter)
 	})
@@ -36,7 +42,9 @@ func SqlToOptionalModel[DBModel, Model any](ctx context.Context, exec Executor, 
 
 // executes the sql query with the given transaction and returns a models using the provided adapter
 // if no result is returned by the query, returns a NotFoundError
-func SqlToModel[DBModel, Model any](ctx context.Context, exec Executor, s squirrel.Sqlizer, adapter func(dbModel DBModel) (Model, error)) (Model, error) {
+func SqlToModel[DBModel, Model any](ctx context.Context, exec Executor, s squirrel.Sqlizer,
+	adapter func(dbModel DBModel) (Model, error),
+) (Model, error) {
 	return SqlToRow(ctx, exec, s, func(row pgx.CollectableRow) (Model, error) {
 		return adaptModelUsingRowToStruct(row, adapter)
 	})

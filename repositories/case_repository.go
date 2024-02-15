@@ -36,7 +36,8 @@ func (repo *MarbleDbRepository) ListOrganizationCases(
 		var err error
 		offsetCase, err = repo.GetCaseById(ctx, exec, pagination.OffsetId)
 		if errors.Is(err, pgx.ErrNoRows) {
-			return []models.CaseWithRank{}, errors.Wrap(models.NotFoundError, "No row found matching the provided offset case Id")
+			return []models.CaseWithRank{}, errors.Wrap(models.NotFoundError,
+				"No row found matching the provided offset case Id")
 		} else if err != nil {
 			return []models.CaseWithRank{}, errors.Wrap(err, "Error fetching offset case")
 		}
@@ -71,13 +72,17 @@ func (repo *MarbleDbRepository) GetCaseById(ctx context.Context, exec Executor, 
 	return SqlToModel(
 		ctx,
 		exec,
-		selectCasesWithJoinedFields(squirrel.SelectBuilder(NewQueryBuilder()), models.PaginationAndSorting{Sorting: models.CasesSortingCreatedAt}, false).
+		selectCasesWithJoinedFields(squirrel.SelectBuilder(NewQueryBuilder()), models.PaginationAndSorting{
+			Sorting: models.CasesSortingCreatedAt,
+		}, false).
 			Where(squirrel.Eq{"c.id": caseId}),
 		dbmodels.AdaptCaseWithContributorsAndTags,
 	)
 }
 
-func (repo *MarbleDbRepository) CreateCase(ctx context.Context, exec Executor, createCaseAttributes models.CreateCaseAttributes, newCaseId string) error {
+func (repo *MarbleDbRepository) CreateCase(ctx context.Context, exec Executor,
+	createCaseAttributes models.CreateCaseAttributes, newCaseId string,
+) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -107,7 +112,9 @@ func (repo *MarbleDbRepository) UpdateCase(ctx context.Context, exec Executor, u
 		return err
 	}
 
-	query := NewQueryBuilder().Update(dbmodels.TABLE_CASES).Where(squirrel.Eq{"id": updateCaseAttributes.Id})
+	query := NewQueryBuilder().Update(dbmodels.TABLE_CASES).Where(squirrel.Eq{
+		"id": updateCaseAttributes.Id,
+	})
 
 	if updateCaseAttributes.InboxId != "" {
 		query = query.Set("inbox_id", updateCaseAttributes.InboxId)
@@ -210,7 +217,8 @@ func casesCoreQueryWithRank(pagination models.PaginationAndSorting) squirrel.Sel
 	// When fetching the previous page, we want the "last xx cases", so we need to reverse the order of the query,
 	// select the xx items, then reverse again to put them back in the right order
 	if pagination.OffsetId != "" && pagination.Previous {
-		query = query.OrderBy(fmt.Sprintf("c.%s %s, c.id %s", pagination.Sorting, models.ReverseOrder(pagination.Order), models.ReverseOrder(pagination.Order)))
+		query = query.OrderBy(fmt.Sprintf("c.%s %s, c.id %s", pagination.Sorting,
+			models.ReverseOrder(pagination.Order), models.ReverseOrder(pagination.Order)))
 	} else {
 		query = query.OrderBy(orderCondition)
 	}
@@ -357,7 +365,9 @@ func selectCasesWithJoinedFields(query squirrel.SelectBuilder, p models.Paginati
 		PlaceholderFormat(squirrel.Dollar)
 }
 
-func (repo *MarbleDbRepository) CreateDbCaseFile(ctx context.Context, exec Executor, createCaseFileAttributes models.CreateDbCaseFileInput) error {
+func (repo *MarbleDbRepository) CreateDbCaseFile(ctx context.Context, exec Executor,
+	createCaseFileAttributes models.CreateDbCaseFileInput,
+) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}

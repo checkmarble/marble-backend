@@ -23,7 +23,8 @@ func TestExtractMinimalSetOfIdxFamilies(t *testing.T) {
 
 		minimalSet := extractMinimalSetOfIdxFamilies(idxFamilies)
 		asserts.Equal(1, minimalSet.Size(), "Keep just the one input family")
-		asserts.True(minimalSet.EqualSet(idxFamilies), "The input and output sets are the same")
+		asserts.True(minimalSet.EqualSet(idxFamilies),
+			"The input and output sets are the same")
 	})
 
 	t.Run("2 non overlapping families", func(t *testing.T) {
@@ -45,7 +46,8 @@ func TestExtractMinimalSetOfIdxFamilies(t *testing.T) {
 
 		minimalSet := extractMinimalSetOfIdxFamilies(idxFamilies)
 		asserts.Equal(2, minimalSet.Size(), "Keep the two identical input families")
-		asserts.True(minimalSet.EqualSet(idxFamilies), "The input and output sets are the same")
+		asserts.True(minimalSet.EqualSet(idxFamilies),
+			"The input and output sets are the same")
 	})
 
 	t.Run("2 overlapping families", func(t *testing.T) {
@@ -65,7 +67,8 @@ func TestExtractMinimalSetOfIdxFamilies(t *testing.T) {
 			},
 		})
 
-		minimalSet := extractMinimalSetOfIdxFamilies(idxFamilies.Union(expected).(*set.HashSet[models.IndexFamily, string]))
+		minimalSet := extractMinimalSetOfIdxFamilies(
+			idxFamilies.Union(expected).(*set.HashSet[models.IndexFamily, string]))
 		asserts.Equal(1, minimalSet.Size(), "Keep just one idx family")
 		asserts.True(minimalSet.EqualSet(expected), "Keep the second input idx families")
 	})

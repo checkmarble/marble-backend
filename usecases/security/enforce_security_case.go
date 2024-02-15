@@ -25,7 +25,8 @@ func (e *EnforceSecurityCaseImpl) ReadOrUpdateCase(c models.Case, availableInbox
 			break
 		}
 	}
-	return errors.Join(e.Permission(models.CASE_READ_WRITE), e.ReadOrganization(c.OrganizationId), err)
+	return errors.Join(e.Permission(models.CASE_READ_WRITE),
+		e.ReadOrganization(c.OrganizationId), err)
 }
 
 func (e *EnforceSecurityCaseImpl) CreateCase(input models.CreateCaseAttributes, availableInboxIds []string) error {
@@ -36,5 +37,6 @@ func (e *EnforceSecurityCaseImpl) CreateCase(input models.CreateCaseAttributes, 
 			break
 		}
 	}
-	return errors.Join(e.Permission(models.CASE_READ_WRITE), e.ReadOrganization(input.OrganizationId), err)
+	return errors.Join(e.Permission(models.CASE_READ_WRITE),
+		e.ReadOrganization(input.OrganizationId), err)
 }

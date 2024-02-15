@@ -24,7 +24,9 @@ func (repo *MarbleDbRepository) GetInboxById(ctx context.Context, exec Executor,
 	)
 }
 
-func (repo *MarbleDbRepository) ListInboxes(ctx context.Context, exec Executor, organizationId string, inboxIds []string, withCaseCount bool) ([]models.Inbox, error) {
+func (repo *MarbleDbRepository) ListInboxes(ctx context.Context, exec Executor,
+	organizationId string, inboxIds []string, withCaseCount bool,
+) ([]models.Inbox, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -38,7 +40,8 @@ func (repo *MarbleDbRepository) ListInboxes(ctx context.Context, exec Executor, 
 	}
 
 	if withCaseCount {
-		query = query.Column("(SELECT count(distinct c.id) FROM " + dbmodels.TABLE_CASES + " AS c WHERE c.inbox_id = i.id) AS cases_count")
+		query = query.Column("(SELECT count(distinct c.id) FROM " + dbmodels.TABLE_CASES +
+			" AS c WHERE c.inbox_id = i.id) AS cases_count")
 		return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptInboxWithCasesCount)
 	}
 

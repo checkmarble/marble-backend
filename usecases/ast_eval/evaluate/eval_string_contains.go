@@ -37,6 +37,7 @@ func (f StringContains) Evaluate(ctx context.Context, arguments ast.Arguments) (
 	} else if f.Function == ast.FUNC_STRING_NOT_CONTAIN {
 		return !strings.Contains(strings.ToLower(left), strings.ToLower(right)), nil
 	} else {
-		return MakeEvaluateError(errors.New(fmt.Sprintf("StringContains does not support %s function", f.Function.DebugString())))
+		return MakeEvaluateError(errors.New(fmt.Sprintf(
+			"StringContains does not support %s function", f.Function.DebugString())))
 	}
 }

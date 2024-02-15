@@ -79,7 +79,10 @@ func TestIngestedDataGetDbFieldWithoutJoin(t *testing.T) {
 }
 
 func TestIngestedDataGetDbFieldWithJoin(t *testing.T) {
-	path := []models.LinkName{models.LinkName(utils.DummyTableNameSecond), models.LinkName(utils.DummyTableNameThird)}
+	path := []models.LinkName{
+		models.LinkName(utils.DummyTableNameSecond),
+		models.LinkName(utils.DummyTableNameThird),
+	}
 
 	query, err := createQueryDbForField(context.TODO(), TransactionTest{}, models.DbFieldReadParams{
 		TriggerTableName: utils.DummyTableNameFirst,
@@ -100,7 +103,8 @@ func TestIngestedDataGetDbFieldWithJoin(t *testing.T) {
 }
 
 func TestIngestedDataQueryAggregatedValueWithoutFilter(t *testing.T) {
-	query, err := createQueryAggregated(context.TODO(), TransactionTest{}, utils.DummyTableNameFirst, utils.DummyFieldNameForInt, ast.AGGREGATOR_AVG, []ast.Filter{})
+	query, err := createQueryAggregated(context.TODO(), TransactionTest{},
+		utils.DummyTableNameFirst, utils.DummyFieldNameForInt, ast.AGGREGATOR_AVG, []ast.Filter{})
 	assert.Empty(t, err)
 	sql, args, err := query.ToSql()
 	assert.Empty(t, err)
@@ -126,7 +130,8 @@ func TestIngestedDataQueryAggregatedValueWithFilter(t *testing.T) {
 		},
 	}
 
-	query, err := createQueryAggregated(context.TODO(), TransactionTest{}, utils.DummyTableNameFirst, utils.DummyFieldNameForInt, ast.AGGREGATOR_AVG, filters)
+	query, err := createQueryAggregated(context.TODO(), TransactionTest{},
+		utils.DummyTableNameFirst, utils.DummyFieldNameForInt, ast.AGGREGATOR_AVG, filters)
 	assert.Empty(t, err)
 	sql, args, err := query.ToSql()
 	assert.Empty(t, err)

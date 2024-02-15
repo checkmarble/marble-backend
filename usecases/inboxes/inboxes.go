@@ -10,15 +10,18 @@ import (
 
 type InboxRepository interface {
 	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId string) (models.Inbox, error)
-	ListInboxes(ctx context.Context, exec repositories.Executor, organizationId string, inboxIds []string, withCaseCount bool) ([]models.Inbox, error)
-	ListInboxUsers(ctx context.Context, exec repositories.Executor, filters models.InboxUserFilterInput) ([]models.InboxUser, error)
+	ListInboxes(ctx context.Context, exec repositories.Executor, organizationId string,
+		inboxIds []string, withCaseCount bool) ([]models.Inbox, error)
+	ListInboxUsers(ctx context.Context, exec repositories.Executor,
+		filters models.InboxUserFilterInput) ([]models.InboxUser, error)
 }
 
 type EnforceSecurityInboxes interface {
 	ReadInbox(i models.Inbox) error
 	CreateInbox(organizationId string) error
 	ReadInboxUser(inboxUser models.InboxUser, actorInboxUsers []models.InboxUser) error
-	CreateInboxUser(i models.CreateInboxUserInput, actorInboxUsers []models.InboxUser, targetInbox models.Inbox, targetUser models.User) error
+	CreateInboxUser(i models.CreateInboxUserInput, actorInboxUsers []models.InboxUser,
+		targetInbox models.Inbox, targetUser models.User) error
 }
 
 type InboxReader struct {
@@ -84,7 +87,9 @@ func (i *InboxReader) getAvailableInboxes(ctx context.Context, exec repositories
 	availableInboxIds := make([]string, 0)
 
 	userId := i.Credentials.ActorIdentity.UserId
-	inboxUsers, err := i.InboxRepository.ListInboxUsers(ctx, exec, models.InboxUserFilterInput{UserId: userId})
+	inboxUsers, err := i.InboxRepository.ListInboxUsers(ctx, exec, models.InboxUserFilterInput{
+		UserId: userId,
+	})
 	if err != nil {
 		return []string{}, err
 	}

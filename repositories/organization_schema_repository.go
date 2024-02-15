@@ -15,7 +15,8 @@ import (
 
 type OrganizationSchemaRepository interface {
 	OrganizationSchemaOfOrganization(ctx context.Context, exec Executor, organizationId string) (models.OrganizationSchema, error)
-	CreateOrganizationSchema(ctx context.Context, exec Executor, createOrganizationSchema models.OrganizationSchema) error
+	CreateOrganizationSchema(ctx context.Context, exec Executor,
+		createOrganizationSchema models.OrganizationSchema) error
 	CreateSchema(ctx context.Context, exec Executor, schema string) error
 	DeleteSchema(ctx context.Context, exec Executor, schema string) error
 	CreateTable(ctx context.Context, exec Executor, schema, tableName string) error
@@ -24,7 +25,9 @@ type OrganizationSchemaRepository interface {
 
 type OrganizationSchemaRepositoryPostgresql struct{}
 
-func (repo *OrganizationSchemaRepositoryPostgresql) OrganizationSchemaOfOrganization(ctx context.Context, exec Executor, organizationId string) (models.OrganizationSchema, error) {
+func (repo *OrganizationSchemaRepositoryPostgresql) OrganizationSchemaOfOrganization(
+	ctx context.Context, exec Executor, organizationId string,
+) (models.OrganizationSchema, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.OrganizationSchema{}, err
 	}
@@ -45,7 +48,8 @@ func (repo *OrganizationSchemaRepositoryPostgresql) CreateSchema(ctx context.Con
 		return err
 	}
 
-	sql := fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", pgx.Identifier.Sanitize([]string{schema}))
+	sql := fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s",
+		pgx.Identifier.Sanitize([]string{schema}))
 
 	_, err := exec.Exec(ctx, sql)
 	return err
@@ -56,7 +60,8 @@ func (repo *OrganizationSchemaRepositoryPostgresql) DeleteSchema(ctx context.Con
 		return err
 	}
 
-	sql := fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE", pgx.Identifier.Sanitize([]string{schema}))
+	sql := fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE",
+		pgx.Identifier.Sanitize([]string{schema}))
 	_, err := exec.Exec(ctx, sql)
 	return err
 }
@@ -79,7 +84,9 @@ func (repo *OrganizationSchemaRepositoryPostgresql) CreateTable(ctx context.Cont
 	return err
 }
 
-func (repo *OrganizationSchemaRepositoryPostgresql) CreateField(ctx context.Context, exec Executor, schema, tableName string, field models.DataModelField) error {
+func (repo *OrganizationSchemaRepositoryPostgresql) CreateField(ctx context.Context, exec Executor,
+	schema, tableName string, field models.DataModelField,
+) error {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return err
 	}
@@ -88,7 +95,8 @@ func (repo *OrganizationSchemaRepositoryPostgresql) CreateField(ctx context.Cont
 	sanitizedTableName := pgx.Identifier.Sanitize([]string{schema, tableName})
 
 	builder := strings.Builder{}
-	builder.WriteString(fmt.Sprintf("ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s", sanitizedTableName, field.Name, fieldType))
+	builder.WriteString(fmt.Sprintf("ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s",
+		sanitizedTableName, field.Name, fieldType))
 	if !field.Nullable {
 		builder.WriteString(" NOT NULL")
 	}
@@ -96,7 +104,9 @@ func (repo *OrganizationSchemaRepositoryPostgresql) CreateField(ctx context.Cont
 	return err
 }
 
-func (repo *OrganizationSchemaRepositoryPostgresql) CreateOrganizationSchema(ctx context.Context, exec Executor, createOrganizationSchema models.OrganizationSchema) error {
+func (repo *OrganizationSchemaRepositoryPostgresql) CreateOrganizationSchema(ctx context.Context,
+	exec Executor, createOrganizationSchema models.OrganizationSchema,
+) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}

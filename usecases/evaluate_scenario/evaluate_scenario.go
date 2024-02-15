@@ -41,7 +41,9 @@ type ScenarioEvaluationRepositories struct {
 	EvaluateRuleAstExpression  ast_eval.EvaluateRuleAstExpression
 }
 
-func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repositories ScenarioEvaluationRepositories, logger *slog.Logger) (se models.ScenarioExecution, err error) {
+func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters,
+	repositories ScenarioEvaluationRepositories, logger *slog.Logger,
+) (se models.ScenarioExecution, err error) {
 	start := time.Now()
 	///////////////////////////////
 	// Recover in case the evaluation panicked.
@@ -65,17 +67,21 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repo
 
 	// If the scenario has no live version, don't try to Eval() it, return early
 	if params.Scenario.LiveVersionID == nil {
-		return models.ScenarioExecution{}, errors.Wrap(models.ScenarioHasNoLiveVersionError, "scenario has no live version in EvalScenario")
+		return models.ScenarioExecution{}, errors.Wrap(models.ScenarioHasNoLiveVersionError,
+			"scenario has no live version in EvalScenario")
 	}
 
-	liveVersion, err := repositories.EvalScenarioRepository.GetScenarioIteration(ctx, repositories.ExecutorFactory.NewExecutor(), *params.Scenario.LiveVersionID)
+	liveVersion, err := repositories.EvalScenarioRepository.GetScenarioIteration(ctx,
+		repositories.ExecutorFactory.NewExecutor(), *params.Scenario.LiveVersionID)
 	if err != nil {
-		return models.ScenarioExecution{}, errors.Wrap(err, "error getting scenario iteration in EvalScenario")
+		return models.ScenarioExecution{}, errors.Wrap(err,
+			"error getting scenario iteration in EvalScenario")
 	}
 
 	publishedVersion, err := models.NewPublishedScenarioIteration(liveVersion)
 	if err != nil {
-		return models.ScenarioExecution{}, errors.Wrap(err, "error mapping published scenario iteration in eval scenario")
+		return models.ScenarioExecution{}, errors.Wrap(err,
+			"error mapping published scenario iteration in eval scenario")
 	}
 
 	// Check the scenario & trigger_object's types
@@ -103,16 +109,21 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repo
 
 	isAuthorizedError := models.IsAuthorizedError(err)
 	if err != nil && !isAuthorizedError {
-		return models.ScenarioExecution{}, errors.Wrap(err, "Unexpected error evaluating trigger condition in EvalScenario")
+		return models.ScenarioExecution{}, errors.Wrap(err,
+			"Unexpected error evaluating trigger condition in EvalScenario")
 	}
 	if !triggerPassed || isAuthorizedError {
-		return models.ScenarioExecution{}, errors.Wrap(models.ScenarioTriggerConditionAndTriggerObjectMismatchError, "scenario trigger object does not match payload in EvalScenario")
+		return models.ScenarioExecution{}, errors.Wrap(
+			models.ScenarioTriggerConditionAndTriggerObjectMismatchError,
+			"scenario trigger object does not match payload in EvalScenario")
 	}
 
 	// Evaluate all rules
-	score, ruleExecutions, err := evalAllScenarioRules(ctx, repositories, publishedVersion.Body.Rules, dataAccessor, params.DataModel, logger)
+	score, ruleExecutions, err := evalAllScenarioRules(ctx, repositories,
+		publishedVersion.Body.Rules, dataAccessor, params.DataModel, logger)
 	if err != nil {
-		return models.ScenarioExecution{}, errors.Wrap(err, "error during concurrent rule evaluation")
+		return models.ScenarioExecution{}, errors.Wrap(err,
+			"error during concurrent rule evaluation")
 	}
 
 	// Compute outcome from score
@@ -143,15 +154,19 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repo
 	return se, nil
 }
 
-func evalScenarioRule(ctx context.Context, repositories ScenarioEvaluationRepositories, rule models.Rule, dataAccessor DataAccessor, dataModel models.DataModel, logger *slog.Logger) (int, models.RuleExecution, error) {
+func evalScenarioRule(ctx context.Context, repositories ScenarioEvaluationRepositories,
+	rule models.Rule, dataAccessor DataAccessor, dataModel models.DataModel, logger *slog.Logger,
+) (int, models.RuleExecution, error) {
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
-	ctx, span := tracer.Start(ctx, "evaluate_scenario.evalScenarioRule", trace.WithAttributes(attribute.String("rule_id", rule.Id)))
+	ctx, span := tracer.Start(ctx, "evaluate_scenario.evalScenarioRule",
+		trace.WithAttributes(attribute.String("rule_id", rule.Id)))
 	defer span.End()
 
 	// return early if ctx is done
 	select {
 	case <-ctx.Done():
-		return 0, models.RuleExecution{}, errors.Wrap(ctx.Err(), fmt.Sprintf("context cancelled when evaluating rule %s (%s)", rule.Name, rule.Id))
+		return 0, models.RuleExecution{}, errors.Wrap(ctx.Err(),
+			fmt.Sprintf("context cancelled when evaluating rule %s (%s)", rule.Name, rule.Id))
 	default:
 	}
 
@@ -165,7 +180,8 @@ func evalScenarioRule(ctx context.Context, repositories ScenarioEvaluationReposi
 	)
 
 	if err != nil && !models.IsAuthorizedError(err) {
-		return 0, models.RuleExecution{}, errors.Wrap(err, fmt.Sprintf("error while evaluating rule %s (%s)", rule.Name, rule.Id))
+		return 0, models.RuleExecution{}, errors.Wrap(err,
+			fmt.Sprintf("error while evaluating rule %s (%s)", rule.Name, rule.Id))
 	}
 
 	score := 0
@@ -200,7 +216,9 @@ func evalScenarioRule(ctx context.Context, repositories ScenarioEvaluationReposi
 	return score, ruleExecution, nil
 }
 
-func evalScenarioTrigger(ctx context.Context, repositories ScenarioEvaluationRepositories, ruleAstExpression ast.Node, organizationId string, payload models.PayloadReader, dataModel models.DataModel) (bool, error) {
+func evalScenarioTrigger(ctx context.Context, repositories ScenarioEvaluationRepositories,
+	ruleAstExpression ast.Node, organizationId string, payload models.PayloadReader, dataModel models.DataModel,
+) (bool, error) {
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(ctx, "evaluate_scenario.evalScenarioTrigger")
 	defer span.End()
@@ -214,7 +232,9 @@ func evalScenarioTrigger(ctx context.Context, repositories ScenarioEvaluationRep
 	)
 }
 
-func evalAllScenarioRules(ctx context.Context, repositories ScenarioEvaluationRepositories, rules []models.Rule, dataAccessor DataAccessor, dataModel models.DataModel, logger *slog.Logger) (int, []models.RuleExecution, error) {
+func evalAllScenarioRules(ctx context.Context, repositories ScenarioEvaluationRepositories,
+	rules []models.Rule, dataAccessor DataAccessor, dataModel models.DataModel, logger *slog.Logger,
+) (int, []models.RuleExecution, error) {
 	// Results
 	runningSumOfScores := 0
 	ruleExecutions := make([]models.RuleExecution, len(rules))
@@ -233,7 +253,8 @@ func evalAllScenarioRules(ctx context.Context, repositories ScenarioEvaluationRe
 			// return early if ctx is done
 			select {
 			case <-ctx.Done():
-				return errors.Wrap(ctx.Err(), fmt.Sprintf("context cancelled before evaluating rule %s (%s)", rule.Name, rule.Id))
+				return errors.Wrap(ctx.Err(), fmt.Sprintf(
+					"context cancelled before evaluating rule %s (%s)", rule.Name, rule.Id))
 			default:
 			}
 

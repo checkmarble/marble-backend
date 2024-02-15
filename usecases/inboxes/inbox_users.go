@@ -14,15 +14,18 @@ import (
 type InboxUserRepository interface {
 	GetInboxById(ctx context.Context, exec repositories.Executor, inboxId string) (models.Inbox, error)
 	GetInboxUserById(ctx context.Context, exec repositories.Executor, inboxUserId string) (models.InboxUser, error)
-	ListInboxUsers(ctx context.Context, exec repositories.Executor, filters models.InboxUserFilterInput) ([]models.InboxUser, error)
-	CreateInboxUser(ctx context.Context, exec repositories.Executor, createInboxUserAttributes models.CreateInboxUserInput, newInboxUserId string) error
+	ListInboxUsers(ctx context.Context, exec repositories.Executor,
+		filters models.InboxUserFilterInput) ([]models.InboxUser, error)
+	CreateInboxUser(ctx context.Context, exec repositories.Executor,
+		createInboxUserAttributes models.CreateInboxUserInput, newInboxUserId string) error
 	UpdateInboxUser(ctx context.Context, exec repositories.Executor, inboxUserId string, role models.InboxUserRole) error
 	DeleteInboxUser(ctx context.Context, exec repositories.Executor, inboxUserId string) error
 }
 
 type EnforceSecurityInboxUsers interface {
 	ReadInboxUser(inboxUser models.InboxUser, actorInboxUsers []models.InboxUser) error
-	CreateInboxUser(i models.CreateInboxUserInput, actorInboxUsers []models.InboxUser, targetInbox models.Inbox, targetUser models.User) error
+	CreateInboxUser(i models.CreateInboxUserInput, actorInboxUsers []models.InboxUser,
+		targetInbox models.Inbox, targetUser models.User) error
 	UpdateInboxUser(inboxUser models.InboxUser, actorInboxUsers []models.InboxUser) error
 }
 
@@ -87,7 +90,8 @@ func (usecase *InboxUsers) ListAllInboxUsers(ctx context.Context) ([]models.Inbo
 		return []models.InboxUser{}, errors.New("only admins can list all inbox users")
 	}
 
-	return usecase.InboxUserRepository.ListInboxUsers(ctx, usecase.ExecutorFactory.NewExecutor(), models.InboxUserFilterInput{})
+	return usecase.InboxUserRepository.ListInboxUsers(ctx,
+		usecase.ExecutorFactory.NewExecutor(), models.InboxUserFilterInput{})
 }
 
 func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.CreateInboxUserInput) (models.InboxUser, error) {
@@ -119,7 +123,8 @@ func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.Cre
 			newInboxUserId := utils.NewPrimaryKey(input.InboxId)
 			if err := usecase.InboxUserRepository.CreateInboxUser(ctx, tx, input, newInboxUserId); err != nil {
 				if repositories.IsUniqueViolationError(err) {
-					return models.InboxUser{}, errors.Wrap(models.DuplicateValueError, "This combination of user_id and inbox_user_id already exists")
+					return models.InboxUser{}, errors.Wrap(models.DuplicateValueError,
+						"This combination of user_id and inbox_user_id already exists")
 				}
 				return models.InboxUser{}, err
 			}
@@ -132,7 +137,9 @@ func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.Cre
 		return models.InboxUser{}, err
 	}
 
-	tracking.TrackEvent(ctx, models.AnalyticsInboxUserCreated, map[string]interface{}{"inbox_user_id": inboxUser.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsInboxUserCreated, map[string]interface{}{
+		"inbox_user_id": inboxUser.Id,
+	})
 	return inboxUser, nil
 }
 
@@ -168,7 +175,9 @@ func (usecase *InboxUsers) UpdateInboxUser(ctx context.Context, inboxUserId stri
 		return models.InboxUser{}, err
 	}
 
-	tracking.TrackEvent(ctx, models.AnalyticsInboxUserUpdated, map[string]interface{}{"inbox_user_id": inboxUser.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsInboxUserUpdated, map[string]interface{}{
+		"inbox_user_id": inboxUser.Id,
+	})
 	return inboxUser, nil
 }
 
@@ -199,6 +208,8 @@ func (usecase *InboxUsers) DeleteInboxUser(ctx context.Context, inboxUserId stri
 		return err
 	}
 
-	tracking.TrackEvent(ctx, models.AnalyticsInboxUserDeleted, map[string]interface{}{"inbox_user_id": inboxUserId})
+	tracking.TrackEvent(ctx, models.AnalyticsInboxUserDeleted, map[string]interface{}{
+		"inbox_user_id": inboxUserId,
+	})
 	return nil
 }

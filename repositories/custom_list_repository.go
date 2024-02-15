@@ -14,7 +14,8 @@ type CustomListRepository interface {
 	GetCustomListById(ctx context.Context, exec Executor, id string) (models.CustomList, error)
 	GetCustomListValues(ctx context.Context, exec Executor, getCustomList models.GetCustomListValuesInput) ([]models.CustomListValue, error)
 	GetCustomListValueById(ctx context.Context, exec Executor, id string) (models.CustomListValue, error)
-	CreateCustomList(ctx context.Context, exec Executor, createCustomList models.CreateCustomListInput, organizationId string, newCustomListId string) error
+	CreateCustomList(ctx context.Context, exec Executor, createCustomList models.CreateCustomListInput,
+		organizationId string, newCustomListId string) error
 	UpdateCustomList(ctx context.Context, exec Executor, updateCustomList models.UpdateCustomListInput) error
 	SoftDeleteCustomList(ctx context.Context, exec Executor, listId string) error
 	AddCustomListValue(ctx context.Context, exec Executor, addCustomListValue models.AddCustomListValueInput, newCustomListId string) error
@@ -56,7 +57,9 @@ func (repo *CustomListRepositoryPostgresql) GetCustomListById(ctx context.Contex
 	)
 }
 
-func (repo *CustomListRepositoryPostgresql) GetCustomListValues(ctx context.Context, exec Executor, getCustomList models.GetCustomListValuesInput) ([]models.CustomListValue, error) {
+func (repo *CustomListRepositoryPostgresql) GetCustomListValues(ctx context.Context, exec Executor,
+	getCustomList models.GetCustomListValuesInput,
+) ([]models.CustomListValue, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -194,7 +197,8 @@ func (repo *CustomListRepositoryPostgresql) DeleteCustomListValue(
 
 	deleteRequest = deleteRequest.Set("deleted_at", squirrel.Expr("NOW()"))
 
-	deleteRequest = deleteRequest.Where("id = ? AND custom_list_id = ?", deleteCustomListValue.Id, deleteCustomListValue.CustomListId)
+	deleteRequest = deleteRequest.Where("id = ? AND custom_list_id = ?",
+		deleteCustomListValue.Id, deleteCustomListValue.CustomListId)
 
 	err := ExecBuilder(ctx, exec, deleteRequest)
 	return err

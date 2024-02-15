@@ -7,7 +7,8 @@ import (
 )
 
 type TransactionFactory interface {
-	TransactionInOrgSchema(ctx context.Context, organizationId string, f func(tx repositories.Executor) error) error
+	TransactionInOrgSchema(ctx context.Context, organizationId string,
+		f func(tx repositories.Executor) error) error
 	Transaction(ctx context.Context, fn func(tx repositories.Executor) error) error
 }
 

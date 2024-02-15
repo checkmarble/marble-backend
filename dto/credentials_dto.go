@@ -21,7 +21,8 @@ type Credentials struct {
 }
 
 func AdaptCredentialDto(creds models.Credentials) Credentials {
-	permissions := pure_utils.Map(creds.Role.Permissions(), func(p models.Permission) string { return p.String() })
+	permissions := pure_utils.Map(creds.Role.Permissions(),
+		func(p models.Permission) string { return p.String() })
 
 	return Credentials{
 		OrganizationId: creds.OrganizationId,

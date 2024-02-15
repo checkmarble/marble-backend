@@ -41,12 +41,14 @@ func (c *Client) VerifyFirebaseToken(ctx context.Context, firebaseToken string) 
 
 	identities := token.Firebase.Identities["email"]
 	if identities == nil {
-		return models.FirebaseIdentity{}, fmt.Errorf("unexpected firebase token content: Field email is missing")
+		return models.FirebaseIdentity{}, fmt.Errorf(
+			"unexpected firebase token content: Field email is missing")
 	}
 
 	emails, ok := identities.([]interface{})
 	if !ok || len(emails) == 0 {
-		return models.FirebaseIdentity{}, fmt.Errorf("unexpected firebase token content: identities is not an array")
+		return models.FirebaseIdentity{}, fmt.Errorf(
+			"unexpected firebase token content: identities is not an array")
 	}
 
 	email, ok := emails[0].(string)

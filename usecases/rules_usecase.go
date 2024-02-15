@@ -38,7 +38,8 @@ func (usecase *RuleUsecase) ListRules(ctx context.Context, iterationId string) (
 			if err != nil {
 				return nil, err
 			}
-			if err := usecase.enforceSecurity.ReadScenarioIteration(scenarioAndIteration.Iteration); err != nil {
+			if err := usecase.enforceSecurity.ReadScenarioIteration(
+				scenarioAndIteration.Iteration); err != nil {
 				return nil, err
 			}
 			return usecase.repository.ListRulesByIterationId(ctx, tx, iterationId)
@@ -63,7 +64,8 @@ func (usecase *RuleUsecase) CreateRule(ctx context.Context, ruleInput models.Cre
 			}
 			// check if iteration is draft
 			if scenarioAndIteration.Iteration.Version != nil {
-				return models.Rule{}, fmt.Errorf("can't update rule as iteration %s is not in draft %w", scenarioAndIteration.Iteration.Id, models.ErrScenarioIterationNotDraft)
+				return models.Rule{}, fmt.Errorf("can't update rule as iteration %s is not in draft %w",
+					scenarioAndIteration.Iteration.Id, models.ErrScenarioIterationNotDraft)
 			}
 
 			ruleInput.Id = utils.NewPrimaryKey(organizationId)
@@ -77,7 +79,9 @@ func (usecase *RuleUsecase) CreateRule(ctx context.Context, ruleInput models.Cre
 		return models.Rule{}, err
 	}
 
-	tracking.TrackEvent(ctx, models.AnalyticsRuleCreated, map[string]interface{}{"rule_id": ruleInput.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsRuleCreated, map[string]interface{}{
+		"rule_id": ruleInput.Id,
+	})
 
 	return rule, nil
 }
@@ -95,7 +99,8 @@ func (usecase *RuleUsecase) GetRule(ctx context.Context, ruleId string) (models.
 			if err != nil {
 				return models.Rule{}, err
 			}
-			if err := usecase.enforceSecurity.ReadScenarioIteration(scenarioAndIteration.Iteration); err != nil {
+			if err := usecase.enforceSecurity.ReadScenarioIteration(
+				scenarioAndIteration.Iteration); err != nil {
 				return models.Rule{}, err
 			}
 			return rule, nil
@@ -117,7 +122,8 @@ func (usecase *RuleUsecase) UpdateRule(ctx context.Context, updateRule models.Up
 		}
 		// check if iteration is draft
 		if scenarioAndIteration.Iteration.Version != nil {
-			return fmt.Errorf("can't update rule as iteration %s is not in draft %w", scenarioAndIteration.Iteration.Id, models.ErrScenarioIterationNotDraft)
+			return fmt.Errorf("can't update rule as iteration %s is not in draft %w",
+				scenarioAndIteration.Iteration.Id, models.ErrScenarioIterationNotDraft)
 		}
 
 		err = usecase.repository.UpdateRule(ctx, tx, updateRule)
@@ -132,7 +138,9 @@ func (usecase *RuleUsecase) UpdateRule(ctx context.Context, updateRule models.Up
 		return models.Rule{}, err
 	}
 
-	tracking.TrackEvent(ctx, models.AnalyticsRuleUpdated, map[string]interface{}{"rule_id": updateRule.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsRuleUpdated, map[string]interface{}{
+		"rule_id": updateRule.Id,
+	})
 
 	return updatedRule, err
 }
@@ -160,7 +168,9 @@ func (usecase *RuleUsecase) DeleteRule(ctx context.Context, ruleId string) error
 		return err
 	}
 
-	tracking.TrackEvent(ctx, models.AnalyticsRuleDeleted, map[string]interface{}{"rule_id": ruleId})
+	tracking.TrackEvent(ctx, models.AnalyticsRuleDeleted, map[string]interface{}{
+		"rule_id": ruleId,
+	})
 
 	return nil
 }

@@ -134,7 +134,8 @@ func TestDataModelHandler_CreateTable(t *testing.T) {
 		gin.SetMode(gin.TestMode)
 		router := gin.New()
 		router.POST("/datamodel/tables", dataModelHandler.CreateTable)
-		request := httptest.NewRequest(http.MethodPost, "https://checkmarble.com/datamodel/tables", strings.NewReader(body)).
+		request := httptest.NewRequest(http.MethodPost,
+			"https://checkmarble.com/datamodel/tables", strings.NewReader(body)).
 			WithContext(ctx)
 
 		r := httptest.NewRecorder()
@@ -158,7 +159,8 @@ func TestDataModelHandler_CreateTable(t *testing.T) {
 		gin.SetMode(gin.TestMode)
 		router := gin.New()
 		router.POST("/datamodel/tables", dataModelHandler.CreateTable)
-		request := httptest.NewRequest(http.MethodPost, "https://checkmarble.com/datamodel/tables", strings.NewReader(body)).
+		request := httptest.NewRequest(http.MethodPost,
+			"https://checkmarble.com/datamodel/tables", strings.NewReader(body)).
 			WithContext(ctx)
 
 		r := httptest.NewRecorder()
@@ -174,7 +176,8 @@ func TestDataModelHandler_CreateTable(t *testing.T) {
 		gin.SetMode(gin.TestMode)
 		router := gin.New()
 		router.POST("/datamodel/tables", dataModelHandler.CreateTable)
-		request := httptest.NewRequest(http.MethodPost, "https://checkmarble.com/datamodel/tables", strings.NewReader(`{bad}`)).
+		request := httptest.NewRequest(http.MethodPost,
+			"https://checkmarble.com/datamodel/tables", strings.NewReader(`{bad}`)).
 			WithContext(ctx)
 
 		r := httptest.NewRecorder()
@@ -311,7 +314,8 @@ func TestDataModelHandler_CreateLink(t *testing.T) {
 		router := gin.New()
 		router.POST("/datamodel/links", dataModelHandler.CreateLink)
 
-		request := httptest.NewRequest(http.MethodPost, "https://checkmarble.com/datamodel/links", strings.NewReader(body)).
+		request := httptest.NewRequest(http.MethodPost,
+			"https://checkmarble.com/datamodel/links", strings.NewReader(body)).
 			WithContext(ctx)
 
 		r := httptest.NewRecorder()
@@ -334,7 +338,8 @@ func TestDataModelHandler_CreateLink(t *testing.T) {
 		router := gin.New()
 		router.POST("/datamodel/links", dataModelHandler.CreateLink)
 
-		request := httptest.NewRequest(http.MethodPost, "https://checkmarble.com/datamodel/links", strings.NewReader(body)).
+		request := httptest.NewRequest(http.MethodPost,
+			"https://checkmarble.com/datamodel/links", strings.NewReader(body)).
 			WithContext(ctx)
 
 		r := httptest.NewRecorder()
@@ -351,7 +356,8 @@ func TestDataModelHandler_CreateLink(t *testing.T) {
 		router := gin.New()
 		router.POST("/datamodel/links", dataModelHandler.CreateLink)
 
-		request := httptest.NewRequest(http.MethodPost, "https://checkmarble.com/datamodel/links", strings.NewReader(`{bad}`)).
+		request := httptest.NewRequest(http.MethodPost,
+			"https://checkmarble.com/datamodel/links", strings.NewReader(`{bad}`)).
 			WithContext(ctx)
 
 		r := httptest.NewRecorder()
@@ -451,7 +457,9 @@ func TestDataModelHandler_UpdateDataModelField(t *testing.T) {
 
 	t.Run("nominal", func(t *testing.T) {
 		mockUseCase := new(mocks.DataModelUseCase)
-		mockUseCase.On("UpdateDataModelField", mock.Anything, fieldID, models.UpdateDataModelFieldInput{Description: &description, IsEnum: nil}).
+		mockUseCase.On("UpdateDataModelField", mock.Anything, fieldID, models.UpdateDataModelFieldInput{
+			Description: &description, IsEnum: nil,
+		}).
 			Return(nil)
 
 		dataModelHandler := DataModelHandler{
@@ -475,7 +483,9 @@ func TestDataModelHandler_UpdateDataModelField(t *testing.T) {
 
 	t.Run("UpdateDataModelField error", func(t *testing.T) {
 		mockUseCase := new(mocks.DataModelUseCase)
-		mockUseCase.On("UpdateDataModelField", mock.Anything, fieldID, models.UpdateDataModelFieldInput{Description: &description, IsEnum: nil}).
+		mockUseCase.On("UpdateDataModelField", mock.Anything, fieldID, models.UpdateDataModelFieldInput{
+			Description: &description, IsEnum: nil,
+		}).
 			Return(assert.AnError)
 
 		dataModelHandler := DataModelHandler{

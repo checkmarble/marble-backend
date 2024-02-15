@@ -33,7 +33,9 @@ func (repo *OrganizationRepositoryPostgresql) AllOrganizations(ctx context.Conte
 	)
 }
 
-func (repo *OrganizationRepositoryPostgresql) GetOrganizationById(ctx context.Context, exec Executor, organizationId string) (models.Organization, error) {
+func (repo *OrganizationRepositoryPostgresql) GetOrganizationById(ctx context.Context,
+	exec Executor, organizationId string,
+) (models.Organization, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.Organization{}, err
 	}
@@ -49,7 +51,9 @@ func (repo *OrganizationRepositoryPostgresql) GetOrganizationById(ctx context.Co
 	)
 }
 
-func (repo *OrganizationRepositoryPostgresql) CreateOrganization(ctx context.Context, exec Executor, createOrganization models.CreateOrganizationInput, newOrganizationId string) error {
+func (repo *OrganizationRepositoryPostgresql) CreateOrganization(ctx context.Context, exec Executor,
+	createOrganization models.CreateOrganizationInput, newOrganizationId string,
+) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -86,7 +90,8 @@ func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(ctx context.Con
 		updateRequest = updateRequest.Set("database_name", *updateOrganization.DatabaseName)
 	}
 	if updateOrganization.ExportScheduledExecutionS3 != nil {
-		updateRequest = updateRequest.Set("export_scheduled_execution_s3", *updateOrganization.ExportScheduledExecutionS3)
+		updateRequest = updateRequest.Set("export_scheduled_execution_s3",
+			*updateOrganization.ExportScheduledExecutionS3)
 	}
 
 	updateRequest = updateRequest.Where("id = ?", updateOrganization.Id)

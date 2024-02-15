@@ -44,7 +44,8 @@ func (api *API) handleGetScheduledExecutionDecisions(c *gin.Context) {
 
 	c.Writer.Header().Set("Content-Type", "application/zip")
 	c.Writer.Header().Set("Content-Disposition", "attachment; filename=\"decisions.ndjson.zip\"")
-	numberOfExportedDecisions, err := usecase.ExportScheduledExecutionDecisions(c.Request.Context(), scheduledExecutionID, fileWriter)
+	numberOfExportedDecisions, err := usecase.ExportScheduledExecutionDecisions(
+		c.Request.Context(), scheduledExecutionID, fileWriter)
 	if err != nil {
 		// note: un case of security error, the header has not been sent, so we can still send a 401
 		presentError(c, err)

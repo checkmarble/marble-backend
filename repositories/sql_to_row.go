@@ -12,7 +12,9 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 )
 
-func SqlToChannelOfModels[Model any](ctx context.Context, exec Executor, query squirrel.Sqlizer, adapter func(row pgx.CollectableRow) (Model, error)) (<-chan Model, <-chan error) {
+func SqlToChannelOfModels[Model any](ctx context.Context, exec Executor, query squirrel.Sqlizer,
+	adapter func(row pgx.CollectableRow) (Model, error),
+) (<-chan Model, <-chan error) {
 	modelsChannel := make(chan Model, 100)
 	errChannel := make(chan error, 1)
 
@@ -35,7 +37,9 @@ func SqlToChannelOfModels[Model any](ctx context.Context, exec Executor, query s
 	return modelsChannel, errChannel
 }
 
-func SqlToListOfRow[Model any](ctx context.Context, exec Executor, query squirrel.Sqlizer, adapter func(row pgx.CollectableRow) (Model, error)) ([]Model, error) {
+func SqlToListOfRow[Model any](ctx context.Context, exec Executor, query squirrel.Sqlizer,
+	adapter func(row pgx.CollectableRow) (Model, error),
+) ([]Model, error) {
 	models := make([]Model, 0)
 	err := ForEachRow(ctx, exec, query, func(row pgx.CollectableRow) error {
 		model, err := adapter(row)
@@ -48,7 +52,9 @@ func SqlToListOfRow[Model any](ctx context.Context, exec Executor, query squirre
 	return models, err
 }
 
-func SqlToOptionalRow[Model any](ctx context.Context, exec Executor, s squirrel.Sqlizer, adapter func(row pgx.CollectableRow) (Model, error)) (*Model, error) {
+func SqlToOptionalRow[Model any](ctx context.Context, exec Executor, s squirrel.Sqlizer,
+	adapter func(row pgx.CollectableRow) (Model, error),
+) (*Model, error) {
 	models, err := SqlToListOfRow(ctx, exec, s, adapter)
 	if err != nil {
 		return nil, err
@@ -61,19 +67,23 @@ func SqlToOptionalRow[Model any](ctx context.Context, exec Executor, s squirrel.
 
 	model := models[0]
 	if numberOfResults > 1 {
-		return nil, errors.New(fmt.Sprintf("expect 1 or 0 %v, %d rows in the result", reflect.TypeOf(model), numberOfResults))
+		return nil, errors.New(fmt.Sprintf("expect 1 or 0 %v, %d rows in the result",
+			reflect.TypeOf(model), numberOfResults))
 	}
 	return &model, nil
 }
 
-func SqlToRow[Model any](ctx context.Context, exec Executor, s squirrel.Sqlizer, adapter func(row pgx.CollectableRow) (Model, error)) (Model, error) {
+func SqlToRow[Model any](ctx context.Context, exec Executor, s squirrel.Sqlizer,
+	adapter func(row pgx.CollectableRow) (Model, error),
+) (Model, error) {
 	model, err := SqlToOptionalRow(ctx, exec, s, adapter)
 	var zeroModel Model
 	if err != nil {
 		return zeroModel, err
 	}
 	if model == nil {
-		return zeroModel, errors.Wrap(models.NotFoundError, fmt.Sprintf("found no object of type %T", zeroModel))
+		return zeroModel, errors.Wrap(models.NotFoundError,
+			fmt.Sprintf("found no object of type %T", zeroModel))
 	}
 	return *model, nil
 }

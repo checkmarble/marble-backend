@@ -50,7 +50,8 @@ func (tx *Transaction) addDataModelFieldToSchema(ctx context.Context, schema, ta
 	sanitizedTableName := pgx.Identifier.Sanitize([]string{schema, tableName})
 
 	builder := strings.Builder{}
-	builder.WriteString(fmt.Sprintf("ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s", sanitizedTableName, field.Name, fieldType))
+	builder.WriteString(fmt.Sprintf("ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s",
+		sanitizedTableName, field.Name, fieldType))
 	if !field.Nullable {
 		builder.WriteString(" NOT NULL")
 	}
@@ -59,7 +60,8 @@ func (tx *Transaction) addDataModelFieldToSchema(ctx context.Context, schema, ta
 }
 
 func (tx *Transaction) createSchema(ctx context.Context, schema string) error {
-	query := fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", pgx.Identifier.Sanitize([]string{schema}))
+	query := fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s",
+		pgx.Identifier.Sanitize([]string{schema}))
 
 	_, err := tx.Exec(ctx, query)
 	return err

@@ -64,7 +64,9 @@ func (suite *ScheduledExecutionsTestSuite) AssertExpectations() {
 func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutions_with_OrganizationId() {
 	ctx := context.Background()
 	suite.transactionFactory.On("Transaction", ctx, mock.Anything).Return(nil)
-	suite.repository.On("ListScheduledExecutions", suite.transaction, models.ListScheduledExecutionsFilters{OrganizationId: "some org id"}).Return(suite.scheduledExecutions, nil)
+	suite.repository.On("ListScheduledExecutions", suite.transaction, models.ListScheduledExecutionsFilters{
+		OrganizationId: "some org id",
+	}).Return(suite.scheduledExecutions, nil)
 	suite.enforceSecurity.On("ReadScheduledExecution", suite.scheduledExecutions[0]).Return(nil)
 
 	result, err := suite.makeUsecase().ListScheduledExecutions(ctx, "")
@@ -79,7 +81,9 @@ func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutions_with_Orga
 func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutions_with_ScenarioId() {
 	ctx := context.Background()
 	suite.transactionFactory.On("Transaction", ctx, mock.Anything).Return(nil)
-	suite.repository.On("ListScheduledExecutions", suite.transaction, models.ListScheduledExecutionsFilters{ScenarioId: suite.scenarioId}).Return(suite.scheduledExecutions, nil)
+	suite.repository.On("ListScheduledExecutions", suite.transaction, models.ListScheduledExecutionsFilters{
+		ScenarioId: suite.scenarioId,
+	}).Return(suite.scheduledExecutions, nil)
 	suite.enforceSecurity.On("ReadScheduledExecution", suite.scheduledExecutions[0]).Return(nil)
 
 	result, err := suite.makeUsecase().ListScheduledExecutions(ctx, suite.scenarioId)
@@ -96,7 +100,9 @@ func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutions_security(
 	securityError := errors.New("some security error")
 
 	suite.transactionFactory.On("Transaction", ctx, mock.Anything).Return(nil)
-	suite.repository.On("ListScheduledExecutions", suite.transaction, models.ListScheduledExecutionsFilters{ScenarioId: suite.scenarioId}).Return(suite.scheduledExecutions, nil)
+	suite.repository.On("ListScheduledExecutions", suite.transaction, models.ListScheduledExecutionsFilters{
+		ScenarioId: suite.scenarioId,
+	}).Return(suite.scheduledExecutions, nil)
 	suite.enforceSecurity.On("ReadScheduledExecution", suite.scheduledExecutions[0]).Return(securityError)
 
 	result, err := suite.makeUsecase().ListScheduledExecutions(ctx, suite.scenarioId)

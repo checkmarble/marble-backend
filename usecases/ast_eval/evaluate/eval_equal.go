@@ -38,5 +38,6 @@ func (f Equal) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []er
 		return MakeEvaluateResult(left.Equal(right))
 	}
 
-	return MakeEvaluateError(errors.Wrap(ast.ErrArgumentInvalidType, "all arguments to Equal Evaluate must be string, boolean, time, int or float"))
+	return MakeEvaluateError(errors.Wrap(ast.ErrArgumentInvalidType,
+		"all arguments to Equal Evaluate must be string, boolean, time, int or float"))
 }

@@ -42,7 +42,8 @@ type DecisionUsecase struct {
 }
 
 func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId string) (models.Decision, error) {
-	decision, err := usecase.decisionRepository.DecisionById(ctx, usecase.executorFactory.NewExecutor(), decisionId)
+	decision, err := usecase.decisionRepository.DecisionById(ctx,
+		usecase.executorFactory.NewExecutor(), decisionId)
 	if err != nil {
 		return models.Decision{}, err
 	}
@@ -53,7 +54,9 @@ func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId stri
 	return decision, nil
 }
 
-func (usecase *DecisionUsecase) ListDecisions(ctx context.Context, organizationId string, paginationAndSorting models.PaginationAndSorting, filters dto.DecisionFilters) ([]models.DecisionWithRank, error) {
+func (usecase *DecisionUsecase) ListDecisions(ctx context.Context, organizationId string,
+	paginationAndSorting models.PaginationAndSorting, filters dto.DecisionFilters,
+) ([]models.DecisionWithRank, error) {
 	if err := usecase.validateScenarioIds(ctx, filters.ScenarioIds, organizationId); err != nil {
 		return []models.DecisionWithRank{}, err
 	}
@@ -63,8 +66,10 @@ func (usecase *DecisionUsecase) ListDecisions(ctx context.Context, organizationI
 		return []models.DecisionWithRank{}, err
 	}
 
-	if !filters.StartDate.IsZero() && !filters.EndDate.IsZero() && filters.StartDate.After(filters.EndDate) {
-		return []models.DecisionWithRank{}, fmt.Errorf("start date must be before end date: %w", models.BadParameterError)
+	if !filters.StartDate.IsZero() && !filters.EndDate.IsZero() &&
+		filters.StartDate.After(filters.EndDate) {
+		return []models.DecisionWithRank{}, fmt.Errorf(
+			"start date must be before end date: %w", models.BadParameterError)
 	}
 
 	triggerObjectTypes, err := usecase.validateTriggerObjects(ctx, filters.TriggerObjects, organizationId)
@@ -80,15 +85,16 @@ func (usecase *DecisionUsecase) ListDecisions(ctx context.Context, organizationI
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Executor) ([]models.DecisionWithRank, error) {
-			decisions, err := usecase.decisionRepository.DecisionsOfOrganization(ctx, tx, organizationId, paginationAndSorting, models.DecisionFilters{
-				ScenarioIds:    filters.ScenarioIds,
-				StartDate:      filters.StartDate,
-				EndDate:        filters.EndDate,
-				Outcomes:       outcomes,
-				TriggerObjects: triggerObjectTypes,
-				HasCase:        filters.HasCase,
-				CaseIds:        filters.CaseIds,
-			})
+			decisions, err := usecase.decisionRepository.DecisionsOfOrganization(ctx, tx,
+				organizationId, paginationAndSorting, models.DecisionFilters{
+					ScenarioIds:    filters.ScenarioIds,
+					StartDate:      filters.StartDate,
+					EndDate:        filters.EndDate,
+					Outcomes:       outcomes,
+					TriggerObjects: triggerObjectTypes,
+					HasCase:        filters.HasCase,
+					CaseIds:        filters.CaseIds,
+				})
 			if err != nil {
 				return []models.DecisionWithRank{}, err
 			}
@@ -103,7 +109,8 @@ func (usecase *DecisionUsecase) ListDecisions(ctx context.Context, organizationI
 }
 
 func (usecase *DecisionUsecase) validateScenarioIds(ctx context.Context, scenarioIds []string, organizationId string) error {
-	scenarios, err := usecase.repository.ListScenariosOfOrganization(ctx, usecase.executorFactory.NewExecutor(), organizationId)
+	scenarios, err := usecase.repository.ListScenariosOfOrganization(ctx,
+		usecase.executorFactory.NewExecutor(), organizationId)
 	if err != nil {
 		return err
 	}
@@ -114,7 +121,8 @@ func (usecase *DecisionUsecase) validateScenarioIds(ctx context.Context, scenari
 
 	for _, scenarioId := range scenarioIds {
 		if !slices.Contains(organizationScenarioIds, scenarioId) {
-			return fmt.Errorf("scenario id %s not found in organization %s: %w", scenarioId, organizationId, models.BadParameterError)
+			return fmt.Errorf("scenario id %s not found in organization %s: %w",
+				scenarioId, organizationId, models.BadParameterError)
 		}
 	}
 	return nil
@@ -131,8 +139,11 @@ func (usecase *DecisionUsecase) validateOutcomes(ctx context.Context, filtersOut
 	return outcomes, nil
 }
 
-func (usecase *DecisionUsecase) validateTriggerObjects(ctx context.Context, filtersTriggerObjects []string, organizationId string) ([]models.TableName, error) {
-	dataModel, err := usecase.datamodelRepository.GetDataModel(ctx, usecase.executorFactory.NewExecutor(), organizationId, true)
+func (usecase *DecisionUsecase) validateTriggerObjects(ctx context.Context,
+	filtersTriggerObjects []string, organizationId string,
+) ([]models.TableName, error) {
+	dataModel, err := usecase.datamodelRepository.GetDataModel(ctx,
+		usecase.executorFactory.NewExecutor(), organizationId, true)
 	if err != nil {
 		return []models.TableName{}, err
 	}
@@ -140,13 +151,16 @@ func (usecase *DecisionUsecase) validateTriggerObjects(ctx context.Context, filt
 	for i, triggerObject := range filtersTriggerObjects {
 		triggerObjectTypes[i] = models.TableName(triggerObject)
 		if _, ok := dataModel.Tables[triggerObjectTypes[i]]; !ok {
-			return []models.TableName{}, fmt.Errorf("table %s not found on data model: %w", triggerObject, models.BadParameterError)
+			return []models.TableName{}, fmt.Errorf(
+				"table %s not found on data model: %w", triggerObject, models.BadParameterError)
 		}
 	}
 	return triggerObjectTypes, nil
 }
 
-func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models.CreateDecisionInput, logger *slog.Logger) (models.Decision, error) {
+func (usecase *DecisionUsecase) CreateDecision(ctx context.Context,
+	input models.CreateDecisionInput, logger *slog.Logger,
+) (models.Decision, error) {
 	exec := usecase.executorFactory.NewExecutor()
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(ctx, "DecisionUsecase.CreateDecision")
@@ -202,7 +216,9 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 		Score:               scenarioExecution.Score,
 	}
 
-	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Executor) (models.Decision, error) {
+	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
+		tx repositories.Executor,
+	) (models.Decision, error) {
 		err = usecase.decisionRepository.StoreDecision(ctx, tx, decision, input.OrganizationId, newDecisionId)
 		if err != nil {
 			return models.Decision{}, fmt.Errorf("error storing decision: %w", err)

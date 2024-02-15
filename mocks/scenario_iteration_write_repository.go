@@ -11,17 +11,23 @@ type ScenarioIterationWriteRepository struct {
 	mock.Mock
 }
 
-func (s *ScenarioIterationWriteRepository) CreateScenarioIterationAndRules(exec repositories.Executor, organizationId string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error) {
+func (s *ScenarioIterationWriteRepository) CreateScenarioIterationAndRules(
+	exec repositories.Executor, organizationId string, scenarioIteration models.CreateScenarioIterationInput,
+) (models.ScenarioIteration, error) {
 	args := s.Called(exec, organizationId, scenarioIteration)
 	return args.Get(0).(models.ScenarioIteration), args.Error(1)
 }
 
-func (s *ScenarioIterationWriteRepository) UpdateScenarioIteration(exec repositories.Executor, scenarioIteration models.UpdateScenarioIterationInput) (models.ScenarioIteration, error) {
+func (s *ScenarioIterationWriteRepository) UpdateScenarioIteration(exec repositories.Executor,
+	scenarioIteration models.UpdateScenarioIterationInput,
+) (models.ScenarioIteration, error) {
 	args := s.Called(exec, scenarioIteration)
 	return args.Get(0).(models.ScenarioIteration), args.Error(1)
 }
 
-func (s *ScenarioIterationWriteRepository) UpdateScenarioIterationVersion(exec repositories.Executor, scenarioIterationId string, newVersion int) error {
+func (s *ScenarioIterationWriteRepository) UpdateScenarioIterationVersion(
+	exec repositories.Executor, scenarioIterationId string, newVersion int,
+) error {
 	args := s.Called(exec, scenarioIterationId, newVersion)
 	return args.Error(0)
 }

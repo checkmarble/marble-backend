@@ -22,13 +22,18 @@ import (
 )
 
 type CaseUseCaseRepository interface {
-	ListOrganizationCases(ctx context.Context, exec repositories.Executor, filters models.CaseFilters, pagination models.PaginationAndSorting) ([]models.CaseWithRank, error)
+	ListOrganizationCases(ctx context.Context, exec repositories.Executor, filters models.CaseFilters,
+		pagination models.PaginationAndSorting) ([]models.CaseWithRank, error)
 	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)
-	CreateCase(ctx context.Context, exec repositories.Executor, createCaseAttributes models.CreateCaseAttributes, newCaseId string) error
-	UpdateCase(ctx context.Context, exec repositories.Executor, updateCaseAttributes models.UpdateCaseAttributes) error
+	CreateCase(ctx context.Context, exec repositories.Executor,
+		createCaseAttributes models.CreateCaseAttributes, newCaseId string) error
+	UpdateCase(ctx context.Context, exec repositories.Executor,
+		updateCaseAttributes models.UpdateCaseAttributes) error
 
-	CreateCaseEvent(ctx context.Context, exec repositories.Executor, createCaseEventAttributes models.CreateCaseEventAttributes) error
-	BatchCreateCaseEvents(ctx context.Context, exec repositories.Executor, createCaseEventAttributes []models.CreateCaseEventAttributes) error
+	CreateCaseEvent(ctx context.Context, exec repositories.Executor,
+		createCaseEventAttributes models.CreateCaseEventAttributes) error
+	BatchCreateCaseEvents(ctx context.Context, exec repositories.Executor,
+		createCaseEventAttributes []models.CreateCaseEventAttributes) error
 	ListCaseEvents(ctx context.Context, exec repositories.Executor, caseId string) ([]models.CaseEvent, error)
 
 	GetCaseContributor(ctx context.Context, exec repositories.Executor, caseId, userId string) (*models.CaseContributor, error)
@@ -39,7 +44,8 @@ type CaseUseCaseRepository interface {
 	ListCaseTagsByCaseId(ctx context.Context, exec repositories.Executor, caseId string) ([]models.CaseTag, error)
 	SoftDeleteCaseTag(ctx context.Context, exec repositories.Executor, tagId string) error
 
-	CreateDbCaseFile(ctx context.Context, exec repositories.Executor, createCaseFileInput models.CreateDbCaseFileInput) error
+	CreateDbCaseFile(ctx context.Context, exec repositories.Executor,
+		createCaseFileInput models.CreateDbCaseFileInput) error
 	GetCaseFileById(ctx context.Context, exec repositories.Executor, caseFileId string) (models.CaseFile, error)
 	GetCasesFileByCaseId(ctx context.Context, exec repositories.Executor, caseId string) ([]models.CaseFile, error)
 }
@@ -61,7 +67,8 @@ func (usecase *CaseUseCase) ListCases(
 	pagination models.PaginationAndSorting,
 	filters dto.CaseFilters,
 ) ([]models.CaseWithRank, error) {
-	if !filters.StartDate.IsZero() && !filters.EndDate.IsZero() && filters.StartDate.After(filters.EndDate) {
+	if !filters.StartDate.IsZero() && !filters.EndDate.IsZero() &&
+		filters.StartDate.After(filters.EndDate) {
 		return []models.CaseWithRank{}, fmt.Errorf("start date must be before end date: %w", models.BadParameterError)
 	}
 	statuses, err := models.ValidateCaseStatuses(filters.Statuses)
@@ -84,7 +91,8 @@ func (usecase *CaseUseCase) ListCases(
 			if len(filters.InboxIds) > 0 {
 				for _, inboxId := range filters.InboxIds {
 					if !slices.Contains(availableInboxIds, inboxId) {
-						return []models.CaseWithRank{}, errors.Wrap(models.ForbiddenError, fmt.Sprintf("inbox %s is not accessible", inboxId))
+						return []models.CaseWithRank{}, errors.Wrap(
+							models.ForbiddenError, fmt.Sprintf("inbox %s is not accessible", inboxId))
 					}
 				}
 			}
@@ -145,8 +153,12 @@ func (usecase *CaseUseCase) GetCase(ctx context.Context, caseId string) (models.
 	return c, nil
 }
 
-func (usecase *CaseUseCase) CreateCase(ctx context.Context, userId string, createCaseAttributes models.CreateCaseAttributes) (models.Case, error) {
-	c, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Executor) (models.Case, error) {
+func (usecase *CaseUseCase) CreateCase(ctx context.Context, userId string,
+	createCaseAttributes models.CreateCaseAttributes,
+) (models.Case, error) {
+	c, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
+		tx repositories.Executor,
+	) (models.Case, error) {
 		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx)
 		if err != nil {
 			return models.Case{}, err
@@ -187,13 +199,19 @@ func (usecase *CaseUseCase) CreateCase(ctx context.Context, userId string, creat
 		return models.Case{}, err
 	}
 
-	tracking.TrackEvent(ctx, models.AnalyticsCaseCreated, map[string]interface{}{"case_id": c.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsCaseCreated, map[string]interface{}{
+		"case_id": c.Id,
+	})
 
 	return c, err
 }
 
-func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string, updateCaseAttributes models.UpdateCaseAttributes) (models.Case, error) {
-	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Executor) (models.Case, error) {
+func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string,
+	updateCaseAttributes models.UpdateCaseAttributes,
+) (models.Case, error) {
+	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
+		tx repositories.Executor,
+	) (models.Case, error) {
 		c, err := usecase.repository.GetCaseById(ctx, tx, updateCaseAttributes.Id)
 		if err != nil {
 			return models.Case{}, err
@@ -209,8 +227,10 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string, updat
 		}
 		if updateCaseAttributes.InboxId != "" {
 			// access check on the case's new requested inbox
-			if _, err := usecase.inboxReader.GetInboxById(ctx, updateCaseAttributes.InboxId); err != nil {
-				return models.Case{}, errors.Wrap(err, fmt.Sprintf("User does not have access the new inbox %s", updateCaseAttributes.InboxId))
+			if _, err := usecase.inboxReader.GetInboxById(ctx,
+				updateCaseAttributes.InboxId); err != nil {
+				return models.Case{}, errors.Wrap(err,
+					fmt.Sprintf("User does not have access the new inbox %s", updateCaseAttributes.InboxId))
 			}
 		}
 		if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
@@ -255,7 +275,9 @@ func isIdenticalCaseUpdate(updateCaseAttributes models.UpdateCaseAttributes, c m
 		(updateCaseAttributes.DecisionIds == nil || slices.Equal(updateCaseAttributes.DecisionIds, oldDecisionIds))
 }
 
-func (usecase *CaseUseCase) updateCaseCreateEvents(ctx context.Context, exec repositories.Executor, updateCaseAttributes models.UpdateCaseAttributes, oldCase models.Case, userId string) error {
+func (usecase *CaseUseCase) updateCaseCreateEvents(ctx context.Context, exec repositories.Executor,
+	updateCaseAttributes models.UpdateCaseAttributes, oldCase models.Case, userId string,
+) error {
 	var err error
 	if updateCaseAttributes.Name != "" && updateCaseAttributes.Name != oldCase.Name {
 		err = usecase.repository.CreateCaseEvent(ctx, exec, models.CreateCaseEventAttributes{
@@ -300,7 +322,9 @@ func (usecase *CaseUseCase) updateCaseCreateEvents(ctx context.Context, exec rep
 }
 
 func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, caseId string, decisionIds []string) (models.Case, error) {
-	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Executor) (models.Case, error) {
+	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
+		tx repositories.Executor,
+	) (models.Case, error) {
 		c, err := usecase.repository.GetCaseById(ctx, tx, caseId)
 		if err != nil {
 			return models.Case{}, err
@@ -330,12 +354,18 @@ func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, case
 		return models.Case{}, err
 	}
 
-	tracking.TrackEvent(ctx, models.AnalyticsDecisionsAdded, map[string]interface{}{"case_id": updatedCase.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsDecisionsAdded, map[string]interface{}{
+		"case_id": updatedCase.Id,
+	})
 	return updatedCase, nil
 }
 
-func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string, caseCommentAttributes models.CreateCaseCommentAttributes) (models.Case, error) {
-	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Executor) (models.Case, error) {
+func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string,
+	caseCommentAttributes models.CreateCaseCommentAttributes,
+) (models.Case, error) {
+	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
+		tx repositories.Executor,
+	) (models.Case, error) {
 		c, err := usecase.repository.GetCaseById(ctx, tx, caseCommentAttributes.Id)
 		if err != nil {
 			return models.Case{}, err
@@ -368,12 +398,18 @@ func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string
 		return models.Case{}, err
 	}
 
-	tracking.TrackEvent(ctx, models.AnalyticsCaseCommentCreated, map[string]interface{}{"case_id": updatedCase.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsCaseCommentCreated, map[string]interface{}{
+		"case_id": updatedCase.Id,
+	})
 	return updatedCase, nil
 }
 
-func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string, caseTagAttributes models.CreateCaseTagsAttributes) (models.Case, error) {
-	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Executor) (models.Case, error) {
+func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string,
+	caseTagAttributes models.CreateCaseTagsAttributes,
+) (models.Case, error) {
+	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
+		tx repositories.Executor,
+	) (models.Case, error) {
 		c, err := usecase.repository.GetCaseById(ctx, tx, caseTagAttributes.CaseId)
 		if err != nil {
 			return models.Case{}, err
@@ -391,7 +427,8 @@ func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string, c
 		if err != nil {
 			return models.Case{}, err
 		}
-		previousTagIds := pure_utils.Map(previousCaseTags, func(caseTag models.CaseTag) string { return caseTag.TagId })
+		previousTagIds := pure_utils.Map(previousCaseTags,
+			func(caseTag models.CaseTag) string { return caseTag.TagId })
 
 		for _, tagId := range caseTagAttributes.TagIds {
 			if !slices.Contains(previousTagIds, tagId) {
@@ -431,7 +468,9 @@ func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string, c
 		return models.Case{}, err
 	}
 
-	tracking.TrackEvent(ctx, models.AnalyticsCaseTagsUpdated, map[string]interface{}{"case_id": updatedCase.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsCaseTagsUpdated, map[string]interface{}{
+		"case_id": updatedCase.Id,
+	})
 	return updatedCase, nil
 }
 
@@ -493,13 +532,16 @@ func (usecase *CaseUseCase) validateDecisions(ctx context.Context, exec reposito
 
 	for _, decision := range decisions {
 		if decision.Case != nil && decision.Case.Id != "" {
-			return fmt.Errorf("decision %s already belongs to a case %s %w", decision.DecisionId, (*decision.Case).Id, models.BadParameterError)
+			return fmt.Errorf("decision %s already belongs to a case %s %w",
+				decision.DecisionId, (*decision.Case).Id, models.BadParameterError)
 		}
 	}
 	return nil
 }
 
-func (usecase *CaseUseCase) updateDecisionsWithEvents(ctx context.Context, exec repositories.Executor, caseId, userId string, decisionIds []string) error {
+func (usecase *CaseUseCase) updateDecisionsWithEvents(ctx context.Context,
+	exec repositories.Executor, caseId, userId string, decisionIds []string,
+) error {
 	if len(decisionIds) > 0 {
 		if err := usecase.decisionRepository.UpdateDecisionCaseId(ctx, exec, decisionIds, caseId); err != nil {
 			return err
@@ -516,7 +558,8 @@ func (usecase *CaseUseCase) updateDecisionsWithEvents(ctx context.Context, exec 
 				ResourceType: &resourceType,
 			}
 		}
-		if err := usecase.repository.BatchCreateCaseEvents(ctx, exec, createCaseEventAttributes); err != nil {
+		if err := usecase.repository.BatchCreateCaseEvents(ctx, exec,
+			createCaseEventAttributes); err != nil {
 			return err
 		}
 	}
@@ -536,10 +579,14 @@ func (usecase *CaseUseCase) createCaseContributorIfNotExist(ctx context.Context,
 
 func trackCaseUpdatedEvents(ctx context.Context, caseId string, updateCaseAttributes models.UpdateCaseAttributes) {
 	if updateCaseAttributes.Status != "" {
-		tracking.TrackEvent(ctx, models.AnalyticsCaseStatusUpdated, map[string]interface{}{"case_id": caseId})
+		tracking.TrackEvent(ctx, models.AnalyticsCaseStatusUpdated, map[string]interface{}{
+			"case_id": caseId,
+		})
 	}
 	if updateCaseAttributes.Name != "" {
-		tracking.TrackEvent(ctx, models.AnalyticsCaseUpdated, map[string]interface{}{"case_id": caseId})
+		tracking.TrackEvent(ctx, models.AnalyticsCaseUpdated, map[string]interface{}{
+			"case_id": caseId,
+		})
 	}
 }
 
@@ -593,7 +640,9 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 		return models.Case{}, err
 	}
 
-	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Executor) (models.Case, error) {
+	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
+		tx repositories.Executor,
+	) (models.Case, error) {
 		if err := usecase.createCaseContributorIfNotExist(ctx, tx, input.CaseId, userId); err != nil {
 			return models.Case{}, err
 		}
@@ -639,7 +688,9 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 		return models.Case{}, err
 	}
 
-	tracking.TrackEvent(ctx, models.AnalyticsCaseFileCreated, map[string]interface{}{"case_id": updatedCase.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsCaseFileCreated, map[string]interface{}{
+		"case_id": updatedCase.Id,
+	})
 	return updatedCase, nil
 }
 
@@ -653,7 +704,8 @@ func validateFileType(file *multipart.FileHeader) error {
 		"application/pdf",
 		"image/",
 	}
-	errFileType := errors.Wrap(models.BadParameterError, fmt.Sprintf("file type not supported: %s", file.Header.Get("Content-Type")))
+	errFileType := errors.Wrap(models.BadParameterError,
+		fmt.Sprintf("file type not supported: %s", file.Header.Get("Content-Type")))
 	for _, supportedFileType := range supportedFileTypes {
 		if strings.HasPrefix(file.Header.Get("Content-Type"), supportedFileType) {
 			return nil

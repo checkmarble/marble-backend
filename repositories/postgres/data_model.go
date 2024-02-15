@@ -49,7 +49,8 @@ func (tx *Transaction) addDataModelField(ctx context.Context, tableID string, fi
 	`
 
 	var fieldID string
-	err := tx.QueryRow(ctx, query, tableID, field.Name, field.Type, field.Nullable, field.Description, field.IsEnum).Scan(&fieldID)
+	err := tx.QueryRow(ctx, query, tableID, field.Name, field.Type, field.Nullable,
+		field.Description, field.IsEnum).Scan(&fieldID)
 	if err != nil {
 		return "", fmt.Errorf("tx.QueryRow error: %w", err)
 	}
@@ -62,7 +63,8 @@ func (db *Database) CreateDataModelLink(ctx context.Context, link models.DataMod
 		VALUES ($1, $2, $3, $4, $5, $6)
 	`
 
-	_, err := db.pool.Exec(ctx, query, link.OrganizationID, link.Name, link.ParentTableID, link.ParentFieldID, link.ChildTableID, link.ChildFieldID)
+	_, err := db.pool.Exec(ctx, query, link.OrganizationID, link.Name, link.ParentTableID,
+		link.ParentFieldID, link.ChildTableID, link.ChildFieldID)
 	if err != nil {
 		return fmt.Errorf("tx.Exec error: %w", err)
 	}
@@ -102,7 +104,9 @@ func (db *Database) DeleteDataModel(ctx context.Context, organizationID string) 
 	return nil
 }
 
-func (db *Database) CreateDataModelTable(ctx context.Context, organizationID, name, description string, defaultFields []models.DataModelField) (string, error) {
+func (db *Database) CreateDataModelTable(ctx context.Context,
+	organizationID, name, description string, defaultFields []models.DataModelField,
+) (string, error) {
 	tx, err := db.Begin(ctx)
 	if err != nil {
 		return "", err

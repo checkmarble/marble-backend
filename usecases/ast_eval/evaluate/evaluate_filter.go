@@ -50,7 +50,8 @@ func (f FilterEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) 
 	validTypes, isValid := ValidTypeForFilterOperators[operator]
 	if !isValid {
 		return MakeEvaluateError(errors.Join(
-			errors.Wrap(models.ErrRuntimeExpression, fmt.Sprintf("operator %s is not valid in Evaluate filter", operator)),
+			errors.Wrap(models.ErrRuntimeExpression,
+				fmt.Sprintf("operator %s is not valid in Evaluate filter", operator)),
 			ast.NewNamedArgumentError("operator"),
 		))
 	}
@@ -58,7 +59,8 @@ func (f FilterEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) 
 	isValidFieldType := slices.Contains(validTypes, fieldType)
 	if !isValidFieldType {
 		return MakeEvaluateError(errors.Join(
-			errors.Wrap(ast.ErrArgumentInvalidType, fmt.Sprintf("field type %s is not valid for operator %s in Evaluate filter", fieldType.String(), operator)),
+			errors.Wrap(ast.ErrArgumentInvalidType,
+				fmt.Sprintf("field type %s is not valid for operator %s in Evaluate filter", fieldType.String(), operator)),
 			ast.NewNamedArgumentError("fieldName"),
 		))
 	}
@@ -77,7 +79,8 @@ func (f FilterEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) 
 		}
 		if err != nil {
 			return MakeEvaluateError(errors.Join(
-				errors.Wrap(ast.ErrArgumentInvalidType, fmt.Sprintf("value is not compatible with selected field %s.%s in Evaluate filter", tableNameStr, fieldNameStr)),
+				errors.Wrap(ast.ErrArgumentInvalidType,
+					fmt.Sprintf("value is not compatible with selected field %s.%s in Evaluate filter", tableNameStr, fieldNameStr)),
 				ast.NewNamedArgumentError("value"),
 				err,
 			))

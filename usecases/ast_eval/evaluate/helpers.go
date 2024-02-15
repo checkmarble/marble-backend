@@ -62,7 +62,8 @@ func AdaptNamedArgument[T any](namedArgs map[string]any, name string, adapter fu
 	if !ok {
 		var zero T
 		return zero, errors.Join(
-			errors.Wrap(ast.NewNamedArgumentError(name), fmt.Sprintf("missing named argument %s not found", name)),
+			errors.Wrap(ast.NewNamedArgumentError(name),
+				fmt.Sprintf("missing named argument %s not found", name)),
 			ast.ErrMissingNamedArgument,
 		)
 	}

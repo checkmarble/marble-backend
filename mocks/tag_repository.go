@@ -15,7 +15,9 @@ func (_m *TagUseCaseRepository) ListOrganizationTags(exec repositories.Executor,
 	return args.Get(0).([]models.Tag), args.Error(1)
 }
 
-func (_m *TagUseCaseRepository) CreateTag(exec repositories.Executor, attributes models.CreateTagAttributes, newTagId string) error {
+func (_m *TagUseCaseRepository) CreateTag(exec repositories.Executor,
+	attributes models.CreateTagAttributes, newTagId string,
+) error {
 	args := _m.Called(exec, attributes, newTagId)
 	return args.Error(0)
 }

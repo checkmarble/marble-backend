@@ -16,7 +16,9 @@ type PopulateOrganizationSchema struct {
 	DataModelRepository          repositories.DataModelRepository
 }
 
-func (p *PopulateOrganizationSchema) CreateOrganizationSchema(ctx context.Context, exec repositories.Executor, organization models.Organization, database models.Database) error {
+func (p *PopulateOrganizationSchema) CreateOrganizationSchema(ctx context.Context,
+	exec repositories.Executor, organization models.Organization, database models.Database,
+) error {
 	orgDatabaseSchema := models.DatabaseSchema{
 		SchemaType: models.DATABASE_SCHEMA_TYPE_CLIENT,
 		Database:   database,
@@ -40,14 +42,17 @@ func (p *PopulateOrganizationSchema) CreateTable(ctx context.Context, exec repos
 		return err
 	}
 
-	if err := p.OrganizationSchemaRepository.CreateSchema(ctx, db, orgSchema.DatabaseSchema.Schema); err != nil {
+	if err := p.OrganizationSchemaRepository.CreateSchema(ctx, db,
+		orgSchema.DatabaseSchema.Schema); err != nil {
 		return err
 	}
 
 	return p.OrganizationSchemaRepository.CreateTable(ctx, db, orgSchema.DatabaseSchema.Schema, tableName)
 }
 
-func (p *PopulateOrganizationSchema) CreateField(ctx context.Context, tx repositories.Executor, organizationId, tableName string, field models.DataModelField) error {
+func (p *PopulateOrganizationSchema) CreateField(ctx context.Context, tx repositories.Executor,
+	organizationId, tableName string, field models.DataModelField,
+) error {
 	orgSchema, err := p.OrganizationSchemaRepository.OrganizationSchemaOfOrganization(ctx, tx, organizationId)
 	if err != nil {
 		return err

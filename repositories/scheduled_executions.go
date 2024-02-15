@@ -53,7 +53,9 @@ func (repo *MarbleDbRepository) GetScheduledExecution(ctx context.Context, exec 
 	)
 }
 
-func (repo *MarbleDbRepository) ListScheduledExecutions(ctx context.Context, exec Executor, filters models.ListScheduledExecutionsFilters) ([]models.ScheduledExecution, error) {
+func (repo *MarbleDbRepository) ListScheduledExecutions(ctx context.Context, exec Executor,
+	filters models.ListScheduledExecutionsFilters,
+) ([]models.ScheduledExecution, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -83,7 +85,9 @@ func (repo *MarbleDbRepository) ListScheduledExecutions(ctx context.Context, exe
 	)
 }
 
-func (repo *MarbleDbRepository) CreateScheduledExecution(ctx context.Context, exec Executor, createScheduledEx models.CreateScheduledExecutionInput, newScheduledExecutionId string) error {
+func (repo *MarbleDbRepository) CreateScheduledExecution(ctx context.Context, exec Executor,
+	createScheduledEx models.CreateScheduledExecutionInput, newScheduledExecutionId string,
+) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -112,7 +116,9 @@ func (repo *MarbleDbRepository) CreateScheduledExecution(ctx context.Context, ex
 	return err
 }
 
-func (repo *MarbleDbRepository) UpdateScheduledExecution(ctx context.Context, exec Executor, updateScheduledEx models.UpdateScheduledExecutionInput) error {
+func (repo *MarbleDbRepository) UpdateScheduledExecution(ctx context.Context, exec Executor,
+	updateScheduledEx models.UpdateScheduledExecutionInput,
+) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -127,7 +133,8 @@ func (repo *MarbleDbRepository) UpdateScheduledExecution(ctx context.Context, ex
 	}
 
 	if updateScheduledEx.NumberOfCreatedDecisions != nil {
-		query = query.Set("number_of_created_decisions", *updateScheduledEx.NumberOfCreatedDecisions)
+		query = query.Set("number_of_created_decisions",
+			*updateScheduledEx.NumberOfCreatedDecisions)
 	}
 
 	err := ExecBuilder(ctx, exec, query)
