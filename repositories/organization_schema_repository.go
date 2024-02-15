@@ -99,7 +99,7 @@ func (repo *OrganizationSchemaRepositoryPostgresql) CreateField(ctx context.Cont
 func (repo *OrganizationSchemaRepositoryPostgresql) CreateOrganizationSchema(ctx context.Context, exec Executor, createOrganizationSchema models.OrganizationSchema) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().Insert(dbmodels.ORGANIZATION_SCHEMA_TABLE).

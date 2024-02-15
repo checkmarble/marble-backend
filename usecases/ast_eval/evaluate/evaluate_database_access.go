@@ -72,15 +72,15 @@ func (d DatabaseAccess) getDbField(ctx context.Context, tableName models.TableNa
 		return DryRunGetDbField(d.DataModel, tableName, path, fieldName)
 	}
 
-	if db, err := d.ClientSchemaExecutorFactory.NewClientDbExecutor(ctx, d.OrganizationId); err != nil {
+	db, err := d.ClientSchemaExecutorFactory.NewClientDbExecutor(ctx, d.OrganizationId)
+	if err != nil {
 		return nil, err
-	} else {
-		return d.IngestedDataReadRepository.GetDbField(ctx, db, models.DbFieldReadParams{
-			TriggerTableName: models.TableName(tableName),
-			Path:             models.ToLinkNames(path),
-			FieldName:        models.FieldName(fieldName),
-			DataModel:        d.DataModel,
-			Payload:          d.Payload,
-		})
 	}
+	return d.IngestedDataReadRepository.GetDbField(ctx, db, models.DbFieldReadParams{
+		TriggerTableName: models.TableName(tableName),
+		Path:             models.ToLinkNames(path),
+		FieldName:        models.FieldName(fieldName),
+		DataModel:        d.DataModel,
+		Payload:          d.Payload,
+	})
 }

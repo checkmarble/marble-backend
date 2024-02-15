@@ -57,7 +57,7 @@ func (repo *MarbleDbRepository) BatchCreateCaseEvents(ctx context.Context, exec 
 		)
 	}
 
-	_, err := ExecBuilder(ctx, exec, query)
+	err := ExecBuilder(ctx, exec, query)
 
 	return err
 }

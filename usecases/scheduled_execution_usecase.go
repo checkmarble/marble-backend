@@ -37,7 +37,7 @@ type ScheduledExecutionUsecase struct {
 }
 
 func (usecase *ScheduledExecutionUsecase) GetScheduledExecution(ctx context.Context, id string) (models.ScheduledExecution, error) {
-	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Executor) (models.ScheduledExecution, error) {
+	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Executor) (models.ScheduledExecution, error) {
 		execution, err := usecase.repository.GetScheduledExecution(ctx, tx, id)
 		if err != nil {
 			return models.ScheduledExecution{}, err
@@ -50,7 +50,7 @@ func (usecase *ScheduledExecutionUsecase) GetScheduledExecution(ctx context.Cont
 }
 
 func (usecase *ScheduledExecutionUsecase) ExportScheduledExecutionDecisions(ctx context.Context, scheduledExecutionID string, w io.Writer) (int, error) {
-	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Executor) (int, error) {
+	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Executor) (int, error) {
 		execution, err := usecase.repository.GetScheduledExecution(ctx, tx, scheduledExecutionID)
 		if err != nil {
 			return 0, err
@@ -67,7 +67,7 @@ func (usecase *ScheduledExecutionUsecase) ExportScheduledExecutionDecisions(ctx 
 // The optional argument 'scenarioId' can be used to filter the returned list.
 func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(ctx context.Context, scenarioId string) ([]models.ScheduledExecution, error) {
 
-	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Executor) ([]models.ScheduledExecution, error) {
+	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Executor) ([]models.ScheduledExecution, error) {
 
 		var executions []models.ScheduledExecution
 		if scenarioId == "" {

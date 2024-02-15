@@ -61,7 +61,7 @@ func (repo *ScenarioPublicationRepositoryPostgresql) ListScenarioPublicationsOfO
 func (repo *ScenarioPublicationRepositoryPostgresql) CreateScenarioPublication(ctx context.Context, exec Executor, input models.CreateScenarioPublicationInput, newScenarioPublicationId string) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().Insert(dbmodels.TABLE_SCENARIOS_PUBLICATIONS).

@@ -24,7 +24,7 @@ type UploadLogRepositoryImpl struct {
 func (repo *UploadLogRepositoryImpl) CreateUploadLog(ctx context.Context, exec Executor, log models.UploadLog) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().Insert(dbmodels.TABLE_UPLOAD_LOGS).
@@ -67,7 +67,7 @@ func (repo *UploadLogRepositoryImpl) UpdateUploadLog(ctx context.Context, exec E
 	}
 	updateRequest = updateRequest.Where("id = ?", input.Id)
 
-	_, err := ExecBuilder(ctx, exec, updateRequest)
+	err := ExecBuilder(ctx, exec, updateRequest)
 	return err
 }
 

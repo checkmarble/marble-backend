@@ -33,7 +33,6 @@ type RuleUsecase struct {
 func (usecase *RuleUsecase) ListRules(ctx context.Context, iterationId string) ([]models.Rule, error) {
 	return executor_factory.TransactionReturnValue(ctx,
 		usecase.transactionFactory,
-		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Executor) ([]models.Rule, error) {
 			scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, tx, iterationId)
 			if err != nil {
@@ -49,7 +48,6 @@ func (usecase *RuleUsecase) ListRules(ctx context.Context, iterationId string) (
 func (usecase *RuleUsecase) CreateRule(ctx context.Context, ruleInput models.CreateRuleInput) (models.Rule, error) {
 	rule, err := executor_factory.TransactionReturnValue(ctx,
 		usecase.transactionFactory,
-		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Executor) (models.Rule, error) {
 			organizationId, err := usecase.organizationIdOfContext()
 			if err != nil {
@@ -87,7 +85,6 @@ func (usecase *RuleUsecase) CreateRule(ctx context.Context, ruleInput models.Cre
 func (usecase *RuleUsecase) GetRule(ctx context.Context, ruleId string) (models.Rule, error) {
 	return executor_factory.TransactionReturnValue(ctx,
 		usecase.transactionFactory,
-		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Executor) (models.Rule, error) {
 			rule, err := usecase.repository.GetRuleById(ctx, tx, ruleId)
 			if err != nil {

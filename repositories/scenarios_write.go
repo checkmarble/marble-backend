@@ -10,7 +10,7 @@ import (
 func (repo *MarbleDbRepository) CreateScenario(ctx context.Context, exec Executor, organizationId string, scenario models.CreateScenarioInput, newScenarioId string) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().Insert(dbmodels.TABLE_SCENARIOS).
@@ -50,7 +50,7 @@ func (repo *MarbleDbRepository) UpdateScenario(ctx context.Context, exec Executo
 		sql = sql.Set("description", scenario.Description)
 	}
 
-	if _, err := ExecBuilder(ctx, exec, sql); err != nil {
+	if err := ExecBuilder(ctx, exec, sql); err != nil {
 		return err
 	}
 
@@ -65,7 +65,7 @@ func (repo *MarbleDbRepository) UpdateScenarioLiveIterationId(ctx context.Contex
 		Where("id = ?", scenarioId).
 		Set("live_scenario_iteration_id", scenarioIterationId)
 
-	if _, err := ExecBuilder(ctx, exec, sql); err != nil {
+	if err := ExecBuilder(ctx, exec, sql); err != nil {
 		return err
 	}
 	return nil

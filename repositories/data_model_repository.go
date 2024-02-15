@@ -126,7 +126,7 @@ func (repo *DataModelRepositoryPostgresql) GetDataModelTable(ctx context.Context
 func (repo *DataModelRepositoryPostgresql) UpdateDataModelTable(ctx context.Context, exec Executor, tableID, description string) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().
@@ -155,7 +155,7 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelField(ctx context.Cont
 func (repo *DataModelRepositoryPostgresql) UpdateDataModelField(ctx context.Context, exec Executor, fieldID, description string) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().
@@ -169,7 +169,7 @@ func (repo *DataModelRepositoryPostgresql) UpdateDataModelField(ctx context.Cont
 func (repo *DataModelRepositoryPostgresql) CreateDataModelLink(ctx context.Context, exec Executor, link models.DataModelLink) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().
@@ -255,7 +255,7 @@ func (repo *DataModelRepositoryPostgresql) GetLinks(ctx context.Context, exec Ex
 func (repo *DataModelRepositoryPostgresql) DeleteDataModel(ctx context.Context, exec Executor, organizationID string) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().
@@ -266,7 +266,7 @@ func (repo *DataModelRepositoryPostgresql) DeleteDataModel(ctx context.Context, 
 		return err
 	}
 
-	_, err = ExecBuilder(
+	err = ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().

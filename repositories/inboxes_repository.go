@@ -64,7 +64,7 @@ func selectInboxesJoinUsers() squirrel.SelectBuilder {
 func (repo *MarbleDbRepository) CreateInbox(ctx context.Context, exec Executor, input models.CreateInboxInput, newInboxId string) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().Insert(dbmodels.TABLE_INBOXES).
@@ -85,7 +85,7 @@ func (repo *MarbleDbRepository) CreateInbox(ctx context.Context, exec Executor, 
 func (repo *MarbleDbRepository) UpdateInbox(ctx context.Context, exec Executor, inboxId, name string) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().Update(dbmodels.TABLE_INBOXES).
@@ -99,7 +99,7 @@ func (repo *MarbleDbRepository) UpdateInbox(ctx context.Context, exec Executor, 
 func (repo *MarbleDbRepository) SoftDeleteInbox(ctx context.Context, exec Executor, inboxId string) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().Update(dbmodels.TABLE_INBOXES).

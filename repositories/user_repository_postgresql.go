@@ -35,7 +35,7 @@ func (repo *UserRepositoryPostgresql) CreateUser(ctx context.Context, exec Execu
 		organizationId = &createUser.OrganizationId
 	}
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().Insert(dbmodels.TABLE_USERS).
@@ -77,14 +77,14 @@ func (repo *UserRepositoryPostgresql) UpdateUser(ctx context.Context, exec Execu
 		query = query.Set("last_name", updateUser.LastName)
 	}
 
-	_, err := ExecBuilder(ctx, exec, query)
+	err := ExecBuilder(ctx, exec, query)
 	return err
 }
 
 func (repo *UserRepositoryPostgresql) DeleteUser(ctx context.Context, exec Executor, userID models.UserId) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().
@@ -98,7 +98,7 @@ func (repo *UserRepositoryPostgresql) DeleteUser(ctx context.Context, exec Execu
 func (repo *UserRepositoryPostgresql) DeleteUsersOfOrganization(ctx context.Context, exec Executor, organizationId string) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().Delete(dbmodels.TABLE_USERS).Where("organization_id = ?", string(organizationId)),

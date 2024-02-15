@@ -37,7 +37,7 @@ func (repo *MarbleDbRepository) CreateCaseContributor(ctx context.Context, exec 
 			userId,
 		)
 
-	_, err := ExecBuilder(ctx, exec, query)
+	err := ExecBuilder(ctx, exec, query)
 
 	return err
 }

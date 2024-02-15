@@ -29,7 +29,7 @@ func (repo *MarbleDbRepository) ListOrganizationTags(ctx context.Context, exec E
 func (repo *MarbleDbRepository) CreateTag(ctx context.Context, exec Executor, attributes models.CreateTagAttributes, newTagId string) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().Insert(dbmodels.TABLE_TAGS).
@@ -60,7 +60,7 @@ func (repo *MarbleDbRepository) UpdateTag(ctx context.Context, exec Executor, at
 	if attributes.Name != "" {
 		query = query.Set("name", attributes.Name)
 	}
-	_, err := ExecBuilder(ctx, exec, query)
+	err := ExecBuilder(ctx, exec, query)
 	return err
 }
 
@@ -84,6 +84,6 @@ func (repo *MarbleDbRepository) SoftDeleteTag(ctx context.Context, exec Executor
 	query = query.Set("deleted_at", squirrel.Expr("NOW()"))
 	query = query.Set("updated_at", squirrel.Expr("NOW()"))
 
-	_, err := ExecBuilder(ctx, exec, query)
+	err := ExecBuilder(ctx, exec, query)
 	return err
 }

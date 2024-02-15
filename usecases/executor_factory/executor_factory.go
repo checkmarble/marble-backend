@@ -79,3 +79,7 @@ func (factory DbExecutorFactory) NewClientDbExecutor(
 
 	return factory.transactionFactoryRepository.GetExecutor(schema), nil
 }
+
+func (factory DbExecutorFactory) NewExecutor() repositories.Executor {
+	return factory.transactionFactoryRepository.GetExecutor(models.DATABASE_MARBLE_SCHEMA)
+}

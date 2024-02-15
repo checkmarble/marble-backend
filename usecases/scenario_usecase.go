@@ -62,7 +62,6 @@ func (usecase *ScenarioUsecase) UpdateScenario(ctx context.Context, scenarioInpu
 	return executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
-		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Executor) (models.Scenario, error) {
 			scenario, err := usecase.repository.GetScenarioById(ctx, tx, scenarioInput.Id)
 			if err != nil {
@@ -95,7 +94,6 @@ func (usecase *ScenarioUsecase) CreateScenario(ctx context.Context, scenario mod
 	cratedScenario, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
-		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Executor) (models.Scenario, error) {
 			newScenarioId := utils.NewPrimaryKey(organizationId)
 			if err := usecase.repository.CreateScenario(ctx, tx, organizationId, scenario, newScenarioId); err != nil {

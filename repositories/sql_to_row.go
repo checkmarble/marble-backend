@@ -100,3 +100,20 @@ func ForEachRow(ctx context.Context, exec Executor, query squirrel.Sqlizer, fn f
 
 	return errors.Wrap(rows.Err(), "error iterating over rows")
 }
+
+type SqlBuilder interface {
+	ToSql() (string, []interface{}, error)
+}
+
+func ExecBuilder(ctx context.Context, exec Executor, builder SqlBuilder) (err error) {
+	query, args, err := builder.ToSql()
+	if err != nil {
+		return errors.Wrap(err, "can't build sql query")
+	}
+
+	_, err = exec.Exec(ctx, query, args...)
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("error executing sql query: %s", query))
+	}
+	return nil
+}

@@ -125,7 +125,7 @@ func (usecase *RunScheduledExecution) ExecuteScheduledScenario(ctx context.Conte
 		return err
 	}
 
-	scheduledExecution, err := executor_factory.TransactionReturnValue(ctx, usecase.TransactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Executor) (models.ScheduledExecution, error) {
+	scheduledExecution, err := executor_factory.TransactionReturnValue(ctx, usecase.TransactionFactory, func(tx repositories.Executor) (models.ScheduledExecution, error) {
 		numberOfCreatedDecisions, err := usecase.executeScheduledScenario(ctx, scheduledExecution.Id, scheduledExecution.Scenario)
 		if err != nil {
 			return scheduledExecution, err

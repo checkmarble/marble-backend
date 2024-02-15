@@ -79,7 +79,6 @@ func (usecase *DecisionUsecase) ListDecisions(ctx context.Context, organizationI
 	return executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
-		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Executor) ([]models.DecisionWithRank, error) {
 			decisions, err := usecase.decisionRepository.DecisionsOfOrganization(ctx, tx, organizationId, paginationAndSorting, models.DecisionFilters{
 				ScenarioIds:    filters.ScenarioIds,
@@ -203,7 +202,7 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 		Score:               scenarioExecution.Score,
 	}
 
-	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Executor) (models.Decision, error) {
+	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Executor) (models.Decision, error) {
 		err = usecase.decisionRepository.StoreDecision(ctx, tx, decision, input.OrganizationId, newDecisionId)
 		if err != nil {
 			return models.Decision{}, fmt.Errorf("error storing decision: %w", err)

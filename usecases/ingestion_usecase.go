@@ -129,7 +129,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 	}
 
 	return executor_factory.TransactionReturnValue(ctx,
-		usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Executor) (models.UploadLog, error) {
+		usecase.transactionFactory, func(tx repositories.Executor) (models.UploadLog, error) {
 			newUploadListId := uuid.NewString()
 			newUploadLoad := models.UploadLog{
 				Id:             newUploadListId,

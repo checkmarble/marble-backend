@@ -26,7 +26,6 @@ func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.Creat
 	createdUser, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
-		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Executor) (models.User, error) {
 			// cleanup spaces
 			createUser.Email = strings.TrimSpace(createUser.Email)
@@ -55,7 +54,6 @@ func (usecase *UserUseCase) UpdateUser(ctx context.Context, updateUser models.Up
 	updatedUser, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
-		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Executor) (models.User, error) {
 			user, err := usecase.userRepository.UserByID(ctx, tx, updateUser.UserId)
 			if err != nil {
@@ -111,7 +109,6 @@ func (usecase *UserUseCase) GetAllUsers(ctx context.Context) ([]models.User, err
 	return executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
-		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Executor) ([]models.User, error) {
 			return usecase.userRepository.AllUsers(ctx, tx)
 		},
@@ -125,7 +122,6 @@ func (usecase *UserUseCase) GetUser(ctx context.Context, userID string) (models.
 	return executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
-		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Executor) (models.User, error) {
 			return usecase.userRepository.UserByID(ctx, tx, models.UserId(userID))
 		},
