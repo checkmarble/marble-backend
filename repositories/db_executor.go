@@ -2,10 +2,8 @@ package repositories
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/pkg/errors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -37,21 +35,4 @@ func (e ExecutorPostgres) Query(ctx context.Context, sql string, args ...any) (p
 
 func (e ExecutorPostgres) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
 	return e.exec.QueryRow(ctx, sql, args...)
-}
-
-type SqlBuilder interface {
-	ToSql() (string, []interface{}, error)
-}
-
-func ExecBuilder(ctx context.Context, exec Executor, builder SqlBuilder) (rowsAffected int64, err error) {
-	query, args, err := builder.ToSql()
-	if err != nil {
-		return 0, errors.Wrap(err, "can't build sql query")
-	}
-
-	tag, err := exec.Exec(ctx, query, args...)
-	if err != nil {
-		return 0, errors.Wrap(err, fmt.Sprintf("error executing sql query: %s", query))
-	}
-	return tag.RowsAffected(), nil
 }

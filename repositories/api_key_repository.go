@@ -57,7 +57,7 @@ func (repo *MarbleDbRepository) ListApiKeys(ctx context.Context, exec Executor, 
 func (repo *MarbleDbRepository) CreateApiKey(ctx context.Context, exec Executor, apiKey models.CreateApiKey) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().
@@ -83,7 +83,7 @@ func (repo *MarbleDbRepository) CreateApiKey(ctx context.Context, exec Executor,
 func (repo *MarbleDbRepository) SoftDeleteApiKey(ctx context.Context, exec Executor, apiKeyId string) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().

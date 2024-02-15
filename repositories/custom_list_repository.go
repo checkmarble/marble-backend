@@ -89,7 +89,7 @@ func (repo *CustomListRepositoryPostgresql) CreateCustomList(
 ) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().Insert(dbmodels.TABLE_CUSTOM_LIST).
@@ -124,7 +124,7 @@ func (repo *CustomListRepositoryPostgresql) UpdateCustomList(ctx context.Context
 
 	updateRequest = updateRequest.Where("id = ?", updateCustomList.Id)
 
-	_, err := ExecBuilder(ctx, exec, updateRequest)
+	err := ExecBuilder(ctx, exec, updateRequest)
 	return err
 }
 
@@ -135,7 +135,7 @@ func (repo *CustomListRepositoryPostgresql) SoftDeleteCustomList(ctx context.Con
 	softDeleteRequest = softDeleteRequest.Set("updated_at", squirrel.Expr("NOW()"))
 	softDeleteRequest = softDeleteRequest.Where("id = ?", listId)
 
-	_, err := ExecBuilder(ctx, exec, softDeleteRequest)
+	err := ExecBuilder(ctx, exec, softDeleteRequest)
 	return err
 }
 
@@ -147,7 +147,7 @@ func (repo *CustomListRepositoryPostgresql) AddCustomListValue(
 ) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().Insert(dbmodels.TABLE_CUSTOM_LIST_VALUE).
@@ -178,6 +178,6 @@ func (repo *CustomListRepositoryPostgresql) DeleteCustomListValue(
 
 	deleteRequest = deleteRequest.Where("id = ? AND custom_list_id = ?", deleteCustomListValue.Id, deleteCustomListValue.CustomListId)
 
-	_, err := ExecBuilder(ctx, exec, deleteRequest)
+	err := ExecBuilder(ctx, exec, deleteRequest)
 	return err
 }

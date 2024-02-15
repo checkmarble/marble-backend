@@ -55,14 +55,14 @@ func (repo *MarbleDbRepository) UpdateRule(ctx context.Context, exec Executor, r
 		SetMap(utils.ColumnValueMap(dbUpdateRuleInput)).
 		Where("id = ?", rule.Id)
 
-	_, err = ExecBuilder(ctx, exec, updateRequest)
+	err = ExecBuilder(ctx, exec, updateRequest)
 	return err
 }
 
 func (repo *MarbleDbRepository) DeleteRule(ctx context.Context, exec Executor, ruleID string) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(ctx, exec, NewQueryBuilder().Delete(dbmodels.TABLE_RULES).Where("id = ?", ruleID))
+	err := ExecBuilder(ctx, exec, NewQueryBuilder().Delete(dbmodels.TABLE_RULES).Where("id = ?", ruleID))
 	return err
 }
 

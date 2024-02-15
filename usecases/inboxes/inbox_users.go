@@ -91,7 +91,6 @@ func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.Cre
 	inboxUser, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.TransactionFactory,
-		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Executor) (models.InboxUser, error) {
 			thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(ctx, tx, models.InboxUserFilterInput{
 				UserId: usecase.Credentials.ActorIdentity.UserId,
@@ -139,7 +138,6 @@ func (usecase *InboxUsers) UpdateInboxUser(ctx context.Context, inboxUserId stri
 	inboxUser, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.TransactionFactory,
-		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Executor) (models.InboxUser, error) {
 			thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(ctx, tx, models.InboxUserFilterInput{
 				UserId: usecase.Credentials.ActorIdentity.UserId,

@@ -49,7 +49,7 @@ func (repo *OrganizationRepositoryPostgresql) GetOrganizationById(ctx context.Co
 func (repo *OrganizationRepositoryPostgresql) CreateOrganization(ctx context.Context, exec Executor, createOrganization models.CreateOrganizationInput, newOrganizationId string) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().Insert(dbmodels.TABLE_ORGANIZATION).
@@ -84,13 +84,13 @@ func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(ctx context.Con
 
 	updateRequest = updateRequest.Where("id = ?", updateOrganization.Id)
 
-	_, err := ExecBuilder(ctx, exec, updateRequest)
+	err := ExecBuilder(ctx, exec, updateRequest)
 	return err
 }
 
 func (repo *OrganizationRepositoryPostgresql) DeleteOrganization(ctx context.Context, exec Executor, organizationId string) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(ctx, exec, NewQueryBuilder().Delete(dbmodels.TABLE_ORGANIZATION).Where("id = ?", organizationId))
+	err := ExecBuilder(ctx, exec, NewQueryBuilder().Delete(dbmodels.TABLE_ORGANIZATION).Where("id = ?", organizationId))
 	return err
 }

@@ -67,7 +67,6 @@ func (usecase *ApiKeyUseCase) CreateApiKey(ctx context.Context, input models.Cre
 	apiKey, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
-		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Executor) (models.CreatedApiKey, error) {
 			if err := usecase.enforceSecurity.CreateApiKey(input.OrganizationId); err != nil {
 				return models.CreatedApiKey{}, err

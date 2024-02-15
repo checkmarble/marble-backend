@@ -76,7 +76,7 @@ func (repo *MarbleDbRepository) GetCaseById(ctx context.Context, exec Executor, 
 func (repo *MarbleDbRepository) CreateCase(ctx context.Context, exec Executor, createCaseAttributes models.CreateCaseAttributes, newCaseId string) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().Insert(dbmodels.TABLE_CASES).
@@ -113,14 +113,14 @@ func (repo *MarbleDbRepository) UpdateCase(ctx context.Context, exec Executor, u
 		query = query.Set("status", updateCaseAttributes.Status)
 	}
 
-	_, err := ExecBuilder(ctx, exec, query)
+	err := ExecBuilder(ctx, exec, query)
 	return err
 }
 
 func (repo *MarbleDbRepository) CreateCaseTag(ctx context.Context, exec Executor, caseId, tagId string) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().Insert(dbmodels.TABLE_CASE_TAGS).
@@ -170,7 +170,7 @@ func (repo *MarbleDbRepository) SoftDeleteCaseTag(ctx context.Context, exec Exec
 	query := NewQueryBuilder().Update(dbmodels.TABLE_CASE_TAGS).Where(squirrel.Eq{"id": tagId})
 	query = query.Set("deleted_at", squirrel.Expr("NOW()"))
 
-	_, err := ExecBuilder(ctx, exec, query)
+	err := ExecBuilder(ctx, exec, query)
 	return err
 }
 
@@ -345,7 +345,7 @@ func selectCasesWithJoinedFields(query squirrel.SelectBuilder, p models.Paginati
 func (repo *MarbleDbRepository) CreateDbCaseFile(ctx context.Context, exec Executor, createCaseFileAttributes models.CreateDbCaseFileInput) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().Insert(dbmodels.TABLE_CASE_FILES).

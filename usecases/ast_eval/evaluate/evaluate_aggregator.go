@@ -100,11 +100,11 @@ func (a AggregatorEvaluator) runQueryInRepository(ctx context.Context, tableName
 		return DryRunQueryAggregatedValue(a.DataModel, tableName, fieldName, aggregator)
 	}
 
-	if db, err := a.ClientSchemaExecutorFactory.NewClientDbExecutor(ctx, a.OrganizationId); err != nil {
+	db, err := a.ClientSchemaExecutorFactory.NewClientDbExecutor(ctx, a.OrganizationId)
+	if err != nil {
 		return nil, err
-	} else {
-		return a.IngestedDataReadRepository.QueryAggregatedValue(ctx, db, tableName, fieldName, aggregator, filters)
 	}
+	return a.IngestedDataReadRepository.QueryAggregatedValue(ctx, db, tableName, fieldName, aggregator, filters)
 }
 
 func (a AggregatorEvaluator) defaultValueForAggregator(aggregator ast.Aggregator) (any, []error) {

@@ -51,7 +51,7 @@ func (usecase *OrganizationUseCase) UpdateOrganization(ctx context.Context, orga
 	if err := usecase.enforceSecurity.CreateOrganization(); err != nil {
 		return models.Organization{}, err
 	}
-	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Executor) (models.Organization, error) {
+	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Executor) (models.Organization, error) {
 		err := usecase.organizationRepository.UpdateOrganization(ctx, tx, organization)
 		if err != nil {
 			return models.Organization{}, err
@@ -105,7 +105,6 @@ func (usecase *OrganizationUseCase) GetUsersOfOrganization(ctx context.Context, 
 	return executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
-		models.DATABASE_MARBLE_SCHEMA,
 		func(tx repositories.Executor) ([]models.User, error) {
 			return usecase.userRepository.UsersOfOrganization(ctx, tx, organizationIDFilter)
 		},

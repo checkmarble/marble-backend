@@ -133,7 +133,7 @@ func (repo *IngestionRepositoryImpl) batchUpdateValidUntilOnObsoleteObjects(ctx 
 		Update(tableNameWithSchema(exec, tableName)).
 		Set("valid_until", "now()").
 		Where(squirrel.Eq{"id": obsoleteIngestedObjectIds})
-	_, err := ExecBuilder(ctx, exec, sql)
+	err := ExecBuilder(ctx, exec, sql)
 
 	return err
 }
@@ -163,7 +163,7 @@ func (repo *IngestionRepositoryImpl) batchInsertPayloadsAndEnumValues(ctx contex
 	columnNames = append(columnNames, "id")
 	query = query.Columns(columnNames...)
 
-	_, err = ExecBuilder(ctx, exec, query)
+	err = ExecBuilder(ctx, exec, query)
 
 	return err
 }
@@ -234,13 +234,13 @@ func (repo *IngestionRepositoryImpl) batchInsertEnumValues(ctx context.Context, 
 	}
 
 	if shouldInsertTextValues {
-		_, err := ExecBuilder(ctx, exec, textQuery)
+		err := ExecBuilder(ctx, exec, textQuery)
 		if err != nil {
 			return err
 		}
 	}
 	if shouldInsertFloatValues {
-		_, err := ExecBuilder(ctx, exec, floatQuery)
+		err := ExecBuilder(ctx, exec, floatQuery)
 		if err != nil {
 			return err
 		}

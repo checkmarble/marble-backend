@@ -303,7 +303,7 @@ func (repo *DecisionRepositoryImpl) DecisionsOfScheduledExecution(ctx context.Co
 func (repo *DecisionRepositoryImpl) StoreDecision(ctx context.Context, exec Executor, decision models.Decision, organizationId string, newDecisionId string) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().Insert(dbmodels.TABLE_DECISIONS).
@@ -370,7 +370,7 @@ func (repo *DecisionRepositoryImpl) StoreDecision(ctx context.Context, exec Exec
 				models.AdaptRuleExecutionError(ruleExecution.Error),
 			)
 	}
-	_, err = ExecBuilder(ctx, exec, builderForRules)
+	err = ExecBuilder(ctx, exec, builderForRules)
 	return err
 }
 
@@ -381,7 +381,7 @@ func (repo *DecisionRepositoryImpl) UpdateDecisionCaseId(ctx context.Context, ex
 		Set("case_id", caseId).
 		Where(squirrel.Eq{"id": decisionIds})
 
-	_, err := ExecBuilder(ctx, exec, query)
+	err := ExecBuilder(ctx, exec, query)
 	return err
 }
 

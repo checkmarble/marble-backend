@@ -41,7 +41,7 @@ func (usecase *CustomListUseCase) CreateCustomList(ctx context.Context, createCu
 		return models.CustomList{}, err
 	}
 
-	list, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Executor) (models.CustomList, error) {
+	list, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Executor) (models.CustomList, error) {
 		newCustomListId := uuid.NewString()
 		organizationId, err := usecase.organizationIdOfContext()
 		if err != nil {
@@ -67,7 +67,7 @@ func (usecase *CustomListUseCase) CreateCustomList(ctx context.Context, createCu
 }
 
 func (usecase *CustomListUseCase) UpdateCustomList(ctx context.Context, updateCustomList models.UpdateCustomListInput) (models.CustomList, error) {
-	list, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Executor) (models.CustomList, error) {
+	list, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Executor) (models.CustomList, error) {
 		if updateCustomList.Name != nil || updateCustomList.Description != nil {
 			customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, updateCustomList.Id)
 			if err != nil {
@@ -132,7 +132,7 @@ func (usecase *CustomListUseCase) GetCustomListValues(ctx context.Context, getCu
 }
 
 func (usecase *CustomListUseCase) AddCustomListValue(ctx context.Context, addCustomListValue models.AddCustomListValueInput) (models.CustomListValue, error) {
-	value, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Executor) (models.CustomListValue, error) {
+	value, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Executor) (models.CustomListValue, error) {
 		customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, addCustomListValue.CustomListId)
 		if err != nil {
 			return models.CustomListValue{}, err

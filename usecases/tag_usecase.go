@@ -42,7 +42,7 @@ func (usecase *TagUseCase) CreateTag(ctx context.Context, attributes models.Crea
 	}
 
 	tag, err := executor_factory.TransactionReturnValue(ctx,
-		usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Executor) (models.Tag, error) {
+		usecase.transactionFactory, func(tx repositories.Executor) (models.Tag, error) {
 			newTagId := uuid.NewString()
 			if err := usecase.repository.CreateTag(ctx, tx, attributes, newTagId); err != nil {
 				if repositories.IsUniqueViolationError(err) {
@@ -69,7 +69,7 @@ func (usecase *TagUseCase) UpdateTag(ctx context.Context, organizationId string,
 	if err := usecase.inboxReader.EnforceSecurity.CreateInbox(organizationId); err != nil {
 		return models.Tag{}, err
 	}
-	tag, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, models.DATABASE_MARBLE_SCHEMA, func(tx repositories.Executor) (models.Tag, error) {
+	tag, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Executor) (models.Tag, error) {
 		if err := usecase.repository.UpdateTag(ctx, tx, attributes); err != nil {
 			return models.Tag{}, err
 		}

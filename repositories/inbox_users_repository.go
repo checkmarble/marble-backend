@@ -52,7 +52,7 @@ func (repo *MarbleDbRepository) ListInboxUsers(ctx context.Context, exec Executo
 func (repo *MarbleDbRepository) CreateInboxUser(ctx context.Context, exec Executor, input models.CreateInboxUserInput, newInboxUserId string) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().Insert(dbmodels.TABLE_INBOX_USERS).
@@ -75,7 +75,7 @@ func (repo *MarbleDbRepository) CreateInboxUser(ctx context.Context, exec Execut
 func (repo *MarbleDbRepository) UpdateInboxUser(ctx context.Context, exec Executor, inboxUserId string, role models.InboxUserRole) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().Update(dbmodels.TABLE_INBOX_USERS).
@@ -89,7 +89,7 @@ func (repo *MarbleDbRepository) UpdateInboxUser(ctx context.Context, exec Execut
 func (repo *MarbleDbRepository) DeleteInboxUser(ctx context.Context, exec Executor, inboxUserId string) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().Delete(dbmodels.TABLE_INBOX_USERS).

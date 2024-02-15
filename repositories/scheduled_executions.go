@@ -83,7 +83,7 @@ func (repo *MarbleDbRepository) ListScheduledExecutions(ctx context.Context, exe
 func (repo *MarbleDbRepository) CreateScheduledExecution(ctx context.Context, exec Executor, createScheduledEx models.CreateScheduledExecutionInput, newScheduledExecutionId string) error {
 	exec = repo.executorGetter.ifNil(exec)
 
-	_, err := ExecBuilder(
+	err := ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().Insert(dbmodels.TABLE_SCHEDULED_EXECUTIONS).
@@ -123,6 +123,6 @@ func (repo *MarbleDbRepository) UpdateScheduledExecution(ctx context.Context, ex
 		query = query.Set("number_of_created_decisions", *updateScheduledEx.NumberOfCreatedDecisions)
 	}
 
-	_, err := ExecBuilder(ctx, exec, query)
+	err := ExecBuilder(ctx, exec, query)
 	return err
 }
