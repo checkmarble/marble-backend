@@ -36,7 +36,7 @@ func (factory DbExecutorFactory) organizationDatabaseSchema(
 	ctx context.Context,
 	organizationId string,
 ) (models.DatabaseSchema, error) {
-	organizationSchema, err := factory.organizationSchemaReader.OrganizationSchemaOfOrganization(ctx, nil, organizationId)
+	organizationSchema, err := factory.organizationSchemaReader.OrganizationSchemaOfOrganization(ctx, factory.NewExecutor(), organizationId)
 	if err != nil {
 		return models.DatabaseSchema{}, err
 	}

@@ -35,10 +35,10 @@ type EvalScenarioRepository interface {
 }
 
 type ScenarioEvaluationRepositories struct {
-	EvalScenarioRepository      EvalScenarioRepository
-	ClientSchemaExecutorFactory executor_factory.ClientSchemaExecutorFactory
-	IngestedDataReadRepository  repositories.IngestedDataReadRepository
-	EvaluateRuleAstExpression   ast_eval.EvaluateRuleAstExpression
+	EvalScenarioRepository     EvalScenarioRepository
+	ExecutorFactory            executor_factory.ExecutorFactory
+	IngestedDataReadRepository repositories.IngestedDataReadRepository
+	EvaluateRuleAstExpression  ast_eval.EvaluateRuleAstExpression
 }
 
 func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repositories ScenarioEvaluationRepositories, logger *slog.Logger) (se models.ScenarioExecution, err error) {
@@ -68,7 +68,7 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repo
 		return models.ScenarioExecution{}, errors.Wrap(models.ScenarioHasNoLiveVersionError, "scenario has no live version in EvalScenario")
 	}
 
-	liveVersion, err := repositories.EvalScenarioRepository.GetScenarioIteration(ctx, nil, *params.Scenario.LiveVersionID)
+	liveVersion, err := repositories.EvalScenarioRepository.GetScenarioIteration(ctx, repositories.ExecutorFactory.NewExecutor(), *params.Scenario.LiveVersionID)
 	if err != nil {
 		return models.ScenarioExecution{}, errors.Wrap(err, "error getting scenario iteration in EvalScenario")
 	}
@@ -84,11 +84,11 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repo
 	}
 
 	dataAccessor := DataAccessor{
-		DataModel:                   params.DataModel,
-		Payload:                     params.Payload,
-		clientSchemaExecutorFactory: repositories.ClientSchemaExecutorFactory,
-		organizationId:              params.Scenario.OrganizationId,
-		ingestedDataReadRepository:  repositories.IngestedDataReadRepository,
+		DataModel:                  params.DataModel,
+		Payload:                    params.Payload,
+		executorFactory:            repositories.ExecutorFactory,
+		organizationId:             params.Scenario.OrganizationId,
+		ingestedDataReadRepository: repositories.IngestedDataReadRepository,
 	}
 
 	// Evaluate the trigger

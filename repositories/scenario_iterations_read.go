@@ -16,7 +16,9 @@ func (repository *MarbleDbRepository) GetScenarioIteration(
 	exec Executor,
 	scenarioIterationId string,
 ) (models.ScenarioIteration, error) {
-	exec = repository.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ScenarioIteration{}, err
+	}
 
 	return SqlToModel(
 		ctx,
@@ -32,7 +34,9 @@ func (repository *MarbleDbRepository) ListScenarioIterations(
 	organizationId string,
 	filters models.GetScenarioIterationFilters,
 ) ([]models.ScenarioIteration, error) {
-	exec = repository.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	sql := selectScenarioIterations().Where(squirrel.Eq{"si.org_id": organizationId})
 	if filters.ScenarioId != nil {

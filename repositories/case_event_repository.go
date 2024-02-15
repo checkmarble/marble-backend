@@ -9,7 +9,9 @@ import (
 )
 
 func (repo *MarbleDbRepository) ListCaseEvents(ctx context.Context, exec Executor, caseId string) ([]models.CaseEvent, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	query := NewQueryBuilder().
 		Select(dbmodels.SelectCaseEventColumn...).
@@ -30,7 +32,9 @@ func (repo *MarbleDbRepository) CreateCaseEvent(ctx context.Context, exec Execut
 }
 
 func (repo *MarbleDbRepository) BatchCreateCaseEvents(ctx context.Context, exec Executor, createCaseEventAttributes []models.CreateCaseEventAttributes) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	query := NewQueryBuilder().Insert(dbmodels.TABLE_CASE_EVENTS).
 		Columns(

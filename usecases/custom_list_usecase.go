@@ -16,6 +16,7 @@ type CustomListUseCase struct {
 	organizationIdOfContext func() (string, error)
 	enforceSecurity         security.EnforceSecurityCustomList
 	transactionFactory      executor_factory.TransactionFactory
+	executorFactory         executor_factory.ExecutorFactory
 	CustomListRepository    repositories.CustomListRepository
 }
 
@@ -24,7 +25,7 @@ func (usecase *CustomListUseCase) GetCustomLists(ctx context.Context) ([]models.
 	if err != nil {
 		return []models.CustomList{}, err
 	}
-	customLists, err := usecase.CustomListRepository.AllCustomLists(ctx, nil, organizationId)
+	customLists, err := usecase.CustomListRepository.AllCustomLists(ctx, usecase.executorFactory.NewExecutor(), organizationId)
 	if err != nil {
 		return []models.CustomList{}, err
 	}
@@ -112,7 +113,7 @@ func (usecase *CustomListUseCase) SoftDeleteCustomList(ctx context.Context, list
 }
 
 func (usecase *CustomListUseCase) GetCustomListById(ctx context.Context, id string) (models.CustomList, error) {
-	customList, err := usecase.CustomListRepository.GetCustomListById(ctx, nil, id)
+	customList, err := usecase.CustomListRepository.GetCustomListById(ctx, usecase.executorFactory.NewExecutor(), id)
 	if err != nil {
 		return models.CustomList{}, err
 	}
@@ -128,7 +129,7 @@ func (usecase *CustomListUseCase) GetCustomListValues(ctx context.Context, getCu
 	if _, err := usecase.GetCustomListById(ctx, getCustomListValues.Id); err != nil {
 		return []models.CustomListValue{}, err
 	}
-	return usecase.CustomListRepository.GetCustomListValues(ctx, nil, getCustomListValues)
+	return usecase.CustomListRepository.GetCustomListValues(ctx, usecase.executorFactory.NewExecutor(), getCustomListValues)
 }
 
 func (usecase *CustomListUseCase) AddCustomListValue(ctx context.Context, addCustomListValue models.AddCustomListValueInput) (models.CustomListValue, error) {

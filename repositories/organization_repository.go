@@ -15,12 +15,12 @@ type OrganizationRepository interface {
 	DeleteOrganization(ctx context.Context, exec Executor, organizationId string) error
 }
 
-type OrganizationRepositoryPostgresql struct {
-	executorGetter ExecutorGetter
-}
+type OrganizationRepositoryPostgresql struct{}
 
 func (repo *OrganizationRepositoryPostgresql) AllOrganizations(ctx context.Context, exec Executor) ([]models.Organization, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	return SqlToListOfModels(
 		ctx,
@@ -33,7 +33,9 @@ func (repo *OrganizationRepositoryPostgresql) AllOrganizations(ctx context.Conte
 	)
 }
 func (repo *OrganizationRepositoryPostgresql) GetOrganizationById(ctx context.Context, exec Executor, organizationId string) (models.Organization, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.Organization{}, err
+	}
 
 	return SqlToModel(
 		ctx,
@@ -47,7 +49,9 @@ func (repo *OrganizationRepositoryPostgresql) GetOrganizationById(ctx context.Co
 }
 
 func (repo *OrganizationRepositoryPostgresql) CreateOrganization(ctx context.Context, exec Executor, createOrganization models.CreateOrganizationInput, newOrganizationId string) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	err := ExecBuilder(
 		ctx,
@@ -68,7 +72,9 @@ func (repo *OrganizationRepositoryPostgresql) CreateOrganization(ctx context.Con
 }
 
 func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(ctx context.Context, exec Executor, updateOrganization models.UpdateOrganizationInput) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	var updateRequest = NewQueryBuilder().Update(dbmodels.TABLE_ORGANIZATION)
 
@@ -89,7 +95,9 @@ func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(ctx context.Con
 }
 
 func (repo *OrganizationRepositoryPostgresql) DeleteOrganization(ctx context.Context, exec Executor, organizationId string) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	err := ExecBuilder(ctx, exec, NewQueryBuilder().Delete(dbmodels.TABLE_ORGANIZATION).Where("id = ?", organizationId))
 	return err

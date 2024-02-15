@@ -9,7 +9,9 @@ import (
 )
 
 func (repo *MarbleDbRepository) GetApiKeyById(ctx context.Context, exec Executor, apiKeyId string) (models.ApiKey, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ApiKey{}, err
+	}
 
 	return SqlToModel(
 		ctx,
@@ -24,7 +26,9 @@ func (repo *MarbleDbRepository) GetApiKeyById(ctx context.Context, exec Executor
 }
 
 func (repo *MarbleDbRepository) GetApiKeyByKey(ctx context.Context, exec Executor, key string) (models.ApiKey, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ApiKey{}, err
+	}
 
 	return SqlToModel(
 		ctx,
@@ -39,7 +43,9 @@ func (repo *MarbleDbRepository) GetApiKeyByKey(ctx context.Context, exec Executo
 }
 
 func (repo *MarbleDbRepository) ListApiKeys(ctx context.Context, exec Executor, organizationId string) ([]models.ApiKey, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	return SqlToListOfModels(
 		ctx,
@@ -55,7 +61,9 @@ func (repo *MarbleDbRepository) ListApiKeys(ctx context.Context, exec Executor, 
 }
 
 func (repo *MarbleDbRepository) CreateApiKey(ctx context.Context, exec Executor, apiKey models.CreateApiKey) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	err := ExecBuilder(
 		ctx,
@@ -81,7 +89,9 @@ func (repo *MarbleDbRepository) CreateApiKey(ctx context.Context, exec Executor,
 }
 
 func (repo *MarbleDbRepository) SoftDeleteApiKey(ctx context.Context, exec Executor, apiKeyId string) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	err := ExecBuilder(
 		ctx,

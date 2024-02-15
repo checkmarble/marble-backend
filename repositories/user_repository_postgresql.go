@@ -21,14 +21,14 @@ type UserRepository interface {
 	UserByEmail(ctx context.Context, exec Executor, email string) (*models.User, error)
 }
 
-type UserRepositoryPostgresql struct {
-	executorGetter ExecutorGetter
-}
+type UserRepositoryPostgresql struct{}
 
 func (repo *UserRepositoryPostgresql) CreateUser(ctx context.Context, exec Executor, createUser models.CreateUser) (models.UserId, error) {
 	userId := models.UserId(uuid.NewString())
 
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.UserId(""), err
+	}
 
 	var organizationId *string
 	if len(createUser.OrganizationId) != 0 {
@@ -60,7 +60,9 @@ func (repo *UserRepositoryPostgresql) CreateUser(ctx context.Context, exec Execu
 }
 
 func (repo *UserRepositoryPostgresql) UpdateUser(ctx context.Context, exec Executor, updateUser models.UpdateUser) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	query := NewQueryBuilder().Update(dbmodels.TABLE_USERS).Where(squirrel.Eq{"id": updateUser.UserId})
 
@@ -82,7 +84,9 @@ func (repo *UserRepositoryPostgresql) UpdateUser(ctx context.Context, exec Execu
 }
 
 func (repo *UserRepositoryPostgresql) DeleteUser(ctx context.Context, exec Executor, userID models.UserId) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	err := ExecBuilder(
 		ctx,
@@ -96,7 +100,9 @@ func (repo *UserRepositoryPostgresql) DeleteUser(ctx context.Context, exec Execu
 }
 
 func (repo *UserRepositoryPostgresql) DeleteUsersOfOrganization(ctx context.Context, exec Executor, organizationId string) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	err := ExecBuilder(
 		ctx,
@@ -107,7 +113,9 @@ func (repo *UserRepositoryPostgresql) DeleteUsersOfOrganization(ctx context.Cont
 }
 
 func (repo *UserRepositoryPostgresql) UserByID(ctx context.Context, exec Executor, userId models.UserId) (models.User, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.User{}, err
+	}
 
 	return SqlToModel(
 		ctx,
@@ -124,7 +132,9 @@ func (repo *UserRepositoryPostgresql) UserByID(ctx context.Context, exec Executo
 
 func (repo *UserRepositoryPostgresql) UsersOfOrganization(ctx context.Context, exec Executor, organizationIDFilter string) ([]models.User, error) {
 
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	return SqlToListOfModels(
 		ctx,
@@ -140,7 +150,9 @@ func (repo *UserRepositoryPostgresql) UsersOfOrganization(ctx context.Context, e
 }
 
 func (repo *UserRepositoryPostgresql) AllUsers(ctx context.Context, exec Executor) ([]models.User, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	return SqlToListOfModels(
 		ctx,
@@ -154,7 +166,9 @@ func (repo *UserRepositoryPostgresql) AllUsers(ctx context.Context, exec Executo
 }
 
 func (repo *UserRepositoryPostgresql) UserByEmail(ctx context.Context, exec Executor, email string) (*models.User, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	return SqlToOptionalModel(
 		ctx,

@@ -18,7 +18,7 @@ type Usecases struct {
 	Configuration models.GlobalConfiguration
 }
 
-func (usecases *Usecases) NewClientDbExecutorFactory() executor_factory.ClientSchemaExecutorFactory {
+func (usecases *Usecases) NewExecutorFactory() executor_factory.ExecutorFactory {
 	return executor_factory.NewDbExecutorFactory(
 		usecases.Repositories.OrganizationSchemaRepository,
 		usecases.Repositories.ExecutorGetter,
@@ -35,6 +35,7 @@ func (usecases *Usecases) NewTransactionFactory() executor_factory.TransactionFa
 func (usecases *Usecases) NewSeedUseCase() SeedUseCase {
 	return SeedUseCase{
 		transactionFactory:     usecases.NewTransactionFactory(),
+		executorFactory:        usecases.NewExecutorFactory(),
 		userRepository:         usecases.Repositories.UserRepository,
 		organizationCreator:    usecases.NewOrganizationCreator(),
 		organizationRepository: usecases.Repositories.OrganizationRepository,
@@ -48,6 +49,7 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 		OrganizationRepository: usecases.Repositories.OrganizationRepository,
 		DataModelRepository:    usecases.Repositories.DataModelRepository,
 		OrganizationSeeder: organization.OrganizationSeeder{
+			ExecutorFactory:      usecases.NewExecutorFactory(),
 			CustomListRepository: usecases.Repositories.CustomListRepository,
 		},
 		PopulateOrganizationSchema: usecases.NewPopulateOrganizationSchema(),
@@ -67,12 +69,13 @@ func (usecases *Usecases) NewExportScheduleExecution() *scheduledexecution.Expor
 		AwsS3Repository:        awsS3Repository,
 		DecisionRepository:     usecases.Repositories.DecisionRepository,
 		OrganizationRepository: usecases.Repositories.OrganizationRepository,
+		ExecutorFactory:        usecases.NewExecutorFactory(),
 	}
 }
 
 func (usecases *Usecases) NewPopulateOrganizationSchema() organization.PopulateOrganizationSchema {
 	return organization.PopulateOrganizationSchema{
-		ClientSchemaExecutorFactory:  usecases.NewClientDbExecutorFactory(),
+		ExecutorFactory:              usecases.NewExecutorFactory(),
 		OrganizationRepository:       usecases.Repositories.OrganizationRepository,
 		OrganizationSchemaRepository: usecases.Repositories.OrganizationSchemaRepository,
 		DataModelRepository:          usecases.Repositories.DataModelRepository,
@@ -93,29 +96,30 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 		evaluate.NewCustomListValuesAccess(
 			usecases.Repositories.CustomListRepository,
 			enforceSecurity,
+			usecases.NewExecutorFactory(),
 		),
 	)
 
 	environment.AddEvaluator(ast.FUNC_DB_ACCESS,
 		evaluate.DatabaseAccess{
-			OrganizationId:              params.OrganizationId,
-			DataModel:                   params.DataModel,
-			Payload:                     params.Payload,
-			ClientSchemaExecutorFactory: usecases.NewClientDbExecutorFactory(),
-			IngestedDataReadRepository:  usecases.Repositories.IngestedDataReadRepository,
-			ReturnFakeValue:             params.DatabaseAccessReturnFakeValue,
+			OrganizationId:             params.OrganizationId,
+			DataModel:                  params.DataModel,
+			Payload:                    params.Payload,
+			ExecutorFactory:            usecases.NewExecutorFactory(),
+			IngestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
+			ReturnFakeValue:            params.DatabaseAccessReturnFakeValue,
 		},
 	)
 
 	environment.AddEvaluator(ast.FUNC_PAYLOAD, evaluate.NewPayload(ast.FUNC_PAYLOAD, params.Payload))
 
 	environment.AddEvaluator(ast.FUNC_AGGREGATOR, evaluate.AggregatorEvaluator{
-		OrganizationId:              params.OrganizationId,
-		DataModel:                   params.DataModel,
-		Payload:                     params.Payload,
-		ClientSchemaExecutorFactory: usecases.NewClientDbExecutorFactory(),
-		IngestedDataReadRepository:  usecases.Repositories.IngestedDataReadRepository,
-		ReturnFakeValue:             params.DatabaseAccessReturnFakeValue,
+		OrganizationId:             params.OrganizationId,
+		DataModel:                  params.DataModel,
+		Payload:                    params.Payload,
+		ExecutorFactory:            usecases.NewExecutorFactory(),
+		IngestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
+		ReturnFakeValue:            params.DatabaseAccessReturnFakeValue,
 	})
 
 	environment.AddEvaluator(ast.FUNC_FILTER, evaluate.FilterEvaluator{
@@ -143,6 +147,7 @@ func (usecases *Usecases) NewValidateScenarioIteration() scenarios.ValidateScena
 	return &scenarios.ValidateScenarioIterationImpl{
 		DataModelRepository:             usecases.Repositories.DataModelRepository,
 		AstEvaluationEnvironmentFactory: usecases.AstEvaluationEnvironmentFactory,
+		ExecutorFactory:                 usecases.NewExecutorFactory(),
 	}
 }
 

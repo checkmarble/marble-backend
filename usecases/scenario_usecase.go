@@ -22,6 +22,7 @@ type ScenarioUsecaseRepository interface {
 
 type ScenarioUsecase struct {
 	transactionFactory      executor_factory.TransactionFactory
+	executorFactory         executor_factory.ExecutorFactory
 	organizationIdOfContext func() (string, error)
 	enforceSecurity         security.EnforceSecurityScenario
 	repository              ScenarioUsecaseRepository
@@ -32,7 +33,7 @@ func (usecase *ScenarioUsecase) ListScenarios(ctx context.Context) ([]models.Sce
 	if err != nil {
 		return nil, err
 	}
-	scenarios, err := usecase.repository.ListScenariosOfOrganization(ctx, nil, organizationId)
+	scenarios, err := usecase.repository.ListScenariosOfOrganization(ctx, usecase.executorFactory.NewExecutor(), organizationId)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +47,7 @@ func (usecase *ScenarioUsecase) ListScenarios(ctx context.Context) ([]models.Sce
 }
 
 func (usecase *ScenarioUsecase) GetScenario(ctx context.Context, scenarioId string) (models.Scenario, error) {
-	scenario, err := usecase.repository.GetScenarioById(ctx, nil, scenarioId)
+	scenario, err := usecase.repository.GetScenarioById(ctx, usecase.executorFactory.NewExecutor(), scenarioId)
 	if err != nil {
 		return models.Scenario{}, err
 	}

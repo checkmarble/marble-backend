@@ -14,12 +14,12 @@ import (
 )
 
 type AggregatorEvaluator struct {
-	OrganizationId              string
-	DataModel                   models.DataModel
-	Payload                     models.PayloadReader
-	ClientSchemaExecutorFactory executor_factory.ClientSchemaExecutorFactory
-	IngestedDataReadRepository  repositories.IngestedDataReadRepository
-	ReturnFakeValue             bool
+	OrganizationId             string
+	DataModel                  models.DataModel
+	Payload                    models.PayloadReader
+	ExecutorFactory            executor_factory.ExecutorFactory
+	IngestedDataReadRepository repositories.IngestedDataReadRepository
+	ReturnFakeValue            bool
 }
 
 var ValidTypesForAggregator = map[ast.Aggregator][]models.DataType{
@@ -100,7 +100,7 @@ func (a AggregatorEvaluator) runQueryInRepository(ctx context.Context, tableName
 		return DryRunQueryAggregatedValue(a.DataModel, tableName, fieldName, aggregator)
 	}
 
-	db, err := a.ClientSchemaExecutorFactory.NewClientDbExecutor(ctx, a.OrganizationId)
+	db, err := a.ExecutorFactory.NewClientDbExecutor(ctx, a.OrganizationId)
 	if err != nil {
 		return nil, err
 	}

@@ -18,7 +18,9 @@ func selectInboxUsers() squirrel.SelectBuilder {
 }
 
 func (repo *MarbleDbRepository) GetInboxUserById(ctx context.Context, exec Executor, inboxUserId string) (models.InboxUser, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.InboxUser{}, err
+	}
 
 	return SqlToModel(
 		ctx,
@@ -30,7 +32,9 @@ func (repo *MarbleDbRepository) GetInboxUserById(ctx context.Context, exec Execu
 }
 
 func (repo *MarbleDbRepository) ListInboxUsers(ctx context.Context, exec Executor, filters models.InboxUserFilterInput) ([]models.InboxUser, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	query := selectInboxUsers()
 
@@ -50,7 +54,9 @@ func (repo *MarbleDbRepository) ListInboxUsers(ctx context.Context, exec Executo
 }
 
 func (repo *MarbleDbRepository) CreateInboxUser(ctx context.Context, exec Executor, input models.CreateInboxUserInput, newInboxUserId string) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	err := ExecBuilder(
 		ctx,
@@ -73,7 +79,9 @@ func (repo *MarbleDbRepository) CreateInboxUser(ctx context.Context, exec Execut
 }
 
 func (repo *MarbleDbRepository) UpdateInboxUser(ctx context.Context, exec Executor, inboxUserId string, role models.InboxUserRole) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	err := ExecBuilder(
 		ctx,
@@ -87,7 +95,9 @@ func (repo *MarbleDbRepository) UpdateInboxUser(ctx context.Context, exec Execut
 }
 
 func (repo *MarbleDbRepository) DeleteInboxUser(ctx context.Context, exec Executor, inboxUserId string) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	err := ExecBuilder(
 		ctx,

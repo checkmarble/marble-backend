@@ -76,22 +76,23 @@ func (usecases *UsecasesWithCreds) NewEnforceCaseSecurity() security.EnforceSecu
 
 func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 	return DecisionUsecase{
-		enforceSecurity:             usecases.NewEnforceDecisionSecurity(),
-		enforceSecurityScenario:     usecases.NewEnforceScenarioSecurity(),
-		clientSchemaExecutorFactory: usecases.NewClientDbExecutorFactory(),
-		transactionFactory:          usecases.NewTransactionFactory(),
-		ingestedDataReadRepository:  usecases.Repositories.IngestedDataReadRepository,
-		decisionRepository:          usecases.Repositories.DecisionRepository,
-		datamodelRepository:         usecases.Repositories.DataModelRepository,
-		repository:                  &usecases.Repositories.MarbleDbRepository,
-		evaluateRuleAstExpression:   usecases.NewEvaluateRuleAstExpression(),
-		organizationIdOfContext:     usecases.OrganizationIdOfContext,
+		enforceSecurity:            usecases.NewEnforceDecisionSecurity(),
+		enforceSecurityScenario:    usecases.NewEnforceScenarioSecurity(),
+		executorFactory:            usecases.NewExecutorFactory(),
+		transactionFactory:         usecases.NewTransactionFactory(),
+		ingestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
+		decisionRepository:         usecases.Repositories.DecisionRepository,
+		datamodelRepository:        usecases.Repositories.DataModelRepository,
+		repository:                 &usecases.Repositories.MarbleDbRepository,
+		evaluateRuleAstExpression:  usecases.NewEvaluateRuleAstExpression(),
+		organizationIdOfContext:    usecases.OrganizationIdOfContext,
 	}
 }
 
 func (usecases *UsecasesWithCreds) NewScenarioUsecase() ScenarioUsecase {
 	return ScenarioUsecase{
 		transactionFactory:      usecases.NewTransactionFactory(),
+		executorFactory:         usecases.NewExecutorFactory(),
 		organizationIdOfContext: usecases.OrganizationIdOfContext,
 		enforceSecurity:         usecases.NewEnforceScenarioSecurity(),
 		repository:              &usecases.Repositories.MarbleDbRepository,
@@ -105,6 +106,7 @@ func (usecases *UsecasesWithCreds) NewScenarioIterationUsecase() ScenarioIterati
 		enforceSecurity:           usecases.NewEnforceScenarioSecurity(),
 		scenarioFetcher:           usecases.NewScenarioFetcher(),
 		validateScenarioIteration: usecases.NewValidateScenarioIteration(),
+		executorFactory:           usecases.NewExecutorFactory(),
 	}
 }
 
@@ -123,6 +125,7 @@ func (usecases *UsecasesWithCreds) AstExpressionUsecase() AstExpressionUsecase {
 		EnforceSecurity:     usecases.NewEnforceScenarioSecurity(),
 		DataModelRepository: usecases.Repositories.DataModelRepository,
 		Repository:          &usecases.Repositories.MarbleDbRepository,
+		executorFactory:     usecases.NewExecutorFactory(),
 	}
 }
 
@@ -131,6 +134,7 @@ func (usecases *UsecasesWithCreds) NewCustomListUseCase() CustomListUseCase {
 		enforceSecurity:         usecases.NewEnforceCustomListSecurity(),
 		organizationIdOfContext: usecases.OrganizationIdOfContext,
 		transactionFactory:      usecases.NewTransactionFactory(),
+		executorFactory:         usecases.NewExecutorFactory(),
 		CustomListRepository:    usecases.Repositories.CustomListRepository,
 	}
 }
@@ -138,7 +142,7 @@ func (usecases *UsecasesWithCreds) NewCustomListUseCase() CustomListUseCase {
 func (usecases *UsecasesWithCreds) NewScenarioPublicationUsecase() ScenarioPublicationUsecase {
 	return ScenarioPublicationUsecase{
 		transactionFactory:             usecases.NewTransactionFactory(),
-		clientSchemaExecutorFactory:    usecases.NewClientDbExecutorFactory(),
+		executorFactory:                usecases.NewExecutorFactory(),
 		scenarioPublicationsRepository: usecases.Repositories.ScenarioPublicationRepository,
 		OrganizationIdOfContext:        usecases.OrganizationIdOfContext,
 		enforceSecurity:                usecases.NewEnforceScenarioSecurity(),
@@ -153,6 +157,7 @@ func (usecases *UsecasesWithCreds) NewMarbleTokenUseCase() MarbleTokenUseCase {
 	repositories := usecases.Repositories
 	return MarbleTokenUseCase{
 		transactionFactory:      usecases.NewTransactionFactory(),
+		executorFactory:         usecases.NewExecutorFactory(),
 		firebaseTokenRepository: repositories.FirebaseTokenRepository,
 		marbleJwtRepository:     repositories.MarbleJwtRepository(),
 		userRepository:          repositories.UserRepository,
@@ -166,7 +171,7 @@ func (usecases *UsecasesWithCreds) NewMarbleTokenUseCase() MarbleTokenUseCase {
 func (usecases *UsecasesWithCreds) NewOrganizationUseCase() OrganizationUseCase {
 	return OrganizationUseCase{
 		enforceSecurity:              usecases.NewEnforceOrganizationSecurity(),
-		clientSchemaExecutorFactory:  usecases.NewClientDbExecutorFactory(),
+		executorFactory:              usecases.NewExecutorFactory(),
 		transactionFactory:           usecases.NewTransactionFactory(),
 		organizationRepository:       usecases.Repositories.OrganizationRepository,
 		datamodelRepository:          usecases.Repositories.DataModelRepository,
@@ -181,6 +186,7 @@ func (usecases *UsecasesWithCreds) NewDataModelUseCase() DataModelUseCase {
 	return DataModelUseCase{
 		enforceSecurity:            usecases.NewEnforceOrganizationSecurity(),
 		transactionFactory:         usecases.NewTransactionFactory(),
+		executorFactory:            usecases.NewExecutorFactory(),
 		dataModelRepository:        usecases.Repositories.DataModelRepository,
 		populateOrganizationSchema: usecases.NewPopulateOrganizationSchema(),
 	}
@@ -197,6 +203,7 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 	return IngestionUseCase{
 		enforceSecurity:     usecases.NewEnforceIngestionSecurity(),
 		transactionFactory:  usecases.NewTransactionFactory(),
+		executorFactory:     usecases.NewExecutorFactory(),
 		ingestionRepository: usecases.Repositories.IngestionRepository,
 		gcsRepository:       gcsRepository,
 		dataModelUseCase:    usecases.NewDataModelUseCase(),
@@ -209,7 +216,7 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 func (usecases *UsecasesWithCreds) NewRunScheduledExecution() scheduledexecution.RunScheduledExecution {
 	return scheduledexecution.RunScheduledExecution{
 		Repository:                     &usecases.Repositories.MarbleDbRepository,
-		ClientSchemaExecutorFactory:    usecases.NewClientDbExecutorFactory(),
+		ExecutorFactory:                usecases.NewExecutorFactory(),
 		TransactionFactory:             usecases.NewTransactionFactory(),
 		ExportScheduleExecution:        *usecases.NewExportScheduleExecution(),
 		ScenarioPublicationsRepository: usecases.Repositories.ScenarioPublicationRepository,
@@ -224,6 +231,7 @@ func (usecases *UsecasesWithCreds) NewScheduledExecutionUsecase() ScheduledExecu
 	return ScheduledExecutionUsecase{
 		enforceSecurity:         usecases.NewEnforceDecisionSecurity(),
 		transactionFactory:      usecases.NewTransactionFactory(),
+		executorFactory:         usecases.NewExecutorFactory(),
 		repository:              &usecases.Repositories.MarbleDbRepository,
 		exportScheduleExecution: usecases.NewExportScheduleExecution(),
 		organizationIdOfContext: usecases.OrganizationIdOfContext,
@@ -252,6 +260,7 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() CaseUseCase {
 	return CaseUseCase{
 		enforceSecurity:    usecases.NewEnforceCaseSecurity(),
 		transactionFactory: usecases.NewTransactionFactory(),
+		executorFactory:    usecases.NewExecutorFactory(),
 		repository:         &usecases.Repositories.MarbleDbRepository,
 		decisionRepository: usecases.Repositories.DecisionRepository,
 		inboxReader: inboxes.InboxReader{
@@ -259,6 +268,7 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() CaseUseCase {
 			OrganizationIdOfContext: usecases.OrganizationIdOfContext,
 			InboxRepository:         &usecases.Repositories.MarbleDbRepository,
 			Credentials:             usecases.Credentials,
+			ExecutorFactory:         usecases.NewExecutorFactory(),
 		},
 		gcsCaseManagerBucket: usecases.Configuration.GcsCaseManagerBucket,
 		gcsRepository:        gcsRepository,
@@ -270,6 +280,7 @@ func (usecases *UsecasesWithCreds) NewInboxUsecase() InboxUsecase {
 		EnforceSecurity: usecases.NewEnforceSecurity(),
 		Credentials:     usecases.Credentials,
 	}
+	executorFactory := usecases.NewExecutorFactory()
 	return InboxUsecase{
 		enforceSecurity:         sec,
 		inboxRepository:         &usecases.Repositories.MarbleDbRepository,
@@ -277,17 +288,20 @@ func (usecases *UsecasesWithCreds) NewInboxUsecase() InboxUsecase {
 		credentials:             usecases.Credentials,
 		organizationIdOfContext: usecases.OrganizationIdOfContext,
 		transactionFactory:      usecases.NewTransactionFactory(),
+		executorFactory:         executorFactory,
 		inboxReader: inboxes.InboxReader{
 			EnforceSecurity:         sec,
 			OrganizationIdOfContext: usecases.OrganizationIdOfContext,
 			InboxRepository:         &usecases.Repositories.MarbleDbRepository,
 			Credentials:             usecases.Credentials,
+			ExecutorFactory:         executorFactory,
 		},
 		inboxUsers: inboxes.InboxUsers{
 			EnforceSecurity:     sec,
 			InboxUserRepository: &usecases.Repositories.MarbleDbRepository,
 			Credentials:         usecases.Credentials,
 			TransactionFactory:  usecases.NewTransactionFactory(),
+			ExecutorFactory:     executorFactory,
 			UserRepository:      usecases.Repositories.UserRepository,
 		},
 	}
@@ -301,12 +315,14 @@ func (usecases *UsecasesWithCreds) NewTagUseCase() TagUseCase {
 	return TagUseCase{
 		enforceSecurity:    sec,
 		transactionFactory: usecases.NewTransactionFactory(),
+		executorFactory:    usecases.NewExecutorFactory(),
 		repository:         &usecases.Repositories.MarbleDbRepository,
 		inboxReader: inboxes.InboxReader{
 			EnforceSecurity:         sec,
 			OrganizationIdOfContext: usecases.OrganizationIdOfContext,
 			InboxRepository:         &usecases.Repositories.MarbleDbRepository,
 			Credentials:             usecases.Credentials,
+			ExecutorFactory:         usecases.NewExecutorFactory(),
 		},
 	}
 }
@@ -314,6 +330,7 @@ func (usecases *UsecasesWithCreds) NewTagUseCase() TagUseCase {
 func (usecases *UsecasesWithCreds) NewApiKeyUseCase() ApiKeyUseCase {
 	return ApiKeyUseCase{
 		transactionFactory:      usecases.NewTransactionFactory(),
+		executorFactory:         usecases.NewExecutorFactory(),
 		organizationIdOfContext: usecases.OrganizationIdOfContext,
 		enforceSecurity: &security.EnforceSecurityApiKeyImpl{
 			EnforceSecurity: usecases.NewEnforceSecurity(),

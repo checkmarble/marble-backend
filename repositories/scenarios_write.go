@@ -8,7 +8,9 @@ import (
 )
 
 func (repo *MarbleDbRepository) CreateScenario(ctx context.Context, exec Executor, organizationId string, scenario models.CreateScenarioInput, newScenarioId string) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	err := ExecBuilder(
 		ctx,
@@ -37,7 +39,9 @@ func (repo *MarbleDbRepository) CreateScenario(ctx context.Context, exec Executo
 }
 
 func (repo *MarbleDbRepository) UpdateScenario(ctx context.Context, exec Executor, scenario models.UpdateScenarioInput) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	sql := NewQueryBuilder().
 		Update(dbmodels.TABLE_SCENARIOS).
@@ -58,7 +62,9 @@ func (repo *MarbleDbRepository) UpdateScenario(ctx context.Context, exec Executo
 }
 
 func (repo *MarbleDbRepository) UpdateScenarioLiveIterationId(ctx context.Context, exec Executor, scenarioId string, scenarioIterationId *string) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	sql := NewQueryBuilder().
 		Update(dbmodels.TABLE_SCENARIOS).

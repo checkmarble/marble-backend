@@ -28,6 +28,7 @@ type EnforceSecurityInboxUsers interface {
 
 type InboxUsers struct {
 	TransactionFactory  executor_factory.TransactionFactory
+	ExecutorFactory     executor_factory.ExecutorFactory
 	EnforceSecurity     EnforceSecurityInboxUsers
 	InboxUserRepository InboxUserRepository
 	UserRepository      repositories.UserRepository
@@ -35,12 +36,13 @@ type InboxUsers struct {
 }
 
 func (usecase *InboxUsers) GetInboxUserById(ctx context.Context, inboxUserId string) (models.InboxUser, error) {
-	inboxUser, err := usecase.InboxUserRepository.GetInboxUserById(ctx, nil, inboxUserId)
+	exec := usecase.ExecutorFactory.NewExecutor()
+	inboxUser, err := usecase.InboxUserRepository.GetInboxUserById(ctx, exec, inboxUserId)
 	if err != nil {
 		return models.InboxUser{}, err
 	}
 
-	thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(ctx, nil, models.InboxUserFilterInput{
+	thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(ctx, exec, models.InboxUserFilterInput{
 		UserId: usecase.Credentials.ActorIdentity.UserId,
 	})
 	if err != nil {
@@ -56,14 +58,15 @@ func (usecase *InboxUsers) GetInboxUserById(ctx context.Context, inboxUserId str
 }
 
 func (usecase *InboxUsers) ListInboxUsers(ctx context.Context, inboxId string) ([]models.InboxUser, error) {
-	thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(ctx, nil, models.InboxUserFilterInput{
+	exec := usecase.ExecutorFactory.NewExecutor()
+	thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(ctx, exec, models.InboxUserFilterInput{
 		UserId: usecase.Credentials.ActorIdentity.UserId,
 	})
 	if err != nil {
 		return []models.InboxUser{}, err
 	}
 
-	inboxUsers, err := usecase.InboxUserRepository.ListInboxUsers(ctx, nil, models.InboxUserFilterInput{
+	inboxUsers, err := usecase.InboxUserRepository.ListInboxUsers(ctx, exec, models.InboxUserFilterInput{
 		InboxId: inboxId,
 	})
 	if err != nil {
@@ -84,7 +87,7 @@ func (usecase *InboxUsers) ListAllInboxUsers(ctx context.Context) ([]models.Inbo
 		return []models.InboxUser{}, errors.New("only admins can list all inbox users")
 	}
 
-	return usecase.InboxUserRepository.ListInboxUsers(ctx, nil, models.InboxUserFilterInput{})
+	return usecase.InboxUserRepository.ListInboxUsers(ctx, usecase.ExecutorFactory.NewExecutor(), models.InboxUserFilterInput{})
 }
 
 func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.CreateInboxUserInput) (models.InboxUser, error) {

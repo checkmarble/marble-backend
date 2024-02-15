@@ -10,7 +10,7 @@ import (
 )
 
 type PopulateOrganizationSchema struct {
-	ClientSchemaExecutorFactory  executor_factory.ClientSchemaExecutorFactory
+	ExecutorFactory              executor_factory.ExecutorFactory
 	OrganizationRepository       repositories.OrganizationRepository
 	OrganizationSchemaRepository repositories.OrganizationSchemaRepository
 	DataModelRepository          repositories.DataModelRepository
@@ -36,7 +36,7 @@ func (p *PopulateOrganizationSchema) CreateTable(ctx context.Context, exec repos
 		return err
 	}
 
-	db, err := p.ClientSchemaExecutorFactory.NewClientDbExecutor(ctx, organizationId)
+	db, err := p.ExecutorFactory.NewClientDbExecutor(ctx, organizationId)
 	if err != nil {
 		return err
 	}
@@ -54,7 +54,7 @@ func (p *PopulateOrganizationSchema) CreateField(ctx context.Context, tx reposit
 		return err
 	}
 
-	db, err := p.ClientSchemaExecutorFactory.NewClientDbExecutor(ctx, organizationId)
+	db, err := p.ExecutorFactory.NewClientDbExecutor(ctx, organizationId)
 	if err != nil {
 		return err
 	}

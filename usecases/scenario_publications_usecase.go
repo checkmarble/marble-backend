@@ -26,7 +26,7 @@ type IngestedDataIndexesRepository interface {
 
 type ScenarioPublicationUsecase struct {
 	transactionFactory             executor_factory.TransactionFactory
-	clientSchemaExecutorFactory    executor_factory.ClientSchemaExecutorFactory
+	executorFactory                executor_factory.ExecutorFactory
 	scenarioPublicationsRepository repositories.ScenarioPublicationRepository
 	OrganizationIdOfContext        func() (string, error)
 	enforceSecurity                security.EnforceSecurityScenario
@@ -37,7 +37,7 @@ type ScenarioPublicationUsecase struct {
 }
 
 func (usecase *ScenarioPublicationUsecase) GetScenarioPublication(ctx context.Context, scenarioPublicationID string) (models.ScenarioPublication, error) {
-	scenarioPublication, err := usecase.scenarioPublicationsRepository.GetScenarioPublicationById(ctx, nil, scenarioPublicationID)
+	scenarioPublication, err := usecase.scenarioPublicationsRepository.GetScenarioPublicationById(ctx, usecase.executorFactory.NewExecutor(), scenarioPublicationID)
 	if err != nil {
 		return models.ScenarioPublication{}, err
 	}
@@ -60,7 +60,7 @@ func (usecase *ScenarioPublicationUsecase) ListScenarioPublications(ctx context.
 		return nil, err
 	}
 
-	return usecase.scenarioPublicationsRepository.ListScenarioPublicationsOfOrganization(ctx, nil, organizationId, filters)
+	return usecase.scenarioPublicationsRepository.ListScenarioPublicationsOfOrganization(ctx, usecase.executorFactory.NewExecutor(), organizationId, filters)
 }
 
 func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(ctx context.Context, input models.PublishScenarioIterationInput) ([]models.ScenarioPublication, error) {
@@ -81,8 +81,9 @@ func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(ctx 
 }
 
 func (usecase *ScenarioPublicationUsecase) CreateDatamodelIndexesForScenarioPublication(ctx context.Context, scenarioIterationId string) (ready bool, err error) {
+	exec := usecase.executorFactory.NewExecutor()
 	logger := utils.LoggerFromContext(ctx)
-	iterationToActivate, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, nil, scenarioIterationId)
+	iterationToActivate, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, exec, scenarioIterationId)
 	if err != nil {
 		return false, err
 	}
@@ -91,7 +92,7 @@ func (usecase *ScenarioPublicationUsecase) CreateDatamodelIndexesForScenarioPubl
 	if err != nil {
 		return false, err
 	}
-	scenarios, err := usecase.scenarioListRepository.ListScenariosOfOrganization(ctx, nil, organizationId)
+	scenarios, err := usecase.scenarioListRepository.ListScenariosOfOrganization(ctx, exec, organizationId)
 	if err != nil {
 		return false, err
 	}
@@ -99,7 +100,7 @@ func (usecase *ScenarioPublicationUsecase) CreateDatamodelIndexesForScenarioPubl
 		return scenario.LiveVersionID != nil
 	})
 	activeScenarioIterations, err := pure_utils.MapErr(liveScenarios, func(scenario models.Scenario) (models.ScenarioIteration, error) {
-		it, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, nil, *scenario.LiveVersionID)
+		it, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, exec, *scenario.LiveVersionID)
 		if err != nil {
 			return models.ScenarioIteration{}, err
 		}
@@ -109,7 +110,7 @@ func (usecase *ScenarioPublicationUsecase) CreateDatamodelIndexesForScenarioPubl
 		return false, errors.Wrap(err, "Error while fetching active scenario iterations in CreateDatamodelIndexesForScenarioPublication")
 	}
 
-	db, err := usecase.clientSchemaExecutorFactory.NewClientDbExecutor(ctx, organizationId)
+	db, err := usecase.executorFactory.NewClientDbExecutor(ctx, organizationId)
 	if err != nil {
 		return false, errors.Wrap(err, "Error while creating client schema executor in CreateDatamodelIndexesForScenarioPublication")
 	}

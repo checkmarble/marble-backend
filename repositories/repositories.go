@@ -54,38 +54,20 @@ func NewRepositories(
 				jwtSigningPrivateKey: *marbleJwtSigningKey,
 			}
 		},
-		UserRepository: &UserRepositoryPostgresql{
-			executorGetter: executorGetter,
-		},
-		OrganizationRepository: &OrganizationRepositoryPostgresql{
-			executorGetter: executorGetter,
-		},
-		IngestionRepository: &IngestionRepositoryImpl{},
-		DataModelRepository: &DataModelRepositoryPostgresql{
-			executorGetter: executorGetter,
-		},
-		IngestedDataReadRepository: &IngestedDataReadRepositoryImpl{},
-		DecisionRepository: &DecisionRepositoryImpl{
-			executorGetter: executorGetter,
-		},
-		MarbleDbRepository: MarbleDbRepository{
-			executorGetter: executorGetter,
-		},
-		ClientDbRepository: ClientDbRepository{},
-		ScenarioPublicationRepository: &ScenarioPublicationRepositoryPostgresql{
-			executorGetter: executorGetter,
-		},
-		OrganizationSchemaRepository: &OrganizationSchemaRepositoryPostgresql{
-			executorGetter: executorGetter,
-		},
-		CustomListRepository: &CustomListRepositoryPostgresql{
-			executorGetter: executorGetter,
-		},
-		UploadLogRepository: &UploadLogRepositoryImpl{
-			executorGetter: executorGetter,
-		},
-		AwsS3Repository: AwsS3Repository{s3Client: NewS3Client()},
-		GcsRepository:   &GcsRepositoryImpl{},
+		UserRepository:                &UserRepositoryPostgresql{},
+		OrganizationRepository:        &OrganizationRepositoryPostgresql{},
+		IngestionRepository:           &IngestionRepositoryImpl{},
+		DataModelRepository:           &DataModelRepositoryPostgresql{},
+		IngestedDataReadRepository:    &IngestedDataReadRepositoryImpl{},
+		DecisionRepository:            &DecisionRepositoryImpl{},
+		MarbleDbRepository:            MarbleDbRepository{},
+		ClientDbRepository:            ClientDbRepository{},
+		ScenarioPublicationRepository: &ScenarioPublicationRepositoryPostgresql{},
+		OrganizationSchemaRepository:  &OrganizationSchemaRepositoryPostgresql{},
+		CustomListRepository:          &CustomListRepositoryPostgresql{},
+		UploadLogRepository:           &UploadLogRepositoryImpl{},
+		AwsS3Repository:               AwsS3Repository{s3Client: NewS3Client()},
+		GcsRepository:                 &GcsRepositoryImpl{},
 		MarbleAnalyticsRepository: MarbleAnalyticsRepository{
 			metabase: metabase,
 		},

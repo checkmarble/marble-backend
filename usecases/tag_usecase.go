@@ -28,12 +28,13 @@ type TagUseCaseRepository interface {
 type TagUseCase struct {
 	enforceSecurity    security.EnforceSecurityInboxes
 	transactionFactory executor_factory.TransactionFactory
+	executorFactory    executor_factory.ExecutorFactory
 	repository         TagUseCaseRepository
 	inboxReader        inboxes.InboxReader
 }
 
 func (usecase *TagUseCase) ListAllTags(ctx context.Context, organizationId string, withCaseCount bool) ([]models.Tag, error) {
-	return usecase.repository.ListOrganizationTags(ctx, nil, organizationId, withCaseCount)
+	return usecase.repository.ListOrganizationTags(ctx, usecase.executorFactory.NewExecutor(), organizationId, withCaseCount)
 }
 
 func (usecase *TagUseCase) CreateTag(ctx context.Context, attributes models.CreateTagAttributes) (models.Tag, error) {
@@ -62,7 +63,7 @@ func (usecase *TagUseCase) CreateTag(ctx context.Context, attributes models.Crea
 }
 
 func (usecase *TagUseCase) GetTagById(ctx context.Context, tagId string) (models.Tag, error) {
-	return usecase.repository.GetTagById(ctx, nil, tagId)
+	return usecase.repository.GetTagById(ctx, usecase.executorFactory.NewExecutor(), tagId)
 }
 
 func (usecase *TagUseCase) UpdateTag(ctx context.Context, organizationId string, attributes models.UpdateTagAttributes) (models.Tag, error) {

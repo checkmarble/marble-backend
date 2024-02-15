@@ -19,7 +19,9 @@ func selectRules() squirrel.SelectBuilder {
 }
 
 func (repo *MarbleDbRepository) GetRuleById(ctx context.Context, exec Executor, ruleId string) (models.Rule, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.Rule{}, err
+	}
 
 	return SqlToModel(
 		ctx,
@@ -30,7 +32,9 @@ func (repo *MarbleDbRepository) GetRuleById(ctx context.Context, exec Executor, 
 }
 
 func (repo *MarbleDbRepository) ListRulesByIterationId(ctx context.Context, exec Executor, iterationId string) ([]models.Rule, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	return SqlToListOfModels(
 		ctx,
@@ -43,7 +47,9 @@ func (repo *MarbleDbRepository) ListRulesByIterationId(ctx context.Context, exec
 }
 
 func (repo *MarbleDbRepository) UpdateRule(ctx context.Context, exec Executor, rule models.UpdateRuleInput) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	dbUpdateRuleInput, err := dbmodels.AdaptDBUpdateRuleInput(rule)
 	if err != nil {
@@ -60,7 +66,9 @@ func (repo *MarbleDbRepository) UpdateRule(ctx context.Context, exec Executor, r
 }
 
 func (repo *MarbleDbRepository) DeleteRule(ctx context.Context, exec Executor, ruleID string) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	err := ExecBuilder(ctx, exec, NewQueryBuilder().Delete(dbmodels.TABLE_RULES).Where("id = ?", ruleID))
 	return err
@@ -71,7 +79,9 @@ func (repo *MarbleDbRepository) CreateRules(ctx context.Context, exec Executor, 
 		return []models.Rule{}, fmt.Errorf("no rule found")
 	}
 
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	dbCreateRuleInputs, err := pure_utils.MapErr(rules, dbmodels.AdaptDBCreateRuleInput)
 	if err != nil {

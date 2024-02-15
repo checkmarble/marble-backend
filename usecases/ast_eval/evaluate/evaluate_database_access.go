@@ -13,12 +13,12 @@ import (
 )
 
 type DatabaseAccess struct {
-	OrganizationId              string
-	DataModel                   models.DataModel
-	Payload                     models.PayloadReader
-	ClientSchemaExecutorFactory executor_factory.ClientSchemaExecutorFactory
-	IngestedDataReadRepository  repositories.IngestedDataReadRepository
-	ReturnFakeValue             bool
+	OrganizationId             string
+	DataModel                  models.DataModel
+	Payload                    models.PayloadReader
+	ExecutorFactory            executor_factory.ExecutorFactory
+	IngestedDataReadRepository repositories.IngestedDataReadRepository
+	ReturnFakeValue            bool
 }
 
 func (d DatabaseAccess) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
@@ -72,7 +72,7 @@ func (d DatabaseAccess) getDbField(ctx context.Context, tableName models.TableNa
 		return DryRunGetDbField(d.DataModel, tableName, path, fieldName)
 	}
 
-	db, err := d.ClientSchemaExecutorFactory.NewClientDbExecutor(ctx, d.OrganizationId)
+	db, err := d.ExecutorFactory.NewClientDbExecutor(ctx, d.OrganizationId)
 	if err != nil {
 		return nil, err
 	}

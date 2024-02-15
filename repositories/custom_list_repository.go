@@ -21,12 +21,12 @@ type CustomListRepository interface {
 	DeleteCustomListValue(ctx context.Context, exec Executor, deleteCustomListValue models.DeleteCustomListValueInput) error
 }
 
-type CustomListRepositoryPostgresql struct {
-	executorGetter ExecutorGetter
-}
+type CustomListRepositoryPostgresql struct{}
 
 func (repo *CustomListRepositoryPostgresql) AllCustomLists(ctx context.Context, exec Executor, organizationId string) ([]models.CustomList, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	return SqlToListOfModels(
 		ctx,
@@ -40,7 +40,9 @@ func (repo *CustomListRepositoryPostgresql) AllCustomLists(ctx context.Context, 
 	)
 }
 func (repo *CustomListRepositoryPostgresql) GetCustomListById(ctx context.Context, exec Executor, id string) (models.CustomList, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.CustomList{}, err
+	}
 
 	return SqlToModel(
 		ctx,
@@ -54,7 +56,9 @@ func (repo *CustomListRepositoryPostgresql) GetCustomListById(ctx context.Contex
 }
 
 func (repo *CustomListRepositoryPostgresql) GetCustomListValues(ctx context.Context, exec Executor, getCustomList models.GetCustomListValuesInput) ([]models.CustomListValue, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	return SqlToListOfModels(
 		ctx,
@@ -67,7 +71,9 @@ func (repo *CustomListRepositoryPostgresql) GetCustomListValues(ctx context.Cont
 	)
 }
 func (repo *CustomListRepositoryPostgresql) GetCustomListValueById(ctx context.Context, exec Executor, id string) (models.CustomListValue, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.CustomListValue{}, err
+	}
 
 	return SqlToModel(
 		ctx,
@@ -87,7 +93,9 @@ func (repo *CustomListRepositoryPostgresql) CreateCustomList(
 	organizationId string,
 	newCustomListId string,
 ) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	err := ExecBuilder(
 		ctx,
@@ -110,7 +118,9 @@ func (repo *CustomListRepositoryPostgresql) CreateCustomList(
 }
 
 func (repo *CustomListRepositoryPostgresql) UpdateCustomList(ctx context.Context, exec Executor, updateCustomList models.UpdateCustomListInput) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	var updateRequest = NewQueryBuilder().Update(dbmodels.TABLE_CUSTOM_LIST)
 
@@ -129,7 +139,9 @@ func (repo *CustomListRepositoryPostgresql) UpdateCustomList(ctx context.Context
 }
 
 func (repo *CustomListRepositoryPostgresql) SoftDeleteCustomList(ctx context.Context, exec Executor, listId string) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 	var softDeleteRequest = NewQueryBuilder().Update(dbmodels.TABLE_CUSTOM_LIST)
 	softDeleteRequest = softDeleteRequest.Set("deleted_at", squirrel.Expr("NOW()"))
 	softDeleteRequest = softDeleteRequest.Set("updated_at", squirrel.Expr("NOW()"))
@@ -145,7 +157,9 @@ func (repo *CustomListRepositoryPostgresql) AddCustomListValue(
 	addCustomListValue models.AddCustomListValueInput,
 	newCustomListId string,
 ) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	err := ExecBuilder(
 		ctx,
@@ -170,7 +184,9 @@ func (repo *CustomListRepositoryPostgresql) DeleteCustomListValue(
 	exec Executor,
 	deleteCustomListValue models.DeleteCustomListValueInput,
 ) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	var deleteRequest = NewQueryBuilder().Update(dbmodels.TABLE_CUSTOM_LIST_VALUE)
 

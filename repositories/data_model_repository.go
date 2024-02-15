@@ -13,7 +13,7 @@ import (
 )
 
 type DataModelRepository interface {
-	GetDataModel(ctx context.Context, organizationID string, fetchEnumValues bool) (models.DataModel, error)
+	GetDataModel(ctx context.Context, exec Executor, organizationID string, fetchEnumValues bool) (models.DataModel, error)
 	GetTablesAndFields(ctx context.Context, exec Executor, organizationID string) ([]models.DataModelTableField, error)
 	CreateDataModelTable(ctx context.Context, exec Executor, organizationID, tableID, name, description string) error
 	UpdateDataModelTable(ctx context.Context, exec Executor, tableID, description string) error
@@ -24,17 +24,15 @@ type DataModelRepository interface {
 	DeleteDataModel(ctx context.Context, exec Executor, organizationID string) error
 }
 
-type DataModelRepositoryPostgresql struct {
-	executorGetter ExecutorGetter
-}
+type DataModelRepositoryPostgresql struct{}
 
-func (repo *DataModelRepositoryPostgresql) GetDataModel(ctx context.Context, organizationID string, fetchEnumValues bool) (models.DataModel, error) {
-	fields, err := repo.GetTablesAndFields(ctx, nil, organizationID)
+func (repo *DataModelRepositoryPostgresql) GetDataModel(ctx context.Context, exec Executor, organizationID string, fetchEnumValues bool) (models.DataModel, error) {
+	fields, err := repo.GetTablesAndFields(ctx, exec, organizationID)
 	if err != nil {
 		return models.DataModel{}, err
 	}
 
-	links, err := repo.GetLinks(ctx, nil, organizationID)
+	links, err := repo.GetLinks(ctx, exec, organizationID)
 	if err != nil {
 		return models.DataModel{}, err
 	}
@@ -49,7 +47,7 @@ func (repo *DataModelRepositoryPostgresql) GetDataModel(ctx context.Context, org
 
 		var values []any
 		if field.FieldIsEnum && fetchEnumValues {
-			values, err = repo.GetEnumValues(ctx, nil, field.FieldID)
+			values, err = repo.GetEnumValues(ctx, exec, field.FieldID)
 			if err != nil {
 				return models.DataModel{}, err
 			}
@@ -96,7 +94,9 @@ func (repo *DataModelRepositoryPostgresql) GetDataModel(ctx context.Context, org
 }
 
 func (repo *DataModelRepositoryPostgresql) CreateDataModelTable(ctx context.Context, exec Executor, organizationID, tableID, name, description string) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	query := `
 		INSERT INTO data_model_tables (id, organization_id, name, description)
@@ -110,7 +110,9 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelTable(ctx context.Cont
 }
 
 func (repo *DataModelRepositoryPostgresql) GetDataModelTable(ctx context.Context, exec Executor, tableID string) (models.DataModelTable, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.DataModelTable{}, err
+	}
 
 	return SqlToModel(
 		ctx,
@@ -124,7 +126,9 @@ func (repo *DataModelRepositoryPostgresql) GetDataModelTable(ctx context.Context
 }
 
 func (repo *DataModelRepositoryPostgresql) UpdateDataModelTable(ctx context.Context, exec Executor, tableID, description string) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	err := ExecBuilder(
 		ctx,
@@ -138,7 +142,9 @@ func (repo *DataModelRepositoryPostgresql) UpdateDataModelTable(ctx context.Cont
 }
 
 func (repo *DataModelRepositoryPostgresql) CreateDataModelField(ctx context.Context, exec Executor, tableID, fieldID string, field models.DataModelField) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	query := `
 		INSERT INTO data_model_fields (id, table_id, name, type, nullable, description, is_enum)
@@ -153,7 +159,9 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelField(ctx context.Cont
 }
 
 func (repo *DataModelRepositoryPostgresql) UpdateDataModelField(ctx context.Context, exec Executor, fieldID, description string) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	err := ExecBuilder(
 		ctx,
@@ -167,7 +175,9 @@ func (repo *DataModelRepositoryPostgresql) UpdateDataModelField(ctx context.Cont
 }
 
 func (repo *DataModelRepositoryPostgresql) CreateDataModelLink(ctx context.Context, exec Executor, link models.DataModelLink) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	err := ExecBuilder(
 		ctx,
@@ -184,7 +194,9 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelLink(ctx context.Conte
 }
 
 func (repo *DataModelRepositoryPostgresql) GetTablesAndFields(ctx context.Context, exec Executor, organizationID string) ([]models.DataModelTableField, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	query, args, err := NewQueryBuilder().
 		Select(dbmodels.SelectDataModelFieldColumns...).
@@ -222,7 +234,9 @@ func (repo *DataModelRepositoryPostgresql) GetTablesAndFields(ctx context.Contex
 }
 
 func (repo *DataModelRepositoryPostgresql) GetLinks(ctx context.Context, exec Executor, organizationID string) ([]models.DataModelLink, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	query := `
 		SELECT data_model_links.id, data_model_links.name, parent_table.name, parent_field.name, child_table.name, child_field.name FROM data_model_links
@@ -253,7 +267,9 @@ func (repo *DataModelRepositoryPostgresql) GetLinks(ctx context.Context, exec Ex
 }
 
 func (repo *DataModelRepositoryPostgresql) DeleteDataModel(ctx context.Context, exec Executor, organizationID string) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	err := ExecBuilder(
 		ctx,
@@ -280,7 +296,9 @@ func (repo *DataModelRepositoryPostgresql) DeleteDataModel(ctx context.Context, 
 }
 
 func (repo *DataModelRepositoryPostgresql) GetEnumValues(ctx context.Context, exec Executor, fieldID string) ([]any, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	query, args, err := NewQueryBuilder().
 		Select("text_value", "float_value").

@@ -29,20 +29,20 @@ type DecisionUsecaseRepository interface {
 }
 
 type DecisionUsecase struct {
-	enforceSecurity             security.EnforceSecurityDecision
-	enforceSecurityScenario     security.EnforceSecurityScenario
-	transactionFactory          executor_factory.TransactionFactory
-	clientSchemaExecutorFactory executor_factory.ClientSchemaExecutorFactory
-	ingestedDataReadRepository  repositories.IngestedDataReadRepository
-	decisionRepository          repositories.DecisionRepository
-	datamodelRepository         repositories.DataModelRepository
-	repository                  DecisionUsecaseRepository
-	evaluateRuleAstExpression   ast_eval.EvaluateRuleAstExpression
-	organizationIdOfContext     func() (string, error)
+	enforceSecurity            security.EnforceSecurityDecision
+	enforceSecurityScenario    security.EnforceSecurityScenario
+	transactionFactory         executor_factory.TransactionFactory
+	executorFactory            executor_factory.ExecutorFactory
+	ingestedDataReadRepository repositories.IngestedDataReadRepository
+	decisionRepository         repositories.DecisionRepository
+	datamodelRepository        repositories.DataModelRepository
+	repository                 DecisionUsecaseRepository
+	evaluateRuleAstExpression  ast_eval.EvaluateRuleAstExpression
+	organizationIdOfContext    func() (string, error)
 }
 
 func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId string) (models.Decision, error) {
-	decision, err := usecase.decisionRepository.DecisionById(ctx, nil, decisionId)
+	decision, err := usecase.decisionRepository.DecisionById(ctx, usecase.executorFactory.NewExecutor(), decisionId)
 	if err != nil {
 		return models.Decision{}, err
 	}
@@ -103,7 +103,7 @@ func (usecase *DecisionUsecase) ListDecisions(ctx context.Context, organizationI
 }
 
 func (usecase *DecisionUsecase) validateScenarioIds(ctx context.Context, scenarioIds []string, organizationId string) error {
-	scenarios, err := usecase.repository.ListScenariosOfOrganization(ctx, nil, organizationId)
+	scenarios, err := usecase.repository.ListScenariosOfOrganization(ctx, usecase.executorFactory.NewExecutor(), organizationId)
 	if err != nil {
 		return err
 	}
@@ -132,7 +132,7 @@ func (usecase *DecisionUsecase) validateOutcomes(ctx context.Context, filtersOut
 }
 
 func (usecase *DecisionUsecase) validateTriggerObjects(ctx context.Context, filtersTriggerObjects []string, organizationId string) ([]models.TableName, error) {
-	dataModel, err := usecase.datamodelRepository.GetDataModel(ctx, organizationId, true)
+	dataModel, err := usecase.datamodelRepository.GetDataModel(ctx, usecase.executorFactory.NewExecutor(), organizationId, true)
 	if err != nil {
 		return []models.TableName{}, err
 	}
@@ -147,7 +147,7 @@ func (usecase *DecisionUsecase) validateTriggerObjects(ctx context.Context, filt
 }
 
 func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models.CreateDecisionInput, logger *slog.Logger) (models.Decision, error) {
-
+	exec := usecase.executorFactory.NewExecutor()
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(ctx, "DecisionUsecase.CreateDecision")
 	defer span.End()
@@ -155,7 +155,7 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 	if err := usecase.enforceSecurity.CreateDecision(input.OrganizationId); err != nil {
 		return models.Decision{}, err
 	}
-	scenario, err := usecase.repository.GetScenarioById(ctx, nil, input.ScenarioId)
+	scenario, err := usecase.repository.GetScenarioById(ctx, exec, input.ScenarioId)
 	if errors.Is(err, models.NotFoundInRepositoryError) {
 		return models.Decision{}, fmt.Errorf("scenario not found: %w", models.NotFoundError)
 	} else if err != nil {
@@ -165,7 +165,7 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 		return models.Decision{}, err
 	}
 
-	dm, err := usecase.datamodelRepository.GetDataModel(ctx, input.OrganizationId, false)
+	dm, err := usecase.datamodelRepository.GetDataModel(ctx, exec, input.OrganizationId, false)
 	if errors.Is(err, models.NotFoundInRepositoryError) {
 		return models.Decision{}, fmt.Errorf("data model not found: %w", models.NotFoundError)
 	} else if err != nil {
@@ -179,10 +179,10 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context, input models
 	}
 
 	evaluationRepositories := evaluate_scenario.ScenarioEvaluationRepositories{
-		EvalScenarioRepository:      usecase.repository,
-		ClientSchemaExecutorFactory: usecase.clientSchemaExecutorFactory,
-		IngestedDataReadRepository:  usecase.ingestedDataReadRepository,
-		EvaluateRuleAstExpression:   usecase.evaluateRuleAstExpression,
+		EvalScenarioRepository:     usecase.repository,
+		ExecutorFactory:            usecase.executorFactory,
+		IngestedDataReadRepository: usecase.ingestedDataReadRepository,
+		EvaluateRuleAstExpression:  usecase.evaluateRuleAstExpression,
 	}
 
 	scenarioExecution, err := evaluate_scenario.EvalScenario(ctx, evaluationParameters, evaluationRepositories, logger)

@@ -22,14 +22,14 @@ type OrganizationUseCase struct {
 	organizationCreator          organization.OrganizationCreator
 	organizationSchemaRepository repositories.OrganizationSchemaRepository
 	populateOrganizationSchema   organization.PopulateOrganizationSchema
-	clientSchemaExecutorFactory  executor_factory.ClientSchemaExecutorFactory
+	executorFactory              executor_factory.ExecutorFactory
 }
 
 func (usecase *OrganizationUseCase) GetOrganizations(ctx context.Context) ([]models.Organization, error) {
 	if err := usecase.enforceSecurity.ListOrganization(); err != nil {
 		return []models.Organization{}, err
 	}
-	return usecase.organizationRepository.AllOrganizations(ctx, nil)
+	return usecase.organizationRepository.AllOrganizations(ctx, usecase.executorFactory.NewExecutor())
 }
 
 func (usecase *OrganizationUseCase) CreateOrganization(ctx context.Context, createOrga models.CreateOrganizationInput) (models.Organization, error) {
@@ -44,7 +44,7 @@ func (usecase *OrganizationUseCase) GetOrganization(ctx context.Context, organiz
 	if err := usecase.enforceSecurity.ReadOrganization(organizationId); err != nil {
 		return models.Organization{}, err
 	}
-	return usecase.organizationRepository.GetOrganizationById(ctx, nil, organizationId)
+	return usecase.organizationRepository.GetOrganizationById(ctx, usecase.executorFactory.NewExecutor(), organizationId)
 }
 
 func (usecase *OrganizationUseCase) UpdateOrganization(ctx context.Context, organization models.UpdateOrganizationInput) (models.Organization, error) {
@@ -86,7 +86,7 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 		}
 
 		if schemaFound {
-			db, err := usecase.clientSchemaExecutorFactory.NewClientDbExecutor(ctx, organizationId)
+			db, err := usecase.executorFactory.NewClientDbExecutor(ctx, organizationId)
 			if err != nil {
 				return err
 			}

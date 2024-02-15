@@ -13,6 +13,7 @@ import (
 
 type SeedUseCase struct {
 	transactionFactory     executor_factory.TransactionFactory
+	executorFactory        executor_factory.ExecutorFactory
 	userRepository         repositories.UserRepository
 	organizationCreator    organization.OrganizationCreator
 	organizationRepository repositories.OrganizationRepository
@@ -37,7 +38,7 @@ func (usecase *SeedUseCase) SeedMarbleAdmins(ctx context.Context, firstMarbleAdm
 }
 
 func (usecase *SeedUseCase) SeedZorgOrganization(ctx context.Context, zorgOrganizationId string) error {
-
+	exec := usecase.executorFactory.NewExecutor()
 	_, err := usecase.organizationCreator.CreateOrganizationWithId(
 		ctx,
 		zorgOrganizationId,
@@ -56,7 +57,7 @@ func (usecase *SeedUseCase) SeedZorgOrganization(ctx context.Context, zorgOrgani
 
 	// assign test s3 bucket name to zorg organization
 	var testBucketName = "marble-backend-export-scheduled-execution-test"
-	err = usecase.organizationRepository.UpdateOrganization(ctx, nil, models.UpdateOrganizationInput{
+	err = usecase.organizationRepository.UpdateOrganization(ctx, exec, models.UpdateOrganizationInput{
 		Id:                         zorgOrganizationId,
 		ExportScheduledExecutionS3: &testBucketName,
 	})
@@ -66,7 +67,7 @@ func (usecase *SeedUseCase) SeedZorgOrganization(ctx context.Context, zorgOrgani
 	}
 
 	// add Admin user Jean-Baptiste Emanuel Zorg
-	_, err = usecase.userRepository.CreateUser(ctx, nil, models.CreateUser{
+	_, err = usecase.userRepository.CreateUser(ctx, exec, models.CreateUser{
 		Email:          "jbe@zorg.com", // Jean-Baptiste Emanuel Zorg
 		Role:           models.ADMIN,
 		OrganizationId: zorgOrganizationId,
@@ -82,7 +83,7 @@ func (usecase *SeedUseCase) SeedZorgOrganization(ctx context.Context, zorgOrgani
 
 	newCustomListId := "d6643d7e-c973-4899-a9a8-805f868ef90a"
 
-	err = usecase.customListRepository.CreateCustomList(ctx, nil, models.CreateCustomListInput{
+	err = usecase.customListRepository.CreateCustomList(ctx, exec, models.CreateCustomListInput{
 		Name:        "zorg custom list",
 		Description: "Need a whitelist or blacklist ? The list is your friend :)",
 	}, zorgOrganizationId, newCustomListId)
@@ -93,11 +94,11 @@ func (usecase *SeedUseCase) SeedZorgOrganization(ctx context.Context, zorgOrgani
 			CustomListId: newCustomListId,
 			Value:        "Welcome",
 		}
-		usecase.customListRepository.AddCustomListValue(ctx, nil, addCustomListValueInput, uuid.NewString())
+		usecase.customListRepository.AddCustomListValue(ctx, exec, addCustomListValueInput, uuid.NewString())
 		addCustomListValueInput.Value = "to"
-		usecase.customListRepository.AddCustomListValue(ctx, nil, addCustomListValueInput, uuid.NewString())
+		usecase.customListRepository.AddCustomListValue(ctx, exec, addCustomListValueInput, uuid.NewString())
 		addCustomListValueInput.Value = "marble"
-		usecase.customListRepository.AddCustomListValue(ctx, nil, addCustomListValueInput, uuid.NewString())
+		usecase.customListRepository.AddCustomListValue(ctx, exec, addCustomListValueInput, uuid.NewString())
 	}
 
 	if repositories.IsUniqueViolationError(err) {

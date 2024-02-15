@@ -52,6 +52,7 @@ type CaseUseCase struct {
 	gcsRepository        repositories.GcsRepository
 	gcsCaseManagerBucket string
 	transactionFactory   executor_factory.TransactionFactory
+	executorFactory      executor_factory.ExecutorFactory
 }
 
 func (usecase *CaseUseCase) ListCases(
@@ -127,12 +128,13 @@ func (usecase *CaseUseCase) getAvailableInboxIds(ctx context.Context, exec repos
 }
 
 func (usecase *CaseUseCase) GetCase(ctx context.Context, caseId string) (models.Case, error) {
-	c, err := usecase.getCaseWithDetails(ctx, nil, caseId)
+	exec := usecase.executorFactory.NewExecutor()
+	c, err := usecase.getCaseWithDetails(ctx, exec, caseId)
 	if err != nil {
 		return models.Case{}, err
 	}
 
-	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, nil)
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec)
 	if err != nil {
 		return models.Case{}, err
 	}
@@ -202,7 +204,7 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string, updat
 			return usecase.getCaseWithDetails(ctx, tx, updateCaseAttributes.Id)
 		}
 
-		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, nil)
+		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, usecase.executorFactory.NewExecutor())
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -304,7 +306,7 @@ func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, case
 		if err != nil {
 			return models.Case{}, err
 		}
-		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, nil)
+		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx)
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -341,7 +343,7 @@ func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string
 			return models.Case{}, err
 		}
 
-		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, nil)
+		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx)
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -380,7 +382,7 @@ func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string, c
 			return models.Case{}, err
 		}
 
-		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, nil)
+		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, usecase.executorFactory.NewExecutor())
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -546,6 +548,7 @@ func trackCaseUpdatedEvents(ctx context.Context, caseId string, updateCaseAttrib
 }
 
 func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.CreateCaseFileInput) (models.Case, error) {
+	exec := usecase.executorFactory.NewExecutor()
 	logger := utils.LoggerFromContext(ctx)
 	creds, found := utils.CredentialsFromCtx(ctx)
 	if !found {
@@ -558,11 +561,11 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 	}
 
 	// permissions check
-	c, err := usecase.repository.GetCaseById(ctx, nil, input.CaseId)
+	c, err := usecase.repository.GetCaseById(ctx, exec, input.CaseId)
 	if err != nil {
 		return models.Case{}, err
 	}
-	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, nil)
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec)
 	if err != nil {
 		return models.Case{}, err
 	}
@@ -665,16 +668,17 @@ func validateFileType(file *multipart.FileHeader) error {
 }
 
 func (usecase *CaseUseCase) GetCaseFileUrl(ctx context.Context, caseFileId string) (string, error) {
-	cf, err := usecase.repository.GetCaseFileById(ctx, nil, caseFileId)
+	exec := usecase.executorFactory.NewExecutor()
+	cf, err := usecase.repository.GetCaseFileById(ctx, exec, caseFileId)
 	if err != nil {
 		return "", err
 	}
 
-	c, err := usecase.getCaseWithDetails(ctx, nil, cf.CaseId)
+	c, err := usecase.getCaseWithDetails(ctx, exec, cf.CaseId)
 	if err != nil {
 		return "", err
 	}
-	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, nil)
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec)
 	if err != nil {
 		return "", err
 	}

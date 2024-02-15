@@ -5,6 +5,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 )
 
 type InboxRepository interface {
@@ -25,10 +26,11 @@ type InboxReader struct {
 	OrganizationIdOfContext func() (string, error)
 	InboxRepository         InboxRepository
 	Credentials             models.Credentials
+	ExecutorFactory         executor_factory.ExecutorFactory
 }
 
 func (i *InboxReader) GetInboxById(ctx context.Context, inboxId string) (models.Inbox, error) {
-	inbox, err := i.InboxRepository.GetInboxById(ctx, nil, inboxId)
+	inbox, err := i.InboxRepository.GetInboxById(ctx, i.ExecutorFactory.NewExecutor(), inboxId)
 	if err != nil {
 		return models.Inbox{}, err
 	}

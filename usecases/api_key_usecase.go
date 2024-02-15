@@ -29,6 +29,7 @@ type EnforceSecurityApiKey interface {
 
 type ApiKeyUseCase struct {
 	transactionFactory      executor_factory.TransactionFactory
+	executorFactory         executor_factory.ExecutorFactory
 	organizationIdOfContext func() (string, error)
 	enforceSecurity         EnforceSecurityApiKey
 	apiKeyRepository        ApiKeyRepository
@@ -40,7 +41,7 @@ func (usecase *ApiKeyUseCase) ListApiKeys(ctx context.Context) ([]models.ApiKey,
 		return []models.ApiKey{}, err
 	}
 
-	apiKeys, err := usecase.apiKeyRepository.ListApiKeys(ctx, nil, organizationId)
+	apiKeys, err := usecase.apiKeyRepository.ListApiKeys(ctx, usecase.executorFactory.NewExecutor(), organizationId)
 	if err != nil {
 		return []models.ApiKey{}, err
 	}
@@ -114,7 +115,8 @@ func generateAPiKey() string {
 }
 
 func (usecase *ApiKeyUseCase) DeleteApiKey(ctx context.Context, apiKeyId string) error {
-	apiKey, err := usecase.apiKeyRepository.GetApiKeyById(ctx, nil, apiKeyId)
+	exec := usecase.executorFactory.NewExecutor()
+	apiKey, err := usecase.apiKeyRepository.GetApiKeyById(ctx, exec, apiKeyId)
 	if err != nil {
 		return err
 	}
@@ -123,7 +125,7 @@ func (usecase *ApiKeyUseCase) DeleteApiKey(ctx context.Context, apiKeyId string)
 		return err
 	}
 
-	err = usecase.apiKeyRepository.SoftDeleteApiKey(ctx, nil, apiKey.Id)
+	err = usecase.apiKeyRepository.SoftDeleteApiKey(ctx, exec, apiKey.Id)
 	if err != nil {
 		return err
 	}
