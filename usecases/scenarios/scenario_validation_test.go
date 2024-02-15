@@ -67,8 +67,11 @@ func TestValidateScenarioIterationImpl_Validate(t *testing.T) {
 		Schedule:             "schedule",
 	}
 
+	exec := new(mocks.Executor)
+	executorFactory := new(mocks.ExecutorFactory)
+	executorFactory.On("NewExecutor").Once().Return(exec)
 	mdmr := new(mocks.DataModelRepository)
-	mdmr.On("GetDataModel", scenario.OrganizationId, false).
+	mdmr.On("GetDataModel", exec, scenario.OrganizationId, false).
 		Return(models.DataModel{
 			Version: "version",
 			Status:  models.Live,
@@ -90,6 +93,7 @@ func TestValidateScenarioIterationImpl_Validate(t *testing.T) {
 		AstEvaluationEnvironmentFactory: func(params ast_eval.EvaluationEnvironmentFactoryParams) ast_eval.AstEvaluationEnvironment {
 			return ast_eval.NewAstEvaluationEnvironment()
 		},
+		ExecutorFactory: executorFactory,
 	}
 
 	result := validator.Validate(context.TODO(), ScenarioAndIteration{

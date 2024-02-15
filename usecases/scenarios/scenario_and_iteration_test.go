@@ -36,7 +36,7 @@ func TestScenarioFetcher_FetchScenarioAndIteration(t *testing.T) {
 		ScenarioId: "scenario_id",
 	}
 
-	mt := new(mocks.Transaction)
+	mt := new(mocks.Executor)
 
 	repo := new(ScenarioFetcherRepositoryMock)
 	repo.On("GetScenarioIteration", mt, scenarioIteration.Id).Return(scenarioIteration, nil)
@@ -58,7 +58,7 @@ func TestScenarioFetcher_FetchScenarioAndIteration(t *testing.T) {
 }
 
 func TestScenarioFetcher_FetchScenarioAndIteration_GetScenarioIteration_error(t *testing.T) {
-	mt := new(mocks.Transaction)
+	mt := new(mocks.Executor)
 
 	repo := new(ScenarioFetcherRepositoryMock)
 	repo.On("GetScenarioIteration", mt, "scenario_iteration_id").Return(models.ScenarioIteration{}, assert.AnError)
@@ -84,7 +84,7 @@ func TestScenarioFetcher_FetchScenarioAndIteration_GetScenarioById_error(t *test
 		ScenarioId: "scenario_id",
 	}
 
-	mt := new(mocks.Transaction)
+	mt := new(mocks.Executor)
 
 	repo := new(ScenarioFetcherRepositoryMock)
 	repo.On("GetScenarioIteration", mt, scenarioIteration.Id).Return(scenarioIteration, nil)

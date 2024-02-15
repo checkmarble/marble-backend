@@ -16,8 +16,9 @@ import (
 type InboxReaderTestSuite struct {
 	suite.Suite
 	enforceSecurity    *mocks.EnforceSecurity
-	transaction        *mocks.Transaction
+	transaction        *mocks.Executor
 	transactionFactory *mocks.TransactionFactory
+	executorFactory    *mocks.ExecutorFactory
 	inboxRepository    *mocks.InboxRepository
 	userRepository     *mocks.UserRepository
 	credentials        models.Credentials
@@ -30,14 +31,18 @@ type InboxReaderTestSuite struct {
 	nonAdminUserId  models.UserId
 	repositoryError error
 	securityError   error
+	ctx             context.Context
 }
 
 func (suite *InboxReaderTestSuite) SetupTest() {
 	suite.enforceSecurity = new(mocks.EnforceSecurity)
 	suite.inboxRepository = new(mocks.InboxRepository)
 	suite.userRepository = new(mocks.UserRepository)
-	suite.transaction = new(mocks.Transaction)
-	suite.transactionFactory = &mocks.TransactionFactory{TxMock: suite.transaction}
+	suite.transaction = new(mocks.Executor)
+	suite.transactionFactory = &mocks.TransactionFactory{ExecMock: suite.transaction}
+	suite.executorFactory = new(mocks.ExecutorFactory)
+
+	suite.ctx = context.Background()
 
 	suite.organizationId = "25ab6323-1657-4a52-923a-ef6983fe4532"
 	suite.inboxId = "0ae6fda7-f7b3-4218-9fc3-4efa329432a7"
@@ -74,6 +79,7 @@ func (suite *InboxReaderTestSuite) makeUsecase() *InboxReader {
 		EnforceSecurity: suite.enforceSecurity,
 		InboxRepository: suite.inboxRepository,
 		Credentials:     suite.credentials,
+		ExecutorFactory: suite.executorFactory,
 	}
 }
 
@@ -85,6 +91,7 @@ func (suite *InboxReaderTestSuite) makeUsecaseAdmin() *InboxReader {
 		EnforceSecurity: suite.enforceSecurity,
 		InboxRepository: suite.inboxRepository,
 		Credentials:     suite.adminCredentials,
+		ExecutorFactory: suite.executorFactory,
 	}
 }
 
@@ -98,10 +105,11 @@ func (suite *InboxReaderTestSuite) AssertExpectations() {
 func (suite *InboxReaderTestSuite) Test_GetInboxById_nominal() {
 	t := suite.T()
 
-	suite.inboxRepository.On("GetInboxById", nil, suite.inboxId).Return(suite.inbox, nil)
+	suite.executorFactory.On("NewExecutor").Once().Return(suite.transaction)
+	suite.inboxRepository.On("GetInboxById", suite.transaction, suite.inboxId).Return(suite.inbox, nil)
 	suite.enforceSecurity.On("ReadInbox", suite.inbox).Return(nil)
 
-	result, err := suite.makeUsecase().GetInboxById(context.Background(), suite.inbox.Id)
+	result, err := suite.makeUsecase().GetInboxById(suite.ctx, suite.inbox.Id)
 
 	assert.NoError(t, err)
 	assert.Equal(t, suite.inbox, result)
@@ -111,9 +119,10 @@ func (suite *InboxReaderTestSuite) Test_GetInboxById_nominal() {
 }
 
 func (suite *InboxReaderTestSuite) Test_GetInboxById_repository_error() {
-	suite.inboxRepository.On("GetInboxById", nil, suite.inboxId).Return(models.Inbox{}, suite.repositoryError)
+	suite.executorFactory.On("NewExecutor").Once().Return(suite.transaction)
+	suite.inboxRepository.On("GetInboxById", suite.transaction, suite.inboxId).Return(models.Inbox{}, suite.repositoryError)
 
-	_, err := suite.makeUsecase().GetInboxById(context.Background(), suite.inbox.Id)
+	_, err := suite.makeUsecase().GetInboxById(suite.ctx, suite.inbox.Id)
 
 	t := suite.T()
 	assert.ErrorIs(t, err, suite.repositoryError)
@@ -122,10 +131,11 @@ func (suite *InboxReaderTestSuite) Test_GetInboxById_repository_error() {
 }
 
 func (suite *InboxReaderTestSuite) Test_GetInboxById_security_error() {
-	suite.inboxRepository.On("GetInboxById", nil, suite.inboxId).Return(suite.inbox, nil)
+	suite.executorFactory.On("NewExecutor").Once().Return(suite.transaction)
+	suite.inboxRepository.On("GetInboxById", suite.transaction, suite.inboxId).Return(suite.inbox, nil)
 	suite.enforceSecurity.On("ReadInbox", suite.inbox).Return(suite.securityError)
 
-	_, err := suite.makeUsecase().GetInboxById(context.Background(), suite.inbox.Id)
+	_, err := suite.makeUsecase().GetInboxById(suite.ctx, suite.inbox.Id)
 
 	t := suite.T()
 	assert.ErrorIs(t, err, suite.securityError)
@@ -134,10 +144,10 @@ func (suite *InboxReaderTestSuite) Test_GetInboxById_security_error() {
 }
 
 func (suite *InboxReaderTestSuite) Test_ListInboxes_nominal_admin() {
-	suite.inboxRepository.On("ListInboxes", nil, suite.organizationId, mock.MatchedBy(func(s []string) bool { return s == nil })).Return([]models.Inbox{suite.inbox}, nil)
+	suite.inboxRepository.On("ListInboxes", suite.transaction, suite.organizationId, mock.MatchedBy(func(s []string) bool { return s == nil })).Return([]models.Inbox{suite.inbox}, nil)
 	suite.enforceSecurity.On("ReadInbox", suite.inbox).Return(nil)
 
-	result, err := suite.makeUsecaseAdmin().ListInboxes(context.Background(), nil, false)
+	result, err := suite.makeUsecaseAdmin().ListInboxes(suite.ctx, suite.transaction, false)
 
 	t := suite.T()
 	assert.NoError(t, err)
@@ -147,11 +157,12 @@ func (suite *InboxReaderTestSuite) Test_ListInboxes_nominal_admin() {
 }
 
 func (suite *InboxReaderTestSuite) Test_ListInboxes_nominal_non_admin() {
-	suite.inboxRepository.On("ListInboxUsers", nil, models.InboxUserFilterInput{UserId: suite.nonAdminUserId}).Return([]models.InboxUser{{InboxId: suite.inboxId}}, nil)
-	suite.inboxRepository.On("ListInboxes", nil, suite.organizationId, []string{suite.inboxId}).Return([]models.Inbox{suite.inbox}, nil)
+	suite.executorFactory.On("NewExecutor").Once().Return(suite.transaction)
+	suite.inboxRepository.On("ListInboxUsers", suite.transaction, models.InboxUserFilterInput{UserId: suite.nonAdminUserId}).Return([]models.InboxUser{{InboxId: suite.inboxId}}, nil)
+	suite.inboxRepository.On("ListInboxes", suite.transaction, suite.organizationId, []string{suite.inboxId}).Return([]models.Inbox{suite.inbox}, nil)
 	suite.enforceSecurity.On("ReadInbox", suite.inbox).Return(nil)
 
-	result, err := suite.makeUsecase().ListInboxes(context.Background(), nil, false)
+	result, err := suite.makeUsecase().ListInboxes(suite.ctx, suite.transaction, false)
 
 	t := suite.T()
 	assert.NoError(t, err)
@@ -161,9 +172,10 @@ func (suite *InboxReaderTestSuite) Test_ListInboxes_nominal_non_admin() {
 }
 
 func (suite *InboxReaderTestSuite) Test_ListInboxes_nominal_no_inboxes() {
-	suite.inboxRepository.On("ListInboxUsers", nil, models.InboxUserFilterInput{UserId: suite.nonAdminUserId}).Return([]models.InboxUser{}, nil)
+	suite.executorFactory.On("NewExecutor").Once().Return(suite.transaction)
+	suite.inboxRepository.On("ListInboxUsers", suite.transaction, models.InboxUserFilterInput{UserId: suite.nonAdminUserId}).Return([]models.InboxUser{}, nil)
 
-	result, err := suite.makeUsecase().ListInboxes(context.Background(), nil, false)
+	result, err := suite.makeUsecase().ListInboxes(suite.ctx, suite.transaction, false)
 
 	t := suite.T()
 	assert.NoError(t, err)
@@ -173,10 +185,11 @@ func (suite *InboxReaderTestSuite) Test_ListInboxes_nominal_no_inboxes() {
 }
 
 func (suite *InboxReaderTestSuite) Test_ListInboxes_repository_error() {
-	suite.inboxRepository.On("ListInboxUsers", nil, models.InboxUserFilterInput{UserId: suite.nonAdminUserId}).Return([]models.InboxUser{{InboxId: suite.inboxId}}, nil)
-	suite.inboxRepository.On("ListInboxes", nil, suite.organizationId, []string{suite.inboxId}).Return([]models.Inbox{}, suite.repositoryError)
+	suite.executorFactory.On("NewExecutor").Once().Return(suite.transaction)
+	suite.inboxRepository.On("ListInboxUsers", suite.transaction, models.InboxUserFilterInput{UserId: suite.nonAdminUserId}).Return([]models.InboxUser{{InboxId: suite.inboxId}}, nil)
+	suite.inboxRepository.On("ListInboxes", suite.transaction, suite.organizationId, []string{suite.inboxId}).Return([]models.Inbox{}, suite.repositoryError)
 
-	_, err := suite.makeUsecase().ListInboxes(context.Background(), nil, false)
+	_, err := suite.makeUsecase().ListInboxes(suite.ctx, suite.transaction, false)
 
 	t := suite.T()
 	assert.ErrorIs(t, err, suite.repositoryError)
@@ -185,11 +198,12 @@ func (suite *InboxReaderTestSuite) Test_ListInboxes_repository_error() {
 }
 
 func (suite *InboxReaderTestSuite) Test_ListInboxes_security_error() {
-	suite.inboxRepository.On("ListInboxUsers", nil, models.InboxUserFilterInput{UserId: suite.nonAdminUserId}).Return([]models.InboxUser{{InboxId: suite.inboxId}}, nil)
-	suite.inboxRepository.On("ListInboxes", nil, suite.organizationId, []string{suite.inboxId}).Return([]models.Inbox{suite.inbox}, nil)
+	suite.executorFactory.On("NewExecutor").Once().Return(suite.transaction)
+	suite.inboxRepository.On("ListInboxUsers", suite.transaction, models.InboxUserFilterInput{UserId: suite.nonAdminUserId}).Return([]models.InboxUser{{InboxId: suite.inboxId}}, nil)
+	suite.inboxRepository.On("ListInboxes", suite.transaction, suite.organizationId, []string{suite.inboxId}).Return([]models.Inbox{suite.inbox}, nil)
 	suite.enforceSecurity.On("ReadInbox", suite.inbox).Return(suite.securityError)
 
-	_, err := suite.makeUsecase().ListInboxes(context.Background(), nil, false)
+	_, err := suite.makeUsecase().ListInboxes(suite.ctx, suite.transaction, false)
 
 	t := suite.T()
 	assert.ErrorIs(t, err, suite.securityError)

@@ -16,7 +16,7 @@ import (
 type ApiKeyUsecaseTestSuite struct {
 	suite.Suite
 	enforceSecurity    *mocks.EnforceSecurity
-	transaction        *mocks.Transaction
+	transaction        *mocks.Executor
 	transactionFactory *mocks.TransactionFactory
 	apiKeyRepository   *mocks.ApiKeyRepository
 
@@ -30,8 +30,8 @@ type ApiKeyUsecaseTestSuite struct {
 func (suite *ApiKeyUsecaseTestSuite) SetupTest() {
 	suite.enforceSecurity = new(mocks.EnforceSecurity)
 	suite.apiKeyRepository = new(mocks.ApiKeyRepository)
-	suite.transaction = new(mocks.Transaction)
-	suite.transactionFactory = &mocks.TransactionFactory{TxMock: suite.transaction}
+	suite.transaction = new(mocks.Executor)
+	suite.transactionFactory = &mocks.TransactionFactory{ExecMock: suite.transaction}
 
 	suite.organizationId = "25ab6323-1657-4a52-923a-ef6983fe4532"
 	suite.apiKey = models.ApiKey{
