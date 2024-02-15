@@ -13,8 +13,8 @@ type DataModelRepository struct {
 	mock.Mock
 }
 
-func (d *DataModelRepository) GetDataModel(ctx context.Context, organizationId string, fetchEnumValues bool) (models.DataModel, error) {
-	args := d.Called(organizationId, fetchEnumValues)
+func (d *DataModelRepository) GetDataModel(ctx context.Context, exec repositories.Executor, organizationId string, fetchEnumValues bool) (models.DataModel, error) {
+	args := d.Called(exec, organizationId, fetchEnumValues)
 	return args.Get(0).(models.DataModel), args.Error(1)
 }
 

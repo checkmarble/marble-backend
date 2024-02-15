@@ -8,6 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
 )
 
@@ -16,6 +17,7 @@ type AstExpressionUsecaseRepository interface {
 }
 
 type AstExpressionUsecase struct {
+	executorFactory     executor_factory.ExecutorFactory
 	EnforceSecurity     security.EnforceSecurityScenario
 	DataModelRepository repositories.DataModelRepository
 	Repository          AstExpressionUsecaseRepository
@@ -102,8 +104,7 @@ func (usecase *AstExpressionUsecase) getPayloadIdentifiers(scenario models.Scena
 }
 
 func (usecase *AstExpressionUsecase) EditorIdentifiers(ctx context.Context, scenarioId string) (EditorIdentifiers, error) {
-
-	scenario, err := usecase.Repository.GetScenarioById(ctx, nil, scenarioId)
+	scenario, err := usecase.Repository.GetScenarioById(ctx, usecase.executorFactory.NewExecutor(), scenarioId)
 	if err != nil {
 		return EditorIdentifiers{}, err
 	}
@@ -112,7 +113,7 @@ func (usecase *AstExpressionUsecase) EditorIdentifiers(ctx context.Context, scen
 		return EditorIdentifiers{}, err
 	}
 
-	dataModel, err := usecase.DataModelRepository.GetDataModel(ctx, scenario.OrganizationId, false)
+	dataModel, err := usecase.DataModelRepository.GetDataModel(ctx, usecase.executorFactory.NewExecutor(), scenario.OrganizationId, false)
 	if err != nil {
 		return EditorIdentifiers{}, err
 	}

@@ -9,15 +9,15 @@ import (
 )
 
 type DataAccessor struct {
-	DataModel                   models.DataModel
-	Payload                     models.PayloadReader
-	clientSchemaExecutorFactory executor_factory.ClientSchemaExecutorFactory
-	organizationId              string
-	ingestedDataReadRepository  repositories.IngestedDataReadRepository
+	DataModel                  models.DataModel
+	Payload                    models.PayloadReader
+	executorFactory            executor_factory.ExecutorFactory
+	organizationId             string
+	ingestedDataReadRepository repositories.IngestedDataReadRepository
 }
 
 func (d *DataAccessor) GetDbField(ctx context.Context, triggerTableName string, path []string, fieldName string) (interface{}, error) {
-	db, err := d.clientSchemaExecutorFactory.NewClientDbExecutor(ctx, d.organizationId)
+	db, err := d.executorFactory.NewClientDbExecutor(ctx, d.organizationId)
 	if err != nil {
 		return nil, err
 	}

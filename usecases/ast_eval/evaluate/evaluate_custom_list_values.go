@@ -10,28 +10,36 @@ import (
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
 )
 
 type CustomListValuesAccess struct {
 	CustomListRepository repositories.CustomListRepository
 	EnforceSecurity      security.EnforceSecurity
+	executorFactory      executor_factory.ExecutorFactory
 }
 
-func NewCustomListValuesAccess(clr repositories.CustomListRepository, enforceSecurity security.EnforceSecurity) CustomListValuesAccess {
+func NewCustomListValuesAccess(
+	clr repositories.CustomListRepository,
+	enforceSecurity security.EnforceSecurity,
+	executorFactory executor_factory.ExecutorFactory,
+) CustomListValuesAccess {
 	return CustomListValuesAccess{
 		CustomListRepository: clr,
 		EnforceSecurity:      enforceSecurity,
+		executorFactory:      executorFactory,
 	}
 }
 
 func (clva CustomListValuesAccess) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
+	exec := clva.executorFactory.NewExecutor()
 	listId, err := AdaptNamedArgument(arguments.NamedArgs, "customListId", adaptArgumentToString)
 	if err != nil {
 		return MakeEvaluateError(err)
 	}
 
-	list, err := clva.CustomListRepository.GetCustomListById(ctx, nil, listId)
+	list, err := clva.CustomListRepository.GetCustomListById(ctx, exec, listId)
 	if err != nil {
 		return MakeEvaluateError(ast.ErrListNotFound)
 	}
@@ -39,7 +47,7 @@ func (clva CustomListValuesAccess) Evaluate(ctx context.Context, arguments ast.A
 		return MakeEvaluateError(errors.Wrap(err, fmt.Sprintf("Organization in credentials is not allowed to read this list %s", list.Id)))
 	}
 
-	listValues, err := clva.CustomListRepository.GetCustomListValues(ctx, nil, models.GetCustomListValuesInput{
+	listValues, err := clva.CustomListRepository.GetCustomListValues(ctx, exec, models.GetCustomListValuesInput{
 		Id: listId,
 	})
 	if err != nil {

@@ -30,6 +30,7 @@ const (
 
 type IngestionUseCase struct {
 	transactionFactory  executor_factory.TransactionFactory
+	executorFactory     executor_factory.ExecutorFactory
 	enforceSecurity     security.EnforceSecurityIngestion
 	ingestionRepository repositories.IngestionRepository
 	gcsRepository       repositories.GcsRepository
@@ -52,11 +53,7 @@ func (usecase *IngestionUseCase) ListUploadLogs(ctx context.Context, organizatio
 		return []models.UploadLog{}, err
 	}
 
-	uploadLogs, err := usecase.uploadLogRepository.AllUploadLogsByTable(ctx, nil, organizationId, objectType)
-	if err != nil {
-		return []models.UploadLog{}, err
-	}
-	return uploadLogs, nil
+	return usecase.uploadLogRepository.AllUploadLogsByTable(ctx, usecase.executorFactory.NewExecutor(), organizationId, objectType)
 }
 
 func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Context, organizationId, userId, objectType string, fileReader *csv.Reader) (models.UploadLog, error) {
@@ -149,7 +146,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 }
 
 func (usecase *IngestionUseCase) IngestDataFromCsv(ctx context.Context, logger *slog.Logger) error {
-	pendingUploadLogs, err := usecase.uploadLogRepository.AllUploadLogsByStatus(ctx, nil, models.UploadPending)
+	pendingUploadLogs, err := usecase.uploadLogRepository.AllUploadLogsByStatus(ctx, usecase.executorFactory.NewExecutor(), models.UploadPending)
 	if err != nil {
 		return err
 	}
@@ -180,9 +177,10 @@ func (usecase *IngestionUseCase) IngestDataFromCsv(ctx context.Context, logger *
 }
 
 func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog models.UploadLog, logger *slog.Logger) error {
+	exec := usecase.executorFactory.NewExecutor()
 	logger.InfoContext(ctx, fmt.Sprintf("Start processing UploadLog %s", uploadLog.Id))
 
-	err := usecase.uploadLogRepository.UpdateUploadLog(ctx, nil, models.UpdateUploadLogInput{Id: uploadLog.Id, UploadStatus: models.UploadProcessing})
+	err := usecase.uploadLogRepository.UpdateUploadLog(ctx, exec, models.UpdateUploadLogInput{Id: uploadLog.Id, UploadStatus: models.UploadProcessing})
 	if err != nil {
 		return err
 	}
@@ -199,7 +197,7 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 
 	currentTime := time.Now()
 	input := models.UpdateUploadLogInput{Id: uploadLog.Id, UploadStatus: models.UploadSuccess, FinishedAt: &currentTime}
-	if err = usecase.uploadLogRepository.UpdateUploadLog(ctx, nil, input); err != nil {
+	if err = usecase.uploadLogRepository.UpdateUploadLog(ctx, exec, input); err != nil {
 		return err
 	}
 	return nil

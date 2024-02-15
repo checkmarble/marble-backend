@@ -42,7 +42,9 @@ func selectJoinScheduledExecutionAndScenario() squirrel.SelectBuilder {
 }
 
 func (repo *MarbleDbRepository) GetScheduledExecution(ctx context.Context, exec Executor, id string) (models.ScheduledExecution, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ScheduledExecution{}, err
+	}
 
 	return SqlToRow(
 		ctx,
@@ -53,7 +55,9 @@ func (repo *MarbleDbRepository) GetScheduledExecution(ctx context.Context, exec 
 }
 
 func (repo *MarbleDbRepository) ListScheduledExecutions(ctx context.Context, exec Executor, filters models.ListScheduledExecutionsFilters) ([]models.ScheduledExecution, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
 	query := selectJoinScheduledExecutionAndScenario().OrderBy("se.started_at DESC")
 
 	if filters.ScenarioId != "" {
@@ -81,7 +85,9 @@ func (repo *MarbleDbRepository) ListScheduledExecutions(ctx context.Context, exe
 }
 
 func (repo *MarbleDbRepository) CreateScheduledExecution(ctx context.Context, exec Executor, createScheduledEx models.CreateScheduledExecutionInput, newScheduledExecutionId string) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	err := ExecBuilder(
 		ctx,
@@ -108,7 +114,9 @@ func (repo *MarbleDbRepository) CreateScheduledExecution(ctx context.Context, ex
 }
 
 func (repo *MarbleDbRepository) UpdateScheduledExecution(ctx context.Context, exec Executor, updateScheduledEx models.UpdateScheduledExecutionInput) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 	query := NewQueryBuilder().Update(dbmodels.TABLE_SCHEDULED_EXECUTIONS).
 		Where("id = ?", updateScheduledEx.Id)
 

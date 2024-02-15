@@ -8,7 +8,9 @@ import (
 )
 
 func (repo *MarbleDbRepository) GetCaseContributor(ctx context.Context, exec Executor, caseId, userId string) (*models.CaseContributor, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	query := NewQueryBuilder().
 		Select(dbmodels.SelectCaseContributorColumn...).
@@ -25,7 +27,9 @@ func (repo *MarbleDbRepository) GetCaseContributor(ctx context.Context, exec Exe
 }
 
 func (repo *MarbleDbRepository) CreateCaseContributor(ctx context.Context, exec Executor, caseId, userId string) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	query := NewQueryBuilder().Insert(dbmodels.TABLE_CASE_CONTRIBUTORS).
 		Columns(

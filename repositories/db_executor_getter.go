@@ -57,22 +57,22 @@ func (g ExecutorGetter) GetExecutor(databaseSchema models.DatabaseSchema) Execut
 	}
 }
 
-func (g ExecutorGetter) ifNil(exec Executor) Executor {
-	if exec == nil {
-		exec = &ExecutorPostgres{
-			databaseShema: models.DATABASE_MARBLE_SCHEMA,
-			exec:          g.connectionPool,
-		}
-	}
-	return exec
-}
-
 func validateClientDbExecutor(exec databaseSchemaGetter) error {
 	if exec == nil {
 		return errors.New("Cannot use nil executor for client database")
 	}
 	if exec.DatabaseSchema().SchemaType != models.DATABASE_SCHEMA_TYPE_CLIENT {
 		return errors.New("Cannot use marble db executor to query client database")
+	}
+	return nil
+}
+
+func validateMarbleDbExecutor(exec databaseSchemaGetter) error {
+	if exec == nil {
+		return errors.New("Cannot use nil executor for marble database")
+	}
+	if exec.DatabaseSchema().SchemaType != models.DATABASE_SCHEMA_TYPE_MARBLE {
+		return errors.New("Cannot use client db executor to query marble database")
 	}
 	return nil
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 )
 
 type AwsS3Repository interface {
@@ -21,11 +22,12 @@ type ExportScheduleExecution struct {
 	AwsS3Repository        AwsS3Repository
 	DecisionRepository     repositories.DecisionRepository
 	OrganizationRepository repositories.OrganizationRepository
+	ExecutorFactory        executor_factory.ExecutorFactory
 }
 
 func (exporter *ExportScheduleExecution) ExportScheduledExecutionToS3(ctx context.Context, scenario models.Scenario, scheduledExecution models.ScheduledExecution) error {
 
-	organization, err := exporter.OrganizationRepository.GetOrganizationById(ctx, nil, scheduledExecution.OrganizationId)
+	organization, err := exporter.OrganizationRepository.GetOrganizationById(ctx, exporter.ExecutorFactory.NewExecutor(), scheduledExecution.OrganizationId)
 	if err != nil {
 		return err
 	}
@@ -103,7 +105,7 @@ func (exporter *ExportScheduleExecution) uploadDecisions(src *io.PipeReader, sch
 
 func (exporter *ExportScheduleExecution) ExportDecisions(ctx context.Context, scheduledExecutionId string, dest io.Writer) (int, error) {
 
-	decisionChan, errorChan := exporter.DecisionRepository.DecisionsOfScheduledExecution(ctx, nil, scheduledExecutionId)
+	decisionChan, errorChan := exporter.DecisionRepository.DecisionsOfScheduledExecution(ctx, exporter.ExecutorFactory.NewExecutor(), scheduledExecutionId)
 
 	encoder := json.NewEncoder(dest)
 

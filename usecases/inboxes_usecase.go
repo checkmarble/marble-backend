@@ -29,6 +29,7 @@ type EnforceSecurityInboxes interface {
 
 type InboxUsecase struct {
 	transactionFactory      executor_factory.TransactionFactory
+	executorFactory         executor_factory.ExecutorFactory
 	enforceSecurity         EnforceSecurityInboxes
 	organizationIdOfContext func() (string, error)
 	inboxRepository         InboxRepository
@@ -43,7 +44,7 @@ func (usecase *InboxUsecase) GetInboxById(ctx context.Context, inboxId string) (
 }
 
 func (usecase *InboxUsecase) ListInboxes(ctx context.Context, withCaseCount bool) ([]models.Inbox, error) {
-	return usecase.inboxReader.ListInboxes(ctx, nil, withCaseCount)
+	return usecase.inboxReader.ListInboxes(ctx, usecase.executorFactory.NewExecutor(), withCaseCount)
 }
 
 func (usecase *InboxUsecase) CreateInbox(ctx context.Context, input models.CreateInboxInput) (models.Inbox, error) {

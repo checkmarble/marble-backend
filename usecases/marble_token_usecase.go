@@ -12,6 +12,7 @@ import (
 
 type MarbleTokenUseCase struct {
 	transactionFactory      executor_factory.TransactionFactory
+	executorFactory         executor_factory.ExecutorFactory
 	marbleJwtRepository     repositories.MarbleJwtRepository
 	firebaseTokenRepository repositories.FireBaseTokenRepository
 	userRepository          repositories.UserRepository
@@ -32,7 +33,7 @@ func (usecase *MarbleTokenUseCase) encodeMarbleToken(creds models.Credentials) (
 
 func (usecase *MarbleTokenUseCase) adaptCredentialFromApiKey(ctx context.Context, key string) (models.Credentials, error) {
 
-	apiKey, err := usecase.apiKeyRepository.GetApiKeyByKey(ctx, nil, key)
+	apiKey, err := usecase.apiKeyRepository.GetApiKeyByKey(ctx, usecase.executorFactory.NewExecutor(), key)
 	if err != nil {
 		return models.Credentials{}, err
 	}
@@ -47,7 +48,7 @@ func (usecase *MarbleTokenUseCase) adaptCredentialFromApiKey(ctx context.Context
 }
 
 func (usecase *MarbleTokenUseCase) makeTokenName(ctx context.Context, apiKey models.ApiKey) (string, error) {
-	organizationName, err := usecase.organizationRepository.GetOrganizationById(ctx, nil, apiKey.OrganizationId)
+	organizationName, err := usecase.organizationRepository.GetOrganizationById(ctx, usecase.executorFactory.NewExecutor(), apiKey.OrganizationId)
 	if err != nil {
 		return "", err
 	}

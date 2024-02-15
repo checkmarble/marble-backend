@@ -16,7 +16,9 @@ func selectScenarios() squirrel.SelectBuilder {
 }
 
 func (repo *MarbleDbRepository) GetScenarioById(ctx context.Context, exec Executor, scenarioId string) (models.Scenario, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.Scenario{}, err
+	}
 
 	return SqlToModel(
 		ctx,
@@ -27,7 +29,9 @@ func (repo *MarbleDbRepository) GetScenarioById(ctx context.Context, exec Execut
 }
 
 func (repo *MarbleDbRepository) ListScenariosOfOrganization(ctx context.Context, exec Executor, organizationId string) ([]models.Scenario, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	return SqlToListOfModels(
 		ctx,
@@ -38,7 +42,9 @@ func (repo *MarbleDbRepository) ListScenariosOfOrganization(ctx context.Context,
 }
 
 func (repo *MarbleDbRepository) ListAllScenarios(ctx context.Context, exec Executor, filters models.ListAllScenariosFilters) ([]models.Scenario, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	query := selectScenarios().OrderBy("id")
 

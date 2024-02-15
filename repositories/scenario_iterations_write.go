@@ -12,14 +12,18 @@ import (
 )
 
 func (repo *MarbleDbRepository) DeleteScenarioIteration(ctx context.Context, exec Executor, scenarioIterationId string) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	err := ExecBuilder(ctx, exec, NewQueryBuilder().Delete(dbmodels.TABLE_SCENARIO_ITERATIONS).Where("id = ?", scenarioIterationId))
 	return err
 }
 
 func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Context, exec Executor, organizationId string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ScenarioIteration{}, err
+	}
 
 	query := NewQueryBuilder().Insert(dbmodels.TABLE_SCENARIO_ITERATIONS).
 		Columns(
@@ -94,7 +98,9 @@ func (repo *MarbleDbRepository) UpdateScenarioIteration(ctx context.Context, exe
 		return models.ScenarioIteration{}, fmt.Errorf("nothing to update")
 	}
 
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ScenarioIteration{}, err
+	}
 
 	sql := NewQueryBuilder().
 		Update(dbmodels.TABLE_SCENARIO_ITERATIONS).
@@ -128,7 +134,9 @@ func (repo *MarbleDbRepository) UpdateScenarioIteration(ctx context.Context, exe
 }
 
 func (repo *MarbleDbRepository) UpdateScenarioIterationVersion(ctx context.Context, exec Executor, scenarioIterationId string, newVersion int) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	err := ExecBuilder(
 		ctx,

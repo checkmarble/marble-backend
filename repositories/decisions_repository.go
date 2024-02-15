@@ -24,15 +24,15 @@ type DecisionRepository interface {
 	UpdateDecisionCaseId(ctx context.Context, exec Executor, decisionsIds []string, caseId string) error
 }
 
-type DecisionRepositoryImpl struct {
-	executorGetter ExecutorGetter
-}
+type DecisionRepositoryImpl struct{}
 
 // the size of the batch is chosen without any benchmark
 const decisionRulesBatchSize = 1000
 
 func (repo *DecisionRepositoryImpl) DecisionById(ctx context.Context, exec Executor, decisionId string) (models.Decision, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.Decision{}, err
+	}
 
 	rules, err := repo.rulesOfDecision(ctx, exec, decisionId)
 	if err != nil {
@@ -64,7 +64,9 @@ func (repo *DecisionRepositoryImpl) DecisionById(ctx context.Context, exec Execu
 }
 
 func (repo *DecisionRepositoryImpl) DecisionsById(ctx context.Context, exec Executor, decisionIds []string) ([]models.Decision, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	query := selectJoinDecisionAndCase().Where(squirrel.Eq{"d.id": decisionIds})
 
@@ -87,7 +89,9 @@ func (repo *DecisionRepositoryImpl) DecisionsById(ctx context.Context, exec Exec
 }
 
 func (repo *DecisionRepositoryImpl) DecisionsByCaseId(ctx context.Context, exec Executor, caseId string) ([]models.Decision, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	query := selectDecisions().
 		Where(squirrel.Eq{"case_id": caseId}).
@@ -108,7 +112,9 @@ func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(
 	pagination models.PaginationAndSorting,
 	filters models.DecisionFilters,
 ) ([]models.DecisionWithRank, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	subquery := selectDecisionsWithRank(pagination).
 		Where(squirrel.Eq{"d.org_id": organizationId})
@@ -289,7 +295,14 @@ func selectDecisionsWithJoinedFields(query squirrel.SelectBuilder, p models.Pagi
 }
 
 func (repo *DecisionRepositoryImpl) DecisionsOfScheduledExecution(ctx context.Context, exec Executor, scheduledExecutionId string) (<-chan models.Decision, <-chan error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		valChannel := make(chan models.Decision)
+		errChannel := make(chan error)
+		errChannel <- err
+		close(valChannel)
+		close(errChannel)
+		return valChannel, errChannel
+	}
 
 	return repo.channelOfDecisions(
 		ctx,
@@ -301,7 +314,9 @@ func (repo *DecisionRepositoryImpl) DecisionsOfScheduledExecution(ctx context.Co
 }
 
 func (repo *DecisionRepositoryImpl) StoreDecision(ctx context.Context, exec Executor, decision models.Decision, organizationId string, newDecisionId string) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	err := ExecBuilder(
 		ctx,
@@ -375,7 +390,9 @@ func (repo *DecisionRepositoryImpl) StoreDecision(ctx context.Context, exec Exec
 }
 
 func (repo *DecisionRepositoryImpl) UpdateDecisionCaseId(ctx context.Context, exec Executor, decisionIds []string, caseId string) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 	var query = NewQueryBuilder().
 		Update(dbmodels.TABLE_DECISIONS).
 		Set("case_id", caseId).
@@ -397,7 +414,9 @@ func selectJoinDecisionAndCase() squirrel.SelectBuilder {
 }
 
 func (repo *DecisionRepositoryImpl) rulesOfDecision(ctx context.Context, exec Executor, decisionId string) ([]models.RuleExecution, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	return SqlToListOfModels(
 		ctx,
@@ -418,7 +437,9 @@ type RulesOfDecision struct {
 
 // Return an array of RulesOfDecision that correspond to the decisionIds
 func (repo *DecisionRepositoryImpl) rulesOfDecisionsBatch(ctx context.Context, exec Executor, decisionIds []string) ([]RulesOfDecision, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	allRules, err := SqlToListOfModels(
 		ctx,

@@ -17,12 +17,12 @@ type UploadLogRepository interface {
 	AllUploadLogsByTable(ctx context.Context, exec Executor, organizationId, tableName string) ([]models.UploadLog, error)
 }
 
-type UploadLogRepositoryImpl struct {
-	executorGetter ExecutorGetter
-}
+type UploadLogRepositoryImpl struct{}
 
 func (repo *UploadLogRepositoryImpl) CreateUploadLog(ctx context.Context, exec Executor, log models.UploadLog) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	err := ExecBuilder(
 		ctx,
@@ -55,7 +55,9 @@ func (repo *UploadLogRepositoryImpl) CreateUploadLog(ctx context.Context, exec E
 }
 
 func (repo *UploadLogRepositoryImpl) UpdateUploadLog(ctx context.Context, exec Executor, input models.UpdateUploadLogInput) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	var updateRequest = NewQueryBuilder().Update(dbmodels.TABLE_UPLOAD_LOGS)
 
@@ -72,7 +74,9 @@ func (repo *UploadLogRepositoryImpl) UpdateUploadLog(ctx context.Context, exec E
 }
 
 func (repo *UploadLogRepositoryImpl) UploadLogById(ctx context.Context, exec Executor, id string) (models.UploadLog, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.UploadLog{}, err
+	}
 
 	uploadLog, err := SqlToModel(
 		ctx,
@@ -92,7 +96,9 @@ func (repo *UploadLogRepositoryImpl) UploadLogById(ctx context.Context, exec Exe
 }
 
 func (repo *UploadLogRepositoryImpl) AllUploadLogsByStatus(ctx context.Context, exec Executor, status models.UploadStatus) ([]models.UploadLog, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	return SqlToListOfModels(
 		ctx,
@@ -107,7 +113,9 @@ func (repo *UploadLogRepositoryImpl) AllUploadLogsByStatus(ctx context.Context, 
 }
 
 func (repo *UploadLogRepositoryImpl) AllUploadLogsByTable(ctx context.Context, exec Executor, organizationId, tableName string) ([]models.UploadLog, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	return SqlToListOfModels(
 		ctx,

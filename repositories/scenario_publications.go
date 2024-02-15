@@ -15,9 +15,7 @@ type ScenarioPublicationRepository interface {
 	GetScenarioPublicationById(ctx context.Context, exec Executor, scenarioPublicationID string) (models.ScenarioPublication, error)
 }
 
-type ScenarioPublicationRepositoryPostgresql struct {
-	executorGetter ExecutorGetter
-}
+type ScenarioPublicationRepositoryPostgresql struct{}
 
 func selectScenarioPublications() squirrel.SelectBuilder {
 	return NewQueryBuilder().
@@ -26,7 +24,9 @@ func selectScenarioPublications() squirrel.SelectBuilder {
 }
 
 func (repo *ScenarioPublicationRepositoryPostgresql) GetScenarioPublicationById(ctx context.Context, exec Executor, scenarioPublicationID string) (models.ScenarioPublication, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.ScenarioPublication{}, err
+	}
 
 	return SqlToModel(
 		ctx,
@@ -37,7 +37,9 @@ func (repo *ScenarioPublicationRepositoryPostgresql) GetScenarioPublicationById(
 }
 
 func (repo *ScenarioPublicationRepositoryPostgresql) ListScenarioPublicationsOfOrganization(ctx context.Context, exec Executor, organizationId string, filters models.ListScenarioPublicationsFilters) ([]models.ScenarioPublication, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
 
 	query := selectScenarioPublications().
 		Where(squirrel.Eq{"org_id": organizationId}).
@@ -59,7 +61,9 @@ func (repo *ScenarioPublicationRepositoryPostgresql) ListScenarioPublicationsOfO
 }
 
 func (repo *ScenarioPublicationRepositoryPostgresql) CreateScenarioPublication(ctx context.Context, exec Executor, input models.CreateScenarioPublicationInput, newScenarioPublicationId string) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	err := ExecBuilder(
 		ctx,

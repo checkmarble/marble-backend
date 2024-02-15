@@ -22,12 +22,12 @@ type OrganizationSchemaRepository interface {
 	CreateField(ctx context.Context, exec Executor, schema, tableName string, field models.DataModelField) error
 }
 
-type OrganizationSchemaRepositoryPostgresql struct {
-	executorGetter ExecutorGetter
-}
+type OrganizationSchemaRepositoryPostgresql struct{}
 
 func (repo *OrganizationSchemaRepositoryPostgresql) OrganizationSchemaOfOrganization(ctx context.Context, exec Executor, organizationId string) (models.OrganizationSchema, error) {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.OrganizationSchema{}, err
+	}
 
 	return SqlToModel(
 		ctx,
@@ -97,7 +97,9 @@ func (repo *OrganizationSchemaRepositoryPostgresql) CreateField(ctx context.Cont
 }
 
 func (repo *OrganizationSchemaRepositoryPostgresql) CreateOrganizationSchema(ctx context.Context, exec Executor, createOrganizationSchema models.OrganizationSchema) error {
-	exec = repo.executorGetter.ifNil(exec)
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
 
 	err := ExecBuilder(
 		ctx,

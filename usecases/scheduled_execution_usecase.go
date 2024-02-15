@@ -31,6 +31,7 @@ type ScheduledExecutionUsecaseRepository interface {
 type ScheduledExecutionUsecase struct {
 	enforceSecurity         security.EnforceSecurityDecision
 	transactionFactory      executor_factory.TransactionFactory
+	executorFactory         executor_factory.ExecutorFactory
 	repository              ScheduledExecutionUsecaseRepository
 	exportScheduleExecution ExportDecisions
 	organizationIdOfContext func() (string, error)
@@ -99,15 +100,16 @@ func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(ctx context.Co
 }
 
 func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(ctx context.Context, input models.CreateScheduledExecutionInput) error {
+	exec := usecase.executorFactory.NewExecutor()
 	if err := usecase.enforceSecurity.CreateScheduledExecution(input.OrganizationId); err != nil {
 		return err
 	}
 
-	scenarioIteration, err := usecase.repository.GetScenarioIteration(ctx, nil, input.ScenarioIterationId)
+	scenarioIteration, err := usecase.repository.GetScenarioIteration(ctx, exec, input.ScenarioIterationId)
 	if err != nil {
 		return err
 	}
-	scenario, err := usecase.repository.GetScenarioById(ctx, nil, scenarioIteration.ScenarioId)
+	scenario, err := usecase.repository.GetScenarioById(ctx, exec, scenarioIteration.ScenarioId)
 	if err != nil {
 		return err
 	}
@@ -116,7 +118,7 @@ func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(ctx context.C
 		return fmt.Errorf("scenario iteration is not live %w", models.BadParameterError)
 	}
 
-	pendingExecutions, err := usecase.repository.ListScheduledExecutions(ctx, nil, models.ListScheduledExecutionsFilters{ScenarioId: scenario.Id, Status: []models.ScheduledExecutionStatus{models.ScheduledExecutionPending, models.ScheduledExecutionProcessing}})
+	pendingExecutions, err := usecase.repository.ListScheduledExecutions(ctx, exec, models.ListScheduledExecutionsFilters{ScenarioId: scenario.Id, Status: []models.ScheduledExecutionStatus{models.ScheduledExecutionPending, models.ScheduledExecutionProcessing}})
 	if err != nil {
 		return err
 	}

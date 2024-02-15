@@ -11,6 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval/evaluate"
+	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 )
 
 func ScenarioValidationToError(validation models.ScenarioValidation) error {
@@ -43,6 +44,7 @@ type ValidateScenarioIteration interface {
 type ValidateScenarioIterationImpl struct {
 	DataModelRepository             repositories.DataModelRepository
 	AstEvaluationEnvironmentFactory ast_eval.AstEvaluationEnvironmentFactory
+	ExecutorFactory                 executor_factory.ExecutorFactory
 }
 
 func (validator *ValidateScenarioIterationImpl) Validate(ctx context.Context, si ScenarioAndIteration) models.ScenarioValidation {
@@ -110,7 +112,7 @@ func (validator *ValidateScenarioIterationImpl) Validate(ctx context.Context, si
 func (validator *ValidateScenarioIterationImpl) makeDryRunEnvironment(ctx context.Context, si ScenarioAndIteration) (ast_eval.AstEvaluationEnvironment, *models.ScenarioValidationError) {
 	organizationId := si.Scenario.OrganizationId
 
-	dataModel, err := validator.DataModelRepository.GetDataModel(ctx, organizationId, false)
+	dataModel, err := validator.DataModelRepository.GetDataModel(ctx, validator.ExecutorFactory.NewExecutor(), organizationId, false)
 	if err != nil {
 		return ast_eval.AstEvaluationEnvironment{}, &models.ScenarioValidationError{
 			Error: errors.Wrap(err, "could not get data model for dry run"),

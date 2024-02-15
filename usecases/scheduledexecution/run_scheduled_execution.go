@@ -30,7 +30,7 @@ type RunScheduledExecutionRepository interface {
 
 type RunScheduledExecution struct {
 	Repository                     RunScheduledExecutionRepository
-	ClientSchemaExecutorFactory    executor_factory.ClientSchemaExecutorFactory
+	ExecutorFactory                executor_factory.ExecutorFactory
 	ExportScheduleExecution        ExportScheduleExecution
 	ScenarioPublicationsRepository repositories.ScenarioPublicationRepository
 	DataModelRepository            repositories.DataModelRepository
@@ -41,13 +41,14 @@ type RunScheduledExecution struct {
 }
 
 func (usecase *RunScheduledExecution) ScheduleScenarioIfDue(ctx context.Context, organizationId string, scenarioId string) error {
+	exec := usecase.ExecutorFactory.NewExecutor()
 	logger := utils.LoggerFromContext(ctx)
-	scenario, err := usecase.Repository.GetScenarioById(ctx, nil, scenarioId)
+	scenario, err := usecase.Repository.GetScenarioById(ctx, exec, scenarioId)
 	if err != nil {
 		return err
 	}
 
-	publishedVersion, err := usecase.getPublishedScenarioIteration(ctx, scenario)
+	publishedVersion, err := usecase.getPublishedScenarioIteration(ctx, exec, scenario)
 	if err != nil {
 		return err
 	}
@@ -56,7 +57,7 @@ func (usecase *RunScheduledExecution) ScheduleScenarioIfDue(ctx context.Context,
 		return nil
 	}
 
-	previousExecutions, err := usecase.Repository.ListScheduledExecutions(ctx, nil, models.ListScheduledExecutionsFilters{ScenarioId: scenarioId, Status: []models.ScheduledExecutionStatus{models.ScheduledExecutionPending, models.ScheduledExecutionProcessing}})
+	previousExecutions, err := usecase.Repository.ListScheduledExecutions(ctx, exec, models.ListScheduledExecutionsFilters{ScenarioId: scenarioId, Status: []models.ScheduledExecutionStatus{models.ScheduledExecutionPending, models.ScheduledExecutionProcessing}})
 	if err != nil {
 		return err
 	}
@@ -75,7 +76,7 @@ func (usecase *RunScheduledExecution) ScheduleScenarioIfDue(ctx context.Context,
 
 	logger.DebugContext(ctx, fmt.Sprintf("Scenario iteration %s is due", publishedVersion.Id))
 	scheduledExecutionId := utils.NewPrimaryKey(organizationId)
-	return usecase.Repository.CreateScheduledExecution(ctx, nil, models.CreateScheduledExecutionInput{
+	return usecase.Repository.CreateScheduledExecution(ctx, exec, models.CreateScheduledExecutionInput{
 		OrganizationId:      organizationId,
 		ScenarioId:          scenarioId,
 		ScenarioIterationId: publishedVersion.Id,
@@ -86,7 +87,7 @@ func (usecase *RunScheduledExecution) ScheduleScenarioIfDue(ctx context.Context,
 func (usecase *RunScheduledExecution) ExecuteAllScheduledScenarios(ctx context.Context) error {
 	logger := utils.LoggerFromContext(ctx)
 
-	pendingScheduledExecutions, err := usecase.Repository.ListScheduledExecutions(ctx, nil, models.ListScheduledExecutionsFilters{Status: []models.ScheduledExecutionStatus{models.ScheduledExecutionPending}})
+	pendingScheduledExecutions, err := usecase.Repository.ListScheduledExecutions(ctx, usecase.ExecutorFactory.NewExecutor(), models.ListScheduledExecutionsFilters{Status: []models.ScheduledExecutionStatus{models.ScheduledExecutionPending}})
 	if err != nil {
 		return fmt.Errorf("Error while listing pending ScheduledExecutions: %w", err)
 	}
@@ -116,9 +117,10 @@ func (usecase *RunScheduledExecution) ExecuteAllScheduledScenarios(ctx context.C
 }
 
 func (usecase *RunScheduledExecution) ExecuteScheduledScenario(ctx context.Context, logger *slog.Logger, scheduledExecution models.ScheduledExecution) error {
+	exec := usecase.ExecutorFactory.NewExecutor()
 	logger.InfoContext(ctx, fmt.Sprintf("Start execution %s", scheduledExecution.Id))
 
-	if err := usecase.Repository.UpdateScheduledExecution(ctx, nil, models.UpdateScheduledExecutionInput{
+	if err := usecase.Repository.UpdateScheduledExecution(ctx, exec, models.UpdateScheduledExecutionInput{
 		Id:     scheduledExecution.Id,
 		Status: utils.PtrTo(models.ScheduledExecutionProcessing, nil),
 	}); err != nil {
@@ -141,7 +143,7 @@ func (usecase *RunScheduledExecution) ExecuteScheduledScenario(ctx context.Conte
 	})
 
 	if err != nil {
-		if err := usecase.Repository.UpdateScheduledExecution(ctx, nil, models.UpdateScheduledExecutionInput{
+		if err := usecase.Repository.UpdateScheduledExecution(ctx, exec, models.UpdateScheduledExecutionInput{
 			Id:     scheduledExecution.Id,
 			Status: utils.PtrTo(models.ScheduledExecutionFailure, nil),
 		}); err != nil {
@@ -155,6 +157,7 @@ func (usecase *RunScheduledExecution) ExecuteScheduledScenario(ctx context.Conte
 }
 
 func (usecase *RunScheduledExecution) scenarioIsDue(ctx context.Context, publishedVersion models.PublishedScenarioIteration, scenario models.Scenario) (bool, error) {
+	exec := usecase.ExecutorFactory.NewExecutor()
 	logger := utils.LoggerFromContext(ctx)
 	if publishedVersion.Body.Schedule == "" {
 		logger.DebugContext(ctx, fmt.Sprintf("Scenario iteration %s has no schedule", publishedVersion.Id))
@@ -166,12 +169,12 @@ func (usecase *RunScheduledExecution) scenarioIsDue(ctx context.Context, publish
 		return false, fmt.Errorf("invalid schedule: %w", models.BadParameterError)
 	}
 
-	previousExecutions, err := usecase.Repository.ListScheduledExecutions(ctx, nil, models.ListScheduledExecutionsFilters{ScenarioId: scenario.Id, ExcludeManual: true})
+	previousExecutions, err := usecase.Repository.ListScheduledExecutions(ctx, exec, models.ListScheduledExecutionsFilters{ScenarioId: scenario.Id, ExcludeManual: true})
 	if err != nil {
 		return false, fmt.Errorf("error listing scheduled executions: %w", err)
 	}
 
-	publications, err := usecase.ScenarioPublicationsRepository.ListScenarioPublicationsOfOrganization(ctx, nil, scenario.OrganizationId, models.ListScenarioPublicationsFilters{ScenarioId: &scenario.Id})
+	publications, err := usecase.ScenarioPublicationsRepository.ListScenarioPublicationsOfOrganization(ctx, exec, scenario.OrganizationId, models.ListScenarioPublicationsFilters{ScenarioId: &scenario.Id})
 	if err != nil {
 		return false, err
 	}
@@ -200,7 +203,7 @@ func executionIsDueNow(schedule string, previousExecutions []models.ScheduledExe
 }
 
 func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Context, scheduledExecutionId string, scenario models.Scenario) (int, error) {
-	dataModel, err := usecase.DataModelRepository.GetDataModel(ctx, scenario.OrganizationId, false)
+	dataModel, err := usecase.DataModelRepository.GetDataModel(ctx, usecase.ExecutorFactory.NewExecutor(), scenario.OrganizationId, false)
 	if err != nil {
 		return 0, err
 	}
@@ -213,7 +216,7 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 	// list objects to score
 	numberOfCreatedDecisions := 0
 	var objects []models.ClientObject
-	db, err := usecase.ClientSchemaExecutorFactory.NewClientDbExecutor(ctx, scenario.OrganizationId)
+	db, err := usecase.ExecutorFactory.NewClientDbExecutor(ctx, scenario.OrganizationId)
 	if err != nil {
 		return 0, err
 	}
@@ -233,10 +236,10 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 					DataModel: dataModel,
 				},
 				evaluate_scenario.ScenarioEvaluationRepositories{
-					EvalScenarioRepository:      usecase.Repository,
-					ClientSchemaExecutorFactory: usecase.ClientSchemaExecutorFactory,
-					IngestedDataReadRepository:  usecase.IngestedDataReadRepository,
-					EvaluateRuleAstExpression:   usecase.EvaluateRuleAstExpression,
+					EvalScenarioRepository:     usecase.Repository,
+					ExecutorFactory:            usecase.ExecutorFactory,
+					IngestedDataReadRepository: usecase.IngestedDataReadRepository,
+					EvaluateRuleAstExpression:  usecase.EvaluateRuleAstExpression,
 				},
 				utils.LoggerFromContext(ctx),
 			)
@@ -272,12 +275,16 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 	return numberOfCreatedDecisions, err
 }
 
-func (usecase *RunScheduledExecution) getPublishedScenarioIteration(ctx context.Context, scenario models.Scenario) (*models.PublishedScenarioIteration, error) {
+func (usecase *RunScheduledExecution) getPublishedScenarioIteration(
+	ctx context.Context,
+	exec repositories.Executor,
+	scenario models.Scenario,
+) (*models.PublishedScenarioIteration, error) {
 	if scenario.LiveVersionID == nil {
 		return nil, nil
 	}
 
-	liveVersion, err := usecase.Repository.GetScenarioIteration(ctx, nil, *scenario.LiveVersionID)
+	liveVersion, err := usecase.Repository.GetScenarioIteration(ctx, exec, *scenario.LiveVersionID)
 	if err != nil {
 		return nil, err
 	}
