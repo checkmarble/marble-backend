@@ -16,12 +16,16 @@ type ScenarioFetcherRepositoryMock struct {
 	mock.Mock
 }
 
-func (s *ScenarioFetcherRepositoryMock) GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error) {
+func (s *ScenarioFetcherRepositoryMock) GetScenarioById(ctx context.Context,
+	exec repositories.Executor, scenarioId string,
+) (models.Scenario, error) {
 	args := s.Called(exec, scenarioId)
 	return args.Get(0).(models.Scenario), args.Error(1)
 }
 
-func (s *ScenarioFetcherRepositoryMock) GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (models.ScenarioIteration, error) {
+func (s *ScenarioFetcherRepositoryMock) GetScenarioIteration(ctx context.Context,
+	exec repositories.Executor, scenarioIterationId string,
+) (models.ScenarioIteration, error) {
 	args := s.Called(exec, scenarioIterationId)
 	return args.Get(0).(models.ScenarioIteration), args.Error(1)
 }
@@ -61,7 +65,8 @@ func TestScenarioFetcher_FetchScenarioAndIteration_GetScenarioIteration_error(t 
 	mt := new(mocks.Executor)
 
 	repo := new(ScenarioFetcherRepositoryMock)
-	repo.On("GetScenarioIteration", mt, "scenario_iteration_id").Return(models.ScenarioIteration{}, assert.AnError)
+	repo.On("GetScenarioIteration", mt, "scenario_iteration_id").Return(
+		models.ScenarioIteration{}, assert.AnError)
 
 	fetcher := ScenarioFetcher{
 		Repository: repo,

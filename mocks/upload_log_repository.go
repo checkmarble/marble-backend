@@ -31,7 +31,9 @@ func (r *UploadLogRepository) AllUploadLogsByStatus(exec repositories.Executor, 
 	return args.Get(0).([]models.UploadLog), args.Error(1)
 }
 
-func (r *UploadLogRepository) AllUploadLogsByTable(exec repositories.Executor, organizationId, tableName string) ([]models.UploadLog, error) {
+func (r *UploadLogRepository) AllUploadLogsByTable(exec repositories.Executor,
+	organizationId, tableName string,
+) ([]models.UploadLog, error) {
 	args := r.Called(exec, organizationId, tableName)
 	return args.Get(0).([]models.UploadLog), args.Error(1)
 }

@@ -64,7 +64,10 @@ func Test_ReadInbox(t *testing.T) {
 		}
 
 		t.Run("User is member of the inbox", func(t *testing.T) {
-			err := sec.ReadInbox(models.Inbox{OrganizationId: organizationId, InboxUsers: []models.InboxUser{{UserId: "userId"}}})
+			err := sec.ReadInbox(models.Inbox{
+				OrganizationId: organizationId,
+				InboxUsers:     []models.InboxUser{{UserId: "userId"}},
+			})
 			if err != nil {
 				t.Errorf("Expected no error, got %v", err)
 			}
@@ -144,7 +147,10 @@ func Test_ReadInboxUser(t *testing.T) {
 			}
 		})
 		t.Run("Should not be able to read any inbox user from another org", func(t *testing.T) {
-			err := sec.ReadInboxUser(models.InboxUser{InboxId: inboxId, OrganizationId: anotherOrganizationId}, nil)
+			err := sec.ReadInboxUser(models.InboxUser{
+				InboxId:        inboxId,
+				OrganizationId: anotherOrganizationId,
+			}, nil)
 			if err == nil {
 				t.Errorf("Expected error, got nil")
 			}
@@ -165,7 +171,9 @@ func Test_ReadInboxUser(t *testing.T) {
 			}
 		})
 		t.Run("Should not be able to read an inbox user if the calling user is not a member of the inbox", func(t *testing.T) {
-			err := sec.ReadInboxUser(models.InboxUser{InboxId: inboxId}, []models.InboxUser{{InboxId: "anotherInboxId"}})
+			err := sec.ReadInboxUser(models.InboxUser{InboxId: inboxId}, []models.InboxUser{
+				{InboxId: "anotherInboxId"},
+			})
 			if err == nil {
 				t.Errorf("Expected error, got nil")
 			}
@@ -185,7 +193,9 @@ func Test_CreateInboxUser(t *testing.T) {
 
 		t.Run("Should be able to create an inbox user in any inbox", func(t *testing.T) {
 			err := sec.CreateInboxUser(
-				models.CreateInboxUserInput{InboxId: "inboxId"}, nil, models.Inbox{OrganizationId: organizationId}, models.User{OrganizationId: organizationId},
+				models.CreateInboxUserInput{InboxId: "inboxId"}, nil, models.Inbox{
+					OrganizationId: organizationId,
+				}, models.User{OrganizationId: organizationId},
 			)
 			if err != nil {
 				t.Errorf("Expected no error, got %v", err)
@@ -194,7 +204,9 @@ func Test_CreateInboxUser(t *testing.T) {
 
 		t.Run("Should not be able to create an inbox user in another org", func(t *testing.T) {
 			err := sec.CreateInboxUser(
-				models.CreateInboxUserInput{InboxId: "inboxId"}, nil, models.Inbox{OrganizationId: anotherOrganizationId}, models.User{OrganizationId: organizationId},
+				models.CreateInboxUserInput{InboxId: "inboxId"}, nil, models.Inbox{
+					OrganizationId: anotherOrganizationId,
+				}, models.User{OrganizationId: organizationId},
 			)
 			if err == nil {
 				t.Errorf("Expected an error, got %v", err)

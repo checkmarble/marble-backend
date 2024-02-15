@@ -23,17 +23,23 @@ func (cl *CustomListRepository) GetCustomListById(ctx context.Context, exec repo
 	return args.Get(0).(models.CustomList), args.Error(1)
 }
 
-func (cl *CustomListRepository) GetCustomListValues(ctx context.Context, exec repositories.Executor, getCustomList models.GetCustomListValuesInput) ([]models.CustomListValue, error) {
+func (cl *CustomListRepository) GetCustomListValues(ctx context.Context, exec repositories.Executor,
+	getCustomList models.GetCustomListValuesInput,
+) ([]models.CustomListValue, error) {
 	args := cl.Called(exec, getCustomList)
 	return args.Get(0).([]models.CustomListValue), args.Error(1)
 }
 
-func (cl *CustomListRepository) GetCustomListValueById(ctx context.Context, exec repositories.Executor, id string) (models.CustomListValue, error) {
+func (cl *CustomListRepository) GetCustomListValueById(ctx context.Context,
+	exec repositories.Executor, id string,
+) (models.CustomListValue, error) {
 	args := cl.Called(exec, id)
 	return args.Get(0).(models.CustomListValue), args.Error(1)
 }
 
-func (cl *CustomListRepository) CreateCustomList(ctx context.Context, exec repositories.Executor, createCustomList models.CreateCustomListInput, organizationId string, newCustomListId string) error {
+func (cl *CustomListRepository) CreateCustomList(ctx context.Context, exec repositories.Executor,
+	createCustomList models.CreateCustomListInput, organizationId string, newCustomListId string,
+) error {
 	args := cl.Called(exec, createCustomList)
 	return args.Error(0)
 }
@@ -48,12 +54,16 @@ func (cl *CustomListRepository) SoftDeleteCustomList(ctx context.Context, exec r
 	return args.Error(0)
 }
 
-func (cl *CustomListRepository) AddCustomListValue(ctx context.Context, exec repositories.Executor, addCustomListValue models.AddCustomListValueInput, newCustomListId string) error {
+func (cl *CustomListRepository) AddCustomListValue(ctx context.Context, exec repositories.Executor,
+	addCustomListValue models.AddCustomListValueInput, newCustomListId string,
+) error {
 	args := cl.Called(exec, addCustomListValue)
 	return args.Error(0)
 }
 
-func (cl *CustomListRepository) DeleteCustomListValue(ctx context.Context, exec repositories.Executor, deleteCustomListValue models.DeleteCustomListValueInput) error {
+func (cl *CustomListRepository) DeleteCustomListValue(ctx context.Context,
+	exec repositories.Executor, deleteCustomListValue models.DeleteCustomListValueInput,
+) error {
 	args := cl.Called(exec, deleteCustomListValue)
 	return args.Error(0)
 }

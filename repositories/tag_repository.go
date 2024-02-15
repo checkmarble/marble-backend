@@ -9,7 +9,9 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
-func (repo *MarbleDbRepository) ListOrganizationTags(ctx context.Context, exec Executor, organizationId string, withCaseCount bool) ([]models.Tag, error) {
+func (repo *MarbleDbRepository) ListOrganizationTags(ctx context.Context, exec Executor,
+	organizationId string, withCaseCount bool,
+) ([]models.Tag, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -21,14 +23,17 @@ func (repo *MarbleDbRepository) ListOrganizationTags(ctx context.Context, exec E
 		OrderBy("created_at DESC")
 
 	if withCaseCount {
-		query = query.Column("(SELECT count(distinct ct.case_id) FROM " + dbmodels.TABLE_CASE_TAGS + " AS ct WHERE ct.tag_id = t.id AND ct.deleted_at IS NULL) AS cases_count")
+		query = query.Column("(SELECT count(distinct ct.case_id) FROM " +
+			dbmodels.TABLE_CASE_TAGS + " AS ct WHERE ct.tag_id = t.id AND ct.deleted_at IS NULL) AS cases_count")
 		return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptTagWithCasesCount)
 	}
 
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptTag)
 }
 
-func (repo *MarbleDbRepository) CreateTag(ctx context.Context, exec Executor, attributes models.CreateTagAttributes, newTagId string) error {
+func (repo *MarbleDbRepository) CreateTag(ctx context.Context, exec Executor,
+	attributes models.CreateTagAttributes, newTagId string,
+) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -58,7 +63,9 @@ func (repo *MarbleDbRepository) UpdateTag(ctx context.Context, exec Executor, at
 		return err
 	}
 
-	query := NewQueryBuilder().Update(dbmodels.TABLE_TAGS).Where(squirrel.Eq{"id": attributes.TagId}).Set("updated_at", squirrel.Expr("NOW()"))
+	query := NewQueryBuilder().Update(dbmodels.TABLE_TAGS).Where(squirrel.Eq{
+		"id": attributes.TagId,
+	}).Set("updated_at", squirrel.Expr("NOW()"))
 
 	if attributes.Color != "" {
 		query = query.Set("color", attributes.Color)

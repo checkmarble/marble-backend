@@ -52,7 +52,9 @@ func TestCustomListValues(t *testing.T) {
 	clr.On("GetCustomListValues", exec, models.GetCustomListValuesInput{Id: testListId}).Return(testCustomListValues, nil)
 
 	er.On("ReadOrganization", testListOrgId).Return(nil)
-	result, errs := customListEval.Evaluate(context.TODO(), ast.Arguments{NamedArgs: testCustomListNamedArgs})
+	result, errs := customListEval.Evaluate(context.TODO(), ast.Arguments{
+		NamedArgs: testCustomListNamedArgs,
+	})
 	assert.Len(t, errs, 0)
 	if assert.Len(t, result, 2) {
 		assert.Equal(t, result.([]string)[0], testCustomListValues[0].Value)

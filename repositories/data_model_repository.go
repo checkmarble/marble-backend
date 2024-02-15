@@ -26,7 +26,9 @@ type DataModelRepository interface {
 
 type DataModelRepositoryPostgresql struct{}
 
-func (repo *DataModelRepositoryPostgresql) GetDataModel(ctx context.Context, exec Executor, organizationID string, fetchEnumValues bool) (models.DataModel, error) {
+func (repo *DataModelRepositoryPostgresql) GetDataModel(ctx context.Context, exec Executor,
+	organizationID string, fetchEnumValues bool,
+) (models.DataModel, error) {
 	fields, err := repo.GetTablesAndFields(ctx, exec, organizationID)
 	if err != nil {
 		return models.DataModel{}, err
@@ -141,7 +143,9 @@ func (repo *DataModelRepositoryPostgresql) UpdateDataModelTable(ctx context.Cont
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) CreateDataModelField(ctx context.Context, exec Executor, tableID, fieldID string, field models.DataModelField) error {
+func (repo *DataModelRepositoryPostgresql) CreateDataModelField(ctx context.Context, exec Executor,
+	tableID, fieldID string, field models.DataModelField,
+) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -151,7 +155,8 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelField(ctx context.Cont
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id`
 
-	_, err := exec.Exec(ctx, query, fieldID, tableID, strings.ToLower(field.Name), field.Type, field.Nullable, field.Description, field.IsEnum)
+	_, err := exec.Exec(ctx, query, fieldID, tableID, strings.ToLower(field.Name), field.Type,
+		field.Nullable, field.Description, field.IsEnum)
 	if IsUniqueViolationError(err) {
 		return models.DuplicateValueError
 	}
@@ -185,7 +190,8 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelLink(ctx context.Conte
 		NewQueryBuilder().
 			Insert("data_model_links").
 			Columns("organization_id", "name", "parent_table_id", "parent_field_id", "child_table_id", "child_field_id").
-			Values(link.OrganizationID, strings.ToLower(string(link.Name)), link.ParentTableID, link.ParentFieldID, link.ChildTableID, link.ChildFieldID),
+			Values(link.OrganizationID, strings.ToLower(string(link.Name)), link.ParentTableID,
+				link.ParentFieldID, link.ChildTableID, link.ChildFieldID),
 	)
 	if IsUniqueViolationError(err) {
 		return models.DuplicateValueError
@@ -193,7 +199,9 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelLink(ctx context.Conte
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) GetTablesAndFields(ctx context.Context, exec Executor, organizationID string) ([]models.DataModelTableField, error) {
+func (repo *DataModelRepositoryPostgresql) GetTablesAndFields(ctx context.Context, exec Executor,
+	organizationID string,
+) ([]models.DataModelTableField, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}

@@ -36,8 +36,11 @@ type ScenarioPublicationUsecase struct {
 	ingestedDataIndexesRepository  IngestedDataIndexesRepository
 }
 
-func (usecase *ScenarioPublicationUsecase) GetScenarioPublication(ctx context.Context, scenarioPublicationID string) (models.ScenarioPublication, error) {
-	scenarioPublication, err := usecase.scenarioPublicationsRepository.GetScenarioPublicationById(ctx, usecase.executorFactory.NewExecutor(), scenarioPublicationID)
+func (usecase *ScenarioPublicationUsecase) GetScenarioPublication(ctx context.Context,
+	scenarioPublicationID string,
+) (models.ScenarioPublication, error) {
+	scenarioPublication, err := usecase.scenarioPublicationsRepository.GetScenarioPublicationById(
+		ctx, usecase.executorFactory.NewExecutor(), scenarioPublicationID)
 	if err != nil {
 		return models.ScenarioPublication{}, err
 	}
@@ -49,7 +52,9 @@ func (usecase *ScenarioPublicationUsecase) GetScenarioPublication(ctx context.Co
 	return scenarioPublication, nil
 }
 
-func (usecase *ScenarioPublicationUsecase) ListScenarioPublications(ctx context.Context, filters models.ListScenarioPublicationsFilters) ([]models.ScenarioPublication, error) {
+func (usecase *ScenarioPublicationUsecase) ListScenarioPublications(ctx context.Context,
+	filters models.ListScenarioPublicationsFilters,
+) ([]models.ScenarioPublication, error) {
 	organizationId, err := usecase.OrganizationIdOfContext()
 	if err != nil {
 		return nil, err
@@ -60,11 +65,16 @@ func (usecase *ScenarioPublicationUsecase) ListScenarioPublications(ctx context.
 		return nil, err
 	}
 
-	return usecase.scenarioPublicationsRepository.ListScenarioPublicationsOfOrganization(ctx, usecase.executorFactory.NewExecutor(), organizationId, filters)
+	return usecase.scenarioPublicationsRepository.ListScenarioPublicationsOfOrganization(ctx,
+		usecase.executorFactory.NewExecutor(), organizationId, filters)
 }
 
-func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(ctx context.Context, input models.PublishScenarioIterationInput) ([]models.ScenarioPublication, error) {
-	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Executor) ([]models.ScenarioPublication, error) {
+func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(ctx context.Context,
+	input models.PublishScenarioIterationInput,
+) ([]models.ScenarioPublication, error) {
+	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
+		tx repositories.Executor,
+	) ([]models.ScenarioPublication, error) {
 		scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, tx, input.ScenarioIterationId)
 		if err != nil {
 			return []models.ScenarioPublication{}, err
@@ -74,11 +84,14 @@ func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(ctx 
 			return []models.ScenarioPublication{}, err
 		}
 
-		return usecase.scenarioPublisher.PublishOrUnpublishIteration(ctx, tx, scenarioAndIteration, input.PublicationAction)
+		return usecase.scenarioPublisher.PublishOrUnpublishIteration(ctx, tx,
+			scenarioAndIteration, input.PublicationAction)
 	})
 }
 
-func (usecase *ScenarioPublicationUsecase) CreateDatamodelIndexesForScenarioPublication(ctx context.Context, scenarioIterationId string) (ready bool, err error) {
+func (usecase *ScenarioPublicationUsecase) CreateDatamodelIndexesForScenarioPublication(
+	ctx context.Context, scenarioIterationId string,
+) (ready bool, err error) {
 	exec := usecase.executorFactory.NewExecutor()
 	logger := utils.LoggerFromContext(ctx)
 	iterationToActivate, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, exec, scenarioIterationId)
@@ -97,7 +110,9 @@ func (usecase *ScenarioPublicationUsecase) CreateDatamodelIndexesForScenarioPubl
 	liveScenarios := utils.Filter(scenarios, func(scenario models.Scenario) bool {
 		return scenario.LiveVersionID != nil
 	})
-	activeScenarioIterations, err := pure_utils.MapErr(liveScenarios, func(scenario models.Scenario) (models.ScenarioIteration, error) {
+	activeScenarioIterations, err := pure_utils.MapErr(liveScenarios, func(
+		scenario models.Scenario,
+	) (models.ScenarioIteration, error) {
 		it, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, exec, *scenario.LiveVersionID)
 		if err != nil {
 			return models.ScenarioIteration{}, err
@@ -118,7 +133,8 @@ func (usecase *ScenarioPublicationUsecase) CreateDatamodelIndexesForScenarioPubl
 		return false, errors.Wrap(err, "Error while fetching existing indexes in CreateDatamodelIndexesForScenarioPublication")
 	}
 
-	indexesToCreate, err := indexes.IndexesToCreateFromScenarioIterations(append(activeScenarioIterations, iterationToActivate.Iteration), existingIndexes)
+	indexesToCreate, err := indexes.IndexesToCreateFromScenarioIterations(
+		append(activeScenarioIterations, iterationToActivate.Iteration), existingIndexes)
 	if err != nil {
 		return false, errors.Wrap(err, "Error while finding indexes to create from scenario iterations in CreateDatamodelIndexesForScenarioPublication")
 	}

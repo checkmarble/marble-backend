@@ -67,7 +67,8 @@ func (api *API) CreateScenarioIteration(c *gin.Context) {
 		}
 
 		for i, rule := range input.Body.Rules {
-			createScenarioIterationInput.Body.Rules[i], err = dto.AdaptCreateRuleInput(rule, organizationId)
+			createScenarioIterationInput.Body.Rules[i], err =
+				dto.AdaptCreateRuleInput(rule, organizationId)
 			if presentError(c, err) {
 				return
 			}
@@ -152,7 +153,8 @@ func (api *API) UpdateScenarioIteration(c *gin.Context) {
 		return
 	}
 
-	logger = logger.With(slog.String("scenarioIterationId", iterationID), slog.String("organizationId", organizationId))
+	logger = logger.With(slog.String("scenarioIterationId", iterationID),
+		slog.String("organizationId", organizationId))
 
 	updateScenarioIterationInput := models.UpdateScenarioIterationInput{
 		Id: iterationID,
@@ -221,7 +223,8 @@ func (api *API) ValidateScenarioIteration(c *gin.Context) {
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewScenarioIterationUsecase()
-	scenarioValidation, err := usecase.ValidateScenarioIteration(c.Request.Context(), scenarioIterationID, triggerOrRule, input.RuleId)
+	scenarioValidation, err := usecase.ValidateScenarioIteration(c.Request.Context(),
+		scenarioIterationID, triggerOrRule, input.RuleId)
 
 	if presentError(c, err) {
 		return

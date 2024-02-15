@@ -7,7 +7,9 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
-func (repo *MarbleDbRepository) CreateScenario(ctx context.Context, exec Executor, organizationId string, scenario models.CreateScenarioInput, newScenarioId string) error {
+func (repo *MarbleDbRepository) CreateScenario(ctx context.Context, exec Executor,
+	organizationId string, scenario models.CreateScenarioInput, newScenarioId string,
+) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}

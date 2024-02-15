@@ -60,7 +60,8 @@ func AdaptScenarioIteration(dto DBScenarioIteration) (models.ScenarioIteration, 
 	}
 
 	var err error
-	scenarioIteration.TriggerConditionAstExpression, err = AdaptSerializedAstExpression(dto.TriggerConditionAstExpression)
+	scenarioIteration.TriggerConditionAstExpression, err =
+		AdaptSerializedAstExpression(dto.TriggerConditionAstExpression)
 	if err != nil {
 		return scenarioIteration, fmt.Errorf("unable to unmarshal trigger codition ast expression: %w", err)
 	}

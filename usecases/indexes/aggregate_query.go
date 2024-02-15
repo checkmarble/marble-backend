@@ -81,12 +81,14 @@ func aggregationNodeToQueryFamily(node ast.Node) (models.AggregateQueryFamily, e
 
 	queryTableName, err := node.ReadConstantNamedChildString("tableName")
 	if err != nil {
-		return models.AggregateQueryFamily{}, errors.Wrap(err, "Error reading tableName in aggregation node")
+		return models.AggregateQueryFamily{}, errors.Wrap(err,
+			"Error reading tableName in aggregation node")
 	}
 
 	aggregatedFieldNameStr, err := node.ReadConstantNamedChildString("fieldName")
 	if err != nil {
-		return models.AggregateQueryFamily{}, errors.Wrap(err, "Error reading fieldName in aggregation node")
+		return models.AggregateQueryFamily{}, errors.Wrap(err,
+			"Error reading fieldName in aggregation node")
 	}
 	aggregatedFieldName := models.FieldName(aggregatedFieldNameStr)
 
@@ -103,14 +105,17 @@ func aggregationNodeToQueryFamily(node ast.Node) (models.AggregateQueryFamily, e
 	}
 	for _, filter := range filters.Children {
 		if tableNameStr, err := filter.ReadConstantNamedChildString("tableName"); err != nil {
-			return models.AggregateQueryFamily{}, errors.Wrap(err, "Error reading tableName in filter node")
+			return models.AggregateQueryFamily{}, errors.Wrap(err,
+				"Error reading tableName in filter node")
 		} else if tableNameStr == "" || tableNameStr != queryTableName {
-			return models.AggregateQueryFamily{}, errors.New("Filter tableName empty or is different from parent aggregator node's tableName")
+			return models.AggregateQueryFamily{}, errors.New(
+				"Filter tableName empty or is different from parent aggregator node's tableName")
 		}
 
 		fieldNameStr, err := filter.ReadConstantNamedChildString("fieldName")
 		if err != nil {
-			return models.AggregateQueryFamily{}, errors.Wrap(err, "Error reading fieldName in filter node")
+			return models.AggregateQueryFamily{}, errors.Wrap(err,
+				"Error reading fieldName in filter node")
 		} else if fieldNameStr == "" {
 			return models.AggregateQueryFamily{}, errors.New("Filter fieldName is empty")
 		}
@@ -118,7 +123,8 @@ func aggregationNodeToQueryFamily(node ast.Node) (models.AggregateQueryFamily, e
 
 		operatorStr, err := filter.ReadConstantNamedChildString("operator")
 		if err != nil {
-			return models.AggregateQueryFamily{}, errors.Wrap(err, "Error reading operator in filter node")
+			return models.AggregateQueryFamily{}, errors.Wrap(err,
+				"Error reading operator in filter node")
 		}
 
 		switch ast.FilterOperator(operatorStr) {
@@ -129,16 +135,19 @@ func aggregationNodeToQueryFamily(node ast.Node) (models.AggregateQueryFamily, e
 				family.IneqConditions.Insert(fieldName)
 			}
 		case ast.FILTER_IS_IN_LIST, ast.FILTER_IS_NOT_IN_LIST, ast.FILTER_NOT_EQUAL:
-			if !family.EqConditions.Contains(fieldName) && !family.IneqConditions.Contains(fieldName) {
+			if !family.EqConditions.Contains(fieldName) &&
+				!family.IneqConditions.Contains(fieldName) {
 				family.SelectOrOtherConditions.Insert(fieldName)
 			}
 		default:
-			return models.AggregateQueryFamily{}, errors.New(fmt.Sprintf("Filter operator %s is not valid", operatorStr))
+			return models.AggregateQueryFamily{}, errors.New(
+				fmt.Sprintf("Filter operator %s is not valid", operatorStr))
 		}
 	}
 
 	// Columns that are used in the index but not in = or <,>,>=,<= filters are added as columns to be "included" in the index
-	if !family.EqConditions.Contains(aggregatedFieldName) && !family.IneqConditions.Contains(aggregatedFieldName) {
+	if !family.EqConditions.Contains(aggregatedFieldName) &&
+		!family.IneqConditions.Contains(aggregatedFieldName) {
 		family.SelectOrOtherConditions.Insert(aggregatedFieldName)
 	}
 

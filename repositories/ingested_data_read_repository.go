@@ -15,7 +15,8 @@ import (
 type IngestedDataReadRepository interface {
 	GetDbField(ctx context.Context, exec Executor, readParams models.DbFieldReadParams) (any, error)
 	ListAllObjectsFromTable(ctx context.Context, exec Executor, table models.Table) ([]models.ClientObject, error)
-	QueryAggregatedValue(ctx context.Context, exec Executor, tableName models.TableName, fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter) (any, error)
+	QueryAggregatedValue(ctx context.Context, exec Executor, tableName models.TableName,
+		fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter) (any, error)
 }
 
 type IngestedDataReadRepositoryImpl struct{}
@@ -50,18 +51,21 @@ func createQueryDbForField(ctx context.Context, exec Executor, readParams models
 	}
 	link, ok := triggerTable.LinksToSingle[readParams.Path[0]]
 	if !ok {
-		return squirrel.SelectBuilder{}, fmt.Errorf("no link with name %s: %w", readParams.Path[0], models.NotFoundError)
+		return squirrel.SelectBuilder{}, fmt.Errorf("no link with name %s: %w",
+			readParams.Path[0], models.NotFoundError)
 	}
 
 	firstTableObjectId, err := getFirstTableObjectIdFromPayload(readParams.Payload, link.ChildFieldName)
 	if err != nil {
-		return squirrel.SelectBuilder{}, fmt.Errorf("error while getting first path table object id from payload: %w", err)
+		return squirrel.SelectBuilder{}, fmt.Errorf(
+			"error while getting first path table object id from payload: %w", err)
 	}
 
 	// "first table" is the first table reached starting from the trigger table and following the path
 	firstTable, ok := readParams.DataModel.Tables[link.LinkedTableName]
 	if !ok {
-		return squirrel.SelectBuilder{}, fmt.Errorf("no table with name %s: %w", link.LinkedTableName, models.NotFoundError)
+		return squirrel.SelectBuilder{}, fmt.Errorf("no table with name %s: %w",
+			link.LinkedTableName, models.NotFoundError)
 	}
 	// "last table" is the last table reached starting from the trigger table and following the path, from which the field is selected
 	lastTable, err := getLastTableFromPath(readParams, firstTable)
@@ -110,17 +114,21 @@ func getFirstTableObjectIdFromPayload(payload models.PayloadReader, fieldName mo
 	return parentObjectId, nil
 }
 
-func addJoinsOnIntermediateTables(ctx context.Context, exec Executor, query squirrel.SelectBuilder, readParams models.DbFieldReadParams, firstTable models.Table) (squirrel.SelectBuilder, error) {
+func addJoinsOnIntermediateTables(ctx context.Context, exec Executor, query squirrel.SelectBuilder,
+	readParams models.DbFieldReadParams, firstTable models.Table,
+) (squirrel.SelectBuilder, error) {
 	currentTable := firstTable
 	// ignore the first element of the path, as it is the starting table of the query
 	for _, linkName := range readParams.Path[1:] {
 		link, ok := currentTable.LinksToSingle[linkName]
 		if !ok {
-			return squirrel.SelectBuilder{}, fmt.Errorf("no link with name %s on table %s: %w", linkName, currentTable.Name, models.NotFoundError)
+			return squirrel.SelectBuilder{}, fmt.Errorf(
+				"no link with name %s on table %s: %w", linkName, currentTable.Name, models.NotFoundError)
 		}
 		nextTable, ok := readParams.DataModel.Tables[link.LinkedTableName]
 		if !ok {
-			return squirrel.SelectBuilder{}, fmt.Errorf("no table with name %s: %w", link.LinkedTableName, models.NotFoundError)
+			return squirrel.SelectBuilder{}, fmt.Errorf("no table with name %s: %w",
+				link.LinkedTableName, models.NotFoundError)
 		}
 
 		currentTableName := tableNameWithSchema(exec, currentTable.Name)
@@ -154,7 +162,8 @@ func getLastTableFromPath(params models.DbFieldReadParams, firstTable models.Tab
 		}
 		nextTable, ok := params.DataModel.Tables[link.LinkedTableName]
 		if !ok {
-			return models.Table{}, fmt.Errorf("no table with name %s: %w", link.LinkedTableName, models.NotFoundError)
+			return models.Table{}, fmt.Errorf("no table with name %s: %w",
+				link.LinkedTableName, models.NotFoundError)
 		}
 
 		currentTable = nextTable
@@ -162,14 +171,17 @@ func getLastTableFromPath(params models.DbFieldReadParams, firstTable models.Tab
 	return currentTable, nil
 }
 
-func (repo *IngestedDataReadRepositoryImpl) ListAllObjectsFromTable(ctx context.Context, exec Executor, table models.Table) ([]models.ClientObject, error) {
+func (repo *IngestedDataReadRepositoryImpl) ListAllObjectsFromTable(ctx context.Context,
+	exec Executor, table models.Table,
+) ([]models.ClientObject, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
 	columnNames := models.ColumnNames(table)
 
-	objectsAsMap, err := queryWithDynamicColumnList(ctx, exec, tableNameWithSchema(exec, table.Name), columnNames)
+	objectsAsMap, err := queryWithDynamicColumnList(ctx, exec,
+		tableNameWithSchema(exec, table.Name), columnNames)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +233,9 @@ func queryWithDynamicColumnList(ctx context.Context, exec Executor, qualifiedTab
 	return output, nil
 }
 
-func createQueryAggregated(ctx context.Context, exec Executor, tableName models.TableName, fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter) (squirrel.SelectBuilder, error) {
+func createQueryAggregated(ctx context.Context, exec Executor, tableName models.TableName,
+	fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter,
+) (squirrel.SelectBuilder, error) {
 	var selectExpression string
 	if aggregator == ast.AGGREGATOR_COUNT_DISTINCT {
 		selectExpression = fmt.Sprintf("COUNT(DISTINCT %s)", fieldName)
@@ -246,7 +260,9 @@ func createQueryAggregated(ctx context.Context, exec Executor, tableName models.
 	return query, nil
 }
 
-func (repo *IngestedDataReadRepositoryImpl) QueryAggregatedValue(ctx context.Context, exec Executor, tableName models.TableName, fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter) (any, error) {
+func (repo *IngestedDataReadRepositoryImpl) QueryAggregatedValue(ctx context.Context, exec Executor,
+	tableName models.TableName, fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter,
+) (any, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -268,7 +284,9 @@ func (repo *IngestedDataReadRepositoryImpl) QueryAggregatedValue(ctx context.Con
 	return result, nil
 }
 
-func addConditionForOperator(query squirrel.SelectBuilder, tableName string, fieldName string, operator ast.FilterOperator, value any) (squirrel.SelectBuilder, error) {
+func addConditionForOperator(query squirrel.SelectBuilder, tableName string, fieldName string,
+	operator ast.FilterOperator, value any,
+) (squirrel.SelectBuilder, error) {
 	switch operator {
 	case ast.FILTER_EQUAL, ast.FILTER_IS_IN_LIST:
 		return query.Where(squirrel.Eq{fmt.Sprintf("%s.%s", tableName, fieldName): value}), nil

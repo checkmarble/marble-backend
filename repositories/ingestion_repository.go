@@ -13,12 +13,15 @@ import (
 )
 
 type IngestionRepository interface {
-	IngestObjects(ctx context.Context, exec Executor, payloads []models.PayloadReader, table models.Table, logger *slog.Logger) (err error)
+	IngestObjects(ctx context.Context, exec Executor, payloads []models.PayloadReader,
+		table models.Table, logger *slog.Logger) (err error)
 }
 
 type IngestionRepositoryImpl struct{}
 
-func (repo *IngestionRepositoryImpl) IngestObjects(ctx context.Context, exec Executor, payloads []models.PayloadReader, table models.Table, logger *slog.Logger) (err error) {
+func (repo *IngestionRepositoryImpl) IngestObjects(ctx context.Context, exec Executor,
+	payloads []models.PayloadReader, table models.Table, logger *slog.Logger,
+) (err error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return err
 	}
@@ -30,10 +33,12 @@ func (repo *IngestionRepositoryImpl) IngestObjects(ctx context.Context, exec Exe
 		return err
 	}
 
-	payloadsToInsert, obsoleteIngestedObjectIds := repo.comparePayloadsToIngestedObjects(mostRecentPayloads, previouslyIngestedObjects)
+	payloadsToInsert, obsoleteIngestedObjectIds :=
+		repo.comparePayloadsToIngestedObjects(mostRecentPayloads, previouslyIngestedObjects)
 
 	if len(obsoleteIngestedObjectIds) > 0 {
-		if err := repo.batchUpdateValidUntilOnObsoleteObjects(ctx, exec, table.Name, obsoleteIngestedObjectIds); err != nil {
+		if err := repo.batchUpdateValidUntilOnObsoleteObjects(ctx, exec, table.Name,
+			obsoleteIngestedObjectIds); err != nil {
 			return err
 		}
 	}
@@ -44,7 +49,8 @@ func (repo *IngestionRepositoryImpl) IngestObjects(ctx context.Context, exec Exe
 		}
 	}
 
-	logger.Info("Inserted objects in db", slog.String("type", tableNameWithSchema(exec, table.Name)), slog.Int("nb_objects", len(payloadsToInsert)))
+	logger.Info("Inserted objects in db", slog.String("type",
+		tableNameWithSchema(exec, table.Name)), slog.Int("nb_objects", len(payloadsToInsert)))
 
 	return nil
 }
@@ -94,7 +100,9 @@ type IngestedObject struct {
 	UpdatedAt time.Time
 }
 
-func (repo *IngestionRepositoryImpl) loadPreviouslyIngestedObjects(ctx context.Context, exec Executor, objectIds []string, tableName models.TableName) ([]IngestedObject, error) {
+func (repo *IngestionRepositoryImpl) loadPreviouslyIngestedObjects(ctx context.Context,
+	exec Executor, objectIds []string, tableName models.TableName,
+) ([]IngestedObject, error) {
 	query := NewQueryBuilder().
 		Select("id, object_id, updated_at").
 		From(tableNameWithSchema(exec, tableName)).
@@ -104,7 +112,9 @@ func (repo *IngestionRepositoryImpl) loadPreviouslyIngestedObjects(ctx context.C
 	return SqlToListOfModels(ctx, exec, query, func(db DBObject) (IngestedObject, error) { return IngestedObject(db), nil })
 }
 
-func (repo *IngestionRepositoryImpl) comparePayloadsToIngestedObjects(payloads []models.PayloadReader, previouslyIngestedObjects []IngestedObject) ([]models.PayloadReader, []string) {
+func (repo *IngestionRepositoryImpl) comparePayloadsToIngestedObjects(
+	payloads []models.PayloadReader, previouslyIngestedObjects []IngestedObject,
+) ([]models.PayloadReader, []string) {
 	previouslyIngestedMap := make(map[string]IngestedObject)
 	for _, obj := range previouslyIngestedObjects {
 		previouslyIngestedMap[obj.ObjectId] = obj
@@ -119,7 +129,8 @@ func (repo *IngestionRepositoryImpl) comparePayloadsToIngestedObjects(payloads [
 		existingObject, exists := previouslyIngestedMap[objectId]
 		if !exists {
 			payloadsToInsert = append(payloadsToInsert, payload)
-		} else if updatedAt.After(existingObject.UpdatedAt) || updatedAt.Equal(existingObject.UpdatedAt) {
+		} else if updatedAt.After(existingObject.UpdatedAt) ||
+			updatedAt.Equal(existingObject.UpdatedAt) {
 			payloadsToInsert = append(payloadsToInsert, payload)
 			obsoleteIngestedObjectIds = append(obsoleteIngestedObjectIds, existingObject.Id)
 		}
@@ -128,7 +139,9 @@ func (repo *IngestionRepositoryImpl) comparePayloadsToIngestedObjects(payloads [
 	return payloadsToInsert, obsoleteIngestedObjectIds
 }
 
-func (repo *IngestionRepositoryImpl) batchUpdateValidUntilOnObsoleteObjects(ctx context.Context, exec Executor, tableName models.TableName, obsoleteIngestedObjectIds []string) error {
+func (repo *IngestionRepositoryImpl) batchUpdateValidUntilOnObsoleteObjects(ctx context.Context,
+	exec Executor, tableName models.TableName, obsoleteIngestedObjectIds []string,
+) error {
 	sql := NewQueryBuilder().
 		Update(tableNameWithSchema(exec, tableName)).
 		Set("valid_until", "now()").
@@ -138,7 +151,9 @@ func (repo *IngestionRepositoryImpl) batchUpdateValidUntilOnObsoleteObjects(ctx 
 	return err
 }
 
-func (repo *IngestionRepositoryImpl) batchInsertPayloadsAndEnumValues(ctx context.Context, exec Executor, payloads []models.PayloadReader, table models.Table) error {
+func (repo *IngestionRepositoryImpl) batchInsertPayloadsAndEnumValues(ctx context.Context,
+	exec Executor, payloads []models.PayloadReader, table models.Table,
+) error {
 	columnNames := models.ColumnNames(table)
 	query := NewQueryBuilder().Insert(tableNameWithSchema(exec, table.Name))
 

@@ -17,13 +17,17 @@ func TestTimeNow(t *testing.T) {
 }
 
 func TestParseTime(t *testing.T) {
-	result, errs := TimeFunctions{ast.FUNC_PARSE_TIME}.Evaluate(context.TODO(), ast.Arguments{Args: []any{"2021-07-07T00:00:00Z"}})
+	result, errs := TimeFunctions{ast.FUNC_PARSE_TIME}.Evaluate(context.TODO(), ast.Arguments{
+		Args: []any{"2021-07-07T00:00:00Z"},
+	})
 	assert.Empty(t, errs)
 	assert.Equal(t, time.Date(2021, 7, 7, 0, 0, 0, 0, time.UTC), result.(time.Time))
 }
 
 func TestParseTime_fail(t *testing.T) {
-	_, errs := TimeFunctions{ast.FUNC_PARSE_TIME}.Evaluate(context.TODO(), ast.Arguments{Args: []any{"2021-07-07 00:00:00Z"}})
+	_, errs := TimeFunctions{ast.FUNC_PARSE_TIME}.Evaluate(context.TODO(), ast.Arguments{
+		Args: []any{"2021-07-07 00:00:00Z"},
+	})
 	if assert.Len(t, errs, 1) {
 		assert.Error(t, errs[0])
 	}

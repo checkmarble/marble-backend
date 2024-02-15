@@ -18,7 +18,9 @@ func (s *ScenarioRepository) GetScenarioById(ctx context.Context, exec repositor
 	return args.Get(0).(models.Scenario), args.Error(1)
 }
 
-func (s *ScenarioRepository) ListScenariosOfOrganization(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.Scenario, error) {
+func (s *ScenarioRepository) ListScenariosOfOrganization(ctx context.Context,
+	exec repositories.Executor, organizationId string,
+) ([]models.Scenario, error) {
 	args := s.Called(exec, organizationId)
 	return args.Get(0).([]models.Scenario), args.Error(1)
 }
@@ -28,7 +30,9 @@ func (s *ScenarioRepository) ListAllScenarios(ctx context.Context, exec reposito
 	return args.Get(0).([]models.Scenario), args.Error(1)
 }
 
-func (s *ScenarioRepository) CreateScenario(ctx context.Context, exec repositories.Executor, organizationId string, scenario models.CreateScenarioInput, newScenarioId string) error {
+func (s *ScenarioRepository) CreateScenario(ctx context.Context, exec repositories.Executor,
+	organizationId string, scenario models.CreateScenarioInput, newScenarioId string,
+) error {
 	args := s.Called(exec, organizationId, scenario, newScenarioId)
 	return args.Error(0)
 }

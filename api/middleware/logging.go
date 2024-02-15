@@ -81,6 +81,7 @@ func NewLogging(logger *slog.Logger, options ...LoggerOption) gin.HandlerFunc {
 		if c.Errors != nil {
 			attributes = append(attributes, slog.String("error", c.Errors.String()))
 		}
-		l.logger.LogAttrs(c.Request.Context(), level, fmt.Sprintf("%s %s", c.Request.Method, path), attributes...)
+		l.logger.LogAttrs(c.Request.Context(), level,
+			fmt.Sprintf("%s %s", c.Request.Method, path), attributes...)
 	}
 }

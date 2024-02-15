@@ -213,7 +213,9 @@ func createDataModel(t *testing.T, organizationID string) (models.DataModel, err
 	return usecase.GetDataModel(ctx, organizationID)
 }
 
-func setupScenarioAndPublish(t *testing.T, ctx context.Context, usecasesWithCreds usecases.UsecasesWithCreds, organizationId string) string {
+func setupScenarioAndPublish(t *testing.T, ctx context.Context,
+	usecasesWithCreds usecases.UsecasesWithCreds, organizationId string,
+) string {
 	// Create a new empty scenario
 	scenarioUsecase := usecasesWithCreds.NewScenarioUsecase()
 	scenario, err := scenarioUsecase.CreateScenario(ctx, models.CreateScenarioInput{
@@ -230,40 +232,42 @@ func setupScenarioAndPublish(t *testing.T, ctx context.Context, usecasesWithCred
 	// Now, create a scenario iteration, with a rule
 	scenarioIterationUsecase := usecasesWithCreds.NewScenarioIterationUsecase()
 	threshold := 20
-	scenarioIteration, err := scenarioIterationUsecase.CreateScenarioIteration(usecasesWithCreds.Context, organizationId, models.CreateScenarioIterationInput{
-		ScenarioId: scenarioId,
-		Body: &models.CreateScenarioIterationBody{
-			Rules: []models.CreateRuleInput{
-				{
-					FormulaAstExpression: &ast.Node{
-						Function: ast.FUNC_AND,
-						Children: []ast.Node{
-							{
-								Function: ast.FUNC_EQUAL,
-								Children: []ast.Node{
-									{
-										Function: ast.FUNC_DB_ACCESS,
-										NamedChildren: map[string]ast.Node{
-											"tableName": {Constant: "transactions"},
-											"fieldName": {Constant: "name"},
-											"path":      {Constant: []string{"account"}},
+	scenarioIteration, err := scenarioIterationUsecase.CreateScenarioIteration(
+		usecasesWithCreds.Context, organizationId, models.CreateScenarioIterationInput{
+			ScenarioId: scenarioId,
+			Body: &models.CreateScenarioIterationBody{
+				Rules: []models.CreateRuleInput{
+					{
+						FormulaAstExpression: &ast.Node{
+							Function: ast.FUNC_AND,
+							Children: []ast.Node{
+								{
+									Function: ast.FUNC_EQUAL,
+									Children: []ast.Node{
+										{
+											Function: ast.FUNC_DB_ACCESS,
+											NamedChildren: map[string]ast.Node{
+												"tableName": {Constant: "transactions"},
+												"fieldName": {Constant: "name"},
+												"path":      {Constant: []string{"account"}},
+											},
 										},
+										{Constant: "Reject test account"},
 									},
-									{Constant: "Reject test account"},
 								},
-							},
-							{
-								Function: ast.FUNC_EQUAL,
-								Children: []ast.Node{
-									{Constant: 1},
-									{
-										Function: ast.FUNC_DIVIDE,
-										Children: []ast.Node{
-											{Constant: 100},
-											{
-												Function: ast.FUNC_PAYLOAD,
-												Children: []ast.Node{
-													{Constant: "amount"},
+								{
+									Function: ast.FUNC_EQUAL,
+									Children: []ast.Node{
+										{Constant: 1},
+										{
+											Function: ast.FUNC_DIVIDE,
+											Children: []ast.Node{
+												{Constant: 100},
+												{
+													Function: ast.FUNC_PAYLOAD,
+													Children: []ast.Node{
+														{Constant: "amount"},
+													},
 												},
 											},
 										},
@@ -271,36 +275,36 @@ func setupScenarioAndPublish(t *testing.T, ctx context.Context, usecasesWithCred
 								},
 							},
 						},
+						ScoreModifier: 100,
+						Name:          "Check on account name",
+						Description:   "Check on account name",
 					},
-					ScoreModifier: 100,
-					Name:          "Check on account name",
-					Description:   "Check on account name",
-				},
-				{
-					FormulaAstExpression: &ast.Node{
-						Function: ast.FUNC_GREATER,
-						Children: []ast.Node{
-							{Constant: 500},
-							{
-								Function: ast.FUNC_AGGREGATOR,
-								NamedChildren: map[string]ast.Node{
-									"tableName":  {Constant: "transactions"},
-									"fieldName":  {Constant: "amount"},
-									"aggregator": {Constant: ast.AGGREGATOR_SUM},
-									"label":      {Constant: "An aggregator function"},
-									"filters": {
-										Function: ast.FUNC_LIST,
-										Children: []ast.Node{
-											{
-												Function: ast.FUNC_FILTER,
-												NamedChildren: map[string]ast.Node{
-													"tableName": {Constant: "transactions"},
-													"fieldName": {Constant: "amount"},
-													"operator":  {Constant: ast.FILTER_EQUAL},
-													"value": {
-														Function: ast.FUNC_PAYLOAD,
-														Children: []ast.Node{
-															{Constant: "amount"},
+					{
+						FormulaAstExpression: &ast.Node{
+							Function: ast.FUNC_GREATER,
+							Children: []ast.Node{
+								{Constant: 500},
+								{
+									Function: ast.FUNC_AGGREGATOR,
+									NamedChildren: map[string]ast.Node{
+										"tableName":  {Constant: "transactions"},
+										"fieldName":  {Constant: "amount"},
+										"aggregator": {Constant: ast.AGGREGATOR_SUM},
+										"label":      {Constant: "An aggregator function"},
+										"filters": {
+											Function: ast.FUNC_LIST,
+											Children: []ast.Node{
+												{
+													Function: ast.FUNC_FILTER,
+													NamedChildren: map[string]ast.Node{
+														"tableName": {Constant: "transactions"},
+														"fieldName": {Constant: "amount"},
+														"operator":  {Constant: ast.FILTER_EQUAL},
+														"value": {
+															Function: ast.FUNC_PAYLOAD,
+															Children: []ast.Node{
+																{Constant: "amount"},
+															},
 														},
 													},
 												},
@@ -310,30 +314,33 @@ func setupScenarioAndPublish(t *testing.T, ctx context.Context, usecasesWithCred
 								},
 							},
 						},
+						ScoreModifier: 10,
+						Name:          "Check on aggregated value",
+						Description:   "Check on aggregated value",
 					},
-					ScoreModifier: 10,
-					Name:          "Check on aggregated value",
-					Description:   "Check on aggregated value",
 				},
+				TriggerConditionAstExpression: &ast.Node{
+					Function: ast.FUNC_EQUAL,
+					Children: []ast.Node{{Constant: "transactions"}, {Constant: "transactions"}},
+				},
+				ScoreReviewThreshold: &threshold,
+				ScoreRejectThreshold: &threshold,
+				Schedule:             "*/10 * * * *",
 			},
-			TriggerConditionAstExpression: &ast.Node{Function: ast.FUNC_EQUAL, Children: []ast.Node{{Constant: "transactions"}, {Constant: "transactions"}}},
-			ScoreReviewThreshold:          &threshold,
-			ScoreRejectThreshold:          &threshold,
-			Schedule:                      "*/10 * * * *",
-		},
-	})
+		})
 	assert.NoError(t, err, "Could not create scenario iteration")
 	scenarioIterationId := scenarioIteration.Id
 	fmt.Println("Created scenario iteration", scenarioIterationId)
 
 	// Actually, modify the scenario iteration
 	threshold = 30
-	updatedScenarioIteration, err := scenarioIterationUsecase.UpdateScenarioIteration(usecasesWithCreds.Context, organizationId, models.UpdateScenarioIterationInput{
-		Id: scenarioIterationId,
-		Body: &models.UpdateScenarioIterationBody{
-			ScoreRejectThreshold: &threshold,
-		},
-	})
+	updatedScenarioIteration, err := scenarioIterationUsecase.UpdateScenarioIteration(
+		usecasesWithCreds.Context, organizationId, models.UpdateScenarioIterationInput{
+			Id: scenarioIterationId,
+			Body: &models.UpdateScenarioIterationBody{
+				ScoreRejectThreshold: &threshold,
+			},
+		})
 	assert.NoError(t, err)
 
 	validation, err := scenarioIterationUsecase.ValidateScenarioIteration(ctx, scenarioIterationId, nil, nil)
@@ -346,16 +353,18 @@ func setupScenarioAndPublish(t *testing.T, ctx context.Context, usecasesWithCred
 		assert.Equal(
 			t,
 			threshold, *updatedScenarioIteration.ScoreRejectThreshold,
-			"Expected score review threshold to be %d, got %d", threshold, *updatedScenarioIteration.ScoreRejectThreshold,
+			"Expected score review threshold to be %d, got %d", threshold,
+			*updatedScenarioIteration.ScoreRejectThreshold,
 		)
 	}
 
 	// Publish the iteration to make it live
 	scenarioPublicationUsecase := usecasesWithCreds.NewScenarioPublicationUsecase()
-	scenarioPublications, err := scenarioPublicationUsecase.ExecuteScenarioPublicationAction(ctx, models.PublishScenarioIterationInput{
-		ScenarioIterationId: scenarioIterationId,
-		PublicationAction:   models.Publish,
-	})
+	scenarioPublications, err := scenarioPublicationUsecase.ExecuteScenarioPublicationAction(
+		ctx, models.PublishScenarioIterationInput{
+			ScenarioIterationId: scenarioIterationId,
+			PublicationAction:   models.Publish,
+		})
 	assert.NoError(t, err, "Could not publish scenario iteration")
 	assert.Equal(t, 1, len(scenarioPublications), "Expected 1 scenario publication, got %d", len(scenarioPublications))
 	fmt.Println("Published scenario iteration")
@@ -366,7 +375,8 @@ func setupScenarioAndPublish(t *testing.T, ctx context.Context, usecasesWithCred
 
 	assert.NotNil(t, scenarioIteration.Version, "Expected scenario iteration to have a version")
 	if assert.NotNil(t, scenarioIteration.Version) {
-		assert.Equal(t, 1, *scenarioIteration.Version, "Expected scenario iteration to have version")
+		assert.Equal(t, 1, *scenarioIteration.Version,
+			"Expected scenario iteration to have version")
 	}
 	fmt.Printf("Updated scenario iteration %+v\n", scenarioIteration)
 
@@ -393,11 +403,15 @@ func ingestAccounts(t *testing.T, table models.Table, usecases usecases.Usecases
 	assert.NoError(t, err, "Could not parse payload")
 	accountPayload2, _ := payload_parser.ParseToDataModelObject(table, accountPayloadJson2)
 	accountPayload3, _ := payload_parser.ParseToDataModelObject(table, accountPayloadJson3)
-	err = ingestionUsecase.IngestObjects(context.TODO(), organizationId, []models.PayloadReader{accountPayload1, accountPayload2, accountPayload3}, table, logger)
+	err = ingestionUsecase.IngestObjects(context.TODO(), organizationId, []models.PayloadReader{
+		accountPayload1, accountPayload2, accountPayload3,
+	}, table, logger)
 	assert.NoError(t, err, "Could not ingest data")
 }
 
-func createTransactionPayload(transactionPayloadJson []byte, triggerObjectMap map[string]interface{}, t *testing.T, table models.Table) models.PayloadReader {
+func createTransactionPayload(transactionPayloadJson []byte,
+	triggerObjectMap map[string]interface{}, t *testing.T, table models.Table,
+) models.PayloadReader {
 	if err := json.Unmarshal(transactionPayloadJson, &triggerObjectMap); err != nil {
 		t.Fatalf("Could not unmarshal json: %s", err)
 	}
@@ -416,8 +430,10 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"account_id": "{account_id_reject}",
 		"amount": 100
 	}`)
-	rejectDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
-	assert.Equal(t, models.Reject, rejectDecision.Outcome, "Expected decision to be Reject, got %s", rejectDecision.Outcome)
+	rejectDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase,
+		usecasesWithCreds, organizationId, scenarioId, logger)
+	assert.Equal(t, models.Reject, rejectDecision.Outcome,
+		"Expected decision to be Reject, got %s", rejectDecision.Outcome)
 
 	// Create a decision [APPROVE]
 	transactionPayloadJson = []byte(`{
@@ -426,8 +442,10 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"account_id": "{account_id_approve}",
 		"amount": 100
 	}`)
-	approveDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
-	assert.Equal(t, models.Approve, approveDecision.Outcome, "Expected decision to be Approve, got %s", approveDecision.Outcome)
+	approveDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase,
+		usecasesWithCreds, organizationId, scenarioId, logger)
+	assert.Equal(t, models.Approve, approveDecision.Outcome,
+		"Expected decision to be Approve, got %s", approveDecision.Outcome)
 
 	// Create a decision [APPROVE] with a null field value (null field read)
 	transactionPayloadJson = []byte(`{
@@ -436,11 +454,14 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"account_id": "{account_id_approve_no_name}",
 		"amount": 100
 	}`)
-	approveNoNameDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
-	assert.Equal(t, models.Approve, approveNoNameDecision.Outcome, "Expected decision to be Approve, got %s", approveNoNameDecision.Outcome)
+	approveNoNameDecision := createAndTestDecision(t, transactionPayloadJson, table,
+		decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
+	assert.Equal(t, models.Approve, approveNoNameDecision.Outcome,
+		"Expected decision to be Approve, got %s", approveNoNameDecision.Outcome)
 	if assert.NotEmpty(t, approveNoNameDecision.RuleExecutions) {
 		ruleExecution := findRuleExecutionByName(approveNoNameDecision.RuleExecutions, "Check on account name")
-		assert.ErrorIs(t, ruleExecution.Error, models.NullFieldReadError, "Expected error to be A field read in a rule is null, got %s", ruleExecution.Error)
+		assert.ErrorIs(t, ruleExecution.Error, models.NullFieldReadError,
+			"Expected error to be A field read in a rule is null, got %s", ruleExecution.Error)
 	}
 
 	// Create a decision [APPROVE] without a record in db (no row read)
@@ -450,11 +471,14 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"account_id": "{account_id_approve_no_record}",
 		"amount": 100
 	}`)
-	approveNoRecordDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
-	assert.Equal(t, models.Approve, approveNoRecordDecision.Outcome, "Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
+	approveNoRecordDecision := createAndTestDecision(t, transactionPayloadJson, table,
+		decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
+	assert.Equal(t, models.Approve, approveNoRecordDecision.Outcome,
+		"Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
 	if assert.NotEmpty(t, approveNoRecordDecision.RuleExecutions) {
 		ruleExecution := findRuleExecutionByName(approveNoRecordDecision.RuleExecutions, "Check on account name")
-		assert.ErrorIs(t, ruleExecution.Error, models.NoRowsReadError, "Expected error to be No rows were read from db in a rule, got %s", ruleExecution.Error)
+		assert.ErrorIs(t, ruleExecution.Error, models.NoRowsReadError,
+			"Expected error to be No rows were read from db in a rule, got %s", ruleExecution.Error)
 	}
 
 	// Create a decision [APPROVE] without a field in payload (null field read)
@@ -463,11 +487,14 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"updated_at": "2020-01-01T00:00:00Z",
 		"account_id": "{account_id_approve}"
 	}`)
-	approveMissingFieldInPayloadDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
-	assert.Equal(t, models.Approve, approveMissingFieldInPayloadDecision.Outcome, "Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
+	approveMissingFieldInPayloadDecision := createAndTestDecision(t, transactionPayloadJson,
+		table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
+	assert.Equal(t, models.Approve, approveMissingFieldInPayloadDecision.Outcome,
+		"Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
 	if assert.NotEmpty(t, approveMissingFieldInPayloadDecision.RuleExecutions) {
 		ruleExecution := findRuleExecutionByName(approveMissingFieldInPayloadDecision.RuleExecutions, "Check on account name")
-		assert.ErrorIs(t, ruleExecution.Error, models.NullFieldReadError, "Expected error to be A field read in a rule is null, got %s", ruleExecution.Error)
+		assert.ErrorIs(t, ruleExecution.Error, models.NullFieldReadError,
+			"Expected error to be A field read in a rule is null, got %s", ruleExecution.Error)
 	}
 
 	// Create a decision [APPROVE] with a division by zero
@@ -477,15 +504,20 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"account_id": "{account_id_approve}",
 		"amount": 0
 	}`)
-	approveDivisionByZeroDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
-	assert.Equal(t, models.Approve, approveDivisionByZeroDecision.Outcome, "Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
+	approveDivisionByZeroDecision := createAndTestDecision(t, transactionPayloadJson, table,
+		decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
+	assert.Equal(t, models.Approve, approveDivisionByZeroDecision.Outcome,
+		"Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
 	if assert.NotEmpty(t, approveDivisionByZeroDecision.RuleExecutions) {
 		ruleExecution := findRuleExecutionByName(approveDivisionByZeroDecision.RuleExecutions, "Check on account name")
-		assert.ErrorIs(t, ruleExecution.Error, models.DivisionByZeroError, "Expected error to be A division by zero occurred in a rule, got %s", ruleExecution.Error)
+		assert.ErrorIs(t, ruleExecution.Error, models.DivisionByZeroError,
+			"Expected error to be A division by zero occurred in a rule, got %s", ruleExecution.Error)
 	}
 }
 
-func createTransactionPayloadAndClientObject(transactionPayloadJson []byte, t *testing.T, table models.Table) (models.PayloadReader, models.ClientObject) {
+func createTransactionPayloadAndClientObject(transactionPayloadJson []byte, t *testing.T,
+	table models.Table,
+) (models.PayloadReader, models.ClientObject) {
 	triggerObjectMap := make(map[string]interface{})
 	ClientObject := models.ClientObject{TableName: table.Name, Data: triggerObjectMap}
 	transactionPayload := createTransactionPayload(transactionPayloadJson, triggerObjectMap, t, table)
@@ -493,7 +525,10 @@ func createTransactionPayloadAndClientObject(transactionPayloadJson []byte, t *t
 	return transactionPayload, ClientObject
 }
 
-func createAndTestDecision(t *testing.T, transactionPayloadJson []byte, table models.Table, decisionUsecase usecases.DecisionUsecase, usecasesWithCreds usecases.UsecasesWithCreds, organizationId, scenarioId string, logger *slog.Logger) models.Decision {
+func createAndTestDecision(t *testing.T, transactionPayloadJson []byte, table models.Table,
+	decisionUsecase usecases.DecisionUsecase, usecasesWithCreds usecases.UsecasesWithCreds,
+	organizationId, scenarioId string, logger *slog.Logger,
+) models.Decision {
 	transactionPayload, ClientObject := createTransactionPayloadAndClientObject(transactionPayloadJson, t, table)
 
 	decision, err := decisionUsecase.CreateDecision(usecasesWithCreds.Context, models.CreateDecisionInput{

@@ -36,7 +36,8 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 	fieldNameStr, fieldNameErr := AdaptNamedArgument(arguments.NamedArgs, "fieldName", adaptArgumentToString)
 	_, labelErr := AdaptNamedArgument(arguments.NamedArgs, "label", adaptArgumentToString)
 	aggregatorStr, aggregatorErr := AdaptNamedArgument(arguments.NamedArgs, "aggregator", adaptArgumentToString)
-	filters, filtersErr := AdaptNamedArgument(arguments.NamedArgs, "filters", adaptArgumentToListOfThings[ast.Filter])
+	filters, filtersErr := AdaptNamedArgument(arguments.NamedArgs, "filters",
+		adaptArgumentToListOfThings[ast.Filter])
 
 	errs := filterNilErrors(tableNameErr, fieldNameErr, labelErr, aggregatorErr, filtersErr)
 	if len(errs) > 0 {
@@ -51,7 +52,8 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 	validTypes, isValid := ValidTypesForAggregator[aggregator]
 	if !isValid {
 		return MakeEvaluateError(errors.Join(
-			errors.Wrap(models.ErrRuntimeExpression, fmt.Sprintf("aggregator %s is not a valid aggregator in Evaluate aggregator", aggregator)),
+			errors.Wrap(models.ErrRuntimeExpression,
+				fmt.Sprintf("aggregator %s is not a valid aggregator in Evaluate aggregator", aggregator)),
 			ast.NewNamedArgumentError("aggregator"),
 		))
 	}
@@ -66,7 +68,8 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 	isValidFieldType := slices.Contains(validTypes, fieldType)
 	if !isValidFieldType {
 		return MakeEvaluateError(errors.Join(
-			errors.Wrap(models.ErrRuntimeExpression, fmt.Sprintf("field type %s is not valid for aggregator %s in Evaluate aggregator", fieldType.String(), aggregator)),
+			errors.Wrap(models.ErrRuntimeExpression,
+				fmt.Sprintf("field type %s is not valid for aggregator %s in Evaluate aggregator", fieldType.String(), aggregator)),
 			ast.NewNamedArgumentError("fieldName"),
 		))
 	}
@@ -76,7 +79,8 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 		for _, filter := range filters {
 			if filter.TableName != tableNameStr {
 				return MakeEvaluateError(errors.Join(
-					errors.Wrap(models.ErrRuntimeExpression, "filters must be applied on the same table"),
+					errors.Wrap(models.ErrRuntimeExpression,
+						"filters must be applied on the same table"),
 					ast.NewNamedArgumentError("filters"),
 				))
 			}
@@ -95,7 +99,9 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 	return result, nil
 }
 
-func (a AggregatorEvaluator) runQueryInRepository(ctx context.Context, tableName models.TableName, fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter) (any, error) {
+func (a AggregatorEvaluator) runQueryInRepository(ctx context.Context, tableName models.TableName,
+	fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter,
+) (any, error) {
 	if a.ReturnFakeValue {
 		return DryRunQueryAggregatedValue(a.DataModel, tableName, fieldName, aggregator)
 	}
@@ -114,8 +120,10 @@ func (a AggregatorEvaluator) defaultValueForAggregator(aggregator ast.Aggregator
 	case ast.AGGREGATOR_COUNT, ast.AGGREGATOR_COUNT_DISTINCT:
 		return 0, nil
 	case ast.AGGREGATOR_AVG, ast.AGGREGATOR_MAX, ast.AGGREGATOR_MIN:
-		return MakeEvaluateError(errors.Wrap(models.NullFieldReadError, fmt.Sprintf("aggregation %s returned null", aggregator)))
+		return MakeEvaluateError(errors.Wrap(models.NullFieldReadError,
+			fmt.Sprintf("aggregation %s returned null", aggregator)))
 	default:
-		return MakeEvaluateError(errors.Wrap(models.ErrRuntimeExpression, fmt.Sprintf("aggregation %s not supported", aggregator)))
+		return MakeEvaluateError(errors.Wrap(models.ErrRuntimeExpression,
+			fmt.Sprintf("aggregation %s not supported", aggregator)))
 	}
 }

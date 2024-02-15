@@ -13,12 +13,16 @@ type DataModelRepository struct {
 	mock.Mock
 }
 
-func (d *DataModelRepository) GetDataModel(ctx context.Context, exec repositories.Executor, organizationId string, fetchEnumValues bool) (models.DataModel, error) {
+func (d *DataModelRepository) GetDataModel(ctx context.Context, exec repositories.Executor,
+	organizationId string, fetchEnumValues bool,
+) (models.DataModel, error) {
 	args := d.Called(exec, organizationId, fetchEnumValues)
 	return args.Get(0).(models.DataModel), args.Error(1)
 }
 
-func (d *DataModelRepository) GetTablesAndFields(ctx context.Context, exec repositories.Executor, organizationID string) ([]models.DataModelTableField, error) {
+func (d *DataModelRepository) GetTablesAndFields(ctx context.Context, exec repositories.Executor,
+	organizationID string,
+) ([]models.DataModelTableField, error) {
 	args := d.Called(exec, organizationID)
 	return args.Get(0).([]models.DataModelTableField), args.Error(1)
 }
@@ -38,7 +42,9 @@ func (d *DataModelRepository) UpdateDataModelTable(ctx context.Context, exec rep
 	return args.Error(0)
 }
 
-func (d *DataModelRepository) CreateDataModelField(ctx context.Context, exec repositories.Executor, tableID, fieldID string, field models.DataModelField) error {
+func (d *DataModelRepository) CreateDataModelField(ctx context.Context, exec repositories.Executor,
+	tableID, fieldID string, field models.DataModelField,
+) error {
 	args := d.Called(exec, tableID, fieldID, field)
 	return args.Error(0)
 }

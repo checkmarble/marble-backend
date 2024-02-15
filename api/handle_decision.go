@@ -52,7 +52,8 @@ func (api *API) handleListDecisions(c *gin.Context) {
 	paginationAndSorting = dto.WithPaginationDefaults(paginationAndSorting, decisionPaginationDefaults)
 
 	usecase := api.UsecasesWithCreds(c.Request).NewDecisionUsecase()
-	decisions, err := usecase.ListDecisions(c.Request.Context(), organizationId, dto.AdaptPaginationAndSortingInput(paginationAndSorting), filters)
+	decisions, err := usecase.ListDecisions(c.Request.Context(), organizationId,
+		dto.AdaptPaginationAndSortingInput(paginationAndSorting), filters)
 	if presentError(c, err) {
 		return
 	}
@@ -71,7 +72,9 @@ func (api *API) handleListDecisions(c *gin.Context) {
 		"total_count": dto.AdaptTotalCount(decisions[0].TotalCount),
 		"start_index": decisions[0].RankNumber,
 		"end_index":   decisions[len(decisions)-1].RankNumber,
-		"items":       pure_utils.Map(decisions, func(d models.DecisionWithRank) dto.APIDecision { return dto.NewAPIDecision(d.Decision) }),
+		"items": pure_utils.Map(decisions, func(d models.DecisionWithRank) dto.APIDecision {
+			return dto.NewAPIDecision(d.Decision)
+		}),
 	})
 }
 
@@ -99,19 +102,22 @@ func (api *API) handlePostDecision(c *gin.Context) {
 	tables := dataModel.Tables
 	table, ok := tables[models.TableName(requestData.TriggerObjectType)]
 	if !ok {
-		http.Error(c.Writer, fmt.Sprintf("Table %s not found", requestData.TriggerObjectType), http.StatusNotFound)
+		http.Error(c.Writer, fmt.Sprintf("Table %s not found",
+			requestData.TriggerObjectType), http.StatusNotFound)
 		return
 	}
 
 	parser := payload_parser.NewParser()
 	validationErrors, err := parser.ValidatePayload(table, requestData.TriggerObjectRaw)
 	if err != nil {
-		presentError(c, errors.Wrap(models.BadParameterError, fmt.Sprintf("Error while validating payload: %v", err)))
+		presentError(c, errors.Wrap(models.BadParameterError,
+			fmt.Sprintf("Error while validating payload: %v", err)))
 		return
 	}
 	if len(validationErrors) > 0 {
 		encoded, _ := json.Marshal(validationErrors)
-		logger.InfoContext(c.Request.Context(), fmt.Sprintf("Validation errors on POST decisions: %s", string(encoded)))
+		logger.InfoContext(c.Request.Context(),
+			fmt.Sprintf("Validation errors on POST decisions: %s", string(encoded)))
 		http.Error(c.Writer, string(encoded), http.StatusBadRequest)
 		return
 	}
@@ -134,7 +140,8 @@ func (api *API) handlePostDecision(c *gin.Context) {
 		http.Error(c.Writer, "", http.StatusUnprocessableEntity)
 		return
 	}
-	ClientObject := models.ClientObject{TableName: models.TableName(requestData.TriggerObjectType), Data: triggerObjectMap}
+	ClientObject := models.ClientObject{TableName: models.TableName(
+		requestData.TriggerObjectType), Data: triggerObjectMap}
 	decisionUsecase := api.UsecasesWithCreds(c.Request).NewDecisionUsecase()
 
 	decision, err := decisionUsecase.CreateDecision(c.Request.Context(), models.CreateDecisionInput{

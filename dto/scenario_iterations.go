@@ -40,7 +40,8 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 	for i, rule := range si.Rules {
 		apiRule, err := AdaptRuleDto(rule)
 		if err != nil {
-			return ScenarioIterationWithBodyDto{}, fmt.Errorf("could not create new api scenario iteration rule: %w", err)
+			return ScenarioIterationWithBodyDto{},
+				fmt.Errorf("could not create new api scenario iteration rule: %w", err)
 		}
 		body.Rules[i] = apiRule
 	}
@@ -48,7 +49,8 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 	if si.TriggerConditionAstExpression != nil {
 		triggerDto, err := AdaptNodeDto(*si.TriggerConditionAstExpression)
 		if err != nil {
-			return ScenarioIterationWithBodyDto{}, fmt.Errorf("unable to marshal trigger condition ast expression: %w", err)
+			return ScenarioIterationWithBodyDto{},
+				fmt.Errorf("unable to marshal trigger condition ast expression: %w", err)
 		}
 		body.TriggerConditionAstExpression = &triggerDto
 	}

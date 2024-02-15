@@ -11,13 +11,15 @@ import (
 )
 
 func TestString_Contains_true(t *testing.T) {
-	result, errs := evaluate.NewStringContains(ast.FUNC_STRING_CONTAINS).Evaluate(context.TODO(), ast.Arguments{Args: []any{"abc", "ab"}})
+	result, errs := evaluate.NewStringContains(ast.FUNC_STRING_CONTAINS).Evaluate(
+		context.TODO(), ast.Arguments{Args: []any{"abc", "ab"}})
 	assert.Empty(t, errs)
 	assert.Equal(t, true, result)
 }
 
 func TestString_Contains_false(t *testing.T) {
-	result, errs := evaluate.NewStringContains(ast.FUNC_STRING_CONTAINS).Evaluate(context.TODO(), ast.Arguments{Args: []any{"abc", "cd"}})
+	result, errs := evaluate.NewStringContains(ast.FUNC_STRING_CONTAINS).Evaluate(
+		context.TODO(), ast.Arguments{Args: []any{"abc", "cd"}})
 	assert.Empty(t, errs)
 	assert.Equal(t, false, result)
 }
@@ -35,19 +37,22 @@ func TestString_Contains_wrong_type_of_arguments(t *testing.T) {
 }
 
 func TestString_Contains_case_insensitive(t *testing.T) {
-	result, errs := evaluate.NewStringContains(ast.FUNC_STRING_CONTAINS).Evaluate(context.TODO(), ast.Arguments{Args: []any{"abc", "AB"}})
+	result, errs := evaluate.NewStringContains(ast.FUNC_STRING_CONTAINS).Evaluate(
+		context.TODO(), ast.Arguments{Args: []any{"abc", "AB"}})
 	assert.Empty(t, errs)
 	assert.Equal(t, true, result)
 }
 
 func TestString_Not_Contains_true(t *testing.T) {
-	result, errs := evaluate.NewStringContains(ast.FUNC_STRING_NOT_CONTAIN).Evaluate(context.TODO(), ast.Arguments{Args: []any{"abc", "cd"}})
+	result, errs := evaluate.NewStringContains(ast.FUNC_STRING_NOT_CONTAIN).Evaluate(
+		context.TODO(), ast.Arguments{Args: []any{"abc", "cd"}})
 	assert.Empty(t, errs)
 	assert.Equal(t, true, result)
 }
 
 func TestString_Not_Contains_false(t *testing.T) {
-	result, errs := evaluate.NewStringContains(ast.FUNC_STRING_NOT_CONTAIN).Evaluate(context.TODO(), ast.Arguments{Args: []any{"abc", "ab"}})
+	result, errs := evaluate.NewStringContains(ast.FUNC_STRING_NOT_CONTAIN).Evaluate(
+		context.TODO(), ast.Arguments{Args: []any{"abc", "ab"}})
 	assert.Empty(t, errs)
 	assert.Equal(t, false, result)
 }

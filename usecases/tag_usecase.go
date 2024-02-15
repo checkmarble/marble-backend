@@ -15,7 +15,8 @@ import (
 )
 
 type TagUseCaseRepository interface {
-	ListOrganizationTags(ctx context.Context, exec repositories.Executor, organizationId string, withCaseCount bool) ([]models.Tag, error)
+	ListOrganizationTags(ctx context.Context, exec repositories.Executor, organizationId string,
+		withCaseCount bool) ([]models.Tag, error)
 	CreateTag(ctx context.Context, exec repositories.Executor, attributes models.CreateTagAttributes, newTagId string) error
 	UpdateTag(ctx context.Context, exec repositories.Executor, attributes models.UpdateTagAttributes) error
 	GetTagById(ctx context.Context, exec repositories.Executor, tagId string) (models.Tag, error)
@@ -57,7 +58,9 @@ func (usecase *TagUseCase) CreateTag(ctx context.Context, attributes models.Crea
 		return models.Tag{}, err
 	}
 
-	tracking.TrackEvent(ctx, models.AnalyticsTagCreated, map[string]interface{}{"tag_id": tag.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsTagCreated, map[string]interface{}{
+		"tag_id": tag.Id,
+	})
 
 	return tag, err
 }
@@ -66,11 +69,15 @@ func (usecase *TagUseCase) GetTagById(ctx context.Context, tagId string) (models
 	return usecase.repository.GetTagById(ctx, usecase.executorFactory.NewExecutor(), tagId)
 }
 
-func (usecase *TagUseCase) UpdateTag(ctx context.Context, organizationId string, attributes models.UpdateTagAttributes) (models.Tag, error) {
+func (usecase *TagUseCase) UpdateTag(ctx context.Context, organizationId string,
+	attributes models.UpdateTagAttributes,
+) (models.Tag, error) {
 	if err := usecase.inboxReader.EnforceSecurity.CreateInbox(organizationId); err != nil {
 		return models.Tag{}, err
 	}
-	tag, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Executor) (models.Tag, error) {
+	tag, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
+		tx repositories.Executor,
+	) (models.Tag, error) {
 		if err := usecase.repository.UpdateTag(ctx, tx, attributes); err != nil {
 			return models.Tag{}, err
 		}
@@ -80,7 +87,9 @@ func (usecase *TagUseCase) UpdateTag(ctx context.Context, organizationId string,
 		return models.Tag{}, err
 	}
 
-	tracking.TrackEvent(ctx, models.AnalyticsTagUpdated, map[string]interface{}{"tag_id": tag.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsTagUpdated, map[string]interface{}{
+		"tag_id": tag.Id,
+	})
 
 	return tag, err
 }
@@ -98,7 +107,8 @@ func (usecase *TagUseCase) DeleteTag(ctx context.Context, organizationId, tagId 
 			return err
 		}
 		if len(caseTags) > 0 {
-			return errors.Wrap(models.ForbiddenError, "Cannot delete tag that is still in use")
+			return errors.Wrap(models.ForbiddenError,
+				"Cannot delete tag that is still in use")
 		}
 		if err := usecase.repository.SoftDeleteTag(ctx, tx, tagId); err != nil {
 			return err
@@ -109,7 +119,9 @@ func (usecase *TagUseCase) DeleteTag(ctx context.Context, organizationId, tagId 
 		return err
 	}
 
-	tracking.TrackEvent(ctx, models.AnalyticsTagDeleted, map[string]interface{}{"tag_id": tagId})
+	tracking.TrackEvent(ctx, models.AnalyticsTagDeleted, map[string]interface{}{
+		"tag_id": tagId,
+	})
 
 	return nil
 }

@@ -32,7 +32,8 @@ func (usecase *MarbleTokenUseCase) encodeMarbleToken(creds models.Credentials) (
 }
 
 func (usecase *MarbleTokenUseCase) adaptCredentialFromApiKey(ctx context.Context, key string) (models.Credentials, error) {
-	apiKey, err := usecase.apiKeyRepository.GetApiKeyByKey(ctx, usecase.executorFactory.NewExecutor(), key)
+	apiKey, err := usecase.apiKeyRepository.GetApiKeyByKey(ctx,
+		usecase.executorFactory.NewExecutor(), key)
 	if err != nil {
 		return models.Credentials{}, err
 	}
@@ -47,7 +48,8 @@ func (usecase *MarbleTokenUseCase) adaptCredentialFromApiKey(ctx context.Context
 }
 
 func (usecase *MarbleTokenUseCase) makeTokenName(ctx context.Context, apiKey models.ApiKey) (string, error) {
-	organizationName, err := usecase.organizationRepository.GetOrganizationById(ctx, usecase.executorFactory.NewExecutor(), apiKey.OrganizationId)
+	organizationName, err := usecase.organizationRepository.GetOrganizationById(ctx,
+		usecase.executorFactory.NewExecutor(), apiKey.OrganizationId)
 	if err != nil {
 		return "", err
 	}
@@ -71,16 +73,17 @@ func (usecase *MarbleTokenUseCase) NewMarbleToken(ctx context.Context, apiKey st
 			return "", time.Time{}, fmt.Errorf("firebase TokenID verification fail: %w", err)
 		}
 
-		user, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Executor) (models.User, error) {
-			user, err := usecase.userRepository.UserByEmail(ctx, tx, identity.Email)
-			if err != nil {
-				return models.User{}, err
-			}
-			if user == nil {
-				return models.User{}, fmt.Errorf("unknown user %s: %w", identity.Email, models.NotFoundError)
-			}
-			return *user, nil
-		})
+		user, err := executor_factory.TransactionReturnValue(ctx,
+			usecase.transactionFactory, func(tx repositories.Executor) (models.User, error) {
+				user, err := usecase.userRepository.UserByEmail(ctx, tx, identity.Email)
+				if err != nil {
+					return models.User{}, err
+				}
+				if user == nil {
+					return models.User{}, fmt.Errorf("unknown user %s: %w", identity.Email, models.NotFoundError)
+				}
+				return *user, nil
+			})
 		if err != nil {
 			return "", time.Time{}, err
 		}

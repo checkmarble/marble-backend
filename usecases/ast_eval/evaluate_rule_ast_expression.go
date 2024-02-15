@@ -14,7 +14,9 @@ type EvaluateRuleAstExpression struct {
 	AstEvaluationEnvironmentFactory AstEvaluationEnvironmentFactory
 }
 
-func (evaluator *EvaluateRuleAstExpression) EvaluateRuleAstExpression(ctx context.Context, ruleAstExpression ast.Node, organizationId string, payload models.PayloadReader, dataModel models.DataModel) (bool, error) {
+func (evaluator *EvaluateRuleAstExpression) EvaluateRuleAstExpression(ctx context.Context,
+	ruleAstExpression ast.Node, organizationId string, payload models.PayloadReader, dataModel models.DataModel,
+) (bool, error) {
 	environment := evaluator.AstEvaluationEnvironmentFactory(EvaluationEnvironmentFactoryParams{
 		OrganizationId:                organizationId,
 		Payload:                       payload,
@@ -33,5 +35,6 @@ func (evaluator *EvaluateRuleAstExpression) EvaluateRuleAstExpression(ctx contex
 		return value, nil
 	}
 
-	return false, errors.Wrap(models.ErrRuntimeExpression, fmt.Sprintf("rule ast expression does not return a boolean, '%v' instead", result))
+	return false, errors.Wrap(models.ErrRuntimeExpression,
+		fmt.Sprintf("rule ast expression does not return a boolean, '%v' instead", result))
 }

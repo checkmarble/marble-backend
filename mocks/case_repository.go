@@ -11,7 +11,9 @@ type CaseRepository struct {
 	mock.Mock
 }
 
-func (r *CaseRepository) ListOrganizationCases(exec repositories.Executor, organizationId string, filters models.CaseFilters, pagination models.PaginationAndSorting) ([]models.CaseWithRank, error) {
+func (r *CaseRepository) ListOrganizationCases(exec repositories.Executor, organizationId string,
+	filters models.CaseFilters, pagination models.PaginationAndSorting,
+) ([]models.CaseWithRank, error) {
 	args := r.Called(exec, organizationId)
 	return args.Get(0).([]models.CaseWithRank), args.Error(1)
 }
@@ -21,7 +23,9 @@ func (r *CaseRepository) GetCaseById(exec repositories.Executor, caseId string) 
 	return args.Get(0).(models.Case), args.Error(1)
 }
 
-func (r *CaseRepository) CreateCase(exec repositories.Executor, createCaseAttributes models.CreateCaseAttributes, newCaseId string) error {
+func (r *CaseRepository) CreateCase(exec repositories.Executor,
+	createCaseAttributes models.CreateCaseAttributes, newCaseId string,
+) error {
 	args := r.Called(exec, createCaseAttributes, newCaseId)
 	return args.Error(0)
 }
@@ -31,7 +35,9 @@ func (r *CaseRepository) UpdateCase(exec repositories.Executor, caseId string, u
 	return args.Error(0)
 }
 
-func (r *CaseRepository) CreateCaseTag(exec repositories.Executor, newCaseTagId string, createCaseTagAttributes models.CreateCaseTagsAttributes) error {
+func (r *CaseRepository) CreateCaseTag(exec repositories.Executor, newCaseTagId string,
+	createCaseTagAttributes models.CreateCaseTagsAttributes,
+) error {
 	args := r.Called(exec, newCaseTagId, createCaseTagAttributes)
 	return args.Error(0)
 }

@@ -40,7 +40,8 @@ func (api *API) handleListCases(c *gin.Context) {
 	paginationAndSorting = dto.WithPaginationDefaults(paginationAndSorting, casesPaginationDefaults)
 
 	usecase := api.UsecasesWithCreds(c.Request).NewCaseUseCase()
-	cases, err := usecase.ListCases(c.Request.Context(), organizationId, dto.AdaptPaginationAndSortingInput(paginationAndSorting), filters)
+	cases, err := usecase.ListCases(c.Request.Context(), organizationId,
+		dto.AdaptPaginationAndSortingInput(paginationAndSorting), filters)
 	if presentError(c, err) {
 		return
 	}

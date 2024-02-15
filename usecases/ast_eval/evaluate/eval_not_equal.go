@@ -37,5 +37,6 @@ func (f NotEqual) Evaluate(ctx context.Context, arguments ast.Arguments) (any, [
 		return MakeEvaluateResult(!left.Equal(right))
 	}
 
-	return MakeEvaluateError(errors.Wrap(ast.ErrArgumentInvalidType, "all arguments to NotEqual Evaluate must be string, boolean, time, int or float"))
+	return MakeEvaluateError(errors.Wrap(ast.ErrArgumentInvalidType,
+		"all arguments to NotEqual Evaluate must be string, boolean, time, int or float"))
 }

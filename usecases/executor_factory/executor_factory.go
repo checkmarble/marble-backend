@@ -10,11 +10,13 @@ import (
 // interfaces used by the class
 type executorFactoryRepository interface {
 	GetExecutor(databaseSchema models.DatabaseSchema) repositories.Executor
-	Transaction(ctx context.Context, databaseSchema models.DatabaseSchema, fn func(tx repositories.Executor) error) error
+	Transaction(ctx context.Context, databaseSchema models.DatabaseSchema,
+		fn func(tx repositories.Executor) error) error
 }
 
 type organizationSchemaReader interface {
-	OrganizationSchemaOfOrganization(ctx context.Context, exec repositories.Executor, organizationId string) (models.OrganizationSchema, error)
+	OrganizationSchemaOfOrganization(ctx context.Context, exec repositories.Executor,
+		organizationId string) (models.OrganizationSchema, error)
 }
 
 type DbExecutorFactory struct {
@@ -36,7 +38,8 @@ func (factory DbExecutorFactory) organizationDatabaseSchema(
 	ctx context.Context,
 	organizationId string,
 ) (models.DatabaseSchema, error) {
-	organizationSchema, err := factory.organizationSchemaReader.OrganizationSchemaOfOrganization(ctx, factory.NewExecutor(), organizationId)
+	organizationSchema, err := factory.organizationSchemaReader.OrganizationSchemaOfOrganization(
+		ctx, factory.NewExecutor(), organizationId)
 	if err != nil {
 		return models.DatabaseSchema{}, err
 	}

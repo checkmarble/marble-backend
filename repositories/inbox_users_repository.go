@@ -31,7 +31,9 @@ func (repo *MarbleDbRepository) GetInboxUserById(ctx context.Context, exec Execu
 	)
 }
 
-func (repo *MarbleDbRepository) ListInboxUsers(ctx context.Context, exec Executor, filters models.InboxUserFilterInput) ([]models.InboxUser, error) {
+func (repo *MarbleDbRepository) ListInboxUsers(ctx context.Context, exec Executor,
+	filters models.InboxUserFilterInput,
+) ([]models.InboxUser, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -53,7 +55,9 @@ func (repo *MarbleDbRepository) ListInboxUsers(ctx context.Context, exec Executo
 	)
 }
 
-func (repo *MarbleDbRepository) CreateInboxUser(ctx context.Context, exec Executor, input models.CreateInboxUserInput, newInboxUserId string) error {
+func (repo *MarbleDbRepository) CreateInboxUser(ctx context.Context, exec Executor,
+	input models.CreateInboxUserInput, newInboxUserId string,
+) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}

@@ -39,7 +39,9 @@ type IngestionUseCase struct {
 	GcsIngestionBucket  string
 }
 
-func (usecase *IngestionUseCase) IngestObjects(ctx context.Context, organizationId string, payloads []models.PayloadReader, table models.Table, logger *slog.Logger) error {
+func (usecase *IngestionUseCase) IngestObjects(ctx context.Context, organizationId string,
+	payloads []models.PayloadReader, table models.Table, logger *slog.Logger,
+) error {
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
 		return err
 	}
@@ -48,15 +50,20 @@ func (usecase *IngestionUseCase) IngestObjects(ctx context.Context, organization
 	})
 }
 
-func (usecase *IngestionUseCase) ListUploadLogs(ctx context.Context, organizationId, objectType string) ([]models.UploadLog, error) {
+func (usecase *IngestionUseCase) ListUploadLogs(ctx context.Context,
+	organizationId, objectType string,
+) ([]models.UploadLog, error) {
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
 		return []models.UploadLog{}, err
 	}
 
-	return usecase.uploadLogRepository.AllUploadLogsByTable(ctx, usecase.executorFactory.NewExecutor(), organizationId, objectType)
+	return usecase.uploadLogRepository.AllUploadLogsByTable(ctx,
+		usecase.executorFactory.NewExecutor(), organizationId, objectType)
 }
 
-func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Context, organizationId, userId, objectType string, fileReader *csv.Reader) (models.UploadLog, error) {
+func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Context,
+	organizationId, userId, objectType string, fileReader *csv.Reader,
+) (models.UploadLog, error) {
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
 		return models.UploadLog{}, err
 	}
@@ -110,7 +117,8 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 
 		_, err = parseStringValuesToMap(headers, row, table)
 		if err != nil {
-			return models.UploadLog{}, fmt.Errorf("error found at line %d in CSV: %w (%w)", lineNumber, err, models.BadParameterError)
+			return models.UploadLog{}, fmt.Errorf("error found at line %d in CSV: %w (%w)",
+				lineNumber, err, models.BadParameterError)
 		}
 
 		if err := csvWriter.WriteAll([][]string{row}); err != nil {
@@ -121,7 +129,8 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 	if err := writer.Close(); err != nil {
 		return models.UploadLog{}, err
 	}
-	if err := usecase.gcsRepository.UpdateFileMetadata(ctx, usecase.GcsIngestionBucket, fileName, map[string]string{"processed": "true"}); err != nil {
+	if err := usecase.gcsRepository.UpdateFileMetadata(ctx, usecase.GcsIngestionBucket,
+		fileName, map[string]string{"processed": "true"}); err != nil {
 		return models.UploadLog{}, err
 	}
 
@@ -146,7 +155,8 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 }
 
 func (usecase *IngestionUseCase) IngestDataFromCsv(ctx context.Context, logger *slog.Logger) error {
-	pendingUploadLogs, err := usecase.uploadLogRepository.AllUploadLogsByStatus(ctx, usecase.executorFactory.NewExecutor(), models.UploadPending)
+	pendingUploadLogs, err := usecase.uploadLogRepository.AllUploadLogsByStatus(ctx,
+		usecase.executorFactory.NewExecutor(), models.UploadPending)
 	if err != nil {
 		return err
 	}
@@ -180,7 +190,9 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 	exec := usecase.executorFactory.NewExecutor()
 	logger.InfoContext(ctx, fmt.Sprintf("Start processing UploadLog %s", uploadLog.Id))
 
-	err := usecase.uploadLogRepository.UpdateUploadLog(ctx, exec, models.UpdateUploadLogInput{Id: uploadLog.Id, UploadStatus: models.UploadProcessing})
+	err := usecase.uploadLogRepository.UpdateUploadLog(ctx, exec, models.UpdateUploadLogInput{
+		Id: uploadLog.Id, UploadStatus: models.UploadProcessing,
+	})
 	if err != nil {
 		return err
 	}
@@ -238,7 +250,9 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file
 	return nil
 }
 
-func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organizationId string, file models.GCSFile, table models.Table, logger *slog.Logger) error {
+func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organizationId string,
+	file models.GCSFile, table models.Table, logger *slog.Logger,
+) error {
 	start := time.Now()
 	r := csv.NewReader(pure_utils.NewReaderWithoutBom(file.Reader))
 	firstRow, err := r.Read()

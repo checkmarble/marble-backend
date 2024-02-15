@@ -269,28 +269,36 @@ func TestUseCase_UpdateDataModelField(t *testing.T) {
 	t.Run("nominal", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
 		mockRepository.On("GetDataModelField", mock.Anything, fieldID).Return(models.Field{}, nil)
-		mockRepository.On("UpdateDataModelField", mock.Anything, fieldID, models.UpdateDataModelFieldInput{Description: &description, IsEnum: nil}).
+		mockRepository.On("UpdateDataModelField", mock.Anything, fieldID, models.UpdateDataModelFieldInput{
+			Description: &description, IsEnum: nil,
+		}).
 			Return(nil)
 
 		useCase := UseCase{
 			repository: mockRepository,
 		}
 
-		err := useCase.UpdateDataModelField(context.Background(), fieldID, models.UpdateDataModelFieldInput{Description: &description, IsEnum: nil})
+		err := useCase.UpdateDataModelField(context.Background(), fieldID, models.UpdateDataModelFieldInput{
+			Description: &description, IsEnum: nil,
+		})
 		assert.NoError(t, err)
 		mockRepository.AssertExpectations(t)
 	})
 
 	t.Run("Error when setting isEnum on a bool field", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
-		mockRepository.On("GetDataModelField", mock.Anything, fieldID).Return(models.Field{DataType: models.Bool}, nil)
+		mockRepository.On("GetDataModelField", mock.Anything, fieldID).Return(models.Field{
+			DataType: models.Bool,
+		}, nil)
 
 		useCase := UseCase{
 			repository: mockRepository,
 		}
 
 		trueVar := true
-		err := useCase.UpdateDataModelField(context.Background(), fieldID, models.UpdateDataModelFieldInput{Description: &description, IsEnum: &trueVar})
+		err := useCase.UpdateDataModelField(context.Background(), fieldID, models.UpdateDataModelFieldInput{
+			Description: &description, IsEnum: &trueVar,
+		})
 		assert.Error(t, err)
 		mockRepository.AssertExpectations(t)
 	})
@@ -298,14 +306,18 @@ func TestUseCase_UpdateDataModelField(t *testing.T) {
 	t.Run("UpdateDataModelField error", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
 		mockRepository.On("GetDataModelField", mock.Anything, fieldID).Return(models.Field{}, nil)
-		mockRepository.On("UpdateDataModelField", mock.Anything, fieldID, models.UpdateDataModelFieldInput{Description: &description, IsEnum: nil}).
+		mockRepository.On("UpdateDataModelField", mock.Anything, fieldID, models.UpdateDataModelFieldInput{
+			Description: &description, IsEnum: nil,
+		}).
 			Return(assert.AnError)
 
 		useCase := UseCase{
 			repository: mockRepository,
 		}
 
-		err := useCase.UpdateDataModelField(context.Background(), fieldID, models.UpdateDataModelFieldInput{Description: &description, IsEnum: nil})
+		err := useCase.UpdateDataModelField(context.Background(), fieldID, models.UpdateDataModelFieldInput{
+			Description: &description, IsEnum: nil,
+		})
 		assert.Error(t, err)
 		mockRepository.AssertExpectations(t)
 	})

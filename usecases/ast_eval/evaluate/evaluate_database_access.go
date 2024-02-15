@@ -36,12 +36,14 @@ func (d DatabaseAccess) Evaluate(ctx context.Context, arguments ast.Arguments) (
 
 	path, ok := arguments.NamedArgs["path"].([]any)
 	if !ok {
-		return MakeEvaluateError(errors.Wrap(ast.ErrArgumentInvalidType, "path is not a slice of any in Evaluate DatabaseAccess"))
+		return MakeEvaluateError(errors.Wrap(ast.ErrArgumentInvalidType,
+			"path is not a slice of any in Evaluate DatabaseAccess"))
 	}
 	for _, v := range path {
 		str, ok := v.(string)
 		if !ok {
-			return MakeEvaluateError(errors.Wrap(ast.ErrArgumentMustBeString, "path value is not a string in Evaluate DatabaseAccess"))
+			return MakeEvaluateError(errors.Wrap(ast.ErrArgumentMustBeString,
+				"path value is not a string in Evaluate DatabaseAccess"))
 		}
 		pathStringArr = append(pathStringArr, str)
 	}
@@ -58,13 +60,16 @@ func (d DatabaseAccess) Evaluate(ctx context.Context, arguments ast.Arguments) (
 	if fieldValue == nil {
 		errorMsg := fmt.Sprintf("tableName: %s, fieldName: %s, path: %v", tableName, fieldName, path)
 		objectId, _ := d.getDbField(ctx, tableName, "object_id", pathStringArr)
-		return MakeEvaluateError(errors.Wrap(models.NullFieldReadError, fmt.Sprintf("value is null for object_id %s, in %s", objectId, errorMsg)))
+		return MakeEvaluateError(errors.Wrap(models.NullFieldReadError,
+			fmt.Sprintf("value is null for object_id %s, in %s", objectId, errorMsg)))
 	}
 
 	return fieldValue, nil
 }
 
-func (d DatabaseAccess) getDbField(ctx context.Context, tableName models.TableName, fieldName models.FieldName, path []string) (interface{}, error) {
+func (d DatabaseAccess) getDbField(ctx context.Context, tableName models.TableName,
+	fieldName models.FieldName, path []string,
+) (interface{}, error) {
 	if d.ReturnFakeValue {
 		return DryRunGetDbField(d.DataModel, tableName, path, fieldName)
 	}

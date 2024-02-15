@@ -16,8 +16,10 @@ import (
 type ScenarioUsecaseRepository interface {
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
 	ListScenariosOfOrganization(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.Scenario, error)
-	CreateScenario(ctx context.Context, exec repositories.Executor, organizationId string, scenario models.CreateScenarioInput, newScenarioId string) error
-	UpdateScenario(ctx context.Context, exec repositories.Executor, scenario models.UpdateScenarioInput) error
+	CreateScenario(ctx context.Context, exec repositories.Executor, organizationId string,
+		scenario models.CreateScenarioInput, newScenarioId string) error
+	UpdateScenario(ctx context.Context, exec repositories.Executor,
+		scenario models.UpdateScenarioInput) error
 }
 
 type ScenarioUsecase struct {
@@ -33,7 +35,8 @@ func (usecase *ScenarioUsecase) ListScenarios(ctx context.Context) ([]models.Sce
 	if err != nil {
 		return nil, err
 	}
-	scenarios, err := usecase.repository.ListScenariosOfOrganization(ctx, usecase.executorFactory.NewExecutor(), organizationId)
+	scenarios, err := usecase.repository.ListScenariosOfOrganization(ctx,
+		usecase.executorFactory.NewExecutor(), organizationId)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +50,8 @@ func (usecase *ScenarioUsecase) ListScenarios(ctx context.Context) ([]models.Sce
 }
 
 func (usecase *ScenarioUsecase) GetScenario(ctx context.Context, scenarioId string) (models.Scenario, error) {
-	scenario, err := usecase.repository.GetScenarioById(ctx, usecase.executorFactory.NewExecutor(), scenarioId)
+	scenario, err := usecase.repository.GetScenarioById(ctx,
+		usecase.executorFactory.NewExecutor(), scenarioId)
 	if err != nil {
 		return models.Scenario{}, err
 	}
@@ -59,7 +63,9 @@ func (usecase *ScenarioUsecase) GetScenario(ctx context.Context, scenarioId stri
 	return scenario, nil
 }
 
-func (usecase *ScenarioUsecase) UpdateScenario(ctx context.Context, scenarioInput models.UpdateScenarioInput) (models.Scenario, error) {
+func (usecase *ScenarioUsecase) UpdateScenario(ctx context.Context,
+	scenarioInput models.UpdateScenarioInput,
+) (models.Scenario, error) {
 	return executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
@@ -82,7 +88,9 @@ func (usecase *ScenarioUsecase) UpdateScenario(ctx context.Context, scenarioInpu
 	)
 }
 
-func (usecase *ScenarioUsecase) CreateScenario(ctx context.Context, scenario models.CreateScenarioInput) (models.Scenario, error) {
+func (usecase *ScenarioUsecase) CreateScenario(ctx context.Context,
+	scenario models.CreateScenarioInput,
+) (models.Scenario, error) {
 	organizationId, err := usecase.organizationIdOfContext()
 	if err != nil {
 		return models.Scenario{}, err
@@ -108,6 +116,8 @@ func (usecase *ScenarioUsecase) CreateScenario(ctx context.Context, scenario mod
 		return models.Scenario{}, err
 	}
 
-	tracking.TrackEvent(ctx, models.AnalyticsScenarioCreated, map[string]interface{}{"scenario_id": cratedScenario.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsScenarioCreated, map[string]interface{}{
+		"scenario_id": cratedScenario.Id,
+	})
 	return cratedScenario, nil
 }

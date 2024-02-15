@@ -49,7 +49,10 @@ var (
 	PayloadFieldNotFoundError = fmt.Errorf("Payload field not found %w", ErrRuntimeExpression)
 )
 
-var RuleExecutionAuthorizedErrors = []error{NullFieldReadError, NoRowsReadError, DivisionByZeroError, PayloadFieldNotFoundError}
+var RuleExecutionAuthorizedErrors = []error{
+	NullFieldReadError, NoRowsReadError,
+	DivisionByZeroError, PayloadFieldNotFoundError,
+}
 
 func IsAuthorizedError(err error) bool {
 	for _, authorizedError := range RuleExecutionAuthorizedErrors {

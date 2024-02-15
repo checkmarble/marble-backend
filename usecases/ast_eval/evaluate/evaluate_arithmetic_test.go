@@ -24,7 +24,9 @@ func TestNewArithmetic_basic(t *testing.T) {
 }
 
 func TestNewArithmetic_fail(t *testing.T) {
-	_, errs := NewArithmetic(ast.FUNC_ADD).Evaluate(context.TODO(), ast.Arguments{Args: []any{2, "totally not an int or a float"}})
+	_, errs := NewArithmetic(ast.FUNC_ADD).Evaluate(context.TODO(), ast.Arguments{
+		Args: []any{2, "totally not an int or a float"},
+	})
 	if assert.Len(t, errs, 1) {
 		assert.ErrorIs(t, errs[0], ast.ErrArgumentMustBeIntOrFloat)
 	}

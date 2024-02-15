@@ -45,7 +45,9 @@ func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.Creat
 	if err != nil {
 		return models.User{}, err
 	}
-	tracking.TrackEvent(context.Background(), models.AnalyticsUserCreated, map[string]interface{}{"user_id": createdUser.UserId})
+	tracking.TrackEvent(context.Background(), models.AnalyticsUserCreated, map[string]interface{}{
+		"user_id": createdUser.UserId,
+	})
 
 	return createdUser, nil
 }
@@ -71,7 +73,9 @@ func (usecase *UserUseCase) UpdateUser(ctx context.Context, updateUser models.Up
 	if err != nil {
 		return models.User{}, err
 	}
-	tracking.TrackEvent(ctx, models.AnalyticsUserUpdated, map[string]interface{}{"user_id": updatedUser.UserId})
+	tracking.TrackEvent(ctx, models.AnalyticsUserUpdated, map[string]interface{}{
+		"user_id": updatedUser.UserId,
+	})
 
 	return updatedUser, nil
 }
@@ -96,7 +100,9 @@ func (usecase *UserUseCase) DeleteUser(ctx context.Context, userId, currentUserI
 	if err != nil {
 		return err
 	}
-	tracking.TrackEvent(context.Background(), models.AnalyticsUserDeleted, map[string]interface{}{"user_id": userId})
+	tracking.TrackEvent(context.Background(), models.AnalyticsUserDeleted, map[string]interface{}{
+		"user_id": userId,
+	})
 
 	return nil
 }

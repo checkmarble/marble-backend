@@ -70,7 +70,8 @@ func AddTraceIdToLoggerMiddleware(isDevEnv bool, projectId string) func(next htt
 			traceId := findTraceId()
 			if projectId != "" {
 				if traceId != "" {
-					logger = logger.With("logging.googleapis.com/trace", fmt.Sprintf("projects/%s/traces/%s", projectId, traceId))
+					logger = logger.With("logging.googleapis.com/trace",
+						fmt.Sprintf("projects/%s/traces/%s", projectId, traceId))
 				} else if !isDevEnv {
 					logger.DebugContext(ctx, "no trace id found in request")
 				}

@@ -27,7 +27,8 @@ func promoteArgumentToInt64(argument any) (int64, error) {
 	result, err := ToInt64(argument)
 	if err != nil {
 		return 0, errors.Join(
-			errors.Wrap(ast.ErrArgumentMustBeInt, fmt.Sprintf("can't promote argument %v to int64", argument)),
+			errors.Wrap(ast.ErrArgumentMustBeInt,
+				fmt.Sprintf("can't promote argument %v to int64", argument)),
 			err,
 		)
 	}
@@ -42,7 +43,8 @@ func promoteArgumentToFloat64(argument any) (float64, error) {
 	result, err := ToFloat64(argument)
 	if err != nil {
 		return 0, errors.Join(
-			errors.Wrap(ast.ErrArgumentMustBeIntOrFloat, fmt.Sprintf("can't promote argument %v to float64", argument)),
+			errors.Wrap(ast.ErrArgumentMustBeIntOrFloat,
+				fmt.Sprintf("can't promote argument %v to float64", argument)),
 			err,
 		)
 	}
@@ -58,7 +60,8 @@ func adaptArgumentToString(argument any) (string, error) {
 		return result, nil
 	}
 
-	return "", errors.Wrap(ast.ErrArgumentMustBeString, fmt.Sprintf("can't promote argument %v to string", argument))
+	return "", errors.Wrap(ast.ErrArgumentMustBeString,
+		fmt.Sprintf("can't promote argument %v to string", argument))
 }
 
 func adaptArgumentToTime(argument any) (time.Time, error) {
@@ -69,7 +72,8 @@ func adaptArgumentToTime(argument any) (time.Time, error) {
 	if result, ok := argument.(time.Time); ok {
 		return result, nil
 	}
-	return time.Time{}, errors.Wrap(ast.ErrArgumentMustBeTime, fmt.Sprintf("can't promote argument %v to time", argument))
+	return time.Time{}, errors.Wrap(ast.ErrArgumentMustBeTime,
+		fmt.Sprintf("can't promote argument %v to time", argument))
 }
 
 func adaptArgumentToDuration(argument any) (time.Duration, error) {
@@ -95,7 +99,8 @@ func adaptArgumentToDuration(argument any) (time.Duration, error) {
 		return time.Duration(result), nil
 	}
 
-	return 0, errors.Wrap(ast.ErrArgumentCantBeConvertedToDuration, fmt.Sprintf("can't promote argument %v to duration", argument))
+	return 0, errors.Wrap(ast.ErrArgumentCantBeConvertedToDuration,
+		fmt.Sprintf("can't promote argument %v to duration", argument))
 }
 
 func adaptArgumentToListOfThings[T any](argument any) ([]T, error) {
@@ -119,7 +124,8 @@ func adaptArgumentToListOfThings[T any](argument any) ([]T, error) {
 		return nil, err
 	}
 
-	return nil, errors.Wrap(ast.ErrArgumentMustBeList, fmt.Sprintf("can't promote argument %v to []%T", argument, zero))
+	return nil, errors.Wrap(ast.ErrArgumentMustBeList,
+		fmt.Sprintf("can't promote argument %v to []%T", argument, zero))
 }
 
 func adaptArgumentToListOfStrings(argument any) ([]string, error) {
@@ -135,7 +141,8 @@ func adaptArgumentToBool(argument any) (bool, error) {
 		return value, nil
 	}
 
-	return false, errors.Wrap(ast.ErrArgumentMustBeBool, fmt.Sprintf("can't promote argument %v to bool", argument))
+	return false, errors.Wrap(ast.ErrArgumentMustBeBool,
+		fmt.Sprintf("can't promote argument %v to bool", argument))
 }
 
 func promoteArgumentToDataType(argument any, datatype models.DataType) (any, error) {

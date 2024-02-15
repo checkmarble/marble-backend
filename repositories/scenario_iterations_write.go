@@ -20,7 +20,9 @@ func (repo *MarbleDbRepository) DeleteScenarioIteration(ctx context.Context, exe
 	return err
 }
 
-func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Context, exec Executor, organizationId string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error) {
+func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Context, exec Executor,
+	organizationId string, scenarioIteration models.CreateScenarioIterationInput,
+) (models.ScenarioIteration, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.ScenarioIteration{}, err
 	}
@@ -38,9 +40,11 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Cont
 		var triggerCondition *[]byte
 		if scenarioIterationBodyInput != nil && scenarioIterationBodyInput.TriggerConditionAstExpression != nil {
 			var err error
-			triggerCondition, err = dbmodels.SerializeFormulaAstExpression(scenarioIterationBodyInput.TriggerConditionAstExpression)
+			triggerCondition, err = dbmodels.SerializeFormulaAstExpression(
+				scenarioIterationBodyInput.TriggerConditionAstExpression)
 			if err != nil {
-				return models.ScenarioIteration{}, fmt.Errorf("unable to marshal trigger condition ast expression: %w", err)
+				return models.ScenarioIteration{}, fmt.Errorf(
+					"unable to marshal trigger condition ast expression: %w", err)
 			}
 		}
 		query = query.Columns(
@@ -85,7 +89,8 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Cont
 		}
 		createdRules, err := repo.CreateRules(ctx, exec, scenarioIteration.Body.Rules)
 		if err != nil {
-			return models.ScenarioIteration{}, fmt.Errorf("unable to create scenario iteration rules: %w", err)
+			return models.ScenarioIteration{}, fmt.Errorf(
+				"unable to create scenario iteration rules: %w", err)
 		}
 		createdIteration.Rules = createdRules
 	}
@@ -93,7 +98,9 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Cont
 	return createdIteration, nil
 }
 
-func (repo *MarbleDbRepository) UpdateScenarioIteration(ctx context.Context, exec Executor, scenarioIteration models.UpdateScenarioIterationInput) (models.ScenarioIteration, error) {
+func (repo *MarbleDbRepository) UpdateScenarioIteration(ctx context.Context, exec Executor,
+	scenarioIteration models.UpdateScenarioIterationInput,
+) (models.ScenarioIteration, error) {
 	if scenarioIteration.Body == nil {
 		return models.ScenarioIteration{}, fmt.Errorf("nothing to update")
 	}
@@ -120,9 +127,11 @@ func (repo *MarbleDbRepository) UpdateScenarioIteration(ctx context.Context, exe
 		sql = sql.Set("batch_trigger_sql", scenarioIteration.Body.BatchTriggerSQL)
 	}
 	if scenarioIteration.Body.TriggerConditionAstExpression != nil {
-		triggerCondition, err := dbmodels.SerializeFormulaAstExpression(scenarioIteration.Body.TriggerConditionAstExpression)
+		triggerCondition, err := dbmodels.SerializeFormulaAstExpression(
+			scenarioIteration.Body.TriggerConditionAstExpression)
 		if err != nil {
-			return models.ScenarioIteration{}, fmt.Errorf("unable to marshal trigger condition ast expression: %w", err)
+			return models.ScenarioIteration{}, fmt.Errorf(
+				"unable to marshal trigger condition ast expression: %w", err)
 		}
 		sql = sql.Set("trigger_condition_ast_expression", triggerCondition)
 	}

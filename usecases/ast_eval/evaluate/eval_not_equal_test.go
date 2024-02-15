@@ -177,14 +177,20 @@ func TestNotEqual_Evaluate_time(t *testing.T) {
 		errors []error
 	}{
 		{
-			name:   "nominal",
-			args:   []any{time.Date(2016, time.April, 25, 0, 0, 0, 0, time.UTC), time.Date(2016, time.April, 29, 0, 0, 0, 0, time.UTC)},
+			name: "nominal",
+			args: []any{
+				time.Date(2016, time.April, 25, 0, 0, 0, 0, time.UTC),
+				time.Date(2016, time.April, 29, 0, 0, 0, 0, time.UTC),
+			},
 			want:   true,
 			errors: []error{},
 		},
 		{
-			name:   "equal",
-			args:   []any{time.Date(2016, time.April, 29, 0, 0, 0, 0, time.UTC), time.Date(2016, time.April, 29, 0, 0, 0, 0, time.UTC)},
+			name: "equal",
+			args: []any{
+				time.Date(2016, time.April, 29, 0, 0, 0, 0, time.UTC),
+				time.Date(2016, time.April, 29, 0, 0, 0, 0, time.UTC),
+			},
 			want:   false,
 			errors: []error{},
 		},

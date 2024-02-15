@@ -128,7 +128,9 @@ func (repository *GcsRepositoryImpl) OpenStream(ctx context.Context, bucketName,
 	return writer
 }
 
-func (repository *GcsRepositoryImpl) UpdateFileMetadata(ctx context.Context, bucketName, fileName string, metadata map[string]string) error {
+func (repository *GcsRepositoryImpl) UpdateFileMetadata(ctx context.Context,
+	bucketName, fileName string, metadata map[string]string,
+) error {
 	gcsClient := repository.getGCSClient(ctx)
 	defer gcsClient.Close()
 

@@ -41,7 +41,8 @@ func (usecase *ApiKeyUseCase) ListApiKeys(ctx context.Context) ([]models.ApiKey,
 		return []models.ApiKey{}, err
 	}
 
-	apiKeys, err := usecase.apiKeyRepository.ListApiKeys(ctx, usecase.executorFactory.NewExecutor(), organizationId)
+	apiKeys, err := usecase.apiKeyRepository.ListApiKeys(ctx,
+		usecase.executorFactory.NewExecutor(), organizationId)
 	if err != nil {
 		return []models.ApiKey{}, err
 	}
@@ -74,7 +75,8 @@ func (usecase *ApiKeyUseCase) CreateApiKey(ctx context.Context, input models.Cre
 			}
 
 			if input.Role != models.API_CLIENT {
-				return models.CreatedApiKey{}, errors.Wrap(models.BadParameterError, fmt.Sprintf("role %s is not supported", input.Role))
+				return models.CreatedApiKey{}, errors.Wrap(models.BadParameterError,
+					fmt.Sprintf("role %s is not supported", input.Role))
 			}
 
 			apiKeyId := uuid.NewString()
@@ -100,7 +102,9 @@ func (usecase *ApiKeyUseCase) CreateApiKey(ctx context.Context, input models.Cre
 		return models.CreatedApiKey{}, err
 	}
 
-	tracking.TrackEvent(ctx, models.AnalyticsApiKeyCreated, map[string]interface{}{"api_key_id": apiKey.Id})
+	tracking.TrackEvent(ctx, models.AnalyticsApiKeyCreated, map[string]interface{}{
+		"api_key_id": apiKey.Id,
+	})
 	return apiKey, nil
 }
 
@@ -129,6 +133,8 @@ func (usecase *ApiKeyUseCase) DeleteApiKey(ctx context.Context, apiKeyId string)
 		return err
 	}
 
-	tracking.TrackEvent(ctx, models.AnalyticsApiKeyDeleted, map[string]interface{}{"api_key_id": apiKeyId})
+	tracking.TrackEvent(ctx, models.AnalyticsApiKeyDeleted, map[string]interface{}{
+		"api_key_id": apiKeyId,
+	})
 	return nil
 }

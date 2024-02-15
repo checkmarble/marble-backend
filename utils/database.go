@@ -15,7 +15,8 @@ func (config PGConfig) GetConnectionString(env string) string {
 	if config.ConnectionString != "" {
 		return config.ConnectionString
 	}
-	connectionString := fmt.Sprintf("host=%s user=%s password=%s database=%s sslmode=disable", config.Hostname, config.User, config.Password, config.Database)
+	connectionString := fmt.Sprintf("host=%s user=%s password=%s database=%s sslmode=disable",
+		config.Hostname, config.User, config.Password, config.Database)
 	if env == "development" {
 		// Cloud Run connects to the DB through a proxy and a unix socket, so we don't need need to specify the port
 		// but we do when running locally

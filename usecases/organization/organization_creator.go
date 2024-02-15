@@ -16,16 +16,19 @@ type OrganizationCreator struct {
 	PopulateOrganizationSchema PopulateOrganizationSchema
 }
 
-func (creator *OrganizationCreator) CreateOrganizationWithId(ctx context.Context, newOrganizationId string, createOrga models.CreateOrganizationInput) (models.Organization, error) {
-	organization, err := executor_factory.TransactionReturnValue(ctx, creator.TransactionFactory, func(tx repositories.Executor) (models.Organization, error) {
-		if err := creator.OrganizationRepository.CreateOrganization(ctx, tx, createOrga, newOrganizationId); err != nil {
-			return models.Organization{}, err
-		}
-		//if err := creator.createDataModel(tx, newOrganizationId); err != nil {
-		//	return models.Organization{}, err
-		//}
-		return creator.OrganizationRepository.GetOrganizationById(ctx, tx, newOrganizationId)
-	})
+func (creator *OrganizationCreator) CreateOrganizationWithId(ctx context.Context,
+	newOrganizationId string, createOrga models.CreateOrganizationInput,
+) (models.Organization, error) {
+	organization, err := executor_factory.TransactionReturnValue(ctx,
+		creator.TransactionFactory, func(tx repositories.Executor) (models.Organization, error) {
+			if err := creator.OrganizationRepository.CreateOrganization(ctx, tx, createOrga, newOrganizationId); err != nil {
+				return models.Organization{}, err
+			}
+			//if err := creator.createDataModel(tx, newOrganizationId); err != nil {
+			//	return models.Organization{}, err
+			//}
+			return creator.OrganizationRepository.GetOrganizationById(ctx, tx, newOrganizationId)
+		})
 	if err != nil {
 		return models.Organization{}, err
 	}
@@ -35,7 +38,9 @@ func (creator *OrganizationCreator) CreateOrganizationWithId(ctx context.Context
 		return models.Organization{}, err
 	}
 
-	_, err = executor_factory.TransactionReturnValue(ctx, creator.TransactionFactory, func(tx repositories.Executor) (any, error) {
+	_, err = executor_factory.TransactionReturnValue(ctx, creator.TransactionFactory, func(
+		tx repositories.Executor,
+	) (any, error) {
 		// store client's data in marble DB
 		orgDatabase := models.DATABASE_MARBLE
 		err := creator.PopulateOrganizationSchema.CreateOrganizationSchema(ctx, tx, organization, orgDatabase)

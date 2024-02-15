@@ -110,7 +110,8 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 		},
 	)
 
-	environment.AddEvaluator(ast.FUNC_PAYLOAD, evaluate.NewPayload(ast.FUNC_PAYLOAD, params.Payload))
+	environment.AddEvaluator(ast.FUNC_PAYLOAD,
+		evaluate.NewPayload(ast.FUNC_PAYLOAD, params.Payload))
 
 	environment.AddEvaluator(ast.FUNC_AGGREGATOR, evaluate.AggregatorEvaluator{
 		OrganizationId:             params.OrganizationId,

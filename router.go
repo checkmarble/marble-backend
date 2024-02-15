@@ -21,12 +21,16 @@ func corsOption(env string) cors.Config {
 	allowedOrigins := []string{"*"}
 
 	if env == "development" {
-		allowedOrigins = append(allowedOrigins, "http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:5173")
+		allowedOrigins = append(allowedOrigins, "http://localhost:3000",
+			"http://localhost:3001", "http://localhost:3002", "http://localhost:5173")
 	}
 
 	return cors.Config{
-		AllowOrigins:     allowedOrigins,
-		AllowMethods:     []string{http.MethodOptions, http.MethodHead, http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodPatch},
+		AllowOrigins: allowedOrigins,
+		AllowMethods: []string{
+			http.MethodOptions, http.MethodHead, http.MethodGet,
+			http.MethodPost, http.MethodDelete, http.MethodPatch,
+		},
 		AllowHeaders:     []string{"Authorization", "Content-Type", "X-Api-Key", "baggage", "sentry-trace"},
 		AllowCredentials: false,
 		MaxAge:           12 * time.Hour,
@@ -87,10 +91,13 @@ func initRouter(ctx context.Context, conf AppConfiguration, deps dependencies) *
 
 	router.GET("/data-model", api.HasPermission(models.DATA_MODEL_READ), deps.DataModelHandler.GetDataModel)
 	router.POST("/data-model/tables", api.HasPermission(models.DATA_MODEL_WRITE), deps.DataModelHandler.CreateTable)
-	router.PATCH("/data-model/tables/:tableID", api.HasPermission(models.DATA_MODEL_WRITE), deps.DataModelHandler.UpdateDataModelTable)
+	router.PATCH("/data-model/tables/:tableID", api.HasPermission(models.DATA_MODEL_WRITE),
+		deps.DataModelHandler.UpdateDataModelTable)
 	router.POST("/data-model/links", api.HasPermission(models.DATA_MODEL_WRITE), deps.DataModelHandler.CreateLink)
-	router.POST("/data-model/tables/:tableID/fields", api.HasPermission(models.DATA_MODEL_WRITE), deps.DataModelHandler.CreateField)
-	router.PATCH("/data-model/fields/:fieldID", api.HasPermission(models.DATA_MODEL_WRITE), deps.DataModelHandler.UpdateDataModelField)
+	router.POST("/data-model/tables/:tableID/fields",
+		api.HasPermission(models.DATA_MODEL_WRITE), deps.DataModelHandler.CreateField)
+	router.PATCH("/data-model/fields/:fieldID", api.HasPermission(models.DATA_MODEL_WRITE),
+		deps.DataModelHandler.UpdateDataModelField)
 	router.DELETE("/data-model", api.HasPermission(models.DATA_MODEL_WRITE), deps.DataModelHandler.DeleteDataModel)
 	router.GET("/data-model/openapi", api.HasPermission(models.DATA_MODEL_READ), deps.DataModelHandler.OpenAPI)
 

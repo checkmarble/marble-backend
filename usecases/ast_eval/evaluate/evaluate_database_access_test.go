@@ -33,29 +33,40 @@ func TestDatabaseAccessValuesDryRun(t *testing.T) {
 		"path":      []any{},
 	}
 
-	value, errs := databaseAccessEval.Evaluate(context.TODO(), ast.Arguments{NamedArgs: testDatabaseAccessNamedArgs})
+	value, errs := databaseAccessEval.Evaluate(context.TODO(), ast.Arguments{
+		NamedArgs: testDatabaseAccessNamedArgs,
+	})
 	assert.Len(t, errs, 0)
-	assert.Equal(t, fmt.Sprintf("fake value for DbAccess:%s..%s", testDatabaseAccessNamedArgs["tableName"], testDatabaseAccessNamedArgs["fieldName"]), value)
+	assert.Equal(t, fmt.Sprintf("fake value for DbAccess:%s..%s",
+		testDatabaseAccessNamedArgs["tableName"], testDatabaseAccessNamedArgs["fieldName"]), value)
 
 	testDatabaseAccessNamedArgs["fieldName"] = string(utils.DummyFieldNameForBool)
 	testDatabaseAccessNamedArgs["path"] = []any{string(utils.DummyTableNameSecond)}
-	value, errs = databaseAccessEval.Evaluate(context.TODO(), ast.Arguments{NamedArgs: testDatabaseAccessNamedArgs})
+	value, errs = databaseAccessEval.Evaluate(context.TODO(), ast.Arguments{
+		NamedArgs: testDatabaseAccessNamedArgs,
+	})
 	assert.Len(t, errs, 0)
 	assert.Equal(t, true, value)
 
 	testDatabaseAccessNamedArgs["fieldName"] = string(utils.DummyFieldNameForInt)
-	value, errs = databaseAccessEval.Evaluate(context.TODO(), ast.Arguments{NamedArgs: testDatabaseAccessNamedArgs})
+	value, errs = databaseAccessEval.Evaluate(context.TODO(), ast.Arguments{
+		NamedArgs: testDatabaseAccessNamedArgs,
+	})
 	assert.Len(t, errs, 0)
 	assert.Equal(t, 1, value)
 
 	testDatabaseAccessNamedArgs["fieldName"] = string(utils.DummyFieldNameForFloat)
-	value, errs = databaseAccessEval.Evaluate(context.TODO(), ast.Arguments{NamedArgs: testDatabaseAccessNamedArgs})
+	value, errs = databaseAccessEval.Evaluate(context.TODO(), ast.Arguments{
+		NamedArgs: testDatabaseAccessNamedArgs,
+	})
 	assert.Len(t, errs, 0)
 	assert.Equal(t, 1.0, value)
 
 	testDatabaseAccessNamedArgs["fieldName"] = string(utils.DummyFieldNameForTimestamp)
 	timestamp := time.Now()
-	value, errs = databaseAccessEval.Evaluate(context.TODO(), ast.Arguments{NamedArgs: testDatabaseAccessNamedArgs})
+	value, errs = databaseAccessEval.Evaluate(context.TODO(), ast.Arguments{
+		NamedArgs: testDatabaseAccessNamedArgs,
+	})
 	assert.Len(t, errs, 0)
 	assert.WithinDuration(t, timestamp, value.(time.Time), 1*time.Millisecond)
 }

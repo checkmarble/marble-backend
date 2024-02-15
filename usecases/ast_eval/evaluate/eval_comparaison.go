@@ -35,7 +35,8 @@ func (f Comparison) Evaluate(ctx context.Context, arguments ast.Arguments) (any,
 	if len(errs) == 0 {
 		return MakeEvaluateResult(f.comparisonTimeFunction(leftTime, rightTime))
 	}
-	return MakeEvaluateError(errors.Wrap(ast.ErrArgumentMustBeIntFloatOrTime, "all arguments to Comparison Evaluate must be int, float or time"))
+	return MakeEvaluateError(errors.Wrap(ast.ErrArgumentMustBeIntFloatOrTime,
+		"all arguments to Comparison Evaluate must be int, float or time"))
 }
 
 func (f Comparison) comparisonFloatFunction(l, r float64) (bool, error) {

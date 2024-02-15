@@ -65,7 +65,9 @@ func DryRunValue(prefix string, fieldName string, field models.Field) any {
 	}
 }
 
-func DryRunQueryAggregatedValue(datamodel models.DataModel, tableName models.TableName, fieldName models.FieldName, aggregator ast.Aggregator) (any, error) {
+func DryRunQueryAggregatedValue(datamodel models.DataModel, tableName models.TableName,
+	fieldName models.FieldName, aggregator ast.Aggregator,
+) (any, error) {
 	table, ok := datamodel.Tables[tableName]
 	if !ok {
 		return nil, fmt.Errorf("table %s not found in data model", tableName)

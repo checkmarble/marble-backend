@@ -12,32 +12,44 @@ type ScheduledExecutionUsecaseRepository struct {
 	mock.Mock
 }
 
-func (s *ScheduledExecutionUsecaseRepository) GetScheduledExecution(ctx context.Context, exec repositories.Executor, id string) (models.ScheduledExecution, error) {
+func (s *ScheduledExecutionUsecaseRepository) GetScheduledExecution(ctx context.Context,
+	exec repositories.Executor, id string,
+) (models.ScheduledExecution, error) {
 	args := s.Called(exec, id)
 	return args.Get(0).(models.ScheduledExecution), args.Error(1)
 }
 
-func (s *ScheduledExecutionUsecaseRepository) ListScheduledExecutions(ctx context.Context, exec repositories.Executor, filters models.ListScheduledExecutionsFilters) ([]models.ScheduledExecution, error) {
+func (s *ScheduledExecutionUsecaseRepository) ListScheduledExecutions(ctx context.Context,
+	exec repositories.Executor, filters models.ListScheduledExecutionsFilters,
+) ([]models.ScheduledExecution, error) {
 	args := s.Called(exec, filters)
 	return args.Get(0).([]models.ScheduledExecution), args.Error(1)
 }
 
-func (s *ScheduledExecutionUsecaseRepository) CreateScheduledExecution(ctx context.Context, exec repositories.Executor, input models.CreateScheduledExecutionInput, newScheduledExecutionId string) error {
+func (s *ScheduledExecutionUsecaseRepository) CreateScheduledExecution(ctx context.Context,
+	exec repositories.Executor, input models.CreateScheduledExecutionInput, newScheduledExecutionId string,
+) error {
 	args := s.Called(exec, input, newScheduledExecutionId)
 	return args.Error(0)
 }
 
-func (s *ScheduledExecutionUsecaseRepository) UpdateScheduledExecution(ctx context.Context, exec repositories.Executor, updateScheduledEx models.UpdateScheduledExecutionInput) error {
+func (s *ScheduledExecutionUsecaseRepository) UpdateScheduledExecution(ctx context.Context,
+	exec repositories.Executor, updateScheduledEx models.UpdateScheduledExecutionInput,
+) error {
 	args := s.Called(exec, updateScheduledEx)
 	return args.Error(0)
 }
 
-func (s *ScheduledExecutionUsecaseRepository) GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error) {
+func (s *ScheduledExecutionUsecaseRepository) GetScenarioById(ctx context.Context,
+	exec repositories.Executor, scenarioId string,
+) (models.Scenario, error) {
 	args := s.Called(exec, scenarioId)
 	return args.Get(0).(models.Scenario), args.Error(1)
 }
 
-func (s *ScheduledExecutionUsecaseRepository) GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (models.ScenarioIteration, error) {
+func (s *ScheduledExecutionUsecaseRepository) GetScenarioIteration(ctx context.Context,
+	exec repositories.Executor, scenarioIterationId string,
+) (models.ScenarioIteration, error) {
 	args := s.Called(exec, scenarioIterationId)
 	return args.Get(0).(models.ScenarioIteration), args.Error(1)
 }

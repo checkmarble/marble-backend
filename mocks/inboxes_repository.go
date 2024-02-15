@@ -13,7 +13,9 @@ type InboxRepository struct {
 	mock.Mock
 }
 
-func (r *InboxRepository) ListInboxes(ctx context.Context, exec repositories.Executor, organizationId string, inboxIds []string, withCaseCount bool) ([]models.Inbox, error) {
+func (r *InboxRepository) ListInboxes(ctx context.Context, exec repositories.Executor,
+	organizationId string, inboxIds []string, withCaseCount bool,
+) ([]models.Inbox, error) {
 	args := r.Called(exec, organizationId, inboxIds)
 	return args.Get(0).([]models.Inbox), args.Error(1)
 }
@@ -38,12 +40,16 @@ func (r *InboxRepository) SoftDeleteInbox(ctx context.Context, exec repositories
 	return args.Error(0)
 }
 
-func (r *InboxRepository) ListOrganizationCases(ctx context.Context, exec repositories.Executor, filters models.CaseFilters, pagination models.PaginationAndSorting) ([]models.CaseWithRank, error) {
+func (r *InboxRepository) ListOrganizationCases(ctx context.Context, exec repositories.Executor,
+	filters models.CaseFilters, pagination models.PaginationAndSorting,
+) ([]models.CaseWithRank, error) {
 	args := r.Called(exec, filters, pagination)
 	return args.Get(0).([]models.CaseWithRank), args.Error(1)
 }
 
-func (r *InboxRepository) ListInboxUsers(ctx context.Context, exec repositories.Executor, filters models.InboxUserFilterInput) ([]models.InboxUser, error) {
+func (r *InboxRepository) ListInboxUsers(ctx context.Context, exec repositories.Executor,
+	filters models.InboxUserFilterInput,
+) ([]models.InboxUser, error) {
 	args := r.Called(exec, filters)
 	return args.Get(0).([]models.InboxUser), args.Error(1)
 }
@@ -53,7 +59,9 @@ func (repo *InboxRepository) GetInboxUserById(ctx context.Context, exec reposito
 	return args.Get(0).(models.InboxUser), args.Error(1)
 }
 
-func (repo *InboxRepository) CreateInboxUser(ctx context.Context, exec repositories.Executor, input models.CreateInboxUserInput, newInboxUserId string) error {
+func (repo *InboxRepository) CreateInboxUser(ctx context.Context, exec repositories.Executor,
+	input models.CreateInboxUserInput, newInboxUserId string,
+) error {
 	args := repo.Called(exec, input, newInboxUserId)
 	return args.Error(0)
 }

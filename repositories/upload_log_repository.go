@@ -111,7 +111,9 @@ func (repo *UploadLogRepositoryImpl) AllUploadLogsByStatus(ctx context.Context, 
 	)
 }
 
-func (repo *UploadLogRepositoryImpl) AllUploadLogsByTable(ctx context.Context, exec Executor, organizationId, tableName string) ([]models.UploadLog, error) {
+func (repo *UploadLogRepositoryImpl) AllUploadLogsByTable(ctx context.Context, exec Executor,
+	organizationId, tableName string,
+) ([]models.UploadLog, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}

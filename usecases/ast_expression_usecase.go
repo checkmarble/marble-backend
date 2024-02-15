@@ -104,7 +104,8 @@ func (usecase *AstExpressionUsecase) getPayloadIdentifiers(scenario models.Scena
 }
 
 func (usecase *AstExpressionUsecase) EditorIdentifiers(ctx context.Context, scenarioId string) (EditorIdentifiers, error) {
-	scenario, err := usecase.Repository.GetScenarioById(ctx, usecase.executorFactory.NewExecutor(), scenarioId)
+	scenario, err := usecase.Repository.GetScenarioById(ctx,
+		usecase.executorFactory.NewExecutor(), scenarioId)
 	if err != nil {
 		return EditorIdentifiers{}, err
 	}
@@ -113,7 +114,8 @@ func (usecase *AstExpressionUsecase) EditorIdentifiers(ctx context.Context, scen
 		return EditorIdentifiers{}, err
 	}
 
-	dataModel, err := usecase.DataModelRepository.GetDataModel(ctx, usecase.executorFactory.NewExecutor(), scenario.OrganizationId, false)
+	dataModel, err := usecase.DataModelRepository.GetDataModel(ctx,
+		usecase.executorFactory.NewExecutor(), scenario.OrganizationId, false)
 	if err != nil {
 		return EditorIdentifiers{}, err
 	}
