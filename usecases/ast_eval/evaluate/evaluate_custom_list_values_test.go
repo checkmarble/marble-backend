@@ -26,7 +26,9 @@ var testCustomListNamedArgs = map[string]any{
 }
 
 func TestCustomListValuesWrongArg(t *testing.T) {
-	customListEval := evaluate.NewCustomListValuesAccess(nil, nil)
+	execFactory := new(mocks.ExecutorFactory)
+	execFactory.On("NewExecutor").Return(new(mocks.Executor))
+	customListEval := evaluate.NewCustomListValuesAccess(nil, nil, execFactory)
 	_, errs := customListEval.Evaluate(context.TODO(), ast.Arguments{Args: []any{true}})
 	if assert.Len(t, errs, 1) {
 		assert.ErrorIs(t, errs[0], ast.ErrMissingNamedArgument)
@@ -36,13 +38,16 @@ func TestCustomListValuesWrongArg(t *testing.T) {
 func TestCustomListValues(t *testing.T) {
 	clr := new(mocks.CustomListRepository)
 	er := new(mocks.EnforceSecurity)
+	execFactory := new(mocks.ExecutorFactory)
+	exec := new(mocks.Executor)
 
-	customListEval := evaluate.NewCustomListValuesAccess(clr, er)
+	customListEval := evaluate.NewCustomListValuesAccess(clr, er, execFactory)
 
 	testCustomListValues := []models.CustomListValue{{Value: "test"}, {Value: "test2"}}
 
-	clr.On("GetCustomListById", nil, testListId).Return(testList, nil)
-	clr.On("GetCustomListValues", nil, models.GetCustomListValuesInput{Id: testListId}).Return(testCustomListValues, nil)
+	execFactory.On("NewExecutor").Return(exec)
+	clr.On("GetCustomListById", exec, testListId).Return(testList, nil)
+	clr.On("GetCustomListValues", exec, models.GetCustomListValuesInput{Id: testListId}).Return(testCustomListValues, nil)
 
 	er.On("ReadOrganization", testListOrgId).Return(nil)
 	result, errs := customListEval.Evaluate(context.TODO(), ast.Arguments{NamedArgs: testCustomListNamedArgs})
@@ -59,10 +64,13 @@ func TestCustomListValues(t *testing.T) {
 func TestCustomListValuesNoAccess(t *testing.T) {
 	clr := new(mocks.CustomListRepository)
 	er := new(mocks.EnforceSecurity)
+	execFactory := new(mocks.ExecutorFactory)
+	exec := new(mocks.Executor)
 
-	customListEval := evaluate.NewCustomListValuesAccess(clr, er)
+	customListEval := evaluate.NewCustomListValuesAccess(clr, er, execFactory)
 
-	clr.On("GetCustomListById", nil, testListId).Return(testList, nil)
+	execFactory.On("NewExecutor").Return(exec)
+	clr.On("GetCustomListById", exec, testListId).Return(testList, nil)
 	er.On("ReadOrganization", testListOrgId).Return(models.ForbiddenError)
 
 	_, errs := customListEval.Evaluate(context.TODO(), ast.Arguments{NamedArgs: testCustomListNamedArgs})

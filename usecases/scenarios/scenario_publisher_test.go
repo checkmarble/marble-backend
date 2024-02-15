@@ -47,7 +47,7 @@ func TestScenarioPublisher_PublishOrUnpublishIteration_unpublish_nominal(t *test
 		CreatedAt:           time.Now(),
 	}
 
-	transaction := new(mocks.Transaction)
+	transaction := new(mocks.Executor)
 
 	repo := new(mocks.ScenarioPublisherRepository)
 	repo.On("UpdateScenarioLiveIterationId", transaction, scenarioAndIteration.Scenario.Id, (*string)(nil)).Return(nil)
@@ -99,7 +99,7 @@ func TestScenarioPublisher_PublishOrUnpublishIteration_unpublish_CreateScenarioP
 		PublicationAction:   models.Unpublish,
 	}
 
-	transaction := new(mocks.Transaction)
+	transaction := new(mocks.Executor)
 
 	spr := new(mocks.ScenarioPublicationRepository)
 	spr.On("CreateScenarioPublication", transaction, createScenarioInput, mock.MatchedBy(func(id string) bool {
