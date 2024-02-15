@@ -36,9 +36,6 @@ go.work
 # env
 .env
 
-# vscode
-.vscode/settings.json
-
 docker-compose.dev.yml
 *.log
 

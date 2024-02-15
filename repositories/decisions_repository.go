@@ -393,7 +393,7 @@ func (repo *DecisionRepositoryImpl) UpdateDecisionCaseId(ctx context.Context, ex
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
-	var query = NewQueryBuilder().
+	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_DECISIONS).
 		Set("case_id", caseId).
 		Where(squirrel.Eq{"id": decisionIds})
@@ -504,7 +504,6 @@ func (repo *DecisionRepositoryImpl) channelOfDecisions(ctx context.Context, exec
 				nil,
 				pure_utils.Map(dbDecisions, func(d dbmodels.DbDecision) string { return d.Id }),
 			)
-
 			if err != nil {
 				allErrors = append(allErrors, err)
 				// do not send invalid decisions
@@ -532,7 +531,6 @@ func selectDecisions() squirrel.SelectBuilder {
 }
 
 func BatchChannel[Value any](inChannel <-chan Value, batchSize int) <-chan []Value {
-
 	out := make(chan []Value, batchSize)
 
 	go func() {

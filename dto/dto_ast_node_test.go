@@ -10,7 +10,6 @@ import (
 )
 
 func TestAdaptNodeDto(t *testing.T) {
-
 	root := ast.Node{Function: ast.FUNC_GREATER}.
 		AddChild(ast.Node{Constant: 1}).
 		AddNamedChild("named", ast.Node{Constant: 2})
@@ -29,7 +28,6 @@ func TestAdaptNodeDto(t *testing.T) {
 }
 
 func TestAdaptASTNode(t *testing.T) {
-
 	dto := NodeDto{
 		FuncName: "+",
 		Children: []NodeDto{{Constant: 1, Children: []NodeDto{}, NamedChildren: map[string]NodeDto{}}},
@@ -50,7 +48,6 @@ func TestAdaptASTNode(t *testing.T) {
 }
 
 func TestAstToJson(t *testing.T) {
-
 	node := ast.NewAstCompareBalance()
 
 	dto, err := AdaptNodeDto(node)

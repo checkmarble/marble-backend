@@ -32,6 +32,7 @@ func (repo *OrganizationRepositoryPostgresql) AllOrganizations(ctx context.Conte
 		dbmodels.AdaptOrganization,
 	)
 }
+
 func (repo *OrganizationRepositoryPostgresql) GetOrganizationById(ctx context.Context, exec Executor, organizationId string) (models.Organization, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.Organization{}, err
@@ -76,7 +77,7 @@ func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(ctx context.Con
 		return err
 	}
 
-	var updateRequest = NewQueryBuilder().Update(dbmodels.TABLE_ORGANIZATION)
+	updateRequest := NewQueryBuilder().Update(dbmodels.TABLE_ORGANIZATION)
 
 	if updateOrganization.Name != nil {
 		updateRequest = updateRequest.Set("name", *updateOrganization.Name)

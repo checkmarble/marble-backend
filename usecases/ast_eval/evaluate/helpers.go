@@ -10,7 +10,6 @@ import (
 )
 
 func leftAndRight(args []any) (any, any, error) {
-
 	if err := verifyNumberOfArguments(args, 2); err != nil {
 		return nil, nil, err
 	}
@@ -20,7 +19,6 @@ func leftAndRight(args []any) (any, any, error) {
 type FuncAdaptArgument[T any] func(argument any) (T, error)
 
 func adaptLeftAndRight[T any](left any, right any, adapt FuncAdaptArgument[T]) (T, T, []error) {
-
 	leftT, errLeft := adapt(left)
 	rightT, errRight := adapt(right)
 
@@ -45,7 +43,6 @@ func verifyNumberOfArguments(args []any, requiredNumberOfArguments int) error {
 }
 
 func AdaptArguments[T any](args []any, adapter func(any) (T, error)) ([]T, []error) {
-
 	values := make([]T, 0, len(args))
 	errs := make([]error, 0, len(args))
 
@@ -61,7 +58,6 @@ func AdaptArguments[T any](args []any, adapter func(any) (T, error)) ([]T, []err
 }
 
 func AdaptNamedArgument[T any](namedArgs map[string]any, name string, adapter func(any) (T, error)) (T, error) {
-
 	value, ok := namedArgs[name]
 	if !ok {
 		var zero T
@@ -79,7 +75,6 @@ func AdaptNamedArgument[T any](namedArgs map[string]any, name string, adapter fu
 }
 
 func MakeAdaptedArgsErrors(errs []error) []error {
-
 	result := make([]error, 0, len(errs))
 	for argumentIndex, err := range errs {
 		if err != nil {

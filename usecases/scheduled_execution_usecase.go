@@ -67,9 +67,7 @@ func (usecase *ScheduledExecutionUsecase) ExportScheduledExecutionDecisions(ctx 
 // ListScheduledExecutions returns the list of scheduled executions of the current organization.
 // The optional argument 'scenarioId' can be used to filter the returned list.
 func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(ctx context.Context, scenarioId string) ([]models.ScheduledExecution, error) {
-
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Executor) ([]models.ScheduledExecution, error) {
-
 		var executions []models.ScheduledExecution
 		if scenarioId == "" {
 			organizationId, err := usecase.organizationIdOfContext()
@@ -138,7 +136,6 @@ func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(ctx context.C
 }
 
 func (usecase *ScheduledExecutionUsecase) UpdateScheduledExecution(ctx context.Context, input models.UpdateScheduledExecutionInput) error {
-
 	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
 		execution, err := usecase.repository.GetScheduledExecution(ctx, tx, input.Id)
 		if err != nil {

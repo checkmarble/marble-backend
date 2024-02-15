@@ -128,7 +128,6 @@ func (usecase *RuleUsecase) UpdateRule(ctx context.Context, updateRule models.Up
 		updatedRule, err = usecase.repository.GetRuleById(ctx, tx, updateRule.Id)
 		return err
 	})
-
 	if err != nil {
 		return models.Rule{}, err
 	}

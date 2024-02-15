@@ -22,7 +22,6 @@ type DatabaseAccess struct {
 }
 
 func (d DatabaseAccess) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
-
 	tableNameStr, tableNameErr := AdaptNamedArgument(arguments.NamedArgs, "tableName", adaptArgumentToString)
 	fieldNameStr, fieldNameErr := AdaptNamedArgument(arguments.NamedArgs, "fieldName", adaptArgumentToString)
 
@@ -48,7 +47,6 @@ func (d DatabaseAccess) Evaluate(ctx context.Context, arguments ast.Arguments) (
 	}
 
 	fieldValue, err := d.getDbField(ctx, tableName, fieldName, pathStringArr)
-
 	if err != nil {
 		errorMsg := fmt.Sprintf("Error reading value in DatabaseAccess: tableName %s, fieldName %s, path %v", tableName, fieldName, path)
 		return MakeEvaluateError(errors.Join(
@@ -67,7 +65,6 @@ func (d DatabaseAccess) Evaluate(ctx context.Context, arguments ast.Arguments) (
 }
 
 func (d DatabaseAccess) getDbField(ctx context.Context, tableName models.TableName, fieldName models.FieldName, path []string) (interface{}, error) {
-
 	if d.ReturnFakeValue {
 		return DryRunGetDbField(d.DataModel, tableName, path, fieldName)
 	}

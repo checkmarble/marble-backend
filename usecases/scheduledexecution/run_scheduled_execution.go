@@ -141,7 +141,6 @@ func (usecase *RunScheduledExecution) ExecuteScheduledScenario(ctx context.Conte
 		}
 		return usecase.Repository.GetScheduledExecution(ctx, tx, scheduledExecution.Id)
 	})
-
 	if err != nil {
 		if err := usecase.Repository.UpdateScheduledExecution(ctx, exec, models.UpdateScheduledExecutionInput{
 			Id:     scheduledExecution.Id,

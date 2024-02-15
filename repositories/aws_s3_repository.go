@@ -20,7 +20,6 @@ type AwsS3Repository struct {
 }
 
 func NewS3Client() *s3.Client {
-
 	// aws auto configure itself with the following environment variables:
 	// AWS_REGION, AWS_ACCESS_KEY, AWS_SECRET_KEY
 	conf, err := config.LoadDefaultConfig(context.Background())

@@ -75,7 +75,6 @@ func Test_ReadInbox(t *testing.T) {
 				t.Errorf("Expected error, got nil")
 			}
 		})
-
 	})
 }
 
@@ -171,7 +170,6 @@ func Test_ReadInboxUser(t *testing.T) {
 				t.Errorf("Expected error, got nil")
 			}
 		})
-
 	})
 }
 

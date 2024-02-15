@@ -20,7 +20,6 @@ func NewBooleanArithmetic(f ast.Function) BooleanArithmetic {
 }
 
 func (f BooleanArithmetic) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
-
 	numberOfOperands := len(arguments.Args)
 	if numberOfOperands < 1 {
 		return MakeEvaluateError(errors.Wrap(ast.ErrWrongNumberOfArgument, fmt.Sprintf("Boolean arithmetic expects at least 1 operand, got %d", numberOfOperands)))
@@ -34,7 +33,6 @@ func (f BooleanArithmetic) Evaluate(ctx context.Context, arguments ast.Arguments
 }
 
 func (f BooleanArithmetic) booleanArithmeticEval(args []bool) (bool, error) {
-
 	r := args[0]
 	numberOfOperands := len(args)
 	for i := 1; i < numberOfOperands; i++ {

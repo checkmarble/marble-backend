@@ -13,8 +13,10 @@ import (
 )
 
 // For Custom List Evaluator
-const testListId string = "1"
-const testListOrgId string = "2"
+const (
+	testListId    string = "1"
+	testListOrgId string = "2"
+)
 
 var testList = models.CustomList{
 	Id:             testListId,

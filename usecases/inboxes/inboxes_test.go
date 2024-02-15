@@ -115,7 +115,6 @@ func (suite *InboxReaderTestSuite) Test_GetInboxById_nominal() {
 	assert.Equal(t, suite.inbox, result)
 
 	suite.AssertExpectations()
-
 }
 
 func (suite *InboxReaderTestSuite) Test_GetInboxById_repository_error() {

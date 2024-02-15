@@ -9,19 +9,17 @@ import (
 
 type ParserFunc func(v string) (interface{}, error)
 
-var (
-	defaultBuiltInParsers = map[reflect.Kind]ParserFunc{
-		reflect.String: func(v string) (interface{}, error) {
-			return v, nil
-		},
-		reflect.Bool: func(v string) (interface{}, error) {
-			return strconv.ParseBool(v)
-		},
-		reflect.Int: func(v string) (interface{}, error) {
-			return strconv.Atoi(v)
-		},
-	}
-)
+var defaultBuiltInParsers = map[reflect.Kind]ParserFunc{
+	reflect.String: func(v string) (interface{}, error) {
+		return v, nil
+	},
+	reflect.Bool: func(v string) (interface{}, error) {
+		return strconv.ParseBool(v)
+	},
+	reflect.Int: func(v string) (interface{}, error) {
+		return strconv.Atoi(v)
+	},
+}
 
 type envVarType interface {
 	~string | ~bool | ~int

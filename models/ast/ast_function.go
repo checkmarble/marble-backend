@@ -203,7 +203,6 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 }
 
 func (f Function) Attributes() (FuncAttributes, error) {
-
 	if attributes, ok := FuncAttributesMap[f]; ok {
 		return attributes, nil
 	}

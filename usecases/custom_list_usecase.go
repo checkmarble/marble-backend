@@ -169,7 +169,6 @@ func (usecase *CustomListUseCase) DeleteCustomListValue(ctx context.Context, del
 		}
 		return usecase.CustomListRepository.DeleteCustomListValue(ctx, tx, deleteCustomListValue)
 	})
-
 	if err != nil {
 		return err
 	}

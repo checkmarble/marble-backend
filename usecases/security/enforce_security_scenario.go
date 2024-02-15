@@ -24,7 +24,6 @@ type EnforceSecurityScenarioImpl struct {
 }
 
 func (e *EnforceSecurityScenarioImpl) ReadScenario(scenario models.Scenario) error {
-
 	return errors.Join(
 		e.Permission(models.SCENARIO_READ),
 		e.ReadOrganization(scenario.OrganizationId),

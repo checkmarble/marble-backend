@@ -236,7 +236,6 @@ func setupScenarioAndPublish(t *testing.T, ctx context.Context, usecasesWithCred
 			Rules: []models.CreateRuleInput{
 				{
 					FormulaAstExpression: &ast.Node{
-
 						Function: ast.FUNC_AND,
 						Children: []ast.Node{
 							{
@@ -247,7 +246,8 @@ func setupScenarioAndPublish(t *testing.T, ctx context.Context, usecasesWithCred
 										NamedChildren: map[string]ast.Node{
 											"tableName": {Constant: "transactions"},
 											"fieldName": {Constant: "name"},
-											"path":      {Constant: []string{"account"}}},
+											"path":      {Constant: []string{"account"}},
+										},
 									},
 									{Constant: "Reject test account"},
 								},

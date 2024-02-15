@@ -39,6 +39,7 @@ func (repo *CustomListRepositoryPostgresql) AllCustomLists(ctx context.Context, 
 		dbmodels.AdaptCustomList,
 	)
 }
+
 func (repo *CustomListRepositoryPostgresql) GetCustomListById(ctx context.Context, exec Executor, id string) (models.CustomList, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.CustomList{}, err
@@ -70,6 +71,7 @@ func (repo *CustomListRepositoryPostgresql) GetCustomListValues(ctx context.Cont
 		dbmodels.AdaptCustomListValue,
 	)
 }
+
 func (repo *CustomListRepositoryPostgresql) GetCustomListValueById(ctx context.Context, exec Executor, id string) (models.CustomListValue, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.CustomListValue{}, err
@@ -122,7 +124,7 @@ func (repo *CustomListRepositoryPostgresql) UpdateCustomList(ctx context.Context
 		return err
 	}
 
-	var updateRequest = NewQueryBuilder().Update(dbmodels.TABLE_CUSTOM_LIST)
+	updateRequest := NewQueryBuilder().Update(dbmodels.TABLE_CUSTOM_LIST)
 
 	if updateCustomList.Name != nil {
 		updateRequest = updateRequest.Set("name", *updateCustomList.Name)
@@ -142,7 +144,7 @@ func (repo *CustomListRepositoryPostgresql) SoftDeleteCustomList(ctx context.Con
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
-	var softDeleteRequest = NewQueryBuilder().Update(dbmodels.TABLE_CUSTOM_LIST)
+	softDeleteRequest := NewQueryBuilder().Update(dbmodels.TABLE_CUSTOM_LIST)
 	softDeleteRequest = softDeleteRequest.Set("deleted_at", squirrel.Expr("NOW()"))
 	softDeleteRequest = softDeleteRequest.Set("updated_at", squirrel.Expr("NOW()"))
 	softDeleteRequest = softDeleteRequest.Where("id = ?", listId)
@@ -188,7 +190,7 @@ func (repo *CustomListRepositoryPostgresql) DeleteCustomListValue(
 		return err
 	}
 
-	var deleteRequest = NewQueryBuilder().Update(dbmodels.TABLE_CUSTOM_LIST_VALUE)
+	deleteRequest := NewQueryBuilder().Update(dbmodels.TABLE_CUSTOM_LIST_VALUE)
 
 	deleteRequest = deleteRequest.Set("deleted_at", squirrel.Expr("NOW()"))
 

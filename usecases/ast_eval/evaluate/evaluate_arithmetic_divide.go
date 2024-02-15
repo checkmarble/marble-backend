@@ -9,11 +9,9 @@ import (
 	"github.com/checkmarble/marble-backend/models/ast"
 )
 
-type ArithmeticDivide struct {
-}
+type ArithmeticDivide struct{}
 
 func (f ArithmeticDivide) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
-
 	leftAny, rightAny, err := leftAndRight(arguments.Args)
 	if err != nil {
 		return MakeEvaluateError(errors.Wrap(err, "Error in Evaluate function Divide"))

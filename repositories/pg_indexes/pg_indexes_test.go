@@ -49,5 +49,4 @@ func TestParseCreateIndexStatement(t *testing.T) {
 			idx,
 		)
 	})
-
 }

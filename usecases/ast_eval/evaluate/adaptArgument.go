@@ -50,7 +50,6 @@ func promoteArgumentToFloat64(argument any) (float64, error) {
 }
 
 func adaptArgumentToString(argument any) (string, error) {
-
 	if err := argumentNotNil(argument); err != nil {
 		return "", err
 	}

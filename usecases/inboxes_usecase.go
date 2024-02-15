@@ -64,7 +64,6 @@ func (usecase *InboxUsecase) CreateInbox(ctx context.Context, input models.Creat
 			inbox, err := usecase.inboxRepository.GetInboxById(ctx, tx, newInboxId)
 			return inbox, err
 		})
-
 	if err != nil {
 		return models.Inbox{}, err
 	}
@@ -97,7 +96,6 @@ func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId, name stri
 
 			return usecase.inboxRepository.GetInboxById(ctx, tx, inboxId)
 		})
-
 	if err != nil {
 		return models.Inbox{}, err
 	}
@@ -136,7 +134,6 @@ func (usecase *InboxUsecase) DeleteInbox(ctx context.Context, inboxId string) er
 
 			return usecase.inboxRepository.SoftDeleteInbox(ctx, tx, inboxId)
 		})
-
 	if err != nil {
 		return err
 	}

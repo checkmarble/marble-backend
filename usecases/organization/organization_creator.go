@@ -17,7 +17,6 @@ type OrganizationCreator struct {
 }
 
 func (creator *OrganizationCreator) CreateOrganizationWithId(ctx context.Context, newOrganizationId string, createOrga models.CreateOrganizationInput) (models.Organization, error) {
-
 	organization, err := executor_factory.TransactionReturnValue(ctx, creator.TransactionFactory, func(tx repositories.Executor) (models.Organization, error) {
 		if err := creator.OrganizationRepository.CreateOrganization(ctx, tx, createOrga, newOrganizationId); err != nil {
 			return models.Organization{}, err
@@ -27,7 +26,6 @@ func (creator *OrganizationCreator) CreateOrganizationWithId(ctx context.Context
 		//}
 		return creator.OrganizationRepository.GetOrganizationById(ctx, tx, newOrganizationId)
 	})
-
 	if err != nil {
 		return models.Organization{}, err
 	}

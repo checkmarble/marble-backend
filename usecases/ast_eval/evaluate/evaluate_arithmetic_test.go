@@ -28,7 +28,6 @@ func TestNewArithmetic_fail(t *testing.T) {
 	if assert.Len(t, errs, 1) {
 		assert.ErrorIs(t, errs[0], ast.ErrArgumentMustBeIntOrFloat)
 	}
-
 }
 
 func TestNewArithmetic_ErrWrongNumberOfArgument(t *testing.T) {
@@ -36,5 +35,4 @@ func TestNewArithmetic_ErrWrongNumberOfArgument(t *testing.T) {
 	if assert.Len(t, errs, 1) {
 		assert.ErrorIs(t, errs[0], ast.ErrWrongNumberOfArgument)
 	}
-
 }

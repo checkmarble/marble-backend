@@ -59,7 +59,7 @@ func (repo *UploadLogRepositoryImpl) UpdateUploadLog(ctx context.Context, exec E
 		return err
 	}
 
-	var updateRequest = NewQueryBuilder().Update(dbmodels.TABLE_UPLOAD_LOGS)
+	updateRequest := NewQueryBuilder().Update(dbmodels.TABLE_UPLOAD_LOGS)
 
 	if input.UploadStatus != "" {
 		updateRequest = updateRequest.Set("status", input.UploadStatus)
@@ -87,7 +87,6 @@ func (repo *UploadLogRepositoryImpl) UploadLogById(ctx context.Context, exec Exe
 			Where(squirrel.Eq{"id": id}),
 		dbmodels.AdaptUploadLog,
 	)
-
 	if err != nil {
 		return models.UploadLog{}, err
 	}

@@ -15,7 +15,6 @@ type NodeDto struct {
 }
 
 func AdaptNodeDto(node ast.Node) (NodeDto, error) {
-
 	funcName, err := adaptDtoFunctionName(node.Function)
 	if err != nil {
 		return NodeDto{}, err
@@ -40,13 +39,11 @@ func AdaptNodeDto(node ast.Node) (NodeDto, error) {
 }
 
 func adaptDtoFunctionName(f ast.Function) (string, error) {
-
 	attributes, err := f.Attributes()
 	return attributes.AstName, err
 }
 
 func AdaptASTNode(dto NodeDto) (ast.Node, error) {
-
 	if dto.FuncName == "Unknown" {
 		dto.FuncName = "Undefined"
 	}
@@ -83,7 +80,6 @@ var astNameFuncMap = func() map[string]ast.Function {
 }()
 
 func adaptFunctionName(f string) (ast.Function, error) {
-
 	if f, ok := astNameFuncMap[f]; ok {
 		return f, nil
 	}

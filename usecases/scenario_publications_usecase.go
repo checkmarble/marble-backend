@@ -65,7 +65,6 @@ func (usecase *ScenarioPublicationUsecase) ListScenarioPublications(ctx context.
 
 func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(ctx context.Context, input models.PublishScenarioIterationInput) ([]models.ScenarioPublication, error) {
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(tx repositories.Executor) ([]models.ScenarioPublication, error) {
-
 		scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, tx, input.ScenarioIterationId)
 		if err != nil {
 			return []models.ScenarioPublication{}, err
@@ -77,7 +76,6 @@ func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(ctx 
 
 		return usecase.scenarioPublisher.PublishOrUnpublishIteration(ctx, tx, scenarioAndIteration, input.PublicationAction)
 	})
-
 }
 
 func (usecase *ScenarioPublicationUsecase) CreateDatamodelIndexesForScenarioPublication(ctx context.Context, scenarioIterationId string) (ready bool, err error) {

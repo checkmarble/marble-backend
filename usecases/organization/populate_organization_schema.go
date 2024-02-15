@@ -17,7 +17,6 @@ type PopulateOrganizationSchema struct {
 }
 
 func (p *PopulateOrganizationSchema) CreateOrganizationSchema(ctx context.Context, exec repositories.Executor, organization models.Organization, database models.Database) error {
-
 	orgDatabaseSchema := models.DatabaseSchema{
 		SchemaType: models.DATABASE_SCHEMA_TYPE_CLIENT,
 		Database:   database,

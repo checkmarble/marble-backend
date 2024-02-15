@@ -56,7 +56,6 @@ type DeleteRuleInput struct {
 }
 
 func AdaptRuleDto(rule models.Rule) (RuleDto, error) {
-
 	var formulaAstExpression *NodeDto
 	if rule.FormulaAstExpression != nil {
 		nodeDto, err := AdaptNodeDto(*rule.FormulaAstExpression)
@@ -79,7 +78,6 @@ func AdaptRuleDto(rule models.Rule) (RuleDto, error) {
 }
 
 func AdaptCreateRuleInput(body CreateRuleInputBody, organizationId string) (models.CreateRuleInput, error) {
-
 	createRuleInput := models.CreateRuleInput{
 		OrganizationId:       organizationId,
 		ScenarioIterationId:  body.ScenarioIterationId,
@@ -102,7 +100,6 @@ func AdaptCreateRuleInput(body CreateRuleInputBody, organizationId string) (mode
 }
 
 func AdaptUpdateRule(ruleId string, body UpdateRuleBody) (models.UpdateRuleInput, error) {
-
 	updateRuleInput := models.UpdateRuleInput{
 		Id:                   ruleId,
 		DisplayOrder:         body.DisplayOrder,

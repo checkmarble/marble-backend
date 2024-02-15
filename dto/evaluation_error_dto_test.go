@@ -10,7 +10,6 @@ import (
 )
 
 func TestAdaptEvaluationErrorDto_an_error(t *testing.T) {
-
 	err := fmt.Errorf("test error %w", ast.ErrWrongNumberOfArgument)
 
 	evaluationError := AdaptEvaluationErrorDto(err)
@@ -22,7 +21,6 @@ func TestAdaptEvaluationErrorDto_an_error(t *testing.T) {
 }
 
 func TestAdaptEvaluationErrorDto_with_argument_error(t *testing.T) {
-
 	err := fmt.Errorf("test error %w", ast.NewArgumentError(666))
 
 	evaluationError := AdaptEvaluationErrorDto(err)
@@ -34,7 +32,6 @@ func TestAdaptEvaluationErrorDto_with_argument_error(t *testing.T) {
 }
 
 func TestAdaptEvaluationErrorDto_with_named_argument_error(t *testing.T) {
-
 	err := fmt.Errorf("test error %w", ast.NewNamedArgumentError("diabolo"))
 
 	evaluationError := AdaptEvaluationErrorDto(err)

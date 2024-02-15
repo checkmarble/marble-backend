@@ -10,7 +10,6 @@ import (
 )
 
 func TestExtractMinimalSetOfIdxFamilies(t *testing.T) {
-
 	t.Run("Just one input family", func(t *testing.T) {
 		asserts := assert.New(t)
 		idxFamilies := set.HashSetFrom[models.IndexFamily]([]models.IndexFamily{
@@ -70,7 +69,6 @@ func TestExtractMinimalSetOfIdxFamilies(t *testing.T) {
 		asserts.Equal(1, minimalSet.Size(), "Keep just one idx family")
 		asserts.True(minimalSet.EqualSet(expected), "Keep the second input idx families")
 	})
-
 }
 
 func TestRefineIdxFamiliesShortHasNoFixed(t *testing.T) {
@@ -246,7 +244,6 @@ func TestRefineIdxFamiliesShortHasNoFixed(t *testing.T) {
 
 		_, found := refineIdxFamilies(A, B)
 		asserts.False(found, "There is no solution to merge them")
-
 	})
 
 	t.Run("5", func(t *testing.T) {

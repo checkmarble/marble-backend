@@ -60,5 +60,4 @@ func Init(configuration Configuration) (trace.Tracer, error) {
 
 	tracer := tp.Tracer(configuration.ApplicationName)
 	return tracer, nil
-
 }

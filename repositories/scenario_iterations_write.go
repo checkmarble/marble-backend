@@ -32,7 +32,7 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Cont
 			"scenario_id",
 		).Suffix("RETURNING *")
 
-	var scenarioIterationBodyInput = scenarioIteration.Body
+	scenarioIterationBodyInput := scenarioIteration.Body
 	if scenarioIterationBodyInput != nil {
 
 		var triggerCondition *[]byte

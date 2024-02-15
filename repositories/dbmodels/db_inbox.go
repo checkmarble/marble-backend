@@ -51,8 +51,10 @@ type DBInboxUserWithOrgId struct {
 
 const TABLE_INBOX_USERS = "inbox_users"
 
-var SelectInboxUserColumn = utils.ColumnList[DBInboxUser]()
-var SelectInboxUserWithOrgIdColumn = utils.ColumnList[DBInboxUser]()
+var (
+	SelectInboxUserColumn          = utils.ColumnList[DBInboxUser]()
+	SelectInboxUserWithOrgIdColumn = utils.ColumnList[DBInboxUser]()
+)
 
 func AdaptInboxUser(db DBInboxUser) (models.InboxUser, error) {
 	return models.InboxUser{

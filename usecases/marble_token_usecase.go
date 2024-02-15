@@ -32,7 +32,6 @@ func (usecase *MarbleTokenUseCase) encodeMarbleToken(creds models.Credentials) (
 }
 
 func (usecase *MarbleTokenUseCase) adaptCredentialFromApiKey(ctx context.Context, key string) (models.Credentials, error) {
-
 	apiKey, err := usecase.apiKeyRepository.GetApiKeyByKey(ctx, usecase.executorFactory.NewExecutor(), key)
 	if err != nil {
 		return models.Credentials{}, err
@@ -68,7 +67,6 @@ func (usecase *MarbleTokenUseCase) NewMarbleToken(ctx context.Context, apiKey st
 
 	if firebaseToken != "" {
 		identity, err := usecase.firebaseTokenRepository.VerifyFirebaseToken(usecase.context, firebaseToken)
-
 		if err != nil {
 			return "", time.Time{}, fmt.Errorf("firebase TokenID verification fail: %w", err)
 		}
@@ -83,7 +81,6 @@ func (usecase *MarbleTokenUseCase) NewMarbleToken(ctx context.Context, apiKey st
 			}
 			return *user, nil
 		})
-
 		if err != nil {
 			return "", time.Time{}, err
 		}

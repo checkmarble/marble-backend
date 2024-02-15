@@ -11,9 +11,7 @@ var BadParameterError = errors.New("bad parameter")
 // UnAuthorizedError is rendered with the http status code 401
 var UnAuthorizedError = errors.New("unauthorized")
 
-var (
-	ErrUnknownUser = errors.New("unknown user")
-)
+var ErrUnknownUser = errors.New("unknown user")
 
 // ForbiddenError is rendered with the http status code 403
 var ForbiddenError = errors.New("forbidden")
@@ -39,12 +37,11 @@ var (
 	ScenarioTriggerConditionAndTriggerObjectMismatchError = fmt.Errorf("trigger_object does not match the scenario's trigger conditions %w", BadParameterError)
 )
 
-var (
-	FormatValidationError = errors.New("The input object is not valid")
-)
+var FormatValidationError = errors.New("The input object is not valid")
 
 // Rule execution related errors
 var ErrRuntimeExpression = errors.New("expression runtime error")
+
 var (
 	NullFieldReadError        = fmt.Errorf("Null field read: %w", ErrRuntimeExpression)
 	NoRowsReadError           = fmt.Errorf("No rows read %w", ErrRuntimeExpression)

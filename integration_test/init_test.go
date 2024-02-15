@@ -115,7 +115,7 @@ func TestMain(m *testing.M) {
 		Repositories: *repositories,
 	}
 
-	//Run tests
+	// Run tests
 	code := m.Run()
 
 	// You can't defer this because os.Exit doesn't care for defer

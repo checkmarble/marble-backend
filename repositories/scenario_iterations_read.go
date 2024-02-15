@@ -49,7 +49,6 @@ func (repository *MarbleDbRepository) ListScenarioIterations(
 		sql,
 		dbmodels.AdaptScenarioIterationWithRules,
 	)
-
 }
 
 func selectScenarioIterations() squirrel.SelectBuilder {

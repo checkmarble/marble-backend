@@ -21,7 +21,6 @@ func NewStringInList(f ast.Function) StringInList {
 }
 
 func (f StringInList) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
-
 	leftAny, rightAny, err := leftAndRight(arguments.Args)
 	if err != nil {
 		return MakeEvaluateError(errors.Wrap(err, "Error in Evaluate function StringInList"))

@@ -20,7 +20,6 @@ func NewArithmetic(f ast.Function) Arithmetic {
 }
 
 func (f Arithmetic) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
-
 	leftAny, rightAny, err := leftAndRight(arguments.Args)
 	if err != nil {
 		return MakeEvaluateError(err)
@@ -40,7 +39,6 @@ func (f Arithmetic) Evaluate(ctx context.Context, arguments ast.Arguments) (any,
 }
 
 func arithmeticEval[T int64 | float64](function ast.Function, l, r T) (T, error) {
-
 	switch function {
 	case ast.FUNC_ADD:
 		return l + r, nil

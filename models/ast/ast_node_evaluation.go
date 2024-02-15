@@ -9,7 +9,6 @@ type NodeEvaluation struct {
 }
 
 func (root NodeEvaluation) AllErrors() (errs []error) {
-
 	var addEvaluationErrors func(NodeEvaluation)
 
 	addEvaluationErrors = func(child NodeEvaluation) {

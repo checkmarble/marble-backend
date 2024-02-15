@@ -210,7 +210,6 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 		uploadLogRepository: usecases.Repositories.UploadLogRepository,
 		GcsIngestionBucket:  usecases.Configuration.GcsIngestionBucket,
 	}
-
 }
 
 func (usecases *UsecasesWithCreds) NewRunScheduledExecution() scheduledexecution.RunScheduledExecution {

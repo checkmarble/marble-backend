@@ -10,7 +10,6 @@ import (
 )
 
 func encodeDecodeNodeEvaluation(t *testing.T, evaluation ast.NodeEvaluation) NodeEvaluationDto {
-
 	jsonData, err := json.Marshal(AdaptNodeEvaluationDto(evaluation))
 	assert.NoError(t, err)
 
@@ -22,7 +21,6 @@ func encodeDecodeNodeEvaluation(t *testing.T, evaluation ast.NodeEvaluation) Nod
 }
 
 func TestAdaptAdaptNodeEvaluationDto_noerror(t *testing.T) {
-
 	// evaluation succeded -> errors is encoded as en empty array
 	result := encodeDecodeNodeEvaluation(t, ast.NodeEvaluation{
 		Errors: []error{},
@@ -33,7 +31,6 @@ func TestAdaptAdaptNodeEvaluationDto_noerror(t *testing.T) {
 }
 
 func TestAdaptAdaptNodeEvaluationDto_noevaluation(t *testing.T) {
-
 	// no evaluation -> errors is encoded as nil
 	result := encodeDecodeNodeEvaluation(t, ast.NodeEvaluation{
 		Errors: nil,

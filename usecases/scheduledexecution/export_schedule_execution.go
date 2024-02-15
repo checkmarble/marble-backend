@@ -26,7 +26,6 @@ type ExportScheduleExecution struct {
 }
 
 func (exporter *ExportScheduleExecution) ExportScheduledExecutionToS3(ctx context.Context, scenario models.Scenario, scheduledExecution models.ScheduledExecution) error {
-
 	organization, err := exporter.OrganizationRepository.GetOrganizationById(ctx, exporter.ExecutorFactory.NewExecutor(), scheduledExecution.OrganizationId)
 	if err != nil {
 		return err
@@ -46,7 +45,6 @@ func (exporter *ExportScheduleExecution) ExportScheduledExecutionToS3(ctx contex
 }
 
 func (exporter *ExportScheduleExecution) exportScenarioToS3(scenario models.Scenario, scheduledExecution models.ScheduledExecution, s3Bucket string, numberOfDecision int) error {
-
 	filename := fmt.Sprintf("scheduled_scenario_execution_%s.json", scheduledExecution.Id)
 
 	encoded, err := json.Marshal(map[string]any{
@@ -68,7 +66,6 @@ func (exporter *ExportScheduleExecution) exportScenarioToS3(scenario models.Scen
 }
 
 func (exporter *ExportScheduleExecution) exportDecisionsToS3(ctx context.Context, scheduledExecution models.ScheduledExecution, s3Bucket string) (int, error) {
-
 	pipeReader, pipeWriter := io.Pipe()
 
 	uploadErrorChan := exporter.uploadDecisions(pipeReader, scheduledExecution, s3Bucket)
@@ -86,7 +83,6 @@ func (exporter *ExportScheduleExecution) exportDecisionsToS3(ctx context.Context
 }
 
 func (exporter *ExportScheduleExecution) uploadDecisions(src *io.PipeReader, scheduledExecution models.ScheduledExecution, s3Bucket string) <-chan error {
-
 	filename := fmt.Sprintf("scheduled_scenario_execution_%s_decisions.ndjson", scheduledExecution.Id)
 
 	// run immediately a goroutine that consume the pipeReader until the pipeWriter is closed
@@ -104,7 +100,6 @@ func (exporter *ExportScheduleExecution) uploadDecisions(src *io.PipeReader, sch
 }
 
 func (exporter *ExportScheduleExecution) ExportDecisions(ctx context.Context, scheduledExecutionId string, dest io.Writer) (int, error) {
-
 	decisionChan, errorChan := exporter.DecisionRepository.DecisionsOfScheduledExecution(ctx, exporter.ExecutorFactory.NewExecutor(), scheduledExecutionId)
 
 	encoder := json.NewEncoder(dest)

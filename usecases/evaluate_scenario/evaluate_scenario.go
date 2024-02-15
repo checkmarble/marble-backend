@@ -115,7 +115,7 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repo
 		return models.ScenarioExecution{}, errors.Wrap(err, "error during concurrent rule evaluation")
 	}
 
-	//Compute outcome from score
+	// Compute outcome from score
 	outcome := models.None
 
 	if score < publishedVersion.Body.ScoreReviewThreshold {
@@ -144,7 +144,6 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters, repo
 }
 
 func evalScenarioRule(ctx context.Context, repositories ScenarioEvaluationRepositories, rule models.Rule, dataAccessor DataAccessor, dataModel models.DataModel, logger *slog.Logger) (int, models.RuleExecution, error) {
-
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(ctx, "evaluate_scenario.evalScenarioRule", trace.WithAttributes(attribute.String("rule_id", rule.Id)))
 	defer span.End()
@@ -202,7 +201,6 @@ func evalScenarioRule(ctx context.Context, repositories ScenarioEvaluationReposi
 }
 
 func evalScenarioTrigger(ctx context.Context, repositories ScenarioEvaluationRepositories, ruleAstExpression ast.Node, organizationId string, payload models.PayloadReader, dataModel models.DataModel) (bool, error) {
-
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(ctx, "evaluate_scenario.evalScenarioTrigger")
 	defer span.End()
@@ -217,7 +215,6 @@ func evalScenarioTrigger(ctx context.Context, repositories ScenarioEvaluationRep
 }
 
 func evalAllScenarioRules(ctx context.Context, repositories ScenarioEvaluationRepositories, rules []models.Rule, dataAccessor DataAccessor, dataModel models.DataModel, logger *slog.Logger) (int, []models.RuleExecution, error) {
-
 	// Results
 	runningSumOfScores := 0
 	ruleExecutions := make([]models.RuleExecution, len(rules))
@@ -233,7 +230,6 @@ func evalAllScenarioRules(ctx context.Context, repositories ScenarioEvaluationRe
 		// should be solved with go 1.22
 		i, rule := i, rule
 		group.Go(func() error {
-
 			// return early if ctx is done
 			select {
 			case <-ctx.Done():
@@ -243,7 +239,6 @@ func evalAllScenarioRules(ctx context.Context, repositories ScenarioEvaluationRe
 
 			// Eval each rule
 			scoreModifier, ruleExecution, err := evalScenarioRule(ctx, repositories, rule, dataAccessor, dataModel, logger)
-
 			if err != nil {
 				return err // First err will cancel the ctx
 			}
@@ -260,5 +255,4 @@ func evalAllScenarioRules(ctx context.Context, repositories ScenarioEvaluationRe
 	}
 
 	return runningSumOfScores, ruleExecutions, nil
-
 }

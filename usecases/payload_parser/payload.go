@@ -44,11 +44,11 @@ func validateParsedJson(instance interface{}) error {
 func buildDynamicStruct(fields map[models.FieldName]models.Field) dynamicstruct.DynamicStruct {
 	customType := dynamicstruct.NewStruct()
 
-	var f = new(float64)
-	var i = new(int64)
-	var b = new(bool)
-	var s = new(string)
-	var t = new(time.Time)
+	f := new(float64)
+	i := new(int64)
+	b := new(bool)
+	s := new(string)
+	t := new(time.Time)
 
 	// those fields are mandatory for all tables
 	customType.AddField("Object_id", s, `validate:"required",json:"object_id"`)
@@ -114,7 +114,7 @@ func ParseToDataModelObject(table models.Table, jsonBody []byte) (models.Payload
 }
 
 func adaptReaderToMap(reader dynamicstruct.Reader, table models.Table) (map[string]any, error) {
-	var out = make(map[string]any)
+	out := make(map[string]any)
 
 	for fieldName := range table.Fields {
 		stringFieldName := string(fieldName)
@@ -140,14 +140,16 @@ type Parser struct {
 	validators fieldValidator
 }
 
-var errIsInvalidJSON = fmt.Errorf("json is invalid")
-var errIsNotNullable = fmt.Errorf("is not nullable")
-var errIsInvalidTimestamp = fmt.Errorf("is not a valid timestamp")
-var errIsInvalidInteger = fmt.Errorf("is not a valid integer")
-var errIsInvalidFloat = fmt.Errorf("is not a valid float")
-var errIsInvalidBoolean = fmt.Errorf("is not a valid boolean")
-var errIsInvalidString = fmt.Errorf("is not a valid string")
-var errIsInvalidDataType = fmt.Errorf("invalid type")
+var (
+	errIsInvalidJSON      = fmt.Errorf("json is invalid")
+	errIsNotNullable      = fmt.Errorf("is not nullable")
+	errIsInvalidTimestamp = fmt.Errorf("is not a valid timestamp")
+	errIsInvalidInteger   = fmt.Errorf("is not a valid integer")
+	errIsInvalidFloat     = fmt.Errorf("is not a valid float")
+	errIsInvalidBoolean   = fmt.Errorf("is not a valid boolean")
+	errIsInvalidString    = fmt.Errorf("is not a valid string")
+	errIsInvalidDataType  = fmt.Errorf("invalid type")
+)
 
 func (p *Parser) ValidatePayload(table models.Table, json []byte) (map[models.FieldName]string, error) {
 	if !gjson.ValidBytes(json) {

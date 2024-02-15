@@ -183,7 +183,6 @@ func (usecase *CaseUseCase) CreateCase(ctx context.Context, userId string, creat
 
 		return usecase.getCaseWithDetails(ctx, tx, newCaseId)
 	})
-
 	if err != nil {
 		return models.Case{}, err
 	}
@@ -327,7 +326,6 @@ func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, case
 
 		return usecase.getCaseWithDetails(ctx, tx, caseId)
 	})
-
 	if err != nil {
 		return models.Case{}, err
 	}
@@ -366,7 +364,6 @@ func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string
 		}
 		return usecase.getCaseWithDetails(ctx, tx, caseCommentAttributes.Id)
 	})
-
 	if err != nil {
 		return models.Case{}, err
 	}
@@ -430,7 +427,6 @@ func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string, c
 
 		return usecase.getCaseWithDetails(ctx, tx, caseTagAttributes.CaseId)
 	})
-
 	if err != nil {
 		return models.Case{}, err
 	}
@@ -591,7 +587,8 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 		newFileReference,
 		map[string]string{
 			"processed":           "true",
-			"content-disposition": fmt.Sprintf("attachment; filename=\"%s\"", input.File.Filename)},
+			"content-disposition": fmt.Sprintf("attachment; filename=\"%s\"", input.File.Filename),
+		},
 	); err != nil {
 		return models.Case{}, err
 	}
@@ -631,7 +628,6 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 
 		return usecase.getCaseWithDetails(ctx, tx, input.CaseId)
 	})
-
 	if err != nil {
 		if deleteErr := usecase.gcsRepository.DeleteFile(ctx, usecase.gcsCaseManagerBucket, newFileReference); deleteErr != nil {
 			logger.WarnContext(ctx, fmt.Sprintf("failed to clean up GCS object %s after case file creation failed", newFileReference),

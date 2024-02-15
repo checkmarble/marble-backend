@@ -15,11 +15,13 @@ func helperFloatComparison(t *testing.T, f ast.Function, left, right float64, ex
 	assert.Empty(t, errs)
 	assert.Equal(t, expected, r)
 }
+
 func helperIntComparison(t *testing.T, f ast.Function, left, right int, expected bool) {
 	r, errs := NewComparison(f).Evaluate(context.TODO(), ast.Arguments{Args: []any{left, right}})
 	assert.Empty(t, errs)
 	assert.Equal(t, expected, r)
 }
+
 func helperTimeComparison(t *testing.T, f ast.Function, left, right time.Time, expected bool) {
 	r, errs := NewComparison(f).Evaluate(context.TODO(), ast.Arguments{Args: []any{left, right}})
 	assert.Empty(t, errs)

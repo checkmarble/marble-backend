@@ -20,5 +20,4 @@ func InitializeFirebase(ctx context.Context) *auth.Client {
 	}
 
 	return client
-
 }

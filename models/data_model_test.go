@@ -7,7 +7,6 @@ import (
 )
 
 func TestDataType(t *testing.T) {
-
 	// DataType is serialized in database
 	// So we want to make sure the values stay stable
 	assert.Equal(t, int(UnknownDataType), -1)

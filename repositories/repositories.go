@@ -40,7 +40,6 @@ func NewRepositories(
 	marbleConnectionPool *pgxpool.Pool,
 	metabase Metabase,
 ) (*Repositories, error) {
-
 	executorGetter := NewExecutorGetter(marbleConnectionPool)
 
 	return &Repositories{

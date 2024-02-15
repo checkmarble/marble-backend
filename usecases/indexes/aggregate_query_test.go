@@ -261,7 +261,8 @@ func TestAstNodeToQueryFamilies(t *testing.T) {
 									"fieldName": ast.NewNodeConstant("field"),
 									"operator":  ast.NewNodeConstant("="),
 								},
-							}}},
+							}},
+						},
 					},
 				},
 				{
@@ -277,7 +278,8 @@ func TestAstNodeToQueryFamilies(t *testing.T) {
 									"fieldName": ast.NewNodeConstant("field"),
 									"operator":  ast.NewNodeConstant("="),
 								},
-							}}},
+							}},
+						},
 					},
 				},
 			},
@@ -298,7 +300,6 @@ func TestAstNodeToQueryFamilies(t *testing.T) {
 	})
 
 	t.Run("nominal case with nesting, several layers, duplicates", func(t *testing.T) {
-
 		asserts := assert.New(t)
 		ast := ast.Node{
 			Children: []ast.Node{

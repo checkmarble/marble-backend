@@ -26,7 +26,6 @@ type ScheduledExecutionsTestSuite struct {
 }
 
 func (suite *ScheduledExecutionsTestSuite) SetupTest() {
-
 	suite.transaction = new(mocks.Executor)
 	suite.enforceSecurity = new(mocks.EnforceSecurity)
 	suite.transactionFactory = &mocks.TransactionFactory{ExecMock: suite.transaction}
