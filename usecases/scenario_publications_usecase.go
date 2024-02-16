@@ -36,7 +36,8 @@ type ScenarioPublicationUsecase struct {
 	ingestedDataIndexesRepository  IngestedDataIndexesRepository
 }
 
-func (usecase *ScenarioPublicationUsecase) GetScenarioPublication(ctx context.Context,
+func (usecase *ScenarioPublicationUsecase) GetScenarioPublication(
+	ctx context.Context,
 	scenarioPublicationID string,
 ) (models.ScenarioPublication, error) {
 	scenarioPublication, err := usecase.scenarioPublicationsRepository.GetScenarioPublicationById(
@@ -52,7 +53,8 @@ func (usecase *ScenarioPublicationUsecase) GetScenarioPublication(ctx context.Co
 	return scenarioPublication, nil
 }
 
-func (usecase *ScenarioPublicationUsecase) ListScenarioPublications(ctx context.Context,
+func (usecase *ScenarioPublicationUsecase) ListScenarioPublications(
+	ctx context.Context,
 	filters models.ListScenarioPublicationsFilters,
 ) ([]models.ScenarioPublication, error) {
 	organizationId, err := usecase.OrganizationIdOfContext()
@@ -69,7 +71,8 @@ func (usecase *ScenarioPublicationUsecase) ListScenarioPublications(ctx context.
 		usecase.executorFactory.NewExecutor(), organizationId, filters)
 }
 
-func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(ctx context.Context,
+func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(
+	ctx context.Context,
 	input models.PublishScenarioIterationInput,
 ) ([]models.ScenarioPublication, error) {
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
@@ -77,15 +80,19 @@ func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(ctx 
 	) ([]models.ScenarioPublication, error) {
 		scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, tx, input.ScenarioIterationId)
 		if err != nil {
-			return []models.ScenarioPublication{}, err
+			return nil, err
 		}
 
 		if err := usecase.enforceSecurity.PublishScenario(scenarioAndIteration.Scenario); err != nil {
-			return []models.ScenarioPublication{}, err
+			return nil, err
 		}
 
-		return usecase.scenarioPublisher.PublishOrUnpublishIteration(ctx, tx,
-			scenarioAndIteration, input.PublicationAction)
+		return usecase.scenarioPublisher.PublishOrUnpublishIteration(
+			ctx,
+			tx,
+			scenarioAndIteration,
+			input.PublicationAction,
+		)
 	})
 }
 
