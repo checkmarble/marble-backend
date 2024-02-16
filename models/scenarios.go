@@ -27,3 +27,8 @@ type UpdateScenarioInput struct {
 type ListAllScenariosFilters struct {
 	Live bool
 }
+
+type ScenarioAndIteration struct {
+	Scenario  Scenario
+	Iteration ScenarioIteration
+}

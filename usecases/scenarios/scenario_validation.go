@@ -38,7 +38,7 @@ func ScenarioValidationToError(validation models.ScenarioValidation) error {
 }
 
 type ValidateScenarioIteration interface {
-	Validate(ctx context.Context, si ScenarioAndIteration) models.ScenarioValidation
+	Validate(ctx context.Context, si models.ScenarioAndIteration) models.ScenarioValidation
 }
 
 type ValidateScenarioIterationImpl struct {
@@ -47,7 +47,7 @@ type ValidateScenarioIterationImpl struct {
 	ExecutorFactory                 executor_factory.ExecutorFactory
 }
 
-func (validator *ValidateScenarioIterationImpl) Validate(ctx context.Context, si ScenarioAndIteration) models.ScenarioValidation {
+func (validator *ValidateScenarioIterationImpl) Validate(ctx context.Context, si models.ScenarioAndIteration) models.ScenarioValidation {
 	iteration := si.Iteration
 
 	result := models.NewScenarioValidation()
@@ -115,7 +115,7 @@ func (validator *ValidateScenarioIterationImpl) Validate(ctx context.Context, si
 }
 
 func (validator *ValidateScenarioIterationImpl) makeDryRunEnvironment(ctx context.Context,
-	si ScenarioAndIteration,
+	si models.ScenarioAndIteration,
 ) (ast_eval.AstEvaluationEnvironment, *models.ScenarioValidationError) {
 	organizationId := si.Scenario.OrganizationId
 

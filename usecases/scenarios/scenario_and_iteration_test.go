@@ -52,7 +52,7 @@ func TestScenarioFetcher_FetchScenarioAndIteration(t *testing.T) {
 
 	result, err := fetcher.FetchScenarioAndIteration(context.TODO(), mt, scenarioIteration.Id)
 	assert.NoError(t, err)
-	assert.Equal(t, ScenarioAndIteration{
+	assert.Equal(t, models.ScenarioAndIteration{
 		Scenario:  scenario,
 		Iteration: scenarioIteration,
 	}, result)

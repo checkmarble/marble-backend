@@ -25,7 +25,7 @@ func TestScenarioPublisher_PublishOrUnpublishIteration_unpublish_nominal(t *test
 		LiveVersionID:  utils.Ptr(Iteration.Id),
 	}
 
-	scenarioAndIteration := ScenarioAndIteration{
+	scenarioAndIteration := models.ScenarioAndIteration{
 		Scenario:  scenario,
 		Iteration: Iteration,
 	}
@@ -48,17 +48,18 @@ func TestScenarioPublisher_PublishOrUnpublishIteration_unpublish_nominal(t *test
 	}
 
 	transaction := new(mocks.Executor)
+	ctx := context.Background()
 
 	repo := new(mocks.ScenarioPublisherRepository)
-	repo.On("UpdateScenarioLiveIterationId", transaction, scenarioAndIteration.Scenario.Id, (*string)(nil)).Return(nil)
+	repo.On("UpdateScenarioLiveIterationId", ctx, transaction, scenarioAndIteration.Scenario.Id, (*string)(nil)).Return(nil)
 
 	spr := new(mocks.ScenarioPublicationRepository)
-	spr.On("CreateScenarioPublication", transaction, createScenarioInput, mock.MatchedBy(func(id string) bool {
+	spr.On("CreateScenarioPublication", ctx, transaction, createScenarioInput, mock.MatchedBy(func(id string) bool {
 		_, err := uuid.Parse(id)
 		return err == nil
 	})).Return(nil)
 
-	spr.On("GetScenarioPublicationById", transaction, mock.MatchedBy(func(id string) bool {
+	spr.On("GetScenarioPublicationById", ctx, transaction, mock.MatchedBy(func(id string) bool {
 		_, err := uuid.Parse(id)
 		return err == nil
 	})).Return(scenarioPublication, nil)
@@ -68,8 +69,8 @@ func TestScenarioPublisher_PublishOrUnpublishIteration_unpublish_nominal(t *test
 		ScenarioPublicationsRepository: spr,
 	}
 
-	publications, err := publisher.PublishOrUnpublishIteration(context.Background(),
-		transaction, scenarioAndIteration, models.Unpublish)
+	publications, err := publisher.PublishOrUnpublishIteration(
+		ctx, transaction, scenarioAndIteration, models.Unpublish)
 	assert.NoError(t, err)
 	assert.Equal(t, []models.ScenarioPublication{scenarioPublication}, publications)
 
@@ -88,7 +89,7 @@ func TestScenarioPublisher_PublishOrUnpublishIteration_unpublish_CreateScenarioP
 		LiveVersionID:  utils.Ptr(Iteration.Id),
 	}
 
-	scenarioAndIteration := ScenarioAndIteration{
+	scenarioAndIteration := models.ScenarioAndIteration{
 		Scenario:  scenario,
 		Iteration: Iteration,
 	}
@@ -101,9 +102,10 @@ func TestScenarioPublisher_PublishOrUnpublishIteration_unpublish_CreateScenarioP
 	}
 
 	transaction := new(mocks.Executor)
+	ctx := context.Background()
 
 	spr := new(mocks.ScenarioPublicationRepository)
-	spr.On("CreateScenarioPublication", transaction, createScenarioInput, mock.MatchedBy(func(id string) bool {
+	spr.On("CreateScenarioPublication", ctx, transaction, createScenarioInput, mock.MatchedBy(func(id string) bool {
 		_, err := uuid.Parse(id)
 		return err == nil
 	})).Return(assert.AnError)
@@ -111,7 +113,7 @@ func TestScenarioPublisher_PublishOrUnpublishIteration_unpublish_CreateScenarioP
 	swr := new(mocks.ScenarioRepository)
 
 	repo := new(mocks.ScenarioPublisherRepository)
-	repo.On("UpdateScenarioLiveIterationId", transaction, scenarioAndIteration.Scenario.Id, (*string)(nil)).Return(nil)
+	repo.On("UpdateScenarioLiveIterationId", ctx, transaction, scenarioAndIteration.Scenario.Id, (*string)(nil)).Return(nil)
 
 	publisher := ScenarioPublisher{
 		Repository:                     repo,

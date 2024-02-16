@@ -26,10 +26,10 @@ type ScenarioPublisher struct {
 	ScenarioPublicationsRepository repositories.ScenarioPublicationRepository
 }
 
-func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(
+func (publisher ScenarioPublisher) PublishOrUnpublishIteration(
 	ctx context.Context,
 	exec repositories.Executor,
-	scenarioAndIteration ScenarioAndIteration,
+	scenarioAndIteration models.ScenarioAndIteration,
 	publicationAction models.PublicationAction,
 ) ([]models.ScenarioPublication, error) {
 	var scenarioPublications []models.ScenarioPublication
@@ -96,7 +96,7 @@ func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(
 	return scenarioPublications, nil
 }
 
-func (publisher *ScenarioPublisher) unpublishOldIteration(ctx context.Context,
+func (publisher ScenarioPublisher) unpublishOldIteration(ctx context.Context,
 	exec repositories.Executor, organizationId, scenarioId string, liveVersionId *string,
 ) ([]models.ScenarioPublication, error) {
 	if liveVersionId == nil {
@@ -120,7 +120,7 @@ func (publisher *ScenarioPublisher) unpublishOldIteration(ctx context.Context,
 	return []models.ScenarioPublication{scenarioPublication}, err
 }
 
-func (publisher *ScenarioPublisher) publishNewIteration(ctx context.Context,
+func (publisher ScenarioPublisher) publishNewIteration(ctx context.Context,
 	exec repositories.Executor, organizationId, scenarioId, scenarioIterationId string,
 ) (models.ScenarioPublication, error) {
 	newScenarioPublicationId := utils.NewPrimaryKey(organizationId)
