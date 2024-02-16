@@ -16,9 +16,11 @@ func ScheduleDueScenarios(ctx context.Context, usecases usecases.Usecases) error
 
 	logger.InfoContext(ctx, "Start scheduling scenarios")
 
-	scenarios, err := usecases.Repositories.MarbleDbRepository.ListAllScenarios(ctx, nil, models.ListAllScenariosFilters{
-		Live: true,
-	})
+	scenarios, err := usecases.Repositories.MarbleDbRepository.ListAllScenarios(
+		ctx,
+		usecases.NewExecutorFactory().NewExecutor(),
+		models.ListAllScenariosFilters{Live: true},
+	)
 	if err != nil {
 		return fmt.Errorf("Error while listing all live scenarios: %w", err)
 	}
