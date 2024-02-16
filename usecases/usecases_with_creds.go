@@ -107,6 +107,7 @@ func (usecases *UsecasesWithCreds) NewScenarioIterationUsecase() ScenarioIterati
 		scenarioFetcher:           usecases.NewScenarioFetcher(),
 		validateScenarioIteration: usecases.NewValidateScenarioIteration(),
 		executorFactory:           usecases.NewExecutorFactory(),
+		transactionFactory:        usecases.NewTransactionFactory(),
 	}
 }
 

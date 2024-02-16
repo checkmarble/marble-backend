@@ -55,23 +55,18 @@ func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(
 		}
 	case models.Publish:
 		{
+			if scenarioAndIteration.Iteration.Version == nil {
+				return nil, errors.Wrap(models.ErrScenarioIterationIsDraft,
+					"input scenario iteration is a draft in PublishOrUnpublishIteration")
+			}
+
 			if liveVersionId != nil && *liveVersionId == iterationId {
 				return []models.ScenarioPublication{}, nil
 			}
+
 			if err := ScenarioValidationToError(publisher.ValidateScenarioIteration.Validate(
 				ctx, scenarioAndIteration)); err != nil {
 				return nil, fmt.Errorf("can't validate scenario %w %w", err, models.BadParameterError)
-			}
-
-			scenarioVersion, err := publisher.getScenarioVersion(ctx, exec,
-				organizationId, scenariosId, iterationId)
-			if err != nil {
-				return nil, err
-			}
-
-			err = publisher.Repository.UpdateScenarioIterationVersion(ctx, exec, iterationId, scenarioVersion)
-			if err != nil {
-				return nil, err
 			}
 
 			if sps, err := publisher.unpublishOldIteration(ctx, exec, organizationId,
@@ -92,7 +87,10 @@ func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(
 			})
 		}
 	default:
-		return nil, errors.Wrap(models.BadParameterError, "unknown publication action")
+		return nil, errors.Wrap(
+			models.BadParameterError,
+			"unknown publication action: "+string(publicationAction.String()),
+		)
 	}
 
 	return scenarioPublications, nil
@@ -144,30 +142,4 @@ func (publisher *ScenarioPublisher) publishNewIteration(ctx context.Context,
 		return models.ScenarioPublication{}, err
 	}
 	return scenarioPublication, nil
-}
-
-func (publisher *ScenarioPublisher) getScenarioVersion(ctx context.Context,
-	exec repositories.Executor, organizationId, scenarioId, iterationId string,
-) (int, error) {
-	scenarioIterations, err := publisher.Repository.ListScenarioIterations(ctx, exec,
-		organizationId, models.GetScenarioIterationFilters{ScenarioId: &scenarioId})
-	if err != nil {
-		return 0, err
-	}
-
-	for _, scenarioIteration := range scenarioIterations {
-		if scenarioIteration.Id == iterationId && scenarioIteration.Version != nil {
-			return *scenarioIteration.Version, nil
-		}
-	}
-
-	var latestVersion int
-	for _, scenarioIteration := range scenarioIterations {
-		if scenarioIteration.Version != nil && *scenarioIteration.Version > latestVersion {
-			latestVersion = *scenarioIteration.Version
-		}
-	}
-	newVersion := latestVersion + 1
-
-	return newVersion, nil
 }

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -63,7 +64,9 @@ func (api *API) CreateScenarioPublication(c *gin.Context) {
 			ScenarioIterationId: data.ScenarioIterationId,
 			PublicationAction:   models.PublicationActionFrom(data.PublicationAction),
 		})
-	if presentError(c, err) {
+	if handleExpectedPublicationError(c, err) {
+		return
+	} else if presentError(c, err) {
 		return
 	}
 	c.JSON(http.StatusOK, pure_utils.Map(scenarioPublications, NewAPIScenarioPublication))
@@ -93,4 +96,12 @@ func (api *API) ValidateIndexesForPublication(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusOK)
+}
+
+func handleExpectedPublicationError(c *gin.Context, err error) bool {
+	if errors.Is(err, models.ErrScenarioIterationIsDraft) {
+		http.Error(c.Writer, "You cannot activate a draft iteration", http.StatusBadRequest)
+		return true
+	}
+	return false
 }

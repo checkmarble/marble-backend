@@ -1,8 +1,9 @@
 package models
 
 import (
-	"errors"
 	"fmt"
+
+	"github.com/cockroachdb/errors"
 )
 
 // BadParameterError is rendered with the http status code 400
@@ -31,6 +32,7 @@ var (
 
 var (
 	ErrScenarioIterationNotDraft                          = fmt.Errorf("scenario iteration is not a draft %w", BadParameterError)
+	ErrScenarioIterationIsDraft                           = errors.Wrap(BadParameterError, "scenario iteration version is nil")
 	ErrScenarioIterationNotValid                          = fmt.Errorf("scenario iteration is not valid for publication %w", BadParameterError)
 	ScenarioHasNoLiveVersionError                         = fmt.Errorf("scenario has no live version %w", BadParameterError)
 	ScenarioTriggerTypeAndTiggerObjectTypeMismatchError   = fmt.Errorf("scenario's trigger_type and provided trigger_object type are different %w", BadParameterError)
