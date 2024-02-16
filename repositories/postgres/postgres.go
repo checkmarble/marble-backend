@@ -12,11 +12,12 @@ import (
 )
 
 type Configuration struct {
-	Host     string
-	Port     string
-	User     string
-	Password string
-	Database string
+	Database            string
+	DbConnectWithSocket bool
+	Host                string
+	Password            string
+	Port                string
+	User                string
 }
 
 type Database struct {
@@ -48,6 +49,9 @@ func New(conf Configuration) (*Database, error) {
 		conf.Password,
 		conf.Database,
 	)
+	if !conf.DbConnectWithSocket {
+		connectionString = fmt.Sprintf("%s port=%s", connectionString, conf.Port)
+	}
 	cfg, err := pgxpool.ParseConfig(connectionString)
 	if err != nil {
 		return nil, fmt.Errorf("create connection pool: %w", err)
