@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/adhocore/gronx"
+	"github.com/cockroachdb/errors"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -11,26 +14,43 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
-
-	"github.com/adhocore/gronx"
 )
 
 type IterationUsecaseRepository interface {
-	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (
-		models.ScenarioIteration, error,
-	)
-	ListScenarioIterations(ctx context.Context, exec repositories.Executor, organizationId string,
-		filters models.GetScenarioIterationFilters) (
-		[]models.ScenarioIteration, error,
-	)
+	GetScenarioIteration(
+		ctx context.Context,
+		exec repositories.Executor,
+		scenarioIterationId string,
+	) (models.ScenarioIteration, error)
+	ListScenarioIterations(
+		ctx context.Context,
+		exec repositories.Executor,
+		organizationId string,
+		filters models.GetScenarioIterationFilters,
+	) ([]models.ScenarioIteration, error)
 
-	CreateScenarioIterationAndRules(ctx context.Context, exec repositories.Executor,
-		organizationId string, scenarioIteration models.CreateScenarioIterationInput) (models.ScenarioIteration, error)
-	UpdateScenarioIteration(ctx context.Context, exec repositories.Executor,
-		scenarioIteration models.UpdateScenarioIterationInput) (models.ScenarioIteration, error)
-	UpdateScenarioIterationVersion(ctx context.Context, exec repositories.Executor,
-		scenarioIterationId string, newVersion int) error
-	DeleteScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) error
+	CreateScenarioIterationAndRules(
+		ctx context.Context,
+		exec repositories.Executor,
+		organizationId string,
+		scenarioIteration models.CreateScenarioIterationInput,
+	) (models.ScenarioIteration, error)
+	UpdateScenarioIteration(
+		ctx context.Context,
+		exec repositories.Executor,
+		scenarioIteration models.UpdateScenarioIterationInput,
+	) (models.ScenarioIteration, error)
+	UpdateScenarioIterationVersion(
+		ctx context.Context,
+		exec repositories.Executor,
+		scenarioIterationId string,
+		newVersion int,
+	) error
+	DeleteScenarioIteration(
+		ctx context.Context,
+		exec repositories.Executor,
+		scenarioIterationId string,
+	) error
 }
 
 type ScenarioIterationUsecase struct {
@@ -40,6 +60,7 @@ type ScenarioIterationUsecase struct {
 	scenarioFetcher           scenarios.ScenarioFetcher
 	validateScenarioIteration scenarios.ValidateScenarioIteration
 	executorFactory           executor_factory.ExecutorFactory
+	transactionFactory        executor_factory.TransactionFactory
 }
 
 func (usecase *ScenarioIterationUsecase) ListScenarioIterations(ctx context.Context,
@@ -229,6 +250,51 @@ func (usecase *ScenarioIterationUsecase) ValidateScenarioIteration(ctx context.C
 	return validation, err
 }
 
+func (usecase *ScenarioIterationUsecase) CommitScenarioIterationVersion(
+	ctx context.Context,
+	iterationId string,
+) (iteration models.ScenarioIteration, err error) {
+	return executor_factory.TransactionReturnValue(
+		ctx,
+		usecase.transactionFactory,
+		func(tx repositories.Executor) (models.ScenarioIteration, error) {
+			scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, tx, iterationId)
+			if err != nil {
+				return iteration, err
+			}
+			if err := usecase.enforceSecurity.UpdateScenario(scenarioAndIteration.Scenario); err != nil {
+				return iteration, err
+			}
+			if scenarioAndIteration.Iteration.Version != nil {
+				return iteration, errors.Wrap(
+					models.ErrScenarioIterationNotDraft,
+					"input scenario iteration is a draft in CommitScenarioIterationVersion",
+				)
+			}
+			validation := usecase.validateScenarioIteration.Validate(ctx, scenarioAndIteration)
+			if err := scenarios.ScenarioValidationToError(validation); err != nil {
+				return iteration, errors.Wrap(models.BadParameterError,
+					fmt.Sprintf("Scenario iteration %s is not valid", iterationId),
+				)
+			}
+			version, err := usecase.getScenarioVersion(
+				ctx,
+				tx,
+				scenarioAndIteration.Scenario.OrganizationId,
+				scenarioAndIteration.Scenario.Id,
+				iterationId,
+			)
+			if err != nil {
+				return iteration, err
+			}
+			if err = usecase.repository.UpdateScenarioIterationVersion(ctx, tx, iterationId, version); err != nil {
+				return iteration, err
+			}
+			return usecase.repository.GetScenarioIteration(ctx, tx, iterationId)
+		},
+	)
+}
+
 func replaceTriggerOrRule(scenarioAndIteration scenarios.ScenarioAndIteration,
 	triggerOrRuleToReplace *ast.Node, ruleIdToReplace *string,
 ) (scenarios.ScenarioAndIteration, error) {
@@ -251,4 +317,35 @@ func replaceTriggerOrRule(scenarioAndIteration scenarios.ScenarioAndIteration,
 	}
 
 	return scenarioAndIteration, nil
+}
+
+func (usecase *ScenarioIterationUsecase) getScenarioVersion(
+	ctx context.Context,
+	exec repositories.Executor,
+	organizationId, scenarioId, iterationId string,
+) (int, error) {
+	scenarioIterations, err := usecase.repository.ListScenarioIterations(
+		ctx,
+		exec,
+		organizationId,
+		models.GetScenarioIterationFilters{ScenarioId: &scenarioId})
+	if err != nil {
+		return 0, err
+	}
+
+	for _, scenarioIteration := range scenarioIterations {
+		if scenarioIteration.Id == iterationId && scenarioIteration.Version != nil {
+			return *scenarioIteration.Version, nil
+		}
+	}
+
+	var latestVersion int
+	for _, scenarioIteration := range scenarioIterations {
+		if scenarioIteration.Version != nil && *scenarioIteration.Version > latestVersion {
+			latestVersion = *scenarioIteration.Version
+		}
+	}
+	newVersion := latestVersion + 1
+
+	return newVersion, nil
 }

@@ -360,6 +360,8 @@ func setupScenarioAndPublish(t *testing.T, ctx context.Context,
 
 	// Publish the iteration to make it live
 	scenarioPublicationUsecase := usecasesWithCreds.NewScenarioPublicationUsecase()
+	_, err = scenarioIterationUsecase.CommitScenarioIterationVersion(ctx, scenarioIterationId)
+	assert.NoError(t, err, "Could not commit scenario iteration")
 	scenarioPublications, err := scenarioPublicationUsecase.ExecuteScenarioPublicationAction(
 		ctx, models.PublishScenarioIterationInput{
 			ScenarioIterationId: scenarioIterationId,

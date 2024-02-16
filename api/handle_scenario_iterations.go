@@ -234,3 +234,16 @@ func (api *API) ValidateScenarioIteration(c *gin.Context) {
 		"scenario_validation": dto.AdaptScenarioValidationDto(scenarioValidation),
 	})
 }
+
+func (api *API) CommitScenarioIterationVersion(c *gin.Context) {
+	scenarioIterationID := c.Param("iteration_id")
+
+	usecase := api.UsecasesWithCreds(c.Request).NewScenarioIterationUsecase()
+	iteration, err := usecase.CommitScenarioIterationVersion(c.Request.Context(), scenarioIterationID)
+	if presentError(c, err) {
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"iteration": iteration,
+	})
+}
