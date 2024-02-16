@@ -295,9 +295,9 @@ func (usecase *ScenarioIterationUsecase) CommitScenarioIterationVersion(
 	)
 }
 
-func replaceTriggerOrRule(scenarioAndIteration scenarios.ScenarioAndIteration,
+func replaceTriggerOrRule(scenarioAndIteration models.ScenarioAndIteration,
 	triggerOrRuleToReplace *ast.Node, ruleIdToReplace *string,
-) (scenarios.ScenarioAndIteration, error) {
+) (models.ScenarioAndIteration, error) {
 	if triggerOrRuleToReplace != nil {
 		if ruleIdToReplace != nil {
 			var found bool

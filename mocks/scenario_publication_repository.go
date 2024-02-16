@@ -13,23 +13,31 @@ type ScenarioPublicationRepository struct {
 	mock.Mock
 }
 
-func (s *ScenarioPublicationRepository) ListScenarioPublicationsOfOrganization(ctx context.Context,
-	exec repositories.Executor, organizationId string, filters models.ListScenarioPublicationsFilters,
+func (s *ScenarioPublicationRepository) ListScenarioPublicationsOfOrganization(
+	ctx context.Context,
+	exec repositories.Executor,
+	organizationId string,
+	filters models.ListScenarioPublicationsFilters,
 ) ([]models.ScenarioPublication, error) {
-	args := s.Called(exec, organizationId, filters)
+	args := s.Called(ctx, exec, organizationId, filters)
 	return args.Get(0).([]models.ScenarioPublication), args.Error(1)
 }
 
-func (s *ScenarioPublicationRepository) CreateScenarioPublication(ctx context.Context,
-	exec repositories.Executor, input models.CreateScenarioPublicationInput, newScenarioPublicationId string,
+func (s *ScenarioPublicationRepository) CreateScenarioPublication(
+	ctx context.Context,
+	exec repositories.Executor,
+	input models.CreateScenarioPublicationInput,
+	newScenarioPublicationId string,
 ) error {
-	args := s.Called(exec, input, newScenarioPublicationId)
+	args := s.Called(ctx, exec, input, newScenarioPublicationId)
 	return args.Error(0)
 }
 
-func (s *ScenarioPublicationRepository) GetScenarioPublicationById(ctx context.Context,
-	exec repositories.Executor, scenarioPublicationID string,
+func (s *ScenarioPublicationRepository) GetScenarioPublicationById(
+	ctx context.Context,
+	exec repositories.Executor,
+	scenarioPublicationID string,
 ) (models.ScenarioPublication, error) {
-	args := s.Called(exec, scenarioPublicationID)
+	args := s.Called(ctx, exec, scenarioPublicationID)
 	return args.Get(0).(models.ScenarioPublication), args.Error(1)
 }

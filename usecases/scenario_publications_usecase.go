@@ -9,7 +9,6 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/indexes"
-	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
@@ -24,14 +23,31 @@ type IngestedDataIndexesRepository interface {
 	CreateIndexesAsync(ctx context.Context, exec repositories.Executor, indexes []models.ConcreteIndex) (numCreating int, err error)
 }
 
+type ScenarioFetcher interface {
+	FetchScenarioAndIteration(
+		ctx context.Context,
+		exec repositories.Executor,
+		scenarioIterationId string,
+	) (models.ScenarioAndIteration, error)
+}
+
+type ScenarioPublisher interface {
+	PublishOrUnpublishIteration(
+		ctx context.Context,
+		exec repositories.Executor,
+		scenarioAndIteration models.ScenarioAndIteration,
+		publicationAction models.PublicationAction,
+	) ([]models.ScenarioPublication, error)
+}
+
 type ScenarioPublicationUsecase struct {
 	transactionFactory             executor_factory.TransactionFactory
 	executorFactory                executor_factory.ExecutorFactory
 	scenarioPublicationsRepository repositories.ScenarioPublicationRepository
 	OrganizationIdOfContext        func() (string, error)
 	enforceSecurity                security.EnforceSecurityScenario
-	scenarioFetcher                scenarios.ScenarioFetcher
-	scenarioPublisher              scenarios.ScenarioPublisher
+	scenarioFetcher                ScenarioFetcher
+	scenarioPublisher              ScenarioPublisher
 	scenarioListRepository         scenarioListRepository
 	ingestedDataIndexesRepository  IngestedDataIndexesRepository
 }
@@ -75,25 +91,27 @@ func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(
 	ctx context.Context,
 	input models.PublishScenarioIterationInput,
 ) ([]models.ScenarioPublication, error) {
-	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		tx repositories.Executor,
-	) ([]models.ScenarioPublication, error) {
-		scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, tx, input.ScenarioIterationId)
-		if err != nil {
-			return nil, err
-		}
+	return executor_factory.TransactionReturnValue(
+		ctx,
+		usecase.transactionFactory,
+		func(tx repositories.Executor,
+		) ([]models.ScenarioPublication, error) {
+			scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, tx, input.ScenarioIterationId)
+			if err != nil {
+				return nil, err
+			}
 
-		if err := usecase.enforceSecurity.PublishScenario(scenarioAndIteration.Scenario); err != nil {
-			return nil, err
-		}
+			if err := usecase.enforceSecurity.PublishScenario(scenarioAndIteration.Scenario); err != nil {
+				return nil, err
+			}
 
-		return usecase.scenarioPublisher.PublishOrUnpublishIteration(
-			ctx,
-			tx,
-			scenarioAndIteration,
-			input.PublicationAction,
-		)
-	})
+			return usecase.scenarioPublisher.PublishOrUnpublishIteration(
+				ctx,
+				tx,
+				scenarioAndIteration,
+				input.PublicationAction,
+			)
+		})
 }
 
 func (usecase *ScenarioPublicationUsecase) CreateDatamodelIndexesForScenarioPublication(

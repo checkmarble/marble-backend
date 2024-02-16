@@ -135,7 +135,7 @@ func (usecases *Usecases) NewEvaluateRuleAstExpression() ast_eval.EvaluateRuleAs
 	}
 }
 
-func (usecases *Usecases) NewScenarioPublisher() scenarios.ScenarioPublisher {
+func (usecases *Usecases) NewScenarioPublisher() ScenarioPublisher {
 	return scenarios.ScenarioPublisher{
 		Repository:                     &usecases.Repositories.MarbleDbRepository,
 		ValidateScenarioIteration:      usecases.NewValidateScenarioIteration(),

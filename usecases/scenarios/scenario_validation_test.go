@@ -96,7 +96,7 @@ func TestValidateScenarioIterationImpl_Validate(t *testing.T) {
 		ExecutorFactory: executorFactory,
 	}
 
-	result := validator.Validate(context.TODO(), ScenarioAndIteration{
+	result := validator.Validate(context.TODO(), models.ScenarioAndIteration{
 		Scenario:  scenario,
 		Iteration: scenarioIteration,
 	})

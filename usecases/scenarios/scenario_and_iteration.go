@@ -14,26 +14,21 @@ type ScenarioFetcherRepository interface {
 	)
 }
 
-type ScenarioAndIteration struct {
-	Scenario  models.Scenario
-	Iteration models.ScenarioIteration
-}
-
 type ScenarioFetcher struct {
 	Repository ScenarioFetcherRepository
 }
 
-func (fetcher *ScenarioFetcher) FetchScenarioAndIteration(ctx context.Context,
+func (fetcher ScenarioFetcher) FetchScenarioAndIteration(ctx context.Context,
 	exec repositories.Executor, iterationId string,
-) (result ScenarioAndIteration, err error) {
+) (result models.ScenarioAndIteration, err error) {
 	result.Iteration, err = fetcher.Repository.GetScenarioIteration(ctx, exec, iterationId)
 	if err != nil {
-		return ScenarioAndIteration{}, err
+		return models.ScenarioAndIteration{}, err
 	}
 
 	result.Scenario, err = fetcher.Repository.GetScenarioById(ctx, exec, result.Iteration.ScenarioId)
 	if err != nil {
-		return ScenarioAndIteration{}, err
+		return models.ScenarioAndIteration{}, err
 	}
 
 	return result, err
