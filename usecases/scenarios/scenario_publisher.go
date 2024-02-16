@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/cockroachdb/errors"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
@@ -89,6 +91,8 @@ func (publisher *ScenarioPublisher) PublishOrUnpublishIteration(
 				"scenario_iteration_id": iterationId,
 			})
 		}
+	default:
+		return nil, errors.Wrap(models.BadParameterError, "unknown publication action")
 	}
 
 	return scenarioPublications, nil
