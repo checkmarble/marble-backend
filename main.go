@@ -49,11 +49,12 @@ func initDependencies(conf AppConfiguration, signingKey *rsa.PrivateKey) (depend
 		return dependencies{}, fmt.Errorf("tracing.Init error: %w", err)
 	}
 	database, err := postgres.New(postgres.Configuration{
-		Host:     conf.pgConfig.Hostname,
-		Port:     conf.pgConfig.Port,
-		User:     conf.pgConfig.User,
-		Password: conf.pgConfig.Password,
-		Database: conf.pgConfig.Database,
+		Host:                conf.pgConfig.Hostname,
+		Port:                conf.pgConfig.Port,
+		User:                conf.pgConfig.User,
+		Password:            conf.pgConfig.Password,
+		Database:            conf.pgConfig.Database,
+		DbConnectWithSocket: conf.pgConfig.DbConnectWithSocket,
 	})
 	if err != nil {
 		return dependencies{}, fmt.Errorf("postgres.New error: %w", err)
@@ -151,11 +152,12 @@ func main() {
 		port:       utils.GetRequiredEnv[string]("PORT"),
 		gcpProject: os.Getenv("GOOGLE_CLOUD_PROJECT"),
 		pgConfig: utils.PGConfig{
-			Hostname: utils.GetRequiredEnv[string]("PG_HOSTNAME"),
-			Port:     utils.GetEnv("PG_PORT", "5432"),
-			User:     utils.GetRequiredEnv[string]("PG_USER"),
-			Password: utils.GetRequiredEnv[string]("PG_PASSWORD"),
-			Database: "marble",
+			Database:            "marble",
+			DbConnectWithSocket: utils.GetEnv("PG_CONNECT_WITH_SOCKET", false),
+			Hostname:            utils.GetRequiredEnv[string]("PG_HOSTNAME"),
+			Password:            utils.GetRequiredEnv[string]("PG_PASSWORD"),
+			Port:                utils.GetEnv("PG_PORT", "5432"),
+			User:                utils.GetRequiredEnv[string]("PG_USER"),
 		},
 		config: models.GlobalConfiguration{
 			TokenLifetimeMinute:  utils.GetEnv("TOKEN_LIFETIME_MINUTE", 60*2),
@@ -242,9 +244,8 @@ func main() {
 }
 
 func NewUseCases(ctx context.Context, appConfiguration AppConfiguration, marbleJwtSigningKey *rsa.PrivateKey) usecases.Usecases {
-	connectionString := appConfiguration.pgConfig.GetConnectionString(appConfiguration.env)
-
-	marbleConnectionPool, err := infra.NewPostgresConnectionPool(connectionString)
+	marbleConnectionPool, err := infra.NewPostgresConnectionPool(
+		appConfiguration.pgConfig.GetConnectionString())
 	if err != nil {
 		log.Fatal("error creating postgres connection to marble database", err.Error())
 	}

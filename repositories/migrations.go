@@ -27,7 +27,6 @@ var embedAnalyticsViews embed.FS
 type Migrater struct {
 	dbMigrationsFileSystem   embed.FS
 	analyticsViewsFileSystem embed.FS
-	env                      string
 	pgConfig                 utils.PGConfig
 	db                       *sql.DB
 }
@@ -36,7 +35,6 @@ func NewMigrater(pgConfig utils.PGConfig, env string) *Migrater {
 	return &Migrater{
 		dbMigrationsFileSystem:   embedMigrations,
 		analyticsViewsFileSystem: embedAnalyticsViews,
-		env:                      env,
 		pgConfig:                 pgConfig,
 	}
 }
@@ -59,7 +57,7 @@ func (m *Migrater) Run(ctx context.Context) error {
 }
 
 func (m *Migrater) openDb() error {
-	connectionString := m.pgConfig.GetConnectionString(m.env)
+	connectionString := m.pgConfig.GetConnectionString()
 	db, err := sql.Open("pgx", connectionString)
 	if err != nil {
 		return errors.Wrap(err, "unable to create connection pool for migrations")
