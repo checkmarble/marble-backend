@@ -83,19 +83,38 @@ func (api *API) GetScenarioPublication(c *gin.Context) {
 	c.JSON(http.StatusOK, NewAPIScenarioPublication(scenarioPublication))
 }
 
-func (api *API) ValidateIndexesForPublication(c *gin.Context) {
-	var data dto.CreateScenarioPublicationBody
+func (api *API) GetPublicationPreparationStatus(c *gin.Context) {
+	var data struct {
+		ScenarioIterationId string `form:"scenario_iteration_id" binding:"required"`
+	}
+	if err := c.ShouldBindQuery(&data); err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
+	usecase := api.UsecasesWithCreds(c.Request).NewScenarioPublicationUsecase()
+	status, err := usecase.GetPublicationPreparationStatus(c.Request.Context(), data.ScenarioIterationId)
+	if presentError(c, err) {
+		return
+	}
+	c.JSON(http.StatusOK, dto.AdaptPublicationPreparationStatus(status))
+}
+
+func (api *API) StartPublicationPreparation(c *gin.Context) {
+	var data struct {
+		ScenarioIterationId string `json:"scenario_iteration_id" binding:"required"`
+	}
 	if err := c.ShouldBindJSON(&data); err != nil {
 		c.Status(http.StatusBadRequest)
 		return
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewScenarioPublicationUsecase()
-	_, err := usecase.CreateDatamodelIndexesForScenarioPublication(c.Request.Context(), data.ScenarioIterationId)
+	err := usecase.StartPublicationPreparation(c.Request.Context(), data.ScenarioIterationId)
 	if presentError(c, err) {
 		return
 	}
-	c.Status(http.StatusOK)
+	c.Status(http.StatusAccepted)
 }
 
 func handleExpectedPublicationError(c *gin.Context, err error) bool {

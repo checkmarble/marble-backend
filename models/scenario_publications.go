@@ -102,3 +102,23 @@ type CreateScenarioPublicationInput struct {
 	ScenarioIterationId string
 	PublicationAction   PublicationAction
 }
+
+type PublicationPreparationStatus struct {
+	PreparationStatus        PreparationStatus
+	PreparationServiceStatus PreparationServiceStatus
+}
+
+type PreparationStatus string
+
+var (
+	PreparationStatusRequired        PreparationStatus = "required"
+	PreparationStatusInProgress      PreparationStatus = "in_progress" // We are not yet able compute this one
+	PreparationStatusReadyToActivate PreparationStatus = "ready_to_activate"
+)
+
+type PreparationServiceStatus string
+
+var (
+	PreparationServiceStatusAvailable PreparationServiceStatus = "available"
+	PreparationServiceStatusOccupied  PreparationServiceStatus = "occupied"
+)
