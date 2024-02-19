@@ -24,9 +24,9 @@ func (m *IngestedDataIndexesRepository) ListAllValidIndexes(
 func (m *IngestedDataIndexesRepository) CreateIndexesAsync(
 	ctx context.Context,
 	exec repositories.Executor, indexes []models.ConcreteIndex,
-) (int, error) {
+) error {
 	args := m.Called(ctx, exec, indexes)
-	return args.Int(0), args.Error(1)
+	return args.Error(0)
 }
 
 func (m *IngestedDataIndexesRepository) CountPendingIndexes(
