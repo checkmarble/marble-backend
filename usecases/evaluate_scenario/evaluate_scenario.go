@@ -26,7 +26,7 @@ const MAX_CONCURRENT_RULE_EXECUTIONS = 5
 
 type ScenarioEvaluationParameters struct {
 	Scenario  models.Scenario
-	Payload   models.PayloadReader
+	Payload   models.ClientObject
 	DataModel models.DataModel
 }
 
@@ -85,7 +85,7 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters,
 	}
 
 	// Check the scenario & trigger_object's types
-	if params.Scenario.TriggerObjectType != string(params.Payload.ReadTableName()) {
+	if params.Scenario.TriggerObjectType != string(params.Payload.TableName) {
 		return models.ScenarioExecution{}, models.ScenarioTriggerTypeAndTiggerObjectTypeMismatchError
 	}
 
@@ -217,7 +217,7 @@ func evalScenarioRule(ctx context.Context, repositories ScenarioEvaluationReposi
 }
 
 func evalScenarioTrigger(ctx context.Context, repositories ScenarioEvaluationRepositories,
-	ruleAstExpression ast.Node, organizationId string, payload models.PayloadReader, dataModel models.DataModel,
+	ruleAstExpression ast.Node, organizationId string, payload models.ClientObject, dataModel models.DataModel,
 ) (bool, error) {
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(ctx, "evaluate_scenario.evalScenarioTrigger")

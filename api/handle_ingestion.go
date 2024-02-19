@@ -73,7 +73,7 @@ func (api *API) handleIngestion(c *gin.Context) {
 		return
 	}
 
-	err = usecase.IngestObjects(c.Request.Context(), organizationId, []models.PayloadReader{
+	err = usecase.IngestObjects(c.Request.Context(), organizationId, []models.ClientObject{
 		payload,
 	}, table, logger)
 	if err != nil {

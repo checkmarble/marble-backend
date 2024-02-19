@@ -188,7 +188,7 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context,
 
 	evaluationParameters := evaluate_scenario.ScenarioEvaluationParameters{
 		Scenario:  scenario,
-		Payload:   input.PayloadStructWithReader,
+		Payload:   input.Payload,
 		DataModel: dm,
 	}
 
@@ -206,7 +206,7 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context,
 
 	newDecisionId := utils.NewPrimaryKey(input.OrganizationId)
 	decision := models.Decision{
-		ClientObject:        input.ClientObject,
+		ClientObject:        input.Payload,
 		Outcome:             scenarioExecution.Outcome,
 		RuleExecutions:      scenarioExecution.RuleExecutions,
 		ScenarioDescription: scenarioExecution.ScenarioDescription,

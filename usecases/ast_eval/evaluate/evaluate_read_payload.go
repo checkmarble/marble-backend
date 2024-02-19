@@ -12,10 +12,10 @@ import (
 
 type Payload struct {
 	Function ast.Function
-	Payload  models.PayloadReader
+	Payload  models.ClientObject
 }
 
-func NewPayload(f ast.Function, payload models.PayloadReader) Payload {
+func NewPayload(f ast.Function, payload models.ClientObject) Payload {
 	return Payload{
 		Function: ast.FUNC_PAYLOAD,
 		Payload:  payload,

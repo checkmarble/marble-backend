@@ -2,7 +2,6 @@ package integration
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
@@ -411,24 +410,10 @@ func ingestAccounts(t *testing.T, table models.Table, usecases usecases.Usecases
 	accountPayload3, validationErrors3, err := parser.ParsePayload(table, accountPayloadJson3)
 	assert.NoError(t, err, "Could not parse payload")
 	assert.Empty(t, validationErrors3, "Expected no validation errors, got %v", validationErrors3)
-	err = ingestionUsecase.IngestObjects(context.TODO(), organizationId, []models.PayloadReader{
+	err = ingestionUsecase.IngestObjects(context.TODO(), organizationId, []models.ClientObject{
 		accountPayload1, accountPayload2, accountPayload3,
 	}, table, logger)
 	assert.NoError(t, err, "Could not ingest data")
-}
-
-func createTransactionPayload(transactionPayloadJson []byte,
-	triggerObjectMap map[string]interface{}, t *testing.T, table models.Table,
-) models.PayloadReader {
-	if err := json.Unmarshal(transactionPayloadJson, &triggerObjectMap); err != nil {
-		t.Fatalf("Could not unmarshal json: %s", err)
-	}
-	parser := payload_parser.NewParser()
-	transactionPayload, validationErrors, err :=
-		parser.ParsePayload(table, transactionPayloadJson)
-	assert.NoError(t, err, "Could not parse payload")
-	assert.Empty(t, validationErrors, "Expected no validation errors, got %v", validationErrors)
-	return transactionPayload
 }
 
 func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecases.UsecasesWithCreds, organizationId, scenarioId string, logger *slog.Logger) {
@@ -526,28 +511,25 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 	}
 }
 
-func createTransactionPayloadAndClientObject(transactionPayloadJson []byte, t *testing.T,
-	table models.Table,
-) (models.PayloadReader, models.ClientObject) {
-	triggerObjectMap := make(map[string]interface{})
-	ClientObject := models.ClientObject{TableName: table.Name, Data: triggerObjectMap}
-	transactionPayload := createTransactionPayload(transactionPayloadJson, triggerObjectMap, t, table)
-
-	return transactionPayload, ClientObject
-}
-
 func createAndTestDecision(t *testing.T, transactionPayloadJson []byte, table models.Table,
 	decisionUsecase usecases.DecisionUsecase, usecasesWithCreds usecases.UsecasesWithCreds,
 	organizationId, scenarioId string, logger *slog.Logger,
 ) models.Decision {
-	transactionPayload, ClientObject := createTransactionPayloadAndClientObject(transactionPayloadJson, t, table)
+	parser := payload_parser.NewParser()
+	transactionPayload, validationErrors, err :=
+		parser.ParsePayload(table, transactionPayloadJson)
+	assert.NoError(t, err, "Could not parse payload")
+	assert.Empty(t, validationErrors, "Expected no validation errors, got %v", validationErrors)
 
-	decision, err := decisionUsecase.CreateDecision(usecasesWithCreds.Context, models.CreateDecisionInput{
-		ScenarioId:              scenarioId,
-		ClientObject:            ClientObject,
-		OrganizationId:          organizationId,
-		PayloadStructWithReader: transactionPayload,
-	}, logger)
+	decision, err := decisionUsecase.CreateDecision(
+		usecasesWithCreds.Context,
+		models.CreateDecisionInput{
+			ScenarioId:     scenarioId,
+			Payload:        transactionPayload,
+			OrganizationId: organizationId,
+		},
+		logger,
+	)
 	assert.NoError(t, err, "Could not create decision")
 	fmt.Println("Created decision", decision.DecisionId)
 
