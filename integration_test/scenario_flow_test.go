@@ -401,10 +401,16 @@ func ingestAccounts(t *testing.T, table models.Table, usecases usecases.Usecases
 		"object_id": "{account_id_approve_no_name}",
 		"updated_at": "2020-01-01T00:00:00Z"
 	}`)
-	accountPayload1, err := payload_parser.ParseToDataModelObject(table, accountPayloadJson1)
+	parser := payload_parser.NewParser()
+	accountPayload1, validationErrors1, err := parser.ParsePayload(table, accountPayloadJson1)
 	assert.NoError(t, err, "Could not parse payload")
-	accountPayload2, _ := payload_parser.ParseToDataModelObject(table, accountPayloadJson2)
-	accountPayload3, _ := payload_parser.ParseToDataModelObject(table, accountPayloadJson3)
+	assert.Empty(t, validationErrors1, "Expected no validation errors, got %v", validationErrors1)
+	accountPayload2, validationErrors2, err := parser.ParsePayload(table, accountPayloadJson2)
+	assert.NoError(t, err, "Could not parse payload")
+	assert.Empty(t, validationErrors2, "Expected no validation errors, got %v", validationErrors2)
+	accountPayload3, validationErrors3, err := parser.ParsePayload(table, accountPayloadJson3)
+	assert.NoError(t, err, "Could not parse payload")
+	assert.Empty(t, validationErrors3, "Expected no validation errors, got %v", validationErrors3)
 	err = ingestionUsecase.IngestObjects(context.TODO(), organizationId, []models.PayloadReader{
 		accountPayload1, accountPayload2, accountPayload3,
 	}, table, logger)
@@ -417,8 +423,11 @@ func createTransactionPayload(transactionPayloadJson []byte,
 	if err := json.Unmarshal(transactionPayloadJson, &triggerObjectMap); err != nil {
 		t.Fatalf("Could not unmarshal json: %s", err)
 	}
-	transactionPayload, err := payload_parser.ParseToDataModelObject(table, transactionPayloadJson)
+	parser := payload_parser.NewParser()
+	transactionPayload, validationErrors, err :=
+		parser.ParsePayload(table, transactionPayloadJson)
 	assert.NoError(t, err, "Could not parse payload")
+	assert.Empty(t, validationErrors, "Expected no validation errors, got %v", validationErrors)
 	return transactionPayload
 }
 

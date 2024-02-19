@@ -108,7 +108,7 @@ func (api *API) handlePostDecision(c *gin.Context) {
 	}
 
 	parser := payload_parser.NewParser()
-	validationErrors, err := parser.ValidatePayload(table, requestData.TriggerObjectRaw)
+	payload, validationErrors, err := parser.ParsePayload(table, requestData.TriggerObjectRaw)
 	if err != nil {
 		presentError(c, errors.Wrap(models.BadParameterError,
 			fmt.Sprintf("Error while validating payload: %v", err)))
@@ -119,17 +119,6 @@ func (api *API) handlePostDecision(c *gin.Context) {
 		logger.InfoContext(c.Request.Context(),
 			fmt.Sprintf("Validation errors on POST decisions: %s", string(encoded)))
 		http.Error(c.Writer, string(encoded), http.StatusBadRequest)
-		return
-	}
-
-	payload, err := payload_parser.ParseToDataModelObject(table, requestData.TriggerObjectRaw)
-	if errors.Is(err, models.FormatValidationError) {
-		errString := fmt.Sprintf("Format validation error: %v", err)
-		logger.InfoContext(c.Request.Context(), errString)
-		http.Error(c.Writer, errString, http.StatusUnprocessableEntity) // 422
-		return
-	} else if err != nil {
-		presentError(c, errors.Wrap(err, "Error parsing payload in handlePostDecision"))
 		return
 	}
 
