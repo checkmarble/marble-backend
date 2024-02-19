@@ -33,8 +33,8 @@ func presentError(c *gin.Context, err error) bool {
 		utils.LogRequestInfo(c.Request, fmt.Sprintf("NotFoundError: %v", err))
 		http.Error(c.Writer, err.Error(), http.StatusNotFound)
 
-	} else if errors.Is(err, models.DuplicateValueError) {
-		utils.LogRequestInfo(c.Request, fmt.Sprintf("DuplicateValueError: %v", err))
+	} else if errors.Is(err, models.ConflictError) {
+		utils.LogRequestInfo(c.Request, fmt.Sprintf("ConflictError: %v", err))
 		http.Error(c.Writer, err.Error(), http.StatusConflict)
 
 	} else {

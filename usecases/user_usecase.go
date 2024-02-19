@@ -34,7 +34,7 @@ func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.Creat
 
 			createdUserUuid, err := usecase.userRepository.CreateUser(ctx, tx, createUser)
 			if repositories.IsUniqueViolationError(err) {
-				return models.User{}, models.DuplicateValueError
+				return models.User{}, models.ConflictError
 			}
 			if err != nil {
 				return models.User{}, err
