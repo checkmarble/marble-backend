@@ -19,7 +19,7 @@ type scenarioListRepository interface {
 
 type IngestedDataIndexesRepository interface {
 	ListAllValidIndexes(ctx context.Context, exec repositories.Executor) ([]models.ConcreteIndex, error)
-	CreateIndexesAsync(ctx context.Context, exec repositories.Executor, indexes []models.ConcreteIndex) (numCreating int, err error)
+	CreateIndexesAsync(ctx context.Context, exec repositories.Executor, indexes []models.ConcreteIndex) (err error)
 	CountPendingIndexes(ctx context.Context, exec repositories.Executor) (int, error)
 }
 
@@ -172,13 +172,13 @@ func (usecase *ScenarioPublicationUsecase) StartPublicationPreparation(
 			err,
 			"Error while creating client schema executor in StartPublicationPreparation")
 	}
-	num, err := usecase.ingestedDataIndexesRepository.CreateIndexesAsync(ctx, db, indexesToCreate)
+	err = usecase.ingestedDataIndexesRepository.CreateIndexesAsync(ctx, db, indexesToCreate)
 	if err != nil {
 		return errors.Wrap(err, "Error while creating indexes in StartPublicationPreparation")
 	}
 	logger.InfoContext(
 		ctx,
-		fmt.Sprintf("%d indexes pending creation in: %+v\n", num, indexesToCreate), "org_id", organizationId,
+		fmt.Sprintf("%d indexes pending creation in: %+v\n", len(indexesToCreate), indexesToCreate), "org_id", organizationId,
 	)
 	return nil
 }
