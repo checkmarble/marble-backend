@@ -21,8 +21,7 @@ func (repo *ClientDbRepository) ListAllValidIndexes(
 	ctx context.Context,
 	exec Executor,
 ) ([]models.ConcreteIndex, error) {
-	err := validateClientDbExecutor(exec)
-	if err != nil {
+	if err := validateClientDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
@@ -45,8 +44,7 @@ func (repo *ClientDbRepository) CountPendingIndexes(
 	ctx context.Context,
 	exec Executor,
 ) (int, error) {
-	err := validateClientDbExecutor(exec)
-	if err != nil {
+	if err := validateClientDbExecutor(exec); err != nil {
 		return 0, err
 	}
 
@@ -128,31 +126,14 @@ func (repo *ClientDbRepository) CreateIndexesAsync(
 	ctx context.Context,
 	exec Executor,
 	indexes []models.ConcreteIndex,
-) (int, error) {
-	err := validateClientDbExecutor(exec)
-	if err != nil {
-		return 0, err
-	}
-
+) error {
 	if err := validateClientDbExecutor(exec); err != nil {
-		return 0, err
+		return err
 	}
 
-	existing, err := repo.listAllIndexes(ctx, exec)
-	if err != nil {
-		return 0, errors.Wrap(err, "error while listing all indexes")
-	}
+	go asynchronouslyCreateIndexes(ctx, exec, indexes)
 
-	toCreate := make([]models.ConcreteIndex, 0)
-	for _, index := range indexes {
-		if !indexAlreadyExists(index, existing) {
-			toCreate = append(toCreate, index)
-		}
-	}
-
-	go asynchronouslyCreateIndexes(ctx, exec, toCreate)
-
-	return len(toCreate), nil
+	return nil
 }
 
 func asynchronouslyCreateIndexes(
