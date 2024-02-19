@@ -123,22 +123,17 @@ func (api *API) handlePostDecision(c *gin.Context) {
 	}
 
 	// make a decision
-	triggerObjectMap := make(map[string]interface{})
-	err = json.Unmarshal(requestData.TriggerObjectRaw, &triggerObjectMap)
-	if err != nil {
-		http.Error(c.Writer, "", http.StatusUnprocessableEntity)
-		return
-	}
-	ClientObject := models.ClientObject{TableName: models.TableName(
-		requestData.TriggerObjectType), Data: triggerObjectMap}
 	decisionUsecase := api.UsecasesWithCreds(c.Request).NewDecisionUsecase()
 
-	decision, err := decisionUsecase.CreateDecision(c.Request.Context(), models.CreateDecisionInput{
-		ScenarioId:              requestData.ScenarioId,
-		ClientObject:            ClientObject,
-		OrganizationId:          organizationId,
-		PayloadStructWithReader: payload,
-	}, logger)
+	decision, err := decisionUsecase.CreateDecision(
+		c.Request.Context(),
+		models.CreateDecisionInput{
+			ScenarioId:     requestData.ScenarioId,
+			Payload:        payload,
+			OrganizationId: organizationId,
+		},
+		logger,
+	)
 	if errors.Is(err, models.NotFoundError) || errors.Is(err, models.BadParameterError) {
 		presentError(c, err)
 		return

@@ -47,10 +47,9 @@ func OutcomeFrom(s string) Outcome {
 }
 
 type CreateDecisionInput struct {
-	OrganizationId          string
-	ScenarioId              string
-	ClientObject            ClientObject
-	PayloadStructWithReader PayloadReader
+	OrganizationId string
+	ScenarioId     string
+	Payload        ClientObject
 }
 
 type DecisionFilters struct {

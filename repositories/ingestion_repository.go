@@ -13,14 +13,14 @@ import (
 )
 
 type IngestionRepository interface {
-	IngestObjects(ctx context.Context, exec Executor, payloads []models.PayloadReader,
+	IngestObjects(ctx context.Context, exec Executor, payloads []models.ClientObject,
 		table models.Table, logger *slog.Logger) (err error)
 }
 
 type IngestionRepositoryImpl struct{}
 
 func (repo *IngestionRepositoryImpl) IngestObjects(ctx context.Context, exec Executor,
-	payloads []models.PayloadReader, table models.Table, logger *slog.Logger,
+	payloads []models.ClientObject, table models.Table, logger *slog.Logger,
 ) (err error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return err
@@ -55,7 +55,7 @@ func (repo *IngestionRepositoryImpl) IngestObjects(ctx context.Context, exec Exe
 	return nil
 }
 
-func objectIdAndUpdatedAtFromPayload(payload models.PayloadReader) (string, time.Time) {
+func objectIdAndUpdatedAtFromPayload(payload models.ClientObject) (string, time.Time) {
 	objectIdItf, _ := payload.ReadFieldFromPayload("object_id")
 	updatedAtItf, _ := payload.ReadFieldFromPayload("updated_at")
 	objectId := objectIdItf.(string)
@@ -64,8 +64,8 @@ func objectIdAndUpdatedAtFromPayload(payload models.PayloadReader) (string, time
 	return objectId, updatedAt
 }
 
-func (repo *IngestionRepositoryImpl) mostRecentPayloadsByObjectId(payloads []models.PayloadReader) ([]string, []models.PayloadReader) {
-	recentMap := make(map[string]models.PayloadReader)
+func (repo *IngestionRepositoryImpl) mostRecentPayloadsByObjectId(payloads []models.ClientObject) ([]string, []models.ClientObject) {
+	recentMap := make(map[string]models.ClientObject)
 	for _, payload := range payloads {
 		objectId, updatedAt := objectIdAndUpdatedAtFromPayload(payload)
 
@@ -79,7 +79,7 @@ func (repo *IngestionRepositoryImpl) mostRecentPayloadsByObjectId(payloads []mod
 		}
 	}
 
-	mostRecentPayloads := make([]models.PayloadReader, 0, len(recentMap))
+	mostRecentPayloads := make([]models.ClientObject, 0, len(recentMap))
 	mostRecentObjectIds := make([]string, 0, len(recentMap))
 	for key, obj := range recentMap {
 		mostRecentObjectIds = append(mostRecentObjectIds, key)
@@ -113,14 +113,14 @@ func (repo *IngestionRepositoryImpl) loadPreviouslyIngestedObjects(ctx context.C
 }
 
 func (repo *IngestionRepositoryImpl) comparePayloadsToIngestedObjects(
-	payloads []models.PayloadReader, previouslyIngestedObjects []IngestedObject,
-) ([]models.PayloadReader, []string) {
+	payloads []models.ClientObject, previouslyIngestedObjects []IngestedObject,
+) ([]models.ClientObject, []string) {
 	previouslyIngestedMap := make(map[string]IngestedObject)
 	for _, obj := range previouslyIngestedObjects {
 		previouslyIngestedMap[obj.ObjectId] = obj
 	}
 
-	payloadsToInsert := make([]models.PayloadReader, 0, len(payloads))
+	payloadsToInsert := make([]models.ClientObject, 0, len(payloads))
 	obsoleteIngestedObjectIds := make([]string, 0, len(previouslyIngestedMap))
 
 	for _, payload := range payloads {
@@ -152,7 +152,7 @@ func (repo *IngestionRepositoryImpl) batchUpdateValidUntilOnObsoleteObjects(ctx 
 }
 
 func (repo *IngestionRepositoryImpl) batchInsertPayloadsAndEnumValues(ctx context.Context,
-	exec Executor, payloads []models.PayloadReader, table models.Table,
+	exec Executor, payloads []models.ClientObject, table models.Table,
 ) error {
 	columnNames := models.ColumnNames(table)
 	query := NewQueryBuilder().Insert(tableNameWithSchema(exec, table.Name))
@@ -196,7 +196,7 @@ func (repo *IngestionRepositoryImpl) buildEnumValuesWithEnumFields(table models.
 	return enumValues
 }
 
-func (repo *IngestionRepositoryImpl) generateInsertValues(payload models.PayloadReader, columnNames []string) ([]interface{}, error) {
+func (repo *IngestionRepositoryImpl) generateInsertValues(payload models.ClientObject, columnNames []string) ([]interface{}, error) {
 	insertValues := make([]interface{}, len(columnNames))
 	i := 0
 	for _, columnName := range columnNames {
@@ -207,7 +207,7 @@ func (repo *IngestionRepositoryImpl) generateInsertValues(payload models.Payload
 	return insertValues, nil
 }
 
-func (repo *IngestionRepositoryImpl) collectEnumValues(payload models.PayloadReader, enumValues EnumValues) {
+func (repo *IngestionRepositoryImpl) collectEnumValues(payload models.ClientObject, enumValues EnumValues) {
 	for fieldName := range enumValues {
 		value, _ := payload.ReadFieldFromPayload(models.FieldName(fieldName))
 

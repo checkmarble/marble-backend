@@ -10,7 +10,7 @@ import (
 
 type DataAccessor struct {
 	DataModel                  models.DataModel
-	Payload                    models.PayloadReader
+	Payload                    models.ClientObject
 	executorFactory            executor_factory.ExecutorFactory
 	organizationId             string
 	ingestedDataReadRepository repositories.IngestedDataReadRepository

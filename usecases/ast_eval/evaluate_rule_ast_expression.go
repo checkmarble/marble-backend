@@ -15,7 +15,7 @@ type EvaluateRuleAstExpression struct {
 }
 
 func (evaluator *EvaluateRuleAstExpression) EvaluateRuleAstExpression(ctx context.Context,
-	ruleAstExpression ast.Node, organizationId string, payload models.PayloadReader, dataModel models.DataModel,
+	ruleAstExpression ast.Node, organizationId string, payload models.ClientObject, dataModel models.DataModel,
 ) (bool, error) {
 	environment := evaluator.AstEvaluationEnvironmentFactory(EvaluationEnvironmentFactoryParams{
 		OrganizationId:                organizationId,

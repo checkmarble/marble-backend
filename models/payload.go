@@ -4,17 +4,12 @@ import (
 	"fmt"
 )
 
-type PayloadReader interface {
-	ReadFieldFromPayload(fieldName FieldName) (any, error)
-	ReadTableName() TableName
-}
-
 type DbFieldReadParams struct {
 	TriggerTableName TableName
 	Path             []LinkName
 	FieldName        FieldName
 	DataModel        DataModel
-	Payload          PayloadReader
+	Payload          ClientObject
 }
 
 type ClientObject struct {
@@ -29,8 +24,4 @@ func (obj ClientObject) ReadFieldFromPayload(fieldName FieldName) (any, error) {
 		return nil, fmt.Errorf("no field with name %s", fieldName)
 	}
 	return fieldValue, nil
-}
-
-func (obj ClientObject) ReadTableName() TableName {
-	return obj.TableName
 }

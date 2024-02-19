@@ -40,7 +40,7 @@ type IngestionUseCase struct {
 }
 
 func (usecase *IngestionUseCase) IngestObjects(ctx context.Context, organizationId string,
-	payloads []models.PayloadReader, table models.Table, logger *slog.Logger,
+	payloads []models.ClientObject, table models.Table, logger *slog.Logger,
 ) error {
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
 		return err
@@ -269,14 +269,14 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 		}
 	}
 
-	payloadReaders := make([]models.PayloadReader, 0)
+	clientObjects := make([]models.ClientObject, 0)
 	keepParsingFile := true
 	windowStart := 0
 	total := 0
 
 	for keepParsingFile {
 		windowEnd := windowStart + batchSize
-		payloadReaders = make([]models.PayloadReader, 0)
+		clientObjects = make([]models.ClientObject, 0)
 		for ; windowStart < windowEnd; windowStart++ {
 			logger.InfoContext(ctx, fmt.Sprintf("Start reading line %v", windowStart))
 			record, err := r.Read()
@@ -296,13 +296,12 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 				TableName: table.Name,
 				Data:      object,
 			}
-			payloadReader := models.PayloadReader(clientObject)
 
-			payloadReaders = append(payloadReaders, payloadReader)
+			clientObjects = append(clientObjects, clientObject)
 		}
 
 		if err := usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Executor) error {
-			return usecase.ingestionRepository.IngestObjects(ctx, tx, payloadReaders, table, logger)
+			return usecase.ingestionRepository.IngestObjects(ctx, tx, clientObjects, table, logger)
 		}); err != nil {
 			return err
 		}

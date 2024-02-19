@@ -15,7 +15,7 @@ import (
 type DatabaseAccess struct {
 	OrganizationId             string
 	DataModel                  models.DataModel
-	Payload                    models.PayloadReader
+	Payload                    models.ClientObject
 	ExecutorFactory            executor_factory.ExecutorFactory
 	IngestedDataReadRepository repositories.IngestedDataReadRepository
 	ReturnFakeValue            bool

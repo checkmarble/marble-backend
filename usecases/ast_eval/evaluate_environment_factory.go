@@ -4,7 +4,7 @@ import "github.com/checkmarble/marble-backend/models"
 
 type EvaluationEnvironmentFactoryParams struct {
 	OrganizationId                string
-	Payload                       models.PayloadReader
+	Payload                       models.ClientObject
 	DataModel                     models.DataModel
 	DatabaseAccessReturnFakeValue bool
 }

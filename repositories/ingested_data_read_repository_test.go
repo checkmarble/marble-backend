@@ -48,16 +48,6 @@ func (tx TransactionTest) Exec(ctx context.Context, query string, args ...interf
 	return pgconn.CommandTag{}, nil
 }
 
-type PayloadTest struct{}
-
-func (pt PayloadTest) ReadFieldFromPayload(fieldName models.FieldName) (any, error) {
-	return string(utils.DummyFieldNameId), nil
-}
-
-func (pt PayloadTest) ReadTableName() models.TableName {
-	return utils.DummyTableNameFirst
-}
-
 func TestIngestedDataGetDbFieldWithoutJoin(t *testing.T) {
 	path := []models.LinkName{models.LinkName(utils.DummyTableNameSecond)}
 
@@ -66,7 +56,10 @@ func TestIngestedDataGetDbFieldWithoutJoin(t *testing.T) {
 		Path:             path,
 		FieldName:        utils.DummyFieldNameForInt,
 		DataModel:        utils.GetDummyDataModel(),
-		Payload:          PayloadTest{},
+		Payload: models.ClientObject{
+			TableName: utils.DummyTableNameFirst,
+			Data:      map[string]any{string(utils.DummyFieldNameId): string(utils.DummyFieldNameId)},
+		},
 	})
 	assert.Empty(t, err)
 	sql, args, err := query.ToSql()
@@ -89,7 +82,10 @@ func TestIngestedDataGetDbFieldWithJoin(t *testing.T) {
 		Path:             path,
 		FieldName:        utils.DummyFieldNameForInt,
 		DataModel:        utils.GetDummyDataModel(),
-		Payload:          PayloadTest{},
+		Payload: models.ClientObject{
+			TableName: utils.DummyTableNameFirst,
+			Data:      map[string]any{string(utils.DummyFieldNameId): string(utils.DummyFieldNameId)},
+		},
 	})
 	assert.Empty(t, err)
 	sql, args, err := query.ToSql()
