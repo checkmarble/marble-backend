@@ -2,7 +2,7 @@
 
 This repo is the Marble backend implementation:
 
-- 1 single Go app
+- 1 single go app
 - Postgres DB
 
 ## Getting Started
