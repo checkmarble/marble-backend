@@ -123,7 +123,7 @@ func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.Cre
 			newInboxUserId := utils.NewPrimaryKey(input.InboxId)
 			if err := usecase.InboxUserRepository.CreateInboxUser(ctx, tx, input, newInboxUserId); err != nil {
 				if repositories.IsUniqueViolationError(err) {
-					return models.InboxUser{}, errors.Wrap(models.DuplicateValueError,
+					return models.InboxUser{}, errors.Wrap(models.ConflictError,
 						"This combination of user_id and inbox_user_id already exists")
 				}
 				return models.InboxUser{}, err

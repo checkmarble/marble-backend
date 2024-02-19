@@ -56,7 +56,7 @@ func (usecase *CustomListUseCase) CreateCustomList(ctx context.Context,
 
 		err = usecase.CustomListRepository.CreateCustomList(ctx, tx, createCustomList, organizationId, newCustomListId)
 		if repositories.IsUniqueViolationError(err) {
-			return models.CustomList{}, models.DuplicateValueError
+			return models.CustomList{}, models.ConflictError
 		}
 		if err != nil {
 			return models.CustomList{}, err

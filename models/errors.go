@@ -20,8 +20,8 @@ var ForbiddenError = errors.New("forbidden")
 // NotFoundError is rendered with the http status code 404
 var NotFoundError = errors.New("not found")
 
-// DuplicateValueError is rendered with the http status code 409
-var DuplicateValueError = errors.New("duplicate value")
+// ConflictError is rendered with the http status code 409
+var ConflictError = errors.New("duplicate value")
 
 var ErrIgnoreRollBackError = errors.New("ignore rollback error")
 
