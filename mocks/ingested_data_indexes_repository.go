@@ -28,3 +28,11 @@ func (m *IngestedDataIndexesRepository) CreateIndexesAsync(
 	args := m.Called(ctx, exec, indexes)
 	return args.Int(0), args.Error(1)
 }
+
+func (m *IngestedDataIndexesRepository) CountPendingIndexes(
+	ctx context.Context,
+	exec repositories.Executor,
+) (int, error) {
+	args := m.Called(ctx, exec)
+	return args.Int(0), args.Error(1)
+}

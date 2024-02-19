@@ -21,6 +21,11 @@ func (repo *ClientDbRepository) ListAllValidIndexes(
 	ctx context.Context,
 	exec Executor,
 ) ([]models.ConcreteIndex, error) {
+	err := validateClientDbExecutor(exec)
+	if err != nil {
+		return nil, err
+	}
+
 	pgIndexes, err := repo.listAllIndexes(ctx, exec)
 	if err != nil {
 		return nil, errors.Wrap(err, "error while listing all indexes")
@@ -34,6 +39,29 @@ func (repo *ClientDbRepository) ListAllValidIndexes(
 	}
 
 	return validOrPendingIndexes, nil
+}
+
+func (repo *ClientDbRepository) CountPendingIndexes(
+	ctx context.Context,
+	exec Executor,
+) (int, error) {
+	err := validateClientDbExecutor(exec)
+	if err != nil {
+		return 0, err
+	}
+
+	pgIndexes, err := repo.listAllIndexes(ctx, exec)
+	if err != nil {
+		return 0, errors.Wrap(err, "error while listing all indexes")
+	}
+
+	count := 0
+	for _, pgIndex := range pgIndexes {
+		if pgIndex.CreationInProgress {
+			count++
+		}
+	}
+	return count, nil
 }
 
 func (repo *ClientDbRepository) listAllIndexes(
@@ -101,6 +129,11 @@ func (repo *ClientDbRepository) CreateIndexesAsync(
 	exec Executor,
 	indexes []models.ConcreteIndex,
 ) (int, error) {
+	err := validateClientDbExecutor(exec)
+	if err != nil {
+		return 0, err
+	}
+
 	if err := validateClientDbExecutor(exec); err != nil {
 		return 0, err
 	}
