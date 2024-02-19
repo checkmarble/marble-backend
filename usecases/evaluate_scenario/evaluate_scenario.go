@@ -245,10 +245,6 @@ func evalAllScenarioRules(ctx context.Context, repositories ScenarioEvaluationRe
 
 	// Launch rules concurrently
 	for i, rule := range rules {
-
-		// i, rule := i, rule avoids scoping issues.
-		// should be solved with go 1.22
-		i, rule := i, rule
 		group.Go(func() error {
 			// return early if ctx is done
 			select {
