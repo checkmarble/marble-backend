@@ -62,22 +62,6 @@ type CreateDraftFromScenarioIterationInput struct {
 	ScenarioIterationId string `in:"path=scenarioIterationId"`
 }
 
-// scenario publications
-
-type CreateScenarioPublicationBody struct {
-	ScenarioIterationId string `json:"scenarioIterationID"`
-	PublicationAction   string `json:"publicationAction"`
-}
-
-type CreateScenarioPublicationInput struct {
-	Body *CreateScenarioPublicationBody `in:"body=json"`
-}
-
-type ListScenarioPublicationsInput struct {
-	ScenarioId          *string `in:"query=scenarioID"`
-	ScenarioIterationId *string `in:"query=scenarioIterationID"`
-}
-
 func AdaptCreateScenario(input CreateScenarioBody) models.CreateScenarioInput {
 	return models.CreateScenarioInput{
 		Name:              input.Name,
