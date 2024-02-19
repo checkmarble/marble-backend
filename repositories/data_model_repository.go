@@ -106,7 +106,7 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelTable(ctx context.Cont
 
 	_, err := exec.Exec(ctx, query, tableID, organizationID, strings.ToLower(name), description)
 	if IsUniqueViolationError(err) {
-		return models.DuplicateValueError
+		return models.ConflictError
 	}
 	return err
 }
@@ -158,7 +158,7 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelField(ctx context.Cont
 	_, err := exec.Exec(ctx, query, fieldID, tableID, strings.ToLower(field.Name), field.Type,
 		field.Nullable, field.Description, field.IsEnum)
 	if IsUniqueViolationError(err) {
-		return models.DuplicateValueError
+		return models.ConflictError
 	}
 	return err
 }
@@ -194,7 +194,7 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelLink(ctx context.Conte
 				link.ParentFieldID, link.ChildTableID, link.ChildFieldID),
 	)
 	if IsUniqueViolationError(err) {
-		return models.DuplicateValueError
+		return models.ConflictError
 	}
 	return err
 }

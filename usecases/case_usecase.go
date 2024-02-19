@@ -486,7 +486,7 @@ func (usecase *CaseUseCase) createCaseTag(ctx context.Context, exec repositories
 
 	if err = usecase.repository.CreateCaseTag(ctx, exec, caseId, tagId); err != nil {
 		if repositories.IsUniqueViolationError(err) {
-			return fmt.Errorf("tag %s already added to case %s %w", tag.Id, caseId, models.DuplicateValueError)
+			return fmt.Errorf("tag %s already added to case %s %w", tag.Id, caseId, models.ConflictError)
 		}
 		return err
 	}

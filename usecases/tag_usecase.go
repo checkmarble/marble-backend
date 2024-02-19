@@ -48,7 +48,7 @@ func (usecase *TagUseCase) CreateTag(ctx context.Context, attributes models.Crea
 			newTagId := uuid.NewString()
 			if err := usecase.repository.CreateTag(ctx, tx, attributes, newTagId); err != nil {
 				if repositories.IsUniqueViolationError(err) {
-					return models.Tag{}, errors.Wrap(models.DuplicateValueError, "There is already a tag by this name")
+					return models.Tag{}, errors.Wrap(models.ConflictError, "There is already a tag by this name")
 				}
 				return models.Tag{}, err
 			}
