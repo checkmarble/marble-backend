@@ -102,7 +102,7 @@ func (repo *IngestedDataReadRepositoryImpl) queryDbForField(ctx context.Context,
 }
 
 func getFirstTableObjectIdFromPayload(payload models.ClientObject, fieldName models.FieldName) (string, error) {
-	parentObjectIdItf, _ := payload.ReadFieldFromPayload(fieldName)
+	parentObjectIdItf := payload.Data[string(fieldName)]
 	if parentObjectIdItf == nil {
 		return "", fmt.Errorf("%s in payload is null", fieldName) // should not happen, as per input validation
 	}

@@ -28,10 +28,13 @@ func (p Payload) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []
 		return nil, MakeAdaptedArgsErrors([]error{err})
 	}
 
-	value, err := p.Payload.ReadFieldFromPayload(models.FieldName(payloadFieldName))
-	if err != nil {
-		return MakeEvaluateError(errors.Wrap(models.PayloadFieldNotFoundError,
-			fmt.Sprintf("payload var does not exist: %s", payloadFieldName)))
+	value, ok := p.Payload.Data[payloadFieldName]
+	if !ok {
+		return MakeEvaluateError(
+			errors.Wrap(
+				models.PayloadFieldNotFoundError,
+				fmt.Sprintf("payload var does not exist: %s", payloadFieldName)),
+		)
 	}
 
 	if value == nil {

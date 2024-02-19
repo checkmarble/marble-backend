@@ -56,8 +56,8 @@ func (repo *IngestionRepositoryImpl) IngestObjects(ctx context.Context, exec Exe
 }
 
 func objectIdAndUpdatedAtFromPayload(payload models.ClientObject) (string, time.Time) {
-	objectIdItf, _ := payload.ReadFieldFromPayload("object_id")
-	updatedAtItf, _ := payload.ReadFieldFromPayload("updated_at")
+	objectIdItf := payload.Data["object_id"]
+	updatedAtItf := payload.Data["updated_at"]
 	objectId := objectIdItf.(string)
 	updatedAt := updatedAtItf.(time.Time)
 
@@ -201,7 +201,7 @@ func (repo *IngestionRepositoryImpl) generateInsertValues(payload models.ClientO
 	i := 0
 	for _, columnName := range columnNames {
 		fieldName := models.FieldName(columnName)
-		insertValues[i], _ = payload.ReadFieldFromPayload(fieldName)
+		insertValues[i] = payload.Data[string(fieldName)]
 		i++
 	}
 	return insertValues, nil
@@ -209,8 +209,7 @@ func (repo *IngestionRepositoryImpl) generateInsertValues(payload models.ClientO
 
 func (repo *IngestionRepositoryImpl) collectEnumValues(payload models.ClientObject, enumValues EnumValues) {
 	for fieldName := range enumValues {
-		value, _ := payload.ReadFieldFromPayload(models.FieldName(fieldName))
-
+		value := payload.Data[fieldName]
 		if value != nil && value != "" {
 			enumValues[fieldName][value] = true
 		}
