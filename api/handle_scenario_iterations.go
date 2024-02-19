@@ -243,7 +243,13 @@ func (api *API) CommitScenarioIterationVersion(c *gin.Context) {
 	if presentError(c, err) {
 		return
 	}
+
+	iterationDto, err := dto.AdaptScenarioIterationWithBodyDto(iteration)
+	if presentError(c, err) {
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"iteration": iteration,
+		"iteration": iterationDto,
 	})
 }
