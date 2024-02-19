@@ -20,14 +20,12 @@ require (
 	github.com/gin-contrib/size v0.0.0-20231211133737-500859255df8
 	github.com/gin-contrib/timeout v0.0.6
 	github.com/gin-gonic/gin v1.9.1
-	github.com/go-playground/validator/v10 v10.15.3
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/google/uuid v1.3.1
 	github.com/hashicorp/go-set/v2 v2.1.0
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/jackc/pgx/v5 v5.5.1
-	github.com/ompluscator/dynamic-struct v1.4.0
 	github.com/ory/dockertest/v3 v3.10.0
 	github.com/pkg/errors v0.9.1
 	github.com/pressly/goose/v3 v3.15.0
@@ -92,6 +90,7 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
+	github.com/go-playground/validator/v10 v10.15.3 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect

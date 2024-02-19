@@ -57,7 +57,7 @@ func (api *API) handleIngestion(c *gin.Context) {
 	}
 
 	parser := payload_parser.NewParser()
-	validationErrors, err := parser.ValidatePayload(table, objectBody)
+	payload, validationErrors, err := parser.ParsePayload(table, objectBody)
 	if err != nil {
 		presentError(c, errors.Wrap(models.BadParameterError,
 			fmt.Sprintf("Error while validating payload: %v", err)))
@@ -65,24 +65,14 @@ func (api *API) handleIngestion(c *gin.Context) {
 	}
 	if len(validationErrors) > 0 {
 		encoded, _ := json.Marshal(validationErrors)
-		logger.InfoContext(c.Request.Context(),
-			fmt.Sprintf("Validation errors on POST ingestion %s: %s", objectType, string(encoded)))
+		logger.InfoContext(
+			c.Request.Context(),
+			fmt.Sprintf("Validation errors on POST ingestion %s: %s", objectType, string(encoded)),
+		)
 		http.Error(c.Writer, string(encoded), http.StatusBadRequest)
 		return
 	}
 
-	payload, err := payload_parser.ParseToDataModelObject(table, objectBody)
-	if errors.Is(err, models.FormatValidationError) {
-		logger.ErrorContext(c.Request.Context(),
-			fmt.Sprintf("format validation error while parsing to data model object: %v", err))
-		http.Error(c.Writer, "", http.StatusUnprocessableEntity)
-		return
-	} else if err != nil {
-		logger.ErrorContext(c.Request.Context(),
-			fmt.Sprintf("Unexpected error while parsing to data model object: %v", err))
-		http.Error(c.Writer, "", http.StatusInternalServerError)
-		return
-	}
 	err = usecase.IngestObjects(c.Request.Context(), organizationId, []models.PayloadReader{
 		payload,
 	}, table, logger)

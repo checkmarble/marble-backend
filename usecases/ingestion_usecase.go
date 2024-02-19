@@ -354,11 +354,13 @@ func parseStringValuesToMap(headers []string, values []string, table models.Tabl
 		case models.String:
 			result[fieldName] = value
 		case models.Timestamp:
-			val, err := time.Parse(time.RFC3339, value)
-			if err != nil {
+			if val, err := time.Parse(time.RFC3339, value); err == nil {
+				result[fieldName] = val.UTC()
+			} else if val, err = time.Parse("2006-01-02 15:04:05.9", value); err != nil {
+				result[fieldName] = val.UTC()
+			} else {
 				return nil, fmt.Errorf("error parsing timestamp %s for field %s: %w", value, fieldName, err)
 			}
-			result[fieldName] = val
 		case models.Bool:
 			val, err := strconv.ParseBool(value)
 			if err != nil {
