@@ -78,17 +78,15 @@ func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObj
 }
 
 func NewParser() *Parser {
-	validators := fieldParser{
+	parsers := fieldParser{
 		models.Timestamp: func(result gjson.Result) (any, error) {
-			t, err1 := time.Parse(time.RFC3339, result.String())
-			if err1 == nil {
+			if t, err := time.Parse(time.RFC3339, result.String()); err == nil {
 				return t.UTC(), nil
 			}
-			t, err2 := time.Parse("2006-01-02 15:04:05.9", result.String())
-			if err2 != nil {
-				return nil, fmt.Errorf("%w: expected format \"YYYY-MM-DD hh:mm:ss[+optional decimals]\" or \"YYYY-MM-DDThh:mm:ss[+optional decimals]Z\", got \"%s\"", errIsInvalidTimestamp, result.String())
+			if t, err := time.Parse("2006-01-02 15:04:05.9", result.String()); err == nil {
+				return t.UTC(), nil
 			}
-			return t.UTC(), nil
+			return nil, fmt.Errorf("%w: expected format \"YYYY-MM-DD hh:mm:ss[+optional decimals]\" or \"YYYY-MM-DDThh:mm:ss[+optional decimals]Z\", got \"%s\"", errIsInvalidTimestamp, result.String())
 		},
 		models.Int: func(result gjson.Result) (any, error) {
 			i, err := strconv.ParseInt(result.Raw, 10, 64)
@@ -119,6 +117,6 @@ func NewParser() *Parser {
 	}
 
 	return &Parser{
-		parsers: validators,
+		parsers: parsers,
 	}
 }
