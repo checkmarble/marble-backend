@@ -24,7 +24,7 @@ func (f ArithmeticDivide) Evaluate(ctx context.Context, arguments ast.Arguments)
 	}
 
 	if right == 0.0 {
-		return MakeEvaluateError(errors.Wrap(models.DivisionByZeroError,
+		return MakeEvaluateError(errors.Wrap(models.ErrDivisionByZero,
 			"Zero division error in Evaluate function Divide"))
 	}
 

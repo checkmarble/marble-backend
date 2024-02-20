@@ -269,7 +269,7 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 				utils.LoggerFromContext(ctx),
 			)
 
-			if errors.Is(err, models.ScenarioTriggerConditionAndTriggerObjectMismatchError) {
+			if errors.Is(err, models.ErrScenarioTriggerConditionAndTriggerObjectMismatch) {
 				logger := utils.LoggerFromContext(ctx)
 				logger.InfoContext(ctx, fmt.Sprintf("Trigger condition and trigger object mismatch: %s",
 					err.Error()), "scenarioId", scenario.Id, "triggerObjectType",

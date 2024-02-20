@@ -11,6 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/pkg/errors"
 )
 
 type RuleUsecaseRepository interface {
@@ -64,8 +65,9 @@ func (usecase *RuleUsecase) CreateRule(ctx context.Context, ruleInput models.Cre
 			}
 			// check if iteration is draft
 			if scenarioAndIteration.Iteration.Version != nil {
-				return models.Rule{}, fmt.Errorf("can't update rule as iteration %s is not in draft %w",
-					scenarioAndIteration.Iteration.Id, models.ErrScenarioIterationNotDraft)
+				return models.Rule{}, errors.Wrap(
+					models.ErrScenarioIterationNotDraft,
+					fmt.Sprintf("can't update rule as iteration %s is not in draft", scenarioAndIteration.Iteration.Id))
 			}
 
 			ruleInput.Id = utils.NewPrimaryKey(organizationId)
@@ -122,8 +124,10 @@ func (usecase *RuleUsecase) UpdateRule(ctx context.Context, updateRule models.Up
 		}
 		// check if iteration is draft
 		if scenarioAndIteration.Iteration.Version != nil {
-			return fmt.Errorf("can't update rule as iteration %s is not in draft %w",
-				scenarioAndIteration.Iteration.Id, models.ErrScenarioIterationNotDraft)
+			return errors.Wrap(
+				models.ErrScenarioIterationNotDraft,
+				fmt.Sprintf("can't update rule as iteration %s is not in draft", scenarioAndIteration.Iteration.Id),
+			)
 		}
 
 		err = usecase.repository.UpdateRule(ctx, tx, updateRule)
