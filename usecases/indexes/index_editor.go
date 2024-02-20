@@ -80,6 +80,7 @@ func (editor ClientDbIndexEditor) GetIndexesToCreate(
 	}
 
 	toCreate, err = indexesToCreateFromScenarioIterations(
+		ctx,
 		[]models.ScenarioIteration{iterationToActivate.Iteration},
 		existingIndexes,
 	)
