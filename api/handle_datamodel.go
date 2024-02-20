@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -54,7 +55,7 @@ func (d *DataModelHandler) CreateTable(c *gin.Context) {
 
 	var input createTableInput
 	if err := json.NewDecoder(c.Request.Body).Decode(&input); err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		presentError(c, errors.Wrap(models.BadParameterError, err.Error()))
 		return
 	}
 
@@ -70,7 +71,7 @@ func (d *DataModelHandler) CreateTable(c *gin.Context) {
 func (d *DataModelHandler) UpdateDataModelTable(c *gin.Context) {
 	var input createFieldInput
 	if err := json.NewDecoder(c.Request.Body).Decode(&input); err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		presentError(c, errors.Wrap(models.BadParameterError, err.Error()))
 		return
 	}
 	tableID := c.Param("tableID")
@@ -98,7 +99,7 @@ func (d *DataModelHandler) CreateField(c *gin.Context) {
 
 	var input createFieldInput
 	if err := json.NewDecoder(c.Request.Body).Decode(&input); err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		presentError(c, errors.Wrap(models.BadParameterError, err.Error()))
 		return
 	}
 
@@ -159,7 +160,7 @@ func (d *DataModelHandler) CreateLink(c *gin.Context) {
 
 	var input createLinkInput
 	if err := json.NewDecoder(c.Request.Body).Decode(&input); err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		presentError(c, errors.Wrap(models.BadParameterError, err.Error()))
 		return
 	}
 
