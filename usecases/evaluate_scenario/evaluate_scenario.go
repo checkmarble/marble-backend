@@ -25,9 +25,9 @@ import (
 const MAX_CONCURRENT_RULE_EXECUTIONS = 5
 
 type ScenarioEvaluationParameters struct {
-	Scenario  models.Scenario
-	Payload   models.ClientObject
-	DataModel models.DataModel
+	Scenario     models.Scenario
+	ClientObject models.ClientObject
+	DataModel    models.DataModel
 }
 
 type EvalScenarioRepository interface {
@@ -85,13 +85,13 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters,
 	}
 
 	// Check the scenario & trigger_object's types
-	if params.Scenario.TriggerObjectType != string(params.Payload.TableName) {
+	if params.Scenario.TriggerObjectType != string(params.ClientObject.TableName) {
 		return models.ScenarioExecution{}, models.ScenarioTriggerTypeAndTiggerObjectTypeMismatchError
 	}
 
 	dataAccessor := DataAccessor{
 		DataModel:                  params.DataModel,
-		Payload:                    params.Payload,
+		ClientObject:               params.ClientObject,
 		executorFactory:            repositories.ExecutorFactory,
 		organizationId:             params.Scenario.OrganizationId,
 		ingestedDataReadRepository: repositories.IngestedDataReadRepository,
@@ -103,7 +103,7 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters,
 		repositories,
 		publishedVersion.Body.TriggerConditionAstExpression,
 		dataAccessor.organizationId,
-		dataAccessor.Payload,
+		dataAccessor.ClientObject,
 		params.DataModel,
 	)
 
@@ -175,7 +175,7 @@ func evalScenarioRule(ctx context.Context, repositories ScenarioEvaluationReposi
 		ctx,
 		*rule.FormulaAstExpression,
 		dataAccessor.organizationId,
-		dataAccessor.Payload,
+		dataAccessor.ClientObject,
 		dataModel,
 	)
 

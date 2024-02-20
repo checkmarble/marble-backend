@@ -137,14 +137,14 @@ func (validator *ValidateScenarioIterationImpl) makeDryRunEnvironment(ctx contex
 		}
 	}
 
-	payload := models.ClientObject{
+	clientObject := models.ClientObject{
 		TableName: table.Name,
 		Data:      evaluate.DryRunPayload(table),
 	}
 
 	env := validator.AstEvaluationEnvironmentFactory(ast_eval.EvaluationEnvironmentFactoryParams{
 		OrganizationId:                organizationId,
-		Payload:                       payload,
+		ClientObject:                  clientObject,
 		DataModel:                     dataModel,
 		DatabaseAccessReturnFakeValue: true,
 	})

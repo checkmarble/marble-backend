@@ -56,7 +56,7 @@ func TestIngestedDataGetDbFieldWithoutJoin(t *testing.T) {
 		Path:             path,
 		FieldName:        utils.DummyFieldNameForInt,
 		DataModel:        utils.GetDummyDataModel(),
-		Payload: models.ClientObject{
+		ClientObject: models.ClientObject{
 			TableName: utils.DummyTableNameFirst,
 			Data:      map[string]any{string(utils.DummyFieldNameId): string(utils.DummyFieldNameId)},
 		},
@@ -82,7 +82,7 @@ func TestIngestedDataGetDbFieldWithJoin(t *testing.T) {
 		Path:             path,
 		FieldName:        utils.DummyFieldNameForInt,
 		DataModel:        utils.GetDummyDataModel(),
-		Payload: models.ClientObject{
+		ClientObject: models.ClientObject{
 			TableName: utils.DummyTableNameFirst,
 			Data:      map[string]any{string(utils.DummyFieldNameId): string(utils.DummyFieldNameId)},
 		},

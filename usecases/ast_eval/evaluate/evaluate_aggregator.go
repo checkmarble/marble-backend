@@ -16,7 +16,7 @@ import (
 type AggregatorEvaluator struct {
 	OrganizationId             string
 	DataModel                  models.DataModel
-	Payload                    models.ClientObject
+	ClientObject               models.ClientObject
 	ExecutorFactory            executor_factory.ExecutorFactory
 	IngestedDataReadRepository repositories.IngestedDataReadRepository
 	ReturnFakeValue            bool

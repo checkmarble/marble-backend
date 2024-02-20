@@ -256,9 +256,9 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 			scenarioExecution, err := evaluate_scenario.EvalScenario(
 				ctx,
 				evaluate_scenario.ScenarioEvaluationParameters{
-					Scenario:  scenario,
-					Payload:   object,
-					DataModel: dataModel,
+					Scenario:     scenario,
+					ClientObject: object,
+					DataModel:    dataModel,
 				},
 				evaluate_scenario.ScenarioEvaluationRepositories{
 					EvalScenarioRepository:     usecase.Repository,

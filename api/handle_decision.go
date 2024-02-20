@@ -129,7 +129,7 @@ func (api *API) handlePostDecision(c *gin.Context) {
 		c.Request.Context(),
 		models.CreateDecisionInput{
 			ScenarioId:     requestData.ScenarioId,
-			Payload:        payload,
+			ClientObject:   payload,
 			OrganizationId: organizationId,
 		},
 		logger,

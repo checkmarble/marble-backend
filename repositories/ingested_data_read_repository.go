@@ -55,7 +55,7 @@ func createQueryDbForField(ctx context.Context, exec Executor, readParams models
 			readParams.Path[0], models.NotFoundError)
 	}
 
-	firstTableObjectId, err := getFirstTableObjectIdFromPayload(readParams.Payload, link.ChildFieldName)
+	firstTableObjectId, err := getFirstTableObjectIdFromPayload(readParams.ClientObject, link.ChildFieldName)
 	if err != nil {
 		return squirrel.SelectBuilder{}, fmt.Errorf(
 			"error while getting first path table object id from payload: %w", err)

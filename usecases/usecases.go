@@ -103,7 +103,7 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 		evaluate.DatabaseAccess{
 			OrganizationId:             params.OrganizationId,
 			DataModel:                  params.DataModel,
-			Payload:                    params.Payload,
+			ClientObject:               params.ClientObject,
 			ExecutorFactory:            usecases.NewExecutorFactory(),
 			IngestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
 			ReturnFakeValue:            params.DatabaseAccessReturnFakeValue,
@@ -111,12 +111,12 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 	)
 
 	environment.AddEvaluator(ast.FUNC_PAYLOAD,
-		evaluate.NewPayload(ast.FUNC_PAYLOAD, params.Payload))
+		evaluate.NewPayload(ast.FUNC_PAYLOAD, params.ClientObject))
 
 	environment.AddEvaluator(ast.FUNC_AGGREGATOR, evaluate.AggregatorEvaluator{
 		OrganizationId:             params.OrganizationId,
 		DataModel:                  params.DataModel,
-		Payload:                    params.Payload,
+		ClientObject:               params.ClientObject,
 		ExecutorFactory:            usecases.NewExecutorFactory(),
 		IngestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
 		ReturnFakeValue:            params.DatabaseAccessReturnFakeValue,

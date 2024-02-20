@@ -19,7 +19,7 @@ func (evaluator *EvaluateRuleAstExpression) EvaluateRuleAstExpression(ctx contex
 ) (bool, error) {
 	environment := evaluator.AstEvaluationEnvironmentFactory(EvaluationEnvironmentFactoryParams{
 		OrganizationId:                organizationId,
-		Payload:                       payload,
+		ClientObject:                  payload,
 		DataModel:                     dataModel,
 		DatabaseAccessReturnFakeValue: false,
 	})

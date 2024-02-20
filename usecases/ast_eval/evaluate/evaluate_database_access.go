@@ -15,7 +15,7 @@ import (
 type DatabaseAccess struct {
 	OrganizationId             string
 	DataModel                  models.DataModel
-	Payload                    models.ClientObject
+	ClientObject               models.ClientObject
 	ExecutorFactory            executor_factory.ExecutorFactory
 	IngestedDataReadRepository repositories.IngestedDataReadRepository
 	ReturnFakeValue            bool
@@ -83,6 +83,6 @@ func (d DatabaseAccess) getDbField(ctx context.Context, tableName models.TableNa
 		Path:             models.ToLinkNames(path),
 		FieldName:        models.FieldName(fieldName),
 		DataModel:        d.DataModel,
-		Payload:          d.Payload,
+		ClientObject:     d.ClientObject,
 	})
 }
