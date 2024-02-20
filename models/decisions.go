@@ -49,7 +49,7 @@ func OutcomeFrom(s string) Outcome {
 type CreateDecisionInput struct {
 	OrganizationId string
 	ScenarioId     string
-	Payload        ClientObject
+	ClientObject   ClientObject
 }
 
 type DecisionFilters struct {

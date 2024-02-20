@@ -10,7 +10,7 @@ import (
 
 type DataAccessor struct {
 	DataModel                  models.DataModel
-	Payload                    models.ClientObject
+	ClientObject               models.ClientObject
 	executorFactory            executor_factory.ExecutorFactory
 	organizationId             string
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
@@ -29,6 +29,6 @@ func (d *DataAccessor) GetDbField(ctx context.Context, triggerTableName string, 
 			Path:             models.ToLinkNames(path),
 			FieldName:        models.FieldName(fieldName),
 			DataModel:        d.DataModel,
-			Payload:          d.Payload,
+			ClientObject:     d.ClientObject,
 		})
 }

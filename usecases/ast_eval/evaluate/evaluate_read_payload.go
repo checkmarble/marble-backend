@@ -11,14 +11,14 @@ import (
 )
 
 type Payload struct {
-	Function ast.Function
-	Payload  models.ClientObject
+	Function     ast.Function
+	ClientObject models.ClientObject
 }
 
 func NewPayload(f ast.Function, payload models.ClientObject) Payload {
 	return Payload{
-		Function: ast.FUNC_PAYLOAD,
-		Payload:  payload,
+		Function:     ast.FUNC_PAYLOAD,
+		ClientObject: payload,
 	}
 }
 
@@ -28,7 +28,7 @@ func (p Payload) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []
 		return nil, MakeAdaptedArgsErrors([]error{err})
 	}
 
-	value, ok := p.Payload.Data[payloadFieldName]
+	value, ok := p.ClientObject.Data[payloadFieldName]
 	if !ok {
 		return MakeEvaluateError(
 			errors.Wrap(

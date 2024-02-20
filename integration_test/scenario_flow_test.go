@@ -525,7 +525,7 @@ func createAndTestDecision(t *testing.T, transactionPayloadJson []byte, table mo
 		usecasesWithCreds.Context,
 		models.CreateDecisionInput{
 			ScenarioId:     scenarioId,
-			Payload:        transactionPayload,
+			ClientObject:   transactionPayload,
 			OrganizationId: organizationId,
 		},
 		logger,

@@ -5,7 +5,7 @@ type DbFieldReadParams struct {
 	Path             []LinkName
 	FieldName        FieldName
 	DataModel        DataModel
-	Payload          ClientObject
+	ClientObject     ClientObject
 }
 
 type ClientObject struct {
