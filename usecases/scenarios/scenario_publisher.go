@@ -66,7 +66,10 @@ func (publisher ScenarioPublisher) PublishOrUnpublishIteration(
 
 			if err := ScenarioValidationToError(publisher.ValidateScenarioIteration.Validate(
 				ctx, scenarioAndIteration)); err != nil {
-				return nil, fmt.Errorf("can't validate scenario %w %w", err, models.BadParameterError)
+				return nil, errors.Wrap(
+					models.ErrScenarioIterationNotValid,
+					fmt.Sprintf("Error validating scenario iteration %s: %s", iterationId, err.Error()),
+				)
 			}
 
 			if sps, err := publisher.unpublishOldIteration(ctx, exec, organizationId,

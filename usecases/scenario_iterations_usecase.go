@@ -160,7 +160,10 @@ func (usecase *ScenarioIterationUsecase) UpdateScenarioIteration(ctx context.Con
 		}
 	}
 	if scenarioAndIteration.Iteration.Version != nil {
-		return iteration, fmt.Errorf("iteration is not a draft: %w", models.ErrScenarioIterationNotDraft)
+		return iteration, errors.Wrap(
+			models.ErrScenarioIterationNotDraft,
+			fmt.Sprintf("iteration %s is not a draft", scenarioAndIteration.Iteration.Id),
+		)
 	}
 	return usecase.repository.UpdateScenarioIteration(ctx, exec, scenarioIteration)
 }
@@ -268,7 +271,7 @@ func (usecase *ScenarioIterationUsecase) CommitScenarioIterationVersion(
 			if scenarioAndIteration.Iteration.Version != nil {
 				return iteration, errors.Wrap(
 					models.ErrScenarioIterationNotDraft,
-					"input scenario iteration is a draft in CommitScenarioIterationVersion",
+					fmt.Sprintf("input scenario iteration %s is a draft in CommitScenarioIterationVersion", iterationId),
 				)
 			}
 			validation := usecase.validateScenarioIteration.Validate(ctx, scenarioAndIteration)

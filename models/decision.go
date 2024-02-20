@@ -75,13 +75,13 @@ func AdaptRuleExecutionError(err error) RuleExecutionError {
 	switch {
 	case err == nil:
 		return NoError
-	case errors.Is(err, NullFieldReadError):
+	case errors.Is(err, ErrNullFieldRead):
 		return NullFieldRead
-	case errors.Is(err, NoRowsReadError):
+	case errors.Is(err, ErrNoRowsRead):
 		return NoRowsRead
-	case errors.Is(err, DivisionByZeroError):
+	case errors.Is(err, ErrDivisionByZero):
 		return DivisionByZero
-	case errors.Is(err, PayloadFieldNotFoundError):
+	case errors.Is(err, ErrPayloadFieldNotFound):
 		return PayloadFieldNotFound
 	default:
 		return Unknown

@@ -120,7 +120,7 @@ func (a AggregatorEvaluator) defaultValueForAggregator(aggregator ast.Aggregator
 	case ast.AGGREGATOR_COUNT, ast.AGGREGATOR_COUNT_DISTINCT:
 		return 0, nil
 	case ast.AGGREGATOR_AVG, ast.AGGREGATOR_MAX, ast.AGGREGATOR_MIN:
-		return MakeEvaluateError(errors.Wrap(models.NullFieldReadError,
+		return MakeEvaluateError(errors.Wrap(models.ErrNullFieldRead,
 			fmt.Sprintf("aggregation %s returned null", aggregator)))
 	default:
 		return MakeEvaluateError(errors.Wrap(models.ErrRuntimeExpression,

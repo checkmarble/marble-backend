@@ -82,7 +82,8 @@ func SqlToRow[Model any](ctx context.Context, exec Executor, s squirrel.Sqlizer,
 		return zeroModel, err
 	}
 	if model == nil {
-		return zeroModel, errors.Wrap(models.NotFoundError,
+		return zeroModel, errors.Wrap(
+			models.NotFoundError,
 			fmt.Sprintf("found no object of type %T", zeroModel))
 	}
 	return *model, nil

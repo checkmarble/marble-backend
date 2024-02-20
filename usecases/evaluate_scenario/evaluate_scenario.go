@@ -54,7 +54,7 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters,
 			logger.ErrorContext(ctx, "recovered from panic during Eval. stacktrace from panic: ")
 			logger.ErrorContext(ctx, string(debug.Stack()))
 
-			err = models.PanicInScenarioEvalutionError
+			err = models.ErrPanicInScenarioEvalution
 			se = models.ScenarioExecution{}
 		}
 	}()
@@ -67,7 +67,7 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters,
 
 	// If the scenario has no live version, don't try to Eval() it, return early
 	if params.Scenario.LiveVersionID == nil {
-		return models.ScenarioExecution{}, errors.Wrap(models.ScenarioHasNoLiveVersionError,
+		return models.ScenarioExecution{}, errors.Wrap(models.ErrScenarioHasNoLiveVersion,
 			"scenario has no live version in EvalScenario")
 	}
 
@@ -86,7 +86,7 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters,
 
 	// Check the scenario & trigger_object's types
 	if params.Scenario.TriggerObjectType != string(params.Payload.ReadTableName()) {
-		return models.ScenarioExecution{}, models.ScenarioTriggerTypeAndTiggerObjectTypeMismatchError
+		return models.ScenarioExecution{}, models.ErrScenarioTriggerTypeAndTiggerObjectTypeMismatch
 	}
 
 	dataAccessor := DataAccessor{
@@ -114,7 +114,7 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters,
 	}
 	if !triggerPassed || isAuthorizedError {
 		return models.ScenarioExecution{}, errors.Wrap(
-			models.ScenarioTriggerConditionAndTriggerObjectMismatchError,
+			models.ErrScenarioTriggerConditionAndTriggerObjectMismatch,
 			"scenario trigger object does not match payload in EvalScenario")
 	}
 

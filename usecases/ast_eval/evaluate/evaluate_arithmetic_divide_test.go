@@ -28,6 +28,6 @@ func TestNewArithmetic_divide_int(t *testing.T) {
 func TestNewArithmeticFunction_float_divide_by_zero(t *testing.T) {
 	_, errs := ArithmeticDivide{}.Evaluate(context.TODO(), ast.Arguments{Args: []any{1.0, 0.0}})
 	if assert.Len(t, errs, 1) {
-		assert.ErrorIs(t, errs[0], models.DivisionByZeroError)
+		assert.ErrorIs(t, errs[0], models.ErrDivisionByZero)
 	}
 }

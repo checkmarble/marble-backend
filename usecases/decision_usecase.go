@@ -2,10 +2,11 @@ package usecases
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
+
+	"github.com/cockroachdb/errors"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -170,20 +171,20 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context,
 		return models.Decision{}, err
 	}
 	scenario, err := usecase.repository.GetScenarioById(ctx, exec, input.ScenarioId)
-	if errors.Is(err, models.NotFoundInRepositoryError) {
-		return models.Decision{}, fmt.Errorf("scenario not found: %w", models.NotFoundError)
+	if errors.Is(err, models.NotFoundError) {
+		return models.Decision{}, errors.Wrap(err, "scenario not found")
 	} else if err != nil {
-		return models.Decision{}, fmt.Errorf("error getting scenario: %w", err)
+		return models.Decision{}, errors.Wrap(err, "error getting scenario")
 	}
 	if err := usecase.enforceSecurityScenario.ReadScenario(scenario); err != nil {
 		return models.Decision{}, err
 	}
 
 	dm, err := usecase.datamodelRepository.GetDataModel(ctx, exec, input.OrganizationId, false)
-	if errors.Is(err, models.NotFoundInRepositoryError) {
-		return models.Decision{}, fmt.Errorf("data model not found: %w", models.NotFoundError)
+	if errors.Is(err, models.NotFoundError) {
+		return models.Decision{}, errors.Wrap(models.NotFoundError, "data model not found")
 	} else if err != nil {
-		return models.Decision{}, fmt.Errorf("error getting data model: %w", err)
+		return models.Decision{}, errors.Wrap(err, "error getting data model")
 	}
 
 	evaluationParameters := evaluate_scenario.ScenarioEvaluationParameters{

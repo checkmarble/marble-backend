@@ -49,7 +49,7 @@ func (api *API) CreateRule(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewRuleUsecase()
 	rule, err := usecase.CreateRule(c.Request.Context(), createInputRule)
-	if presentError(c, err) {
+	if handleExpectedIterationError(c, err) || presentError(c, err) {
 		return
 	}
 
@@ -98,7 +98,7 @@ func (api *API) UpdateRule(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewRuleUsecase()
 	updatedRule, err := usecase.UpdateRule(c.Request.Context(), updateRuleInput)
-	if presentError(c, err) {
+	if handleExpectedIterationError(c, err) || presentError(c, err) {
 		return
 	}
 

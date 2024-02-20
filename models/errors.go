@@ -1,59 +1,77 @@
 package models
 
 import (
-	"fmt"
-
 	"github.com/cockroachdb/errors"
 )
 
-// BadParameterError is rendered with the http status code 400
-var BadParameterError = errors.New("bad parameter")
-
-// UnAuthorizedError is rendered with the http status code 401
-var UnAuthorizedError = errors.New("unauthorized")
-
-var ErrUnknownUser = errors.New("unknown user")
-
-// ForbiddenError is rendered with the http status code 403
-var ForbiddenError = errors.New("forbidden")
-
-// NotFoundError is rendered with the http status code 404
-var NotFoundError = errors.New("not found")
-
-// ConflictError is rendered with the http status code 409
-var ConflictError = errors.New("duplicate value")
-
-var ErrIgnoreRollBackError = errors.New("ignore rollback error")
-
+// Base errors, related to default API status codes
 var (
-	PanicInScenarioEvalutionError = errors.New("panic during scenario evaluation")
-	NotFoundInRepositoryError     = fmt.Errorf("item not found in repository: %w", NotFoundError)
+	// BadParameterError is rendered with the http status code 400
+	BadParameterError = errors.New("bad parameter")
+
+	// UnAuthorizedError is rendered with the http status code 401
+	UnAuthorizedError = errors.New("unauthorized")
+
+	// ForbiddenError is rendered with the http status code 403
+	ForbiddenError = errors.New("forbidden")
+
+	// NotFoundError is rendered with the http status code 404
+	NotFoundError = errors.New("not found")
+
+	// ConflictError is rendered with the http status code 409
+	ConflictError = errors.New("duplicate value")
 )
 
+// Authentication related errors
+var ErrUnknownUser = errors.Wrap(NotFoundError, "unknown user")
+
+// DB related errors
 var (
-	ErrScenarioIterationNotDraft                          = fmt.Errorf("scenario iteration is not a draft %w", BadParameterError)
-	ErrScenarioIterationIsDraft                           = errors.Wrap(BadParameterError, "scenario iteration version is nil")
-	ErrScenarioIterationNotValid                          = fmt.Errorf("scenario iteration is not valid for publication %w", BadParameterError)
-	ScenarioHasNoLiveVersionError                         = fmt.Errorf("scenario has no live version %w", BadParameterError)
-	ScenarioTriggerTypeAndTiggerObjectTypeMismatchError   = fmt.Errorf("scenario's trigger_type and provided trigger_object type are different %w", BadParameterError)
-	ScenarioTriggerConditionAndTriggerObjectMismatchError = fmt.Errorf("trigger_object does not match the scenario's trigger conditions %w", BadParameterError)
+	ErrIgnoreRollBackError = errors.New("ignore rollback error")
 )
 
+// Scenario status related errors
+var (
+	// iteration edition
+	ErrScenarioIterationNotDraft = errors.Wrap(BadParameterError, "scenario iteration is not a draft")
+
+	// publication
+	ErrScenarioIterationIsDraft = errors.Wrap(BadParameterError,
+		"scenario iteration version a draft and cannot published")
+	ErrScenarioIterationRequiresPreparation = errors.Wrap(
+		BadParameterError,
+		"scenario iteration requires preparation")
+	ErrScenarioIterationNotValid = errors.Wrap(
+		BadParameterError,
+		"scenario iteration is not valid for publication")
+	ErrDataPreparationServiceUnavailable = errors.Wrap(
+		ConflictError,
+		"data preparation service is unavailable: an index is being created in the client db schema")
+
+	// execution
+	ErrScenarioHasNoLiveVersion                         = errors.Wrap(BadParameterError, "scenario has no live version")
+	ErrScenarioTriggerTypeAndTiggerObjectTypeMismatch   = errors.Wrap(BadParameterError, "scenario's trigger_type and provided trigger_object type are different")
+	ErrScenarioTriggerConditionAndTriggerObjectMismatch = errors.Wrap(BadParameterError, "trigger_object does not match the scenario's trigger conditions")
+	ErrPanicInScenarioEvalution                         = errors.New("panic during scenario evaluation")
+)
+
+// ingestion and decision creating payload related errors
 var FormatValidationError = errors.New("The input object is not valid")
 
 // Rule execution related errors
-var ErrRuntimeExpression = errors.New("expression runtime error")
-
 var (
-	NullFieldReadError        = fmt.Errorf("Null field read: %w", ErrRuntimeExpression)
-	NoRowsReadError           = fmt.Errorf("No rows read %w", ErrRuntimeExpression)
-	DivisionByZeroError       = fmt.Errorf("Division by zero %w", ErrRuntimeExpression)
-	PayloadFieldNotFoundError = fmt.Errorf("Payload field not found %w", ErrRuntimeExpression)
+	ErrRuntimeExpression    = errors.New("expression runtime error")
+	ErrNullFieldRead        = errors.Wrap(ErrRuntimeExpression, "Null field read")
+	ErrNoRowsRead           = errors.Wrap(ErrRuntimeExpression, "No rows read")
+	ErrDivisionByZero       = errors.Wrap(ErrRuntimeExpression, "Division by zero")
+	ErrPayloadFieldNotFound = errors.Wrap(ErrRuntimeExpression, "Payload field not found")
 )
 
 var RuleExecutionAuthorizedErrors = []error{
-	NullFieldReadError, NoRowsReadError,
-	DivisionByZeroError, PayloadFieldNotFoundError,
+	ErrNullFieldRead,
+	ErrNoRowsRead,
+	ErrDivisionByZero,
+	ErrPayloadFieldNotFound,
 }
 
 func IsAuthorizedError(err error) bool {

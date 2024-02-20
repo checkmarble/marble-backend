@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -138,9 +137,6 @@ func (api *API) GetScenarioIteration(c *gin.Context) {
 }
 
 func (api *API) UpdateScenarioIteration(c *gin.Context) {
-	ctx := c.Request.Context()
-	logger := utils.LoggerFromContext(ctx)
-
 	organizationId, err := utils.OrganizationIdFromRequest(c.Request)
 	if presentError(c, err) {
 		return
@@ -152,9 +148,6 @@ func (api *API) UpdateScenarioIteration(c *gin.Context) {
 		c.Status(http.StatusBadRequest)
 		return
 	}
-
-	logger = logger.With(slog.String("scenarioIterationId", iterationID),
-		slog.String("organizationId", organizationId))
 
 	updateScenarioIterationInput := models.UpdateScenarioIterationInput{
 		Id: iterationID,
@@ -176,14 +169,8 @@ func (api *API) UpdateScenarioIteration(c *gin.Context) {
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewScenarioIterationUsecase()
-	updatedSI, err := usecase.UpdateScenarioIteration(ctx, organizationId, updateScenarioIterationInput)
-	if errors.Is(err, models.ErrScenarioIterationNotDraft) {
-		logger.WarnContext(ctx, "Cannot update scenario iteration that is not in draft state: \n"+err.Error())
-		http.Error(c.Writer, "", http.StatusForbidden)
-		return
-	}
-
-	if presentError(c, err) {
+	updatedSI, err := usecase.UpdateScenarioIteration(c.Request.Context(), organizationId, updateScenarioIterationInput)
+	if handleExpectedIterationError(c, err) || presentError(c, err) {
 		return
 	}
 
@@ -240,7 +227,7 @@ func (api *API) CommitScenarioIterationVersion(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewScenarioIterationUsecase()
 	iteration, err := usecase.CommitScenarioIterationVersion(c.Request.Context(), scenarioIterationID)
-	if presentError(c, err) {
+	if handleExpectedIterationError(c, err) || presentError(c, err) {
 		return
 	}
 
@@ -252,4 +239,21 @@ func (api *API) CommitScenarioIterationVersion(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"iteration": iterationDto,
 	})
+}
+
+func handleExpectedIterationError(c *gin.Context, err error) bool {
+	if err == nil {
+		return false
+	}
+	logger := utils.LoggerFromContext(c.Request.Context())
+	logger.InfoContext(c.Request.Context(), fmt.Sprintf("error: %v", err))
+	if errors.Is(err, models.ErrScenarioIterationNotDraft) {
+		c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
+			Message:   "Only a draft iteration can be committed or edited",
+			ErrorCode: dto.CanOnlyEditDraft,
+		})
+		return true
+	}
+
+	return false
 }
