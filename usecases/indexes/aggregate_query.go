@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func IndexesToCreateFromScenarioIterations(
+func indexesToCreateFromScenarioIterations(
 	scenarioIterations []models.ScenarioIteration,
 	existingIndexes []models.ConcreteIndex,
 ) ([]models.ConcreteIndex, error) {
