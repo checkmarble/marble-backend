@@ -37,6 +37,9 @@ type ExecutorFactory struct {
 
 func (e *ExecutorFactory) NewClientDbExecutor(ctx context.Context, organizationId string) (repositories.Executor, error) {
 	args := e.Called(ctx, organizationId)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
 	return args.Get(0).(repositories.Executor), args.Error(1)
 }
 

@@ -7,6 +7,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
+	"github.com/checkmarble/marble-backend/usecases/indexes"
 	"github.com/checkmarble/marble-backend/usecases/scheduledexecution"
 	"github.com/checkmarble/marble-backend/usecases/security"
 )
@@ -149,9 +150,18 @@ func (usecases *UsecasesWithCreds) NewScenarioPublicationUsecase() ScenarioPubli
 		enforceSecurity:                usecases.NewEnforceScenarioSecurity(),
 		scenarioFetcher:                usecases.NewScenarioFetcher(),
 		scenarioPublisher:              usecases.NewScenarioPublisher(),
-		scenarioListRepository:         &usecases.Repositories.MarbleDbRepository,
-		ingestedDataIndexesRepository:  &usecases.Repositories.ClientDbRepository,
+		clientDbIndexEditor:            usecases.NewClientDbIndexEditor(),
 	}
+}
+
+func (usecases *UsecasesWithCreds) NewClientDbIndexEditor() clientDbIndexEditor {
+	return indexes.NewClientDbIndexEditor(
+		usecases.NewExecutorFactory(),
+		usecases.NewScenarioFetcher(),
+		&usecases.Repositories.ClientDbRepository,
+		usecases.NewEnforceScenarioSecurity(),
+		usecases.OrganizationIdOfContext,
+	)
 }
 
 func (usecases *UsecasesWithCreds) NewMarbleTokenUseCase() MarbleTokenUseCase {

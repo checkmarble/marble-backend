@@ -7,21 +7,10 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
-	"github.com/checkmarble/marble-backend/usecases/indexes"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 )
-
-type scenarioListRepository interface {
-	ListScenariosOfOrganization(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.Scenario, error)
-}
-
-type IngestedDataIndexesRepository interface {
-	ListAllValidIndexes(ctx context.Context, exec repositories.Executor) ([]models.ConcreteIndex, error)
-	CreateIndexesAsync(ctx context.Context, exec repositories.Executor, indexes []models.ConcreteIndex) (err error)
-	CountPendingIndexes(ctx context.Context, exec repositories.Executor) (int, error)
-}
 
 type ScenarioFetcher interface {
 	FetchScenarioAndIteration(
@@ -40,6 +29,17 @@ type ScenarioPublisher interface {
 	) ([]models.ScenarioPublication, error)
 }
 
+type clientDbIndexEditor interface {
+	GetIndexesToCreate(
+		ctx context.Context,
+		scenarioIterationId string,
+	) (toCreate []models.ConcreteIndex, numPending int, err error)
+	CreateIndexesAsync(
+		ctx context.Context,
+		indexes []models.ConcreteIndex,
+	) error
+}
+
 type ScenarioPublicationUsecase struct {
 	transactionFactory             executor_factory.TransactionFactory
 	executorFactory                executor_factory.ExecutorFactory
@@ -48,8 +48,7 @@ type ScenarioPublicationUsecase struct {
 	enforceSecurity                security.EnforceSecurityScenario
 	scenarioFetcher                ScenarioFetcher
 	scenarioPublisher              ScenarioPublisher
-	scenarioListRepository         scenarioListRepository
-	ingestedDataIndexesRepository  IngestedDataIndexesRepository
+	clientDbIndexEditor            clientDbIndexEditor
 }
 
 func (usecase *ScenarioPublicationUsecase) GetScenarioPublication(
@@ -91,6 +90,17 @@ func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(
 	ctx context.Context,
 	input models.PublishScenarioIterationInput,
 ) ([]models.ScenarioPublication, error) {
+	indexesToCreate, _, err := usecase.clientDbIndexEditor.GetIndexesToCreate(ctx, input.ScenarioIterationId)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error while fetching indexes to create in ExecuteScenarioPublicationAction")
+	}
+	if len(indexesToCreate) > 0 && input.PublicationAction == models.Publish {
+		return nil, errors.Wrap(
+			models.BadParameterError,
+			fmt.Sprintf("Cannot publish the scenario iteration: it requires data preparation to be run first for %d indexes", len(indexesToCreate)),
+		)
+	}
+
 	return executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
@@ -120,7 +130,7 @@ func (usecase *ScenarioPublicationUsecase) GetPublicationPreparationStatus(
 ) (status models.PublicationPreparationStatus, err error) {
 	logger := utils.LoggerFromContext(ctx)
 
-	indexesToCreate, numPending, err := usecase.getIndexesToCreate(ctx, scenarioIterationId)
+	indexesToCreate, numPending, err := usecase.clientDbIndexEditor.GetIndexesToCreate(ctx, scenarioIterationId)
 	if err != nil {
 		return status, errors.Wrap(err, "Error while fetching indexes to create in GetPublicationPreparationStatus")
 	}
@@ -145,9 +155,7 @@ func (usecase *ScenarioPublicationUsecase) StartPublicationPreparation(
 	ctx context.Context,
 	scenarioIterationId string,
 ) error {
-	logger := utils.LoggerFromContext(ctx)
-
-	indexesToCreate, numPending, err := usecase.getIndexesToCreate(ctx, scenarioIterationId)
+	indexesToCreate, numPending, err := usecase.clientDbIndexEditor.GetIndexesToCreate(ctx, scenarioIterationId)
 	if err != nil {
 		return errors.Wrap(err, "Error while fetching indexes to create in StartPublicationPreparation")
 	}
@@ -162,70 +170,5 @@ func (usecase *ScenarioPublicationUsecase) StartPublicationPreparation(
 			"There are still pending indexes in the schema")
 	}
 
-	organizationId, err := usecase.OrganizationIdOfContext()
-	if err != nil {
-		return err
-	}
-	db, err := usecase.executorFactory.NewClientDbExecutor(ctx, organizationId)
-	if err != nil {
-		return errors.Wrap(
-			err,
-			"Error while creating client schema executor in StartPublicationPreparation")
-	}
-	err = usecase.ingestedDataIndexesRepository.CreateIndexesAsync(ctx, db, indexesToCreate)
-	if err != nil {
-		return errors.Wrap(err, "Error while creating indexes in StartPublicationPreparation")
-	}
-	logger.InfoContext(
-		ctx,
-		fmt.Sprintf("%d indexes pending creation in: %+v\n", len(indexesToCreate), indexesToCreate), "org_id", organizationId,
-	)
-	return nil
-}
-
-func (usecase *ScenarioPublicationUsecase) getIndexesToCreate(
-	ctx context.Context,
-	scenarioIterationId string,
-) (toCreate []models.ConcreteIndex, numPending int, err error) {
-	exec := usecase.executorFactory.NewExecutor()
-	iterationToActivate, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, exec, scenarioIterationId)
-	if err != nil {
-		return toCreate, numPending, err
-	}
-	if err := usecase.enforceSecurity.PublishScenario(iterationToActivate.Scenario); err != nil {
-		return toCreate, numPending, err
-	}
-
-	organizationId, err := usecase.OrganizationIdOfContext()
-	if err != nil {
-		return toCreate, numPending, err
-	}
-	db, err := usecase.executorFactory.NewClientDbExecutor(ctx, organizationId)
-	if err != nil {
-		return toCreate, numPending, errors.Wrap(err,
-			"Error while creating client schema executor in CreateDatamodelIndexesForScenarioPublication")
-	}
-
-	existingIndexes, err := usecase.ingestedDataIndexesRepository.ListAllValidIndexes(ctx, db)
-	if err != nil {
-		return toCreate, numPending, errors.Wrap(err,
-			"Error while fetching existing indexes in CreateDatamodelIndexesForScenarioPublication")
-	}
-
-	toCreate, err = indexes.IndexesToCreateFromScenarioIterations(
-		[]models.ScenarioIteration{iterationToActivate.Iteration},
-		existingIndexes,
-	)
-	if err != nil {
-		return toCreate, numPending, errors.Wrap(err,
-			"Error while finding indexes to create from scenario iterations in CreateDatamodelIndexesForScenarioPublication")
-	}
-
-	numPending, err = usecase.ingestedDataIndexesRepository.CountPendingIndexes(ctx, db)
-	if err != nil {
-		return toCreate, numPending, errors.Wrap(err,
-			"Error while counting pending indexes in CreateDatamodelIndexesForScenarioPublication")
-	}
-
-	return
+	return usecase.clientDbIndexEditor.CreateIndexesAsync(ctx, indexesToCreate)
 }
