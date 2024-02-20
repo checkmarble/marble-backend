@@ -155,16 +155,6 @@ func asynchronouslyCreateIndexes(
 	}
 }
 
-func indexAlreadyExists(index models.ConcreteIndex, existingIndexes []pg_indexes.PGIndex) bool {
-	for _, existingIndex := range existingIndexes {
-		existing := existingIndex.AdaptConcreteIndex()
-		if index.Equal(existing) {
-			return true
-		}
-	}
-	return false
-}
-
 func createIndexSQL(ctx context.Context, exec Executor, index models.ConcreteIndex) error {
 	logger := utils.LoggerFromContext(ctx)
 	qualifiedTableName := tableNameWithSchema(exec, index.TableName)
@@ -193,7 +183,7 @@ func createIndexSQL(ctx context.Context, exec Executor, index models.ConcreteInd
 			sql,
 		)
 		logger.ErrorContext(ctx, errMessage)
-		logger.ErrorContext(ctx, fmt.Sprintf("%+v", err))
+		utils.LogAndReportSentryError(ctx, err)
 		return errors.Wrap(err, errMessage)
 	}
 	logger.InfoContext(ctx, fmt.Sprintf(
