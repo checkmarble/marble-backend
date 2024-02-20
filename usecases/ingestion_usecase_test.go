@@ -37,6 +37,11 @@ func TestParseStringValuesToMap(t *testing.T) {
 			columns: []string{"object_id", "updated_at", "value", "status"},
 			values:  []string{"1", "2020-01-01T00:00:00Z", "", ""},
 		},
+		{
+			name:    "error case with the other format updated_at (missing T & Z)",
+			columns: []string{"object_id", "updated_at", "value", "status"},
+			values:  []string{"1234", "2023-01-01 00:00:00", "", ""},
+		},
 	}
 
 	for _, c := range OKcases {
@@ -58,9 +63,9 @@ func TestParseStringValuesToMap(t *testing.T) {
 			values:  []string{"1234", "", "", ""},
 		},
 		{
-			name:    "error case with bad format updated_at (missing T & Z)",
+			name:    "error case with bad format updated_at",
 			columns: []string{"object_id", "updated_at", "value", "status"},
-			values:  []string{"1234", "2023-01-01 00:00:00", "", ""},
+			values:  []string{"1234", "2023-01-01", "", ""},
 		},
 		{
 			name:    "error case with bad format value",
