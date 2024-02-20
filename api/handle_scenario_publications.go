@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -64,9 +65,7 @@ func (api *API) CreateScenarioPublication(c *gin.Context) {
 			ScenarioIterationId: data.ScenarioIterationId,
 			PublicationAction:   models.PublicationActionFrom(data.PublicationAction),
 		})
-	if handleExpectedPublicationError(c, err) {
-		return
-	} else if presentError(c, err) {
+	if handleExpectedPublicationError(c, err) || presentError(c, err) {
 		return
 	}
 	c.JSON(http.StatusOK, pure_utils.Map(scenarioPublications, NewAPIScenarioPublication))
@@ -111,15 +110,42 @@ func (api *API) StartPublicationPreparation(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewScenarioPublicationUsecase()
 	err := usecase.StartPublicationPreparation(c.Request.Context(), data.ScenarioIterationId)
-	if presentError(c, err) {
+	if handleExpectedPublicationError(c, err) || presentError(c, err) {
 		return
 	}
 	c.Status(http.StatusAccepted)
 }
 
 func handleExpectedPublicationError(c *gin.Context, err error) bool {
+	if err == nil {
+		return false
+	}
+	logger := utils.LoggerFromContext(c.Request.Context())
+	logger.InfoContext(c.Request.Context(), fmt.Sprintf("error: %v", err))
+
 	if errors.Is(err, models.ErrScenarioIterationIsDraft) {
-		http.Error(c.Writer, "You cannot activate a draft iteration", http.StatusBadRequest)
+		c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
+			Message:   "You cannot activate a draft iteration",
+			ErrorCode: dto.CannotPublishDraft,
+		})
+		return true
+	} else if errors.Is(err, models.ErrScenarioIterationRequiresPreparation) {
+		c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
+			Message:   "You cannot activate the iteration: requires data preparation to be run",
+			ErrorCode: dto.CannotPublishRequiresPreparation,
+		})
+		return true
+	} else if errors.Is(err, models.ErrScenarioIterationNotValid) {
+		c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
+			Message:   "You cannot activate an invalid iteration",
+			ErrorCode: dto.ScenarioIterationInvalid,
+		})
+		return true
+	} else if errors.Is(err, models.ErrDataPreparationServiceUnavailable) {
+		c.JSON(http.StatusConflict, dto.APIErrorResponse{
+			Message:   "Data preparation service is currently busy",
+			ErrorCode: dto.DataPreparationServiceUnavailable,
+		})
 		return true
 	}
 	return false
