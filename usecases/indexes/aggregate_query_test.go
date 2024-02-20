@@ -1,6 +1,7 @@
 package indexes
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -248,7 +249,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 func TestAstNodeToQueryFamilies(t *testing.T) {
 	t.Run("empty node", func(t *testing.T) {
 		asserts := assert.New(t)
-		output, err := extractQueryFamiliesFromAst(ast.Node{})
+		output, err := extractQueryFamiliesFromAst(context.Background(), ast.Node{})
 		asserts.NoError(err)
 		asserts.Equal(0, output.Size())
 	})
@@ -294,7 +295,7 @@ func TestAstNodeToQueryFamilies(t *testing.T) {
 				},
 			},
 		}
-		output, err := extractQueryFamiliesFromAst(ast)
+		output, err := extractQueryFamiliesFromAst(context.Background(), ast)
 		asserts.NoError(err)
 		asserts.Equal(1, output.Size(), "There should be only 1 query family in the output set")
 		expected := set.NewHashSet[models.AggregateQueryFamily](0)
@@ -380,7 +381,7 @@ func TestAstNodeToQueryFamilies(t *testing.T) {
 				},
 			},
 		}
-		output, err := extractQueryFamiliesFromAst(ast)
+		output, err := extractQueryFamiliesFromAst(context.Background(), ast)
 		asserts.NoError(err)
 		asserts.Equal(3, output.Size(), "There should be 2 query families in the output set")
 		expected := set.NewHashSet[models.AggregateQueryFamily](0)

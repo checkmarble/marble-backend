@@ -52,6 +52,7 @@ var (
 	ErrScenarioHasNoLiveVersion                         = errors.Wrap(BadParameterError, "scenario has no live version")
 	ErrScenarioTriggerTypeAndTiggerObjectTypeMismatch   = errors.Wrap(BadParameterError, "scenario's trigger_type and provided trigger_object type are different")
 	ErrScenarioTriggerConditionAndTriggerObjectMismatch = errors.Wrap(BadParameterError, "trigger_object does not match the scenario's trigger conditions")
+	ErrInvalidAST                                       = errors.Wrap(BadParameterError, "invalid AST")
 	ErrPanicInScenarioEvalution                         = errors.New("panic during scenario evaluation")
 )
 

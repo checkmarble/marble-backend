@@ -1,27 +1,34 @@
 package indexes
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/hashicorp/go-set/v2"
 	"github.com/pkg/errors"
 )
 
 func indexesToCreateFromScenarioIterations(
+	ctx context.Context,
 	scenarioIterations []models.ScenarioIteration,
 	existingIndexes []models.ConcreteIndex,
 ) ([]models.ConcreteIndex, error) {
 	var asts []ast.Node
 	for _, i := range scenarioIterations {
-		asts = append(asts, *i.TriggerConditionAstExpression)
+		if i.TriggerConditionAstExpression != nil {
+			asts = append(asts, *i.TriggerConditionAstExpression)
+		}
 		for _, r := range i.Rules {
-			asts = append(asts, *r.FormulaAstExpression)
+			if r.FormulaAstExpression != nil {
+				asts = append(asts, *r.FormulaAstExpression)
+			}
 		}
 	}
 
-	queryFamilies, err := extractQueryFamiliesFromAstSlice(asts)
+	queryFamilies, err := extractQueryFamiliesFromAstSlice(ctx, asts)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error extracting query families from scenario iterations")
 	}
@@ -30,11 +37,11 @@ func indexesToCreateFromScenarioIterations(
 }
 
 // simple utility function using extractQueryFamiliesFromAst above
-func extractQueryFamiliesFromAstSlice(nodes []ast.Node) (*set.HashSet[models.AggregateQueryFamily, string], error) {
+func extractQueryFamiliesFromAstSlice(ctx context.Context, nodes []ast.Node) (*set.HashSet[models.AggregateQueryFamily, string], error) {
 	families := set.NewHashSet[models.AggregateQueryFamily, string](0)
 
 	for _, node := range nodes {
-		nodeFamilies, err := extractQueryFamiliesFromAst(node)
+		nodeFamilies, err := extractQueryFamiliesFromAst(ctx, node)
 		if err != nil {
 			return nil, errors.Wrap(err, "Error getting query families from node")
 		}
@@ -44,27 +51,31 @@ func extractQueryFamiliesFromAstSlice(nodes []ast.Node) (*set.HashSet[models.Agg
 	return families, nil
 }
 
-func extractQueryFamiliesFromAst(node ast.Node) (set.Collection[models.AggregateQueryFamily], error) {
+func extractQueryFamiliesFromAst(ctx context.Context, node ast.Node) (set.Collection[models.AggregateQueryFamily], error) {
+	logger := utils.LoggerFromContext(ctx)
 	families := set.NewHashSet[models.AggregateQueryFamily, string](0)
 
 	if node.Function == ast.FUNC_AGGREGATOR {
 		family, err := aggregationNodeToQueryFamily(node)
-		if err != nil {
+		if errors.Is(err, models.ErrInvalidAST) {
+			logger.InfoContext(ctx, "Invalid aggregation AST node in extractQueryFamiliesFromAst: "+err.Error())
+		} else if err != nil {
 			return nil, errors.Wrap(err, "Error converting aggregation node to query family")
+		} else {
+			families.Insert(family)
 		}
-		families.Insert(family)
 	}
 
 	// union with query families from all children
 	for _, child := range node.Children {
-		childFamilies, err := extractQueryFamiliesFromAst(child)
+		childFamilies, err := extractQueryFamiliesFromAst(ctx, child)
 		if err != nil {
 			return nil, errors.Wrap(err, "Error getting query families from child")
 		}
 		families = families.Union(childFamilies).(*set.HashSet[models.AggregateQueryFamily, string])
 	}
 	for _, child := range node.NamedChildren {
-		childFamilies, err := extractQueryFamiliesFromAst(child)
+		childFamilies, err := extractQueryFamiliesFromAst(ctx, child)
 		if err != nil {
 			return nil, errors.Wrap(err, "Error getting query families from named child")
 		}
@@ -76,19 +87,19 @@ func extractQueryFamiliesFromAst(node ast.Node) (set.Collection[models.Aggregate
 
 func aggregationNodeToQueryFamily(node ast.Node) (models.AggregateQueryFamily, error) {
 	if node.Function != ast.FUNC_AGGREGATOR {
-		return models.AggregateQueryFamily{}, errors.New("Node is not an aggregator")
+		return models.AggregateQueryFamily{}, errors.Wrap(models.ErrInvalidAST, "Node is not an aggregator")
 	}
 
 	queryTableName, err := node.ReadConstantNamedChildString("tableName")
 	if err != nil {
-		return models.AggregateQueryFamily{}, errors.Wrap(err,
-			"Error reading tableName in aggregation node")
+		return models.AggregateQueryFamily{}, errors.Wrap(models.ErrInvalidAST,
+			"Error reading tableName in aggregation node: "+err.Error())
 	}
 
 	aggregatedFieldNameStr, err := node.ReadConstantNamedChildString("fieldName")
 	if err != nil {
-		return models.AggregateQueryFamily{}, errors.Wrap(err,
-			"Error reading fieldName in aggregation node")
+		return models.AggregateQueryFamily{}, errors.Wrap(models.ErrInvalidAST,
+			"Error reading fieldName in aggregation node: "+err.Error())
 	}
 	aggregatedFieldName := models.FieldName(aggregatedFieldNameStr)
 
@@ -105,17 +116,17 @@ func aggregationNodeToQueryFamily(node ast.Node) (models.AggregateQueryFamily, e
 	}
 	for _, filter := range filters.Children {
 		if tableNameStr, err := filter.ReadConstantNamedChildString("tableName"); err != nil {
-			return models.AggregateQueryFamily{}, errors.Wrap(err,
-				"Error reading tableName in filter node")
+			return models.AggregateQueryFamily{}, errors.Wrap(models.ErrInvalidAST,
+				"Error reading tableName in filter node: "+err.Error())
 		} else if tableNameStr == "" || tableNameStr != queryTableName {
-			return models.AggregateQueryFamily{}, errors.New(
+			return models.AggregateQueryFamily{}, errors.Wrap(models.ErrInvalidAST,
 				"Filter tableName empty or is different from parent aggregator node's tableName")
 		}
 
 		fieldNameStr, err := filter.ReadConstantNamedChildString("fieldName")
 		if err != nil {
-			return models.AggregateQueryFamily{}, errors.Wrap(err,
-				"Error reading fieldName in filter node")
+			return models.AggregateQueryFamily{}, errors.Wrap(models.ErrInvalidAST,
+				"Error reading fieldName in filter node: "+err.Error())
 		} else if fieldNameStr == "" {
 			return models.AggregateQueryFamily{}, errors.New("Filter fieldName is empty")
 		}
@@ -123,8 +134,8 @@ func aggregationNodeToQueryFamily(node ast.Node) (models.AggregateQueryFamily, e
 
 		operatorStr, err := filter.ReadConstantNamedChildString("operator")
 		if err != nil {
-			return models.AggregateQueryFamily{}, errors.Wrap(err,
-				"Error reading operator in filter node")
+			return models.AggregateQueryFamily{}, errors.Wrap(models.ErrInvalidAST,
+				"Error reading operator in filter node:"+err.Error())
 		}
 
 		switch ast.FilterOperator(operatorStr) {
@@ -140,7 +151,7 @@ func aggregationNodeToQueryFamily(node ast.Node) (models.AggregateQueryFamily, e
 				family.SelectOrOtherConditions.Insert(fieldName)
 			}
 		default:
-			return models.AggregateQueryFamily{}, errors.New(
+			return models.AggregateQueryFamily{}, errors.Wrap(models.ErrInvalidAST,
 				fmt.Sprintf("Filter operator %s is not valid", operatorStr))
 		}
 	}
