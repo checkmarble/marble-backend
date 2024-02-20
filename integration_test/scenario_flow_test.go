@@ -8,6 +8,7 @@ import (
 	"os"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/segmentio/analytics-go/v3"
 	"github.com/stretchr/testify/assert"
@@ -362,6 +363,9 @@ func setupScenarioAndPublish(t *testing.T, ctx context.Context,
 	scenarioPublicationUsecase := usecasesWithCreds.NewScenarioPublicationUsecase()
 	_, err = scenarioIterationUsecase.CommitScenarioIterationVersion(ctx, scenarioIterationId)
 	assert.NoError(t, err, "Could not commit scenario iteration")
+	err = scenarioPublicationUsecase.StartPublicationPreparation(ctx, scenarioIterationId)
+	assert.NoError(t, err, "Could not start publication preparation")
+	time.Sleep(50 * time.Millisecond)
 	scenarioPublications, err := scenarioPublicationUsecase.ExecuteScenarioPublicationAction(
 		ctx, models.PublishScenarioIterationInput{
 			ScenarioIterationId: scenarioIterationId,
