@@ -460,7 +460,7 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"Expected decision to be Approve, got %s", approveNoNameDecision.Outcome)
 	if assert.NotEmpty(t, approveNoNameDecision.RuleExecutions) {
 		ruleExecution := findRuleExecutionByName(approveNoNameDecision.RuleExecutions, "Check on account name")
-		assert.ErrorIs(t, ruleExecution.Error, models.NullFieldReadError,
+		assert.ErrorIs(t, ruleExecution.Error, models.ErrNullFieldRead,
 			"Expected error to be A field read in a rule is null, got %s", ruleExecution.Error)
 	}
 
@@ -477,7 +477,7 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
 	if assert.NotEmpty(t, approveNoRecordDecision.RuleExecutions) {
 		ruleExecution := findRuleExecutionByName(approveNoRecordDecision.RuleExecutions, "Check on account name")
-		assert.ErrorIs(t, ruleExecution.Error, models.NoRowsReadError,
+		assert.ErrorIs(t, ruleExecution.Error, models.ErrNoRowsRead,
 			"Expected error to be No rows were read from db in a rule, got %s", ruleExecution.Error)
 	}
 
@@ -493,7 +493,7 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
 	if assert.NotEmpty(t, approveMissingFieldInPayloadDecision.RuleExecutions) {
 		ruleExecution := findRuleExecutionByName(approveMissingFieldInPayloadDecision.RuleExecutions, "Check on account name")
-		assert.ErrorIs(t, ruleExecution.Error, models.NullFieldReadError,
+		assert.ErrorIs(t, ruleExecution.Error, models.ErrNullFieldRead,
 			"Expected error to be A field read in a rule is null, got %s", ruleExecution.Error)
 	}
 
@@ -510,7 +510,7 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
 	if assert.NotEmpty(t, approveDivisionByZeroDecision.RuleExecutions) {
 		ruleExecution := findRuleExecutionByName(approveDivisionByZeroDecision.RuleExecutions, "Check on account name")
-		assert.ErrorIs(t, ruleExecution.Error, models.DivisionByZeroError,
+		assert.ErrorIs(t, ruleExecution.Error, models.ErrDivisionByZero,
 			"Expected error to be A division by zero occurred in a rule, got %s", ruleExecution.Error)
 	}
 }

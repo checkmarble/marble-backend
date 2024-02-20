@@ -30,13 +30,13 @@ func adaptErrorCodeAsError(errCode models.RuleExecutionError) error {
 	case models.NoError:
 		return nil
 	case models.NullFieldRead:
-		return models.NullFieldReadError
+		return models.ErrNullFieldRead
 	case models.NoRowsRead:
-		return models.NoRowsReadError
+		return models.ErrNoRowsRead
 	case models.DivisionByZero:
-		return models.DivisionByZeroError
+		return models.ErrDivisionByZero
 	case models.PayloadFieldNotFound:
-		return models.PayloadFieldNotFoundError
+		return models.ErrPayloadFieldNotFound
 	default:
 		return fmt.Errorf("unknown error code")
 	}

@@ -96,7 +96,7 @@ func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(
 	}
 	if len(indexesToCreate) > 0 && input.PublicationAction == models.Publish {
 		return nil, errors.Wrap(
-			models.BadParameterError,
+			models.ErrScenarioIterationRequiresPreparation,
 			fmt.Sprintf("Cannot publish the scenario iteration: it requires data preparation to be run first for %d indexes", len(indexesToCreate)),
 		)
 	}
@@ -165,9 +165,7 @@ func (usecase *ScenarioPublicationUsecase) StartPublicationPreparation(
 	}
 
 	if numPending > 0 {
-		return errors.Wrap(
-			models.ConflictError, // return 409 if the db is busy creating indexes in this schema
-			"There are still pending indexes in the schema")
+		return models.ErrDataPreparationServiceUnavailable
 	}
 
 	return usecase.clientDbIndexEditor.CreateIndexesAsync(ctx, indexesToCreate)

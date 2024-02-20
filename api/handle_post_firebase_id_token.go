@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
@@ -38,12 +39,17 @@ func (t *TokenHandler) GenerateToken(c *gin.Context) {
 	if err != nil {
 		_ = c.Error(fmt.Errorf("generator.GenerateToken error: %w", err))
 
-		var errMsg string
 		if errors.Is(err, models.ErrUnknownUser) {
-			errMsg = "ErrUnknownUser" // Change this code carefully, it is used in the frontend
+			c.JSON(http.StatusUnauthorized, dto.APIErrorResponse{
+				Message:   "Unknown user: ErrUnknownUser",
+				ErrorCode: dto.UnknownUser,
+			})
+			return
 		}
 
-		http.Error(c.Writer, errMsg, http.StatusUnauthorized)
+		c.JSON(http.StatusUnauthorized, dto.APIErrorResponse{
+			Message: "Authentication error",
+		})
 		return
 	}
 
