@@ -10,7 +10,13 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/utils"
 )
+
+func makeTestContext() context.Context {
+	ctx := context.Background()
+	return utils.StoreLoggerInContext(ctx, utils.NewLogger("test"))
+}
 
 func TestAggregationNodeToQueryFamily(t *testing.T) {
 	t.Run("empty filters", func(t *testing.T) {
@@ -247,9 +253,10 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 }
 
 func TestAstNodeToQueryFamilies(t *testing.T) {
+	ctx := makeTestContext()
 	t.Run("empty node", func(t *testing.T) {
 		asserts := assert.New(t)
-		output, err := extractQueryFamiliesFromAst(context.Background(), ast.Node{})
+		output, err := extractQueryFamiliesFromAst(ctx, ast.Node{})
 		asserts.NoError(err)
 		asserts.Equal(0, output.Size())
 	})
@@ -295,7 +302,7 @@ func TestAstNodeToQueryFamilies(t *testing.T) {
 				},
 			},
 		}
-		output, err := extractQueryFamiliesFromAst(context.Background(), ast)
+		output, err := extractQueryFamiliesFromAst(ctx, ast)
 		asserts.NoError(err)
 		asserts.Equal(1, output.Size(), "There should be only 1 query family in the output set")
 		expected := set.NewHashSet[models.AggregateQueryFamily](0)
@@ -381,7 +388,7 @@ func TestAstNodeToQueryFamilies(t *testing.T) {
 				},
 			},
 		}
-		output, err := extractQueryFamiliesFromAst(context.Background(), ast)
+		output, err := extractQueryFamiliesFromAst(ctx, ast)
 		asserts.NoError(err)
 		asserts.Equal(3, output.Size(), "There should be 2 query families in the output set")
 		expected := set.NewHashSet[models.AggregateQueryFamily](0)
@@ -408,5 +415,116 @@ func TestAstNodeToQueryFamilies(t *testing.T) {
 		asserts.True(output.EqualSet(expected), "The output set should contain the 2 query families")
 		fmt.Println(expected)
 		fmt.Println(output)
+	})
+
+	t.Run("with invalid child", func(t *testing.T) {
+		asserts := assert.New(t)
+		ast := ast.Node{
+			Children: []ast.Node{
+				{
+					Function: ast.FUNC_AGGREGATOR,
+					NamedChildren: map[string]ast.Node{
+						"filters": {
+							Children: []ast.Node{
+								{
+									Function: ast.FUNC_FILTER,
+									NamedChildren: map[string]ast.Node{
+										"tableName": ast.NewNodeConstant("table"),
+										"operator":  ast.NewNodeConstant("="),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		out, err := extractQueryFamiliesFromAst(ctx, ast)
+		asserts.NoError(err)
+		asserts.Equal(0, out.Size(), "There should be no query families in the output set")
+	})
+}
+
+func Test_indexesToCreateFromScenarioIterations(t *testing.T) {
+	ctx := makeTestContext()
+	t.Run("empty input", func(t *testing.T) {
+		asserts := assert.New(t)
+		out, err := indexesToCreateFromScenarioIterations(ctx, []models.ScenarioIteration{}, nil)
+		asserts.NoError(err)
+		asserts.Equal(0, len(out), "There should be no indexes to create")
+	})
+
+	t.Run("with one iteration and no existing indexes", func(t *testing.T) {
+		asserts := assert.New(t)
+		out, err := indexesToCreateFromScenarioIterations(ctx, []models.ScenarioIteration{
+			{
+				TriggerConditionAstExpression: &ast.Node{
+					Function: ast.FUNC_AGGREGATOR,
+					NamedChildren: map[string]ast.Node{
+						"tableName": ast.NewNodeConstant("table"),
+						"fieldName": ast.NewNodeConstant("field 0"),
+						"filters": {
+							Children: []ast.Node{
+								{
+									Function: ast.FUNC_FILTER,
+									NamedChildren: map[string]ast.Node{
+										"tableName": ast.NewNodeConstant("table"),
+										"fieldName": ast.NewNodeConstant("field"),
+										"operator":  ast.NewNodeConstant("="),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}, nil)
+		asserts.NoError(err)
+		asserts.Equal(1, len(out), "There should be 1 index to create")
+		asserts.Equal(models.ConcreteIndex{
+			TableName: models.TableName("table"),
+			Indexed:   []models.FieldName{"field"},
+			Included:  []models.FieldName{"field 0"},
+		}, out[0])
+	})
+
+	t.Run("with one iteration, invalid aggregation (missing field name)", func(t *testing.T) {
+		asserts := assert.New(t)
+		out, err := indexesToCreateFromScenarioIterations(ctx, []models.ScenarioIteration{
+			{
+				TriggerConditionAstExpression: &ast.Node{
+					Function: ast.FUNC_AGGREGATOR,
+					NamedChildren: map[string]ast.Node{
+						"tableName": ast.NewNodeConstant("table"),
+						"fieldName": ast.NewNodeConstant("field 0"),
+						"filters": {
+							Children: []ast.Node{
+								{
+									Function: ast.FUNC_FILTER,
+									NamedChildren: map[string]ast.Node{
+										// missing field name in filter
+										"tableName": ast.NewNodeConstant("table"),
+										"operator":  ast.NewNodeConstant("="),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}, nil)
+		asserts.NoError(err)
+		asserts.Equal(0, len(out), "There should be no indexes to create")
+	})
+
+	t.Run("scenario iteration without ASTs", func(t *testing.T) {
+		asserts := assert.New(t)
+		out, err := indexesToCreateFromScenarioIterations(ctx, []models.ScenarioIteration{
+			{
+				TriggerConditionAstExpression: nil,
+			},
+		}, nil)
+		asserts.NoError(err)
+		asserts.Equal(0, len(out), "There should be no indexes to create")
 	})
 }
