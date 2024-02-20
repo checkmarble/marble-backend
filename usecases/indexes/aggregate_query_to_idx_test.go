@@ -116,4 +116,14 @@ func TestAggregateQueryToIndexFamily(t *testing.T) {
 		})
 		asserts.True(expected.Equal(idxFamily), "The index families in the result are the expected ones")
 	})
+
+	t.Run("Case with no conditions", func(t *testing.T) {
+		asserts := assert.New(t)
+
+		qFamily := models.NewAggregateQueryFamily("")
+		qFamily.SelectOrOtherConditions = set.From([]models.FieldName{"a", "b", "c"})
+
+		idxFamily := qFamily.ToIndexFamilies()
+		asserts.Equal(0, idxFamily.Size(), "No indexable condition, so no family is rendered")
+	})
 }

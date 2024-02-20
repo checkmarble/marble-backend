@@ -14,6 +14,15 @@ type AggregateQueryFamily struct {
 	SelectOrOtherConditions *set.Set[FieldName]
 }
 
+func NewAggregateQueryFamily(tableName string) AggregateQueryFamily {
+	return AggregateQueryFamily{
+		TableName:               TableName(tableName),
+		EqConditions:            set.New[FieldName](0),
+		IneqConditions:          set.New[FieldName](0),
+		SelectOrOtherConditions: set.New[FieldName](0),
+	}
+}
+
 func (family AggregateQueryFamily) Equal(other AggregateQueryFamily) bool {
 	return family.TableName == other.TableName &&
 		family.EqConditions.Equal(other.EqConditions) &&
@@ -49,15 +58,16 @@ func (family AggregateQueryFamily) Hash() string {
 }
 
 func (qFamily AggregateQueryFamily) ToIndexFamilies() *set.HashSet[IndexFamily, string] {
-	return aggregateQueryToIndexFamily(qFamily)
-}
-
-func aggregateQueryToIndexFamily(qFamily AggregateQueryFamily) *set.HashSet[IndexFamily, string] {
 	// we output a collection of index families, with the different combinations of "inequality filtering"
 	//  at the end of the index.
 	// E.g. if we have a query with conditions a = 1, b = 2, c > 3, d > 4, e > 5, we output:
 	// { Flex: {a,b}, Last: c, Included: {d,e} }  +  { Flex: {a,b}, Last: d, Included: {c,e} }   +  { Flex: {a,b}, Last: e, Included: {c,d} }
 	output := set.NewHashSet[IndexFamily, string](0)
+	if (qFamily.EqConditions == nil || qFamily.EqConditions.Size() == 0) &&
+		(qFamily.IneqConditions == nil || qFamily.IneqConditions.Size() == 0) {
+		// if there are no conditions that are indexable, we return an empty family
+		return output
+	}
 
 	// first iterate on equality conditions and colunms to include anyway
 	base := NewIndexFamily()

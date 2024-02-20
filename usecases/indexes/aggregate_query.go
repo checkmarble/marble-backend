@@ -103,12 +103,7 @@ func aggregationNodeToQueryFamily(node ast.Node) (models.AggregateQueryFamily, e
 	}
 	aggregatedFieldName := models.FieldName(aggregatedFieldNameStr)
 
-	family := models.AggregateQueryFamily{
-		TableName:               models.TableName(queryTableName),
-		EqConditions:            set.New[models.FieldName](0),
-		IneqConditions:          set.New[models.FieldName](0),
-		SelectOrOtherConditions: set.New[models.FieldName](0),
-	}
+	family := models.NewAggregateQueryFamily(queryTableName)
 
 	filters, ok := node.NamedChildren["filters"]
 	if !ok {
