@@ -333,12 +333,6 @@ func (usecase *ScenarioIterationUsecase) getScenarioVersion(
 		return 0, err
 	}
 
-	for _, scenarioIteration := range scenarioIterations {
-		if scenarioIteration.Id == iterationId && scenarioIteration.Version != nil {
-			return *scenarioIteration.Version, nil
-		}
-	}
-
 	var latestVersion int
 	for _, scenarioIteration := range scenarioIterations {
 		if scenarioIteration.Version != nil && *scenarioIteration.Version > latestVersion {
