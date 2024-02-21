@@ -32,7 +32,7 @@ func (repo *ClientDbRepository) ListAllValidIndexes(
 
 	var validOrPendingIndexes []models.ConcreteIndex
 	for _, pgIndex := range pgIndexes {
-		if pgIndex.IsValid || pgIndex.CreationInProgress {
+		if pgIndex.IsValid {
 			validOrPendingIndexes = append(validOrPendingIndexes, pgIndex.AdaptConcreteIndex())
 		}
 	}
