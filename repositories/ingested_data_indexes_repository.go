@@ -161,6 +161,7 @@ func createIndexSQL(ctx context.Context, exec Executor, index models.ConcreteInd
 	indexName := indexToIndexName(index)
 	indexedColumns := index.Indexed
 	includedColumns := index.Included
+
 	sql := fmt.Sprintf(
 		"CREATE INDEX CONCURRENTLY %s ON %s USING btree (%s)",
 		indexName,
@@ -176,6 +177,8 @@ func createIndexSQL(ctx context.Context, exec Executor, index models.ConcreteInd
 			),
 		)
 	}
+	sql += "WHERE valid_until='infinity'"
+
 	if _, err := exec.Exec(ctx, sql); err != nil {
 		errMessage := fmt.Sprintf(
 			"Error while creating index in schema %s with DDL \"%s\"",
