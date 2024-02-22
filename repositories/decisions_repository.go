@@ -479,7 +479,9 @@ func (repo *DecisionRepositoryImpl) rulesOfDecisionsBatch(ctx context.Context, e
 	}), nil
 }
 
-func (repo *DecisionRepositoryImpl) channelOfDecisions(ctx context.Context, exec Executor,
+func (repo *DecisionRepositoryImpl) channelOfDecisions(
+	ctx context.Context,
+	exec Executor,
 	query squirrel.Sqlizer,
 ) (<-chan models.Decision, <-chan error) {
 	decisionsChannel := make(chan models.Decision, 100)
@@ -489,31 +491,25 @@ func (repo *DecisionRepositoryImpl) channelOfDecisions(ctx context.Context, exec
 		defer close(decisionsChannel)
 		defer close(errChannel)
 
-		dbDecisionsChannel, dbErrChannel := SqlToChannelOfModels(ctx, exec, query, func(
-			row pgx.CollectableRow,
-		) (dbmodels.DbDecision, error) {
-			return pgx.RowToStructByName[dbmodels.DbDecision](row)
-		})
+		dbDecisionsChannel, dbErrChannel := SqlToChannelOfModels(
+			ctx,
+			exec,
+			query,
+			func(
+				row pgx.CollectableRow,
+			) (dbmodels.DbDecision, error) {
+				return pgx.RowToStructByName[dbmodels.DbDecision](row)
+			},
+		)
 
 		var allErrors []error
-
-		// Let's keep the non optimized version
-		// for dbDecision := range dbDecisionsChannel {
-		// 	rules, err := repo.rulesOfDecision(tx, dbDecision.Id)
-		// 	if err != nil {
-		// 		allErrors = append(allErrors, err)
-		// 		// do not send invalid decisions
-		// 		continue
-		// 	}
-		// 	decisionsChannel <- dbmodels.AdaptDecision(dbDecision, rules)
-		// }
 
 		for dbDecisions := range BatchChannel(dbDecisionsChannel, decisionRulesBatchSize) {
 
 			// fetch rules of all decisions
 			rules, err := repo.rulesOfDecisionsBatch(
 				ctx,
-				nil,
+				exec,
 				pure_utils.Map(dbDecisions, func(d dbmodels.DbDecision) string { return d.Id }),
 			)
 			if err != nil {
