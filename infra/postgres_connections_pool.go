@@ -3,12 +3,16 @@ package infra
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const MAX_CONNECTIONS = 100
+const (
+	MAX_CONNECTIONS          = 40
+	MAX_CONNECTION_IDLE_TIME = 5 * time.Minute
+)
 
 func NewPostgresConnectionPool(connectionString string) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(connectionString)
@@ -17,6 +21,7 @@ func NewPostgresConnectionPool(connectionString string) (*pgxpool.Pool, error) {
 	}
 	cfg.ConnConfig.Tracer = otelpgx.NewTracer()
 	cfg.MaxConns = MAX_CONNECTIONS
+	cfg.MaxConnIdleTime = MAX_CONNECTION_IDLE_TIME
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), cfg)
 	if err != nil {
