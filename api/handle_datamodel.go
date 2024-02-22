@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 
@@ -13,27 +12,14 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-type dataModelUseCase interface {
-	GetDataModel(ctx context.Context, organizationID string) (models.DataModel, error)
-	CreateTable(ctx context.Context, organizationID, name, description string) (string, error)
-	UpdateDataModelTable(ctx context.Context, tableID, description string) error
-	CreateField(ctx context.Context, organizationID, tableID string, field models.DataModelField) (string, error)
-	UpdateDataModelField(ctx context.Context, fieldID string, input models.UpdateDataModelFieldInput) error
-	DeleteDataModel(ctx context.Context, organizationID string) error
-	CreateDataModelLink(ctx context.Context, link models.DataModelLink) error
-}
-
-type DataModelHandler struct {
-	useCase dataModelUseCase
-}
-
-func (d *DataModelHandler) GetDataModel(c *gin.Context) {
+func (api *API) GetDataModel(c *gin.Context) {
 	organizationID, err := utils.OrganizationIdFromRequest(c.Request)
 	if presentError(c, err) {
 		return
 	}
 
-	dataModel, err := d.useCase.GetDataModel(c.Request.Context(), organizationID)
+	usecase := api.UsecasesWithCreds(c.Request).NewDataModelUseCase()
+	dataModel, err := usecase.GetDataModel(c.Request.Context(), organizationID)
 	if presentError(c, err) {
 		return
 	}
@@ -47,7 +33,7 @@ type createTableInput struct {
 	Description string `json:"description"`
 }
 
-func (d *DataModelHandler) CreateTable(c *gin.Context) {
+func (api *API) CreateTable(c *gin.Context) {
 	organizationID, err := utils.OrganizationIdFromRequest(c.Request)
 	if presentError(c, err) {
 		return
@@ -59,7 +45,8 @@ func (d *DataModelHandler) CreateTable(c *gin.Context) {
 		return
 	}
 
-	tableID, err := d.useCase.CreateTable(c.Request.Context(), organizationID, input.Name, input.Description)
+	usecase := api.UsecasesWithCreds(c.Request).NewDataModelUseCase()
+	tableID, err := usecase.CreateDataModelTable(c.Request.Context(), organizationID, input.Name, input.Description)
 	if presentError(c, err) {
 		return
 	}
@@ -68,7 +55,7 @@ func (d *DataModelHandler) CreateTable(c *gin.Context) {
 	})
 }
 
-func (d *DataModelHandler) UpdateDataModelTable(c *gin.Context) {
+func (api *API) UpdateDataModelTable(c *gin.Context) {
 	var input createFieldInput
 	if err := json.NewDecoder(c.Request.Body).Decode(&input); err != nil {
 		presentError(c, errors.Wrap(models.BadParameterError, err.Error()))
@@ -76,7 +63,8 @@ func (d *DataModelHandler) UpdateDataModelTable(c *gin.Context) {
 	}
 	tableID := c.Param("tableID")
 
-	err := d.useCase.UpdateDataModelTable(c.Request.Context(), tableID, input.Description)
+	usecase := api.UsecasesWithCreds(c.Request).NewDataModelUseCase()
+	err := usecase.UpdateDataModelTable(c.Request.Context(), tableID, input.Description)
 	if presentError(c, err) {
 		return
 	}
@@ -91,12 +79,7 @@ type createFieldInput struct {
 	IsEnum      bool   `json:"is_enum"`
 }
 
-func (d *DataModelHandler) CreateField(c *gin.Context) {
-	organizationID, err := utils.OrganizationIdFromRequest(c.Request)
-	if presentError(c, err) {
-		return
-	}
-
+func (api *API) CreateField(c *gin.Context) {
 	var input createFieldInput
 	if err := json.NewDecoder(c.Request.Body).Decode(&input); err != nil {
 		presentError(c, errors.Wrap(models.BadParameterError, err.Error()))
@@ -112,7 +95,8 @@ func (d *DataModelHandler) CreateField(c *gin.Context) {
 		IsEnum:      input.IsEnum,
 	}
 
-	fieldID, err := d.useCase.CreateField(c.Request.Context(), organizationID, tableID, field)
+	usecase := api.UsecasesWithCreds(c.Request).NewDataModelUseCase()
+	fieldID, err := usecase.CreateDataModelField(c.Request.Context(), tableID, field)
 	if presentError(c, err) {
 		return
 	}
@@ -126,7 +110,7 @@ type updateFieldInput struct {
 	IsEnum      *bool   `json:"is_enum"`
 }
 
-func (d *DataModelHandler) UpdateDataModelField(c *gin.Context) {
+func (api *API) UpdateDataModelField(c *gin.Context) {
 	var input updateFieldInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.Status(http.StatusBadRequest)
@@ -134,7 +118,8 @@ func (d *DataModelHandler) UpdateDataModelField(c *gin.Context) {
 	}
 	fieldID := c.Param("fieldID")
 
-	err := d.useCase.UpdateDataModelField(c.Request.Context(), fieldID, models.UpdateDataModelFieldInput{
+	usecase := api.UsecasesWithCreds(c.Request).NewDataModelUseCase()
+	err := usecase.UpdateDataModelField(c.Request.Context(), fieldID, models.UpdateDataModelFieldInput{
 		Description: input.Description,
 		IsEnum:      input.IsEnum,
 	})
@@ -152,7 +137,7 @@ type createLinkInput struct {
 	ChildFieldID  string `json:"child_field_id"`
 }
 
-func (d *DataModelHandler) CreateLink(c *gin.Context) {
+func (api *API) CreateLink(c *gin.Context) {
 	organizationID, err := utils.OrganizationIdFromRequest(c.Request)
 	if presentError(c, err) {
 		return
@@ -173,43 +158,40 @@ func (d *DataModelHandler) CreateLink(c *gin.Context) {
 		ChildFieldID:   input.ChildFieldID,
 	}
 
-	err = d.useCase.CreateDataModelLink(c.Request.Context(), link)
+	usecase := api.UsecasesWithCreds(c.Request).NewDataModelUseCase()
+	err = usecase.CreateDataModelLink(c.Request.Context(), link)
 	if presentError(c, err) {
 		return
 	}
 	c.Status(http.StatusNoContent)
 }
 
-func (d *DataModelHandler) DeleteDataModel(c *gin.Context) {
+func (api *API) DeleteDataModel(c *gin.Context) {
 	organizationID, err := utils.OrganizationIdFromRequest(c.Request)
 	if presentError(c, err) {
 		return
 	}
 
-	err = d.useCase.DeleteDataModel(c.Request.Context(), organizationID)
+	usecase := api.UsecasesWithCreds(c.Request).NewDataModelUseCase()
+	err = usecase.DeleteDataModel(c.Request.Context(), organizationID)
 	if presentError(c, err) {
 		return
 	}
 	c.Status(http.StatusNoContent)
 }
 
-func (d *DataModelHandler) OpenAPI(c *gin.Context) {
+func (api *API) OpenAPI(c *gin.Context) {
 	organizationID, err := utils.OrganizationIdFromRequest(c.Request)
 	if presentError(c, err) {
 		return
 	}
 
-	dataModel, err := d.useCase.GetDataModel(c.Request.Context(), organizationID)
+	usecase := api.UsecasesWithCreds(c.Request).NewDataModelUseCase()
+	dataModel, err := usecase.GetDataModel(c.Request.Context(), organizationID)
 	if presentError(c, err) {
 		return
 	}
 
 	openapi := dto.OpenAPIFromDataModel(dataModel)
 	c.JSON(http.StatusOK, openapi)
-}
-
-func NewDataModelHandler(u dataModelUseCase) *DataModelHandler {
-	return &DataModelHandler{
-		useCase: u,
-	}
 }

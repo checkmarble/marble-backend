@@ -59,7 +59,14 @@ func (d *DataModelRepository) CreateDataModelLink(ctx context.Context, exec repo
 	return args.Error(0)
 }
 
-func (d *DataModelRepository) UpdateDataModelField(ctx context.Context, exec repositories.Executor, fieldID, description string) error {
-	args := d.Called(exec, fieldID, description)
+func (d *DataModelRepository) UpdateDataModelField(ctx context.Context, exec repositories.Executor,
+	fieldID string, input models.UpdateDataModelFieldInput,
+) error {
+	args := d.Called(exec, fieldID, input)
 	return args.Error(0)
+}
+
+func (repo *DataModelRepository) GetDataModelField(ctx context.Context, exec repositories.Executor, fieldId string) (models.Field, error) {
+	args := repo.Called(exec, fieldId)
+	return args.Get(0).(models.Field), args.Error(1)
 }

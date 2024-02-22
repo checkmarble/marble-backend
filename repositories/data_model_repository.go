@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/cockroachdb/errors"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -19,9 +20,15 @@ type DataModelRepository interface {
 	UpdateDataModelTable(ctx context.Context, exec Executor, tableID, description string) error
 	GetDataModelTable(ctx context.Context, exec Executor, tableID string) (models.DataModelTable, error)
 	CreateDataModelField(ctx context.Context, exec Executor, tableID, fieldID string, field models.DataModelField) error
-	UpdateDataModelField(ctx context.Context, exec Executor, field, description string) error
+	UpdateDataModelField(
+		ctx context.Context,
+		exec Executor,
+		field string,
+		input models.UpdateDataModelFieldInput,
+	) error
 	CreateDataModelLink(ctx context.Context, exec Executor, link models.DataModelLink) error
 	DeleteDataModel(ctx context.Context, exec Executor, organizationID string) error
+	GetDataModelField(ctx context.Context, exec Executor, fieldId string) (models.Field, error)
 }
 
 type DataModelRepositoryPostgresql struct{}
@@ -163,18 +170,30 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelField(ctx context.Cont
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) UpdateDataModelField(ctx context.Context, exec Executor, fieldID, description string) error {
+func (repo *DataModelRepositoryPostgresql) UpdateDataModelField(
+	ctx context.Context,
+	exec Executor,
+	fieldID string,
+	input models.UpdateDataModelFieldInput,
+) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
+	}
+	query := NewQueryBuilder().
+		Update(dbmodels.TableDataModelFields).
+		Where(squirrel.Eq{"id": fieldID})
+
+	if input.Description != nil {
+		query = query.Set("description", *input.Description)
+	}
+	if input.IsEnum != nil {
+		query = query.Set("is_enum", *input.IsEnum)
 	}
 
 	err := ExecBuilder(
 		ctx,
 		exec,
-		NewQueryBuilder().
-			Update(dbmodels.TableDataModelFields).
-			Set("description", description).
-			Where(squirrel.Eq{"id": fieldID}),
+		query,
 	)
 	return err
 }
@@ -337,4 +356,38 @@ func (repo *DataModelRepositoryPostgresql) GetEnumValues(ctx context.Context, ex
 		return valueFloat, err
 	})
 	return values, nil
+}
+
+func (repo *DataModelRepositoryPostgresql) GetDataModelField(ctx context.Context, exec Executor, fieldId string) (models.Field, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.Field{}, err
+	}
+
+	query := `
+		SELECT
+			data_model_fields.type,
+			data_model_fields.nullable,
+			data_model_fields.description,
+			data_model_fields.is_enum
+		FROM data_model_fields
+		WHERE id = $1
+	`
+
+	row := exec.QueryRow(ctx, query, fieldId)
+
+	var field models.Field
+	var dataType string
+	if err := row.Scan(
+		&dataType,
+		&field.Nullable,
+		&field.Description,
+		&field.IsEnum,
+	); errors.Is(err, pgx.ErrNoRows) {
+		return models.Field{}, fmt.Errorf("error in GetDataModelField: %w", models.NotFoundError)
+	} else if err != nil {
+		return models.Field{}, err
+	}
+	field.DataType = models.DataTypeFrom(dataType)
+
+	return field, nil
 }

@@ -105,12 +105,25 @@ func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, table
 	return fieldID, nil
 }
 
-func (usecase *DataModelUseCase) UpdateDataModelField(ctx context.Context, fieldID, description string) error {
+func (usecase *DataModelUseCase) UpdateDataModelField(ctx context.Context, fieldID string, input models.UpdateDataModelFieldInput) error {
+	exec := usecase.executorFactory.NewExecutor()
 	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
 		return err
 	}
-	return usecase.dataModelRepository.UpdateDataModelField(ctx,
-		usecase.executorFactory.NewExecutor(), fieldID, description)
+
+	field, err := usecase.dataModelRepository.GetDataModelField(ctx, exec, fieldID)
+	if err != nil {
+		return fmt.Errorf("repository.GetDataModelField error: %w", err)
+	}
+
+	if input.IsEnum != nil && *input.IsEnum &&
+		(field.DataType != models.String &&
+			field.DataType != models.Int &&
+			field.DataType != models.Float) {
+		return fmt.Errorf("enum fields can only be of type string or numeric: %w", models.BadParameterError)
+	}
+
+	return usecase.dataModelRepository.UpdateDataModelField(ctx, exec, fieldID, input)
 }
 
 func (usecase *DataModelUseCase) CreateDataModelLink(ctx context.Context, link models.DataModelLink) error {
@@ -121,7 +134,7 @@ func (usecase *DataModelUseCase) CreateDataModelLink(ctx context.Context, link m
 		usecase.executorFactory.NewExecutor(), link)
 }
 
-func (usecase *DataModelUseCase) DeleteSchema(ctx context.Context, organizationID string) error {
+func (usecase *DataModelUseCase) DeleteDataModel(ctx context.Context, organizationID string) error {
 	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
 		return err
 	}
