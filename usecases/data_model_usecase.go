@@ -25,8 +25,12 @@ func (usecase *DataModelUseCase) GetDataModel(ctx context.Context, organizationI
 		return models.DataModel{}, err
 	}
 
-	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx,
-		usecase.executorFactory.NewExecutor(), organizationID, true)
+	dataModel, err := usecase.dataModelRepository.GetDataModel(
+		ctx,
+		usecase.executorFactory.NewExecutor(),
+		organizationID,
+		true,
+	)
 	if err != nil {
 		return models.DataModel{}, err
 	}
@@ -34,7 +38,7 @@ func (usecase *DataModelUseCase) GetDataModel(ctx context.Context, organizationI
 }
 
 func (usecase *DataModelUseCase) CreateDataModelTable(ctx context.Context, organizationID, name, description string) (string, error) {
-	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
+	if err := usecase.enforceSecurity.WriteDataModel(organizationID); err != nil {
 		return "", err
 	}
 
@@ -74,15 +78,32 @@ func (usecase *DataModelUseCase) CreateDataModelTable(ctx context.Context, organ
 }
 
 func (usecase *DataModelUseCase) UpdateDataModelTable(ctx context.Context, tableID, description string) error {
-	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
+	if table, err := usecase.dataModelRepository.GetDataModelTable(
+		ctx,
+		usecase.executorFactory.NewExecutor(),
+		tableID,
+	); err != nil {
+		return err
+	} else if err := usecase.enforceSecurity.WriteDataModel(table.OrganizationID); err != nil {
 		return err
 	}
-	return usecase.dataModelRepository.UpdateDataModelTable(ctx,
-		usecase.executorFactory.NewExecutor(), tableID, description)
+
+	return usecase.dataModelRepository.UpdateDataModelTable(
+		ctx,
+		usecase.executorFactory.NewExecutor(),
+		tableID,
+		description,
+	)
 }
 
 func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, tableID string, field models.DataModelField) (string, error) {
-	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
+	if table, err := usecase.dataModelRepository.GetDataModelTable(
+		ctx,
+		usecase.executorFactory.NewExecutor(),
+		tableID,
+	); err != nil {
+		return "", err
+	} else if err := usecase.enforceSecurity.WriteDataModel(table.OrganizationID); err != nil {
 		return "", err
 	}
 
@@ -107,13 +128,15 @@ func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, table
 
 func (usecase *DataModelUseCase) UpdateDataModelField(ctx context.Context, fieldID string, input models.UpdateDataModelFieldInput) error {
 	exec := usecase.executorFactory.NewExecutor()
-	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
+	field, err := usecase.dataModelRepository.GetDataModelField(ctx, exec, fieldID)
+	if err != nil {
 		return err
 	}
 
-	field, err := usecase.dataModelRepository.GetDataModelField(ctx, exec, fieldID)
-	if err != nil {
-		return fmt.Errorf("repository.GetDataModelField error: %w", err)
+	if table, err := usecase.dataModelRepository.GetDataModelTable(ctx, exec, field.TableId); err != nil {
+		return err
+	} else if err := usecase.enforceSecurity.WriteDataModel(table.OrganizationID); err != nil {
+		return err
 	}
 
 	if input.IsEnum != nil && *input.IsEnum &&
@@ -127,7 +150,7 @@ func (usecase *DataModelUseCase) UpdateDataModelField(ctx context.Context, field
 }
 
 func (usecase *DataModelUseCase) CreateDataModelLink(ctx context.Context, link models.DataModelLink) error {
-	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
+	if err := usecase.enforceSecurity.WriteDataModel(link.OrganizationID); err != nil {
 		return err
 	}
 	return usecase.dataModelRepository.CreateDataModelLink(ctx,
@@ -135,7 +158,7 @@ func (usecase *DataModelUseCase) CreateDataModelLink(ctx context.Context, link m
 }
 
 func (usecase *DataModelUseCase) DeleteDataModel(ctx context.Context, organizationID string) error {
-	if err := usecase.enforceSecurity.WriteDataModel(); err != nil {
+	if err := usecase.enforceSecurity.WriteDataModel(organizationID); err != nil {
 		return err
 	}
 

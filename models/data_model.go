@@ -147,10 +147,11 @@ func ColumnNames(table Table) []string {
 
 type Field struct {
 	ID          string   `json:"id,omitempty"`
-	Description string   `json:"description"`
 	DataType    DataType `json:"dataType"`
-	Nullable    bool     `json:"nullable"`
+	Description string   `json:"description"`
 	IsEnum      bool     `json:"is_enum"`
+	Nullable    bool     `json:"nullable"`
+	TableId     string   `json:"table_id,omitempty"`
 	Values      []any    `json:"values,omitempty"`
 }
 
