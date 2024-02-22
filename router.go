@@ -63,10 +63,10 @@ func initRouter(ctx context.Context, conf AppConfiguration, deps dependencies) *
 			if ctx.Span.Name == "GET /token" {
 				return 0.1
 			}
-			return 1.0
+			return 0.5
 		}),
 		// Experimental - value to be adjusted in prod once volumes go up - relative to the trace sampling rate
-		ProfilesSampleRate: 1.0,
+		ProfilesSampleRate: 0.5,
 	}); err != nil {
 		panic(err)
 	}
