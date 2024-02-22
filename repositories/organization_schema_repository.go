@@ -15,8 +15,11 @@ import (
 
 type OrganizationSchemaRepository interface {
 	OrganizationSchemaOfOrganization(ctx context.Context, exec Executor, organizationId string) (models.OrganizationSchema, error)
-	CreateOrganizationSchema(ctx context.Context, exec Executor,
-		createOrganizationSchema models.OrganizationSchema) error
+	CreateOrganizationSchema(
+		ctx context.Context,
+		exec Executor,
+		organizationId, schemaName string,
+	) error
 	CreateSchema(ctx context.Context, exec Executor, schema string) error
 	DeleteSchema(ctx context.Context, exec Executor, schema string) error
 	CreateTable(ctx context.Context, exec Executor, schema, tableName string) error
@@ -104,8 +107,10 @@ func (repo *OrganizationSchemaRepositoryPostgresql) CreateField(ctx context.Cont
 	return err
 }
 
-func (repo *OrganizationSchemaRepositoryPostgresql) CreateOrganizationSchema(ctx context.Context,
-	exec Executor, createOrganizationSchema models.OrganizationSchema,
+func (repo *OrganizationSchemaRepositoryPostgresql) CreateOrganizationSchema(
+	ctx context.Context,
+	exec Executor,
+	organizationId, schemaName string,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
@@ -120,8 +125,8 @@ func (repo *OrganizationSchemaRepositoryPostgresql) CreateOrganizationSchema(ctx
 			).
 			Values(
 				uuid.NewString(),
-				createOrganizationSchema.OrganizationId,
-				createOrganizationSchema.DatabaseSchema.Schema,
+				organizationId,
+				schemaName,
 			),
 	)
 	return err

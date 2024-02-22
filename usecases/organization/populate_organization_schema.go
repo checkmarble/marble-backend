@@ -2,7 +2,6 @@ package organization
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -11,24 +10,7 @@ import (
 
 type PopulateOrganizationSchema struct {
 	ExecutorFactory              executor_factory.ExecutorFactory
-	OrganizationRepository       repositories.OrganizationRepository
 	OrganizationSchemaRepository repositories.OrganizationSchemaRepository
-	DataModelRepository          repositories.DataModelRepository
-}
-
-func (p *PopulateOrganizationSchema) CreateOrganizationSchema(ctx context.Context,
-	exec repositories.Executor, organization models.Organization, database models.Database,
-) error {
-	orgDatabaseSchema := models.DatabaseSchema{
-		SchemaType: models.DATABASE_SCHEMA_TYPE_CLIENT,
-		Database:   database,
-		Schema:     fmt.Sprintf("org-%s", organization.DatabaseName),
-	}
-	// create entry in organizations_schema
-	return p.OrganizationSchemaRepository.CreateOrganizationSchema(ctx, exec, models.OrganizationSchema{
-		OrganizationId: organization.Id,
-		DatabaseSchema: orgDatabaseSchema,
-	})
 }
 
 func (p *PopulateOrganizationSchema) CreateTable(ctx context.Context, exec repositories.Executor, organizationId, tableName string) error {
