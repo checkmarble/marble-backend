@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/api/middleware"
-	"github.com/checkmarble/marble-backend/models"
 	limits "github.com/gin-contrib/size"
 	"github.com/gin-contrib/timeout"
 	"github.com/gin-gonic/gin"
@@ -135,17 +134,12 @@ func (api *API) routes(auth *Authentication, tokenHandler *TokenHandler, logger 
 	router.PATCH("/tags/:tag_id", api.handlePatchTag)
 	router.DELETE("/tags/:tag_id", api.handleDeleteTag)
 
-	router.GET("/data-model", hasPermission(models.DATA_MODEL_READ), api.GetDataModel)
-	router.POST("/data-model/tables", hasPermission(models.DATA_MODEL_WRITE), api.CreateTable)
-	router.PATCH("/data-model/tables/:tableID",
-		hasPermission(models.DATA_MODEL_WRITE),
-		api.UpdateDataModelTable)
-	router.POST("/data-model/links", hasPermission(models.DATA_MODEL_WRITE), api.CreateLink)
-	router.POST("/data-model/tables/:tableID/fields",
-		hasPermission(models.DATA_MODEL_WRITE), api.CreateField)
-	router.PATCH("/data-model/fields/:fieldID",
-		hasPermission(models.DATA_MODEL_WRITE),
-		api.UpdateDataModelField)
-	router.DELETE("/data-model", hasPermission(models.DATA_MODEL_WRITE), api.DeleteDataModel)
-	router.GET("/data-model/openapi", hasPermission(models.DATA_MODEL_READ), api.OpenAPI)
+	router.GET("/data-model", api.GetDataModel)
+	router.POST("/data-model/tables", api.CreateTable)
+	router.PATCH("/data-model/tables/:tableID", api.UpdateDataModelTable)
+	router.POST("/data-model/links", api.CreateLink)
+	router.POST("/data-model/tables/:tableID/fields", api.CreateField)
+	router.PATCH("/data-model/fields/:fieldID", api.UpdateDataModelField)
+	router.DELETE("/data-model", api.DeleteDataModel)
+	router.GET("/data-model/openapi", api.OpenAPI)
 }

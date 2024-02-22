@@ -27,22 +27,6 @@ func identityAttr(identity models.Identity) (attr slog.Attr, ok bool) {
 	return slog.Attr{}, false
 }
 
-func hasPermission(permission models.Permission) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		credentials, ok := c.Request.Context().Value(utils.ContextKeyCredentials).(models.Credentials)
-		if !ok {
-			c.AbortWithStatus(http.StatusInternalServerError)
-			return
-		}
-
-		if !credentials.Role.HasPermission(permission) {
-			c.AbortWithStatus(http.StatusForbidden)
-			return
-		}
-		c.Next()
-	}
-}
-
 type validator interface {
 	Validate(ctx context.Context, marbleToken, apiKey string) (models.Credentials, error)
 }
