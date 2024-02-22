@@ -365,10 +365,11 @@ func (repo *DataModelRepositoryPostgresql) GetDataModelField(ctx context.Context
 
 	query := `
 		SELECT
-			data_model_fields.type,
-			data_model_fields.nullable,
 			data_model_fields.description,
-			data_model_fields.is_enum
+			data_model_fields.is_enum,
+			data_model_fields.nullable,
+			data_model_fields.table_id,
+			data_model_fields.type
 		FROM data_model_fields
 		WHERE id = $1
 	`
@@ -378,15 +379,17 @@ func (repo *DataModelRepositoryPostgresql) GetDataModelField(ctx context.Context
 	var field models.Field
 	var dataType string
 	if err := row.Scan(
-		&dataType,
-		&field.Nullable,
 		&field.Description,
 		&field.IsEnum,
+		&field.Nullable,
+		&field.TableId,
+		&dataType,
 	); errors.Is(err, pgx.ErrNoRows) {
 		return models.Field{}, fmt.Errorf("error in GetDataModelField: %w", models.NotFoundError)
 	} else if err != nil {
 		return models.Field{}, err
 	}
+	field.ID = fieldId
 	field.DataType = models.DataTypeFrom(dataType)
 
 	return field, nil

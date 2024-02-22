@@ -13,7 +13,7 @@ type EnforceSecurityOrganization interface {
 	DeleteOrganization() error
 	ReadOrganizationApiKeys(apiKey models.ApiKey) error
 	ReadDataModel() error
-	WriteDataModel() error
+	WriteDataModel(organizationId string) error
 }
 
 type EnforceSecurityOrganizationImpl struct {
@@ -52,8 +52,9 @@ func (e *EnforceSecurityOrganizationImpl) ReadDataModel() error {
 	)
 }
 
-func (e *EnforceSecurityOrganizationImpl) WriteDataModel() error {
+func (e *EnforceSecurityOrganizationImpl) WriteDataModel(organizationId string) error {
 	return errors.Join(
 		e.Permission(models.DATA_MODEL_WRITE),
+		e.ReadOrganization(organizationId),
 	)
 }
