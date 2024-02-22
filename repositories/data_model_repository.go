@@ -33,9 +33,16 @@ type DataModelRepository interface {
 
 type DataModelRepositoryPostgresql struct{}
 
-func (repo *DataModelRepositoryPostgresql) GetDataModel(ctx context.Context, exec Executor,
-	organizationID string, fetchEnumValues bool,
+func (repo *DataModelRepositoryPostgresql) GetDataModel(
+	ctx context.Context,
+	exec Executor,
+	organizationID string,
+	fetchEnumValues bool,
 ) (models.DataModel, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.DataModel{}, err
+	}
+
 	fields, err := repo.GetTablesAndFields(ctx, exec, organizationID)
 	if err != nil {
 		return models.DataModel{}, err
@@ -309,6 +316,7 @@ func (repo *DataModelRepositoryPostgresql) DeleteDataModel(ctx context.Context, 
 		return err
 	}
 
+	// TODO cleanup ?
 	err = ExecBuilder(
 		ctx,
 		exec,

@@ -20,14 +20,14 @@ type Usecases struct {
 
 func (usecases *Usecases) NewExecutorFactory() executor_factory.ExecutorFactory {
 	return executor_factory.NewDbExecutorFactory(
-		usecases.Repositories.OrganizationSchemaRepository,
+		usecases.Repositories.OrganizationRepository,
 		usecases.Repositories.ExecutorGetter,
 	)
 }
 
 func (usecases *Usecases) NewTransactionFactory() executor_factory.TransactionFactory {
 	return executor_factory.NewDbExecutorFactory(
-		usecases.Repositories.OrganizationSchemaRepository,
+		usecases.Repositories.OrganizationRepository,
 		usecases.Repositories.ExecutorGetter,
 	)
 }
@@ -47,7 +47,6 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 	return organization.OrganizationCreator{
 		TransactionFactory:     usecases.NewTransactionFactory(),
 		OrganizationRepository: usecases.Repositories.OrganizationRepository,
-		DataModelRepository:    usecases.Repositories.DataModelRepository,
 		OrganizationSeeder: organization.OrganizationSeeder{
 			ExecutorFactory:      usecases.NewExecutorFactory(),
 			CustomListRepository: usecases.Repositories.CustomListRepository,
@@ -68,13 +67,6 @@ func (usecases *Usecases) NewExportScheduleExecution() *scheduledexecution.Expor
 		DecisionRepository:     usecases.Repositories.DecisionRepository,
 		OrganizationRepository: usecases.Repositories.OrganizationRepository,
 		ExecutorFactory:        usecases.NewExecutorFactory(),
-	}
-}
-
-func (usecases *Usecases) NewPopulateOrganizationSchema() organization.PopulateOrganizationSchema {
-	return organization.PopulateOrganizationSchema{
-		ExecutorFactory:              usecases.NewExecutorFactory(),
-		OrganizationSchemaRepository: usecases.Repositories.OrganizationSchemaRepository,
 	}
 }
 

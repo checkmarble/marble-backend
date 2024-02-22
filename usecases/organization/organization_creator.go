@@ -12,7 +12,6 @@ import (
 type OrganizationCreator struct {
 	TransactionFactory     executor_factory.TransactionFactory
 	OrganizationRepository repositories.OrganizationRepository
-	DataModelRepository    repositories.DataModelRepository
 	OrganizationSeeder     OrganizationSeeder
 }
 
