@@ -26,7 +26,6 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/postgres"
 	"github.com/checkmarble/marble-backend/tracing"
 	"github.com/checkmarble/marble-backend/usecases"
-	"github.com/checkmarble/marble-backend/usecases/datamodel"
 	"github.com/checkmarble/marble-backend/usecases/token"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -34,7 +33,6 @@ import (
 type dependencies struct {
 	Authentication      *api.Authentication
 	TokenHandler        *api.TokenHandler
-	DataModelHandler    *api.DataModelHandler
 	SegmentClient       analytics.Client
 	OpenTelemetryTracer trace.Tracer
 }
@@ -65,13 +63,11 @@ func initDependencies(conf AppConfiguration, signingKey *rsa.PrivateKey) (depend
 	jwtRepository := repositories.NewJWTRepository(signingKey)
 	tokenValidator := token.NewValidator(database, jwtRepository)
 	tokenGenerator := token.NewGenerator(database, jwtRepository, firebaseClient, conf.config.TokenLifetimeMinute)
-	dataModelUseCase := datamodel.New(database)
 	segmentClient := analytics.New(conf.config.SegmentWriteKey)
 
 	return dependencies{
 		Authentication:      api.NewAuthentication(tokenValidator),
 		TokenHandler:        api.NewTokenHandler(tokenGenerator),
-		DataModelHandler:    api.NewDataModelHandler(dataModelUseCase),
 		SegmentClient:       segmentClient,
 		OpenTelemetryTracer: tracer,
 	}, nil
@@ -113,7 +109,7 @@ func runServer(ctx context.Context, appConfig AppConfiguration) {
 	}
 
 	router := initRouter(ctx, appConfig, deps)
-	server := api.New(router, appConfig.port, uc, deps.Authentication)
+	server := api.New(router, appConfig.port, uc, deps.Authentication, deps.TokenHandler, logger)
 
 	notify, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

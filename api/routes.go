@@ -1,9 +1,12 @@
 package api
 
 import (
+	"log/slog"
 	"net/http"
 	"time"
 
+	"github.com/checkmarble/marble-backend/api/middleware"
+	"github.com/checkmarble/marble-backend/models"
 	limits "github.com/gin-contrib/size"
 	"github.com/gin-contrib/timeout"
 	"github.com/gin-gonic/gin"
@@ -23,7 +26,11 @@ func timeoutMiddleware(duration time.Duration) gin.HandlerFunc {
 	)
 }
 
-func (api *API) routes(auth *Authentication) {
+func (api *API) routes(auth *Authentication, tokenHandler *TokenHandler, logger *slog.Logger) {
+	api.router.GET("/liveness", middleware.NewLogging(logger), HandleLivenessProbe)
+	api.router.POST("/crash", HandleCrash)
+	api.router.POST("/token", tokenHandler.GenerateToken)
+
 	router := api.router.Use(auth.Middleware)
 
 	router.GET("/credentials", api.handleGetCredentials)
@@ -127,4 +134,18 @@ func (api *API) routes(auth *Authentication) {
 	router.GET("/tags/:tag_id", api.handleGetTag)
 	router.PATCH("/tags/:tag_id", api.handlePatchTag)
 	router.DELETE("/tags/:tag_id", api.handleDeleteTag)
+
+	router.GET("/data-model", hasPermission(models.DATA_MODEL_READ), api.GetDataModel)
+	router.POST("/data-model/tables", hasPermission(models.DATA_MODEL_WRITE), api.CreateTable)
+	router.PATCH("/data-model/tables/:tableID",
+		hasPermission(models.DATA_MODEL_WRITE),
+		api.UpdateDataModelTable)
+	router.POST("/data-model/links", hasPermission(models.DATA_MODEL_WRITE), api.CreateLink)
+	router.POST("/data-model/tables/:tableID/fields",
+		hasPermission(models.DATA_MODEL_WRITE), api.CreateField)
+	router.PATCH("/data-model/fields/:fieldID",
+		hasPermission(models.DATA_MODEL_WRITE),
+		api.UpdateDataModelField)
+	router.DELETE("/data-model", hasPermission(models.DATA_MODEL_WRITE), api.DeleteDataModel)
+	router.GET("/data-model/openapi", hasPermission(models.DATA_MODEL_READ), api.OpenAPI)
 }

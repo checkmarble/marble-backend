@@ -27,7 +27,7 @@ func identityAttr(identity models.Identity) (attr slog.Attr, ok bool) {
 	return slog.Attr{}, false
 }
 
-func HasPermission(permission models.Permission) gin.HandlerFunc {
+func hasPermission(permission models.Permission) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		credentials, ok := c.Request.Context().Value(utils.ContextKeyCredentials).(models.Credentials)
 		if !ok {

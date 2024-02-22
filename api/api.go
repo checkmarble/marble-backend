@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -19,13 +20,20 @@ type API struct {
 	usecases usecases.Usecases
 }
 
-func New(router *gin.Engine, port string, usecases usecases.Usecases, auth *Authentication) *http.Server {
+func New(
+	router *gin.Engine,
+	port string,
+	usecases usecases.Usecases,
+	auth *Authentication,
+	tokenHandler *TokenHandler,
+	logger *slog.Logger,
+) *http.Server {
 	s := &API{
 		router:   router,
 		usecases: usecases,
 	}
 
-	s.routes(auth)
+	s.routes(auth, tokenHandler, logger)
 
 	return &http.Server{
 		Addr:         fmt.Sprintf("0.0.0.0:%s", port),

@@ -11,9 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 
-	"github.com/checkmarble/marble-backend/api"
 	"github.com/checkmarble/marble-backend/api/middleware"
-	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -82,24 +80,6 @@ func initRouter(ctx context.Context, conf AppConfiguration, deps dependencies) *
 	r.Use(utils.StoreLoggerInContextMiddleware(logger))
 	r.Use(utils.StoreSegmentClientInContextMiddleware(deps.SegmentClient))
 	r.Use(utils.StoreOpenTelemetryTracerInContextMiddleware(deps.OpenTelemetryTracer))
-
-	r.GET("/liveness", middleware.NewLogging(logger), api.HandleLivenessProbe)
-	r.POST("/crash", api.HandleCrash)
-	r.POST("/token", deps.TokenHandler.GenerateToken)
-
-	router := r.Use(deps.Authentication.Middleware)
-
-	router.GET("/data-model", api.HasPermission(models.DATA_MODEL_READ), deps.DataModelHandler.GetDataModel)
-	router.POST("/data-model/tables", api.HasPermission(models.DATA_MODEL_WRITE), deps.DataModelHandler.CreateTable)
-	router.PATCH("/data-model/tables/:tableID", api.HasPermission(models.DATA_MODEL_WRITE),
-		deps.DataModelHandler.UpdateDataModelTable)
-	router.POST("/data-model/links", api.HasPermission(models.DATA_MODEL_WRITE), deps.DataModelHandler.CreateLink)
-	router.POST("/data-model/tables/:tableID/fields",
-		api.HasPermission(models.DATA_MODEL_WRITE), deps.DataModelHandler.CreateField)
-	router.PATCH("/data-model/fields/:fieldID", api.HasPermission(models.DATA_MODEL_WRITE),
-		deps.DataModelHandler.UpdateDataModelField)
-	router.DELETE("/data-model", api.HasPermission(models.DATA_MODEL_WRITE), deps.DataModelHandler.DeleteDataModel)
-	router.GET("/data-model/openapi", api.HasPermission(models.DATA_MODEL_READ), deps.DataModelHandler.OpenAPI)
 
 	return r
 }
