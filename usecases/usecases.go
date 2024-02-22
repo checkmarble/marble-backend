@@ -52,7 +52,6 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 			ExecutorFactory:      usecases.NewExecutorFactory(),
 			CustomListRepository: usecases.Repositories.CustomListRepository,
 		},
-		PopulateOrganizationSchema: usecases.NewPopulateOrganizationSchema(),
 	}
 }
 
@@ -75,9 +74,7 @@ func (usecases *Usecases) NewExportScheduleExecution() *scheduledexecution.Expor
 func (usecases *Usecases) NewPopulateOrganizationSchema() organization.PopulateOrganizationSchema {
 	return organization.PopulateOrganizationSchema{
 		ExecutorFactory:              usecases.NewExecutorFactory(),
-		OrganizationRepository:       usecases.Repositories.OrganizationRepository,
 		OrganizationSchemaRepository: usecases.Repositories.OrganizationSchemaRepository,
-		DataModelRepository:          usecases.Repositories.DataModelRepository,
 	}
 }
 

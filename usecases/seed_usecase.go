@@ -40,10 +40,7 @@ func (usecase *SeedUseCase) SeedZorgOrganization(ctx context.Context, zorgOrgani
 	_, err := usecase.organizationCreator.CreateOrganizationWithId(
 		ctx,
 		zorgOrganizationId,
-		models.CreateOrganizationInput{
-			Name:         "Zorg",
-			DatabaseName: "zorg",
-		},
+		"Zorg",
 	)
 	if repositories.IsUniqueViolationError(err) {
 		err = nil

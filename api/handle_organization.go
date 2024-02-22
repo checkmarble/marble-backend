@@ -32,10 +32,7 @@ func (api *API) handlePostOrganization(c *gin.Context) {
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewOrganizationUseCase()
-	organization, err := usecase.CreateOrganization(c.Request.Context(), models.CreateOrganizationInput{
-		Name:         data.Name,
-		DatabaseName: data.DatabaseName,
-	})
+	organization, err := usecase.CreateOrganization(c.Request.Context(), data.Name)
 	if presentError(c, err) {
 		return
 	}

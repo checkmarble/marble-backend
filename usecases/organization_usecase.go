@@ -21,7 +21,6 @@ type OrganizationUseCase struct {
 	userRepository               repositories.UserRepository
 	organizationCreator          organization.OrganizationCreator
 	organizationSchemaRepository repositories.OrganizationSchemaRepository
-	populateOrganizationSchema   organization.PopulateOrganizationSchema
 	executorFactory              executor_factory.ExecutorFactory
 }
 
@@ -32,14 +31,12 @@ func (usecase *OrganizationUseCase) GetOrganizations(ctx context.Context) ([]mod
 	return usecase.organizationRepository.AllOrganizations(ctx, usecase.executorFactory.NewExecutor())
 }
 
-func (usecase *OrganizationUseCase) CreateOrganization(ctx context.Context,
-	createOrga models.CreateOrganizationInput,
-) (models.Organization, error) {
+func (usecase *OrganizationUseCase) CreateOrganization(ctx context.Context, name string) (models.Organization, error) {
 	if err := usecase.enforceSecurity.CreateOrganization(); err != nil {
 		return models.Organization{}, err
 	}
 	newOrganizationId := uuid.NewString()
-	return usecase.organizationCreator.CreateOrganizationWithId(ctx, newOrganizationId, createOrga)
+	return usecase.organizationCreator.CreateOrganizationWithId(ctx, newOrganizationId, name)
 }
 
 func (usecase *OrganizationUseCase) GetOrganization(ctx context.Context, organizationId string) (models.Organization, error) {

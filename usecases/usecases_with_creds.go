@@ -189,7 +189,6 @@ func (usecases *UsecasesWithCreds) NewOrganizationUseCase() OrganizationUseCase 
 		userRepository:               usecases.Repositories.UserRepository,
 		organizationCreator:          usecases.NewOrganizationCreator(),
 		organizationSchemaRepository: usecases.Repositories.OrganizationSchemaRepository,
-		populateOrganizationSchema:   usecases.NewPopulateOrganizationSchema(),
 	}
 }
 

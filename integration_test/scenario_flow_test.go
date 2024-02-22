@@ -101,10 +101,7 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T) (models.Credentials, mo
 	// Create a new organization
 	testAdminUsecase := GenerateUsecaseWithCredForMarbleAdmin(ctx, testUsecases)
 	orgUsecase := testAdminUsecase.NewOrganizationUseCase()
-	organization, err := orgUsecase.CreateOrganization(ctx, models.CreateOrganizationInput{
-		Name:         "Test org n°42",
-		DatabaseName: "test_org_42",
-	})
+	organization, err := orgUsecase.CreateOrganization(ctx, "Test org n°42")
 	assert.NoError(t, err, "Could not create organization")
 	organizationId := organization.Id
 	fmt.Println("Created organization", organizationId)

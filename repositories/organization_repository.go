@@ -3,16 +3,27 @@ package repositories
 import (
 	"context"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/google/uuid"
 )
 
 type OrganizationRepository interface {
+	// organization
 	AllOrganizations(ctx context.Context, exec Executor) ([]models.Organization, error)
 	GetOrganizationById(ctx context.Context, exec Executor, organizationId string) (models.Organization, error)
-	CreateOrganization(ctx context.Context, exec Executor, createOrganization models.CreateOrganizationInput, newOrganizationId string) error
+	CreateOrganization(ctx context.Context, exec Executor, newOrganizationId, name string) error
 	UpdateOrganization(ctx context.Context, exec Executor, updateOrganization models.UpdateOrganizationInput) error
 	DeleteOrganization(ctx context.Context, exec Executor, organizationId string) error
+
+	// organization schema
+	OrganizationSchemaOfOrganization(ctx context.Context, exec Executor, organizationId string) (models.OrganizationSchema, error)
+	CreateOrganizationSchema(
+		ctx context.Context,
+		exec Executor,
+		organizationId, schemaName string,
+	) error
 }
 
 type OrganizationRepositoryPostgresql struct{}
@@ -51,8 +62,10 @@ func (repo *OrganizationRepositoryPostgresql) GetOrganizationById(ctx context.Co
 	)
 }
 
-func (repo *OrganizationRepositoryPostgresql) CreateOrganization(ctx context.Context, exec Executor,
-	createOrganization models.CreateOrganizationInput, newOrganizationId string,
+func (repo *OrganizationRepositoryPostgresql) CreateOrganization(
+	ctx context.Context,
+	exec Executor,
+	newOrganizationId, name string,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
@@ -69,8 +82,8 @@ func (repo *OrganizationRepositoryPostgresql) CreateOrganization(ctx context.Con
 			).
 			Values(
 				newOrganizationId,
-				createOrganization.Name,
-				createOrganization.DatabaseName,
+				name,
+				name,
 			),
 	)
 	return err
@@ -107,4 +120,47 @@ func (repo *OrganizationRepositoryPostgresql) DeleteOrganization(ctx context.Con
 
 	err := ExecBuilder(ctx, exec, NewQueryBuilder().Delete(dbmodels.TABLE_ORGANIZATION).Where("id = ?", organizationId))
 	return err
+}
+
+func (repo *OrganizationRepositoryPostgresql) CreateOrganizationSchema(
+	ctx context.Context,
+	exec Executor,
+	organizationId, schemaName string,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	err := ExecBuilder(
+		ctx,
+		exec,
+		NewQueryBuilder().Insert(dbmodels.ORGANIZATION_SCHEMA_TABLE).
+			Columns(
+				dbmodels.OrganizationSchemaFields...,
+			).
+			Values(
+				uuid.NewString(),
+				organizationId,
+				schemaName,
+			),
+	)
+	return err
+}
+
+func (repo *OrganizationRepositoryPostgresql) OrganizationSchemaOfOrganization(
+	ctx context.Context, exec Executor, organizationId string,
+) (models.OrganizationSchema, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.OrganizationSchema{}, err
+	}
+
+	return SqlToModel(
+		ctx,
+		exec,
+		NewQueryBuilder().
+			Select(dbmodels.OrganizationSchemaFields...).
+			From(dbmodels.ORGANIZATION_SCHEMA_TABLE).
+			Where(squirrel.Eq{"org_id": organizationId}),
+		dbmodels.AdaptOrganizationSchema,
+	)
 }
