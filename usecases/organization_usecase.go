@@ -2,7 +2,6 @@ package usecases
 
 import (
 	"context"
-	"errors"
 
 	"github.com/google/uuid"
 
@@ -75,27 +74,12 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 			return err
 		}
 
-		// fetch client tables to get schema name, then delete schema
-		schema, err := usecase.organizationSchemaRepository.OrganizationSchemaOfOrganization(ctx, tx, organizationId)
-
-		schemaFound := err == nil
-
-		if errors.Is(err, models.NotFoundError) {
-			// ignore client tables not found: the organization can be older than the introduction of client tables
-			err = nil
-		}
-
+		db, err := usecase.executorFactory.NewClientDbExecutor(ctx, organizationId)
 		if err != nil {
 			return err
 		}
-
-		if schemaFound {
-			db, err := usecase.executorFactory.NewClientDbExecutor(ctx, organizationId)
-			if err != nil {
-				return err
-			}
-			// another transaction in client's database to delete client's schema:
-			return usecase.organizationSchemaRepository.DeleteSchema(ctx, db, schema.DatabaseSchema.Schema)
+		if err = usecase.organizationSchemaRepository.DeleteSchema(ctx, db); err != nil {
+			return err
 		}
 
 		return usecase.organizationRepository.DeleteOrganization(ctx, tx, organizationId)

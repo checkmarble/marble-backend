@@ -194,11 +194,11 @@ func (usecases *UsecasesWithCreds) NewOrganizationUseCase() OrganizationUseCase 
 
 func (usecases *UsecasesWithCreds) NewDataModelUseCase() DataModelUseCase {
 	return DataModelUseCase{
-		enforceSecurity:            usecases.NewEnforceOrganizationSecurity(),
-		transactionFactory:         usecases.NewTransactionFactory(),
-		executorFactory:            usecases.NewExecutorFactory(),
-		dataModelRepository:        usecases.Repositories.DataModelRepository,
-		populateOrganizationSchema: usecases.NewPopulateOrganizationSchema(),
+		dataModelRepository:          usecases.Repositories.DataModelRepository,
+		enforceSecurity:              usecases.NewEnforceOrganizationSecurity(),
+		executorFactory:              usecases.NewExecutorFactory(),
+		organizationSchemaRepository: usecases.Repositories.OrganizationSchemaRepository,
+		transactionFactory:           usecases.NewTransactionFactory(),
 	}
 }
 
