@@ -8,6 +8,12 @@ import (
 	"github.com/hashicorp/go-set/v2"
 )
 
+type UnicityIndex struct {
+	TableName         TableName
+	Fields            []FieldName
+	CreationInProcess bool
+}
+
 type ConcreteIndex struct {
 	TableName TableName
 	Indexed   []FieldName

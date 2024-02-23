@@ -194,6 +194,7 @@ func (usecases *UsecasesWithCreds) NewOrganizationUseCase() OrganizationUseCase 
 
 func (usecases *UsecasesWithCreds) NewDataModelUseCase() DataModelUseCase {
 	return DataModelUseCase{
+		clientDbIndexEditor:          usecases.NewClientDbIndexEditor(),
 		dataModelRepository:          usecases.Repositories.DataModelRepository,
 		enforceSecurity:              usecases.NewEnforceOrganizationSecurity(),
 		executorFactory:              usecases.NewExecutorFactory(),

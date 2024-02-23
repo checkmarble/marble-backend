@@ -40,6 +40,32 @@ func (repo *ClientDbRepository) ListAllValidIndexes(
 	return validOrPendingIndexes, nil
 }
 
+func (repo *ClientDbRepository) ListAllUniqueIndexes(
+	ctx context.Context,
+	exec Executor,
+) ([]models.UnicityIndex, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	pgIndexes, err := repo.listAllIndexes(ctx, exec)
+	if err != nil {
+		return nil, errors.Wrap(err, "error while listing all indexes")
+	}
+
+	var uniqueIndexes []models.UnicityIndex
+	for _, pgIndex := range pgIndexes {
+		if pgIndex.IsUnique {
+			isUnique, idx := pgIndex.AdaptUnicityIndex()
+			if isUnique {
+				uniqueIndexes = append(uniqueIndexes, idx)
+			}
+		}
+	}
+
+	return uniqueIndexes, nil
+}
+
 func (repo *ClientDbRepository) CountPendingIndexes(
 	ctx context.Context,
 	exec Executor,
@@ -66,16 +92,13 @@ func (repo *ClientDbRepository) listAllIndexes(
 	ctx context.Context,
 	exec Executor,
 ) ([]pg_indexes.PGIndex, error) {
-	if err := validateClientDbExecutor(exec); err != nil {
-		return nil, err
-	}
-
 	sql := `
 	SELECT
 		pg_get_indexdef(pg_class_idx.oid) AS indexdef,
 		pg_class_idx.relname AS indexname,
 		pgidx.indisvalid,
 		pgidx.indexrelid,
+		pgidx.indisunique,
 		pg_class_table.relname AS tablename
 	FROM pg_namespace AS pgn
 	INNER JOIN pg_class AS pg_class_table ON (pgn.oid=pg_class_table.relnamespace)
@@ -89,7 +112,7 @@ func (repo *ClientDbRepository) listAllIndexes(
 	}
 	pgIndexRows, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (pg_indexes.PGIndex, error) {
 		var index pg_indexes.PGIndex
-		err := row.Scan(&index.Definition, &index.Name, &index.IsValid, &index.RelationId, &index.TableName)
+		err := row.Scan(&index.Definition, &index.Name, &index.IsValid, &index.RelationId, &index.IsUnique, &index.TableName)
 		return index, err
 	})
 	if err != nil {

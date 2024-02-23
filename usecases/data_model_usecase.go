@@ -12,6 +12,7 @@ import (
 )
 
 type DataModelUseCase struct {
+	clientDbIndexEditor          clientDbIndexEditor
 	dataModelRepository          repositories.DataModelRepository
 	enforceSecurity              security.EnforceSecurityOrganization
 	executorFactory              executor_factory.ExecutorFactory
@@ -24,12 +25,51 @@ func (usecase *DataModelUseCase) GetDataModel(ctx context.Context, organizationI
 		return models.DataModel{}, err
 	}
 
-	return usecase.dataModelRepository.GetDataModel(
+	dataModel, err := usecase.dataModelRepository.GetDataModel(
 		ctx,
 		usecase.executorFactory.NewExecutor(),
 		organizationID,
 		true,
 	)
+	if err != nil {
+		return models.DataModel{}, err
+	}
+
+	uniqueIndexes, err := usecase.clientDbIndexEditor.ListAllUniqueIndexes(ctx)
+	if err != nil {
+		return models.DataModel{}, err
+	}
+	dataModel = addUnicityConstraintStatusToDataModel(dataModel, uniqueIndexes)
+
+	return dataModel, nil
+}
+
+func addUnicityConstraintStatusToDataModel(dataModel models.DataModel, uniqueIndexes []models.UnicityIndex) models.DataModel {
+	for _, index := range uniqueIndexes {
+		// here we only care about single fields with a unicity constraint
+		if len(index.Fields) != 1 {
+			continue
+		}
+		table, ok := dataModel.Tables[index.TableName]
+		if !ok {
+			continue
+		}
+		field, ok := table.Fields[index.Fields[0]]
+		if !ok {
+			continue
+		}
+
+		if field.Name == index.Fields[0] {
+			if index.CreationInProcess && field.UnicityConstraint != models.ActiveUniqueConstraint {
+				field.UnicityConstraint = models.PendingUniqueConstraint
+			} else {
+				field.UnicityConstraint = models.ActiveUniqueConstraint
+			}
+			// cannot directly modify the struct field in the map, so we need to reassign it
+			dataModel.Tables[index.TableName].Fields[index.Fields[0]] = field
+		}
+	}
+	return dataModel
 }
 
 func (usecase *DataModelUseCase) CreateDataModelTable(ctx context.Context, organizationId, name, description string) (string, error) {

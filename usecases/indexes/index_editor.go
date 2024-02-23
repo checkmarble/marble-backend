@@ -14,16 +14,13 @@ import (
 
 type IngestedDataIndexesRepository interface {
 	ListAllValidIndexes(ctx context.Context, exec repositories.Executor) ([]models.ConcreteIndex, error)
-	CreateIndexesAsync(ctx context.Context, exec repositories.Executor, indexes []models.ConcreteIndex) (err error)
+	ListAllUniqueIndexes(ctx context.Context, exec repositories.Executor) ([]models.UnicityIndex, error)
+	CreateIndexesAsync(ctx context.Context, exec repositories.Executor, indexes []models.ConcreteIndex) error
 	CountPendingIndexes(ctx context.Context, exec repositories.Executor) (int, error)
 }
 
 type ScenarioFetcher interface {
-	FetchScenarioAndIteration(
-		ctx context.Context,
-		exec repositories.Executor,
-		scenarioIterationId string,
-	) (models.ScenarioAndIteration, error)
+	FetchScenarioAndIteration(ctx context.Context, exec repositories.Executor, iterationId string) (models.ScenarioAndIteration, error)
 }
 
 type ClientDbIndexEditor struct {
@@ -123,4 +120,18 @@ func (editor ClientDbIndexEditor) CreateIndexesAsync(
 		fmt.Sprintf("%d indexes pending creation in: %+v\n", len(indexes), indexes), "org_id", organizationId,
 	)
 	return nil
+}
+
+func (editor ClientDbIndexEditor) ListAllUniqueIndexes(ctx context.Context) ([]models.UnicityIndex, error) {
+	organizationId, err := editor.organizationIdOfContext()
+	if err != nil {
+		return nil, err
+	}
+	db, err := editor.executorFactory.NewClientDbExecutor(ctx, organizationId)
+	if err != nil {
+		return nil, errors.Wrap(
+			err,
+			"Error while creating client schema executor in ListAllUniqueIndexes")
+	}
+	return editor.ingestedDataIndexesRepository.ListAllUniqueIndexes(ctx, db)
 }

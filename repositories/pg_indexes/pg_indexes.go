@@ -14,6 +14,7 @@ type PGIndex struct {
 	CreationInProgress bool
 	Definition         string
 	IsValid            bool
+	IsUnique           bool
 	Name               string
 	RelationId         uint32
 	TableName          string
@@ -57,4 +58,19 @@ func (pgIndex PGIndex) AdaptConcreteIndex() models.ConcreteIndex {
 
 	idx.TableName = models.TableName(pgIndex.TableName)
 	return idx
+}
+
+func (pgIndex PGIndex) AdaptUnicityIndex() (bool, models.UnicityIndex) {
+	if !pgIndex.IsUnique {
+		return false, models.UnicityIndex{}
+	}
+
+	idx := pgIndex.AdaptConcreteIndex()
+
+	out := models.UnicityIndex{
+		Fields:    idx.Indexed,
+		TableName: idx.TableName,
+	}
+	out.CreationInProcess = pgIndex.CreationInProgress
+	return true, out
 }

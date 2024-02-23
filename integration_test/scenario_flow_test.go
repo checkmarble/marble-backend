@@ -99,12 +99,14 @@ func setupApiCreds(ctx context.Context, t *testing.T, usecasesWithCreds usecases
 
 func setupOrgAndCreds(ctx context.Context, t *testing.T) (models.Credentials, models.DataModel) {
 	// Create a new organization
-	testAdminUsecase := GenerateUsecaseWithCredForMarbleAdmin(ctx, testUsecases)
+	testAdminUsecase := GenerateUsecaseWithCredForMarbleAdmin(ctx, testUsecases, "")
 	orgUsecase := testAdminUsecase.NewOrganizationUseCase()
 	organization, err := orgUsecase.CreateOrganization(ctx, "Test org n°42")
 	assert.NoError(t, err, "Could not create organization")
 	organizationId := organization.Id
 	fmt.Println("Created organization", organizationId)
+
+	testAdminUsecase = GenerateUsecaseWithCredForMarbleAdmin(ctx, testUsecases, organizationId)
 
 	// Check that there are no users on the organization yet
 	users, err := orgUsecase.GetUsersOfOrganization(ctx, organizationId)
@@ -140,7 +142,7 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T) (models.Credentials, mo
 }
 
 func createDataModel(t *testing.T, organizationID string) (models.DataModel, error) {
-	testAdminUsecase := GenerateUsecaseWithCredForMarbleAdmin(context.Background(), testUsecases)
+	testAdminUsecase := GenerateUsecaseWithCredForMarbleAdmin(context.Background(), testUsecases, organizationID)
 	ctx := context.TODO()
 
 	usecase := testAdminUsecase.NewDataModelUseCase()

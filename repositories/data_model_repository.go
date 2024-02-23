@@ -15,8 +15,6 @@ import (
 
 type DataModelRepository interface {
 	GetDataModel(ctx context.Context, exec Executor, organizationID string, fetchEnumValues bool) (models.DataModel, error)
-	// GetTablesAndFields(ctx context.Context, exec Executor, organizationID string) (
-	// 	[]models.DataModelFieldJoinTable, error)
 	CreateDataModelTable(ctx context.Context, exec Executor, organizationID, tableID, name, description string) error
 	UpdateDataModelTable(ctx context.Context, exec Executor, tableID, description string) error
 	GetDataModelTable(ctx context.Context, exec Executor, tableID string) (models.TableMetadata, error)
@@ -71,33 +69,25 @@ func (repo *DataModelRepositoryPostgresql) GetDataModel(
 		}
 
 		_, ok := dataModel.Tables[tableName]
-		if ok {
-			dataModel.Tables[tableName].Fields[fieldName] = models.Field{
-				ID:          field.FieldID,
-				Description: field.FieldDescription,
-				DataType:    models.DataTypeFrom(field.FieldType),
-				Nullable:    field.FieldNullable,
-				IsEnum:      field.FieldIsEnum,
-				Values:      values,
-			}
-		} else {
+		if !ok {
 			dataModel.Tables[tableName] = models.Table{
-				ID:          field.TableID,
-				Name:        tableName,
-				Description: field.TableDescription,
-				Fields: map[models.FieldName]models.Field{
-					fieldName: {
-						ID:          field.FieldID,
-						Description: field.FieldDescription,
-						DataType:    models.DataTypeFrom(field.FieldType),
-						Nullable:    field.FieldNullable,
-						IsEnum:      field.FieldIsEnum,
-						Values:      values,
-					},
-				},
+				ID:            field.TableID,
+				Name:          tableName,
+				Description:   field.TableDescription,
+				Fields:        map[models.FieldName]models.Field{},
 				LinksToSingle: make(map[models.LinkName]models.LinkToSingle),
 			}
 		}
+		dataModel.Tables[tableName].Fields[fieldName] = models.Field{
+			ID:          field.FieldID,
+			Description: field.FieldDescription,
+			DataType:    models.DataTypeFrom(field.FieldType),
+			Name:        fieldName,
+			Nullable:    field.FieldNullable,
+			IsEnum:      field.FieldIsEnum,
+			Values:      values,
+		}
+
 	}
 
 	for _, link := range links {
