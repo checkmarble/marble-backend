@@ -30,7 +30,6 @@ type Table struct {
 
 type DataModel struct {
 	Version string                     `json:"version"`
-	Status  string                     `json:"status"`
 	Tables  map[models.TableName]Table `json:"tables"`
 }
 
@@ -103,7 +102,6 @@ func AdaptTableDto(table models.Table) Table {
 func AdaptDataModelDto(dataModel models.DataModel) DataModel {
 	return DataModel{
 		Version: dataModel.Version,
-		Status:  dataModel.Status.String(),
 		Tables:  pure_utils.MapValues(dataModel.Tables, AdaptTableDto),
 	}
 }

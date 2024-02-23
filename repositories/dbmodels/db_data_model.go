@@ -15,7 +15,6 @@ type DbDataModel struct {
 	Id             string      `db:"id"`
 	OrganizationId string      `db:"org_id"`
 	Version        string      `db:"version"`
-	Status         string      `db:"status"`
 	Tables         []byte      `db:"tables"`
 	DeletedAt      pgtype.Time `db:"deleted_at"`
 }
@@ -32,7 +31,6 @@ func AdaptDataModel(dbDataModel DbDataModel) (models.DataModel, error) {
 
 	return models.DataModel{
 		Version: dbDataModel.Version,
-		Status:  models.StatusFrom(dbDataModel.Status),
 		Tables:  tables,
 	}, nil
 }

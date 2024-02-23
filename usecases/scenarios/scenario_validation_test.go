@@ -74,7 +74,6 @@ func TestValidateScenarioIterationImpl_Validate(t *testing.T) {
 	mdmr.On("GetDataModel", exec, scenario.OrganizationId, false).
 		Return(models.DataModel{
 			Version: "version",
-			Status:  models.Live,
 			Tables: map[models.TableName]models.Table{
 				"object_type": {
 					Name: "object_type",

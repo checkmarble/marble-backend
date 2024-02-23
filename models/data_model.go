@@ -66,50 +66,12 @@ func DataTypeFrom(s string) DataType {
 	return UnknownDataType
 }
 
-// /////////////////////////////
-// Status
-// /////////////////////////////
-type Status int
-
-const (
-	Validated Status = iota
-	Live
-	Deprecated
-)
-
-// Provide a string value for each status
-func (o Status) String() string {
-	switch o {
-	case Validated:
-		return "validated"
-	case Live:
-		return "live"
-	case Deprecated:
-		return "deprecated"
-	}
-	return "deprecated"
-}
-
-// Provide an Status from a string value
-func StatusFrom(s string) Status {
-	switch s {
-	case "validated":
-		return Validated
-	case "live":
-		return Live
-	case "deprecated":
-		return Deprecated
-	}
-	return Deprecated
-}
-
 ///////////////////////////////
 // Data Model
 ///////////////////////////////
 
 type DataModel struct {
 	Version string              `json:"version"`
-	Status  Status              `json:"status"`
 	Tables  map[TableName]Table `json:"tables"`
 }
 
