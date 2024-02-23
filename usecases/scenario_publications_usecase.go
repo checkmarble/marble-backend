@@ -30,14 +30,11 @@ type ScenarioPublisher interface {
 }
 
 type clientDbIndexEditor interface {
-	GetIndexesToCreate(
-		ctx context.Context,
-		scenarioIterationId string,
-	) (toCreate []models.ConcreteIndex, numPending int, err error)
-	CreateIndexesAsync(
-		ctx context.Context,
-		indexes []models.ConcreteIndex,
-	) error
+	GetIndexesToCreate(ctx context.Context, scenarioIterationId string) (
+		toCreate []models.ConcreteIndex, numPending int, err error,
+	)
+	CreateIndexesAsync(ctx context.Context, indexes []models.ConcreteIndex) error
+	ListAllUniqueIndexes(ctx context.Context) ([]models.UnicityIndex, error)
 }
 
 type ScenarioPublicationUsecase struct {

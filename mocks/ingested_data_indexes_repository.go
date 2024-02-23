@@ -36,3 +36,11 @@ func (m *IngestedDataIndexesRepository) CountPendingIndexes(
 	args := m.Called(ctx, exec)
 	return args.Int(0), args.Error(1)
 }
+
+func (m *IngestedDataIndexesRepository) ListAllUniqueIndexes(
+	ctx context.Context,
+	exec repositories.Executor,
+) ([]models.UnicityIndex, error) {
+	args := m.Called(ctx, exec)
+	return args.Get(0).([]models.UnicityIndex), args.Error(1)
+}
