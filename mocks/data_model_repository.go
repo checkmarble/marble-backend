@@ -20,13 +20,6 @@ func (d *DataModelRepository) GetDataModel(ctx context.Context, exec repositorie
 	return args.Get(0).(models.DataModel), args.Error(1)
 }
 
-func (d *DataModelRepository) GetTablesAndFields(ctx context.Context, exec repositories.Executor,
-	organizationID string,
-) ([]models.DataModelTableField, error) {
-	args := d.Called(exec, organizationID)
-	return args.Get(0).([]models.DataModelTableField), args.Error(1)
-}
-
 func (d *DataModelRepository) DeleteDataModel(ctx context.Context, exec repositories.Executor, organizationId string) error {
 	args := d.Called(exec, organizationId)
 	return args.Error(0)
@@ -42,25 +35,28 @@ func (d *DataModelRepository) UpdateDataModelTable(ctx context.Context, exec rep
 	return args.Error(0)
 }
 
-func (d *DataModelRepository) CreateDataModelField(ctx context.Context, exec repositories.Executor,
-	tableID, fieldID string, field models.DataModelField,
+func (d *DataModelRepository) CreateDataModelField(
+	ctx context.Context,
+	exec repositories.Executor,
+	tableID string,
+	field models.CreateFieldInput,
 ) error {
-	args := d.Called(exec, tableID, fieldID, field)
+	args := d.Called(ctx, exec, tableID, field)
 	return args.Error(0)
 }
 
-func (d *DataModelRepository) GetDataModelTable(ctx context.Context, exec repositories.Executor, tableID string) (models.DataModelTable, error) {
+func (d *DataModelRepository) GetDataModelTable(ctx context.Context, exec repositories.Executor, tableID string) (models.TableMetadata, error) {
 	args := d.Called(exec, tableID)
-	return args.Get(0).(models.DataModelTable), args.Error(1)
+	return args.Get(0).(models.TableMetadata), args.Error(1)
 }
 
-func (d *DataModelRepository) CreateDataModelLink(ctx context.Context, exec repositories.Executor, link models.DataModelLink) error {
+func (d *DataModelRepository) CreateDataModelLink(ctx context.Context, exec repositories.Executor, link models.DataModelLinkCreateInput) error {
 	args := d.Called(exec, link)
 	return args.Error(0)
 }
 
 func (d *DataModelRepository) UpdateDataModelField(ctx context.Context, exec repositories.Executor,
-	fieldID string, input models.UpdateDataModelFieldInput,
+	fieldID string, input models.UpdateFieldInput,
 ) error {
 	args := d.Called(exec, fieldID, input)
 	return args.Error(0)

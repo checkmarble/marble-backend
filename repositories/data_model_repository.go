@@ -15,18 +15,19 @@ import (
 
 type DataModelRepository interface {
 	GetDataModel(ctx context.Context, exec Executor, organizationID string, fetchEnumValues bool) (models.DataModel, error)
-	GetTablesAndFields(ctx context.Context, exec Executor, organizationID string) ([]models.DataModelTableField, error)
+	// GetTablesAndFields(ctx context.Context, exec Executor, organizationID string) (
+	// 	[]models.DataModelFieldJoinTable, error)
 	CreateDataModelTable(ctx context.Context, exec Executor, organizationID, tableID, name, description string) error
 	UpdateDataModelTable(ctx context.Context, exec Executor, tableID, description string) error
-	GetDataModelTable(ctx context.Context, exec Executor, tableID string) (models.DataModelTable, error)
-	CreateDataModelField(ctx context.Context, exec Executor, tableID, fieldID string, field models.DataModelField) error
+	GetDataModelTable(ctx context.Context, exec Executor, tableID string) (models.TableMetadata, error)
+	CreateDataModelField(ctx context.Context, exec Executor, fieldId string, field models.CreateFieldInput) error
 	UpdateDataModelField(
 		ctx context.Context,
 		exec Executor,
 		field string,
-		input models.UpdateDataModelFieldInput,
+		input models.UpdateFieldInput,
 	) error
-	CreateDataModelLink(ctx context.Context, exec Executor, link models.DataModelLink) error
+	CreateDataModelLink(ctx context.Context, exec Executor, link models.DataModelLinkCreateInput) error
 	DeleteDataModel(ctx context.Context, exec Executor, organizationID string) error
 	GetDataModelField(ctx context.Context, exec Executor, fieldId string) (models.Field, error)
 }
@@ -43,12 +44,12 @@ func (repo *DataModelRepositoryPostgresql) GetDataModel(
 		return models.DataModel{}, err
 	}
 
-	fields, err := repo.GetTablesAndFields(ctx, exec, organizationID)
+	fields, err := repo.getTablesAndFields(ctx, exec, organizationID)
 	if err != nil {
 		return models.DataModel{}, err
 	}
 
-	links, err := repo.GetLinks(ctx, exec, organizationID)
+	links, err := repo.getLinks(ctx, exec, organizationID)
 	if err != nil {
 		return models.DataModel{}, err
 	}
@@ -100,11 +101,7 @@ func (repo *DataModelRepositoryPostgresql) GetDataModel(
 	}
 
 	for _, link := range links {
-		dataModel.Tables[link.ChildTable].LinksToSingle[link.Name] = models.LinkToSingle{
-			LinkedTableName: link.ParentTable,
-			ParentFieldName: link.ParentField,
-			ChildFieldName:  link.ChildField,
-		}
+		dataModel.Tables[link.ChildTableName].LinksToSingle[link.Name] = link
 	}
 	return dataModel, nil
 }
@@ -125,9 +122,9 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelTable(ctx context.Cont
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) GetDataModelTable(ctx context.Context, exec Executor, tableID string) (models.DataModelTable, error) {
+func (repo *DataModelRepositoryPostgresql) GetDataModelTable(ctx context.Context, exec Executor, tableID string) (models.TableMetadata, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.DataModelTable{}, err
+		return models.TableMetadata{}, err
 	}
 
 	return SqlToModel(
@@ -137,7 +134,7 @@ func (repo *DataModelRepositoryPostgresql) GetDataModelTable(ctx context.Context
 			Select(dbmodels.SelectDataModelTableColumns...).
 			From(dbmodels.TableDataModelTables).
 			Where(squirrel.Eq{"id": tableID}),
-		dbmodels.AdaptDataModelTable,
+		dbmodels.AdaptTableMetadata,
 	)
 }
 
@@ -157,8 +154,11 @@ func (repo *DataModelRepositoryPostgresql) UpdateDataModelTable(ctx context.Cont
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) CreateDataModelField(ctx context.Context, exec Executor,
-	tableID, fieldID string, field models.DataModelField,
+func (repo *DataModelRepositoryPostgresql) CreateDataModelField(
+	ctx context.Context,
+	exec Executor,
+	fieldId string,
+	field models.CreateFieldInput,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
@@ -169,8 +169,16 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelField(ctx context.Cont
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id`
 
-	_, err := exec.Exec(ctx, query, fieldID, tableID, strings.ToLower(field.Name), field.Type,
-		field.Nullable, field.Description, field.IsEnum)
+	_, err := exec.Exec(ctx,
+		query,
+		fieldId,
+		field.TableId,
+		strings.ToLower(string(field.Name)),
+		field.DataType.String(),
+		field.Nullable,
+		field.Description,
+		field.IsEnum,
+	)
 	if IsUniqueViolationError(err) {
 		return models.ConflictError
 	}
@@ -181,7 +189,7 @@ func (repo *DataModelRepositoryPostgresql) UpdateDataModelField(
 	ctx context.Context,
 	exec Executor,
 	fieldID string,
-	input models.UpdateDataModelFieldInput,
+	input models.UpdateFieldInput,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
@@ -205,7 +213,7 @@ func (repo *DataModelRepositoryPostgresql) UpdateDataModelField(
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) CreateDataModelLink(ctx context.Context, exec Executor, link models.DataModelLink) error {
+func (repo *DataModelRepositoryPostgresql) CreateDataModelLink(ctx context.Context, exec Executor, link models.DataModelLinkCreateInput) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -215,9 +223,22 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelLink(ctx context.Conte
 		exec,
 		NewQueryBuilder().
 			Insert("data_model_links").
-			Columns("organization_id", "name", "parent_table_id", "parent_field_id", "child_table_id", "child_field_id").
-			Values(link.OrganizationID, strings.ToLower(string(link.Name)), link.ParentTableID,
-				link.ParentFieldID, link.ChildTableID, link.ChildFieldID),
+			Columns(
+				"organization_id",
+				"name",
+				"parent_table_id",
+				"parent_field_id",
+				"child_table_id",
+				"child_field_id",
+			).
+			Values(
+				link.OrganizationID,
+				strings.ToLower(string(link.Name)),
+				link.ParentTableID,
+				link.ParentFieldID,
+				link.ChildTableID,
+				link.ChildFieldID,
+			),
 	)
 	if IsUniqueViolationError(err) {
 		return models.ConflictError
@@ -225,15 +246,15 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelLink(ctx context.Conte
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) GetTablesAndFields(ctx context.Context, exec Executor,
+func (repo *DataModelRepositoryPostgresql) getTablesAndFields(ctx context.Context, exec Executor,
 	organizationID string,
-) ([]models.DataModelTableField, error) {
+) ([]dbmodels.DbDataModelTableJoinField, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
 	query, args, err := NewQueryBuilder().
-		Select(dbmodels.SelectDataModelFieldColumns...).
+		Select(dbmodels.SelectDataModelTableJoinFieldColumns...).
 		From(dbmodels.TableDataModelTables).
 		Join(fmt.Sprintf("%s ON (data_model_tables.id = data_model_fields.table_id)", dbmodels.TableDataModelFields)).
 		Where(squirrel.Eq{"organization_id": organizationID}).
@@ -247,8 +268,10 @@ func (repo *DataModelRepositoryPostgresql) GetTablesAndFields(ctx context.Contex
 		return nil, err
 	}
 
-	fields, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.DataModelTableField, error) {
-		var dbModel dbmodels.DbDataModelField
+	fields, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (
+		dbmodels.DbDataModelTableJoinField, error,
+	) {
+		var dbModel dbmodels.DbDataModelTableJoinField
 		if err := rows.Scan(&dbModel.TableID,
 			&dbModel.OrganizationID,
 			&dbModel.TableName,
@@ -260,20 +283,21 @@ func (repo *DataModelRepositoryPostgresql) GetTablesAndFields(ctx context.Contex
 			&dbModel.FieldDescription,
 			&dbModel.FieldIsEnum,
 		); err != nil {
-			return models.DataModelTableField{}, err
+			return dbmodels.DbDataModelTableJoinField{}, err
 		}
-		return dbmodels.AdaptDataModelTableField(dbModel), err
+		return dbModel, nil
 	})
 	return fields, err
 }
 
-func (repo *DataModelRepositoryPostgresql) GetLinks(ctx context.Context, exec Executor, organizationID string) ([]models.DataModelLink, error) {
+func (repo *DataModelRepositoryPostgresql) getLinks(ctx context.Context, exec Executor, organizationID string) ([]models.LinkToSingle, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
 	query := `
-		SELECT data_model_links.id, data_model_links.name, parent_table.name, parent_field.name, child_table.name, child_field.name FROM data_model_links
+	SELECT data_model_links.name, parent_table.name, parent_field.name, child_table.name, child_field.name
+	FROM data_model_links
     	JOIN data_model_tables AS parent_table ON (data_model_links.parent_table_id = parent_table.id)
     	JOIN data_model_fields AS parent_field ON (data_model_links.parent_field_id = parent_field.id)
     	JOIN data_model_tables AS child_table ON (data_model_links.child_table_id = child_table.id)
@@ -285,17 +309,18 @@ func (repo *DataModelRepositoryPostgresql) GetLinks(ctx context.Context, exec Ex
 		return nil, err
 	}
 
-	links, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.DataModelLink, error) {
-		var dbLinks dbmodels.DataModelLink
-		if err := rows.Scan(&dbLinks.ID,
+	links, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.LinkToSingle, error) {
+		var dbLinks dbmodels.DbDataModelLink
+		if err := rows.Scan(
 			&dbLinks.Name,
 			&dbLinks.ParentTable,
 			&dbLinks.ParentField,
 			&dbLinks.ChildTable,
-			&dbLinks.ChildField); err != nil {
-			return models.DataModelLink{}, err
+			&dbLinks.ChildField,
+		); err != nil {
+			return models.LinkToSingle{}, err
 		}
-		return dbmodels.AdaptDataModelLink(dbLinks), err
+		return dbmodels.AdaptLinkToSingle(dbLinks), err
 	})
 	return links, nil
 }

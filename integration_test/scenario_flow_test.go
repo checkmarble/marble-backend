@@ -146,49 +146,49 @@ func createDataModel(t *testing.T, organizationID string) (models.DataModel, err
 	usecase := testAdminUsecase.NewDataModelUseCase()
 	transactionsTableID, err := usecase.CreateDataModelTable(ctx, organizationID, "transactions", "description")
 	assert.NoError(t, err)
-	transactionsFields := []models.DataModelField{
-		{Name: "account_id", Type: models.String.String(), Nullable: true},
-		{Name: "bic_country", Type: models.String.String(), Nullable: true},
-		{Name: "country", Type: models.String.String(), Nullable: true},
-		{Name: "description", Type: models.String.String(), Nullable: true},
-		{Name: "direction", Type: models.String.String(), Nullable: true},
-		{Name: "status", Type: models.String.String(), Nullable: true},
-		{Name: "title", Type: models.String.String(), Nullable: true},
-		{Name: "amount", Type: models.Float.String(), Nullable: true},
+	transactionsFields := []models.CreateFieldInput{
+		{TableId: transactionsTableID, Name: "account_id", DataType: models.String, Nullable: true},
+		{TableId: transactionsTableID, Name: "bic_country", DataType: models.String, Nullable: true},
+		{TableId: transactionsTableID, Name: "country", DataType: models.String, Nullable: true},
+		{TableId: transactionsTableID, Name: "description", DataType: models.String, Nullable: true},
+		{TableId: transactionsTableID, Name: "direction", DataType: models.String, Nullable: true},
+		{TableId: transactionsTableID, Name: "status", DataType: models.String, Nullable: true},
+		{TableId: transactionsTableID, Name: "title", DataType: models.String, Nullable: true},
+		{TableId: transactionsTableID, Name: "amount", DataType: models.Float, Nullable: true},
 	}
 	for _, field := range transactionsFields {
-		_, err = usecase.CreateDataModelField(ctx, transactionsTableID, field)
+		_, err = usecase.CreateDataModelField(ctx, field)
 		assert.NoError(t, err)
 	}
 
 	accountsTableID, err := usecase.CreateDataModelTable(ctx, organizationID, "accounts", "description")
 	assert.NoError(t, err)
-	accountsFields := []models.DataModelField{
-		{Name: "balance", Type: models.Float.String(), Nullable: true},
-		{Name: "company_id", Type: models.String.String(), Nullable: true},
-		{Name: "name", Type: models.String.String(), Nullable: true},
-		{Name: "currency", Type: models.String.String(), Nullable: true},
-		{Name: "is_frozen", Type: models.Bool.String(), Nullable: true},
+	accountsFields := []models.CreateFieldInput{
+		{TableId: accountsTableID, Name: "balance", DataType: models.Float, Nullable: true},
+		{TableId: accountsTableID, Name: "company_id", DataType: models.String, Nullable: true},
+		{TableId: accountsTableID, Name: "name", DataType: models.String, Nullable: true},
+		{TableId: accountsTableID, Name: "currency", DataType: models.String, Nullable: true},
+		{TableId: accountsTableID, Name: "is_frozen", DataType: models.Bool, Nullable: true},
 	}
 	for _, field := range accountsFields {
-		_, err = usecase.CreateDataModelField(ctx, accountsTableID, field)
+		_, err = usecase.CreateDataModelField(ctx, field)
 		assert.NoError(t, err)
 	}
 
 	companiesTableID, err := usecase.CreateDataModelTable(ctx, organizationID, "companies", "description")
 	assert.NoError(t, err)
-	companiesFields := []models.DataModelField{
-		{Name: "name", Type: models.Float.String(), Nullable: true},
+	companiesFields := []models.CreateFieldInput{
+		{TableId: companiesTableID, Name: "name", DataType: models.Float, Nullable: true},
 	}
 	for _, field := range companiesFields {
-		_, err = usecase.CreateDataModelField(ctx, companiesTableID, field)
+		_, err = usecase.CreateDataModelField(ctx, field)
 		assert.NoError(t, err)
 	}
 
 	dm, err := usecase.GetDataModel(ctx, organizationID)
 	assert.NoError(t, err)
 
-	err = usecase.CreateDataModelLink(ctx, models.DataModelLink{
+	err = usecase.CreateDataModelLink(ctx, models.DataModelLinkCreateInput{
 		Name:           "account",
 		OrganizationID: organizationID,
 		ParentTableID:  accountsTableID,
@@ -198,7 +198,7 @@ func createDataModel(t *testing.T, organizationID string) (models.DataModel, err
 	})
 	assert.NoError(t, err)
 
-	err = usecase.CreateDataModelLink(ctx, models.DataModelLink{
+	err = usecase.CreateDataModelLink(ctx, models.DataModelLinkCreateInput{
 		Name:           "company",
 		OrganizationID: organizationID,
 		ParentTableID:  companiesTableID,
