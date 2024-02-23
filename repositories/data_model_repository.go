@@ -135,7 +135,7 @@ func (repo *DataModelRepositoryPostgresql) GetDataModelTable(ctx context.Context
 		exec,
 		NewQueryBuilder().
 			Select(dbmodels.SelectDataModelTableColumns...).
-			From(dbmodels.TableDataModelTable).
+			From(dbmodels.TableDataModelTables).
 			Where(squirrel.Eq{"id": tableID}),
 		dbmodels.AdaptDataModelTable,
 	)
@@ -150,7 +150,7 @@ func (repo *DataModelRepositoryPostgresql) UpdateDataModelTable(ctx context.Cont
 		ctx,
 		exec,
 		NewQueryBuilder().
-			Update(dbmodels.TableDataModelTable).
+			Update(dbmodels.TableDataModelTables).
 			Set("description", description).
 			Where(squirrel.Eq{"id": tableID}),
 	)
@@ -234,7 +234,7 @@ func (repo *DataModelRepositoryPostgresql) GetTablesAndFields(ctx context.Contex
 
 	query, args, err := NewQueryBuilder().
 		Select(dbmodels.SelectDataModelFieldColumns...).
-		From(dbmodels.TableDataModelTable).
+		From(dbmodels.TableDataModelTables).
 		Join(fmt.Sprintf("%s ON (data_model_tables.id = data_model_fields.table_id)", dbmodels.TableDataModelFields)).
 		Where(squirrel.Eq{"organization_id": organizationID}).
 		ToSql()
@@ -305,29 +305,13 @@ func (repo *DataModelRepositoryPostgresql) DeleteDataModel(ctx context.Context, 
 		return err
 	}
 
-	err := ExecBuilder(
+	return ExecBuilder(
 		ctx,
 		exec,
 		NewQueryBuilder().
-			Delete(dbmodels.TableDataModelTable).
+			Delete(dbmodels.TableDataModelTables).
 			Where(squirrel.Eq{"organization_id": organizationID}),
 	)
-	if err != nil {
-		return err
-	}
-
-	// TODO cleanup ?
-	err = ExecBuilder(
-		ctx,
-		exec,
-		NewQueryBuilder().
-			Delete(dbmodels.TABLE_DATA_MODELS).
-			Where(squirrel.Eq{"org_id": organizationID}),
-	)
-	if err != nil {
-		return err
-	}
-	return err
 }
 
 func (repo *DataModelRepositoryPostgresql) GetEnumValues(ctx context.Context, exec Executor, fieldID string) ([]any, error) {

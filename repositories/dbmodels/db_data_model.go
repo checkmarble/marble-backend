@@ -45,7 +45,7 @@ type DbDataModelTable struct {
 }
 
 const (
-	TableDataModelTable  = "data_model_tables"
+	TableDataModelTables = "data_model_tables"
 	TableDataModelFields = "data_model_fields"
 )
 
