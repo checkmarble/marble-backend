@@ -1,13 +1,7 @@
 package models
 
-import "fmt"
-
-// /////////////////////////////
-// Data types
-// /////////////////////////////
 type DataType int
 
-// Careful: DataType is serialized in database, it's also a dto
 const (
 	UnknownDataType DataType = iota - 1
 	Bool
@@ -33,23 +27,6 @@ func (d DataType) String() string {
 	return "unknown"
 }
 
-func (d DataType) ToPostgresType() string {
-	switch d {
-	case Int:
-		return "INTEGER"
-	case String:
-		return "TEXT"
-	case Timestamp:
-		return "TIMESTAMP WITH TIME ZONE"
-	case Float:
-		return "FLOAT"
-	case Bool:
-		return "BOOLEAN"
-	default:
-		panic(fmt.Errorf("unknown data type: %v", d))
-	}
-}
-
 func DataTypeFrom(s string) DataType {
 	switch s {
 	case "Bool":
@@ -71,8 +48,8 @@ func DataTypeFrom(s string) DataType {
 ///////////////////////////////
 
 type DataModel struct {
-	Version string              `json:"version"`
-	Tables  map[TableName]Table `json:"tables"`
+	Version string
+	Tables  map[TableName]Table
 }
 
 type (
@@ -90,11 +67,11 @@ func ToLinkNames(arr []string) []LinkName {
 }
 
 type Table struct {
-	ID            string                    `json:"id,omitempty"`
-	Name          TableName                 `json:"name"`
-	Description   string                    `json:"description"`
-	Fields        map[FieldName]Field       `json:"fields"`
-	LinksToSingle map[LinkName]LinkToSingle `json:"linksToSingle"`
+	ID            string
+	Name          TableName
+	Description   string
+	Fields        map[FieldName]Field
+	LinksToSingle map[LinkName]LinkToSingle
 }
 
 func ColumnNames(table Table) []string {
@@ -140,35 +117,35 @@ func UnicityConstraintFromString(s string) UnicityConstraint {
 }
 
 type Field struct {
-	ID                string            `json:"id,omitempty"`
-	DataType          DataType          `json:"dataType"`
-	Description       string            `json:"description"`
-	IsEnum            bool              `json:"is_enum"`
-	Nullable          bool              `json:"nullable"`
-	TableId           string            `json:"table_id,omitempty"`
-	Values            []any             `json:"values,omitempty"`
-	UnicityConstraint UnicityConstraint `json:"unicity_constraint"`
+	ID                string
+	DataType          DataType
+	Description       string
+	IsEnum            bool
+	Nullable          bool
+	TableId           string
+	Values            []any
+	UnicityConstraint UnicityConstraint
 }
 
 type LinkToSingle struct {
-	LinkedTableName TableName `json:"linkedTableName"`
-	ParentFieldName FieldName `json:"parentFieldName"`
-	ChildFieldName  FieldName `json:"childFieldName"`
+	LinkedTableName TableName
+	ParentFieldName FieldName
+	ChildFieldName  FieldName
 }
 
 type DataModelTable struct {
-	ID             string `json:"id"`
-	OrganizationID string `json:"organization_id"`
-	Name           string `json:"name"`
-	Description    string `json:"description"`
+	ID             string
+	OrganizationID string
+	Name           string
+	Description    string
 }
 
 type DataModelField struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Type        string `json:"dataType"`
-	Nullable    bool   `json:"nullable"`
-	IsEnum      bool   `json:"is_enum"`
+	Name        string
+	Description string
+	Type        string
+	Nullable    bool
+	IsEnum      bool
 }
 
 type UpdateDataModelFieldInput struct {
@@ -190,15 +167,15 @@ type DataModelTableField struct {
 }
 
 type DataModelLink struct {
-	ID             string    `json:"id"`
-	OrganizationID string    `json:"organization_id"`
-	Name           LinkName  `json:"name"`
-	ParentTableID  string    `json:"parent_table_id"`
-	ParentTable    TableName `json:"parent_table"`
-	ParentFieldID  string    `json:"parent_field_id"`
-	ParentField    FieldName `json:"parent_field"`
-	ChildTableID   string    `json:"child_table_id"`
-	ChildTable     TableName `json:"child_table"`
-	ChildFieldID   string    `json:"child_field_id"`
-	ChildField     FieldName `json:"child_field"`
+	ID             string
+	OrganizationID string
+	Name           LinkName
+	ParentTableID  string
+	ParentTable    TableName
+	ParentFieldID  string
+	ParentField    FieldName
+	ChildTableID   string
+	ChildTable     TableName
+	ChildFieldID   string
+	ChildField     FieldName
 }
