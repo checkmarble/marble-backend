@@ -87,7 +87,6 @@ func GetDummyDataModel() models.DataModel {
 
 	return models.DataModel{
 		Version: "1",
-		Status:  0,
 		Tables: map[models.TableName]models.Table{
 			DummyTableNameFirst:  dummyDataModelFirstTable,
 			DummyTableNameSecond: dummyDataModelSecondTable,
