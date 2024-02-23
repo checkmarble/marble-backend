@@ -12,7 +12,7 @@ import (
 
 func (db *Database) GetOrganizationByID(ctx context.Context, organizationID string) (models.Organization, error) {
 	query := `
-		SELECT id, name, database_name, export_scheduled_execution_s3
+		SELECT id, name, export_scheduled_execution_s3
 		FROM organizations
 		WHERE id = $1
 	`
@@ -21,7 +21,7 @@ func (db *Database) GetOrganizationByID(ctx context.Context, organizationID stri
 	err := db.pool.QueryRow(ctx, query, organizationID).Scan(
 		&organization.Id,
 		&organization.Name,
-		&organization.DatabaseName,
+		// &organization.DatabaseName,
 		&organization.ExportScheduledExecutionS3,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {

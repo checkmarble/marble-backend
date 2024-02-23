@@ -34,7 +34,7 @@ func (creator *OrganizationCreator) CreateOrganizationWithId(
 				ctx,
 				tx,
 				organization.Id,
-				fmt.Sprintf("org-%s", organization.DatabaseName),
+				fmt.Sprintf("org-%s", organization.Name),
 			); err != nil {
 				return models.Organization{}, err
 			}

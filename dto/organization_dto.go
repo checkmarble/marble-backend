@@ -5,7 +5,6 @@ import "github.com/checkmarble/marble-backend/models"
 type APIOrganization struct {
 	Id                         string `json:"id"`
 	Name                       string `json:"name"`
-	DatabaseName               string `json:"database_name"`
 	ExportScheduledExecutionS3 string `json:"export_scheduled_execution_s3"`
 }
 
@@ -13,7 +12,6 @@ func AdaptOrganizationDto(org models.Organization) APIOrganization {
 	return APIOrganization{
 		Id:                         org.Id,
 		Name:                       org.Name,
-		DatabaseName:               org.DatabaseName,
 		ExportScheduledExecutionS3: org.ExportScheduledExecutionS3,
 	}
 }

@@ -23,9 +23,8 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 	}
 
 	organization := models.Organization{
-		Id:           "organization_id",
-		Name:         "organization",
-		DatabaseName: "organization_database",
+		Id:   "organization_id",
+		Name: "organization",
 	}
 
 	token := "token"
