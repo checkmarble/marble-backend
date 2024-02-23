@@ -78,11 +78,9 @@ func (repo *OrganizationRepositoryPostgresql) CreateOrganization(
 			Columns(
 				"id",
 				"name",
-				"database_name",
 			).
 			Values(
 				newOrganizationId,
-				name,
 				name,
 			),
 	)
@@ -98,9 +96,6 @@ func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(ctx context.Con
 
 	if updateOrganization.Name != nil {
 		updateRequest = updateRequest.Set("name", *updateOrganization.Name)
-	}
-	if updateOrganization.DatabaseName != nil {
-		updateRequest = updateRequest.Set("database_name", *updateOrganization.DatabaseName)
 	}
 	if updateOrganization.ExportScheduledExecutionS3 != nil {
 		updateRequest = updateRequest.Set("export_scheduled_execution_s3",

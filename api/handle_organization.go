@@ -80,7 +80,6 @@ func (api *API) handlePatchOrganization(c *gin.Context) {
 	organization, err := usecase.UpdateOrganization(c.Request.Context(), models.UpdateOrganizationInput{
 		Id:                         organizationID,
 		Name:                       data.Name,
-		DatabaseName:               data.DatabaseName,
 		ExportScheduledExecutionS3: data.ExportScheduledExecutionS3,
 	})
 

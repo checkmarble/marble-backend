@@ -7,7 +7,6 @@ WITH
 SELECT
       id,
       name,
-      database_name,
       deleted_at,
       export_scheduled_execution_s3
 FROM
