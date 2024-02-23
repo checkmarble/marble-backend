@@ -1,5 +1,8 @@
 package models
 
+// ///////////////////////////////
+// Data Type
+// ///////////////////////////////
 type DataType int
 
 const (
@@ -66,12 +69,23 @@ func ToLinkNames(arr []string) []LinkName {
 	return result
 }
 
+// ///////////////////////////////
+// Data Model table
+// ///////////////////////////////
+
 type Table struct {
 	ID            string
 	Name          TableName
 	Description   string
 	Fields        map[FieldName]Field
 	LinksToSingle map[LinkName]LinkToSingle
+}
+
+type TableMetadata struct {
+	ID             string
+	Description    string
+	Name           string
+	OrganizationID string
 }
 
 func ColumnNames(table Table) []string {
@@ -82,6 +96,22 @@ func ColumnNames(table Table) []string {
 		i++
 	}
 	return columnNames
+}
+
+// ///////////////////////////////
+// Data Type
+// ///////////////////////////////
+
+type Field struct {
+	ID                string
+	DataType          DataType
+	Description       string
+	IsEnum            bool
+	Name              FieldName
+	Nullable          bool
+	TableId           string
+	Values            []any
+	UnicityConstraint UnicityConstraint
 }
 
 type UnicityConstraint int
@@ -116,66 +146,36 @@ func UnicityConstraintFromString(s string) UnicityConstraint {
 	return NoUnicityConstraint
 }
 
-type Field struct {
-	ID                string
-	DataType          DataType
-	Description       string
-	IsEnum            bool
-	Nullable          bool
-	TableId           string
-	Values            []any
-	UnicityConstraint UnicityConstraint
-}
-
-type LinkToSingle struct {
-	LinkedTableName TableName
-	ParentFieldName FieldName
-	ChildFieldName  FieldName
-}
-
-type DataModelTable struct {
-	ID             string
-	OrganizationID string
-	Name           string
-	Description    string
-}
-
-type DataModelField struct {
-	Name        string
+type CreateFieldInput struct {
+	TableId     string
+	Name        FieldName
 	Description string
-	Type        string
+	DataType    DataType
 	Nullable    bool
 	IsEnum      bool
 }
 
-type UpdateDataModelFieldInput struct {
+type UpdateFieldInput struct {
 	Description *string
 	IsEnum      *bool
 }
 
-type DataModelTableField struct {
-	TableID          string
-	OrganizationID   string
-	TableName        string
-	TableDescription string
-	FieldID          string
-	FieldName        string
-	FieldType        string
-	FieldNullable    bool
-	FieldDescription string
-	FieldIsEnum      bool
+// ///////////////////////////////
+// Data Model Link
+// ///////////////////////////////
+type LinkToSingle struct {
+	Name            LinkName
+	LinkedTableName TableName
+	ParentFieldName FieldName
+	ChildTableName  TableName
+	ChildFieldName  FieldName
 }
 
-type DataModelLink struct {
-	ID             string
+type DataModelLinkCreateInput struct {
 	OrganizationID string
 	Name           LinkName
 	ParentTableID  string
-	ParentTable    TableName
 	ParentFieldID  string
-	ParentField    FieldName
 	ChildTableID   string
-	ChildTable     TableName
 	ChildFieldID   string
-	ChildField     FieldName
 }

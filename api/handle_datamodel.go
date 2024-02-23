@@ -87,16 +87,17 @@ func (api *API) CreateField(c *gin.Context) {
 	}
 
 	tableID := c.Param("tableID")
-	field := models.DataModelField{
-		Name:        input.Name,
+	field := models.CreateFieldInput{
+		TableId:     tableID,
+		Name:        models.FieldName(input.Name),
 		Description: input.Description,
-		Type:        input.Type,
+		DataType:    models.DataTypeFrom(input.Type),
 		Nullable:    input.Nullable,
 		IsEnum:      input.IsEnum,
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewDataModelUseCase()
-	fieldID, err := usecase.CreateDataModelField(c.Request.Context(), tableID, field)
+	fieldID, err := usecase.CreateDataModelField(c.Request.Context(), field)
 	if presentError(c, err) {
 		return
 	}
@@ -119,7 +120,7 @@ func (api *API) UpdateDataModelField(c *gin.Context) {
 	fieldID := c.Param("fieldID")
 
 	usecase := api.UsecasesWithCreds(c.Request).NewDataModelUseCase()
-	err := usecase.UpdateDataModelField(c.Request.Context(), fieldID, models.UpdateDataModelFieldInput{
+	err := usecase.UpdateDataModelField(c.Request.Context(), fieldID, models.UpdateFieldInput{
 		Description: input.Description,
 		IsEnum:      input.IsEnum,
 	})
@@ -149,7 +150,7 @@ func (api *API) CreateLink(c *gin.Context) {
 		return
 	}
 
-	link := models.DataModelLink{
+	link := models.DataModelLinkCreateInput{
 		OrganizationID: organizationID,
 		Name:           models.LinkName(input.Name),
 		ParentTableID:  input.ParentTableID,

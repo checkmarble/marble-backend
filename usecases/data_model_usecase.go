@@ -36,31 +36,34 @@ func (usecase *DataModelUseCase) CreateDataModelTable(ctx context.Context, organ
 	if err := usecase.enforceSecurity.WriteDataModel(organizationId); err != nil {
 		return "", err
 	}
+	tableId := uuid.New().String()
 
-	defaultFields := []models.DataModelField{
+	defaultFields := []models.CreateFieldInput{
 		{
-			Name:        "object_id",
+			TableId:     tableId,
+			DataType:    models.String,
 			Description: fmt.Sprintf("required id on all objects in the %s table", name),
-			Type:        models.String.String(),
+			Name:        "object_id",
 			Nullable:    false,
 		},
 		{
-			Name:        "updated_at",
+			TableId:     tableId,
+			DataType:    models.Timestamp,
 			Description: fmt.Sprintf("required timestamp on all objects in the %s table", name),
-			Type:        models.Timestamp.String(),
+			Name:        "updated_at",
 			Nullable:    false,
 		},
 	}
 
-	tableID := uuid.New().String()
 	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
-		err := usecase.dataModelRepository.CreateDataModelTable(ctx, tx, organizationId, tableID, name, description)
+		err := usecase.dataModelRepository.CreateDataModelTable(ctx, tx, organizationId, tableId, name, description)
 		if err != nil {
 			return err
 		}
 
 		for _, field := range defaultFields {
-			err := usecase.dataModelRepository.CreateDataModelField(ctx, tx, tableID, uuid.New().String(), field)
+			fieldId := uuid.New().String()
+			err := usecase.dataModelRepository.CreateDataModelField(ctx, tx, fieldId, field)
 			if err != nil {
 				return err
 			}
@@ -74,7 +77,7 @@ func (usecase *DataModelUseCase) CreateDataModelTable(ctx context.Context, organ
 			return usecase.organizationSchemaRepository.CreateTable(ctx, orgTx, name)
 		})
 	})
-	return tableID, err
+	return tableId, err
 }
 
 func (usecase *DataModelUseCase) UpdateDataModelTable(ctx context.Context, tableID, description string) error {
@@ -96,10 +99,10 @@ func (usecase *DataModelUseCase) UpdateDataModelTable(ctx context.Context, table
 	)
 }
 
-func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, tableID string, field models.DataModelField) (string, error) {
-	fieldID := uuid.New().String()
+func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, field models.CreateFieldInput) (string, error) {
+	fieldId := uuid.New().String()
 	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
-		table, err := usecase.dataModelRepository.GetDataModelTable(ctx, tx, tableID)
+		table, err := usecase.dataModelRepository.GetDataModelTable(ctx, tx, field.TableId)
 		if err != nil {
 			return err
 		}
@@ -107,7 +110,7 @@ func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, table
 			return err
 		}
 
-		if err := usecase.dataModelRepository.CreateDataModelField(ctx, tx, tableID, fieldID, field); err != nil {
+		if err := usecase.dataModelRepository.CreateDataModelField(ctx, tx, fieldId, field); err != nil {
 			return err
 		}
 
@@ -120,10 +123,10 @@ func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, table
 			},
 		)
 	})
-	return fieldID, err
+	return fieldId, err
 }
 
-func (usecase *DataModelUseCase) UpdateDataModelField(ctx context.Context, fieldID string, input models.UpdateDataModelFieldInput) error {
+func (usecase *DataModelUseCase) UpdateDataModelField(ctx context.Context, fieldID string, input models.UpdateFieldInput) error {
 	exec := usecase.executorFactory.NewExecutor()
 	field, err := usecase.dataModelRepository.GetDataModelField(ctx, exec, fieldID)
 	if err != nil {
@@ -146,12 +149,15 @@ func (usecase *DataModelUseCase) UpdateDataModelField(ctx context.Context, field
 	return usecase.dataModelRepository.UpdateDataModelField(ctx, exec, fieldID, input)
 }
 
-func (usecase *DataModelUseCase) CreateDataModelLink(ctx context.Context, link models.DataModelLink) error {
+func (usecase *DataModelUseCase) CreateDataModelLink(ctx context.Context, link models.DataModelLinkCreateInput) error {
 	if err := usecase.enforceSecurity.WriteDataModel(link.OrganizationID); err != nil {
 		return err
 	}
-	return usecase.dataModelRepository.CreateDataModelLink(ctx,
-		usecase.executorFactory.NewExecutor(), link)
+	return usecase.dataModelRepository.CreateDataModelLink(
+		ctx,
+		usecase.executorFactory.NewExecutor(),
+		link,
+	)
 }
 
 func (usecase *DataModelUseCase) DeleteDataModel(ctx context.Context, organizationID string) error {

@@ -14,7 +14,7 @@ type OrganizationSchemaRepository interface {
 	CreateSchemaIfNotExists(ctx context.Context, exec Executor) error
 	DeleteSchema(ctx context.Context, exec Executor) error
 	CreateTable(ctx context.Context, exec Executor, tableName string) error
-	CreateField(ctx context.Context, exec Executor, tableName string, field models.DataModelField) error
+	CreateField(ctx context.Context, exec Executor, tableName string, field models.CreateFieldInput) error
 }
 
 type OrganizationSchemaRepositoryPostgresql struct{}
@@ -64,13 +64,13 @@ func (repo *OrganizationSchemaRepositoryPostgresql) CreateField(
 	ctx context.Context,
 	exec Executor,
 	tableName string,
-	field models.DataModelField,
+	field models.CreateFieldInput,
 ) error {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return err
 	}
 
-	fieldType := toPgType(models.DataTypeFrom(field.Type))
+	fieldType := toPgType(field.DataType)
 	sanitizedTableName := pgx.Identifier.Sanitize([]string{exec.DatabaseSchema().Schema, tableName})
 
 	builder := strings.Builder{}

@@ -49,8 +49,8 @@ const (
 
 var SelectDataModelTableColumns = utils.ColumnList[DbDataModelTable]()
 
-func AdaptDataModelTable(dbDataModelTable DbDataModelTable) (models.DataModelTable, error) {
-	return models.DataModelTable{
+func AdaptTableMetadata(dbDataModelTable DbDataModelTable) (models.TableMetadata, error) {
+	return models.TableMetadata{
 		ID:             dbDataModelTable.ID,
 		OrganizationID: dbDataModelTable.OrganizationID,
 		Name:           dbDataModelTable.Name,
@@ -58,7 +58,7 @@ func AdaptDataModelTable(dbDataModelTable DbDataModelTable) (models.DataModelTab
 	}, nil
 }
 
-type DbDataModelField struct {
+type DbDataModelTableJoinField struct {
 	TableID          string `db:"data_model_tables.id"`
 	OrganizationID   string `db:"data_model_tables.organization_id"`
 	TableName        string `db:"data_model_tables.name"`
@@ -71,43 +71,22 @@ type DbDataModelField struct {
 	FieldIsEnum      bool   `db:"data_model_fields.is_enum"`
 }
 
-var SelectDataModelFieldColumns = utils.ColumnList[DbDataModelField]()
+var SelectDataModelTableJoinFieldColumns = utils.ColumnList[DbDataModelTableJoinField]()
 
-func AdaptDataModelTableField(dbDataModelTableField DbDataModelField) models.DataModelTableField {
-	return models.DataModelTableField{
-		TableID:          dbDataModelTableField.TableID,
-		OrganizationID:   dbDataModelTableField.OrganizationID,
-		TableName:        dbDataModelTableField.TableName,
-		TableDescription: dbDataModelTableField.TableDescription,
-		FieldID:          dbDataModelTableField.FieldID,
-		FieldName:        dbDataModelTableField.FieldName,
-		FieldType:        dbDataModelTableField.FieldType,
-		FieldNullable:    dbDataModelTableField.FieldNullable,
-		FieldDescription: dbDataModelTableField.FieldDescription,
-		FieldIsEnum:      dbDataModelTableField.FieldIsEnum,
-	}
+type DbDataModelLink struct {
+	Name        string
+	ParentTable string
+	ParentField string
+	ChildTable  string
+	ChildField  string
 }
 
-type DataModelLink struct {
-	ID            string
-	Name          string
-	ParentTableID string
-	ParentTable   string
-	ParentFieldID string
-	ParentField   string
-	ChildTableID  string
-	ChildTable    string
-	ChildFieldID  string
-	ChildField    string
-}
-
-func AdaptDataModelLink(dbDataModelLink DataModelLink) models.DataModelLink {
-	return models.DataModelLink{
-		ID:          dbDataModelLink.ID,
-		Name:        models.LinkName(dbDataModelLink.Name),
-		ParentTable: models.TableName(dbDataModelLink.ParentTable),
-		ParentField: models.FieldName(dbDataModelLink.ParentField),
-		ChildTable:  models.TableName(dbDataModelLink.ChildTable),
-		ChildField:  models.FieldName(dbDataModelLink.ChildField),
+func AdaptLinkToSingle(dbDataModelLink DbDataModelLink) models.LinkToSingle {
+	return models.LinkToSingle{
+		Name:            models.LinkName(dbDataModelLink.Name),
+		LinkedTableName: models.TableName(dbDataModelLink.ParentTable),
+		ParentFieldName: models.FieldName(dbDataModelLink.ParentField),
+		ChildTableName:  models.TableName(dbDataModelLink.ChildTable),
+		ChildFieldName:  models.FieldName(dbDataModelLink.ChildField),
 	}
 }
