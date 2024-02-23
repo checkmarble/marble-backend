@@ -107,14 +107,47 @@ func ColumnNames(table Table) []string {
 	return columnNames
 }
 
+type UnicityConstraint int
+
+const (
+	NoUnicityConstraint UnicityConstraint = iota
+	ActiveUniqueConstraint
+	PendingUniqueConstraint
+)
+
+func (u UnicityConstraint) String() string {
+	switch u {
+	case NoUnicityConstraint:
+		return "no_unicity_constraint"
+	case ActiveUniqueConstraint:
+		return "active_unique_constraint"
+	case PendingUniqueConstraint:
+		return "pending_unique_constraint"
+	}
+	return "unknown"
+}
+
+func UnicityConstraintFromString(s string) UnicityConstraint {
+	switch s {
+	case "no_unicity_constraint":
+		return NoUnicityConstraint
+	case "active_unique_constraint":
+		return ActiveUniqueConstraint
+	case "pending_unique_constraint":
+		return PendingUniqueConstraint
+	}
+	return NoUnicityConstraint
+}
+
 type Field struct {
-	ID          string   `json:"id,omitempty"`
-	DataType    DataType `json:"dataType"`
-	Description string   `json:"description"`
-	IsEnum      bool     `json:"is_enum"`
-	Nullable    bool     `json:"nullable"`
-	TableId     string   `json:"table_id,omitempty"`
-	Values      []any    `json:"values,omitempty"`
+	ID                string            `json:"id,omitempty"`
+	DataType          DataType          `json:"dataType"`
+	Description       string            `json:"description"`
+	IsEnum            bool              `json:"is_enum"`
+	Nullable          bool              `json:"nullable"`
+	TableId           string            `json:"table_id,omitempty"`
+	Values            []any             `json:"values,omitempty"`
+	UnicityConstraint UnicityConstraint `json:"unicity_constraint"`
 }
 
 type LinkToSingle struct {
