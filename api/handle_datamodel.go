@@ -77,6 +77,7 @@ type createFieldInput struct {
 	Type        string `json:"type"`
 	Nullable    bool   `json:"nullable"`
 	IsEnum      bool   `json:"is_enum"`
+	IsUnique    bool   `json:"is_unique"`
 }
 
 func (api *API) CreateField(c *gin.Context) {
@@ -94,6 +95,7 @@ func (api *API) CreateField(c *gin.Context) {
 		DataType:    models.DataTypeFrom(input.Type),
 		Nullable:    input.Nullable,
 		IsEnum:      input.IsEnum,
+		IsUnique:    input.IsUnique,
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewDataModelUseCase()

@@ -44,3 +44,11 @@ func (m *IngestedDataIndexesRepository) ListAllUniqueIndexes(
 	args := m.Called(ctx, exec)
 	return args.Get(0).([]models.UnicityIndex), args.Error(1)
 }
+
+func (m *IngestedDataIndexesRepository) CreateUniqueIndexAsync(
+	ctx context.Context,
+	exec repositories.Executor, index models.UnicityIndex,
+) error {
+	args := m.Called(ctx, exec, index)
+	return args.Error(0)
+}

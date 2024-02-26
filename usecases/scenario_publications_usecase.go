@@ -35,6 +35,7 @@ type clientDbIndexEditor interface {
 	)
 	CreateIndexesAsync(ctx context.Context, indexes []models.ConcreteIndex) error
 	ListAllUniqueIndexes(ctx context.Context) ([]models.UnicityIndex, error)
+	CreateUniqueIndexAsync(ctx context.Context, index models.UnicityIndex) error
 }
 
 type ScenarioPublicationUsecase struct {

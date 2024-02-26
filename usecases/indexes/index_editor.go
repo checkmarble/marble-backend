@@ -17,6 +17,7 @@ type IngestedDataIndexesRepository interface {
 	ListAllUniqueIndexes(ctx context.Context, exec repositories.Executor) ([]models.UnicityIndex, error)
 	CreateIndexesAsync(ctx context.Context, exec repositories.Executor, indexes []models.ConcreteIndex) error
 	CountPendingIndexes(ctx context.Context, exec repositories.Executor) (int, error)
+	CreateUniqueIndexAsync(ctx context.Context, exec repositories.Executor, index models.UnicityIndex) error
 }
 
 type ScenarioFetcher interface {
@@ -134,4 +135,32 @@ func (editor ClientDbIndexEditor) ListAllUniqueIndexes(ctx context.Context) ([]m
 			"Error while creating client schema executor in ListAllUniqueIndexes")
 	}
 	return editor.ingestedDataIndexesRepository.ListAllUniqueIndexes(ctx, db)
+}
+
+func (editor ClientDbIndexEditor) CreateUniqueIndexAsync(
+	ctx context.Context,
+	index models.UnicityIndex,
+) error {
+	logger := utils.LoggerFromContext(ctx)
+
+	organizationId, err := editor.organizationIdOfContext()
+	if err != nil {
+		return err
+	}
+	db, err := editor.executorFactory.NewClientDbExecutor(ctx, organizationId)
+	if err != nil {
+		return errors.Wrap(
+			err,
+			"Error while creating client schema executor in CreateUniqueIndexAsync")
+	}
+	err = editor.ingestedDataIndexesRepository.CreateUniqueIndexAsync(ctx, db, index)
+	if err != nil {
+		return errors.Wrap(err, "Error while creating unique index in CreateUniqueIndexAsync")
+	}
+	logger.InfoContext(
+		ctx,
+		fmt.Sprintf("Unique index pending creation: %+v\n", index),
+		"org_id", organizationId,
+	)
+	return nil
 }
