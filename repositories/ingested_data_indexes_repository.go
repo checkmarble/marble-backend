@@ -181,7 +181,7 @@ func asynchronouslyCreateIndexes(
 func createIndexSQL(ctx context.Context, exec Executor, index models.ConcreteIndex) error {
 	logger := utils.LoggerFromContext(ctx)
 	qualifiedTableName := tableNameWithSchema(exec, index.TableName)
-	indexName := indexToIndexName(index)
+	indexName := indexToIndexName(index.Indexed, index.TableName)
 	indexedColumns := index.Indexed
 	includedColumns := index.Included
 
@@ -225,16 +225,77 @@ func withDesc(s models.FieldName) string {
 	return fmt.Sprintf("%s DESC", s)
 }
 
-func indexToIndexName(index models.ConcreteIndex) string {
+func indexToIndexName(fields []models.FieldName, table models.TableName) string {
 	// postgresql enforces a 63 character length limit on all identifiers
 	indexedNames := strings.Join(
 		pure_utils.Map(
-			index.Indexed,
+			fields,
 			func(s models.FieldName) string { return string(s) },
 		),
 		"-",
 	)
-	out := fmt.Sprintf("idx_%s_%s", index.TableName, indexedNames)
+	out := fmt.Sprintf("idx_%s_%s", table, indexedNames)
 	randomId := uuid.NewString()
-	return pgx.Identifier.Sanitize([]string{out[:min(len(out), 53)] + "_" + randomId})
+	length := min(len(out)+len(randomId), 53)
+	return pgx.Identifier.Sanitize([]string{out[:length] + "_" + randomId})
+}
+
+func toUniqIndexName(fields []models.FieldName, table models.TableName) string {
+	// postgresql enforces a 63 character length limit on all identifiers
+	indexedNames := strings.Join(
+		pure_utils.Map(
+			fields,
+			func(s models.FieldName) string { return string(s) },
+		),
+		"-",
+	)
+	out := fmt.Sprintf("uniq_idx_%s_%s", table, indexedNames)
+	length := min(len(out), 53)
+	return pgx.Identifier.Sanitize([]string{out[:length]})
+}
+
+func (repo *ClientDbRepository) CreateUniqueIndexAsync(ctx context.Context, exec Executor, index models.UnicityIndex) error {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return err
+	}
+
+	logger := utils.LoggerFromContext(ctx)
+	indexName := toUniqIndexName(index.Fields, index.TableName)
+	if _, err := exec.Exec(ctx, "DROP INDEX IF EXISTS "+indexName); err != nil {
+		logger.ErrorContext(ctx, fmt.Sprintf("Error while dropping index %s", indexName))
+		return errors.Wrap(err, "error while dropping index")
+	}
+
+	ctx = context.WithoutCancel(ctx)
+	ctx, _ = context.WithTimeout(ctx, INDEX_CREATION_TIMEOUT*time.Minute)
+
+	// The function is meant to be executed asynchronously and return way after the request was finished,
+	// so we don't return any error
+	go func() {
+		qualifiedTableName := tableNameWithSchema(exec, index.TableName)
+
+		sql := fmt.Sprintf(
+			"CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS %s ON %s (%s) WHERE valid_until='infinity'",
+			indexName,
+			qualifiedTableName,
+			strings.Join(pure_utils.Map(index.Fields, withDesc), ","),
+		)
+
+		if _, err := exec.Exec(ctx, sql); err != nil {
+			errMessage := fmt.Sprintf(
+				"Error while creating unique index in schema %s with DDL \"%s\"",
+				exec.DatabaseSchema().Schema,
+				sql,
+			)
+			logger.ErrorContext(ctx, errMessage)
+			utils.LogAndReportSentryError(ctx, err)
+		}
+		logger.InfoContext(ctx, fmt.Sprintf(
+			"Unique index %s created in schema %s with DDL \"%s\"",
+			indexName,
+			exec.DatabaseSchema().Schema,
+			sql,
+		))
+	}()
+	return nil
 }

@@ -31,3 +31,8 @@ func (editor *ClientDbIndexEditor) ListAllUniqueIndexes(ctx context.Context) ([]
 	args := editor.Called(ctx)
 	return args.Get(0).([]models.UnicityIndex), args.Error(1)
 }
+
+func (editor *ClientDbIndexEditor) CreateUniqueIndexAsync(ctx context.Context, index models.UnicityIndex) error {
+	args := editor.Called(ctx, index)
+	return args.Error(0)
+}

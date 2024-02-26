@@ -141,7 +141,8 @@ func (usecase *DataModelUseCase) UpdateDataModelTable(ctx context.Context, table
 
 func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, field models.CreateFieldInput) (string, error) {
 	fieldId := uuid.New().String()
-	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
+	var tableName string
+	if err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
 		table, err := usecase.dataModelRepository.GetDataModelTable(ctx, tx, field.TableId)
 		if err != nil {
 			return err
@@ -149,6 +150,8 @@ func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, field
 		if err := usecase.enforceSecurity.WriteDataModel(table.OrganizationID); err != nil {
 			return err
 		}
+
+		tableName = table.Name
 
 		if err := usecase.dataModelRepository.CreateDataModelField(ctx, tx, fieldId, field); err != nil {
 			return err
@@ -162,8 +165,22 @@ func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, field
 				return usecase.organizationSchemaRepository.CreateField(ctx, orgTx, table.Name, field)
 			},
 		)
-	})
-	return fieldId, err
+	}); err != nil {
+		return "", err
+	}
+
+	if field.IsUnique {
+		if err := usecase.clientDbIndexEditor.CreateUniqueIndexAsync(
+			ctx,
+			models.UnicityIndex{
+				TableName: models.TableName(tableName),
+				Fields:    []models.FieldName{field.Name},
+			}); err != nil {
+			return "", err
+		}
+	}
+
+	return fieldId, nil
 }
 
 func (usecase *DataModelUseCase) UpdateDataModelField(ctx context.Context, fieldID string, input models.UpdateFieldInput) error {

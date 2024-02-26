@@ -153,6 +153,7 @@ type CreateFieldInput struct {
 	DataType    DataType
 	Nullable    bool
 	IsEnum      bool
+	IsUnique    bool
 }
 
 type UpdateFieldInput struct {
