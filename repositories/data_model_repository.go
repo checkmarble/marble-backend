@@ -27,7 +27,7 @@ type DataModelRepository interface {
 	) error
 	CreateDataModelLink(ctx context.Context, exec Executor, link models.DataModelLinkCreateInput) error
 	DeleteDataModel(ctx context.Context, exec Executor, organizationID string) error
-	GetDataModelField(ctx context.Context, exec Executor, fieldId string) (models.Field, error)
+	GetDataModelField(ctx context.Context, exec Executor, fieldId string) (models.FieldMetadata, error)
 }
 
 type DataModelRepositoryPostgresql struct{}
@@ -365,15 +365,16 @@ func (repo *DataModelRepositoryPostgresql) GetEnumValues(ctx context.Context, ex
 	return values, nil
 }
 
-func (repo *DataModelRepositoryPostgresql) GetDataModelField(ctx context.Context, exec Executor, fieldId string) (models.Field, error) {
+func (repo *DataModelRepositoryPostgresql) GetDataModelField(ctx context.Context, exec Executor, fieldId string) (models.FieldMetadata, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.Field{}, err
+		return models.FieldMetadata{}, err
 	}
 
 	query := `
 		SELECT
 			data_model_fields.description,
 			data_model_fields.is_enum,
+			data_model_fields.name,
 			data_model_fields.nullable,
 			data_model_fields.table_id,
 			data_model_fields.type
@@ -383,18 +384,19 @@ func (repo *DataModelRepositoryPostgresql) GetDataModelField(ctx context.Context
 
 	row := exec.QueryRow(ctx, query, fieldId)
 
-	var field models.Field
+	var field models.FieldMetadata
 	var dataType string
 	if err := row.Scan(
 		&field.Description,
 		&field.IsEnum,
+		&field.Name,
 		&field.Nullable,
 		&field.TableId,
 		&dataType,
 	); errors.Is(err, pgx.ErrNoRows) {
-		return models.Field{}, fmt.Errorf("error in GetDataModelField: %w", models.NotFoundError)
+		return models.FieldMetadata{}, fmt.Errorf("error in GetDataModelField: %w", models.NotFoundError)
 	} else if err != nil {
-		return models.Field{}, err
+		return models.FieldMetadata{}, err
 	}
 	field.ID = fieldId
 	field.DataType = models.DataTypeFrom(dataType)
