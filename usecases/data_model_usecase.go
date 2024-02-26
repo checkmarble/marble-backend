@@ -9,6 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 )
 
 type DataModelUseCase struct {
@@ -218,14 +219,42 @@ func (usecase *DataModelUseCase) UpdateDataModelField(ctx context.Context, field
 }
 
 func (usecase *DataModelUseCase) CreateDataModelLink(ctx context.Context, link models.DataModelLinkCreateInput) error {
+	exec := usecase.executorFactory.NewExecutor()
 	if err := usecase.enforceSecurity.WriteDataModel(link.OrganizationID); err != nil {
 		return err
 	}
-	return usecase.dataModelRepository.CreateDataModelLink(
-		ctx,
-		usecase.executorFactory.NewExecutor(),
-		link,
-	)
+
+	// check existence of tables
+	if _, err := usecase.dataModelRepository.GetDataModelTable(ctx, exec, link.ChildTableID); err != nil {
+		return err
+	}
+	table, err := usecase.dataModelRepository.GetDataModelTable(ctx, exec, link.ParentTableID)
+	if err != nil {
+		return err
+	}
+
+	// check existence of fields
+	if _, err := usecase.dataModelRepository.GetDataModelField(ctx, exec, link.ChildFieldID); err != nil {
+		return err
+	}
+	field, err := usecase.dataModelRepository.GetDataModelField(ctx, exec, link.ParentFieldID)
+	if err != nil {
+		return err
+	}
+
+	// Check that the parent field is unique by getting the full data model
+	dataModel, err := usecase.GetDataModel(ctx, link.OrganizationID)
+	if err != nil {
+		return err
+	}
+	parentTable := dataModel.Tables[models.TableName(table.Name)]
+	parentField := parentTable.Fields[models.FieldName(field.Name)]
+	if parentField.UnicityConstraint != models.ActiveUniqueConstraint {
+		return errors.Wrap(models.BadParameterError,
+			fmt.Sprintf("parent field must be unique: field %s is not", field.Name))
+	}
+
+	return usecase.dataModelRepository.CreateDataModelLink(ctx, exec, link)
 }
 
 func (usecase *DataModelUseCase) DeleteDataModel(ctx context.Context, organizationID string) error {

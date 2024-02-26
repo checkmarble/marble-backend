@@ -114,6 +114,16 @@ type Field struct {
 	UnicityConstraint UnicityConstraint
 }
 
+type FieldMetadata struct {
+	ID          string
+	DataType    DataType
+	Description string
+	IsEnum      bool
+	Name        string
+	Nullable    bool
+	TableId     string
+}
+
 type UnicityConstraint int
 
 const (

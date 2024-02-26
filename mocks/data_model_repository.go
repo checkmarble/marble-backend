@@ -62,7 +62,7 @@ func (d *DataModelRepository) UpdateDataModelField(ctx context.Context, exec rep
 	return args.Error(0)
 }
 
-func (repo *DataModelRepository) GetDataModelField(ctx context.Context, exec repositories.Executor, fieldId string) (models.Field, error) {
-	args := repo.Called(exec, fieldId)
-	return args.Get(0).(models.Field), args.Error(1)
+func (repo *DataModelRepository) GetDataModelField(ctx context.Context, exec repositories.Executor, fieldId string) (models.FieldMetadata, error) {
+	args := repo.Called(ctx, exec, fieldId)
+	return args.Get(0).(models.FieldMetadata), args.Error(1)
 }
