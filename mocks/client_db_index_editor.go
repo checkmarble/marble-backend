@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -30,6 +31,15 @@ func (editor *ClientDbIndexEditor) CreateIndexesAsync(
 func (editor *ClientDbIndexEditor) ListAllUniqueIndexes(ctx context.Context) ([]models.UnicityIndex, error) {
 	args := editor.Called(ctx)
 	return args.Get(0).([]models.UnicityIndex), args.Error(1)
+}
+
+func (editor *ClientDbIndexEditor) CreateUniqueIndex(
+	ctx context.Context,
+	exec repositories.Executor,
+	index models.UnicityIndex,
+) error {
+	args := editor.Called(ctx, exec, index)
+	return args.Error(0)
 }
 
 func (editor *ClientDbIndexEditor) CreateUniqueIndexAsync(ctx context.Context, index models.UnicityIndex) error {
