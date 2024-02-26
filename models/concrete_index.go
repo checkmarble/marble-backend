@@ -11,6 +11,7 @@ import (
 type UnicityIndex struct {
 	TableName         TableName
 	Fields            []FieldName
+	Included          []FieldName
 	CreationInProcess bool
 }
 

@@ -259,43 +259,74 @@ func (repo *ClientDbRepository) CreateUniqueIndexAsync(ctx context.Context, exec
 		return err
 	}
 
-	logger := utils.LoggerFromContext(ctx)
 	indexName := toUniqIndexName(index.Fields, index.TableName)
 	if _, err := exec.Exec(ctx, "DROP INDEX IF EXISTS "+indexName); err != nil {
-		logger.ErrorContext(ctx, fmt.Sprintf("Error while dropping index %s", indexName))
-		return errors.Wrap(err, "error while dropping index")
+		return errors.Wrap(err, fmt.Sprintf("Error while dropping index %s", indexName))
 	}
 
 	ctx = context.WithoutCancel(ctx)
 	ctx, _ = context.WithTimeout(ctx, INDEX_CREATION_TIMEOUT*time.Minute)
 
+	go createUniqueIndex(ctx, exec, index, true)
 	// The function is meant to be executed asynchronously and return way after the request was finished,
 	// so we don't return any error
-	go func() {
-		qualifiedTableName := tableNameWithSchema(exec, index.TableName)
+	return nil
+}
 
-		sql := fmt.Sprintf(
-			"CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS %s ON %s (%s) WHERE valid_until='infinity'",
-			indexName,
-			qualifiedTableName,
-			strings.Join(pure_utils.Map(index.Fields, withDesc), ","),
+func createUniqueIndex(ctx context.Context, exec Executor, index models.UnicityIndex, async bool) error {
+	logger := utils.LoggerFromContext(ctx)
+	qualifiedTableName := tableNameWithSchema(exec, index.TableName)
+	indexName := toUniqIndexName(index.Fields, index.TableName)
+
+	var concurrently string
+	if async {
+		concurrently = "CONCURRENTLY"
+	}
+	sql := fmt.Sprintf(
+		"CREATE UNIQUE INDEX %s IF NOT EXISTS %s ON %s (%s)",
+		concurrently,
+		indexName,
+		qualifiedTableName,
+		strings.Join(pure_utils.Map(index.Fields, withDesc), ","),
+	)
+	if len(index.Included) > 0 {
+		sql += fmt.Sprintf(
+			" INCLUDE (%s)",
+			strings.Join(
+				pure_utils.Map(index.Included, func(s models.FieldName) string { return string(s) }),
+				",",
+			),
 		)
+	}
+	sql += " WHERE valid_until='infinity'"
 
-		if _, err := exec.Exec(ctx, sql); err != nil {
-			errMessage := fmt.Sprintf(
-				"Error while creating unique index in schema %s with DDL \"%s\"",
-				exec.DatabaseSchema().Schema,
-				sql,
-			)
-			logger.ErrorContext(ctx, errMessage)
-			utils.LogAndReportSentryError(ctx, err)
-		}
-		logger.InfoContext(ctx, fmt.Sprintf(
-			"Unique index %s created in schema %s with DDL \"%s\"",
-			indexName,
+	if _, err := exec.Exec(ctx, sql); err != nil {
+		errMessage := fmt.Sprintf(
+			"Error while creating unique index in schema %s with DDL \"%s\"",
 			exec.DatabaseSchema().Schema,
 			sql,
-		))
-	}()
+		)
+		logger.ErrorContext(ctx, errMessage)
+		utils.LogAndReportSentryError(ctx, err)
+		return errors.Wrap(err, errMessage)
+	}
+	logger.InfoContext(ctx, fmt.Sprintf(
+		"Unique index %s created in schema %s with DDL \"%s\"",
+		indexName,
+		exec.DatabaseSchema().Schema,
+		sql,
+	))
 	return nil
+}
+
+func (repo *ClientDbRepository) CreateUniqueIndex(ctx context.Context, exec Executor, index models.UnicityIndex) error {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return err
+	}
+
+	indexName := toUniqIndexName(index.Fields, index.TableName)
+	if _, err := exec.Exec(ctx, "DROP INDEX IF EXISTS "+indexName); err != nil {
+		return errors.Wrap(err, "error while dropping index")
+	}
+	return createUniqueIndex(ctx, exec, index, false)
 }

@@ -114,7 +114,18 @@ func (usecase *DataModelUseCase) CreateDataModelTable(ctx context.Context, organ
 			if err := usecase.organizationSchemaRepository.CreateSchemaIfNotExists(ctx, orgTx); err != nil {
 				return err
 			}
-			return usecase.organizationSchemaRepository.CreateTable(ctx, orgTx, name)
+			if err := usecase.organizationSchemaRepository.CreateTable(ctx, orgTx, name); err != nil {
+				return err
+			}
+			// the unique index on object_id will serve both to enforce unicity and to speed up ingestion queries
+			return usecase.clientDbIndexEditor.CreateUniqueIndex(
+				ctx,
+				orgTx,
+				models.UnicityIndex{
+					TableName: models.TableName(name),
+					Fields:    []models.FieldName{"object_id"},
+					Included:  []models.FieldName{"updated_at", "id"},
+				})
 		})
 	})
 	return tableId, err
