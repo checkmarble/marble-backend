@@ -254,7 +254,9 @@ func validateFieldUpdateRules(
 	table models.TableMetadata,
 	input models.UpdateFieldInput,
 ) (makeUnique, makeNotUnique bool, err error) {
-	if input.IsEnum != nil && *input.IsEnum && !slices.Contains(enumTypes, field.DataType) {
+	makeEnum := input.IsEnum != nil && *input.IsEnum && !field.IsEnum
+	makeNotEnum := input.IsEnum != nil && !*input.IsEnum && field.IsEnum
+	if makeEnum && !slices.Contains(enumTypes, field.DataType) {
 		return false, false, errors.Wrap(
 			models.BadParameterError,
 			"enum fields can only be of type string or numeric")
@@ -279,6 +281,17 @@ func validateFieldUpdateRules(
 		return false, false, errors.Wrap(
 			models.BadParameterError,
 			"cannot remove unicity constraint on a field that is linked to another table")
+	}
+
+	if makeUnique && ((field.IsEnum && !makeNotEnum) || makeEnum) {
+		return false, false, errors.Wrap(
+			models.BadParameterError,
+			"cannot make a field unique if it is an enum")
+	}
+	if makeEnum && !(currentField.UnicityConstraint == models.NoUnicityConstraint || makeNotUnique) {
+		return false, false, errors.Wrap(
+			models.BadParameterError,
+			"cannot make a field an enum if it is unique or has a pending unique constraint")
 	}
 
 	return
