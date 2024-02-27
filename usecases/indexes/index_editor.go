@@ -19,6 +19,7 @@ type IngestedDataIndexesRepository interface {
 	CountPendingIndexes(ctx context.Context, exec repositories.Executor) (int, error)
 	CreateUniqueIndexAsync(ctx context.Context, exec repositories.Executor, index models.UnicityIndex) error
 	CreateUniqueIndex(ctx context.Context, exec repositories.Executor, index models.UnicityIndex) error
+	DeleteUniqueIndex(ctx context.Context, exec repositories.Executor, index models.UnicityIndex) error
 }
 
 type ScenarioFetcher interface {
@@ -191,4 +192,21 @@ func (editor ClientDbIndexEditor) CreateUniqueIndex(
 
 	logger.InfoContext(ctx, fmt.Sprintf("Unique index pending created: %+v\n", index))
 	return nil
+}
+
+func (editor ClientDbIndexEditor) DeleteUniqueIndex(
+	ctx context.Context,
+	index models.UnicityIndex,
+) error {
+	organizationId, err := editor.organizationIdOfContext()
+	if err != nil {
+		return err
+	}
+	db, err := editor.executorFactory.NewClientDbExecutor(ctx, organizationId)
+	if err != nil {
+		return errors.Wrap(
+			err,
+			"Error while creating client schema executor in DeleteUniqueIndex")
+	}
+	return editor.ingestedDataIndexesRepository.DeleteUniqueIndex(ctx, db, index)
 }

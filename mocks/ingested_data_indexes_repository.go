@@ -62,3 +62,12 @@ func (m *IngestedDataIndexesRepository) CreateUniqueIndex(
 	args := m.Called(ctx, exec, index)
 	return args.Error(0)
 }
+
+func (m *IngestedDataIndexesRepository) DeleteUniqueIndex(
+	ctx context.Context,
+	exec repositories.Executor,
+	index models.UnicityIndex,
+) error {
+	args := m.Called(ctx, exec, index)
+	return args.Error(0)
+}

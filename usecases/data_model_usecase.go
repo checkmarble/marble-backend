@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -20,6 +21,11 @@ type DataModelUseCase struct {
 	organizationSchemaRepository repositories.OrganizationSchemaRepository
 	transactionFactory           executor_factory.TransactionFactory
 }
+
+var (
+	uniqTypes = []models.DataType{models.String, models.Int, models.Float}
+	enumTypes = []models.DataType{models.String, models.Int, models.Float}
+)
 
 func (usecase *DataModelUseCase) GetDataModel(ctx context.Context, organizationID string) (models.DataModel, error) {
 	if err := usecase.enforceSecurity.ReadDataModel(); err != nil {
@@ -197,25 +203,99 @@ func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, field
 
 func (usecase *DataModelUseCase) UpdateDataModelField(ctx context.Context, fieldID string, input models.UpdateFieldInput) error {
 	exec := usecase.executorFactory.NewExecutor()
+	// permission and input validation
 	field, err := usecase.dataModelRepository.GetDataModelField(ctx, exec, fieldID)
 	if err != nil {
 		return err
 	}
-
-	if table, err := usecase.dataModelRepository.GetDataModelTable(ctx, exec, field.TableId); err != nil {
+	table, err := usecase.dataModelRepository.GetDataModelTable(ctx, exec, field.TableId)
+	if err != nil {
 		return err
 	} else if err := usecase.enforceSecurity.WriteDataModel(table.OrganizationID); err != nil {
 		return err
 	}
-
-	if input.IsEnum != nil && *input.IsEnum &&
-		(field.DataType != models.String &&
-			field.DataType != models.Int &&
-			field.DataType != models.Float) {
-		return fmt.Errorf("enum fields can only be of type string or numeric: %w", models.BadParameterError)
+	dataModel, err := usecase.GetDataModel(ctx, table.OrganizationID)
+	if err != nil {
+		return err
 	}
 
-	return usecase.dataModelRepository.UpdateDataModelField(ctx, exec, fieldID, input)
+	makeUnique, makeNotUnique, err := validateFieldUpdateRules(dataModel, field, table, input)
+	if err != nil {
+		return err
+	}
+
+	// update the field (data_model_field row)
+	if err := usecase.dataModelRepository.UpdateDataModelField(ctx, exec, fieldID, input); err != nil {
+		return err
+	}
+
+	// asynchronously create the unique index if required
+	if makeUnique {
+		return usecase.clientDbIndexEditor.CreateUniqueIndexAsync(ctx, models.UnicityIndex{
+			TableName: models.TableName(table.Name),
+			Fields:    []models.FieldName{models.FieldName(field.Name)},
+		})
+	}
+
+	// delete the unique index if required
+	if makeNotUnique {
+		return usecase.clientDbIndexEditor.DeleteUniqueIndex(ctx, models.UnicityIndex{
+			TableName: models.TableName(table.Name),
+			Fields:    []models.FieldName{models.FieldName(field.Name)},
+		})
+	}
+
+	return nil
+}
+
+func validateFieldUpdateRules(
+	dataModel models.DataModel,
+	field models.FieldMetadata,
+	table models.TableMetadata,
+	input models.UpdateFieldInput,
+) (makeUnique, makeNotUnique bool, err error) {
+	if input.IsEnum != nil && *input.IsEnum && !slices.Contains(enumTypes, field.DataType) {
+		return false, false, errors.Wrap(
+			models.BadParameterError,
+			"enum fields can only be of type string or numeric")
+	}
+
+	currentField := dataModel.Tables[models.TableName(table.Name)].Fields[models.FieldName(field.Name)]
+
+	makeUnique = input.IsUnique != nil &&
+		*input.IsUnique &&
+		currentField.UnicityConstraint == models.NoUnicityConstraint
+	if makeUnique && !slices.Contains(uniqTypes, field.DataType) {
+		return false, false, errors.Wrap(
+			models.BadParameterError,
+			"unique fields can only be of type string, int or float")
+	}
+
+	linksToField := findLinksToField(dataModel, table.Name, field.Name)
+	makeNotUnique = input.IsUnique != nil &&
+		!*input.IsUnique &&
+		currentField.UnicityConstraint != models.NoUnicityConstraint
+	if makeNotUnique && len(linksToField) > 0 {
+		return false, false, errors.Wrap(
+			models.BadParameterError,
+			"cannot remove unicity constraint on a field that is linked to another table")
+	}
+
+	return
+}
+
+func findLinksToField(dataModel models.DataModel, tableName string, fieldName string) []models.LinkToSingle {
+	var links []models.LinkToSingle
+	for _, table := range dataModel.Tables {
+		for _, link := range table.LinksToSingle {
+			if string(link.LinkedTableName) == tableName &&
+				string(link.ParentFieldName) == fieldName {
+				links = append(links, link)
+			}
+		}
+	}
+
+	return links
 }
 
 func (usecase *DataModelUseCase) CreateDataModelLink(ctx context.Context, link models.DataModelLinkCreateInput) error {

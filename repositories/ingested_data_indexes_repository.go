@@ -236,7 +236,7 @@ func indexToIndexName(fields []models.FieldName, table models.TableName) string 
 	)
 	out := fmt.Sprintf("idx_%s_%s", table, indexedNames)
 	randomId := uuid.NewString()
-	length := min(len(out)+len(randomId), 53)
+	length := min(len(out), 53)
 	return pgx.Identifier.Sanitize([]string{out[:length] + "_" + randomId})
 }
 
@@ -251,7 +251,7 @@ func toUniqIndexName(fields []models.FieldName, table models.TableName) string {
 	)
 	out := fmt.Sprintf("uniq_idx_%s_%s", table, indexedNames)
 	length := min(len(out), 53)
-	return pgx.Identifier.Sanitize([]string{out[:length]})
+	return out[:length]
 }
 
 func (repo *ClientDbRepository) CreateUniqueIndexAsync(ctx context.Context, exec Executor, index models.UnicityIndex) error {
@@ -259,8 +259,10 @@ func (repo *ClientDbRepository) CreateUniqueIndexAsync(ctx context.Context, exec
 		return err
 	}
 
+	// The usecase is responsible for ensuring that a valid unique index does not exist yet. This is only for
+	// cleaning up an invalid index (created concurrently) and creating a new one.
 	indexName := toUniqIndexName(index.Fields, index.TableName)
-	if _, err := exec.Exec(ctx, "DROP INDEX IF EXISTS "+indexName); err != nil {
+	if _, err := exec.Exec(ctx, dropIdxSqlQuery(indexName, exec)); err != nil {
 		return errors.Wrap(err, fmt.Sprintf("Error while dropping index %s", indexName))
 	}
 
@@ -273,10 +275,19 @@ func (repo *ClientDbRepository) CreateUniqueIndexAsync(ctx context.Context, exec
 	return nil
 }
 
+func dropIdxSqlQuery(indexName string, exec Executor) string {
+	return fmt.Sprintf(
+		"DROP INDEX IF EXISTS %s",
+		pgx.Identifier.Sanitize([]string{exec.DatabaseSchema().Schema, indexName}),
+	)
+}
+
 func createUniqueIndex(ctx context.Context, exec Executor, index models.UnicityIndex, async bool) error {
 	logger := utils.LoggerFromContext(ctx)
 	qualifiedTableName := tableNameWithSchema(exec, index.TableName)
-	indexName := toUniqIndexName(index.Fields, index.TableName)
+	indexName := pgx.Identifier.Sanitize([]string{
+		toUniqIndexName(index.Fields, index.TableName),
+	})
 
 	var concurrently string
 	if async {
@@ -325,8 +336,19 @@ func (repo *ClientDbRepository) CreateUniqueIndex(ctx context.Context, exec Exec
 	}
 
 	indexName := toUniqIndexName(index.Fields, index.TableName)
-	if _, err := exec.Exec(ctx, "DROP INDEX IF EXISTS "+indexName); err != nil {
+	if _, err := exec.Exec(ctx, dropIdxSqlQuery(indexName, exec)); err != nil {
 		return errors.Wrap(err, "error while dropping index")
 	}
 	return createUniqueIndex(ctx, exec, index, false)
+}
+
+func (repo *ClientDbRepository) DeleteUniqueIndex(ctx context.Context, exec Executor, index models.UnicityIndex) error {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return err
+	}
+
+	indexName := toUniqIndexName(index.Fields, index.TableName)
+	fmt.Println(dropIdxSqlQuery(indexName, exec))
+	_, err := exec.Exec(ctx, dropIdxSqlQuery(indexName, exec))
+	return err
 }

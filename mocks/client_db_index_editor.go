@@ -46,3 +46,8 @@ func (editor *ClientDbIndexEditor) CreateUniqueIndexAsync(ctx context.Context, i
 	args := editor.Called(ctx, index)
 	return args.Error(0)
 }
+
+func (editor *ClientDbIndexEditor) DeleteUniqueIndex(ctx context.Context, index models.UnicityIndex) error {
+	args := editor.Called(ctx, index)
+	return args.Error(0)
+}

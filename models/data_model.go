@@ -169,6 +169,7 @@ type CreateFieldInput struct {
 type UpdateFieldInput struct {
 	Description *string
 	IsEnum      *bool
+	IsUnique    *bool
 }
 
 // ///////////////////////////////
