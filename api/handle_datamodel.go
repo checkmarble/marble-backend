@@ -111,6 +111,7 @@ func (api *API) CreateField(c *gin.Context) {
 type updateFieldInput struct {
 	Description *string `json:"description"`
 	IsEnum      *bool   `json:"is_enum"`
+	IsUnique    *bool   `json:"is_unique"`
 }
 
 func (api *API) UpdateDataModelField(c *gin.Context) {
@@ -125,6 +126,7 @@ func (api *API) UpdateDataModelField(c *gin.Context) {
 	err := usecase.UpdateDataModelField(c.Request.Context(), fieldID, models.UpdateFieldInput{
 		Description: input.Description,
 		IsEnum:      input.IsEnum,
+		IsUnique:    input.IsUnique,
 	})
 	if presentError(c, err) {
 		return
