@@ -282,6 +282,11 @@ func validateFieldUpdateRules(
 			models.BadParameterError,
 			"cannot remove unicity constraint on a field that is linked to another table")
 	}
+	if makeNotUnique && field.Name == "object_id" {
+		return false, false, errors.Wrap(
+			models.BadParameterError,
+			"cannot remove unicity constraint on the object_id field")
+	}
 
 	if makeUnique && ((field.IsEnum && !makeNotEnum) || makeEnum) {
 		return false, false, errors.Wrap(
