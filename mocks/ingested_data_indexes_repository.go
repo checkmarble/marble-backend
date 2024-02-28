@@ -42,6 +42,9 @@ func (m *IngestedDataIndexesRepository) ListAllUniqueIndexes(
 	exec repositories.Executor,
 ) ([]models.UnicityIndex, error) {
 	args := m.Called(ctx, exec)
+	if args.Error(1) != nil {
+		return nil, args.Error(1)
+	}
 	return args.Get(0).([]models.UnicityIndex), args.Error(1)
 }
 

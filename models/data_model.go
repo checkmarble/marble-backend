@@ -69,6 +69,17 @@ func ToLinkNames(arr []string) []LinkName {
 	return result
 }
 
+func (dm DataModel) Copy() DataModel {
+	tables := make(map[TableName]Table)
+	for k, v := range dm.Tables {
+		tables[k] = v.Copy()
+	}
+	return DataModel{
+		Version: dm.Version,
+		Tables:  tables,
+	}
+}
+
 // ///////////////////////////////
 // Data Model table
 // ///////////////////////////////
@@ -79,6 +90,21 @@ type Table struct {
 	Description   string
 	Fields        map[FieldName]Field
 	LinksToSingle map[LinkName]LinkToSingle
+}
+
+func (t Table) Copy() Table {
+	fields := make(map[FieldName]Field)
+	for k, v := range t.Fields {
+		fields[k] = v
+	}
+	links := make(map[LinkName]LinkToSingle)
+	for k, v := range t.LinksToSingle {
+		links[k] = v
+	}
+	out := t
+	out.Fields = fields
+	out.LinksToSingle = links
+	return out
 }
 
 type TableMetadata struct {

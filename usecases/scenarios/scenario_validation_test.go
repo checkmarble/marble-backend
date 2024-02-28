@@ -16,6 +16,7 @@ import (
 )
 
 func TestValidateScenarioIterationImpl_Validate(t *testing.T) {
+	ctx := utils.StoreLoggerInContext(context.Background(), utils.NewLogger("test"))
 	scenario := models.Scenario{
 		Id:                uuid.New().String(),
 		OrganizationId:    uuid.New().String(),
@@ -71,7 +72,7 @@ func TestValidateScenarioIterationImpl_Validate(t *testing.T) {
 	executorFactory := new(mocks.ExecutorFactory)
 	executorFactory.On("NewExecutor").Once().Return(exec)
 	mdmr := new(mocks.DataModelRepository)
-	mdmr.On("GetDataModel", exec, scenario.OrganizationId, false).
+	mdmr.On("GetDataModel", ctx, exec, scenario.OrganizationId, false).
 		Return(models.DataModel{
 			Version: "version",
 			Tables: map[models.TableName]models.Table{
@@ -95,7 +96,7 @@ func TestValidateScenarioIterationImpl_Validate(t *testing.T) {
 		ExecutorFactory: executorFactory,
 	}
 
-	result := validator.Validate(context.TODO(), models.ScenarioAndIteration{
+	result := validator.Validate(ctx, models.ScenarioAndIteration{
 		Scenario:  scenario,
 		Iteration: scenarioIteration,
 	})
