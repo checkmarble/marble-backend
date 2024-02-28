@@ -11,7 +11,6 @@ type EnforceSecurityOrganization interface {
 	ListOrganization() error
 	CreateOrganization() error
 	DeleteOrganization() error
-	ReadOrganizationApiKeys(apiKey models.ApiKey) error
 	ReadDataModel() error
 	WriteDataModel(organizationId string) error
 }
@@ -36,13 +35,6 @@ func (e *EnforceSecurityOrganizationImpl) CreateOrganization() error {
 func (e *EnforceSecurityOrganizationImpl) DeleteOrganization() error {
 	return errors.Join(
 		e.Permission(models.ORGANIZATIONS_DELETE),
-	)
-}
-
-func (e *EnforceSecurityOrganizationImpl) ReadOrganizationApiKeys(apiKey models.ApiKey) error {
-	return errors.Join(
-		e.Permission(models.APIKEY_READ),
-		e.ReadOrganization(apiKey.OrganizationId),
 	)
 }
 

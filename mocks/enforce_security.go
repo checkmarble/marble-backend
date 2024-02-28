@@ -121,3 +121,28 @@ func (e *EnforceSecurity) DeleteApiKey(apiKey models.ApiKey) error {
 	args := e.Called(apiKey)
 	return args.Error(0)
 }
+
+func (e *EnforceSecurity) CreateOrganization() error {
+	args := e.Called()
+	return args.Error(0)
+}
+
+func (e *EnforceSecurity) DeleteOrganization() error {
+	args := e.Called()
+	return args.Error(0)
+}
+
+func (e *EnforceSecurity) ListOrganization() error {
+	args := e.Called()
+	return args.Error(0)
+}
+
+func (e *EnforceSecurity) ReadDataModel() error {
+	args := e.Called()
+	return args.Error(0)
+}
+
+func (e *EnforceSecurity) WriteDataModel(organizationId string) error {
+	args := e.Called(organizationId)
+	return args.Error(0)
+}

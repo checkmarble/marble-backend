@@ -52,12 +52,13 @@ func (usecase *DataModelUseCase) GetDataModel(ctx context.Context, organizationI
 }
 
 func addUnicityConstraintStatusToDataModel(dataModel models.DataModel, uniqueIndexes []models.UnicityIndex) models.DataModel {
+	dm := dataModel.Copy()
 	for _, index := range uniqueIndexes {
 		// here we only care about single fields with a unicity constraint
 		if len(index.Fields) != 1 {
 			continue
 		}
-		table, ok := dataModel.Tables[index.TableName]
+		table, ok := dm.Tables[index.TableName]
 		if !ok {
 			continue
 		}
@@ -73,10 +74,10 @@ func addUnicityConstraintStatusToDataModel(dataModel models.DataModel, uniqueInd
 				field.UnicityConstraint = models.ActiveUniqueConstraint
 			}
 			// cannot directly modify the struct field in the map, so we need to reassign it
-			dataModel.Tables[index.TableName].Fields[index.Fields[0]] = field
+			dm.Tables[index.TableName].Fields[index.Fields[0]] = field
 		}
 	}
-	return dataModel
+	return dm
 }
 
 func (usecase *DataModelUseCase) CreateDataModelTable(ctx context.Context, organizationId, name, description string) (string, error) {
@@ -139,22 +140,14 @@ func (usecase *DataModelUseCase) CreateDataModelTable(ctx context.Context, organ
 }
 
 func (usecase *DataModelUseCase) UpdateDataModelTable(ctx context.Context, tableID, description string) error {
-	if table, err := usecase.dataModelRepository.GetDataModelTable(
-		ctx,
-		usecase.executorFactory.NewExecutor(),
-		tableID,
-	); err != nil {
+	exec := usecase.executorFactory.NewExecutor()
+	if table, err := usecase.dataModelRepository.GetDataModelTable(ctx, exec, tableID); err != nil {
 		return err
 	} else if err := usecase.enforceSecurity.WriteDataModel(table.OrganizationID); err != nil {
 		return err
 	}
 
-	return usecase.dataModelRepository.UpdateDataModelTable(
-		ctx,
-		usecase.executorFactory.NewExecutor(),
-		tableID,
-		description,
-	)
+	return usecase.dataModelRepository.UpdateDataModelTable(ctx, exec, tableID, description)
 }
 
 func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, field models.CreateFieldInput) (string, error) {
@@ -263,6 +256,7 @@ func validateFieldUpdateRules(
 	}
 
 	currentField := dataModel.Tables[models.TableName(table.Name)].Fields[models.FieldName(field.Name)]
+	isUnique := currentField.UnicityConstraint != models.NoUnicityConstraint
 
 	makeUnique = input.IsUnique != nil &&
 		*input.IsUnique &&
@@ -288,12 +282,13 @@ func validateFieldUpdateRules(
 			"cannot remove unicity constraint on the object_id field")
 	}
 
-	if makeUnique && ((field.IsEnum && !makeNotEnum) || makeEnum) {
+	if makeUnique && (makeEnum || (field.IsEnum && !makeNotEnum)) {
 		return false, false, errors.Wrap(
 			models.BadParameterError,
 			"cannot make a field unique if it is an enum")
 	}
-	if makeEnum && !(currentField.UnicityConstraint == models.NoUnicityConstraint || makeNotUnique) {
+	// if makeEnum && !(currentField.UnicityConstraint == models.NoUnicityConstraint || makeNotUnique) {
+	if makeEnum && (makeUnique || (isUnique && !makeNotUnique)) {
 		return false, false, errors.Wrap(
 			models.BadParameterError,
 			"cannot make a field an enum if it is unique or has a pending unique constraint")
@@ -317,10 +312,10 @@ func findLinksToField(dataModel models.DataModel, tableName string, fieldName st
 }
 
 func (usecase *DataModelUseCase) CreateDataModelLink(ctx context.Context, link models.DataModelLinkCreateInput) error {
-	exec := usecase.executorFactory.NewExecutor()
 	if err := usecase.enforceSecurity.WriteDataModel(link.OrganizationID); err != nil {
 		return err
 	}
+	exec := usecase.executorFactory.NewExecutor()
 
 	// check existence of tables
 	if _, err := usecase.dataModelRepository.GetDataModelTable(ctx, exec, link.ChildTableID); err != nil {
