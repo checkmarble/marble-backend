@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
@@ -202,6 +204,33 @@ func getFieldUniqueIndex(tableName models.TableName, fieldName models.FieldName)
 		TableName: models.TableName(tableName),
 		Fields:    []models.FieldName{models.FieldName(fieldName)},
 	}
+}
+
+func (usecase *DataModelUseCase) AddUniqueIndex(
+	ctx context.Context,
+	orgId string,
+	tableName models.TableName,
+	fieldName models.FieldName,
+) (bool, error) {
+	logger := utils.LoggerFromContext(ctx)
+	exec, err := usecase.executorFactory.NewClientDbExecutor(ctx, orgId)
+	if err != nil {
+		return false, err
+	}
+
+	err = usecase.clientDbIndexEditor.CreateUniqueIndex(
+		ctx,
+		exec,
+		getFieldUniqueIndex(tableName, fieldName))
+	if err != nil && strings.Contains(err.Error(), "SQLSTATE 23505") {
+		logger.InfoContext(ctx, "Existing duplicate keys for table "+
+			string(tableName)+" and field "+string(fieldName)+" in org "+orgId)
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (usecase *DataModelUseCase) UpdateDataModelField(ctx context.Context, fieldID string, input models.UpdateFieldInput) error {

@@ -186,6 +186,7 @@ func main() {
 	shouldRunScheduleScenarios := flag.Bool("scheduler", false, "Run schedule scenarios")
 	shouldRunExecuteScheduledScenarios := flag.Bool("scheduled-executer", false, "Run execute scheduled scenarios")
 	shouldRunDataIngestion := flag.Bool("data-ingestion", false, "Run data ingestion")
+	shouldRunIndexMigration := flag.Bool("index-migration", false, "Run index migration script")
 	flag.Parse()
 	logger.InfoContext(appContext, "Flags",
 		slog.Bool("shouldRunMigrations", *shouldRunMigrations),
@@ -213,6 +214,15 @@ func main() {
 		err := jobs.ScheduleDueScenarios(appContext, usecases)
 		if err != nil {
 			slog.Error("jobs.ScheduleDueScenarios failed", slog.String("error", err.Error()))
+			os.Exit(1)
+			return
+		}
+	}
+	if *shouldRunIndexMigration {
+		usecases := NewUseCases(appContext, appConfig, nil)
+		err := jobs.MigrateIndexes(appContext, usecases)
+		if err != nil {
+			slog.Error("jobs.MigrateIndexes failed", slog.String("error", err.Error()))
 			os.Exit(1)
 			return
 		}
