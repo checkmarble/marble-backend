@@ -129,11 +129,8 @@ func (usecase *DataModelUseCase) CreateDataModelTable(ctx context.Context, organ
 			return usecase.clientDbIndexEditor.CreateUniqueIndex(
 				ctx,
 				orgTx,
-				models.UnicityIndex{
-					TableName: models.TableName(name),
-					Fields:    []models.FieldName{"object_id"},
-					Included:  []models.FieldName{"updated_at", "id"},
-				})
+				getFieldUniqueIndex(models.TableName(name), "object_id"),
+			)
 		})
 	})
 	return tableId, err
@@ -183,15 +180,28 @@ func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, field
 	if field.IsUnique {
 		if err := usecase.clientDbIndexEditor.CreateUniqueIndexAsync(
 			ctx,
-			models.UnicityIndex{
-				TableName: models.TableName(tableName),
-				Fields:    []models.FieldName{field.Name},
-			}); err != nil {
+			getFieldUniqueIndex(models.TableName(tableName), field.Name)); err != nil {
 			return "", err
 		}
 	}
 
 	return fieldId, nil
+}
+
+func getFieldUniqueIndex(tableName models.TableName, fieldName models.FieldName) models.UnicityIndex {
+	// the unique index on object_id will serve both to enforce unicity and to speed up ingestion queries
+	// which is why we include the updated_at and id fields
+	if fieldName == "object_id" {
+		return models.UnicityIndex{
+			TableName: models.TableName(tableName),
+			Fields:    []models.FieldName{"object_id"},
+			Included:  []models.FieldName{"updated_at", "id"},
+		}
+	}
+	return models.UnicityIndex{
+		TableName: models.TableName(tableName),
+		Fields:    []models.FieldName{models.FieldName(fieldName)},
+	}
 }
 
 func (usecase *DataModelUseCase) UpdateDataModelField(ctx context.Context, fieldID string, input models.UpdateFieldInput) error {
@@ -224,18 +234,18 @@ func (usecase *DataModelUseCase) UpdateDataModelField(ctx context.Context, field
 
 	// asynchronously create the unique index if required
 	if makeUnique {
-		return usecase.clientDbIndexEditor.CreateUniqueIndexAsync(ctx, models.UnicityIndex{
-			TableName: models.TableName(table.Name),
-			Fields:    []models.FieldName{models.FieldName(field.Name)},
-		})
+		return usecase.clientDbIndexEditor.CreateUniqueIndexAsync(
+			ctx,
+			getFieldUniqueIndex(models.TableName(table.Name), models.FieldName(field.Name)),
+		)
 	}
 
 	// delete the unique index if required
 	if makeNotUnique {
-		return usecase.clientDbIndexEditor.DeleteUniqueIndex(ctx, models.UnicityIndex{
-			TableName: models.TableName(table.Name),
-			Fields:    []models.FieldName{models.FieldName(field.Name)},
-		})
+		return usecase.clientDbIndexEditor.DeleteUniqueIndex(
+			ctx,
+			getFieldUniqueIndex(models.TableName(table.Name), models.FieldName(field.Name)),
+		)
 	}
 
 	return nil
