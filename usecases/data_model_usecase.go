@@ -150,7 +150,7 @@ func (usecase *DataModelUseCase) UpdateDataModelTable(ctx context.Context, table
 func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, field models.CreateFieldInput) (string, error) {
 	fieldId := uuid.New().String()
 	var tableName string
-	if err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
+	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
 		table, err := usecase.dataModelRepository.GetDataModelTable(ctx, tx, field.TableId)
 		if err != nil {
 			return err
@@ -173,14 +173,17 @@ func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, field
 				return usecase.organizationSchemaRepository.CreateField(ctx, orgTx, table.Name, field)
 			},
 		)
-	}); err != nil {
+	})
+	if err != nil {
 		return "", err
 	}
 
 	if field.IsUnique {
-		if err := usecase.clientDbIndexEditor.CreateUniqueIndexAsync(
+		err := usecase.clientDbIndexEditor.CreateUniqueIndexAsync(
 			ctx,
-			getFieldUniqueIndex(models.TableName(tableName), field.Name)); err != nil {
+			getFieldUniqueIndex(models.TableName(tableName), field.Name),
+		)
+		if err != nil {
 			return "", err
 		}
 	}

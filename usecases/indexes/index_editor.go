@@ -120,7 +120,7 @@ func (editor ClientDbIndexEditor) CreateIndexesAsync(
 	}
 	logger.InfoContext(
 		ctx,
-		fmt.Sprintf("%d indexes pending creation in: %+v\n", len(indexes), indexes), "org_id", organizationId,
+		fmt.Sprintf("%d indexes pending creation in: %+v", len(indexes), indexes), "org_id", organizationId,
 	)
 	return nil
 }
@@ -161,7 +161,7 @@ func (editor ClientDbIndexEditor) CreateUniqueIndexAsync(
 	}
 	logger.InfoContext(
 		ctx,
-		fmt.Sprintf("Unique index pending creation asynchronously: %+v\n", index),
+		fmt.Sprintf("Unique index pending creation asynchronously: %+v", index),
 		"org_id", organizationId,
 	)
 	return nil
@@ -190,7 +190,7 @@ func (editor ClientDbIndexEditor) CreateUniqueIndex(
 		return errors.Wrap(err, "Error while creating unique index in CreateUniqueIndex")
 	}
 
-	logger.InfoContext(ctx, fmt.Sprintf("Unique index pending created: %+v\n", index))
+	logger.InfoContext(ctx, fmt.Sprintf("Unique index pending created: %+v", index))
 	return nil
 }
 
@@ -198,6 +198,7 @@ func (editor ClientDbIndexEditor) DeleteUniqueIndex(
 	ctx context.Context,
 	index models.UnicityIndex,
 ) error {
+	logger := utils.LoggerFromContext(ctx)
 	organizationId, err := editor.organizationIdOfContext()
 	if err != nil {
 		return err
@@ -208,5 +209,13 @@ func (editor ClientDbIndexEditor) DeleteUniqueIndex(
 			err,
 			"Error while creating client schema executor in DeleteUniqueIndex")
 	}
-	return editor.ingestedDataIndexesRepository.DeleteUniqueIndex(ctx, db, index)
+	err = editor.ingestedDataIndexesRepository.DeleteUniqueIndex(ctx, db, index)
+	if err != nil {
+		return errors.Wrap(err, "Error while deleting unique index in DeleteUniqueIndex")
+	}
+	logger.InfoContext(
+		ctx,
+		fmt.Sprintf("Unique index deletion: %+v", index),
+	)
+	return nil
 }

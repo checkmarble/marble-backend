@@ -348,7 +348,6 @@ func (repo *ClientDbRepository) DeleteUniqueIndex(ctx context.Context, exec Exec
 	}
 
 	indexName := toUniqIndexName(index.Fields, index.TableName)
-	fmt.Println(dropIdxSqlQuery(indexName, exec))
 	_, err := exec.Exec(ctx, dropIdxSqlQuery(indexName, exec))
 	return err
 }
