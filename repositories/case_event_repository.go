@@ -6,6 +6,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func (repo *MarbleDbRepository) ListCaseEvents(ctx context.Context, exec Executor, caseId string) ([]models.CaseEvent, error) {
@@ -53,9 +54,15 @@ func (repo *MarbleDbRepository) BatchCreateCaseEvents(ctx context.Context, exec 
 		)
 
 	for _, createCaseEventAttribute := range createCaseEventAttributes {
+		var userId pgtype.Text
+		if createCaseEventAttribute.UserId != "" {
+			userId = pgtype.Text{String: createCaseEventAttribute.UserId, Valid: true}
+		} else {
+			userId = pgtype.Text{Valid: false}
+		}
 		query = query.Values(
 			createCaseEventAttribute.CaseId,
-			createCaseEventAttribute.UserId,
+			userId,
 			createCaseEventAttribute.EventType,
 			createCaseEventAttribute.AdditionalNote,
 			createCaseEventAttribute.ResourceId,

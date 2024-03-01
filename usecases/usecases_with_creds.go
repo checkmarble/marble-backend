@@ -87,6 +87,7 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 		repository:                 &usecases.Repositories.MarbleDbRepository,
 		evaluateRuleAstExpression:  usecases.NewEvaluateRuleAstExpression(),
 		organizationIdOfContext:    usecases.OrganizationIdOfContext,
+		caseCreator:                usecases.NewCaseUseCase(),
 	}
 }
 
@@ -257,7 +258,7 @@ func (usecases *UsecasesWithCreds) NewUserUseCase() UserUseCase {
 	}
 }
 
-func (usecases *UsecasesWithCreds) NewCaseUseCase() CaseUseCase {
+func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 	var gcsRepository repositories.GcsRepository
 	if usecases.Configuration.FakeGcsRepository {
 		gcsRepository = &repositories.GcsRepositoryFake{}
@@ -268,7 +269,7 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() CaseUseCase {
 		EnforceSecurity: usecases.NewEnforceSecurity(),
 		Credentials:     usecases.Credentials,
 	}
-	return CaseUseCase{
+	return &CaseUseCase{
 		enforceSecurity:    usecases.NewEnforceCaseSecurity(),
 		transactionFactory: usecases.NewTransactionFactory(),
 		executorFactory:    usecases.NewExecutorFactory(),
