@@ -31,6 +31,7 @@ type ClientDbIndexEditor struct {
 	scenarioFetcher               ScenarioFetcher
 	ingestedDataIndexesRepository IngestedDataIndexesRepository
 	enforceSecurity               security.EnforceSecurityScenario
+	enforceSecurityDataModel      security.EnforceSecurityOrganization
 	organizationIdOfContext       func() (string, error)
 }
 
@@ -39,6 +40,7 @@ func NewClientDbIndexEditor(
 	scenarioFetcher ScenarioFetcher,
 	ingestedDataIndexesRepository IngestedDataIndexesRepository,
 	enforceSecurity security.EnforceSecurityScenario,
+	enforceSecurityDataModel security.EnforceSecurityOrganization,
 	organizationIdOfContext func() (string, error),
 ) ClientDbIndexEditor {
 	return ClientDbIndexEditor{
@@ -46,6 +48,7 @@ func NewClientDbIndexEditor(
 		scenarioFetcher:               scenarioFetcher,
 		ingestedDataIndexesRepository: ingestedDataIndexesRepository,
 		enforceSecurity:               enforceSecurity,
+		enforceSecurityDataModel:      enforceSecurityDataModel,
 		organizationIdOfContext:       organizationIdOfContext,
 	}
 }
@@ -108,6 +111,10 @@ func (editor ClientDbIndexEditor) CreateIndexesAsync(
 	if err != nil {
 		return err
 	}
+	if err := editor.enforceSecurityDataModel.WriteDataModel(organizationId); err != nil {
+		return err
+	}
+
 	db, err := editor.executorFactory.NewClientDbExecutor(ctx, organizationId)
 	if err != nil {
 		return errors.Wrap(
@@ -126,10 +133,14 @@ func (editor ClientDbIndexEditor) CreateIndexesAsync(
 }
 
 func (editor ClientDbIndexEditor) ListAllUniqueIndexes(ctx context.Context) ([]models.UnicityIndex, error) {
+	if err := editor.enforceSecurityDataModel.ReadDataModel(); err != nil {
+		return nil, err
+	}
 	organizationId, err := editor.organizationIdOfContext()
 	if err != nil {
 		return nil, err
 	}
+
 	db, err := editor.executorFactory.NewClientDbExecutor(ctx, organizationId)
 	if err != nil {
 		return nil, errors.Wrap(
@@ -149,6 +160,10 @@ func (editor ClientDbIndexEditor) CreateUniqueIndexAsync(
 	if err != nil {
 		return err
 	}
+	if err := editor.enforceSecurityDataModel.WriteDataModel(organizationId); err != nil {
+		return err
+	}
+
 	db, err := editor.executorFactory.NewClientDbExecutor(ctx, organizationId)
 	if err != nil {
 		return errors.Wrap(
@@ -173,11 +188,15 @@ func (editor ClientDbIndexEditor) CreateUniqueIndex(
 	index models.UnicityIndex,
 ) error {
 	logger := utils.LoggerFromContext(ctx)
+	organizationId, err := editor.organizationIdOfContext()
+	if err != nil {
+		return err
+	}
+	if err := editor.enforceSecurityDataModel.WriteDataModel(organizationId); err != nil {
+		return err
+	}
+
 	if exec == nil {
-		organizationId, err := editor.organizationIdOfContext()
-		if err != nil {
-			return err
-		}
 		exec, err = editor.executorFactory.NewClientDbExecutor(ctx, organizationId)
 		if err != nil {
 			return errors.Wrap(
@@ -203,6 +222,10 @@ func (editor ClientDbIndexEditor) DeleteUniqueIndex(
 	if err != nil {
 		return err
 	}
+	if err := editor.enforceSecurityDataModel.WriteDataModel(organizationId); err != nil {
+		return err
+	}
+
 	db, err := editor.executorFactory.NewClientDbExecutor(ctx, organizationId)
 	if err != nil {
 		return errors.Wrap(
