@@ -18,6 +18,7 @@ import (
 type ClientDbIndexEditorTestSuite struct {
 	suite.Suite
 	enforceSecurity               *mocks.EnforceSecurity
+	enforceSecurityDataModel      *mocks.EnforceSecurity
 	executorFactory               *mocks.ExecutorFactory
 	ingestedDataIndexesRepository *mocks.IngestedDataIndexesRepository
 	scenarioFetcher               *mocks.ScenarioFetcher
@@ -41,6 +42,7 @@ type ClientDbIndexEditorTestSuite struct {
 
 func (suite *ClientDbIndexEditorTestSuite) SetupTest() {
 	suite.enforceSecurity = new(mocks.EnforceSecurity)
+	suite.enforceSecurityDataModel = new(mocks.EnforceSecurity)
 	suite.executorFactory = new(mocks.ExecutorFactory)
 	suite.ingestedDataIndexesRepository = new(mocks.IngestedDataIndexesRepository)
 	suite.scenarioFetcher = new(mocks.ScenarioFetcher)
@@ -140,6 +142,7 @@ func (suite *ClientDbIndexEditorTestSuite) makeUsecase() ClientDbIndexEditor {
 		suite.scenarioFetcher,
 		suite.ingestedDataIndexesRepository,
 		suite.enforceSecurity,
+		suite.enforceSecurityDataModel,
 		func() (string, error) {
 			return suite.organizationId, nil
 		},
@@ -249,12 +252,29 @@ func (suite *ClientDbIndexEditorTestSuite) Test_CreateIndexesAsync_nominal() {
 			Included: []models.FieldName{"c", "d"},
 		},
 	}
+	suite.enforceSecurityDataModel.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.ingestedDataIndexesRepository.On("CreateIndexesAsync", suite.ctx, suite.transaction, indexes).Return(nil)
 
 	err := suite.makeUsecase().CreateIndexesAsync(suite.ctx, indexes)
 
 	suite.NoError(err)
+
+	suite.AssertExpectations()
+}
+
+func (suite *ClientDbIndexEditorTestSuite) Test_CreateIndexesAsync_security_error() {
+	indexes := []models.ConcreteIndex{
+		{
+			TableName: "table", Indexed: []models.FieldName{"a", "b"},
+			Included: []models.FieldName{"c", "d"},
+		},
+	}
+	suite.enforceSecurityDataModel.On("WriteDataModel", suite.organizationId).Return(suite.securityError)
+
+	err := suite.makeUsecase().CreateIndexesAsync(suite.ctx, indexes)
+
+	suite.Assert().Error(err)
 
 	suite.AssertExpectations()
 }
@@ -266,6 +286,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_CreateIndexesAsync_error() {
 			Included: []models.FieldName{"c", "d"},
 		},
 	}
+	suite.enforceSecurityDataModel.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.ingestedDataIndexesRepository.On("CreateIndexesAsync", suite.ctx, suite.transaction, indexes).Return(suite.repositoryError)
 
@@ -283,6 +304,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_CreateIndexesAsync_get_executor_
 			Included: []models.FieldName{"c", "d"},
 		},
 	}
+	suite.enforceSecurityDataModel.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(nil, suite.repositoryError)
 
 	err := suite.makeUsecase().CreateIndexesAsync(suite.ctx, indexes)
@@ -299,6 +321,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_ListAllUniqueIndexes_nominal() {
 			TableName: "table", Fields: []models.FieldName{"a", "b"},
 		},
 	}
+	suite.enforceSecurityDataModel.On("ReadDataModel").Return(nil)
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.ingestedDataIndexesRepository.On("ListAllUniqueIndexes", suite.ctx, suite.transaction).Return(uniqueIndexes, nil)
 
@@ -311,16 +334,18 @@ func (suite *ClientDbIndexEditorTestSuite) Test_ListAllUniqueIndexes_nominal() {
 }
 
 func (suite *ClientDbIndexEditorTestSuite) Test_ListAllUniqueIndexes_security_error() {
-	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(nil, suite.repositoryError)
+	suite.enforceSecurityDataModel.On("ReadDataModel").Return(suite.securityError)
 
 	_, err := suite.makeUsecase().ListAllUniqueIndexes(suite.ctx)
 
 	suite.Assert().Error(err)
+	suite.Assert().Equal(suite.securityError, err)
 
 	suite.AssertExpectations()
 }
 
 func (suite *ClientDbIndexEditorTestSuite) Test_ListAllUniqueIndexes_repository_error() {
+	suite.enforceSecurityDataModel.On("ReadDataModel").Return(nil)
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.ingestedDataIndexesRepository.On("ListAllUniqueIndexes", suite.ctx, suite.transaction).Return(nil, suite.repositoryError)
 
@@ -336,6 +361,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_CreateUniqueIndexAsync_nominal()
 	index := models.UnicityIndex{
 		TableName: "table", Fields: []models.FieldName{"a", "b"},
 	}
+	suite.enforceSecurityDataModel.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.ingestedDataIndexesRepository.On("CreateUniqueIndexAsync", suite.ctx, suite.transaction, index).Return(nil)
 
@@ -346,10 +372,25 @@ func (suite *ClientDbIndexEditorTestSuite) Test_CreateUniqueIndexAsync_nominal()
 	suite.AssertExpectations()
 }
 
+func (suite *ClientDbIndexEditorTestSuite) Test_CreateUniqueIndexAsync_security_error() {
+	index := models.UnicityIndex{
+		TableName: "table", Fields: []models.FieldName{"a", "b"},
+	}
+	suite.enforceSecurityDataModel.On("WriteDataModel", suite.organizationId).Return(suite.securityError)
+
+	err := suite.makeUsecase().CreateUniqueIndexAsync(suite.ctx, index)
+
+	suite.Assert().Error(err)
+	suite.Assert().Equal(suite.securityError, err)
+
+	suite.AssertExpectations()
+}
+
 func (suite *ClientDbIndexEditorTestSuite) Test_CreateUniqueIndexAsync_error() {
 	index := models.UnicityIndex{
 		TableName: "table", Fields: []models.FieldName{"a", "b"},
 	}
+	suite.enforceSecurityDataModel.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(nil, suite.repositoryError)
 
 	err := suite.makeUsecase().CreateUniqueIndexAsync(suite.ctx, index)
@@ -364,6 +405,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_CreateUniqueIndex_nominal() {
 	index := models.UnicityIndex{
 		TableName: "table", Fields: []models.FieldName{"a", "b"},
 	}
+	suite.enforceSecurityDataModel.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.ingestedDataIndexesRepository.On("CreateUniqueIndex", suite.ctx, suite.transaction, index).Return(nil)
 
@@ -374,10 +416,25 @@ func (suite *ClientDbIndexEditorTestSuite) Test_CreateUniqueIndex_nominal() {
 	suite.AssertExpectations()
 }
 
+func (suite *ClientDbIndexEditorTestSuite) Test_CreateUniqueIndex_security_error() {
+	index := models.UnicityIndex{
+		TableName: "table", Fields: []models.FieldName{"a", "b"},
+	}
+	suite.enforceSecurityDataModel.On("WriteDataModel", suite.organizationId).Return(suite.securityError)
+
+	err := suite.makeUsecase().CreateUniqueIndex(suite.ctx, nil, index)
+
+	suite.Assert().Error(err)
+	suite.Assert().Equal(suite.securityError, err)
+
+	suite.AssertExpectations()
+}
+
 func (suite *ClientDbIndexEditorTestSuite) Test_CreateUniqueIndex_error() {
 	index := models.UnicityIndex{
 		TableName: "table", Fields: []models.FieldName{"a", "b"},
 	}
+	suite.enforceSecurityDataModel.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.ingestedDataIndexesRepository.On("CreateUniqueIndex", suite.ctx, suite.transaction, index).Return(suite.repositoryError)
 
@@ -393,6 +450,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_DeleteUniqueIndex_nominal() {
 	index := models.UnicityIndex{
 		TableName: "table", Fields: []models.FieldName{"a", "b"},
 	}
+	suite.enforceSecurityDataModel.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.ingestedDataIndexesRepository.On("DeleteUniqueIndex", suite.ctx, suite.transaction, index).Return(nil)
 
@@ -403,10 +461,25 @@ func (suite *ClientDbIndexEditorTestSuite) Test_DeleteUniqueIndex_nominal() {
 	suite.AssertExpectations()
 }
 
+func (suite *ClientDbIndexEditorTestSuite) Test_DeleteUniqueIndex_security_error() {
+	index := models.UnicityIndex{
+		TableName: "table", Fields: []models.FieldName{"a", "b"},
+	}
+	suite.enforceSecurityDataModel.On("WriteDataModel", suite.organizationId).Return(suite.securityError)
+
+	err := suite.makeUsecase().DeleteUniqueIndex(suite.ctx, index)
+
+	suite.Assert().Error(err)
+	suite.Assert().Equal(suite.securityError, err)
+
+	suite.AssertExpectations()
+}
+
 func (suite *ClientDbIndexEditorTestSuite) Test_DeleteUniqueIndex_error() {
 	index := models.UnicityIndex{
 		TableName: "table", Fields: []models.FieldName{"a", "b"},
 	}
+	suite.enforceSecurityDataModel.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.ingestedDataIndexesRepository.On("DeleteUniqueIndex", suite.ctx, suite.transaction, index).Return(suite.repositoryError)
 

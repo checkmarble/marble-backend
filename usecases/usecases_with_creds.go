@@ -160,6 +160,7 @@ func (usecases *UsecasesWithCreds) NewClientDbIndexEditor() clientDbIndexEditor 
 		usecases.NewScenarioFetcher(),
 		&usecases.Repositories.ClientDbRepository,
 		usecases.NewEnforceScenarioSecurity(),
+		usecases.NewEnforceOrganizationSecurity(),
 		usecases.OrganizationIdOfContext,
 	)
 }
