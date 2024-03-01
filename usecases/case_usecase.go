@@ -153,55 +153,88 @@ func (usecase *CaseUseCase) GetCase(ctx context.Context, caseId string) (models.
 	return c, nil
 }
 
-func (usecase *CaseUseCase) CreateCase(ctx context.Context, userId string,
+func (usecase *CaseUseCase) createCase(
+	ctx context.Context,
+	tx repositories.Executor,
+	userId string,
 	createCaseAttributes models.CreateCaseAttributes,
+	fromEndUser bool,
 ) (models.Case, error) {
-	c, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		tx repositories.Executor,
-	) (models.Case, error) {
-		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx)
-		if err != nil {
-			return models.Case{}, err
-		}
-		if err := usecase.enforceSecurity.CreateCase(createCaseAttributes, availableInboxIds); err != nil {
-			return models.Case{}, err
-		}
+	if err := usecase.validateDecisions(ctx, tx, createCaseAttributes.DecisionIds); err != nil {
+		return models.Case{}, err
+	}
+	newCaseId := uuid.NewString()
+	err := usecase.repository.CreateCase(ctx, tx, createCaseAttributes, newCaseId)
+	if err != nil {
+		return models.Case{}, err
+	}
 
-		if err := usecase.validateDecisions(ctx, tx, createCaseAttributes.DecisionIds); err != nil {
-			return models.Case{}, err
-		}
-		newCaseId := uuid.NewString()
-		err = usecase.repository.CreateCase(ctx, tx, createCaseAttributes, newCaseId)
-		if err != nil {
-			return models.Case{}, err
-		}
-
-		err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+	if fromEndUser {
+		if err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			CaseId:    newCaseId,
 			UserId:    userId,
 			EventType: models.CaseCreated,
-		})
-		if err != nil {
+		}); err != nil {
 			return models.Case{}, err
 		}
 		if err := usecase.createCaseContributorIfNotExist(ctx, tx, newCaseId, userId); err != nil {
 			return models.Case{}, err
 		}
 
-		err = usecase.updateDecisionsWithEvents(ctx, tx, newCaseId, userId, createCaseAttributes.DecisionIds)
-		if err != nil {
+	} else {
+		if err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+			CaseId:    newCaseId,
+			EventType: models.CaseCreatedAutomatically,
+		}); err != nil {
 			return models.Case{}, err
 		}
+	}
 
-		return usecase.getCaseWithDetails(ctx, tx, newCaseId)
-	})
+	err = usecase.updateDecisionsWithEvents(ctx, tx, newCaseId, userId, createCaseAttributes.DecisionIds)
 	if err != nil {
 		return models.Case{}, err
 	}
 
+	return usecase.getCaseWithDetails(ctx, tx, newCaseId)
+}
+
+func (usecase *CaseUseCase) CreateCaseAsUser(
+	ctx context.Context,
+	userId string,
+	createCaseAttributes models.CreateCaseAttributes,
+) (models.Case, error) {
+	exec := usecase.executorFactory.NewExecutor()
+	c, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory,
+		func(tx repositories.Executor) (models.Case, error) {
+			// permission check on the inbox as end user
+			availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec)
+			if err != nil {
+				return models.Case{}, err
+			}
+			if err := usecase.enforceSecurity.CreateCase(createCaseAttributes, availableInboxIds); err != nil {
+				return models.Case{}, err
+			}
+
+			return usecase.createCase(ctx, tx, userId, createCaseAttributes, true)
+		})
+
 	tracking.TrackEvent(ctx, models.AnalyticsCaseCreated, map[string]interface{}{
 		"case_id": c.Id,
 	})
+
+	return c, err
+}
+
+func (usecase *CaseUseCase) CreateCaseAsWorkflow(
+	ctx context.Context,
+	tx repositories.Executor,
+	createCaseAttributes models.CreateCaseAttributes,
+) (models.Case, error) {
+	// As an automated workflow, we don't need to check the inbox permissions
+	c, err := usecase.createCase(ctx, tx, "", createCaseAttributes, false)
+	if err != nil {
+		return models.Case{}, err
+	}
 
 	return c, err
 }

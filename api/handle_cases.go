@@ -103,7 +103,7 @@ func (api *API) handlePostCase(c *gin.Context) {
 		return
 	}
 
-	inboxCase, err := usecase.CreateCase(c.Request.Context(), userId, models.CreateCaseAttributes{
+	inboxCase, err := usecase.CreateCaseAsUser(c.Request.Context(), userId, models.CreateCaseAttributes{
 		DecisionIds:    data.DecisionIds,
 		InboxId:        data.InboxId,
 		Name:           data.Name,

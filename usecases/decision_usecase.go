@@ -29,6 +29,14 @@ type DecisionUsecaseRepository interface {
 	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)
 }
 
+type caseCreatorAsWorkflow interface {
+	CreateCaseAsWorkflow(
+		ctx context.Context,
+		exec repositories.Executor,
+		createCaseAttributes models.CreateCaseAttributes,
+	) (models.Case, error)
+}
+
 type DecisionUsecase struct {
 	enforceSecurity            security.EnforceSecurityDecision
 	enforceSecurityScenario    security.EnforceSecurityScenario
@@ -39,6 +47,7 @@ type DecisionUsecase struct {
 	datamodelRepository        repositories.DataModelRepository
 	repository                 DecisionUsecaseRepository
 	evaluateRuleAstExpression  ast_eval.EvaluateRuleAstExpression
+	caseCreator                caseCreatorAsWorkflow
 	organizationIdOfContext    func() (string, error)
 }
 
@@ -159,8 +168,10 @@ func (usecase *DecisionUsecase) validateTriggerObjects(ctx context.Context,
 	return triggerObjectTypes, nil
 }
 
-func (usecase *DecisionUsecase) CreateDecision(ctx context.Context,
-	input models.CreateDecisionInput, logger *slog.Logger,
+func (usecase *DecisionUsecase) CreateDecision(
+	ctx context.Context,
+	input models.CreateDecisionInput,
+	logger *slog.Logger,
 ) (models.Decision, error) {
 	exec := usecase.executorFactory.NewExecutor()
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
@@ -224,6 +235,23 @@ func (usecase *DecisionUsecase) CreateDecision(ctx context.Context,
 		if err != nil {
 			return models.Decision{}, fmt.Errorf("error storing decision: %w", err)
 		}
+
+		if true || slices.Contains(scenario.DecisionToCaseOutcomes, decision.Outcome) {
+			_, err = usecase.caseCreator.CreateCaseAsWorkflow(ctx, tx, models.CreateCaseAttributes{
+				DecisionIds: []string{newDecisionId},
+				InboxId:     "54624b1f-09a2-4c86-ac7e-57f3b729b57a", // scenario.DecisionToCaseInboxId,
+				Name: fmt.Sprintf(
+					"Case for %s: %s",
+					scenario.TriggerObjectType,
+					input.ClientObject.Data["object_id"],
+				),
+				OrganizationId: input.OrganizationId,
+			})
+			if err != nil {
+				return models.Decision{}, fmt.Errorf("error linking decision to case: %w", err)
+			}
+		}
+
 		return usecase.decisionRepository.DecisionById(ctx, tx, newDecisionId)
 	})
 }
