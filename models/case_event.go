@@ -2,12 +2,14 @@ package models
 
 import (
 	"time"
+
+	"github.com/guregu/null/v5"
 )
 
 type CaseEvent struct {
 	Id             string
 	CaseId         string
-	UserId         string
+	UserId         null.String
 	CreatedAt      time.Time
 	EventType      CaseEventType
 	AdditionalNote string
