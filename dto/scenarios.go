@@ -2,6 +2,8 @@ package dto
 
 import (
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/guregu/null/v5"
 )
 
 type CreateScenarioBody struct {
@@ -15,13 +17,23 @@ type CreateScenarioInput struct {
 }
 
 type UpdateScenarioBody struct {
-	Name        *string `json:"name,omitempty"`
-	Description *string `json:"description,omitempty"`
+	DecisionToCaseOutcomes []string    `json:"decision_to_case_outcomes"`
+	DecisionToCaseInboxId  null.String `json:"decision_to_case_inbox_id"`
+	Description            *string     `json:"description"`
+	Name                   *string     `json:"name"`
 }
 
-type UpdateScenarioInput struct {
-	ScenarioId string              `in:"path=scenarioId"`
-	Body       *UpdateScenarioBody `in:"body=json"`
+func AdaptUpdateScenario(scenarioId string, input UpdateScenarioBody) models.UpdateScenarioInput {
+	parsedInput := models.UpdateScenarioInput{
+		Id:                    scenarioId,
+		DecisionToCaseInboxId: input.DecisionToCaseInboxId,
+		Description:           input.Description,
+		Name:                  input.Name,
+	}
+	if input.DecisionToCaseOutcomes != nil {
+		parsedInput.DecisionToCaseOutcomes = pure_utils.Map(input.DecisionToCaseOutcomes, models.OutcomeFrom)
+	}
+	return parsedInput
 }
 
 // Scenario iterations
@@ -35,11 +47,6 @@ type UpdateScenarioIterationData struct {
 
 type UpdateScenarioIterationBody struct {
 	Body *UpdateScenarioIterationData `json:"body,omitempty"`
-}
-
-type UpdateScenarioIterationInput struct {
-	ScenarioIterationId string                       `in:"path=scenarioIterationId"`
-	Payload             *UpdateScenarioIterationBody `in:"body=json"`
 }
 
 type CreateScenarioIterationBody struct {

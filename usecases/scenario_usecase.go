@@ -2,6 +2,8 @@ package usecases
 
 import (
 	"context"
+	"fmt"
+	"slices"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -63,9 +65,18 @@ func (usecase *ScenarioUsecase) GetScenario(ctx context.Context, scenarioId stri
 	return scenario, nil
 }
 
-func (usecase *ScenarioUsecase) UpdateScenario(ctx context.Context,
+func (usecase *ScenarioUsecase) UpdateScenario(
+	ctx context.Context,
 	scenarioInput models.UpdateScenarioInput,
 ) (models.Scenario, error) {
+	for _, outcome := range scenarioInput.DecisionToCaseOutcomes {
+		if !slices.Contains(models.ValidOutcomes, outcome) {
+			return models.Scenario{}, errors.Wrap(
+				models.BadParameterError,
+				fmt.Sprintf("Invalid input outcome: %s", outcome))
+		}
+	}
+
 	return executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
