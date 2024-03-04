@@ -5,13 +5,13 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/guregu/null/v5"
 )
 
 type DBCaseEvent struct {
 	Id             string      `db:"id"`
 	CaseId         string      `db:"case_id"`
-	UserId         pgtype.Text `db:"user_id"`
+	UserId         null.String `db:"user_id"`
 	CreatedAt      time.Time   `db:"created_at"`
 	EventType      string      `db:"event_type"`
 	AdditionalNote *string     `db:"additional_note"`
@@ -45,7 +45,7 @@ func AdaptCaseEvent(caseEvent DBCaseEvent) (models.CaseEvent, error) {
 	return models.CaseEvent{
 		Id:             caseEvent.Id,
 		CaseId:         caseEvent.CaseId,
-		UserId:         caseEvent.UserId.String,
+		UserId:         caseEvent.UserId,
 		CreatedAt:      caseEvent.CreatedAt,
 		EventType:      models.CaseEventType(caseEvent.EventType),
 		AdditionalNote: additionalNote,
