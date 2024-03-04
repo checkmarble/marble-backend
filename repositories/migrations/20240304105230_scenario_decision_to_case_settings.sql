@@ -1,10 +1,10 @@
 -- +goose Up
 -- +goose StatementBegin
 ALTER TABLE scenarios
-ADD COLUMN decision_to_case_inbox_id UUID;
+ADD COLUMN decision_to_case_inbox_id UUID REFERENCES inboxes (id) ON DELETE SET NULL ON UPDATE CASCADE;
 
 ALTER TABLE scenarios
-ADD COLUMN decision_to_case_outcomes decision_outcome[];
+ADD COLUMN decision_to_case_outcomes varchar(50) [];
 
 -- +goose StatementEnd
 -- +goose Down

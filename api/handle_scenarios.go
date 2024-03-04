@@ -15,7 +15,7 @@ type APIScenario struct {
 	Id                     string    `json:"id"`
 	CreatedAt              time.Time `json:"createdAt"`
 	DecisionToCaseOutcomes []string  `json:"decision_to_case_outcomes"`
-	DecisionToCaseInboxId  *string   `json:"decision_to_case_inbox_id"`
+	DecisionToCaseInboxId  string    `json:"decision_to_case_inbox_id"`
 	Description            string    `json:"description"`
 	LiveVersionID          *string   `json:"liveVersionId,omitempty"`
 	Name                   string    `json:"name"`
@@ -24,18 +24,21 @@ type APIScenario struct {
 }
 
 func NewAPIScenario(scenario models.Scenario) APIScenario {
-	return APIScenario{
+	out := APIScenario{
 		Id:        scenario.Id,
 		CreatedAt: scenario.CreatedAt,
 		DecisionToCaseOutcomes: pure_utils.Map(scenario.DecisionToCaseOutcomes,
 			func(o models.Outcome) string { return o.String() }),
-		DecisionToCaseInboxId: scenario.DecisionToCaseInboxId,
-		Description:           scenario.Description,
-		LiveVersionID:         scenario.LiveVersionID,
-		Name:                  scenario.Name,
-		OrganizationId:        scenario.OrganizationId,
-		TriggerObjectType:     scenario.TriggerObjectType,
+		Description:       scenario.Description,
+		LiveVersionID:     scenario.LiveVersionID,
+		Name:              scenario.Name,
+		OrganizationId:    scenario.OrganizationId,
+		TriggerObjectType: scenario.TriggerObjectType,
 	}
+	if scenario.DecisionToCaseInboxId != nil {
+		out.DecisionToCaseInboxId = *scenario.DecisionToCaseInboxId
+	}
+	return out
 }
 
 func (api *API) ListScenarios(c *gin.Context) {
@@ -80,14 +83,13 @@ func (api *API) UpdateScenario(c *gin.Context) {
 		c.Status(http.StatusBadRequest)
 		return
 	}
-	scenarioID := c.Param("scenario_id")
+	scenarioId := c.Param("scenario_id")
 
 	usecase := api.UsecasesWithCreds(c.Request).NewScenarioUsecase()
-	scenario, err := usecase.UpdateScenario(c.Request.Context(), models.UpdateScenarioInput{
-		Id:          scenarioID,
-		Name:        input.Name,
-		Description: input.Description,
-	})
+
+	scenario, err := usecase.UpdateScenario(
+		c.Request.Context(),
+		dto.AdaptUpdateScenario(scenarioId, input))
 	if presentError(c, err) {
 		return
 	}

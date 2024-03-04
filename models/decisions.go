@@ -12,6 +12,8 @@ const (
 	UnknownOutcome
 )
 
+var ValidOutcomes = []Outcome{Approve, Review, Reject}
+
 // Provide a string value for each outcome
 func (o Outcome) String() string {
 	switch o {

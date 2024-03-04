@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/guregu/null/v5"
+)
 
 type Scenario struct {
 	Id                     string
@@ -21,9 +25,11 @@ type CreateScenarioInput struct {
 }
 
 type UpdateScenarioInput struct {
-	Id          string
-	Description *string
-	Name        *string
+	Id                     string
+	DecisionToCaseOutcomes []Outcome
+	DecisionToCaseInboxId  null.String
+	Description            *string
+	Name                   *string
 }
 
 type ListAllScenariosFilters struct {

@@ -49,11 +49,30 @@ func (repo *MarbleDbRepository) UpdateScenario(ctx context.Context, exec Executo
 		Update(dbmodels.TABLE_SCENARIOS).
 		Where("id = ?", scenario.Id)
 
-	if scenario.Name != nil {
-		sql = sql.Set("name", scenario.Name)
+	countApply := 0
+	if scenario.DecisionToCaseInboxId.Valid {
+		if scenario.DecisionToCaseInboxId.String == "" {
+			sql = sql.Set("decision_to_case_inbox_id", nil)
+		} else {
+			sql = sql.Set("decision_to_case_inbox_id", scenario.DecisionToCaseInboxId)
+		}
+		countApply++
+	}
+	if scenario.DecisionToCaseOutcomes != nil {
+		sql = sql.Set("decision_to_case_outcomes", scenario.DecisionToCaseOutcomes)
+		countApply++
 	}
 	if scenario.Description != nil {
 		sql = sql.Set("description", scenario.Description)
+		countApply++
+	}
+	if scenario.Name != nil {
+		sql = sql.Set("name", scenario.Name)
+		countApply++
+	}
+
+	if countApply == 0 {
+		return nil
 	}
 
 	if err := ExecBuilder(ctx, exec, sql); err != nil {
