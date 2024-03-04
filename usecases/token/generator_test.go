@@ -18,7 +18,7 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 	key := models.ApiKey{
 		Id:             "api_key_id",
 		OrganizationId: "organization_id",
-		Hash:           apiKeyHash,
+		Key:            apiKeyHash,
 		Role:           models.ADMIN,
 	}
 

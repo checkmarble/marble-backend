@@ -92,7 +92,7 @@ func setupApiCreds(ctx context.Context, t *testing.T, usecasesWithCreds usecases
 
 	// Generate creds from the created API Key
 	marbleTokenUsecase := usecasesWithCreds.NewMarbleTokenUseCase()
-	creds, err := marbleTokenUsecase.ValidateCredentials(ctx, "", apiKey.Hash)
+	creds, err := marbleTokenUsecase.ValidateCredentials(ctx, "", apiKey.Key)
 	assert.NoError(t, err, "Could not generate creds from api key")
 	return creds
 }

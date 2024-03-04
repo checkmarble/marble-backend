@@ -54,12 +54,13 @@ func (repo *MarbleDbRepository) ListApiKeys(ctx context.Context, exec Executor, 
 			Select(dbmodels.ApiKeyFields...).
 			From(dbmodels.TABLE_APIKEYS).
 			Where("org_id = ?", organizationId).
-			Where("deleted_at IS NULL"),
+			Where("deleted_at IS NULL").
+			OrderBy("created_at DESC"),
 		dbmodels.AdaptApikey,
 	)
 }
 
-func (repo *MarbleDbRepository) CreateApiKey(ctx context.Context, exec Executor, apiKey models.CreateApiKey) error {
+func (repo *MarbleDbRepository) CreateApiKey(ctx context.Context, exec Executor, apiKey models.ApiKey) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -73,12 +74,14 @@ func (repo *MarbleDbRepository) CreateApiKey(ctx context.Context, exec Executor,
 				"id",
 				"org_id",
 				"key",
+				"key_hash",
 				"description",
 				"role",
 			).
 			Values(
 				apiKey.Id,
 				apiKey.OrganizationId,
+				apiKey.Key,
 				apiKey.Hash,
 				apiKey.Description,
 				apiKey.Role,

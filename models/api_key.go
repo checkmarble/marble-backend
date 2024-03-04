@@ -1,26 +1,19 @@
 package models
 
+import "time"
+
 type ApiKey struct {
 	Id             string
-	OrganizationId string
-	Hash           string
+	CreatedAt      time.Time
 	Description    string
+	Key            string
+	Hash           []byte
+	OrganizationId string
 	Role           Role
-}
-
-type CreatedApiKey struct {
-	ApiKey
-	Value string
 }
 
 type CreateApiKeyInput struct {
-	OrganizationId string
 	Description    string
+	OrganizationId string
 	Role           Role
-}
-
-type CreateApiKey struct {
-	CreateApiKeyInput
-	Id   string
-	Hash string
 }

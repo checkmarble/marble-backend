@@ -341,7 +341,6 @@ func (usecases *UsecasesWithCreds) NewTagUseCase() TagUseCase {
 
 func (usecases *UsecasesWithCreds) NewApiKeyUseCase() ApiKeyUseCase {
 	return ApiKeyUseCase{
-		transactionFactory:      usecases.NewTransactionFactory(),
 		executorFactory:         usecases.NewExecutorFactory(),
 		organizationIdOfContext: usecases.OrganizationIdOfContext,
 		enforceSecurity: &security.EnforceSecurityApiKeyImpl{
