@@ -88,6 +88,14 @@ func (usecase *ScenarioUsecase) UpdateScenario(
 			if err := usecase.enforceSecurity.UpdateScenario(scenario); err != nil {
 				return models.Scenario{}, err
 			}
+			// the DecisionToCaseInboxId and DecisionToCaseOutcomes settings are of higher criticity (they
+			// influence how decisions are treated) so require a higher permission to update
+			if scenarioInput.DecisionToCaseInboxId.Valid ||
+				scenarioInput.DecisionToCaseOutcomes != nil {
+				if err := usecase.enforceSecurity.PublishScenario(scenario); err != nil {
+					return models.Scenario{}, err
+				}
+			}
 
 			err = usecase.repository.UpdateScenario(ctx, tx, scenarioInput)
 			if err != nil {
