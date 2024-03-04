@@ -6,7 +6,7 @@ type Scenario struct {
 	Id                     string
 	CreatedAt              time.Time
 	DecisionToCaseOutcomes []Outcome
-	DecisionToCaseInboxId  string
+	DecisionToCaseInboxId  *string
 	Description            string
 	LiveVersionID          *string
 	Name                   string
