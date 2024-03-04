@@ -12,24 +12,29 @@ import (
 )
 
 type APIScenario struct {
-	Id                string    `json:"id"`
-	OrganizationId    string    `json:"organization_id"`
-	Name              string    `json:"name"`
-	Description       string    `json:"description"`
-	TriggerObjectType string    `json:"triggerObjectType"`
-	CreatedAt         time.Time `json:"createdAt"`
-	LiveVersionID     *string   `json:"liveVersionId,omitempty"`
+	Id                     string    `json:"id"`
+	CreatedAt              time.Time `json:"createdAt"`
+	DecisionToCaseOutcomes []string  `json:"decision_to_case_outcomes"`
+	DecisionToCaseInboxId  *string   `json:"decision_to_case_inbox_id"`
+	Description            string    `json:"description"`
+	LiveVersionID          *string   `json:"liveVersionId,omitempty"`
+	Name                   string    `json:"name"`
+	OrganizationId         string    `json:"organization_id"`
+	TriggerObjectType      string    `json:"triggerObjectType"`
 }
 
 func NewAPIScenario(scenario models.Scenario) APIScenario {
 	return APIScenario{
-		Id:                scenario.Id,
-		OrganizationId:    scenario.OrganizationId,
-		Name:              scenario.Name,
-		Description:       scenario.Description,
-		TriggerObjectType: scenario.TriggerObjectType,
-		CreatedAt:         scenario.CreatedAt,
-		LiveVersionID:     scenario.LiveVersionID,
+		Id:        scenario.Id,
+		CreatedAt: scenario.CreatedAt,
+		DecisionToCaseOutcomes: pure_utils.Map(scenario.DecisionToCaseOutcomes,
+			func(o models.Outcome) string { return o.String() }),
+		DecisionToCaseInboxId: scenario.DecisionToCaseInboxId,
+		Description:           scenario.Description,
+		LiveVersionID:         scenario.LiveVersionID,
+		Name:                  scenario.Name,
+		OrganizationId:        scenario.OrganizationId,
+		TriggerObjectType:     scenario.TriggerObjectType,
 	}
 }
 
