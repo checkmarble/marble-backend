@@ -52,36 +52,9 @@ func (api *API) CreateScenarioIteration(c *gin.Context) {
 		return
 	}
 
-	createScenarioIterationInput := models.CreateScenarioIterationInput{
-		ScenarioId: input.ScenarioId,
-	}
-
-	if input.Body != nil {
-		createScenarioIterationInput.Body = &models.CreateScenarioIterationBody{
-			ScoreReviewThreshold: input.Body.ScoreReviewThreshold,
-			ScoreRejectThreshold: input.Body.ScoreRejectThreshold,
-			BatchTriggerSQL:      input.Body.BatchTriggerSQL,
-			Schedule:             input.Body.Schedule,
-			Rules:                make([]models.CreateRuleInput, len(input.Body.Rules)),
-		}
-
-		for i, rule := range input.Body.Rules {
-			createScenarioIterationInput.Body.Rules[i], err =
-				dto.AdaptCreateRuleInput(rule, organizationId)
-			if presentError(c, err) {
-				return
-			}
-		}
-
-		if input.Body.TriggerConditionAstExpression != nil {
-			trigger, err := dto.AdaptASTNode(*input.Body.TriggerConditionAstExpression)
-			if err != nil {
-				presentError(c, fmt.Errorf("invalid trigger: %w %w", err, models.BadParameterError))
-				return
-			}
-			createScenarioIterationInput.Body.TriggerConditionAstExpression = &trigger
-		}
-
+	createScenarioIterationInput, err := dto.AdaptCreateScenarioIterationInput(input, organizationId)
+	if presentError(c, err) {
+		return
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewScenarioIterationUsecase()
@@ -149,23 +122,9 @@ func (api *API) UpdateScenarioIteration(c *gin.Context) {
 		return
 	}
 
-	updateScenarioIterationInput := models.UpdateScenarioIterationInput{
-		Id: iterationID,
-		Body: &models.UpdateScenarioIterationBody{
-			ScoreReviewThreshold: data.Body.ScoreReviewThreshold,
-			ScoreRejectThreshold: data.Body.ScoreRejectThreshold,
-			Schedule:             data.Body.Schedule,
-			BatchTriggerSQL:      data.Body.BatchTriggerSQL,
-		},
-	}
-
-	if data.Body.TriggerConditionAstExpression != nil {
-		trigger, err := dto.AdaptASTNode(*data.Body.TriggerConditionAstExpression)
-		if err != nil {
-			presentError(c, fmt.Errorf("invalid trigger: %w %w", err, models.BadParameterError))
-			return
-		}
-		updateScenarioIterationInput.Body.TriggerConditionAstExpression = &trigger
+	updateScenarioIterationInput, err := dto.AdaptUpdateScenarioIterationInput(data, iterationID)
+	if presentError(c, err) {
+		return
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewScenarioIterationUsecase()
