@@ -152,7 +152,7 @@ func (usecase *ScenarioIterationUsecase) UpdateScenarioIteration(ctx context.Con
 		return iteration, err
 	}
 	body := scenarioIteration.Body
-	if body != nil && body.Schedule != nil && *body.Schedule != "" {
+	if body.Schedule != nil && *body.Schedule != "" {
 		gron := gronx.New()
 		ok := gron.IsValid(*body.Schedule)
 		if !ok {

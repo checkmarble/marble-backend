@@ -101,9 +101,7 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Cont
 func (repo *MarbleDbRepository) UpdateScenarioIteration(ctx context.Context, exec Executor,
 	scenarioIteration models.UpdateScenarioIterationInput,
 ) (models.ScenarioIteration, error) {
-	if scenarioIteration.Body == nil {
-		return models.ScenarioIteration{}, fmt.Errorf("nothing to update")
-	}
+	countUpdate := 0
 
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.ScenarioIteration{}, err
@@ -116,15 +114,19 @@ func (repo *MarbleDbRepository) UpdateScenarioIteration(ctx context.Context, exe
 		Suffix("RETURNING *")
 	if scenarioIteration.Body.ScoreReviewThreshold != nil {
 		sql = sql.Set("score_review_threshold", scenarioIteration.Body.ScoreReviewThreshold)
+		countUpdate++
 	}
 	if scenarioIteration.Body.ScoreRejectThreshold != nil {
 		sql = sql.Set("score_reject_threshold", scenarioIteration.Body.ScoreRejectThreshold)
+		countUpdate++
 	}
 	if scenarioIteration.Body.Schedule != nil {
 		sql = sql.Set("schedule", scenarioIteration.Body.Schedule)
+		countUpdate++
 	}
 	if scenarioIteration.Body.BatchTriggerSQL != nil {
 		sql = sql.Set("batch_trigger_sql", scenarioIteration.Body.BatchTriggerSQL)
+		countUpdate++
 	}
 	if scenarioIteration.Body.TriggerConditionAstExpression != nil {
 		triggerCondition, err := dbmodels.SerializeFormulaAstExpression(
@@ -134,7 +136,12 @@ func (repo *MarbleDbRepository) UpdateScenarioIteration(ctx context.Context, exe
 				"unable to marshal trigger condition ast expression: %w", err)
 		}
 		sql = sql.Set("trigger_condition_ast_expression", triggerCondition)
+		countUpdate++
 	}
+	if countUpdate == 0 {
+		return repo.GetScenarioIteration(ctx, exec, scenarioIteration.Id)
+	}
+
 	updatedIteration, err := SqlToModel(ctx, exec, sql, dbmodels.AdaptScenarioIteration)
 	if err != nil {
 		return models.ScenarioIteration{}, err

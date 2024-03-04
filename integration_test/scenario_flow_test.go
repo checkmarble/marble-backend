@@ -336,7 +336,7 @@ func setupScenarioAndPublish(t *testing.T, ctx context.Context,
 	updatedScenarioIteration, err := scenarioIterationUsecase.UpdateScenarioIteration(
 		usecasesWithCreds.Context, organizationId, models.UpdateScenarioIterationInput{
 			Id: scenarioIterationId,
-			Body: &models.UpdateScenarioIterationBody{
+			Body: models.UpdateScenarioIterationBody{
 				ScoreRejectThreshold: &threshold,
 			},
 		})

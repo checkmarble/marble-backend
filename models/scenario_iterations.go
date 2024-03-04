@@ -41,7 +41,7 @@ type CreateScenarioIterationBody struct {
 
 type UpdateScenarioIterationInput struct {
 	Id   string
-	Body *UpdateScenarioIterationBody
+	Body UpdateScenarioIterationBody
 }
 
 type UpdateScenarioIterationBody struct {
