@@ -2,10 +2,10 @@ package usecases
 
 import (
 	"context"
+	"crypto/sha256"
 	"testing"
 
 	"github.com/cockroachdb/errors"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
@@ -15,14 +15,12 @@ import (
 
 type ApiKeyUsecaseTestSuite struct {
 	suite.Suite
-	enforceSecurity    *mocks.EnforceSecurity
-	transaction        *mocks.Executor
-	transactionFactory *mocks.TransactionFactory
-	apiKeyRepository   *mocks.ApiKeyRepository
+	enforceSecurity  *mocks.EnforceSecurity
+	transaction      *mocks.Executor
+	executorFactory  *mocks.ExecutorFactory
+	apiKeyRepository *mocks.ApiKeyRepository
 
 	organizationId  string
-	apiKey          models.ApiKey
-	createdApiKey   models.CreatedApiKey
 	repositoryError error
 	securityError   error
 }
@@ -31,38 +29,30 @@ func (suite *ApiKeyUsecaseTestSuite) SetupTest() {
 	suite.enforceSecurity = new(mocks.EnforceSecurity)
 	suite.apiKeyRepository = new(mocks.ApiKeyRepository)
 	suite.transaction = new(mocks.Executor)
-	suite.transactionFactory = &mocks.TransactionFactory{ExecMock: suite.transaction}
+	suite.executorFactory = new(mocks.ExecutorFactory)
 
 	suite.organizationId = "25ab6323-1657-4a52-923a-ef6983fe4532"
-	suite.apiKey = models.ApiKey{
-		Id:             "0ae6fda7-f7b3-4218-9fc3-4efa329432a7",
-		OrganizationId: suite.organizationId,
-		Description:    "test key",
-		Role:           models.API_CLIENT,
-	}
-	suite.createdApiKey = models.CreatedApiKey{
-		ApiKey: suite.apiKey,
-		Value:  mock.Anything,
-	}
+
 	suite.repositoryError = errors.New("some repository error")
 	suite.securityError = errors.New("some security error")
 }
 
 func (suite *ApiKeyUsecaseTestSuite) makeUsecase() *ApiKeyUseCase {
 	return &ApiKeyUseCase{
-		transactionFactory: suite.transactionFactory,
+		apiKeyRepository: suite.apiKeyRepository,
+		enforceSecurity:  suite.enforceSecurity,
+		executorFactory:  suite.executorFactory,
 		organizationIdOfContext: func() (string, error) {
 			return suite.organizationId, nil
 		},
-		enforceSecurity:  suite.enforceSecurity,
-		apiKeyRepository: suite.apiKeyRepository,
 	}
 }
 
 func (suite *ApiKeyUsecaseTestSuite) AssertExpectations() {
 	t := suite.T()
-	suite.enforceSecurity.AssertExpectations(t)
 	suite.apiKeyRepository.AssertExpectations(t)
+	suite.enforceSecurity.AssertExpectations(t)
+	suite.executorFactory.AssertExpectations(t)
 }
 
 func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_nominal() {
@@ -71,19 +61,35 @@ func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_nominal() {
 		OrganizationId: suite.organizationId,
 		Description:    "test key", Role: models.API_CLIENT,
 	}
-	suite.transactionFactory.On("Transaction", ctx, mock.Anything).Return(nil)
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
 	suite.enforceSecurity.On("CreateApiKey", suite.organizationId).Return(nil)
-	suite.apiKeyRepository.On("CreateApiKey", suite.transaction,
-		mock.AnythingOfType("models.CreateApiKey")).Return(nil)
-	suite.apiKeyRepository.On("GetApiKeyById", suite.transaction, mock.AnythingOfType("string")).Return(suite.apiKey, nil)
-	suite.enforceSecurity.On("ReadApiKey", mock.AnythingOfType("string")).Return(nil)
+	suite.apiKeyRepository.On(
+		"CreateApiKey",
+		suite.transaction,
+		mock.AnythingOfType("models.ApiKey"),
+	).
+		Return(nil)
 
 	createdApiKey, err := suite.makeUsecase().CreateApiKey(ctx, input)
 
 	suite.NoError(err)
-	suite.Assert().NotEmpty(createdApiKey.Value)
-	createdApiKey.Value = mock.Anything
-	suite.Equal(suite.createdApiKey, createdApiKey)
+	suite.Equal(64, len(createdApiKey.Key))
+	hash := sha256.Sum256([]byte(createdApiKey.Key))
+	suite.Equal(createdApiKey.Hash, hash[:])
+	suite.AssertExpectations()
+}
+
+func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_bad_parameter() {
+	ctx := context.Background()
+	input := models.CreateApiKeyInput{
+		OrganizationId: suite.organizationId,
+		Description:    "test key", Role: models.ADMIN,
+	}
+	suite.enforceSecurity.On("CreateApiKey", suite.organizationId).Return(nil)
+
+	_, err := suite.makeUsecase().CreateApiKey(ctx, input)
+
+	suite.ErrorIs(err, models.BadParameterError)
 
 	suite.AssertExpectations()
 }
@@ -94,13 +100,11 @@ func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_security_error() {
 		OrganizationId: suite.organizationId,
 		Description:    "test key", Role: models.API_CLIENT,
 	}
-	suite.transactionFactory.On("Transaction", ctx, mock.Anything).Return(nil)
 	suite.enforceSecurity.On("CreateApiKey", suite.organizationId).Return(suite.securityError)
 
 	_, err := suite.makeUsecase().CreateApiKey(ctx, input)
 
-	t := suite.T()
-	assert.ErrorIs(t, err, suite.securityError)
+	suite.ErrorIs(err, suite.securityError)
 
 	suite.AssertExpectations()
 }
@@ -111,15 +115,14 @@ func (suite *ApiKeyUsecaseTestSuite) Test_CreateApiKey_repository_error() {
 		OrganizationId: suite.organizationId,
 		Description:    "test key", Role: models.API_CLIENT,
 	}
-	suite.transactionFactory.On("Transaction", ctx, mock.Anything).Return(nil)
+	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
 	suite.enforceSecurity.On("CreateApiKey", suite.organizationId).Return(nil)
 	suite.apiKeyRepository.On("CreateApiKey", suite.transaction,
-		mock.AnythingOfType("models.CreateApiKey")).Return(suite.repositoryError)
+		mock.AnythingOfType("models.ApiKey")).Return(suite.repositoryError)
 
 	_, err := suite.makeUsecase().CreateApiKey(ctx, input)
 
-	t := suite.T()
-	assert.ErrorIs(t, err, suite.repositoryError)
+	suite.ErrorIs(err, suite.repositoryError)
 
 	suite.AssertExpectations()
 }

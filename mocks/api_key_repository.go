@@ -23,7 +23,7 @@ func (r *ApiKeyRepository) ListApiKeys(ctx context.Context, exec repositories.Ex
 	return args.Get(0).([]models.ApiKey), args.Error(1)
 }
 
-func (r *ApiKeyRepository) CreateApiKey(ctx context.Context, exec repositories.Executor, apiKey models.CreateApiKey) error {
+func (r *ApiKeyRepository) CreateApiKey(ctx context.Context, exec repositories.Executor, apiKey models.ApiKey) error {
 	args := r.Called(exec, apiKey)
 	return args.Error(0)
 }

@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 
@@ -17,7 +18,7 @@ import (
 type ApiKeyRepository interface {
 	GetApiKeyById(ctx context.Context, exec repositories.Executor, apiKeyId string) (models.ApiKey, error)
 	ListApiKeys(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.ApiKey, error)
-	CreateApiKey(ctx context.Context, exec repositories.Executor, apiKey models.CreateApiKey) error
+	CreateApiKey(ctx context.Context, exec repositories.Executor, apiKey models.ApiKey) error
 	SoftDeleteApiKey(ctx context.Context, exec repositories.Executor, apiKeyId string) error
 }
 
@@ -28,7 +29,6 @@ type EnforceSecurityApiKey interface {
 }
 
 type ApiKeyUseCase struct {
-	transactionFactory      executor_factory.TransactionFactory
 	executorFactory         executor_factory.ExecutorFactory
 	organizationIdOfContext func() (string, error)
 	enforceSecurity         EnforceSecurityApiKey
@@ -54,57 +54,43 @@ func (usecase *ApiKeyUseCase) ListApiKeys(ctx context.Context) ([]models.ApiKey,
 	return apiKeys, nil
 }
 
-func (usecase *ApiKeyUseCase) getApiKey(ctx context.Context, exec repositories.Executor, apiKeyId string) (models.ApiKey, error) {
-	apiKey, err := usecase.apiKeyRepository.GetApiKeyById(ctx, exec, apiKeyId)
-	if err != nil {
-		return models.ApiKey{}, err
+func (usecase *ApiKeyUseCase) CreateApiKey(ctx context.Context, input models.CreateApiKeyInput) (models.ApiKey, error) {
+	apiKeyId := uuid.NewString()
+	key := generateAPiKey()
+	hash := sha256.Sum256([]byte(key))
+	apiKey := models.ApiKey{
+		Id:             apiKeyId,
+		Description:    input.Description,
+		Hash:           hash[:],
+		Key:            key,
+		OrganizationId: input.OrganizationId,
+		Role:           input.Role,
 	}
-	if err := usecase.enforceSecurity.ReadApiKey(apiKey); err != nil {
-		return models.ApiKey{}, err
-	}
-	return apiKey, nil
-}
 
-func (usecase *ApiKeyUseCase) CreateApiKey(ctx context.Context, input models.CreateApiKeyInput) (models.CreatedApiKey, error) {
-	apiKey, err := executor_factory.TransactionReturnValue(
+	if err := usecase.enforceSecurity.CreateApiKey(input.OrganizationId); err != nil {
+		return models.ApiKey{}, err
+	}
+
+	if input.Role != models.API_CLIENT {
+		return models.ApiKey{}, errors.Wrap(
+			models.BadParameterError,
+			fmt.Sprintf("role %s is not supported", input.Role),
+		)
+	}
+
+	err := usecase.apiKeyRepository.CreateApiKey(
 		ctx,
-		usecase.transactionFactory,
-		func(tx repositories.Executor) (models.CreatedApiKey, error) {
-			if err := usecase.enforceSecurity.CreateApiKey(input.OrganizationId); err != nil {
-				return models.CreatedApiKey{}, err
-			}
-
-			if input.Role != models.API_CLIENT {
-				return models.CreatedApiKey{}, errors.Wrap(models.BadParameterError,
-					fmt.Sprintf("role %s is not supported", input.Role))
-			}
-
-			apiKeyId := uuid.NewString()
-			key := generateAPiKey()
-			if err := usecase.apiKeyRepository.CreateApiKey(ctx, tx, models.CreateApiKey{
-				CreateApiKeyInput: input,
-				Id:                apiKeyId,
-				Hash:              key, // TODO: hash the key
-			}); err != nil {
-				return models.CreatedApiKey{}, err
-			}
-
-			apiKey, err := usecase.getApiKey(ctx, tx, apiKeyId)
-			if err != nil {
-				return models.CreatedApiKey{}, err
-			}
-			return models.CreatedApiKey{
-				ApiKey: apiKey,
-				Value:  key,
-			}, nil
-		})
+		usecase.executorFactory.NewExecutor(),
+		apiKey,
+	)
 	if err != nil {
-		return models.CreatedApiKey{}, err
+		return models.ApiKey{}, err
 	}
 
 	tracking.TrackEvent(ctx, models.AnalyticsApiKeyCreated, map[string]interface{}{
 		"api_key_id": apiKey.Id,
 	})
+
 	return apiKey, nil
 }
 
@@ -112,7 +98,7 @@ func generateAPiKey() string {
 	key := make([]byte, 32)
 	_, err := rand.Read(key)
 	if err != nil {
-		panic(fmt.Errorf("randomAPiKey: %w", err))
+		panic(fmt.Errorf("generateAPiKey: %w", err))
 	}
 	return hex.EncodeToString(key)
 }
