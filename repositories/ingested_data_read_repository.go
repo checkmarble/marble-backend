@@ -44,7 +44,7 @@ func (repo *IngestedDataReadRepositoryImpl) GetDbField(ctx context.Context, exec
 	return output, nil
 }
 
-func createQueryDbForField(ctx context.Context, exec Executor, readParams models.DbFieldReadParams) (squirrel.SelectBuilder, error) {
+func createQueryDbForField(exec Executor, readParams models.DbFieldReadParams) (squirrel.SelectBuilder, error) {
 	triggerTable, ok := readParams.DataModel.Tables[readParams.TriggerTableName]
 	if !ok {
 		return squirrel.SelectBuilder{}, fmt.Errorf("table %s not found in data model", readParams.TriggerTableName)
@@ -55,10 +55,10 @@ func createQueryDbForField(ctx context.Context, exec Executor, readParams models
 			readParams.Path[0], models.NotFoundError)
 	}
 
-	firstTableObjectId, err := getFirstTableObjectIdFromPayload(readParams.ClientObject, link.ChildFieldName)
+	firstTableLinkValue, err := getParentTableJoinField(readParams.ClientObject, link.ChildFieldName)
 	if err != nil {
 		return squirrel.SelectBuilder{}, fmt.Errorf(
-			"error while getting first path table object id from payload: %w", err)
+			"error while getting first path table unique id from payload: %w", err)
 	}
 
 	// "first table" is the first table reached starting from the trigger table and following the path
@@ -80,14 +80,14 @@ func createQueryDbForField(ctx context.Context, exec Executor, readParams models
 	query := NewQueryBuilder().
 		Select(fmt.Sprintf("%s.%s", lastTableName, readParams.FieldName)).
 		From(firstTableName).
-		Where(squirrel.Eq{fmt.Sprintf("%s.object_id", firstTableName): firstTableObjectId}).
+		Where(squirrel.Eq{fmt.Sprintf("%s.%s", firstTableName, link.ParentFieldName): firstTableLinkValue}).
 		Where(rowIsValid(firstTableName))
 
-	return addJoinsOnIntermediateTables(ctx, exec, query, readParams, firstTable)
+	return addJoinsOnIntermediateTables(exec, query, readParams, firstTable)
 }
 
 func (repo *IngestedDataReadRepositoryImpl) queryDbForField(ctx context.Context, exec Executor, readParams models.DbFieldReadParams) (pgx.Row, error) {
-	query, err := createQueryDbForField(ctx, exec, readParams)
+	query, err := createQueryDbForField(exec, readParams)
 	if err != nil {
 		return nil, fmt.Errorf("error while building SQL query: %w", err)
 	}
@@ -101,21 +101,26 @@ func (repo *IngestedDataReadRepositoryImpl) queryDbForField(ctx context.Context,
 	return row, nil
 }
 
-func getFirstTableObjectIdFromPayload(payload models.ClientObject, fieldName models.FieldName) (string, error) {
-	parentObjectIdItf := payload.Data[string(fieldName)]
-	if parentObjectIdItf == nil {
-		return "", fmt.Errorf("%s in payload is null", fieldName) // should not happen, as per input validation
+func getParentTableJoinField(payload models.ClientObject, fieldName models.FieldName) (string, error) {
+	parentFieldItf := payload.Data[string(fieldName)]
+	if parentFieldItf == nil {
+		return "", errors.Wrap(
+			models.ErrNullFieldRead,
+			fmt.Sprintf("%s in payload is null", fieldName))
 	}
-	parentObjectId, ok := parentObjectIdItf.(string)
+	parentField, ok := parentFieldItf.(string)
 	if !ok {
-		return "", fmt.Errorf("%s in payload is not a string", fieldName) // should not happen, as per input validation
+		return "", fmt.Errorf("%s in payload is not a string", fieldName)
 	}
 
-	return parentObjectId, nil
+	return parentField, nil
 }
 
-func addJoinsOnIntermediateTables(ctx context.Context, exec Executor, query squirrel.SelectBuilder,
-	readParams models.DbFieldReadParams, firstTable models.Table,
+func addJoinsOnIntermediateTables(
+	exec Executor,
+	query squirrel.SelectBuilder,
+	readParams models.DbFieldReadParams,
+	firstTable models.Table,
 ) (squirrel.SelectBuilder, error) {
 	currentTable := firstTable
 	// ignore the first element of the path, as it is the starting table of the query
