@@ -15,11 +15,11 @@ import (
 )
 
 const expectedQueryDbFieldExpectedWithoutJoin string = "SELECT test_schema.second.int_var FROM test_schema.second " +
-	"WHERE test_schema.second.object_id = $1 AND test_schema.second.valid_until = $2"
+	"WHERE test_schema.second.id = $1 AND test_schema.second.valid_until = $2"
 
 const expectedQueryDbFieldWithJoin string = "SELECT test_schema.third.int_var " +
 	"FROM test_schema.second JOIN test_schema.third ON test_schema.second.id = test_schema.third.id " +
-	"WHERE test_schema.second.object_id = $1 AND test_schema.second.valid_until = $2 AND test_schema.third.valid_until = $3"
+	"WHERE test_schema.second.id = $1 AND test_schema.second.valid_until = $2 AND test_schema.third.valid_until = $3"
 
 const expectedQueryAggregatedWithoutFilter string = "SELECT AVG(int_var) FROM test_schema.first " +
 	"WHERE test_schema.first.valid_until = $1"
@@ -51,7 +51,7 @@ func (tx TransactionTest) Exec(ctx context.Context, query string, args ...interf
 func TestIngestedDataGetDbFieldWithoutJoin(t *testing.T) {
 	path := []models.LinkName{models.LinkName(utils.DummyTableNameSecond)}
 
-	query, err := createQueryDbForField(context.TODO(), TransactionTest{}, models.DbFieldReadParams{
+	query, err := createQueryDbForField(TransactionTest{}, models.DbFieldReadParams{
 		TriggerTableName: utils.DummyTableNameFirst,
 		Path:             path,
 		FieldName:        utils.DummyFieldNameForInt,
@@ -77,7 +77,7 @@ func TestIngestedDataGetDbFieldWithJoin(t *testing.T) {
 		models.LinkName(utils.DummyTableNameThird),
 	}
 
-	query, err := createQueryDbForField(context.TODO(), TransactionTest{}, models.DbFieldReadParams{
+	query, err := createQueryDbForField(TransactionTest{}, models.DbFieldReadParams{
 		TriggerTableName: utils.DummyTableNameFirst,
 		Path:             path,
 		FieldName:        utils.DummyFieldNameForInt,
