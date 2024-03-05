@@ -184,7 +184,7 @@ func (usecase *CaseUseCase) createCase(
 	} else {
 		if err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
 			CaseId:    newCaseId,
-			EventType: models.CaseCreatedAutomatically,
+			EventType: models.CaseCreated,
 		}); err != nil {
 			return models.Case{}, err
 		}
