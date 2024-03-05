@@ -21,6 +21,7 @@ type IngestedDataReadRepository interface {
 
 type IngestedDataReadRepositoryImpl struct{}
 
+// "read db field" methods
 func (repo *IngestedDataReadRepositoryImpl) GetDbField(ctx context.Context, exec Executor, readParams models.DbFieldReadParams) (any, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return nil, err
@@ -42,6 +43,21 @@ func (repo *IngestedDataReadRepositoryImpl) GetDbField(ctx context.Context, exec
 		return nil, err
 	}
 	return output, nil
+}
+
+func (repo *IngestedDataReadRepositoryImpl) queryDbForField(ctx context.Context, exec Executor, readParams models.DbFieldReadParams) (pgx.Row, error) {
+	query, err := createQueryDbForField(exec, readParams)
+	if err != nil {
+		return nil, fmt.Errorf("error while building SQL query: %w", err)
+	}
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("error while building SQL query: %w", err)
+	}
+
+	row := exec.QueryRow(ctx, sql, args...)
+	return row, nil
 }
 
 func createQueryDbForField(exec Executor, readParams models.DbFieldReadParams) (squirrel.SelectBuilder, error) {
@@ -86,21 +102,6 @@ func createQueryDbForField(exec Executor, readParams models.DbFieldReadParams) (
 	return addJoinsOnIntermediateTables(exec, query, readParams, firstTable)
 }
 
-func (repo *IngestedDataReadRepositoryImpl) queryDbForField(ctx context.Context, exec Executor, readParams models.DbFieldReadParams) (pgx.Row, error) {
-	query, err := createQueryDbForField(exec, readParams)
-	if err != nil {
-		return nil, fmt.Errorf("error while building SQL query: %w", err)
-	}
-
-	sql, args, err := query.ToSql()
-	if err != nil {
-		return nil, fmt.Errorf("error while building SQL query: %w", err)
-	}
-
-	row := exec.QueryRow(ctx, sql, args...)
-	return row, nil
-}
-
 func getParentTableJoinField(payload models.ClientObject, fieldName models.FieldName) (string, error) {
 	parentFieldItf := payload.Data[string(fieldName)]
 	if parentFieldItf == nil {
@@ -114,6 +115,25 @@ func getParentTableJoinField(payload models.ClientObject, fieldName models.Field
 	}
 
 	return parentField, nil
+}
+
+func getLastTableFromPath(params models.DbFieldReadParams, firstTable models.Table) (models.Table, error) {
+	currentTable := firstTable
+	// ignore the first element of the path, as it is the starting table of the query
+	for _, linkName := range params.Path[1:] {
+		link, ok := currentTable.LinksToSingle[linkName]
+		if !ok {
+			return models.Table{}, fmt.Errorf("no link with name %s: %w", linkName, models.NotFoundError)
+		}
+		nextTable, ok := params.DataModel.Tables[link.LinkedTableName]
+		if !ok {
+			return models.Table{}, fmt.Errorf("no table with name %s: %w",
+				link.LinkedTableName, models.NotFoundError)
+		}
+
+		currentTable = nextTable
+	}
+	return currentTable, nil
 }
 
 func addJoinsOnIntermediateTables(
@@ -157,25 +177,7 @@ func rowIsValid(tableName string) squirrel.Eq {
 	return squirrel.Eq{fmt.Sprintf("%s.valid_until", tableName): "Infinity"}
 }
 
-func getLastTableFromPath(params models.DbFieldReadParams, firstTable models.Table) (models.Table, error) {
-	currentTable := firstTable
-	// ignore the first element of the path, as it is the starting table of the query
-	for _, linkName := range params.Path[1:] {
-		link, ok := currentTable.LinksToSingle[linkName]
-		if !ok {
-			return models.Table{}, fmt.Errorf("no link with name %s: %w", linkName, models.NotFoundError)
-		}
-		nextTable, ok := params.DataModel.Tables[link.LinkedTableName]
-		if !ok {
-			return models.Table{}, fmt.Errorf("no table with name %s: %w",
-				link.LinkedTableName, models.NotFoundError)
-		}
-
-		currentTable = nextTable
-	}
-	return currentTable, nil
-}
-
+// "list all fields" methods
 func (repo *IngestedDataReadRepositoryImpl) ListAllObjectsFromTable(ctx context.Context,
 	exec Executor, table models.Table,
 ) ([]models.ClientObject, error) {
