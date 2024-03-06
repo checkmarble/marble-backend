@@ -7,7 +7,7 @@ RUN go get
 
 RUN CGO_ENABLED=0 go build -o /go/bin/app -ldflags="-X 'main.version=`git rev-parse --short HEAD`'"
 
-FROM gcr.io/distroless/static
+FROM alpine:3.19
 
 COPY --from=build /go/bin/app /
 
