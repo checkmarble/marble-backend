@@ -11,7 +11,6 @@ import (
 
 type tokenCookieVerifier interface {
 	VerifyIDToken(ctx context.Context, idToken string) (*auth.Token, error)
-	VerifySessionCookie(ctx context.Context, sessionCookie string) (*auth.Token, error)
 }
 
 type Client struct {
@@ -20,9 +19,6 @@ type Client struct {
 
 func (c *Client) verifyTokenOrCookie(ctx context.Context, firebaseToken string) (*auth.Token, error) {
 	token, err := c.verifier.VerifyIDToken(ctx, firebaseToken)
-	if err != nil {
-		token, err = c.verifier.VerifySessionCookie(ctx, firebaseToken)
-	}
 	if err != nil {
 		return nil, err
 	}

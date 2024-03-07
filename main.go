@@ -34,18 +34,10 @@ type dependencies struct {
 	Authentication      *api.Authentication
 	TokenHandler        *api.TokenHandler
 	SegmentClient       analytics.Client
-	OpenTelemetryTracer trace.Tracer
+	OpenTelemetryTracer *trace.Tracer
 }
 
 func initDependencies(conf AppConfiguration, signingKey *rsa.PrivateKey) (dependencies, error) {
-	tracer, err := tracing.Init(tracing.Configuration{
-		Enabled:         conf.env != "development",
-		ApplicationName: "marble-backend",
-		ProjectID:       conf.gcpProject,
-	})
-	if err != nil {
-		return dependencies{}, fmt.Errorf("tracing.Init error: %w", err)
-	}
 	database, err := postgres.New(postgres.Configuration{
 		Host:                conf.pgConfig.Hostname,
 		Port:                conf.pgConfig.Port,
@@ -65,12 +57,24 @@ func initDependencies(conf AppConfiguration, signingKey *rsa.PrivateKey) (depend
 	tokenGenerator := token.NewGenerator(database, jwtRepository, firebaseClient, conf.config.TokenLifetimeMinute)
 	segmentClient := analytics.New(conf.config.SegmentWriteKey)
 
-	return dependencies{
-		Authentication:      api.NewAuthentication(tokenValidator),
-		TokenHandler:        api.NewTokenHandler(tokenGenerator),
-		SegmentClient:       segmentClient,
-		OpenTelemetryTracer: tracer,
-	}, nil
+	deps := dependencies{
+		Authentication: api.NewAuthentication(tokenValidator),
+		TokenHandler:   api.NewTokenHandler(tokenGenerator),
+		SegmentClient:  segmentClient,
+	}
+
+	tracer, err := tracing.Init(tracing.Configuration{
+		Enabled:         conf.env != "development",
+		ApplicationName: "marble-backend",
+		ProjectID:       conf.gcpProject,
+	})
+	if err != nil {
+		fmt.Println("tracing.Init error: ", err)
+	} else {
+		deps.OpenTelemetryTracer = &tracer
+	}
+
+	return deps, nil
 }
 
 func runServer(ctx context.Context, appConfig AppConfiguration) {
@@ -145,7 +149,7 @@ type AppConfiguration struct {
 func main() {
 	appConfig := AppConfiguration{
 		env:        utils.GetEnv("ENV", "development"),
-		port:       utils.GetRequiredEnv[string]("PORT"),
+		port:       utils.GetRequiredEnv[string]("API_PORT"),
 		gcpProject: os.Getenv("GOOGLE_CLOUD_PROJECT"),
 		pgConfig: utils.PGConfig{
 			Database:            "marble",
