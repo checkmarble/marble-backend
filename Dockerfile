@@ -11,7 +11,7 @@ FROM alpine:3.19
 
 COPY --from=build /go/bin/app /
 
-ENV PORT=8080
-EXPOSE $PORT
+ENV API_PORT=${API_PORT:-8080}
+EXPOSE $API_PORT
 
 ENTRYPOINT ["/app"]
