@@ -21,22 +21,22 @@ const TABLE_USERS = "users"
 var UserFields = utils.ColumnList[DBUserResult]()
 
 func AdaptUser(db DBUserResult) (models.User, error) {
-	var organizationId, firstName, lastName string
+	user := models.User{
+		UserId: models.UserId(db.Id),
+		Email:  db.Email,
+		Role:   models.Role(db.Role),
+	}
 	if db.OrganizationId != nil {
-		organizationId = *db.OrganizationId
+		user.OrganizationId = *db.OrganizationId
 	}
 	if db.FirstName.Valid {
-		firstName = db.FirstName.String
+		user.FirstName = db.FirstName.String
 	}
 	if db.LastName.Valid {
-		lastName = db.LastName.String
+		user.LastName = db.LastName.String
 	}
-	return models.User{
-		UserId:         models.UserId(db.Id),
-		Email:          db.Email,
-		Role:           models.Role(db.Role),
-		OrganizationId: organizationId,
-		FirstName:      firstName,
-		LastName:       lastName,
-	}, nil
+	if db.DeletedAt.Valid {
+		user.DeletedAt = &db.DeletedAt.Time
+	}
+	return user, nil
 }

@@ -1,14 +1,19 @@
 package dto
 
-import "github.com/checkmarble/marble-backend/models"
+import (
+	"time"
+
+	"github.com/checkmarble/marble-backend/models"
+)
 
 type User struct {
-	UserId         string `json:"user_id"`
-	Email          string `json:"email"`
-	Role           string `json:"role"`
-	OrganizationId string `json:"organization_id"`
-	FirstName      string `json:"first_name"`
-	LastName       string `json:"last_name"`
+	UserId         string     `json:"user_id"`
+	Email          string     `json:"email"`
+	Role           string     `json:"role"`
+	OrganizationId string     `json:"organization_id"`
+	FirstName      string     `json:"first_name"`
+	LastName       string     `json:"last_name"`
+	DeletedAt      *time.Time `json:"deleted_at,omitempty"`
 }
 
 func AdaptUserDto(user models.User) User {
@@ -19,6 +24,7 @@ func AdaptUserDto(user models.User) User {
 		OrganizationId: user.OrganizationId,
 		FirstName:      user.FirstName,
 		LastName:       user.LastName,
+		DeletedAt:      user.DeletedAt,
 	}
 }
 

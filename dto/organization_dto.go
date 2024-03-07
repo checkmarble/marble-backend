@@ -17,8 +17,7 @@ func AdaptOrganizationDto(org models.Organization) APIOrganization {
 }
 
 type CreateOrganizationBodyDto struct {
-	Name         string `json:"name"`
-	DatabaseName string `json:"databaseName"`
+	Name string `json:"name"`
 }
 
 type CreateOrganizationInputDto struct {
@@ -27,7 +26,6 @@ type CreateOrganizationInputDto struct {
 
 type UpdateOrganizationBodyDto struct {
 	Name                       *string `json:"name,omitempty"`
-	DatabaseName               *string `json:"databaseName,omitempty"`
 	ExportScheduledExecutionS3 *string `json:"export_scheduled_execution_s3,omitempty"`
 }
 
