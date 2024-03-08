@@ -138,7 +138,7 @@ func (suite *ScenarioPublicationUsecaseTestSuite) SetupTest() {
 
 	suite.repositoryError = errors.New("some repository error")
 	suite.securityError = errors.New("some security error")
-	suite.ctx = utils.StoreLoggerInContext(context.Background(), utils.NewLogger("test"))
+	suite.ctx = utils.StoreLoggerInContext(context.Background(), utils.NewLogger("text"))
 }
 
 func (suite *ScenarioPublicationUsecaseTestSuite) makeUsecase() *ScenarioPublicationUsecase {

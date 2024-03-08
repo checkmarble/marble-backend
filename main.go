@@ -110,7 +110,7 @@ func runServer(ctx context.Context, appConfig AppConfiguration) {
 	}
 
 	router := initRouter(ctx, appConfig, deps)
-	server := api.New(router, appConfig.port, uc, deps.Authentication, deps.TokenHandler, logger)
+	server := api.New(router, appConfig.port, uc, deps.Authentication, deps.TokenHandler)
 
 	notify, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -134,22 +134,26 @@ func runServer(ctx context.Context, appConfig AppConfiguration) {
 }
 
 type AppConfiguration struct {
-	env              string
-	port             string
-	gcpProject       string
-	enableGcpTracing bool
-	pgConfig         utils.PGConfig
-	config           models.GlobalConfiguration
-	sentryDsn        string
-	metabase         models.MetabaseConfiguration
+	env                 string
+	port                string
+	gcpProject          string
+	enableGcpTracing    bool
+	requestLoggingLevel string
+	loggingFormat       string
+	pgConfig            utils.PGConfig
+	config              models.GlobalConfiguration
+	sentryDsn           string
+	metabase            models.MetabaseConfiguration
 }
 
 func main() {
 	appConfig := AppConfiguration{
-		env:              utils.GetEnv("ENV", "development"),
-		port:             utils.GetRequiredEnv[string]("API_PORT"),
-		gcpProject:       os.Getenv("GOOGLE_CLOUD_PROJECT"),
-		enableGcpTracing: utils.GetEnv("ENABLE_GCP_TRACING", false),
+		env:                 utils.GetEnv("ENV", "development"),
+		port:                utils.GetRequiredEnv[string]("PORT"),
+		gcpProject:          os.Getenv("GOOGLE_CLOUD_PROJECT"),
+		enableGcpTracing:    utils.GetEnv("ENABLE_GCP_TRACING", false),
+		requestLoggingLevel: utils.GetEnv("REQUEST_LOGGING_LEVEL", "all"),
+		loggingFormat:       utils.GetEnv("LOGGING_FORMAT", "text"),
 		pgConfig: utils.PGConfig{
 			Database:            "marble",
 			DbConnectWithSocket: utils.GetEnv("PG_CONNECT_WITH_SOCKET", false),
@@ -181,7 +185,7 @@ func main() {
 	// Setup dependencies
 	////////////////////////////////////////////////////////////
 
-	logger := utils.NewLogger(appConfig.env)
+	logger := utils.NewLogger(appConfig.loggingFormat)
 	appContext := utils.StoreLoggerInContext(context.Background(), logger)
 
 	shouldRunMigrations := flag.Bool("migrations", false, "Run migrations")

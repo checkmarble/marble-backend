@@ -1,11 +1,9 @@
 package api
 
 import (
-	"log/slog"
 	"net/http"
 	"time"
 
-	"github.com/checkmarble/marble-backend/api/middleware"
 	limits "github.com/gin-contrib/size"
 	"github.com/gin-contrib/timeout"
 	"github.com/gin-gonic/gin"
@@ -25,8 +23,8 @@ func timeoutMiddleware(duration time.Duration) gin.HandlerFunc {
 	)
 }
 
-func (api *API) routes(auth *Authentication, tokenHandler *TokenHandler, logger *slog.Logger) {
-	api.router.GET("/liveness", middleware.NewLogging(logger), HandleLivenessProbe)
+func (api *API) routes(auth *Authentication, tokenHandler *TokenHandler) {
+	api.router.GET("/liveness", HandleLivenessProbe)
 	api.router.POST("/crash", HandleCrash)
 	api.router.POST("/token", tokenHandler.GenerateToken)
 

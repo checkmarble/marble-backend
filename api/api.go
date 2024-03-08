@@ -2,7 +2,6 @@ package api
 
 import (
 	"fmt"
-	"log/slog"
 	"net/http"
 	"time"
 
@@ -26,14 +25,13 @@ func New(
 	usecases usecases.Usecases,
 	auth *Authentication,
 	tokenHandler *TokenHandler,
-	logger *slog.Logger,
 ) *http.Server {
 	s := &API{
 		router:   router,
 		usecases: usecases,
 	}
 
-	s.routes(auth, tokenHandler, logger)
+	s.routes(auth, tokenHandler)
 
 	return &http.Server{
 		Addr:         fmt.Sprintf("0.0.0.0:%s", port),

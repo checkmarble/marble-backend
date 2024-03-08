@@ -26,7 +26,7 @@ func WithIgnorePath(s []string) LoggerOption {
 	}
 }
 
-func NewLogging(logger *slog.Logger, options ...LoggerOption) gin.HandlerFunc {
+func NewLogging(logger *slog.Logger, level string, options ...LoggerOption) gin.HandlerFunc {
 	l := &config{
 		logger:           logger,
 		defaultLevel:     slog.LevelInfo,
@@ -44,6 +44,17 @@ func NewLogging(logger *slog.Logger, options ...LoggerOption) gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
+		switch level {
+		case "liveness":
+			if c.Request.URL.Path != "/liveness" {
+				return
+			}
+		case "all":
+			// continue
+		default:
+			return
+		}
+
 		if _, ok := ignore[c.Request.URL.Path]; ok {
 			return
 		}
