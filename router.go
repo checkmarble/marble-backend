@@ -79,9 +79,7 @@ func initRouter(ctx context.Context, conf AppConfiguration, deps dependencies) *
 	r.Use(otelgin.Middleware("marble-backend"))
 	r.Use(utils.StoreLoggerInContextMiddleware(logger))
 	r.Use(utils.StoreSegmentClientInContextMiddleware(deps.SegmentClient))
-	if deps.OpenTelemetryTracer != nil {
-		r.Use(utils.StoreOpenTelemetryTracerInContextMiddleware(*deps.OpenTelemetryTracer))
-	}
+	r.Use(utils.StoreOpenTelemetryTracerInContextMiddleware(deps.OpenTelemetryTracer))
 
 	return r
 }
