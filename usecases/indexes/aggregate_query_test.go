@@ -15,7 +15,7 @@ import (
 
 func makeTestContext() context.Context {
 	ctx := context.Background()
-	return utils.StoreLoggerInContext(ctx, utils.NewLogger("test"))
+	return utils.StoreLoggerInContext(ctx, utils.NewLogger("text"))
 }
 
 func TestAggregationNodeToQueryFamily(t *testing.T) {

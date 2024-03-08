@@ -7,21 +7,26 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"slices"
 
 	"github.com/gin-gonic/gin"
 )
 
-func NewLogger(env string) *slog.Logger {
+func NewLogger(format string) *slog.Logger {
 	var logger *slog.Logger
+	if !slices.Contains([]string{"text", "json"}, format) {
+		fmt.Printf("invalid log format '%s', falling back to 'text'\n", format)
+		format = "text"
+	}
 
-	isDevEnv := env == "development"
-	if isDevEnv {
+	switch format {
+	case "text":
 		logHandler := LocalDevHandlerOptions{
 			SlogOpts: slog.HandlerOptions{Level: slog.LevelDebug},
 			UseColor: true,
 		}.NewLocalDevHandler(os.Stdout)
 		logger = slog.New(logHandler)
-	} else {
+	case "json":
 		slogOption := slog.HandlerOptions{ReplaceAttr: GCPLoggerAttributeReplacer}
 		jsonHandler := slog.NewJSONHandler(os.Stdout, &slogOption)
 		logger = slog.New(jsonHandler)
