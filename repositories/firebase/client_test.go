@@ -20,11 +20,6 @@ func (m *mockTokenCookieVerifier) VerifyIDToken(ctx context.Context, idToken str
 	return args.Get(0).(*auth.Token), args.Error(1)
 }
 
-func (m *mockTokenCookieVerifier) VerifySessionCookie(ctx context.Context, sessionCookie string) (*auth.Token, error) {
-	args := m.Called(ctx, sessionCookie)
-	return args.Get(0).(*auth.Token), args.Error(1)
-}
-
 func TestClient_VerifyFirebaseToken(t *testing.T) {
 	token := auth.Token{
 		Subject: "token_subject",
@@ -55,27 +50,6 @@ func TestClient_VerifyFirebaseToken(t *testing.T) {
 	t.Run("VerifyIDToken error", func(t *testing.T) {
 		mockVerifier := new(mockTokenCookieVerifier)
 		mockVerifier.On("VerifyIDToken", mock.Anything, "token").
-			Return(&auth.Token{}, assert.AnError)
-		mockVerifier.On("VerifySessionCookie", mock.Anything, "token").
-			Return(&token, nil)
-
-		c := Client{
-			verifier: mockVerifier,
-		}
-
-		identity, err := c.VerifyFirebaseToken(context.Background(), "token")
-		assert.NoError(t, err)
-		assert.Equal(t, models.FirebaseIdentity{
-			Email: "user@email.com",
-		}, identity)
-		mockVerifier.AssertExpectations(t)
-	})
-
-	t.Run("VerifySessionCookie error", func(t *testing.T) {
-		mockVerifier := new(mockTokenCookieVerifier)
-		mockVerifier.On("VerifyIDToken", mock.Anything, "token").
-			Return(&auth.Token{}, assert.AnError)
-		mockVerifier.On("VerifySessionCookie", mock.Anything, "token").
 			Return(&auth.Token{}, assert.AnError)
 
 		c := Client{
