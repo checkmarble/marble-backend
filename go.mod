@@ -8,7 +8,7 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.21.0
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.45.0
 	github.com/Masterminds/squirrel v1.5.4
-	github.com/adhocore/gronx v1.6.5
+	github.com/adhocore/gronx v1.7.0
 	github.com/aws/aws-sdk-go-v2 v1.21.0
 	github.com/aws/aws-sdk-go-v2/config v1.18.36
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.80

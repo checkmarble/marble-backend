@@ -6,6 +6,7 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"time"
 
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
@@ -40,7 +41,7 @@ func NewMigrater(pgConfig utils.PGConfig, env string) *Migrater {
 }
 
 func (m *Migrater) Run(ctx context.Context) error {
-	if err := m.openDb(); err != nil {
+	if err := m.openDb(ctx); err != nil {
 		return errors.Wrap(err, "unable to open db in Migrater")
 	}
 
@@ -56,7 +57,7 @@ func (m *Migrater) Run(ctx context.Context) error {
 	return nil
 }
 
-func (m *Migrater) openDb() error {
+func (m *Migrater) openDb(ctx context.Context) error {
 	connectionString := m.pgConfig.GetConnectionString()
 	db, err := sql.Open("pgx", connectionString)
 	if err != nil {
@@ -64,7 +65,9 @@ func (m *Migrater) openDb() error {
 	} else {
 		m.db = db
 	}
-	if err = m.db.Ping(); err != nil {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	if err = m.db.PingContext(ctx); err != nil {
 		return errors.Wrap(err, "unable to ping database")
 	}
 	return nil
