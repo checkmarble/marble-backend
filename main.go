@@ -193,12 +193,14 @@ func main() {
 	shouldRunScheduleScenarios := flag.Bool("scheduler", false, "Run schedule scenarios")
 	shouldRunExecuteScheduledScenarios := flag.Bool("scheduled-executer", false, "Run execute scheduled scenarios")
 	shouldRunDataIngestion := flag.Bool("data-ingestion", false, "Run data ingestion")
+	shouldRunScheduler := flag.Bool("cron-scheduler", false, "Run scheduler for cron jobs")
 	flag.Parse()
 	logger.InfoContext(appContext, "Flags",
 		slog.Bool("shouldRunMigrations", *shouldRunMigrations),
 		slog.Bool("shouldRunServer", *shouldRunServer),
 		slog.Bool("shouldRunScheduledScenarios", *shouldRunScheduleScenarios),
 		slog.Bool("shouldRunDataIngestion", *shouldRunDataIngestion),
+		slog.Bool("shouldRunScheduler", *shouldRunScheduler),
 	)
 
 	if *shouldRunMigrations {
@@ -243,6 +245,10 @@ func main() {
 			os.Exit(1)
 			return
 		}
+	}
+
+	if *shouldRunScheduler {
+		jobs.RunScheduler(appContext, NewUseCases(appContext, appConfig, nil))
 	}
 }
 
