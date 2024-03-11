@@ -10,6 +10,8 @@ RUN CGO_ENABLED=0 go build -o /go/bin/app -ldflags="-X 'main.version=`git rev-pa
 FROM alpine:3.19
 
 COPY --from=build /go/bin/app /
+COPY --from=build /usr/local/go/lib/time/zoneinfo.zip /
+ENV ZONEINFO=/zoneinfo.zip
 
 ENV PORT=${PORT:-8080}
 EXPOSE $PORT
