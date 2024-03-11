@@ -41,8 +41,8 @@ func ScheduleDueScenarios(ctx context.Context, usecases usecases.Usecases) error
 			logger.ErrorContext(ctx, "error scheduling scenario",
 				slog.String("scenario", scenario.Id),
 				slog.String("organization", scenario.OrganizationId),
-				slog.String("error", err.Error()),
 			)
+			logger.ErrorContext(ctx, fmt.Sprintf("error scheduling scenario: %+v", err))
 		}
 	}
 	logger.InfoContext(ctx, "Done scheduling all due scenarios")
