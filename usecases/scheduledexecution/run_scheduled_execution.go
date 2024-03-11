@@ -170,8 +170,10 @@ func (usecase *RunScheduledExecution) ExecuteScheduledScenario(ctx context.Conte
 		scheduledExecution.Scenario, scheduledExecution)
 }
 
-func (usecase *RunScheduledExecution) scenarioIsDue(ctx context.Context,
-	publishedVersion models.PublishedScenarioIteration, scenario models.Scenario,
+func (usecase *RunScheduledExecution) scenarioIsDue(
+	ctx context.Context,
+	publishedVersion models.PublishedScenarioIteration,
+	scenario models.Scenario,
 ) (bool, error) {
 	exec := usecase.ExecutorFactory.NewExecutor()
 	logger := utils.LoggerFromContext(ctx)
@@ -198,13 +200,22 @@ func (usecase *RunScheduledExecution) scenarioIsDue(ctx context.Context,
 		return false, err
 	}
 
-	tz, _ := time.LoadLocation("Europe/Paris")
+	tz, err := time.LoadLocation("Europe/Paris")
+	if err != nil {
+		return false, errors.Wrap(err, "error loading timezone")
+	}
 	return executionIsDueNow(publishedVersion.Body.Schedule, previousExecutions, publications, tz)
 }
 
-func executionIsDueNow(schedule string, previousExecutions []models.ScheduledExecution,
-	publications []models.ScenarioPublication, tz *time.Location,
+func executionIsDueNow(
+	schedule string,
+	previousExecutions []models.ScheduledExecution,
+	publications []models.ScenarioPublication,
+	tz *time.Location,
 ) (bool, error) {
+	if tz == nil {
+		return false, errors.New("Nil timezone passed in executionIsDueNow")
+	}
 	var referenceTime time.Time
 	if len(previousExecutions) > 0 {
 		referenceTime = previousExecutions[0].StartedAt.In(tz)
