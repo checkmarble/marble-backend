@@ -3,8 +3,6 @@ package usecases
 import (
 	"context"
 
-	"github.com/google/uuid"
-
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
@@ -34,8 +32,7 @@ func (usecase *OrganizationUseCase) CreateOrganization(ctx context.Context, name
 	if err := usecase.enforceSecurity.CreateOrganization(); err != nil {
 		return models.Organization{}, err
 	}
-	newOrganizationId := uuid.NewString()
-	return usecase.organizationCreator.CreateOrganizationWithId(ctx, newOrganizationId, name)
+	return usecase.organizationCreator.CreateOrganization(ctx, name)
 }
 
 func (usecase *OrganizationUseCase) GetOrganization(ctx context.Context, organizationId string) (models.Organization, error) {

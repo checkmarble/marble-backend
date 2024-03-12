@@ -12,7 +12,6 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 
 	"github.com/cockroachdb/errors"
-	"github.com/google/uuid"
 )
 
 type SeedUseCase struct {
@@ -73,12 +72,7 @@ func (usecase *SeedUseCase) CreateOrgAndUser(ctx context.Context, input models.I
 	}
 
 	if targetOrg.Id == "" {
-		organizationId := uuid.NewString()
-		targetOrg, err = usecase.organizationCreator.CreateOrganizationWithId(
-			ctx,
-			organizationId,
-			input.OrgName,
-		)
+		targetOrg, err = usecase.organizationCreator.CreateOrganization(ctx, input.OrgName)
 		if repositories.IsUniqueViolationError(err) {
 			err = nil
 		} else if err != nil {
