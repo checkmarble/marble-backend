@@ -223,6 +223,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		RuleExecutions:      scenarioExecution.RuleExecutions,
 		ScenarioDescription: scenarioExecution.ScenarioDescription,
 		ScenarioId:          scenarioExecution.ScenarioId,
+		ScenarioIterationId: scenarioExecution.ScenarioIterationId,
 		ScenarioName:        scenarioExecution.ScenarioName,
 		ScenarioVersion:     scenarioExecution.ScenarioVersion,
 		Score:               scenarioExecution.Score,

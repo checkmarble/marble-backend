@@ -37,6 +37,7 @@ type APIDecisionRule struct {
 	ScoreModifier int       `json:"score_modifier"`
 	Result        bool      `json:"result"`
 	Error         *APIError `json:"error"`
+	RuleId        string    `json:"rule_id"`
 }
 
 type APIError struct {
@@ -62,6 +63,7 @@ type APIDecision struct {
 	Rules                []APIDecisionRule   `json:"rules"`
 	Score                int                 `json:"score"`
 	ScheduledExecutionId *string             `json:"scheduled_execution_id,omitempty"`
+	ScenarioIterationId  string              `json:"scenario_iteration_id"`
 }
 
 func NewAPIDecision(decision models.Decision) APIDecision {
@@ -80,6 +82,7 @@ func NewAPIDecision(decision models.Decision) APIDecision {
 		Score:                decision.Score,
 		Rules:                make([]APIDecisionRule, len(decision.RuleExecutions)),
 		ScheduledExecutionId: decision.ScheduledExecutionId,
+		ScenarioIterationId:  decision.ScenarioIterationId,
 	}
 
 	for i, ruleExecution := range decision.RuleExecutions {
@@ -99,6 +102,7 @@ func NewAPIDecisionRule(rule models.RuleExecution) APIDecisionRule {
 		Description:   rule.Rule.Description,
 		ScoreModifier: rule.ResultScoreModifier,
 		Result:        rule.Result,
+		RuleId:        rule.Rule.Id,
 	}
 
 	// Error added here to make sure it does not appear if empty
