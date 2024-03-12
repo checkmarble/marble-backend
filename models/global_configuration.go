@@ -1,10 +1,11 @@
 package models
 
 type GlobalConfiguration struct {
-	TokenLifetimeMinute  int
 	FakeAwsS3Repository  bool
 	FakeGcsRepository    bool
 	GcsIngestionBucket   string
 	GcsCaseManagerBucket string
+	JwtSigningKey        string
 	SegmentWriteKey      string
+	TokenLifetimeMinute  int
 }

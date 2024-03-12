@@ -75,8 +75,7 @@ func initDependencies(conf AppConfiguration, signingKey *rsa.PrivateKey) (depend
 }
 
 func runServer(ctx context.Context, appConfig AppConfiguration) {
-	jwtSigningKey := utils.GetRequiredEnv[string]("AUTHENTICATION_JWT_SIGNING_KEY")
-	marbleJwtSigningKey := infra.MustParseSigningKey(jwtSigningKey)
+	marbleJwtSigningKey := infra.ParseOrGenerateSigningKey(ctx, appConfig.config.JwtSigningKey)
 
 	uc := NewUseCases(ctx, appConfig, marbleJwtSigningKey)
 
@@ -167,6 +166,7 @@ func main() {
 			GcsIngestionBucket:   utils.GetRequiredEnv[string]("GCS_INGESTION_BUCKET"),
 			GcsCaseManagerBucket: utils.GetRequiredEnv[string]("GCS_CASE_MANAGER_BUCKET"),
 			SegmentWriteKey:      utils.GetRequiredEnv[string]("SEGMENT_WRITE_KEY"),
+			JwtSigningKey:        utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY", ""),
 		},
 		sentryDsn: utils.GetEnv("SENTRY_DSN", ""),
 		metabase: models.MetabaseConfiguration{
