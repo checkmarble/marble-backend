@@ -19,6 +19,7 @@ type Decision struct {
 	RuleExecutions       []RuleExecution
 	Score                int
 	ScheduledExecutionId *string
+	ScenarioIterationId  string
 }
 
 type DecisionWithRank struct {
@@ -29,6 +30,7 @@ type DecisionWithRank struct {
 
 type ScenarioExecution struct {
 	ScenarioId          string
+	ScenarioIterationId string
 	ScenarioName        string
 	ScenarioDescription string
 	ScenarioVersion     int

@@ -319,8 +319,12 @@ func (repo *DecisionRepositoryImpl) DecisionsOfScheduledExecution(ctx context.Co
 	)
 }
 
-func (repo *DecisionRepositoryImpl) StoreDecision(ctx context.Context, exec Executor,
-	decision models.Decision, organizationId string, newDecisionId string,
+func (repo *DecisionRepositoryImpl) StoreDecision(
+	ctx context.Context,
+	exec Executor,
+	decision models.Decision,
+	organizationId string,
+	newDecisionId string,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
@@ -335,6 +339,7 @@ func (repo *DecisionRepositoryImpl) StoreDecision(ctx context.Context, exec Exec
 				"org_id",
 				"outcome",
 				"scenario_id",
+				"scenario_iteration_id",
 				"scenario_name",
 				"scenario_description",
 				"scenario_version",
@@ -349,6 +354,7 @@ func (repo *DecisionRepositoryImpl) StoreDecision(ctx context.Context, exec Exec
 				organizationId,
 				decision.Outcome.String(),
 				decision.ScenarioId,
+				decision.ScenarioIterationId,
 				decision.ScenarioName,
 				decision.ScenarioDescription,
 				decision.ScenarioVersion,
@@ -378,6 +384,7 @@ func (repo *DecisionRepositoryImpl) StoreDecision(ctx context.Context, exec Exec
 			"score_modifier",
 			"result",
 			"error_code",
+			"rule_id",
 		)
 
 	for _, ruleExecution := range decision.RuleExecutions {
@@ -391,6 +398,7 @@ func (repo *DecisionRepositoryImpl) StoreDecision(ctx context.Context, exec Exec
 				ruleExecution.ResultScoreModifier,
 				ruleExecution.Result,
 				models.AdaptRuleExecutionError(ruleExecution.Error),
+				ruleExecution.Rule.Id,
 			)
 	}
 	err = ExecBuilder(ctx, exec, builderForRules)

@@ -23,6 +23,7 @@ type DbDecision struct {
 	CreatedAt            time.Time   `db:"created_at"`
 	Outcome              string      `db:"outcome"`
 	ScenarioId           string      `db:"scenario_id"`
+	ScenarioIterationId  pgtype.Text `db:"scenario_iteration_id"`
 	ScenarioName         string      `db:"scenario_name"`
 	ScenarioDescription  string      `db:"scenario_description"`
 	ScenarioVersion      int         `db:"scenario_version"`
@@ -62,6 +63,7 @@ func AdaptDecision(db DbDecision, ruleExecutions []models.RuleExecution, decisio
 		ClientObject:         models.ClientObject{TableName: models.TableName(db.TriggerObjectType), Data: triggerObject},
 		Outcome:              models.OutcomeFrom(db.Outcome),
 		ScenarioId:           db.ScenarioId,
+		ScenarioIterationId:  db.ScenarioIterationId.String,
 		ScenarioName:         db.ScenarioName,
 		ScenarioDescription:  db.ScenarioDescription,
 		ScenarioVersion:      db.ScenarioVersion,

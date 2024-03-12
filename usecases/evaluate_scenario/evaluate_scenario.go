@@ -140,6 +140,7 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters,
 	// Build ScenarioExecution as result
 	se = models.ScenarioExecution{
 		ScenarioId:          params.Scenario.Id,
+		ScenarioIterationId: publishedVersion.Id,
 		ScenarioName:        params.Scenario.Name,
 		ScenarioDescription: params.Scenario.Description,
 		ScenarioVersion:     publishedVersion.Version,
