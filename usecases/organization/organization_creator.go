@@ -18,10 +18,8 @@ type OrganizationCreator struct {
 	OrganizationRepository repositories.OrganizationRepository
 }
 
-func (creator *OrganizationCreator) CreateOrganizationWithId(
-	ctx context.Context,
-	newOrganizationId, name string,
-) (models.Organization, error) {
+func (creator *OrganizationCreator) CreateOrganization(ctx context.Context, name string) (models.Organization, error) {
+	newOrganizationId := uuid.NewString()
 	organization, err := executor_factory.TransactionReturnValue(ctx,
 		creator.TransactionFactory, func(tx repositories.Executor) (models.Organization, error) {
 			if err := creator.OrganizationRepository.CreateOrganization(ctx, tx, newOrganizationId, name); err != nil {
