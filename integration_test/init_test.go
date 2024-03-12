@@ -85,7 +85,7 @@ func TestMain(m *testing.M) {
 	}
 
 	pgConfig := utils.PGConfig{ConnectionString: databaseURL}
-	migrater := repositories.NewMigrater(pgConfig, "development")
+	migrater := repositories.NewMigrater(pgConfig)
 	err = migrater.Run(ctx)
 	if err != nil {
 		log.Fatalf("Could not run migrations: %s", err)

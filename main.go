@@ -85,21 +85,18 @@ func runServer(ctx context.Context, appConfig AppConfiguration) {
 	////////////////////////////////////////////////////////////
 	// Seed the database
 	////////////////////////////////////////////////////////////
-
 	seedUsecase := uc.NewSeedUseCase()
-
-	marbleAdminEmail, _ := os.LookupEnv("MARBLE_ADMIN_EMAIL")
+	marbleAdminEmail := appConfig.seedOrgConfig.CreateGlobalAdminEmail
 	if marbleAdminEmail != "" {
-		err := seedUsecase.SeedMarbleAdmins(ctx, marbleAdminEmail)
-		if err != nil {
+		if err := seedUsecase.SeedMarbleAdmins(ctx, marbleAdminEmail); err != nil {
 			panic(err)
 		}
 	}
-
-	if appConfig.env == "development" {
-		zorgOrganizationId := "13617a88-56f5-4baa-8d11-ce102f7da907"
-		err := seedUsecase.SeedZorgOrganization(ctx, zorgOrganizationId)
-		if err != nil {
+	if appConfig.seedOrgConfig.CreateOrgName != "" {
+		if err := seedUsecase.CreateOrgAndUser(ctx, models.InitOrgInput{
+			OrgName:    appConfig.seedOrgConfig.CreateOrgName,
+			AdminEmail: appConfig.seedOrgConfig.CreateOrgAdminEmail,
+		}); err != nil {
 			panic(err)
 		}
 	}
@@ -144,6 +141,7 @@ type AppConfiguration struct {
 	config              models.GlobalConfiguration
 	sentryDsn           string
 	metabase            models.MetabaseConfiguration
+	seedOrgConfig       models.SeedOrgConfiguration
 }
 
 func main() {
@@ -179,6 +177,11 @@ func main() {
 				models.GlobalDashboard: utils.GetRequiredEnv[int]("METABASE_GLOBAL_DASHBOARD_ID"),
 			},
 		},
+		seedOrgConfig: models.SeedOrgConfiguration{
+			CreateGlobalAdminEmail: utils.GetEnv("CREATE_GLOBAL_ADMIN_EMAIL", ""),
+			CreateOrgName:          utils.GetEnv("CREATE_ORG_NAME", ""),
+			CreateOrgAdminEmail:    utils.GetEnv("CREATE_ORG_ADMIN_EMAIL", ""),
+		},
 	}
 
 	////////////////////////////////////////////////////////////
@@ -204,7 +207,7 @@ func main() {
 	)
 
 	if *shouldRunMigrations {
-		migrater := repositories.NewMigrater(appConfig.pgConfig, appConfig.env)
+		migrater := repositories.NewMigrater(appConfig.pgConfig)
 		if err := migrater.Run(appContext); err != nil {
 			logger.ErrorContext(appContext, fmt.Sprintf(
 				"error while running migrations: %+v", err))

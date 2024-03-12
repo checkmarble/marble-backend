@@ -15,3 +15,14 @@ type UpdateOrganizationInput struct {
 	ExportScheduledExecutionS3 *string
 	Name                       *string
 }
+
+type SeedOrgConfiguration struct {
+	CreateGlobalAdminEmail string
+	CreateOrgAdminEmail    string
+	CreateOrgName          string
+}
+
+type InitOrgInput struct {
+	OrgName    string
+	AdminEmail string
+}
