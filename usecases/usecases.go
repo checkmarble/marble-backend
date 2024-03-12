@@ -45,12 +45,10 @@ func (usecases *Usecases) NewSeedUseCase() SeedUseCase {
 
 func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCreator {
 	return organization.OrganizationCreator{
-		TransactionFactory:     usecases.NewTransactionFactory(),
+		CustomListRepository:   usecases.Repositories.CustomListRepository,
+		ExecutorFactory:        usecases.NewExecutorFactory(),
 		OrganizationRepository: usecases.Repositories.OrganizationRepository,
-		OrganizationSeeder: organization.OrganizationSeeder{
-			ExecutorFactory:      usecases.NewExecutorFactory(),
-			CustomListRepository: usecases.Repositories.CustomListRepository,
-		},
+		TransactionFactory:     usecases.NewTransactionFactory(),
 	}
 }
 

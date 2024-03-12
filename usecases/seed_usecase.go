@@ -2,12 +2,16 @@ package usecases
 
 import (
 	"context"
+	"fmt"
+	"net/mail"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/organization"
+	"github.com/checkmarble/marble-backend/utils"
 
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -21,86 +25,84 @@ type SeedUseCase struct {
 }
 
 func (usecase *SeedUseCase) SeedMarbleAdmins(ctx context.Context, firstMarbleAdminEmail string) error {
-	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
-		_, err := usecase.userRepository.CreateUser(ctx, tx, models.CreateUser{
-			Email: firstMarbleAdminEmail,
-			Role:  models.MARBLE_ADMIN,
-		})
+	exec := usecase.executorFactory.NewExecutor()
+	logger := utils.LoggerFromContext(ctx)
 
-		// ignore user already added
-		if repositories.IsUniqueViolationError(err) {
-			return models.ErrIgnoreRollBackError
-		}
-		return err
+	_, err := usecase.userRepository.CreateUser(ctx, exec, models.CreateUser{
+		Email: firstMarbleAdminEmail,
+		Role:  models.MARBLE_ADMIN,
 	})
+
+	// ignore user already added
+	if err != nil && !repositories.IsUniqueViolationError(err) {
+		return err
+	}
+	logger.InfoContext(ctx, fmt.Sprintf("Created marble admin user with email %s (or already exists)", firstMarbleAdminEmail))
+	return nil
 }
 
-func (usecase *SeedUseCase) SeedZorgOrganization(ctx context.Context, zorgOrganizationId string) error {
-	exec := usecase.executorFactory.NewExecutor()
-	_, err := usecase.organizationCreator.CreateOrganizationWithId(
-		ctx,
-		zorgOrganizationId,
-		"Zorg",
-	)
-	if repositories.IsUniqueViolationError(err) {
-		err = nil
+// This method is supposed to be used as a script when starting the server, not from the API
+// Hence it does not enforce any authorization, since there is also no user credentials context
+func (usecase *SeedUseCase) CreateOrgAndUser(ctx context.Context, input models.InitOrgInput) error {
+	if input.OrgName == "" {
+		return errors.New("Cannot create organization or org admin with empty name in CreateOrgAndUser")
 	}
-
-	if err != nil {
-		return err
-	}
-
-	// assign test s3 bucket name to zorg organization
-	testBucketName := "marble-backend-export-scheduled-execution-test"
-	err = usecase.organizationRepository.UpdateOrganization(ctx, exec, models.UpdateOrganizationInput{
-		Id:                         zorgOrganizationId,
-		ExportScheduledExecutionS3: &testBucketName,
-	})
-	if err != nil {
-		return err
-	}
-
-	// add Admin user Jean-Baptiste Emanuel Zorg
-	_, err = usecase.userRepository.CreateUser(ctx, exec, models.CreateUser{
-		Email:          "jbe@zorg.com", // Jean-Baptiste Emanuel Zorg
-		Role:           models.ADMIN,
-		OrganizationId: zorgOrganizationId,
-		FirstName:      "Jean-Baptiste Emanuel",
-		LastName:       "Zorg",
-	})
-	if repositories.IsUniqueViolationError(err) {
-		err = nil
-	}
-	if err != nil {
-		return err
-	}
-
-	newCustomListId := "d6643d7e-c973-4899-a9a8-805f868ef90a"
-
-	err = usecase.customListRepository.CreateCustomList(ctx, exec, models.CreateCustomListInput{
-		Name:        "zorg custom list",
-		Description: "Need a whitelist or blacklist ? The list is your friend :)",
-	}, zorgOrganizationId, newCustomListId)
-
-	if err == nil {
-		// add some values to the hardcoded custom list
-		addCustomListValueInput := models.AddCustomListValueInput{
-			CustomListId: newCustomListId,
-			Value:        "Welcome",
+	if input.AdminEmail != "" {
+		_, err := mail.ParseAddress(input.AdminEmail)
+		if err != nil {
+			return errors.New(fmt.Sprintf("Invalid email address %s in CreateOrgAndUser", input.AdminEmail))
 		}
-		usecase.customListRepository.AddCustomListValue(ctx, exec, addCustomListValueInput, uuid.NewString())
-		addCustomListValueInput.Value = "to"
-		usecase.customListRepository.AddCustomListValue(ctx, exec, addCustomListValueInput, uuid.NewString())
-		addCustomListValueInput.Value = "marble"
-		usecase.customListRepository.AddCustomListValue(ctx, exec, addCustomListValueInput, uuid.NewString())
 	}
+	logger := utils.LoggerFromContext(ctx)
+	exec := usecase.executorFactory.NewExecutor()
 
-	if repositories.IsUniqueViolationError(err) {
-		err = nil
-	}
-
+	var targetOrg models.Organization
+	allOrgs, err := usecase.organizationRepository.AllOrganizations(ctx, exec)
 	if err != nil {
 		return err
+	}
+	for _, org := range allOrgs {
+		if org.Name == input.OrgName {
+			targetOrg = org
+			logger.InfoContext(
+				ctx,
+				fmt.Sprintf("Organization %s already exists for name %s", targetOrg.Id, input.OrgName),
+			)
+			break
+		}
+	}
+
+	if targetOrg.Id == "" {
+		organizationId := uuid.NewString()
+		targetOrg, err = usecase.organizationCreator.CreateOrganizationWithId(
+			ctx,
+			organizationId,
+			input.OrgName,
+		)
+		if repositories.IsUniqueViolationError(err) {
+			err = nil
+		} else if err != nil {
+			return err
+		}
+		logger.InfoContext(
+			ctx,
+			fmt.Sprintf("Created organization %s with name %s", targetOrg.Id, input.OrgName),
+		)
+	}
+
+	if input.AdminEmail != "" {
+		_, err := usecase.userRepository.CreateUser(ctx, exec, models.CreateUser{
+			Email:          input.AdminEmail,
+			OrganizationId: targetOrg.Id,
+			Role:           models.ADMIN,
+		})
+		if err != nil && !repositories.IsUniqueViolationError(err) {
+			return err
+		}
+		logger.InfoContext(
+			ctx,
+			fmt.Sprintf("Created admin user for organization %s with email %s (or already exists)", targetOrg.Id, input.AdminEmail),
+		)
 	}
 
 	return nil

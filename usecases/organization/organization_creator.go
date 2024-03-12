@@ -7,12 +7,15 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 )
 
 type OrganizationCreator struct {
+	CustomListRepository   repositories.CustomListRepository
+	ExecutorFactory        executor_factory.ExecutorFactory
 	TransactionFactory     executor_factory.TransactionFactory
 	OrganizationRepository repositories.OrganizationRepository
-	OrganizationSeeder     OrganizationSeeder
 }
 
 func (creator *OrganizationCreator) CreateOrganizationWithId(
@@ -44,9 +47,36 @@ func (creator *OrganizationCreator) CreateOrganizationWithId(
 		return models.Organization{}, err
 	}
 
-	if err = creator.OrganizationSeeder.Seed(ctx, organization.Id); err != nil {
+	if err = creator.seedDefaultList(ctx, organization.Id); err != nil {
 		return models.Organization{}, err
 	}
 
 	return organization, nil
+}
+
+func (creator *OrganizationCreator) seedDefaultList(ctx context.Context, organizationId string) error {
+	logger := utils.LoggerFromContext(ctx)
+	exec := creator.ExecutorFactory.NewExecutor()
+	newCustomListId := uuid.NewString()
+
+	err := creator.CustomListRepository.CreateCustomList(ctx, exec, models.CreateCustomListInput{
+		Name:        "Welcome to Marble",
+		Description: "Need a whitelist or blacklist ? The list is your friend :)",
+	}, organizationId, newCustomListId)
+	if err != nil {
+		return err
+	}
+
+	addCustomListValueInput := models.AddCustomListValueInput{
+		CustomListId: newCustomListId,
+		Value:        "Welcome",
+	}
+	creator.CustomListRepository.AddCustomListValue(ctx, exec, addCustomListValueInput, uuid.NewString())
+	addCustomListValueInput.Value = "to"
+	creator.CustomListRepository.AddCustomListValue(ctx, exec, addCustomListValueInput, uuid.NewString())
+	addCustomListValueInput.Value = "marble"
+	creator.CustomListRepository.AddCustomListValue(ctx, exec, addCustomListValueInput, uuid.NewString())
+
+	logger.InfoContext(ctx, "Finish to create the default custom list for the organization")
+	return nil
 }

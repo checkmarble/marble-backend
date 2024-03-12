@@ -32,7 +32,7 @@ type Migrater struct {
 	db                       *sql.DB
 }
 
-func NewMigrater(pgConfig utils.PGConfig, env string) *Migrater {
+func NewMigrater(pgConfig utils.PGConfig) *Migrater {
 	return &Migrater{
 		dbMigrationsFileSystem:   embedMigrations,
 		analyticsViewsFileSystem: embedAnalyticsViews,
