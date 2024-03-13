@@ -19,7 +19,7 @@ type DbDecisionRule struct {
 	Result         bool        `db:"result"`
 	ErrorCode      int         `db:"error_code"`
 	DeletedAt      pgtype.Time `db:"deleted_at"`
-	RuleId         pgtype.Text `db:"rule_id"`
+	RuleId         string      `db:"rule_id"`
 }
 
 const TABLE_DECISION_RULE = "decision_rules"
@@ -46,7 +46,7 @@ func adaptErrorCodeAsError(errCode models.RuleExecutionError) error {
 func AdaptRuleExecution(db DbDecisionRule) models.RuleExecution {
 	return models.RuleExecution{
 		Rule: models.Rule{
-			Id:          db.RuleId.String,
+			Id:          db.RuleId,
 			Name:        db.Name,
 			Description: db.Description,
 		},

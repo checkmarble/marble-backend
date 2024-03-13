@@ -8,11 +8,12 @@ SELECT
       id,
       org_id AS organization_id,
       decision_id,
-      name,
+      deleted_at,
       description,
-      score_modifier,
-      result,
       error_code,
-      deleted_at
+      name,
+      result,
+      rule_id,
+      score_modifier
 FROM
       marble.decision_rules
