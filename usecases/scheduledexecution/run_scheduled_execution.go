@@ -294,6 +294,7 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 				ClientObject:         object,
 				Outcome:              scenarioExecution.Outcome,
 				ScenarioId:           scenarioExecution.ScenarioId,
+				ScenarioIterationId:  scenarioExecution.ScenarioIterationId,
 				ScenarioName:         scenarioExecution.ScenarioName,
 				ScenarioDescription:  scenarioExecution.ScenarioDescription,
 				ScenarioVersion:      scenarioExecution.ScenarioVersion,
