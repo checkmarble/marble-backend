@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"time"
 
@@ -17,7 +18,7 @@ type MarbleTokenUseCase struct {
 	firebaseTokenRepository repositories.FireBaseTokenRepository
 	userRepository          repositories.UserRepository
 	apiKeyRepository        interface {
-		GetApiKeyByKey(ctx context.Context, exec repositories.Executor, apiKey string) (models.ApiKey, error)
+		GetApiKeyByHash(ctx context.Context, exec repositories.Executor, hash []byte) (models.ApiKey, error)
 	}
 	organizationRepository repositories.OrganizationRepository
 	tokenLifetimeMinute    int
@@ -32,8 +33,11 @@ func (usecase *MarbleTokenUseCase) encodeMarbleToken(creds models.Credentials) (
 }
 
 func (usecase *MarbleTokenUseCase) adaptCredentialFromApiKey(ctx context.Context, key string) (models.Credentials, error) {
-	apiKey, err := usecase.apiKeyRepository.GetApiKeyByKey(ctx,
-		usecase.executorFactory.NewExecutor(), key)
+	hashArr := sha256.Sum256([]byte(key))
+	hash := hashArr[:]
+
+	apiKey, err := usecase.apiKeyRepository.GetApiKeyByHash(ctx,
+		usecase.executorFactory.NewExecutor(), hash)
 	if err != nil {
 		return models.Credentials{}, err
 	}

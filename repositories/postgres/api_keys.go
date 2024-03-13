@@ -11,16 +11,16 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
-func (db *Database) GetApiKeyByKey(ctx context.Context, key string) (models.ApiKey, error) {
+func (db *Database) GetApiKeyByHash(ctx context.Context, hash []byte) (models.ApiKey, error) {
 	query := `
 		SELECT id, org_id, key, description, role
 		FROM apikeys
-		WHERE key = $1
+		WHERE key_hash = $1
 		AND deleted_at IS NULL
 	`
 
 	var apiKey dbmodels.DBApiKey
-	err := db.pool.QueryRow(ctx, query, key).Scan(
+	err := db.pool.QueryRow(ctx, query, hash).Scan(
 		&apiKey.Id,
 		&apiKey.OrganizationId,
 		&apiKey.Key,

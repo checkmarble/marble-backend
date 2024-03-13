@@ -25,7 +25,7 @@ func (repo *MarbleDbRepository) GetApiKeyById(ctx context.Context, exec Executor
 	)
 }
 
-func (repo *MarbleDbRepository) GetApiKeyByKey(ctx context.Context, exec Executor, key string) (models.ApiKey, error) {
+func (repo *MarbleDbRepository) GetApiKeyByHash(ctx context.Context, exec Executor, hash []byte) (models.ApiKey, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.ApiKey{}, err
 	}
@@ -36,7 +36,7 @@ func (repo *MarbleDbRepository) GetApiKeyByKey(ctx context.Context, exec Executo
 		NewQueryBuilder().
 			Select(dbmodels.ApiKeyFields...).
 			From(dbmodels.TABLE_APIKEYS).
-			Where("key = ?", key).
+			Where("key_hash = ?", hash).
 			Where("deleted_at IS NULL"),
 		dbmodels.AdaptApikey,
 	)
