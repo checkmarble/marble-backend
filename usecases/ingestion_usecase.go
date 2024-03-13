@@ -34,7 +34,7 @@ type IngestionUseCase struct {
 	enforceSecurity     security.EnforceSecurityIngestion
 	ingestionRepository repositories.IngestionRepository
 	gcsRepository       repositories.GcsRepository
-	dataModelUseCase    DataModelUseCase
+	dataModelRepository repositories.DataModelRepository
 	uploadLogRepository repositories.UploadLogRepository
 	GcsIngestionBucket  string
 }
@@ -67,7 +67,11 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
 		return models.UploadLog{}, err
 	}
-	dataModel, err := usecase.dataModelUseCase.GetDataModel(ctx, organizationId)
+	dataModel, err := usecase.dataModelRepository.GetDataModel(
+		ctx,
+		usecase.executorFactory.NewExecutor(),
+		organizationId,
+		false)
 	if err != nil {
 		return models.UploadLog{}, err
 	}
@@ -233,9 +237,13 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file
 		return err
 	}
 
-	dataModel, err := usecase.dataModelUseCase.GetDataModel(ctx, organizationId)
+	dataModel, err := usecase.dataModelRepository.GetDataModel(
+		ctx,
+		usecase.executorFactory.NewExecutor(),
+		organizationId,
+		false)
 	if err != nil {
-		return fmt.Errorf("error getting data model for organization %s: %w", organizationId, err)
+		return err
 	}
 
 	table, ok := dataModel.Tables[models.TableName(tableName)]
