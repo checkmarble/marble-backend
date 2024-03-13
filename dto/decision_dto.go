@@ -46,10 +46,11 @@ type APIError struct {
 }
 
 type APIDecisionScenario struct {
-	Id          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Version     int    `json:"version"`
+	Id                  string `json:"id"`
+	Name                string `json:"name"`
+	Description         string `json:"description"`
+	ScenarioIterationId string `json:"scenario_iteration_id,omitempty"`
+	Version             int    `json:"version"`
 }
 
 type APIDecision struct {
@@ -63,7 +64,6 @@ type APIDecision struct {
 	Rules                []APIDecisionRule   `json:"rules"`
 	Score                int                 `json:"score"`
 	ScheduledExecutionId *string             `json:"scheduled_execution_id,omitempty"`
-	ScenarioIterationId  string              `json:"scenario_iteration_id"`
 }
 
 func NewAPIDecision(decision models.Decision) APIDecision {
@@ -74,15 +74,15 @@ func NewAPIDecision(decision models.Decision) APIDecision {
 		TriggerObject:     decision.ClientObject.Data,
 		Outcome:           decision.Outcome.String(),
 		Scenario: APIDecisionScenario{
-			Id:          decision.ScenarioId,
-			Name:        decision.ScenarioName,
-			Description: decision.ScenarioDescription,
-			Version:     decision.ScenarioVersion,
+			Id:                  decision.ScenarioId,
+			Name:                decision.ScenarioName,
+			Description:         decision.ScenarioDescription,
+			ScenarioIterationId: decision.ScenarioIterationId,
+			Version:             decision.ScenarioVersion,
 		},
 		Score:                decision.Score,
 		Rules:                make([]APIDecisionRule, len(decision.RuleExecutions)),
 		ScheduledExecutionId: decision.ScheduledExecutionId,
-		ScenarioIterationId:  decision.ScenarioIterationId,
 	}
 
 	for i, ruleExecution := range decision.RuleExecutions {
