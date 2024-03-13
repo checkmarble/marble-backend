@@ -49,7 +49,7 @@ type APIDecisionScenario struct {
 	Id                  string `json:"id"`
 	Name                string `json:"name"`
 	Description         string `json:"description"`
-	ScenarioIterationId string `json:"scenario_iteration_id,omitempty"`
+	ScenarioIterationId string `json:"scenario_iteration_id"`
 	Version             int    `json:"version"`
 }
 

@@ -16,7 +16,7 @@ WHERE
       scenario_iteration_id IS NULL;
 
 -- delete decisions without a matching iteration (should not happen unless decision or scenario iteration version numbers have been manually changed in the db)
-DELETE decisions
+DELETE FROM decisions
 WHERE
       scenario_iteration_id IS NULL;
 
@@ -41,11 +41,27 @@ WHERE
       AND dr.rule_id IS NULL;
 
 -- delete decision_rules without a matching rule (should not happen unless rule names have been manually changed in the db)
-DELETE decision_rules
+DELETE FROM decision_rules
 WHERE
       rule_id IS NULL;
+
+ALTER TABLE decisions
+ALTER COLUMN scenario_iteration_id
+SET NOT NULL;
+
+ALTER TABLE decision_rules
+ALTER COLUMN rule_id
+SET NOT NULL;
 
 -- +goose StatementEnd
 -- +goose Down
 -- +goose StatementBegin
+ALTER TABLE decisions
+ALTER COLUMN scenario_iteration_id
+DROP NOT NULL;
+
+ALTER TABLE decision_rules
+ALTER COLUMN rule_id
+DROP NOT NULL;
+
 -- +goose StatementEnd
