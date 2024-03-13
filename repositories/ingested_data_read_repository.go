@@ -240,12 +240,16 @@ func queryWithDynamicColumnList(ctx context.Context, exec Executor, qualifiedTab
 	return output, nil
 }
 
-func createQueryAggregated(ctx context.Context, exec Executor, tableName models.TableName,
+func createQueryAggregated(exec Executor, tableName models.TableName,
 	fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter,
 ) (squirrel.SelectBuilder, error) {
 	var selectExpression string
 	if aggregator == ast.AGGREGATOR_COUNT_DISTINCT {
 		selectExpression = fmt.Sprintf("COUNT(DISTINCT %s)", fieldName)
+	} else if aggregator == ast.AGGREGATOR_COUNT {
+		// COUNT(*) is a special case, as it does not take a field name (we do not want to count only non-null
+		// values of a field, but all rows in the table that match the filters)
+		selectExpression = "COUNT(*)"
 	} else {
 		selectExpression = fmt.Sprintf("%s(%s)", aggregator, fieldName)
 	}
@@ -274,7 +278,7 @@ func (repo *IngestedDataReadRepositoryImpl) QueryAggregatedValue(ctx context.Con
 		return nil, err
 	}
 
-	query, err := createQueryAggregated(ctx, exec, tableName, fieldName, aggregator, filters)
+	query, err := createQueryAggregated(exec, tableName, fieldName, aggregator, filters)
 	if err != nil {
 		return nil, fmt.Errorf("error while building SQL query: %w", err)
 	}

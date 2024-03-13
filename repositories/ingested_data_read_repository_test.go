@@ -24,6 +24,9 @@ const expectedQueryDbFieldWithJoin string = "SELECT test_schema.third.int_var " 
 const expectedQueryAggregatedWithoutFilter string = "SELECT AVG(int_var) FROM test_schema.first " +
 	"WHERE test_schema.first.valid_until = $1"
 
+const expectedQueryCountWithoutFilter string = "SELECT COUNT(*) FROM test_schema.first " +
+	"WHERE test_schema.first.valid_until = $1"
+
 const expectedQueryAggregatedWithFilter string = "SELECT AVG(int_var) FROM test_schema.first " +
 	"WHERE test_schema.first.valid_until = $1 AND test_schema.first.int_var = $2 AND test_schema.first.bool_var <> $3"
 
@@ -99,8 +102,8 @@ func TestIngestedDataGetDbFieldWithJoin(t *testing.T) {
 }
 
 func TestIngestedDataQueryAggregatedValueWithoutFilter(t *testing.T) {
-	query, err := createQueryAggregated(context.TODO(), TransactionTest{},
-		utils.DummyTableNameFirst, utils.DummyFieldNameForInt, ast.AGGREGATOR_AVG, []ast.Filter{})
+	query, err := createQueryAggregated(TransactionTest{}, utils.DummyTableNameFirst,
+		utils.DummyFieldNameForInt, ast.AGGREGATOR_AVG, []ast.Filter{})
 	assert.Empty(t, err)
 	sql, args, err := query.ToSql()
 	assert.Empty(t, err)
@@ -108,6 +111,18 @@ func TestIngestedDataQueryAggregatedValueWithoutFilter(t *testing.T) {
 		assert.Equal(t, args[0], "Infinity")
 	}
 	assert.Equal(t, strings.ReplaceAll(sql, "\"", ""), expectedQueryAggregatedWithoutFilter)
+}
+
+func TestIngestedDataQueryCountWithoutFilter(t *testing.T) {
+	query, err := createQueryAggregated(TransactionTest{}, utils.DummyTableNameFirst,
+		utils.DummyFieldNameForInt, ast.AGGREGATOR_COUNT, []ast.Filter{})
+	assert.Empty(t, err)
+	sql, args, err := query.ToSql()
+	assert.Empty(t, err)
+	if assert.Len(t, args, 1) {
+		assert.Equal(t, args[0], "Infinity")
+	}
+	assert.Equal(t, strings.ReplaceAll(sql, "\"", ""), expectedQueryCountWithoutFilter)
 }
 
 func TestIngestedDataQueryAggregatedValueWithFilter(t *testing.T) {
@@ -126,8 +141,8 @@ func TestIngestedDataQueryAggregatedValueWithFilter(t *testing.T) {
 		},
 	}
 
-	query, err := createQueryAggregated(context.TODO(), TransactionTest{},
-		utils.DummyTableNameFirst, utils.DummyFieldNameForInt, ast.AGGREGATOR_AVG, filters)
+	query, err := createQueryAggregated(TransactionTest{}, utils.DummyTableNameFirst,
+		utils.DummyFieldNameForInt, ast.AGGREGATOR_AVG, filters)
 	assert.Empty(t, err)
 	sql, args, err := query.ToSql()
 	assert.Empty(t, err)
