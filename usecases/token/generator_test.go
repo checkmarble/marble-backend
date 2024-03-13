@@ -2,6 +2,7 @@ package token
 
 import (
 	"context"
+	"encoding/hex"
 	"testing"
 	"time"
 
@@ -15,6 +16,10 @@ import (
 
 func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 	key := "api_key"
+	// hash of "api_key"
+	keyHash, err := hex.DecodeString("2e9bc6c94a4cbdfe2a31d2df79103a5eb3702eaf5d7018d47a774e9540a8ec29")
+	assert.NoError(t, err)
+
 	apiKey := models.ApiKey{
 		Id:             "api_key_id",
 		OrganizationId: "organization_id",
@@ -30,11 +35,13 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 	token := "token"
 	now := time.Now()
 
+	ctx := context.Background()
+
 	t.Run("nominal", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
-		mockRepository.On("GetApiKeyByKey", mock.Anything, key).
+		mockRepository.On("GetApiKeyByHash", ctx, keyHash).
 			Return(apiKey, nil)
-		mockRepository.On("GetOrganizationByID", mock.Anything, "organization_id").
+		mockRepository.On("GetOrganizationByID", ctx, "organization_id").
 			Return(organization, nil)
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
@@ -54,7 +61,7 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 			tokenLifetime: 60 * time.Second,
 		}
 
-		receivedToken, expirationTime, err := generator.GenerateToken(context.Background(), key, "")
+		receivedToken, expirationTime, err := generator.GenerateToken(ctx, key, "")
 		assert.NoError(t, err)
 		assert.Equal(t, token, receivedToken)
 		assert.Equal(t, now.Add(60*time.Second), expirationTime)
@@ -63,16 +70,16 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 		mockEncoder.AssertExpectations(t)
 	})
 
-	t.Run("GetApiKeyByKey error", func(t *testing.T) {
+	t.Run("GetApiKeyByHash error", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
-		mockRepository.On("GetApiKeyByKey", mock.Anything, key).
+		mockRepository.On("GetApiKeyByHash", ctx, keyHash).
 			Return(models.ApiKey{}, assert.AnError)
 
 		generator := Generator{
 			repository: mockRepository,
 		}
 
-		_, _, err := generator.GenerateToken(context.Background(), key, "")
+		_, _, err := generator.GenerateToken(ctx, key, "")
 		assert.Error(t, err)
 
 		mockRepository.AssertExpectations(t)
@@ -80,16 +87,16 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 
 	t.Run("GetOrganizationByID error", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
-		mockRepository.On("GetApiKeyByKey", mock.Anything, key).
+		mockRepository.On("GetApiKeyByHash", ctx, keyHash).
 			Return(apiKey, nil)
-		mockRepository.On("GetOrganizationByID", mock.Anything, "organization_id").
+		mockRepository.On("GetOrganizationByID", ctx, "organization_id").
 			Return(models.Organization{}, assert.AnError)
 
 		generator := Generator{
 			repository: mockRepository,
 		}
 
-		_, _, err := generator.GenerateToken(context.Background(), key, "")
+		_, _, err := generator.GenerateToken(ctx, key, "")
 		assert.Error(t, err)
 
 		mockRepository.AssertExpectations(t)
@@ -97,9 +104,9 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 
 	t.Run("EncodeMarbleToken error", func(t *testing.T) {
 		mockRepository := new(mocks.Database)
-		mockRepository.On("GetApiKeyByKey", mock.Anything, key).
+		mockRepository.On("GetApiKeyByHash", ctx, keyHash).
 			Return(apiKey, nil)
-		mockRepository.On("GetOrganizationByID", mock.Anything, "organization_id").
+		mockRepository.On("GetOrganizationByID", ctx, "organization_id").
 			Return(organization, nil)
 
 		mockEncoder := new(mocks.JWTEncoderValidator)
@@ -119,7 +126,7 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 			tokenLifetime: 60 * time.Second,
 		}
 
-		receivedToken, expirationTime, err := generator.GenerateToken(context.Background(), key, "")
+		receivedToken, expirationTime, err := generator.GenerateToken(ctx, key, "")
 		assert.NoError(t, err)
 		assert.Equal(t, token, receivedToken)
 		assert.Equal(t, now.Add(60*time.Second), expirationTime)

@@ -2,6 +2,7 @@ package token
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"time"
@@ -12,7 +13,7 @@ import (
 )
 
 type marbleRepository interface {
-	GetApiKeyByKey(ctx context.Context, key string) (models.ApiKey, error)
+	GetApiKeyByHash(ctx context.Context, hash []byte) (models.ApiKey, error)
 	GetOrganizationByID(ctx context.Context, organizationID string) (models.Organization, error)
 	UserByEmail(ctx context.Context, email string) (models.User, error)
 }
@@ -45,10 +46,12 @@ func (g *Generator) encodeToken(credentials models.Credentials) (string, time.Ti
 }
 
 func (g *Generator) fromAPIKey(ctx context.Context, apiKey string) (string, time.Time, models.Credentials, error) {
-	key, err := g.repository.GetApiKeyByKey(ctx, apiKey)
+	hashArr := sha256.Sum256([]byte(apiKey))
+	hash := hashArr[:]
+	key, err := g.repository.GetApiKeyByHash(ctx, hash)
 	if err != nil {
 		return "", time.Time{}, models.Credentials{},
-			fmt.Errorf("GetApiKeyByKey error: %w", err)
+			fmt.Errorf("GetApiKeyByHash error: %w", err)
 	}
 
 	organization, err := g.repository.GetOrganizationByID(ctx, key.OrganizationId)

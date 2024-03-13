@@ -22,7 +22,7 @@ func (m *Database) GetOrganizationByID(ctx context.Context, organizationID strin
 	return args.Get(0).(models.Organization), args.Error(1)
 }
 
-func (m *Database) GetApiKeyByKey(ctx context.Context, key string) (models.ApiKey, error) {
-	args := m.Called(ctx, key)
+func (m *Database) GetApiKeyByHash(ctx context.Context, hash []byte) (models.ApiKey, error) {
+	args := m.Called(ctx, hash)
 	return args.Get(0).(models.ApiKey), args.Error(1)
 }

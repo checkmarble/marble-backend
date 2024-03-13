@@ -2,13 +2,14 @@ package token
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
 )
 
 type keyAndOrganizationGetter interface {
-	GetApiKeyByKey(ctx context.Context, key string) (models.ApiKey, error)
+	GetApiKeyByHash(ctx context.Context, hash []byte) (models.ApiKey, error)
 	GetOrganizationByID(ctx context.Context, organizationID string) (models.Organization, error)
 }
 
@@ -22,9 +23,10 @@ type Validator struct {
 }
 
 func (v *Validator) fromAPIKey(ctx context.Context, key string) (models.Credentials, error) {
-	apiKey, err := v.getter.GetApiKeyByKey(ctx, key)
+	hash := sha256.Sum256([]byte(key))
+	apiKey, err := v.getter.GetApiKeyByHash(ctx, hash[:])
 	if err != nil {
-		return models.Credentials{}, fmt.Errorf("getter.GetApiKeyByKey error: %w", err)
+		return models.Credentials{}, fmt.Errorf("getter.GetApiKeyByHash error: %w", err)
 	}
 
 	organization, err := v.getter.GetOrganizationByID(ctx, apiKey.OrganizationId)
