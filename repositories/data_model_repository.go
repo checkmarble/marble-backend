@@ -105,7 +105,7 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelTable(ctx context.Cont
 		INSERT INTO data_model_tables (id, organization_id, name, description)
 		VALUES ($1, $2, $3, $4)`
 
-	_, err := exec.Exec(ctx, query, tableID, organizationID, strings.ToLower(name), description)
+	_, err := exec.Exec(ctx, query, tableID, organizationID, name, description)
 	if IsUniqueViolationError(err) {
 		return models.ConflictError
 	}
