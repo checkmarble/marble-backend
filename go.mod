@@ -26,7 +26,7 @@ require (
 	github.com/guregu/null/v5 v5.0.0
 	github.com/hashicorp/go-set/v2 v2.1.0
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
-	github.com/jackc/pgx/v5 v5.5.1
+	github.com/jackc/pgx/v5 v5.5.4
 	github.com/ory/dockertest/v3 v3.10.0
 	github.com/pkg/errors v0.9.1
 	github.com/pressly/goose/v3 v3.15.0
