@@ -16,11 +16,11 @@ import (
 )
 
 func corsOption(env string) cors.Config {
-	allowedOrigins := []string{"*"}
+	allowedOrigins := []string{"*.checkmarble.com"}
 
 	if env == "development" {
-		allowedOrigins = append(allowedOrigins, "http://localhost:3000",
-			"http://localhost:3001", "http://localhost:3002", "http://localhost:5173")
+		allowedOrigins = append(allowedOrigins,
+			"http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:5173")
 	}
 
 	return cors.Config{
