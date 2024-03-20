@@ -15,11 +15,20 @@ import (
 )
 
 type DecisionRepository interface {
-	DecisionById(ctx context.Context, exec Executor, decisionId string) (models.Decision, error)
+	DecisionById(ctx context.Context, exec Executor, decisionId string) (
+		models.DecisionWithRuleExecutions, error)
 	DecisionsById(ctx context.Context, exec Executor, decisionIds []string) ([]models.Decision, error)
-	DecisionsByCaseId(ctx context.Context, exec Executor, caseId string) ([]models.Decision, error)
-	DecisionsOfScheduledExecution(ctx context.Context, exec Executor, scheduledExecutionId string) (<-chan models.Decision, <-chan error)
-	StoreDecision(ctx context.Context, exec Executor, decision models.Decision, organizationId string, newDecisionId string) error
+	DecisionsByCaseId(ctx context.Context, exec Executor, caseId string) (
+		[]models.DecisionWithRuleExecutions, error)
+	DecisionsOfScheduledExecution(
+		ctx context.Context,
+		exec Executor,
+		scheduledExecutionId string) (<-chan models.DecisionWithRuleExecutions, <-chan error)
+	StoreDecision(
+		ctx context.Context,
+		exec Executor, decision models.DecisionWithRuleExecutions,
+		organizationId string,
+		newDecisionId string) error
 	DecisionsOfOrganization(ctx context.Context, exec Executor, organizationId string,
 		paginationAndSorting models.PaginationAndSorting, filters models.DecisionFilters) ([]models.DecisionWithRank, error)
 	UpdateDecisionCaseId(ctx context.Context, exec Executor, decisionsIds []string, caseId string) error
@@ -30,14 +39,16 @@ type DecisionRepositoryImpl struct{}
 // the size of the batch is chosen without any benchmark
 const decisionRulesBatchSize = 1000
 
-func (repo *DecisionRepositoryImpl) DecisionById(ctx context.Context, exec Executor, decisionId string) (models.Decision, error) {
+func (repo *DecisionRepositoryImpl) DecisionById(ctx context.Context, exec Executor,
+	decisionId string,
+) (models.DecisionWithRuleExecutions, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.Decision{}, err
+		return models.DecisionWithRuleExecutions{}, err
 	}
 
 	rules, err := repo.rulesOfDecision(ctx, exec, decisionId)
 	if err != nil {
-		return models.Decision{}, err
+		return models.DecisionWithRuleExecutions{}, err
 	}
 
 	return SqlToRow(
@@ -45,21 +56,21 @@ func (repo *DecisionRepositoryImpl) DecisionById(ctx context.Context, exec Execu
 		exec,
 		selectJoinDecisionAndCase().
 			Where(squirrel.Eq{"d.id": decisionId}),
-		func(row pgx.CollectableRow) (models.Decision, error) {
+		func(row pgx.CollectableRow) (models.DecisionWithRuleExecutions, error) {
 			db, err := pgx.RowToStructByPos[dbmodels.DbJoinDecisionAndCase](row)
 			if err != nil {
-				return models.Decision{}, err
+				return models.DecisionWithRuleExecutions{}, err
 			}
 
 			var decisionCase *models.Case
 			if db.DbDecision.CaseId != nil {
 				decisionCaseValue, err := dbmodels.AdaptCase(db.DBCase)
 				if err != nil {
-					return models.Decision{}, err
+					return models.DecisionWithRuleExecutions{}, err
 				}
 				decisionCase = &decisionCaseValue
 			}
-			return dbmodels.AdaptDecision(db.DbDecision, rules, decisionCase), nil
+			return dbmodels.AdaptDecisionWithRuleExecutions(db.DbDecision, rules, decisionCase), nil
 		},
 	)
 }
@@ -85,11 +96,15 @@ func (repo *DecisionRepositoryImpl) DecisionsById(ctx context.Context, exec Exec
 			}
 			decisionCase = &decisionCaseValue
 		}
-		return dbmodels.AdaptDecision(db.DbDecision, []models.RuleExecution{}, decisionCase), nil
+		return dbmodels.AdaptDecision(db.DbDecision, decisionCase), nil
 	})
 }
 
-func (repo *DecisionRepositoryImpl) DecisionsByCaseId(ctx context.Context, exec Executor, caseId string) ([]models.Decision, error) {
+func (repo *DecisionRepositoryImpl) DecisionsByCaseId(
+	ctx context.Context,
+	exec Executor,
+	caseId string,
+) ([]models.DecisionWithRuleExecutions, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -126,7 +141,7 @@ func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(
 		FromSelect(subquery, "s").
 		Limit(uint64(pagination.Limit))
 
-	var offsetDecision models.Decision
+	var offsetDecision models.DecisionWithRuleExecutions
 	if pagination.OffsetId != "" {
 		var err error
 		offsetDecision, err = repo.DecisionById(ctx, exec, pagination.OffsetId)
@@ -139,7 +154,7 @@ func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(
 		}
 	}
 
-	paginatedQuery, err := applyDecisionPagination(paginatedQuery, pagination, offsetDecision)
+	paginatedQuery, err := applyDecisionPagination(paginatedQuery, pagination, offsetDecision.Decision)
 	if err != nil {
 		return []models.DecisionWithRank{}, err
 	}
@@ -298,11 +313,13 @@ func selectDecisionsWithJoinedFields(query squirrel.SelectBuilder, p models.Pagi
 		PlaceholderFormat(squirrel.Dollar)
 }
 
-func (repo *DecisionRepositoryImpl) DecisionsOfScheduledExecution(ctx context.Context,
-	exec Executor, scheduledExecutionId string,
-) (<-chan models.Decision, <-chan error) {
+func (repo *DecisionRepositoryImpl) DecisionsOfScheduledExecution(
+	ctx context.Context,
+	exec Executor,
+	scheduledExecutionId string,
+) (<-chan models.DecisionWithRuleExecutions, <-chan error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		valChannel := make(chan models.Decision)
+		valChannel := make(chan models.DecisionWithRuleExecutions)
 		errChannel := make(chan error)
 		errChannel <- err
 		close(valChannel)
@@ -322,7 +339,7 @@ func (repo *DecisionRepositoryImpl) DecisionsOfScheduledExecution(ctx context.Co
 func (repo *DecisionRepositoryImpl) StoreDecision(
 	ctx context.Context,
 	exec Executor,
-	decision models.Decision,
+	decision models.DecisionWithRuleExecutions,
 	organizationId string,
 	newDecisionId string,
 ) error {
@@ -491,8 +508,8 @@ func (repo *DecisionRepositoryImpl) channelOfDecisions(
 	ctx context.Context,
 	exec Executor,
 	query squirrel.Sqlizer,
-) (<-chan models.Decision, <-chan error) {
-	decisionsChannel := make(chan models.Decision, 100)
+) (<-chan models.DecisionWithRuleExecutions, <-chan error) {
+	decisionsChannel := make(chan models.DecisionWithRuleExecutions, 100)
 	errChannel := make(chan error, 1)
 
 	go func() {
@@ -527,7 +544,7 @@ func (repo *DecisionRepositoryImpl) channelOfDecisions(
 			}
 
 			for i := 0; i < len(dbDecisions); i++ {
-				decisionsChannel <- dbmodels.AdaptDecision(dbDecisions[i], rules[i].rules, nil)
+				decisionsChannel <- dbmodels.AdaptDecisionWithRuleExecutions(dbDecisions[i], rules[i].rules, nil)
 			}
 		}
 

@@ -38,7 +38,7 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Cont
 	if scenarioIterationBodyInput != nil {
 
 		var triggerCondition *[]byte
-		if scenarioIterationBodyInput != nil && scenarioIterationBodyInput.TriggerConditionAstExpression != nil {
+		if scenarioIterationBodyInput.TriggerConditionAstExpression != nil {
 			var err error
 			triggerCondition, err = dbmodels.SerializeFormulaAstExpression(
 				scenarioIterationBodyInput.TriggerConditionAstExpression)

@@ -285,7 +285,6 @@ func (usecase *ScenarioIterationUsecase) CommitScenarioIterationVersion(
 				tx,
 				scenarioAndIteration.Scenario.OrganizationId,
 				scenarioAndIteration.Scenario.Id,
-				iterationId,
 			)
 			if err != nil {
 				return iteration, err
@@ -325,7 +324,7 @@ func replaceTriggerOrRule(scenarioAndIteration models.ScenarioAndIteration,
 func (usecase *ScenarioIterationUsecase) getScenarioVersion(
 	ctx context.Context,
 	exec repositories.Executor,
-	organizationId, scenarioId, iterationId string,
+	organizationId, scenarioId string,
 ) (int, error) {
 	scenarioIterations, err := usecase.repository.ListScenarioIterations(
 		ctx,

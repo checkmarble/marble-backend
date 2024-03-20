@@ -517,7 +517,7 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 func createAndTestDecision(t *testing.T, transactionPayloadJson []byte, table models.Table,
 	decisionUsecase usecases.DecisionUsecase, usecasesWithCreds usecases.UsecasesWithCreds,
 	organizationId, scenarioId string, logger *slog.Logger,
-) models.Decision {
+) models.DecisionWithRuleExecutions {
 	parser := payload_parser.NewParser()
 	transactionPayload, validationErrors, err :=
 		parser.ParsePayload(table, transactionPayloadJson)

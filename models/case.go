@@ -9,7 +9,7 @@ type Case struct {
 	Id             string
 	Contributors   []CaseContributor
 	CreatedAt      time.Time
-	Decisions      []Decision
+	Decisions      []DecisionWithRuleExecutions
 	DecisionsCount int
 	Events         []CaseEvent
 	InboxId        string
