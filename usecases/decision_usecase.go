@@ -51,14 +51,14 @@ type DecisionUsecase struct {
 	organizationIdOfContext    func() (string, error)
 }
 
-func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId string) (models.Decision, error) {
+func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId string) (models.DecisionWithRuleExecutions, error) {
 	decision, err := usecase.decisionRepository.DecisionById(ctx,
 		usecase.executorFactory.NewExecutor(), decisionId)
 	if err != nil {
-		return models.Decision{}, err
+		return models.DecisionWithRuleExecutions{}, err
 	}
-	if err := usecase.enforceSecurity.ReadDecision(decision); err != nil {
-		return models.Decision{}, err
+	if err := usecase.enforceSecurity.ReadDecision(decision.Decision); err != nil {
+		return models.DecisionWithRuleExecutions{}, err
 	}
 
 	return decision, nil
@@ -138,7 +138,7 @@ func (usecase *DecisionUsecase) validateScenarioIds(ctx context.Context, scenari
 	return nil
 }
 
-func (usecase *DecisionUsecase) validateOutcomes(ctx context.Context, filtersOutcomes []string) ([]models.Outcome, error) {
+func (usecase *DecisionUsecase) validateOutcomes(_ context.Context, filtersOutcomes []string) ([]models.Outcome, error) {
 	outcomes := make([]models.Outcome, len(filtersOutcomes))
 	for i, outcome := range filtersOutcomes {
 		outcomes[i] = models.OutcomeFrom(outcome)
@@ -172,30 +172,33 @@ func (usecase *DecisionUsecase) CreateDecision(
 	ctx context.Context,
 	input models.CreateDecisionInput,
 	logger *slog.Logger,
-) (models.Decision, error) {
+) (models.DecisionWithRuleExecutions, error) {
 	exec := usecase.executorFactory.NewExecutor()
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(ctx, "DecisionUsecase.CreateDecision")
 	defer span.End()
 
 	if err := usecase.enforceSecurity.CreateDecision(input.OrganizationId); err != nil {
-		return models.Decision{}, err
+		return models.DecisionWithRuleExecutions{}, err
 	}
 	scenario, err := usecase.repository.GetScenarioById(ctx, exec, input.ScenarioId)
 	if errors.Is(err, models.NotFoundError) {
-		return models.Decision{}, errors.Wrap(err, "scenario not found")
+		return models.DecisionWithRuleExecutions{}, errors.Wrap(err, "scenario not found")
 	} else if err != nil {
-		return models.Decision{}, errors.Wrap(err, "error getting scenario")
+		return models.DecisionWithRuleExecutions{},
+			errors.Wrap(err, "error getting scenario")
 	}
 	if err := usecase.enforceSecurityScenario.ReadScenario(scenario); err != nil {
-		return models.Decision{}, err
+		return models.DecisionWithRuleExecutions{}, err
 	}
 
 	dm, err := usecase.datamodelRepository.GetDataModel(ctx, exec, input.OrganizationId, false)
 	if errors.Is(err, models.NotFoundError) {
-		return models.Decision{}, errors.Wrap(models.NotFoundError, "data model not found")
+		return models.DecisionWithRuleExecutions{},
+			errors.Wrap(models.NotFoundError, "data model not found")
 	} else if err != nil {
-		return models.Decision{}, errors.Wrap(err, "error getting data model")
+		return models.DecisionWithRuleExecutions{},
+			errors.Wrap(err, "error getting data model")
 	}
 
 	evaluationParameters := evaluate_scenario.ScenarioEvaluationParameters{
@@ -213,28 +216,32 @@ func (usecase *DecisionUsecase) CreateDecision(
 
 	scenarioExecution, err := evaluate_scenario.EvalScenario(ctx, evaluationParameters, evaluationRepositories, logger)
 	if err != nil {
-		return models.Decision{}, fmt.Errorf("error evaluating scenario: %w", err)
+		return models.DecisionWithRuleExecutions{},
+			fmt.Errorf("error evaluating scenario: %w", err)
 	}
 
 	newDecisionId := utils.NewPrimaryKey(input.OrganizationId)
-	decision := models.Decision{
-		ClientObject:        input.ClientObject,
-		Outcome:             scenarioExecution.Outcome,
-		RuleExecutions:      scenarioExecution.RuleExecutions,
-		ScenarioDescription: scenarioExecution.ScenarioDescription,
-		ScenarioId:          scenarioExecution.ScenarioId,
-		ScenarioIterationId: scenarioExecution.ScenarioIterationId,
-		ScenarioName:        scenarioExecution.ScenarioName,
-		ScenarioVersion:     scenarioExecution.ScenarioVersion,
-		Score:               scenarioExecution.Score,
+	decision := models.DecisionWithRuleExecutions{
+		Decision: models.Decision{
+			ClientObject:        input.ClientObject,
+			Outcome:             scenarioExecution.Outcome,
+			ScenarioDescription: scenarioExecution.ScenarioDescription,
+			ScenarioId:          scenarioExecution.ScenarioId,
+			ScenarioIterationId: scenarioExecution.ScenarioIterationId,
+			ScenarioName:        scenarioExecution.ScenarioName,
+			ScenarioVersion:     scenarioExecution.ScenarioVersion,
+			Score:               scenarioExecution.Score,
+		},
+		RuleExecutions: scenarioExecution.RuleExecutions,
 	}
 
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Executor,
-	) (models.Decision, error) {
+	) (models.DecisionWithRuleExecutions, error) {
 		err = usecase.decisionRepository.StoreDecision(ctx, tx, decision, input.OrganizationId, newDecisionId)
 		if err != nil {
-			return models.Decision{}, fmt.Errorf("error storing decision: %w", err)
+			return models.DecisionWithRuleExecutions{},
+				fmt.Errorf("error storing decision: %w", err)
 		}
 
 		if scenario.DecisionToCaseOutcomes != nil &&
@@ -251,7 +258,8 @@ func (usecase *DecisionUsecase) CreateDecision(
 				OrganizationId: input.OrganizationId,
 			})
 			if err != nil {
-				return models.Decision{}, fmt.Errorf("error linking decision to case: %w", err)
+				return models.DecisionWithRuleExecutions{},
+					fmt.Errorf("error linking decision to case: %w", err)
 			}
 		}
 

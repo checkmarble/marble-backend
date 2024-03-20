@@ -29,7 +29,7 @@ func (api *API) handleGetDecision(c *gin.Context) {
 	if presentError(c, err) {
 		return
 	}
-	c.JSON(http.StatusOK, dto.NewAPIDecision(decision))
+	c.JSON(http.StatusOK, dto.NewAPIDecisionWithRule(decision))
 }
 
 func (api *API) handleListDecisions(c *gin.Context) {
@@ -141,5 +141,5 @@ func (api *API) handlePostDecision(c *gin.Context) {
 		presentError(c, errors.Wrap(err, "Error creating decision in handlePostDecision"))
 		return
 	}
-	c.JSON(http.StatusOK, dto.NewAPIDecision(decision))
+	c.JSON(http.StatusOK, dto.NewAPIDecisionWithRule(decision))
 }

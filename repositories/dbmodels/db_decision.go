@@ -48,7 +48,7 @@ type DBPaginatedDecisions struct {
 
 var SelectDecisionColumn = utils.ColumnList[DbDecision]()
 
-func AdaptDecision(db DbDecision, ruleExecutions []models.RuleExecution, decisionCase *models.Case) models.Decision {
+func AdaptDecision(db DbDecision, decisionCase *models.Case) models.Decision {
 	triggerObject := make(map[string]any)
 	err := json.Unmarshal(db.TriggerObjectRaw, &triggerObject)
 	if err != nil {
@@ -67,14 +67,20 @@ func AdaptDecision(db DbDecision, ruleExecutions []models.RuleExecution, decisio
 		ScenarioName:         db.ScenarioName,
 		ScenarioDescription:  db.ScenarioDescription,
 		ScenarioVersion:      db.ScenarioVersion,
-		RuleExecutions:       ruleExecutions,
 		Score:                db.Score,
 		ScheduledExecutionId: db.ScheduledExecutionId,
 	}
 }
 
+func AdaptDecisionWithRuleExecutions(db DbDecision, ruleExecutions []models.RuleExecution,
+	decisionCase *models.Case,
+) models.DecisionWithRuleExecutions {
+	decision := AdaptDecision(db, decisionCase)
+	return models.DecisionWithRuleExecutions{Decision: decision, RuleExecutions: ruleExecutions}
+}
+
 func AdaptDecisionWithRank(db DbDecision, decisionCase *models.Case, rankNumber, total int) models.DecisionWithRank {
-	decision := AdaptDecision(db, nil, decisionCase)
+	decision := AdaptDecision(db, decisionCase)
 	return models.DecisionWithRank{
 		Decision:   decision,
 		RankNumber: rankNumber,

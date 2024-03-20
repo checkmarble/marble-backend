@@ -61,9 +61,13 @@ type APIDecision struct {
 	TriggerObjectType    string              `json:"trigger_object_type"`
 	Outcome              string              `json:"outcome"`
 	Scenario             APIDecisionScenario `json:"scenario"`
-	Rules                []APIDecisionRule   `json:"rules"`
 	Score                int                 `json:"score"`
 	ScheduledExecutionId *string             `json:"scheduled_execution_id,omitempty"`
+}
+
+type APIDecisionWithRules struct {
+	APIDecision
+	Rules []APIDecisionRule `json:"rules"`
 }
 
 func NewAPIDecision(decision models.Decision) APIDecision {
@@ -81,16 +85,25 @@ func NewAPIDecision(decision models.Decision) APIDecision {
 			Version:             decision.ScenarioVersion,
 		},
 		Score:                decision.Score,
-		Rules:                make([]APIDecisionRule, len(decision.RuleExecutions)),
 		ScheduledExecutionId: decision.ScheduledExecutionId,
+	}
+
+	if decision.Case != nil {
+		c := AdaptCaseDto(*decision.Case)
+		apiDecision.Case = &c
+	}
+
+	return apiDecision
+}
+
+func NewAPIDecisionWithRule(decision models.DecisionWithRuleExecutions) APIDecisionWithRules {
+	apiDecision := APIDecisionWithRules{
+		APIDecision: NewAPIDecision(decision.Decision),
+		Rules:       make([]APIDecisionRule, len(decision.RuleExecutions)),
 	}
 
 	for i, ruleExecution := range decision.RuleExecutions {
 		apiDecision.Rules[i] = NewAPIDecisionRule(ruleExecution)
-	}
-	if decision.Case != nil {
-		c := AdaptCaseDto(*decision.Case)
-		apiDecision.Case = &c
 	}
 
 	return apiDecision

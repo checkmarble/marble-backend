@@ -290,17 +290,19 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 				return errors.Wrap(err, fmt.Sprintf("error evaluating scenario in executeScheduledScenario %s", scenario.Id))
 			}
 
-			decisionInput := models.Decision{
-				ClientObject:         object,
-				Outcome:              scenarioExecution.Outcome,
-				ScenarioId:           scenarioExecution.ScenarioId,
-				ScenarioIterationId:  scenarioExecution.ScenarioIterationId,
-				ScenarioName:         scenarioExecution.ScenarioName,
-				ScenarioDescription:  scenarioExecution.ScenarioDescription,
-				ScenarioVersion:      scenarioExecution.ScenarioVersion,
-				RuleExecutions:       scenarioExecution.RuleExecutions,
-				Score:                scenarioExecution.Score,
-				ScheduledExecutionId: &scheduledExecutionId,
+			decisionInput := models.DecisionWithRuleExecutions{
+				Decision: models.Decision{
+					ClientObject:         object,
+					Outcome:              scenarioExecution.Outcome,
+					ScenarioId:           scenarioExecution.ScenarioId,
+					ScenarioIterationId:  scenarioExecution.ScenarioIterationId,
+					ScenarioName:         scenarioExecution.ScenarioName,
+					ScenarioDescription:  scenarioExecution.ScenarioDescription,
+					ScenarioVersion:      scenarioExecution.ScenarioVersion,
+					Score:                scenarioExecution.Score,
+					ScheduledExecutionId: &scheduledExecutionId,
+				},
+				RuleExecutions: scenarioExecution.RuleExecutions,
 			}
 
 			err = usecase.DecisionRepository.StoreDecision(ctx, tx, decisionInput,

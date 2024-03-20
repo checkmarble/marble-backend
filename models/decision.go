@@ -16,10 +16,14 @@ type Decision struct {
 	ScenarioName         string
 	ScenarioDescription  string
 	ScenarioVersion      int
-	RuleExecutions       []RuleExecution
 	Score                int
 	ScheduledExecutionId *string
 	ScenarioIterationId  string
+}
+
+type DecisionWithRuleExecutions struct {
+	Decision
+	RuleExecutions []RuleExecution
 }
 
 type DecisionWithRank struct {

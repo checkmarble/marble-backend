@@ -29,7 +29,7 @@ func (repo *MarbleAnalyticsRepository) ListAnalytics(ctx context.Context, organi
 	return analytics, nil
 }
 
-func (repo *MarbleAnalyticsRepository) getAnalytics(ctx context.Context, organizationId string,
+func (repo *MarbleAnalyticsRepository) getAnalytics(_ context.Context, organizationId string,
 	analyticsCustomClaims models.AnalyticsCustomClaims,
 ) (models.Analytics, error) {
 	generalDashboardUrl, err := repo.metabase.GenerateSignedEmbeddingURL(analyticsCustomClaims)
