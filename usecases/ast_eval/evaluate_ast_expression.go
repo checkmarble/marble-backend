@@ -2,7 +2,6 @@ package ast_eval
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/cockroachdb/errors"
 
@@ -10,13 +9,17 @@ import (
 	"github.com/checkmarble/marble-backend/models/ast"
 )
 
-type EvaluateRuleAstExpression struct {
+type EvaluateAstExpression struct {
 	AstEvaluationEnvironmentFactory AstEvaluationEnvironmentFactory
 }
 
-func (evaluator *EvaluateRuleAstExpression) EvaluateRuleAstExpression(ctx context.Context,
-	ruleAstExpression ast.Node, organizationId string, payload models.ClientObject, dataModel models.DataModel,
-) (bool, error) {
+func (evaluator *EvaluateAstExpression) EvaluateAstExpression(
+	ctx context.Context,
+	ruleAstExpression ast.Node,
+	organizationId string,
+	payload models.ClientObject,
+	dataModel models.DataModel,
+) (ast.RootNodeEvaluation, error) {
 	environment := evaluator.AstEvaluationEnvironmentFactory(EvaluationEnvironmentFactoryParams{
 		OrganizationId:                organizationId,
 		ClientObject:                  payload,
@@ -25,16 +28,13 @@ func (evaluator *EvaluateRuleAstExpression) EvaluateRuleAstExpression(ctx contex
 	})
 
 	evaluation, ok := EvaluateAst(ctx, environment, ruleAstExpression)
-
 	if !ok {
-		return false, errors.Join(evaluation.AllErrors()...)
-	}
-	result := evaluation.ReturnValue
-
-	if value, ok := result.(bool); ok {
-		return value, nil
+		return ast.RootNodeEvaluation{}, errors.Join(evaluation.AllErrors()...)
 	}
 
-	return false, errors.Wrap(models.ErrRuntimeExpression,
-		fmt.Sprintf("rule ast expression does not return a boolean, '%v' instead", result))
+	rootEvaluation, err := ast.AdaptRootNodeEvaluation(evaluation)
+	if err != nil {
+		return ast.RootNodeEvaluation{}, errors.Join(models.ErrRuntimeExpression, err)
+	}
+	return rootEvaluation, nil
 }

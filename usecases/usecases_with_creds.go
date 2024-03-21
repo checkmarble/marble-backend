@@ -85,7 +85,7 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 		decisionRepository:         usecases.Repositories.DecisionRepository,
 		datamodelRepository:        usecases.Repositories.DataModelRepository,
 		repository:                 &usecases.Repositories.MarbleDbRepository,
-		evaluateRuleAstExpression:  usecases.NewEvaluateRuleAstExpression(),
+		evaluateAstExpression:      usecases.NewEvaluateAstExpression(),
 		organizationIdOfContext:    usecases.OrganizationIdOfContext,
 		caseCreator:                usecases.NewCaseUseCase(),
 	}
@@ -234,7 +234,7 @@ func (usecases *UsecasesWithCreds) NewRunScheduledExecution() scheduledexecution
 		ScenarioPublicationsRepository: usecases.Repositories.ScenarioPublicationRepository,
 		DataModelRepository:            usecases.Repositories.DataModelRepository,
 		IngestedDataReadRepository:     usecases.Repositories.IngestedDataReadRepository,
-		EvaluateRuleAstExpression:      usecases.NewEvaluateRuleAstExpression(),
+		EvaluateAstExpression:          usecases.NewEvaluateAstExpression(),
 		DecisionRepository:             usecases.Repositories.DecisionRepository,
 	}
 }

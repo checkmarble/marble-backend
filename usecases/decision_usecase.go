@@ -46,7 +46,7 @@ type DecisionUsecase struct {
 	decisionRepository         repositories.DecisionRepository
 	datamodelRepository        repositories.DataModelRepository
 	repository                 DecisionUsecaseRepository
-	evaluateRuleAstExpression  ast_eval.EvaluateRuleAstExpression
+	evaluateAstExpression      ast_eval.EvaluateAstExpression
 	caseCreator                caseCreatorAsWorkflow
 	organizationIdOfContext    func() (string, error)
 }
@@ -211,7 +211,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		EvalScenarioRepository:     usecase.repository,
 		ExecutorFactory:            usecase.executorFactory,
 		IngestedDataReadRepository: usecase.ingestedDataReadRepository,
-		EvaluateRuleAstExpression:  usecase.evaluateRuleAstExpression,
+		EvaluateAstExpression:      usecase.evaluateAstExpression,
 	}
 
 	scenarioExecution, err := evaluate_scenario.EvalScenario(ctx, evaluationParameters, evaluationRepositories, logger)
