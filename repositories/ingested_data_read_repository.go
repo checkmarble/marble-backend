@@ -15,8 +15,20 @@ import (
 type IngestedDataReadRepository interface {
 	GetDbField(ctx context.Context, exec Executor, readParams models.DbFieldReadParams) (any, error)
 	ListAllObjectsFromTable(ctx context.Context, exec Executor, table models.Table) ([]models.ClientObject, error)
-	QueryAggregatedValue(ctx context.Context, exec Executor, tableName models.TableName,
-		fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter) (any, error)
+	QueryIngestedObject(
+		ctx context.Context,
+		exec Executor,
+		table models.Table,
+		objectId string,
+	) ([]map[string]any, error)
+	QueryAggregatedValue(
+		ctx context.Context,
+		exec Executor,
+		tableName models.TableName,
+		fieldName models.FieldName,
+		aggregator ast.Aggregator,
+		filters []ast.Filter,
+	) (any, error)
 }
 
 type IngestedDataReadRepositoryImpl struct{}
@@ -178,8 +190,10 @@ func rowIsValid(tableName string) squirrel.Eq {
 }
 
 // "list all fields" methods
-func (repo *IngestedDataReadRepositoryImpl) ListAllObjectsFromTable(ctx context.Context,
-	exec Executor, table models.Table,
+func (repo *IngestedDataReadRepositoryImpl) ListAllObjectsFromTable(
+	ctx context.Context,
+	exec Executor,
+	table models.Table,
 ) ([]models.ClientObject, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return nil, err
@@ -187,8 +201,13 @@ func (repo *IngestedDataReadRepositoryImpl) ListAllObjectsFromTable(ctx context.
 
 	columnNames := models.ColumnNames(table)
 
-	objectsAsMap, err := queryWithDynamicColumnList(ctx, exec,
-		tableNameWithSchema(exec, table.Name), columnNames)
+	objectsAsMap, err := queryWithDynamicColumnList(
+		ctx,
+		exec,
+		tableNameWithSchema(exec, table.Name),
+		columnNames,
+		nil,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -205,12 +224,48 @@ func (repo *IngestedDataReadRepositoryImpl) ListAllObjectsFromTable(ctx context.
 	return output, nil
 }
 
-func queryWithDynamicColumnList(ctx context.Context, exec Executor, qualifiedTableName string, columnNames []string) ([]map[string]any, error) {
-	sql, args, err := NewQueryBuilder().
+func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObject(
+	ctx context.Context,
+	exec Executor,
+	table models.Table,
+	objectId string,
+) ([]map[string]any, error) {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	columnNames := models.ColumnNames(table)
+
+	objectsAsMap, err := queryWithDynamicColumnList(
+		ctx,
+		exec,
+		tableNameWithSchema(exec, table.Name),
+		columnNames,
+		&objectId,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return objectsAsMap, nil
+}
+
+func queryWithDynamicColumnList(
+	ctx context.Context,
+	exec Executor,
+	qualifiedTableName string,
+	columnNames []string,
+	objectId *string,
+) ([]map[string]any, error) {
+	q := NewQueryBuilder().
 		Select(columnNames...).
 		From(qualifiedTableName).
-		Where(rowIsValid(qualifiedTableName)).
-		ToSql()
+		Where(rowIsValid(qualifiedTableName))
+	if objectId != nil {
+		q = q.Where(squirrel.Eq{fmt.Sprintf("%s.object_id", qualifiedTableName): *objectId})
+	}
+
+	sql, args, err := q.ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("error while building SQL query: %w", err)
 	}
