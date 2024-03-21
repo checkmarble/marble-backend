@@ -361,3 +361,14 @@ func (usecases *UsecasesWithCreds) NewAnalyticsUseCase() AnalyticsUseCase {
 		analyticsRepository: &usecases.Repositories.MarbleAnalyticsRepository,
 	}
 }
+
+func (usecases *UsecasesWithCreds) NewTransferCheckUsecase() TransferCheckUsecase {
+	return TransferCheckUsecase{
+		dataModelRepository:        usecases.Repositories.DataModelRepository,
+		decisionUseCase:            usecases.NewDecisionUsecase(),
+		executorFactory:            usecases.NewExecutorFactory(),
+		ingestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
+		ingestionRepository:        usecases.Repositories.IngestionRepository,
+		transactionFactory:         usecases.NewTransactionFactory(),
+	}
+}
