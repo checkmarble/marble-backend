@@ -116,8 +116,8 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 	return environment
 }
 
-func (usecases *Usecases) NewEvaluateRuleAstExpression() ast_eval.EvaluateRuleAstExpression {
-	return ast_eval.EvaluateRuleAstExpression{
+func (usecases *Usecases) NewEvaluateAstExpression() ast_eval.EvaluateAstExpression {
+	return ast_eval.EvaluateAstExpression{
 		AstEvaluationEnvironmentFactory: usecases.AstEvaluationEnvironmentFactory,
 	}
 }

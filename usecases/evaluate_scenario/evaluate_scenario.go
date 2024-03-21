@@ -38,11 +38,14 @@ type ScenarioEvaluationRepositories struct {
 	EvalScenarioRepository     EvalScenarioRepository
 	ExecutorFactory            executor_factory.ExecutorFactory
 	IngestedDataReadRepository repositories.IngestedDataReadRepository
-	EvaluateRuleAstExpression  ast_eval.EvaluateRuleAstExpression
+	EvaluateAstExpression      ast_eval.EvaluateAstExpression
 }
 
-func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters,
-	repositories ScenarioEvaluationRepositories, logger *slog.Logger,
+func EvalScenario(
+	ctx context.Context,
+	params ScenarioEvaluationParameters,
+	repositories ScenarioEvaluationRepositories,
+	logger *slog.Logger,
 ) (se models.ScenarioExecution, err error) {
 	start := time.Now()
 	///////////////////////////////
@@ -98,7 +101,7 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters,
 	}
 
 	// Evaluate the trigger
-	triggerPassed, err := evalScenarioTrigger(
+	err = evalScenarioTrigger(
 		ctx,
 		repositories,
 		publishedVersion.Body.TriggerConditionAstExpression,
@@ -106,16 +109,8 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters,
 		dataAccessor.ClientObject,
 		params.DataModel,
 	)
-
-	isAuthorizedError := models.IsAuthorizedError(err)
-	if err != nil && !isAuthorizedError {
-		return models.ScenarioExecution{}, errors.Wrap(err,
-			"Unexpected error evaluating trigger condition in EvalScenario")
-	}
-	if !triggerPassed || isAuthorizedError {
-		return models.ScenarioExecution{}, errors.Wrap(
-			models.ErrScenarioTriggerConditionAndTriggerObjectMismatch,
-			"scenario trigger object does not match payload in EvalScenario")
+	if err != nil {
+		return models.ScenarioExecution{}, err
 	}
 
 	// Evaluate all rules
@@ -155,8 +150,13 @@ func EvalScenario(ctx context.Context, params ScenarioEvaluationParameters,
 	return se, nil
 }
 
-func evalScenarioRule(ctx context.Context, repositories ScenarioEvaluationRepositories,
-	rule models.Rule, dataAccessor DataAccessor, dataModel models.DataModel, logger *slog.Logger,
+func evalScenarioRule(
+	ctx context.Context,
+	repositories ScenarioEvaluationRepositories,
+	rule models.Rule,
+	dataAccessor DataAccessor,
+	dataModel models.DataModel,
+	logger *slog.Logger,
 ) (int, models.RuleExecution, error) {
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(ctx, "evaluate_scenario.evalScenarioRule",
@@ -172,7 +172,7 @@ func evalScenarioRule(ctx context.Context, repositories ScenarioEvaluationReposi
 	}
 
 	// Evaluate single rule
-	ruleReturnValue, err := repositories.EvaluateRuleAstExpression.EvaluateRuleAstExpression(
+	ruleReturnValue, err := repositories.EvaluateAstExpression.EvaluateAstExpression(
 		ctx,
 		*rule.FormulaAstExpression,
 		dataAccessor.organizationId,
@@ -185,19 +185,12 @@ func evalScenarioRule(ctx context.Context, repositories ScenarioEvaluationReposi
 			fmt.Sprintf("error while evaluating rule %s (%s)", rule.Name, rule.Id))
 	}
 
-	score := 0
-	if ruleReturnValue {
-		score = rule.ScoreModifier
-	}
-
 	ruleExecution := models.RuleExecution{
-		Rule:                rule,
-		Result:              ruleReturnValue,
-		ResultScoreModifier: score,
+		Rule:   rule,
+		Result: ruleReturnValue.ReturnValue,
 	}
 
 	if err != nil {
-		ruleExecution.Rule = rule
 		ruleExecution.Error = err
 		logger.InfoContext(ctx, fmt.Sprintf("%v", ruleExecution.Error), //"Rule had an error",
 			slog.String("ruleName", rule.Name),
@@ -207,34 +200,56 @@ func evalScenarioRule(ctx context.Context, repositories ScenarioEvaluationReposi
 
 	// Increment scenario score when rule is true
 	if ruleExecution.Result {
+		ruleExecution.ResultScoreModifier = rule.ScoreModifier
 		logger.InfoContext(ctx, "Rule executed",
 			slog.Int("score_modifier", rule.ScoreModifier),
 			slog.String("ruleName", rule.Name),
 			slog.Bool("result", ruleExecution.Result),
 		)
-		score = ruleExecution.Rule.ScoreModifier
 	}
-	return score, ruleExecution, nil
+	return ruleExecution.ResultScoreModifier, ruleExecution, nil
 }
 
-func evalScenarioTrigger(ctx context.Context, repositories ScenarioEvaluationRepositories,
-	ruleAstExpression ast.Node, organizationId string, payload models.ClientObject, dataModel models.DataModel,
-) (bool, error) {
+func evalScenarioTrigger(
+	ctx context.Context,
+	repositories ScenarioEvaluationRepositories,
+	triggerAstExpression ast.Node,
+	organizationId string,
+	payload models.ClientObject,
+	dataModel models.DataModel,
+) error {
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(ctx, "evaluate_scenario.evalScenarioTrigger")
 	defer span.End()
 
-	return repositories.EvaluateRuleAstExpression.EvaluateRuleAstExpression(
+	triggerEvaluation, err := repositories.EvaluateAstExpression.EvaluateAstExpression(
 		ctx,
-		ruleAstExpression,
+		triggerAstExpression,
 		organizationId,
 		payload,
 		dataModel,
 	)
+	isAuthorizedError := models.IsAuthorizedError(err)
+	if err != nil && !isAuthorizedError {
+		return errors.Wrap(err,
+			"Unexpected error evaluating trigger condition in EvalScenario")
+	}
+
+	if !triggerEvaluation.ReturnValue || isAuthorizedError {
+		return errors.Wrap(
+			models.ErrScenarioTriggerConditionAndTriggerObjectMismatch,
+			"scenario trigger object does not match payload in EvalScenario")
+	}
+	return nil
 }
 
-func evalAllScenarioRules(ctx context.Context, repositories ScenarioEvaluationRepositories,
-	rules []models.Rule, dataAccessor DataAccessor, dataModel models.DataModel, logger *slog.Logger,
+func evalAllScenarioRules(
+	ctx context.Context,
+	repositories ScenarioEvaluationRepositories,
+	rules []models.Rule,
+	dataAccessor DataAccessor,
+	dataModel models.DataModel,
+	logger *slog.Logger,
 ) (int, []models.RuleExecution, error) {
 	// Results
 	runningSumOfScores := 0

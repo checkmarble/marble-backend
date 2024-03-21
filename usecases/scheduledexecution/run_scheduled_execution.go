@@ -38,7 +38,7 @@ type RunScheduledExecution struct {
 	ScenarioPublicationsRepository repositories.ScenarioPublicationRepository
 	DataModelRepository            repositories.DataModelRepository
 	IngestedDataReadRepository     repositories.IngestedDataReadRepository
-	EvaluateRuleAstExpression      ast_eval.EvaluateRuleAstExpression
+	EvaluateAstExpression          ast_eval.EvaluateAstExpression
 	DecisionRepository             repositories.DecisionRepository
 	TransactionFactory             executor_factory.TransactionFactory
 }
@@ -275,7 +275,7 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 					EvalScenarioRepository:     usecase.Repository,
 					ExecutorFactory:            usecase.ExecutorFactory,
 					IngestedDataReadRepository: usecase.IngestedDataReadRepository,
-					EvaluateRuleAstExpression:  usecase.EvaluateRuleAstExpression,
+					EvaluateAstExpression:      usecase.EvaluateAstExpression,
 				},
 				utils.LoggerFromContext(ctx),
 			)
