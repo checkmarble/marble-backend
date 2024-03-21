@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"github.com/guregu/null/v5"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -16,6 +17,17 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
+type transferMappingsRepository interface {
+	GetTransferMapping(ctx context.Context, exec repositories.Executor, id string) (models.TransferMapping, error)
+	ListTransferMappings(ctx context.Context, exec repositories.Executor, transferId string) ([]models.TransferMapping, error)
+	CreateTransferMapping(
+		ctx context.Context,
+		exec repositories.Executor,
+		id string,
+		transferMapping models.TransferMappingCreateInput,
+	) error
+}
+
 type TransferCheckUsecase struct {
 	dataModelRepository        repositories.DataModelRepository
 	decisionUseCase            DecisionUsecase
@@ -23,6 +35,7 @@ type TransferCheckUsecase struct {
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
 	ingestionRepository        repositories.IngestionRepository
 	transactionFactory         executor_factory.TransactionFactory
+	transferMappingsRepository transferMappingsRepository
 }
 
 const TransferCheckTable = "transfers"
@@ -51,20 +64,44 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 
 	clientObject := models.ClientObject{Data: transfer.TransferData.ToMap(), TableName: TransferCheckTable}
 
-	var previousObjects []map[string]interface{}
-	err = usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Executor) error {
-		previousObjects, err = usecase.ingestedDataReadRepository.QueryIngestedObject(ctx,
-			tx, table, transfer.TransferData.TransferId)
-		if err != nil {
-			return err
-		}
-		if len(previousObjects) > 0 {
-			return errors.Wrap(
-				models.ConflictError,
-				fmt.Sprintf("transfer %s already exists", transfer.TransferData.TransferId),
-			)
-		}
+	db, err := usecase.executorFactory.NewClientDbExecutor(ctx, organizationId)
+	if err != nil {
+		return models.Transfer{}, err
+	}
 
+	var previousObjects []map[string]interface{}
+	previousObjects, err = usecase.ingestedDataReadRepository.QueryIngestedObject(ctx,
+		db, table, transfer.TransferData.TransferId)
+	if err != nil {
+		return models.Transfer{}, err
+	}
+	if len(previousObjects) > 0 {
+		return models.Transfer{}, errors.Wrap(
+			models.ConflictError,
+			fmt.Sprintf("transfer %s already exists", transfer.TransferData.TransferId),
+		)
+	}
+
+	var transferMappingId string
+	transferMappings, err := usecase.transferMappingsRepository.ListTransferMappings(ctx, exec, transfer.TransferData.TransferId)
+	if err != nil {
+		return models.Transfer{}, err
+	}
+	if len(transferMappings) > 0 {
+		transferMappingId = transferMappings[0].Id
+	} else {
+		transferMappingId = uuid.New().String()
+		err = usecase.transferMappingsRepository.CreateTransferMapping(ctx, exec,
+			transferMappingId, models.TransferMappingCreateInput{
+				OrganizationId: organizationId,
+				TransferId:     transfer.TransferData.TransferId,
+			})
+		if err != nil {
+			return models.Transfer{}, err
+		}
+	}
+
+	err = usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Executor) error {
 		err := usecase.ingestionRepository.IngestObjects(ctx, tx, []models.ClientObject{
 			clientObject,
 		}, table, logger)
@@ -108,7 +145,7 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 	}
 
 	out := models.Transfer{
-		Id:           transfer.TransferData.TransferId,
+		Id:           transferMappingId,
 		TransferData: outTransfer,
 	}
 	if doScore {
@@ -140,7 +177,7 @@ func validateTransfer(transfer models.TransferDataCreateBody) error {
 func (usecase *TransferCheckUsecase) UpdateTransfer(
 	ctx context.Context,
 	organizationId string,
-	transferId string,
+	id string,
 	transfer models.TransferUpdateBody,
 ) (models.Transfer, error) {
 	logger := utils.LoggerFromContext(ctx)
@@ -160,16 +197,23 @@ func (usecase *TransferCheckUsecase) UpdateTransfer(
 		return models.Transfer{}, errors.Newf("table %s not found", TransferCheckTable)
 	}
 
+	transferMapping, err := usecase.transferMappingsRepository.GetTransferMapping(ctx, exec, id)
+	if err != nil {
+		return models.Transfer{}, err
+	}
+
 	var previousObjects []map[string]interface{}
 	err = usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Executor) error {
-		previousObjects, err = usecase.ingestedDataReadRepository.QueryIngestedObject(ctx, tx, table, transferId)
+		previousObjects, err = usecase.ingestedDataReadRepository.QueryIngestedObject(ctx,
+			tx, table, transferMapping.ClientTransferId)
 		if err != nil {
 			return err
 		}
 		if len(previousObjects) == 0 {
 			return errors.Wrap(models.NotFoundError,
-				fmt.Sprintf("transfer %s not found", transferId))
+				fmt.Sprintf("transfer %s not found", transferMapping.ClientTransferId))
 		}
+
 		previousObjects[0]["status"] = transfer.Status
 		previousObjects[0]["updated_at"] = time.Now()
 		clientObject := models.ClientObject{Data: previousObjects[0], TableName: TransferCheckTable}
@@ -181,8 +225,12 @@ func (usecase *TransferCheckUsecase) UpdateTransfer(
 			return err
 		}
 
-		previousObjects, err = usecase.ingestedDataReadRepository.QueryIngestedObject(ctx,
-			tx, table, transferId)
+		previousObjects, err = usecase.ingestedDataReadRepository.QueryIngestedObject(
+			ctx,
+			tx,
+			table,
+			transferMapping.ClientTransferId,
+		)
 		if err != nil {
 			return err
 		}
@@ -198,7 +246,7 @@ func (usecase *TransferCheckUsecase) UpdateTransfer(
 	}
 
 	return models.Transfer{
-		Id:           transferId,
+		Id:           id,
 		TransferData: outTransfer,
 	}, nil
 }
@@ -216,7 +264,7 @@ func validateTranferUpdate(transfer models.TransferUpdateBody) error {
 func (usecase *TransferCheckUsecase) QueryTransfers(
 	ctx context.Context,
 	organizationId string,
-	transferId string,
+	clientTransferId string,
 ) ([]models.Transfer, error) {
 	exec := usecase.executorFactory.NewExecutor()
 
@@ -229,12 +277,20 @@ func (usecase *TransferCheckUsecase) QueryTransfers(
 		return nil, errors.Newf("table %s not found", TransferCheckTable)
 	}
 
+	transferMappings, err := usecase.transferMappingsRepository.ListTransferMappings(ctx, exec, clientTransferId)
+	if err != nil {
+		return []models.Transfer{}, err
+	}
+	if len(transferMappings) == 0 {
+		return make([]models.Transfer, 0), nil
+	}
+
 	db, err := usecase.executorFactory.NewClientDbExecutor(ctx, organizationId)
 	if err != nil {
 		return nil, err
 	}
 
-	objects, err := usecase.ingestedDataReadRepository.QueryIngestedObject(ctx, db, table, transferId)
+	objects, err := usecase.ingestedDataReadRepository.QueryIngestedObject(ctx, db, table, transferMappings[0].ClientTransferId)
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +302,7 @@ func (usecase *TransferCheckUsecase) QueryTransfers(
 			return nil, err
 		}
 		transfer := models.Transfer{
-			Id:           t.TransferId,
+			Id:           transferMappings[0].Id,
 			TransferData: t,
 		}
 		out = append(out, transfer)
@@ -258,7 +314,7 @@ func (usecase *TransferCheckUsecase) QueryTransfers(
 func (usecase *TransferCheckUsecase) GetTransfer(
 	ctx context.Context,
 	organizationId string,
-	transferId string,
+	id string,
 ) (models.Transfer, error) {
 	exec := usecase.executorFactory.NewExecutor()
 
@@ -271,12 +327,17 @@ func (usecase *TransferCheckUsecase) GetTransfer(
 		return models.Transfer{}, errors.Newf("table %s not found", TransferCheckTable)
 	}
 
+	transferMapping, err := usecase.transferMappingsRepository.GetTransferMapping(ctx, exec, id)
+	if err != nil {
+		return models.Transfer{}, err
+	}
+
 	db, err := usecase.executorFactory.NewClientDbExecutor(ctx, organizationId)
 	if err != nil {
 		return models.Transfer{}, err
 	}
 
-	objects, err := usecase.ingestedDataReadRepository.QueryIngestedObject(ctx, db, table, transferId)
+	objects, err := usecase.ingestedDataReadRepository.QueryIngestedObject(ctx, db, table, transferMapping.ClientTransferId)
 	if err != nil {
 		return models.Transfer{}, err
 	}
@@ -287,12 +348,14 @@ func (usecase *TransferCheckUsecase) GetTransfer(
 			return models.Transfer{}, err
 		}
 		transfer := models.Transfer{
-			Id:           t.TransferId,
+			Id:           id,
 			TransferData: t,
 		}
 		return transfer, nil
 	}
 
-	return models.Transfer{}, errors.Wrap(models.NotFoundError,
-		fmt.Sprintf("transfer %s not found", transferId))
+	return models.Transfer{}, errors.Wrap(
+		models.NotFoundError,
+		fmt.Sprintf("transfer %s not found", id),
+	)
 }

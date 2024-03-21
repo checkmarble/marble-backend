@@ -16,6 +16,18 @@ type Transfer struct {
 	TransferData TransferData
 }
 
+type TransferMapping struct {
+	Id               string
+	CreatedAt        time.Time
+	OrganizationId   string
+	ClientTransferId string
+}
+
+type TransferMappingCreateInput struct {
+	OrganizationId string
+	TransferId     string
+}
+
 type TransferData struct {
 	BeneficiaryBic      string
 	BeneficiaryIban     string
