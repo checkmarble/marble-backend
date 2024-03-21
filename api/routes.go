@@ -140,5 +140,8 @@ func (api *API) routes(auth *Authentication, tokenHandler *TokenHandler) {
 	router.DELETE("/data-model", api.DeleteDataModel)
 	router.GET("/data-model/openapi", api.OpenAPI)
 
-	router.POST("/transfer-check", api.handleTransferCheck)
+	router.POST("/transfers", api.handleTransferCheck)
+	router.GET("/transfers", api.handleQueryTransfers)
+	router.PATCH("/transfers/:transfer_id", api.handleUpdateTransfer)
+	router.GET("/transfers/:transfer_id", api.handleGetTransfer)
 }

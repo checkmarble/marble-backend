@@ -7,17 +7,16 @@ import (
 	"github.com/guregu/null/v5"
 )
 
-type TransferCheckScoreDetail struct {
-	Score        null.Int32
-	LastScoredAt null.Time
-}
-
-type TransferCheckResult struct {
-	Result   TransferCheckScoreDetail
-	Transfer Transfer
-}
+var TransferStatuses = []string{"neutral", "suspected_fraud", "confirmed_fraud"}
 
 type Transfer struct {
+	Id           string
+	LastScoredAt null.Time
+	Score        null.Int32
+	TransferData TransferData
+}
+
+type TransferData struct {
 	BeneficiaryBic      string
 	BeneficiaryIban     string
 	BeneficiaryName     string
@@ -36,8 +35,8 @@ type Transfer struct {
 	Value               int64
 }
 
-func TransferFromMap(m map[string]any) (Transfer, error) {
-	transfer := Transfer{}
+func TransferFromMap(m map[string]any) (TransferData, error) {
+	transfer := TransferData{}
 	var ok bool
 	transfer.BeneficiaryBic, ok = m["beneficiary_bic"].(string)
 	if !ok {
@@ -106,7 +105,7 @@ func TransferFromMap(m map[string]any) (Transfer, error) {
 	return transfer, nil
 }
 
-type TransferCheckCreateBody struct {
+type TransferDataCreateBody struct {
 	BeneficiaryBic      string
 	BeneficiaryIban     string
 	BeneficiaryName     string
@@ -123,7 +122,16 @@ type TransferCheckCreateBody struct {
 	Value               int64
 }
 
-func (t TransferCheckCreateBody) ToMap() map[string]any {
+type TransferCreateOptions struct {
+	ComputeScore bool `json:"compute_score"`
+}
+
+type TransferCreateBody struct {
+	TransferData TransferDataCreateBody
+	SkipScore    *bool
+}
+
+func (t TransferDataCreateBody) ToMap() map[string]any {
 	return map[string]any{
 		// there is a trap here: we map it to "object_id" to match what we do elsewhere on data model tables
 		"object_id": t.TransferId,
@@ -146,4 +154,8 @@ func (t TransferCheckCreateBody) ToMap() map[string]any {
 		"transfer_requested_at": t.TransferRequestedAt,
 		"value":                 t.Value,
 	}
+}
+
+type TransferUpdateBody struct {
+	Status string
 }
