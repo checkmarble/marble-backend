@@ -11,10 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const (
-	TABLE_DECISIONS      = "decisions"
-	TABLE_DECISION_RULES = "decision_rules"
-)
+const TABLE_DECISIONS = "decisions"
 
 type DbDecision struct {
 	Id                   string      `db:"id"`
