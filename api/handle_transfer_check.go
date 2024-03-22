@@ -102,3 +102,21 @@ func (api *API) handleGetTransfer(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"transfer": dto.AdaptTransferCheckResultDto(transferCheck)})
 }
+
+func (api *API) handleScoreTransfer(c *gin.Context) {
+	id := c.Param("transfer_id")
+
+	usecase := api.UsecasesWithCreds(c.Request).NewTransferCheckUsecase()
+
+	orgId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+	if presentError(c, err) {
+		return
+	}
+
+	transferCheck, err := usecase.ScoreTransfer(c.Request.Context(), orgId, id)
+	if presentError(c, err) {
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"transfer": dto.AdaptTransferCheckResultDto(transferCheck)})
+}

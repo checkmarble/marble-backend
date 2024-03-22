@@ -144,4 +144,5 @@ func (api *API) routes(auth *Authentication, tokenHandler *TokenHandler) {
 	router.GET("/transfers", api.handleQueryTransfers)
 	router.PATCH("/transfers/:transfer_id", api.handleUpdateTransfer)
 	router.GET("/transfers/:transfer_id", api.handleGetTransfer)
+	router.POST("/transfers/:transfer_id/score", api.handleScoreTransfer)
 }
