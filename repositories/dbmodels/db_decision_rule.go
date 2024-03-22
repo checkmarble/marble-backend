@@ -20,13 +20,14 @@ type DbDecisionRule struct {
 	ErrorCode      int         `db:"error_code"`
 	DeletedAt      pgtype.Time `db:"deleted_at"`
 	RuleId         string      `db:"rule_id"`
+	RuleEvaluation []byte      `db:"rule_evaluation"`
 }
 
-const TABLE_DECISION_RULE = "decision_rules"
+const TABLE_DECISION_RULES = "decision_rules"
 
 var SelectDecisionRuleColumn = utils.ColumnList[DbDecisionRule]()
 
-func adaptErrorCodeAsError(errCode models.RuleExecutionError) error {
+func adaptErrorCodeAsError(errCode models.ExecutionError) error {
 	switch errCode {
 	case models.NoError:
 		return nil
@@ -43,7 +44,12 @@ func adaptErrorCodeAsError(errCode models.RuleExecutionError) error {
 	}
 }
 
-func AdaptRuleExecution(db DbDecisionRule) models.RuleExecution {
+func AdaptRuleExecution(db DbDecisionRule) (models.RuleExecution, error) {
+	evaluation, err := DeserializeNodeEvaluation(db.RuleEvaluation)
+	if err != nil {
+		return models.RuleExecution{}, err
+	}
+
 	return models.RuleExecution{
 		Rule: models.Rule{
 			Id:          db.RuleId,
@@ -52,6 +58,7 @@ func AdaptRuleExecution(db DbDecisionRule) models.RuleExecution {
 		},
 		Result:              db.Result,
 		ResultScoreModifier: db.ScoreModifier,
-		Error:               adaptErrorCodeAsError(models.RuleExecutionError(db.ErrorCode)),
-	}
+		Error:               adaptErrorCodeAsError(models.ExecutionError(db.ErrorCode)),
+		Evaluation:          evaluation,
+	}, nil
 }

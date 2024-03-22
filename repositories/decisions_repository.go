@@ -27,7 +27,8 @@ type DecisionRepository interface {
 		scheduledExecutionId string) (<-chan models.DecisionWithRuleExecutions, <-chan error)
 	StoreDecision(
 		ctx context.Context,
-		exec Executor, decision models.DecisionWithRuleExecutions,
+		exec Executor,
+		decision models.DecisionWithRuleExecutions,
 		organizationId string,
 		newDecisionId string) error
 	DecisionsOfOrganization(ctx context.Context, exec Executor, organizationId string,
@@ -428,9 +429,15 @@ func (repo *DecisionRepositoryImpl) StoreDecision(
 			"result",
 			"error_code",
 			"rule_id",
+			"rule_evaluation",
 		)
 
 	for _, ruleExecution := range decision.RuleExecutions {
+		serializedRuleEvaluation, err := dbmodels.SerializeNodeEvaluation(ruleExecution.Evaluation)
+		if err != nil {
+			return errors.Wrap(err, fmt.Sprintf("rule(%s):", ruleExecution.Rule.Id))
+		}
+
 		builderForRules = builderForRules.
 			Values(
 				utils.NewPrimaryKey(organizationId),
@@ -440,8 +447,9 @@ func (repo *DecisionRepositoryImpl) StoreDecision(
 				ruleExecution.Rule.Description,
 				ruleExecution.ResultScoreModifier,
 				ruleExecution.Result,
-				models.AdaptRuleExecutionError(ruleExecution.Error),
+				models.AdaptExecutionError(ruleExecution.Error),
 				ruleExecution.Rule.Id,
+				serializedRuleEvaluation,
 			)
 	}
 	err = ExecBuilder(ctx, exec, builderForRules)
@@ -481,11 +489,11 @@ func (repo *DecisionRepositoryImpl) rulesOfDecision(ctx context.Context, exec Ex
 		ctx,
 		exec,
 		NewQueryBuilder().Select(dbmodels.SelectDecisionRuleColumn...).
-			From(dbmodels.TABLE_DECISION_RULE).
+			From(dbmodels.TABLE_DECISION_RULES).
 			Where(squirrel.Eq{"decision_id": decisionId}).
 			OrderBy("id"),
 		func(r dbmodels.DbDecisionRule) (models.RuleExecution, error) {
-			return dbmodels.AdaptRuleExecution(r), nil
+			return dbmodels.AdaptRuleExecution(r)
 		},
 	)
 }
@@ -500,11 +508,11 @@ func (repo *DecisionRepositoryImpl) rulesOfDecisionsBatch(ctx context.Context, e
 		return nil, err
 	}
 
-	allRules, err := SqlToListOfModels(
+	allDbRules, err := SqlToListOfModels(
 		ctx,
 		exec,
 		NewQueryBuilder().Select(dbmodels.SelectDecisionRuleColumn...).
-			From(dbmodels.TABLE_DECISION_RULE).
+			From(dbmodels.TABLE_DECISION_RULES).
 			Where(squirrel.Eq{"decision_id": decisionIds}).
 			OrderBy("decision_id"),
 		func(r dbmodels.DbDecisionRule) (dbmodels.DbDecisionRule, error) { return r, nil },
@@ -519,9 +527,14 @@ func (repo *DecisionRepositoryImpl) rulesOfDecisionsBatch(ctx context.Context, e
 	}
 
 	// dispatch rules to their corresponding decision
-	for _, dbRule := range allRules {
+	for _, dbRule := range allDbRules {
+		rule, err := dbmodels.AdaptRuleExecution(dbRule)
+		if err != nil {
+			return nil, errors.Wrap(err, fmt.Sprintf("decision rule (%s):", dbRule.Id))
+		}
+
 		rulesOfDecision := decisionsRulesMap[dbRule.DecisionId]
-		rulesOfDecision.rules = append(rulesOfDecision.rules, dbmodels.AdaptRuleExecution(dbRule))
+		rulesOfDecision.rules = append(rulesOfDecision.rules, rule)
 	}
 
 	// return an array of RulesOfDecision that match the input array decisionIds

@@ -3,6 +3,8 @@ package models
 import (
 	"errors"
 	"time"
+
+	"github.com/checkmarble/marble-backend/models/ast"
 )
 
 type Decision struct {
@@ -53,22 +55,23 @@ type ScenarioExecution struct {
 type RuleExecution struct {
 	Rule                Rule
 	Result              bool
+	Evaluation          *ast.NodeEvaluation
 	ResultScoreModifier int
 	Error               error
 }
 
-type RuleExecutionError int
+type ExecutionError int
 
 const (
-	NoError              RuleExecutionError = 0
-	DivisionByZero       RuleExecutionError = 100
-	NullFieldRead        RuleExecutionError = 200
-	NoRowsRead           RuleExecutionError = 201
-	PayloadFieldNotFound RuleExecutionError = 202
-	Unknown              RuleExecutionError = -1
+	NoError              ExecutionError = 0
+	DivisionByZero       ExecutionError = 100
+	NullFieldRead        ExecutionError = 200
+	NoRowsRead           ExecutionError = 201
+	PayloadFieldNotFound ExecutionError = 202
+	Unknown              ExecutionError = -1
 )
 
-func (r RuleExecutionError) String() string {
+func (r ExecutionError) String() string {
 	switch r {
 	case DivisionByZero:
 		return "A division by zero occurred in a rule"
@@ -84,7 +87,7 @@ func (r RuleExecutionError) String() string {
 	return ""
 }
 
-func AdaptRuleExecutionError(err error) RuleExecutionError {
+func AdaptExecutionError(err error) ExecutionError {
 	switch {
 	case err == nil:
 		return NoError

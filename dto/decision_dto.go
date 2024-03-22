@@ -32,12 +32,13 @@ type CreateDecisionInputDto struct {
 }
 
 type APIDecisionRule struct {
-	Name          string    `json:"name"`
-	Description   string    `json:"description"`
-	ScoreModifier int       `json:"score_modifier"`
-	Result        bool      `json:"result"`
-	Error         *APIError `json:"error"`
-	RuleId        string    `json:"rule_id"`
+	Name           string             `json:"name"`
+	Description    string             `json:"description"`
+	ScoreModifier  int                `json:"score_modifier"`
+	Result         bool               `json:"result"`
+	Error          *APIError          `json:"error,omitempty"`
+	RuleId         string             `json:"rule_id"`
+	RuleEvaluation *NodeEvaluationDto `json:"rule_evaluation,omitempty"`
 }
 
 type APIError struct {
@@ -122,6 +123,11 @@ func NewAPIDecisionRule(rule models.RuleExecution) APIDecisionRule {
 	// Otherwise, by default it will generate an empty APIError{}
 	if rule.Error != nil {
 		apiDecisionRule.Error = &APIError{1, rule.Error.Error()}
+	}
+
+	if rule.Evaluation != nil {
+		evaluationDto := AdaptNodeEvaluationDto(*rule.Evaluation)
+		apiDecisionRule.RuleEvaluation = &evaluationDto
 	}
 
 	return apiDecisionRule
