@@ -366,6 +366,7 @@ func (usecases *UsecasesWithCreds) NewTransferCheckUsecase() TransferCheckUsecas
 	return TransferCheckUsecase{
 		dataModelRepository:        usecases.Repositories.DataModelRepository,
 		decisionUseCase:            usecases.NewDecisionUsecase(),
+		decisionRepository:         usecases.Repositories.DecisionRepository,
 		executorFactory:            usecases.NewExecutorFactory(),
 		ingestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
 		ingestionRepository:        usecases.Repositories.IngestionRepository,

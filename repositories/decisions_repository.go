@@ -20,6 +20,7 @@ type DecisionRepository interface {
 	DecisionsById(ctx context.Context, exec Executor, decisionIds []string) ([]models.Decision, error)
 	DecisionsByCaseId(ctx context.Context, exec Executor, caseId string) (
 		[]models.DecisionWithRuleExecutions, error)
+	DecisionsByObjectId(ctx context.Context, exec Executor, organizationId string, objectId string) ([]models.DecisionCore, error)
 	DecisionsOfScheduledExecution(
 		ctx context.Context,
 		exec Executor,
@@ -119,6 +120,31 @@ func (repo *DecisionRepositoryImpl) DecisionsByCaseId(
 	err := <-errChan
 
 	return decisions, err
+}
+
+func (repo *DecisionRepositoryImpl) DecisionsByObjectId(
+	ctx context.Context,
+	exec Executor,
+	organizationId string,
+	objectId string,
+) ([]models.DecisionCore, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := selectDecisions().
+		Where(squirrel.Eq{"org_id": organizationId}).
+		Where(squirrel.Eq{"trigger_object->>'object_id'": objectId}).
+		OrderBy("created_at DESC")
+
+	return SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (models.DecisionCore, error) {
+		db, err := pgx.RowToStructByPos[dbmodels.DbDecision](row)
+		if err != nil {
+			return models.DecisionCore{}, err
+		}
+
+		return dbmodels.AdaptDecisionCore(db), nil
+	})
 }
 
 func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(

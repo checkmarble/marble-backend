@@ -21,6 +21,13 @@ type Decision struct {
 	ScenarioIterationId  string
 }
 
+type DecisionCore struct {
+	DecisionId     string
+	OrganizationId string
+	CreatedAt      time.Time
+	Score          int
+}
+
 type DecisionWithRuleExecutions struct {
 	Decision
 	RuleExecutions []RuleExecution
