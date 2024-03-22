@@ -39,7 +39,10 @@ type TransferCheckUsecase struct {
 	transferMappingsRepository transferMappingsRepository
 }
 
-const TransferCheckTable = "transfers"
+const (
+	TransferCheckTable      = "transfers"
+	TransferCheckScenarioId = "585906d7-c55d-44f9-a7bf-b38459ce667d" // TODO: change placeholder
+)
 
 func (usecase *TransferCheckUsecase) CreateTransfer(
 	ctx context.Context,
@@ -124,12 +127,10 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 	doScore := transfer.SkipScore == nil || !*transfer.SkipScore
 	var decision models.DecisionWithRuleExecutions
 	if doScore {
-
-		// make a decision
 		decision, err = usecase.decisionUseCase.CreateDecision(
 			ctx,
 			models.CreateDecisionInput{
-				ScenarioId:     "585906d7-c55d-44f9-a7bf-b38459ce667d", // TODO: change placeholder
+				ScenarioId:     TransferCheckScenarioId,
 				ClientObject:   clientObject,
 				OrganizationId: organizationId,
 			},
@@ -403,4 +404,69 @@ func (usecase *TransferCheckUsecase) GetTransfer(
 		models.NotFoundError,
 		fmt.Sprintf("transfer %s not found", id),
 	)
+}
+
+func (usecase *TransferCheckUsecase) ScoreTransfer(
+	ctx context.Context,
+	organizationId string,
+	id string,
+) (models.Transfer, error) {
+	exec := usecase.executorFactory.NewExecutor()
+
+	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationId, false)
+	if err != nil {
+		return models.Transfer{}, err
+	}
+	table, ok := dataModel.Tables[TransferCheckTable]
+	if !ok {
+		return models.Transfer{}, errors.Newf("table %s not found", TransferCheckTable)
+	}
+
+	transferMapping, err := usecase.transferMappingsRepository.GetTransferMapping(ctx, exec, id)
+	if err != nil {
+		return models.Transfer{}, err
+	}
+
+	db, err := usecase.executorFactory.NewClientDbExecutor(ctx, organizationId)
+	if err != nil {
+		return models.Transfer{}, err
+	}
+
+	objects, err := usecase.ingestedDataReadRepository.QueryIngestedObject(ctx, db, table, transferMapping.ClientTransferId)
+	if err != nil {
+		return models.Transfer{}, err
+	}
+
+	if len(objects) == 0 {
+		return models.Transfer{}, errors.Wrap(
+			models.NotFoundError,
+			fmt.Sprintf("transfer %s not found", id),
+		)
+	}
+
+	t, err := models.TransferFromMap(objects[0])
+	if err != nil {
+		return models.Transfer{}, err
+	}
+	transfer := models.Transfer{
+		Id:           id,
+		TransferData: t,
+	}
+
+	decision, err := usecase.decisionUseCase.CreateDecision(
+		ctx,
+		models.CreateDecisionInput{
+			ScenarioId:     TransferCheckScenarioId,
+			ClientObject:   models.ClientObject{Data: objects[0], TableName: TransferCheckTable},
+			OrganizationId: organizationId,
+		},
+		utils.LoggerFromContext(ctx),
+	)
+	if err != nil {
+		return models.Transfer{}, err
+	}
+	transfer.LastScoredAt = null.TimeFrom(decision.CreatedAt)
+	transfer.Score = null.Int32From(int32(decision.Score))
+
+	return transfer, nil
 }
