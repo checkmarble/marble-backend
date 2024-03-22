@@ -35,14 +35,12 @@ type TransferCheckUsecase struct {
 	executorFactory            executor_factory.ExecutorFactory
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
 	ingestionRepository        repositories.IngestionRepository
+	organizationRepository     repositories.OrganizationRepository
 	transactionFactory         executor_factory.TransactionFactory
 	transferMappingsRepository transferMappingsRepository
 }
 
-const (
-	TransferCheckTable      = "transfers"
-	TransferCheckScenarioId = "585906d7-c55d-44f9-a7bf-b38459ce667d" // TODO: change placeholder
-)
+const TransferCheckTable = "transfers"
 
 func (usecase *TransferCheckUsecase) CreateTransfer(
 	ctx context.Context,
@@ -55,6 +53,16 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 	err := validateTransfer(transfer.TransferData)
 	if err != nil {
 		return models.Transfer{}, err
+	}
+
+	org, err := usecase.organizationRepository.GetOrganizationById(ctx, exec, organizationId)
+	if err != nil {
+		return models.Transfer{}, err
+	}
+	if org.TransferCheckScenarioId == nil {
+		return models.Transfer{}, errors.Wrapf(models.ForbiddenError,
+			"organization %s is not setup for transfer check", organizationId,
+		)
 	}
 
 	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationId, false)
@@ -130,7 +138,7 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 		decision, err = usecase.decisionUseCase.CreateDecision(
 			ctx,
 			models.CreateDecisionInput{
-				ScenarioId:     TransferCheckScenarioId,
+				ScenarioId:     *org.TransferCheckScenarioId,
 				ClientObject:   clientObject,
 				OrganizationId: organizationId,
 			},
@@ -413,6 +421,17 @@ func (usecase *TransferCheckUsecase) ScoreTransfer(
 ) (models.Transfer, error) {
 	exec := usecase.executorFactory.NewExecutor()
 
+	org, err := usecase.organizationRepository.GetOrganizationById(ctx, exec, organizationId)
+	if err != nil {
+		return models.Transfer{}, err
+	}
+	if org.TransferCheckScenarioId == nil {
+		return models.Transfer{}, errors.Wrapf(
+			models.ForbiddenError,
+			"organization %s is not setup for transfer check", organizationId,
+		)
+	}
+
 	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationId, false)
 	if err != nil {
 		return models.Transfer{}, err
@@ -456,7 +475,7 @@ func (usecase *TransferCheckUsecase) ScoreTransfer(
 	decision, err := usecase.decisionUseCase.CreateDecision(
 		ctx,
 		models.CreateDecisionInput{
-			ScenarioId:     TransferCheckScenarioId,
+			ScenarioId:     *org.TransferCheckScenarioId,
 			ClientObject:   models.ClientObject{Data: objects[0], TableName: TransferCheckTable},
 			OrganizationId: organizationId,
 		},

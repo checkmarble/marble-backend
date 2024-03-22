@@ -370,6 +370,7 @@ func (usecases *UsecasesWithCreds) NewTransferCheckUsecase() TransferCheckUsecas
 		executorFactory:            usecases.NewExecutorFactory(),
 		ingestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
 		ingestionRepository:        usecases.Repositories.IngestionRepository,
+		organizationRepository:     usecases.Repositories.OrganizationRepository,
 		transactionFactory:         usecases.NewTransactionFactory(),
 		transferMappingsRepository: &usecases.Repositories.MarbleDbRepository,
 	}
