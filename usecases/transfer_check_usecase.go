@@ -31,6 +31,7 @@ type transferMappingsRepository interface {
 type TransferCheckUsecase struct {
 	dataModelRepository        repositories.DataModelRepository
 	decisionUseCase            DecisionUsecase
+	decisionRepository         repositories.DecisionRepository
 	executorFactory            executor_factory.ExecutorFactory
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
 	ingestionRepository        repositories.IngestionRepository
@@ -202,6 +203,16 @@ func (usecase *TransferCheckUsecase) UpdateTransfer(
 		return models.Transfer{}, err
 	}
 
+	previousDecisions, err := usecase.decisionRepository.DecisionsByObjectId(
+		ctx,
+		exec,
+		organizationId,
+		transferMapping.ClientTransferId,
+	)
+	if err != nil {
+		return models.Transfer{}, err
+	}
+
 	var previousObjects []map[string]interface{}
 	err = usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Executor) error {
 		previousObjects, err = usecase.ingestedDataReadRepository.QueryIngestedObject(ctx,
@@ -245,10 +256,16 @@ func (usecase *TransferCheckUsecase) UpdateTransfer(
 		logger.ErrorContext(ctx, "error while converting transfer from map")
 	}
 
-	return models.Transfer{
+	out := models.Transfer{
 		Id:           id,
 		TransferData: outTransfer,
-	}, nil
+	}
+	if len(previousDecisions) > 0 {
+		out.LastScoredAt = null.TimeFrom(previousDecisions[0].CreatedAt)
+		out.Score = null.Int32From(int32(previousDecisions[0].Score))
+	}
+
+	return out, nil
 }
 
 func validateTranferUpdate(transfer models.TransferUpdateBody) error {
@@ -285,6 +302,16 @@ func (usecase *TransferCheckUsecase) QueryTransfers(
 		return make([]models.Transfer, 0), nil
 	}
 
+	previousDecisions, err := usecase.decisionRepository.DecisionsByObjectId(
+		ctx,
+		exec,
+		organizationId,
+		clientTransferId,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	db, err := usecase.executorFactory.NewClientDbExecutor(ctx, organizationId)
 	if err != nil {
 		return nil, err
@@ -304,6 +331,10 @@ func (usecase *TransferCheckUsecase) QueryTransfers(
 		transfer := models.Transfer{
 			Id:           transferMappings[0].Id,
 			TransferData: t,
+		}
+		if len(previousDecisions) > 0 {
+			transfer.LastScoredAt = null.TimeFrom(previousDecisions[0].CreatedAt)
+			transfer.Score = null.Int32From(int32(previousDecisions[0].Score))
 		}
 		out = append(out, transfer)
 	}
@@ -332,6 +363,16 @@ func (usecase *TransferCheckUsecase) GetTransfer(
 		return models.Transfer{}, err
 	}
 
+	previousDecisions, err := usecase.decisionRepository.DecisionsByObjectId(
+		ctx,
+		exec,
+		organizationId,
+		transferMapping.ClientTransferId,
+	)
+	if err != nil {
+		return models.Transfer{}, err
+	}
+
 	db, err := usecase.executorFactory.NewClientDbExecutor(ctx, organizationId)
 	if err != nil {
 		return models.Transfer{}, err
@@ -350,6 +391,10 @@ func (usecase *TransferCheckUsecase) GetTransfer(
 		transfer := models.Transfer{
 			Id:           id,
 			TransferData: t,
+		}
+		if len(previousDecisions) > 0 {
+			transfer.LastScoredAt = null.TimeFrom(previousDecisions[0].CreatedAt)
+			transfer.Score = null.Int32From(int32(previousDecisions[0].Score))
 		}
 		return transfer, nil
 	}

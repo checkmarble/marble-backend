@@ -72,6 +72,15 @@ func AdaptDecision(db DbDecision, decisionCase *models.Case) models.Decision {
 	}
 }
 
+func AdaptDecisionCore(db DbDecision) models.DecisionCore {
+	return models.DecisionCore{
+		DecisionId:     db.Id,
+		OrganizationId: db.OrganizationId,
+		CreatedAt:      db.CreatedAt,
+		Score:          db.Score,
+	}
+}
+
 func AdaptDecisionWithRuleExecutions(db DbDecision, ruleExecutions []models.RuleExecution,
 	decisionCase *models.Case,
 ) models.DecisionWithRuleExecutions {
