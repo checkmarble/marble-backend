@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/cockroachdb/errors"
+	"github.com/gin-gonic/gin"
+
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/gin-gonic/gin"
 )
 
 func (api *API) handleTransferCheck(c *gin.Context) {
@@ -21,8 +23,7 @@ func (api *API) handleTransferCheck(c *gin.Context) {
 
 	var data dto.TransferCreateBody
 	if err := c.ShouldBindJSON(&data); err != nil {
-		fmt.Println(err)
-		c.Status(http.StatusBadRequest)
+		presentError(c, errors.Wrap(models.BadParameterError, err.Error()))
 		return
 	}
 
