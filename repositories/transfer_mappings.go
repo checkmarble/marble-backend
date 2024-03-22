@@ -64,7 +64,7 @@ func (repo *MarbleDbRepository) CreateTransferMapping(
 			Values(
 				id,
 				transferMapping.OrganizationId,
-				transferMapping.TransferId,
+				transferMapping.ClientTransferId,
 			),
 	)
 	return err
