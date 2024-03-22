@@ -68,8 +68,8 @@ type TransferDataCreateBody struct {
 }
 
 type TransferCreateBody struct {
-	TransferData TransferDataCreateBody `json:"transfer_data" binding:"required"`
-	SkipScore    *bool                  `json:"skip_score"`
+	TransferData *TransferDataCreateBody `json:"transfer_data" binding:"required"`
+	SkipScore    *bool                   `json:"skip_score"`
 }
 
 func AdaptTransferDataCreateBody(body TransferDataCreateBody) models.TransferDataCreateBody {
@@ -78,7 +78,7 @@ func AdaptTransferDataCreateBody(body TransferDataCreateBody) models.TransferDat
 
 func AdaptTransferCreateBody(body TransferCreateBody) models.TransferCreateBody {
 	return models.TransferCreateBody{
-		TransferData: AdaptTransferDataCreateBody(body.TransferData),
+		TransferData: AdaptTransferDataCreateBody(*body.TransferData),
 		SkipScore:    body.SkipScore,
 	}
 }
