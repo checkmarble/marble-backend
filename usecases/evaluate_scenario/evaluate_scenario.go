@@ -172,7 +172,7 @@ func evalScenarioRule(
 	}
 
 	// Evaluate single rule
-	ruleReturnValue, err := repositories.EvaluateAstExpression.EvaluateAstExpression(
+	returnValue, ruleEvaluation, err := repositories.EvaluateAstExpression.EvaluateAstExpression(
 		ctx,
 		*rule.FormulaAstExpression,
 		dataAccessor.organizationId,
@@ -186,8 +186,9 @@ func evalScenarioRule(
 	}
 
 	ruleExecution := models.RuleExecution{
-		Rule:   rule,
-		Result: ruleReturnValue.ReturnValue,
+		Rule:       rule,
+		Evaluation: &ruleEvaluation,
+		Result:     returnValue,
 	}
 
 	if err != nil {
@@ -222,7 +223,7 @@ func evalScenarioTrigger(
 	ctx, span := tracer.Start(ctx, "evaluate_scenario.evalScenarioTrigger")
 	defer span.End()
 
-	triggerEvaluation, err := repositories.EvaluateAstExpression.EvaluateAstExpression(
+	returnValue, _, err := repositories.EvaluateAstExpression.EvaluateAstExpression(
 		ctx,
 		triggerAstExpression,
 		organizationId,
@@ -235,7 +236,7 @@ func evalScenarioTrigger(
 			"Unexpected error evaluating trigger condition in EvalScenario")
 	}
 
-	if !triggerEvaluation.ReturnValue || isAuthorizedError {
+	if !returnValue || isAuthorizedError {
 		return errors.Wrap(
 			models.ErrScenarioTriggerConditionAndTriggerObjectMismatch,
 			"scenario trigger object does not match payload in EvalScenario")

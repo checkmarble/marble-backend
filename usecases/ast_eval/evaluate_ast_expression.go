@@ -19,7 +19,7 @@ func (evaluator *EvaluateAstExpression) EvaluateAstExpression(
 	organizationId string,
 	payload models.ClientObject,
 	dataModel models.DataModel,
-) (ast.RootNodeEvaluation, error) {
+) (bool, ast.NodeEvaluation, error) {
 	environment := evaluator.AstEvaluationEnvironmentFactory(EvaluationEnvironmentFactoryParams{
 		OrganizationId:                organizationId,
 		ClientObject:                  payload,
@@ -29,12 +29,12 @@ func (evaluator *EvaluateAstExpression) EvaluateAstExpression(
 
 	evaluation, ok := EvaluateAst(ctx, environment, ruleAstExpression)
 	if !ok {
-		return ast.RootNodeEvaluation{}, errors.Join(evaluation.AllErrors()...)
+		return false, evaluation, errors.Join(evaluation.AllErrors()...)
 	}
 
-	rootEvaluation, err := ast.AdaptRootNodeEvaluation(evaluation)
+	returnValue, err := evaluation.GetBoolReturnValue()
 	if err != nil {
-		return ast.RootNodeEvaluation{}, errors.Join(models.ErrRuntimeExpression, err)
+		return false, evaluation, errors.Join(models.ErrRuntimeExpression, err)
 	}
-	return rootEvaluation, nil
+	return returnValue, evaluation, nil
 }
