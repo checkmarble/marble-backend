@@ -4,6 +4,7 @@ type Organization struct {
 	Id                         string
 	Name                       string
 	ExportScheduledExecutionS3 string
+	TransferCheckScenarioId    *string
 }
 
 type CreateOrganizationInput struct {
