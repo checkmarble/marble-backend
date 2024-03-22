@@ -24,8 +24,8 @@ type TransferMapping struct {
 }
 
 type TransferMappingCreateInput struct {
-	OrganizationId string
-	TransferId     string
+	OrganizationId   string
+	ClientTransferId string
 }
 
 type TransferData struct {
@@ -98,6 +98,7 @@ func TransferFromMap(m map[string]any) (TransferData, error) {
 	if !ok {
 		return transfer, errors.New("timezone is not a string")
 	}
+	// warning here: reverse of what we do in "ToMap", the struct has "TransferId" but the map has "object_id"
 	transfer.TransferId, ok = m["object_id"].(string)
 	if !ok {
 		return transfer, errors.New("object_id is not a string")
