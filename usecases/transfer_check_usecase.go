@@ -26,6 +26,7 @@ type transferMappingsRepository interface {
 		id string,
 		transferMapping models.TransferMappingCreateInput,
 	) error
+	DeleteTransferMapping(ctx context.Context, exec repositories.Executor, id string) error
 }
 
 type TransferCheckUsecase struct {
@@ -64,8 +65,6 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 		return models.Transfer{}, err
 	}
 
-	clientObject := models.ClientObject{Data: transfer.TransferData.ToMap(), TableName: TransferCheckTable}
-
 	previousObjects, err := usecase.lookupPreviousObjects(ctx, nil, organizationId, table, transfer.TransferData.TransferId)
 	if err != nil {
 		return models.Transfer{}, err
@@ -96,6 +95,9 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 		}
 	}
 
+	clientObject := models.ClientObject{Data: transfer.TransferData.ToIngestionMap(
+		transferMappingId), TableName: TransferCheckTable}
+
 	err = usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Executor) error {
 		err := usecase.ingestionRepository.IngestObjects(ctx, tx, []models.ClientObject{
 			clientObject,
@@ -112,6 +114,9 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 		return nil
 	})
 	if err != nil {
+		if delErr := usecase.transferMappingsRepository.DeleteTransferMapping(ctx, exec, transferMappingId); delErr != nil {
+			logger.ErrorContext(ctx, fmt.Sprintf("error while deleting transfer mapping: %s", delErr.Error()))
+		}
 		return models.Transfer{}, err
 	}
 
