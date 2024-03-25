@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 )
 
 type GetDecisionInput struct {
@@ -32,13 +33,13 @@ type CreateDecisionInputDto struct {
 }
 
 type APIDecisionRule struct {
-	Name           string             `json:"name"`
-	Description    string             `json:"description"`
-	ScoreModifier  int                `json:"score_modifier"`
-	Result         bool               `json:"result"`
-	Error          *APIError          `json:"error,omitempty"`
-	RuleId         string             `json:"rule_id"`
-	RuleEvaluation *NodeEvaluationDto `json:"rule_evaluation,omitempty"`
+	Name           string                 `json:"name"`
+	Description    string                 `json:"description"`
+	ScoreModifier  int                    `json:"score_modifier"`
+	Result         bool                   `json:"result"`
+	Error          *APIError              `json:"error,omitempty"`
+	RuleId         string                 `json:"rule_id"`
+	RuleEvaluation *ast.NodeEvaluationDto `json:"rule_evaluation,omitempty"`
 }
 
 type APIError struct {
@@ -112,22 +113,18 @@ func NewAPIDecisionWithRule(decision models.DecisionWithRuleExecutions) APIDecis
 
 func NewAPIDecisionRule(rule models.RuleExecution) APIDecisionRule {
 	apiDecisionRule := APIDecisionRule{
-		Name:          rule.Rule.Name,
-		Description:   rule.Rule.Description,
-		ScoreModifier: rule.ResultScoreModifier,
-		Result:        rule.Result,
-		RuleId:        rule.Rule.Id,
+		Name:           rule.Rule.Name,
+		Description:    rule.Rule.Description,
+		ScoreModifier:  rule.ResultScoreModifier,
+		Result:         rule.Result,
+		RuleId:         rule.Rule.Id,
+		RuleEvaluation: rule.Evaluation,
 	}
 
 	// Error added here to make sure it does not appear if empty
 	// Otherwise, by default it will generate an empty APIError{}
 	if rule.Error != nil {
 		apiDecisionRule.Error = &APIError{1, rule.Error.Error()}
-	}
-
-	if rule.Evaluation != nil {
-		evaluationDto := AdaptNodeEvaluationDto(*rule.Evaluation)
-		apiDecisionRule.RuleEvaluation = &evaluationDto
 	}
 
 	return apiDecisionRule

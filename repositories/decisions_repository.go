@@ -433,7 +433,7 @@ func (repo *DecisionRepositoryImpl) StoreDecision(
 		)
 
 	for _, ruleExecution := range decision.RuleExecutions {
-		serializedRuleEvaluation, err := dbmodels.SerializeNodeEvaluation(ruleExecution.Evaluation)
+		serializedRuleEvaluation, err := dbmodels.SerializeNodeEvaluationDto(ruleExecution.Evaluation)
 		if err != nil {
 			return errors.Wrap(err, fmt.Sprintf("rule(%s):", ruleExecution.Rule.Id))
 		}
