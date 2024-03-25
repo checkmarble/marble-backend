@@ -9,9 +9,10 @@ import (
 
 type DBTransferMapping struct {
 	Id               string    `db:"id"`
+	ClientTransferId string    `db:"client_transfer_id"`
 	CreatedAt        time.Time `db:"created_at"`
 	OrganizationId   string    `db:"organization_id"`
-	ClientTransferId string    `db:"client_transfer_id"`
+	PartnerId        string    `db:"partner_id"`
 }
 
 const TABLE_TRANSFER_MAPPINGS = "transfer_mappings"

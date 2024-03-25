@@ -58,13 +58,15 @@ func (repo *MarbleDbRepository) CreateTransferMapping(
 			Insert(dbmodels.TABLE_TRANSFER_MAPPINGS).
 			Columns(
 				"id",
-				"organization_id",
 				"client_transfer_id",
+				"organization_id",
+				"partner_id",
 			).
 			Values(
 				id,
-				transferMapping.OrganizationId,
 				transferMapping.ClientTransferId,
+				transferMapping.OrganizationId,
+				transferMapping.PartnerId,
 			),
 	)
 	return err
