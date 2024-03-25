@@ -60,7 +60,7 @@ func (g *Generator) FromAPIKey(ctx context.Context, apiKey string) (string, time
 			fmt.Errorf("GetOrganizationByID error: %w", err)
 	}
 
-	name := fmt.Sprintf("ApiKey Of %s", organization.Name)
+	name := fmt.Sprintf("Api key %s*** of %s", key.Prefix, organization.Name)
 	credentials := models.NewCredentialWithApiKey(key.OrganizationId, key.Role, name)
 	return g.encodeToken(credentials)
 }
