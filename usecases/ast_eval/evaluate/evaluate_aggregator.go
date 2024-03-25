@@ -52,7 +52,7 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 	validTypes, isValid := ValidTypesForAggregator[aggregator]
 	if !isValid {
 		return MakeEvaluateError(errors.Join(
-			errors.Wrap(models.ErrRuntimeExpression,
+			errors.Wrap(ast.ErrRuntimeExpression,
 				fmt.Sprintf("aggregator %s is not a valid aggregator in Evaluate aggregator", aggregator)),
 			ast.NewNamedArgumentError("aggregator"),
 		))
@@ -68,7 +68,7 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 	isValidFieldType := slices.Contains(validTypes, fieldType)
 	if !isValidFieldType {
 		return MakeEvaluateError(errors.Join(
-			errors.Wrap(models.ErrRuntimeExpression,
+			errors.Wrap(ast.ErrRuntimeExpression,
 				fmt.Sprintf("field type %s is not valid for aggregator %s in Evaluate aggregator", fieldType.String(), aggregator)),
 			ast.NewNamedArgumentError("fieldName"),
 		))
@@ -79,7 +79,7 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 		for _, filter := range filters {
 			if filter.TableName != tableNameStr {
 				return MakeEvaluateError(errors.Join(
-					errors.Wrap(models.ErrRuntimeExpression,
+					errors.Wrap(ast.ErrRuntimeExpression,
 						"filters must be applied on the same table"),
 					ast.NewNamedArgumentError("filters"),
 				))
@@ -120,10 +120,10 @@ func (a AggregatorEvaluator) defaultValueForAggregator(aggregator ast.Aggregator
 	case ast.AGGREGATOR_COUNT, ast.AGGREGATOR_COUNT_DISTINCT:
 		return 0, nil
 	case ast.AGGREGATOR_AVG, ast.AGGREGATOR_MAX, ast.AGGREGATOR_MIN:
-		return MakeEvaluateError(errors.Wrap(models.ErrNullFieldRead,
+		return MakeEvaluateError(errors.Wrap(ast.ErrNullFieldRead,
 			fmt.Sprintf("aggregation %s returned null", aggregator)))
 	default:
-		return MakeEvaluateError(errors.Wrap(models.ErrRuntimeExpression,
+		return MakeEvaluateError(errors.Wrap(ast.ErrRuntimeExpression,
 			fmt.Sprintf("aggregation %s not supported", aggregator)))
 	}
 }

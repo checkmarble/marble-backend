@@ -180,7 +180,7 @@ func evalScenarioRule(
 		dataModel,
 	)
 
-	if err != nil && !models.IsAuthorizedError(err) {
+	if err != nil && !ast.IsAuthorizedError(err) {
 		return 0, models.RuleExecution{}, errors.Wrap(err,
 			fmt.Sprintf("error while evaluating rule %s (%s)", rule.Name, rule.Id))
 	}
@@ -231,7 +231,7 @@ func evalScenarioTrigger(
 		payload,
 		dataModel,
 	)
-	isAuthorizedError := models.IsAuthorizedError(err)
+	isAuthorizedError := ast.IsAuthorizedError(err)
 	if err != nil && !isAuthorizedError {
 		return errors.Wrap(err,
 			"Unexpected error evaluating trigger condition in EvalScenario")
