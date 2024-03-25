@@ -69,3 +69,18 @@ func (repo *MarbleDbRepository) CreateTransferMapping(
 	)
 	return err
 }
+
+func (repo *MarbleDbRepository) DeleteTransferMapping(ctx context.Context, exec Executor, id string) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	err := ExecBuilder(
+		ctx,
+		exec,
+		NewQueryBuilder().
+			Delete(dbmodels.TABLE_TRANSFER_MAPPINGS).
+			Where(squirrel.Eq{"id": id}),
+	)
+	return err
+}

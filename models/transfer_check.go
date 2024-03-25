@@ -115,6 +115,7 @@ func TransferFromMap(m map[string]any) (TransferData, error) {
 	if !ok {
 		return transfer, errors.New("value is not an int64")
 	}
+
 	return transfer, nil
 }
 
@@ -144,7 +145,7 @@ type TransferCreateBody struct {
 	SkipScore    *bool
 }
 
-func (t TransferDataCreateBody) ToMap() map[string]any {
+func (t TransferDataCreateBody) ToIngestionMap(id string) map[string]any {
 	return map[string]any{
 		// there is a trap here: we map it to "object_id" to match what we do elsewhere on data model tables
 		"object_id": t.TransferId,
@@ -152,6 +153,8 @@ func (t TransferDataCreateBody) ToMap() map[string]any {
 		"updated_at": time.Now(),
 		// TODO: actually we want this if it's a new transfer, the old value otherwise
 		"created_at": time.Now(),
+		// marble generated id of the transfer
+		"marble_id": id,
 
 		"beneficiary_bic":       t.BeneficiaryBic,
 		"beneficiary_iban":      t.BeneficiaryIban,
