@@ -61,7 +61,7 @@ func (g *Generator) FromAPIKey(ctx context.Context, apiKey string) (string, time
 	}
 
 	name := fmt.Sprintf("Api key %s*** of %s", key.Prefix, organization.Name)
-	credentials := models.NewCredentialWithApiKey(key.OrganizationId, key.Role, name)
+	credentials := models.NewCredentialWithApiKey(key.OrganizationId, key.PartnerId, key.Role, name)
 	return g.encodeToken(credentials)
 }
 
