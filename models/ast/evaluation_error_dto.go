@@ -17,6 +17,7 @@ type errorAndCode struct {
 }
 
 var evaluationErrorDtoMap = []errorAndCode{
+	// Validation related errors
 	{ErrUndefinedFunction, "UNDEFINED_FUNCTION"},
 	{ErrWrongNumberOfArgument, "WRONG_NUMBER_OF_ARGUMENTS"},
 	{ErrMissingNamedArgument, "MISSING_NAMED_ARGUMENT"},
@@ -32,6 +33,13 @@ var evaluationErrorDtoMap = []errorAndCode{
 	{ErrArgumentInvalidType, "ARGUMENT_INVALID_TYPE"},
 	{ErrListNotFound, "LIST_NOT_FOUND"},
 	{ErrDatabaseAccessNotFound, "DATABASE_ACCESS_NOT_FOUND"},
+
+	// Runtime execution related errors
+	{ErrNullFieldRead, "NULL_FIELD_READ"},
+	{ErrNoRowsRead, "NO_ROWS_READ"},
+	{ErrDivisionByZero, "DIVISION_BY_ZERO"},
+	{ErrPayloadFieldNotFound, "PAYLOAD_FIELD_NOT_FOUND"},
+	{ErrRuntimeExpression, "RUNTIME_EXPRESSION_ERROR"}, // must be last, as it is the most generic error (and above runtime errors are wrapped in it)
 }
 
 func AdaptEvaluationErrorDto(err error) EvaluationErrorDto {

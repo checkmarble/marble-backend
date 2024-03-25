@@ -14,24 +14,19 @@ type NodeEvaluation struct {
 	NamedChildren map[string]NodeEvaluation
 }
 
-func (root NodeEvaluation) AllErrors() (errs []error) {
-	var addEvaluationErrors func(NodeEvaluation)
+func (root NodeEvaluation) FlattenErrors() []error {
+	errs := make([]error, 0)
 
-	addEvaluationErrors = func(child NodeEvaluation) {
-		if child.Errors != nil {
-			errs = append(errs, child.Errors...)
-		}
+	errs = append(errs, root.Errors...)
 
-		for _, child := range child.Children {
-			addEvaluationErrors(child)
-		}
-
-		for _, child := range child.NamedChildren {
-			addEvaluationErrors(child)
-		}
+	for _, child := range root.Children {
+		errs = append(errs, child.FlattenErrors()...)
 	}
 
-	addEvaluationErrors(root)
+	for _, child := range root.NamedChildren {
+		errs = append(errs, child.FlattenErrors()...)
+	}
+
 	return errs
 }
 

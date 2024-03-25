@@ -24,12 +24,12 @@ func ScenarioValidationToError(validation models.ScenarioValidation) error {
 	errs = append(errs, pure_utils.Map(validation.Errors, toError)...)
 
 	errs = append(errs, pure_utils.Map(validation.Trigger.Errors, toError)...)
-	errs = append(errs, validation.Trigger.TriggerEvaluation.AllErrors()...)
+	errs = append(errs, validation.Trigger.TriggerEvaluation.FlattenErrors()...)
 
 	errs = append(errs, pure_utils.Map(validation.Rules.Errors, toError)...)
 	for _, rule := range validation.Rules.Rules {
 		errs = append(errs, pure_utils.Map(rule.Errors, toError)...)
-		errs = append(errs, rule.RuleEvaluation.AllErrors()...)
+		errs = append(errs, rule.RuleEvaluation.FlattenErrors()...)
 	}
 
 	errs = append(errs, pure_utils.Map(validation.Decision.Errors, toError)...)
