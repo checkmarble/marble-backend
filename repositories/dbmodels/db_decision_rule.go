@@ -45,7 +45,7 @@ func adaptErrorCodeAsError(errCode models.ExecutionError) error {
 }
 
 func AdaptRuleExecution(db DbDecisionRule) (models.RuleExecution, error) {
-	evaluation, err := DeserializeNodeEvaluation(db.RuleEvaluation)
+	evaluation, err := DeserializeNodeEvaluationDto(db.RuleEvaluation)
 	if err != nil {
 		return models.RuleExecution{}, err
 	}

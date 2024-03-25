@@ -1,9 +1,6 @@
-package dto
+package ast
 
-import (
-	"github.com/checkmarble/marble-backend/models/ast"
-	"github.com/checkmarble/marble-backend/pure_utils"
-)
+import "github.com/checkmarble/marble-backend/pure_utils"
 
 type NodeEvaluationDto struct {
 	ReturnValue   any                          `json:"return_value"`
@@ -12,7 +9,7 @@ type NodeEvaluationDto struct {
 	NamedChildren map[string]NodeEvaluationDto `json:"named_children,omitempty"`
 }
 
-func AdaptNodeEvaluationDto(evaluation ast.NodeEvaluation) NodeEvaluationDto {
+func AdaptNodeEvaluationDto(evaluation NodeEvaluation) NodeEvaluationDto {
 	return NodeEvaluationDto{
 		ReturnValue:   evaluation.ReturnValue,
 		Errors:        pure_utils.Map(evaluation.Errors, AdaptEvaluationErrorDto),
