@@ -36,7 +36,7 @@ func New(
 	return &http.Server{
 		Addr:         fmt.Sprintf("0.0.0.0:%s", port),
 		WriteTimeout: time.Second * 60,
-		ReadTimeout:  time.Second * 15,
+		ReadTimeout:  time.Second * 60,
 		IdleTimeout:  time.Second * 60,
 		Handler:      h2c.NewHandler(router, &http2.Server{}),
 	}
