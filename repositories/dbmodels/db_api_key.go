@@ -12,15 +12,15 @@ import (
 type DBApiKey struct {
 	Id             string             `db:"id"`
 	CreatedAt      time.Time          `db:"created_at"`
-	OrganizationId string             `db:"org_id"`
-	Key            string             `db:"key"` // TODO(hash-key): alter column name to "hash"
-	Hash           []byte             `db:"key_hash"`
-	Description    string             `db:"description"`
 	DeletedAt      pgtype.Timestamptz `db:"deleted_at"`
+	Description    string             `db:"description"`
+	Hash           []byte             `db:"key_hash"`
+	OrganizationId string             `db:"org_id"`
+	Prefix         string             `db:"prefix"`
 	Role           int                `db:"role"`
 }
 
-const TABLE_APIKEYS = "apikeys"
+const TABLE_APIKEYS = "api_keys"
 
 var ApiKeyFields = utils.ColumnList[DBApiKey]()
 
@@ -29,9 +29,9 @@ func AdaptApikey(db DBApiKey) (models.ApiKey, error) {
 		Id:             db.Id,
 		CreatedAt:      db.CreatedAt,
 		Description:    db.Description,
-		Key:            db.Key,
 		Hash:           db.Hash,
 		OrganizationId: db.OrganizationId,
+		Prefix:         db.Prefix,
 		Role:           models.Role(db.Role),
 	}, nil
 }
