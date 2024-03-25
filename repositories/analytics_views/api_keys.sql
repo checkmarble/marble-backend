@@ -1,7 +1,7 @@
-DROP VIEW IF EXISTS analytics.apikeys;
+DROP VIEW IF EXISTS analytics.api_keys;
 
 CREATE VIEW
-      analytics.apikeys
+      analytics.api_keys
 WITH
       (security_invoker = false) AS
 SELECT
@@ -10,4 +10,4 @@ SELECT
       deleted_at,
       role
 FROM
-      marble.apikeys;
+      marble.api_keys;

@@ -54,7 +54,7 @@ func (usecase *ApiKeyUseCase) ListApiKeys(ctx context.Context) ([]models.ApiKey,
 	return apiKeys, nil
 }
 
-func (usecase *ApiKeyUseCase) CreateApiKey(ctx context.Context, input models.CreateApiKeyInput) (models.ApiKey, error) {
+func (usecase *ApiKeyUseCase) CreateApiKey(ctx context.Context, input models.CreateApiKeyInput) (models.CreatedApiKey, error) {
 	apiKeyId := uuid.NewString()
 	key := generateAPiKey()
 	hash := sha256.Sum256([]byte(key))
@@ -62,17 +62,17 @@ func (usecase *ApiKeyUseCase) CreateApiKey(ctx context.Context, input models.Cre
 		Id:             apiKeyId,
 		Description:    input.Description,
 		Hash:           hash[:],
-		Key:            key,
+		Prefix:         key[:3],
 		OrganizationId: input.OrganizationId,
 		Role:           input.Role,
 	}
 
 	if err := usecase.enforceSecurity.CreateApiKey(input.OrganizationId); err != nil {
-		return models.ApiKey{}, err
+		return models.CreatedApiKey{}, err
 	}
 
 	if input.Role != models.API_CLIENT {
-		return models.ApiKey{}, errors.Wrap(
+		return models.CreatedApiKey{}, errors.Wrap(
 			models.BadParameterError,
 			fmt.Sprintf("role %s is not supported", input.Role),
 		)
@@ -84,14 +84,17 @@ func (usecase *ApiKeyUseCase) CreateApiKey(ctx context.Context, input models.Cre
 		apiKey,
 	)
 	if err != nil {
-		return models.ApiKey{}, err
+		return models.CreatedApiKey{}, err
 	}
 
 	tracking.TrackEvent(ctx, models.AnalyticsApiKeyCreated, map[string]interface{}{
 		"api_key_id": apiKey.Id,
 	})
 
-	return apiKey, nil
+	return models.CreatedApiKey{
+		ApiKey: apiKey,
+		Key:    key,
+	}, nil
 }
 
 func generateAPiKey() string {

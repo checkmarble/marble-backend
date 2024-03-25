@@ -13,8 +13,8 @@ import (
 
 func (db *Database) GetApiKeyByHash(ctx context.Context, hash []byte) (models.ApiKey, error) {
 	query := `
-		SELECT id, org_id, key, description, role
-		FROM apikeys
+		SELECT id, org_id, prefix, description, role
+		FROM api_keys
 		WHERE key_hash = $1
 		AND deleted_at IS NULL
 	`
@@ -23,7 +23,7 @@ func (db *Database) GetApiKeyByHash(ctx context.Context, hash []byte) (models.Ap
 	err := db.pool.QueryRow(ctx, query, hash).Scan(
 		&apiKey.Id,
 		&apiKey.OrganizationId,
-		&apiKey.Key,
+		&apiKey.Prefix,
 		&apiKey.Description,
 		&apiKey.Role,
 	)
