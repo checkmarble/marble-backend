@@ -447,7 +447,7 @@ func (repo *DecisionRepositoryImpl) StoreDecision(
 				ruleExecution.Rule.Description,
 				ruleExecution.ResultScoreModifier,
 				ruleExecution.Result,
-				models.AdaptExecutionError(ruleExecution.Error),
+				dbmodels.AdaptExecutionError(ruleExecution.Error),
 				ruleExecution.Rule.Id,
 				serializedRuleEvaluation,
 			)
