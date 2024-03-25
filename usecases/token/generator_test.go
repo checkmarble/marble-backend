@@ -23,6 +23,7 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 	apiKey := models.ApiKey{
 		Id:             "api_key_id",
 		OrganizationId: "organization_id",
+		Prefix:         "abc",
 		Role:           models.ADMIN,
 	}
 
@@ -48,7 +49,7 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 			OrganizationId: "organization_id",
 			Role:           models.ADMIN,
 			ActorIdentity: models.Identity{
-				ApiKeyName: "ApiKey Of organization",
+				ApiKeyName: "Api key abc*** of organization",
 			},
 		}).
 			Return(token, nil)
@@ -113,7 +114,7 @@ func TestGenerator_GenerateToken_APIKey(t *testing.T) {
 			OrganizationId: "organization_id",
 			Role:           models.ADMIN,
 			ActorIdentity: models.Identity{
-				ApiKeyName: "ApiKey Of organization",
+				ApiKeyName: "Api key abc*** of organization",
 			},
 		}).
 			Return(token, nil)

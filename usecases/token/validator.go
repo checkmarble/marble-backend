@@ -33,7 +33,7 @@ func (v *Validator) fromAPIKey(ctx context.Context, key string) (models.Credenti
 	if err != nil {
 		return models.Credentials{}, fmt.Errorf("getter.GetOrganizationByID error: %w", err)
 	}
-	name := fmt.Sprintf("ApiKey Of %s", organization.Name)
+	name := fmt.Sprintf("Api key %s*** of %s", apiKey.Prefix, organization.Name)
 	credentials := models.NewCredentialWithApiKey(apiKey.OrganizationId, apiKey.Role, name)
 	return credentials, nil
 }
