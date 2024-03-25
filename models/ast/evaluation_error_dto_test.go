@@ -1,16 +1,14 @@
-package dto
+package ast
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/checkmarble/marble-backend/models/ast"
-
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAdaptEvaluationErrorDto_an_error(t *testing.T) {
-	err := fmt.Errorf("test error %w", ast.ErrWrongNumberOfArgument)
+	err := fmt.Errorf("test error %w", ErrWrongNumberOfArgument)
 
 	evaluationError := AdaptEvaluationErrorDto(err)
 
@@ -21,7 +19,7 @@ func TestAdaptEvaluationErrorDto_an_error(t *testing.T) {
 }
 
 func TestAdaptEvaluationErrorDto_with_argument_error(t *testing.T) {
-	err := fmt.Errorf("test error %w", ast.NewArgumentError(666))
+	err := fmt.Errorf("test error %w", NewArgumentError(666))
 
 	evaluationError := AdaptEvaluationErrorDto(err)
 
@@ -32,7 +30,7 @@ func TestAdaptEvaluationErrorDto_with_argument_error(t *testing.T) {
 }
 
 func TestAdaptEvaluationErrorDto_with_named_argument_error(t *testing.T) {
-	err := fmt.Errorf("test error %w", ast.NewNamedArgumentError("diabolo"))
+	err := fmt.Errorf("test error %w", NewNamedArgumentError("diabolo"))
 
 	evaluationError := AdaptEvaluationErrorDto(err)
 

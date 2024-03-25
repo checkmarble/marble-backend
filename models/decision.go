@@ -55,7 +55,7 @@ type ScenarioExecution struct {
 type RuleExecution struct {
 	Rule                Rule
 	Result              bool
-	Evaluation          *ast.NodeEvaluation
+	Evaluation          *ast.NodeEvaluationDto
 	ResultScoreModifier int
 	Error               error
 }

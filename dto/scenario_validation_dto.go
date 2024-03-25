@@ -2,6 +2,7 @@ package dto
 
 import (
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
@@ -19,12 +20,12 @@ func AdaptScenarioValidationErrorDto(err models.ScenarioValidationError) Scenari
 
 type triggerValidationDto struct {
 	Errors            []ScenarioValidationErrorDto `json:"errors"`
-	TriggerEvaluation NodeEvaluationDto            `json:"trigger_evaluation"`
+	TriggerEvaluation ast.NodeEvaluationDto        `json:"trigger_evaluation"`
 }
 
 type ruleValidationDto struct {
 	Errors         []ScenarioValidationErrorDto `json:"errors"`
-	RuleEvaluation NodeEvaluationDto            `json:"rule_evaluation"`
+	RuleEvaluation ast.NodeEvaluationDto        `json:"rule_evaluation"`
 }
 
 type rulesValidationDto struct {
@@ -46,14 +47,14 @@ func AdaptScenarioValidationDto(s models.ScenarioValidation) ScenarioValidationD
 	return ScenarioValidationDto{
 		Trigger: triggerValidationDto{
 			Errors:            pure_utils.Map(s.Trigger.Errors, AdaptScenarioValidationErrorDto),
-			TriggerEvaluation: AdaptNodeEvaluationDto(s.Trigger.TriggerEvaluation),
+			TriggerEvaluation: ast.AdaptNodeEvaluationDto(s.Trigger.TriggerEvaluation),
 		},
 		Rules: rulesValidationDto{
 			Errors: pure_utils.Map(s.Rules.Errors, AdaptScenarioValidationErrorDto),
 			Rules: pure_utils.MapValues(s.Rules.Rules, func(ruleValidation models.RuleValidation) ruleValidationDto {
 				return ruleValidationDto{
 					Errors:         pure_utils.Map(ruleValidation.Errors, AdaptScenarioValidationErrorDto),
-					RuleEvaluation: AdaptNodeEvaluationDto(ruleValidation.RuleEvaluation),
+					RuleEvaluation: ast.AdaptNodeEvaluationDto(ruleValidation.RuleEvaluation),
 				}
 			}),
 		},

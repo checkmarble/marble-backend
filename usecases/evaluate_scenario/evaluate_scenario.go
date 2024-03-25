@@ -185,9 +185,10 @@ func evalScenarioRule(
 			fmt.Sprintf("error while evaluating rule %s (%s)", rule.Name, rule.Id))
 	}
 
+	ruleEvaluationDto := ast.AdaptNodeEvaluationDto(ruleEvaluation)
 	ruleExecution := models.RuleExecution{
 		Rule:       rule,
-		Evaluation: &ruleEvaluation,
+		Evaluation: &ruleEvaluationDto,
 		Result:     returnValue,
 	}
 
