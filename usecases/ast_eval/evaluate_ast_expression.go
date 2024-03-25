@@ -34,7 +34,7 @@ func (evaluator *EvaluateAstExpression) EvaluateAstExpression(
 
 	returnValue, err := evaluation.GetBoolReturnValue()
 	if err != nil {
-		return false, evaluation, errors.Join(models.ErrRuntimeExpression, err)
+		return false, evaluation, errors.Join(ast.ErrRuntimeExpression, err)
 	}
 	return returnValue, evaluation, nil
 }

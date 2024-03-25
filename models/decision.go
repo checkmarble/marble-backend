@@ -91,13 +91,13 @@ func AdaptExecutionError(err error) ExecutionError {
 	switch {
 	case err == nil:
 		return NoError
-	case errors.Is(err, ErrNullFieldRead):
+	case errors.Is(err, ast.ErrNullFieldRead):
 		return NullFieldRead
-	case errors.Is(err, ErrNoRowsRead):
+	case errors.Is(err, ast.ErrNoRowsRead):
 		return NoRowsRead
-	case errors.Is(err, ErrDivisionByZero):
+	case errors.Is(err, ast.ErrDivisionByZero):
 		return DivisionByZero
-	case errors.Is(err, ErrPayloadFieldNotFound):
+	case errors.Is(err, ast.ErrPayloadFieldNotFound):
 		return PayloadFieldNotFound
 	default:
 		return Unknown

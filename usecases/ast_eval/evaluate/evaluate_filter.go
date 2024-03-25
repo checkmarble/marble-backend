@@ -50,7 +50,7 @@ func (f FilterEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) 
 	validTypes, isValid := ValidTypeForFilterOperators[operator]
 	if !isValid {
 		return MakeEvaluateError(errors.Join(
-			errors.Wrap(models.ErrRuntimeExpression,
+			errors.Wrap(ast.ErrRuntimeExpression,
 				fmt.Sprintf("operator %s is not valid in Evaluate filter", operator)),
 			ast.NewNamedArgumentError("operator"),
 		))

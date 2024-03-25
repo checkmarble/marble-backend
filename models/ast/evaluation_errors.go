@@ -3,6 +3,7 @@ package ast
 import "github.com/cockroachdb/errors"
 
 var (
+	// Validation related errors
 	ErrUndefinedFunction                 = errors.New("undefined function")
 	ErrWrongNumberOfArgument             = errors.New("wrong number of arguments")
 	ErrMissingNamedArgument              = errors.New("missing named argument")
@@ -18,4 +19,27 @@ var (
 	ErrArgumentInvalidType               = errors.New("argument has an invalid type")
 	ErrListNotFound                      = errors.New("list not found")
 	ErrDatabaseAccessNotFound            = errors.New("database access not found")
+
+	// Runtime execution related errors
+	ErrRuntimeExpression    = errors.New("expression runtime error")
+	ErrNullFieldRead        = errors.Wrap(ErrRuntimeExpression, "Null field read")
+	ErrNoRowsRead           = errors.Wrap(ErrRuntimeExpression, "No rows read")
+	ErrDivisionByZero       = errors.Wrap(ErrRuntimeExpression, "Division by zero")
+	ErrPayloadFieldNotFound = errors.Wrap(ErrRuntimeExpression, "Payload field not found")
 )
+
+var ExecutionAuthorizedErrors = []error{
+	ErrNullFieldRead,
+	ErrNoRowsRead,
+	ErrDivisionByZero,
+	ErrPayloadFieldNotFound,
+}
+
+func IsAuthorizedError(err error) bool {
+	for _, authorizedError := range ExecutionAuthorizedErrors {
+		if errors.Is(err, authorizedError) {
+			return true
+		}
+	}
+	return false
+}

@@ -6,7 +6,6 @@ import (
 
 	"github.com/cockroachdb/errors"
 
-	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 )
 
@@ -40,7 +39,7 @@ func (f TimeArithmetic) Evaluate(ctx context.Context, arguments ast.Arguments) (
 		if sign != PlusSign && sign != MinusSign {
 			return MakeEvaluateError(errors.Join(
 				errors.Wrap(ast.NewNamedArgumentError("sign"), "sign is not a valid sign"),
-				models.ErrRuntimeExpression,
+				ast.ErrRuntimeExpression,
 			))
 		}
 
