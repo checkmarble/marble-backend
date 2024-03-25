@@ -45,7 +45,7 @@ func (g *Generator) encodeToken(credentials models.Credentials) (string, time.Ti
 	return token, expirationTime, credentials, nil
 }
 
-func (g *Generator) fromAPIKey(ctx context.Context, apiKey string) (string, time.Time, models.Credentials, error) {
+func (g *Generator) FromAPIKey(ctx context.Context, apiKey string) (string, time.Time, models.Credentials, error) {
 	hashArr := sha256.Sum256([]byte(apiKey))
 	hash := hashArr[:]
 	key, err := g.repository.GetApiKeyByHash(ctx, hash)
@@ -88,7 +88,7 @@ func (g *Generator) fromFirebaseToken(ctx context.Context, firebaseToken string)
 func (g *Generator) GenerateToken(ctx context.Context, key string, firebaseToken string) (string, time.Time, error) {
 	// segment analytics events only for login by an end user with firebase
 	if key != "" {
-		token, expirationTime, _, err := g.fromAPIKey(ctx, key)
+		token, expirationTime, _, err := g.FromAPIKey(ctx, key)
 		return token, expirationTime, err
 	}
 

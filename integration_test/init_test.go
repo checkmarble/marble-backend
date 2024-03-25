@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,7 +17,9 @@ import (
 
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/repositories/postgres"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/usecases/token"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -27,7 +30,10 @@ const (
 	testDbName     = "marble"
 )
 
-var testUsecases usecases.Usecases
+var (
+	testUsecases   usecases.Usecases
+	tokenGenerator *token.Generator
+)
 
 func TestMain(m *testing.M) {
 	ctx := context.Background()
@@ -101,7 +107,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("Could not create private key: %s", err)
 	}
-	repositories, err := repositories.NewRepositories(
+	repos, err := repositories.NewRepositories(
 		privateKey,
 		nil,
 		dbPool,
@@ -110,9 +116,22 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
+	jwtRepository := repositories.NewJWTRepository(privateKey)
+	database, err := postgres.New(postgres.Configuration{
+		Host:                strings.Split(hostAndPort, ":")[0],
+		Port:                strings.Split(hostAndPort, ":")[1],
+		User:                testUser,
+		Password:            testPassword,
+		Database:            testDbName,
+		DbConnectWithSocket: false,
+	})
+	if err != nil {
+		panic(err)
+	}
+	tokenGenerator = token.NewGenerator(database, jwtRepository, nil, 10)
 
 	testUsecases = usecases.Usecases{
-		Repositories: *repositories,
+		Repositories: *repos,
 	}
 
 	// Run tests
