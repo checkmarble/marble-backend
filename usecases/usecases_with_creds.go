@@ -166,21 +166,6 @@ func (usecases *UsecasesWithCreds) NewClientDbIndexEditor() clientDbIndexEditor 
 	)
 }
 
-func (usecases *UsecasesWithCreds) NewMarbleTokenUseCase() MarbleTokenUseCase {
-	repositories := usecases.Repositories
-	return MarbleTokenUseCase{
-		transactionFactory:      usecases.NewTransactionFactory(),
-		executorFactory:         usecases.NewExecutorFactory(),
-		firebaseTokenRepository: repositories.FirebaseTokenRepository,
-		marbleJwtRepository:     repositories.MarbleJwtRepository(),
-		userRepository:          repositories.UserRepository,
-		apiKeyRepository:        &usecases.Repositories.MarbleDbRepository,
-		organizationRepository:  repositories.OrganizationRepository,
-		tokenLifetimeMinute:     usecases.Configuration.TokenLifetimeMinute,
-		context:                 usecases.Context,
-	}
-}
-
 func (usecases *UsecasesWithCreds) NewOrganizationUseCase() OrganizationUseCase {
 	return OrganizationUseCase{
 		enforceSecurity:              usecases.NewEnforceOrganizationSecurity(),
