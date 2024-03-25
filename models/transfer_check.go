@@ -18,14 +18,16 @@ type Transfer struct {
 
 type TransferMapping struct {
 	Id               string
+	ClientTransferId string
 	CreatedAt        time.Time
 	OrganizationId   string
-	ClientTransferId string
+	PartnerId        string
 }
 
 type TransferMappingCreateInput struct {
-	OrganizationId   string
 	ClientTransferId string
+	OrganizationId   string
+	PartnerId        string
 }
 
 type TransferData struct {

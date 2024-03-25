@@ -21,13 +21,23 @@ func (api *API) handleTransferCheck(c *gin.Context) {
 		return
 	}
 
+	creds, _ := utils.CredentialsFromCtx(c.Request.Context())
+	partnerId := creds.PartnerId
+	if partnerId == "" {
+		presentError(c, errors.Wrap(
+			models.ForbiddenError,
+			"API key with a valid partner_id is required"),
+		)
+		return
+	}
+
 	var data dto.TransferCreateBody
 	if err := c.ShouldBindJSON(&data); err != nil {
 		presentError(c, errors.Wrap(models.BadParameterError, err.Error()))
 		return
 	}
 
-	transferCheck, err := usecase.CreateTransfer(c.Request.Context(), orgId, dto.AdaptTransferCreateBody(data))
+	transferCheck, err := usecase.CreateTransfer(c.Request.Context(), orgId, partnerId, dto.AdaptTransferCreateBody(data))
 	if presentError(c, err) {
 		return
 	}

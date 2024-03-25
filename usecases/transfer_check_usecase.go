@@ -46,6 +46,7 @@ const TransferCheckTable = "transfers"
 func (usecase *TransferCheckUsecase) CreateTransfer(
 	ctx context.Context,
 	organizationId string,
+	partnerId string,
 	transfer models.TransferCreateBody,
 ) (models.Transfer, error) {
 	logger := utils.LoggerFromContext(ctx)
@@ -87,8 +88,9 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 		transferMappingId = uuid.New().String()
 		err = usecase.transferMappingsRepository.CreateTransferMapping(ctx, exec,
 			transferMappingId, models.TransferMappingCreateInput{
-				OrganizationId:   organizationId,
 				ClientTransferId: transfer.TransferData.TransferId,
+				OrganizationId:   organizationId,
+				PartnerId:        partnerId,
 			})
 		if err != nil {
 			return models.Transfer{}, err
