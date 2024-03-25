@@ -11,6 +11,7 @@ func EvaluateAst(ctx context.Context, environment AstEvaluationEnvironment, node
 	// Early exit for constant, because it should have no children.
 	if node.Function == ast.FUNC_CONSTANT {
 		return ast.NodeEvaluation{
+			Function:    node.Function,
 			ReturnValue: node.Constant,
 			Errors:      []error{},
 		}, true
@@ -28,6 +29,7 @@ func EvaluateAst(ctx context.Context, environment AstEvaluationEnvironment, node
 
 	// eval each child
 	evaluation := ast.NodeEvaluation{
+		Function:      node.Function,
 		Children:      pure_utils.Map(node.Children, evalChild),
 		NamedChildren: pure_utils.MapValues(node.NamedChildren, evalChild),
 	}

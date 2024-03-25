@@ -7,6 +7,7 @@ import (
 )
 
 type NodeEvaluation struct {
+	Function    Function
 	ReturnValue any
 	Errors      []error
 
