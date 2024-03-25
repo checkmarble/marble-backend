@@ -13,9 +13,10 @@ type Identity struct {
 }
 
 type Credentials struct {
-	OrganizationId string
-	Role           Role
 	ActorIdentity  Identity // email or api key, for audit log
+	OrganizationId string
+	PartnerId      string
+	Role           Role
 }
 
 func (c Credentials) ActorIdentityDescription() string {
@@ -24,23 +25,24 @@ func (c Credentials) ActorIdentityDescription() string {
 
 func NewCredentialWithUser(user User) Credentials {
 	return Credentials{
-		OrganizationId: user.OrganizationId,
-		Role:           user.Role,
 		ActorIdentity: Identity{
 			UserId:    user.UserId,
 			Email:     user.Email,
 			FirstName: user.FirstName,
 			LastName:  user.LastName,
 		},
+		OrganizationId: user.OrganizationId,
+		Role:           user.Role,
 	}
 }
 
-func NewCredentialWithApiKey(organizationId string, role Role, apiKeyName string) Credentials {
+func NewCredentialWithApiKey(organizationId string, partnerId string, role Role, apiKeyName string) Credentials {
 	return Credentials{
-		OrganizationId: organizationId,
-		Role:           role,
 		ActorIdentity: Identity{
 			ApiKeyName: apiKeyName,
 		},
+		OrganizationId: organizationId,
+		PartnerId:      partnerId,
+		Role:           role,
 	}
 }

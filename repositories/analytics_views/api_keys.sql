@@ -8,6 +8,7 @@ SELECT
       id,
       org_id AS organization_id,
       deleted_at,
+      partner_id,
       role
 FROM
       marble.api_keys;

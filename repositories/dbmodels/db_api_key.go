@@ -15,8 +15,9 @@ type DBApiKey struct {
 	DeletedAt      pgtype.Timestamptz `db:"deleted_at"`
 	Description    string             `db:"description"`
 	Hash           []byte             `db:"key_hash"`
-	OrganizationId string             `db:"org_id"`
 	Prefix         string             `db:"prefix"`
+	PartnerId      string             `db:"partner_id"`
+	OrganizationId string             `db:"org_id"`
 	Role           int                `db:"role"`
 }
 
@@ -31,6 +32,7 @@ func AdaptApikey(db DBApiKey) (models.ApiKey, error) {
 		Description:    db.Description,
 		Hash:           db.Hash,
 		OrganizationId: db.OrganizationId,
+		PartnerId:      db.PartnerId,
 		Prefix:         db.Prefix,
 		Role:           models.Role(db.Role),
 	}, nil
