@@ -29,7 +29,7 @@ func (evaluator *EvaluateAstExpression) EvaluateAstExpression(
 
 	evaluation, ok := EvaluateAst(ctx, environment, ruleAstExpression)
 	if !ok {
-		return false, evaluation, errors.Join(evaluation.AllErrors()...)
+		return false, evaluation, errors.Join(evaluation.FlattenErrors()...)
 	}
 
 	returnValue, err := evaluation.GetBoolReturnValue()
