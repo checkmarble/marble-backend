@@ -59,31 +59,6 @@ var (
 // ingestion and decision creating payload related errors
 var FormatValidationError = errors.New("The input object is not valid")
 
-// Rule execution related errors
-var (
-	ErrRuntimeExpression    = errors.New("expression runtime error")
-	ErrNullFieldRead        = errors.Wrap(ErrRuntimeExpression, "Null field read")
-	ErrNoRowsRead           = errors.Wrap(ErrRuntimeExpression, "No rows read")
-	ErrDivisionByZero       = errors.Wrap(ErrRuntimeExpression, "Division by zero")
-	ErrPayloadFieldNotFound = errors.Wrap(ErrRuntimeExpression, "Payload field not found")
-)
-
-var RuleExecutionAuthorizedErrors = []error{
-	ErrNullFieldRead,
-	ErrNoRowsRead,
-	ErrDivisionByZero,
-	ErrPayloadFieldNotFound,
-}
-
-func IsAuthorizedError(err error) bool {
-	for _, authorizedError := range RuleExecutionAuthorizedErrors {
-		if errors.Is(err, authorizedError) {
-			return true
-		}
-	}
-	return false
-}
-
 type PayloadValidationErrors struct {
 	message string
 	errors  map[string]string

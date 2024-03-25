@@ -50,7 +50,7 @@ func (repo *IngestedDataReadRepositoryImpl) GetDbField(ctx context.Context, exec
 	var output any
 	err = row.Scan(&output)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, fmt.Errorf("no rows scanned while reading DB: %w", models.ErrNoRowsRead)
+		return nil, fmt.Errorf("no rows scanned while reading DB: %w", ast.ErrNoRowsRead)
 	} else if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func getParentTableJoinField(payload models.ClientObject, fieldName models.Field
 	parentFieldItf := payload.Data[string(fieldName)]
 	if parentFieldItf == nil {
 		return "", errors.Wrap(
-			models.ErrNullFieldRead,
+			ast.ErrNullFieldRead,
 			fmt.Sprintf("%s in payload is null", fieldName))
 	}
 	parentField, ok := parentFieldItf.(string)

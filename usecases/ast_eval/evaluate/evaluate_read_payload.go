@@ -30,12 +30,12 @@ func (p Payload) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []
 
 	value, ok := p.ClientObject.Data[payloadFieldName]
 	if !ok {
-		return MakeEvaluateError(errors.Wrap(models.ErrPayloadFieldNotFound,
+		return MakeEvaluateError(errors.Wrap(ast.ErrPayloadFieldNotFound,
 			fmt.Sprintf("payload var does not exist: %s", payloadFieldName)))
 	}
 
 	if value == nil {
-		return MakeEvaluateError(errors.Wrap(models.ErrNullFieldRead,
+		return MakeEvaluateError(errors.Wrap(ast.ErrNullFieldRead,
 			fmt.Sprintf("value is null in payload field '%s'", payloadFieldName)))
 	}
 

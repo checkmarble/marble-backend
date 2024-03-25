@@ -5,7 +5,6 @@ import (
 
 	"github.com/cockroachdb/errors"
 
-	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 )
 
@@ -24,7 +23,7 @@ func (f ArithmeticDivide) Evaluate(ctx context.Context, arguments ast.Arguments)
 	}
 
 	if right == 0.0 {
-		return MakeEvaluateError(errors.Wrap(models.ErrDivisionByZero,
+		return MakeEvaluateError(errors.Wrap(ast.ErrDivisionByZero,
 			"Zero division error in Evaluate function Divide"))
 	}
 

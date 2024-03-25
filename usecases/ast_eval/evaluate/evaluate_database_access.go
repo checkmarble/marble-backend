@@ -60,7 +60,7 @@ func (d DatabaseAccess) Evaluate(ctx context.Context, arguments ast.Arguments) (
 	if fieldValue == nil {
 		errorMsg := fmt.Sprintf("tableName: %s, fieldName: %s, path: %v", tableName, fieldName, path)
 		objectId, _ := d.getDbField(ctx, tableName, "object_id", pathStringArr)
-		return MakeEvaluateError(errors.Wrap(models.ErrNullFieldRead,
+		return MakeEvaluateError(errors.Wrap(ast.ErrNullFieldRead,
 			fmt.Sprintf("value is null for object_id %s, in %s", objectId, errorMsg)))
 	}
 

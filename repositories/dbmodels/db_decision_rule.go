@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/utils"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -32,13 +33,13 @@ func adaptErrorCodeAsError(errCode models.ExecutionError) error {
 	case models.NoError:
 		return nil
 	case models.NullFieldRead:
-		return models.ErrNullFieldRead
+		return ast.ErrNullFieldRead
 	case models.NoRowsRead:
-		return models.ErrNoRowsRead
+		return ast.ErrNoRowsRead
 	case models.DivisionByZero:
-		return models.ErrDivisionByZero
+		return ast.ErrDivisionByZero
 	case models.PayloadFieldNotFound:
-		return models.ErrPayloadFieldNotFound
+		return ast.ErrPayloadFieldNotFound
 	default:
 		return fmt.Errorf("unknown error code")
 	}

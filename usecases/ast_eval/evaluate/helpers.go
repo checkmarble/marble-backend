@@ -97,7 +97,7 @@ func getFieldType(dataModel models.DataModel, tableName models.TableName, fieldN
 	table, ok := dataModel.Tables[tableName]
 	if !ok {
 		return models.UnknownDataType, errors.Wrap(
-			models.ErrRuntimeExpression,
+			ast.ErrRuntimeExpression,
 			fmt.Sprintf("couldn't find table %s in data model", tableName),
 		)
 	}
@@ -105,7 +105,7 @@ func getFieldType(dataModel models.DataModel, tableName models.TableName, fieldN
 	field, ok := table.Fields[fieldName]
 	if !ok {
 		return models.UnknownDataType, errors.Wrap(
-			models.ErrRuntimeExpression,
+			ast.ErrRuntimeExpression,
 			fmt.Sprintf("couldn't find field %s in table %s", fieldName, tableName),
 		)
 	}
