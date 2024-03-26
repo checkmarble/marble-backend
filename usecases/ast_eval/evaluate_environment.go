@@ -65,5 +65,7 @@ func NewAstEvaluationEnvironment() AstEvaluationEnvironment {
 	environment.AddEvaluator(ast.FUNC_PARSE_TIME,
 		evaluate.NewTimeFunctions(ast.FUNC_PARSE_TIME))
 	environment.AddEvaluator(ast.FUNC_LIST, evaluate.List{})
+	environment.AddEvaluator(ast.FUNC_FUZZY_MATCH, evaluate.FuzzyMatch{})
+	environment.AddEvaluator(ast.FUNC_FUZZY_MATCH_ANY_OF, evaluate.FuzzyMatchAnyOf{})
 	return environment
 }
