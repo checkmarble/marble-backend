@@ -315,6 +315,27 @@ func setupScenarioAndPublish(t *testing.T, ctx context.Context,
 						Name:          "Check on aggregated value",
 						Description:   "Check on aggregated value",
 					},
+					{
+						FormulaAstExpression: &ast.Node{
+							Function: ast.FUNC_GREATER,
+							Children: []ast.Node{
+								{
+									Function: ast.FUNC_FUZZY_MATCH,
+									Children: []ast.Node{
+										{Constant: "testy testing"},
+										{Constant: "tasty tasting"},
+									},
+									NamedChildren: map[string]ast.Node{
+										"algorithm": {Constant: "ratio"},
+									},
+								},
+								{Constant: 50},
+							},
+						},
+						ScoreModifier: 1,
+						Name:          "Fuzzy match on name",
+						Description:   "Fuzzy match on name",
+					},
 				},
 				TriggerConditionAstExpression: &ast.Node{
 					Function: ast.FUNC_EQUAL,
@@ -428,7 +449,7 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"amount": 100
 	}`)
 	rejectDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase,
-		usecasesWithCreds, organizationId, scenarioId, logger)
+		usecasesWithCreds, organizationId, scenarioId, logger, 111)
 	assert.Equal(t, models.Reject, rejectDecision.Outcome,
 		"Expected decision to be Reject, got %s", rejectDecision.Outcome)
 
@@ -440,7 +461,7 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"amount": 100
 	}`)
 	approveDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase,
-		usecasesWithCreds, organizationId, scenarioId, logger)
+		usecasesWithCreds, organizationId, scenarioId, logger, 11)
 	assert.Equal(t, models.Approve, approveDecision.Outcome,
 		"Expected decision to be Approve, got %s", approveDecision.Outcome)
 
@@ -452,7 +473,7 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"amount": 100
 	}`)
 	approveNoNameDecision := createAndTestDecision(t, transactionPayloadJson, table,
-		decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
+		decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger, 11)
 	assert.Equal(t, models.Approve, approveNoNameDecision.Outcome,
 		"Expected decision to be Approve, got %s", approveNoNameDecision.Outcome)
 	if assert.NotEmpty(t, approveNoNameDecision.RuleExecutions) {
@@ -469,7 +490,7 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"amount": 100
 	}`)
 	approveNoRecordDecision := createAndTestDecision(t, transactionPayloadJson, table,
-		decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
+		decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger, 11)
 	assert.Equal(t, models.Approve, approveNoRecordDecision.Outcome,
 		"Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
 	if assert.NotEmpty(t, approveNoRecordDecision.RuleExecutions) {
@@ -485,7 +506,7 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"account_id": "{account_id_approve}"
 	}`)
 	approveMissingFieldInPayloadDecision := createAndTestDecision(t, transactionPayloadJson,
-		table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
+		table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger, 1)
 	assert.Equal(t, models.Approve, approveMissingFieldInPayloadDecision.Outcome,
 		"Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
 	if assert.NotEmpty(t, approveMissingFieldInPayloadDecision.RuleExecutions) {
@@ -502,7 +523,7 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"amount": 0
 	}`)
 	approveDivisionByZeroDecision := createAndTestDecision(t, transactionPayloadJson, table,
-		decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger)
+		decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger, 11)
 	assert.Equal(t, models.Approve, approveDivisionByZeroDecision.Outcome,
 		"Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
 	if assert.NotEmpty(t, approveDivisionByZeroDecision.RuleExecutions) {
@@ -512,9 +533,16 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 	}
 }
 
-func createAndTestDecision(t *testing.T, transactionPayloadJson []byte, table models.Table,
-	decisionUsecase usecases.DecisionUsecase, usecasesWithCreds usecases.UsecasesWithCreds,
-	organizationId, scenarioId string, logger *slog.Logger,
+func createAndTestDecision(
+	t *testing.T,
+	transactionPayloadJson []byte,
+	table models.Table,
+	decisionUsecase usecases.DecisionUsecase,
+	usecasesWithCreds usecases.UsecasesWithCreds,
+	organizationId string,
+	scenarioId string,
+	logger *slog.Logger,
+	expectedScore int,
 ) models.DecisionWithRuleExecutions {
 	parser := payload_parser.NewParser()
 	transactionPayload, validationErrors, err :=
@@ -533,6 +561,7 @@ func createAndTestDecision(t *testing.T, transactionPayloadJson []byte, table mo
 		false,
 	)
 	assert.NoError(t, err, "Could not create decision")
+	assert.Equal(t, expectedScore, decision.Score, "The score should match the expected value")
 	fmt.Println("Created decision", decision.DecisionId)
 
 	return decision
