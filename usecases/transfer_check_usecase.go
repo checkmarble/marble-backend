@@ -120,16 +120,11 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 		if err != nil {
 			return models.Transfer{}, err
 		}
-		transferMappings, err = usecase.transferMappingsRepository.ListTransferMappings(
-			ctx,
-			exec,
-			organizationId,
-			partnerId,
-			transfer.TransferData.TransferId,
-		)
+		transferMapping, err := usecase.transferMappingsRepository.GetTransferMapping(ctx, exec, transferMappingId)
 		if err != nil {
 			return models.Transfer{}, err
 		}
+		transferMappings = append(transferMappings, transferMapping)
 	}
 
 	clientObject := models.ClientObject{
