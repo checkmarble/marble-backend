@@ -2,31 +2,35 @@ package ast
 
 import "github.com/checkmarble/marble-backend/pure_utils"
 
+// When too long, the ReturnValue can be omitted (ex: when function is `FUNC_CUSTOM_LIST_ACCESS“).
+// In such cases, ReturnValue will be nil and Omitted will be true.
+type ReturnValueDto struct {
+	Value   any  `json:"value,omitempty"`
+	Omitted bool `json:"is_omitted"`
+}
+
 type NodeEvaluationDto struct {
-	// When too long, the ReturnValue can be omitted (ex: when function is `FUNC_CUSTOM_LIST_ACCESS``).
-	// In such cases, ReturnValue will be the constant `omittedReturnValue``
-	ReturnValue   any                          `json:"return_value"`
+	ReturnValue   ReturnValueDto               `json:"return_value"`
 	Errors        []EvaluationErrorDto         `json:"errors"`
 	Children      []NodeEvaluationDto          `json:"children,omitempty"`
 	NamedChildren map[string]NodeEvaluationDto `json:"named_children,omitempty"`
 }
 
 func AdaptNodeEvaluationDto(evaluation NodeEvaluation) NodeEvaluationDto {
-	nodeEvaluationDto := NodeEvaluationDto{
-		ReturnValue:   evaluation.ReturnValue,
+	var returnValueDto ReturnValueDto
+	if isReturnValueOmitted(evaluation) {
+		returnValueDto = ReturnValueDto{Value: nil, Omitted: true}
+	} else {
+		returnValueDto = ReturnValueDto{Value: evaluation.ReturnValue, Omitted: false}
+	}
+
+	return NodeEvaluationDto{
+		ReturnValue:   returnValueDto,
 		Errors:        pure_utils.Map(evaluation.Errors, AdaptEvaluationErrorDto),
 		Children:      pure_utils.Map(evaluation.Children, AdaptNodeEvaluationDto),
 		NamedChildren: pure_utils.MapValues(evaluation.NamedChildren, AdaptNodeEvaluationDto),
 	}
-
-	if isReturnValueOmitted(evaluation) {
-		nodeEvaluationDto.ReturnValue = omittedReturnValue
-	}
-
-	return nodeEvaluationDto
 }
-
-const omittedReturnValue = "__omitted_return_value"
 
 func isReturnValueOmitted(evaluation NodeEvaluation) bool {
 	return evaluation.Function == FUNC_CUSTOM_LIST_ACCESS
