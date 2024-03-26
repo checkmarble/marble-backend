@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
@@ -447,7 +448,7 @@ func (repo *DecisionRepositoryImpl) StoreDecision(
 				ruleExecution.Rule.Description,
 				ruleExecution.ResultScoreModifier,
 				ruleExecution.Result,
-				dbmodels.AdaptExecutionError(ruleExecution.Error),
+				ast.AdaptExecutionError(ruleExecution.Error),
 				ruleExecution.Rule.Id,
 				serializedRuleEvaluation,
 			)
