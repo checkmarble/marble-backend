@@ -23,13 +23,6 @@ func (api *API) handleTransferCheck(c *gin.Context) {
 
 	creds, _ := utils.CredentialsFromCtx(c.Request.Context())
 	partnerId := creds.PartnerId
-	if partnerId == "" {
-		presentError(c, errors.Wrap(
-			models.ForbiddenError,
-			"API key with a valid partner_id is required"),
-		)
-		return
-	}
 
 	var data dto.TransferCreateBody
 	if err := c.ShouldBindJSON(&data); err != nil {
@@ -88,7 +81,10 @@ func (api *API) handleQueryTransfers(c *gin.Context) {
 		return
 	}
 
-	transferCheck, err := usecase.QueryTransfers(c.Request.Context(), orgId, filters.TransferId)
+	creds, _ := utils.CredentialsFromCtx(c.Request.Context())
+	partnerId := creds.PartnerId
+
+	transferCheck, err := usecase.QueryTransfers(c.Request.Context(), orgId, partnerId, filters.TransferId)
 	if presentError(c, err) {
 		return
 	}

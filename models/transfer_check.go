@@ -151,7 +151,7 @@ type TransferCreateBody struct {
 func (t TransferDataCreateBody) ToIngestionMap(mapping TransferMapping) map[string]any {
 	return map[string]any{
 		// there is a trap here: we map it to "object_id" to match what we do elsewhere on data model tables
-		"object_id": fmt.Sprintf("%s-%s", mapping.PartnerId, t.TransferId),
+		"object_id": ObjectIdWithPartnerIdPrefix(mapping.PartnerId, t.TransferId),
 		// is added to the map to match the data model
 		"updated_at": time.Now(),
 		// TODO: actually we want this if it's a new transfer, the old value otherwise
@@ -173,6 +173,10 @@ func (t TransferDataCreateBody) ToIngestionMap(mapping TransferMapping) map[stri
 		"transfer_requested_at": t.TransferRequestedAt,
 		"value":                 t.Value,
 	}
+}
+
+func ObjectIdWithPartnerIdPrefix(partnerId string, transferId string) string {
+	return fmt.Sprintf("%s:::%s", partnerId, transferId)
 }
 
 type TransferUpdateBody struct {

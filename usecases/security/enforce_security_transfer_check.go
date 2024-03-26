@@ -32,3 +32,10 @@ func (e *EnforceSecurityImpl) UpdateTransfer(ctx context.Context, transferMappin
 		utils.EnforcePartnerAccess(e.Credentials, transferMapping.PartnerId),
 	)
 }
+
+func (e *EnforceSecurityImpl) ReadTransferData(ctx context.Context, partnerId string) error {
+	return errors.Join(
+		e.Permission(models.TRANSFER_READ),
+		utils.EnforcePartnerAccess(e.Credentials, partnerId),
+	)
+}
