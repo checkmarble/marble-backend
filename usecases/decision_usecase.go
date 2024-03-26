@@ -172,6 +172,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 	ctx context.Context,
 	input models.CreateDecisionInput,
 	logger *slog.Logger,
+	skipScenarioPermissionForTransferCheck bool,
 ) (models.DecisionWithRuleExecutions, error) {
 	exec := usecase.executorFactory.NewExecutor()
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
@@ -188,8 +189,10 @@ func (usecase *DecisionUsecase) CreateDecision(
 		return models.DecisionWithRuleExecutions{},
 			errors.Wrap(err, "error getting scenario")
 	}
-	if err := usecase.enforceSecurityScenario.ReadScenario(scenario); err != nil {
-		return models.DecisionWithRuleExecutions{}, err
+	if !skipScenarioPermissionForTransferCheck {
+		if err := usecase.enforceSecurityScenario.ReadScenario(scenario); err != nil {
+			return models.DecisionWithRuleExecutions{}, err
+		}
 	}
 
 	dm, err := usecase.datamodelRepository.GetDataModel(ctx, exec, input.OrganizationId, false)

@@ -26,6 +26,8 @@ const (
 	MARBLE_USER_LIST
 	CASE_READ_WRITE
 	INBOX_EDITOR
+	TRANSFER_READ
+	TRANSFER_WRITE
 )
 
 func (r Permission) String() string {
@@ -53,5 +55,7 @@ func (r Permission) String() string {
 		"MARBLE_USER_LIST",
 		"CASE_READ_WRITE",
 		"INBOX_EDITOR",
+		"TRANSFER_READ",
+		"TRANSFER_WRITE",
 	}[r]
 }

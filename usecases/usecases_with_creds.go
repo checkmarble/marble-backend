@@ -352,6 +352,7 @@ func (usecases *UsecasesWithCreds) NewTransferCheckUsecase() TransferCheckUsecas
 		dataModelRepository:        usecases.Repositories.DataModelRepository,
 		decisionUseCase:            usecases.NewDecisionUsecase(),
 		decisionRepository:         usecases.Repositories.DecisionRepository,
+		enforceSecurity:            security.NewEnforceSecurity(usecases.Credentials),
 		executorFactory:            usecases.NewExecutorFactory(),
 		ingestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
 		ingestionRepository:        usecases.Repositories.IngestionRepository,
