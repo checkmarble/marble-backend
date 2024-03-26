@@ -112,20 +112,24 @@ func NewAPIDecisionWithRule(decision models.DecisionWithRuleExecutions) APIDecis
 }
 
 func NewAPIDecisionRule(rule models.RuleExecution) APIDecisionRule {
-	apiDecisionRule := APIDecisionRule{
+	return APIDecisionRule{
 		Name:           rule.Rule.Name,
 		Description:    rule.Rule.Description,
 		ScoreModifier:  rule.ResultScoreModifier,
 		Result:         rule.Result,
 		RuleId:         rule.Rule.Id,
 		RuleEvaluation: rule.Evaluation,
+		Error:          APIErrorFromError(rule.Error),
+	}
+}
+
+func APIErrorFromError(err error) *APIError {
+	if err == nil {
+		return nil
 	}
 
-	// Error added here to make sure it does not appear if empty
-	// Otherwise, by default it will generate an empty APIError{}
-	if rule.Error != nil {
-		apiDecisionRule.Error = &APIError{1, rule.Error.Error()}
+	return &APIError{
+		Code:    int(ast.AdaptExecutionError(err)),
+		Message: err.Error(),
 	}
-
-	return apiDecisionRule
 }
