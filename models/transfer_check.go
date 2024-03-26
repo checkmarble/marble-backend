@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/guregu/null/v5"
@@ -147,16 +148,16 @@ type TransferCreateBody struct {
 	SkipScore    *bool
 }
 
-func (t TransferDataCreateBody) ToIngestionMap(id string) map[string]any {
+func (t TransferDataCreateBody) ToIngestionMap(mapping TransferMapping) map[string]any {
 	return map[string]any{
 		// there is a trap here: we map it to "object_id" to match what we do elsewhere on data model tables
-		"object_id": t.TransferId,
+		"object_id": fmt.Sprintf("%s-%s", mapping.PartnerId, t.TransferId),
 		// is added to the map to match the data model
 		"updated_at": time.Now(),
 		// TODO: actually we want this if it's a new transfer, the old value otherwise
 		"created_at": time.Now(),
 		// marble generated id of the transfer
-		"marble_id": id,
+		"marble_id": mapping.Id,
 
 		"beneficiary_bic":       t.BeneficiaryBic,
 		"beneficiary_iban":      t.BeneficiaryIban,
