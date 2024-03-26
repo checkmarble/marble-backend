@@ -28,7 +28,13 @@ func (repo *MarbleDbRepository) GetTransferMapping(ctx context.Context, exec Exe
 	)
 }
 
-func (repo *MarbleDbRepository) ListTransferMappings(ctx context.Context, exec Executor, transferId string) ([]models.TransferMapping, error) {
+func (repo *MarbleDbRepository) ListTransferMappings(
+	ctx context.Context,
+	exec Executor,
+	organizationId string,
+	partnerId string,
+	transferId string,
+) ([]models.TransferMapping, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -36,7 +42,10 @@ func (repo *MarbleDbRepository) ListTransferMappings(ctx context.Context, exec E
 	return SqlToListOfModels(
 		ctx,
 		exec,
-		selectTransferMappings().Where(squirrel.Eq{"client_transfer_id": transferId}),
+		selectTransferMappings().
+			Where(squirrel.Eq{"organization_id": organizationId}).
+			Where(squirrel.Eq{"partner_id": partnerId}).
+			Where(squirrel.Eq{"client_transfer_id": transferId}),
 		dbmodels.AdaptTransferMapping,
 	)
 }

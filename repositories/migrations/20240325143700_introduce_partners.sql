@@ -17,11 +17,15 @@ WHERE
 ALTER TABLE transfer_mappings
 ADD COLUMN partner_id uuid NOT NULL REFERENCES partners (id) ON DELETE SET NULL;
 
+CREATE UNIQUE INDEX IF NOT EXISTS transfer_mappings_client_transfer_id_idx ON transfer_mappings (organization_id, partner_id, client_transfer_id);
+
 -- +goose StatementEnd
 -- +goose Down
 -- +goose StatementBegin
 ALTER TABLE api_keys
 DROP COLUMN partner_id;
+
+DROP INDEX IF EXISTS transfer_mappings_client_transfer_id_idx;
 
 ALTER TABLE transfer_mappings
 DROP COLUMN partner_id;
