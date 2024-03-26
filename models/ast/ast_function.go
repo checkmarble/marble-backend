@@ -55,6 +55,8 @@ const (
 	FUNC_AGGREGATOR
 	FUNC_LIST
 	FUNC_FILTER
+	FUNC_FUZZY_MATCH
+	FUNC_FUZZY_MATCH_ANY_OF
 	FUNC_UNDEFINED Function = -1
 	FUNC_UNKNOWN   Function = -2
 )
@@ -198,6 +200,18 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 	FUNC_LIST: {
 		DebugName: "FUNC_LIST",
 		AstName:   "List",
+	},
+	FUNC_FUZZY_MATCH: {
+		DebugName:         "FUNC_FUZZY_MATCH",
+		AstName:           "FuzzyMatch",
+		NumberOfArguments: 2,
+		NamedArguments:    []string{"algorithm"},
+	},
+	FUNC_FUZZY_MATCH_ANY_OF: {
+		DebugName:         "FUNC_FUZZY_MATCH_ANY_OF",
+		AstName:           "FuzzyMatchAnyOf",
+		NumberOfArguments: 2,
+		NamedArguments:    []string{"algorithm"},
 	},
 	FUNC_FILTER: FuncFilterAttributes,
 }

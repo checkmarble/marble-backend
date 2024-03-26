@@ -20,7 +20,6 @@ require (
 	github.com/gin-contrib/size v0.0.0-20231211133737-500859255df8
 	github.com/gin-contrib/timeout v0.0.6
 	github.com/gin-gonic/gin v1.9.1
-	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/google/uuid v1.3.1
 	github.com/guregu/null/v5 v5.0.0
@@ -28,6 +27,7 @@ require (
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/jackc/pgx/v5 v5.5.4
 	github.com/ory/dockertest/v3 v3.10.0
+	github.com/paul-mannino/go-fuzzywuzzy v0.0.0-20200127021948-54652b135d0e
 	github.com/pkg/errors v0.9.1
 	github.com/pressly/goose/v3 v3.15.0
 	github.com/segmentio/analytics-go/v3 v3.3.0
