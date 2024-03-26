@@ -12,6 +12,7 @@ const (
 	ADMIN
 	API_CLIENT
 	MARBLE_ADMIN
+	TRANSFER_CHECK_API_CLIENT
 )
 
 func (r Role) String() string {
@@ -30,6 +31,8 @@ func (r Role) String() string {
 		return "API_CLIENT"
 	case MARBLE_ADMIN:
 		return "MARBLE_ADMIN"
+	case TRANSFER_CHECK_API_CLIENT:
+		return "TRANSFER_CHECK_API_CLIENT"
 	default:
 		return "UNKNOWN_ROLE"
 	}
@@ -61,6 +64,8 @@ func RoleFromString(s string) Role {
 		return API_CLIENT
 	case "MARBLE_ADMIN":
 		return MARBLE_ADMIN
+	case "TRANSFER_CHECK_API_CLIENT":
+		return TRANSFER_CHECK_API_CLIENT
 	}
 	return NO_ROLE
 }

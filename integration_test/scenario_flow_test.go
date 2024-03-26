@@ -530,6 +530,7 @@ func createAndTestDecision(t *testing.T, transactionPayloadJson []byte, table mo
 			OrganizationId: organizationId,
 		},
 		logger,
+		false,
 	)
 	assert.NoError(t, err, "Could not create decision")
 	fmt.Println("Created decision", decision.DecisionId)

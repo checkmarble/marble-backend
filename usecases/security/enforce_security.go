@@ -16,13 +16,19 @@ type EnforceSecurityImpl struct {
 	Credentials models.Credentials
 }
 
+func NewEnforceSecurity(credentials models.Credentials) *EnforceSecurityImpl {
+	return &EnforceSecurityImpl{
+		Credentials: credentials,
+	}
+}
+
 func (e *EnforceSecurityImpl) ReadOrganization(organizationId string) error {
 	return utils.EnforceOrganizationAccess(e.Credentials, organizationId)
 }
 
 func (e *EnforceSecurityImpl) Permission(permission models.Permission) error {
 	if !e.Credentials.Role.HasPermission(permission) {
-		return errors.Wrap(models.ForbiddenError, "missing permission %s"+permission.String())
+		return errors.Wrap(models.ForbiddenError, "missing permission "+permission.String())
 	}
 	return nil
 }

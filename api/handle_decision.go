@@ -133,6 +133,7 @@ func (api *API) handlePostDecision(c *gin.Context) {
 			OrganizationId: organizationId,
 		},
 		logger,
+		false,
 	)
 	if errors.Is(err, models.NotFoundError) || errors.Is(err, models.BadParameterError) {
 		presentError(c, err)

@@ -29,10 +29,17 @@ type transferMappingsRepository interface {
 	DeleteTransferMapping(ctx context.Context, exec repositories.Executor, id string) error
 }
 
+type enforceSecurityTransferCheck interface {
+	CreateTransfer(ctx context.Context, organizationId string, partnerId string) error
+	ReadTransfer(ctx context.Context, transferMapping models.TransferMapping) error
+	UpdateTransfer(ctx context.Context, transferMapping models.TransferMapping) error
+}
+
 type TransferCheckUsecase struct {
 	dataModelRepository        repositories.DataModelRepository
 	decisionUseCase            DecisionUsecase
 	decisionRepository         repositories.DecisionRepository
+	enforceSecurity            enforceSecurityTransferCheck
 	executorFactory            executor_factory.ExecutorFactory
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
 	ingestionRepository        repositories.IngestionRepository
@@ -58,6 +65,10 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 
 	scenarioId, err := usecase.validateOrgHasTransfercheckEnabled(ctx, organizationId)
 	if err != nil {
+		return models.Transfer{}, err
+	}
+
+	if err := usecase.enforceSecurity.CreateTransfer(ctx, organizationId, partnerId); err != nil {
 		return models.Transfer{}, err
 	}
 
@@ -133,6 +144,7 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 				OrganizationId: organizationId,
 			},
 			logger,
+			true,
 		)
 		if err != nil {
 			return models.Transfer{}, err
@@ -170,13 +182,12 @@ func (usecase *TransferCheckUsecase) UpdateTransfer(
 		return models.Transfer{}, err
 	}
 
-	table, err := usecase.getTransfercheckTable(ctx, organizationId)
+	transferMapping, err := usecase.transferMappingsRepository.GetTransferMapping(ctx, exec, id)
 	if err != nil {
 		return models.Transfer{}, err
 	}
 
-	transferMapping, err := usecase.transferMappingsRepository.GetTransferMapping(ctx, exec, id)
-	if err != nil {
+	if err := usecase.enforceSecurity.UpdateTransfer(ctx, transferMapping); err != nil {
 		return models.Transfer{}, err
 	}
 
@@ -190,10 +201,18 @@ func (usecase *TransferCheckUsecase) UpdateTransfer(
 		return models.Transfer{}, err
 	}
 
+	table, err := usecase.getTransfercheckTable(ctx, organizationId)
+	if err != nil {
+		return models.Transfer{}, err
+	}
 	var newObjects []map[string]interface{}
 	err = usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Executor) error {
-		previousObjects, err := usecase.lookupPreviousObjects(ctx, tx, organizationId,
-			table, transferMapping.ClientTransferId)
+		previousObjects, err := usecase.lookupPreviousObjects(
+			ctx,
+			tx,
+			organizationId,
+			table,
+			transferMapping.ClientTransferId)
 		if err != nil {
 			return err
 		}
@@ -264,11 +283,6 @@ func (usecase *TransferCheckUsecase) QueryTransfers(
 ) ([]models.Transfer, error) {
 	exec := usecase.executorFactory.NewExecutor()
 
-	table, err := usecase.getTransfercheckTable(ctx, organizationId)
-	if err != nil {
-		return nil, err
-	}
-
 	transferMappings, err := usecase.transferMappingsRepository.ListTransferMappings(ctx, exec, clientTransferId)
 	if err != nil {
 		return []models.Transfer{}, err
@@ -277,12 +291,13 @@ func (usecase *TransferCheckUsecase) QueryTransfers(
 		return make([]models.Transfer, 0), nil
 	}
 
-	previousDecisions, err := usecase.decisionRepository.DecisionsByObjectId(
-		ctx,
-		exec,
-		organizationId,
-		clientTransferId,
-	)
+	if err := usecase.enforceSecurity.ReadTransfer(ctx, transferMappings[0]); err != nil {
+		logger := utils.LoggerFromContext(ctx)
+		logger.ErrorContext(ctx, fmt.Sprintf("Tried to read transfer %s without permission", clientTransferId))
+		return make([]models.Transfer, 0), nil
+	}
+
+	table, err := usecase.getTransfercheckTable(ctx, organizationId)
 	if err != nil {
 		return nil, err
 	}
@@ -302,6 +317,16 @@ func (usecase *TransferCheckUsecase) QueryTransfers(
 			Id:           transferMappings[0].Id,
 			TransferData: t,
 		}
+
+		previousDecisions, err := usecase.decisionRepository.DecisionsByObjectId(
+			ctx,
+			exec,
+			organizationId,
+			clientTransferId,
+		)
+		if err != nil {
+			return nil, err
+		}
 		if len(previousDecisions) > 0 {
 			transfer.LastScoredAt = null.TimeFrom(previousDecisions[0].CreatedAt)
 			transfer.Score = null.Int32From(int32(previousDecisions[0].Score))
@@ -319,22 +344,16 @@ func (usecase *TransferCheckUsecase) GetTransfer(
 ) (models.Transfer, error) {
 	exec := usecase.executorFactory.NewExecutor()
 
-	table, err := usecase.getTransfercheckTable(ctx, organizationId)
-	if err != nil {
-		return models.Transfer{}, err
-	}
-
 	transferMapping, err := usecase.transferMappingsRepository.GetTransferMapping(ctx, exec, id)
 	if err != nil {
 		return models.Transfer{}, err
 	}
 
-	previousDecisions, err := usecase.decisionRepository.DecisionsByObjectId(
-		ctx,
-		exec,
-		organizationId,
-		transferMapping.ClientTransferId,
-	)
+	if err := usecase.enforceSecurity.ReadTransfer(ctx, transferMapping); err != nil {
+		return models.Transfer{}, err
+	}
+
+	table, err := usecase.getTransfercheckTable(ctx, organizationId)
 	if err != nil {
 		return models.Transfer{}, err
 	}
@@ -359,6 +378,16 @@ func (usecase *TransferCheckUsecase) GetTransfer(
 		Id:           id,
 		TransferData: t,
 	}
+
+	previousDecisions, err := usecase.decisionRepository.DecisionsByObjectId(
+		ctx,
+		exec,
+		organizationId,
+		transferMapping.ClientTransferId,
+	)
+	if err != nil {
+		return models.Transfer{}, err
+	}
 	if len(previousDecisions) > 0 {
 		transfer.LastScoredAt = null.TimeFrom(previousDecisions[0].CreatedAt)
 		transfer.Score = null.Int32From(int32(previousDecisions[0].Score))
@@ -378,12 +407,16 @@ func (usecase *TransferCheckUsecase) ScoreTransfer(
 		return models.Transfer{}, err
 	}
 
-	table, err := usecase.getTransfercheckTable(ctx, organizationId)
+	transferMapping, err := usecase.transferMappingsRepository.GetTransferMapping(ctx, exec, id)
 	if err != nil {
 		return models.Transfer{}, err
 	}
 
-	transferMapping, err := usecase.transferMappingsRepository.GetTransferMapping(ctx, exec, id)
+	if err := usecase.enforceSecurity.UpdateTransfer(ctx, transferMapping); err != nil {
+		return models.Transfer{}, err
+	}
+
+	table, err := usecase.getTransfercheckTable(ctx, organizationId)
 	if err != nil {
 		return models.Transfer{}, err
 	}
@@ -417,6 +450,7 @@ func (usecase *TransferCheckUsecase) ScoreTransfer(
 			OrganizationId: organizationId,
 		},
 		utils.LoggerFromContext(ctx),
+		true,
 	)
 	if err != nil {
 		return models.Transfer{}, err
