@@ -77,7 +77,8 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 		return models.Transfer{}, err
 	}
 
-	previousObjects, err := usecase.lookupPreviousObjects(ctx, nil, organizationId, table, transfer.TransferData.TransferId)
+	objectId := objectIdWithPartnerIdPrefix(partnerId, transfer.TransferData.TransferId)
+	previousObjects, err := usecase.lookupPreviousObjects(ctx, nil, organizationId, table, objectId)
 	if err != nil {
 		return models.Transfer{}, err
 	}
@@ -106,10 +107,16 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 		if err != nil {
 			return models.Transfer{}, err
 		}
+		transferMappings, err = usecase.transferMappingsRepository.ListTransferMappings(ctx, exec, transfer.TransferData.TransferId)
+		if err != nil {
+			return models.Transfer{}, err
+		}
 	}
 
-	clientObject := models.ClientObject{Data: transfer.TransferData.ToIngestionMap(
-		transferMappingId), TableName: TransferCheckTable}
+	clientObject := models.ClientObject{
+		Data:      transfer.TransferData.ToIngestionMap(transferMappings[0]),
+		TableName: TransferCheckTable,
+	}
 
 	err = usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Executor) error {
 		err := usecase.ingestionRepository.IngestObjects(ctx, tx, []models.ClientObject{
@@ -119,8 +126,7 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 			return err
 		}
 
-		previousObjects, err = usecase.ingestedDataReadRepository.QueryIngestedObject(ctx,
-			tx, table, transfer.TransferData.TransferId)
+		previousObjects, err = usecase.ingestedDataReadRepository.QueryIngestedObject(ctx, tx, table, objectId)
 		if err != nil {
 			return err
 		}
@@ -191,12 +197,8 @@ func (usecase *TransferCheckUsecase) UpdateTransfer(
 		return models.Transfer{}, err
 	}
 
-	previousDecisions, err := usecase.decisionRepository.DecisionsByObjectId(
-		ctx,
-		exec,
-		organizationId,
-		transferMapping.ClientTransferId,
-	)
+	objectId := objectIdWithPartnerIdPrefix(transferMapping.PartnerId, transferMapping.ClientTransferId)
+	previousDecisions, err := usecase.decisionRepository.DecisionsByObjectId(ctx, exec, organizationId, objectId)
 	if err != nil {
 		return models.Transfer{}, err
 	}
@@ -207,12 +209,7 @@ func (usecase *TransferCheckUsecase) UpdateTransfer(
 	}
 	var newObjects []map[string]interface{}
 	err = usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Executor) error {
-		previousObjects, err := usecase.lookupPreviousObjects(
-			ctx,
-			tx,
-			organizationId,
-			table,
-			transferMapping.ClientTransferId)
+		previousObjects, err := usecase.lookupPreviousObjects(ctx, tx, organizationId, table, objectId)
 		if err != nil {
 			return err
 		}
@@ -234,12 +231,7 @@ func (usecase *TransferCheckUsecase) UpdateTransfer(
 			return err
 		}
 
-		newObjects, err = usecase.ingestedDataReadRepository.QueryIngestedObject(
-			ctx,
-			tx,
-			table,
-			transferMapping.ClientTransferId,
-		)
+		newObjects, err = usecase.ingestedDataReadRepository.QueryIngestedObject(ctx, tx, table, objectId)
 		if err != nil {
 			return err
 		}
@@ -302,7 +294,8 @@ func (usecase *TransferCheckUsecase) QueryTransfers(
 		return nil, err
 	}
 
-	objects, err := usecase.lookupPreviousObjects(ctx, nil, organizationId, table, transferMappings[0].ClientTransferId)
+	objectId := objectIdWithPartnerIdPrefix(transferMappings[0].PartnerId, transferMappings[0].ClientTransferId)
+	objects, err := usecase.lookupPreviousObjects(ctx, nil, organizationId, table, objectId)
 	if err != nil {
 		return nil, err
 	}
@@ -318,12 +311,7 @@ func (usecase *TransferCheckUsecase) QueryTransfers(
 			TransferData: t,
 		}
 
-		previousDecisions, err := usecase.decisionRepository.DecisionsByObjectId(
-			ctx,
-			exec,
-			organizationId,
-			clientTransferId,
-		)
+		previousDecisions, err := usecase.decisionRepository.DecisionsByObjectId(ctx, exec, organizationId, objectId)
 		if err != nil {
 			return nil, err
 		}
@@ -358,7 +346,9 @@ func (usecase *TransferCheckUsecase) GetTransfer(
 		return models.Transfer{}, err
 	}
 
-	objects, err := usecase.lookupPreviousObjects(ctx, nil, organizationId, table, transferMapping.ClientTransferId)
+	objectId := objectIdWithPartnerIdPrefix(transferMapping.PartnerId, transferMapping.ClientTransferId)
+
+	objects, err := usecase.lookupPreviousObjects(ctx, nil, organizationId, table, objectId)
 	if err != nil {
 		return models.Transfer{}, err
 	}
@@ -379,12 +369,7 @@ func (usecase *TransferCheckUsecase) GetTransfer(
 		TransferData: t,
 	}
 
-	previousDecisions, err := usecase.decisionRepository.DecisionsByObjectId(
-		ctx,
-		exec,
-		organizationId,
-		transferMapping.ClientTransferId,
-	)
+	previousDecisions, err := usecase.decisionRepository.DecisionsByObjectId(ctx, exec, organizationId, objectId)
 	if err != nil {
 		return models.Transfer{}, err
 	}
@@ -421,7 +406,9 @@ func (usecase *TransferCheckUsecase) ScoreTransfer(
 		return models.Transfer{}, err
 	}
 
-	objects, err := usecase.lookupPreviousObjects(ctx, nil, organizationId, table, transferMapping.ClientTransferId)
+	objectId := objectIdWithPartnerIdPrefix(transferMapping.PartnerId, transferMapping.ClientTransferId)
+
+	objects, err := usecase.lookupPreviousObjects(ctx, nil, organizationId, table, objectId)
 	if err != nil {
 		return models.Transfer{}, err
 	}
@@ -536,4 +523,8 @@ func validateTransfer(transfer models.TransferDataCreateBody) error {
 	// TODO implement other validation rules
 
 	return nil
+}
+
+func objectIdWithPartnerIdPrefix(partnerId string, transferId string) string {
+	return fmt.Sprintf("%s-%s", partnerId, transferId)
 }
