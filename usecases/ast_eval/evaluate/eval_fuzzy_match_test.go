@@ -41,6 +41,12 @@ func TestFuzzyMatch(t *testing.T) {
 			algo:   "unknown",
 			errors: []error{errors.New("Unknown algorithm: unknown")},
 		},
+		{
+			name: "with accents",
+			args: []any{"ça, c'est une théière", "la theier a une typo"},
+			algo: "token_set_ratio",
+			want: 65,
+		},
 	}
 
 	for _, tt := range tests {
@@ -76,7 +82,7 @@ func TestFuzzyMatchAnyOf(t *testing.T) {
 			name: "token_set_ratio",
 			args: []any{"old mc donald had a farm", []string{"E I E I O"}},
 			algo: "token_set_ratio",
-			want: 14,
+			want: 21,
 		},
 		{
 			name: "partial_ratio",
@@ -106,6 +112,41 @@ func TestFuzzyMatchAnyOf(t *testing.T) {
 				assert.ErrorContains(t, errs[0], tt.errors[0].Error())
 			}
 			assert.Equal(t, tt.want, r)
+		})
+	}
+}
+
+func TestCleanseString(t *testing.T) {
+	tests := []struct {
+		name string
+		args string
+		want string
+	}{
+		{
+			name: "cleanse string",
+			args: "old mc donald had a farm",
+			want: "old mc donald had a farm",
+		},
+		{
+			name: "cleanse string with special characters",
+			args: "old mc donald had a farm!@#$%^&*()",
+			want: "old mc donald had a farm",
+		},
+		{
+			name: "cleanse string with accents",
+			args: "il était une fois une belle théière à ma sœur et ça c'est beau",
+			want: "il etait une fois une belle theiere a ma sœur et ca c est beau",
+		},
+		{
+			name: "various accents with upper case",
+			args: "AÉÇÀÈÙÎÏ",
+			want: "aecaeuii",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, cleanseString(tt.args))
 		})
 	}
 }
