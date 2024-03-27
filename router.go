@@ -16,7 +16,7 @@ import (
 )
 
 func corsOption(env string) cors.Config {
-	allowedOrigins := []string{"*.checkmarble.com"}
+	allowedOrigins := []string{"https://app*.checkmarble.com", "https://backoffice*.checkmarble.com"}
 
 	if env == "development" {
 		allowedOrigins = append(allowedOrigins,
@@ -24,7 +24,8 @@ func corsOption(env string) cors.Config {
 	}
 
 	return cors.Config{
-		AllowOrigins: allowedOrigins,
+		AllowOrigins:  allowedOrigins,
+		AllowWildcard: true,
 		AllowMethods: []string{
 			http.MethodOptions, http.MethodHead, http.MethodGet,
 			http.MethodPost, http.MethodDelete, http.MethodPatch,
