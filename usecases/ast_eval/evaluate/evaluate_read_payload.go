@@ -8,6 +8,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
 type Payload struct {
@@ -37,6 +38,11 @@ func (p Payload) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []
 	if value == nil {
 		return MakeEvaluateError(errors.Wrap(ast.ErrNullFieldRead,
 			fmt.Sprintf("value is null in payload field '%s'", payloadFieldName)))
+	}
+
+	valueStr, ok := value.(string)
+	if ok {
+		return pure_utils.Normalize(valueStr), nil
 	}
 
 	return value, nil

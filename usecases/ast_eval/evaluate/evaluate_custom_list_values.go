@@ -58,6 +58,6 @@ func (clva CustomListValuesAccess) Evaluate(ctx context.Context, arguments ast.A
 
 	return pure_utils.Map(
 		listValues,
-		func(v models.CustomListValue) string { return v.Value },
+		func(v models.CustomListValue) string { return pure_utils.Normalize(v.Value) },
 	), nil
 }
