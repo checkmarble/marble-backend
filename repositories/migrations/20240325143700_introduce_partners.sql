@@ -8,14 +8,14 @@ CREATE TABLE IF NOT EXISTS
       );
 
 ALTER TABLE api_keys
-ADD COLUMN partner_id uuid REFERENCES partners (id) ON DELETE SET NULL;
+ADD COLUMN IF NOT EXISTS partner_id uuid REFERENCES partners (id) ON DELETE SET NULL;
 
 DELETE FROM transfer_mappings
 WHERE
       TRUE;
 
 ALTER TABLE transfer_mappings
-ADD COLUMN partner_id uuid NOT NULL REFERENCES partners (id) ON DELETE SET NULL;
+ADD COLUMN IF NOT EXISTS partner_id uuid NOT NULL REFERENCES partners (id) ON DELETE SET NULL;
 
 CREATE UNIQUE INDEX IF NOT EXISTS transfer_mappings_client_transfer_id_idx ON transfer_mappings (organization_id, partner_id, client_transfer_id);
 
