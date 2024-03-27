@@ -57,11 +57,13 @@ func adaptArgumentToString(argument any) (string, error) {
 	}
 
 	if result, ok := argument.(string); ok {
-		return result, nil
+		return pure_utils.Normalize(result), nil
 	}
 
-	return "", errors.Wrap(ast.ErrArgumentMustBeString,
-		fmt.Sprintf("can't promote argument %v to string", argument))
+	return "", errors.Wrap(
+		ast.ErrArgumentMustBeString,
+		fmt.Sprintf("can't promote argument %v to string", argument),
+	)
 }
 
 func adaptArgumentToTime(argument any) (time.Time, error) {
@@ -129,7 +131,11 @@ func adaptArgumentToListOfThings[T any](argument any) ([]T, error) {
 }
 
 func adaptArgumentToListOfStrings(argument any) ([]string, error) {
-	return adaptArgumentToListOfThings[string](argument)
+	arr, err := adaptArgumentToListOfThings[string](argument)
+	if err != nil {
+		return nil, err
+	}
+	return pure_utils.Map(arr, pure_utils.Normalize), nil
 }
 
 func adaptArgumentToBool(argument any) (bool, error) {

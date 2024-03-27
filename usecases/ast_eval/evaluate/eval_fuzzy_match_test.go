@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/cockroachdb/errors"
 	"github.com/stretchr/testify/assert"
 )
@@ -146,7 +147,7 @@ func TestCleanseString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, cleanseString(tt.args))
+			assert.Equal(t, tt.want, pure_utils.CleanseString(tt.args))
 		})
 	}
 }

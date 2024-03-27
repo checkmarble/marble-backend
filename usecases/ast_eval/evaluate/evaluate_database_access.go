@@ -8,6 +8,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 )
@@ -62,6 +63,11 @@ func (d DatabaseAccess) Evaluate(ctx context.Context, arguments ast.Arguments) (
 		objectId, _ := d.getDbField(ctx, tableName, "object_id", pathStringArr)
 		return MakeEvaluateError(errors.Wrap(ast.ErrNullFieldRead,
 			fmt.Sprintf("value is null for object_id %s, in %s", objectId, errorMsg)))
+	}
+
+	fieldValueStr, ok := fieldValue.(string)
+	if ok {
+		return pure_utils.Normalize(fieldValueStr), nil
 	}
 
 	return fieldValue, nil
