@@ -10,8 +10,6 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
-type FuzzyMatch struct{}
-
 // Implements a fuzzy match using the go-fuzzywuzzy library.
 // List of strign cleaning steps applied:
 // - normalize
@@ -19,11 +17,12 @@ type FuzzyMatch struct{}
 // - set to lower case
 // - keep only letters and numbers
 // (- keep non-ASCII characters)
+type FuzzyMatch struct{}
 
 func (fuzzyMatcher FuzzyMatch) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 	leftAny, rightAny, err := leftAndRight(arguments.Args)
 	if err != nil {
-		return MakeEvaluateError(errors.Wrap(err, "Error in Evaluate function StringInList"))
+		return MakeEvaluateError(errors.Wrap(err, "Error in Evaluate function FuzzyMatch"))
 	}
 
 	left, errLeft := adaptArgumentToString(leftAny)
@@ -50,7 +49,7 @@ type FuzzyMatchAnyOf struct{}
 func (fuzzyMatcher FuzzyMatchAnyOf) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 	leftAny, rightAny, err := leftAndRight(arguments.Args)
 	if err != nil {
-		return MakeEvaluateError(errors.Wrap(err, "Error in Evaluate function StringInList"))
+		return MakeEvaluateError(errors.Wrap(err, "Error in Evaluate function FuzzyMatchAnyOf"))
 	}
 
 	left, errLeft := adaptArgumentToString(leftAny)

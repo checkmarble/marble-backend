@@ -31,11 +31,11 @@ func NormalizeAndRemoveDiacritics(s string) string {
 	return result
 }
 
+// - normalize
+// - remove diacritics
+// - set to lower case
+// - keep only letters and numbers
+// - keep non-ASCII characters
 func CleanseString(s string) string {
-	// - normalize
-	// - remove diacritics
-	// - set to lower case
-	// - keep only letters and numbers
-	// - keep non-ASCII characters
 	return strings.TrimSpace(fuzzy.Cleanse(NormalizeAndRemoveDiacritics(s), false))
 }
