@@ -2,6 +2,12 @@ package evaluate
 
 import (
 	"context"
+	"strings"
+	"unicode"
+
+	"golang.org/x/text/runes"
+	"golang.org/x/text/transform"
+	"golang.org/x/text/unicode/norm"
 
 	"github.com/cockroachdb/errors"
 	fuzzy "github.com/paul-mannino/go-fuzzywuzzy"
@@ -11,6 +17,14 @@ import (
 
 type FuzzyMatch struct{}
 
+// Implements a fuzzy match using the go-fuzzywuzzy library.
+// List of strign cleaning steps applied:
+// - normalize
+// - remove diacritics
+// - set to lower case
+// - keep only letters and numbers
+// (- keep non-ASCII characters)
+
 func (fuzzyMatcher FuzzyMatch) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 	leftAny, rightAny, err := leftAndRight(arguments.Args)
 	if err != nil {
@@ -18,7 +32,9 @@ func (fuzzyMatcher FuzzyMatch) Evaluate(ctx context.Context, arguments ast.Argum
 	}
 
 	left, errLeft := adaptArgumentToString(leftAny)
+	left = cleanseString(left)
 	right, errRight := adaptArgumentToString(rightAny)
+	right = cleanseString(right)
 	algorithm, algorithmErr := AdaptNamedArgument(arguments.NamedArgs, "algorithm", adaptArgumentToString)
 
 	errs := MakeAdaptedArgsErrors([]error{errLeft, errRight, algorithmErr})
@@ -43,6 +59,7 @@ func (fuzzyMatcher FuzzyMatchAnyOf) Evaluate(ctx context.Context, arguments ast.
 	}
 
 	left, errLeft := adaptArgumentToString(leftAny)
+	left = cleanseString(left)
 	right, errRight := adaptArgumentToListOfStrings(rightAny)
 	algorithm, algorithmErr := AdaptNamedArgument(arguments.NamedArgs, "algorithm", adaptArgumentToString)
 
@@ -58,7 +75,7 @@ func (fuzzyMatcher FuzzyMatchAnyOf) Evaluate(ctx context.Context, arguments ast.
 
 	maxScore := 0
 	for _, rVal := range right {
-		maxScore = max(maxScore, f(left, rVal))
+		maxScore = max(maxScore, f(left, cleanseString(rVal)))
 		if maxScore == 100 {
 			break
 		}
@@ -85,4 +102,23 @@ func getSimilarityAlgo(s string) (func(s1 string, s2 string, opts ...bool) int, 
 		return f, errors.New("Unknown algorithm: " + s)
 	}
 	return f, nil
+}
+
+func normalizeAndRemoveDiacritics(s string) string {
+	t := transform.Chain(
+		norm.NFD,
+		runes.Remove(runes.In(unicode.Mn)),
+		norm.NFC,
+	)
+	result, _, _ := transform.String(t, s)
+	return result
+}
+
+func cleanseString(s string) string {
+	// - normalize
+	// - remove diacritics
+	// - set to lower case
+	// - keep only letters and numbers
+	// - keep non-ASCII characters
+	return strings.TrimSpace(fuzzy.Cleanse(normalizeAndRemoveDiacritics(s), false))
 }
