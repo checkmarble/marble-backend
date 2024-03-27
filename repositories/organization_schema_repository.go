@@ -49,7 +49,7 @@ func (repo *OrganizationSchemaRepositoryPostgresql) CreateTable(ctx context.Cont
 
 	sanitizedTableName := pgx.Identifier.Sanitize([]string{exec.DatabaseSchema().Schema, tableName})
 	sql := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
-		id UUID NOT NULL DEFAULT uuid_generate_v4(),
+		id UUID NOT NULL DEFAULT uuid_generate_v4() PRIMARY KEY,
 		object_id TEXT NOT NULL,
 		updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
 		valid_from TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
