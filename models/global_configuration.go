@@ -7,6 +7,7 @@ type GlobalConfiguration struct {
 	GcsCaseManagerBucket string
 	JwtSigningKey        string
 	MarbleAppHost        string
+	MarbleBackofficeHost string
 	SegmentWriteKey      string
 	TokenLifetimeMinute  int
 }

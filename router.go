@@ -15,17 +15,24 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func corsOption(env string) cors.Config {
-	allowedOrigins := []string{"https://app*.checkmarble.com", "https://backoffice*.checkmarble.com"}
+func corsOption(conf AppConfiguration) cors.Config {
+	protocol := "https://"
+	if conf.env == "development" {
+		protocol = "http://"
+	}
 
-	if env == "development" {
+	allowedOrigins := []string{
+		protocol + conf.config.MarbleAppHost,
+		protocol + conf.config.MarbleBackofficeHost,
+	}
+
+	if conf.env == "development" {
 		allowedOrigins = append(allowedOrigins,
 			"http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:5173")
 	}
 
 	return cors.Config{
-		AllowOrigins:  allowedOrigins,
-		AllowWildcard: true,
+		AllowOrigins: allowedOrigins,
 		AllowMethods: []string{
 			http.MethodOptions, http.MethodHead, http.MethodGet,
 			http.MethodPost, http.MethodDelete, http.MethodPatch,
@@ -72,7 +79,7 @@ func initRouter(ctx context.Context, conf AppConfiguration, deps dependencies) *
 
 	r.Use(gin.Recovery())
 	r.Use(sentrygin.New(sentrygin.Options{Repanic: true}))
-	r.Use(cors.New(corsOption(conf.env)))
+	r.Use(cors.New(corsOption(conf)))
 	r.Use(middleware.NewLogging(logger, conf.requestLoggingLevel))
 	r.Use(otelgin.Middleware("marble-backend"))
 	r.Use(utils.StoreLoggerInContextMiddleware(logger))
