@@ -8,6 +8,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 
 	"github.com/checkmarble/marble-backend/models"
 )
@@ -86,7 +87,7 @@ func (repo *IngestionRepositoryImpl) mostRecentPayloadsByObjectId(payloads []mod
 		mostRecentPayloads = append(mostRecentPayloads, obj)
 	}
 
-	return mostRecentObjectIds, mostRecentPayloads
+	return mostRecentObjectIds, payloads
 }
 
 type DBObject struct {
@@ -179,6 +180,9 @@ func (repo *IngestionRepositoryImpl) batchInsertPayloadsAndEnumValues(ctx contex
 	query = query.Columns(columnNames...)
 
 	err = ExecBuilder(ctx, exec, query)
+	if IsUniqueViolationError(err) {
+		return errors.Wrap(models.ConflictError, "unique constraint violation during ingestion")
+	}
 
 	return err
 }

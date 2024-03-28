@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/cockroachdb/errors"
-
 	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -20,6 +20,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 const (
@@ -45,9 +46,13 @@ func (usecase *IngestionUseCase) IngestObjects(ctx context.Context, organization
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
 		return err
 	}
-	return usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Executor) error {
-		return usecase.ingestionRepository.IngestObjects(ctx, tx, payloads, table, logger)
-	})
+
+	ingestClosure := func() error {
+		return usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Executor) error {
+			return usecase.ingestionRepository.IngestObjects(ctx, tx, payloads, table, logger)
+		})
+	}
+	return retryIngestion(ctx, ingestClosure)
 }
 
 func (usecase *IngestionUseCase) ListUploadLogs(ctx context.Context,
@@ -308,9 +313,13 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 			clientObjects = append(clientObjects, clientObject)
 		}
 
-		if err := usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Executor) error {
-			return usecase.ingestionRepository.IngestObjects(ctx, tx, clientObjects, table, logger)
-		}); err != nil {
+		ingestClosure := func() error {
+			return usecase.transactionFactory.TransactionInOrgSchema(ctx,
+				organizationId, func(tx repositories.Executor) error {
+					return usecase.ingestionRepository.IngestObjects(ctx, tx, clientObjects, table, logger)
+				})
+		}
+		if err := retryIngestion(ctx, ingestClosure); err != nil {
 			return err
 		}
 	}
@@ -396,4 +405,18 @@ func parseStringValuesToMap(headers []string, values []string, table models.Tabl
 
 func computeFileName(organizationId, tableName string) string {
 	return organizationId + "/" + tableName + "/" + strconv.FormatInt(time.Now().Unix(), 10) + ".csv"
+}
+
+func retryIngestion(ctx context.Context, f func() error) error {
+	logger := utils.LoggerFromContext(ctx)
+	return retry.Do(f,
+		retry.Attempts(3),
+		retry.LastErrorOnly(true),
+		retry.RetryIf(func(err error) bool {
+			return errors.Is(err, models.ConflictError)
+		}),
+		retry.OnRetry(func(n uint, err error) {
+			logger.WarnContext(ctx, "Error occurred during ingestion, retry: "+err.Error())
+		}),
+	)
 }
