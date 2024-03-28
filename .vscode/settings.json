@@ -11,7 +11,8 @@
             "go.sum": true,
             "tempFiles/*": true,
             "**/*.ndjson": true,
-            "LICENSE": true
+            "LICENSE": true,
+            ".git/logs": true,
       },
 }
     
