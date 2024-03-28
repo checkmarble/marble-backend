@@ -106,7 +106,7 @@ func runServer(ctx context.Context, appConfig AppConfiguration) {
 	}
 
 	router := initRouter(ctx, appConfig, deps)
-	server := api.New(router, appConfig.port, uc, deps.Authentication, deps.TokenHandler)
+	server := api.New(router, appConfig.port, appConfig.config, uc, deps.Authentication, deps.TokenHandler)
 
 	notify, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -165,6 +165,7 @@ func main() {
 			FakeGcsRepository:    utils.GetEnv("FAKE_GCS", false),
 			GcsIngestionBucket:   utils.GetRequiredEnv[string]("GCS_INGESTION_BUCKET"),
 			GcsCaseManagerBucket: utils.GetRequiredEnv[string]("GCS_CASE_MANAGER_BUCKET"),
+			MarbleAppHost:        utils.GetEnv("MARBLE_APP_HOST", ""),
 			SegmentWriteKey:      utils.GetRequiredEnv[string]("SEGMENT_WRITE_KEY"),
 			JwtSigningKey:        utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY", ""),
 		},

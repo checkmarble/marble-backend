@@ -42,8 +42,10 @@ func AdaptCaseDto(c models.Case) APICase {
 
 func AdaptCaseWithDecisionsDto(c models.Case) APICaseWithDecisions {
 	return APICaseWithDecisions{
-		APICase:   AdaptCaseDto(c),
-		Decisions: pure_utils.Map(c.Decisions, NewAPIDecisionWithRule),
+		APICase: AdaptCaseDto(c),
+		Decisions: pure_utils.Map(c.Decisions, func(d models.DecisionWithRuleExecutions) APIDecisionWithRules {
+			return NewAPIDecisionWithRule(d, "")
+		}),
 	}
 }
 

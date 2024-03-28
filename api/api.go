@@ -17,11 +17,13 @@ import (
 type API struct {
 	router   *gin.Engine
 	usecases usecases.Usecases
+	config   models.GlobalConfiguration
 }
 
 func New(
 	router *gin.Engine,
 	port string,
+	config models.GlobalConfiguration,
 	usecases usecases.Usecases,
 	auth *Authentication,
 	tokenHandler *TokenHandler,
@@ -29,6 +31,7 @@ func New(
 	s := &API{
 		router:   router,
 		usecases: usecases,
+		config:   config,
 	}
 
 	s.routes(auth, tokenHandler)
