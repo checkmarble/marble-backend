@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/cockroachdb/errors"
+
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
@@ -22,14 +24,11 @@ func ScheduleDueScenarios(ctx context.Context, usecases usecases.Usecases) error
 		models.ListAllScenariosFilters{Live: true},
 	)
 	if err != nil {
-		return fmt.Errorf("Error while listing all live scenarios: %w", err)
+		return errors.Wrap(err, "Error while listing all live scenarios")
 	}
 
 	usecasesWithCreds := GenerateUsecaseWithCredForMarbleAdmin(ctx, usecases)
 	runScheduledExecution := usecasesWithCreds.NewRunScheduledExecution()
-	if err != nil {
-		return fmt.Errorf("usecasesWithCreds.NewRunScheduledExecution error: %w", err)
-	}
 
 	for _, scenario := range scenarios {
 		logger.DebugContext(ctx, "executing scenario",
