@@ -87,7 +87,7 @@ func (repo *IngestionRepositoryImpl) mostRecentPayloadsByObjectId(payloads []mod
 		mostRecentPayloads = append(mostRecentPayloads, obj)
 	}
 
-	return mostRecentObjectIds, payloads
+	return mostRecentObjectIds, mostRecentPayloads
 }
 
 type DBObject struct {
