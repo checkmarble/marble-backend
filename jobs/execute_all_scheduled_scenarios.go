@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
@@ -11,6 +12,12 @@ import (
 
 // Runs every minute
 func ExecuteAllScheduledScenarios(ctx context.Context, usecases usecases.Usecases) error {
+	defer func() {
+		ok := sentry.Flush(2 * time.Second)
+		if !ok {
+			fmt.Println("failed to send some events")
+		}
+	}()
 	logger := utils.LoggerFromContext(ctx)
 	logger.InfoContext(ctx, "Start pending scheduled executions")
 
