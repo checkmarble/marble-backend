@@ -16,6 +16,8 @@ func ExecuteAllScheduledScenarios(ctx context.Context, usecases usecases.Usecase
 		ok := sentry.Flush(2 * time.Second)
 		if !ok {
 			fmt.Println("failed to send some events")
+		} else {
+			fmt.Println("flushed all events")
 		}
 	}()
 	logger := utils.LoggerFromContext(ctx)
@@ -28,6 +30,7 @@ func ExecuteAllScheduledScenarios(ctx context.Context, usecases usecases.Usecase
 		},
 		nil,
 	)
+	fmt.Println("checkinId: ", *checkinId)
 
 	usecasesWithCreds := GenerateUsecaseWithCredForMarbleAdmin(ctx, usecases)
 	runScheduledExecution := usecasesWithCreds.NewRunScheduledExecution()
