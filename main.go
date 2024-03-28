@@ -166,6 +166,7 @@ func main() {
 			GcsIngestionBucket:   utils.GetRequiredEnv[string]("GCS_INGESTION_BUCKET"),
 			GcsCaseManagerBucket: utils.GetRequiredEnv[string]("GCS_CASE_MANAGER_BUCKET"),
 			MarbleAppHost:        utils.GetEnv("MARBLE_APP_HOST", ""),
+			MarbleBackofficeHost: utils.GetEnv("MARBLE_BACKOFFICE_HOST", ""),
 			SegmentWriteKey:      utils.GetRequiredEnv[string]("SEGMENT_WRITE_KEY"),
 			JwtSigningKey:        utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY", ""),
 		},
