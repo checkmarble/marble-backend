@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/getsentry/sentry-go"
 	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -51,31 +50,6 @@ func initRouter(ctx context.Context, conf AppConfiguration, deps dependencies) *
 	logger := utils.LoggerFromContext(ctx)
 
 	r := gin.New()
-
-	if err := sentry.Init(sentry.ClientOptions{
-		Dsn:           conf.sentryDsn,
-		EnableTracing: true,
-		Environment:   conf.env,
-		TracesSampler: sentry.TracesSampler(func(ctx sentry.SamplingContext) float64 {
-			if ctx.Span.Name == "GET /liveness" {
-				return 0.0
-			}
-			if ctx.Span.Name == "POST /ingestion/:object_type" {
-				return 0.05
-			}
-			if ctx.Span.Name == "POST /decisions" {
-				return 0.05
-			}
-			if ctx.Span.Name == "GET /token" {
-				return 0.05
-			}
-			return 0.1
-		}),
-		// Experimental - value to be adjusted in prod once volumes go up - relative to the trace sampling rate
-		ProfilesSampleRate: 0.2,
-	}); err != nil {
-		panic(err)
-	}
 
 	r.Use(gin.Recovery())
 	r.Use(sentrygin.New(sentrygin.Options{Repanic: true}))
