@@ -210,6 +210,7 @@ func main() {
 	)
 
 	setupSentry(appConfig)
+	defer sentry.Flush(3 * time.Second)
 
 	if *shouldRunMigrations {
 		migrater := repositories.NewMigrater(appConfig.pgConfig)
