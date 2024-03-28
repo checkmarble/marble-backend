@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
+	"github.com/getsentry/sentry-go"
 	"github.com/segmentio/analytics-go/v3"
 	"go.opentelemetry.io/otel/trace"
 
@@ -208,6 +209,8 @@ func main() {
 		slog.Bool("shouldRunScheduler", *shouldRunScheduler),
 	)
 
+	setupSentry(appConfig)
+
 	if *shouldRunMigrations {
 		migrater := repositories.NewMigrater(appConfig.pgConfig)
 		if err := migrater.Run(appContext); err != nil {
@@ -278,5 +281,32 @@ func NewUseCases(ctx context.Context, appConfiguration AppConfiguration, marbleJ
 	return usecases.Usecases{
 		Repositories:  *repositories,
 		Configuration: appConfiguration.config,
+	}
+}
+
+func setupSentry(conf AppConfiguration) {
+	if err := sentry.Init(sentry.ClientOptions{
+		Dsn:           conf.sentryDsn,
+		EnableTracing: true,
+		Environment:   conf.env,
+		TracesSampler: sentry.TracesSampler(func(ctx sentry.SamplingContext) float64 {
+			if ctx.Span.Name == "GET /liveness" {
+				return 0.0
+			}
+			if ctx.Span.Name == "POST /ingestion/:object_type" {
+				return 0.05
+			}
+			if ctx.Span.Name == "POST /decisions" {
+				return 0.05
+			}
+			if ctx.Span.Name == "GET /token" {
+				return 0.05
+			}
+			return 0.1
+		}),
+		// Experimental - value to be adjusted in prod once volumes go up - relative to the trace sampling rate
+		ProfilesSampleRate: 0.2,
+	}); err != nil {
+		panic(err)
 	}
 }
