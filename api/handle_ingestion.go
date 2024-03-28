@@ -76,10 +76,7 @@ func (api *API) handleIngestion(c *gin.Context) {
 	err = usecase.IngestObjects(c.Request.Context(), organizationId, []models.ClientObject{
 		payload,
 	}, table, logger)
-	if err != nil {
-		logger.ErrorContext(c.Request.Context(),
-			fmt.Sprintf("Error while ingesting object: %v", err))
-		http.Error(c.Writer, "", http.StatusInternalServerError)
+	if presentError(c, err) {
 		return
 	}
 	c.Status(http.StatusCreated)
