@@ -29,7 +29,7 @@ func (api *API) handleGetDecision(c *gin.Context) {
 	if presentError(c, err) {
 		return
 	}
-	c.JSON(http.StatusOK, dto.NewAPIDecisionWithRule(decision))
+	c.JSON(http.StatusOK, dto.NewAPIDecisionWithRule(decision, api.config.MarbleAppHost))
 }
 
 func (api *API) handleListDecisions(c *gin.Context) {
@@ -73,7 +73,7 @@ func (api *API) handleListDecisions(c *gin.Context) {
 		"start_index": decisions[0].RankNumber,
 		"end_index":   decisions[len(decisions)-1].RankNumber,
 		"items": pure_utils.Map(decisions, func(d models.DecisionWithRank) dto.APIDecision {
-			return dto.NewAPIDecision(d.Decision)
+			return dto.NewAPIDecision(d.Decision, api.config.MarbleAppHost)
 		}),
 	})
 }
@@ -142,5 +142,5 @@ func (api *API) handlePostDecision(c *gin.Context) {
 		presentError(c, errors.Wrap(err, "Error creating decision in handlePostDecision"))
 		return
 	}
-	c.JSON(http.StatusOK, dto.NewAPIDecisionWithRule(decision))
+	c.JSON(http.StatusOK, dto.NewAPIDecisionWithRule(decision, api.config.MarbleAppHost))
 }

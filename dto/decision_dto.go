@@ -2,10 +2,13 @@ package dto
 
 import (
 	"encoding/json"
+	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/guregu/null/v5"
 )
 
 type GetDecisionInput struct {
@@ -57,6 +60,7 @@ type APIDecisionScenario struct {
 
 type APIDecision struct {
 	Id                   string              `json:"id"`
+	AppLink              null.String         `json:"app_link"`
 	Case                 *APICase            `json:"case,omitempty"`
 	CreatedAt            time.Time           `json:"created_at"`
 	TriggerObject        map[string]any      `json:"trigger_object"`
@@ -72,9 +76,10 @@ type APIDecisionWithRules struct {
 	Rules []APIDecisionRule `json:"rules"`
 }
 
-func NewAPIDecision(decision models.Decision) APIDecision {
+func NewAPIDecision(decision models.Decision, marbleAppHost string) APIDecision {
 	apiDecision := APIDecision{
 		Id:                decision.DecisionId,
+		AppLink:           toDecisionUrl(marbleAppHost, decision.DecisionId),
 		CreatedAt:         decision.CreatedAt,
 		TriggerObjectType: string(decision.ClientObject.TableName),
 		TriggerObject:     decision.ClientObject.Data,
@@ -98,9 +103,22 @@ func NewAPIDecision(decision models.Decision) APIDecision {
 	return apiDecision
 }
 
-func NewAPIDecisionWithRule(decision models.DecisionWithRuleExecutions) APIDecisionWithRules {
+func toDecisionUrl(marbleAppHost string, decisionId string) null.String {
+	if marbleAppHost == "" {
+		return null.String{}
+	}
+
+	url := url.URL{
+		Scheme: "https",
+		Host:   marbleAppHost,
+		Path:   fmt.Sprintf("/decisions/%s", decisionId),
+	}
+	return null.StringFrom(url.String())
+}
+
+func NewAPIDecisionWithRule(decision models.DecisionWithRuleExecutions, marbleAppHost string) APIDecisionWithRules {
 	apiDecision := APIDecisionWithRules{
-		APIDecision: NewAPIDecision(decision.Decision),
+		APIDecision: NewAPIDecision(decision.Decision, marbleAppHost),
 		Rules:       make([]APIDecisionRule, len(decision.RuleExecutions)),
 	}
 

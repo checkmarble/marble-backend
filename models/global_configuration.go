@@ -6,6 +6,7 @@ type GlobalConfiguration struct {
 	GcsIngestionBucket   string
 	GcsCaseManagerBucket string
 	JwtSigningKey        string
+	MarbleAppHost        string
 	SegmentWriteKey      string
 	TokenLifetimeMinute  int
 }
