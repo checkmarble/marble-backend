@@ -25,7 +25,12 @@ type CustomListRepository interface {
 		newCustomListId string,
 		userId *models.UserId,
 	) error
-	DeleteCustomListValue(ctx context.Context, exec Executor, deleteCustomListValue models.DeleteCustomListValueInput) error
+	DeleteCustomListValue(
+		ctx context.Context,
+		exec Executor,
+		deleteCustomListValue models.DeleteCustomListValueInput,
+		userId *models.UserId,
+	) error
 }
 
 type CustomListRepositoryPostgresql struct{}
@@ -201,9 +206,16 @@ func (repo *CustomListRepositoryPostgresql) DeleteCustomListValue(
 	ctx context.Context,
 	exec Executor,
 	deleteCustomListValue models.DeleteCustomListValueInput,
+	userId *models.UserId,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
+	}
+
+	if userId != nil {
+		if err := setCurrentUserIdContext(ctx, exec, userId); err != nil {
+			return err
+		}
 	}
 
 	deleteRequest := NewQueryBuilder().Update(dbmodels.TABLE_CUSTOM_LIST_VALUE)

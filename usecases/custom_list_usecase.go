@@ -193,6 +193,12 @@ func (usecase *CustomListUseCase) AddCustomListValue(ctx context.Context,
 func (usecase *CustomListUseCase) DeleteCustomListValue(ctx context.Context,
 	deleteCustomListValue models.DeleteCustomListValueInput,
 ) error {
+	var userId *models.UserId
+	creds, found := utils.CredentialsFromCtx(ctx)
+	if found {
+		userId = &creds.ActorIdentity.UserId
+	}
+
 	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
 		customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, deleteCustomListValue.CustomListId)
 		if err != nil {
@@ -201,7 +207,7 @@ func (usecase *CustomListUseCase) DeleteCustomListValue(ctx context.Context,
 		if err := usecase.enforceSecurity.ModifyCustomList(customList); err != nil {
 			return err
 		}
-		return usecase.CustomListRepository.DeleteCustomListValue(ctx, tx, deleteCustomListValue)
+		return usecase.CustomListRepository.DeleteCustomListValue(ctx, tx, deleteCustomListValue, userId)
 	})
 	if err != nil {
 		return err
