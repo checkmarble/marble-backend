@@ -61,13 +61,16 @@ func (cl *CustomListRepository) AddCustomListValue(
 	newCustomListId string,
 	userId *models.UserId,
 ) error {
-	args := cl.Called(exec, addCustomListValue)
+	args := cl.Called(ctx, exec, addCustomListValue, userId)
 	return args.Error(0)
 }
 
-func (cl *CustomListRepository) DeleteCustomListValue(ctx context.Context,
-	exec repositories.Executor, deleteCustomListValue models.DeleteCustomListValueInput,
+func (cl *CustomListRepository) DeleteCustomListValue(
+	ctx context.Context,
+	exec repositories.Executor,
+	deleteCustomListValue models.DeleteCustomListValueInput,
+	userId *models.UserId,
 ) error {
-	args := cl.Called(exec, deleteCustomListValue)
+	args := cl.Called(ctx, exec, deleteCustomListValue, userId)
 	return args.Error(0)
 }
