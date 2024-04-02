@@ -54,8 +54,12 @@ func (cl *CustomListRepository) SoftDeleteCustomList(ctx context.Context, exec r
 	return args.Error(0)
 }
 
-func (cl *CustomListRepository) AddCustomListValue(ctx context.Context, exec repositories.Executor,
-	addCustomListValue models.AddCustomListValueInput, newCustomListId string,
+func (cl *CustomListRepository) AddCustomListValue(
+	ctx context.Context,
+	exec repositories.Executor,
+	addCustomListValue models.AddCustomListValueInput,
+	newCustomListId string,
+	userId *models.UserId,
 ) error {
 	args := cl.Called(exec, addCustomListValue)
 	return args.Error(0)
