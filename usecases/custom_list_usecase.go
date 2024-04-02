@@ -10,6 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type CustomListUseCase struct {
@@ -154,6 +155,12 @@ func (usecase *CustomListUseCase) GetCustomListValues(ctx context.Context,
 func (usecase *CustomListUseCase) AddCustomListValue(ctx context.Context,
 	addCustomListValue models.AddCustomListValueInput,
 ) (models.CustomListValue, error) {
+	var userId *models.UserId
+	creds, found := utils.CredentialsFromCtx(ctx)
+	if found {
+		userId = &creds.ActorIdentity.UserId
+	}
+
 	value, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Executor,
 	) (models.CustomListValue, error) {
@@ -166,7 +173,7 @@ func (usecase *CustomListUseCase) AddCustomListValue(ctx context.Context,
 		}
 		newCustomListValueId := uuid.NewString()
 
-		err = usecase.CustomListRepository.AddCustomListValue(ctx, tx, addCustomListValue, newCustomListValueId)
+		err = usecase.CustomListRepository.AddCustomListValue(ctx, tx, addCustomListValue, newCustomListValueId, userId)
 		if err != nil {
 			return models.CustomListValue{}, err
 		}
