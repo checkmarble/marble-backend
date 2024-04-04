@@ -144,3 +144,30 @@ func (api *API) handlePostDecision(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, dto.NewAPIDecisionWithRule(decision, api.config.MarbleAppHost))
 }
+
+func (api *API) handlePostAllDecisions(c *gin.Context) {
+	organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+	if presentError(c, err) {
+		return
+	}
+
+	var requestData dto.CreateDecisionBody
+	if err := c.ShouldBindJSON(&requestData); err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
+	decisionUsecase := api.UsecasesWithCreds(c.Request).NewDecisionUsecase()
+	decisions, nbSkipped, err := decisionUsecase.CreateAllDecisions(
+		c.Request.Context(),
+		models.CreateAllDecisionsInput{
+			OrganizationId:     organizationId,
+			PayloadRaw:         requestData.TriggerObjectRaw,
+			TriggerObjectTable: requestData.TriggerObjectType,
+		},
+	)
+	if presentError(c, err) {
+		return
+	}
+	c.JSON(http.StatusOK, dto.AdaptAPIDecisionsWithMetadata(decisions, api.config.MarbleAppHost, nbSkipped))
+}

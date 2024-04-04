@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type Outcome int
 
@@ -52,6 +55,12 @@ type CreateDecisionInput struct {
 	OrganizationId string
 	ScenarioId     string
 	ClientObject   ClientObject
+}
+
+type CreateAllDecisionsInput struct {
+	OrganizationId     string
+	TriggerObjectTable string
+	PayloadRaw         json.RawMessage
 }
 
 type DecisionFilters struct {

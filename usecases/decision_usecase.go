@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -14,6 +15,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/payload_parser"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -268,4 +270,136 @@ func (usecase *DecisionUsecase) CreateDecision(
 
 		return usecase.decisionRepository.DecisionById(ctx, tx, newDecisionId)
 	})
+}
+
+func (usecase *DecisionUsecase) CreateAllDecisions(
+	ctx context.Context,
+	input models.CreateAllDecisionsInput,
+) (decisions []models.DecisionWithRuleExecutions, nbSkipped int, err error) {
+	exec := usecase.executorFactory.NewExecutor()
+	logger := utils.LoggerFromContext(ctx)
+
+	if err = usecase.enforceSecurity.CreateDecision(input.OrganizationId); err != nil {
+		return
+	}
+
+	dataModel, err := usecase.datamodelRepository.GetDataModel(ctx, exec, input.OrganizationId, false)
+	if err != nil {
+		return nil, 0, errors.Wrap(err, "error getting data model in CreateAllDecisions")
+	}
+
+	tables := dataModel.Tables
+	table, ok := tables[models.TableName(input.TriggerObjectTable)]
+	if !ok {
+		return nil, 0, errors.Wrap(
+			models.NotFoundError,
+			fmt.Sprintf("table %s not found in data model in CreateAllDecisions", input.TriggerObjectTable),
+		)
+	}
+
+	parser := payload_parser.NewParser()
+	payload, validationErrors, err := parser.ParsePayload(table, input.PayloadRaw)
+	if err != nil {
+		return nil, 0, errors.Wrap(
+			models.BadParameterError,
+			fmt.Sprintf("Error while validating payload in CreateAllDecisions: %v", err),
+		)
+	}
+	if len(validationErrors) > 0 {
+		encoded, _ := json.Marshal(validationErrors)
+		logger.InfoContext(ctx, fmt.Sprintf("Validation errors on POST all decisions: %s", string(encoded)))
+		return nil, 0, errors.Wrap(models.BadParameterError, string(encoded))
+	}
+
+	scenarios, err := usecase.repository.ListScenariosOfOrganization(ctx, exec, input.OrganizationId)
+	if err != nil {
+		return nil, 0, errors.Wrap(err, "error getting scenarios in CreateAllDecisions")
+	}
+	var filteredScenarios []models.Scenario
+	for _, scenario := range scenarios {
+		if scenario.TriggerObjectType == input.TriggerObjectTable {
+			if err := usecase.enforceSecurityScenario.ReadScenario(scenario); err != nil {
+				return nil, 0, err
+			}
+			filteredScenarios = append(filteredScenarios, scenario)
+		}
+	}
+
+	evaluationRepositories := evaluate_scenario.ScenarioEvaluationRepositories{
+		EvalScenarioRepository:     usecase.repository,
+		ExecutorFactory:            usecase.executorFactory,
+		IngestedDataReadRepository: usecase.ingestedDataReadRepository,
+		EvaluateAstExpression:      usecase.evaluateAstExpression,
+	}
+
+	type decisionAndScenario struct {
+		decision models.DecisionWithRuleExecutions
+		scenario models.Scenario
+	}
+	var items []decisionAndScenario
+	for _, scenario := range filteredScenarios {
+		evaluationParameters := evaluate_scenario.ScenarioEvaluationParameters{
+			Scenario:     scenario,
+			ClientObject: payload,
+			DataModel:    dataModel,
+		}
+		scenarioExecution, err := evaluate_scenario.EvalScenario(ctx, evaluationParameters, evaluationRepositories, logger)
+		if errors.Is(err, models.ErrScenarioTriggerConditionAndTriggerObjectMismatch) {
+			nbSkipped++
+			continue
+		} else if err != nil {
+			return nil, 0, errors.Wrap(err, "error evaluating scenario in CreateAllDecisions")
+		}
+
+		decision := models.DecisionWithRuleExecutions{
+			Decision: models.Decision{
+				ClientObject:        payload,
+				Outcome:             scenarioExecution.Outcome,
+				ScenarioDescription: scenarioExecution.ScenarioDescription,
+				ScenarioId:          scenarioExecution.ScenarioId,
+				ScenarioIterationId: scenarioExecution.ScenarioIterationId,
+				ScenarioName:        scenarioExecution.ScenarioName,
+				ScenarioVersion:     scenarioExecution.ScenarioVersion,
+				Score:               scenarioExecution.Score,
+			},
+			RuleExecutions: scenarioExecution.RuleExecutions,
+		}
+		items = append(items, decisionAndScenario{decision: decision, scenario: scenario})
+
+	}
+
+	decisions, err = executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
+		tx repositories.Executor,
+	) ([]models.DecisionWithRuleExecutions, error) {
+		var ids []string
+		for _, item := range items {
+			newDecisionId := utils.NewPrimaryKey(input.OrganizationId)
+			ids = append(ids, newDecisionId)
+			err = usecase.decisionRepository.StoreDecision(ctx, tx, item.decision, input.OrganizationId, newDecisionId)
+			if err != nil {
+				return nil, fmt.Errorf("error storing decision in CreateAllDecisions: %w", err)
+			}
+
+			if item.scenario.DecisionToCaseOutcomes != nil &&
+				slices.Contains(item.scenario.DecisionToCaseOutcomes, item.decision.Outcome) &&
+				item.scenario.DecisionToCaseInboxId != nil {
+				_, err = usecase.caseCreator.CreateCaseAsWorkflow(ctx, tx, models.CreateCaseAttributes{
+					DecisionIds: []string{newDecisionId},
+					InboxId:     *item.scenario.DecisionToCaseInboxId,
+					Name: fmt.Sprintf(
+						"Case for %s: %s",
+						item.scenario.TriggerObjectType,
+						payload.Data["object_id"],
+					),
+					OrganizationId: input.OrganizationId,
+				})
+				if err != nil {
+					return nil, fmt.Errorf("error linking decision to case: %w", err)
+				}
+			}
+		}
+
+		return usecase.decisionRepository.DecisionsByIds(ctx, tx, ids)
+	})
+	return
 }

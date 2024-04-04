@@ -27,8 +27,8 @@ type DecisionFilters struct {
 
 type CreateDecisionBody struct {
 	ScenarioId        string          `json:"scenario_id"`
-	TriggerObjectRaw  json.RawMessage `json:"trigger_object"`
-	TriggerObjectType string          `json:"object_type"`
+	TriggerObjectRaw  json.RawMessage `json:"trigger_object" binding:"required"`
+	TriggerObjectType string          `json:"object_type" binding:"required"`
 }
 
 type CreateDecisionInputDto struct {
@@ -150,4 +150,54 @@ func APIErrorFromError(err error) *APIError {
 		Code:    int(ast.AdaptExecutionError(err)),
 		Message: err.Error(),
 	}
+}
+
+type DecisionsAggregateMetadata struct {
+	Count struct {
+		Total   int `json:"total"`
+		Approve int `json:"approve"`
+		Review  int `json:"review"`
+		Reject  int `json:"reject"`
+		Skipped int `json:"skipped"`
+	} `json:"count"`
+}
+type APIDecisionsWithMetadata struct {
+	Decisions []APIDecisionWithRules     `json:"decisions"`
+	Metadata  DecisionsAggregateMetadata `json:"metadata"`
+}
+
+func AdaptAPIDecisionsWithMetadata(
+	decisions []models.DecisionWithRuleExecutions,
+	marbleAppHost string,
+	nbSkipped int,
+) APIDecisionsWithMetadata {
+	apiDecisions := make([]APIDecisionWithRules, len(decisions))
+	for i, decision := range decisions {
+		apiDecisions[i] = NewAPIDecisionWithRule(decision, marbleAppHost)
+	}
+
+	return APIDecisionsWithMetadata{
+		Decisions: apiDecisions,
+		Metadata:  AdaptDecisionsMetadata(decisions, nbSkipped),
+	}
+}
+
+func AdaptDecisionsMetadata(
+	decisions []models.DecisionWithRuleExecutions,
+	nbSkipped int,
+) DecisionsAggregateMetadata {
+	metadata := DecisionsAggregateMetadata{}
+	for _, decision := range decisions {
+		switch decision.Outcome {
+		case models.Approve:
+			metadata.Count.Approve++
+		case models.Review:
+			metadata.Count.Review++
+		case models.Reject:
+			metadata.Count.Reject++
+		}
+	}
+	metadata.Count.Total = len(decisions)
+	metadata.Count.Skipped = nbSkipped
+	return metadata
 }
