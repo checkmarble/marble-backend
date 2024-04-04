@@ -39,6 +39,7 @@ func (api *API) routes(auth *Authentication, tokenHandler *TokenHandler) {
 
 	router.GET("/decisions", api.handleListDecisions)
 	router.POST("/decisions", timeoutMiddleware(10*time.Second), api.handlePostDecision)
+	router.POST("/decisions/all", timeoutMiddleware(30*time.Second), api.handlePostAllDecisions)
 	router.GET("/decisions/:decision_id", api.handleGetDecision)
 
 	router.POST("/ingestion/:object_type", api.handleIngestion)

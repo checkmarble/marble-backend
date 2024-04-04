@@ -15,9 +15,17 @@ import (
 )
 
 type DecisionRepository interface {
-	DecisionById(ctx context.Context, exec Executor, decisionId string) (
-		models.DecisionWithRuleExecutions, error)
-	DecisionsById(ctx context.Context, exec Executor, decisionIds []string) ([]models.Decision, error)
+	DecisionById(
+		ctx context.Context,
+		exec Executor,
+		decisionId string,
+	) (models.DecisionWithRuleExecutions, error)
+	DecisionsByIds(
+		ctx context.Context,
+		exec Executor,
+		decisionIds []string,
+	) ([]models.DecisionWithRuleExecutions, error)
+	DecisionsWithoutRulesById(ctx context.Context, exec Executor, decisionIds []string) ([]models.Decision, error)
 	DecisionsByCaseId(ctx context.Context, exec Executor, caseId string) (
 		[]models.DecisionWithRuleExecutions, error)
 	DecisionsByObjectId(ctx context.Context, exec Executor, organizationId string, objectId string) ([]models.DecisionCore, error)
@@ -44,21 +52,41 @@ const decisionRulesBatchSize = 1000
 func (repo *DecisionRepositoryImpl) DecisionById(ctx context.Context, exec Executor,
 	decisionId string,
 ) (models.DecisionWithRuleExecutions, error) {
-	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.DecisionWithRuleExecutions{}, err
-	}
-
-	rules, err := repo.rulesOfDecision(ctx, exec, decisionId)
+	decisions, err := repo.DecisionsByIds(ctx, exec, []string{decisionId})
 	if err != nil {
 		return models.DecisionWithRuleExecutions{}, err
 	}
+	if len(decisions) == 0 {
+		return models.DecisionWithRuleExecutions{},
+			errors.Wrap(models.NotFoundError, "Decision not found")
+	}
+	return decisions[0], nil
+}
 
-	return SqlToRow(
+func (repo *DecisionRepositoryImpl) DecisionsByIds(
+	ctx context.Context,
+	exec Executor,
+	decisionIds []string,
+) ([]models.DecisionWithRuleExecutions, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	rules, err := repo.rulesOfDecisions(ctx, exec, decisionIds)
+	if err != nil {
+		return nil, err
+	}
+	rulesAsMap := make(map[string][]models.RuleExecution, len(rules))
+	for _, rule := range rules {
+		rulesAsMap[rule.DecisionId] = append(rulesAsMap[rule.DecisionId], rule)
+	}
+
+	return SqlToListOfRow(
 		ctx,
 		exec,
 		selectJoinDecisionAndCase().
-			Where(squirrel.Eq{"d.id": decisionId}),
-		func(row pgx.CollectableRow) (models.DecisionWithRuleExecutions, error) {
+			Where(squirrel.Eq{"d.id": decisionIds}),
+		func(row pgx.CollectableRow) (decisions models.DecisionWithRuleExecutions, err error) {
 			db, err := pgx.RowToStructByPos[dbmodels.DbJoinDecisionAndCase](row)
 			if err != nil {
 				return models.DecisionWithRuleExecutions{}, err
@@ -72,12 +100,17 @@ func (repo *DecisionRepositoryImpl) DecisionById(ctx context.Context, exec Execu
 				}
 				decisionCase = &decisionCaseValue
 			}
-			return dbmodels.AdaptDecisionWithRuleExecutions(db.DbDecision, rules, decisionCase), nil
+
+			return dbmodels.AdaptDecisionWithRuleExecutions(
+				db.DbDecision,
+				rulesAsMap[db.DbDecision.Id],
+				decisionCase,
+			), nil
 		},
 	)
 }
 
-func (repo *DecisionRepositoryImpl) DecisionsById(ctx context.Context, exec Executor, decisionIds []string) ([]models.Decision, error) {
+func (repo *DecisionRepositoryImpl) DecisionsWithoutRulesById(ctx context.Context, exec Executor, decisionIds []string) ([]models.Decision, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -481,6 +514,10 @@ func selectJoinDecisionAndCase() squirrel.SelectBuilder {
 }
 
 func (repo *DecisionRepositoryImpl) rulesOfDecision(ctx context.Context, exec Executor, decisionId string) ([]models.RuleExecution, error) {
+	return repo.rulesOfDecisions(ctx, exec, []string{decisionId})
+}
+
+func (repo *DecisionRepositoryImpl) rulesOfDecisions(ctx context.Context, exec Executor, decisionIds []string) ([]models.RuleExecution, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -490,7 +527,7 @@ func (repo *DecisionRepositoryImpl) rulesOfDecision(ctx context.Context, exec Ex
 		exec,
 		NewQueryBuilder().Select(dbmodels.SelectDecisionRuleColumn...).
 			From(dbmodels.TABLE_DECISION_RULES).
-			Where(squirrel.Eq{"decision_id": decisionId}).
+			Where(squirrel.Eq{"decision_id": decisionIds}).
 			OrderBy("id"),
 		func(r dbmodels.DbDecisionRule) (models.RuleExecution, error) {
 			return dbmodels.AdaptRuleExecution(r)

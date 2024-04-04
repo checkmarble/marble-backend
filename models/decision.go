@@ -52,6 +52,7 @@ type ScenarioExecution struct {
 }
 
 type RuleExecution struct {
+	DecisionId          string
 	Rule                Rule
 	Result              bool
 	Evaluation          *ast.NodeEvaluationDto

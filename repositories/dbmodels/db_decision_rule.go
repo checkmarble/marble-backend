@@ -33,6 +33,7 @@ func AdaptRuleExecution(db DbDecisionRule) (models.RuleExecution, error) {
 	}
 
 	return models.RuleExecution{
+		DecisionId: db.DecisionId,
 		Rule: models.Rule{
 			Id:          db.RuleId,
 			Name:        db.Name,
