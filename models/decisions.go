@@ -52,15 +52,17 @@ func OutcomeFrom(s string) Outcome {
 }
 
 type CreateDecisionInput struct {
-	OrganizationId string
-	ScenarioId     string
-	ClientObject   ClientObject
+	OrganizationId     string
+	PayloadRaw         json.RawMessage
+	ClientObject       *ClientObject
+	ScenarioId         string
+	TriggerObjectTable string
 }
 
 type CreateAllDecisionsInput struct {
 	OrganizationId     string
-	TriggerObjectTable string
 	PayloadRaw         json.RawMessage
+	TriggerObjectTable string
 }
 
 type DecisionFilters struct {

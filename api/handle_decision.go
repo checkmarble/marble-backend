@@ -1,17 +1,13 @@
 package api
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
 
-	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
-	"github.com/checkmarble/marble-backend/usecases/payload_parser"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -79,66 +75,30 @@ func (api *API) handleListDecisions(c *gin.Context) {
 }
 
 func (api *API) handlePostDecision(c *gin.Context) {
-	logger := utils.LoggerFromContext(c.Request.Context())
-
 	organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
 	if presentError(c, err) {
 		return
 	}
 
-	var requestData dto.CreateDecisionBody
+	var requestData dto.CreateDecisionWithScenarioBody
 	if err := c.ShouldBindJSON(&requestData); err != nil {
 		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	dataModelUseCase := api.UsecasesWithCreds(c.Request).NewDataModelUseCase()
-	dataModel, err := dataModelUseCase.GetDataModel(c.Request.Context(), organizationId)
-	if err != nil {
-		http.Error(c.Writer, "No data model found for organization", http.StatusInternalServerError)
-		return
-	}
-
-	tables := dataModel.Tables
-	table, ok := tables[models.TableName(requestData.TriggerObjectType)]
-	if !ok {
-		http.Error(c.Writer, fmt.Sprintf("Table %s not found",
-			requestData.TriggerObjectType), http.StatusNotFound)
-		return
-	}
-
-	parser := payload_parser.NewParser()
-	payload, validationErrors, err := parser.ParsePayload(table, requestData.TriggerObjectRaw)
-	if err != nil {
-		presentError(c, errors.Wrap(models.BadParameterError,
-			fmt.Sprintf("Error while validating payload: %v", err)))
-		return
-	}
-	if len(validationErrors) > 0 {
-		encoded, _ := json.Marshal(validationErrors)
-		logger.InfoContext(c.Request.Context(),
-			fmt.Sprintf("Validation errors on POST decisions: %s", string(encoded)))
-		http.Error(c.Writer, string(encoded), http.StatusBadRequest)
-		return
-	}
-
 	// make a decision
 	decisionUsecase := api.UsecasesWithCreds(c.Request).NewDecisionUsecase()
-
 	decision, err := decisionUsecase.CreateDecision(
 		c.Request.Context(),
 		models.CreateDecisionInput{
-			ScenarioId:     requestData.ScenarioId,
-			ClientObject:   payload,
-			OrganizationId: organizationId,
+			OrganizationId:     organizationId,
+			PayloadRaw:         requestData.TriggerObjectRaw,
+			ScenarioId:         requestData.ScenarioId,
+			TriggerObjectTable: requestData.TriggerObjectType,
 		},
 		false,
 	)
-	if errors.Is(err, models.NotFoundError) || errors.Is(err, models.BadParameterError) {
-		presentError(c, err)
-		return
-	} else if err != nil {
-		presentError(c, errors.Wrap(err, "Error creating decision in handlePostDecision"))
+	if presentError(c, err) {
 		return
 	}
 	c.JSON(http.StatusOK, dto.NewAPIDecisionWithRule(decision, api.config.MarbleAppHost))

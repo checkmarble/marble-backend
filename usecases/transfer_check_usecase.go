@@ -160,7 +160,7 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 			ctx,
 			models.CreateDecisionInput{
 				ScenarioId:     scenarioId,
-				ClientObject:   clientObject,
+				ClientObject:   &clientObject,
 				OrganizationId: organizationId,
 			},
 			true,
@@ -459,7 +459,7 @@ func (usecase *TransferCheckUsecase) ScoreTransfer(
 		ctx,
 		models.CreateDecisionInput{
 			ScenarioId:     scenarioId,
-			ClientObject:   models.ClientObject{Data: objects[0], TableName: TransferCheckTable},
+			ClientObject:   &models.ClientObject{Data: objects[0], TableName: TransferCheckTable},
 			OrganizationId: organizationId,
 		},
 		true,

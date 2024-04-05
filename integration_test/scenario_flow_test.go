@@ -552,9 +552,10 @@ func createAndTestDecision(
 	decision, err := decisionUsecase.CreateDecision(
 		usecasesWithCreds.Context,
 		models.CreateDecisionInput{
-			ScenarioId:     scenarioId,
-			ClientObject:   transactionPayload,
-			OrganizationId: organizationId,
+			ScenarioId:         scenarioId,
+			ClientObject:       &transactionPayload,
+			OrganizationId:     organizationId,
+			TriggerObjectTable: string(table.Name),
 		},
 		false,
 	)
