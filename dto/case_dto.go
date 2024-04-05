@@ -44,7 +44,7 @@ func AdaptCaseWithDecisionsDto(c models.Case) APICaseWithDecisions {
 	return APICaseWithDecisions{
 		APICase: AdaptCaseDto(c),
 		Decisions: pure_utils.Map(c.Decisions, func(d models.DecisionWithRuleExecutions) APIDecisionWithRules {
-			return NewAPIDecisionWithRule(d, "")
+			return NewAPIDecisionWithRule(d, "", false)
 		}),
 	}
 }
@@ -70,8 +70,8 @@ type CreateCaseCommentBody struct {
 }
 
 type CaseFilters struct {
-	StartDate time.Time `form:"startDate" time_format`
-	EndDate   time.Time `form:"endDate" time_format`
+	StartDate time.Time `form:"startDate"`
+	EndDate   time.Time `form:"endDate"`
 	Statuses  []string  `form:"statuses[]"`
 	InboxIds  []string  `form:"inbox_ids[]"`
 }

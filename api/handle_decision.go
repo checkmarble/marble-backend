@@ -25,7 +25,7 @@ func (api *API) handleGetDecision(c *gin.Context) {
 	if presentError(c, err) {
 		return
 	}
-	c.JSON(http.StatusOK, dto.NewAPIDecisionWithRule(decision, api.config.MarbleAppHost))
+	c.JSON(http.StatusOK, dto.NewAPIDecisionWithRule(decision, api.config.MarbleAppHost, true))
 }
 
 func (api *API) handleListDecisions(c *gin.Context) {
@@ -101,7 +101,7 @@ func (api *API) handlePostDecision(c *gin.Context) {
 	if presentError(c, err) {
 		return
 	}
-	c.JSON(http.StatusOK, dto.NewAPIDecisionWithRule(decision, api.config.MarbleAppHost))
+	c.JSON(http.StatusOK, dto.NewAPIDecisionWithRule(decision, api.config.MarbleAppHost, false))
 }
 
 func (api *API) handlePostAllDecisions(c *gin.Context) {
@@ -128,5 +128,5 @@ func (api *API) handlePostAllDecisions(c *gin.Context) {
 	if presentError(c, err) {
 		return
 	}
-	c.JSON(http.StatusOK, dto.AdaptAPIDecisionsWithMetadata(decisions, api.config.MarbleAppHost, nbSkipped))
+	c.JSON(http.StatusOK, dto.AdaptAPIDecisionsWithMetadata(decisions, api.config.MarbleAppHost, nbSkipped, false))
 }
