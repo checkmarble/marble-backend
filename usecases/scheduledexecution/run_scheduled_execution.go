@@ -11,6 +11,7 @@ import (
 	"github.com/cockroachdb/errors"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
@@ -82,7 +83,7 @@ func (usecase *RunScheduledExecution) ScheduleScenarioIfDue(ctx context.Context,
 	}
 
 	logger.DebugContext(ctx, fmt.Sprintf("Scenario iteration %s is due", publishedVersion.Id))
-	scheduledExecutionId := utils.NewPrimaryKey(organizationId)
+	scheduledExecutionId := pure_utils.NewPrimaryKey(organizationId)
 	return usecase.Repository.CreateScheduledExecution(ctx, exec, models.CreateScheduledExecutionInput{
 		OrganizationId:      organizationId,
 		ScenarioId:          scenarioId,
@@ -306,7 +307,7 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 			}
 
 			err = usecase.DecisionRepository.StoreDecision(ctx, tx, decisionInput,
-				scenario.OrganizationId, utils.NewPrimaryKey(scenario.OrganizationId))
+				scenario.OrganizationId, pure_utils.NewPrimaryKey(scenario.OrganizationId))
 			if err != nil {
 				return fmt.Errorf("error storing decision: %w", err)
 			}

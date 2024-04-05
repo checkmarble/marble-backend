@@ -12,7 +12,6 @@ import (
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
-	"github.com/checkmarble/marble-backend/utils"
 )
 
 type DecisionRepository interface {
@@ -441,7 +440,7 @@ func (repo *DecisionRepositoryImpl) StoreDecision(
 
 		builderForRules = builderForRules.
 			Values(
-				utils.NewPrimaryKey(organizationId),
+				pure_utils.NewPrimaryKey(organizationId),
 				organizationId,
 				newDecisionId,
 				ruleExecution.Rule.Name,

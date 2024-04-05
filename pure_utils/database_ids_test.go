@@ -1,4 +1,4 @@
-package utils
+package pure_utils
 
 import (
 	"log"

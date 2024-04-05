@@ -6,10 +6,10 @@ import (
 	"io"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/security"
-	"github.com/checkmarble/marble-backend/utils"
 )
 
 type ExportDecisions interface {
@@ -141,7 +141,7 @@ func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(ctx context.C
 		return fmt.Errorf("a pending execution already exists for this scenario %w", models.BadParameterError)
 	}
 
-	id := utils.NewPrimaryKey(input.OrganizationId)
+	id := pure_utils.NewPrimaryKey(input.OrganizationId)
 	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
 		return usecase.repository.CreateScheduledExecution(ctx, tx, models.CreateScheduledExecutionInput{
 			OrganizationId:      input.OrganizationId,
