@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
 const (
@@ -54,6 +55,7 @@ type ScenarioExecution struct {
 	RuleExecutions      []RuleExecution
 	Score               int
 	Outcome             Outcome
+	OrganizationId      string
 }
 
 type RuleExecution struct {
@@ -63,4 +65,21 @@ type RuleExecution struct {
 	Evaluation          *ast.NodeEvaluationDto
 	ResultScoreModifier int
 	Error               error
+}
+
+func AdaptScenarExecToDecision(scenarioExecution ScenarioExecution, clientObject ClientObject) DecisionWithRuleExecutions {
+	return DecisionWithRuleExecutions{
+		Decision: Decision{
+			DecisionId:          pure_utils.NewPrimaryKey(scenarioExecution.OrganizationId),
+			ClientObject:        clientObject,
+			Outcome:             scenarioExecution.Outcome,
+			ScenarioDescription: scenarioExecution.ScenarioDescription,
+			ScenarioId:          scenarioExecution.ScenarioId,
+			ScenarioIterationId: scenarioExecution.ScenarioIterationId,
+			ScenarioName:        scenarioExecution.ScenarioName,
+			ScenarioVersion:     scenarioExecution.ScenarioVersion,
+			Score:               scenarioExecution.Score,
+		},
+		RuleExecutions: scenarioExecution.RuleExecutions,
+	}
 }
