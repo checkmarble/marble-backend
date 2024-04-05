@@ -17,8 +17,8 @@ type GetDecisionInput struct {
 
 type DecisionFilters struct {
 	ScenarioIds    []string  `form:"scenarioId[]"`
-	StartDate      time.Time `form:"startDate" time_format`
-	EndDate        time.Time `form:"endDate" time_format`
+	StartDate      time.Time `form:"startDate"`
+	EndDate        time.Time `form:"endDate"`
 	Outcomes       []string  `form:"outcome[]"`
 	TriggerObjects []string  `form:"triggerObject[]"`
 	CaseIds        []string  `form:"caseId[]"`
@@ -41,12 +41,14 @@ type CreateDecisionInputDto struct {
 }
 
 type APIDecisionRule struct {
-	Name           string                 `json:"name"`
-	Description    string                 `json:"description"`
-	ScoreModifier  int                    `json:"score_modifier"`
-	Result         bool                   `json:"result"`
-	Error          *APIError              `json:"error,omitempty"`
-	RuleId         string                 `json:"rule_id"`
+	Description   string    `json:"description"`
+	Error         *APIError `json:"error,omitempty"`
+	Name          string    `json:"name"`
+	Result        bool      `json:"result"`
+	RuleId        string    `json:"rule_id"`
+	ScoreModifier int       `json:"score_modifier"`
+
+	// RuleEvaluation is not returned by default, it only is for endpoints consumed by the frontend
 	RuleEvaluation *ast.NodeEvaluationDto `json:"rule_evaluation,omitempty"`
 }
 
@@ -121,29 +123,32 @@ func toDecisionUrl(marbleAppHost string, decisionId string) null.String {
 	return null.StringFrom(url.String())
 }
 
-func NewAPIDecisionWithRule(decision models.DecisionWithRuleExecutions, marbleAppHost string) APIDecisionWithRules {
+func NewAPIDecisionWithRule(decision models.DecisionWithRuleExecutions, marbleAppHost string, withRuleExecution bool) APIDecisionWithRules {
 	apiDecision := APIDecisionWithRules{
 		APIDecision: NewAPIDecision(decision.Decision, marbleAppHost),
 		Rules:       make([]APIDecisionRule, len(decision.RuleExecutions)),
 	}
 
 	for i, ruleExecution := range decision.RuleExecutions {
-		apiDecision.Rules[i] = NewAPIDecisionRule(ruleExecution)
+		apiDecision.Rules[i] = NewAPIDecisionRule(ruleExecution, withRuleExecution)
 	}
 
 	return apiDecision
 }
 
-func NewAPIDecisionRule(rule models.RuleExecution) APIDecisionRule {
-	return APIDecisionRule{
-		Name:           rule.Rule.Name,
-		Description:    rule.Rule.Description,
-		ScoreModifier:  rule.ResultScoreModifier,
-		Result:         rule.Result,
-		RuleId:         rule.Rule.Id,
-		RuleEvaluation: rule.Evaluation,
-		Error:          APIErrorFromError(rule.Error),
+func NewAPIDecisionRule(rule models.RuleExecution, withRuleExecution bool) APIDecisionRule {
+	out := APIDecisionRule{
+		Name:          rule.Rule.Name,
+		Description:   rule.Rule.Description,
+		ScoreModifier: rule.ResultScoreModifier,
+		Result:        rule.Result,
+		RuleId:        rule.Rule.Id,
+		Error:         APIErrorFromError(rule.Error),
 	}
+	if withRuleExecution {
+		out.RuleEvaluation = rule.Evaluation
+	}
+	return out
 }
 
 func APIErrorFromError(err error) *APIError {
@@ -175,10 +180,11 @@ func AdaptAPIDecisionsWithMetadata(
 	decisions []models.DecisionWithRuleExecutions,
 	marbleAppHost string,
 	nbSkipped int,
+	withRuleExecution bool,
 ) APIDecisionsWithMetadata {
 	apiDecisions := make([]APIDecisionWithRules, len(decisions))
 	for i, decision := range decisions {
-		apiDecisions[i] = NewAPIDecisionWithRule(decision, marbleAppHost)
+		apiDecisions[i] = NewAPIDecisionWithRule(decision, marbleAppHost, withRuleExecution)
 	}
 
 	return APIDecisionsWithMetadata{

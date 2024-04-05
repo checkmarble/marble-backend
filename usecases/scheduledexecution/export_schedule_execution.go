@@ -122,7 +122,7 @@ func (exporter *ExportScheduleExecution) ExportDecisions(ctx context.Context, sc
 	var number_of_exported_decisions int
 
 	for decision := range decisionChan {
-		err := encoder.Encode(dto.NewAPIDecisionWithRule(decision, ""))
+		err := encoder.Encode(dto.NewAPIDecisionWithRule(decision, "", false))
 		if err != nil {
 			allErrors = append(allErrors, err)
 		} else {
