@@ -200,19 +200,21 @@ func (usecase *DecisionUsecase) CreateDecision(
 		}
 	}
 
-	dm, err := usecase.datamodelRepository.GetDataModel(ctx, exec, input.OrganizationId, false)
-	if errors.Is(err, models.NotFoundError) {
-		return models.DecisionWithRuleExecutions{},
-			errors.Wrap(models.NotFoundError, "data model not found")
-	} else if err != nil {
-		return models.DecisionWithRuleExecutions{},
-			errors.Wrap(err, "error getting data model")
+	payload, dataModel, err := usecase.validatePayload(
+		ctx,
+		input.OrganizationId,
+		input.TriggerObjectTable,
+		input.ClientObject,
+		input.PayloadRaw,
+	)
+	if err != nil {
+		return models.DecisionWithRuleExecutions{}, err
 	}
 
 	evaluationParameters := evaluate_scenario.ScenarioEvaluationParameters{
 		Scenario:     scenario,
-		ClientObject: input.ClientObject,
-		DataModel:    dm,
+		ClientObject: payload,
+		DataModel:    dataModel,
 	}
 
 	evaluationRepositories := evaluate_scenario.ScenarioEvaluationRepositories{
@@ -228,7 +230,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 			fmt.Errorf("error evaluating scenario: %w", err)
 	}
 
-	decision := models.AdaptScenarExecToDecision(scenarioExecution, input.ClientObject)
+	decision := models.AdaptScenarExecToDecision(scenarioExecution, payload)
 
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Executor,
@@ -257,7 +259,6 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	input models.CreateAllDecisionsInput,
 ) (decisions []models.DecisionWithRuleExecutions, nbSkipped int, err error) {
 	exec := usecase.executorFactory.NewExecutor()
-	logger := utils.LoggerFromContext(ctx)
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(ctx, "DecisionUsecase.CreateAllDecisions")
 	defer span.End()
@@ -266,32 +267,15 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		return
 	}
 
-	dataModel, err := usecase.datamodelRepository.GetDataModel(ctx, exec, input.OrganizationId, false)
+	payload, dataModel, err := usecase.validatePayload(
+		ctx,
+		input.OrganizationId,
+		input.TriggerObjectTable,
+		nil,
+		input.PayloadRaw,
+	)
 	if err != nil {
-		return nil, 0, errors.Wrap(err, "error getting data model in CreateAllDecisions")
-	}
-
-	tables := dataModel.Tables
-	table, ok := tables[models.TableName(input.TriggerObjectTable)]
-	if !ok {
-		return nil, 0, errors.Wrap(
-			models.NotFoundError,
-			fmt.Sprintf("table %s not found in data model in CreateAllDecisions", input.TriggerObjectTable),
-		)
-	}
-
-	parser := payload_parser.NewParser()
-	payload, validationErrors, err := parser.ParsePayload(table, input.PayloadRaw)
-	if err != nil {
-		return nil, 0, errors.Wrap(
-			models.BadParameterError,
-			fmt.Sprintf("Error while validating payload in CreateAllDecisions: %v", err),
-		)
-	}
-	if len(validationErrors) > 0 {
-		encoded, _ := json.Marshal(validationErrors)
-		logger.InfoContext(ctx, fmt.Sprintf("Validation errors on POST all decisions: %s", string(encoded)))
-		return nil, 0, errors.Wrap(models.BadParameterError, string(encoded))
+		return nil, 0, err
 	}
 
 	scenarios, err := usecase.repository.ListScenariosOfOrganization(ctx, exec, input.OrganizationId)
@@ -402,4 +386,61 @@ func (usecase *DecisionUsecase) createCaseIfApplicable(
 		}
 	}
 	return nil
+}
+
+// used in different contexts, so allow different cases of input: pass client object or raw payload
+func (usecase DecisionUsecase) validatePayload(
+	ctx context.Context,
+	organizationId string,
+	triggerObjectTable string,
+	clientObject *models.ClientObject,
+	rawPayload json.RawMessage,
+) (payload models.ClientObject, dataModel models.DataModel, err error) {
+	logger := utils.LoggerFromContext(ctx)
+	exec := usecase.executorFactory.NewExecutor()
+
+	if clientObject == nil && len(rawPayload) == 0 {
+		err = errors.Wrap(
+			models.BadParameterError,
+			"empty payload received in validatePayload")
+		return
+	}
+
+	dataModel, err = usecase.datamodelRepository.GetDataModel(ctx, exec, organizationId, false)
+	if err != nil {
+		err = errors.Wrap(err, "error getting data model in validatePayload")
+		return
+	}
+
+	tables := dataModel.Tables
+	table, ok := tables[models.TableName(triggerObjectTable)]
+	if !ok {
+		err = errors.Wrap(
+			models.NotFoundError,
+			fmt.Sprintf("table %s not found in data model in validatePayload", triggerObjectTable),
+		)
+		return
+	}
+
+	if clientObject != nil {
+		payload = *clientObject
+		return
+	}
+
+	parser := payload_parser.NewParser()
+	payload, validationErrors, err := parser.ParsePayload(table, rawPayload)
+	if err != nil {
+		err = errors.Wrap(
+			models.BadParameterError,
+			fmt.Sprintf("Error while validating payload in validatePayload: %v", err),
+		)
+		return
+	}
+	if len(validationErrors) > 0 {
+		encoded, _ := json.Marshal(validationErrors)
+		logger.InfoContext(ctx, fmt.Sprintf("Validation errors on POST all decisions: %s", string(encoded)))
+		err = errors.Wrap(models.BadParameterError, string(encoded))
+	}
+
+	return
 }
