@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/checkmarble/marble-backend/models"
 	limits "github.com/gin-contrib/size"
 	"github.com/gin-contrib/timeout"
 	"github.com/gin-gonic/gin"
@@ -38,8 +39,8 @@ func (api *API) routes(auth *Authentication, tokenHandler *TokenHandler) {
 	router.GET("/ast-expression/available-functions", api.handleAvailableFunctions)
 
 	router.GET("/decisions", api.handleListDecisions)
-	router.POST("/decisions", timeoutMiddleware(10*time.Second), api.handlePostDecision)
-	router.POST("/decisions/all", timeoutMiddleware(30*time.Second), api.handlePostAllDecisions)
+	router.POST("/decisions", timeoutMiddleware(models.DECISION_TIMEOUT), api.handlePostDecision)
+	router.POST("/decisions/all", timeoutMiddleware(models.SEQUENTIAL_DECISION_TIMEOUT), api.handlePostAllDecisions)
 	router.GET("/decisions/:decision_id", api.handleGetDecision)
 
 	router.POST("/ingestion/:object_type", api.handleIngestion)
