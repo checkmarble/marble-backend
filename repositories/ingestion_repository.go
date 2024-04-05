@@ -11,18 +11,22 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type IngestionRepository interface {
-	IngestObjects(ctx context.Context, exec Executor, payloads []models.ClientObject,
-		table models.Table, logger *slog.Logger) (err error)
+	IngestObjects(ctx context.Context, exec Executor, payloads []models.ClientObject, table models.Table) (err error)
 }
 
 type IngestionRepositoryImpl struct{}
 
-func (repo *IngestionRepositoryImpl) IngestObjects(ctx context.Context, exec Executor,
-	payloads []models.ClientObject, table models.Table, logger *slog.Logger,
+func (repo *IngestionRepositoryImpl) IngestObjects(
+	ctx context.Context,
+	exec Executor,
+	payloads []models.ClientObject,
+	table models.Table,
 ) (err error) {
+	logger := utils.LoggerFromContext(ctx)
 	if err := validateClientDbExecutor(exec); err != nil {
 		return err
 	}

@@ -278,7 +278,6 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 					IngestedDataReadRepository: usecase.IngestedDataReadRepository,
 					EvaluateAstExpression:      usecase.EvaluateAstExpression,
 				},
-				utils.LoggerFromContext(ctx),
 			)
 
 			if errors.Is(err, models.ErrScenarioTriggerConditionAndTriggerObjectMismatch) {

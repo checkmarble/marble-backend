@@ -75,7 +75,7 @@ func (api *API) handleIngestion(c *gin.Context) {
 
 	err = usecase.IngestObjects(c.Request.Context(), organizationId, []models.ClientObject{
 		payload,
-	}, table, logger)
+	}, table)
 	if presentError(c, err) {
 		return
 	}
