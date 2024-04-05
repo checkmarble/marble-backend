@@ -74,10 +74,10 @@ func TestScenarioEndToEnd(t *testing.T) {
 	}
 
 	// Ingest two accounts (parent of a transaction) to execute a full scenario: one to be rejected, one to be approved
-	ingestAccounts(t, dataModel.Tables["accounts"], usecasesWithApiCreds, organizationId, logger)
+	ingestAccounts(t, dataModel.Tables["accounts"], usecasesWithApiCreds, organizationId)
 
 	// Create a pair of decision and check that the outcome matches the expectation
-	createDecisions(t, dataModel.Tables["transactions"], usecasesWithApiCreds, organizationId, scenarioId, logger)
+	createDecisions(t, dataModel.Tables["transactions"], usecasesWithApiCreds, organizationId, scenarioId)
 }
 
 func setupApiCreds(ctx context.Context, t *testing.T, usecasesWithCreds usecases.UsecasesWithCreds, organizationId string) models.Credentials {
@@ -406,7 +406,7 @@ func setupScenarioAndPublish(t *testing.T, ctx context.Context,
 	return scenarioId
 }
 
-func ingestAccounts(t *testing.T, table models.Table, usecases usecases.UsecasesWithCreds, organizationId string, logger *slog.Logger) {
+func ingestAccounts(t *testing.T, table models.Table, usecases usecases.UsecasesWithCreds, organizationId string) {
 	ingestionUsecase := usecases.NewIngestionUseCase()
 	accountPayloadJson1 := []byte(`{
 		"object_id": "{account_id_reject}",
@@ -434,11 +434,11 @@ func ingestAccounts(t *testing.T, table models.Table, usecases usecases.Usecases
 	assert.Empty(t, validationErrors3, "Expected no validation errors, got %v", validationErrors3)
 	err = ingestionUsecase.IngestObjects(context.TODO(), organizationId, []models.ClientObject{
 		accountPayload1, accountPayload2, accountPayload3,
-	}, table, logger)
+	}, table)
 	assert.NoError(t, err, "Could not ingest data")
 }
 
-func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecases.UsecasesWithCreds, organizationId, scenarioId string, logger *slog.Logger) {
+func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecases.UsecasesWithCreds, organizationId, scenarioId string) {
 	decisionUsecase := usecasesWithCreds.NewDecisionUsecase()
 
 	// Create a decision [REJECT]
@@ -449,7 +449,7 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"amount": 100
 	}`)
 	rejectDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase,
-		usecasesWithCreds, organizationId, scenarioId, logger, 111)
+		usecasesWithCreds, organizationId, scenarioId, 111)
 	assert.Equal(t, models.Reject, rejectDecision.Outcome,
 		"Expected decision to be Reject, got %s", rejectDecision.Outcome)
 
@@ -461,7 +461,7 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"amount": 100
 	}`)
 	approveDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase,
-		usecasesWithCreds, organizationId, scenarioId, logger, 11)
+		usecasesWithCreds, organizationId, scenarioId, 11)
 	assert.Equal(t, models.Approve, approveDecision.Outcome,
 		"Expected decision to be Approve, got %s", approveDecision.Outcome)
 
@@ -473,7 +473,7 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"amount": 100
 	}`)
 	approveNoNameDecision := createAndTestDecision(t, transactionPayloadJson, table,
-		decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger, 11)
+		decisionUsecase, usecasesWithCreds, organizationId, scenarioId, 11)
 	assert.Equal(t, models.Approve, approveNoNameDecision.Outcome,
 		"Expected decision to be Approve, got %s", approveNoNameDecision.Outcome)
 	if assert.NotEmpty(t, approveNoNameDecision.RuleExecutions) {
@@ -490,7 +490,7 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"amount": 100
 	}`)
 	approveNoRecordDecision := createAndTestDecision(t, transactionPayloadJson, table,
-		decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger, 11)
+		decisionUsecase, usecasesWithCreds, organizationId, scenarioId, 11)
 	assert.Equal(t, models.Approve, approveNoRecordDecision.Outcome,
 		"Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
 	if assert.NotEmpty(t, approveNoRecordDecision.RuleExecutions) {
@@ -506,7 +506,7 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"account_id": "{account_id_approve}"
 	}`)
 	approveMissingFieldInPayloadDecision := createAndTestDecision(t, transactionPayloadJson,
-		table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger, 1)
+		table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, 1)
 	assert.Equal(t, models.Approve, approveMissingFieldInPayloadDecision.Outcome,
 		"Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
 	if assert.NotEmpty(t, approveMissingFieldInPayloadDecision.RuleExecutions) {
@@ -523,7 +523,7 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"amount": 0
 	}`)
 	approveDivisionByZeroDecision := createAndTestDecision(t, transactionPayloadJson, table,
-		decisionUsecase, usecasesWithCreds, organizationId, scenarioId, logger, 11)
+		decisionUsecase, usecasesWithCreds, organizationId, scenarioId, 11)
 	assert.Equal(t, models.Approve, approveDivisionByZeroDecision.Outcome,
 		"Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
 	if assert.NotEmpty(t, approveDivisionByZeroDecision.RuleExecutions) {
@@ -541,7 +541,6 @@ func createAndTestDecision(
 	usecasesWithCreds usecases.UsecasesWithCreds,
 	organizationId string,
 	scenarioId string,
-	logger *slog.Logger,
 	expectedScore int,
 ) models.DecisionWithRuleExecutions {
 	parser := payload_parser.NewParser()
@@ -557,7 +556,6 @@ func createAndTestDecision(
 			ClientObject:   transactionPayload,
 			OrganizationId: organizationId,
 		},
-		logger,
 		false,
 	)
 	assert.NoError(t, err, "Could not create decision")

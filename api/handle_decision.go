@@ -132,7 +132,6 @@ func (api *API) handlePostDecision(c *gin.Context) {
 			ClientObject:   payload,
 			OrganizationId: organizationId,
 		},
-		logger,
 		false,
 	)
 	if errors.Is(err, models.NotFoundError) || errors.Is(err, models.BadParameterError) {

@@ -45,8 +45,8 @@ func EvalScenario(
 	ctx context.Context,
 	params ScenarioEvaluationParameters,
 	repositories ScenarioEvaluationRepositories,
-	logger *slog.Logger,
 ) (se models.ScenarioExecution, err error) {
+	logger := utils.LoggerFromContext(ctx)
 	start := time.Now()
 	///////////////////////////////
 	// Recover in case the evaluation panicked.

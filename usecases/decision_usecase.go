@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"slices"
 
 	"github.com/cockroachdb/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -173,12 +174,14 @@ func (usecase *DecisionUsecase) validateTriggerObjects(ctx context.Context,
 func (usecase *DecisionUsecase) CreateDecision(
 	ctx context.Context,
 	input models.CreateDecisionInput,
-	logger *slog.Logger,
 	skipScenarioPermissionForTransferCheck bool,
 ) (models.DecisionWithRuleExecutions, error) {
 	exec := usecase.executorFactory.NewExecutor()
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
-	ctx, span := tracer.Start(ctx, "DecisionUsecase.CreateDecision")
+	ctx, span := tracer.Start(
+		ctx,
+		"DecisionUsecase.CreateDecision",
+		trace.WithAttributes(attribute.String("scenario_id", input.ScenarioId)))
 	defer span.End()
 
 	if err := usecase.enforceSecurity.CreateDecision(input.OrganizationId); err != nil {
@@ -219,7 +222,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		EvaluateAstExpression:      usecase.evaluateAstExpression,
 	}
 
-	scenarioExecution, err := evaluate_scenario.EvalScenario(ctx, evaluationParameters, evaluationRepositories, logger)
+	scenarioExecution, err := evaluate_scenario.EvalScenario(ctx, evaluationParameters, evaluationRepositories)
 	if err != nil {
 		return models.DecisionWithRuleExecutions{},
 			fmt.Errorf("error evaluating scenario: %w", err)
@@ -255,6 +258,9 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 ) (decisions []models.DecisionWithRuleExecutions, nbSkipped int, err error) {
 	exec := usecase.executorFactory.NewExecutor()
 	logger := utils.LoggerFromContext(ctx)
+	tracer := utils.OpenTelemetryTracerFromContext(ctx)
+	ctx, span := tracer.Start(ctx, "DecisionUsecase.CreateAllDecisions")
+	defer span.End()
 
 	if err = usecase.enforceSecurity.CreateDecision(input.OrganizationId); err != nil {
 		return
@@ -323,7 +329,13 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 
 		ctx, cancel := context.WithTimeout(ctx, models.DECISION_TIMEOUT)
 		defer cancel()
-		scenarioExecution, err := evaluate_scenario.EvalScenario(ctx, evaluationParameters, evaluationRepositories, logger)
+		ctx, span := tracer.Start(
+			ctx,
+			"DecisionUsecase.CreateAllDecisions",
+			trace.WithAttributes(attribute.String("scenario_id", scenario.Id)),
+		)
+		defer span.End()
+		scenarioExecution, err := evaluate_scenario.EvalScenario(ctx, evaluationParameters, evaluationRepositories)
 		if errors.Is(err, models.ErrScenarioTriggerConditionAndTriggerObjectMismatch) {
 			nbSkipped++
 			continue
@@ -336,6 +348,8 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 
 	}
 
+	ctx, span2 := tracer.Start(ctx, "DecisionUsecase.CreateAllDecisions - store decisions")
+	defer span2.End()
 	decisions, err = executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Executor,
 	) ([]models.DecisionWithRuleExecutions, error) {

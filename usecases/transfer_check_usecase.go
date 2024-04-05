@@ -135,7 +135,7 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 	err = usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Executor) error {
 		err := usecase.ingestionRepository.IngestObjects(ctx, tx, []models.ClientObject{
 			clientObject,
-		}, table, logger)
+		}, table)
 		if err != nil {
 			return err
 		}
@@ -163,7 +163,6 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 				ClientObject:   clientObject,
 				OrganizationId: organizationId,
 			},
-			logger,
 			true,
 		)
 		if err != nil {
@@ -244,7 +243,7 @@ func (usecase *TransferCheckUsecase) UpdateTransfer(
 
 		err = usecase.ingestionRepository.IngestObjects(ctx, tx, []models.ClientObject{
 			clientObject,
-		}, table, logger)
+		}, table)
 		if err != nil {
 			return err
 		}
@@ -463,7 +462,6 @@ func (usecase *TransferCheckUsecase) ScoreTransfer(
 			ClientObject:   models.ClientObject{Data: objects[0], TableName: TransferCheckTable},
 			OrganizationId: organizationId,
 		},
-		utils.LoggerFromContext(ctx),
 		true,
 	)
 	if err != nil {

@@ -40,16 +40,14 @@ type IngestionUseCase struct {
 	GcsIngestionBucket  string
 }
 
-func (usecase *IngestionUseCase) IngestObjects(ctx context.Context, organizationId string,
-	payloads []models.ClientObject, table models.Table, logger *slog.Logger,
-) error {
+func (usecase *IngestionUseCase) IngestObjects(ctx context.Context, organizationId string, payloads []models.ClientObject, table models.Table) error {
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
 		return err
 	}
 
 	ingestClosure := func() error {
 		return usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Executor) error {
-			return usecase.ingestionRepository.IngestObjects(ctx, tx, payloads, table, logger)
+			return usecase.ingestionRepository.IngestObjects(ctx, tx, payloads, table)
 		})
 	}
 	return retryIngestion(ctx, ingestClosure)
@@ -316,7 +314,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 		ingestClosure := func() error {
 			return usecase.transactionFactory.TransactionInOrgSchema(ctx,
 				organizationId, func(tx repositories.Executor) error {
-					return usecase.ingestionRepository.IngestObjects(ctx, tx, clientObjects, table, logger)
+					return usecase.ingestionRepository.IngestObjects(ctx, tx, clientObjects, table)
 				})
 		}
 		if err := retryIngestion(ctx, ingestClosure); err != nil {
