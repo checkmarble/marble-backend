@@ -6,6 +6,11 @@ import (
 	"github.com/checkmarble/marble-backend/models/ast"
 )
 
+const (
+	DECISION_TIMEOUT            = 10 * time.Second
+	SEQUENTIAL_DECISION_TIMEOUT = 30 * time.Second
+)
+
 type Decision struct {
 	DecisionId           string
 	OrganizationId       string

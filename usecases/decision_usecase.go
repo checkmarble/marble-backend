@@ -343,6 +343,9 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			ClientObject: payload,
 			DataModel:    dataModel,
 		}
+
+		ctx, cancel := context.WithTimeout(ctx, models.DECISION_TIMEOUT)
+		defer cancel()
 		scenarioExecution, err := evaluate_scenario.EvalScenario(ctx, evaluationParameters, evaluationRepositories, logger)
 		if errors.Is(err, models.ErrScenarioTriggerConditionAndTriggerObjectMismatch) {
 			nbSkipped++
