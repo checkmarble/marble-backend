@@ -142,6 +142,7 @@ func EvalScenario(
 		RuleExecutions:      ruleExecutions,
 		Score:               score,
 		Outcome:             outcome,
+		OrganizationId:      params.Scenario.OrganizationId,
 	}
 
 	elapsed := time.Since(start)

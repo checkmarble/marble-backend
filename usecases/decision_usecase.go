@@ -225,50 +225,27 @@ func (usecase *DecisionUsecase) CreateDecision(
 			fmt.Errorf("error evaluating scenario: %w", err)
 	}
 
-	newDecisionId := utils.NewPrimaryKey(input.OrganizationId)
-	decision := models.DecisionWithRuleExecutions{
-		Decision: models.Decision{
-			ClientObject:        input.ClientObject,
-			Outcome:             scenarioExecution.Outcome,
-			ScenarioDescription: scenarioExecution.ScenarioDescription,
-			ScenarioId:          scenarioExecution.ScenarioId,
-			ScenarioIterationId: scenarioExecution.ScenarioIterationId,
-			ScenarioName:        scenarioExecution.ScenarioName,
-			ScenarioVersion:     scenarioExecution.ScenarioVersion,
-			Score:               scenarioExecution.Score,
-		},
-		RuleExecutions: scenarioExecution.RuleExecutions,
-	}
+	decision := models.AdaptScenarExecToDecision(scenarioExecution, input.ClientObject)
 
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Executor,
 	) (models.DecisionWithRuleExecutions, error) {
-		err = usecase.decisionRepository.StoreDecision(ctx, tx, decision, input.OrganizationId, newDecisionId)
-		if err != nil {
+		if err = usecase.decisionRepository.StoreDecision(
+			ctx,
+			tx,
+			decision,
+			input.OrganizationId,
+			decision.DecisionId,
+		); err != nil {
 			return models.DecisionWithRuleExecutions{},
 				fmt.Errorf("error storing decision: %w", err)
 		}
 
-		if scenario.DecisionToCaseOutcomes != nil &&
-			slices.Contains(scenario.DecisionToCaseOutcomes, decision.Outcome) &&
-			scenario.DecisionToCaseInboxId != nil {
-			_, err = usecase.caseCreator.CreateCaseAsWorkflow(ctx, tx, models.CreateCaseAttributes{
-				DecisionIds: []string{newDecisionId},
-				InboxId:     *scenario.DecisionToCaseInboxId,
-				Name: fmt.Sprintf(
-					"Case for %s: %s",
-					scenario.TriggerObjectType,
-					input.ClientObject.Data["object_id"],
-				),
-				OrganizationId: input.OrganizationId,
-			})
-			if err != nil {
-				return models.DecisionWithRuleExecutions{},
-					fmt.Errorf("error linking decision to case: %w", err)
-			}
+		if err := usecase.createCaseIfApplicable(ctx, tx, scenario, decision, input.OrganizationId); err != nil {
+			return models.DecisionWithRuleExecutions{}, err
 		}
 
-		return usecase.decisionRepository.DecisionById(ctx, tx, newDecisionId)
+		return usecase.decisionRepository.DecisionById(ctx, tx, decision.DecisionId)
 	})
 }
 
@@ -354,19 +331,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			return nil, 0, errors.Wrap(err, "error evaluating scenario in CreateAllDecisions")
 		}
 
-		decision := models.DecisionWithRuleExecutions{
-			Decision: models.Decision{
-				ClientObject:        payload,
-				Outcome:             scenarioExecution.Outcome,
-				ScenarioDescription: scenarioExecution.ScenarioDescription,
-				ScenarioId:          scenarioExecution.ScenarioId,
-				ScenarioIterationId: scenarioExecution.ScenarioIterationId,
-				ScenarioName:        scenarioExecution.ScenarioName,
-				ScenarioVersion:     scenarioExecution.ScenarioVersion,
-				Score:               scenarioExecution.Score,
-			},
-			RuleExecutions: scenarioExecution.RuleExecutions,
-		}
+		decision := models.AdaptScenarExecToDecision(scenarioExecution, payload)
 		items = append(items, decisionAndScenario{decision: decision, scenario: scenario})
 
 	}
@@ -376,33 +341,51 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	) ([]models.DecisionWithRuleExecutions, error) {
 		var ids []string
 		for _, item := range items {
-			newDecisionId := utils.NewPrimaryKey(input.OrganizationId)
-			ids = append(ids, newDecisionId)
-			err = usecase.decisionRepository.StoreDecision(ctx, tx, item.decision, input.OrganizationId, newDecisionId)
-			if err != nil {
+			ids = append(ids, item.decision.DecisionId)
+			if err = usecase.decisionRepository.StoreDecision(
+				ctx,
+				tx,
+				item.decision,
+				input.OrganizationId,
+				item.decision.DecisionId,
+			); err != nil {
 				return nil, fmt.Errorf("error storing decision in CreateAllDecisions: %w", err)
 			}
 
-			if item.scenario.DecisionToCaseOutcomes != nil &&
-				slices.Contains(item.scenario.DecisionToCaseOutcomes, item.decision.Outcome) &&
-				item.scenario.DecisionToCaseInboxId != nil {
-				_, err = usecase.caseCreator.CreateCaseAsWorkflow(ctx, tx, models.CreateCaseAttributes{
-					DecisionIds: []string{newDecisionId},
-					InboxId:     *item.scenario.DecisionToCaseInboxId,
-					Name: fmt.Sprintf(
-						"Case for %s: %s",
-						item.scenario.TriggerObjectType,
-						payload.Data["object_id"],
-					),
-					OrganizationId: input.OrganizationId,
-				})
-				if err != nil {
-					return nil, fmt.Errorf("error linking decision to case: %w", err)
-				}
+			if err := usecase.createCaseIfApplicable(ctx, tx, item.scenario,
+				item.decision, input.OrganizationId); err != nil {
+				return nil, err
 			}
 		}
 
 		return usecase.decisionRepository.DecisionsByIds(ctx, tx, ids)
 	})
 	return
+}
+
+func (usecase *DecisionUsecase) createCaseIfApplicable(
+	ctx context.Context,
+	tx repositories.Executor,
+	scenario models.Scenario,
+	decision models.DecisionWithRuleExecutions,
+	organizationId string,
+) error {
+	if scenario.DecisionToCaseOutcomes != nil &&
+		slices.Contains(scenario.DecisionToCaseOutcomes, decision.Outcome) &&
+		scenario.DecisionToCaseInboxId != nil {
+		_, err := usecase.caseCreator.CreateCaseAsWorkflow(ctx, tx, models.CreateCaseAttributes{
+			DecisionIds: []string{decision.DecisionId},
+			InboxId:     *scenario.DecisionToCaseInboxId,
+			Name: fmt.Sprintf(
+				"Case for %s: %s",
+				scenario.TriggerObjectType,
+				decision.ClientObject.Data["object_id"],
+			),
+			OrganizationId: organizationId,
+		})
+		if err != nil {
+			return errors.Wrap(err, "error linking decision to case")
+		}
+	}
+	return nil
 }
