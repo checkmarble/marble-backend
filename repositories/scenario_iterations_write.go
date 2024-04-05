@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
-	"github.com/checkmarble/marble-backend/utils"
 
 	"github.com/Masterminds/squirrel"
 )
@@ -54,7 +54,7 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Cont
 			"batch_trigger_sql",
 			"schedule",
 		).Values(
-			utils.NewPrimaryKey(organizationId),
+			pure_utils.NewPrimaryKey(organizationId),
 			organizationId,
 			scenarioIteration.ScenarioId,
 			scenarioIterationBodyInput.ScoreReviewThreshold,
@@ -65,7 +65,7 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Cont
 		)
 	} else {
 		query = query.Values(
-			utils.NewPrimaryKey(organizationId),
+			pure_utils.NewPrimaryKey(organizationId),
 			organizationId,
 			scenarioIteration.ScenarioId,
 		)
@@ -83,7 +83,7 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Cont
 
 	if scenarioIteration.Body != nil && len(scenarioIteration.Body.Rules) > 0 {
 		for i := range scenarioIteration.Body.Rules {
-			scenarioIteration.Body.Rules[i].Id = utils.NewPrimaryKey(organizationId)
+			scenarioIteration.Body.Rules[i].Id = pure_utils.NewPrimaryKey(organizationId)
 			scenarioIteration.Body.Rules[i].OrganizationId = organizationId
 			scenarioIteration.Body.Rules[i].ScenarioIterationId = createdIteration.Id
 		}

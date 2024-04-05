@@ -7,9 +7,9 @@ import (
 	"github.com/cockroachdb/errors"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
-	"github.com/checkmarble/marble-backend/utils"
 )
 
 type ScenarioPublisherRepository interface {
@@ -106,7 +106,7 @@ func (publisher ScenarioPublisher) unpublishOldIteration(ctx context.Context,
 		return []models.ScenarioPublication{}, nil
 	}
 
-	newScenarioPublicationId := utils.NewPrimaryKey(organizationId)
+	newScenarioPublicationId := pure_utils.NewPrimaryKey(organizationId)
 	if err := publisher.ScenarioPublicationsRepository.CreateScenarioPublication(ctx, exec, models.CreateScenarioPublicationInput{
 		OrganizationId:      organizationId,
 		ScenarioIterationId: *liveVersionId,
@@ -126,7 +126,7 @@ func (publisher ScenarioPublisher) unpublishOldIteration(ctx context.Context,
 func (publisher ScenarioPublisher) publishNewIteration(ctx context.Context,
 	exec repositories.Executor, organizationId, scenarioId, scenarioIterationId string,
 ) (models.ScenarioPublication, error) {
-	newScenarioPublicationId := utils.NewPrimaryKey(organizationId)
+	newScenarioPublicationId := pure_utils.NewPrimaryKey(organizationId)
 	if err := publisher.ScenarioPublicationsRepository.CreateScenarioPublication(ctx, exec, models.CreateScenarioPublicationInput{
 		OrganizationId:      organizationId,
 		ScenarioIterationId: scenarioIterationId,

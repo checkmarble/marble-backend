@@ -4,11 +4,11 @@ import (
 	"context"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
-	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 )
 
@@ -59,7 +59,7 @@ func (usecase *InboxUsecase) CreateInbox(ctx context.Context, input models.Creat
 				return models.Inbox{}, err
 			}
 
-			newInboxId := utils.NewPrimaryKey(input.OrganizationId)
+			newInboxId := pure_utils.NewPrimaryKey(input.OrganizationId)
 			if err := usecase.inboxRepository.CreateInbox(ctx, tx, input, newInboxId); err != nil {
 				return models.Inbox{}, err
 			}
