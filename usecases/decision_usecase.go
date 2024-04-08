@@ -55,7 +55,7 @@ type DecisionUsecase struct {
 }
 
 func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId string) (models.DecisionWithRuleExecutions, error) {
-	decision, err := usecase.decisionRepository.DecisionById(ctx,
+	decision, err := usecase.decisionRepository.DecisionWithRuleExecutionsById(ctx,
 		usecase.executorFactory.NewExecutor(), decisionId)
 	if err != nil {
 		return models.DecisionWithRuleExecutions{}, err
@@ -250,7 +250,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 			return models.DecisionWithRuleExecutions{}, err
 		}
 
-		return usecase.decisionRepository.DecisionById(ctx, tx, decision.DecisionId)
+		return usecase.decisionRepository.DecisionWithRuleExecutionsById(ctx, tx, decision.DecisionId)
 	})
 }
 
@@ -356,7 +356,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			}
 		}
 
-		return usecase.decisionRepository.DecisionsByIds(ctx, tx, ids)
+		return usecase.decisionRepository.DecisionsWithRuleExecutionsByIds(ctx, tx, ids)
 	})
 	return
 }

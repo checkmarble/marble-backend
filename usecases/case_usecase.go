@@ -558,7 +558,7 @@ func (usecase *CaseUseCase) validateDecisions(ctx context.Context, exec reposito
 	if len(decisionIds) == 0 {
 		return nil
 	}
-	decisions, err := usecase.decisionRepository.DecisionsWithoutRulesById(ctx, exec, decisionIds)
+	decisions, err := usecase.decisionRepository.DecisionsById(ctx, exec, decisionIds)
 	if err != nil {
 		return err
 	}
