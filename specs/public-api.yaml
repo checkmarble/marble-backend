@@ -39,7 +39,6 @@ paths:
           description: The provided object is invalid.
         500:
           description: An error happened while ingesting the object.
-
   /decisions:
     post:
       tags:
@@ -82,6 +81,38 @@ paths:
           description: The input is invalid.
         500:
           description: An error happened while taking a decision.
+  /decisions/all:
+    post:
+      tags:
+        - Decision
+      security:
+        - ApiKeyAuth: []
+      description: List all relevant scenarios for this object type, and create decisions for them
+      summary: Create all the possible decisions for the input object
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/decisions_input_all_scenarios"
+      responses:
+        200:
+          description: Between 0 and N decisions were created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  decisions:
+                    $ref: "#/components/schemas/decisions"
+                  metadata:
+                    type: object
+                    properties:
+                      count:
+                        $ref: "#/components/schemas/decisions_count_metadata"
+        400:
+          description: The input is invalid.
+        500:
+          description: An error happened while creating the decisions
   /decisions/{decision_id}:
     get:
       tags:
@@ -145,18 +176,29 @@ components:
         trigger_object:
           description: The object to execute the scenario on, as per the client data model
           $ref: "#/components/schemas/data_model_object"
+    decisions_input_all_scenarios:
+      type: object
+      properties:
+        object_type:
+          description: Object type, as per the data model
+          type: string
+          example: transactions
+        trigger_object:
+          description: The object to execute the scenario on, as per the client data model
+          $ref: "#/components/schemas/data_model_object"
     decision:
       type: object
       properties:
+        app_link:
+          description: Link to the app to review the decision, and see its details
+          type: string
+          example: https://app.checkmarble.com/decisions/{decision_id}
         created_at:
           description: Date at which the decision was taken.
           type: string
           format: date-time
         id:
           description: ID of the returned decision.
-          type: string
-        object_type:
-          description: Object type used to take a decision.
           type: string
         outcome:
           description: Outcome of the decision.
@@ -182,7 +224,10 @@ components:
           type: integer
         trigger_object:
           description: Raw object used to take a decision.
-          type: object
+          $ref: "#/components/schemas/data_model_object"
+        trigger_object_type:
+          description: Object type used to take a decision.
+          type: string
     decisions:
       type: array
       items:
@@ -197,6 +242,10 @@ components:
           type: string
           format: uuid
           description: Id of the scenario.
+        scenario_iteration_id:
+          type: string
+          format: uuid
+          description: Id of the scenario iteration.
         name:
           type: string
           description: Name of the scenario.
@@ -217,9 +266,37 @@ components:
         result:
           type: boolean
           description: Execution result of the rule (true or false).
+        rule_id:
+          type: string
+          format: uuid
+          description: Id of the rule in the iteration
         score_modifier:
           type: integer
           description: Score modifier applied to the decision.
+    decisions_count_metadata:
+      description: decisions count metadata
+      type: object
+      properties:
+        total:
+          type: integer
+          description: total number of decisions created (approve+review+reject)
+          example: 2
+        approve:
+          type: integer
+          description: number of decisions created in 'approve' status
+          example: 1
+        review:
+          type: integer
+          description: number of decisions created in 'review' status
+          example: 0
+        reject:
+          type: integer
+          description: number of decisions created in 'reject' status
+          example: 1
+        skipped:
+          type: integer
+          description: number of decisions skipped because the payload object did not match the trigger condition
+          example: 3
     error:
       type: object
       properties:
