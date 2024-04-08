@@ -15,17 +15,17 @@ import (
 )
 
 type DecisionRepository interface {
-	DecisionById(
+	DecisionWithRuleExecutionsById(
 		ctx context.Context,
 		exec Executor,
 		decisionId string,
 	) (models.DecisionWithRuleExecutions, error)
-	DecisionsByIds(
+	DecisionsWithRuleExecutionsByIds(
 		ctx context.Context,
 		exec Executor,
 		decisionIds []string,
 	) ([]models.DecisionWithRuleExecutions, error)
-	DecisionsWithoutRulesById(ctx context.Context, exec Executor, decisionIds []string) ([]models.Decision, error)
+	DecisionsById(ctx context.Context, exec Executor, decisionIds []string) ([]models.Decision, error)
 	DecisionsByCaseId(ctx context.Context, exec Executor, caseId string) (
 		[]models.DecisionWithRuleExecutions, error)
 	DecisionsByObjectId(ctx context.Context, exec Executor, organizationId string, objectId string) ([]models.DecisionCore, error)
@@ -49,10 +49,10 @@ type DecisionRepositoryImpl struct{}
 // the size of the batch is chosen without any benchmark
 const decisionRulesBatchSize = 1000
 
-func (repo *DecisionRepositoryImpl) DecisionById(ctx context.Context, exec Executor,
+func (repo *DecisionRepositoryImpl) DecisionWithRuleExecutionsById(ctx context.Context, exec Executor,
 	decisionId string,
 ) (models.DecisionWithRuleExecutions, error) {
-	decisions, err := repo.DecisionsByIds(ctx, exec, []string{decisionId})
+	decisions, err := repo.DecisionsWithRuleExecutionsByIds(ctx, exec, []string{decisionId})
 	if err != nil {
 		return models.DecisionWithRuleExecutions{}, err
 	}
@@ -63,7 +63,7 @@ func (repo *DecisionRepositoryImpl) DecisionById(ctx context.Context, exec Execu
 	return decisions[0], nil
 }
 
-func (repo *DecisionRepositoryImpl) DecisionsByIds(
+func (repo *DecisionRepositoryImpl) DecisionsWithRuleExecutionsByIds(
 	ctx context.Context,
 	exec Executor,
 	decisionIds []string,
@@ -76,17 +76,13 @@ func (repo *DecisionRepositoryImpl) DecisionsByIds(
 	if err != nil {
 		return nil, err
 	}
-	rulesAsMap := make(map[string][]models.RuleExecution, len(rules))
-	for _, rule := range rules {
-		rulesAsMap[rule.DecisionId] = append(rulesAsMap[rule.DecisionId], rule)
-	}
 
 	return SqlToListOfRow(
 		ctx,
 		exec,
 		selectJoinDecisionAndCase().
 			Where(squirrel.Eq{"d.id": decisionIds}),
-		func(row pgx.CollectableRow) (decisions models.DecisionWithRuleExecutions, err error) {
+		func(row pgx.CollectableRow) (models.DecisionWithRuleExecutions, error) {
 			db, err := pgx.RowToStructByPos[dbmodels.DbJoinDecisionAndCase](row)
 			if err != nil {
 				return models.DecisionWithRuleExecutions{}, err
@@ -103,14 +99,14 @@ func (repo *DecisionRepositoryImpl) DecisionsByIds(
 
 			return dbmodels.AdaptDecisionWithRuleExecutions(
 				db.DbDecision,
-				rulesAsMap[db.DbDecision.Id],
+				rules[db.DbDecision.Id],
 				decisionCase,
 			), nil
 		},
 	)
 }
 
-func (repo *DecisionRepositoryImpl) DecisionsWithoutRulesById(ctx context.Context, exec Executor, decisionIds []string) ([]models.Decision, error) {
+func (repo *DecisionRepositoryImpl) DecisionsById(ctx context.Context, exec Executor, decisionIds []string) ([]models.Decision, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -204,7 +200,7 @@ func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(
 	var offsetDecision models.DecisionWithRuleExecutions
 	if pagination.OffsetId != "" {
 		var err error
-		offsetDecision, err = repo.DecisionById(ctx, exec, pagination.OffsetId)
+		offsetDecision, err = repo.DecisionWithRuleExecutionsById(ctx, exec, pagination.OffsetId)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return []models.DecisionWithRank{}, errors.Wrap(models.NotFoundError,
 				"No row found matching the provided offsetId")
@@ -513,16 +509,16 @@ func selectJoinDecisionAndCase() squirrel.SelectBuilder {
 		OrderBy("d.created_at DESC")
 }
 
-func (repo *DecisionRepositoryImpl) rulesOfDecision(ctx context.Context, exec Executor, decisionId string) ([]models.RuleExecution, error) {
-	return repo.rulesOfDecisions(ctx, exec, []string{decisionId})
-}
-
-func (repo *DecisionRepositoryImpl) rulesOfDecisions(ctx context.Context, exec Executor, decisionIds []string) ([]models.RuleExecution, error) {
+func (repo *DecisionRepositoryImpl) rulesOfDecisions(
+	ctx context.Context,
+	exec Executor,
+	decisionIds []string,
+) (map[string][]models.RuleExecution, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
-	return SqlToListOfModels(
+	rules, err := SqlToListOfModels(
 		ctx,
 		exec,
 		NewQueryBuilder().Select(dbmodels.SelectDecisionRuleColumn...).
@@ -533,6 +529,15 @@ func (repo *DecisionRepositoryImpl) rulesOfDecisions(ctx context.Context, exec E
 			return dbmodels.AdaptRuleExecution(r)
 		},
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	rulesAsMap := make(map[string][]models.RuleExecution, len(rules))
+	for _, rule := range rules {
+		rulesAsMap[rule.DecisionId] = append(rulesAsMap[rule.DecisionId], rule)
+	}
+	return rulesAsMap, err
 }
 
 type RulesOfDecision struct {
