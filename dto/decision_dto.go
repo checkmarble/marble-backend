@@ -11,19 +11,15 @@ import (
 	"github.com/guregu/null/v5"
 )
 
-type GetDecisionInput struct {
-	DecisionId string `in:"path=decisionId"`
-}
-
 type DecisionFilters struct {
-	ScenarioIds           []string  `form:"scenarioId[]"`
-	StartDate             time.Time `form:"startDate"`
-	EndDate               time.Time `form:"endDate"`
-	Outcomes              []string  `form:"outcome[]"`
-	TriggerObjects        []string  `form:"triggerObject[]"`
-	CaseIds               []string  `form:"caseId[]"`
+	CaseIds               []string  `form:"case_id[]"`
+	EndDate               time.Time `form:"end_date"`
 	HasCase               *bool     `form:"has_case"`
+	Outcomes              []string  `form:"outcome[]"`
+	ScenarioIds           []string  `form:"scenario_id[]"`
 	ScheduledExecutionIds []string  `form:"scheduled_execution_id[]"`
+	StartDate             time.Time `form:"start_date"`
+	TriggerObjects        []string  `form:"trigger_object[]"`
 }
 
 type CreateDecisionBody struct {
