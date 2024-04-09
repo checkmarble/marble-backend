@@ -16,13 +16,14 @@ type GetDecisionInput struct {
 }
 
 type DecisionFilters struct {
-	ScenarioIds    []string  `form:"scenarioId[]"`
-	StartDate      time.Time `form:"startDate"`
-	EndDate        time.Time `form:"endDate"`
-	Outcomes       []string  `form:"outcome[]"`
-	TriggerObjects []string  `form:"triggerObject[]"`
-	CaseIds        []string  `form:"caseId[]"`
-	HasCase        *bool     `form:"has_case"`
+	ScenarioIds           []string  `form:"scenarioId[]"`
+	StartDate             time.Time `form:"startDate"`
+	EndDate               time.Time `form:"endDate"`
+	Outcomes              []string  `form:"outcome[]"`
+	TriggerObjects        []string  `form:"triggerObject[]"`
+	CaseIds               []string  `form:"caseId[]"`
+	HasCase               *bool     `form:"has_case"`
+	ScheduledExecutionIds []string  `form:"scheduled_execution_id[]"`
 }
 
 type CreateDecisionBody struct {

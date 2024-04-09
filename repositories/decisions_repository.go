@@ -289,6 +289,9 @@ func applyDecisionFilters(query squirrel.SelectBuilder, filters models.DecisionF
 	if len(filters.CaseIds) > 0 {
 		query = query.Where(squirrel.Eq{"case_id": filters.CaseIds})
 	}
+	if len(filters.ScheduledExecutionIds) > 0 {
+		query = query.Where(squirrel.Eq{"scheduled_execution_id": filters.ScheduledExecutionIds})
+	}
 	return query
 }
 
