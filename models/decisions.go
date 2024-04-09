@@ -66,13 +66,14 @@ type CreateAllDecisionsInput struct {
 }
 
 type DecisionFilters struct {
-	ScenarioIds    []string
-	StartDate      time.Time
-	EndDate        time.Time
-	Outcomes       []Outcome
-	TriggerObjects []TableName
-	HasCase        *bool
-	CaseIds        []string
+	ScenarioIds           []string
+	StartDate             time.Time
+	EndDate               time.Time
+	Outcomes              []Outcome
+	TriggerObjects        []TableName
+	HasCase               *bool
+	CaseIds               []string
+	ScheduledExecutionIds []string
 }
 
 const (

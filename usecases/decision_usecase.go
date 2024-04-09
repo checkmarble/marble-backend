@@ -67,8 +67,11 @@ func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId stri
 	return decision, nil
 }
 
-func (usecase *DecisionUsecase) ListDecisions(ctx context.Context, organizationId string,
-	paginationAndSorting models.PaginationAndSorting, filters dto.DecisionFilters,
+func (usecase *DecisionUsecase) ListDecisions(
+	ctx context.Context,
+	organizationId string,
+	paginationAndSorting models.PaginationAndSorting,
+	filters dto.DecisionFilters,
 ) ([]models.DecisionWithRank, error) {
 	if err := usecase.validateScenarioIds(ctx, filters.ScenarioIds, organizationId); err != nil {
 		return []models.DecisionWithRank{}, err
@@ -98,15 +101,20 @@ func (usecase *DecisionUsecase) ListDecisions(ctx context.Context, organizationI
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Executor) ([]models.DecisionWithRank, error) {
-			decisions, err := usecase.decisionRepository.DecisionsOfOrganization(ctx, tx,
-				organizationId, paginationAndSorting, models.DecisionFilters{
-					ScenarioIds:    filters.ScenarioIds,
-					StartDate:      filters.StartDate,
-					EndDate:        filters.EndDate,
-					Outcomes:       outcomes,
-					TriggerObjects: triggerObjectTypes,
-					HasCase:        filters.HasCase,
-					CaseIds:        filters.CaseIds,
+			decisions, err := usecase.decisionRepository.DecisionsOfOrganization(
+				ctx,
+				tx,
+				organizationId,
+				paginationAndSorting,
+				models.DecisionFilters{
+					ScenarioIds:           filters.ScenarioIds,
+					StartDate:             filters.StartDate,
+					EndDate:               filters.EndDate,
+					Outcomes:              outcomes,
+					TriggerObjects:        triggerObjectTypes,
+					HasCase:               filters.HasCase,
+					CaseIds:               filters.CaseIds,
+					ScheduledExecutionIds: filters.ScheduledExecutionIds,
 				})
 			if err != nil {
 				return []models.DecisionWithRank{}, err
