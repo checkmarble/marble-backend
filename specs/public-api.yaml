@@ -99,7 +99,7 @@ paths:
         - $ref: "#/components/parameters/start_date"
         - $ref: "#/components/parameters/end_date"
         - name: has_case
-          description: the decision is attached to a case
+          description: Filter decisions that have a case associated with them or not (true or false, default returns all)
           in: query
           required: false
           schema:
