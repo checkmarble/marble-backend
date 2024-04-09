@@ -3,7 +3,7 @@ package dto
 import "github.com/checkmarble/marble-backend/models"
 
 type PaginationAndSortingInput struct {
-	OffsetId string              `form:"offsetId"`
+	OffsetId string              `form:"offset_id"`
 	Previous bool                `form:"previous"`
 	Next     bool                `form:"next"`
 	Sorting  models.SortingField `form:"sorting"`
