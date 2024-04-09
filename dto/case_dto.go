@@ -70,8 +70,8 @@ type CreateCaseCommentBody struct {
 }
 
 type CaseFilters struct {
-	StartDate time.Time `form:"startDate"`
-	EndDate   time.Time `form:"endDate"`
-	Statuses  []string  `form:"statuses[]"`
-	InboxIds  []string  `form:"inbox_ids[]"`
+	EndDate   time.Time `form:"end_date"`
+	InboxIds  []string  `form:"inbox_id[]"`
+	StartDate time.Time `form:"start_date"`
+	Statuses  []string  `form:"status[]"`
 }

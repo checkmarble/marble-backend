@@ -68,15 +68,80 @@ paths:
         - Decision
       security:
         - ApiKeyAuth: []
-      description: List existing decisions for the organization.
-      summary: Query a list of decisions
+      description: List matching decisions for the organization
+      summary: List decisions based on the provided filters and pagination
+      parameters:
+        - name: outcome[]
+          description: decision outcomes used to filter the list
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/outcome"
+        - name: scenario_id[]
+          description: scenario IDs used to filter the list
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
+        - name: trigger_object[]
+          description: trigger objects used to filter the list
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - $ref: "#/components/parameters/start_date"
+        - $ref: "#/components/parameters/end_date"
+        - name: has_case
+          description: the decision is attached to a case
+          in: query
+          required: false
+          schema:
+            type: boolean
+        - name: scheduled_execution_id[]
+          description: scheduled execution IDs used to filter the list
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
+        - name: sorting
+          description: the field used to sort the items
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - created_at
+        - $ref: "#/components/parameters/offset_id"
+        - $ref: "#/components/parameters/previous"
+        - $ref: "#/components/parameters/next"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/order"
       responses:
         200:
-          description: A decision was successfully taken.
+          description: List of corresponding decisions
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/decisions"
+                allOf:
+                  - $ref: "#/components/schemas/pagination"
+                  - type: object
+                    required:
+                      - items
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/decision"
         400:
           description: The input is invalid.
         500:
@@ -103,7 +168,9 @@ paths:
                 type: object
                 properties:
                   decisions:
-                    $ref: "#/components/schemas/decisions"
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/decision"
                   metadata:
                     type: object
                     properties:
@@ -130,7 +197,7 @@ paths:
           description: Id of the decision to retrieve.
       responses:
         200:
-          description: A decision was successfully taken.
+          description: The decision corresponding to the provided `decision_id`
           content:
             application/json:
               schema:
@@ -139,13 +206,103 @@ paths:
           description: The input is invalid.
         500:
           description: An error happened while taking a decision.
+  /scheduled-executions:
+    get:
+      tags:
+        - ScheduledExecutions
+      summary: List Scheduled Executions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scenario_id
+          description: ID of the scenario used to filter the list
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: List of Scheduled Executions of the organization
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - scheduled_executions
+                properties:
+                  scheduled_executions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/scheduled_execution"
+        401:
+          description: Unauthorized
+        500:
+          description: An error happened while listing the scheduled executions
 components:
   securitySchemes:
     ApiKeyAuth:
       type: apiKey
       in: header
       name: X-API-KEY
-
+  parameters:
+    offset_id:
+      in: query
+      name: offsetId
+      description: the item from which to paginate
+      required: false
+      schema:
+        type: string
+        format: uuid
+    next:
+      in: query
+      name: next
+      description: Next page
+      required: false
+      schema:
+        type: boolean
+    previous:
+      in: query
+      name: previous
+      description: Previous page
+      required: false
+      schema:
+        type: boolean
+    limit:
+      in: query
+      name: limit
+      description: the number of items to fetch
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+    order:
+      in: query
+      name: order
+      description: the order of the items to fetch
+      required: false
+      schema:
+        type: string
+        enum:
+          - ASC
+          - DESC
+    start_date:
+      in: query
+      name: start_date
+      description: start date used to filter the list
+      required: false
+      schema:
+        type: string
+        format: date-time
+    end_date:
+      in: query
+      name: end_date
+      description: end date used to filter the list
+      required: false
+      schema:
+        type: string
+        format: date-time
   schemas:
     data_model_object:
       type: object
@@ -186,6 +343,12 @@ components:
         trigger_object:
           description: The object to execute the scenario on, as per the client data model
           $ref: "#/components/schemas/data_model_object"
+    outcome:
+      type: string
+      enum:
+        - approve
+        - review
+        - decline
     decision:
       type: object
       properties:
@@ -202,11 +365,7 @@ components:
           type: string
         outcome:
           description: Outcome of the decision.
-          type: string
-          enum:
-            - approve
-            - review
-            - decline
+          $ref: "#/components/schemas/outcome"
         rules:
           description: Rules executed to take the decision.
           type: array
@@ -228,10 +387,6 @@ components:
         trigger_object_type:
           description: Object type used to take a decision.
           type: string
-    decisions:
-      type: array
-      items:
-        $ref: "#/components/schemas/decision"
     scenario:
       type: object
       properties:
@@ -297,6 +452,46 @@ components:
           type: integer
           description: number of decisions skipped because the payload object did not match the trigger condition
           example: 3
+    scheduled_execution:
+      type: object
+      required:
+        - finished_at
+        - id
+        - manual
+        - number_of_created_decisions
+        - scenario_id
+        - scenario_iteration_id
+        - scenario_name
+        - scenario_trigger_object_type
+        - started_at
+        - status
+      properties:
+        finished_at:
+          format: date-time
+          nullable: true
+          type: string
+        id:
+          format: uuid
+          type: string
+        manual:
+          description: Whether the execution was manual or not
+          type: boolean
+        number_of_created_decisions:
+          type: number
+        scenario_id:
+          format: uuid
+          type: string
+        scenario_iteration_id:
+          format: uuid
+          type: string
+        scenario_name:
+          type: string
+        scenario_trigger_object_type:
+          type: string
+        started_at:
+          type: string
+        status:
+          type: string
     error:
       type: object
       properties:
@@ -304,3 +499,26 @@ components:
           type: integer
         message:
           type: string
+    pagination:
+      type: object
+      required:
+        - end_index
+        - start_index
+        - total_count
+      properties:
+        end_index:
+          type: integer
+        start_index:
+          type: integer
+        total_count:
+          $ref: "#/components/schemas/pagination_count"
+    pagination_count:
+      type: object
+      required:
+        - is_max_count
+        - value
+      properties:
+        is_max_count:
+          type: boolean
+        value:
+          type: integer
