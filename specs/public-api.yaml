@@ -248,7 +248,7 @@ components:
   parameters:
     offset_id:
       in: query
-      name: offsetId
+      name: offset_id
       description: the item from which to paginate
       required: false
       schema:
