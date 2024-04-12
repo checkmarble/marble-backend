@@ -57,7 +57,7 @@ func AdaptDecision(db DbDecision, decisionCase *models.Case) models.Decision {
 		OrganizationId:       db.OrganizationId,
 		Case:                 decisionCase,
 		CreatedAt:            db.CreatedAt,
-		ClientObject:         models.ClientObject{TableName: models.TableName(db.TriggerObjectType), Data: triggerObject},
+		ClientObject:         models.ClientObject{TableName: db.TriggerObjectType, Data: triggerObject},
 		Outcome:              models.OutcomeFrom(db.Outcome),
 		ScenarioId:           db.ScenarioId,
 		ScenarioIterationId:  db.ScenarioIterationId,

@@ -52,15 +52,11 @@ func DataTypeFrom(s string) DataType {
 
 type DataModel struct {
 	Version string
-	Tables  map[TableName]Table
+	Tables  map[string]Table
 }
 
-type (
-	TableName string
-)
-
 func (dm DataModel) Copy() DataModel {
-	tables := make(map[TableName]Table)
+	tables := make(map[string]Table)
 	for k, v := range dm.Tables {
 		tables[k] = v.Copy()
 	}
@@ -76,7 +72,7 @@ func (dm DataModel) Copy() DataModel {
 
 type Table struct {
 	ID            string
-	Name          TableName
+	Name          string
 	Description   string
 	Fields        map[string]Field
 	LinksToSingle map[string]LinkToSingle
@@ -193,9 +189,9 @@ type UpdateFieldInput struct {
 // ///////////////////////////////
 type LinkToSingle struct {
 	Name            string
-	LinkedTableName TableName
+	LinkedTableName string
 	ParentFieldName string
-	ChildTableName  TableName
+	ChildTableName  string
 	ChildFieldName  string
 }
 

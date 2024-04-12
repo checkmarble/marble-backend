@@ -11,7 +11,7 @@ import (
 )
 
 var dataModel = models.DataModel{
-	Tables: map[models.TableName]models.Table{
+	Tables: map[string]models.Table{
 		"table1": {
 			Name: "table1",
 			Fields: map[string]models.Field{
@@ -138,7 +138,7 @@ func TestFilter_value_incompatible(t *testing.T) {
 }
 
 var dataModelWithInt = models.DataModel{
-	Tables: map[models.TableName]models.Table{
+	Tables: map[string]models.Table{
 		"table1": {
 			Name: "table1",
 			Fields: map[string]models.Field{
@@ -175,7 +175,7 @@ func TestFilter_value_float(t *testing.T) {
 }
 
 var dataModelWithString = models.DataModel{
-	Tables: map[models.TableName]models.Table{
+	Tables: map[string]models.Table{
 		"table1": {
 			Name: "table1",
 			Fields: map[string]models.Field{

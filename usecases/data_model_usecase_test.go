@@ -43,7 +43,7 @@ func (suite *DatamodelUsecaseTestSuite) SetupTest() {
 
 	suite.organizationId = "organizationId"
 	suite.dataModel = models.DataModel{
-		Tables: map[models.TableName]models.Table{
+		Tables: map[string]models.Table{
 			"transactions": {
 				Name: "transactions",
 				Fields: map[string]models.Field{
@@ -104,7 +104,7 @@ func (suite *DatamodelUsecaseTestSuite) SetupTest() {
 		},
 	}
 	suite.dataModelWithUnique = models.DataModel{
-		Tables: map[models.TableName]models.Table{
+		Tables: map[string]models.Table{
 			"transactions": {
 				Name: "transactions",
 				Fields: map[string]models.Field{
@@ -299,7 +299,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_nominal() {
 		Return(nil)
 	suite.clientDbIndexEditor.On("CreateUniqueIndex",
 		suite.ctx, suite.transaction, models.UnicityIndex{
-			TableName: models.TableName(tableName),
+			TableName: tableName,
 			Fields:    []string{"object_id"},
 			Included:  []string{"updated_at", "id"},
 		}).
@@ -491,7 +491,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelField_nominal_unique(
 	suite.organizationSchemaRepository.On("CreateField", suite.ctx, suite.transaction, table.Name, field).
 		Return(nil)
 	suite.clientDbIndexEditor.On("CreateUniqueIndexAsync", suite.ctx, models.UnicityIndex{
-		TableName: models.TableName(table.Name),
+		TableName: table.Name,
 		Fields:    []string{field.Name},
 	}).Return(nil)
 
@@ -855,7 +855,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_nominal_update_
 	suite.dataModelRepository.On("UpdateDataModelField", suite.ctx, suite.transaction, fieldId, input).
 		Return(nil)
 	suite.clientDbIndexEditor.On("CreateUniqueIndexAsync", suite.ctx, models.UnicityIndex{
-		TableName: models.TableName("transactions"),
+		TableName: "transactions",
 		Fields:    []string{"not_yet_unique_id"},
 	}).Return(nil)
 
@@ -888,7 +888,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_nominal_update_
 	suite.dataModelRepository.On("UpdateDataModelField", suite.ctx, suite.transaction, fieldId, input).
 		Return(nil)
 	suite.clientDbIndexEditor.On("DeleteUniqueIndex", suite.ctx, models.UnicityIndex{
-		TableName: models.TableName("transactions"),
+		TableName: "transactions",
 		Fields:    []string{"unique_id"},
 	}).Return(nil)
 	// for GetDataModel (reused in UpdateDataModelField), copied from TestGetDataModel_nominal_with_unique

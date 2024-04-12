@@ -6,9 +6,9 @@ import (
 )
 
 type LinkToSingle struct {
-	LinkedTableName models.TableName `json:"linked_table_name"`
-	ParentFieldName string           `json:"parent_field_name"`
-	ChildFieldName  string           `json:"child_field_name"`
+	LinkedTableName string `json:"linked_table_name"`
+	ParentFieldName string `json:"parent_field_name"`
+	ChildFieldName  string `json:"child_field_name"`
 }
 
 type Field struct {
@@ -30,8 +30,8 @@ type Table struct {
 }
 
 type DataModel struct {
-	Version string                     `json:"version"`
-	Tables  map[models.TableName]Table `json:"tables"`
+	Version string           `json:"version"`
+	Tables  map[string]Table `json:"tables"`
 }
 
 type PostDataModel struct {

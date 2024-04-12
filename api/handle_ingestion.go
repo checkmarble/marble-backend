@@ -49,7 +49,7 @@ func (api *API) handleIngestion(c *gin.Context) {
 	logger = logger.With(slog.String("object_type", objectType))
 
 	tables := dataModel.Tables
-	table, ok := tables[models.TableName(objectType)]
+	table, ok := tables[objectType]
 	if !ok {
 		logger.ErrorContext(c.Request.Context(), "Table not found in data model for organization")
 		http.Error(c.Writer, "", http.StatusNotFound)

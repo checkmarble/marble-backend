@@ -129,7 +129,7 @@ func (usecase *DataModelUseCase) CreateDataModelTable(ctx context.Context, organ
 			return usecase.clientDbIndexEditor.CreateUniqueIndex(
 				ctx,
 				orgTx,
-				getFieldUniqueIndex(models.TableName(name), "object_id"),
+				getFieldUniqueIndex(name, "object_id"),
 			)
 		})
 	})
@@ -181,7 +181,7 @@ func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, field
 	if field.IsUnique {
 		err := usecase.clientDbIndexEditor.CreateUniqueIndexAsync(
 			ctx,
-			getFieldUniqueIndex(models.TableName(tableName), field.Name),
+			getFieldUniqueIndex(tableName, field.Name),
 		)
 		if err != nil {
 			return "", err
@@ -191,18 +191,18 @@ func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, field
 	return fieldId, nil
 }
 
-func getFieldUniqueIndex(tableName models.TableName, fieldName string) models.UnicityIndex {
+func getFieldUniqueIndex(tableName string, fieldName string) models.UnicityIndex {
 	// the unique index on object_id will serve both to enforce unicity and to speed up ingestion queries
 	// which is why we include the updated_at and id fields
 	if fieldName == "object_id" {
 		return models.UnicityIndex{
-			TableName: models.TableName(tableName),
+			TableName: tableName,
 			Fields:    []string{"object_id"},
 			Included:  []string{"updated_at", "id"},
 		}
 	}
 	return models.UnicityIndex{
-		TableName: models.TableName(tableName),
+		TableName: tableName,
 		Fields:    []string{fieldName},
 	}
 }
@@ -239,7 +239,7 @@ func (usecase *DataModelUseCase) UpdateDataModelField(ctx context.Context, field
 	if makeUnique {
 		return usecase.clientDbIndexEditor.CreateUniqueIndexAsync(
 			ctx,
-			getFieldUniqueIndex(models.TableName(table.Name), field.Name),
+			getFieldUniqueIndex(table.Name, field.Name),
 		)
 	}
 
@@ -247,7 +247,7 @@ func (usecase *DataModelUseCase) UpdateDataModelField(ctx context.Context, field
 	if makeNotUnique {
 		return usecase.clientDbIndexEditor.DeleteUniqueIndex(
 			ctx,
-			getFieldUniqueIndex(models.TableName(table.Name), field.Name),
+			getFieldUniqueIndex(table.Name, field.Name),
 		)
 	}
 
@@ -268,7 +268,7 @@ func validateFieldUpdateRules(
 			"enum fields can only be of type string or numeric")
 	}
 
-	currentField := dataModel.Tables[models.TableName(table.Name)].Fields[field.Name]
+	currentField := dataModel.Tables[table.Name].Fields[field.Name]
 	isUnique := currentField.UnicityConstraint != models.NoUnicityConstraint
 
 	makeUnique = input.IsUnique != nil &&
@@ -353,7 +353,7 @@ func (usecase *DataModelUseCase) CreateDataModelLink(ctx context.Context, link m
 	if err != nil {
 		return err
 	}
-	parentTable := dataModel.Tables[models.TableName(table.Name)]
+	parentTable := dataModel.Tables[table.Name]
 	parentField := parentTable.Fields[field.Name]
 	if parentField.UnicityConstraint != models.ActiveUniqueConstraint {
 		return errors.Wrap(models.BadParameterError,

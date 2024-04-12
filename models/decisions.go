@@ -70,7 +70,7 @@ type DecisionFilters struct {
 	StartDate             time.Time
 	EndDate               time.Time
 	Outcomes              []Outcome
-	TriggerObjects        []TableName
+	TriggerObjects        []string
 	HasCase               *bool
 	CaseIds               []string
 	ScheduledExecutionIds []string

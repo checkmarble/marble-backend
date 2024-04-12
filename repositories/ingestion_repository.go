@@ -106,7 +106,7 @@ type IngestedObject struct {
 }
 
 func (repo *IngestionRepositoryImpl) loadPreviouslyIngestedObjects(ctx context.Context,
-	exec Executor, objectIds []string, tableName models.TableName,
+	exec Executor, objectIds []string, tableName string,
 ) ([]IngestedObject, error) {
 	query := NewQueryBuilder().
 		Select("id, object_id, updated_at").
@@ -145,7 +145,7 @@ func (repo *IngestionRepositoryImpl) comparePayloadsToIngestedObjects(
 }
 
 func (repo *IngestionRepositoryImpl) batchUpdateValidUntilOnObsoleteObjects(ctx context.Context,
-	exec Executor, tableName models.TableName, obsoleteIngestedObjectIds []string,
+	exec Executor, tableName string, obsoleteIngestedObjectIds []string,
 ) error {
 	sql := NewQueryBuilder().
 		Update(tableNameWithSchema(exec, tableName)).

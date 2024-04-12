@@ -254,7 +254,7 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 		return 0, err
 	}
 	tables := dataModel.Tables
-	table, ok := tables[models.TableName(scenario.TriggerObjectType)]
+	table, ok := tables[scenario.TriggerObjectType]
 	if !ok {
 		return 0, fmt.Errorf("trigger object type %s not found in data model: %w",
 			scenario.TriggerObjectType, models.NotFoundError)

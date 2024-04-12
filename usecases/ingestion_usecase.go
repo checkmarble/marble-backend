@@ -79,7 +79,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 		return models.UploadLog{}, err
 	}
 
-	table, ok := dataModel.Tables[models.TableName(objectType)]
+	table, ok := dataModel.Tables[objectType]
 	if !ok {
 		return models.UploadLog{}, fmt.Errorf("table %s not found on data model", objectType)
 	}
@@ -249,7 +249,7 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file
 		return err
 	}
 
-	table, ok := dataModel.Tables[models.TableName(tableName)]
+	table, ok := dataModel.Tables[tableName]
 	if !ok {
 		return fmt.Errorf("table %s not found in data model for organization %s", tableName, organizationId)
 	}

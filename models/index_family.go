@@ -8,7 +8,7 @@ import (
 )
 
 type IndexFamily struct {
-	TableName TableName
+	TableName string
 	Fixed     []string
 	Flex      *set.Set[string]
 	Last      string

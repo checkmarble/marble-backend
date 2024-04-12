@@ -24,7 +24,7 @@ type IngestedDataReadRepository interface {
 	QueryAggregatedValue(
 		ctx context.Context,
 		exec Executor,
-		tableName models.TableName,
+		tableName string,
 		fieldName string,
 		aggregator ast.Aggregator,
 		filters []ast.Filter,
@@ -295,7 +295,7 @@ func queryWithDynamicColumnList(
 	return output, nil
 }
 
-func createQueryAggregated(exec Executor, tableName models.TableName,
+func createQueryAggregated(exec Executor, tableName string,
 	fieldName string, aggregator ast.Aggregator, filters []ast.Filter,
 ) (squirrel.SelectBuilder, error) {
 	var selectExpression string
@@ -327,7 +327,7 @@ func createQueryAggregated(exec Executor, tableName models.TableName,
 }
 
 func (repo *IngestedDataReadRepositoryImpl) QueryAggregatedValue(ctx context.Context, exec Executor,
-	tableName models.TableName, fieldName string, aggregator ast.Aggregator, filters []ast.Filter,
+	tableName string, fieldName string, aggregator ast.Aggregator, filters []ast.Filter,
 ) (any, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return nil, err

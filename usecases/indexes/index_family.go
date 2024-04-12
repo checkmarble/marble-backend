@@ -50,8 +50,8 @@ func extractMinimalSetOfIdxFamiliesOneTable(idxFamiliesIn set.Collection[models.
 	return set.HashSetFrom(output)
 }
 
-func groupIdxFamiliesByTable(idxFamilies *set.HashSet[models.IndexFamily, string]) map[models.TableName]set.Collection[models.IndexFamily] {
-	out := make(map[models.TableName]set.Collection[models.IndexFamily])
+func groupIdxFamiliesByTable(idxFamilies *set.HashSet[models.IndexFamily, string]) map[string]set.Collection[models.IndexFamily] {
+	out := make(map[string]set.Collection[models.IndexFamily])
 	for _, idxFamily := range idxFamilies.Slice() {
 		if _, ok := out[idxFamily.TableName]; !ok {
 			out[idxFamily.TableName] = set.NewHashSet[models.IndexFamily, string](0)

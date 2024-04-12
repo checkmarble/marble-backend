@@ -9,7 +9,7 @@ import (
 
 func getTestDataModel() (models.DataModel, models.DataModel) {
 	dataModel := models.DataModel{
-		Tables: map[models.TableName]models.Table{
+		Tables: map[string]models.Table{
 			"transactions": {
 				Name: "transactions",
 				Fields: map[string]models.Field{
@@ -74,7 +74,7 @@ func getTestDataModel() (models.DataModel, models.DataModel) {
 		},
 	}
 	dataModelWithUnique := models.DataModel{
-		Tables: map[models.TableName]models.Table{
+		Tables: map[string]models.Table{
 			"transactions": {
 				Name: "transactions",
 				Fields: map[string]models.Field{

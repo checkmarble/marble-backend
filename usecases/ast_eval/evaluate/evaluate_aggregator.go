@@ -32,7 +32,7 @@ var ValidTypesForAggregator = map[ast.Aggregator][]models.DataType{
 }
 
 func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
-	tableNameStr, tableNameErr := AdaptNamedArgument(arguments.NamedArgs, "tableName", adaptArgumentToString)
+	tableName, tableNameErr := AdaptNamedArgument(arguments.NamedArgs, "tableName", adaptArgumentToString)
 	fieldName, fieldNameErr := AdaptNamedArgument(arguments.NamedArgs, "fieldName", adaptArgumentToString)
 	_, labelErr := AdaptNamedArgument(arguments.NamedArgs, "label", adaptArgumentToString)
 	aggregatorStr, aggregatorErr := AdaptNamedArgument(arguments.NamedArgs, "aggregator", adaptArgumentToString)
@@ -44,7 +44,6 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 		return nil, errs
 	}
 
-	tableName := models.TableName(tableNameStr)
 	aggregator := ast.Aggregator(aggregatorStr)
 
 	// Aggregator validation
@@ -76,7 +75,7 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 	// Filters validation
 	if len(filters) > 0 {
 		for _, filter := range filters {
-			if filter.TableName != tableNameStr {
+			if filter.TableName != tableName {
 				return MakeEvaluateError(errors.Join(
 					errors.Wrap(ast.ErrRuntimeExpression,
 						"filters must be applied on the same table"),
@@ -98,7 +97,7 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 	return result, nil
 }
 
-func (a AggregatorEvaluator) runQueryInRepository(ctx context.Context, tableName models.TableName,
+func (a AggregatorEvaluator) runQueryInRepository(ctx context.Context, tableName string,
 	fieldName string, aggregator ast.Aggregator, filters []ast.Filter,
 ) (any, error) {
 	if a.ReturnFakeValue {

@@ -9,14 +9,14 @@ import (
 )
 
 type UnicityIndex struct {
-	TableName         TableName
+	TableName         string
 	Fields            []string
 	Included          []string
 	CreationInProcess bool
 }
 
 type ConcreteIndex struct {
-	TableName TableName
+	TableName string
 	Indexed   []string
 	Included  []string
 }
@@ -33,13 +33,13 @@ func (i ConcreteIndex) Covers(f IndexFamily) bool {
 	// far as identifiers are concerned (unless quoted)
 	// and as such will return names will all lower case
 	f = f.Copy()
-	f.TableName = TableName(strings.ToUpper(string(f.TableName)))
+	f.TableName = strings.ToUpper(string(f.TableName))
 	f.Last = fieldNameToUpper(f.Last)
 	f.Fixed = pure_utils.Map(f.Fixed, fieldNameToUpper)
 	f.Flex = set.From(pure_utils.Map(f.Flex.Slice(), fieldNameToUpper))
 	f.Included = set.From(pure_utils.Map(f.Included.Slice(), fieldNameToUpper))
 	i = ConcreteIndex{
-		TableName: TableName(strings.ToUpper(string(i.TableName))),
+		TableName: strings.ToUpper(string(i.TableName)),
 		Indexed:   pure_utils.Map(i.Indexed, fieldNameToUpper),
 		Included:  pure_utils.Map(i.Included, fieldNameToUpper),
 	}
