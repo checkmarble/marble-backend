@@ -221,6 +221,7 @@ func (usecases *UsecasesWithCreds) NewRunScheduledExecution() scheduledexecution
 		IngestedDataReadRepository:     usecases.Repositories.IngestedDataReadRepository,
 		EvaluateAstExpression:          usecases.NewEvaluateAstExpression(),
 		DecisionRepository:             usecases.Repositories.DecisionRepository,
+		CaseCreator:                    usecases.NewCaseUseCase(),
 	}
 }
 
