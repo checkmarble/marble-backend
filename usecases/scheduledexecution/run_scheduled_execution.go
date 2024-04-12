@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sync"
 	"time"
 
@@ -18,6 +19,14 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 )
+
+type caseCreatorAsWorkflow interface {
+	CreateCaseAsWorkflow(
+		ctx context.Context,
+		exec repositories.Executor,
+		createCaseAttributes models.CreateCaseAttributes,
+	) (models.Case, error)
+}
 
 type RunScheduledExecutionRepository interface {
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
@@ -42,6 +51,7 @@ type RunScheduledExecution struct {
 	EvaluateAstExpression          ast_eval.EvaluateAstExpression
 	DecisionRepository             repositories.DecisionRepository
 	TransactionFactory             executor_factory.TransactionFactory
+	CaseCreator                    caseCreatorAsWorkflow
 }
 
 func (usecase *RunScheduledExecution) ScheduleScenarioIfDue(ctx context.Context, organizationId string, scenarioId string) error {
@@ -100,7 +110,7 @@ func (usecase *RunScheduledExecution) ExecuteAllScheduledScenarios(ctx context.C
 			Status: []models.ScheduledExecutionStatus{models.ScheduledExecutionPending},
 		})
 	if err != nil {
-		return fmt.Errorf("Error while listing pending ScheduledExecutions: %w", err)
+		return fmt.Errorf("error while listing pending ScheduledExecutions: %w", err)
 	}
 
 	logger.InfoContext(ctx, fmt.Sprintf("Found %d pending scheduled executions", len(pendingScheduledExecutions)))
@@ -290,31 +300,52 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 				return errors.Wrap(err, fmt.Sprintf("error evaluating scenario in executeScheduledScenario %s", scenario.Id))
 			}
 
-			decisionInput := models.DecisionWithRuleExecutions{
-				Decision: models.Decision{
-					ClientObject:         object,
-					Outcome:              scenarioExecution.Outcome,
-					ScenarioId:           scenarioExecution.ScenarioId,
-					ScenarioIterationId:  scenarioExecution.ScenarioIterationId,
-					ScenarioName:         scenarioExecution.ScenarioName,
-					ScenarioDescription:  scenarioExecution.ScenarioDescription,
-					ScenarioVersion:      scenarioExecution.ScenarioVersion,
-					Score:                scenarioExecution.Score,
-					ScheduledExecutionId: &scheduledExecutionId,
-				},
-				RuleExecutions: scenarioExecution.RuleExecutions,
-			}
-
-			err = usecase.DecisionRepository.StoreDecision(ctx, tx, decisionInput,
-				scenario.OrganizationId, pure_utils.NewPrimaryKey(scenario.OrganizationId))
+			decision := models.AdaptScenarExecToDecision(scenarioExecution, object, &scheduledExecutionId)
+			err = usecase.DecisionRepository.StoreDecision(
+				ctx,
+				tx,
+				decision,
+				scenario.OrganizationId,
+				pure_utils.NewPrimaryKey(scenario.OrganizationId),
+			)
 			if err != nil {
 				return fmt.Errorf("error storing decision: %w", err)
+			}
+
+			if err = usecase.createCaseIfApplicable(ctx, tx, scenario, decision); err != nil {
+				return err
 			}
 			numberOfCreatedDecisions += 1
 		}
 		return nil
 	})
 	return numberOfCreatedDecisions, err
+}
+
+func (usecase *RunScheduledExecution) createCaseIfApplicable(
+	ctx context.Context,
+	tx repositories.Executor,
+	scenario models.Scenario,
+	decision models.DecisionWithRuleExecutions,
+) error {
+	if scenario.DecisionToCaseOutcomes != nil &&
+		slices.Contains(scenario.DecisionToCaseOutcomes, decision.Outcome) &&
+		scenario.DecisionToCaseInboxId != nil {
+		_, err := usecase.CaseCreator.CreateCaseAsWorkflow(ctx, tx, models.CreateCaseAttributes{
+			DecisionIds: []string{decision.DecisionId},
+			InboxId:     *scenario.DecisionToCaseInboxId,
+			Name: fmt.Sprintf(
+				"Case for %s: %s",
+				scenario.TriggerObjectType,
+				decision.ClientObject.Data["object_id"],
+			),
+			OrganizationId: scenario.OrganizationId,
+		})
+		if err != nil {
+			return errors.Wrap(err, "error linking decision to case")
+		}
+	}
+	return nil
 }
 
 func (usecase *RunScheduledExecution) getPublishedScenarioIteration(
