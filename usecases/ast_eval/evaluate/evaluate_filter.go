@@ -29,7 +29,7 @@ var ValidTypeForFilterOperators = map[ast.FilterOperator][]models.DataType{
 
 func (f FilterEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 	tableNameStr, tableNameErr := AdaptNamedArgument(arguments.NamedArgs, "tableName", adaptArgumentToString)
-	fieldNameStr, fieldNameErr := AdaptNamedArgument(arguments.NamedArgs, "fieldName", adaptArgumentToString)
+	fieldName, fieldNameErr := AdaptNamedArgument(arguments.NamedArgs, "fieldName", adaptArgumentToString)
 	operatorStr, operatorErr := AdaptNamedArgument(arguments.NamedArgs, "operator", adaptArgumentToString)
 
 	errs := filterNilErrors(tableNameErr, fieldNameErr, operatorErr)
@@ -37,10 +37,10 @@ func (f FilterEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) 
 		return nil, errs
 	}
 
-	fieldType, err := getFieldType(f.DataModel, models.TableName(tableNameStr), models.FieldName(fieldNameStr))
+	fieldType, err := getFieldType(f.DataModel, models.TableName(tableNameStr), fieldName)
 	if err != nil {
 		return MakeEvaluateError(errors.Join(
-			errors.Wrap(err, fmt.Sprintf("field type for %s.%s not found in data model in Evaluate filter", tableNameStr, fieldNameStr)),
+			errors.Wrap(err, fmt.Sprintf("field type for %s.%s not found in data model in Evaluate filter", tableNameStr, fieldName)),
 			ast.NewNamedArgumentError("fieldName"),
 		))
 	}
@@ -80,7 +80,7 @@ func (f FilterEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) 
 		if err != nil {
 			return MakeEvaluateError(errors.Join(
 				errors.Wrap(ast.ErrArgumentInvalidType,
-					fmt.Sprintf("value is not compatible with selected field %s.%s in Evaluate filter", tableNameStr, fieldNameStr)),
+					fmt.Sprintf("value is not compatible with selected field %s.%s in Evaluate filter", tableNameStr, fieldName)),
 				ast.NewNamedArgumentError("value"),
 				err,
 			))
@@ -89,7 +89,7 @@ func (f FilterEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) 
 
 	returnValue := ast.Filter{
 		TableName: tableNameStr,
-		FieldName: fieldNameStr,
+		FieldName: fieldName,
 		Operator:  operator,
 		Value:     promotedValue,
 	}

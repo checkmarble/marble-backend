@@ -57,7 +57,6 @@ type DataModel struct {
 
 type (
 	TableName string
-	FieldName string
 )
 
 func (dm DataModel) Copy() DataModel {
@@ -79,12 +78,12 @@ type Table struct {
 	ID            string
 	Name          TableName
 	Description   string
-	Fields        map[FieldName]Field
+	Fields        map[string]Field
 	LinksToSingle map[string]LinkToSingle
 }
 
 func (t Table) Copy() Table {
-	fields := make(map[FieldName]Field)
+	fields := make(map[string]Field)
 	for k, v := range t.Fields {
 		fields[k] = v
 	}
@@ -124,7 +123,7 @@ type Field struct {
 	DataType          DataType
 	Description       string
 	IsEnum            bool
-	Name              FieldName
+	Name              string
 	Nullable          bool
 	TableId           string
 	Values            []any
@@ -175,7 +174,7 @@ func UnicityConstraintFromString(s string) UnicityConstraint {
 
 type CreateFieldInput struct {
 	TableId     string
-	Name        FieldName
+	Name        string
 	Description string
 	DataType    DataType
 	Nullable    bool
@@ -195,9 +194,9 @@ type UpdateFieldInput struct {
 type LinkToSingle struct {
 	Name            string
 	LinkedTableName TableName
-	ParentFieldName FieldName
+	ParentFieldName string
 	ChildTableName  TableName
-	ChildFieldName  FieldName
+	ChildFieldName  string
 }
 
 type DataModelLinkCreateInput struct {

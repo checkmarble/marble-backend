@@ -46,7 +46,7 @@ func (suite *DatamodelUsecaseTestSuite) SetupTest() {
 		Tables: map[models.TableName]models.Table{
 			"transactions": {
 				Name: "transactions",
-				Fields: map[models.FieldName]models.Field{
+				Fields: map[string]models.Field{
 					"object_id": {
 						DataType: models.String,
 						Name:     "object_id",
@@ -86,7 +86,7 @@ func (suite *DatamodelUsecaseTestSuite) SetupTest() {
 			},
 			"accounts": {
 				Name: "accounts",
-				Fields: map[models.FieldName]models.Field{
+				Fields: map[string]models.Field{
 					"object_id": {
 						DataType: models.String,
 						Name:     "object_id",
@@ -107,7 +107,7 @@ func (suite *DatamodelUsecaseTestSuite) SetupTest() {
 		Tables: map[models.TableName]models.Table{
 			"transactions": {
 				Name: "transactions",
-				Fields: map[models.FieldName]models.Field{
+				Fields: map[string]models.Field{
 					"object_id": {
 						DataType:          models.String,
 						Name:              "object_id",
@@ -150,7 +150,7 @@ func (suite *DatamodelUsecaseTestSuite) SetupTest() {
 			},
 			"accounts": {
 				Name: "accounts",
-				Fields: map[models.FieldName]models.Field{
+				Fields: map[string]models.Field{
 					"object_id": {
 						DataType:          models.String,
 						Name:              "object_id",
@@ -171,20 +171,20 @@ func (suite *DatamodelUsecaseTestSuite) SetupTest() {
 	suite.uniqueIndexes = []models.UnicityIndex{
 		{
 			TableName: "transactions",
-			Fields:    []models.FieldName{"object_id"},
+			Fields:    []string{"object_id"},
 		},
 		{
 			TableName:         "transactions",
-			Fields:            []models.FieldName{"reference_id"},
+			Fields:            []string{"reference_id"},
 			CreationInProcess: true,
 		},
 		{
 			TableName: "transactions",
-			Fields:    []models.FieldName{"unique_id"},
+			Fields:    []string{"unique_id"},
 		},
 		{
 			TableName: "accounts",
-			Fields:    []models.FieldName{"object_id"},
+			Fields:    []string{"object_id"},
 		},
 	}
 
@@ -300,8 +300,8 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_nominal() {
 	suite.clientDbIndexEditor.On("CreateUniqueIndex",
 		suite.ctx, suite.transaction, models.UnicityIndex{
 			TableName: models.TableName(tableName),
-			Fields:    []models.FieldName{"object_id"},
-			Included:  []models.FieldName{"updated_at", "id"},
+			Fields:    []string{"object_id"},
+			Included:  []string{"updated_at", "id"},
 		}).
 		Return(nil)
 
@@ -492,7 +492,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelField_nominal_unique(
 		Return(nil)
 	suite.clientDbIndexEditor.On("CreateUniqueIndexAsync", suite.ctx, models.UnicityIndex{
 		TableName: models.TableName(table.Name),
-		Fields:    []models.FieldName{field.Name},
+		Fields:    []string{field.Name},
 	}).Return(nil)
 
 	_, err := usecase.CreateDataModelField(suite.ctx, field)
@@ -856,7 +856,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_nominal_update_
 		Return(nil)
 	suite.clientDbIndexEditor.On("CreateUniqueIndexAsync", suite.ctx, models.UnicityIndex{
 		TableName: models.TableName("transactions"),
-		Fields:    []models.FieldName{"not_yet_unique_id"},
+		Fields:    []string{"not_yet_unique_id"},
 	}).Return(nil)
 
 	err := usecase.UpdateDataModelField(suite.ctx, fieldId, input)
@@ -889,7 +889,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_nominal_update_
 		Return(nil)
 	suite.clientDbIndexEditor.On("DeleteUniqueIndex", suite.ctx, models.UnicityIndex{
 		TableName: models.TableName("transactions"),
-		Fields:    []models.FieldName{"unique_id"},
+		Fields:    []string{"unique_id"},
 	}).Return(nil)
 	// for GetDataModel (reused in UpdateDataModelField), copied from TestGetDataModel_nominal_with_unique
 	suite.enforceSecurity.On("ReadDataModel").Return(nil)

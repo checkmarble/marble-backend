@@ -345,7 +345,7 @@ func parseStringValuesToMap(headers []string, values []string, table models.Tabl
 
 	for i, value := range values {
 		fieldName := headers[i]
-		field, ok := table.Fields[models.FieldName(fieldName)]
+		field, ok := table.Fields[fieldName]
 		if !ok {
 			return nil, fmt.Errorf("field %s not found in table %s", fieldName, table.Name)
 		}

@@ -14,7 +14,7 @@ var dataModel = models.DataModel{
 	Tables: map[models.TableName]models.Table{
 		"table1": {
 			Name: "table1",
-			Fields: map[models.FieldName]models.Field{
+			Fields: map[string]models.Field{
 				"field1": {
 					DataType: models.Bool,
 					Nullable: false,
@@ -141,7 +141,7 @@ var dataModelWithInt = models.DataModel{
 	Tables: map[models.TableName]models.Table{
 		"table1": {
 			Name: "table1",
-			Fields: map[models.FieldName]models.Field{
+			Fields: map[string]models.Field{
 				"field1": {
 					DataType: models.Int,
 					Nullable: false,
@@ -178,7 +178,7 @@ var dataModelWithString = models.DataModel{
 	Tables: map[models.TableName]models.Table{
 		"table1": {
 			Name: "table1",
-			Fields: map[models.FieldName]models.Field{
+			Fields: map[string]models.Field{
 				"field1": {
 					DataType: models.String,
 					Nullable: false,

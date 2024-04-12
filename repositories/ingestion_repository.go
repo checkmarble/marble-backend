@@ -208,7 +208,7 @@ func (repo *IngestionRepositoryImpl) generateInsertValues(payload models.ClientO
 	insertValues := make([]interface{}, len(columnNames))
 	i := 0
 	for _, columnName := range columnNames {
-		fieldName := models.FieldName(columnName)
+		fieldName := columnName
 		insertValues[i] = payload.Data[string(fieldName)]
 		i++
 	}
@@ -241,8 +241,8 @@ func (repo *IngestionRepositoryImpl) batchInsertEnumValues(ctx context.Context, 
 	var shouldInsertFloatValues bool
 
 	for fieldName, values := range enumValues {
-		fieldId := table.Fields[models.FieldName(fieldName)].ID
-		dataType := table.Fields[models.FieldName(fieldName)].DataType
+		fieldId := table.Fields[fieldName].ID
+		dataType := table.Fields[fieldName].DataType
 
 		for value := range values {
 			if dataType == models.String {

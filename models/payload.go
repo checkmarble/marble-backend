@@ -3,7 +3,7 @@ package models
 type DbFieldReadParams struct {
 	TriggerTableName TableName
 	Path             []string
-	FieldName        FieldName
+	FieldName        string
 	DataModel        DataModel
 	ClientObject     ClientObject
 }

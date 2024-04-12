@@ -9,11 +9,11 @@ const (
 )
 
 const (
-	DummyFieldNameId           models.FieldName = "id"
-	DummyFieldNameForBool      models.FieldName = "bool_var"
-	DummyFieldNameForInt       models.FieldName = "int_var"
-	DummyFieldNameForFloat     models.FieldName = "float_var"
-	DummyFieldNameForTimestamp models.FieldName = "time_var"
+	DummyFieldNameId           = "id"
+	DummyFieldNameForBool      = "bool_var"
+	DummyFieldNameForInt       = "int_var"
+	DummyFieldNameForFloat     = "float_var"
+	DummyFieldNameForTimestamp = "time_var"
 )
 
 func GetDummyDataModel() models.DataModel {
@@ -56,11 +56,11 @@ func GetDummyDataModel() models.DataModel {
 		},
 	}
 
-	dummyFieldsIdOnly := map[models.FieldName]models.Field{
+	dummyFieldsIdOnly := map[string]models.Field{
 		DummyFieldNameId: dummyFieldString,
 	}
 
-	dummyAllFields := map[models.FieldName]models.Field{
+	dummyAllFields := map[string]models.Field{
 		DummyFieldNameId:           dummyFieldString,
 		DummyFieldNameForInt:       dummyFieldInt,
 		DummyFieldNameForFloat:     dummyFieldFloat,

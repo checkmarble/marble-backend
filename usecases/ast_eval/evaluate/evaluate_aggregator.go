@@ -33,7 +33,7 @@ var ValidTypesForAggregator = map[ast.Aggregator][]models.DataType{
 
 func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 	tableNameStr, tableNameErr := AdaptNamedArgument(arguments.NamedArgs, "tableName", adaptArgumentToString)
-	fieldNameStr, fieldNameErr := AdaptNamedArgument(arguments.NamedArgs, "fieldName", adaptArgumentToString)
+	fieldName, fieldNameErr := AdaptNamedArgument(arguments.NamedArgs, "fieldName", adaptArgumentToString)
 	_, labelErr := AdaptNamedArgument(arguments.NamedArgs, "label", adaptArgumentToString)
 	aggregatorStr, aggregatorErr := AdaptNamedArgument(arguments.NamedArgs, "aggregator", adaptArgumentToString)
 	filters, filtersErr := AdaptNamedArgument(arguments.NamedArgs, "filters",
@@ -45,7 +45,6 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 	}
 
 	tableName := models.TableName(tableNameStr)
-	fieldName := models.FieldName(fieldNameStr)
 	aggregator := ast.Aggregator(aggregatorStr)
 
 	// Aggregator validation
@@ -100,7 +99,7 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 }
 
 func (a AggregatorEvaluator) runQueryInRepository(ctx context.Context, tableName models.TableName,
-	fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter,
+	fieldName string, aggregator ast.Aggregator, filters []ast.Filter,
 ) (any, error) {
 	if a.ReturnFakeValue {
 		return DryRunQueryAggregatedValue(a.DataModel, tableName, fieldName, aggregator)

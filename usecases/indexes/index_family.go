@@ -138,7 +138,7 @@ func refineIdxFamiliesFirstHasNoFixed(A, B models.IndexFamily) (models.IndexFami
 			out.Fixed = append(out.Fixed, fixAppend...)
 			out.Fixed = append(out.Fixed, B.Last)
 		}
-		out.Flex = A.Flex.Difference(set.From(out.Fixed)).(*set.Set[models.FieldName])
+		out.Flex = A.Flex.Difference(set.From(out.Fixed)).(*set.Set[string])
 		out.SetLast(A.Last)
 		out = out.MergeIncluded(A)
 		return out, true
@@ -217,7 +217,7 @@ func refineIdxFamiliesFirstHasNoFixed(A, B models.IndexFamily) (models.IndexFami
 			// ?? To check TODO
 			if A.Flex.Equal(set.From(B.Fixed[:A.Size()])) {
 				out := B.Copy()
-				out.Flex = B.Flex.Difference(set.From(B.Fixed[:A.Size()])).(*set.Set[models.FieldName])
+				out.Flex = B.Flex.Difference(set.From(B.Fixed[:A.Size()])).(*set.Set[string])
 				out = out.MergeIncluded(A)
 				return out, true
 			}
@@ -260,12 +260,12 @@ func refineIdxFamiliesFirstHasNoFixed(A, B models.IndexFamily) (models.IndexFami
 		return models.IndexFamily{}, false
 	}
 	out := B.Copy()
-	appendToFix := B.Flex.Intersect(A.Flex).(*set.Set[models.FieldName]).Slice()
+	appendToFix := B.Flex.Intersect(A.Flex).(*set.Set[string]).Slice()
 	// arbitrary order here
 	slices.Sort(appendToFix)
 	out.Fixed = append(out.Fixed, appendToFix...)
 	out.Fixed = append(out.Fixed, A.Last)
-	out.Flex = B.Flex.Difference(set.From(out.Fixed)).(*set.Set[models.FieldName])
+	out.Flex = B.Flex.Difference(set.From(out.Fixed)).(*set.Set[string])
 	if out.Flex.Empty() {
 		out.SetLast(B.Last)
 	}

@@ -27,12 +27,12 @@ var (
 	errIsInvalidDataType  = fmt.Errorf("invalid type")
 )
 
-func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObject, map[models.FieldName]string, error) {
+func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObject, map[string]string, error) {
 	if !gjson.ValidBytes(json) {
 		return models.ClientObject{}, nil, errIsInvalidJSON
 	}
 
-	errors := make(map[models.FieldName]string)
+	errors := make(map[string]string)
 	out := make(map[string]any)
 	result := gjson.ParseBytes(json)
 
@@ -40,10 +40,10 @@ func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObj
 	for _, name := range []string{"object_id", "updated_at"} {
 		value := result.Get(name)
 		if !value.Exists() || value.Type == gjson.Null {
-			errors[models.FieldName(name)] = errIsNotNullable.Error()
+			errors[name] = errIsNotNullable.Error()
 		}
 		if name == "object_id" && result.String() == "" {
-			errors[models.FieldName(name)] = errIsNotNullable.Error()
+			errors[name] = errIsNotNullable.Error()
 		}
 	}
 
