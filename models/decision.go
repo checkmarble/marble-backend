@@ -73,6 +73,7 @@ func AdaptScenarExecToDecision(scenarioExecution ScenarioExecution, clientObject
 			DecisionId:           pure_utils.NewPrimaryKey(scenarioExecution.OrganizationId),
 			ClientObject:         clientObject,
 			Outcome:              scenarioExecution.Outcome,
+			OrganizationId:       scenarioExecution.OrganizationId,
 			ScenarioDescription:  scenarioExecution.ScenarioDescription,
 			ScenarioId:           scenarioExecution.ScenarioId,
 			ScenarioIterationId:  scenarioExecution.ScenarioIterationId,

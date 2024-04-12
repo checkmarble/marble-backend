@@ -306,7 +306,7 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 				tx,
 				decision,
 				scenario.OrganizationId,
-				pure_utils.NewPrimaryKey(scenario.OrganizationId),
+				decision.DecisionId,
 			)
 			if err != nil {
 				return fmt.Errorf("error storing decision: %w", err)

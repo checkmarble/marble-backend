@@ -492,6 +492,7 @@ func (repo *DecisionRepositoryImpl) UpdateDecisionCaseId(ctx context.Context, ex
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
+
 	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_DECISIONS).
 		Set("case_id", caseId).
