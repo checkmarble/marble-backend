@@ -238,7 +238,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 			fmt.Errorf("error evaluating scenario: %w", err)
 	}
 
-	decision := models.AdaptScenarExecToDecision(scenarioExecution, payload)
+	decision := models.AdaptScenarExecToDecision(scenarioExecution, payload, nil)
 
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Executor,
@@ -254,7 +254,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 				fmt.Errorf("error storing decision: %w", err)
 		}
 
-		if err := usecase.createCaseIfApplicable(ctx, tx, scenario, decision, input.OrganizationId); err != nil {
+		if err := usecase.createCaseIfApplicable(ctx, tx, scenario, decision); err != nil {
 			return models.DecisionWithRuleExecutions{}, err
 		}
 
@@ -335,7 +335,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			return nil, 0, errors.Wrap(err, "error evaluating scenario in CreateAllDecisions")
 		}
 
-		decision := models.AdaptScenarExecToDecision(scenarioExecution, payload)
+		decision := models.AdaptScenarExecToDecision(scenarioExecution, payload, nil)
 		items = append(items, decisionAndScenario{decision: decision, scenario: scenario})
 
 	}
@@ -358,8 +358,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 				return nil, fmt.Errorf("error storing decision in CreateAllDecisions: %w", err)
 			}
 
-			if err := usecase.createCaseIfApplicable(ctx, tx, item.scenario,
-				item.decision, input.OrganizationId); err != nil {
+			if err := usecase.createCaseIfApplicable(ctx, tx, item.scenario, item.decision); err != nil {
 				return nil, err
 			}
 		}
@@ -374,7 +373,6 @@ func (usecase *DecisionUsecase) createCaseIfApplicable(
 	tx repositories.Executor,
 	scenario models.Scenario,
 	decision models.DecisionWithRuleExecutions,
-	organizationId string,
 ) error {
 	if scenario.DecisionToCaseOutcomes != nil &&
 		slices.Contains(scenario.DecisionToCaseOutcomes, decision.Outcome) &&
@@ -387,7 +385,7 @@ func (usecase *DecisionUsecase) createCaseIfApplicable(
 				scenario.TriggerObjectType,
 				decision.ClientObject.Data["object_id"],
 			),
-			OrganizationId: organizationId,
+			OrganizationId: scenario.OrganizationId,
 		})
 		if err != nil {
 			return errors.Wrap(err, "error linking decision to case")
