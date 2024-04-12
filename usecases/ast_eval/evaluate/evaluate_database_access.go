@@ -86,7 +86,7 @@ func (d DatabaseAccess) getDbField(ctx context.Context, tableName models.TableNa
 	}
 	return d.IngestedDataReadRepository.GetDbField(ctx, db, models.DbFieldReadParams{
 		TriggerTableName: models.TableName(tableName),
-		Path:             models.ToLinkNames(path),
+		Path:             path,
 		FieldName:        models.FieldName(fieldName),
 		DataModel:        d.DataModel,
 		ClientObject:     d.ClientObject,

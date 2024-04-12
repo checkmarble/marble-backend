@@ -40,16 +40,16 @@ func GetDummyDataModel() models.DataModel {
 		Nullable: false,
 	}
 
-	dummyFirstLinkToSingle := map[models.LinkName]models.LinkToSingle{
-		models.LinkName(DummyTableNameSecond): {
+	dummyFirstLinkToSingle := map[string]models.LinkToSingle{
+		string(DummyTableNameSecond): {
 			LinkedTableName: DummyTableNameSecond,
 			ParentFieldName: DummyFieldNameId,
 			ChildFieldName:  DummyFieldNameId,
 		},
 	}
 
-	dummySecondLinkToSingle := map[models.LinkName]models.LinkToSingle{
-		models.LinkName(DummyTableNameThird): {
+	dummySecondLinkToSingle := map[string]models.LinkToSingle{
+		string(DummyTableNameThird): {
 			LinkedTableName: DummyTableNameThird,
 			ParentFieldName: DummyFieldNameId,
 			ChildFieldName:  DummyFieldNameId,

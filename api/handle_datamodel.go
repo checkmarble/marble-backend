@@ -156,7 +156,7 @@ func (api *API) CreateLink(c *gin.Context) {
 
 	link := models.DataModelLinkCreateInput{
 		OrganizationID: organizationID,
-		Name:           models.LinkName(input.Name),
+		Name:           input.Name,
 		ParentTableID:  input.ParentTableID,
 		ParentFieldID:  input.ParentFieldID,
 		ChildTableID:   input.ChildTableID,

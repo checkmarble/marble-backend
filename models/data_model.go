@@ -58,16 +58,7 @@ type DataModel struct {
 type (
 	TableName string
 	FieldName string
-	LinkName  string
 )
-
-func ToLinkNames(arr []string) []LinkName {
-	var result []LinkName
-	for _, s := range arr {
-		result = append(result, LinkName(s))
-	}
-	return result
-}
 
 func (dm DataModel) Copy() DataModel {
 	tables := make(map[TableName]Table)
@@ -89,7 +80,7 @@ type Table struct {
 	Name          TableName
 	Description   string
 	Fields        map[FieldName]Field
-	LinksToSingle map[LinkName]LinkToSingle
+	LinksToSingle map[string]LinkToSingle
 }
 
 func (t Table) Copy() Table {
@@ -97,7 +88,7 @@ func (t Table) Copy() Table {
 	for k, v := range t.Fields {
 		fields[k] = v
 	}
-	links := make(map[LinkName]LinkToSingle)
+	links := make(map[string]LinkToSingle)
 	for k, v := range t.LinksToSingle {
 		links[k] = v
 	}
@@ -202,7 +193,7 @@ type UpdateFieldInput struct {
 // Data Model Link
 // ///////////////////////////////
 type LinkToSingle struct {
-	Name            LinkName
+	Name            string
 	LinkedTableName TableName
 	ParentFieldName FieldName
 	ChildTableName  TableName
@@ -211,7 +202,7 @@ type LinkToSingle struct {
 
 type DataModelLinkCreateInput struct {
 	OrganizationID string
-	Name           LinkName
+	Name           string
 	ParentTableID  string
 	ParentFieldID  string
 	ChildTableID   string

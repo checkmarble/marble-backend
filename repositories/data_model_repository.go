@@ -75,7 +75,7 @@ func (repo *DataModelRepositoryPostgresql) GetDataModel(
 				Name:          tableName,
 				Description:   field.TableDescription,
 				Fields:        map[models.FieldName]models.Field{},
-				LinksToSingle: make(map[models.LinkName]models.LinkToSingle),
+				LinksToSingle: make(map[string]models.LinkToSingle),
 			}
 		}
 		dataModel.Tables[tableName].Fields[fieldName] = models.Field{

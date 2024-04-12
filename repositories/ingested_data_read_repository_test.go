@@ -52,7 +52,7 @@ func (tx TransactionTest) Exec(ctx context.Context, query string, args ...interf
 }
 
 func TestIngestedDataGetDbFieldWithoutJoin(t *testing.T) {
-	path := []models.LinkName{models.LinkName(utils.DummyTableNameSecond)}
+	path := []string{string(utils.DummyTableNameSecond)}
 
 	query, err := createQueryDbForField(TransactionTest{}, models.DbFieldReadParams{
 		TriggerTableName: utils.DummyTableNameFirst,
@@ -75,9 +75,9 @@ func TestIngestedDataGetDbFieldWithoutJoin(t *testing.T) {
 }
 
 func TestIngestedDataGetDbFieldWithJoin(t *testing.T) {
-	path := []models.LinkName{
-		models.LinkName(utils.DummyTableNameSecond),
-		models.LinkName(utils.DummyTableNameThird),
+	path := []string{
+		string(utils.DummyTableNameSecond),
+		string(utils.DummyTableNameThird),
 	}
 
 	query, err := createQueryDbForField(TransactionTest{}, models.DbFieldReadParams{

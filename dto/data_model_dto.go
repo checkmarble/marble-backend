@@ -22,11 +22,11 @@ type Field struct {
 }
 
 type Table struct {
-	ID            string                           `json:"id,omitempty"`
-	Name          string                           `json:"name"`
-	Description   string                           `json:"description"`
-	Fields        map[models.FieldName]Field       `json:"fields"`
-	LinksToSingle map[models.LinkName]LinkToSingle `json:"links_to_single,omitempty"`
+	ID            string                     `json:"id,omitempty"`
+	Name          string                     `json:"name"`
+	Description   string                     `json:"description"`
+	Fields        map[models.FieldName]Field `json:"fields"`
+	LinksToSingle map[string]LinkToSingle    `json:"links_to_single,omitempty"`
 }
 
 type DataModel struct {

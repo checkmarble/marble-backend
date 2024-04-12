@@ -34,7 +34,7 @@ type EditorOperators struct {
 
 func (usecase *AstExpressionUsecase) getLinkedDatabaseIdentifiers(scenario models.Scenario, dataModel models.DataModel) ([]ast.Node, error) {
 	dataAccessors := []ast.Node{}
-	var recursiveDatabaseAccessor func(path []string, links map[models.LinkName]models.LinkToSingle) error
+	var recursiveDatabaseAccessor func(path []string, links map[string]models.LinkToSingle) error
 
 	triggerObjectTable, found := dataModel.Tables[models.TableName(scenario.TriggerObjectType)]
 	if !found {
@@ -42,7 +42,7 @@ func (usecase *AstExpressionUsecase) getLinkedDatabaseIdentifiers(scenario model
 	}
 
 	var visited []string
-	recursiveDatabaseAccessor = func(path []string, links map[models.LinkName]models.LinkToSingle) error {
+	recursiveDatabaseAccessor = func(path []string, links map[string]models.LinkToSingle) error {
 		for linkName, link := range links {
 			table, found := dataModel.Tables[link.LinkedTableName]
 			if !found {
