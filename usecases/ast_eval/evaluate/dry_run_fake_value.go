@@ -28,7 +28,7 @@ func DryRunGetDbField(dataModel models.DataModel, triggerTableName models.TableN
 	}
 
 	for _, linkName := range path {
-		link, ok := table.LinksToSingle[models.LinkName(linkName)]
+		link, ok := table.LinksToSingle[linkName]
 		if !ok {
 			return nil, errors.New(fmt.Sprintf("link %s not found in table %s", linkName, table.Name))
 		}

@@ -2,7 +2,7 @@ package models
 
 type DbFieldReadParams struct {
 	TriggerTableName TableName
-	Path             []LinkName
+	Path             []string
 	FieldName        FieldName
 	DataModel        DataModel
 	ClientObject     ClientObject

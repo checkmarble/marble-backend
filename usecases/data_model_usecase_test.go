@@ -75,7 +75,7 @@ func (suite *DatamodelUsecaseTestSuite) SetupTest() {
 						Name:     "unique_id",
 					},
 				},
-				LinksToSingle: map[models.LinkName]models.LinkToSingle{
+				LinksToSingle: map[string]models.LinkToSingle{
 					"account": {
 						Name:            "account",
 						LinkedTableName: "accounts",
@@ -99,7 +99,7 @@ func (suite *DatamodelUsecaseTestSuite) SetupTest() {
 						IsEnum:   true,
 					},
 				},
-				LinksToSingle: map[models.LinkName]models.LinkToSingle{},
+				LinksToSingle: map[string]models.LinkToSingle{},
 			},
 		},
 	}
@@ -139,7 +139,7 @@ func (suite *DatamodelUsecaseTestSuite) SetupTest() {
 						UnicityConstraint: models.ActiveUniqueConstraint,
 					},
 				},
-				LinksToSingle: map[models.LinkName]models.LinkToSingle{
+				LinksToSingle: map[string]models.LinkToSingle{
 					"account": {
 						Name:            "account",
 						LinkedTableName: "accounts",
@@ -164,7 +164,7 @@ func (suite *DatamodelUsecaseTestSuite) SetupTest() {
 						IsEnum:   true,
 					},
 				},
-				LinksToSingle: map[models.LinkName]models.LinkToSingle{},
+				LinksToSingle: map[string]models.LinkToSingle{},
 			},
 		},
 	}

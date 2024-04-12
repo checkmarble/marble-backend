@@ -83,7 +83,7 @@ type DbDataModelLink struct {
 
 func AdaptLinkToSingle(dbDataModelLink DbDataModelLink) models.LinkToSingle {
 	return models.LinkToSingle{
-		Name:            models.LinkName(dbDataModelLink.Name),
+		Name:            dbDataModelLink.Name,
 		LinkedTableName: models.TableName(dbDataModelLink.ParentTable),
 		ParentFieldName: models.FieldName(dbDataModelLink.ParentField),
 		ChildTableName:  models.TableName(dbDataModelLink.ChildTable),

@@ -45,7 +45,7 @@ func getTestDataModel() (models.DataModel, models.DataModel) {
 						Name:     "timestamp",
 					},
 				},
-				LinksToSingle: map[models.LinkName]models.LinkToSingle{
+				LinksToSingle: map[string]models.LinkToSingle{
 					"account": {
 						Name:            "account",
 						LinkedTableName: "accounts",
@@ -69,7 +69,7 @@ func getTestDataModel() (models.DataModel, models.DataModel) {
 						IsEnum:   true,
 					},
 				},
-				LinksToSingle: map[models.LinkName]models.LinkToSingle{},
+				LinksToSingle: map[string]models.LinkToSingle{},
 			},
 		},
 	}
@@ -113,7 +113,7 @@ func getTestDataModel() (models.DataModel, models.DataModel) {
 						Name:     "timestamp",
 					},
 				},
-				LinksToSingle: map[models.LinkName]models.LinkToSingle{
+				LinksToSingle: map[string]models.LinkToSingle{
 					"account": {
 						Name:            "account",
 						LinkedTableName: "accounts",
@@ -138,7 +138,7 @@ func getTestDataModel() (models.DataModel, models.DataModel) {
 						IsEnum:   true,
 					},
 				},
-				LinksToSingle: map[models.LinkName]models.LinkToSingle{},
+				LinksToSingle: map[string]models.LinkToSingle{},
 			},
 		},
 	}

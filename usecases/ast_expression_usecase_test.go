@@ -21,7 +21,7 @@ func TestAstExpressionUsecase_getLinkedDatabaseIdentifiers(t *testing.T) {
 					"id":                  {},
 					"last_transaction_id": {},
 				},
-				LinksToSingle: map[models.LinkName]models.LinkToSingle{
+				LinksToSingle: map[string]models.LinkToSingle{
 					"last_transactions": {
 						LinkedTableName: "transactions",
 						ParentFieldName: "id",
@@ -35,7 +35,7 @@ func TestAstExpressionUsecase_getLinkedDatabaseIdentifiers(t *testing.T) {
 					"id":         {},
 					"account_id": {},
 				},
-				LinksToSingle: map[models.LinkName]models.LinkToSingle{
+				LinksToSingle: map[string]models.LinkToSingle{
 					"account": {
 						LinkedTableName: "accounts",
 						ParentFieldName: "id",
