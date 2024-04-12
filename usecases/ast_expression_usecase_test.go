@@ -17,7 +17,7 @@ func TestAstExpressionUsecase_getLinkedDatabaseIdentifiers(t *testing.T) {
 		Tables: map[models.TableName]models.Table{
 			"accounts": {
 				Name: "accounts",
-				Fields: map[models.FieldName]models.Field{
+				Fields: map[string]models.Field{
 					"id":                  {},
 					"last_transaction_id": {},
 				},
@@ -31,7 +31,7 @@ func TestAstExpressionUsecase_getLinkedDatabaseIdentifiers(t *testing.T) {
 			},
 			"transactions": {
 				Name: "transactions",
-				Fields: map[models.FieldName]models.Field{
+				Fields: map[string]models.Field{
 					"id":         {},
 					"account_id": {},
 				},

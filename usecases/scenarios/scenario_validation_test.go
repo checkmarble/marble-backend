@@ -78,7 +78,7 @@ func TestValidateScenarioIterationImpl_Validate(t *testing.T) {
 			Tables: map[models.TableName]models.Table{
 				"object_type": {
 					Name: "object_type",
-					Fields: map[models.FieldName]models.Field{
+					Fields: map[string]models.Field{
 						"id": {
 							DataType: models.Int,
 						},

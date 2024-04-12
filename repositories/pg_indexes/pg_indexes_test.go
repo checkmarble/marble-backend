@@ -16,8 +16,8 @@ func TestParseCreateIndexStatement(t *testing.T) {
 		)
 		asserts.Equal(
 			models.ConcreteIndex{
-				Indexed:  []models.FieldName{"userpublicid", "eventdate"},
-				Included: []models.FieldName{"object_id", "transactionamount", "operationdirection", "operationcode"},
+				Indexed:  []string{"userpublicid", "eventdate"},
+				Included: []string{"object_id", "transactionamount", "operationdirection", "operationcode"},
 			},
 			idx,
 		)
@@ -30,8 +30,8 @@ func TestParseCreateIndexStatement(t *testing.T) {
 		)
 		asserts.Equal(
 			models.ConcreteIndex{
-				Indexed:  []models.FieldName{"userpublicid", "eventdate"},
-				Included: []models.FieldName{"object_id", "transactionamount", "operationdirection", "operationcode"},
+				Indexed:  []string{"userpublicid", "eventdate"},
+				Included: []string{"object_id", "transactionamount", "operationdirection", "operationcode"},
 			},
 			idx,
 		)
@@ -43,7 +43,7 @@ func TestParseCreateIndexStatement(t *testing.T) {
 		fmt.Println(idx)
 		asserts.Equal(
 			models.ConcreteIndex{
-				Indexed:  []models.FieldName{"userpublicid"},
+				Indexed:  []string{"userpublicid"},
 				Included: nil,
 			},
 			idx,

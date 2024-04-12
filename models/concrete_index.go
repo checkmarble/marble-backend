@@ -10,15 +10,15 @@ import (
 
 type UnicityIndex struct {
 	TableName         TableName
-	Fields            []FieldName
-	Included          []FieldName
+	Fields            []string
+	Included          []string
 	CreationInProcess bool
 }
 
 type ConcreteIndex struct {
 	TableName TableName
-	Indexed   []FieldName
-	Included  []FieldName
+	Indexed   []string
+	Included  []string
 }
 
 func (i ConcreteIndex) Equal(other ConcreteIndex) bool {
@@ -104,6 +104,6 @@ func (i ConcreteIndex) Covers(f IndexFamily) bool {
 	return true
 }
 
-func fieldNameToUpper(f FieldName) FieldName {
-	return FieldName(strings.ToUpper(string(f)))
+func fieldNameToUpper(f string) string {
+	return string(strings.ToUpper(string(f)))
 }

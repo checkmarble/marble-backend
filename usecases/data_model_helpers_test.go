@@ -12,7 +12,7 @@ func getTestDataModel() (models.DataModel, models.DataModel) {
 		Tables: map[models.TableName]models.Table{
 			"transactions": {
 				Name: "transactions",
-				Fields: map[models.FieldName]models.Field{
+				Fields: map[string]models.Field{
 					"object_id": {
 						DataType: models.String,
 						Name:     "object_id",
@@ -56,7 +56,7 @@ func getTestDataModel() (models.DataModel, models.DataModel) {
 			},
 			"accounts": {
 				Name: "accounts",
-				Fields: map[models.FieldName]models.Field{
+				Fields: map[string]models.Field{
 					"object_id": {
 						DataType: models.String,
 						Name:     "object_id",
@@ -77,7 +77,7 @@ func getTestDataModel() (models.DataModel, models.DataModel) {
 		Tables: map[models.TableName]models.Table{
 			"transactions": {
 				Name: "transactions",
-				Fields: map[models.FieldName]models.Field{
+				Fields: map[string]models.Field{
 					"object_id": {
 						DataType:          models.String,
 						Name:              "object_id",
@@ -124,7 +124,7 @@ func getTestDataModel() (models.DataModel, models.DataModel) {
 			},
 			"accounts": {
 				Name: "accounts",
-				Fields: map[models.FieldName]models.Field{
+				Fields: map[string]models.Field{
 					"object_id": {
 						DataType:          models.String,
 						Name:              "object_id",

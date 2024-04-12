@@ -9,7 +9,7 @@ import (
 func TestParseStringValuesToMap(t *testing.T) {
 	table := models.Table{
 		Name: "transactions",
-		Fields: map[models.FieldName]models.Field{
+		Fields: map[string]models.Field{
 			"object_id": {
 				DataType: models.String, Nullable: false,
 			},

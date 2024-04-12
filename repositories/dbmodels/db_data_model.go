@@ -85,8 +85,8 @@ func AdaptLinkToSingle(dbDataModelLink DbDataModelLink) models.LinkToSingle {
 	return models.LinkToSingle{
 		Name:            dbDataModelLink.Name,
 		LinkedTableName: models.TableName(dbDataModelLink.ParentTable),
-		ParentFieldName: models.FieldName(dbDataModelLink.ParentField),
+		ParentFieldName: dbDataModelLink.ParentField,
 		ChildTableName:  models.TableName(dbDataModelLink.ChildTable),
-		ChildFieldName:  models.FieldName(dbDataModelLink.ChildField),
+		ChildFieldName:  dbDataModelLink.ChildField,
 	}
 }

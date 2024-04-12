@@ -13,7 +13,7 @@ func TestParser_ParsePayload(t *testing.T) {
 	table := models.Table{
 		Name:        "transactions",
 		Description: "description",
-		Fields: map[models.FieldName]models.Field{
+		Fields: map[string]models.Field{
 			"object_id": {
 				DataType: models.String,
 			},
@@ -42,7 +42,7 @@ func TestParser_ParsePayload(t *testing.T) {
 		name       string
 		table      models.Table
 		input      []byte
-		wantErrors map[models.FieldName]string
+		wantErrors map[string]string
 		want       models.ClientObject
 		err        error
 	}{
@@ -75,7 +75,7 @@ func TestParser_ParsePayload(t *testing.T) {
 			name:  "empty json",
 			table: table,
 			input: []byte(`{}`),
-			wantErrors: map[models.FieldName]string{
+			wantErrors: map[string]string{
 				"string":     errIsNotNullable.Error(),
 				"integer":    errIsNotNullable.Error(),
 				"float":      errIsNotNullable.Error(),
@@ -100,7 +100,7 @@ func TestParser_ParsePayload(t *testing.T) {
 				"timestamp": "not a timestamp",
 				"boolean": "true"
 			}`),
-			wantErrors: map[models.FieldName]string{
+			wantErrors: map[string]string{
 				"string":     errIsInvalidString.Error(),
 				"integer":    "is not a valid integer: expected an integer, got \"string\"",
 				"float":      "is not a valid float: expected a float, got \"string\"",
@@ -115,7 +115,7 @@ func TestParser_ParsePayload(t *testing.T) {
 			table: models.Table{
 				Name:        "transactions",
 				Description: "description",
-				Fields: map[models.FieldName]models.Field{
+				Fields: map[string]models.Field{
 					"unknown": {
 						DataType: models.UnknownDataType,
 						Nullable: true,
@@ -129,7 +129,7 @@ func TestParser_ParsePayload(t *testing.T) {
 			name: "nullable fields without object_id and updated_at",
 			table: models.Table{
 				Name: "transactions",
-				Fields: map[models.FieldName]models.Field{
+				Fields: map[string]models.Field{
 					"nullable": {
 						DataType: models.String,
 						Nullable: true,
@@ -143,7 +143,7 @@ func TestParser_ParsePayload(t *testing.T) {
 					"nullable": nil,
 				},
 			},
-			wantErrors: map[models.FieldName]string{
+			wantErrors: map[string]string{
 				"object_id":  errIsNotNullable.Error(),
 				"updated_at": errIsNotNullable.Error(),
 			},
@@ -152,7 +152,7 @@ func TestParser_ParsePayload(t *testing.T) {
 			name: "nullable fields with object_id and updated_at",
 			table: models.Table{
 				Name: "transactions",
-				Fields: map[models.FieldName]models.Field{
+				Fields: map[string]models.Field{
 					"nullable": {
 						DataType: models.String,
 						Nullable: true,

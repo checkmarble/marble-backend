@@ -9,18 +9,18 @@ import (
 
 type IndexFamily struct {
 	TableName TableName
-	Fixed     []FieldName
-	Flex      *set.Set[FieldName]
-	Last      FieldName
-	Included  *set.Set[FieldName]
+	Fixed     []string
+	Flex      *set.Set[string]
+	Last      string
+	Included  *set.Set[string]
 }
 
 func NewIndexFamily() IndexFamily {
 	return IndexFamily{
-		Fixed:    make([]FieldName, 0),
-		Flex:     set.New[FieldName](0),
+		Fixed:    make([]string, 0),
+		Flex:     set.New[string](0),
 		Last:     "",
-		Included: set.New[FieldName](0),
+		Included: set.New[string](0),
 	}
 }
 
@@ -58,7 +58,7 @@ func (f IndexFamily) Copy() IndexFamily {
 	}
 }
 
-func (f IndexFamily) AllIndexedValues() set.Collection[FieldName] {
+func (f IndexFamily) AllIndexedValues() set.Collection[string] {
 	out := f.Flex.Union(set.From(f.Fixed))
 	if f.Last != "" {
 		out.Insert(f.Last)
@@ -74,7 +74,7 @@ func (f IndexFamily) Size() int {
 	return s
 }
 
-func (f IndexFamily) RemoveFixedPrefix(prefix []FieldName) IndexFamily {
+func (f IndexFamily) RemoveFixedPrefix(prefix []string) IndexFamily {
 	if len(prefix) > len(f.Fixed) {
 		return IndexFamily{}
 	}
@@ -89,7 +89,7 @@ func (f IndexFamily) RemoveFixedPrefix(prefix []FieldName) IndexFamily {
 	}
 }
 
-func (f IndexFamily) PrependPrefix(prefix []FieldName) IndexFamily {
+func (f IndexFamily) PrependPrefix(prefix []string) IndexFamily {
 	return IndexFamily{
 		Fixed:    append(prefix, f.Fixed...),
 		Flex:     f.Flex.Copy(),
@@ -98,7 +98,7 @@ func (f IndexFamily) PrependPrefix(prefix []FieldName) IndexFamily {
 	}
 }
 
-func (f *IndexFamily) SetLast(last FieldName) {
+func (f *IndexFamily) SetLast(last string) {
 	if last == "" {
 		f.Last = ""
 		return
@@ -114,7 +114,7 @@ func (f *IndexFamily) SetLast(last FieldName) {
 
 func (f IndexFamily) MergeIncluded(B IndexFamily) IndexFamily {
 	out := f.Copy()
-	out.Included = out.Included.Union(B.Included).(*set.Set[FieldName])
-	out.Included = out.Included.Difference(out.AllIndexedValues()).(*set.Set[FieldName])
+	out.Included = out.Included.Union(B.Included).(*set.Set[string])
+	out.Included = out.Included.Difference(out.AllIndexedValues()).(*set.Set[string])
 	return out
 }

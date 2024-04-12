@@ -96,12 +96,11 @@ func aggregationNodeToQueryFamily(node ast.Node) (models.AggregateQueryFamily, e
 			"Error reading tableName in aggregation node: "+err.Error())
 	}
 
-	aggregatedFieldNameStr, err := node.ReadConstantNamedChildString("fieldName")
+	aggregatedFieldName, err := node.ReadConstantNamedChildString("fieldName")
 	if err != nil {
 		return models.AggregateQueryFamily{}, errors.Wrap(models.ErrInvalidAST,
 			"Error reading fieldName in aggregation node: "+err.Error())
 	}
-	aggregatedFieldName := models.FieldName(aggregatedFieldNameStr)
 
 	family := models.NewAggregateQueryFamily(queryTableName)
 
@@ -118,14 +117,13 @@ func aggregationNodeToQueryFamily(node ast.Node) (models.AggregateQueryFamily, e
 				"Filter tableName empty or is different from parent aggregator node's tableName")
 		}
 
-		fieldNameStr, err := filter.ReadConstantNamedChildString("fieldName")
+		fieldName, err := filter.ReadConstantNamedChildString("fieldName")
 		if err != nil {
 			return models.AggregateQueryFamily{}, errors.Wrap(models.ErrInvalidAST,
 				"Error reading fieldName in filter node: "+err.Error())
-		} else if fieldNameStr == "" {
+		} else if fieldName == "" {
 			return models.AggregateQueryFamily{}, errors.New("Filter fieldName is empty")
 		}
-		fieldName := models.FieldName(fieldNameStr)
 
 		operatorStr, err := filter.ReadConstantNamedChildString("operator")
 		if err != nil {

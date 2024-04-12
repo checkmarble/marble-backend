@@ -194,10 +194,7 @@ func createIndexSQL(ctx context.Context, exec Executor, index models.ConcreteInd
 	if len(includedColumns) > 0 {
 		sql += fmt.Sprintf(
 			" INCLUDE (%s)",
-			strings.Join(
-				pure_utils.Map(includedColumns, func(s models.FieldName) string { return string(s) }),
-				",",
-			),
+			strings.Join(includedColumns, ","),
 		)
 	}
 	sql += "WHERE valid_until='infinity'"
@@ -221,34 +218,22 @@ func createIndexSQL(ctx context.Context, exec Executor, index models.ConcreteInd
 	return nil
 }
 
-func withDesc(s models.FieldName) string {
+func withDesc(s string) string {
 	return fmt.Sprintf("%s DESC", s)
 }
 
-func indexToIndexName(fields []models.FieldName, table models.TableName) string {
+func indexToIndexName(fields []string, table models.TableName) string {
 	// postgresql enforces a 63 character length limit on all identifiers
-	indexedNames := strings.Join(
-		pure_utils.Map(
-			fields,
-			func(s models.FieldName) string { return string(s) },
-		),
-		"-",
-	)
+	indexedNames := strings.Join(fields, "-")
 	out := fmt.Sprintf("idx_%s_%s", table, indexedNames)
 	randomId := uuid.NewString()
 	length := min(len(out), 53)
 	return pgx.Identifier.Sanitize([]string{out[:length] + "_" + randomId})
 }
 
-func toUniqIndexName(fields []models.FieldName, table models.TableName) string {
+func toUniqIndexName(fields []string, table models.TableName) string {
 	// postgresql enforces a 63 character length limit on all identifiers
-	indexedNames := strings.Join(
-		pure_utils.Map(
-			fields,
-			func(s models.FieldName) string { return string(s) },
-		),
-		"-",
-	)
+	indexedNames := strings.Join(fields, "-")
 	out := fmt.Sprintf("uniq_idx_%s_%s", table, indexedNames)
 	length := min(len(out), 53)
 	return out[:length]
@@ -303,10 +288,7 @@ func createUniqueIndex(ctx context.Context, exec Executor, index models.UnicityI
 	if len(index.Included) > 0 {
 		sql += fmt.Sprintf(
 			" INCLUDE (%s)",
-			strings.Join(
-				pure_utils.Map(index.Included, func(s models.FieldName) string { return string(s) }),
-				",",
-			),
+			strings.Join(index.Included, ","),
 		)
 	}
 	sql += " WHERE valid_until='infinity'"

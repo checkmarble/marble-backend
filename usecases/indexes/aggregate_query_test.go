@@ -79,7 +79,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 		asserts.NoError(err)
 		asserts.Equal(models.TableName("table"), aggregateFamily.TableName)
 		asserts.Equal(1, aggregateFamily.EqConditions.Size())
-		asserts.True(aggregateFamily.EqConditions.Contains(models.FieldName("field")))
+		asserts.True(aggregateFamily.EqConditions.Contains("field"))
 		asserts.Equal(0, aggregateFamily.IneqConditions.Size())
 		asserts.Equal(1, aggregateFamily.SelectOrOtherConditions.Size(),
 			"SelectOrOtherConditions should contain field 0")
@@ -118,7 +118,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 		asserts.NoError(err)
 		asserts.Equal(models.TableName("table"), aggregateFamily.TableName)
 		asserts.Equal(1, aggregateFamily.EqConditions.Size())
-		asserts.True(aggregateFamily.EqConditions.Contains(models.FieldName("field")))
+		asserts.True(aggregateFamily.EqConditions.Contains("field"))
 		asserts.Equal(0, aggregateFamily.IneqConditions.Size())
 		asserts.Equal(1, aggregateFamily.SelectOrOtherConditions.Size(),
 			"SelectOrOtherConditions should contain field 0")
@@ -157,9 +157,9 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 		asserts.NoError(err)
 		asserts.Equal(models.TableName("table"), aggregateFamily.TableName)
 		asserts.Equal(1, aggregateFamily.EqConditions.Size())
-		asserts.True(aggregateFamily.EqConditions.Contains(models.FieldName("field 1")))
+		asserts.True(aggregateFamily.EqConditions.Contains("field 1"))
 		asserts.Equal(1, aggregateFamily.IneqConditions.Size())
-		asserts.True(aggregateFamily.IneqConditions.Contains(models.FieldName("field 2")))
+		asserts.True(aggregateFamily.IneqConditions.Contains("field 2"))
 		asserts.Equal(1, aggregateFamily.SelectOrOtherConditions.Size(),
 			"SelectOrOtherConditions should contain field 0")
 	})
@@ -239,16 +239,16 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 		asserts.Equal(models.TableName("table"), aggregateFamily.TableName)
 		asserts.Equal(2, aggregateFamily.EqConditions.Size(),
 			"EqConditions should contain field 1 and field 2")
-		asserts.True(aggregateFamily.EqConditions.Contains(models.FieldName("field 1")), "EqConditions should contain field 1")
-		asserts.True(aggregateFamily.EqConditions.Contains(models.FieldName("field 2")), "EqConditions should contain field 2")
+		asserts.True(aggregateFamily.EqConditions.Contains("field 1"), "EqConditions should contain field 1")
+		asserts.True(aggregateFamily.EqConditions.Contains("field 2"), "EqConditions should contain field 2")
 		asserts.Equal(1, aggregateFamily.IneqConditions.Size(),
 			"IneqConditions should contain field 3")
-		asserts.True(aggregateFamily.IneqConditions.Contains(models.FieldName("field 3")),
+		asserts.True(aggregateFamily.IneqConditions.Contains("field 3"),
 			"IneqConditions should contain field 3")
 		asserts.Equal(1, aggregateFamily.SelectOrOtherConditions.Size(),
 			"SelectOrOtherConditions should contain 1 field")
-		asserts.True(aggregateFamily.SelectOrOtherConditions.Contains(
-			models.FieldName("field 0")), "SelectOrOtherConditions should contain field 0")
+		asserts.True(aggregateFamily.SelectOrOtherConditions.Contains("field 0"),
+			"SelectOrOtherConditions should contain field 0")
 	})
 }
 
@@ -308,9 +308,9 @@ func TestAstNodeToQueryFamilies(t *testing.T) {
 		expected := set.NewHashSet[models.AggregateQueryFamily](0)
 		expected.Insert(models.AggregateQueryFamily{
 			TableName:               models.TableName("table"),
-			EqConditions:            set.From[models.FieldName]([]models.FieldName{"field"}),
-			IneqConditions:          set.New[models.FieldName](0),
-			SelectOrOtherConditions: set.From[models.FieldName]([]models.FieldName{"field 0"}),
+			EqConditions:            set.From[string]([]string{"field"}),
+			IneqConditions:          set.New[string](0),
+			SelectOrOtherConditions: set.From[string]([]string{"field 0"}),
 		})
 		asserts.True(output.EqualSet(expected), "The output set should contain the one query family (that was present twice)")
 		fmt.Println(expected)
@@ -394,21 +394,21 @@ func TestAstNodeToQueryFamilies(t *testing.T) {
 		expected := set.NewHashSet[models.AggregateQueryFamily](0)
 		expected.Insert(models.AggregateQueryFamily{
 			TableName:               models.TableName("table"),
-			EqConditions:            set.From[models.FieldName]([]models.FieldName{"field"}),
-			IneqConditions:          set.New[models.FieldName](0),
-			SelectOrOtherConditions: set.From[models.FieldName]([]models.FieldName{"field 0"}),
+			EqConditions:            set.From[string]([]string{"field"}),
+			IneqConditions:          set.New[string](0),
+			SelectOrOtherConditions: set.From[string]([]string{"field 0"}),
 		})
 		expected.Insert(models.AggregateQueryFamily{
 			TableName:               models.TableName("table"),
-			EqConditions:            set.New[models.FieldName](0),
-			IneqConditions:          set.From[models.FieldName]([]models.FieldName{"field"}),
-			SelectOrOtherConditions: set.From[models.FieldName]([]models.FieldName{"field 0"}),
+			EqConditions:            set.New[string](0),
+			IneqConditions:          set.From[string]([]string{"field"}),
+			SelectOrOtherConditions: set.From[string]([]string{"field 0"}),
 		})
 		expected.Insert(models.AggregateQueryFamily{
 			TableName:      models.TableName("table"),
-			EqConditions:   set.From[models.FieldName]([]models.FieldName{"field 0"}),
-			IneqConditions: set.New[models.FieldName](0),
-			SelectOrOtherConditions: set.From[models.FieldName]([]models.FieldName{
+			EqConditions:   set.From[string]([]string{"field 0"}),
+			IneqConditions: set.New[string](0),
+			SelectOrOtherConditions: set.From[string]([]string{
 				"field 2", "field 3",
 			}),
 		})
@@ -483,8 +483,8 @@ func Test_indexesToCreateFromScenarioIterations(t *testing.T) {
 		asserts.Equal(1, len(out), "There should be 1 index to create")
 		asserts.Equal(models.ConcreteIndex{
 			TableName: models.TableName("table"),
-			Indexed:   []models.FieldName{"field"},
-			Included:  []models.FieldName{"field 0"},
+			Indexed:   []string{"field"},
+			Included:  []string{"field 0"},
 		}, out[0])
 	})
 

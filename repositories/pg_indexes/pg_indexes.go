@@ -31,19 +31,19 @@ func parseCreateIndexStatement(sql string) models.ConcreteIndex {
 
 	// len(matches) is expected to be > 0 because the sql statement is expected to be a proper CREATE INDEX statement
 	indexedColumnsRaw := strings.Split(strings.Trim(matches[0], "() "), ",")
-	indexedColumnNames := pure_utils.Map(indexedColumnsRaw, func(s string) models.FieldName {
+	indexedColumnNames := pure_utils.Map(indexedColumnsRaw, func(s string) string {
 		// We discard the order of the index (ASC/DESC) because this is not relevant or modelized (yet) for our purposes
 		parts := strings.Split(strings.Trim(s, " "), " ")
 		// the first part of the string must be the column name
-		return models.FieldName(parts[0])
+		return parts[0]
 	})
 
-	var includedColumnNames []models.FieldName
+	var includedColumnNames []string
 	// if there is a second match, it is the list of included columns (optional)
 	if len(matches) > 1 {
 		names := strings.Split(strings.Trim(matches[1], "() "), ",")
-		includedColumnNames = pure_utils.Map(names, func(s string) models.FieldName {
-			return models.FieldName(strings.Trim(s, " "))
+		includedColumnNames = pure_utils.Map(names, func(s string) string {
+			return strings.Trim(s, " ")
 		})
 	}
 

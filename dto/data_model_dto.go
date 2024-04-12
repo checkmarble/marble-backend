@@ -7,8 +7,8 @@ import (
 
 type LinkToSingle struct {
 	LinkedTableName models.TableName `json:"linked_table_name"`
-	ParentFieldName models.FieldName `json:"parent_field_name"`
-	ChildFieldName  models.FieldName `json:"child_field_name"`
+	ParentFieldName string           `json:"parent_field_name"`
+	ChildFieldName  string           `json:"child_field_name"`
 }
 
 type Field struct {
@@ -22,11 +22,11 @@ type Field struct {
 }
 
 type Table struct {
-	ID            string                     `json:"id,omitempty"`
-	Name          string                     `json:"name"`
-	Description   string                     `json:"description"`
-	Fields        map[models.FieldName]Field `json:"fields"`
-	LinksToSingle map[string]LinkToSingle    `json:"links_to_single,omitempty"`
+	ID            string                  `json:"id,omitempty"`
+	Name          string                  `json:"name"`
+	Description   string                  `json:"description"`
+	Fields        map[string]Field        `json:"fields"`
+	LinksToSingle map[string]LinkToSingle `json:"links_to_single,omitempty"`
 }
 
 type DataModel struct {

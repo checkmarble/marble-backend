@@ -90,7 +90,7 @@ func (api *API) CreateField(c *gin.Context) {
 	tableID := c.Param("tableID")
 	field := models.CreateFieldInput{
 		TableId:     tableID,
-		Name:        models.FieldName(input.Name),
+		Name:        input.Name,
 		Description: input.Description,
 		DataType:    models.DataTypeFrom(input.Type),
 		Nullable:    input.Nullable,

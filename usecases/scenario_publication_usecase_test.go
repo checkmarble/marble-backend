@@ -131,8 +131,8 @@ func (suite *ScenarioPublicationUsecaseTestSuite) SetupTest() {
 	suite.scenarioAndIterationWithQuery.Iteration.TriggerConditionAstExpression = &astNode
 	suite.existingIndexes = []models.ConcreteIndex{
 		{
-			TableName: "table", Indexed: []models.FieldName{"a", "b"},
-			Included: []models.FieldName{"c", "d"},
+			TableName: "table", Indexed: []string{"a", "b"},
+			Included: []string{"c", "d"},
 		},
 	}
 
@@ -373,7 +373,7 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_GetPublicationPreparation
 	// another prepration is running
 	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.iterationId).Return([]models.ConcreteIndex{}, 1, nil)
 
-	// {Indexed: []models.FieldName{"a", "b"}, Included: []models.FieldName{"c", "d"}},
+	// {Indexed: []string{"a", "b"}, Included: []string{"c", "d"}},
 	status, err := suite.makeUsecase().GetPublicationPreparationStatus(suite.ctx, suite.iterationId)
 
 	suite.NoError(err)
@@ -388,7 +388,7 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_GetPublicationPreparation
 func (suite *ScenarioPublicationUsecaseTestSuite) Test_GetPublicationPreparationStatus_nominal_3() {
 	// One index to create
 	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.iterationId).Return([]models.ConcreteIndex{
-		{Indexed: []models.FieldName{"a", "b"}, Included: []models.FieldName{"c", "d"}},
+		{Indexed: []string{"a", "b"}, Included: []string{"c", "d"}},
 	}, 0, nil)
 
 	status, err := suite.makeUsecase().GetPublicationPreparationStatus(suite.ctx, suite.iterationId)
@@ -426,7 +426,7 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_StartPublicationPreparati
 
 func (suite *ScenarioPublicationUsecaseTestSuite) Test_StartPublicationPreparation_preparation_already_in_progress() {
 	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.iterationId).Return([]models.ConcreteIndex{
-		{Indexed: []models.FieldName{"a", "b"}, Included: []models.FieldName{"c", "d"}},
+		{Indexed: []string{"a", "b"}, Included: []string{"c", "d"}},
 	}, 1, nil)
 
 	err := suite.makeUsecase().StartPublicationPreparation(suite.ctx, suite.iterationId)
@@ -438,12 +438,12 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_StartPublicationPreparati
 
 func (suite *ScenarioPublicationUsecaseTestSuite) Test_StartPublicationPreparation_preparation_nominal() {
 	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.iterationId).Return([]models.ConcreteIndex{
-		{Indexed: []models.FieldName{"a", "b"}, Included: []models.FieldName{"c", "d"}},
+		{Indexed: []string{"a", "b"}, Included: []string{"c", "d"}},
 	}, 0, nil)
 	suite.clientDbIndexEditor.On("CreateIndexesAsync",
 		suite.ctx,
 		[]models.ConcreteIndex{
-			{Indexed: []models.FieldName{"a", "b"}, Included: []models.FieldName{"c", "d"}},
+			{Indexed: []string{"a", "b"}, Included: []string{"c", "d"}},
 		}).Return(nil)
 
 	err := suite.makeUsecase().StartPublicationPreparation(suite.ctx, suite.iterationId)

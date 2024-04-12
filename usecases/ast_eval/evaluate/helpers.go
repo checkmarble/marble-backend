@@ -93,7 +93,7 @@ func MakeEvaluateError(err error) (any, []error) {
 	return nil, []error{err}
 }
 
-func getFieldType(dataModel models.DataModel, tableName models.TableName, fieldName models.FieldName) (models.DataType, error) {
+func getFieldType(dataModel models.DataModel, tableName models.TableName, fieldName string) (models.DataType, error) {
 	table, ok := dataModel.Tables[tableName]
 	if !ok {
 		return models.UnknownDataType, errors.Wrap(

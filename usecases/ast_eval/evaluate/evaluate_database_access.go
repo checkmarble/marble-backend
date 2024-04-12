@@ -24,7 +24,7 @@ type DatabaseAccess struct {
 
 func (d DatabaseAccess) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 	tableNameStr, tableNameErr := AdaptNamedArgument(arguments.NamedArgs, "tableName", adaptArgumentToString)
-	fieldNameStr, fieldNameErr := AdaptNamedArgument(arguments.NamedArgs, "fieldName", adaptArgumentToString)
+	fieldName, fieldNameErr := AdaptNamedArgument(arguments.NamedArgs, "fieldName", adaptArgumentToString)
 
 	errs := filterNilErrors(tableNameErr, fieldNameErr)
 	if len(errs) > 0 {
@@ -33,7 +33,6 @@ func (d DatabaseAccess) Evaluate(ctx context.Context, arguments ast.Arguments) (
 
 	var pathStringArr []string
 	tableName := models.TableName(tableNameStr)
-	fieldName := models.FieldName(fieldNameStr)
 
 	path, ok := arguments.NamedArgs["path"].([]any)
 	if !ok {
@@ -74,7 +73,7 @@ func (d DatabaseAccess) Evaluate(ctx context.Context, arguments ast.Arguments) (
 }
 
 func (d DatabaseAccess) getDbField(ctx context.Context, tableName models.TableName,
-	fieldName models.FieldName, path []string,
+	fieldName string, path []string,
 ) (interface{}, error) {
 	if d.ReturnFakeValue {
 		return DryRunGetDbField(d.DataModel, tableName, path, fieldName)
@@ -87,7 +86,7 @@ func (d DatabaseAccess) getDbField(ctx context.Context, tableName models.TableNa
 	return d.IngestedDataReadRepository.GetDbField(ctx, db, models.DbFieldReadParams{
 		TriggerTableName: models.TableName(tableName),
 		Path:             path,
-		FieldName:        models.FieldName(fieldName),
+		FieldName:        fieldName,
 		DataModel:        d.DataModel,
 		ClientObject:     d.ClientObject,
 	})

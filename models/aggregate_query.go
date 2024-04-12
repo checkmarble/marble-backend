@@ -9,17 +9,17 @@ import (
 
 type AggregateQueryFamily struct {
 	TableName               TableName
-	EqConditions            *set.Set[FieldName]
-	IneqConditions          *set.Set[FieldName]
-	SelectOrOtherConditions *set.Set[FieldName]
+	EqConditions            *set.Set[string]
+	IneqConditions          *set.Set[string]
+	SelectOrOtherConditions *set.Set[string]
 }
 
 func NewAggregateQueryFamily(tableName string) AggregateQueryFamily {
 	return AggregateQueryFamily{
 		TableName:               TableName(tableName),
-		EqConditions:            set.New[FieldName](0),
-		IneqConditions:          set.New[FieldName](0),
-		SelectOrOtherConditions: set.New[FieldName](0),
+		EqConditions:            set.New[string](0),
+		IneqConditions:          set.New[string](0),
+		SelectOrOtherConditions: set.New[string](0),
 	}
 }
 
@@ -73,13 +73,13 @@ func (qFamily AggregateQueryFamily) ToIndexFamilies() *set.HashSet[IndexFamily, 
 	base := NewIndexFamily()
 	base.TableName = qFamily.TableName
 	if qFamily.EqConditions != nil {
-		qFamily.EqConditions.ForEach(func(f FieldName) bool {
+		qFamily.EqConditions.ForEach(func(f string) bool {
 			base.Flex.Insert(f)
 			return true
 		})
 	}
 	if qFamily.SelectOrOtherConditions != nil {
-		qFamily.SelectOrOtherConditions.ForEach(func(f FieldName) bool {
+		qFamily.SelectOrOtherConditions.ForEach(func(f string) bool {
 			base.Included.Insert(f)
 			return true
 		})
@@ -91,13 +91,13 @@ func (qFamily AggregateQueryFamily) ToIndexFamilies() *set.HashSet[IndexFamily, 
 
 	// If inequality conditions are involved, we need to create a family for each column involved
 	// in the inequality conditions (and complete the "other" columns)
-	qFamily.IneqConditions.ForEach(func(f FieldName) bool {
+	qFamily.IneqConditions.ForEach(func(f string) bool {
 		// we create a copy of the base family
 		family := base.Copy()
 		// we add the current column as the "last" column
 		family.Last = f
 		// we add all the other columns as "other" columns
-		qFamily.IneqConditions.ForEach(func(o FieldName) bool {
+		qFamily.IneqConditions.ForEach(func(o string) bool {
 			if o != f {
 				family.Included.Insert(o)
 			}

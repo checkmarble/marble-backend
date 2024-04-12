@@ -25,7 +25,7 @@ type IngestedDataReadRepository interface {
 		ctx context.Context,
 		exec Executor,
 		tableName models.TableName,
-		fieldName models.FieldName,
+		fieldName string,
 		aggregator ast.Aggregator,
 		filters []ast.Filter,
 	) (any, error)
@@ -114,7 +114,7 @@ func createQueryDbForField(exec Executor, readParams models.DbFieldReadParams) (
 	return addJoinsOnIntermediateTables(exec, query, readParams, firstTable)
 }
 
-func getParentTableJoinField(payload models.ClientObject, fieldName models.FieldName) (string, error) {
+func getParentTableJoinField(payload models.ClientObject, fieldName string) (string, error) {
 	parentFieldItf := payload.Data[string(fieldName)]
 	if parentFieldItf == nil {
 		return "", errors.Wrap(
@@ -296,7 +296,7 @@ func queryWithDynamicColumnList(
 }
 
 func createQueryAggregated(exec Executor, tableName models.TableName,
-	fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter,
+	fieldName string, aggregator ast.Aggregator, filters []ast.Filter,
 ) (squirrel.SelectBuilder, error) {
 	var selectExpression string
 	if aggregator == ast.AGGREGATOR_COUNT_DISTINCT {
@@ -327,7 +327,7 @@ func createQueryAggregated(exec Executor, tableName models.TableName,
 }
 
 func (repo *IngestedDataReadRepositoryImpl) QueryAggregatedValue(ctx context.Context, exec Executor,
-	tableName models.TableName, fieldName models.FieldName, aggregator ast.Aggregator, filters []ast.Filter,
+	tableName models.TableName, fieldName string, aggregator ast.Aggregator, filters []ast.Filter,
 ) (any, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return nil, err
