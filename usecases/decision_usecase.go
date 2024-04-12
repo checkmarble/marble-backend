@@ -162,17 +162,17 @@ func (usecase *DecisionUsecase) validateOutcomes(_ context.Context, filtersOutco
 
 func (usecase *DecisionUsecase) validateTriggerObjects(ctx context.Context,
 	filtersTriggerObjects []string, organizationId string,
-) ([]models.TableName, error) {
+) ([]string, error) {
 	dataModel, err := usecase.datamodelRepository.GetDataModel(ctx,
 		usecase.executorFactory.NewExecutor(), organizationId, true)
 	if err != nil {
-		return []models.TableName{}, err
+		return nil, err
 	}
-	triggerObjectTypes := make([]models.TableName, len(filtersTriggerObjects))
+	triggerObjectTypes := make([]string, len(filtersTriggerObjects))
 	for i, triggerObject := range filtersTriggerObjects {
-		triggerObjectTypes[i] = models.TableName(triggerObject)
+		triggerObjectTypes[i] = triggerObject
 		if _, ok := dataModel.Tables[triggerObjectTypes[i]]; !ok {
-			return []models.TableName{}, fmt.Errorf(
+			return nil, fmt.Errorf(
 				"table %s not found on data model: %w", triggerObject, models.BadParameterError)
 		}
 	}
@@ -419,7 +419,7 @@ func (usecase DecisionUsecase) validatePayload(
 	}
 
 	tables := dataModel.Tables
-	table, ok := tables[models.TableName(triggerObjectTable)]
+	table, ok := tables[triggerObjectTable]
 	if !ok {
 		err = errors.Wrap(
 			models.NotFoundError,

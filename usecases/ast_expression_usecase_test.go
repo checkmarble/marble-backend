@@ -14,7 +14,7 @@ func TestAstExpressionUsecase_getLinkedDatabaseIdentifiers(t *testing.T) {
 	}
 
 	model := models.DataModel{
-		Tables: map[models.TableName]models.Table{
+		Tables: map[string]models.Table{
 			"accounts": {
 				Name: "accounts",
 				Fields: map[string]models.Field{

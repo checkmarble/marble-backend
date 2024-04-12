@@ -56,7 +56,7 @@ func parseCreateIndexStatement(sql string) models.ConcreteIndex {
 func (pgIndex PGIndex) AdaptConcreteIndex() models.ConcreteIndex {
 	idx := parseCreateIndexStatement(pgIndex.Definition)
 
-	idx.TableName = models.TableName(pgIndex.TableName)
+	idx.TableName = pgIndex.TableName
 	return idx
 }
 

@@ -222,7 +222,7 @@ func withDesc(s string) string {
 	return fmt.Sprintf("%s DESC", s)
 }
 
-func indexToIndexName(fields []string, table models.TableName) string {
+func indexToIndexName(fields []string, table string) string {
 	// postgresql enforces a 63 character length limit on all identifiers
 	indexedNames := strings.Join(fields, "-")
 	out := fmt.Sprintf("idx_%s_%s", table, indexedNames)
@@ -231,7 +231,7 @@ func indexToIndexName(fields []string, table models.TableName) string {
 	return pgx.Identifier.Sanitize([]string{out[:length] + "_" + randomId})
 }
 
-func toUniqIndexName(fields []string, table models.TableName) string {
+func toUniqIndexName(fields []string, table string) string {
 	// postgresql enforces a 63 character length limit on all identifiers
 	indexedNames := strings.Join(fields, "-")
 	out := fmt.Sprintf("uniq_idx_%s_%s", table, indexedNames)

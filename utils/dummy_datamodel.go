@@ -3,9 +3,9 @@ package utils
 import "github.com/checkmarble/marble-backend/models"
 
 const (
-	DummyTableNameFirst  models.TableName = "first"
-	DummyTableNameSecond models.TableName = "second"
-	DummyTableNameThird  models.TableName = "third"
+	DummyTableNameFirst  = "first"
+	DummyTableNameSecond = "second"
+	DummyTableNameThird  = "third"
 )
 
 const (
@@ -87,7 +87,7 @@ func GetDummyDataModel() models.DataModel {
 
 	return models.DataModel{
 		Version: "1",
-		Tables: map[models.TableName]models.Table{
+		Tables: map[string]models.Table{
 			DummyTableNameFirst:  dummyDataModelFirstTable,
 			DummyTableNameSecond: dummyDataModelSecondTable,
 			DummyTableNameThird:  dummyDataModelThirdTable,

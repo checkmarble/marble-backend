@@ -128,7 +128,7 @@ func (validator *ValidateScenarioIterationImpl) makeDryRunEnvironment(ctx contex
 		}
 	}
 
-	table, ok := dataModel.Tables[models.TableName(si.Scenario.TriggerObjectType)]
+	table, ok := dataModel.Tables[si.Scenario.TriggerObjectType]
 	if !ok {
 		return ast_eval.AstEvaluationEnvironment{}, &models.ScenarioValidationError{
 			Error: errors.Wrap(models.NotFoundError,

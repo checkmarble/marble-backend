@@ -1,7 +1,7 @@
 package models
 
 type DbFieldReadParams struct {
-	TriggerTableName TableName
+	TriggerTableName string
 	Path             []string
 	FieldName        string
 	DataModel        DataModel
@@ -9,6 +9,6 @@ type DbFieldReadParams struct {
 }
 
 type ClientObject struct {
-	TableName TableName
+	TableName string
 	Data      map[string]any
 }

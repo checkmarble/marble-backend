@@ -53,12 +53,10 @@ func (repo *DataModelRepositoryPostgresql) GetDataModel(
 	}
 
 	dataModel := models.DataModel{
-		Tables: make(map[models.TableName]models.Table),
+		Tables: make(map[string]models.Table),
 	}
 
 	for _, field := range fields {
-		tableName := models.TableName(field.TableName)
-
 		var values []any
 		if field.FieldIsEnum && fetchEnumValues {
 			values, err = repo.GetEnumValues(ctx, exec, field.FieldID)
@@ -67,17 +65,17 @@ func (repo *DataModelRepositoryPostgresql) GetDataModel(
 			}
 		}
 
-		_, ok := dataModel.Tables[tableName]
+		_, ok := dataModel.Tables[field.TableName]
 		if !ok {
-			dataModel.Tables[tableName] = models.Table{
+			dataModel.Tables[field.TableName] = models.Table{
 				ID:            field.TableID,
-				Name:          tableName,
+				Name:          field.TableName,
 				Description:   field.TableDescription,
 				Fields:        map[string]models.Field{},
 				LinksToSingle: make(map[string]models.LinkToSingle),
 			}
 		}
-		dataModel.Tables[tableName].Fields[field.FieldName] = models.Field{
+		dataModel.Tables[field.TableName].Fields[field.FieldName] = models.Field{
 			ID:          field.FieldID,
 			Description: field.FieldDescription,
 			DataType:    models.DataTypeFrom(field.FieldType),

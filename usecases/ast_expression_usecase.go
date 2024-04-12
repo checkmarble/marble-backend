@@ -36,7 +36,7 @@ func (usecase *AstExpressionUsecase) getLinkedDatabaseIdentifiers(scenario model
 	dataAccessors := []ast.Node{}
 	var recursiveDatabaseAccessor func(path []string, links map[string]models.LinkToSingle) error
 
-	triggerObjectTable, found := dataModel.Tables[models.TableName(scenario.TriggerObjectType)]
+	triggerObjectTable, found := dataModel.Tables[scenario.TriggerObjectType]
 	if !found {
 		return nil, fmt.Errorf("triggerObjectTable %s not found in data model", scenario.TriggerObjectType)
 	}
@@ -84,7 +84,7 @@ func (usecase *AstExpressionUsecase) getLinkedDatabaseIdentifiers(scenario model
 func (usecase *AstExpressionUsecase) getPayloadIdentifiers(scenario models.Scenario, dataModel models.DataModel) ([]ast.Node, error) {
 	dataAccessors := []ast.Node{}
 
-	triggerObjectTable, found := dataModel.Tables[models.TableName(scenario.TriggerObjectType)]
+	triggerObjectTable, found := dataModel.Tables[scenario.TriggerObjectType]
 	if !found {
 		// unexpected error: must be a valid table
 		return nil, fmt.Errorf("triggerObjectTable %s not found in data model", scenario.TriggerObjectType)

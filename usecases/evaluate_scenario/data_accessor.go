@@ -25,7 +25,7 @@ func (d *DataAccessor) GetDbField(ctx context.Context, triggerTableName string, 
 		ctx,
 		db,
 		models.DbFieldReadParams{
-			TriggerTableName: models.TableName(triggerTableName),
+			TriggerTableName: triggerTableName,
 			Path:             path,
 			FieldName:        fieldName,
 			DataModel:        d.DataModel,

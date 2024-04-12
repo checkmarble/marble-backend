@@ -33,7 +33,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 		}
 		aggregateFamily, err := aggregationNodeToQueryFamily(node)
 		asserts.NoError(err)
-		asserts.Equal(models.TableName("table"), aggregateFamily.TableName,
+		asserts.Equal("table", aggregateFamily.TableName,
 			"table name should be input table name")
 	})
 
@@ -77,7 +77,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 		}
 		aggregateFamily, err := aggregationNodeToQueryFamily(node)
 		asserts.NoError(err)
-		asserts.Equal(models.TableName("table"), aggregateFamily.TableName)
+		asserts.Equal("table", aggregateFamily.TableName)
 		asserts.Equal(1, aggregateFamily.EqConditions.Size())
 		asserts.True(aggregateFamily.EqConditions.Contains("field"))
 		asserts.Equal(0, aggregateFamily.IneqConditions.Size())
@@ -116,7 +116,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 		}
 		aggregateFamily, err := aggregationNodeToQueryFamily(node)
 		asserts.NoError(err)
-		asserts.Equal(models.TableName("table"), aggregateFamily.TableName)
+		asserts.Equal("table", aggregateFamily.TableName)
 		asserts.Equal(1, aggregateFamily.EqConditions.Size())
 		asserts.True(aggregateFamily.EqConditions.Contains("field"))
 		asserts.Equal(0, aggregateFamily.IneqConditions.Size())
@@ -155,7 +155,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 		}
 		aggregateFamily, err := aggregationNodeToQueryFamily(node)
 		asserts.NoError(err)
-		asserts.Equal(models.TableName("table"), aggregateFamily.TableName)
+		asserts.Equal("table", aggregateFamily.TableName)
 		asserts.Equal(1, aggregateFamily.EqConditions.Size())
 		asserts.True(aggregateFamily.EqConditions.Contains("field 1"))
 		asserts.Equal(1, aggregateFamily.IneqConditions.Size())
@@ -236,7 +236,7 @@ func TestAggregationNodeToQueryFamily(t *testing.T) {
 		}
 		aggregateFamily, err := aggregationNodeToQueryFamily(node)
 		asserts.NoError(err)
-		asserts.Equal(models.TableName("table"), aggregateFamily.TableName)
+		asserts.Equal("table", aggregateFamily.TableName)
 		asserts.Equal(2, aggregateFamily.EqConditions.Size(),
 			"EqConditions should contain field 1 and field 2")
 		asserts.True(aggregateFamily.EqConditions.Contains("field 1"), "EqConditions should contain field 1")
@@ -307,7 +307,7 @@ func TestAstNodeToQueryFamilies(t *testing.T) {
 		asserts.Equal(1, output.Size(), "There should be only 1 query family in the output set")
 		expected := set.NewHashSet[models.AggregateQueryFamily](0)
 		expected.Insert(models.AggregateQueryFamily{
-			TableName:               models.TableName("table"),
+			TableName:               "table",
 			EqConditions:            set.From[string]([]string{"field"}),
 			IneqConditions:          set.New[string](0),
 			SelectOrOtherConditions: set.From[string]([]string{"field 0"}),
@@ -393,19 +393,19 @@ func TestAstNodeToQueryFamilies(t *testing.T) {
 		asserts.Equal(3, output.Size(), "There should be 2 query families in the output set")
 		expected := set.NewHashSet[models.AggregateQueryFamily](0)
 		expected.Insert(models.AggregateQueryFamily{
-			TableName:               models.TableName("table"),
+			TableName:               "table",
 			EqConditions:            set.From[string]([]string{"field"}),
 			IneqConditions:          set.New[string](0),
 			SelectOrOtherConditions: set.From[string]([]string{"field 0"}),
 		})
 		expected.Insert(models.AggregateQueryFamily{
-			TableName:               models.TableName("table"),
+			TableName:               "table",
 			EqConditions:            set.New[string](0),
 			IneqConditions:          set.From[string]([]string{"field"}),
 			SelectOrOtherConditions: set.From[string]([]string{"field 0"}),
 		})
 		expected.Insert(models.AggregateQueryFamily{
-			TableName:      models.TableName("table"),
+			TableName:      "table",
 			EqConditions:   set.From[string]([]string{"field 0"}),
 			IneqConditions: set.New[string](0),
 			SelectOrOtherConditions: set.From[string]([]string{
@@ -482,7 +482,7 @@ func Test_indexesToCreateFromScenarioIterations(t *testing.T) {
 		asserts.NoError(err)
 		asserts.Equal(1, len(out), "There should be 1 index to create")
 		asserts.Equal(models.ConcreteIndex{
-			TableName: models.TableName("table"),
+			TableName: "table",
 			Indexed:   []string{"field"},
 			Included:  []string{"field 0"},
 		}, out[0])

@@ -24,7 +24,7 @@ const TABLE_DATA_MODELS = "data_models"
 var SelectDataModelColumn = utils.ColumnList[DbDataModel]()
 
 func AdaptDataModel(dbDataModel DbDataModel) (models.DataModel, error) {
-	var tables map[models.TableName]models.Table
+	var tables map[string]models.Table
 	if err := json.Unmarshal(dbDataModel.Tables, &tables); err != nil {
 		return models.DataModel{}, fmt.Errorf("unable to unmarshal data model tables: %w", err)
 	}
@@ -84,9 +84,9 @@ type DbDataModelLink struct {
 func AdaptLinkToSingle(dbDataModelLink DbDataModelLink) models.LinkToSingle {
 	return models.LinkToSingle{
 		Name:            dbDataModelLink.Name,
-		LinkedTableName: models.TableName(dbDataModelLink.ParentTable),
+		LinkedTableName: dbDataModelLink.ParentTable,
 		ParentFieldName: dbDataModelLink.ParentField,
-		ChildTableName:  models.TableName(dbDataModelLink.ChildTable),
+		ChildTableName:  dbDataModelLink.ChildTable,
 		ChildFieldName:  dbDataModelLink.ChildField,
 	}
 }

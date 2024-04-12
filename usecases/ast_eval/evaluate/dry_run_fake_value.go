@@ -21,7 +21,7 @@ func DryRunPayload(table models.Table) map[string]any {
 	return result
 }
 
-func DryRunGetDbField(dataModel models.DataModel, triggerTableName models.TableName, path []string, fieldName string) (any, error) {
+func DryRunGetDbField(dataModel models.DataModel, triggerTableName string, path []string, fieldName string) (any, error) {
 	table, ok := dataModel.Tables[triggerTableName]
 	if !ok {
 		return nil, fmt.Errorf("table %s not found in data model", triggerTableName)
@@ -65,9 +65,7 @@ func DryRunValue(prefix string, fieldName string, field models.Field) any {
 	}
 }
 
-func DryRunQueryAggregatedValue(datamodel models.DataModel, tableName models.TableName,
-	fieldName string, aggregator ast.Aggregator,
-) (any, error) {
+func DryRunQueryAggregatedValue(datamodel models.DataModel, tableName string, fieldName string, aggregator ast.Aggregator) (any, error) {
 	table, ok := datamodel.Tables[tableName]
 	if !ok {
 		return nil, fmt.Errorf("table %s not found in data model", tableName)

@@ -8,7 +8,7 @@ import (
 )
 
 type AggregateQueryFamily struct {
-	TableName               TableName
+	TableName               string
 	EqConditions            *set.Set[string]
 	IneqConditions          *set.Set[string]
 	SelectOrOtherConditions *set.Set[string]
@@ -16,7 +16,7 @@ type AggregateQueryFamily struct {
 
 func NewAggregateQueryFamily(tableName string) AggregateQueryFamily {
 	return AggregateQueryFamily{
-		TableName:               TableName(tableName),
+		TableName:               tableName,
 		EqConditions:            set.New[string](0),
 		IneqConditions:          set.New[string](0),
 		SelectOrOtherConditions: set.New[string](0),
