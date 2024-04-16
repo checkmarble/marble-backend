@@ -31,7 +31,11 @@ func (api *API) handleCreateTransfer(c *gin.Context) {
 	}
 
 	transferCheck, err := usecase.CreateTransfer(c.Request.Context(), orgId, partnerId, dto.AdaptTransferCreateBody(data))
-	if presentError(c, err) {
+	var fieldValidationError models.FieldValidationError
+	if errors.As(err, &fieldValidationError) {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": fieldValidationError})
+		return
+	} else if presentError(c, err) {
 		return
 	}
 

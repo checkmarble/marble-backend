@@ -21,8 +21,8 @@ var (
 )
 
 const (
-	maxStringLengthTfCheck   = 140
-	senderAccountIdMaxLength = 50
+	maxStringLengthTfCheck = 140
+	idMaxLength            = 50
 )
 
 type Transfer struct {
@@ -192,56 +192,61 @@ func (t TransferDataCreateBody) ToIngestionMap(mapping TransferMapping) map[stri
 
 func (t TransferDataCreateBody) FormatAndValidate() (TransferDataCreateBody, error) {
 	var err error
-	var errs []error
+	errs := make(FieldValidationError, 10)
 
 	// hash the iban if it's clear - otherwise keep it unchanged
 	t.BeneficiaryIban, err = hashIbanIfClear(t.BeneficiaryIban)
 	if err != nil {
-		errs = append(errs, err)
+		errs["beneficiary_iban"] = err.Error()
 	}
 
 	// first validate the fields that expect a specific format
 	t.BeneficiaryBic, err = formatAndValidateBic(t.BeneficiaryBic)
-	errs = append(errs, err)
+	if err != nil {
+		errs["beneficiary_bic"] = err.Error()
+	}
 
 	t.SenderBic, err = formatAndValidateBic(t.SenderBic)
-	errs = append(errs, err)
+	if err != nil {
+		errs["sender_bic"] = err.Error()
+	}
 
 	t.Currency = strings.ToUpper(t.Currency)
 	if !slices.Contains(pure_utils.CurrencyCodes, t.Currency) {
-		errs = append(errs, errors.Wrap(BadParameterError, "currency is not valid"))
+		errs["currency"] = fmt.Sprintf("currency %s is not valid", t.Currency)
 	}
 
 	_, err = netip.ParseAddr(t.SenderIP)
 	if t.SenderIP != "" && err != nil {
-		errs = append(errs, errors.Wrap(BadParameterError, "sender_ip is not a valid IP address"))
+		errs["sender_ip"] = fmt.Sprintf("sender_ip %s is not a valid IP address", t.SenderIP)
 	}
 
 	if !slices.Contains(TransferStatuses, t.Status) {
-		errs = append(errs, errors.Wrap(
-			BadParameterError,
-			fmt.Sprintf("status %s is not valid", t.Status),
-		))
+		errs["status"] = fmt.Sprintf("status %s is not valid", t.Status)
 	}
 
+	stringTooLongErr := "string is too long"
 	// max length checks for strings that don't have any other format
 	if len(t.BeneficiaryName) > maxStringLengthTfCheck {
-		errs = append(errs, errors.Wrap(BadParameterError, "beneficiary_name is too long"))
+		errs["beneficiary_name"] = stringTooLongErr
 	}
 	if len(t.Label) > maxStringLengthTfCheck {
-		errs = append(errs, errors.Wrap(BadParameterError, "label is too long"))
+		errs["label"] = stringTooLongErr
 	}
-	if len(t.SenderAccountId) > senderAccountIdMaxLength {
-		errs = append(errs, errors.Wrap(BadParameterError, "sender_account_id is too long"))
+	if len(t.SenderAccountId) > idMaxLength {
+		errs["sender_account_id"] = stringTooLongErr
+	}
+	if len(t.TransferId) > idMaxLength {
+		errs["transfer_id"] = stringTooLongErr
 	}
 	if len(t.SenderDevice) > maxStringLengthTfCheck {
-		errs = append(errs, errors.Wrap(BadParameterError, "sender_device is too long"))
+		errs["sender_device"] = stringTooLongErr
 	}
 	if t.Value <= 0 {
-		errs = append(errs, errors.Wrap(BadParameterError, "value must be positive"))
+		errs["value"] = "value must be positive"
 	}
 
-	return t, errors.Join(errs...)
+	return t, errs
 }
 
 func formatAndValidateBic(bic string) (string, error) {
@@ -271,7 +276,7 @@ func hashIbanIfClear(ibanOrHash string) (string, error) {
 		return "", errors.Wrap(BadParameterError, "iban must be alphanumeric")
 	}
 	if len(iban) < 15 || len(iban) > 34 {
-		return "", errors.Wrap(BadParameterError, "iban must be between 15 and 34 characters")
+		return "", errors.Wrap(BadParameterError, "iban must be between 16 and 34 characters")
 	}
 
 	hash := sha256.Sum256([]byte(trimAndUpper(iban)))
