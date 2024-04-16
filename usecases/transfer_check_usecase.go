@@ -66,7 +66,8 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 	logger := utils.LoggerFromContext(ctx)
 	exec := usecase.executorFactory.NewExecutor()
 
-	if err := validateTransfer(transfer.TransferData); err != nil {
+	createBody, err := transfer.TransferData.FormatAndValidate()
+	if err != nil {
 		return models.Transfer{}, err
 	}
 
@@ -84,7 +85,7 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 		return models.Transfer{}, err
 	}
 
-	objectId := models.ObjectIdWithPartnerIdPrefix(partnerId, transfer.TransferData.TransferId)
+	objectId := models.ObjectIdWithPartnerIdPrefix(partnerId, createBody.TransferId)
 	previousObjects, err := usecase.lookupPreviousObjects(ctx, nil, organizationId, table, objectId)
 	if err != nil {
 		return models.Transfer{}, err
@@ -92,7 +93,7 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 	if len(previousObjects) > 0 {
 		return models.Transfer{}, errors.Wrap(
 			models.ConflictError,
-			fmt.Sprintf("transfer %s already exists", transfer.TransferData.TransferId),
+			fmt.Sprintf("transfer %s already exists", createBody.TransferId),
 		)
 	}
 
@@ -102,7 +103,7 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 		exec,
 		organizationId,
 		partnerId,
-		transfer.TransferData.TransferId,
+		createBody.TransferId,
 	)
 	if err != nil {
 		return models.Transfer{}, err
@@ -113,7 +114,7 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 		transferMappingId = uuid.New().String()
 		err = usecase.transferMappingsRepository.CreateTransferMapping(ctx, exec,
 			transferMappingId, models.TransferMappingCreateInput{
-				ClientTransferId: transfer.TransferData.TransferId,
+				ClientTransferId: createBody.TransferId,
 				OrganizationId:   organizationId,
 				PartnerId:        partnerId,
 			})
@@ -128,7 +129,7 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 	}
 
 	clientObject := models.ClientObject{
-		Data:      transfer.TransferData.ToIngestionMap(transferMappings[0]),
+		Data:      createBody.ToIngestionMap(transferMappings[0]),
 		TableName: TransferCheckTable,
 	}
 
@@ -159,9 +160,10 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 		decision, err = usecase.decisionUseCase.CreateDecision(
 			ctx,
 			models.CreateDecisionInput{
-				ScenarioId:     scenarioId,
-				ClientObject:   &clientObject,
-				OrganizationId: organizationId,
+				ScenarioId:         scenarioId,
+				ClientObject:       &clientObject,
+				OrganizationId:     organizationId,
+				TriggerObjectTable: TransferCheckTable,
 			},
 			true,
 		)
