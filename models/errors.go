@@ -1,6 +1,8 @@
 package models
 
 import (
+	"fmt"
+
 	"github.com/cockroachdb/errors"
 )
 
@@ -59,22 +61,9 @@ var (
 // ingestion and decision creating payload related errors
 var FormatValidationError = errors.New("The input object is not valid")
 
-type PayloadValidationErrors struct {
-	message string
-	errors  map[string]string
-}
+// transfercheck errors
+type FieldValidationError map[string]string
 
-func (p PayloadValidationErrors) Error() string {
-	return p.message
-}
-
-func (p PayloadValidationErrors) Errors() map[string]string {
-	return p.errors
-}
-
-func NewPayloadValidationErrors(message string, errors map[string]string) PayloadValidationErrors {
-	return PayloadValidationErrors{
-		message: message,
-		errors:  errors,
-	}
+func (e FieldValidationError) Error() string {
+	return fmt.Sprintf("%v", map[string]string(e))
 }
