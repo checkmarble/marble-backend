@@ -13,7 +13,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func (api *API) handleTransferCheck(c *gin.Context) {
+func (api *API) handleCreateTransfer(c *gin.Context) {
 	usecase := api.UsecasesWithCreds(c.Request).NewTransferCheckUsecase()
 
 	orgId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
