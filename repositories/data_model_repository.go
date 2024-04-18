@@ -336,7 +336,6 @@ func (repo *DataModelRepositoryPostgresql) GetEnumValues(ctx context.Context, ex
 		From("data_model_enum_values").
 		Where(squirrel.Eq{"field_id": fieldID}).
 		Where("(text_value IS NOT NULL OR float_value IS NOT NULL)").
-		OrderBy("last_seen DESC").
 		Limit(100).
 		ToSql()
 	if err != nil {

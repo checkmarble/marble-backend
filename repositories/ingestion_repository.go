@@ -229,12 +229,12 @@ func (repo *IngestionRepositoryImpl) batchInsertEnumValues(ctx context.Context, 
 	textQuery := NewQueryBuilder().
 		Insert("data_model_enum_values").
 		Columns("field_id", "text_value").
-		Suffix("ON CONFLICT ON CONSTRAINT unique_data_model_enum_text_values_field_id_value DO UPDATE SET last_seen = NOW()")
+		Suffix("ON CONFLICT ON CONSTRAINT unique_data_model_enum_text_values_field_id_value DO NOTHING")
 
 	floatQuery := NewQueryBuilder().
 		Insert("data_model_enum_values").
 		Columns("field_id", "float_value").
-		Suffix("ON CONFLICT ON CONSTRAINT unique_data_model_enum_float_values_field_id_value DO UPDATE SET last_seen = NOW()")
+		Suffix("ON CONFLICT ON CONSTRAINT unique_data_model_enum_float_values_field_id_value DO NOTHING")
 
 	// Hack to avoid empty query, which would cause an execution error
 	var shouldInsertTextValues bool
