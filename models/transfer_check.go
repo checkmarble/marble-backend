@@ -195,7 +195,7 @@ func (t TransferDataCreateBody) FormatAndValidate() (TransferDataCreateBody, err
 	errs := make(FieldValidationError, 10)
 
 	// hash the iban if it's clear - otherwise keep it unchanged
-	t.BeneficiaryIban, err = hashIbanIfClear(t.BeneficiaryIban)
+	t.BeneficiaryIban, err = validateIbanOrHashIfClear(t.BeneficiaryIban)
 	if err != nil {
 		errs["beneficiary_iban"] = err.Error()
 	}
@@ -263,15 +263,21 @@ func formatAndValidateBic(bic string) (string, error) {
 }
 
 // takes a clear iban or a hexadecimal hash of an iban and returns a hexadecimal hash of the iban
-func hashIbanIfClear(ibanOrHash string) (string, error) {
+// In detail:
+// - if it looks like a SHA256 hash, keep it and upper case it
+// - otherwise
+//   - upper case it and remove spaces
+//   - check if it's alphanumeric & if it's between 15 and 34 characters
+//   - if it is, hash it with SHA256 and return the hash as a hexadecimal string (upper case)
+func validateIbanOrHashIfClear(ibanOrHash string) (string, error) {
 	data, err := hex.DecodeString(ibanOrHash)
 	if err == nil {
 		if len(data) == sha256.Size {
-			return trimAndUpper(ibanOrHash), nil
+			return strings.ToUpper(ibanOrHash), nil
 		}
 	}
 
-	iban := trimAndUpper(ibanOrHash)
+	iban := strings.ToUpper(strings.ReplaceAll(ibanOrHash, " ", ""))
 	if !isAlphanumeric.MatchString(iban) {
 		return "", errors.Wrap(BadParameterError, "iban must be alphanumeric")
 	}
@@ -279,12 +285,8 @@ func hashIbanIfClear(ibanOrHash string) (string, error) {
 		return "", errors.Wrap(BadParameterError, "iban must be between 16 and 34 characters")
 	}
 
-	hash := sha256.Sum256([]byte(trimAndUpper(iban)))
+	hash := sha256.Sum256([]byte(iban))
 	return strings.ToUpper(hex.EncodeToString(hash[:])), nil
-}
-
-func trimAndUpper(s string) string {
-	return strings.TrimSpace(strings.ToUpper(s))
 }
 
 func ObjectIdWithPartnerIdPrefix(partnerId string, transferId string) string {
