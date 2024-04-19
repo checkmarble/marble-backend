@@ -144,6 +144,8 @@ func (api *API) routes(auth *Authentication, tokenHandler *TokenHandler) {
 	router.PATCH("/data-model/fields/:fieldID", api.UpdateDataModelField)
 	router.DELETE("/data-model", api.DeleteDataModel)
 	router.GET("/data-model/openapi", api.OpenAPI)
+	router.POST("data-model/pivots", api.createDataModelPivot)
+	router.GET("data-model/pivots", api.listDataModelPivots)
 
 	router.POST("/transfers", api.handleCreateTransfer)
 	router.GET("/transfers", api.handleQueryTransfers)
