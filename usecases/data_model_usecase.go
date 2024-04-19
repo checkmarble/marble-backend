@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -378,4 +379,40 @@ func (usecase *DataModelUseCase) DeleteDataModel(ctx context.Context, organizati
 			return usecase.organizationSchemaRepository.DeleteSchema(ctx, orgTx)
 		})
 	})
+}
+
+func (usecase *DataModelUseCase) CreatePivot(ctx context.Context, organizationID string, input models.CreatePivotInput) (models.Pivot, error) {
+	if err := usecase.enforceSecurity.WriteDataModel(organizationID); err != nil {
+		return models.Pivot{}, err
+	}
+
+	// return  dummy pivot for now
+	return models.Pivot{
+		Id:        uuid.New().String(),
+		CreatedAt: time.Now(),
+
+		BaseTableId: input.BaseTableId,
+		BaseTable:   "dummy_table",
+		Links:       []string{},
+		LinkIds:     input.LinkIds,
+	}, nil
+}
+
+func (usecase *DataModelUseCase) ListPivots(ctx context.Context, organizationID string, tableID *string) ([]models.Pivot, error) {
+	if err := usecase.enforceSecurity.ReadDataModel(); err != nil {
+		return nil, err
+	}
+
+	// return dummy pivots for now
+	return []models.Pivot{
+		{
+			Id:        uuid.New().String(),
+			CreatedAt: time.Now(),
+
+			BaseTableId: *tableID,
+			BaseTable:   "dummy_table",
+			Links:       []string{},
+			LinkIds:     []string{"dummy_link_id"},
+		},
+	}, nil
 }
