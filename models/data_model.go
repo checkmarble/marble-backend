@@ -66,6 +66,34 @@ func (dm DataModel) Copy() DataModel {
 	}
 }
 
+func (dm DataModel) AllLinksAsMap() map[string]LinkToSingle {
+	links := make(map[string]LinkToSingle, 100)
+	for _, table := range dm.Tables {
+		for _, link := range table.LinksToSingle {
+			links[link.Id] = link
+		}
+	}
+	return links
+}
+
+func (dm DataModel) AllTablesAsMap() map[string]Table {
+	tables := make(map[string]Table, 100)
+	for _, table := range dm.Tables {
+		tables[table.ID] = table
+	}
+	return tables
+}
+
+func (dm DataModel) AllFieldsAsMap() map[string]Field {
+	fields := make(map[string]Field, 100)
+	for _, table := range dm.Tables {
+		for _, field := range table.Fields {
+			fields[field.ID] = field
+		}
+	}
+	return fields
+}
+
 // ///////////////////////////////
 // Data Model table
 // ///////////////////////////////
@@ -188,6 +216,8 @@ type UpdateFieldInput struct {
 // Data Model Link
 // ///////////////////////////////
 type LinkToSingle struct {
+	Id              string
+	OrganizationId  string
 	Name            string
 	LinkedTableName string
 	ParentFieldName string

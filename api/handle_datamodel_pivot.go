@@ -22,7 +22,10 @@ func (api *API) createDataModelPivot(c *gin.Context) {
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewDataModelUseCase()
-	pivot, err := usecase.CreatePivot(c.Request.Context(), organizationID, dto.AdaptCreatePivotInput(input))
+	pivot, err := usecase.CreatePivot(
+		c.Request.Context(),
+		dto.AdaptCreatePivotInput(input, organizationID),
+	)
 	if presentError(c, err) {
 		return
 	}

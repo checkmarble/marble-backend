@@ -26,8 +26,13 @@ type DataModelRepository interface {
 		input models.UpdateFieldInput,
 	) error
 	CreateDataModelLink(ctx context.Context, exec Executor, link models.DataModelLinkCreateInput) error
+	GetLinks(ctx context.Context, exec Executor, organizationId string) ([]models.LinkToSingle, error)
 	DeleteDataModel(ctx context.Context, exec Executor, organizationID string) error
 	GetDataModelField(ctx context.Context, exec Executor, fieldId string) (models.FieldMetadata, error)
+
+	CreatePivot(ctx context.Context, exec Executor, id string, pivot models.CreatePivotInput) error
+	ListPivots(ctx context.Context, exec Executor, organization_id string, tableId *string) ([]models.PivotMetadata, error)
+	GetPivot(ctx context.Context, exec Executor, pivotId string) (models.PivotMetadata, error)
 }
 
 type DataModelRepositoryPostgresql struct{}
@@ -47,7 +52,7 @@ func (repo *DataModelRepositoryPostgresql) GetDataModel(
 		return models.DataModel{}, err
 	}
 
-	links, err := repo.getLinks(ctx, exec, organizationID)
+	links, err := repo.GetLinks(ctx, exec, organizationID)
 	if err != nil {
 		return models.DataModel{}, err
 	}
@@ -277,19 +282,26 @@ func (repo *DataModelRepositoryPostgresql) getTablesAndFields(ctx context.Contex
 	return fields, err
 }
 
-func (repo *DataModelRepositoryPostgresql) getLinks(ctx context.Context, exec Executor, organizationID string) ([]models.LinkToSingle, error) {
+func (repo *DataModelRepositoryPostgresql) GetLinks(ctx context.Context, exec Executor, organizationID string) ([]models.LinkToSingle, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
 	query := `
-	SELECT data_model_links.name, parent_table.name, parent_field.name, child_table.name, child_field.name
-	FROM data_model_links
-    	JOIN data_model_tables AS parent_table ON (data_model_links.parent_table_id = parent_table.id)
-    	JOIN data_model_fields AS parent_field ON (data_model_links.parent_field_id = parent_field.id)
-    	JOIN data_model_tables AS child_table ON (data_model_links.child_table_id = child_table.id)
-    	JOIN data_model_fields AS child_field ON (data_model_links.child_field_id = child_field.id)
-    	WHERE data_model_links.organization_id = $1`
+	SELECT
+		links.id,
+		links.organization_id,
+		links.name,
+		parent_table.name,
+		parent_field.name,
+		child_table.name,
+		child_field.name
+	FROM data_model_links AS links
+    	JOIN data_model_tables AS parent_table ON (links.parent_table_id = parent_table.id)
+    	JOIN data_model_fields AS parent_field ON (links.parent_field_id = parent_field.id)
+    	JOIN data_model_tables AS child_table ON (links.child_table_id = child_table.id)
+    	JOIN data_model_fields AS child_field ON (links.child_field_id = child_field.id)
+    	WHERE links.organization_id = $1`
 
 	rows, err := exec.Query(ctx, query, organizationID)
 	if err != nil {
@@ -299,6 +311,8 @@ func (repo *DataModelRepositoryPostgresql) getLinks(ctx context.Context, exec Ex
 	links, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.LinkToSingle, error) {
 		var dbLinks dbmodels.DbDataModelLink
 		if err := rows.Scan(
+			&dbLinks.Id,
+			&dbLinks.OrganizationId,
 			&dbLinks.Name,
 			&dbLinks.ParentTable,
 			&dbLinks.ParentField,
@@ -398,4 +412,69 @@ func (repo *DataModelRepositoryPostgresql) GetDataModelField(ctx context.Context
 	field.DataType = models.DataTypeFrom(dataType)
 
 	return field, nil
+}
+
+// ///////////////////////////////
+// Data table pivot methods
+// ///////////////////////////////
+
+func (repo *DataModelRepositoryPostgresql) CreatePivot(
+	ctx context.Context,
+	exec Executor,
+	id string,
+	pivot models.CreatePivotInput,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	err := ExecBuilder(
+		ctx,
+		exec,
+		NewQueryBuilder().
+			Insert(dbmodels.TABLE_DATA_MODEL_PIVOTS).
+			Columns("id", "organization_id", "base_table_id", "field_id", "path_link_ids").
+			Values(id, pivot.OrganizationId, pivot.BaseTableId, pivot.FieldId, pivot.PathLinkIds),
+	)
+
+	return err
+}
+
+func (repo *DataModelRepositoryPostgresql) ListPivots(
+	ctx context.Context,
+	exec Executor,
+	organizationId string,
+	tableId *string,
+) ([]models.PivotMetadata, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectPivotColumns...).
+		From(dbmodels.TABLE_DATA_MODEL_PIVOTS).
+		Where(squirrel.Eq{"organization_id": organizationId}).
+		OrderBy("created_at DESC")
+
+	if tableId != nil {
+		query = query.Where(squirrel.Eq{"base_table_id": *tableId})
+	}
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptPivotMetadata)
+}
+
+func (repo *DataModelRepositoryPostgresql) GetPivot(ctx context.Context, exec Executor, pivotId string) (models.PivotMetadata, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.PivotMetadata{}, err
+	}
+
+	return SqlToModel(
+		ctx,
+		exec,
+		NewQueryBuilder().
+			Select(dbmodels.SelectPivotColumns...).
+			From(dbmodels.TABLE_DATA_MODEL_PIVOTS).
+			Where(squirrel.Eq{"id": pivotId}),
+		dbmodels.AdaptPivotMetadata,
+	)
 }

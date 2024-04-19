@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -381,38 +380,86 @@ func (usecase *DataModelUseCase) DeleteDataModel(ctx context.Context, organizati
 	})
 }
 
-func (usecase *DataModelUseCase) CreatePivot(ctx context.Context, organizationID string, input models.CreatePivotInput) (models.Pivot, error) {
-	if err := usecase.enforceSecurity.WriteDataModel(organizationID); err != nil {
+// data model pivot methods
+
+func (usecase *DataModelUseCase) CreatePivot(ctx context.Context, input models.CreatePivotInput) (models.Pivot, error) {
+	if err := usecase.enforceSecurity.WriteDataModel(input.OrganizationId); err != nil {
+		return models.Pivot{}, err
+	}
+	exec := usecase.executorFactory.NewExecutor()
+
+	dm, err := usecase.dataModelRepository.GetDataModel(ctx, exec, input.OrganizationId, false)
+	if err != nil {
 		return models.Pivot{}, err
 	}
 
-	// return  dummy pivot for now
-	return models.Pivot{
-		Id:        uuid.New().String(),
-		CreatedAt: time.Now(),
+	// check existence of base table
+	var table models.Table
+	for _, t := range dm.Tables {
+		if t.ID == input.BaseTableId {
+			table = t
+			break
+		}
+	}
+	if table.ID == "" {
+		return models.Pivot{}, errors.Wrap(
+			models.NotFoundError,
+			fmt.Sprintf("base table %s not found", input.BaseTableId),
+		)
+	}
 
-		BaseTableId: input.BaseTableId,
-		BaseTable:   "dummy_table",
-		Links:       []string{},
-		LinkIds:     input.LinkIds,
-	}, nil
+	// check existence of links
+	linksMap := dm.AllLinksAsMap()
+	for _, linkId := range input.PathLinkIds {
+		link := linksMap[linkId]
+		if err := usecase.enforceSecurity.ReadOrganization(link.OrganizationId); err != nil {
+			return models.Pivot{}, errors.Wrap(
+				models.NotFoundError,
+				fmt.Sprintf("link %s not found", linkId),
+			)
+		}
+	}
+
+	id := uuid.New().String()
+	return executor_factory.TransactionReturnValue(
+		ctx,
+		usecase.transactionFactory,
+		func(tx repositories.Executor) (models.Pivot, error) {
+			err := usecase.dataModelRepository.CreatePivot(ctx, tx, id, input)
+			if err != nil {
+				return models.Pivot{}, err
+			}
+			pivotMeta, err := usecase.dataModelRepository.GetPivot(ctx, tx, id)
+			return models.AdaptPivot(pivotMeta, dm), err
+		},
+	)
 }
 
-func (usecase *DataModelUseCase) ListPivots(ctx context.Context, organizationID string, tableID *string) ([]models.Pivot, error) {
+func (usecase *DataModelUseCase) ListPivots(ctx context.Context, organizationId string, tableID *string) ([]models.Pivot, error) {
 	if err := usecase.enforceSecurity.ReadDataModel(); err != nil {
 		return nil, err
 	}
 
-	// return dummy pivots for now
-	return []models.Pivot{
-		{
-			Id:        uuid.New().String(),
-			CreatedAt: time.Now(),
+	exec := usecase.executorFactory.NewExecutor()
 
-			BaseTableId: *tableID,
-			BaseTable:   "dummy_table",
-			Links:       []string{},
-			LinkIds:     []string{"dummy_link_id"},
-		},
-	}, nil
+	dm, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationId, false)
+	if err != nil {
+		return nil, err
+	}
+
+	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, organizationId, tableID)
+	if err != nil {
+		return nil, err
+	}
+
+	pivots := make([]models.Pivot, 0, len(pivotsMeta))
+	for _, pivot := range pivotsMeta {
+		err = usecase.enforceSecurity.ReadOrganization(pivot.OrganizationId)
+		if err != nil {
+			return nil, err
+		}
+		pivots = append(pivots, models.AdaptPivot(pivot, dm))
+	}
+
+	return pivots, nil
 }
