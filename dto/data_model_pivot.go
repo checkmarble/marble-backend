@@ -8,47 +8,54 @@ import (
 )
 
 type Pivot struct {
-	Id string `json:"id"`
+	Id        string    `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
 
 	BaseTable   string `json:"base_table"`
 	BaseTableId string `json:"base_table_id"`
 
-	CreatedAt time.Time `json:"created_at"`
+	Field   null.String `json:"field"`
+	FieldId null.String `json:"field_id"`
 
-	BaseField   null.String `json:"base_field"`
-	BaseFieldId null.String `json:"base_field_id"`
-
-	Links   []string `json:"links"`
-	LinkIds []string `json:"link_ids"`
+	PathLinks   []string `json:"path_links"`
+	PathLinkIds []string `json:"path_link_ids"`
 }
 
 func AdaptPivotDto(pivot models.Pivot) Pivot {
-	return Pivot{
-		Id: pivot.Id,
+	out := Pivot{
+		Id:        pivot.Id,
+		CreatedAt: pivot.CreatedAt,
 
 		BaseTable:   pivot.BaseTable,
 		BaseTableId: pivot.BaseTableId,
 
-		CreatedAt: pivot.CreatedAt,
+		Field:   null.StringFromPtr(pivot.Field),
+		FieldId: null.StringFromPtr(pivot.FieldId),
 
-		BaseField:   null.StringFromPtr(pivot.BaseField),
-		BaseFieldId: null.StringFromPtr(pivot.BaseFieldId),
-
-		Links:   pivot.Links,
-		LinkIds: pivot.LinkIds,
+		PathLinks:   make([]string, 0, len(pivot.PathLinks)),
+		PathLinkIds: make([]string, 0, len(pivot.PathLinks)),
 	}
+	if pivot.PathLinks != nil {
+		out.PathLinks = pivot.PathLinks
+	}
+	if pivot.PathLinkIds != nil {
+		out.PathLinkIds = pivot.PathLinkIds
+	}
+
+	return out
 }
 
 type CreatePivotInput struct {
 	BaseTableId string   `json:"base_table_id" binding:"required"`
-	BaseFieldId *string  `json:"base_field_id"`
-	LinkIds     []string `json:"link_ids"`
+	FieldId     *string  `json:"field_id"`
+	PathLinkIds []string `json:"path_link_ids"`
 }
 
-func AdaptCreatePivotInput(input CreatePivotInput) models.CreatePivotInput {
+func AdaptCreatePivotInput(input CreatePivotInput, organizationId string) models.CreatePivotInput {
 	return models.CreatePivotInput{
-		BaseTableId: input.BaseTableId,
-		BaseFieldId: input.BaseFieldId,
-		LinkIds:     input.LinkIds,
+		OrganizationId: organizationId,
+		BaseTableId:    input.BaseTableId,
+		FieldId:        input.FieldId,
+		PathLinkIds:    input.PathLinkIds,
 	}
 }

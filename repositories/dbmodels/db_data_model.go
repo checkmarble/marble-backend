@@ -74,15 +74,19 @@ type DbDataModelTableJoinField struct {
 var SelectDataModelTableJoinFieldColumns = utils.ColumnList[DbDataModelTableJoinField]()
 
 type DbDataModelLink struct {
-	Name        string
-	ParentTable string
-	ParentField string
-	ChildTable  string
-	ChildField  string
+	Id             string
+	OrganizationId string
+	Name           string
+	ParentTable    string
+	ParentField    string
+	ChildTable     string
+	ChildField     string
 }
 
 func AdaptLinkToSingle(dbDataModelLink DbDataModelLink) models.LinkToSingle {
 	return models.LinkToSingle{
+		Id:              dbDataModelLink.Id,
+		OrganizationId:  dbDataModelLink.OrganizationId,
 		Name:            dbDataModelLink.Name,
 		LinkedTableName: dbDataModelLink.ParentTable,
 		ParentFieldName: dbDataModelLink.ParentField,
