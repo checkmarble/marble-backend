@@ -386,38 +386,15 @@ func (usecase *DataModelUseCase) CreatePivot(ctx context.Context, input models.C
 	if err := usecase.enforceSecurity.WriteDataModel(input.OrganizationId); err != nil {
 		return models.Pivot{}, err
 	}
-	exec := usecase.executorFactory.NewExecutor()
 
+	exec := usecase.executorFactory.NewExecutor()
 	dm, err := usecase.dataModelRepository.GetDataModel(ctx, exec, input.OrganizationId, false)
 	if err != nil {
 		return models.Pivot{}, err
 	}
 
-	// check existence of base table
-	var table models.Table
-	for _, t := range dm.Tables {
-		if t.ID == input.BaseTableId {
-			table = t
-			break
-		}
-	}
-	if table.ID == "" {
-		return models.Pivot{}, errors.Wrap(
-			models.NotFoundError,
-			fmt.Sprintf("base table %s not found", input.BaseTableId),
-		)
-	}
-
-	// check existence of links
-	linksMap := dm.AllLinksAsMap()
-	for _, linkId := range input.PathLinkIds {
-		link := linksMap[linkId]
-		if err := usecase.enforceSecurity.ReadOrganization(link.OrganizationId); err != nil {
-			return models.Pivot{}, errors.Wrap(
-				models.NotFoundError,
-				fmt.Sprintf("link %s not found", linkId),
-			)
-		}
+	if err := validatePivotCreateInput(input, dm); err != nil {
+		return models.Pivot{}, err
 	}
 
 	id := uuid.New().String()
@@ -433,6 +410,88 @@ func (usecase *DataModelUseCase) CreatePivot(ctx context.Context, input models.C
 			return models.AdaptPivot(pivotMeta, dm), err
 		},
 	)
+}
+
+func validatePivotCreateInput(input models.CreatePivotInput, dm models.DataModel) error {
+	hasField := input.FieldId != nil
+	hasPath := len(input.PathLinkIds) > 0
+	// For now we choose not to allow to select a field and a path at the same time
+	// (a field can only be selected if the pivot is a field from the base table)
+	// By convention, the pivot field in the case of a pivot defined with a path is the
+	// parent field of the last link in the path.
+	// This is susceptible to change in the future.
+	if hasField == hasPath {
+		return errors.Wrap(
+			models.BadParameterError,
+			"either field or path must be provided",
+		)
+	}
+
+	// check existence of base table
+	var table models.Table
+	for _, t := range dm.Tables {
+		if t.ID == input.BaseTableId {
+			table = t
+			break
+		}
+	}
+	if table.ID == "" {
+		return errors.Wrap(
+			models.NotFoundError,
+			fmt.Sprintf("base table %s not found", input.BaseTableId),
+		)
+	}
+
+	// check existence of links
+	linksMap := dm.AllLinksAsMap()
+	for _, linkId := range input.PathLinkIds {
+		link := linksMap[linkId]
+		if link.Id == "" {
+			return errors.Wrap(
+				models.NotFoundError,
+				fmt.Sprintf("link %s not found", linkId),
+			)
+		}
+	}
+
+	// verify that the links are chained consistently
+	if hasPath {
+		if err := validatePath(dm, input.PathLinkIds, table.Name); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func validatePath(dm models.DataModel, pathLinkIds []string, baseTableName string) error {
+	linksMap := dm.AllLinksAsMap()
+	// check that the first link is from the base table
+	firstLink := linksMap[pathLinkIds[0]]
+	if string(firstLink.ChildTableName) != baseTableName {
+		return errors.Wrap(
+			models.BadParameterError,
+			fmt.Sprintf(`first link's (%s) child table must be the base table "%s" (is "%s" instead)`,
+				firstLink.Id, baseTableName, firstLink.ChildTableName,
+			),
+		)
+	}
+
+	// check that the links are chained consistently
+	for i := 1; i < len(pathLinkIds); i++ {
+		previousLink := linksMap[pathLinkIds[i-1]]
+		currentLink := linksMap[pathLinkIds[i]]
+		if previousLink.LinkedTableName != currentLink.ChildTableName {
+			return errors.Wrap(
+				models.BadParameterError,
+				fmt.Sprintf(`link %s (parent table "%s") is not a child of link %s (child table "%s")`,
+					previousLink.Id, previousLink.LinkedTableName, currentLink.Id, currentLink.ChildTableName,
+				),
+			)
+		}
+	}
+
+	return nil
 }
 
 func (usecase *DataModelUseCase) ListPivots(ctx context.Context, organizationId string, tableID *string) ([]models.Pivot, error) {
