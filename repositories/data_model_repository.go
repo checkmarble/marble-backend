@@ -82,11 +82,12 @@ func (repo *DataModelRepositoryPostgresql) GetDataModel(
 		}
 		dataModel.Tables[field.TableName].Fields[field.FieldName] = models.Field{
 			ID:          field.FieldID,
-			Description: field.FieldDescription,
 			DataType:    models.DataTypeFrom(field.FieldType),
+			Description: field.FieldDescription,
 			Name:        field.FieldName,
 			Nullable:    field.FieldNullable,
 			IsEnum:      field.FieldIsEnum,
+			TableId:     field.TableID,
 			Values:      values,
 		}
 
