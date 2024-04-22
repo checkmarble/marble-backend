@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
             field_id uuid REFERENCES data_model_fields (id) ON DELETE CASCADE,
             organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
-            path_link_ids uuid[] default array[]::uuid[]
+            path_link_ids uuid[] NOT NULL DEFAULT ARRAY[]::uuid[]
       );
 
 CREATE UNIQUE INDEX data_model_pivots_base_table_id_idx ON data_model_pivots (organization_id, base_table_id);

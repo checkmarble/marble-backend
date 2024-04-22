@@ -441,6 +441,12 @@ func validatePivotCreateInput(input models.CreatePivotInput, dm models.DataModel
 			fmt.Sprintf("base table %s not found", input.BaseTableId),
 		)
 	}
+	if hasField && table.Fields[*input.FieldId].DataType != models.String {
+		return errors.Wrap(
+			models.BadParameterError,
+			"pivot field must be of type string",
+		)
+	}
 
 	// check existence of links
 	linksMap := dm.AllLinksAsMap()
@@ -456,8 +462,15 @@ func validatePivotCreateInput(input models.CreatePivotInput, dm models.DataModel
 
 	// verify that the links are chained consistently
 	if hasPath {
-		if _, err := models.FieldFromPath(dm, input.PathLinkIds, table.Name); err != nil {
+		lastTable, err := models.FieldFromPath(dm, input.PathLinkIds, table.Name)
+		if err != nil {
 			return err
+		}
+		if lastTable.DataType != models.String {
+			return errors.Wrap(
+				models.BadParameterError,
+				"pivot field must be of type string",
+			)
 		}
 	}
 
