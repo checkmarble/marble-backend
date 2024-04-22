@@ -10,8 +10,10 @@ type Pivot struct {
 	Id        string    `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 
-	BaseTable   string `json:"base_table"`
-	BaseTableId string `json:"base_table_id"`
+	BaseTable    string `json:"base_table"`
+	BaseTableId  string `json:"base_table_id"`
+	PivotTable   string `json:"pivot_table"`
+	PivotTableId string `json:"pivot_table_id"`
 
 	Field   string `json:"field"`
 	FieldId string `json:"field_id"`
@@ -25,8 +27,10 @@ func AdaptPivotDto(pivot models.Pivot) Pivot {
 		Id:        pivot.Id,
 		CreatedAt: pivot.CreatedAt,
 
-		BaseTable:   pivot.BaseTable,
-		BaseTableId: pivot.BaseTableId,
+		BaseTable:    pivot.BaseTable,
+		BaseTableId:  pivot.BaseTableId,
+		PivotTable:   pivot.PivotTable,
+		PivotTableId: pivot.PivotTableId,
 
 		Field:   pivot.Field,
 		FieldId: pivot.FieldId,

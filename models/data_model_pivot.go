@@ -17,6 +17,23 @@ type PivotMetadata struct {
 	PathLinkIds []string
 }
 
+type Pivot struct {
+	Id             string
+	CreatedAt      time.Time
+	OrganizationId string
+
+	BaseTable    string
+	BaseTableId  string
+	PivotTable   string
+	PivotTableId string
+
+	Field   string
+	FieldId string
+
+	PathLinks   []string
+	PathLinkIds []string
+}
+
 func AdaptPivot(pivotMeta PivotMetadata, dataModel DataModel) Pivot {
 	pivot := Pivot{
 		Id:             pivotMeta.Id,
@@ -34,10 +51,16 @@ func AdaptPivot(pivotMeta PivotMetadata, dataModel DataModel) Pivot {
 		field := dataModel.AllFieldsAsMap()[*pivotMeta.FieldId]
 		pivot.Field = field.Name
 		pivot.FieldId = field.ID
+		// in this case, the pivot table is the base table
+		pivot.PivotTable = baseTable.Name
+		pivot.PivotTableId = baseTable.ID
 	} else {
 		field, _ := FieldFromPath(dataModel, pivot.PathLinkIds, pivot.BaseTable)
 		pivot.Field = field.Name
 		pivot.FieldId = field.ID
+		// in this case, the pivot table is the last table in the path
+		pivot.PivotTable = dataModel.AllTablesAsMap()[field.TableId].Name
+		pivot.PivotTableId = field.TableId
 	}
 
 	pivot.PathLinks = make([]string, 0, len(pivot.PathLinkIds))
@@ -48,21 +71,6 @@ func AdaptPivot(pivotMeta PivotMetadata, dataModel DataModel) Pivot {
 	}
 
 	return pivot
-}
-
-type Pivot struct {
-	Id             string
-	CreatedAt      time.Time
-	OrganizationId string
-
-	BaseTable   string
-	BaseTableId string
-
-	Field   string
-	FieldId string
-
-	PathLinks   []string
-	PathLinkIds []string
 }
 
 func FieldFromPath(dm DataModel, pathLinkIds []string, baseTableName string) (Field, error) {
