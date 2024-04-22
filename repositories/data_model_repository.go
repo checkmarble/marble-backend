@@ -437,6 +437,12 @@ func (repo *DataModelRepositoryPostgresql) CreatePivot(
 			Values(id, pivot.OrganizationId, pivot.BaseTableId, pivot.FieldId, pivot.PathLinkIds),
 	)
 
+	if IsUniqueViolationError(err) {
+		return errors.Wrap(
+			models.ConflictError,
+			fmt.Sprintf("Conflict on creating pivot for table %s in repository CreatePivot", pivot.BaseTableId),
+		)
+	}
 	return err
 }
 
