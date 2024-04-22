@@ -293,9 +293,13 @@ func (repo *DataModelRepositoryPostgresql) GetLinks(ctx context.Context, exec Ex
 		links.organization_id,
 		links.name,
 		parent_table.name,
+		parent_table.id,
 		parent_field.name,
+		parent_field.id,
 		child_table.name,
-		child_field.name
+		child_table.id,
+		child_field.name,
+		child_field.id
 	FROM data_model_links AS links
     	JOIN data_model_tables AS parent_table ON (links.parent_table_id = parent_table.id)
     	JOIN data_model_fields AS parent_field ON (links.parent_field_id = parent_field.id)
@@ -314,10 +318,14 @@ func (repo *DataModelRepositoryPostgresql) GetLinks(ctx context.Context, exec Ex
 			&dbLinks.Id,
 			&dbLinks.OrganizationId,
 			&dbLinks.Name,
-			&dbLinks.ParentTable,
-			&dbLinks.ParentField,
-			&dbLinks.ChildTable,
-			&dbLinks.ChildField,
+			&dbLinks.ParentTableName,
+			&dbLinks.ParentTableId,
+			&dbLinks.ParentFieldName,
+			&dbLinks.ParentFieldId,
+			&dbLinks.ChildTableName,
+			&dbLinks.ChildTableId,
+			&dbLinks.ChildFieldName,
+			&dbLinks.ChildFieldId,
 		); err != nil {
 			return models.LinkToSingle{}, err
 		}

@@ -48,7 +48,7 @@ func getTestDataModel() (models.DataModel, models.DataModel) {
 				LinksToSingle: map[string]models.LinkToSingle{
 					"account": {
 						Name:            "account",
-						LinkedTableName: "accounts",
+						ParentTableName: "accounts",
 						ParentFieldName: "object_id",
 						ChildFieldName:  "account_id",
 					},
@@ -116,7 +116,7 @@ func getTestDataModel() (models.DataModel, models.DataModel) {
 				LinksToSingle: map[string]models.LinkToSingle{
 					"account": {
 						Name:            "account",
-						LinkedTableName: "accounts",
+						ParentTableName: "accounts",
 						ParentFieldName: "object_id",
 						ChildFieldName:  "account_id",
 					},
@@ -153,7 +153,7 @@ func TestFindLinksToField(t *testing.T) {
 		links := findLinksToField(dataModel, "accounts", "object_id")
 		assert.Equal([]models.LinkToSingle{{
 			Name:            "account",
-			LinkedTableName: "accounts",
+			ParentTableName: "accounts",
 			ParentFieldName: "object_id",
 			ChildTableName:  "",
 			ChildFieldName:  "account_id",

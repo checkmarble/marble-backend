@@ -219,10 +219,14 @@ type LinkToSingle struct {
 	Id              string
 	OrganizationId  string
 	Name            string
-	LinkedTableName string
+	ParentTableName string
+	ParentTableId   string
 	ParentFieldName string
+	ParentFieldId   string
 	ChildTableName  string
+	ChildTableId    string
 	ChildFieldName  string
+	ChildFieldId    string
 }
 
 type DataModelLinkCreateInput struct {

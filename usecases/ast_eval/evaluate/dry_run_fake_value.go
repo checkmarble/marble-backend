@@ -33,7 +33,7 @@ func DryRunGetDbField(dataModel models.DataModel, triggerTableName string, path 
 			return nil, errors.New(fmt.Sprintf("link %s not found in table %s", linkName, table.Name))
 		}
 
-		table, ok = dataModel.Tables[link.LinkedTableName]
+		table, ok = dataModel.Tables[link.ParentTableName]
 		if !ok {
 			return nil, errors.New(fmt.Sprintf("table %s not found in data model", triggerTableName))
 		}

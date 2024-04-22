@@ -314,7 +314,7 @@ func findLinksToField(dataModel models.DataModel, tableName string, fieldName st
 	var links []models.LinkToSingle
 	for _, table := range dataModel.Tables {
 		for _, link := range table.LinksToSingle {
-			if string(link.LinkedTableName) == tableName &&
+			if string(link.ParentTableName) == tableName &&
 				string(link.ParentFieldName) == fieldName {
 				links = append(links, link)
 			}
