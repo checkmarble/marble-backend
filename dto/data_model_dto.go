@@ -92,7 +92,7 @@ func AdaptTableDto(table models.Table) Table {
 			linkToSingle models.LinkToSingle,
 		) LinkToSingle {
 			return LinkToSingle{
-				LinkedTableName: linkToSingle.LinkedTableName,
+				LinkedTableName: linkToSingle.ParentTableName,
 				ParentFieldName: linkToSingle.ParentFieldName,
 				ChildFieldName:  linkToSingle.ChildFieldName,
 			}

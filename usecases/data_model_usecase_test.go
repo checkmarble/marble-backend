@@ -78,7 +78,7 @@ func (suite *DatamodelUsecaseTestSuite) SetupTest() {
 				LinksToSingle: map[string]models.LinkToSingle{
 					"account": {
 						Name:            "account",
-						LinkedTableName: "accounts",
+						ParentTableName: "accounts",
 						ParentFieldName: "object_id",
 						ChildFieldName:  "account_id",
 					},
@@ -142,7 +142,7 @@ func (suite *DatamodelUsecaseTestSuite) SetupTest() {
 				LinksToSingle: map[string]models.LinkToSingle{
 					"account": {
 						Name:            "account",
-						LinkedTableName: "accounts",
+						ParentTableName: "accounts",
 						ParentFieldName: "object_id",
 						ChildFieldName:  "account_id",
 					},

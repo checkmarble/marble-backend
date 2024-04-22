@@ -44,7 +44,7 @@ func (usecase *AstExpressionUsecase) getLinkedDatabaseIdentifiers(scenario model
 	var visited []string
 	recursiveDatabaseAccessor = func(path []string, links map[string]models.LinkToSingle) error {
 		for linkName, link := range links {
-			table, found := dataModel.Tables[link.LinkedTableName]
+			table, found := dataModel.Tables[link.ParentTableName]
 			if !found {
 				return fmt.Errorf("table %s not found in data model", scenario.TriggerObjectType)
 			}

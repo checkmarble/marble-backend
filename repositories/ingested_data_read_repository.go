@@ -90,10 +90,10 @@ func createQueryDbForField(exec Executor, readParams models.DbFieldReadParams) (
 	}
 
 	// "first table" is the first table reached starting from the trigger table and following the path
-	firstTable, ok := readParams.DataModel.Tables[link.LinkedTableName]
+	firstTable, ok := readParams.DataModel.Tables[link.ParentTableName]
 	if !ok {
 		return squirrel.SelectBuilder{}, fmt.Errorf("no table with name %s: %w",
-			link.LinkedTableName, models.NotFoundError)
+			link.ParentTableName, models.NotFoundError)
 	}
 	// "last table" is the last table reached starting from the trigger table and following the path, from which the field is selected
 	lastTable, err := getLastTableFromPath(readParams, firstTable)
@@ -137,10 +137,10 @@ func getLastTableFromPath(params models.DbFieldReadParams, firstTable models.Tab
 		if !ok {
 			return models.Table{}, fmt.Errorf("no link with name %s: %w", linkName, models.NotFoundError)
 		}
-		nextTable, ok := params.DataModel.Tables[link.LinkedTableName]
+		nextTable, ok := params.DataModel.Tables[link.ParentTableName]
 		if !ok {
 			return models.Table{}, fmt.Errorf("no table with name %s: %w",
-				link.LinkedTableName, models.NotFoundError)
+				link.ParentTableName, models.NotFoundError)
 		}
 
 		currentTable = nextTable
@@ -162,10 +162,10 @@ func addJoinsOnIntermediateTables(
 			return squirrel.SelectBuilder{}, fmt.Errorf(
 				"no link with name %s on table %s: %w", linkName, currentTable.Name, models.NotFoundError)
 		}
-		nextTable, ok := readParams.DataModel.Tables[link.LinkedTableName]
+		nextTable, ok := readParams.DataModel.Tables[link.ParentTableName]
 		if !ok {
 			return squirrel.SelectBuilder{}, fmt.Errorf("no table with name %s: %w",
-				link.LinkedTableName, models.NotFoundError)
+				link.ParentTableName, models.NotFoundError)
 		}
 
 		currentTableName := tableNameWithSchema(exec, currentTable.Name)
