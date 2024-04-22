@@ -456,38 +456,8 @@ func validatePivotCreateInput(input models.CreatePivotInput, dm models.DataModel
 
 	// verify that the links are chained consistently
 	if hasPath {
-		if err := validatePath(dm, input.PathLinkIds, table.Name); err != nil {
+		if _, err := models.FieldFromPath(dm, input.PathLinkIds, table.Name); err != nil {
 			return err
-		}
-	}
-
-	return nil
-}
-
-func validatePath(dm models.DataModel, pathLinkIds []string, baseTableName string) error {
-	linksMap := dm.AllLinksAsMap()
-	// check that the first link is from the base table
-	firstLink := linksMap[pathLinkIds[0]]
-	if string(firstLink.ChildTableName) != baseTableName {
-		return errors.Wrap(
-			models.BadParameterError,
-			fmt.Sprintf(`first link's (%s) child table must be the base table "%s" (is "%s" instead)`,
-				firstLink.Id, baseTableName, firstLink.ChildTableName,
-			),
-		)
-	}
-
-	// check that the links are chained consistently
-	for i := 1; i < len(pathLinkIds); i++ {
-		previousLink := linksMap[pathLinkIds[i-1]]
-		currentLink := linksMap[pathLinkIds[i]]
-		if previousLink.LinkedTableName != currentLink.ChildTableName {
-			return errors.Wrap(
-				models.BadParameterError,
-				fmt.Sprintf(`link %s (parent table "%s") is not a child of link %s (child table "%s")`,
-					previousLink.Id, previousLink.LinkedTableName, currentLink.Id, currentLink.ChildTableName,
-				),
-			)
 		}
 	}
 

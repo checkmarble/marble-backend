@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/guregu/null/v5"
 )
 
 type Pivot struct {
@@ -14,8 +13,8 @@ type Pivot struct {
 	BaseTable   string `json:"base_table"`
 	BaseTableId string `json:"base_table_id"`
 
-	Field   null.String `json:"field"`
-	FieldId null.String `json:"field_id"`
+	Field   string `json:"field"`
+	FieldId string `json:"field_id"`
 
 	PathLinks   []string `json:"path_links"`
 	PathLinkIds []string `json:"path_link_ids"`
@@ -29,8 +28,8 @@ func AdaptPivotDto(pivot models.Pivot) Pivot {
 		BaseTable:   pivot.BaseTable,
 		BaseTableId: pivot.BaseTableId,
 
-		Field:   null.StringFromPtr(pivot.Field),
-		FieldId: null.StringFromPtr(pivot.FieldId),
+		Field:   pivot.Field,
+		FieldId: pivot.FieldId,
 
 		PathLinks:   make([]string, 0, len(pivot.PathLinks)),
 		PathLinkIds: make([]string, 0, len(pivot.PathLinks)),
@@ -45,6 +44,7 @@ func AdaptPivotDto(pivot models.Pivot) Pivot {
 	return out
 }
 
+// pass either FieldId or PathLinkIds (not both). If PathLinkIds is passed, FieldId will be calculated in the returned object
 type CreatePivotInput struct {
 	BaseTableId string   `json:"base_table_id" binding:"required"`
 	FieldId     *string  `json:"field_id"`
