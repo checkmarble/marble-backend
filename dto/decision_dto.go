@@ -62,6 +62,11 @@ type APIDecisionScenario struct {
 	Version             int    `json:"version"`
 }
 
+type PivotValueDto struct {
+	PivotValue null.String `json:"pivot_value"`
+	PivotId    null.String `json:"pivot_id"`
+}
+
 type APIDecision struct {
 	Id                   string              `json:"id"`
 	AppLink              null.String         `json:"app_link"`
@@ -70,6 +75,7 @@ type APIDecision struct {
 	TriggerObject        map[string]any      `json:"trigger_object"`
 	TriggerObjectType    string              `json:"trigger_object_type"`
 	Outcome              string              `json:"outcome"`
+	PivotValues          []PivotValueDto     `json:"pivot_values"`
 	Scenario             APIDecisionScenario `json:"scenario"`
 	Score                int                 `json:"score"`
 	ScheduledExecutionId *string             `json:"scheduled_execution_id,omitempty"`
@@ -88,6 +94,7 @@ func NewAPIDecision(decision models.Decision, marbleAppHost string) APIDecision 
 		TriggerObjectType: decision.ClientObject.TableName,
 		TriggerObject:     decision.ClientObject.Data,
 		Outcome:           decision.Outcome.String(),
+		PivotValues:       make([]PivotValueDto, 0, 1),
 		Scenario: APIDecisionScenario{
 			Id:                  decision.ScenarioId,
 			Name:                decision.ScenarioName,
@@ -102,6 +109,13 @@ func NewAPIDecision(decision models.Decision, marbleAppHost string) APIDecision 
 	if decision.Case != nil {
 		c := AdaptCaseDto(*decision.Case)
 		apiDecision.Case = &c
+	}
+
+	if decision.PivotId != nil {
+		apiDecision.PivotValues = append(apiDecision.PivotValues, PivotValueDto{
+			PivotId:    null.StringFromPtr(decision.PivotId),
+			PivotValue: null.StringFromPtr(decision.PivotValue),
+		})
 	}
 
 	return apiDecision
