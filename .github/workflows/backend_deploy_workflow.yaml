@@ -56,38 +56,9 @@ jobs:
           credentials_json: "${{ secrets.GCP_SA_KEY }}"
 
       - name: Deploy migration job
-        run: |
-          gcloud beta run jobs deploy migrations \
-            --quiet \
-            --image=${{ env.IMAGE }} \
-            --region="europe-west1" \
-            --execute-now \
-            --wait
-
-      - name: Deploy server
-        run: |
-          gcloud run deploy marble-backend \
-            --quiet \
-            --image=${{ env.IMAGE }} \
-            --region="europe-west1"
-
-      - name: Deploy scheduler job
-        run: |
-          gcloud beta run jobs deploy scheduler \
-            --quiet \
-            --image=${{ env.IMAGE }} \
-            --region="europe-west1"
-
-      - name: Deploy execute scheduled scenario job
-        run: |
-          gcloud beta run jobs deploy scheduled-executer \
-            --quiet \
-            --image=${{ env.IMAGE }} \
-            --region="europe-west1"
-
-      - name: Deploy data ingestion job
-        run: |
-          gcloud beta run jobs deploy data-ingestion \
-            --quiet \
-            --image=${{ env.IMAGE }} \
-            --region="europe-west1" \
+        uses: "google-github-actions/deploy-cloudrun@v1"
+        with:
+          service: marble-backend
+          image: ${{ env.IMAGE }}
+          region: europe-west1
+          flags: --args="-server"
