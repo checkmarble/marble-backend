@@ -1,10 +1,5 @@
 package models
 
-import (
-	"encoding/json"
-	"time"
-)
-
 type Outcome int
 
 const (
@@ -50,32 +45,3 @@ func OutcomeFrom(s string) Outcome {
 	}
 	return UnknownOutcome
 }
-
-type CreateDecisionInput struct {
-	OrganizationId     string
-	PayloadRaw         json.RawMessage
-	ClientObject       *ClientObject
-	ScenarioId         string
-	TriggerObjectTable string
-}
-
-type CreateAllDecisionsInput struct {
-	OrganizationId     string
-	PayloadRaw         json.RawMessage
-	TriggerObjectTable string
-}
-
-type DecisionFilters struct {
-	ScenarioIds           []string
-	StartDate             time.Time
-	EndDate               time.Time
-	Outcomes              []Outcome
-	TriggerObjects        []string
-	HasCase               *bool
-	CaseIds               []string
-	ScheduledExecutionIds []string
-}
-
-const (
-	DecisionSortingCreatedAt SortingField = "created_at"
-)
