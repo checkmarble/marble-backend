@@ -6,9 +6,15 @@ import (
 )
 
 type LinkToSingle struct {
-	LinkedTableName string `json:"linked_table_name"`
-	ParentFieldName string `json:"parent_field_name"`
-	ChildFieldName  string `json:"child_field_name"`
+	ParentTableName_deprec string `json:"linked_table_name"` // left for compatibility
+	ParentTableName        string `json:"parent_table_name"`
+	ParentTableId          string `json:"parent_table_id"`
+	ParentFieldName        string `json:"parent_field_name"`
+	ParentFieldId          string `json:"parent_field_id"`
+	ChildTableName         string `json:"child_table_name"`
+	ChildTableId           string `json:"child_table_id"`
+	ChildFieldName         string `json:"child_field_name"`
+	ChildFieldId           string `json:"child_field_id"`
 }
 
 type Field struct {
@@ -16,7 +22,9 @@ type Field struct {
 	DataType          string `json:"data_type"`
 	Description       string `json:"description"`
 	IsEnum            bool   `json:"is_enum"`
+	Name              string `json:"name"`
 	Nullable          bool   `json:"nullable"`
+	TableId           string `json:"table_id"`
 	Values            []any  `json:"values,omitempty"`
 	UnicityConstraint string `json:"unicity_constraint"`
 }
@@ -30,8 +38,7 @@ type Table struct {
 }
 
 type DataModel struct {
-	Version string           `json:"version"`
-	Tables  map[string]Table `json:"tables"`
+	Tables map[string]Table `json:"tables"`
 }
 
 type PostDataModel struct {
@@ -75,35 +82,44 @@ type PostToggleIsEnum struct {
 
 func AdaptTableDto(table models.Table) Table {
 	return Table{
-		Name: table.Name,
-		ID:   table.ID,
-		Fields: pure_utils.MapValues(table.Fields, func(field models.Field) Field {
-			return Field{
-				ID:                field.ID,
-				DataType:          field.DataType.String(),
-				Description:       field.Description,
-				IsEnum:            field.IsEnum,
-				Nullable:          field.Nullable,
-				Values:            field.Values,
-				UnicityConstraint: field.UnicityConstraint.String(),
-			}
-		}),
-		LinksToSingle: pure_utils.MapValues(table.LinksToSingle, func(
-			linkToSingle models.LinkToSingle,
-		) LinkToSingle {
-			return LinkToSingle{
-				LinkedTableName: linkToSingle.ParentTableName,
-				ParentFieldName: linkToSingle.ParentFieldName,
-				ChildFieldName:  linkToSingle.ChildFieldName,
-			}
-		}),
-		Description: table.Description,
+		Name:          table.Name,
+		ID:            table.ID,
+		Fields:        pure_utils.MapValues(table.Fields, adaptDataModelField),
+		LinksToSingle: pure_utils.MapValues(table.LinksToSingle, adaptDataModelLink),
+		Description:   table.Description,
+	}
+}
+
+func adaptDataModelField(field models.Field) Field {
+	return Field{
+		ID:                field.ID,
+		DataType:          field.DataType.String(),
+		Description:       field.Description,
+		IsEnum:            field.IsEnum,
+		Name:              field.Name,
+		Nullable:          field.Nullable,
+		TableId:           field.TableId,
+		Values:            field.Values,
+		UnicityConstraint: field.UnicityConstraint.String(),
+	}
+}
+
+func adaptDataModelLink(linkToSingle models.LinkToSingle) LinkToSingle {
+	return LinkToSingle{
+		ParentTableName_deprec: linkToSingle.ParentTableName,
+		ParentTableName:        linkToSingle.ParentTableName,
+		ParentTableId:          linkToSingle.ParentTableId,
+		ParentFieldName:        linkToSingle.ParentFieldName,
+		ParentFieldId:          linkToSingle.ParentFieldId,
+		ChildTableName:         linkToSingle.ChildTableName,
+		ChildTableId:           linkToSingle.ChildTableId,
+		ChildFieldName:         linkToSingle.ChildFieldName,
+		ChildFieldId:           linkToSingle.ChildFieldId,
 	}
 }
 
 func AdaptDataModelDto(dataModel models.DataModel) DataModel {
 	return DataModel{
-		Version: dataModel.Version,
-		Tables:  pure_utils.MapValues(dataModel.Tables, AdaptTableDto),
+		Tables: pure_utils.MapValues(dataModel.Tables, AdaptTableDto),
 	}
 }
