@@ -21,6 +21,8 @@ type Decision struct {
 	CreatedAt            time.Time
 	ClientObject         ClientObject
 	Outcome              Outcome
+	PivotId              *string
+	PivotValue           *string
 	ScenarioId           string
 	ScenarioName         string
 	ScenarioDescription  string
@@ -54,6 +56,8 @@ type ScenarioExecution struct {
 	ScenarioName        string
 	ScenarioDescription string
 	ScenarioVersion     int
+	PivotId             *string
+	PivotValue          *string
 	RuleExecutions      []RuleExecution
 	Score               int
 	Outcome             Outcome
@@ -76,6 +80,8 @@ func AdaptScenarExecToDecision(scenarioExecution ScenarioExecution, clientObject
 			ClientObject:         clientObject,
 			Outcome:              scenarioExecution.Outcome,
 			OrganizationId:       scenarioExecution.OrganizationId,
+			PivotId:              scenarioExecution.PivotId,
+			PivotValue:           scenarioExecution.PivotValue,
 			ScenarioDescription:  scenarioExecution.ScenarioDescription,
 			ScenarioId:           scenarioExecution.ScenarioId,
 			ScenarioIterationId:  scenarioExecution.ScenarioIterationId,
