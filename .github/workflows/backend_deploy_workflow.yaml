@@ -56,7 +56,7 @@ jobs:
           credentials_json: "${{ secrets.GCP_SA_KEY }}"
 
       - name: Deploy migration job
-        uses: "google-github-actions/deploy-cloudrun@v1"
+        uses: "google-github-actions/deploy-cloudrun@v2"
         with:
           service: marble-backend
           image: ${{ env.IMAGE }}
