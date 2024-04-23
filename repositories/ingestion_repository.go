@@ -198,7 +198,7 @@ func (repo *IngestionRepositoryImpl) buildEnumValuesWithEnumFields(table models.
 	for fieldName := range table.Fields {
 		dataType := table.Fields[fieldName].DataType
 		if table.Fields[fieldName].IsEnum && (dataType == models.String || dataType == models.Float) {
-			enumValues[string(fieldName)] = make(map[any]bool)
+			enumValues[fieldName] = make(map[any]bool)
 		}
 	}
 	return enumValues
@@ -209,7 +209,7 @@ func (repo *IngestionRepositoryImpl) generateInsertValues(payload models.ClientO
 	i := 0
 	for _, columnName := range columnNames {
 		fieldName := columnName
-		insertValues[i] = payload.Data[string(fieldName)]
+		insertValues[i] = payload.Data[fieldName]
 		i++
 	}
 	return insertValues, nil

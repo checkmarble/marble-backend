@@ -132,7 +132,7 @@ func ColumnNames(table Table) []string {
 	columnNames := make([]string, len(table.Fields))
 	i := 0
 	for fieldName := range table.Fields {
-		columnNames[i] = string(fieldName)
+		columnNames[i] = fieldName
 		i++
 	}
 	return columnNames

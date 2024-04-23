@@ -555,7 +555,7 @@ func createAndTestDecision(
 			ScenarioId:         scenarioId,
 			ClientObject:       &transactionPayload,
 			OrganizationId:     organizationId,
-			TriggerObjectTable: string(table.Name),
+			TriggerObjectTable: table.Name,
 		},
 		false,
 	)

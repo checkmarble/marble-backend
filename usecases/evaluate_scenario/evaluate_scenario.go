@@ -88,7 +88,7 @@ func EvalScenario(
 	}
 
 	// Check the scenario & trigger_object's types
-	if params.Scenario.TriggerObjectType != string(params.ClientObject.TableName) {
+	if params.Scenario.TriggerObjectType != params.ClientObject.TableName {
 		return models.ScenarioExecution{}, models.ErrScenarioTriggerTypeAndTiggerObjectTypeMismatch
 	}
 

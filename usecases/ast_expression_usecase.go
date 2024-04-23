@@ -55,13 +55,13 @@ func (usecase *AstExpressionUsecase) getLinkedDatabaseIdentifiers(scenario model
 				continue
 			}
 			visited = append(visited, relation)
-			pathForLink := append(path, string(linkName))
+			pathForLink := append(path, linkName)
 
 			for fieldName := range table.Fields {
 				dataAccessors = append(dataAccessors,
 					ast.NewNodeDatabaseAccess(
 						scenario.TriggerObjectType,
-						string(fieldName),
+						fieldName,
 						pathForLink,
 					),
 				)

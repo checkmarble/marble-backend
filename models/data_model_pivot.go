@@ -77,7 +77,7 @@ func FieldFromPath(dm DataModel, pathLinkIds []string, baseTableName string) (Fi
 	linksMap := dm.AllLinksAsMap()
 	// check that the first link is from the base table
 	firstLink := linksMap[pathLinkIds[0]]
-	if string(firstLink.ChildTableName) != baseTableName {
+	if firstLink.ChildTableName != baseTableName {
 		return Field{}, errors.Wrap(
 			BadParameterError,
 			fmt.Sprintf(`first link's (%s) child table must be the base table "%s" (is "%s" instead)`,

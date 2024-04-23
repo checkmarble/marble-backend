@@ -265,16 +265,16 @@ func OpenAPIFromDataModel(dataModel models.DataModel) Reference {
 		properties := make(map[string]Property)
 		for name, field := range table.Fields {
 			description := field.Description
-			properties[string(name)] = Property{
+			properties[name] = Property{
 				Description: &description,
 				Type:        toSwaggerType(field.DataType),
 			}
 			if !field.Nullable {
-				required = append(required, string(name))
+				required = append(required, name)
 			}
 		}
 
-		ref.Components.Schemas[string(table.Name)] = ComponentsSchema{
+		ref.Components.Schemas[table.Name] = ComponentsSchema{
 			Required:   required,
 			Type:       "object",
 			Properties: properties,
@@ -293,7 +293,7 @@ func OpenAPIFromDataModel(dataModel models.DataModel) Reference {
 					Content: Content{
 						ApplicationJSON: ApplicationJSON{
 							Schema: Schema{
-								Ref: fmt.Sprintf("#/components/schemas/%s", string(table.Name)),
+								Ref: fmt.Sprintf("#/components/schemas/%s", table.Name),
 							},
 						},
 					},
@@ -315,7 +315,7 @@ func OpenAPIFromDataModel(dataModel models.DataModel) Reference {
 	var triggerObjects []map[string]string
 	for _, table := range dataModel.Tables {
 		ref := map[string]string{
-			"$ref": fmt.Sprintf("#/components/schemas/%s", string(table.Name)),
+			"$ref": fmt.Sprintf("#/components/schemas/%s", table.Name),
 		}
 		triggerObjects = append(triggerObjects, ref)
 	}

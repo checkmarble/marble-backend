@@ -28,8 +28,8 @@ func TestDatabaseAccessValuesDryRun(t *testing.T) {
 		ReturnFakeValue: true,
 	}
 	testDatabaseAccessNamedArgs := map[string]any{
-		"tableName": string(utils.DummyTableNameFirst),
-		"fieldName": string(utils.DummyFieldNameId),
+		"tableName": utils.DummyTableNameFirst,
+		"fieldName": utils.DummyFieldNameId,
 		"path":      []any{},
 	}
 
@@ -40,29 +40,29 @@ func TestDatabaseAccessValuesDryRun(t *testing.T) {
 	assert.Equal(t, fmt.Sprintf("fake value for DbAccess:%s..%s",
 		testDatabaseAccessNamedArgs["tableName"], testDatabaseAccessNamedArgs["fieldName"]), value)
 
-	testDatabaseAccessNamedArgs["fieldName"] = string(utils.DummyFieldNameForBool)
-	testDatabaseAccessNamedArgs["path"] = []any{string(utils.DummyTableNameSecond)}
+	testDatabaseAccessNamedArgs["fieldName"] = utils.DummyFieldNameForBool
+	testDatabaseAccessNamedArgs["path"] = []any{utils.DummyTableNameSecond}
 	value, errs = databaseAccessEval.Evaluate(context.TODO(), ast.Arguments{
 		NamedArgs: testDatabaseAccessNamedArgs,
 	})
 	assert.Len(t, errs, 0)
 	assert.Equal(t, true, value)
 
-	testDatabaseAccessNamedArgs["fieldName"] = string(utils.DummyFieldNameForInt)
+	testDatabaseAccessNamedArgs["fieldName"] = utils.DummyFieldNameForInt
 	value, errs = databaseAccessEval.Evaluate(context.TODO(), ast.Arguments{
 		NamedArgs: testDatabaseAccessNamedArgs,
 	})
 	assert.Len(t, errs, 0)
 	assert.Equal(t, 1, value)
 
-	testDatabaseAccessNamedArgs["fieldName"] = string(utils.DummyFieldNameForFloat)
+	testDatabaseAccessNamedArgs["fieldName"] = utils.DummyFieldNameForFloat
 	value, errs = databaseAccessEval.Evaluate(context.TODO(), ast.Arguments{
 		NamedArgs: testDatabaseAccessNamedArgs,
 	})
 	assert.Len(t, errs, 0)
 	assert.Equal(t, 1.0, value)
 
-	testDatabaseAccessNamedArgs["fieldName"] = string(utils.DummyFieldNameForTimestamp)
+	testDatabaseAccessNamedArgs["fieldName"] = utils.DummyFieldNameForTimestamp
 	timestamp := time.Now()
 	value, errs = databaseAccessEval.Evaluate(context.TODO(), ast.Arguments{
 		NamedArgs: testDatabaseAccessNamedArgs,

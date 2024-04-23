@@ -52,7 +52,7 @@ func (tx TransactionTest) Exec(ctx context.Context, query string, args ...interf
 }
 
 func TestIngestedDataGetDbFieldWithoutJoin(t *testing.T) {
-	path := []string{string(utils.DummyTableNameSecond)}
+	path := []string{utils.DummyTableNameSecond}
 
 	query, err := createQueryDbForField(TransactionTest{}, models.DbFieldReadParams{
 		TriggerTableName: utils.DummyTableNameFirst,
@@ -61,14 +61,14 @@ func TestIngestedDataGetDbFieldWithoutJoin(t *testing.T) {
 		DataModel:        utils.GetDummyDataModel(),
 		ClientObject: models.ClientObject{
 			TableName: utils.DummyTableNameFirst,
-			Data:      map[string]any{string(utils.DummyFieldNameId): string(utils.DummyFieldNameId)},
+			Data:      map[string]any{utils.DummyFieldNameId: utils.DummyFieldNameId},
 		},
 	})
 	assert.Empty(t, err)
 	sql, args, err := query.ToSql()
 	assert.Empty(t, err)
 	if assert.Len(t, args, 2) {
-		assert.Equal(t, args[0], string(utils.DummyFieldNameId))
+		assert.Equal(t, args[0], utils.DummyFieldNameId)
 		assert.Equal(t, args[1], "Infinity")
 	}
 	assert.Equal(t, strings.ReplaceAll(sql, "\"", ""), expectedQueryDbFieldExpectedWithoutJoin)
@@ -76,8 +76,8 @@ func TestIngestedDataGetDbFieldWithoutJoin(t *testing.T) {
 
 func TestIngestedDataGetDbFieldWithJoin(t *testing.T) {
 	path := []string{
-		string(utils.DummyTableNameSecond),
-		string(utils.DummyTableNameThird),
+		utils.DummyTableNameSecond,
+		utils.DummyTableNameThird,
 	}
 
 	query, err := createQueryDbForField(TransactionTest{}, models.DbFieldReadParams{
@@ -87,14 +87,14 @@ func TestIngestedDataGetDbFieldWithJoin(t *testing.T) {
 		DataModel:        utils.GetDummyDataModel(),
 		ClientObject: models.ClientObject{
 			TableName: utils.DummyTableNameFirst,
-			Data:      map[string]any{string(utils.DummyFieldNameId): string(utils.DummyFieldNameId)},
+			Data:      map[string]any{utils.DummyFieldNameId: utils.DummyFieldNameId},
 		},
 	})
 	assert.Empty(t, err)
 	sql, args, err := query.ToSql()
 	assert.Empty(t, err)
 	if assert.Len(t, args, 3) {
-		assert.Equal(t, args[0], string(utils.DummyFieldNameId))
+		assert.Equal(t, args[0], utils.DummyFieldNameId)
 		assert.Equal(t, args[1], "Infinity")
 		assert.Equal(t, args[2], "Infinity")
 	}
@@ -128,14 +128,14 @@ func TestIngestedDataQueryCountWithoutFilter(t *testing.T) {
 func TestIngestedDataQueryAggregatedValueWithFilter(t *testing.T) {
 	filters := []ast.Filter{
 		{
-			TableName: string(utils.DummyTableNameFirst),
-			FieldName: string(utils.DummyFieldNameForInt),
+			TableName: utils.DummyTableNameFirst,
+			FieldName: utils.DummyFieldNameForInt,
 			Operator:  ast.FILTER_EQUAL,
 			Value:     1,
 		},
 		{
-			TableName: string(utils.DummyTableNameFirst),
-			FieldName: string(utils.DummyFieldNameForBool),
+			TableName: utils.DummyTableNameFirst,
+			FieldName: utils.DummyFieldNameForBool,
 			Operator:  ast.FILTER_NOT_EQUAL,
 			Value:     true,
 		},

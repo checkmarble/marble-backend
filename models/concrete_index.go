@@ -33,15 +33,15 @@ func (i ConcreteIndex) Covers(f IndexFamily) bool {
 	// far as identifiers are concerned (unless quoted)
 	// and as such will return names will all lower case
 	f = f.Copy()
-	f.TableName = strings.ToUpper(string(f.TableName))
-	f.Last = fieldNameToUpper(f.Last)
-	f.Fixed = pure_utils.Map(f.Fixed, fieldNameToUpper)
-	f.Flex = set.From(pure_utils.Map(f.Flex.Slice(), fieldNameToUpper))
-	f.Included = set.From(pure_utils.Map(f.Included.Slice(), fieldNameToUpper))
+	f.TableName = strings.ToUpper(f.TableName)
+	f.Last = strings.ToUpper(f.Last)
+	f.Fixed = pure_utils.Map(f.Fixed, strings.ToUpper)
+	f.Flex = set.From(pure_utils.Map(f.Flex.Slice(), strings.ToUpper))
+	f.Included = set.From(pure_utils.Map(f.Included.Slice(), strings.ToUpper))
 	i = ConcreteIndex{
-		TableName: strings.ToUpper(string(i.TableName)),
-		Indexed:   pure_utils.Map(i.Indexed, fieldNameToUpper),
-		Included:  pure_utils.Map(i.Included, fieldNameToUpper),
+		TableName: strings.ToUpper(i.TableName),
+		Indexed:   pure_utils.Map(i.Indexed, strings.ToUpper),
+		Included:  pure_utils.Map(i.Included, strings.ToUpper),
 	}
 
 	if i.TableName != f.TableName {
@@ -102,8 +102,4 @@ func (i ConcreteIndex) Covers(f IndexFamily) bool {
 	}
 
 	return true
-}
-
-func fieldNameToUpper(f string) string {
-	return string(strings.ToUpper(string(f)))
 }

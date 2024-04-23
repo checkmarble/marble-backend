@@ -115,7 +115,7 @@ func createQueryDbForField(exec Executor, readParams models.DbFieldReadParams) (
 }
 
 func getParentTableJoinField(payload models.ClientObject, fieldName string) (string, error) {
-	parentFieldItf := payload.Data[string(fieldName)]
+	parentFieldItf := payload.Data[fieldName]
 	if parentFieldItf == nil {
 		return "", errors.Wrap(
 			ast.ErrNullFieldRead,

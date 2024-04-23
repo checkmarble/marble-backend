@@ -89,13 +89,13 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 		return models.UploadLog{}, fmt.Errorf("error reading first row of CSV (%w)", err)
 	}
 
-	fileName := computeFileName(organizationId, string(table.Name))
+	fileName := computeFileName(organizationId, table.Name)
 	writer := usecase.gcsRepository.OpenStream(ctx, usecase.GcsIngestionBucket, fileName)
 	csvWriter := csv.NewWriter(writer)
 
 	for name, field := range table.Fields {
 		if !field.Nullable {
-			if !containsString(headers, string(name)) {
+			if !containsString(headers, name) {
 				return models.UploadLog{}, fmt.Errorf("missing required field %s in CSV (%w)", name, models.BadParameterError)
 			}
 		}
@@ -274,7 +274,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 	// first, check presence of all required fields in the csv
 	for name, field := range table.Fields {
 		if !field.Nullable {
-			if !containsString(firstRow, string(name)) {
+			if !containsString(firstRow, name) {
 				return fmt.Errorf("missing required field %s in CSV", name)
 			}
 		}
