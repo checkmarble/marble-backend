@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -12,6 +13,7 @@ const (
 	SEQUENTIAL_DECISION_TIMEOUT = 30 * time.Second
 )
 
+// Decision models
 type Decision struct {
 	DecisionId           string
 	OrganizationId       string
@@ -85,3 +87,33 @@ func AdaptScenarExecToDecision(scenarioExecution ScenarioExecution, clientObject
 		RuleExecutions: scenarioExecution.RuleExecutions,
 	}
 }
+
+// Decision input models
+type CreateDecisionInput struct {
+	OrganizationId     string
+	PayloadRaw         json.RawMessage
+	ClientObject       *ClientObject
+	ScenarioId         string
+	TriggerObjectTable string
+}
+
+type CreateAllDecisionsInput struct {
+	OrganizationId     string
+	PayloadRaw         json.RawMessage
+	TriggerObjectTable string
+}
+
+type DecisionFilters struct {
+	ScenarioIds           []string
+	StartDate             time.Time
+	EndDate               time.Time
+	Outcomes              []Outcome
+	TriggerObjects        []string
+	HasCase               *bool
+	CaseIds               []string
+	ScheduledExecutionIds []string
+}
+
+const (
+	DecisionSortingCreatedAt SortingField = "created_at"
+)
