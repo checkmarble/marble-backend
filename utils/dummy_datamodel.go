@@ -41,7 +41,7 @@ func GetDummyDataModel() models.DataModel {
 	}
 
 	dummyFirstLinkToSingle := map[string]models.LinkToSingle{
-		string(DummyTableNameSecond): {
+		DummyTableNameSecond: {
 			ParentTableName: DummyTableNameSecond,
 			ParentFieldName: DummyFieldNameId,
 			ChildFieldName:  DummyFieldNameId,
@@ -49,7 +49,7 @@ func GetDummyDataModel() models.DataModel {
 	}
 
 	dummySecondLinkToSingle := map[string]models.LinkToSingle{
-		string(DummyTableNameThird): {
+		DummyTableNameThird: {
 			ParentTableName: DummyTableNameThird,
 			ParentFieldName: DummyFieldNameId,
 			ChildFieldName:  DummyFieldNameId,

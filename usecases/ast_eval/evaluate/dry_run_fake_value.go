@@ -15,7 +15,7 @@ func DryRunPayload(table models.Table) map[string]any {
 	result := make(map[string]any)
 	for fieldName, field := range table.Fields {
 		fullFieldName := fmt.Sprintf("%s.%s", table.Name, fieldName)
-		result[string(fieldName)] = DryRunValue("Payload", fullFieldName, field)
+		result[fieldName] = DryRunValue("Payload", fullFieldName, field)
 	}
 
 	return result

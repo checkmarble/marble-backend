@@ -75,7 +75,7 @@ type PostToggleIsEnum struct {
 
 func AdaptTableDto(table models.Table) Table {
 	return Table{
-		Name: string(table.Name),
+		Name: table.Name,
 		ID:   table.ID,
 		Fields: pure_utils.MapValues(table.Fields, func(field models.Field) Field {
 			return Field{

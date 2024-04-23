@@ -48,12 +48,12 @@ func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObj
 	}
 
 	for name, field := range table.Fields {
-		value := result.Get(string(name))
+		value := result.Get(name)
 		if !value.Exists() || value.Type == gjson.Null {
 			if !field.Nullable {
 				errors[name] = errIsNotNullable.Error()
 			}
-			out[string(name)] = nil
+			out[name] = nil
 			continue
 		}
 
@@ -65,7 +65,7 @@ func (p *Parser) ParsePayload(table models.Table, json []byte) (models.ClientObj
 		if val, err := parseField(value); err != nil {
 			errors[name] = err.Error()
 		} else {
-			out[string(name)] = val
+			out[name] = val
 		}
 	}
 	if len(errors) > 0 {

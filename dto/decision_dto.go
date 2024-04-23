@@ -85,7 +85,7 @@ func NewAPIDecision(decision models.Decision, marbleAppHost string) APIDecision 
 		Id:                decision.DecisionId,
 		AppLink:           toDecisionUrl(marbleAppHost, decision.DecisionId),
 		CreatedAt:         decision.CreatedAt,
-		TriggerObjectType: string(decision.ClientObject.TableName),
+		TriggerObjectType: decision.ClientObject.TableName,
 		TriggerObject:     decision.ClientObject.Data,
 		Outcome:           decision.Outcome.String(),
 		Scenario: APIDecisionScenario{

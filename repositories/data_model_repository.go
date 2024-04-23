@@ -166,7 +166,7 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelField(
 		query,
 		fieldId,
 		field.TableId,
-		strings.ToLower(string(field.Name)),
+		strings.ToLower(field.Name),
 		field.DataType.String(),
 		field.Nullable,
 		field.Description,
@@ -226,7 +226,7 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelLink(ctx context.Conte
 			).
 			Values(
 				link.OrganizationID,
-				strings.ToLower(string(link.Name)),
+				strings.ToLower(link.Name),
 				link.ParentTableID,
 				link.ParentFieldID,
 				link.ChildTableID,
