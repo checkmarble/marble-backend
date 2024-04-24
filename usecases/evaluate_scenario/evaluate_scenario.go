@@ -28,6 +28,7 @@ type ScenarioEvaluationParameters struct {
 	Scenario     models.Scenario
 	ClientObject models.ClientObject
 	DataModel    models.DataModel
+	Pivot        *models.Pivot
 }
 
 type EvalScenarioRepository interface {
@@ -121,6 +122,13 @@ func EvalScenario(
 			"error during concurrent rule evaluation")
 	}
 
+	pivotValue, err := getPivotValue(ctx, params.Pivot, dataAccessor)
+	if err != nil {
+		return models.ScenarioExecution{}, errors.Wrap(
+			err,
+			"error getting pivot value in EvalScenario")
+	}
+
 	// Compute outcome from score
 	outcome := models.None
 
@@ -139,10 +147,14 @@ func EvalScenario(
 		ScenarioName:        params.Scenario.Name,
 		ScenarioDescription: params.Scenario.Description,
 		ScenarioVersion:     publishedVersion.Version,
+		PivotValue:          pivotValue,
 		RuleExecutions:      ruleExecutions,
 		Score:               score,
 		Outcome:             outcome,
 		OrganizationId:      params.Scenario.OrganizationId,
+	}
+	if params.Pivot != nil {
+		se.PivotId = &params.Pivot.Id
 	}
 
 	elapsed := time.Since(start)
@@ -291,4 +303,35 @@ func evalAllScenarioRules(
 	}
 
 	return runningSumOfScores, ruleExecutions, nil
+}
+
+func getPivotValue(ctx context.Context, pivot *models.Pivot, dataAccessor DataAccessor) (*string, error) {
+	if pivot == nil {
+		return nil, nil
+	}
+
+	var val any
+	if len(pivot.PathLinks) == 0 {
+		val = dataAccessor.ClientObject.Data[pivot.Field]
+	} else {
+		// This is V1. An optimized V2 would stop at the last but one step and use the last but one's link child field value (follow-up commit incoming)
+		var err error
+		val, err = dataAccessor.GetDbField(ctx, pivot.BaseTable, pivot.PathLinks, pivot.Field)
+		if errors.Is(err, ast.ErrNullFieldRead) || errors.Is(err, ast.ErrNoRowsRead) {
+			return nil, nil
+		} else if err != nil {
+			return nil, errors.Wrap(err, "error getting pivot value")
+		}
+	}
+
+	if val == nil {
+		return nil, nil
+	}
+
+	valStr, ok := val.(string)
+	if !ok {
+		return nil, errors.New("pivot value is not a string")
+	}
+
+	return &valStr, nil
 }

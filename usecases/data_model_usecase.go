@@ -441,7 +441,7 @@ func validatePivotCreateInput(input models.CreatePivotInput, dm models.DataModel
 			fmt.Sprintf("base table %s not found", input.BaseTableId),
 		)
 	}
-	if hasField && table.Fields[*input.FieldId].DataType != models.String {
+	if hasField && dm.AllFieldsAsMap()[*input.FieldId].DataType != models.String {
 		return errors.Wrap(
 			models.BadParameterError,
 			"pivot field must be of type string",

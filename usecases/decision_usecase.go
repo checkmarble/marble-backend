@@ -47,7 +47,7 @@ type DecisionUsecase struct {
 	executorFactory            executor_factory.ExecutorFactory
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
 	decisionRepository         repositories.DecisionRepository
-	datamodelRepository        repositories.DataModelRepository
+	dataModelRepository        repositories.DataModelRepository
 	repository                 DecisionUsecaseRepository
 	evaluateAstExpression      ast_eval.EvaluateAstExpression
 	caseCreator                caseCreatorAsWorkflow
@@ -163,7 +163,7 @@ func (usecase *DecisionUsecase) validateOutcomes(_ context.Context, filtersOutco
 func (usecase *DecisionUsecase) validateTriggerObjects(ctx context.Context,
 	filtersTriggerObjects []string, organizationId string,
 ) ([]string, error) {
-	dataModel, err := usecase.datamodelRepository.GetDataModel(ctx,
+	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx,
 		usecase.executorFactory.NewExecutor(), organizationId, true)
 	if err != nil {
 		return nil, err
@@ -219,10 +219,17 @@ func (usecase *DecisionUsecase) CreateDecision(
 		return models.DecisionWithRuleExecutions{}, err
 	}
 
+	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, input.OrganizationId, nil)
+	if err != nil {
+		return models.DecisionWithRuleExecutions{}, err
+	}
+	pivot := models.FindPivot(pivotsMeta, input.TriggerObjectTable, dataModel)
+
 	evaluationParameters := evaluate_scenario.ScenarioEvaluationParameters{
 		Scenario:     scenario,
 		ClientObject: payload,
 		DataModel:    dataModel,
+		Pivot:        pivot,
 	}
 
 	evaluationRepositories := evaluate_scenario.ScenarioEvaluationRepositories{
@@ -286,6 +293,12 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		return nil, 0, err
 	}
 
+	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, input.OrganizationId, nil)
+	if err != nil {
+		return nil, 0, err
+	}
+	pivot := models.FindPivot(pivotsMeta, input.TriggerObjectTable, dataModel)
+
 	scenarios, err := usecase.repository.ListScenariosOfOrganization(ctx, exec, input.OrganizationId)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "error getting scenarios in CreateAllDecisions")
@@ -317,6 +330,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			Scenario:     scenario,
 			ClientObject: payload,
 			DataModel:    dataModel,
+			Pivot:        pivot,
 		}
 
 		ctx, cancel := context.WithTimeout(ctx, models.DECISION_TIMEOUT)
@@ -412,7 +426,7 @@ func (usecase DecisionUsecase) validatePayload(
 		return
 	}
 
-	dataModel, err = usecase.datamodelRepository.GetDataModel(ctx, exec, organizationId, false)
+	dataModel, err = usecase.dataModelRepository.GetDataModel(ctx, exec, organizationId, false)
 	if err != nil {
 		err = errors.Wrap(err, "error getting data model in validatePayload")
 		return

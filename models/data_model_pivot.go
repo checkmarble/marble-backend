@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/cockroachdb/errors"
 )
 
@@ -77,6 +78,7 @@ func FieldFromPath(dm DataModel, pathLinkIds []string, baseTableName string) (Fi
 	linksMap := dm.AllLinksAsMap()
 	// check that the first link is from the base table
 	firstLink := linksMap[pathLinkIds[0]]
+	var fieldId string
 	if firstLink.ChildTableName != baseTableName {
 		return Field{}, errors.Wrap(
 			BadParameterError,
@@ -84,9 +86,10 @@ func FieldFromPath(dm DataModel, pathLinkIds []string, baseTableName string) (Fi
 				firstLink.Id, baseTableName, firstLink.ChildTableName,
 			),
 		)
+	} else {
+		fieldId = firstLink.ParentFieldId
 	}
 
-	var fieldId string
 	// check that the links are chained consistently
 	for i := 1; i < len(pathLinkIds); i++ {
 		previousLink := linksMap[pathLinkIds[i-1]]
@@ -104,6 +107,22 @@ func FieldFromPath(dm DataModel, pathLinkIds []string, baseTableName string) (Fi
 	}
 
 	return dm.AllFieldsAsMap()[fieldId], nil
+}
+
+// Find the pivot definition, if there is one for this table
+func FindPivot(pivotsMeta []PivotMetadata, table string, dm DataModel) *Pivot {
+	pivots := pure_utils.Map(pivotsMeta, func(p PivotMetadata) Pivot {
+		return AdaptPivot(p, dm)
+	})
+	var pivot *Pivot
+	for _, p := range pivots {
+		if p.BaseTable == table {
+			pivot = &p
+			break
+		}
+	}
+
+	return pivot
 }
 
 type CreatePivotInput struct {
