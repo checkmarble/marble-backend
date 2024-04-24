@@ -18,7 +18,7 @@ type LinkToSingle struct {
 }
 
 type Field struct {
-	ID                string `json:"id,omitempty"`
+	ID                string `json:"id"`
 	DataType          string `json:"data_type"`
 	Description       string `json:"description"`
 	IsEnum            bool   `json:"is_enum"`
@@ -30,7 +30,7 @@ type Field struct {
 }
 
 type Table struct {
-	ID            string                  `json:"id,omitempty"`
+	ID            string                  `json:"id"`
 	Name          string                  `json:"name"`
 	Description   string                  `json:"description"`
 	Fields        map[string]Field        `json:"fields"`
