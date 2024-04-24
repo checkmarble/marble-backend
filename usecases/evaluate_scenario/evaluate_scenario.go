@@ -310,13 +310,26 @@ func getPivotValue(ctx context.Context, pivot *models.Pivot, dataAccessor DataAc
 		return nil, nil
 	}
 
+	// In the case where a path through links is defined on the pivot, it's equivalent to stop at the penultimate link, because by hypothesis
+	// of the join the child and parent field values are the same.
+	// This allows us to do one fewer joins, and especially to return a value if the pivot object is not present (but the object "below" it is,
+	// e.g. a transaction with its accountId is present but the account is not).
+	// As a special case, if there is only one link to define the pivot value, we can just read the field value from the payload rather than
+	// the ingested data.
+	// This no longer works if we allow to define any field of the pivot object as the pivot value (currently it must be the last link's parent field)
 	var val any
+	links := dataAccessor.DataModel.AllLinksAsMap()
 	if len(pivot.PathLinks) == 0 {
 		val = dataAccessor.ClientObject.Data[pivot.Field]
+	} else if len(pivot.PathLinks) == 1 {
+		// special case of the below: we can read the field value from the payload
+		link := links[pivot.PathLinkIds[0]]
+		val = dataAccessor.ClientObject.Data[link.ChildFieldName]
 	} else {
-		// This is V1. An optimized V2 would stop at the last but one step and use the last but one's link child field value (follow-up commit incoming)
+		lastLink := links[pivot.PathLinkIds[len(pivot.PathLinkIds)-1]]
+		usefulLinks := pivot.PathLinks[:len(pivot.PathLinks)-1]
 		var err error
-		val, err = dataAccessor.GetDbField(ctx, pivot.BaseTable, pivot.PathLinks, pivot.Field)
+		val, err = dataAccessor.GetDbField(ctx, pivot.BaseTable, usefulLinks, lastLink.ChildFieldName)
 		if errors.Is(err, ast.ErrNullFieldRead) || errors.Is(err, ast.ErrNoRowsRead) {
 			return nil, nil
 		} else if err != nil {
