@@ -248,8 +248,8 @@ func executionIsDueNow(
 func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Context,
 	scheduledExecutionId string, scenario models.Scenario,
 ) (int, error) {
-	dataModel, err := usecase.DataModelRepository.GetDataModel(ctx,
-		usecase.ExecutorFactory.NewExecutor(), scenario.OrganizationId, false)
+	exec := usecase.ExecutorFactory.NewExecutor()
+	dataModel, err := usecase.DataModelRepository.GetDataModel(ctx, exec, scenario.OrganizationId, false)
 	if err != nil {
 		return 0, err
 	}
@@ -259,6 +259,12 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 		return 0, fmt.Errorf("trigger object type %s not found in data model: %w",
 			scenario.TriggerObjectType, models.NotFoundError)
 	}
+
+	pivotsMeta, err := usecase.DataModelRepository.ListPivots(ctx, exec, scenario.OrganizationId, nil)
+	if err != nil {
+		return 0, err
+	}
+	pivot := models.FindPivot(pivotsMeta, scenario.TriggerObjectType, dataModel)
 
 	// list objects to score
 	numberOfCreatedDecisions := 0
@@ -281,6 +287,7 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 					Scenario:     scenario,
 					ClientObject: object,
 					DataModel:    dataModel,
+					Pivot:        pivot,
 				},
 				evaluate_scenario.ScenarioEvaluationRepositories{
 					EvalScenarioRepository:     usecase.Repository,

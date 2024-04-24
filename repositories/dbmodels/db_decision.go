@@ -18,18 +18,20 @@ type DbDecision struct {
 	OrganizationId       string      `db:"org_id"`
 	CaseId               *string     `db:"case_id"`
 	CreatedAt            time.Time   `db:"created_at"`
+	ErrorCode            int         `db:"error_code"`
+	DeletedAt            pgtype.Time `db:"deleted_at"`
 	Outcome              string      `db:"outcome"`
+	PivotId              *string     `db:"pivot_id"`
+	PivotValue           *string     `db:"pivot_value"`
 	ScenarioId           string      `db:"scenario_id"`
 	ScenarioIterationId  string      `db:"scenario_iteration_id"`
 	ScenarioName         string      `db:"scenario_name"`
 	ScenarioDescription  string      `db:"scenario_description"`
 	ScenarioVersion      int         `db:"scenario_version"`
+	ScheduledExecutionId *string     `db:"scheduled_execution_id"`
 	Score                int         `db:"score"`
-	ErrorCode            int         `db:"error_code"`
-	DeletedAt            pgtype.Time `db:"deleted_at"`
 	TriggerObjectRaw     []byte      `db:"trigger_object"`
 	TriggerObjectType    string      `db:"trigger_object_type"`
-	ScheduledExecutionId *string     `db:"scheduled_execution_id"`
 }
 
 type DbJoinDecisionAndCase struct {
@@ -59,6 +61,8 @@ func AdaptDecision(db DbDecision, decisionCase *models.Case) models.Decision {
 		CreatedAt:            db.CreatedAt,
 		ClientObject:         models.ClientObject{TableName: db.TriggerObjectType, Data: triggerObject},
 		Outcome:              models.OutcomeFrom(db.Outcome),
+		PivotId:              db.PivotId,
+		PivotValue:           db.PivotValue,
 		ScenarioId:           db.ScenarioId,
 		ScenarioIterationId:  db.ScenarioIterationId,
 		ScenarioName:         db.ScenarioName,

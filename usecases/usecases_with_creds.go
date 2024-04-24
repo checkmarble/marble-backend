@@ -83,7 +83,7 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 		transactionFactory:         usecases.NewTransactionFactory(),
 		ingestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
 		decisionRepository:         usecases.Repositories.DecisionRepository,
-		datamodelRepository:        usecases.Repositories.DataModelRepository,
+		dataModelRepository:        usecases.Repositories.DataModelRepository,
 		repository:                 &usecases.Repositories.MarbleDbRepository,
 		evaluateAstExpression:      usecases.NewEvaluateAstExpression(),
 		organizationIdOfContext:    usecases.OrganizationIdOfContext,
