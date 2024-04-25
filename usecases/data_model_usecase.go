@@ -462,11 +462,12 @@ func validatePivotCreateInput(input models.CreatePivotInput, dm models.DataModel
 
 	// verify that the links are chained consistently
 	if hasPath {
-		lastTable, err := models.FieldFromPath(dm, input.PathLinkIds, table.Name)
+		err := models.ValidatePathPivot(dm, input.PathLinkIds, table.Name)
 		if err != nil {
 			return err
 		}
-		if lastTable.DataType != models.String {
+		field := models.FieldFromPath(dm, input.PathLinkIds)
+		if field.DataType != models.String {
 			return errors.Wrap(
 				models.BadParameterError,
 				"pivot field must be of type string",
