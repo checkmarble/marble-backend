@@ -48,8 +48,12 @@ func (api *API) handleListDecisions(c *gin.Context) {
 	paginationAndSorting = dto.WithPaginationDefaults(paginationAndSorting, decisionPaginationDefaults)
 
 	usecase := api.UsecasesWithCreds(c.Request).NewDecisionUsecase()
-	decisions, err := usecase.ListDecisions(c.Request.Context(), organizationId,
-		dto.AdaptPaginationAndSortingInput(paginationAndSorting), filters)
+	decisions, err := usecase.ListDecisions(
+		c.Request.Context(),
+		organizationId,
+		dto.AdaptPaginationAndSortingInput(paginationAndSorting),
+		filters,
+	)
 	if presentError(c, err) {
 		return
 	}

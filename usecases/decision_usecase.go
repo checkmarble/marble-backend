@@ -97,36 +97,31 @@ func (usecase *DecisionUsecase) ListDecisions(
 		return []models.DecisionWithRank{}, err
 	}
 
-	return executor_factory.TransactionReturnValue(
+	decisions, err := usecase.decisionRepository.DecisionsOfOrganization(
 		ctx,
-		usecase.transactionFactory,
-		func(tx repositories.Executor) ([]models.DecisionWithRank, error) {
-			decisions, err := usecase.decisionRepository.DecisionsOfOrganization(
-				ctx,
-				tx,
-				organizationId,
-				paginationAndSorting,
-				models.DecisionFilters{
-					ScenarioIds:           filters.ScenarioIds,
-					StartDate:             filters.StartDate,
-					EndDate:               filters.EndDate,
-					Outcomes:              outcomes,
-					TriggerObjects:        triggerObjectTypes,
-					HasCase:               filters.HasCase,
-					CaseIds:               filters.CaseIds,
-					ScheduledExecutionIds: filters.ScheduledExecutionIds,
-				})
-			if err != nil {
-				return []models.DecisionWithRank{}, err
-			}
-			for _, decision := range decisions {
-				if err := usecase.enforceSecurity.ReadDecision(decision.Decision); err != nil {
-					return []models.DecisionWithRank{}, err
-				}
-			}
-			return decisions, nil
-		},
-	)
+		usecase.executorFactory.NewExecutor(),
+		organizationId,
+		paginationAndSorting,
+		models.DecisionFilters{
+			CaseIds:               filters.CaseIds,
+			EndDate:               filters.EndDate,
+			HasCase:               filters.HasCase,
+			Outcomes:              outcomes,
+			PivotValue:            filters.PivotValue,
+			ScenarioIds:           filters.ScenarioIds,
+			ScheduledExecutionIds: filters.ScheduledExecutionIds,
+			StartDate:             filters.StartDate,
+			TriggerObjects:        triggerObjectTypes,
+		})
+	if err != nil {
+		return []models.DecisionWithRank{}, err
+	}
+	for _, decision := range decisions {
+		if err := usecase.enforceSecurity.ReadDecision(decision.Decision); err != nil {
+			return []models.DecisionWithRank{}, err
+		}
+	}
+	return decisions, nil
 }
 
 func (usecase *DecisionUsecase) validateScenarioIds(ctx context.Context, scenarioIds []string, organizationId string) error {
