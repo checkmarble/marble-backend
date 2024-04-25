@@ -112,7 +112,7 @@ func NewAPIDecision(decision models.Decision, marbleAppHost string) APIDecision 
 		apiDecision.Case = &c
 	}
 
-	if decision.PivotId != nil {
+	if decision.PivotValue != nil {
 		apiDecision.PivotValues = append(apiDecision.PivotValues, PivotValueDto{
 			PivotId:    null.StringFromPtr(decision.PivotId),
 			PivotValue: null.StringFromPtr(decision.PivotValue),
