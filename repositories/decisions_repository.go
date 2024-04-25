@@ -292,6 +292,9 @@ func applyDecisionFilters(query squirrel.SelectBuilder, filters models.DecisionF
 	if len(filters.ScheduledExecutionIds) > 0 {
 		query = query.Where(squirrel.Eq{"scheduled_execution_id": filters.ScheduledExecutionIds})
 	}
+	if filters.PivotValue != nil {
+		query = query.Where(squirrel.Eq{"pivot_value": *filters.PivotValue})
+	}
 	return query
 }
 

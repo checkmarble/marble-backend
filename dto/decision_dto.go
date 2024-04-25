@@ -16,6 +16,7 @@ type DecisionFilters struct {
 	EndDate               time.Time `form:"end_date"`
 	HasCase               *bool     `form:"has_case"`
 	Outcomes              []string  `form:"outcome[]"`
+	PivotValue            *string   `form:"pivot_value"`
 	ScenarioIds           []string  `form:"scenario_id[]"`
 	ScheduledExecutionIds []string  `form:"scheduled_execution_id[]"`
 	StartDate             time.Time `form:"start_date"`
