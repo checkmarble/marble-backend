@@ -6,6 +6,7 @@ import (
 )
 
 type LinkToSingle struct {
+	Id                     string `json:"id"`
 	ParentTableName_deprec string `json:"linked_table_name"` // left for compatibility
 	ParentTableName        string `json:"parent_table_name"`
 	ParentTableId          string `json:"parent_table_id"`
@@ -106,6 +107,7 @@ func adaptDataModelField(field models.Field) Field {
 
 func adaptDataModelLink(linkToSingle models.LinkToSingle) LinkToSingle {
 	return LinkToSingle{
+		Id:                     linkToSingle.Id,
 		ParentTableName_deprec: linkToSingle.ParentTableName,
 		ParentTableName:        linkToSingle.ParentTableName,
 		ParentTableId:          linkToSingle.ParentTableId,
