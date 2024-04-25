@@ -56,7 +56,7 @@ func AdaptPivot(pivotMeta PivotMetadata, dataModel DataModel) Pivot {
 		pivot.PivotTable = baseTable.Name
 		pivot.PivotTableId = baseTable.ID
 	} else {
-		field, _ := FieldFromPath(dataModel, pivot.PathLinkIds, pivot.BaseTable)
+		field := FieldFromPath(dataModel, pivot.PathLinkIds)
 		pivot.Field = field.Name
 		pivot.FieldId = field.ID
 		// in this case, the pivot table is the last table in the path
@@ -74,20 +74,17 @@ func AdaptPivot(pivotMeta PivotMetadata, dataModel DataModel) Pivot {
 	return pivot
 }
 
-func FieldFromPath(dm DataModel, pathLinkIds []string, baseTableName string) (Field, error) {
+func ValidatePathPivot(dm DataModel, pathLinkIds []string, baseTableName string) error {
 	linksMap := dm.AllLinksAsMap()
 	// check that the first link is from the base table
 	firstLink := linksMap[pathLinkIds[0]]
-	var fieldId string
 	if firstLink.ChildTableName != baseTableName {
-		return Field{}, errors.Wrap(
+		return errors.Wrap(
 			BadParameterError,
 			fmt.Sprintf(`first link's (%s) child table must be the base table "%s" (is "%s" instead)`,
 				firstLink.Id, baseTableName, firstLink.ChildTableName,
 			),
 		)
-	} else {
-		fieldId = firstLink.ParentFieldId
 	}
 
 	// check that the links are chained consistently
@@ -95,18 +92,23 @@ func FieldFromPath(dm DataModel, pathLinkIds []string, baseTableName string) (Fi
 		previousLink := linksMap[pathLinkIds[i-1]]
 		currentLink := linksMap[pathLinkIds[i]]
 		if previousLink.ParentTableName != currentLink.ChildTableName {
-			return Field{}, errors.Wrap(
+			return errors.Wrap(
 				BadParameterError,
 				fmt.Sprintf(`link %s (parent table "%s") is not a child of link %s (child table "%s")`,
 					previousLink.Id, previousLink.ParentTableName, currentLink.Id, currentLink.ChildTableName,
 				),
 			)
 		}
-
-		fieldId = currentLink.ParentFieldId
 	}
 
-	return dm.AllFieldsAsMap()[fieldId], nil
+	return nil
+}
+
+func FieldFromPath(dm DataModel, pathLinkIds []string) Field {
+	// at this point the path is validated, so we assume that pathLinkIds is not empty and that the fieldId is found in the data model
+	linksMap := dm.AllLinksAsMap()
+	lastLink := linksMap[pathLinkIds[len(pathLinkIds)-1]]
+	return dm.AllFieldsAsMap()[lastLink.ParentFieldId]
 }
 
 // Find the pivot definition, if there is one for this table

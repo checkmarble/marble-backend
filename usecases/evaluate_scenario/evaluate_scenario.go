@@ -122,13 +122,6 @@ func EvalScenario(
 			"error during concurrent rule evaluation")
 	}
 
-	pivotValue, err := getPivotValue(ctx, params.Pivot, dataAccessor)
-	if err != nil {
-		return models.ScenarioExecution{}, errors.Wrap(
-			err,
-			"error getting pivot value in EvalScenario")
-	}
-
 	// Compute outcome from score
 	outcome := models.None
 
@@ -147,14 +140,20 @@ func EvalScenario(
 		ScenarioName:        params.Scenario.Name,
 		ScenarioDescription: params.Scenario.Description,
 		ScenarioVersion:     publishedVersion.Version,
-		PivotValue:          pivotValue,
 		RuleExecutions:      ruleExecutions,
 		Score:               score,
 		Outcome:             outcome,
 		OrganizationId:      params.Scenario.OrganizationId,
 	}
 	if params.Pivot != nil {
+		pivotValue, err := getPivotValue(ctx, *params.Pivot, dataAccessor)
+		if err != nil {
+			return models.ScenarioExecution{}, errors.Wrap(
+				err,
+				"error getting pivot value in EvalScenario")
+		}
 		se.PivotId = &params.Pivot.Id
+		se.PivotValue = pivotValue
 	}
 
 	elapsed := time.Since(start)
@@ -305,11 +304,7 @@ func evalAllScenarioRules(
 	return runningSumOfScores, ruleExecutions, nil
 }
 
-func getPivotValue(ctx context.Context, pivot *models.Pivot, dataAccessor DataAccessor) (*string, error) {
-	if pivot == nil {
-		return nil, nil
-	}
-
+func getPivotValue(ctx context.Context, pivot models.Pivot, dataAccessor DataAccessor) (*string, error) {
 	// In the case where a path through links is defined on the pivot, it's equivalent to stop at the penultimate link, because by hypothesis
 	// of the join the child and parent field values are the same.
 	// This allows us to do one fewer joins, and especially to return a value if the pivot object is not present (but the object "below" it is,
