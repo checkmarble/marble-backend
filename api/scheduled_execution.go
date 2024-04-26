@@ -30,6 +30,10 @@ func (api *API) handleGetScheduledExecution(c *gin.Context) {
 
 func (api *API) handleGetScheduledExecutionDecisions(c *gin.Context) {
 	scheduledExecutionID := c.Param("execution_id")
+	organizationId, err := utils.OrganizationIdFromRequest(c.Request)
+	if presentError(c, err) {
+		return
+	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewScheduledExecutionUsecase()
 
@@ -45,7 +49,7 @@ func (api *API) handleGetScheduledExecutionDecisions(c *gin.Context) {
 	c.Writer.Header().Set("Content-Type", "application/zip")
 	c.Writer.Header().Set("Content-Disposition", "attachment; filename=\"decisions.ndjson.zip\"")
 	numberOfExportedDecisions, err := usecase.ExportScheduledExecutionDecisions(
-		c.Request.Context(), scheduledExecutionID, fileWriter)
+		c.Request.Context(), organizationId, scheduledExecutionID, fileWriter)
 	if err != nil {
 		// note: un case of security error, the header has not been sent, so we can still send a 401
 		presentError(c, err)

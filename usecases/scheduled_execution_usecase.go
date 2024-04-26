@@ -13,7 +13,7 @@ import (
 )
 
 type ExportDecisions interface {
-	ExportDecisions(ctx context.Context, scheduledExecutionId string, dest io.Writer) (int, error)
+	ExportDecisions(ctx context.Context, organizationId string, scheduledExecutionId string, dest io.Writer) (int, error)
 }
 
 type ScheduledExecutionUsecaseRepository interface {
@@ -55,7 +55,12 @@ func (usecase *ScheduledExecutionUsecase) GetScheduledExecution(ctx context.Cont
 	})
 }
 
-func (usecase *ScheduledExecutionUsecase) ExportScheduledExecutionDecisions(ctx context.Context, scheduledExecutionID string, w io.Writer) (int, error) {
+func (usecase *ScheduledExecutionUsecase) ExportScheduledExecutionDecisions(
+	ctx context.Context,
+	organizationId string,
+	scheduledExecutionID string,
+	w io.Writer,
+) (int, error) {
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Executor,
 	) (int, error) {
@@ -67,7 +72,7 @@ func (usecase *ScheduledExecutionUsecase) ExportScheduledExecutionDecisions(ctx 
 			return 0, err
 		}
 
-		return usecase.exportScheduleExecution.ExportDecisions(ctx, execution.Id, w)
+		return usecase.exportScheduleExecution.ExportDecisions(ctx, organizationId, execution.Id, w)
 	})
 }
 

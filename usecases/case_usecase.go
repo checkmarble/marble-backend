@@ -533,7 +533,7 @@ func (usecase *CaseUseCase) getCaseWithDetails(ctx context.Context, exec reposit
 		return models.Case{}, err
 	}
 
-	decisions, err := usecase.decisionRepository.DecisionsByCaseId(ctx, exec, caseId)
+	decisions, err := usecase.decisionRepository.DecisionsByCaseId(ctx, exec, c.OrganizationId, caseId)
 	if err != nil {
 		return models.Case{}, err
 	}
