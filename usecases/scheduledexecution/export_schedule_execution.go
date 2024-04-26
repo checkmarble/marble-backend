@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
+
+	"github.com/cockroachdb/errors"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -25,8 +26,10 @@ type ExportScheduleExecution struct {
 	ExecutorFactory        executor_factory.ExecutorFactory
 }
 
-func (exporter *ExportScheduleExecution) ExportScheduledExecutionToS3(ctx context.Context,
-	scenario models.Scenario, scheduledExecution models.ScheduledExecution,
+func (exporter *ExportScheduleExecution) ExportScheduledExecutionToS3(
+	ctx context.Context,
+	scenario models.Scenario,
+	scheduledExecution models.ScheduledExecution,
 ) error {
 	organization, err := exporter.OrganizationRepository.GetOrganizationById(ctx,
 		exporter.ExecutorFactory.NewExecutor(), scheduledExecution.OrganizationId)
@@ -39,7 +42,10 @@ func (exporter *ExportScheduleExecution) ExportScheduledExecutionToS3(ctx contex
 		return nil
 	}
 
-	numberOfDecision, err := exporter.exportDecisionsToS3(ctx, scheduledExecution,
+	numberOfDecision, err := exporter.exportDecisionsToS3(
+		ctx,
+		scenario.OrganizationId,
+		scheduledExecution,
 		organization.ExportScheduledExecutionS3)
 	if err != nil {
 		return err
@@ -72,16 +78,23 @@ func (exporter *ExportScheduleExecution) exportScenarioToS3(scenario models.Scen
 	return exporter.AwsS3Repository.StoreInBucket(context.Background(), s3Bucket, filename, bytes.NewReader(encoded))
 }
 
-func (exporter *ExportScheduleExecution) exportDecisionsToS3(ctx context.Context,
-	scheduledExecution models.ScheduledExecution, s3Bucket string,
+func (exporter *ExportScheduleExecution) exportDecisionsToS3(
+	ctx context.Context,
+	organizationId string,
+	scheduledExecution models.ScheduledExecution,
+	s3Bucket string,
 ) (int, error) {
 	pipeReader, pipeWriter := io.Pipe()
 
 	uploadErrorChan := exporter.uploadDecisions(pipeReader, scheduledExecution, s3Bucket)
 
 	// write everything. No need to create a second goroutine, the write can be synchronous.
-	number_of_exported_decisions, exportErr :=
-		exporter.ExportDecisions(ctx, scheduledExecution.Id, pipeWriter)
+	number_of_exported_decisions, exportErr := exporter.ExportDecisions(
+		ctx,
+		organizationId,
+		scheduledExecution.Id,
+		pipeWriter,
+	)
 
 	// close the pipe when done
 	pipeWriter.Close()
@@ -111,9 +124,18 @@ func (exporter *ExportScheduleExecution) uploadDecisions(src *io.PipeReader,
 	return uploadErrorChan
 }
 
-func (exporter *ExportScheduleExecution) ExportDecisions(ctx context.Context, scheduledExecutionId string, dest io.Writer) (int, error) {
-	decisionChan, errorChan := exporter.DecisionRepository.DecisionsOfScheduledExecution(ctx,
-		exporter.ExecutorFactory.NewExecutor(), scheduledExecutionId)
+func (exporter *ExportScheduleExecution) ExportDecisions(
+	ctx context.Context,
+	organizationId string,
+	scheduledExecutionId string,
+	dest io.Writer,
+) (int, error) {
+	decisionChan, errorChan := exporter.DecisionRepository.DecisionsOfScheduledExecution(
+		ctx,
+		exporter.ExecutorFactory.NewExecutor(),
+		organizationId,
+		scheduledExecutionId,
+	)
 
 	encoder := json.NewEncoder(dest)
 
@@ -122,6 +144,13 @@ func (exporter *ExportScheduleExecution) ExportDecisions(ctx context.Context, sc
 	var number_of_exported_decisions int
 
 	for decision := range decisionChan {
+		if decision.OrganizationId != organizationId {
+			allErrors = append(
+				allErrors,
+				errors.Wrap(models.ForbiddenError, "decision does not belong to the organization"),
+			)
+			return number_of_exported_decisions, errors.Join(allErrors...)
+		}
 		err := encoder.Encode(dto.NewAPIDecisionWithRule(decision, "", false))
 		if err != nil {
 			allErrors = append(allErrors, err)

@@ -26,13 +26,18 @@ type DecisionRepository interface {
 		decisionIds []string,
 	) ([]models.DecisionWithRuleExecutions, error)
 	DecisionsById(ctx context.Context, exec Executor, decisionIds []string) ([]models.Decision, error)
-	DecisionsByCaseId(ctx context.Context, exec Executor, caseId string) (
-		[]models.DecisionWithRuleExecutions, error)
+	DecisionsByCaseId(
+		ctx context.Context,
+		exec Executor,
+		organizationId, caseId string,
+	) ([]models.DecisionWithRuleExecutions, error)
 	DecisionsByObjectId(ctx context.Context, exec Executor, organizationId string, objectId string) ([]models.DecisionCore, error)
 	DecisionsOfScheduledExecution(
 		ctx context.Context,
 		exec Executor,
-		scheduledExecutionId string) (<-chan models.DecisionWithRuleExecutions, <-chan error)
+		organizationId string,
+		scheduledExecutionId string,
+	) (<-chan models.DecisionWithRuleExecutions, <-chan error)
 	StoreDecision(
 		ctx context.Context,
 		exec Executor,
@@ -134,6 +139,7 @@ func (repo *DecisionRepositoryImpl) DecisionsById(ctx context.Context, exec Exec
 func (repo *DecisionRepositoryImpl) DecisionsByCaseId(
 	ctx context.Context,
 	exec Executor,
+	organizationId string,
 	caseId string,
 ) ([]models.DecisionWithRuleExecutions, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
@@ -141,6 +147,7 @@ func (repo *DecisionRepositoryImpl) DecisionsByCaseId(
 	}
 
 	query := selectDecisions().
+		Where(squirrel.Eq{"org_id": organizationId}).
 		Where(squirrel.Eq{"case_id": caseId}).
 		OrderBy("created_at DESC")
 
@@ -378,6 +385,7 @@ func selectDecisionsWithJoinedFields(query squirrel.SelectBuilder, p models.Pagi
 func (repo *DecisionRepositoryImpl) DecisionsOfScheduledExecution(
 	ctx context.Context,
 	exec Executor,
+	organizationId string,
 	scheduledExecutionId string,
 ) (<-chan models.DecisionWithRuleExecutions, <-chan error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
@@ -393,6 +401,7 @@ func (repo *DecisionRepositoryImpl) DecisionsOfScheduledExecution(
 		ctx,
 		exec,
 		selectDecisions().
+			Where(squirrel.Eq{"org_id": organizationId}).
 			Where(squirrel.Eq{"scheduled_execution_id": scheduledExecutionId}).
 			OrderBy("created_at DESC"),
 	)
