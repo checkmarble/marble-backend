@@ -423,7 +423,7 @@ func validatePivotCreateInput(input models.CreatePivotInput, dm models.DataModel
 	if hasField == hasPath {
 		return errors.Wrap(
 			models.BadParameterError,
-			"either field or path must be provided",
+			"either field_id or path_link_ids must be provided",
 		)
 	}
 
