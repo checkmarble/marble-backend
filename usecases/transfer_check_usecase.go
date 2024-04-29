@@ -3,7 +3,6 @@ package usecases
 import (
 	"context"
 	"fmt"
-	"net/netip"
 	"slices"
 	"time"
 
@@ -57,6 +56,16 @@ type TransferCheckUsecase struct {
 
 const TransferCheckTable = "transfers"
 
+func transfersAreDifferent(t1, t2 map[string]any) bool {
+	keys := []string{"beneficiary_bic", "beneficiary_iban", "sender_account_id", "sender_bic"}
+	for _, key := range keys {
+		if t1[key] != t2[key] {
+			return true
+		}
+	}
+	return false
+}
+
 func (usecase *TransferCheckUsecase) CreateTransfer(
 	ctx context.Context,
 	organizationId string,
@@ -83,18 +92,6 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 	table, err := usecase.getTransfercheckTable(ctx, organizationId)
 	if err != nil {
 		return models.Transfer{}, err
-	}
-
-	objectId := models.ObjectIdWithPartnerIdPrefix(partnerId, createBody.TransferId)
-	previousObjects, err := usecase.lookupPreviousObjects(ctx, nil, organizationId, table, objectId)
-	if err != nil {
-		return models.Transfer{}, err
-	}
-	if len(previousObjects) > 0 {
-		return models.Transfer{}, errors.Wrap(
-			models.ConflictError,
-			fmt.Sprintf("transfer %s already exists", createBody.TransferId),
-		)
 	}
 
 	var transferMappingId string
@@ -128,6 +125,21 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 		transferMappings = append(transferMappings, transferMapping)
 	}
 
+	objectId := models.ObjectIdWithPartnerIdPrefix(partnerId, createBody.TransferId)
+	ingestedObjects, err := usecase.lookupPreviousObjects(ctx, nil, organizationId, table, objectId)
+	if err != nil {
+		return models.Transfer{}, err
+	}
+	if len(ingestedObjects) > 0 && transfersAreDifferent(
+		createBody.ToIngestionMap(transferMappings[0]),
+		ingestedObjects[0],
+	) {
+		return models.Transfer{}, errors.Wrap(
+			models.ConflictError,
+			fmt.Sprintf("transfer %s already exists", createBody.TransferId),
+		)
+	}
+
 	clientObject := models.ClientObject{
 		Data:      createBody.ToIngestionMap(transferMappings[0]),
 		TableName: TransferCheckTable,
@@ -141,7 +153,7 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 			return err
 		}
 
-		previousObjects, err = usecase.ingestedDataReadRepository.QueryIngestedObject(ctx, tx, table, objectId)
+		ingestedObjects, err = usecase.ingestedDataReadRepository.QueryIngestedObject(ctx, tx, table, objectId)
 		if err != nil {
 			return err
 		}
@@ -172,7 +184,7 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 		}
 	}
 
-	readPartnerId, transferData := presentTransferData(ctx, previousObjects[0])
+	readPartnerId, transferData := presentTransferData(ctx, ingestedObjects[0])
 	if err := usecase.enforceSecurity.ReadTransferData(ctx, readPartnerId); err != nil {
 		return models.Transfer{}, err
 	}
@@ -544,25 +556,6 @@ func (usecase *TransferCheckUsecase) lookupPreviousObjects(
 		return nil, errors.Wrap(err, "error while querying ingested objects in lookupPreviousObjects")
 	}
 	return objects, nil
-}
-
-// other helper functions
-func validateTransfer(transfer models.TransferDataCreateBody) error {
-	_, err := netip.ParseAddr(transfer.SenderIP)
-	if transfer.SenderIP != "" && err != nil {
-		return errors.Wrap(models.BadParameterError, "sender_ip is not a valid IP address")
-	}
-
-	if !slices.Contains(models.TransferStatuses, transfer.Status) {
-		return errors.Wrap(
-			models.BadParameterError,
-			fmt.Sprintf("status %s is not valid", transfer.Status),
-		)
-	}
-
-	// TODO implement other validation rules
-
-	return nil
 }
 
 func presentTransferData(ctx context.Context, m map[string]interface{}) (string, map[string]interface{}) {

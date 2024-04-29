@@ -306,7 +306,8 @@ func createQueryAggregated(exec Executor, tableName string,
 		// values of a field, but all rows in the table that match the filters)
 		selectExpression = "COUNT(*)"
 	} else {
-		selectExpression = fmt.Sprintf("%s(%s)", aggregator, fieldName)
+		// pgx will build a math/big.Int if we sum postgresql "bigint" (int64) values - we'd rather have a float64.
+		selectExpression = fmt.Sprintf("%s(%s)::float8", aggregator, fieldName)
 	}
 
 	qualifiedTableName := tableNameWithSchema(exec, tableName)

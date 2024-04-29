@@ -246,7 +246,12 @@ func (t TransferDataCreateBody) FormatAndValidate() (TransferDataCreateBody, err
 		errs["value"] = "value must be positive"
 	}
 
-	return t, errs
+	// FieldValidationError implements the error interface, but I created a non-nil map to fill it
+	// so we only want to return it if any errors were added
+	if len(errs) > 0 {
+		return t, errs
+	}
+	return t, nil
 }
 
 func formatAndValidateBic(bic string) (string, error) {
