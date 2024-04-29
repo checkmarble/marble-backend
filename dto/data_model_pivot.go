@@ -56,10 +56,14 @@ type CreatePivotInput struct {
 }
 
 func AdaptCreatePivotInput(input CreatePivotInput, organizationId string) models.CreatePivotInput {
-	return models.CreatePivotInput{
+	out := models.CreatePivotInput{
 		OrganizationId: organizationId,
 		BaseTableId:    input.BaseTableId,
 		FieldId:        input.FieldId,
-		PathLinkIds:    input.PathLinkIds,
+		PathLinkIds:    make([]string, 0),
 	}
+	if input.PathLinkIds != nil {
+		out.PathLinkIds = input.PathLinkIds
+	}
+	return out
 }
