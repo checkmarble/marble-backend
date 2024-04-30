@@ -25,6 +25,15 @@ const (
 	idMaxLength            = 50
 )
 
+const (
+	RegularIP = "regular"
+	TorIP     = "tor"
+	VpnIP     = "vpn"
+
+	TrustedSender = "trusted"
+	RegularSender = "regular"
+)
+
 type Transfer struct {
 	Id           string
 	LastScoredAt null.Time
@@ -55,8 +64,11 @@ type TransferData struct {
 	Label               string
 	SenderAccountId     string
 	SenderBic           string
+	SenderBicRiskLevel  string
 	SenderDevice        string
 	SenderIP            string
+	SenderIPType        string
+	SenderIPCountry     string
 	Status              string
 	Timezone            string
 	TransferId          string
@@ -100,6 +112,13 @@ func TransferFromMap(m map[string]any) (TransferData, error) {
 	if !ok {
 		return transfer, errors.New("sender_bic is not a string")
 	}
+	bicRiskLevel, found := m["sender_bic_risk_level"]
+	if found {
+		transfer.SenderBicRiskLevel, ok = bicRiskLevel.(string)
+		if !ok {
+			return transfer, errors.New("sender_bic_risk_level is not a string")
+		}
+	}
 	transfer.SenderDevice, ok = m["sender_device"].(string)
 	if !ok {
 		return transfer, errors.New("sender_device is not a string")
@@ -107,6 +126,20 @@ func TransferFromMap(m map[string]any) (TransferData, error) {
 	transfer.SenderIP, ok = m["sender_ip"].(string)
 	if !ok {
 		return transfer, errors.New("sender_ip is not a string")
+	}
+	senderIpType, found := m["sender_ip_type"]
+	if found {
+		transfer.SenderIPType, ok = senderIpType.(string)
+		if !ok {
+			return transfer, errors.New("sender_ip_type is not a string")
+		}
+	}
+	senderIpCountry, found := m["sender_ip_country"]
+	if found {
+		transfer.SenderIPCountry, ok = senderIpCountry.(string)
+		if !ok {
+			return transfer, errors.New("sender_ip_country is not a string")
+		}
 	}
 	transfer.Status, ok = m["status"].(string)
 	if !ok {
@@ -163,55 +196,77 @@ type TransferCreateBody struct {
 	SkipScore    *bool
 }
 
-func (t TransferDataCreateBody) ToIngestionMap(mapping TransferMapping) map[string]any {
+func (t TransferData) ToIngestionMap(mapping TransferMapping) map[string]any {
 	return map[string]any{
 		// there is a trap here: we map it to "object_id" to match what we do elsewhere on data model tables
 		"object_id": ObjectIdWithPartnerIdPrefix(mapping.PartnerId, t.TransferId),
-		// is added to the map to match the data model
-		"updated_at": time.Now(),
-		// TODO: actually we want this if it's a new transfer, the old value otherwise
-		"created_at": time.Now(),
 		// marble generated id of the transfer
 		"marble_id": mapping.Id,
 
 		"beneficiary_bic":       t.BeneficiaryBic,
 		"beneficiary_iban":      t.BeneficiaryIban,
 		"beneficiary_name":      t.BeneficiaryName,
+		"created_at":            t.CreatedAt,
 		"currency":              t.Currency,
 		"label":                 t.Label,
 		"sender_account_id":     t.SenderAccountId,
 		"sender_bic":            t.SenderBic,
+		"sender_bic_risk_level": t.SenderBicRiskLevel,
 		"sender_device":         t.SenderDevice,
 		"sender_ip":             t.SenderIP,
+		"sender_ip_type":        t.SenderIPType,
+		"sender_ip_country":     t.SenderIPCountry,
 		"status":                t.Status,
 		"timezone":              t.Timezone,
 		"transfer_requested_at": t.TransferRequestedAt,
+		"updated_at":            t.UpdatedAt,
 		"value":                 t.Value,
 	}
 }
 
-func (t TransferDataCreateBody) FormatAndValidate() (TransferDataCreateBody, error) {
+func (t TransferDataCreateBody) FormatAndValidate() (TransferData, error) {
 	var err error
 	errs := make(FieldValidationError, 10)
+	out := TransferData{
+		BeneficiaryBic:      t.BeneficiaryBic,
+		BeneficiaryIban:     t.BeneficiaryIban,
+		BeneficiaryName:     t.BeneficiaryName,
+		CreatedAt:           time.Now(),
+		Currency:            t.Currency,
+		Label:               t.Label,
+		SenderAccountId:     t.SenderAccountId,
+		SenderBic:           t.SenderBic,
+		SenderBicRiskLevel:  RegularSender,
+		SenderDevice:        t.SenderDevice,
+		SenderIP:            t.SenderIP,
+		SenderIPType:        RegularIP,
+		SenderIPCountry:     "FR",
+		Status:              t.Status,
+		Timezone:            t.Timezone,
+		TransferId:          t.TransferId,
+		TransferRequestedAt: t.TransferRequestedAt,
+		UpdatedAt:           time.Now(),
+		Value:               t.Value,
+	}
 
 	// hash the iban if it's clear - otherwise keep it unchanged
-	t.BeneficiaryIban, err = validateIbanOrHashIfClear(t.BeneficiaryIban)
+	out.BeneficiaryIban, err = validateIbanOrHashIfClear(t.BeneficiaryIban)
 	if err != nil {
 		errs["beneficiary_iban"] = err.Error()
 	}
 
 	// first validate the fields that expect a specific format
-	t.BeneficiaryBic, err = formatAndValidateBic(t.BeneficiaryBic)
+	out.BeneficiaryBic, err = formatAndValidateBic(t.BeneficiaryBic)
 	if err != nil {
 		errs["beneficiary_bic"] = err.Error()
 	}
 
-	t.SenderBic, err = formatAndValidateBic(t.SenderBic)
+	out.SenderBic, err = formatAndValidateBic(t.SenderBic)
 	if err != nil {
 		errs["sender_bic"] = err.Error()
 	}
 
-	t.Currency = strings.ToUpper(t.Currency)
+	out.Currency = strings.ToUpper(t.Currency)
 	if !slices.Contains(pure_utils.CurrencyCodes, t.Currency) {
 		errs["currency"] = fmt.Sprintf("currency %s is not valid", t.Currency)
 	}
@@ -249,9 +304,9 @@ func (t TransferDataCreateBody) FormatAndValidate() (TransferDataCreateBody, err
 	// FieldValidationError implements the error interface, but I created a non-nil map to fill it
 	// so we only want to return it if any errors were added
 	if len(errs) > 0 {
-		return t, errs
+		return out, errs
 	}
-	return t, nil
+	return out, nil
 }
 
 func formatAndValidateBic(bic string) (string, error) {
