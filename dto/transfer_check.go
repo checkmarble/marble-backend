@@ -43,11 +43,24 @@ type TransferData struct {
 }
 
 func AdaptTransferDataDto(transfer models.TransferData) TransferData {
-	return TransferData(transfer)
-}
-
-func AdaptTransfer(transfer TransferData) models.TransferData {
-	return models.TransferData(transfer)
+	return TransferData{
+		BeneficiaryBic:      transfer.BeneficiaryBic,
+		BeneficiaryIban:     transfer.BeneficiaryIban,
+		BeneficiaryName:     transfer.BeneficiaryName,
+		CreatedAt:           transfer.CreatedAt,
+		Currency:            transfer.Currency,
+		Label:               transfer.Label,
+		SenderAccountId:     transfer.SenderAccountId,
+		SenderBic:           transfer.SenderBic,
+		SenderDevice:        transfer.SenderDevice,
+		SenderIP:            transfer.SenderIP,
+		Status:              transfer.Status,
+		Timezone:            transfer.Timezone,
+		TransferId:          transfer.TransferId,
+		TransferRequestedAt: transfer.TransferRequestedAt,
+		UpdatedAt:           transfer.UpdatedAt,
+		Value:               transfer.Value,
+	}
 }
 
 type TransferDataCreateBody struct {

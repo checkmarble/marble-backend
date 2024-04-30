@@ -34,6 +34,12 @@ type transferMappingsRepository interface {
 	DeleteTransferMapping(ctx context.Context, exec repositories.Executor, id string) error
 }
 
+type transferCheckEnrichmentRepository interface {
+	GetIPCountry(ctx context.Context, ip string) (string, error)
+	GetIPType(ctx context.Context, ip string) (string, error)
+	GetSenderBicRiskLevel(ctx context.Context, bic string) (string, error)
+}
+
 type enforceSecurityTransferCheck interface {
 	CreateTransfer(ctx context.Context, organizationId string, partnerId string) error
 	ReadTransfer(ctx context.Context, transferMapping models.TransferMapping) error
@@ -42,16 +48,17 @@ type enforceSecurityTransferCheck interface {
 }
 
 type TransferCheckUsecase struct {
-	dataModelRepository        repositories.DataModelRepository
-	decisionUseCase            DecisionUsecase
-	decisionRepository         repositories.DecisionRepository
-	enforceSecurity            enforceSecurityTransferCheck
-	executorFactory            executor_factory.ExecutorFactory
-	ingestedDataReadRepository repositories.IngestedDataReadRepository
-	ingestionRepository        repositories.IngestionRepository
-	organizationRepository     repositories.OrganizationRepository
-	transactionFactory         executor_factory.TransactionFactory
-	transferMappingsRepository transferMappingsRepository
+	dataModelRepository               repositories.DataModelRepository
+	decisionUseCase                   DecisionUsecase
+	decisionRepository                repositories.DecisionRepository
+	enforceSecurity                   enforceSecurityTransferCheck
+	executorFactory                   executor_factory.ExecutorFactory
+	ingestedDataReadRepository        repositories.IngestedDataReadRepository
+	ingestionRepository               repositories.IngestionRepository
+	organizationRepository            repositories.OrganizationRepository
+	transactionFactory                executor_factory.TransactionFactory
+	transferMappingsRepository        transferMappingsRepository
+	transferCheckEnrichmentRepository transferCheckEnrichmentRepository
 }
 
 const TransferCheckTable = "transfers"
@@ -75,12 +82,16 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 	logger := utils.LoggerFromContext(ctx)
 	exec := usecase.executorFactory.NewExecutor()
 
-	createBody, err := transfer.TransferData.FormatAndValidate()
+	scenarioId, err := usecase.validateOrgHasTransfercheckEnabled(ctx, organizationId)
 	if err != nil {
 		return models.Transfer{}, err
 	}
 
-	scenarioId, err := usecase.validateOrgHasTransfercheckEnabled(ctx, organizationId)
+	createBody, err := transfer.TransferData.FormatAndValidate()
+	if err != nil {
+		return models.Transfer{}, err
+	}
+	createBody, err = usecase.enrichTransfer(ctx, createBody)
 	if err != nil {
 		return models.Transfer{}, err
 	}
@@ -203,6 +214,33 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 	}
 
 	return out, nil
+}
+
+func (usecase *TransferCheckUsecase) enrichTransfer(
+	ctx context.Context,
+	transfer models.TransferData,
+) (models.TransferData, error) {
+	if transfer.SenderIP != "" {
+		country, err := usecase.transferCheckEnrichmentRepository.GetIPCountry(ctx, transfer.SenderIP)
+		if err != nil {
+			return models.TransferData{}, err
+		}
+		transfer.SenderIPCountry = country
+
+		ipType, err := usecase.transferCheckEnrichmentRepository.GetIPType(ctx, transfer.SenderIP)
+		if err != nil {
+			return models.TransferData{}, err
+		}
+		transfer.SenderIPType = ipType
+	}
+	if transfer.SenderBic != "" {
+		riskLevel, err := usecase.transferCheckEnrichmentRepository.GetSenderBicRiskLevel(ctx, transfer.SenderBic)
+		if err != nil {
+			return models.TransferData{}, err
+		}
+		transfer.SenderBicRiskLevel = riskLevel
+	}
+	return transfer, nil
 }
 
 func (usecase *TransferCheckUsecase) UpdateTransfer(
