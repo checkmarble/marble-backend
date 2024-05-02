@@ -8,7 +8,7 @@ type ApiKey struct {
 	Description    string
 	Hash           []byte
 	OrganizationId string
-	PartnerId      string
+	PartnerId      *string
 	Prefix         string
 	Role           Role
 }

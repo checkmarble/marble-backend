@@ -30,7 +30,7 @@ func EnforcePartnerAccess(creds models.Credentials, partnerId string) error {
 	if partnerId == "" {
 		return errors.Wrap(models.ForbiddenError, "API key with a valid partner_id is required")
 	}
-	if creds.PartnerId != partnerId {
+	if creds.PartnerId == nil || *creds.PartnerId != partnerId {
 		return errors.Wrapf(models.ForbiddenError, "credentials does not grant access to partner %s", partnerId)
 	}
 	return nil

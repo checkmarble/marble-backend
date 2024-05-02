@@ -16,7 +16,7 @@ type Identity struct {
 type Credentials struct {
 	ActorIdentity  Identity `json:"actor_identity"`
 	OrganizationId string   `json:"organization_id"`
-	PartnerId      string   `json:"partner_id"`
+	PartnerId      *string  `json:"partner_id,omitempty"`
 	Permissions    []string `json:"permissions"`
 	Role           string   `json:"role"`
 }

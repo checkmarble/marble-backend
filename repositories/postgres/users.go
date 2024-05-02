@@ -13,7 +13,7 @@ import (
 
 func (db *Database) UserByEmail(ctx context.Context, email string) (models.User, error) {
 	query := `
-		SELECT id, email, first_name, last_name, role, organization_id
+		SELECT id, email, first_name, last_name, role, organization_id, partner_id
 		FROM users
 		WHERE email = $1
 		AND deleted_at IS NULL
@@ -29,6 +29,7 @@ func (db *Database) UserByEmail(ctx context.Context, email string) (models.User,
 			&lastName,
 			&user.Role,
 			&organizationID,
+			&user.PartnerId,
 		)
 	if firstName.Valid {
 		user.FirstName = firstName.String

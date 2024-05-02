@@ -76,7 +76,7 @@ func transfersAreDifferent(t1, t2 map[string]any) bool {
 func (usecase *TransferCheckUsecase) CreateTransfer(
 	ctx context.Context,
 	organizationId string,
-	partnerId string,
+	partnerId *string,
 	transfer models.TransferCreateBody,
 ) (models.Transfer, error) {
 	logger := utils.LoggerFromContext(ctx)
@@ -85,6 +85,10 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 	scenarioId, err := usecase.validateOrgHasTransfercheckEnabled(ctx, organizationId)
 	if err != nil {
 		return models.Transfer{}, err
+	}
+
+	if partnerId == nil {
+		return models.Transfer{}, errors.Wrap(models.BadParameterError, "partnerId is required")
 	}
 
 	createBody, err := transfer.TransferData.FormatAndValidate()
@@ -96,7 +100,7 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 		return models.Transfer{}, err
 	}
 
-	if err := usecase.enforceSecurity.CreateTransfer(ctx, organizationId, partnerId); err != nil {
+	if err := usecase.enforceSecurity.CreateTransfer(ctx, organizationId, *partnerId); err != nil {
 		return models.Transfer{}, err
 	}
 
@@ -110,7 +114,7 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 		ctx,
 		exec,
 		organizationId,
-		partnerId,
+		*partnerId,
 		createBody.TransferId,
 	)
 	if err != nil {
@@ -124,7 +128,7 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 			transferMappingId, models.TransferMappingCreateInput{
 				ClientTransferId: createBody.TransferId,
 				OrganizationId:   organizationId,
-				PartnerId:        partnerId,
+				PartnerId:        *partnerId,
 			})
 		if err != nil {
 			return models.Transfer{}, err
@@ -136,7 +140,7 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 		transferMappings = append(transferMappings, transferMapping)
 	}
 
-	objectId := models.ObjectIdWithPartnerIdPrefix(partnerId, createBody.TransferId)
+	objectId := models.ObjectIdWithPartnerIdPrefix(*partnerId, createBody.TransferId)
 	ingestedObjects, err := usecase.lookupPreviousObjects(ctx, nil, organizationId, table, objectId)
 	if err != nil {
 		return models.Transfer{}, err
@@ -344,16 +348,19 @@ func validateTranferUpdate(transfer models.TransferUpdateBody) error {
 func (usecase *TransferCheckUsecase) QueryTransfers(
 	ctx context.Context,
 	organizationId string,
-	partnerId string,
+	partnerId *string,
 	clientTransferId string,
 ) ([]models.Transfer, error) {
 	exec := usecase.executorFactory.NewExecutor()
+	if partnerId == nil {
+		return nil, errors.Wrap(models.BadParameterError, "partnerId is required")
+	}
 
 	transferMappings, err := usecase.transferMappingsRepository.ListTransferMappings(
 		ctx,
 		exec,
 		organizationId,
-		partnerId,
+		*partnerId,
 		clientTransferId)
 	if err != nil {
 		return []models.Transfer{}, err

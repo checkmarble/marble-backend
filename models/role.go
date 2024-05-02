@@ -34,6 +34,8 @@ func (r Role) String() string {
 		return "MARBLE_ADMIN"
 	case TRANSFER_CHECK_API_CLIENT:
 		return "TRANSFER_CHECK_API_CLIENT"
+	case TRANSFER_CHECK_USER:
+		return "TRANSFER_CHECK_USER"
 	default:
 		return "UNKNOWN_ROLE"
 	}
@@ -67,6 +69,8 @@ func RoleFromString(s string) Role {
 		return MARBLE_ADMIN
 	case "TRANSFER_CHECK_API_CLIENT":
 		return TRANSFER_CHECK_API_CLIENT
+	case "TRANSFER_CHECK_USER":
+		return TRANSFER_CHECK_USER
 	}
 	return NO_ROLE
 }
