@@ -26,14 +26,18 @@ const TABLE_APIKEYS = "api_keys"
 var ApiKeyFields = utils.ColumnList[DBApiKey]()
 
 func AdaptApikey(db DBApiKey) (models.ApiKey, error) {
-	return models.ApiKey{
+	out := models.ApiKey{
 		Id:             db.Id,
 		CreatedAt:      db.CreatedAt,
 		Description:    db.Description,
 		Hash:           db.Hash,
 		OrganizationId: db.OrganizationId,
-		PartnerId:      db.PartnerId.String,
 		Prefix:         db.Prefix,
 		Role:           models.Role(db.Role),
-	}, nil
+	}
+	if db.PartnerId.Valid {
+		out.PartnerId = &db.PartnerId.String
+	}
+
+	return out, nil
 }

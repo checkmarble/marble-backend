@@ -11,6 +11,7 @@ type DBUserResult struct {
 	Email          string             `db:"email"`
 	Role           int                `db:"role"`
 	OrganizationId *string            `db:"organization_id"`
+	PartnerId      *string            `db:"partner_id"`
 	FirstName      pgtype.Text        `db:"first_name"`
 	LastName       pgtype.Text        `db:"last_name"`
 	DeletedAt      pgtype.Timestamptz `db:"deleted_at"`
@@ -22,9 +23,10 @@ var UserFields = utils.ColumnList[DBUserResult]()
 
 func AdaptUser(db DBUserResult) (models.User, error) {
 	user := models.User{
-		UserId: models.UserId(db.Id),
-		Email:  db.Email,
-		Role:   models.Role(db.Role),
+		UserId:    models.UserId(db.Id),
+		Email:     db.Email,
+		Role:      models.Role(db.Role),
+		PartnerId: db.PartnerId,
 	}
 	if db.OrganizationId != nil {
 		user.OrganizationId = *db.OrganizationId
