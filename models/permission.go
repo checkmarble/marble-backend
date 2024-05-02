@@ -27,7 +27,8 @@ const (
 	CASE_READ_WRITE
 	INBOX_EDITOR
 	TRANSFER_READ
-	TRANSFER_WRITE
+	TRANSFER_UPDATE
+	TRANSFER_CREATE
 )
 
 func (r Permission) String() string {
@@ -56,6 +57,7 @@ func (r Permission) String() string {
 		"CASE_READ_WRITE",
 		"INBOX_EDITOR",
 		"TRANSFER_READ",
-		"TRANSFER_WRITE",
+		"TRANSFER_UPDATE",
+		"TRANSFER_CREATE",
 	}[r]
 }

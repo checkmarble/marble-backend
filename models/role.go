@@ -13,6 +13,7 @@ const (
 	API_CLIENT
 	MARBLE_ADMIN
 	TRANSFER_CHECK_API_CLIENT
+	TRANSFER_CHECK_USER
 )
 
 func (r Role) String() string {

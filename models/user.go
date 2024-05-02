@@ -9,6 +9,7 @@ type User struct {
 	Email          string
 	Role           Role
 	OrganizationId string
+	PartnerId      *string
 	FirstName      string
 	LastName       string
 	DeletedAt      *time.Time
@@ -18,6 +19,7 @@ type CreateUser struct {
 	Email          string
 	Role           Role
 	OrganizationId string
+	PartnerId      *string
 	FirstName      string
 	LastName       string
 }
