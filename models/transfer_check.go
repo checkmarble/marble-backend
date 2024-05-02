@@ -301,6 +301,12 @@ func (t TransferDataCreateBody) FormatAndValidate() (TransferData, error) {
 		errs["value"] = "value must be positive"
 	}
 
+	if t.Timezone == "" {
+		out.Timezone = "Europe/Paris"
+	} else if t.Timezone != "Europe/Paris" {
+		errs["timezone"] = "timezone must be Europe/Paris"
+	}
+
 	// FieldValidationError implements the error interface, but I created a non-nil map to fill it
 	// so we only want to return it if any errors were added
 	if len(errs) > 0 {
