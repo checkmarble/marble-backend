@@ -1,5 +1,7 @@
 package models
 
+import "slices"
+
 // ///////////////////////////////
 // Data Type
 // ///////////////////////////////
@@ -135,6 +137,7 @@ func ColumnNames(table Table) []string {
 		columnNames[i] = fieldName
 		i++
 	}
+	slices.Sort(columnNames)
 	return columnNames
 }
 
