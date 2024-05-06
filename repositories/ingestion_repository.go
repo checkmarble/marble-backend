@@ -162,20 +162,18 @@ func (repo *IngestionRepositoryImpl) batchInsertPayloadsAndEnumValues(ctx contex
 	columnNames := models.ColumnNames(table)
 	query := NewQueryBuilder().Insert(tableNameWithSchema(exec, table.Name))
 
-	enumValues := repo.buildEnumValuesWithEnumFields(table)
+	enumValues := buildEnumValuesWithEnumFields(table)
 
 	for _, payload := range payloads {
-		repo.collectEnumValues(payload, enumValues)
+		collectEnumValues(payload, enumValues)
 
-		insertValues, err := repo.generateInsertValues(payload, columnNames)
-		if err != nil {
-			return fmt.Errorf("generateInsertValues error: %w", err)
-		}
+		insertValues := generateInsertValues(payload, columnNames)
+		// Add UUID to the insert values for the "id" field
 		insertValues = append(insertValues, uuid.NewString())
 		query = query.Values(insertValues...)
 	}
 
-	err := repo.batchInsertEnumValues(ctx, exec, enumValues, table)
+	err := batchInsertEnumValues(ctx, exec, enumValues, table)
 	if err != nil {
 		return fmt.Errorf("batchInsertEnumValues error: %w", err)
 	}
@@ -193,7 +191,7 @@ func (repo *IngestionRepositoryImpl) batchInsertPayloadsAndEnumValues(ctx contex
 
 type EnumValues map[string]map[any]bool
 
-func (repo *IngestionRepositoryImpl) buildEnumValuesWithEnumFields(table models.Table) EnumValues {
+func buildEnumValuesWithEnumFields(table models.Table) EnumValues {
 	enumValues := make(EnumValues)
 	for fieldName := range table.Fields {
 		dataType := table.Fields[fieldName].DataType
@@ -204,18 +202,8 @@ func (repo *IngestionRepositoryImpl) buildEnumValuesWithEnumFields(table models.
 	return enumValues
 }
 
-func (repo *IngestionRepositoryImpl) generateInsertValues(payload models.ClientObject, columnNames []string) ([]interface{}, error) {
-	insertValues := make([]interface{}, len(columnNames))
-	i := 0
-	for _, columnName := range columnNames {
-		fieldName := columnName
-		insertValues[i] = payload.Data[fieldName]
-		i++
-	}
-	return insertValues, nil
-}
-
-func (repo *IngestionRepositoryImpl) collectEnumValues(payload models.ClientObject, enumValues EnumValues) {
+// mutates enumValues
+func collectEnumValues(payload models.ClientObject, enumValues EnumValues) {
 	for fieldName := range enumValues {
 		value := payload.Data[fieldName]
 		if value != nil && value != "" {
@@ -224,8 +212,16 @@ func (repo *IngestionRepositoryImpl) collectEnumValues(payload models.ClientObje
 	}
 }
 
+func generateInsertValues(payload models.ClientObject, columnNames []string) []any {
+	insertValues := make([]any, len(columnNames))
+	for i, fieldName := range columnNames {
+		insertValues[i] = payload.Data[fieldName]
+	}
+	return insertValues
+}
+
 // This has to be done in 2 queries because there cannot be multiple ON CONFLICT clauses per query
-func (repo *IngestionRepositoryImpl) batchInsertEnumValues(ctx context.Context, exec Executor, enumValues EnumValues, table models.Table) error {
+func batchInsertEnumValues(ctx context.Context, exec Executor, enumValues EnumValues, table models.Table) error {
 	textQuery := NewQueryBuilder().
 		Insert("data_model_enum_values").
 		Columns("field_id", "text_value").
