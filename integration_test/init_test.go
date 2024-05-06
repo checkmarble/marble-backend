@@ -50,8 +50,8 @@ func TestMain(m *testing.M) {
 
 	// pulls an image, creates a container based on it and runs it
 	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: "postgres",
-		Tag:        "15",
+		Repository: "europe-west1-docker.pkg.dev/marble-infra/marble/postgresql-db", // custom image of postgres15 with pg_cron extension added
+		Tag:        "latest",
 		Env: []string{
 			fmt.Sprintf("POSTGRES_PASSWORD=%s", testPassword),
 			fmt.Sprintf("POSTGRES_USER=%s", testUser),
