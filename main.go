@@ -16,7 +16,6 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/getsentry/sentry-go"
 	"github.com/segmentio/analytics-go/v3"
-	"go.opentelemetry.io/otel/trace"
 
 	"github.com/checkmarble/marble-backend/api"
 	"github.com/checkmarble/marble-backend/infra"
@@ -35,12 +34,12 @@ type dependencies struct {
 	Authentication      *api.Authentication
 	TokenHandler        *api.TokenHandler
 	SegmentClient       analytics.Client
-	OpenTelemetryTracer trace.Tracer
+	TelemetryRessources tracing.TelemetryRessources
 }
 
 func initDependencies(conf AppConfiguration, signingKey *rsa.PrivateKey) (dependencies, error) {
-	tracer, err := tracing.Init(tracing.Configuration{
-		ApplicationName: "marble-backend",
+	telemetryRessources, err := tracing.Init(tracing.Configuration{
+		ApplicationName: conf.appName,
 		Enabled:         conf.enableGcpTracing,
 		ProjectID:       conf.gcpProject,
 	})
@@ -69,7 +68,7 @@ func initDependencies(conf AppConfiguration, signingKey *rsa.PrivateKey) (depend
 
 	return dependencies{
 		Authentication:      api.NewAuthentication(tokenValidator),
-		OpenTelemetryTracer: tracer,
+		TelemetryRessources: telemetryRessources,
 		SegmentClient:       segmentClient,
 		TokenHandler:        api.NewTokenHandler(tokenGenerator),
 	}, nil
@@ -131,6 +130,7 @@ func runServer(ctx context.Context, appConfig AppConfiguration) {
 }
 
 type AppConfiguration struct {
+	appName             string
 	env                 string
 	port                string
 	gcpProject          string
@@ -146,6 +146,7 @@ type AppConfiguration struct {
 
 func main() {
 	appConfig := AppConfiguration{
+		appName:             "marble-backend",
 		env:                 utils.GetEnv("ENV", "development"),
 		port:                utils.GetRequiredEnv[string]("PORT"),
 		gcpProject:          os.Getenv("GOOGLE_CLOUD_PROJECT"),
