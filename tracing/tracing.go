@@ -8,7 +8,6 @@ import (
 	gcppropagator "github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator"
 
 	"go.opentelemetry.io/contrib/detectors/gcp"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -23,14 +22,24 @@ type Configuration struct {
 	ProjectID       string
 }
 
-func Init(configuration Configuration) (trace.Tracer, error) {
+type TelemetryRessources struct {
+	TracerProvider    trace.TracerProvider
+	Tracer            trace.Tracer
+	TextMapPropagator propagation.TextMapPropagator
+}
+
+func Init(configuration Configuration) (TelemetryRessources, error) {
 	if !configuration.Enabled {
-		return &noop.Tracer{}, nil
+		return TelemetryRessources{
+			TracerProvider:    noop.NewTracerProvider(),
+			Tracer:            &noop.Tracer{},
+			TextMapPropagator: nil,
+		}, nil
 	}
 
 	exporter, err := texporter.New(texporter.WithProjectID(configuration.ProjectID))
 	if err != nil {
-		return nil, fmt.Errorf("texporter.New error: %v", err)
+		return TelemetryRessources{}, fmt.Errorf("texporter.New error: %v", err)
 	}
 
 	res, err := resource.New(context.Background(),
@@ -41,7 +50,7 @@ func Init(configuration Configuration) (trace.Tracer, error) {
 		),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("resource.New error: %w", err)
+		return TelemetryRessources{}, fmt.Errorf("resource.New error: %w", err)
 	}
 
 	tp := sdktrace.NewTracerProvider(
@@ -49,15 +58,14 @@ func Init(configuration Configuration) (trace.Tracer, error) {
 		sdktrace.WithResource(res),
 	)
 
-	otel.SetTextMapPropagator(
-		propagation.NewCompositeTextMapPropagator(
+	tracer := tp.Tracer(configuration.ApplicationName)
+	return TelemetryRessources{
+		TracerProvider: tp,
+		Tracer:         tracer,
+		TextMapPropagator: propagation.NewCompositeTextMapPropagator(
 			gcppropagator.CloudTraceFormatPropagator{},
 			propagation.TraceContext{},
 			propagation.Baggage{},
 		),
-	)
-	otel.SetTracerProvider(tp)
-
-	tracer := tp.Tracer(configuration.ApplicationName)
-	return tracer, nil
+	}, nil
 }
