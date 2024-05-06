@@ -3,7 +3,7 @@ version: "3.8"
 services:
   db:
     container_name: postgres
-    image: postgres:15
+    image: europe-west1-docker.pkg.dev/marble-infra/marble/postgresql-db:latest # custom image of postgres 15 with pg_cron extension added
     restart: always
     environment:
       POSTGRES_USER: postgres
