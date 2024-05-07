@@ -39,8 +39,9 @@ func (suite *ScenarioUsecaseTestSuite) SetupTest() {
 	suite.organizationId = "25ab6323-1657-4a52-923a-ef6983fe4532"
 	suite.scenarioId = "c5968ff7-6142-4623-a6b3-1539f345e5fa"
 	suite.scenario = models.Scenario{
-		Id:             suite.scenarioId,
-		OrganizationId: suite.organizationId,
+		Id:                         suite.scenarioId,
+		OrganizationId:             suite.organizationId,
+		DecisionToCaseWorkflowType: models.WorkflowDisabled,
 	}
 	suite.ctx = context.Background()
 }
