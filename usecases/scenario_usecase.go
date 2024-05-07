@@ -18,10 +18,18 @@ import (
 type ScenarioUsecaseRepository interface {
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
 	ListScenariosOfOrganization(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.Scenario, error)
-	CreateScenario(ctx context.Context, exec repositories.Executor, organizationId string,
-		scenario models.CreateScenarioInput, newScenarioId string) error
-	UpdateScenario(ctx context.Context, exec repositories.Executor,
-		scenario models.UpdateScenarioInput) error
+	CreateScenario(
+		ctx context.Context,
+		exec repositories.Executor,
+		organizationId string,
+		scenario models.CreateScenarioInput,
+		newScenarioId string,
+	) error
+	UpdateScenario(
+		ctx context.Context,
+		exec repositories.Executor,
+		scenario models.UpdateScenarioInput,
+	) error
 }
 
 type ScenarioUsecase struct {
@@ -76,6 +84,11 @@ func (usecase *ScenarioUsecase) UpdateScenario(
 				fmt.Sprintf("Invalid input outcome: %s", outcome))
 		}
 	}
+	workflowType := scenarioInput.DecisionToCaseWorkflowType
+	if workflowType != nil && !slices.Contains(models.ValidWorkflowTypes, *workflowType) {
+		return models.Scenario{}, errors.Wrapf(models.BadParameterError,
+			"Invalid input workflow type: %s", *workflowType)
+	}
 
 	return executor_factory.TransactionReturnValue(
 		ctx,
@@ -90,8 +103,10 @@ func (usecase *ScenarioUsecase) UpdateScenario(
 			}
 			// the DecisionToCaseInboxId and DecisionToCaseOutcomes settings are of higher criticity (they
 			// influence how decisions are treated) so require a higher permission to update
-			if scenarioInput.DecisionToCaseInboxId.Valid ||
-				scenarioInput.DecisionToCaseOutcomes != nil {
+			changeWorkflowSettings := scenarioInput.DecisionToCaseInboxId.Valid ||
+				scenarioInput.DecisionToCaseOutcomes != nil ||
+				scenarioInput.DecisionToCaseWorkflowType != nil
+			if changeWorkflowSettings {
 				if err := usecase.enforceSecurity.PublishScenario(scenario); err != nil {
 					return models.Scenario{}, err
 				}

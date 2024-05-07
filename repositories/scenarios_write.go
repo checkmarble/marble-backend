@@ -62,6 +62,10 @@ func (repo *MarbleDbRepository) UpdateScenario(ctx context.Context, exec Executo
 		sql = sql.Set("decision_to_case_outcomes", scenario.DecisionToCaseOutcomes)
 		countApply++
 	}
+	if scenario.DecisionToCaseWorkflowType != nil {
+		sql = sql.Set("decision_to_case_workflow_type", scenario.DecisionToCaseWorkflowType)
+		countApply++
+	}
 	if scenario.Description != nil {
 		sql = sql.Set("description", scenario.Description)
 		countApply++
