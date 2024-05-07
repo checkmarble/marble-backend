@@ -10,21 +10,23 @@ import (
 
 // Read DTO
 type ScenarioDto struct {
-	Id                     string    `json:"id"`
-	CreatedAt              time.Time `json:"createdAt"`
-	DecisionToCaseOutcomes []string  `json:"decision_to_case_outcomes"`
-	DecisionToCaseInboxId  string    `json:"decision_to_case_inbox_id"`
-	Description            string    `json:"description"`
-	LiveVersionID          *string   `json:"liveVersionId,omitempty"`
-	Name                   string    `json:"name"`
-	OrganizationId         string    `json:"organization_id"`
-	TriggerObjectType      string    `json:"triggerObjectType"`
+	Id                         string      `json:"id"`
+	CreatedAt                  time.Time   `json:"createdAt"`
+	DecisionToCaseOutcomes     []string    `json:"decision_to_case_outcomes"`
+	DecisionToCaseInboxId      null.String `json:"decision_to_case_inbox_id"`
+	DecisionToCaseWorkflowType null.String `json:"decision_to_case_workflow_type"`
+	Description                string      `json:"description"`
+	LiveVersionID              *string     `json:"liveVersionId,omitempty"`
+	Name                       string      `json:"name"`
+	OrganizationId             string      `json:"organization_id"`
+	TriggerObjectType          string      `json:"triggerObjectType"`
 }
 
 func AdaptScenarioDto(scenario models.Scenario) ScenarioDto {
 	out := ScenarioDto{
-		Id:        scenario.Id,
-		CreatedAt: scenario.CreatedAt,
+		Id:                    scenario.Id,
+		CreatedAt:             scenario.CreatedAt,
+		DecisionToCaseInboxId: null.StringFromPtr(scenario.DecisionToCaseInboxId),
 		DecisionToCaseOutcomes: pure_utils.Map(scenario.DecisionToCaseOutcomes,
 			func(o models.Outcome) string { return o.String() }),
 		Description:       scenario.Description,
@@ -33,9 +35,11 @@ func AdaptScenarioDto(scenario models.Scenario) ScenarioDto {
 		OrganizationId:    scenario.OrganizationId,
 		TriggerObjectType: scenario.TriggerObjectType,
 	}
-	if scenario.DecisionToCaseInboxId != nil {
-		out.DecisionToCaseInboxId = *scenario.DecisionToCaseInboxId
+	if scenario.DecisionToCaseWorkflowType != nil {
+		out.DecisionToCaseWorkflowType = null.StringFrom(
+			string(*scenario.DecisionToCaseWorkflowType))
 	}
+
 	return out
 }
 
@@ -56,10 +60,11 @@ func AdaptCreateScenarioInput(input CreateScenarioBody) models.CreateScenarioInp
 
 // Update scenario DTO
 type UpdateScenarioBody struct {
-	DecisionToCaseOutcomes []string    `json:"decision_to_case_outcomes"`
-	DecisionToCaseInboxId  null.String `json:"decision_to_case_inbox_id"`
-	Description            *string     `json:"description"`
-	Name                   *string     `json:"name"`
+	DecisionToCaseOutcomes     []string    `json:"decision_to_case_outcomes"`
+	DecisionToCaseInboxId      null.String `json:"decision_to_case_inbox_id"`
+	DecisionToCaseWorkflowType *string     `json:"decision_to_case_workflow_type"`
+	Description                *string     `json:"description"`
+	Name                       *string     `json:"name"`
 }
 
 func AdaptUpdateScenarioInput(scenarioId string, input UpdateScenarioBody) models.UpdateScenarioInput {
@@ -71,6 +76,10 @@ func AdaptUpdateScenarioInput(scenarioId string, input UpdateScenarioBody) model
 	}
 	if input.DecisionToCaseOutcomes != nil {
 		parsedInput.DecisionToCaseOutcomes = pure_utils.Map(input.DecisionToCaseOutcomes, models.OutcomeFrom)
+	}
+	if input.DecisionToCaseWorkflowType != nil {
+		val := models.WorkflowType(*input.DecisionToCaseWorkflowType)
+		parsedInput.DecisionToCaseWorkflowType = &val
 	}
 	return parsedInput
 }

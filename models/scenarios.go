@@ -6,16 +6,29 @@ import (
 	"github.com/guregu/null/v5"
 )
 
+type WorkflowType string
+
+const (
+	WorkflowCreateCase          WorkflowType = "CREATE_CASE"
+	WorkflowAddToCaseIfPossible WorkflowType = "ADD_TO_CASE_IF_POSSIBLE"
+)
+
+var ValidWorkflowTypes = []WorkflowType{
+	WorkflowCreateCase,
+	WorkflowAddToCaseIfPossible,
+}
+
 type Scenario struct {
-	Id                     string
-	CreatedAt              time.Time
-	DecisionToCaseOutcomes []Outcome
-	DecisionToCaseInboxId  *string
-	Description            string
-	LiveVersionID          *string
-	Name                   string
-	OrganizationId         string
-	TriggerObjectType      string
+	Id                         string
+	CreatedAt                  time.Time
+	DecisionToCaseOutcomes     []Outcome
+	DecisionToCaseInboxId      *string
+	DecisionToCaseWorkflowType *WorkflowType
+	Description                string
+	LiveVersionID              *string
+	Name                       string
+	OrganizationId             string
+	TriggerObjectType          string
 }
 
 type CreateScenarioInput struct {
@@ -25,11 +38,12 @@ type CreateScenarioInput struct {
 }
 
 type UpdateScenarioInput struct {
-	Id                     string
-	DecisionToCaseOutcomes []Outcome
-	DecisionToCaseInboxId  null.String
-	Description            *string
-	Name                   *string
+	Id                         string
+	DecisionToCaseOutcomes     []Outcome
+	DecisionToCaseInboxId      null.String
+	DecisionToCaseWorkflowType *WorkflowType
+	Description                *string
+	Name                       *string
 }
 
 type ListAllScenariosFilters struct {
