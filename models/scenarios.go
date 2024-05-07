@@ -9,11 +9,13 @@ import (
 type WorkflowType string
 
 const (
+	WorkflowDisabled            WorkflowType = "DISABLED"
 	WorkflowCreateCase          WorkflowType = "CREATE_CASE"
 	WorkflowAddToCaseIfPossible WorkflowType = "ADD_TO_CASE_IF_POSSIBLE"
 )
 
 var ValidWorkflowTypes = []WorkflowType{
+	WorkflowDisabled,
 	WorkflowCreateCase,
 	WorkflowAddToCaseIfPossible,
 }
@@ -23,7 +25,7 @@ type Scenario struct {
 	CreatedAt                  time.Time
 	DecisionToCaseOutcomes     []Outcome
 	DecisionToCaseInboxId      *string
-	DecisionToCaseWorkflowType *WorkflowType
+	DecisionToCaseWorkflowType WorkflowType
 	Description                string
 	LiveVersionID              *string
 	Name                       string

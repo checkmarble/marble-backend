@@ -14,7 +14,7 @@ type ScenarioDto struct {
 	CreatedAt                  time.Time   `json:"createdAt"`
 	DecisionToCaseOutcomes     []string    `json:"decision_to_case_outcomes"`
 	DecisionToCaseInboxId      null.String `json:"decision_to_case_inbox_id"`
-	DecisionToCaseWorkflowType null.String `json:"decision_to_case_workflow_type"`
+	DecisionToCaseWorkflowType string      `json:"decision_to_case_workflow_type"`
 	Description                string      `json:"description"`
 	LiveVersionID              *string     `json:"liveVersionId,omitempty"`
 	Name                       string      `json:"name"`
@@ -23,24 +23,19 @@ type ScenarioDto struct {
 }
 
 func AdaptScenarioDto(scenario models.Scenario) ScenarioDto {
-	out := ScenarioDto{
+	return ScenarioDto{
 		Id:                    scenario.Id,
 		CreatedAt:             scenario.CreatedAt,
 		DecisionToCaseInboxId: null.StringFromPtr(scenario.DecisionToCaseInboxId),
 		DecisionToCaseOutcomes: pure_utils.Map(scenario.DecisionToCaseOutcomes,
 			func(o models.Outcome) string { return o.String() }),
-		Description:       scenario.Description,
-		LiveVersionID:     scenario.LiveVersionID,
-		Name:              scenario.Name,
-		OrganizationId:    scenario.OrganizationId,
-		TriggerObjectType: scenario.TriggerObjectType,
+		DecisionToCaseWorkflowType: string(scenario.DecisionToCaseWorkflowType),
+		Description:                scenario.Description,
+		LiveVersionID:              scenario.LiveVersionID,
+		Name:                       scenario.Name,
+		OrganizationId:             scenario.OrganizationId,
+		TriggerObjectType:          scenario.TriggerObjectType,
 	}
-	if scenario.DecisionToCaseWorkflowType != nil {
-		out.DecisionToCaseWorkflowType = null.StringFrom(
-			string(*scenario.DecisionToCaseWorkflowType))
-	}
-
-	return out
 }
 
 // Create scenario DTO

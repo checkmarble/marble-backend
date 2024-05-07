@@ -15,7 +15,7 @@ type DBScenario struct {
 	CreatedAt                  time.Time   `db:"created_at"`
 	DecisionToCaseInboxId      pgtype.Text `db:"decision_to_case_inbox_id"`
 	DecisionToCaseOutcomes     []string    `db:"decision_to_case_outcomes"`
-	DecisionToCaseWorkflowType pgtype.Text `db:"decision_to_case_workflow_type"`
+	DecisionToCaseWorkflowType string      `db:"decision_to_case_workflow_type"`
 	DeletedAt                  pgtype.Time `db:"deleted_at"`
 	Description                string      `db:"description"`
 	LiveVersionID              pgtype.Text `db:"live_scenario_iteration_id"`
@@ -34,17 +34,14 @@ func AdaptScenario(dto DBScenario) (models.Scenario, error) {
 		CreatedAt: dto.CreatedAt,
 		DecisionToCaseOutcomes: pure_utils.Map(dto.DecisionToCaseOutcomes,
 			func(s string) models.Outcome { return models.OutcomeFrom(s) }),
-		Description:       dto.Description,
-		Name:              dto.Name,
-		OrganizationId:    dto.OrganizationId,
-		TriggerObjectType: dto.TriggerObjectType,
+		DecisionToCaseWorkflowType: models.WorkflowType(dto.DecisionToCaseWorkflowType),
+		Description:                dto.Description,
+		Name:                       dto.Name,
+		OrganizationId:             dto.OrganizationId,
+		TriggerObjectType:          dto.TriggerObjectType,
 	}
 	if dto.DecisionToCaseInboxId.Valid {
 		scenario.DecisionToCaseInboxId = &dto.DecisionToCaseInboxId.String
-	}
-	if dto.DecisionToCaseWorkflowType.Valid {
-		val := models.WorkflowType(dto.DecisionToCaseWorkflowType.String)
-		scenario.DecisionToCaseWorkflowType = &val
 	}
 	if dto.LiveVersionID.Valid {
 		scenario.LiveVersionID = &dto.LiveVersionID.String
