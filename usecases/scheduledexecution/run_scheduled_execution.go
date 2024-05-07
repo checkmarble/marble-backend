@@ -10,6 +10,8 @@ import (
 
 	"github.com/adhocore/gronx"
 	"github.com/cockroachdb/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -137,8 +139,10 @@ func (usecase *RunScheduledExecution) ExecuteAllScheduledScenarios(ctx context.C
 	return executionErr
 }
 
-func (usecase *RunScheduledExecution) ExecuteScheduledScenario(ctx context.Context,
-	logger *slog.Logger, scheduledExecution models.ScheduledExecution,
+func (usecase *RunScheduledExecution) ExecuteScheduledScenario(
+	ctx context.Context,
+	logger *slog.Logger,
+	scheduledExecution models.ScheduledExecution,
 ) error {
 	exec := usecase.ExecutorFactory.NewExecutor()
 	logger.InfoContext(ctx, fmt.Sprintf("Start execution %s", scheduledExecution.Id))
@@ -150,29 +154,41 @@ func (usecase *RunScheduledExecution) ExecuteScheduledScenario(ctx context.Conte
 		return err
 	}
 
-	scheduledExecution, err := executor_factory.TransactionReturnValue(ctx,
-		usecase.TransactionFactory, func(tx repositories.Executor) (models.ScheduledExecution, error) {
-			numberOfCreatedDecisions, err := usecase.executeScheduledScenario(ctx,
-				scheduledExecution.Id, scheduledExecution.Scenario)
+	scheduledExecution, err := executor_factory.TransactionReturnValue(
+		ctx,
+		usecase.TransactionFactory,
+		func(tx repositories.Executor) (models.ScheduledExecution, error) {
+			numberOfCreatedDecisions, err := usecase.executeScheduledScenario(
+				ctx,
+				scheduledExecution.Id,
+				scheduledExecution.Scenario,
+			)
 			if err != nil {
 				return scheduledExecution, err
 			}
-			if err := usecase.Repository.UpdateScheduledExecution(ctx, tx, models.UpdateScheduledExecutionInput{
-				Id:                       scheduledExecution.Id,
-				Status:                   utils.PtrTo(models.ScheduledExecutionSuccess, nil),
-				NumberOfCreatedDecisions: &numberOfCreatedDecisions,
-			}); err != nil {
+			err = usecase.Repository.UpdateScheduledExecution(
+				ctx,
+				tx,
+				models.UpdateScheduledExecutionInput{
+					Id:                       scheduledExecution.Id,
+					Status:                   utils.PtrTo(models.ScheduledExecutionSuccess, nil),
+					NumberOfCreatedDecisions: &numberOfCreatedDecisions,
+				},
+			)
+			if err != nil {
 				return scheduledExecution, err
 			}
 			return usecase.Repository.GetScheduledExecution(ctx, tx, scheduledExecution.Id)
 		})
 	if err != nil {
-		if err := usecase.Repository.UpdateScheduledExecution(ctx, exec, models.UpdateScheduledExecutionInput{
+		err2 := usecase.Repository.UpdateScheduledExecution(ctx, exec, models.UpdateScheduledExecutionInput{
 			Id:     scheduledExecution.Id,
 			Status: utils.PtrTo(models.ScheduledExecutionFailure, nil),
-		}); err != nil {
-			return err
+		})
+		if err2 != nil {
+			return errors.Join(err, err2)
 		}
+
 		return err
 	}
 
@@ -278,11 +294,20 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 		return 0, err
 	}
 
+	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	err = usecase.TransactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
 		// execute scenario for each object
-		for _, object := range objects {
-			scenarioExecution, err := evaluate_scenario.EvalScenario(
+		for i, object := range objects {
+			ctxWithSpan, span := tracer.Start(
 				ctx,
+				"Batch RunScheduledExecution.executeScheduledScenario",
+				trace.WithAttributes(
+					attribute.String("scenario_id", scenario.Id),
+					attribute.Int64("object_index", int64(i)),
+				))
+			defer span.End()
+			scenarioExecution, err := evaluate_scenario.EvalScenario(
+				ctxWithSpan,
 				evaluate_scenario.ScenarioEvaluationParameters{
 					Scenario:     scenario,
 					ClientObject: object,
@@ -298,8 +323,9 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 			)
 
 			if errors.Is(err, models.ErrScenarioTriggerConditionAndTriggerObjectMismatch) {
-				logger := utils.LoggerFromContext(ctx)
-				logger.InfoContext(ctx, fmt.Sprintf("Trigger condition and trigger object mismatch: %s",
+				logger := utils.LoggerFromContext(ctxWithSpan)
+				logger.InfoContext(ctxWithSpan, fmt.Sprintf(
+					"Trigger condition and trigger object mismatch: %s",
 					err.Error()), "scenarioId", scenario.Id, "triggerObjectType",
 					scenario.TriggerObjectType, "object", object)
 				continue
@@ -309,7 +335,7 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 
 			decision := models.AdaptScenarExecToDecision(scenarioExecution, object, &scheduledExecutionId)
 			err = usecase.DecisionRepository.StoreDecision(
-				ctx,
+				ctxWithSpan,
 				tx,
 				decision,
 				scenario.OrganizationId,
@@ -319,10 +345,11 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 				return fmt.Errorf("error storing decision: %w", err)
 			}
 
-			if err = usecase.createCaseIfApplicable(ctx, tx, scenario, decision); err != nil {
+			if err = usecase.createCaseIfApplicable(ctxWithSpan, tx, scenario, decision); err != nil {
 				return err
 			}
 			numberOfCreatedDecisions += 1
+			span.End()
 		}
 		return nil
 	})

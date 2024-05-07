@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/adhocore/gronx/pkg/tasker"
+	"github.com/checkmarble/marble-backend/tracing"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -15,7 +16,7 @@ func errToReturnCode(err error) int {
 	return 0
 }
 
-func RunScheduler(ctx context.Context, usecases usecases.Usecases) {
+func RunScheduler(ctx context.Context, usecases usecases.Usecases, config tracing.Configuration) {
 	taskr := tasker.New(tasker.Option{
 		Verbose: true,
 		Tz:      "Europe/Paris",
@@ -32,7 +33,7 @@ func RunScheduler(ctx context.Context, usecases usecases.Usecases) {
 	taskr.Task("* * * * *", func(ctx context.Context) (int, error) {
 		logger := utils.LoggerFromContext(ctx).With("job", "execute_all_scheduled_scenarios")
 		ctx = utils.StoreLoggerInContext(ctx, logger)
-		err := ExecuteAllScheduledScenarios(ctx, usecases)
+		err := ExecuteAllScheduledScenarios(ctx, usecases, config)
 		return errToReturnCode(err), err
 	})
 

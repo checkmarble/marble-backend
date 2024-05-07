@@ -38,15 +38,6 @@ type dependencies struct {
 }
 
 func initDependencies(conf AppConfiguration, signingKey *rsa.PrivateKey) (dependencies, error) {
-	telemetryRessources, err := tracing.Init(tracing.Configuration{
-		ApplicationName: conf.appName,
-		Enabled:         conf.enableGcpTracing,
-		ProjectID:       conf.gcpProject,
-	})
-	if err != nil {
-		return dependencies{}, fmt.Errorf("tracing.Init error: %w", err)
-	}
-
 	database, err := postgres.New(postgres.Configuration{
 		Host:                conf.pgConfig.Hostname,
 		Port:                conf.pgConfig.Port,
@@ -68,13 +59,13 @@ func initDependencies(conf AppConfiguration, signingKey *rsa.PrivateKey) (depend
 
 	return dependencies{
 		Authentication:      api.NewAuthentication(tokenValidator),
-		TelemetryRessources: telemetryRessources,
 		SegmentClient:       segmentClient,
+		TelemetryRessources: tracing.NoopTelemetry(),
 		TokenHandler:        api.NewTokenHandler(tokenGenerator),
 	}, nil
 }
 
-func runServer(ctx context.Context, appConfig AppConfiguration) {
+func runServer(ctx context.Context, appConfig AppConfiguration, tracingConfig tracing.Configuration) {
 	marbleJwtSigningKey := infra.ParseOrGenerateSigningKey(ctx, appConfig.config.JwtSigningKey)
 
 	uc := NewUseCases(ctx, appConfig, marbleJwtSigningKey)
@@ -101,6 +92,11 @@ func runServer(ctx context.Context, appConfig AppConfiguration) {
 	}
 
 	deps, err := initDependencies(appConfig, marbleJwtSigningKey)
+	if err != nil {
+		panic(err)
+	}
+
+	deps.TelemetryRessources, err = tracing.Init(tracingConfig)
 	if err != nil {
 		panic(err)
 	}
@@ -213,6 +209,12 @@ func main() {
 	setupSentry(appConfig)
 	defer sentry.Flush(3 * time.Second)
 
+	tracingConfig := tracing.Configuration{
+		ApplicationName: appConfig.appName,
+		Enabled:         appConfig.enableGcpTracing,
+		ProjectID:       appConfig.gcpProject,
+	}
+
 	if *shouldRunMigrations {
 		migrater := repositories.NewMigrater(appConfig.pgConfig)
 		if err := migrater.Run(appContext); err != nil {
@@ -224,7 +226,7 @@ func main() {
 	}
 
 	if *shouldRunServer {
-		runServer(appContext, appConfig)
+		runServer(appContext, appConfig, tracingConfig)
 	}
 
 	if *shouldRunScheduleScenarios {
@@ -239,7 +241,7 @@ func main() {
 
 	if *shouldRunExecuteScheduledScenarios {
 		usecases := NewUseCases(appContext, appConfig, nil)
-		err := jobs.ExecuteAllScheduledScenarios(appContext, usecases)
+		err := jobs.ExecuteAllScheduledScenarios(appContext, usecases, tracingConfig)
 		if err != nil {
 			slog.Error("jobs.ExecuteAllScheduledScenarios failed", slog.String("error", err.Error()))
 			os.Exit(1)
@@ -258,7 +260,7 @@ func main() {
 	}
 
 	if *shouldRunScheduler {
-		jobs.RunScheduler(appContext, NewUseCases(appContext, appConfig, nil))
+		jobs.RunScheduler(appContext, NewUseCases(appContext, appConfig, nil), tracingConfig)
 	}
 }
 
