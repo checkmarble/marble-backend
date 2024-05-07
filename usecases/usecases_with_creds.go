@@ -363,3 +363,12 @@ func (usecases *UsecasesWithCreds) NewTransferCheckUsecase() TransferCheckUsecas
 		transferCheckEnrichmentRepository: repositories.NewTransferCheckEnrichmentRepository(),
 	}
 }
+
+func (usecases *UsecasesWithCreds) NewPartnerUsecase() PartnerUsecase {
+	return PartnerUsecase{
+		enforceSecurity:    security.NewEnforceSecurity(usecases.Credentials),
+		transactionFactory: usecases.NewTransactionFactory(),
+		executorFactory:    usecases.NewExecutorFactory(),
+		partnersRepository: usecases.Repositories.MarbleDbRepository,
+	}
+}
