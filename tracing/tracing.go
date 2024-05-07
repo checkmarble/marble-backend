@@ -29,13 +29,17 @@ type TelemetryRessources struct {
 	TextMapPropagator propagation.TextMapPropagator
 }
 
+func NoopTelemetry() TelemetryRessources {
+	return TelemetryRessources{
+		TracerProvider:    noop.NewTracerProvider(),
+		Tracer:            &noop.Tracer{},
+		TextMapPropagator: nil,
+	}
+}
+
 func Init(configuration Configuration) (TelemetryRessources, error) {
 	if !configuration.Enabled {
-		return TelemetryRessources{
-			TracerProvider:    noop.NewTracerProvider(),
-			Tracer:            &noop.Tracer{},
-			TextMapPropagator: nil,
-		}, nil
+		return NoopTelemetry(), nil
 	}
 
 	exporter, err := texporter.New(texporter.WithProjectID(configuration.ProjectID))

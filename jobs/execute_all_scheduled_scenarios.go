@@ -4,13 +4,20 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/checkmarble/marble-backend/tracing"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/getsentry/sentry-go"
 )
 
 // Runs every minute
-func ExecuteAllScheduledScenarios(ctx context.Context, usecases usecases.Usecases) error {
+func ExecuteAllScheduledScenarios(ctx context.Context, usecases usecases.Usecases, config tracing.Configuration) error {
+	telemetryRessources, err := tracing.Init(config)
+	if err != nil {
+		return fmt.Errorf("error initializing tracing: %w", err)
+	}
+	ctx = utils.StoreOpenTelemetryTracerInContext(ctx, telemetryRessources.Tracer)
+
 	logger := utils.LoggerFromContext(ctx)
 	logger.InfoContext(ctx, "Start pending scheduled executions")
 
@@ -25,7 +32,7 @@ func ExecuteAllScheduledScenarios(ctx context.Context, usecases usecases.Usecase
 
 	usecasesWithCreds := GenerateUsecaseWithCredForMarbleAdmin(ctx, usecases)
 	runScheduledExecution := usecasesWithCreds.NewRunScheduledExecution()
-	err := runScheduledExecution.ExecuteAllScheduledScenarios(ctx)
+	err = runScheduledExecution.ExecuteAllScheduledScenarios(ctx)
 	if err != nil {
 		sentry.CaptureCheckIn(
 			&sentry.CheckIn{
