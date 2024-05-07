@@ -5,12 +5,14 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/guregu/null/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/checkmarble/marble-backend/mocks"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type ScenarioUsecaseTestSuite struct {
@@ -141,6 +143,64 @@ func (suite *ScenarioUsecaseTestSuite) TestUpdateScenario() {
 	t := suite.T()
 	assert.NoError(t, err)
 	assert.Equal(t, updatedScenario, result)
+
+	suite.AssertExpectations()
+}
+
+func (suite *ScenarioUsecaseTestSuite) TestUpdateScenario_with_workflow() {
+	scenarioInput := models.UpdateScenarioInput{
+		Id:                    suite.scenarioId,
+		DecisionToCaseInboxId: null.StringFrom("inbox_id_2"),
+	}
+
+	scenario := suite.scenario
+	scenario.DecisionToCaseWorkflowType = models.WorkflowCreateCase
+	scenario.DecisionToCaseInboxId = utils.Ptr("inbox_id")
+	scenario.DecisionToCaseOutcomes = []models.Outcome{models.Reject}
+
+	updatedScenario := scenario
+	updatedScenario.DecisionToCaseInboxId = utils.Ptr("inbox_id_2")
+
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
+	suite.scenarioRepository.On("GetScenarioById", suite.transaction, suite.scenarioId).Return(scenario, nil).Once()
+	suite.enforceSecurity.On("UpdateScenario", scenario).Return(nil)
+	suite.enforceSecurity.On("PublishScenario", scenario).Return(nil)
+
+	suite.scenarioRepository.On("UpdateScenario", suite.transaction, scenarioInput).Return(nil)
+	suite.scenarioRepository.On("GetScenarioById", suite.transaction, suite.scenarioId).Return(updatedScenario, nil).Once()
+
+	result, err := suite.makeUsecase().UpdateScenario(suite.ctx, scenarioInput)
+
+	t := suite.T()
+	assert.NoError(t, err)
+	assert.Equal(t, updatedScenario, result)
+
+	suite.AssertExpectations()
+}
+
+func (suite *ScenarioUsecaseTestSuite) TestUpdateScenario_with_workflow_error() {
+	scenarioInput := models.UpdateScenarioInput{
+		Id:                    suite.scenarioId,
+		DecisionToCaseInboxId: null.StringFrom(""),
+	}
+
+	scenario := suite.scenario
+	scenario.DecisionToCaseWorkflowType = models.WorkflowCreateCase
+	scenario.DecisionToCaseInboxId = utils.Ptr("inbox_id")
+	scenario.DecisionToCaseOutcomes = []models.Outcome{models.Reject}
+
+	updatedScenario := scenario
+	updatedScenario.DecisionToCaseInboxId = utils.Ptr("inbox_id_2")
+
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
+	suite.scenarioRepository.On("GetScenarioById", suite.transaction, suite.scenarioId).Return(scenario, nil).Once()
+	suite.enforceSecurity.On("UpdateScenario", scenario).Return(nil)
+	suite.enforceSecurity.On("PublishScenario", scenario).Return(nil)
+
+	_, err := suite.makeUsecase().UpdateScenario(suite.ctx, scenarioInput)
+
+	t := suite.T()
+	assert.ErrorIs(t, err, models.BadParameterError)
 
 	suite.AssertExpectations()
 }
