@@ -2,7 +2,6 @@ package usecases
 
 import (
 	"context"
-	"fmt"
 	"slices"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -77,19 +76,6 @@ func (usecase *ScenarioUsecase) UpdateScenario(
 	ctx context.Context,
 	scenarioInput models.UpdateScenarioInput,
 ) (models.Scenario, error) {
-	for _, outcome := range scenarioInput.DecisionToCaseOutcomes {
-		if !slices.Contains(models.ValidOutcomes, outcome) {
-			return models.Scenario{}, errors.Wrap(
-				models.BadParameterError,
-				fmt.Sprintf("Invalid input outcome: %s", outcome))
-		}
-	}
-	workflowType := scenarioInput.DecisionToCaseWorkflowType
-	if workflowType != nil && !slices.Contains(models.ValidWorkflowTypes, *workflowType) {
-		return models.Scenario{}, errors.Wrapf(models.BadParameterError,
-			"Invalid input workflow type: %s", *workflowType)
-	}
-
 	return executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
@@ -98,9 +84,11 @@ func (usecase *ScenarioUsecase) UpdateScenario(
 			if err != nil {
 				return models.Scenario{}, err
 			}
+
 			if err := usecase.enforceSecurity.UpdateScenario(scenario); err != nil {
 				return models.Scenario{}, err
 			}
+
 			// the DecisionToCaseInboxId and DecisionToCaseOutcomes settings are of higher criticity (they
 			// influence how decisions are treated) so require a higher permission to update
 			changeWorkflowSettings := scenarioInput.DecisionToCaseInboxId.Valid ||
@@ -112,6 +100,10 @@ func (usecase *ScenarioUsecase) UpdateScenario(
 				}
 			}
 
+			if err := validateScenarioUpdate(scenario, scenarioInput); err != nil {
+				return models.Scenario{}, err
+			}
+
 			err = usecase.repository.UpdateScenario(ctx, tx, scenarioInput)
 			if err != nil {
 				return models.Scenario{}, err
@@ -120,6 +112,46 @@ func (usecase *ScenarioUsecase) UpdateScenario(
 			return scenario, errors.HandledWithMessage(err, "Error getting scenario after update")
 		},
 	)
+}
+
+func validateScenarioUpdate(scenario models.Scenario, input models.UpdateScenarioInput) error {
+	// start by simple input sanity checks
+	for _, outcome := range input.DecisionToCaseOutcomes {
+		if !slices.Contains(models.ValidOutcomes, outcome) {
+			return errors.Wrapf(
+				models.BadParameterError,
+				"Invalid input outcome: %s", outcome)
+		}
+	}
+	workflowType := input.DecisionToCaseWorkflowType
+	if workflowType != nil && !slices.Contains(models.ValidWorkflowTypes, *workflowType) {
+		return errors.Wrapf(models.BadParameterError,
+			"Invalid input workflow type: %s", *workflowType)
+	}
+
+	// next compute the new scenario, after updates
+	if input.DecisionToCaseInboxId.Valid {
+		if input.DecisionToCaseInboxId.String == "" {
+			scenario.DecisionToCaseInboxId = nil
+		} else {
+			scenario.DecisionToCaseInboxId = &input.DecisionToCaseInboxId.String
+		}
+	}
+	if input.DecisionToCaseOutcomes != nil {
+		scenario.DecisionToCaseOutcomes = input.DecisionToCaseOutcomes
+	}
+	if input.DecisionToCaseWorkflowType != nil {
+		scenario.DecisionToCaseWorkflowType = *input.DecisionToCaseWorkflowType
+	}
+
+	// now validate that the new scenario is valid
+	if scenario.DecisionToCaseWorkflowType != models.WorkflowDisabled &&
+		(scenario.DecisionToCaseInboxId == nil || len(scenario.DecisionToCaseOutcomes) == 0) {
+		return errors.Wrap(models.BadParameterError,
+			"DecisionToCaseInboxId and DecisionToCaseOutcomes are required when DecisionToCaseWorkflowType is not DISABLED")
+	}
+
+	return nil
 }
 
 func (usecase *ScenarioUsecase) CreateScenario(ctx context.Context,
