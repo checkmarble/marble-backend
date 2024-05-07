@@ -108,6 +108,11 @@ func (api *API) routes(auth *Authentication, tokenHandler *TokenHandler) {
 	router.DELETE("/organizations/:organization_id", api.handleDeleteOrganization)
 	router.GET("/organizations/:organization_id/users", api.handleGetOrganizationUsers)
 
+	router.GET("/partners", api.handleListPartners)
+	router.POST("/partners", api.handleCreatePartner)
+	router.GET("/partners/:partner_id", api.handleGetPartner)
+	router.PATCH("/partners/:partner_id", api.handleUpdatePartner)
+
 	router.GET("/cases", api.handleListCases)
 	router.POST("/cases", api.handlePostCase)
 	router.GET("/cases/:case_id", api.handleGetCase)

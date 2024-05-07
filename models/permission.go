@@ -29,6 +29,10 @@ const (
 	TRANSFER_READ
 	TRANSFER_UPDATE
 	TRANSFER_CREATE
+	PARTNER_LIST
+	PARTNER_CREATE
+	PARTNER_READ
+	PARTNER_UPDATE
 )
 
 func (r Permission) String() string {
@@ -59,5 +63,9 @@ func (r Permission) String() string {
 		"TRANSFER_READ",
 		"TRANSFER_UPDATE",
 		"TRANSFER_CREATE",
+		"PARTNER_LIST",
+		"PARTNER_CREATE",
+		"PARTNER_READ",
+		"PARTNER_UPDATE",
 	}[r]
 }
