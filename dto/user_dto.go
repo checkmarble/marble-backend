@@ -11,6 +11,7 @@ type User struct {
 	Email          string     `json:"email"`
 	Role           string     `json:"role"`
 	OrganizationId string     `json:"organization_id"`
+	PartnerId      *string    `json:"partner_id,omitempty"`
 	FirstName      string     `json:"first_name"`
 	LastName       string     `json:"last_name"`
 	DeletedAt      *time.Time `json:"deleted_at,omitempty"`
@@ -22,6 +23,7 @@ func AdaptUserDto(user models.User) User {
 		Email:          user.Email,
 		Role:           user.Role.String(),
 		OrganizationId: user.OrganizationId,
+		PartnerId:      user.PartnerId,
 		FirstName:      user.FirstName,
 		LastName:       user.LastName,
 		DeletedAt:      user.DeletedAt,
@@ -29,11 +31,12 @@ func AdaptUserDto(user models.User) User {
 }
 
 type CreateUser struct {
-	Email          string `json:"email"`
-	Role           string `json:"role"`
-	OrganizationId string `json:"organization_id"`
-	FirstName      string `json:"first_name"`
-	LastName       string `json:"last_name"`
+	Email          string  `json:"email"`
+	Role           string  `json:"role"`
+	OrganizationId string  `json:"organization_id"`
+	PartnerId      *string `json:"partner_id"`
+	FirstName      string  `json:"first_name"`
+	LastName       string  `json:"last_name"`
 }
 
 type UpdateUser struct {
@@ -48,6 +51,7 @@ func AdaptCreateUser(dto CreateUser) models.CreateUser {
 		Email:          dto.Email,
 		Role:           models.RoleFromString(dto.Role),
 		OrganizationId: dto.OrganizationId,
+		PartnerId:      dto.PartnerId,
 		FirstName:      dto.FirstName,
 		LastName:       dto.LastName,
 	}

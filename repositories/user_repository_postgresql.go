@@ -44,6 +44,7 @@ func (repo *UserRepositoryPostgresql) CreateUser(ctx context.Context, exec Execu
 				"email",
 				"role",
 				"organization_id",
+				"partner_id",
 				"first_name",
 				"last_name",
 			).
@@ -52,6 +53,7 @@ func (repo *UserRepositoryPostgresql) CreateUser(ctx context.Context, exec Execu
 				createUser.Email,
 				int(createUser.Role),
 				organizationId,
+				createUser.PartnerId,
 				createUser.FirstName,
 				createUser.LastName,
 			),
