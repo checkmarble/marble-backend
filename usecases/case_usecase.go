@@ -190,7 +190,7 @@ func (usecase *CaseUseCase) CreateCase(
 		}
 	}
 
-	err = usecase.updateDecisionsWithEvents(ctx, tx, newCaseId, userId, createCaseAttributes.DecisionIds)
+	err = usecase.UpdateDecisionsWithEvents(ctx, tx, newCaseId, userId, createCaseAttributes.DecisionIds)
 	if err != nil {
 		return models.Case{}, err
 	}
@@ -268,7 +268,7 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string,
 			return models.Case{}, err
 		}
 
-		err = usecase.updateDecisionsWithEvents(ctx, tx, updateCaseAttributes.Id, userId, updateCaseAttributes.DecisionIds)
+		err = usecase.UpdateDecisionsWithEvents(ctx, tx, updateCaseAttributes.Id, userId, updateCaseAttributes.DecisionIds)
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -359,7 +359,7 @@ func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, case
 			return models.Case{}, err
 		}
 
-		err = usecase.updateDecisionsWithEvents(ctx, tx, caseId, userId, decisionIds)
+		err = usecase.UpdateDecisionsWithEvents(ctx, tx, caseId, userId, decisionIds)
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -558,7 +558,7 @@ func (usecase *CaseUseCase) validateDecisions(ctx context.Context, exec reposito
 	return nil
 }
 
-func (usecase *CaseUseCase) updateDecisionsWithEvents(ctx context.Context,
+func (usecase *CaseUseCase) UpdateDecisionsWithEvents(ctx context.Context,
 	exec repositories.Executor, caseId, userId string, decisionIds []string,
 ) error {
 	if len(decisionIds) > 0 {
