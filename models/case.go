@@ -20,6 +20,13 @@ type Case struct {
 	Files          []CaseFile
 }
 
+type CaseMetadata struct {
+	Id             string
+	CreatedAt      time.Time
+	OrganizationId string
+	Status         CaseStatus
+}
+
 type CaseStatus string
 
 const (
@@ -39,7 +46,7 @@ type CreateCaseAttributes struct {
 
 type UpdateCaseAttributes struct {
 	Id          string
-	DecisionIds []string
+	DecisionIds []string // Decision Ids to add to the case - not list of decision ids to replace on the case
 	InboxId     string
 	Name        string
 	Status      CaseStatus
