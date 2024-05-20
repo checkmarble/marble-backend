@@ -153,7 +153,7 @@ func (usecase *CaseUseCase) GetCase(ctx context.Context, caseId string) (models.
 	return c, nil
 }
 
-func (usecase *CaseUseCase) createCase(
+func (usecase *CaseUseCase) CreateCase(
 	ctx context.Context,
 	tx repositories.Executor,
 	userId string,
@@ -215,26 +215,12 @@ func (usecase *CaseUseCase) CreateCaseAsUser(
 				return models.Case{}, err
 			}
 
-			return usecase.createCase(ctx, tx, userId, createCaseAttributes, true)
+			return usecase.CreateCase(ctx, tx, userId, createCaseAttributes, true)
 		})
 
 	tracking.TrackEvent(ctx, models.AnalyticsCaseCreated, map[string]interface{}{
 		"case_id": c.Id,
 	})
-
-	return c, err
-}
-
-func (usecase *CaseUseCase) CreateCaseAsWorkflow(
-	ctx context.Context,
-	tx repositories.Executor,
-	createCaseAttributes models.CreateCaseAttributes,
-) (models.Case, error) {
-	// As an automated workflow, we don't need to check the inbox permissions
-	c, err := usecase.createCase(ctx, tx, "", createCaseAttributes, false)
-	if err != nil {
-		return models.Case{}, err
-	}
 
 	return c, err
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"slices"
 	"sync"
 	"time"
 
@@ -22,14 +21,14 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-type caseCreatorAsWorkflow interface {
-	CreateCaseAsWorkflow(
+type decisionWorkflowsUsecase interface {
+	CreateCaseIfApplicable(
 		ctx context.Context,
-		exec repositories.Executor,
-		createCaseAttributes models.CreateCaseAttributes,
-	) (models.Case, error)
+		tx repositories.Executor,
+		scenario models.Scenario,
+		decision models.DecisionWithRuleExecutions,
+	) error
 }
-
 type RunScheduledExecutionRepository interface {
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
 	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (models.ScenarioIteration, error)
@@ -53,7 +52,7 @@ type RunScheduledExecution struct {
 	EvaluateAstExpression          ast_eval.EvaluateAstExpression
 	DecisionRepository             repositories.DecisionRepository
 	TransactionFactory             executor_factory.TransactionFactory
-	CaseCreator                    caseCreatorAsWorkflow
+	DecisionWorkflows              decisionWorkflowsUsecase
 }
 
 func (usecase *RunScheduledExecution) ScheduleScenarioIfDue(ctx context.Context, organizationId string, scenarioId string) error {
@@ -345,7 +344,7 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 				return fmt.Errorf("error storing decision: %w", err)
 			}
 
-			if err = usecase.createCaseIfApplicable(ctxWithSpan, tx, scenario, decision); err != nil {
+			if err = usecase.DecisionWorkflows.CreateCaseIfApplicable(ctxWithSpan, tx, scenario, decision); err != nil {
 				return err
 			}
 			numberOfCreatedDecisions += 1
@@ -354,32 +353,6 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 		return nil
 	})
 	return numberOfCreatedDecisions, err
-}
-
-func (usecase *RunScheduledExecution) createCaseIfApplicable(
-	ctx context.Context,
-	tx repositories.Executor,
-	scenario models.Scenario,
-	decision models.DecisionWithRuleExecutions,
-) error {
-	if scenario.DecisionToCaseOutcomes != nil &&
-		slices.Contains(scenario.DecisionToCaseOutcomes, decision.Outcome) &&
-		scenario.DecisionToCaseInboxId != nil {
-		_, err := usecase.CaseCreator.CreateCaseAsWorkflow(ctx, tx, models.CreateCaseAttributes{
-			DecisionIds: []string{decision.DecisionId},
-			InboxId:     *scenario.DecisionToCaseInboxId,
-			Name: fmt.Sprintf(
-				"Case for %s: %s",
-				scenario.TriggerObjectType,
-				decision.ClientObject.Data["object_id"],
-			),
-			OrganizationId: scenario.OrganizationId,
-		})
-		if err != nil {
-			return errors.Wrap(err, "error linking decision to case")
-		}
-	}
-	return nil
 }
 
 func (usecase *RunScheduledExecution) getPublishedScenarioIteration(
