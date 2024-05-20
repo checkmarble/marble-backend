@@ -124,6 +124,11 @@ type caseMetadataWithDecisionCount struct {
 	DecisionCount int
 }
 
+// The best match:
+// - has only this the pivot value common to all the cases, if possible (at least, has the least possible number of distinct pivot values)
+// - is open rather than investigating, if possible
+// - if everyting else is equal, is the most recent case
+// (we know implicitly that all the cases share at least one common pivot value)
 func findBestMatchCase(cases []caseMetadataWithDecisionCount) models.CaseMetadata {
 	bestMatch := cases[0]
 	for _, c := range cases {
@@ -135,6 +140,15 @@ func findBestMatchCase(cases []caseMetadataWithDecisionCount) models.CaseMetadat
 }
 
 func caseIsBetterMatch(a, b caseMetadataWithDecisionCount) bool {
-	// TODO implement the real logic
-	return a.DecisionCount < b.DecisionCount
+	if a.DecisionCount < b.DecisionCount {
+		// b contains more decisions with pivot values than a (in particular, more than one)
+		return true
+	}
+
+	if a.Status == models.CaseOpen && b.Status == models.CaseInvestigating {
+		// a is open, b is investigating
+		return true
+	}
+
+	return a.CreatedAt.After(b.CreatedAt)
 }
