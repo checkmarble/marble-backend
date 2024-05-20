@@ -32,12 +32,13 @@ type DecisionUsecaseRepository interface {
 	GetCaseById(ctx context.Context, exec repositories.Executor, caseId string) (models.Case, error)
 }
 
-type caseCreatorAsWorkflow interface {
-	CreateCaseAsWorkflow(
+type decisionWorkflowsUsecase interface {
+	CreateCaseIfApplicable(
 		ctx context.Context,
-		exec repositories.Executor,
-		createCaseAttributes models.CreateCaseAttributes,
-	) (models.Case, error)
+		tx repositories.Executor,
+		scenario models.Scenario,
+		decision models.DecisionWithRuleExecutions,
+	) error
 }
 
 type DecisionUsecase struct {
@@ -50,7 +51,7 @@ type DecisionUsecase struct {
 	dataModelRepository        repositories.DataModelRepository
 	repository                 DecisionUsecaseRepository
 	evaluateAstExpression      ast_eval.EvaluateAstExpression
-	caseCreator                caseCreatorAsWorkflow
+	decisionWorkflows          decisionWorkflowsUsecase
 	organizationIdOfContext    func() (string, error)
 }
 
@@ -256,7 +257,8 @@ func (usecase *DecisionUsecase) CreateDecision(
 				fmt.Errorf("error storing decision: %w", err)
 		}
 
-		if err := usecase.createCaseIfApplicable(ctx, tx, scenario, decision); err != nil {
+		err := usecase.decisionWorkflows.CreateCaseIfApplicable(ctx, tx, scenario, decision)
+		if err != nil {
 			return models.DecisionWithRuleExecutions{}, err
 		}
 
@@ -367,7 +369,8 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 				return nil, fmt.Errorf("error storing decision in CreateAllDecisions: %w", err)
 			}
 
-			if err := usecase.createCaseIfApplicable(ctx, tx, item.scenario, item.decision); err != nil {
+			err := usecase.decisionWorkflows.CreateCaseIfApplicable(ctx, tx, item.scenario, item.decision)
+			if err != nil {
 				return nil, err
 			}
 		}
@@ -375,32 +378,6 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		return usecase.decisionRepository.DecisionsWithRuleExecutionsByIds(ctx, tx, ids)
 	})
 	return
-}
-
-func (usecase *DecisionUsecase) createCaseIfApplicable(
-	ctx context.Context,
-	tx repositories.Executor,
-	scenario models.Scenario,
-	decision models.DecisionWithRuleExecutions,
-) error {
-	if scenario.DecisionToCaseOutcomes != nil &&
-		slices.Contains(scenario.DecisionToCaseOutcomes, decision.Outcome) &&
-		scenario.DecisionToCaseInboxId != nil {
-		_, err := usecase.caseCreator.CreateCaseAsWorkflow(ctx, tx, models.CreateCaseAttributes{
-			DecisionIds: []string{decision.DecisionId},
-			InboxId:     *scenario.DecisionToCaseInboxId,
-			Name: fmt.Sprintf(
-				"Case for %s: %s",
-				scenario.TriggerObjectType,
-				decision.ClientObject.Data["object_id"],
-			),
-			OrganizationId: scenario.OrganizationId,
-		})
-		if err != nil {
-			return errors.Wrap(err, "error linking decision to case")
-		}
-	}
-	return nil
 }
 
 // used in different contexts, so allow different cases of input: pass client object or raw payload

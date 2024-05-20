@@ -6,6 +6,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/decision_workflows"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/indexes"
 	"github.com/checkmarble/marble-backend/usecases/scheduledexecution"
@@ -87,8 +88,15 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 		repository:                 &usecases.Repositories.MarbleDbRepository,
 		evaluateAstExpression:      usecases.NewEvaluateAstExpression(),
 		organizationIdOfContext:    usecases.OrganizationIdOfContext,
-		caseCreator:                usecases.NewCaseUseCase(),
+		decisionWorkflows:          usecases.NewDecisionWorkflows(),
 	}
+}
+
+func (usecases *UsecasesWithCreds) NewDecisionWorkflows() decision_workflows.DecisionsWorkflows {
+	return decision_workflows.NewDecisionWorkflows(
+		usecases.NewCaseUseCase(),
+		&usecases.Repositories.MarbleDbRepository,
+	)
 }
 
 func (usecases *UsecasesWithCreds) NewScenarioUsecase() ScenarioUsecase {
@@ -221,7 +229,7 @@ func (usecases *UsecasesWithCreds) NewRunScheduledExecution() scheduledexecution
 		IngestedDataReadRepository:     usecases.Repositories.IngestedDataReadRepository,
 		EvaluateAstExpression:          usecases.NewEvaluateAstExpression(),
 		DecisionRepository:             usecases.Repositories.DecisionRepository,
-		CaseCreator:                    usecases.NewCaseUseCase(),
+		DecisionWorkflows:              usecases.NewDecisionWorkflows(),
 	}
 }
 
