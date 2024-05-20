@@ -124,3 +124,10 @@ type DecisionFilters struct {
 const (
 	DecisionSortingCreatedAt SortingField = "created_at"
 )
+
+type DecisionWorkflowFilters struct {
+	InboxId        string
+	OrganizationId string
+	PivotValue     string
+	Status         []CaseStatus
+}

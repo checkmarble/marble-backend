@@ -22,7 +22,7 @@ import (
 )
 
 type decisionWorkflowsUsecase interface {
-	CreateCaseIfApplicable(
+	AutomaticDecisionToCase(
 		ctx context.Context,
 		tx repositories.Executor,
 		scenario models.Scenario,
@@ -344,7 +344,7 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 				return fmt.Errorf("error storing decision: %w", err)
 			}
 
-			if err = usecase.DecisionWorkflows.CreateCaseIfApplicable(ctxWithSpan, tx, scenario, decision); err != nil {
+			if err = usecase.DecisionWorkflows.AutomaticDecisionToCase(ctxWithSpan, tx, scenario, decision); err != nil {
 				return err
 			}
 			numberOfCreatedDecisions += 1

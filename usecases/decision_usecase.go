@@ -33,7 +33,7 @@ type DecisionUsecaseRepository interface {
 }
 
 type decisionWorkflowsUsecase interface {
-	CreateCaseIfApplicable(
+	AutomaticDecisionToCase(
 		ctx context.Context,
 		tx repositories.Executor,
 		scenario models.Scenario,
@@ -257,7 +257,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 				fmt.Errorf("error storing decision: %w", err)
 		}
 
-		err := usecase.decisionWorkflows.CreateCaseIfApplicable(ctx, tx, scenario, decision)
+		err := usecase.decisionWorkflows.AutomaticDecisionToCase(ctx, tx, scenario, decision)
 		if err != nil {
 			return models.DecisionWithRuleExecutions{}, err
 		}
@@ -369,7 +369,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 				return nil, fmt.Errorf("error storing decision in CreateAllDecisions: %w", err)
 			}
 
-			err := usecase.decisionWorkflows.CreateCaseIfApplicable(ctx, tx, item.scenario, item.decision)
+			err := usecase.decisionWorkflows.AutomaticDecisionToCase(ctx, tx, item.scenario, item.decision)
 			if err != nil {
 				return nil, err
 			}

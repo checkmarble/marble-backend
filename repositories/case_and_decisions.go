@@ -6,7 +6,11 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 )
 
-func (repo *MarbleDbRepository) SelectCasesWithPivot(ctx context.Context, tx Executor, pivotValue string) ([]models.CaseMetadata, error) {
+func (repo *MarbleDbRepository) SelectCasesWithPivot(
+	ctx context.Context,
+	tx Executor,
+	filters models.DecisionWorkflowFilters,
+) ([]models.CaseMetadata, error) {
 	return nil, nil
 }
 

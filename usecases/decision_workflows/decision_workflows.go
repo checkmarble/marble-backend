@@ -27,7 +27,11 @@ type caseEditor interface {
 }
 
 type caseAndDecisionRepository interface {
-	SelectCasesWithPivot(ctx context.Context, tx repositories.Executor, pivotValue string) ([]models.CaseMetadata, error)
+	SelectCasesWithPivot(
+		ctx context.Context,
+		tx repositories.Executor,
+		filters models.DecisionWorkflowFilters,
+	) ([]models.CaseMetadata, error)
 	CountDecisionsByCaseIds(ctx context.Context, tx repositories.Executor, caseIds []string) (map[string]int, error)
 }
 
@@ -46,50 +50,81 @@ func NewDecisionWorkflows(
 	}
 }
 
-func (d DecisionsWorkflows) CreateCaseIfApplicable(
+func (d DecisionsWorkflows) AutomaticDecisionToCase(
 	ctx context.Context,
 	tx repositories.Executor,
 	scenario models.Scenario,
 	decision models.DecisionWithRuleExecutions,
 ) error {
-	if scenario.DecisionToCaseOutcomes != nil &&
-		slices.Contains(scenario.DecisionToCaseOutcomes, decision.Outcome) &&
-		scenario.DecisionToCaseInboxId != nil {
-		input := models.CreateCaseAttributes{
-			DecisionIds: []string{decision.DecisionId},
-			InboxId:     *scenario.DecisionToCaseInboxId,
-			Name: fmt.Sprintf(
-				"Case for %s: %s",
-				scenario.TriggerObjectType,
-				decision.ClientObject.Data["object_id"],
-			),
-			OrganizationId: scenario.OrganizationId,
-		}
+	if scenario.DecisionToCaseWorkflowType == models.WorkflowDisabled ||
+		scenario.DecisionToCaseOutcomes == nil ||
+		!slices.Contains(scenario.DecisionToCaseOutcomes, decision.Outcome) ||
+		scenario.DecisionToCaseInboxId == nil {
+		return nil
+	}
+
+	if scenario.DecisionToCaseWorkflowType == models.WorkflowCreateCase {
+		input := automaticCreateCaseAttributes(scenario, decision)
 		_, err := d.caseEditor.CreateCase(ctx, tx, "", input, false)
 		if err != nil {
 			return errors.Wrap(err, "error creating case for decision")
 		}
+		return nil
 	}
-	return nil
+
+	if scenario.DecisionToCaseWorkflowType == models.WorkflowAddToCaseIfPossible {
+		added, err := d.addToOpenCase(ctx, tx, scenario, decision)
+		if err != nil {
+			return errors.Wrap(err, "error adding decision to open case")
+		}
+
+		if !added {
+			input := automaticCreateCaseAttributes(scenario, decision)
+			_, err := d.caseEditor.CreateCase(ctx, tx, "", input, false)
+			if err != nil {
+				return errors.Wrap(err, "error creating case for decision")
+			}
+		}
+		return nil
+	}
+
+	return errors.New(fmt.Sprintf("unknown workflow type: %s", scenario.DecisionToCaseWorkflowType))
 }
 
-func (d DecisionsWorkflows) AddToCaseIfAnyOpen(
+func automaticCreateCaseAttributes(
+	scenario models.Scenario,
+	decision models.DecisionWithRuleExecutions,
+) models.CreateCaseAttributes {
+	return models.CreateCaseAttributes{
+		DecisionIds: []string{decision.DecisionId},
+		InboxId:     *scenario.DecisionToCaseInboxId,
+		Name: fmt.Sprintf(
+			"Case for %s: %s",
+			scenario.TriggerObjectType,
+			decision.ClientObject.Data["object_id"],
+		),
+		OrganizationId: scenario.OrganizationId,
+	}
+}
+
+func (d DecisionsWorkflows) addToOpenCase(
 	ctx context.Context,
 	tx repositories.Executor,
 	scenario models.Scenario,
 	decision models.DecisionWithRuleExecutions,
-) error {
-	if decision.PivotValue == nil {
-		return nil
-	}
-
-	eligibleCases, err := d.repository.SelectCasesWithPivot(ctx, tx, *decision.PivotValue)
+) (bool, error) {
+	eligibleCases, err := d.repository.SelectCasesWithPivot(ctx, tx, models.DecisionWorkflowFilters{
+		InboxId:        *scenario.DecisionToCaseInboxId,
+		OrganizationId: scenario.OrganizationId,
+		PivotValue:     *decision.PivotValue,
+		Status:         []models.CaseStatus{models.CaseOpen, models.CaseInvestigating},
+	})
 	if err != nil {
-		return errors.Wrap(err, "error selecting cases with pivot")
+		return false, errors.Wrap(err, "error selecting cases with pivot")
 	}
 
 	if len(eligibleCases) == 0 {
-		return nil
+		return false, nil
 	}
 
 	caseIds := make([]string, 0, len(eligibleCases))
@@ -99,7 +134,7 @@ func (d DecisionsWorkflows) AddToCaseIfAnyOpen(
 
 	decisionCounts, err := d.repository.CountDecisionsByCaseIds(ctx, tx, caseIds)
 	if err != nil {
-		return errors.Wrap(err, "error counting decisions by case ids")
+		return false, errors.Wrap(err, "error counting decisions by case ids")
 	}
 
 	cases := make([]caseMetadataWithDecisionCount, 0, len(eligibleCases))
@@ -113,10 +148,10 @@ func (d DecisionsWorkflows) AddToCaseIfAnyOpen(
 	bestMatchCase := findBestMatchCase(cases)
 	err = d.caseEditor.UpdateDecisionsWithEvents(ctx, tx, bestMatchCase.Id, "", []string{decision.DecisionId})
 	if err != nil {
-		return errors.Wrap(err, "error updating case")
+		return false, errors.Wrap(err, "error updating case")
 	}
 
-	return nil
+	return true, nil
 }
 
 type caseMetadataWithDecisionCount struct {
