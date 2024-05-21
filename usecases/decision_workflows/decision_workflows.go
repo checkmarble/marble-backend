@@ -117,7 +117,7 @@ func (d DecisionsWorkflows) addToOpenCase(
 		InboxId:        *scenario.DecisionToCaseInboxId,
 		OrganizationId: scenario.OrganizationId,
 		PivotValue:     *decision.PivotValue,
-		Status:         []models.CaseStatus{models.CaseOpen, models.CaseInvestigating},
+		Statuses:       []models.CaseStatus{models.CaseOpen, models.CaseInvestigating},
 	})
 	if err != nil {
 		return false, errors.Wrap(err, "error selecting cases with pivot")

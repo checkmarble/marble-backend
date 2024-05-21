@@ -129,5 +129,5 @@ type DecisionWorkflowFilters struct {
 	InboxId        string
 	OrganizationId string
 	PivotValue     string
-	Status         []CaseStatus
+	Statuses       []CaseStatus
 }
