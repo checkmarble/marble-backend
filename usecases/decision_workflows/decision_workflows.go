@@ -175,14 +175,13 @@ func findBestMatchCase(cases []caseMetadataWithDecisionCount) models.CaseMetadat
 }
 
 func caseIsBetterMatch(a, b caseMetadataWithDecisionCount) bool {
-	if a.DecisionCount < b.DecisionCount {
-		// b contains more decisions with pivot values than a (in particular, more than one)
-		return true
+	if a.DecisionCount != b.DecisionCount {
+		// a has fewer distinct pivot values than b - particular case if a has only one distinct pivot value (all have at least one)
+		return a.DecisionCount < b.DecisionCount
 	}
 
-	if a.Status == models.CaseOpen && b.Status == models.CaseInvestigating {
-		// a is open, b is investigating
-		return true
+	if a.Status != b.Status {
+		return a.Status == models.CaseOpen
 	}
 
 	return a.CreatedAt.After(b.CreatedAt)
