@@ -32,7 +32,12 @@ type caseAndDecisionRepository interface {
 		tx repositories.Executor,
 		filters models.DecisionWorkflowFilters,
 	) ([]models.CaseMetadata, error)
-	CountDecisionsByCaseIds(ctx context.Context, tx repositories.Executor, caseIds []string) (map[string]int, error)
+	CountDecisionsByCaseIds(
+		ctx context.Context,
+		tx repositories.Executor,
+		organizationId string,
+		caseIds []string,
+	) (map[string]int, error)
 }
 
 type DecisionsWorkflows struct {
@@ -117,7 +122,6 @@ func (d DecisionsWorkflows) addToOpenCase(
 		InboxId:        *scenario.DecisionToCaseInboxId,
 		OrganizationId: scenario.OrganizationId,
 		PivotValue:     *decision.PivotValue,
-		Statuses:       []models.CaseStatus{models.CaseOpen, models.CaseInvestigating},
 	})
 	if err != nil {
 		return false, errors.Wrap(err, "error selecting cases with pivot")
@@ -132,7 +136,7 @@ func (d DecisionsWorkflows) addToOpenCase(
 		caseIds = append(caseIds, c.Id)
 	}
 
-	decisionCounts, err := d.repository.CountDecisionsByCaseIds(ctx, tx, caseIds)
+	decisionCounts, err := d.repository.CountDecisionsByCaseIds(ctx, tx, scenario.OrganizationId, caseIds)
 	if err != nil {
 		return false, errors.Wrap(err, "error counting decisions by case ids")
 	}
