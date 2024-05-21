@@ -16,20 +16,18 @@ func (repo *MarbleDbRepository) SelectCasesWithPivot(
 		return nil, err
 	}
 
-	query := `SELECT DISTINCT c.id, c.status, c.created_at, c.org_id
+	// both sides of the query should be ordered by case_id so that a merge join is possible
+	query := `SELECT c.id, c.status, c.created_at, c.org_id
 	FROM cases AS c
-	INNER JOIN decisions AS d ON c.id = d.case_id
+	INNER JOIN (
+		SELECT DISTINCT case_id FROM decisions WHERE org_id = $1 AND pivot_value = $3 ORDER BY case_id
+		) AS d ON c.id = d.case_id
 	WHERE c.org_id = $1 
-		AND c.status = ANY($2)
-		AND c.inbox_id = $3
-		AND d.pivot_value = $4
+		AND c.status IN ('open', 'investigating')
+		AND c.inbox_id = $2
 	`
 
-	statuses := make([]string, len(filters.Statuses))
-	for i, status := range filters.Statuses {
-		statuses[i] = string(status)
-	}
-	rows, err := exec.Query(ctx, query, filters.OrganizationId, statuses, filters.InboxId, filters.PivotValue)
+	rows, err := exec.Query(ctx, query, filters.OrganizationId, filters.InboxId, filters.PivotValue)
 	if err != nil {
 		return nil, err
 	}
@@ -42,13 +40,18 @@ func (repo *MarbleDbRepository) SelectCasesWithPivot(
 	return cases, err
 }
 
-func (repo *MarbleDbRepository) CountDecisionsByCaseIds(ctx context.Context, exec Executor, caseIds []string) (map[string]int, error) {
+func (repo *MarbleDbRepository) CountDecisionsByCaseIds(
+	ctx context.Context,
+	exec Executor,
+	organizationId string,
+	caseIds []string,
+) (map[string]int, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
-	query := `SELECT case_id, COUNT(DISTINCT pivot_value) AS nb FROM decisions WHERE case_id = ANY($1) GROUP BY case_id`
-	rows, err := exec.Query(ctx, query, caseIds)
+	query := `SELECT case_id, COUNT(DISTINCT pivot_value) AS nb FROM decisions WHERE org_id = $1 AND case_id = ANY($2) GROUP BY case_id`
+	rows, err := exec.Query(ctx, query, organizationId, caseIds)
 	if err != nil {
 		return nil, err
 	}
