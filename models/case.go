@@ -45,11 +45,10 @@ type CreateCaseAttributes struct {
 }
 
 type UpdateCaseAttributes struct {
-	Id          string
-	DecisionIds []string // Decision Ids to add to the case - not list of decision ids to replace on the case
-	InboxId     string
-	Name        string
-	Status      CaseStatus
+	Id      string
+	InboxId string
+	Name    string
+	Status  CaseStatus
 }
 
 type CreateCaseCommentAttributes struct {
