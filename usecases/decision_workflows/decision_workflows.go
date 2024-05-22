@@ -22,7 +22,7 @@ type caseEditor interface {
 		ctx context.Context,
 		exec repositories.Executor,
 		caseId, userId string,
-		decisionIds []string,
+		decisionIdsToAdd []string,
 	) error
 }
 

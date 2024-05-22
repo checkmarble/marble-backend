@@ -20,7 +20,7 @@ func (repo *MarbleDbRepository) SelectCasesWithPivot(
 	query := `SELECT c.id, c.status, c.created_at, c.org_id
 	FROM cases AS c
 	INNER JOIN (
-		SELECT DISTINCT case_id FROM decisions WHERE org_id = $1 AND pivot_value = $3 ORDER BY case_id
+		SELECT DISTINCT case_id FROM decisions WHERE org_id = $1 AND pivot_value = $3 AND case_id IS NOT NULL ORDER BY case_id
 		) AS d ON c.id = d.case_id
 	WHERE c.org_id = $1 
 		AND c.status IN ('open', 'investigating')

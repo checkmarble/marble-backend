@@ -268,11 +268,6 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string,
 			return models.Case{}, err
 		}
 
-		err = usecase.UpdateDecisionsWithEvents(ctx, tx, updateCaseAttributes.Id, userId, updateCaseAttributes.DecisionIds)
-		if err != nil {
-			return models.Case{}, err
-		}
-
 		return usecase.getCaseWithDetails(ctx, tx, updateCaseAttributes.Id)
 	})
 	if err != nil {
@@ -284,14 +279,9 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string,
 }
 
 func isIdenticalCaseUpdate(updateCaseAttributes models.UpdateCaseAttributes, c models.Case) bool {
-	var oldDecisionIds []string
-	for _, decision := range c.Decisions {
-		oldDecisionIds = append(oldDecisionIds, decision.DecisionId)
-	}
 	return (updateCaseAttributes.Name == "" || updateCaseAttributes.Name == c.Name) &&
 		(updateCaseAttributes.Status == "" || updateCaseAttributes.Status == c.Status) &&
-		(updateCaseAttributes.InboxId == "" || updateCaseAttributes.InboxId == c.InboxId) &&
-		(updateCaseAttributes.DecisionIds == nil || slices.Equal(updateCaseAttributes.DecisionIds, oldDecisionIds))
+		(updateCaseAttributes.InboxId == "" || updateCaseAttributes.InboxId == c.InboxId)
 }
 
 func (usecase *CaseUseCase) updateCaseCreateEvents(ctx context.Context, exec repositories.Executor,
@@ -558,17 +548,20 @@ func (usecase *CaseUseCase) validateDecisions(ctx context.Context, exec reposito
 	return nil
 }
 
-func (usecase *CaseUseCase) UpdateDecisionsWithEvents(ctx context.Context,
-	exec repositories.Executor, caseId, userId string, decisionIds []string,
+func (usecase *CaseUseCase) UpdateDecisionsWithEvents(
+	ctx context.Context,
+	exec repositories.Executor,
+	caseId, userId string,
+	decisionIdsToAdd []string,
 ) error {
-	if len(decisionIds) > 0 {
-		if err := usecase.decisionRepository.UpdateDecisionCaseId(ctx, exec, decisionIds, caseId); err != nil {
+	if len(decisionIdsToAdd) > 0 {
+		if err := usecase.decisionRepository.UpdateDecisionCaseId(ctx, exec, decisionIdsToAdd, caseId); err != nil {
 			return err
 		}
 
-		createCaseEventAttributes := make([]models.CreateCaseEventAttributes, len(decisionIds))
+		createCaseEventAttributes := make([]models.CreateCaseEventAttributes, len(decisionIdsToAdd))
 		resourceType := models.DecisionResourceType
-		for i, decisionId := range decisionIds {
+		for i, decisionId := range decisionIdsToAdd {
 			createCaseEventAttributes[i] = models.CreateCaseEventAttributes{
 				CaseId:       caseId,
 				UserId:       userId,

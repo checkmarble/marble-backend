@@ -2,7 +2,8 @@
 -- +goose StatementBegin
 CREATE INDEX decisions_add_to_case_idx ON decisions (org_id, pivot_value, case_id)
 WHERE
-      pivot_value IS NOT NULL;
+      pivot_value IS NOT NULL
+      AND case_id IS NOT NULL;
 
 CREATE INDEX cases_add_to_case_workflow_idx ON cases (org_id, inbox_id, id)
 WHERE
