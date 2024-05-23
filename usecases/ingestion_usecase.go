@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -19,6 +20,7 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/payload_parser"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -40,17 +42,53 @@ type IngestionUseCase struct {
 	GcsIngestionBucket  string
 }
 
-func (usecase *IngestionUseCase) IngestObjects(ctx context.Context, organizationId string, payloads []models.ClientObject, table models.Table) error {
+func (usecase *IngestionUseCase) IngestObjects(
+	ctx context.Context,
+	organizationId string,
+	objectType string,
+	objectBody json.RawMessage,
+) (int, error) {
+	logger := utils.LoggerFromContext(ctx)
+
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
-		return err
+		return 0, err
+	}
+
+	exec := usecase.executorFactory.NewExecutor()
+	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationId, false)
+	if err != nil {
+		return 0, errors.Wrap(err, "error getting data model in IngestObjects")
+	}
+
+	tables := dataModel.Tables
+	table, ok := tables[objectType]
+	if !ok {
+		return 0, errors.Wrapf(
+			models.NotFoundError,
+			"table %s not found in data model in validatePayload", objectType,
+		)
+	}
+
+	parser := payload_parser.NewParser()
+	payload, validationErrors, err := parser.ParsePayload(table, objectBody)
+	if err != nil {
+		return 0, errors.Wrapf(
+			models.BadParameterError,
+			"Error while validating payload in validatePayload: %v", err,
+		)
+	}
+	if len(validationErrors) > 0 {
+		encoded, _ := json.Marshal(validationErrors)
+		logger.InfoContext(ctx, fmt.Sprintf("Validation errors on POST all decisions: %s", string(encoded)))
+		return 0, errors.Wrap(models.BadParameterError, string(encoded))
 	}
 
 	ingestClosure := func() error {
 		return usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Executor) error {
-			return usecase.ingestionRepository.IngestObjects(ctx, tx, payloads, table)
+			return usecase.ingestionRepository.IngestObjects(ctx, tx, []models.ClientObject{payload}, table)
 		})
 	}
-	return retryIngestion(ctx, ingestClosure)
+	return 1, retryIngestion(ctx, ingestClosure)
 }
 
 func (usecase *IngestionUseCase) ListUploadLogs(ctx context.Context,
