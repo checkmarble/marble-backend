@@ -15,6 +15,8 @@ import (
 	"github.com/avast/retry-go/v4"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -49,6 +51,13 @@ func (usecase *IngestionUseCase) IngestObjects(
 	objectBody json.RawMessage,
 ) (int, error) {
 	logger := utils.LoggerFromContext(ctx)
+	tracer := utils.OpenTelemetryTracerFromContext(ctx)
+	ctx, span := tracer.Start(
+		ctx,
+		"IngestionUseCase.IngestObjects",
+		trace.WithAttributes(attribute.String("objectType", objectType)),
+		trace.WithAttributes(attribute.String("organizationId", organizationId)))
+	defer span.End()
 
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
 		return 0, err
@@ -65,7 +74,7 @@ func (usecase *IngestionUseCase) IngestObjects(
 	if !ok {
 		return 0, errors.Wrapf(
 			models.NotFoundError,
-			"table %s not found in data model in validatePayload", objectType,
+			"table %s not found in data model in IngestObjects", objectType,
 		)
 	}
 
@@ -74,12 +83,12 @@ func (usecase *IngestionUseCase) IngestObjects(
 	if err != nil {
 		return 0, errors.Wrapf(
 			models.BadParameterError,
-			"Error while validating payload in validatePayload: %v", err,
+			"Error while validating payload in IngestObjects: %v", err,
 		)
 	}
 	if len(validationErrors) > 0 {
 		encoded, _ := json.Marshal(validationErrors)
-		logger.InfoContext(ctx, fmt.Sprintf("Validation errors on POST all decisions: %s", string(encoded)))
+		logger.InfoContext(ctx, fmt.Sprintf("Validation errors on IngestObjects: %s", string(encoded)))
 		return 0, errors.Wrap(models.BadParameterError, string(encoded))
 	}
 
