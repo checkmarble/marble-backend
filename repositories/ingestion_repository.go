@@ -15,7 +15,7 @@ import (
 )
 
 type IngestionRepository interface {
-	IngestObjects(ctx context.Context, exec Executor, payloads []models.ClientObject, table models.Table) (err error)
+	IngestObjects(ctx context.Context, exec Executor, payloads []models.ClientObject, table models.Table) (int, error)
 }
 
 type IngestionRepositoryImpl struct{}
@@ -25,39 +25,47 @@ func (repo *IngestionRepositoryImpl) IngestObjects(
 	exec Executor,
 	payloads []models.ClientObject,
 	table models.Table,
-) (err error) {
+) (int, error) {
 	logger := utils.LoggerFromContext(ctx)
 	if err := validateClientDbExecutor(exec); err != nil {
-		return err
+		return 0, err
 	}
 
 	mostRecentObjectIds, mostRecentPayloads := repo.mostRecentPayloadsByObjectId(payloads)
 
 	previouslyIngestedObjects, err := repo.loadPreviouslyIngestedObjects(ctx, exec, mostRecentObjectIds, table.Name)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	payloadsToInsert, obsoleteIngestedObjectIds :=
-		repo.comparePayloadsToIngestedObjects(mostRecentPayloads, previouslyIngestedObjects)
+	payloadsToInsert, obsoleteIngestedObjectIds := repo.comparePayloadsToIngestedObjects(
+		mostRecentPayloads,
+		previouslyIngestedObjects,
+	)
 
 	if len(obsoleteIngestedObjectIds) > 0 {
-		if err := repo.batchUpdateValidUntilOnObsoleteObjects(ctx, exec, table.Name,
-			obsoleteIngestedObjectIds); err != nil {
-			return err
+		err := repo.batchUpdateValidUntilOnObsoleteObjects(
+			ctx,
+			exec,
+			table.Name,
+			obsoleteIngestedObjectIds,
+		)
+		if err != nil {
+			return 0, err
 		}
 	}
 
 	if len(payloadsToInsert) > 0 {
 		if err := repo.batchInsertPayloadsAndEnumValues(ctx, exec, payloadsToInsert, table); err != nil {
-			return err
+			return 0, err
 		}
 	}
 
-	logger.Info("Inserted objects in db", slog.String("type",
-		tableNameWithSchema(exec, table.Name)), slog.Int("nb_objects", len(payloadsToInsert)))
+	logger.Info("Inserted objects in db",
+		slog.String("type", tableNameWithSchema(exec, table.Name)),
+		slog.Int("nb_objects", len(payloadsToInsert)))
 
-	return nil
+	return len(payloadsToInsert), nil
 }
 
 func objectIdAndUpdatedAtFromPayload(payload models.ClientObject) (string, time.Time) {

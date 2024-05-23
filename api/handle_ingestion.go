@@ -32,6 +32,7 @@ func (api *API) handleIngestion(c *gin.Context) {
 	}
 	if nb == 0 {
 		c.Status(http.StatusOK)
+		return
 	}
 	c.Status(http.StatusCreated)
 }

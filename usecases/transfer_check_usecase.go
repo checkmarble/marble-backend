@@ -161,7 +161,7 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 	}
 
 	err = usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Executor) error {
-		err := usecase.ingestionRepository.IngestObjects(ctx, tx, []models.ClientObject{
+		_, err := usecase.ingestionRepository.IngestObjects(ctx, tx, []models.ClientObject{
 			clientObject,
 		}, table)
 		if err != nil {
@@ -297,7 +297,7 @@ func (usecase *TransferCheckUsecase) UpdateTransfer(
 		previousObjects[0]["updated_at"] = time.Now()
 		clientObject := models.ClientObject{Data: previousObjects[0], TableName: TransferCheckTable}
 
-		err = usecase.ingestionRepository.IngestObjects(ctx, tx, []models.ClientObject{
+		_, err = usecase.ingestionRepository.IngestObjects(ctx, tx, []models.ClientObject{
 			clientObject,
 		}, table)
 		if err != nil {
