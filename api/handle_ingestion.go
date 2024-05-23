@@ -2,82 +2,36 @@ package api
 
 import (
 	"encoding/csv"
-	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 
-	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 
 	"github.com/checkmarble/marble-backend/dto"
-	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
-	"github.com/checkmarble/marble-backend/usecases/payload_parser"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
 func (api *API) handleIngestion(c *gin.Context) {
-	logger := utils.LoggerFromContext(c.Request.Context())
 	organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
 	if presentError(c, err) {
 		return
 	}
 
-	logger = logger.With(slog.String("organizationId", organizationId))
-
-	usecase := api.UsecasesWithCreds(c.Request).NewIngestionUseCase()
-
-	dataModelUseCase := api.UsecasesWithCreds(c.Request).NewDataModelUseCase()
-	dataModel, err := dataModelUseCase.GetDataModel(c.Request.Context(), organizationId)
-	if err != nil {
-		logger.ErrorContext(c.Request.Context(),
-			fmt.Sprintf("Unable to find datamodel by organizationId for ingestion: %v", err))
-		http.Error(c.Writer, "", http.StatusInternalServerError)
-		return
-	}
-
 	objectType := c.Param("object_type")
 	objectBody, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		logger.ErrorContext(c.Request.Context(),
-			fmt.Sprintf("Error while reading request body bytes in api handle_ingestion: %v", err))
-		http.Error(c.Writer, "", http.StatusUnprocessableEntity)
-		return
-	}
-	logger = logger.With(slog.String("object_type", objectType))
-
-	tables := dataModel.Tables
-	table, ok := tables[objectType]
-	if !ok {
-		logger.ErrorContext(c.Request.Context(), "Table not found in data model for organization")
-		http.Error(c.Writer, "", http.StatusNotFound)
-		return
-	}
-
-	parser := payload_parser.NewParser()
-	payload, validationErrors, err := parser.ParsePayload(table, objectBody)
-	if err != nil {
-		presentError(c, errors.Wrap(models.BadParameterError,
-			fmt.Sprintf("Error while validating payload: %v", err)))
-		return
-	}
-	if len(validationErrors) > 0 {
-		encoded, _ := json.Marshal(validationErrors)
-		logger.InfoContext(
-			c.Request.Context(),
-			fmt.Sprintf("Validation errors on POST ingestion %s: %s", objectType, string(encoded)),
-		)
-		http.Error(c.Writer, string(encoded), http.StatusBadRequest)
-		return
-	}
-
-	err = usecase.IngestObjects(c.Request.Context(), organizationId, []models.ClientObject{
-		payload,
-	}, table)
 	if presentError(c, err) {
 		return
+	}
+
+	usecase := api.UsecasesWithCreds(c.Request).NewIngestionUseCase()
+	nb, err := usecase.IngestObjects(c.Request.Context(), organizationId, objectType, objectBody)
+	if presentError(c, err) {
+		return
+	}
+	if nb == 0 {
+		c.Status(http.StatusOK)
 	}
 	c.Status(http.StatusCreated)
 }
