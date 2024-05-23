@@ -233,7 +233,7 @@ func main() {
 		usecases := NewUseCases(appContext, appConfig, nil)
 		err := jobs.ScheduleDueScenarios(appContext, usecases)
 		if err != nil {
-			slog.Error("jobs.ScheduleDueScenarios failed", slog.String("error", err.Error()))
+			logger.ErrorContext(appContext, "jobs.ScheduleDueScenarios failed", slog.String("error", err.Error()))
 			os.Exit(1)
 			return
 		}
@@ -243,7 +243,7 @@ func main() {
 		usecases := NewUseCases(appContext, appConfig, nil)
 		err := jobs.ExecuteAllScheduledScenarios(appContext, usecases, tracingConfig)
 		if err != nil {
-			slog.Error("jobs.ExecuteAllScheduledScenarios failed", slog.String("error", err.Error()))
+			logger.ErrorContext(appContext, "jobs.ExecuteAllScheduledScenarios failed", slog.String("error", err.Error()))
 			os.Exit(1)
 			return
 		}
@@ -253,7 +253,7 @@ func main() {
 		usecases := NewUseCases(appContext, appConfig, nil)
 		err := jobs.IngestDataFromCsv(appContext, usecases)
 		if err != nil {
-			slog.Error("jobs.IngestDataFromCsv failed", slog.String("error", err.Error()))
+			logger.ErrorContext(appContext, "jobs.IngestDataFromCsv failed", slog.String("error", err.Error()))
 			os.Exit(1)
 			return
 		}
