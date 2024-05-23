@@ -74,7 +74,7 @@ func TestScenarioEndToEnd(t *testing.T) {
 	}
 
 	// Ingest two accounts (parent of a transaction) to execute a full scenario: one to be rejected, one to be approved
-	ingestAccounts(t, dataModel.Tables["accounts"], usecasesWithApiCreds, organizationId)
+	ingestAccounts(t, "accounts", usecasesWithApiCreds, organizationId)
 
 	// Create a pair of decision and check that the outcome matches the expectation
 	createDecisions(t, dataModel.Tables["transactions"], usecasesWithApiCreds, organizationId, scenarioId)
@@ -406,7 +406,7 @@ func setupScenarioAndPublish(t *testing.T, ctx context.Context,
 	return scenarioId
 }
 
-func ingestAccounts(t *testing.T, table models.Table, usecases usecases.UsecasesWithCreds, organizationId string) {
+func ingestAccounts(t *testing.T, tableName string, usecases usecases.UsecasesWithCreds, organizationId string) {
 	ingestionUsecase := usecases.NewIngestionUseCase()
 	accountPayloadJson1 := []byte(`{
 		"object_id": "{account_id_reject}",
@@ -422,19 +422,12 @@ func ingestAccounts(t *testing.T, table models.Table, usecases usecases.Usecases
 		"object_id": "{account_id_approve_no_name}",
 		"updated_at": "2020-01-01T00:00:00Z"
 	}`)
-	parser := payload_parser.NewParser()
-	accountPayload1, validationErrors1, err := parser.ParsePayload(table, accountPayloadJson1)
-	assert.NoError(t, err, "Could not parse payload")
-	assert.Empty(t, validationErrors1, "Expected no validation errors, got %v", validationErrors1)
-	accountPayload2, validationErrors2, err := parser.ParsePayload(table, accountPayloadJson2)
-	assert.NoError(t, err, "Could not parse payload")
-	assert.Empty(t, validationErrors2, "Expected no validation errors, got %v", validationErrors2)
-	accountPayload3, validationErrors3, err := parser.ParsePayload(table, accountPayloadJson3)
-	assert.NoError(t, err, "Could not parse payload")
-	assert.Empty(t, validationErrors3, "Expected no validation errors, got %v", validationErrors3)
-	err = ingestionUsecase.IngestObjects(context.TODO(), organizationId, []models.ClientObject{
-		accountPayload1, accountPayload2, accountPayload3,
-	}, table)
+
+	_, err := ingestionUsecase.IngestObjects(context.TODO(), organizationId, tableName, accountPayloadJson1)
+	assert.NoError(t, err, "Could not ingest data")
+	_, err = ingestionUsecase.IngestObjects(context.TODO(), organizationId, tableName, accountPayloadJson2)
+	assert.NoError(t, err, "Could not ingest data")
+	_, err = ingestionUsecase.IngestObjects(context.TODO(), organizationId, tableName, accountPayloadJson3)
 	assert.NoError(t, err, "Could not ingest data")
 }
 

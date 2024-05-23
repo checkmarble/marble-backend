@@ -83,12 +83,15 @@ func (usecase *IngestionUseCase) IngestObjects(
 		return 0, errors.Wrap(models.BadParameterError, string(encoded))
 	}
 
+	var nb int
 	ingestClosure := func() error {
 		return usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Executor) error {
-			return usecase.ingestionRepository.IngestObjects(ctx, tx, []models.ClientObject{payload}, table)
+			var err error
+			nb, err = usecase.ingestionRepository.IngestObjects(ctx, tx, []models.ClientObject{payload}, table)
+			return err
 		})
 	}
-	return 1, retryIngestion(ctx, ingestClosure)
+	return nb, retryIngestion(ctx, ingestClosure)
 }
 
 func (usecase *IngestionUseCase) ListUploadLogs(ctx context.Context,
@@ -352,7 +355,8 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 		ingestClosure := func() error {
 			return usecase.transactionFactory.TransactionInOrgSchema(ctx,
 				organizationId, func(tx repositories.Executor) error {
-					return usecase.ingestionRepository.IngestObjects(ctx, tx, clientObjects, table)
+					_, err := usecase.ingestionRepository.IngestObjects(ctx, tx, clientObjects, table)
+					return err
 				})
 		}
 		if err := retryIngestion(ctx, ingestClosure); err != nil {
