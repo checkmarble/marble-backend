@@ -294,19 +294,20 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 	}
 
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
+
 	err = usecase.TransactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
-		// execute scenario for each object
-		for i, object := range objects {
-			ctxWithSpan, span := tracer.Start(
+		executionScenario := func(ctx context.Context, object models.ClientObject, i int) error {
+			ctx, span := tracer.Start(
 				ctx,
 				"Batch RunScheduledExecution.executeScheduledScenario",
 				trace.WithAttributes(
 					attribute.String("scenario_id", scenario.Id),
 					attribute.Int64("object_index", int64(i)),
+					attribute.String("object_type", scenario.TriggerObjectType),
 				))
 			defer span.End()
 			scenarioExecution, err := evaluate_scenario.EvalScenario(
-				ctxWithSpan,
+				ctx,
 				evaluate_scenario.ScenarioEvaluationParameters{
 					Scenario:     scenario,
 					ClientObject: object,
@@ -322,33 +323,42 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 			)
 
 			if errors.Is(err, models.ErrScenarioTriggerConditionAndTriggerObjectMismatch) {
-				logger := utils.LoggerFromContext(ctxWithSpan)
-				logger.InfoContext(ctxWithSpan, fmt.Sprintf(
-					"Trigger condition and trigger object mismatch: %s",
-					err.Error()), "scenarioId", scenario.Id, "triggerObjectType",
-					scenario.TriggerObjectType, "object", object)
-				continue
+				logger := utils.LoggerFromContext(ctx)
+				logger.InfoContext(ctx,
+					fmt.Sprintf("Trigger condition and trigger object mismatch: %s", err.Error()),
+					"scenarioId", scenario.Id,
+					"object_index", i,
+					"triggerObjectType", scenario.TriggerObjectType,
+					"object", object)
+				return nil
 			} else if err != nil {
-				return errors.Wrap(err, fmt.Sprintf("error evaluating scenario in executeScheduledScenario %s", scenario.Id))
+				return errors.Wrapf(err, "error evaluating scenario in executeScheduledScenario %s", scenario.Id)
 			}
 
 			decision := models.AdaptScenarExecToDecision(scenarioExecution, object, &scheduledExecutionId)
 			err = usecase.DecisionRepository.StoreDecision(
-				ctxWithSpan,
+				ctx,
 				tx,
 				decision,
 				scenario.OrganizationId,
 				decision.DecisionId,
 			)
 			if err != nil {
-				return fmt.Errorf("error storing decision: %w", err)
+				return errors.Wrapf(err, "error storing decision in executeScheduledScenario %s", scenario.Id)
 			}
 
-			if err = usecase.DecisionWorkflows.AutomaticDecisionToCase(ctxWithSpan, tx, scenario, decision); err != nil {
+			if err = usecase.DecisionWorkflows.AutomaticDecisionToCase(ctx, tx, scenario, decision); err != nil {
 				return err
 			}
 			numberOfCreatedDecisions += 1
-			span.End()
+			return nil
+		}
+
+		// execute scenario for each object
+		for i, object := range objects {
+			if err := executionScenario(ctx, object, i); err != nil {
+				return err
+			}
 		}
 		return nil
 	})
