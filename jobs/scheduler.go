@@ -26,7 +26,7 @@ func RunScheduler(ctx context.Context, usecases usecases.Usecases, config tracin
 	taskr.Task("* * * * *", func(ctx context.Context) (int, error) {
 		logger := utils.LoggerFromContext(ctx).With("job", "schedule_due_scenarios")
 		ctx = utils.StoreLoggerInContext(ctx, logger)
-		err := ScheduleDueScenarios(ctx, usecases)
+		err := ScheduleDueScenarios(ctx, usecases, config)
 		return errToReturnCode(err), err
 	}, notConcurrent)
 
@@ -40,7 +40,7 @@ func RunScheduler(ctx context.Context, usecases usecases.Usecases, config tracin
 	taskr.Task("* * * * *", func(ctx context.Context) (int, error) {
 		logger := utils.LoggerFromContext(ctx).With("job", "ingest_data_from_csv")
 		ctx = utils.StoreLoggerInContext(ctx, logger)
-		err := IngestDataFromCsv(ctx, usecases)
+		err := IngestDataFromCsv(ctx, usecases, config)
 		return errToReturnCode(err), err
 	})
 

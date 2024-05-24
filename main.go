@@ -231,7 +231,7 @@ func main() {
 
 	if *shouldRunScheduleScenarios {
 		usecases := NewUseCases(appContext, appConfig, nil)
-		err := jobs.ScheduleDueScenarios(appContext, usecases)
+		err := jobs.ScheduleDueScenarios(appContext, usecases, tracingConfig)
 		if err != nil {
 			logger.ErrorContext(appContext, "jobs.ScheduleDueScenarios failed", slog.String("error", err.Error()))
 			os.Exit(1)
@@ -251,7 +251,7 @@ func main() {
 
 	if *shouldRunDataIngestion {
 		usecases := NewUseCases(appContext, appConfig, nil)
-		err := jobs.IngestDataFromCsv(appContext, usecases)
+		err := jobs.IngestDataFromCsv(appContext, usecases, tracingConfig)
 		if err != nil {
 			logger.ErrorContext(appContext, "jobs.IngestDataFromCsv failed", slog.String("error", err.Error()))
 			os.Exit(1)
