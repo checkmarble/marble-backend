@@ -6,9 +6,11 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 
 	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -21,7 +23,8 @@ func (api *API) handleIngestion(c *gin.Context) {
 
 	objectType := c.Param("object_type")
 	objectBody, err := io.ReadAll(c.Request.Body)
-	if presentError(c, err) {
+	if err != nil {
+		presentError(c, errors.Wrap(models.BadParameterError, err.Error()))
 		return
 	}
 
