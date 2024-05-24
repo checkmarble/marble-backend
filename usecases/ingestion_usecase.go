@@ -95,7 +95,6 @@ func (usecase *IngestionUseCase) IngestObjects(
 	var nb int
 	ingestClosure := func() error {
 		return usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Executor) error {
-			var err error
 			nb, err = usecase.ingestionRepository.IngestObjects(ctx, tx, []models.ClientObject{payload}, table)
 			return err
 		})
