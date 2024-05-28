@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Marble Public API
+  title: Marble decision engine API
   description: Public API on decisions and data ingestion.
   version: 1.0.0
 servers:
@@ -10,6 +10,8 @@ tags:
     description: Routes for data ingestion
   - name: Decision
     description: Routes for creating and reading decisions
+  - name: ScheduledExecutions
+    description: Routes for listing scheduled executions
 paths:
   /ingestion/{object_type}:
     post:
