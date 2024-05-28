@@ -1,0 +1,414 @@
+openapi: 3.0.3
+info:
+  version: 0.1.0
+  title: "Transfercheck API"
+  description: "Marble transfer checking API"
+servers:
+  - url: "https://api.checkmarble.com"
+    description: Marble api
+paths:
+  /transfers:
+    post:
+      tags:
+        - Transfers
+      summary: Create and score a transfer
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        description: "Transfer payload to be scored and stored"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTransferBody"
+        required: true
+      responses:
+        "200":
+          description: The created transfer with score
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransferApiResponse"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "409":
+          $ref: "#/components/responses/409"
+        "422":
+          $ref: "#/components/responses/422"
+    get:
+      tags:
+        - Transfers
+      security:
+        - ApiKeyAuth: []
+      summary: Look up an existing transfer by its id in the sender systems
+      parameters:
+        - in: query
+          required: true
+          name: transfer_id
+          schema:
+            type: string
+          description: Unique identifier of the transfer in the sender bank system
+      responses:
+        "200":
+          description: The list of existing transfers matching the sender transfer_id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransferArrayApiResponse"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+  /transfers/{transfer_id}:
+    patch:
+      tags:
+        - Transfers
+      summary: Update a transfer's status
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          description: Marble id of the transfer to update
+          name: transfer_id
+          schema:
+            type: string
+            format: uuid
+          required: true
+      requestBody:
+        description: "Payload to update the transfer"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTransferBody"
+        required: true
+      responses:
+        "200":
+          description: The decision corresponding to the provided payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransferApiResponse"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+        "422":
+          $ref: "#/components/responses/422"
+    get:
+      tags:
+        - Transfers
+      security:
+        - ApiKeyAuth: []
+      summary: Retrieve an existing transfer by its Marble id
+      parameters:
+        - in: path
+          required: true
+          name: transfer_id
+          schema:
+            type: string
+            format: uuid
+          description: Marble id of the transfer to retrieve
+      responses:
+        "200":
+          description: The decision corresponding to the provided payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransferApiResponse"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+  /transfers/{transfer_id}/score:
+    post:
+      tags:
+        - Transfers
+      summary: Compute a score on an existing transfer
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          description: Marble id of the transfer to score
+          name: transfer_id
+          schema:
+            type: string
+            format: uuid
+          required: true
+      responses:
+        "200":
+          description: The decision corresponding to the provided payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransferWithRequiredScoreApiResponse"
+        "401":
+          $ref: "#/components/responses/401"
+        "403":
+          $ref: "#/components/responses/403"
+        "404":
+          $ref: "#/components/responses/404"
+
+components:
+  schemas:
+    CreateTransferBody:
+      type: object
+      required:
+        - transfer_data
+      properties:
+        transfer_data:
+          $ref: "#/components/schemas/CreateTransferDataBody"
+        skip_score:
+          type: boolean
+          description: Optional. Pass true to ingest the transfer without scoring it.
+    CreateTransferDataBody:
+      type: object
+      required:
+        - beneficiary_bic
+        - beneficiary_iban
+        - currency
+        - sender_account_id
+        - sender_bic
+        - transfer_id
+        - transfer_requested_at
+        - value
+      properties:
+        beneficiary_bic:
+          type: string
+          description: BIC code of the beneficiary bank
+        beneficiary_iban:
+          type: string
+          description: IBAN of the beneficiary. Is hashed upon reception.
+        beneficiary_name:
+          type: string
+          description: Beneficiary name, as declared by the sender
+        currency:
+          type: string
+          description: Currency of the transfer (ISO3 format)
+        label:
+          type: string
+          description: Free text label attached by the sender
+        sender_account_id:
+          type: string
+          description: Unique ID for your customers. Use a pseudo-ID or an internal customer ID instead of an externally facing customer ID.
+        sender_bic:
+          type: string
+          description: BIC code of the sender bank
+        sender_device:
+          type: string
+          description: Name of the device from which the transfer was initiated
+        sender_ip:
+          type: string
+          description: IP address of the sender device (if available) at transfer request time
+          anyOf:
+            - format: ipv4
+            - format: ipv6
+        status:
+          type: string
+          enum: [neutral, suspected_fraud, confirmed_fraud]
+          default: neutral
+          description: Status of the transfer in the sender bank system.
+        timezone:
+          type: string
+          description: Timezone of the sender (for now, only accepts 'Europe/Paris')
+          default: "Europe/Paris"
+        transfer_id:
+          type: string
+          description: Unique identifier of the transfer in the sender bank system
+        transfer_requested_at:
+          type: string
+          description: Timestamp at which the transfer was initially requested by the end user
+        value:
+          type: integer
+          description: Transfer value in minor currency units
+    TransferData:
+      type: object
+      required:
+        - beneficiary_bic
+        - beneficiary_iban
+        - beneficiary_name
+        - created_at
+        - currency
+        - label
+        - sender_account_id
+        - sender_bic
+        - sender_device
+        - sender_ip
+        - status
+        - timezone
+        - transfer_id
+        - transfer_requested_at
+        - updated_at
+        - value
+      properties:
+        beneficiary_bic:
+          type: string
+          description: BIC code of the beneficiary bank
+        beneficiary_iban:
+          type: string
+        beneficiary_name:
+          type: string
+          description: Beneficiary name, as declared by the sender
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp on the transfer in Marble's database
+        currency:
+          type: string
+          description: Currency of the transfer (ISO3 format)
+        label:
+          type: string
+          description: Free text label attached by the sender
+        sender_account_id:
+          type: string
+          description: Unique identifier of the transfer sender account
+        sender_bic:
+          type: string
+          description: BIC code of the sender bank
+        sender_device:
+          type: string
+          description: Name of the device from which the transfer was initiated
+        sender_ip:
+          type: string
+          description: IP address of the sender device (if available) at transfer request time
+          anyOf:
+            - format: ipv4
+            - format: ipv6
+        status:
+          type: string
+          enum: [neutral, suspected_fraud, confirmed_fraud]
+          description: Status of the transfer in the sender bank system.
+        timezone:
+          type: string
+          description: Timezone of the sender (for now, only accepts 'Europe/Paris')
+          default: "Europe/Paris"
+        transfer_id:
+          type: string
+          description: Unique identifier of the transfer in the sender bank system
+        transfer_requested_at:
+          type: string
+          description: Timestamp at which the transfer was initially requested by the end user
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp on the transfer in Marble's database
+        value:
+          type: integer
+          description: Transfer value in minor currency units
+    UpdateTransferBody:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [neutral, suspected_fraud, confirmed_fraud]
+          description: Status of the transfer in the sender bank system.
+    Transfer:
+      type: object
+      required:
+        - id
+        - transfer_data
+      properties:
+        id:
+          type: string
+          description: Marble id of the transfer
+        last_scored_at:
+          type: string
+          format: date-time
+        score:
+          type: integer
+          description: Score of the transfer
+          minimum: 0
+          maximum: 100
+        transfer_data:
+          $ref: "#/components/schemas/TransferData"
+    TransferWithRequiredScore:
+      type: object
+      required:
+        - id
+        - transfer_data
+        - score
+        - last_scored_at
+      properties:
+        id:
+          type: string
+          description: Marble id of the transfer
+        last_scored_at:
+          type: string
+          format: date-time
+        score:
+          type: integer
+          description: Score of the transfer
+          minimum: 0
+          maximum: 100
+        transfer_data:
+          $ref: "#/components/schemas/TransferData"
+    TransferApiResponse:
+      type: object
+      required:
+        - transfer
+      properties:
+        transfer:
+          $ref: "#/components/schemas/Transfer"
+    TransferWithRequiredScoreApiResponse:
+      type: object
+      required:
+        - transfer
+      properties:
+        transfer:
+          $ref: "#/components/schemas/Transfer"
+    TransferArrayApiResponse:
+      type: object
+      required:
+        - transfers
+      properties:
+        transfers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transfer"
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-KEY
+  responses:
+    "401":
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            type: string
+            example: Unauthorized
+    "403":
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            type: string
+            example: Forbidden
+    "404":
+      description: Not found
+      content:
+        application/json:
+          schema:
+            type: string
+            example: Not found
+    "409":
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            type: string
+            example: Duplicate Value
+    "422":
+      description: Unprocessable Content
+      content:
+        application/json:
+          schema:
+            type: object
+            description: To be defined
