@@ -8,7 +8,10 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/iterator"
@@ -81,11 +84,32 @@ func (repository *GcsRepositoryImpl) ListFiles(ctx context.Context, bucketName, 
 }
 
 func (repository *GcsRepositoryImpl) GetFile(ctx context.Context, bucketName, fileName string) (models.GCSFile, error) {
+	tracer := utils.OpenTelemetryTracerFromContext(ctx)
+	ctx, span := tracer.Start(
+		ctx,
+		"repositories.GcsRepository.GetFile",
+		trace.WithAttributes(attribute.String("bucket", bucketName)),
+		trace.WithAttributes(attribute.String("fileName", fileName)),
+	)
+	defer span.End()
 	bucket := repository.getGCSClient(ctx).Bucket(bucketName)
-	_, err := bucket.Attrs(ctx)
+
+	ctxBucket, span2 := tracer.Start(
+		ctx,
+		"repositories.GcsRepository.GetFile - bucket attrs",
+	)
+	defer span2.End()
+	_, err := bucket.Attrs(ctxBucket)
 	if err != nil {
 		return models.GCSFile{}, fmt.Errorf("failed to get bucket %s: %w", bucketName, err)
 	}
+	span2.End()
+
+	ctx, span = tracer.Start(
+		ctx,
+		"repositories.GcsRepository.GetFile - file reader",
+	)
+	defer span.End()
 	reader, err := bucket.Object(fileName).NewReader(ctx)
 	if err != nil {
 		return models.GCSFile{}, fmt.Errorf("failed to read GCS object %s/%s: %v", bucketName, fileName, err)

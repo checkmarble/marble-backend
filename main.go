@@ -277,6 +277,7 @@ func NewUseCases(ctx context.Context, appConfiguration AppConfiguration, marbleJ
 		infra.InitializeFirebase(ctx),
 		marbleConnectionPool,
 		infra.InitializeMetabase(appConfiguration.metabase),
+		appConfiguration.config.GcsTransferCheckEnrichmentBucket,
 	)
 	if err != nil {
 		slog.Error("repositories.NewRepositories failed", slog.String("error", err.Error()))

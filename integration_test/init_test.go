@@ -112,6 +112,7 @@ func TestMain(m *testing.M) {
 		nil,
 		dbPool,
 		nil,
+		"",
 	)
 	if err != nil {
 		panic(err)
