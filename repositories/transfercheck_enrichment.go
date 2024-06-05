@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/pkg/errors"
 )
 
@@ -46,8 +47,15 @@ func NewTransferCheckEnrichmentRepository(gcsrepository GcsRepository, bucket st
 
 // Expects a CSV file with two columns: IP range and country code (ISO 3166-1 alpha-3) containing both ipv4 and ipv6 ranges.
 func (r *TransferCheckEnrichmentRepository) setupIpCountryRanges(ctx context.Context) error {
+	tracer := utils.OpenTelemetryTracerFromContext(ctx)
+	ctx, span := tracer.Start(
+		ctx,
+		"repositories.TransferCheckEnrichmentRepository.setupIpCountryRanges",
+	)
+	defer span.End()
 	r.muCountries.Lock()
 	defer r.muCountries.Unlock()
+
 	file, err := r.gcsRepository.GetFile(ctx, r.bucket, IP_COUNTRY_RANGE_FILE)
 	if err != nil {
 		return err
@@ -59,7 +67,7 @@ func (r *TransferCheckEnrichmentRepository) setupIpCountryRanges(ctx context.Con
 	for err == nil {
 		ipRange, err = netip.ParsePrefix(record[0])
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "failed to parse IP range '%s'", record[0])
 		}
 		r.ipCountryRanges = append(r.ipCountryRanges, ipCountryRange{
 			ipRange: ipRange,
@@ -84,6 +92,12 @@ func (r *TransferCheckEnrichmentRepository) setupIpCountryRanges(ctx context.Con
 }
 
 func (r *TransferCheckEnrichmentRepository) GetIPCountry(ctx context.Context, ip netip.Addr) (string, error) {
+	tracer := utils.OpenTelemetryTracerFromContext(ctx)
+	ctx, span := tracer.Start(
+		ctx,
+		"repositories.TransferCheckEnrichmentRepository.GetIPCountry",
+	)
+	defer span.End()
 	// TODO later: add an expiry mechanism for the ipCountryRanges so that the csv file is polled again every X hours/days
 	if len(r.ipCountryRanges) == 0 {
 		if err := r.setupIpCountryRanges(ctx); err != nil {
@@ -115,6 +129,13 @@ func (r *TransferCheckEnrichmentRepository) findCountryDichotomy(ip netip.Addr) 
 }
 
 func (r *TransferCheckEnrichmentRepository) GetIPType(ctx context.Context, ip netip.Addr) (string, error) {
+	tracer := utils.OpenTelemetryTracerFromContext(ctx)
+	ctx, span := tracer.Start(
+		ctx,
+		"repositories.TransferCheckEnrichmentRepository.GetIPType",
+	)
+	defer span.End()
+
 	// TODO later: add an expiry mechanism for the ipTypeRanges so that the csv file is polled again every X hours/days
 	if len(r.ipTypeRanges) == 0 {
 		if err := r.setupIpTypeRanges(ctx); err != nil {
@@ -155,6 +176,12 @@ func (r *TransferCheckEnrichmentRepository) findIpTypeDichotomy(ip netip.Addr) s
 // one with one column (IP addresses) containing  both ipv4 and ipv6 with TOR exit nodes
 // The ips & ranges between the two files may overlap.
 func (r *TransferCheckEnrichmentRepository) setupIpTypeRanges(ctx context.Context) error {
+	tracer := utils.OpenTelemetryTracerFromContext(ctx)
+	ctx, span := tracer.Start(
+		ctx,
+		"repositories.TransferCheckEnrichmentRepository.setupIpTypeRanges",
+	)
+	defer span.End()
 	r.muIpTypes.Lock()
 	defer r.muIpTypes.Unlock()
 	file, err := r.gcsRepository.GetFile(ctx, r.bucket, IP_VPN_RANGE_FILE)
