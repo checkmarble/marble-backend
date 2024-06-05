@@ -39,7 +39,7 @@ func (repo *MarbleDbRepository) CreateCaseContributor(ctx context.Context, exec 
 		Values(
 			caseId,
 			userId,
-		)
+		).Suffix("ON CONFLICT DO NOTHING")
 
 	err := ExecBuilder(ctx, exec, query)
 
