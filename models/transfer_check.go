@@ -66,7 +66,7 @@ type TransferData struct {
 	SenderBic           string
 	SenderBicRiskLevel  string
 	SenderDevice        string
-	SenderIP            string
+	SenderIP            netip.Addr
 	SenderIPType        string
 	SenderIPCountry     string
 	Status              string
@@ -123,10 +123,20 @@ func TransferFromMap(m map[string]any) (TransferData, error) {
 	if !ok {
 		return transfer, errors.New("sender_device is not a string")
 	}
-	transfer.SenderIP, ok = m["sender_ip"].(string)
+
+	ipString, ok := m["sender_ip"].(string)
 	if !ok {
 		return transfer, errors.New("sender_ip is not a string")
 	}
+	if ipString != "" {
+		ip, err := netip.ParseAddr(ipString)
+		if err != nil {
+			transfer.SenderIP = netip.IPv4Unspecified()
+		} else {
+			transfer.SenderIP = ip
+		}
+	}
+
 	senderIpType, found := m["sender_ip_type"]
 	if found {
 		transfer.SenderIPType, ok = senderIpType.(string)
@@ -213,7 +223,7 @@ func (t TransferData) ToIngestionMap(mapping TransferMapping) map[string]any {
 		"sender_bic":            t.SenderBic,
 		"sender_bic_risk_level": t.SenderBicRiskLevel,
 		"sender_device":         t.SenderDevice,
-		"sender_ip":             t.SenderIP,
+		"sender_ip":             t.SenderIP.String(),
 		"sender_ip_type":        t.SenderIPType,
 		"sender_ip_country":     t.SenderIPCountry,
 		"status":                t.Status,
@@ -238,7 +248,7 @@ func (t TransferDataCreateBody) FormatAndValidate() (TransferData, error) {
 		SenderBic:           t.SenderBic,
 		SenderBicRiskLevel:  RegularSender,
 		SenderDevice:        t.SenderDevice,
-		SenderIP:            t.SenderIP,
+		SenderIP:            netip.IPv4Unspecified(), // SenderIP defaults to 0.0.0.0 if not provided
 		SenderIPType:        RegularIP,
 		SenderIPCountry:     "FR",
 		Status:              t.Status,
@@ -271,9 +281,13 @@ func (t TransferDataCreateBody) FormatAndValidate() (TransferData, error) {
 		errs["currency"] = fmt.Sprintf("currency %s is not valid", t.Currency)
 	}
 
-	_, err = netip.ParseAddr(t.SenderIP)
-	if t.SenderIP != "" && err != nil {
-		errs["sender_ip"] = fmt.Sprintf("sender_ip %s is not a valid IP address", t.SenderIP)
+	if t.SenderIP != "" {
+		ip, err := netip.ParseAddr(t.SenderIP)
+		if err != nil {
+			errs["sender_ip"] = fmt.Sprintf("sender_ip %s is not a valid IP address", t.SenderIP)
+		} else {
+			out.SenderIP = ip
+		}
 	}
 
 	if !slices.Contains(TransferStatuses, t.Status) {

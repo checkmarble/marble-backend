@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"fmt"
+	"net/netip"
 	"slices"
 	"time"
 
@@ -35,8 +36,8 @@ type transferMappingsRepository interface {
 }
 
 type transferCheckEnrichmentRepository interface {
-	GetIPCountry(ctx context.Context, ip string) (string, error)
-	GetIPType(ctx context.Context, ip string) (string, error)
+	GetIPCountry(ctx context.Context, ip netip.Addr) (string, error)
+	GetIPType(ctx context.Context, ip netip.Addr) (string, error)
 	GetSenderBicRiskLevel(ctx context.Context, bic string) (string, error)
 }
 
@@ -224,7 +225,7 @@ func (usecase *TransferCheckUsecase) enrichTransfer(
 	ctx context.Context,
 	transfer models.TransferData,
 ) (models.TransferData, error) {
-	if transfer.SenderIP != "" {
+	if !transfer.SenderIP.IsUnspecified() {
 		country, err := usecase.transferCheckEnrichmentRepository.GetIPCountry(ctx, transfer.SenderIP)
 		if err != nil {
 			return models.TransferData{}, err

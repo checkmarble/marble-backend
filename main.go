@@ -163,6 +163,8 @@ func main() {
 			FakeGcsRepository:    utils.GetEnv("FAKE_GCS", false),
 			GcsIngestionBucket:   utils.GetRequiredEnv[string]("GCS_INGESTION_BUCKET"),
 			GcsCaseManagerBucket: utils.GetRequiredEnv[string]("GCS_CASE_MANAGER_BUCKET"),
+			GcsTransferCheckEnrichmentBucket: utils.GetEnv("GCS_TRANSFER_CHECK_ENRICHMENT_BUCKET",
+				"case-manager-tokyo-country-381508"), // TODO: fixme hard coded placeholder
 			MarbleAppHost:        utils.GetEnv("MARBLE_APP_HOST", ""),
 			MarbleBackofficeHost: utils.GetEnv("MARBLE_BACKOFFICE_HOST", ""),
 			SegmentWriteKey:      utils.GetRequiredEnv[string]("SEGMENT_WRITE_KEY"),

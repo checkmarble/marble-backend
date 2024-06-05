@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"net/netip"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -24,22 +25,22 @@ func AdaptTransferCheckResultDto(result models.Transfer) Transfer {
 }
 
 type TransferData struct {
-	BeneficiaryBic      string    `json:"beneficiary_bic"`
-	BeneficiaryIban     string    `json:"beneficiary_iban"`
-	BeneficiaryName     string    `json:"beneficiary_name"`
-	CreatedAt           time.Time `json:"created_at"`
-	Currency            string    `json:"currency"`
-	Label               string    `json:"label"`
-	SenderAccountId     string    `json:"sender_account_id"`
-	SenderBic           string    `json:"sender_bic"`
-	SenderDevice        string    `json:"sender_device"`
-	SenderIP            string    `json:"sender_ip"`
-	Status              string    `json:"status"`
-	Timezone            string    `json:"timezone"`
-	TransferId          string    `json:"transfer_id"`
-	TransferRequestedAt time.Time `json:"transfer_requested_at"`
-	UpdatedAt           time.Time `json:"updated_at"`
-	Value               int64     `json:"value"`
+	BeneficiaryBic      string     `json:"beneficiary_bic"`
+	BeneficiaryIban     string     `json:"beneficiary_iban"`
+	BeneficiaryName     string     `json:"beneficiary_name"`
+	CreatedAt           time.Time  `json:"created_at"`
+	Currency            string     `json:"currency"`
+	Label               string     `json:"label"`
+	SenderAccountId     string     `json:"sender_account_id"`
+	SenderBic           string     `json:"sender_bic"`
+	SenderDevice        string     `json:"sender_device"`
+	SenderIP            netip.Addr `json:"sender_ip"`
+	Status              string     `json:"status"`
+	Timezone            string     `json:"timezone"`
+	TransferId          string     `json:"transfer_id"`
+	TransferRequestedAt time.Time  `json:"transfer_requested_at"`
+	UpdatedAt           time.Time  `json:"updated_at"`
+	Value               int64      `json:"value"`
 }
 
 func AdaptTransferDataDto(transfer models.TransferData) TransferData {
