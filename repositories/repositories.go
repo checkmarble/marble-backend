@@ -10,24 +10,25 @@ import (
 )
 
 type Repositories struct {
-	ExecutorGetter                ExecutorGetter
-	FirebaseTokenRepository       FireBaseTokenRepository
-	MarbleJwtRepository           func() MarbleJwtRepository
-	UserRepository                UserRepository
-	OrganizationRepository        OrganizationRepository
-	IngestionRepository           IngestionRepository
-	DataModelRepository           DataModelRepository
-	IngestedDataReadRepository    IngestedDataReadRepository
-	DecisionRepository            DecisionRepository
-	MarbleDbRepository            MarbleDbRepository
-	ClientDbRepository            ClientDbRepository
-	ScenarioPublicationRepository ScenarioPublicationRepository
-	OrganizationSchemaRepository  OrganizationSchemaRepository
-	AwsS3Repository               AwsS3Repository
-	GcsRepository                 GcsRepository
-	CustomListRepository          CustomListRepository
-	UploadLogRepository           UploadLogRepository
-	MarbleAnalyticsRepository     MarbleAnalyticsRepository
+	ExecutorGetter                    ExecutorGetter
+	FirebaseTokenRepository           FireBaseTokenRepository
+	MarbleJwtRepository               func() MarbleJwtRepository
+	UserRepository                    UserRepository
+	OrganizationRepository            OrganizationRepository
+	IngestionRepository               IngestionRepository
+	DataModelRepository               DataModelRepository
+	IngestedDataReadRepository        IngestedDataReadRepository
+	DecisionRepository                DecisionRepository
+	MarbleDbRepository                MarbleDbRepository
+	ClientDbRepository                ClientDbRepository
+	ScenarioPublicationRepository     ScenarioPublicationRepository
+	OrganizationSchemaRepository      OrganizationSchemaRepository
+	AwsS3Repository                   AwsS3Repository
+	GcsRepository                     GcsRepository
+	CustomListRepository              CustomListRepository
+	UploadLogRepository               UploadLogRepository
+	MarbleAnalyticsRepository         MarbleAnalyticsRepository
+	TransferCheckEnrichmentRepository *TransferCheckEnrichmentRepository
 }
 
 func NewQueryBuilder() squirrel.StatementBuilderType {
@@ -39,9 +40,11 @@ func NewRepositories(
 	firebaseClient *auth.Client,
 	marbleConnectionPool *pgxpool.Pool,
 	metabase Metabase,
+	tranfsercheckEnrichmentBucket string,
 ) (*Repositories, error) {
 	executorGetter := NewExecutorGetter(marbleConnectionPool)
 
+	gcsRepository := GcsRepositoryImpl{}
 	return &Repositories{
 		ExecutorGetter:          executorGetter,
 		FirebaseTokenRepository: firebase.New(firebaseClient),
@@ -66,9 +69,13 @@ func NewRepositories(
 		CustomListRepository:          &CustomListRepositoryPostgresql{},
 		UploadLogRepository:           &UploadLogRepositoryImpl{},
 		AwsS3Repository:               AwsS3Repository{s3Client: NewS3Client()},
-		GcsRepository:                 &GcsRepositoryImpl{},
+		GcsRepository:                 &gcsRepository,
 		MarbleAnalyticsRepository: MarbleAnalyticsRepository{
 			metabase: metabase,
 		},
+		TransferCheckEnrichmentRepository: NewTransferCheckEnrichmentRepository(
+			&gcsRepository,
+			tranfsercheckEnrichmentBucket,
+		),
 	}, nil
 }
