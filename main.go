@@ -158,17 +158,16 @@ func main() {
 			User:                utils.GetRequiredEnv[string]("PG_USER"),
 		},
 		config: models.GlobalConfiguration{
-			TokenLifetimeMinute:  utils.GetEnv("TOKEN_LIFETIME_MINUTE", 60*2),
-			FakeAwsS3Repository:  utils.GetEnv("FAKE_AWS_S3", false),
-			FakeGcsRepository:    utils.GetEnv("FAKE_GCS", false),
-			GcsIngestionBucket:   utils.GetRequiredEnv[string]("GCS_INGESTION_BUCKET"),
-			GcsCaseManagerBucket: utils.GetRequiredEnv[string]("GCS_CASE_MANAGER_BUCKET"),
-			GcsTransferCheckEnrichmentBucket: utils.GetEnv("GCS_TRANSFER_CHECK_ENRICHMENT_BUCKET",
-				"case-manager-tokyo-country-381508"), // TODO: fixme hard coded placeholder
-			MarbleAppHost:        utils.GetEnv("MARBLE_APP_HOST", ""),
-			MarbleBackofficeHost: utils.GetEnv("MARBLE_BACKOFFICE_HOST", ""),
-			SegmentWriteKey:      utils.GetRequiredEnv[string]("SEGMENT_WRITE_KEY"),
-			JwtSigningKey:        utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY", ""),
+			TokenLifetimeMinute:              utils.GetEnv("TOKEN_LIFETIME_MINUTE", 60*2),
+			FakeAwsS3Repository:              utils.GetEnv("FAKE_AWS_S3", false),
+			FakeGcsRepository:                utils.GetEnv("FAKE_GCS", false),
+			GcsIngestionBucket:               utils.GetRequiredEnv[string]("GCS_INGESTION_BUCKET"),
+			GcsCaseManagerBucket:             utils.GetRequiredEnv[string]("GCS_CASE_MANAGER_BUCKET"),
+			GcsTransferCheckEnrichmentBucket: utils.GetEnv("GCS_TRANSFER_CHECK_ENRICHMENT_BUCKET", ""), // required for transfercheck
+			MarbleAppHost:                    utils.GetEnv("MARBLE_APP_HOST", ""),
+			MarbleBackofficeHost:             utils.GetEnv("MARBLE_BACKOFFICE_HOST", ""),
+			SegmentWriteKey:                  utils.GetRequiredEnv[string]("SEGMENT_WRITE_KEY"),
+			JwtSigningKey:                    utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY", ""),
 		},
 		sentryDsn: utils.GetEnv("SENTRY_DSN", ""),
 		metabase: models.MetabaseConfiguration{
