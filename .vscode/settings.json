@@ -7,7 +7,6 @@
             "GOFUMPT_SPLIT_LONG_LINES": "on"
       },
       "search.exclude": {
-            "go.mod": true,
             "go.sum": true,
             "tempFiles/*": true,
             "**/*.ndjson": true,
