@@ -16,7 +16,7 @@ import (
 const (
 	IP_COUNTRY_RANGE_FILE = "ip_country_ranges.csv"
 	IP_VPN_RANGE_FILE     = "ip_vpn_ranges.csv"
-	IP_TOR_RANGE_FILE     = "ip_tor_ranges.csv"
+	IP_TOR_RANGE_FILE     = "ip_tor.csv"
 )
 
 type ipCountryRange struct {
@@ -30,12 +30,14 @@ type ipTypeRange struct {
 }
 
 type TransferCheckEnrichmentRepository struct {
-	gcsRepository   GcsRepository
-	bucket          string
-	ipCountryRanges []ipCountryRange
-	ipTypeRanges    []ipTypeRange
-	muCountries     sync.Mutex
-	muIpTypes       sync.Mutex
+	gcsRepository     GcsRepository
+	bucket            string
+	ipCountryRanges   []ipCountryRange
+	ipTypeRanges      []ipTypeRange
+	muCountries       sync.Mutex
+	muIpTypes         sync.Mutex
+	countryRangeSetup bool
+	ipTypeRangeSetup  bool
 }
 
 func NewTransferCheckEnrichmentRepository(gcsrepository GcsRepository, bucket string) *TransferCheckEnrichmentRepository {
@@ -55,6 +57,9 @@ func (r *TransferCheckEnrichmentRepository) setupIpCountryRanges(ctx context.Con
 	defer span.End()
 	r.muCountries.Lock()
 	defer r.muCountries.Unlock()
+	if r.countryRangeSetup {
+		return nil
+	}
 
 	file, err := r.gcsRepository.GetFile(ctx, r.bucket, IP_COUNTRY_RANGE_FILE)
 	if err != nil {
@@ -88,6 +93,7 @@ func (r *TransferCheckEnrichmentRepository) setupIpCountryRanges(ctx context.Con
 		return 1
 	})
 
+	r.countryRangeSetup = true
 	return nil
 }
 
@@ -99,10 +105,8 @@ func (r *TransferCheckEnrichmentRepository) GetIPCountry(ctx context.Context, ip
 	)
 	defer span.End()
 	// TODO later: add an expiry mechanism for the ipCountryRanges so that the csv file is polled again every X hours/days
-	if len(r.ipCountryRanges) == 0 {
-		if err := r.setupIpCountryRanges(ctx); err != nil {
-			return "", err
-		}
+	if err := r.setupIpCountryRanges(ctx); err != nil {
+		return "", err
 	}
 
 	return r.findCountryDichotomy(ip), nil
@@ -137,10 +141,8 @@ func (r *TransferCheckEnrichmentRepository) GetIPType(ctx context.Context, ip ne
 	defer span.End()
 
 	// TODO later: add an expiry mechanism for the ipTypeRanges so that the csv file is polled again every X hours/days
-	if len(r.ipTypeRanges) == 0 {
-		if err := r.setupIpTypeRanges(ctx); err != nil {
-			return "", err
-		}
+	if err := r.setupIpTypeRanges(ctx); err != nil {
+		return "", err
 	}
 
 	ipType := r.findIpTypeDichotomy(ip)
@@ -184,6 +186,10 @@ func (r *TransferCheckEnrichmentRepository) setupIpTypeRanges(ctx context.Contex
 	defer span.End()
 	r.muIpTypes.Lock()
 	defer r.muIpTypes.Unlock()
+	if r.ipTypeRangeSetup {
+		return nil
+	}
+
 	file, err := r.gcsRepository.GetFile(ctx, r.bucket, IP_VPN_RANGE_FILE)
 	if err != nil {
 		return errors.Wrap(err, "failed to get VPN IP file")
@@ -241,6 +247,7 @@ func (r *TransferCheckEnrichmentRepository) setupIpTypeRanges(ctx context.Contex
 		return 1
 	})
 
+	r.ipTypeRangeSetup = true
 	return nil
 }
 
