@@ -713,6 +713,7 @@ func validateFileType(file *multipart.FileHeader) error {
 		"application/vnd.openxmlformats-officedocument.",
 		"application/msword",
 		"application/zip",
+		"application/x-zip-compressed",
 		"application/pdf",
 		"image/",
 	}
