@@ -98,7 +98,8 @@ func (repo *MarbleDbRepository) CreateRules(ctx context.Context, exec Executor, 
 			"name",
 			"description",
 			"formula_ast_expression",
-			"score_modifier").
+			"score_modifier",
+			"rule_group").
 		Suffix("RETURNING *")
 
 	for _, rule := range dbCreateRuleInputs {
@@ -111,6 +112,7 @@ func (repo *MarbleDbRepository) CreateRules(ctx context.Context, exec Executor, 
 			rule.Description,
 			rule.FormulaAstExpression,
 			rule.ScoreModifier,
+			rule.RuleGroup,
 		)
 	}
 

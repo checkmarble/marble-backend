@@ -20,6 +20,7 @@ type Rule struct {
 	FormulaAstExpression *ast.Node
 	ScoreModifier        int
 	CreatedAt            time.Time
+	RuleGroup            string
 }
 
 type CreateRuleInput struct {
@@ -31,6 +32,7 @@ type CreateRuleInput struct {
 	Description          string
 	FormulaAstExpression *ast.Node
 	ScoreModifier        int
+	RuleGroup            string
 }
 
 type UpdateRuleInput struct {
@@ -40,4 +42,5 @@ type UpdateRuleInput struct {
 	Description          *string
 	FormulaAstExpression *ast.Node
 	ScoreModifier        *int
+	RuleGroup            *string
 }
