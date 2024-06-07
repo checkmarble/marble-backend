@@ -24,6 +24,7 @@ type RuleDto struct {
 	FormulaAstExpression *NodeDto  `json:"formula_ast_expression"`
 	ScoreModifier        int       `json:"scoreModifier"`
 	CreatedAt            time.Time `json:"createdAt"`
+	RuleGroup            string    `json:"rule_group"`
 }
 
 type CreateRuleInputBody struct {
@@ -33,6 +34,7 @@ type CreateRuleInputBody struct {
 	Description          string   `json:"description"`
 	FormulaAstExpression *NodeDto `json:"formula_ast_expression"`
 	ScoreModifier        int      `json:"scoreModifier"`
+	RuleGroup            string   `json:"rule_group"`
 }
 
 type CreateRuleInput struct {
@@ -45,6 +47,7 @@ type UpdateRuleBody struct {
 	Description          *string  `json:"description,omitempty"`
 	FormulaAstExpression *NodeDto `json:"formula_ast_expression"`
 	ScoreModifier        *int     `json:"scoreModifier,omitempty"`
+	RuleGroup            *string  `json:"rule_group"`
 }
 
 type UpdateRuleInput struct {
@@ -74,6 +77,7 @@ func AdaptRuleDto(rule models.Rule) (RuleDto, error) {
 		FormulaAstExpression: formulaAstExpression,
 		ScoreModifier:        rule.ScoreModifier,
 		CreatedAt:            rule.CreatedAt,
+		RuleGroup:            rule.RuleGroup,
 	}, nil
 }
 
@@ -86,6 +90,7 @@ func AdaptCreateRuleInput(body CreateRuleInputBody, organizationId string) (mode
 		Description:          body.Description,
 		FormulaAstExpression: nil,
 		ScoreModifier:        body.ScoreModifier,
+		RuleGroup:            body.RuleGroup,
 	}
 
 	if body.FormulaAstExpression != nil {
@@ -108,6 +113,7 @@ func AdaptUpdateRule(ruleId string, body UpdateRuleBody) (models.UpdateRuleInput
 		Description:          body.Description,
 		FormulaAstExpression: nil,
 		ScoreModifier:        body.ScoreModifier,
+		RuleGroup:            body.RuleGroup,
 	}
 
 	if body.FormulaAstExpression != nil {
