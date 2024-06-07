@@ -7,6 +7,7 @@ import (
 	"net/netip"
 	"slices"
 	"sync"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
@@ -14,9 +15,10 @@ import (
 )
 
 const (
-	IP_COUNTRY_RANGE_FILE = "ip_country_ranges.csv"
-	IP_VPN_RANGE_FILE     = "ip_vpn_ranges.csv"
-	IP_TOR_RANGE_FILE     = "ip_tor.csv"
+	IP_COUNTRY_RANGE_FILE     = "ip_country_ranges.csv"
+	IP_VPN_RANGE_FILE         = "ip_vpn_ranges.csv"
+	IP_TOR_RANGE_FILE         = "ip_tor.csv"
+	IP_RANGE_FILES_EXPIRATION = 2 * time.Hour
 )
 
 type ipCountryRange struct {
@@ -30,14 +32,14 @@ type ipTypeRange struct {
 }
 
 type TransferCheckEnrichmentRepository struct {
-	gcsRepository     GcsRepository
-	bucket            string
-	ipCountryRanges   []ipCountryRange
-	ipTypeRanges      []ipTypeRange
-	muCountries       sync.Mutex
-	muIpTypes         sync.Mutex
-	countryRangeSetup bool
-	ipTypeRangeSetup  bool
+	gcsRepository         GcsRepository
+	bucket                string
+	ipCountryRanges       []ipCountryRange
+	ipTypeRanges          []ipTypeRange
+	muCountries           sync.Mutex
+	muIpTypes             sync.Mutex
+	countryRangesExpireAt time.Time
+	ipTypeRangesExpireAt  time.Time
 }
 
 func NewTransferCheckEnrichmentRepository(gcsrepository GcsRepository, bucket string) *TransferCheckEnrichmentRepository {
@@ -57,7 +59,7 @@ func (r *TransferCheckEnrichmentRepository) setupIpCountryRanges(ctx context.Con
 	defer span.End()
 	r.muCountries.Lock()
 	defer r.muCountries.Unlock()
-	if r.countryRangeSetup {
+	if time.Now().After(r.countryRangesExpireAt) {
 		return nil
 	}
 
@@ -93,7 +95,7 @@ func (r *TransferCheckEnrichmentRepository) setupIpCountryRanges(ctx context.Con
 		return 1
 	})
 
-	r.countryRangeSetup = true
+	r.countryRangesExpireAt = time.Now().Add(IP_RANGE_FILES_EXPIRATION)
 	return nil
 }
 
@@ -104,7 +106,7 @@ func (r *TransferCheckEnrichmentRepository) GetIPCountry(ctx context.Context, ip
 		"repositories.TransferCheckEnrichmentRepository.GetIPCountry",
 	)
 	defer span.End()
-	// TODO later: add an expiry mechanism for the ipCountryRanges so that the csv file is polled again every X hours/days
+
 	if err := r.setupIpCountryRanges(ctx); err != nil {
 		return "", err
 	}
@@ -140,7 +142,6 @@ func (r *TransferCheckEnrichmentRepository) GetIPType(ctx context.Context, ip ne
 	)
 	defer span.End()
 
-	// TODO later: add an expiry mechanism for the ipTypeRanges so that the csv file is polled again every X hours/days
 	if err := r.setupIpTypeRanges(ctx); err != nil {
 		return "", err
 	}
@@ -186,7 +187,7 @@ func (r *TransferCheckEnrichmentRepository) setupIpTypeRanges(ctx context.Contex
 	defer span.End()
 	r.muIpTypes.Lock()
 	defer r.muIpTypes.Unlock()
-	if r.ipTypeRangeSetup {
+	if time.Now().After(r.ipTypeRangesExpireAt) {
 		return nil
 	}
 
@@ -247,7 +248,7 @@ func (r *TransferCheckEnrichmentRepository) setupIpTypeRanges(ctx context.Contex
 		return 1
 	})
 
-	r.ipTypeRangeSetup = true
+	r.ipTypeRangesExpireAt = time.Now().Add(IP_RANGE_FILES_EXPIRATION)
 	return nil
 }
 
