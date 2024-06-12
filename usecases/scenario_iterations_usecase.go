@@ -212,6 +212,7 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(ctx co
 			Description:          rule.Description,
 			FormulaAstExpression: rule.FormulaAstExpression,
 			ScoreModifier:        rule.ScoreModifier,
+			RuleGroup:            rule.RuleGroup,
 		}
 	}
 	newScenarioIteration, err := usecase.repository.CreateScenarioIterationAndRules(ctx, exec,
