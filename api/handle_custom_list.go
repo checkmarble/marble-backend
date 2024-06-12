@@ -94,7 +94,7 @@ func (api *API) handlePatchCustomList(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"lists": dto.AdaptCustomListDto(CustomList),
+		"custom_list": dto.AdaptCustomListDto(CustomList),
 	})
 }
 
