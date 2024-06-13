@@ -26,6 +26,7 @@ type IngestedDataReadRepository interface {
 		exec Executor,
 		tableName string,
 		fieldName string,
+		fieldType models.DataType,
 		aggregator ast.Aggregator,
 		filters []ast.Filter,
 	) (any, error)
@@ -295,8 +296,13 @@ func queryWithDynamicColumnList(
 	return output, nil
 }
 
-func createQueryAggregated(exec Executor, tableName string,
-	fieldName string, aggregator ast.Aggregator, filters []ast.Filter,
+func createQueryAggregated(
+	exec Executor,
+	tableName string,
+	fieldName string,
+	fieldType models.DataType,
+	aggregator ast.Aggregator,
+	filters []ast.Filter,
 ) (squirrel.SelectBuilder, error) {
 	var selectExpression string
 	if aggregator == ast.AGGREGATOR_COUNT_DISTINCT {
@@ -305,9 +311,11 @@ func createQueryAggregated(exec Executor, tableName string,
 		// COUNT(*) is a special case, as it does not take a field name (we do not want to count only non-null
 		// values of a field, but all rows in the table that match the filters)
 		selectExpression = "COUNT(*)"
-	} else {
+	} else if fieldType == models.Int {
 		// pgx will build a math/big.Int if we sum postgresql "bigint" (int64) values - we'd rather have a float64.
 		selectExpression = fmt.Sprintf("%s(%s)::float8", aggregator, fieldName)
+	} else {
+		selectExpression = fmt.Sprintf("%s(%s)", aggregator, fieldName)
 	}
 
 	qualifiedTableName := tableNameWithSchema(exec, tableName)
@@ -327,14 +335,20 @@ func createQueryAggregated(exec Executor, tableName string,
 	return query, nil
 }
 
-func (repo *IngestedDataReadRepositoryImpl) QueryAggregatedValue(ctx context.Context, exec Executor,
-	tableName string, fieldName string, aggregator ast.Aggregator, filters []ast.Filter,
+func (repo *IngestedDataReadRepositoryImpl) QueryAggregatedValue(
+	ctx context.Context,
+	exec Executor,
+	tableName string,
+	fieldName string,
+	fieldType models.DataType,
+	aggregator ast.Aggregator,
+	filters []ast.Filter,
 ) (any, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
-	query, err := createQueryAggregated(exec, tableName, fieldName, aggregator, filters)
+	query, err := createQueryAggregated(exec, tableName, fieldName, fieldType, aggregator, filters)
 	if err != nil {
 		return nil, fmt.Errorf("error while building SQL query: %w", err)
 	}

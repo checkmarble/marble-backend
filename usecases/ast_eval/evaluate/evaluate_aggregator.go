@@ -85,7 +85,7 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 		}
 	}
 
-	result, err := a.runQueryInRepository(ctx, tableName, fieldName, aggregator, filters)
+	result, err := a.runQueryInRepository(ctx, tableName, fieldName, fieldType, aggregator, filters)
 	if err != nil {
 		return MakeEvaluateError(errors.Wrap(err, "Error running aggregation query in repository"))
 	}
@@ -97,8 +97,13 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 	return result, nil
 }
 
-func (a AggregatorEvaluator) runQueryInRepository(ctx context.Context, tableName string,
-	fieldName string, aggregator ast.Aggregator, filters []ast.Filter,
+func (a AggregatorEvaluator) runQueryInRepository(
+	ctx context.Context,
+	tableName string,
+	fieldName string,
+	fieldType models.DataType,
+	aggregator ast.Aggregator,
+	filters []ast.Filter,
 ) (any, error) {
 	if a.ReturnFakeValue {
 		return DryRunQueryAggregatedValue(a.DataModel, tableName, fieldName, aggregator)
@@ -108,7 +113,7 @@ func (a AggregatorEvaluator) runQueryInRepository(ctx context.Context, tableName
 	if err != nil {
 		return nil, err
 	}
-	return a.IngestedDataReadRepository.QueryAggregatedValue(ctx, db, tableName, fieldName, aggregator, filters)
+	return a.IngestedDataReadRepository.QueryAggregatedValue(ctx, db, tableName, fieldName, fieldType, aggregator, filters)
 }
 
 func (a AggregatorEvaluator) defaultValueForAggregator(aggregator ast.Aggregator) (any, []error) {
