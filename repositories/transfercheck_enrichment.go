@@ -59,7 +59,7 @@ func (r *TransferCheckEnrichmentRepository) setupIpCountryRanges(ctx context.Con
 	defer span.End()
 	r.muCountries.Lock()
 	defer r.muCountries.Unlock()
-	if time.Now().After(r.countryRangesExpireAt) {
+	if time.Now().Before(r.countryRangesExpireAt) {
 		return nil
 	}
 
@@ -187,7 +187,7 @@ func (r *TransferCheckEnrichmentRepository) setupIpTypeRanges(ctx context.Contex
 	defer span.End()
 	r.muIpTypes.Lock()
 	defer r.muIpTypes.Unlock()
-	if time.Now().After(r.ipTypeRangesExpireAt) {
+	if time.Now().Before(r.ipTypeRangesExpireAt) {
 		return nil
 	}
 
