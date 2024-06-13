@@ -102,8 +102,14 @@ func TestIngestedDataGetDbFieldWithJoin(t *testing.T) {
 }
 
 func TestIngestedDataQueryAggregatedValueWithoutFilter(t *testing.T) {
-	query, err := createQueryAggregated(TransactionTest{}, utils.DummyTableNameFirst,
-		utils.DummyFieldNameForInt, ast.AGGREGATOR_AVG, []ast.Filter{})
+	query, err := createQueryAggregated(
+		TransactionTest{},
+		utils.DummyTableNameFirst,
+		utils.DummyFieldNameForInt,
+		models.Int,
+		ast.AGGREGATOR_AVG,
+		[]ast.Filter{},
+	)
 	assert.Empty(t, err)
 	sql, args, err := query.ToSql()
 	assert.Empty(t, err)
@@ -114,8 +120,13 @@ func TestIngestedDataQueryAggregatedValueWithoutFilter(t *testing.T) {
 }
 
 func TestIngestedDataQueryCountWithoutFilter(t *testing.T) {
-	query, err := createQueryAggregated(TransactionTest{}, utils.DummyTableNameFirst,
-		utils.DummyFieldNameForInt, ast.AGGREGATOR_COUNT, []ast.Filter{})
+	query, err := createQueryAggregated(
+		TransactionTest{},
+		utils.DummyTableNameFirst,
+		utils.DummyFieldNameForInt,
+		models.Int,
+		ast.AGGREGATOR_COUNT,
+		[]ast.Filter{})
 	assert.Empty(t, err)
 	sql, args, err := query.ToSql()
 	assert.Empty(t, err)
@@ -141,8 +152,13 @@ func TestIngestedDataQueryAggregatedValueWithFilter(t *testing.T) {
 		},
 	}
 
-	query, err := createQueryAggregated(TransactionTest{}, utils.DummyTableNameFirst,
-		utils.DummyFieldNameForInt, ast.AGGREGATOR_AVG, filters)
+	query, err := createQueryAggregated(
+		TransactionTest{},
+		utils.DummyTableNameFirst,
+		utils.DummyFieldNameForInt,
+		models.Int,
+		ast.AGGREGATOR_AVG,
+		filters)
 	assert.Empty(t, err)
 	sql, args, err := query.ToSql()
 	assert.Empty(t, err)
