@@ -243,6 +243,12 @@ func (usecase *DecisionUsecase) CreateDecision(
 
 	decision := models.AdaptScenarExecToDecision(scenarioExecution, payload, nil)
 
+	ctx, span = tracer.Start(
+		ctx,
+		"DecisionUsecase.CreateDecision.store_decision",
+		trace.WithAttributes(attribute.String("scenario_id", input.ScenarioId)),
+		trace.WithAttributes(attribute.Int("nb_rule_executions", len(decision.RuleExecutions))))
+	defer span.End()
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Executor,
 	) (models.DecisionWithRuleExecutions, error) {

@@ -7,11 +7,14 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/cockroachdb/errors"
 	"github.com/jackc/pgx/v5"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type DecisionRepository interface {
@@ -414,6 +417,13 @@ func (repo *DecisionRepositoryImpl) StoreDecision(
 	organizationId string,
 	newDecisionId string,
 ) error {
+	tracer := utils.OpenTelemetryTracerFromContext(ctx)
+	ctx, span := tracer.Start(
+		ctx,
+		"DecisionRepository.StoreDecision.store_decision",
+		trace.WithAttributes(attribute.String("decision_id", newDecisionId)),
+		trace.WithAttributes(attribute.Int("nb_rule_executions", len(decision.RuleExecutions))))
+	defer span.End()
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -465,6 +475,12 @@ func (repo *DecisionRepositoryImpl) StoreDecision(
 		return nil
 	}
 
+	ctx, span = tracer.Start(
+		ctx,
+		"DecisionRepository.StoreDecision.store_decision_rules",
+		trace.WithAttributes(attribute.String("decision_id", newDecisionId)),
+		trace.WithAttributes(attribute.Int("nb_rule_executions", len(decision.RuleExecutions))))
+	defer span.End()
 	builderForRules := NewQueryBuilder().
 		Insert(dbmodels.TABLE_DECISION_RULES).
 		Columns(
