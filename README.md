@@ -33,13 +33,15 @@ Install the [Firebase tools](https://firebase.google.com/docs/emulator-suite):
 curl -sL firebase.tools | bash
 ```
 
+Then copy the `./firebase-local-data.example` folder to `./firebase-local-data`. This folder will be used to store the local data of the Firebase emulator. It is ignored by git.
+
 Then start it using (replace `GOOGLE_CLOUD_PROJECT` with the value from your `.env` file):
 
 ```sh
-firebase --project GOOGLE_CLOUD_PROJECT emulators:start --import=./firebase-local-data
+firebase --project GOOGLE_CLOUD_PROJECT emulators:start --import=./firebase-local-data --export-on-exit
 ```
 
-> NB: The `--import` flag is used to import the local data into the emulator.
+> NB: The `--import` flag is used to import the local data into the emulator. The `--export-on-exit` flag is used to export the data when the emulator is stopped so you don't lose your changes.
 
 ### Launch the project
 
