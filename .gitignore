@@ -41,6 +41,7 @@ docker-compose.dev.yml
 
 .idea
 /.firebase
+/firebase-local-data
 __debug_bin*
 
 # Use by the Fake GcsRepository
