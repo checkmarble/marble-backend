@@ -3,6 +3,9 @@ info:
   title: Marble decision engine API
   description: Public API on decisions and data ingestion.
   version: 1.0.0
+x-readme:
+  explorer-enabled: false
+  proxy-enabled: false
 servers:
   - url: "api.checkmarble.com"
 tags:
