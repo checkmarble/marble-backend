@@ -3,6 +3,9 @@ info:
   version: 0.1.0
   title: "Transfercheck API"
   description: "Marble transfer checking API"
+x-readme:
+  explorer-enabled: false
+  proxy-enabled: false
 servers:
   - url: "https://api.checkmarble.com"
     description: Marble api
