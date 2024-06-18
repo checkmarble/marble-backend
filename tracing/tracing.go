@@ -6,6 +6,7 @@ import (
 
 	texporter "github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace"
 	gcppropagator "github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator"
+	"google.golang.org/api/option"
 
 	"go.opentelemetry.io/contrib/detectors/gcp"
 	"go.opentelemetry.io/otel"
@@ -42,7 +43,10 @@ func Init(configuration Configuration) (TelemetryRessources, error) {
 		return NoopTelemetry(), nil
 	}
 
-	exporter, err := texporter.New(texporter.WithProjectID(configuration.ProjectID))
+	exporter, err := texporter.New(
+		texporter.WithProjectID(configuration.ProjectID),
+		texporter.WithTraceClientOptions([]option.ClientOption{option.WithTelemetryDisabled()}),
+	)
 	if err != nil {
 		return TelemetryRessources{}, fmt.Errorf("texporter.New error: %v", err)
 	}
