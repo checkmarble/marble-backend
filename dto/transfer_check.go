@@ -32,6 +32,7 @@ type TransferData struct {
 	Currency            string     `json:"currency"`
 	Label               string     `json:"label"`
 	SenderAccountId     string     `json:"sender_account_id"`
+	SenderAccountType   string     `json:"sender_account_type"`
 	SenderBic           string     `json:"sender_bic"`
 	SenderDevice        string     `json:"sender_device"`
 	SenderIP            netip.Addr `json:"sender_ip"`
@@ -52,6 +53,7 @@ func AdaptTransferDataDto(transfer models.TransferData) TransferData {
 		Currency:            transfer.Currency,
 		Label:               transfer.Label,
 		SenderAccountId:     transfer.SenderAccountId,
+		SenderAccountType:   transfer.SenderAccountType,
 		SenderBic:           transfer.SenderBic,
 		SenderDevice:        transfer.SenderDevice,
 		SenderIP:            transfer.SenderIP,
@@ -71,6 +73,7 @@ type TransferDataCreateBody struct {
 	Currency            string    `json:"currency" binding:"required"`
 	Label               string    `json:"label"`
 	SenderAccountId     string    `json:"sender_account_id" binding:"required"`
+	SenderAccountType   string    `json:"sender_account_type"`
 	SenderBic           string    `json:"sender_bic" binding:"required"`
 	SenderDevice        string    `json:"sender_device"`
 	SenderIP            string    `json:"sender_ip"`
