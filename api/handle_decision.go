@@ -1,8 +1,10 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
+	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 
 	"github.com/checkmarble/marble-backend/dto"
@@ -102,10 +104,28 @@ func (api *API) handlePostDecision(c *gin.Context) {
 		},
 		false,
 	)
-	if presentError(c, err) {
+
+	if returnExpectedDecisionError(c, err) || presentError(c, err) {
 		return
 	}
 	c.JSON(http.StatusOK, dto.NewAPIDecisionWithRule(decision, api.config.MarbleAppHost, false))
+}
+
+func returnExpectedDecisionError(c *gin.Context, err error) bool {
+	if err == nil {
+		return false
+	}
+	logger := utils.LoggerFromContext(c.Request.Context())
+	logger.InfoContext(c.Request.Context(), fmt.Sprintf("error: %v", err))
+
+	if errors.Is(err, models.ErrScenarioTriggerConditionAndTriggerObjectMismatch) {
+		c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
+			Message:   "The payload object you sent does not match the trigger condition of the scenario.",
+			ErrorCode: dto.CannotPublishDraft,
+		})
+		return true
+	}
+	return false
 }
 
 func (api *API) handlePostAllDecisions(c *gin.Context) {

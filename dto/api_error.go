@@ -17,6 +17,9 @@ const (
 	ScenarioIterationInvalid          ErrorCode = "scenario_iteration_is_invalid"
 	DataPreparationServiceUnavailable ErrorCode = "data_preparation_service_unavailable"
 
+	// decision related
+	TriggerConditionNotMatched ErrorCode = "trigger_condition_not_matched"
+
 	// general
 	UnknownUser ErrorCode = "unknown_user"
 )
