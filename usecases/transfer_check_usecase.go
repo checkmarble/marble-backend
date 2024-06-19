@@ -215,7 +215,7 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 	}
 	if doScore {
 		out.LastScoredAt = null.TimeFrom(decision.CreatedAt)
-		out.Score = null.Int32From(int32(decision.Score))
+		out.Score = scoreFromDecision(decision.Score)
 	}
 
 	return out, nil
@@ -330,7 +330,7 @@ func (usecase *TransferCheckUsecase) UpdateTransfer(
 	}
 	if len(previousDecisions) > 0 {
 		out.LastScoredAt = null.TimeFrom(previousDecisions[0].CreatedAt)
-		out.Score = null.Int32From(int32(previousDecisions[0].Score))
+		out.Score = scoreFromDecision(previousDecisions[0].Score)
 	}
 
 	return out, nil
@@ -408,7 +408,7 @@ func (usecase *TransferCheckUsecase) QueryTransfers(
 		}
 		if len(previousDecisions) > 0 {
 			transfer.LastScoredAt = null.TimeFrom(previousDecisions[0].CreatedAt)
-			transfer.Score = null.Int32From(int32(previousDecisions[0].Score))
+			transfer.Score = scoreFromDecision(previousDecisions[0].Score)
 		}
 		out = append(out, transfer)
 	}
@@ -470,7 +470,7 @@ func (usecase *TransferCheckUsecase) GetTransfer(
 	}
 	if len(previousDecisions) > 0 {
 		transfer.LastScoredAt = null.TimeFrom(previousDecisions[0].CreatedAt)
-		transfer.Score = null.Int32From(int32(previousDecisions[0].Score))
+		transfer.Score = scoreFromDecision(previousDecisions[0].Score)
 	}
 	return transfer, nil
 }
@@ -541,7 +541,7 @@ func (usecase *TransferCheckUsecase) ScoreTransfer(
 		TransferData: outTransfer,
 	}
 	transfer.LastScoredAt = null.TimeFrom(decision.CreatedAt)
-	transfer.Score = null.Int32From(int32(decision.Score))
+	transfer.Score = scoreFromDecision(decision.Score)
 
 	return transfer, nil
 }
@@ -626,4 +626,14 @@ func presentTransferData(ctx context.Context, m map[string]interface{}) (string,
 
 	out["object_id"] = objectId[prefixSize+separatorSize:]
 	return partnerId, out
+}
+
+func scoreFromDecision(score int) null.Int32 {
+	if score < 0 {
+		score = 0
+	} else if score > 100 {
+		score = 100
+	}
+
+	return null.Int32From(int32(score))
 }
