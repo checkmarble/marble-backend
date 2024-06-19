@@ -16,8 +16,9 @@ import (
 )
 
 var (
-	TransferStatuses = []string{"neutral", "suspected_fraud", "confirmed_fraud"}
-	isAlphanumeric   = regexp.MustCompile(`^[a-zA-Z0-9]*$`)
+	TransferStatuses   = []string{"neutral", "suspected_fraud", "confirmed_fraud"}
+	SenderAccountTypes = []string{"physical_person", "moral_person"}
+	isAlphanumeric     = regexp.MustCompile(`^[a-zA-Z0-9]*$`)
 )
 
 const (
@@ -63,6 +64,7 @@ type TransferData struct {
 	Currency            string
 	Label               string
 	SenderAccountId     string
+	SenderAccountType   string
 	SenderBic           string
 	SenderBicRiskLevel  string
 	SenderDevice        string
@@ -107,6 +109,10 @@ func TransferFromMap(m map[string]any) (TransferData, error) {
 	transfer.SenderAccountId, ok = m["sender_account_id"].(string)
 	if !ok {
 		return transfer, errors.New("sender_account_id is not a string")
+	}
+	transfer.SenderAccountType, ok = m["sender_account_type"].(string)
+	if !ok {
+		return transfer, errors.New("sender_account_type is not a string")
 	}
 	transfer.SenderBic, ok = m["sender_bic"].(string)
 	if !ok {
@@ -187,6 +193,7 @@ type TransferDataCreateBody struct {
 	Currency            string
 	Label               string
 	SenderAccountId     string
+	SenderAccountType   string
 	SenderBic           string
 	SenderDevice        string
 	SenderIP            string
@@ -220,6 +227,7 @@ func (t TransferData) ToIngestionMap(mapping TransferMapping) map[string]any {
 		"currency":              t.Currency,
 		"label":                 t.Label,
 		"sender_account_id":     t.SenderAccountId,
+		"sender_account_type":   t.SenderAccountType,
 		"sender_bic":            t.SenderBic,
 		"sender_bic_risk_level": t.SenderBicRiskLevel,
 		"sender_device":         t.SenderDevice,
@@ -245,6 +253,7 @@ func (t TransferDataCreateBody) FormatAndValidate() (TransferData, error) {
 		Currency:            t.Currency,
 		Label:               t.Label,
 		SenderAccountId:     t.SenderAccountId,
+		SenderAccountType:   t.SenderAccountType,
 		SenderBic:           t.SenderBic,
 		SenderBicRiskLevel:  RegularSender,
 		SenderDevice:        t.SenderDevice,
@@ -292,6 +301,10 @@ func (t TransferDataCreateBody) FormatAndValidate() (TransferData, error) {
 
 	if !slices.Contains(TransferStatuses, t.Status) {
 		errs["status"] = fmt.Sprintf("status %s is not valid", t.Status)
+	}
+
+	if !slices.Contains(SenderAccountTypes, t.SenderAccountType) {
+		errs["sender_account_type"] = fmt.Sprintf("sender_account_type %s is not valid", t.SenderAccountType)
 	}
 
 	stringTooLongErr := "string is too long"
