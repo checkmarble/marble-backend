@@ -38,14 +38,7 @@ type dependencies struct {
 }
 
 func initDependencies(conf AppConfiguration, signingKey *rsa.PrivateKey) (dependencies, error) {
-	database, err := postgres.New(postgres.Configuration{
-		Host:                conf.pgConfig.Hostname,
-		Port:                conf.pgConfig.Port,
-		User:                conf.pgConfig.User,
-		Password:            conf.pgConfig.Password,
-		Database:            conf.pgConfig.Database,
-		DbConnectWithSocket: conf.pgConfig.DbConnectWithSocket,
-	})
+	database, err := postgres.New(conf.pgConfig)
 	if err != nil {
 		return dependencies{}, fmt.Errorf("postgres.New error: %w", err)
 	}

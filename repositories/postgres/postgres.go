@@ -6,19 +6,11 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
-
-type Configuration struct {
-	Database            string
-	DbConnectWithSocket bool
-	Host                string
-	Password            string
-	Port                string
-	User                string
-}
 
 type Database struct {
 	pool *pgxpool.Pool
@@ -42,16 +34,9 @@ func (db *Database) Begin(ctx context.Context) (*Transaction, error) {
 	}, nil
 }
 
-func New(conf Configuration) (*Database, error) {
-	connectionString := fmt.Sprintf("host=%s user=%s password=%s database=%s sslmode=disable",
-		conf.Host,
-		conf.User,
-		conf.Password,
-		conf.Database,
-	)
-	if !conf.DbConnectWithSocket {
-		connectionString = fmt.Sprintf("%s port=%s", connectionString, conf.Port)
-	}
+func New(conf infra.PGConfig) (*Database, error) {
+	connectionString := conf.GetConnectionString()
+
 	cfg, err := pgxpool.ParseConfig(connectionString)
 	if err != nil {
 		return nil, fmt.Errorf("create connection pool: %w", err)
