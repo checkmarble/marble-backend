@@ -175,6 +175,7 @@ components:
         - beneficiary_iban
         - currency
         - sender_account_id
+        - sender_account_type
         - sender_bic
         - transfer_id
         - transfer_requested_at
@@ -198,6 +199,10 @@ components:
         sender_account_id:
           type: string
           description: Unique ID for your customers. Use a pseudo-ID or an internal customer ID instead of an externally facing customer ID.
+        sender_account_type:
+          type: string
+          description: Type of the account
+          enum: [physical_person, moral_person]
         sender_bic:
           type: string
           description: BIC code of the sender bank
@@ -238,6 +243,7 @@ components:
         - currency
         - label
         - sender_account_id
+        - sender_account_type
         - sender_bic
         - sender_device
         - sender_ip
@@ -269,6 +275,10 @@ components:
         sender_account_id:
           type: string
           description: Unique identifier of the transfer sender account
+        sender_account_type:
+          type: string
+          description: Type of the account
+          enum: [physical_person, moral_person]
         sender_bic:
           type: string
           description: BIC code of the sender bank
