@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"time"
 
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 
@@ -28,11 +29,11 @@ var embedAnalyticsViews embed.FS
 type Migrater struct {
 	dbMigrationsFileSystem   embed.FS
 	analyticsViewsFileSystem embed.FS
-	pgConfig                 utils.PGConfig
+	pgConfig                 infra.PGConfig
 	db                       *sql.DB
 }
 
-func NewMigrater(pgConfig utils.PGConfig) *Migrater {
+func NewMigrater(pgConfig infra.PGConfig) *Migrater {
 	return &Migrater{
 		dbMigrationsFileSystem:   embedMigrations,
 		analyticsViewsFileSystem: embedAnalyticsViews,

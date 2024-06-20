@@ -20,7 +20,6 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/postgres"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/token"
-	"github.com/checkmarble/marble-backend/utils"
 )
 
 const (
@@ -90,7 +89,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not connect to db: %s", err)
 	}
 
-	pgConfig := utils.PGConfig{ConnectionString: databaseURL}
+	pgConfig := infra.PGConfig{ConnectionString: databaseURL}
 	migrater := repositories.NewMigrater(pgConfig)
 	err = migrater.Run(ctx)
 	if err != nil {

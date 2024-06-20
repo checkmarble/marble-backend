@@ -133,7 +133,7 @@ type AppConfiguration struct {
 	enableGcpTracing    bool
 	requestLoggingLevel string
 	loggingFormat       string
-	pgConfig            utils.PGConfig
+	pgConfig            infra.PGConfig
 	config              models.GlobalConfiguration
 	sentryDsn           string
 	metabase            models.MetabaseConfiguration
@@ -149,7 +149,7 @@ func main() {
 		enableGcpTracing:    utils.GetEnv("ENABLE_GCP_TRACING", false),
 		requestLoggingLevel: utils.GetEnv("REQUEST_LOGGING_LEVEL", "all"),
 		loggingFormat:       utils.GetEnv("LOGGING_FORMAT", "text"),
-		pgConfig: utils.PGConfig{
+		pgConfig: infra.PGConfig{
 			Database:            "marble",
 			DbConnectWithSocket: utils.GetEnv("PG_CONNECT_WITH_SOCKET", false),
 			Hostname:            utils.GetRequiredEnv[string]("PG_HOSTNAME"),
