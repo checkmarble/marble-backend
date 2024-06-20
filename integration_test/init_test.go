@@ -96,7 +96,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// Need to declare this after the migrations, to have the correct search path
-	dbPool, err := infra.NewPostgresConnectionPool(pgConfig.GetConnectionString())
+	dbPool, err := infra.NewPostgresConnectionPool(ctx, pgConfig.GetConnectionString())
 	if err != nil {
 		log.Fatalf("Could not create connection pool: %s", err)
 	}
@@ -105,18 +105,15 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("Could not create private key: %s", err)
 	}
-	repos, err := repositories.NewRepositories(
-		privateKey,
+	repos := repositories.NewRepositories(
 		nil,
 		dbPool,
 		nil,
 		"",
 	)
-	if err != nil {
-		panic(err)
-	}
+
 	jwtRepository := repositories.NewJWTRepository(privateKey)
-	database, err := postgres.New(pgConfig)
+	database := postgres.New(dbPool)
 	if err != nil {
 		panic(err)
 	}
