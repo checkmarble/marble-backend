@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -71,8 +70,8 @@ func TestMain(m *testing.M) {
 	pool.MaxWait = testDbLifetime * time.Second
 
 	hostAndPort := resource.GetHostPort("5432/tcp") // docker container will bind to another port than 5432 if already taken
-	databaseURL := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", testUser, testPassword, hostAndPort, testDbName)
-	testDbPool, err := pgxpool.New(context.Background(), databaseURL)
+	connectionString := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", testUser, testPassword, hostAndPort, testDbName)
+	testDbPool, err := pgxpool.New(context.Background(), connectionString)
 	if err != nil {
 		log.Fatalf("Could not connect to database: %s", err)
 	}
@@ -89,7 +88,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not connect to db: %s", err)
 	}
 
-	pgConfig := infra.PGConfig{ConnectionString: databaseURL}
+	pgConfig := infra.PGConfig{ConnectionString: connectionString}
 	migrater := repositories.NewMigrater(pgConfig)
 	err = migrater.Run(ctx)
 	if err != nil {
@@ -117,14 +116,7 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 	jwtRepository := repositories.NewJWTRepository(privateKey)
-	database, err := postgres.New(postgres.Configuration{
-		Host:                strings.Split(hostAndPort, ":")[0],
-		Port:                strings.Split(hostAndPort, ":")[1],
-		User:                testUser,
-		Password:            testPassword,
-		Database:            testDbName,
-		DbConnectWithSocket: false,
-	})
+	database, err := postgres.New(pgConfig)
 	if err != nil {
 		panic(err)
 	}
