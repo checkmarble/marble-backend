@@ -38,7 +38,7 @@ func (config PGConfig) GetConnectionString() string {
 	return connectionString
 }
 
-func NewPostgresConnectionPool(connectionString string) (*pgxpool.Pool, error) {
+func NewPostgresConnectionPool(ctx context.Context, connectionString string) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(connectionString)
 	if err != nil {
 		return nil, fmt.Errorf("create connection pool: %w", err)
@@ -51,5 +51,12 @@ func NewPostgresConnectionPool(connectionString string) (*pgxpool.Pool, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to create connection pool: %w", err)
 	}
+
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	if err := pool.Ping(ctx); err != nil {
+		return nil, fmt.Errorf("NewPostgresConnectionPool.Ping error: %w", err)
+	}
+
 	return pool, nil
 }

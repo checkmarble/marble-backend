@@ -3,11 +3,8 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/checkmarble/marble-backend/infra"
-	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -34,29 +31,10 @@ func (db *Database) Begin(ctx context.Context) (*Transaction, error) {
 	}, nil
 }
 
-func New(conf infra.PGConfig) (*Database, error) {
-	connectionString := conf.GetConnectionString()
-
-	cfg, err := pgxpool.ParseConfig(connectionString)
-	if err != nil {
-		return nil, fmt.Errorf("create connection pool: %w", err)
-	}
-	cfg.ConnConfig.Tracer = otelpgx.NewTracer()
-
-	pool, err := pgxpool.NewWithConfig(context.Background(), cfg)
-	if err != nil {
-		return nil, fmt.Errorf("unable to create connection pool: %w", err)
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if err := pool.Ping(ctx); err != nil {
-		return nil, fmt.Errorf("conn.Ping error: %w", err)
-	}
-
+func New(pool *pgxpool.Pool) *Database {
 	return &Database{
 		pool: pool,
-	}, nil
+	}
 }
 
 func NewQueryBuilder() squirrel.StatementBuilderType {

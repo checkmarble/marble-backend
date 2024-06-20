@@ -1,8 +1,6 @@
 package repositories
 
 import (
-	"crypto/rsa"
-
 	"firebase.google.com/go/v4/auth"
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/repositories/firebase"
@@ -12,7 +10,6 @@ import (
 type Repositories struct {
 	ExecutorGetter                    ExecutorGetter
 	FirebaseTokenRepository           FireBaseTokenRepository
-	MarbleJwtRepository               func() MarbleJwtRepository
 	UserRepository                    UserRepository
 	OrganizationRepository            OrganizationRepository
 	IngestionRepository               IngestionRepository
@@ -36,26 +33,17 @@ func NewQueryBuilder() squirrel.StatementBuilderType {
 }
 
 func NewRepositories(
-	marbleJwtSigningKey *rsa.PrivateKey,
 	firebaseClient *auth.Client,
 	marbleConnectionPool *pgxpool.Pool,
 	metabase Metabase,
 	tranfsercheckEnrichmentBucket string,
-) (*Repositories, error) {
+) *Repositories {
 	executorGetter := NewExecutorGetter(marbleConnectionPool)
 
 	gcsRepository := GcsRepositoryImpl{}
 	return &Repositories{
-		ExecutorGetter:          executorGetter,
-		FirebaseTokenRepository: firebase.New(firebaseClient),
-		MarbleJwtRepository: func() MarbleJwtRepository {
-			if marbleJwtSigningKey == nil {
-				panic("Repositories does not contain a jwt signing key")
-			}
-			return MarbleJwtRepository{
-				jwtSigningPrivateKey: *marbleJwtSigningKey,
-			}
-		},
+		ExecutorGetter:                executorGetter,
+		FirebaseTokenRepository:       firebase.New(firebaseClient),
 		UserRepository:                &UserRepositoryPostgresql{},
 		OrganizationRepository:        &OrganizationRepositoryPostgresql{},
 		IngestionRepository:           &IngestionRepositoryImpl{},
@@ -77,5 +65,5 @@ func NewRepositories(
 			&gcsRepository,
 			tranfsercheckEnrichmentBucket,
 		),
-	}, nil
+	}
 }

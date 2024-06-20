@@ -5,7 +5,6 @@ import (
 	"crypto/rsa"
 	"flag"
 	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/getsentry/sentry-go"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/segmentio/analytics-go/v3"
 
 	"github.com/checkmarble/marble-backend/api"
@@ -37,13 +37,10 @@ type dependencies struct {
 	TelemetryRessources tracing.TelemetryRessources
 }
 
-func initDependencies(conf AppConfiguration, signingKey *rsa.PrivateKey) (dependencies, error) {
-	database, err := postgres.New(conf.pgConfig)
-	if err != nil {
-		return dependencies{}, fmt.Errorf("postgres.New error: %w", err)
-	}
+func initDependencies(ctx context.Context, conf AppConfiguration, dbPool *pgxpool.Pool, signingKey *rsa.PrivateKey) dependencies {
+	database := postgres.New(dbPool)
 
-	auth := infra.InitializeFirebase(context.Background())
+	auth := infra.InitializeFirebase(ctx)
 	firebaseClient := firebase.New(auth)
 	jwtRepository := repositories.NewJWTRepository(signingKey)
 	tokenValidator := token.NewValidator(database, jwtRepository)
@@ -55,13 +52,16 @@ func initDependencies(conf AppConfiguration, signingKey *rsa.PrivateKey) (depend
 		SegmentClient:       segmentClient,
 		TelemetryRessources: tracing.NoopTelemetry(),
 		TokenHandler:        api.NewTokenHandler(tokenGenerator),
-	}, nil
+	}
 }
 
-func runServer(ctx context.Context, appConfig AppConfiguration, tracingConfig tracing.Configuration) {
-	marbleJwtSigningKey := infra.ParseOrGenerateSigningKey(ctx, appConfig.config.JwtSigningKey)
+func runServer(ctx context.Context, conf AppConfiguration, tracingConfig tracing.Configuration) error {
+	marbleConnectionPool, err := infra.NewPostgresConnectionPool(ctx, conf.pgConfig.GetConnectionString())
+	if err != nil {
+		return err
+	}
 
-	uc := NewUseCases(ctx, appConfig, marbleJwtSigningKey)
+	uc := NewUseCases(ctx, conf, marbleConnectionPool)
 
 	logger := utils.LoggerFromContext(ctx)
 
@@ -69,40 +69,39 @@ func runServer(ctx context.Context, appConfig AppConfiguration, tracingConfig tr
 	// Seed the database
 	////////////////////////////////////////////////////////////
 	seedUsecase := uc.NewSeedUseCase()
-	marbleAdminEmail := appConfig.seedOrgConfig.CreateGlobalAdminEmail
+	marbleAdminEmail := conf.seedOrgConfig.CreateGlobalAdminEmail
 	if marbleAdminEmail != "" {
 		if err := seedUsecase.SeedMarbleAdmins(ctx, marbleAdminEmail); err != nil {
-			panic(err)
+			return err
 		}
 	}
-	if appConfig.seedOrgConfig.CreateOrgName != "" {
+	if conf.seedOrgConfig.CreateOrgName != "" {
 		if err := seedUsecase.CreateOrgAndUser(ctx, models.InitOrgInput{
-			OrgName:    appConfig.seedOrgConfig.CreateOrgName,
-			AdminEmail: appConfig.seedOrgConfig.CreateOrgAdminEmail,
+			OrgName:    conf.seedOrgConfig.CreateOrgName,
+			AdminEmail: conf.seedOrgConfig.CreateOrgAdminEmail,
 		}); err != nil {
-			panic(err)
+			return err
 		}
 	}
 
-	deps, err := initDependencies(appConfig, marbleJwtSigningKey)
-	if err != nil {
-		panic(err)
-	}
+	marbleJwtSigningKey := infra.ParseOrGenerateSigningKey(ctx, conf.config.JwtSigningKey)
+	deps := initDependencies(ctx, conf, marbleConnectionPool, marbleJwtSigningKey)
 
 	deps.TelemetryRessources, err = tracing.Init(tracingConfig)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	router := initRouter(ctx, appConfig, deps)
-	server := api.New(router, appConfig.port, appConfig.config, uc, deps.Authentication, deps.TokenHandler)
+	router := initRouter(ctx, conf, deps)
+	server := api.New(router, conf.port, conf.config, uc, deps.Authentication, deps.TokenHandler)
 
-	notify, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	notify, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	go func() {
-		logger.Info("starting server", slog.String("port", appConfig.port))
-		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		logger.InfoContext(ctx, "starting server", slog.String("port", conf.port))
+		err := server.ListenAndServe()
+		if !errors.Is(err, http.ErrServerClosed) {
 			logger.ErrorContext(ctx, "error serving the app: \n"+err.Error())
 		}
 		logger.InfoContext(ctx, "server returned")
@@ -116,6 +115,8 @@ func runServer(ctx context.Context, appConfig AppConfiguration, tracingConfig tr
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		logger.ErrorContext(ctx, "server.Shutdown error", slog.String("error", err.Error()))
 	}
+
+	return nil
 }
 
 type AppConfiguration struct {
@@ -134,7 +135,7 @@ type AppConfiguration struct {
 }
 
 func main() {
-	appConfig := AppConfiguration{
+	config := AppConfiguration{
 		appName:             "marble-backend",
 		env:                 utils.GetEnv("ENV", "development"),
 		port:                utils.GetRequiredEnv[string]("PORT"),
@@ -182,8 +183,8 @@ func main() {
 	// Setup dependencies
 	////////////////////////////////////////////////////////////
 
-	logger := utils.NewLogger(appConfig.loggingFormat)
-	appContext := utils.StoreLoggerInContext(context.Background(), logger)
+	logger := utils.NewLogger(config.loggingFormat)
+	ctx := utils.StoreLoggerInContext(context.Background(), logger)
 
 	shouldRunMigrations := flag.Bool("migrations", false, "Run migrations")
 	shouldRunServer := flag.Bool("server", false, "Run server")
@@ -192,7 +193,7 @@ func main() {
 	shouldRunDataIngestion := flag.Bool("data-ingestion", false, "Run data ingestion")
 	shouldRunScheduler := flag.Bool("cron-scheduler", false, "Run scheduler for cron jobs")
 	flag.Parse()
-	logger.InfoContext(appContext, "Flags",
+	logger.InfoContext(ctx, "Flags",
 		slog.Bool("shouldRunMigrations", *shouldRunMigrations),
 		slog.Bool("shouldRunServer", *shouldRunServer),
 		slog.Bool("shouldRunScheduledScenarios", *shouldRunScheduleScenarios),
@@ -200,82 +201,92 @@ func main() {
 		slog.Bool("shouldRunScheduler", *shouldRunScheduler),
 	)
 
-	setupSentry(appConfig)
+	setupSentry(config)
 	defer sentry.Flush(3 * time.Second)
 
 	tracingConfig := tracing.Configuration{
-		ApplicationName: appConfig.appName,
-		Enabled:         appConfig.enableGcpTracing,
-		ProjectID:       appConfig.gcpProject,
+		ApplicationName: config.appName,
+		Enabled:         config.enableGcpTracing,
+		ProjectID:       config.gcpProject,
 	}
 
 	if *shouldRunMigrations {
-		migrater := repositories.NewMigrater(appConfig.pgConfig)
-		if err := migrater.Run(appContext); err != nil {
-			logger.ErrorContext(appContext, fmt.Sprintf(
+		migrater := repositories.NewMigrater(config.pgConfig)
+		if err := migrater.Run(ctx); err != nil {
+			logger.ErrorContext(ctx, fmt.Sprintf(
 				"error while running migrations: %+v", err))
-			os.Exit(1)
 			return
 		}
 	}
 
 	if *shouldRunServer {
-		runServer(appContext, appConfig, tracingConfig)
+		err := runServer(ctx, config, tracingConfig)
+		if err != nil {
+			logger.ErrorContext(ctx, fmt.Sprintf(
+				"error while running server: %+v", err))
+			return
+		}
 	}
 
 	if *shouldRunScheduleScenarios {
-		usecases := NewUseCases(appContext, appConfig, nil)
-		err := jobs.ScheduleDueScenarios(appContext, usecases, tracingConfig)
+		pool, err := infra.NewPostgresConnectionPool(ctx,
+			config.pgConfig.GetConnectionString())
 		if err != nil {
-			logger.ErrorContext(appContext, "jobs.ScheduleDueScenarios failed", slog.String("error", err.Error()))
-			os.Exit(1)
+			logger.ErrorContext(ctx, "failed to create marbleConnectionPool", slog.String("error", err.Error()))
+		}
+		usecases := NewUseCases(ctx, config, pool)
+		err = jobs.ScheduleDueScenarios(ctx, usecases, tracingConfig)
+		if err != nil {
+			logger.ErrorContext(ctx, "jobs.ScheduleDueScenarios failed", slog.String("error", err.Error()))
 			return
 		}
 	}
 
 	if *shouldRunExecuteScheduledScenarios {
-		usecases := NewUseCases(appContext, appConfig, nil)
-		err := jobs.ExecuteAllScheduledScenarios(appContext, usecases, tracingConfig)
+		pool, err := infra.NewPostgresConnectionPool(ctx,
+			config.pgConfig.GetConnectionString())
 		if err != nil {
-			logger.ErrorContext(appContext, "jobs.ExecuteAllScheduledScenarios failed", slog.String("error", err.Error()))
-			os.Exit(1)
+			logger.ErrorContext(ctx, "failed to create marbleConnectionPool", slog.String("error", err.Error()))
+		}
+		usecases := NewUseCases(ctx, config, pool)
+		err = jobs.ExecuteAllScheduledScenarios(ctx, usecases, tracingConfig)
+		if err != nil {
+			logger.ErrorContext(ctx, "jobs.ExecuteAllScheduledScenarios failed", slog.String("error", err.Error()))
 			return
 		}
 	}
 
 	if *shouldRunDataIngestion {
-		usecases := NewUseCases(appContext, appConfig, nil)
-		err := jobs.IngestDataFromCsv(appContext, usecases, tracingConfig)
+		pool, err := infra.NewPostgresConnectionPool(ctx,
+			config.pgConfig.GetConnectionString())
 		if err != nil {
-			logger.ErrorContext(appContext, "jobs.IngestDataFromCsv failed", slog.String("error", err.Error()))
-			os.Exit(1)
+			logger.ErrorContext(ctx, "failed to create marbleConnectionPool", slog.String("error", err.Error()))
+		}
+		usecases := NewUseCases(ctx, config, pool)
+		err = jobs.IngestDataFromCsv(ctx, usecases, tracingConfig)
+		if err != nil {
+			logger.ErrorContext(ctx, "jobs.IngestDataFromCsv failed", slog.String("error", err.Error()))
 			return
 		}
 	}
 
 	if *shouldRunScheduler {
-		jobs.RunScheduler(appContext, NewUseCases(appContext, appConfig, nil), tracingConfig)
+		pool, err := infra.NewPostgresConnectionPool(ctx,
+			config.pgConfig.GetConnectionString())
+		if err != nil {
+			logger.ErrorContext(ctx, "failed to create marbleConnectionPool", slog.String("error", err.Error()))
+		}
+		jobs.RunScheduler(ctx, NewUseCases(ctx, config, pool), tracingConfig)
 	}
 }
 
-func NewUseCases(ctx context.Context, appConfiguration AppConfiguration, marbleJwtSigningKey *rsa.PrivateKey) usecases.Usecases {
-	marbleConnectionPool, err := infra.NewPostgresConnectionPool(
-		appConfiguration.pgConfig.GetConnectionString())
-	if err != nil {
-		log.Fatal("error creating postgres connection to marble database", err.Error())
-	}
-
-	repositories, err := repositories.NewRepositories(
-		marbleJwtSigningKey,
+func NewUseCases(ctx context.Context, appConfiguration AppConfiguration, pool *pgxpool.Pool) usecases.Usecases {
+	repositories := repositories.NewRepositories(
 		infra.InitializeFirebase(ctx),
-		marbleConnectionPool,
+		pool,
 		infra.InitializeMetabase(appConfiguration.metabase),
 		appConfiguration.config.GcsTransferCheckEnrichmentBucket,
 	)
-	if err != nil {
-		slog.Error("repositories.NewRepositories failed", slog.String("error", err.Error()))
-		os.Exit(1)
-	}
 
 	return usecases.Usecases{
 		Repositories:  *repositories,
