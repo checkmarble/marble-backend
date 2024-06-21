@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"context"
@@ -14,11 +14,12 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
+
 	"github.com/cockroachdb/errors"
 	"github.com/getsentry/sentry-go"
 )
 
-func runServer(ctx context.Context) error {
+func RunServer() error {
 	// This is where we read the environment variables and set up the configuration for the application.
 	apiConfig := api.Configuration{
 		Env:                  utils.GetEnv("ENV", "development"),
@@ -69,8 +70,9 @@ func runServer(ctx context.Context) error {
 		sentryDsn:     utils.GetEnv("SENTRY_DSN", ""),
 	}
 
-	marbleJwtSigningKey := infra.ParseOrGenerateSigningKey(ctx, serverConfig.jwtSigningKey)
 	logger := utils.NewLogger(serverConfig.loggingFormat)
+	ctx := utils.StoreLoggerInContext(context.Background(), logger)
+	marbleJwtSigningKey := infra.ParseOrGenerateSigningKey(ctx, serverConfig.jwtSigningKey)
 
 	infra.SetupSentry(serverConfig.sentryDsn, apiConfig.Env)
 	defer sentry.Flush(3 * time.Second)
@@ -82,12 +84,12 @@ func runServer(ctx context.Context) error {
 	}
 	telemetryRessources, err := infra.InitTelemetry(tracingConfig)
 	if err != nil {
-		return err
+		utils.LogAndReportSentryError(ctx, err)
 	}
 
 	marbleConnectionPool, err := infra.NewPostgresConnectionPool(ctx, pgConfig.GetConnectionString())
 	if err != nil {
-		return err
+		utils.LogAndReportSentryError(ctx, err)
 	}
 
 	repositories := repositories.NewRepositories(
@@ -110,6 +112,7 @@ func runServer(ctx context.Context) error {
 	marbleAdminEmail := seedOrgConfig.CreateGlobalAdminEmail
 	if marbleAdminEmail != "" {
 		if err := seedUsecase.SeedMarbleAdmins(ctx, marbleAdminEmail); err != nil {
+			utils.LogAndReportSentryError(ctx, err)
 			return err
 		}
 	}
@@ -118,6 +121,7 @@ func runServer(ctx context.Context) error {
 			OrgName:    seedOrgConfig.CreateOrgName,
 			AdminEmail: seedOrgConfig.CreateOrgAdminEmail,
 		}); err != nil {
+			utils.LogAndReportSentryError(ctx, err)
 			return err
 		}
 	}
@@ -134,7 +138,7 @@ func runServer(ctx context.Context) error {
 		logger.InfoContext(ctx, "starting server", slog.String("port", apiConfig.Port))
 		err := server.ListenAndServe()
 		if !errors.Is(err, http.ErrServerClosed) {
-			logger.ErrorContext(ctx, "error serving the app: \n"+err.Error())
+			utils.LogAndReportSentryError(ctx, errors.Wrap(err, "Error while serving the app"))
 		}
 		logger.InfoContext(ctx, "server returned")
 	}()
@@ -145,8 +149,11 @@ func runServer(ctx context.Context) error {
 	deps.SegmentClient.Close()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		logger.ErrorContext(ctx, "server.Shutdown error", slog.String("error", err.Error()))
+		utils.LogAndReportSentryError(
+			ctx,
+			errors.Wrap(err, "Error while shutting down the server"),
+		)
 	}
 
-	return nil
+	return err
 }

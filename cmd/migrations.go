@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func runMigrations(ctx context.Context) error {
+func RunMigrations() error {
 	pgConfig := infra.PgConfig{
 		Database:            "marble",
 		DbConnectWithSocket: utils.GetEnv("PG_CONNECT_WITH_SOCKET", false),
@@ -20,10 +20,12 @@ func runMigrations(ctx context.Context) error {
 	}
 
 	logger := utils.NewLogger(utils.GetEnv("LOGGING_FORMAT", "text"))
+	ctx := utils.StoreLoggerInContext(context.Background(), logger)
 
 	migrater := repositories.NewMigrater(pgConfig)
 	if err := migrater.Run(ctx); err != nil {
 		logger.ErrorContext(ctx, fmt.Sprintf("error running migrations: %v", err))
+		return err
 	}
 
 	return nil

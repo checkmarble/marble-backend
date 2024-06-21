@@ -6,8 +6,10 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"log"
+	"fmt"
 	"strings"
+
+	"github.com/cockroachdb/errors"
 
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -47,12 +49,12 @@ func parsePrivateKey(privateKeyString string) *rsa.PrivateKey {
 	privateKeyString = strings.Replace(privateKeyString, "\\n", "\n", -1)
 	block, _ := pem.Decode([]byte(privateKeyString))
 	if block == nil || block.Type != "RSA PRIVATE KEY" {
-		log.Fatalf("failed to decode PEM block containing RSA private key")
+		panic(errors.New("failed to decode PEM block containing RSA private key"))
 	}
 
 	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 	if err != nil {
-		log.Fatalf("Can't load AUTHENTICATION_JWT_SIGNING_KEY private key %s", err)
+		panic(errors.New(fmt.Sprintf("Can't load AUTHENTICATION_JWT_SIGNING_KEY private key %s", err)))
 	}
 	return privateKey
 }
