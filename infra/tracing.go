@@ -9,7 +9,6 @@ import (
 	"google.golang.org/api/option"
 
 	"go.opentelemetry.io/contrib/detectors/gcp"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -60,14 +59,6 @@ func InitTelemetry(configuration TelemetryConfiguration) (TelemetryRessources, e
 		sdktrace.WithBatcher(exporter),
 		sdktrace.WithResource(res),
 	)
-	otel.SetTextMapPropagator(
-		propagation.NewCompositeTextMapPropagator(
-			gcppropagator.CloudTraceFormatPropagator{},
-			propagation.TraceContext{},
-			propagation.Baggage{},
-		),
-	)
-	otel.SetTracerProvider(tp)
 
 	tracer := tp.Tracer(configuration.ApplicationName)
 	return TelemetryRessources{

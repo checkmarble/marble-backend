@@ -7,6 +7,7 @@ import (
 
 	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -14,12 +15,16 @@ const (
 	MAX_CONNECTION_IDLE_TIME = 5 * time.Minute
 )
 
-func NewPostgresConnectionPool(ctx context.Context, connectionString string) (*pgxpool.Pool, error) {
+func NewPostgresConnectionPool(ctx context.Context, connectionString string, tp trace.TracerProvider) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(connectionString)
 	if err != nil {
 		return nil, fmt.Errorf("create connection pool: %w", err)
 	}
-	cfg.ConnConfig.Tracer = otelpgx.NewTracer()
+	ops := []otelpgx.Option{}
+	if tp != nil {
+		ops = append(ops, otelpgx.WithTracerProvider(tp))
+	}
+	cfg.ConnConfig.Tracer = otelpgx.NewTracer(ops...)
 	cfg.MaxConns = MAX_CONNECTIONS
 	cfg.MaxConnIdleTime = MAX_CONNECTION_IDLE_TIME
 
