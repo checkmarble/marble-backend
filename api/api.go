@@ -15,23 +15,23 @@ import (
 )
 
 type API struct {
-	router   *gin.Engine
-	usecases usecases.Usecases
-	config   models.GlobalConfiguration
+	router        *gin.Engine
+	usecases      usecases.Usecases
+	marbleAppHost string
 }
 
 func New(
 	router *gin.Engine,
 	port string,
-	config models.GlobalConfiguration,
+	marbleAppHost string,
 	usecases usecases.Usecases,
-	auth *Authentication,
-	tokenHandler *TokenHandler,
+	auth Authentication,
+	tokenHandler TokenHandler,
 ) *http.Server {
 	s := &API{
-		router:   router,
-		usecases: usecases,
-		config:   config,
+		router:        router,
+		usecases:      usecases,
+		marbleAppHost: marbleAppHost,
 	}
 
 	s.routes(auth, tokenHandler)

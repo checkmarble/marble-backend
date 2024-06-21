@@ -24,7 +24,7 @@ func (m *mockGenerator) GenerateToken(ctx context.Context, key string, firebaseT
 
 func TestToken_GenerateToken(t *testing.T) {
 	t.Run("nominal", func(t *testing.T) {
-		tok := token{
+		tok := accessToken{
 			AccessToken: "marbleToken",
 			TokenType:   "Bearer",
 			ExpiresAt:   time.Now(),

@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"context"
@@ -8,24 +8,26 @@ import (
 	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/segmentio/analytics-go/v3"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 
 	"github.com/checkmarble/marble-backend/api/middleware"
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func corsOption(conf AppConfiguration) cors.Config {
+func corsOption(conf Configuration) cors.Config {
 	protocol := "https://"
-	if conf.env == "development" {
+	if conf.Env == "development" {
 		protocol = "http://"
 	}
 
 	allowedOrigins := []string{
-		protocol + conf.config.MarbleAppHost,
-		protocol + conf.config.MarbleBackofficeHost,
+		protocol + conf.MarbleAppHost,
+		protocol + conf.MarbleBackofficeHost,
 	}
 
-	if conf.env == "development" {
+	if conf.Env == "development" {
 		allowedOrigins = append(allowedOrigins,
 			"http://localhost:3000", "http://localhost:3001", "http://localhost:3002",
 			"http://localhost:3003", "http://localhost:5173")
@@ -43,8 +45,13 @@ func corsOption(conf AppConfiguration) cors.Config {
 	}
 }
 
-func initRouter(ctx context.Context, conf AppConfiguration, deps dependencies) *gin.Engine {
-	if conf.env != "development" {
+func InitRouter(
+	ctx context.Context,
+	conf Configuration,
+	segmentClient analytics.Client,
+	telemetryRessources infra.TelemetryRessources,
+) *gin.Engine {
+	if conf.Env != "development" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
@@ -55,15 +62,15 @@ func initRouter(ctx context.Context, conf AppConfiguration, deps dependencies) *
 	r.Use(gin.Recovery())
 	r.Use(sentrygin.New(sentrygin.Options{Repanic: true}))
 	r.Use(cors.New(corsOption(conf)))
-	r.Use(middleware.NewLogging(logger, conf.requestLoggingLevel))
+	r.Use(middleware.NewLogging(logger, conf.RequestLoggingLevel))
 	r.Use(utils.StoreLoggerInContextMiddleware(logger))
-	r.Use(utils.StoreSegmentClientInContextMiddleware(deps.SegmentClient))
+	r.Use(utils.StoreSegmentClientInContextMiddleware(segmentClient))
 	r.Use(otelgin.Middleware(
-		conf.appName,
-		otelgin.WithTracerProvider(deps.TelemetryRessources.TracerProvider),
-		otelgin.WithPropagators(deps.TelemetryRessources.TextMapPropagator),
+		conf.AppName,
+		otelgin.WithTracerProvider(telemetryRessources.TracerProvider),
+		otelgin.WithPropagators(telemetryRessources.TextMapPropagator),
 	))
-	r.Use(utils.StoreOpenTelemetryTracerInContextMiddleware(deps.TelemetryRessources.Tracer))
+	r.Use(utils.StoreOpenTelemetryTracerInContextMiddleware(telemetryRessources.Tracer))
 
 	return r
 }

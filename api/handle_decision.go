@@ -27,7 +27,7 @@ func (api *API) handleGetDecision(c *gin.Context) {
 	if presentError(c, err) {
 		return
 	}
-	c.JSON(http.StatusOK, dto.NewAPIDecisionWithRule(decision, api.config.MarbleAppHost, true))
+	c.JSON(http.StatusOK, dto.NewAPIDecisionWithRule(decision, api.marbleAppHost, true))
 }
 
 func (api *API) handleListDecisions(c *gin.Context) {
@@ -75,7 +75,7 @@ func (api *API) handleListDecisions(c *gin.Context) {
 		"start_index": decisions[0].RankNumber,
 		"end_index":   decisions[len(decisions)-1].RankNumber,
 		"items": pure_utils.Map(decisions, func(d models.DecisionWithRank) dto.APIDecision {
-			return dto.NewAPIDecision(d.Decision, api.config.MarbleAppHost)
+			return dto.NewAPIDecision(d.Decision, api.marbleAppHost)
 		}),
 	})
 }
@@ -108,7 +108,7 @@ func (api *API) handlePostDecision(c *gin.Context) {
 	if returnExpectedDecisionError(c, err) || presentError(c, err) {
 		return
 	}
-	c.JSON(http.StatusOK, dto.NewAPIDecisionWithRule(decision, api.config.MarbleAppHost, false))
+	c.JSON(http.StatusOK, dto.NewAPIDecisionWithRule(decision, api.marbleAppHost, false))
 }
 
 func returnExpectedDecisionError(c *gin.Context, err error) bool {
@@ -152,5 +152,5 @@ func (api *API) handlePostAllDecisions(c *gin.Context) {
 	if presentError(c, err) {
 		return
 	}
-	c.JSON(http.StatusOK, dto.AdaptAPIDecisionsWithMetadata(decisions, api.config.MarbleAppHost, nbSkipped, false))
+	c.JSON(http.StatusOK, dto.AdaptAPIDecisionsWithMetadata(decisions, api.marbleAppHost, nbSkipped, false))
 }

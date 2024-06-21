@@ -29,11 +29,11 @@ var embedAnalyticsViews embed.FS
 type Migrater struct {
 	dbMigrationsFileSystem   embed.FS
 	analyticsViewsFileSystem embed.FS
-	pgConfig                 infra.PGConfig
+	pgConfig                 infra.PgConfig
 	db                       *sql.DB
 }
 
-func NewMigrater(pgConfig infra.PGConfig) *Migrater {
+func NewMigrater(pgConfig infra.PgConfig) *Migrater {
 	return &Migrater{
 		dbMigrationsFileSystem:   embedMigrations,
 		analyticsViewsFileSystem: embedAnalyticsViews,

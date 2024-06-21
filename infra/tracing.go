@@ -18,12 +18,6 @@ import (
 	"go.opentelemetry.io/otel/trace/noop"
 )
 
-type TelemetryConfiguration struct {
-	Enabled         bool
-	ApplicationName string
-	ProjectID       string
-}
-
 type TelemetryRessources struct {
 	TracerProvider    trace.TracerProvider
 	Tracer            trace.Tracer

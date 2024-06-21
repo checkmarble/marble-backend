@@ -88,7 +88,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not connect to db: %s", err)
 	}
 
-	pgConfig := infra.PGConfig{ConnectionString: connectionString}
+	pgConfig := infra.PgConfig{ConnectionString: connectionString}
 	migrater := repositories.NewMigrater(pgConfig)
 	err = migrater.Run(ctx)
 	if err != nil {
@@ -120,7 +120,7 @@ func TestMain(m *testing.M) {
 	tokenGenerator = token.NewGenerator(database, jwtRepository, nil, 10)
 
 	testUsecases = usecases.Usecases{
-		Repositories: *repos,
+		Repositories: repos,
 	}
 
 	// Run tests

@@ -14,8 +14,62 @@ import (
 )
 
 type Usecases struct {
-	Repositories  repositories.Repositories
-	Configuration models.GlobalConfiguration
+	Repositories         repositories.Repositories
+	fakeAwsS3Repository  bool
+	fakeGcsRepository    bool
+	gcsIngestionBucket   string
+	gcsCaseManagerBucket string
+}
+
+type Option func(*options)
+
+func WithFakeAwsS3Repository(b bool) Option {
+	return func(o *options) {
+		o.fakeAwsS3Repository = b
+	}
+}
+
+func WithFakeGcsRepository(b bool) Option {
+	return func(o *options) {
+		o.fakeGcsRepository = b
+	}
+}
+
+func WithGcsIngestionBucket(bucket string) Option {
+	return func(o *options) {
+		o.gcsIngestionBucket = bucket
+	}
+}
+
+func WithGcsCaseManagerBucket(bucket string) Option {
+	return func(o *options) {
+		o.gcsCaseManagerBucket = bucket
+	}
+}
+
+type options struct {
+	fakeAwsS3Repository  bool
+	fakeGcsRepository    bool
+	gcsIngestionBucket   string
+	gcsCaseManagerBucket string
+}
+
+func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
+	return Usecases{
+		Repositories:         repositories,
+		fakeAwsS3Repository:  o.fakeAwsS3Repository,
+		fakeGcsRepository:    o.fakeGcsRepository,
+		gcsIngestionBucket:   o.gcsIngestionBucket,
+		gcsCaseManagerBucket: o.gcsCaseManagerBucket,
+	}
+}
+
+func NewUsecases(repositories repositories.Repositories, opts ...Option) Usecases {
+	o := &options{}
+	for _, opt := range opts {
+		opt(o)
+	}
+	return newUsecasesWithOptions(repositories, o)
 }
 
 func (usecases *Usecases) NewExecutorFactory() executor_factory.ExecutorFactory {
@@ -54,7 +108,7 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 
 func (usecases *Usecases) NewExportScheduleExecution() *scheduledexecution.ExportScheduleExecution {
 	var awsS3Repository scheduledexecution.AwsS3Repository
-	if usecases.Configuration.FakeAwsS3Repository {
+	if usecases.fakeAwsS3Repository {
 		awsS3Repository = &repositories.AwsS3RepositoryFake{}
 	} else {
 		awsS3Repository = &usecases.Repositories.AwsS3Repository

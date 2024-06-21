@@ -37,11 +37,11 @@ func NewRepositories(
 	marbleConnectionPool *pgxpool.Pool,
 	metabase Metabase,
 	tranfsercheckEnrichmentBucket string,
-) *Repositories {
+) Repositories {
 	executorGetter := NewExecutorGetter(marbleConnectionPool)
 
 	gcsRepository := GcsRepositoryImpl{}
-	return &Repositories{
+	return Repositories{
 		ExecutorGetter:                executorGetter,
 		FirebaseTokenRepository:       firebase.New(firebaseClient),
 		UserRepository:                &UserRepositoryPostgresql{},

@@ -2,121 +2,22 @@ package main
 
 import (
 	"context"
-	"crypto/rsa"
 	"flag"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/getsentry/sentry-go"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/segmentio/analytics-go/v3"
 
-	"github.com/checkmarble/marble-backend/api"
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/jobs"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/repositories/firebase"
-	"github.com/checkmarble/marble-backend/repositories/postgres"
 	"github.com/checkmarble/marble-backend/usecases"
-	"github.com/checkmarble/marble-backend/usecases/token"
 	"github.com/checkmarble/marble-backend/utils"
 )
-
-type dependencies struct {
-	Authentication      *api.Authentication
-	TokenHandler        *api.TokenHandler
-	SegmentClient       analytics.Client
-	TelemetryRessources infra.TelemetryRessources
-}
-
-func initDependencies(ctx context.Context, conf AppConfiguration, dbPool *pgxpool.Pool, signingKey *rsa.PrivateKey) dependencies {
-	database := postgres.New(dbPool)
-
-	auth := infra.InitializeFirebase(ctx)
-	firebaseClient := firebase.New(auth)
-	jwtRepository := repositories.NewJWTRepository(signingKey)
-	tokenValidator := token.NewValidator(database, jwtRepository)
-	tokenGenerator := token.NewGenerator(database, jwtRepository, firebaseClient, conf.config.TokenLifetimeMinute)
-	segmentClient := analytics.New(conf.config.SegmentWriteKey)
-
-	return dependencies{
-		Authentication:      api.NewAuthentication(tokenValidator),
-		SegmentClient:       segmentClient,
-		TelemetryRessources: infra.NoopTelemetry(),
-		TokenHandler:        api.NewTokenHandler(tokenGenerator),
-	}
-}
-
-func runServer(ctx context.Context, conf AppConfiguration, tracingConfig infra.TelemetryConfiguration) error {
-	marbleConnectionPool, err := infra.NewPostgresConnectionPool(ctx, conf.pgConfig.GetConnectionString())
-	if err != nil {
-		return err
-	}
-
-	uc := NewUseCases(ctx, conf, marbleConnectionPool)
-
-	logger := utils.LoggerFromContext(ctx)
-
-	////////////////////////////////////////////////////////////
-	// Seed the database
-	////////////////////////////////////////////////////////////
-	seedUsecase := uc.NewSeedUseCase()
-	marbleAdminEmail := conf.seedOrgConfig.CreateGlobalAdminEmail
-	if marbleAdminEmail != "" {
-		if err := seedUsecase.SeedMarbleAdmins(ctx, marbleAdminEmail); err != nil {
-			return err
-		}
-	}
-	if conf.seedOrgConfig.CreateOrgName != "" {
-		if err := seedUsecase.CreateOrgAndUser(ctx, models.InitOrgInput{
-			OrgName:    conf.seedOrgConfig.CreateOrgName,
-			AdminEmail: conf.seedOrgConfig.CreateOrgAdminEmail,
-		}); err != nil {
-			return err
-		}
-	}
-
-	marbleJwtSigningKey := infra.ParseOrGenerateSigningKey(ctx, conf.config.JwtSigningKey)
-	deps := initDependencies(ctx, conf, marbleConnectionPool, marbleJwtSigningKey)
-
-	deps.TelemetryRessources, err = infra.InitTelemetry(tracingConfig)
-	if err != nil {
-		return err
-	}
-
-	router := initRouter(ctx, conf, deps)
-	server := api.New(router, conf.port, conf.config, uc, deps.Authentication, deps.TokenHandler)
-
-	notify, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	go func() {
-		logger.InfoContext(ctx, "starting server", slog.String("port", conf.port))
-		err := server.ListenAndServe()
-		if !errors.Is(err, http.ErrServerClosed) {
-			logger.ErrorContext(ctx, "error serving the app: \n"+err.Error())
-		}
-		logger.InfoContext(ctx, "server returned")
-	}()
-
-	<-notify.Done()
-	shutdownCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	deps.SegmentClient.Close()
-
-	if err := server.Shutdown(shutdownCtx); err != nil {
-		logger.ErrorContext(ctx, "server.Shutdown error", slog.String("error", err.Error()))
-	}
-
-	return nil
-}
 
 type AppConfiguration struct {
 	appName             string
@@ -126,10 +27,10 @@ type AppConfiguration struct {
 	enableGcpTracing    bool
 	requestLoggingLevel string
 	loggingFormat       string
-	pgConfig            infra.PGConfig
+	pgConfig            infra.PgConfig
 	config              models.GlobalConfiguration
 	sentryDsn           string
-	metabase            models.MetabaseConfiguration
+	metabase            infra.MetabaseConfiguration
 	seedOrgConfig       models.SeedOrgConfiguration
 }
 
@@ -142,7 +43,7 @@ func main() {
 		enableGcpTracing:    utils.GetEnv("ENABLE_GCP_TRACING", false),
 		requestLoggingLevel: utils.GetEnv("REQUEST_LOGGING_LEVEL", "all"),
 		loggingFormat:       utils.GetEnv("LOGGING_FORMAT", "text"),
-		pgConfig: infra.PGConfig{
+		pgConfig: infra.PgConfig{
 			Database:            "marble",
 			DbConnectWithSocket: utils.GetEnv("PG_CONNECT_WITH_SOCKET", false),
 			Hostname:            utils.GetRequiredEnv[string]("PG_HOSTNAME"),
@@ -163,7 +64,7 @@ func main() {
 			JwtSigningKey:                    utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY", ""),
 		},
 		sentryDsn: utils.GetEnv("SENTRY_DSN", ""),
-		metabase: models.MetabaseConfiguration{
+		metabase: infra.MetabaseConfiguration{
 			SiteUrl:             utils.GetRequiredEnv[string]("METABASE_SITE_URL"),
 			JwtSigningKey:       []byte(utils.GetRequiredEnv[string]("METABASE_JWT_SIGNING_KEY")),
 			TokenLifetimeMinute: utils.GetEnv("METABASE_TOKEN_LIFETIME_MINUTE", 10),
@@ -219,7 +120,7 @@ func main() {
 	}
 
 	if *shouldRunServer {
-		err := runServer(ctx, config, tracingConfig)
+		err := runServer(ctx)
 		if err != nil {
 			logger.ErrorContext(ctx, fmt.Sprintf(
 				"error while running server: %+v", err))
@@ -288,7 +189,7 @@ func NewUseCases(ctx context.Context, appConfiguration AppConfiguration, pool *p
 	)
 
 	return usecases.Usecases{
-		Repositories:  *repositories,
-		Configuration: appConfiguration.config,
+		Repositories: repositories,
+		// Configuration: appConfiguration.config, // add back the relevant options for batch jobs (gcs buckets)
 	}
 }
