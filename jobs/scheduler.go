@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/adhocore/gronx/pkg/tasker"
-	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -16,7 +15,7 @@ func errToReturnCode(err error) int {
 	return 0
 }
 
-func RunScheduler(ctx context.Context, usecases usecases.Usecases, config infra.TelemetryConfiguration) {
+func RunScheduler(ctx context.Context, usecases usecases.Usecases) {
 	taskr := tasker.New(tasker.Option{
 		Verbose: true,
 		Tz:      "Europe/Paris",
@@ -26,21 +25,21 @@ func RunScheduler(ctx context.Context, usecases usecases.Usecases, config infra.
 	taskr.Task("* * * * *", func(ctx context.Context) (int, error) {
 		logger := utils.LoggerFromContext(ctx).With("job", "schedule_due_scenarios")
 		ctx = utils.StoreLoggerInContext(ctx, logger)
-		err := ScheduleDueScenarios(ctx, usecases, config)
+		err := ScheduleDueScenarios(ctx, usecases)
 		return errToReturnCode(err), err
 	}, notConcurrent)
 
 	taskr.Task("* * * * *", func(ctx context.Context) (int, error) {
 		logger := utils.LoggerFromContext(ctx).With("job", "execute_all_scheduled_scenarios")
 		ctx = utils.StoreLoggerInContext(ctx, logger)
-		err := ExecuteAllScheduledScenarios(ctx, usecases, config)
+		err := ExecuteAllScheduledScenarios(ctx, usecases)
 		return errToReturnCode(err), err
 	})
 
 	taskr.Task("* * * * *", func(ctx context.Context) (int, error) {
 		logger := utils.LoggerFromContext(ctx).With("job", "ingest_data_from_csv")
 		ctx = utils.StoreLoggerInContext(ctx, logger)
-		err := IngestDataFromCsv(ctx, usecases, config)
+		err := IngestDataFromCsv(ctx, usecases)
 		return errToReturnCode(err), err
 	})
 

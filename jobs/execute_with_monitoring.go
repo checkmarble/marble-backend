@@ -5,25 +5,19 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
+
+	"github.com/cockroachdb/errors"
 	"github.com/getsentry/sentry-go"
 )
 
 func executeWithMonitoring(
 	ctx context.Context,
 	uc usecases.Usecases,
-	config infra.TelemetryConfiguration,
 	jobName string,
 	fn func(context.Context, usecases.Usecases) error,
 ) error {
-	telemetryRessources, err := infra.InitTelemetry(config)
-	if err != nil {
-		return fmt.Errorf("error initializing tracing: %w", err)
-	}
-	ctx = utils.StoreOpenTelemetryTracerInContext(ctx, telemetryRessources.Tracer)
-
 	logger := utils.LoggerFromContext(ctx)
 	logger.InfoContext(ctx, fmt.Sprintf("Start job %s", jobName))
 
@@ -35,7 +29,7 @@ func executeWithMonitoring(
 		nil,
 	)
 
-	err = fn(ctx, uc)
+	err := fn(ctx, uc)
 	if err != nil {
 		// Known issue where Cloud Run will sometimes fail to create the unix socket to connect to CloudSQL. In this case, we don't log the error in Sentry.
 		if strings.Contains(err.Error(), "failed to connect to `host=/cloudsql/") {
@@ -55,7 +49,7 @@ func executeWithMonitoring(
 		} else {
 			sentry.CaptureException(err)
 		}
-		return fmt.Errorf("error executing job %s: %w", jobName, err)
+		return errors.Wrap(err, fmt.Sprintf("error executing job %s", jobName))
 	}
 
 	sentry.CaptureCheckIn(

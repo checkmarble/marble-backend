@@ -2,21 +2,21 @@ package infra
 
 import (
 	"context"
-	"log"
 
 	firebase "firebase.google.com/go/v4"
 	"firebase.google.com/go/v4/auth"
+	"github.com/cockroachdb/errors"
 )
 
 func InitializeFirebase(ctx context.Context) *auth.Client {
 	app, err := firebase.NewApp(ctx, nil)
 	if err != nil {
-		log.Fatalf("error initializing app: %v\n", err)
+		panic(errors.Wrap(err, "error initializing app"))
 	}
 
 	client, err := app.Auth(ctx)
 	if err != nil {
-		log.Fatalf("error getting Auth client: %v\n", err)
+		panic(errors.Wrap(err, "error getting Auth client"))
 	}
 
 	return client

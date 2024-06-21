@@ -36,7 +36,7 @@ func NewRepositories(
 	firebaseClient *auth.Client,
 	marbleConnectionPool *pgxpool.Pool,
 	metabase Metabase,
-	tranfsercheckEnrichmentBucket string,
+	transfercheckEnrichmentBucket string,
 ) Repositories {
 	executorGetter := NewExecutorGetter(marbleConnectionPool)
 
@@ -63,7 +63,7 @@ func NewRepositories(
 		},
 		TransferCheckEnrichmentRepository: NewTransferCheckEnrichmentRepository(
 			&gcsRepository,
-			tranfsercheckEnrichmentBucket,
+			transfercheckEnrichmentBucket,
 		),
 	}
 }

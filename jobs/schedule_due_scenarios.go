@@ -6,18 +6,16 @@ import (
 
 	"github.com/cockroachdb/errors"
 
-	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
 // Runs every hour at past 10min
-func ScheduleDueScenarios(ctx context.Context, uc usecases.Usecases, config infra.TelemetryConfiguration) error {
+func ScheduleDueScenarios(ctx context.Context, uc usecases.Usecases) error {
 	return executeWithMonitoring(
 		ctx,
 		uc,
-		config,
 		"scenario-scheduler",
 		func(
 			ctx context.Context, usecases usecases.Usecases,

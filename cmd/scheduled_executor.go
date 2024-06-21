@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 	"github.com/getsentry/sentry-go"
 )
 
-func runScheduledExecuter(ctx context.Context) error {
+func RunScheduledExecuter() error {
 	// This is where we read the environment variables and set up the configuration for the application.
 	gcpConfig := infra.GcpConfig{
 		EnableTracing: utils.GetEnv("ENABLE_GCP_TRACING", false),
@@ -42,6 +42,7 @@ func runScheduledExecuter(ctx context.Context) error {
 	}
 
 	logger := utils.NewLogger(jobConfig.loggingFormat)
+	ctx := utils.StoreLoggerInContext(context.Background(), logger)
 
 	infra.SetupSentry(jobConfig.sentryDsn, jobConfig.env)
 	defer sentry.Flush(3 * time.Second)
@@ -51,15 +52,16 @@ func runScheduledExecuter(ctx context.Context) error {
 		Enabled:         gcpConfig.EnableTracing,
 		ProjectID:       gcpConfig.ProjectId,
 	}
-	_, err := infra.InitTelemetry(tracingConfig)
+	telemetryRessources, err := infra.InitTelemetry(tracingConfig)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to initialize tracing", slog.String("error", err.Error()))
+		utils.LogAndReportSentryError(ctx, err)
 		return err
 	}
+	ctx = utils.StoreOpenTelemetryTracerInContext(ctx, telemetryRessources.Tracer)
 
 	pool, err := infra.NewPostgresConnectionPool(ctx, pgConfig.GetConnectionString())
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to create marbleConnectionPool", slog.String("error", err.Error()))
+		utils.LogAndReportSentryError(ctx, err)
 		return err
 	}
 
@@ -68,7 +70,7 @@ func runScheduledExecuter(ctx context.Context) error {
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithFakeAwsS3Repository(jobConfig.fakeAwsS3Repository))
 
-	err = jobs.ExecuteAllScheduledScenarios(ctx, uc, tracingConfig)
+	err = jobs.ExecuteAllScheduledScenarios(ctx, uc)
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to execute all scheduled scenarios", slog.String("error", err.Error()))
 	}
