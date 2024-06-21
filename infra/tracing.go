@@ -1,4 +1,4 @@
-package tracing
+package infra
 
 import (
 	"context"
@@ -18,7 +18,7 @@ import (
 	"go.opentelemetry.io/otel/trace/noop"
 )
 
-type Configuration struct {
+type TelemetryConfiguration struct {
 	Enabled         bool
 	ApplicationName string
 	ProjectID       string
@@ -38,7 +38,7 @@ func NoopTelemetry() TelemetryRessources {
 	}
 }
 
-func Init(configuration Configuration) (TelemetryRessources, error) {
+func InitTelemetry(configuration TelemetryConfiguration) (TelemetryRessources, error) {
 	if !configuration.Enabled {
 		return NoopTelemetry(), nil
 	}

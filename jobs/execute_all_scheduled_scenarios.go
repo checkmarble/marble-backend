@@ -3,12 +3,12 @@ package jobs
 import (
 	"context"
 
-	"github.com/checkmarble/marble-backend/tracing"
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/usecases"
 )
 
 // Runs every minute
-func ExecuteAllScheduledScenarios(ctx context.Context, uc usecases.Usecases, config tracing.Configuration) error {
+func ExecuteAllScheduledScenarios(ctx context.Context, uc usecases.Usecases, config infra.TelemetryConfiguration) error {
 	return executeWithMonitoring(
 		ctx,
 		uc,

@@ -24,7 +24,6 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/repositories/firebase"
 	"github.com/checkmarble/marble-backend/repositories/postgres"
-	"github.com/checkmarble/marble-backend/tracing"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/token"
 	"github.com/checkmarble/marble-backend/utils"
@@ -34,7 +33,7 @@ type dependencies struct {
 	Authentication      *api.Authentication
 	TokenHandler        *api.TokenHandler
 	SegmentClient       analytics.Client
-	TelemetryRessources tracing.TelemetryRessources
+	TelemetryRessources infra.TelemetryRessources
 }
 
 func initDependencies(ctx context.Context, conf AppConfiguration, dbPool *pgxpool.Pool, signingKey *rsa.PrivateKey) dependencies {
@@ -50,12 +49,12 @@ func initDependencies(ctx context.Context, conf AppConfiguration, dbPool *pgxpoo
 	return dependencies{
 		Authentication:      api.NewAuthentication(tokenValidator),
 		SegmentClient:       segmentClient,
-		TelemetryRessources: tracing.NoopTelemetry(),
+		TelemetryRessources: infra.NoopTelemetry(),
 		TokenHandler:        api.NewTokenHandler(tokenGenerator),
 	}
 }
 
-func runServer(ctx context.Context, conf AppConfiguration, tracingConfig tracing.Configuration) error {
+func runServer(ctx context.Context, conf AppConfiguration, tracingConfig infra.TelemetryConfiguration) error {
 	marbleConnectionPool, err := infra.NewPostgresConnectionPool(ctx, conf.pgConfig.GetConnectionString())
 	if err != nil {
 		return err
@@ -87,7 +86,7 @@ func runServer(ctx context.Context, conf AppConfiguration, tracingConfig tracing
 	marbleJwtSigningKey := infra.ParseOrGenerateSigningKey(ctx, conf.config.JwtSigningKey)
 	deps := initDependencies(ctx, conf, marbleConnectionPool, marbleJwtSigningKey)
 
-	deps.TelemetryRessources, err = tracing.Init(tracingConfig)
+	deps.TelemetryRessources, err = infra.InitTelemetry(tracingConfig)
 	if err != nil {
 		return err
 	}
@@ -201,10 +200,10 @@ func main() {
 		slog.Bool("shouldRunScheduler", *shouldRunScheduler),
 	)
 
-	setupSentry(config)
+	infra.SetupSentry(config.sentryDsn, config.env)
 	defer sentry.Flush(3 * time.Second)
 
-	tracingConfig := tracing.Configuration{
+	tracingConfig := infra.TelemetryConfiguration{
 		ApplicationName: config.appName,
 		Enabled:         config.enableGcpTracing,
 		ProjectID:       config.gcpProject,
@@ -291,32 +290,5 @@ func NewUseCases(ctx context.Context, appConfiguration AppConfiguration, pool *p
 	return usecases.Usecases{
 		Repositories:  *repositories,
 		Configuration: appConfiguration.config,
-	}
-}
-
-func setupSentry(conf AppConfiguration) {
-	if err := sentry.Init(sentry.ClientOptions{
-		Dsn:           conf.sentryDsn,
-		EnableTracing: true,
-		Environment:   conf.env,
-		TracesSampler: sentry.TracesSampler(func(ctx sentry.SamplingContext) float64 {
-			if ctx.Span.Name == "GET /liveness" {
-				return 0.0
-			}
-			if ctx.Span.Name == "POST /ingestion/:object_type" {
-				return 0.05
-			}
-			if ctx.Span.Name == "POST /decisions" {
-				return 0.05
-			}
-			if ctx.Span.Name == "GET /token" {
-				return 0.05
-			}
-			return 0.1
-		}),
-		// Experimental - value to be adjusted in prod once volumes go up - relative to the trace sampling rate
-		ProfilesSampleRate: 0.2,
-	}); err != nil {
-		panic(err)
 	}
 }
