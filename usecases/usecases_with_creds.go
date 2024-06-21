@@ -380,3 +380,12 @@ func (usecases *UsecasesWithCreds) NewPartnerUsecase() PartnerUsecase {
 		partnersRepository: usecases.Repositories.MarbleDbRepository,
 	}
 }
+
+func (usecases *UsecasesWithCreds) NewLicenseUsecase() ProtectedLicenseUseCase {
+	return ProtectedLicenseUseCase{
+		enforceSecurity:    security.NewEnforceSecurity(usecases.Credentials),
+		transactionFactory: usecases.NewTransactionFactory(),
+		executorFactory:    usecases.NewExecutorFactory(),
+		licenseRepository:  &usecases.Repositories.MarbleDbRepository,
+	}
+}

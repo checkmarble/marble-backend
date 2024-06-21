@@ -143,3 +143,10 @@ func (usecase *Usecases) NewScenarioFetcher() scenarios.ScenarioFetcher {
 		Repository: &usecase.Repositories.MarbleDbRepository,
 	}
 }
+
+func (usecases *Usecases) NewLicenseUsecase() PublicLicenseUseCase {
+	return PublicLicenseUseCase{
+		executorFactory:   usecases.NewExecutorFactory(),
+		licenseRepository: &usecases.Repositories.MarbleDbRepository,
+	}
+}

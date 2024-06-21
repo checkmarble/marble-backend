@@ -33,6 +33,9 @@ const (
 	PARTNER_CREATE
 	PARTNER_READ
 	PARTNER_UPDATE
+	LICENSE_LIST
+	LICENSE_CREATE
+	LICENSE_UPDATE
 )
 
 func (r Permission) String() string {
@@ -67,5 +70,8 @@ func (r Permission) String() string {
 		"PARTNER_CREATE",
 		"PARTNER_READ",
 		"PARTNER_UPDATE",
+		"LICENSE_LIST",
+		"LICENSE_CREATE",
+		"LICENSE_UPDATE",
 	}[r]
 }
