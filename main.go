@@ -138,16 +138,9 @@ func main() {
 	}
 
 	if *shouldRunExecuteScheduledScenarios {
-		pool, err := infra.NewPostgresConnectionPool(ctx,
-			config.pgConfig.GetConnectionString())
+		err := runScheduledExecuter(ctx)
 		if err != nil {
-			logger.ErrorContext(ctx, "failed to create marbleConnectionPool", slog.String("error", err.Error()))
-		}
-		usecases := NewUseCases(ctx, config, pool)
-		err = jobs.ExecuteAllScheduledScenarios(ctx, usecases, tracingConfig)
-		if err != nil {
-			logger.ErrorContext(ctx, "jobs.ExecuteAllScheduledScenarios failed", slog.String("error", err.Error()))
-			return
+			log.Fatal(err)
 		}
 	}
 
