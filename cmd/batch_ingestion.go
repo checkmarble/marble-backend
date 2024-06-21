@@ -59,7 +59,7 @@ func RunBatchIngestion() error {
 	}
 	ctx = utils.StoreOpenTelemetryTracerInContext(ctx, telemetryRessources.Tracer)
 
-	pool, err := infra.NewPostgresConnectionPool(ctx, pgConfig.GetConnectionString())
+	pool, err := infra.NewPostgresConnectionPool(ctx, pgConfig.GetConnectionString(), telemetryRessources.TracerProvider)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 		return err

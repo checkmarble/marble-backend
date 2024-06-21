@@ -87,14 +87,14 @@ func RunServer() error {
 		utils.LogAndReportSentryError(ctx, err)
 	}
 
-	marbleConnectionPool, err := infra.NewPostgresConnectionPool(ctx, pgConfig.GetConnectionString())
+	pool, err := infra.NewPostgresConnectionPool(ctx, pgConfig.GetConnectionString(), telemetryRessources.TracerProvider)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 	}
 
 	repositories := repositories.NewRepositories(
 		infra.InitializeFirebase(ctx),
-		marbleConnectionPool,
+		pool,
 		infra.InitializeMetabase(metabaseConfig),
 		gcpConfig.GcsTransferCheckEnrichmentBucket,
 	)
@@ -126,7 +126,7 @@ func RunServer() error {
 		}
 	}
 
-	deps := api.InitDependencies(ctx, apiConfig, marbleConnectionPool, marbleJwtSigningKey)
+	deps := api.InitDependencies(ctx, apiConfig, pool, marbleJwtSigningKey)
 
 	router := api.InitRouter(ctx, apiConfig, deps.SegmentClient, telemetryRessources)
 	server := api.New(router, apiConfig.Port, apiConfig.MarbleAppHost, uc, deps.Authentication, deps.TokenHandler)
