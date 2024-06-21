@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
+	"log"
 	"log/slog"
 	"os"
 	"time"
@@ -111,20 +111,15 @@ func main() {
 	}
 
 	if *shouldRunMigrations {
-		migrater := repositories.NewMigrater(config.pgConfig)
-		if err := migrater.Run(ctx); err != nil {
-			logger.ErrorContext(ctx, fmt.Sprintf(
-				"error while running migrations: %+v", err))
-			return
+		if err := runMigrations(ctx); err != nil {
+			os.Exit(1)
 		}
 	}
 
 	if *shouldRunServer {
 		err := runServer(ctx)
 		if err != nil {
-			logger.ErrorContext(ctx, fmt.Sprintf(
-				"error while running server: %+v", err))
-			return
+			log.Fatal(err)
 		}
 	}
 
