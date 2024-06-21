@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/checkmarble/marble-backend/tracing"
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/getsentry/sentry-go"
@@ -14,11 +14,11 @@ import (
 func executeWithMonitoring(
 	ctx context.Context,
 	uc usecases.Usecases,
-	config tracing.Configuration,
+	config infra.TelemetryConfiguration,
 	jobName string,
 	fn func(context.Context, usecases.Usecases) error,
 ) error {
-	telemetryRessources, err := tracing.Init(config)
+	telemetryRessources, err := infra.InitTelemetry(config)
 	if err != nil {
 		return fmt.Errorf("error initializing tracing: %w", err)
 	}

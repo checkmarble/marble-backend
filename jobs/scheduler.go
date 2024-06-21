@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/adhocore/gronx/pkg/tasker"
-	"github.com/checkmarble/marble-backend/tracing"
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -16,7 +16,7 @@ func errToReturnCode(err error) int {
 	return 0
 }
 
-func RunScheduler(ctx context.Context, usecases usecases.Usecases, config tracing.Configuration) {
+func RunScheduler(ctx context.Context, usecases usecases.Usecases, config infra.TelemetryConfiguration) {
 	taskr := tasker.New(tasker.Option{
 		Verbose: true,
 		Tz:      "Europe/Paris",

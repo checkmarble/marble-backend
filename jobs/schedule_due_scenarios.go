@@ -6,14 +6,14 @@ import (
 
 	"github.com/cockroachdb/errors"
 
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/tracing"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
 // Runs every hour at past 10min
-func ScheduleDueScenarios(ctx context.Context, uc usecases.Usecases, config tracing.Configuration) error {
+func ScheduleDueScenarios(ctx context.Context, uc usecases.Usecases, config infra.TelemetryConfiguration) error {
 	return executeWithMonitoring(
 		ctx,
 		uc,
