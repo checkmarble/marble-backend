@@ -156,4 +156,10 @@ func (api *API) routes(auth *Authentication, tokenHandler *TokenHandler) {
 	router.PATCH("/transfers/:transfer_id", api.handleUpdateTransfer)
 	router.GET("/transfers/:transfer_id", api.handleGetTransfer)
 	router.POST("/transfers/:transfer_id/score", api.handleScoreTransfer)
+
+	router.GET("/licenses", api.handleListLicenses)
+	router.POST("/licenses", api.handleCreateLicense)
+	router.PATCH("/licenses/:license_id", api.handleUpdateLicense)
+	router.GET("/licenses/:license_id", api.handleGetLicenseById)
+	router.GET("/validate-license/:license_key", api.handleValidateLicense)
 }
