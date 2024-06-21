@@ -9,10 +9,10 @@ import (
 )
 
 type Metabase struct {
-	config models.MetabaseConfiguration
+	config MetabaseConfiguration
 }
 
-func InitializeMetabase(config models.MetabaseConfiguration) Metabase {
+func InitializeMetabase(config MetabaseConfiguration) Metabase {
 	return Metabase{
 		config: config,
 	}

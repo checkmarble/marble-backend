@@ -200,7 +200,7 @@ func (usecases *UsecasesWithCreds) NewDataModelUseCase() DataModelUseCase {
 
 func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 	var gcsRepository repositories.GcsRepository
-	if usecases.Configuration.FakeGcsRepository {
+	if usecases.fakeGcsRepository {
 		gcsRepository = &repositories.GcsRepositoryFake{}
 	} else {
 		gcsRepository = usecases.Repositories.GcsRepository
@@ -214,7 +214,7 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 		gcsRepository:       gcsRepository,
 		dataModelRepository: usecases.Repositories.DataModelRepository,
 		uploadLogRepository: usecases.Repositories.UploadLogRepository,
-		GcsIngestionBucket:  usecases.Configuration.GcsIngestionBucket,
+		GcsIngestionBucket:  usecases.gcsIngestionBucket,
 	}
 }
 
@@ -254,7 +254,7 @@ func (usecases *UsecasesWithCreds) NewUserUseCase() UserUseCase {
 
 func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 	var gcsRepository repositories.GcsRepository
-	if usecases.Configuration.FakeGcsRepository {
+	if usecases.fakeGcsRepository {
 		gcsRepository = &repositories.GcsRepositoryFake{}
 	} else {
 		gcsRepository = usecases.Repositories.GcsRepository
@@ -276,7 +276,7 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 			Credentials:             usecases.Credentials,
 			ExecutorFactory:         usecases.NewExecutorFactory(),
 		},
-		gcsCaseManagerBucket: usecases.Configuration.GcsCaseManagerBucket,
+		gcsCaseManagerBucket: usecases.gcsCaseManagerBucket,
 		gcsRepository:        gcsRepository,
 	}
 }

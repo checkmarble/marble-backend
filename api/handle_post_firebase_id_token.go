@@ -20,7 +20,7 @@ type TokenHandler struct {
 	generator tokenGenerator
 }
 
-type token struct {
+type accessToken struct {
 	AccessToken string    `json:"access_token"`
 	TokenType   string    `json:"token_type"`
 	ExpiresAt   time.Time `json:"expires_at"`
@@ -53,15 +53,15 @@ func (t *TokenHandler) GenerateToken(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, token{
+	c.JSON(http.StatusOK, accessToken{
 		AccessToken: marbleToken,
 		TokenType:   "Bearer",
 		ExpiresAt:   expirationTime,
 	})
 }
 
-func NewTokenHandler(generator tokenGenerator) *TokenHandler {
-	return &TokenHandler{
+func NewTokenHandler(generator tokenGenerator) TokenHandler {
+	return TokenHandler{
 		generator: generator,
 	}
 }

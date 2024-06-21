@@ -61,8 +61,8 @@ func (a *Authentication) Middleware(c *gin.Context) {
 	c.Next()
 }
 
-func NewAuthentication(validator validator) *Authentication {
-	return &Authentication{
+func NewAuthentication(validator validator) Authentication {
+	return Authentication{
 		validator: validator,
 	}
 }

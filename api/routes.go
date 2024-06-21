@@ -27,7 +27,7 @@ func timeoutMiddleware(duration time.Duration) gin.HandlerFunc {
 // Infra timeout is 60sec, so we set it to 55sec in order to gracefully handle the timeout in our code
 const batchIngestionTimeout = 55 * time.Second
 
-func (api *API) routes(auth *Authentication, tokenHandler *TokenHandler) {
+func (api *API) routes(auth Authentication, tokenHandler TokenHandler) {
 	api.router.GET("/liveness", HandleLivenessProbe)
 	api.router.POST("/token", tokenHandler.GenerateToken)
 	api.router.GET("/validate-license/:license_key", api.handleValidateLicense)
