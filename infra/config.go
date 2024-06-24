@@ -7,7 +7,7 @@ import (
 )
 
 type GcpConfig struct {
-	ProjectId                        string
+	TracingProjectId                 string
 	EnableTracing                    bool
 	FakeGcsRepository                bool
 	GcsIngestionBucket               string
