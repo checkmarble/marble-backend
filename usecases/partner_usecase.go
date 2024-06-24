@@ -60,13 +60,13 @@ func (usecase *PartnerUsecase) CreatePartner(
 	}
 
 	partner, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		exec repositories.Executor,
+		tx repositories.Executor,
 	) (models.Partner, error) {
 		partnerId := uuid.New().String()
-		if err := usecase.partnersRepository.CreatePartner(ctx, exec, partnerId, partnerCreateInput); err != nil {
+		if err := usecase.partnersRepository.CreatePartner(ctx, tx, partnerId, partnerCreateInput); err != nil {
 			return models.Partner{}, err
 		}
-		return usecase.partnersRepository.GetPartnerById(ctx, exec, partnerId)
+		return usecase.partnersRepository.GetPartnerById(ctx, tx, partnerId)
 	})
 	if err != nil {
 		return models.Partner{}, err
@@ -101,12 +101,12 @@ func (usecase *PartnerUsecase) UpdatePartner(
 	}
 
 	partner, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		exec repositories.Executor,
+		tx repositories.Executor,
 	) (models.Partner, error) {
-		if err := usecase.partnersRepository.UpdatePartner(ctx, exec, partnerId, partnerUpdateInput); err != nil {
+		if err := usecase.partnersRepository.UpdatePartner(ctx, tx, partnerId, partnerUpdateInput); err != nil {
 			return models.Partner{}, err
 		}
-		return usecase.partnersRepository.GetPartnerById(ctx, exec, partnerId)
+		return usecase.partnersRepository.GetPartnerById(ctx, tx, partnerId)
 	})
 	if err != nil {
 		return models.Partner{}, err

@@ -38,7 +38,9 @@ func (usecase *ProtectedLicenseUseCase) ListLicenses(ctx context.Context) ([]mod
 	if err := usecase.enforceSecurity.ListLicenses(ctx); err != nil {
 		return []models.License{}, err
 	}
-	licenses, err := usecase.licenseRepository.ListLicenses(ctx, usecase.executorFactory.NewExecutor())
+
+	exec := usecase.executorFactory.NewExecutor()
+	licenses, err := usecase.licenseRepository.ListLicenses(ctx, exec)
 	if err != nil {
 		return []models.License{}, err
 	}
@@ -50,8 +52,8 @@ func (usecase *ProtectedLicenseUseCase) GetLicenseById(ctx context.Context, lice
 		return models.License{}, err
 	}
 
-	license, err := usecase.licenseRepository.GetLicenseById(ctx,
-		usecase.executorFactory.NewExecutor(), licenseId)
+	exec := usecase.executorFactory.NewExecutor()
+	license, err := usecase.licenseRepository.GetLicenseById(ctx, exec, licenseId)
 	if err != nil {
 		return models.License{}, err
 	}
@@ -63,12 +65,12 @@ func (usecase *ProtectedLicenseUseCase) CreateLicense(ctx context.Context, input
 		return models.License{}, err
 	}
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		exec repositories.Executor,
+		tx repositories.Executor,
 	) (models.License, error) {
 		licenseId := uuid.NewString()
 		err := usecase.licenseRepository.CreateLicense(
 			ctx,
-			usecase.executorFactory.NewExecutor(),
+			tx,
 			models.License{
 				Id:                  licenseId,
 				Key:                 generateLicense(),
@@ -81,7 +83,7 @@ func (usecase *ProtectedLicenseUseCase) CreateLicense(ctx context.Context, input
 		if err != nil {
 			return models.License{}, err
 		}
-		return usecase.licenseRepository.GetLicenseById(ctx, exec, licenseId)
+		return usecase.licenseRepository.GetLicenseById(ctx, tx, licenseId)
 	})
 }
 
@@ -104,14 +106,13 @@ func (usecase *ProtectedLicenseUseCase) UpdateLicense(ctx context.Context, input
 	}
 
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		exec repositories.Executor,
+		tx repositories.Executor,
 	) (models.License, error) {
-		err := usecase.licenseRepository.UpdateLicense(ctx,
-			usecase.executorFactory.NewExecutor(), input)
+		err := usecase.licenseRepository.UpdateLicense(ctx, tx, input)
 		if err != nil {
 			return models.License{}, err
 		}
-		return usecase.licenseRepository.GetLicenseById(ctx, exec, input.Id)
+		return usecase.licenseRepository.GetLicenseById(ctx, tx, input.Id)
 	})
 }
 
@@ -125,8 +126,8 @@ type PublicLicenseUseCase struct {
 }
 
 func (usecase *PublicLicenseUseCase) ValidateLicense(ctx context.Context, licenseKey string) (models.LicenseValidation, error) {
-	license, err := usecase.licenseRepository.GetLicenseByKey(ctx,
-		usecase.executorFactory.NewExecutor(), licenseKey)
+	exec := usecase.executorFactory.NewExecutor()
+	license, err := usecase.licenseRepository.GetLicenseByKey(ctx, exec, licenseKey)
 	if err != nil {
 		return models.LicenseValidation{
 			LicenseValidationCode: models.NOT_FOUND,
