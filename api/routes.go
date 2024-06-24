@@ -30,7 +30,7 @@ const batchIngestionTimeout = 55 * time.Second
 func (api *API) routes(auth Authentication, tokenHandler TokenHandler) {
 	api.router.GET("/liveness", HandleLivenessProbe)
 	api.router.POST("/token", tokenHandler.GenerateToken)
-	api.router.GET("/validate-license/:license_key", api.handleValidateLicense)
+	api.router.GET("/validate-license/*license_key", api.handleValidateLicense)
 
 	router := api.router.Use(auth.Middleware)
 
