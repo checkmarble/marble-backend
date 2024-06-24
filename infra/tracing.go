@@ -37,7 +37,7 @@ func InitTelemetry(configuration TelemetryConfiguration) (TelemetryRessources, e
 	}
 
 	exporter, err := texporter.New(
-		texporter.WithProjectID(configuration.ProjectID),
+		texporter.WithProjectID(configuration.ProjectID), // If empty (env variable GOOGLE_CLOUD_PROJECT not set), it will try to determine the project id from the GCP metadata server
 		texporter.WithTraceClientOptions([]option.ClientOption{option.WithTelemetryDisabled()}),
 	)
 	if err != nil {

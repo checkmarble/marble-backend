@@ -16,7 +16,7 @@ func RunJobScheduler() error {
 	// This is where we read the environment variables and set up the configuration for the application.
 	gcpConfig := infra.GcpConfig{
 		EnableTracing:      utils.GetEnv("ENABLE_GCP_TRACING", false),
-		ProjectId:          utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
+		TracingProjectId:   utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
 		GcsIngestionBucket: utils.GetRequiredEnv[string]("GCS_INGESTION_BUCKET"),
 		FakeGcsRepository:  utils.GetEnv("FAKE_GCS", false),
 	}
@@ -51,7 +51,7 @@ func RunJobScheduler() error {
 	tracingConfig := infra.TelemetryConfiguration{
 		ApplicationName: jobConfig.appName,
 		Enabled:         gcpConfig.EnableTracing,
-		ProjectID:       gcpConfig.ProjectId,
+		ProjectID:       gcpConfig.TracingProjectId,
 	}
 	telemetryRessources, err := infra.InitTelemetry(tracingConfig)
 	if err != nil {

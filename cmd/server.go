@@ -34,7 +34,7 @@ func RunServer() error {
 	gcpConfig := infra.GcpConfig{
 		FakeGcsRepository:                utils.GetEnv("FAKE_GCS", false),
 		EnableTracing:                    utils.GetEnv("ENABLE_GCP_TRACING", false),
-		ProjectId:                        utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
+		TracingProjectId:                 utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
 		GcsIngestionBucket:               utils.GetEnv("GCS_INGESTION_BUCKET", ""),
 		GcsCaseManagerBucket:             utils.GetEnv("GCS_CASE_MANAGER_BUCKET", ""),
 		GcsTransferCheckEnrichmentBucket: utils.GetEnv("GCS_TRANSFER_CHECK_ENRICHMENT_BUCKET", ""), // required for transfercheck
@@ -80,7 +80,7 @@ func RunServer() error {
 	tracingConfig := infra.TelemetryConfiguration{
 		ApplicationName: apiConfig.AppName,
 		Enabled:         gcpConfig.EnableTracing,
-		ProjectID:       gcpConfig.ProjectId,
+		ProjectID:       gcpConfig.TracingProjectId,
 	}
 	telemetryRessources, err := infra.InitTelemetry(tracingConfig)
 	if err != nil {
