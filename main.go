@@ -60,6 +60,9 @@ func main() {
 	}
 
 	if *shouldRunScheduler {
-		cmd.RunJobScheduler()
+		err := cmd.RunJobScheduler()
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
