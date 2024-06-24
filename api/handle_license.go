@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -75,7 +76,7 @@ func (api *API) handleValidateLicense(c *gin.Context) {
 	licenseKey := c.Param("license_key")
 
 	usecase := api.usecases.NewLicenseUsecase()
-	licenseValidation, err := usecase.ValidateLicense(c.Request.Context(), licenseKey)
+	licenseValidation, err := usecase.ValidateLicense(c.Request.Context(), strings.TrimPrefix(licenseKey, "/"))
 	if presentError(c, err) {
 		return
 	}
