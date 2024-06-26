@@ -6,52 +6,14 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"sync"
 	"time"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
-func GCPLoggerAttributeReplacer(groups []string, a slog.Attr) slog.Attr {
-	// Rename "msg" to "message" so that stackdriver logging can parse it as the main message
-	if a.Key == "msg" {
-		a.Key = "message"
-		return a
-	}
-
-	// Rename "level" to "severity" and convert the value so that stackdriver can properly parse it to a stackdriver severity
-	if a.Key == slog.LevelKey {
-		a.Key = "severity"
-
-		level := a.Value.Any().(slog.Level)
-
-		const (
-			LevelDebug   = slog.LevelDebug
-			LevelInfo    = slog.LevelInfo
-			LevelWarning = slog.LevelWarn
-			LevelError   = slog.LevelError
-		)
-
-		const (
-			gcpLevelDebug   = "DEBUG"
-			gcpLevelInfo    = "INFO"
-			gcpLevelWarning = "WARNING"
-			gcpLevelError   = "ERROR"
-		)
-
-		switch {
-		case level < LevelInfo:
-			a.Value = slog.StringValue(gcpLevelDebug)
-		case level < LevelWarning:
-			a.Value = slog.StringValue(gcpLevelInfo)
-		case level < LevelError:
-			a.Value = slog.StringValue(gcpLevelWarning)
-		default:
-			a.Value = slog.StringValue(gcpLevelError)
-		}
-	}
-
-	return a
-}
-
+// Log handler for logging to local development, that formats the log message and adds color
 type LocalDevHandler struct {
 	opts            LocalDevHandlerOptions
 	internalHandler slog.Handler
@@ -91,6 +53,12 @@ func (h *LocalDevHandler) Enabled(ctx context.Context, level slog.Level) bool {
 
 func (h *LocalDevHandler) Handle(ctx context.Context, r slog.Record) error {
 	var buf bytes.Buffer
+
+	span := trace.SpanFromContext(ctx)
+	if span.SpanContext().HasTraceID() {
+		traceId := span.SpanContext().TraceID().String()
+		r.AddAttrs(slog.String("trace", traceId))
+	}
 
 	buf.WriteString(r.Time.Format(time.RFC3339))
 	buf.WriteString(" ")
@@ -165,4 +133,84 @@ func addColorToLevel(level string) string {
 		color = unknownLevelColor
 	}
 	return color.Add(level)
+}
+
+// Log handler for logging to GCP, by replacing relevant attributes and adding trace attributes.
+type GcpHandler struct {
+	projectId       string
+	internalHandler slog.Handler
+}
+
+func (h *GcpHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return h.internalHandler.Enabled(ctx, level)
+}
+
+func (h *GcpHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return h.internalHandler.WithAttrs(attrs)
+}
+
+func (h *GcpHandler) WithGroup(name string) slog.Handler {
+	return h.internalHandler.WithGroup(name)
+}
+
+func (h *GcpHandler) Handle(ctx context.Context, r slog.Record) error {
+	span := trace.SpanFromContext(ctx)
+	if span.SpanContext().HasTraceID() {
+		traceId := span.SpanContext().TraceID().String()
+		r.AddAttrs(slog.String("trace", fmt.Sprintf("projects/%s/traces/%s", h.projectId, traceId)))
+	}
+	if span.SpanContext().HasSpanID() {
+		spanId := span.SpanContext().SpanID().String()
+		r.AddAttrs(slog.String("spanId", spanId))
+	}
+
+	return h.internalHandler.Handle(ctx, r)
+}
+
+func NewGcpHandler(projectId string) *GcpHandler {
+	slogOption := slog.HandlerOptions{ReplaceAttr: GCPLoggerAttributeReplacer}
+	jsonHandler := slog.NewJSONHandler(os.Stdout, &slogOption)
+	return &GcpHandler{projectId: projectId, internalHandler: jsonHandler}
+}
+
+func GCPLoggerAttributeReplacer(groups []string, a slog.Attr) slog.Attr {
+	// Rename "msg" to "message" so that stackdriver logging can parse it as the main message
+	if a.Key == "msg" {
+		a.Key = "message"
+		return a
+	}
+
+	// Rename "level" to "severity" and convert the value so that stackdriver can properly parse it to a stackdriver severity
+	if a.Key == slog.LevelKey {
+		a.Key = "severity"
+
+		level := a.Value.Any().(slog.Level)
+
+		const (
+			LevelDebug   = slog.LevelDebug
+			LevelInfo    = slog.LevelInfo
+			LevelWarning = slog.LevelWarn
+			LevelError   = slog.LevelError
+		)
+
+		const (
+			gcpLevelDebug   = "DEBUG"
+			gcpLevelInfo    = "INFO"
+			gcpLevelWarning = "WARNING"
+			gcpLevelError   = "ERROR"
+		)
+
+		switch {
+		case level < LevelInfo:
+			a.Value = slog.StringValue(gcpLevelDebug)
+		case level < LevelWarning:
+			a.Value = slog.StringValue(gcpLevelInfo)
+		case level < LevelError:
+			a.Value = slog.StringValue(gcpLevelWarning)
+		default:
+			a.Value = slog.StringValue(gcpLevelError)
+		}
+	}
+
+	return a
 }
