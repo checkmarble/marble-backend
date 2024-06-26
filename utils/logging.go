@@ -157,11 +157,12 @@ func (h *GcpHandler) Handle(ctx context.Context, r slog.Record) error {
 	span := trace.SpanFromContext(ctx)
 	if span.SpanContext().HasTraceID() {
 		traceId := span.SpanContext().TraceID().String()
-		r.AddAttrs(slog.String("trace", fmt.Sprintf("projects/%s/traces/%s", h.projectId, traceId)))
+		r.AddAttrs(slog.String("logging.googleapis.com/trace",
+			fmt.Sprintf("projects/%s/traces/%s", h.projectId, traceId)))
 	}
 	if span.SpanContext().HasSpanID() {
 		spanId := span.SpanContext().SpanID().String()
-		r.AddAttrs(slog.String("spanId", spanId))
+		r.AddAttrs(slog.String("logging.googleapis.com/spanId", spanId))
 	}
 
 	return h.internalHandler.Handle(ctx, r)
