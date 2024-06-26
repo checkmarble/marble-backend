@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/otel/trace"
@@ -35,9 +36,15 @@ func NewPostgresConnectionPool(ctx context.Context, connectionString string, tp 
 
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	if err := pool.Ping(ctx); err != nil {
-		return nil, fmt.Errorf("NewPostgresConnectionPool.Ping error: %w", err)
-	}
 
-	return pool, nil
+	return pool, retry.Do(
+		func() error {
+			if err := pool.Ping(ctx); err != nil {
+				return fmt.Errorf("NewPostgresConnectionPool.Ping error: %w", err)
+			}
+			return err
+		},
+		retry.Attempts(3),
+		retry.LastErrorOnly(true),
+	)
 }

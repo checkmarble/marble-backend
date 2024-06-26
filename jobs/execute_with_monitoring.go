@@ -3,7 +3,6 @@ package jobs
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
@@ -31,11 +30,6 @@ func executeWithMonitoring(
 
 	err := fn(ctx, uc)
 	if err != nil {
-		// Known issue where Cloud Run will sometimes fail to create the unix socket to connect to CloudSQL. In this case, we don't log the error in Sentry.
-		if strings.Contains(err.Error(), "failed to connect to `host=/cloudsql/") {
-			logger.WarnContext(ctx, "Failed to create unix socket to connect to CloudSQL. Wait for the next execution of the job.")
-			return nil
-		}
 		sentry.CaptureCheckIn(
 			&sentry.CheckIn{
 				ID:          *checkinId,
