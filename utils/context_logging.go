@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/oauth2/google"
 )
 
 func NewLogger(format string) *slog.Logger {
@@ -28,11 +29,11 @@ func NewLogger(format string) *slog.Logger {
 	case "json":
 		logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	case "gcp":
-		projectId := GetEnv("GOOGLE_CLOUD_PROJECT", "")
-		if projectId == "" {
-			fmt.Println("GOOGLE_CLOUD_PROJECT not set, the trace id in logs will not be usable")
+		creds, err := google.FindDefaultCredentials(context.Background())
+		if err != nil || creds.ProjectID == "" {
+			fmt.Printf("failed to find default credentials (%v) or projectId empty: the traceId in logs will not be usable\n", err)
 		}
-		logger = slog.New(NewGcpHandler(projectId))
+		logger = slog.New(NewGcpHandler(creds.ProjectID))
 	}
 	return logger
 }
