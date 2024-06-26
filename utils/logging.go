@@ -155,6 +155,9 @@ func (h *GcpHandler) WithGroup(name string) slog.Handler {
 
 func (h *GcpHandler) Handle(ctx context.Context, r slog.Record) error {
 	span := trace.SpanFromContext(ctx)
+	fmt.Println(span.SpanContext().HasTraceID())
+	fmt.Println(span.SpanContext().HasSpanID())
+	fmt.Println(span.SpanContext().IsValid())
 	if span.SpanContext().HasTraceID() {
 		traceId := span.SpanContext().TraceID().String()
 		r.AddAttrs(slog.String("logging.googleapis.com/trace",
