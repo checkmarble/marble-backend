@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -10,7 +11,7 @@ import (
 )
 
 type partnersRepository interface {
-	ListPartners(ctx context.Context, exec repositories.Executor) ([]models.Partner, error)
+	ListPartners(ctx context.Context, exec repositories.Executor, filters models.PartnerFilters) ([]models.Partner, error)
 	CreatePartner(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -38,16 +39,17 @@ type PartnerUsecase struct {
 	partnersRepository partnersRepository
 }
 
-func (usecase *PartnerUsecase) ListPartners(ctx context.Context) ([]models.Partner, error) {
+func (usecase *PartnerUsecase) ListPartners(ctx context.Context, filters models.PartnerFilters) ([]models.Partner, error) {
 	if err := usecase.enforceSecurity.ListPartners(ctx); err != nil {
 		return nil, err
 	}
 
 	exec := usecase.executorFactory.NewExecutor()
-	partners, err := usecase.partnersRepository.ListPartners(ctx, exec)
+	partners, err := usecase.partnersRepository.ListPartners(ctx, exec, filters)
 	if err != nil {
 		return []models.Partner{}, err
 	}
+
 	return partners, nil
 }
 
@@ -63,6 +65,7 @@ func (usecase *PartnerUsecase) CreatePartner(
 		tx repositories.Executor,
 	) (models.Partner, error) {
 		partnerId := uuid.New().String()
+		partnerCreateInput.Bic = strings.TrimSpace(strings.ToUpper(partnerCreateInput.Bic))
 		if err := usecase.partnersRepository.CreatePartner(ctx, tx, partnerId, partnerCreateInput); err != nil {
 			return models.Partner{}, err
 		}
@@ -103,6 +106,8 @@ func (usecase *PartnerUsecase) UpdatePartner(
 	partner, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Executor,
 	) (models.Partner, error) {
+		partnerUpdateInput.Bic.String = strings.TrimSpace(
+			strings.ToUpper(partnerUpdateInput.Bic.String))
 		if err := usecase.partnersRepository.UpdatePartner(ctx, tx, partnerId, partnerUpdateInput); err != nil {
 			return models.Partner{}, err
 		}

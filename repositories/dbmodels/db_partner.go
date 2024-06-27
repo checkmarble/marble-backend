@@ -11,6 +11,7 @@ type DBPartner struct {
 	Id        string    `db:"id"`
 	CreatedAt time.Time `db:"created_at"`
 	Name      string    `db:"name"`
+	Bic       string    `db:"bic"`
 }
 
 const TABLE_PARTNERS = "partners"
@@ -22,5 +23,6 @@ func AdaptPartner(db DBPartner) (models.Partner, error) {
 		Id:        db.Id,
 		CreatedAt: db.CreatedAt,
 		Name:      db.Name,
+		Bic:       db.Bic,
 	}, nil
 }

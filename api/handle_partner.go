@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
@@ -13,7 +14,7 @@ func (api *API) handleListPartners(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	usecase := api.UsecasesWithCreds(c.Request).NewPartnerUsecase()
-	partners, err := usecase.ListPartners(ctx)
+	partners, err := usecase.ListPartners(ctx, models.PartnerFilters{})
 	if presentError(c, err) {
 		return
 	}
