@@ -65,7 +65,7 @@ func RunServer() error {
 		loggingFormat string
 		sentryDsn     string
 	}{
-		jwtSigningKey: utils.GetEnv("AUTHENTICATION_JWT_SIGNING", ""),
+		jwtSigningKey: utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY", ""),
 		loggingFormat: utils.GetEnv("LOGGING_FORMAT", "text"),
 		sentryDsn:     utils.GetEnv("SENTRY_DSN", ""),
 	}
