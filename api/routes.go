@@ -158,6 +158,14 @@ func (api *API) routes(auth Authentication, tokenHandler TokenHandler) {
 	router.GET("/transfers/:transfer_id", api.handleGetTransfer)
 	router.POST("/transfers/:transfer_id/score", api.handleScoreTransfer)
 
+	router.POST("/transfer/alerts", api.handleCreateTransferAlert)
+	router.GET("/transfer/sent/alerts/:alert_id", api.handleGetTransferAlertSender)
+	router.GET("/transfer/received/alerts/:alert_id", api.handleGetTransferAlertReceiver)
+	router.GET("/transfer/sent/alerts", api.handleListTransferAlertsSender)
+	router.GET("/transfer/received/alerts", api.handleListTransferAlertsReceiver)
+	router.PATCH("/transfer/sent/alerts/:alert_id", api.handleUpdateTransferAlertSender)
+	router.PATCH("/transfer/received/alerts/:alert_id", api.handleUpdateTransferAlertReceiver)
+
 	router.GET("/licenses", api.handleListLicenses)
 	router.POST("/licenses", api.handleCreateLicense)
 	router.PATCH("/licenses/:license_id", api.handleUpdateLicense)
