@@ -43,6 +43,6 @@ func (repo *AwsS3Repository) StoreInBucket(ctx context.Context, bucketName strin
 		return errors.Errorf("Couldn't upload fileName to %v:%v. Here's why: %v\n", bucketName, key, err)
 	}
 
-	logger.Info(fmt.Sprintf("Successfully uploaded to s3 to %v", location.Location))
+	logger.InfoContext(ctx, fmt.Sprintf("Successfully uploaded to s3 to %v", location.Location))
 	return nil
 }

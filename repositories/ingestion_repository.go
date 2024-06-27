@@ -61,7 +61,7 @@ func (repo *IngestionRepositoryImpl) IngestObjects(
 		}
 	}
 
-	logger.Info("Inserted objects in db",
+	logger.InfoContext(ctx, "Inserted objects in db",
 		slog.String("type", tableNameWithSchema(exec, table.Name)),
 		slog.Int("nb_objects", len(payloadsToInsert)))
 
