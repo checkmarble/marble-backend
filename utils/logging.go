@@ -146,11 +146,17 @@ func (h *GcpHandler) Enabled(ctx context.Context, level slog.Level) bool {
 }
 
 func (h *GcpHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return h.internalHandler.WithAttrs(attrs)
+	return &GcpHandler{
+		projectId:       h.projectId,
+		internalHandler: h.internalHandler.WithAttrs(attrs),
+	}
 }
 
 func (h *GcpHandler) WithGroup(name string) slog.Handler {
-	return h.internalHandler.WithGroup(name)
+	return &GcpHandler{
+		projectId:       h.projectId,
+		internalHandler: h.internalHandler.WithGroup(name),
+	}
 }
 
 func (h *GcpHandler) Handle(ctx context.Context, r slog.Record) error {
