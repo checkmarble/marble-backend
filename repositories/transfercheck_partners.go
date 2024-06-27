@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
@@ -14,15 +15,20 @@ func selectPartners() squirrel.SelectBuilder {
 		From(dbmodels.TABLE_PARTNERS)
 }
 
-func (repo MarbleDbRepository) ListPartners(ctx context.Context, exec Executor) ([]models.Partner, error) {
+func (repo MarbleDbRepository) ListPartners(ctx context.Context, exec Executor, filters models.PartnerFilters) ([]models.Partner, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
+	}
+
+	query := selectPartners().OrderBy("created_at DESC")
+	if filters.Bic.Valid {
+		query = query.Where(squirrel.Eq{"LOWER(bic)": strings.ToLower(filters.Bic.String)})
 	}
 
 	return SqlToListOfModels(
 		ctx,
 		exec,
-		selectPartners(),
+		query,
 		dbmodels.AdaptPartner,
 	)
 }
@@ -45,10 +51,12 @@ func (repo MarbleDbRepository) CreatePartner(
 			Columns(
 				"id",
 				"name",
+				"bic",
 			).
 			Values(
 				partnerId,
 				partnerCreateInput.Name,
+				partnerCreateInput.Bic,
 			),
 	)
 	return err
@@ -66,8 +74,14 @@ func (repo MarbleDbRepository) UpdatePartner(
 
 	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_PARTNERS).
-		Where(squirrel.Eq{"id": partnerId}).
-		Set("name", partnerUpdateInput.Name)
+		Where(squirrel.Eq{"id": partnerId})
+
+	if partnerUpdateInput.Name.Valid {
+		query = query.Set("name", partnerUpdateInput.Name)
+	}
+	if partnerUpdateInput.Bic.Valid {
+		query = query.Set("bic", partnerUpdateInput.Bic)
+	}
 
 	err := ExecBuilder(ctx, exec, query)
 	return err
