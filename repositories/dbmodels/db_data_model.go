@@ -10,7 +10,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// TODO(data_model): handle versionning + status / change db schema if it's useless
 type DbDataModel struct {
 	Id             string      `db:"id"`
 	OrganizationId string      `db:"org_id"`

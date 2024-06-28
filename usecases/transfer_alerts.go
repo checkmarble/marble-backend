@@ -8,6 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"github.com/guregu/null/v5"
 )
 
 type transferAlertsRepository interface {
@@ -56,6 +57,9 @@ type TransferAlertsUsecase struct {
 	transactionFactory         executor_factory.TransactionFactory
 	transferMappingsRepository transferMappingsRepository
 	transferAlertsRepository   transferAlertsRepository
+	partnersRepository         partnersRepository
+	ingestedDataReadRepository repositories.IngestedDataReadRepository
+	dataModelRepository        repositories.DataModelRepository
 }
 
 func NewTransferAlertsUsecase(
@@ -65,6 +69,9 @@ func NewTransferAlertsUsecase(
 	transactionFactory executor_factory.TransactionFactory,
 	transferMappingsRepository transferMappingsRepository,
 	transferAlertsRepository transferAlertsRepository,
+	partnersRepository partnersRepository,
+	ingestedDataReadRepository repositories.IngestedDataReadRepository,
+	dataModelRepository repositories.DataModelRepository,
 ) TransferAlertsUsecase {
 	return TransferAlertsUsecase{
 		enforceSecurity:            enforceSecurity,
@@ -73,6 +80,9 @@ func NewTransferAlertsUsecase(
 		transactionFactory:         transactionFactory,
 		transferMappingsRepository: transferMappingsRepository,
 		transferAlertsRepository:   transferAlertsRepository,
+		partnersRepository:         partnersRepository,
+		ingestedDataReadRepository: ingestedDataReadRepository,
+		dataModelRepository:        dataModelRepository,
 	}
 }
 
@@ -147,13 +157,63 @@ func (usecase TransferAlertsUsecase) CreateTransferAlert(
 		return models.TransferAlert{}, err
 	}
 
+	// -------
+	// Bloc: we verify that there is a transfer with this id and that it's beneficiary bank is in the network
 	exec := usecase.executorFactory.NewExecutor()
-	_, err = usecase.transferMappingsRepository.GetTransferMapping(ctx, exec, input.TransferId)
+	transferMapping, err := usecase.transferMappingsRepository.GetTransferMapping(ctx, exec, input.TransferId)
 	if err != nil {
 		return models.TransferAlert{}, err
 	}
-	// TODO: get beneficiary partner id, need to merge another PR first
-	input.BeneficiaryPartnerId = uuid.NewString()
+	if transferMapping.PartnerId != input.SenderPartnerId {
+		return models.TransferAlert{}, errors.Wrapf(
+			models.NotFoundError,
+			"transfer %s not found for partner %s", input.TransferId, input.SenderPartnerId,
+		)
+	}
+
+	// read the actual transfer data
+	// TODO: factorize some of this, it's used both in here and in the transfer check usecase
+	db, err := usecase.executorFactory.NewClientDbExecutor(ctx, input.OrganizationId)
+	if err != nil {
+		return models.TransferAlert{}, err
+	}
+
+	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, input.OrganizationId, false)
+	if err != nil {
+		return models.TransferAlert{}, err
+	}
+	table, ok := dataModel.Tables[TransferCheckTable]
+	if !ok {
+		return models.TransferAlert{}, errors.Newf("table %s not found", TransferCheckTable)
+	}
+
+	objectId := models.ObjectIdWithPartnerIdPrefix(transferMapping.PartnerId, transferMapping.ClientTransferId)
+	objects, err := usecase.ingestedDataReadRepository.QueryIngestedObject(ctx, db, table, objectId)
+	if err != nil {
+		return models.TransferAlert{}, errors.Wrap(err,
+			"error while querying ingested objects in lookupPreviousObjects")
+	}
+	if len(objects) == 0 {
+		return models.TransferAlert{}, errors.Newf("no ingested object found for transferId %s", input.TransferId)
+	}
+
+	bic, ok := objects[0]["bic"].(string)
+	if !ok {
+		return models.TransferAlert{}, errors.New("bic not found in ingested object")
+	}
+
+	partnersByBic, err := usecase.partnersRepository.ListPartners(ctx, exec, models.PartnerFilters{
+		Bic: null.StringFrom(bic),
+	})
+	if err != nil {
+		return models.TransferAlert{}, err
+	}
+	if len(partnersByBic) == 0 {
+		return models.TransferAlert{}, errors.Wrapf(models.BadParameterError, "partner not found for bic %s", bic)
+	}
+	input.BeneficiaryPartnerId = partnersByBic[0].Id
+	// Bloc end
+	// -------
 
 	input.Id = uuid.NewString()
 	return executor_factory.TransactionReturnValue(
@@ -170,7 +230,7 @@ func (usecase TransferAlertsUsecase) CreateTransferAlert(
 	)
 }
 
-func (usecase TransferAlertsUsecase) UpcateTransferAlertAsSender(
+func (usecase TransferAlertsUsecase) UpdateTransferAlertAsSender(
 	ctx context.Context,
 	alertId string,
 	input models.TransferAlertUpdateBodySender,
@@ -204,7 +264,7 @@ func (usecase TransferAlertsUsecase) UpcateTransferAlertAsSender(
 	)
 }
 
-func (usecase TransferAlertsUsecase) UpcateTransferAlertAsReceiver(
+func (usecase TransferAlertsUsecase) UpdateTransferAlertAsReceiver(
 	ctx context.Context,
 	alertId string,
 	input models.TransferAlertUpdateBodyReceiver,
