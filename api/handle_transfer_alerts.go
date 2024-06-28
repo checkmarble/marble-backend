@@ -34,10 +34,13 @@ func (api *API) handleGetTransferAlertReceiver(c *gin.Context) {
 
 func (api *API) handleListTransferAlertsSender(c *gin.Context) {
 	creds, _ := utils.CredentialsFromCtx(c.Request.Context())
-	partnerId := creds.PartnerId
+	var partnerId string
+	if creds.PartnerId != nil {
+		partnerId = *creds.PartnerId
+	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewTransferAlertsUsecase()
-	alerts, err := usecase.ListTransferAlerts(c.Request.Context(), partnerId, "sender")
+	alerts, err := usecase.ListTransferAlerts(c.Request.Context(), creds.OrganizationId, partnerId, "sender")
 	if presentError(c, err) {
 		return
 	}
@@ -47,10 +50,13 @@ func (api *API) handleListTransferAlertsSender(c *gin.Context) {
 
 func (api *API) handleListTransferAlertsReceiver(c *gin.Context) {
 	creds, _ := utils.CredentialsFromCtx(c.Request.Context())
-	partnerId := creds.PartnerId
+	var partnerId string
+	if creds.PartnerId != nil {
+		partnerId = *creds.PartnerId
+	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewTransferAlertsUsecase()
-	alerts, err := usecase.ListTransferAlerts(c.Request.Context(), partnerId, "receiver")
+	alerts, err := usecase.ListTransferAlerts(c.Request.Context(), creds.OrganizationId, partnerId, "receiver")
 	if presentError(c, err) {
 		return
 	}
