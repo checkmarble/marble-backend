@@ -16,20 +16,27 @@ type transferAlertsRepository interface {
 	ListTransferAlerts(
 		ctx context.Context,
 		exec repositories.Executor,
+		organizationId string,
 		partnerId string,
-		senderOrReceiver string) ([]models.TransferAlert, error)
-	CreateTransferAlert(ctx context.Context, exec repositories.Executor,
-		alert models.TransferAlertCreateBody) error
+		senderOrReceiver string,
+	) ([]models.TransferAlert, error)
+	CreateTransferAlert(
+		ctx context.Context,
+		exec repositories.Executor,
+		alert models.TransferAlertCreateBody,
+	) error
 	UpdateTransferAlertAsSender(
 		ctx context.Context,
 		exec repositories.Executor,
 		alertId string,
-		input models.TransferAlertUpdateBodySender) error
+		input models.TransferAlertUpdateBodySender,
+	) error
 	UpdateTransferAlertAsReceiver(
 		ctx context.Context,
 		exec repositories.Executor,
 		alertId string,
-		input models.TransferAlertUpdateBodyReceiver) error
+		input models.TransferAlertUpdateBodyReceiver,
+	) error
 }
 
 type enforceSecurityTransferAlerts interface {
@@ -123,12 +130,20 @@ func (usecase TransferAlertsUsecase) GetTransferAlert(ctx context.Context, alert
 	return alert, nil
 }
 
-func (usecase TransferAlertsUsecase) ListTransferAlerts(ctx context.Context, partnerId *string, senderOrReceiver string) ([]models.TransferAlert, error) {
-	if partnerId == nil {
-		return nil, errors.Wrap(models.ForbiddenError, "partner id is required")
-	}
+func (usecase TransferAlertsUsecase) ListTransferAlerts(
+	ctx context.Context,
+	organizationId string,
+	partnerId string,
+	senderOrReceiver string,
+) ([]models.TransferAlert, error) {
 	exec := usecase.executorFactory.NewExecutor()
-	alerts, err := usecase.transferAlertsRepository.ListTransferAlerts(ctx, exec, *partnerId, senderOrReceiver)
+	alerts, err := usecase.transferAlertsRepository.ListTransferAlerts(
+		ctx,
+		exec,
+		organizationId,
+		partnerId,
+		senderOrReceiver,
+	)
 	if err != nil {
 		return nil, err
 	}
