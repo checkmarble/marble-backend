@@ -379,7 +379,10 @@ func (usecases *UsecasesWithCreds) NewTransferAlertsUsecase() TransferAlertsUsec
 		usecases.Repositories.OrganizationRepository,
 		usecases.NewTransactionFactory(),
 		&usecases.Repositories.MarbleDbRepository,
-		nil, // TODO: add this
+		nil, // add this
+		&usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.IngestedDataReadRepository,
+		usecases.Repositories.DataModelRepository,
 	)
 }
 

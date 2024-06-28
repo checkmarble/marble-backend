@@ -100,7 +100,7 @@ func (api *API) handleUpdateTransferAlertSender(c *gin.Context) {
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewTransferAlertsUsecase()
-	alert, err := usecase.UpcateTransferAlertAsSender(c.Request.Context(), alertId, models.TransferAlertUpdateBodySender{
+	alert, err := usecase.UpdateTransferAlertAsSender(c.Request.Context(), alertId, models.TransferAlertUpdateBodySender{
 		Message:            data.Message,
 		TransferEndToEndId: data.TransferEndToEndId,
 		BeneficiaryIban:    data.BeneficiaryIban,
@@ -124,7 +124,7 @@ func (api *API) handleUpdateTransferAlertReceiver(c *gin.Context) {
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewTransferAlertsUsecase()
-	alert, err := usecase.UpcateTransferAlertAsReceiver(c.Request.Context(), alertId, models.TransferAlertUpdateBodyReceiver{
+	alert, err := usecase.UpdateTransferAlertAsReceiver(c.Request.Context(), alertId, models.TransferAlertUpdateBodyReceiver{
 		Status: data.Status,
 	}, creds.OrganizationId)
 	if presentError(c, err) {
