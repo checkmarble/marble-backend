@@ -372,6 +372,17 @@ func (usecases *UsecasesWithCreds) NewTransferCheckUsecase() TransferCheckUsecas
 	}
 }
 
+func (usecases *UsecasesWithCreds) NewTransferAlertsUsecase() TransferAlertsUsecase {
+	return NewTransferAlertsUsecase(
+		security.NewEnforceSecurity(usecases.Credentials),
+		usecases.NewExecutorFactory(),
+		usecases.Repositories.OrganizationRepository,
+		usecases.NewTransactionFactory(),
+		&usecases.Repositories.MarbleDbRepository,
+		nil, // TODO: add this
+	)
+}
+
 func (usecases *UsecasesWithCreds) NewPartnerUsecase() PartnerUsecase {
 	return PartnerUsecase{
 		enforceSecurity:    security.NewEnforceSecurity(usecases.Credentials),

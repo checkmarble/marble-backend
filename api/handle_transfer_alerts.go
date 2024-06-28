@@ -1,27 +1,20 @@
 package api
 
 import (
-	"time"
-
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/gin-gonic/gin"
 )
 
 func (api *API) handleGetTransferAlertSender(c *gin.Context) {
 	alertId := c.Param("alert_id")
 
-	alert := models.TransferAlert{
-		Id:                 alertId,
-		TransferId:         "transfer_id",
-		SenderPartnerId:    "sender_partner_id",
-		CreatedAt:          time.Now(),
-		Status:             "status",
-		Message:            "message",
-		TransferEndToEndId: "transfer_end_to_end_id",
-		BeneficiaryIban:    "beneficiary_iban",
-		SenderIban:         "sender_iban",
+	usecase := api.UsecasesWithCreds(c.Request).NewTransferAlertsUsecase()
+	alert, err := usecase.GetTransferAlert(c.Request.Context(), alertId, "sender")
+	if presentError(c, err) {
+		return
 	}
 
 	c.JSON(200, gin.H{"alert": dto.AdaptSenderTransferAlert(alert)})
@@ -30,52 +23,36 @@ func (api *API) handleGetTransferAlertSender(c *gin.Context) {
 func (api *API) handleGetTransferAlertReceiver(c *gin.Context) {
 	alertId := c.Param("alert_id")
 
-	alert := models.TransferAlert{
-		Id:                 alertId,
-		TransferId:         "transfer_id",
-		SenderPartnerId:    "sender_partner_id",
-		CreatedAt:          time.Now(),
-		Status:             "status",
-		Message:            "message",
-		TransferEndToEndId: "transfer_end_to_end_id",
-		BeneficiaryIban:    "beneficiary_iban",
-		SenderIban:         "sender_iban",
+	usecase := api.UsecasesWithCreds(c.Request).NewTransferAlertsUsecase()
+	alert, err := usecase.GetTransferAlert(c.Request.Context(), alertId, "receiver")
+	if presentError(c, err) {
+		return
 	}
 
 	c.JSON(200, gin.H{"alert": dto.AdaptBeneficiaryTransferAlert(alert)})
 }
 
 func (api *API) handleListTransferAlertsSender(c *gin.Context) {
-	alerts := []models.TransferAlert{
-		{
-			Id:                 "id",
-			TransferId:         "transfer_id",
-			SenderPartnerId:    "sender_partner_id",
-			CreatedAt:          time.Now(),
-			Status:             "status",
-			Message:            "message",
-			TransferEndToEndId: "transfer_end_to_end_id",
-			BeneficiaryIban:    "beneficiary_iban",
-			SenderIban:         "sender_iban",
-		},
+	creds, _ := utils.CredentialsFromCtx(c.Request.Context())
+	partnerId := creds.PartnerId
+
+	usecase := api.UsecasesWithCreds(c.Request).NewTransferAlertsUsecase()
+	alerts, err := usecase.ListTransferAlerts(c.Request.Context(), partnerId, "sender")
+	if presentError(c, err) {
+		return
 	}
 
 	c.JSON(200, gin.H{"alerts": pure_utils.Map(alerts, dto.AdaptSenderTransferAlert)})
 }
 
 func (api *API) handleListTransferAlertsReceiver(c *gin.Context) {
-	alerts := []models.TransferAlert{
-		{
-			Id:                 "id",
-			TransferId:         "transfer_id",
-			SenderPartnerId:    "sender_partner_id",
-			CreatedAt:          time.Now(),
-			Status:             "status",
-			Message:            "message",
-			TransferEndToEndId: "transfer_end_to_end_id",
-			BeneficiaryIban:    "beneficiary_iban",
-			SenderIban:         "sender_iban",
-		},
+	creds, _ := utils.CredentialsFromCtx(c.Request.Context())
+	partnerId := creds.PartnerId
+
+	usecase := api.UsecasesWithCreds(c.Request).NewTransferAlertsUsecase()
+	alerts, err := usecase.ListTransferAlerts(c.Request.Context(), partnerId, "receiver")
+	if presentError(c, err) {
+		return
 	}
 
 	c.JSON(200, gin.H{"alerts": pure_utils.Map(alerts, dto.AdaptBeneficiaryTransferAlert)})
@@ -88,16 +65,25 @@ func (api *API) handleCreateTransferAlert(c *gin.Context) {
 		return
 	}
 
-	alert := models.TransferAlert{
-		Id:                 "id",
+	creds, _ := utils.CredentialsFromCtx(c.Request.Context())
+	var partnerId string
+	if creds.PartnerId != nil {
+		partnerId = *creds.PartnerId
+	}
+
+	usecase := api.UsecasesWithCreds(c.Request).NewTransferAlertsUsecase()
+
+	alert, err := usecase.CreateTransferAlert(c.Request.Context(), models.TransferAlertCreateBody{
 		TransferId:         data.TransferId,
-		SenderPartnerId:    "qezfqzef",
-		CreatedAt:          time.Now(),
-		Status:             "unread",
+		OrganizationId:     creds.OrganizationId,
+		SenderPartnerId:    partnerId,
 		Message:            data.Message,
 		TransferEndToEndId: data.TransferEndToEndId,
 		BeneficiaryIban:    data.BeneficiaryIban,
 		SenderIban:         data.SenderIban,
+	})
+	if presentError(c, err) {
+		return
 	}
 
 	c.JSON(200, gin.H{"alert": dto.AdaptSenderTransferAlert(alert)})
@@ -105,6 +91,7 @@ func (api *API) handleCreateTransferAlert(c *gin.Context) {
 
 func (api *API) handleUpdateTransferAlertSender(c *gin.Context) {
 	alertId := c.Param("alert_id")
+	creds, _ := utils.CredentialsFromCtx(c.Request.Context())
 
 	var data dto.TransferAlertUpdateBody
 	if err := c.ShouldBindJSON(&data); err != nil {
@@ -112,16 +99,15 @@ func (api *API) handleUpdateTransferAlertSender(c *gin.Context) {
 		return
 	}
 
-	alert := models.TransferAlert{
-		Id:                 alertId,
-		TransferId:         "transfer_id",
-		SenderPartnerId:    "SenderPartnerId",
-		CreatedAt:          time.Now(),
-		Status:             "",
-		Message:            data.Message.String,
-		TransferEndToEndId: data.TransferEndToEndId.String,
-		BeneficiaryIban:    data.BeneficiaryIban.String,
-		SenderIban:         data.SenderIban.String,
+	usecase := api.UsecasesWithCreds(c.Request).NewTransferAlertsUsecase()
+	alert, err := usecase.UpcateTransferAlertAsSender(c.Request.Context(), alertId, models.TransferAlertUpdateBodySender{
+		Message:            data.Message,
+		TransferEndToEndId: data.TransferEndToEndId,
+		BeneficiaryIban:    data.BeneficiaryIban,
+		SenderIban:         data.SenderIban,
+	}, creds.OrganizationId)
+	if presentError(c, err) {
+		return
 	}
 
 	c.JSON(200, gin.H{"alert": dto.AdaptSenderTransferAlert(alert)})
@@ -129,6 +115,7 @@ func (api *API) handleUpdateTransferAlertSender(c *gin.Context) {
 
 func (api *API) handleUpdateTransferAlertReceiver(c *gin.Context) {
 	alertId := c.Param("alert_id")
+	creds, _ := utils.CredentialsFromCtx(c.Request.Context())
 
 	var data dto.TransferAlertUpdateBody
 	if err := c.ShouldBindJSON(&data); err != nil {
@@ -136,14 +123,12 @@ func (api *API) handleUpdateTransferAlertReceiver(c *gin.Context) {
 		return
 	}
 
-	alert := models.TransferAlert{
-		Id:                 alertId,
-		CreatedAt:          time.Now(),
-		Status:             data.Status.String,
-		Message:            "",
-		TransferEndToEndId: "",
-		BeneficiaryIban:    "",
-		SenderIban:         "",
+	usecase := api.UsecasesWithCreds(c.Request).NewTransferAlertsUsecase()
+	alert, err := usecase.UpcateTransferAlertAsReceiver(c.Request.Context(), alertId, models.TransferAlertUpdateBodyReceiver{
+		Status: data.Status,
+	}, creds.OrganizationId)
+	if presentError(c, err) {
+		return
 	}
 
 	c.JSON(200, gin.H{"alert": dto.AdaptBeneficiaryTransferAlert(alert)})

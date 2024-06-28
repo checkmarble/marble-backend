@@ -9,6 +9,7 @@ import (
 type TransferAlert struct {
 	Id                   string
 	TransferId           string
+	OrganizationId       string
 	SenderPartnerId      string
 	BeneficiaryPartnerId string
 	CreatedAt            time.Time
@@ -22,7 +23,9 @@ type TransferAlert struct {
 }
 
 type TransferAlertCreateBody struct {
+	Id                   string
 	TransferId           string
+	OrganizationId       string
 	SenderPartnerId      string
 	BeneficiaryPartnerId string
 
@@ -41,5 +44,5 @@ type TransferAlertUpdateBodySender struct {
 }
 
 type TransferAlertUpdateBodyReceiver struct {
-	Status string
+	Status null.String
 }
