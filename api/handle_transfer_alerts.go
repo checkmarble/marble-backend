@@ -131,7 +131,7 @@ func (api *API) handleUpdateTransferAlertSender(c *gin.Context) {
 	alertId := c.Param("alert_id")
 	creds, _ := utils.CredentialsFromCtx(c.Request.Context())
 
-	var data dto.TransferAlertUpdateBody
+	var data dto.TransferAlertUpdateAsSenderBody
 	if err := c.ShouldBindJSON(&data); err != nil {
 		c.Status(http.StatusBadRequest)
 		return
@@ -155,7 +155,7 @@ func (api *API) handleUpdateTransferAlertBeneficiary(c *gin.Context) {
 	alertId := c.Param("alert_id")
 	creds, _ := utils.CredentialsFromCtx(c.Request.Context())
 
-	var data dto.TransferAlertUpdateBody
+	var data dto.TransferAlertUpdateAsBeneficiaryBody
 	if err := c.ShouldBindJSON(&data); err != nil {
 		c.Status(http.StatusBadRequest)
 		return
