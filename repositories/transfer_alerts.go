@@ -5,6 +5,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/cockroachdb/errors"
+	"github.com/guregu/null/v5"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
@@ -35,6 +36,7 @@ func (repo *MarbleDbRepository) ListTransferAlerts(
 	organizationId string,
 	partnerId string,
 	senderOrBeneficiary string,
+	transferId null.String,
 ) ([]models.TransferAlert, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
@@ -50,15 +52,15 @@ func (repo *MarbleDbRepository) ListTransferAlerts(
 		return nil, errors.Newf(`invalid value for senderOrBeneficiary "%s" in MarbleDbRepository.ListTransferAlerts`, senderOrBeneficiary)
 	}
 
-	return SqlToListOfModels(
-		ctx,
-		exec,
-		selectTransferAlerts().
-			Where(squirrel.Eq{"organization_id": organizationId}).
-			Where(squirrel.Eq{partnerFilterField: partnerId}).
-			OrderBy("created_at DESC"),
-		dbmodels.AdaptTransferAlert,
-	)
+	query := selectTransferAlerts().
+		Where(squirrel.Eq{"organization_id": organizationId}).
+		Where(squirrel.Eq{partnerFilterField: partnerId}).
+		OrderBy("created_at DESC")
+	if transferId.Valid {
+		query = query.Where(squirrel.Eq{"transfer_id": transferId.String})
+	}
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptTransferAlert)
 }
 
 func (repo *MarbleDbRepository) CreateTransferAlert(
