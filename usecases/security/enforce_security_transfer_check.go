@@ -43,17 +43,17 @@ func (e *EnforceSecurityImpl) ReadTransferData(ctx context.Context, partnerId st
 func (e *EnforceSecurityImpl) ReadTransferAlert(
 	ctx context.Context,
 	transferAlert models.TransferAlert,
-	senderOrReceiver string,
+	senderOrBeneficiary string,
 ) error {
 	var err error
 
-	switch senderOrReceiver {
+	switch senderOrBeneficiary {
 	case "sender":
 		err = utils.EnforcePartnerAccess(e.Credentials, transferAlert.SenderPartnerId)
-	case "receiver":
+	case "beneficiary":
 		err = utils.EnforcePartnerAccess(e.Credentials, transferAlert.BeneficiaryPartnerId)
 	default:
-		err = errors.Newf("invalid access type %s", senderOrReceiver)
+		err = errors.Newf("invalid access type %s", senderOrBeneficiary)
 	}
 
 	return errors.Join(
@@ -66,17 +66,17 @@ func (e *EnforceSecurityImpl) ReadTransferAlert(
 func (e *EnforceSecurityImpl) UpdateTransferAlert(
 	ctx context.Context,
 	transferAlert models.TransferAlert,
-	senderOrReceiver string,
+	senderOrBeneficiary string,
 ) error {
 	var err error
 
-	switch senderOrReceiver {
+	switch senderOrBeneficiary {
 	case "sender":
 		err = utils.EnforcePartnerAccess(e.Credentials, transferAlert.SenderPartnerId)
-	case "receiver":
+	case "beneficiary":
 		err = utils.EnforcePartnerAccess(e.Credentials, transferAlert.BeneficiaryPartnerId)
 	default:
-		err = errors.Newf("invalid access type %s", senderOrReceiver)
+		err = errors.Newf("invalid access type %s", senderOrBeneficiary)
 	}
 
 	return errors.Join(

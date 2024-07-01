@@ -18,7 +18,7 @@ type transferAlertsRepository interface {
 		exec repositories.Executor,
 		organizationId string,
 		partnerId string,
-		senderOrReceiver string,
+		senderOrBeneficiary string,
 	) ([]models.TransferAlert, error)
 	CreateTransferAlert(
 		ctx context.Context,
@@ -31,11 +31,11 @@ type transferAlertsRepository interface {
 		alertId string,
 		input models.TransferAlertUpdateBodySender,
 	) error
-	UpdateTransferAlertAsReceiver(
+	UpdateTransferAlertAsBeneficiary(
 		ctx context.Context,
 		exec repositories.Executor,
 		alertId string,
-		input models.TransferAlertUpdateBodyReceiver,
+		input models.TransferAlertUpdateBodyBeneficiary,
 	) error
 }
 
@@ -53,7 +53,7 @@ type enforceSecurityTransferAlerts interface {
 	UpdateTransferAlert(
 		ctx context.Context,
 		transferAlert models.TransferAlert,
-		senderOrReceiver string,
+		senderOrBeneficiary string,
 	) error
 }
 
@@ -110,7 +110,7 @@ func (usecase TransferAlertsUsecase) validateOrgHasTransfercheckEnabled(ctx cont
 	return *org.TransferCheckScenarioId, nil
 }
 
-func (usecase TransferAlertsUsecase) GetTransferAlert(ctx context.Context, alertId string, senderOrReceiver string) (models.TransferAlert, error) {
+func (usecase TransferAlertsUsecase) GetTransferAlert(ctx context.Context, alertId string, senderOrBeneficiary string) (models.TransferAlert, error) {
 	_, err := usecase.validateOrgHasTransfercheckEnabled(ctx, alertId)
 	if err != nil {
 		return models.TransferAlert{}, err
@@ -122,7 +122,7 @@ func (usecase TransferAlertsUsecase) GetTransferAlert(ctx context.Context, alert
 		return models.TransferAlert{}, err
 	}
 
-	err = usecase.enforceSecurity.ReadTransferAlert(ctx, alert, senderOrReceiver)
+	err = usecase.enforceSecurity.ReadTransferAlert(ctx, alert, senderOrBeneficiary)
 	if err != nil {
 		return models.TransferAlert{}, err
 	}
@@ -134,7 +134,7 @@ func (usecase TransferAlertsUsecase) ListTransferAlerts(
 	ctx context.Context,
 	organizationId string,
 	partnerId string,
-	senderOrReceiver string,
+	senderOrBeneficiary string,
 ) ([]models.TransferAlert, error) {
 	exec := usecase.executorFactory.NewExecutor()
 	alerts, err := usecase.transferAlertsRepository.ListTransferAlerts(
@@ -142,14 +142,14 @@ func (usecase TransferAlertsUsecase) ListTransferAlerts(
 		exec,
 		organizationId,
 		partnerId,
-		senderOrReceiver,
+		senderOrBeneficiary,
 	)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, alert := range alerts {
-		err = usecase.enforceSecurity.ReadTransferAlert(ctx, alert, senderOrReceiver)
+		err = usecase.enforceSecurity.ReadTransferAlert(ctx, alert, senderOrBeneficiary)
 		if err != nil {
 			return nil, err
 		}
@@ -279,10 +279,10 @@ func (usecase TransferAlertsUsecase) UpdateTransferAlertAsSender(
 	)
 }
 
-func (usecase TransferAlertsUsecase) UpdateTransferAlertAsReceiver(
+func (usecase TransferAlertsUsecase) UpdateTransferAlertAsBeneficiary(
 	ctx context.Context,
 	alertId string,
-	input models.TransferAlertUpdateBodyReceiver,
+	input models.TransferAlertUpdateBodyBeneficiary,
 	organizationId string,
 ) (models.TransferAlert, error) {
 	_, err := usecase.validateOrgHasTransfercheckEnabled(ctx, organizationId)
@@ -298,12 +298,12 @@ func (usecase TransferAlertsUsecase) UpdateTransferAlertAsReceiver(
 			if err != nil {
 				return models.TransferAlert{}, err
 			}
-			err = usecase.enforceSecurity.UpdateTransferAlert(ctx, alert, "receiver")
+			err = usecase.enforceSecurity.UpdateTransferAlert(ctx, alert, "beneficiary")
 			if err != nil {
 				return models.TransferAlert{}, err
 			}
 
-			err = usecase.transferAlertsRepository.UpdateTransferAlertAsReceiver(ctx, tx, alertId, input)
+			err = usecase.transferAlertsRepository.UpdateTransferAlertAsBeneficiary(ctx, tx, alertId, input)
 			if err != nil {
 				return models.TransferAlert{}, err
 			}

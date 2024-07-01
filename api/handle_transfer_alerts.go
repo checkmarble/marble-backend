@@ -20,11 +20,11 @@ func (api *API) handleGetTransferAlertSender(c *gin.Context) {
 	c.JSON(200, gin.H{"alert": dto.AdaptSenderTransferAlert(alert)})
 }
 
-func (api *API) handleGetTransferAlertReceiver(c *gin.Context) {
+func (api *API) handleGetTransferAlertBeneficiary(c *gin.Context) {
 	alertId := c.Param("alert_id")
 
 	usecase := api.UsecasesWithCreds(c.Request).NewTransferAlertsUsecase()
-	alert, err := usecase.GetTransferAlert(c.Request.Context(), alertId, "receiver")
+	alert, err := usecase.GetTransferAlert(c.Request.Context(), alertId, "beneficiary")
 	if presentError(c, err) {
 		return
 	}
@@ -48,7 +48,7 @@ func (api *API) handleListTransferAlertsSender(c *gin.Context) {
 	c.JSON(200, gin.H{"alerts": pure_utils.Map(alerts, dto.AdaptSenderTransferAlert)})
 }
 
-func (api *API) handleListTransferAlertsReceiver(c *gin.Context) {
+func (api *API) handleListTransferAlertsBeneficiary(c *gin.Context) {
 	creds, _ := utils.CredentialsFromCtx(c.Request.Context())
 	var partnerId string
 	if creds.PartnerId != nil {
@@ -56,7 +56,7 @@ func (api *API) handleListTransferAlertsReceiver(c *gin.Context) {
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewTransferAlertsUsecase()
-	alerts, err := usecase.ListTransferAlerts(c.Request.Context(), creds.OrganizationId, partnerId, "receiver")
+	alerts, err := usecase.ListTransferAlerts(c.Request.Context(), creds.OrganizationId, partnerId, "beneficiary")
 	if presentError(c, err) {
 		return
 	}
@@ -119,7 +119,7 @@ func (api *API) handleUpdateTransferAlertSender(c *gin.Context) {
 	c.JSON(200, gin.H{"alert": dto.AdaptSenderTransferAlert(alert)})
 }
 
-func (api *API) handleUpdateTransferAlertReceiver(c *gin.Context) {
+func (api *API) handleUpdateTransferAlertBeneficiary(c *gin.Context) {
 	alertId := c.Param("alert_id")
 	creds, _ := utils.CredentialsFromCtx(c.Request.Context())
 
@@ -130,7 +130,7 @@ func (api *API) handleUpdateTransferAlertReceiver(c *gin.Context) {
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewTransferAlertsUsecase()
-	alert, err := usecase.UpdateTransferAlertAsReceiver(c.Request.Context(), alertId, models.TransferAlertUpdateBodyReceiver{
+	alert, err := usecase.UpdateTransferAlertAsBeneficiary(c.Request.Context(), alertId, models.TransferAlertUpdateBodyBeneficiary{
 		Status: data.Status,
 	}, creds.OrganizationId)
 	if presentError(c, err) {

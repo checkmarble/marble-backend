@@ -34,20 +34,20 @@ func (repo *MarbleDbRepository) ListTransferAlerts(
 	exec Executor,
 	organizationId string,
 	partnerId string,
-	senderOrReceiver string,
+	senderOrBeneficiary string,
 ) ([]models.TransferAlert, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
 	var partnerFilterField string
-	switch senderOrReceiver {
+	switch senderOrBeneficiary {
 	case "sender":
 		partnerFilterField = "sender_partner_id"
-	case "receiver":
+	case "beneficiary":
 		partnerFilterField = "beneficiary_partner_id"
 	default:
-		return nil, errors.Newf(`invalid value for senderOrReceiver "%s" in MarbleDbRepository.ListTransferAlerts`, senderOrReceiver)
+		return nil, errors.Newf(`invalid value for senderOrBeneficiary "%s" in MarbleDbRepository.ListTransferAlerts`, senderOrBeneficiary)
 	}
 
 	return SqlToListOfModels(
@@ -103,11 +103,11 @@ func (repo *MarbleDbRepository) CreateTransferAlert(
 	return err
 }
 
-func (repo *MarbleDbRepository) UpdateTransferAlertAsReceiver(
+func (repo *MarbleDbRepository) UpdateTransferAlertAsBeneficiary(
 	ctx context.Context,
 	exec Executor,
 	alertId string,
-	input models.TransferAlertUpdateBodyReceiver,
+	input models.TransferAlertUpdateBodyBeneficiary,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
