@@ -65,8 +65,11 @@ type TransferAlertCreateBody struct {
 	SenderIban         string `json:"sender_iban"`
 }
 
-type TransferAlertUpdateBody struct {
-	Status             null.String `json:"status"`
+type TransferAlertUpdateAsBeneficiaryBody struct {
+	Status null.String `json:"status"`
+}
+
+type TransferAlertUpdateAsSenderBody struct {
 	Message            null.String `json:"message"`
 	TransferEndToEndId null.String `json:"transfer_end_to_end_id"`
 	BeneficiaryIban    null.String `json:"beneficiary_iban"`
