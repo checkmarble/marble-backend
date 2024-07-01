@@ -160,11 +160,12 @@ func (api *API) routes(auth Authentication, tokenHandler TokenHandler) {
 
 	router.POST("/transfer/alerts", api.handleCreateTransferAlert)
 	router.GET("/transfer/sent/alerts/:alert_id", api.handleGetTransferAlertSender)
-	router.GET("/transfer/received/alerts/:alert_id", api.handleGetTransferAlertReceiver)
+	router.GET("/transfer/received/alerts/:alert_id", api.handleGetTransferAlertBeneficiary)
 	router.GET("/transfer/sent/alerts", api.handleListTransferAlertsSender)
-	router.GET("/transfer/received/alerts", api.handleListTransferAlertsReceiver)
+	router.GET("/transfer/received/alerts", api.handleListTransferAlertsBeneficiary)
 	router.PATCH("/transfer/sent/alerts/:alert_id", api.handleUpdateTransferAlertSender)
-	router.PATCH("/transfer/received/alerts/:alert_id", api.handleUpdateTransferAlertReceiver)
+	router.PATCH("/transfer/received/alerts/:alert_id",
+		api.handleUpdateTransferAlertBeneficiary)
 
 	router.GET("/licenses", api.handleListLicenses)
 	router.POST("/licenses", api.handleCreateLicense)

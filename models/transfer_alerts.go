@@ -43,6 +43,6 @@ type TransferAlertUpdateBodySender struct {
 	SenderIban         null.String
 }
 
-type TransferAlertUpdateBodyReceiver struct {
+type TransferAlertUpdateBodyBeneficiary struct {
 	Status null.String
 }
