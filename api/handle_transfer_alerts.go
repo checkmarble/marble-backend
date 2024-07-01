@@ -7,7 +7,9 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
+
 	"github.com/gin-gonic/gin"
+	"github.com/guregu/null/v5"
 )
 
 func (api *API) handleGetTransferAlertSender(c *gin.Context) {
@@ -41,8 +43,22 @@ func (api *API) handleListTransferAlertsSender(c *gin.Context) {
 		partnerId = *creds.PartnerId
 	}
 
+	var filters struct {
+		TransferId string `form:"transfer_id"`
+	}
+	if err := c.ShouldBind(&filters); err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
 	usecase := api.UsecasesWithCreds(c.Request).NewTransferAlertsUsecase()
-	alerts, err := usecase.ListTransferAlerts(c.Request.Context(), creds.OrganizationId, partnerId, "sender")
+	alerts, err := usecase.ListTransferAlerts(
+		c.Request.Context(),
+		creds.OrganizationId,
+		partnerId,
+		"sender",
+		null.NewString(filters.TransferId, filters.TransferId != ""),
+	)
 	if presentError(c, err) {
 		return
 	}
@@ -57,8 +73,22 @@ func (api *API) handleListTransferAlertsBeneficiary(c *gin.Context) {
 		partnerId = *creds.PartnerId
 	}
 
+	var filters struct {
+		TransferId string `form:"transfer_id"`
+	}
+	if err := c.ShouldBind(&filters); err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
 	usecase := api.UsecasesWithCreds(c.Request).NewTransferAlertsUsecase()
-	alerts, err := usecase.ListTransferAlerts(c.Request.Context(), creds.OrganizationId, partnerId, "beneficiary")
+	alerts, err := usecase.ListTransferAlerts(
+		c.Request.Context(),
+		creds.OrganizationId,
+		partnerId,
+		"beneficiary",
+		null.NewString(filters.TransferId, filters.TransferId != ""),
+	)
 	if presentError(c, err) {
 		return
 	}

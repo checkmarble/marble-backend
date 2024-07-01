@@ -18,6 +18,7 @@ type transferAlertsRepository interface {
 		organizationId string,
 		partnerId string,
 		senderOrBeneficiary string,
+		transferId null.String,
 	) ([]models.TransferAlert, error)
 	CreateTransferAlert(
 		ctx context.Context,
@@ -134,6 +135,7 @@ func (usecase TransferAlertsUsecase) ListTransferAlerts(
 	organizationId string,
 	partnerId string,
 	senderOrBeneficiary string,
+	transferId null.String,
 ) ([]models.TransferAlert, error) {
 	exec := usecase.executorFactory.NewExecutor()
 	alerts, err := usecase.transferAlertsRepository.ListTransferAlerts(
@@ -142,6 +144,7 @@ func (usecase TransferAlertsUsecase) ListTransferAlerts(
 		organizationId,
 		partnerId,
 		senderOrBeneficiary,
+		transferId,
 	)
 	if err != nil {
 		return nil, err
