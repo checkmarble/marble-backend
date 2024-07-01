@@ -1,6 +1,8 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -17,7 +19,7 @@ func (api *API) handleGetTransferAlertSender(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"alert": dto.AdaptSenderTransferAlert(alert)})
+	c.JSON(http.StatusOK, gin.H{"alert": dto.AdaptSenderTransferAlert(alert)})
 }
 
 func (api *API) handleGetTransferAlertBeneficiary(c *gin.Context) {
@@ -29,7 +31,7 @@ func (api *API) handleGetTransferAlertBeneficiary(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"alert": dto.AdaptBeneficiaryTransferAlert(alert)})
+	c.JSON(http.StatusOK, gin.H{"alert": dto.AdaptBeneficiaryTransferAlert(alert)})
 }
 
 func (api *API) handleListTransferAlertsSender(c *gin.Context) {
@@ -45,7 +47,7 @@ func (api *API) handleListTransferAlertsSender(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"alerts": pure_utils.Map(alerts, dto.AdaptSenderTransferAlert)})
+	c.JSON(http.StatusOK, gin.H{"alerts": pure_utils.Map(alerts, dto.AdaptSenderTransferAlert)})
 }
 
 func (api *API) handleListTransferAlertsBeneficiary(c *gin.Context) {
@@ -61,13 +63,13 @@ func (api *API) handleListTransferAlertsBeneficiary(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"alerts": pure_utils.Map(alerts, dto.AdaptBeneficiaryTransferAlert)})
+	c.JSON(http.StatusOK, gin.H{"alerts": pure_utils.Map(alerts, dto.AdaptBeneficiaryTransferAlert)})
 }
 
 func (api *API) handleCreateTransferAlert(c *gin.Context) {
 	var data dto.TransferAlertCreateBody
 	if err := c.ShouldBindJSON(&data); err != nil {
-		c.Status(400)
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
@@ -92,7 +94,7 @@ func (api *API) handleCreateTransferAlert(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"alert": dto.AdaptSenderTransferAlert(alert)})
+	c.JSON(http.StatusOK, gin.H{"alert": dto.AdaptSenderTransferAlert(alert)})
 }
 
 func (api *API) handleUpdateTransferAlertSender(c *gin.Context) {
@@ -101,7 +103,7 @@ func (api *API) handleUpdateTransferAlertSender(c *gin.Context) {
 
 	var data dto.TransferAlertUpdateBody
 	if err := c.ShouldBindJSON(&data); err != nil {
-		c.Status(400)
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
@@ -116,7 +118,7 @@ func (api *API) handleUpdateTransferAlertSender(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"alert": dto.AdaptSenderTransferAlert(alert)})
+	c.JSON(http.StatusOK, gin.H{"alert": dto.AdaptSenderTransferAlert(alert)})
 }
 
 func (api *API) handleUpdateTransferAlertBeneficiary(c *gin.Context) {
@@ -125,7 +127,7 @@ func (api *API) handleUpdateTransferAlertBeneficiary(c *gin.Context) {
 
 	var data dto.TransferAlertUpdateBody
 	if err := c.ShouldBindJSON(&data); err != nil {
-		c.Status(400)
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
@@ -137,5 +139,5 @@ func (api *API) handleUpdateTransferAlertBeneficiary(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"alert": dto.AdaptBeneficiaryTransferAlert(alert)})
+	c.JSON(http.StatusOK, gin.H{"alert": dto.AdaptBeneficiaryTransferAlert(alert)})
 }
