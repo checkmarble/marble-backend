@@ -7,7 +7,6 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/cockroachdb/errors"
-	"github.com/google/uuid"
 	"github.com/guregu/null/v5"
 )
 
@@ -23,7 +22,7 @@ type transferAlertsRepository interface {
 	CreateTransferAlert(
 		ctx context.Context,
 		exec repositories.Executor,
-		alert models.TransferAlertCreateBody,
+		alert models.TransferAlert,
 	) error
 	UpdateTransferAlertAsSender(
 		ctx context.Context,
@@ -111,11 +110,6 @@ func (usecase TransferAlertsUsecase) validateOrgHasTransfercheckEnabled(ctx cont
 }
 
 func (usecase TransferAlertsUsecase) GetTransferAlert(ctx context.Context, alertId string, senderOrBeneficiary string) (models.TransferAlert, error) {
-	_, err := usecase.validateOrgHasTransfercheckEnabled(ctx, alertId)
-	if err != nil {
-		return models.TransferAlert{}, err
-	}
-
 	exec := usecase.executorFactory.NewExecutor()
 	alert, err := usecase.transferAlertsRepository.GetTransferAlert(ctx, exec, alertId)
 	if err != nil {
@@ -167,13 +161,17 @@ func (usecase TransferAlertsUsecase) CreateTransferAlert(
 		return models.TransferAlert{}, err
 	}
 
+	if err := input.Validate(); err != nil {
+		return models.TransferAlert{}, err
+	}
+
 	_, err = usecase.validateOrgHasTransfercheckEnabled(ctx, input.OrganizationId)
 	if err != nil {
 		return models.TransferAlert{}, err
 	}
 
 	// -------
-	// Bloc: we verify that there is a transfer with this id and that it's beneficiary bank is in the network
+	// Bloc: we verify that there is a transfer with this id and that its beneficiary bank is in the network
 	exec := usecase.executorFactory.NewExecutor()
 	transferMapping, err := usecase.transferMappingsRepository.GetTransferMapping(ctx, exec, input.TransferId)
 	if err != nil {
@@ -212,9 +210,9 @@ func (usecase TransferAlertsUsecase) CreateTransferAlert(
 		return models.TransferAlert{}, errors.Newf("no ingested object found for transferId %s", input.TransferId)
 	}
 
-	bic, ok := objects[0]["bic"].(string)
+	bic, ok := objects[0]["beneficiary_bic"].(string)
 	if !ok {
-		return models.TransferAlert{}, errors.New("bic not found in ingested object")
+		return models.TransferAlert{}, errors.New("beneficiary_bic not found in ingested object")
 	}
 
 	partnersByBic, err := usecase.partnersRepository.ListPartners(ctx, exec, models.PartnerFilters{
@@ -226,21 +224,24 @@ func (usecase TransferAlertsUsecase) CreateTransferAlert(
 	if len(partnersByBic) == 0 {
 		return models.TransferAlert{}, errors.Wrapf(models.BadParameterError, "partner not found for bic %s", bic)
 	}
-	input.BeneficiaryPartnerId = partnersByBic[0].Id
 	// Bloc end
 	// -------
 
-	input.Id = uuid.NewString()
+	alert, err := input.WithBeneficiaryPartnerAndDefaults(partnersByBic[0].Id)
+	if err != nil {
+		return models.TransferAlert{}, err
+	}
+
 	return executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Executor) (models.TransferAlert, error) {
-			err := usecase.transferAlertsRepository.CreateTransferAlert(ctx, tx, input)
+			err := usecase.transferAlertsRepository.CreateTransferAlert(ctx, tx, alert)
 			if err != nil {
 				return models.TransferAlert{}, err
 			}
 
-			return usecase.transferAlertsRepository.GetTransferAlert(ctx, tx, input.Id)
+			return usecase.transferAlertsRepository.GetTransferAlert(ctx, tx, alert.Id)
 		},
 	)
 }
@@ -253,6 +254,10 @@ func (usecase TransferAlertsUsecase) UpdateTransferAlertAsSender(
 ) (models.TransferAlert, error) {
 	_, err := usecase.validateOrgHasTransfercheckEnabled(ctx, organizationId)
 	if err != nil {
+		return models.TransferAlert{}, err
+	}
+
+	if err := input.Validate(); err != nil {
 		return models.TransferAlert{}, err
 	}
 
@@ -287,6 +292,10 @@ func (usecase TransferAlertsUsecase) UpdateTransferAlertAsBeneficiary(
 ) (models.TransferAlert, error) {
 	_, err := usecase.validateOrgHasTransfercheckEnabled(ctx, organizationId)
 	if err != nil {
+		return models.TransferAlert{}, err
+	}
+
+	if err := input.Validate(); err != nil {
 		return models.TransferAlert{}, err
 	}
 

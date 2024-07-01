@@ -22,7 +22,7 @@ func (repo MarbleDbRepository) ListPartners(ctx context.Context, exec Executor, 
 
 	query := selectPartners().OrderBy("created_at DESC")
 	if filters.Bic.Valid {
-		query = query.Where(squirrel.Eq{"UPPER(bic)": strings.ToLower(filters.Bic.String)})
+		query = query.Where(squirrel.Eq{"UPPER(bic)": strings.ToUpper(filters.Bic.String)})
 	}
 
 	return SqlToListOfModels(
