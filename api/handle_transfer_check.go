@@ -86,7 +86,10 @@ func (api *API) handleQueryTransfers(c *gin.Context) {
 	}
 
 	creds, _ := utils.CredentialsFromCtx(c.Request.Context())
-	partnerId := creds.PartnerId
+	var partnerId string
+	if creds.PartnerId != nil {
+		partnerId = *creds.PartnerId
+	}
 
 	transferCheck, err := usecase.QueryTransfers(c.Request.Context(), orgId, partnerId, filters.TransferId)
 	if presentError(c, err) {

@@ -56,6 +56,14 @@ type enforceSecurityTransferAlerts interface {
 	) error
 }
 
+type transferDataReader interface {
+	QueryTransferDataFromMapping(
+		ctx context.Context,
+		db repositories.Executor,
+		transferMapping models.TransferMapping,
+	) ([]models.TransferData, error)
+}
+
 type TransferAlertsUsecase struct {
 	enforceSecurity            enforceSecurityTransferAlerts
 	executorFactory            executor_factory.ExecutorFactory
@@ -64,8 +72,7 @@ type TransferAlertsUsecase struct {
 	transferMappingsRepository transferMappingsRepository
 	transferAlertsRepository   transferAlertsRepository
 	partnersRepository         partnersRepository
-	ingestedDataReadRepository repositories.IngestedDataReadRepository
-	dataModelRepository        repositories.DataModelRepository
+	transferDataReader         transferDataReader
 }
 
 func NewTransferAlertsUsecase(
@@ -76,8 +83,7 @@ func NewTransferAlertsUsecase(
 	transferMappingsRepository transferMappingsRepository,
 	transferAlertsRepository transferAlertsRepository,
 	partnersRepository partnersRepository,
-	ingestedDataReadRepository repositories.IngestedDataReadRepository,
-	dataModelRepository repositories.DataModelRepository,
+	transferDataReader transferDataReader,
 ) TransferAlertsUsecase {
 	return TransferAlertsUsecase{
 		enforceSecurity:            enforceSecurity,
@@ -87,8 +93,7 @@ func NewTransferAlertsUsecase(
 		transferMappingsRepository: transferMappingsRepository,
 		transferAlertsRepository:   transferAlertsRepository,
 		partnersRepository:         partnersRepository,
-		ingestedDataReadRepository: ingestedDataReadRepository,
-		dataModelRepository:        dataModelRepository,
+		transferDataReader:         transferDataReader,
 	}
 }
 
@@ -171,7 +176,7 @@ func (usecase TransferAlertsUsecase) CreateTransferAlert(
 	}
 
 	// -------
-	// Bloc: we verify that there is a transfer with this id and that its beneficiary bank is in the network
+	// Bloc: we verify that there is a transfer with this id, that its beneficiary bank is in the network, and find the corresponding partner
 	exec := usecase.executorFactory.NewExecutor()
 	transferMapping, err := usecase.transferMappingsRepository.GetTransferMapping(ctx, exec, input.TransferId)
 	if err != nil {
@@ -185,36 +190,23 @@ func (usecase TransferAlertsUsecase) CreateTransferAlert(
 	}
 
 	// read the actual transfer data
-	// TODO: factorize some of this, it's used both in here and in the transfer check usecase
-	db, err := usecase.executorFactory.NewClientDbExecutor(ctx, input.OrganizationId)
+	transfers, err := usecase.transferDataReader.QueryTransferDataFromMapping(ctx, nil, transferMapping)
 	if err != nil {
 		return models.TransferAlert{}, err
 	}
-
-	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, input.OrganizationId, false)
-	if err != nil {
-		return models.TransferAlert{}, err
-	}
-	table, ok := dataModel.Tables[TransferCheckTable]
-	if !ok {
-		return models.TransferAlert{}, errors.Newf("table %s not found", TransferCheckTable)
-	}
-
-	objectId := models.ObjectIdWithPartnerIdPrefix(transferMapping.PartnerId, transferMapping.ClientTransferId)
-	objects, err := usecase.ingestedDataReadRepository.QueryIngestedObject(ctx, db, table, objectId)
-	if err != nil {
-		return models.TransferAlert{}, errors.Wrap(err,
-			"error while querying ingested objects in lookupPreviousObjects")
-	}
-	if len(objects) == 0 {
+	if len(transfers) == 0 {
 		return models.TransferAlert{}, errors.Newf("no ingested object found for transferId %s", input.TransferId)
 	}
+	transferData := transfers[0]
 
-	bic, ok := objects[0]["beneficiary_bic"].(string)
-	if !ok {
-		return models.TransferAlert{}, errors.New("beneficiary_bic not found in ingested object")
+	bic := transferData.BeneficiaryBic
+	if bic == "" {
+		return models.TransferAlert{}, errors.Wrapf(
+			models.BadParameterError,
+			"beneficiary_bic not found in ingested object %s", input.TransferId)
 	}
 
+	// finally, find the partner
 	partnersByBic, err := usecase.partnersRepository.ListPartners(ctx, exec, models.PartnerFilters{
 		Bic: null.StringFrom(bic),
 	})

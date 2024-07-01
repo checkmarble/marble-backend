@@ -33,6 +33,8 @@ const (
 
 	TrustedSender = "trusted"
 	RegularSender = "regular"
+
+	TransferCheckTable = "transfers"
 )
 
 type Transfer struct {

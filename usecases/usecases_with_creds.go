@@ -11,6 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/indexes"
 	"github.com/checkmarble/marble-backend/usecases/scheduledexecution"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/checkmarble/marble-backend/usecases/transfers_data_read"
 )
 
 type UsecasesWithCreds struct {
@@ -363,12 +364,12 @@ func (usecases *UsecasesWithCreds) NewTransferCheckUsecase() TransferCheckUsecas
 		decisionRepository:                usecases.Repositories.DecisionRepository,
 		enforceSecurity:                   security.NewEnforceSecurity(usecases.Credentials),
 		executorFactory:                   usecases.NewExecutorFactory(),
-		ingestedDataReadRepository:        usecases.Repositories.IngestedDataReadRepository,
 		ingestionRepository:               usecases.Repositories.IngestionRepository,
 		organizationRepository:            usecases.Repositories.OrganizationRepository,
 		transactionFactory:                usecases.NewTransactionFactory(),
 		transferMappingsRepository:        &usecases.Repositories.MarbleDbRepository,
 		transferCheckEnrichmentRepository: usecases.Repositories.TransferCheckEnrichmentRepository,
+		transferDataReader:                usecases.NewTransferDataReader(),
 	}
 }
 
@@ -381,6 +382,14 @@ func (usecases *UsecasesWithCreds) NewTransferAlertsUsecase() TransferAlertsUsec
 		&usecases.Repositories.MarbleDbRepository,
 		&usecases.Repositories.MarbleDbRepository,
 		&usecases.Repositories.MarbleDbRepository,
+		usecases.NewTransferDataReader(),
+	)
+}
+
+func (usecases *UsecasesWithCreds) NewTransferDataReader() transfers_data_read.TransferDataReader {
+	return transfers_data_read.NewTransferDataReader(
+		security.NewEnforceSecurity(usecases.Credentials),
+		usecases.NewExecutorFactory(),
 		usecases.Repositories.IngestedDataReadRepository,
 		usecases.Repositories.DataModelRepository,
 	)
