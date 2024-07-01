@@ -64,7 +64,7 @@ func (repo *MarbleDbRepository) ListTransferAlerts(
 func (repo *MarbleDbRepository) CreateTransferAlert(
 	ctx context.Context,
 	exec Executor,
-	TransferAlert models.TransferAlertCreateBody,
+	TransferAlert models.TransferAlert,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
@@ -74,13 +74,14 @@ func (repo *MarbleDbRepository) CreateTransferAlert(
 		ctx,
 		exec,
 		NewQueryBuilder().
-			Insert(dbmodels.TABLE_TRANSFER_MAPPINGS).
+			Insert(dbmodels.TABLE_TRANSFER_ALERTS).
 			Columns(
 				"id",
 				"transfer_id",
 				"organization_id",
 				"sender_partner_id",
 				"beneficiary_partner_id",
+				"created_at",
 				"status",
 				"message",
 				"transfer_end_to_end_id",
@@ -93,7 +94,8 @@ func (repo *MarbleDbRepository) CreateTransferAlert(
 				TransferAlert.OrganizationId,
 				TransferAlert.SenderPartnerId,
 				TransferAlert.BeneficiaryPartnerId,
-				"unread", // TODO: find the real values for status
+				TransferAlert.CreatedAt,
+				TransferAlert.Status,
 				TransferAlert.Message,
 				TransferAlert.TransferEndToEndId,
 				TransferAlert.BeneficiaryIban,
