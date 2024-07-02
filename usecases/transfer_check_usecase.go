@@ -60,6 +60,7 @@ type TransferCheckUsecase struct {
 	transferMappingsRepository        transferMappingsRepository
 	transferCheckEnrichmentRepository transferCheckEnrichmentRepository
 	transferDataReader                transferDataReader
+	partnersRepository                partnersRepository
 }
 
 func transfersAreDifferent(t1, t2 map[string]any) bool {
@@ -104,6 +105,11 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 	}
 
 	table, err := usecase.getTransfercheckTable(ctx, organizationId)
+	if err != nil {
+		return models.Transfer{}, err
+	}
+
+	beneficiaryInNetwork, err := usecase.beneficiaryIsInNetwork(ctx, createBody)
 	if err != nil {
 		return models.Transfer{}, err
 	}
@@ -210,10 +216,11 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 	}
 
 	return models.Transfer{
-		Id:           transferMappingId,
-		TransferData: transfersData[0],
-		LastScoredAt: null.TimeFrom(decision.CreatedAt),
-		Score:        scoreFromDecision(decision.Score),
+		Id:                   transferMappingId,
+		TransferData:         transfersData[0],
+		LastScoredAt:         null.TimeFrom(decision.CreatedAt),
+		Score:                scoreFromDecision(decision.Score),
+		BeneficiaryInNetwork: beneficiaryInNetwork,
 	}, nil
 }
 
@@ -277,6 +284,7 @@ func (usecase *TransferCheckUsecase) UpdateTransfer(
 		return models.Transfer{}, err
 	}
 
+	var beneficiaryInNetwork bool
 	var transfersData []models.TransferData
 	err = usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Executor) error {
 		transfersData, err = usecase.transferDataReader.QueryTransferDataFromMapping(ctx, tx, transferMapping)
@@ -288,6 +296,11 @@ func (usecase *TransferCheckUsecase) UpdateTransfer(
 				models.NotFoundError,
 				fmt.Sprintf("transfer %s not found", transferMapping.ClientTransferId),
 			)
+		}
+
+		beneficiaryInNetwork, err = usecase.beneficiaryIsInNetwork(ctx, transfersData[0])
+		if err != nil {
+			return err
 		}
 
 		previous := transfersData[0].ToIngestionMap(transferMapping)
@@ -312,8 +325,9 @@ func (usecase *TransferCheckUsecase) UpdateTransfer(
 	}
 
 	out := models.Transfer{
-		Id:           id,
-		TransferData: transfersData[0],
+		Id:                   id,
+		TransferData:         transfersData[0],
+		BeneficiaryInNetwork: beneficiaryInNetwork,
 	}
 	if len(previousDecisions) > 0 {
 		out.LastScoredAt = null.TimeFrom(previousDecisions[0].CreatedAt)
@@ -367,10 +381,15 @@ func (usecase *TransferCheckUsecase) QueryTransfers(
 	if len(transfersData) == 0 {
 		return make([]models.Transfer, 0), nil
 	}
+	beneficiaryInNetwork, err := usecase.beneficiaryIsInNetwork(ctx, transfersData[0])
+	if err != nil {
+		return nil, err
+	}
 
 	transfer := models.Transfer{
-		Id:           transferMappings[0].Id,
-		TransferData: transfersData[0],
+		Id:                   transferMappings[0].Id,
+		TransferData:         transfersData[0],
+		BeneficiaryInNetwork: beneficiaryInNetwork,
 	}
 
 	objectId := models.ObjectIdWithPartnerIdPrefix(transferMappings[0].PartnerId, transferMappings[0].ClientTransferId)
@@ -412,10 +431,15 @@ func (usecase *TransferCheckUsecase) GetTransfer(
 			fmt.Sprintf("transfer %s not found", id),
 		)
 	}
+	beneficiaryInNetwork, err := usecase.beneficiaryIsInNetwork(ctx, transfersData[0])
+	if err != nil {
+		return models.Transfer{}, err
+	}
 
 	transfer := models.Transfer{
-		Id:           id,
-		TransferData: transfersData[0],
+		Id:                   id,
+		TransferData:         transfersData[0],
+		BeneficiaryInNetwork: beneficiaryInNetwork,
 	}
 
 	objectId := models.ObjectIdWithPartnerIdPrefix(transferMapping.PartnerId, transferMapping.ClientTransferId)
@@ -462,6 +486,10 @@ func (usecase *TransferCheckUsecase) ScoreTransfer(
 		)
 	}
 	transferData := transfersData[0]
+	beneficiaryInNetwork, err := usecase.beneficiaryIsInNetwork(ctx, transferData)
+	if err != nil {
+		return models.Transfer{}, err
+	}
 
 	decision, err := usecase.decisionUseCase.CreateDecision(
 		ctx,
@@ -471,7 +499,8 @@ func (usecase *TransferCheckUsecase) ScoreTransfer(
 				Data:      transferData.ToIngestionMap(transferMapping),
 				TableName: models.TransferCheckTable,
 			},
-			OrganizationId: organizationId,
+			OrganizationId:     organizationId,
+			TriggerObjectTable: models.TransferCheckTable,
 		},
 		true,
 	)
@@ -480,10 +509,11 @@ func (usecase *TransferCheckUsecase) ScoreTransfer(
 	}
 
 	transfer := models.Transfer{
-		Id:           id,
-		TransferData: transferData,
-		LastScoredAt: null.TimeFrom(decision.CreatedAt),
-		Score:        scoreFromDecision(decision.Score),
+		Id:                   id,
+		TransferData:         transferData,
+		LastScoredAt:         null.TimeFrom(decision.CreatedAt),
+		Score:                scoreFromDecision(decision.Score),
+		BeneficiaryInNetwork: beneficiaryInNetwork,
 	}
 
 	return transfer, nil
@@ -534,4 +564,20 @@ func scoreFromDecision(score int) null.Int32 {
 	}
 
 	return null.Int32From(int32(score))
+}
+
+func (usecase *TransferCheckUsecase) beneficiaryIsInNetwork(ctx context.Context, transfer models.TransferData) (bool, error) {
+	partnersByBic, err := usecase.partnersRepository.ListPartners(
+		ctx,
+		usecase.executorFactory.NewExecutor(),
+		models.PartnerFilters{Bic: null.StringFrom(transfer.BeneficiaryBic)},
+	)
+	if err != nil {
+		return false, errors.Wrap(err, "error while querying partners in TransferCheckUsecase.beneficiaryIsInNetwork")
+	}
+	if len(partnersByBic) == 0 {
+		return false, nil
+	}
+
+	return true, nil
 }

@@ -9,18 +9,20 @@ import (
 )
 
 type Transfer struct {
-	Id           string       `json:"id"`
-	LastScoredAt null.Time    `json:"last_scored_at"`
-	Score        null.Int32   `json:"score"`
-	TransferData TransferData `json:"transfer_data"`
+	Id                   string       `json:"id"`
+	LastScoredAt         null.Time    `json:"last_scored_at"`
+	Score                null.Int32   `json:"score"`
+	TransferData         TransferData `json:"transfer_data"`
+	BeneficiaryInNetwork bool         `json:"beneficiary_in_network"`
 }
 
 func AdaptTransferCheckResultDto(result models.Transfer) Transfer {
 	return Transfer{
-		Id:           result.Id,
-		LastScoredAt: result.LastScoredAt,
-		Score:        result.Score,
-		TransferData: AdaptTransferDataDto(result.TransferData),
+		Id:                   result.Id,
+		LastScoredAt:         result.LastScoredAt,
+		Score:                result.Score,
+		TransferData:         AdaptTransferDataDto(result.TransferData),
+		BeneficiaryInNetwork: result.BeneficiaryInNetwork,
 	}
 }
 
