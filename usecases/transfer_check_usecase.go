@@ -212,7 +212,9 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 		true,
 	)
 	if err != nil {
-		return models.Transfer{}, err
+		return models.Transfer{}, errors.Wrapf(
+			errors.Handled(err),
+			"Error while creating decision in transfercheck")
 	}
 
 	return models.Transfer{
@@ -505,7 +507,9 @@ func (usecase *TransferCheckUsecase) ScoreTransfer(
 		true,
 	)
 	if err != nil {
-		return models.Transfer{}, err
+		return models.Transfer{}, errors.Wrapf(
+			errors.Handled(err),
+			"Error while creating decision in transfercheck")
 	}
 
 	transfer := models.Transfer{
