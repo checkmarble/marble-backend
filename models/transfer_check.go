@@ -15,8 +15,14 @@ import (
 	"github.com/guregu/null/v5"
 )
 
+const (
+	TransferStatusNeutral        = "neutral"
+	TransferStatusSuspectedFraud = "suspected_fraud"
+	TransferStatusConfirmedFraud = "confirmed_fraud"
+)
+
 var (
-	TransferStatuses   = []string{"neutral", "suspected_fraud", "confirmed_fraud"}
+	TransferStatuses   = []string{TransferStatusNeutral, TransferStatusSuspectedFraud, TransferStatusConfirmedFraud}
 	SenderAccountTypes = []string{"physical_person", "moral_person"}
 	isAlphanumeric     = regexp.MustCompile(`^[a-zA-Z0-9]*$`)
 )
@@ -290,24 +296,26 @@ func (t TransferDataCreateBody) FormatAndValidate() (TransferData, error) {
 
 	out.Currency = strings.ToUpper(t.Currency)
 	if !slices.Contains(pure_utils.CurrencyCodes, t.Currency) {
-		errs["currency"] = fmt.Sprintf("currency %s is not valid", t.Currency)
+		errs["currency"] = fmt.Sprintf("currency '%s' is not valid", t.Currency)
 	}
 
 	if t.SenderIP != "" {
 		ip, err := netip.ParseAddr(t.SenderIP)
 		if err != nil {
-			errs["sender_ip"] = fmt.Sprintf("sender_ip %s is not a valid IP address", t.SenderIP)
+			errs["sender_ip"] = fmt.Sprintf("sender_ip '%s' is not a valid IP address", t.SenderIP)
 		} else {
 			out.SenderIP = ip
 		}
 	}
 
-	if !slices.Contains(TransferStatuses, t.Status) {
-		errs["status"] = fmt.Sprintf("status %s is not valid", t.Status)
+	if t.Status == "" {
+		out.Status = TransferStatusNeutral
+	} else if !slices.Contains(TransferStatuses, t.Status) {
+		errs["status"] = fmt.Sprintf("status '%s' is not valid", t.Status)
 	}
 
 	if !slices.Contains(SenderAccountTypes, t.SenderAccountType) {
-		errs["sender_account_type"] = fmt.Sprintf("sender_account_type %s is not valid", t.SenderAccountType)
+		errs["sender_account_type"] = fmt.Sprintf("sender_account_type '%s' is not valid", t.SenderAccountType)
 	}
 
 	stringTooLongErr := "string is too long"
