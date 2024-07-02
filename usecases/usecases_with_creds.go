@@ -370,6 +370,7 @@ func (usecases *UsecasesWithCreds) NewTransferCheckUsecase() TransferCheckUsecas
 		transferMappingsRepository:        &usecases.Repositories.MarbleDbRepository,
 		transferCheckEnrichmentRepository: usecases.Repositories.TransferCheckEnrichmentRepository,
 		transferDataReader:                usecases.NewTransferDataReader(),
+		partnersRepository:                usecases.Repositories.MarbleDbRepository,
 	}
 }
 

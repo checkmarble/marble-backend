@@ -38,10 +38,11 @@ const (
 )
 
 type Transfer struct {
-	Id           string
-	LastScoredAt null.Time
-	Score        null.Int32
-	TransferData TransferData
+	Id                   string
+	LastScoredAt         null.Time
+	Score                null.Int32
+	TransferData         TransferData
+	BeneficiaryInNetwork bool
 }
 
 type TransferMapping struct {
