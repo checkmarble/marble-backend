@@ -58,7 +58,7 @@ func (e *EnforceSecurityImpl) ReadTransferAlert(
 
 	return errors.Join(
 		err,
-		e.Permission(models.TRANSFER_READ),
+		e.Permission(models.TRANSFER_ALERT_READ),
 		utils.EnforceOrganizationAccess(e.Credentials, transferAlert.OrganizationId),
 	)
 }
@@ -81,14 +81,14 @@ func (e *EnforceSecurityImpl) UpdateTransferAlert(
 
 	return errors.Join(
 		err,
-		e.Permission(models.TRANSFER_UPDATE),
+		e.Permission(models.TRANSFER_ALERT_UPDATE),
 		utils.EnforceOrganizationAccess(e.Credentials, transferAlert.OrganizationId),
 	)
 }
 
 func (e *EnforceSecurityImpl) CreateTransferAlert(ctx context.Context, organizationId string, partnerId string) error {
 	return errors.Join(
-		e.Permission(models.TRANSFER_CREATE),
+		e.Permission(models.TRANSFER_ALERT_CREATE),
 		utils.EnforceOrganizationAccess(e.Credentials, organizationId),
 		utils.EnforcePartnerAccess(e.Credentials, partnerId),
 	)
