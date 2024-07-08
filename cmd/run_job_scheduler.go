@@ -66,7 +66,9 @@ func RunJobScheduler() error {
 		return err
 	}
 
-	repositories := repositories.NewRepositories(nil, pool, nil, "")
+	repositories := repositories.NewRepositories(pool,
+		repositories.WithFakeGcsRepository(gcpConfig.FakeGcsRepository),
+	)
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithGcsIngestionBucket(gcpConfig.GcsIngestionBucket),
 		usecases.WithFakeAwsS3Repository(jobConfig.fakeAwsS3Repository),

@@ -65,7 +65,7 @@ func RunScheduledExecuter() error {
 		return err
 	}
 
-	repositories := repositories.NewRepositories(nil, pool, nil, "")
+	repositories := repositories.NewRepositories(pool)
 
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithFakeAwsS3Repository(jobConfig.fakeAwsS3Repository))

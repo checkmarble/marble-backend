@@ -55,6 +55,7 @@ func RunServer() error {
 			models.GlobalDashboard: utils.GetEnv("METABASE_GLOBAL_DASHBOARD_ID", 0),
 		},
 	}
+
 	seedOrgConfig := models.SeedOrgConfiguration{
 		CreateGlobalAdminEmail: utils.GetEnv("CREATE_GLOBAL_ADMIN_EMAIL", ""),
 		CreateOrgName:          utils.GetEnv("CREATE_ORG_NAME", ""),
@@ -92,11 +93,11 @@ func RunServer() error {
 		utils.LogAndReportSentryError(ctx, err)
 	}
 
-	repositories := repositories.NewRepositories(
-		infra.InitializeFirebase(ctx),
-		pool,
-		infra.InitializeMetabase(metabaseConfig),
-		gcpConfig.GcsTransferCheckEnrichmentBucket,
+	repositories := repositories.NewRepositories(pool,
+		repositories.WithFirebaseClient(infra.InitializeFirebase(ctx)),
+		repositories.WithMetabase(infra.InitializeMetabase(metabaseConfig)),
+		repositories.WithTransferCheckEnrichmentBucket(gcpConfig.GcsTransferCheckEnrichmentBucket),
+		repositories.WithFakeGcsRepository(gcpConfig.FakeGcsRepository),
 	)
 
 	uc := usecases.NewUsecases(repositories,

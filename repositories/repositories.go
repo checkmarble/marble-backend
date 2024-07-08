@@ -7,6 +7,47 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type options struct {
+	firebaseClient                *auth.Client
+	metabase                      Metabase
+	transfercheckEnrichmentBucket string
+	fakeGcsRepository             bool
+}
+
+type Option func(*options)
+
+func getOptions(opts []Option) *options {
+	o := &options{}
+	for _, opt := range opts {
+		opt(o)
+	}
+	return o
+}
+
+func WithFirebaseClient(firebaseClient *auth.Client) Option {
+	return func(o *options) {
+		o.firebaseClient = firebaseClient
+	}
+}
+
+func WithMetabase(metabase Metabase) Option {
+	return func(o *options) {
+		o.metabase = metabase
+	}
+}
+
+func WithTransferCheckEnrichmentBucket(bucket string) Option {
+	return func(o *options) {
+		o.transfercheckEnrichmentBucket = bucket
+	}
+}
+
+func WithFakeGcsRepository(b bool) Option {
+	return func(o *options) {
+		o.fakeGcsRepository = b
+	}
+}
+
 type Repositories struct {
 	ExecutorGetter                    ExecutorGetter
 	FirebaseTokenRepository           FireBaseTokenRepository
@@ -33,17 +74,23 @@ func NewQueryBuilder() squirrel.StatementBuilderType {
 }
 
 func NewRepositories(
-	firebaseClient *auth.Client,
 	marbleConnectionPool *pgxpool.Pool,
-	metabase Metabase,
-	transfercheckEnrichmentBucket string,
+	opts ...Option,
 ) Repositories {
+	options := getOptions(opts)
+
 	executorGetter := NewExecutorGetter(marbleConnectionPool)
 
-	gcsRepository := GcsRepositoryImpl{}
+	var gcsRepository GcsRepository
+	if options.fakeGcsRepository {
+		gcsRepository = &GcsRepositoryFake{}
+	} else {
+		gcsRepository = &GcsRepositoryImpl{}
+	}
+
 	return Repositories{
 		ExecutorGetter:                executorGetter,
-		FirebaseTokenRepository:       firebase.New(firebaseClient),
+		FirebaseTokenRepository:       firebase.New(options.firebaseClient),
 		UserRepository:                &UserRepositoryPostgresql{},
 		OrganizationRepository:        &OrganizationRepositoryPostgresql{},
 		IngestionRepository:           &IngestionRepositoryImpl{},
@@ -57,13 +104,13 @@ func NewRepositories(
 		CustomListRepository:          &CustomListRepositoryPostgresql{},
 		UploadLogRepository:           &UploadLogRepositoryImpl{},
 		AwsS3Repository:               AwsS3Repository{s3Client: NewS3Client()},
-		GcsRepository:                 &gcsRepository,
+		GcsRepository:                 gcsRepository,
 		MarbleAnalyticsRepository: MarbleAnalyticsRepository{
-			metabase: metabase,
+			metabase: options.metabase,
 		},
 		TransferCheckEnrichmentRepository: NewTransferCheckEnrichmentRepository(
-			&gcsRepository,
-			transfercheckEnrichmentBucket,
+			gcsRepository,
+			options.transfercheckEnrichmentBucket,
 		),
 	}
 }
