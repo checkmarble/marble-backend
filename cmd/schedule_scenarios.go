@@ -63,7 +63,7 @@ func RunScheduleScenarios() error {
 		return err
 	}
 
-	repositories := repositories.NewRepositories(nil, pool, nil, "")
+	repositories := repositories.NewRepositories(pool)
 	uc := usecases.NewUsecases(repositories)
 
 	err = jobs.ScheduleDueScenarios(ctx, uc)

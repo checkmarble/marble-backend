@@ -105,12 +105,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("Could not create private key: %s", err)
 	}
-	repos := repositories.NewRepositories(
-		nil,
-		dbPool,
-		nil,
-		"",
-	)
+	repos := repositories.NewRepositories(dbPool)
 
 	jwtRepository := repositories.NewJWTRepository(privateKey)
 	database := postgres.New(dbPool)

@@ -65,7 +65,9 @@ func RunBatchIngestion() error {
 		return err
 	}
 
-	repositories := repositories.NewRepositories(nil, pool, nil, "")
+	repositories := repositories.NewRepositories(pool,
+		repositories.WithFakeGcsRepository(gcpConfig.FakeGcsRepository),
+	)
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithGcsIngestionBucket(gcpConfig.GcsIngestionBucket),
 		usecases.WithFakeGcsRepository(gcpConfig.FakeGcsRepository),
