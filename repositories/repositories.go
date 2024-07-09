@@ -12,6 +12,7 @@ type options struct {
 	metabase                      Metabase
 	transfercheckEnrichmentBucket string
 	fakeGcsRepository             bool
+	convoyResources               convoyResources
 }
 
 type Option func(*options)
@@ -48,9 +49,16 @@ func WithFakeGcsRepository(b bool) Option {
 	}
 }
 
+func WithConvoyResources(convoyResources convoyResources) Option {
+	return func(o *options) {
+		o.convoyResources = convoyResources
+	}
+}
+
 type Repositories struct {
 	ExecutorGetter                    ExecutorGetter
 	FirebaseTokenRepository           FireBaseTokenRepository
+	ConvoyRepository                  ConvoyRepository
 	UserRepository                    UserRepository
 	OrganizationRepository            OrganizationRepository
 	IngestionRepository               IngestionRepository
@@ -89,8 +97,11 @@ func NewRepositories(
 	}
 
 	return Repositories{
-		ExecutorGetter:                executorGetter,
-		FirebaseTokenRepository:       firebase.New(options.firebaseClient),
+		ExecutorGetter:          executorGetter,
+		FirebaseTokenRepository: firebase.New(options.firebaseClient),
+		ConvoyRepository: ConvoyRepository{
+			convoyResources: options.convoyResources,
+		},
 		UserRepository:                &UserRepositoryPostgresql{},
 		OrganizationRepository:        &OrganizationRepositoryPostgresql{},
 		IngestionRepository:           &IngestionRepositoryImpl{},

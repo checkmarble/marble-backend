@@ -72,6 +72,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.3.12 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.11.12 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.17.10 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sqs v1.24.7 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.20.12 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.24.6 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.28.13 // indirect
@@ -90,6 +91,8 @@ require (
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
+	github.com/frain-dev/convoy v0.9.2 // indirect
+	github.com/frain-dev/convoy-go/v2 v2.1.8 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.4 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
@@ -101,6 +104,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
+	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
@@ -111,6 +115,7 @@ require (
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/klauspost/compress v1.17.7 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
@@ -127,9 +132,11 @@ require (
 	github.com/opencontainers/image-spec v1.1.0-rc4 // indirect
 	github.com/opencontainers/runc v1.1.12 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
+	github.com/pierrec/lz4/v4 v4.1.18 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/segmentio/backo-go v1.1.0 // indirect
+	github.com/segmentio/kafka-go v0.4.44 // indirect
 	github.com/sethvargo/go-retry v0.2.4 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect

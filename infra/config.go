@@ -51,3 +51,9 @@ type TelemetryConfiguration struct {
 	ApplicationName string
 	ProjectID       string
 }
+
+type ConvoyConfiguration struct {
+	APIKey    string
+	APIUrl    string
+	ProjectID string
+}

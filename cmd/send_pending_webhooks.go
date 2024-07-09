@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/checkmarble/marble-backend/infra"
@@ -12,13 +13,11 @@ import (
 	"github.com/getsentry/sentry-go"
 )
 
-func RunJobScheduler() error {
+func RunSendPendingWebhooks() error {
 	// This is where we read the environment variables and set up the configuration for the application.
 	gcpConfig := infra.GcpConfig{
-		EnableTracing:      utils.GetEnv("ENABLE_GCP_TRACING", false),
-		TracingProjectId:   utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
-		GcsIngestionBucket: utils.GetRequiredEnv[string]("GCS_INGESTION_BUCKET"),
-		FakeGcsRepository:  utils.GetEnv("FAKE_GCS", false),
+		EnableTracing:    utils.GetEnv("ENABLE_GCP_TRACING", false),
+		TracingProjectId: utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
 	}
 	pgConfig := infra.PgConfig{
 		Database:            "marble",
@@ -34,17 +33,15 @@ func RunJobScheduler() error {
 		ProjectID: utils.GetEnv("CONVOY_PROJECT_ID", ""),
 	}
 	jobConfig := struct {
-		env                 string
-		appName             string
-		loggingFormat       string
-		sentryDsn           string
-		fakeAwsS3Repository bool
+		env           string
+		appName       string
+		loggingFormat string
+		sentryDsn     string
 	}{
-		env:                 utils.GetEnv("ENV", "development"),
-		appName:             "marble-backend",
-		loggingFormat:       utils.GetEnv("LOGGING_FORMAT", "text"),
-		sentryDsn:           utils.GetEnv("SENTRY_DSN", ""),
-		fakeAwsS3Repository: utils.GetEnv("FAKE_AWS_S3", false),
+		env:           utils.GetEnv("ENV", "development"),
+		appName:       "marble-backend",
+		loggingFormat: utils.GetEnv("LOGGING_FORMAT", "text"),
+		sentryDsn:     utils.GetEnv("SENTRY_DSN", ""),
 	}
 
 	logger := utils.NewLogger(jobConfig.loggingFormat)
@@ -72,16 +69,13 @@ func RunJobScheduler() error {
 	}
 
 	repositories := repositories.NewRepositories(pool,
-		repositories.WithFakeGcsRepository(gcpConfig.FakeGcsRepository),
-		repositories.WithConvoyResources(infra.InitializeConvoyRessources(convoyConfiguration)),
-	)
-	uc := usecases.NewUsecases(repositories,
-		usecases.WithGcsIngestionBucket(gcpConfig.GcsIngestionBucket),
-		usecases.WithFakeAwsS3Repository(jobConfig.fakeAwsS3Repository),
-		usecases.WithFakeGcsRepository(gcpConfig.FakeGcsRepository),
-	)
+		repositories.WithConvoyResources(infra.InitializeConvoyRessources(convoyConfiguration)))
+	uc := usecases.NewUsecases(repositories)
 
-	jobs.RunScheduler(ctx, uc)
+	err = jobs.SendPendingWebhooks(ctx, uc)
+	if err != nil {
+		logger.ErrorContext(ctx, "failed to send pending webhooks", slog.String("error", err.Error()))
+	}
 
-	return nil
+	return err
 }
