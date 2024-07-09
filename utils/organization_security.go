@@ -27,6 +27,10 @@ func EnforceOrganizationAccess(creds models.Credentials, organizationId string) 
 }
 
 func EnforcePartnerAccess(creds models.Credentials, partnerId string) error {
+	noPartnerIdSecurity := creds.Role.HasPermission(models.ANY_PARTNER_ID_IN_CONTEXT)
+	if noPartnerIdSecurity {
+		return nil
+	}
 	if partnerId == "" {
 		return errors.Wrap(models.ForbiddenError, "API key with a valid partner_id is required")
 	}
