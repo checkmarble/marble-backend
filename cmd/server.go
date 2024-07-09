@@ -55,6 +55,11 @@ func RunServer() error {
 			models.GlobalDashboard: utils.GetEnv("METABASE_GLOBAL_DASHBOARD_ID", 0),
 		},
 	}
+	convoyConfiguration := infra.ConvoyConfiguration{
+		APIKey:    utils.GetEnv("CONVOY_API_KEY", ""),
+		APIUrl:    utils.GetEnv("CONVOY_API_URL", ""),
+		ProjectID: utils.GetEnv("CONVOY_PROJECT_ID", ""),
+	}
 
 	seedOrgConfig := models.SeedOrgConfiguration{
 		CreateGlobalAdminEmail: utils.GetEnv("CREATE_GLOBAL_ADMIN_EMAIL", ""),
@@ -98,6 +103,7 @@ func RunServer() error {
 		repositories.WithMetabase(infra.InitializeMetabase(metabaseConfig)),
 		repositories.WithTransferCheckEnrichmentBucket(gcpConfig.GcsTransferCheckEnrichmentBucket),
 		repositories.WithFakeGcsRepository(gcpConfig.FakeGcsRepository),
+		repositories.WithConvoyResources(infra.InitializeConvoyRessources(convoyConfiguration)),
 	)
 
 	uc := usecases.NewUsecases(repositories,
