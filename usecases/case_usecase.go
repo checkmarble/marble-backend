@@ -50,11 +50,11 @@ type CaseUseCaseRepository interface {
 	GetCasesFileByCaseId(ctx context.Context, exec repositories.Executor, caseId string) ([]models.CaseFile, error)
 }
 
-type webhooksUsecase interface {
-	CreateWebhook(
+type webhookEventsUsecase interface {
+	CreateWebhookEvent(
 		ctx context.Context,
 		tx repositories.Executor,
-		input models.WebhookCreate,
+		input models.WebhookEventCreate,
 	) error
 }
 
@@ -67,7 +67,7 @@ type CaseUseCase struct {
 	gcsCaseManagerBucket string
 	transactionFactory   executor_factory.TransactionFactory
 	executorFactory      executor_factory.ExecutorFactory
-	webhooksUsecase      webhooksUsecase
+	webhookEventsUsecase webhookEventsUsecase
 }
 
 func (usecase *CaseUseCase) ListCases(
@@ -284,7 +284,7 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string,
 
 		// TODO(webhook): integration test for webhooks, refactor when webhooks are fully implemented
 		if updateCaseAttributes.Status != "" {
-			err = usecase.webhooksUsecase.CreateWebhook(ctx, tx, models.WebhookCreate{
+			err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 				OrganizationId: updatedCase.OrganizationId,
 				EventType:      models.WebhookEventType_CaseStatusUpdated,
 				EventData:      map[string]any{"case_status": updatedCase.Status},

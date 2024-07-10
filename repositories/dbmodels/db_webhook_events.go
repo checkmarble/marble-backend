@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type DBWebhook struct {
+type DBWebhookEvent struct {
 	Id               string      `db:"id"`
 	CreatedAt        time.Time   `db:"created_at"`
 	UpdatedAt        time.Time   `db:"updated_at"`
@@ -23,23 +23,23 @@ type DBWebhook struct {
 	EventData        []byte      `db:"event_data"`
 }
 
-const TABLE_WEBHOOKS = "webhooks"
+const TABLE_WEBHOOK_EVENTS = "webhook_events"
 
-var WebhookFields = utils.ColumnList[DBWebhook]()
+var WebhookEventFields = utils.ColumnList[DBWebhookEvent]()
 
-func AdaptWebhook(db DBWebhook) (models.Webhook, error) {
+func AdaptWebhookEvent(db DBWebhookEvent) (models.WebhookEvent, error) {
 	eventData := make(map[string]any)
 	err := json.Unmarshal(db.EventData, &eventData)
 	if err != nil {
-		return models.Webhook{}, fmt.Errorf("can't decode %s webhook's event data: %v", db.Id, err)
+		return models.WebhookEvent{}, fmt.Errorf("can't decode %s webhook's event data: %v", db.Id, err)
 	}
 
-	return models.Webhook{
+	return models.WebhookEvent{
 		Id:               db.Id,
 		CreatedAt:        db.CreatedAt,
 		UpdatedAt:        db.UpdatedAt,
 		SendAttemptCount: db.SendAttemptCount,
-		DeliveryStatus:   models.WebhookDeliveryStatusFrom(db.DeliveryStatus),
+		DeliveryStatus:   models.WebhookEventDeliveryStatusFrom(db.DeliveryStatus),
 		OrganizationId:   db.OrganizationId,
 		PartnerId:        null.NewString(db.PartnerId.String, db.PartnerId.Valid),
 		EventType:        models.WebhookEventTypeFrom(db.EventType),

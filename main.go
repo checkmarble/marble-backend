@@ -15,7 +15,7 @@ func main() {
 	shouldRunScheduleScenarios := flag.Bool("scheduler", false, "Run schedule scenarios")
 	shouldRunExecuteScheduledScenarios := flag.Bool("scheduled-executer", false, "Run execute scheduled scenarios")
 	shouldRunDataIngestion := flag.Bool("data-ingestion", false, "Run data ingestion")
-	shouldRunSendPendingWebhooks := flag.Bool("send-pending-webhooks", false, "Send pending webhooks")
+	shouldRunSendPendingWebhookEvents := flag.Bool("send-pending-webhook-events", false, "Send pending webhook events")
 	shouldRunScheduler := flag.Bool("cron-scheduler", false, "Run scheduler for cron jobs")
 	flag.Parse()
 	utils.NewLogger("text").Info("Flags",
@@ -24,7 +24,7 @@ func main() {
 		slog.Bool("shouldRunScheduledScenarios", *shouldRunScheduleScenarios),
 		slog.Bool("shouldRunDataIngestion", *shouldRunDataIngestion),
 		slog.Bool("shouldRunScheduler", *shouldRunScheduler),
-		slog.Bool("shouldRunSendPendingWebhooks", *shouldRunSendPendingWebhooks),
+		slog.Bool("shouldRunSendPendingWebhookEvents", *shouldRunSendPendingWebhookEvents),
 	)
 
 	if *shouldRunMigrations {
@@ -61,8 +61,8 @@ func main() {
 		}
 	}
 
-	if *shouldRunSendPendingWebhooks {
-		err := cmd.RunSendPendingWebhooks()
+	if *shouldRunSendPendingWebhookEvents {
+		err := cmd.RunSendPendingWebhookEvents()
 		if err != nil {
 			log.Fatal(err)
 		}

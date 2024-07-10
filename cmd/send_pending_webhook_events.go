@@ -13,7 +13,7 @@ import (
 	"github.com/getsentry/sentry-go"
 )
 
-func RunSendPendingWebhooks() error {
+func RunSendPendingWebhookEvents() error {
 	// This is where we read the environment variables and set up the configuration for the application.
 	gcpConfig := infra.GcpConfig{
 		EnableTracing:    utils.GetEnv("ENABLE_GCP_TRACING", false),
@@ -73,9 +73,9 @@ func RunSendPendingWebhooks() error {
 			infra.InitializeConvoyRessources(convoyConfiguration)))
 	uc := usecases.NewUsecases(repositories)
 
-	err = jobs.SendPendingWebhooks(ctx, uc)
+	err = jobs.SendPendingWebhookEvents(ctx, uc)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to send pending webhooks", slog.String("error", err.Error()))
+		logger.ErrorContext(ctx, "failed to send pending webhook events", slog.String("error", err.Error()))
 	}
 
 	return err

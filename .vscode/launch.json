@@ -45,13 +45,13 @@
       "console": "integratedTerminal"
     },
     {
-      "name": "Launch send pending webhooks job (.env)",
+      "name": "Launch send pending webhook events job (.env)",
       "type": "go",
       "request": "launch",
       "mode": "auto",
       "program": "${workspaceFolder}/.",
       "envFile": "${workspaceFolder}/.env",
-      "args": ["--send-pending-webhooks"],
+      "args": ["--send-pending-webhook-events"],
       "console": "integratedTerminal"
     },
     {
