@@ -40,7 +40,7 @@ const (
 	LICENSE_LIST
 	LICENSE_CREATE
 	LICENSE_UPDATE
-	WEBHOOK
+	WEBHOOK_EVENT
 )
 
 func (r Permission) String() string {
@@ -82,6 +82,6 @@ func (r Permission) String() string {
 		"LICENSE_LIST",
 		"LICENSE_CREATE",
 		"LICENSE_UPDATE",
-		"WEBHOOK",
+		"WEBHOOK_EVENT",
 	}[r]
 }

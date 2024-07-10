@@ -44,9 +44,9 @@ func RunScheduler(ctx context.Context, usecases usecases.Usecases) {
 	})
 
 	taskr.Task("* * * * *", func(ctx context.Context) (int, error) {
-		logger := utils.LoggerFromContext(ctx).With("job", "send_webhooks_to_convoy")
+		logger := utils.LoggerFromContext(ctx).With("job", "send_webhook_events_to_convoy")
 		ctx = utils.StoreLoggerInContext(ctx, logger)
-		err := SendPendingWebhooks(ctx, usecases)
+		err := SendPendingWebhookEvents(ctx, usecases)
 		return errToReturnCode(err), err
 	})
 

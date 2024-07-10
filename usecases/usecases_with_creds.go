@@ -279,7 +279,7 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 		},
 		gcsCaseManagerBucket: usecases.gcsCaseManagerBucket,
 		gcsRepository:        gcsRepository,
-		webhooksUsecase:      usecases.NewWebhooksUsecase(),
+		webhookEventsUsecase: usecases.NewWebhookEventsUsecase(),
 	}
 }
 
@@ -415,12 +415,12 @@ func (usecases *UsecasesWithCreds) NewLicenseUsecase() ProtectedLicenseUseCase {
 	}
 }
 
-func (usecases *UsecasesWithCreds) NewWebhooksUsecase() WebhooksUsecase {
-	return WebhooksUsecase{
-		enforceSecurity:    security.NewEnforceSecurity(usecases.Credentials),
-		executorFactory:    usecases.NewExecutorFactory(),
-		transactionFactory: usecases.NewTransactionFactory(),
-		convoyRepository:   usecases.Repositories.ConvoyRepository,
-		webhookRepository:  usecases.Repositories.MarbleDbRepository,
+func (usecases *UsecasesWithCreds) NewWebhookEventsUsecase() WebhookEventsUsecase {
+	return WebhookEventsUsecase{
+		enforceSecurity:         security.NewEnforceSecurity(usecases.Credentials),
+		executorFactory:         usecases.NewExecutorFactory(),
+		transactionFactory:      usecases.NewTransactionFactory(),
+		convoyRepository:        usecases.Repositories.ConvoyRepository,
+		webhookEventsRepository: usecases.Repositories.MarbleDbRepository,
 	}
 }

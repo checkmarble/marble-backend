@@ -10,31 +10,33 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
-func selectWebhooks() squirrel.SelectBuilder {
+func selectWebhookEvents() squirrel.SelectBuilder {
 	return NewQueryBuilder().
-		Select(dbmodels.WebhookFields...).
-		From(dbmodels.TABLE_WEBHOOKS)
+		Select(dbmodels.WebhookEventFields...).
+		From(dbmodels.TABLE_WEBHOOK_EVENTS)
 }
 
-func (repo MarbleDbRepository) GetWebhook(ctx context.Context, exec Executor, webhookId string) (models.Webhook, error) {
+func (repo MarbleDbRepository) GetWebhookEvent(ctx context.Context, exec Executor, webhookEventId string) (models.WebhookEvent, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.Webhook{}, err
+		return models.WebhookEvent{}, err
 	}
 
 	return SqlToModel(
 		ctx,
 		exec,
-		selectWebhooks().Where(squirrel.Eq{"id": webhookId}),
-		dbmodels.AdaptWebhook,
+		selectWebhookEvents().Where(squirrel.Eq{"id": webhookEventId}),
+		dbmodels.AdaptWebhookEvent,
 	)
 }
 
-func (repo MarbleDbRepository) ListWebhooks(ctx context.Context, exec Executor, filters models.WebhookFilters) ([]models.Webhook, error) {
+func (repo MarbleDbRepository) ListWebhookEvents(ctx context.Context, exec Executor,
+	filters models.WebhookEventFilters,
+) ([]models.WebhookEvent, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
-	query := selectWebhooks()
+	query := selectWebhookEvents()
 	mergedFilters := filters.MergeWithDefaults()
 
 	if mergedFilters.DeliveryStatus != nil {
@@ -47,22 +49,22 @@ func (repo MarbleDbRepository) ListWebhooks(ctx context.Context, exec Executor, 
 		ctx,
 		exec,
 		query,
-		func(row pgx.CollectableRow) (models.Webhook, error) {
-			db, err := pgx.RowToStructByPos[dbmodels.DBWebhook](row)
+		func(row pgx.CollectableRow) (models.WebhookEvent, error) {
+			db, err := pgx.RowToStructByPos[dbmodels.DBWebhookEvent](row)
 			if err != nil {
-				return models.Webhook{}, err
+				return models.WebhookEvent{}, err
 			}
 
-			return dbmodels.AdaptWebhook(db)
+			return dbmodels.AdaptWebhookEvent(db)
 		},
 	)
 }
 
-func (repo MarbleDbRepository) CreateWebhook(
+func (repo MarbleDbRepository) CreateWebhookEvent(
 	ctx context.Context,
 	exec Executor,
-	webhookId string,
-	webhook models.WebhookCreate,
+	webhookEventId string,
+	input models.WebhookEventCreate,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
@@ -72,7 +74,7 @@ func (repo MarbleDbRepository) CreateWebhook(
 		ctx,
 		exec,
 		NewQueryBuilder().
-			Insert(dbmodels.TABLE_WEBHOOKS).
+			Insert(dbmodels.TABLE_WEBHOOK_EVENTS).
 			Columns(
 				"id",
 				"delivery_status",
@@ -82,21 +84,21 @@ func (repo MarbleDbRepository) CreateWebhook(
 				"event_data",
 			).
 			Values(
-				webhookId,
+				webhookEventId,
 				models.Scheduled.String(),
-				webhook.OrganizationId,
-				webhook.PartnerId.Ptr(),
-				webhook.EventType.String(),
-				webhook.EventData,
+				input.OrganizationId,
+				input.PartnerId.Ptr(),
+				input.EventType.String(),
+				input.EventData,
 			),
 	)
 	return err
 }
 
-func (repo MarbleDbRepository) UpdateWebhook(
+func (repo MarbleDbRepository) UpdateWebhookEvent(
 	ctx context.Context,
 	exec Executor,
-	input models.WebhookUpdate,
+	input models.WebhookEventUpdate,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
@@ -106,7 +108,7 @@ func (repo MarbleDbRepository) UpdateWebhook(
 		ctx,
 		exec,
 		NewQueryBuilder().
-			Update(dbmodels.TABLE_WEBHOOKS).
+			Update(dbmodels.TABLE_WEBHOOK_EVENTS).
 			Set("updated_at", "NOW()").
 			Set("delivery_status", input.DeliveryStatus.String()).
 			Set("send_attempt_count", input.SendAttemptCount).
