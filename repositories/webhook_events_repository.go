@@ -36,14 +36,13 @@ func (repo MarbleDbRepository) ListWebhookEvents(ctx context.Context, exec Execu
 		return nil, err
 	}
 
-	query := selectWebhookEvents()
 	mergedFilters := filters.MergeWithDefaults()
+
+	query := selectWebhookEvents().Limit(mergedFilters.Limit)
 
 	if mergedFilters.DeliveryStatus != nil {
 		query = query.Where(squirrel.Eq{"delivery_status": mergedFilters.DeliveryStatus})
 	}
-
-	query = query.Limit(mergedFilters.Limit)
 
 	return SqlToListOfRow(
 		ctx,
