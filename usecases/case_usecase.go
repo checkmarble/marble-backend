@@ -53,6 +53,7 @@ type CaseUseCaseRepository interface {
 type webhooksUsecase interface {
 	CreateWebhook(
 		ctx context.Context,
+		tx repositories.Executor,
 		input models.WebhookCreate,
 	) error
 }
@@ -276,19 +277,27 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string,
 			return models.Case{}, err
 		}
 
-		return usecase.getCaseWithDetails(ctx, tx, updateCaseAttributes.Id)
+		updatedCase, err := usecase.getCaseWithDetails(ctx, tx, updateCaseAttributes.Id)
+		if err != nil {
+			return models.Case{}, err
+		}
+
+		// TODO(webhook): integration test for webhooks, refactor when webhooks are fully implemented
+		if updateCaseAttributes.Status != "" {
+			err = usecase.webhooksUsecase.CreateWebhook(ctx, tx, models.WebhookCreate{
+				OrganizationId: updatedCase.OrganizationId,
+				EventType:      models.WebhookEventType_CaseStatusUpdated,
+				EventData:      map[string]any{"case_status": updatedCase.Status},
+			})
+			if err != nil {
+				return models.Case{}, err
+			}
+		}
+
+		return updatedCase, nil
 	})
 	if err != nil {
 		return models.Case{}, err
-	}
-
-	// TODO(webhook): integration test for webhooks, refactor when webhooks are fully implemented
-	if updateCaseAttributes.Status != "" {
-		usecase.webhooksUsecase.CreateWebhook(ctx, models.WebhookCreate{
-			OrganizationId: updatedCase.OrganizationId,
-			EventType:      models.WebhookEventType_CaseStatusUpdated,
-			EventData:      map[string]any{"case_status": updatedCase.Status},
-		})
 	}
 
 	trackCaseUpdatedEvents(ctx, updatedCase.Id, updateCaseAttributes)

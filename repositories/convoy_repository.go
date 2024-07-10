@@ -9,12 +9,12 @@ import (
 	convoy "github.com/frain-dev/convoy-go/v2"
 )
 
-type convoyResources interface {
-	GetClient() *convoy.Client
+type ConvoyClientProvider interface {
+	GetClient() (*convoy.Client, error)
 }
 
 type ConvoyRepository struct {
-	convoyResources convoyResources
+	convoyClientProvider ConvoyClientProvider
 }
 
 func getOwnerId(webhook models.Webhook) string {
@@ -27,12 +27,12 @@ func getOwnerId(webhook models.Webhook) string {
 func (repo ConvoyRepository) SendWebhookEvent(ctx context.Context, webhook models.Webhook) error {
 	eventData, err := json.Marshal(webhook.EventData)
 	if err != nil {
-		return fmt.Errorf("can't decode webhook's event data: %v", err)
+		return fmt.Errorf("can't encode webhook's event data: %v", err)
 	}
 
-	convoyClient := repo.convoyResources.GetClient()
-	if convoyClient == nil {
-		return fmt.Errorf("convoy client is nil")
+	convoyClient, err := repo.convoyClientProvider.GetClient()
+	if err != nil {
+		return fmt.Errorf("can't get convoy client: %v", err)
 	}
 
 	err = convoyClient.Events.FanoutEvent(ctx, &convoy.CreateFanoutEventRequest{

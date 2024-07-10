@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
-	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -13,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 	"github.com/guregu/null/v5"
+	"github.com/pkg/errors"
 )
 
 type convoyRepository interface {
@@ -25,7 +25,8 @@ type webhookRepository interface {
 	CreateWebhook(
 		ctx context.Context,
 		exec repositories.Executor,
-		webhook models.Webhook,
+		webhookId string,
+		webhook models.WebhookCreate,
 	) error
 	UpdateWebhook(
 		ctx context.Context,
@@ -35,15 +36,7 @@ type webhookRepository interface {
 }
 
 type enforceSecurityWebhooks interface {
-	CreateWebhook(
-		ctx context.Context,
-		organizationId string,
-		partnerId null.String,
-	) error
-	SendWebhook(
-		ctx context.Context,
-		webhook models.Webhook,
-	) error
+	CanManageWebhook(ctx context.Context, organizationId string, partnerId null.String) error
 }
 
 type WebhooksUsecase struct {
@@ -72,44 +65,23 @@ func NewWebhooksUsecase(
 
 func (usecase WebhooksUsecase) CreateWebhook(
 	ctx context.Context,
+	tx repositories.Executor,
 	input models.WebhookCreate,
 ) error {
-	err := usecase.enforceSecurity.CreateWebhook(ctx, input.OrganizationId, input.PartnerId)
+	err := usecase.enforceSecurity.CanManageWebhook(ctx, input.OrganizationId, input.PartnerId)
 	if err != nil {
 		return err
 	}
 
-	webhook, err := executor_factory.TransactionReturnValue(
-		ctx,
-		usecase.transactionFactory,
-		func(tx repositories.Executor) (models.Webhook, error) {
-			webhookId := uuid.New().String()
-			now := time.Now()
-			err = usecase.webhookRepository.CreateWebhook(ctx,
-				usecase.executorFactory.NewExecutor(), models.Webhook{
-					Id:               webhookId,
-					CreatedAt:        now,
-					UpdatedAt:        now,
-					SendAttemptCount: 0,
-					DeliveryStatus:   models.Scheduled,
-					OrganizationId:   input.OrganizationId,
-					PartnerId:        input.PartnerId,
-					EventType:        input.EventType,
-					EventData:        input.EventData,
-				})
-			if err != nil {
-				return models.Webhook{}, fmt.Errorf("error while creating webhook: %w", err)
-			}
-			return usecase.webhookRepository.GetWebhook(ctx, tx, webhookId)
-		})
-
-	go func() {
-		ctx := context.WithoutCancel(ctx)
-		ctx, _ = context.WithTimeout(ctx, 10*time.Second)
-		// This function is meant to be executed asynchronously and return way after the request was finished
-		// so we don't return any error
-		usecase.sendWebhook(ctx, webhook, utils.LoggerFromContext(ctx))
-	}()
+	webhookId := uuid.New().String()
+	err = usecase.webhookRepository.CreateWebhook(ctx,
+		tx,
+		webhookId,
+		input,
+	)
+	if err != nil {
+		return errors.Wrap(err, "error creating webhook")
+	}
 
 	return nil
 }
@@ -122,9 +94,10 @@ func (usecase WebhooksUsecase) SendWebhooks(
 
 	pendingWebhooks, err := usecase.webhookRepository.ListWebhooks(ctx, exec, models.WebhookFilters{
 		DeliveryStatus: []models.WebhookDeliveryStatus{models.Scheduled, models.Retry},
+		Limit:          100,
 	})
 	if err != nil {
-		return fmt.Errorf("error while listing pending webhooks: %w", err)
+		return errors.Wrap(err, "error while listing pending webhooks")
 	}
 	logger.InfoContext(ctx, fmt.Sprintf("Found %d webhooks to send", len(pendingWebhooks)))
 	if len(pendingWebhooks) == 0 {
@@ -192,7 +165,7 @@ func (usecase *WebhooksUsecase) sendWebhook(
 	webhook models.Webhook,
 	logger *slog.Logger,
 ) (*models.WebhookDeliveryStatus, error) {
-	err := usecase.enforceSecurity.SendWebhook(ctx, webhook)
+	err := usecase.enforceSecurity.CanManageWebhook(ctx, webhook.OrganizationId, webhook.PartnerId)
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +177,6 @@ func (usecase *WebhooksUsecase) sendWebhook(
 
 	webhookUpdate := models.WebhookUpdate{
 		Id:               webhook.Id,
-		UpdatedAt:        time.Now(),
 		SendAttemptCount: webhook.SendAttemptCount + 1,
 	}
 	if err == nil {
@@ -218,7 +190,7 @@ func (usecase *WebhooksUsecase) sendWebhook(
 	}
 	err = usecase.webhookRepository.UpdateWebhook(ctx, exec, webhookUpdate)
 	if err != nil {
-		return nil, fmt.Errorf("error while updating webhook %s: %w", webhook.Id, err)
+		return nil, errors.Wrap(err, fmt.Sprintf("error while updating webhook %s", webhook.Id))
 	}
 	return &webhookUpdate.DeliveryStatus, nil
 }

@@ -35,10 +35,13 @@ func (repo MarbleDbRepository) ListWebhooks(ctx context.Context, exec Executor, 
 	}
 
 	query := selectWebhooks()
+	mergedFilters := filters.MergeWithDefaults()
 
-	if filters.DeliveryStatus != nil {
-		query = query.Where(squirrel.Eq{"delivery_status": filters.DeliveryStatus})
+	if mergedFilters.DeliveryStatus != nil {
+		query = query.Where(squirrel.Eq{"delivery_status": mergedFilters.DeliveryStatus})
 	}
+
+	query = query.OrderBy("created_at DESC").Limit(mergedFilters.Limit)
 
 	return SqlToListOfRow(
 		ctx,
@@ -58,7 +61,8 @@ func (repo MarbleDbRepository) ListWebhooks(ctx context.Context, exec Executor, 
 func (repo MarbleDbRepository) CreateWebhook(
 	ctx context.Context,
 	exec Executor,
-	webhook models.Webhook,
+	webhookId string,
+	webhook models.WebhookCreate,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
@@ -71,7 +75,6 @@ func (repo MarbleDbRepository) CreateWebhook(
 			Insert(dbmodels.TABLE_WEBHOOKS).
 			Columns(
 				"id",
-				"send_attempt_count",
 				"delivery_status",
 				"organization_id",
 				"partner_id",
@@ -79,9 +82,8 @@ func (repo MarbleDbRepository) CreateWebhook(
 				"event_data",
 			).
 			Values(
-				webhook.Id,
-				webhook.SendAttemptCount,
-				webhook.DeliveryStatus.String(),
+				webhookId,
+				models.Scheduled.String(),
 				webhook.OrganizationId,
 				webhook.PartnerId.Ptr(),
 				webhook.EventType.String(),
@@ -105,7 +107,7 @@ func (repo MarbleDbRepository) UpdateWebhook(
 		exec,
 		NewQueryBuilder().
 			Update(dbmodels.TABLE_WEBHOOKS).
-			Set("updated_at", input.UpdatedAt).
+			Set("updated_at", "NOW()").
 			Set("delivery_status", input.DeliveryStatus.String()).
 			Set("send_attempt_count", input.SendAttemptCount).
 			Where(squirrel.Eq{"id": input.Id}),

@@ -73,7 +73,8 @@ func RunJobScheduler() error {
 
 	repositories := repositories.NewRepositories(pool,
 		repositories.WithFakeGcsRepository(gcpConfig.FakeGcsRepository),
-		repositories.WithConvoyResources(infra.InitializeConvoyRessources(convoyConfiguration)),
+		repositories.WithConvoyClientProvider(
+			infra.InitializeConvoyRessources(convoyConfiguration)),
 	)
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithGcsIngestionBucket(gcpConfig.GcsIngestionBucket),
