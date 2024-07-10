@@ -7,11 +7,11 @@ import (
 	"github.com/guregu/null/v5"
 )
 
-type WebhookDeliveryStatus int
+type WebhookEventDeliveryStatus int
 
 const (
 	// In this state, the event delivery has been enqueued to the message broker, but a worker node is yet to pick it up for delivery.
-	Scheduled WebhookDeliveryStatus = iota
+	Scheduled WebhookEventDeliveryStatus = iota
 	// The event has been successfully delivered to the target service.
 	Success
 	// The event delivery previously failed and the automatic retries have kicked in
@@ -20,8 +20,8 @@ const (
 	Failed
 )
 
-func (webhookDeliveryStatus WebhookDeliveryStatus) String() string {
-	switch webhookDeliveryStatus {
+func (webhookEventDeliveryStatus WebhookEventDeliveryStatus) String() string {
+	switch webhookEventDeliveryStatus {
 	case Scheduled:
 		return "scheduled"
 	case Success:
@@ -31,10 +31,10 @@ func (webhookDeliveryStatus WebhookDeliveryStatus) String() string {
 	case Failed:
 		return "failed"
 	}
-	panic(fmt.Errorf("unknown webhook delivery status: %d", webhookDeliveryStatus))
+	panic(fmt.Errorf("unknown webhook event delivery status: %d", webhookEventDeliveryStatus))
 }
 
-func WebhookDeliveryStatusFrom(s string) WebhookDeliveryStatus {
+func WebhookEventDeliveryStatusFrom(s string) WebhookEventDeliveryStatus {
 	switch s {
 	case "scheduled":
 		return Scheduled
@@ -45,7 +45,7 @@ func WebhookDeliveryStatusFrom(s string) WebhookDeliveryStatus {
 	case "failed":
 		return Failed
 	}
-	panic(fmt.Errorf("unknown webhook delivery status: %s", s))
+	panic(fmt.Errorf("unknown webhook event delivery status: %s", s))
 }
 
 type WebhookEventType int
@@ -70,38 +70,38 @@ func WebhookEventTypeFrom(s string) WebhookEventType {
 	panic(fmt.Errorf("unknown webhook event type: %s", s))
 }
 
-type Webhook struct {
+type WebhookEvent struct {
 	Id               string
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 	SendAttemptCount int
-	DeliveryStatus   WebhookDeliveryStatus
+	DeliveryStatus   WebhookEventDeliveryStatus
 	OrganizationId   string
 	PartnerId        null.String
 	EventType        WebhookEventType
 	EventData        map[string]any
 }
 
-type WebhookCreate struct {
+type WebhookEventCreate struct {
 	OrganizationId string
 	PartnerId      null.String
 	EventType      WebhookEventType
 	EventData      map[string]any
 }
 
-type WebhookUpdate struct {
+type WebhookEventUpdate struct {
 	Id               string
-	DeliveryStatus   WebhookDeliveryStatus
+	DeliveryStatus   WebhookEventDeliveryStatus
 	SendAttemptCount int
 }
 
-type WebhookFilters struct {
-	DeliveryStatus []WebhookDeliveryStatus
+type WebhookEventFilters struct {
+	DeliveryStatus []WebhookEventDeliveryStatus
 	Limit          uint64
 }
 
-func (f WebhookFilters) MergeWithDefaults() WebhookFilters {
-	defaultFilters := WebhookFilters{
+func (f WebhookEventFilters) MergeWithDefaults() WebhookEventFilters {
+	defaultFilters := WebhookEventFilters{
 		Limit: 100,
 	}
 	defaultFilters.DeliveryStatus = f.DeliveryStatus

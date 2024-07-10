@@ -7,17 +7,17 @@ import (
 )
 
 // Runs every minute
-func SendPendingWebhooks(ctx context.Context, uc usecases.Usecases) error {
+func SendPendingWebhookEvents(ctx context.Context, uc usecases.Usecases) error {
 	return executeWithMonitoring(
 		ctx,
 		uc,
-		"send-webhooks",
+		"send-webhook-events",
 		func(
 			ctx context.Context, usecases usecases.Usecases,
 		) error {
 			usecasesWithCreds := GenerateUsecaseWithCredForMarbleAdmin(ctx, usecases)
-			webhooksUsecase := usecasesWithCreds.NewWebhooksUsecase()
-			return webhooksUsecase.SendWebhooks(ctx)
+			webhooksUsecase := usecasesWithCreds.NewWebhookEventsUsecase()
+			return webhooksUsecase.SendWebhookEvents(ctx)
 		},
 	)
 }

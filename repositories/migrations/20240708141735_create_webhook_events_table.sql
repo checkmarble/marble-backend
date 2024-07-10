@@ -2,7 +2,7 @@
 -- +goose StatementBegin
 
 CREATE TABLE IF NOT EXISTS
-      webhooks (
+      webhook_events (
             id uuid DEFAULT uuid_generate_v4 (),
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
@@ -17,13 +17,13 @@ CREATE TABLE IF NOT EXISTS
             CONSTRAINT fk_webhooks_partner FOREIGN KEY(partner_id) REFERENCES partners(id) ON DELETE CASCADE
       );
 
-CREATE INDEX webhooks_delivery_status_idx ON webhooks(delivery_status) WHERE delivery_status IN ('scheduled', 'retry');
+CREATE INDEX webhooks_delivery_status_idx ON webhook_events(delivery_status) WHERE delivery_status IN ('scheduled', 'retry');
 
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
 
-DROP TABLE webhooks;
+DROP TABLE webhook_events;
 
 -- +goose StatementEnd
