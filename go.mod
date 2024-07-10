@@ -16,6 +16,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.55.2
 	github.com/cockroachdb/errors v1.11.3
 	github.com/exaring/otelpgx v0.6.1
+	github.com/frain-dev/convoy-go/v2 v2.1.8
 	github.com/getsentry/sentry-go v0.28.1
 	github.com/gin-contrib/cors v1.7.2
 	github.com/gin-contrib/size v1.0.1
@@ -92,7 +93,6 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/frain-dev/convoy v0.9.2 // indirect
-	github.com/frain-dev/convoy-go/v2 v2.1.8 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.4 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect

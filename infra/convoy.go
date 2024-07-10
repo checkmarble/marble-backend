@@ -20,6 +20,6 @@ func InitializeConvoyRessources(config ConvoyConfiguration) ConvoyRessources {
 	}
 }
 
-func (r ConvoyRessources) GetClient() *convoy.Client {
-	return r.convoyClient
+func (r ConvoyRessources) GetClient() (*convoy.Client, error) {
+	return r.convoyClient, nil
 }

@@ -28,9 +28,7 @@ import (
 )
 
 const (
-	batchSize          = 1000
-	pendingFilesFolder = "pending"
-	doneFilesFolder    = "done"
+	batchSize = 1000
 )
 
 type IngestionUseCase struct {
