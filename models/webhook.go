@@ -91,11 +91,22 @@ type WebhookCreate struct {
 
 type WebhookUpdate struct {
 	Id               string
-	UpdatedAt        time.Time
 	DeliveryStatus   WebhookDeliveryStatus
 	SendAttemptCount int
 }
 
 type WebhookFilters struct {
 	DeliveryStatus []WebhookDeliveryStatus
+	Limit          uint64
+}
+
+func (f WebhookFilters) MergeWithDefaults() WebhookFilters {
+	defaultFilters := WebhookFilters{
+		Limit: 100,
+	}
+	defaultFilters.DeliveryStatus = f.DeliveryStatus
+	if f.Limit > 0 {
+		defaultFilters.Limit = f.Limit
+	}
+	return defaultFilters
 }

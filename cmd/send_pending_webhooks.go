@@ -69,7 +69,8 @@ func RunSendPendingWebhooks() error {
 	}
 
 	repositories := repositories.NewRepositories(pool,
-		repositories.WithConvoyResources(infra.InitializeConvoyRessources(convoyConfiguration)))
+		repositories.WithConvoyClientProvider(
+			infra.InitializeConvoyRessources(convoyConfiguration)))
 	uc := usecases.NewUsecases(repositories)
 
 	err = jobs.SendPendingWebhooks(ctx, uc)
