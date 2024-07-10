@@ -10,7 +10,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func (e *EnforceSecurityImpl) CanManageWebhookEvent(ctx context.Context, organizationId string, partnerId null.String) error {
+func (e *EnforceSecurityImpl) SendWebhookEvent(ctx context.Context, organizationId string, partnerId null.String) error {
 	err := errors.Join(
 		e.Permission(models.WEBHOOK_EVENT),
 		utils.EnforceOrganizationAccess(e.Credentials, organizationId),
