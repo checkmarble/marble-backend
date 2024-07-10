@@ -43,7 +43,7 @@ func (repo MarbleDbRepository) ListWebhookEvents(ctx context.Context, exec Execu
 		query = query.Where(squirrel.Eq{"delivery_status": mergedFilters.DeliveryStatus})
 	}
 
-	query = query.OrderBy("created_at DESC").Limit(mergedFilters.Limit)
+	query = query.Limit(mergedFilters.Limit)
 
 	return SqlToListOfRow(
 		ctx,

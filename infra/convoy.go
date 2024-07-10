@@ -1,6 +1,8 @@
 package infra
 
 import (
+	"fmt"
+
 	convoy "github.com/frain-dev/convoy-go/v2"
 )
 
@@ -20,6 +22,10 @@ func InitializeConvoyRessources(config ConvoyConfiguration) ConvoyRessources {
 	}
 }
 
-func (r ConvoyRessources) GetClient() (*convoy.Client, error) {
-	return r.convoyClient, nil
+func (r ConvoyRessources) GetClient() (convoy.Client, error) {
+	client := r.convoyClient
+	if client == nil {
+		return convoy.Client{}, fmt.Errorf("convoy client is not initialized")
+	}
+	return *client, nil
 }
