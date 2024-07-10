@@ -24,6 +24,8 @@ CREATE INDEX webhooks_delivery_status_idx ON webhook_events(delivery_status) WHE
 -- +goose Down
 -- +goose StatementBegin
 
+DROP INDEX webhooks_delivery_status_idx;
+
 DROP TABLE webhook_events;
 
 -- +goose StatementEnd

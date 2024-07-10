@@ -40,7 +40,7 @@ type webhookEventsRepository interface {
 }
 
 type enforceSecurityWebhookEvents interface {
-	CanManageWebhookEvent(ctx context.Context, organizationId string, partnerId null.String) error
+	SendWebhookEvent(ctx context.Context, organizationId string, partnerId null.String) error
 }
 
 type WebhookEventsUsecase struct {
@@ -72,7 +72,7 @@ func (usecase WebhookEventsUsecase) CreateWebhookEvent(
 	tx repositories.Executor,
 	input models.WebhookEventCreate,
 ) error {
-	err := usecase.enforceSecurity.CanManageWebhookEvent(ctx, input.OrganizationId, input.PartnerId)
+	err := usecase.enforceSecurity.SendWebhookEvent(ctx, input.OrganizationId, input.PartnerId)
 	if err != nil {
 		return err
 	}
@@ -169,7 +169,7 @@ func (usecase *WebhookEventsUsecase) sendWebhookEvent(
 	webhookEvent models.WebhookEvent,
 	logger *slog.Logger,
 ) (*models.WebhookEventDeliveryStatus, error) {
-	err := usecase.enforceSecurity.CanManageWebhookEvent(ctx, webhookEvent.OrganizationId, webhookEvent.PartnerId)
+	err := usecase.enforceSecurity.SendWebhookEvent(ctx, webhookEvent.OrganizationId, webhookEvent.PartnerId)
 	if err != nil {
 		return nil, err
 	}

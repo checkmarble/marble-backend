@@ -12,7 +12,7 @@ import (
 )
 
 type ConvoyClientProvider interface {
-	GetClient() (*convoy.Client, error)
+	GetClient() (convoy.Client, error)
 }
 
 type ConvoyRepository struct {
@@ -26,21 +26,13 @@ func getOwnerId(organizationId string, partnerId null.String) string {
 	return fmt.Sprintf("org:%s", organizationId)
 }
 
-func (repo ConvoyRepository) getConvoyClient() (*convoy.Client, error) {
-	convoyClient, err := repo.convoyClientProvider.GetClient()
-	if err != nil {
-		return nil, errors.Wrap(err, "can't get convoy client")
-	}
-	return convoyClient, nil
-}
-
 func (repo ConvoyRepository) SendWebhookEvent(ctx context.Context, webhookEvent models.WebhookEvent) error {
 	eventData, err := json.Marshal(webhookEvent.EventData)
 	if err != nil {
 		return errors.Wrap(err, "can't encode webhook event data")
 	}
 
-	convoyClient, err := repo.getConvoyClient()
+	convoyClient, err := repo.convoyClientProvider.GetClient()
 	if err != nil {
 		return err
 	}
