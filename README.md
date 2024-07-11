@@ -83,6 +83,12 @@ Migrations are located in the `repositories/migrations` folder.
 
 Execute the program with flags `-migrations` to run migrations
 
+To create a new migration, you can use the following command:
+
+```sh
+make generate_migration
+```
+
 ## FAQ
 
 ### How to update firebase local data ?
@@ -90,7 +96,8 @@ Execute the program with flags `-migrations` to run migrations
 - Run firebase emulator with paramater: `--export-on-exit`
 - Add user, change options...
 - Exit the emulator
-- commit
+
+> NB: The data will be saved in the `./firebase-local-data` folder. If you want to share the data, you can copy it to `./firebase-local-data.example` and commit it.
 
 ### How to reset the DB ?
 

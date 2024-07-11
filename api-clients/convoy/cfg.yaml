@@ -1,0 +1,9 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/deepmap/oapi-codegen/HEAD/configuration-schema.json
+package: convoy
+output: client.gen.go
+generate:
+  models: true
+  client: true
+output-options:
+  include-operation-ids:
+    - CreateEndpointFanoutEvent
