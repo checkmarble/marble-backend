@@ -39,10 +39,10 @@ func AdaptWebhookEvent(db DBWebhookEvent) (models.WebhookEvent, error) {
 		CreatedAt:        db.CreatedAt,
 		UpdatedAt:        db.UpdatedAt,
 		SendAttemptCount: db.SendAttemptCount,
-		DeliveryStatus:   models.WebhookEventDeliveryStatusFrom(db.DeliveryStatus),
+		DeliveryStatus:   models.WebhookEventDeliveryStatus(db.DeliveryStatus),
 		OrganizationId:   db.OrganizationId,
 		PartnerId:        null.NewString(db.PartnerId.String, db.PartnerId.Valid),
-		EventType:        models.WebhookEventTypeFrom(db.EventType),
+		EventType:        models.WebhookEventType(db.EventType),
 		EventData:        eventData,
 	}, nil
 }

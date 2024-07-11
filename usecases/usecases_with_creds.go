@@ -416,11 +416,20 @@ func (usecases *UsecasesWithCreds) NewLicenseUsecase() ProtectedLicenseUseCase {
 }
 
 func (usecases *UsecasesWithCreds) NewWebhookEventsUsecase() WebhookEventsUsecase {
-	return WebhookEventsUsecase{
-		enforceSecurity:         security.NewEnforceSecurity(usecases.Credentials),
-		executorFactory:         usecases.NewExecutorFactory(),
-		transactionFactory:      usecases.NewTransactionFactory(),
-		convoyRepository:        usecases.Repositories.ConvoyRepository,
-		webhookEventsRepository: usecases.Repositories.MarbleDbRepository,
-	}
+	return NewWebhookEventsUsecase(
+		security.NewEnforceSecurity(usecases.Credentials),
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.Repositories.ConvoyRepository,
+		usecases.Repositories.MarbleDbRepository,
+	)
+}
+
+func (usecases *UsecasesWithCreds) NewWebhooksUsecase() WebhooksUsecase {
+	return NewWebhooksUsecase(
+		security.NewEnforceSecurity(usecases.Credentials),
+		usecases.NewExecutorFactory(),
+		usecases.NewTransactionFactory(),
+		usecases.Repositories.ConvoyRepository,
+	)
 }
