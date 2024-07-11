@@ -84,10 +84,10 @@ func (repo MarbleDbRepository) CreateWebhookEvent(
 			).
 			Values(
 				webhookEventId,
-				models.Scheduled.String(),
+				models.Scheduled,
 				input.OrganizationId,
 				input.PartnerId.Ptr(),
-				input.EventType.String(),
+				input.EventType,
 				input.EventData,
 			),
 	)
@@ -109,7 +109,7 @@ func (repo MarbleDbRepository) UpdateWebhookEvent(
 		NewQueryBuilder().
 			Update(dbmodels.TABLE_WEBHOOK_EVENTS).
 			Set("updated_at", "NOW()").
-			Set("delivery_status", input.DeliveryStatus.String()).
+			Set("delivery_status", input.DeliveryStatus).
 			Set("send_attempt_count", input.SendAttemptCount).
 			Where(squirrel.Eq{"id": input.Id}),
 	)
