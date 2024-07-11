@@ -7,3 +7,5 @@ generate:
 output-options:
   include-operation-ids:
     - CreateEndpointFanoutEvent
+    - CreateEndpoint
+    - CreateSubscription

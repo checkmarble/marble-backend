@@ -20,8 +20,457 @@ const (
 	ApiKeyAuthScopes = "ApiKeyAuth.Scopes"
 )
 
+// Defines values for DatastoreDeviceStatus.
+const (
+	DeviceStatusDisabled DatastoreDeviceStatus = "disabled"
+	DeviceStatusOffline  DatastoreDeviceStatus = "offline"
+	DeviceStatusOnline   DatastoreDeviceStatus = "online"
+)
+
+// Defines values for DatastoreEncodingType.
+const (
+	Base64Encoding DatastoreEncodingType = "base64"
+	HexEncoding    DatastoreEncodingType = "hex"
+)
+
+// Defines values for DatastoreEndpointAuthenticationType.
+const (
+	APIKeyAuthentication DatastoreEndpointAuthenticationType = "api_key"
+)
+
+// Defines values for DatastoreEndpointStatus.
+const (
+	ActiveEndpointStatus   DatastoreEndpointStatus = "active"
+	InactiveEndpointStatus DatastoreEndpointStatus = "inactive"
+	PausedEndpointStatus   DatastoreEndpointStatus = "paused"
+	PendingEndpointStatus  DatastoreEndpointStatus = "pending"
+)
+
+// Defines values for DatastorePubSubType.
+const (
+	AmqpPubSub   DatastorePubSubType = "amqp"
+	GooglePubSub DatastorePubSubType = "google"
+	KafkaPubSub  DatastorePubSubType = "kafka"
+	SqsPubSub    DatastorePubSubType = "sqs"
+)
+
+// Defines values for DatastoreSourceProvider.
+const (
+	GithubSourceProvider  DatastoreSourceProvider = "github"
+	ShopifySourceProvider DatastoreSourceProvider = "shopify"
+	TwitterSourceProvider DatastoreSourceProvider = "twitter"
+)
+
+// Defines values for DatastoreSourceType.
+const (
+	DBChangeStream DatastoreSourceType = "db_change_stream"
+	HTTPSource     DatastoreSourceType = "http"
+	PubSubSource   DatastoreSourceType = "pub_sub"
+	RestApiSource  DatastoreSourceType = "rest_api"
+)
+
+// Defines values for DatastoreStrategyProvider.
+const (
+	ExponentialStrategyProvider DatastoreStrategyProvider = "exponential"
+	LinearStrategyProvider      DatastoreStrategyProvider = "linear"
+)
+
+// Defines values for DatastoreSubscriptionType.
+const (
+	SubscriptionTypeAPI DatastoreSubscriptionType = "api"
+	SubscriptionTypeCLI DatastoreSubscriptionType = "cli"
+)
+
+// Defines values for DatastoreVerifierType.
+const (
+	APIKeyVerifier    DatastoreVerifierType = "api_key"
+	BasicAuthVerifier DatastoreVerifierType = "basic_auth"
+	HMacVerifier      DatastoreVerifierType = "hmac"
+	NoopVerifier      DatastoreVerifierType = "noop"
+)
+
+// DatastoreAlertConfiguration defines model for datastore.AlertConfiguration.
+type DatastoreAlertConfiguration struct {
+	Count     *int    `json:"count,omitempty"`
+	Threshold *string `json:"threshold,omitempty"`
+}
+
+// DatastoreAmqpCredentials defines model for datastore.AmqpCredentials.
+type DatastoreAmqpCredentials struct {
+	Password *string `json:"password,omitempty"`
+	User     *string `json:"user,omitempty"`
+}
+
+// DatastoreAmqpPubSubConfig defines model for datastore.AmqpPubSubConfig.
+type DatastoreAmqpPubSubConfig struct {
+	Auth               *DatastoreAmqpCredentials `json:"auth,omitempty"`
+	BindedExchange     *string                   `json:"bindedExchange,omitempty"`
+	DeadLetterExchange *string                   `json:"deadLetterExchange,omitempty"`
+	Host               *string                   `json:"host,omitempty"`
+	Port               *string                   `json:"port,omitempty"`
+	Queue              *string                   `json:"queue,omitempty"`
+	RoutingKey         *string                   `json:"routingKey,omitempty"`
+	Schema             *string                   `json:"schema,omitempty"`
+	Vhost              *string                   `json:"vhost,omitempty"`
+}
+
+// DatastoreApiKey defines model for datastore.ApiKey.
+type DatastoreApiKey struct {
+	HeaderName  *string `json:"header_name,omitempty"`
+	HeaderValue *string `json:"header_value,omitempty"`
+}
+
+// DatastoreBasicAuth defines model for datastore.BasicAuth.
+type DatastoreBasicAuth struct {
+	Password *string `json:"password,omitempty"`
+	Username *string `json:"username,omitempty"`
+}
+
+// DatastoreCustomResponse defines model for datastore.CustomResponse.
+type DatastoreCustomResponse struct {
+	Body        *string `json:"body,omitempty"`
+	ContentType *string `json:"content_type,omitempty"`
+}
+
+// DatastoreDevice defines model for datastore.Device.
+type DatastoreDevice struct {
+	CreatedAt  *string                `json:"created_at,omitempty"`
+	DeletedAt  *string                `json:"deleted_at,omitempty"`
+	EndpointId *string                `json:"endpoint_id,omitempty"`
+	HostName   *string                `json:"host_name,omitempty"`
+	LastSeenAt *string                `json:"last_seen_at,omitempty"`
+	ProjectId  *string                `json:"project_id,omitempty"`
+	Status     *DatastoreDeviceStatus `json:"status,omitempty"`
+	Uid        *string                `json:"uid,omitempty"`
+	UpdatedAt  *string                `json:"updated_at,omitempty"`
+}
+
+// DatastoreDeviceStatus defines model for datastore.DeviceStatus.
+type DatastoreDeviceStatus string
+
+// DatastoreEncodingType defines model for datastore.EncodingType.
+type DatastoreEncodingType string
+
+// DatastoreEndpoint defines model for datastore.Endpoint.
+type DatastoreEndpoint struct {
+	AdvancedSignatures *bool                            `json:"advanced_signatures,omitempty"`
+	Authentication     *DatastoreEndpointAuthentication `json:"authentication,omitempty"`
+	CreatedAt          *string                          `json:"created_at,omitempty"`
+	DeletedAt          *string                          `json:"deleted_at,omitempty"`
+	Description        *string                          `json:"description,omitempty"`
+	Events             *int                             `json:"events,omitempty"`
+	HttpTimeout        *int                             `json:"http_timeout,omitempty"`
+	Name               *string                          `json:"name,omitempty"`
+	OwnerId            *string                          `json:"owner_id,omitempty"`
+	ProjectId          *string                          `json:"project_id,omitempty"`
+	RateLimit          *int                             `json:"rate_limit,omitempty"`
+	RateLimitDuration  *int                             `json:"rate_limit_duration,omitempty"`
+	Secrets            *[]DatastoreSecret               `json:"secrets,omitempty"`
+	SlackWebhookUrl    *string                          `json:"slack_webhook_url,omitempty"`
+	Status             *DatastoreEndpointStatus         `json:"status,omitempty"`
+	SupportEmail       *string                          `json:"support_email,omitempty"`
+	Uid                *string                          `json:"uid,omitempty"`
+	UpdatedAt          *string                          `json:"updated_at,omitempty"`
+	Url                *string                          `json:"url,omitempty"`
+}
+
+// DatastoreEndpointAuthentication defines model for datastore.EndpointAuthentication.
+type DatastoreEndpointAuthentication struct {
+	ApiKey *DatastoreApiKey                     `json:"api_key,omitempty"`
+	Type   *DatastoreEndpointAuthenticationType `json:"type,omitempty"`
+}
+
+// DatastoreEndpointAuthenticationType defines model for datastore.EndpointAuthenticationType.
+type DatastoreEndpointAuthenticationType string
+
+// DatastoreEndpointStatus defines model for datastore.EndpointStatus.
+type DatastoreEndpointStatus string
+
+// DatastoreFilterConfiguration defines model for datastore.FilterConfiguration.
+type DatastoreFilterConfiguration struct {
+	EventTypes *[]string              `json:"event_types,omitempty"`
+	Filter     *DatastoreFilterSchema `json:"filter,omitempty"`
+}
+
+// DatastoreFilterSchema defines model for datastore.FilterSchema.
+type DatastoreFilterSchema struct {
+	Body        *DatastoreM `json:"body,omitempty"`
+	Headers     *DatastoreM `json:"headers,omitempty"`
+	IsFlattened *bool       `json:"is_flattened,omitempty"`
+}
+
+// DatastoreGooglePubSubConfig defines model for datastore.GooglePubSubConfig.
+type DatastoreGooglePubSubConfig struct {
+	ProjectId      *string `json:"project_id,omitempty"`
+	ServiceAccount *[]int  `json:"service_account,omitempty"`
+	SubscriptionId *string `json:"subscription_id,omitempty"`
+}
+
+// DatastoreHMac defines model for datastore.HMac.
+type DatastoreHMac struct {
+	Encoding *DatastoreEncodingType `json:"encoding,omitempty"`
+	Hash     *string                `json:"hash,omitempty"`
+	Header   *string                `json:"header,omitempty"`
+	Secret   *string                `json:"secret,omitempty"`
+}
+
+// DatastoreKafkaAuth defines model for datastore.KafkaAuth.
+type DatastoreKafkaAuth struct {
+	Hash     *string `json:"hash,omitempty"`
+	Password *string `json:"password,omitempty"`
+	Tls      *bool   `json:"tls,omitempty"`
+	Type     *string `json:"type,omitempty"`
+	Username *string `json:"username,omitempty"`
+}
+
+// DatastoreKafkaPubSubConfig defines model for datastore.KafkaPubSubConfig.
+type DatastoreKafkaPubSubConfig struct {
+	Auth            *DatastoreKafkaAuth `json:"auth,omitempty"`
+	Brokers         *[]string           `json:"brokers,omitempty"`
+	ConsumerGroupId *string             `json:"consumer_group_id,omitempty"`
+	TopicName       *string             `json:"topic_name,omitempty"`
+}
+
+// DatastoreM defines model for datastore.M.
+type DatastoreM map[string]interface{}
+
+// DatastoreProviderConfig defines model for datastore.ProviderConfig.
+type DatastoreProviderConfig struct {
+	Twitter *DatastoreTwitterProviderConfig `json:"twitter,omitempty"`
+}
+
+// DatastorePubSubConfig defines model for datastore.PubSubConfig.
+type DatastorePubSubConfig struct {
+	Amqp    *DatastoreAmqpPubSubConfig   `json:"amqp,omitempty"`
+	Google  *DatastoreGooglePubSubConfig `json:"google,omitempty"`
+	Kafka   *DatastoreKafkaPubSubConfig  `json:"kafka,omitempty"`
+	Sqs     *DatastoreSQSPubSubConfig    `json:"sqs,omitempty"`
+	Type    *DatastorePubSubType         `json:"type,omitempty"`
+	Workers *int                         `json:"workers,omitempty"`
+}
+
+// DatastorePubSubType defines model for datastore.PubSubType.
+type DatastorePubSubType string
+
+// DatastoreRateLimitConfiguration defines model for datastore.RateLimitConfiguration.
+type DatastoreRateLimitConfiguration struct {
+	Count    *int `json:"count,omitempty"`
+	Duration *int `json:"duration,omitempty"`
+}
+
+// DatastoreRetryConfiguration defines model for datastore.RetryConfiguration.
+type DatastoreRetryConfiguration struct {
+	Duration   *int                       `json:"duration,omitempty"`
+	RetryCount *int                       `json:"retry_count,omitempty"`
+	Type       *DatastoreStrategyProvider `json:"type,omitempty"`
+}
+
+// DatastoreSQSPubSubConfig defines model for datastore.SQSPubSubConfig.
+type DatastoreSQSPubSubConfig struct {
+	AccessKeyId   *string `json:"access_key_id,omitempty"`
+	DefaultRegion *string `json:"default_region,omitempty"`
+	QueueName     *string `json:"queue_name,omitempty"`
+	SecretKey     *string `json:"secret_key,omitempty"`
+}
+
+// DatastoreSecret defines model for datastore.Secret.
+type DatastoreSecret struct {
+	CreatedAt *string `json:"created_at,omitempty"`
+	DeletedAt *string `json:"deleted_at,omitempty"`
+	ExpiresAt *string `json:"expires_at,omitempty"`
+	Uid       *string `json:"uid,omitempty"`
+	UpdatedAt *string `json:"updated_at,omitempty"`
+	Value     *string `json:"value,omitempty"`
+}
+
+// DatastoreSource defines model for datastore.Source.
+type DatastoreSource struct {
+	BodyFunction    *string                  `json:"body_function,omitempty"`
+	CreatedAt       *string                  `json:"created_at,omitempty"`
+	CustomResponse  *DatastoreCustomResponse `json:"custom_response,omitempty"`
+	DeletedAt       *string                  `json:"deleted_at,omitempty"`
+	ForwardHeaders  *[]string                `json:"forward_headers,omitempty"`
+	HeaderFunction  *string                  `json:"header_function,omitempty"`
+	IdempotencyKeys *[]string                `json:"idempotency_keys,omitempty"`
+	IsDisabled      *bool                    `json:"is_disabled,omitempty"`
+	MaskId          *string                  `json:"mask_id,omitempty"`
+	Name            *string                  `json:"name,omitempty"`
+	ProjectId       *string                  `json:"project_id,omitempty"`
+	Provider        *DatastoreSourceProvider `json:"provider,omitempty"`
+	ProviderConfig  *DatastoreProviderConfig `json:"provider_config,omitempty"`
+	PubSub          *DatastorePubSubConfig   `json:"pub_sub,omitempty"`
+	Type            *DatastoreSourceType     `json:"type,omitempty"`
+	Uid             *string                  `json:"uid,omitempty"`
+	UpdatedAt       *string                  `json:"updated_at,omitempty"`
+	Url             *string                  `json:"url,omitempty"`
+	Verifier        *DatastoreVerifierConfig `json:"verifier,omitempty"`
+}
+
+// DatastoreSourceProvider defines model for datastore.SourceProvider.
+type DatastoreSourceProvider string
+
+// DatastoreSourceType defines model for datastore.SourceType.
+type DatastoreSourceType string
+
+// DatastoreStrategyProvider defines model for datastore.StrategyProvider.
+type DatastoreStrategyProvider string
+
+// DatastoreSubscriptionType defines model for datastore.SubscriptionType.
+type DatastoreSubscriptionType string
+
+// DatastoreTwitterProviderConfig defines model for datastore.TwitterProviderConfig.
+type DatastoreTwitterProviderConfig struct {
+	CrcVerifiedAt *string `json:"crc_verified_at,omitempty"`
+}
+
+// DatastoreVerifierConfig defines model for datastore.VerifierConfig.
+type DatastoreVerifierConfig struct {
+	ApiKey    *DatastoreApiKey       `json:"api_key,omitempty"`
+	BasicAuth *DatastoreBasicAuth    `json:"basic_auth,omitempty"`
+	Hmac      *DatastoreHMac         `json:"hmac,omitempty"`
+	Type      *DatastoreVerifierType `json:"type,omitempty"`
+}
+
+// DatastoreVerifierType defines model for datastore.VerifierType.
+type DatastoreVerifierType string
+
 // HandlersStub defines model for handlers.Stub.
 type HandlersStub = map[string]interface{}
+
+// ModelsAlertConfiguration defines model for models.AlertConfiguration.
+type ModelsAlertConfiguration struct {
+	// Count Count
+	Count *int `json:"count,omitempty"`
+
+	// Threshold Threshold
+	Threshold *string `json:"threshold,omitempty"`
+}
+
+// ModelsApiKey defines model for models.ApiKey.
+type ModelsApiKey struct {
+	HeaderName  *string `json:"header_name,omitempty"`
+	HeaderValue *string `json:"header_value,omitempty"`
+}
+
+// ModelsCreateEndpoint defines model for models.CreateEndpoint.
+type ModelsCreateEndpoint struct {
+	// AdvancedSignatures Convoy supports two [signature formats](https://getconvoy.io/docs/manual/signatures)
+	// -- simple or advanced. If left unspecified, we default to false.
+	AdvancedSignatures *bool `json:"advanced_signatures,omitempty"`
+
+	// AppID Deprecated but necessary for backward compatibility
+	AppID *string `json:"appID,omitempty"`
+
+	// Authentication This is used to define any custom authentication required by the endpoint. This
+	// shouldn't be needed often because webhook endpoints usually should be exposed to
+	// the internet.
+	Authentication *ModelsEndpointAuthentication `json:"authentication,omitempty"`
+
+	// Description Human-readable description of the endpoint. Think of this as metadata describing
+	// the endpoint
+	Description *string `json:"description,omitempty"`
+
+	// HttpTimeout Define endpoint http timeout in seconds.
+	HttpTimeout *int `json:"http_timeout,omitempty"`
+
+	// IsDisabled This is used to manually enable/disable the endpoint.
+	IsDisabled *bool `json:"is_disabled,omitempty"`
+
+	// Name Endpoint name.
+	Name *string `json:"name,omitempty"`
+
+	// OwnerId The OwnerID is used to group more than one endpoint together to achieve
+	// [fanout](https://getconvoy.io/docs/manual/endpoints#Endpoint%20Owner%20ID)
+	OwnerId *string `json:"owner_id,omitempty"`
+
+	// RateLimit Rate limit is the total number of requests to be sent to an endpoint in
+	// the time duration specified in RateLimitDuration
+	RateLimit *int `json:"rate_limit,omitempty"`
+
+	// RateLimitDuration Rate limit duration specifies the time range for the rate limit.
+	RateLimitDuration *int `json:"rate_limit_duration,omitempty"`
+
+	// Secret Endpoint's webhook secret. If not provided, Convoy autogenerates one for the endpoint.
+	Secret *string `json:"secret,omitempty"`
+
+	// SlackWebhookUrl Slack webhook URL is an alternative method to support email where endpoint developers
+	// can receive failure notifications on a slack channel.
+	SlackWebhookUrl *string `json:"slack_webhook_url,omitempty"`
+
+	// SupportEmail Endpoint developers support email. This is used for communicating endpoint state
+	// changes. You should always turn this on when disabling endpoints are enabled.
+	SupportEmail *string `json:"support_email,omitempty"`
+
+	// Url URL is the endpoint's URL prefixed with https. non-https urls are currently
+	// not supported.
+	Url *string `json:"url,omitempty"`
+}
+
+// ModelsCreateSubscription defines model for models.CreateSubscription.
+type ModelsCreateSubscription struct {
+	// AlertConfig Alert configuration
+	AlertConfig *ModelsAlertConfiguration `json:"alert_config,omitempty"`
+
+	// AppId Deprecated but necessary for backward compatibility
+	AppId *string `json:"app_id,omitempty"`
+
+	// EndpointId Destination endpoint ID
+	EndpointId *string `json:"endpoint_id,omitempty"`
+
+	// FilterConfig Filter configuration
+	FilterConfig *ModelsFilterConfiguration `json:"filter_config,omitempty"`
+
+	// Function Convoy supports mutating your request payload using a js function. Use this field
+	// to specify a `transform` function for this purpose. See this[https://docs.getconvoy.io/product-manual/subscriptions#functions] for more
+	Function *string `json:"function,omitempty"`
+
+	// Name Subscription Nme
+	Name *string `json:"name,omitempty"`
+
+	// RateLimitConfig Rate limit configuration
+	RateLimitConfig *ModelsRateLimitConfiguration `json:"rate_limit_config,omitempty"`
+
+	// RetryConfig Retry configuration
+	RetryConfig *ModelsRetryConfiguration `json:"retry_config,omitempty"`
+
+	// SourceId Source Id
+	SourceId *string `json:"source_id,omitempty"`
+}
+
+// ModelsEndpointAuthentication defines model for models.EndpointAuthentication.
+type ModelsEndpointAuthentication struct {
+	ApiKey *ModelsApiKey                        `json:"api_key,omitempty"`
+	Type   *DatastoreEndpointAuthenticationType `json:"type,omitempty"`
+}
+
+// ModelsEndpointResponse defines model for models.EndpointResponse.
+type ModelsEndpointResponse struct {
+	AdvancedSignatures *bool                            `json:"advanced_signatures,omitempty"`
+	Authentication     *DatastoreEndpointAuthentication `json:"authentication,omitempty"`
+	CreatedAt          *string                          `json:"created_at,omitempty"`
+	DeletedAt          *string                          `json:"deleted_at,omitempty"`
+	Description        *string                          `json:"description,omitempty"`
+	Events             *int                             `json:"events,omitempty"`
+	HttpTimeout        *int                             `json:"http_timeout,omitempty"`
+	Name               *string                          `json:"name,omitempty"`
+	OwnerId            *string                          `json:"owner_id,omitempty"`
+	ProjectId          *string                          `json:"project_id,omitempty"`
+	RateLimit          *int                             `json:"rate_limit,omitempty"`
+	RateLimitDuration  *int                             `json:"rate_limit_duration,omitempty"`
+	Secrets            *[]DatastoreSecret               `json:"secrets,omitempty"`
+	SlackWebhookUrl    *string                          `json:"slack_webhook_url,omitempty"`
+	Status             *DatastoreEndpointStatus         `json:"status,omitempty"`
+	SupportEmail       *string                          `json:"support_email,omitempty"`
+	Uid                *string                          `json:"uid,omitempty"`
+	UpdatedAt          *string                          `json:"updated_at,omitempty"`
+	Url                *string                          `json:"url,omitempty"`
+}
+
+// ModelsFS defines model for models.FS.
+type ModelsFS struct {
+	Body    *DatastoreM `json:"body,omitempty"`
+	Headers *DatastoreM `json:"headers,omitempty"`
+}
 
 // ModelsFanoutEvent defines model for models.FanoutEvent.
 type ModelsFanoutEvent struct {
@@ -42,14 +491,69 @@ type ModelsFanoutEvent struct {
 	OwnerId *string `json:"owner_id,omitempty"`
 }
 
+// ModelsFilterConfiguration defines model for models.FilterConfiguration.
+type ModelsFilterConfiguration struct {
+	// EventTypes List of event types that the subscription should match
+	EventTypes *[]string `json:"event_types,omitempty"`
+
+	// Filter Body & Header filters
+	Filter *ModelsFS `json:"filter,omitempty"`
+}
+
+// ModelsRateLimitConfiguration defines model for models.RateLimitConfiguration.
+type ModelsRateLimitConfiguration struct {
+	Count    *int `json:"count,omitempty"`
+	Duration *int `json:"duration,omitempty"`
+}
+
+// ModelsRetryConfiguration defines model for models.RetryConfiguration.
+type ModelsRetryConfiguration struct {
+	// Duration Used to specify a valid Go time duration e.g 10s, 1h3m for how long to wait between event delivery retries
+	Duration *string `json:"duration,omitempty"`
+
+	// IntervalSeconds Used to specify a time in seconds for how long to wait between event delivery retries,
+	IntervalSeconds *int `json:"interval_seconds,omitempty"`
+
+	// RetryCount Used to specify the max number of retries
+	RetryCount *int `json:"retry_count,omitempty"`
+
+	// Type Retry Strategy type
+	Type *DatastoreStrategyProvider `json:"type,omitempty"`
+}
+
+// ModelsSubscriptionResponse defines model for models.SubscriptionResponse.
+type ModelsSubscriptionResponse struct {
+	// AlertConfig subscription config
+	AlertConfig      *DatastoreAlertConfiguration     `json:"alert_config,omitempty"`
+	CreatedAt        *string                          `json:"created_at,omitempty"`
+	DeletedAt        *string                          `json:"deleted_at,omitempty"`
+	DeviceMetadata   *DatastoreDevice                 `json:"device_metadata,omitempty"`
+	EndpointMetadata *DatastoreEndpoint               `json:"endpoint_metadata,omitempty"`
+	FilterConfig     *DatastoreFilterConfiguration    `json:"filter_config,omitempty"`
+	Function         *string                          `json:"function,omitempty"`
+	Name             *string                          `json:"name,omitempty"`
+	RateLimitConfig  *DatastoreRateLimitConfiguration `json:"rate_limit_config,omitempty"`
+	RetryConfig      *DatastoreRetryConfiguration     `json:"retry_config,omitempty"`
+	SourceMetadata   *DatastoreSource                 `json:"source_metadata,omitempty"`
+	Type             *DatastoreSubscriptionType       `json:"type,omitempty"`
+	Uid              *string                          `json:"uid,omitempty"`
+	UpdatedAt        *string                          `json:"updated_at,omitempty"`
+}
+
 // UtilServerResponse defines model for util.ServerResponse.
 type UtilServerResponse struct {
 	Message *string `json:"message,omitempty"`
 	Status  *bool   `json:"status,omitempty"`
 }
 
+// CreateEndpointJSONRequestBody defines body for CreateEndpoint for application/json ContentType.
+type CreateEndpointJSONRequestBody = ModelsCreateEndpoint
+
 // CreateEndpointFanoutEventJSONRequestBody defines body for CreateEndpointFanoutEvent for application/json ContentType.
 type CreateEndpointFanoutEventJSONRequestBody = ModelsFanoutEvent
+
+// CreateSubscriptionJSONRequestBody defines body for CreateSubscription for application/json ContentType.
+type CreateSubscriptionJSONRequestBody = ModelsCreateSubscription
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -124,10 +628,44 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// CreateEndpointWithBody request with any body
+	CreateEndpointWithBody(ctx context.Context, projectID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateEndpoint(ctx context.Context, projectID string, body CreateEndpointJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateEndpointFanoutEventWithBody request with any body
 	CreateEndpointFanoutEventWithBody(ctx context.Context, projectID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	CreateEndpointFanoutEvent(ctx context.Context, projectID string, body CreateEndpointFanoutEventJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateSubscriptionWithBody request with any body
+	CreateSubscriptionWithBody(ctx context.Context, projectID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateSubscription(ctx context.Context, projectID string, body CreateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) CreateEndpointWithBody(ctx context.Context, projectID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateEndpointRequestWithBody(c.Server, projectID, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateEndpoint(ctx context.Context, projectID string, body CreateEndpointJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateEndpointRequest(c.Server, projectID, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) CreateEndpointFanoutEventWithBody(ctx context.Context, projectID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -152,6 +690,77 @@ func (c *Client) CreateEndpointFanoutEvent(ctx context.Context, projectID string
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+func (c *Client) CreateSubscriptionWithBody(ctx context.Context, projectID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateSubscriptionRequestWithBody(c.Server, projectID, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateSubscription(ctx context.Context, projectID string, body CreateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateSubscriptionRequest(c.Server, projectID, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// NewCreateEndpointRequest calls the generic CreateEndpoint builder with application/json body
+func NewCreateEndpointRequest(server string, projectID string, body CreateEndpointJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateEndpointRequestWithBody(server, projectID, "application/json", bodyReader)
+}
+
+// NewCreateEndpointRequestWithBody generates requests for CreateEndpoint with any type of body
+func NewCreateEndpointRequestWithBody(server string, projectID string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectID", runtime.ParamLocationPath, projectID)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/projects/%s/endpoints", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
 }
 
 // NewCreateEndpointFanoutEventRequest calls the generic CreateEndpointFanoutEvent builder with application/json body
@@ -182,6 +791,53 @@ func NewCreateEndpointFanoutEventRequestWithBody(server string, projectID string
 	}
 
 	operationPath := fmt.Sprintf("/v1/projects/%s/events/fanout", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateSubscriptionRequest calls the generic CreateSubscription builder with application/json body
+func NewCreateSubscriptionRequest(server string, projectID string, body CreateSubscriptionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateSubscriptionRequestWithBody(server, projectID, "application/json", bodyReader)
+}
+
+// NewCreateSubscriptionRequestWithBody generates requests for CreateSubscription with any type of body
+func NewCreateSubscriptionRequestWithBody(server string, projectID string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectID", runtime.ParamLocationPath, projectID)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/projects/%s/subscriptions", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -244,16 +900,67 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// CreateEndpointWithBodyWithResponse request with any body
+	CreateEndpointWithBodyWithResponse(ctx context.Context, projectID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateEndpointResponse, error)
+
+	CreateEndpointWithResponse(ctx context.Context, projectID string, body CreateEndpointJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateEndpointResponse, error)
+
 	// CreateEndpointFanoutEventWithBodyWithResponse request with any body
 	CreateEndpointFanoutEventWithBodyWithResponse(ctx context.Context, projectID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateEndpointFanoutEventResponse, error)
 
 	CreateEndpointFanoutEventWithResponse(ctx context.Context, projectID string, body CreateEndpointFanoutEventJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateEndpointFanoutEventResponse, error)
+
+	// CreateSubscriptionWithBodyWithResponse request with any body
+	CreateSubscriptionWithBodyWithResponse(ctx context.Context, projectID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateSubscriptionResponse, error)
+
+	CreateSubscriptionWithResponse(ctx context.Context, projectID string, body CreateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSubscriptionResponse, error)
+}
+
+type CreateEndpointResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *struct {
+		Data    *ModelsEndpointResponse `json:"data,omitempty"`
+		Message *string                 `json:"message,omitempty"`
+		Status  *bool                   `json:"status,omitempty"`
+	}
+	JSON400 *struct {
+		Data    *HandlersStub `json:"data,omitempty"`
+		Message *string       `json:"message,omitempty"`
+		Status  *bool         `json:"status,omitempty"`
+	}
+	JSON401 *struct {
+		Data    *HandlersStub `json:"data,omitempty"`
+		Message *string       `json:"message,omitempty"`
+		Status  *bool         `json:"status,omitempty"`
+	}
+	JSON404 *struct {
+		Data    *HandlersStub `json:"data,omitempty"`
+		Message *string       `json:"message,omitempty"`
+		Status  *bool         `json:"status,omitempty"`
+	}
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateEndpointResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateEndpointResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
 }
 
 type CreateEndpointFanoutEventResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *struct {
+	JSON201      *struct {
 		Data    *HandlersStub `json:"data,omitempty"`
 		Message *string       `json:"message,omitempty"`
 		Status  *bool         `json:"status,omitempty"`
@@ -291,6 +998,64 @@ func (r CreateEndpointFanoutEventResponse) StatusCode() int {
 	return 0
 }
 
+type CreateSubscriptionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *struct {
+		Data    *ModelsSubscriptionResponse `json:"data,omitempty"`
+		Message *string                     `json:"message,omitempty"`
+		Status  *bool                       `json:"status,omitempty"`
+	}
+	JSON400 *struct {
+		Data    *HandlersStub `json:"data,omitempty"`
+		Message *string       `json:"message,omitempty"`
+		Status  *bool         `json:"status,omitempty"`
+	}
+	JSON401 *struct {
+		Data    *HandlersStub `json:"data,omitempty"`
+		Message *string       `json:"message,omitempty"`
+		Status  *bool         `json:"status,omitempty"`
+	}
+	JSON404 *struct {
+		Data    *HandlersStub `json:"data,omitempty"`
+		Message *string       `json:"message,omitempty"`
+		Status  *bool         `json:"status,omitempty"`
+	}
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateSubscriptionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateSubscriptionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// CreateEndpointWithBodyWithResponse request with arbitrary body returning *CreateEndpointResponse
+func (c *ClientWithResponses) CreateEndpointWithBodyWithResponse(ctx context.Context, projectID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateEndpointResponse, error) {
+	rsp, err := c.CreateEndpointWithBody(ctx, projectID, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateEndpointResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateEndpointWithResponse(ctx context.Context, projectID string, body CreateEndpointJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateEndpointResponse, error) {
+	rsp, err := c.CreateEndpoint(ctx, projectID, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateEndpointResponse(rsp)
+}
+
 // CreateEndpointFanoutEventWithBodyWithResponse request with arbitrary body returning *CreateEndpointFanoutEventResponse
 func (c *ClientWithResponses) CreateEndpointFanoutEventWithBodyWithResponse(ctx context.Context, projectID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateEndpointFanoutEventResponse, error) {
 	rsp, err := c.CreateEndpointFanoutEventWithBody(ctx, projectID, contentType, body, reqEditors...)
@@ -308,6 +1073,86 @@ func (c *ClientWithResponses) CreateEndpointFanoutEventWithResponse(ctx context.
 	return ParseCreateEndpointFanoutEventResponse(rsp)
 }
 
+// CreateSubscriptionWithBodyWithResponse request with arbitrary body returning *CreateSubscriptionResponse
+func (c *ClientWithResponses) CreateSubscriptionWithBodyWithResponse(ctx context.Context, projectID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateSubscriptionResponse, error) {
+	rsp, err := c.CreateSubscriptionWithBody(ctx, projectID, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateSubscriptionResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateSubscriptionWithResponse(ctx context.Context, projectID string, body CreateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSubscriptionResponse, error) {
+	rsp, err := c.CreateSubscription(ctx, projectID, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateSubscriptionResponse(rsp)
+}
+
+// ParseCreateEndpointResponse parses an HTTP response from a CreateEndpointWithResponse call
+func ParseCreateEndpointResponse(rsp *http.Response) (*CreateEndpointResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateEndpointResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest struct {
+			Data    *ModelsEndpointResponse `json:"data,omitempty"`
+			Message *string                 `json:"message,omitempty"`
+			Status  *bool                   `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Data    *HandlersStub `json:"data,omitempty"`
+			Message *string       `json:"message,omitempty"`
+			Status  *bool         `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Data    *HandlersStub `json:"data,omitempty"`
+			Message *string       `json:"message,omitempty"`
+			Status  *bool         `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Data    *HandlersStub `json:"data,omitempty"`
+			Message *string       `json:"message,omitempty"`
+			Status  *bool         `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseCreateEndpointFanoutEventResponse parses an HTTP response from a CreateEndpointFanoutEventWithResponse call
 func ParseCreateEndpointFanoutEventResponse(rsp *http.Response) (*CreateEndpointFanoutEventResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -322,7 +1167,7 @@ func ParseCreateEndpointFanoutEventResponse(rsp *http.Response) (*CreateEndpoint
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest struct {
 			Data    *HandlersStub `json:"data,omitempty"`
 			Message *string       `json:"message,omitempty"`
@@ -331,7 +1176,70 @@ func ParseCreateEndpointFanoutEventResponse(rsp *http.Response) (*CreateEndpoint
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Data    *HandlersStub `json:"data,omitempty"`
+			Message *string       `json:"message,omitempty"`
+			Status  *bool         `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Data    *HandlersStub `json:"data,omitempty"`
+			Message *string       `json:"message,omitempty"`
+			Status  *bool         `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Data    *HandlersStub `json:"data,omitempty"`
+			Message *string       `json:"message,omitempty"`
+			Status  *bool         `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateSubscriptionResponse parses an HTTP response from a CreateSubscriptionWithResponse call
+func ParseCreateSubscriptionResponse(rsp *http.Response) (*CreateSubscriptionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateSubscriptionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest struct {
+			Data    *ModelsSubscriptionResponse `json:"data,omitempty"`
+			Message *string                     `json:"message,omitempty"`
+			Status  *bool                       `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest struct {

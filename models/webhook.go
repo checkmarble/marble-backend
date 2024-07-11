@@ -2,72 +2,42 @@ package models
 
 import (
 	"fmt"
+	"net/url"
+	"slices"
 	"time"
 
 	"github.com/guregu/null/v5"
+	"github.com/pkg/errors"
 )
 
-type WebhookEventDeliveryStatus int
+type WebhookEventDeliveryStatus string
 
 const (
 	// In this state, the event delivery has been enqueued to the message broker, but a worker node is yet to pick it up for delivery.
-	Scheduled WebhookEventDeliveryStatus = iota
+	Scheduled WebhookEventDeliveryStatus = "scheduled"
 	// The event has been successfully delivered to the target service.
-	Success
+	Success WebhookEventDeliveryStatus = "success"
 	// The event delivery previously failed and the automatic retries have kicked in
-	Retry
+	Retry WebhookEventDeliveryStatus = "retry"
 	// The event delivery has reached the maximum amount of automatic retries and failed to deliver the event or the endpoint failed to acknowledge delivery
-	Failed
+	Failed WebhookEventDeliveryStatus = "failed"
 )
 
-func (webhookEventDeliveryStatus WebhookEventDeliveryStatus) String() string {
-	switch webhookEventDeliveryStatus {
-	case Scheduled:
-		return "scheduled"
-	case Success:
-		return "success"
-	case Retry:
-		return "retry"
-	case Failed:
-		return "failed"
-	}
-	panic(fmt.Errorf("unknown webhook event delivery status: %d", webhookEventDeliveryStatus))
+var validWebhookEventDeliveryStatus = []WebhookEventDeliveryStatus{
+	Scheduled,
+	Success,
+	Retry,
+	Failed,
 }
 
-func WebhookEventDeliveryStatusFrom(s string) WebhookEventDeliveryStatus {
-	switch s {
-	case "scheduled":
-		return Scheduled
-	case "success":
-		return Success
-	case "retry":
-		return Retry
-	case "failed":
-		return Failed
-	}
-	panic(fmt.Errorf("unknown webhook event delivery status: %s", s))
-}
-
-type WebhookEventType int
+type WebhookEventType string
 
 const (
-	WebhookEventType_CaseStatusUpdated WebhookEventType = iota
+	WebhookEventType_CaseStatusUpdated WebhookEventType = "case_status_updated"
 )
 
-func (webhookEventType WebhookEventType) String() string {
-	switch webhookEventType {
-	case WebhookEventType_CaseStatusUpdated:
-		return "case_status_updated"
-	}
-	panic(fmt.Errorf("unknown webhook event type: %d", webhookEventType))
-}
-
-func WebhookEventTypeFrom(s string) WebhookEventType {
-	switch s {
-	case "case_status_updated":
-		return WebhookEventType_CaseStatusUpdated
-	}
-	panic(fmt.Errorf("unknown webhook event type: %s", s))
+var validWebhookEventTypes = []WebhookEventType{
+	WebhookEventType_CaseStatusUpdated,
 }
 
 type WebhookEvent struct {
@@ -109,4 +79,27 @@ func (f WebhookEventFilters) MergeWithDefaults() WebhookEventFilters {
 		defaultFilters.Limit = f.Limit
 	}
 	return defaultFilters
+}
+
+type WebhookCreate struct {
+	OrganizationId    string
+	PartnerId         null.String
+	EventType         WebhookEventType
+	Secret            string
+	Url               string
+	HttpTimeout       *int
+	RateLimit         *int
+	RateLimitDuration *int
+}
+
+func (input WebhookCreate) Validate() error {
+	if !slices.Contains(validWebhookEventTypes, input.EventType) {
+		return errors.Wrapf(BadParameterError,
+			fmt.Sprintf("invalid event type: %s", input.EventType))
+	}
+	if _, err := url.ParseRequestURI(input.Url); err != nil {
+		return errors.Wrapf(BadParameterError, "invalid Url: %s", input.Url)
+	}
+
+	return nil
 }
