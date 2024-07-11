@@ -1,31 +1,43 @@
 package infra
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 
-	convoy "github.com/frain-dev/convoy-go/v2"
+	convoy "github.com/checkmarble/marble-backend/api-clients/convoy"
 )
 
 type ConvoyRessources struct {
-	convoyClient *convoy.Client
+	projectID    string
+	convoyClient *convoy.ClientWithResponses
 }
 
 func InitializeConvoyRessources(config ConvoyConfiguration) ConvoyRessources {
-	convoyClient := convoy.New(
-		config.APIUrl,
-		config.APIKey,
-		config.ProjectID,
+	convoyClient, err := convoy.NewClientWithResponses(config.APIUrl,
+		convoy.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
+			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", config.APIKey))
+			return nil
+		}),
 	)
+	if err != nil {
+		panic(fmt.Errorf("error initializing convoy client: %w", err))
+	}
 
 	return ConvoyRessources{
 		convoyClient: convoyClient,
+		projectID:    config.ProjectID,
 	}
 }
 
-func (r ConvoyRessources) GetClient() (convoy.Client, error) {
+func (r ConvoyRessources) GetClient() (convoy.ClientWithResponses, error) {
 	client := r.convoyClient
 	if client == nil {
-		return convoy.Client{}, fmt.Errorf("convoy client is not initialized")
+		return convoy.ClientWithResponses{}, fmt.Errorf("convoy client is not initialized")
 	}
 	return *client, nil
+}
+
+func (r ConvoyRessources) GetProjectID() string {
+	return r.projectID
 }
