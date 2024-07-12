@@ -33,7 +33,6 @@ func extractMinimalSetOfIdxFamiliesOneTable(idxFamiliesIn set.Collection[models.
 			var ok bool
 			combined, ok = refineIdxFamilies(idxOut, idxIn)
 			if ok {
-				output = append(output, combined)
 				foundReplacement = true
 				matchIdx = i
 				break
