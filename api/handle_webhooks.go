@@ -4,10 +4,27 @@ import (
 	"net/http"
 
 	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/guregu/null/v5"
 
 	"github.com/gin-gonic/gin"
 )
+
+func (api *API) handleListWebhooks(c *gin.Context) {
+	creds, _ := utils.CredentialsFromCtx(c.Request.Context())
+
+	usecase := api.UsecasesWithCreds(c.Request).NewWebhooksUsecase()
+
+	webhooks, err := usecase.ListWebhooks(c.Request.Context(), creds.OrganizationId, null.StringFromPtr(creds.PartnerId))
+	if presentError(c, err) {
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"webhooks": pure_utils.Map(webhooks, dto.AdaptWebhook),
+	})
+}
 
 func (api *API) handleRegisterWebhook(c *gin.Context) {
 	var data dto.WebhookRegisterBody

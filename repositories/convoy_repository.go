@@ -111,6 +111,98 @@ func (repo ConvoyRepository) RegisterWebhook(ctx context.Context, input models.W
 	return nil
 }
 
+func (repo ConvoyRepository) ListWebhooks(ctx context.Context, organizationId string, partnerId null.String) ([]models.Webhook, error) {
+	projectId := repo.convoyClientProvider.GetProjectID()
+	convoyClient, err := repo.convoyClientProvider.GetClient()
+	if err != nil {
+		return nil, err
+	}
+
+	ownerId := getOwnerId(organizationId, partnerId)
+
+	endpoints, err := convoyClient.GetEndpointsWithResponse(ctx, projectId, &convoy.GetEndpointsParams{
+		OwnerId: &ownerId,
+		PerPage: utils.Ptr(100),
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get convoy endpoints: request error")
+	}
+	if endpoints.JSON200 == nil {
+		err = parseResponseError(endpoints.HTTPResponse.Status, endpoints.Body)
+		return nil, errors.Wrap(err, "can't get convoy endpoints")
+	}
+
+	endpointMap := make(map[string]convoy.ModelsEndpointResponse)
+	endpointIds := make([]string, 0, len(*endpoints.JSON200.Data.Content))
+	for _, convoyEndpoint := range *endpoints.JSON200.Data.Content {
+		endpointIds = append(endpointIds, *convoyEndpoint.Uid)
+		endpointMap[*convoyEndpoint.Uid] = convoyEndpoint
+	}
+
+	subscriptions, err := convoyClient.GetSubscriptionsWithResponse(ctx, projectId, &convoy.GetSubscriptionsParams{
+		EndpointId: &endpointIds,
+		PerPage:    utils.Ptr(100),
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get convoy subscriptions: request error")
+	}
+	if subscriptions.JSON200 == nil {
+		err = parseResponseError(subscriptions.HTTPResponse.Status, subscriptions.Body)
+		return nil, errors.Wrap(err, "can't get convoy subscriptions")
+	}
+
+	webhooks := make([]models.Webhook, 0, len(*subscriptions.JSON200.Data.Content))
+	for _, convoySubscription := range *subscriptions.JSON200.Data.Content {
+		convoyEndpoint, ok := endpointMap[*convoySubscription.EndpointMetadata.Uid]
+		if !ok {
+			return nil, errors.New("can't find convoy endpoint")
+		}
+
+		webhooks = append(webhooks, adaptWebhook(convoyEndpoint, convoySubscription))
+	}
+
+	return webhooks, nil
+}
+
+func adaptSecret(convoySecret convoy.DatastoreSecret) models.Secret {
+	secret := models.Secret{
+		CreatedAt: *convoySecret.CreatedAt,
+		Uid:       *convoySecret.Uid,
+		UpdatedAt: *convoySecret.UpdatedAt,
+		Value:     *convoySecret.Value,
+	}
+	if convoySecret.DeletedAt != nil {
+		secret.DeletedAt = *convoySecret.DeletedAt
+	}
+	if convoySecret.ExpiresAt != nil {
+		secret.ExpiresAt = *convoySecret.ExpiresAt
+	}
+	return secret
+}
+
+func adaptWebhook(
+	convoyEndpoint convoy.ModelsEndpointResponse,
+	convoySubscription convoy.ModelsSubscriptionResponse,
+) models.Webhook {
+	webhook := models.Webhook{
+		SubscriptionId:    *convoySubscription.Uid,
+		EndpointId:        *convoyEndpoint.Uid,
+		EventTypes:        *convoySubscription.FilterConfig.EventTypes,
+		Url:               *convoyEndpoint.Url,
+		HttpTimeout:       convoyEndpoint.HttpTimeout,
+		RateLimit:         convoyEndpoint.RateLimit,
+		RateLimitDuration: convoyEndpoint.RateLimitDuration,
+	}
+
+	if convoyEndpoint.Secrets != nil {
+		for _, convoySecret := range *convoyEndpoint.Secrets {
+			webhook.Secrets = append(webhook.Secrets, adaptSecret(convoySecret))
+		}
+	}
+
+	return webhook
+}
+
 func parseResponseError(status string, body []byte) error {
 	var dest struct {
 		Message *string `json:"message,omitempty"`

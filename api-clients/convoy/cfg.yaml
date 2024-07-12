@@ -9,3 +9,5 @@ output-options:
     - CreateEndpointFanoutEvent
     - CreateEndpoint
     - CreateSubscription
+    - GetEndpoints
+    - GetSubscriptions

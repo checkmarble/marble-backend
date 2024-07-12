@@ -89,6 +89,18 @@ const (
 	NoopVerifier      DatastoreVerifierType = "noop"
 )
 
+// Defines values for GetEndpointsParamsDirection.
+const (
+	GetEndpointsParamsDirectionNext GetEndpointsParamsDirection = "next"
+	GetEndpointsParamsDirectionPrev GetEndpointsParamsDirection = "prev"
+)
+
+// Defines values for GetSubscriptionsParamsDirection.
+const (
+	GetSubscriptionsParamsDirectionNext GetSubscriptionsParamsDirection = "next"
+	GetSubscriptionsParamsDirectionPrev GetSubscriptionsParamsDirection = "prev"
+)
+
 // DatastoreAlertConfiguration defines model for datastore.AlertConfiguration.
 type DatastoreAlertConfiguration struct {
 	Count     *int    `json:"count,omitempty"`
@@ -233,6 +245,15 @@ type DatastoreKafkaPubSubConfig struct {
 
 // DatastoreM defines model for datastore.M.
 type DatastoreM map[string]interface{}
+
+// DatastorePaginationData defines model for datastore.PaginationData.
+type DatastorePaginationData struct {
+	HasNextPage    *bool   `json:"has_next_page,omitempty"`
+	HasPrevPage    *bool   `json:"has_prev_page,omitempty"`
+	NextPageCursor *string `json:"next_page_cursor,omitempty"`
+	PerPage        *int    `json:"per_page,omitempty"`
+	PrevPageCursor *string `json:"prev_page_cursor,omitempty"`
+}
 
 // DatastoreProviderConfig defines model for datastore.ProviderConfig.
 type DatastoreProviderConfig struct {
@@ -500,6 +521,12 @@ type ModelsFilterConfiguration struct {
 	Filter *ModelsFS `json:"filter,omitempty"`
 }
 
+// ModelsPagedResponse defines model for models.PagedResponse.
+type ModelsPagedResponse struct {
+	Content    *interface{}             `json:"content,omitempty"`
+	Pagination *DatastorePaginationData `json:"pagination,omitempty"`
+}
+
 // ModelsRateLimitConfiguration defines model for models.RateLimitConfiguration.
 type ModelsRateLimitConfiguration struct {
 	Count    *int `json:"count,omitempty"`
@@ -545,6 +572,58 @@ type UtilServerResponse struct {
 	Message *string `json:"message,omitempty"`
 	Status  *bool   `json:"status,omitempty"`
 }
+
+// GetEndpointsParams defines parameters for GetEndpoints.
+type GetEndpointsParams struct {
+	Direction *GetEndpointsParamsDirection `form:"direction,omitempty" json:"direction,omitempty"`
+
+	// NextPageCursor A pagination cursor to fetch the next page of a list
+	NextPageCursor *string `form:"next_page_cursor,omitempty" json:"next_page_cursor,omitempty"`
+
+	// OwnerId The owner ID of the endpoint
+	OwnerId *string `form:"ownerId,omitempty" json:"ownerId,omitempty"`
+
+	// PerPage The number of items to return per page
+	PerPage *int `form:"perPage,omitempty" json:"perPage,omitempty"`
+
+	// PrevPageCursor A pagination cursor to fetch the previous page of a list
+	PrevPageCursor *string `form:"prev_page_cursor,omitempty" json:"prev_page_cursor,omitempty"`
+
+	// Q The name of the endpoint
+	Q *string `form:"q,omitempty" json:"q,omitempty"`
+
+	// Sort Sort order, values are `ASC` or `DESC`, defaults to `DESC`
+	Sort *string `form:"sort,omitempty" json:"sort,omitempty"`
+}
+
+// GetEndpointsParamsDirection defines parameters for GetEndpoints.
+type GetEndpointsParamsDirection string
+
+// GetSubscriptionsParams defines parameters for GetSubscriptions.
+type GetSubscriptionsParams struct {
+	Direction *GetSubscriptionsParamsDirection `form:"direction,omitempty" json:"direction,omitempty"`
+
+	// EndpointId A list of endpointIDs to filter by
+	EndpointId *[]string `form:"endpointId,omitempty" json:"endpointId,omitempty"`
+
+	// Name Subscription name to filter by
+	Name *string `form:"name,omitempty" json:"name,omitempty"`
+
+	// NextPageCursor A pagination cursor to fetch the next page of a list
+	NextPageCursor *string `form:"next_page_cursor,omitempty" json:"next_page_cursor,omitempty"`
+
+	// PerPage The number of items to return per page
+	PerPage *int `form:"perPage,omitempty" json:"perPage,omitempty"`
+
+	// PrevPageCursor A pagination cursor to fetch the previous page of a list
+	PrevPageCursor *string `form:"prev_page_cursor,omitempty" json:"prev_page_cursor,omitempty"`
+
+	// Sort Sort order, values are `ASC` or `DESC`, defaults to `DESC`
+	Sort *string `form:"sort,omitempty" json:"sort,omitempty"`
+}
+
+// GetSubscriptionsParamsDirection defines parameters for GetSubscriptions.
+type GetSubscriptionsParamsDirection string
 
 // CreateEndpointJSONRequestBody defines body for CreateEndpoint for application/json ContentType.
 type CreateEndpointJSONRequestBody = ModelsCreateEndpoint
@@ -628,6 +707,9 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// GetEndpoints request
+	GetEndpoints(ctx context.Context, projectID string, params *GetEndpointsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateEndpointWithBody request with any body
 	CreateEndpointWithBody(ctx context.Context, projectID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -638,10 +720,25 @@ type ClientInterface interface {
 
 	CreateEndpointFanoutEvent(ctx context.Context, projectID string, body CreateEndpointFanoutEventJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetSubscriptions request
+	GetSubscriptions(ctx context.Context, projectID string, params *GetSubscriptionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateSubscriptionWithBody request with any body
 	CreateSubscriptionWithBody(ctx context.Context, projectID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	CreateSubscription(ctx context.Context, projectID string, body CreateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) GetEndpoints(ctx context.Context, projectID string, params *GetEndpointsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetEndpointsRequest(c.Server, projectID, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) CreateEndpointWithBody(ctx context.Context, projectID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -692,6 +789,18 @@ func (c *Client) CreateEndpointFanoutEvent(ctx context.Context, projectID string
 	return c.Client.Do(req)
 }
 
+func (c *Client) GetSubscriptions(ctx context.Context, projectID string, params *GetSubscriptionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetSubscriptionsRequest(c.Server, projectID, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) CreateSubscriptionWithBody(ctx context.Context, projectID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateSubscriptionRequestWithBody(c.Server, projectID, contentType, body)
 	if err != nil {
@@ -714,6 +823,158 @@ func (c *Client) CreateSubscription(ctx context.Context, projectID string, body 
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewGetEndpointsRequest generates requests for GetEndpoints
+func NewGetEndpointsRequest(server string, projectID string, params *GetEndpointsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectID", runtime.ParamLocationPath, projectID)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/projects/%s/endpoints", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Direction != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, *params.Direction); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.NextPageCursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "next_page_cursor", runtime.ParamLocationQuery, *params.NextPageCursor); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.OwnerId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "ownerId", runtime.ParamLocationQuery, *params.OwnerId); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "perPage", runtime.ParamLocationQuery, *params.PerPage); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.PrevPageCursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "prev_page_cursor", runtime.ParamLocationQuery, *params.PrevPageCursor); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Q != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "q", runtime.ParamLocationQuery, *params.Q); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Sort != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, *params.Sort); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }
 
 // NewCreateEndpointRequest calls the generic CreateEndpoint builder with application/json body
@@ -810,6 +1071,158 @@ func NewCreateEndpointFanoutEventRequestWithBody(server string, projectID string
 	return req, nil
 }
 
+// NewGetSubscriptionsRequest generates requests for GetSubscriptions
+func NewGetSubscriptionsRequest(server string, projectID string, params *GetSubscriptionsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectID", runtime.ParamLocationPath, projectID)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/projects/%s/subscriptions", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Direction != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, *params.Direction); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.EndpointId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "endpointId", runtime.ParamLocationQuery, *params.EndpointId); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Name != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "name", runtime.ParamLocationQuery, *params.Name); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.NextPageCursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "next_page_cursor", runtime.ParamLocationQuery, *params.NextPageCursor); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.PerPage != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "perPage", runtime.ParamLocationQuery, *params.PerPage); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.PrevPageCursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "prev_page_cursor", runtime.ParamLocationQuery, *params.PrevPageCursor); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Sort != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, *params.Sort); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewCreateSubscriptionRequest calls the generic CreateSubscription builder with application/json body
 func NewCreateSubscriptionRequest(server string, projectID string, body CreateSubscriptionJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -900,6 +1313,9 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// GetEndpointsWithResponse request
+	GetEndpointsWithResponse(ctx context.Context, projectID string, params *GetEndpointsParams, reqEditors ...RequestEditorFn) (*GetEndpointsResponse, error)
+
 	// CreateEndpointWithBodyWithResponse request with any body
 	CreateEndpointWithBodyWithResponse(ctx context.Context, projectID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateEndpointResponse, error)
 
@@ -910,10 +1326,57 @@ type ClientWithResponsesInterface interface {
 
 	CreateEndpointFanoutEventWithResponse(ctx context.Context, projectID string, body CreateEndpointFanoutEventJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateEndpointFanoutEventResponse, error)
 
+	// GetSubscriptionsWithResponse request
+	GetSubscriptionsWithResponse(ctx context.Context, projectID string, params *GetSubscriptionsParams, reqEditors ...RequestEditorFn) (*GetSubscriptionsResponse, error)
+
 	// CreateSubscriptionWithBodyWithResponse request with any body
 	CreateSubscriptionWithBodyWithResponse(ctx context.Context, projectID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateSubscriptionResponse, error)
 
 	CreateSubscriptionWithResponse(ctx context.Context, projectID string, body CreateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSubscriptionResponse, error)
+}
+
+type GetEndpointsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *struct {
+		Data *struct {
+			Content    *[]ModelsEndpointResponse `json:"content,omitempty"`
+			Pagination *DatastorePaginationData  `json:"pagination,omitempty"`
+		} `json:"data,omitempty"`
+		Message *string `json:"message,omitempty"`
+		Status  *bool   `json:"status,omitempty"`
+	}
+	JSON400 *struct {
+		Data    *HandlersStub `json:"data,omitempty"`
+		Message *string       `json:"message,omitempty"`
+		Status  *bool         `json:"status,omitempty"`
+	}
+	JSON401 *struct {
+		Data    *HandlersStub `json:"data,omitempty"`
+		Message *string       `json:"message,omitempty"`
+		Status  *bool         `json:"status,omitempty"`
+	}
+	JSON404 *struct {
+		Data    *HandlersStub `json:"data,omitempty"`
+		Message *string       `json:"message,omitempty"`
+		Status  *bool         `json:"status,omitempty"`
+	}
+}
+
+// Status returns HTTPResponse.Status
+func (r GetEndpointsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetEndpointsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
 }
 
 type CreateEndpointResponse struct {
@@ -998,6 +1461,50 @@ func (r CreateEndpointFanoutEventResponse) StatusCode() int {
 	return 0
 }
 
+type GetSubscriptionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *struct {
+		Data *struct {
+			Content    *[]ModelsSubscriptionResponse `json:"content,omitempty"`
+			Pagination *DatastorePaginationData      `json:"pagination,omitempty"`
+		} `json:"data,omitempty"`
+		Message *string `json:"message,omitempty"`
+		Status  *bool   `json:"status,omitempty"`
+	}
+	JSON400 *struct {
+		Data    *HandlersStub `json:"data,omitempty"`
+		Message *string       `json:"message,omitempty"`
+		Status  *bool         `json:"status,omitempty"`
+	}
+	JSON401 *struct {
+		Data    *HandlersStub `json:"data,omitempty"`
+		Message *string       `json:"message,omitempty"`
+		Status  *bool         `json:"status,omitempty"`
+	}
+	JSON404 *struct {
+		Data    *HandlersStub `json:"data,omitempty"`
+		Message *string       `json:"message,omitempty"`
+		Status  *bool         `json:"status,omitempty"`
+	}
+}
+
+// Status returns HTTPResponse.Status
+func (r GetSubscriptionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetSubscriptionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type CreateSubscriptionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -1039,6 +1546,15 @@ func (r CreateSubscriptionResponse) StatusCode() int {
 	return 0
 }
 
+// GetEndpointsWithResponse request returning *GetEndpointsResponse
+func (c *ClientWithResponses) GetEndpointsWithResponse(ctx context.Context, projectID string, params *GetEndpointsParams, reqEditors ...RequestEditorFn) (*GetEndpointsResponse, error) {
+	rsp, err := c.GetEndpoints(ctx, projectID, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetEndpointsResponse(rsp)
+}
+
 // CreateEndpointWithBodyWithResponse request with arbitrary body returning *CreateEndpointResponse
 func (c *ClientWithResponses) CreateEndpointWithBodyWithResponse(ctx context.Context, projectID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateEndpointResponse, error) {
 	rsp, err := c.CreateEndpointWithBody(ctx, projectID, contentType, body, reqEditors...)
@@ -1073,6 +1589,15 @@ func (c *ClientWithResponses) CreateEndpointFanoutEventWithResponse(ctx context.
 	return ParseCreateEndpointFanoutEventResponse(rsp)
 }
 
+// GetSubscriptionsWithResponse request returning *GetSubscriptionsResponse
+func (c *ClientWithResponses) GetSubscriptionsWithResponse(ctx context.Context, projectID string, params *GetSubscriptionsParams, reqEditors ...RequestEditorFn) (*GetSubscriptionsResponse, error) {
+	rsp, err := c.GetSubscriptions(ctx, projectID, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetSubscriptionsResponse(rsp)
+}
+
 // CreateSubscriptionWithBodyWithResponse request with arbitrary body returning *CreateSubscriptionResponse
 func (c *ClientWithResponses) CreateSubscriptionWithBodyWithResponse(ctx context.Context, projectID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateSubscriptionResponse, error) {
 	rsp, err := c.CreateSubscriptionWithBody(ctx, projectID, contentType, body, reqEditors...)
@@ -1088,6 +1613,72 @@ func (c *ClientWithResponses) CreateSubscriptionWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseCreateSubscriptionResponse(rsp)
+}
+
+// ParseGetEndpointsResponse parses an HTTP response from a GetEndpointsWithResponse call
+func ParseGetEndpointsResponse(rsp *http.Response) (*GetEndpointsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetEndpointsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Data *struct {
+				Content    *[]ModelsEndpointResponse `json:"content,omitempty"`
+				Pagination *DatastorePaginationData  `json:"pagination,omitempty"`
+			} `json:"data,omitempty"`
+			Message *string `json:"message,omitempty"`
+			Status  *bool   `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Data    *HandlersStub `json:"data,omitempty"`
+			Message *string       `json:"message,omitempty"`
+			Status  *bool         `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Data    *HandlersStub `json:"data,omitempty"`
+			Message *string       `json:"message,omitempty"`
+			Status  *bool         `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Data    *HandlersStub `json:"data,omitempty"`
+			Message *string       `json:"message,omitempty"`
+			Status  *bool         `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
 }
 
 // ParseCreateEndpointResponse parses an HTTP response from a CreateEndpointWithResponse call
@@ -1177,6 +1768,72 @@ func ParseCreateEndpointFanoutEventResponse(rsp *http.Response) (*CreateEndpoint
 			return nil, err
 		}
 		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Data    *HandlersStub `json:"data,omitempty"`
+			Message *string       `json:"message,omitempty"`
+			Status  *bool         `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Data    *HandlersStub `json:"data,omitempty"`
+			Message *string       `json:"message,omitempty"`
+			Status  *bool         `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Data    *HandlersStub `json:"data,omitempty"`
+			Message *string       `json:"message,omitempty"`
+			Status  *bool         `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetSubscriptionsResponse parses an HTTP response from a GetSubscriptionsWithResponse call
+func ParseGetSubscriptionsResponse(rsp *http.Response) (*GetSubscriptionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetSubscriptionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Data *struct {
+				Content    *[]ModelsSubscriptionResponse `json:"content,omitempty"`
+				Pagination *DatastorePaginationData      `json:"pagination,omitempty"`
+			} `json:"data,omitempty"`
+			Message *string `json:"message,omitempty"`
+			Status  *bool   `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest struct {
