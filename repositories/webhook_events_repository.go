@@ -87,8 +87,8 @@ func (repo MarbleDbRepository) CreateWebhookEvent(
 				models.Scheduled,
 				input.OrganizationId,
 				input.PartnerId.Ptr(),
-				input.EventContent.GetType(),
-				input.EventContent.GetData(),
+				input.EventContent.Type,
+				input.EventContent.Data,
 			),
 	)
 	return err

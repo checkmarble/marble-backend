@@ -48,9 +48,9 @@ func ParseWebhookEventType(input string) (WebhookEventType, error) {
 	return "", errors.New(fmt.Sprintf("invalid webhook event type: %s", input))
 }
 
-type WebhookEventContent interface {
-	GetType() WebhookEventType
-	GetData() map[string]any
+type WebhookEventContent struct {
+	Type WebhookEventType
+	Data map[string]any
 }
 
 type WebhookEvent struct {
@@ -116,36 +116,11 @@ func (input WebhookRegister) Validate() error {
 	return nil
 }
 
-type webhookEventContentImpl struct {
-	Type WebhookEventType
-	Data map[string]any
-}
-
-func (c webhookEventContentImpl) GetType() WebhookEventType {
-	return c.Type
-}
-
-func (c webhookEventContentImpl) GetData() map[string]any {
-	return c.Data
-}
-
-func WebhookEventContentFrom(eventType WebhookEventType, data map[string]any) WebhookEventContent {
-	return webhookEventContentImpl{
-		Type: eventType,
-		Data: data,
-	}
-}
-
-type WebhookEventCaseStatusUpdated struct {
-	CaseStatus CaseStatus
-}
-
-func (c WebhookEventCaseStatusUpdated) GetType() WebhookEventType {
-	return WebhookEventType_CaseStatusUpdated
-}
-
-func (c WebhookEventCaseStatusUpdated) GetData() map[string]any {
-	return map[string]any{
-		"case_status": c.CaseStatus,
+func NewWebhookEventCaseStatusUpdated(caseStatus CaseStatus) WebhookEventContent {
+	return WebhookEventContent{
+		Type: WebhookEventType_CaseStatusUpdated,
+		Data: map[string]any{
+			"case_status": caseStatus,
+		},
 	}
 }

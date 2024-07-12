@@ -30,8 +30,8 @@ func getOwnerId(organizationId string, partnerId null.String) string {
 
 // Ensure event type is included in the event data
 func getEventContent(eventContent models.WebhookEventContent) (string, map[string]interface{}) {
-	eventType := string(eventContent.GetType())
-	eventData := eventContent.GetData()
+	eventType := string(eventContent.Type)
+	eventData := eventContent.Data
 	eventData["event_type"] = eventType
 	return eventType, eventData
 }
