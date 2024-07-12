@@ -116,3 +116,23 @@ func NewWebhookEventCaseStatusUpdated(caseStatus CaseStatus) WebhookEventContent
 		},
 	}
 }
+
+type Webhook struct {
+	EndpointId        string
+	SubscriptionId    string
+	EventTypes        []string
+	Secrets           []Secret
+	Url               string
+	HttpTimeout       *int
+	RateLimit         *int
+	RateLimitDuration *int
+}
+
+type Secret struct {
+	CreatedAt string
+	DeletedAt string
+	ExpiresAt string
+	Uid       string
+	UpdatedAt string
+	Value     string
+}

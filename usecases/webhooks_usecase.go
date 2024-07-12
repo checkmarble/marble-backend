@@ -13,6 +13,7 @@ import (
 )
 
 type convoyWebhooksRepository interface {
+	ListWebhooks(ctx context.Context, organizationId string, partnerId null.String) ([]models.Webhook, error)
 	RegisterWebhook(ctx context.Context, input models.WebhookRegister) error
 }
 
@@ -39,6 +40,20 @@ func NewWebhooksUsecase(
 		transactionFactory: transactionFactory,
 		convoyRepository:   convoyRepository,
 	}
+}
+
+func (usecase WebhooksUsecase) ListWebhooks(ctx context.Context, organizationId string, partnerId null.String) ([]models.Webhook, error) {
+	err := usecase.enforceSecurity.CanManageWebhook(ctx, organizationId, partnerId)
+	if err != nil {
+		return nil, err
+	}
+
+	webhooks, err := usecase.convoyRepository.ListWebhooks(ctx, organizationId, partnerId)
+	if err != nil {
+		return nil, errors.Wrap(err, "error listing webhooks")
+	}
+
+	return webhooks, nil
 }
 
 func (usecase WebhooksUsecase) RegisterWebhook(
