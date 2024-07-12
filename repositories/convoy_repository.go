@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/checkmarble/marble-backend/api-clients/convoy"
 	"github.com/checkmarble/marble-backend/models"
@@ -27,6 +28,14 @@ func getOwnerId(organizationId string, partnerId null.String) string {
 	return fmt.Sprintf("org:%s", organizationId)
 }
 
+// Ensure event type is included in the event data
+func getEventContent(eventContent models.WebhookEventContent) (string, map[string]interface{}) {
+	eventType := string(eventContent.GetType())
+	eventData := eventContent.GetData()
+	eventData["event_type"] = eventType
+	return eventType, eventData
+}
+
 func (repo ConvoyRepository) SendWebhookEvent(ctx context.Context, webhookEvent models.WebhookEvent) error {
 	projectId := repo.convoyClientProvider.GetProjectID()
 	convoyClient, err := repo.convoyClientProvider.GetClient()
@@ -35,21 +44,25 @@ func (repo ConvoyRepository) SendWebhookEvent(ctx context.Context, webhookEvent 
 	}
 
 	ownerId := getOwnerId(webhookEvent.OrganizationId, webhookEvent.PartnerId)
-	eventType := string(webhookEvent.EventType)
+	eventType, eventData := getEventContent(webhookEvent.EventContent)
 
-	_, err = convoyClient.CreateEndpointFanoutEventWithResponse(ctx, projectId, convoy.ModelsFanoutEvent{
+	fanoutEvent, err := convoyClient.CreateEndpointFanoutEventWithResponse(ctx, projectId, convoy.ModelsFanoutEvent{
 		OwnerId:        &ownerId,
 		EventType:      &eventType,
 		IdempotencyKey: &webhookEvent.Id,
-		Data:           &webhookEvent.EventData,
+		Data:           &eventData,
 	})
 	if err != nil {
-		return errors.Wrap(err, "can't create convoy event")
+		return errors.Wrap(err, "can't create convoy event: request error")
 	}
+	if fanoutEvent.JSON201 == nil {
+		return errors.New("can't create convoy event: response error")
+	}
+
 	return nil
 }
 
-func (repo ConvoyRepository) CreateWebhook(ctx context.Context, input models.WebhookCreate) error {
+func (repo ConvoyRepository) RegisterWebhook(ctx context.Context, input models.WebhookRegister) error {
 	projectId := repo.convoyClientProvider.GetProjectID()
 	convoyClient, err := repo.convoyClientProvider.GetClient()
 	if err != nil {
@@ -57,10 +70,15 @@ func (repo ConvoyRepository) CreateWebhook(ctx context.Context, input models.Web
 	}
 
 	ownerId := getOwnerId(input.OrganizationId, input.PartnerId)
-	eventType := string(input.EventType)
+
+	eventLabel := "all-events"
+	if len(input.EventTypes) > 0 {
+		eventLabel = strings.Join(input.EventTypes, ",")
+	}
+	name := fmt.Sprintf("%s|%s", ownerId, eventLabel)
 
 	endpoint, err := convoyClient.CreateEndpointWithResponse(ctx, projectId, convoy.ModelsCreateEndpoint{
-		Name:              &eventType,
+		Name:              &name,
 		OwnerId:           &ownerId,
 		Url:               &input.Url,
 		Secret:            &input.Secret,
@@ -69,14 +87,17 @@ func (repo ConvoyRepository) CreateWebhook(ctx context.Context, input models.Web
 		RateLimitDuration: input.RateLimitDuration,
 	})
 	if err != nil {
-		return errors.Wrap(err, "can't create convoy endpoint")
+		return errors.Wrap(err, "can't create convoy endpoint: request error")
+	}
+	if endpoint.JSON201 == nil {
+		return errors.New("can't create convoy endpoint: response error")
 	}
 
-	_, err = convoyClient.CreateSubscriptionWithResponse(ctx, projectId, convoy.ModelsCreateSubscription{
-		Name:       utils.Ptr(fmt.Sprintf("%s-%s", ownerId, input.EventType)),
+	subscription, err := convoyClient.CreateSubscriptionWithResponse(ctx, projectId, convoy.ModelsCreateSubscription{
+		Name:       &name,
 		EndpointId: endpoint.JSON201.Data.Uid,
 		FilterConfig: &convoy.ModelsFilterConfiguration{
-			EventTypes: &[]string{eventType},
+			EventTypes: &input.EventTypes,
 		},
 		RetryConfig: &convoy.ModelsRetryConfiguration{
 			Type:       utils.Ptr(convoy.ExponentialStrategyProvider),
@@ -85,7 +106,10 @@ func (repo ConvoyRepository) CreateWebhook(ctx context.Context, input models.Web
 		},
 	})
 	if err != nil {
-		return errors.Wrap(err, "can't create convoy subscription")
+		return errors.Wrap(err, "can't create convoy subscription: request error")
+	}
+	if subscription.JSON201 == nil {
+		return errors.New("can't create convoy subscription: response error")
 	}
 
 	return nil

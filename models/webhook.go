@@ -3,7 +3,6 @@ package models
 import (
 	"fmt"
 	"net/url"
-	"slices"
 	"time"
 
 	"github.com/guregu/null/v5"
@@ -40,6 +39,20 @@ var validWebhookEventTypes = []WebhookEventType{
 	WebhookEventType_CaseStatusUpdated,
 }
 
+func ParseWebhookEventType(input string) (WebhookEventType, error) {
+	for _, eventType := range validWebhookEventTypes {
+		if eventType == WebhookEventType(input) {
+			return eventType, nil
+		}
+	}
+	return "", errors.New(fmt.Sprintf("invalid webhook event type: %s", input))
+}
+
+type WebhookEventContent interface {
+	GetType() WebhookEventType
+	GetData() map[string]any
+}
+
 type WebhookEvent struct {
 	Id               string
 	CreatedAt        time.Time
@@ -48,15 +61,13 @@ type WebhookEvent struct {
 	DeliveryStatus   WebhookEventDeliveryStatus
 	OrganizationId   string
 	PartnerId        null.String
-	EventType        WebhookEventType
-	EventData        map[string]any
+	EventContent     WebhookEventContent
 }
 
 type WebhookEventCreate struct {
 	OrganizationId string
 	PartnerId      null.String
-	EventType      WebhookEventType
-	EventData      map[string]any
+	EventContent   WebhookEventContent
 }
 
 type WebhookEventUpdate struct {
@@ -81,10 +92,10 @@ func (f WebhookEventFilters) MergeWithDefaults() WebhookEventFilters {
 	return defaultFilters
 }
 
-type WebhookCreate struct {
+type WebhookRegister struct {
 	OrganizationId    string
 	PartnerId         null.String
-	EventType         WebhookEventType
+	EventTypes        []string
 	Secret            string
 	Url               string
 	HttpTimeout       *int
@@ -92,14 +103,49 @@ type WebhookCreate struct {
 	RateLimitDuration *int
 }
 
-func (input WebhookCreate) Validate() error {
-	if !slices.Contains(validWebhookEventTypes, input.EventType) {
-		return errors.Wrapf(BadParameterError,
-			fmt.Sprintf("invalid event type: %s", input.EventType))
+func (input WebhookRegister) Validate() error {
+	for _, eventType := range input.EventTypes {
+		if _, err := ParseWebhookEventType(eventType); err != nil {
+			return errors.Wrapf(BadParameterError, "invalid event type: %s", eventType)
+		}
 	}
 	if _, err := url.ParseRequestURI(input.Url); err != nil {
 		return errors.Wrapf(BadParameterError, "invalid Url: %s", input.Url)
 	}
 
 	return nil
+}
+
+type webhookEventContentImpl struct {
+	Type WebhookEventType
+	Data map[string]any
+}
+
+func (c webhookEventContentImpl) GetType() WebhookEventType {
+	return c.Type
+}
+
+func (c webhookEventContentImpl) GetData() map[string]any {
+	return c.Data
+}
+
+func WebhookEventContentFrom(eventType WebhookEventType, data map[string]any) WebhookEventContent {
+	return webhookEventContentImpl{
+		Type: eventType,
+		Data: data,
+	}
+}
+
+type WebhookEventCaseStatusUpdated struct {
+	CaseStatus CaseStatus
+}
+
+func (c WebhookEventCaseStatusUpdated) GetType() WebhookEventType {
+	return WebhookEventType_CaseStatusUpdated
+}
+
+func (c WebhookEventCaseStatusUpdated) GetData() map[string]any {
+	return map[string]any{
+		"case_status": c.CaseStatus,
+	}
 }

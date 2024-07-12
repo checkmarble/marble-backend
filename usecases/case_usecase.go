@@ -283,11 +283,11 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string,
 		}
 
 		// TODO(webhook): integration test for webhooks, refactor when webhooks are fully implemented
-		if updateCaseAttributes.Status != "" {
+		eventContent := webhookEventCaseUpdatedFrom(updateCaseAttributes)
+		if eventContent != nil {
 			err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 				OrganizationId: updatedCase.OrganizationId,
-				EventType:      models.WebhookEventType_CaseStatusUpdated,
-				EventData:      map[string]any{"case_status": updatedCase.Status},
+				EventContent:   eventContent,
 			})
 			if err != nil {
 				return models.Case{}, err
@@ -302,6 +302,15 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string,
 
 	trackCaseUpdatedEvents(ctx, updatedCase.Id, updateCaseAttributes)
 	return updatedCase, nil
+}
+
+func webhookEventCaseUpdatedFrom(updateCaseAttributes models.UpdateCaseAttributes) models.WebhookEventContent {
+	if updateCaseAttributes.Status != "" {
+		return models.WebhookEventCaseStatusUpdated{
+			CaseStatus: updateCaseAttributes.Status,
+		}
+	}
+	return nil
 }
 
 func isIdenticalCaseUpdate(updateCaseAttributes models.UpdateCaseAttributes, c models.Case) bool {

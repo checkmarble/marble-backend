@@ -42,7 +42,9 @@ func AdaptWebhookEvent(db DBWebhookEvent) (models.WebhookEvent, error) {
 		DeliveryStatus:   models.WebhookEventDeliveryStatus(db.DeliveryStatus),
 		OrganizationId:   db.OrganizationId,
 		PartnerId:        null.NewString(db.PartnerId.String, db.PartnerId.Valid),
-		EventType:        models.WebhookEventType(db.EventType),
-		EventData:        eventData,
+		EventContent: models.WebhookEventContentFrom(
+			models.WebhookEventType(db.EventType),
+			eventData,
+		),
 	}, nil
 }
