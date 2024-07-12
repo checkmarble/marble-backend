@@ -172,5 +172,5 @@ func (api *API) routes(auth Authentication, tokenHandler TokenHandler) {
 	router.PATCH("/licenses/:license_id", api.handleUpdateLicense)
 	router.GET("/licenses/:license_id", api.handleGetLicenseById)
 
-	router.POST("/webhooks", api.handleCreateWebhook)
+	router.POST("/webhooks", api.handleRegisterWebhook)
 }

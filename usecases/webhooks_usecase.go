@@ -2,6 +2,9 @@ package usecases
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
@@ -10,7 +13,7 @@ import (
 )
 
 type convoyWebhooksRepository interface {
-	CreateWebhook(ctx context.Context, input models.WebhookCreate) error
+	RegisterWebhook(ctx context.Context, input models.WebhookRegister) error
 }
 
 type enforceSecurityWebhook interface {
@@ -38,9 +41,9 @@ func NewWebhooksUsecase(
 	}
 }
 
-func (usecase WebhooksUsecase) CreateWebhook(
+func (usecase WebhooksUsecase) RegisterWebhook(
 	ctx context.Context,
-	input models.WebhookCreate,
+	input models.WebhookRegister,
 ) error {
 	err := usecase.enforceSecurity.CanManageWebhook(ctx, input.OrganizationId, input.PartnerId)
 	if err != nil {
@@ -51,13 +54,21 @@ func (usecase WebhooksUsecase) CreateWebhook(
 		return err
 	}
 
-	// TODO(webhook): generate secret
-	input.Secret = "secret"
+	input.Secret = generateSecret()
 
-	err = usecase.convoyRepository.CreateWebhook(ctx, input)
+	err = usecase.convoyRepository.RegisterWebhook(ctx, input)
 	if err != nil {
-		return errors.Wrap(err, "error creating webhook event")
+		return errors.Wrap(err, "error registering webhook")
 	}
 
 	return nil
+}
+
+func generateSecret() string {
+	key := make([]byte, 32)
+	_, err := rand.Read(key)
+	if err != nil {
+		panic(fmt.Errorf("generateSecret: %w", err))
+	}
+	return hex.EncodeToString(key)
 }

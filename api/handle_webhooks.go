@@ -9,8 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (api *API) handleCreateWebhook(c *gin.Context) {
-	var data dto.WebhookCreateBody
+func (api *API) handleRegisterWebhook(c *gin.Context) {
+	var data dto.WebhookRegisterBody
 	if err := c.ShouldBindJSON(&data); err != nil {
 		c.Status(http.StatusBadRequest)
 		return
@@ -20,7 +20,7 @@ func (api *API) handleCreateWebhook(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewWebhooksUsecase()
 
-	err := usecase.CreateWebhook(c.Request.Context(), dto.AdaptWebhookCreate(
+	err := usecase.RegisterWebhook(c.Request.Context(), dto.AdaptWebhookRegister(
 		creds.OrganizationId,
 		creds.PartnerId,
 		data,
