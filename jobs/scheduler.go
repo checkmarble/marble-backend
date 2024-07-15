@@ -43,7 +43,7 @@ func RunScheduler(ctx context.Context, usecases usecases.Usecases) {
 		return errToReturnCode(err), err
 	})
 
-	taskr.Task("* * * * *", func(ctx context.Context) (int, error) {
+	taskr.Task("*/10 * * * *", func(ctx context.Context) (int, error) {
 		logger := utils.LoggerFromContext(ctx).With("job", "send_webhook_events_to_convoy")
 		ctx = utils.StoreLoggerInContext(ctx, logger)
 		err := SendPendingWebhookEvents(ctx, usecases)

@@ -14,11 +14,12 @@ import (
 )
 
 type Usecases struct {
-	Repositories         repositories.Repositories
-	fakeAwsS3Repository  bool
-	fakeGcsRepository    bool
-	gcsIngestionBucket   string
-	gcsCaseManagerBucket string
+	Repositories                repositories.Repositories
+	fakeAwsS3Repository         bool
+	fakeGcsRepository           bool
+	gcsIngestionBucket          string
+	gcsCaseManagerBucket        string
+	failedWebhooksRetryPageSize int
 }
 
 type Option func(*options)
@@ -47,20 +48,28 @@ func WithGcsCaseManagerBucket(bucket string) Option {
 	}
 }
 
+func WithFailedWebhooksRetryPageSize(size int) Option {
+	return func(o *options) {
+		o.failedWebhooksRetryPageSize = size
+	}
+}
+
 type options struct {
-	fakeAwsS3Repository  bool
-	fakeGcsRepository    bool
-	gcsIngestionBucket   string
-	gcsCaseManagerBucket string
+	fakeAwsS3Repository         bool
+	fakeGcsRepository           bool
+	gcsIngestionBucket          string
+	gcsCaseManagerBucket        string
+	failedWebhooksRetryPageSize int
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
 	return Usecases{
-		Repositories:         repositories,
-		fakeAwsS3Repository:  o.fakeAwsS3Repository,
-		fakeGcsRepository:    o.fakeGcsRepository,
-		gcsIngestionBucket:   o.gcsIngestionBucket,
-		gcsCaseManagerBucket: o.gcsCaseManagerBucket,
+		Repositories:                repositories,
+		fakeAwsS3Repository:         o.fakeAwsS3Repository,
+		fakeGcsRepository:           o.fakeGcsRepository,
+		gcsIngestionBucket:          o.gcsIngestionBucket,
+		gcsCaseManagerBucket:        o.gcsCaseManagerBucket,
+		failedWebhooksRetryPageSize: o.failedWebhooksRetryPageSize,
 	}
 }
 

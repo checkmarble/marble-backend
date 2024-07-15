@@ -33,15 +33,17 @@ func RunSendPendingWebhookEvents() error {
 		ProjectID: utils.GetEnv("CONVOY_PROJECT_ID", ""),
 	}
 	jobConfig := struct {
-		env           string
-		appName       string
-		loggingFormat string
-		sentryDsn     string
+		env                         string
+		appName                     string
+		loggingFormat               string
+		sentryDsn                   string
+		failedWebhooksRetryPageSize int
 	}{
-		env:           utils.GetEnv("ENV", "development"),
-		appName:       "marble-backend",
-		loggingFormat: utils.GetEnv("LOGGING_FORMAT", "text"),
-		sentryDsn:     utils.GetEnv("SENTRY_DSN", ""),
+		env:                         utils.GetEnv("ENV", "development"),
+		appName:                     "marble-backend",
+		loggingFormat:               utils.GetEnv("LOGGING_FORMAT", "text"),
+		sentryDsn:                   utils.GetEnv("SENTRY_DSN", ""),
+		failedWebhooksRetryPageSize: utils.GetEnv("FAILED_WEBHOOKS_RETRY_PAGE_SIZE", 1000),
 	}
 
 	logger := utils.NewLogger(jobConfig.loggingFormat)
@@ -71,7 +73,8 @@ func RunSendPendingWebhookEvents() error {
 	repositories := repositories.NewRepositories(pool,
 		repositories.WithConvoyClientProvider(
 			infra.InitializeConvoyRessources(convoyConfiguration)))
-	uc := usecases.NewUsecases(repositories)
+	uc := usecases.NewUsecases(repositories,
+		usecases.WithFailedWebhooksRetryPageSize(jobConfig.failedWebhooksRetryPageSize))
 
 	err = jobs.SendPendingWebhookEvents(ctx, uc)
 	if err != nil {

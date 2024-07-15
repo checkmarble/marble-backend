@@ -422,6 +422,7 @@ func (usecases *UsecasesWithCreds) NewWebhookEventsUsecase() WebhookEventsUsecas
 		usecases.NewTransactionFactory(),
 		usecases.Repositories.ConvoyRepository,
 		usecases.Repositories.MarbleDbRepository,
+		usecases.Usecases.failedWebhooksRetryPageSize,
 	)
 }
 
