@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -28,14 +29,6 @@ func getOwnerId(organizationId string, partnerId null.String) string {
 	return fmt.Sprintf("org:%s", organizationId)
 }
 
-// Ensure event type is included in the event data
-func getEventContent(eventContent models.WebhookEventContent) (string, map[string]interface{}) {
-	eventType := string(eventContent.Type)
-	eventData := eventContent.Data
-	eventData["event_type"] = eventType
-	return eventType, eventData
-}
-
 func (repo ConvoyRepository) SendWebhookEvent(ctx context.Context, webhookEvent models.WebhookEvent) error {
 	projectId := repo.convoyClientProvider.GetProjectID()
 	convoyClient, err := repo.convoyClientProvider.GetClient()
@@ -44,19 +37,20 @@ func (repo ConvoyRepository) SendWebhookEvent(ctx context.Context, webhookEvent 
 	}
 
 	ownerId := getOwnerId(webhookEvent.OrganizationId, webhookEvent.PartnerId)
-	eventType, eventData := getEventContent(webhookEvent.EventContent)
+	eventType := string(webhookEvent.EventContent.Type)
 
 	fanoutEvent, err := convoyClient.CreateEndpointFanoutEventWithResponse(ctx, projectId, convoy.ModelsFanoutEvent{
 		OwnerId:        &ownerId,
 		EventType:      &eventType,
 		IdempotencyKey: &webhookEvent.Id,
-		Data:           &eventData,
+		Data:           &webhookEvent.EventContent.Data,
 	})
 	if err != nil {
 		return errors.Wrap(err, "can't create convoy event: request error")
 	}
 	if fanoutEvent.JSON201 == nil {
-		return errors.New("can't create convoy event: response error")
+		err = parseResponseError(fanoutEvent.HTTPResponse.Status, fanoutEvent.Body)
+		return errors.Wrap(err, "can't create convoy event")
 	}
 
 	return nil
@@ -89,8 +83,9 @@ func (repo ConvoyRepository) RegisterWebhook(ctx context.Context, input models.W
 	if err != nil {
 		return errors.Wrap(err, "can't create convoy endpoint: request error")
 	}
-	if endpoint.JSON201 == nil {
-		return errors.New("can't create convoy endpoint: response error")
+	if endpoint.JSON201 != nil {
+		err = parseResponseError(endpoint.HTTPResponse.Status, endpoint.Body)
+		return errors.Wrap(err, "can't create convoy endpoint")
 	}
 
 	subscription, err := convoyClient.CreateSubscriptionWithResponse(ctx, projectId, convoy.ModelsCreateSubscription{
@@ -109,8 +104,20 @@ func (repo ConvoyRepository) RegisterWebhook(ctx context.Context, input models.W
 		return errors.Wrap(err, "can't create convoy subscription: request error")
 	}
 	if subscription.JSON201 == nil {
-		return errors.New("can't create convoy subscription: response error")
+		err = parseResponseError(endpoint.HTTPResponse.Status, endpoint.Body)
+		return errors.Wrap(err, "can't create convoy subscription")
 	}
 
 	return nil
+}
+
+func parseResponseError(status string, body []byte) error {
+	var dest struct {
+		Message *string `json:"message,omitempty"`
+	}
+	err := json.Unmarshal(body, &dest)
+	if err != nil || dest.Message == nil {
+		return errors.New(status)
+	}
+	return errors.Newf("%s: %s", status, *dest.Message)
 }
