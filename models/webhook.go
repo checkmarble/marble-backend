@@ -1,8 +1,8 @@
 package models
 
 import (
-	"fmt"
 	"net/url"
+	"slices"
 	"time"
 
 	"github.com/guregu/null/v5"
@@ -37,15 +37,6 @@ const (
 
 var validWebhookEventTypes = []WebhookEventType{
 	WebhookEventType_CaseStatusUpdated,
-}
-
-func ParseWebhookEventType(input string) (WebhookEventType, error) {
-	for _, eventType := range validWebhookEventTypes {
-		if eventType == WebhookEventType(input) {
-			return eventType, nil
-		}
-	}
-	return "", errors.New(fmt.Sprintf("invalid webhook event type: %s", input))
 }
 
 type WebhookEventContent struct {
@@ -105,7 +96,7 @@ type WebhookRegister struct {
 
 func (input WebhookRegister) Validate() error {
 	for _, eventType := range input.EventTypes {
-		if _, err := ParseWebhookEventType(eventType); err != nil {
+		if !slices.Contains(validWebhookEventTypes, WebhookEventType(eventType)) {
 			return errors.Wrapf(BadParameterError, "invalid event type: %s", eventType)
 		}
 	}
@@ -120,6 +111,7 @@ func NewWebhookEventCaseStatusUpdated(caseStatus CaseStatus) WebhookEventContent
 	return WebhookEventContent{
 		Type: WebhookEventType_CaseStatusUpdated,
 		Data: map[string]any{
+			"event_type":  WebhookEventType_CaseStatusUpdated,
 			"case_status": caseStatus,
 		},
 	}
