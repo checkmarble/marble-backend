@@ -15,6 +15,7 @@ import (
 type convoyWebhooksRepository interface {
 	ListWebhooks(ctx context.Context, organizationId string, partnerId null.String) ([]models.Webhook, error)
 	RegisterWebhook(ctx context.Context, input models.WebhookRegister) error
+	DeleteWebhook(ctx context.Context, webhookId string) error
 }
 
 type enforceSecurityWebhook interface {
@@ -86,4 +87,15 @@ func generateSecret() string {
 		panic(fmt.Errorf("generateSecret: %w", err))
 	}
 	return hex.EncodeToString(key)
+}
+
+func (usecase WebhooksUsecase) DeleteWebhook(
+	ctx context.Context, organizationId string, partnerId null.String, webhookId string,
+) error {
+	err := usecase.enforceSecurity.CanManageWebhook(ctx, organizationId, partnerId)
+	if err != nil {
+		return err
+	}
+
+	return usecase.convoyRepository.DeleteWebhook(ctx, webhookId)
 }
