@@ -11,3 +11,4 @@ output-options:
     - CreateSubscription
     - GetEndpoints
     - GetSubscriptions
+    - DeleteEndpoint

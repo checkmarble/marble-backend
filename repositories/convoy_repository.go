@@ -222,6 +222,26 @@ func adaptWebhook(
 	return webhook
 }
 
+func (repo ConvoyRepository) DeleteWebhook(ctx context.Context, webhookId string) error {
+	projectId := repo.convoyClientProvider.GetProjectID()
+	convoyClient, err := repo.convoyClientProvider.GetClient()
+	if err != nil {
+		return err
+	}
+
+	// Delete linked subscription on cascade
+	deleteRes, err := convoyClient.DeleteEndpointWithResponse(ctx, projectId, webhookId)
+	if err != nil {
+		return errors.Wrap(err, "can't delete convoy endpoint: request error")
+	}
+	if deleteRes.JSON200 == nil {
+		err = parseResponseError(deleteRes.HTTPResponse.Status, deleteRes.Body)
+		return errors.Wrap(err, "can't delete convoy endpoint")
+	}
+
+	return nil
+}
+
 func parseResponseError(status string, body []byte) error {
 	var dest struct {
 		Message *string `json:"message,omitempty"`
