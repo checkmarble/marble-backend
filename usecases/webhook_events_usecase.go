@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -11,6 +12,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/guregu/null/v5"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -90,14 +93,33 @@ func (usecase WebhookEventsUsecase) CreateWebhookEvent(
 	}
 
 	webhookEventId := uuid.New().String()
-	err = usecase.webhookEventsRepository.CreateWebhookEvent(ctx,
-		tx,
-		webhookEventId,
-		input,
-	)
+	err = usecase.webhookEventsRepository.CreateWebhookEvent(ctx, tx, webhookEventId, input)
 	if err != nil {
 		return errors.Wrap(err, "error creating webhook event")
 	}
+
+	logger := utils.LoggerFromContext(ctx).With("webhook_event_id", webhookEventId)
+	ctx = utils.StoreLoggerInContext(ctx, logger)
+
+	// go routine to send the webhook event asynchronously, with a new context and timeout and a child span
+	go func() {
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Second*3)
+		defer cancel()
+		tracer := utils.OpenTelemetryTracerFromContext(ctx)
+		ctx, span := tracer.Start(
+			ctx,
+			"CreateWebhookEvent.SendWebhookEventAsync",
+			trace.WithAttributes(attribute.String("webhook_event_id", webhookEventId)))
+		defer span.End()
+
+		status, err := usecase.sendWebhookEvent(ctx, webhookEventId)
+		if err != nil {
+			logger.ErrorContext(ctx, fmt.Sprintf("Error sending webhook event %s: %s", webhookEventId, err.Error()))
+		}
+		if status == models.Retry {
+			logger.InfoContext(ctx, fmt.Sprintf("Webhook event %s will be retried", webhookEventId))
+		}
+	}()
 
 	return nil
 }
@@ -158,7 +180,8 @@ func (usecase WebhookEventsUsecase) SendWebhookEvents(
 			retryCount++
 		}
 	}
-	logger.InfoContext(ctx, fmt.Sprintf("Webhook events sent: %d success, %d retry", successCount, retryCount))
+	logger.InfoContext(ctx, fmt.Sprintf("Webhook events sent: %d success, %d retry out of %d events",
+		successCount, retryCount, len(pendingWebhookEvents)))
 
 	return nil
 }
