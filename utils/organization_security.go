@@ -2,6 +2,7 @@ package utils
 
 import (
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/guregu/null/v5"
 
 	"github.com/cockroachdb/errors"
 )
@@ -38,4 +39,12 @@ func EnforcePartnerAccess(creds models.Credentials, partnerId string) error {
 		return errors.Wrapf(models.ForbiddenError, "credentials does not grant access to partner %s", partnerId)
 	}
 	return nil
+}
+
+func EnforceOrganizationAndPartnerAccess(creds models.Credentials, organizationId string, partnerId null.String) error {
+	err := EnforceOrganizationAccess(creds, organizationId)
+	if partnerId.Valid {
+		err = errors.Join(err, EnforcePartnerAccess(creds, partnerId.String))
+	}
+	return err
 }

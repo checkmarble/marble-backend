@@ -29,6 +29,22 @@ func getOwnerId(organizationId string, partnerId null.String) string {
 	return fmt.Sprintf("org:%s", organizationId)
 }
 
+func parseOwnerId(ownerId string) (string, null.String) {
+	parts := strings.Split(ownerId, "-partner:")
+	if len(parts) == 2 {
+		return parts[0][4:], null.StringFrom(parts[1])
+	}
+	return ownerId[4:], null.String{}
+}
+
+func getName(ownerId string, eventTypes []string) string {
+	eventLabel := "all-events"
+	if len(eventTypes) > 0 {
+		eventLabel = strings.Join(eventTypes, ",")
+	}
+	return fmt.Sprintf("%s|%s", ownerId, eventLabel)
+}
+
 func (repo ConvoyRepository) SendWebhookEvent(ctx context.Context, webhookEvent models.WebhookEvent) error {
 	projectId := repo.convoyClientProvider.GetProjectID()
 	convoyClient, err := repo.convoyClientProvider.GetClient()
@@ -56,20 +72,20 @@ func (repo ConvoyRepository) SendWebhookEvent(ctx context.Context, webhookEvent 
 	return nil
 }
 
-func (repo ConvoyRepository) RegisterWebhook(ctx context.Context, input models.WebhookRegister) error {
+func (repo ConvoyRepository) RegisterWebhook(
+	ctx context.Context,
+	organizationId string,
+	partnerId null.String,
+	input models.WebhookRegister,
+) error {
 	projectId := repo.convoyClientProvider.GetProjectID()
 	convoyClient, err := repo.convoyClientProvider.GetClient()
 	if err != nil {
 		return err
 	}
 
-	ownerId := getOwnerId(input.OrganizationId, input.PartnerId)
-
-	eventLabel := "all-events"
-	if len(input.EventTypes) > 0 {
-		eventLabel = strings.Join(input.EventTypes, ",")
-	}
-	name := fmt.Sprintf("%s|%s", ownerId, eventLabel)
+	ownerId := getOwnerId(organizationId, partnerId)
+	name := getName(ownerId, input.EventTypes)
 
 	endpoint, err := convoyClient.CreateEndpointWithResponse(ctx, projectId, convoy.ModelsCreateEndpoint{
 		Name:              &name,
@@ -83,7 +99,7 @@ func (repo ConvoyRepository) RegisterWebhook(ctx context.Context, input models.W
 	if err != nil {
 		return errors.Wrap(err, "can't create convoy endpoint: request error")
 	}
-	if endpoint.JSON201 != nil {
+	if endpoint.JSON201 == nil {
 		err = parseResponseError(endpoint.HTTPResponse.Status, endpoint.Body)
 		return errors.Wrap(err, "can't create convoy endpoint")
 	}
@@ -203,9 +219,12 @@ func adaptWebhook(
 	convoyEndpoint convoy.ModelsEndpointResponse,
 	convoySubscription convoy.ModelsSubscriptionResponse,
 ) models.Webhook {
+	organizationId, partnerId := parseOwnerId(*convoyEndpoint.OwnerId)
+
 	webhook := models.Webhook{
-		SubscriptionId:    *convoySubscription.Uid,
-		EndpointId:        *convoyEndpoint.Uid,
+		Id:                *convoyEndpoint.Uid,
+		OrganizationId:    organizationId,
+		PartnerId:         partnerId,
 		EventTypes:        *convoySubscription.FilterConfig.EventTypes,
 		Url:               *convoyEndpoint.Url,
 		HttpTimeout:       convoyEndpoint.HttpTimeout,
@@ -220,6 +239,84 @@ func adaptWebhook(
 	}
 
 	return webhook
+}
+
+func getEndpoint(
+	ctx context.Context,
+	convoyClient convoy.ClientWithResponses,
+	projectId string,
+	endpointId string,
+) (convoy.ModelsEndpointResponse, error) {
+	endpointRes, err := convoyClient.GetEndpointWithResponse(ctx, projectId, endpointId)
+	if err != nil {
+		return convoy.ModelsEndpointResponse{},
+			errors.Wrap(err, "can't get convoy endpoint: request error")
+	}
+	if endpointRes.JSON200 == nil {
+		err = parseResponseError(endpointRes.HTTPResponse.Status, endpointRes.Body)
+		return convoy.ModelsEndpointResponse{},
+			errors.Wrap(err, "can't get convoy endpoint")
+	}
+
+	var endpoint convoy.ModelsEndpointResponse
+	if endpointRes.JSON200.Data != nil {
+		endpoint = *endpointRes.JSON200.Data
+	}
+
+	return endpoint, nil
+}
+
+func getSubscription(
+	ctx context.Context,
+	convoyClient convoy.ClientWithResponses,
+	projectId string,
+	endpointId string,
+) (convoy.ModelsSubscriptionResponse, error) {
+	subscriptionRes, err := convoyClient.GetSubscriptionsWithResponse(ctx, projectId, &convoy.GetSubscriptionsParams{
+		EndpointId: &[]string{endpointId},
+		PerPage:    &perPage,
+	})
+	if err != nil {
+		return convoy.ModelsSubscriptionResponse{},
+			errors.Wrap(err, "can't get convoy subscription: request error")
+	}
+	if subscriptionRes.JSON200 == nil {
+		err = parseResponseError(subscriptionRes.HTTPResponse.Status, subscriptionRes.Body)
+		return convoy.ModelsSubscriptionResponse{},
+			errors.Wrap(err, "can't get convoy subscriptions")
+	}
+
+	var subscription convoy.ModelsSubscriptionResponse
+	if subscriptionRes.JSON200.Data != nil &&
+		subscriptionRes.JSON200.Data.Content != nil &&
+		len(*subscriptionRes.JSON200.Data.Content) > 0 {
+		subscription = (*subscriptionRes.JSON200.Data.Content)[0]
+	} else {
+		return convoy.ModelsSubscriptionResponse{},
+			errors.New("can't find convoy subscription")
+	}
+
+	return subscription, nil
+}
+
+func (repo ConvoyRepository) GetWebhook(ctx context.Context, webhookId string) (models.Webhook, error) {
+	projectId := repo.convoyClientProvider.GetProjectID()
+	convoyClient, err := repo.convoyClientProvider.GetClient()
+	if err != nil {
+		return models.Webhook{}, err
+	}
+
+	endpoint, err := getEndpoint(ctx, convoyClient, projectId, webhookId)
+	if err != nil {
+		return models.Webhook{}, err
+	}
+
+	subscription, err := getSubscription(ctx, convoyClient, projectId, webhookId)
+	if err != nil {
+		return models.Webhook{}, err
+	}
+
+	return adaptWebhook(endpoint, subscription), nil
 }
 
 func (repo ConvoyRepository) DeleteWebhook(ctx context.Context, webhookId string) error {
@@ -237,6 +334,59 @@ func (repo ConvoyRepository) DeleteWebhook(ctx context.Context, webhookId string
 	if deleteRes.JSON200 == nil {
 		err = parseResponseError(deleteRes.HTTPResponse.Status, deleteRes.Body)
 		return errors.Wrap(err, "can't delete convoy endpoint")
+	}
+
+	return nil
+}
+
+func (repo ConvoyRepository) UpdateWebhook(
+	ctx context.Context,
+	input models.Webhook,
+) error {
+	projectId := repo.convoyClientProvider.GetProjectID()
+	convoyClient, err := repo.convoyClientProvider.GetClient()
+	if err != nil {
+		return err
+	}
+
+	ownerId := getOwnerId(input.OrganizationId, input.PartnerId)
+	name := getName(ownerId, input.EventTypes)
+
+	subscription, err := getSubscription(ctx, convoyClient, projectId, input.Id)
+	if err != nil {
+		return err
+	}
+
+	endpointRes, err := convoyClient.UpdateEndpointWithResponse(ctx, projectId, input.Id, convoy.ModelsUpdateEndpoint{
+		Name:              &name,
+		OwnerId:           &ownerId,
+		Url:               &input.Url,
+		HttpTimeout:       input.HttpTimeout,
+		RateLimit:         input.RateLimit,
+		RateLimitDuration: input.RateLimitDuration,
+	})
+	if err != nil {
+		return errors.Wrap(err, "can't update convoy endpoint: request error")
+	}
+	if endpointRes.JSON202 == nil {
+		err = parseResponseError(endpointRes.HTTPResponse.Status, endpointRes.Body)
+		return errors.Wrap(err, "can't update convoy endpoint")
+	}
+
+	subscriptionRes, err := convoyClient.UpdateSubscriptionWithResponse(ctx,
+		projectId,
+		*subscription.Uid,
+		convoy.ModelsUpdateSubscription{
+			FilterConfig: &convoy.ModelsFilterConfiguration{
+				EventTypes: &input.EventTypes,
+			},
+		})
+	if err != nil {
+		return errors.Wrap(err, "can't update convoy subscription: request error")
+	}
+	if subscriptionRes.JSON202 == nil {
+		err = parseResponseError(subscriptionRes.HTTPResponse.Status, subscriptionRes.Body)
+		return errors.Wrap(err, "can't update convoy subscription")
 	}
 
 	return nil

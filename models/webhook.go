@@ -84,8 +84,6 @@ func (f WebhookEventFilters) MergeWithDefaults() WebhookEventFilters {
 }
 
 type WebhookRegister struct {
-	OrganizationId    string
-	PartnerId         null.String
 	EventTypes        []string
 	Secret            string
 	Url               string
@@ -118,8 +116,9 @@ func NewWebhookEventCaseStatusUpdated(caseStatus CaseStatus) WebhookEventContent
 }
 
 type Webhook struct {
-	EndpointId        string
-	SubscriptionId    string
+	Id                string
+	OrganizationId    string
+	PartnerId         null.String
 	EventTypes        []string
 	Secrets           []Secret
 	Url               string
@@ -135,4 +134,43 @@ type Secret struct {
 	Uid       string
 	UpdatedAt string
 	Value     string
+}
+
+type WebhookUpdate struct {
+	EventTypes        *[]string
+	Url               *string
+	HttpTimeout       *int
+	RateLimit         *int
+	RateLimitDuration *int
+}
+
+// MergeWebhookWithUpdate merges a Webhook with a WebhookUpdate, returning a new Webhook with the updated fields.
+// Secret is not updated by this function.
+func MergeWebhookWithUpdate(w Webhook, update WebhookUpdate) Webhook {
+	result := Webhook{
+		Id:                w.Id,
+		OrganizationId:    w.OrganizationId,
+		PartnerId:         w.PartnerId,
+		EventTypes:        w.EventTypes,
+		Url:               w.Url,
+		HttpTimeout:       w.HttpTimeout,
+		RateLimit:         w.RateLimit,
+		RateLimitDuration: w.RateLimitDuration,
+	}
+	if update.EventTypes != nil {
+		result.EventTypes = *update.EventTypes
+	}
+	if update.Url != nil {
+		result.Url = *update.Url
+	}
+	if update.HttpTimeout != nil {
+		result.HttpTimeout = update.HttpTimeout
+	}
+	if update.RateLimit != nil {
+		result.RateLimit = update.RateLimit
+	}
+	if update.RateLimitDuration != nil {
+		result.RateLimitDuration = update.RateLimitDuration
+	}
+	return result
 }

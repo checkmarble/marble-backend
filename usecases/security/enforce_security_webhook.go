@@ -11,23 +11,29 @@ import (
 )
 
 func (e *EnforceSecurityImpl) SendWebhookEvent(ctx context.Context, organizationId string, partnerId null.String) error {
-	err := errors.Join(
+	return errors.Join(
 		e.Permission(models.WEBHOOK_EVENT),
-		utils.EnforceOrganizationAccess(e.Credentials, organizationId),
+		utils.EnforceOrganizationAndPartnerAccess(e.Credentials, organizationId, partnerId),
 	)
-	if partnerId.Valid {
-		err = errors.Join(err, utils.EnforcePartnerAccess(e.Credentials, partnerId.String))
-	}
-	return err
 }
 
-func (e *EnforceSecurityImpl) CanManageWebhook(ctx context.Context, organizationId string, partnerId null.String) error {
-	err := errors.Join(
+func (e *EnforceSecurityImpl) CanCreateWebhook(ctx context.Context, organizationId string, partnerId null.String) error {
+	return errors.Join(
 		e.Permission(models.WEBHOOK),
-		utils.EnforceOrganizationAccess(e.Credentials, organizationId),
+		utils.EnforceOrganizationAndPartnerAccess(e.Credentials, organizationId, partnerId),
 	)
-	if partnerId.Valid {
-		err = errors.Join(err, utils.EnforcePartnerAccess(e.Credentials, partnerId.String))
-	}
-	return err
+}
+
+func (e *EnforceSecurityImpl) CanReadWebhook(ctx context.Context, webhook models.Webhook) error {
+	return errors.Join(
+		e.Permission(models.WEBHOOK),
+		utils.EnforceOrganizationAndPartnerAccess(e.Credentials, webhook.OrganizationId, webhook.PartnerId),
+	)
+}
+
+func (e *EnforceSecurityImpl) CanModifyWebhook(ctx context.Context, webhook models.Webhook) error {
+	return errors.Join(
+		e.Permission(models.WEBHOOK),
+		utils.EnforceOrganizationAndPartnerAccess(e.Credentials, webhook.OrganizationId, webhook.PartnerId),
+	)
 }
