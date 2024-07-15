@@ -34,17 +34,19 @@ func RunJobScheduler() error {
 		ProjectID: utils.GetEnv("CONVOY_PROJECT_ID", ""),
 	}
 	jobConfig := struct {
-		env                 string
-		appName             string
-		loggingFormat       string
-		sentryDsn           string
-		fakeAwsS3Repository bool
+		env                         string
+		appName                     string
+		loggingFormat               string
+		sentryDsn                   string
+		fakeAwsS3Repository         bool
+		failedWebhooksRetryPageSize int
 	}{
-		env:                 utils.GetEnv("ENV", "development"),
-		appName:             "marble-backend",
-		loggingFormat:       utils.GetEnv("LOGGING_FORMAT", "text"),
-		sentryDsn:           utils.GetEnv("SENTRY_DSN", ""),
-		fakeAwsS3Repository: utils.GetEnv("FAKE_AWS_S3", false),
+		env:                         utils.GetEnv("ENV", "development"),
+		appName:                     "marble-backend",
+		loggingFormat:               utils.GetEnv("LOGGING_FORMAT", "text"),
+		sentryDsn:                   utils.GetEnv("SENTRY_DSN", ""),
+		fakeAwsS3Repository:         utils.GetEnv("FAKE_AWS_S3", false),
+		failedWebhooksRetryPageSize: utils.GetEnv("FAILED_WEBHOOKS_RETRY_PAGE_SIZE", 1000),
 	}
 
 	logger := utils.NewLogger(jobConfig.loggingFormat)
@@ -80,6 +82,7 @@ func RunJobScheduler() error {
 		usecases.WithGcsIngestionBucket(gcpConfig.GcsIngestionBucket),
 		usecases.WithFakeAwsS3Repository(jobConfig.fakeAwsS3Repository),
 		usecases.WithFakeGcsRepository(gcpConfig.FakeGcsRepository),
+		usecases.WithFailedWebhooksRetryPageSize(jobConfig.failedWebhooksRetryPageSize),
 	)
 
 	jobs.RunScheduler(ctx, uc)
