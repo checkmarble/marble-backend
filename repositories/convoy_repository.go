@@ -111,6 +111,15 @@ func (repo ConvoyRepository) RegisterWebhook(ctx context.Context, input models.W
 	return nil
 }
 
+var perPage = 1000
+
+func checkPerPageLimit(ctx context.Context, count int) {
+	if count >= perPage {
+		utils.LoggerFromContext(ctx).WarnContext(ctx,
+			"convoy per page limit reached", "limit", perPage)
+	}
+}
+
 func (repo ConvoyRepository) ListWebhooks(ctx context.Context, organizationId string, partnerId null.String) ([]models.Webhook, error) {
 	projectId := repo.convoyClientProvider.GetProjectID()
 	convoyClient, err := repo.convoyClientProvider.GetClient()
@@ -120,39 +129,49 @@ func (repo ConvoyRepository) ListWebhooks(ctx context.Context, organizationId st
 
 	ownerId := getOwnerId(organizationId, partnerId)
 
-	endpoints, err := convoyClient.GetEndpointsWithResponse(ctx, projectId, &convoy.GetEndpointsParams{
+	endpointRes, err := convoyClient.GetEndpointsWithResponse(ctx, projectId, &convoy.GetEndpointsParams{
 		OwnerId: &ownerId,
-		PerPage: utils.Ptr(100),
+		PerPage: &perPage,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get convoy endpoints: request error")
 	}
-	if endpoints.JSON200 == nil {
-		err = parseResponseError(endpoints.HTTPResponse.Status, endpoints.Body)
+	if endpointRes.JSON200 == nil {
+		err = parseResponseError(endpointRes.HTTPResponse.Status, endpointRes.Body)
 		return nil, errors.Wrap(err, "can't get convoy endpoints")
 	}
+	var endpoints []convoy.ModelsEndpointResponse
+	if endpointRes.JSON200.Data.Content != nil {
+		endpoints = *endpointRes.JSON200.Data.Content
+	}
+	checkPerPageLimit(ctx, len(endpoints))
 
 	endpointMap := make(map[string]convoy.ModelsEndpointResponse)
-	endpointIds := make([]string, 0, len(*endpoints.JSON200.Data.Content))
-	for _, convoyEndpoint := range *endpoints.JSON200.Data.Content {
+	endpointIds := make([]string, 0, len(endpoints))
+	for _, convoyEndpoint := range endpoints {
 		endpointIds = append(endpointIds, *convoyEndpoint.Uid)
 		endpointMap[*convoyEndpoint.Uid] = convoyEndpoint
 	}
 
-	subscriptions, err := convoyClient.GetSubscriptionsWithResponse(ctx, projectId, &convoy.GetSubscriptionsParams{
+	subscriptionRes, err := convoyClient.GetSubscriptionsWithResponse(ctx, projectId, &convoy.GetSubscriptionsParams{
 		EndpointId: &endpointIds,
-		PerPage:    utils.Ptr(100),
+		PerPage:    &perPage,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get convoy subscriptions: request error")
 	}
-	if subscriptions.JSON200 == nil {
-		err = parseResponseError(subscriptions.HTTPResponse.Status, subscriptions.Body)
+	if subscriptionRes.JSON200 == nil {
+		err = parseResponseError(subscriptionRes.HTTPResponse.Status, subscriptionRes.Body)
 		return nil, errors.Wrap(err, "can't get convoy subscriptions")
 	}
+	var subscriptions []convoy.ModelsSubscriptionResponse
+	if subscriptionRes.JSON200.Data.Content != nil {
+		subscriptions = *subscriptionRes.JSON200.Data.Content
+	}
+	checkPerPageLimit(ctx, len(subscriptions))
 
-	webhooks := make([]models.Webhook, 0, len(*subscriptions.JSON200.Data.Content))
-	for _, convoySubscription := range *subscriptions.JSON200.Data.Content {
+	webhooks := make([]models.Webhook, 0, len(subscriptions))
+	for _, convoySubscription := range subscriptions {
 		convoyEndpoint, ok := endpointMap[*convoySubscription.EndpointMetadata.Uid]
 		if !ok {
 			return nil, errors.New("can't find convoy endpoint")
