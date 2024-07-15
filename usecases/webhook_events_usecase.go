@@ -3,8 +3,6 @@ package usecases
 import (
 	"context"
 	"fmt"
-	"log/slog"
-	"sync"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -13,6 +11,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/guregu/null/v5"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
+)
+
+const (
+	MAX_CONCURRENT_WEBHOOKS_SENT    = 20
+	FAILED_WEBHOOKS_RETRY_PAGE_SIZE = 1000
 )
 
 type convoyWebhookEventRepository interface {
@@ -98,7 +102,7 @@ func (usecase WebhookEventsUsecase) SendWebhookEvents(
 
 	pendingWebhookEvents, err := usecase.webhookEventsRepository.ListWebhookEvents(ctx, exec, models.WebhookEventFilters{
 		DeliveryStatus: []models.WebhookEventDeliveryStatus{models.Scheduled, models.Retry},
-		Limit:          100,
+		Limit:          FAILED_WEBHOOKS_RETRY_PAGE_SIZE,
 	})
 	if err != nil {
 		return errors.Wrap(err, "error while listing pending webhook events")
@@ -108,45 +112,38 @@ func (usecase WebhookEventsUsecase) SendWebhookEvents(
 		return nil
 	}
 
-	var waitGroup sync.WaitGroup
-	// The channel needs to be big enough to store any possible errors to avoid deadlock due to the presence of a waitGroup
-	uploadErrorChan := make(chan error, len(pendingWebhookEvents))
-	deliveryStatusChan := make(chan models.WebhookEventDeliveryStatus, len(pendingWebhookEvents))
+	group, ctx := errgroup.WithContext(ctx)
+	group.SetLimit(MAX_CONCURRENT_WEBHOOKS_SENT)
 
-	startProcessSendWebhookEvent := func(webhookEventId string) {
-		defer waitGroup.Done()
-		logger := logger.With("webhook_event_id", webhookEventId)
-		deliveryStatus, err := usecase.sendWebhookEvent(ctx, webhookEventId, logger)
-		if err != nil {
-			uploadErrorChan <- err
-		}
-		if deliveryStatus != nil {
-			deliveryStatusChan <- *deliveryStatus
-		}
+	deliveryStatuses := make([]models.WebhookEventDeliveryStatus, len(pendingWebhookEvents))
+
+	for i, webhookEvent := range pendingWebhookEvents {
+		group.Go(func() error {
+			ctx := utils.StoreLoggerInContext(
+				ctx,
+				logger.With("webhook_event_id", webhookEvent.Id))
+
+			select {
+			case <-ctx.Done():
+				return errors.Wrapf(ctx.Err(), "context cancelled before retrying webhook %s", webhookEvent.Id)
+			default:
+			}
+
+			deliveryStatus, err := usecase.sendWebhookEvent(ctx, webhookEvent.Id)
+			deliveryStatuses[i] = deliveryStatus
+			return err
+		})
 	}
 
-	for _, webhookEvent := range pendingWebhookEvents {
-		waitGroup.Add(1)
-		go startProcessSendWebhookEvent(webhookEvent.Id)
-	}
-
-	waitGroup.Wait()
-	close(uploadErrorChan)
-	close(deliveryStatusChan)
-
-	errorCount := 0
-	var firstError error
-	for err := range uploadErrorChan {
-		errorCount++
-		if firstError == nil {
-			firstError = err
-		}
+	err = group.Wait()
+	if err != nil {
+		return errors.Wrap(err, "error while sending webhook events")
 	}
 
 	successCount := 0
 	retryCount := 0
 	failedCount := 0
-	for status := range deliveryStatusChan {
+	for _, status := range deliveryStatuses {
 		switch status {
 		case models.Success:
 			successCount++
@@ -156,31 +153,27 @@ func (usecase WebhookEventsUsecase) SendWebhookEvents(
 			failedCount++
 		}
 	}
-	logger.InfoContext(ctx, fmt.Sprintf("Webhook events sent: %d success, %d retry, %d failed, %d errors",
-		successCount, retryCount, failedCount, errorCount))
+	logger.InfoContext(ctx, fmt.Sprintf("Webhook events sent: %d success, %d retry, %d failed", successCount, retryCount, failedCount))
 
-	return firstError
+	return nil
 }
 
-// sendWebhookEvent sends a webhook event and updates its status in the database.
-// It returns the delivery status of the webhook event and an error if updating the webhook event fails.
-func (usecase *WebhookEventsUsecase) sendWebhookEvent(
-	ctx context.Context,
-	webhookEventId string,
-	logger *slog.Logger,
-) (*models.WebhookEventDeliveryStatus, error) {
+// sendWebhookEvent actually sends a webhook event and updates its status in the database.
+func (usecase *WebhookEventsUsecase) sendWebhookEvent(ctx context.Context, webhookEventId string) (models.WebhookEventDeliveryStatus, error) {
+	logger := utils.LoggerFromContext(ctx)
+
 	return executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
-		func(tx repositories.Executor) (*models.WebhookEventDeliveryStatus, error) {
+		func(tx repositories.Executor) (models.WebhookEventDeliveryStatus, error) {
 			webhookEvent, err := usecase.webhookEventsRepository.GetWebhookEvent(ctx, tx, webhookEventId)
 			if err != nil {
-				return nil, err
+				return models.Scheduled, err
 			}
 
 			err = usecase.enforceSecurity.SendWebhookEvent(ctx, webhookEvent.OrganizationId, webhookEvent.PartnerId)
 			if err != nil {
-				return nil, err
+				return models.Scheduled, err
 			}
 
 			logger.InfoContext(ctx, fmt.Sprintf("Start processing webhook event %s", webhookEvent.Id))
@@ -201,9 +194,9 @@ func (usecase *WebhookEventsUsecase) sendWebhookEvent(
 			}
 			err = usecase.webhookEventsRepository.UpdateWebhookEvent(ctx, tx, webhookEventUpdate)
 			if err != nil {
-				return nil, errors.Wrap(err, fmt.Sprintf(
-					"error while updating webhook event %s", webhookEvent.Id))
+				return models.Scheduled, errors.Wrapf(err,
+					"error while updating webhook event %s", webhookEvent.Id)
 			}
-			return &webhookEventUpdate.DeliveryStatus, nil
+			return webhookEventUpdate.DeliveryStatus, nil
 		})
 }
