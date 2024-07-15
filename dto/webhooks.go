@@ -3,7 +3,6 @@ package dto
 import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
-	"github.com/guregu/null/v5"
 )
 
 type WebhookRegisterBody struct {
@@ -14,21 +13,8 @@ type WebhookRegisterBody struct {
 	RateLimitDuration *int     `json:"rate_limit_duration,omitempty"`
 }
 
-func AdaptWebhookRegister(organizationId string, partnerId *string, input WebhookRegisterBody) models.WebhookRegister {
-	return models.WebhookRegister{
-		OrganizationId:    organizationId,
-		PartnerId:         null.StringFromPtr(partnerId),
-		Url:               input.Url,
-		EventTypes:        input.EventTypes,
-		HttpTimeout:       input.HttpTimeout,
-		RateLimit:         input.RateLimit,
-		RateLimitDuration: input.RateLimitDuration,
-	}
-}
-
 type Webhook struct {
-	EndpointId        string   `json:"endpoint_id"`
-	SubscriptionId    string   `json:"subscription_id"`
+	Id                string   `json:"id"`
 	EventTypes        []string `json:"event_types"`
 	Secrets           []Secret `json:"secrets"`
 	Url               string   `json:"url"`
@@ -59,8 +45,7 @@ func AdaptSecret(secret models.Secret) Secret {
 
 func AdaptWebhook(webhook models.Webhook) Webhook {
 	return Webhook{
-		EndpointId:        webhook.EndpointId,
-		SubscriptionId:    webhook.SubscriptionId,
+		Id:                webhook.Id,
 		EventTypes:        webhook.EventTypes,
 		Secrets:           pure_utils.Map(webhook.Secrets, AdaptSecret),
 		Url:               webhook.Url,
@@ -68,4 +53,12 @@ func AdaptWebhook(webhook models.Webhook) Webhook {
 		RateLimit:         webhook.RateLimit,
 		RateLimitDuration: webhook.RateLimitDuration,
 	}
+}
+
+type WebhookUpdateBody struct {
+	EventTypes        *[]string `json:"event_types,omitempty"`
+	Url               *string   `json:"url,omitempty"`
+	HttpTimeout       *int      `json:"http_timeout,omitempty"`
+	RateLimit         *int      `json:"rate_limit,omitempty"`
+	RateLimitDuration *int      `json:"rate_limit_duration,omitempty"`
 }

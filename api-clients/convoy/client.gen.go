@@ -567,6 +567,86 @@ type ModelsSubscriptionResponse struct {
 	UpdatedAt        *string                          `json:"updated_at,omitempty"`
 }
 
+// ModelsUpdateEndpoint defines model for models.UpdateEndpoint.
+type ModelsUpdateEndpoint struct {
+	// AdvancedSignatures Convoy supports two [signature formats](https://getconvoy.io/docs/manual/signatures)
+	// -- simple or advanced. If left unspecified, we default to false.
+	AdvancedSignatures *bool `json:"advanced_signatures,omitempty"`
+
+	// Authentication This is used to define any custom authentication required by the endpoint. This
+	// shouldn't be needed often because webhook endpoints usually should be exposed to
+	// the internet.
+	Authentication *ModelsEndpointAuthentication `json:"authentication,omitempty"`
+
+	// Description Human-readable description of the endpoint. Think of this as metadata describing
+	// the endpoint
+	Description *string `json:"description,omitempty"`
+
+	// HttpTimeout Define endpoint http timeout in seconds.
+	HttpTimeout *int `json:"http_timeout,omitempty"`
+
+	// IsDisabled This is used to manually enable/disable the endpoint.
+	IsDisabled *bool   `json:"is_disabled,omitempty"`
+	Name       *string `json:"name,omitempty"`
+
+	// OwnerId The OwnerID is used to group more than one endpoint together to achieve
+	// [fanout](https://getconvoy.io/docs/manual/endpoints#Endpoint%20Owner%20ID)
+	OwnerId *string `json:"owner_id,omitempty"`
+
+	// RateLimit Rate limit is the total number of requests to be sent to an endpoint in
+	// the time duration specified in RateLimitDuration
+	RateLimit *int `json:"rate_limit,omitempty"`
+
+	// RateLimitDuration Rate limit duration specifies the time range for the rate limit.
+	RateLimitDuration *int `json:"rate_limit_duration,omitempty"`
+
+	// Secret Endpoint's webhook secret. If not provided, Convoy autogenerates one for the endpoint.
+	Secret *string `json:"secret,omitempty"`
+
+	// SlackWebhookUrl Slack webhook URL is an alternative method to support email where endpoint developers
+	// can receive failure notifications on a slack channel.
+	SlackWebhookUrl *string `json:"slack_webhook_url,omitempty"`
+
+	// SupportEmail Endpoint developers support email. This is used for communicating endpoint state
+	// changes. You should always turn this on when disabling endpoints are enabled.
+	SupportEmail *string `json:"support_email,omitempty"`
+
+	// Url URL is the endpoint's URL prefixed with https. non-https urls are currently
+	// not supported.
+	Url *string `json:"url,omitempty"`
+}
+
+// ModelsUpdateSubscription defines model for models.UpdateSubscription.
+type ModelsUpdateSubscription struct {
+	// AlertConfig Alert configuration
+	AlertConfig *ModelsAlertConfiguration `json:"alert_config,omitempty"`
+
+	// AppId Deprecated but necessary for backward compatibility
+	AppId *string `json:"app_id,omitempty"`
+
+	// EndpointId Destination endpoint ID
+	EndpointId *string `json:"endpoint_id,omitempty"`
+
+	// FilterConfig Filter configuration
+	FilterConfig *ModelsFilterConfiguration `json:"filter_config,omitempty"`
+
+	// Function Convoy supports mutating your request payload using a js function. Use this field
+	// to specify a `transform` function for this purpose. See this[https://docs.getconvoy.io/product-manual/subscriptions#functions] for more
+	Function *string `json:"function,omitempty"`
+
+	// Name Subscription Nme
+	Name *string `json:"name,omitempty"`
+
+	// RateLimitConfig Rate limit configuration
+	RateLimitConfig *ModelsRateLimitConfiguration `json:"rate_limit_config,omitempty"`
+
+	// RetryConfig Retry configuration
+	RetryConfig *ModelsRetryConfiguration `json:"retry_config,omitempty"`
+
+	// SourceId Source Id
+	SourceId *string `json:"source_id,omitempty"`
+}
+
 // UtilServerResponse defines model for util.ServerResponse.
 type UtilServerResponse struct {
 	Message *string `json:"message,omitempty"`
@@ -628,11 +708,17 @@ type GetSubscriptionsParamsDirection string
 // CreateEndpointJSONRequestBody defines body for CreateEndpoint for application/json ContentType.
 type CreateEndpointJSONRequestBody = ModelsCreateEndpoint
 
+// UpdateEndpointJSONRequestBody defines body for UpdateEndpoint for application/json ContentType.
+type UpdateEndpointJSONRequestBody = ModelsUpdateEndpoint
+
 // CreateEndpointFanoutEventJSONRequestBody defines body for CreateEndpointFanoutEvent for application/json ContentType.
 type CreateEndpointFanoutEventJSONRequestBody = ModelsFanoutEvent
 
 // CreateSubscriptionJSONRequestBody defines body for CreateSubscription for application/json ContentType.
 type CreateSubscriptionJSONRequestBody = ModelsCreateSubscription
+
+// UpdateSubscriptionJSONRequestBody defines body for UpdateSubscription for application/json ContentType.
+type UpdateSubscriptionJSONRequestBody = ModelsUpdateSubscription
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -718,6 +804,14 @@ type ClientInterface interface {
 	// DeleteEndpoint request
 	DeleteEndpoint(ctx context.Context, projectID string, endpointID string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetEndpoint request
+	GetEndpoint(ctx context.Context, projectID string, endpointID string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateEndpointWithBody request with any body
+	UpdateEndpointWithBody(ctx context.Context, projectID string, endpointID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpdateEndpoint(ctx context.Context, projectID string, endpointID string, body UpdateEndpointJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateEndpointFanoutEventWithBody request with any body
 	CreateEndpointFanoutEventWithBody(ctx context.Context, projectID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -730,6 +824,11 @@ type ClientInterface interface {
 	CreateSubscriptionWithBody(ctx context.Context, projectID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	CreateSubscription(ctx context.Context, projectID string, body CreateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateSubscriptionWithBody request with any body
+	UpdateSubscriptionWithBody(ctx context.Context, projectID string, subscriptionID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpdateSubscription(ctx context.Context, projectID string, subscriptionID string, body UpdateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) GetEndpoints(ctx context.Context, projectID string, params *GetEndpointsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -770,6 +869,42 @@ func (c *Client) CreateEndpoint(ctx context.Context, projectID string, body Crea
 
 func (c *Client) DeleteEndpoint(ctx context.Context, projectID string, endpointID string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteEndpointRequest(c.Server, projectID, endpointID)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetEndpoint(ctx context.Context, projectID string, endpointID string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetEndpointRequest(c.Server, projectID, endpointID)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) UpdateEndpointWithBody(ctx context.Context, projectID string, endpointID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateEndpointRequestWithBody(c.Server, projectID, endpointID, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) UpdateEndpoint(ctx context.Context, projectID string, endpointID string, body UpdateEndpointJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateEndpointRequest(c.Server, projectID, endpointID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -830,6 +965,30 @@ func (c *Client) CreateSubscriptionWithBody(ctx context.Context, projectID strin
 
 func (c *Client) CreateSubscription(ctx context.Context, projectID string, body CreateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateSubscriptionRequest(c.Server, projectID, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) UpdateSubscriptionWithBody(ctx context.Context, projectID string, subscriptionID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateSubscriptionRequestWithBody(c.Server, projectID, subscriptionID, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) UpdateSubscription(ctx context.Context, projectID string, subscriptionID string, body UpdateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateSubscriptionRequest(c.Server, projectID, subscriptionID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1080,6 +1239,101 @@ func NewDeleteEndpointRequest(server string, projectID string, endpointID string
 	return req, nil
 }
 
+// NewGetEndpointRequest generates requests for GetEndpoint
+func NewGetEndpointRequest(server string, projectID string, endpointID string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectID", runtime.ParamLocationPath, projectID)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "endpointID", runtime.ParamLocationPath, endpointID)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/projects/%s/endpoints/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateEndpointRequest calls the generic UpdateEndpoint builder with application/json body
+func NewUpdateEndpointRequest(server string, projectID string, endpointID string, body UpdateEndpointJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateEndpointRequestWithBody(server, projectID, endpointID, "application/json", bodyReader)
+}
+
+// NewUpdateEndpointRequestWithBody generates requests for UpdateEndpoint with any type of body
+func NewUpdateEndpointRequestWithBody(server string, projectID string, endpointID string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectID", runtime.ParamLocationPath, projectID)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "endpointID", runtime.ParamLocationPath, endpointID)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/projects/%s/endpoints/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewCreateEndpointFanoutEventRequest calls the generic CreateEndpointFanoutEvent builder with application/json body
 func NewCreateEndpointFanoutEventRequest(server string, projectID string, body CreateEndpointFanoutEventJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -1326,6 +1580,60 @@ func NewCreateSubscriptionRequestWithBody(server string, projectID string, conte
 	return req, nil
 }
 
+// NewUpdateSubscriptionRequest calls the generic UpdateSubscription builder with application/json body
+func NewUpdateSubscriptionRequest(server string, projectID string, subscriptionID string, body UpdateSubscriptionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateSubscriptionRequestWithBody(server, projectID, subscriptionID, "application/json", bodyReader)
+}
+
+// NewUpdateSubscriptionRequestWithBody generates requests for UpdateSubscription with any type of body
+func NewUpdateSubscriptionRequestWithBody(server string, projectID string, subscriptionID string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "projectID", runtime.ParamLocationPath, projectID)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "subscriptionID", runtime.ParamLocationPath, subscriptionID)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/projects/%s/subscriptions/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -1380,6 +1688,14 @@ type ClientWithResponsesInterface interface {
 	// DeleteEndpointWithResponse request
 	DeleteEndpointWithResponse(ctx context.Context, projectID string, endpointID string, reqEditors ...RequestEditorFn) (*DeleteEndpointResponse, error)
 
+	// GetEndpointWithResponse request
+	GetEndpointWithResponse(ctx context.Context, projectID string, endpointID string, reqEditors ...RequestEditorFn) (*GetEndpointResponse, error)
+
+	// UpdateEndpointWithBodyWithResponse request with any body
+	UpdateEndpointWithBodyWithResponse(ctx context.Context, projectID string, endpointID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateEndpointResponse, error)
+
+	UpdateEndpointWithResponse(ctx context.Context, projectID string, endpointID string, body UpdateEndpointJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateEndpointResponse, error)
+
 	// CreateEndpointFanoutEventWithBodyWithResponse request with any body
 	CreateEndpointFanoutEventWithBodyWithResponse(ctx context.Context, projectID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateEndpointFanoutEventResponse, error)
 
@@ -1392,6 +1708,11 @@ type ClientWithResponsesInterface interface {
 	CreateSubscriptionWithBodyWithResponse(ctx context.Context, projectID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateSubscriptionResponse, error)
 
 	CreateSubscriptionWithResponse(ctx context.Context, projectID string, body CreateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSubscriptionResponse, error)
+
+	// UpdateSubscriptionWithBodyWithResponse request with any body
+	UpdateSubscriptionWithBodyWithResponse(ctx context.Context, projectID string, subscriptionID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSubscriptionResponse, error)
+
+	UpdateSubscriptionWithResponse(ctx context.Context, projectID string, subscriptionID string, body UpdateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSubscriptionResponse, error)
 }
 
 type GetEndpointsResponse struct {
@@ -1514,6 +1835,88 @@ func (r DeleteEndpointResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r DeleteEndpointResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetEndpointResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *struct {
+		Data    *ModelsEndpointResponse `json:"data,omitempty"`
+		Message *string                 `json:"message,omitempty"`
+		Status  *bool                   `json:"status,omitempty"`
+	}
+	JSON400 *struct {
+		Data    *HandlersStub `json:"data,omitempty"`
+		Message *string       `json:"message,omitempty"`
+		Status  *bool         `json:"status,omitempty"`
+	}
+	JSON401 *struct {
+		Data    *HandlersStub `json:"data,omitempty"`
+		Message *string       `json:"message,omitempty"`
+		Status  *bool         `json:"status,omitempty"`
+	}
+	JSON404 *struct {
+		Data    *HandlersStub `json:"data,omitempty"`
+		Message *string       `json:"message,omitempty"`
+		Status  *bool         `json:"status,omitempty"`
+	}
+}
+
+// Status returns HTTPResponse.Status
+func (r GetEndpointResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetEndpointResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type UpdateEndpointResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *struct {
+		Data    *ModelsEndpointResponse `json:"data,omitempty"`
+		Message *string                 `json:"message,omitempty"`
+		Status  *bool                   `json:"status,omitempty"`
+	}
+	JSON400 *struct {
+		Data    *HandlersStub `json:"data,omitempty"`
+		Message *string       `json:"message,omitempty"`
+		Status  *bool         `json:"status,omitempty"`
+	}
+	JSON401 *struct {
+		Data    *HandlersStub `json:"data,omitempty"`
+		Message *string       `json:"message,omitempty"`
+		Status  *bool         `json:"status,omitempty"`
+	}
+	JSON404 *struct {
+		Data    *HandlersStub `json:"data,omitempty"`
+		Message *string       `json:"message,omitempty"`
+		Status  *bool         `json:"status,omitempty"`
+	}
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateEndpointResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateEndpointResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1646,6 +2049,47 @@ func (r CreateSubscriptionResponse) StatusCode() int {
 	return 0
 }
 
+type UpdateSubscriptionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *struct {
+		Data    *ModelsSubscriptionResponse `json:"data,omitempty"`
+		Message *string                     `json:"message,omitempty"`
+		Status  *bool                       `json:"status,omitempty"`
+	}
+	JSON400 *struct {
+		Data    *HandlersStub `json:"data,omitempty"`
+		Message *string       `json:"message,omitempty"`
+		Status  *bool         `json:"status,omitempty"`
+	}
+	JSON401 *struct {
+		Data    *HandlersStub `json:"data,omitempty"`
+		Message *string       `json:"message,omitempty"`
+		Status  *bool         `json:"status,omitempty"`
+	}
+	JSON404 *struct {
+		Data    *HandlersStub `json:"data,omitempty"`
+		Message *string       `json:"message,omitempty"`
+		Status  *bool         `json:"status,omitempty"`
+	}
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateSubscriptionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateSubscriptionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 // GetEndpointsWithResponse request returning *GetEndpointsResponse
 func (c *ClientWithResponses) GetEndpointsWithResponse(ctx context.Context, projectID string, params *GetEndpointsParams, reqEditors ...RequestEditorFn) (*GetEndpointsResponse, error) {
 	rsp, err := c.GetEndpoints(ctx, projectID, params, reqEditors...)
@@ -1679,6 +2123,32 @@ func (c *ClientWithResponses) DeleteEndpointWithResponse(ctx context.Context, pr
 		return nil, err
 	}
 	return ParseDeleteEndpointResponse(rsp)
+}
+
+// GetEndpointWithResponse request returning *GetEndpointResponse
+func (c *ClientWithResponses) GetEndpointWithResponse(ctx context.Context, projectID string, endpointID string, reqEditors ...RequestEditorFn) (*GetEndpointResponse, error) {
+	rsp, err := c.GetEndpoint(ctx, projectID, endpointID, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetEndpointResponse(rsp)
+}
+
+// UpdateEndpointWithBodyWithResponse request with arbitrary body returning *UpdateEndpointResponse
+func (c *ClientWithResponses) UpdateEndpointWithBodyWithResponse(ctx context.Context, projectID string, endpointID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateEndpointResponse, error) {
+	rsp, err := c.UpdateEndpointWithBody(ctx, projectID, endpointID, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateEndpointResponse(rsp)
+}
+
+func (c *ClientWithResponses) UpdateEndpointWithResponse(ctx context.Context, projectID string, endpointID string, body UpdateEndpointJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateEndpointResponse, error) {
+	rsp, err := c.UpdateEndpoint(ctx, projectID, endpointID, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateEndpointResponse(rsp)
 }
 
 // CreateEndpointFanoutEventWithBodyWithResponse request with arbitrary body returning *CreateEndpointFanoutEventResponse
@@ -1722,6 +2192,23 @@ func (c *ClientWithResponses) CreateSubscriptionWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseCreateSubscriptionResponse(rsp)
+}
+
+// UpdateSubscriptionWithBodyWithResponse request with arbitrary body returning *UpdateSubscriptionResponse
+func (c *ClientWithResponses) UpdateSubscriptionWithBodyWithResponse(ctx context.Context, projectID string, subscriptionID string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSubscriptionResponse, error) {
+	rsp, err := c.UpdateSubscriptionWithBody(ctx, projectID, subscriptionID, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateSubscriptionResponse(rsp)
+}
+
+func (c *ClientWithResponses) UpdateSubscriptionWithResponse(ctx context.Context, projectID string, subscriptionID string, body UpdateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSubscriptionResponse, error) {
+	rsp, err := c.UpdateSubscription(ctx, projectID, subscriptionID, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateSubscriptionResponse(rsp)
 }
 
 // ParseGetEndpointsResponse parses an HTTP response from a GetEndpointsWithResponse call
@@ -1916,6 +2403,132 @@ func ParseDeleteEndpointResponse(rsp *http.Response) (*DeleteEndpointResponse, e
 	return response, nil
 }
 
+// ParseGetEndpointResponse parses an HTTP response from a GetEndpointWithResponse call
+func ParseGetEndpointResponse(rsp *http.Response) (*GetEndpointResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetEndpointResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Data    *ModelsEndpointResponse `json:"data,omitempty"`
+			Message *string                 `json:"message,omitempty"`
+			Status  *bool                   `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Data    *HandlersStub `json:"data,omitempty"`
+			Message *string       `json:"message,omitempty"`
+			Status  *bool         `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Data    *HandlersStub `json:"data,omitempty"`
+			Message *string       `json:"message,omitempty"`
+			Status  *bool         `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Data    *HandlersStub `json:"data,omitempty"`
+			Message *string       `json:"message,omitempty"`
+			Status  *bool         `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateEndpointResponse parses an HTTP response from a UpdateEndpointWithResponse call
+func ParseUpdateEndpointResponse(rsp *http.Response) (*UpdateEndpointResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateEndpointResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest struct {
+			Data    *ModelsEndpointResponse `json:"data,omitempty"`
+			Message *string                 `json:"message,omitempty"`
+			Status  *bool                   `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Data    *HandlersStub `json:"data,omitempty"`
+			Message *string       `json:"message,omitempty"`
+			Status  *bool         `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Data    *HandlersStub `json:"data,omitempty"`
+			Message *string       `json:"message,omitempty"`
+			Status  *bool         `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Data    *HandlersStub `json:"data,omitempty"`
+			Message *string       `json:"message,omitempty"`
+			Status  *bool         `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseCreateEndpointFanoutEventResponse parses an HTTP response from a CreateEndpointFanoutEventWithResponse call
 func ParseCreateEndpointFanoutEventResponse(rsp *http.Response) (*CreateEndpointFanoutEventResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -2069,6 +2682,69 @@ func ParseCreateSubscriptionResponse(rsp *http.Response) (*CreateSubscriptionRes
 			return nil, err
 		}
 		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Data    *HandlersStub `json:"data,omitempty"`
+			Message *string       `json:"message,omitempty"`
+			Status  *bool         `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Data    *HandlersStub `json:"data,omitempty"`
+			Message *string       `json:"message,omitempty"`
+			Status  *bool         `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Data    *HandlersStub `json:"data,omitempty"`
+			Message *string       `json:"message,omitempty"`
+			Status  *bool         `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateSubscriptionResponse parses an HTTP response from a UpdateSubscriptionWithResponse call
+func ParseUpdateSubscriptionResponse(rsp *http.Response) (*UpdateSubscriptionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateSubscriptionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest struct {
+			Data    *ModelsSubscriptionResponse `json:"data,omitempty"`
+			Message *string                     `json:"message,omitempty"`
+			Status  *bool                       `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest struct {

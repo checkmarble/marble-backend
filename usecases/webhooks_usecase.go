@@ -13,13 +13,17 @@ import (
 )
 
 type convoyWebhooksRepository interface {
+	GetWebhook(ctx context.Context, webhookId string) (models.Webhook, error)
 	ListWebhooks(ctx context.Context, organizationId string, partnerId null.String) ([]models.Webhook, error)
-	RegisterWebhook(ctx context.Context, input models.WebhookRegister) error
+	RegisterWebhook(ctx context.Context, organizationId string, partnerId null.String, input models.WebhookRegister) error
+	UpdateWebhook(ctx context.Context, input models.Webhook) error
 	DeleteWebhook(ctx context.Context, webhookId string) error
 }
 
 type enforceSecurityWebhook interface {
-	CanManageWebhook(ctx context.Context, organizationId string, partnerId null.String) error
+	CanCreateWebhook(ctx context.Context, organizationId string, partnerId null.String) error
+	CanReadWebhook(ctx context.Context, webhook models.Webhook) error
+	CanModifyWebhook(ctx context.Context, webhook models.Webhook) error
 }
 
 type WebhooksUsecase struct {
@@ -44,14 +48,15 @@ func NewWebhooksUsecase(
 }
 
 func (usecase WebhooksUsecase) ListWebhooks(ctx context.Context, organizationId string, partnerId null.String) ([]models.Webhook, error) {
-	err := usecase.enforceSecurity.CanManageWebhook(ctx, organizationId, partnerId)
-	if err != nil {
-		return nil, err
-	}
-
 	webhooks, err := usecase.convoyRepository.ListWebhooks(ctx, organizationId, partnerId)
 	if err != nil {
 		return nil, errors.Wrap(err, "error listing webhooks")
+	}
+
+	for _, webhook := range webhooks {
+		if err := usecase.enforceSecurity.CanReadWebhook(ctx, webhook); err != nil {
+			return nil, err
+		}
 	}
 
 	return webhooks, nil
@@ -59,9 +64,11 @@ func (usecase WebhooksUsecase) ListWebhooks(ctx context.Context, organizationId 
 
 func (usecase WebhooksUsecase) RegisterWebhook(
 	ctx context.Context,
+	organizationId string,
+	partnerId null.String,
 	input models.WebhookRegister,
 ) error {
-	err := usecase.enforceSecurity.CanManageWebhook(ctx, input.OrganizationId, input.PartnerId)
+	err := usecase.enforceSecurity.CanCreateWebhook(ctx, organizationId, partnerId)
 	if err != nil {
 		return err
 	}
@@ -72,7 +79,7 @@ func (usecase WebhooksUsecase) RegisterWebhook(
 
 	input.Secret = generateSecret()
 
-	err = usecase.convoyRepository.RegisterWebhook(ctx, input)
+	err = usecase.convoyRepository.RegisterWebhook(ctx, organizationId, partnerId, input)
 	if err != nil {
 		return errors.Wrap(err, "error registering webhook")
 	}
@@ -92,10 +99,28 @@ func generateSecret() string {
 func (usecase WebhooksUsecase) DeleteWebhook(
 	ctx context.Context, organizationId string, partnerId null.String, webhookId string,
 ) error {
-	err := usecase.enforceSecurity.CanManageWebhook(ctx, organizationId, partnerId)
+	webhook, err := usecase.convoyRepository.GetWebhook(ctx, webhookId)
 	if err != nil {
+		return models.NotFoundError
+	}
+	if err = usecase.enforceSecurity.CanModifyWebhook(ctx, webhook); err != nil {
 		return err
 	}
 
-	return usecase.convoyRepository.DeleteWebhook(ctx, webhookId)
+	return usecase.convoyRepository.DeleteWebhook(ctx, webhook.Id)
+}
+
+func (usecase WebhooksUsecase) UpdateWebhook(
+	ctx context.Context, organizationId string, partnerId null.String, webhookId string, input models.WebhookUpdate,
+) error {
+	webhook, err := usecase.convoyRepository.GetWebhook(ctx, webhookId)
+	if err != nil {
+		return models.NotFoundError
+	}
+	if err = usecase.enforceSecurity.CanModifyWebhook(ctx, webhook); err != nil {
+		return err
+	}
+
+	return usecase.convoyRepository.UpdateWebhook(ctx,
+		models.MergeWebhookWithUpdate(webhook, input))
 }

@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/guregu/null/v5"
@@ -32,25 +33,30 @@ func (api *API) handleListWebhooks(c *gin.Context) {
 }
 
 func (api *API) handleRegisterWebhook(c *gin.Context) {
-	var data dto.WebhookRegisterBody
-	if err := c.ShouldBindJSON(&data); err != nil {
-		c.Status(http.StatusBadRequest)
-		return
-	}
-
 	creds, found := utils.CredentialsFromCtx(c.Request.Context())
 	if !found {
 		presentError(c, fmt.Errorf("no credentials in context"))
 		return
 	}
 
+	var data dto.WebhookRegisterBody
+	if err := c.ShouldBindJSON(&data); err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
 	usecase := api.UsecasesWithCreds(c.Request).NewWebhooksUsecase()
 
-	err := usecase.RegisterWebhook(c.Request.Context(), dto.AdaptWebhookRegister(
+	err := usecase.RegisterWebhook(c.Request.Context(),
 		creds.OrganizationId,
-		creds.PartnerId,
-		data,
-	))
+		null.StringFromPtr(creds.PartnerId),
+		models.WebhookRegister{
+			EventTypes:        data.EventTypes,
+			Url:               data.Url,
+			HttpTimeout:       data.HttpTimeout,
+			RateLimit:         data.RateLimit,
+			RateLimitDuration: data.RateLimitDuration,
+		})
 	if presentError(c, err) {
 		return
 	}
@@ -78,4 +84,39 @@ func (api *API) handleDeleteWebhook(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+func (api *API) handleUpdateWebhook(c *gin.Context) {
+	webhookId := c.Param("webhook_id")
+
+	creds, found := utils.CredentialsFromCtx(c.Request.Context())
+	if !found {
+		presentError(c, fmt.Errorf("no credentials in context"))
+		return
+	}
+
+	var data dto.WebhookUpdateBody
+	if err := c.ShouldBindJSON(&data); err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
+	usecase := api.UsecasesWithCreds(c.Request).NewWebhooksUsecase()
+
+	err := usecase.UpdateWebhook(c.Request.Context(),
+		creds.OrganizationId,
+		null.StringFromPtr(creds.PartnerId),
+		webhookId,
+		models.WebhookUpdate{
+			EventTypes:        data.EventTypes,
+			Url:               data.Url,
+			HttpTimeout:       data.HttpTimeout,
+			RateLimit:         data.RateLimit,
+			RateLimitDuration: data.RateLimitDuration,
+		})
+	if presentError(c, err) {
+		return
+	}
+
+	c.Status(http.StatusOK)
 }
