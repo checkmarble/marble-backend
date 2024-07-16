@@ -104,12 +104,11 @@ func (repo ConvoyRepository) RegisterWebhook(
 		return errors.Wrap(err, "can't create convoy endpoint")
 	}
 
+	filterConfig := adaptModelsFilterConfiguration(input.EventTypes)
 	subscription, err := convoyClient.CreateSubscriptionWithResponse(ctx, projectId, convoy.ModelsCreateSubscription{
-		Name:       &name,
-		EndpointId: endpoint.JSON201.Data.Uid,
-		FilterConfig: &convoy.ModelsFilterConfiguration{
-			EventTypes: &input.EventTypes,
-		},
+		Name:         &name,
+		EndpointId:   endpoint.JSON201.Data.Uid,
+		FilterConfig: &filterConfig,
 		RetryConfig: &convoy.ModelsRetryConfiguration{
 			Type:       utils.Ptr(convoy.ExponentialStrategyProvider),
 			RetryCount: utils.Ptr(3),
@@ -199,6 +198,32 @@ func (repo ConvoyRepository) ListWebhooks(ctx context.Context, organizationId st
 	return webhooks, nil
 }
 
+func adaptEventTypes(convoyFilterConfig convoy.DatastoreFilterConfiguration) []string {
+	var eventTypes []string
+	if convoyFilterConfig.EventTypes == nil || len(*convoyFilterConfig.EventTypes) == 0 {
+		return eventTypes
+	}
+	if len(*convoyFilterConfig.EventTypes) == 1 && (*convoyFilterConfig.EventTypes)[0] == "*" {
+		return eventTypes
+	}
+	for _, eventType := range *convoyFilterConfig.EventTypes {
+		eventTypes = append(eventTypes, eventType)
+	}
+	return eventTypes
+}
+
+func adaptModelsFilterConfiguration(eventTypes []string) convoy.ModelsFilterConfiguration {
+	var convoyEventTypes []string
+	if len(eventTypes) > 0 {
+		convoyEventTypes = eventTypes
+	} else {
+		convoyEventTypes = []string{"*"}
+	}
+	return convoy.ModelsFilterConfiguration{
+		EventTypes: &convoyEventTypes,
+	}
+}
+
 func adaptSecret(convoySecret convoy.DatastoreSecret) models.Secret {
 	secret := models.Secret{
 		CreatedAt: *convoySecret.CreatedAt,
@@ -225,11 +250,14 @@ func adaptWebhook(
 		Id:                *convoyEndpoint.Uid,
 		OrganizationId:    organizationId,
 		PartnerId:         partnerId,
-		EventTypes:        *convoySubscription.FilterConfig.EventTypes,
 		Url:               *convoyEndpoint.Url,
 		HttpTimeout:       convoyEndpoint.HttpTimeout,
 		RateLimit:         convoyEndpoint.RateLimit,
 		RateLimitDuration: convoyEndpoint.RateLimitDuration,
+	}
+
+	if convoySubscription.FilterConfig != nil {
+		webhook.EventTypes = adaptEventTypes(*convoySubscription.FilterConfig)
 	}
 
 	if convoyEndpoint.Secrets != nil {
@@ -373,13 +401,12 @@ func (repo ConvoyRepository) UpdateWebhook(
 		return errors.Wrap(err, "can't update convoy endpoint")
 	}
 
+	filterConfig := adaptModelsFilterConfiguration(input.EventTypes)
 	subscriptionRes, err := convoyClient.UpdateSubscriptionWithResponse(ctx,
 		projectId,
 		*subscription.Uid,
 		convoy.ModelsUpdateSubscription{
-			FilterConfig: &convoy.ModelsFilterConfiguration{
-				EventTypes: &input.EventTypes,
-			},
+			FilterConfig: &filterConfig,
 		})
 	if err != nil {
 		return errors.Wrap(err, "can't update convoy subscription: request error")

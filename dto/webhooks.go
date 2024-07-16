@@ -6,7 +6,7 @@ import (
 )
 
 type WebhookRegisterBody struct {
-	EventTypes        []string `json:"event_types"`
+	EventTypes        []string `json:"event_types,omitempty"`
 	Url               string   `json:"url"`
 	HttpTimeout       *int     `json:"http_timeout,omitempty"`
 	RateLimit         *int     `json:"rate_limit,omitempty"`
@@ -15,7 +15,7 @@ type WebhookRegisterBody struct {
 
 type Webhook struct {
 	Id                string   `json:"id"`
-	EventTypes        []string `json:"event_types"`
+	EventTypes        []string `json:"event_types,omitempty"`
 	Secrets           []Secret `json:"secrets"`
 	Url               string   `json:"url"`
 	HttpTimeout       *int     `json:"http_timeout,omitempty"`
