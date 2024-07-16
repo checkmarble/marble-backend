@@ -16,11 +16,15 @@ type WebhookRegisterBody struct {
 type Webhook struct {
 	Id                string   `json:"id"`
 	EventTypes        []string `json:"event_types,omitempty"`
-	Secrets           []Secret `json:"secrets"`
 	Url               string   `json:"url"`
 	HttpTimeout       *int     `json:"http_timeout,omitempty"`
 	RateLimit         *int     `json:"rate_limit,omitempty"`
 	RateLimitDuration *int     `json:"rate_limit_duration,omitempty"`
+}
+
+type WebhookWithSecret struct {
+	Webhook
+	Secrets []Secret `json:"secrets,omitempty"`
 }
 
 type Secret struct {
@@ -47,11 +51,17 @@ func AdaptWebhook(webhook models.Webhook) Webhook {
 	return Webhook{
 		Id:                webhook.Id,
 		EventTypes:        webhook.EventTypes,
-		Secrets:           pure_utils.Map(webhook.Secrets, AdaptSecret),
 		Url:               webhook.Url,
 		HttpTimeout:       webhook.HttpTimeout,
 		RateLimit:         webhook.RateLimit,
 		RateLimitDuration: webhook.RateLimitDuration,
+	}
+}
+
+func AdaptWebhookWithSecret(webhook models.Webhook) WebhookWithSecret {
+	return WebhookWithSecret{
+		Webhook: AdaptWebhook(webhook),
+		Secrets: pure_utils.Map(webhook.Secrets, AdaptSecret),
 	}
 }
 

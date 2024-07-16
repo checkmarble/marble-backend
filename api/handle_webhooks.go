@@ -47,7 +47,7 @@ func (api *API) handleRegisterWebhook(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewWebhooksUsecase()
 
-	err := usecase.RegisterWebhook(c.Request.Context(),
+	webhook, err := usecase.RegisterWebhook(c.Request.Context(),
 		creds.OrganizationId,
 		null.StringFromPtr(creds.PartnerId),
 		models.WebhookRegister{
@@ -61,7 +61,7 @@ func (api *API) handleRegisterWebhook(c *gin.Context) {
 		return
 	}
 
-	c.Status(http.StatusOK)
+	c.JSON(http.StatusCreated, gin.H{"webhook": dto.AdaptWebhookWithSecret(webhook)})
 }
 
 func (api *API) handleDeleteWebhook(c *gin.Context) {
@@ -103,7 +103,7 @@ func (api *API) handleUpdateWebhook(c *gin.Context) {
 
 	usecase := api.UsecasesWithCreds(c.Request).NewWebhooksUsecase()
 
-	err := usecase.UpdateWebhook(c.Request.Context(),
+	webhook, err := usecase.UpdateWebhook(c.Request.Context(),
 		creds.OrganizationId,
 		null.StringFromPtr(creds.PartnerId),
 		webhookId,
@@ -118,5 +118,5 @@ func (api *API) handleUpdateWebhook(c *gin.Context) {
 		return
 	}
 
-	c.Status(http.StatusOK)
+	c.JSON(http.StatusOK, gin.H{"webhook": dto.AdaptWebhook(webhook)})
 }

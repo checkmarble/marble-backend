@@ -77,17 +77,17 @@ func (repo ConvoyRepository) RegisterWebhook(
 	organizationId string,
 	partnerId null.String,
 	input models.WebhookRegister,
-) error {
+) (models.Webhook, error) {
 	projectId := repo.convoyClientProvider.GetProjectID()
 	convoyClient, err := repo.convoyClientProvider.GetClient()
 	if err != nil {
-		return err
+		return models.Webhook{}, err
 	}
 
 	ownerId := getOwnerId(organizationId, partnerId)
 	name := getName(ownerId, input.EventTypes)
 
-	endpoint, err := convoyClient.CreateEndpointWithResponse(ctx, projectId, convoy.ModelsCreateEndpoint{
+	endpointRes, err := convoyClient.CreateEndpointWithResponse(ctx, projectId, convoy.ModelsCreateEndpoint{
 		Name:              &name,
 		OwnerId:           &ownerId,
 		Url:               &input.Url,
@@ -97,17 +97,18 @@ func (repo ConvoyRepository) RegisterWebhook(
 		RateLimitDuration: input.RateLimitDuration,
 	})
 	if err != nil {
-		return errors.Wrap(err, "can't create convoy endpoint: request error")
+		return models.Webhook{}, errors.Wrap(err, "can't create convoy endpoint: request error")
 	}
-	if endpoint.JSON201 == nil {
-		err = parseResponseError(endpoint.HTTPResponse.Status, endpoint.Body)
-		return errors.Wrap(err, "can't create convoy endpoint")
+	if endpointRes.JSON201 == nil || endpointRes.JSON201.Data == nil {
+		err = parseResponseError(endpointRes.HTTPResponse.Status, endpointRes.Body)
+		return models.Webhook{}, errors.Wrap(err, "can't create convoy endpoint")
 	}
+	endpoint := *endpointRes.JSON201.Data
 
 	filterConfig := adaptModelsFilterConfiguration(input.EventTypes)
-	subscription, err := convoyClient.CreateSubscriptionWithResponse(ctx, projectId, convoy.ModelsCreateSubscription{
+	subscriptionRes, err := convoyClient.CreateSubscriptionWithResponse(ctx, projectId, convoy.ModelsCreateSubscription{
 		Name:         &name,
-		EndpointId:   endpoint.JSON201.Data.Uid,
+		EndpointId:   endpoint.Uid,
 		FilterConfig: &filterConfig,
 		RetryConfig: &convoy.ModelsRetryConfiguration{
 			Type:       utils.Ptr(convoy.ExponentialStrategyProvider),
@@ -116,14 +117,15 @@ func (repo ConvoyRepository) RegisterWebhook(
 		},
 	})
 	if err != nil {
-		return errors.Wrap(err, "can't create convoy subscription: request error")
+		return models.Webhook{}, errors.Wrap(err, "can't create convoy subscription: request error")
 	}
-	if subscription.JSON201 == nil {
-		err = parseResponseError(endpoint.HTTPResponse.Status, endpoint.Body)
-		return errors.Wrap(err, "can't create convoy subscription")
+	if subscriptionRes.JSON201 == nil || subscriptionRes.JSON201.Data == nil {
+		err = parseResponseError(endpointRes.HTTPResponse.Status, endpointRes.Body)
+		return models.Webhook{}, errors.Wrap(err, "can't create convoy subscription")
 	}
+	subscription := *subscriptionRes.JSON201.Data
 
-	return nil
+	return adaptWebhook(endpoint, subscription), nil
 }
 
 var perPage = 1000
@@ -370,11 +372,11 @@ func (repo ConvoyRepository) DeleteWebhook(ctx context.Context, webhookId string
 func (repo ConvoyRepository) UpdateWebhook(
 	ctx context.Context,
 	input models.Webhook,
-) error {
+) (models.Webhook, error) {
 	projectId := repo.convoyClientProvider.GetProjectID()
 	convoyClient, err := repo.convoyClientProvider.GetClient()
 	if err != nil {
-		return err
+		return models.Webhook{}, err
 	}
 
 	ownerId := getOwnerId(input.OrganizationId, input.PartnerId)
@@ -382,7 +384,7 @@ func (repo ConvoyRepository) UpdateWebhook(
 
 	subscription, err := getSubscription(ctx, convoyClient, projectId, input.Id)
 	if err != nil {
-		return err
+		return models.Webhook{}, err
 	}
 
 	endpointRes, err := convoyClient.UpdateEndpointWithResponse(ctx, projectId, input.Id, convoy.ModelsUpdateEndpoint{
@@ -394,12 +396,13 @@ func (repo ConvoyRepository) UpdateWebhook(
 		RateLimitDuration: input.RateLimitDuration,
 	})
 	if err != nil {
-		return errors.Wrap(err, "can't update convoy endpoint: request error")
+		return models.Webhook{}, errors.Wrap(err, "can't update convoy endpoint: request error")
 	}
-	if endpointRes.JSON202 == nil {
+	if endpointRes.JSON202 == nil || endpointRes.JSON202.Data == nil {
 		err = parseResponseError(endpointRes.HTTPResponse.Status, endpointRes.Body)
-		return errors.Wrap(err, "can't update convoy endpoint")
+		return models.Webhook{}, errors.Wrap(err, "can't update convoy endpoint")
 	}
+	endpoint := *endpointRes.JSON202.Data
 
 	filterConfig := adaptModelsFilterConfiguration(input.EventTypes)
 	subscriptionRes, err := convoyClient.UpdateSubscriptionWithResponse(ctx,
@@ -409,14 +412,15 @@ func (repo ConvoyRepository) UpdateWebhook(
 			FilterConfig: &filterConfig,
 		})
 	if err != nil {
-		return errors.Wrap(err, "can't update convoy subscription: request error")
+		return models.Webhook{}, errors.Wrap(err, "can't update convoy subscription: request error")
 	}
-	if subscriptionRes.JSON202 == nil {
+	if subscriptionRes.JSON202 == nil || subscriptionRes.JSON202.Data == nil {
 		err = parseResponseError(subscriptionRes.HTTPResponse.Status, subscriptionRes.Body)
-		return errors.Wrap(err, "can't update convoy subscription")
+		return models.Webhook{}, errors.Wrap(err, "can't update convoy subscription")
 	}
+	subscription = *subscriptionRes.JSON202.Data
 
-	return nil
+	return adaptWebhook(endpoint, subscription), nil
 }
 
 func parseResponseError(status string, body []byte) error {

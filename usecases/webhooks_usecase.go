@@ -15,8 +15,9 @@ import (
 type convoyWebhooksRepository interface {
 	GetWebhook(ctx context.Context, webhookId string) (models.Webhook, error)
 	ListWebhooks(ctx context.Context, organizationId string, partnerId null.String) ([]models.Webhook, error)
-	RegisterWebhook(ctx context.Context, organizationId string, partnerId null.String, input models.WebhookRegister) error
-	UpdateWebhook(ctx context.Context, input models.Webhook) error
+	RegisterWebhook(ctx context.Context, organizationId string, partnerId null.String,
+		input models.WebhookRegister) (models.Webhook, error)
+	UpdateWebhook(ctx context.Context, input models.Webhook) (models.Webhook, error)
 	DeleteWebhook(ctx context.Context, webhookId string) error
 }
 
@@ -67,24 +68,18 @@ func (usecase WebhooksUsecase) RegisterWebhook(
 	organizationId string,
 	partnerId null.String,
 	input models.WebhookRegister,
-) error {
+) (models.Webhook, error) {
 	err := usecase.enforceSecurity.CanCreateWebhook(ctx, organizationId, partnerId)
 	if err != nil {
-		return err
+		return models.Webhook{}, err
 	}
 
 	if err = input.Validate(); err != nil {
-		return err
+		return models.Webhook{}, err
 	}
 
-	input.Secret = generateSecret()
-
-	err = usecase.convoyRepository.RegisterWebhook(ctx, organizationId, partnerId, input)
-	if err != nil {
-		return errors.Wrap(err, "error registering webhook")
-	}
-
-	return nil
+	webhook, err := usecase.convoyRepository.RegisterWebhook(ctx, organizationId, partnerId, input)
+	return webhook, errors.Wrap(err, "error registering webhook")
 }
 
 func generateSecret() string {
@@ -107,24 +102,26 @@ func (usecase WebhooksUsecase) DeleteWebhook(
 		return err
 	}
 
-	return usecase.convoyRepository.DeleteWebhook(ctx, webhook.Id)
+	err = usecase.convoyRepository.DeleteWebhook(ctx, webhook.Id)
+	return errors.Wrap(err, "error deleting webhook")
 }
 
 func (usecase WebhooksUsecase) UpdateWebhook(
 	ctx context.Context, organizationId string, partnerId null.String, webhookId string, input models.WebhookUpdate,
-) error {
+) (models.Webhook, error) {
 	if err := input.Validate(); err != nil {
-		return err
+		return models.Webhook{}, err
 	}
 
 	webhook, err := usecase.convoyRepository.GetWebhook(ctx, webhookId)
 	if err != nil {
-		return models.NotFoundError
+		return models.Webhook{}, models.NotFoundError
 	}
 	if err = usecase.enforceSecurity.CanModifyWebhook(ctx, webhook); err != nil {
-		return err
+		return models.Webhook{}, err
 	}
 
-	return usecase.convoyRepository.UpdateWebhook(ctx,
+	updatedWebhook, err := usecase.convoyRepository.UpdateWebhook(ctx,
 		models.MergeWebhookWithUpdate(webhook, input))
+	return updatedWebhook, errors.Wrap(err, "error updating webhook")
 }
