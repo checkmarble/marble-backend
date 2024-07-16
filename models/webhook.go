@@ -101,6 +101,15 @@ func (input WebhookRegister) Validate() error {
 	if _, err := url.ParseRequestURI(input.Url); err != nil {
 		return errors.Wrapf(BadParameterError, "invalid Url: %s", input.Url)
 	}
+	if input.HttpTimeout != nil && *input.HttpTimeout < 0 {
+		return errors.Wrapf(BadParameterError, "invalid HttpTimeout: %d", *input.HttpTimeout)
+	}
+	if input.RateLimit != nil && *input.RateLimit < 0 {
+		return errors.Wrapf(BadParameterError, "invalid RateLimit: %d", *input.RateLimit)
+	}
+	if input.RateLimitDuration != nil && *input.RateLimitDuration < 0 {
+		return errors.Wrapf(BadParameterError, "invalid RateLimitDuration: %d", *input.RateLimitDuration)
+	}
 
 	return nil
 }
@@ -142,6 +151,31 @@ type WebhookUpdate struct {
 	HttpTimeout       *int
 	RateLimit         *int
 	RateLimitDuration *int
+}
+
+func (input WebhookUpdate) Validate() error {
+	if input.EventTypes != nil {
+		for _, eventType := range *input.EventTypes {
+			if !slices.Contains(validWebhookEventTypes, WebhookEventType(eventType)) {
+				return errors.Wrapf(BadParameterError, "invalid event type: %s", eventType)
+			}
+		}
+	}
+	if input.Url != nil {
+		if _, err := url.ParseRequestURI(*input.Url); err != nil {
+			return errors.Wrapf(BadParameterError, "invalid Url: %s", *input.Url)
+		}
+	}
+	if input.HttpTimeout != nil && *input.HttpTimeout < 0 {
+		return errors.Wrapf(BadParameterError, "invalid HttpTimeout: %d", *input.HttpTimeout)
+	}
+	if input.RateLimit != nil && *input.RateLimit < 0 {
+		return errors.Wrapf(BadParameterError, "invalid RateLimit: %d", *input.RateLimit)
+	}
+	if input.RateLimitDuration != nil && *input.RateLimitDuration < 0 {
+		return errors.Wrapf(BadParameterError, "invalid RateLimitDuration: %d", *input.RateLimitDuration)
+	}
+	return nil
 }
 
 // MergeWebhookWithUpdate merges a Webhook with a WebhookUpdate, returning a new Webhook with the updated fields.

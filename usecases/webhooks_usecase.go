@@ -113,6 +113,10 @@ func (usecase WebhooksUsecase) DeleteWebhook(
 func (usecase WebhooksUsecase) UpdateWebhook(
 	ctx context.Context, organizationId string, partnerId null.String, webhookId string, input models.WebhookUpdate,
 ) error {
+	if err := input.Validate(); err != nil {
+		return err
+	}
+
 	webhook, err := usecase.convoyRepository.GetWebhook(ctx, webhookId)
 	if err != nil {
 		return models.NotFoundError
