@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/checkmarble/marble-backend/models/ast"
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/cockroachdb/errors"
 	"github.com/stretchr/testify/assert"
 )
@@ -19,22 +18,10 @@ func TestFuzzyMatch(t *testing.T) {
 		errors []error
 	}{
 		{
-			name: "partial_token_set_ratio",
+			name: "bag_of_words_similarity",
 			args: []any{"old mc donald had a farm", "old mc donald may have had a farm"},
-			algo: "partial_token_set_ratio",
+			algo: "bag_of_words_similarity",
 			want: 100,
-		},
-		{
-			name: "token_set_ratio",
-			args: []any{"old mc donald had a farm", "old mc donald may have had a farm"},
-			algo: "token_set_ratio",
-			want: 100,
-		},
-		{
-			name: "partial_ratio",
-			args: []any{"old mc donald had a farm", "old mc donald may have had a farm"},
-			algo: "partial_ratio",
-			want: 75,
 		},
 		{
 			name:   "error algo",
@@ -45,7 +32,7 @@ func TestFuzzyMatch(t *testing.T) {
 		{
 			name: "with accents",
 			args: []any{"ça, c'est une théière", "la theier a une typo"},
-			algo: "token_set_ratio",
+			algo: "bag_of_words_similarity",
 			want: 65,
 		},
 	}
@@ -74,25 +61,19 @@ func TestFuzzyMatchAnyOf(t *testing.T) {
 		errors []error
 	}{
 		{
-			name: "partial_token_set_ratio",
-			args: []any{"old mc donald had a farm", []string{"old mc donald may have had a farm", "E I E I O"}},
-			algo: "partial_token_set_ratio",
-			want: 100,
-		},
-		{
-			name: "token_set_ratio",
+			name: "bag_of_words_similarity",
 			args: []any{"old mc donald had a farm", []string{"E I E I O"}},
-			algo: "token_set_ratio",
+			algo: "bag_of_words_similarity",
 			want: 21,
 		},
 		{
-			name: "partial_ratio",
+			name: "ratio",
 			args: []any{"old mc donald had a farm", []string{
 				"Lorem ipsum dolor sit amet, consectetur adipiscing elit",
 				"sed do eiusmod tempor incididunt ut labore et dolore magna aliqua",
 			}},
-			algo: "partial_ratio",
-			want: 46,
+			algo: "ratio",
+			want: 31,
 		},
 		{
 			name:   "error algo",
@@ -113,41 +94,6 @@ func TestFuzzyMatchAnyOf(t *testing.T) {
 				assert.ErrorContains(t, errs[0], tt.errors[0].Error())
 			}
 			assert.Equal(t, tt.want, r)
-		})
-	}
-}
-
-func TestCleanseString(t *testing.T) {
-	tests := []struct {
-		name string
-		args string
-		want string
-	}{
-		{
-			name: "cleanse string",
-			args: "old mc donald had a farm",
-			want: "old mc donald had a farm",
-		},
-		{
-			name: "cleanse string with special characters",
-			args: "old mc donald had a farm!@#$%^&*()",
-			want: "old mc donald had a farm",
-		},
-		{
-			name: "cleanse string with accents",
-			args: "il était une fois une belle théière à ma sœur et ça c'est beau",
-			want: "il etait une fois une belle theiere a ma sœur et ca c est beau",
-		},
-		{
-			name: "various accents with upper case",
-			args: "AÉÇÀÈÙÎÏ",
-			want: "aecaeuii",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, pure_utils.CleanseString(tt.args))
 		})
 	}
 }
