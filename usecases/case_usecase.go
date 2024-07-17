@@ -56,6 +56,7 @@ type webhookEventsUsecase interface {
 		tx repositories.Executor,
 		input models.WebhookEventCreate,
 	) error
+	SendWebhookEventAsync(ctx context.Context, webhookEventId string)
 }
 
 type CaseUseCase struct {
@@ -237,6 +238,8 @@ func (usecase *CaseUseCase) CreateCaseAsUser(
 func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string,
 	updateCaseAttributes models.UpdateCaseAttributes,
 ) (models.Case, error) {
+	webhookEventId := uuid.New().String()
+
 	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Executor,
 	) (models.Case, error) {
@@ -282,9 +285,10 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string,
 			return models.Case{}, err
 		}
 
-		// TODO(webhook): integration test for webhooks, refactor when webhooks are fully implemented		
+		// TODO(webhook): integration test for webhooks, refactor when webhooks are fully implemented
 		if updateCaseAttributes.Status != "" {
 			err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+				Id:             webhookEventId,
 				OrganizationId: updatedCase.OrganizationId,
 				EventContent:   models.NewWebhookEventCaseStatusUpdated(updateCaseAttributes.Status),
 			})
@@ -298,6 +302,8 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string,
 	if err != nil {
 		return models.Case{}, err
 	}
+
+	usecase.webhookEventsUsecase.SendWebhookEventAsync(ctx, webhookEventId)
 
 	trackCaseUpdatedEvents(ctx, updatedCase.Id, updateCaseAttributes)
 	return updatedCase, nil

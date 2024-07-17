@@ -9,7 +9,6 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/google/uuid"
 	"github.com/guregu/null/v5"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
@@ -37,7 +36,6 @@ type webhookEventsRepository interface {
 	CreateWebhookEvent(
 		ctx context.Context,
 		exec repositories.Executor,
-		webhookEventId string,
 		webhookEvent models.WebhookEventCreate,
 	) error
 	UpdateWebhookEvent(
@@ -92,12 +90,15 @@ func (usecase WebhookEventsUsecase) CreateWebhookEvent(
 		return err
 	}
 
-	webhookEventId := uuid.New().String()
-	err = usecase.webhookEventsRepository.CreateWebhookEvent(ctx, tx, webhookEventId, input)
+	err = usecase.webhookEventsRepository.CreateWebhookEvent(ctx, tx, input)
 	if err != nil {
 		return errors.Wrap(err, "error creating webhook event")
 	}
+	return nil
+}
 
+// SendWebhookEventAsync sends a webhook event asynchronously, with a new context and timeout and a child span.
+func (usecase WebhookEventsUsecase) SendWebhookEventAsync(ctx context.Context, webhookEventId string) {
 	logger := utils.LoggerFromContext(ctx).With("webhook_event_id", webhookEventId)
 	ctx = utils.StoreLoggerInContext(ctx, logger)
 
@@ -112,19 +113,17 @@ func (usecase WebhookEventsUsecase) CreateWebhookEvent(
 			trace.WithAttributes(attribute.String("webhook_event_id", webhookEventId)))
 		defer span.End()
 
-		status, err := usecase.sendWebhookEvent(ctx, webhookEventId)
+		status, err := usecase._sendWebhookEvent(ctx, webhookEventId)
 		if err != nil {
 			logger.ErrorContext(ctx, fmt.Sprintf("Error sending webhook event %s: %s", webhookEventId, err.Error()))
 		}
 		if status == models.Retry {
-			logger.InfoContext(ctx, fmt.Sprintf("Webhook event %s will be retried", webhookEventId))
+			logger.WarnContext(ctx, fmt.Sprintf("Webhook event %s will be retried", webhookEventId))
 		}
 	}()
-
-	return nil
 }
 
-func (usecase WebhookEventsUsecase) SendWebhookEvents(
+func (usecase WebhookEventsUsecase) RetrySendWebhookEvents(
 	ctx context.Context,
 ) error {
 	logger := utils.LoggerFromContext(ctx)
@@ -159,7 +158,7 @@ func (usecase WebhookEventsUsecase) SendWebhookEvents(
 			default:
 			}
 
-			deliveryStatus, err := usecase.sendWebhookEvent(ctx, webhookEvent.Id)
+			deliveryStatus, err := usecase._sendWebhookEvent(ctx, webhookEvent.Id)
 			deliveryStatuses[i] = deliveryStatus
 			return err
 		})
@@ -186,8 +185,8 @@ func (usecase WebhookEventsUsecase) SendWebhookEvents(
 	return nil
 }
 
-// sendWebhookEvent actually sends a webhook event and updates its status in the database.
-func (usecase *WebhookEventsUsecase) sendWebhookEvent(ctx context.Context, webhookEventId string) (models.WebhookEventDeliveryStatus, error) {
+// _sendWebhookEvent actually sends a webhook event and updates its status in the database.
+func (usecase WebhookEventsUsecase) _sendWebhookEvent(ctx context.Context, webhookEventId string) (models.WebhookEventDeliveryStatus, error) {
 	logger := utils.LoggerFromContext(ctx)
 	exec := usecase.executorFactory.NewExecutor()
 	webhookEvent, err := usecase.webhookEventsRepository.GetWebhookEvent(ctx, exec, webhookEventId)
