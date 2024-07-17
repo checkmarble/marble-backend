@@ -4,19 +4,16 @@ import (
 	"context"
 
 	"github.com/cockroachdb/errors"
-	fuzzy "github.com/paul-mannino/go-fuzzywuzzy"
 
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
 )
 
-// Implements a fuzzy match using the go-fuzzywuzzy library.
-// List of strign cleaning steps applied:
+// List of string cleaning steps applied:
 // - normalize
 // - remove diacritics
 // - set to lower case
-// - keep only letters and numbers
-// (- keep non-ASCII characters)
+// - only letters and numbers
 type FuzzyMatch struct{}
 
 func (fuzzyMatcher FuzzyMatch) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
@@ -26,9 +23,7 @@ func (fuzzyMatcher FuzzyMatch) Evaluate(ctx context.Context, arguments ast.Argum
 	}
 
 	left, errLeft := adaptArgumentToString(leftAny)
-	left = pure_utils.CleanseString(left)
 	right, errRight := adaptArgumentToString(rightAny)
-	right = pure_utils.CleanseString(right)
 	algorithm, algorithmErr := AdaptNamedArgument(arguments.NamedArgs, "algorithm", adaptArgumentToString)
 
 	errs := MakeAdaptedArgsErrors([]error{errLeft, errRight, algorithmErr})
@@ -53,7 +48,6 @@ func (fuzzyMatcher FuzzyMatchAnyOf) Evaluate(ctx context.Context, arguments ast.
 	}
 
 	left, errLeft := adaptArgumentToString(leftAny)
-	left = pure_utils.CleanseString(left)
 	right, errRight := adaptArgumentToListOfStrings(rightAny)
 	algorithm, algorithmErr := AdaptNamedArgument(arguments.NamedArgs, "algorithm", adaptArgumentToString)
 
@@ -69,7 +63,7 @@ func (fuzzyMatcher FuzzyMatchAnyOf) Evaluate(ctx context.Context, arguments ast.
 
 	maxScore := 0
 	for _, rVal := range right {
-		maxScore = max(maxScore, f(left, pure_utils.CleanseString(rVal)))
+		maxScore = max(maxScore, f(left, rVal))
 		if maxScore == 100 {
 			break
 		}
@@ -77,23 +71,19 @@ func (fuzzyMatcher FuzzyMatchAnyOf) Evaluate(ctx context.Context, arguments ast.
 	return maxScore, nil
 }
 
-func getSimilarityAlgo(s string) (func(s1 string, s2 string, opts ...bool) int, error) {
-	var f func(s1 string, s2 string, opts ...bool) int
+func getSimilarityAlgo(s string) (func(s1 string, s2 string) int, error) {
+	var f func(s1 string, s2 string) int
+
 	switch s {
 	case "ratio":
-		f = func(s1 string, s2 string, opts ...bool) int { return fuzzy.Ratio(s1, s2) }
-	case "partial_ratio":
-		f = func(s1 string, s2 string, opts ...bool) int { return fuzzy.PartialRatio(s1, s2) }
-	case "token_sort_ratio":
-		f = fuzzy.TokenSortRatio
+		return pure_utils.DirectSimilarity, nil
 	case "token_set_ratio":
-		f = fuzzy.TokenSetRatio
-	case "partial_token_set_ratio":
-		f = fuzzy.PartialTokenSetRatio
-	case "partial_token_sort_ratio":
-		f = fuzzy.PartialTokenSortRatio
-	default:
-		return f, errors.New("Unknown algorithm: " + s)
+		// backward compatibility with an old name used in thefirst implementation. Renamed to "bag_of_words_similarity" to be
+		// library agnostic and more descriptive.
+		return pure_utils.BagOfWordsSimilarity, nil
+	case "bag_of_words_similarity":
+		return pure_utils.BagOfWordsSimilarity, nil
 	}
-	return f, nil
+
+	return f, errors.New("Unknown algorithm: " + s)
 }
