@@ -12,15 +12,15 @@ import (
 )
 
 type DBWebhookEvent struct {
-	Id               string      `db:"id"`
-	CreatedAt        time.Time   `db:"created_at"`
-	UpdatedAt        time.Time   `db:"updated_at"`
-	SendAttemptCount int         `db:"send_attempt_count"`
-	DeliveryStatus   string      `db:"delivery_status"`
-	OrganizationId   string      `db:"organization_id"`
-	PartnerId        pgtype.Text `db:"partner_id"`
-	EventType        string      `db:"event_type"`
-	EventData        []byte      `db:"event_data"`
+	Id             string      `db:"id"`
+	CreatedAt      time.Time   `db:"created_at"`
+	UpdatedAt      time.Time   `db:"updated_at"`
+	RetryCount     int         `db:"retry_count"`
+	DeliveryStatus string      `db:"delivery_status"`
+	OrganizationId string      `db:"organization_id"`
+	PartnerId      pgtype.Text `db:"partner_id"`
+	EventType      string      `db:"event_type"`
+	EventData      []byte      `db:"event_data"`
 }
 
 const TABLE_WEBHOOK_EVENTS = "webhook_events"
@@ -35,13 +35,13 @@ func AdaptWebhookEvent(db DBWebhookEvent) (models.WebhookEvent, error) {
 	}
 
 	return models.WebhookEvent{
-		Id:               db.Id,
-		CreatedAt:        db.CreatedAt,
-		UpdatedAt:        db.UpdatedAt,
-		SendAttemptCount: db.SendAttemptCount,
-		DeliveryStatus:   models.WebhookEventDeliveryStatus(db.DeliveryStatus),
-		OrganizationId:   db.OrganizationId,
-		PartnerId:        null.NewString(db.PartnerId.String, db.PartnerId.Valid),
+		Id:             db.Id,
+		CreatedAt:      db.CreatedAt,
+		UpdatedAt:      db.UpdatedAt,
+		RetryCount:     db.RetryCount,
+		DeliveryStatus: models.WebhookEventDeliveryStatus(db.DeliveryStatus),
+		OrganizationId: db.OrganizationId,
+		PartnerId:      null.NewString(db.PartnerId.String, db.PartnerId.Valid),
 		EventContent: models.WebhookEventContent{
 			Type: models.WebhookEventType(db.EventType),
 			Data: eventData,

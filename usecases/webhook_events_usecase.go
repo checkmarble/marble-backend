@@ -113,12 +113,9 @@ func (usecase WebhookEventsUsecase) SendWebhookEventAsync(ctx context.Context, w
 			trace.WithAttributes(attribute.String("webhook_event_id", webhookEventId)))
 		defer span.End()
 
-		status, err := usecase._sendWebhookEvent(ctx, webhookEventId)
+		_, err := usecase._sendWebhookEvent(ctx, webhookEventId)
 		if err != nil {
 			logger.ErrorContext(ctx, fmt.Sprintf("Error sending webhook event %s: %s", webhookEventId, err.Error()))
-		}
-		if status == models.Retry {
-			logger.WarnContext(ctx, fmt.Sprintf("Webhook event %s will be retried", webhookEventId))
 		}
 	}()
 }
@@ -193,6 +190,9 @@ func (usecase WebhookEventsUsecase) _sendWebhookEvent(ctx context.Context, webho
 	if err != nil {
 		return models.Scheduled, err
 	}
+	if webhookEvent.DeliveryStatus == models.Success {
+		return webhookEvent.DeliveryStatus, nil
+	}
 
 	err = usecase.enforceSecurity.SendWebhookEvent(ctx, webhookEvent.OrganizationId, webhookEvent.PartnerId)
 	if err != nil {
@@ -202,13 +202,15 @@ func (usecase WebhookEventsUsecase) _sendWebhookEvent(ctx context.Context, webho
 	logger.InfoContext(ctx, fmt.Sprintf("Start processing webhook event %s", webhookEvent.Id))
 
 	err = usecase.convoyRepository.SendWebhookEvent(ctx, webhookEvent)
-	// sending the webhook to convoy was successful, so we can (no need for transaction)
+	// sending the webhook to convoy was successful, so we can update the status directly (no need for transaction)
 	if err == nil {
 		webhookEventUpdate := models.WebhookEventUpdate{Id: webhookEvent.Id, DeliveryStatus: models.Success}
 		err := usecase.webhookEventsRepository.UpdateWebhookEvent(ctx, exec, webhookEventUpdate)
 		return webhookEventUpdate.DeliveryStatus, err
-
 	}
+
+	// so we're in the error case
+	logger.ErrorContext(ctx, fmt.Sprintf("Error sending webhook event %s: %s", webhookEvent.Id, err.Error()))
 
 	// there was an error sending the webhook to convoy so we mark it as failed or to retry
 	return executor_factory.TransactionReturnValue(
@@ -225,9 +227,9 @@ func (usecase WebhookEventsUsecase) _sendWebhookEvent(ctx context.Context, webho
 			}
 
 			webhookEventUpdate := models.WebhookEventUpdate{
-				Id:               webhookEvent.Id,
-				DeliveryStatus:   models.Retry,
-				SendAttemptCount: webhookEvent.SendAttemptCount + 1,
+				Id:             webhookEvent.Id,
+				DeliveryStatus: models.Retry,
+				RetryCount:     webhookEvent.RetryCount + 1,
 			}
 			err = usecase.webhookEventsRepository.UpdateWebhookEvent(ctx, tx, webhookEventUpdate)
 			return webhookEventUpdate.DeliveryStatus, errors.Wrapf(

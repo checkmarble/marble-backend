@@ -18,16 +18,7 @@ const (
 	Success WebhookEventDeliveryStatus = "success"
 	// The event delivery previously failed and the automatic retries have kicked in
 	Retry WebhookEventDeliveryStatus = "retry"
-	// The event delivery has reached the maximum amount of automatic retries and failed to deliver the event or the endpoint failed to acknowledge delivery
-	Failed WebhookEventDeliveryStatus = "failed"
 )
-
-var validWebhookEventDeliveryStatus = []WebhookEventDeliveryStatus{
-	Scheduled,
-	Success,
-	Retry,
-	Failed,
-}
 
 type WebhookEventType string
 
@@ -45,14 +36,14 @@ type WebhookEventContent struct {
 }
 
 type WebhookEvent struct {
-	Id               string
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-	SendAttemptCount int
-	DeliveryStatus   WebhookEventDeliveryStatus
-	OrganizationId   string
-	PartnerId        null.String
-	EventContent     WebhookEventContent
+	Id             string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	RetryCount     int
+	DeliveryStatus WebhookEventDeliveryStatus
+	OrganizationId string
+	PartnerId      null.String
+	EventContent   WebhookEventContent
 }
 
 type WebhookEventCreate struct {
@@ -63,9 +54,9 @@ type WebhookEventCreate struct {
 }
 
 type WebhookEventUpdate struct {
-	Id               string
-	DeliveryStatus   WebhookEventDeliveryStatus
-	SendAttemptCount int
+	Id             string
+	DeliveryStatus WebhookEventDeliveryStatus
+	RetryCount     int
 }
 
 type WebhookEventFilters struct {
