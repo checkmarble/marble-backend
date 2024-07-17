@@ -109,7 +109,7 @@ func (repo MarbleDbRepository) UpdateWebhookEvent(
 			Update(dbmodels.TABLE_WEBHOOK_EVENTS).
 			Set("updated_at", "NOW()").
 			Set("delivery_status", input.DeliveryStatus).
-			Set("send_attempt_count", input.SendAttemptCount).
+			Set("retry_count", input.RetryCount).
 			Where(squirrel.Eq{"id": input.Id}),
 	)
 	return err
