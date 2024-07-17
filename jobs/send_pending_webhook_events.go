@@ -17,7 +17,7 @@ func SendPendingWebhookEvents(ctx context.Context, uc usecases.Usecases) error {
 		) error {
 			usecasesWithCreds := GenerateUsecaseWithCredForMarbleAdmin(ctx, usecases)
 			webhooksUsecase := usecasesWithCreds.NewWebhookEventsUsecase()
-			return webhooksUsecase.SendWebhookEvents(ctx)
+			return webhooksUsecase.RetrySendWebhookEvents(ctx)
 		},
 	)
 }

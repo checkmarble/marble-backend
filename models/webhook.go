@@ -56,6 +56,7 @@ type WebhookEvent struct {
 }
 
 type WebhookEventCreate struct {
+	Id             string
 	OrganizationId string
 	PartnerId      null.String
 	EventContent   WebhookEventContent

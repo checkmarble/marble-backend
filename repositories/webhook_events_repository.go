@@ -62,7 +62,6 @@ func (repo MarbleDbRepository) ListWebhookEvents(ctx context.Context, exec Execu
 func (repo MarbleDbRepository) CreateWebhookEvent(
 	ctx context.Context,
 	exec Executor,
-	webhookEventId string,
 	input models.WebhookEventCreate,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
@@ -83,7 +82,7 @@ func (repo MarbleDbRepository) CreateWebhookEvent(
 				"event_data",
 			).
 			Values(
-				webhookEventId,
+				input.Id,
 				models.Scheduled,
 				input.OrganizationId,
 				input.PartnerId.Ptr(),
