@@ -214,6 +214,7 @@ func (usecase *CaseUseCase) CreateCaseAsUser(
 	createCaseAttributes models.CreateCaseAttributes,
 ) (models.Case, error) {
 	exec := usecase.executorFactory.NewExecutor()
+	webhookEventId := uuid.NewString()
 	c, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory,
 		func(tx repositories.Executor) (models.Case, error) {
 			// permission check on the inbox as end user
@@ -225,14 +226,33 @@ func (usecase *CaseUseCase) CreateCaseAsUser(
 				return models.Case{}, err
 			}
 
-			return usecase.CreateCase(ctx, tx, userId, createCaseAttributes, true)
+			newCase, err := usecase.CreateCase(ctx, tx, userId, createCaseAttributes, true)
+			if err != nil {
+				return models.Case{}, err
+			}
+
+			err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+				Id:             webhookEventId,
+				OrganizationId: newCase.OrganizationId,
+				EventContent:   models.NewWebhookEventCaseCreated(newCase),
+			})
+			if err != nil {
+				return models.Case{}, err
+			}
+
+			return newCase, nil
 		})
+	if err != nil {
+		return models.Case{}, err
+	}
+
+	usecase.webhookEventsUsecase.SendWebhookEventAsync(ctx, webhookEventId)
 
 	tracking.TrackEvent(ctx, models.AnalyticsCaseCreated, map[string]interface{}{
 		"case_id": c.Id,
 	})
 
-	return c, err
+	return c, nil
 }
 
 func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string,
@@ -285,16 +305,13 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string,
 			return models.Case{}, err
 		}
 
-		// TODO(webhook): integration test for webhooks, refactor when webhooks are fully implemented
-		if updateCaseAttributes.Status != "" {
-			err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
-				Id:             webhookEventId,
-				OrganizationId: updatedCase.OrganizationId,
-				EventContent:   models.NewWebhookEventCaseStatusUpdated(updateCaseAttributes.Status),
-			})
-			if err != nil {
-				return models.Case{}, err
-			}
+		err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+			Id:             webhookEventId,
+			OrganizationId: updatedCase.OrganizationId,
+			EventContent:   models.NewWebhookEventCaseUpdated(updatedCase),
+		})
+		if err != nil {
+			return models.Case{}, err
 		}
 
 		return updatedCase, nil
@@ -362,6 +379,8 @@ func (usecase *CaseUseCase) updateCaseCreateEvents(ctx context.Context, exec rep
 }
 
 func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, caseId string, decisionIds []string) (models.Case, error) {
+	webhookEventId := uuid.New().String()
+
 	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Executor,
 	) (models.Case, error) {
@@ -388,11 +407,27 @@ func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, case
 			return models.Case{}, err
 		}
 
-		return usecase.getCaseWithDetails(ctx, tx, caseId)
+		updatedCase, err := usecase.getCaseWithDetails(ctx, tx, caseId)
+		if err != nil {
+			return models.Case{}, err
+		}
+
+		err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+			Id:             webhookEventId,
+			OrganizationId: updatedCase.OrganizationId,
+			EventContent:   models.NewWebhookEventCaseDecisionsUpdated(updatedCase),
+		})
+		if err != nil {
+			return models.Case{}, err
+		}
+
+		return updatedCase, nil
 	})
 	if err != nil {
 		return models.Case{}, err
 	}
+
+	usecase.webhookEventsUsecase.SendWebhookEventAsync(ctx, webhookEventId)
 
 	tracking.TrackEvent(ctx, models.AnalyticsDecisionsAdded, map[string]interface{}{
 		"case_id": updatedCase.Id,
@@ -403,6 +438,8 @@ func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, case
 func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string,
 	caseCommentAttributes models.CreateCaseCommentAttributes,
 ) (models.Case, error) {
+	webhookEventId := uuid.New().String()
+
 	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Executor,
 	) (models.Case, error) {
@@ -432,11 +469,27 @@ func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string
 		if err != nil {
 			return models.Case{}, err
 		}
-		return usecase.getCaseWithDetails(ctx, tx, caseCommentAttributes.Id)
+		updatedCase, err := usecase.getCaseWithDetails(ctx, tx, caseCommentAttributes.Id)
+		if err != nil {
+			return models.Case{}, err
+		}
+
+		err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+			Id:             webhookEventId,
+			OrganizationId: updatedCase.OrganizationId,
+			EventContent:   models.NewWebhookEventCaseCommentCreated(updatedCase),
+		})
+		if err != nil {
+			return models.Case{}, err
+		}
+
+		return updatedCase, nil
 	})
 	if err != nil {
 		return models.Case{}, err
 	}
+
+	usecase.webhookEventsUsecase.SendWebhookEventAsync(ctx, webhookEventId)
 
 	tracking.TrackEvent(ctx, models.AnalyticsCaseCommentCreated, map[string]interface{}{
 		"case_id": updatedCase.Id,
@@ -447,6 +500,8 @@ func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string
 func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string,
 	caseTagAttributes models.CreateCaseTagsAttributes,
 ) (models.Case, error) {
+	webhookEventId := uuid.New().String()
+
 	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Executor,
 	) (models.Case, error) {
@@ -502,11 +557,27 @@ func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string,
 			return models.Case{}, err
 		}
 
-		return usecase.getCaseWithDetails(ctx, tx, caseTagAttributes.CaseId)
+		updatedCase, err := usecase.getCaseWithDetails(ctx, tx, caseTagAttributes.CaseId)
+		if err != nil {
+			return models.Case{}, err
+		}
+
+		err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+			Id:             webhookEventId,
+			OrganizationId: updatedCase.OrganizationId,
+			EventContent:   models.NewWebhookEventCaseTagsUpdated(updatedCase),
+		})
+		if err != nil {
+			return models.Case{}, err
+		}
+
+		return updatedCase, nil
 	})
 	if err != nil {
 		return models.Case{}, err
 	}
+
+	usecase.webhookEventsUsecase.SendWebhookEventAsync(ctx, webhookEventId)
 
 	tracking.TrackEvent(ctx, models.AnalyticsCaseTagsUpdated, map[string]interface{}{
 		"case_id": updatedCase.Id,
@@ -683,6 +754,8 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 		return models.Case{}, err
 	}
 
+	webhookEventId := uuid.New().String()
+
 	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Executor,
 	) (models.Case, error) {
@@ -718,7 +791,21 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 			return models.Case{}, err
 		}
 
-		return usecase.getCaseWithDetails(ctx, tx, input.CaseId)
+		updatedCase, err := usecase.getCaseWithDetails(ctx, tx, input.CaseId)
+		if err != nil {
+			return models.Case{}, err
+		}
+
+		err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+			Id:             webhookEventId,
+			OrganizationId: updatedCase.OrganizationId,
+			EventContent:   models.NewWebhookEventCaseFileCreated(updatedCase),
+		})
+		if err != nil {
+			return models.Case{}, err
+		}
+
+		return updatedCase, nil
 	})
 	if err != nil {
 		if deleteErr := usecase.gcsRepository.DeleteFile(ctx, usecase.gcsCaseManagerBucket, newFileReference); deleteErr != nil {
@@ -730,6 +817,8 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 		}
 		return models.Case{}, err
 	}
+
+	usecase.webhookEventsUsecase.SendWebhookEventAsync(ctx, webhookEventId)
 
 	tracking.TrackEvent(ctx, models.AnalyticsCaseFileCreated, map[string]interface{}{
 		"case_id": updatedCase.Id,

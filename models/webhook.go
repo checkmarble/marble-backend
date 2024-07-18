@@ -23,11 +23,21 @@ const (
 type WebhookEventType string
 
 const (
-	WebhookEventType_CaseStatusUpdated WebhookEventType = "case_status_updated"
+	WebhookEventType_CaseUpdated          WebhookEventType = "case_updated"
+	WebhookEventType_CaseCreated          WebhookEventType = "case_created"
+	WebhookEventType_CaseDecisionsUpdated WebhookEventType = "case_decisions_updated"
+	WebhookEventType_CaseTagsUpdated      WebhookEventType = "case_tags_updated"
+	WebhookEventType_CaseCommentCreated   WebhookEventType = "case_comment_created"
+	WebhookEventType_CaseFileCreated      WebhookEventType = "case_file_created"
 )
 
 var validWebhookEventTypes = []WebhookEventType{
-	WebhookEventType_CaseStatusUpdated,
+	WebhookEventType_CaseUpdated,
+	WebhookEventType_CaseCreated,
+	WebhookEventType_CaseDecisionsUpdated,
+	WebhookEventType_CaseTagsUpdated,
+	WebhookEventType_CaseCommentCreated,
+	WebhookEventType_CaseFileCreated,
 }
 
 type WebhookEventContent struct {
@@ -106,12 +116,68 @@ func (input WebhookRegister) Validate() error {
 	return nil
 }
 
-func NewWebhookEventCaseStatusUpdated(caseStatus CaseStatus) WebhookEventContent {
+func NewWebhookEventCaseUpdated(c Case) WebhookEventContent {
 	return WebhookEventContent{
-		Type: WebhookEventType_CaseStatusUpdated,
+		Type: WebhookEventType_CaseUpdated,
 		Data: map[string]any{
-			"event_type":  WebhookEventType_CaseStatusUpdated,
-			"case_status": caseStatus,
+			"event_type":      WebhookEventType_CaseUpdated,
+			"case_id":         c.Id,
+			"event_timestamp": time.Now(),
+		},
+	}
+}
+
+func NewWebhookEventCaseCreated(c Case) WebhookEventContent {
+	return WebhookEventContent{
+		Type: WebhookEventType_CaseCreated,
+		Data: map[string]any{
+			"event_type":      WebhookEventType_CaseCreated,
+			"case_id":         c.Id,
+			"event_timestamp": time.Now(),
+		},
+	}
+}
+
+func NewWebhookEventCaseDecisionsUpdated(c Case) WebhookEventContent {
+	return WebhookEventContent{
+		Type: WebhookEventType_CaseDecisionsUpdated,
+		Data: map[string]any{
+			"event_type":      WebhookEventType_CaseDecisionsUpdated,
+			"case_id":         c.Id,
+			"event_timestamp": time.Now(),
+		},
+	}
+}
+
+func NewWebhookEventCaseTagsUpdated(c Case) WebhookEventContent {
+	return WebhookEventContent{
+		Type: WebhookEventType_CaseTagsUpdated,
+		Data: map[string]any{
+			"event_type":      WebhookEventType_CaseTagsUpdated,
+			"case_id":         c.Id,
+			"event_timestamp": time.Now(),
+		},
+	}
+}
+
+func NewWebhookEventCaseCommentCreated(c Case) WebhookEventContent {
+	return WebhookEventContent{
+		Type: WebhookEventType_CaseCommentCreated,
+		Data: map[string]any{
+			"event_type":      WebhookEventType_CaseCommentCreated,
+			"case_id":         c.Id,
+			"event_timestamp": time.Now(),
+		},
+	}
+}
+
+func NewWebhookEventCaseFileCreated(c Case) WebhookEventContent {
+	return WebhookEventContent{
+		Type: WebhookEventType_CaseFileCreated,
+		Data: map[string]any{
+			"event_type":      WebhookEventType_CaseFileCreated,
+			"case_id":         c.Id,
+			"event_timestamp": time.Now(),
 		},
 	}
 }
