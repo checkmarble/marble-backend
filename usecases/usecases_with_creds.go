@@ -90,6 +90,7 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 		evaluateAstExpression:      usecases.NewEvaluateAstExpression(),
 		organizationIdOfContext:    usecases.OrganizationIdOfContext,
 		decisionWorkflows:          usecases.NewDecisionWorkflows(),
+		webhookEventsSender:        usecases.NewWebhookEventsUsecase(),
 	}
 }
 
@@ -97,6 +98,7 @@ func (usecases *UsecasesWithCreds) NewDecisionWorkflows() decision_workflows.Dec
 	return decision_workflows.NewDecisionWorkflows(
 		usecases.NewCaseUseCase(),
 		&usecases.Repositories.MarbleDbRepository,
+		usecases.NewWebhookEventsUsecase(),
 	)
 }
 
@@ -220,18 +222,19 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 }
 
 func (usecases *UsecasesWithCreds) NewRunScheduledExecution() scheduledexecution.RunScheduledExecution {
-	return scheduledexecution.RunScheduledExecution{
-		Repository:                     &usecases.Repositories.MarbleDbRepository,
-		ExecutorFactory:                usecases.NewExecutorFactory(),
-		TransactionFactory:             usecases.NewTransactionFactory(),
-		ExportScheduleExecution:        *usecases.NewExportScheduleExecution(),
-		ScenarioPublicationsRepository: usecases.Repositories.ScenarioPublicationRepository,
-		DataModelRepository:            usecases.Repositories.DataModelRepository,
-		IngestedDataReadRepository:     usecases.Repositories.IngestedDataReadRepository,
-		EvaluateAstExpression:          usecases.NewEvaluateAstExpression(),
-		DecisionRepository:             usecases.Repositories.DecisionRepository,
-		DecisionWorkflows:              usecases.NewDecisionWorkflows(),
-	}
+	return *scheduledexecution.NewRunScheduledExecution(
+		&usecases.Repositories.MarbleDbRepository,
+		usecases.NewExecutorFactory(),
+		*usecases.NewExportScheduleExecution(),
+		usecases.Repositories.ScenarioPublicationRepository,
+		usecases.Repositories.DataModelRepository,
+		usecases.Repositories.IngestedDataReadRepository,
+		usecases.NewEvaluateAstExpression(),
+		usecases.Repositories.DecisionRepository,
+		usecases.NewTransactionFactory(),
+		usecases.NewDecisionWorkflows(),
+		usecases.NewWebhookEventsUsecase(),
+	)
 }
 
 func (usecases *UsecasesWithCreds) NewScheduledExecutionUsecase() ScheduledExecutionUsecase {

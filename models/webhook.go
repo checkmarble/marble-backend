@@ -127,7 +127,7 @@ func NewWebhookEventCaseUpdated(c Case) WebhookEventContent {
 	}
 }
 
-func NewWebhookEventCaseCreated(c Case) WebhookEventContent {
+func NewWebhookEventCaseCreated(c CaseMetadata) WebhookEventContent {
 	return WebhookEventContent{
 		Type: WebhookEventType_CaseCreated,
 		Data: map[string]any{
@@ -138,7 +138,7 @@ func NewWebhookEventCaseCreated(c Case) WebhookEventContent {
 	}
 }
 
-func NewWebhookEventCaseDecisionsUpdated(c Case) WebhookEventContent {
+func NewWebhookEventCaseDecisionsUpdated(c CaseMetadata) WebhookEventContent {
 	return WebhookEventContent{
 		Type: WebhookEventType_CaseDecisionsUpdated,
 		Data: map[string]any{
