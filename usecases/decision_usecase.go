@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
@@ -38,7 +39,12 @@ type decisionWorkflowsUsecase interface {
 		tx repositories.Executor,
 		scenario models.Scenario,
 		decision models.DecisionWithRuleExecutions,
-	) error
+		webhookEventId string,
+	) (bool, error)
+}
+
+type webhookEventsSender interface {
+	SendWebhookEventAsync(ctx context.Context, webhookEventId string)
 }
 
 type DecisionUsecase struct {
@@ -53,6 +59,7 @@ type DecisionUsecase struct {
 	evaluateAstExpression      ast_eval.EvaluateAstExpression
 	decisionWorkflows          decisionWorkflowsUsecase
 	organizationIdOfContext    func() (string, error)
+	webhookEventsSender        webhookEventsSender
 }
 
 func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId string) (models.DecisionWithRuleExecutions, error) {
@@ -249,7 +256,10 @@ func (usecase *DecisionUsecase) CreateDecision(
 		trace.WithAttributes(attribute.String("scenario_id", input.ScenarioId)),
 		trace.WithAttributes(attribute.Int("nb_rule_executions", len(decision.RuleExecutions))))
 	defer span.End()
-	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
+
+	caseWebhookEventId := uuid.NewString()
+	webhookEventCreated := false
+	newDecision, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Executor,
 	) (models.DecisionWithRuleExecutions, error) {
 		if err = usecase.decisionRepository.StoreDecision(
@@ -263,13 +273,24 @@ func (usecase *DecisionUsecase) CreateDecision(
 				fmt.Errorf("error storing decision: %w", err)
 		}
 
-		err := usecase.decisionWorkflows.AutomaticDecisionToCase(ctx, tx, scenario, decision)
+		webhookEventCreated, err = usecase.decisionWorkflows.AutomaticDecisionToCase(
+			ctx,
+			tx,
+			scenario,
+			decision,
+			caseWebhookEventId)
 		if err != nil {
 			return models.DecisionWithRuleExecutions{}, err
 		}
 
 		return usecase.decisionRepository.DecisionWithRuleExecutionsById(ctx, tx, decision.DecisionId)
 	})
+
+	if webhookEventCreated {
+		usecase.webhookEventsSender.SendWebhookEventAsync(ctx, caseWebhookEventId)
+	}
+
+	return newDecision, err
 }
 
 func (usecase *DecisionUsecase) CreateAllDecisions(
@@ -359,6 +380,8 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 
 	ctx, span2 := tracer.Start(ctx, "DecisionUsecase.CreateAllDecisions - store decisions")
 	defer span2.End()
+
+	sentWebhookEventIds := make([]string, 0)
 	decisions, err = executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Executor,
 	) ([]models.DecisionWithRuleExecutions, error) {
@@ -375,14 +398,24 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 				return nil, fmt.Errorf("error storing decision in CreateAllDecisions: %w", err)
 			}
 
-			err := usecase.decisionWorkflows.AutomaticDecisionToCase(ctx, tx, item.scenario, item.decision)
+			webhookEventId := uuid.NewString()
+			webhookEventCreated, err := usecase.decisionWorkflows.AutomaticDecisionToCase(
+				ctx, tx, item.scenario, item.decision, webhookEventId)
 			if err != nil {
 				return nil, err
+			}
+			if webhookEventCreated {
+				sentWebhookEventIds = append(sentWebhookEventIds, webhookEventId)
 			}
 		}
 
 		return usecase.decisionRepository.DecisionsWithRuleExecutionsByIds(ctx, tx, ids)
 	})
+
+	for _, caseWebhookEventId := range sentWebhookEventIds {
+		usecase.webhookEventsSender.SendWebhookEventAsync(ctx, caseWebhookEventId)
+	}
+
 	return
 }
 

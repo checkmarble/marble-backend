@@ -234,7 +234,7 @@ func (usecase *CaseUseCase) CreateCaseAsUser(
 			err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 				Id:             webhookEventId,
 				OrganizationId: newCase.OrganizationId,
-				EventContent:   models.NewWebhookEventCaseCreated(newCase),
+				EventContent:   models.NewWebhookEventCaseCreated(newCase.GetMetadata()),
 			})
 			if err != nil {
 				return models.Case{}, err
@@ -415,7 +415,7 @@ func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, case
 		err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 			Id:             webhookEventId,
 			OrganizationId: updatedCase.OrganizationId,
-			EventContent:   models.NewWebhookEventCaseDecisionsUpdated(updatedCase),
+			EventContent:   models.NewWebhookEventCaseDecisionsUpdated(updatedCase.GetMetadata()),
 		})
 		if err != nil {
 			return models.Case{}, err

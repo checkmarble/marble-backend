@@ -40,18 +40,29 @@ type caseAndDecisionRepository interface {
 	) (map[string]int, error)
 }
 
+type webhookEventCreator interface {
+	CreateWebhookEvent(
+		ctx context.Context,
+		tx repositories.Executor,
+		create models.WebhookEventCreate,
+	) error
+}
+
 type DecisionsWorkflows struct {
-	caseEditor caseEditor
-	repository caseAndDecisionRepository
+	caseEditor          caseEditor
+	repository          caseAndDecisionRepository
+	webhookEventCreator webhookEventCreator
 }
 
 func NewDecisionWorkflows(
 	caseEditor caseEditor,
 	repository caseAndDecisionRepository,
+	webhookEventCreator webhookEventCreator,
 ) DecisionsWorkflows {
 	return DecisionsWorkflows{
-		caseEditor: caseEditor,
-		repository: repository,
+		caseEditor:          caseEditor,
+		repository:          repository,
+		webhookEventCreator: webhookEventCreator,
 	}
 }
 
@@ -60,40 +71,71 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 	tx repositories.Executor,
 	scenario models.Scenario,
 	decision models.DecisionWithRuleExecutions,
-) error {
+	webhookEventId string,
+) (webhookEventCreated bool, err error) {
 	if scenario.DecisionToCaseWorkflowType == models.WorkflowDisabled ||
 		scenario.DecisionToCaseOutcomes == nil ||
 		!slices.Contains(scenario.DecisionToCaseOutcomes, decision.Outcome) ||
 		scenario.DecisionToCaseInboxId == nil {
-		return nil
+		return false, nil
 	}
 
 	if scenario.DecisionToCaseWorkflowType == models.WorkflowCreateCase {
 		input := automaticCreateCaseAttributes(scenario, decision)
-		_, err := d.caseEditor.CreateCase(ctx, tx, "", input, false)
+		newCase, err := d.caseEditor.CreateCase(ctx, tx, "", input, false)
 		if err != nil {
-			return errors.Wrap(err, "error creating case for decision")
+			return false, errors.Wrap(err, "error creating case for decision")
 		}
-		return nil
+		err = d.webhookEventCreator.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+			Id:             webhookEventId,
+			OrganizationId: newCase.OrganizationId,
+			EventContent:   models.NewWebhookEventCaseCreated(newCase.GetMetadata()),
+		})
+		if err != nil {
+			return false, err
+		}
+
+		return true, nil
 	}
 
 	if scenario.DecisionToCaseWorkflowType == models.WorkflowAddToCaseIfPossible {
-		added, err := d.addToOpenCase(ctx, tx, scenario, decision)
+		matchedCase, added, err := d.addToOpenCase(ctx, tx, scenario, decision)
 		if err != nil {
-			return errors.Wrap(err, "error adding decision to open case")
+			return false, errors.Wrap(err, "error adding decision to open case")
 		}
 
 		if !added {
 			input := automaticCreateCaseAttributes(scenario, decision)
-			_, err := d.caseEditor.CreateCase(ctx, tx, "", input, false)
+			newCase, err := d.caseEditor.CreateCase(ctx, tx, "", input, false)
 			if err != nil {
-				return errors.Wrap(err, "error creating case for decision")
+				return false, errors.Wrap(err, "error creating case for decision")
 			}
+
+			err = d.webhookEventCreator.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+				Id:             webhookEventId,
+				OrganizationId: newCase.OrganizationId,
+				EventContent:   models.NewWebhookEventCaseCreated(newCase.GetMetadata()),
+			})
+			if err != nil {
+				return false, err
+			}
+
+			return true, nil
 		}
-		return nil
+
+		err = d.webhookEventCreator.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+			Id:             webhookEventId,
+			OrganizationId: matchedCase.OrganizationId,
+			EventContent:   models.NewWebhookEventCaseDecisionsUpdated(matchedCase),
+		})
+		if err != nil {
+			return false, err
+		}
+
+		return true, nil
 	}
 
-	return errors.New(fmt.Sprintf("unknown workflow type: %s", scenario.DecisionToCaseWorkflowType))
+	return false, errors.New(fmt.Sprintf("unknown workflow type: %s", scenario.DecisionToCaseWorkflowType))
 }
 
 func automaticCreateCaseAttributes(
@@ -117,18 +159,22 @@ func (d DecisionsWorkflows) addToOpenCase(
 	tx repositories.Executor,
 	scenario models.Scenario,
 	decision models.DecisionWithRuleExecutions,
-) (bool, error) {
+) (models.CaseMetadata, bool, error) {
+	if decision.PivotValue == nil {
+		return models.CaseMetadata{}, false, nil
+	}
+
 	eligibleCases, err := d.repository.SelectCasesWithPivot(ctx, tx, models.DecisionWorkflowFilters{
 		InboxId:        *scenario.DecisionToCaseInboxId,
 		OrganizationId: scenario.OrganizationId,
 		PivotValue:     *decision.PivotValue,
 	})
 	if err != nil {
-		return false, errors.Wrap(err, "error selecting cases with pivot")
+		return models.CaseMetadata{}, false, errors.Wrap(err, "error selecting cases with pivot")
 	}
 
 	if len(eligibleCases) == 0 {
-		return false, nil
+		return models.CaseMetadata{}, false, nil
 	}
 
 	caseIds := make([]string, 0, len(eligibleCases))
@@ -138,7 +184,7 @@ func (d DecisionsWorkflows) addToOpenCase(
 
 	decisionCounts, err := d.repository.CountDecisionsByCaseIds(ctx, tx, scenario.OrganizationId, caseIds)
 	if err != nil {
-		return false, errors.Wrap(err, "error counting decisions by case ids")
+		return models.CaseMetadata{}, false, errors.Wrap(err, "error counting decisions by case ids")
 	}
 
 	cases := make([]caseMetadataWithDecisionCount, 0, len(eligibleCases))
@@ -152,10 +198,10 @@ func (d DecisionsWorkflows) addToOpenCase(
 	bestMatchCase := findBestMatchCase(cases)
 	err = d.caseEditor.UpdateDecisionsWithEvents(ctx, tx, bestMatchCase.Id, "", []string{decision.DecisionId})
 	if err != nil {
-		return false, errors.Wrap(err, "error updating case")
+		return models.CaseMetadata{}, false, errors.Wrap(err, "error updating case")
 	}
 
-	return true, nil
+	return bestMatchCase, true, nil
 }
 
 type caseMetadataWithDecisionCount struct {

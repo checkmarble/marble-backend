@@ -20,6 +20,15 @@ type Case struct {
 	Files          []CaseFile
 }
 
+func (c Case) GetMetadata() CaseMetadata {
+	return CaseMetadata{
+		Id:             c.Id,
+		CreatedAt:      c.CreatedAt,
+		OrganizationId: c.OrganizationId,
+		Status:         c.Status,
+	}
+}
+
 type CaseMetadata struct {
 	Id             string
 	CreatedAt      time.Time
