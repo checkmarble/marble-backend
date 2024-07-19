@@ -23,17 +23,19 @@ const (
 type WebhookEventType string
 
 const (
-	WebhookEventType_CaseUpdated          WebhookEventType = "case_updated"
-	WebhookEventType_CaseCreated          WebhookEventType = "case_created"
-	WebhookEventType_CaseDecisionsUpdated WebhookEventType = "case_decisions_updated"
-	WebhookEventType_CaseTagsUpdated      WebhookEventType = "case_tags_updated"
-	WebhookEventType_CaseCommentCreated   WebhookEventType = "case_comment_created"
-	WebhookEventType_CaseFileCreated      WebhookEventType = "case_file_created"
+	WebhookEventType_CaseUpdated          WebhookEventType = "case.updated"
+	WebhookEventType_CaseCreatedManually  WebhookEventType = "case.created_manually"
+	WebhookEventType_CaseCreatedWorkflow  WebhookEventType = "case.created_workflow"
+	WebhookEventType_CaseDecisionsUpdated WebhookEventType = "case.decisions_updated"
+	WebhookEventType_CaseTagsUpdated      WebhookEventType = "case.tags_updated"
+	WebhookEventType_CaseCommentCreated   WebhookEventType = "case.comment_created"
+	WebhookEventType_CaseFileCreated      WebhookEventType = "case.file_created"
 )
 
 var validWebhookEventTypes = []WebhookEventType{
 	WebhookEventType_CaseUpdated,
-	WebhookEventType_CaseCreated,
+	WebhookEventType_CaseCreatedManually,
+	WebhookEventType_CaseCreatedWorkflow,
 	WebhookEventType_CaseDecisionsUpdated,
 	WebhookEventType_CaseTagsUpdated,
 	WebhookEventType_CaseCommentCreated,
@@ -116,70 +118,47 @@ func (input WebhookRegister) Validate() error {
 	return nil
 }
 
-func NewWebhookEventCaseUpdated(c Case) WebhookEventContent {
+func mapOfCaseWithId(id string) map[string]any {
+	return map[string]any{"case": map[string]any{"id": id}}
+}
+
+func newWebhookContentCase(eventType WebhookEventType, id string) WebhookEventContent {
 	return WebhookEventContent{
-		Type: WebhookEventType_CaseUpdated,
+		Type: eventType,
 		Data: map[string]any{
-			"event_type":      WebhookEventType_CaseUpdated,
-			"case_id":         c.Id,
-			"event_timestamp": time.Now(),
+			"type":      eventType,
+			"content":   mapOfCaseWithId(id),
+			"timestamp": time.Now(),
 		},
 	}
 }
 
-func NewWebhookEventCaseCreated(c CaseMetadata) WebhookEventContent {
-	return WebhookEventContent{
-		Type: WebhookEventType_CaseCreated,
-		Data: map[string]any{
-			"event_type":      WebhookEventType_CaseCreated,
-			"case_id":         c.Id,
-			"event_timestamp": time.Now(),
-		},
-	}
+func NewWebhookEventCaseUpdated(c Case) WebhookEventContent {
+	return newWebhookContentCase(WebhookEventType_CaseUpdated, c.Id)
+}
+
+func NewWebhookEventCaseCreatedManually(c CaseMetadata) WebhookEventContent {
+	return newWebhookContentCase(WebhookEventType_CaseCreatedManually, c.Id)
+}
+
+func NewWebhookEventCaseCreatedWorkflow(c CaseMetadata) WebhookEventContent {
+	return newWebhookContentCase(WebhookEventType_CaseCreatedWorkflow, c.Id)
 }
 
 func NewWebhookEventCaseDecisionsUpdated(c CaseMetadata) WebhookEventContent {
-	return WebhookEventContent{
-		Type: WebhookEventType_CaseDecisionsUpdated,
-		Data: map[string]any{
-			"event_type":      WebhookEventType_CaseDecisionsUpdated,
-			"case_id":         c.Id,
-			"event_timestamp": time.Now(),
-		},
-	}
+	return newWebhookContentCase(WebhookEventType_CaseDecisionsUpdated, c.Id)
 }
 
 func NewWebhookEventCaseTagsUpdated(c Case) WebhookEventContent {
-	return WebhookEventContent{
-		Type: WebhookEventType_CaseTagsUpdated,
-		Data: map[string]any{
-			"event_type":      WebhookEventType_CaseTagsUpdated,
-			"case_id":         c.Id,
-			"event_timestamp": time.Now(),
-		},
-	}
+	return newWebhookContentCase(WebhookEventType_CaseTagsUpdated, c.Id)
 }
 
 func NewWebhookEventCaseCommentCreated(c Case) WebhookEventContent {
-	return WebhookEventContent{
-		Type: WebhookEventType_CaseCommentCreated,
-		Data: map[string]any{
-			"event_type":      WebhookEventType_CaseCommentCreated,
-			"case_id":         c.Id,
-			"event_timestamp": time.Now(),
-		},
-	}
+	return newWebhookContentCase(WebhookEventType_CaseCommentCreated, c.Id)
 }
 
 func NewWebhookEventCaseFileCreated(c Case) WebhookEventContent {
-	return WebhookEventContent{
-		Type: WebhookEventType_CaseFileCreated,
-		Data: map[string]any{
-			"event_type":      WebhookEventType_CaseFileCreated,
-			"case_id":         c.Id,
-			"event_timestamp": time.Now(),
-		},
-	}
+	return newWebhookContentCase(WebhookEventType_CaseFileCreated, c.Id)
 }
 
 type Webhook struct {

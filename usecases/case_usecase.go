@@ -234,7 +234,7 @@ func (usecase *CaseUseCase) CreateCaseAsUser(
 			err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 				Id:             webhookEventId,
 				OrganizationId: newCase.OrganizationId,
-				EventContent:   models.NewWebhookEventCaseCreated(newCase.GetMetadata()),
+				EventContent:   models.NewWebhookEventCaseCreatedManually(newCase.GetMetadata()),
 			})
 			if err != nil {
 				return models.Case{}, err
