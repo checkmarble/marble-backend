@@ -43,10 +43,6 @@ type decisionWorkflowsUsecase interface {
 	) (bool, error)
 }
 
-type webhookEventsSender interface {
-	SendWebhookEventAsync(ctx context.Context, webhookEventId string)
-}
-
 type DecisionUsecase struct {
 	enforceSecurity            security.EnforceSecurityDecision
 	enforceSecurityScenario    security.EnforceSecurityScenario
@@ -59,7 +55,7 @@ type DecisionUsecase struct {
 	evaluateAstExpression      ast_eval.EvaluateAstExpression
 	decisionWorkflows          decisionWorkflowsUsecase
 	organizationIdOfContext    func() (string, error)
-	webhookEventsSender        webhookEventsSender
+	webhookEventsSender        webhookEventsUsecase
 }
 
 func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId string) (models.DecisionWithRuleExecutions, error) {
@@ -257,7 +253,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		trace.WithAttributes(attribute.Int("nb_rule_executions", len(decision.RuleExecutions))))
 	defer span.End()
 
-	caseWebhookEventId := uuid.NewString()
+	sendWebhookEventId := make([]string, 0)
 	webhookEventCreated := false
 	newDecision, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Executor,
@@ -273,6 +269,18 @@ func (usecase *DecisionUsecase) CreateDecision(
 				fmt.Errorf("error storing decision: %w", err)
 		}
 
+		webhookEventId := uuid.NewString()
+		err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+			Id:             webhookEventId,
+			OrganizationId: decision.OrganizationId,
+			EventContent:   models.NewWebhookEventDecisionCreated(decision.DecisionId),
+		})
+		if err != nil {
+			return models.DecisionWithRuleExecutions{}, err
+		}
+		sendWebhookEventId = append(sendWebhookEventId, webhookEventId)
+
+		caseWebhookEventId := uuid.NewString()
 		webhookEventCreated, err = usecase.decisionWorkflows.AutomaticDecisionToCase(
 			ctx,
 			tx,
@@ -282,12 +290,15 @@ func (usecase *DecisionUsecase) CreateDecision(
 		if err != nil {
 			return models.DecisionWithRuleExecutions{}, err
 		}
+		if webhookEventCreated {
+			sendWebhookEventId = append(sendWebhookEventId, caseWebhookEventId)
+		}
 
 		return usecase.decisionRepository.DecisionWithRuleExecutionsById(ctx, tx, decision.DecisionId)
 	})
 
-	if webhookEventCreated {
-		usecase.webhookEventsSender.SendWebhookEventAsync(ctx, caseWebhookEventId)
+	for _, webhookEventId := range sendWebhookEventId {
+		usecase.webhookEventsSender.SendWebhookEventAsync(ctx, webhookEventId)
 	}
 
 	return newDecision, err
@@ -381,7 +392,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	ctx, span2 := tracer.Start(ctx, "DecisionUsecase.CreateAllDecisions - store decisions")
 	defer span2.End()
 
-	sentWebhookEventIds := make([]string, 0)
+	sendWebhookEventIds := make([]string, 0)
 	decisions, err = executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Executor,
 	) ([]models.DecisionWithRuleExecutions, error) {
@@ -399,20 +410,31 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			}
 
 			webhookEventId := uuid.NewString()
+			err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+				Id:             webhookEventId,
+				OrganizationId: item.decision.OrganizationId,
+				EventContent:   models.NewWebhookEventDecisionCreated(item.decision.DecisionId),
+			})
+			if err != nil {
+				return nil, err
+			}
+			sendWebhookEventIds = append(sendWebhookEventIds, webhookEventId)
+
+			caseWebhookEventId := uuid.NewString()
 			webhookEventCreated, err := usecase.decisionWorkflows.AutomaticDecisionToCase(
-				ctx, tx, item.scenario, item.decision, webhookEventId)
+				ctx, tx, item.scenario, item.decision, caseWebhookEventId)
 			if err != nil {
 				return nil, err
 			}
 			if webhookEventCreated {
-				sentWebhookEventIds = append(sentWebhookEventIds, webhookEventId)
+				sendWebhookEventIds = append(sendWebhookEventIds, caseWebhookEventId)
 			}
 		}
 
 		return usecase.decisionRepository.DecisionsWithRuleExecutionsByIds(ctx, tx, ids)
 	})
 
-	for _, caseWebhookEventId := range sentWebhookEventIds {
+	for _, caseWebhookEventId := range sendWebhookEventIds {
 		usecase.webhookEventsSender.SendWebhookEventAsync(ctx, caseWebhookEventId)
 	}
 

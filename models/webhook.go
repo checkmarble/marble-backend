@@ -25,11 +25,12 @@ type WebhookEventType string
 const (
 	WebhookEventType_CaseUpdated          WebhookEventType = "case.updated"
 	WebhookEventType_CaseCreatedManually  WebhookEventType = "case.created_manually"
-	WebhookEventType_CaseCreatedWorkflow  WebhookEventType = "case.created_workflow"
+	WebhookEventType_CaseCreatedWorkflow  WebhookEventType = "case.created_from_workflow"
 	WebhookEventType_CaseDecisionsUpdated WebhookEventType = "case.decisions_updated"
 	WebhookEventType_CaseTagsUpdated      WebhookEventType = "case.tags_updated"
 	WebhookEventType_CaseCommentCreated   WebhookEventType = "case.comment_created"
 	WebhookEventType_CaseFileCreated      WebhookEventType = "case.file_created"
+	WebhookEventType_DecisionCreated      WebhookEventType = "decision.created"
 )
 
 var validWebhookEventTypes = []WebhookEventType{
@@ -40,6 +41,7 @@ var validWebhookEventTypes = []WebhookEventType{
 	WebhookEventType_CaseTagsUpdated,
 	WebhookEventType_CaseCommentCreated,
 	WebhookEventType_CaseFileCreated,
+	WebhookEventType_DecisionCreated,
 }
 
 type WebhookEventContent struct {
@@ -116,6 +118,17 @@ func (input WebhookRegister) Validate() error {
 	}
 
 	return nil
+}
+
+func NewWebhookEventDecisionCreated(id string) WebhookEventContent {
+	return WebhookEventContent{
+		Type: WebhookEventType_DecisionCreated,
+		Data: map[string]any{
+			"type":      WebhookEventType_DecisionCreated,
+			"content":   map[string]any{"decision": map[string]any{"id": id}},
+			"timestamp": time.Now(),
+		},
+	}
 }
 
 func mapOfCaseWithId(id string) map[string]any {

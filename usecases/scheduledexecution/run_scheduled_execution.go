@@ -32,7 +32,12 @@ type decisionWorkflowsUsecase interface {
 	) (bool, error)
 }
 
-type webhookEventsSender interface {
+type webhookEventsUsecase interface {
+	CreateWebhookEvent(
+		ctx context.Context,
+		tx repositories.Executor,
+		input models.WebhookEventCreate,
+	) error
 	SendWebhookEventAsync(ctx context.Context, webhookEventId string)
 }
 
@@ -60,7 +65,7 @@ type RunScheduledExecution struct {
 	decisionRepository             repositories.DecisionRepository
 	transactionFactory             executor_factory.TransactionFactory
 	decisionWorkflows              decisionWorkflowsUsecase
-	webhookEventsSender            webhookEventsSender
+	webhookEventsSender            webhookEventsUsecase
 }
 
 func NewRunScheduledExecution(
@@ -74,7 +79,7 @@ func NewRunScheduledExecution(
 	decisionRepository repositories.DecisionRepository,
 	transactionFactory executor_factory.TransactionFactory,
 	decisionWorkflows decisionWorkflowsUsecase,
-	webhookEventsSender webhookEventsSender,
+	webhookEventsSender webhookEventsUsecase,
 ) *RunScheduledExecution {
 	return &RunScheduledExecution{
 		repository:                     repository,
@@ -331,7 +336,7 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 
-	webhookEventIds := make([]string, 0)
+	sendWebhookEventId := make([]string, 0)
 	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
 		executionScenario := func(ctx context.Context, object models.ClientObject, i int) error {
 			ctx, span := tracer.Start(
@@ -385,13 +390,24 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 			}
 
 			webhookEventId := uuid.NewString()
+			err = usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+				Id:             webhookEventId,
+				OrganizationId: decision.OrganizationId,
+				EventContent:   models.NewWebhookEventDecisionCreated(decision.DecisionId),
+			})
+			if err != nil {
+				return err
+			}
+			sendWebhookEventId = append(sendWebhookEventId, webhookEventId)
+
+			caseWebhookEventId := uuid.NewString()
 			webhookEventCreated, err := usecase.decisionWorkflows.AutomaticDecisionToCase(
-				ctx, tx, scenario, decision, webhookEventId)
+				ctx, tx, scenario, decision, caseWebhookEventId)
 			if err != nil {
 				return err
 			}
 			if webhookEventCreated {
-				webhookEventIds = append(webhookEventIds, webhookEventId)
+				sendWebhookEventId = append(sendWebhookEventId, caseWebhookEventId)
 			}
 
 			numberOfCreatedDecisions += 1
@@ -410,7 +426,7 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 		return numberOfCreatedDecisions, err
 	}
 
-	for _, webhookEventId := range webhookEventIds {
+	for _, webhookEventId := range sendWebhookEventId {
 		usecase.webhookEventsSender.SendWebhookEventAsync(ctx, webhookEventId)
 	}
 
