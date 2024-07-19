@@ -89,7 +89,7 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 		err = d.webhookEventCreator.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 			Id:             webhookEventId,
 			OrganizationId: newCase.OrganizationId,
-			EventContent:   models.NewWebhookEventCaseCreated(newCase.GetMetadata()),
+			EventContent:   models.NewWebhookEventCaseCreatedWorkflow(newCase.GetMetadata()),
 		})
 		if err != nil {
 			return false, err
@@ -114,7 +114,7 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 			err = d.webhookEventCreator.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 				Id:             webhookEventId,
 				OrganizationId: newCase.OrganizationId,
-				EventContent:   models.NewWebhookEventCaseCreated(newCase.GetMetadata()),
+				EventContent:   models.NewWebhookEventCaseCreatedWorkflow(newCase.GetMetadata()),
 			})
 			if err != nil {
 				return false, err
