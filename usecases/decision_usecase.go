@@ -296,12 +296,15 @@ func (usecase *DecisionUsecase) CreateDecision(
 
 		return usecase.decisionRepository.DecisionWithRuleExecutionsById(ctx, tx, decision.DecisionId)
 	})
+	if err != nil {
+		return models.DecisionWithRuleExecutions{}, err
+	}
 
 	for _, webhookEventId := range sendWebhookEventId {
 		usecase.webhookEventsSender.SendWebhookEventAsync(ctx, webhookEventId)
 	}
 
-	return newDecision, err
+	return newDecision, nil
 }
 
 func (usecase *DecisionUsecase) CreateAllDecisions(
@@ -433,6 +436,9 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 
 		return usecase.decisionRepository.DecisionsWithRuleExecutionsByIds(ctx, tx, ids)
 	})
+	if err != nil {
+		return nil, 0, err
+	}
 
 	for _, caseWebhookEventId := range sendWebhookEventIds {
 		usecase.webhookEventsSender.SendWebhookEventAsync(ctx, caseWebhookEventId)
