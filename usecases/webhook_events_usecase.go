@@ -56,6 +56,7 @@ type WebhookEventsUsecase struct {
 	convoyRepository            convoyWebhookEventRepository
 	webhookEventsRepository     webhookEventsRepository
 	failedWebhooksRetryPageSize int
+	hasLicense                  bool
 }
 
 func NewWebhookEventsUsecase(
@@ -65,6 +66,7 @@ func NewWebhookEventsUsecase(
 	convoyRepository convoyWebhookEventRepository,
 	webhookEventsRepository webhookEventsRepository,
 	failedWebhooksRetryPageSize int,
+	hasLicense bool,
 ) WebhookEventsUsecase {
 	if failedWebhooksRetryPageSize == 0 {
 		failedWebhooksRetryPageSize = DEFAULT_FAILED_WEBHOOKS_PAGE_SIZE
@@ -77,14 +79,20 @@ func NewWebhookEventsUsecase(
 		convoyRepository:            convoyRepository,
 		webhookEventsRepository:     webhookEventsRepository,
 		failedWebhooksRetryPageSize: failedWebhooksRetryPageSize,
+		hasLicense:                  hasLicense,
 	}
 }
 
+// Does nothing (returns nil) if the license is not active
 func (usecase WebhookEventsUsecase) CreateWebhookEvent(
 	ctx context.Context,
 	tx repositories.Executor,
 	input models.WebhookEventCreate,
 ) error {
+	if !usecase.hasLicense {
+		return nil
+	}
+
 	err := usecase.enforceSecurity.SendWebhookEvent(ctx, input.OrganizationId, input.PartnerId)
 	if err != nil {
 		return err
@@ -98,7 +106,12 @@ func (usecase WebhookEventsUsecase) CreateWebhookEvent(
 }
 
 // SendWebhookEventAsync sends a webhook event asynchronously, with a new context and timeout and a child span.
+// Does nothing if the license is not active
 func (usecase WebhookEventsUsecase) SendWebhookEventAsync(ctx context.Context, webhookEventId string) {
+	if !usecase.hasLicense {
+		return
+	}
+
 	logger := utils.LoggerFromContext(ctx).With("webhook_event_id", webhookEventId)
 	ctx = utils.StoreLoggerInContext(ctx, logger)
 
@@ -120,9 +133,15 @@ func (usecase WebhookEventsUsecase) SendWebhookEventAsync(ctx context.Context, w
 	}()
 }
 
+// RetrySendWebhookEvents retries sending webhook events that have failed to be sent.
+// Does nothing if the license is not active
 func (usecase WebhookEventsUsecase) RetrySendWebhookEvents(
 	ctx context.Context,
 ) error {
+	if !usecase.hasLicense {
+		return nil
+	}
+
 	logger := utils.LoggerFromContext(ctx)
 	exec := usecase.executorFactory.NewExecutor()
 

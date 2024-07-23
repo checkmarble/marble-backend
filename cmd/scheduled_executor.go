@@ -7,6 +7,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/jobs"
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
@@ -27,6 +28,10 @@ func RunScheduledExecuter() error {
 		Port:                utils.GetEnv("PG_PORT", "5432"),
 		User:                utils.GetRequiredEnv[string]("PG_USER"),
 	}
+	licenseConfig := models.LicenseConfiguration{
+		LicenseKey:             utils.GetEnv("LICENSE_KEY", ""),
+		KillIfReadLicenseError: utils.GetEnv("KILL_IF_READ_LICENSE_ERROR", false),
+	}
 	jobConfig := struct {
 		env                 string
 		appName             string
@@ -43,6 +48,7 @@ func RunScheduledExecuter() error {
 
 	logger := utils.NewLogger(jobConfig.loggingFormat)
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
+	license := infra.VerifyLicense(licenseConfig)
 
 	infra.SetupSentry(jobConfig.sentryDsn, jobConfig.env)
 	defer sentry.Flush(3 * time.Second)
@@ -68,7 +74,8 @@ func RunScheduledExecuter() error {
 	repositories := repositories.NewRepositories(pool)
 
 	uc := usecases.NewUsecases(repositories,
-		usecases.WithFakeAwsS3Repository(jobConfig.fakeAwsS3Repository))
+		usecases.WithFakeAwsS3Repository(jobConfig.fakeAwsS3Repository),
+		usecases.WithLicense(license))
 
 	err = jobs.ExecuteAllScheduledScenarios(ctx, uc)
 	if err != nil {

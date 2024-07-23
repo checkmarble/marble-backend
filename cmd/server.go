@@ -66,6 +66,10 @@ func RunServer() error {
 		CreateOrgName:          utils.GetEnv("CREATE_ORG_NAME", ""),
 		CreateOrgAdminEmail:    utils.GetEnv("CREATE_ORG_ADMIN_EMAIL", ""),
 	}
+	licenseConfig := models.LicenseConfiguration{
+		LicenseKey:             utils.GetEnv("LICENSE_KEY", ""),
+		KillIfReadLicenseError: utils.GetEnv("KILL_IF_READ_LICENSE_ERROR", false),
+	}
 	serverConfig := struct {
 		jwtSigningKey string
 		loggingFormat string
@@ -79,6 +83,7 @@ func RunServer() error {
 	logger := utils.NewLogger(serverConfig.loggingFormat)
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
 	marbleJwtSigningKey := infra.ParseOrGenerateSigningKey(ctx, serverConfig.jwtSigningKey)
+	license := infra.VerifyLicense(licenseConfig)
 
 	infra.SetupSentry(serverConfig.sentryDsn, apiConfig.Env)
 	defer sentry.Flush(3 * time.Second)
@@ -111,6 +116,7 @@ func RunServer() error {
 		usecases.WithFakeGcsRepository(gcpConfig.FakeGcsRepository),
 		usecases.WithGcsIngestionBucket(gcpConfig.GcsIngestionBucket),
 		usecases.WithGcsCaseManagerBucket(gcpConfig.GcsCaseManagerBucket),
+		usecases.WithLicense(license),
 	)
 
 	////////////////////////////////////////////////////////////

@@ -7,12 +7,16 @@ import (
 	"github.com/guregu/null/v5"
 )
 
+// This DTO serves as both a DTO for serializing the models (in the API layer) and for deserializing
+// the license validation response from the license server (at server startup outside the SaaS offering)
+// This means we should be careful of not making breaking changes to it such as removing fields.
 type LicenseEntitlements struct {
 	Sso            bool `json:"sso"`
 	Workflows      bool `json:"workflows"`
 	Analytics      bool `json:"analytics"`
 	DataEnrichment bool `json:"data_enrichment"`
 	UserRoles      bool `json:"user_roles"`
+	Webhooks       bool `json:"webhooks"`
 }
 
 func AdaptLicenseEntitlements(licenseEntitlements models.LicenseEntitlements) LicenseEntitlements {
@@ -22,6 +26,7 @@ func AdaptLicenseEntitlements(licenseEntitlements models.LicenseEntitlements) Li
 		Analytics:      licenseEntitlements.Analytics,
 		DataEnrichment: licenseEntitlements.DataEnrichment,
 		UserRoles:      licenseEntitlements.UserRoles,
+		Webhooks:       licenseEntitlements.Webhooks,
 	}
 }
 
@@ -49,6 +54,9 @@ func AdaptLicenseDto(license models.License) License {
 	}
 }
 
+// This DTO serves as both a DTO for serializing the models (in the API layer) and for deserializing
+// the license validation response from the license server (at server startup outside the SaaS offering)
+// This means we should be careful of not making breaking changes to it such as removing fields.
 type LicenseValidation struct {
 	LicenseValidationCode string `json:"license_validation_code"`
 	LicenseEntitlements   `json:"license_entitlements"`
@@ -58,6 +66,14 @@ func AdaptLicenseValidationDto(licenseValidation models.LicenseValidation) Licen
 	return LicenseValidation{
 		LicenseValidationCode: licenseValidation.LicenseValidationCode.String(),
 		LicenseEntitlements:   AdaptLicenseEntitlements(licenseValidation.LicenseEntitlements),
+	}
+}
+
+func AdaptLicenseValidation(licenseValidation LicenseValidation) models.LicenseValidation {
+	return models.LicenseValidation{
+		LicenseValidationCode: models.LicenseValidationCodeFromString(
+			licenseValidation.LicenseValidationCode),
+		LicenseEntitlements: models.LicenseEntitlements(licenseValidation.LicenseEntitlements),
 	}
 }
 

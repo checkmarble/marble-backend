@@ -20,6 +20,7 @@ type Usecases struct {
 	gcsIngestionBucket          string
 	gcsCaseManagerBucket        string
 	failedWebhooksRetryPageSize int
+	license                     models.LicenseValidation
 }
 
 type Option func(*options)
@@ -54,12 +55,19 @@ func WithFailedWebhooksRetryPageSize(size int) Option {
 	}
 }
 
+func WithLicense(license models.LicenseValidation) Option {
+	return func(o *options) {
+		o.license = license
+	}
+}
+
 type options struct {
 	fakeAwsS3Repository         bool
 	fakeGcsRepository           bool
 	gcsIngestionBucket          string
 	gcsCaseManagerBucket        string
 	failedWebhooksRetryPageSize int
+	license                     models.LicenseValidation
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
@@ -70,6 +78,7 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		gcsIngestionBucket:          o.gcsIngestionBucket,
 		gcsCaseManagerBucket:        o.gcsCaseManagerBucket,
 		failedWebhooksRetryPageSize: o.failedWebhooksRetryPageSize,
+		license:                     o.license,
 	}
 }
 

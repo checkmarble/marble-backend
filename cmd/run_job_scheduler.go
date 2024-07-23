@@ -6,6 +6,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/jobs"
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
@@ -33,6 +34,10 @@ func RunJobScheduler() error {
 		APIUrl:    utils.GetEnv("CONVOY_API_URL", ""),
 		ProjectID: utils.GetEnv("CONVOY_PROJECT_ID", ""),
 	}
+	licenseConfig := models.LicenseConfiguration{
+		LicenseKey:             utils.GetEnv("LICENSE_KEY", ""),
+		KillIfReadLicenseError: utils.GetEnv("KILL_IF_READ_LICENSE_ERROR", false),
+	}
 	jobConfig := struct {
 		env                         string
 		appName                     string
@@ -51,6 +56,7 @@ func RunJobScheduler() error {
 
 	logger := utils.NewLogger(jobConfig.loggingFormat)
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
+	license := infra.VerifyLicense(licenseConfig)
 
 	infra.SetupSentry(jobConfig.sentryDsn, jobConfig.env)
 	defer sentry.Flush(3 * time.Second)
@@ -83,7 +89,7 @@ func RunJobScheduler() error {
 		usecases.WithFakeAwsS3Repository(jobConfig.fakeAwsS3Repository),
 		usecases.WithFakeGcsRepository(gcpConfig.FakeGcsRepository),
 		usecases.WithFailedWebhooksRetryPageSize(jobConfig.failedWebhooksRetryPageSize),
-	)
+		usecases.WithLicense(license))
 
 	jobs.RunScheduler(ctx, uc)
 
