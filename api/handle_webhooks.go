@@ -64,6 +64,28 @@ func (api *API) handleRegisterWebhook(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"webhook": dto.AdaptWebhookWithSecret(webhook)})
 }
 
+func (api *API) handleGetWebhook(c *gin.Context) {
+	webhookId := c.Param("webhook_id")
+
+	creds, found := utils.CredentialsFromCtx(c.Request.Context())
+	if !found {
+		presentError(c, fmt.Errorf("no credentials in context"))
+		return
+	}
+
+	usecase := api.UsecasesWithCreds(c.Request).NewWebhooksUsecase()
+
+	webhook, err := usecase.GetWebhook(c.Request.Context(),
+		creds.OrganizationId,
+		null.StringFromPtr(creds.PartnerId),
+		webhookId)
+	if presentError(c, err) {
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"webhook": dto.AdaptWebhookWithSecret(webhook)})
+}
+
 func (api *API) handleDeleteWebhook(c *gin.Context) {
 	webhookId := c.Param("webhook_id")
 

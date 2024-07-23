@@ -174,6 +174,7 @@ func (api *API) routes(auth Authentication, tokenHandler TokenHandler) {
 
 	router.GET("/webhooks", api.handleListWebhooks)
 	router.POST("/webhooks", api.handleRegisterWebhook)
+	router.GET("/webhooks/:webhook_id", api.handleGetWebhook)
 	router.PATCH("/webhooks/:webhook_id", api.handleUpdateWebhook)
 	router.DELETE("/webhooks/:webhook_id", api.handleDeleteWebhook)
 }
