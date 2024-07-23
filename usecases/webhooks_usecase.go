@@ -91,6 +91,19 @@ func generateSecret() string {
 	return hex.EncodeToString(key)
 }
 
+func (usecase WebhooksUsecase) GetWebhook(
+	ctx context.Context, organizationId string, partnerId null.String, webhookId string,
+) (models.Webhook, error) {
+	webhook, err := usecase.convoyRepository.GetWebhook(ctx, webhookId)
+	if err != nil {
+		return models.Webhook{}, models.NotFoundError
+	}
+	if err = usecase.enforceSecurity.CanReadWebhook(ctx, webhook); err != nil {
+		return models.Webhook{}, err
+	}
+	return webhook, nil
+}
+
 func (usecase WebhooksUsecase) DeleteWebhook(
 	ctx context.Context, organizationId string, partnerId null.String, webhookId string,
 ) error {
