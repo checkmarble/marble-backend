@@ -34,17 +34,54 @@ func (o LicenseValidationCode) String() string {
 	return "NOT_FOUND"
 }
 
+func LicenseValidationCodeFromString(s string) LicenseValidationCode {
+	switch s {
+	case "VALID":
+		return VALID
+	case "EXPIRED":
+		return EXPIRED
+	case "NOT_FOUND":
+		return NOT_FOUND
+	case "OVERDUE":
+		return OVERDUE
+	case "SUSPENDED":
+		return SUSPENDED
+	}
+	return NOT_FOUND
+}
+
 type LicenseEntitlements struct {
 	Sso            bool
 	Workflows      bool
 	Analytics      bool
 	DataEnrichment bool
 	UserRoles      bool
+	Webhooks       bool
 }
 
 type LicenseValidation struct {
 	LicenseValidationCode
 	LicenseEntitlements
+}
+
+func NewFullLicense() LicenseValidation {
+	return LicenseValidation{
+		LicenseValidationCode: VALID,
+		LicenseEntitlements: LicenseEntitlements{
+			Sso:            true,
+			Workflows:      true,
+			Analytics:      true,
+			DataEnrichment: true,
+			UserRoles:      true,
+			Webhooks:       true,
+		},
+	}
+}
+
+func NewNotFoundLicense() LicenseValidation {
+	return LicenseValidation{
+		LicenseValidationCode: NOT_FOUND,
+	}
 }
 
 type License struct {
@@ -81,4 +118,9 @@ func (l *UpdateLicenseInput) Validate() error {
 	}
 
 	return nil
+}
+
+type LicenseConfiguration struct {
+	LicenseKey             string
+	KillIfReadLicenseError bool
 }
