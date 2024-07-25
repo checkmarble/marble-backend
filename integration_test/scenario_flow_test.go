@@ -551,6 +551,7 @@ func createAndTestDecision(
 			TriggerObjectTable: table.Name,
 		},
 		false,
+		false,
 	)
 	assert.NoError(t, err, "Could not create decision")
 	assert.Equal(t, expectedScore, decision.Score, "The score should match the expected value")
