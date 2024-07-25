@@ -22,7 +22,7 @@ func (repo *MarbleDbRepository) GetLicenseById(ctx context.Context, exec Executo
 	return SqlToModel(
 		ctx,
 		exec,
-		selectLicenses().Where("id = ?", licenseId),
+		selectLicenses().Where(squirrel.Eq{"id": licenseId}),
 		dbmodels.AdaptLicense,
 	)
 }

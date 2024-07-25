@@ -10,6 +10,8 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 )
 
@@ -129,6 +131,10 @@ func (usecase *PublicLicenseUseCase) ValidateLicense(ctx context.Context, licens
 	exec := usecase.executorFactory.NewExecutor()
 	license, err := usecase.licenseRepository.GetLicenseByKey(ctx, exec, licenseKey)
 	if err != nil {
+		if !errors.Is(err, models.NotFoundError) {
+			utils.LogAndReportSentryError(ctx, err)
+		}
+
 		return models.LicenseValidation{
 			LicenseValidationCode: models.NOT_FOUND,
 		}, nil
