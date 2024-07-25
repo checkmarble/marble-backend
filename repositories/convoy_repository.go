@@ -163,6 +163,10 @@ func (repo ConvoyRepository) ListWebhooks(ctx context.Context, organizationId st
 	}
 	checkPerPageLimit(ctx, len(endpoints))
 
+	if len(endpoints) == 0 {
+		return make([]models.Webhook, 0, 0), nil
+	}
+
 	endpointMap := make(map[string]convoy.ModelsEndpointResponse)
 	endpointIds := make([]string, 0, len(endpoints))
 	for _, convoyEndpoint := range endpoints {
