@@ -210,6 +210,7 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 			TriggerObjectTable: models.TransferCheckTable,
 		},
 		true,
+		false,
 	)
 	if err != nil {
 		return models.Transfer{}, errors.Wrapf(
@@ -505,6 +506,7 @@ func (usecase *TransferCheckUsecase) ScoreTransfer(
 			TriggerObjectTable: models.TransferCheckTable,
 		},
 		true,
+		false,
 	)
 	if err != nil {
 		return models.Transfer{}, errors.Wrapf(

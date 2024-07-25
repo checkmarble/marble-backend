@@ -182,6 +182,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 	ctx context.Context,
 	input models.CreateDecisionInput,
 	skipScenarioPermissionForTransferCheck bool,
+	withDecisionWebhooks bool,
 ) (models.DecisionWithRuleExecutions, error) {
 	exec := usecase.executorFactory.NewExecutor()
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
@@ -254,7 +255,6 @@ func (usecase *DecisionUsecase) CreateDecision(
 	defer span.End()
 
 	sendWebhookEventId := make([]string, 0)
-	webhookEventCreated := false
 	newDecision, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Executor,
 	) (models.DecisionWithRuleExecutions, error) {
@@ -269,19 +269,21 @@ func (usecase *DecisionUsecase) CreateDecision(
 				fmt.Errorf("error storing decision: %w", err)
 		}
 
-		webhookEventId := uuid.NewString()
-		err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
-			Id:             webhookEventId,
-			OrganizationId: decision.OrganizationId,
-			EventContent:   models.NewWebhookEventDecisionCreated(decision.DecisionId),
-		})
-		if err != nil {
-			return models.DecisionWithRuleExecutions{}, err
+		if withDecisionWebhooks {
+			webhookEventId := uuid.NewString()
+			err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+				Id:             webhookEventId,
+				OrganizationId: decision.OrganizationId,
+				EventContent:   models.NewWebhookEventDecisionCreated(decision.DecisionId),
+			})
+			if err != nil {
+				return models.DecisionWithRuleExecutions{}, err
+			}
+			sendWebhookEventId = append(sendWebhookEventId, webhookEventId)
 		}
-		sendWebhookEventId = append(sendWebhookEventId, webhookEventId)
 
 		caseWebhookEventId := uuid.NewString()
-		webhookEventCreated, err = usecase.decisionWorkflows.AutomaticDecisionToCase(
+		webhookEventCreated, err := usecase.decisionWorkflows.AutomaticDecisionToCase(
 			ctx,
 			tx,
 			scenario,

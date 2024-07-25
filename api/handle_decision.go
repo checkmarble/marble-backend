@@ -103,6 +103,7 @@ func (api *API) handlePostDecision(c *gin.Context) {
 			TriggerObjectTable: requestData.TriggerObjectType,
 		},
 		false,
+		true,
 	)
 
 	if returnExpectedDecisionError(c, err) || presentError(c, err) {
