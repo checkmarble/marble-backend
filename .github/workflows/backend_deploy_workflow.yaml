@@ -91,3 +91,10 @@ jobs:
             --quiet \
             --image=${{ env.IMAGE }} \
             --region="europe-west1" \
+
+      - name: Deploy webhook retry
+        run: |
+          gcloud beta run jobs deploy retry-webhooks \
+            --quiet \
+            --image=${{ env.IMAGE }} \
+            --region="europe-west1" \
