@@ -93,7 +93,7 @@ func (repo MarbleDbRepository) CreateWebhookEvent(
 	return err
 }
 
-func (repo MarbleDbRepository) UpdateWebhookEvent(
+func (repo MarbleDbRepository) MarkWebhookEventRetried(
 	ctx context.Context,
 	exec Executor,
 	input models.WebhookEventUpdate,
@@ -109,8 +109,9 @@ func (repo MarbleDbRepository) UpdateWebhookEvent(
 			Update(dbmodels.TABLE_WEBHOOK_EVENTS).
 			Set("updated_at", "NOW()").
 			Set("delivery_status", input.DeliveryStatus).
-			Set("retry_count", input.RetryCount).
-			Where(squirrel.Eq{"id": input.Id}),
+			Set("retry_count", squirrel.Expr("retry_count + 1")).
+			Where(squirrel.Eq{"id": input.Id}).
+			Where(squirrel.NotEq{"delivery_status": models.Success}),
 	)
 	return err
 }

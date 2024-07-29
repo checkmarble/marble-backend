@@ -38,7 +38,7 @@ type webhookEventsRepository interface {
 		exec repositories.Executor,
 		webhookEvent models.WebhookEventCreate,
 	) error
-	UpdateWebhookEvent(
+	MarkWebhookEventRetried(
 		ctx context.Context,
 		exec repositories.Executor,
 		input models.WebhookEventUpdate,
@@ -52,7 +52,6 @@ type enforceSecurityWebhookEvents interface {
 type WebhookEventsUsecase struct {
 	enforceSecurity             enforceSecurityWebhookEvents
 	executorFactory             executor_factory.ExecutorFactory
-	transactionFactory          executor_factory.TransactionFactory
 	convoyRepository            convoyWebhookEventRepository
 	webhookEventsRepository     webhookEventsRepository
 	failedWebhooksRetryPageSize int
@@ -62,7 +61,6 @@ type WebhookEventsUsecase struct {
 func NewWebhookEventsUsecase(
 	enforceSecurity enforceSecurityWebhookEvents,
 	executorFactory executor_factory.ExecutorFactory,
-	transactionFactory executor_factory.TransactionFactory,
 	convoyRepository convoyWebhookEventRepository,
 	webhookEventsRepository webhookEventsRepository,
 	failedWebhooksRetryPageSize int,
@@ -75,7 +73,6 @@ func NewWebhookEventsUsecase(
 	return WebhookEventsUsecase{
 		enforceSecurity:             enforceSecurity,
 		executorFactory:             executorFactory,
-		transactionFactory:          transactionFactory,
 		convoyRepository:            convoyRepository,
 		webhookEventsRepository:     webhookEventsRepository,
 		failedWebhooksRetryPageSize: failedWebhooksRetryPageSize,
@@ -220,40 +217,19 @@ func (usecase WebhookEventsUsecase) _sendWebhookEvent(ctx context.Context, webho
 
 	logger.InfoContext(ctx, fmt.Sprintf("Start processing webhook event %s", webhookEvent.Id))
 
+	webhookEventUpdate := models.WebhookEventUpdate{Id: webhookEvent.Id}
+
 	err = usecase.convoyRepository.SendWebhookEvent(ctx, webhookEvent)
-	// sending the webhook to convoy was successful, so we can update the status directly (no need for transaction)
 	if err == nil {
-		webhookEventUpdate := models.WebhookEventUpdate{Id: webhookEvent.Id, DeliveryStatus: models.Success}
-		err := usecase.webhookEventsRepository.UpdateWebhookEvent(ctx, exec, webhookEventUpdate)
-		return webhookEventUpdate.DeliveryStatus, err
+		webhookEventUpdate.DeliveryStatus = models.Success
+	} else {
+		logger.ErrorContext(ctx, fmt.Sprintf("Error sending webhook event %s: %s", webhookEvent.Id, err.Error()))
+		webhookEventUpdate.DeliveryStatus = models.Retry
 	}
 
-	// so we're in the error case
-	logger.ErrorContext(ctx, fmt.Sprintf("Error sending webhook event %s: %s", webhookEvent.Id, err.Error()))
-
-	// there was an error sending the webhook to convoy so we mark it as failed or to retry
-	return executor_factory.TransactionReturnValue(
-		ctx,
-		usecase.transactionFactory,
-		func(tx repositories.Executor) (models.WebhookEventDeliveryStatus, error) {
-			webhookEventBeforeUpdate, err := usecase.webhookEventsRepository.GetWebhookEvent(ctx, tx, webhookEventId)
-			if err != nil {
-				return models.Scheduled, err
-			}
-			// another goroutine already updated the webhook event, no need to do anything else
-			if webhookEventBeforeUpdate.DeliveryStatus == models.Success {
-				return webhookEventBeforeUpdate.DeliveryStatus, nil
-			}
-
-			webhookEventUpdate := models.WebhookEventUpdate{
-				Id:             webhookEvent.Id,
-				DeliveryStatus: models.Retry,
-				RetryCount:     webhookEvent.RetryCount + 1,
-			}
-			err = usecase.webhookEventsRepository.UpdateWebhookEvent(ctx, tx, webhookEventUpdate)
-			return webhookEventUpdate.DeliveryStatus, errors.Wrapf(
-				err,
-				"error while updating webhook event %s", webhookEvent.Id,
-			)
-		})
+	err = usecase.webhookEventsRepository.MarkWebhookEventRetried(ctx, exec, webhookEventUpdate)
+	return webhookEventUpdate.DeliveryStatus, errors.Wrapf(
+		err,
+		"error while updating webhook event %s", webhookEvent.Id,
+	)
 }
