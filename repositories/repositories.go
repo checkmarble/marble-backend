@@ -97,11 +97,9 @@ func NewRepositories(
 	}
 
 	return Repositories{
-		ExecutorGetter:          executorGetter,
-		FirebaseTokenRepository: firebase.New(options.firebaseClient),
-		ConvoyRepository: ConvoyRepository{
-			convoyClientProvider: options.convoyClientProvider,
-		},
+		ExecutorGetter:                executorGetter,
+		FirebaseTokenRepository:       firebase.New(options.firebaseClient),
+		ConvoyRepository:              NewConvoyRepository(options.convoyClientProvider),
 		UserRepository:                &UserRepositoryPostgresql{},
 		OrganizationRepository:        &OrganizationRepositoryPostgresql{},
 		IngestionRepository:           &IngestionRepositoryImpl{},
