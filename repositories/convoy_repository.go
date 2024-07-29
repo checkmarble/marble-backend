@@ -18,6 +18,24 @@ type ConvoyClientProvider interface {
 	GetProjectID() string
 }
 
+type noOpConvoyClientProvider struct{}
+
+func (noOpConvoyClientProvider) GetClient() (convoy.ClientWithResponses, error) {
+	return convoy.ClientWithResponses{}, errors.New("convoy client provider is not set")
+}
+
+func (noOpConvoyClientProvider) GetProjectID() string {
+	return ""
+}
+
+func NewConvoyRepository(convoyClientProvider ConvoyClientProvider) ConvoyRepository {
+	if convoyClientProvider == nil {
+		convoyClientProvider = noOpConvoyClientProvider{}
+	}
+
+	return ConvoyRepository{convoyClientProvider: convoyClientProvider}
+}
+
 type ConvoyRepository struct {
 	convoyClientProvider ConvoyClientProvider
 }

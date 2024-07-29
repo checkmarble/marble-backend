@@ -30,6 +30,11 @@ func RunBatchIngestion() error {
 		Port:                utils.GetEnv("PG_PORT", "5432"),
 		User:                utils.GetRequiredEnv[string]("PG_USER"),
 	}
+	convoyConfiguration := infra.ConvoyConfiguration{
+		APIKey:    utils.GetEnv("CONVOY_API_KEY", ""),
+		APIUrl:    utils.GetEnv("CONVOY_API_URL", ""),
+		ProjectID: utils.GetEnv("CONVOY_PROJECT_ID", ""),
+	}
 	licenseConfig := models.LicenseConfiguration{
 		LicenseKey:             utils.GetEnv("LICENSE_KEY", ""),
 		KillIfReadLicenseError: utils.GetEnv("KILL_IF_READ_LICENSE_ERROR", false),
@@ -71,8 +76,11 @@ func RunBatchIngestion() error {
 		return err
 	}
 
-	repositories := repositories.NewRepositories(pool,
+	repositories := repositories.NewRepositories(
+		pool,
 		repositories.WithFakeGcsRepository(gcpConfig.FakeGcsRepository),
+		repositories.WithConvoyClientProvider(
+			infra.InitializeConvoyRessources(convoyConfiguration)),
 	)
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithGcsIngestionBucket(gcpConfig.GcsIngestionBucket),
