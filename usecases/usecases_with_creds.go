@@ -422,7 +422,6 @@ func (usecases *UsecasesWithCreds) NewWebhookEventsUsecase() WebhookEventsUsecas
 	return NewWebhookEventsUsecase(
 		security.NewEnforceSecurity(usecases.Credentials),
 		usecases.NewExecutorFactory(),
-		usecases.NewTransactionFactory(),
 		usecases.Repositories.ConvoyRepository,
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Usecases.failedWebhooksRetryPageSize,

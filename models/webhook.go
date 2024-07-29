@@ -70,7 +70,6 @@ type WebhookEventCreate struct {
 type WebhookEventUpdate struct {
 	Id             string
 	DeliveryStatus WebhookEventDeliveryStatus
-	RetryCount     int
 }
 
 type WebhookEventFilters struct {

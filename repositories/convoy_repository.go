@@ -212,9 +212,8 @@ func adaptEventTypes(convoyFilterConfig convoy.DatastoreFilterConfiguration) []s
 	if len(*convoyFilterConfig.EventTypes) == 1 && (*convoyFilterConfig.EventTypes)[0] == "*" {
 		return eventTypes
 	}
-	for _, eventType := range *convoyFilterConfig.EventTypes {
-		eventTypes = append(eventTypes, eventType)
-	}
+	eventTypes = append(eventTypes, *convoyFilterConfig.EventTypes...)
+
 	return eventTypes
 }
 
