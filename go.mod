@@ -57,6 +57,7 @@ require (
 	cloud.google.com/go/iam v1.1.8 // indirect
 	cloud.google.com/go/longrunning v0.5.7 // indirect
 	cloud.google.com/go/trace v1.10.7 // indirect
+	dario.cat/mergo v1.0.0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.24.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.48.0 // indirect
@@ -88,9 +89,9 @@ require (
 	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/containerd/continuity v0.4.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/docker/cli v24.0.5+incompatible // indirect
+	github.com/docker/cli v26.1.4+incompatible // indirect
 	github.com/docker/docker v26.1.4+incompatible // indirect
-	github.com/docker/go-connections v0.4.0 // indirect
+	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.4 // indirect
