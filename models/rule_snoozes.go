@@ -5,25 +5,26 @@ import "time"
 type SnoozeGroup struct {
 	Id             string
 	OrganizationId string
+	CreatedAt      time.Time
 }
 
 type RuleSnooze struct {
 	Id            string
-	CreatedBy     string
+	CreatedByUser string
 	PivotValue    string
 	SnoozeGroupId string
 	StartsAt      time.Time
-	EndsAt        time.Time
+	ExpiresAt     time.Time
 }
 
 type RuleSnoozeWithRuleId struct {
 	Id            string
-	CreatedBy     string
+	CreatedByUser string
 	PivotValue    string
 	RuleId        string
 	SnoozeGroupId string
 	StartsAt      time.Time
-	EndsAt        time.Time
+	ExpiresAt     time.Time
 }
 
 type SnoozesOfDecision struct {
@@ -41,12 +42,12 @@ func NewSnoozesOfDecision(decisionId string, snoozes []RuleSnooze, iteration Sce
 				ruleId = rule.Id
 				snoozesWithRuleId = append(snoozesWithRuleId, RuleSnoozeWithRuleId{
 					Id:            s.Id,
-					CreatedBy:     s.CreatedBy,
+					CreatedByUser: s.CreatedByUser,
 					PivotValue:    s.PivotValue,
 					RuleId:        ruleId,
 					SnoozeGroupId: s.SnoozeGroupId,
 					StartsAt:      s.StartsAt,
-					EndsAt:        s.EndsAt,
+					ExpiresAt:     s.ExpiresAt,
 				})
 				break
 			}

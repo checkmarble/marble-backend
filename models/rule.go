@@ -34,6 +34,7 @@ type CreateRuleInput struct {
 	FormulaAstExpression *ast.Node
 	ScoreModifier        int
 	RuleGroup            string
+	SnoozeGroupId        string
 }
 
 type UpdateRuleInput struct {
@@ -44,4 +45,5 @@ type UpdateRuleInput struct {
 	FormulaAstExpression *ast.Node
 	ScoreModifier        *int
 	RuleGroup            *string
+	SnoozeGroupId        *string
 }
