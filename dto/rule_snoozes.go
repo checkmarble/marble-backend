@@ -7,12 +7,12 @@ import (
 )
 
 type RuleSnooze struct {
-	Id         string    `json:"id"`
-	RuleId     string    `json:"rule_id"`
-	PivotValue string    `json:"pivot_value"`
-	StartsAt   time.Time `json:"starts_at"`
-	EndsAt     time.Time `json:"ends_at"`
-	CreatedBy  string    `json:"created_by"`
+	Id            string    `json:"id"`
+	RuleId        string    `json:"rule_id"`
+	PivotValue    string    `json:"pivot_value"`
+	StartsAt      time.Time `json:"starts_at"`
+	ExpiresAt     time.Time `json:"ends_at"`
+	CreatedByUser string    `json:"created_by_user"`
 }
 
 type SnoozesOfDecision struct {
@@ -24,12 +24,12 @@ func AdaptSnoozesOfDecision(s models.SnoozesOfDecision) SnoozesOfDecision {
 	snoozes := make([]RuleSnooze, 0, len(s.RuleSnoozes))
 	for _, s := range s.RuleSnoozes {
 		snoozes = append(snoozes, RuleSnooze{
-			Id:         s.Id,
-			RuleId:     s.RuleId,
-			PivotValue: s.PivotValue,
-			StartsAt:   s.StartsAt,
-			EndsAt:     s.EndsAt,
-			CreatedBy:  s.CreatedBy,
+			Id:            s.Id,
+			RuleId:        s.RuleId,
+			PivotValue:    s.PivotValue,
+			StartsAt:      s.StartsAt,
+			ExpiresAt:     s.ExpiresAt,
+			CreatedByUser: s.CreatedByUser,
 		})
 	}
 

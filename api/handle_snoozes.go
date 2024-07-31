@@ -40,7 +40,7 @@ func (api *API) handleSnoozesOfDecision(c *gin.Context) {
 	}
 	snoozes := dto.AdaptSnoozesOfDecision(models.NewSnoozesOfDecision(decisionId,
 		[]models.RuleSnooze{{
-			Id: "1", SnoozeGroupId: "1", PivotValue: "1", StartsAt: time.Now(), EndsAt: time.Now(), CreatedBy: "1",
+			Id: "1", SnoozeGroupId: "1", PivotValue: "1", StartsAt: time.Now(), ExpiresAt: time.Now(), CreatedByUser: "1",
 		}},
 		models.ScenarioIteration{
 			Rules: []models.Rule{{Id: "1", SnoozeGroupId: "1"}, {Id: "2", SnoozeGroupId: "2"}},
