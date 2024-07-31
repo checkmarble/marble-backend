@@ -1,0 +1,61 @@
+package models
+
+import "time"
+
+type SnoozeGroup struct {
+	Id             string
+	OrganizationId string
+}
+
+type RuleSnooze struct {
+	Id            string
+	CreatedBy     string
+	PivotValue    string
+	SnoozeGroupId string
+	StartsAt      time.Time
+	EndsAt        time.Time
+}
+
+type RuleSnoozeWithRuleId struct {
+	Id            string
+	CreatedBy     string
+	PivotValue    string
+	RuleId        string
+	SnoozeGroupId string
+	StartsAt      time.Time
+	EndsAt        time.Time
+}
+
+type SnoozesOfDecision struct {
+	DecisionId  string
+	Iteration   ScenarioIteration
+	RuleSnoozes []RuleSnoozeWithRuleId
+}
+
+func NewSnoozesOfDecision(decisionId string, snoozes []RuleSnooze, iteration ScenarioIteration) SnoozesOfDecision {
+	snoozesWithRuleId := make([]RuleSnoozeWithRuleId, 0, len(snoozes))
+	for _, s := range snoozes {
+		var ruleId string
+		for _, rule := range iteration.Rules {
+			if rule.SnoozeGroupId == s.SnoozeGroupId {
+				ruleId = rule.Id
+				snoozesWithRuleId = append(snoozesWithRuleId, RuleSnoozeWithRuleId{
+					Id:            s.Id,
+					CreatedBy:     s.CreatedBy,
+					PivotValue:    s.PivotValue,
+					RuleId:        ruleId,
+					SnoozeGroupId: s.SnoozeGroupId,
+					StartsAt:      s.StartsAt,
+					EndsAt:        s.EndsAt,
+				})
+				break
+			}
+		}
+	}
+
+	return SnoozesOfDecision{
+		DecisionId:  decisionId,
+		RuleSnoozes: snoozesWithRuleId,
+		Iteration:   iteration,
+	}
+}
