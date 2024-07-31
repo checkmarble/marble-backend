@@ -2,7 +2,6 @@ package api
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -26,25 +25,10 @@ func (api *API) handleSnoozesOfDecision(c *gin.Context) {
 		return
 	}
 
-	// decisionUsecase := api.UsecasesWithCreds(c.Request).NewDecisionUsecase()
-	// decisions, nbSkipped, err := decisionUsecase.CreateAllDecisions(
-	// 	c.Request.Context(),
-	// 	models.CreateAllDecisionsInput{
-	// 		OrganizationId:     organizationId,
-	// 		PayloadRaw:         requestData.TriggerObjectRaw,
-	// 		TriggerObjectTable: requestData.TriggerObjectType,
-	// 	},
-	// )
+	ruleSnoozeUsecase := api.UsecasesWithCreds(c.Request).NewRuleSnoozeUsecase()
+	snoozes, err := ruleSnoozeUsecase.ActiveSnoozesForDecision(c.Request.Context(), decisionId)
 	if presentError(c, err) {
 		return
 	}
-	snoozes := dto.AdaptSnoozesOfDecision(models.NewSnoozesOfDecision(decisionId,
-		[]models.RuleSnooze{{
-			Id: "1", SnoozeGroupId: "1", PivotValue: "1", StartsAt: time.Now(), ExpiresAt: time.Now(), CreatedByUser: "1",
-		}},
-		models.ScenarioIteration{
-			Rules: []models.Rule{{Id: "1", SnoozeGroupId: "1"}, {Id: "2", SnoozeGroupId: "2"}},
-		},
-	))
-	c.JSON(http.StatusOK, gin.H{"snoozes": snoozes})
+	c.JSON(http.StatusOK, gin.H{"snoozes": dto.AdaptSnoozesOfDecision(snoozes)})
 }

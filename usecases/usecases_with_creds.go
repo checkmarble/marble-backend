@@ -437,3 +437,10 @@ func (usecases *UsecasesWithCreds) NewWebhooksUsecase() WebhooksUsecase {
 		usecases.Repositories.ConvoyRepository,
 	)
 }
+
+func (usecases *UsecasesWithCreds) NewRuleSnoozeUsecase() RuleSnoozeUsecase {
+	return NewRuleSnoozeUsecase(
+		usecases.Repositories.DecisionRepository,
+		usecases.NewExecutorFactory(),
+		&usecases.Repositories.MarbleDbRepository)
+}
