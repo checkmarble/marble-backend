@@ -99,7 +99,9 @@ func (repo *MarbleDbRepository) CreateRules(ctx context.Context, exec Executor, 
 			"description",
 			"formula_ast_expression",
 			"score_modifier",
-			"rule_group").
+			"rule_group",
+			"snooze_group_id",
+		).
 		Suffix("RETURNING *")
 
 	for _, rule := range dbCreateRuleInputs {
@@ -113,6 +115,7 @@ func (repo *MarbleDbRepository) CreateRules(ctx context.Context, exec Executor, 
 			rule.FormulaAstExpression,
 			rule.ScoreModifier,
 			rule.RuleGroup,
+			rule.SnoozeGroupId,
 		)
 	}
 

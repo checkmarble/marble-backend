@@ -12,7 +12,7 @@ type RuleSnooze struct {
 	PivotValue    string    `json:"pivot_value"`
 	StartsAt      time.Time `json:"starts_at"`
 	ExpiresAt     time.Time `json:"ends_at"`
-	CreatedByUser string    `json:"created_by"`
+	CreatedByUser string    `json:"created_by_user"`
 }
 
 type SnoozesOfDecision struct {

@@ -38,7 +38,7 @@ func NewSnoozesOfDecision(decisionId string, snoozes []RuleSnooze, iteration Sce
 	for _, s := range snoozes {
 		var ruleId string
 		for _, rule := range iteration.Rules {
-			if rule.SnoozeGroupId == s.SnoozeGroupId {
+			if rule.SnoozeGroupId != nil && *rule.SnoozeGroupId == s.SnoozeGroupId {
 				ruleId = rule.Id
 				snoozesWithRuleId = append(snoozesWithRuleId, RuleSnoozeWithRuleId{
 					Id:            s.Id,
@@ -59,4 +59,12 @@ func NewSnoozesOfDecision(decisionId string, snoozes []RuleSnooze, iteration Sce
 		RuleSnoozes: snoozesWithRuleId,
 		Iteration:   iteration,
 	}
+}
+
+type RuleSnoozeCreateInput struct {
+	Id            string
+	SnoozeGroupId string
+	ExpiresAt     time.Time
+	CreatedByUser string
+	PivotValue    string
 }
