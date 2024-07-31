@@ -42,6 +42,7 @@ func (api *API) routes(auth Authentication, tokenHandler TokenHandler) {
 	router.POST("/decisions", timeoutMiddleware(models.DECISION_TIMEOUT), api.handlePostDecision)
 	router.POST("/decisions/all", timeoutMiddleware(models.SEQUENTIAL_DECISION_TIMEOUT), api.handlePostAllDecisions)
 	router.GET("/decisions/:decision_id", api.handleGetDecision)
+	router.GET("/decisions/:decision_id/active-snoozes", api.handleSnoozesOfDecision)
 
 	router.POST("/ingestion/:object_type", api.handleIngestion)
 	router.POST("/ingestion/:object_type/batch", timeoutMiddleware(batchIngestionTimeout), api.handleCsvIngestion)
