@@ -2,7 +2,6 @@ package usecases
 
 import (
 	"context"
-	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -19,17 +18,34 @@ type iterationGetter interface {
 	)
 }
 
-type RuleSnoozeUsecase struct {
-	decisionGetter  decisionGetter
-	executorFactory executor_factory.ExecutorFactory
-	iterationGetter iterationGetter
+type ruleSnoozeRepository interface {
+	CreateSnoozeGroup(ctx context.Context, exec repositories.Executor, id, organizationId string) error
+	ListRuleSnoozesForDecision(
+		ctx context.Context,
+		exec repositories.Executor,
+		snoozeGroupIds []string,
+		pivotValue string,
+	) ([]models.RuleSnooze, error)
+	CreateRuleSnooze(
+		ctx context.Context,
+		exec repositories.Executor,
+		input models.RuleSnoozeCreateInput,
+	) error
 }
 
-func NewRuleSnoozeUsecase(d decisionGetter, e executor_factory.ExecutorFactory, i iterationGetter) RuleSnoozeUsecase {
+type RuleSnoozeUsecase struct {
+	decisionGetter       decisionGetter
+	executorFactory      executor_factory.ExecutorFactory
+	iterationGetter      iterationGetter
+	ruleSnoozeRepository ruleSnoozeRepository
+}
+
+func NewRuleSnoozeUsecase(d decisionGetter, e executor_factory.ExecutorFactory, i iterationGetter, s ruleSnoozeRepository) RuleSnoozeUsecase {
 	return RuleSnoozeUsecase{
-		decisionGetter:  d,
-		executorFactory: e,
-		iterationGetter: i,
+		decisionGetter:       d,
+		executorFactory:      e,
+		iterationGetter:      i,
+		ruleSnoozeRepository: s,
 	}
 }
 
@@ -48,19 +64,27 @@ func (usecase RuleSnoozeUsecase) ActiveSnoozesForDecision(ctx context.Context, d
 		return models.SnoozesOfDecision{}, err
 	}
 
-	snoozes := models.NewSnoozesOfDecision(decisionId,
-		[]models.RuleSnooze{
-			{
-				Id: "1", SnoozeGroupId: "", PivotValue: "1", StartsAt: time.Now(), ExpiresAt: time.Now(), CreatedByUser: "1",
-			},
-			{
-				Id: "2", SnoozeGroupId: "", PivotValue: "2", StartsAt: time.Now(), ExpiresAt: time.Now(), CreatedByUser: "2",
-			},
-			{
-				Id: "3", SnoozeGroupId: "", PivotValue: "3", StartsAt: time.Now(), ExpiresAt: time.Now(), CreatedByUser: "3",
-			},
-		},
-		it,
-	)
-	return snoozes, nil
+	if decisions[0].PivotValue == nil {
+		// no snoozes possible if decision doesn't have a pivot value
+		return models.SnoozesOfDecision{
+			DecisionId:  decisionId,
+			RuleSnoozes: make([]models.RuleSnoozeWithRuleId, 0),
+			Iteration:   it,
+		}, nil
+	}
+
+	snooze_group_ids := make([]string, 0, len(it.Rules))
+	for _, rule := range it.Rules {
+		if rule.SnoozeGroupId != nil {
+			snooze_group_ids = append(snooze_group_ids, *rule.SnoozeGroupId)
+		}
+	}
+
+	snoozes, err := usecase.ruleSnoozeRepository.ListRuleSnoozesForDecision(
+		ctx, exec, snooze_group_ids, *decisions[0].PivotValue)
+	if err != nil {
+		return models.SnoozesOfDecision{}, err
+	}
+
+	return models.NewSnoozesOfDecision(decisionId, snoozes, it), nil
 }
