@@ -42,6 +42,7 @@ const (
 	LICENSE_UPDATE
 	WEBHOOK_EVENT
 	WEBHOOK
+	READ_SNOOZES
 )
 
 func (r Permission) String() string {
@@ -85,5 +86,6 @@ func (r Permission) String() string {
 		"LICENSE_UPDATE",
 		"WEBHOOK_EVENT",
 		"WEBHOOK",
+		"READ_SNOOZES",
 	}[r]
 }

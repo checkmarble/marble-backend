@@ -33,19 +33,27 @@ type ruleSnoozeRepository interface {
 	) error
 }
 
+type enforceSecuritySnoozes interface {
+	ReadSnoozesOfDecision(ctx context.Context, decision models.Decision) error
+}
+
 type RuleSnoozeUsecase struct {
 	decisionGetter       decisionGetter
 	executorFactory      executor_factory.ExecutorFactory
 	iterationGetter      iterationGetter
 	ruleSnoozeRepository ruleSnoozeRepository
+	enforceSecurity      enforceSecuritySnoozes
 }
 
-func NewRuleSnoozeUsecase(d decisionGetter, e executor_factory.ExecutorFactory, i iterationGetter, s ruleSnoozeRepository) RuleSnoozeUsecase {
+func NewRuleSnoozeUsecase(
+	d decisionGetter, e executor_factory.ExecutorFactory, i iterationGetter, s ruleSnoozeRepository, es enforceSecuritySnoozes,
+) RuleSnoozeUsecase {
 	return RuleSnoozeUsecase{
 		decisionGetter:       d,
 		executorFactory:      e,
 		iterationGetter:      i,
 		ruleSnoozeRepository: s,
+		enforceSecurity:      es,
 	}
 }
 
@@ -57,6 +65,10 @@ func (usecase RuleSnoozeUsecase) ActiveSnoozesForDecision(ctx context.Context, d
 	}
 	if len(decisions) == 0 {
 		return models.SnoozesOfDecision{}, errors.Wrapf(models.NotFoundError, "decision %s not found", decisionId)
+	}
+
+	if err := usecase.enforceSecurity.ReadSnoozesOfDecision(ctx, decisions[0]); err != nil {
+		return models.SnoozesOfDecision{}, err
 	}
 
 	it, err := usecase.iterationGetter.GetScenarioIteration(ctx, exec, decisions[0].ScenarioIterationId)
