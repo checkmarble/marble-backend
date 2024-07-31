@@ -38,3 +38,30 @@ func AdaptSnoozesOfDecision(s models.SnoozesOfDecision) SnoozesOfDecision {
 		RuleSnoozes: snoozes,
 	}
 }
+
+type SnoozesOfIteration struct {
+	IterationId string                  `json:"iteration_id"`
+	RuleSnoozes []RuleSnoozeInformation `json:"rule_snoozes"`
+}
+
+type RuleSnoozeInformation struct {
+	RuleId           string `json:"rule_id"`
+	SnoozeGroupId    string `json:"snooze_group_id"`
+	HasSnoozesActive bool   `json:"has_snoozes_active"`
+}
+
+func AdaptSnoozesOfIteration(s models.SnoozesOfIteration) SnoozesOfIteration {
+	snoozes := make([]RuleSnoozeInformation, 0, len(s.RuleSnoozes))
+	for _, s := range s.RuleSnoozes {
+		snoozes = append(snoozes, RuleSnoozeInformation{
+			RuleId:           s.RuleId,
+			SnoozeGroupId:    s.SnoozeGroupId,
+			HasSnoozesActive: s.HasSnoozesActive,
+		})
+	}
+
+	return SnoozesOfIteration{
+		IterationId: s.IterationId,
+		RuleSnoozes: snoozes,
+	}
+}

@@ -68,3 +68,14 @@ type RuleSnoozeCreateInput struct {
 	CreatedByUser string
 	PivotValue    string
 }
+
+type SnoozesOfIteration struct {
+	IterationId string
+	RuleSnoozes []RuleSnoozeInformation
+}
+
+type RuleSnoozeInformation struct {
+	RuleId           string
+	SnoozeGroupId    string
+	HasSnoozesActive bool
+}

@@ -61,6 +61,7 @@ func (api *API) routes(auth Authentication, tokenHandler TokenHandler) {
 	router.POST("/scenario-iterations/:iteration_id/validate", api.ValidateScenarioIteration)
 	router.POST("/scenario-iterations/:iteration_id/commit", api.CommitScenarioIterationVersion)
 	router.POST("/scenario-iterations/:iteration_id/schedule-execution", api.handleCreateScheduledExecution)
+	router.GET("/scenario-iterations/:iteration_id/active-snoozes", api.handleSnoozesOfScenarioIteartion)
 
 	router.GET("/scenario-iteration-rules", api.ListRules)
 	router.POST("/scenario-iteration-rules", api.CreateRule)
