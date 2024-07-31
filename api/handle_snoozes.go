@@ -32,3 +32,25 @@ func (api *API) handleSnoozesOfDecision(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"snoozes": dto.AdaptSnoozesOfDecision(snoozes)})
 }
+
+func (api *API) handleSnoozesOfScenarioIteartion(c *gin.Context) {
+	_, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+	if presentError(c, err) {
+		return
+	}
+
+	scenarioIterationId := c.Param("iteration_id")
+	_, err = uuid.Parse(scenarioIterationId)
+	if err != nil {
+		presentError(c, errors.Wrap(models.BadParameterError,
+			"scenario_iteration_id must be a valid uuid"))
+		return
+	}
+
+	ruleSnoozeUsecase := api.UsecasesWithCreds(c.Request).NewRuleSnoozeUsecase()
+	snoozes, err := ruleSnoozeUsecase.ActiveSnoozesForScenarioIteration(c.Request.Context(), scenarioIterationId)
+	if presentError(c, err) {
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"snoozes": dto.AdaptSnoozesOfIteration(snoozes)})
+}

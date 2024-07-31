@@ -15,3 +15,10 @@ func (e *EnforceSecurityImpl) ReadSnoozesOfDecision(ctx context.Context, decisio
 		utils.EnforceOrganizationAccess(e.Credentials, decision.OrganizationId),
 	)
 }
+
+func (e *EnforceSecurityImpl) ReadSnoozesOfIteration(ctx context.Context, iteration models.ScenarioIteration) error {
+	return errors.Join(
+		e.Permission(models.READ_SNOOZES),
+		utils.EnforceOrganizationAccess(e.Credentials, iteration.OrganizationId),
+	)
+}

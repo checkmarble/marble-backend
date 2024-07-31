@@ -26,6 +26,11 @@ type ruleSnoozeRepository interface {
 		snoozeGroupIds []string,
 		pivotValue string,
 	) ([]models.RuleSnooze, error)
+	AnySnoozesForIteration(
+		ctx context.Context,
+		exec repositories.Executor,
+		snoozeGroupIds []string,
+	) (map[string]bool, error)
 	CreateRuleSnooze(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -35,6 +40,7 @@ type ruleSnoozeRepository interface {
 
 type enforceSecuritySnoozes interface {
 	ReadSnoozesOfDecision(ctx context.Context, decision models.Decision) error
+	ReadSnoozesOfIteration(ctx context.Context, iteration models.ScenarioIteration) error
 }
 
 type RuleSnoozeUsecase struct {
@@ -99,4 +105,54 @@ func (usecase RuleSnoozeUsecase) ActiveSnoozesForDecision(ctx context.Context, d
 	}
 
 	return models.NewSnoozesOfDecision(decisionId, snoozes, it), nil
+}
+
+func (usecase RuleSnoozeUsecase) ActiveSnoozesForScenarioIteration(ctx context.Context, iterationId string) (models.SnoozesOfIteration, error) {
+	exec := usecase.executorFactory.NewExecutor()
+	it, err := usecase.iterationGetter.GetScenarioIteration(ctx, exec, iterationId)
+	if err != nil {
+		return models.SnoozesOfIteration{}, err
+	}
+
+	if err := usecase.enforceSecurity.ReadSnoozesOfIteration(ctx, it); err != nil {
+		return models.SnoozesOfIteration{}, err
+	}
+
+	snooze_group_ids := make([]string, 0, len(it.Rules))
+	for _, rule := range it.Rules {
+		if rule.SnoozeGroupId != nil {
+			snooze_group_ids = append(snooze_group_ids, *rule.SnoozeGroupId)
+		}
+	}
+	snoozesByRule, err := usecase.ruleSnoozeRepository.AnySnoozesForIteration(
+		ctx, exec, snooze_group_ids)
+	if err != nil {
+		return models.SnoozesOfIteration{}, err
+	}
+
+	snoozes := make([]models.RuleSnoozeInformation, 0, len(it.Rules))
+	for _, rule := range it.Rules {
+		if rule.SnoozeGroupId == nil {
+			snoozes = append(snoozes, models.RuleSnoozeInformation{
+				RuleId:           rule.Id,
+				SnoozeGroupId:    "",
+				HasSnoozesActive: false,
+			})
+			continue
+		}
+		hasSnoozesActive, ok := snoozesByRule[*rule.SnoozeGroupId]
+		if !ok {
+			hasSnoozesActive = false
+		}
+		snoozes = append(snoozes, models.RuleSnoozeInformation{
+			RuleId:           rule.Id,
+			SnoozeGroupId:    *rule.SnoozeGroupId,
+			HasSnoozesActive: hasSnoozesActive,
+		})
+	}
+
+	return models.SnoozesOfIteration{
+		IterationId: iterationId,
+		RuleSnoozes: snoozes,
+	}, nil
 }
