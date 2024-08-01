@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -105,6 +106,58 @@ func (usecase RuleSnoozeUsecase) ActiveSnoozesForDecision(ctx context.Context, d
 	}
 
 	return models.NewSnoozesOfDecision(decisionId, snoozes, it), nil
+}
+
+func (usecase RuleSnoozeUsecase) SnoozeDecision(
+	ctx context.Context, input models.SnoozeDecisionInput,
+) (models.SnoozesOfDecision, error) {
+	exec := usecase.executorFactory.NewExecutor()
+
+	if input.Duration < 0 || input.Duration > 180*24*time.Hour {
+		return models.SnoozesOfDecision{}, errors.Wrapf(models.BadParameterError,
+			"duration must be between 24 hours and 180 days")
+	}
+
+	decisions, err := usecase.decisionGetter.DecisionsById(ctx, exec, []string{input.DecisionId})
+	if err != nil {
+		return models.SnoozesOfDecision{}, err
+	}
+	if len(decisions) == 0 {
+		return models.SnoozesOfDecision{}, errors.Wrapf(models.NotFoundError,
+			"decision %s not found", input.DecisionId)
+	}
+	decision := decisions[0]
+
+	if err := usecase.enforceSecurity.ReadSnoozesOfDecision(ctx, decision); err != nil {
+		return models.SnoozesOfDecision{}, err
+	}
+
+	it, err := usecase.iterationGetter.GetScenarioIteration(ctx, exec, decision.ScenarioIterationId)
+	if err != nil {
+		return models.SnoozesOfDecision{}, err
+	}
+
+	// verify input rule is in the decision
+	ruleFound := false
+	thisRule := models.Rule{}
+	for _, rule := range it.Rules {
+		if rule.Id == input.RuleId {
+			ruleFound = true
+			thisRule = rule
+			break
+		}
+	}
+	if !ruleFound {
+		return models.SnoozesOfDecision{}, errors.Wrapf(models.NotFoundError,
+			"rule %s not found in decision %s", input.RuleId, input.DecisionId)
+	}
+
+	if input.UserId == "" {
+		return models.SnoozesOfDecision{}, errors.Wrapf(models.NotFoundError,
+			"userId not found in credentials")
+	}
+
+	return models.SnoozesOfDecision{}, nil
 }
 
 func (usecase RuleSnoozeUsecase) ActiveSnoozesForScenarioIteration(ctx context.Context, iterationId string) (models.SnoozesOfIteration, error) {

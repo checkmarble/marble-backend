@@ -33,6 +33,42 @@ func (api *API) handleSnoozesOfDecision(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"snoozes": dto.AdaptSnoozesOfDecision(snoozes)})
 }
 
+func (api *API) handleSnoozeDecision(c *gin.Context) {
+	organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+	if presentError(c, err) {
+		return
+	}
+
+	creds, _ := utils.CredentialsFromCtx(c.Request.Context())
+	userId := creds.ActorIdentity.UserId
+
+	decisionId := c.Param("decision_id")
+	_, err = uuid.Parse(decisionId)
+	if err != nil {
+		presentError(c, errors.Wrap(models.BadParameterError, "decision_id must be a valid uuid"))
+		return
+	}
+
+	var input dto.SnoozeDecisionInput
+	if presentError(c, c.BindJSON(&input)) {
+		return
+	}
+
+	ruleSnoozeUsecase := api.UsecasesWithCreds(c.Request).NewRuleSnoozeUsecase()
+	snoozes, err := ruleSnoozeUsecase.SnoozeDecision(c.Request.Context(), models.SnoozeDecisionInput{
+		DecisionId:     decisionId,
+		Duration:       input.Duration,
+		OrganizationId: organizationId,
+		RuleId:         input.RuleId,
+		UserId:         userId,
+	})
+	if presentError(c, err) {
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"snoozes": dto.AdaptSnoozesOfDecision(snoozes)})
+}
+
 func (api *API) handleSnoozesOfScenarioIteartion(c *gin.Context) {
 	_, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
 	if presentError(c, err) {
