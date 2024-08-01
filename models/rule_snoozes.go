@@ -79,3 +79,11 @@ type RuleSnoozeInformation struct {
 	SnoozeGroupId    string
 	HasSnoozesActive bool
 }
+
+type SnoozeDecisionInput struct {
+	DecisionId     string
+	Duration       time.Duration
+	OrganizationId string
+	RuleId         string
+	UserId         UserId
+}

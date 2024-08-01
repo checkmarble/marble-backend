@@ -43,6 +43,7 @@ const (
 	WEBHOOK_EVENT
 	WEBHOOK
 	READ_SNOOZES
+	CREATE_SNOOZE
 )
 
 func (r Permission) String() string {
@@ -87,5 +88,6 @@ func (r Permission) String() string {
 		"WEBHOOK_EVENT",
 		"WEBHOOK",
 		"READ_SNOOZES",
+		"CREATE_SNOOZE",
 	}[r]
 }
