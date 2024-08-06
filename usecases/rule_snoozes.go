@@ -7,6 +7,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
 
@@ -41,24 +42,38 @@ type ruleSnoozeRepository interface {
 
 type enforceSecuritySnoozes interface {
 	ReadSnoozesOfDecision(ctx context.Context, decision models.Decision) error
+	CreateSnoozesOnDecision(ctx context.Context, decision models.Decision) error
 	ReadSnoozesOfIteration(ctx context.Context, iteration models.ScenarioIteration) error
+}
+
+type updateRuleRepository interface {
+	UpdateRule(ctx context.Context, exec repositories.Executor, rule models.UpdateRuleInput) error
+}
+
+type caseReader interface {
+	GetCase(ctx context.Context, caseId string) (models.Case, error)
 }
 
 type RuleSnoozeUsecase struct {
 	decisionGetter       decisionGetter
 	executorFactory      executor_factory.ExecutorFactory
+	caseReader           caseReader
 	iterationGetter      iterationGetter
+	ruleRepository       updateRuleRepository
 	ruleSnoozeRepository ruleSnoozeRepository
 	enforceSecurity      enforceSecuritySnoozes
 }
 
 func NewRuleSnoozeUsecase(
-	d decisionGetter, e executor_factory.ExecutorFactory, i iterationGetter, s ruleSnoozeRepository, es enforceSecuritySnoozes,
+	d decisionGetter, e executor_factory.ExecutorFactory, cr caseReader, ig iterationGetter,
+	r updateRuleRepository, s ruleSnoozeRepository, es enforceSecuritySnoozes,
 ) RuleSnoozeUsecase {
 	return RuleSnoozeUsecase{
 		decisionGetter:       d,
 		executorFactory:      e,
-		iterationGetter:      i,
+		caseReader:           cr,
+		iterationGetter:      ig,
+		ruleRepository:       r,
 		ruleSnoozeRepository: s,
 		enforceSecurity:      es,
 	}
@@ -73,17 +88,18 @@ func (usecase RuleSnoozeUsecase) ActiveSnoozesForDecision(ctx context.Context, d
 	if len(decisions) == 0 {
 		return models.SnoozesOfDecision{}, errors.Wrapf(models.NotFoundError, "decision %s not found", decisionId)
 	}
+	decision := decisions[0]
 
-	if err := usecase.enforceSecurity.ReadSnoozesOfDecision(ctx, decisions[0]); err != nil {
+	if err := usecase.enforceSecurity.ReadSnoozesOfDecision(ctx, decision); err != nil {
 		return models.SnoozesOfDecision{}, err
 	}
 
-	it, err := usecase.iterationGetter.GetScenarioIteration(ctx, exec, decisions[0].ScenarioIterationId)
+	it, err := usecase.iterationGetter.GetScenarioIteration(ctx, exec, decision.ScenarioIterationId)
 	if err != nil {
 		return models.SnoozesOfDecision{}, err
 	}
 
-	if decisions[0].PivotValue == nil {
+	if decision.PivotValue == nil {
 		// no snoozes possible if decision doesn't have a pivot value
 		return models.SnoozesOfDecision{
 			DecisionId:  decisionId,
@@ -92,15 +108,15 @@ func (usecase RuleSnoozeUsecase) ActiveSnoozesForDecision(ctx context.Context, d
 		}, nil
 	}
 
-	snooze_group_ids := make([]string, 0, len(it.Rules))
+	snoozeGroupIds := make([]string, 0, len(it.Rules))
 	for _, rule := range it.Rules {
 		if rule.SnoozeGroupId != nil {
-			snooze_group_ids = append(snooze_group_ids, *rule.SnoozeGroupId)
+			snoozeGroupIds = append(snoozeGroupIds, *rule.SnoozeGroupId)
 		}
 	}
 
 	snoozes, err := usecase.ruleSnoozeRepository.ListRuleSnoozesForDecision(
-		ctx, exec, snooze_group_ids, *decisions[0].PivotValue)
+		ctx, exec, snoozeGroupIds, *decision.PivotValue)
 	if err != nil {
 		return models.SnoozesOfDecision{}, err
 	}
@@ -113,8 +129,19 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 ) (models.SnoozesOfDecision, error) {
 	exec := usecase.executorFactory.NewExecutor()
 
-	if input.Duration < 0 || input.Duration > 180*24*time.Hour {
-		return models.SnoozesOfDecision{}, errors.Wrapf(models.BadParameterError,
+	if input.UserId == "" {
+		return models.SnoozesOfDecision{}, errors.Wrap(
+			models.NotFoundError,
+			"userId not found in credentials")
+	}
+
+	duration, err := time.ParseDuration(input.Duration)
+	if err != nil {
+		return models.SnoozesOfDecision{}, errors.Wrap(models.BadParameterError, err.Error())
+	}
+	if duration < 0 || duration > 180*24*time.Hour {
+		return models.SnoozesOfDecision{}, errors.Wrap(
+			models.BadParameterError,
 			"duration must be between 24 hours and 180 days")
 	}
 
@@ -123,12 +150,30 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 		return models.SnoozesOfDecision{}, err
 	}
 	if len(decisions) == 0 {
-		return models.SnoozesOfDecision{}, errors.Wrapf(models.NotFoundError,
+		return models.SnoozesOfDecision{}, errors.Wrapf(
+			models.NotFoundError,
 			"decision %s not found", input.DecisionId)
 	}
 	decision := decisions[0]
 
-	if err := usecase.enforceSecurity.ReadSnoozesOfDecision(ctx, decision); err != nil {
+	if decision.Case == nil {
+		return models.SnoozesOfDecision{}, errors.Wrapf(
+			models.BadParameterError,
+			"decision %s is not attached to a case and cannot be snoozed", input.DecisionId)
+	}
+	// case (inbox) permission check done in caseReader
+	_, err = usecase.caseReader.GetCase(ctx, decision.Case.Id)
+	if err != nil {
+		return models.SnoozesOfDecision{}, err
+	}
+
+	if decision.PivotValue == nil || *decision.PivotValue == "" {
+		return models.SnoozesOfDecision{}, errors.Wrapf(
+			models.BadParameterError,
+			"Decision %s has no pivot value and cannot be snoozed", decision.DecisionId)
+	}
+
+	if err := usecase.enforceSecurity.CreateSnoozesOnDecision(ctx, decision); err != nil {
 		return models.SnoozesOfDecision{}, err
 	}
 
@@ -140,24 +185,60 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 	// verify input rule is in the decision
 	ruleFound := false
 	thisRule := models.Rule{}
+	snoozeGroupIds := make([]string, 0, len(it.Rules))
 	for _, rule := range it.Rules {
 		if rule.Id == input.RuleId {
 			ruleFound = true
 			thisRule = rule
-			break
+		}
+		if rule.SnoozeGroupId != nil {
+			snoozeGroupIds = append(snoozeGroupIds, *rule.SnoozeGroupId)
 		}
 	}
+
 	if !ruleFound {
-		return models.SnoozesOfDecision{}, errors.Wrapf(models.NotFoundError,
+		return models.SnoozesOfDecision{}, errors.Wrapf(
+			models.BadParameterError,
 			"rule %s not found in decision %s", input.RuleId, input.DecisionId)
 	}
+	snoozeGroupId := thisRule.SnoozeGroupId
 
-	if input.UserId == "" {
-		return models.SnoozesOfDecision{}, errors.Wrapf(models.NotFoundError,
-			"userId not found in credentials")
+	if snoozeGroupId == nil {
+		val := uuid.NewString()
+		snoozeGroupId = &val
+		snoozeGroupIds = append(snoozeGroupIds, *snoozeGroupId)
+		err := usecase.ruleSnoozeRepository.CreateSnoozeGroup(ctx, exec, val, input.OrganizationId)
+		if err != nil {
+			return models.SnoozesOfDecision{}, err
+		}
+		err = usecase.ruleRepository.UpdateRule(ctx, exec, models.UpdateRuleInput{
+			Id:            thisRule.Id,
+			SnoozeGroupId: snoozeGroupId,
+		})
+		if err != nil {
+			return models.SnoozesOfDecision{}, err
+		}
+
+	}
+	snoozeId := uuid.NewString()
+	err = usecase.ruleSnoozeRepository.CreateRuleSnooze(ctx, exec, models.RuleSnoozeCreateInput{
+		Id:            snoozeId,
+		SnoozeGroupId: *snoozeGroupId,
+		ExpiresAt:     time.Now().Add(duration),
+		CreatedByUser: input.UserId,
+		PivotValue:    *decision.PivotValue,
+	})
+	if err != nil {
+		return models.SnoozesOfDecision{}, err
 	}
 
-	return models.SnoozesOfDecision{}, nil
+	snoozes, err := usecase.ruleSnoozeRepository.ListRuleSnoozesForDecision(
+		ctx, exec, snoozeGroupIds, *decision.PivotValue)
+	if err != nil {
+		return models.SnoozesOfDecision{}, err
+	}
+
+	return models.NewSnoozesOfDecision(decision.DecisionId, snoozes, it), nil
 }
 
 func (usecase RuleSnoozeUsecase) ActiveSnoozesForScenarioIteration(ctx context.Context, iterationId string) (models.SnoozesOfIteration, error) {
@@ -171,14 +252,14 @@ func (usecase RuleSnoozeUsecase) ActiveSnoozesForScenarioIteration(ctx context.C
 		return models.SnoozesOfIteration{}, err
 	}
 
-	snooze_group_ids := make([]string, 0, len(it.Rules))
+	snoozeGroupIds := make([]string, 0, len(it.Rules))
 	for _, rule := range it.Rules {
 		if rule.SnoozeGroupId != nil {
-			snooze_group_ids = append(snooze_group_ids, *rule.SnoozeGroupId)
+			snoozeGroupIds = append(snoozeGroupIds, *rule.SnoozeGroupId)
 		}
 	}
 	snoozesByRule, err := usecase.ruleSnoozeRepository.AnySnoozesForIteration(
-		ctx, exec, snooze_group_ids)
+		ctx, exec, snoozeGroupIds)
 	if err != nil {
 		return models.SnoozesOfIteration{}, err
 	}
