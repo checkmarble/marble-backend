@@ -23,6 +23,7 @@ type DBLicense struct {
 	DataEnrichment       bool               `db:"data_enrichment"`
 	UserRoles            bool               `db:"user_roles"`
 	Webhooks             bool               `db:"webhooks"`
+	RuleSnoozes          bool               `db:"rule_snoozes"`
 }
 
 const TABLE_LICENSES = "licenses"
@@ -45,6 +46,7 @@ func AdaptLicense(db DBLicense) (models.License, error) {
 			DataEnrichment: db.DataEnrichment,
 			UserRoles:      db.UserRoles,
 			Webhooks:       db.Webhooks,
+			RuleSnoozes:    db.RuleSnoozes,
 		},
 	}, nil
 }
