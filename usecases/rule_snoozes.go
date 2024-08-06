@@ -211,6 +211,21 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 	}
 	snoozeGroupId := thisRule.SnoozeGroupId
 
+	if snoozeGroupId != nil {
+		snoozes, err := usecase.ruleSnoozeRepository.ListRuleSnoozesForDecision(ctx, exec, []string{
+			*snoozeGroupId,
+		}, *decision.PivotValue)
+		if err != nil {
+			return models.SnoozesOfDecision{}, err
+		}
+
+		if len(snoozes) > 0 {
+			return models.SnoozesOfDecision{}, errors.Wrapf(
+				models.BadParameterError,
+				"rule %s already has an active snooze %s", input.RuleId, input.DecisionId)
+		}
+	}
+
 	snoozes, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
