@@ -91,6 +91,7 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 		organizationIdOfContext:    usecases.OrganizationIdOfContext,
 		decisionWorkflows:          usecases.NewDecisionWorkflows(),
 		webhookEventsSender:        usecases.NewWebhookEventsUsecase(),
+		snoozesReader:              &usecases.Repositories.MarbleDbRepository,
 	}
 }
 
@@ -234,6 +235,7 @@ func (usecases *UsecasesWithCreds) NewRunScheduledExecution() scheduledexecution
 		usecases.NewTransactionFactory(),
 		usecases.NewDecisionWorkflows(),
 		usecases.NewWebhookEventsUsecase(),
+		&usecases.Repositories.MarbleDbRepository,
 	)
 }
 
