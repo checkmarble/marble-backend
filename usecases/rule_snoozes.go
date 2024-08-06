@@ -57,6 +57,7 @@ type caseReader interface {
 type RuleSnoozeUsecase struct {
 	decisionGetter       decisionGetter
 	executorFactory      executor_factory.ExecutorFactory
+	transactionFactory   executor_factory.TransactionFactory
 	caseReader           caseReader
 	iterationGetter      iterationGetter
 	ruleRepository       updateRuleRepository
@@ -65,12 +66,19 @@ type RuleSnoozeUsecase struct {
 }
 
 func NewRuleSnoozeUsecase(
-	d decisionGetter, e executor_factory.ExecutorFactory, cr caseReader, ig iterationGetter,
-	r updateRuleRepository, s ruleSnoozeRepository, es enforceSecuritySnoozes,
+	d decisionGetter,
+	e executor_factory.ExecutorFactory,
+	t executor_factory.TransactionFactory,
+	cr caseReader,
+	ig iterationGetter,
+	r updateRuleRepository,
+	s ruleSnoozeRepository,
+	es enforceSecuritySnoozes,
 ) RuleSnoozeUsecase {
 	return RuleSnoozeUsecase{
 		decisionGetter:       d,
 		executorFactory:      e,
+		transactionFactory:   t,
 		caseReader:           cr,
 		iterationGetter:      ig,
 		ruleRepository:       r,
@@ -203,40 +211,42 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 	}
 	snoozeGroupId := thisRule.SnoozeGroupId
 
-	if snoozeGroupId == nil {
-		val := uuid.NewString()
-		snoozeGroupId = &val
-		snoozeGroupIds = append(snoozeGroupIds, *snoozeGroupId)
-		err := usecase.ruleSnoozeRepository.CreateSnoozeGroup(ctx, exec, val, input.OrganizationId)
-		if err != nil {
-			return models.SnoozesOfDecision{}, err
-		}
-		err = usecase.ruleRepository.UpdateRule(ctx, exec, models.UpdateRuleInput{
-			Id:            thisRule.Id,
-			SnoozeGroupId: snoozeGroupId,
-		})
-		if err != nil {
-			return models.SnoozesOfDecision{}, err
-		}
+	snoozes, err := executor_factory.TransactionReturnValue(
+		ctx,
+		usecase.transactionFactory,
+		func(tx repositories.Executor) ([]models.RuleSnooze, error) {
+			if snoozeGroupId == nil {
+				val := uuid.NewString()
+				snoozeGroupId = &val
+				snoozeGroupIds = append(snoozeGroupIds, *snoozeGroupId)
+				err := usecase.ruleSnoozeRepository.CreateSnoozeGroup(ctx, tx, val, input.OrganizationId)
+				if err != nil {
+					return nil, err
+				}
+				err = usecase.ruleRepository.UpdateRule(ctx, tx, models.UpdateRuleInput{
+					Id:            thisRule.Id,
+					SnoozeGroupId: snoozeGroupId,
+				})
+				if err != nil {
+					return nil, err
+				}
 
-	}
-	snoozeId := uuid.NewString()
-	err = usecase.ruleSnoozeRepository.CreateRuleSnooze(ctx, exec, models.RuleSnoozeCreateInput{
-		Id:            snoozeId,
-		SnoozeGroupId: *snoozeGroupId,
-		ExpiresAt:     time.Now().Add(duration),
-		CreatedByUser: input.UserId,
-		PivotValue:    *decision.PivotValue,
-	})
-	if err != nil {
-		return models.SnoozesOfDecision{}, err
-	}
+			}
+			snoozeId := uuid.NewString()
+			err = usecase.ruleSnoozeRepository.CreateRuleSnooze(ctx, tx, models.RuleSnoozeCreateInput{
+				Id:            snoozeId,
+				SnoozeGroupId: *snoozeGroupId,
+				ExpiresAt:     time.Now().Add(duration),
+				CreatedByUser: input.UserId,
+				PivotValue:    *decision.PivotValue,
+			})
+			if err != nil {
+				return nil, err
+			}
 
-	snoozes, err := usecase.ruleSnoozeRepository.ListRuleSnoozesForDecision(
-		ctx, exec, snoozeGroupIds, *decision.PivotValue)
-	if err != nil {
-		return models.SnoozesOfDecision{}, err
-	}
+			return usecase.ruleSnoozeRepository.ListRuleSnoozesForDecision(ctx, tx, snoozeGroupIds, *decision.PivotValue)
+		},
+	)
 
 	return models.NewSnoozesOfDecision(decision.DecisionId, snoozes, it), nil
 }
