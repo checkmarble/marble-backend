@@ -67,6 +67,6 @@ func AdaptSnoozesOfIteration(s models.SnoozesOfIteration) SnoozesOfIteration {
 }
 
 type SnoozeDecisionInput struct {
-	RuleId   string        `json:"rule_id"`
-	Duration time.Duration `json:"duration"`
+	RuleId   string `json:"rule_id"`
+	Duration string `json:"duration"`
 }

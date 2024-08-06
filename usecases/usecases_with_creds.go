@@ -442,6 +442,8 @@ func (usecases *UsecasesWithCreds) NewRuleSnoozeUsecase() RuleSnoozeUsecase {
 	return NewRuleSnoozeUsecase(
 		usecases.Repositories.DecisionRepository,
 		usecases.NewExecutorFactory(),
+		usecases.NewCaseUseCase(),
+		&usecases.Repositories.MarbleDbRepository,
 		&usecases.Repositories.MarbleDbRepository,
 		&usecases.Repositories.MarbleDbRepository,
 		security.NewEnforceSecurity(usecases.Credentials),

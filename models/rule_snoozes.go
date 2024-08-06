@@ -65,7 +65,7 @@ type RuleSnoozeCreateInput struct {
 	Id            string
 	SnoozeGroupId string
 	ExpiresAt     time.Time
-	CreatedByUser string
+	CreatedByUser UserId
 	PivotValue    string
 }
 
@@ -82,7 +82,7 @@ type RuleSnoozeInformation struct {
 
 type SnoozeDecisionInput struct {
 	DecisionId     string
-	Duration       time.Duration
+	Duration       string
 	OrganizationId string
 	RuleId         string
 	UserId         UserId

@@ -18,7 +18,7 @@ type EnforceSecurityCaseImpl struct {
 }
 
 func (e *EnforceSecurityCaseImpl) ReadOrUpdateCase(c models.Case, availableInboxIds []string) error {
-	err := errors.Wrap(models.ForbiddenError, "User does not have access to cases' inbox")
+	err := errors.Wrap(models.ForbiddenError, "User does not have access to case's inbox")
 	for _, inboxId := range availableInboxIds {
 		if inboxId == c.InboxId {
 			err = nil
@@ -30,7 +30,7 @@ func (e *EnforceSecurityCaseImpl) ReadOrUpdateCase(c models.Case, availableInbox
 }
 
 func (e *EnforceSecurityCaseImpl) CreateCase(input models.CreateCaseAttributes, availableInboxIds []string) error {
-	err := errors.Wrap(models.ForbiddenError, "User does not have access to cases' inbox")
+	err := errors.Wrap(models.ForbiddenError, "User does not have access to case's inbox")
 	for _, inboxId := range availableInboxIds {
 		if inboxId == input.InboxId {
 			err = nil
