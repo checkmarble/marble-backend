@@ -221,7 +221,7 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 
 		if len(snoozes) > 0 {
 			return models.SnoozesOfDecision{}, errors.Wrapf(
-				models.BadParameterError,
+				models.ConflictError,
 				"rule %s already has an active snooze %s", input.RuleId, input.DecisionId)
 		}
 	}
