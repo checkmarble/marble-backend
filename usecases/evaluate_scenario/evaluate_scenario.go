@@ -216,7 +216,7 @@ func evalScenarioRule(
 
 	for _, snooze := range snoozes {
 		if rule.SnoozeGroupId != nil && *rule.SnoozeGroupId == snooze.SnoozeGroupId {
-			return 0, models.RuleExecution{Rule: rule, Result: false}, nil
+			return 0, models.RuleExecution{Outcome: "snoozed", Rule: rule, Result: false}, nil
 		}
 	}
 
@@ -236,12 +236,14 @@ func evalScenarioRule(
 
 	ruleEvaluationDto := ast.AdaptNodeEvaluationDto(ruleEvaluation)
 	ruleExecution := models.RuleExecution{
+		Outcome:    "no_hit",
 		Rule:       rule,
 		Evaluation: &ruleEvaluationDto,
 		Result:     returnValue,
 	}
 
 	if err != nil {
+		ruleExecution.Outcome = "error"
 		ruleExecution.Error = err
 		logger.InfoContext(ctx, fmt.Sprintf("%v", ruleExecution.Error), //"Rule had an error",
 			slog.String("ruleName", rule.Name),
@@ -251,6 +253,7 @@ func evalScenarioRule(
 
 	// Increment scenario score when rule is true
 	if ruleExecution.Result {
+		ruleExecution.Outcome = "hit"
 		ruleExecution.ResultScoreModifier = rule.ScoreModifier
 		logger.InfoContext(ctx, "Rule executed",
 			slog.Int("score_modifier", rule.ScoreModifier),

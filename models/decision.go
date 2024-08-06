@@ -66,6 +66,7 @@ type ScenarioExecution struct {
 
 type RuleExecution struct {
 	DecisionId          string
+	Outcome             string // enum: hit, no_hit, snoozed, error
 	Rule                Rule
 	Result              bool
 	Evaluation          *ast.NodeEvaluationDto

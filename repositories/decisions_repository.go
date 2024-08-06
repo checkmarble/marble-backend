@@ -494,6 +494,7 @@ func (repo *DecisionRepositoryImpl) StoreDecision(
 			"error_code",
 			"rule_id",
 			"rule_evaluation",
+			"outcome",
 		)
 
 	for _, ruleExecution := range decision.RuleExecutions {
@@ -514,6 +515,7 @@ func (repo *DecisionRepositoryImpl) StoreDecision(
 				ast.AdaptExecutionError(ruleExecution.Error),
 				ruleExecution.Rule.Id,
 				serializedRuleEvaluation,
+				ruleExecution.Outcome,
 			)
 	}
 	err = ExecBuilder(ctx, exec, builderForRules)

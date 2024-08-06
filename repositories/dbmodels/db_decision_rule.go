@@ -20,6 +20,7 @@ type DbDecisionRule struct {
 	DeletedAt      pgtype.Time        `db:"deleted_at"`
 	RuleId         string             `db:"rule_id"`
 	RuleEvaluation []byte             `db:"rule_evaluation"`
+	Outcome        string             `db:"outcome"`
 }
 
 const TABLE_DECISION_RULES = "decision_rules"
@@ -32,6 +33,16 @@ func AdaptRuleExecution(db DbDecisionRule) (models.RuleExecution, error) {
 		return models.RuleExecution{}, err
 	}
 
+	outcome := db.Outcome
+	if outcome == "" {
+		if db.ErrorCode != 0 {
+			outcome = "error"
+		} else if db.Result {
+			outcome = "hit"
+		} else {
+			outcome = "no_hit"
+		}
+	}
 	return models.RuleExecution{
 		DecisionId: db.DecisionId,
 		Rule: models.Rule{
@@ -43,5 +54,6 @@ func AdaptRuleExecution(db DbDecisionRule) (models.RuleExecution, error) {
 		ResultScoreModifier: db.ScoreModifier,
 		Error:               ast.AdaptErrorCodeAsError(db.ErrorCode),
 		Evaluation:          evaluation,
+		Outcome:             outcome,
 	}, nil
 }
