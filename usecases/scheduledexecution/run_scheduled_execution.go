@@ -54,6 +54,15 @@ type RunScheduledExecutionRepository interface {
 	GetScheduledExecution(ctx context.Context, exec repositories.Executor, id string) (models.ScheduledExecution, error)
 }
 
+type snoozesForDecisionReader interface {
+	ListRuleSnoozesForDecision(
+		ctx context.Context,
+		exec repositories.Executor,
+		snoozeGroupIds []string,
+		pivotValue string,
+	) ([]models.RuleSnooze, error)
+}
+
 type RunScheduledExecution struct {
 	repository                     RunScheduledExecutionRepository
 	executorFactory                executor_factory.ExecutorFactory
@@ -66,6 +75,7 @@ type RunScheduledExecution struct {
 	transactionFactory             executor_factory.TransactionFactory
 	decisionWorkflows              decisionWorkflowsUsecase
 	webhookEventsSender            webhookEventsUsecase
+	snoozesReader                  snoozesForDecisionReader
 }
 
 func NewRunScheduledExecution(
@@ -80,6 +90,7 @@ func NewRunScheduledExecution(
 	transactionFactory executor_factory.TransactionFactory,
 	decisionWorkflows decisionWorkflowsUsecase,
 	webhookEventsSender webhookEventsUsecase,
+	snoozesReader snoozesForDecisionReader,
 ) *RunScheduledExecution {
 	return &RunScheduledExecution{
 		repository:                     repository,
@@ -93,6 +104,7 @@ func NewRunScheduledExecution(
 		transactionFactory:             transactionFactory,
 		decisionWorkflows:              decisionWorkflows,
 		webhookEventsSender:            webhookEventsSender,
+		snoozesReader:                  snoozesReader,
 	}
 }
 
@@ -361,6 +373,7 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 					ExecutorFactory:            usecase.executorFactory,
 					IngestedDataReadRepository: usecase.ingestedDataReadRepository,
 					EvaluateAstExpression:      usecase.evaluateAstExpression,
+					SnoozeReader:               usecase.snoozesReader,
 				},
 			)
 

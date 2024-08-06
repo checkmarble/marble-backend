@@ -43,6 +43,15 @@ type decisionWorkflowsUsecase interface {
 	) (bool, error)
 }
 
+type snoozesForDecisionReader interface {
+	ListRuleSnoozesForDecision(
+		ctx context.Context,
+		exec repositories.Executor,
+		snoozeGroupIds []string,
+		pivotValue string,
+	) ([]models.RuleSnooze, error)
+}
+
 type DecisionUsecase struct {
 	enforceSecurity            security.EnforceSecurityDecision
 	enforceSecurityScenario    security.EnforceSecurityScenario
@@ -56,6 +65,7 @@ type DecisionUsecase struct {
 	decisionWorkflows          decisionWorkflowsUsecase
 	organizationIdOfContext    func() (string, error)
 	webhookEventsSender        webhookEventsUsecase
+	snoozesReader              snoozesForDecisionReader
 }
 
 func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId string) (models.DecisionWithRuleExecutions, error) {
@@ -237,6 +247,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		ExecutorFactory:            usecase.executorFactory,
 		IngestedDataReadRepository: usecase.ingestedDataReadRepository,
 		EvaluateAstExpression:      usecase.evaluateAstExpression,
+		SnoozeReader:               usecase.snoozesReader,
 	}
 
 	scenarioExecution, err := evaluate_scenario.EvalScenario(ctx, evaluationParameters, evaluationRepositories)
@@ -358,6 +369,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		ExecutorFactory:            usecase.executorFactory,
 		IngestedDataReadRepository: usecase.ingestedDataReadRepository,
 		EvaluateAstExpression:      usecase.evaluateAstExpression,
+		SnoozeReader:               usecase.snoozesReader,
 	}
 
 	type decisionAndScenario struct {

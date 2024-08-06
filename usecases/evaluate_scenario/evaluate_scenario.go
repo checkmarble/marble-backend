@@ -35,11 +35,21 @@ type EvalScenarioRepository interface {
 	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (models.ScenarioIteration, error)
 }
 
+type snoozesForDecisionReader interface {
+	ListRuleSnoozesForDecision(
+		ctx context.Context,
+		exec repositories.Executor,
+		snoozeGroupIds []string,
+		pivotValue string,
+	) ([]models.RuleSnooze, error)
+}
+
 type ScenarioEvaluationRepositories struct {
 	EvalScenarioRepository     EvalScenarioRepository
 	ExecutorFactory            executor_factory.ExecutorFactory
 	IngestedDataReadRepository repositories.IngestedDataReadRepository
 	EvaluateAstExpression      ast_eval.EvaluateAstExpression
+	SnoozeReader               snoozesForDecisionReader
 }
 
 func EvalScenario(
@@ -64,6 +74,7 @@ func EvalScenario(
 	}()
 
 	logger.InfoContext(ctx, "Evaluating scenario", "scenarioId", params.Scenario.Id)
+	exec := repositories.ExecutorFactory.NewExecutor()
 
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(ctx, "evaluate_scenario.EvalScenario")
@@ -75,8 +86,7 @@ func EvalScenario(
 			"scenario has no live version in EvalScenario")
 	}
 
-	liveVersion, err := repositories.EvalScenarioRepository.GetScenarioIteration(ctx,
-		repositories.ExecutorFactory.NewExecutor(), *params.Scenario.LiveVersionID)
+	liveVersion, err := repositories.EvalScenarioRepository.GetScenarioIteration(ctx, exec, *params.Scenario.LiveVersionID)
 	if err != nil {
 		return models.ScenarioExecution{}, errors.Wrap(err,
 			"error getting scenario iteration in EvalScenario")
@@ -114,9 +124,35 @@ func EvalScenario(
 		return models.ScenarioExecution{}, err
 	}
 
+	var pivotValue *string
+	if params.Pivot != nil {
+		pivotValue, err = getPivotValue(ctx, *params.Pivot, dataAccessor)
+		if err != nil {
+			return models.ScenarioExecution{}, errors.Wrap(
+				err,
+				"error getting pivot value in EvalScenario")
+		}
+	}
+
+	snoozes := make([]models.RuleSnooze, 0)
+	if params.Pivot != nil {
+		snoozeGroupIds := make([]string, 0, len(publishedVersion.Body.Rules))
+		for _, rule := range publishedVersion.Body.Rules {
+			if rule.SnoozeGroupId != nil {
+				snoozeGroupIds = append(snoozeGroupIds, *rule.SnoozeGroupId)
+			}
+		}
+		snoozes, err = repositories.SnoozeReader.ListRuleSnoozesForDecision(ctx, exec, snoozeGroupIds, *pivotValue)
+	}
+
 	// Evaluate all rules
-	score, ruleExecutions, err := evalAllScenarioRules(ctx, repositories,
-		publishedVersion.Body.Rules, dataAccessor, params.DataModel, logger)
+	score, ruleExecutions, err := evalAllScenarioRules(
+		ctx,
+		repositories,
+		publishedVersion.Body.Rules,
+		dataAccessor,
+		params.DataModel,
+		snoozes)
 	if err != nil {
 		return models.ScenarioExecution{}, errors.Wrap(err,
 			"error during concurrent rule evaluation")
@@ -144,16 +180,10 @@ func EvalScenario(
 		Score:               score,
 		Outcome:             outcome,
 		OrganizationId:      params.Scenario.OrganizationId,
+		PivotValue:          pivotValue,
 	}
 	if params.Pivot != nil {
-		pivotValue, err := getPivotValue(ctx, *params.Pivot, dataAccessor)
-		if err != nil {
-			return models.ScenarioExecution{}, errors.Wrap(
-				err,
-				"error getting pivot value in EvalScenario")
-		}
 		se.PivotId = &params.Pivot.Id
-		se.PivotValue = pivotValue
 	}
 
 	elapsed := time.Since(start)
@@ -168,12 +198,13 @@ func evalScenarioRule(
 	rule models.Rule,
 	dataAccessor DataAccessor,
 	dataModel models.DataModel,
-	logger *slog.Logger,
+	snoozes []models.RuleSnooze,
 ) (int, models.RuleExecution, error) {
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(ctx, "evaluate_scenario.evalScenarioRule",
 		trace.WithAttributes(attribute.String("rule_id", rule.Id)))
 	defer span.End()
+	logger := utils.LoggerFromContext(ctx)
 
 	// return early if ctx is done
 	select {
@@ -181,6 +212,12 @@ func evalScenarioRule(
 		return 0, models.RuleExecution{}, errors.Wrap(ctx.Err(),
 			fmt.Sprintf("context cancelled when evaluating rule %s (%s)", rule.Name, rule.Id))
 	default:
+	}
+
+	for _, snooze := range snoozes {
+		if rule.SnoozeGroupId != nil && *rule.SnoozeGroupId == snooze.SnoozeGroupId {
+			return 0, models.RuleExecution{Rule: rule, Result: false}, nil
+		}
 	}
 
 	// Evaluate single rule
@@ -263,7 +300,7 @@ func evalAllScenarioRules(
 	rules []models.Rule,
 	dataAccessor DataAccessor,
 	dataModel models.DataModel,
-	logger *slog.Logger,
+	snoozes []models.RuleSnooze,
 ) (int, []models.RuleExecution, error) {
 	// Results
 	runningSumOfScores := 0
@@ -285,7 +322,7 @@ func evalAllScenarioRules(
 			}
 
 			// Eval each rule
-			scoreModifier, ruleExecution, err := evalScenarioRule(ctx, repositories, rule, dataAccessor, dataModel, logger)
+			scoreModifier, ruleExecution, err := evalScenarioRule(ctx, repositories, rule, dataAccessor, dataModel, snoozes)
 			if err != nil {
 				return err // First err will cancel the ctx
 			}
