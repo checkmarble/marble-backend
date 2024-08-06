@@ -42,6 +42,7 @@ type APIDecisionRule struct {
 	Description   string    `json:"description"`
 	Error         *APIError `json:"error,omitempty"`
 	Name          string    `json:"name"`
+	Outcome       string    `json:"outcome"`
 	Result        bool      `json:"result"`
 	RuleId        string    `json:"rule_id"`
 	ScoreModifier int       `json:"score_modifier"`
@@ -152,6 +153,7 @@ func NewAPIDecisionRule(rule models.RuleExecution, withRuleExecution bool) APIDe
 	out := APIDecisionRule{
 		Name:          rule.Rule.Name,
 		Description:   rule.Rule.Description,
+		Outcome:       rule.Outcome,
 		ScoreModifier: rule.ResultScoreModifier,
 		Result:        rule.Result,
 		RuleId:        rule.Rule.Id,

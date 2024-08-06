@@ -97,15 +97,3 @@ func AdaptDecisionWithRank(db DbDecision, decisionCase *models.Case, rankNumber,
 		TotalCount: models.TotalCount{Value: total, IsMaxCount: total == models.COUNT_ROWS_LIMIT},
 	}
 }
-
-type DBDecisionRule struct {
-	Id             string      `db:"id"`
-	OrganizationId string      `db:"org_id"`
-	DecisionId     string      `db:"decision_id"`
-	Name           string      `db:"name"`
-	Description    string      `db:"description"`
-	ScoreModifier  int         `db:"score_modifier"`
-	Result         bool        `db:"result"`
-	ErrorCode      int         `db:"error_code"`
-	DeletedAt      pgtype.Time `db:"deleted_at"`
-}
