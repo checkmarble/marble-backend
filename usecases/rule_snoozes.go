@@ -150,7 +150,7 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 	if duration < 0 || duration > 180*24*time.Hour {
 		return models.SnoozesOfDecision{}, errors.Wrap(
 			models.BadParameterError,
-			"duration must be between 24 hours and 180 days")
+			"duration must be positive and below 180 days")
 	}
 
 	decisions, err := usecase.decisionGetter.DecisionsById(ctx, exec, []string{input.DecisionId})
