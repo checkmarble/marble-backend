@@ -217,7 +217,7 @@ paths:
         - ScheduledExecutions
       summary: List Scheduled Executions
       security:
-        - bearerAuth: []
+        - ApiKeyAuth: []
       parameters:
         - name: scenario_id
           description: ID of the scenario used to filter the list
@@ -368,9 +368,15 @@ components:
         id:
           description: ID of the returned decision.
           type: string
+          format: uuid
         outcome:
           description: Outcome of the decision.
           $ref: "#/components/schemas/outcome"
+        pivot_values:
+          description: Array (0 or 1 elements) containing the possible pivot value attached to the decision.
+          type: array
+          items:
+            $ref: "#/components/schemas/pivot_value"
         rules:
           description: Rules executed to take the decision.
           type: array
@@ -392,6 +398,18 @@ components:
         trigger_object_type:
           description: Object type used to take a decision.
           type: string
+    pivot_value:
+      type: object
+      required:
+        - pivot_id
+      properties:
+        pivot_id: 
+          type: string
+          description: Id of the pivot definition
+          format: uuid
+        pivot_value:
+          type: string
+          description: Actual value of the pivot value (can be null)
     scenario:
       type: object
       properties:
@@ -423,6 +441,10 @@ components:
         name:
           type: string
           description: Name of the rule.
+        outcome:
+          type: string
+          description: Outcome of the rule (detail result)
+          enum: [hit, no_hit, snoozed, error]
         result:
           type: boolean
           description: Execution result of the rule (true or false).
