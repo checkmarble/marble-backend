@@ -213,6 +213,7 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(ctx co
 			FormulaAstExpression: rule.FormulaAstExpression,
 			ScoreModifier:        rule.ScoreModifier,
 			RuleGroup:            rule.RuleGroup,
+			SnoozeGroupId:        rule.SnoozeGroupId,
 		}
 	}
 	newScenarioIteration, err := usecase.repository.CreateScenarioIterationAndRules(ctx, exec,
