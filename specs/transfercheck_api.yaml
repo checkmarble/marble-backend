@@ -6,6 +6,7 @@ info:
 x-readme:
   explorer-enabled: false
   proxy-enabled: false
+  samples-languages: ["shell", "python", "javascript", "go", "ruby"]
 servers:
   - url: "https://api.checkmarble.com"
     description: Marble api
