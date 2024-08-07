@@ -80,7 +80,7 @@ type APIDecision struct {
 	PivotValues          []PivotValueDto     `json:"pivot_values"`
 	Scenario             APIDecisionScenario `json:"scenario"`
 	Score                int                 `json:"score"`
-	ScheduledExecutionId *string             `json:"scheduled_execution_id,omitempty"`
+	ScheduledExecutionId *string             `json:"scheduled_execution_id"`
 }
 
 type APIDecisionWithRules struct {
