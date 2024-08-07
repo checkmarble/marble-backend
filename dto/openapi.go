@@ -21,6 +21,7 @@ type Property struct {
 	Description *string             `json:"description,omitempty"`
 	Type        *string             `json:"type,omitempty"`
 	Format      *string             `json:"format,omitempty"`
+	Enum        []string            `json:"enum"`
 	OneOf       []map[string]string `json:"oneOf,omitempty"`
 	Ref         *string             `json:"$ref,omitempty"`
 	Items       *Schema             `json:"items,omitempty"`
@@ -141,6 +142,10 @@ func decisionSchema(triggerObjects []map[string]string) ComponentsSchema {
 				Description: utils.Ptr("ID of the returned decision."),
 				Type:        utils.Ptr("string"),
 			},
+			"app_link": {
+				Description: utils.Ptr("Link to the decision in the app"),
+				Type:        utils.Ptr("string"),
+			},
 			"created_at": {
 				Description: utils.Ptr("Date the decision was taken."),
 				Type:        utils.Ptr("string"),
@@ -151,13 +156,14 @@ func decisionSchema(triggerObjects []map[string]string) ComponentsSchema {
 				Type:        utils.Ptr("object"),
 				OneOf:       triggerObjects,
 			},
-			"object_type": {
+			"trigger_object_type": {
 				Description: utils.Ptr("Object type used to take a decision."),
 				Type:        utils.Ptr("string"),
 			},
 			"outcome": {
 				Description: utils.Ptr("Object type used to take a decision."),
 				Type:        utils.Ptr("string"),
+				Enum:        []string{"approve", "review", "decline"},
 			},
 			"scenario": {
 				Ref: utils.Ptr("#/components/schemas/Scenario"),
@@ -177,8 +183,13 @@ func decisionSchema(triggerObjects []map[string]string) ComponentsSchema {
 				Ref: utils.Ptr("#/components/schemas/Error"),
 			},
 			"scheduled_execution_id": {
-				Description: utils.Ptr(""),
+				Description: utils.Ptr("Id of the scheduled execution, if the decision was created during a batch execution."),
 				Type:        utils.Ptr("string"),
+			},
+			"pivot_values": {
+				Description: utils.Ptr("Array (0 or 1 elements) of the pivot values attached to the decision."),
+				Type:        utils.Ptr("array"),
+				Items:       &Schema{Ref: "#/components/schemas/PivotValues"},
 			},
 		},
 	}
@@ -203,6 +214,14 @@ func decisionRuleSchema() ComponentsSchema {
 			"error": {
 				Ref: utils.Ptr("#/components/schemas/Error"),
 			},
+			"rule_id": {
+				Type:        utils.Ptr("string"),
+				Description: utils.Ptr("Id of the rule used for this rule execution."),
+			},
+			"outcome": {
+				Type: utils.Ptr("string"),
+				Enum: []string{"hit", "no_hit", "error", "snoozed"},
+			},
 		},
 	}
 }
@@ -222,6 +241,20 @@ func scenarioSchema() ComponentsSchema {
 			},
 			"version": {
 				Type: utils.Ptr("integer"),
+			},
+		},
+	}
+}
+
+func pivotValuesSchema() ComponentsSchema {
+	return ComponentsSchema{
+		Type: "object",
+		Properties: map[string]Property{
+			"pivot_id": {
+				Type: utils.Ptr("string"),
+			},
+			"pivot_value": {
+				Type: utils.Ptr("string"),
 			},
 		},
 	}
@@ -322,6 +355,7 @@ func OpenAPIFromDataModel(dataModel models.DataModel) Reference {
 
 	ref.Components.Schemas["Error"] = errorSchema()
 	ref.Components.Schemas["Scenario"] = scenarioSchema()
+	ref.Components.Schemas["PivotValues"] = pivotValuesSchema()
 	ref.Components.Schemas["DecisionInput"] = decisionInputSchema(triggerObjects)
 	ref.Components.Schemas["Decision"] = decisionSchema(triggerObjects)
 	ref.Components.Schemas["DecisionRule"] = decisionRuleSchema()
