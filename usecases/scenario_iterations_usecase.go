@@ -171,53 +171,59 @@ func (usecase *ScenarioIterationUsecase) UpdateScenarioIteration(ctx context.Con
 func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(ctx context.Context,
 	organizationId string, scenarioIterationId string,
 ) (models.ScenarioIteration, error) {
-	exec := usecase.executorFactory.NewExecutor()
-	if err := usecase.enforceSecurity.CreateScenario(organizationId); err != nil {
-		return models.ScenarioIteration{}, err
-	}
-	si, err := usecase.repository.GetScenarioIteration(ctx, exec, scenarioIterationId)
-	if err != nil {
-		return models.ScenarioIteration{}, err
-	}
-	iterations, err := usecase.repository.ListScenarioIterations(ctx, exec, organizationId, models.GetScenarioIterationFilters{
-		ScenarioId: &si.ScenarioId,
-	})
-	if err != nil {
-		return models.ScenarioIteration{}, err
-	}
-	for _, iteration := range iterations {
-		if iteration.Version == nil {
-			err = usecase.repository.DeleteScenarioIteration(ctx, exec, iteration.Id)
+	newScenarioIteration, err := executor_factory.TransactionReturnValue(
+		ctx,
+		usecase.transactionFactory,
+		func(tx repositories.Executor) (models.ScenarioIteration, error) {
+			if err := usecase.enforceSecurity.CreateScenario(organizationId); err != nil {
+				return models.ScenarioIteration{}, err
+			}
+			si, err := usecase.repository.GetScenarioIteration(ctx, tx, scenarioIterationId)
 			if err != nil {
 				return models.ScenarioIteration{}, err
 			}
-		}
-	}
-	createScenarioIterationInput := models.CreateScenarioIterationInput{
-		ScenarioId: si.ScenarioId,
-	}
-	createScenarioIterationInput.Body = &models.CreateScenarioIterationBody{
-		ScoreReviewThreshold:          si.ScoreReviewThreshold,
-		ScoreRejectThreshold:          si.ScoreRejectThreshold,
-		BatchTriggerSQL:               si.BatchTriggerSQL,
-		Schedule:                      si.Schedule,
-		Rules:                         make([]models.CreateRuleInput, len(si.Rules)),
-		TriggerConditionAstExpression: si.TriggerConditionAstExpression,
-	}
+			iterations, err := usecase.repository.ListScenarioIterations(
+				ctx,
+				tx,
+				organizationId,
+				models.GetScenarioIterationFilters{ScenarioId: &si.ScenarioId},
+			)
+			if err != nil {
+				return models.ScenarioIteration{}, err
+			}
+			for _, iteration := range iterations {
+				if iteration.Version == nil {
+					err = usecase.repository.DeleteScenarioIteration(ctx, tx, iteration.Id)
+					if err != nil {
+						return models.ScenarioIteration{}, err
+					}
+				}
+			}
+			createScenarioIterationInput := models.CreateScenarioIterationInput{
+				ScenarioId: si.ScenarioId,
+			}
+			createScenarioIterationInput.Body = &models.CreateScenarioIterationBody{
+				ScoreReviewThreshold:          si.ScoreReviewThreshold,
+				ScoreRejectThreshold:          si.ScoreRejectThreshold,
+				BatchTriggerSQL:               si.BatchTriggerSQL,
+				Schedule:                      si.Schedule,
+				Rules:                         make([]models.CreateRuleInput, len(si.Rules)),
+				TriggerConditionAstExpression: si.TriggerConditionAstExpression,
+			}
 
-	for i, rule := range si.Rules {
-		createScenarioIterationInput.Body.Rules[i] = models.CreateRuleInput{
-			DisplayOrder:         rule.DisplayOrder,
-			Name:                 rule.Name,
-			Description:          rule.Description,
-			FormulaAstExpression: rule.FormulaAstExpression,
-			ScoreModifier:        rule.ScoreModifier,
-			RuleGroup:            rule.RuleGroup,
-			SnoozeGroupId:        rule.SnoozeGroupId,
-		}
-	}
-	newScenarioIteration, err := usecase.repository.CreateScenarioIterationAndRules(ctx, exec,
-		organizationId, createScenarioIterationInput)
+			for i, rule := range si.Rules {
+				createScenarioIterationInput.Body.Rules[i] = models.CreateRuleInput{
+					DisplayOrder:         rule.DisplayOrder,
+					Name:                 rule.Name,
+					Description:          rule.Description,
+					FormulaAstExpression: rule.FormulaAstExpression,
+					ScoreModifier:        rule.ScoreModifier,
+					RuleGroup:            rule.RuleGroup,
+					SnoozeGroupId:        rule.SnoozeGroupId,
+				}
+			}
+			return usecase.repository.CreateScenarioIterationAndRules(ctx, tx, organizationId, createScenarioIterationInput)
+		})
 	if err != nil {
 		return models.ScenarioIteration{}, err
 	}
