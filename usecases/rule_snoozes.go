@@ -353,5 +353,9 @@ func (usecase RuleSnoozeUsecase) GetRuleSnoozeById(ctx context.Context, ruleSnoo
 		return models.RuleSnooze{}, err
 	}
 
+	if err := usecase.enforceSecurity.ReadRuleSnooze(ctx, s); err != nil {
+		return models.RuleSnooze{}, err
+	}
+
 	return s, nil
 }
