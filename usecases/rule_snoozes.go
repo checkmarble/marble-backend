@@ -263,11 +263,12 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 			}
 			snoozeId := uuid.NewString()
 			err = usecase.ruleSnoozeRepository.CreateRuleSnooze(ctx, tx, models.RuleSnoozeCreateInput{
-				Id:            snoozeId,
-				SnoozeGroupId: *snoozeGroupId,
-				ExpiresAt:     time.Now().Add(duration),
-				CreatedByUser: input.UserId,
-				PivotValue:    *decision.PivotValue,
+				Id:                    snoozeId,
+				CreatedByUserId:       input.UserId,
+				ExpiresAt:             time.Now().Add(duration),
+				CreatedFromDecisionId: input.DecisionId,
+				PivotValue:            *decision.PivotValue,
+				SnoozeGroupId:         *snoozeGroupId,
 			})
 			if err != nil {
 				return nil, err

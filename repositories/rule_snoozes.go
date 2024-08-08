@@ -66,6 +66,7 @@ func (repo *MarbleDbRepository) CreateRuleSnooze(ctx context.Context, exec Execu
 				"id",
 				"created_at",
 				"created_by_user",
+				"created_from_decision_id",
 				"snooze_group_id",
 				"pivot_value",
 				"starts_at",
@@ -74,7 +75,8 @@ func (repo *MarbleDbRepository) CreateRuleSnooze(ctx context.Context, exec Execu
 			Values(
 				input.Id,
 				"NOW()",
-				input.CreatedByUser,
+				input.CreatedByUserId,
+				input.CreatedFromDecisionId,
 				input.SnoozeGroupId,
 				input.PivotValue,
 				"NOW()",
