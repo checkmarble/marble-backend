@@ -21,6 +21,7 @@ type iterationGetter interface {
 }
 
 type ruleSnoozeRepository interface {
+	GetSnoozeById(ctx context.Context, exec repositories.Executor, ruleSnoozeId string) (models.RuleSnooze, error)
 	CreateSnoozeGroup(ctx context.Context, exec repositories.Executor, id, organizationId string) error
 	ListRuleSnoozesForDecision(
 		ctx context.Context,
@@ -44,6 +45,7 @@ type enforceSecuritySnoozes interface {
 	ReadSnoozesOfDecision(ctx context.Context, decision models.Decision) error
 	CreateSnoozesOnDecision(ctx context.Context, decision models.Decision) error
 	ReadSnoozesOfIteration(ctx context.Context, iteration models.ScenarioIteration) error
+	ReadRuleSnooze(ctx context.Context, snooze models.RuleSnooze) error
 }
 
 type updateRuleRepository interface {
@@ -342,4 +344,14 @@ func (usecase RuleSnoozeUsecase) ActiveSnoozesForScenarioIteration(ctx context.C
 		IterationId: iterationId,
 		RuleSnoozes: snoozes,
 	}, nil
+}
+
+func (usecase RuleSnoozeUsecase) GetRuleSnoozeById(ctx context.Context, ruleSnoozeId string) (models.RuleSnooze, error) {
+	s, err := usecase.ruleSnoozeRepository.GetSnoozeById(
+		ctx, usecase.executorFactory.NewExecutor(), ruleSnoozeId)
+	if err != nil {
+		return models.RuleSnooze{}, err
+	}
+
+	return s, nil
 }

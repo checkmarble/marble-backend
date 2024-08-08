@@ -8,7 +8,6 @@ import (
 
 type RuleSnooze struct {
 	Id                    string    `json:"id"`
-	RuleId                string    `json:"rule_id"`
 	PivotValue            string    `json:"pivot_value"`
 	StartsAt              time.Time `json:"starts_at"`
 	ExpiresAt             time.Time `json:"ends_at"`
@@ -16,22 +15,40 @@ type RuleSnooze struct {
 	CreatedFromDecisionId *string   `json:"created_from_decision_id"`
 }
 
+type RuleSnoozeWithRuleId struct {
+	RuleSnooze
+	RuleId string `json:"rule_id"`
+}
+
+func AdaptRuleSnoose(r models.RuleSnooze) RuleSnooze {
+	return RuleSnooze{
+		Id:                    r.Id,
+		PivotValue:            r.PivotValue,
+		StartsAt:              r.StartsAt,
+		ExpiresAt:             r.ExpiresAt,
+		CreatedByUser:         r.CreatedByUser,
+		CreatedFromDecisionId: r.CreatedFromDecisionId,
+	}
+}
+
 type SnoozesOfDecision struct {
-	DecisionId  string       `json:"decision_id"`
-	RuleSnoozes []RuleSnooze `json:"rule_snoozes"`
+	DecisionId  string                 `json:"decision_id"`
+	RuleSnoozes []RuleSnoozeWithRuleId `json:"rule_snoozes"`
 }
 
 func AdaptSnoozesOfDecision(s models.SnoozesOfDecision) SnoozesOfDecision {
-	snoozes := make([]RuleSnooze, 0, len(s.RuleSnoozes))
+	snoozes := make([]RuleSnoozeWithRuleId, 0, len(s.RuleSnoozes))
 	for _, s := range s.RuleSnoozes {
-		snoozes = append(snoozes, RuleSnooze{
-			Id:                    s.Id,
-			RuleId:                s.RuleId,
-			PivotValue:            s.PivotValue,
-			StartsAt:              s.StartsAt,
-			ExpiresAt:             s.ExpiresAt,
-			CreatedByUser:         s.CreatedByUser,
-			CreatedFromDecisionId: s.CreatedFromDecisionId,
+		snoozes = append(snoozes, RuleSnoozeWithRuleId{
+			RuleSnooze: RuleSnooze{
+				Id:                    s.Id,
+				PivotValue:            s.PivotValue,
+				StartsAt:              s.StartsAt,
+				ExpiresAt:             s.ExpiresAt,
+				CreatedByUser:         s.CreatedByUser,
+				CreatedFromDecisionId: s.CreatedFromDecisionId,
+			},
+			RuleId: s.RuleId,
 		})
 	}
 

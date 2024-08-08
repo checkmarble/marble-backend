@@ -10,6 +10,7 @@ type SnoozeGroup struct {
 
 type RuleSnooze struct {
 	Id                    string
+	OrganizationId        string
 	CreatedByUser         string
 	CreatedFromDecisionId *string
 	PivotValue            string
