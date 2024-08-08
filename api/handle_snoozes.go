@@ -91,3 +91,21 @@ func (api *API) handleSnoozesOfScenarioIteartion(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"snoozes": dto.AdaptSnoozesOfIteration(snoozes)})
 }
+
+func (api *API) handleGetSnoozesById(c *gin.Context) {
+	ruleSnoozeId := c.Param("rule_snooze_id")
+	_, err := uuid.Parse(ruleSnoozeId)
+	if err != nil {
+		presentError(c, errors.Wrap(models.BadParameterError,
+			"rule_snooze_id must be a valid uuid"))
+		return
+	}
+
+	ruleSnoozeUsecase := api.UsecasesWithCreds(c.Request).NewRuleSnoozeUsecase()
+	snooze, err := ruleSnoozeUsecase.GetRuleSnoozeById(c.Request.Context(), ruleSnoozeId)
+	if presentError(c, err) {
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"snooze": dto.AdaptRuleSnoose(snooze)})
+}

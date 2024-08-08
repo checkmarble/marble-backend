@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/jackc/pgx/v5"
+	"github.com/pkg/errors"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
@@ -13,6 +15,46 @@ func selectSnoozeGroups() squirrel.SelectBuilder {
 	return NewQueryBuilder().
 		Select(dbmodels.SelectSnoozeGroupsColumn...).
 		From(dbmodels.TABLE_SNOOZE_GROUPS)
+}
+
+func (repo *MarbleDbRepository) GetSnoozeById(ctx context.Context, exec Executor, id string) (models.RuleSnooze, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.RuleSnooze{}, err
+	}
+
+	sql := `
+	SELECT
+		rs.id,
+		sg.organization_id,
+		rs.created_by_user,
+		rs.created_from_decision_id,
+		rs.snooze_group_id,
+		rs.pivot_value,
+		rs.starts_at,
+		rs.expires_at
+	FROM rule_snoozes AS rs
+	INNER JOIN snooze_groups AS sg ON(rs.snooze_group_id = sg.id)
+	WHERE rs.id = $1
+	`
+
+	row := exec.QueryRow(ctx, sql, id)
+	s := models.RuleSnooze{}
+	if err := row.Scan(
+		&s.Id,
+		&s.OrganizationId,
+		&s.CreatedByUser,
+		&s.CreatedFromDecisionId,
+		&s.SnoozeGroupId,
+		&s.PivotValue,
+		&s.StartsAt,
+		&s.ExpiresAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.RuleSnooze{}, errors.Wrapf(models.NotFoundError, "Snooze %s not found", id)
+		} else {
+			return models.RuleSnooze{}, err
+		}
+	}
+	return s, nil
 }
 
 func (repo *MarbleDbRepository) CreateSnoozeGroup(ctx context.Context, exec Executor, id, organizationId string) error {

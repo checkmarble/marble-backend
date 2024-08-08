@@ -180,4 +180,6 @@ func (api *API) routes(auth Authentication, tokenHandler TokenHandler) {
 	router.GET("/webhooks/:webhook_id", api.handleGetWebhook)
 	router.PATCH("/webhooks/:webhook_id", api.handleUpdateWebhook)
 	router.DELETE("/webhooks/:webhook_id", api.handleDeleteWebhook)
+
+	router.GET("/rule-snoozes/:rule_snooze_id", api.handleGetSnoozesById)
 }

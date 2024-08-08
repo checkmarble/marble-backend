@@ -29,3 +29,10 @@ func (e *EnforceSecurityImpl) ReadSnoozesOfIteration(ctx context.Context, iterat
 		utils.EnforceOrganizationAccess(e.Credentials, iteration.OrganizationId),
 	)
 }
+
+func (e *EnforceSecurityImpl) ReadRuleSnooze(ctx context.Context, snooze models.RuleSnooze) error {
+	return errors.Join(
+		e.Permission(models.READ_SNOOZES),
+		utils.EnforceOrganizationAccess(e.Credentials, snooze.OrganizationId),
+	)
+}
