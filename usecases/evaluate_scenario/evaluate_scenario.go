@@ -135,7 +135,7 @@ func EvalScenario(
 	}
 
 	snoozes := make([]models.RuleSnooze, 0)
-	if params.Pivot != nil {
+	if pivotValue != nil {
 		snoozeGroupIds := make([]string, 0, len(publishedVersion.Body.Rules))
 		for _, rule := range publishedVersion.Body.Rules {
 			if rule.SnoozeGroupId != nil {
@@ -180,10 +180,10 @@ func EvalScenario(
 		Score:               score,
 		Outcome:             outcome,
 		OrganizationId:      params.Scenario.OrganizationId,
-		PivotValue:          pivotValue,
 	}
 	if params.Pivot != nil {
 		se.PivotId = &params.Pivot.Id
+		se.PivotValue = pivotValue
 	}
 
 	elapsed := time.Since(start)
