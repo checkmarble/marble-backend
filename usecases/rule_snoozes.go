@@ -275,6 +275,7 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 
 			err = usecase.caseUsecase.CreateRuleSnoozeEvent(ctx, tx, models.RuleSnoozeCaseEventInput{
 				CaseId:         decision.Case.Id,
+				Comment:        input.Comment,
 				RuleSnoozeId:   snoozeId,
 				UserId:         string(input.UserId),
 				WebhookEventId: webhookEventId,

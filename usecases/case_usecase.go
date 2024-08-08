@@ -891,11 +891,12 @@ func (usecase *CaseUseCase) CreateRuleSnoozeEvent(ctx context.Context, tx reposi
 
 	resourceType := models.RuleSnoozeResourceType
 	err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-		CaseId:       input.CaseId,
-		UserId:       input.UserId,
-		EventType:    models.CaseRuleSnooseCreated,
-		ResourceType: &resourceType,
-		ResourceId:   &input.RuleSnoozeId,
+		AdditionalNote: &input.Comment,
+		CaseId:         input.CaseId,
+		UserId:         input.UserId,
+		EventType:      models.CaseRuleSnooseCreated,
+		ResourceType:   &resourceType,
+		ResourceId:     &input.RuleSnoozeId,
 	})
 	if err != nil {
 		return err
