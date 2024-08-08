@@ -9,22 +9,24 @@ type SnoozeGroup struct {
 }
 
 type RuleSnooze struct {
-	Id            string
-	CreatedByUser string
-	PivotValue    string
-	SnoozeGroupId string
-	StartsAt      time.Time
-	ExpiresAt     time.Time
+	Id                    string
+	CreatedByUser         string
+	CreatedFromDecisionId *string
+	PivotValue            string
+	SnoozeGroupId         string
+	StartsAt              time.Time
+	ExpiresAt             time.Time
 }
 
 type RuleSnoozeWithRuleId struct {
-	Id            string
-	CreatedByUser string
-	PivotValue    string
-	RuleId        string
-	SnoozeGroupId string
-	StartsAt      time.Time
-	ExpiresAt     time.Time
+	Id                    string
+	CreatedByUser         string
+	CreatedFromDecisionId *string
+	PivotValue            string
+	RuleId                string
+	SnoozeGroupId         string
+	StartsAt              time.Time
+	ExpiresAt             time.Time
 }
 
 type SnoozesOfDecision struct {
@@ -41,13 +43,14 @@ func NewSnoozesOfDecision(decisionId string, snoozes []RuleSnooze, iteration Sce
 			if rule.SnoozeGroupId != nil && *rule.SnoozeGroupId == s.SnoozeGroupId {
 				ruleId = rule.Id
 				snoozesWithRuleId = append(snoozesWithRuleId, RuleSnoozeWithRuleId{
-					Id:            s.Id,
-					CreatedByUser: s.CreatedByUser,
-					PivotValue:    s.PivotValue,
-					RuleId:        ruleId,
-					SnoozeGroupId: s.SnoozeGroupId,
-					StartsAt:      s.StartsAt,
-					ExpiresAt:     s.ExpiresAt,
+					Id:                    s.Id,
+					CreatedByUser:         s.CreatedByUser,
+					CreatedFromDecisionId: s.CreatedFromDecisionId,
+					PivotValue:            s.PivotValue,
+					RuleId:                ruleId,
+					SnoozeGroupId:         s.SnoozeGroupId,
+					StartsAt:              s.StartsAt,
+					ExpiresAt:             s.ExpiresAt,
 				})
 				break
 			}
@@ -62,11 +65,12 @@ func NewSnoozesOfDecision(decisionId string, snoozes []RuleSnooze, iteration Sce
 }
 
 type RuleSnoozeCreateInput struct {
-	Id            string
-	SnoozeGroupId string
-	ExpiresAt     time.Time
-	CreatedByUser UserId
-	PivotValue    string
+	Id                    string
+	CreatedByUserId       UserId
+	CreatedFromDecisionId string
+	ExpiresAt             time.Time
+	PivotValue            string
+	SnoozeGroupId         string
 }
 
 type SnoozesOfIteration struct {
