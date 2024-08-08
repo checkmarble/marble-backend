@@ -56,6 +56,7 @@ func (api *API) handleSnoozeDecision(c *gin.Context) {
 
 	ruleSnoozeUsecase := api.UsecasesWithCreds(c.Request).NewRuleSnoozeUsecase()
 	snoozes, err := ruleSnoozeUsecase.SnoozeDecision(c.Request.Context(), models.SnoozeDecisionInput{
+		Comment:        input.Comment,
 		DecisionId:     decisionId,
 		Duration:       input.Duration,
 		OrganizationId: organizationId,

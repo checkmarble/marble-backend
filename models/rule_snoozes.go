@@ -81,6 +81,7 @@ type RuleSnoozeInformation struct {
 }
 
 type SnoozeDecisionInput struct {
+	Comment        string
 	DecisionId     string
 	Duration       string
 	OrganizationId string
@@ -90,6 +91,7 @@ type SnoozeDecisionInput struct {
 
 type RuleSnoozeCaseEventInput struct {
 	CaseId         string
+	Comment        string
 	RuleSnoozeId   string
 	UserId         string
 	WebhookEventId string
