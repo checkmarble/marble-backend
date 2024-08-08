@@ -6,6 +6,7 @@ info:
 x-readme:
   explorer-enabled: false
   proxy-enabled: false
+  samples-languages: ["shell", "python", "javascript", "go", "ruby"]
 servers:
   - url: "api.checkmarble.com"
 tags:
@@ -403,7 +404,7 @@ components:
       required:
         - pivot_id
       properties:
-        pivot_id: 
+        pivot_id:
           type: string
           description: Id of the pivot definition
           format: uuid
