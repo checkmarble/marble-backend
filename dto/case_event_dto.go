@@ -15,6 +15,8 @@ type APICaseEvent struct {
 	EventType      string      `json:"event_type"`
 	AdditionalNote string      `json:"additional_note"`
 	NewValue       string      `json:"new_value"`
+	ResourceType   string      `json:"resource_type"`
+	ResourceId     string      `json:"resource_id"`
 }
 
 func NewAPICaseEvent(caseEvent models.CaseEvent) APICaseEvent {
@@ -26,5 +28,7 @@ func NewAPICaseEvent(caseEvent models.CaseEvent) APICaseEvent {
 		EventType:      string(caseEvent.EventType),
 		AdditionalNote: caseEvent.AdditionalNote,
 		NewValue:       caseEvent.NewValue,
+		ResourceType:   string(caseEvent.ResourceType),
+		ResourceId:     caseEvent.ResourceId,
 	}
 }

@@ -50,40 +50,49 @@ type updateRuleRepository interface {
 	UpdateRule(ctx context.Context, exec repositories.Executor, rule models.UpdateRuleInput) error
 }
 
-type caseReader interface {
+type caseUsecase interface {
 	GetCase(ctx context.Context, caseId string) (models.Case, error)
+	CreateRuleSnoozeEvent(ctx context.Context, tx repositories.Executor, input models.RuleSnoozeCaseEventInput,
+	) error
+}
+
+type webhooksSender interface {
+	SendWebhookEventAsync(ctx context.Context, webhookEventId string)
 }
 
 type RuleSnoozeUsecase struct {
 	decisionGetter       decisionGetter
 	executorFactory      executor_factory.ExecutorFactory
 	transactionFactory   executor_factory.TransactionFactory
-	caseReader           caseReader
+	caseUsecase          caseUsecase
 	iterationGetter      iterationGetter
 	ruleRepository       updateRuleRepository
 	ruleSnoozeRepository ruleSnoozeRepository
 	enforceSecurity      enforceSecuritySnoozes
+	webhooksSender       webhooksSender
 }
 
 func NewRuleSnoozeUsecase(
 	d decisionGetter,
 	e executor_factory.ExecutorFactory,
 	t executor_factory.TransactionFactory,
-	cr caseReader,
+	cr caseUsecase,
 	ig iterationGetter,
 	r updateRuleRepository,
 	s ruleSnoozeRepository,
 	es enforceSecuritySnoozes,
+	w webhooksSender,
 ) RuleSnoozeUsecase {
 	return RuleSnoozeUsecase{
 		decisionGetter:       d,
 		executorFactory:      e,
 		transactionFactory:   t,
-		caseReader:           cr,
+		caseUsecase:          cr,
 		iterationGetter:      ig,
 		ruleRepository:       r,
 		ruleSnoozeRepository: s,
 		enforceSecurity:      es,
+		webhooksSender:       w,
 	}
 }
 
@@ -169,8 +178,8 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 			models.BadParameterError,
 			"decision %s is not attached to a case and cannot be snoozed", input.DecisionId)
 	}
-	// case (inbox) permission check done in caseReader
-	_, err = usecase.caseReader.GetCase(ctx, decision.Case.Id)
+	// case (inbox) permission check done in caseUsecase
+	_, err = usecase.caseUsecase.GetCase(ctx, decision.Case.Id)
 	if err != nil {
 		return models.SnoozesOfDecision{}, err
 	}
@@ -192,12 +201,14 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 
 	// verify input rule is in the decision
 	ruleFound := false
+	ruleIdx := 0
 	thisRule := models.Rule{}
 	snoozeGroupIds := make([]string, 0, len(it.Rules))
-	for _, rule := range it.Rules {
+	for i, rule := range it.Rules {
 		if rule.Id == input.RuleId {
 			ruleFound = true
 			thisRule = rule
+			ruleIdx = i
 		}
 		if rule.SnoozeGroupId != nil {
 			snoozeGroupIds = append(snoozeGroupIds, *rule.SnoozeGroupId)
@@ -226,6 +237,7 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 		}
 	}
 
+	webhookEventId := uuid.NewString()
 	snoozes, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
@@ -245,7 +257,9 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 				if err != nil {
 					return nil, err
 				}
-
+				// "it" variable is reused in NewSnoozesOfDecision() at the end of the function to return the created snooze
+				// update it here rather than re-reading it from the DB
+				it.Rules[ruleIdx].SnoozeGroupId = snoozeGroupId
 			}
 			snoozeId := uuid.NewString()
 			err = usecase.ruleSnoozeRepository.CreateRuleSnooze(ctx, tx, models.RuleSnoozeCreateInput{
@@ -259,9 +273,21 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 				return nil, err
 			}
 
+			err = usecase.caseUsecase.CreateRuleSnoozeEvent(ctx, tx, models.RuleSnoozeCaseEventInput{
+				CaseId:         decision.Case.Id,
+				RuleSnoozeId:   snoozeId,
+				UserId:         string(input.UserId),
+				WebhookEventId: webhookEventId,
+			})
+			if err != nil {
+				return nil, err
+			}
+
 			return usecase.ruleSnoozeRepository.ListRuleSnoozesForDecision(ctx, tx, snoozeGroupIds, *decision.PivotValue)
 		},
 	)
+
+	usecase.webhooksSender.SendWebhookEventAsync(ctx, webhookEventId)
 
 	return models.NewSnoozesOfDecision(decision.DecisionId, snoozes, it), nil
 }

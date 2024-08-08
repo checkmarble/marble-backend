@@ -450,5 +450,6 @@ func (usecases *UsecasesWithCreds) NewRuleSnoozeUsecase() RuleSnoozeUsecase {
 		&usecases.Repositories.MarbleDbRepository,
 		&usecases.Repositories.MarbleDbRepository,
 		security.NewEnforceSecurity(usecases.Credentials),
+		usecases.NewWebhookEventsUsecase(),
 	)
 }

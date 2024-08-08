@@ -869,3 +869,49 @@ func (usecase *CaseUseCase) GetCaseFileUrl(ctx context.Context, caseFileId strin
 
 	return usecase.gcsRepository.GenerateSignedUrl(ctx, usecase.gcsCaseManagerBucket, cf.FileReference)
 }
+
+func (usecase *CaseUseCase) CreateRuleSnoozeEvent(ctx context.Context, tx repositories.Executor, input models.RuleSnoozeCaseEventInput,
+) error {
+	c, err := usecase.repository.GetCaseById(ctx, tx, input.CaseId)
+	if err != nil {
+		return err
+	}
+
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx)
+	if err != nil {
+		return err
+	}
+	if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
+		return err
+	}
+
+	if err := usecase.createCaseContributorIfNotExist(ctx, tx, input.CaseId, input.UserId); err != nil {
+		return err
+	}
+
+	resourceType := models.RuleSnoozeResourceType
+	err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+		CaseId:       input.CaseId,
+		UserId:       input.UserId,
+		EventType:    models.CaseRuleSnooseCreated,
+		ResourceType: &resourceType,
+		ResourceId:   &input.RuleSnoozeId,
+	})
+	if err != nil {
+		return err
+	}
+	updatedCase, err := usecase.getCaseWithDetails(ctx, tx, input.CaseId)
+	if err != nil {
+		return err
+	}
+
+	err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+		Id:             input.WebhookEventId,
+		OrganizationId: updatedCase.OrganizationId,
+		EventContent:   models.NewWebhookEventCaseCommentCreated(updatedCase),
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}

@@ -87,3 +87,10 @@ type SnoozeDecisionInput struct {
 	RuleId         string
 	UserId         UserId
 }
+
+type RuleSnoozeCaseEventInput struct {
+	CaseId         string
+	RuleSnoozeId   string
+	UserId         string
+	WebhookEventId string
+}
