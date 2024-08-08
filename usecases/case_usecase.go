@@ -894,7 +894,7 @@ func (usecase *CaseUseCase) CreateRuleSnoozeEvent(ctx context.Context, tx reposi
 		AdditionalNote: &input.Comment,
 		CaseId:         input.CaseId,
 		UserId:         input.UserId,
-		EventType:      models.CaseRuleSnooseCreated,
+		EventType:      models.CaseRuleSnoozeCreated,
 		ResourceType:   &resourceType,
 		ResourceId:     &input.RuleSnoozeId,
 	})

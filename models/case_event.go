@@ -30,7 +30,7 @@ const (
 	CaseTagsUpdated       CaseEventType = "tags_updated"
 	CaseFileAdded         CaseEventType = "file_added"
 	CaseInboxChanged      CaseEventType = "inbox_changed"
-	CaseRuleSnooseCreated CaseEventType = "rule_snooze_created"
+	CaseRuleSnoozeCreated CaseEventType = "rule_snooze_created"
 )
 
 type CaseEventResourceType string
