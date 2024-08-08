@@ -23,14 +23,15 @@ const (
 type WebhookEventType string
 
 const (
-	WebhookEventType_CaseUpdated          WebhookEventType = "case.updated"
-	WebhookEventType_CaseCreatedManually  WebhookEventType = "case.created_manually"
-	WebhookEventType_CaseCreatedWorkflow  WebhookEventType = "case.created_from_workflow"
-	WebhookEventType_CaseDecisionsUpdated WebhookEventType = "case.decisions_updated"
-	WebhookEventType_CaseTagsUpdated      WebhookEventType = "case.tags_updated"
-	WebhookEventType_CaseCommentCreated   WebhookEventType = "case.comment_created"
-	WebhookEventType_CaseFileCreated      WebhookEventType = "case.file_created"
-	WebhookEventType_DecisionCreated      WebhookEventType = "decision.created"
+	WebhookEventType_CaseUpdated           WebhookEventType = "case.updated"
+	WebhookEventType_CaseCreatedManually   WebhookEventType = "case.created_manually"
+	WebhookEventType_CaseCreatedWorkflow   WebhookEventType = "case.created_from_workflow"
+	WebhookEventType_CaseDecisionsUpdated  WebhookEventType = "case.decisions_updated"
+	WebhookEventType_CaseTagsUpdated       WebhookEventType = "case.tags_updated"
+	WebhookEventType_CaseCommentCreated    WebhookEventType = "case.comment_created"
+	WebhookEventType_CaseFileCreated       WebhookEventType = "case.file_created"
+	WebhookEventType_CaseRuleSnoozeCreated WebhookEventType = "case.rule_snooze_created"
+	WebhookEventType_DecisionCreated       WebhookEventType = "decision.created"
 )
 
 var validWebhookEventTypes = []WebhookEventType{
@@ -171,6 +172,10 @@ func NewWebhookEventCaseCommentCreated(c Case) WebhookEventContent {
 
 func NewWebhookEventCaseFileCreated(c Case) WebhookEventContent {
 	return newWebhookContentCase(WebhookEventType_CaseFileCreated, c.Id)
+}
+
+func NewWebhookEventRuleSnoozeCreated(c Case) WebhookEventContent {
+	return newWebhookContentCase(WebhookEventType_CaseRuleSnoozeCreated, c.Id)
 }
 
 type Webhook struct {
