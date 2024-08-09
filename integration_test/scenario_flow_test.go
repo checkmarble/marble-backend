@@ -3,8 +3,6 @@ package integration
 import (
 	"context"
 	"fmt"
-	"log/slog"
-	"os"
 	"slices"
 	"testing"
 	"time"
@@ -39,45 +37,27 @@ func TestScenarioEndToEnd(t *testing.T) {
 	ctx := context.Background()
 
 	// Initialize a logger and store it in the context
-	logHandler := utils.LocalDevHandlerOptions{
-		SlogOpts: slog.HandlerOptions{Level: slog.LevelDebug},
-		UseColor: true,
-	}.NewLocalDevHandler(os.Stdout)
-	logger := slog.New(logHandler)
-
-	ctx = utils.StoreLoggerInContext(ctx, logger)
+	ctx = utils.StoreLoggerInContext(ctx, utils.NewLogger("text"))
 	ctx = utils.StoreSegmentClientInContext(ctx, analytics.New("dummy key"))
 
 	// Setup an organization and user credentials
 	creds, dataModel := setupOrgAndCreds(ctx, t)
 	organizationId := creds.OrganizationId
-	ctx = context.WithValue(ctx, utils.ContextKeyCredentials, creds)
 
 	// Now that we have a user and credentials, create a container for usecases with these credentials
-	usecasesWithCreds := usecases.UsecasesWithCreds{
-		Usecases:                testUsecases,
-		Credentials:             creds,
-		Logger:                  utils.LoggerFromContext(ctx),
-		OrganizationIdOfContext: func() (string, error) { return organizationId, nil },
-		Context:                 ctx,
-	}
+	usecasesWithCreds := generateUsecaseWithCreds(testUsecases, creds)
+
 	// Scenario setup
 	scenarioId := setupScenarioAndPublish(t, ctx, usecasesWithCreds, organizationId)
 
 	apiCreds := setupApiCreds(ctx, t, usecasesWithCreds, organizationId)
-	usecasesWithApiCreds := usecases.UsecasesWithCreds{
-		Usecases:                testUsecases,
-		Credentials:             apiCreds,
-		Logger:                  utils.LoggerFromContext(ctx),
-		OrganizationIdOfContext: func() (string, error) { return organizationId, nil },
-		Context:                 ctx,
-	}
+	usecasesWithApiCreds := generateUsecaseWithCreds(testUsecases, apiCreds)
 
 	// Ingest two accounts (parent of a transaction) to execute a full scenario: one to be rejected, one to be approved
-	ingestAccounts(t, "accounts", usecasesWithApiCreds, organizationId)
+	ingestAccounts(ctx, t, usecasesWithApiCreds, "accounts", organizationId)
 
 	// Create a pair of decision and check that the outcome matches the expectation
-	createDecisions(t, dataModel.Tables["transactions"], usecasesWithApiCreds, organizationId, scenarioId)
+	createDecisions(ctx, t, usecasesWithApiCreds, dataModel.Tables["transactions"], organizationId, scenarioId)
 }
 
 func setupApiCreds(ctx context.Context, t *testing.T, usecasesWithCreds usecases.UsecasesWithCreds, organizationId string) models.Credentials {
@@ -88,27 +68,35 @@ func setupApiCreds(ctx context.Context, t *testing.T, usecasesWithCreds usecases
 		Description:    "Test API key",
 		Role:           models.API_CLIENT,
 	})
-	assert.NoError(t, err, "Could not create api key")
+	if err != nil {
+		assert.FailNow(t, "Could not create api key", err)
+	}
 
 	_, _, creds, err := tokenGenerator.FromAPIKey(ctx, apiKey.Key)
-	assert.NoError(t, err, "Could not generate creds from api key")
+	if err != nil {
+		assert.FailNow(t, "Could not generate creds from api key", err)
+	}
 	return creds
 }
 
 func setupOrgAndCreds(ctx context.Context, t *testing.T) (models.Credentials, models.DataModel) {
 	// Create a new organization
-	testAdminUsecase := GenerateUsecaseWithCredForMarbleAdmin(ctx, testUsecases, "")
+	testAdminUsecase := generateUsecaseWithCredForMarbleAdmin(testUsecases, "")
 	orgUsecase := testAdminUsecase.NewOrganizationUseCase()
 	organization, err := orgUsecase.CreateOrganization(ctx, "Test org n°42")
-	assert.NoError(t, err, "Could not create organization")
+	if err != nil {
+		assert.FailNow(t, "Could not create organization", err)
+	}
 	organizationId := organization.Id
 	fmt.Println("Created organization", organizationId)
 
-	testAdminUsecase = GenerateUsecaseWithCredForMarbleAdmin(ctx, testUsecases, organizationId)
+	testAdminUsecase = generateUsecaseWithCredForMarbleAdmin(testUsecases, organizationId)
 
 	// Check that there are no users on the organization yet
 	users, err := orgUsecase.GetUsersOfOrganization(ctx, organizationId)
-	assert.NoError(t, err, "Could not get users of organization")
+	if err != nil {
+		assert.FailNow(t, "Could not get users of organization", err)
+	}
 	assert.Equal(t, 0, len(users), "Expected 0 users, got %d", len(users))
 
 	// Create a new admin user on the organization
@@ -118,7 +106,9 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T) (models.Credentials, mo
 		OrganizationId: organizationId,
 		Role:           models.ADMIN,
 	})
-	assert.NoError(t, err, "Could not create user")
+	if err != nil {
+		assert.FailNow(t, "Could not create user", err)
+	}
 	adminUserId := adminUser.UserId
 	fmt.Println("Created admin user", adminUserId)
 
@@ -132,16 +122,17 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T) (models.Credentials, mo
 	}
 
 	// Create a data model for the organization
-	dataModel, err := createDataModel(t, organizationId)
-	assert.NoError(t, err, "Could not create data model")
+	dataModel, err := createDataModel(ctx, t, organizationId)
+	if err != nil {
+		assert.FailNow(t, "Could not create data model", err)
+	}
 	fmt.Println("Created data model")
 
 	return creds, dataModel
 }
 
-func createDataModel(t *testing.T, organizationID string) (models.DataModel, error) {
-	testAdminUsecase := GenerateUsecaseWithCredForMarbleAdmin(context.Background(), testUsecases, organizationID)
-	ctx := context.TODO()
+func createDataModel(ctx context.Context, t *testing.T, organizationID string) (models.DataModel, error) {
+	testAdminUsecase := generateUsecaseWithCredForMarbleAdmin(testUsecases, organizationID)
 
 	usecase := testAdminUsecase.NewDataModelUseCase()
 	transactionsTableID, err := usecase.CreateDataModelTable(ctx, organizationID, "transactions", "description")
@@ -220,7 +211,9 @@ func setupScenarioAndPublish(t *testing.T, ctx context.Context,
 		Description:       "Test scenario description",
 		TriggerObjectType: "transactions",
 	})
-	assert.NoError(t, err, "Could not create scenario")
+	if err != nil {
+		assert.FailNow(t, "Could not create scenario", err)
+	}
 	scenarioId := scenario.Id
 	fmt.Println("Created scenario", scenarioId)
 
@@ -230,7 +223,7 @@ func setupScenarioAndPublish(t *testing.T, ctx context.Context,
 	scenarioIterationUsecase := usecasesWithCreds.NewScenarioIterationUsecase()
 	threshold := 20
 	scenarioIteration, err := scenarioIterationUsecase.CreateScenarioIteration(
-		usecasesWithCreds.Context, organizationId, models.CreateScenarioIterationInput{
+		ctx, organizationId, models.CreateScenarioIterationInput{
 			ScenarioId: scenarioId,
 			Body: &models.CreateScenarioIterationBody{
 				Rules: []models.CreateRuleInput{
@@ -346,26 +339,33 @@ func setupScenarioAndPublish(t *testing.T, ctx context.Context,
 				Schedule:             "*/10 * * * *",
 			},
 		})
-	assert.NoError(t, err, "Could not create scenario iteration")
+	if err != nil {
+		assert.FailNow(t, "Could not create scenario iteration", err)
+	}
 	scenarioIterationId := scenarioIteration.Id
 	fmt.Println("Created scenario iteration", scenarioIterationId)
 
 	// Actually, modify the scenario iteration
 	threshold = 30
 	updatedScenarioIteration, err := scenarioIterationUsecase.UpdateScenarioIteration(
-		usecasesWithCreds.Context, organizationId, models.UpdateScenarioIterationInput{
+		ctx, organizationId, models.UpdateScenarioIterationInput{
 			Id: scenarioIterationId,
 			Body: models.UpdateScenarioIterationBody{
 				ScoreRejectThreshold: &threshold,
 			},
 		})
-	assert.NoError(t, err)
+	if err != nil {
+		assert.FailNow(t, "Could not update scenario iteration", err)
+	}
 
 	validation, err := scenarioIterationUsecase.ValidateScenarioIteration(ctx, scenarioIterationId, nil, nil)
-	assert.NoError(t, err)
+	if err != nil {
+		assert.FailNow(t, "Could not validate scenario iteration", err)
+	}
 
-	assert.NoError(t, scenarios.ScenarioValidationToError(validation))
-	assert.NoError(t, err, "Could not update scenario iteration")
+	if scenarios.ScenarioValidationToError(validation) != nil {
+		assert.FailNow(t, "Scenario iteration not valid", err)
+	}
 
 	if assert.NotNil(t, updatedScenarioIteration.ScoreRejectThreshold) {
 		assert.Equal(
@@ -379,22 +379,30 @@ func setupScenarioAndPublish(t *testing.T, ctx context.Context,
 	// Publish the iteration to make it live
 	scenarioPublicationUsecase := usecasesWithCreds.NewScenarioPublicationUsecase()
 	_, err = scenarioIterationUsecase.CommitScenarioIterationVersion(ctx, scenarioIterationId)
-	assert.NoError(t, err, "Could not commit scenario iteration")
+	if err != nil {
+		assert.FailNow(t, "Could not commit scenario iteration", err)
+	}
 	err = scenarioPublicationUsecase.StartPublicationPreparation(ctx, scenarioIterationId)
-	assert.NoError(t, err, "Could not start publication preparation")
+	if err != nil {
+		assert.FailNow(t, "Could not start publication preparation", err)
+	}
 	time.Sleep(50 * time.Millisecond)
 	scenarioPublications, err := scenarioPublicationUsecase.ExecuteScenarioPublicationAction(
 		ctx, models.PublishScenarioIterationInput{
 			ScenarioIterationId: scenarioIterationId,
 			PublicationAction:   models.Publish,
 		})
-	assert.NoError(t, err, "Could not publish scenario iteration")
+	if err != nil {
+		assert.FailNow(t, "Could not publish scenario iteration", err)
+	}
 	assert.Equal(t, 1, len(scenarioPublications), "Expected 1 scenario publication, got %d", len(scenarioPublications))
 	fmt.Println("Published scenario iteration")
 
 	// Now get the iteration and check it has a version
 	scenarioIteration, err = scenarioIterationUsecase.GetScenarioIteration(ctx, scenarioIterationId)
-	assert.NoError(t, err, "Could not get scenario iteration")
+	if err != nil {
+		assert.FailNow(t, "Could not get scenario iteration", err)
+	}
 
 	assert.NotNil(t, scenarioIteration.Version, "Expected scenario iteration to have a version")
 	if assert.NotNil(t, scenarioIteration.Version) {
@@ -406,7 +414,12 @@ func setupScenarioAndPublish(t *testing.T, ctx context.Context,
 	return scenarioId
 }
 
-func ingestAccounts(t *testing.T, tableName string, usecases usecases.UsecasesWithCreds, organizationId string) {
+func ingestAccounts(
+	ctx context.Context,
+	t *testing.T,
+	usecases usecases.UsecasesWithCreds,
+	tableName, organizationId string,
+) {
 	ingestionUsecase := usecases.NewIngestionUseCase()
 	accountPayloadJson1 := []byte(`{
 		"object_id": "{account_id_reject}",
@@ -423,15 +436,27 @@ func ingestAccounts(t *testing.T, tableName string, usecases usecases.UsecasesWi
 		"updated_at": "2020-01-01T00:00:00Z"
 	}`)
 
-	_, err := ingestionUsecase.IngestObjects(context.TODO(), organizationId, tableName, accountPayloadJson1)
-	assert.NoError(t, err, "Could not ingest data")
-	_, err = ingestionUsecase.IngestObjects(context.TODO(), organizationId, tableName, accountPayloadJson2)
-	assert.NoError(t, err, "Could not ingest data")
-	_, err = ingestionUsecase.IngestObjects(context.TODO(), organizationId, tableName, accountPayloadJson3)
-	assert.NoError(t, err, "Could not ingest data")
+	_, err := ingestionUsecase.IngestObjects(ctx, organizationId, tableName, accountPayloadJson1)
+	if err != nil {
+		assert.FailNow(t, "Could not ingest data", err)
+	}
+	_, err = ingestionUsecase.IngestObjects(ctx, organizationId, tableName, accountPayloadJson2)
+	if err != nil {
+		assert.FailNow(t, "Could not ingest data", err)
+	}
+	_, err = ingestionUsecase.IngestObjects(ctx, organizationId, tableName, accountPayloadJson3)
+	if err != nil {
+		assert.FailNow(t, "Could not ingest data", err)
+	}
 }
 
-func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecases.UsecasesWithCreds, organizationId, scenarioId string) {
+func createDecisions(
+	ctx context.Context,
+	t *testing.T,
+	usecasesWithCreds usecases.UsecasesWithCreds,
+	table models.Table,
+	organizationId, scenarioId string,
+) {
 	decisionUsecase := usecasesWithCreds.NewDecisionUsecase()
 
 	// Create a decision [REJECT]
@@ -441,8 +466,8 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"account_id": "{account_id_reject}",
 		"amount": 100
 	}`)
-	rejectDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase,
-		usecasesWithCreds, organizationId, scenarioId, 111)
+	rejectDecision := createAndTestDecision(ctx, t, transactionPayloadJson, table, decisionUsecase,
+		organizationId, scenarioId, 111)
 	assert.Equal(t, models.Reject, rejectDecision.Outcome,
 		"Expected decision to be Reject, got %s", rejectDecision.Outcome)
 
@@ -453,8 +478,8 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"account_id": "{account_id_approve}",
 		"amount": 100
 	}`)
-	approveDecision := createAndTestDecision(t, transactionPayloadJson, table, decisionUsecase,
-		usecasesWithCreds, organizationId, scenarioId, 11)
+	approveDecision := createAndTestDecision(ctx, t, transactionPayloadJson, table, decisionUsecase,
+		organizationId, scenarioId, 11)
 	assert.Equal(t, models.Approve, approveDecision.Outcome,
 		"Expected decision to be Approve, got %s", approveDecision.Outcome)
 
@@ -465,8 +490,8 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"account_id": "{account_id_approve_no_name}",
 		"amount": 100
 	}`)
-	approveNoNameDecision := createAndTestDecision(t, transactionPayloadJson, table,
-		decisionUsecase, usecasesWithCreds, organizationId, scenarioId, 11)
+	approveNoNameDecision := createAndTestDecision(ctx, t, transactionPayloadJson, table,
+		decisionUsecase, organizationId, scenarioId, 11)
 	assert.Equal(t, models.Approve, approveNoNameDecision.Outcome,
 		"Expected decision to be Approve, got %s", approveNoNameDecision.Outcome)
 	if assert.NotEmpty(t, approveNoNameDecision.RuleExecutions) {
@@ -482,8 +507,8 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"account_id": "{account_id_approve_no_record}",
 		"amount": 100
 	}`)
-	approveNoRecordDecision := createAndTestDecision(t, transactionPayloadJson, table,
-		decisionUsecase, usecasesWithCreds, organizationId, scenarioId, 11)
+	approveNoRecordDecision := createAndTestDecision(ctx, t, transactionPayloadJson, table,
+		decisionUsecase, organizationId, scenarioId, 11)
 	assert.Equal(t, models.Approve, approveNoRecordDecision.Outcome,
 		"Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
 	if assert.NotEmpty(t, approveNoRecordDecision.RuleExecutions) {
@@ -498,8 +523,8 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"updated_at": "2020-01-01T00:00:00Z",
 		"account_id": "{account_id_approve}"
 	}`)
-	approveMissingFieldInPayloadDecision := createAndTestDecision(t, transactionPayloadJson,
-		table, decisionUsecase, usecasesWithCreds, organizationId, scenarioId, 1)
+	approveMissingFieldInPayloadDecision := createAndTestDecision(ctx, t, transactionPayloadJson,
+		table, decisionUsecase, organizationId, scenarioId, 1)
 	assert.Equal(t, models.Approve, approveMissingFieldInPayloadDecision.Outcome,
 		"Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
 	if assert.NotEmpty(t, approveMissingFieldInPayloadDecision.RuleExecutions) {
@@ -515,8 +540,8 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 		"account_id": "{account_id_approve}",
 		"amount": 0
 	}`)
-	approveDivisionByZeroDecision := createAndTestDecision(t, transactionPayloadJson, table,
-		decisionUsecase, usecasesWithCreds, organizationId, scenarioId, 11)
+	approveDivisionByZeroDecision := createAndTestDecision(ctx, t, transactionPayloadJson, table,
+		decisionUsecase, organizationId, scenarioId, 11)
 	assert.Equal(t, models.Approve, approveDivisionByZeroDecision.Outcome,
 		"Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
 	if assert.NotEmpty(t, approveDivisionByZeroDecision.RuleExecutions) {
@@ -527,11 +552,11 @@ func createDecisions(t *testing.T, table models.Table, usecasesWithCreds usecase
 }
 
 func createAndTestDecision(
+	ctx context.Context,
 	t *testing.T,
 	transactionPayloadJson []byte,
 	table models.Table,
 	decisionUsecase usecases.DecisionUsecase,
-	usecasesWithCreds usecases.UsecasesWithCreds,
 	organizationId string,
 	scenarioId string,
 	expectedScore int,
@@ -539,11 +564,13 @@ func createAndTestDecision(
 	parser := payload_parser.NewParser()
 	transactionPayload, validationErrors, err :=
 		parser.ParsePayload(table, transactionPayloadJson)
-	assert.NoError(t, err, "Could not parse payload")
+	if err != nil {
+		assert.FailNow(t, "Could not parse payload", err)
+	}
 	assert.Empty(t, validationErrors, "Expected no validation errors, got %v", validationErrors)
 
 	decision, err := decisionUsecase.CreateDecision(
-		usecasesWithCreds.Context,
+		ctx,
 		models.CreateDecisionInput{
 			ScenarioId:         scenarioId,
 			ClientObject:       &transactionPayload,
@@ -553,7 +580,9 @@ func createAndTestDecision(
 		false,
 		false,
 	)
-	assert.NoError(t, err, "Could not create decision")
+	if err != nil {
+		assert.FailNow(t, "Could not create decision", err)
+	}
 	assert.Equal(t, expectedScore, decision.Score, "The score should match the expected value")
 	fmt.Println("Created decision", decision.DecisionId)
 
