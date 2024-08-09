@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/guregu/null/v5"
 	"github.com/segmentio/analytics-go/v3"
 	"github.com/stretchr/testify/assert"
 
@@ -24,11 +25,15 @@ func TestScenarioEndToEnd(t *testing.T) {
 		- Creates an organization
 		- Creates a user on the organization
 		- Creates a data model for the organization
+		- sets up a pivot for the transactions table (defined as the tx's account_id)
+		- creates an inbox to use in the case manager
+		- sets up a workflow to send all decisions with the same pivot value to the same case
 		- Creates a scenario on the organization
 		- Creates a scenario iteration for the scenario, updates its body and publishes it
 		- Ingests two accounts to be used in the scenario: one for a transaction to be rejected, one for a transaction to be approved
-		- Creates a decision for the transaction to be rejected
-		- Creates a decision for the transaction to be approved
+		- Creates several decision for transactions, with different cases tested
+		- Snoozes a rule
+		- Creates decisions again to test the snooze
 		This corresponds to the critical path of our users.
 
 		It does so by using the usecases (with credentials where applicable) and the repositories with a real local migrated docker db.
@@ -41,14 +46,14 @@ func TestScenarioEndToEnd(t *testing.T) {
 	ctx = utils.StoreSegmentClientInContext(ctx, analytics.New("dummy key"))
 
 	// Setup an organization and user credentials
-	creds, dataModel := setupOrgAndCreds(ctx, t)
-	organizationId := creds.OrganizationId
+	userCreds, dataModel, inboxId := setupOrgAndCreds(ctx, t)
+	organizationId := userCreds.OrganizationId
 
 	// Now that we have a user and credentials, create a container for usecases with these credentials
-	usecasesWithCreds := generateUsecaseWithCreds(testUsecases, creds)
+	usecasesWithCreds := generateUsecaseWithCreds(testUsecases, userCreds)
 
 	// Scenario setup
-	scenarioId := setupScenarioAndPublish(t, ctx, usecasesWithCreds, organizationId)
+	scenarioId := setupScenarioAndPublish(ctx, t, usecasesWithCreds, organizationId, inboxId)
 
 	apiCreds := setupApiCreds(ctx, t, usecasesWithCreds, organizationId)
 	usecasesWithApiCreds := generateUsecaseWithCreds(testUsecases, apiCreds)
@@ -57,7 +62,8 @@ func TestScenarioEndToEnd(t *testing.T) {
 	ingestAccounts(ctx, t, usecasesWithApiCreds, "accounts", organizationId)
 
 	// Create a pair of decision and check that the outcome matches the expectation
-	createDecisions(ctx, t, usecasesWithApiCreds, dataModel.Tables["transactions"], organizationId, scenarioId)
+	createDecisions(ctx, t, usecasesWithApiCreds, usecasesWithCreds,
+		dataModel.Tables["transactions"], organizationId, scenarioId)
 }
 
 func setupApiCreds(ctx context.Context, t *testing.T, usecasesWithCreds usecases.UsecasesWithCreds, organizationId string) models.Credentials {
@@ -79,7 +85,7 @@ func setupApiCreds(ctx context.Context, t *testing.T, usecasesWithCreds usecases
 	return creds
 }
 
-func setupOrgAndCreds(ctx context.Context, t *testing.T) (models.Credentials, models.DataModel) {
+func setupOrgAndCreds(ctx context.Context, t *testing.T) (models.Credentials, models.DataModel, string) {
 	// Create a new organization
 	testAdminUsecase := generateUsecaseWithCredForMarbleAdmin(testUsecases, "")
 	orgUsecase := testAdminUsecase.NewOrganizationUseCase()
@@ -120,89 +126,138 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T) (models.Credentials, mo
 			UserId: adminUserId,
 		},
 	}
+	usecases := generateUsecaseWithCreds(testUsecases, creds)
 
 	// Create a data model for the organization
-	dataModel, err := createDataModel(ctx, t, organizationId)
-	if err != nil {
-		assert.FailNow(t, "Could not create data model", err)
-	}
+	dataModel, inboxId := createDataModelAndSetupCaseManager(ctx, t, usecases, organizationId)
 	fmt.Println("Created data model")
 
-	return creds, dataModel
+	return creds, dataModel, inboxId
 }
 
-func createDataModel(ctx context.Context, t *testing.T, organizationID string) (models.DataModel, error) {
-	testAdminUsecase := generateUsecaseWithCredForMarbleAdmin(testUsecases, organizationID)
+func createDataModelAndSetupCaseManager(
+	ctx context.Context,
+	t *testing.T,
+	usecases usecases.UsecasesWithCreds,
+	organizationId string,
+) (dm models.DataModel, inboxId string) {
+	testAdminUsecase := generateUsecaseWithCredForMarbleAdmin(testUsecases, organizationId)
 
 	usecase := testAdminUsecase.NewDataModelUseCase()
-	transactionsTableID, err := usecase.CreateDataModelTable(ctx, organizationID, "transactions", "description")
-	assert.NoError(t, err)
+	transactionsTableId, err := usecase.CreateDataModelTable(ctx, organizationId, "transactions", "description")
+	if err != nil {
+		assert.FailNow(t, "Could not create table", err)
+	}
 	transactionsFields := []models.CreateFieldInput{
-		{TableId: transactionsTableID, Name: "account_id", DataType: models.String, Nullable: true},
-		{TableId: transactionsTableID, Name: "bic_country", DataType: models.String, Nullable: true},
-		{TableId: transactionsTableID, Name: "country", DataType: models.String, Nullable: true},
-		{TableId: transactionsTableID, Name: "description", DataType: models.String, Nullable: true},
-		{TableId: transactionsTableID, Name: "direction", DataType: models.String, Nullable: true},
-		{TableId: transactionsTableID, Name: "status", DataType: models.String, Nullable: true},
-		{TableId: transactionsTableID, Name: "title", DataType: models.String, Nullable: true},
-		{TableId: transactionsTableID, Name: "amount", DataType: models.Float, Nullable: true},
+		{TableId: transactionsTableId, Name: "account_id", DataType: models.String, Nullable: true},
+		{TableId: transactionsTableId, Name: "bic_country", DataType: models.String, Nullable: true},
+		{TableId: transactionsTableId, Name: "country", DataType: models.String, Nullable: true},
+		{TableId: transactionsTableId, Name: "description", DataType: models.String, Nullable: true},
+		{TableId: transactionsTableId, Name: "direction", DataType: models.String, Nullable: true},
+		{TableId: transactionsTableId, Name: "status", DataType: models.String, Nullable: true},
+		{TableId: transactionsTableId, Name: "title", DataType: models.String, Nullable: true},
+		{TableId: transactionsTableId, Name: "amount", DataType: models.Float, Nullable: true},
 	}
 	for _, field := range transactionsFields {
 		_, err = usecase.CreateDataModelField(ctx, field)
-		assert.NoError(t, err)
+		if err != nil {
+			assert.FailNow(t, "Could not create field", err)
+		}
 	}
 
-	accountsTableID, err := usecase.CreateDataModelTable(ctx, organizationID, "accounts", "description")
-	assert.NoError(t, err)
+	accountsTableId, err := usecase.CreateDataModelTable(ctx, organizationId, "accounts", "description")
+	if err != nil {
+		assert.FailNow(t, "Could not create table", err)
+	}
 	accountsFields := []models.CreateFieldInput{
-		{TableId: accountsTableID, Name: "balance", DataType: models.Float, Nullable: true},
-		{TableId: accountsTableID, Name: "company_id", DataType: models.String, Nullable: true},
-		{TableId: accountsTableID, Name: "name", DataType: models.String, Nullable: true},
-		{TableId: accountsTableID, Name: "currency", DataType: models.String, Nullable: true},
-		{TableId: accountsTableID, Name: "is_frozen", DataType: models.Bool, Nullable: true},
+		{TableId: accountsTableId, Name: "balance", DataType: models.Float, Nullable: true},
+		{TableId: accountsTableId, Name: "company_id", DataType: models.String, Nullable: true},
+		{TableId: accountsTableId, Name: "name", DataType: models.String, Nullable: true},
+		{TableId: accountsTableId, Name: "currency", DataType: models.String, Nullable: true},
+		{TableId: accountsTableId, Name: "is_frozen", DataType: models.Bool, Nullable: true},
 	}
 	for _, field := range accountsFields {
 		_, err = usecase.CreateDataModelField(ctx, field)
-		assert.NoError(t, err)
+		if err != nil {
+			assert.FailNow(t, "Could not create field", err)
+		}
 	}
 
-	companiesTableID, err := usecase.CreateDataModelTable(ctx, organizationID, "companies", "description")
-	assert.NoError(t, err)
+	companiesTableId, err := usecase.CreateDataModelTable(ctx, organizationId, "companies", "description")
+	if err != nil {
+		assert.FailNow(t, "Could not create table", err)
+	}
 	companiesFields := []models.CreateFieldInput{
-		{TableId: companiesTableID, Name: "name", DataType: models.Float, Nullable: true},
+		{TableId: companiesTableId, Name: "name", DataType: models.Float, Nullable: true},
 	}
 	for _, field := range companiesFields {
 		_, err = usecase.CreateDataModelField(ctx, field)
-		assert.NoError(t, err)
+		if err != nil {
+			assert.FailNow(t, "Could not create field", err)
+		}
 	}
 
-	dm, err := usecase.GetDataModel(ctx, organizationID)
-	assert.NoError(t, err)
+	dm, err = usecase.GetDataModel(ctx, organizationId)
+	if err != nil {
+		assert.FailNow(t, "Could not get data model", err)
+	}
 
-	err = usecase.CreateDataModelLink(ctx, models.DataModelLinkCreateInput{
+	txToAccountLinkId, err := usecase.CreateDataModelLink(ctx, models.DataModelLinkCreateInput{
 		Name:           "account",
-		OrganizationID: organizationID,
-		ParentTableID:  accountsTableID,
+		OrganizationID: organizationId,
+		ParentTableID:  accountsTableId,
 		ParentFieldID:  dm.Tables["accounts"].Fields["object_id"].ID,
-		ChildTableID:   transactionsTableID,
+		ChildTableID:   transactionsTableId,
 		ChildFieldID:   dm.Tables["transactions"].Fields["account_id"].ID,
 	})
-	assert.NoError(t, err)
+	if err != nil {
+		assert.FailNow(t, "Could not create data model link", err)
+	}
 
-	err = usecase.CreateDataModelLink(ctx, models.DataModelLinkCreateInput{
+	_, err = usecase.CreateDataModelLink(ctx, models.DataModelLinkCreateInput{
 		Name:           "company",
-		OrganizationID: organizationID,
-		ParentTableID:  companiesTableID,
+		OrganizationID: organizationId,
+		ParentTableID:  companiesTableId,
 		ParentFieldID:  dm.Tables["companies"].Fields["object_id"].ID,
-		ChildTableID:   accountsTableID,
+		ChildTableID:   accountsTableId,
 		ChildFieldID:   dm.Tables["accounts"].Fields["company_id"].ID,
 	})
-	assert.NoError(t, err)
-	return usecase.GetDataModel(ctx, organizationID)
+	if err != nil {
+		assert.FailNow(t, "Could not create data model link", err)
+	}
+
+	pivot, err := usecase.CreatePivot(ctx, models.CreatePivotInput{
+		BaseTableId:    transactionsTableId,
+		OrganizationId: organizationId,
+		PathLinkIds:    []string{txToAccountLinkId},
+	})
+	if err != nil {
+		assert.FailNow(t, "Failed to create pivot value", err)
+	}
+	fmt.Printf("Created pivot %s\n", pivot.Id)
+
+	inboxUsecase := usecases.NewInboxUsecase()
+	inbox, err := inboxUsecase.CreateInbox(ctx, models.CreateInboxInput{
+		Name:           "test inbox",
+		OrganizationId: organizationId,
+	})
+	if err != nil {
+		assert.FailNow(t, "could not create inbox", err)
+	}
+	fmt.Printf("Created inbox %s successfully\n", inbox.Id)
+
+	// dm, err = usecase.GetDataModel(ctx, organizationId)
+	if err != nil {
+		assert.FailNow(t, "Could not get data model", err)
+	}
+	return dm, inbox.Id
 }
 
-func setupScenarioAndPublish(t *testing.T, ctx context.Context,
-	usecasesWithCreds usecases.UsecasesWithCreds, organizationId string,
+func setupScenarioAndPublish(
+	ctx context.Context,
+	t *testing.T,
+	usecasesWithCreds usecases.UsecasesWithCreds,
+	organizationId, inboxId string,
 ) string {
 	// Create a new empty scenario
 	scenarioUsecase := usecasesWithCreds.NewScenarioUsecase()
@@ -411,6 +466,17 @@ func setupScenarioAndPublish(t *testing.T, ctx context.Context,
 	}
 	fmt.Printf("Updated scenario iteration %+v\n", scenarioIteration)
 
+	workflowType := models.WorkflowAddToCaseIfPossible
+	_, err = scenarioUsecase.UpdateScenario(ctx, models.UpdateScenarioInput{
+		Id:                         scenarioId,
+		DecisionToCaseOutcomes:     []models.Outcome{models.Reject, models.Review},
+		DecisionToCaseInboxId:      null.StringFrom(inboxId),
+		DecisionToCaseWorkflowType: &workflowType,
+	})
+	if err != nil {
+		assert.FailNow(t, "Failed to create workflow on scenario", err)
+	}
+
 	return scenarioId
 }
 
@@ -453,11 +519,12 @@ func ingestAccounts(
 func createDecisions(
 	ctx context.Context,
 	t *testing.T,
-	usecasesWithCreds usecases.UsecasesWithCreds,
+	usecasesWithApiCreds usecases.UsecasesWithCreds,
+	usecasesWithUserCreds usecases.UsecasesWithCreds,
 	table models.Table,
 	organizationId, scenarioId string,
 ) {
-	decisionUsecase := usecasesWithCreds.NewDecisionUsecase()
+	decisionUsecase := usecasesWithApiCreds.NewDecisionUsecase()
 
 	// Create a decision [REJECT]
 	transactionPayloadJson := []byte(`{
@@ -471,6 +538,18 @@ func createDecisions(
 	assert.Equal(t, models.Reject, rejectDecision.Outcome,
 		"Expected decision to be Reject, got %s", rejectDecision.Outcome)
 
+	// Create a second decision with the same account_id to check their cases [REJECT]
+	rejectDecision2 := createAndTestDecision(ctx, t, transactionPayloadJson, table, decisionUsecase,
+		organizationId, scenarioId, 111)
+	assert.Equal(t, models.Reject, rejectDecision.Outcome,
+		"Expected decision to be Reject, got %s", rejectDecision.Outcome)
+
+	// Check that the two decisions on tx with account_id "{account_id_reject}" are both in a case - the same
+	assert.NotNil(t, rejectDecision.Case, "Decision is in a case")
+	assert.NotNil(t, rejectDecision2.Case, "Decision is in a case")
+	assert.Equal(t, rejectDecision.Case.Id, rejectDecision2.Case.Id,
+		"The two decisions are in the same case")
+
 	// Create a decision [APPROVE]
 	transactionPayloadJson = []byte(`{
 		"object_id": "{transaction_id}",
@@ -482,6 +561,7 @@ func createDecisions(
 		organizationId, scenarioId, 11)
 	assert.Equal(t, models.Approve, approveDecision.Outcome,
 		"Expected decision to be Approve, got %s", approveDecision.Outcome)
+	assert.Nil(t, approveDecision.Case, "Approve decision is not in a case")
 
 	// Create a decision [APPROVE] with a null field value (null field read)
 	transactionPayloadJson = []byte(`{
@@ -549,6 +629,38 @@ func createDecisions(
 		assert.ErrorIs(t, ruleExecution.Error, ast.ErrDivisionByZero,
 			"Expected error to be \"%s\", got \"%s\"", ast.ErrDivisionByZero, ruleExecution.Error)
 	}
+
+	// find the rule with higest score
+	ruleId := ""
+	for _, r := range rejectDecision.RuleExecutions {
+		if r.Rule.Name == "Check on account name" {
+			ruleId = r.Rule.Id
+		}
+	}
+	// Now snooze the rules and rerun the decision in REJECT status
+	ruleSnoozeUsecase := usecasesWithUserCreds.NewRuleSnoozeUsecase()
+	_, err := ruleSnoozeUsecase.SnoozeDecision(ctx, models.SnoozeDecisionInput{
+		Comment:        "this is a test snooze",
+		DecisionId:     rejectDecision.DecisionId,
+		Duration:       "12h",
+		OrganizationId: organizationId,
+		RuleId:         ruleId, // snooze a rule (nevermind which one)
+		UserId:         usecasesWithUserCreds.Credentials.ActorIdentity.UserId,
+	})
+	if err != nil {
+		assert.FailNow(t, "Failed to snooze decision", err)
+	}
+	// After snoozing the rule, the new decision should be approved
+	transactionPayloadJson = []byte(`{
+		"object_id": "{transaction_id}",
+		"updated_at": "2020-01-01T00:00:00Z",
+		"account_id": "{account_id_reject}",
+		"amount": 100
+	}`)
+	approvedDecisionAfternooze := createAndTestDecision(ctx, t, transactionPayloadJson, table, decisionUsecase,
+		organizationId, scenarioId, 11)
+	assert.Equal(t, models.Approve, approvedDecisionAfternooze.Outcome,
+		"Expected decision to be Approve, got %s", approvedDecisionAfternooze.Outcome)
 }
 
 func createAndTestDecision(

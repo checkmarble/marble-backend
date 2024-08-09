@@ -58,8 +58,8 @@ func (d *DataModelRepository) GetDataModelTable(ctx context.Context, exec reposi
 	return args.Get(0).(models.TableMetadata), args.Error(1)
 }
 
-func (d *DataModelRepository) CreateDataModelLink(ctx context.Context, exec repositories.Executor, link models.DataModelLinkCreateInput) error {
-	args := d.Called(ctx, exec, link)
+func (d *DataModelRepository) CreateDataModelLink(ctx context.Context, exec repositories.Executor, id string, link models.DataModelLinkCreateInput) error {
+	args := d.Called(ctx, exec, id, link)
 	return args.Error(0)
 }
 

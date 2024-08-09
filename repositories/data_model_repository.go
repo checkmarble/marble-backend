@@ -25,7 +25,12 @@ type DataModelRepository interface {
 		field string,
 		input models.UpdateFieldInput,
 	) error
-	CreateDataModelLink(ctx context.Context, exec Executor, link models.DataModelLinkCreateInput) error
+	CreateDataModelLink(
+		ctx context.Context,
+		exec Executor,
+		id string,
+		link models.DataModelLinkCreateInput,
+	) error
 	GetLinks(ctx context.Context, exec Executor, organizationId string) ([]models.LinkToSingle, error)
 	DeleteDataModel(ctx context.Context, exec Executor, organizationID string) error
 	GetDataModelField(ctx context.Context, exec Executor, fieldId string) (models.FieldMetadata, error)
@@ -206,7 +211,7 @@ func (repo *DataModelRepositoryPostgresql) UpdateDataModelField(
 	return err
 }
 
-func (repo *DataModelRepositoryPostgresql) CreateDataModelLink(ctx context.Context, exec Executor, link models.DataModelLinkCreateInput) error {
+func (repo *DataModelRepositoryPostgresql) CreateDataModelLink(ctx context.Context, exec Executor, id string, link models.DataModelLinkCreateInput) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -217,6 +222,7 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelLink(ctx context.Conte
 		NewQueryBuilder().
 			Insert("data_model_links").
 			Columns(
+				"id",
 				"organization_id",
 				"name",
 				"parent_table_id",
@@ -225,6 +231,7 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelLink(ctx context.Conte
 				"child_field_id",
 			).
 			Values(
+				id,
 				link.OrganizationID,
 				strings.ToLower(link.Name),
 				link.ParentTableID,
