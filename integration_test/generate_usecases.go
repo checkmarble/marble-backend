@@ -1,27 +1,29 @@
 package integration
 
 import (
-	"context"
-
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases"
-	"github.com/checkmarble/marble-backend/utils"
 )
 
-func GenerateUsecaseWithCredForMarbleAdmin(
-	ctx context.Context,
+func generateUsecaseWithCredForMarbleAdmin(
 	testUsecases usecases.Usecases,
 	organizationId string,
 ) usecases.UsecasesWithCreds {
-	creds := models.Credentials{
-		Role:           models.MARBLE_ADMIN,
-		OrganizationId: organizationId,
-	}
+	creds := models.Credentials{Role: models.MARBLE_ADMIN}
 	return usecases.UsecasesWithCreds{
 		Usecases:                testUsecases,
 		Credentials:             creds,
-		Logger:                  utils.LoggerFromContext(ctx),
 		OrganizationIdOfContext: func() (string, error) { return organizationId, nil },
-		Context:                 ctx,
+	}
+}
+
+func generateUsecaseWithCreds(
+	testUsecases usecases.Usecases,
+	creds models.Credentials,
+) usecases.UsecasesWithCreds {
+	return usecases.UsecasesWithCreds{
+		Usecases:                testUsecases,
+		Credentials:             creds,
+		OrganizationIdOfContext: func() (string, error) { return creds.OrganizationId, nil },
 	}
 }

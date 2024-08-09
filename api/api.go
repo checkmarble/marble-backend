@@ -60,7 +60,6 @@ func (api *API) UsecasesWithCreds(r *http.Request) *usecases.UsecasesWithCreds {
 	return &usecases.UsecasesWithCreds{
 		Usecases:    api.usecases,
 		Credentials: creds,
-		Logger:      utils.LoggerFromContext(ctx),
 		OrganizationIdOfContext: func() (string, error) {
 			if organizationId == "" {
 				return "", fmt.Errorf(
@@ -71,6 +70,5 @@ func (api *API) UsecasesWithCreds(r *http.Request) *usecases.UsecasesWithCreds {
 			}
 			return organizationId, nil
 		},
-		Context: ctx,
 	}
 }

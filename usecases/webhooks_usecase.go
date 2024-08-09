@@ -2,9 +2,6 @@ package usecases
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
-	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
@@ -80,15 +77,6 @@ func (usecase WebhooksUsecase) RegisterWebhook(
 
 	webhook, err := usecase.convoyRepository.RegisterWebhook(ctx, organizationId, partnerId, input)
 	return webhook, errors.Wrap(err, "error registering webhook")
-}
-
-func generateSecret() string {
-	key := make([]byte, 32)
-	_, err := rand.Read(key)
-	if err != nil {
-		panic(fmt.Errorf("generateSecret: %w", err))
-	}
-	return hex.EncodeToString(key)
 }
 
 func (usecase WebhooksUsecase) GetWebhook(
