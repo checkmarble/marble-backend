@@ -642,7 +642,7 @@ func createDecisions(
 	_, err := ruleSnoozeUsecase.SnoozeDecision(ctx, models.SnoozeDecisionInput{
 		Comment:        "this is a test snooze",
 		DecisionId:     rejectDecision.DecisionId,
-		Duration:       "12h",
+		Duration:       "500ms", // snooze for 0.5 sec, after this wait for the snooze to end before moving on
 		OrganizationId: organizationId,
 		RuleId:         ruleId, // snooze a rule (nevermind which one)
 		UserId:         usecasesWithUserCreds.Credentials.ActorIdentity.UserId,
@@ -661,6 +661,7 @@ func createDecisions(
 		organizationId, scenarioId, 11)
 	assert.Equal(t, models.Approve, approvedDecisionAfternooze.Outcome,
 		"Expected decision to be Approve, got %s", approvedDecisionAfternooze.Outcome)
+	time.Sleep(time.Millisecond * 500)
 }
 
 func createAndTestDecision(
