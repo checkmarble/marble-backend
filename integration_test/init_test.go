@@ -19,6 +19,7 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/postgres"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/token"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 const (
@@ -90,6 +91,9 @@ func TestMain(m *testing.M) {
 
 	pgConfig := infra.PgConfig{ConnectionString: connectionString}
 	migrater := repositories.NewMigrater(pgConfig)
+	logger := utils.NewLogger("text")
+	ctx = utils.StoreLoggerInContext(ctx, logger)
+
 	err = migrater.Run(ctx)
 	if err != nil {
 		log.Fatalf("Could not run migrations: %s", err)
