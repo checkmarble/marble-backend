@@ -671,7 +671,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelLink_nominal() {
 		Return(models.FieldMetadata{Name: parentFieldName}, nil)
 	suite.dataModelRepository.On("GetDataModelField", suite.ctx, suite.transaction, link.ChildFieldID).
 		Return(models.FieldMetadata{}, nil)
-	suite.dataModelRepository.On("CreateDataModelLink", suite.ctx, suite.transaction, link).
+	suite.dataModelRepository.On("CreateDataModelLink", suite.ctx, suite.transaction, mock.AnythingOfType("string"), link).
 		Return(nil)
 	// for GetDataModel (reused in CreateDataModelLink), copied from TestGetDataModel_nominal_with_unique
 	suite.enforceSecurity.On("ReadDataModel").Return(nil)
@@ -682,7 +682,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelLink_nominal() {
 	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx).
 		Return(suite.uniqueIndexes, nil)
 
-	err := usecase.CreateDataModelLink(suite.ctx, link)
+	_, err := usecase.CreateDataModelLink(suite.ctx, link)
 	suite.Require().NoError(err, "no error expected")
 
 	suite.AssertExpectations()
@@ -719,7 +719,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelLink_parent_field_not
 	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx).
 		Return([]models.UnicityIndex{}, nil)
 
-	err := usecase.CreateDataModelLink(suite.ctx, link)
+	_, err := usecase.CreateDataModelLink(suite.ctx, link)
 	suite.Require().Error(err, "error expected")
 	suite.Require().ErrorContains(err, "parent field must be unique", "expected error should be returned")
 
@@ -731,7 +731,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelLink_security_error()
 	usecase := suite.makeUsecase()
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(suite.securityError)
 
-	err := usecase.CreateDataModelLink(suite.ctx, link)
+	_, err := usecase.CreateDataModelLink(suite.ctx, link)
 	suite.Require().Error(err, "error expected")
 	suite.Require().Equal(suite.securityError, err, "expected error should be returned")
 
@@ -750,7 +750,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelLink_repository_error
 	suite.dataModelRepository.On("GetDataModelField", suite.ctx, suite.transaction, link.ChildFieldID).
 		Return(models.FieldMetadata{}, suite.repositoryError)
 
-	err := usecase.CreateDataModelLink(suite.ctx, link)
+	_, err := usecase.CreateDataModelLink(suite.ctx, link)
 	suite.Require().Error(err, "error expected")
 	suite.Require().Equal(suite.repositoryError, err, "expected error should be returned")
 
