@@ -324,43 +324,44 @@ func findLinksToField(dataModel models.DataModel, tableName string, fieldName st
 	return links
 }
 
-func (usecase *DataModelUseCase) CreateDataModelLink(ctx context.Context, link models.DataModelLinkCreateInput) error {
+func (usecase *DataModelUseCase) CreateDataModelLink(ctx context.Context, link models.DataModelLinkCreateInput) (string, error) {
 	if err := usecase.enforceSecurity.WriteDataModel(link.OrganizationID); err != nil {
-		return err
+		return "", err
 	}
 	exec := usecase.executorFactory.NewExecutor()
 
 	// check existence of tables
 	if _, err := usecase.dataModelRepository.GetDataModelTable(ctx, exec, link.ChildTableID); err != nil {
-		return err
+		return "", err
 	}
 	table, err := usecase.dataModelRepository.GetDataModelTable(ctx, exec, link.ParentTableID)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// check existence of fields
 	if _, err := usecase.dataModelRepository.GetDataModelField(ctx, exec, link.ChildFieldID); err != nil {
-		return err
+		return "", err
 	}
 	field, err := usecase.dataModelRepository.GetDataModelField(ctx, exec, link.ParentFieldID)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// Check that the parent field is unique by getting the full data model
 	dataModel, err := usecase.GetDataModel(ctx, link.OrganizationID)
 	if err != nil {
-		return err
+		return "", err
 	}
 	parentTable := dataModel.Tables[table.Name]
 	parentField := parentTable.Fields[field.Name]
 	if parentField.UnicityConstraint != models.ActiveUniqueConstraint {
-		return errors.Wrap(models.BadParameterError,
+		return "", errors.Wrap(models.BadParameterError,
 			fmt.Sprintf("parent field must be unique: field %s is not", field.Name))
 	}
 
-	return usecase.dataModelRepository.CreateDataModelLink(ctx, exec, link)
+	linkId := uuid.NewString()
+	return linkId, usecase.dataModelRepository.CreateDataModelLink(ctx, exec, linkId, link)
 }
 
 func (usecase *DataModelUseCase) DeleteDataModel(ctx context.Context, organizationID string) error {

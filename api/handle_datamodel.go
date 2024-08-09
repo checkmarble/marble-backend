@@ -164,7 +164,7 @@ func (api *API) CreateLink(c *gin.Context) {
 	}
 
 	usecase := api.UsecasesWithCreds(c.Request).NewDataModelUseCase()
-	err = usecase.CreateDataModelLink(c.Request.Context(), link)
+	_, err = usecase.CreateDataModelLink(c.Request.Context(), link)
 	if presentError(c, err) {
 		return
 	}
