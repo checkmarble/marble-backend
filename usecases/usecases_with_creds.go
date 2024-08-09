@@ -1,9 +1,6 @@
 package usecases
 
 import (
-	"context"
-	"log/slog"
-
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/decision_workflows"
@@ -17,9 +14,7 @@ import (
 type UsecasesWithCreds struct {
 	Usecases
 	Credentials             models.Credentials
-	Logger                  *slog.Logger
 	OrganizationIdOfContext func() (string, error)
-	Context                 context.Context
 }
 
 func (usecases *UsecasesWithCreds) NewEnforceSecurity() security.EnforceSecurity {
