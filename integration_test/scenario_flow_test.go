@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/guregu/null/v5"
 	"github.com/segmentio/analytics-go/v3"
 	"github.com/stretchr/testify/assert"
@@ -46,7 +47,7 @@ func TestScenarioEndToEnd(t *testing.T) {
 	ctx = utils.StoreSegmentClientInContext(ctx, analytics.New("dummy key"))
 
 	// Setup an organization and user credentials
-	userCreds, dataModel, inboxId := setupOrgAndCreds(ctx, t)
+	userCreds, dataModel, inboxId := setupOrgAndCreds(ctx, t, "test org with api usage")
 	organizationId := userCreds.OrganizationId
 
 	// Now that we have a user and credentials, create a container for usecases with these credentials
@@ -85,11 +86,11 @@ func setupApiCreds(ctx context.Context, t *testing.T, usecasesWithCreds usecases
 	return creds
 }
 
-func setupOrgAndCreds(ctx context.Context, t *testing.T) (models.Credentials, models.DataModel, string) {
+func setupOrgAndCreds(ctx context.Context, t *testing.T, orgName string) (models.Credentials, models.DataModel, string) {
 	// Create a new organization
 	testAdminUsecase := generateUsecaseWithCredForMarbleAdmin(testUsecases, "")
 	orgUsecase := testAdminUsecase.NewOrganizationUseCase()
-	organization, err := orgUsecase.CreateOrganization(ctx, "Test org n°42")
+	organization, err := orgUsecase.CreateOrganization(ctx, orgName)
 	if err != nil {
 		assert.FailNow(t, "Could not create organization", err)
 	}
@@ -108,7 +109,7 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T) (models.Credentials, mo
 	// Create a new admin user on the organization
 	userUsecase := testAdminUsecase.NewUserUseCase()
 	adminUser, err := userUsecase.AddUser(ctx, models.CreateUser{
-		Email:          "test@testmarble.com",
+		Email:          uuid.NewString() + "@testmarble.com",
 		OrganizationId: organizationId,
 		Role:           models.ADMIN,
 	})
