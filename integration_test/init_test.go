@@ -113,8 +113,11 @@ func TestMain(m *testing.M) {
 	// actually using the convoy repository to send webhooks will fail (because we don't have an instance set up),
 	// but it is not blocking (an error will be logged but the test will pass). We sill need to pass the provider
 	// or else the repository will panic.
-	repos := repositories.NewRepositories(dbPool, repositories.WithConvoyClientProvider(
-		infra.InitializeConvoyRessources(infra.ConvoyConfiguration{})))
+	repos := repositories.NewRepositories(dbPool,
+		repositories.WithConvoyClientProvider(
+			infra.InitializeConvoyRessources(infra.ConvoyConfiguration{})),
+		repositories.WithFakeGcsRepository(true),
+	)
 
 	jwtRepository := repositories.NewJWTRepository(privateKey)
 	database := postgres.New(dbPool)

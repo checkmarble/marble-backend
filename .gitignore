@@ -46,6 +46,7 @@ __debug_bin*
 
 # Use by the Fake GcsRepository
 /tempFiles
+/integration_test/tempFiles
 
 e2e_test
 
