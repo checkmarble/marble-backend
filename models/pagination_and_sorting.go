@@ -11,6 +11,14 @@ type PaginationAndSorting struct {
 	Next     bool
 }
 
+func NewDefaultPaginationAndSorting(sortColumnName string) PaginationAndSorting {
+	return PaginationAndSorting{
+		Sorting: SortingField(sortColumnName),
+		Order:   SortingOrderDesc,
+		Limit:   100,
+	}
+}
+
 type (
 	SortingField string
 	SortingOrder string

@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/segmentio/analytics-go/v3"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/usecases"
@@ -30,6 +30,8 @@ func TestBatchIngestionAndExecution(t *testing.T) {
 		- Creates a scenario iteration for the scenario, updates its body and publishes it
 		- Validates and uploads a csv file (one line) with data of transactions
 		- Runs the batch job that executes data ingestion from CSV files
+		- Schedules (manually) a batch execution
+		- Runs the batch job that executes all scenarios marked as due
 
 		It does so by using the usecases (with credentials where applicable) and the repositories with a real local migrated docker db.
 		It does not test the API layer.
@@ -47,15 +49,15 @@ func TestBatchIngestionAndExecution(t *testing.T) {
 	// Now that we have a user and credentials, create a container for usecases with these credentials
 	usecasesWithCreds := generateUsecaseWithCreds(testUsecases, userCreds)
 
+	rules := getRulesForBatchTest()
 	// Scenario setup
-	scenarioId := setupScenarioAndPublish(ctx, t, usecasesWithCreds, organizationId, inboxId)
-	fmt.Println(scenarioId)
+	scenarioId, scenarioIterationId := setupScenarioAndPublish(ctx, t, usecasesWithCreds, organizationId, inboxId, rules)
 
 	// Ingest two accounts (parent of a transaction) to execute a full scenario: one to be rejected, one to be approved
 	ingestAccountsBatch(ctx, t, usecasesWithCreds, organizationId, string(userCreds.ActorIdentity.UserId))
 
 	// Create a pair of decision and check that the outcome matches the expectation
-	// createDecisionsBatch(ctx, t, usecasesWithCreds, dataModel.Tables["transactions"], organizationId, scenarioId)
+	createDecisionsBatch(ctx, t, usecasesWithCreds, organizationId, scenarioId, scenarioIterationId)
 }
 
 func ingestAccountsBatch(
@@ -64,7 +66,6 @@ func ingestAccountsBatch(
 	usecases usecases.UsecasesWithCreds,
 	organizationId, userId string,
 ) {
-	return
 	ingestionUsecase := usecases.NewIngestionUseCase()
 	fileContent := `object_id,updated_at,account_id,bic_country,country,description,status,title,amount
 a8ca9ad7-1581-44f8-89d0-1f00500f2d02,2024-08-11T22:47:00Z,7b7ffdbc-cf98-48cb-a468-7695122d74d6,france,germany,"some tx description",validated,"some tx title",4200
@@ -95,145 +96,77 @@ func createDecisionsBatch(
 	ctx context.Context,
 	t *testing.T,
 	usecasesWithUserCreds usecases.UsecasesWithCreds,
-	table models.Table,
-	organizationId, scenarioId string,
+	organizationId, scenarioId, scenarioIterationId string,
 ) {
-	decisionUsecase := usecasesWithUserCreds.NewDecisionUsecase()
-
-	// Create a decision [REJECT]
-	transactionPayloadJson := []byte(`{
-		"object_id": "{transaction_id}",
-		"updated_at": "2020-01-01T00:00:00Z",
-		"account_id": "{account_id_reject}",
-		"amount": 100
-	}`)
-	rejectDecision := createAndTestDecision(ctx, t, transactionPayloadJson, table, decisionUsecase,
-		organizationId, scenarioId, 111)
-	assert.Equal(t, models.Reject, rejectDecision.Outcome,
-		"Expected decision to be Reject, got %s", rejectDecision.Outcome)
-
-	// Create a second decision with the same account_id to check their cases [REJECT]
-	rejectDecision2 := createAndTestDecision(ctx, t, transactionPayloadJson, table, decisionUsecase,
-		organizationId, scenarioId, 111)
-	assert.Equal(t, models.Reject, rejectDecision.Outcome,
-		"Expected decision to be Reject, got %s", rejectDecision.Outcome)
-
-	// Check that the two decisions on tx with account_id "{account_id_reject}" are both in a case - the same
-	assert.NotNil(t, rejectDecision.Case, "Decision is in a case")
-	assert.NotNil(t, rejectDecision2.Case, "Decision is in a case")
-	assert.Equal(t, rejectDecision.Case.Id, rejectDecision2.Case.Id,
-		"The two decisions are in the same case")
-
-	// Create a decision [APPROVE]
-	transactionPayloadJson = []byte(`{
-		"object_id": "{transaction_id}",
-		"updated_at": "2020-01-01T00:00:00Z",
-		"account_id": "{account_id_approve}",
-		"amount": 100
-	}`)
-	approveDecision := createAndTestDecision(ctx, t, transactionPayloadJson, table, decisionUsecase,
-		organizationId, scenarioId, 11)
-	assert.Equal(t, models.Approve, approveDecision.Outcome,
-		"Expected decision to be Approve, got %s", approveDecision.Outcome)
-	assert.Nil(t, approveDecision.Case, "Approve decision is not in a case")
-
-	// Create a decision [APPROVE] with a null field value (null field read)
-	transactionPayloadJson = []byte(`{
-		"object_id": "{transaction_id}",
-		"updated_at": "2020-01-01T00:00:00Z",
-		"account_id": "{account_id_approve_no_name}",
-		"amount": 100
-	}`)
-	approveNoNameDecision := createAndTestDecision(ctx, t, transactionPayloadJson, table,
-		decisionUsecase, organizationId, scenarioId, 11)
-	assert.Equal(t, models.Approve, approveNoNameDecision.Outcome,
-		"Expected decision to be Approve, got %s", approveNoNameDecision.Outcome)
-	if assert.NotEmpty(t, approveNoNameDecision.RuleExecutions) {
-		ruleExecution := findRuleExecutionByName(approveNoNameDecision.RuleExecutions, "Check on account name")
-		assert.ErrorIs(t, ruleExecution.Error, ast.ErrNullFieldRead,
-			"Expected error to be \"%s\", got \"%s\"", ast.ErrNullFieldRead, ruleExecution.Error)
+	scheduledExecUsecase := usecasesWithUserCreds.NewScheduledExecutionUsecase()
+	ses, err := scheduledExecUsecase.ListScheduledExecutions(ctx, scenarioId)
+	if err != nil {
+		assert.FailNow(t, "Failed to list scheduled executions", err)
+	}
+	if len(ses) != 0 {
+		assert.FailNowf(t, "wrong number of scheduled executions",
+			"Expected zero scheduled execution for the scenario %s, got %d", scenarioId, len(ses))
 	}
 
-	// Create a decision [APPROVE] without a record in db (no row read)
-	transactionPayloadJson = []byte(`{
-		"object_id": "{transaction_id}",
-		"updated_at": "2020-01-01T00:00:00Z",
-		"account_id": "{account_id_approve_no_record}",
-		"amount": 100
-	}`)
-	approveNoRecordDecision := createAndTestDecision(ctx, t, transactionPayloadJson, table,
-		decisionUsecase, organizationId, scenarioId, 11)
-	assert.Equal(t, models.Approve, approveNoRecordDecision.Outcome,
-		"Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
-	if assert.NotEmpty(t, approveNoRecordDecision.RuleExecutions) {
-		ruleExecution := findRuleExecutionByName(approveNoRecordDecision.RuleExecutions, "Check on account name")
-		assert.ErrorIs(t, ruleExecution.Error, ast.ErrNoRowsRead,
-			"Expected error to be \"%s\", got \"%s\"", ast.ErrNoRowsRead, ruleExecution.Error)
-	}
-
-	// Create a decision [APPROVE] without a field in payload (null field read)
-	transactionPayloadJson = []byte(`{
-		"object_id": "{transaction_id}",
-		"updated_at": "2020-01-01T00:00:00Z",
-		"account_id": "{account_id_approve}"
-	}`)
-	approveMissingFieldInPayloadDecision := createAndTestDecision(ctx, t, transactionPayloadJson,
-		table, decisionUsecase, organizationId, scenarioId, 1)
-	assert.Equal(t, models.Approve, approveMissingFieldInPayloadDecision.Outcome,
-		"Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
-	if assert.NotEmpty(t, approveMissingFieldInPayloadDecision.RuleExecutions) {
-		ruleExecution := findRuleExecutionByName(approveMissingFieldInPayloadDecision.RuleExecutions, "Check on account name")
-		assert.ErrorIs(t, ruleExecution.Error, ast.ErrNullFieldRead,
-			"Expected error to be \"%s\", got \"%s\"", ast.ErrNullFieldRead, ruleExecution.Error)
-	}
-
-	// Create a decision [APPROVE] with a division by zero
-	transactionPayloadJson = []byte(`{
-		"object_id": "{transaction_id}",
-		"updated_at": "2020-01-01T00:00:00Z",
-		"account_id": "{account_id_approve}",
-		"amount": 0
-	}`)
-	approveDivisionByZeroDecision := createAndTestDecision(ctx, t, transactionPayloadJson, table,
-		decisionUsecase, organizationId, scenarioId, 11)
-	assert.Equal(t, models.Approve, approveDivisionByZeroDecision.Outcome,
-		"Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
-	if assert.NotEmpty(t, approveDivisionByZeroDecision.RuleExecutions) {
-		ruleExecution := findRuleExecutionByName(approveDivisionByZeroDecision.RuleExecutions, "Check on account name")
-		assert.ErrorIs(t, ruleExecution.Error, ast.ErrDivisionByZero,
-			"Expected error to be \"%s\", got \"%s\"", ast.ErrDivisionByZero, ruleExecution.Error)
-	}
-
-	// find the rule with higest score
-	ruleId := ""
-	for _, r := range rejectDecision.RuleExecutions {
-		if r.Rule.Name == "Check on account name" {
-			ruleId = r.Rule.Id
-		}
-	}
-	// Now snooze the rules and rerun the decision in REJECT status
-	ruleSnoozeUsecase := usecasesWithUserCreds.NewRuleSnoozeUsecase()
-	_, err := ruleSnoozeUsecase.SnoozeDecision(ctx, models.SnoozeDecisionInput{
-		Comment:        "this is a test snooze",
-		DecisionId:     rejectDecision.DecisionId,
-		Duration:       "500ms", // snooze for 0.5 sec, after this wait for the snooze to end before moving on
-		OrganizationId: organizationId,
-		RuleId:         ruleId, // snooze a rule (nevermind which one)
-		UserId:         usecasesWithUserCreds.Credentials.ActorIdentity.UserId,
+	err = scheduledExecUsecase.CreateScheduledExecution(ctx, models.CreateScheduledExecutionInput{
+		OrganizationId:      organizationId,
+		ScenarioId:          scenarioId,
+		ScenarioIterationId: scenarioIterationId,
+		Manual:              true,
 	})
 	if err != nil {
-		assert.FailNow(t, "Failed to snooze decision", err)
+		assert.FailNow(t, "Failed to create scheduled executions", err)
 	}
-	// After snoozing the rule, the new decision should be approved
-	transactionPayloadJson = []byte(`{
-		"object_id": "{transaction_id}",
-		"updated_at": "2020-01-01T00:00:00Z",
-		"account_id": "{account_id_reject}",
-		"amount": 100
-	}`)
-	approvedDecisionAfternooze := createAndTestDecision(ctx, t, transactionPayloadJson, table, decisionUsecase,
-		organizationId, scenarioId, 11)
-	assert.Equal(t, models.Approve, approvedDecisionAfternooze.Outcome,
-		"Expected decision to be Approve, got %s", approvedDecisionAfternooze.Outcome)
-	time.Sleep(time.Millisecond * 500)
+
+	ses, err = scheduledExecUsecase.ListScheduledExecutions(ctx, scenarioId)
+	if err != nil {
+		assert.FailNow(t, "Failed to list scheduled executions", err)
+	}
+	if len(ses) != 1 {
+		assert.FailNowf(t, "wrong number of scheduled executions",
+			"Expected one scheduled execution for the scenario %s, got %d", scenarioId, len(ses))
+	}
+
+	runScheduledExecUsecase := usecasesWithUserCreds.NewRunScheduledExecution()
+	err = runScheduledExecUsecase.ExecuteAllScheduledScenarios(ctx)
+	if err != nil {
+		assert.FailNow(t, "Failed to run scheduled executions", err)
+	}
+
+	se, err := scheduledExecUsecase.GetScheduledExecution(ctx, ses[0].Id)
+	if err != nil {
+		assert.FailNow(t, "Failed to get scheduled execution", err)
+	}
+	assert.Equal(t, models.ScheduledExecutionSuccess, se.Status, "Status should be success")
+	assert.Equal(t, 1, se.NumberOfCreatedDecisions, "Should have created 1 decision")
+
+	decisionsUsecase := usecasesWithUserCreds.NewDecisionUsecase()
+	decisions, err := decisionsUsecase.ListDecisions(ctx, organizationId,
+		models.NewDefaultPaginationAndSorting("created_at"), dto.DecisionFilters{
+			ScheduledExecutionIds: []string{se.Id},
+		},
+	)
+	if err != nil {
+		assert.FailNow(t, "Error while listing decisions", err)
+	}
+	assert.Equalf(t, 1, len(decisions), "Expected 1 decision, got %d", len(decisions))
+	assert.Equalf(t, models.Reject, decisions[0].Outcome,
+		"Decision should be in review status, got %s", decisions[0].Outcome)
+}
+
+func getRulesForBatchTest() []models.CreateRuleInput {
+	return []models.CreateRuleInput{
+		{
+			FormulaAstExpression: &ast.Node{
+				Function: ast.FUNC_EQUAL,
+				Children: []ast.Node{
+					{Constant: 1},
+					{Constant: 1},
+				},
+			},
+			ScoreModifier: 100,
+			Name:          "Rule that hits",
+			Description:   "Rule that hits",
+		},
+	}
 }
