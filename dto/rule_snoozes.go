@@ -13,7 +13,7 @@ type RuleSnooze struct {
 	ExpiresAt             time.Time `json:"ends_at"`
 	CreatedByUser         string    `json:"created_by_user"`
 	CreatedFromDecisionId *string   `json:"created_from_decision_id"`
-	CreatedFromRuleId     *string   `json:"created_from_rule_id"`
+	CreatedFromRuleId     string    `json:"created_from_rule_id"`
 }
 
 type RuleSnoozeWithRuleId struct {

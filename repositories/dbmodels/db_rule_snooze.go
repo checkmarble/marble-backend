@@ -33,7 +33,7 @@ type DBRuleSnooze struct {
 	Id                    string    `db:"id"`
 	CreatedByUser         string    `db:"created_by_user"`
 	CreatedFromDecisionId *string   `db:"created_from_decision_id"`
-	CreatedFromRuleId     *string   `db:"created_from_rule_id"`
+	CreatedFromRuleId     string    `db:"created_from_rule_id"`
 	SnoozeGroupId         string    `db:"snooze_group_id"`
 	PivotValue            string    `db:"pivot_value"`
 	StartsAt              time.Time `db:"starts_at"`
