@@ -13,7 +13,7 @@ type RuleSnooze struct {
 	OrganizationId        string
 	CreatedByUser         string
 	CreatedFromDecisionId *string
-	CreatedFromRuleId     *string
+	CreatedFromRuleId     string
 	PivotValue            string
 	SnoozeGroupId         string
 	StartsAt              time.Time
@@ -24,7 +24,7 @@ type RuleSnoozeWithRuleId struct {
 	Id                    string
 	CreatedByUser         string
 	CreatedFromDecisionId *string
-	CreatedFromRuleId     *string
+	CreatedFromRuleId     string
 	PivotValue            string
 	RuleId                string
 	SnoozeGroupId         string
