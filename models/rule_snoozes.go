@@ -13,6 +13,7 @@ type RuleSnooze struct {
 	OrganizationId        string
 	CreatedByUser         string
 	CreatedFromDecisionId *string
+	CreatedFromRuleId     *string
 	PivotValue            string
 	SnoozeGroupId         string
 	StartsAt              time.Time
@@ -23,6 +24,7 @@ type RuleSnoozeWithRuleId struct {
 	Id                    string
 	CreatedByUser         string
 	CreatedFromDecisionId *string
+	CreatedFromRuleId     *string
 	PivotValue            string
 	RuleId                string
 	SnoozeGroupId         string
@@ -47,6 +49,7 @@ func NewSnoozesOfDecision(decisionId string, snoozes []RuleSnooze, iteration Sce
 					Id:                    s.Id,
 					CreatedByUser:         s.CreatedByUser,
 					CreatedFromDecisionId: s.CreatedFromDecisionId,
+					CreatedFromRuleId:     s.CreatedFromRuleId,
 					PivotValue:            s.PivotValue,
 					RuleId:                ruleId,
 					SnoozeGroupId:         s.SnoozeGroupId,
@@ -69,6 +72,7 @@ type RuleSnoozeCreateInput struct {
 	Id                    string
 	CreatedByUserId       UserId
 	CreatedFromDecisionId string
+	CreatedFromRuleId     string
 	ExpiresAt             time.Time
 	PivotValue            string
 	SnoozeGroupId         string

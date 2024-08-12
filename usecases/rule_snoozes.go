@@ -269,6 +269,7 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 				CreatedByUserId:       input.UserId,
 				ExpiresAt:             time.Now().Add(duration),
 				CreatedFromDecisionId: input.DecisionId,
+				CreatedFromRuleId:     thisRule.Id,
 				PivotValue:            *decision.PivotValue,
 				SnoozeGroupId:         *snoozeGroupId,
 			})

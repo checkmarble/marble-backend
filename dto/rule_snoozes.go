@@ -13,6 +13,7 @@ type RuleSnooze struct {
 	ExpiresAt             time.Time `json:"ends_at"`
 	CreatedByUser         string    `json:"created_by_user"`
 	CreatedFromDecisionId *string   `json:"created_from_decision_id"`
+	CreatedFromRuleId     *string   `json:"created_from_rule_id"`
 }
 
 type RuleSnoozeWithRuleId struct {
@@ -28,6 +29,7 @@ func AdaptRuleSnoose(r models.RuleSnooze) RuleSnooze {
 		ExpiresAt:             r.ExpiresAt,
 		CreatedByUser:         r.CreatedByUser,
 		CreatedFromDecisionId: r.CreatedFromDecisionId,
+		CreatedFromRuleId:     r.CreatedFromRuleId,
 	}
 }
 
@@ -47,6 +49,7 @@ func AdaptSnoozesOfDecision(s models.SnoozesOfDecision) SnoozesOfDecision {
 				ExpiresAt:             s.ExpiresAt,
 				CreatedByUser:         s.CreatedByUser,
 				CreatedFromDecisionId: s.CreatedFromDecisionId,
+				CreatedFromRuleId:     s.CreatedFromRuleId,
 			},
 			RuleId: s.RuleId,
 		})
