@@ -248,7 +248,7 @@ func createDataModelAndSetupCaseManager(
 	}
 	fmt.Printf("Created inbox %s successfully\n", inbox.Id)
 
-	// dm, err = usecase.GetDataModel(ctx, organizationId)
+	dm, err = usecase.GetDataModel(ctx, organizationId)
 	if err != nil {
 		assert.FailNow(t, "Could not get data model", err)
 	}
