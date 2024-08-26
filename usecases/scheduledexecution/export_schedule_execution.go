@@ -114,12 +114,17 @@ func (exporter *ExportScheduleExecution) uploadDecisions(src *io.PipeReader,
 	uploadErrorChan := make(chan error, 1)
 	go func() {
 		err := exporter.AwsS3Repository.StoreInBucket(context.Background(), s3Bucket, filename, src)
+		if err != nil {
+			uploadErrorChan <- err
+			return
+		}
 
 		// Ensure that src is consumed entirely. StoreInBucket can fail without reading everything in src.
 		// The goal is to avoid inifinite blocking of PipeWriter.Write
-		io.Copy(io.Discard, src)
-
-		uploadErrorChan <- err
+		_, err = io.Copy(io.Discard, src)
+		if err != nil {
+			uploadErrorChan <- err
+		}
 	}()
 	return uploadErrorChan
 }

@@ -189,9 +189,6 @@ func (suite *ScenarioUsecaseTestSuite) TestUpdateScenario_with_workflow_error() 
 	scenario.DecisionToCaseInboxId = utils.Ptr("inbox_id")
 	scenario.DecisionToCaseOutcomes = []models.Outcome{models.Reject}
 
-	updatedScenario := scenario
-	updatedScenario.DecisionToCaseInboxId = utils.Ptr("inbox_id_2")
-
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.scenarioRepository.On("GetScenarioById", suite.transaction, suite.scenarioId).Return(scenario, nil).Once()
 	suite.enforceSecurity.On("UpdateScenario", scenario).Return(nil)

@@ -41,7 +41,7 @@ func InitTelemetry(configuration TelemetryConfiguration) (TelemetryRessources, e
 		texporter.WithTraceClientOptions([]option.ClientOption{option.WithTelemetryDisabled()}),
 	)
 	if err != nil {
-		return TelemetryRessources{}, fmt.Errorf("texporter.New error: %v", err)
+		return TelemetryRessources{}, fmt.Errorf("texporter.New error: %w", err)
 	}
 
 	res, err := resource.New(context.Background(),

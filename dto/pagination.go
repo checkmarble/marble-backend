@@ -30,7 +30,7 @@ type PaginationDefaults struct {
 
 func WithPaginationDefaults(pagination PaginationAndSortingInput, defaults PaginationDefaults) PaginationAndSortingInput {
 	if pagination.Sorting == "" {
-		pagination.Sorting = models.SortingField(defaults.SortBy)
+		pagination.Sorting = defaults.SortBy
 	}
 
 	if pagination.Order == "" {

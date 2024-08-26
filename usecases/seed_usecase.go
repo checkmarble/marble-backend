@@ -73,9 +73,7 @@ func (usecase *SeedUseCase) CreateOrgAndUser(ctx context.Context, input models.I
 
 	if targetOrg.Id == "" {
 		targetOrg, err = usecase.organizationCreator.CreateOrganization(ctx, input.OrgName)
-		if repositories.IsUniqueViolationError(err) {
-			err = nil
-		} else if err != nil {
+		if err != nil && !repositories.IsUniqueViolationError(err) {
 			return err
 		}
 		logger.InfoContext(

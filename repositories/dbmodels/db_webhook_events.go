@@ -31,7 +31,7 @@ func AdaptWebhookEvent(db DBWebhookEvent) (models.WebhookEvent, error) {
 	eventData := make(map[string]any)
 	err := json.Unmarshal(db.EventData, &eventData)
 	if err != nil {
-		return models.WebhookEvent{}, fmt.Errorf("can't decode %s webhook's event data: %v", db.Id, err)
+		return models.WebhookEvent{}, fmt.Errorf("can't decode %s webhook's event data: %w", db.Id, err)
 	}
 
 	return models.WebhookEvent{

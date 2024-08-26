@@ -92,7 +92,7 @@ func (publisher ScenarioPublisher) PublishOrUnpublishIteration(
 	default:
 		return nil, errors.Wrap(
 			models.BadParameterError,
-			"unknown publication action: "+string(publicationAction.String()),
+			"unknown publication action: "+publicationAction.String(),
 		)
 	}
 

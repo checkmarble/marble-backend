@@ -66,7 +66,10 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not start resource: %s", err)
 	}
 
-	resource.Expire(testDbLifetime) // Tell docker to hard kill the container in testDbLifetime seconds
+	err = resource.Expire(testDbLifetime) // Tell docker to hard kill the container in testDbLifetime seconds
+	if err != nil {
+		log.Fatalf("Could not set container lifetime: %s", err)
+	}
 
 	pool.MaxWait = testDbLifetime * time.Second
 

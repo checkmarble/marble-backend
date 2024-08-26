@@ -17,7 +17,7 @@ type CustomList struct {
 
 func AdaptCustomListDto(list models.CustomList) CustomList {
 	return CustomList{
-		Id:          string(list.Id),
+		Id:          list.Id,
 		Name:        list.Name,
 		Description: list.Description,
 		CreatedAt:   list.CreatedAt,
@@ -41,7 +41,7 @@ type CustomListValue struct {
 
 func AdaptCustomListWithValuesDto(list models.CustomList, values []models.CustomListValue) CustomListWithValues {
 	return CustomListWithValues{
-		Id:          string(list.Id),
+		Id:          list.Id,
 		Name:        list.Name,
 		Description: list.Description,
 		CreatedAt:   list.CreatedAt,
@@ -52,7 +52,7 @@ func AdaptCustomListWithValuesDto(list models.CustomList, values []models.Custom
 
 func AdaptCustomListValueDto(listValue models.CustomListValue) CustomListValue {
 	return CustomListValue{
-		Id:    string(listValue.Id),
+		Id:    listValue.Id,
 		Value: listValue.Value,
 	}
 }

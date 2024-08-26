@@ -15,7 +15,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-var INDEX_CREATION_TIMEOUT time.Duration = 60 * 4 // 4 hours
+var INDEX_CREATION_TIMEOUT time.Duration = 60 * 4 * time.Minute // 4 hours
 
 func (repo *ClientDbRepository) ListAllValidIndexes(
 	ctx context.Context,
@@ -165,7 +165,7 @@ func asynchronouslyCreateIndexes(
 	indexes []models.ConcreteIndex,
 ) {
 	ctx = context.WithoutCancel(ctx)
-	ctx, _ = context.WithTimeout(ctx, INDEX_CREATION_TIMEOUT*time.Minute)
+	ctx, _ = context.WithTimeout(ctx, INDEX_CREATION_TIMEOUT) //nolint:govet
 	// The function is meant to be executed asynchronously and return way after the request was finished,
 	// so we don't return any error
 	// However the indexes are created one after the other to avoid a (probably) deadlock situation
@@ -174,7 +174,7 @@ func asynchronouslyCreateIndexes(
 		// in particular, if it just finishes.
 		// We still put a high timeout on it to protect agains an index creation that takes probihitively long
 		// An error log is sent from within createIndexSQL and should be monitored
-		createIndexSQL(ctx, exec, index)
+		_ = createIndexSQL(ctx, exec, index)
 	}
 }
 
@@ -252,9 +252,9 @@ func (repo *ClientDbRepository) CreateUniqueIndexAsync(ctx context.Context, exec
 	}
 
 	ctx = context.WithoutCancel(ctx)
-	ctx, _ = context.WithTimeout(ctx, INDEX_CREATION_TIMEOUT*time.Minute)
+	ctx, _ = context.WithTimeout(ctx, INDEX_CREATION_TIMEOUT) //nolint:govet
 
-	go createUniqueIndex(ctx, exec, index, true)
+	go createUniqueIndex(ctx, exec, index, true) //nolint:errcheck
 	// The function is meant to be executed asynchronously and return way after the request was finished,
 	// so we don't return any error
 	return nil
