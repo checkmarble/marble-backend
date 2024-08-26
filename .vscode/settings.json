@@ -7,7 +7,7 @@
             "GOFUMPT_SPLIT_LONG_LINES": "on"
       },
       "go.lintTool": "golangci-lint",
-      
+      "go.lintOnSave": "file",
       "search.exclude": {
             "go.sum": true,
             "tempFiles/*": true,
