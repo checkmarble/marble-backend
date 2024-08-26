@@ -2,6 +2,8 @@ package ast
 
 import (
 	"fmt"
+
+	"github.com/cockroachdb/errors"
 )
 
 type Function int
@@ -225,7 +227,7 @@ func (f Function) Attributes() (FuncAttributes, error) {
 	return FuncAttributes{
 		DebugName: unknown,
 		AstName:   unknown,
-	}, fmt.Errorf(unknown)
+	}, errors.New(unknown)
 }
 
 func (f Function) DebugString() string {

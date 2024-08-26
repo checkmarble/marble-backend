@@ -82,7 +82,7 @@ func (r *TransferCheckEnrichmentRepository) setupIpCountryRanges(ctx context.Con
 		})
 		record, err = fileReader.Read()
 	}
-	if err != io.EOF {
+	if err != io.EOF { //nolint:errorlint
 		return err
 	}
 
@@ -210,7 +210,7 @@ func (r *TransferCheckEnrichmentRepository) setupIpTypeRanges(ctx context.Contex
 		})
 		record, err = fileReader.Read()
 	}
-	if err != io.EOF {
+	if err != io.EOF { //nolint:errorlint
 		return errors.Wrap(err, "failed to read VPN IP file")
 	}
 
@@ -233,7 +233,7 @@ func (r *TransferCheckEnrichmentRepository) setupIpTypeRanges(ctx context.Contex
 		})
 		record, err = fileReader.Read()
 	}
-	if err != io.EOF {
+	if err != io.EOF { //nolint:errorlint
 		return errors.Wrap(err, "failed to read TOR IP file")
 	}
 

@@ -2,6 +2,11 @@ name: Test back-end
 
 on: [workflow_call]
 
+permissions:
+  contents: read
+  pull-requests: read
+  checks: write
+
 jobs:
   test_backend:
     name: Test back-end
@@ -13,6 +18,11 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: ./go.mod
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.60
 
       - name: Build
         run: go build -v ./...

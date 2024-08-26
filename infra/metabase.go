@@ -40,7 +40,7 @@ func (metabase Metabase) GenerateSignedEmbeddingURL(analyticsCustomClaims models
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signedToken, err := token.SignedString([]byte(metabase.config.JwtSigningKey))
+	signedToken, err := token.SignedString(metabase.config.JwtSigningKey)
 	if err != nil {
 		return "", err
 	}

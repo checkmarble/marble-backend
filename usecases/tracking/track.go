@@ -19,12 +19,15 @@ func TrackEvent(ctx context.Context, event models.AnalyticsEvent, properties map
 	for k, v := range properties {
 		segmentProperties.Set(k, v)
 	}
-
-	segmentClient.Enqueue(analytics.Track{
+	err := segmentClient.Enqueue(analytics.Track{
 		Event:      string(event),
 		UserId:     string(credentials.ActorIdentity.UserId),
 		Properties: segmentProperties,
 	})
+	if err != nil {
+		logger := utils.LoggerFromContext(ctx)
+		logger.ErrorContext(ctx, "Failed to track event", "error", err.Error())
+	}
 }
 
 func TrackEventWithUserId(ctx context.Context, event models.AnalyticsEvent, userId models.UserId, properties map[string]interface{}) {
@@ -38,11 +41,15 @@ func TrackEventWithUserId(ctx context.Context, event models.AnalyticsEvent, user
 		segmentProperties.Set(k, v)
 	}
 
-	segmentClient.Enqueue(analytics.Track{
+	err := segmentClient.Enqueue(analytics.Track{
 		Event:      string(event),
 		UserId:     string(userId),
 		Properties: segmentProperties,
 	})
+	if err != nil {
+		logger := utils.LoggerFromContext(ctx)
+		logger.ErrorContext(ctx, "Failed to track event", "error", err.Error())
+	}
 }
 
 func Identify(ctx context.Context, userId models.UserId, traits map[string]interface{}) {
@@ -58,10 +65,14 @@ func Identify(ctx context.Context, userId models.UserId, traits map[string]inter
 		segmentTraits.Set(k, v)
 	}
 
-	segmentClient.Enqueue(analytics.Identify{
+	err := segmentClient.Enqueue(analytics.Identify{
 		UserId: string(userId),
 		Traits: segmentTraits,
 	})
+	if err != nil {
+		logger := utils.LoggerFromContext(ctx)
+		logger.ErrorContext(ctx, "Failed to track event", "error", err.Error())
+	}
 }
 
 func Group(ctx context.Context, userId models.UserId, organizationId string, traits map[string]interface{}) {
@@ -77,11 +88,15 @@ func Group(ctx context.Context, userId models.UserId, organizationId string, tra
 		segmentTraits.Set(k, v)
 	}
 
-	segmentClient.Enqueue(analytics.Group{
+	err := segmentClient.Enqueue(analytics.Group{
 		UserId:  string(userId),
 		GroupId: organizationId,
 		Traits:  segmentTraits,
 	})
+	if err != nil {
+		logger := utils.LoggerFromContext(ctx)
+		logger.ErrorContext(ctx, "Failed to track event", "error", err.Error())
+	}
 }
 
 func getCredentialsAndAnalyticsClientFromContext(ctx context.Context) (models.Credentials, analytics.Client, bool) {

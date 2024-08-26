@@ -19,7 +19,7 @@ func NewReaderWithoutBom(r io.Reader) io.Reader {
 		return buf
 	}
 	if b[0] == bom0 && b[1] == bom1 && b[2] == bom2 {
-		buf.Discard(3)
+		_, _ = buf.Discard(3)
 	}
 	return buf
 }
