@@ -73,6 +73,11 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 			return err
 		}
 
+		err = usecase.organizationRepository.DeleteOrganization(ctx, tx, organizationId)
+		if err != nil {
+			return err
+		}
+
 		db, err := usecase.executorFactory.NewClientDbExecutor(ctx, organizationId)
 		if err != nil {
 			return err
@@ -81,7 +86,7 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 			return err
 		}
 
-		return usecase.organizationRepository.DeleteOrganization(ctx, tx, organizationId)
+		return nil
 	})
 }
 
