@@ -159,7 +159,7 @@ func EvalScenario(
 	}
 
 	// Compute outcome from score
-	outcome := models.None
+	var outcome models.Outcome
 
 	if score < publishedVersion.Body.ScoreReviewThreshold {
 		outcome = models.Approve

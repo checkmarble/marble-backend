@@ -1,3 +1,12 @@
 linters:
   enable:
-    - revive
+    - errorlint
+    - loggercheck
+    - durationcheck
+    - sloglint
+    - unconvert
+
+issues:
+  exclude-rules:
+    - path: repository/ingested_data_indexes_repository.go
+      text: "should be called, not discarded, to avoid a context leak"

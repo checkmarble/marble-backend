@@ -61,16 +61,16 @@ func (repository *GcsRepositoryImpl) ListFiles(ctx context.Context, bucketName, 
 	it := bucket.Objects(ctx, query)
 	for {
 		attrs, err := it.Next()
-		if err == iterator.Done {
+		if err == iterator.Done { //nolint:errorlint
 			break
 		}
 		if err != nil {
-			return nil, fmt.Errorf("failed to list GCS objects from bucket %s/%s: %v", bucketName, prefix, err)
+			return nil, fmt.Errorf("failed to list GCS objects from bucket %s/%s: %w", bucketName, prefix, err)
 		}
 
 		r, err := bucket.Object(attrs.Name).NewReader(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read GCS object %s/%s: %v", bucketName, attrs.Name, err)
+			return nil, fmt.Errorf("failed to read GCS object %s/%s: %w", bucketName, attrs.Name, err)
 		}
 
 		output = append(output, models.GCSFile{
@@ -112,7 +112,7 @@ func (repository *GcsRepositoryImpl) GetFile(ctx context.Context, bucketName, fi
 	defer span.End()
 	reader, err := bucket.Object(fileName).NewReader(ctx)
 	if err != nil {
-		return models.GCSFile{}, fmt.Errorf("failed to read GCS object %s/%s: %v", bucketName, fileName, err)
+		return models.GCSFile{}, fmt.Errorf("failed to read GCS object %s/%s: %w", bucketName, fileName, err)
 	}
 
 	return models.GCSFile{

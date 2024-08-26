@@ -50,7 +50,7 @@ func (e EnforceSecurityInboxes) ReadInboxUser(inboxUser models.InboxUser, actorI
 func (e EnforceSecurityInboxes) CreateInboxUser(
 	i models.CreateInboxUserInput, actorInboxUsers []models.InboxUser, targetInbox models.Inbox, targetUser models.User,
 ) error {
-	organizationId := string(e.Credentials.OrganizationId)
+	organizationId := e.Credentials.OrganizationId
 	if targetUser.OrganizationId != organizationId {
 		return errors.Wrap(models.ForbiddenError, "Target user does not belong to the right organization")
 	}

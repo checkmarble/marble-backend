@@ -157,7 +157,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 		// line number starts at 1, and we already read the first line as headers
 		lineNumber := processedLinesCount + 2
 		row, err := fileReader.Read()
-		if err == io.EOF {
+		if err == io.EOF { //nolint:errorlint
 			break
 		}
 		if err != nil {
@@ -338,7 +338,7 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 		for ; windowStart < windowEnd; windowStart++ {
 			logger.InfoContext(ctx, fmt.Sprintf("Start reading line %v", windowStart))
 			record, err := r.Read()
-			if err == io.EOF {
+			if err == io.EOF { //nolint:errorlint
 				total = windowStart
 				keepParsingFile = false
 				break

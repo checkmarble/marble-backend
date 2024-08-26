@@ -6,6 +6,8 @@
       "go.toolsEnvVars": {
             "GOFUMPT_SPLIT_LONG_LINES": "on"
       },
+      "go.lintTool": "golangci-lint",
+      
       "search.exclude": {
             "go.sum": true,
             "tempFiles/*": true,

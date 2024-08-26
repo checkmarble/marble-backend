@@ -151,7 +151,7 @@ type PostScenarioValidationInputBody struct {
 func (api *API) ValidateScenarioIteration(c *gin.Context) {
 	var input PostScenarioValidationInputBody
 	err := c.ShouldBindJSON(&input)
-	if err != nil && err != io.EOF {
+	if err != nil && err != io.EOF { //nolint:errorlint
 		c.Status(http.StatusBadRequest)
 		return
 	}

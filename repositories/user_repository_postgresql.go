@@ -109,7 +109,7 @@ func (repo *UserRepositoryPostgresql) DeleteUsersOfOrganization(ctx context.Cont
 	err := ExecBuilder(
 		ctx,
 		exec,
-		NewQueryBuilder().Delete(dbmodels.TABLE_USERS).Where("organization_id = ?", string(organizationId)),
+		NewQueryBuilder().Delete(dbmodels.TABLE_USERS).Where("organization_id = ?", organizationId),
 	)
 	return err
 }

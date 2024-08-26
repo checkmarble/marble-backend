@@ -69,11 +69,11 @@ func (creator *OrganizationCreator) seedDefaultList(ctx context.Context, organiz
 		CustomListId: newCustomListId,
 		Value:        "Welcome",
 	}
-	creator.CustomListRepository.AddCustomListValue(ctx, exec, addCustomListValueInput, uuid.NewString(), nil)
+	_ = creator.CustomListRepository.AddCustomListValue(ctx, exec, addCustomListValueInput, uuid.NewString(), nil)
 	addCustomListValueInput.Value = "to"
-	creator.CustomListRepository.AddCustomListValue(ctx, exec, addCustomListValueInput, uuid.NewString(), nil)
+	_ = creator.CustomListRepository.AddCustomListValue(ctx, exec, addCustomListValueInput, uuid.NewString(), nil)
 	addCustomListValueInput.Value = "marble"
-	creator.CustomListRepository.AddCustomListValue(ctx, exec, addCustomListValueInput, uuid.NewString(), nil)
+	_ = creator.CustomListRepository.AddCustomListValue(ctx, exec, addCustomListValueInput, uuid.NewString(), nil)
 
 	logger.InfoContext(ctx, "Finish to create the default custom list for the organization")
 	return nil
