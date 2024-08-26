@@ -45,6 +45,9 @@ func VerifyLicense(config models.LicenseConfiguration) models.LicenseValidation 
 		if isWhitelisted {
 			return models.NewFullLicense()
 		}
+		if config.IsDevEnvironment {
+			return models.NewDevLicense()
+		}
 		return models.NewNotFoundLicense()
 	}
 

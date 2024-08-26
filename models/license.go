@@ -80,6 +80,21 @@ func NewFullLicense() LicenseValidation {
 	}
 }
 
+func NewDevLicense() LicenseValidation {
+	return LicenseValidation{
+		LicenseValidationCode: VALID,
+		LicenseEntitlements: LicenseEntitlements{
+			Sso:            true,
+			Workflows:      true,
+			Analytics:      true,
+			DataEnrichment: true,
+			UserRoles:      true,
+			Webhooks:       false,
+			RuleSnoozes:    true,
+		},
+	}
+}
+
 func NewNotFoundLicense() LicenseValidation {
 	return LicenseValidation{
 		LicenseValidationCode: NOT_FOUND,
@@ -125,4 +140,5 @@ func (l *UpdateLicenseInput) Validate() error {
 type LicenseConfiguration struct {
 	LicenseKey             string
 	KillIfReadLicenseError bool
+	IsDevEnvironment       bool
 }

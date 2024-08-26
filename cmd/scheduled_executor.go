@@ -36,6 +36,7 @@ func RunScheduledExecuter() error {
 	licenseConfig := models.LicenseConfiguration{
 		LicenseKey:             utils.GetEnv("LICENSE_KEY", ""),
 		KillIfReadLicenseError: utils.GetEnv("KILL_IF_READ_LICENSE_ERROR", false),
+		IsDevEnvironment:       utils.GetEnv("FIREBASE_AUTH_EMULATOR_HOST", "") != "",
 	}
 	jobConfig := struct {
 		env                 string
