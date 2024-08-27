@@ -95,7 +95,7 @@ func TestFromTimeDuration(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.give.String(), func(t *testing.T) {
-			got := FromTimeDuration(tt.give)
+			got := fromTimeDuration(tt.give)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Format() got = %s, want %s", got, tt.want)
 			}
@@ -139,7 +139,7 @@ func TestFormat(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {
-			got := Format(tt.give)
+			got := formatDuration(tt.give)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Format() got = %s, want %s", got, tt.want)
 			}

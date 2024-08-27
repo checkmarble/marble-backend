@@ -1,4 +1,6 @@
-// This package is a copy of the package duration at https://github.com/sosodev/duration
+// This package is a copy of the package duration at https://github.com/sosodev/duration,
+// used to parse ISO8601 durations to go time.Duration and vice versa.
+// MIT license https://github.com/sosodev/duration?tab=MIT-1-ov-file#readme
 package duration
 
 import (
@@ -135,10 +137,10 @@ func Parse(d string) (*Duration, error) {
 	return duration, nil
 }
 
-// FromTimeDuration converts the given time.Duration into duration.Duration.
+// fromTimeDuration converts the given time.Duration into duration.Duration.
 // Note that for *Duration's with period values of a month or year that the duration becomes a bit fuzzy
 // since obviously those things vary month to month and year to year
-func FromTimeDuration(d time.Duration) *Duration {
+func fromTimeDuration(d time.Duration) *Duration {
 	duration := &Duration{}
 	if d == 0 {
 		return duration
@@ -178,12 +180,12 @@ func FromTimeDuration(d time.Duration) *Duration {
 	return duration
 }
 
-// Format formats the given time.Duration into an ISO 8601 duration string (e.g. P1DT6H5M),
+// formatDuration formats the given time.Duration into an ISO 8601 duration string (e.g. P1DT6H5M),
 // negative durations are prefixed with a minus sign, for a zero duration "PT0S" is returned.
 // Note that for *Duration's with period values of a month or year that the duration becomes a bit fuzzy
 // since obviously those things vary month to month and year to year
-func Format(d time.Duration) string {
-	return FromTimeDuration(d).String()
+func formatDuration(d time.Duration) string {
+	return fromTimeDuration(d).String()
 }
 
 // ToTimeDuration converts the *Duration to the standard library's time.Duration.
