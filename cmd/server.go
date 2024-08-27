@@ -104,7 +104,6 @@ func RunServer() error {
 	}
 
 	repositories := repositories.NewRepositories(pool,
-		repositories.WithFirebaseClient(infra.InitializeFirebase(ctx)),
 		repositories.WithMetabase(infra.InitializeMetabase(metabaseConfig)),
 		repositories.WithTransferCheckEnrichmentBucket(gcpConfig.GcsTransferCheckEnrichmentBucket),
 		repositories.WithFakeGcsRepository(gcpConfig.FakeGcsRepository),
@@ -140,7 +139,7 @@ func RunServer() error {
 		}
 	}
 
-	deps := api.InitDependencies(ctx, apiConfig, pool, marbleJwtSigningKey)
+	deps := api.InitDependencies(ctx, apiConfig, pool, marbleJwtSigningKey, nil)
 
 	router := api.InitRouter(ctx, apiConfig, deps.SegmentClient, telemetryRessources)
 	server := api.New(router, apiConfig.Port, apiConfig.MarbleAppHost, uc, deps.Authentication, deps.TokenHandler)

@@ -9,6 +9,8 @@ import (
 	"github.com/checkmarble/marble-backend/repositories/firebase"
 	"github.com/checkmarble/marble-backend/repositories/postgres"
 	"github.com/checkmarble/marble-backend/usecases/token"
+
+	"firebase.google.com/go/v4/auth"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/segmentio/analytics-go/v3"
 )
@@ -19,11 +21,24 @@ type dependencies struct {
 	SegmentClient  analytics.Client
 }
 
-func InitDependencies(ctx context.Context, conf Configuration, dbPool *pgxpool.Pool, signingKey *rsa.PrivateKey) dependencies {
+type tokenCookieVerifier interface {
+	VerifyIDToken(ctx context.Context, idToken string) (*auth.Token, error)
+}
+
+func InitDependencies(
+	ctx context.Context,
+	conf Configuration,
+	dbPool *pgxpool.Pool,
+	signingKey *rsa.PrivateKey,
+	tokenVerifier tokenCookieVerifier,
+) dependencies {
 	database := postgres.New(dbPool)
 
-	auth := infra.InitializeFirebase(ctx)
-	firebaseClient := firebase.New(auth)
+	if tokenVerifier == nil {
+		tokenVerifier = infra.InitializeFirebase(ctx)
+	}
+
+	firebaseClient := firebase.New(tokenVerifier)
 	jwtRepository := repositories.NewJWTRepository(signingKey)
 	tokenValidator := token.NewValidator(database, jwtRepository)
 	tokenGenerator := token.NewGenerator(database, jwtRepository, firebaseClient, conf.TokenLifetimeMinute)
