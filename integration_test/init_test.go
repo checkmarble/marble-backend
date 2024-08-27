@@ -2,10 +2,11 @@ package integration
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/rsa"
 	"fmt"
 	"log"
+	"log/slog"
+	"math/rand"
+	"net/http"
 	"os"
 	"testing"
 	"time"
@@ -13,9 +14,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
+	"github.com/pkg/errors"
 
+	"github.com/checkmarble/marble-backend/api"
 	"github.com/checkmarble/marble-backend/infra"
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/repositories/firebase"
 	"github.com/checkmarble/marble-backend/repositories/postgres"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/usecases/token"
@@ -23,15 +28,17 @@ import (
 )
 
 const (
-	testDbLifetime = 120 // seconds
-	testUser       = "postgres"
-	testPassword   = "pwd"
-	testDbName     = "marble"
+	testDbLifetime      = 120 // seconds
+	testUser            = "postgres"
+	testPassword        = "pwd"
+	testDbName          = "marble"
+	privatePortRangeMin = 49152
 )
 
 var (
 	testUsecases   usecases.Usecases
 	tokenGenerator *token.Generator
+	port           string
 )
 
 func TestMain(m *testing.M) {
@@ -108,10 +115,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not create connection pool: %s", err)
 	}
 
-	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
-	if err != nil {
-		log.Fatalf("Could not create private key: %s", err)
-	}
+	privateKey := infra.ParseOrGenerateSigningKey(ctx, "")
 
 	// actually using the convoy repository to send webhooks will fail (because we don't have an instance set up),
 	// but it is not blocking (an error will be logged but the test will pass). We sill need to pass the provider
@@ -122,19 +126,50 @@ func TestMain(m *testing.M) {
 		repositories.WithFakeGcsRepository(true),
 	)
 
+	testUsecases = usecases.NewUsecases(repos,
+		usecases.WithFakeGcsRepository(true),
+		usecases.WithLicense(models.NewFullLicense()),
+	)
+
+	// select a random port
+	port = fmt.Sprintf("%d", rand.Int31n(1000)+privatePortRangeMin)
+	apiConfig := api.Configuration{
+		Env:                 "development",
+		AppName:             "marble-backend",
+		MarbleAppHost:       "http://localhost:3000",
+		Port:                port,
+		RequestLoggingLevel: "all",
+		TokenLifetimeMinute: 60,
+		SegmentWriteKey:     "",
+	}
+	tokenVerifier := infra.NewMockedFirebaseTokenVerifier()
+	firebaseClient := firebase.New(tokenVerifier)
+	deps := api.InitDependencies(ctx, apiConfig, dbPool, privateKey, tokenVerifier)
+
+	telemetryRessources, _ := infra.InitTelemetry(infra.TelemetryConfiguration{Enabled: false})
+	router := api.InitRouter(ctx, apiConfig, deps.SegmentClient, telemetryRessources)
+	server := api.New(router, apiConfig.Port, apiConfig.MarbleAppHost, testUsecases, deps.Authentication, deps.TokenHandler)
+
 	jwtRepository := repositories.NewJWTRepository(privateKey)
 	database := postgres.New(dbPool)
 	if err != nil {
 		panic(err)
 	}
-	tokenGenerator = token.NewGenerator(database, jwtRepository, nil, 10)
+	tokenGenerator = token.NewGenerator(database, jwtRepository, firebaseClient, 10)
 
-	testUsecases = usecases.Usecases{
-		Repositories: repos,
-	}
+	go func() {
+		logger.InfoContext(ctx, "starting server", slog.String("port", apiConfig.Port))
+		err := server.ListenAndServe()
+		if !errors.Is(err, http.ErrServerClosed) {
+			utils.LogAndReportSentryError(ctx, errors.Wrap(err, "Error while serving the app"))
+		}
+		logger.InfoContext(ctx, "server returned")
+	}()
 
 	// Run tests
 	code := m.Run()
+
+	_ = server.Shutdown(ctx)
 
 	// You can't defer this because os.Exit doesn't care for defer
 	if err := pool.Purge(resource); err != nil {

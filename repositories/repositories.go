@@ -3,7 +3,6 @@ package repositories
 import (
 	"firebase.google.com/go/v4/auth"
 	"github.com/Masterminds/squirrel"
-	"github.com/checkmarble/marble-backend/repositories/firebase"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -23,12 +22,6 @@ func getOptions(opts []Option) *options {
 		opt(o)
 	}
 	return o
-}
-
-func WithFirebaseClient(firebaseClient *auth.Client) Option {
-	return func(o *options) {
-		o.firebaseClient = firebaseClient
-	}
 }
 
 func WithMetabase(metabase Metabase) Option {
@@ -57,7 +50,6 @@ func WithConvoyClientProvider(convoyResources ConvoyClientProvider) Option {
 
 type Repositories struct {
 	ExecutorGetter                    ExecutorGetter
-	FirebaseTokenRepository           FireBaseTokenRepository
 	ConvoyRepository                  ConvoyRepository
 	UserRepository                    UserRepository
 	OrganizationRepository            OrganizationRepository
@@ -98,7 +90,6 @@ func NewRepositories(
 
 	return Repositories{
 		ExecutorGetter:                executorGetter,
-		FirebaseTokenRepository:       firebase.New(options.firebaseClient),
 		ConvoyRepository:              NewConvoyRepository(options.convoyClientProvider),
 		UserRepository:                &UserRepositoryPostgresql{},
 		OrganizationRepository:        &OrganizationRepositoryPostgresql{},
