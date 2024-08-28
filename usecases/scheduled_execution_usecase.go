@@ -37,7 +37,6 @@ type ScheduledExecutionUsecase struct {
 	executorFactory         executor_factory.ExecutorFactory
 	repository              ScheduledExecutionUsecaseRepository
 	exportScheduleExecution ExportDecisions
-	organizationIdOfContext func() (string, error)
 }
 
 func (usecase *ScheduledExecutionUsecase) GetScheduledExecution(ctx context.Context, id string) (models.ScheduledExecution, error) {
@@ -78,17 +77,17 @@ func (usecase *ScheduledExecutionUsecase) ExportScheduledExecutionDecisions(
 
 // ListScheduledExecutions returns the list of scheduled executions of the current organization.
 // The optional argument 'scenarioId' can be used to filter the returned list.
-func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(ctx context.Context, scenarioId string) ([]models.ScheduledExecution, error) {
+func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(
+	ctx context.Context,
+	organizationId string,
+	scenarioId *string,
+) ([]models.ScheduledExecution, error) {
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Executor,
 	) ([]models.ScheduledExecution, error) {
 		var executions []models.ScheduledExecution
-		if scenarioId == "" {
-			organizationId, err := usecase.organizationIdOfContext()
-			if err != nil {
-				return nil, err
-			}
-
+		var err error
+		if scenarioId == nil {
 			executions, err = usecase.repository.ListScheduledExecutions(ctx, tx, models.ListScheduledExecutionsFilters{
 				OrganizationId: organizationId,
 			})
@@ -98,7 +97,7 @@ func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(ctx context.Co
 		} else {
 			var err error
 			executions, err = usecase.repository.ListScheduledExecutions(ctx, tx, models.ListScheduledExecutionsFilters{
-				ScenarioId: scenarioId,
+				ScenarioId: *scenarioId,
 			})
 			if err != nil {
 				return []models.ScheduledExecution{}, err

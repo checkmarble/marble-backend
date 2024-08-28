@@ -99,7 +99,7 @@ func createDecisionsBatch(
 	organizationId, scenarioId, scenarioIterationId string,
 ) {
 	scheduledExecUsecase := usecasesWithUserCreds.NewScheduledExecutionUsecase()
-	ses, err := scheduledExecUsecase.ListScheduledExecutions(ctx, scenarioId)
+	ses, err := scheduledExecUsecase.ListScheduledExecutions(ctx, organizationId, &scenarioId)
 	if err != nil {
 		assert.FailNow(t, "Failed to list scheduled executions", err)
 	}
@@ -118,7 +118,7 @@ func createDecisionsBatch(
 		assert.FailNow(t, "Failed to create scheduled executions", err)
 	}
 
-	ses, err = scheduledExecUsecase.ListScheduledExecutions(ctx, scenarioId)
+	ses, err = scheduledExecUsecase.ListScheduledExecutions(ctx, organizationId, &scenarioId)
 	if err != nil {
 		assert.FailNow(t, "Failed to list scheduled executions", err)
 	}

@@ -24,11 +24,10 @@ type RuleUsecaseRepository interface {
 }
 
 type RuleUsecase struct {
-	organizationIdOfContext func() (string, error)
-	enforceSecurity         security.EnforceSecurityScenario
-	repository              RuleUsecaseRepository
-	scenarioFetcher         scenarios.ScenarioFetcher
-	transactionFactory      executor_factory.TransactionFactory
+	enforceSecurity    security.EnforceSecurityScenario
+	repository         RuleUsecaseRepository
+	scenarioFetcher    scenarios.ScenarioFetcher
+	transactionFactory executor_factory.TransactionFactory
 }
 
 func (usecase *RuleUsecase) ListRules(ctx context.Context, iterationId string) ([]models.Rule, error) {
@@ -51,11 +50,6 @@ func (usecase *RuleUsecase) CreateRule(ctx context.Context, ruleInput models.Cre
 	rule, err := executor_factory.TransactionReturnValue(ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Executor) (models.Rule, error) {
-			organizationId, err := usecase.organizationIdOfContext()
-			if err != nil {
-				return models.Rule{}, err
-			}
-
 			scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, tx, ruleInput.ScenarioIterationId)
 			if err != nil {
 				return models.Rule{}, err
@@ -70,7 +64,7 @@ func (usecase *RuleUsecase) CreateRule(ctx context.Context, ruleInput models.Cre
 					fmt.Sprintf("can't update rule as iteration %s is not in draft", scenarioAndIteration.Iteration.Id))
 			}
 
-			ruleInput.Id = pure_utils.NewPrimaryKey(organizationId)
+			ruleInput.Id = pure_utils.NewPrimaryKey(ruleInput.OrganizationId)
 			_, err = usecase.repository.CreateRule(ctx, tx, ruleInput)
 			if err != nil {
 				return models.Rule{}, err

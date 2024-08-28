@@ -55,7 +55,6 @@ type IterationUsecaseRepository interface {
 
 type ScenarioIterationUsecase struct {
 	repository                IterationUsecaseRepository
-	organizationIdOfContext   func() (string, error)
 	enforceSecurity           security.EnforceSecurityScenario
 	scenarioFetcher           scenarios.ScenarioFetcher
 	validateScenarioIteration scenarios.ValidateScenarioIteration
@@ -63,13 +62,11 @@ type ScenarioIterationUsecase struct {
 	transactionFactory        executor_factory.TransactionFactory
 }
 
-func (usecase *ScenarioIterationUsecase) ListScenarioIterations(ctx context.Context,
+func (usecase *ScenarioIterationUsecase) ListScenarioIterations(
+	ctx context.Context,
+	organizationId string,
 	filters models.GetScenarioIterationFilters,
 ) ([]models.ScenarioIteration, error) {
-	organizationId, err := usecase.organizationIdOfContext()
-	if err != nil {
-		return nil, err
-	}
 	scenarioIterations, err := usecase.repository.ListScenarioIterations(ctx,
 		usecase.executorFactory.NewExecutor(), organizationId, filters)
 	if err != nil {

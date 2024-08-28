@@ -13,8 +13,7 @@ import (
 
 type UsecasesWithCreds struct {
 	Usecases
-	Credentials             models.Credentials
-	OrganizationIdOfContext func() (string, error)
+	Credentials models.Credentials
 }
 
 func (usecases *UsecasesWithCreds) NewEnforceSecurity() security.EnforceSecurity {
@@ -109,7 +108,6 @@ func (usecases *UsecasesWithCreds) NewScenarioUsecase() ScenarioUsecase {
 func (usecases *UsecasesWithCreds) NewScenarioIterationUsecase() ScenarioIterationUsecase {
 	return ScenarioIterationUsecase{
 		repository:                &usecases.Repositories.MarbleDbRepository,
-		organizationIdOfContext:   usecases.OrganizationIdOfContext,
 		enforceSecurity:           usecases.NewEnforceScenarioSecurity(),
 		scenarioFetcher:           usecases.NewScenarioFetcher(),
 		validateScenarioIteration: usecases.NewValidateScenarioIteration(),
@@ -120,11 +118,10 @@ func (usecases *UsecasesWithCreds) NewScenarioIterationUsecase() ScenarioIterati
 
 func (usecases *UsecasesWithCreds) NewRuleUsecase() RuleUsecase {
 	return RuleUsecase{
-		organizationIdOfContext: usecases.OrganizationIdOfContext,
-		enforceSecurity:         usecases.NewEnforceScenarioSecurity(),
-		repository:              &usecases.Repositories.MarbleDbRepository,
-		scenarioFetcher:         usecases.NewScenarioFetcher(),
-		transactionFactory:      usecases.NewTransactionFactory(),
+		enforceSecurity:    usecases.NewEnforceScenarioSecurity(),
+		repository:         &usecases.Repositories.MarbleDbRepository,
+		scenarioFetcher:    usecases.NewScenarioFetcher(),
+		transactionFactory: usecases.NewTransactionFactory(),
 	}
 }
 
@@ -236,7 +233,6 @@ func (usecases *UsecasesWithCreds) NewScheduledExecutionUsecase() ScheduledExecu
 		executorFactory:         usecases.NewExecutorFactory(),
 		repository:              &usecases.Repositories.MarbleDbRepository,
 		exportScheduleExecution: usecases.NewExportScheduleExecution(),
-		organizationIdOfContext: usecases.OrganizationIdOfContext,
 	}
 }
 

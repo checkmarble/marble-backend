@@ -13,8 +13,7 @@ func GenerateUsecaseWithCredForMarbleAdmin(ctx context.Context, jobUsecases usec
 		OrganizationId: "",
 	}
 	return usecases.UsecasesWithCreds{
-		Usecases:                jobUsecases,
-		Credentials:             creds,
-		OrganizationIdOfContext: func() (string, error) { return "", nil },
+		Usecases:    jobUsecases,
+		Credentials: creds,
 	}
 }
