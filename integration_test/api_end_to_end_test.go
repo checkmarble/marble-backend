@@ -20,7 +20,13 @@ func TestApiEndToEnd(t *testing.T) {
 	setupDataModel(authOrgAdmin)
 
 	// create a scenario and publish it
-	setupTestScenarioAndPublish(authOrgAdmin)
+	scenarioId := setupTestScenarioAndPublish(authOrgAdmin)
+
+	// create an api key
+	authApiKey := setupApiKey(e, authOrgAdmin)
+
+	// ingest data and call a decision
+	ingestAndCreateDecision(authApiKey, scenarioId)
 }
 
 func setupOrgAndUser(e *httpexpect.Expect) (authMarbleAdmin *httpexpect.Expect, authOrgAdmin *httpexpect.Expect) {
@@ -157,7 +163,7 @@ func setupDataModel(auth *httpexpect.Expect) {
 		Expect().Status(http.StatusOK)
 }
 
-func setupTestScenarioAndPublish(authOrgAdmin *httpexpect.Expect) {
+func setupTestScenarioAndPublish(authOrgAdmin *httpexpect.Expect) string {
 	scenarioId := authOrgAdmin.POST("/scenarios").
 		WithJSON(map[string]any{"name": "test-scenario", "triggerObjectType": "transactions"}).
 		Expect().Status(http.StatusOK).
@@ -169,7 +175,6 @@ func setupTestScenarioAndPublish(authOrgAdmin *httpexpect.Expect) {
 		Expect().Status(http.StatusOK).
 		JSON().
 		Object().Value("id").String().NotEmpty().Raw()
-	fmt.Println(scenarioIterationId)
 
 	triggerBody := `{
   "body": {
@@ -182,7 +187,7 @@ func setupTestScenarioAndPublish(authOrgAdmin *httpexpect.Expect) {
           "name": "=",
           "children": [
             { "name": "Payload", "children": [{ "constant": "status" }] },
-            { "constant": "payout" }
+            { "constant": "validated" }
           ]
         }
       ]
@@ -196,27 +201,22 @@ func setupTestScenarioAndPublish(authOrgAdmin *httpexpect.Expect) {
 
 	ruleBody := fmt.Sprintf(`{
   "scenarioIterationId": "%s",
-  "name": "Rule 1 Name",
+  "name": "Test rule 1",
   "formula_ast_expression": {
-    "body": {
-      "scoreReviewThreshold": 10,
-      "scoreRejectThreshold": 20,
-      "trigger_condition_ast_expression": {
-        "name": "And",
+    "name": "And",
+    "children": [
+      {
+        "name": "=",
         "children": [
-          {
-            "name": "=",
-            "children": [
-              { "name": "Payload", "children": [{ "constant": "status" }] },
-              { "constant": "payout" }
-            ]
-          }
+          { "name": "Payload", "children": [{ "constant": "status" }] },
+          { "constant": "validated" }
         ]
       }
-    }
+    ]
   },
   "scoreModifier": 2
 }`, scenarioIterationId)
+
 	authOrgAdmin.POST("/scenario-iteration-rules").WithBytes([]byte(ruleBody)).
 		Expect().Status(http.StatusOK)
 
@@ -232,4 +232,48 @@ func setupTestScenarioAndPublish(authOrgAdmin *httpexpect.Expect) {
 	authOrgAdmin.POST("/scenario-publications").
 		WithJSON(map[string]any{"scenarioIterationID": scenarioIterationId, "publicationAction": "publish"}).
 		Expect().Status(http.StatusOK)
+
+	return scenarioId
+}
+
+func setupApiKey(e *httpexpect.Expect, authOrgAdmin *httpexpect.Expect) *httpexpect.Expect {
+	apiKey := authOrgAdmin.POST("/apikeys").
+		WithJSON(map[string]any{"role": "API_CLIENT", "description": "test api key"}).
+		Expect().Status(http.StatusCreated).
+		JSON().
+		Object().Value("api_key").
+		Object().Value("key").String().NotEmpty().Raw()
+
+	auth := e.Builder(func(req *httpexpect.Request) {
+		req.WithHeader("x-api-key", apiKey)
+	})
+	return auth
+}
+
+func ingestAndCreateDecision(authApiKey *httpexpect.Expect, scenarioId string) {
+	authApiKey.POST("/ingestion/transactions").
+		WithBytes([]byte(`{
+  "object_id": "my-unique-id",
+  "updated_at": "2024-01-01T00:00:00Z",
+  "account_id": "my-account-id",
+  "amount": 100,
+  "status": "validated",
+  "transaction_at": "2024-01-01T00:00:00Z"
+}`)).
+		Expect().Status(http.StatusCreated)
+
+	dec := authApiKey.POST("/decisions").
+		WithJSON(map[string]any{"scenario_id": scenarioId, "object_type": "transactions", "trigger_object": map[string]any{
+			"object_id":      "my-unique-id",
+			"updated_at":     "2024-01-01T00:00:00Z",
+			"account_id":     "my-account-id",
+			"amount":         100,
+			"status":         "validated",
+			"transaction_at": "2024-01-01T00:00:00Z",
+		}}).
+		Expect().Status(http.StatusOK).JSON()
+	dec.Object().Value("rules").Array().Length().IsEqual(1)
+	dec.Object().Value("outcome").String().IsEqual("approve")
+	dec.Object().Value("score").Number().IsEqual(2)
+	dec.Object().Value("pivot_values").Array().Length().IsEqual(1)
 }
