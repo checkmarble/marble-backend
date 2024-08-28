@@ -94,6 +94,13 @@ func (validator *ValidateScenarioIterationImpl) Validate(ctx context.Context, si
 		})
 	} else {
 		result.Trigger.TriggerEvaluation, _ = ast_eval.EvaluateAst(ctx, dryRunEnvironment, *trigger)
+		if _, ok := result.Trigger.TriggerEvaluation.ReturnValue.(bool); !ok {
+			result.Trigger.Errors = append(result.Trigger.Errors, models.ScenarioValidationError{
+				Error: errors.Wrap(models.BadParameterError,
+					"scenario iteration trigger condition does not return a boolean"),
+				Code: models.FormulaMustReturnBoolean,
+			})
+		}
 	}
 
 	// validate each rule
@@ -108,6 +115,13 @@ func (validator *ValidateScenarioIterationImpl) Validate(ctx context.Context, si
 			result.Rules.Rules[rule.Id] = ruleValidation
 		} else {
 			ruleValidation.RuleEvaluation, _ = ast_eval.EvaluateAst(ctx, dryRunEnvironment, *formula)
+			if _, ok := ruleValidation.RuleEvaluation.ReturnValue.(bool); !ok {
+				ruleValidation.Errors = append(ruleValidation.Errors, models.ScenarioValidationError{
+					Error: errors.Wrap(models.BadParameterError,
+						"rule formula does not return a boolean"),
+					Code: models.FormulaMustReturnBoolean,
+				})
+			}
 			result.Rules.Rules[rule.Id] = ruleValidation
 		}
 	}

@@ -12,6 +12,8 @@ const (
 	TriggerConditionRequired
 	// Rule
 	RuleFormulaRequired
+	// Ast output
+	FormulaMustReturnBoolean
 	// Decision
 	ScoreReviewThresholdRequired
 	ScoreRejectThresholdRequired
@@ -29,6 +31,8 @@ func (e ScenarioValidationErrorCode) String() string {
 		return "TRIGGER_CONDITION_REQUIRED"
 	case RuleFormulaRequired:
 		return "RULE_FORMULA_REQUIRED"
+	case FormulaMustReturnBoolean:
+		return "FORMULA_MUST_RETURN_BOOLEAN"
 	case ScoreReviewThresholdRequired:
 		return "SCORE_REVIEW_THRESHOLD_REQUIRED"
 	case ScoreRejectThresholdRequired:
