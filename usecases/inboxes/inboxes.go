@@ -25,11 +25,10 @@ type EnforceSecurityInboxes interface {
 }
 
 type InboxReader struct {
-	EnforceSecurity         EnforceSecurityInboxes
-	OrganizationIdOfContext func() (string, error)
-	InboxRepository         InboxRepository
-	Credentials             models.Credentials
-	ExecutorFactory         executor_factory.ExecutorFactory
+	EnforceSecurity EnforceSecurityInboxes
+	InboxRepository InboxRepository
+	Credentials     models.Credentials
+	ExecutorFactory executor_factory.ExecutorFactory
 }
 
 func (i *InboxReader) GetInboxById(ctx context.Context, inboxId string) (models.Inbox, error) {
@@ -45,13 +44,14 @@ func (i *InboxReader) GetInboxById(ctx context.Context, inboxId string) (models.
 	return inbox, err
 }
 
-func (i *InboxReader) ListInboxes(ctx context.Context, exec repositories.Executor, withCaseCount bool) ([]models.Inbox, error) {
-	organizationId, err := i.OrganizationIdOfContext()
-	if err != nil {
-		return []models.Inbox{}, err
-	}
-
+func (i *InboxReader) ListInboxes(
+	ctx context.Context,
+	exec repositories.Executor,
+	organizationId string,
+	withCaseCount bool,
+) ([]models.Inbox, error) {
 	var inboxes []models.Inbox
+	var err error
 	if i.isAdminHasAccessToAllInboxes(ctx) {
 		inboxes, err = i.InboxRepository.ListInboxes(ctx, exec, organizationId, nil, withCaseCount)
 	} else {
@@ -71,7 +71,7 @@ func (i *InboxReader) ListInboxes(ctx context.Context, exec repositories.Executo
 	}
 
 	for _, inbox := range inboxes {
-		if err = i.EnforceSecurity.ReadInbox(inbox); err != nil {
+		if err := i.EnforceSecurity.ReadInbox(inbox); err != nil {
 			return []models.Inbox{}, err
 		}
 	}

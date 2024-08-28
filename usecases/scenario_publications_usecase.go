@@ -44,7 +44,6 @@ type ScenarioPublicationUsecase struct {
 	transactionFactory             executor_factory.TransactionFactory
 	executorFactory                executor_factory.ExecutorFactory
 	scenarioPublicationsRepository repositories.ScenarioPublicationRepository
-	OrganizationIdOfContext        func() (string, error)
 	enforceSecurity                security.EnforceSecurityScenario
 	scenarioFetcher                ScenarioFetcher
 	scenarioPublisher              ScenarioPublisher
@@ -70,13 +69,9 @@ func (usecase *ScenarioPublicationUsecase) GetScenarioPublication(
 
 func (usecase *ScenarioPublicationUsecase) ListScenarioPublications(
 	ctx context.Context,
+	organizationId string,
 	filters models.ListScenarioPublicationsFilters,
 ) ([]models.ScenarioPublication, error) {
-	organizationId, err := usecase.OrganizationIdOfContext()
-	if err != nil {
-		return nil, err
-	}
-
 	// Enforce permissions
 	if err := usecase.enforceSecurity.ListScenarios(organizationId); err != nil {
 		return nil, err

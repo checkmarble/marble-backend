@@ -16,8 +16,13 @@ import (
 
 func handleGetAllCustomLists(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(c, err) {
+			return
+		}
+
 		usecase := usecasesWithCreds(c.Request, uc).NewCustomListUseCase()
-		lists, err := usecase.GetCustomLists(c.Request.Context())
+		lists, err := usecase.GetCustomLists(c.Request.Context(), organizationId)
 		if presentError(c, err) {
 			return
 		}
@@ -29,6 +34,11 @@ func handleGetAllCustomLists(uc usecases.Usecases) func(c *gin.Context) {
 
 func handlePostCustomList(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(c, err) {
+			return
+		}
+
 		var data dto.CreateCustomListBodyDto
 		if err := c.ShouldBindJSON(&data); err != nil {
 			c.Status(http.StatusBadRequest)
@@ -37,8 +47,9 @@ func handlePostCustomList(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(c.Request, uc).NewCustomListUseCase()
 		customList, err := usecase.CreateCustomList(c.Request.Context(), models.CreateCustomListInput{
-			Name:        data.Name,
-			Description: data.Description,
+			Name:           data.Name,
+			Description:    data.Description,
+			OrganizationId: organizationId,
 		})
 		if presentError(c, err) {
 			return

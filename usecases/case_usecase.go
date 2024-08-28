@@ -94,7 +94,7 @@ func (usecase *CaseUseCase) ListCases(
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Executor) ([]models.CaseWithRank, error) {
-			availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx)
+			availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx, organizationId)
 			if err != nil {
 				return []models.CaseWithRank{}, err
 			}
@@ -133,8 +133,8 @@ func (usecase *CaseUseCase) ListCases(
 	)
 }
 
-func (usecase *CaseUseCase) getAvailableInboxIds(ctx context.Context, exec repositories.Executor) ([]string, error) {
-	inboxes, err := usecase.inboxReader.ListInboxes(ctx, exec, false)
+func (usecase *CaseUseCase) getAvailableInboxIds(ctx context.Context, exec repositories.Executor, organizationId string) ([]string, error) {
+	inboxes, err := usecase.inboxReader.ListInboxes(ctx, exec, organizationId, false)
 	if err != nil {
 		return []string{}, errors.Wrap(err, "failed to list available inboxes in usecase")
 	}
@@ -152,7 +152,7 @@ func (usecase *CaseUseCase) GetCase(ctx context.Context, caseId string) (models.
 		return models.Case{}, err
 	}
 
-	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec)
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, c.OrganizationId)
 	if err != nil {
 		return models.Case{}, err
 	}
@@ -210,6 +210,7 @@ func (usecase *CaseUseCase) CreateCase(
 
 func (usecase *CaseUseCase) CreateCaseAsUser(
 	ctx context.Context,
+	organizationId string,
 	userId string,
 	createCaseAttributes models.CreateCaseAttributes,
 ) (models.Case, error) {
@@ -218,7 +219,7 @@ func (usecase *CaseUseCase) CreateCaseAsUser(
 	c, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory,
 		func(tx repositories.Executor) (models.Case, error) {
 			// permission check on the inbox as end user
-			availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec)
+			availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, organizationId)
 			if err != nil {
 				return models.Case{}, err
 			}
@@ -255,7 +256,9 @@ func (usecase *CaseUseCase) CreateCaseAsUser(
 	return c, nil
 }
 
-func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string,
+func (usecase *CaseUseCase) UpdateCase(
+	ctx context.Context,
+	userId string,
 	updateCaseAttributes models.UpdateCaseAttributes,
 ) (models.Case, error) {
 	webhookEventId := uuid.New().String()
@@ -272,7 +275,10 @@ func (usecase *CaseUseCase) UpdateCase(ctx context.Context, userId string,
 			return usecase.getCaseWithDetails(ctx, tx, updateCaseAttributes.Id)
 		}
 
-		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, usecase.executorFactory.NewExecutor())
+		availableInboxIds, err := usecase.getAvailableInboxIds(
+			ctx,
+			usecase.executorFactory.NewExecutor(),
+			c.OrganizationId)
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -388,7 +394,7 @@ func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, case
 		if err != nil {
 			return models.Case{}, err
 		}
-		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx)
+		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx, c.OrganizationId)
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -448,7 +454,7 @@ func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string
 			return models.Case{}, err
 		}
 
-		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx)
+		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx, c.OrganizationId)
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -510,7 +516,10 @@ func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string,
 			return models.Case{}, err
 		}
 
-		availableInboxIds, err := usecase.getAvailableInboxIds(ctx, usecase.executorFactory.NewExecutor())
+		availableInboxIds, err := usecase.getAvailableInboxIds(
+			ctx,
+			usecase.executorFactory.NewExecutor(),
+			c.OrganizationId)
 		if err != nil {
 			return models.Case{}, err
 		}
@@ -722,7 +731,7 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 	if err != nil {
 		return models.Case{}, err
 	}
-	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec)
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, c.OrganizationId)
 	if err != nil {
 		return models.Case{}, err
 	}
@@ -859,7 +868,7 @@ func (usecase *CaseUseCase) GetCaseFileUrl(ctx context.Context, caseFileId strin
 	if err != nil {
 		return "", err
 	}
-	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec)
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, c.OrganizationId)
 	if err != nil {
 		return "", err
 	}
@@ -877,7 +886,7 @@ func (usecase *CaseUseCase) CreateRuleSnoozeEvent(ctx context.Context, tx reposi
 		return err
 	}
 
-	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx)
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx, c.OrganizationId)
 	if err != nil {
 		return err
 	}

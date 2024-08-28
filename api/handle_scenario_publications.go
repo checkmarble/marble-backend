@@ -37,12 +37,18 @@ func NewAPIScenarioPublication(sp models.ScenarioPublication) APIScenarioPublica
 
 func handleListScenarioPublications(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(c, err) {
+			return
+		}
+
 		scenarioID := c.Query("scenarioID")
 		scenarioIterationID := c.Query("scenarioIterationID")
 
 		usecase := usecasesWithCreds(c.Request, uc).NewScenarioPublicationUsecase()
 		scenarioPublications, err := usecase.ListScenarioPublications(
 			c.Request.Context(),
+			organizationId,
 			models.ListScenarioPublicationsFilters{
 				ScenarioId:          utils.PtrTo(scenarioID, &utils.PtrToOptions{OmitZero: true}),
 				ScenarioIterationId: utils.PtrTo(scenarioIterationID, &utils.PtrToOptions{OmitZero: true}),

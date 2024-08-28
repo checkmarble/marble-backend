@@ -32,18 +32,13 @@ type ScenarioUsecaseRepository interface {
 }
 
 type ScenarioUsecase struct {
-	transactionFactory      executor_factory.TransactionFactory
-	executorFactory         executor_factory.ExecutorFactory
-	organizationIdOfContext func() (string, error)
-	enforceSecurity         security.EnforceSecurityScenario
-	repository              ScenarioUsecaseRepository
+	transactionFactory executor_factory.TransactionFactory
+	executorFactory    executor_factory.ExecutorFactory
+	enforceSecurity    security.EnforceSecurityScenario
+	repository         ScenarioUsecaseRepository
 }
 
-func (usecase *ScenarioUsecase) ListScenarios(ctx context.Context) ([]models.Scenario, error) {
-	organizationId, err := usecase.organizationIdOfContext()
-	if err != nil {
-		return nil, err
-	}
+func (usecase *ScenarioUsecase) ListScenarios(ctx context.Context, organizationId string) ([]models.Scenario, error) {
 	scenarios, err := usecase.repository.ListScenariosOfOrganization(ctx,
 		usecase.executorFactory.NewExecutor(), organizationId)
 	if err != nil {
@@ -154,15 +149,11 @@ func validateScenarioUpdate(scenario models.Scenario, input models.UpdateScenari
 	return nil
 }
 
-func (usecase *ScenarioUsecase) CreateScenario(ctx context.Context,
+func (usecase *ScenarioUsecase) CreateScenario(
+	ctx context.Context,
 	scenario models.CreateScenarioInput,
 ) (models.Scenario, error) {
-	organizationId, err := usecase.organizationIdOfContext()
-	if err != nil {
-		return models.Scenario{}, err
-	}
-
-	if err := usecase.enforceSecurity.CreateScenario(organizationId); err != nil {
+	if err := usecase.enforceSecurity.CreateScenario(scenario.OrganizationId); err != nil {
 		return models.Scenario{}, err
 	}
 
@@ -170,8 +161,8 @@ func (usecase *ScenarioUsecase) CreateScenario(ctx context.Context,
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Executor) (models.Scenario, error) {
-			newScenarioId := pure_utils.NewPrimaryKey(organizationId)
-			if err := usecase.repository.CreateScenario(ctx, tx, organizationId, scenario, newScenarioId); err != nil {
+			newScenarioId := pure_utils.NewPrimaryKey(scenario.OrganizationId)
+			if err := usecase.repository.CreateScenario(ctx, tx, scenario.OrganizationId, scenario, newScenarioId); err != nil {
 				return models.Scenario{}, err
 			}
 			scenario, err := usecase.repository.GetScenarioById(ctx, tx, newScenarioId)

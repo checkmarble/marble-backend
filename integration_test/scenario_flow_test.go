@@ -268,6 +268,7 @@ func setupScenarioAndPublish(
 		Name:              "Test scenario",
 		Description:       "Test scenario description",
 		TriggerObjectType: "transactions",
+		OrganizationId:    organizationId,
 	})
 	if err != nil {
 		assert.FailNow(t, "Could not create scenario", err)

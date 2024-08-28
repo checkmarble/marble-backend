@@ -14,8 +14,7 @@ type CustomListRepository interface {
 	GetCustomListById(ctx context.Context, exec Executor, id string) (models.CustomList, error)
 	GetCustomListValues(ctx context.Context, exec Executor, getCustomList models.GetCustomListValuesInput) ([]models.CustomListValue, error)
 	GetCustomListValueById(ctx context.Context, exec Executor, id string) (models.CustomListValue, error)
-	CreateCustomList(ctx context.Context, exec Executor, createCustomList models.CreateCustomListInput,
-		organizationId string, newCustomListId string) error
+	CreateCustomList(ctx context.Context, exec Executor, createCustomList models.CreateCustomListInput, newCustomListId string) error
 	UpdateCustomList(ctx context.Context, exec Executor, updateCustomList models.UpdateCustomListInput) error
 	SoftDeleteCustomList(ctx context.Context, exec Executor, listId string) error
 	AddCustomListValue(
@@ -106,7 +105,6 @@ func (repo *CustomListRepositoryPostgresql) CreateCustomList(
 	ctx context.Context,
 	exec Executor,
 	createCustomList models.CreateCustomListInput,
-	organizationId string,
 	newCustomListId string,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
@@ -125,7 +123,7 @@ func (repo *CustomListRepositoryPostgresql) CreateCustomList(
 			).
 			Values(
 				newCustomListId,
-				organizationId,
+				createCustomList.OrganizationId,
 				createCustomList.Name,
 				createCustomList.Description,
 			),

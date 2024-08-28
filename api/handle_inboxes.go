@@ -38,6 +38,11 @@ func handleGetInboxById(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleListInboxes(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(c, err) {
+			return
+		}
+
 		withCaseCountFilter := struct {
 			WithCaseCount bool `form:"withCaseCount"`
 		}{}
@@ -47,7 +52,7 @@ func handleListInboxes(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(c.Request, uc).NewInboxUsecase()
-		inboxes, err := usecase.ListInboxes(c.Request.Context(), withCaseCountFilter.WithCaseCount)
+		inboxes, err := usecase.ListInboxes(c.Request.Context(), organizationId, withCaseCountFilter.WithCaseCount)
 		if presentError(c, err) {
 			return
 		}

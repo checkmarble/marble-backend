@@ -143,11 +143,8 @@ func (suite *ScenarioPublicationUsecaseTestSuite) SetupTest() {
 
 func (suite *ScenarioPublicationUsecaseTestSuite) makeUsecase() *ScenarioPublicationUsecase {
 	return &ScenarioPublicationUsecase{
-		enforceSecurity: suite.enforceSecurity,
-		executorFactory: suite.executorFactory,
-		OrganizationIdOfContext: func() (string, error) {
-			return suite.organizationId, nil
-		},
+		enforceSecurity:                suite.enforceSecurity,
+		executorFactory:                suite.executorFactory,
 		scenarioFetcher:                suite.scenarioFetcher,
 		scenarioPublicationsRepository: suite.scenarioPublicationsRepository,
 		scenarioPublisher:              suite.scenarioPublisher,
@@ -234,7 +231,9 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_ListScenarioPublications_
 		models.ListScenarioPublicationsFilters{},
 	).Return([]models.ScenarioPublication{suite.scenarioPublication}, nil)
 
-	publications, err := suite.makeUsecase().ListScenarioPublications(suite.ctx,
+	publications, err := suite.makeUsecase().ListScenarioPublications(
+		suite.ctx,
+		suite.organizationId,
 		models.ListScenarioPublicationsFilters{})
 
 	suite.NoError(err)
@@ -247,7 +246,9 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_ListScenarioPublications_
 func (suite *ScenarioPublicationUsecaseTestSuite) Test_ListScenarioPublications_security_error() {
 	suite.enforceSecurity.On("ListScenarios", suite.organizationId).Return(suite.securityError)
 
-	publications, err := suite.makeUsecase().ListScenarioPublications(suite.ctx,
+	publications, err := suite.makeUsecase().ListScenarioPublications(
+		suite.ctx,
+		suite.organizationId,
 		models.ListScenarioPublicationsFilters{})
 
 	suite.Equal(suite.securityError, err)
@@ -267,7 +268,9 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_ListScenarioPublications_
 		models.ListScenarioPublicationsFilters{},
 	).Return([]models.ScenarioPublication{}, suite.repositoryError)
 
-	publications, err := suite.makeUsecase().ListScenarioPublications(suite.ctx,
+	publications, err := suite.makeUsecase().ListScenarioPublications(
+		suite.ctx,
+		suite.organizationId,
 		models.ListScenarioPublicationsFilters{})
 
 	suite.Equal(suite.repositoryError, err)

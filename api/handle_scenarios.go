@@ -8,12 +8,18 @@ import (
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 func listScenarios(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(c, err) {
+			return
+		}
+
 		usecase := usecasesWithCreds(c.Request, uc).NewScenarioUsecase()
-		scenarios, err := usecase.ListScenarios(c.Request.Context())
+		scenarios, err := usecase.ListScenarios(c.Request.Context(), organizationId)
 		if presentError(c, err) {
 			return
 		}
@@ -23,6 +29,11 @@ func listScenarios(uc usecases.Usecases) func(c *gin.Context) {
 
 func createScenario(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(c, err) {
+			return
+		}
+
 		var input dto.CreateScenarioBody
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.Status(http.StatusBadRequest)
@@ -30,7 +41,9 @@ func createScenario(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(c.Request, uc).NewScenarioUsecase()
-		scenario, err := usecase.CreateScenario(c.Request.Context(), dto.AdaptCreateScenarioInput(input))
+		scenario, err := usecase.CreateScenario(
+			c.Request.Context(),
+			dto.AdaptCreateScenarioInput(input, organizationId))
 		if presentError(c, err) {
 			return
 		}

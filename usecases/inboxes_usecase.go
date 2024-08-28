@@ -31,23 +31,22 @@ type EnforceSecurityInboxes interface {
 }
 
 type InboxUsecase struct {
-	transactionFactory      executor_factory.TransactionFactory
-	executorFactory         executor_factory.ExecutorFactory
-	enforceSecurity         EnforceSecurityInboxes
-	organizationIdOfContext func() (string, error)
-	inboxRepository         InboxRepository
-	userRepository          repositories.UserRepository
-	credentials             models.Credentials
-	inboxReader             inboxes.InboxReader
-	inboxUsers              inboxes.InboxUsers
+	transactionFactory executor_factory.TransactionFactory
+	executorFactory    executor_factory.ExecutorFactory
+	enforceSecurity    EnforceSecurityInboxes
+	inboxRepository    InboxRepository
+	userRepository     repositories.UserRepository
+	credentials        models.Credentials
+	inboxReader        inboxes.InboxReader
+	inboxUsers         inboxes.InboxUsers
 }
 
 func (usecase *InboxUsecase) GetInboxById(ctx context.Context, inboxId string) (models.Inbox, error) {
 	return usecase.inboxReader.GetInboxById(ctx, inboxId)
 }
 
-func (usecase *InboxUsecase) ListInboxes(ctx context.Context, withCaseCount bool) ([]models.Inbox, error) {
-	return usecase.inboxReader.ListInboxes(ctx, usecase.executorFactory.NewExecutor(), withCaseCount)
+func (usecase *InboxUsecase) ListInboxes(ctx context.Context, organizationId string, withCaseCount bool) ([]models.Inbox, error) {
+	return usecase.inboxReader.ListInboxes(ctx, usecase.executorFactory.NewExecutor(), organizationId, withCaseCount)
 }
 
 func (usecase *InboxUsecase) CreateInbox(ctx context.Context, input models.CreateInboxInput) (models.Inbox, error) {
