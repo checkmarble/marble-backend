@@ -139,10 +139,10 @@ func RunServer() error {
 		}
 	}
 
-	deps := api.InitDependencies(ctx, apiConfig, pool, marbleJwtSigningKey, nil)
+	deps := api.InitDependencies(ctx, apiConfig, pool, marbleJwtSigningKey)
 
-	router := api.InitRouter(ctx, apiConfig, deps.SegmentClient, telemetryRessources)
-	server := api.New(router, apiConfig.Port, apiConfig.MarbleAppHost, uc, deps.Authentication, deps.TokenHandler)
+	router := api.InitRouterMiddlewares(ctx, apiConfig, deps.SegmentClient, telemetryRessources)
+	server := api.NewServer(router, apiConfig.Port, apiConfig.MarbleAppHost, uc, deps.Authentication, deps.TokenHandler)
 
 	notify, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
