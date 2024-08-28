@@ -14,7 +14,7 @@ func TestApiEndToEnd(t *testing.T) {
 	e.GET("/liveness").Expect().Status(http.StatusOK)
 
 	// Create an org and an admin user in it
-	_, authOrgAdmin, authOrgViewer := setupOrgAndUser(e)
+	authOrgAdmin, authOrgViewer := setupOrgAndUser(e)
 
 	// create the data model
 	setupDataModel(authOrgAdmin, authOrgViewer)
@@ -29,7 +29,7 @@ func TestApiEndToEnd(t *testing.T) {
 	ingestAndCreateDecision(authApiKey, scenarioId)
 }
 
-func setupOrgAndUser(e *httpexpect.Expect) (authMarbleAdmin *httpexpect.Expect, authOrgAdmin *httpexpect.Expect, authOrgViewer *httpexpect.Expect) {
+func setupOrgAndUser(e *httpexpect.Expect) (authOrgAdmin *httpexpect.Expect, authOrgViewer *httpexpect.Expect) {
 	adminToken := e.POST("/token").
 		WithHeader("Authorization", fmt.Sprintf("Bearer %s", marbleAdminEmail)).
 		Expect().Status(http.StatusOK).
@@ -105,7 +105,7 @@ func setupOrgAndUser(e *httpexpect.Expect) (authMarbleAdmin *httpexpect.Expect, 
 		req.WithHeader("Authorization", fmt.Sprintf("Bearer %s", orgViewerToken))
 	})
 
-	return auth, authOrgAdmin, authOrgViewer
+	return authOrgAdmin, authOrgViewer
 }
 
 func setupDataModel(auth *httpexpect.Expect, authOrgViewer *httpexpect.Expect) {
