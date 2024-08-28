@@ -9,103 +9,116 @@ import (
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func (api *API) handleGetAllUsers(c *gin.Context) {
-	usecase := api.UsecasesWithCreds(c.Request).NewUserUseCase()
-	users, err := usecase.GetAllUsers(c.Request.Context())
-	if presentError(c, err) {
-		return
+func handleGetAllUsers(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		usecase := usecasesWithCreds(c.Request, uc).NewUserUseCase()
+		users, err := usecase.GetAllUsers(c.Request.Context())
+		if presentError(c, err) {
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"users": pure_utils.Map(users, dto.AdaptUserDto),
+		})
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"users": pure_utils.Map(users, dto.AdaptUserDto),
-	})
 }
 
-func (api *API) handlePostUser(c *gin.Context) {
-	var data dto.CreateUser
-	if err := c.ShouldBindJSON(&data); err != nil {
-		c.Status(http.StatusBadRequest)
-		return
-	}
+func handlePostUser(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		var data dto.CreateUser
+		if err := c.ShouldBindJSON(&data); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
 
-	createUser := dto.AdaptCreateUser(data)
+		createUser := dto.AdaptCreateUser(data)
 
-	usecase := api.UsecasesWithCreds(c.Request).NewUserUseCase()
-	createdUser, err := usecase.AddUser(c.Request.Context(), createUser)
-	if presentError(c, err) {
-		return
+		usecase := usecasesWithCreds(c.Request, uc).NewUserUseCase()
+		createdUser, err := usecase.AddUser(c.Request.Context(), createUser)
+		if presentError(c, err) {
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"user": dto.AdaptUserDto(createdUser),
+		})
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"user": dto.AdaptUserDto(createdUser),
-	})
 }
 
-func (api *API) handleGetUser(c *gin.Context) {
-	userID := c.Param("user_id")
+func handleGetUser(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		userID := c.Param("user_id")
 
-	usecase := api.UsecasesWithCreds(c.Request).NewUserUseCase()
-	user, err := usecase.GetUser(c.Request.Context(), userID)
-	if presentError(c, err) {
-		return
+		usecase := usecasesWithCreds(c.Request, uc).NewUserUseCase()
+		user, err := usecase.GetUser(c.Request.Context(), userID)
+		if presentError(c, err) {
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"user": dto.AdaptUserDto(user),
+		})
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"user": dto.AdaptUserDto(user),
-	})
 }
 
-func (api *API) handlePatchUser(c *gin.Context) {
-	userID := c.Param("user_id")
+func handlePatchUser(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		userID := c.Param("user_id")
 
-	var data dto.UpdateUser
-	if err := c.ShouldBindJSON(&data); err != nil {
-		c.Status(http.StatusBadRequest)
-		return
-	}
+		var data dto.UpdateUser
+		if err := c.ShouldBindJSON(&data); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
 
-	usecase := api.UsecasesWithCreds(c.Request).NewUserUseCase()
-	createdUser, err := usecase.UpdateUser(c, models.UpdateUser{
-		UserId:    models.UserId(userID),
-		Email:     data.Email,
-		Role:      models.RoleFromString(data.Role),
-		FirstName: data.FirstName,
-		LastName:  data.LastName,
-	})
-	if presentError(c, err) {
-		return
+		usecase := usecasesWithCreds(c.Request, uc).NewUserUseCase()
+		createdUser, err := usecase.UpdateUser(c, models.UpdateUser{
+			UserId:    models.UserId(userID),
+			Email:     data.Email,
+			Role:      models.RoleFromString(data.Role),
+			FirstName: data.FirstName,
+			LastName:  data.LastName,
+		})
+		if presentError(c, err) {
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"user": dto.AdaptUserDto(createdUser),
+		})
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"user": dto.AdaptUserDto(createdUser),
-	})
 }
 
-func (api *API) handleDeleteUser(c *gin.Context) {
-	creds, found := utils.CredentialsFromCtx(c.Request.Context())
-	if !found {
-		presentError(c, fmt.Errorf("no credentials in context"))
-		return
-	}
-	currentUserId := string(creds.ActorIdentity.UserId)
+func handleDeleteUser(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		creds, found := utils.CredentialsFromCtx(c.Request.Context())
+		if !found {
+			presentError(c, fmt.Errorf("no credentials in context"))
+			return
+		}
+		currentUserId := string(creds.ActorIdentity.UserId)
 
-	userId := c.Param("user_id")
+		userId := c.Param("user_id")
 
-	usecase := api.UsecasesWithCreds(c.Request).NewUserUseCase()
-	err := usecase.DeleteUser(c.Request.Context(), userId, currentUserId)
-	if presentError(c, err) {
-		return
+		usecase := usecasesWithCreds(c.Request, uc).NewUserUseCase()
+		err := usecase.DeleteUser(c.Request.Context(), userId, currentUserId)
+		if presentError(c, err) {
+			return
+		}
+		c.Status(http.StatusNoContent)
 	}
-	c.Status(http.StatusNoContent)
 }
 
-func (api *API) handleGetCredentials(c *gin.Context) {
-	creds, found := utils.CredentialsFromCtx(c.Request.Context())
-	if !found {
-		presentError(c, fmt.Errorf("no credentials in context %w", models.NotFoundError))
-		return
-	}
+func handleGetCredentials() func(c *gin.Context) {
+	return func(c *gin.Context) {
+		creds, found := utils.CredentialsFromCtx(c.Request.Context())
+		if !found {
+			presentError(c, fmt.Errorf("no credentials in context %w", models.NotFoundError))
+			return
+		}
 
-	c.JSON(http.StatusOK, gin.H{
-		"credentials": dto.AdaptCredentialDto(creds),
-	})
+		c.JSON(http.StatusOK, gin.H{
+			"credentials": dto.AdaptCredentialDto(creds),
+		})
+	}
 }

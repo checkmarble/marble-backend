@@ -11,6 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
@@ -34,86 +35,96 @@ func NewAPIScenarioPublication(sp models.ScenarioPublication) APIScenarioPublica
 	}
 }
 
-func (api *API) ListScenarioPublications(c *gin.Context) {
-	scenarioID := c.Query("scenarioID")
-	scenarioIterationID := c.Query("scenarioIterationID")
+func handleListScenarioPublications(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		scenarioID := c.Query("scenarioID")
+		scenarioIterationID := c.Query("scenarioIterationID")
 
-	usecase := api.UsecasesWithCreds(c.Request).NewScenarioPublicationUsecase()
-	scenarioPublications, err := usecase.ListScenarioPublications(
-		c.Request.Context(),
-		models.ListScenarioPublicationsFilters{
-			ScenarioId:          utils.PtrTo(scenarioID, &utils.PtrToOptions{OmitZero: true}),
-			ScenarioIterationId: utils.PtrTo(scenarioIterationID, &utils.PtrToOptions{OmitZero: true}),
-		})
-	if presentError(c, err) {
-		return
+		usecase := usecasesWithCreds(c.Request, uc).NewScenarioPublicationUsecase()
+		scenarioPublications, err := usecase.ListScenarioPublications(
+			c.Request.Context(),
+			models.ListScenarioPublicationsFilters{
+				ScenarioId:          utils.PtrTo(scenarioID, &utils.PtrToOptions{OmitZero: true}),
+				ScenarioIterationId: utils.PtrTo(scenarioIterationID, &utils.PtrToOptions{OmitZero: true}),
+			})
+		if presentError(c, err) {
+			return
+		}
+		c.JSON(http.StatusOK, pure_utils.Map(scenarioPublications, NewAPIScenarioPublication))
 	}
-	c.JSON(http.StatusOK, pure_utils.Map(scenarioPublications, NewAPIScenarioPublication))
 }
 
-func (api *API) CreateScenarioPublication(c *gin.Context) {
-	var data dto.CreateScenarioPublicationBody
-	if err := c.ShouldBindJSON(&data); err != nil {
-		c.Status(http.StatusBadRequest)
-		return
-	}
+func handleCreateScenarioPublication(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		var data dto.CreateScenarioPublicationBody
+		if err := c.ShouldBindJSON(&data); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
 
-	usecase := api.UsecasesWithCreds(c.Request).NewScenarioPublicationUsecase()
-	scenarioPublications, err := usecase.ExecuteScenarioPublicationAction(
-		c.Request.Context(),
-		models.PublishScenarioIterationInput{
-			ScenarioIterationId: data.ScenarioIterationId,
-			PublicationAction:   models.PublicationActionFrom(data.PublicationAction),
-		})
-	if handleExpectedPublicationError(c, err) || presentError(c, err) {
-		return
+		usecase := usecasesWithCreds(c.Request, uc).NewScenarioPublicationUsecase()
+		scenarioPublications, err := usecase.ExecuteScenarioPublicationAction(
+			c.Request.Context(),
+			models.PublishScenarioIterationInput{
+				ScenarioIterationId: data.ScenarioIterationId,
+				PublicationAction:   models.PublicationActionFrom(data.PublicationAction),
+			})
+		if handleExpectedPublicationError(c, err) || presentError(c, err) {
+			return
+		}
+		c.JSON(http.StatusOK, pure_utils.Map(scenarioPublications, NewAPIScenarioPublication))
 	}
-	c.JSON(http.StatusOK, pure_utils.Map(scenarioPublications, NewAPIScenarioPublication))
 }
 
-func (api *API) GetScenarioPublication(c *gin.Context) {
-	scenarioPublicationID := c.Param("publication_id")
+func handleGetScenarioPublication(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		scenarioPublicationID := c.Param("publication_id")
 
-	usecase := api.UsecasesWithCreds(c.Request).NewScenarioPublicationUsecase()
-	scenarioPublication, err := usecase.GetScenarioPublication(c.Request.Context(), scenarioPublicationID)
-	if presentError(c, err) {
-		return
+		usecase := usecasesWithCreds(c.Request, uc).NewScenarioPublicationUsecase()
+		scenarioPublication, err := usecase.GetScenarioPublication(c.Request.Context(), scenarioPublicationID)
+		if presentError(c, err) {
+			return
+		}
+		c.JSON(http.StatusOK, NewAPIScenarioPublication(scenarioPublication))
 	}
-	c.JSON(http.StatusOK, NewAPIScenarioPublication(scenarioPublication))
 }
 
-func (api *API) GetPublicationPreparationStatus(c *gin.Context) {
-	var data struct {
-		ScenarioIterationId string `form:"scenario_iteration_id" binding:"required"`
-	}
-	if err := c.ShouldBindQuery(&data); err != nil {
-		c.Status(http.StatusBadRequest)
-		return
-	}
+func handleGetPublicationPreparationStatus(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		var data struct {
+			ScenarioIterationId string `form:"scenario_iteration_id" binding:"required"`
+		}
+		if err := c.ShouldBindQuery(&data); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
 
-	usecase := api.UsecasesWithCreds(c.Request).NewScenarioPublicationUsecase()
-	status, err := usecase.GetPublicationPreparationStatus(c.Request.Context(), data.ScenarioIterationId)
-	if presentError(c, err) {
-		return
+		usecase := usecasesWithCreds(c.Request, uc).NewScenarioPublicationUsecase()
+		status, err := usecase.GetPublicationPreparationStatus(c.Request.Context(), data.ScenarioIterationId)
+		if presentError(c, err) {
+			return
+		}
+		c.JSON(http.StatusOK, dto.AdaptPublicationPreparationStatus(status))
 	}
-	c.JSON(http.StatusOK, dto.AdaptPublicationPreparationStatus(status))
 }
 
-func (api *API) StartPublicationPreparation(c *gin.Context) {
-	var data struct {
-		ScenarioIterationId string `json:"scenario_iteration_id" binding:"required"`
-	}
-	if err := c.ShouldBindJSON(&data); err != nil {
-		c.Status(http.StatusBadRequest)
-		return
-	}
+func handleStartPublicationPreparation(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		var data struct {
+			ScenarioIterationId string `json:"scenario_iteration_id" binding:"required"`
+		}
+		if err := c.ShouldBindJSON(&data); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
 
-	usecase := api.UsecasesWithCreds(c.Request).NewScenarioPublicationUsecase()
-	err := usecase.StartPublicationPreparation(c.Request.Context(), data.ScenarioIterationId)
-	if handleExpectedPublicationError(c, err) || presentError(c, err) {
-		return
+		usecase := usecasesWithCreds(c.Request, uc).NewScenarioPublicationUsecase()
+		err := usecase.StartPublicationPreparation(c.Request.Context(), data.ScenarioIterationId)
+		if handleExpectedPublicationError(c, err) || presentError(c, err) {
+			return
+		}
+		c.Status(http.StatusAccepted)
 	}
-	c.Status(http.StatusAccepted)
 }
 
 func handleExpectedPublicationError(c *gin.Context, err error) bool {

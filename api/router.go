@@ -45,7 +45,7 @@ func corsOption(conf Configuration) cors.Config {
 	}
 }
 
-func InitRouter(
+func InitRouterMiddlewares(
 	ctx context.Context,
 	conf Configuration,
 	segmentClient analytics.Client,

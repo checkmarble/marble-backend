@@ -9,7 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/models/ast"
 )
 
-func (api *API) handleAvailableFunctions(c *gin.Context) {
+func handleAvailableFunctions(c *gin.Context) {
 	functions := make(map[string]dto.FuncAttributesDto)
 
 	for f, attributes := range ast.FuncAttributesMap {

@@ -7,43 +7,48 @@ import (
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/checkmarble/marble-backend/usecases"
 )
 
-func (api *API) handleGetEditorIdentifiers(c *gin.Context) {
-	scenarioID := c.Param("scenario_id")
+func handleGetEditorIdentifiers(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		scenarioID := c.Param("scenario_id")
 
-	usecase := api.UsecasesWithCreds(c.Request).AstExpressionUsecase()
-	result, err := usecase.EditorIdentifiers(c.Request.Context(), scenarioID)
+		usecase := usecasesWithCreds(c.Request, uc).AstExpressionUsecase()
+		result, err := usecase.EditorIdentifiers(c.Request.Context(), scenarioID)
 
-	if presentError(c, err) {
-		return
+		if presentError(c, err) {
+			return
+		}
+
+		databaseNodes, err := pure_utils.MapErr(result.DatabaseAccessors, dto.AdaptNodeDto)
+		if presentError(c, err) {
+			return
+		}
+		payloadbaseNodes, err := pure_utils.MapErr(result.PayloadAccessors, dto.AdaptNodeDto)
+		if presentError(c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"database_accessors": databaseNodes,
+			"payload_accessors":  payloadbaseNodes,
+		})
 	}
-
-	databaseNodes, err := pure_utils.MapErr(result.DatabaseAccessors, dto.AdaptNodeDto)
-	if presentError(c, err) {
-		return
-	}
-	payloadbaseNodes, err := pure_utils.MapErr(result.PayloadAccessors, dto.AdaptNodeDto)
-	if presentError(c, err) {
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"database_accessors": databaseNodes,
-		"payload_accessors":  payloadbaseNodes,
-	})
 }
 
-func (api *API) handleGetEditorOperators(c *gin.Context) {
-	usecase := api.UsecasesWithCreds(c.Request).AstExpressionUsecase()
-	result := usecase.EditorOperators()
+func handleGetEditorOperators(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		usecase := usecasesWithCreds(c.Request, uc).AstExpressionUsecase()
+		result := usecase.EditorOperators()
 
-	var functions []dto.FuncAttributesDto
+		var functions []dto.FuncAttributesDto
 
-	for _, attributes := range result.OperatorAccessors {
-		functions = append(functions, dto.AdaptFuncAttributesDto(attributes))
+		for _, attributes := range result.OperatorAccessors {
+			functions = append(functions, dto.AdaptFuncAttributesDto(attributes))
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"operators_accessors": functions,
+		})
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"operators_accessors": functions,
-	})
 }

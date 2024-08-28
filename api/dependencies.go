@@ -21,7 +21,7 @@ type dependencies struct {
 	SegmentClient  analytics.Client
 }
 
-type tokenCookieVerifier interface {
+type tokenVerifier interface {
 	VerifyIDToken(ctx context.Context, idToken string) (*auth.Token, error)
 }
 
@@ -30,15 +30,15 @@ func InitDependencies(
 	conf Configuration,
 	dbPool *pgxpool.Pool,
 	signingKey *rsa.PrivateKey,
-	tokenVerifier tokenCookieVerifier,
+	optTokenVerifier ...tokenVerifier,
 ) dependencies {
 	database := postgres.New(dbPool)
 
-	if tokenVerifier == nil {
-		tokenVerifier = infra.InitializeFirebase(ctx)
+	if len(optTokenVerifier) == 0 {
+		optTokenVerifier = append(optTokenVerifier, infra.InitializeFirebase(ctx))
 	}
 
-	firebaseClient := firebase.New(tokenVerifier)
+	firebaseClient := firebase.New(optTokenVerifier[0])
 	jwtRepository := repositories.NewJWTRepository(signingKey)
 	tokenValidator := token.NewValidator(database, jwtRepository)
 	tokenGenerator := token.NewGenerator(database, jwtRepository, firebaseClient, conf.TokenLifetimeMinute)
