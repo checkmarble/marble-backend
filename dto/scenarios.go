@@ -45,11 +45,12 @@ type CreateScenarioBody struct {
 	TriggerObjectType string `json:"triggerObjectType"`
 }
 
-func AdaptCreateScenarioInput(input CreateScenarioBody) models.CreateScenarioInput {
+func AdaptCreateScenarioInput(input CreateScenarioBody, organizationId string) models.CreateScenarioInput {
 	return models.CreateScenarioInput{
 		Name:              input.Name,
 		Description:       input.Description,
 		TriggerObjectType: input.TriggerObjectType,
+		OrganizationId:    organizationId,
 	}
 }
 

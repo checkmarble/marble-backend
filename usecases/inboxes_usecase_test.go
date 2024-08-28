@@ -73,9 +73,6 @@ func (suite *InboxUsecaseTestSuite) SetupTest() {
 
 func (suite *InboxUsecaseTestSuite) makeUsecase() *InboxUsecase {
 	return &InboxUsecase{
-		organizationIdOfContext: func() (string, error) {
-			return suite.organizationId, nil
-		},
 		enforceSecurity:    suite.enforceSecurity,
 		inboxRepository:    suite.inboxRepository,
 		userRepository:     suite.userRepository,
@@ -95,9 +92,6 @@ func (suite *InboxUsecaseTestSuite) makeUsecase() *InboxUsecase {
 
 func (suite *InboxUsecaseTestSuite) makeUsecaseAdmin() *InboxUsecase {
 	return &InboxUsecase{
-		organizationIdOfContext: func() (string, error) {
-			return suite.organizationId, nil
-		},
 		enforceSecurity:    suite.enforceSecurity,
 		inboxRepository:    suite.inboxRepository,
 		userRepository:     suite.userRepository,

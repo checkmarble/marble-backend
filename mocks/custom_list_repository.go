@@ -38,9 +38,9 @@ func (cl *CustomListRepository) GetCustomListValueById(ctx context.Context,
 }
 
 func (cl *CustomListRepository) CreateCustomList(ctx context.Context, exec repositories.Executor,
-	createCustomList models.CreateCustomListInput, organizationId string, newCustomListId string,
+	createCustomList models.CreateCustomListInput, newCustomListId string,
 ) error {
-	args := cl.Called(exec, createCustomList)
+	args := cl.Called(ctx, exec, createCustomList, newCustomListId)
 	return args.Error(0)
 }
 

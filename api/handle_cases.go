@@ -109,12 +109,16 @@ func handlePostCase(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		inboxCase, err := usecase.CreateCaseAsUser(c.Request.Context(), userId, models.CreateCaseAttributes{
-			DecisionIds:    data.DecisionIds,
-			InboxId:        data.InboxId,
-			Name:           data.Name,
-			OrganizationId: organizationId,
-		})
+		inboxCase, err := usecase.CreateCaseAsUser(
+			c.Request.Context(),
+			organizationId,
+			userId,
+			models.CreateCaseAttributes{
+				DecisionIds:    data.DecisionIds,
+				InboxId:        data.InboxId,
+				Name:           data.Name,
+				OrganizationId: organizationId,
+			})
 
 		if presentError(c, err) {
 			return

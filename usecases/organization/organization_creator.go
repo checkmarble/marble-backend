@@ -58,9 +58,10 @@ func (creator *OrganizationCreator) seedDefaultList(ctx context.Context, organiz
 	newCustomListId := uuid.NewString()
 
 	err := creator.CustomListRepository.CreateCustomList(ctx, exec, models.CreateCustomListInput{
-		Name:        "Welcome to Marble",
-		Description: "Need a whitelist or blacklist ? The list is your friend :)",
-	}, organizationId, newCustomListId)
+		Name:           "Welcome to Marble",
+		Description:    "Need a whitelist or blacklist ? The list is your friend :)",
+		OrganizationId: organizationId,
+	}, newCustomListId)
 	if err != nil {
 		return err
 	}

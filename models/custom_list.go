@@ -21,8 +21,9 @@ type CustomListValue struct {
 }
 
 type CreateCustomListInput struct {
-	Name        string
-	Description string
+	Name           string
+	Description    string
+	OrganizationId string
 }
 
 type UpdateCustomListInput struct {

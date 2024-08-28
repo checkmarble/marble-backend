@@ -52,11 +52,8 @@ func (suite *ScenarioUsecaseTestSuite) makeUsecase() *ScenarioUsecase {
 	return &ScenarioUsecase{
 		transactionFactory: suite.transactionFactory,
 		executorFactory:    suite.executorFactory,
-		organizationIdOfContext: func() (string, error) {
-			return suite.organizationId, nil
-		},
-		enforceSecurity: suite.enforceSecurity,
-		repository:      suite.scenarioRepository,
+		enforceSecurity:    suite.enforceSecurity,
+		repository:         suite.scenarioRepository,
 	}
 }
 
@@ -75,7 +72,7 @@ func (suite *ScenarioUsecaseTestSuite) TestListScenarios() {
 		suite.organizationId).Return(expected, nil)
 	suite.enforceSecurity.On("ReadScenario", suite.scenario).Return(nil)
 
-	result, err := suite.makeUsecase().ListScenarios(suite.ctx)
+	result, err := suite.makeUsecase().ListScenarios(suite.ctx, suite.organizationId)
 
 	t := suite.T()
 	assert.NoError(t, err)
@@ -90,7 +87,7 @@ func (suite *ScenarioUsecaseTestSuite) TestListScenarios_security() {
 		suite.organizationId).Return([]models.Scenario{suite.scenario}, nil)
 	suite.enforceSecurity.On("ReadScenario", suite.scenario).Return(suite.securityError)
 
-	_, err := suite.makeUsecase().ListScenarios(suite.ctx)
+	_, err := suite.makeUsecase().ListScenarios(suite.ctx, suite.organizationId)
 
 	assert.ErrorIs(suite.T(), err, suite.securityError)
 	suite.AssertExpectations()
@@ -219,7 +216,8 @@ func (suite *ScenarioUsecaseTestSuite) TestUpdateScenario_security() {
 
 func (suite *ScenarioUsecaseTestSuite) TestCreateScenario() {
 	createScenarioInput := models.CreateScenarioInput{
-		Name: "new scenario",
+		Name:           "new scenario",
+		OrganizationId: suite.organizationId,
 	}
 
 	suite.enforceSecurity.On("CreateScenario", suite.organizationId).Return(nil)
@@ -241,7 +239,9 @@ func (suite *ScenarioUsecaseTestSuite) TestCreateScenario() {
 func (suite *ScenarioUsecaseTestSuite) TestCreateScenario_security() {
 	suite.enforceSecurity.On("CreateScenario", suite.organizationId).Return(suite.securityError)
 
-	_, err := suite.makeUsecase().CreateScenario(context.Background(), models.CreateScenarioInput{})
+	_, err := suite.makeUsecase().CreateScenario(context.Background(), models.CreateScenarioInput{
+		OrganizationId: suite.organizationId,
+	})
 	assert.ErrorIs(suite.T(), err, suite.securityError)
 
 	suite.AssertExpectations()

@@ -14,18 +14,13 @@ import (
 )
 
 type CustomListUseCase struct {
-	organizationIdOfContext func() (string, error)
-	enforceSecurity         security.EnforceSecurityCustomList
-	transactionFactory      executor_factory.TransactionFactory
-	executorFactory         executor_factory.ExecutorFactory
-	CustomListRepository    repositories.CustomListRepository
+	enforceSecurity      security.EnforceSecurityCustomList
+	transactionFactory   executor_factory.TransactionFactory
+	executorFactory      executor_factory.ExecutorFactory
+	CustomListRepository repositories.CustomListRepository
 }
 
-func (usecase *CustomListUseCase) GetCustomLists(ctx context.Context) ([]models.CustomList, error) {
-	organizationId, err := usecase.organizationIdOfContext()
-	if err != nil {
-		return []models.CustomList{}, err
-	}
+func (usecase *CustomListUseCase) GetCustomLists(ctx context.Context, organizationId string) ([]models.CustomList, error) {
 	customLists, err := usecase.CustomListRepository.AllCustomLists(ctx,
 		usecase.executorFactory.NewExecutor(), organizationId)
 	if err != nil {
@@ -39,7 +34,9 @@ func (usecase *CustomListUseCase) GetCustomLists(ctx context.Context) ([]models.
 	return customLists, nil
 }
 
-func (usecase *CustomListUseCase) CreateCustomList(ctx context.Context,
+func (usecase *CustomListUseCase) CreateCustomList(
+	ctx context.Context,
+
 	createCustomList models.CreateCustomListInput,
 ) (models.CustomList, error) {
 	if err := usecase.enforceSecurity.CreateCustomList(); err != nil {
@@ -50,12 +47,8 @@ func (usecase *CustomListUseCase) CreateCustomList(ctx context.Context,
 		tx repositories.Executor,
 	) (models.CustomList, error) {
 		newCustomListId := uuid.NewString()
-		organizationId, err := usecase.organizationIdOfContext()
-		if err != nil {
-			return models.CustomList{}, err
-		}
 
-		err = usecase.CustomListRepository.CreateCustomList(ctx, tx, createCustomList, organizationId, newCustomListId)
+		err := usecase.CustomListRepository.CreateCustomList(ctx, tx, createCustomList, newCustomListId)
 		if repositories.IsUniqueViolationError(err) {
 			return models.CustomList{}, models.ConflictError
 		}

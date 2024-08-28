@@ -37,6 +37,7 @@ type CreateScenarioInput struct {
 	Description       string
 	Name              string
 	TriggerObjectType string
+	OrganizationId    string
 }
 
 type UpdateScenarioInput struct {
