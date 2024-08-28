@@ -14,13 +14,16 @@ func TestApiEndToEnd(t *testing.T) {
 	e.GET("/liveness").Expect().Status(http.StatusOK)
 
 	// Create an org and an admin user in it
-	auth, _, _ := setupOrgAndUser(e)
+	_, authOrgAdmin := setupOrgAndUser(e)
 
 	// create the data model
-	setupDataModel(auth)
+	setupDataModel(authOrgAdmin)
+
+	// create a scenario and publish it
+	setupTestScenarioAndPublish(authOrgAdmin)
 }
 
-func setupOrgAndUser(e *httpexpect.Expect) (authUser *httpexpect.Expect, orgId, userId string) {
+func setupOrgAndUser(e *httpexpect.Expect) (authMarbleAdmin *httpexpect.Expect, authOrgAdmin *httpexpect.Expect) {
 	adminToken := e.POST("/token").
 		WithHeader("Authorization", fmt.Sprintf("Bearer %s", marbleAdminEmail)).
 		Expect().Status(http.StatusOK).
@@ -41,20 +44,19 @@ func setupOrgAndUser(e *httpexpect.Expect) (authUser *httpexpect.Expect, orgId, 
 	obj.Value("users").Array().Length().IsEqual(1)
 
 	// Create an org and an admin user in it
-	orgId = auth.POST("/organizations").WithJSON(map[string]any{"name": "test-org"}).
+	orgId := auth.POST("/organizations").WithJSON(map[string]any{"name": "test-org"}).
 		Expect().Status(http.StatusOK).
 		JSON().
 		Object().Value("organization").
 		Object().Value("id").String().NotEmpty().Raw()
 
 	orgAdminEmail := "test@email.com"
-	userId = auth.POST("/users").
+	auth.POST("/users").
 		WithJSON(map[string]any{"email": orgAdminEmail, "organization_id": orgId, "role": "ADMIN"}).
 		Expect().Status(http.StatusOK).
 		JSON().
 		Object().Value("user").
 		Object().Value("user_id").String().NotEmpty().Raw()
-	fmt.Println(userId)
 
 	// Check that there are now 2 users
 	obj = auth.GET("/users").
@@ -77,11 +79,11 @@ func setupOrgAndUser(e *httpexpect.Expect) (authUser *httpexpect.Expect, orgId, 
 		Object().ContainsKey("access_token").
 		Value("access_token").String().Raw()
 
-	authUser = e.Builder(func(req *httpexpect.Request) {
+	authOrgAdmin = e.Builder(func(req *httpexpect.Request) {
 		req.WithHeader("Authorization", fmt.Sprintf("Bearer %s", orgAdminToken))
 	})
 
-	return authUser, orgId, userId
+	return auth, authOrgAdmin
 }
 
 func setupDataModel(auth *httpexpect.Expect) {
@@ -152,5 +154,82 @@ func setupDataModel(auth *httpexpect.Expect) {
 			"base_table_id": transactionsTableId,
 			"path_link_ids": []string{linkId},
 		}).
+		Expect().Status(http.StatusOK)
+}
+
+func setupTestScenarioAndPublish(authOrgAdmin *httpexpect.Expect) {
+	scenarioId := authOrgAdmin.POST("/scenarios").
+		WithJSON(map[string]any{"name": "test-scenario", "triggerObjectType": "transactions"}).
+		Expect().Status(http.StatusOK).
+		JSON().
+		Object().Value("id").String().NotEmpty().Raw()
+
+	scenarioIterationId := authOrgAdmin.POST("/scenario-iterations").
+		WithJSON(map[string]any{"scenarioId": scenarioId}).
+		Expect().Status(http.StatusOK).
+		JSON().
+		Object().Value("id").String().NotEmpty().Raw()
+	fmt.Println(scenarioIterationId)
+
+	triggerBody := `{
+  "body": {
+    "scoreReviewThreshold": 10,
+    "scoreRejectThreshold": 20,
+    "trigger_condition_ast_expression": {
+      "name": "And",
+      "children": [
+        {
+          "name": "=",
+          "children": [
+            { "name": "Payload", "children": [{ "constant": "status" }] },
+            { "constant": "payout" }
+          ]
+        }
+      ]
+    }
+  }
+}
+`
+	authOrgAdmin.PATCH("/scenario-iterations/{iteration_id}", scenarioIterationId).
+		WithBytes([]byte(triggerBody)).
+		Expect().Status(http.StatusOK)
+
+	ruleBody := fmt.Sprintf(`{
+  "scenarioIterationId": "%s",
+  "name": "Rule 1 Name",
+  "formula_ast_expression": {
+    "body": {
+      "scoreReviewThreshold": 10,
+      "scoreRejectThreshold": 20,
+      "trigger_condition_ast_expression": {
+        "name": "And",
+        "children": [
+          {
+            "name": "=",
+            "children": [
+              { "name": "Payload", "children": [{ "constant": "status" }] },
+              { "constant": "payout" }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "scoreModifier": 2
+}`, scenarioIterationId)
+	authOrgAdmin.POST("/scenario-iteration-rules").WithBytes([]byte(ruleBody)).
+		Expect().Status(http.StatusOK)
+
+	// validate the scenario
+	authOrgAdmin.POST("/scenario-iterations/{iteration_id}/validate", scenarioIterationId).
+		Expect().Status(http.StatusOK)
+
+	// commit the scenario
+	authOrgAdmin.POST("/scenario-iterations/{iteration_id}/commit", scenarioIterationId).
+		Expect().Status(http.StatusOK)
+
+	// activate the scenario
+	authOrgAdmin.POST("/scenario-publications").
+		WithJSON(map[string]any{"scenarioIterationID": scenarioIterationId, "publicationAction": "publish"}).
 		Expect().Status(http.StatusOK)
 }
