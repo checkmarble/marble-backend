@@ -33,6 +33,7 @@ const (
 	testPassword        = "pwd"
 	testDbName          = "marble"
 	privatePortRangeMin = 49152
+	marbleAdminEmail    = "test@admin.com"
 )
 
 var (
@@ -86,9 +87,9 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("Could not connect to database: %s", err)
 	}
+	log.Printf("DB connection pool created.")
 
 	if err = pool.Retry(func() error {
-		log.Printf("DB connection pool created. Stats: %+v\n", testDbPool.Stat())
 		err = testDbPool.Ping(ctx)
 		if err != nil {
 			log.Printf("Could not ping database: %s", err)
@@ -156,6 +157,13 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 	tokenGenerator = token.NewGenerator(database, jwtRepository, firebaseClient, 10)
+
+	// we need to create a first marble admin user, otherwise we can't use the API (chicken and egg)
+	seedUsecase := testUsecases.NewSeedUseCase()
+	if err := seedUsecase.SeedMarbleAdmins(ctx, marbleAdminEmail); err != nil {
+		logger.ErrorContext(ctx, "Error seeding marble admin", "error", err)
+		panic(err)
+	}
 
 	go func() {
 		logger.InfoContext(ctx, "starting server", slog.String("port", apiConfig.Port))
