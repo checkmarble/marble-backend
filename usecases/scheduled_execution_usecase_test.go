@@ -21,6 +21,7 @@ type ScheduledExecutionsTestSuite struct {
 	repository              *mocks.ScheduledExecutionUsecaseRepository
 	exportScheduleExecution *mocks.ExportDecisionsMock
 
+	organizationId      string
 	scenarioId          string
 	scheduledExecutions []models.ScheduledExecution
 }
@@ -32,6 +33,7 @@ func (suite *ScheduledExecutionsTestSuite) SetupTest() {
 	suite.repository = new(mocks.ScheduledExecutionUsecaseRepository)
 	suite.exportScheduleExecution = new(mocks.ExportDecisionsMock)
 
+	suite.organizationId = "some org id"
 	suite.scenarioId = "some scenario id"
 	suite.scheduledExecutions = []models.ScheduledExecution{
 		{
@@ -46,9 +48,6 @@ func (suite *ScheduledExecutionsTestSuite) makeUsecase() *ScheduledExecutionUsec
 		transactionFactory:      suite.transactionFactory,
 		repository:              suite.repository,
 		exportScheduleExecution: suite.exportScheduleExecution,
-		organizationIdOfContext: func() (string, error) {
-			return "some org id", nil
-		},
 	}
 }
 
@@ -69,7 +68,7 @@ func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutions_with_Orga
 	}).Return(suite.scheduledExecutions, nil)
 	suite.enforceSecurity.On("ReadScheduledExecution", suite.scheduledExecutions[0]).Return(nil)
 
-	result, err := suite.makeUsecase().ListScheduledExecutions(ctx, "")
+	result, err := suite.makeUsecase().ListScheduledExecutions(ctx, suite.organizationId, nil)
 
 	t := suite.T()
 	assert.NoError(t, err)
@@ -86,7 +85,7 @@ func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutions_with_Scen
 	}).Return(suite.scheduledExecutions, nil)
 	suite.enforceSecurity.On("ReadScheduledExecution", suite.scheduledExecutions[0]).Return(nil)
 
-	result, err := suite.makeUsecase().ListScheduledExecutions(ctx, suite.scenarioId)
+	result, err := suite.makeUsecase().ListScheduledExecutions(ctx, suite.organizationId, &suite.scenarioId)
 
 	t := suite.T()
 	assert.NoError(t, err)
@@ -105,7 +104,7 @@ func (suite *ScheduledExecutionsTestSuite) TestListScheduledExecutions_security(
 	}).Return(suite.scheduledExecutions, nil)
 	suite.enforceSecurity.On("ReadScheduledExecution", suite.scheduledExecutions[0]).Return(securityError)
 
-	result, err := suite.makeUsecase().ListScheduledExecutions(ctx, suite.scenarioId)
+	result, err := suite.makeUsecase().ListScheduledExecutions(ctx, suite.organizationId, &suite.scenarioId)
 
 	t := suite.T()
 	assert.ErrorIs(t, err, securityError)

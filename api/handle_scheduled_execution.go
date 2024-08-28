@@ -68,10 +68,17 @@ func handleGetScheduledExecutionDecisions(uc usecases.Usecases) func(c *gin.Cont
 
 func handleListScheduledExecution(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		scenarioID := c.Query("scenario_id")
+		scenarioId := c.Query("scenario_id")
+		scenarioIdPtr := utils.PtrTo(scenarioId, &utils.PtrToOptions{OmitZero: true})
+
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(c, err) {
+			return
+		}
 
 		usecase := usecasesWithCreds(c.Request, uc).NewScheduledExecutionUsecase()
-		executions, err := usecase.ListScheduledExecutions(c.Request.Context(), scenarioID)
+
+		executions, err := usecase.ListScheduledExecutions(c.Request.Context(), organizationId, scenarioIdPtr)
 
 		if presentError(c, err) {
 			return
