@@ -56,6 +56,11 @@ func handleListScenarioPublications(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleCreateScenarioPublication(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(c, err) {
+			return
+		}
+
 		var data dto.CreateScenarioPublicationBody
 		if err := c.ShouldBindJSON(&data); err != nil {
 			c.Status(http.StatusBadRequest)
@@ -65,6 +70,7 @@ func handleCreateScenarioPublication(uc usecases.Usecases) func(c *gin.Context) 
 		usecase := usecasesWithCreds(c.Request, uc).NewScenarioPublicationUsecase()
 		scenarioPublications, err := usecase.ExecuteScenarioPublicationAction(
 			c.Request.Context(),
+			organizationId,
 			models.PublishScenarioIterationInput{
 				ScenarioIterationId: data.ScenarioIterationId,
 				PublicationAction:   models.PublicationActionFrom(data.PublicationAction),
@@ -91,6 +97,11 @@ func handleGetScenarioPublication(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleGetPublicationPreparationStatus(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(c, err) {
+			return
+		}
+
 		var data struct {
 			ScenarioIterationId string `form:"scenario_iteration_id" binding:"required"`
 		}
@@ -100,7 +111,10 @@ func handleGetPublicationPreparationStatus(uc usecases.Usecases) func(c *gin.Con
 		}
 
 		usecase := usecasesWithCreds(c.Request, uc).NewScenarioPublicationUsecase()
-		status, err := usecase.GetPublicationPreparationStatus(c.Request.Context(), data.ScenarioIterationId)
+		status, err := usecase.GetPublicationPreparationStatus(
+			c.Request.Context(),
+			organizationId,
+			data.ScenarioIterationId)
 		if presentError(c, err) {
 			return
 		}
@@ -110,6 +124,11 @@ func handleGetPublicationPreparationStatus(uc usecases.Usecases) func(c *gin.Con
 
 func handleStartPublicationPreparation(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(c, err) {
+			return
+		}
+
 		var data struct {
 			ScenarioIterationId string `json:"scenario_iteration_id" binding:"required"`
 		}
@@ -119,7 +138,7 @@ func handleStartPublicationPreparation(uc usecases.Usecases) func(c *gin.Context
 		}
 
 		usecase := usecasesWithCreds(c.Request, uc).NewScenarioPublicationUsecase()
-		err := usecase.StartPublicationPreparation(c.Request.Context(), data.ScenarioIterationId)
+		err = usecase.StartPublicationPreparation(c.Request.Context(), organizationId, data.ScenarioIterationId)
 		if handleExpectedPublicationError(c, err) || presentError(c, err) {
 			return
 		}

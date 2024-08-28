@@ -45,7 +45,7 @@ func handleCreateScenarioIteration(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		organizationId, err := utils.OrgIDFromCtx(ctx, c.Request)
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(c, err) {
 			return
 		}
@@ -79,7 +79,7 @@ func handleCreateDraftFromIteration(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		organizationId, err := utils.OrgIDFromCtx(ctx, c.Request)
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(c, err) {
 			return
 		}

@@ -337,16 +337,19 @@ func setupScenarioAndPublish(
 	if err != nil {
 		assert.FailNow(t, "Could not commit scenario iteration", err)
 	}
-	err = scenarioPublicationUsecase.StartPublicationPreparation(ctx, scenarioIterationId)
+	err = scenarioPublicationUsecase.StartPublicationPreparation(ctx, organizationId, scenarioIterationId)
 	if err != nil {
 		assert.FailNow(t, "Could not start publication preparation", err)
 	}
 	time.Sleep(50 * time.Millisecond)
 	scenarioPublications, err := scenarioPublicationUsecase.ExecuteScenarioPublicationAction(
-		ctx, models.PublishScenarioIterationInput{
+		ctx,
+		organizationId,
+		models.PublishScenarioIterationInput{
 			ScenarioIterationId: scenarioIterationId,
 			PublicationAction:   models.Publish,
-		})
+		},
+	)
 	if err != nil {
 		assert.FailNow(t, "Could not publish scenario iteration", err)
 	}

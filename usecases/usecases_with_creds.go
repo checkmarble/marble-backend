@@ -83,7 +83,6 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 		dataModelRepository:        usecases.Repositories.DataModelRepository,
 		repository:                 &usecases.Repositories.MarbleDbRepository,
 		evaluateAstExpression:      usecases.NewEvaluateAstExpression(),
-		organizationIdOfContext:    usecases.OrganizationIdOfContext,
 		decisionWorkflows:          usecases.NewDecisionWorkflows(),
 		webhookEventsSender:        usecases.NewWebhookEventsUsecase(),
 		snoozesReader:              &usecases.Repositories.MarbleDbRepository,
@@ -169,7 +168,6 @@ func (usecases *UsecasesWithCreds) NewClientDbIndexEditor() clientDbIndexEditor 
 		&usecases.Repositories.ClientDbRepository,
 		usecases.NewEnforceScenarioSecurity(),
 		usecases.NewEnforceOrganizationSecurity(),
-		usecases.OrganizationIdOfContext,
 	)
 }
 
@@ -337,8 +335,7 @@ func (usecases *UsecasesWithCreds) NewTagUseCase() TagUseCase {
 
 func (usecases *UsecasesWithCreds) NewApiKeyUseCase() ApiKeyUseCase {
 	return ApiKeyUseCase{
-		executorFactory:         usecases.NewExecutorFactory(),
-		organizationIdOfContext: usecases.OrganizationIdOfContext,
+		executorFactory: usecases.NewExecutorFactory(),
 		enforceSecurity: &security.EnforceSecurityApiKeyImpl{
 			EnforceSecurity: usecases.NewEnforceSecurity(),
 			Credentials:     usecases.Credentials,
@@ -349,7 +346,6 @@ func (usecases *UsecasesWithCreds) NewApiKeyUseCase() ApiKeyUseCase {
 
 func (usecases *UsecasesWithCreds) NewAnalyticsUseCase() AnalyticsUseCase {
 	return AnalyticsUseCase{
-		organizationIdOfContext: usecases.OrganizationIdOfContext,
 		enforceSecurity: &security.EnforceSecurityAnalyticsImpl{
 			EnforceSecurity: usecases.NewEnforceSecurity(),
 			Credentials:     usecases.Credentials,

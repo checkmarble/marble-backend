@@ -42,7 +42,7 @@ func (usecase *DataModelUseCase) GetDataModel(ctx context.Context, organizationI
 		return models.DataModel{}, err
 	}
 
-	uniqueIndexes, err := usecase.clientDbIndexEditor.ListAllUniqueIndexes(ctx)
+	uniqueIndexes, err := usecase.clientDbIndexEditor.ListAllUniqueIndexes(ctx, organizationID)
 	if err != nil {
 		return models.DataModel{}, err
 	}
@@ -129,6 +129,7 @@ func (usecase *DataModelUseCase) CreateDataModelTable(ctx context.Context, organ
 			return usecase.clientDbIndexEditor.CreateUniqueIndex(
 				ctx,
 				orgTx,
+				organizationId,
 				getFieldUniqueIndex(name, "object_id"),
 			)
 		})
@@ -150,11 +151,13 @@ func (usecase *DataModelUseCase) UpdateDataModelTable(ctx context.Context, table
 func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, field models.CreateFieldInput) (string, error) {
 	fieldId := uuid.New().String()
 	var tableName string
+	var organizationId string
 	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
 		table, err := usecase.dataModelRepository.GetDataModelTable(ctx, tx, field.TableId)
 		if err != nil {
 			return err
 		}
+		organizationId = table.OrganizationID
 		if err := usecase.enforceSecurity.WriteDataModel(table.OrganizationID); err != nil {
 			return err
 		}
@@ -181,6 +184,7 @@ func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, field
 	if field.IsUnique {
 		err := usecase.clientDbIndexEditor.CreateUniqueIndexAsync(
 			ctx,
+			organizationId,
 			getFieldUniqueIndex(tableName, field.Name),
 		)
 		if err != nil {
@@ -239,6 +243,7 @@ func (usecase *DataModelUseCase) UpdateDataModelField(ctx context.Context, field
 	if makeUnique {
 		return usecase.clientDbIndexEditor.CreateUniqueIndexAsync(
 			ctx,
+			table.OrganizationID,
 			getFieldUniqueIndex(table.Name, field.Name),
 		)
 	}
@@ -247,6 +252,7 @@ func (usecase *DataModelUseCase) UpdateDataModelField(ctx context.Context, field
 	if makeNotUnique {
 		return usecase.clientDbIndexEditor.DeleteUniqueIndex(
 			ctx,
+			table.OrganizationID,
 			getFieldUniqueIndex(table.Name, field.Name),
 		)
 	}

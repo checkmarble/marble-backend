@@ -143,9 +143,6 @@ func (suite *ClientDbIndexEditorTestSuite) makeUsecase() ClientDbIndexEditor {
 		suite.ingestedDataIndexesRepository,
 		suite.enforceSecurity,
 		suite.enforceSecurityDataModel,
-		func() (string, error) {
-			return suite.organizationId, nil
-		},
 	)
 }
 
@@ -170,7 +167,10 @@ func (suite *ClientDbIndexEditorTestSuite) Test_GetIndexesToCreate_nominal_1() {
 		Return(suite.existingIndexes, nil)
 	suite.ingestedDataIndexesRepository.On("CountPendingIndexes", suite.ctx, suite.transaction).Return(0, nil)
 
-	toCreate, numPending, err := suite.makeUsecase().GetIndexesToCreate(suite.ctx, suite.iterationId)
+	toCreate, numPending, err := suite.makeUsecase().GetIndexesToCreate(
+		suite.ctx,
+		suite.organizationId,
+		suite.iterationId)
 
 	suite.NoError(err)
 	suite.Assert().Empty(toCreate)
@@ -190,7 +190,10 @@ func (suite *ClientDbIndexEditorTestSuite) Test_GetIndexesToCreate_nominal_2() {
 		Return(suite.existingIndexes, nil)
 	suite.ingestedDataIndexesRepository.On("CountPendingIndexes", suite.ctx, suite.transaction).Return(1, nil)
 
-	toCreate, numPending, err := suite.makeUsecase().GetIndexesToCreate(suite.ctx, suite.iterationId)
+	toCreate, numPending, err := suite.makeUsecase().GetIndexesToCreate(
+		suite.ctx,
+		suite.organizationId,
+		suite.iterationId)
 
 	suite.NoError(err)
 	suite.Assert().Empty(toCreate)
@@ -210,7 +213,10 @@ func (suite *ClientDbIndexEditorTestSuite) Test_GetIndexesToCreate_nominal_3() {
 		Return(suite.existingIndexes, nil)
 	suite.ingestedDataIndexesRepository.On("CountPendingIndexes", suite.ctx, suite.transaction).Return(1, nil)
 
-	toCreate, numPending, err := suite.makeUsecase().GetIndexesToCreate(suite.ctx, suite.iterationId)
+	toCreate, numPending, err := suite.makeUsecase().GetIndexesToCreate(
+		suite.ctx,
+		suite.organizationId,
+		suite.iterationId)
 
 	suite.NoError(err)
 	suite.Assert().Equal(1, len(toCreate))
@@ -225,7 +231,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_GetIndexesToCreate_security_erro
 		suite.iterationId).Return(suite.scenarioAndIteration, nil)
 	suite.enforceSecurity.On("PublishScenario", suite.scenario).Return(suite.securityError)
 
-	_, _, err := suite.makeUsecase().GetIndexesToCreate(suite.ctx, suite.iterationId)
+	_, _, err := suite.makeUsecase().GetIndexesToCreate(suite.ctx, suite.organizationId, suite.iterationId)
 
 	suite.Assert().Error(err)
 
@@ -237,7 +243,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_GetIndexesToCreate_fetch_error()
 	suite.scenarioFetcher.On("FetchScenarioAndIteration", suite.ctx, suite.transaction,
 		suite.iterationId).Return(models.ScenarioAndIteration{}, suite.repositoryError)
 
-	_, _, err := suite.makeUsecase().GetIndexesToCreate(suite.ctx, suite.iterationId)
+	_, _, err := suite.makeUsecase().GetIndexesToCreate(suite.ctx, suite.organizationId, suite.iterationId)
 
 	suite.Assert().ErrorIs(err, suite.repositoryError)
 
@@ -256,7 +262,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_CreateIndexesAsync_nominal() {
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.ingestedDataIndexesRepository.On("CreateIndexesAsync", suite.ctx, suite.transaction, indexes).Return(nil)
 
-	err := suite.makeUsecase().CreateIndexesAsync(suite.ctx, indexes)
+	err := suite.makeUsecase().CreateIndexesAsync(suite.ctx, suite.organizationId, indexes)
 
 	suite.NoError(err)
 
@@ -272,7 +278,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_CreateIndexesAsync_security_erro
 	}
 	suite.enforceSecurityDataModel.On("WriteDataModel", suite.organizationId).Return(suite.securityError)
 
-	err := suite.makeUsecase().CreateIndexesAsync(suite.ctx, indexes)
+	err := suite.makeUsecase().CreateIndexesAsync(suite.ctx, suite.organizationId, indexes)
 
 	suite.Assert().Error(err)
 
@@ -290,7 +296,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_CreateIndexesAsync_error() {
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.ingestedDataIndexesRepository.On("CreateIndexesAsync", suite.ctx, suite.transaction, indexes).Return(suite.repositoryError)
 
-	err := suite.makeUsecase().CreateIndexesAsync(suite.ctx, indexes)
+	err := suite.makeUsecase().CreateIndexesAsync(suite.ctx, suite.organizationId, indexes)
 
 	suite.Assert().Error(err)
 
@@ -307,7 +313,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_CreateIndexesAsync_get_executor_
 	suite.enforceSecurityDataModel.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(nil, suite.repositoryError)
 
-	err := suite.makeUsecase().CreateIndexesAsync(suite.ctx, indexes)
+	err := suite.makeUsecase().CreateIndexesAsync(suite.ctx, suite.organizationId, indexes)
 
 	suite.Assert().Error(err)
 
@@ -325,7 +331,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_ListAllUniqueIndexes_nominal() {
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.ingestedDataIndexesRepository.On("ListAllUniqueIndexes", suite.ctx, suite.transaction).Return(uniqueIndexes, nil)
 
-	indexes, err := suite.makeUsecase().ListAllUniqueIndexes(suite.ctx)
+	indexes, err := suite.makeUsecase().ListAllUniqueIndexes(suite.ctx, suite.organizationId)
 
 	suite.NoError(err)
 	suite.Assert().Equal(uniqueIndexes, indexes)
@@ -336,7 +342,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_ListAllUniqueIndexes_nominal() {
 func (suite *ClientDbIndexEditorTestSuite) Test_ListAllUniqueIndexes_security_error() {
 	suite.enforceSecurityDataModel.On("ReadDataModel").Return(suite.securityError)
 
-	_, err := suite.makeUsecase().ListAllUniqueIndexes(suite.ctx)
+	_, err := suite.makeUsecase().ListAllUniqueIndexes(suite.ctx, suite.organizationId)
 
 	suite.Assert().Error(err)
 	suite.Assert().Equal(suite.securityError, err)
@@ -349,7 +355,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_ListAllUniqueIndexes_repository_
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.ingestedDataIndexesRepository.On("ListAllUniqueIndexes", suite.ctx, suite.transaction).Return(nil, suite.repositoryError)
 
-	_, err := suite.makeUsecase().ListAllUniqueIndexes(suite.ctx)
+	_, err := suite.makeUsecase().ListAllUniqueIndexes(suite.ctx, suite.organizationId)
 
 	suite.Assert().Error(err)
 
@@ -365,7 +371,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_CreateUniqueIndexAsync_nominal()
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.ingestedDataIndexesRepository.On("CreateUniqueIndexAsync", suite.ctx, suite.transaction, index).Return(nil)
 
-	err := suite.makeUsecase().CreateUniqueIndexAsync(suite.ctx, index)
+	err := suite.makeUsecase().CreateUniqueIndexAsync(suite.ctx, suite.organizationId, index)
 
 	suite.NoError(err)
 
@@ -378,7 +384,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_CreateUniqueIndexAsync_security_
 	}
 	suite.enforceSecurityDataModel.On("WriteDataModel", suite.organizationId).Return(suite.securityError)
 
-	err := suite.makeUsecase().CreateUniqueIndexAsync(suite.ctx, index)
+	err := suite.makeUsecase().CreateUniqueIndexAsync(suite.ctx, suite.organizationId, index)
 
 	suite.Assert().Error(err)
 	suite.Assert().Equal(suite.securityError, err)
@@ -393,7 +399,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_CreateUniqueIndexAsync_error() {
 	suite.enforceSecurityDataModel.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(nil, suite.repositoryError)
 
-	err := suite.makeUsecase().CreateUniqueIndexAsync(suite.ctx, index)
+	err := suite.makeUsecase().CreateUniqueIndexAsync(suite.ctx, suite.organizationId, index)
 
 	suite.Assert().Error(err)
 
@@ -409,7 +415,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_CreateUniqueIndex_nominal() {
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.ingestedDataIndexesRepository.On("CreateUniqueIndex", suite.ctx, suite.transaction, index).Return(nil)
 
-	err := suite.makeUsecase().CreateUniqueIndex(suite.ctx, nil, index)
+	err := suite.makeUsecase().CreateUniqueIndex(suite.ctx, nil, suite.organizationId, index)
 
 	suite.NoError(err)
 
@@ -422,7 +428,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_CreateUniqueIndex_security_error
 	}
 	suite.enforceSecurityDataModel.On("WriteDataModel", suite.organizationId).Return(suite.securityError)
 
-	err := suite.makeUsecase().CreateUniqueIndex(suite.ctx, nil, index)
+	err := suite.makeUsecase().CreateUniqueIndex(suite.ctx, nil, suite.organizationId, index)
 
 	suite.Assert().Error(err)
 	suite.Assert().Equal(suite.securityError, err)
@@ -438,7 +444,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_CreateUniqueIndex_error() {
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.ingestedDataIndexesRepository.On("CreateUniqueIndex", suite.ctx, suite.transaction, index).Return(suite.repositoryError)
 
-	err := suite.makeUsecase().CreateUniqueIndex(suite.ctx, nil, index)
+	err := suite.makeUsecase().CreateUniqueIndex(suite.ctx, nil, suite.organizationId, index)
 
 	suite.Assert().Error(err)
 
@@ -454,7 +460,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_DeleteUniqueIndex_nominal() {
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.ingestedDataIndexesRepository.On("DeleteUniqueIndex", suite.ctx, suite.transaction, index).Return(nil)
 
-	err := suite.makeUsecase().DeleteUniqueIndex(suite.ctx, index)
+	err := suite.makeUsecase().DeleteUniqueIndex(suite.ctx, suite.organizationId, index)
 
 	suite.NoError(err)
 
@@ -467,7 +473,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_DeleteUniqueIndex_security_error
 	}
 	suite.enforceSecurityDataModel.On("WriteDataModel", suite.organizationId).Return(suite.securityError)
 
-	err := suite.makeUsecase().DeleteUniqueIndex(suite.ctx, index)
+	err := suite.makeUsecase().DeleteUniqueIndex(suite.ctx, suite.organizationId, index)
 
 	suite.Assert().Error(err)
 	suite.Assert().Equal(suite.securityError, err)
@@ -483,7 +489,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_DeleteUniqueIndex_error() {
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.ingestedDataIndexesRepository.On("DeleteUniqueIndex", suite.ctx, suite.transaction, index).Return(suite.repositoryError)
 
-	err := suite.makeUsecase().DeleteUniqueIndex(suite.ctx, index)
+	err := suite.makeUsecase().DeleteUniqueIndex(suite.ctx, suite.organizationId, index)
 
 	suite.Assert().Error(err)
 

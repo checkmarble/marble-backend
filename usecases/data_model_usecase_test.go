@@ -222,7 +222,7 @@ func (suite *DatamodelUsecaseTestSuite) TestGetDataModel_nominal_no_unique() {
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, true).
 		Return(suite.dataModel, nil)
-	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx).
+	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx, suite.organizationId).
 		Return([]models.UnicityIndex{}, nil)
 
 	dataModel, err := usecase.GetDataModel(suite.ctx, suite.organizationId)
@@ -239,7 +239,7 @@ func (suite *DatamodelUsecaseTestSuite) TestGetDataModel_nominal_with_unique() {
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, true).
 		Return(suite.dataModel, nil)
-	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx).
+	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx, suite.organizationId).
 		Return(suite.uniqueIndexes, nil)
 
 	dataModel, err := usecase.GetDataModel(suite.ctx, suite.organizationId)
@@ -298,7 +298,10 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelTable_nominal() {
 	suite.organizationSchemaRepository.On("CreateTable", suite.ctx, suite.transaction, tableName).
 		Return(nil)
 	suite.clientDbIndexEditor.On("CreateUniqueIndex",
-		suite.ctx, suite.transaction, models.UnicityIndex{
+		suite.ctx,
+		suite.transaction,
+		suite.organizationId,
+		models.UnicityIndex{
 			TableName: tableName,
 			Fields:    []string{"object_id"},
 			Included:  []string{"updated_at", "id"},
@@ -490,7 +493,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelField_nominal_unique(
 	suite.transactionFactory.On("TransactionInOrgSchema", suite.ctx, suite.organizationId, mock.Anything).Return(nil)
 	suite.organizationSchemaRepository.On("CreateField", suite.ctx, suite.transaction, table.Name, field).
 		Return(nil)
-	suite.clientDbIndexEditor.On("CreateUniqueIndexAsync", suite.ctx, models.UnicityIndex{
+	suite.clientDbIndexEditor.On("CreateUniqueIndexAsync", suite.ctx, suite.organizationId, models.UnicityIndex{
 		TableName: table.Name,
 		Fields:    []string{field.Name},
 	}).Return(nil)
@@ -679,7 +682,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelLink_nominal() {
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, true).
 		Return(suite.dataModel, nil)
-	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx).
+	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx, suite.organizationId).
 		Return(suite.uniqueIndexes, nil)
 
 	_, err := usecase.CreateDataModelLink(suite.ctx, link)
@@ -716,7 +719,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelLink_parent_field_not
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, true).
 		Return(suite.dataModel, nil)
-	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx).
+	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx, suite.organizationId).
 		Return([]models.UnicityIndex{}, nil)
 
 	_, err := usecase.CreateDataModelLink(suite.ctx, link)
@@ -779,7 +782,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_nominal_update_
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, true).
 		Return(suite.dataModel, nil)
-	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx).
+	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx, suite.organizationId).
 		Return(suite.uniqueIndexes, nil)
 	suite.dataModelRepository.On("UpdateDataModelField", suite.ctx, suite.transaction, fieldId, input).
 		Return(nil)
@@ -811,7 +814,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_nominal_update_
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, true).
 		Return(suite.dataModel, nil)
-	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx).
+	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx, suite.organizationId).
 		Return(suite.uniqueIndexes, nil)
 	suite.dataModelRepository.On("UpdateDataModelField", suite.ctx, suite.transaction, fieldId, input).
 		Return(nil)
@@ -850,11 +853,11 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_nominal_update_
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, true).
 		Return(suite.dataModel, nil)
-	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx).
+	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx, suite.organizationId).
 		Return(suite.uniqueIndexes, nil)
 	suite.dataModelRepository.On("UpdateDataModelField", suite.ctx, suite.transaction, fieldId, input).
 		Return(nil)
-	suite.clientDbIndexEditor.On("CreateUniqueIndexAsync", suite.ctx, models.UnicityIndex{
+	suite.clientDbIndexEditor.On("CreateUniqueIndexAsync", suite.ctx, suite.organizationId, models.UnicityIndex{
 		TableName: "transactions",
 		Fields:    []string{"not_yet_unique_id"},
 	}).Return(nil)
@@ -887,7 +890,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_nominal_update_
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.dataModelRepository.On("UpdateDataModelField", suite.ctx, suite.transaction, fieldId, input).
 		Return(nil)
-	suite.clientDbIndexEditor.On("DeleteUniqueIndex", suite.ctx, models.UnicityIndex{
+	suite.clientDbIndexEditor.On("DeleteUniqueIndex", suite.ctx, suite.organizationId, models.UnicityIndex{
 		TableName: "transactions",
 		Fields:    []string{"unique_id"},
 	}).Return(nil)
@@ -897,7 +900,7 @@ func (suite *DatamodelUsecaseTestSuite) TestUpdateDataModelField_nominal_update_
 	suite.dataModelRepository.On("GetDataModel",
 		suite.ctx, suite.transaction, suite.organizationId, true).
 		Return(suite.dataModel, nil)
-	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx).
+	suite.clientDbIndexEditor.On("ListAllUniqueIndexes", suite.ctx, suite.organizationId).
 		Return(suite.uniqueIndexes, nil)
 
 	err := usecase.UpdateDataModelField(suite.ctx, fieldId, input)

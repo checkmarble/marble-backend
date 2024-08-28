@@ -14,8 +14,13 @@ import (
 
 func handleListApiKeys(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(c, err) {
+			return
+		}
+
 		usecase := usecasesWithCreds(c.Request, uc).NewApiKeyUseCase()
-		apiKeys, err := usecase.ListApiKeys(c.Request.Context())
+		apiKeys, err := usecase.ListApiKeys(c.Request.Context(), organizationId)
 		if presentError(c, err) {
 			return
 		}
@@ -28,7 +33,7 @@ func handleListApiKeys(uc usecases.Usecases) func(c *gin.Context) {
 
 func handlePostApiKey(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(c, err) {
 			return
 		}

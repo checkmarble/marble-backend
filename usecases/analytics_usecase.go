@@ -15,17 +15,11 @@ type EnforceSecurityAnalytics interface {
 }
 
 type AnalyticsUseCase struct {
-	organizationIdOfContext func() (string, error)
-	enforceSecurity         EnforceSecurityAnalytics
-	analyticsRepository     AnalyticsRepository
+	enforceSecurity     EnforceSecurityAnalytics
+	analyticsRepository AnalyticsRepository
 }
 
-func (usecase *AnalyticsUseCase) ListAnalytics(ctx context.Context) ([]models.Analytics, error) {
-	organizationId, err := usecase.organizationIdOfContext()
-	if err != nil {
-		return []models.Analytics{}, err
-	}
-
+func (usecase *AnalyticsUseCase) ListAnalytics(ctx context.Context, organizationId string) ([]models.Analytics, error) {
 	analyticsList, err := usecase.analyticsRepository.ListAnalytics(ctx, organizationId)
 	if err != nil {
 		return []models.Analytics{}, err

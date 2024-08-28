@@ -42,9 +42,6 @@ func (suite *ApiKeyUsecaseTestSuite) makeUsecase() *ApiKeyUseCase {
 		apiKeyRepository: suite.apiKeyRepository,
 		enforceSecurity:  suite.enforceSecurity,
 		executorFactory:  suite.executorFactory,
-		organizationIdOfContext: func() (string, error) {
-			return suite.organizationId, nil
-		},
 	}
 }
 

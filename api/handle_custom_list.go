@@ -77,7 +77,7 @@ func handlePatchCustomList(uc usecases.Usecases) func(c *gin.Context) {
 		ctx := c.Request.Context()
 		logger := utils.LoggerFromContext(ctx)
 
-		organizationId, err := utils.OrgIDFromCtx(ctx, c.Request)
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(c, err) {
 			return
 		}
@@ -112,7 +112,7 @@ func handleDeleteCustomList(uc usecases.Usecases) func(c *gin.Context) {
 		ctx := c.Request.Context()
 		logger := utils.LoggerFromContext(ctx)
 
-		organizationId, err := utils.OrgIDFromCtx(ctx, c.Request)
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(c, err) {
 			return
 		}
@@ -133,7 +133,7 @@ func handlePostCustomListValue(uc usecases.Usecases) func(c *gin.Context) {
 		ctx := c.Request.Context()
 		logger := utils.LoggerFromContext(ctx)
 
-		organizationId, err := utils.OrgIDFromCtx(ctx, c.Request)
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(c, err) {
 			return
 		}
@@ -166,7 +166,7 @@ func handleDeleteCustomListValue(uc usecases.Usecases) func(c *gin.Context) {
 		ctx := c.Request.Context()
 		logger := utils.LoggerFromContext(ctx)
 
-		organizationId, err := utils.OrgIDFromCtx(ctx, c.Request)
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(c, err) {
 			return
 		}

@@ -30,14 +30,14 @@ type ScenarioPublisher interface {
 }
 
 type clientDbIndexEditor interface {
-	GetIndexesToCreate(ctx context.Context, scenarioIterationId string) (
+	GetIndexesToCreate(ctx context.Context, organizationId string, scenarioIterationId string) (
 		toCreate []models.ConcreteIndex, numPending int, err error,
 	)
-	CreateIndexesAsync(ctx context.Context, indexes []models.ConcreteIndex) error
-	ListAllUniqueIndexes(ctx context.Context) ([]models.UnicityIndex, error)
-	CreateUniqueIndex(ctx context.Context, exec repositories.Executor, index models.UnicityIndex) error
-	CreateUniqueIndexAsync(ctx context.Context, index models.UnicityIndex) error
-	DeleteUniqueIndex(ctx context.Context, index models.UnicityIndex) error
+	CreateIndexesAsync(ctx context.Context, organizationId string, indexes []models.ConcreteIndex) error
+	ListAllUniqueIndexes(ctx context.Context, organizationId string) ([]models.UnicityIndex, error)
+	CreateUniqueIndex(ctx context.Context, exec repositories.Executor, organizationId string, index models.UnicityIndex) error
+	CreateUniqueIndexAsync(ctx context.Context, organizationId string, index models.UnicityIndex) error
+	DeleteUniqueIndex(ctx context.Context, organizationId string, index models.UnicityIndex) error
 }
 
 type ScenarioPublicationUsecase struct {
@@ -88,9 +88,14 @@ func (usecase *ScenarioPublicationUsecase) ListScenarioPublications(
 
 func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(
 	ctx context.Context,
+	organizationId string,
 	input models.PublishScenarioIterationInput,
 ) ([]models.ScenarioPublication, error) {
-	indexesToCreate, _, err := usecase.clientDbIndexEditor.GetIndexesToCreate(ctx, input.ScenarioIterationId)
+	indexesToCreate, _, err := usecase.clientDbIndexEditor.GetIndexesToCreate(
+		ctx,
+		organizationId,
+		input.ScenarioIterationId,
+	)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error while fetching indexes to create in ExecuteScenarioPublicationAction")
 	}
@@ -126,11 +131,12 @@ func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(
 
 func (usecase *ScenarioPublicationUsecase) GetPublicationPreparationStatus(
 	ctx context.Context,
+	organizationId string,
 	scenarioIterationId string,
 ) (status models.PublicationPreparationStatus, err error) {
 	logger := utils.LoggerFromContext(ctx)
 
-	indexesToCreate, numPending, err := usecase.clientDbIndexEditor.GetIndexesToCreate(ctx, scenarioIterationId)
+	indexesToCreate, numPending, err := usecase.clientDbIndexEditor.GetIndexesToCreate(ctx, organizationId, scenarioIterationId)
 	if err != nil {
 		return status, errors.Wrap(err, "Error while fetching indexes to create in GetPublicationPreparationStatus")
 	}
@@ -153,9 +159,10 @@ func (usecase *ScenarioPublicationUsecase) GetPublicationPreparationStatus(
 
 func (usecase *ScenarioPublicationUsecase) StartPublicationPreparation(
 	ctx context.Context,
+	organizationId string,
 	scenarioIterationId string,
 ) error {
-	indexesToCreate, numPending, err := usecase.clientDbIndexEditor.GetIndexesToCreate(ctx, scenarioIterationId)
+	indexesToCreate, numPending, err := usecase.clientDbIndexEditor.GetIndexesToCreate(ctx, organizationId, scenarioIterationId)
 	if err != nil {
 		return errors.Wrap(err, "Error while fetching indexes to create in StartPublicationPreparation")
 	}
@@ -168,5 +175,5 @@ func (usecase *ScenarioPublicationUsecase) StartPublicationPreparation(
 		return models.ErrDataPreparationServiceUnavailable
 	}
 
-	return usecase.clientDbIndexEditor.CreateIndexesAsync(ctx, indexesToCreate)
+	return usecase.clientDbIndexEditor.CreateIndexesAsync(ctx, organizationId, indexesToCreate)
 }
