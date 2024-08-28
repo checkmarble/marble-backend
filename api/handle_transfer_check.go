@@ -18,7 +18,7 @@ func handleCreateTransfer(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		usecase := usecasesWithCreds(c.Request, uc).NewTransferCheckUsecase()
 
-		orgId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(c, err) {
 			return
 		}
@@ -51,7 +51,7 @@ func handleUpdateTransfer(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(c.Request, uc).NewTransferCheckUsecase()
 
-		orgId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(c, err) {
 			return
 		}
@@ -86,7 +86,7 @@ func handleQueryTransfers(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(c.Request, uc).NewTransferCheckUsecase()
 
-		orgId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(c, err) {
 			return
 		}
@@ -110,7 +110,7 @@ func handleGetTransfer(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		id := c.Param("transfer_id")
 
-		organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(c, err) {
 			return
 		}
@@ -131,7 +131,7 @@ func handleScoreTransfer(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(c.Request, uc).NewTransferCheckUsecase()
 
-		orgId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+		orgId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(c, err) {
 			return
 		}

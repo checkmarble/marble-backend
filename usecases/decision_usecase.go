@@ -63,7 +63,6 @@ type DecisionUsecase struct {
 	repository                 DecisionUsecaseRepository
 	evaluateAstExpression      ast_eval.EvaluateAstExpression
 	decisionWorkflows          decisionWorkflowsUsecase
-	organizationIdOfContext    func() (string, error)
 	webhookEventsSender        webhookEventsUsecase
 	snoozesReader              snoozesForDecisionReader
 }

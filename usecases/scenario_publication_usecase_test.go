@@ -278,7 +278,7 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_ListScenarioPublications_
 
 // ExecuteScenarioPublicationAction
 func (suite *ScenarioPublicationUsecaseTestSuite) Test_ExecuteScenarioPublicationAction_nominal() {
-	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.iterationId).Return(
+	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.organizationId, suite.iterationId).Return(
 		[]models.ConcreteIndex{}, 0, nil)
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.scenarioFetcher.On("FetchScenarioAndIteration", suite.ctx, suite.transaction, suite.iterationId).
@@ -288,6 +288,7 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_ExecuteScenarioPublicatio
 		Return([]models.ScenarioPublication{suite.scenarioPublication}, nil)
 
 	publications, err := suite.makeUsecase().ExecuteScenarioPublicationAction(suite.ctx,
+		suite.organizationId,
 		models.PublishScenarioIterationInput{
 			ScenarioIterationId: suite.iterationId,
 			PublicationAction:   models.Publish,
@@ -301,13 +302,15 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_ExecuteScenarioPublicatio
 }
 
 func (suite *ScenarioPublicationUsecaseTestSuite) Test_ExecuteScenarioPublicationAction_fetch_error() {
-	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.iterationId).Return(
+	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.organizationId, suite.iterationId).Return(
 		suite.existingIndexes, 0, nil)
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything)
 	suite.scenarioFetcher.On("FetchScenarioAndIteration", suite.ctx, suite.transaction, suite.iterationId).
 		Return(models.ScenarioAndIteration{}, suite.repositoryError)
 
-	publications, err := suite.makeUsecase().ExecuteScenarioPublicationAction(suite.ctx,
+	publications, err := suite.makeUsecase().ExecuteScenarioPublicationAction(
+		suite.ctx,
+		suite.organizationId,
 		models.PublishScenarioIterationInput{
 			ScenarioIterationId: suite.iterationId,
 			PublicationAction:   models.Unpublish,
@@ -320,14 +323,16 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_ExecuteScenarioPublicatio
 }
 
 func (suite *ScenarioPublicationUsecaseTestSuite) Test_ExecuteScenarioPublicationAction_security_error() {
-	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.iterationId).Return(
+	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.organizationId, suite.iterationId).Return(
 		[]models.ConcreteIndex{}, 0, nil)
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything)
 	suite.scenarioFetcher.On("FetchScenarioAndIteration", suite.ctx, suite.transaction, suite.iterationId).
 		Return(suite.scenarioAndIteration, nil)
 	suite.enforceSecurity.On("PublishScenario", suite.scenario).Return(suite.securityError)
 
-	publications, err := suite.makeUsecase().ExecuteScenarioPublicationAction(suite.ctx,
+	publications, err := suite.makeUsecase().ExecuteScenarioPublicationAction(
+		suite.ctx,
+		suite.organizationId,
 		models.PublishScenarioIterationInput{
 			ScenarioIterationId: suite.iterationId,
 			PublicationAction:   models.Publish,
@@ -340,10 +345,12 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_ExecuteScenarioPublicatio
 }
 
 func (suite *ScenarioPublicationUsecaseTestSuite) Test_ExecuteScenarioPublicationAction_require_preparation() {
-	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.iterationId).Return(
+	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.organizationId, suite.iterationId).Return(
 		suite.existingIndexes, 0, nil)
 
-	_, err := suite.makeUsecase().ExecuteScenarioPublicationAction(suite.ctx,
+	_, err := suite.makeUsecase().ExecuteScenarioPublicationAction(
+		suite.ctx,
+		suite.organizationId,
 		models.PublishScenarioIterationInput{
 			ScenarioIterationId: suite.iterationId,
 			PublicationAction:   models.Publish,
@@ -357,8 +364,10 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_ExecuteScenarioPublicatio
 // GetPublicationPreparationStatus
 func (suite *ScenarioPublicationUsecaseTestSuite) Test_GetPublicationPreparationStatus_nominal_none_to_create() {
 	// no preparation is currently running
-	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.iterationId).Return([]models.ConcreteIndex{}, 0, nil)
-	status, err := suite.makeUsecase().GetPublicationPreparationStatus(suite.ctx, suite.iterationId)
+	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.organizationId,
+		suite.iterationId).Return([]models.ConcreteIndex{}, 0, nil)
+	status, err := suite.makeUsecase().GetPublicationPreparationStatus(suite.ctx,
+		suite.organizationId, suite.iterationId)
 
 	suite.NoError(err)
 	suite.Assert().Equal(models.PublicationPreparationStatus{
@@ -371,10 +380,14 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_GetPublicationPreparation
 
 func (suite *ScenarioPublicationUsecaseTestSuite) Test_GetPublicationPreparationStatus_nominal_already_running() {
 	// another prepration is running
-	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.iterationId).Return([]models.ConcreteIndex{}, 1, nil)
+	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.organizationId,
+		suite.iterationId).Return([]models.ConcreteIndex{}, 1, nil)
 
 	// {Indexed: []string{"a", "b"}, Included: []string{"c", "d"}},
-	status, err := suite.makeUsecase().GetPublicationPreparationStatus(suite.ctx, suite.iterationId)
+	status, err := suite.makeUsecase().GetPublicationPreparationStatus(
+		suite.ctx,
+		suite.organizationId,
+		suite.iterationId)
 
 	suite.NoError(err)
 	suite.Assert().Equal(models.PublicationPreparationStatus{
@@ -387,11 +400,15 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_GetPublicationPreparation
 
 func (suite *ScenarioPublicationUsecaseTestSuite) Test_GetPublicationPreparationStatus_nominal_3() {
 	// One index to create
-	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.iterationId).Return([]models.ConcreteIndex{
+	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.organizationId,
+		suite.iterationId).Return([]models.ConcreteIndex{
 		{Indexed: []string{"a", "b"}, Included: []string{"c", "d"}},
 	}, 0, nil)
 
-	status, err := suite.makeUsecase().GetPublicationPreparationStatus(suite.ctx, suite.iterationId)
+	status, err := suite.makeUsecase().GetPublicationPreparationStatus(
+		suite.ctx,
+		suite.organizationId,
+		suite.iterationId)
 
 	suite.NoError(err)
 	suite.Assert().Equal(models.PublicationPreparationStatus{
@@ -403,10 +420,11 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_GetPublicationPreparation
 }
 
 func (suite *ScenarioPublicationUsecaseTestSuite) Test_GetPublicationPreparationStatus_get_error() {
-	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.iterationId).Return(
+	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.organizationId, suite.iterationId).Return(
 		[]models.ConcreteIndex{}, 0, suite.repositoryError)
 
-	_, err := suite.makeUsecase().GetPublicationPreparationStatus(suite.ctx, suite.iterationId)
+	_, err := suite.makeUsecase().GetPublicationPreparationStatus(suite.ctx,
+		suite.organizationId, suite.iterationId)
 
 	suite.ErrorIs(err, suite.repositoryError)
 
@@ -415,9 +433,10 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_GetPublicationPreparation
 
 // StartPublicationPreparation
 func (suite *ScenarioPublicationUsecaseTestSuite) Test_StartPublicationPreparation_none_to_create() {
-	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.iterationId).Return([]models.ConcreteIndex{}, 0, nil)
+	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.organizationId,
+		suite.iterationId).Return([]models.ConcreteIndex{}, 0, nil)
 
-	err := suite.makeUsecase().StartPublicationPreparation(suite.ctx, suite.iterationId)
+	err := suite.makeUsecase().StartPublicationPreparation(suite.ctx, suite.organizationId, suite.iterationId)
 
 	suite.NoError(err)
 
@@ -425,11 +444,12 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_StartPublicationPreparati
 }
 
 func (suite *ScenarioPublicationUsecaseTestSuite) Test_StartPublicationPreparation_preparation_already_in_progress() {
-	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.iterationId).Return([]models.ConcreteIndex{
+	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.organizationId,
+		suite.iterationId).Return([]models.ConcreteIndex{
 		{Indexed: []string{"a", "b"}, Included: []string{"c", "d"}},
 	}, 1, nil)
 
-	err := suite.makeUsecase().StartPublicationPreparation(suite.ctx, suite.iterationId)
+	err := suite.makeUsecase().StartPublicationPreparation(suite.ctx, suite.organizationId, suite.iterationId)
 
 	suite.Assert().ErrorIs(err, models.ConflictError)
 
@@ -437,16 +457,18 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_StartPublicationPreparati
 }
 
 func (suite *ScenarioPublicationUsecaseTestSuite) Test_StartPublicationPreparation_preparation_nominal() {
-	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.iterationId).Return([]models.ConcreteIndex{
+	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.organizationId,
+		suite.iterationId).Return([]models.ConcreteIndex{
 		{Indexed: []string{"a", "b"}, Included: []string{"c", "d"}},
 	}, 0, nil)
 	suite.clientDbIndexEditor.On("CreateIndexesAsync",
 		suite.ctx,
+		suite.organizationId,
 		[]models.ConcreteIndex{
 			{Indexed: []string{"a", "b"}, Included: []string{"c", "d"}},
 		}).Return(nil)
 
-	err := suite.makeUsecase().StartPublicationPreparation(suite.ctx, suite.iterationId)
+	err := suite.makeUsecase().StartPublicationPreparation(suite.ctx, suite.organizationId, suite.iterationId)
 
 	suite.NoError(err)
 
@@ -454,10 +476,10 @@ func (suite *ScenarioPublicationUsecaseTestSuite) Test_StartPublicationPreparati
 }
 
 func (suite *ScenarioPublicationUsecaseTestSuite) Test_StartPublicationPreparation_get_error() {
-	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.iterationId).Return(
+	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.organizationId, suite.iterationId).Return(
 		[]models.ConcreteIndex{}, 0, suite.repositoryError)
 
-	err := suite.makeUsecase().StartPublicationPreparation(suite.ctx, suite.iterationId)
+	err := suite.makeUsecase().StartPublicationPreparation(suite.ctx, suite.organizationId, suite.iterationId)
 
 	suite.ErrorIs(err, suite.repositoryError)
 

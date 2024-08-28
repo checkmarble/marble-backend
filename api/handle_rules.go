@@ -35,7 +35,7 @@ func handleListRules(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleCreateRule(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(c, err) {
 			return
 		}

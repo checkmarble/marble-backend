@@ -35,7 +35,7 @@ func handleGetDecision(uc usecases.Usecases, marbleAppHost string) func(c *gin.C
 
 func handleListDecisions(uc usecases.Usecases, marbleAppHost string) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(c, err) {
 			return
 		}
@@ -87,7 +87,7 @@ func handleListDecisions(uc usecases.Usecases, marbleAppHost string) func(c *gin
 
 func handlePostDecision(uc usecases.Usecases, marbleAppHost string) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(c, err) {
 			return
 		}
@@ -138,7 +138,7 @@ func returnExpectedDecisionError(c *gin.Context, err error) bool {
 
 func handlePostAllDecisions(uc usecases.Usecases, marbleAppHost string) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(c, err) {
 			return
 		}

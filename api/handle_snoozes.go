@@ -15,7 +15,7 @@ import (
 
 func handleSnoozesOfDecision(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		_, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+		_, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(c, err) {
 			return
 		}
@@ -38,7 +38,7 @@ func handleSnoozesOfDecision(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleSnoozeDecision(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(c, err) {
 			return
 		}
@@ -77,7 +77,7 @@ func handleSnoozeDecision(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleSnoozesOfScenarioIteartion(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		_, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+		_, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(c, err) {
 			return
 		}

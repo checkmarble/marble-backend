@@ -17,7 +17,7 @@ type InboxIdUriInput struct {
 
 func handleListTags(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(c, err) {
 			return
 		}
@@ -42,7 +42,7 @@ func handleListTags(uc usecases.Usecases) func(c *gin.Context) {
 
 func handlePostTag(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(c, err) {
 			return
 		}
@@ -90,7 +90,7 @@ func handleGetTag(uc usecases.Usecases) func(c *gin.Context) {
 
 func handlePatchTag(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(c, err) {
 			return
 		}
@@ -123,7 +123,7 @@ func handlePatchTag(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleDeleteTag(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		organizationId, err := utils.OrgIDFromCtx(c.Request.Context(), c.Request)
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(c, err) {
 			return
 		}

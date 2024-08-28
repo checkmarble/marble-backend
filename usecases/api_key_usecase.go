@@ -29,18 +29,12 @@ type EnforceSecurityApiKey interface {
 }
 
 type ApiKeyUseCase struct {
-	executorFactory         executor_factory.ExecutorFactory
-	organizationIdOfContext func() (string, error)
-	enforceSecurity         EnforceSecurityApiKey
-	apiKeyRepository        ApiKeyRepository
+	executorFactory  executor_factory.ExecutorFactory
+	enforceSecurity  EnforceSecurityApiKey
+	apiKeyRepository ApiKeyRepository
 }
 
-func (usecase *ApiKeyUseCase) ListApiKeys(ctx context.Context) ([]models.ApiKey, error) {
-	organizationId, err := usecase.organizationIdOfContext()
-	if err != nil {
-		return []models.ApiKey{}, err
-	}
-
+func (usecase *ApiKeyUseCase) ListApiKeys(ctx context.Context, organizationId string) ([]models.ApiKey, error) {
 	apiKeys, err := usecase.apiKeyRepository.ListApiKeys(ctx,
 		usecase.executorFactory.NewExecutor(), organizationId)
 	if err != nil {

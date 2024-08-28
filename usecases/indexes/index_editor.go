@@ -32,7 +32,6 @@ type ClientDbIndexEditor struct {
 	ingestedDataIndexesRepository IngestedDataIndexesRepository
 	enforceSecurity               security.EnforceSecurityScenario
 	enforceSecurityDataModel      security.EnforceSecurityOrganization
-	organizationIdOfContext       func() (string, error)
 }
 
 func NewClientDbIndexEditor(
@@ -41,7 +40,6 @@ func NewClientDbIndexEditor(
 	ingestedDataIndexesRepository IngestedDataIndexesRepository,
 	enforceSecurity security.EnforceSecurityScenario,
 	enforceSecurityDataModel security.EnforceSecurityOrganization,
-	organizationIdOfContext func() (string, error),
 ) ClientDbIndexEditor {
 	return ClientDbIndexEditor{
 		executorFactory:               executorFactory,
@@ -49,12 +47,12 @@ func NewClientDbIndexEditor(
 		ingestedDataIndexesRepository: ingestedDataIndexesRepository,
 		enforceSecurity:               enforceSecurity,
 		enforceSecurityDataModel:      enforceSecurityDataModel,
-		organizationIdOfContext:       organizationIdOfContext,
 	}
 }
 
 func (editor ClientDbIndexEditor) GetIndexesToCreate(
 	ctx context.Context,
+	organizationId string,
 	scenarioIterationId string,
 ) (toCreate []models.ConcreteIndex, numPending int, err error) {
 	exec := editor.executorFactory.NewExecutor()
@@ -66,10 +64,6 @@ func (editor ClientDbIndexEditor) GetIndexesToCreate(
 		return toCreate, numPending, err
 	}
 
-	organizationId, err := editor.organizationIdOfContext()
-	if err != nil {
-		return toCreate, numPending, err
-	}
 	db, err := editor.executorFactory.NewClientDbExecutor(ctx, organizationId)
 	if err != nil {
 		return toCreate, numPending, errors.Wrap(err,
@@ -103,14 +97,11 @@ func (editor ClientDbIndexEditor) GetIndexesToCreate(
 
 func (editor ClientDbIndexEditor) CreateIndexesAsync(
 	ctx context.Context,
+	organizationId string,
 	indexes []models.ConcreteIndex,
 ) error {
 	logger := utils.LoggerFromContext(ctx)
 
-	organizationId, err := editor.organizationIdOfContext()
-	if err != nil {
-		return err
-	}
 	if err := editor.enforceSecurityDataModel.WriteDataModel(organizationId); err != nil {
 		return err
 	}
@@ -132,12 +123,8 @@ func (editor ClientDbIndexEditor) CreateIndexesAsync(
 	return nil
 }
 
-func (editor ClientDbIndexEditor) ListAllUniqueIndexes(ctx context.Context) ([]models.UnicityIndex, error) {
+func (editor ClientDbIndexEditor) ListAllUniqueIndexes(ctx context.Context, organizationId string) ([]models.UnicityIndex, error) {
 	if err := editor.enforceSecurityDataModel.ReadDataModel(); err != nil {
-		return nil, err
-	}
-	organizationId, err := editor.organizationIdOfContext()
-	if err != nil {
 		return nil, err
 	}
 
@@ -152,14 +139,11 @@ func (editor ClientDbIndexEditor) ListAllUniqueIndexes(ctx context.Context) ([]m
 
 func (editor ClientDbIndexEditor) CreateUniqueIndexAsync(
 	ctx context.Context,
+	organizationId string,
 	index models.UnicityIndex,
 ) error {
 	logger := utils.LoggerFromContext(ctx)
 
-	organizationId, err := editor.organizationIdOfContext()
-	if err != nil {
-		return err
-	}
 	if err := editor.enforceSecurityDataModel.WriteDataModel(organizationId); err != nil {
 		return err
 	}
@@ -185,18 +169,17 @@ func (editor ClientDbIndexEditor) CreateUniqueIndexAsync(
 func (editor ClientDbIndexEditor) CreateUniqueIndex(
 	ctx context.Context,
 	exec repositories.Executor,
+	organizationId string,
 	index models.UnicityIndex,
 ) error {
 	logger := utils.LoggerFromContext(ctx)
-	organizationId, err := editor.organizationIdOfContext()
-	if err != nil {
-		return err
-	}
+
 	if err := editor.enforceSecurityDataModel.WriteDataModel(organizationId); err != nil {
 		return err
 	}
 
 	if exec == nil {
+		var err error
 		exec, err = editor.executorFactory.NewClientDbExecutor(ctx, organizationId)
 		if err != nil {
 			return errors.Wrap(
@@ -215,13 +198,11 @@ func (editor ClientDbIndexEditor) CreateUniqueIndex(
 
 func (editor ClientDbIndexEditor) DeleteUniqueIndex(
 	ctx context.Context,
+	organizationId string,
 	index models.UnicityIndex,
 ) error {
 	logger := utils.LoggerFromContext(ctx)
-	organizationId, err := editor.organizationIdOfContext()
-	if err != nil {
-		return err
-	}
+
 	if err := editor.enforceSecurityDataModel.WriteDataModel(organizationId); err != nil {
 		return err
 	}
