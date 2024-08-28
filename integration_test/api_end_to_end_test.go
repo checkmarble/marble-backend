@@ -14,13 +14,13 @@ func TestApiEndToEnd(t *testing.T) {
 	e.GET("/liveness").Expect().Status(http.StatusOK)
 
 	// Create an org and an admin user in it
-	_, authOrgAdmin := setupOrgAndUser(e)
+	_, authOrgAdmin, authOrgViewer := setupOrgAndUser(e)
 
 	// create the data model
-	setupDataModel(authOrgAdmin)
+	setupDataModel(authOrgAdmin, authOrgViewer)
 
 	// create a scenario and publish it
-	scenarioId := setupTestScenarioAndPublish(authOrgAdmin)
+	scenarioId := setupTestScenarioAndPublish(authOrgAdmin, authOrgViewer)
 
 	// create an api key
 	authApiKey := setupApiKey(e, authOrgAdmin)
@@ -29,7 +29,7 @@ func TestApiEndToEnd(t *testing.T) {
 	ingestAndCreateDecision(authApiKey, scenarioId)
 }
 
-func setupOrgAndUser(e *httpexpect.Expect) (authMarbleAdmin *httpexpect.Expect, authOrgAdmin *httpexpect.Expect) {
+func setupOrgAndUser(e *httpexpect.Expect) (authMarbleAdmin *httpexpect.Expect, authOrgAdmin *httpexpect.Expect, authOrgViewer *httpexpect.Expect) {
 	adminToken := e.POST("/token").
 		WithHeader("Authorization", fmt.Sprintf("Bearer %s", marbleAdminEmail)).
 		Expect().Status(http.StatusOK).
@@ -89,10 +89,30 @@ func setupOrgAndUser(e *httpexpect.Expect) (authMarbleAdmin *httpexpect.Expect, 
 		req.WithHeader("Authorization", fmt.Sprintf("Bearer %s", orgAdminToken))
 	})
 
-	return auth, authOrgAdmin
+	// create a viewer user
+	viewerEmail := "viewer@email.com"
+	authOrgAdmin.POST("/users").
+		WithJSON(map[string]any{"email": viewerEmail, "organization_id": orgId, "role": "VIEWER"}).
+		Expect().Status(http.StatusOK)
+	orgViewerToken := e.POST("/token").
+		WithHeader("Authorization", fmt.Sprintf("Bearer %s", viewerEmail)).
+		Expect().Status(http.StatusOK).
+		JSON().
+		Object().ContainsKey("access_token").
+		Value("access_token").String().Raw()
+
+	authOrgViewer = e.Builder(func(req *httpexpect.Request) {
+		req.WithHeader("Authorization", fmt.Sprintf("Bearer %s", orgViewerToken))
+	})
+
+	return auth, authOrgAdmin, authOrgViewer
 }
 
-func setupDataModel(auth *httpexpect.Expect) {
+func setupDataModel(auth *httpexpect.Expect, authOrgViewer *httpexpect.Expect) {
+	authOrgViewer.POST("/data-model/tables").
+		WithJSON(map[string]any{"name": "transactions", "description": "the transactions table"}).
+		Expect().Status(http.StatusForbidden)
+
 	transactionsTableId := auth.POST("/data-model/tables").
 		WithJSON(map[string]any{"name": "transactions", "description": "the transactions table"}).
 		Expect().Status(http.StatusOK).
@@ -143,7 +163,7 @@ func setupDataModel(auth *httpexpect.Expect) {
 		Expect().Status(http.StatusNoContent)
 
 	// Read the data model to get the link id
-	linkId := auth.GET("/data-model").
+	linkId := authOrgViewer.GET("/data-model").
 		Expect().Status(http.StatusOK).
 		JSON().
 		Object().Value("data_model").
@@ -163,7 +183,7 @@ func setupDataModel(auth *httpexpect.Expect) {
 		Expect().Status(http.StatusOK)
 }
 
-func setupTestScenarioAndPublish(authOrgAdmin *httpexpect.Expect) string {
+func setupTestScenarioAndPublish(authOrgAdmin *httpexpect.Expect, authOrgViewer *httpexpect.Expect) string {
 	scenarioId := authOrgAdmin.POST("/scenarios").
 		WithJSON(map[string]any{"name": "test-scenario", "triggerObjectType": "transactions"}).
 		Expect().Status(http.StatusOK).
@@ -221,10 +241,13 @@ func setupTestScenarioAndPublish(authOrgAdmin *httpexpect.Expect) string {
 		Expect().Status(http.StatusOK)
 
 	// validate the scenario
-	authOrgAdmin.POST("/scenario-iterations/{iteration_id}/validate", scenarioIterationId).
+	authOrgViewer.POST("/scenario-iterations/{iteration_id}/validate", scenarioIterationId).
 		Expect().Status(http.StatusOK)
 
 	// commit the scenario
+	authOrgViewer.POST("/scenario-iterations/{iteration_id}/commit", scenarioIterationId).
+		Expect().Status(http.StatusForbidden)
+
 	authOrgAdmin.POST("/scenario-iterations/{iteration_id}/commit", scenarioIterationId).
 		Expect().Status(http.StatusOK)
 
