@@ -285,18 +285,28 @@ func ingestAndCreateDecision(authApiKey *httpexpect.Expect, scenarioId string) {
 }`)).
 		Expect().Status(http.StatusCreated)
 
+	objectMap := map[string]any{
+		"object_id":      "my-unique-id",
+		"updated_at":     "2024-01-01T00:00:00Z",
+		"account_id":     "my-account-id",
+		"amount":         100,
+		"status":         "validated",
+		"transaction_at": "2024-01-01T00:00:00Z",
+	}
 	dec := authApiKey.POST("/decisions").
-		WithJSON(map[string]any{"scenario_id": scenarioId, "object_type": "transactions", "trigger_object": map[string]any{
-			"object_id":      "my-unique-id",
-			"updated_at":     "2024-01-01T00:00:00Z",
-			"account_id":     "my-account-id",
-			"amount":         100,
-			"status":         "validated",
-			"transaction_at": "2024-01-01T00:00:00Z",
-		}}).
+		WithJSON(map[string]any{"scenario_id": scenarioId, "object_type": "transactions", "trigger_object": objectMap}).
 		Expect().Status(http.StatusOK).JSON()
 	dec.Object().Value("rules").Array().Length().IsEqual(1)
 	dec.Object().Value("outcome").String().IsEqual("approve")
 	dec.Object().Value("score").Number().IsEqual(2)
 	dec.Object().Value("pivot_values").Array().Length().IsEqual(1)
+
+	authApiKey.POST("/decisions/all").
+		WithJSON(map[string]any{
+			"object_type":    "transactions",
+			"trigger_object": objectMap,
+		}).
+		Expect().Status(http.StatusOK).JSON().
+		Object().Value("decisions").
+		Array().Length().IsEqual(1)
 }
