@@ -11,7 +11,7 @@ import (
 
 type UploadLogRepository interface {
 	CreateUploadLog(ctx context.Context, exec Executor, log models.UploadLog) error
-	UpdateUploadLogStatus(ctx context.Context, exec Executor, input models.UpdateUploadLogStatusInput) error
+	UpdateUploadLogStatus(ctx context.Context, exec Executor, input models.UpdateUploadLogStatusInput) (executed bool, err error)
 	UploadLogById(ctx context.Context, exec Executor, id string) (models.UploadLog, error)
 	AllUploadLogsByStatus(ctx context.Context, exec Executor, status models.UploadStatus) ([]models.UploadLog, error)
 	AllUploadLogsByTable(ctx context.Context, exec Executor, organizationId, tableName string) ([]models.UploadLog, error)
@@ -54,9 +54,14 @@ func (repo *UploadLogRepositoryImpl) CreateUploadLog(ctx context.Context, exec E
 	return err
 }
 
-func (repo *UploadLogRepositoryImpl) UpdateUploadLogStatus(ctx context.Context, exec Executor, input models.UpdateUploadLogStatusInput) error {
+func (repo *UploadLogRepositoryImpl) UpdateUploadLogStatus(
+	ctx context.Context,
+	exec Executor,
+	input models.UpdateUploadLogStatusInput,
+) (executed bool, err error) {
+	// uses optimistic locking to prevent inconsistent updates of the status
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return err
+		return false, err
 	}
 
 	updateRequest := NewQueryBuilder().Update(dbmodels.TABLE_UPLOAD_LOGS)
@@ -75,8 +80,17 @@ func (repo *UploadLogRepositoryImpl) UpdateUploadLogStatus(ctx context.Context, 
 		Where("id = ?", input.Id).
 		Where("status = ?", input.CurrentUploadStatusCondition)
 
-	err := ExecBuilder(ctx, exec, updateRequest)
-	return err
+	sql, args, err := updateRequest.ToSql()
+	if err != nil {
+		return false, err
+	}
+
+	tag, err := exec.Exec(ctx, sql, args)
+	if err != nil {
+		return false, err
+	}
+
+	return tag.RowsAffected() > 0, nil
 }
 
 func (repo *UploadLogRepositoryImpl) UploadLogById(ctx context.Context, exec Executor, id string) (models.UploadLog, error) {
