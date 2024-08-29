@@ -8,15 +8,16 @@ import (
 )
 
 type DBUploadLog struct {
-	Id             string     `db:"id"`
-	OrganizationId string     `db:"org_id"`
-	UserId         string     `db:"user_id"`
-	FileName       string     `db:"file_name"`
-	TableName      string     `db:"table_name"`
-	Status         string     `db:"status"`
-	StartedAt      time.Time  `db:"started_at"`
-	FinishedAt     *time.Time `db:"finished_at"`
-	LinesProcessed int        `db:"lines_processed"`
+	Id              string     `db:"id"`
+	OrganizationId  string     `db:"org_id"`
+	UserId          string     `db:"user_id"`
+	FileName        string     `db:"file_name"`
+	TableName       string     `db:"table_name"`
+	Status          string     `db:"status"`
+	StartedAt       time.Time  `db:"started_at"`
+	FinishedAt      *time.Time `db:"finished_at"`
+	LinesProcessed  int        `db:"lines_processed"`
+	NumRowsIngested int        `db:"num_rows_ingested"`
 }
 
 const TABLE_UPLOAD_LOGS = "upload_logs"
@@ -34,5 +35,6 @@ func AdaptUploadLog(db DBUploadLog) (models.UploadLog, error) {
 		StartedAt:      db.StartedAt,
 		FinishedAt:     db.FinishedAt,
 		LinesProcessed: db.LinesProcessed,
+		RowsIngested:   db.NumRowsIngested,
 	}, nil
 }

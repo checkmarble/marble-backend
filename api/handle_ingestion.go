@@ -43,7 +43,7 @@ func handleIngestion(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleCsvIngestion(uc usecases.Usecases) func(c *gin.Context) {
+func handlePostCsvIngestion(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
