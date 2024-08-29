@@ -33,11 +33,13 @@ func (s *ScheduledExecutionUsecaseRepository) CreateScheduledExecution(ctx conte
 	return args.Error(0)
 }
 
-func (s *ScheduledExecutionUsecaseRepository) UpdateScheduledExecution(ctx context.Context,
-	exec repositories.Executor, updateScheduledEx models.UpdateScheduledExecutionInput,
-) error {
-	args := s.Called(exec, updateScheduledEx)
-	return args.Error(0)
+func (s *ScheduledExecutionUsecaseRepository) UpdateScheduledExecutionStatus(
+	ctx context.Context,
+	exec repositories.Executor,
+	updateScheduledEx models.UpdateScheduledExecutionStatusInput,
+) (executed bool, err error) {
+	args := s.Called(ctx, exec, updateScheduledEx)
+	return true, args.Error(0)
 }
 
 func (s *ScheduledExecutionUsecaseRepository) GetScenarioById(ctx context.Context,

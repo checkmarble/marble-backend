@@ -116,20 +116,22 @@ func (repo *MarbleDbRepository) CreateScheduledExecution(ctx context.Context, ex
 	return err
 }
 
-func (repo *MarbleDbRepository) UpdateScheduledExecution(ctx context.Context, exec Executor,
-	updateScheduledEx models.UpdateScheduledExecutionInput,
-) error {
+func (repo *MarbleDbRepository) UpdateScheduledExecutionStatus(
+	ctx context.Context,
+	exec Executor,
+	updateScheduledEx models.UpdateScheduledExecutionStatusInput,
+) (executed bool, err error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return err
+		return false, err
 	}
-	query := NewQueryBuilder().Update(dbmodels.TABLE_SCHEDULED_EXECUTIONS).
-		Where("id = ?", updateScheduledEx.Id)
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_SCHEDULED_EXECUTIONS).
+		Where("id = ?", updateScheduledEx.Id).
+		Where("status = ?", updateScheduledEx.CurrentStatusCondition.String())
 
-	if updateScheduledEx.Status != nil {
-		query = query.Set("status", updateScheduledEx.Status.String())
-		if *updateScheduledEx.Status == models.ScheduledExecutionSuccess {
-			query = query.Set("finished_at", "NOW()")
-		}
+	query = query.Set("status", updateScheduledEx.Status.String())
+	if updateScheduledEx.Status == models.ScheduledExecutionSuccess {
+		query = query.Set("finished_at", "NOW()")
 	}
 
 	if updateScheduledEx.NumberOfCreatedDecisions != nil {
@@ -137,6 +139,18 @@ func (repo *MarbleDbRepository) UpdateScheduledExecution(ctx context.Context, ex
 			*updateScheduledEx.NumberOfCreatedDecisions)
 	}
 
-	err := ExecBuilder(ctx, exec, query)
-	return err
+	// return ExecBuilder(ctx, exec, query)
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return false, err
+	}
+
+	tag, err := exec.Exec(ctx, sql, args...)
+	if err != nil {
+		return false, err
+	}
+	if tag.RowsAffected() == 0 {
+		return false, nil
+	}
+	return true, nil
 }

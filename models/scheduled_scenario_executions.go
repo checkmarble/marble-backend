@@ -50,10 +50,11 @@ func ScheduledExecutionStatusFrom(s string) ScheduledExecutionStatus {
 	return ScheduledExecutionPending
 }
 
-type UpdateScheduledExecutionInput struct {
+type UpdateScheduledExecutionStatusInput struct {
 	Id                       string
-	Status                   *ScheduledExecutionStatus
+	Status                   ScheduledExecutionStatus
 	NumberOfCreatedDecisions *int
+	CurrentStatusCondition   ScheduledExecutionStatus // Used for optimistic locking
 }
 
 type CreateScheduledExecutionInput struct {

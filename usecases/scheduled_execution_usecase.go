@@ -27,8 +27,11 @@ type ScheduledExecutionUsecaseRepository interface {
 		filters models.ListScheduledExecutionsFilters) ([]models.ScheduledExecution, error)
 	CreateScheduledExecution(ctx context.Context, exec repositories.Executor,
 		input models.CreateScheduledExecutionInput, id string) error
-	UpdateScheduledExecution(ctx context.Context, exec repositories.Executor,
-		input models.UpdateScheduledExecutionInput) error
+	UpdateScheduledExecutionStatus(
+		ctx context.Context,
+		exec repositories.Executor,
+		input models.UpdateScheduledExecutionStatusInput,
+	) (executed bool, err error)
 }
 
 type ScheduledExecutionUsecase struct {
@@ -153,18 +156,5 @@ func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(ctx context.C
 			ScenarioIterationId: input.ScenarioIterationId,
 			Manual:              true,
 		}, id)
-	})
-}
-
-func (usecase *ScheduledExecutionUsecase) UpdateScheduledExecution(ctx context.Context, input models.UpdateScheduledExecutionInput) error {
-	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
-		execution, err := usecase.repository.GetScheduledExecution(ctx, tx, input.Id)
-		if err != nil {
-			return err
-		}
-		if err := usecase.enforceSecurity.CreateScheduledExecution(execution.OrganizationId); err != nil {
-			return err
-		}
-		return usecase.repository.UpdateScheduledExecution(ctx, tx, input)
 	})
 }
