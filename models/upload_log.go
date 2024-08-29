@@ -31,6 +31,8 @@ func UploadStatusFrom(s string) UploadStatus {
 		return UploadSuccess
 	case "failure":
 		return UploadFailure
+	case "processing":
+		return UploadProcessing
 	}
 	return UploadPending
 }
