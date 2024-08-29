@@ -67,6 +67,10 @@ func (repo *UploadLogRepositoryImpl) UpdateUploadLogStatus(ctx context.Context, 
 	if input.FinishedAt != nil {
 		updateRequest = updateRequest.Set("finished_at", *input.FinishedAt)
 	}
+	if input.NumRowsIngested != nil {
+		updateRequest = updateRequest.Set("num_rows_ingested", *input.NumRowsIngested)
+	}
+
 	updateRequest = updateRequest.
 		Where("id = ?", input.Id).
 		Where("status = ?", input.CurrentUploadStatusCondition)

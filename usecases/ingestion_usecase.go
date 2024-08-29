@@ -262,7 +262,7 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 		return err
 	}
 
-	setToFailed := func() {
+	setToFailed := func(numRowsIngested int) {
 		err := usecase.uploadLogRepository.UpdateUploadLogStatus(
 			ctx,
 			exec,
@@ -270,6 +270,7 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 				Id:                           uploadLog.Id,
 				CurrentUploadStatusCondition: models.UploadProcessing,
 				UploadStatus:                 models.UploadFailure,
+				NumRowsIngested:              &numRowsIngested,
 			})
 		if err != nil {
 			logger.ErrorContext(ctx, fmt.Sprintf("Error setting upload log %s to failed", uploadLog.Id), "error", err.Error())
@@ -278,13 +279,14 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 
 	file, err := usecase.gcsRepository.GetFile(ctx, usecase.GcsIngestionBucket, uploadLog.FileName)
 	if err != nil {
-		setToFailed()
+		setToFailed(0)
 		return err
 	}
 	defer file.Reader.Close()
 
-	if err = usecase.readFileIngestObjects(ctx, file); err != nil {
-		setToFailed()
+	out := usecase.readFileIngestObjects(ctx, file)
+	if out.err != nil {
+		setToFailed(out.numRowsIngested)
 		return err
 	}
 
@@ -294,6 +296,7 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 		CurrentUploadStatusCondition: models.UploadProcessing,
 		UploadStatus:                 models.UploadSuccess,
 		FinishedAt:                   &currentTime,
+		NumRowsIngested:              &out.numRowsIngested,
 	}
 	if err = usecase.uploadLogRepository.UpdateUploadLogStatus(ctx, exec, input); err != nil {
 		return err
@@ -301,41 +304,50 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 	return nil
 }
 
-func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file models.GCSFile) error {
+type ingestionResult struct {
+	numRowsIngested int
+	err             error
+}
+
+func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file models.GCSFile) ingestionResult {
 	logger := utils.LoggerFromContext(ctx)
 	fullFileName := file.FileName
 	logger.InfoContext(ctx, fmt.Sprintf("Ingesting data from CSV %s", fullFileName))
 
 	fullFileNameElements := strings.Split(fullFileName, "/")
 	if len(fullFileNameElements) != 3 {
-		return fmt.Errorf("invalid filename %s: expecting format organizationId/tableName/timestamp.csv", fullFileName)
+		return ingestionResult{
+			err: fmt.Errorf("invalid filename %s: expecting format organizationId/tableName/timestamp.csv", fullFileName),
+		}
 	}
 	organizationId := fullFileNameElements[0]
 	tableName := fullFileNameElements[1]
 
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
-		return err
+		return ingestionResult{
+			err: err,
+		}
 	}
 
 	exec := usecase.executorFactory.NewExecutor()
 	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationId, false)
 	if err != nil {
-		return err
+		return ingestionResult{
+			err: errors.Wrap(err, "error getting data model in readFileIngestObjects"),
+		}
 	}
 
 	table, ok := dataModel.Tables[tableName]
 	if !ok {
-		return fmt.Errorf("table %s not found in data model for organization %s", tableName, organizationId)
+		return ingestionResult{
+			err: fmt.Errorf("table %s not found in data model for organization %s", tableName, organizationId),
+		}
 	}
 
-	if err = usecase.ingestObjectsFromCSV(ctx, organizationId, file, table); err != nil {
-		return fmt.Errorf("error ingesting objects from CSV %s: %w", fullFileName, err)
-	}
-
-	return nil
+	return usecase.ingestObjectsFromCSV(ctx, organizationId, file, table)
 }
 
-func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organizationId string, file models.GCSFile, table models.Table) error {
+func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organizationId string, file models.GCSFile, table models.Table) ingestionResult {
 	logger := utils.LoggerFromContext(ctx)
 	total := 0
 	start := time.Now()
@@ -351,14 +363,18 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 	r := csv.NewReader(pure_utils.NewReaderWithoutBom(file.Reader))
 	firstRow, err := r.Read()
 	if err != nil {
-		return fmt.Errorf("error reading first row of CSV: %w", err)
+		return ingestionResult{
+			err: fmt.Errorf("error reading first row of CSV: %w", err),
+		}
 	}
 
 	// first, check presence of all required fields in the csv
 	for name, field := range table.Fields {
 		if !field.Nullable {
 			if !containsString(firstRow, name) {
-				return fmt.Errorf("missing required field %s in CSV", name)
+				return ingestionResult{
+					err: fmt.Errorf("missing required field %s in CSV", name),
+				}
 			}
 		}
 	}
@@ -375,12 +391,18 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 				keepParsingFile = false
 				break
 			} else if err != nil {
-				return err
+				return ingestionResult{
+					numRowsIngested: total,
+					err:             fmt.Errorf("error reading line %d of CSV: %w", objectIdx, err),
+				}
 			}
 
 			object, err := parseStringValuesToMap(firstRow, record, table)
 			if err != nil {
-				return err
+				return ingestionResult{
+					numRowsIngested: total,
+					err:             fmt.Errorf("error parsing line %d of CSV: %w", objectIdx, err),
+				}
 			}
 			logger.InfoContext(ctx, fmt.Sprintf("Object to ingest %d: %+v", objectIdx, object))
 
@@ -396,12 +418,17 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 				})
 		}
 		if err := retryIngestion(ctx, ingestClosure); err != nil {
-			return err
+			return ingestionResult{
+				numRowsIngested: total,
+				err:             err,
+			}
 		}
 		total += len(clientObjects)
 	}
 
-	return nil
+	return ingestionResult{
+		numRowsIngested: total,
+	}
 }
 
 func containsString(arr []string, s string) bool {
