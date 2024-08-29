@@ -253,17 +253,20 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 	logger := utils.LoggerFromContext(ctx)
 	logger.InfoContext(ctx, fmt.Sprintf("Start processing UploadLog %s", uploadLog.Id))
 
-	err := usecase.uploadLogRepository.UpdateUploadLogStatus(ctx, exec, models.UpdateUploadLogStatusInput{
+	done, err := usecase.uploadLogRepository.UpdateUploadLogStatus(ctx, exec, models.UpdateUploadLogStatusInput{
 		Id:                           uploadLog.Id,
 		CurrentUploadStatusCondition: models.UploadPending,
 		UploadStatus:                 models.UploadProcessing,
 	})
 	if err != nil {
 		return err
+	} else if !done {
+		logger.InfoContext(ctx, fmt.Sprintf("UploadLog %s is no longed in pending status", uploadLog.Id))
+		return nil
 	}
 
 	setToFailed := func(numRowsIngested int) {
-		err := usecase.uploadLogRepository.UpdateUploadLogStatus(
+		_, err := usecase.uploadLogRepository.UpdateUploadLogStatus(
 			ctx,
 			exec,
 			models.UpdateUploadLogStatusInput{
@@ -298,7 +301,7 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 		FinishedAt:                   &currentTime,
 		NumRowsIngested:              &out.numRowsIngested,
 	}
-	if err = usecase.uploadLogRepository.UpdateUploadLogStatus(ctx, exec, input); err != nil {
+	if _, err = usecase.uploadLogRepository.UpdateUploadLogStatus(ctx, exec, input); err != nil {
 		return err
 	}
 	return nil
