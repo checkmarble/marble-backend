@@ -46,6 +46,8 @@ func ScheduledExecutionStatusFrom(s string) ScheduledExecutionStatus {
 		return ScheduledExecutionSuccess
 	case "failure":
 		return ScheduledExecutionFailure
+	case "processing":
+		return ScheduledExecutionProcessing
 	}
 	return ScheduledExecutionPending
 }
