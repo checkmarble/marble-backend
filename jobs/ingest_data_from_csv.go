@@ -2,10 +2,12 @@ package jobs
 
 import (
 	"context"
+	"time"
 
 	"github.com/checkmarble/marble-backend/usecases"
-	"github.com/checkmarble/marble-backend/utils"
 )
+
+const csvIngestionTimeout = 1 * time.Hour
 
 func IngestDataFromCsv(ctx context.Context, uc usecases.Usecases) error {
 	return executeWithMonitoring(
@@ -17,9 +19,9 @@ func IngestDataFromCsv(ctx context.Context, uc usecases.Usecases) error {
 		) error {
 			usecasesWithCreds := GenerateUsecaseWithCredForMarbleAdmin(ctx, usecases)
 			usecase := usecasesWithCreds.NewIngestionUseCase()
-			logger := utils.LoggerFromContext(ctx)
-			logger.InfoContext(ctx, "Start ingesting data from upload logs")
-			return usecase.IngestDataFromCsv(ctx, logger)
+			ctx, cancel := context.WithTimeout(ctx, csvIngestionTimeout)
+			defer cancel()
+			return usecase.IngestDataFromCsv(ctx)
 		},
 	)
 }

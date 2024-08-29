@@ -16,7 +16,7 @@ func (r *UploadLogRepository) CreateUploadLog(exec repositories.Executor, log mo
 	return args.Error(0)
 }
 
-func (r *UploadLogRepository) UpdateUploadLog(exec repositories.Executor, input models.UpdateUploadLogInput) error {
+func (r *UploadLogRepository) UpdateUploadLogStatus(exec repositories.Executor, input models.UpdateUploadLogStatusInput) error {
 	args := r.Called(exec, input)
 	return args.Error(0)
 }

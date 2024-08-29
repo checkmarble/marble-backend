@@ -11,7 +11,7 @@ import (
 
 type UploadLogRepository interface {
 	CreateUploadLog(ctx context.Context, exec Executor, log models.UploadLog) error
-	UpdateUploadLog(ctx context.Context, exec Executor, input models.UpdateUploadLogInput) error
+	UpdateUploadLogStatus(ctx context.Context, exec Executor, input models.UpdateUploadLogStatusInput) error
 	UploadLogById(ctx context.Context, exec Executor, id string) (models.UploadLog, error)
 	AllUploadLogsByStatus(ctx context.Context, exec Executor, status models.UploadStatus) ([]models.UploadLog, error)
 	AllUploadLogsByTable(ctx context.Context, exec Executor, organizationId, tableName string) ([]models.UploadLog, error)
@@ -54,7 +54,7 @@ func (repo *UploadLogRepositoryImpl) CreateUploadLog(ctx context.Context, exec E
 	return err
 }
 
-func (repo *UploadLogRepositoryImpl) UpdateUploadLog(ctx context.Context, exec Executor, input models.UpdateUploadLogInput) error {
+func (repo *UploadLogRepositoryImpl) UpdateUploadLogStatus(ctx context.Context, exec Executor, input models.UpdateUploadLogStatusInput) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -67,7 +67,9 @@ func (repo *UploadLogRepositoryImpl) UpdateUploadLog(ctx context.Context, exec E
 	if input.FinishedAt != nil {
 		updateRequest = updateRequest.Set("finished_at", *input.FinishedAt)
 	}
-	updateRequest = updateRequest.Where("id = ?", input.Id)
+	updateRequest = updateRequest.
+		Where("id = ?", input.Id).
+		Where("status = ?", input.CurrentUploadStatusCondition)
 
 	err := ExecBuilder(ctx, exec, updateRequest)
 	return err
