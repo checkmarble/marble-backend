@@ -77,7 +77,7 @@ a8ca9ad7-1581-44f8-89d0-1f00500f2d02,2024-08-11T22:47:00Z,7b7ffdbc-cf98-48cb-a46
 	}
 	fmt.Printf("Created upload log %s in pending state", log.Id)
 
-	err = ingestionUsecase.IngestDataFromCsv(ctx, utils.LoggerFromContext(ctx))
+	err = ingestionUsecase.IngestDataFromCsv(ctx)
 	if err != nil {
 		assert.FailNow(t, "Failed to ingest data from csv file", err)
 	}

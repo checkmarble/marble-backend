@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
 	"strconv"
 	"strings"
 	"sync"
@@ -208,9 +207,13 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 		})
 }
 
-func (usecase *IngestionUseCase) IngestDataFromCsv(ctx context.Context, logger *slog.Logger) error {
-	pendingUploadLogs, err := usecase.uploadLogRepository.AllUploadLogsByStatus(ctx,
-		usecase.executorFactory.NewExecutor(), models.UploadPending)
+func (usecase *IngestionUseCase) IngestDataFromCsv(ctx context.Context) error {
+	logger := utils.LoggerFromContext(ctx)
+	logger.InfoContext(ctx, "Start ingesting data from upload logs")
+	pendingUploadLogs, err := usecase.uploadLogRepository.AllUploadLogsByStatus(
+		ctx,
+		usecase.executorFactory.NewExecutor(),
+		models.UploadPending)
 	if err != nil {
 		return err
 	}
@@ -222,8 +225,13 @@ func (usecase *IngestionUseCase) IngestDataFromCsv(ctx context.Context, logger *
 
 	startProcessUploadLog := func(uploadLog models.UploadLog) {
 		defer waitGroup.Done()
-		logger := logger.With("uploadLogId", uploadLog.Id).With("organization_id", uploadLog.OrganizationId)
-		if err := usecase.processUploadLog(ctx, uploadLog, logger); err != nil {
+		ctx = utils.StoreLoggerInContext(
+			ctx,
+			logger.
+				With("uploadLogId", uploadLog.Id).
+				With("organizationId", uploadLog.OrganizationId),
+		)
+		if err := usecase.processUploadLog(ctx, uploadLog); err != nil {
 			uploadErrorChan <- err
 		}
 	}
@@ -240,36 +248,61 @@ func (usecase *IngestionUseCase) IngestDataFromCsv(ctx context.Context, logger *
 	return uploadErr
 }
 
-func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog models.UploadLog, logger *slog.Logger) error {
+func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog models.UploadLog) error {
 	exec := usecase.executorFactory.NewExecutor()
+	logger := utils.LoggerFromContext(ctx)
 	logger.InfoContext(ctx, fmt.Sprintf("Start processing UploadLog %s", uploadLog.Id))
 
-	err := usecase.uploadLogRepository.UpdateUploadLog(ctx, exec, models.UpdateUploadLogInput{
-		Id: uploadLog.Id, UploadStatus: models.UploadProcessing,
+	err := usecase.uploadLogRepository.UpdateUploadLogStatus(ctx, exec, models.UpdateUploadLogStatusInput{
+		Id:                           uploadLog.Id,
+		CurrentUploadStatusCondition: models.UploadPending,
+		UploadStatus:                 models.UploadProcessing,
 	})
 	if err != nil {
 		return err
 	}
 
+	setToFailed := func() {
+		err := usecase.uploadLogRepository.UpdateUploadLogStatus(
+			ctx,
+			exec,
+			models.UpdateUploadLogStatusInput{
+				Id:                           uploadLog.Id,
+				CurrentUploadStatusCondition: models.UploadProcessing,
+				UploadStatus:                 models.UploadFailure,
+			})
+		if err != nil {
+			logger.ErrorContext(ctx, fmt.Sprintf("Error setting upload log %s to failed", uploadLog.Id), "error", err.Error())
+		}
+	}
+
 	file, err := usecase.gcsRepository.GetFile(ctx, usecase.GcsIngestionBucket, uploadLog.FileName)
 	if err != nil {
+		setToFailed()
 		return err
 	}
 	defer file.Reader.Close()
 
-	if err = usecase.readFileIngestObjects(ctx, file, logger); err != nil {
+	if err = usecase.readFileIngestObjects(ctx, file); err != nil {
+		setToFailed()
 		return err
 	}
 
 	currentTime := time.Now()
-	input := models.UpdateUploadLogInput{Id: uploadLog.Id, UploadStatus: models.UploadSuccess, FinishedAt: &currentTime}
-	if err = usecase.uploadLogRepository.UpdateUploadLog(ctx, exec, input); err != nil {
+	input := models.UpdateUploadLogStatusInput{
+		Id:                           uploadLog.Id,
+		CurrentUploadStatusCondition: models.UploadProcessing,
+		UploadStatus:                 models.UploadSuccess,
+		FinishedAt:                   &currentTime,
+	}
+	if err = usecase.uploadLogRepository.UpdateUploadLogStatus(ctx, exec, input); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file models.GCSFile, logger *slog.Logger) error {
+func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file models.GCSFile) error {
+	logger := utils.LoggerFromContext(ctx)
 	fullFileName := file.FileName
 	logger.InfoContext(ctx, fmt.Sprintf("Ingesting data from CSV %s", fullFileName))
 
@@ -280,18 +313,12 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file
 	organizationId := fullFileNameElements[0]
 	tableName := fullFileNameElements[1]
 
-	// It make more sense to have a CanIngest function for job without the OrgId now
-	// but at least having a check with orgId here make it future proof in case
-	// we want to allow a user to use this functionality
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
 		return err
 	}
 
-	dataModel, err := usecase.dataModelRepository.GetDataModel(
-		ctx,
-		usecase.executorFactory.NewExecutor(),
-		organizationId,
-		false)
+	exec := usecase.executorFactory.NewExecutor()
+	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationId, false)
 	if err != nil {
 		return err
 	}
@@ -301,17 +328,26 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file
 		return fmt.Errorf("table %s not found in data model for organization %s", tableName, organizationId)
 	}
 
-	if err = usecase.ingestObjectsFromCSV(ctx, organizationId, file, table, logger); err != nil {
+	if err = usecase.ingestObjectsFromCSV(ctx, organizationId, file, table); err != nil {
 		return fmt.Errorf("error ingesting objects from CSV %s: %w", fullFileName, err)
 	}
 
 	return nil
 }
 
-func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organizationId string,
-	file models.GCSFile, table models.Table, logger *slog.Logger,
-) error {
+func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organizationId string, file models.GCSFile, table models.Table) error {
+	logger := utils.LoggerFromContext(ctx)
+	total := 0
 	start := time.Now()
+	printDuration := func() {
+		end := time.Now()
+		duration := end.Sub(start)
+		// divide by 1e6 convert to milliseconds (base is nanoseconds)
+		avgDuration := float64(duration) / float64(total*1e6)
+		logger.InfoContext(ctx, fmt.Sprintf("Successfully ingested %d objects in %s, average %vms", total, duration, avgDuration))
+	}
+	defer printDuration()
+
 	r := csv.NewReader(pure_utils.NewReaderWithoutBom(file.Reader))
 	firstRow, err := r.Read()
 	if err != nil {
@@ -327,34 +363,28 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 		}
 	}
 
-	clientObjects := make([]models.ClientObject, 0)
 	keepParsingFile := true
-	windowStart := 0
-	total := 0
-
+	objectIdx := 0
 	for keepParsingFile {
-		windowEnd := windowStart + batchSize
-		clientObjects = make([]models.ClientObject, 0)
-		for ; windowStart < windowEnd; windowStart++ {
-			logger.InfoContext(ctx, fmt.Sprintf("Start reading line %v", windowStart))
+		windowEnd := objectIdx + batchSize
+		clientObjects := make([]models.ClientObject, 0, batchSize)
+		for ; objectIdx < windowEnd; objectIdx++ {
+			logger.InfoContext(ctx, fmt.Sprintf("Start reading line %v", objectIdx))
 			record, err := r.Read()
 			if err == io.EOF { //nolint:errorlint
-				total = windowStart
 				keepParsingFile = false
 				break
 			} else if err != nil {
 				return err
 			}
+
 			object, err := parseStringValuesToMap(firstRow, record, table)
 			if err != nil {
 				return err
 			}
-			logger.InfoContext(ctx, fmt.Sprintf("Object to ingest %d: %+v", windowStart, object))
-			clientObject := models.ClientObject{
-				TableName: table.Name,
-				Data:      object,
-			}
+			logger.InfoContext(ctx, fmt.Sprintf("Object to ingest %d: %+v", objectIdx, object))
 
+			clientObject := models.ClientObject{TableName: table.Name, Data: object}
 			clientObjects = append(clientObjects, clientObject)
 		}
 
@@ -368,13 +398,8 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 		if err := retryIngestion(ctx, ingestClosure); err != nil {
 			return err
 		}
+		total += len(clientObjects)
 	}
-
-	end := time.Now()
-	duration := end.Sub(start)
-	// divide by 1e6 convert to milliseconds (base is nanoseconds)
-	avgDuration := float64(duration) / float64(total*1e6)
-	logger.InfoContext(ctx, fmt.Sprintf("Ingested %d objects in %s, average %vms", total, duration, avgDuration))
 
 	return nil
 }

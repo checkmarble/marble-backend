@@ -35,8 +35,9 @@ func UploadStatusFrom(s string) UploadStatus {
 	return UploadPending
 }
 
-type UpdateUploadLogInput struct {
-	Id           string
-	UploadStatus UploadStatus
-	FinishedAt   *time.Time
+type UpdateUploadLogStatusInput struct {
+	Id                           string
+	UploadStatus                 UploadStatus
+	CurrentUploadStatusCondition UploadStatus // for optimistic locking. Only rows matching this current status will be updated
+	FinishedAt                   *time.Time
 }
