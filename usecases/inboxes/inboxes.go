@@ -52,34 +52,35 @@ func (i *InboxReader) ListInboxes(
 ) ([]models.Inbox, error) {
 	var inboxes []models.Inbox
 	var err error
-	if i.isAdminHasAccessToAllInboxes(ctx) {
+	if i.isAdminHasAccessToAllInboxes() {
 		inboxes, err = i.InboxRepository.ListInboxes(ctx, exec, organizationId, nil, withCaseCount)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		availableInboxIds, err := i.getAvailableInboxes(ctx, exec)
 		if err != nil {
-			return []models.Inbox{}, err
-		} else if len(availableInboxIds) == 0 {
+			return nil, err
+		}
+		if len(availableInboxIds) == 0 {
 			return []models.Inbox{}, nil
 		}
 		inboxes, err = i.InboxRepository.ListInboxes(ctx, exec, organizationId, availableInboxIds, withCaseCount)
 		if err != nil {
-			return []models.Inbox{}, err
+			return nil, err
 		}
-	}
-	if err != nil {
-		return []models.Inbox{}, err
 	}
 
 	for _, inbox := range inboxes {
 		if err := i.EnforceSecurity.ReadInbox(inbox); err != nil {
-			return []models.Inbox{}, err
+			return nil, err
 		}
 	}
 
 	return inboxes, nil
 }
 
-func (i *InboxReader) isAdminHasAccessToAllInboxes(ctx context.Context) bool {
+func (i *InboxReader) isAdminHasAccessToAllInboxes() bool {
 	return i.Credentials.Role == models.ADMIN || i.Credentials.Role == models.MARBLE_ADMIN
 }
 
