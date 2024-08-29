@@ -85,7 +85,7 @@ func (repo *UploadLogRepositoryImpl) UpdateUploadLogStatus(
 		return false, err
 	}
 
-	tag, err := exec.Exec(ctx, sql, args)
+	tag, err := exec.Exec(ctx, sql, args...)
 	if err != nil {
 		return false, err
 	}
