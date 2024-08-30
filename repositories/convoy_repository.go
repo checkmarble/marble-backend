@@ -11,6 +11,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/guregu/null/v5"
+	"golang.org/x/time/rate"
 )
 
 type ConvoyClientProvider interface {
@@ -28,16 +29,22 @@ func (noOpConvoyClientProvider) GetProjectID() string {
 	return ""
 }
 
-func NewConvoyRepository(convoyClientProvider ConvoyClientProvider) ConvoyRepository {
+type ConvoyRepository struct {
+	convoyClientProvider ConvoyClientProvider
+	limiter              *rate.Limiter
+}
+
+func NewConvoyRepository(convoyClientProvider ConvoyClientProvider, limit int) ConvoyRepository {
 	if convoyClientProvider == nil {
 		convoyClientProvider = noOpConvoyClientProvider{}
 	}
 
-	return ConvoyRepository{convoyClientProvider: convoyClientProvider}
-}
-
-type ConvoyRepository struct {
-	convoyClientProvider ConvoyClientProvider
+	instanceLimit := rate.Limit(limit) / 2 // other instances may be running in parallel. If we want to do more precise, we'll need a distributed limiter
+	burst := limit / 3
+	return ConvoyRepository{
+		convoyClientProvider: convoyClientProvider,
+		limiter:              rate.NewLimiter(instanceLimit, burst),
+	}
 }
 
 func getOwnerId(organizationId string, partnerId null.String) string {
@@ -64,6 +71,12 @@ func getName(ownerId string, eventTypes []string) string {
 }
 
 func (repo ConvoyRepository) SendWebhookEvent(ctx context.Context, webhookEvent models.WebhookEvent) error {
+	err := repo.limiter.Wait(ctx)
+	if err != nil {
+		// happens if the context is canceled or the wait time is expected to be larger than the context deadline
+		return errors.Wrap(err, "can't send convoy event: rate limit exceeded")
+	}
+
 	projectId := repo.convoyClientProvider.GetProjectID()
 	convoyClient, err := repo.convoyClientProvider.GetClient()
 	if err != nil {
@@ -81,6 +94,14 @@ func (repo ConvoyRepository) SendWebhookEvent(ctx context.Context, webhookEvent 
 	})
 	if err != nil {
 		return errors.Wrap(err, "can't create convoy event: request error")
+	}
+	if fanoutEvent.StatusCode() == 429 {
+		logger := utils.LoggerFromContext(ctx)
+		logger.WarnContext(ctx,
+			"rate limit exceeded, the webhook sending will be retried asynchronously",
+			"ownerId", ownerId, "webhookEventId", webhookEvent.Id,
+		)
+		return nil
 	}
 	if fanoutEvent.JSON201 == nil {
 		err = parseResponseError(fanoutEvent.HTTPResponse.Status, fanoutEvent.Body)

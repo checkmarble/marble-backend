@@ -59,6 +59,7 @@ func RunServer() error {
 		APIKey:    utils.GetEnv("CONVOY_API_KEY", ""),
 		APIUrl:    utils.GetEnv("CONVOY_API_URL", ""),
 		ProjectID: utils.GetEnv("CONVOY_PROJECT_ID", ""),
+		RateLimit: utils.GetEnv("CONVOY_RATE_LIMIT", 50),
 	}
 
 	seedOrgConfig := models.SeedOrgConfiguration{
@@ -108,7 +109,9 @@ func RunServer() error {
 		repositories.WithTransferCheckEnrichmentBucket(gcpConfig.GcsTransferCheckEnrichmentBucket),
 		repositories.WithFakeGcsRepository(gcpConfig.FakeGcsRepository),
 		repositories.WithConvoyClientProvider(
-			infra.InitializeConvoyRessources(convoyConfiguration)),
+			infra.InitializeConvoyRessources(convoyConfiguration),
+			convoyConfiguration.RateLimit,
+		),
 	)
 
 	uc := usecases.NewUsecases(repositories,

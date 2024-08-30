@@ -34,6 +34,7 @@ func RunBatchIngestion() error {
 		APIKey:    utils.GetEnv("CONVOY_API_KEY", ""),
 		APIUrl:    utils.GetEnv("CONVOY_API_URL", ""),
 		ProjectID: utils.GetEnv("CONVOY_PROJECT_ID", ""),
+		RateLimit: utils.GetEnv("CONVOY_RATE_LIMIT", 50),
 	}
 	licenseConfig := models.LicenseConfiguration{
 		LicenseKey:             utils.GetEnv("LICENSE_KEY", ""),
@@ -80,7 +81,9 @@ func RunBatchIngestion() error {
 		pool,
 		repositories.WithFakeGcsRepository(gcpConfig.FakeGcsRepository),
 		repositories.WithConvoyClientProvider(
-			infra.InitializeConvoyRessources(convoyConfiguration)),
+			infra.InitializeConvoyRessources(convoyConfiguration),
+			convoyConfiguration.RateLimit,
+		),
 	)
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithGcsIngestionBucket(gcpConfig.GcsIngestionBucket),

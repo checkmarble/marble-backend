@@ -56,4 +56,5 @@ type ConvoyConfiguration struct {
 	APIKey    string
 	APIUrl    string
 	ProjectID string
+	RateLimit int
 }
