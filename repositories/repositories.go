@@ -1,13 +1,11 @@
 package repositories
 
 import (
-	"firebase.google.com/go/v4/auth"
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type options struct {
-	firebaseClient                *auth.Client
 	metabase                      Metabase
 	transfercheckEnrichmentBucket string
 	fakeGcsRepository             bool
