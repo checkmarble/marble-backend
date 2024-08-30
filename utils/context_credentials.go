@@ -24,10 +24,8 @@ func OrganizationIdFromRequest(request *http.Request) (organizationId string, er
 		return "", fmt.Errorf("no credentials in context: %w", models.ForbiddenError)
 	}
 
-	var requestOrganizationId string
-
 	// allow organizationId to be passed in query param
-	requestOrganizationId = request.URL.Query().Get("organization-id")
+	requestOrganizationId := request.URL.Query().Get("organization-id")
 	if requestOrganizationId != "" {
 		if err := ValidateUuid(requestOrganizationId); err != nil {
 			return "", err
