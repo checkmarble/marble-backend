@@ -123,7 +123,7 @@ func TestMain(m *testing.M) {
 	// or else the repository will panic.
 	repos := repositories.NewRepositories(dbPool,
 		repositories.WithConvoyClientProvider(
-			infra.InitializeConvoyRessources(infra.ConvoyConfiguration{})),
+			infra.InitializeConvoyRessources(infra.ConvoyConfiguration{}), 0),
 		repositories.WithFakeGcsRepository(true),
 	)
 

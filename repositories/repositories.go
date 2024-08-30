@@ -10,6 +10,7 @@ type options struct {
 	transfercheckEnrichmentBucket string
 	fakeGcsRepository             bool
 	convoyClientProvider          ConvoyClientProvider
+	convoyRateLimit               int
 }
 
 type Option func(*options)
@@ -40,9 +41,10 @@ func WithFakeGcsRepository(b bool) Option {
 	}
 }
 
-func WithConvoyClientProvider(convoyResources ConvoyClientProvider) Option {
+func WithConvoyClientProvider(convoyResources ConvoyClientProvider, convoyRateLimit int) Option {
 	return func(o *options) {
 		o.convoyClientProvider = convoyResources
+		o.convoyRateLimit = convoyRateLimit
 	}
 }
 
@@ -88,7 +90,7 @@ func NewRepositories(
 
 	return Repositories{
 		ExecutorGetter:                executorGetter,
-		ConvoyRepository:              NewConvoyRepository(options.convoyClientProvider),
+		ConvoyRepository:              NewConvoyRepository(options.convoyClientProvider, options.convoyRateLimit),
 		UserRepository:                &UserRepositoryPostgresql{},
 		OrganizationRepository:        &OrganizationRepositoryPostgresql{},
 		IngestionRepository:           &IngestionRepositoryImpl{},
