@@ -66,7 +66,7 @@ func addRoutes(r *gin.Engine, auth Authentication, tokenHandler TokenHandler, uc
 	router.POST("/scenario-iterations/:iteration_id/commit",
 		handleCommitScenarioIterationVersion(uc))
 	router.POST("/scenario-iterations/:iteration_id/schedule-execution", handleCreateScheduledExecution(uc))
-	router.GET("/scenario-iterations/:iteration_id/active-snoozes", handleSnoozesOfScenarioIteartion(uc))
+	router.GET("/scenario-iterations/:iteration_id/active-snoozes", handleSnoozesOfScenarioIteration(uc))
 
 	router.GET("/scenario-iteration-rules", handleListRules(uc))
 	router.POST("/scenario-iteration-rules", handleCreateRule(uc))
