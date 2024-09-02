@@ -75,7 +75,7 @@ func handleSnoozeDecision(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleSnoozesOfScenarioIteartion(uc usecases.Usecases) func(c *gin.Context) {
+func handleSnoozesOfScenarioIteration(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		_, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(c, err) {
