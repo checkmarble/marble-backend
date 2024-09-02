@@ -36,7 +36,7 @@ type EvalScenarioRepository interface {
 }
 
 type snoozesForDecisionReader interface {
-	ListRuleSnoozesForDecision(
+	ListActiveRuleSnoozesForDecision(
 		ctx context.Context,
 		exec repositories.Executor,
 		snoozeGroupIds []string,
@@ -142,7 +142,7 @@ func EvalScenario(
 				snoozeGroupIds = append(snoozeGroupIds, *rule.SnoozeGroupId)
 			}
 		}
-		snoozes, err = repositories.SnoozeReader.ListRuleSnoozesForDecision(ctx, exec, snoozeGroupIds, *pivotValue)
+		snoozes, err = repositories.SnoozeReader.ListActiveRuleSnoozesForDecision(ctx, exec, snoozeGroupIds, *pivotValue)
 	}
 
 	// Evaluate all rules

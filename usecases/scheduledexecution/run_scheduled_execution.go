@@ -57,7 +57,7 @@ type RunScheduledExecutionRepository interface {
 }
 
 type snoozesForDecisionReader interface {
-	ListRuleSnoozesForDecision(
+	ListActiveRuleSnoozesForDecision(
 		ctx context.Context,
 		exec repositories.Executor,
 		snoozeGroupIds []string,
