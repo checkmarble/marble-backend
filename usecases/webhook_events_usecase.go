@@ -20,6 +20,7 @@ const (
 	MAX_CONCURRENT_WEBHOOKS_SENT      = 20
 	WEBHOOKS_SEND_MAX_RETRIES         = 24
 	DEFAULT_FAILED_WEBHOOKS_PAGE_SIZE = 1000
+	ASYNC_WEBHOOKS_SEND_TIMEOUT       = 5 * time.Minute
 )
 
 type convoyWebhookEventRepository interface {
@@ -112,9 +113,9 @@ func (usecase WebhookEventsUsecase) SendWebhookEventAsync(ctx context.Context, w
 	logger := utils.LoggerFromContext(ctx).With("webhook_event_id", webhookEventId)
 	ctx = utils.StoreLoggerInContext(ctx, logger)
 
-	// go routine to send the webhook event asynchronously, with a new context and timeout and a child span
+	// goroutine to send the webhook event asynchronously, with a new context and timeout and a child span
 	go func() {
-		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Second*3)
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), ASYNC_WEBHOOKS_SEND_TIMEOUT)
 		defer cancel()
 		tracer := utils.OpenTelemetryTracerFromContext(ctx)
 		ctx, span := tracer.Start(
