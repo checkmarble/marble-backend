@@ -39,8 +39,12 @@ func NewConvoyRepository(convoyClientProvider ConvoyClientProvider, limit int) C
 		convoyClientProvider = noOpConvoyClientProvider{}
 	}
 
-	instanceLimit := rate.Limit(limit) / 2 // other instances may be running in parallel. If we want to do more precise, we'll need a distributed limiter
+	// other instances may be running in parallel. If we want to do it more precisely, we'll need a distributed limiter
+	instanceLimit := rate.Limit(limit) / 2
 	burst := limit / 3
+	if burst == 0 {
+		burst = 1
+	}
 	return ConvoyRepository{
 		convoyClientProvider: convoyClientProvider,
 		limiter:              rate.NewLimiter(instanceLimit, burst),
@@ -73,8 +77,15 @@ func getName(ownerId string, eventTypes []string) string {
 func (repo ConvoyRepository) SendWebhookEvent(ctx context.Context, webhookEvent models.WebhookEvent) error {
 	err := repo.limiter.Wait(ctx)
 	if err != nil {
-		// happens if the context is canceled or the wait time is expected to be larger than the context deadline
-		return errors.Wrap(err, "can't send convoy event: rate limit exceeded")
+		// Happens if the context is canceled or the wait time is expected to be larger than the context deadline.
+		// The former should not happen in the current implementation, but the latter could happen if the function is called
+		// rapidly and if the context passed has a too short deadline.
+		logger := utils.LoggerFromContext(ctx)
+		logger.WarnContext(ctx,
+			"Internal rate limit exceeded, the webhook sending will be retried asynchronously",
+			"webhookEventId", webhookEvent.Id,
+		)
+		return nil
 	}
 
 	projectId := repo.convoyClientProvider.GetProjectID()
@@ -98,7 +109,7 @@ func (repo ConvoyRepository) SendWebhookEvent(ctx context.Context, webhookEvent 
 	if fanoutEvent.StatusCode() == 429 {
 		logger := utils.LoggerFromContext(ctx)
 		logger.WarnContext(ctx,
-			"rate limit exceeded, the webhook sending will be retried asynchronously",
+			"Convoy rate limit exceeded, the webhook sending will be retried asynchronously",
 			"ownerId", ownerId, "webhookEventId", webhookEvent.Id,
 		)
 		return nil
