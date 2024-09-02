@@ -23,7 +23,7 @@ type iterationGetter interface {
 type ruleSnoozeRepository interface {
 	GetSnoozeById(ctx context.Context, exec repositories.Executor, ruleSnoozeId string) (models.RuleSnooze, error)
 	CreateSnoozeGroup(ctx context.Context, exec repositories.Executor, id, organizationId string) error
-	ListRuleSnoozesForDecision(
+	ListActiveRuleSnoozesForDecision(
 		ctx context.Context,
 		exec repositories.Executor,
 		snoozeGroupIds []string,
@@ -134,7 +134,7 @@ func (usecase RuleSnoozeUsecase) ActiveSnoozesForDecision(ctx context.Context, d
 		}
 	}
 
-	snoozes, err := usecase.ruleSnoozeRepository.ListRuleSnoozesForDecision(
+	snoozes, err := usecase.ruleSnoozeRepository.ListActiveRuleSnoozesForDecision(
 		ctx, exec, snoozeGroupIds, *decision.PivotValue)
 	if err != nil {
 		return models.SnoozesOfDecision{}, err
@@ -225,7 +225,7 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 	snoozeGroupId := thisRule.SnoozeGroupId
 
 	if snoozeGroupId != nil {
-		snoozes, err := usecase.ruleSnoozeRepository.ListRuleSnoozesForDecision(ctx, exec, []string{
+		snoozes, err := usecase.ruleSnoozeRepository.ListActiveRuleSnoozesForDecision(ctx, exec, []string{
 			*snoozeGroupId,
 		}, *decision.PivotValue)
 		if err != nil {
@@ -288,7 +288,7 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 				return nil, err
 			}
 
-			return usecase.ruleSnoozeRepository.ListRuleSnoozesForDecision(ctx, tx, snoozeGroupIds, *decision.PivotValue)
+			return usecase.ruleSnoozeRepository.ListActiveRuleSnoozesForDecision(ctx, tx, snoozeGroupIds, *decision.PivotValue)
 		},
 	)
 

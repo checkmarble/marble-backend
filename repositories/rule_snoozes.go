@@ -148,7 +148,7 @@ func (repo *MarbleDbRepository) GetRuleSnooze(ctx context.Context, exec Executor
 	)
 }
 
-func (repo *MarbleDbRepository) ListRuleSnoozesForDecision(
+func (repo *MarbleDbRepository) ListActiveRuleSnoozesForDecision(
 	ctx context.Context,
 	exec Executor,
 	snoozeGroupIds []string,
@@ -158,13 +158,21 @@ func (repo *MarbleDbRepository) ListRuleSnoozesForDecision(
 		return nil, err
 	}
 
+	if len(snoozeGroupIds) == 0 {
+		return []models.RuleSnooze{}, nil
+	}
+
 	return SqlToListOfModels(
 		ctx,
 		exec,
 		NewQueryBuilder().
 			Select(dbmodels.SelectRuleSnoozesColumn...).
 			From(dbmodels.TABLE_RULE_SNOOZES).
-			Where(squirrel.Eq{"snooze_group_id": snoozeGroupIds, "pivot_value": pivotValue}).
+			Where(squirrel.Eq{
+				"snooze_group_id": snoozeGroupIds,
+				"pivot_value":     pivotValue,
+			}).
+			Where(squirrel.Gt{"expires_at": "now()"}).
 			Limit(200),
 		dbmodels.AdaptRuleSnooze,
 	)
