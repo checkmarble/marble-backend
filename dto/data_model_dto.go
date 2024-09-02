@@ -6,16 +6,15 @@ import (
 )
 
 type LinkToSingle struct {
-	Id                     string `json:"id"`
-	ParentTableName_deprec string `json:"linked_table_name"` // left for compatibility
-	ParentTableName        string `json:"parent_table_name"`
-	ParentTableId          string `json:"parent_table_id"`
-	ParentFieldName        string `json:"parent_field_name"`
-	ParentFieldId          string `json:"parent_field_id"`
-	ChildTableName         string `json:"child_table_name"`
-	ChildTableId           string `json:"child_table_id"`
-	ChildFieldName         string `json:"child_field_name"`
-	ChildFieldId           string `json:"child_field_id"`
+	Id              string `json:"id"`
+	ParentTableName string `json:"parent_table_name"`
+	ParentTableId   string `json:"parent_table_id"`
+	ParentFieldName string `json:"parent_field_name"`
+	ParentFieldId   string `json:"parent_field_id"`
+	ChildTableName  string `json:"child_table_name"`
+	ChildTableId    string `json:"child_table_id"`
+	ChildFieldName  string `json:"child_field_name"`
+	ChildFieldId    string `json:"child_field_id"`
 }
 
 type Field struct {
@@ -40,45 +39,6 @@ type Table struct {
 
 type DataModel struct {
 	Tables map[string]Table `json:"tables"`
-}
-
-type PostDataModel struct {
-	Body *struct {
-		DataModel DataModel `json:"data_model"`
-	} `in:"body=json;required"`
-}
-
-type PostCreateTable struct {
-	Body *struct {
-		Name        string `json:"name"`
-		Description string `json:"description"`
-	} `in:"body=json"`
-}
-
-type PostCreateField struct {
-	Body *struct {
-		Name        string `json:"name"`
-		Description string `json:"description"`
-		Type        string `json:"type"`
-		Nullable    bool   `json:"nullable"`
-		IsEnum      bool   `json:"is_enum"`
-	} `in:"body=json"`
-}
-
-type PostCreateLink struct {
-	Body *struct {
-		Name          string `json:"name"`
-		ParentTableID string `json:"parent_table_id"`
-		ParentFieldID string `json:"parent_field_id"`
-		ChildTableID  string `json:"child_table_id"`
-		ChildFieldID  string `json:"child_field_id"`
-	} `in:"body=json"`
-}
-
-type PostToggleIsEnum struct {
-	Body *struct {
-		FieldID string `json:"field_id"`
-	} `in:"body=json"`
 }
 
 func AdaptTableDto(table models.Table) Table {
@@ -107,16 +67,15 @@ func adaptDataModelField(field models.Field) Field {
 
 func adaptDataModelLink(linkToSingle models.LinkToSingle) LinkToSingle {
 	return LinkToSingle{
-		Id:                     linkToSingle.Id,
-		ParentTableName_deprec: linkToSingle.ParentTableName,
-		ParentTableName:        linkToSingle.ParentTableName,
-		ParentTableId:          linkToSingle.ParentTableId,
-		ParentFieldName:        linkToSingle.ParentFieldName,
-		ParentFieldId:          linkToSingle.ParentFieldId,
-		ChildTableName:         linkToSingle.ChildTableName,
-		ChildTableId:           linkToSingle.ChildTableId,
-		ChildFieldName:         linkToSingle.ChildFieldName,
-		ChildFieldId:           linkToSingle.ChildFieldId,
+		Id:              linkToSingle.Id,
+		ParentTableName: linkToSingle.ParentTableName,
+		ParentTableId:   linkToSingle.ParentTableId,
+		ParentFieldName: linkToSingle.ParentFieldName,
+		ParentFieldId:   linkToSingle.ParentFieldId,
+		ChildTableName:  linkToSingle.ChildTableName,
+		ChildTableId:    linkToSingle.ChildTableId,
+		ChildFieldName:  linkToSingle.ChildFieldName,
+		ChildFieldId:    linkToSingle.ChildFieldId,
 	}
 }
 
@@ -124,4 +83,32 @@ func AdaptDataModelDto(dataModel models.DataModel) DataModel {
 	return DataModel{
 		Tables: pure_utils.MapValues(dataModel.Tables, AdaptTableDto),
 	}
+}
+
+type CreateTableInput struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+type CreateLinkInput struct {
+	Name          string `json:"name"`
+	ParentTableId string `json:"parent_table_id"`
+	ParentFieldId string `json:"parent_field_id"`
+	ChildTableId  string `json:"child_table_id"`
+	ChildFieldId  string `json:"child_field_id"`
+}
+
+type UpdateFieldInput struct {
+	Description *string `json:"description"`
+	IsEnum      *bool   `json:"is_enum"`
+	IsUnique    *bool   `json:"is_unique"`
+}
+
+type CreateFieldInput struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Type        string `json:"type"`
+	Nullable    bool   `json:"nullable"`
+	IsEnum      bool   `json:"is_enum"`
+	IsUnique    bool   `json:"is_unique"`
 }

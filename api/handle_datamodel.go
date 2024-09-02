@@ -31,11 +31,6 @@ func handleGetDataModel(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-type createTableInput struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-}
-
 func handleCreateTable(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		organizationID, err := utils.OrganizationIdFromRequest(c.Request)
@@ -43,7 +38,7 @@ func handleCreateTable(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		var input createTableInput
+		var input dto.CreateTableInput
 		if err := json.NewDecoder(c.Request.Body).Decode(&input); err != nil {
 			presentError(c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
@@ -60,36 +55,9 @@ func handleCreateTable(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleUpdateDataModelTable(uc usecases.Usecases) func(c *gin.Context) {
-	return func(c *gin.Context) {
-		var input createFieldInput
-		if err := json.NewDecoder(c.Request.Body).Decode(&input); err != nil {
-			presentError(c, errors.Wrap(models.BadParameterError, err.Error()))
-			return
-		}
-		tableID := c.Param("tableID")
-
-		usecase := usecasesWithCreds(c.Request, uc).NewDataModelUseCase()
-		err := usecase.UpdateDataModelTable(c.Request.Context(), tableID, input.Description)
-		if presentError(c, err) {
-			return
-		}
-		c.Status(http.StatusNoContent)
-	}
-}
-
-type createFieldInput struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Type        string `json:"type"`
-	Nullable    bool   `json:"nullable"`
-	IsEnum      bool   `json:"is_enum"`
-	IsUnique    bool   `json:"is_unique"`
-}
-
 func handleCreateField(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		var input createFieldInput
+		var input dto.CreateFieldInput
 		if err := json.NewDecoder(c.Request.Body).Decode(&input); err != nil {
 			presentError(c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
@@ -117,15 +85,9 @@ func handleCreateField(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-type updateFieldInput struct {
-	Description *string `json:"description"`
-	IsEnum      *bool   `json:"is_enum"`
-	IsUnique    *bool   `json:"is_unique"`
-}
-
 func handleUpdateDataModelField(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		var input updateFieldInput
+		var input dto.UpdateFieldInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.Status(http.StatusBadRequest)
 			return
@@ -145,14 +107,6 @@ func handleUpdateDataModelField(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-type createLinkInput struct {
-	Name          string `json:"name"`
-	ParentTableID string `json:"parent_table_id"`
-	ParentFieldID string `json:"parent_field_id"`
-	ChildTableID  string `json:"child_table_id"`
-	ChildFieldID  string `json:"child_field_id"`
-}
-
 func handleCreateLink(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		organizationID, err := utils.OrganizationIdFromRequest(c.Request)
@@ -160,7 +114,7 @@ func handleCreateLink(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		var input createLinkInput
+		var input dto.CreateLinkInput
 		if err := json.NewDecoder(c.Request.Body).Decode(&input); err != nil {
 			presentError(c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
@@ -169,10 +123,10 @@ func handleCreateLink(uc usecases.Usecases) func(c *gin.Context) {
 		link := models.DataModelLinkCreateInput{
 			OrganizationID: organizationID,
 			Name:           input.Name,
-			ParentTableID:  input.ParentTableID,
-			ParentFieldID:  input.ParentFieldID,
-			ChildTableID:   input.ChildTableID,
-			ChildFieldID:   input.ChildFieldID,
+			ParentTableID:  input.ParentTableId,
+			ParentFieldID:  input.ParentFieldId,
+			ChildTableID:   input.ChildTableId,
+			ChildFieldID:   input.ChildFieldId,
 		}
 
 		usecase := usecasesWithCreds(c.Request, uc).NewDataModelUseCase()
