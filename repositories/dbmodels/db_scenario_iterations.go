@@ -24,7 +24,6 @@ type DBScenarioIteration struct {
 	ScoreRejectThreshold          pgtype.Int2 `db:"score_reject_threshold"`
 	TriggerConditionAstExpression []byte      `db:"trigger_condition_ast_expression"`
 	DeletedAt                     pgtype.Time `db:"deleted_at"`
-	BatchTriggerSQL               string      `db:"batch_trigger_sql"`
 	Schedule                      string      `db:"schedule"`
 }
 
@@ -37,13 +36,12 @@ var SelectScenarioIterationColumn = utils.ColumnList[DBScenarioIteration]()
 
 func AdaptScenarioIteration(dto DBScenarioIteration) (models.ScenarioIteration, error) {
 	scenarioIteration := models.ScenarioIteration{
-		Id:              dto.Id,
-		OrganizationId:  dto.OrganizationId,
-		ScenarioId:      dto.ScenarioId,
-		CreatedAt:       dto.CreatedAt,
-		UpdatedAt:       dto.UpdatedAt,
-		BatchTriggerSQL: dto.BatchTriggerSQL,
-		Schedule:        dto.Schedule,
+		Id:             dto.Id,
+		OrganizationId: dto.OrganizationId,
+		ScenarioId:     dto.ScenarioId,
+		CreatedAt:      dto.CreatedAt,
+		UpdatedAt:      dto.UpdatedAt,
+		Schedule:       dto.Schedule,
 	}
 
 	if dto.Version.Valid {

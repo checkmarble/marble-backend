@@ -51,7 +51,6 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Cont
 			"score_review_threshold",
 			"score_reject_threshold",
 			"trigger_condition_ast_expression",
-			"batch_trigger_sql",
 			"schedule",
 		).Values(
 			pure_utils.NewPrimaryKey(organizationId),
@@ -60,7 +59,6 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Cont
 			scenarioIterationBodyInput.ScoreReviewThreshold,
 			scenarioIterationBodyInput.ScoreRejectThreshold,
 			triggerCondition,
-			scenarioIterationBodyInput.BatchTriggerSQL,
 			scenarioIterationBodyInput.Schedule,
 		)
 	} else {
@@ -122,10 +120,6 @@ func (repo *MarbleDbRepository) UpdateScenarioIteration(ctx context.Context, exe
 	}
 	if scenarioIteration.Body.Schedule != nil {
 		sql = sql.Set("schedule", scenarioIteration.Body.Schedule)
-		countUpdate++
-	}
-	if scenarioIteration.Body.BatchTriggerSQL != nil {
-		sql = sql.Set("batch_trigger_sql", scenarioIteration.Body.BatchTriggerSQL)
 		countUpdate++
 	}
 	if scenarioIteration.Body.TriggerConditionAstExpression != nil {
