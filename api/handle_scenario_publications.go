@@ -3,7 +3,6 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
@@ -15,26 +14,6 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-type APIScenarioPublication struct {
-	Id                  string    `json:"id"`
-	Rank                int32     `json:"rank"`
-	ScenarioId          string    `json:"scenarioID"`
-	ScenarioIterationId string    `json:"scenarioIterationID"`
-	PublicationAction   string    `json:"publicationAction"`
-	CreatedAt           time.Time `json:"createdAt"`
-}
-
-func NewAPIScenarioPublication(sp models.ScenarioPublication) APIScenarioPublication {
-	return APIScenarioPublication{
-		Id:                  sp.Id,
-		Rank:                sp.Rank,
-		ScenarioId:          sp.ScenarioId,
-		ScenarioIterationId: sp.ScenarioIterationId,
-		PublicationAction:   sp.PublicationAction.String(),
-		CreatedAt:           sp.CreatedAt,
-	}
-}
-
 func handleListScenarioPublications(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -42,8 +21,8 @@ func handleListScenarioPublications(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		scenarioID := c.Query("scenarioID")
-		scenarioIterationID := c.Query("scenarioIterationID")
+		scenarioID := c.Query("scenario_id")
+		scenarioIterationID := c.Query("scenario_iteration_id")
 
 		usecase := usecasesWithCreds(c.Request, uc).NewScenarioPublicationUsecase()
 		scenarioPublications, err := usecase.ListScenarioPublications(
@@ -56,7 +35,7 @@ func handleListScenarioPublications(uc usecases.Usecases) func(c *gin.Context) {
 		if presentError(c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, pure_utils.Map(scenarioPublications, NewAPIScenarioPublication))
+		c.JSON(http.StatusOK, pure_utils.Map(scenarioPublications, dto.AdaptScenarioPublicationDto))
 	}
 }
 
@@ -77,14 +56,11 @@ func handleCreateScenarioPublication(uc usecases.Usecases) func(c *gin.Context) 
 		scenarioPublications, err := usecase.ExecuteScenarioPublicationAction(
 			c.Request.Context(),
 			organizationId,
-			models.PublishScenarioIterationInput{
-				ScenarioIterationId: data.ScenarioIterationId,
-				PublicationAction:   models.PublicationActionFrom(data.PublicationAction),
-			})
+			dto.AdaptCreateScenarioPublicationBody(data))
 		if handleExpectedPublicationError(c, err) || presentError(c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, pure_utils.Map(scenarioPublications, NewAPIScenarioPublication))
+		c.JSON(http.StatusOK, pure_utils.Map(scenarioPublications, dto.AdaptScenarioPublicationDto))
 	}
 }
 
@@ -97,7 +73,7 @@ func handleGetScenarioPublication(uc usecases.Usecases) func(c *gin.Context) {
 		if presentError(c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, NewAPIScenarioPublication(scenarioPublication))
+		c.JSON(http.StatusOK, dto.AdaptScenarioPublicationDto(scenarioPublication))
 	}
 }
 
