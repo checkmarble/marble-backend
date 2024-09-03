@@ -10,7 +10,7 @@ type RuleSnooze struct {
 	Id                    string    `json:"id"`
 	PivotValue            string    `json:"pivot_value"`
 	StartsAt              time.Time `json:"starts_at"`
-	ExpiresAt             time.Time `json:"ends_at"`
+	ExpiresAt             time.Time `json:"ends_at"` //nolint:tagliatelle
 	CreatedByUser         string    `json:"created_by_user"`
 	CreatedFromDecisionId *string   `json:"created_from_decision_id"`
 	CreatedFromRuleId     string    `json:"created_from_rule_id"`

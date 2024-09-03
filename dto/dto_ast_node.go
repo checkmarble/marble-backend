@@ -8,7 +8,7 @@ import (
 )
 
 type NodeDto struct {
-	FuncName      string             `json:"name,omitempty"`
+	Name          string             `json:"name,omitempty"`
 	Constant      any                `json:"constant,omitempty"`
 	Children      []NodeDto          `json:"children,omitempty"`
 	NamedChildren map[string]NodeDto `json:"named_children,omitempty"`
@@ -31,7 +31,7 @@ func AdaptNodeDto(node ast.Node) (NodeDto, error) {
 	}
 
 	return NodeDto{
-		FuncName:      funcName,
+		Name:          funcName,
 		Constant:      node.Constant,
 		Children:      childrenDto,
 		NamedChildren: namedChildrenDto,
@@ -44,11 +44,11 @@ func adaptDtoFunctionName(f ast.Function) (string, error) {
 }
 
 func AdaptASTNode(dto NodeDto) (ast.Node, error) {
-	if dto.FuncName == "Unknown" {
-		dto.FuncName = "Undefined"
+	if dto.Name == "Unknown" {
+		dto.Name = "Undefined"
 	}
 
-	function, err := adaptFunctionName(dto.FuncName)
+	function, err := adaptFunctionName(dto.Name)
 	if err != nil {
 		return ast.Node{}, err
 	}

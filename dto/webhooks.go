@@ -31,7 +31,7 @@ type Secret struct {
 	CreatedAt string `json:"created_at,omitempty"`
 	DeletedAt string `json:"deleted_at,omitempty"`
 	ExpiresAt string `json:"expires_at,omitempty"`
-	Uid       string `json:"id,omitempty"`
+	Id        string `json:"id,omitempty"`
 	UpdatedAt string `json:"updated_at,omitempty"`
 	Value     string `json:"value,omitempty"`
 }
@@ -41,7 +41,7 @@ func AdaptSecret(secret models.Secret) Secret {
 		CreatedAt: secret.CreatedAt,
 		DeletedAt: secret.DeletedAt,
 		ExpiresAt: secret.ExpiresAt,
-		Uid:       secret.Uid,
+		Id:        secret.Uid,
 		UpdatedAt: secret.UpdatedAt,
 		Value:     secret.Value,
 	}

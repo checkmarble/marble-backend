@@ -13,8 +13,8 @@ type CustomList struct {
 	Description      string    `json:"description"`
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
-	CreatedAt_deprec time.Time `json:"createdAt"`
-	UpdatedAt_deprec time.Time `json:"updatedAt"`
+	CreatedAt_deprec time.Time `json:"createdAt"` //nolint:tagliatelle
+	UpdatedAt_deprec time.Time `json:"updatedAt"` //nolint:tagliatelle
 }
 
 func AdaptCustomListDto(list models.CustomList) CustomList {
