@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -32,7 +33,7 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Cont
 			"id",
 			"org_id",
 			"scenario_id",
-		).Suffix("RETURNING *")
+		).Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectScenarioIterationColumn, ",")))
 
 	scenarioIterationBodyInput := scenarioIteration.Body
 	if scenarioIterationBodyInput != nil {
@@ -109,7 +110,7 @@ func (repo *MarbleDbRepository) UpdateScenarioIteration(ctx context.Context, exe
 		Update(dbmodels.TABLE_SCENARIO_ITERATIONS).
 		Set("updated_at", squirrel.Expr("NOW()")).
 		Where("id = ?", scenarioIteration.Id).
-		Suffix("RETURNING *")
+		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SelectScenarioIterationColumn, ",")))
 	if scenarioIteration.Body.ScoreReviewThreshold != nil {
 		sql = sql.Set("score_review_threshold", scenarioIteration.Body.ScoreReviewThreshold)
 		countUpdate++
