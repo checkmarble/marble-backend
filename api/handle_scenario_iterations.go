@@ -17,7 +17,7 @@ import (
 
 func handleListScenarioIterations(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		scenarioID := c.Query("scenarioId")
+		scenarioId := c.Query("scenario_id")
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
 		if presentError(c, err) {
 			return
@@ -28,7 +28,7 @@ func handleListScenarioIterations(uc usecases.Usecases) func(c *gin.Context) {
 			c.Request.Context(),
 			organizationId,
 			models.GetScenarioIterationFilters{
-				ScenarioId: utils.PtrTo(scenarioID, &utils.PtrToOptions{OmitZero: true}),
+				ScenarioId: utils.PtrTo(scenarioId, &utils.PtrToOptions{OmitZero: true}),
 			})
 		if presentError(c, err) {
 			return
