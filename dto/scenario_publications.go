@@ -1,19 +1,61 @@
 package dto
 
-import "github.com/checkmarble/marble-backend/models"
+import (
+	"time"
+
+	"github.com/checkmarble/marble-backend/models"
+)
+
+type ScenarioPublication struct {
+	Id                         string    `json:"id"`
+	Rank                       int32     `json:"rank"`
+	ScenarioId_deprec          string    `json:"scenarioID"`
+	ScenarioId                 string    `json:"scenario_id"`
+	ScenarioIterationId_deprec string    `json:"scenarioIterationID"`
+	ScenarioIterationId        string    `json:"scenario_iteration_id"`
+	PublicationAction_deprec   string    `json:"publicationAction"`
+	PublicationAction          string    `json:"publication_action"`
+	CreatedAt_deprec           time.Time `json:"createdAt"`
+	CreatedAt                  time.Time `json:"created_at"`
+}
+
+func AdaptScenarioPublicationDto(sp models.ScenarioPublication) ScenarioPublication {
+	return ScenarioPublication{
+		Id:                         sp.Id,
+		Rank:                       sp.Rank,
+		ScenarioId_deprec:          sp.ScenarioId,
+		ScenarioId:                 sp.ScenarioId,
+		ScenarioIterationId_deprec: sp.ScenarioIterationId,
+		ScenarioIterationId:        sp.ScenarioIterationId,
+		PublicationAction_deprec:   sp.PublicationAction.String(),
+		PublicationAction:          sp.PublicationAction.String(),
+		CreatedAt_deprec:           sp.CreatedAt,
+		CreatedAt:                  sp.CreatedAt,
+	}
+}
 
 type CreateScenarioPublicationBody struct {
-	ScenarioIterationId string `json:"scenarioIterationID"`
-	PublicationAction   string `json:"publicationAction"`
+	ScenarioIterationId_deprec string `json:"scenarioIterationID"`
+	ScenarioIterationId        string `json:"scenario_iteration_id"`
+	PublicationAction_deprec   string `json:"publicationAction"`
+	PublicationAction          string `json:"publication_action"`
 }
 
-type CreateScenarioPublicationInput struct {
-	Body *CreateScenarioPublicationBody `in:"body=json"`
-}
+func AdaptCreateScenarioPublicationBody(dto CreateScenarioPublicationBody) models.PublishScenarioIterationInput {
+	out := models.PublishScenarioIterationInput{
+		ScenarioIterationId: dto.ScenarioIterationId,
+		PublicationAction:   models.PublicationActionFrom(dto.PublicationAction),
+	}
 
-type ListScenarioPublicationsInput struct {
-	ScenarioId          *string `in:"query=scenarioID"`
-	ScenarioIterationId *string `in:"query=scenarioIterationID"`
+	// TODO remove deprecated fields
+	if out.ScenarioIterationId == "" {
+		out.ScenarioIterationId = dto.ScenarioIterationId_deprec
+	}
+	if out.PublicationAction == models.UnknownPublicationAction {
+		out.PublicationAction = models.PublicationActionFrom(dto.PublicationAction_deprec)
+	}
+
+	return out
 }
 
 type PublicationPreparationStatus struct {
