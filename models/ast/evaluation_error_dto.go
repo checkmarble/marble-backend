@@ -5,7 +5,7 @@ import (
 )
 
 type EvaluationErrorDto struct {
-	EvaluationError string  `json:"error"`
+	EvaluationError string  `json:"error"` //nolint:tagliatelle
 	Message         string  `json:"message"`
 	ArgumentIndex   *int    `json:"argument_index,omitempty"`
 	ArgumentName    *string `json:"argument_name,omitempty"`

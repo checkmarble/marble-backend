@@ -104,9 +104,9 @@ func handlePostDecision(uc usecases.Usecases, marbleAppHost string) func(c *gin.
 			c.Request.Context(),
 			models.CreateDecisionInput{
 				OrganizationId:     organizationId,
-				PayloadRaw:         requestData.TriggerObjectRaw,
+				PayloadRaw:         requestData.TriggerObject,
 				ScenarioId:         requestData.ScenarioId,
-				TriggerObjectTable: requestData.TriggerObjectType,
+				TriggerObjectTable: requestData.ObjectType,
 			},
 			false,
 			true,
@@ -154,8 +154,8 @@ func handlePostAllDecisions(uc usecases.Usecases, marbleAppHost string) func(c *
 			c.Request.Context(),
 			models.CreateAllDecisionsInput{
 				OrganizationId:     organizationId,
-				PayloadRaw:         requestData.TriggerObjectRaw,
-				TriggerObjectTable: requestData.TriggerObjectType,
+				PayloadRaw:         requestData.TriggerObject,
+				TriggerObjectTable: requestData.ObjectType,
 			},
 		)
 		if presentError(c, err) {

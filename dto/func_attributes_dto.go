@@ -5,14 +5,14 @@ import (
 )
 
 type FuncAttributesDto struct {
-	AstName           string   `json:"name"`
+	Name              string   `json:"name"`
 	NumberOfArguments int      `json:"number_of_arguments,omitempty"`
 	NamedArguments    []string `json:"named_arguments,omitempty"`
 }
 
 func AdaptFuncAttributesDto(attributes ast.FuncAttributes) FuncAttributesDto {
 	return FuncAttributesDto{
-		AstName:           attributes.AstName,
+		Name:              attributes.AstName,
 		NumberOfArguments: attributes.NumberOfArguments,
 		NamedArguments:    attributes.NamedArguments,
 	}

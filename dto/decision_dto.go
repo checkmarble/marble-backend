@@ -24,14 +24,14 @@ type DecisionFilters struct {
 }
 
 type CreateDecisionBody struct {
-	TriggerObjectRaw  json.RawMessage `json:"trigger_object" binding:"required"`
-	TriggerObjectType string          `json:"object_type" binding:"required"`
+	TriggerObject json.RawMessage `json:"trigger_object" binding:"required"`
+	ObjectType    string          `json:"object_type" binding:"required"`
 }
 
 type CreateDecisionWithScenarioBody struct {
-	ScenarioId        string          `json:"scenario_id" binding:"required"`
-	TriggerObjectRaw  json.RawMessage `json:"trigger_object" binding:"required"`
-	TriggerObjectType string          `json:"object_type" binding:"required"`
+	ScenarioId    string          `json:"scenario_id" binding:"required"`
+	TriggerObject json.RawMessage `json:"trigger_object" binding:"required"`
+	ObjectType    string          `json:"object_type" binding:"required"`
 }
 
 type CreateDecisionInputDto struct {

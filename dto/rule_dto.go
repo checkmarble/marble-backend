@@ -9,40 +9,40 @@ import (
 
 type RuleDto struct {
 	Id                         string    `json:"id"`
-	ScenarioIterationId_deprec string    `json:"scenarioIterationId"`
+	ScenarioIterationId_deprec string    `json:"scenarioIterationId"` //nolint:tagliatelle
 	ScenarioIterationId        string    `json:"scenario_iteration_id"`
-	DisplayOrder_deprec        int       `json:"displayOrder"`
+	DisplayOrder_deprec        int       `json:"displayOrder"` //nolint:tagliatelle
 	DisplayOrder               int       `json:"display_order"`
 	Name                       string    `json:"name"`
 	Description                string    `json:"description"`
 	FormulaAstExpression       *NodeDto  `json:"formula_ast_expression"`
-	ScoreModifier_deprec       int       `json:"scoreModifier"`
+	ScoreModifier_deprec       int       `json:"scoreModifier"` //nolint:tagliatelle
 	ScoreModifier              int       `json:"score_modifier"`
-	CreatedAt_deprec           time.Time `json:"createdAt"`
+	CreatedAt_deprec           time.Time `json:"createdAt"` //nolint:tagliatelle
 	CreatedAt                  time.Time `json:"created_at"`
 	RuleGroup                  string    `json:"rule_group"`
 }
 
 type CreateRuleInputBody struct {
-	ScenarioIterationId_deprec string   `json:"scenarioIterationId"`
+	ScenarioIterationId_deprec string   `json:"scenarioIterationId"` //nolint:tagliatelle
 	ScenarioIterationId        string   `json:"scenario_iteration_id"`
-	DisplayOrder_deprec        int      `json:"displayOrder"`
+	DisplayOrder_deprec        int      `json:"displayOrder"` //nolint:tagliatelle
 	DisplayOrder               int      `json:"display_order"`
 	Name                       string   `json:"name"`
 	Description                string   `json:"description"`
 	FormulaAstExpression       *NodeDto `json:"formula_ast_expression"`
-	ScoreModifier_deprec       int      `json:"scoreModifier"`
+	ScoreModifier_deprec       int      `json:"scoreModifier"` //nolint:tagliatelle
 	ScoreModifier              int      `json:"score_modifier"`
 	RuleGroup                  string   `json:"rule_group"`
 }
 
 type UpdateRuleBody struct {
-	DisplayOrder_deprec  *int     `json:"displayOrder,omitempty"`
+	DisplayOrder_deprec  *int     `json:"displayOrder,omitempty"` //nolint:tagliatelle
 	DisplayOrder         *int     `json:"display_order,omitempty"`
 	Name                 *string  `json:"name,omitempty"`
 	Description          *string  `json:"description,omitempty"`
 	FormulaAstExpression *NodeDto `json:"formula_ast_expression"`
-	ScoreModifier_deprec *int     `json:"scoreModifier,omitempty"`
+	ScoreModifier_deprec *int     `json:"scoreModifier,omitempty"` //nolint:tagliatelle
 	ScoreModifier        *int     `json:"score_modifier,omitempty"`
 	RuleGroup            *string  `json:"rule_group"`
 }

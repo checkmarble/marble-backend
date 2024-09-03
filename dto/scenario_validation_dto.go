@@ -8,13 +8,13 @@ import (
 
 type ScenarioValidationErrorDto struct {
 	Message string `json:"message"`
-	Code    string `json:"error"`
+	Error   string `json:"error"`
 }
 
 func AdaptScenarioValidationErrorDto(err models.ScenarioValidationError) ScenarioValidationErrorDto {
 	return ScenarioValidationErrorDto{
 		Message: err.Error.Error(),
-		Code:    err.Code.String(),
+		Error:   err.Code.String(),
 	}
 }
 

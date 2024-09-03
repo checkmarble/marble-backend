@@ -19,7 +19,7 @@ func TestAdaptNodeDto(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t,
 		NodeDto{
-			FuncName:      ">",
+			Name:          ">",
 			Children:      []NodeDto{{Constant: 1, Children: []NodeDto{}, NamedChildren: map[string]NodeDto{}}},
 			NamedChildren: map[string]NodeDto{"named": {Constant: 2, Children: []NodeDto{}, NamedChildren: map[string]NodeDto{}}},
 		},
@@ -29,7 +29,7 @@ func TestAdaptNodeDto(t *testing.T) {
 
 func TestAdaptASTNode(t *testing.T) {
 	dto := NodeDto{
-		FuncName: "+",
+		Name:     "+",
 		Children: []NodeDto{{Constant: 1, Children: []NodeDto{}, NamedChildren: map[string]NodeDto{}}},
 		NamedChildren: map[string]NodeDto{
 			"named": {Constant: 2, Children: []NodeDto{}, NamedChildren: map[string]NodeDto{}},

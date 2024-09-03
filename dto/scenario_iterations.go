@@ -17,23 +17,22 @@ type ScenarioIterationWithBodyDto struct {
 
 type ScenarioIterationDto struct {
 	Id                string    `json:"id"`
-	ScenarioId_deprec string    `json:"scenarioId"`
+	ScenarioId_deprec string    `json:"scenarioId"` //nolint:tagliatelle
 	ScenarioId        string    `json:"scenario_id"`
 	Version           *int      `json:"version"`
-	CreatedAt_deprec  time.Time `json:"createdAt"`
+	CreatedAt_deprec  time.Time `json:"createdAt"` //nolint:tagliatelle
 	CreatedAt         time.Time `json:"created_at"`
-	UpdatedAt_deprec  time.Time `json:"updatedAt"`
+	UpdatedAt_deprec  time.Time `json:"updatedAt"` //nolint:tagliatelle
 	UpdatedAt         time.Time `json:"updated_at"`
 }
 
 type ScenarioIterationBodyDto struct {
 	TriggerConditionAstExpression *NodeDto  `json:"trigger_condition_ast_expression"`
 	Rules                         []RuleDto `json:"rules"`
-	ScoreReviewThreshold_deprec   *int      `json:"scoreReviewThreshold"`
+	ScoreReviewThreshold_deprec   *int      `json:"scoreReviewThreshold"` //nolint:tagliatelle
 	ScoreReviewThreshold          *int      `json:"score_review_threshold"`
-	ScoreRejectThreshold_deprec   *int      `json:"scoreRejectThreshold"`
+	ScoreRejectThreshold_deprec   *int      `json:"scoreRejectThreshold"` //nolint:tagliatelle
 	ScoreRejectThreshold          *int      `json:"score_reject_threshold"`
-	BatchTriggerSQL               string    `json:"batchTriggerSql"` // TODO deprec
 	Schedule                      string    `json:"schedule"`
 }
 
@@ -43,7 +42,6 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 		ScoreReviewThreshold:        si.ScoreReviewThreshold,
 		ScoreRejectThreshold_deprec: si.ScoreRejectThreshold,
 		ScoreRejectThreshold:        si.ScoreRejectThreshold,
-		BatchTriggerSQL:             si.BatchTriggerSQL,
 		Schedule:                    si.Schedule,
 		Rules:                       make([]RuleDto, len(si.Rules)),
 	}
@@ -84,12 +82,11 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 type UpdateScenarioIterationBody struct {
 	Body struct {
 		TriggerConditionAstExpression *NodeDto `json:"trigger_condition_ast_expression"`
-		ScoreReviewThreshold_deprec   *int     `json:"scoreReviewThreshold,omitempty"`
+		ScoreReviewThreshold_deprec   *int     `json:"scoreReviewThreshold,omitempty"` //nolint:tagliatelle
 		ScoreReviewThreshold          *int     `json:"score_review_threshold,omitempty"`
-		ScoreRejectThreshold_deprec   *int     `json:"scoreRejectThreshold,omitempty"`
+		ScoreRejectThreshold_deprec   *int     `json:"scoreRejectThreshold,omitempty"` //nolint:tagliatelle
 		ScoreRejectThreshold          *int     `json:"score_reject_threshold,omitempty"`
 		Schedule                      *string  `json:"schedule"`
-		BatchTriggerSQL               *string  `json:"batchTriggerSQL"`
 	} `json:"body,omitempty"`
 }
 
@@ -100,7 +97,6 @@ func AdaptUpdateScenarioIterationInput(input UpdateScenarioIterationBody, iterat
 			ScoreReviewThreshold: input.Body.ScoreReviewThreshold,
 			ScoreRejectThreshold: input.Body.ScoreRejectThreshold,
 			Schedule:             input.Body.Schedule,
-			BatchTriggerSQL:      input.Body.BatchTriggerSQL,
 		},
 	}
 
@@ -128,17 +124,16 @@ func AdaptUpdateScenarioIterationInput(input UpdateScenarioIterationBody, iterat
 
 // Create iteration DTO
 type CreateScenarioIterationBody struct {
-	ScenarioId_deprec string `json:"scenarioId"`
+	ScenarioId_deprec string `json:"scenarioId"` //nolint:tagliatelle
 	ScenarioId        string `json:"scenario_id"`
 	Body              *struct {
 		TriggerConditionAstExpression *NodeDto              `json:"trigger_condition_ast_expression"`
 		Rules                         []CreateRuleInputBody `json:"rules"`
-		ScoreReviewThreshold_deprec   *int                  `json:"scoreReviewThreshold,omitempty"`
+		ScoreReviewThreshold_deprec   *int                  `json:"scoreReviewThreshold,omitempty"` //nolint:tagliatelle
 		ScoreReviewThreshold          *int                  `json:"score_review_threshold,omitempty"`
-		ScoreRejectThreshold_deprec   *int                  `json:"scoreRejectThreshold,omitempty"`
+		ScoreRejectThreshold_deprec   *int                  `json:"scoreRejectThreshold,omitempty"` //nolint:tagliatelle
 		ScoreRejectThreshold          *int                  `json:"score_reject_threshold,omitempty"`
 		Schedule                      string                `json:"schedule"`
-		BatchTriggerSQL               string                `json:"batchTriggerSQL"`
 	} `json:"body,omitempty"`
 }
 
@@ -155,7 +150,6 @@ func AdaptCreateScenarioIterationInput(input CreateScenarioIterationBody, organi
 		createScenarioIterationInput.Body = &models.CreateScenarioIterationBody{
 			ScoreReviewThreshold: input.Body.ScoreReviewThreshold,
 			ScoreRejectThreshold: input.Body.ScoreRejectThreshold,
-			BatchTriggerSQL:      input.Body.BatchTriggerSQL,
 			Schedule:             input.Body.Schedule,
 			Rules:                make([]models.CreateRuleInput, len(input.Body.Rules)),
 		}

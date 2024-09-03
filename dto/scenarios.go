@@ -11,17 +11,17 @@ import (
 // Read DTO
 type ScenarioDto struct {
 	Id                         string      `json:"id"`
-	CreatedAt_deprec           time.Time   `json:"createdAt"`
+	CreatedAt_deprec           time.Time   //nolint:tagliatelle
 	CreatedAt                  time.Time   `json:"created_at"`
 	DecisionToCaseOutcomes     []string    `json:"decision_to_case_outcomes"`
 	DecisionToCaseInboxId      null.String `json:"decision_to_case_inbox_id"`
 	DecisionToCaseWorkflowType string      `json:"decision_to_case_workflow_type"`
 	Description                string      `json:"description"`
-	LiveVersionID_deprec       *string     `json:"liveVersionId,omitempty"`
+	LiveVersionID_deprec       *string     `json:"liveVersionId,omitempty"` //nolint:tagliatelle
 	LiveVersionID              *string     `json:"live_version_id,omitempty"`
 	Name                       string      `json:"name"`
 	OrganizationId             string      `json:"organization_id"`
-	TriggerObjectType_deprec   string      `json:"triggerObjectType"`
+	TriggerObjectType_deprec   string      `json:"triggerObjectType"` //nolint:tagliatelle
 	TriggerObjectType          string      `json:"trigger_object_type"`
 }
 
@@ -48,7 +48,7 @@ func AdaptScenarioDto(scenario models.Scenario) ScenarioDto {
 type CreateScenarioBody struct {
 	Name                     string `json:"name"`
 	Description              string `json:"description"`
-	TriggerObjectType_deprec string `json:"triggerObjectType"`
+	TriggerObjectType_deprec string `json:"triggerObjectType"` //nolint:tagliatelle
 	TriggerObjectType        string `json:"trigger_object_type"`
 }
 

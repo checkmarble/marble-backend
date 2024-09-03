@@ -9,13 +9,13 @@ import (
 type ScenarioPublication struct {
 	Id                         string    `json:"id"`
 	Rank                       int32     `json:"rank"`
-	ScenarioId_deprec          string    `json:"scenarioID"`
+	ScenarioId_deprec          string    `json:"scenarioID"` //nolint:tagliatelle
 	ScenarioId                 string    `json:"scenario_id"`
-	ScenarioIterationId_deprec string    `json:"scenarioIterationID"`
+	ScenarioIterationId_deprec string    `json:"scenarioIterationID"` //nolint:tagliatelle
 	ScenarioIterationId        string    `json:"scenario_iteration_id"`
-	PublicationAction_deprec   string    `json:"publicationAction"`
+	PublicationAction_deprec   string    `json:"publicationAction"` //nolint:tagliatelle
 	PublicationAction          string    `json:"publication_action"`
-	CreatedAt_deprec           time.Time `json:"createdAt"`
+	CreatedAt_deprec           time.Time `json:"createdAt"` //nolint:tagliatelle
 	CreatedAt                  time.Time `json:"created_at"`
 }
 
@@ -35,9 +35,9 @@ func AdaptScenarioPublicationDto(sp models.ScenarioPublication) ScenarioPublicat
 }
 
 type CreateScenarioPublicationBody struct {
-	ScenarioIterationId_deprec string `json:"scenarioIterationID"`
+	ScenarioIterationId_deprec string `json:"scenarioIterationID"` //nolint:tagliatelle
 	ScenarioIterationId        string `json:"scenario_iteration_id"`
-	PublicationAction_deprec   string `json:"publicationAction"`
+	PublicationAction_deprec   string `json:"publicationAction"` //nolint:tagliatelle
 	PublicationAction          string `json:"publication_action"`
 }
 

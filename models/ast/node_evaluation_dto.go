@@ -5,8 +5,8 @@ import "github.com/checkmarble/marble-backend/pure_utils"
 // When too long, the ReturnValue can be omitted (ex: when function is `FUNC_CUSTOM_LIST_ACCESS“).
 // In such cases, ReturnValue will be nil and Omitted will be true.
 type ReturnValueDto struct {
-	Value   any  `json:"value,omitempty"`
-	Omitted bool `json:"is_omitted"`
+	Value     any  `json:"value,omitempty"`
+	IsOmitted bool `json:"is_omitted"`
 }
 
 type NodeEvaluationDto struct {
@@ -19,9 +19,9 @@ type NodeEvaluationDto struct {
 func AdaptNodeEvaluationDto(evaluation NodeEvaluation) NodeEvaluationDto {
 	var returnValueDto ReturnValueDto
 	if isReturnValueOmitted(evaluation) {
-		returnValueDto = ReturnValueDto{Value: nil, Omitted: true}
+		returnValueDto = ReturnValueDto{Value: nil, IsOmitted: true}
 	} else {
-		returnValueDto = ReturnValueDto{Value: evaluation.ReturnValue, Omitted: false}
+		returnValueDto = ReturnValueDto{Value: evaluation.ReturnValue, IsOmitted: false}
 	}
 
 	return NodeEvaluationDto{
