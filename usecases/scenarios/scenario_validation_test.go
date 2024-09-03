@@ -64,7 +64,6 @@ func TestValidateScenarioIterationImpl_Validate(t *testing.T) {
 		},
 		ScoreReviewThreshold: utils.Ptr(100),
 		ScoreRejectThreshold: utils.Ptr(1000),
-		BatchTriggerSQL:      "trigger",
 		Schedule:             "schedule",
 	}
 
@@ -152,7 +151,6 @@ func TestValidateScenarioIterationImpl_Validate_notBool(t *testing.T) {
 		},
 		ScoreReviewThreshold: utils.Ptr(100),
 		ScoreRejectThreshold: utils.Ptr(1000),
-		BatchTriggerSQL:      "trigger",
 		Schedule:             "schedule",
 	}
 

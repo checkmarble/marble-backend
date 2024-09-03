@@ -17,7 +17,6 @@ type ScenarioIteration struct {
 	Rules                         []Rule
 	ScoreReviewThreshold          *int
 	ScoreRejectThreshold          *int
-	BatchTriggerSQL               string
 	Schedule                      string
 }
 
@@ -35,7 +34,6 @@ type CreateScenarioIterationBody struct {
 	Rules                         []CreateRuleInput
 	ScoreReviewThreshold          *int
 	ScoreRejectThreshold          *int
-	BatchTriggerSQL               string
 	Schedule                      string
 }
 
@@ -48,6 +46,5 @@ type UpdateScenarioIterationBody struct {
 	TriggerConditionAstExpression *ast.Node
 	ScoreReviewThreshold          *int
 	ScoreRejectThreshold          *int
-	BatchTriggerSQL               *string
 	Schedule                      *string
 }

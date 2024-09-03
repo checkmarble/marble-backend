@@ -202,7 +202,6 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(ctx co
 			createScenarioIterationInput.Body = &models.CreateScenarioIterationBody{
 				ScoreReviewThreshold:          si.ScoreReviewThreshold,
 				ScoreRejectThreshold:          si.ScoreRejectThreshold,
-				BatchTriggerSQL:               si.BatchTriggerSQL,
 				Schedule:                      si.Schedule,
 				Rules:                         make([]models.CreateRuleInput, len(si.Rules)),
 				TriggerConditionAstExpression: si.TriggerConditionAstExpression,
