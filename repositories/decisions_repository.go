@@ -256,8 +256,8 @@ func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(
 func countDecisions(ctx context.Context, exec Executor, organizationId string, filters models.DecisionFilters) (int, error) {
 	subquery := NewQueryBuilder().
 		Select("*").
-		From(dbmodels.TABLE_DECISIONS).
-		Where(squirrel.Eq{"org_id": organizationId}).
+		From(fmt.Sprintf("%s AS d", dbmodels.TABLE_DECISIONS)).
+		Where(squirrel.Eq{"d.org_id": organizationId}).
 		Limit(models.COUNT_ROWS_LIMIT)
 	subquery = applyDecisionFilters(subquery, filters)
 	query := NewQueryBuilder().
@@ -305,6 +305,14 @@ func applyDecisionFilters(query squirrel.SelectBuilder, filters models.DecisionF
 	if filters.PivotValue != nil {
 		query = query.Where(squirrel.Eq{"pivot_value": *filters.PivotValue})
 	}
+
+	// only if we want to filter by case inbox id, join the cases table
+	if len(filters.CaseInboxIds) > 0 {
+		query = query.
+			Join(fmt.Sprintf("%s AS c ON c.id = d.case_id", dbmodels.TABLE_CASES)).
+			Where(squirrel.Eq{"c.inbox_id": filters.CaseInboxIds})
+	}
+
 	return query
 }
 
@@ -312,7 +320,13 @@ func selectDecisionsWithRank(p models.PaginationAndSorting) squirrel.SelectBuild
 	orderCondition := fmt.Sprintf("d.%s %s, d.id %s", p.Sorting, p.Order, p.Order)
 
 	query := NewQueryBuilder().
-		Select(dbmodels.SelectDecisionColumn...).
+		// Select(dbmodels.SelectDecisionColumn...).
+		Select(
+			pure_utils.Map(dbmodels.SelectDecisionColumn,
+				func(s string) string {
+					return "d." + s
+				})...,
+		).
 		Column(fmt.Sprintf("RANK() OVER (ORDER BY %s) as rank_number", orderCondition)).
 		From(fmt.Sprintf("%s AS d", dbmodels.TABLE_DECISIONS))
 
