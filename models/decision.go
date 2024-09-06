@@ -112,6 +112,7 @@ type CreateAllDecisionsInput struct {
 
 type DecisionFilters struct {
 	CaseIds               []string
+	CaseInboxIds          []string
 	EndDate               time.Time
 	HasCase               *bool
 	Outcomes              []Outcome

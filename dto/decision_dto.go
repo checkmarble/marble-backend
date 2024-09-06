@@ -13,6 +13,7 @@ import (
 
 type DecisionFilters struct {
 	CaseIds               []string  `form:"case_id[]"`
+	CaseInboxIds          []string  `form:"case_inbox_id[]"`
 	EndDate               time.Time `form:"end_date"`
 	HasCase               *bool     `form:"has_case"`
 	Outcomes              []string  `form:"outcome[]"`

@@ -11,7 +11,10 @@
       "mode": "auto",
       "program": "${workspaceFolder}/.",
       "envFile": "${workspaceFolder}/.env",
-      "args": ["--server", "--migrations"],
+      "args": [
+        "--server",
+        "--migrations"
+      ],
       "console": "integratedTerminal"
     },
     {
@@ -21,7 +24,9 @@
       "mode": "auto",
       "program": "${workspaceFolder}/.",
       "envFile": "${workspaceFolder}/.env",
-      "args": ["--scheduler"],
+      "args": [
+        "--scheduler"
+      ],
       "console": "integratedTerminal"
     },
     {
@@ -31,7 +36,9 @@
       "mode": "auto",
       "program": "${workspaceFolder}/.",
       "envFile": "${workspaceFolder}/.env",
-      "args": ["--scheduled-executer"],
+      "args": [
+        "--scheduled-executer"
+      ],
       "console": "integratedTerminal"
     },
     {
@@ -41,7 +48,9 @@
       "mode": "auto",
       "program": "${workspaceFolder}/.",
       "envFile": "${workspaceFolder}/.env",
-      "args": ["--data-ingestion"],
+      "args": [
+        "--data-ingestion"
+      ],
       "console": "integratedTerminal"
     },
     {
@@ -51,7 +60,9 @@
       "mode": "auto",
       "program": "${workspaceFolder}/.",
       "envFile": "${workspaceFolder}/.env",
-      "args": ["--send-pending-webhook-events"],
+      "args": [
+        "--send-pending-webhook-events"
+      ],
       "console": "integratedTerminal"
     },
     {
@@ -61,7 +72,9 @@
       "mode": "auto",
       "program": "${workspaceFolder}/.",
       "envFile": "${workspaceFolder}/.env",
-      "args": ["--cron-scheduler"],
+      "args": [
+        "--cron-scheduler"
+      ],
       "console": "integratedTerminal"
     }
   ]

@@ -117,6 +117,7 @@ func (usecase *DecisionUsecase) ListDecisions(
 		paginationAndSorting,
 		models.DecisionFilters{
 			CaseIds:               filters.CaseIds,
+			CaseInboxIds:          filters.CaseInboxIds,
 			EndDate:               filters.EndDate,
 			HasCase:               filters.HasCase,
 			Outcomes:              outcomes,
