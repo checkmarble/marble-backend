@@ -30,7 +30,11 @@ docker compose up -d
 Install the [Firebase tools](https://firebase.google.com/docs/emulator-suite):
 
 ```sh
-curl -sL firebase.tools | bash
+# Install the Firebase CLI using npm, since the curl script is broken (on 06/09/2024)
+npm install -g firebase-tools
+
+# Check the version is at least 13.16.0
+firebase --version
 ```
 
 Then copy the `./firebase-local-data.example` folder to `./firebase-local-data`. This folder will be used to store the local data of the Firebase emulator. It is ignored by git.
