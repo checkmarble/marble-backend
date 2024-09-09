@@ -8,41 +8,32 @@ import (
 )
 
 type RuleDto struct {
-	Id                         string    `json:"id"`
-	ScenarioIterationId_deprec string    `json:"scenarioIterationId"` //nolint:tagliatelle
-	ScenarioIterationId        string    `json:"scenario_iteration_id"`
-	DisplayOrder_deprec        int       `json:"displayOrder"` //nolint:tagliatelle
-	DisplayOrder               int       `json:"display_order"`
-	Name                       string    `json:"name"`
-	Description                string    `json:"description"`
-	FormulaAstExpression       *NodeDto  `json:"formula_ast_expression"`
-	ScoreModifier_deprec       int       `json:"scoreModifier"` //nolint:tagliatelle
-	ScoreModifier              int       `json:"score_modifier"`
-	CreatedAt_deprec           time.Time `json:"createdAt"` //nolint:tagliatelle
-	CreatedAt                  time.Time `json:"created_at"`
-	RuleGroup                  string    `json:"rule_group"`
+	Id                   string    `json:"id"`
+	ScenarioIterationId  string    `json:"scenario_iteration_id"`
+	DisplayOrder         int       `json:"display_order"`
+	Name                 string    `json:"name"`
+	Description          string    `json:"description"`
+	FormulaAstExpression *NodeDto  `json:"formula_ast_expression"`
+	ScoreModifier        int       `json:"score_modifier"`
+	CreatedAt            time.Time `json:"created_at"`
+	RuleGroup            string    `json:"rule_group"`
 }
 
 type CreateRuleInputBody struct {
-	ScenarioIterationId_deprec string   `json:"scenarioIterationId"` //nolint:tagliatelle
-	ScenarioIterationId        string   `json:"scenario_iteration_id"`
-	DisplayOrder_deprec        int      `json:"displayOrder"` //nolint:tagliatelle
-	DisplayOrder               int      `json:"display_order"`
-	Name                       string   `json:"name"`
-	Description                string   `json:"description"`
-	FormulaAstExpression       *NodeDto `json:"formula_ast_expression"`
-	ScoreModifier_deprec       int      `json:"scoreModifier"` //nolint:tagliatelle
-	ScoreModifier              int      `json:"score_modifier"`
-	RuleGroup                  string   `json:"rule_group"`
+	ScenarioIterationId  string   `json:"scenario_iteration_id"`
+	DisplayOrder         int      `json:"display_order"`
+	Name                 string   `json:"name"`
+	Description          string   `json:"description"`
+	FormulaAstExpression *NodeDto `json:"formula_ast_expression"`
+	ScoreModifier        int      `json:"score_modifier"`
+	RuleGroup            string   `json:"rule_group"`
 }
 
 type UpdateRuleBody struct {
-	DisplayOrder_deprec  *int     `json:"displayOrder,omitempty"` //nolint:tagliatelle
 	DisplayOrder         *int     `json:"display_order,omitempty"`
 	Name                 *string  `json:"name,omitempty"`
 	Description          *string  `json:"description,omitempty"`
 	FormulaAstExpression *NodeDto `json:"formula_ast_expression"`
-	ScoreModifier_deprec *int     `json:"scoreModifier,omitempty"` //nolint:tagliatelle
 	ScoreModifier        *int     `json:"score_modifier,omitempty"`
 	RuleGroup            *string  `json:"rule_group"`
 }
@@ -58,19 +49,15 @@ func AdaptRuleDto(rule models.Rule) (RuleDto, error) {
 	}
 
 	return RuleDto{
-		Id:                         rule.Id,
-		ScenarioIterationId_deprec: rule.ScenarioIterationId,
-		ScenarioIterationId:        rule.ScenarioIterationId,
-		DisplayOrder_deprec:        rule.DisplayOrder,
-		DisplayOrder:               rule.DisplayOrder,
-		Name:                       rule.Name,
-		Description:                rule.Description,
-		FormulaAstExpression:       formulaAstExpression,
-		ScoreModifier_deprec:       rule.ScoreModifier,
-		ScoreModifier:              rule.ScoreModifier,
-		CreatedAt_deprec:           rule.CreatedAt,
-		CreatedAt:                  rule.CreatedAt,
-		RuleGroup:                  rule.RuleGroup,
+		Id:                   rule.Id,
+		ScenarioIterationId:  rule.ScenarioIterationId,
+		DisplayOrder:         rule.DisplayOrder,
+		Name:                 rule.Name,
+		Description:          rule.Description,
+		FormulaAstExpression: formulaAstExpression,
+		ScoreModifier:        rule.ScoreModifier,
+		CreatedAt:            rule.CreatedAt,
+		RuleGroup:            rule.RuleGroup,
 	}, nil
 }
 
@@ -84,17 +71,6 @@ func AdaptCreateRuleInput(body CreateRuleInputBody, organizationId string) (mode
 		FormulaAstExpression: nil,
 		ScoreModifier:        body.ScoreModifier,
 		RuleGroup:            body.RuleGroup,
-	}
-
-	// TODO remove deprec
-	if createRuleInput.ScenarioIterationId == "" {
-		createRuleInput.ScenarioIterationId = body.ScenarioIterationId_deprec
-	}
-	if createRuleInput.DisplayOrder == 0 {
-		createRuleInput.DisplayOrder = body.DisplayOrder_deprec
-	}
-	if createRuleInput.ScoreModifier == 0 {
-		createRuleInput.ScoreModifier = body.ScoreModifier_deprec
 	}
 
 	if body.FormulaAstExpression != nil {
@@ -118,13 +94,6 @@ func AdaptUpdateRule(ruleId string, body UpdateRuleBody) (models.UpdateRuleInput
 		FormulaAstExpression: nil,
 		ScoreModifier:        body.ScoreModifier,
 		RuleGroup:            body.RuleGroup,
-	}
-
-	if body.DisplayOrder == nil {
-		updateRuleInput.DisplayOrder = body.DisplayOrder_deprec
-	}
-	if body.ScoreModifier == nil {
-		updateRuleInput.ScoreModifier = body.ScoreModifier_deprec
 	}
 
 	if body.FormulaAstExpression != nil {
