@@ -1,6 +1,6 @@
 module github.com/checkmarble/marble-backend
 
-go 1.22.0
+go 1.23.1
 
 require (
 	cloud.google.com/go/storage v1.42.0
