@@ -8,24 +8,20 @@ import (
 )
 
 type CustomList struct {
-	Id               string    `json:"id"`
-	Name             string    `json:"name"`
-	Description      string    `json:"description"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
-	CreatedAt_deprec time.Time `json:"createdAt"` //nolint:tagliatelle
-	UpdatedAt_deprec time.Time `json:"updatedAt"` //nolint:tagliatelle
+	Id          string    `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 func AdaptCustomListDto(list models.CustomList) CustomList {
 	return CustomList{
-		Id:               list.Id,
-		Name:             list.Name,
-		Description:      list.Description,
-		CreatedAt:        list.CreatedAt,
-		UpdatedAt:        list.UpdatedAt,
-		CreatedAt_deprec: list.CreatedAt,
-		UpdatedAt_deprec: list.UpdatedAt,
+		Id:          list.Id,
+		Name:        list.Name,
+		Description: list.Description,
+		CreatedAt:   list.CreatedAt,
+		UpdatedAt:   list.UpdatedAt,
 	}
 }
 
