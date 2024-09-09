@@ -462,7 +462,7 @@ components:
       properties:
         total:
           type: integer
-          description: total number of decisions created (approve+review+reject)
+          description: total number of decisions created (approve+review+block_and_review+reject)
           example: 2
         approve:
           type: integer
@@ -472,9 +472,13 @@ components:
           type: integer
           description: number of decisions created in 'review' status
           example: 0
-        reject:
+        block_and_review:
           type: integer
-          description: number of decisions created in 'reject' status
+          description: number of decisions created in 'block_and_review' status
+          example: 0
+        decline:
+          type: integer
+          description: number of decisions created in 'decline' status
           example: 1
         skipped:
           type: integer

@@ -119,14 +119,14 @@ func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(ctx context.Con
 		body.ScoreReviewThreshold = &defaultReviewThreshold
 	}
 
-	defaultRejectThreshold := 10
+	defaultDeclineThreshold := 10
 	if body.ScoreBlockAndReviewThreshold == nil {
-		// the block and review outcome cannot be reached with the default scenario iteration, as backward compatibility
-		body.ScoreBlockAndReviewThreshold = &defaultRejectThreshold
+		// the block and review outcome cannot be reached with the default scenario iteration
+		body.ScoreBlockAndReviewThreshold = &defaultDeclineThreshold
 	}
 
 	if body.ScoreDeclineThreshold == nil {
-		body.ScoreDeclineThreshold = &defaultRejectThreshold
+		body.ScoreDeclineThreshold = &defaultDeclineThreshold
 	}
 
 	si, err := usecase.repository.CreateScenarioIterationAndRules(ctx,
