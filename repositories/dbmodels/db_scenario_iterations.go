@@ -22,7 +22,7 @@ type DBScenarioIteration struct {
 	UpdatedAt                     time.Time   `db:"updated_at"`
 	ScoreReviewThreshold          pgtype.Int2 `db:"score_review_threshold"`
 	ScoreBlockAndReviewThreshold  pgtype.Int2 `db:"score_block_and_review_threshold"`
-	ScoreDeclineThreshold         pgtype.Int2 `db:"score_reject_threshold"`
+	ScoreDeclineThreshold         pgtype.Int2 `db:"score_reject_threshold"` // warning: field named inconsistently
 	TriggerConditionAstExpression []byte      `db:"trigger_condition_ast_expression"`
 	DeletedAt                     pgtype.Time `db:"deleted_at"`
 	Schedule                      string      `db:"schedule"`
@@ -58,8 +58,8 @@ func AdaptScenarioIteration(dto DBScenarioIteration) (models.ScenarioIteration, 
 		scenarioIteration.ScoreBlockAndReviewThreshold = &scoreBlockAndReviewThreshold
 	}
 	if dto.ScoreDeclineThreshold.Valid {
-		scoreRejectThreshold := int(dto.ScoreDeclineThreshold.Int16)
-		scenarioIteration.ScoreDeclineThreshold = &scoreRejectThreshold
+		scoreDeclineThreshold := int(dto.ScoreDeclineThreshold.Int16)
+		scenarioIteration.ScoreDeclineThreshold = &scoreDeclineThreshold
 	}
 
 	var err error
