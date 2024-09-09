@@ -18,6 +18,7 @@ type DecisionFilters struct {
 	HasCase               *bool     `form:"has_case"`
 	Outcomes              []string  `form:"outcome[]"`
 	PivotValue            *string   `form:"pivot_value"`
+	ReviewStatuses        []string  `form:"review_status[]"`
 	ScenarioIds           []string  `form:"scenario_id[]"`
 	ScheduledExecutionIds []string  `form:"scheduled_execution_id[]"`
 	StartDate             time.Time `form:"start_date"`
@@ -79,6 +80,7 @@ type APIDecision struct {
 	TriggerObjectType    string              `json:"trigger_object_type"`
 	Outcome              string              `json:"outcome"`
 	PivotValues          []PivotValueDto     `json:"pivot_values"`
+	ReviewStatus         *string             `json:"review_status"`
 	Scenario             APIDecisionScenario `json:"scenario"`
 	Score                int                 `json:"score"`
 	ScheduledExecutionId *string             `json:"scheduled_execution_id"`
@@ -98,6 +100,7 @@ func NewAPIDecision(decision models.Decision, marbleAppHost string) APIDecision 
 		TriggerObject:     decision.ClientObject.Data,
 		Outcome:           decision.Outcome.String(),
 		PivotValues:       make([]PivotValueDto, 0, 1),
+		ReviewStatus:      decision.ReviewStatus,
 		Scenario: APIDecisionScenario{
 			Id:                  decision.ScenarioId,
 			Name:                decision.ScenarioName,

@@ -23,6 +23,7 @@ type Decision struct {
 	Outcome              Outcome
 	PivotId              *string
 	PivotValue           *string
+	ReviewStatus         *string
 	ScenarioId           string
 	ScenarioName         string
 	ScenarioDescription  string
@@ -31,6 +32,12 @@ type Decision struct {
 	ScheduledExecutionId *string
 	ScenarioIterationId  string
 }
+
+const (
+	ReviewStatusPending = "pending"
+	ReviewStatusDecline = "decline"
+	ReviewStatusApprove = "approve"
+)
 
 type DecisionCore struct {
 	DecisionId     string
@@ -75,6 +82,12 @@ type RuleExecution struct {
 }
 
 func AdaptScenarExecToDecision(scenarioExecution ScenarioExecution, clientObject ClientObject, scheduledExecutionId *string) DecisionWithRuleExecutions {
+	var reviewStatus *string
+	if scenarioExecution.Outcome == BlockAndReview {
+		val := ReviewStatusPending
+		reviewStatus = &val
+	}
+
 	return DecisionWithRuleExecutions{
 		Decision: Decision{
 			DecisionId:           pure_utils.NewPrimaryKey(scenarioExecution.OrganizationId),
@@ -83,6 +96,7 @@ func AdaptScenarExecToDecision(scenarioExecution ScenarioExecution, clientObject
 			OrganizationId:       scenarioExecution.OrganizationId,
 			PivotId:              scenarioExecution.PivotId,
 			PivotValue:           scenarioExecution.PivotValue,
+			ReviewStatus:         reviewStatus,
 			ScenarioDescription:  scenarioExecution.ScenarioDescription,
 			ScenarioId:           scenarioExecution.ScenarioId,
 			ScenarioIterationId:  scenarioExecution.ScenarioIterationId,
@@ -117,6 +131,7 @@ type DecisionFilters struct {
 	HasCase               *bool
 	Outcomes              []Outcome
 	PivotValue            *string
+	ReviewStatuses        []string
 	ScenarioIds           []string
 	ScheduledExecutionIds []string
 	StartDate             time.Time

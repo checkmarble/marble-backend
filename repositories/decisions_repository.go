@@ -299,6 +299,9 @@ func applyDecisionFilters(query squirrel.SelectBuilder, filters models.DecisionF
 	if len(filters.CaseIds) > 0 {
 		query = query.Where(squirrel.Eq{"case_id": filters.CaseIds})
 	}
+	if len(filters.ReviewStatuses) > 0 {
+		query = query.Where(squirrel.Eq{"review_status": filters.ReviewStatuses})
+	}
 	if len(filters.ScheduledExecutionIds) > 0 {
 		query = query.Where(squirrel.Eq{"scheduled_execution_id": filters.ScheduledExecutionIds})
 	}
@@ -452,6 +455,7 @@ func (repo *DecisionRepositoryImpl) StoreDecision(
 				"outcome",
 				"pivot_id",
 				"pivot_value",
+				"review_status",
 				"scenario_id",
 				"scenario_iteration_id",
 				"scenario_name",
@@ -469,6 +473,7 @@ func (repo *DecisionRepositoryImpl) StoreDecision(
 				decision.Outcome.String(),
 				decision.PivotId,
 				decision.PivotValue,
+				decision.ReviewStatus,
 				decision.ScenarioId,
 				decision.ScenarioIterationId,
 				decision.ScenarioName,
