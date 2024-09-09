@@ -5,10 +5,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases"
 )
 
-func generateUsecaseWithCredForMarbleAdmin(
-	testUsecases usecases.Usecases,
-	organizationId string,
-) usecases.UsecasesWithCreds {
+func generateUsecaseWithCredForMarbleAdmin(testUsecases usecases.Usecases) usecases.UsecasesWithCreds {
 	creds := models.Credentials{Role: models.MARBLE_ADMIN}
 	return usecases.UsecasesWithCreds{
 		Usecases:    testUsecases,
