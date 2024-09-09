@@ -36,13 +36,13 @@ type CreateDecisionWithScenarioBody struct {
 	ObjectType    string          `json:"object_type" binding:"required"`
 }
 
-type CreateDecisionInputDto struct {
+type CreateDecisionInput struct {
 	Body *CreateDecisionBody `in:"body=json"`
 }
 
-type APIDecisionRule struct {
+type DecisionRule struct {
 	Description   string    `json:"description"`
-	Error         *APIError `json:"error,omitempty"`
+	Error         *ErrorDto `json:"error,omitempty"`
 	Name          string    `json:"name"`
 	Outcome       string    `json:"outcome"`
 	Result        bool      `json:"result"`
@@ -53,12 +53,12 @@ type APIDecisionRule struct {
 	RuleEvaluation *ast.NodeEvaluationDto `json:"rule_evaluation,omitempty"`
 }
 
-type APIError struct {
+type ErrorDto struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 }
 
-type APIDecisionScenario struct {
+type DecisionScenario struct {
 	Id                  string `json:"id"`
 	Name                string `json:"name"`
 	Description         string `json:"description"`
@@ -66,42 +66,42 @@ type APIDecisionScenario struct {
 	Version             int    `json:"version"`
 }
 
-type PivotValueDto struct {
+type PivotValue struct {
 	PivotValue null.String `json:"pivot_value"`
 	PivotId    null.String `json:"pivot_id"`
 }
 
-type APIDecision struct {
-	Id                   string              `json:"id"`
-	AppLink              null.String         `json:"app_link"`
-	Case                 *APICase            `json:"case,omitempty"`
-	CreatedAt            time.Time           `json:"created_at"`
-	TriggerObject        map[string]any      `json:"trigger_object"`
-	TriggerObjectType    string              `json:"trigger_object_type"`
-	Outcome              string              `json:"outcome"`
-	PivotValues          []PivotValueDto     `json:"pivot_values"`
-	ReviewStatus         *string             `json:"review_status"`
-	Scenario             APIDecisionScenario `json:"scenario"`
-	Score                int                 `json:"score"`
-	ScheduledExecutionId *string             `json:"scheduled_execution_id"`
+type Decision struct {
+	Id                   string           `json:"id"`
+	AppLink              null.String      `json:"app_link"`
+	Case                 *APICase         `json:"case,omitempty"`
+	CreatedAt            time.Time        `json:"created_at"`
+	TriggerObject        map[string]any   `json:"trigger_object"`
+	TriggerObjectType    string           `json:"trigger_object_type"`
+	Outcome              string           `json:"outcome"`
+	PivotValues          []PivotValue     `json:"pivot_values"`
+	ReviewStatus         *string          `json:"review_status"`
+	Scenario             DecisionScenario `json:"scenario"`
+	Score                int              `json:"score"`
+	ScheduledExecutionId *string          `json:"scheduled_execution_id"`
 }
 
-type APIDecisionWithRules struct {
-	APIDecision
-	Rules []APIDecisionRule `json:"rules"`
+type DecisionWithRules struct {
+	Decision
+	Rules []DecisionRule `json:"rules"`
 }
 
-func NewAPIDecision(decision models.Decision, marbleAppHost string) APIDecision {
-	apiDecision := APIDecision{
+func NewDecisionDto(decision models.Decision, marbleAppHost string) Decision {
+	decisionDto := Decision{
 		Id:                decision.DecisionId,
 		AppLink:           toDecisionUrl(marbleAppHost, decision.DecisionId),
 		CreatedAt:         decision.CreatedAt,
 		TriggerObjectType: decision.ClientObject.TableName,
 		TriggerObject:     decision.ClientObject.Data,
 		Outcome:           decision.Outcome.String(),
-		PivotValues:       make([]PivotValueDto, 0, 1),
+		PivotValues:       make([]PivotValue, 0, 1),
 		ReviewStatus:      decision.ReviewStatus,
-		Scenario: APIDecisionScenario{
+		Scenario: DecisionScenario{
 			Id:                  decision.ScenarioId,
 			Name:                decision.ScenarioName,
 			Description:         decision.ScenarioDescription,
@@ -114,17 +114,17 @@ func NewAPIDecision(decision models.Decision, marbleAppHost string) APIDecision 
 
 	if decision.Case != nil {
 		c := AdaptCaseDto(*decision.Case)
-		apiDecision.Case = &c
+		decisionDto.Case = &c
 	}
 
 	if decision.PivotValue != nil {
-		apiDecision.PivotValues = append(apiDecision.PivotValues, PivotValueDto{
+		decisionDto.PivotValues = append(decisionDto.PivotValues, PivotValue{
 			PivotId:    null.StringFromPtr(decision.PivotId),
 			PivotValue: null.StringFromPtr(decision.PivotValue),
 		})
 	}
 
-	return apiDecision
+	return decisionDto
 }
 
 func toDecisionUrl(marbleAppHost string, decisionId string) null.String {
@@ -140,28 +140,28 @@ func toDecisionUrl(marbleAppHost string, decisionId string) null.String {
 	return null.StringFrom(url.String())
 }
 
-func NewAPIDecisionWithRule(decision models.DecisionWithRuleExecutions, marbleAppHost string, withRuleExecution bool) APIDecisionWithRules {
-	apiDecision := APIDecisionWithRules{
-		APIDecision: NewAPIDecision(decision.Decision, marbleAppHost),
-		Rules:       make([]APIDecisionRule, len(decision.RuleExecutions)),
+func NewDecisionWithRuleDto(decision models.DecisionWithRuleExecutions, marbleAppHost string, withRuleExecution bool) DecisionWithRules {
+	decisionDto := DecisionWithRules{
+		Decision: NewDecisionDto(decision.Decision, marbleAppHost),
+		Rules:    make([]DecisionRule, len(decision.RuleExecutions)),
 	}
 
 	for i, ruleExecution := range decision.RuleExecutions {
-		apiDecision.Rules[i] = NewAPIDecisionRule(ruleExecution, withRuleExecution)
+		decisionDto.Rules[i] = NewDecisionRuleDto(ruleExecution, withRuleExecution)
 	}
 
-	return apiDecision
+	return decisionDto
 }
 
-func NewAPIDecisionRule(rule models.RuleExecution, withRuleExecution bool) APIDecisionRule {
-	out := APIDecisionRule{
+func NewDecisionRuleDto(rule models.RuleExecution, withRuleExecution bool) DecisionRule {
+	out := DecisionRule{
 		Name:          rule.Rule.Name,
 		Description:   rule.Rule.Description,
 		Outcome:       rule.Outcome,
 		ScoreModifier: rule.ResultScoreModifier,
 		Result:        rule.Result,
 		RuleId:        rule.Rule.Id,
-		Error:         APIErrorFromError(rule.Error),
+		Error:         ErrorDtoFromError(rule.Error),
 	}
 	if withRuleExecution {
 		out.RuleEvaluation = rule.Evaluation
@@ -169,12 +169,12 @@ func NewAPIDecisionRule(rule models.RuleExecution, withRuleExecution bool) APIDe
 	return out
 }
 
-func APIErrorFromError(err error) *APIError {
+func ErrorDtoFromError(err error) *ErrorDto {
 	if err == nil {
 		return nil
 	}
 
-	return &APIError{
+	return &ErrorDto{
 		Code:    int(ast.AdaptExecutionError(err)),
 		Message: err.Error(),
 	}
@@ -190,24 +190,24 @@ type DecisionsAggregateMetadata struct {
 		Skipped        int `json:"skipped"`
 	} `json:"count"`
 }
-type APIDecisionsWithMetadata struct {
-	Decisions []APIDecisionWithRules     `json:"decisions"`
+type DecisionsWithMetadata struct {
+	Decisions []DecisionWithRules        `json:"decisions"`
 	Metadata  DecisionsAggregateMetadata `json:"metadata"`
 }
 
-func AdaptAPIDecisionsWithMetadata(
+func AdaptDecisionsWithMetadataDto(
 	decisions []models.DecisionWithRuleExecutions,
 	marbleAppHost string,
 	nbSkipped int,
 	withRuleExecution bool,
-) APIDecisionsWithMetadata {
-	apiDecisions := make([]APIDecisionWithRules, len(decisions))
+) DecisionsWithMetadata {
+	decisionDtos := make([]DecisionWithRules, len(decisions))
 	for i, decision := range decisions {
-		apiDecisions[i] = NewAPIDecisionWithRule(decision, marbleAppHost, withRuleExecution)
+		decisionDtos[i] = NewDecisionWithRuleDto(decision, marbleAppHost, withRuleExecution)
 	}
 
-	return APIDecisionsWithMetadata{
-		Decisions: apiDecisions,
+	return DecisionsWithMetadata{
+		Decisions: decisionDtos,
 		Metadata:  AdaptDecisionsMetadata(decisions, nbSkipped),
 	}
 }

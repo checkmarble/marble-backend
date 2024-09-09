@@ -22,7 +22,7 @@ type APICase struct {
 
 type APICaseWithDecisions struct {
 	APICase
-	Decisions []APIDecisionWithRules `json:"decisions"`
+	Decisions []DecisionWithRules `json:"decisions"`
 }
 
 func AdaptCaseDto(c models.Case) APICase {
@@ -43,8 +43,8 @@ func AdaptCaseDto(c models.Case) APICase {
 func AdaptCaseWithDecisionsDto(c models.Case) APICaseWithDecisions {
 	return APICaseWithDecisions{
 		APICase: AdaptCaseDto(c),
-		Decisions: pure_utils.Map(c.Decisions, func(d models.DecisionWithRuleExecutions) APIDecisionWithRules {
-			return NewAPIDecisionWithRule(d, "", false)
+		Decisions: pure_utils.Map(c.Decisions, func(d models.DecisionWithRuleExecutions) DecisionWithRules {
+			return NewDecisionWithRuleDto(d, "", false)
 		}),
 	}
 }
