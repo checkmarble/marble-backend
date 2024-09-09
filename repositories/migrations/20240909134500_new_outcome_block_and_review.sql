@@ -9,10 +9,6 @@ SET
 WHERE
     score_block_and_review_threshold IS NULL;
 
-ALTER TABLE scenario_iterations
-ALTER COLUMN score_block_and_review_threshold
-SET NOT NULL;
-
 ALTER TYPE decision_outcome
 RENAME VALUE 'null' TO 'block_and_review';
 
