@@ -156,7 +156,7 @@ func (exporter *ExportScheduleExecution) ExportDecisions(
 			)
 			return number_of_exported_decisions, errors.Join(allErrors...)
 		}
-		err := encoder.Encode(dto.NewAPIDecisionWithRule(decision, "", false))
+		err := encoder.Encode(dto.NewDecisionWithRuleDto(decision, "", false))
 		if err != nil {
 			allErrors = append(allErrors, err)
 		} else {

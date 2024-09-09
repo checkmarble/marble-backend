@@ -29,7 +29,7 @@ func handleGetDecision(uc usecases.Usecases, marbleAppHost string) func(c *gin.C
 		if presentError(c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, dto.NewAPIDecisionWithRule(decision, marbleAppHost, true))
+		c.JSON(http.StatusOK, dto.NewDecisionWithRuleDto(decision, marbleAppHost, true))
 	}
 }
 
@@ -69,7 +69,7 @@ func handleListDecisions(uc usecases.Usecases, marbleAppHost string) func(c *gin
 				"total_count": dto.AdaptTotalCount(models.TotalCount{}),
 				"start_index": 0,
 				"end_index":   0,
-				"items":       []dto.APIDecision{},
+				"items":       []dto.Decision{},
 			})
 			return
 		}
@@ -78,8 +78,8 @@ func handleListDecisions(uc usecases.Usecases, marbleAppHost string) func(c *gin
 			"total_count": dto.AdaptTotalCount(decisions[0].TotalCount),
 			"start_index": decisions[0].RankNumber,
 			"end_index":   decisions[len(decisions)-1].RankNumber,
-			"items": pure_utils.Map(decisions, func(d models.DecisionWithRank) dto.APIDecision {
-				return dto.NewAPIDecision(d.Decision, marbleAppHost)
+			"items": pure_utils.Map(decisions, func(d models.DecisionWithRank) dto.Decision {
+				return dto.NewDecisionDto(d.Decision, marbleAppHost)
 			}),
 		})
 	}
@@ -115,7 +115,7 @@ func handlePostDecision(uc usecases.Usecases, marbleAppHost string) func(c *gin.
 		if returnExpectedDecisionError(c, err) || presentError(c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, dto.NewAPIDecisionWithRule(decision, marbleAppHost, false))
+		c.JSON(http.StatusOK, dto.NewDecisionWithRuleDto(decision, marbleAppHost, false))
 	}
 }
 
@@ -161,6 +161,6 @@ func handlePostAllDecisions(uc usecases.Usecases, marbleAppHost string) func(c *
 		if presentError(c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, dto.AdaptAPIDecisionsWithMetadata(decisions, marbleAppHost, nbSkipped, false))
+		c.JSON(http.StatusOK, dto.AdaptDecisionsWithMetadataDto(decisions, marbleAppHost, nbSkipped, false))
 	}
 }
