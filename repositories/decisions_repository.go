@@ -480,7 +480,7 @@ func (repo *DecisionRepositoryImpl) StoreDecision(
 				decision.ScenarioDescription,
 				decision.ScenarioVersion,
 				decision.Score,
-				0, // TODO: cleanup, remove the field in db (it's not nullable now)
+				0, // TODO: cleanup, remove the field in db (it's nullable now)
 				decision.ClientObject.Data,
 				decision.ClientObject.TableName,
 				decision.ScheduledExecutionId,
