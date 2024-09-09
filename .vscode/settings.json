@@ -6,6 +6,9 @@
       "go.toolsEnvVars": {
             "GOFUMPT_SPLIT_LONG_LINES": "on"
       },
+      "go.delveConfig": {
+            "debugAdapter": "legacy"
+      },
       "go.lintTool": "golangci-lint",
       "go.lintOnSave": "package",
       "search.exclude": {
@@ -17,4 +20,3 @@
       },
       "editor.tabSize": 4,
 }
-    
