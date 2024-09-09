@@ -21,6 +21,7 @@ type DBScenarioIteration struct {
 	CreatedAt                     time.Time   `db:"created_at"`
 	UpdatedAt                     time.Time   `db:"updated_at"`
 	ScoreReviewThreshold          pgtype.Int2 `db:"score_review_threshold"`
+	ScoreBlockAndReviewThreshold  pgtype.Int2 `db:"score_block_and_review_threshold"`
 	ScoreRejectThreshold          pgtype.Int2 `db:"score_reject_threshold"`
 	TriggerConditionAstExpression []byte      `db:"trigger_condition_ast_expression"`
 	DeletedAt                     pgtype.Time `db:"deleted_at"`
@@ -51,6 +52,10 @@ func AdaptScenarioIteration(dto DBScenarioIteration) (models.ScenarioIteration, 
 	if dto.ScoreReviewThreshold.Valid {
 		scoreReviewThreshold := int(dto.ScoreReviewThreshold.Int16)
 		scenarioIteration.ScoreReviewThreshold = &scoreReviewThreshold
+	}
+	if dto.ScoreBlockAndReviewThreshold.Valid {
+		scoreBlockAndReviewThreshold := int(dto.ScoreBlockAndReviewThreshold.Int16)
+		scenarioIteration.ScoreBlockAndReviewThreshold = &scoreBlockAndReviewThreshold
 	}
 	if dto.ScoreRejectThreshold.Valid {
 		scoreRejectThreshold := int(dto.ScoreRejectThreshold.Int16)

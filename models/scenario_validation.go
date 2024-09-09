@@ -15,9 +15,8 @@ const (
 	// Ast output
 	FormulaMustReturnBoolean
 	// Decision
-	ScoreReviewThresholdRequired
-	ScoreRejectThresholdRequired
-	ScoreRejectReviewThresholdsMissmatch
+	ScoreThresholdMissing
+	ScoreThresholdsMismatch
 )
 
 // Provide a string value for each outcome
@@ -33,12 +32,10 @@ func (e ScenarioValidationErrorCode) String() string {
 		return "RULE_FORMULA_REQUIRED"
 	case FormulaMustReturnBoolean:
 		return "FORMULA_MUST_RETURN_BOOLEAN"
-	case ScoreReviewThresholdRequired:
-		return "SCORE_REVIEW_THRESHOLD_REQUIRED"
-	case ScoreRejectThresholdRequired:
-		return "SCORE_REJECT_THRESHOLD_REQUIRED"
-	case ScoreRejectReviewThresholdsMissmatch:
-		return "SCORE_REJECT_REVIEW_THRESHOLDS_MISSMATCH"
+	case ScoreThresholdMissing:
+		return "SCORE_THRESHOLD_MISSING"
+	case ScoreThresholdsMismatch:
+		return "SCORE_THRESHOLDS_MISMATCH"
 	}
 	return "unknown ScenarioValidationErrorCode"
 }

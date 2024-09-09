@@ -119,8 +119,13 @@ func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(ctx context.Con
 		body.ScoreReviewThreshold = &defaultReviewThreshold
 	}
 
+	defaultRejectThreshold := 10
+	if body.ScoreBlockAndReviewThreshold == nil {
+		// the block and review outcome cannot be reached with the default scenario iteration, as backward compatibility
+		body.ScoreBlockAndReviewThreshold = &defaultRejectThreshold
+	}
+
 	if body.ScoreRejectThreshold == nil {
-		defaultRejectThreshold := 10
 		body.ScoreRejectThreshold = &defaultRejectThreshold
 	}
 
@@ -201,6 +206,7 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(ctx co
 			}
 			createScenarioIterationInput.Body = &models.CreateScenarioIterationBody{
 				ScoreReviewThreshold:          si.ScoreReviewThreshold,
+				ScoreBlockAndReviewThreshold:  si.ScoreBlockAndReviewThreshold,
 				ScoreRejectThreshold:          si.ScoreRejectThreshold,
 				Schedule:                      si.Schedule,
 				Rules:                         make([]models.CreateRuleInput, len(si.Rules)),

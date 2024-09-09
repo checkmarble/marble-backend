@@ -62,9 +62,10 @@ func TestValidateScenarioIterationImpl_Validate(t *testing.T) {
 				CreatedAt:     time.Now(),
 			},
 		},
-		ScoreReviewThreshold: utils.Ptr(100),
-		ScoreRejectThreshold: utils.Ptr(1000),
-		Schedule:             "schedule",
+		ScoreReviewThreshold:         utils.Ptr(100),
+		ScoreBlockAndReviewThreshold: utils.Ptr(1000),
+		ScoreRejectThreshold:         utils.Ptr(1000),
+		Schedule:                     "schedule",
 	}
 
 	exec := new(mocks.Executor)
@@ -149,9 +150,10 @@ func TestValidateScenarioIterationImpl_Validate_notBool(t *testing.T) {
 				CreatedAt:     time.Now(),
 			},
 		},
-		ScoreReviewThreshold: utils.Ptr(100),
-		ScoreRejectThreshold: utils.Ptr(1000),
-		Schedule:             "schedule",
+		ScoreReviewThreshold:         utils.Ptr(100),
+		ScoreBlockAndReviewThreshold: utils.Ptr(1000),
+		ScoreRejectThreshold:         utils.Ptr(1000),
+		Schedule:                     "schedule",
 	}
 
 	exec := new(mocks.Executor)

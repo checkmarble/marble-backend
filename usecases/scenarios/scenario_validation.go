@@ -53,28 +53,21 @@ func (validator *ValidateScenarioIterationImpl) Validate(ctx context.Context, si
 	result := models.NewScenarioValidation()
 
 	// validate Decision
-	if iteration.ScoreReviewThreshold == nil {
+	if !hasScoreThresholds(iteration) {
 		result.Decision.Errors = append(result.Trigger.Errors, models.ScenarioValidationError{
 			Error: errors.Wrap(models.BadParameterError,
-				"scenario iteration has no ScoreReviewThreshold"),
-			Code: models.ScoreReviewThresholdRequired,
+				"At least one of the 3 score thresholds is missing on the iteration"),
+			Code: models.ScoreThresholdMissing,
 		})
 	}
 
-	if iteration.ScoreRejectThreshold == nil {
+	if hasScoreThresholds(iteration) &&
+		(*iteration.ScoreBlockAndReviewThreshold < *iteration.ScoreReviewThreshold ||
+			*iteration.ScoreRejectThreshold < *iteration.ScoreBlockAndReviewThreshold) {
 		result.Decision.Errors = append(result.Trigger.Errors, models.ScenarioValidationError{
 			Error: errors.Wrap(models.BadParameterError,
-				"scenario iteration has no ScoreRejectThreshold"),
-			Code: models.ScoreRejectThresholdRequired,
-		})
-	}
-
-	if iteration.ScoreReviewThreshold != nil && iteration.ScoreRejectThreshold != nil &&
-		*iteration.ScoreRejectThreshold < *iteration.ScoreReviewThreshold {
-		result.Decision.Errors = append(result.Trigger.Errors, models.ScenarioValidationError{
-			Error: errors.Wrap(models.BadParameterError,
-				"scenario iteration has ScoreRejectThreshold < ScoreReviewThreshold"),
-			Code: models.ScoreRejectReviewThresholdsMissmatch,
+				"scenario iteration thresholds are incorrectly ordered, must be ScoreReviewThreshold<=ScoreBlockAndReviewThreshold<=ScoreRejectThreshold"),
+			Code: models.ScoreThresholdsMismatch,
 		})
 	}
 
@@ -126,6 +119,12 @@ func (validator *ValidateScenarioIterationImpl) Validate(ctx context.Context, si
 		}
 	}
 	return result
+}
+
+func hasScoreThresholds(iteration models.ScenarioIteration) bool {
+	return iteration.ScoreReviewThreshold != nil &&
+		iteration.ScoreBlockAndReviewThreshold != nil &&
+		iteration.ScoreRejectThreshold != nil
 }
 
 func (validator *ValidateScenarioIterationImpl) makeDryRunEnvironment(ctx context.Context,

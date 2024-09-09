@@ -179,11 +179,12 @@ func APIErrorFromError(err error) *APIError {
 
 type DecisionsAggregateMetadata struct {
 	Count struct {
-		Total   int `json:"total"`
-		Approve int `json:"approve"`
-		Review  int `json:"review"`
-		Reject  int `json:"reject"`
-		Skipped int `json:"skipped"`
+		Total          int `json:"total"`
+		Approve        int `json:"approve"`
+		Review         int `json:"review"`
+		BlockAndReview int `json:"block_and_review"`
+		Reject         int `json:"reject"`
+		Skipped        int `json:"skipped"`
 	} `json:"count"`
 }
 type APIDecisionsWithMetadata struct {
@@ -219,6 +220,8 @@ func AdaptDecisionsMetadata(
 			metadata.Count.Approve++
 		case models.Review:
 			metadata.Count.Review++
+		case models.BlockAndReview:
+			metadata.Count.BlockAndReview++
 		case models.Reject:
 			metadata.Count.Reject++
 		}

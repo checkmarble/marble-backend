@@ -290,9 +290,10 @@ func setupScenarioAndPublish(
 					Function: ast.FUNC_EQUAL,
 					Children: []ast.Node{{Constant: "transactions"}, {Constant: "transactions"}},
 				},
-				ScoreReviewThreshold: &threshold,
-				ScoreRejectThreshold: &threshold,
-				Schedule:             "*/10 * * * *",
+				ScoreReviewThreshold:         &threshold,
+				ScoreBlockAndReviewThreshold: &threshold,
+				ScoreRejectThreshold:         &threshold,
+				Schedule:                     "*/10 * * * *",
 			},
 		})
 	if err != nil {

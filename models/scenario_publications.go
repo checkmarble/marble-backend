@@ -61,6 +61,7 @@ type PublishedScenarioIterationBody struct {
 	TriggerConditionAstExpression ast.Node
 	Rules                         []Rule
 	ScoreReviewThreshold          int
+	ScoreBlockAndReviewThreshold  int
 	ScoreRejectThreshold          int
 	Schedule                      string
 }
@@ -75,6 +76,7 @@ func NewPublishedScenarioIteration(si ScenarioIteration) (PublishedScenarioItera
 
 	result.Version = *si.Version
 	result.Body.ScoreReviewThreshold = *si.ScoreReviewThreshold
+	result.Body.ScoreBlockAndReviewThreshold = *si.ScoreBlockAndReviewThreshold
 	result.Body.ScoreRejectThreshold = *si.ScoreRejectThreshold
 	result.Body.Rules = si.Rules
 	result.Body.Schedule = si.Schedule

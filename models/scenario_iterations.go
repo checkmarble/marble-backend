@@ -16,6 +16,7 @@ type ScenarioIteration struct {
 	TriggerConditionAstExpression *ast.Node
 	Rules                         []Rule
 	ScoreReviewThreshold          *int
+	ScoreBlockAndReviewThreshold  *int
 	ScoreRejectThreshold          *int
 	Schedule                      string
 }
@@ -33,6 +34,7 @@ type CreateScenarioIterationBody struct {
 	TriggerConditionAstExpression *ast.Node
 	Rules                         []CreateRuleInput
 	ScoreReviewThreshold          *int
+	ScoreBlockAndReviewThreshold  *int
 	ScoreRejectThreshold          *int
 	Schedule                      string
 }
@@ -45,6 +47,7 @@ type UpdateScenarioIterationInput struct {
 type UpdateScenarioIterationBody struct {
 	TriggerConditionAstExpression *ast.Node
 	ScoreReviewThreshold          *int
+	ScoreBlockAndReviewThreshold  *int
 	ScoreRejectThreshold          *int
 	Schedule                      *string
 }
