@@ -32,9 +32,10 @@ type ScenarioIterationBodyDto struct {
 	ScoreReviewThreshold_deprec   *int      `json:"scoreReviewThreshold"` //nolint:tagliatelle
 	ScoreReviewThreshold          *int      `json:"score_review_threshold"`
 	ScoreBlockAndReviewThreshold  *int      `json:"score_block_and_review_threshold"`
-	ScoreRejectThreshold_deprec   *int      `json:"scoreRejectThreshold"` //nolint:tagliatelle
-	ScoreRejectThreshold          *int      `json:"score_reject_threshold"`
-	Schedule                      string    `json:"schedule"`
+	ScoreRejectThreshold_deprec   *int      `json:"scoreRejectThreshold"`   //nolint:tagliatelle
+	ScoreDeclineThreshold         *int      `json:"score_reject_threshold"` //nolint:tagliatelle
+	// TODO: rename it, after the previous migration is finished
+	Schedule string `json:"schedule"`
 }
 
 func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIterationWithBodyDto, error) {
@@ -42,8 +43,8 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 		ScoreReviewThreshold_deprec:  si.ScoreReviewThreshold,
 		ScoreReviewThreshold:         si.ScoreReviewThreshold,
 		ScoreBlockAndReviewThreshold: si.ScoreBlockAndReviewThreshold,
-		ScoreRejectThreshold_deprec:  si.ScoreRejectThreshold,
-		ScoreRejectThreshold:         si.ScoreRejectThreshold,
+		ScoreRejectThreshold_deprec:  si.ScoreDeclineThreshold,
+		ScoreDeclineThreshold:        si.ScoreDeclineThreshold,
 		Schedule:                     si.Schedule,
 		Rules:                        make([]RuleDto, len(si.Rules)),
 	}
@@ -87,9 +88,10 @@ type UpdateScenarioIterationBody struct {
 		ScoreReviewThreshold_deprec   *int     `json:"scoreReviewThreshold,omitempty"` //nolint:tagliatelle
 		ScoreReviewThreshold          *int     `json:"score_review_threshold,omitempty"`
 		ScoreBlockAndReviewThreshold  *int     `json:"score_block_and_review_threshold,omitempty"`
-		ScoreRejectThreshold_deprec   *int     `json:"scoreRejectThreshold,omitempty"` //nolint:tagliatelle
-		ScoreRejectThreshold          *int     `json:"score_reject_threshold,omitempty"`
-		Schedule                      *string  `json:"schedule"`
+		ScoreRejectThreshold_deprec   *int     `json:"scoreRejectThreshold,omitempty"`   //nolint:tagliatelle
+		ScoreDeclineThreshold         *int     `json:"score_reject_threshold,omitempty"` //nolint:tagliatelle
+		// TODO: rename it, after the previous migration is finished
+		Schedule *string `json:"schedule"`
 	} `json:"body,omitempty"`
 }
 
@@ -99,7 +101,7 @@ func AdaptUpdateScenarioIterationInput(input UpdateScenarioIterationBody, iterat
 		Body: models.UpdateScenarioIterationBody{
 			ScoreReviewThreshold:         input.Body.ScoreReviewThreshold,
 			ScoreBlockAndReviewThreshold: input.Body.ScoreBlockAndReviewThreshold,
-			ScoreRejectThreshold:         input.Body.ScoreRejectThreshold,
+			ScoreDeclineThreshold:        input.Body.ScoreDeclineThreshold,
 			Schedule:                     input.Body.Schedule,
 		},
 	}
@@ -108,8 +110,8 @@ func AdaptUpdateScenarioIterationInput(input UpdateScenarioIterationBody, iterat
 	if updateScenarioIterationInput.Body.ScoreReviewThreshold == nil {
 		updateScenarioIterationInput.Body.ScoreReviewThreshold = input.Body.ScoreReviewThreshold_deprec
 	}
-	if updateScenarioIterationInput.Body.ScoreRejectThreshold == nil {
-		updateScenarioIterationInput.Body.ScoreRejectThreshold = input.Body.ScoreRejectThreshold_deprec
+	if updateScenarioIterationInput.Body.ScoreDeclineThreshold == nil {
+		updateScenarioIterationInput.Body.ScoreDeclineThreshold = input.Body.ScoreRejectThreshold_deprec
 	}
 
 	if input.Body.TriggerConditionAstExpression != nil {
@@ -136,9 +138,10 @@ type CreateScenarioIterationBody struct {
 		ScoreReviewThreshold_deprec   *int                  `json:"scoreReviewThreshold,omitempty"` //nolint:tagliatelle
 		ScoreReviewThreshold          *int                  `json:"score_review_threshold,omitempty"`
 		ScoreBlockAndReviewThreshold  *int                  `json:"score_block_and_review_threshold,omitempty"`
-		ScoreRejectThreshold_deprec   *int                  `json:"scoreRejectThreshold,omitempty"` //nolint:tagliatelle
-		ScoreRejectThreshold          *int                  `json:"score_reject_threshold,omitempty"`
-		Schedule                      string                `json:"schedule"`
+		ScoreRejectThreshold_deprec   *int                  `json:"scoreRejectThreshold,omitempty"`   //nolint:tagliatelle
+		ScoreDeclineThreshold         *int                  `json:"score_reject_threshold,omitempty"` //nolint:tagliatelle
+		// TODO: rename it, after the previous migration is finished
+		Schedule string `json:"schedule"`
 	} `json:"body,omitempty"`
 }
 
@@ -155,7 +158,7 @@ func AdaptCreateScenarioIterationInput(input CreateScenarioIterationBody, organi
 		createScenarioIterationInput.Body = &models.CreateScenarioIterationBody{
 			ScoreReviewThreshold:         input.Body.ScoreReviewThreshold,
 			ScoreBlockAndReviewThreshold: input.Body.ScoreBlockAndReviewThreshold,
-			ScoreRejectThreshold:         input.Body.ScoreRejectThreshold,
+			ScoreDeclineThreshold:        input.Body.ScoreDeclineThreshold,
 			Schedule:                     input.Body.Schedule,
 			Rules:                        make([]models.CreateRuleInput, len(input.Body.Rules)),
 		}
@@ -164,8 +167,8 @@ func AdaptCreateScenarioIterationInput(input CreateScenarioIterationBody, organi
 		if createScenarioIterationInput.Body.ScoreReviewThreshold == nil {
 			createScenarioIterationInput.Body.ScoreReviewThreshold = input.Body.ScoreReviewThreshold_deprec
 		}
-		if createScenarioIterationInput.Body.ScoreRejectThreshold == nil {
-			createScenarioIterationInput.Body.ScoreRejectThreshold = input.Body.ScoreRejectThreshold_deprec
+		if createScenarioIterationInput.Body.ScoreDeclineThreshold == nil {
+			createScenarioIterationInput.Body.ScoreDeclineThreshold = input.Body.ScoreRejectThreshold_deprec
 		}
 
 		for i, rule := range input.Body.Rules {

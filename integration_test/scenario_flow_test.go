@@ -31,7 +31,7 @@ func TestScenarioEndToEnd(t *testing.T) {
 		- sets up a workflow to send all decisions with the same pivot value to the same case
 		- Creates a scenario on the organization
 		- Creates a scenario iteration for the scenario, updates its body and publishes it
-		- Ingests two accounts to be used in the scenario: one for a transaction to be rejected, one for a transaction to be approved
+		- Ingests two accounts to be used in the scenario: one for a transaction to be declined, one for a transaction to be approved
 		- Creates several decision for transactions, with different cases tested
 		- Snoozes a rule
 		- Creates decisions again to test the snooze
@@ -60,7 +60,7 @@ func TestScenarioEndToEnd(t *testing.T) {
 	apiCreds := setupApiCreds(ctx, t, usecasesWithCreds, organizationId)
 	usecasesWithApiCreds := generateUsecaseWithCreds(testUsecases, apiCreds)
 
-	// Ingest two accounts (parent of a transaction) to execute a full scenario: one to be rejected, one to be approved
+	// Ingest two accounts (parent of a transaction) to execute a full scenario: one to be declined, one to be approved
 	ingestAccounts(ctx, t, usecasesWithApiCreds, "accounts", organizationId)
 
 	// Create a pair of decision and check that the outcome matches the expectation
@@ -292,7 +292,7 @@ func setupScenarioAndPublish(
 				},
 				ScoreReviewThreshold:         &threshold,
 				ScoreBlockAndReviewThreshold: &threshold,
-				ScoreRejectThreshold:         &threshold,
+				ScoreDeclineThreshold:        &threshold,
 				Schedule:                     "*/10 * * * *",
 			},
 		})
@@ -308,7 +308,7 @@ func setupScenarioAndPublish(
 		ctx, organizationId, models.UpdateScenarioIterationInput{
 			Id: scenarioIterationId,
 			Body: models.UpdateScenarioIterationBody{
-				ScoreRejectThreshold: &threshold,
+				ScoreDeclineThreshold: &threshold,
 			},
 		})
 	if err != nil {
@@ -324,12 +324,12 @@ func setupScenarioAndPublish(
 		assert.FailNow(t, "Scenario iteration not valid", err)
 	}
 
-	if assert.NotNil(t, updatedScenarioIteration.ScoreRejectThreshold) {
+	if assert.NotNil(t, updatedScenarioIteration.ScoreDeclineThreshold) {
 		assert.Equal(
 			t,
-			threshold, *updatedScenarioIteration.ScoreRejectThreshold,
+			threshold, *updatedScenarioIteration.ScoreDeclineThreshold,
 			"Expected score review threshold to be %d, got %d", threshold,
-			*updatedScenarioIteration.ScoreRejectThreshold,
+			*updatedScenarioIteration.ScoreDeclineThreshold,
 		)
 	}
 
@@ -374,7 +374,7 @@ func setupScenarioAndPublish(
 	workflowType := models.WorkflowAddToCaseIfPossible
 	_, err = scenarioUsecase.UpdateScenario(ctx, models.UpdateScenarioInput{
 		Id:                         scenarioId,
-		DecisionToCaseOutcomes:     []models.Outcome{models.Reject, models.Review},
+		DecisionToCaseOutcomes:     []models.Outcome{models.Decline, models.Review},
 		DecisionToCaseInboxId:      null.StringFrom(inboxId),
 		DecisionToCaseWorkflowType: &workflowType,
 	})
@@ -393,9 +393,9 @@ func ingestAccounts(
 ) {
 	ingestionUsecase := usecases.NewIngestionUseCase()
 	accountPayloadJson1 := []byte(`{
-		"object_id": "{account_id_reject}",
+		"object_id": "{account_id_decline}",
 		"updated_at": "2020-01-01T00:00:00Z",
-		"name": "Reject test account"
+		"name": "Decline test account"
 	}`)
 	accountPayloadJson2 := []byte(`{
 		"object_id": "{account_id_approve}",
@@ -431,28 +431,28 @@ func createDecisions(
 ) {
 	decisionUsecase := usecasesWithApiCreds.NewDecisionUsecase()
 
-	// Create a decision [REJECT]
+	// Create a decision [DECLINE]
 	transactionPayloadJson := []byte(`{
 		"object_id": "{transaction_id}",
 		"updated_at": "2020-01-01T00:00:00Z",
-		"account_id": "{account_id_reject}",
+		"account_id": "{account_id_decline}",
 		"amount": 100
 	}`)
-	rejectDecision := createAndTestDecision(ctx, t, transactionPayloadJson, table, decisionUsecase,
+	declineDecision := createAndTestDecision(ctx, t, transactionPayloadJson, table, decisionUsecase,
 		organizationId, scenarioId, 111)
-	assert.Equal(t, models.Reject, rejectDecision.Outcome,
-		"Expected decision to be Reject, got %s", rejectDecision.Outcome)
+	assert.Equal(t, models.Decline, declineDecision.Outcome,
+		"Expected decision to be Decline, got %s", declineDecision.Outcome)
 
-	// Create a second decision with the same account_id to check their cases [REJECT]
-	rejectDecision2 := createAndTestDecision(ctx, t, transactionPayloadJson, table, decisionUsecase,
+	// Create a second decision with the same account_id to check their cases [Decline]
+	declineDecision2 := createAndTestDecision(ctx, t, transactionPayloadJson, table, decisionUsecase,
 		organizationId, scenarioId, 111)
-	assert.Equal(t, models.Reject, rejectDecision.Outcome,
-		"Expected decision to be Reject, got %s", rejectDecision.Outcome)
+	assert.Equal(t, models.Decline, declineDecision2.Outcome,
+		"Expected decision to be Decline, got %s", declineDecision2.Outcome)
 
-	// Check that the two decisions on tx with account_id "{account_id_reject}" are both in a case - the same
-	assert.NotNil(t, rejectDecision.Case, "Decision is in a case")
-	assert.NotNil(t, rejectDecision2.Case, "Decision is in a case")
-	assert.Equal(t, rejectDecision.Case.Id, rejectDecision2.Case.Id,
+	// Check that the two decisions on tx with account_id "{account_id_decline}" are both in a case - the same
+	assert.NotNil(t, declineDecision.Case, "Decision is in a case")
+	assert.NotNil(t, declineDecision2.Case, "Decision is in a case")
+	assert.Equal(t, declineDecision.Case.Id, declineDecision2.Case.Id,
 		"The two decisions are in the same case")
 
 	// Create a decision [APPROVE]
@@ -537,16 +537,16 @@ func createDecisions(
 
 	// find the rule with higest score
 	ruleId := ""
-	for _, r := range rejectDecision.RuleExecutions {
+	for _, r := range declineDecision.RuleExecutions {
 		if r.Rule.Name == "Check on account name" {
 			ruleId = r.Rule.Id
 		}
 	}
-	// Now snooze the rules and rerun the decision in REJECT status
+	// Now snooze the rules and rerun the decision in Decline status
 	ruleSnoozeUsecase := usecasesWithUserCreds.NewRuleSnoozeUsecase()
 	_, err := ruleSnoozeUsecase.SnoozeDecision(ctx, models.SnoozeDecisionInput{
 		Comment:        "this is a test snooze",
-		DecisionId:     rejectDecision.DecisionId,
+		DecisionId:     declineDecision.DecisionId,
 		Duration:       "500ms", // snooze for 0.5 sec, after this wait for the snooze to end before moving on
 		OrganizationId: organizationId,
 		RuleId:         ruleId, // snooze a rule (nevermind which one)
@@ -559,7 +559,7 @@ func createDecisions(
 	transactionPayloadJson = []byte(`{
 		"object_id": "{transaction_id}",
 		"updated_at": "2020-01-01T00:00:00Z",
-		"account_id": "{account_id_reject}",
+		"account_id": "{account_id_decline}",
 		"amount": 100
 	}`)
 	approvedDecisionAfternooze := createAndTestDecision(ctx, t, transactionPayloadJson, table, decisionUsecase,
@@ -629,7 +629,7 @@ func getRulesForFullApiTest() []models.CreateRuleInput {
 									"path":      {Constant: []string{"account"}},
 								},
 							},
-							{Constant: "Reject test account"},
+							{Constant: "Decline test account"},
 						},
 					},
 					{

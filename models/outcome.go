@@ -6,11 +6,11 @@ const (
 	Approve Outcome = iota
 	Review
 	BlockAndReview
-	Reject
+	Decline
 	UnknownOutcome
 )
 
-var ValidOutcomes = []Outcome{Approve, Review, BlockAndReview, Reject}
+var ValidOutcomes = []Outcome{Approve, Review, BlockAndReview, Decline}
 
 // Provide a string value for each outcome
 func (o Outcome) String() string {
@@ -21,7 +21,7 @@ func (o Outcome) String() string {
 		return "review"
 	case BlockAndReview:
 		return "block_and_review"
-	case Reject:
+	case Decline:
 		return "decline"
 	}
 	return "unknown"
@@ -37,7 +37,7 @@ func OutcomeFrom(s string) Outcome {
 	case "block_and_review":
 		return BlockAndReview
 	case "decline":
-		return Reject
+		return Decline
 	}
 	return UnknownOutcome
 }

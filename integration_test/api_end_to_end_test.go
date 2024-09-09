@@ -199,7 +199,7 @@ func setupTestScenarioAndPublish(authOrgAdmin *httpexpect.Expect, authOrgViewer 
 	triggerBody := `{
   "body": {
     "scoreReviewThreshold": 10,
-	"score_block_and_reject_threshold": 10,
+	"score_block_and_review_threshold": 10,
     "scoreRejectThreshold": 20,
     "trigger_condition_ast_expression": {
       "name": "And",

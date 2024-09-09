@@ -125,8 +125,8 @@ func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(ctx context.Con
 		body.ScoreBlockAndReviewThreshold = &defaultRejectThreshold
 	}
 
-	if body.ScoreRejectThreshold == nil {
-		body.ScoreRejectThreshold = &defaultRejectThreshold
+	if body.ScoreDeclineThreshold == nil {
+		body.ScoreDeclineThreshold = &defaultRejectThreshold
 	}
 
 	si, err := usecase.repository.CreateScenarioIterationAndRules(ctx,
@@ -207,7 +207,7 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(ctx co
 			createScenarioIterationInput.Body = &models.CreateScenarioIterationBody{
 				ScoreReviewThreshold:          si.ScoreReviewThreshold,
 				ScoreBlockAndReviewThreshold:  si.ScoreBlockAndReviewThreshold,
-				ScoreRejectThreshold:          si.ScoreRejectThreshold,
+				ScoreDeclineThreshold:         si.ScoreDeclineThreshold,
 				Schedule:                      si.Schedule,
 				Rules:                         make([]models.CreateRuleInput, len(si.Rules)),
 				TriggerConditionAstExpression: si.TriggerConditionAstExpression,

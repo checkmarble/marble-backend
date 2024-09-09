@@ -64,7 +64,7 @@ func TestValidateScenarioIterationImpl_Validate(t *testing.T) {
 		},
 		ScoreReviewThreshold:         utils.Ptr(100),
 		ScoreBlockAndReviewThreshold: utils.Ptr(1000),
-		ScoreRejectThreshold:         utils.Ptr(1000),
+		ScoreDeclineThreshold:        utils.Ptr(1000),
 		Schedule:                     "schedule",
 	}
 
@@ -152,7 +152,7 @@ func TestValidateScenarioIterationImpl_Validate_notBool(t *testing.T) {
 		},
 		ScoreReviewThreshold:         utils.Ptr(100),
 		ScoreBlockAndReviewThreshold: utils.Ptr(1000),
-		ScoreRejectThreshold:         utils.Ptr(1000),
+		ScoreDeclineThreshold:        utils.Ptr(1000),
 		Schedule:                     "schedule",
 	}
 

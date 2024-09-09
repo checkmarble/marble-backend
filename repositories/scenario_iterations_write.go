@@ -60,7 +60,7 @@ func (repo *MarbleDbRepository) CreateScenarioIterationAndRules(ctx context.Cont
 			scenarioIteration.ScenarioId,
 			scenarioIterationBodyInput.ScoreReviewThreshold,
 			scenarioIterationBodyInput.ScoreBlockAndReviewThreshold,
-			scenarioIterationBodyInput.ScoreRejectThreshold,
+			scenarioIterationBodyInput.ScoreDeclineThreshold,
 			triggerCondition,
 			scenarioIterationBodyInput.Schedule,
 		)
@@ -122,8 +122,8 @@ func (repo *MarbleDbRepository) UpdateScenarioIteration(ctx context.Context, exe
 			scenarioIteration.Body.ScoreBlockAndReviewThreshold)
 		countUpdate++
 	}
-	if scenarioIteration.Body.ScoreRejectThreshold != nil {
-		sql = sql.Set("score_reject_threshold", scenarioIteration.Body.ScoreRejectThreshold)
+	if scenarioIteration.Body.ScoreDeclineThreshold != nil {
+		sql = sql.Set("score_reject_threshold", scenarioIteration.Body.ScoreDeclineThreshold)
 		countUpdate++
 	}
 	if scenarioIteration.Body.Schedule != nil {
