@@ -23,6 +23,7 @@ type DbDecision struct {
 	Outcome              string      `db:"outcome"`
 	PivotId              *string     `db:"pivot_id"`
 	PivotValue           *string     `db:"pivot_value"`
+	ReviewStatus         *string     `db:"review_status"`
 	ScenarioId           string      `db:"scenario_id"`
 	ScenarioIterationId  string      `db:"scenario_iteration_id"`
 	ScenarioName         string      `db:"scenario_name"`
@@ -63,6 +64,7 @@ func AdaptDecision(db DbDecision, decisionCase *models.Case) models.Decision {
 		Outcome:              models.OutcomeFrom(db.Outcome),
 		PivotId:              db.PivotId,
 		PivotValue:           db.PivotValue,
+		ReviewStatus:         db.ReviewStatus,
 		ScenarioId:           db.ScenarioId,
 		ScenarioIterationId:  db.ScenarioIterationId,
 		ScenarioName:         db.ScenarioName,
