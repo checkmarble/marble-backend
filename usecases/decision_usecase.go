@@ -90,7 +90,7 @@ func (usecase *DecisionUsecase) ListDecisions(
 		return []models.DecisionWithRank{}, err
 	}
 
-	outcomes, err := usecase.validateOutcomes(ctx, filters.Outcomes)
+	outcomes, err := usecase.validateOutcomes(filters.Outcomes)
 	if err != nil {
 		return []models.DecisionWithRank{}, err
 	}
@@ -158,11 +158,11 @@ func (usecase *DecisionUsecase) validateScenarioIds(ctx context.Context, scenari
 	return nil
 }
 
-func (usecase *DecisionUsecase) validateOutcomes(_ context.Context, filtersOutcomes []string) ([]models.Outcome, error) {
+func (usecase *DecisionUsecase) validateOutcomes(filtersOutcomes []string) ([]models.Outcome, error) {
 	outcomes := make([]models.Outcome, len(filtersOutcomes))
 	for i, outcome := range filtersOutcomes {
 		outcomes[i] = models.OutcomeFrom(outcome)
-		if outcomes[i] == models.UnknownOutcome || outcomes[i] == models.None {
+		if outcomes[i] == models.UnknownOutcome {
 			return []models.Outcome{}, fmt.Errorf("invalid outcome: %s, %w", outcome, models.BadParameterError)
 		}
 	}

@@ -7,7 +7,6 @@ const (
 	Review
 	BlockAndReview
 	Reject
-	None
 	UnknownOutcome
 )
 
@@ -24,10 +23,6 @@ func (o Outcome) String() string {
 		return "block_and_review"
 	case Reject:
 		return "decline"
-	case None:
-		return "null"
-	case UnknownOutcome:
-		return "unknown"
 	}
 	return "unknown"
 }
@@ -43,10 +38,6 @@ func OutcomeFrom(s string) Outcome {
 		return BlockAndReview
 	case "decline":
 		return Reject
-	case "null":
-		return None
-	case "unknown":
-		return UnknownOutcome
 	}
 	return UnknownOutcome
 }
