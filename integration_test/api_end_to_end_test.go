@@ -185,22 +185,22 @@ func setupDataModel(auth *httpexpect.Expect, authOrgViewer *httpexpect.Expect) {
 
 func setupTestScenarioAndPublish(authOrgAdmin *httpexpect.Expect, authOrgViewer *httpexpect.Expect) string {
 	scenarioId := authOrgAdmin.POST("/scenarios").
-		WithJSON(map[string]any{"name": "test-scenario", "triggerObjectType": "transactions"}).
+		WithJSON(map[string]any{"name": "test-scenario", "trigger_object_type": "transactions"}).
 		Expect().Status(http.StatusOK).
 		JSON().
 		Object().Value("id").String().NotEmpty().Raw()
 
 	scenarioIterationId := authOrgAdmin.POST("/scenario-iterations").
-		WithJSON(map[string]any{"scenarioId": scenarioId}).
+		WithJSON(map[string]any{"scenario_id": scenarioId}).
 		Expect().Status(http.StatusOK).
 		JSON().
 		Object().Value("id").String().NotEmpty().Raw()
 
 	triggerBody := `{
   "body": {
-    "scoreReviewThreshold": 10,
+    "score_review_threshold": 10,
 	"score_block_and_review_threshold": 10,
-    "scoreRejectThreshold": 20,
+    "score_decline_threshold": 20,
     "trigger_condition_ast_expression": {
       "name": "And",
       "children": [
@@ -221,7 +221,7 @@ func setupTestScenarioAndPublish(authOrgAdmin *httpexpect.Expect, authOrgViewer 
 		Expect().Status(http.StatusOK)
 
 	ruleBody := fmt.Sprintf(`{
-  "scenarioIterationId": "%s",
+  "scenario_iteration_id": "%s",
   "name": "Test rule 1",
   "formula_ast_expression": {
     "name": "And",
@@ -235,7 +235,7 @@ func setupTestScenarioAndPublish(authOrgAdmin *httpexpect.Expect, authOrgViewer 
       }
     ]
   },
-  "scoreModifier": 2
+  "score_modifier": 2
 }`, scenarioIterationId)
 
 	authOrgAdmin.POST("/scenario-iteration-rules").WithBytes([]byte(ruleBody)).
@@ -254,7 +254,7 @@ func setupTestScenarioAndPublish(authOrgAdmin *httpexpect.Expect, authOrgViewer 
 
 	// activate the scenario
 	authOrgAdmin.POST("/scenario-publications").
-		WithJSON(map[string]any{"scenarioIterationID": scenarioIterationId, "publicationAction": "publish"}).
+		WithJSON(map[string]any{"scenario_iteration_id": scenarioIterationId, "publication_action": "publish"}).
 		Expect().Status(http.StatusOK)
 
 	return scenarioId
