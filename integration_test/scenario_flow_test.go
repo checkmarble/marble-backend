@@ -89,7 +89,7 @@ func setupApiCreds(ctx context.Context, t *testing.T, usecasesWithCreds usecases
 
 func setupOrgAndCreds(ctx context.Context, t *testing.T, orgName string) (models.Credentials, models.DataModel, string) {
 	// Create a new organization
-	testAdminUsecase := generateUsecaseWithCredForMarbleAdmin(testUsecases, "")
+	testAdminUsecase := generateUsecaseWithCredForMarbleAdmin(testUsecases)
 	orgUsecase := testAdminUsecase.NewOrganizationUseCase()
 	organization, err := orgUsecase.CreateOrganization(ctx, orgName)
 	if err != nil {
@@ -98,7 +98,7 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T, orgName string) (models
 	organizationId := organization.Id
 	fmt.Println("Created organization", organizationId)
 
-	testAdminUsecase = generateUsecaseWithCredForMarbleAdmin(testUsecases, organizationId)
+	testAdminUsecase = generateUsecaseWithCredForMarbleAdmin(testUsecases)
 
 	// Check that there are no users on the organization yet
 	users, err := orgUsecase.GetUsersOfOrganization(ctx, organizationId)
@@ -143,7 +143,7 @@ func createDataModelAndSetupCaseManager(
 	usecases usecases.UsecasesWithCreds,
 	organizationId string,
 ) (dm models.DataModel, inboxId string) {
-	testAdminUsecase := generateUsecaseWithCredForMarbleAdmin(testUsecases, organizationId)
+	testAdminUsecase := generateUsecaseWithCredForMarbleAdmin(testUsecases)
 
 	usecase := testAdminUsecase.NewDataModelUseCase()
 	transactionsTableId, err := usecase.CreateDataModelTable(ctx, organizationId, "transactions", "description")

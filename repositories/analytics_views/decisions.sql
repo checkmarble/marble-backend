@@ -15,7 +15,6 @@ SELECT
       scenario_name,
       scenario_version,
       score,
-      error_code,
       deleted_at,
       trigger_object_type,
       scheduled_execution_id,
