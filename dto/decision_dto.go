@@ -183,7 +183,7 @@ type DecisionsAggregateMetadata struct {
 		Approve        int `json:"approve"`
 		Review         int `json:"review"`
 		BlockAndReview int `json:"block_and_review"`
-		Reject         int `json:"reject"`
+		Decline        int `json:"decline"`
 		Skipped        int `json:"skipped"`
 	} `json:"count"`
 }
@@ -222,8 +222,8 @@ func AdaptDecisionsMetadata(
 			metadata.Count.Review++
 		case models.BlockAndReview:
 			metadata.Count.BlockAndReview++
-		case models.Reject:
-			metadata.Count.Reject++
+		case models.Decline:
+			metadata.Count.Decline++
 		}
 	}
 	metadata.Count.Total = len(decisions)

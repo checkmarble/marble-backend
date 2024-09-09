@@ -161,8 +161,8 @@ func EvalScenario(
 	// Compute outcome from score
 	var outcome models.Outcome
 
-	if score >= publishedVersion.Body.ScoreRejectThreshold {
-		outcome = models.Reject
+	if score >= publishedVersion.Body.ScoreDeclineThreshold {
+		outcome = models.Decline
 	} else if score >= publishedVersion.Body.ScoreBlockAndReviewThreshold {
 		outcome = models.BlockAndReview
 	} else if score >= publishedVersion.Body.ScoreReviewThreshold {

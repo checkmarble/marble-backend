@@ -63,10 +63,10 @@ func (validator *ValidateScenarioIterationImpl) Validate(ctx context.Context, si
 
 	if hasScoreThresholds(iteration) &&
 		(*iteration.ScoreBlockAndReviewThreshold < *iteration.ScoreReviewThreshold ||
-			*iteration.ScoreRejectThreshold < *iteration.ScoreBlockAndReviewThreshold) {
+			*iteration.ScoreDeclineThreshold < *iteration.ScoreBlockAndReviewThreshold) {
 		result.Decision.Errors = append(result.Trigger.Errors, models.ScenarioValidationError{
 			Error: errors.Wrap(models.BadParameterError,
-				"scenario iteration thresholds are incorrectly ordered, must be ScoreReviewThreshold<=ScoreBlockAndReviewThreshold<=ScoreRejectThreshold"),
+				"scenario iteration thresholds are incorrectly ordered, must be ScoreReviewThreshold<=ScoreBlockAndReviewThreshold<=ScoreDeclineThreshold"),
 			Code: models.ScoreThresholdsMismatch,
 		})
 	}
@@ -124,7 +124,7 @@ func (validator *ValidateScenarioIterationImpl) Validate(ctx context.Context, si
 func hasScoreThresholds(iteration models.ScenarioIteration) bool {
 	return iteration.ScoreReviewThreshold != nil &&
 		iteration.ScoreBlockAndReviewThreshold != nil &&
-		iteration.ScoreRejectThreshold != nil
+		iteration.ScoreDeclineThreshold != nil
 }
 
 func (validator *ValidateScenarioIterationImpl) makeDryRunEnvironment(ctx context.Context,

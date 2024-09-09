@@ -53,7 +53,7 @@ func TestBatchIngestionAndExecution(t *testing.T) {
 	// Scenario setup
 	scenarioId, scenarioIterationId := setupScenarioAndPublish(ctx, t, usecasesWithCreds, organizationId, inboxId, rules)
 
-	// Ingest two accounts (parent of a transaction) to execute a full scenario: one to be rejected, one to be approved
+	// Ingest two accounts (parent of a transaction) to execute a full scenario: one to be declined, one to be approved
 	ingestAccountsBatch(ctx, t, usecasesWithCreds, organizationId, string(userCreds.ActorIdentity.UserId))
 
 	// Create a pair of decision and check that the outcome matches the expectation
@@ -150,7 +150,7 @@ func createDecisionsBatch(
 		assert.FailNow(t, "Error while listing decisions", err)
 	}
 	assert.Equalf(t, 1, len(decisions), "Expected 1 decision, got %d", len(decisions))
-	assert.Equalf(t, models.Reject, decisions[0].Outcome,
+	assert.Equalf(t, models.Decline, decisions[0].Outcome,
 		"Decision should be in review status, got %s", decisions[0].Outcome)
 }
 
