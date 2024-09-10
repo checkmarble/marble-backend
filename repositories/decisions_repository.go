@@ -50,6 +50,7 @@ type DecisionRepository interface {
 	DecisionsOfOrganization(ctx context.Context, exec Executor, organizationId string,
 		paginationAndSorting models.PaginationAndSorting, filters models.DecisionFilters) ([]models.DecisionWithRank, error)
 	UpdateDecisionCaseId(ctx context.Context, exec Executor, decisionsIds []string, caseId string) error
+	ReviewDecision(ctx context.Context, exec Executor, decisionId string, reviewStatus string) error
 }
 
 type DecisionRepositoryImpl struct{}

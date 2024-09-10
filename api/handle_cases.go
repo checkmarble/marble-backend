@@ -320,3 +320,34 @@ func handleDownloadCaseFile(uc usecases.Usecases) func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"url": url})
 	}
 }
+
+func handleReviewCaseDecisions(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		creds, found := utils.CredentialsFromCtx(c.Request.Context())
+		if !found {
+			presentError(c, fmt.Errorf("no credentials in context"))
+			return
+		}
+		userId := string(creds.ActorIdentity.UserId)
+
+		var data dto.ReviewCaseDecisionsBody
+		if err := c.ShouldBindJSON(&data); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		usecase := usecasesWithCreds(c.Request, uc).NewCaseUseCase()
+		case_, err := usecase.ReviewCaseDecisions(c.Request.Context(),
+			models.ReviewCaseDecisionsBody{
+				DecisionId:    data.DecisionId,
+				ReviewComment: data.ReviewComment,
+				ReviewStatus:  data.ReviewStatus,
+				UserId:        userId,
+			})
+
+		if presentError(c, err) {
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"case": dto.AdaptCaseWithDecisionsDto(case_)})
+	}
+}
