@@ -943,7 +943,7 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 	}
 	decision := decisions[0]
 
-	err = validateDecisionReview(decision, input.ReviewStatus)
+	err = validateDecisionReview(decision)
 	if err != nil {
 		return models.Case{}, err
 	}
@@ -981,13 +981,16 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 				NewValue:       &input.ReviewStatus,
 				PreviousValue:  decisions[0].ReviewStatus,
 			})
+			if err != nil {
+				return models.Case{}, err
+			}
 
 			return usecase.getCaseWithDetails(ctx, tx, caseId)
 		},
 	)
 }
 
-func validateDecisionReview(decision models.Decision, reviewStatus string) error {
+func validateDecisionReview(decision models.Decision) error {
 	if decision.Case == nil {
 		return errors.Wrapf(models.BadParameterError,
 			"decision %s does not belong to a case", decision.DecisionId)
