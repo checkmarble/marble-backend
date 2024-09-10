@@ -737,3 +737,17 @@ func ChanToSlice[Model any](channel <-chan Model) []Model {
 	}
 	return slice
 }
+
+func (repo *DecisionRepositoryImpl) ReviewDecision(ctx context.Context, exec Executor, decisionId string, reviewStatus string) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_DECISIONS).
+		Set("review_status", reviewStatus).
+		Where(squirrel.Eq{"id": decisionId})
+
+	err := ExecBuilder(ctx, exec, query)
+	return err
+}
