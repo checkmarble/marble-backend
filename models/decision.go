@@ -39,6 +39,8 @@ const (
 	ReviewStatusApprove = "approve"
 )
 
+var ValidReviewStatuses = []string{ReviewStatusPending, ReviewStatusDecline, ReviewStatusApprove}
+
 type DecisionCore struct {
 	DecisionId     string
 	OrganizationId string

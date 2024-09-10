@@ -925,3 +925,77 @@ func (usecase *CaseUseCase) CreateRuleSnoozeEvent(ctx context.Context, tx reposi
 	}
 	return nil
 }
+
+func (usecase *CaseUseCase) ReviewCaseDecisions(
+	ctx context.Context,
+	input models.ReviewCaseDecisionsBody,
+) (models.Case, error) {
+	if !slices.Contains(models.ValidReviewStatuses, input.ReviewStatus) {
+		return models.Case{}, fmt.Errorf("invalid review status %w", models.BadParameterError)
+	}
+
+	exec := usecase.executorFactory.NewExecutor()
+	decisions, err := usecase.decisionRepository.DecisionsById(ctx, exec, []string{input.DecisionId})
+	if err != nil {
+		return models.Case{}, err
+	} else if len(decisions) == 0 {
+		return models.Case{}, errors.Wrapf(models.NotFoundError, "decision %s not found", input.DecisionId)
+	}
+	decision := decisions[0]
+
+	err = validateDecisionReview(decision, input.ReviewStatus)
+	if err != nil {
+		return models.Case{}, err
+	}
+	caseId := decision.Case.Id
+
+	c, err := usecase.repository.GetCaseById(ctx, exec, caseId)
+	if err != nil {
+		return models.Case{}, err
+	}
+	availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, c.OrganizationId)
+	if err != nil {
+		return models.Case{}, err
+	}
+	if err := usecase.enforceSecurity.ReadOrUpdateCase(c, availableInboxIds); err != nil {
+		return models.Case{}, err
+	}
+
+	return executor_factory.TransactionReturnValue(
+		ctx,
+		usecase.transactionFactory,
+		func(tx repositories.Executor) (models.Case, error) {
+			err := usecase.decisionRepository.ReviewDecision(ctx, tx, input.DecisionId, input.ReviewStatus)
+			if err != nil {
+				return models.Case{}, err
+			}
+
+			resourceType := models.DecisionResourceType
+			err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+				CaseId:         caseId,
+				UserId:         input.UserId,
+				EventType:      models.DecisionReviewed,
+				ResourceId:     &input.DecisionId,
+				ResourceType:   &resourceType,
+				AdditionalNote: &input.ReviewComment,
+				NewValue:       &input.ReviewStatus,
+				PreviousValue:  decisions[0].ReviewStatus,
+			})
+
+			return usecase.getCaseWithDetails(ctx, tx, caseId)
+		},
+	)
+}
+
+func validateDecisionReview(decision models.Decision, reviewStatus string) error {
+	if decision.Case == nil {
+		return errors.Wrapf(models.BadParameterError,
+			"decision %s does not belong to a case", decision.DecisionId)
+	}
+	if decision.ReviewStatus == nil || *decision.ReviewStatus != models.ReviewStatusPending {
+		return errors.Wrapf(models.BadParameterError,
+			"decision %s is not in pending review", decision.DecisionId)
+	}
+
+	return nil
+}

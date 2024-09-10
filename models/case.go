@@ -93,3 +93,10 @@ func ValidateCaseStatuses(statuses []string) ([]CaseStatus, error) {
 	}
 	return sanitizedStatuses, nil
 }
+
+type ReviewCaseDecisionsBody struct {
+	DecisionId    string
+	ReviewComment string
+	ReviewStatus  string
+	UserId        string
+}

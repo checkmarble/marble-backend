@@ -129,6 +129,7 @@ func addRoutes(r *gin.Engine, auth Authentication, tokenHandler TokenHandler, uc
 	router.POST("/cases/:case_id/case_tags", handlePostCaseTags(uc))
 	router.POST("/cases/:case_id/files", limits.RequestSizeLimiter(maxCaseFileSize), handlePostCaseFile(uc))
 	router.GET("/cases/files/:case_file_id/download_link", handleDownloadCaseFile(uc))
+	router.POST("/cases/:case_id/review_decisions", handleReviewCaseDecisions(uc))
 
 	router.GET("/inboxes/:inbox_id", handleGetInboxById(uc))
 	router.PATCH("/inboxes/:inbox_id", handlePatchInbox(uc))

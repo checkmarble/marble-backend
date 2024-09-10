@@ -75,3 +75,9 @@ type CaseFilters struct {
 	StartDate time.Time `form:"start_date"`
 	Statuses  []string  `form:"status[]"`
 }
+
+type ReviewCaseDecisionsBody struct {
+	DecisionId    string `json:"decision_id" binding:"required"`
+	ReviewComment string `json:"review_comment" binding:"required"`
+	ReviewStatus  string `json:"review_status" binding:"required"`
+}
