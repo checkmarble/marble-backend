@@ -20,7 +20,11 @@ type UserUseCase struct {
 }
 
 func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.CreateUser) (models.User, error) {
-	if err := usecase.enforceUserSecurity.CreateUser(createUser.OrganizationId); err != nil {
+	if createUser.Role == models.NO_ROLE {
+		return models.User{}, errors.Wrap(models.BadParameterError, "Invalid role received")
+	}
+
+	if err := usecase.enforceUserSecurity.CreateUser(createUser); err != nil {
 		return models.User{}, err
 	}
 	createdUser, err := executor_factory.TransactionReturnValue(

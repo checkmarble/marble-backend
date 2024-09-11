@@ -89,6 +89,11 @@ func setupOrgAndUser(e *httpexpect.Expect) (authOrgAdmin *httpexpect.Expect, aut
 		req.WithHeader("Authorization", fmt.Sprintf("Bearer %s", orgAdminToken))
 	})
 
+	// org admin cannot create Marble admin
+	authOrgAdmin.POST("/users").
+		WithJSON(map[string]any{"email": "reject@reject.com", "role": "MARBLE_ADMIN"}).
+		Expect().Status(http.StatusForbidden)
+
 	// create a viewer user
 	viewerEmail := "viewer@email.com"
 	authOrgAdmin.POST("/users").
