@@ -17,8 +17,8 @@ import (
 func RunScheduledExecuter() error {
 	// This is where we read the environment variables and set up the configuration for the application.
 	gcpConfig := infra.GcpConfig{
-		EnableTracing:    utils.GetEnv("ENABLE_GCP_TRACING", false),
-		TracingProjectId: utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
+		EnableTracing: utils.GetEnv("ENABLE_GCP_TRACING", false),
+		ProjectId:     utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
 	}
 	pgConfig := infra.PgConfig{
 		Database:            "marble",
@@ -62,7 +62,7 @@ func RunScheduledExecuter() error {
 	tracingConfig := infra.TelemetryConfiguration{
 		ApplicationName: jobConfig.appName,
 		Enabled:         gcpConfig.EnableTracing,
-		ProjectID:       gcpConfig.TracingProjectId,
+		ProjectID:       gcpConfig.ProjectId,
 	}
 	telemetryRessources, err := infra.InitTelemetry(tracingConfig)
 	if err != nil {
@@ -79,6 +79,7 @@ func RunScheduledExecuter() error {
 
 	repositories := repositories.NewRepositories(
 		pool,
+		gcpConfig.GoogleApplicationCredentials,
 		repositories.WithConvoyClientProvider(
 			infra.InitializeConvoyRessources(convoyConfiguration),
 			convoyConfiguration.RateLimit,

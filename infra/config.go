@@ -7,9 +7,9 @@ import (
 )
 
 type GcpConfig struct {
-	TracingProjectId                 string
+	ProjectId                        string
+	GoogleApplicationCredentials     string
 	EnableTracing                    bool
-	FakeGcsRepository                bool
 	GcsIngestionBucket               string
 	GcsCaseManagerBucket             string
 	GcsTransferCheckEnrichmentBucket string

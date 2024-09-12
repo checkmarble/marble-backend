@@ -8,7 +8,6 @@ import (
 type options struct {
 	metabase                      Metabase
 	transfercheckEnrichmentBucket string
-	fakeGcsRepository             bool
 	convoyClientProvider          ConvoyClientProvider
 	convoyRateLimit               int
 }
@@ -35,12 +34,6 @@ func WithTransferCheckEnrichmentBucket(bucket string) Option {
 	}
 }
 
-func WithFakeGcsRepository(b bool) Option {
-	return func(o *options) {
-		o.fakeGcsRepository = b
-	}
-}
-
 func WithConvoyClientProvider(convoyResources ConvoyClientProvider, convoyRateLimit int) Option {
 	return func(o *options) {
 		o.convoyClientProvider = convoyResources
@@ -62,7 +55,7 @@ type Repositories struct {
 	ScenarioPublicationRepository     ScenarioPublicationRepository
 	OrganizationSchemaRepository      OrganizationSchemaRepository
 	AwsS3Repository                   AwsS3Repository
-	GcsRepository                     GcsRepository
+	BlobRepository                    BlobRepository
 	CustomListRepository              CustomListRepository
 	UploadLogRepository               UploadLogRepository
 	MarbleAnalyticsRepository         MarbleAnalyticsRepository
@@ -75,18 +68,14 @@ func NewQueryBuilder() squirrel.StatementBuilderType {
 
 func NewRepositories(
 	marbleConnectionPool *pgxpool.Pool,
+	googleApplicationCredentials string,
 	opts ...Option,
 ) Repositories {
 	options := getOptions(opts)
 
 	executorGetter := NewExecutorGetter(marbleConnectionPool)
 
-	var gcsRepository GcsRepository
-	if options.fakeGcsRepository {
-		gcsRepository = &GcsRepositoryFake{}
-	} else {
-		gcsRepository = &GcsRepositoryImpl{}
-	}
+	blobRepository := NewBlobRepository(googleApplicationCredentials)
 
 	return Repositories{
 		ExecutorGetter:                executorGetter,
@@ -104,12 +93,12 @@ func NewRepositories(
 		CustomListRepository:          &CustomListRepositoryPostgresql{},
 		UploadLogRepository:           &UploadLogRepositoryImpl{},
 		AwsS3Repository:               AwsS3Repository{s3Client: NewS3Client()},
-		GcsRepository:                 gcsRepository,
+		BlobRepository:                blobRepository,
 		MarbleAnalyticsRepository: MarbleAnalyticsRepository{
 			metabase: options.metabase,
 		},
 		TransferCheckEnrichmentRepository: NewTransferCheckEnrichmentRepository(
-			gcsRepository,
+			blobRepository,
 			options.transfercheckEnrichmentBucket,
 		),
 	}

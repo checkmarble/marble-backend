@@ -50,3 +50,5 @@ __debug_bin*
 
 e2e_test
 
+# Service account key folder for testing
+.service_account_key

@@ -2,7 +2,6 @@ package usecases
 
 import (
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/decision_workflows"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/indexes"
@@ -190,19 +189,12 @@ func (usecases *UsecasesWithCreds) NewDataModelUseCase() DataModelUseCase {
 }
 
 func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
-	var gcsRepository repositories.GcsRepository
-	if usecases.fakeGcsRepository {
-		gcsRepository = &repositories.GcsRepositoryFake{}
-	} else {
-		gcsRepository = usecases.Repositories.GcsRepository
-	}
-
 	return IngestionUseCase{
 		enforceSecurity:     usecases.NewEnforceIngestionSecurity(),
 		transactionFactory:  usecases.NewTransactionFactory(),
 		executorFactory:     usecases.NewExecutorFactory(),
 		ingestionRepository: usecases.Repositories.IngestionRepository,
-		gcsRepository:       gcsRepository,
+		blobRepository:      usecases.Repositories.BlobRepository,
 		dataModelRepository: usecases.Repositories.DataModelRepository,
 		uploadLogRepository: usecases.Repositories.UploadLogRepository,
 		GcsIngestionBucket:  usecases.gcsIngestionBucket,
@@ -245,12 +237,6 @@ func (usecases *UsecasesWithCreds) NewUserUseCase() UserUseCase {
 }
 
 func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
-	var gcsRepository repositories.GcsRepository
-	if usecases.fakeGcsRepository {
-		gcsRepository = &repositories.GcsRepositoryFake{}
-	} else {
-		gcsRepository = usecases.Repositories.GcsRepository
-	}
 	sec := security.EnforceSecurityInboxes{
 		EnforceSecurity: usecases.NewEnforceSecurity(),
 		Credentials:     usecases.Credentials,
@@ -268,7 +254,7 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 			ExecutorFactory: usecases.NewExecutorFactory(),
 		},
 		gcsCaseManagerBucket: usecases.gcsCaseManagerBucket,
-		gcsRepository:        gcsRepository,
+		blobRepository:       usecases.Repositories.BlobRepository,
 		webhookEventsUsecase: usecases.NewWebhookEventsUsecase(),
 	}
 }
