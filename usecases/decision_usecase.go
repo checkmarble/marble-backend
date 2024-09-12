@@ -122,6 +122,7 @@ func (usecase *DecisionUsecase) ListDecisions(
 			HasCase:               filters.HasCase,
 			Outcomes:              outcomes,
 			PivotValue:            filters.PivotValue,
+			ReviewStatuses:        filters.ReviewStatuses,
 			ScenarioIds:           filters.ScenarioIds,
 			ScheduledExecutionIds: filters.ScheduledExecutionIds,
 			StartDate:             filters.StartDate,
