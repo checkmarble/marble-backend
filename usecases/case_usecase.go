@@ -64,7 +64,7 @@ type CaseUseCase struct {
 	repository           CaseUseCaseRepository
 	decisionRepository   repositories.DecisionRepository
 	inboxReader          inboxes.InboxReader
-	gcsRepository        repositories.GcsRepository
+	blobRepository       repositories.BlobRepository
 	gcsCaseManagerBucket string
 	transactionFactory   executor_factory.TransactionFactory
 	executorFactory      executor_factory.ExecutorFactory
@@ -740,7 +740,7 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 	}
 
 	newFileReference := fmt.Sprintf("%s/%s/%s", creds.OrganizationId, input.CaseId, uuid.NewString())
-	writer := usecase.gcsRepository.OpenStream(ctx, usecase.gcsCaseManagerBucket, newFileReference)
+	writer := usecase.blobRepository.OpenStream(ctx, usecase.gcsCaseManagerBucket, newFileReference)
 	file, err := input.File.Open()
 	if err != nil {
 		return models.Case{}, errors.Wrap(models.BadParameterError, err.Error())
@@ -751,7 +751,7 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 	if err := writer.Close(); err != nil {
 		return models.Case{}, err
 	}
-	if err := usecase.gcsRepository.UpdateFileMetadata(
+	if err := usecase.blobRepository.UpdateFileMetadata(
 		ctx,
 		usecase.gcsCaseManagerBucket,
 		newFileReference,
@@ -817,7 +817,7 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 		return updatedCase, nil
 	})
 	if err != nil {
-		if deleteErr := usecase.gcsRepository.DeleteFile(ctx, usecase.gcsCaseManagerBucket, newFileReference); deleteErr != nil {
+		if deleteErr := usecase.blobRepository.DeleteFile(ctx, usecase.gcsCaseManagerBucket, newFileReference); deleteErr != nil {
 			logger.WarnContext(ctx, fmt.Sprintf("failed to clean up GCS object %s after case file creation failed", newFileReference),
 				"bucket", usecase.gcsCaseManagerBucket,
 				"file_reference", newFileReference,
@@ -876,7 +876,7 @@ func (usecase *CaseUseCase) GetCaseFileUrl(ctx context.Context, caseFileId strin
 		return "", err
 	}
 
-	return usecase.gcsRepository.GenerateSignedUrl(ctx, usecase.gcsCaseManagerBucket, cf.FileReference)
+	return usecase.blobRepository.GenerateSignedUrl(ctx, usecase.gcsCaseManagerBucket, cf.FileReference)
 }
 
 func (usecase *CaseUseCase) CreateRuleSnoozeEvent(ctx context.Context, tx repositories.Executor, input models.RuleSnoozeCaseEventInput,

@@ -35,7 +35,7 @@ type IngestionUseCase struct {
 	executorFactory     executor_factory.ExecutorFactory
 	enforceSecurity     security.EnforceSecurityIngestion
 	ingestionRepository repositories.IngestionRepository
-	gcsRepository       repositories.GcsRepository
+	blobRepository      repositories.BlobRepository
 	dataModelRepository repositories.DataModelRepository
 	uploadLogRepository repositories.UploadLogRepository
 	GcsIngestionBucket  string
@@ -136,7 +136,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 	}
 
 	fileName := computeFileName(organizationId, table.Name)
-	writer := usecase.gcsRepository.OpenStream(ctx, usecase.GcsIngestionBucket, fileName)
+	writer := usecase.blobRepository.OpenStream(ctx, usecase.GcsIngestionBucket, fileName)
 	csvWriter := csv.NewWriter(writer)
 
 	for name, field := range table.Fields {
@@ -182,7 +182,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 	if err := writer.Close(); err != nil {
 		return models.UploadLog{}, err
 	}
-	if err := usecase.gcsRepository.UpdateFileMetadata(ctx, usecase.GcsIngestionBucket,
+	if err := usecase.blobRepository.UpdateFileMetadata(ctx, usecase.GcsIngestionBucket,
 		fileName, map[string]string{"processed": "true"}); err != nil {
 		return models.UploadLog{}, err
 	}
@@ -280,7 +280,7 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 		}
 	}
 
-	file, err := usecase.gcsRepository.GetFile(ctx, usecase.GcsIngestionBucket, uploadLog.FileName)
+	file, err := usecase.blobRepository.GetFile(ctx, usecase.GcsIngestionBucket, uploadLog.FileName)
 	if err != nil {
 		setToFailed(0)
 		return err

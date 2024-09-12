@@ -17,9 +17,8 @@ func RunJobScheduler() error {
 	// This is where we read the environment variables and set up the configuration for the application.
 	gcpConfig := infra.GcpConfig{
 		EnableTracing:      utils.GetEnv("ENABLE_GCP_TRACING", false),
-		TracingProjectId:   utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
+		ProjectId:          utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
 		GcsIngestionBucket: utils.GetRequiredEnv[string]("GCS_INGESTION_BUCKET"),
-		FakeGcsRepository:  utils.GetEnv("FAKE_GCS", false),
 	}
 	pgConfig := infra.PgConfig{
 		Database:            "marble",
@@ -65,7 +64,7 @@ func RunJobScheduler() error {
 	tracingConfig := infra.TelemetryConfiguration{
 		ApplicationName: jobConfig.appName,
 		Enabled:         gcpConfig.EnableTracing,
-		ProjectID:       gcpConfig.TracingProjectId,
+		ProjectID:       gcpConfig.ProjectId,
 	}
 	telemetryRessources, err := infra.InitTelemetry(tracingConfig)
 	if err != nil {
@@ -80,8 +79,9 @@ func RunJobScheduler() error {
 		return err
 	}
 
-	repositories := repositories.NewRepositories(pool,
-		repositories.WithFakeGcsRepository(gcpConfig.FakeGcsRepository),
+	repositories := repositories.NewRepositories(
+		pool,
+		gcpConfig.GoogleApplicationCredentials,
 		repositories.WithConvoyClientProvider(
 			infra.InitializeConvoyRessources(convoyConfiguration),
 			convoyConfiguration.RateLimit,
@@ -90,7 +90,6 @@ func RunJobScheduler() error {
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithGcsIngestionBucket(gcpConfig.GcsIngestionBucket),
 		usecases.WithFakeAwsS3Repository(jobConfig.fakeAwsS3Repository),
-		usecases.WithFakeGcsRepository(gcpConfig.FakeGcsRepository),
 		usecases.WithFailedWebhooksRetryPageSize(jobConfig.failedWebhooksRetryPageSize),
 		usecases.WithLicense(license))
 

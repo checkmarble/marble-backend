@@ -122,13 +122,12 @@ func TestMain(m *testing.M) {
 	// but it is not blocking (an error will be logged but the test will pass). We sill need to pass the provider
 	// or else the repository will panic.
 	repos := repositories.NewRepositories(dbPool,
+		"",
 		repositories.WithConvoyClientProvider(
 			infra.InitializeConvoyRessources(infra.ConvoyConfiguration{}), 0),
-		repositories.WithFakeGcsRepository(true),
 	)
 
 	testUsecases = usecases.NewUsecases(repos,
-		usecases.WithFakeGcsRepository(true),
 		usecases.WithLicense(models.NewFullLicense()),
 	)
 

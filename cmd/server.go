@@ -32,9 +32,9 @@ func RunServer() error {
 		SegmentWriteKey:      utils.GetEnv("SEGMENT_WRITE_KEY", ""),
 	}
 	gcpConfig := infra.GcpConfig{
-		FakeGcsRepository:                utils.GetEnv("FAKE_GCS", false),
 		EnableTracing:                    utils.GetEnv("ENABLE_GCP_TRACING", false),
-		TracingProjectId:                 utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
+		ProjectId:                        utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
+		GoogleApplicationCredentials:     utils.GetEnv("GOOGLE_APPLICATION_CREDENTIALS", ""),
 		GcsIngestionBucket:               utils.GetEnv("GCS_INGESTION_BUCKET", ""),
 		GcsCaseManagerBucket:             utils.GetEnv("GCS_CASE_MANAGER_BUCKET", ""),
 		GcsTransferCheckEnrichmentBucket: utils.GetEnv("GCS_TRANSFER_CHECK_ENRICHMENT_BUCKET", ""), // required for transfercheck
@@ -92,7 +92,7 @@ func RunServer() error {
 	tracingConfig := infra.TelemetryConfiguration{
 		ApplicationName: apiConfig.AppName,
 		Enabled:         gcpConfig.EnableTracing,
-		ProjectID:       gcpConfig.TracingProjectId,
+		ProjectID:       gcpConfig.ProjectId,
 	}
 	telemetryRessources, err := infra.InitTelemetry(tracingConfig)
 	if err != nil {
@@ -104,10 +104,11 @@ func RunServer() error {
 		utils.LogAndReportSentryError(ctx, err)
 	}
 
-	repositories := repositories.NewRepositories(pool,
+	repositories := repositories.NewRepositories(
+		pool,
+		gcpConfig.GoogleApplicationCredentials,
 		repositories.WithMetabase(infra.InitializeMetabase(metabaseConfig)),
 		repositories.WithTransferCheckEnrichmentBucket(gcpConfig.GcsTransferCheckEnrichmentBucket),
-		repositories.WithFakeGcsRepository(gcpConfig.FakeGcsRepository),
 		repositories.WithConvoyClientProvider(
 			infra.InitializeConvoyRessources(convoyConfiguration),
 			convoyConfiguration.RateLimit,
@@ -115,7 +116,6 @@ func RunServer() error {
 	)
 
 	uc := usecases.NewUsecases(repositories,
-		usecases.WithFakeGcsRepository(gcpConfig.FakeGcsRepository),
 		usecases.WithGcsIngestionBucket(gcpConfig.GcsIngestionBucket),
 		usecases.WithGcsCaseManagerBucket(gcpConfig.GcsCaseManagerBucket),
 		usecases.WithLicense(license),

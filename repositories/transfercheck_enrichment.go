@@ -32,7 +32,7 @@ type ipTypeRange struct {
 }
 
 type TransferCheckEnrichmentRepository struct {
-	gcsRepository         GcsRepository
+	blobRepository        BlobRepository
 	bucket                string
 	ipCountryRanges       []ipCountryRange
 	ipTypeRanges          []ipTypeRange
@@ -42,10 +42,10 @@ type TransferCheckEnrichmentRepository struct {
 	ipTypeRangesExpireAt  time.Time
 }
 
-func NewTransferCheckEnrichmentRepository(gcsrepository GcsRepository, bucket string) *TransferCheckEnrichmentRepository {
+func NewTransferCheckEnrichmentRepository(blobRepository BlobRepository, bucket string) *TransferCheckEnrichmentRepository {
 	return &TransferCheckEnrichmentRepository{
-		gcsRepository: gcsrepository,
-		bucket:        bucket,
+		blobRepository: blobRepository,
+		bucket:         bucket,
 	}
 }
 
@@ -63,7 +63,7 @@ func (r *TransferCheckEnrichmentRepository) setupIpCountryRanges(ctx context.Con
 		return nil
 	}
 
-	file, err := r.gcsRepository.GetFile(ctx, r.bucket, IP_COUNTRY_RANGE_FILE)
+	file, err := r.blobRepository.GetFile(ctx, r.bucket, IP_COUNTRY_RANGE_FILE)
 	if err != nil {
 		return err
 	}
@@ -191,7 +191,7 @@ func (r *TransferCheckEnrichmentRepository) setupIpTypeRanges(ctx context.Contex
 		return nil
 	}
 
-	file, err := r.gcsRepository.GetFile(ctx, r.bucket, IP_VPN_RANGE_FILE)
+	file, err := r.blobRepository.GetFile(ctx, r.bucket, IP_VPN_RANGE_FILE)
 	if err != nil {
 		return errors.Wrap(err, "failed to get VPN IP file")
 	}
@@ -214,7 +214,7 @@ func (r *TransferCheckEnrichmentRepository) setupIpTypeRanges(ctx context.Contex
 		return errors.Wrap(err, "failed to read VPN IP file")
 	}
 
-	file, err = r.gcsRepository.GetFile(ctx, r.bucket, IP_TOR_RANGE_FILE)
+	file, err = r.blobRepository.GetFile(ctx, r.bucket, IP_TOR_RANGE_FILE)
 	if err != nil {
 		return errors.Wrap(err, "failed to get TOR IP file")
 	}
