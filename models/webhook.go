@@ -31,6 +31,7 @@ const (
 	WebhookEventType_CaseCommentCreated    WebhookEventType = "case.comment_created"
 	WebhookEventType_CaseFileCreated       WebhookEventType = "case.file_created"
 	WebhookEventType_CaseRuleSnoozeCreated WebhookEventType = "case.rule_snooze_created"
+	WebhookEventType_CaseDecisionReviewed  WebhookEventType = "case.decision_reviewed"
 	WebhookEventType_DecisionCreated       WebhookEventType = "decision.created"
 )
 
@@ -176,6 +177,20 @@ func NewWebhookEventCaseFileCreated(c Case) WebhookEventContent {
 
 func NewWebhookEventRuleSnoozeCreated(c Case) WebhookEventContent {
 	return newWebhookContentCase(WebhookEventType_CaseRuleSnoozeCreated, c.Id)
+}
+
+func NewWebhookEventDecisionReviewed(c Case, decisionId string) WebhookEventContent {
+	return WebhookEventContent{
+		Type: WebhookEventType_CaseDecisionReviewed,
+		Data: map[string]any{
+			"type": WebhookEventType_CaseDecisionReviewed,
+			"content": map[string]any{
+				"case":     map[string]any{"id": c.Id},
+				"decision": map[string]any{"id": decisionId},
+			},
+			"timestamp": time.Now(),
+		},
+	}
 }
 
 type Webhook struct {

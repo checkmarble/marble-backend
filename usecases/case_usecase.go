@@ -961,7 +961,8 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 		return models.Case{}, err
 	}
 
-	return executor_factory.TransactionReturnValue(
+	webhookEventId := uuid.NewString()
+	c, err = executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Executor) (models.Case, error) {
@@ -985,9 +986,30 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 				return models.Case{}, err
 			}
 
-			return usecase.getCaseWithDetails(ctx, tx, caseId)
+			c, err = usecase.getCaseWithDetails(ctx, tx, caseId)
+			if err != nil {
+				return models.Case{}, err
+			}
+
+			err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+				Id:             webhookEventId,
+				OrganizationId: c.OrganizationId,
+				EventContent:   models.NewWebhookEventDecisionReviewed(c, decision.DecisionId),
+			})
+			if err != nil {
+				return models.Case{}, err
+			}
+
+			return c, nil
 		},
 	)
+	if err != nil {
+		return models.Case{}, err
+	}
+
+	usecase.webhookEventsUsecase.SendWebhookEventAsync(ctx, webhookEventId)
+
+	return c, nil
 }
 
 func validateDecisionReview(decision models.Decision) error {
