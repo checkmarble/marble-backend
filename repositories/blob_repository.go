@@ -26,8 +26,6 @@ import (
 	"gocloud.dev/blob/gcsblob"
 	_ "gocloud.dev/blob/s3blob"
 	"gocloud.dev/gcp"
-
-	"cloud.google.com/go/storage"
 )
 
 const signedUrlExpiryHours = 1
@@ -40,7 +38,6 @@ type BlobRepository interface {
 }
 
 type blobRepository struct {
-	gcsClient                    *storage.Client
 	buckets                      map[string]*blob.Bucket
 	m                            sync.Mutex
 	googleAccessId               string
@@ -73,20 +70,6 @@ func NewBlobRepository(googleApplicationCredentials string) BlobRepository {
 		googleApplicationCredentials: googleApplicationCredentials,
 		serviceAccountPemKey:         pemKey,
 	}
-}
-
-func (repository *blobRepository) getGCSClient(ctx context.Context) *storage.Client {
-	// Lazy load the GCS client, as it is used only in one batch usecase, to avoid requiring GCS credentials for all devs
-	if repository.gcsClient != nil {
-		return repository.gcsClient
-	}
-
-	client, err := storage.NewClient(ctx)
-	if err != nil {
-		panic(fmt.Errorf("failed to load GCS client: %w", err))
-	}
-	repository.gcsClient = client
-	return client
 }
 
 func (repository *blobRepository) openBlobBucket(ctx context.Context, bucketUrl string) (*blob.Bucket, error) {
@@ -206,24 +189,6 @@ func (repository *blobRepository) DeleteFile(ctx context.Context, bucketUrl, fil
 	defer cancel()
 
 	return bucket.Delete(ctx, fileName)
-}
-
-func (repo *blobRepository) GenerateSignedUrl_(ctx context.Context, bucketName, fileName string) (string, error) {
-	// This code will typically not run locally if you target the real GCS repository, because SignedURL only works with service account credentials (not end user credentials)
-	// Hence, run the code locally with the fake GCS repository always
-	// bucketName = "case-manager-tokyo-country-381508"
-	bucket := repo.getGCSClient(ctx).Bucket(bucketName)
-
-	return bucket.
-		SignedURL(
-			fileName,
-			&storage.SignedURLOptions{
-				Method:         http.MethodGet,
-				Expires:        time.Now().Add(signedUrlExpiryHours * time.Hour),
-				PrivateKey:     repo.serviceAccountPemKey,
-				GoogleAccessID: repo.googleAccessId,
-			},
-		)
 }
 
 func (repo *blobRepository) GenerateSignedUrl(ctx context.Context, bucketUrl, fileName string) (string, error) {
