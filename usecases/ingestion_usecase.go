@@ -136,7 +136,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 	}
 
 	fileName := computeFileName(organizationId, table.Name)
-	writer, err := usecase.blobRepository.OpenStream(ctx, usecase.GcsIngestionBucket, fileName)
+	writer, err := usecase.blobRepository.OpenStream(ctx, usecase.GcsIngestionBucket, fileName, fileName)
 	if err != nil {
 		return models.UploadLog{}, err
 	}

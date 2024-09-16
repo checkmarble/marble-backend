@@ -740,7 +740,7 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 	}
 
 	newFileReference := fmt.Sprintf("%s/%s/%s", creds.OrganizationId, input.CaseId, uuid.NewString())
-	writer, err := usecase.blobRepository.OpenStream(ctx, usecase.gcsCaseManagerBucket, newFileReference)
+	writer, err := usecase.blobRepository.OpenStream(ctx, usecase.gcsCaseManagerBucket, newFileReference, input.File.Filename)
 	if err != nil {
 		return models.Case{}, err
 	}
