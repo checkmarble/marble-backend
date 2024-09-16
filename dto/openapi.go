@@ -164,7 +164,12 @@ func decisionSchema(triggerObjects []map[string]string) ComponentsSchema {
 			"outcome": {
 				Description: utils.Ptr("Object type used to take a decision."),
 				Type:        utils.Ptr("string"),
-				Enum:        []string{"approve", "review", "decline"},
+				Enum:        []string{"approve", "review", "block_and_review", "decline"},
+			},
+			"review_status": {
+				Description: utils.Ptr("Review status of the decision (used for decisions with block_and_review outcome)."),
+				Type:        utils.Ptr("string"),
+				Enum:        []string{"pending", "approve", "decline"},
 			},
 			"scenario": {
 				Ref: utils.Ptr("#/components/schemas/Scenario"),
