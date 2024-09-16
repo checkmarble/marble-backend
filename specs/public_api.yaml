@@ -354,6 +354,7 @@ components:
       enum:
         - approve
         - review
+        - block_and_review
         - decline
     decision:
       type: object
@@ -378,6 +379,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/pivot_value"
+        review_status:
+          description: Review status of the decision (if outcome=block_and_review).
+          type: string
+          enum: [pending, approve, rejecte]
         rules:
           description: Rules executed to take the decision.
           type: array
