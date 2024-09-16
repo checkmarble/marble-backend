@@ -28,13 +28,16 @@ import (
 	"gocloud.dev/gcp"
 )
 
-const signedUrlExpiryHours = 1
+const (
+	signedUrlExpiryHours = 1
+	placeholderFileUrl   = "https://storage.googleapis.com/case-manager-tokyo-country-381508/54624b1f-aac3-4d3c-8fee-75db36436e12/5fd7bbee-b2df-4bc1-9ce8-e218e607c352/d9077dda-7836-45bd-bfde-0c8a3a0c0ad9?Expires=1821107332&GoogleAccessId=marble-backend-cloud-run%40tokyo-country-381508.iam.gserviceaccount.com&Signature=YYGF0msoL%2FmiIb3BKroFDRP0DzZrHQF3pS5VudT0OymeNnmxoIZS5DOycPaCcRa%2FMbRh454YEpAQGT%2F6Xf5dGWo%2FEj7UfmoKmPPyRGZ82qo9lr1ZMdvveBtBmSdzepgk6EBkWxWX3Ov0ZOguD58pKVy4Q0WzaMl5aD8dN8jv2ExuCfGRvNCpfvP43eONEtox6ilPkVkq4Bqhq9BHo4OBQj%2FuU8BLfnge35Db3IIy2f69CJ0wagLPiYkWfu5GODgoXMsjL0JtNEryeCJMH2ocXrTlV0XD00bx%2F8vhaHCHY9o%2Ft1V0sHmd7CoIa3bUsx4gixCuxivqvc5xLeDkgeTf%2FA%3D%3D"
+)
 
 type BlobRepository interface {
-	GetBlob(ctx context.Context, bucketUrl, fileName string) (models.Blob, error)
-	OpenStream(ctx context.Context, bucketUrl, fileName string) (io.WriteCloser, error)
-	DeleteFile(ctx context.Context, bucketUrl, fileName string) error
-	GenerateSignedUrl(ctx context.Context, bucketUrl, fileName string) (string, error)
+	GetBlob(ctx context.Context, bucketUrl, key string) (models.Blob, error)
+	OpenStream(ctx context.Context, bucketUrl, key string, fileName string) (io.WriteCloser, error)
+	DeleteFile(ctx context.Context, bucketUrl, key string) error
+	GenerateSignedUrl(ctx context.Context, bucketUrl, key string) (string, error)
 }
 
 type blobRepository struct {
@@ -130,13 +133,13 @@ func (repository *blobRepository) openBlobBucket(ctx context.Context, bucketUrl 
 	return repository.buckets[bucketUrl], nil
 }
 
-func (repository *blobRepository) GetBlob(ctx context.Context, bucketUrl, fileName string) (models.Blob, error) {
+func (repository *blobRepository) GetBlob(ctx context.Context, bucketUrl, key string) (models.Blob, error) {
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(
 		ctx,
 		"repositories.BlobRepository.openBlobBucket",
 		trace.WithAttributes(attribute.String("bucket", bucketUrl)),
-		trace.WithAttributes(attribute.String("fileName", fileName)),
+		trace.WithAttributes(attribute.String("key", key)),
 	)
 	defer span.End()
 	bucket, err := repository.openBlobBucket(ctx, bucketUrl)
@@ -150,36 +153,36 @@ func (repository *blobRepository) GetBlob(ctx context.Context, bucketUrl, fileNa
 	)
 	defer span.End()
 
-	ok, err := bucket.Exists(ctx, fileName)
+	ok, err := bucket.Exists(ctx, key)
 	if err != nil {
-		return models.Blob{}, errors.Wrapf(err, "failed to check if file %s exists in bucket %s", fileName, bucketUrl)
+		return models.Blob{}, errors.Wrapf(err, "failed to check if file %s exists in bucket %s", key, bucketUrl)
 	} else if !ok {
 		return models.Blob{}, errors.Wrapf(
 			models.NotFoundError,
-			"file %s does not exist in bucket %s", fileName, bucketUrl,
+			"file %s does not exist in bucket %s", key, bucketUrl,
 		)
 	}
 
-	reader, err := bucket.NewReader(ctx, fileName, nil)
+	reader, err := bucket.NewReader(ctx, key, nil)
 	if err != nil {
-		return models.Blob{}, errors.Wrapf(err, "failed to read GCS object %s/%s", bucketUrl, fileName)
+		return models.Blob{}, errors.Wrapf(err, "failed to read GCS object %s/%s", bucketUrl, key)
 	}
 
-	return models.Blob{FileName: fileName, ReadCloser: reader}, nil
+	return models.Blob{FileName: key, ReadCloser: reader}, nil
 }
 
-func (repository *blobRepository) OpenStream(ctx context.Context, bucketUrl, fileName string) (io.WriteCloser, error) {
+func (repository *blobRepository) OpenStream(ctx context.Context, bucketUrl, key string, fileName string) (io.WriteCloser, error) {
 	bucket, err := repository.openBlobBucket(ctx, bucketUrl)
 	if err != nil {
 		return nil, err
 	}
 
-	return bucket.NewWriter(ctx, fileName, &blob.WriterOptions{
+	return bucket.NewWriter(ctx, key, &blob.WriterOptions{
 		ContentDisposition: fmt.Sprintf("attachment; filename=\"%s\"", fileName),
 	})
 }
 
-func (repository *blobRepository) DeleteFile(ctx context.Context, bucketUrl, fileName string) error {
+func (repository *blobRepository) DeleteFile(ctx context.Context, bucketUrl, key string) error {
 	bucket, err := repository.openBlobBucket(ctx, bucketUrl)
 	if err != nil {
 		return err
@@ -188,15 +191,15 @@ func (repository *blobRepository) DeleteFile(ctx context.Context, bucketUrl, fil
 	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
 
-	return bucket.Delete(ctx, fileName)
+	return bucket.Delete(ctx, key)
 }
 
-func (repo *blobRepository) GenerateSignedUrl(ctx context.Context, bucketUrl, fileName string) (string, error) {
+func (repo *blobRepository) GenerateSignedUrl(ctx context.Context, bucketUrl, key string) (string, error) {
 	if strings.HasPrefix(bucketUrl, "file://") {
 		logger := utils.LoggerFromContext(ctx)
 		logger.Warn("Signed URL generation is not supported with a file bucket. Please use a GCS, S3 or Azure bucket instead. Returning a placeholder URL instead.")
-		return "https://storage.googleapis.com/data-ingestion-tokyo-country-381508/test.csv?Expires=1797266654&GoogleAccessId=admintest%40tokyo-country-381508.iam.gserviceaccount.com&Signature=YAVmUMWzR9sQBg9pZiDI%2FOnjRmun%2BT3Mkn84cGb%2FzYdd%2FGovpm6BNV928rAlFF33LnbmEr6JpdnW1SnA72dEOaWqOhRSWuw9pIPkxyZerD9NJyHXCmRSoSSwX7TDHKZZ0lIxz%2FxE8Wtu2Y7Q1Wn83tpigH1y8FNguSX8Zz4OjMKCSSbEXY5PsazNl12yj%2Bp8loqRwG9XIYXstLp0wKpdryz7WkqzORays7OuPs0uPoNFpTgEZtUhaoHTzRV%2FHEHnvEQ0FVFxNYnuTBPyeA%2FADlaSwDxRfGZbt65E4k73XgS1oMgdboPeCEopKAZ0Iikg7th1wdzrfetipvTucWpKOg%3D%3D", nil
-		// dummy file, url valid for 3 years from 2023/12/15
+		// placeholder file, url valid for 3 years from 2024/09/16
+		return placeholderFileUrl, nil
 	}
 
 	// This code will typically not run locally if you target the real GCS repository, because SignedURL only works with service account credentials (not end user credentials)
@@ -208,10 +211,10 @@ func (repo *blobRepository) GenerateSignedUrl(ctx context.Context, bucketUrl, fi
 
 	return bucket.SignedURL(
 		ctx,
-		fileName,
+		key,
 		&blob.SignedURLOptions{
 			Method: http.MethodGet,
-			Expiry: signedUrlExpiryHours * time.Hour,
+			Expiry: signedUrlExpiryHours * time.Hour * 24 * 365 * 3,
 		})
 }
 
