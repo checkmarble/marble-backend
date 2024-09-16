@@ -39,17 +39,15 @@ func RunScheduledExecuter() error {
 		KillIfReadLicenseError: utils.GetEnv("KILL_IF_READ_LICENSE_ERROR", false),
 	}
 	jobConfig := struct {
-		env                 string
-		appName             string
-		loggingFormat       string
-		sentryDsn           string
-		fakeAwsS3Repository bool
+		env           string
+		appName       string
+		loggingFormat string
+		sentryDsn     string
 	}{
-		env:                 utils.GetEnv("ENV", "development"),
-		appName:             "marble-backend",
-		loggingFormat:       utils.GetEnv("LOGGING_FORMAT", "text"),
-		sentryDsn:           utils.GetEnv("SENTRY_DSN", ""),
-		fakeAwsS3Repository: utils.GetEnv("FAKE_AWS_S3", false),
+		env:           utils.GetEnv("ENV", "development"),
+		appName:       "marble-backend",
+		loggingFormat: utils.GetEnv("LOGGING_FORMAT", "text"),
+		sentryDsn:     utils.GetEnv("SENTRY_DSN", ""),
 	}
 
 	logger := utils.NewLogger(jobConfig.loggingFormat)
@@ -85,9 +83,7 @@ func RunScheduledExecuter() error {
 			convoyConfiguration.RateLimit,
 		))
 
-	uc := usecases.NewUsecases(repositories,
-		usecases.WithFakeAwsS3Repository(jobConfig.fakeAwsS3Repository),
-		usecases.WithLicense(license))
+	uc := usecases.NewUsecases(repositories, usecases.WithLicense(license))
 
 	err = jobs.ExecuteAllScheduledScenarios(ctx, uc)
 	if err != nil {

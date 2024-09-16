@@ -255,18 +255,8 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 		return err
 	}
 
-	// read the final scheduled execution to export it
-	finishedScheduledExecution, err := usecase.repository.GetScheduledExecution(ctx, exec, scheduledExecution.Id)
-	if err != nil {
-		return err
-	}
-
 	logger.InfoContext(ctx, fmt.Sprintf("Execution completed for %s", scheduledExecution.Id))
-	return usecase.exportScheduleExecution.ExportScheduledExecutionToS3(
-		ctx,
-		finishedScheduledExecution.Scenario,
-		finishedScheduledExecution,
-	)
+	return nil
 }
 
 func (usecase *RunScheduledExecution) scenarioIsDue(

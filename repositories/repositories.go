@@ -54,7 +54,6 @@ type Repositories struct {
 	ClientDbRepository                ClientDbRepository
 	ScenarioPublicationRepository     ScenarioPublicationRepository
 	OrganizationSchemaRepository      OrganizationSchemaRepository
-	AwsS3Repository                   AwsS3Repository
 	BlobRepository                    BlobRepository
 	CustomListRepository              CustomListRepository
 	UploadLogRepository               UploadLogRepository
@@ -92,7 +91,6 @@ func NewRepositories(
 		OrganizationSchemaRepository:  &OrganizationSchemaRepositoryPostgresql{},
 		CustomListRepository:          &CustomListRepositoryPostgresql{},
 		UploadLogRepository:           &UploadLogRepositoryImpl{},
-		AwsS3Repository:               AwsS3Repository{s3Client: NewS3Client()},
 		BlobRepository:                blobRepository,
 		MarbleAnalyticsRepository: MarbleAnalyticsRepository{
 			metabase: options.metabase,

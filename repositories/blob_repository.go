@@ -203,8 +203,6 @@ func (repo *blobRepository) GenerateSignedUrl(ctx context.Context, bucketUrl, ke
 		return placeholderFileUrl, nil
 	}
 
-	// This code will typically not run locally if you target the real GCS repository, because SignedURL only works with service account credentials (not end user credentials)
-	// Hence, run the code locally with the fake GCS repository always
 	bucket, err := repo.openBlobBucket(ctx, bucketUrl)
 	if err != nil {
 		return "", err

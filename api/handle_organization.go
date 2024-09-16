@@ -88,9 +88,8 @@ func handlePatchOrganization(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(c.Request, uc).NewOrganizationUseCase()
 		organization, err := usecase.UpdateOrganization(c.Request.Context(), models.UpdateOrganizationInput{
-			Id:                         organizationID,
-			Name:                       data.Name,
-			ExportScheduledExecutionS3: data.ExportScheduledExecutionS3,
+			Id:   organizationID,
+			Name: data.Name,
 		})
 
 		if presentError(c, err) {

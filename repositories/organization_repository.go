@@ -97,10 +97,6 @@ func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(ctx context.Con
 	if updateOrganization.Name != nil {
 		updateRequest = updateRequest.Set("name", *updateOrganization.Name)
 	}
-	if updateOrganization.ExportScheduledExecutionS3 != nil {
-		updateRequest = updateRequest.Set("export_scheduled_execution_s3",
-			*updateOrganization.ExportScheduledExecutionS3)
-	}
 
 	updateRequest = updateRequest.Where("id = ?", updateOrganization.Id)
 
