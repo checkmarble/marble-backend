@@ -63,12 +63,12 @@ func (r *TransferCheckEnrichmentRepository) setupIpCountryRanges(ctx context.Con
 		return nil
 	}
 
-	file, err := r.blobRepository.GetFile(ctx, r.bucket, IP_COUNTRY_RANGE_FILE)
+	file, err := r.blobRepository.GetBlob(ctx, r.bucket, IP_COUNTRY_RANGE_FILE)
 	if err != nil {
 		return err
 	}
-	defer file.Reader.Close()
-	fileReader := csv.NewReader(file.Reader)
+	defer file.ReadCloser.Close()
+	fileReader := csv.NewReader(file.ReadCloser)
 	record, err := fileReader.Read()
 	var ipRange netip.Prefix
 	for err == nil {
@@ -191,12 +191,12 @@ func (r *TransferCheckEnrichmentRepository) setupIpTypeRanges(ctx context.Contex
 		return nil
 	}
 
-	file, err := r.blobRepository.GetFile(ctx, r.bucket, IP_VPN_RANGE_FILE)
+	file, err := r.blobRepository.GetBlob(ctx, r.bucket, IP_VPN_RANGE_FILE)
 	if err != nil {
 		return errors.Wrap(err, "failed to get VPN IP file")
 	}
-	defer file.Reader.Close()
-	fileReader := csv.NewReader(file.Reader)
+	defer file.ReadCloser.Close()
+	fileReader := csv.NewReader(file.ReadCloser)
 	record, err := fileReader.Read()
 	var ipRange netip.Prefix
 	for err == nil {
@@ -214,12 +214,12 @@ func (r *TransferCheckEnrichmentRepository) setupIpTypeRanges(ctx context.Contex
 		return errors.Wrap(err, "failed to read VPN IP file")
 	}
 
-	file, err = r.blobRepository.GetFile(ctx, r.bucket, IP_TOR_RANGE_FILE)
+	file, err = r.blobRepository.GetBlob(ctx, r.bucket, IP_TOR_RANGE_FILE)
 	if err != nil {
 		return errors.Wrap(err, "failed to get TOR IP file")
 	}
-	defer file.Reader.Close()
-	fileReader = csv.NewReader(file.Reader)
+	defer file.ReadCloser.Close()
+	fileReader = csv.NewReader(file.ReadCloser)
 	record, err = fileReader.Read()
 	var ip netip.Addr
 	for err == nil {

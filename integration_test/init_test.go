@@ -129,6 +129,8 @@ func TestMain(m *testing.M) {
 
 	testUsecases = usecases.NewUsecases(repos,
 		usecases.WithLicense(models.NewFullLicense()),
+		usecases.WithGcsIngestionBucket("file://./tempFiles?create_dir=true"),
+		usecases.WithGcsCaseManagerBucket("file://./tempFiles?create_dir=true"),
 	)
 
 	// select a random port

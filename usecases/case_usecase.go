@@ -740,7 +740,12 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 	}
 
 	newFileReference := fmt.Sprintf("%s/%s/%s", creds.OrganizationId, input.CaseId, uuid.NewString())
-	writer := usecase.blobRepository.OpenStream(ctx, usecase.gcsCaseManagerBucket, newFileReference)
+	writer, err := usecase.blobRepository.OpenStream(ctx, usecase.gcsCaseManagerBucket, newFileReference)
+	if err != nil {
+		return models.Case{}, err
+	}
+	defer writer.Close() // We should still call Close when we are finished writing to check the error if any - this is a no-op if Close has already been called
+
 	file, err := input.File.Open()
 	if err != nil {
 		return models.Case{}, errors.Wrap(models.BadParameterError, err.Error())
@@ -749,17 +754,6 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 		return models.Case{}, err
 	}
 	if err := writer.Close(); err != nil {
-		return models.Case{}, err
-	}
-	if err := usecase.blobRepository.UpdateFileMetadata(
-		ctx,
-		usecase.gcsCaseManagerBucket,
-		newFileReference,
-		map[string]string{
-			"processed":           "true",
-			"content-disposition": fmt.Sprintf("attachment; filename=\"%s\"", input.File.Filename),
-		},
-	); err != nil {
 		return models.Case{}, err
 	}
 
