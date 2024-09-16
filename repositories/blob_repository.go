@@ -22,6 +22,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"gocloud.dev/blob"
 	_ "gocloud.dev/blob/azureblob"
+	_ "gocloud.dev/blob/fileblob"
 	"gocloud.dev/blob/gcsblob"
 	_ "gocloud.dev/blob/s3blob"
 	"gocloud.dev/gcp"
@@ -32,11 +33,10 @@ import (
 const signedUrlExpiryHours = 1
 
 type BlobRepository interface {
-	GetFile(ctx context.Context, bucketName, fileName string) (models.GCSFile, error)
-	OpenStream(ctx context.Context, bucketName, fileName string) io.WriteCloser
-	DeleteFile(ctx context.Context, bucketName, fileName string) error
-	UpdateFileMetadata(ctx context.Context, bucketName, fileName string, metadata map[string]string) error
-	GenerateSignedUrl(ctx context.Context, bucketName, fileName string) (string, error)
+	GetBlob(ctx context.Context, bucketUrl, fileName string) (models.Blob, error)
+	OpenStream(ctx context.Context, bucketUrl, fileName string) (io.WriteCloser, error)
+	DeleteFile(ctx context.Context, bucketUrl, fileName string) error
+	GenerateSignedUrl(ctx context.Context, bucketUrl, fileName string) (string, error)
 }
 
 type blobRepository struct {
@@ -90,6 +90,14 @@ func (repository *blobRepository) getGCSClient(ctx context.Context) *storage.Cli
 }
 
 func (repository *blobRepository) openBlobBucket(ctx context.Context, bucketUrl string) (*blob.Bucket, error) {
+	tracer := utils.OpenTelemetryTracerFromContext(ctx)
+	ctx, span := tracer.Start(
+		ctx,
+		"repositories.BlobRepository.openBlobBucket",
+		trace.WithAttributes(attribute.String("bucket", bucketUrl)),
+	)
+	defer span.End()
+
 	if repository.buckets[bucketUrl] == nil {
 		repository.m.Lock()
 		defer repository.m.Unlock()
@@ -101,18 +109,7 @@ func (repository *blobRepository) openBlobBucket(ctx context.Context, bucketUrl 
 			return nil, errors.Wrapf(err, "failed to parse bucket url %s", bucketUrl)
 		}
 		if url.Scheme == "gs" {
-			// // in the GCS case, we need to set those values in the url
-			// query := url.Query()
-			// if accessId := query.Get("access_id"); accessId == "" {
-			// 	query.Set("access_id", repository.googleAccessId)
-			// }
-			// if keyPath := query.Get("private_key_path"); keyPath == "" {
-			// 	// query.Set("private_key_path", repository.googleApplicationCredentials)
-			// 	query.Set("private_key_path", ".service_account_key/key.pem")
-			// }
-			// url.RawQuery = query.Encode()
-			// bucketUrl = url.String()
-
+			// in the GCS case, we need to set those values in the url
 			creds, err := gcp.DefaultCredentials(ctx)
 			if err != nil {
 				return nil, err
@@ -137,101 +134,78 @@ func (repository *blobRepository) openBlobBucket(ctx context.Context, bucketUrl 
 				return nil, errors.Wrapf(err, "failed to open bucket %s", bucketUrl)
 			}
 		}
+
+		ok, err := bucket.IsAccessible(ctx)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to check bucket accessibility %s", bucketUrl)
+		} else if !ok {
+			return nil, errors.Newf("bucket %s is not accessible", bucketUrl)
+		}
+
 		repository.buckets[bucketUrl] = bucket
 	}
 	return repository.buckets[bucketUrl], nil
 }
 
-func (repository *blobRepository) GetFile(ctx context.Context, bucketName, fileName string) (models.GCSFile, error) {
+func (repository *blobRepository) GetBlob(ctx context.Context, bucketUrl, fileName string) (models.Blob, error) {
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(
 		ctx,
-		"repositories.GcsRepository.GetFile",
-		trace.WithAttributes(attribute.String("bucket", bucketName)),
+		"repositories.BlobRepository.openBlobBucket",
+		trace.WithAttributes(attribute.String("bucket", bucketUrl)),
 		trace.WithAttributes(attribute.String("fileName", fileName)),
 	)
 	defer span.End()
-	bucket := repository.getGCSClient(ctx).Bucket(bucketName)
-
-	ctxBucket, span2 := tracer.Start(
-		ctx,
-		"repositories.GcsRepository.GetFile - bucket attrs",
-	)
-	defer span2.End()
-	_, err := bucket.Attrs(ctxBucket)
+	bucket, err := repository.openBlobBucket(ctx, bucketUrl)
 	if err != nil {
-		return models.GCSFile{}, fmt.Errorf("failed to get bucket %s: %w", bucketName, err)
+		return models.Blob{}, err
 	}
-	span2.End()
 
 	ctx, span = tracer.Start(
 		ctx,
-		"repositories.GcsRepository.GetFile - file reader",
+		"repositories.BlobRepository.GetFile - file reader",
 	)
 	defer span.End()
-	reader, err := bucket.Object(fileName).NewReader(ctx)
+
+	ok, err := bucket.Exists(ctx, fileName)
 	if err != nil {
-		return models.GCSFile{}, fmt.Errorf("failed to read GCS object %s/%s: %w", bucketName, fileName, err)
+		return models.Blob{}, errors.Wrapf(err, "failed to check if file %s exists in bucket %s", fileName, bucketUrl)
+	} else if !ok {
+		return models.Blob{}, errors.Wrapf(
+			models.NotFoundError,
+			"file %s does not exist in bucket %s", fileName, bucketUrl,
+		)
 	}
 
-	return models.GCSFile{
-		FileName:   fileName,
-		Reader:     reader,
-		BucketName: bucketName,
-	}, nil
+	reader, err := bucket.NewReader(ctx, fileName, nil)
+	if err != nil {
+		return models.Blob{}, errors.Wrapf(err, "failed to read GCS object %s/%s", bucketUrl, fileName)
+	}
+
+	return models.Blob{FileName: fileName, ReadCloser: reader}, nil
 }
 
-func (repository *blobRepository) OpenStream(ctx context.Context, bucketName, fileName string) io.WriteCloser {
-	gcsClient := repository.getGCSClient(ctx)
+func (repository *blobRepository) OpenStream(ctx context.Context, bucketUrl, fileName string) (io.WriteCloser, error) {
+	bucket, err := repository.openBlobBucket(ctx, bucketUrl)
+	if err != nil {
+		return nil, err
+	}
 
-	writer := gcsClient.Bucket(bucketName).Object(fileName).NewWriter(ctx)
-	writer.ChunkSize = 0 // note retries are not supported for chunk size 0.
-	return writer
+	return bucket.NewWriter(ctx, fileName, &blob.WriterOptions{
+		ContentDisposition: fmt.Sprintf("attachment; filename=\"%s\"", fileName),
+	})
 }
 
-func (repository *blobRepository) UpdateFileMetadata(ctx context.Context,
-	bucketName, fileName string, metadata map[string]string,
-) error {
-	gcsClient := repository.getGCSClient(ctx)
-	defer gcsClient.Close()
+func (repository *blobRepository) DeleteFile(ctx context.Context, bucketUrl, fileName string) error {
+	bucket, err := repository.openBlobBucket(ctx, bucketUrl)
+	if err != nil {
+		return err
+	}
 
 	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
 
-	object := gcsClient.Bucket(bucketName).Object(fileName)
-
-	// Optional: set a metageneration-match precondition to avoid potential race
-	// conditions and data corruptions. The request to update is aborted if the
-	// object's metageneration does not match your precondition.
-	attrs, err := object.Attrs(ctx)
-	if err != nil {
-		return fmt.Errorf("object.Attrs: %w", err)
-	}
-	object = object.If(storage.Conditions{MetagenerationMatch: attrs.Metageneration})
-
-	objectAttrsToUpdate := storage.ObjectAttrsToUpdate{Metadata: metadata}
-
-	if _, err := object.Update(ctx, objectAttrsToUpdate); err != nil {
-		return fmt.Errorf("ObjectHandle(%q).Update: %w", fileName, err)
-	}
-
-	return nil
-}
-
-func (repository *blobRepository) DeleteFile(ctx context.Context, bucketName, fileName string) error {
-	gcsClient := repository.getGCSClient(ctx)
-	defer gcsClient.Close()
-
-	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
-	defer cancel()
-
-	object := gcsClient.Bucket(bucketName).Object(fileName)
-
-	if err := object.Delete(ctx); err != nil {
-		return errors.Wrap(err, fmt.Sprintf("Error deleting file: %s", fileName))
-	}
-
-	return nil
+	return bucket.Delete(ctx, fileName)
 }
 
 func (repo *blobRepository) GenerateSignedUrl_(ctx context.Context, bucketName, fileName string) (string, error) {
@@ -252,10 +226,10 @@ func (repo *blobRepository) GenerateSignedUrl_(ctx context.Context, bucketName, 
 		)
 }
 
-func (repo *blobRepository) GenerateSignedUrl(ctx context.Context, bucketName, fileName string) (string, error) {
+func (repo *blobRepository) GenerateSignedUrl(ctx context.Context, bucketUrl, fileName string) (string, error) {
 	// This code will typically not run locally if you target the real GCS repository, because SignedURL only works with service account credentials (not end user credentials)
 	// Hence, run the code locally with the fake GCS repository always
-	bucket, err := repo.openBlobBucket(ctx, bucketName)
+	bucket, err := repo.openBlobBucket(ctx, bucketUrl)
 	if err != nil {
 		return "", err
 	}

@@ -136,7 +136,12 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 	}
 
 	fileName := computeFileName(organizationId, table.Name)
-	writer := usecase.blobRepository.OpenStream(ctx, usecase.GcsIngestionBucket, fileName)
+	writer, err := usecase.blobRepository.OpenStream(ctx, usecase.GcsIngestionBucket, fileName)
+	if err != nil {
+		return models.UploadLog{}, err
+	}
+	defer writer.Close() // We should still call Close when we are finished writing to check the error if any - this is a no-op if Close has already been called
+
 	csvWriter := csv.NewWriter(writer)
 
 	for name, field := range table.Fields {
@@ -180,10 +185,6 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 	}
 
 	if err := writer.Close(); err != nil {
-		return models.UploadLog{}, err
-	}
-	if err := usecase.blobRepository.UpdateFileMetadata(ctx, usecase.GcsIngestionBucket,
-		fileName, map[string]string{"processed": "true"}); err != nil {
 		return models.UploadLog{}, err
 	}
 
@@ -280,14 +281,16 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 		}
 	}
 
-	file, err := usecase.blobRepository.GetFile(ctx, usecase.GcsIngestionBucket, uploadLog.FileName)
+	file, err := usecase.blobRepository.GetBlob(ctx, usecase.GcsIngestionBucket, uploadLog.FileName)
+	if file.ReadCloser != nil {
+		defer file.ReadCloser.Close()
+	}
 	if err != nil {
 		setToFailed(0)
 		return err
 	}
-	defer file.Reader.Close()
 
-	out := usecase.readFileIngestObjects(ctx, file)
+	out := usecase.readFileIngestObjects(ctx, file.FileName, file.ReadCloser)
 	if out.err != nil {
 		setToFailed(out.numRowsIngested)
 		return err
@@ -312,19 +315,18 @@ type ingestionResult struct {
 	err             error
 }
 
-func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file models.GCSFile) ingestionResult {
+func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, fileName string, fileReader io.Reader) ingestionResult {
 	logger := utils.LoggerFromContext(ctx)
-	fullFileName := file.FileName
-	logger.InfoContext(ctx, fmt.Sprintf("Ingesting data from CSV %s", fullFileName))
+	logger.InfoContext(ctx, fmt.Sprintf("Ingesting data from CSV %s", fileName))
 
-	fullFileNameElements := strings.Split(fullFileName, "/")
-	if len(fullFileNameElements) != 3 {
+	fileNameElements := strings.Split(fileName, "/")
+	if len(fileNameElements) != 3 {
 		return ingestionResult{
-			err: fmt.Errorf("invalid filename %s: expecting format organizationId/tableName/timestamp.csv", fullFileName),
+			err: fmt.Errorf("invalid filename %s: expecting format organizationId/tableName/timestamp.csv", fileName),
 		}
 	}
-	organizationId := fullFileNameElements[0]
-	tableName := fullFileNameElements[1]
+	organizationId := fileNameElements[0]
+	tableName := fileNameElements[1]
 
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
 		return ingestionResult{
@@ -347,10 +349,10 @@ func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, file
 		}
 	}
 
-	return usecase.ingestObjectsFromCSV(ctx, organizationId, file, table)
+	return usecase.ingestObjectsFromCSV(ctx, organizationId, fileReader, table)
 }
 
-func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organizationId string, file models.GCSFile, table models.Table) ingestionResult {
+func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organizationId string, fileReader io.Reader, table models.Table) ingestionResult {
 	logger := utils.LoggerFromContext(ctx)
 	total := 0
 	start := time.Now()
@@ -363,7 +365,8 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 	}
 	defer printDuration()
 
-	r := csv.NewReader(pure_utils.NewReaderWithoutBom(file.Reader))
+	r := csv.NewReader(pure_utils.NewReaderWithoutBom(fileReader))
+
 	firstRow, err := r.Read()
 	if err != nil {
 		return ingestionResult{
