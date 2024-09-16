@@ -44,7 +44,7 @@ docker-compose.dev.yml
 /firebase-local-data
 __debug_bin*
 
-# Use by the Fake GcsRepository
+# Used by the file-based local blob repository
 /tempFiles
 /integration_test/tempFiles
 

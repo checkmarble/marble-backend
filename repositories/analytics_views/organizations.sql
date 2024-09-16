@@ -7,7 +7,6 @@ WITH
 SELECT
       id,
       name,
-      deleted_at,
-      export_scheduled_execution_s3
+      deleted_at
 FROM
       marble.organizations

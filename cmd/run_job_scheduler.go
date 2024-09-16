@@ -42,7 +42,6 @@ func RunJobScheduler() error {
 		appName                     string
 		loggingFormat               string
 		sentryDsn                   string
-		fakeAwsS3Repository         bool
 		failedWebhooksRetryPageSize int
 		ingestionBucketUrl          string
 	}{
@@ -51,7 +50,6 @@ func RunJobScheduler() error {
 		ingestionBucketUrl:          utils.GetRequiredEnv[string]("INGESTION_BUCKET_URL"),
 		loggingFormat:               utils.GetEnv("LOGGING_FORMAT", "text"),
 		sentryDsn:                   utils.GetEnv("SENTRY_DSN", ""),
-		fakeAwsS3Repository:         utils.GetEnv("FAKE_AWS_S3", false),
 		failedWebhooksRetryPageSize: utils.GetEnv("FAILED_WEBHOOKS_RETRY_PAGE_SIZE", 1000),
 	}
 
@@ -90,7 +88,6 @@ func RunJobScheduler() error {
 	)
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithGcsIngestionBucket(jobConfig.ingestionBucketUrl),
-		usecases.WithFakeAwsS3Repository(jobConfig.fakeAwsS3Repository),
 		usecases.WithFailedWebhooksRetryPageSize(jobConfig.failedWebhooksRetryPageSize),
 		usecases.WithLicense(license))
 

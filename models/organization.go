@@ -1,10 +1,9 @@
 package models
 
 type Organization struct {
-	Id                         string
-	Name                       string
-	ExportScheduledExecutionS3 string
-	TransferCheckScenarioId    *string
+	Id                      string
+	Name                    string
+	TransferCheckScenarioId *string
 }
 
 type CreateOrganizationInput struct {
@@ -12,9 +11,8 @@ type CreateOrganizationInput struct {
 }
 
 type UpdateOrganizationInput struct {
-	Id                         string
-	ExportScheduledExecutionS3 *string
-	Name                       *string
+	Id   string
+	Name *string
 }
 
 type SeedOrgConfiguration struct {

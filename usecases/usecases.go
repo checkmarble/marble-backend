@@ -15,7 +15,6 @@ import (
 
 type Usecases struct {
 	Repositories                repositories.Repositories
-	fakeAwsS3Repository         bool
 	gcsIngestionBucket          string
 	gcsCaseManagerBucket        string
 	failedWebhooksRetryPageSize int
@@ -23,12 +22,6 @@ type Usecases struct {
 }
 
 type Option func(*options)
-
-func WithFakeAwsS3Repository(b bool) Option {
-	return func(o *options) {
-		o.fakeAwsS3Repository = b
-	}
-}
 
 func WithGcsIngestionBucket(bucket string) Option {
 	return func(o *options) {
@@ -55,7 +48,6 @@ func WithLicense(license models.LicenseValidation) Option {
 }
 
 type options struct {
-	fakeAwsS3Repository         bool
 	gcsIngestionBucket          string
 	gcsCaseManagerBucket        string
 	failedWebhooksRetryPageSize int
@@ -65,7 +57,6 @@ type options struct {
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
 	return Usecases{
 		Repositories:                repositories,
-		fakeAwsS3Repository:         o.fakeAwsS3Repository,
 		gcsIngestionBucket:          o.gcsIngestionBucket,
 		gcsCaseManagerBucket:        o.gcsCaseManagerBucket,
 		failedWebhooksRetryPageSize: o.failedWebhooksRetryPageSize,
@@ -116,15 +107,7 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 }
 
 func (usecases *Usecases) NewExportScheduleExecution() *scheduledexecution.ExportScheduleExecution {
-	var awsS3Repository scheduledexecution.AwsS3Repository
-	if usecases.fakeAwsS3Repository {
-		awsS3Repository = &repositories.AwsS3RepositoryFake{}
-	} else {
-		awsS3Repository = &usecases.Repositories.AwsS3Repository
-	}
-
 	return &scheduledexecution.ExportScheduleExecution{
-		AwsS3Repository:        awsS3Repository,
 		DecisionRepository:     usecases.Repositories.DecisionRepository,
 		OrganizationRepository: usecases.Repositories.OrganizationRepository,
 		ExecutorFactory:        usecases.NewExecutorFactory(),
