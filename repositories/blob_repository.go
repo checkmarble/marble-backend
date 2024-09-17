@@ -29,8 +29,8 @@ import (
 )
 
 const (
-	signedUrlExpiryHours = 1
-	placeholderFileUrl   = "https://storage.googleapis.com/case-manager-tokyo-country-381508/54624b1f-aac3-4d3c-8fee-75db36436e12/5fd7bbee-b2df-4bc1-9ce8-e218e607c352/d9077dda-7836-45bd-bfde-0c8a3a0c0ad9?Expires=1821107332&GoogleAccessId=marble-backend-cloud-run%40tokyo-country-381508.iam.gserviceaccount.com&Signature=YYGF0msoL%2FmiIb3BKroFDRP0DzZrHQF3pS5VudT0OymeNnmxoIZS5DOycPaCcRa%2FMbRh454YEpAQGT%2F6Xf5dGWo%2FEj7UfmoKmPPyRGZ82qo9lr1ZMdvveBtBmSdzepgk6EBkWxWX3Ov0ZOguD58pKVy4Q0WzaMl5aD8dN8jv2ExuCfGRvNCpfvP43eONEtox6ilPkVkq4Bqhq9BHo4OBQj%2FuU8BLfnge35Db3IIy2f69CJ0wagLPiYkWfu5GODgoXMsjL0JtNEryeCJMH2ocXrTlV0XD00bx%2F8vhaHCHY9o%2Ft1V0sHmd7CoIa3bUsx4gixCuxivqvc5xLeDkgeTf%2FA%3D%3D"
+	signedUrlExpiry    = 1 * time.Hour
+	placeholderFileUrl = "https://storage.googleapis.com/case-manager-tokyo-country-381508/54624b1f-aac3-4d3c-8fee-75db36436e12/5fd7bbee-b2df-4bc1-9ce8-e218e607c352/d9077dda-7836-45bd-bfde-0c8a3a0c0ad9?Expires=1821107332&GoogleAccessId=marble-backend-cloud-run%40tokyo-country-381508.iam.gserviceaccount.com&Signature=YYGF0msoL%2FmiIb3BKroFDRP0DzZrHQF3pS5VudT0OymeNnmxoIZS5DOycPaCcRa%2FMbRh454YEpAQGT%2F6Xf5dGWo%2FEj7UfmoKmPPyRGZ82qo9lr1ZMdvveBtBmSdzepgk6EBkWxWX3Ov0ZOguD58pKVy4Q0WzaMl5aD8dN8jv2ExuCfGRvNCpfvP43eONEtox6ilPkVkq4Bqhq9BHo4OBQj%2FuU8BLfnge35Db3IIy2f69CJ0wagLPiYkWfu5GODgoXMsjL0JtNEryeCJMH2ocXrTlV0XD00bx%2F8vhaHCHY9o%2Ft1V0sHmd7CoIa3bUsx4gixCuxivqvc5xLeDkgeTf%2FA%3D%3D"
 )
 
 type BlobRepository interface {
@@ -214,7 +214,7 @@ func (repo *blobRepository) GenerateSignedUrl(ctx context.Context, bucketUrl, ke
 		key,
 		&blob.SignedURLOptions{
 			Method: http.MethodGet,
-			Expiry: signedUrlExpiryHours * time.Hour * 24 * 365 * 3,
+			Expiry: signedUrlExpiry,
 		})
 }
 

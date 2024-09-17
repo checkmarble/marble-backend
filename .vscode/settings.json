@@ -16,4 +16,13 @@
             ".git/logs": true,
       },
       "editor.tabSize": 4,
+      "files.associations": {
+            // This is in order to deactivate github copilot on the .env file. As a result syntax coloring will be disabled because
+            // VSCode will treat it as plain text, you can choose your language mode manually on the file
+            ".env": "env"
+      },
+      "github.copilot.enable": {
+            "*": true,
+            "env": false,
+      }
 }
