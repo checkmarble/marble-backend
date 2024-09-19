@@ -7,12 +7,9 @@ import (
 )
 
 type GcpConfig struct {
-	ProjectId                        string
-	GoogleApplicationCredentials     string
-	EnableTracing                    bool
-	GcsIngestionBucket               string
-	GcsCaseManagerBucket             string
-	GcsTransferCheckEnrichmentBucket string
+	ProjectId                    string
+	GoogleApplicationCredentials string
+	EnableTracing                bool
 }
 
 type PgConfig struct {

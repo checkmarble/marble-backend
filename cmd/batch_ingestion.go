@@ -17,9 +17,8 @@ import (
 func RunBatchIngestion() error {
 	// This is where we read the environment variables and set up the configuration for the application.
 	gcpConfig := infra.GcpConfig{
-		EnableTracing:      utils.GetEnv("ENABLE_GCP_TRACING", false),
-		ProjectId:          utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
-		GcsIngestionBucket: utils.GetRequiredEnv[string]("GCS_INGESTION_BUCKET"),
+		EnableTracing: utils.GetEnv("ENABLE_GCP_TRACING", false),
+		ProjectId:     utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
 	}
 	pgConfig := infra.PgConfig{
 		Database:            "marble",
@@ -40,15 +39,17 @@ func RunBatchIngestion() error {
 		KillIfReadLicenseError: utils.GetEnv("KILL_IF_READ_LICENSE_ERROR", false),
 	}
 	jobConfig := struct {
-		env           string
-		appName       string
-		loggingFormat string
-		sentryDsn     string
+		env                string
+		appName            string
+		ingestionBucketUrl string
+		loggingFormat      string
+		sentryDsn          string
 	}{
-		env:           utils.GetEnv("ENV", "development"),
-		appName:       "marble-backend",
-		loggingFormat: utils.GetEnv("LOGGING_FORMAT", "text"),
-		sentryDsn:     utils.GetEnv("SENTRY_DSN", ""),
+		env:                utils.GetEnv("ENV", "development"),
+		appName:            "marble-backend",
+		ingestionBucketUrl: utils.GetRequiredEnv[string]("INGESTION_BUCKET_URL"),
+		loggingFormat:      utils.GetEnv("LOGGING_FORMAT", "text"),
+		sentryDsn:          utils.GetEnv("SENTRY_DSN", ""),
 	}
 
 	logger := utils.NewLogger(jobConfig.loggingFormat)
@@ -85,7 +86,7 @@ func RunBatchIngestion() error {
 		),
 	)
 	uc := usecases.NewUsecases(repositories,
-		usecases.WithGcsIngestionBucket(gcpConfig.GcsIngestionBucket),
+		usecases.WithGcsIngestionBucket(jobConfig.ingestionBucketUrl),
 		usecases.WithLicense(license))
 
 	err = jobs.IngestDataFromCsv(ctx, uc)

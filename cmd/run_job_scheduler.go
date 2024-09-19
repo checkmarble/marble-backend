@@ -16,9 +16,8 @@ import (
 func RunJobScheduler() error {
 	// This is where we read the environment variables and set up the configuration for the application.
 	gcpConfig := infra.GcpConfig{
-		EnableTracing:      utils.GetEnv("ENABLE_GCP_TRACING", false),
-		ProjectId:          utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
-		GcsIngestionBucket: utils.GetRequiredEnv[string]("GCS_INGESTION_BUCKET"),
+		EnableTracing: utils.GetEnv("ENABLE_GCP_TRACING", false),
+		ProjectId:     utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
 	}
 	pgConfig := infra.PgConfig{
 		Database:            "marble",
@@ -45,9 +44,11 @@ func RunJobScheduler() error {
 		sentryDsn                   string
 		fakeAwsS3Repository         bool
 		failedWebhooksRetryPageSize int
+		ingestionBucketUrl          string
 	}{
 		env:                         utils.GetEnv("ENV", "development"),
 		appName:                     "marble-backend",
+		ingestionBucketUrl:          utils.GetRequiredEnv[string]("INGESTION_BUCKET_URL"),
 		loggingFormat:               utils.GetEnv("LOGGING_FORMAT", "text"),
 		sentryDsn:                   utils.GetEnv("SENTRY_DSN", ""),
 		fakeAwsS3Repository:         utils.GetEnv("FAKE_AWS_S3", false),
@@ -88,7 +89,7 @@ func RunJobScheduler() error {
 		),
 	)
 	uc := usecases.NewUsecases(repositories,
-		usecases.WithGcsIngestionBucket(gcpConfig.GcsIngestionBucket),
+		usecases.WithGcsIngestionBucket(jobConfig.ingestionBucketUrl),
 		usecases.WithFakeAwsS3Repository(jobConfig.fakeAwsS3Repository),
 		usecases.WithFailedWebhooksRetryPageSize(jobConfig.failedWebhooksRetryPageSize),
 		usecases.WithLicense(license))
