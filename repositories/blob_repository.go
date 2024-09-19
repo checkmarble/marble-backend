@@ -242,11 +242,6 @@ func gcpServiceAccountKeyToPEM(key []byte) ([]byte, error) {
 		return nil, errors.Wrap(err, "Failed to encode PEM")
 	}
 
-	err = os.WriteFile(".service_account_key/key.pem", buf.Bytes(), 0o644)
-	if err != nil {
-		return nil, errors.Wrap(err, "Failed to write PEM to file")
-	}
-
 	return buf.Bytes(), nil
 }
 
