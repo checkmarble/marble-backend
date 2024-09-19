@@ -32,12 +32,9 @@ func RunServer() error {
 		SegmentWriteKey:      utils.GetEnv("SEGMENT_WRITE_KEY", ""),
 	}
 	gcpConfig := infra.GcpConfig{
-		EnableTracing:                    utils.GetEnv("ENABLE_GCP_TRACING", false),
-		ProjectId:                        utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
-		GoogleApplicationCredentials:     utils.GetEnv("GOOGLE_APPLICATION_CREDENTIALS", ""),
-		GcsIngestionBucket:               utils.GetEnv("GCS_INGESTION_BUCKET", ""),
-		GcsCaseManagerBucket:             utils.GetEnv("GCS_CASE_MANAGER_BUCKET", ""),
-		GcsTransferCheckEnrichmentBucket: utils.GetEnv("GCS_TRANSFER_CHECK_ENRICHMENT_BUCKET", ""), // required for transfercheck
+		EnableTracing:                utils.GetEnv("ENABLE_GCP_TRACING", false),
+		ProjectId:                    utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
+		GoogleApplicationCredentials: utils.GetEnv("GOOGLE_APPLICATION_CREDENTIALS", ""),
 	}
 	pgConfig := infra.PgConfig{
 		Database:            "marble",
@@ -72,13 +69,19 @@ func RunServer() error {
 		KillIfReadLicenseError: utils.GetEnv("KILL_IF_READ_LICENSE_ERROR", false),
 	}
 	serverConfig := struct {
-		jwtSigningKey string
-		loggingFormat string
-		sentryDsn     string
+		caseManagerBucket                string
+		ingestionBucketUrl               string
+		jwtSigningKey                    string
+		loggingFormat                    string
+		sentryDsn                        string
+		transferCheckEnrichmentBucketUrl string
 	}{
-		jwtSigningKey: utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY", ""),
-		loggingFormat: utils.GetEnv("LOGGING_FORMAT", "text"),
-		sentryDsn:     utils.GetEnv("SENTRY_DSN", ""),
+		caseManagerBucket:                utils.GetEnv("CASE_MANAGER_BUCKET_URL", ""),
+		ingestionBucketUrl:               utils.GetEnv("INGESTION_BUCKET_URL", ""),
+		jwtSigningKey:                    utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY", ""),
+		loggingFormat:                    utils.GetEnv("LOGGING_FORMAT", "text"),
+		sentryDsn:                        utils.GetEnv("SENTRY_DSN", ""),
+		transferCheckEnrichmentBucketUrl: utils.GetEnv("TRANSFER_CHECK_ENRICHMENT_BUCKET_URL", ""), // required for transfercheck
 	}
 
 	logger := utils.NewLogger(serverConfig.loggingFormat)
@@ -108,7 +111,7 @@ func RunServer() error {
 		pool,
 		gcpConfig.GoogleApplicationCredentials,
 		repositories.WithMetabase(infra.InitializeMetabase(metabaseConfig)),
-		repositories.WithTransferCheckEnrichmentBucket(gcpConfig.GcsTransferCheckEnrichmentBucket),
+		repositories.WithTransferCheckEnrichmentBucket(serverConfig.transferCheckEnrichmentBucketUrl),
 		repositories.WithConvoyClientProvider(
 			infra.InitializeConvoyRessources(convoyConfiguration),
 			convoyConfiguration.RateLimit,
@@ -116,8 +119,8 @@ func RunServer() error {
 	)
 
 	uc := usecases.NewUsecases(repositories,
-		usecases.WithGcsIngestionBucket(gcpConfig.GcsIngestionBucket),
-		usecases.WithGcsCaseManagerBucket(gcpConfig.GcsCaseManagerBucket),
+		usecases.WithGcsIngestionBucket(serverConfig.ingestionBucketUrl),
+		usecases.WithGcsCaseManagerBucket(serverConfig.caseManagerBucket),
 		usecases.WithLicense(license),
 	)
 
