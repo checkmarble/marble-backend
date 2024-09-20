@@ -44,6 +44,10 @@ const (
 	WEBHOOK
 	READ_SNOOZES
 	CREATE_SNOOZE
+	TAG_READ
+	TAG_CREATE
+	TAG_UPDATE
+	TAG_DELETE
 )
 
 func (r Permission) String() string {
@@ -89,5 +93,9 @@ func (r Permission) String() string {
 		"WEBHOOK",
 		"READ_SNOOZES",
 		"CREATE_SNOOZE",
+		"TAG_READ",
+		"TAG_CREATE",
+		"TAG_UPDATE",
+		"TAG_DELETE",
 	}[r]
 }

@@ -90,11 +90,6 @@ func handleGetTag(uc usecases.Usecases) func(c *gin.Context) {
 
 func handlePatchTag(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
-			return
-		}
-
 		var tagInput TagUriInput
 		if err := c.ShouldBindUri(&tagInput); err != nil {
 			c.Status(http.StatusBadRequest)
@@ -108,7 +103,7 @@ func handlePatchTag(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(c.Request, uc).NewTagUseCase()
-		tag, err := usecase.UpdateTag(c.Request.Context(), organizationId, models.UpdateTagAttributes{
+		tag, err := usecase.UpdateTag(c.Request.Context(), models.UpdateTagAttributes{
 			TagId: tagInput.TagId,
 			Color: data.Color,
 			Name:  data.Name,
