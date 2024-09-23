@@ -349,7 +349,7 @@ func selectCasesWithJoinedFields(query squirrel.SelectBuilder, p models.Paginati
 				dbmodels.TABLE_CASE_TAGS,
 			),
 		).
-		Column(fmt.Sprintf("(SELECT count(distinct d.id) FROM %s AS d WHERE d.case_id = c.id) AS decisions_count", dbmodels.TABLE_DECISIONS))
+		Column(fmt.Sprintf("(SELECT count(distinct d.id) FROM %s AS d WHERE d.case_id = c.id AND d.org_id=c.org_id) AS decisions_count", dbmodels.TABLE_DECISIONS))
 	if fromSubquery {
 		q = q.Column("rank_number")
 	}
