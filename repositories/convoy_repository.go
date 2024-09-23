@@ -160,12 +160,6 @@ func (repo ConvoyRepository) RegisterWebhook(
 		Name:         &name,
 		EndpointId:   endpoint.Uid,
 		FilterConfig: &filterConfig,
-		RetryConfig: &convoy.ModelsRetryConfiguration{
-			// that would amount to 14 retries in a total duration of 91h (3.8 days) theoretically
-			Type:       utils.Ptr(convoy.ExponentialStrategyProvider),
-			RetryCount: utils.Ptr(14),
-			Duration:   utils.Ptr("10s"),
-		},
 	})
 	if err != nil {
 		return models.Webhook{}, errors.Wrap(err, "can't create convoy subscription: request error")
