@@ -595,8 +595,11 @@ func createAndTestDecision(
 			OrganizationId:     organizationId,
 			TriggerObjectTable: table.Name,
 		},
-		false,
-		false,
+		models.CreateDecisionParams{
+			WithDecisionWebhooks:        false,
+			WithRuleExecutionDetails:    true,
+			WithScenarioPermissionCheck: true,
+		},
 	)
 	if err != nil {
 		assert.FailNow(t, "Could not create decision", err)

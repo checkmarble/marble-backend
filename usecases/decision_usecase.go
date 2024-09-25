@@ -192,8 +192,7 @@ func (usecase *DecisionUsecase) validateTriggerObjects(ctx context.Context,
 func (usecase *DecisionUsecase) CreateDecision(
 	ctx context.Context,
 	input models.CreateDecisionInput,
-	skipScenarioPermissionForTransferCheck bool,
-	withDecisionWebhooks bool,
+	params models.CreateDecisionParams,
 ) (models.DecisionWithRuleExecutions, error) {
 	exec := usecase.executorFactory.NewExecutor()
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
@@ -213,7 +212,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		return models.DecisionWithRuleExecutions{},
 			errors.Wrap(err, "error getting scenario")
 	}
-	if !skipScenarioPermissionForTransferCheck {
+	if !params.WithScenarioPermissionCheck {
 		if err := usecase.enforceSecurityScenario.ReadScenario(scenario); err != nil {
 			return models.DecisionWithRuleExecutions{}, err
 		}
@@ -258,6 +257,11 @@ func (usecase *DecisionUsecase) CreateDecision(
 	}
 
 	decision := models.AdaptScenarExecToDecision(scenarioExecution, payload, nil)
+	if !params.WithRuleExecutionDetails {
+		for i := range decision.RuleExecutions {
+			decision.RuleExecutions[i].Evaluation = nil
+		}
+	}
 
 	ctx, span = tracer.Start(
 		ctx,
@@ -281,7 +285,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 				fmt.Errorf("error storing decision: %w", err)
 		}
 
-		if withDecisionWebhooks {
+		if params.WithDecisionWebhooks {
 			webhookEventId := uuid.NewString()
 			err := usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
 				Id:             webhookEventId,
