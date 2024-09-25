@@ -9,7 +9,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/organization"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
-	"github.com/checkmarble/marble-backend/usecases/scheduledexecution"
+	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
 	"github.com/checkmarble/marble-backend/usecases/security"
 )
 
@@ -106,8 +106,8 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 	}
 }
 
-func (usecases *Usecases) NewExportScheduleExecution() *scheduledexecution.ExportScheduleExecution {
-	return &scheduledexecution.ExportScheduleExecution{
+func (usecases *Usecases) NewExportScheduleExecution() *scheduled_execution.ExportScheduleExecution {
+	return &scheduled_execution.ExportScheduleExecution{
 		DecisionRepository:     usecases.Repositories.DecisionRepository,
 		OrganizationRepository: usecases.Repositories.OrganizationRepository,
 		ExecutorFactory:        usecases.NewExecutorFactory(),

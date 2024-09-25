@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/checkmarble/marble-backend/models/ast"
+)
 
 type ScheduledExecution struct {
 	Id                       string
@@ -71,4 +75,10 @@ type ListScheduledExecutionsFilters struct {
 	ScenarioId     string
 	Status         []ScheduledExecutionStatus
 	ExcludeManual  bool
+}
+
+type Filter struct {
+	LeftFieldOrValue  any
+	Operator          ast.Function
+	RightFieldOrValue any
 }

@@ -5,7 +5,7 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/decision_workflows"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/indexes"
-	"github.com/checkmarble/marble-backend/usecases/scheduledexecution"
+	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/transfers_data_read"
 )
@@ -207,8 +207,8 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 	}
 }
 
-func (usecases *UsecasesWithCreds) NewRunScheduledExecution() scheduledexecution.RunScheduledExecution {
-	return *scheduledexecution.NewRunScheduledExecution(
+func (usecases *UsecasesWithCreds) NewRunScheduledExecution() scheduled_execution.RunScheduledExecution {
+	return *scheduled_execution.NewRunScheduledExecution(
 		&usecases.Repositories.MarbleDbRepository,
 		usecases.NewExecutorFactory(),
 		*usecases.NewExportScheduleExecution(),

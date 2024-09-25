@@ -1,4 +1,4 @@
-package scheduledexecution
+package scheduled_execution
 
 import (
 	"context"
