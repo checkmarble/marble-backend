@@ -8,10 +8,8 @@ SELECT
       id,
       org_id AS organization_id,
       decision_id,
-      deleted_at,
-      description,
       error_code,
-      name,
+      outcome,
       result,
       rule_id,
       score_modifier
