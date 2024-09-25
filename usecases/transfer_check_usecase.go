@@ -209,8 +209,11 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 			OrganizationId:     organizationId,
 			TriggerObjectTable: models.TransferCheckTable,
 		},
-		true,
-		false,
+		models.CreateDecisionParams{
+			WithDecisionWebhooks:        false,
+			WithRuleExecutionDetails:    false,
+			WithScenarioPermissionCheck: false,
+		},
 	)
 	if err != nil {
 		return models.Transfer{}, errors.Wrapf(
@@ -505,8 +508,11 @@ func (usecase *TransferCheckUsecase) ScoreTransfer(
 			OrganizationId:     organizationId,
 			TriggerObjectTable: models.TransferCheckTable,
 		},
-		true,
-		false,
+		models.CreateDecisionParams{
+			WithDecisionWebhooks:        false,
+			WithRuleExecutionDetails:    false,
+			WithScenarioPermissionCheck: false,
+		},
 	)
 	if err != nil {
 		return models.Transfer{}, errors.Wrapf(

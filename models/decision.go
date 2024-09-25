@@ -120,6 +120,12 @@ type CreateDecisionInput struct {
 	TriggerObjectTable string
 }
 
+type CreateDecisionParams struct {
+	WithDecisionWebhooks        bool
+	WithRuleExecutionDetails    bool
+	WithScenarioPermissionCheck bool
+}
+
 type CreateAllDecisionsInput struct {
 	OrganizationId     string
 	PayloadRaw         json.RawMessage

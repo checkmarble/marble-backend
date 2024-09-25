@@ -108,8 +108,11 @@ func handlePostDecision(uc usecases.Usecases, marbleAppHost string) func(c *gin.
 				ScenarioId:         requestData.ScenarioId,
 				TriggerObjectTable: requestData.ObjectType,
 			},
-			false,
-			true,
+			models.CreateDecisionParams{
+				WithScenarioPermissionCheck: true,
+				WithDecisionWebhooks:        true,
+				WithRuleExecutionDetails:    true,
+			},
 		)
 
 		if returnExpectedDecisionError(c, err) || presentError(c, err) {
