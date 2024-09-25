@@ -12,6 +12,7 @@ SELECT
       created_at,
       updated_at,
       score_review_threshold,
+      score_block_and_review_threshold,
       score_reject_threshold,
       deleted_at,
       schedule
