@@ -324,7 +324,6 @@ func selectDecisionsWithRank(p models.PaginationAndSorting) squirrel.SelectBuild
 	orderCondition := fmt.Sprintf("d.%s %s, d.id %s", p.Sorting, p.Order, p.Order)
 
 	query := NewQueryBuilder().
-		// Select(dbmodels.SelectDecisionColumn...).
 		Select(
 			pure_utils.Map(dbmodels.SelectDecisionColumn,
 				func(s string) string {
@@ -507,8 +506,8 @@ func (repo *DecisionRepositoryImpl) StoreDecision(
 			"id",
 			"org_id",
 			"decision_id",
-			"name",
-			"description",
+			"name",        // TODO: remove this field after it's been made nullable, reads are now denormalized
+			"description", // TODO: remove this field after it's been made nullable, reads are now denormalized
 			"score_modifier",
 			"result",
 			"error_code",
@@ -528,8 +527,8 @@ func (repo *DecisionRepositoryImpl) StoreDecision(
 				pure_utils.NewPrimaryKey(organizationId),
 				organizationId,
 				newDecisionId,
-				ruleExecution.Rule.Name,
-				ruleExecution.Rule.Description,
+				"", // TODO: remove this field after it's been made nullable, reads are now denormalized
+				"", // TODO: remove this field after it's been made nullable, reads are now denormalized
 				ruleExecution.ResultScoreModifier,
 				ruleExecution.Result,
 				ast.AdaptExecutionError(ruleExecution.Error),
@@ -576,14 +575,34 @@ func (repo *DecisionRepositoryImpl) rulesOfDecisions(
 		return nil, err
 	}
 
-	rules, err := SqlToListOfModels(
+	rules, err := SqlToListOfRow(
 		ctx,
 		exec,
-		NewQueryBuilder().Select(dbmodels.SelectDecisionRuleColumn...).
-			From(dbmodels.TABLE_DECISION_RULES).
+		NewQueryBuilder().
+			Select("d.id, d.org_id, d.decision_id, r.name, r.description, d.score_modifier, d.result, d.error_code, d.rule_id, d.rule_evaluation, d.outcome").
+			From(fmt.Sprintf("%s AS d", dbmodels.TABLE_DECISION_RULES)).
+			Join(fmt.Sprintf("%s AS r ON d.rule_id = r.id", dbmodels.TABLE_RULES)).
 			Where(squirrel.Eq{"decision_id": decisionIds}).
-			OrderBy("id"),
-		func(r dbmodels.DbDecisionRule) (models.RuleExecution, error) {
+			OrderBy("d.id"),
+		func(row pgx.CollectableRow) (models.RuleExecution, error) {
+			var r dbmodels.DbDecisionRule
+			err := row.Scan(
+				&r.Id,
+				&r.OrganizationId,
+				&r.DecisionId,
+				&r.Name,
+				&r.Description,
+				&r.ScoreModifier,
+				&r.Result,
+				&r.ErrorCode,
+				&r.RuleId,
+				&r.RuleEvaluation,
+				&r.Outcome,
+			)
+			if err != nil {
+				return models.RuleExecution{}, err
+			}
+
 			return dbmodels.AdaptRuleExecution(r)
 		},
 	)
@@ -608,14 +627,36 @@ func (repo *DecisionRepositoryImpl) rulesOfDecisionsBatch(ctx context.Context, e
 		return nil, err
 	}
 
-	allDbRules, err := SqlToListOfModels(
+	allRules, err := SqlToListOfRow(
 		ctx,
 		exec,
-		NewQueryBuilder().Select(dbmodels.SelectDecisionRuleColumn...).
-			From(dbmodels.TABLE_DECISION_RULES).
+		NewQueryBuilder().
+			Select("d.id, d.org_id, d.decision_id, r.name, r.description, d.score_modifier, d.result, d.error_code, d.rule_id, d.rule_evaluation, d.outcome").
+			From(fmt.Sprintf("%s AS d", dbmodels.TABLE_DECISION_RULES)).
+			Join(fmt.Sprintf("%s AS r ON d.rule_id = r.id", dbmodels.TABLE_RULES)).
 			Where(squirrel.Eq{"decision_id": decisionIds}).
 			OrderBy("decision_id"),
-		func(r dbmodels.DbDecisionRule) (dbmodels.DbDecisionRule, error) { return r, nil },
+		func(row pgx.CollectableRow) (models.RuleExecution, error) {
+			var r dbmodels.DbDecisionRule
+			err := row.Scan(
+				&r.Id,
+				&r.OrganizationId,
+				&r.DecisionId,
+				&r.Name,
+				&r.Description,
+				&r.ScoreModifier,
+				&r.Result,
+				&r.ErrorCode,
+				&r.RuleId,
+				&r.RuleEvaluation,
+				&r.Outcome,
+			)
+			if err != nil {
+				return models.RuleExecution{}, err
+			}
+
+			return dbmodels.AdaptRuleExecution(r)
+		},
 	)
 	if err != nil {
 		return nil, err
@@ -627,13 +668,8 @@ func (repo *DecisionRepositoryImpl) rulesOfDecisionsBatch(ctx context.Context, e
 	}
 
 	// dispatch rules to their corresponding decision
-	for _, dbRule := range allDbRules {
-		rule, err := dbmodels.AdaptRuleExecution(dbRule)
-		if err != nil {
-			return nil, errors.Wrap(err, fmt.Sprintf("decision rule (%s):", dbRule.Id))
-		}
-
-		rulesOfDecision := decisionsRulesMap[dbRule.DecisionId]
+	for _, rule := range allRules {
+		rulesOfDecision := decisionsRulesMap[rule.DecisionId]
 		rulesOfDecision.rules = append(rulesOfDecision.rules, rule)
 	}
 

@@ -75,12 +75,12 @@ type ScenarioExecution struct {
 
 type RuleExecution struct {
 	DecisionId          string
-	Outcome             string // enum: hit, no_hit, snoozed, error
-	Rule                Rule
-	Result              bool
-	Evaluation          *ast.NodeEvaluationDto
-	ResultScoreModifier int
 	Error               error
+	Evaluation          *ast.NodeEvaluationDto
+	Outcome             string // enum: hit, no_hit, snoozed, error
+	Result              bool
+	ResultScoreModifier int
+	Rule                Rule
 }
 
 func AdaptScenarExecToDecision(scenarioExecution ScenarioExecution, clientObject ClientObject, scheduledExecutionId *string) DecisionWithRuleExecutions {
