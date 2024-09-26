@@ -14,7 +14,12 @@ import (
 
 type IngestedDataReadRepository interface {
 	GetDbField(ctx context.Context, exec Executor, readParams models.DbFieldReadParams) (any, error)
-	ListAllObjectsFromTable(ctx context.Context, exec Executor, table models.Table) ([]models.ClientObject, error)
+	ListAllObjectsFromTable(
+		ctx context.Context,
+		exec Executor,
+		table models.Table,
+		filters ...models.Filter,
+	) ([]models.ClientObject, error)
 	QueryIngestedObject(
 		ctx context.Context,
 		exec Executor,
@@ -195,6 +200,7 @@ func (repo *IngestedDataReadRepositoryImpl) ListAllObjectsFromTable(
 	ctx context.Context,
 	exec Executor,
 	table models.Table,
+	filters ...models.Filter,
 ) ([]models.ClientObject, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return nil, err
@@ -207,7 +213,7 @@ func (repo *IngestedDataReadRepositoryImpl) ListAllObjectsFromTable(
 		exec,
 		tableNameWithSchema(exec, table.Name),
 		columnNames,
-		nil,
+		filters...,
 	)
 	if err != nil {
 		return nil, err
@@ -237,12 +243,17 @@ func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObject(
 
 	columnNames := models.ColumnNames(table)
 
+	qualifiedTableName := tableNameWithSchema(exec, table.Name)
 	objectsAsMap, err := queryWithDynamicColumnList(
 		ctx,
 		exec,
-		tableNameWithSchema(exec, table.Name),
+		qualifiedTableName,
 		columnNames,
-		&objectId,
+		[]models.Filter{{
+			LeftSql:    fmt.Sprintf("%s.object_id", qualifiedTableName),
+			Operator:   ast.FUNC_EQUAL,
+			RightValue: objectId,
+		}}...,
 	)
 	if err != nil {
 		return nil, err
@@ -256,15 +267,15 @@ func queryWithDynamicColumnList(
 	exec Executor,
 	qualifiedTableName string,
 	columnNames []string,
-	objectId *string,
+	filters ...models.Filter,
 ) ([]map[string]any, error) {
 	q := NewQueryBuilder().
 		Select(columnNames...).
 		From(qualifiedTableName).
 		Where(rowIsValid(qualifiedTableName))
-	if objectId != nil {
-		q = q.Where(squirrel.Eq{fmt.Sprintf("%s.object_id", qualifiedTableName): *objectId})
-	}
+	// if objectId != nil {
+	// 	q = q.Where(squirrel.Eq{fmt.Sprintf("%s.object_id", qualifiedTableName): *objectId})
+	// }
 
 	sql, args, err := q.ToSql()
 	if err != nil {

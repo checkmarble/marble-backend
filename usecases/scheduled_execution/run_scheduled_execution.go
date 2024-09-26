@@ -161,8 +161,10 @@ func (usecase *RunScheduledExecution) ScheduleScenarioIfDue(ctx context.Context,
 func (usecase *RunScheduledExecution) ExecuteAllScheduledScenarios(ctx context.Context) error {
 	logger := utils.LoggerFromContext(ctx)
 
-	pendingScheduledExecutions, err := usecase.repository.ListScheduledExecutions(ctx,
-		usecase.executorFactory.NewExecutor(), models.ListScheduledExecutionsFilters{
+	pendingScheduledExecutions, err := usecase.repository.ListScheduledExecutions(
+		ctx,
+		usecase.executorFactory.NewExecutor(),
+		models.ListScheduledExecutionsFilters{
 			Status: []models.ScheduledExecutionStatus{models.ScheduledExecutionPending},
 		})
 	if err != nil {
@@ -353,7 +355,17 @@ func (usecase *RunScheduledExecution) createScheduledScenarioDecisions(
 	if err != nil {
 		return 0, err
 	}
-	objects, err = usecase.ingestedDataReadRepository.ListAllObjectsFromTable(ctx, db, table)
+
+	liveVersion, err := usecase.repository.GetScenarioIteration(ctx, exec, *scenario.LiveVersionID)
+	if err != nil {
+		return 0, err
+	}
+	filters := selectFiltersFromTriggerAstRootAnd(
+		*liveVersion.TriggerConditionAstExpression,
+		models.TableIdentifier{Table: table.Name, Schema: db.DatabaseSchema().Schema},
+	)
+
+	objects, err = usecase.ingestedDataReadRepository.ListAllObjectsFromTable(ctx, db, table, filters...)
 	if err != nil {
 		return 0, err
 	}
