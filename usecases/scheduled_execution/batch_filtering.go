@@ -1,28 +1,32 @@
 package scheduled_execution
 
 import (
+	"fmt"
 	"slices"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/pure_utils/duration"
+
+	"github.com/jackc/pgx/v5"
 )
 
-func selectFiltersFromTriggerAstRootAnd(node ast.Node) ([]models.Filter, error) {
+func selectFiltersFromTriggerAstRootAnd(node ast.Node, table models.TableIdentifier) []models.Filter {
 	if node.Function != ast.FUNC_AND {
-		return nil, nil
+		return nil
 	}
 
 	filters := make([]models.Filter, 0, 10)
 	for _, node := range node.Children {
-		filter, valid := astConditionToFilter(node)
+		filter, valid := astConditionToFilter(node, table)
 		if valid {
 			filters = append(filters, filter)
 		}
 	}
-	return filters, nil
+	return filters
 }
 
-func astConditionToFilter(node ast.Node) (models.Filter, bool) {
+func astConditionToFilter(node ast.Node, table models.TableIdentifier) (models.Filter, bool) {
 	switch node.Function {
 	case ast.FUNC_GREATER,
 		ast.FUNC_GREATER_OR_EQUAL,
@@ -30,7 +34,7 @@ func astConditionToFilter(node ast.Node) (models.Filter, bool) {
 		ast.FUNC_LESS_OR_EQUAL,
 		ast.FUNC_EQUAL,
 		ast.FUNC_NOT_EQUAL:
-		return models.Filter{}, false
+		return filterFromComparisonNode(node, table)
 	case ast.FUNC_IS_IN_LIST,
 		ast.FUNC_IS_NOT_IN_LIST,
 		ast.FUNC_CONTAINS_ANY,
@@ -43,7 +47,7 @@ func astConditionToFilter(node ast.Node) (models.Filter, bool) {
 	return models.Filter{}, false
 }
 
-func filterFromComparisonNode(node ast.Node) (models.Filter, bool) {
+func filterFromComparisonNode(node ast.Node, table models.TableIdentifier) (models.Filter, bool) {
 	if !slices.Contains([]ast.Function{
 		ast.FUNC_GREATER,
 		ast.FUNC_GREATER_OR_EQUAL,
@@ -55,122 +59,108 @@ func filterFromComparisonNode(node ast.Node) (models.Filter, bool) {
 		return models.Filter{}, false
 	}
 
-	// left options:
-	// - constant (string, number, boolean allowed. String can be timestamp)
-	// - payload (field name)
-	// - time_add operator with something else inside
-	// - "now" operator
-
-	// right options:
-	// same things actually, the comparison is "symmetric"
-
-	// one at least must involve a "payload" field, otherwise nothing to filter on the table
-
-	fieldName, err := node.ReadConstantNamedChildString("fieldName")
-	if err != nil {
+	leftVal := comparisonValueFromNode(node.Children[0], table)
+	if !leftVal.valid {
 		return models.Filter{}, false
 	}
 
-	value, err := node.ReadConstantNamedChildString("value")
-	if err != nil {
+	rightVal := comparisonValueFromNode(node.Children[1], table)
+	if !rightVal.valid {
+		return models.Filter{}, false
+	}
+
+	if !leftVal.involvesPayload && !rightVal.involvesPayload {
 		return models.Filter{}, false
 	}
 
 	return models.Filter{
-		LeftFieldOrValue:  nil,
-		Operator:          node.Function,
-		RightFieldOrValue: nil,
+		LeftSql:    leftVal.rawSql,
+		LeftValue:  leftVal.value,
+		Operator:   node.Function,
+		RightSql:   rightVal.rawSql,
+		RightValue: rightVal.value,
 	}, true
 }
 
-func comparisonValueFromNode(node ast.Node) (value any, involvesPayload bool, valid bool) {
+type parsedFilter struct {
+	rawSql          string
+	value           any
+	involvesPayload bool
+	valid           bool
+}
+
+func payloadFieldNodeToSql(node ast.Node, table models.TableIdentifier) (string, bool) {
+	field, ok := node.Children[0].Constant.(string)
+	return pgx.Identifier.Sanitize([]string{table.Schema, table.Table, field}), ok
+}
+
+func comparisonValueFromNode(node ast.Node, table models.TableIdentifier) parsedFilter {
+	// TODO: handle identifier sanitization against SQL injection
+
 	// case 1: payload field
+	if node.Function == ast.FUNC_PAYLOAD {
+		field, ok := payloadFieldNodeToSql(node, table)
+		return parsedFilter{rawSql: field, involvesPayload: true, valid: ok}
+	}
 
 	// case 2: date add operator
+	if node.Function == ast.FUNC_TIME_ADD {
+		var involvesPayload bool
+		timeNode := node.NamedChildren["timestampField"]
+		var time string
+		if timeNode.Function == ast.FUNC_TIME_NOW {
+			time = "now()"
+		} else if timeNode.Function == ast.FUNC_PAYLOAD {
+			field, ok := payloadFieldNodeToSql(timeNode, table)
+			if !ok {
+				return parsedFilter{}
+			}
+			involvesPayload = true
+			time = field
+		} else {
+			return parsedFilter{}
+		}
+
+		sign, ok := node.NamedChildren["sign"].Constant.(string)
+		if !ok || (sign != "+" && sign != "-") {
+			return parsedFilter{}
+		}
+		durationStr, ok := node.NamedChildren["duration"].Constant.(string)
+		if !ok {
+			return parsedFilter{}
+		}
+		if _, err := duration.Parse(durationStr); err != nil {
+			// check against possible SQL injection
+			return parsedFilter{}
+		}
+
+		return parsedFilter{
+			rawSql:          fmt.Sprintf("%s %s interval %s", time, sign, durationStr),
+			involvesPayload: involvesPayload,
+			valid:           true,
+		}
+	}
 
 	// case 3: now operator
+	if node.Function == ast.FUNC_TIME_NOW {
+		return parsedFilter{rawSql: "now()", valid: true}
+	}
 
-	// case 4: custom list accessor
-
-	// case 5: constant value
+	// case 4: constant value
 	//   - string
 	//   - number
 	//   - boolean
-	//   - timestamp, but it's a string (we can pass the string to the sql query)
-	//   - list of strings => should not happen here because it's a comparison operator
+	//   - list of strings => should not happen here because it's a comparison operator, ignore it if it does anyway
+	if node.Constant != nil {
+		// switch on type
+		switch node.Constant.(type) {
+		case string, float64, bool:
+			return parsedFilter{value: node.Constant, valid: true}
+		default:
+			return parsedFilter{}
+		}
+	}
 
-	return 0, false, false
+	// return no filter in all other cases, in particular aggregates etc.
+	return parsedFilter{}
 }
-
-// func aggregationNodeToQueryFamily(node ast.Node) (models.AggregateQueryFamily, error) {
-// 	if node.Function != ast.FUNC_AGGREGATOR {
-// 		return models.AggregateQueryFamily{}, errors.Wrap(models.ErrInvalidAST, "Node is not an aggregator")
-// 	}
-
-// 	queryTableName, err := node.ReadConstantNamedChildString("tableName")
-// 	if err != nil {
-// 		return models.AggregateQueryFamily{}, errors.Wrap(models.ErrInvalidAST,
-// 			"Error reading tableName in aggregation node: "+err.Error())
-// 	}
-
-// 	aggregatedFieldName, err := node.ReadConstantNamedChildString("fieldName")
-// 	if err != nil {
-// 		return models.AggregateQueryFamily{}, errors.Wrap(models.ErrInvalidAST,
-// 			"Error reading fieldName in aggregation node: "+err.Error())
-// 	}
-
-// 	family := models.NewAggregateQueryFamily(queryTableName)
-
-// 	filters, ok := node.NamedChildren["filters"]
-// 	if !ok {
-// 		return family, nil
-// 	}
-// 	for _, filter := range filters.Children {
-// 		if tableNameStr, err := filter.ReadConstantNamedChildString("tableName"); err != nil {
-// 			return models.AggregateQueryFamily{}, errors.Wrap(models.ErrInvalidAST,
-// 				"Error reading tableName in filter node: "+err.Error())
-// 		} else if tableNameStr == "" || tableNameStr != queryTableName {
-// 			return models.AggregateQueryFamily{}, errors.Wrap(models.ErrInvalidAST,
-// 				"Filter tableName empty or is different from parent aggregator node's tableName")
-// 		}
-
-// 		fieldName, err := filter.ReadConstantNamedChildString("fieldName")
-// 		if err != nil {
-// 			return models.AggregateQueryFamily{}, errors.Wrap(models.ErrInvalidAST,
-// 				"Error reading fieldName in filter node: "+err.Error())
-// 		} else if fieldName == "" {
-// 			return models.AggregateQueryFamily{}, errors.New("Filter fieldName is empty")
-// 		}
-
-// 		operatorStr, err := filter.ReadConstantNamedChildString("operator")
-// 		if err != nil {
-// 			return models.AggregateQueryFamily{}, errors.Wrap(models.ErrInvalidAST,
-// 				"Error reading operator in filter node:"+err.Error())
-// 		}
-
-// 		switch ast.FilterOperator(operatorStr) {
-// 		case ast.FILTER_EQUAL:
-// 			family.EqConditions.Insert(fieldName)
-// 		case ast.FILTER_GREATER, ast.FILTER_GREATER_OR_EQUAL, ast.FILTER_LESSER, ast.FILTER_LESSER_OR_EQUAL:
-// 			if !family.EqConditions.Contains(fieldName) {
-// 				family.IneqConditions.Insert(fieldName)
-// 			}
-// 		case ast.FILTER_IS_IN_LIST, ast.FILTER_IS_NOT_IN_LIST, ast.FILTER_NOT_EQUAL:
-// 			if !family.EqConditions.Contains(fieldName) &&
-// 				!family.IneqConditions.Contains(fieldName) {
-// 				family.SelectOrOtherConditions.Insert(fieldName)
-// 			}
-// 		default:
-// 			return models.AggregateQueryFamily{}, errors.Wrap(models.ErrInvalidAST,
-// 				fmt.Sprintf("Filter operator %s is not valid", operatorStr))
-// 		}
-// 	}
-
-// 	// Columns that are used in the index but not in = or <,>,>=,<= filters are added as columns to be "included" in the index
-// 	if !family.EqConditions.Contains(aggregatedFieldName) &&
-// 		!family.IneqConditions.Contains(aggregatedFieldName) {
-// 		family.SelectOrOtherConditions.Insert(aggregatedFieldName)
-// 	}
-
-// 	return family, nil
-// }

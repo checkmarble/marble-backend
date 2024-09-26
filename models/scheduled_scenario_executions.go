@@ -78,7 +78,14 @@ type ListScheduledExecutionsFilters struct {
 }
 
 type Filter struct {
-	LeftFieldOrValue  any
-	Operator          ast.Function
-	RightFieldOrValue any
+	LeftSql    string
+	LeftValue  any
+	Operator   ast.Function
+	RightSql   string
+	RightValue any
+}
+
+type TableIdentifier struct {
+	Schema string
+	Table  string
 }
