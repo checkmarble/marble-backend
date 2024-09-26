@@ -76,10 +76,29 @@ func filterFromComparisonNode(node ast.Node, table models.TableIdentifier) (mode
 	return models.Filter{
 		LeftSql:    leftVal.rawSql,
 		LeftValue:  leftVal.value,
-		Operator:   node.Function,
+		Operator:   comparisonAstNodeToString(node),
 		RightSql:   rightVal.rawSql,
 		RightValue: rightVal.value,
 	}, true
+}
+
+func comparisonAstNodeToString(node ast.Node) string {
+	switch node.Function {
+	case ast.FUNC_GREATER:
+		return ">"
+	case ast.FUNC_GREATER_OR_EQUAL:
+		return ">="
+	case ast.FUNC_LESS:
+		return "<"
+	case ast.FUNC_LESS_OR_EQUAL:
+		return "<="
+	case ast.FUNC_EQUAL:
+		return "="
+	case ast.FUNC_NOT_EQUAL:
+		return "!="
+	default:
+		return ""
+	}
 }
 
 type parsedFilter struct {
@@ -135,7 +154,7 @@ func comparisonValueFromNode(node ast.Node, table models.TableIdentifier) parsed
 		}
 
 		return parsedFilter{
-			rawSql:          fmt.Sprintf("%s %s interval %s", time, sign, durationStr),
+			rawSql:          fmt.Sprintf("%s %s interval '%s'", time, sign, durationStr),
 			involvesPayload: involvesPayload,
 			valid:           true,
 		}
