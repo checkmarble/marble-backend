@@ -251,7 +251,7 @@ func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObject(
 		columnNames,
 		[]models.Filter{{
 			LeftSql:    fmt.Sprintf("%s.object_id", qualifiedTableName),
-			Operator:   ast.FUNC_EQUAL,
+			Operator:   "=",
 			RightValue: objectId,
 		}}...,
 	)
@@ -273,9 +273,10 @@ func queryWithDynamicColumnList(
 		Select(columnNames...).
 		From(qualifiedTableName).
 		Where(rowIsValid(qualifiedTableName))
-	// if objectId != nil {
-	// 	q = q.Where(squirrel.Eq{fmt.Sprintf("%s.object_id", qualifiedTableName): *objectId})
-	// }
+	for _, f := range filters {
+		sql, args := f.ToSql()
+		q = q.Where(sql, args...)
+	}
 
 	sql, args, err := q.ToSql()
 	if err != nil {

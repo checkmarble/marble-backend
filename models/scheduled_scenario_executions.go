@@ -1,9 +1,8 @@
 package models
 
 import (
+	"fmt"
 	"time"
-
-	"github.com/checkmarble/marble-backend/models/ast"
 )
 
 type ScheduledExecution struct {
@@ -80,9 +79,30 @@ type ListScheduledExecutionsFilters struct {
 type Filter struct {
 	LeftSql    string
 	LeftValue  any
-	Operator   ast.Function
+	Operator   string
 	RightSql   string
 	RightValue any
+}
+
+func (f Filter) ToSql() (string, []any) {
+	var args []any
+	var left string
+	if f.LeftSql != "" {
+		left = f.LeftSql
+	} else {
+		left = "?"
+		args = append(args, f.LeftValue)
+	}
+
+	var right string
+	if f.RightSql != "" {
+		right = f.RightSql
+	} else {
+		right = "?"
+		args = append(args, f.RightValue)
+	}
+
+	return fmt.Sprintf("%s %s %s", left, f.Operator, right), args
 }
 
 type TableIdentifier struct {
