@@ -251,7 +251,7 @@ func (repo *IngestedDataReadRepositoryImpl) QueryIngestedObject(
 		columnNames,
 		[]models.Filter{{
 			LeftSql:    fmt.Sprintf("%s.object_id", qualifiedTableName),
-			Operator:   "=",
+			Operator:   ast.FUNC_EQUAL,
 			RightValue: objectId,
 		}}...,
 	)
