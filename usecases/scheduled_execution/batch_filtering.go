@@ -18,7 +18,7 @@ func selectFiltersFromTriggerAstRootAnd(node ast.Node, table models.TableIdentif
 
 	filters := make([]models.Filter, 0, 10)
 	for _, node := range node.Children {
-		filter, valid := astConditionToFilter(node, table)
+		filter, valid := filterFromComparisonNode(node, table, 0)
 		if valid {
 			filters = append(filters, filter)
 		}
@@ -26,105 +26,49 @@ func selectFiltersFromTriggerAstRootAnd(node ast.Node, table models.TableIdentif
 	return filters
 }
 
-func astConditionToFilter(node ast.Node, table models.TableIdentifier) (models.Filter, bool) {
-	switch node.Function {
-	case ast.FUNC_GREATER,
-		ast.FUNC_GREATER_OR_EQUAL,
-		ast.FUNC_LESS,
-		ast.FUNC_LESS_OR_EQUAL,
-		ast.FUNC_EQUAL,
-		ast.FUNC_NOT_EQUAL:
-		return filterFromComparisonNode(node, table)
-	case ast.FUNC_IS_IN_LIST,
-		ast.FUNC_IS_NOT_IN_LIST,
-		ast.FUNC_CONTAINS_ANY,
-		ast.FUNC_CONTAINS_NONE:
-		return models.Filter{}, false
-	case ast.FUNC_STRING_CONTAINS,
-		ast.FUNC_STRING_NOT_CONTAIN:
-		return models.Filter{}, false
-	}
-	return models.Filter{}, false
-}
-
-func filterFromComparisonNode(node ast.Node, table models.TableIdentifier) (models.Filter, bool) {
-	if !slices.Contains([]ast.Function{
-		ast.FUNC_GREATER,
-		ast.FUNC_GREATER_OR_EQUAL,
-		ast.FUNC_LESS,
-		ast.FUNC_LESS_OR_EQUAL,
-		ast.FUNC_EQUAL,
-		ast.FUNC_NOT_EQUAL,
-	}, node.Function) {
+func filterFromComparisonNode(node ast.Node, table models.TableIdentifier, depth int) (models.Filter, bool) {
+	if depth > 3 {
+		// Should not happen on a scenario edited in the app, but to be sure: avoid too deep recursion
 		return models.Filter{}, false
 	}
 
-	leftVal := comparisonValueFromNode(node.Children[0], table)
+	leftVal := comparisonValueFromNode(node.Children[0], table, depth)
 	if !leftVal.valid {
 		return models.Filter{}, false
 	}
 
-	rightVal := comparisonValueFromNode(node.Children[1], table)
+	rightVal := comparisonValueFromNode(node.Children[1], table, depth)
 	if !rightVal.valid {
 		return models.Filter{}, false
 	}
 
-	if !leftVal.involvesPayload && !rightVal.involvesPayload {
-		return models.Filter{}, false
-	}
-
 	return models.Filter{
-		LeftSql:    leftVal.rawSql,
-		LeftValue:  leftVal.value,
-		Operator:   comparisonAstNodeToString(node),
-		RightSql:   rightVal.rawSql,
-		RightValue: rightVal.value,
+		LeftSql:           leftVal.rawSql,
+		LeftValue:         leftVal.value,
+		LeftNestedFilter:  leftVal.nestedValue,
+		Operator:          node.Function,
+		RightSql:          rightVal.rawSql,
+		RightValue:        rightVal.value,
+		RightNestedFilter: rightVal.nestedValue,
 	}, true
 }
 
-func comparisonAstNodeToString(node ast.Node) string {
-	switch node.Function {
-	case ast.FUNC_GREATER:
-		return ">"
-	case ast.FUNC_GREATER_OR_EQUAL:
-		return ">="
-	case ast.FUNC_LESS:
-		return "<"
-	case ast.FUNC_LESS_OR_EQUAL:
-		return "<="
-	case ast.FUNC_EQUAL:
-		return "="
-	case ast.FUNC_NOT_EQUAL:
-		return "!="
-	default:
-		return ""
-	}
+type parsedFilterValue struct {
+	rawSql      string
+	value       any
+	nestedValue *models.Filter
+	valid       bool
 }
 
-type parsedFilter struct {
-	rawSql          string
-	value           any
-	involvesPayload bool
-	valid           bool
-}
-
-func payloadFieldNodeToSql(node ast.Node, table models.TableIdentifier) (string, bool) {
-	field, ok := node.Children[0].Constant.(string)
-	return pgx.Identifier.Sanitize([]string{table.Schema, table.Table, field}), ok
-}
-
-func comparisonValueFromNode(node ast.Node, table models.TableIdentifier) parsedFilter {
-	// TODO: handle identifier sanitization against SQL injection
-
+func comparisonValueFromNode(node ast.Node, table models.TableIdentifier, depth int) parsedFilterValue {
 	// case 1: payload field
 	if node.Function == ast.FUNC_PAYLOAD {
 		field, ok := payloadFieldNodeToSql(node, table)
-		return parsedFilter{rawSql: field, involvesPayload: true, valid: ok}
+		return parsedFilterValue{rawSql: field, valid: ok}
 	}
 
 	// case 2: date add operator
 	if node.Function == ast.FUNC_TIME_ADD {
-		var involvesPayload bool
 		timeNode := node.NamedChildren["timestampField"]
 		var time string
 		if timeNode.Function == ast.FUNC_TIME_NOW {
@@ -132,54 +76,90 @@ func comparisonValueFromNode(node ast.Node, table models.TableIdentifier) parsed
 		} else if timeNode.Function == ast.FUNC_PAYLOAD {
 			field, ok := payloadFieldNodeToSql(timeNode, table)
 			if !ok {
-				return parsedFilter{}
+				return parsedFilterValue{}
 			}
-			involvesPayload = true
 			time = field
 		} else {
-			return parsedFilter{}
+			return parsedFilterValue{}
 		}
 
 		sign, ok := node.NamedChildren["sign"].Constant.(string)
 		if !ok || (sign != "+" && sign != "-") {
-			return parsedFilter{}
+			return parsedFilterValue{}
 		}
 		durationStr, ok := node.NamedChildren["duration"].Constant.(string)
 		if !ok {
-			return parsedFilter{}
+			return parsedFilterValue{}
 		}
 		if _, err := duration.Parse(durationStr); err != nil {
 			// check against possible SQL injection
-			return parsedFilter{}
+			return parsedFilterValue{}
 		}
 
-		return parsedFilter{
-			rawSql:          fmt.Sprintf("%s %s interval '%s'", time, sign, durationStr),
-			involvesPayload: involvesPayload,
-			valid:           true,
+		return parsedFilterValue{
+			rawSql: fmt.Sprintf("%s %s interval '%s'", time, sign, durationStr),
+			valid:  true,
 		}
 	}
 
 	// case 3: now operator
 	if node.Function == ast.FUNC_TIME_NOW {
-		return parsedFilter{rawSql: "now()", valid: true}
+		return parsedFilterValue{rawSql: "now()", valid: true}
 	}
 
-	// case 4: constant value
-	//   - string
-	//   - number
-	//   - boolean
-	//   - list of strings => should not happen here because it's a comparison operator, ignore it if it does anyway
+	// case 4: constant value: string number, boolean or list of strings
 	if node.Constant != nil {
-		// switch on type
 		switch node.Constant.(type) {
 		case string, float64, bool:
-			return parsedFilter{value: node.Constant, valid: true}
+			return parsedFilterValue{value: node.Constant, valid: true}
+		case []any:
+			// if the json ast contains an array of strings, is is decoded as []any by go
+			strings := []string{}
+			for _, v := range node.Constant.([]any) {
+				if s, ok := v.(string); ok {
+					strings = append(strings, s)
+				} else {
+					return parsedFilterValue{}
+				}
+			}
+			return parsedFilterValue{value: strings, valid: true}
 		default:
-			return parsedFilter{}
+			return parsedFilterValue{}
 		}
 	}
 
-	// return no filter in all other cases, in particular aggregates etc.
-	return parsedFilter{}
+	// case 5: nested operator (mathematical operation or comparison)
+	if canBeNestedNode(node) {
+		nestedFilter, valid := filterFromComparisonNode(node, table, depth+1)
+		return parsedFilterValue{nestedValue: &nestedFilter, valid: valid}
+	}
+
+	// return no filter in all other cases, in particular: DB field access, aggregates, custom list access, string similarity
+	return parsedFilterValue{}
+}
+
+func payloadFieldNodeToSql(node ast.Node, table models.TableIdentifier) (string, bool) {
+	field, ok := node.Children[0].Constant.(string)
+	return pgx.Identifier.Sanitize([]string{table.Schema, table.Table, field}), ok
+}
+
+func canBeNestedNode(node ast.Node) bool {
+	return slices.Contains(
+		[]ast.Function{
+			ast.FUNC_GREATER,
+			ast.FUNC_GREATER_OR_EQUAL,
+			ast.FUNC_LESS,
+			ast.FUNC_LESS_OR_EQUAL,
+			ast.FUNC_EQUAL,
+			ast.FUNC_NOT_EQUAL,
+			ast.FUNC_IS_IN_LIST,
+			ast.FUNC_IS_NOT_IN_LIST,
+			ast.FUNC_STRING_CONTAINS,
+			ast.FUNC_STRING_NOT_CONTAIN,
+			ast.FUNC_SUBTRACT,
+			ast.FUNC_ADD,
+			ast.FUNC_MULTIPLY,
+			ast.FUNC_DIVIDE,
+		},
+		node.Function)
 }

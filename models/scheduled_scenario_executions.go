@@ -2,7 +2,10 @@ package models
 
 import (
 	"fmt"
+	"slices"
 	"time"
+
+	"github.com/checkmarble/marble-backend/models/ast"
 )
 
 type ScheduledExecution struct {
@@ -77,32 +80,114 @@ type ListScheduledExecutionsFilters struct {
 }
 
 type Filter struct {
-	LeftSql    string
-	LeftValue  any
-	Operator   string
-	RightSql   string
-	RightValue any
+	LeftSql           string
+	LeftValue         any
+	LeftNestedFilter  *Filter
+	Operator          ast.Function
+	RightSql          string
+	RightValue        any
+	RightNestedFilter *Filter
 }
 
-func (f Filter) ToSql() (string, []any) {
-	var args []any
+func mathComparisonFuncToString(f ast.Function) string {
+	switch f {
+	case ast.FUNC_GREATER:
+		return ">"
+	case ast.FUNC_GREATER_OR_EQUAL:
+		return ">="
+	case ast.FUNC_LESS:
+		return "<"
+	case ast.FUNC_LESS_OR_EQUAL:
+		return "<="
+	case ast.FUNC_EQUAL:
+		return "="
+	case ast.FUNC_NOT_EQUAL:
+		return "!="
+	case ast.FUNC_ADD:
+		return "+"
+	case ast.FUNC_SUBTRACT:
+		return "-"
+	case ast.FUNC_MULTIPLY:
+		return "*"
+	case ast.FUNC_DIVIDE:
+		return "/"
+	default:
+		return ""
+	}
+}
+
+func isMathOperation(f ast.Function) bool {
+	return slices.Contains([]ast.Function{
+		ast.FUNC_GREATER,
+		ast.FUNC_GREATER_OR_EQUAL,
+		ast.FUNC_LESS,
+		ast.FUNC_LESS_OR_EQUAL,
+		ast.FUNC_EQUAL,
+		ast.FUNC_NOT_EQUAL,
+		ast.FUNC_ADD,
+		ast.FUNC_SUBTRACT,
+		ast.FUNC_MULTIPLY,
+		ast.FUNC_DIVIDE,
+	}, f)
+}
+
+func isStringComparison(f ast.Function) bool {
+	return slices.Contains([]ast.Function{
+		ast.FUNC_STRING_CONTAINS,
+		ast.FUNC_STRING_NOT_CONTAIN,
+	}, f)
+}
+
+func isInListComparison(f ast.Function) bool {
+	return slices.Contains([]ast.Function{
+		ast.FUNC_IS_IN_LIST,
+		ast.FUNC_IS_NOT_IN_LIST,
+	}, f)
+}
+
+// Disclaimer: this logic creates some coupling between the models and SQL queries. It's not great, but I could not find
+// a simple enough abstraction to avoid doing this.
+func (f Filter) ToSql() (sql string, args []any) {
 	var left string
 	if f.LeftSql != "" {
 		left = f.LeftSql
-	} else {
+	} else if f.LeftValue != nil {
 		left = "?"
 		args = append(args, f.LeftValue)
+	} else if f.LeftNestedFilter != nil {
+		leftSql, leftArgs := f.LeftNestedFilter.ToSql()
+		left = fmt.Sprintf("(%s)", leftSql)
+		args = append(args, leftArgs...)
 	}
 
 	var right string
 	if f.RightSql != "" {
 		right = f.RightSql
-	} else {
+	} else if f.RightValue != nil {
 		right = "?"
 		args = append(args, f.RightValue)
+	} else if f.RightNestedFilter != nil {
+		rightSql, rightArgs := f.RightNestedFilter.ToSql()
+		right = fmt.Sprintf("(%s)", rightSql)
+		args = append(args, rightArgs...)
 	}
 
-	return fmt.Sprintf("%s %s %s", left, f.Operator, right), args
+	if isMathOperation(f.Operator) {
+		// apply NULLIF to protect against division by zero
+		if f.Operator == ast.FUNC_DIVIDE {
+			sql = fmt.Sprintf("%s %s NULLIF(%s, 0)",
+				left, mathComparisonFuncToString(f.Operator), right)
+		} else {
+			sql = fmt.Sprintf("%s %s %s", left,
+				mathComparisonFuncToString(f.Operator), right)
+		}
+	} else if isStringComparison(f.Operator) {
+		sql = fmt.Sprintf("%s ILIKE CONCAT('%%',%s,'%%')", left, right)
+	} else if isInListComparison(f.Operator) {
+		sql = fmt.Sprintf("%s = ANY(%s)", left, right)
+	}
+
+	return sql, args
 }
 
 type TableIdentifier struct {
