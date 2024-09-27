@@ -287,8 +287,20 @@ func setupScenarioAndPublish(
 			Body: &models.CreateScenarioIterationBody{
 				Rules: rules,
 				TriggerConditionAstExpression: &ast.Node{
-					Function: ast.FUNC_EQUAL,
-					Children: []ast.Node{{Constant: "transactions"}, {Constant: "transactions"}},
+					Function: ast.FUNC_AND,
+					Children: []ast.Node{
+						{
+							Function: ast.FUNC_EQUAL,
+							Children: []ast.Node{{Constant: "transactions"}, {Constant: "transactions"}},
+						},
+						{
+							Function: ast.FUNC_GREATER_OR_EQUAL,
+							Children: []ast.Node{
+								{Function: ast.FUNC_TIME_NOW},
+								{Function: ast.FUNC_PAYLOAD, Children: []ast.Node{{Constant: "updated_at"}}},
+							},
+						},
+					},
 				},
 				ScoreReviewThreshold:         &threshold,
 				ScoreBlockAndReviewThreshold: &threshold,
