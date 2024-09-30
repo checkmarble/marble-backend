@@ -15,7 +15,7 @@
         "--server",
         "--migrations"
       ],
-      // "console": "integratedTerminal"
+      "console": "integratedTerminal"
     },
     {
       "name": "Launch scenario scheduling job (.env)",
@@ -27,7 +27,7 @@
       "args": [
         "--scheduler"
       ],
-      // "console": "integratedTerminal"
+      "console": "integratedTerminal"
     },
     {
       "name": "Launch execute scheduled scenario job (.env)",
@@ -39,7 +39,7 @@
       "args": [
         "--scheduled-executer"
       ],
-      // "console": "integratedTerminal"
+      "console": "integratedTerminal"
     },
     {
       "name": "Launch data ingestion job (.env)",

@@ -28,7 +28,7 @@ func TestFilterFromComparisonNode(t *testing.T) {
 		{
 			name: "timestamp comparison with date shift",
 			ruleJson: `{
-				"name": "\u003c",
+				"name": "<",
 				"children": [
 					{
 					"name": "TimeAdd",
@@ -51,7 +51,7 @@ func TestFilterFromComparisonNode(t *testing.T) {
 		{
 			name: "number comparison with nested division",
 			ruleJson: `{
-				"name": "\u003c",
+				"name": "<",
 				"children": [
 					{ "constant": 1 },
 					{
