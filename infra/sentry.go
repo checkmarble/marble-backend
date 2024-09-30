@@ -20,7 +20,10 @@ func SetupSentry(dsn, env string) {
 			if ctx.Span.Name == "GET /token" {
 				return 0.05
 			}
-			return 0.1
+			if ctx.Span.Name == "POST /transfers" {
+				return 0.05
+			}
+			return 0.2
 		}),
 		// Experimental - value to be adjusted in prod once volumes go up - relative to the trace sampling rate
 		ProfilesSampleRate: 0.2,
