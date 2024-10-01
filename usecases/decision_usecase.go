@@ -212,7 +212,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		return models.DecisionWithRuleExecutions{},
 			errors.Wrap(err, "error getting scenario")
 	}
-	if !params.WithScenarioPermissionCheck {
+	if params.WithScenarioPermissionCheck {
 		if err := usecase.enforceSecurityScenario.ReadScenario(scenario); err != nil {
 			return models.DecisionWithRuleExecutions{}, err
 		}
