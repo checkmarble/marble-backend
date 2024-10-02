@@ -14,12 +14,12 @@ import (
 
 type IngestedDataReadRepository interface {
 	GetDbField(ctx context.Context, exec Executor, readParams models.DbFieldReadParams) (any, error)
-	ListAllObjectsFromTable(
+	ListAllObjectIdsFromTable(
 		ctx context.Context,
 		exec Executor,
 		table models.Table,
 		filters ...models.Filter,
-	) ([]models.ClientObject, error)
+	) ([]string, error)
 	QueryIngestedObject(
 		ctx context.Context,
 		exec Executor,
@@ -195,37 +195,30 @@ func rowIsValid(tableName string) squirrel.Eq {
 	return squirrel.Eq{fmt.Sprintf("%s.valid_until", tableName): "Infinity"}
 }
 
-// "list all fields" methods
-func (repo *IngestedDataReadRepositoryImpl) ListAllObjectsFromTable(
+func (repo *IngestedDataReadRepositoryImpl) ListAllObjectIdsFromTable(
 	ctx context.Context,
 	exec Executor,
 	table models.Table,
 	filters ...models.Filter,
-) ([]models.ClientObject, error) {
+) ([]string, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return nil, err
 	}
-
-	columnNames := models.ColumnNames(table)
 
 	objectsAsMap, err := queryWithDynamicColumnList(
 		ctx,
 		exec,
 		tableNameWithSchema(exec, table.Name),
-		columnNames,
+		[]string{"object_id"},
 		filters...,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	output := make([]models.ClientObject, len(objectsAsMap))
+	output := make([]string, len(objectsAsMap))
 	for i, objectAsMap := range objectsAsMap {
-		object := models.ClientObject{
-			TableName: table.Name,
-			Data:      objectAsMap,
-		}
-		output[i] = object
+		output[i] = objectAsMap["object_id"].(string)
 	}
 
 	return output, nil
