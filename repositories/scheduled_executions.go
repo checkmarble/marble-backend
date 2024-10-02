@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -174,9 +175,63 @@ func (repo *MarbleDbRepository) UpdateScheduledExecution(
 		Where("id = ?", input.Id)
 
 	if input.NumberOfPlannedDecisions != nil {
-		query = query.Set("number_of_planned_decisions",
-			*input.NumberOfPlannedDecisions)
+		query = query.
+			Set("number_of_planned_decisions", *input.NumberOfPlannedDecisions)
 	}
+
+	return ExecBuilder(ctx, exec, query)
+}
+
+func (repo *MarbleDbRepository) StoreDecisionsToCreate(
+	ctx context.Context,
+	exec Executor,
+	decisionsToCreate models.DecisionToCreateBatchCreateInput,
+) ([]models.DecisionToCreate, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Insert(dbmodels.TABLE_DECISIONS_TO_CREATE).
+		Columns(
+			"scheduled_execution_id",
+			"object_id",
+		)
+
+	for _, objectId := range decisionsToCreate.ObjectId {
+		query = query.Values(
+			decisionsToCreate.ScheduledExecutionId,
+			objectId,
+		)
+	}
+
+	query = query.Suffix(fmt.Sprintf("RETURNING %s",
+		strings.Join(dbmodels.DecisionToCreateFields, ",")))
+
+	return SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (models.DecisionToCreate, error) {
+		db, err := pgx.RowToStructByPos[dbmodels.DecisionToCreate](row)
+		if err != nil {
+			return models.DecisionToCreate{}, err
+		}
+		return dbmodels.AdaptDecisionToCrate(db), nil
+	})
+}
+
+func (repo *MarbleDbRepository) UpdateDecisionToCreateStatus(
+	ctx context.Context,
+	exec Executor,
+	id string,
+	status models.DecisionToCreateStatus,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_DECISIONS_TO_CREATE).
+		Where("id = ?", id).
+		Set("status", status).
+		Set("updated_at", "NOW()")
 
 	return ExecBuilder(ctx, exec, query)
 }

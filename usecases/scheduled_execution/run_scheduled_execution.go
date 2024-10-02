@@ -312,6 +312,7 @@ func (usecase *RunScheduledExecution) createScheduledScenarioDecisions(
 		)
 		nbEvaluatedDec += 1
 		if err != nil {
+			fmt.Printf("%+v\n", err)
 			updateErr := usecase.repository.UpdateDecisionToCreateStatus(
 				ctx,
 				exec,
