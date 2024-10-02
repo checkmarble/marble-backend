@@ -27,6 +27,7 @@ const (
 	ScheduledExecutionPending ScheduledExecutionStatus = iota
 	ScheduledExecutionProcessing
 	ScheduledExecutionSuccess
+	ScheduledExecutionPartialFailure
 	ScheduledExecutionFailure
 )
 
@@ -38,6 +39,8 @@ func (s ScheduledExecutionStatus) String() string {
 		return "processing"
 	case ScheduledExecutionSuccess:
 		return "success"
+	case ScheduledExecutionPartialFailure:
+		return "partial_failure"
 	case ScheduledExecutionFailure:
 		return "failure"
 	}
@@ -52,6 +55,8 @@ func ScheduledExecutionStatusFrom(s string) ScheduledExecutionStatus {
 		return ScheduledExecutionSuccess
 	case "failure":
 		return ScheduledExecutionFailure
+	case "partial_failure":
+		return ScheduledExecutionPartialFailure
 	case "processing":
 		return ScheduledExecutionProcessing
 	}
@@ -59,10 +64,16 @@ func ScheduledExecutionStatusFrom(s string) ScheduledExecutionStatus {
 }
 
 type UpdateScheduledExecutionStatusInput struct {
+	Id                         string
+	Status                     ScheduledExecutionStatus
+	NumberOfCreatedDecisions   *int64
+	NumberOfEvaluatedDecisions *int64
+	CurrentStatusCondition     ScheduledExecutionStatus // Used for optimistic locking
+}
+
+type UpdateScheduledExecutionInput struct {
 	Id                       string
-	Status                   ScheduledExecutionStatus
-	NumberOfCreatedDecisions *int
-	CurrentStatusCondition   ScheduledExecutionStatus // Used for optimistic locking
+	NumberOfPlannedDecisions *int64
 }
 
 type CreateScheduledExecutionInput struct {
@@ -194,3 +205,26 @@ type TableIdentifier struct {
 	Schema string
 	Table  string
 }
+
+type DecisionToCreateStatus string
+
+type DecisionToCreate struct {
+	Id                   string
+	ScheduledExecutionId string
+	ObjectId             string
+	Status               DecisionToCreateStatus
+	CreatedAt            time.Time
+	UpdateAt             time.Time
+}
+
+type DecisionToCreateBatchCreateInput struct {
+	ScheduledExecutionId string
+	ObjectId             []string
+}
+
+const (
+	DecisionToCreateStatusPending                  = "pending"
+	DecisionToCreateStatusCreated                  = "created"
+	DecisionToCreateStatusFailed                   = "failed"
+	DecisionToCreateStatusTriggerConditionMismatch = "trigger_condition_mismatch"
+)

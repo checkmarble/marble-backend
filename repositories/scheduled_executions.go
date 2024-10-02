@@ -140,7 +140,11 @@ func (repo *MarbleDbRepository) UpdateScheduledExecutionStatus(
 			*updateScheduledEx.NumberOfCreatedDecisions)
 	}
 
-	// return ExecBuilder(ctx, exec, query)
+	if updateScheduledEx.NumberOfEvaluatedDecisions != nil {
+		query = query.Set("number_of_evaluated_decisions",
+			*updateScheduledEx.NumberOfEvaluatedDecisions)
+	}
+
 	sql, args, err := query.ToSql()
 	if err != nil {
 		return false, err
@@ -154,4 +158,25 @@ func (repo *MarbleDbRepository) UpdateScheduledExecutionStatus(
 		return false, nil
 	}
 	return true, nil
+}
+
+func (repo *MarbleDbRepository) UpdateScheduledExecution(
+	ctx context.Context,
+	exec Executor,
+	input models.UpdateScheduledExecutionInput,
+) error {
+	// uses optimistic locking based on the current status to avoid overwriting the status incorrectly
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_SCHEDULED_EXECUTIONS).
+		Where("id = ?", input.Id)
+
+	if input.NumberOfPlannedDecisions != nil {
+		query = query.Set("number_of_planned_decisions",
+			*input.NumberOfPlannedDecisions)
+	}
+
+	return ExecBuilder(ctx, exec, query)
 }

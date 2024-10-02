@@ -211,7 +211,7 @@ func (usecases *UsecasesWithCreds) NewRunScheduledExecution() scheduled_executio
 	return *scheduled_execution.NewRunScheduledExecution(
 		&usecases.Repositories.MarbleDbRepository,
 		usecases.NewExecutorFactory(),
-		*usecases.NewExportScheduleExecution(),
+		// *usecases.NewExportScheduleExecution(),
 		usecases.Repositories.ScenarioPublicationRepository,
 		usecases.Repositories.DataModelRepository,
 		usecases.Repositories.IngestedDataReadRepository,
