@@ -462,7 +462,7 @@ func (repo *DecisionRepositoryImpl) StoreDecision(
 				"scenario_description",
 				"scenario_version",
 				"score",
-				"error_code",
+				// "error_code",
 				"trigger_object",
 				"trigger_object_type",
 				"scheduled_execution_id",
@@ -480,7 +480,7 @@ func (repo *DecisionRepositoryImpl) StoreDecision(
 				decision.ScenarioDescription,
 				decision.ScenarioVersion,
 				decision.Score,
-				0, // TODO: cleanup, remove the field in db (it's nullable now)
+				// 0, // TODO: cleanup, remove the field in db (it's nullable now)
 				decision.ClientObject.Data,
 				decision.ClientObject.TableName,
 				decision.ScheduledExecutionId,
@@ -506,8 +506,8 @@ func (repo *DecisionRepositoryImpl) StoreDecision(
 			"id",
 			"org_id",
 			"decision_id",
-			"name",        // TODO: remove this field after it's been made nullable, reads are now denormalized
-			"description", // TODO: remove this field after it's been made nullable, reads are now denormalized
+			// "name",        // TODO: remove this field after it's been made nullable, reads are now denormalized
+			// "description", // TODO: remove this field after it's been made nullable, reads are now denormalized
 			"score_modifier",
 			"result",
 			"error_code",
@@ -527,8 +527,8 @@ func (repo *DecisionRepositoryImpl) StoreDecision(
 				pure_utils.NewPrimaryKey(organizationId),
 				organizationId,
 				newDecisionId,
-				"", // TODO: remove this field after it's been made nullable, reads are now denormalized
-				"", // TODO: remove this field after it's been made nullable, reads are now denormalized
+				// "", // TODO: remove this field after it's been made nullable, reads are now denormalized
+				// "", // TODO: remove this field after it's been made nullable, reads are now denormalized
 				ruleExecution.ResultScoreModifier,
 				ruleExecution.Result,
 				ast.AdaptExecutionError(ruleExecution.Error),

@@ -14,11 +14,11 @@ import (
 const TABLE_DECISIONS = "decisions"
 
 type DbDecision struct {
-	Id                   string      `db:"id"`
-	OrganizationId       string      `db:"org_id"`
-	CaseId               *string     `db:"case_id"`
-	CreatedAt            time.Time   `db:"created_at"`
-	ErrorCode            int         `db:"error_code"`
+	Id             string    `db:"id"`
+	OrganizationId string    `db:"org_id"`
+	CaseId         *string   `db:"case_id"`
+	CreatedAt      time.Time `db:"created_at"`
+	// ErrorCode            int         `db:"error_code"` TODO: remove this deprecated field
 	DeletedAt            pgtype.Time `db:"deleted_at"`
 	Outcome              string      `db:"outcome"`
 	PivotId              *string     `db:"pivot_id"`
