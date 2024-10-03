@@ -3,24 +3,43 @@ package jobs
 import (
 	"context"
 	"log/slog"
-
-	"github.com/cockroachdb/errors"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 )
 
-// Runs every hour at past 10min
-func ScheduleDueScenarios(ctx context.Context, uc usecases.Usecases) error {
+const batchScenarioExecutionTimeout = 3 * time.Hour
+
+// Runs every minute
+func ExecuteAllScheduledScenarios(ctx context.Context, uc usecases.Usecases) error {
 	return executeWithMonitoring(
 		ctx,
 		uc,
-		"scenario-scheduler",
+		"scheduled-execution",
 		func(
 			ctx context.Context, usecases usecases.Usecases,
 		) error {
-			return scheduledScenarios(ctx, usecases)
+			usecasesWithCreds := GenerateUsecaseWithCredForMarbleAdmin(ctx, usecases)
+			runScheduledExecution := usecasesWithCreds.NewRunScheduledExecution()
+			ctx, cancel := context.WithTimeout(ctx, batchScenarioExecutionTimeout)
+			defer cancel()
+
+			// First, schedule all due scenarios
+			err := scheduledScenarios(ctx, usecases)
+			if err != nil {
+				return err
+			}
+
+			// Then, execute all scheduled scenarios
+			err = runScheduledExecution.ExecuteAllScheduledScenarios(ctx)
+			if err != nil {
+				return err
+			}
+
+			return nil
 		},
 	)
 }

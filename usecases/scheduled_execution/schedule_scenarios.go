@@ -40,7 +40,7 @@ func (usecase *RunScheduledExecution) ScheduleScenarioIfDue(ctx context.Context,
 		return err
 	}
 	if len(previousExecutions) > 0 {
-		logger.DebugContext(ctx, fmt.Sprintf("scenario %s has already a pending or processing scheduled execution", scenarioId))
+		logger.DebugContext(ctx, fmt.Sprintf("scenario %s already has a pending or processing scheduled execution", scenarioId))
 		return nil
 	}
 

@@ -21,14 +21,6 @@ func RunScheduler(ctx context.Context, usecases usecases.Usecases) {
 		Tz:      "Europe/Paris",
 	}).WithContext(ctx)
 
-	notConcurrent := false
-	taskr.Task("* * * * *", func(ctx context.Context) (int, error) {
-		logger := utils.LoggerFromContext(ctx).With("job", "schedule_due_scenarios")
-		ctx = utils.StoreLoggerInContext(ctx, logger)
-		err := ScheduleDueScenarios(ctx, usecases)
-		return errToReturnCode(err), err
-	}, notConcurrent)
-
 	taskr.Task("* * * * *", func(ctx context.Context) (int, error) {
 		logger := utils.LoggerFromContext(ctx).With("job", "execute_all_scheduled_scenarios")
 		ctx = utils.StoreLoggerInContext(ctx, logger)
