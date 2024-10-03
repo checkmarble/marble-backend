@@ -289,6 +289,10 @@ func (usecase *RunScheduledExecution) createScheduledScenarioDecisions(
 		return false, numbersOfDecisions{}, err
 	}
 
+	if len(objectIds) == 0 {
+		return true, numbersOfDecisions{}, nil
+	}
+
 	decisionsToCreate, err := usecase.repository.StoreDecisionsToCreate(ctx, exec, models.DecisionToCreateBatchCreateInput{
 		ScheduledExecutionId: scheduledExecutionId,
 		ObjectId:             objectIds,
