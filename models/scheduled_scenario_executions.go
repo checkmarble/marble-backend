@@ -9,16 +9,18 @@ import (
 )
 
 type ScheduledExecution struct {
-	Id                       string
-	OrganizationId           string
-	ScenarioId               string
-	ScenarioIterationId      string
-	Status                   ScheduledExecutionStatus
-	StartedAt                time.Time
-	FinishedAt               *time.Time
-	NumberOfCreatedDecisions int
-	Scenario                 Scenario
-	Manual                   bool
+	Id                         string
+	OrganizationId             string
+	ScenarioId                 string
+	ScenarioIterationId        string
+	Status                     ScheduledExecutionStatus
+	StartedAt                  time.Time
+	FinishedAt                 *time.Time
+	NumberOfCreatedDecisions   *int
+	NumberOfEvaluatedDecisions *int
+	NumberOfPlannedDecisions   *int
+	Scenario                   Scenario
+	Manual                     bool
 }
 
 type ScheduledExecutionStatus int

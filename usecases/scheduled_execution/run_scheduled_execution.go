@@ -311,16 +311,13 @@ func (usecase *RunScheduledExecution) createScheduledScenarioDecisions(
 		)
 		nbEvaluatedDec += 1
 		if err != nil {
-			fmt.Printf("%+v\n", err)
 			updateErr := usecase.repository.UpdateDecisionToCreateStatus(
 				ctx,
 				exec,
 				decisionToCreate.Id,
 				models.DecisionToCreateStatusFailed,
 			)
-			if updateErr != nil {
-				utils.LogAndReportSentryError(ctx, updateErr)
-			}
+			utils.LogAndReportSentryError(ctx, errors.Join(err, updateErr))
 			// Stop at the first encountered error, store the number of created decisions on the scheduled execution
 			return false, numbersOfDecisions{
 				evaluated: nbEvaluatedDec,

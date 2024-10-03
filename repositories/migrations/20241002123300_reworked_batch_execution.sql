@@ -13,10 +13,18 @@ CREATE TABLE
 CREATE INDEX decisions_to_create_unique_per_batch_idx ON decisions_to_create (scheduled_execution_id, object_id) INCLUDE (status);
 
 ALTER TABLE scheduled_executions
-ADD COLUMN number_of_planned_decisions INT NOT NULL DEFAULT 0;
+ADD COLUMN number_of_planned_decisions INT;
 
 ALTER TABLE scheduled_executions
-ADD COLUMN number_of_evaluated_decisions INT NOT NULL DEFAULT 0;
+ADD COLUMN number_of_evaluated_decisions INT;
+
+ALTER TABLE scheduled_executions
+ALTER COLUMN number_of_created_decisions
+DROP NOT NULL;
+
+ALTER TABLE scheduled_executions
+ALTER COLUMN number_of_created_decisions
+DROP DEFAULT;
 
 -- +goose StatementEnd
 -- +goose Down
@@ -30,5 +38,13 @@ DROP COLUMN number_of_planned_decisions;
 
 ALTER TABLE scheduled_executions
 DROP COLUMN number_of_evaluated_decisions;
+
+ALTER TABLE scheduled_executions
+ALTER COLUMN number_of_created_decisions
+SET NOT NULL;
+
+ALTER TABLE scheduled_executions
+ALTER COLUMN number_of_created_decisions
+SET DEFAULT -1;
 
 -- +goose StatementEnd
