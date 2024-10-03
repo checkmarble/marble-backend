@@ -138,7 +138,12 @@ func createDecisionsBatch(
 		assert.FailNow(t, "Failed to get scheduled execution", err)
 	}
 	assert.Equal(t, models.ScheduledExecutionSuccess, se.Status, "Status should be success")
-	assert.Equal(t, 1, se.NumberOfCreatedDecisions, "Should have created 1 decision")
+	assert.NotNil(t, se.NumberOfCreatedDecisions, "Should have created decisions")
+	assert.NotNil(t, se.NumberOfEvaluatedDecisions, "Should have evaluated decisions")
+	assert.NotNil(t, se.NumberOfPlannedDecisions, "Should have planned decisions")
+	assert.Equal(t, 1, *se.NumberOfCreatedDecisions, "Should have created 1 decision")
+	assert.Equal(t, 1, *se.NumberOfEvaluatedDecisions, "Should have evaluated 1 decision")
+	assert.Equal(t, 1, *se.NumberOfPlannedDecisions, "Should have planned 1 decision")
 
 	decisionsUsecase := usecasesWithUserCreds.NewDecisionUsecase()
 	decisions, err := decisionsUsecase.ListDecisions(ctx, organizationId,
