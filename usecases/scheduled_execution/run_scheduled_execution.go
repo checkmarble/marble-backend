@@ -144,8 +144,8 @@ func (usecase *RunScheduledExecution) ExecuteAllScheduledScenarios(ctx context.C
 		ctx = utils.StoreLoggerInContext(
 			ctx,
 			logger.
-				With("scheduledExecutionId", scheduledExecution.Id).
-				With("organizationId", scheduledExecution.OrganizationId),
+				With("scheduled_execution_id", scheduledExecution.Id).
+				With("organization_id", scheduledExecution.OrganizationId),
 		)
 		if err := usecase.executeScheduledScenario(ctx, scheduledExecution); err != nil {
 			executionErrorChan <- err
@@ -232,8 +232,8 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 }
 
 type numbersOfDecisions struct {
-	evaluated int64
-	created   int64
+	evaluated int
+	created   int
 }
 
 func (usecase *RunScheduledExecution) createScheduledScenarioDecisions(
@@ -280,7 +280,7 @@ func (usecase *RunScheduledExecution) createScheduledScenarioDecisions(
 		return false, numbersOfDecisions{}, err
 	}
 
-	nbPlannedDecisions := int64(len(objectIds))
+	nbPlannedDecisions := len(objectIds)
 	err = usecase.repository.UpdateScheduledExecution(ctx, exec, models.UpdateScheduledExecutionInput{
 		Id:                       scheduledExecutionId,
 		NumberOfPlannedDecisions: &nbPlannedDecisions,
@@ -297,8 +297,7 @@ func (usecase *RunScheduledExecution) createScheduledScenarioDecisions(
 		return false, numbersOfDecisions{}, err
 	}
 
-	var nbEvaluatedDec int64
-	var nbCreatedDec int64
+	var nbEvaluatedDec, nbCreatedDec int
 	for i, decisionToCreate := range decisionsToCreate {
 		created, err := usecase.createSingleDecisionForObjectId(
 			ctx,
@@ -389,7 +388,7 @@ func (usecase *RunScheduledExecution) createSingleDecisionForObjectId(
 			"scenario_id", scenario.Id,
 			"object_index", objectIdx,
 			"trigger_object_type", scenario.TriggerObjectType,
-			"object", object)
+			"object_id", decisionToCreate.ObjectId)
 
 		if err := usecase.repository.UpdateDecisionToCreateStatus(
 			ctx,

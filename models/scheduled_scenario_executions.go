@@ -66,14 +66,14 @@ func ScheduledExecutionStatusFrom(s string) ScheduledExecutionStatus {
 type UpdateScheduledExecutionStatusInput struct {
 	Id                         string
 	Status                     ScheduledExecutionStatus
-	NumberOfCreatedDecisions   *int64
-	NumberOfEvaluatedDecisions *int64
+	NumberOfCreatedDecisions   *int
+	NumberOfEvaluatedDecisions *int
 	CurrentStatusCondition     ScheduledExecutionStatus // Used for optimistic locking
 }
 
 type UpdateScheduledExecutionInput struct {
 	Id                       string
-	NumberOfPlannedDecisions *int64
+	NumberOfPlannedDecisions *int
 }
 
 type CreateScheduledExecutionInput struct {
@@ -226,5 +226,5 @@ const (
 	DecisionToCreateStatusPending                  = "pending"
 	DecisionToCreateStatusCreated                  = "created"
 	DecisionToCreateStatusFailed                   = "failed"
-	DecisionToCreateStatusTriggerConditionMismatch = "trigger_condition_mismatch"
+	DecisionToCreateStatusTriggerConditionMismatch = "trigger_mismatch"
 )
