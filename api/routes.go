@@ -30,7 +30,7 @@ func timeoutMiddleware(duration time.Duration) gin.HandlerFunc {
 const batchIngestionTimeout = 55 * time.Second
 
 func addRoutes(r *gin.Engine, auth Authentication, tokenHandler TokenHandler, uc usecases.Usecases, marbleAppHost string) {
-	r.GET("/liveness", handleLivenessProbe)
+	r.GET("/liveness", handleLivenessProbe(uc))
 	r.POST("/token", tokenHandler.GenerateToken)
 	r.GET("/validate-license/*license_key", handleValidateLicense(uc))
 

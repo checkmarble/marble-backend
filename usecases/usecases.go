@@ -86,6 +86,13 @@ func (usecases *Usecases) NewTransactionFactory() executor_factory.TransactionFa
 	)
 }
 
+func (usecases *Usecases) NewLivenessUsecase() LivenessUsecase {
+	return LivenessUsecase{
+		executorFactory:    usecases.NewExecutorFactory(),
+		livenessRepository: &usecases.Repositories.MarbleDbRepository,
+	}
+}
+
 func (usecases *Usecases) NewSeedUseCase() SeedUseCase {
 	return SeedUseCase{
 		transactionFactory:     usecases.NewTransactionFactory(),
