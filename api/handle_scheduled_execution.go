@@ -31,6 +31,7 @@ func handleGetScheduledExecution(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
+// TODO deprecated
 func handleGetScheduledExecutionDecisions(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		scheduledExecutionID := c.Param("execution_id")
