@@ -49,7 +49,6 @@ type Repositories struct {
 	IngestionRepository               IngestionRepository
 	DataModelRepository               DataModelRepository
 	IngestedDataReadRepository        IngestedDataReadRepository
-	DecisionRepository                DecisionRepository
 	MarbleDbRepository                MarbleDbRepository
 	ClientDbRepository                ClientDbRepository
 	ScenarioPublicationRepository     ScenarioPublicationRepository
@@ -84,7 +83,6 @@ func NewRepositories(
 		IngestionRepository:           &IngestionRepositoryImpl{},
 		DataModelRepository:           &DataModelRepositoryPostgresql{},
 		IngestedDataReadRepository:    &IngestedDataReadRepositoryImpl{},
-		DecisionRepository:            &DecisionRepositoryImpl{},
 		MarbleDbRepository:            MarbleDbRepository{},
 		ClientDbRepository:            ClientDbRepository{},
 		ScenarioPublicationRepository: &ScenarioPublicationRepositoryPostgresql{},

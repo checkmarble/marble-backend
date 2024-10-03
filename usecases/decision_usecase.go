@@ -23,6 +23,25 @@ import (
 )
 
 type DecisionUsecaseRepository interface {
+	DecisionWithRuleExecutionsById(
+		ctx context.Context,
+		exec repositories.Executor,
+		decisionId string,
+	) (models.DecisionWithRuleExecutions, error)
+	DecisionsWithRuleExecutionsByIds(
+		ctx context.Context,
+		exec repositories.Executor,
+		decisionIds []string,
+	) ([]models.DecisionWithRuleExecutions, error)
+	StoreDecision(
+		ctx context.Context,
+		exec repositories.Executor,
+		decision models.DecisionWithRuleExecutions,
+		organizationId string,
+		newDecisionId string) error
+	DecisionsOfOrganization(ctx context.Context, exec repositories.Executor, organizationId string,
+		paginationAndSorting models.PaginationAndSorting, filters models.DecisionFilters) ([]models.DecisionWithRank, error)
+
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
 	ListScenariosOfOrganization(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.Scenario, error)
 
@@ -58,7 +77,6 @@ type DecisionUsecase struct {
 	transactionFactory         executor_factory.TransactionFactory
 	executorFactory            executor_factory.ExecutorFactory
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
-	decisionRepository         repositories.DecisionRepository
 	dataModelRepository        repositories.DataModelRepository
 	repository                 DecisionUsecaseRepository
 	evaluateAstExpression      ast_eval.EvaluateAstExpression
@@ -68,7 +86,7 @@ type DecisionUsecase struct {
 }
 
 func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId string) (models.DecisionWithRuleExecutions, error) {
-	decision, err := usecase.decisionRepository.DecisionWithRuleExecutionsById(ctx,
+	decision, err := usecase.repository.DecisionWithRuleExecutionsById(ctx,
 		usecase.executorFactory.NewExecutor(), decisionId)
 	if err != nil {
 		return models.DecisionWithRuleExecutions{}, err
@@ -110,7 +128,7 @@ func (usecase *DecisionUsecase) ListDecisions(
 		return []models.DecisionWithRank{}, err
 	}
 
-	decisions, err := usecase.decisionRepository.DecisionsOfOrganization(
+	decisions, err := usecase.repository.DecisionsOfOrganization(
 		ctx,
 		usecase.executorFactory.NewExecutor(),
 		organizationId,
@@ -274,7 +292,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 	newDecision, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Executor,
 	) (models.DecisionWithRuleExecutions, error) {
-		if err = usecase.decisionRepository.StoreDecision(
+		if err = usecase.repository.StoreDecision(
 			ctx,
 			tx,
 			decision,
@@ -312,7 +330,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 			sendWebhookEventId = append(sendWebhookEventId, caseWebhookEventId)
 		}
 
-		return usecase.decisionRepository.DecisionWithRuleExecutionsById(ctx, tx, decision.DecisionId)
+		return usecase.repository.DecisionWithRuleExecutionsById(ctx, tx, decision.DecisionId)
 	})
 	if err != nil {
 		return models.DecisionWithRuleExecutions{}, err
@@ -421,7 +439,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 		var ids []string
 		for _, item := range items {
 			ids = append(ids, item.decision.DecisionId)
-			if err = usecase.decisionRepository.StoreDecision(
+			if err = usecase.repository.StoreDecision(
 				ctx,
 				tx,
 				item.decision,
@@ -453,7 +471,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			}
 		}
 
-		return usecase.decisionRepository.DecisionsWithRuleExecutionsByIds(ctx, tx, ids)
+		return usecase.repository.DecisionsWithRuleExecutionsByIds(ctx, tx, ids)
 	})
 	if err != nil {
 		return nil, 0, err

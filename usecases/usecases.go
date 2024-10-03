@@ -115,7 +115,7 @@ func (usecases *Usecases) NewOrganizationCreator() organization.OrganizationCrea
 
 func (usecases *Usecases) NewExportScheduleExecution() *scheduled_execution.ExportScheduleExecution {
 	return &scheduled_execution.ExportScheduleExecution{
-		DecisionRepository:     usecases.Repositories.DecisionRepository,
+		DecisionRepository:     &usecases.Repositories.MarbleDbRepository,
 		OrganizationRepository: usecases.Repositories.OrganizationRepository,
 		ExecutorFactory:        usecases.NewExecutorFactory(),
 	}
