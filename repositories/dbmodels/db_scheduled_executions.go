@@ -14,8 +14,8 @@ type DBScheduledExecution struct {
 	Status                     string     `db:"status"`
 	StartedAt                  time.Time  `db:"started_at"`
 	FinishedAt                 *time.Time `db:"finished_at"`
-	NumberOfCreatedDecisions   *int       `db:"number_of_created_decisions"`
-	NumberOfEvaluatedDecisions *int       `db:"number_of_evaluated_decisions"`
+	NumberOfCreatedDecisions   int        `db:"number_of_created_decisions"`
+	NumberOfEvaluatedDecisions int        `db:"number_of_evaluated_decisions"`
 	NumberOfPlannedDecisions   *int       `db:"number_of_planned_decisions"`
 	Manual                     bool       `db:"manual"`
 }

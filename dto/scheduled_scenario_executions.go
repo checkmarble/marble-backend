@@ -12,8 +12,8 @@ type ScheduledExecutionDto struct {
 	Status                     string     `json:"status"`
 	StartedAt                  time.Time  `json:"started_at"`
 	FinishedAt                 *time.Time `json:"finished_at"`
-	NumberOfCreatedDecisions   *int       `json:"number_of_created_decisions"`
-	NumberOfEvaluatedDecisions *int       `json:"number_of_evaluated_decisions"`
+	NumberOfCreatedDecisions   int        `json:"number_of_created_decisions"`
+	NumberOfEvaluatedDecisions int        `json:"number_of_evaluated_decisions"`
 	NumberOfPlannedDecisions   *int       `json:"number_of_planned_decisions"`
 	ScenarioId                 string     `json:"scenario_id"`
 	ScenarioName               string     `json:"scenario_name"`
