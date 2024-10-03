@@ -19,11 +19,24 @@ func selectFiltersFromTriggerAstRootAnd(node ast.Node, table models.TableIdentif
 	filters := make([]models.Filter, 0, 10)
 	for _, node := range node.Children {
 		filter, valid := filterFromComparisonNode(node, table, 0)
-		if valid {
+		onlyConstantValues := filterHasOnlyConstantValues(filter)
+		if valid && !onlyConstantValues {
 			filters = append(filters, filter)
 		}
 	}
 	return filters
+}
+
+// We ignore filters that only use constant values. Indeed, they are not most useful for filtering the data, and
+// they generate errors once translated to SQL (we pass the values as 'any' to pgx, it needs typehints to compare params
+// if it has no hint from columns or SQL expressions with which we compare them).
+func filterHasOnlyConstantValues(filter models.Filter) bool {
+	leftConstant := filter.LeftValue != nil || (filter.LeftNestedFilter != nil &&
+		filterHasOnlyConstantValues(*filter.LeftNestedFilter))
+	rightConstant := filter.RightValue != nil || (filter.RightNestedFilter != nil &&
+		filterHasOnlyConstantValues(*filter.RightNestedFilter))
+
+	return leftConstant && rightConstant
 }
 
 func filterFromComparisonNode(node ast.Node, table models.TableIdentifier, depth int) (models.Filter, bool) {
