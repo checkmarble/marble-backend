@@ -1,10 +1,7 @@
 package api
 
 import (
-	"archive/zip"
-	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 
@@ -28,42 +25,6 @@ func handleGetScheduledExecution(uc usecases.Usecases) func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"scheduled_execution": dto.AdaptScheduledExecutionDto(execution),
 		})
-	}
-}
-
-// TODO deprecated
-func handleGetScheduledExecutionDecisions(uc usecases.Usecases) func(c *gin.Context) {
-	return func(c *gin.Context) {
-		scheduledExecutionID := c.Param("execution_id")
-		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
-			return
-		}
-
-		usecase := usecasesWithCreds(c.Request, uc).NewScheduledExecutionUsecase()
-
-		zipWriter := zip.NewWriter(c.Writer)
-		defer zipWriter.Close()
-
-		fileWriter, err := zipWriter.Create(fmt.Sprintf("decisions_of_execution_%s.ndjson", scheduledExecutionID))
-		if err != nil {
-			presentError(c, err)
-			return
-		}
-
-		c.Writer.Header().Set("Content-Type", "application/zip")
-		c.Writer.Header().Set("Content-Disposition",
-			"attachment; filename=\"decisions.ndjson.zip\"")
-		numberOfExportedDecisions, err := usecase.ExportScheduledExecutionDecisions(
-			c.Request.Context(), organizationId, scheduledExecutionID, fileWriter)
-		if err != nil {
-			// note: un case of security error, the header has not been sent, so we can still send a 401
-			presentError(c, err)
-			return
-		}
-		// nice trailer
-		c.Writer.Header().Set("X-NUMBER-OF-DECISIONS",
-			strconv.Itoa(numberOfExportedDecisions))
 	}
 }
 
