@@ -166,7 +166,6 @@ func (repo *MarbleDbRepository) UpdateScheduledExecution(
 	exec Executor,
 	input models.UpdateScheduledExecutionInput,
 ) error {
-	// uses optimistic locking based on the current status to avoid overwriting the status incorrectly
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
