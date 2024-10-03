@@ -82,6 +82,8 @@ func addRoutes(r *gin.Engine, auth Authentication, tokenHandler TokenHandler, uc
 
 	router.GET("/scheduled-executions", handleListScheduledExecution(uc))
 	router.GET("/scheduled-executions/:execution_id", handleGetScheduledExecution(uc))
+
+	// TODO deprecated
 	router.GET("/scheduled-executions/:execution_id/decisions.zip",
 		handleGetScheduledExecutionDecisions(uc))
 

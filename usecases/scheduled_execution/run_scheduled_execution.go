@@ -3,6 +3,7 @@ package scheduled_execution
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"sync"
 
 	"github.com/cockroachdb/errors"
@@ -327,6 +328,24 @@ func (usecase *RunScheduledExecution) createScheduledScenarioDecisions(
 		if created {
 			nbCreatedDec += 1
 		}
+
+		// Update the number of created decisions on the scheduled execution, but not at every decision
+		if i%100 == 0 {
+			_, err = usecase.repository.UpdateScheduledExecutionStatus(
+				ctx,
+				exec,
+				models.UpdateScheduledExecutionStatusInput{
+					Id:                         decisionToCreate.ScheduledExecutionId,
+					CurrentStatusCondition:     models.ScheduledExecutionProcessing,
+					NumberOfCreatedDecisions:   &nbCreatedDec,
+					NumberOfEvaluatedDecisions: &nbEvaluatedDec,
+					Status:                     models.ScheduledExecutionProcessing,
+				},
+			)
+			if err != nil {
+				return false, numbersOfDecisions{}, err
+			}
+		}
 	}
 
 	return true, numbersOfDecisions{evaluated: nbEvaluatedDec, created: nbCreatedDec}, nil
@@ -352,6 +371,11 @@ func (usecase *RunScheduledExecution) createSingleDecisionForObjectId(
 			attribute.String("trigger_object_type", scenario.TriggerObjectType),
 		))
 	defer span.End()
+
+	// randomly return an error 10% of the time
+	if rand.Intn(10) == 0 {
+		return false, fmt.Errorf("random error")
+	}
 
 	table := dataModel.Tables[scenario.TriggerObjectType]
 
