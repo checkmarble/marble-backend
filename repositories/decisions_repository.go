@@ -53,12 +53,10 @@ type DecisionRepository interface {
 	ReviewDecision(ctx context.Context, exec Executor, decisionId string, reviewStatus string) error
 }
 
-type DecisionRepositoryImpl struct{}
-
 // the size of the batch is chosen without any benchmark
 const decisionRulesBatchSize = 1000
 
-func (repo *DecisionRepositoryImpl) DecisionWithRuleExecutionsById(ctx context.Context, exec Executor,
+func (repo *MarbleDbRepository) DecisionWithRuleExecutionsById(ctx context.Context, exec Executor,
 	decisionId string,
 ) (models.DecisionWithRuleExecutions, error) {
 	decisions, err := repo.DecisionsWithRuleExecutionsByIds(ctx, exec, []string{decisionId})
@@ -72,7 +70,7 @@ func (repo *DecisionRepositoryImpl) DecisionWithRuleExecutionsById(ctx context.C
 	return decisions[0], nil
 }
 
-func (repo *DecisionRepositoryImpl) DecisionsWithRuleExecutionsByIds(
+func (repo *MarbleDbRepository) DecisionsWithRuleExecutionsByIds(
 	ctx context.Context,
 	exec Executor,
 	decisionIds []string,
@@ -115,7 +113,7 @@ func (repo *DecisionRepositoryImpl) DecisionsWithRuleExecutionsByIds(
 	)
 }
 
-func (repo *DecisionRepositoryImpl) DecisionsById(ctx context.Context, exec Executor, decisionIds []string) ([]models.Decision, error) {
+func (repo *MarbleDbRepository) DecisionsById(ctx context.Context, exec Executor, decisionIds []string) ([]models.Decision, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -140,7 +138,7 @@ func (repo *DecisionRepositoryImpl) DecisionsById(ctx context.Context, exec Exec
 	})
 }
 
-func (repo *DecisionRepositoryImpl) DecisionsByCaseId(
+func (repo *MarbleDbRepository) DecisionsByCaseId(
 	ctx context.Context,
 	exec Executor,
 	organizationId string,
@@ -163,7 +161,7 @@ func (repo *DecisionRepositoryImpl) DecisionsByCaseId(
 	return decisions, err
 }
 
-func (repo *DecisionRepositoryImpl) DecisionsByObjectId(
+func (repo *MarbleDbRepository) DecisionsByObjectId(
 	ctx context.Context,
 	exec Executor,
 	organizationId string,
@@ -188,7 +186,7 @@ func (repo *DecisionRepositoryImpl) DecisionsByObjectId(
 	})
 }
 
-func (repo *DecisionRepositoryImpl) DecisionsOfOrganization(
+func (repo *MarbleDbRepository) DecisionsOfOrganization(
 	ctx context.Context,
 	exec Executor,
 	organizationId string,
@@ -402,7 +400,7 @@ func selectDecisionsWithJoinedFields(query squirrel.SelectBuilder, p models.Pagi
 		PlaceholderFormat(squirrel.Dollar)
 }
 
-func (repo *DecisionRepositoryImpl) DecisionsOfScheduledExecution(
+func (repo *MarbleDbRepository) DecisionsOfScheduledExecution(
 	ctx context.Context,
 	exec Executor,
 	organizationId string,
@@ -427,7 +425,7 @@ func (repo *DecisionRepositoryImpl) DecisionsOfScheduledExecution(
 	)
 }
 
-func (repo *DecisionRepositoryImpl) StoreDecision(
+func (repo *MarbleDbRepository) StoreDecision(
 	ctx context.Context,
 	exec Executor,
 	decision models.DecisionWithRuleExecutions,
@@ -541,7 +539,7 @@ func (repo *DecisionRepositoryImpl) StoreDecision(
 	return err
 }
 
-func (repo *DecisionRepositoryImpl) UpdateDecisionCaseId(ctx context.Context, exec Executor, decisionIds []string, caseId string) error {
+func (repo *MarbleDbRepository) UpdateDecisionCaseId(ctx context.Context, exec Executor, decisionIds []string, caseId string) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}
@@ -566,7 +564,7 @@ func selectJoinDecisionAndCase() squirrel.SelectBuilder {
 		OrderBy("d.created_at DESC")
 }
 
-func (repo *DecisionRepositoryImpl) rulesOfDecisions(
+func (repo *MarbleDbRepository) rulesOfDecisions(
 	ctx context.Context,
 	exec Executor,
 	decisionIds []string,
@@ -622,7 +620,7 @@ type RulesOfDecision struct {
 }
 
 // Return an array of RulesOfDecision that correspond to the decisionIds
-func (repo *DecisionRepositoryImpl) rulesOfDecisionsBatch(ctx context.Context, exec Executor, decisionIds []string) ([]RulesOfDecision, error) {
+func (repo *MarbleDbRepository) rulesOfDecisionsBatch(ctx context.Context, exec Executor, decisionIds []string) ([]RulesOfDecision, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
@@ -679,7 +677,7 @@ func (repo *DecisionRepositoryImpl) rulesOfDecisionsBatch(ctx context.Context, e
 	}), nil
 }
 
-func (repo *DecisionRepositoryImpl) channelOfDecisions(
+func (repo *MarbleDbRepository) channelOfDecisions(
 	ctx context.Context,
 	exec Executor,
 	query squirrel.Sqlizer,
@@ -774,7 +772,7 @@ func ChanToSlice[Model any](channel <-chan Model) []Model {
 	return slice
 }
 
-func (repo *DecisionRepositoryImpl) ReviewDecision(ctx context.Context, exec Executor, decisionId string, reviewStatus string) error {
+func (repo *MarbleDbRepository) ReviewDecision(ctx context.Context, exec Executor, decisionId string, reviewStatus string) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
 	}

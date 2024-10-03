@@ -83,7 +83,6 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 		executorFactory:            usecases.NewExecutorFactory(),
 		transactionFactory:         usecases.NewTransactionFactory(),
 		ingestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
-		decisionRepository:         usecases.Repositories.DecisionRepository,
 		dataModelRepository:        usecases.Repositories.DataModelRepository,
 		repository:                 &usecases.Repositories.MarbleDbRepository,
 		evaluateAstExpression:      usecases.NewEvaluateAstExpression(),
@@ -215,7 +214,7 @@ func (usecases *UsecasesWithCreds) NewRunScheduledExecution() scheduled_executio
 		usecases.Repositories.DataModelRepository,
 		usecases.Repositories.IngestedDataReadRepository,
 		usecases.NewEvaluateAstExpression(),
-		usecases.Repositories.DecisionRepository,
+		&usecases.Repositories.MarbleDbRepository,
 		usecases.NewTransactionFactory(),
 		usecases.NewDecisionWorkflows(),
 		usecases.NewWebhookEventsUsecase(),
@@ -251,7 +250,7 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 		transactionFactory: usecases.NewTransactionFactory(),
 		executorFactory:    usecases.NewExecutorFactory(),
 		repository:         &usecases.Repositories.MarbleDbRepository,
-		decisionRepository: usecases.Repositories.DecisionRepository,
+		decisionRepository: &usecases.Repositories.MarbleDbRepository,
 		inboxReader: inboxes.InboxReader{
 			EnforceSecurity: sec,
 			InboxRepository: &usecases.Repositories.MarbleDbRepository,
@@ -328,7 +327,7 @@ func (usecases *UsecasesWithCreds) NewTransferCheckUsecase() TransferCheckUsecas
 	return TransferCheckUsecase{
 		dataModelRepository:               usecases.Repositories.DataModelRepository,
 		decisionUseCase:                   usecases.NewDecisionUsecase(),
-		decisionRepository:                usecases.Repositories.DecisionRepository,
+		decisionRepository:                &usecases.Repositories.MarbleDbRepository,
 		enforceSecurity:                   security.NewEnforceSecurity(usecases.Credentials),
 		executorFactory:                   usecases.NewExecutorFactory(),
 		ingestionRepository:               usecases.Repositories.IngestionRepository,
@@ -403,7 +402,7 @@ func (usecases *UsecasesWithCreds) NewWebhooksUsecase() WebhooksUsecase {
 
 func (usecases *UsecasesWithCreds) NewRuleSnoozeUsecase() RuleSnoozeUsecase {
 	return NewRuleSnoozeUsecase(
-		usecases.Repositories.DecisionRepository,
+		&usecases.Repositories.MarbleDbRepository,
 		usecases.NewExecutorFactory(),
 		usecases.NewTransactionFactory(),
 		usecases.NewCaseUseCase(),
