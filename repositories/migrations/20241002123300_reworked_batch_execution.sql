@@ -16,15 +16,11 @@ ALTER TABLE scheduled_executions
 ADD COLUMN number_of_planned_decisions INT;
 
 ALTER TABLE scheduled_executions
-ADD COLUMN number_of_evaluated_decisions INT;
+ADD COLUMN number_of_evaluated_decisions INT NOT NULL DEFAULT 0;
 
 ALTER TABLE scheduled_executions
 ALTER COLUMN number_of_created_decisions
-DROP NOT NULL;
-
-ALTER TABLE scheduled_executions
-ALTER COLUMN number_of_created_decisions
-DROP DEFAULT;
+SET DEFAULT 0;
 
 -- +goose StatementEnd
 -- +goose Down
@@ -38,10 +34,6 @@ DROP COLUMN number_of_planned_decisions;
 
 ALTER TABLE scheduled_executions
 DROP COLUMN number_of_evaluated_decisions;
-
-ALTER TABLE scheduled_executions
-ALTER COLUMN number_of_created_decisions
-SET NOT NULL;
 
 ALTER TABLE scheduled_executions
 ALTER COLUMN number_of_created_decisions
