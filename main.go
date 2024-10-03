@@ -18,7 +18,8 @@ func main() {
 	shouldRunSendPendingWebhookEvents := flag.Bool("send-pending-webhook-events", false, "Send pending webhook events")
 	shouldRunScheduler := flag.Bool("cron-scheduler", false, "Run scheduler for cron jobs")
 	flag.Parse()
-	utils.NewLogger("text").Info("Flags",
+	logger := utils.NewLogger("text")
+	logger.Info("Flags",
 		slog.Bool("shouldRunMigrations", *shouldRunMigrations),
 		slog.Bool("shouldRunServer", *shouldRunServer),
 		slog.Bool("shouldRunScheduledScenarios", *shouldRunScheduleScenarios),
@@ -41,10 +42,8 @@ func main() {
 	}
 
 	if *shouldRunScheduleScenarios {
-		err := cmd.RunScheduleScenarios()
-		if err != nil {
-			log.Fatal(err)
-		}
+		// TODOl: eventually, remove this entrypoint completely
+		logger.Info("The entrypoint \"scheduler\" is deprecated, its functionality has been merged into the \"scheduled-executer\" entrypoint")
 	}
 
 	if *shouldRunExecuteScheduledScenarios {
