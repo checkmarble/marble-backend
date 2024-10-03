@@ -190,6 +190,10 @@ func (repo *MarbleDbRepository) StoreDecisionsToCreate(
 		return nil, err
 	}
 
+	if len(decisionsToCreate.ObjectId) == 0 {
+		return nil, nil
+	}
+
 	query := NewQueryBuilder().
 		Insert(dbmodels.TABLE_DECISIONS_TO_CREATE).
 		Columns(
