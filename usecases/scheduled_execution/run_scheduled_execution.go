@@ -3,7 +3,6 @@ package scheduled_execution
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"sync"
 
 	"github.com/cockroachdb/errors"
@@ -371,11 +370,6 @@ func (usecase *RunScheduledExecution) createSingleDecisionForObjectId(
 			attribute.String("trigger_object_type", scenario.TriggerObjectType),
 		))
 	defer span.End()
-
-	// randomly return an error 10% of the time
-	if rand.Intn(10) == 0 {
-		return false, fmt.Errorf("random error")
-	}
 
 	table := dataModel.Tables[scenario.TriggerObjectType]
 
