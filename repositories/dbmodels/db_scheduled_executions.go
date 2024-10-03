@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type DBScheduledExecution struct {
@@ -22,19 +23,7 @@ type DBScheduledExecution struct {
 
 const TABLE_SCHEDULED_EXECUTIONS = "scheduled_executions"
 
-var ScheduledExecutionFields = []string{
-	"id",
-	"organization_id",
-	"scenario_id",
-	"scenario_iteration_id",
-	"status",
-	"started_at",
-	"finished_at",
-	"number_of_created_decisions",
-	"number_of_evaluated_decisions",
-	"number_of_planned_decisions",
-	"manual",
-}
+var ScheduledExecutionFields = utils.ColumnList[DBScheduledExecution]()
 
 func AdaptScheduledExecution(db DBScheduledExecution, scenario models.Scenario) models.ScheduledExecution {
 	return models.ScheduledExecution{

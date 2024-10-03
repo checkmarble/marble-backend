@@ -15,7 +15,7 @@
         "--server",
         "--migrations"
       ],
-      // "console": "integratedTerminal"
+      "console": "integratedTerminal"
     },
     {
       "name": "Launch scenario scheduling job (.env)",

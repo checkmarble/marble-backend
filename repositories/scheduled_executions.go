@@ -19,7 +19,6 @@ type dbJoinScheduledExecutionAndScenario struct {
 
 func adaptJoinScheduledExecutionWithScenario(row pgx.CollectableRow) (models.ScheduledExecution, error) {
 	db, err := pgx.RowToStructByPos[dbJoinScheduledExecutionAndScenario](row)
-	// TODO: how the hell does it know where to put values ????
 	if err != nil {
 		return models.ScheduledExecution{}, err
 	}
