@@ -65,6 +65,7 @@ type options struct {
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
 	return Usecases{
 		Repositories:                repositories,
+		batchIngestionMaxSize:       o.batchIngestionMaxSize,
 		ingestionBucketUrl:          o.ingestionBucketUrl,
 		caseManagerBucketUrl:        o.caseManagerBucketUrl,
 		failedWebhooksRetryPageSize: o.failedWebhooksRetryPageSize,
