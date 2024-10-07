@@ -65,7 +65,7 @@ type CaseUseCase struct {
 	decisionRepository   repositories.DecisionRepository
 	inboxReader          inboxes.InboxReader
 	blobRepository       repositories.BlobRepository
-	gcsCaseManagerBucket string
+	caseManagerBucketUrl string
 	transactionFactory   executor_factory.TransactionFactory
 	executorFactory      executor_factory.ExecutorFactory
 	webhookEventsUsecase webhookEventsUsecase
@@ -740,7 +740,7 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 	}
 
 	newFileReference := fmt.Sprintf("%s/%s/%s", creds.OrganizationId, input.CaseId, uuid.NewString())
-	writer, err := usecase.blobRepository.OpenStream(ctx, usecase.gcsCaseManagerBucket, newFileReference, input.File.Filename)
+	writer, err := usecase.blobRepository.OpenStream(ctx, usecase.caseManagerBucketUrl, newFileReference, input.File.Filename)
 	if err != nil {
 		return models.Case{}, err
 	}
@@ -772,7 +772,7 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 			tx,
 			models.CreateDbCaseFileInput{
 				Id:            newCaseFileId,
-				BucketName:    usecase.gcsCaseManagerBucket,
+				BucketName:    usecase.caseManagerBucketUrl,
 				CaseId:        input.CaseId,
 				FileName:      input.File.Filename,
 				FileReference: newFileReference,
@@ -811,9 +811,9 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 		return updatedCase, nil
 	})
 	if err != nil {
-		if deleteErr := usecase.blobRepository.DeleteFile(ctx, usecase.gcsCaseManagerBucket, newFileReference); deleteErr != nil {
-			logger.WarnContext(ctx, fmt.Sprintf("failed to clean up GCS object %s after case file creation failed", newFileReference),
-				"bucket", usecase.gcsCaseManagerBucket,
+		if deleteErr := usecase.blobRepository.DeleteFile(ctx, usecase.caseManagerBucketUrl, newFileReference); deleteErr != nil {
+			logger.WarnContext(ctx, fmt.Sprintf("failed to clean up blob %s after case file creation failed", newFileReference),
+				"bucket", usecase.caseManagerBucketUrl,
 				"file_reference", newFileReference,
 				"error", deleteErr)
 			return models.Case{}, errors.Wrap(err, deleteErr.Error())
@@ -870,7 +870,7 @@ func (usecase *CaseUseCase) GetCaseFileUrl(ctx context.Context, caseFileId strin
 		return "", err
 	}
 
-	return usecase.blobRepository.GenerateSignedUrl(ctx, usecase.gcsCaseManagerBucket, cf.FileReference)
+	return usecase.blobRepository.GenerateSignedUrl(ctx, usecase.caseManagerBucketUrl, cf.FileReference)
 }
 
 func (usecase *CaseUseCase) CreateRuleSnoozeEvent(ctx context.Context, tx repositories.Executor, input models.RuleSnoozeCaseEventInput,

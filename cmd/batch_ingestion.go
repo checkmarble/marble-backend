@@ -86,7 +86,7 @@ func RunBatchIngestion() error {
 		),
 	)
 	uc := usecases.NewUsecases(repositories,
-		usecases.WithGcsIngestionBucket(jobConfig.ingestionBucketUrl),
+		usecases.WithIngestionBucketUrl(jobConfig.ingestionBucketUrl),
 		usecases.WithLicense(license))
 
 	err = jobs.IngestDataFromCsv(ctx, uc)

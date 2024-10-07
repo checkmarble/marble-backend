@@ -202,7 +202,7 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 		blobRepository:        usecases.Repositories.BlobRepository,
 		dataModelRepository:   usecases.Repositories.DataModelRepository,
 		uploadLogRepository:   usecases.Repositories.UploadLogRepository,
-		ingestionBucketUrl:    usecases.gcsIngestionBucket,
+		ingestionBucketUrl:    usecases.ingestionBucketUrl,
 		batchIngestionMaxSize: usecases.Usecases.batchIngestionMaxSize,
 	}
 }
@@ -258,7 +258,7 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 			Credentials:     usecases.Credentials,
 			ExecutorFactory: usecases.NewExecutorFactory(),
 		},
-		gcsCaseManagerBucket: usecases.gcsCaseManagerBucket,
+		caseManagerBucketUrl: usecases.caseManagerBucketUrl,
 		blobRepository:       usecases.Repositories.BlobRepository,
 		webhookEventsUsecase: usecases.NewWebhookEventsUsecase(),
 	}

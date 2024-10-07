@@ -166,7 +166,7 @@ func (repository *blobRepository) GetBlob(ctx context.Context, bucketUrl, key st
 
 	reader, err := bucket.NewReader(ctx, key, nil)
 	if err != nil {
-		return models.Blob{}, errors.Wrapf(err, "failed to read GCS object %s/%s", bucketUrl, key)
+		return models.Blob{}, errors.Wrapf(err, "failed to read blob %s/%s", bucketUrl, key)
 	}
 
 	return models.Blob{FileName: key, ReadCloser: reader}, nil
