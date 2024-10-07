@@ -122,8 +122,8 @@ func RunServer() error {
 
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithBatchIngestionMaxSize(serverConfig.batchIngestionMaxSize),
-		usecases.WithGcsIngestionBucket(serverConfig.ingestionBucketUrl),
-		usecases.WithGcsCaseManagerBucket(serverConfig.caseManagerBucket),
+		usecases.WithIngestionBucketUrl(serverConfig.ingestionBucketUrl),
+		usecases.WithCaseManagerBucketUrl(serverConfig.caseManagerBucket),
 		usecases.WithLicense(license),
 	)
 

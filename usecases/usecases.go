@@ -16,23 +16,23 @@ import (
 type Usecases struct {
 	Repositories                repositories.Repositories
 	batchIngestionMaxSize       int
-	gcsIngestionBucket          string
-	gcsCaseManagerBucket        string
+	ingestionBucketUrl          string
+	caseManagerBucketUrl        string
 	failedWebhooksRetryPageSize int
 	license                     models.LicenseValidation
 }
 
 type Option func(*options)
 
-func WithGcsIngestionBucket(bucket string) Option {
+func WithIngestionBucketUrl(bucket string) Option {
 	return func(o *options) {
-		o.gcsIngestionBucket = bucket
+		o.ingestionBucketUrl = bucket
 	}
 }
 
-func WithGcsCaseManagerBucket(bucket string) Option {
+func WithCaseManagerBucketUrl(bucket string) Option {
 	return func(o *options) {
-		o.gcsCaseManagerBucket = bucket
+		o.caseManagerBucketUrl = bucket
 	}
 }
 
@@ -56,8 +56,8 @@ func WithBatchIngestionMaxSize(size int) Option {
 
 type options struct {
 	batchIngestionMaxSize       int
-	gcsIngestionBucket          string
-	gcsCaseManagerBucket        string
+	ingestionBucketUrl          string
+	caseManagerBucketUrl        string
 	failedWebhooksRetryPageSize int
 	license                     models.LicenseValidation
 }
@@ -65,8 +65,8 @@ type options struct {
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
 	return Usecases{
 		Repositories:                repositories,
-		gcsIngestionBucket:          o.gcsIngestionBucket,
-		gcsCaseManagerBucket:        o.gcsCaseManagerBucket,
+		ingestionBucketUrl:          o.ingestionBucketUrl,
+		caseManagerBucketUrl:        o.caseManagerBucketUrl,
 		failedWebhooksRetryPageSize: o.failedWebhooksRetryPageSize,
 		license:                     o.license,
 	}

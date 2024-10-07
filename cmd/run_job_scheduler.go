@@ -87,7 +87,7 @@ func RunJobScheduler() error {
 		),
 	)
 	uc := usecases.NewUsecases(repositories,
-		usecases.WithGcsIngestionBucket(jobConfig.ingestionBucketUrl),
+		usecases.WithIngestionBucketUrl(jobConfig.ingestionBucketUrl),
 		usecases.WithFailedWebhooksRetryPageSize(jobConfig.failedWebhooksRetryPageSize),
 		usecases.WithLicense(license))
 
