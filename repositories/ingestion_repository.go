@@ -3,7 +3,6 @@ package repositories
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -11,7 +10,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/utils"
 )
 
 type IngestionRepository interface {
@@ -26,7 +24,6 @@ func (repo *IngestionRepositoryImpl) IngestObjects(
 	payloads []models.ClientObject,
 	table models.Table,
 ) (int, error) {
-	logger := utils.LoggerFromContext(ctx)
 	if err := validateClientDbExecutor(exec); err != nil {
 		return 0, err
 	}
@@ -60,10 +57,6 @@ func (repo *IngestionRepositoryImpl) IngestObjects(
 			return 0, err
 		}
 	}
-
-	logger.InfoContext(ctx, "Inserted objects in db",
-		slog.String("type", tableNameWithSchema(exec, table.Name)),
-		slog.Int("nb_objects", len(payloadsToInsert)))
 
 	return len(payloadsToInsert), nil
 }

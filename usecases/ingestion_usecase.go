@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"strconv"
 	"strings"
 	"sync"
@@ -99,7 +100,17 @@ func (usecase *IngestionUseCase) IngestObject(
 		})
 	}
 	err = retryIngestion(ctx, ingestClosure)
-	return nb, err
+	if err != nil {
+		return 0, err
+	}
+
+	logger.InfoContext(ctx, fmt.Sprintf("Successfully ingested objects: %d objects", nb),
+		slog.String("organization_id", organizationId),
+		slog.String("object_type", objectType),
+		slog.Int("nb_objects", nb),
+	)
+
+	return nb, nil
 }
 
 func (usecase *IngestionUseCase) IngestObjects(
@@ -179,7 +190,12 @@ func (usecase *IngestionUseCase) IngestObjects(
 		return 0, err
 	}
 
-	logger.InfoContext(ctx, fmt.Sprintf("Successfully ingested %d objects", nb))
+	logger.InfoContext(ctx, fmt.Sprintf("Successfully ingested objects: %d objects", nb),
+		slog.String("organization_id", organizationId),
+		slog.String("object_type", objectType),
+		slog.Int("nb_objects", nb),
+	)
+
 	return nb, nil
 }
 
