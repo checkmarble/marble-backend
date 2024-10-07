@@ -291,6 +291,29 @@ func ingestAndCreateDecision(authApiKey *httpexpect.Expect, scenarioId string) {
 }`)).
 		Expect().Status(http.StatusCreated)
 
+	// also do some batch ingestion
+	authApiKey.POST("/ingestion/transactions/multiple").
+		WithBytes([]byte(`
+		[
+			{
+				"object_id": "my-unique-id",
+				"updated_at": "2024-01-01T00:00:00Z",
+				"account_id": "my-account-id",
+				"amount": 100,
+				"status": "validated",
+				"transaction_at": "2024-01-01T00:00:00Z"
+			},
+			{
+				"object_id": "my-unique-id-2",
+				"updated_at": "2024-01-01T00:00:00Z",
+				"account_id": "my-account-id-2",
+				"amount": 100,
+				"status": "validated",
+				"transaction_at": "2024-01-01T00:00:00Z"
+			}
+		]`)).
+		Expect().Status(http.StatusCreated)
+
 	objectMap := map[string]any{
 		"object_id":      "my-unique-id",
 		"updated_at":     "2024-01-01T00:00:00Z",

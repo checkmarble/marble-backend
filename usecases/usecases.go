@@ -63,6 +63,9 @@ type options struct {
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
+	if o.batchIngestionMaxSize == 0 {
+		o.batchIngestionMaxSize = DefaultApiBatchIngestionSize
+	}
 	return Usecases{
 		Repositories:                repositories,
 		batchIngestionMaxSize:       o.batchIngestionMaxSize,
