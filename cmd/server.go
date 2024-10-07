@@ -77,7 +77,7 @@ func RunServer() error {
 		sentryDsn                        string
 		transferCheckEnrichmentBucketUrl string
 	}{
-		batchIngestionMaxSize:            utils.GetEnv("BATCH_INGESTION_MAX_SIZE", usecases.DefaultApiBatchIngestionSize),
+		batchIngestionMaxSize:            utils.GetEnv("BATCH_INGESTION_MAX_SIZE", 0),
 		caseManagerBucket:                utils.GetEnv("CASE_MANAGER_BUCKET_URL", ""),
 		ingestionBucketUrl:               utils.GetEnv("INGESTION_BUCKET_URL", ""),
 		jwtSigningKey:                    utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY", ""),
