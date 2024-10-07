@@ -195,14 +195,15 @@ func (usecases *UsecasesWithCreds) NewDataModelUseCase() DataModelUseCase {
 
 func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 	return IngestionUseCase{
-		enforceSecurity:     usecases.NewEnforceIngestionSecurity(),
-		transactionFactory:  usecases.NewTransactionFactory(),
-		executorFactory:     usecases.NewExecutorFactory(),
-		ingestionRepository: usecases.Repositories.IngestionRepository,
-		blobRepository:      usecases.Repositories.BlobRepository,
-		dataModelRepository: usecases.Repositories.DataModelRepository,
-		uploadLogRepository: usecases.Repositories.UploadLogRepository,
-		GcsIngestionBucket:  usecases.gcsIngestionBucket,
+		enforceSecurity:       usecases.NewEnforceIngestionSecurity(),
+		transactionFactory:    usecases.NewTransactionFactory(),
+		executorFactory:       usecases.NewExecutorFactory(),
+		ingestionRepository:   usecases.Repositories.IngestionRepository,
+		blobRepository:        usecases.Repositories.BlobRepository,
+		dataModelRepository:   usecases.Repositories.DataModelRepository,
+		uploadLogRepository:   usecases.Repositories.UploadLogRepository,
+		ingestionBucketUrl:    usecases.gcsIngestionBucket,
+		batchIngestionMaxSize: usecases.Usecases.batchIngestionMaxSize,
 	}
 }
 

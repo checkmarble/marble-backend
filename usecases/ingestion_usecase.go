@@ -27,18 +27,79 @@ import (
 )
 
 const (
-	batchSize = 1000
+	csvIngestionBatchSize        = 1000
+	DefaultApiBatchIngestionSize = 100
 )
 
 type IngestionUseCase struct {
-	transactionFactory  executor_factory.TransactionFactory
-	executorFactory     executor_factory.ExecutorFactory
-	enforceSecurity     security.EnforceSecurityIngestion
-	ingestionRepository repositories.IngestionRepository
-	blobRepository      repositories.BlobRepository
-	dataModelRepository repositories.DataModelRepository
-	uploadLogRepository repositories.UploadLogRepository
-	GcsIngestionBucket  string
+	transactionFactory    executor_factory.TransactionFactory
+	executorFactory       executor_factory.ExecutorFactory
+	enforceSecurity       security.EnforceSecurityIngestion
+	ingestionRepository   repositories.IngestionRepository
+	blobRepository        repositories.BlobRepository
+	dataModelRepository   repositories.DataModelRepository
+	uploadLogRepository   repositories.UploadLogRepository
+	ingestionBucketUrl    string
+	batchIngestionMaxSize int
+}
+
+func (usecase *IngestionUseCase) IngestObject(
+	ctx context.Context,
+	organizationId string,
+	objectType string,
+	objectBody json.RawMessage,
+) (int, error) {
+	logger := utils.LoggerFromContext(ctx)
+	tracer := utils.OpenTelemetryTracerFromContext(ctx)
+	ctx, span := tracer.Start(
+		ctx,
+		"IngestionUseCase.IngestObject",
+		trace.WithAttributes(attribute.String("object_type", objectType)),
+		trace.WithAttributes(attribute.String("organization_id", organizationId)))
+	defer span.End()
+
+	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
+		return 0, err
+	}
+
+	exec := usecase.executorFactory.NewExecutor()
+	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, organizationId, false)
+	if err != nil {
+		return 0, errors.Wrap(err, "error getting data model in IngestObject")
+	}
+
+	tables := dataModel.Tables
+	table, ok := tables[objectType]
+	if !ok {
+		return 0, errors.Wrapf(
+			models.NotFoundError,
+			"table %s not found in data model in IngestObject", objectType,
+		)
+	}
+
+	parser := payload_parser.NewParser()
+	payload, validationErrors, err := parser.ParsePayload(table, objectBody)
+	if err != nil {
+		return 0, errors.Wrapf(
+			models.BadParameterError,
+			"Error while validating payload in IngestObject: %v", err,
+		)
+	}
+	if len(validationErrors) > 0 {
+		encoded, _ := json.Marshal(validationErrors)
+		logger.InfoContext(ctx, fmt.Sprintf("Validation errors on IngestObject: %s", string(encoded)))
+		return 0, errors.Wrap(models.BadParameterError, string(encoded))
+	}
+
+	var nb int
+	ingestClosure := func() error {
+		return usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Executor) error {
+			nb, err = usecase.ingestionRepository.IngestObjects(ctx, tx, []models.ClientObject{payload}, table)
+			return err
+		})
+	}
+	err = retryIngestion(ctx, ingestClosure)
+	return nb, err
 }
 
 func (usecase *IngestionUseCase) IngestObjects(
@@ -52,12 +113,21 @@ func (usecase *IngestionUseCase) IngestObjects(
 	ctx, span := tracer.Start(
 		ctx,
 		"IngestionUseCase.IngestObjects",
-		trace.WithAttributes(attribute.String("objectType", objectType)),
-		trace.WithAttributes(attribute.String("organizationId", organizationId)))
+		trace.WithAttributes(attribute.String("object_type", objectType)),
+		trace.WithAttributes(attribute.String("organization_id", organizationId)))
 	defer span.End()
 
 	if err := usecase.enforceSecurity.CanIngest(organizationId); err != nil {
 		return 0, err
+	}
+
+	var rawMessages []json.RawMessage
+	if err := json.Unmarshal(objectBody, &rawMessages); err != nil {
+		return 0, errors.Wrap(models.BadParameterError,
+			"error unmarshalling objectBody in IngestObjects")
+	}
+	if len(rawMessages) > usecase.batchIngestionMaxSize {
+		return 0, errors.Wrap(models.BadParameterError, "too many objects in the batch")
 	}
 
 	exec := usecase.executorFactory.NewExecutor()
@@ -66,8 +136,7 @@ func (usecase *IngestionUseCase) IngestObjects(
 		return 0, errors.Wrap(err, "error getting data model in IngestObjects")
 	}
 
-	tables := dataModel.Tables
-	table, ok := tables[objectType]
+	table, ok := dataModel.Tables[objectType]
 	if !ok {
 		return 0, errors.Wrapf(
 			models.NotFoundError,
@@ -75,28 +144,43 @@ func (usecase *IngestionUseCase) IngestObjects(
 		)
 	}
 
+	clientObjects := make([]models.ClientObject, 0, len(rawMessages))
+	objectIds := make(map[string]struct{}, len(rawMessages))
 	parser := payload_parser.NewParser()
-	payload, validationErrors, err := parser.ParsePayload(table, objectBody)
-	if err != nil {
-		return 0, errors.Wrapf(
-			models.BadParameterError,
-			"Error while validating payload in IngestObjects: %v", err,
-		)
-	}
-	if len(validationErrors) > 0 {
-		encoded, _ := json.Marshal(validationErrors)
-		logger.InfoContext(ctx, fmt.Sprintf("Validation errors on IngestObjects: %s", string(encoded)))
-		return 0, errors.Wrap(models.BadParameterError, string(encoded))
+	for i, rawMsg := range rawMessages {
+		payload, validationErrors, err := parser.ParsePayload(table, rawMsg)
+		if err != nil {
+			return 0, errors.Wrapf(
+				models.BadParameterError,
+				"Error while validating payload in IngestObjects: %v", err,
+			)
+		}
+		if len(validationErrors) > 0 {
+			encoded, _ := json.Marshal(validationErrors)
+			logger.InfoContext(ctx, fmt.Sprintf("Validation errors on IngestObjects: %s at index %d", string(encoded), i))
+			return 0, errors.Wrap(models.BadParameterError, string(encoded))
+		}
+		if _, ok := objectIds[payload.Data["object_id"].(string)]; ok {
+			return 0, errors.Wrap(models.BadParameterError, "duplicate object_id in the batch")
+		}
+		objectIds[payload.Data["object_id"].(string)] = struct{}{}
+		clientObjects = append(clientObjects, payload)
 	}
 
 	var nb int
 	ingestClosure := func() error {
 		return usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Executor) error {
-			nb, err = usecase.ingestionRepository.IngestObjects(ctx, tx, []models.ClientObject{payload}, table)
+			nb, err = usecase.ingestionRepository.IngestObjects(ctx, tx, clientObjects, table)
 			return err
 		})
 	}
-	return nb, retryIngestion(ctx, ingestClosure)
+	err = retryIngestion(ctx, ingestClosure)
+	if err != nil {
+		return 0, err
+	}
+
+	logger.InfoContext(ctx, fmt.Sprintf("Successfully ingested %d objects", nb))
+	return nb, nil
 }
 
 func (usecase *IngestionUseCase) ListUploadLogs(ctx context.Context,
@@ -136,7 +220,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 	}
 
 	fileName := computeFileName(organizationId, table.Name)
-	writer, err := usecase.blobRepository.OpenStream(ctx, usecase.GcsIngestionBucket, fileName, fileName)
+	writer, err := usecase.blobRepository.OpenStream(ctx, usecase.ingestionBucketUrl, fileName, fileName)
 	if err != nil {
 		return models.UploadLog{}, err
 	}
@@ -281,7 +365,7 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 		}
 	}
 
-	file, err := usecase.blobRepository.GetBlob(ctx, usecase.GcsIngestionBucket, uploadLog.FileName)
+	file, err := usecase.blobRepository.GetBlob(ctx, usecase.ingestionBucketUrl, uploadLog.FileName)
 	if file.ReadCloser != nil {
 		defer file.ReadCloser.Close()
 	}
@@ -388,8 +472,8 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 	keepParsingFile := true
 	objectIdx := 0
 	for keepParsingFile {
-		windowEnd := objectIdx + batchSize
-		clientObjects := make([]models.ClientObject, 0, batchSize)
+		windowEnd := objectIdx + csvIngestionBatchSize
+		clientObjects := make([]models.ClientObject, 0, csvIngestionBatchSize)
 		for ; objectIdx < windowEnd; objectIdx++ {
 			logger.InfoContext(ctx, fmt.Sprintf("Start reading line %v", objectIdx))
 			record, err := r.Read()
@@ -514,7 +598,7 @@ func computeFileName(organizationId, tableName string) string {
 func retryIngestion(ctx context.Context, f func() error) error {
 	logger := utils.LoggerFromContext(ctx)
 	return retry.Do(f,
-		retry.Attempts(3),
+		retry.Attempts(2),
 		retry.LastErrorOnly(true),
 		retry.RetryIf(func(err error) bool {
 			return errors.Is(err, models.ConflictError)

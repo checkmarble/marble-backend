@@ -49,6 +49,7 @@ func addRoutes(r *gin.Engine, auth Authentication, tokenHandler TokenHandler, uc
 	router.POST("/decisions/:decision_id/snooze", handleSnoozeDecision(uc))
 
 	router.POST("/ingestion/:object_type", handleIngestion(uc))
+	router.POST("/ingestion/:object_type/multiple", handleIngestionMultiple(uc))
 	router.POST("/ingestion/:object_type/batch", timeoutMiddleware(batchIngestionTimeout), handlePostCsvIngestion(uc))
 	router.GET("/ingestion/:object_type/upload-logs", handleListUploadLogs(uc))
 

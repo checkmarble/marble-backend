@@ -31,6 +31,33 @@ func handleIngestion(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(c.Request, uc).NewIngestionUseCase()
+		nb, err := usecase.IngestObject(c.Request.Context(), organizationId, objectType, objectBody)
+		if presentError(c, err) {
+			return
+		}
+		if nb == 0 {
+			c.Status(http.StatusOK)
+			return
+		}
+		c.Status(http.StatusCreated)
+	}
+}
+
+func handleIngestionMultiple(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(c, err) {
+			return
+		}
+
+		objectType := c.Param("object_type")
+		objectBody, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			presentError(c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+
+		usecase := usecasesWithCreds(c.Request, uc).NewIngestionUseCase()
 		nb, err := usecase.IngestObjects(c.Request.Context(), organizationId, objectType, objectBody)
 		if presentError(c, err) {
 			return

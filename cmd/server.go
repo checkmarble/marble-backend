@@ -69,6 +69,7 @@ func RunServer() error {
 		KillIfReadLicenseError: utils.GetEnv("KILL_IF_READ_LICENSE_ERROR", false),
 	}
 	serverConfig := struct {
+		batchIngestionMaxSize            int
 		caseManagerBucket                string
 		ingestionBucketUrl               string
 		jwtSigningKey                    string
@@ -76,6 +77,7 @@ func RunServer() error {
 		sentryDsn                        string
 		transferCheckEnrichmentBucketUrl string
 	}{
+		batchIngestionMaxSize:            utils.GetEnv("BATCH_INGESTION_MAX_SIZE", usecases.DefaultApiBatchIngestionSize),
 		caseManagerBucket:                utils.GetEnv("CASE_MANAGER_BUCKET_URL", ""),
 		ingestionBucketUrl:               utils.GetEnv("INGESTION_BUCKET_URL", ""),
 		jwtSigningKey:                    utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY", ""),
@@ -119,6 +121,7 @@ func RunServer() error {
 	)
 
 	uc := usecases.NewUsecases(repositories,
+		usecases.WithBatchIngestionMaxSize(serverConfig.batchIngestionMaxSize),
 		usecases.WithGcsIngestionBucket(serverConfig.ingestionBucketUrl),
 		usecases.WithGcsCaseManagerBucket(serverConfig.caseManagerBucket),
 		usecases.WithLicense(license),
