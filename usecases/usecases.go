@@ -15,6 +15,7 @@ import (
 
 type Usecases struct {
 	Repositories                repositories.Repositories
+	batchIngestionMaxSize       int
 	gcsIngestionBucket          string
 	gcsCaseManagerBucket        string
 	failedWebhooksRetryPageSize int
@@ -47,7 +48,14 @@ func WithLicense(license models.LicenseValidation) Option {
 	}
 }
 
+func WithBatchIngestionMaxSize(size int) Option {
+	return func(o *options) {
+		o.batchIngestionMaxSize = size
+	}
+}
+
 type options struct {
+	batchIngestionMaxSize       int
 	gcsIngestionBucket          string
 	gcsCaseManagerBucket        string
 	failedWebhooksRetryPageSize int
