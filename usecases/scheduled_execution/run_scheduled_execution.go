@@ -18,6 +18,10 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
+// postgres will only accept 65535 parameters in a query, so we need to batch the decisions_to_create creation
+// this is taking into account the fact that we have 2 parameters per decision_to_create
+const batchSize = 30000
+
 type decisionWorkflowsUsecase interface {
 	AutomaticDecisionToCase(
 		ctx context.Context,
@@ -293,12 +297,18 @@ func (usecase *RunScheduledExecution) createScheduledScenarioDecisions(
 		return true, numbersOfDecisions{}, nil
 	}
 
-	decisionsToCreate, err := usecase.repository.StoreDecisionsToCreate(ctx, exec, models.DecisionToCreateBatchCreateInput{
-		ScheduledExecutionId: scheduledExecutionId,
-		ObjectId:             objectIds,
-	})
-	if err != nil {
-		return false, numbersOfDecisions{}, err
+	decisionsToCreate := make([]models.DecisionToCreate, 0, len(objectIds))
+	for i := 0; i < len(objectIds); i += batchSize {
+		end := min(len(objectIds), i+batchSize)
+
+		batch, err := usecase.repository.StoreDecisionsToCreate(ctx, exec, models.DecisionToCreateBatchCreateInput{
+			ScheduledExecutionId: scheduledExecutionId,
+			ObjectId:             objectIds[i:end],
+		})
+		if err != nil {
+			return false, numbersOfDecisions{}, err
+		}
+		decisionsToCreate = append(decisionsToCreate, batch...)
 	}
 
 	var nbEvaluatedDec, nbCreatedDec int
