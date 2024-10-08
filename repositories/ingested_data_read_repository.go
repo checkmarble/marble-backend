@@ -205,20 +205,39 @@ func (repo *IngestedDataReadRepositoryImpl) ListAllObjectIdsFromTable(
 		return nil, err
 	}
 
-	objectsAsMap, err := queryWithDynamicColumnList(
-		ctx,
-		exec,
-		tableNameWithSchema(exec, table.Name),
-		[]string{"object_id"},
-		filters...,
-	)
-	if err != nil {
-		return nil, err
+	qualifiedTableName := tableNameWithSchema(exec, table.Name)
+	q := NewQueryBuilder().
+		Select("object_id").
+		From(qualifiedTableName).
+		Where(rowIsValid(qualifiedTableName))
+	for _, f := range filters {
+		sql, args := f.ToSql()
+		q = q.Where(sql, args...)
 	}
 
-	output := make([]string, len(objectsAsMap))
-	for i := range objectsAsMap {
-		output[i] = objectsAsMap[i]["object_id"].(string)
+	sql, args, err := q.ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("error while building SQL query: %w", err)
+	}
+	rows, err := exec.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, fmt.Errorf("error while querying DB: %w", err)
+	}
+	defer rows.Close()
+
+	output := make([]string, 0)
+	var objectId string
+	for rows.Next() {
+		err = rows.Scan(&objectId)
+		if err != nil {
+			return nil, fmt.Errorf("error while scanning row: %w", err)
+		}
+
+		output = append(output, objectId)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error while iterating over rows: %w", err)
 	}
 
 	return output, nil
