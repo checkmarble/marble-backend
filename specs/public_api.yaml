@@ -45,6 +45,37 @@ paths:
           description: The provided object is invalid.
         500:
           description: An error happened while ingesting the object.
+  /ingestion/{object_type}/multiple:
+    post:
+      summary: Ingest new objects by batch
+      tags:
+        - Ingestion
+      security:
+        - ApiKeyAuth: []
+      description: Ingest a new object from the data model
+      parameters:
+        - in: path
+          name: object_type
+          schema:
+            type: string
+            example: transactions
+          required: true
+          description: name of the object type used for ingestion.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "#/components/schemas/data_model_object"
+              maxLength: 100
+      responses:
+        200:
+          description: The object was successfully ingested.
+        400:
+          description: One of the provided object is invalid (with respect to the data model), or too many objects have been sent.
+        500:
+          description: An error happened while ingesting the object.
   /decisions:
     post:
       tags:
