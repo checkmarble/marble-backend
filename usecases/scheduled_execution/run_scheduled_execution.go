@@ -298,13 +298,14 @@ func (usecase *RunScheduledExecution) createScheduledScenarioDecisions(
 	}
 
 	decisionsToCreate := make([]models.DecisionToCreate, 0, len(objectIds))
+	batch := make([]models.DecisionToCreate, 0, batchSize)
 	err = usecase.transactionFactory.Transaction(
 		ctx,
 		func(tx repositories.Executor) error {
 			for i := 0; i < len(objectIds); i += batchSize {
 				end := min(len(objectIds), i+batchSize)
 
-				batch, err := usecase.repository.StoreDecisionsToCreate(ctx, exec, models.DecisionToCreateBatchCreateInput{
+				batch, err = usecase.repository.StoreDecisionsToCreate(ctx, exec, models.DecisionToCreateBatchCreateInput{
 					ScheduledExecutionId: scheduledExecutionId,
 					ObjectId:             objectIds[i:end],
 				})
