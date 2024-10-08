@@ -29,10 +29,10 @@ type Property struct {
 }
 
 type Schema struct {
-	Ref       string  `json:"$ref"`
-	Type      string  `json:"type,omitempty"`
-	Items     *Schema `json:"items,omitempty"`
-	MaxLength int     `json:"maxLength,omitempty"`
+	Ref      string  `json:"$ref"`
+	Type     string  `json:"type,omitempty"`
+	Items    *Schema `json:"items,omitempty"`
+	MaxItems int     `json:"maxItems,omitempty"`
 }
 
 type ApplicationJSON struct {
@@ -433,7 +433,7 @@ func OpenAPIFromDataModel(dataModel models.DataModel) Reference {
 								Items: &Schema{
 									Ref: fmt.Sprintf("#/components/schemas/%s", table.Name),
 								},
-								MaxLength: 100,
+								MaxItems: 100,
 							},
 						},
 					},
