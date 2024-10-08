@@ -138,6 +138,63 @@ func decisionInputSchema(triggerObjects []map[string]string) ComponentsSchema {
 	}
 }
 
+func multipleDecisionSchema() ComponentsSchema {
+	return ComponentsSchema{
+		Required: []string{"decisions", "metadata"},
+		Type:     "object",
+		Properties: map[string]Property{
+			"decisions": {
+				Type: utils.Ptr("array"),
+				Items: &Schema{
+					Ref: "#/components/schemas/Decision",
+				},
+			},
+			"metadata": {
+				Ref: utils.Ptr("#/components/schemas/MultipleDecisionMetadata"),
+			},
+		},
+	}
+}
+
+func multipleDecisionMetadataSchema() ComponentsSchema {
+	return ComponentsSchema{
+		Required: []string{"count"},
+		Type:     "object",
+		Properties: map[string]Property{
+			"count": {
+				Ref: utils.Ptr("#/components/schemas/Count"),
+			},
+		},
+	}
+}
+
+func countMetadataSchema() ComponentsSchema {
+	return ComponentsSchema{
+		Type: "object",
+		Properties: map[string]Property{
+			"total": {
+				Type: utils.Ptr("integer"),
+			},
+			"approve": {
+				Type: utils.Ptr("integer"),
+			},
+			"review": {
+				Type: utils.Ptr("integer"),
+			},
+			"block_and_review": {
+				Type: utils.Ptr("integer"),
+			},
+			"decline": {
+				Type: utils.Ptr("integer"),
+			},
+			"skipped": {
+				Type: utils.Ptr("integer"),
+			},
+		},
+		Required: []string{"total", "approve", "review", "block_and_review", "decline", "skipped"},
+	}
+}
+
 func decisionSchema(triggerObjects []map[string]string) ComponentsSchema {
 	return ComponentsSchema{
 		Type: "object",
@@ -414,6 +471,9 @@ func OpenAPIFromDataModel(dataModel models.DataModel) Reference {
 	ref.Components.Schemas["PivotValues"] = pivotValuesSchema()
 	ref.Components.Schemas["DecisionInput"] = decisionInputSchema(triggerObjects)
 	ref.Components.Schemas["Decision"] = decisionSchema(triggerObjects)
+	ref.Components.Schemas["MultipleDecisions"] = multipleDecisionSchema()
+	ref.Components.Schemas["MultipleDecisionMetadata"] = multipleDecisionMetadataSchema()
+	ref.Components.Schemas["Count"] = countMetadataSchema()
 	ref.Components.Schemas["DecisionRule"] = decisionRuleSchema()
 	ref.Components.SecuritySchemes = SecuritySchemes{
 		APIKey: APIKey{
@@ -444,7 +504,7 @@ func OpenAPIFromDataModel(dataModel models.DataModel) Reference {
 			},
 			Responses: map[string]Response{
 				"200": {
-					Description: "a decision was successfully returned",
+					Description: "A decision was successfully returned",
 					Content: &Content{
 						ApplicationJSON: ApplicationJSON{
 							Schema: Schema{
@@ -453,11 +513,52 @@ func OpenAPIFromDataModel(dataModel models.DataModel) Reference {
 						},
 					},
 				},
+				"400": {
+					Description: "The object does not match the data model, or the trigger condition of the scenario evaluated to 'false'",
+				},
 				"500": {
-					Description: "an error happened while taking a decision",
+					Description: "An error happened while taking a decision",
 				},
 			},
 		},
 	}
+
+	ref.Paths["/decisions/all"] = PathObject{
+		Post: MethodObject{
+			Security: []map[string][]string{
+				{
+					"api_key": []string{},
+				},
+			},
+			Tags:        []string{"Decisions"},
+			Description: "Decisions API",
+			RequestBody: RequestBody{
+				Content: Content{
+					ApplicationJSON: ApplicationJSON{
+						Schema: Schema{
+							Ref: "#/components/schemas/DecisionInput",
+						},
+					},
+				},
+				Required: true,
+			},
+			Responses: map[string]Response{
+				"200": {
+					Description: "The decisions were successfully evaluated",
+					Content: &Content{
+						ApplicationJSON: ApplicationJSON{
+							Schema: Schema{
+								Ref: "#/components/schemas/MultipleDecisions",
+							},
+						},
+					},
+				},
+				"500": {
+					Description: "An error happened while taking a decision",
+				},
+			},
+		},
+	}
+
 	return ref
 }
