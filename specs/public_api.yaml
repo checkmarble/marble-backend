@@ -68,7 +68,7 @@ paths:
               type: array
               items:
                 $ref: "#/components/schemas/data_model_object"
-              maxLength: 100
+              maxItems: 100
       responses:
         200:
           description: The object was successfully ingested.
