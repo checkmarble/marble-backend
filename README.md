@@ -63,10 +63,10 @@ The application can be run with the following flags:
 
 - `--migrations`: run the migrations
 - `--server`: run the server
-  - in development, it also runs the `SeedZorgOrganization` usecase script from `usecases/seed_usecase`
-- `--scheduler`: run the scenario scheduling job
 - `--scheduled-executer`: execute scheduled scenario job
 - `--data-ingestion`: run data ingestion job
+- `--cron-scheduler`: background job that automatically runs the cron jobs
+- `--send-pending-webhook-events`: retry sending failed webhooks
 
 > NB: `.vscode/launch.json` contains the configuration to run the app with these flags.
 
