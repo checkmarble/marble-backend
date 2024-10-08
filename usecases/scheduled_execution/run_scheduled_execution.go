@@ -353,7 +353,7 @@ func (usecase *RunScheduledExecution) createScheduledScenarioDecisions(
 		}
 
 		// Update the number of created decisions on the scheduled execution, but not at every decision
-		if i%100 == 0 {
+		if nbEvaluatedDec%100 == 0 {
 			_, err = usecase.repository.UpdateScheduledExecutionStatus(
 				ctx,
 				exec,
