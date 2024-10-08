@@ -29,7 +29,10 @@ type Property struct {
 }
 
 type Schema struct {
-	Ref string `json:"$ref"`
+	Ref       string  `json:"$ref"`
+	Type      string  `json:"type,omitempty"`
+	Items     *Schema `json:"items,omitempty"`
+	MaxLength int     `json:"maxLength,omitempty"`
 }
 
 type ApplicationJSON struct {
@@ -340,15 +343,62 @@ func OpenAPIFromDataModel(dataModel models.DataModel) Reference {
 				},
 				Responses: map[string]Response{
 					"200": {
-						Description: "data was successfully ingested",
+						Description: "Data was successfully treated but no new object version was created",
+					},
+					"201": {
+						Description: "Data was successfully ingested",
+					},
+					"400": {
+						Description: "One at least of the objects does not match the data model",
 					},
 					"500": {
-						Description: "an error happened while ingesting data",
+						Description: "An error happened while ingesting data",
 					},
 				},
 			},
 		}
 		ref.Paths[fmt.Sprintf("/ingestion/%s", table.Name)] = object
+
+		object = PathObject{
+			Post: MethodObject{
+				Security: []map[string][]string{
+					{
+						"api_key": []string{},
+					},
+				},
+				Tags:        []string{"Ingestion"},
+				Description: table.Description,
+				RequestBody: RequestBody{
+					Content: Content{
+						ApplicationJSON: ApplicationJSON{
+							Schema: Schema{
+								Type: "array",
+								Items: &Schema{
+									Ref: fmt.Sprintf("#/components/schemas/%s", table.Name),
+								},
+								MaxLength: 100,
+							},
+						},
+					},
+					Required: true,
+				},
+				Responses: map[string]Response{
+					"200": {
+						Description: "Data was successfully treated but no new object version was created",
+					},
+					"201": {
+						Description: "Data was successfully ingested",
+					},
+					"400": {
+						Description: "The array of objects is too long, or one at least of the objects does not match the data model",
+					},
+					"500": {
+						Description: "An error happened while ingesting data",
+					},
+				},
+			},
+		}
+		ref.Paths[fmt.Sprintf("/ingestion/%s/multiple", table.Name)] = object
 	}
 
 	var triggerObjects []map[string]string
