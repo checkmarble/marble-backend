@@ -211,13 +211,32 @@ func (repo *MarbleDbRepository) StoreDecisionsToCreate(
 	query = query.Suffix(fmt.Sprintf("RETURNING %s",
 		strings.Join(dbmodels.DecisionToCreateFields, ",")))
 
-	return SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (models.DecisionToCreate, error) {
-		db, err := pgx.RowToStructByPos[dbmodels.DecisionToCreate](row)
+	// the query can be quite large (65k uuids ~= 2Mb), so avoid to passing it by value to the utility functions
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := exec.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	var decisions []models.DecisionToCreate
+	for rows.Next() {
+		db, err := pgx.RowToStructByPos[dbmodels.DecisionToCreate](rows)
 		if err != nil {
-			return models.DecisionToCreate{}, err
+			return nil, err
 		}
-		return dbmodels.AdaptDecisionToCrate(db), nil
-	})
+		decisions = append(decisions, dbmodels.AdaptDecisionToCrate(db))
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+
+	return decisions, nil
 }
 
 func (repo *MarbleDbRepository) UpdateDecisionToCreateStatus(

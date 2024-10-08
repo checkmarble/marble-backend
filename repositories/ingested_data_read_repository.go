@@ -217,8 +217,8 @@ func (repo *IngestedDataReadRepositoryImpl) ListAllObjectIdsFromTable(
 	}
 
 	output := make([]string, len(objectsAsMap))
-	for i, objectAsMap := range objectsAsMap {
-		output[i] = objectAsMap["object_id"].(string)
+	for i := range objectsAsMap {
+		output[i] = objectsAsMap[i]["object_id"].(string)
 	}
 
 	return output, nil
