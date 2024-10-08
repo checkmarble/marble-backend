@@ -71,13 +71,6 @@ jobs:
             --image=${{ env.IMAGE }} \
             --region="europe-west1"
 
-      - name: Deploy scheduler job
-        run: |
-          gcloud beta run jobs deploy scheduler \
-            --quiet \
-            --image=${{ env.IMAGE }} \
-            --region="europe-west1"
-
       - name: Deploy execute scheduled scenario job
         run: |
           gcloud beta run jobs deploy scheduled-executer \
