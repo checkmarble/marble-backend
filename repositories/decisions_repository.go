@@ -275,37 +275,37 @@ func countDecisions(ctx context.Context, exec Executor, organizationId string, f
 
 func applyDecisionFilters(query squirrel.SelectBuilder, filters models.DecisionFilters) squirrel.SelectBuilder {
 	if len(filters.ScenarioIds) > 0 {
-		query = query.Where(squirrel.Eq{"scenario_id": filters.ScenarioIds})
+		query = query.Where(squirrel.Eq{"d.scenario_id": filters.ScenarioIds})
 	}
 	if len(filters.Outcomes) > 0 {
-		query = query.Where(squirrel.Eq{"outcome": filters.Outcomes})
+		query = query.Where(squirrel.Eq{"d.outcome": filters.Outcomes})
 	}
 	if len(filters.TriggerObjects) > 0 {
-		query = query.Where(squirrel.Eq{"trigger_object_type": filters.TriggerObjects})
+		query = query.Where(squirrel.Eq{"d.trigger_object_type": filters.TriggerObjects})
 	}
 	if !filters.StartDate.IsZero() {
-		query = query.Where(squirrel.GtOrEq{"created_at": filters.StartDate})
+		query = query.Where(squirrel.GtOrEq{"d.created_at": filters.StartDate})
 	}
 	if !filters.EndDate.IsZero() {
-		query = query.Where(squirrel.LtOrEq{"created_at": filters.EndDate})
+		query = query.Where(squirrel.LtOrEq{"d.created_at": filters.EndDate})
 	}
 	if filters.HasCase != nil && *filters.HasCase {
-		query = query.Where(squirrel.NotEq{"case_id": nil})
+		query = query.Where(squirrel.NotEq{"d.case_id": nil})
 	}
 	if filters.HasCase != nil && !*filters.HasCase {
-		query = query.Where(squirrel.Eq{"case_id": nil})
+		query = query.Where(squirrel.Eq{"d.case_id": nil})
 	}
 	if len(filters.CaseIds) > 0 {
-		query = query.Where(squirrel.Eq{"case_id": filters.CaseIds})
+		query = query.Where(squirrel.Eq{"d.case_id": filters.CaseIds})
 	}
 	if len(filters.ReviewStatuses) > 0 {
-		query = query.Where(squirrel.Eq{"review_status": filters.ReviewStatuses})
+		query = query.Where(squirrel.Eq{"d.review_status": filters.ReviewStatuses})
 	}
 	if len(filters.ScheduledExecutionIds) > 0 {
-		query = query.Where(squirrel.Eq{"scheduled_execution_id": filters.ScheduledExecutionIds})
+		query = query.Where(squirrel.Eq{"d.scheduled_execution_id": filters.ScheduledExecutionIds})
 	}
 	if filters.PivotValue != nil {
-		query = query.Where(squirrel.Eq{"pivot_value": *filters.PivotValue})
+		query = query.Where(squirrel.Eq{"d.pivot_value": *filters.PivotValue})
 	}
 
 	// only if we want to filter by case inbox id, join the cases table
