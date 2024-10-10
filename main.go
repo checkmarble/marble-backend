@@ -17,6 +17,7 @@ func main() {
 	shouldRunDataIngestion := flag.Bool("data-ingestion", false, "Run data ingestion")
 	shouldRunSendPendingWebhookEvents := flag.Bool("send-pending-webhook-events", false, "Send pending webhook events")
 	shouldRunScheduler := flag.Bool("cron-scheduler", false, "Run scheduler for cron jobs")
+	shouldRunWorker := flag.Bool("worker", false, "Run workers on the task queues")
 	flag.Parse()
 	logger := utils.NewLogger("text")
 	logger.Info("Flags",
@@ -26,6 +27,7 @@ func main() {
 		slog.Bool("shouldRunDataIngestion", *shouldRunDataIngestion),
 		slog.Bool("shouldRunScheduler", *shouldRunScheduler),
 		slog.Bool("shouldRunSendPendingWebhookEvents", *shouldRunSendPendingWebhookEvents),
+		slog.Bool("shouldRunWorker", *shouldRunWorker),
 	)
 
 	if *shouldRunMigrations {
@@ -69,6 +71,13 @@ func main() {
 
 	if *shouldRunScheduler {
 		err := cmd.RunJobScheduler()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	if *shouldRunWorker {
+		err := cmd.RunTaskQueue()
 		if err != nil {
 			log.Fatal(err)
 		}
