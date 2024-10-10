@@ -230,7 +230,7 @@ func (usecase TransferAlertsUsecase) CreateTransferAlert(
 	return executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
-		func(tx repositories.Executor) (models.TransferAlert, error) {
+		func(tx repositories.Transaction) (models.TransferAlert, error) {
 			err := usecase.transferAlertsRepository.CreateTransferAlert(ctx, tx, alert)
 			if err != nil {
 				return models.TransferAlert{}, err
@@ -259,7 +259,7 @@ func (usecase TransferAlertsUsecase) UpdateTransferAlertAsSender(
 	return executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
-		func(tx repositories.Executor) (models.TransferAlert, error) {
+		func(tx repositories.Transaction) (models.TransferAlert, error) {
 			alert, err := usecase.transferAlertsRepository.GetTransferAlert(ctx, tx, alertId)
 			if err != nil {
 				return models.TransferAlert{}, err
@@ -297,7 +297,7 @@ func (usecase TransferAlertsUsecase) UpdateTransferAlertAsBeneficiary(
 	return executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
-		func(tx repositories.Executor) (models.TransferAlert, error) {
+		func(tx repositories.Transaction) (models.TransferAlert, error) {
 			alert, err := usecase.transferAlertsRepository.GetTransferAlert(ctx, tx, alertId)
 			if err != nil {
 				return models.TransferAlert{}, err

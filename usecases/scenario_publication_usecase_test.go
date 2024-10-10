@@ -23,7 +23,8 @@ type ScenarioPublicationUsecaseTestSuite struct {
 	scenarioFetcher                *mocks.ScenarioFetcher
 	scenarioPublicationsRepository *mocks.ScenarioPublicationRepository
 	scenarioPublisher              *mocks.ScenarioPublisher
-	transaction                    *mocks.Executor
+	exec                           *mocks.Executor
+	transaction                    *mocks.Transaction
 	transactionFactory             *mocks.TransactionFactory
 	clientDbIndexEditor            *mocks.ClientDbIndexEditor
 
@@ -49,8 +50,9 @@ func (suite *ScenarioPublicationUsecaseTestSuite) SetupTest() {
 	suite.scenarioFetcher = new(mocks.ScenarioFetcher)
 	suite.scenarioPublicationsRepository = new(mocks.ScenarioPublicationRepository)
 	suite.scenarioPublisher = new(mocks.ScenarioPublisher)
-	suite.transaction = new(mocks.Executor)
-	suite.transactionFactory = &mocks.TransactionFactory{ExecMock: suite.transaction}
+	suite.exec = new(mocks.Executor)
+	suite.transaction = new(mocks.Transaction)
+	suite.transactionFactory = &mocks.TransactionFactory{TxMock: suite.transaction}
 	suite.clientDbIndexEditor = new(mocks.ClientDbIndexEditor)
 
 	suite.organizationId = "organizationId"
@@ -160,6 +162,7 @@ func (suite *ScenarioPublicationUsecaseTestSuite) AssertExpectations() {
 	suite.scenarioFetcher.AssertExpectations(t)
 	suite.scenarioPublicationsRepository.AssertExpectations(t)
 	suite.scenarioPublisher.AssertExpectations(t)
+	suite.exec.AssertExpectations(t)
 	suite.transaction.AssertExpectations(t)
 	suite.transactionFactory.AssertExpectations(t)
 }

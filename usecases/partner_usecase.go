@@ -62,7 +62,7 @@ func (usecase *PartnerUsecase) CreatePartner(
 	}
 
 	partner, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		tx repositories.Executor,
+		tx repositories.Transaction,
 	) (models.Partner, error) {
 		partnerId := uuid.New().String()
 		partnerCreateInput.Bic = strings.TrimSpace(strings.ToUpper(partnerCreateInput.Bic))
@@ -104,7 +104,7 @@ func (usecase *PartnerUsecase) UpdatePartner(
 	}
 
 	partner, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		tx repositories.Executor,
+		tx repositories.Transaction,
 	) (models.Partner, error) {
 		partnerUpdateInput.Bic.String = strings.TrimSpace(
 			strings.ToUpper(partnerUpdateInput.Bic.String))

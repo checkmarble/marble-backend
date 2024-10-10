@@ -47,7 +47,7 @@ func TestScenarioPublisher_PublishOrUnpublishIteration_unpublish_nominal(t *test
 		CreatedAt:           time.Now(),
 	}
 
-	transaction := new(mocks.Executor)
+	transaction := new(mocks.Transaction)
 	ctx := context.Background()
 
 	repo := new(mocks.ScenarioPublisherRepository)
@@ -101,7 +101,7 @@ func TestScenarioPublisher_PublishOrUnpublishIteration_unpublish_CreateScenarioP
 		PublicationAction:   models.Unpublish,
 	}
 
-	transaction := new(mocks.Executor)
+	transaction := new(mocks.Transaction)
 	ctx := context.Background()
 
 	spr := new(mocks.ScenarioPublicationRepository)

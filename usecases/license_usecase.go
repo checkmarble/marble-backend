@@ -67,7 +67,7 @@ func (usecase *ProtectedLicenseUseCase) CreateLicense(ctx context.Context, input
 		return models.License{}, err
 	}
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		tx repositories.Executor,
+		tx repositories.Transaction,
 	) (models.License, error) {
 		licenseId := uuid.NewString()
 		err := usecase.licenseRepository.CreateLicense(
@@ -108,7 +108,7 @@ func (usecase *ProtectedLicenseUseCase) UpdateLicense(ctx context.Context, input
 	}
 
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		tx repositories.Executor,
+		tx repositories.Transaction,
 	) (models.License, error) {
 		err := usecase.licenseRepository.UpdateLicense(ctx, tx, input)
 		if err != nil {

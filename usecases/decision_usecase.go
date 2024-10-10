@@ -55,7 +55,7 @@ type DecisionUsecaseRepository interface {
 type decisionWorkflowsUsecase interface {
 	AutomaticDecisionToCase(
 		ctx context.Context,
-		tx repositories.Executor,
+		tx repositories.Transaction,
 		scenario models.Scenario,
 		decision models.DecisionWithRuleExecutions,
 		webhookEventId string,
@@ -290,7 +290,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 
 	sendWebhookEventId := make([]string, 0)
 	newDecision, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		tx repositories.Executor,
+		tx repositories.Transaction,
 	) (models.DecisionWithRuleExecutions, error) {
 		if err = usecase.repository.StoreDecision(
 			ctx,
@@ -434,7 +434,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 
 	sendWebhookEventIds := make([]string, 0)
 	decisions, err = executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		tx repositories.Executor,
+		tx repositories.Transaction,
 	) ([]models.DecisionWithRuleExecutions, error) {
 		var ids []string
 		for _, item := range items {

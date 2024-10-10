@@ -8,8 +8,8 @@ import (
 
 type TransactionFactory interface {
 	TransactionInOrgSchema(ctx context.Context, organizationId string,
-		f func(tx repositories.Executor) error) error
-	Transaction(ctx context.Context, fn func(tx repositories.Executor) error) error
+		f func(tx repositories.Transaction) error) error
+	Transaction(ctx context.Context, fn func(tx repositories.Transaction) error) error
 }
 
 // Interface to be used in usecases, implemented by the DbExecutorFactory class in the usecases/db_executor_factory package

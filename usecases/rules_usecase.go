@@ -33,7 +33,7 @@ type RuleUsecase struct {
 func (usecase *RuleUsecase) ListRules(ctx context.Context, iterationId string) ([]models.Rule, error) {
 	return executor_factory.TransactionReturnValue(ctx,
 		usecase.transactionFactory,
-		func(tx repositories.Executor) ([]models.Rule, error) {
+		func(tx repositories.Transaction) ([]models.Rule, error) {
 			scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, tx, iterationId)
 			if err != nil {
 				return nil, err
@@ -49,7 +49,7 @@ func (usecase *RuleUsecase) ListRules(ctx context.Context, iterationId string) (
 func (usecase *RuleUsecase) CreateRule(ctx context.Context, ruleInput models.CreateRuleInput) (models.Rule, error) {
 	rule, err := executor_factory.TransactionReturnValue(ctx,
 		usecase.transactionFactory,
-		func(tx repositories.Executor) (models.Rule, error) {
+		func(tx repositories.Transaction) (models.Rule, error) {
 			scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, tx, ruleInput.ScenarioIterationId)
 			if err != nil {
 				return models.Rule{}, err
@@ -85,7 +85,7 @@ func (usecase *RuleUsecase) CreateRule(ctx context.Context, ruleInput models.Cre
 func (usecase *RuleUsecase) GetRule(ctx context.Context, ruleId string) (models.Rule, error) {
 	return executor_factory.TransactionReturnValue(ctx,
 		usecase.transactionFactory,
-		func(tx repositories.Executor) (models.Rule, error) {
+		func(tx repositories.Transaction) (models.Rule, error) {
 			rule, err := usecase.repository.GetRuleById(ctx, tx, ruleId)
 			if err != nil {
 				return models.Rule{}, err
@@ -104,7 +104,7 @@ func (usecase *RuleUsecase) GetRule(ctx context.Context, ruleId string) (models.
 }
 
 func (usecase *RuleUsecase) UpdateRule(ctx context.Context, updateRule models.UpdateRuleInput) (updatedRule models.Rule, err error) {
-	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
+	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		rule, err := usecase.repository.GetRuleById(ctx, tx, updateRule.Id)
 		if err != nil {
 			return err
@@ -144,7 +144,7 @@ func (usecase *RuleUsecase) UpdateRule(ctx context.Context, updateRule models.Up
 }
 
 func (usecase *RuleUsecase) DeleteRule(ctx context.Context, ruleId string) error {
-	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
+	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		rule, err := usecase.repository.GetRuleById(ctx, tx, ruleId)
 		if err != nil {
 			return err

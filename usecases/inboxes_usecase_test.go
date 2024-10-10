@@ -17,7 +17,8 @@ import (
 type InboxUsecaseTestSuite struct {
 	suite.Suite
 	enforceSecurity    *mocks.EnforceSecurity
-	transaction        *mocks.Executor
+	exec               *mocks.Executor
+	transaction        *mocks.Transaction
 	transactionFactory *mocks.TransactionFactory
 	executorFactory    *mocks.ExecutorFactory
 	inboxRepository    *mocks.InboxRepository
@@ -39,8 +40,9 @@ func (suite *InboxUsecaseTestSuite) SetupTest() {
 	suite.enforceSecurity = new(mocks.EnforceSecurity)
 	suite.inboxRepository = new(mocks.InboxRepository)
 	suite.userRepository = new(mocks.UserRepository)
-	suite.transaction = new(mocks.Executor)
-	suite.transactionFactory = &mocks.TransactionFactory{ExecMock: suite.transaction}
+	suite.exec = new(mocks.Executor)
+	suite.transaction = new(mocks.Transaction)
+	suite.transactionFactory = &mocks.TransactionFactory{TxMock: suite.transaction}
 	suite.executorFactory = new(mocks.ExecutorFactory)
 
 	suite.organizationId = "25ab6323-1657-4a52-923a-ef6983fe4532"
@@ -114,6 +116,8 @@ func (suite *InboxUsecaseTestSuite) AssertExpectations() {
 	suite.enforceSecurity.AssertExpectations(t)
 	suite.inboxRepository.AssertExpectations(t)
 	suite.userRepository.AssertExpectations(t)
+	suite.exec.AssertExpectations(t)
+	suite.transaction.AssertExpectations(t)
 }
 
 func (suite *InboxUsecaseTestSuite) Test_CreateInbox_nominal() {

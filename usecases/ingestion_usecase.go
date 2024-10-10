@@ -94,7 +94,7 @@ func (usecase *IngestionUseCase) IngestObject(
 
 	var nb int
 	ingestClosure := func() error {
-		return usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Executor) error {
+		return usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Transaction) error {
 			nb, err = usecase.ingestionRepository.IngestObjects(ctx, tx, []models.ClientObject{payload}, table)
 			return err
 		})
@@ -180,7 +180,7 @@ func (usecase *IngestionUseCase) IngestObjects(
 
 	var nb int
 	ingestClosure := func() error {
-		return usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Executor) error {
+		return usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Transaction) error {
 			nb, err = usecase.ingestionRepository.IngestObjects(ctx, tx, clientObjects, table)
 			return err
 		})
@@ -289,7 +289,7 @@ func (usecase *IngestionUseCase) ValidateAndUploadIngestionCsv(ctx context.Conte
 	}
 
 	return executor_factory.TransactionReturnValue(ctx,
-		usecase.transactionFactory, func(tx repositories.Executor) (models.UploadLog, error) {
+		usecase.transactionFactory, func(tx repositories.Transaction) (models.UploadLog, error) {
 			newUploadListId := uuid.NewString()
 			newUploadLoad := models.UploadLog{
 				Id:             newUploadListId,
@@ -517,8 +517,10 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 		}
 
 		ingestClosure := func() error {
-			return usecase.transactionFactory.TransactionInOrgSchema(ctx,
-				organizationId, func(tx repositories.Executor) error {
+			return usecase.transactionFactory.TransactionInOrgSchema(
+				ctx,
+				organizationId,
+				func(tx repositories.Transaction) error {
 					_, err := usecase.ingestionRepository.IngestObjects(ctx, tx, clientObjects, table)
 					return err
 				})

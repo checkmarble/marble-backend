@@ -84,7 +84,7 @@ func NewWebhookEventsUsecase(
 // Does nothing (returns nil) if the license is not active
 func (usecase WebhookEventsUsecase) CreateWebhookEvent(
 	ctx context.Context,
-	tx repositories.Executor,
+	tx repositories.Transaction,
 	input models.WebhookEventCreate,
 ) error {
 	if !usecase.hasLicense {

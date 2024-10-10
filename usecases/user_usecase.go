@@ -15,6 +15,7 @@ import (
 
 type UserUseCase struct {
 	enforceUserSecurity security.EnforceSecurityUser
+	executorFactory     executor_factory.ExecutorFactory
 	transactionFactory  executor_factory.TransactionFactory
 	userRepository      repositories.UserRepository
 }
@@ -30,7 +31,7 @@ func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.Creat
 	createdUser, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
-		func(tx repositories.Executor) (models.User, error) {
+		func(tx repositories.Transaction) (models.User, error) {
 			// cleanup spaces
 			createUser.Email = strings.TrimSpace(createUser.Email)
 			// lowercase email to maintain uniqueness
@@ -60,7 +61,7 @@ func (usecase *UserUseCase) UpdateUser(ctx context.Context, updateUser models.Up
 	updatedUser, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
-		func(tx repositories.Executor) (models.User, error) {
+		func(tx repositories.Transaction) (models.User, error) {
 			user, err := usecase.userRepository.UserByID(ctx, tx, updateUser.UserId)
 			if err != nil {
 				return models.User{}, err
@@ -88,19 +89,15 @@ func (usecase *UserUseCase) DeleteUser(ctx context.Context, userId, currentUserI
 	if userId == currentUserId {
 		return errors.Wrap(models.ForbiddenError, "cannot delete yourself")
 	}
-	err := usecase.transactionFactory.Transaction(
-		ctx,
-		func(tx repositories.Executor) error {
-			user, err := usecase.userRepository.UserByID(ctx, tx, models.UserId(userId))
-			if err != nil {
-				return err
-			}
-			if err := usecase.enforceUserSecurity.DeleteUser(user); err != nil {
-				return err
-			}
-			return usecase.userRepository.DeleteUser(ctx, tx, models.UserId(userId))
-		},
-	)
+	exec := usecase.executorFactory.NewExecutor()
+	user, err := usecase.userRepository.UserByID(ctx, exec, models.UserId(userId))
+	if err != nil {
+		return err
+	}
+	if err := usecase.enforceUserSecurity.DeleteUser(user); err != nil {
+		return err
+	}
+	err = usecase.userRepository.DeleteUser(ctx, exec, models.UserId(userId))
 	if err != nil {
 		return err
 	}
@@ -115,24 +112,12 @@ func (usecase *UserUseCase) GetAllUsers(ctx context.Context) ([]models.User, err
 	if err := usecase.enforceUserSecurity.ListUser(); err != nil {
 		return []models.User{}, err
 	}
-	return executor_factory.TransactionReturnValue(
-		ctx,
-		usecase.transactionFactory,
-		func(tx repositories.Executor) ([]models.User, error) {
-			return usecase.userRepository.AllUsers(ctx, tx)
-		},
-	)
+	return usecase.userRepository.AllUsers(ctx, usecase.executorFactory.NewExecutor())
 }
 
 func (usecase *UserUseCase) GetUser(ctx context.Context, userID string) (models.User, error) {
 	if err := usecase.enforceUserSecurity.ListUser(); err != nil {
 		return models.User{}, err
 	}
-	return executor_factory.TransactionReturnValue(
-		ctx,
-		usecase.transactionFactory,
-		func(tx repositories.Executor) (models.User, error) {
-			return usecase.userRepository.UserByID(ctx, tx, models.UserId(userID))
-		},
-	)
+	return usecase.userRepository.UserByID(ctx, usecase.executorFactory.NewExecutor(), models.UserId(userID))
 }

@@ -236,6 +236,7 @@ func (usecases *UsecasesWithCreds) NewScheduledExecutionUsecase() ScheduledExecu
 func (usecases *UsecasesWithCreds) NewUserUseCase() UserUseCase {
 	return UserUseCase{
 		enforceUserSecurity: usecases.NewEnforceUserSecurity(),
+		executorFactory:     usecases.NewExecutorFactory(),
 		transactionFactory:  usecases.NewTransactionFactory(),
 		userRepository:      usecases.Repositories.UserRepository,
 	}

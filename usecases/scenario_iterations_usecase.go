@@ -176,7 +176,7 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(ctx co
 	newScenarioIteration, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
-		func(tx repositories.Executor) (models.ScenarioIteration, error) {
+		func(tx repositories.Transaction) (models.ScenarioIteration, error) {
 			if err := usecase.enforceSecurity.CreateScenario(organizationId); err != nil {
 				return models.ScenarioIteration{}, err
 			}
@@ -270,7 +270,7 @@ func (usecase *ScenarioIterationUsecase) CommitScenarioIterationVersion(
 	return executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
-		func(tx repositories.Executor) (models.ScenarioIteration, error) {
+		func(tx repositories.Transaction) (models.ScenarioIteration, error) {
 			scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, tx, iterationId)
 			if err != nil {
 				return iteration, err

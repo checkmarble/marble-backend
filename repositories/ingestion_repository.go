@@ -13,24 +13,24 @@ import (
 )
 
 type IngestionRepository interface {
-	IngestObjects(ctx context.Context, exec Executor, payloads []models.ClientObject, table models.Table) (int, error)
+	IngestObjects(ctx context.Context, tx Transaction, payloads []models.ClientObject, table models.Table) (int, error)
 }
 
 type IngestionRepositoryImpl struct{}
 
 func (repo *IngestionRepositoryImpl) IngestObjects(
 	ctx context.Context,
-	exec Executor,
+	tx Transaction,
 	payloads []models.ClientObject,
 	table models.Table,
 ) (int, error) {
-	if err := validateClientDbExecutor(exec); err != nil {
+	if err := validateClientDbExecutor(tx); err != nil {
 		return 0, err
 	}
 
 	mostRecentObjectIds, mostRecentPayloads := repo.mostRecentPayloadsByObjectId(payloads)
 
-	previouslyIngestedObjects, err := repo.loadPreviouslyIngestedObjects(ctx, exec, mostRecentObjectIds, table.Name)
+	previouslyIngestedObjects, err := repo.loadPreviouslyIngestedObjects(ctx, tx, mostRecentObjectIds, table.Name)
 	if err != nil {
 		return 0, err
 	}
@@ -43,7 +43,7 @@ func (repo *IngestionRepositoryImpl) IngestObjects(
 	if len(obsoleteIngestedObjectIds) > 0 {
 		err := repo.batchUpdateValidUntilOnObsoleteObjects(
 			ctx,
-			exec,
+			tx,
 			table.Name,
 			obsoleteIngestedObjectIds,
 		)
@@ -53,7 +53,7 @@ func (repo *IngestionRepositoryImpl) IngestObjects(
 	}
 
 	if len(payloadsToInsert) > 0 {
-		if err := repo.batchInsertPayloadsAndEnumValues(ctx, exec, payloadsToInsert, table); err != nil {
+		if err := repo.batchInsertPayloadsAndEnumValues(ctx, tx, payloadsToInsert, table); err != nil {
 			return 0, err
 		}
 	}

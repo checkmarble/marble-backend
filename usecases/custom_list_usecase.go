@@ -44,7 +44,7 @@ func (usecase *CustomListUseCase) CreateCustomList(
 	}
 
 	list, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		tx repositories.Executor,
+		tx repositories.Transaction,
 	) (models.CustomList, error) {
 		newCustomListId := uuid.NewString()
 
@@ -72,7 +72,7 @@ func (usecase *CustomListUseCase) UpdateCustomList(ctx context.Context,
 	updateCustomList models.UpdateCustomListInput,
 ) (models.CustomList, error) {
 	list, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		tx repositories.Executor,
+		tx repositories.Transaction,
 	) (models.CustomList, error) {
 		if updateCustomList.Name != nil || updateCustomList.Description != nil {
 			customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, updateCustomList.Id)
@@ -101,7 +101,7 @@ func (usecase *CustomListUseCase) UpdateCustomList(ctx context.Context,
 }
 
 func (usecase *CustomListUseCase) SoftDeleteCustomList(ctx context.Context, listId string) error {
-	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
+	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, listId)
 		if err != nil {
 			return err
@@ -155,7 +155,7 @@ func (usecase *CustomListUseCase) AddCustomListValue(ctx context.Context,
 	}
 
 	value, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		tx repositories.Executor,
+		tx repositories.Transaction,
 	) (models.CustomListValue, error) {
 		customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, addCustomListValue.CustomListId)
 		if err != nil {
@@ -192,7 +192,7 @@ func (usecase *CustomListUseCase) DeleteCustomListValue(ctx context.Context,
 		userId = &creds.ActorIdentity.UserId
 	}
 
-	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
+	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, deleteCustomListValue.CustomListId)
 		if err != nil {
 			return err

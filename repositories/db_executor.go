@@ -9,30 +9,61 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-type transactionOrPool interface {
+// //////////////////////////////////
+// Generic db executor (tx or pool)
+// //////////////////////////////////
+type TransactionOrPool interface {
 	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
-// implements the DbExecutor from usecasess
-type ExecutorPostgres struct {
-	databaseShema models.DatabaseSchema
-	exec          transactionOrPool
+type PgExecutor struct {
+	databaseSchema models.DatabaseSchema
+	exec           TransactionOrPool
 }
 
-func (e ExecutorPostgres) DatabaseSchema() models.DatabaseSchema {
-	return e.databaseShema
+func (e PgExecutor) DatabaseSchema() models.DatabaseSchema {
+	return e.databaseSchema
 }
 
-func (e ExecutorPostgres) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
+func (e PgExecutor) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
 	return e.exec.Exec(ctx, sql, args...)
 }
 
-func (e ExecutorPostgres) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+func (e PgExecutor) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
 	return e.exec.Query(ctx, sql, args...)
 }
 
-func (e ExecutorPostgres) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+func (e PgExecutor) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
 	return e.exec.QueryRow(ctx, sql, args...)
+}
+
+////////////////////////////////////
+// Transaction
+////////////////////////////////////
+
+type PgTx struct {
+	databaseSchema models.DatabaseSchema
+	tx             pgx.Tx
+}
+
+func (t PgTx) DatabaseSchema() models.DatabaseSchema {
+	return t.databaseSchema
+}
+
+func (t PgTx) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
+	return t.tx.Exec(ctx, sql, args...)
+}
+
+func (t PgTx) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+	return t.tx.Query(ctx, sql, args...)
+}
+
+func (t PgTx) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+	return t.tx.QueryRow(ctx, sql, args...)
+}
+
+func (t PgTx) RawTx() pgx.Tx {
+	return t.tx
 }

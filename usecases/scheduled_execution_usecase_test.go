@@ -15,7 +15,8 @@ import (
 
 type ScheduledExecutionsTestSuite struct {
 	suite.Suite
-	transaction             *mocks.Executor
+	exec                    *mocks.Executor
+	transaction             *mocks.Transaction
 	enforceSecurity         *mocks.EnforceSecurity
 	transactionFactory      *mocks.TransactionFactory
 	repository              *mocks.ScheduledExecutionUsecaseRepository
@@ -27,9 +28,10 @@ type ScheduledExecutionsTestSuite struct {
 }
 
 func (suite *ScheduledExecutionsTestSuite) SetupTest() {
-	suite.transaction = new(mocks.Executor)
+	suite.exec = new(mocks.Executor)
+	suite.transaction = new(mocks.Transaction)
 	suite.enforceSecurity = new(mocks.EnforceSecurity)
-	suite.transactionFactory = &mocks.TransactionFactory{ExecMock: suite.transaction}
+	suite.transactionFactory = &mocks.TransactionFactory{TxMock: suite.transaction}
 	suite.repository = new(mocks.ScheduledExecutionUsecaseRepository)
 	suite.exportScheduleExecution = new(mocks.ExportDecisionsMock)
 
@@ -53,6 +55,7 @@ func (suite *ScheduledExecutionsTestSuite) makeUsecase() *ScheduledExecutionUsec
 
 func (suite *ScheduledExecutionsTestSuite) AssertExpectations() {
 	t := suite.T()
+	suite.exec.AssertExpectations(t)
 	suite.transaction.AssertExpectations(t)
 	suite.enforceSecurity.AssertExpectations(t)
 	suite.transactionFactory.AssertExpectations(t)

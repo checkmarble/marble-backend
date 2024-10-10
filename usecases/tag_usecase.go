@@ -54,7 +54,7 @@ func (usecase *TagUseCase) CreateTag(ctx context.Context, attributes models.Crea
 	}
 
 	tag, err := executor_factory.TransactionReturnValue(ctx,
-		usecase.transactionFactory, func(tx repositories.Executor) (models.Tag, error) {
+		usecase.transactionFactory, func(tx repositories.Transaction) (models.Tag, error) {
 			newTagId := uuid.NewString()
 			if err := usecase.repository.CreateTag(ctx, tx, attributes, newTagId); err != nil {
 				if repositories.IsUniqueViolationError(err) {
@@ -88,7 +88,7 @@ func (usecase *TagUseCase) GetTagById(ctx context.Context, tagId string) (models
 
 func (usecase *TagUseCase) UpdateTag(ctx context.Context, attributes models.UpdateTagAttributes) (models.Tag, error) {
 	tag, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		tx repositories.Executor,
+		tx repositories.Transaction,
 	) (models.Tag, error) {
 		tag, err := usecase.repository.GetTagById(ctx, tx, attributes.TagId)
 		if err != nil {
@@ -115,7 +115,7 @@ func (usecase *TagUseCase) UpdateTag(ctx context.Context, attributes models.Upda
 }
 
 func (usecase *TagUseCase) DeleteTag(ctx context.Context, organizationId, tagId string) error {
-	err := executor_factory.TransactionFactory.Transaction(usecase.transactionFactory, ctx, func(tx repositories.Executor) error {
+	err := executor_factory.TransactionFactory.Transaction(usecase.transactionFactory, ctx, func(tx repositories.Transaction) error {
 		t, err := usecase.repository.GetTagById(ctx, tx, tagId)
 		if err != nil {
 			return err
