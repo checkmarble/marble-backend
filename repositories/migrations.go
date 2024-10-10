@@ -12,6 +12,10 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 
+	"github.com/riverqueue/river/riverdriver/riverpgxv5"
+	"github.com/riverqueue/river/rivermigrate"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 )
@@ -55,6 +59,21 @@ func (m *Migrater) Run(ctx context.Context) error {
 		return errors.Wrap(err, "migrateAnalyticsViews error")
 	}
 
+	pgxPool, err := m.openDbPgx(ctx)
+	if err != nil {
+		return errors.Wrap(err, "unable to open db in Migrater")
+	}
+	migrator, err := rivermigrate.New(riverpgxv5.New(pgxPool), nil)
+	if err != nil {
+		return errors.Wrap(err, "unable to create migrator")
+	}
+
+	res, err := migrator.Migrate(ctx, rivermigrate.DirectionUp, nil)
+	if err != nil {
+		return errors.Wrap(err, "unable to run migrations")
+	}
+	fmt.Println(res.Versions)
+
 	return nil
 }
 
@@ -72,6 +91,27 @@ func (m *Migrater) openDb(ctx context.Context) error {
 		return errors.Wrap(err, "unable to ping database")
 	}
 	return nil
+}
+
+func (m *Migrater) openDbPgx(ctx context.Context) (*pgxpool.Pool, error) {
+	connectionString := m.pgConfig.GetConnectionString()
+	cfg, err := pgxpool.ParseConfig(connectionString)
+	if err != nil {
+		return nil, fmt.Errorf("create connection pool: %w", err)
+	}
+
+	pool, err := pgxpool.NewWithConfig(context.Background(), cfg)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create connection pool: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	if err = pool.Ping(ctx); err != nil {
+		return nil, fmt.Errorf("unable to ping database: %w", err)
+	}
+
+	return pool, nil
 }
 
 func (m *Migrater) runMarbleDbMigrations(ctx context.Context) error {
