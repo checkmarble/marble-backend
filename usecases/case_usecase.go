@@ -19,6 +19,8 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/riverqueue/river"
 )
 
 type CaseUseCaseRepository interface {
@@ -69,6 +71,7 @@ type CaseUseCase struct {
 	transactionFactory   executor_factory.TransactionFactory
 	executorFactory      executor_factory.ExecutorFactory
 	webhookEventsUsecase webhookEventsUsecase
+	riverClient          *river.Client[pgx.Tx]
 }
 
 func (usecase *CaseUseCase) ListCases(
@@ -94,6 +97,14 @@ func (usecase *CaseUseCase) ListCases(
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Transaction) ([]models.CaseWithRank, error) {
+			res, err := usecase.riverClient.InsertTx(ctx, tx.RawTx(), models.SortArgs{
+				Strings: []string{"a", "b", "c"},
+			}, nil)
+			if err != nil {
+				return []models.CaseWithRank{}, err
+			}
+			fmt.Println(res.Job.ID)
+
 			availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx, organizationId)
 			if err != nil {
 				return []models.CaseWithRank{}, err

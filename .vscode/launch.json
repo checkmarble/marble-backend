@@ -64,6 +64,18 @@
         "--cron-scheduler"
       ],
       "console": "integratedTerminal"
+    },
+    {
+      "name": "Launch task queue workers (.env)",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/.",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "--worker"
+      ],
+      "console": "integratedTerminal"
     }
   ]
 }

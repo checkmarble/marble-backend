@@ -262,6 +262,7 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 		caseManagerBucketUrl: usecases.caseManagerBucketUrl,
 		blobRepository:       usecases.Repositories.BlobRepository,
 		webhookEventsUsecase: usecases.NewWebhookEventsUsecase(),
+		riverClient:          usecases.riverClient,
 	}
 }
 
