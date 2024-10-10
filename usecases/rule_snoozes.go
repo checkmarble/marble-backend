@@ -54,7 +54,7 @@ type updateRuleRepository interface {
 
 type caseUsecase interface {
 	GetCase(ctx context.Context, caseId string) (models.Case, error)
-	CreateRuleSnoozeEvent(ctx context.Context, tx repositories.Executor, input models.RuleSnoozeCaseEventInput,
+	CreateRuleSnoozeEvent(ctx context.Context, tx repositories.Transaction, input models.RuleSnoozeCaseEventInput,
 	) error
 }
 
@@ -243,7 +243,7 @@ func (usecase RuleSnoozeUsecase) SnoozeDecision(
 	snoozes, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
-		func(tx repositories.Executor) ([]models.RuleSnooze, error) {
+		func(tx repositories.Transaction) ([]models.RuleSnooze, error) {
 			if snoozeGroupId == nil {
 				val := uuid.NewString()
 				snoozeGroupId = &val

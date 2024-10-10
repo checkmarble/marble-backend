@@ -19,7 +19,8 @@ type DatamodelUsecaseTestSuite struct {
 	executorFactory              *mocks.ExecutorFactory
 	dataModelRepository          *mocks.DataModelRepository
 	organizationSchemaRepository *mocks.OrganizationSchemaRepository
-	transaction                  *mocks.Executor
+	exec                         *mocks.Executor
+	transaction                  *mocks.Transaction
 	transactionFactory           *mocks.TransactionFactory
 
 	organizationId      string
@@ -38,8 +39,9 @@ func (suite *DatamodelUsecaseTestSuite) SetupTest() {
 	suite.executorFactory = new(mocks.ExecutorFactory)
 	suite.dataModelRepository = new(mocks.DataModelRepository)
 	suite.organizationSchemaRepository = new(mocks.OrganizationSchemaRepository)
-	suite.transaction = new(mocks.Executor)
-	suite.transactionFactory = &mocks.TransactionFactory{ExecMock: suite.transaction}
+	suite.exec = new(mocks.Executor)
+	suite.transaction = new(mocks.Transaction)
+	suite.transactionFactory = &mocks.TransactionFactory{TxMock: suite.transaction}
 
 	suite.organizationId = "organizationId"
 	suite.dataModel = models.DataModel{
@@ -210,6 +212,7 @@ func (suite *DatamodelUsecaseTestSuite) AssertExpectations() {
 	suite.executorFactory.AssertExpectations(t)
 	suite.dataModelRepository.AssertExpectations(t)
 	suite.organizationSchemaRepository.AssertExpectations(t)
+	suite.exec.AssertExpectations(t)
 	suite.transaction.AssertExpectations(t)
 	suite.transactionFactory.AssertExpectations(t)
 }
@@ -457,7 +460,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelField_nominal_not_uni
 	suite.dataModelRepository.On("CreateDataModelField",
 		suite.ctx, suite.transaction, mock.AnythingOfType("string"), field).
 		Return(nil)
-	suite.transactionFactory.On("TransactionInOrgSchema", suite.ctx, suite.organizationId, mock.Anything).Return(nil)
+	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.organizationSchemaRepository.On("CreateField", suite.ctx, suite.transaction, table.Name, field).
 		Return(nil)
 
@@ -490,7 +493,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelField_nominal_unique(
 	suite.dataModelRepository.On("CreateDataModelField",
 		suite.ctx, suite.transaction, mock.AnythingOfType("string"), field).
 		Return(nil)
-	suite.transactionFactory.On("TransactionInOrgSchema", suite.ctx, suite.organizationId, mock.Anything).Return(nil)
+	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.organizationSchemaRepository.On("CreateField", suite.ctx, suite.transaction, table.Name, field).
 		Return(nil)
 	suite.clientDbIndexEditor.On("CreateUniqueIndexAsync", suite.ctx, suite.organizationId, models.UnicityIndex{
@@ -583,8 +586,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelField_client_schema_r
 	suite.dataModelRepository.On("CreateDataModelField",
 		suite.ctx, suite.transaction, mock.AnythingOfType("string"), field).
 		Return(nil)
-	suite.transactionFactory.On("TransactionInOrgSchema", suite.ctx, suite.organizationId, mock.Anything).
-		Return(nil)
+	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.organizationSchemaRepository.On("CreateField", suite.ctx, suite.transaction, table.Name, field).
 		Return(suite.repositoryError)
 
@@ -602,7 +604,7 @@ func (suite *DatamodelUsecaseTestSuite) TestDeleteDataModel_nominal() {
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.dataModelRepository.On("DeleteDataModel", suite.ctx, suite.transaction, suite.organizationId).
 		Return(nil)
-	suite.transactionFactory.On("TransactionInOrgSchema", suite.ctx, suite.organizationId, mock.Anything).Return(nil)
+	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.organizationSchemaRepository.On("DeleteSchema", suite.ctx, suite.transaction).Return(nil)
 	err := usecase.DeleteDataModel(suite.ctx, suite.organizationId)
 	suite.Require().NoError(err, "no error expected")
@@ -641,7 +643,7 @@ func (suite *DatamodelUsecaseTestSuite) TestDeleteDataModel_client_schema_reposi
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.dataModelRepository.On("DeleteDataModel", suite.ctx, suite.transaction, suite.organizationId).
 		Return(nil)
-	suite.transactionFactory.On("TransactionInOrgSchema", suite.ctx, suite.organizationId, mock.Anything).Return(nil)
+	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.organizationSchemaRepository.On("DeleteSchema", suite.ctx, suite.transaction).Return(suite.repositoryError)
 
 	err := usecase.DeleteDataModel(suite.ctx, suite.organizationId)

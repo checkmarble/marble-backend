@@ -53,7 +53,7 @@ func (usecase *InboxUsecase) CreateInbox(ctx context.Context, input models.Creat
 	inbox, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
-		func(tx repositories.Executor) (models.Inbox, error) {
+		func(tx repositories.Transaction) (models.Inbox, error) {
 			if err := usecase.enforceSecurity.CreateInbox(input.OrganizationId); err != nil {
 				return models.Inbox{}, err
 			}
@@ -80,7 +80,7 @@ func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId, name stri
 	inbox, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
-		func(tx repositories.Executor) (models.Inbox, error) {
+		func(tx repositories.Transaction) (models.Inbox, error) {
 			inbox, err := usecase.inboxRepository.GetInboxById(ctx, tx, inboxId)
 			if err != nil {
 				return models.Inbox{}, err
@@ -114,7 +114,7 @@ func (usecase *InboxUsecase) UpdateInbox(ctx context.Context, inboxId, name stri
 func (usecase *InboxUsecase) DeleteInbox(ctx context.Context, inboxId string) error {
 	err := usecase.transactionFactory.Transaction(
 		ctx,
-		func(tx repositories.Executor) error {
+		func(tx repositories.Transaction) error {
 			inbox, err := usecase.inboxRepository.GetInboxById(ctx, tx, inboxId)
 			if err != nil {
 				return err

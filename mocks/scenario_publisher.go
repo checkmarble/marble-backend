@@ -15,10 +15,10 @@ type ScenarioPublisher struct {
 
 func (m *ScenarioPublisher) PublishOrUnpublishIteration(
 	ctx context.Context,
-	exec repositories.Executor,
+	tx repositories.Transaction,
 	scenarioAndIteration models.ScenarioAndIteration,
 	publicationAction models.PublicationAction,
 ) ([]models.ScenarioPublication, error) {
-	args := m.Called(ctx, exec, scenarioAndIteration, publicationAction)
+	args := m.Called(ctx, tx, scenarioAndIteration, publicationAction)
 	return args.Get(0).([]models.ScenarioPublication), args.Error(1)
 }

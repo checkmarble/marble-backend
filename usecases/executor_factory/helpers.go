@@ -11,10 +11,10 @@ func TransactionReturnValueInOrgSchema[ReturnType any](
 	ctx context.Context,
 	factory TransactionFactory,
 	organizationId string,
-	fn func(tx repositories.Executor) (ReturnType, error),
+	fn func(tx repositories.Transaction) (ReturnType, error),
 ) (ReturnType, error) {
 	var value ReturnType
-	transactionErr := factory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Executor) error {
+	transactionErr := factory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Transaction) error {
 		var fnErr error
 		value, fnErr = fn(tx)
 		return fnErr
@@ -26,10 +26,10 @@ func TransactionReturnValueInOrgSchema[ReturnType any](
 func TransactionReturnValue[ReturnType any](
 	ctx context.Context,
 	factory TransactionFactory,
-	fn func(tx repositories.Executor) (ReturnType, error),
+	fn func(tx repositories.Transaction) (ReturnType, error),
 ) (ReturnType, error) {
 	var value ReturnType
-	transactionErr := factory.Transaction(ctx, func(tx repositories.Executor) error {
+	transactionErr := factory.Transaction(ctx, func(tx repositories.Transaction) error {
 		var fnErr error
 		value, fnErr = fn(tx)
 		return fnErr

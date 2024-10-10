@@ -11,7 +11,7 @@ import (
 type executorFactoryRepository interface {
 	GetExecutor(databaseSchema models.DatabaseSchema) repositories.Executor
 	Transaction(ctx context.Context, databaseSchema models.DatabaseSchema,
-		fn func(tx repositories.Executor) error) error
+		fn func(tx repositories.Transaction) error) error
 }
 
 type organizationSchemaReader interface {
@@ -54,7 +54,7 @@ func (factory DbExecutorFactory) organizationDatabaseSchema(
 func (factory DbExecutorFactory) TransactionInOrgSchema(
 	ctx context.Context,
 	organizationId string,
-	f func(tx repositories.Executor) error,
+	f func(tx repositories.Transaction) error,
 ) error {
 	dbSchema, err := factory.organizationDatabaseSchema(ctx, organizationId)
 	if err != nil {
@@ -66,7 +66,7 @@ func (factory DbExecutorFactory) TransactionInOrgSchema(
 
 func (factory DbExecutorFactory) Transaction(
 	ctx context.Context,
-	f func(tx repositories.Executor) error,
+	f func(tx repositories.Transaction) error,
 ) error {
 	return factory.transactionFactoryRepository.Transaction(ctx, models.DATABASE_MARBLE_SCHEMA, f)
 }
@@ -77,7 +77,7 @@ func (factory DbExecutorFactory) NewClientDbExecutor(
 ) (repositories.Executor, error) {
 	schema, err := factory.organizationDatabaseSchema(ctx, organizationId)
 	if err != nil {
-		return repositories.ExecutorPostgres{}, err
+		return repositories.PgExecutor{}, err
 	}
 
 	return factory.transactionFactoryRepository.GetExecutor(schema), nil

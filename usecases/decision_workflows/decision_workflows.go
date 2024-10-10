@@ -13,7 +13,7 @@ import (
 type caseEditor interface {
 	CreateCase(
 		ctx context.Context,
-		tx repositories.Executor,
+		tx repositories.Transaction,
 		userId string,
 		createCaseAttributes models.CreateCaseAttributes,
 		fromEndUser bool,
@@ -29,12 +29,12 @@ type caseEditor interface {
 type caseAndDecisionRepository interface {
 	SelectCasesWithPivot(
 		ctx context.Context,
-		tx repositories.Executor,
+		exec repositories.Executor,
 		filters models.DecisionWorkflowFilters,
 	) ([]models.CaseMetadata, error)
 	CountDecisionsByCaseIds(
 		ctx context.Context,
-		tx repositories.Executor,
+		exec repositories.Executor,
 		organizationId string,
 		caseIds []string,
 	) (map[string]int, error)
@@ -43,7 +43,7 @@ type caseAndDecisionRepository interface {
 type webhookEventCreator interface {
 	CreateWebhookEvent(
 		ctx context.Context,
-		tx repositories.Executor,
+		tx repositories.Transaction,
 		create models.WebhookEventCreate,
 	) error
 }
@@ -68,7 +68,7 @@ func NewDecisionWorkflows(
 
 func (d DecisionsWorkflows) AutomaticDecisionToCase(
 	ctx context.Context,
-	tx repositories.Executor,
+	tx repositories.Transaction,
 	scenario models.Scenario,
 	decision models.DecisionWithRuleExecutions,
 	webhookEventId string,
@@ -156,7 +156,7 @@ func automaticCreateCaseAttributes(
 
 func (d DecisionsWorkflows) addToOpenCase(
 	ctx context.Context,
-	tx repositories.Executor,
+	tx repositories.Transaction,
 	scenario models.Scenario,
 	decision models.DecisionWithRuleExecutions,
 ) (models.CaseMetadata, bool, error) {

@@ -74,7 +74,7 @@ func (usecase *ScenarioUsecase) UpdateScenario(
 	return executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
-		func(tx repositories.Executor) (models.Scenario, error) {
+		func(tx repositories.Transaction) (models.Scenario, error) {
 			scenario, err := usecase.repository.GetScenarioById(ctx, tx, scenarioInput.Id)
 			if err != nil {
 				return models.Scenario{}, err
@@ -160,7 +160,7 @@ func (usecase *ScenarioUsecase) CreateScenario(
 	cratedScenario, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
-		func(tx repositories.Executor) (models.Scenario, error) {
+		func(tx repositories.Transaction) (models.Scenario, error) {
 			newScenarioId := pure_utils.NewPrimaryKey(scenario.OrganizationId)
 			if err := usecase.repository.CreateScenario(ctx, tx, scenario.OrganizationId, scenario, newScenarioId); err != nil {
 				return models.Scenario{}, err

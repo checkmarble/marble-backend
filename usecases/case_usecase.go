@@ -53,7 +53,7 @@ type CaseUseCaseRepository interface {
 type webhookEventsUsecase interface {
 	CreateWebhookEvent(
 		ctx context.Context,
-		tx repositories.Executor,
+		tx repositories.Transaction,
 		input models.WebhookEventCreate,
 	) error
 	SendWebhookEventAsync(ctx context.Context, webhookEventId string)
@@ -93,7 +93,7 @@ func (usecase *CaseUseCase) ListCases(
 	return executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
-		func(tx repositories.Executor) ([]models.CaseWithRank, error) {
+		func(tx repositories.Transaction) ([]models.CaseWithRank, error) {
 			availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx, organizationId)
 			if err != nil {
 				return []models.CaseWithRank{}, err
@@ -165,7 +165,7 @@ func (usecase *CaseUseCase) GetCase(ctx context.Context, caseId string) (models.
 
 func (usecase *CaseUseCase) CreateCase(
 	ctx context.Context,
-	tx repositories.Executor,
+	tx repositories.Transaction,
 	userId string,
 	createCaseAttributes models.CreateCaseAttributes,
 	fromEndUser bool,
@@ -217,7 +217,7 @@ func (usecase *CaseUseCase) CreateCaseAsUser(
 	exec := usecase.executorFactory.NewExecutor()
 	webhookEventId := uuid.NewString()
 	c, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory,
-		func(tx repositories.Executor) (models.Case, error) {
+		func(tx repositories.Transaction) (models.Case, error) {
 			// permission check on the inbox as end user
 			availableInboxIds, err := usecase.getAvailableInboxIds(ctx, exec, organizationId)
 			if err != nil {
@@ -264,7 +264,7 @@ func (usecase *CaseUseCase) UpdateCase(
 	webhookEventId := uuid.New().String()
 
 	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		tx repositories.Executor,
+		tx repositories.Transaction,
 	) (models.Case, error) {
 		c, err := usecase.repository.GetCaseById(ctx, tx, updateCaseAttributes.Id)
 		if err != nil {
@@ -388,7 +388,7 @@ func (usecase *CaseUseCase) AddDecisionsToCase(ctx context.Context, userId, case
 	webhookEventId := uuid.New().String()
 
 	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		tx repositories.Executor,
+		tx repositories.Transaction,
 	) (models.Case, error) {
 		c, err := usecase.repository.GetCaseById(ctx, tx, caseId)
 		if err != nil {
@@ -447,7 +447,7 @@ func (usecase *CaseUseCase) CreateCaseComment(ctx context.Context, userId string
 	webhookEventId := uuid.New().String()
 
 	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		tx repositories.Executor,
+		tx repositories.Transaction,
 	) (models.Case, error) {
 		c, err := usecase.repository.GetCaseById(ctx, tx, caseCommentAttributes.Id)
 		if err != nil {
@@ -509,7 +509,7 @@ func (usecase *CaseUseCase) CreateCaseTags(ctx context.Context, userId string,
 	webhookEventId := uuid.New().String()
 
 	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		tx repositories.Executor,
+		tx repositories.Transaction,
 	) (models.Case, error) {
 		c, err := usecase.repository.GetCaseById(ctx, tx, caseTagAttributes.CaseId)
 		if err != nil {
@@ -760,7 +760,7 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 	webhookEventId := uuid.New().String()
 
 	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		tx repositories.Executor,
+		tx repositories.Transaction,
 	) (models.Case, error) {
 		if err := usecase.createCaseContributorIfNotExist(ctx, tx, input.CaseId, userId); err != nil {
 			return models.Case{}, err
@@ -873,7 +873,7 @@ func (usecase *CaseUseCase) GetCaseFileUrl(ctx context.Context, caseFileId strin
 	return usecase.blobRepository.GenerateSignedUrl(ctx, usecase.caseManagerBucketUrl, cf.FileReference)
 }
 
-func (usecase *CaseUseCase) CreateRuleSnoozeEvent(ctx context.Context, tx repositories.Executor, input models.RuleSnoozeCaseEventInput,
+func (usecase *CaseUseCase) CreateRuleSnoozeEvent(ctx context.Context, tx repositories.Transaction, input models.RuleSnoozeCaseEventInput,
 ) error {
 	c, err := usecase.repository.GetCaseById(ctx, tx, input.CaseId)
 	if err != nil {
@@ -959,7 +959,7 @@ func (usecase *CaseUseCase) ReviewCaseDecisions(
 	c, err = executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
-		func(tx repositories.Executor) (models.Case, error) {
+		func(tx repositories.Transaction) (models.Case, error) {
 			err := usecase.decisionRepository.ReviewDecision(ctx, tx, input.DecisionId, input.ReviewStatus)
 			if err != nil {
 				return models.Case{}, err

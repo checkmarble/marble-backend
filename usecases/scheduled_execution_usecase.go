@@ -44,7 +44,7 @@ type ScheduledExecutionUsecase struct {
 
 func (usecase *ScheduledExecutionUsecase) GetScheduledExecution(ctx context.Context, id string) (models.ScheduledExecution, error) {
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		tx repositories.Executor,
+		tx repositories.Transaction,
 	) (models.ScheduledExecution, error) {
 		execution, err := usecase.repository.GetScheduledExecution(ctx, tx, id)
 		if err != nil {
@@ -64,7 +64,7 @@ func (usecase *ScheduledExecutionUsecase) ExportScheduledExecutionDecisions(
 	w io.Writer,
 ) (int, error) {
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		tx repositories.Executor,
+		tx repositories.Transaction,
 	) (int, error) {
 		execution, err := usecase.repository.GetScheduledExecution(ctx, tx, scheduledExecutionID)
 		if err != nil {
@@ -86,7 +86,7 @@ func (usecase *ScheduledExecutionUsecase) ListScheduledExecutions(
 	scenarioId *string,
 ) ([]models.ScheduledExecution, error) {
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		tx repositories.Executor,
+		tx repositories.Transaction,
 	) ([]models.ScheduledExecution, error) {
 		var executions []models.ScheduledExecution
 		var err error
@@ -149,12 +149,10 @@ func (usecase *ScheduledExecutionUsecase) CreateScheduledExecution(ctx context.C
 	}
 
 	id := pure_utils.NewPrimaryKey(input.OrganizationId)
-	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
-		return usecase.repository.CreateScheduledExecution(ctx, tx, models.CreateScheduledExecutionInput{
-			OrganizationId:      input.OrganizationId,
-			ScenarioId:          scenario.Id,
-			ScenarioIterationId: input.ScenarioIterationId,
-			Manual:              true,
-		}, id)
-	})
+	return usecase.repository.CreateScheduledExecution(ctx, exec, models.CreateScheduledExecutionInput{
+		OrganizationId:      input.OrganizationId,
+		ScenarioId:          scenario.Id,
+		ScenarioIterationId: input.ScenarioIterationId,
+		Manual:              true,
+	}, id)
 }

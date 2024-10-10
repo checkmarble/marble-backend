@@ -25,7 +25,7 @@ const batchSize = 30000
 type decisionWorkflowsUsecase interface {
 	AutomaticDecisionToCase(
 		ctx context.Context,
-		tx repositories.Executor,
+		tx repositories.Transaction,
 		scenario models.Scenario,
 		decision models.DecisionWithRuleExecutions,
 		webhookEventId string,
@@ -35,7 +35,7 @@ type decisionWorkflowsUsecase interface {
 type webhookEventsUsecase interface {
 	CreateWebhookEvent(
 		ctx context.Context,
-		tx repositories.Executor,
+		tx repositories.Transaction,
 		input models.WebhookEventCreate,
 	) error
 	SendWebhookEventAsync(ctx context.Context, webhookEventId string)
@@ -301,7 +301,7 @@ func (usecase *RunScheduledExecution) createScheduledScenarioDecisions(
 	batch := make([]models.DecisionToCreate, 0, batchSize)
 	err = usecase.transactionFactory.Transaction(
 		ctx,
-		func(tx repositories.Executor) error {
+		func(tx repositories.Transaction) error {
 			for i := 0; i < len(objectIds); i += batchSize {
 				end := min(len(objectIds), i+batchSize)
 
@@ -444,7 +444,7 @@ func (usecase *RunScheduledExecution) createSingleDecisionForObjectId(
 
 	decision := models.AdaptScenarExecToDecision(scenarioExecution, object, &scheduledExecutionId)
 	sendWebhookEventId := make([]string, 0, 2)
-	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
+	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		err = usecase.decisionRepository.StoreDecision(
 			ctx,
 			tx,

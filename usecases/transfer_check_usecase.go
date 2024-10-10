@@ -168,7 +168,7 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 	err = usecase.transactionFactory.TransactionInOrgSchema(
 		ctx,
 		organizationId,
-		func(tx repositories.Executor) error {
+		func(tx repositories.Transaction) error {
 			_, err := usecase.ingestionRepository.IngestObjects(ctx, tx, []models.ClientObject{
 				clientObject,
 			}, table)
@@ -292,7 +292,7 @@ func (usecase *TransferCheckUsecase) UpdateTransfer(
 
 	var beneficiaryInNetwork bool
 	var transfersData []models.TransferData
-	err = usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Executor) error {
+	err = usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Transaction) error {
 		transfersData, err = usecase.transferDataReader.QueryTransferDataFromMapping(ctx, tx, transferMapping)
 		if err != nil {
 			return err

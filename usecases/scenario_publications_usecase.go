@@ -23,7 +23,7 @@ type ScenarioFetcher interface {
 type ScenarioPublisher interface {
 	PublishOrUnpublishIteration(
 		ctx context.Context,
-		exec repositories.Executor,
+		exec repositories.Transaction,
 		scenarioAndIteration models.ScenarioAndIteration,
 		publicationAction models.PublicationAction,
 	) ([]models.ScenarioPublication, error)
@@ -104,7 +104,7 @@ func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(
 	return executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
-		func(tx repositories.Executor,
+		func(tx repositories.Transaction,
 		) ([]models.ScenarioPublication, error) {
 			scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, tx, input.ScenarioIterationId)
 			if err != nil {

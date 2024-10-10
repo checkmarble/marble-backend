@@ -17,7 +17,8 @@ import (
 
 type ScenarioUsecaseTestSuite struct {
 	suite.Suite
-	transaction        *mocks.Executor
+	exec               *mocks.Executor
+	transaction        *mocks.Transaction
 	transactionFactory *mocks.TransactionFactory
 	executorFactory    *mocks.ExecutorFactory
 	enforceSecurity    *mocks.EnforceSecurity
@@ -31,9 +32,10 @@ type ScenarioUsecaseTestSuite struct {
 }
 
 func (suite *ScenarioUsecaseTestSuite) SetupTest() {
-	suite.transaction = new(mocks.Executor)
+	suite.exec = new(mocks.Executor)
+	suite.transaction = new(mocks.Transaction)
 	suite.enforceSecurity = new(mocks.EnforceSecurity)
-	suite.transactionFactory = &mocks.TransactionFactory{ExecMock: suite.transaction}
+	suite.transactionFactory = &mocks.TransactionFactory{TxMock: suite.transaction}
 	suite.executorFactory = new(mocks.ExecutorFactory)
 	suite.scenarioRepository = new(mocks.ScenarioRepository)
 

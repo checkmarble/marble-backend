@@ -10,21 +10,21 @@ import (
 
 type TransactionFactory struct {
 	mock.Mock
-	ExecMock *Executor
+	TxMock *Transaction
 }
 
-func (t *TransactionFactory) Transaction(ctx context.Context, fn func(exec repositories.Executor) error) error {
+func (t *TransactionFactory) Transaction(ctx context.Context, fn func(exec repositories.Transaction) error) error {
 	args := t.Called(ctx, fn)
-	err := fn(t.ExecMock)
+	err := fn(t.TxMock)
 	if err != nil {
 		return err
 	}
 	return args.Error(0)
 }
 
-func (t *TransactionFactory) TransactionInOrgSchema(ctx context.Context, organizationId string, f func(tx repositories.Executor) error) error {
+func (t *TransactionFactory) TransactionInOrgSchema(ctx context.Context, organizationId string, f func(tx repositories.Transaction) error) error {
 	args := t.Called(ctx, organizationId, f)
-	err := f(t.ExecMock)
+	err := f(t.TxMock)
 	if err != nil {
 		return err
 	}

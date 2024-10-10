@@ -98,7 +98,7 @@ func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.Cre
 	inboxUser, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.TransactionFactory,
-		func(tx repositories.Executor) (models.InboxUser, error) {
+		func(tx repositories.Transaction) (models.InboxUser, error) {
 			thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(ctx, tx, models.InboxUserFilterInput{
 				UserId: usecase.Credentials.ActorIdentity.UserId,
 			})
@@ -147,7 +147,7 @@ func (usecase *InboxUsers) UpdateInboxUser(ctx context.Context, inboxUserId stri
 	inboxUser, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.TransactionFactory,
-		func(tx repositories.Executor) (models.InboxUser, error) {
+		func(tx repositories.Transaction) (models.InboxUser, error) {
 			thisUsersInboxes, err := usecase.InboxUserRepository.ListInboxUsers(ctx, tx, models.InboxUserFilterInput{
 				UserId: usecase.Credentials.ActorIdentity.UserId,
 			})
@@ -184,7 +184,7 @@ func (usecase *InboxUsers) UpdateInboxUser(ctx context.Context, inboxUserId stri
 func (usecase *InboxUsers) DeleteInboxUser(ctx context.Context, inboxUserId string) error {
 	err := usecase.TransactionFactory.Transaction(
 		ctx,
-		func(tx repositories.Executor) error {
+		func(tx repositories.Transaction) error {
 			inboxUser, err := usecase.InboxUserRepository.GetInboxUserById(ctx, tx, inboxUserId)
 			if err != nil {
 				return err

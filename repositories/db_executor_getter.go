@@ -8,6 +8,7 @@ import (
 	"github.com/cockroachdb/errors"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -20,8 +21,16 @@ type databaseSchemaGetter interface {
 }
 
 type Executor interface {
-	transactionOrPool
+	TransactionOrPool
 	databaseSchemaGetter
+}
+
+type Transaction interface {
+	databaseSchemaGetter
+	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	RawTx() pgx.Tx
 }
 
 func NewExecutorGetter(pool *pgxpool.Pool) ExecutorGetter {
@@ -33,12 +42,12 @@ func NewExecutorGetter(pool *pgxpool.Pool) ExecutorGetter {
 func (g ExecutorGetter) Transaction(
 	ctx context.Context,
 	databaseSchema models.DatabaseSchema,
-	fn func(exec Executor) error,
+	fn func(exec Transaction) error,
 ) error {
 	err := pgx.BeginFunc(ctx, g.connectionPool, func(tx pgx.Tx) error {
-		return fn(&ExecutorPostgres{
-			databaseShema: databaseSchema,
-			exec:          tx,
+		return fn(&PgTx{
+			databaseSchema: databaseSchema,
+			tx:             tx,
 		})
 	})
 
@@ -51,9 +60,9 @@ func (g ExecutorGetter) Transaction(
 }
 
 func (g ExecutorGetter) GetExecutor(databaseSchema models.DatabaseSchema) Executor {
-	return &ExecutorPostgres{
-		databaseShema: databaseSchema,
-		exec:          g.connectionPool,
+	return &PgExecutor{
+		databaseSchema: databaseSchema,
+		exec:           g.connectionPool,
 	}
 }
 

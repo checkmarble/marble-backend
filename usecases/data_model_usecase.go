@@ -103,7 +103,7 @@ func (usecase *DataModelUseCase) CreateDataModelTable(ctx context.Context, organ
 		},
 	}
 
-	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
+	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		err := usecase.dataModelRepository.CreateDataModelTable(ctx, tx, organizationId, tableId, name, description)
 		if err != nil {
 			return err
@@ -118,7 +118,7 @@ func (usecase *DataModelUseCase) CreateDataModelTable(ctx context.Context, organ
 		}
 
 		// if it returns an error, rolls back the other transaction
-		return usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(orgTx repositories.Executor) error {
+		return usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(orgTx repositories.Transaction) error {
 			if err := usecase.organizationSchemaRepository.CreateSchemaIfNotExists(ctx, orgTx); err != nil {
 				return err
 			}
@@ -152,31 +152,32 @@ func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, field
 	fieldId := uuid.New().String()
 	var tableName string
 	var organizationId string
-	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
-		table, err := usecase.dataModelRepository.GetDataModelTable(ctx, tx, field.TableId)
-		if err != nil {
-			return err
-		}
-		organizationId = table.OrganizationID
-		if err := usecase.enforceSecurity.WriteDataModel(table.OrganizationID); err != nil {
-			return err
-		}
+	err := usecase.transactionFactory.Transaction(
+		ctx,
+		func(tx repositories.Transaction) error {
+			table, err := usecase.dataModelRepository.GetDataModelTable(ctx, tx, field.TableId)
+			if err != nil {
+				return err
+			}
+			organizationId = table.OrganizationID
+			if err := usecase.enforceSecurity.WriteDataModel(table.OrganizationID); err != nil {
+				return err
+			}
 
-		tableName = table.Name
+			tableName = table.Name
 
-		if err := usecase.dataModelRepository.CreateDataModelField(ctx, tx, fieldId, field); err != nil {
-			return err
-		}
+			if err := usecase.dataModelRepository.CreateDataModelField(ctx, tx, fieldId, field); err != nil {
+				return err
+			}
 
-		// if it returns an error, automatically rolls back the other transaction
-		return usecase.transactionFactory.TransactionInOrgSchema(
-			ctx,
-			table.OrganizationID,
-			func(orgTx repositories.Executor) error {
-				return usecase.organizationSchemaRepository.CreateField(ctx, orgTx, table.Name, field)
-			},
-		)
-	})
+			db, err := usecase.executorFactory.NewClientDbExecutor(ctx, organizationId)
+			if err != nil {
+				return err
+			}
+			// if it returns an error, automatically rolls back the other transaction
+			return usecase.organizationSchemaRepository.CreateField(ctx, db, table.Name, field)
+		},
+	)
 	if err != nil {
 		return "", err
 	}
@@ -375,15 +376,17 @@ func (usecase *DataModelUseCase) DeleteDataModel(ctx context.Context, organizati
 		return err
 	}
 
-	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Executor) error {
+	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		if err := usecase.dataModelRepository.DeleteDataModel(ctx, tx, organizationID); err != nil {
 			return err
 		}
 
+		db, err := usecase.executorFactory.NewClientDbExecutor(ctx, organizationID)
+		if err != nil {
+			return err
+		}
 		// if it returns an error, automatically rolls back the other transaction
-		return usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationID, func(orgTx repositories.Executor) error {
-			return usecase.organizationSchemaRepository.DeleteSchema(ctx, orgTx)
-		})
+		return usecase.organizationSchemaRepository.DeleteSchema(ctx, db)
 	})
 }
 
@@ -408,7 +411,7 @@ func (usecase *DataModelUseCase) CreatePivot(ctx context.Context, input models.C
 	return executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
-		func(tx repositories.Executor) (models.Pivot, error) {
+		func(tx repositories.Transaction) (models.Pivot, error) {
 			err := usecase.dataModelRepository.CreatePivot(ctx, tx, id, input)
 			if err != nil {
 				return models.Pivot{}, err

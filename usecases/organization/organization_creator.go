@@ -21,7 +21,7 @@ type OrganizationCreator struct {
 func (creator *OrganizationCreator) CreateOrganization(ctx context.Context, name string) (models.Organization, error) {
 	newOrganizationId := uuid.NewString()
 	organization, err := executor_factory.TransactionReturnValue(ctx,
-		creator.TransactionFactory, func(tx repositories.Executor) (models.Organization, error) {
+		creator.TransactionFactory, func(tx repositories.Transaction) (models.Organization, error) {
 			if err := creator.OrganizationRepository.CreateOrganization(ctx, tx, newOrganizationId, name); err != nil {
 				return models.Organization{}, err
 			}
