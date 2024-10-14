@@ -126,10 +126,9 @@ func TestMain(m *testing.M) {
 	workers := river.NewWorkers()
 	// AddWorker panics if the worker is already registered or invalid
 
-	// river.AddWorker(workers, &scheduled_execution.AsyncDecisionWorker{})
-	// river.AddWorker(workers, &scheduled_execution.AsyncScheduledExecWorker{})
 	riverClient, err = river.NewClient(riverpgxv5.New(dbPool), &river.Config{
 		Workers: workers,
+		// The org specific queues are added later, dynamically, in the test (they rely on the org id)
 		Queues: map[string]river.QueueConfig{
 			river.QueueDefault: {
 				MaxWorkers: 3,
