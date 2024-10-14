@@ -17,8 +17,12 @@ import (
 )
 
 const (
-	maxJobDuration                 = 4 * time.Hour
-	scheduledExecStatusPollingFreq = 5 * time.Second
+	maxJobDuration                      = 4 * time.Hour
+	scheduledExecStatusPollingFreqStep1 = 500 * time.Millisecond
+	scheduledExecPollingFreqDelay1      = 20 * time.Second
+	scheduledExecStatusPollingFreqStep2 = 1 * time.Second
+	scheduledExecPollingFreqDelay2      = 5 * time.Minute
+	scheduledExecStatusPollingFreqStep3 = 5 * time.Second
 )
 
 type AsyncScheduledExecWorker struct {
@@ -66,7 +70,7 @@ func NewAsyncScheduledExecWorker(
 }
 
 func (w *AsyncScheduledExecWorker) Work(ctx context.Context, job *river.Job[models.ScheduledExecStatusSyncArgs]) error {
-	return w.handleScheduledExecStatusRefres(ctx, job.Args, w.executorFactory.NewExecutor(), job.CreatedAt)
+	return w.handleScheduledExecStatusRefres(ctx, job.Args, w.executorFactory.NewExecutor(), job)
 }
 
 func (w *AsyncScheduledExecWorker) Timeout(job *river.Job[models.ScheduledExecStatusSyncArgs]) time.Duration {
@@ -77,7 +81,7 @@ func (w *AsyncScheduledExecWorker) handleScheduledExecStatusRefres(
 	ctx context.Context,
 	args models.ScheduledExecStatusSyncArgs,
 	tx repositories.Executor,
-	jobCreatedAt time.Time,
+	job *river.Job[models.ScheduledExecStatusSyncArgs],
 ) error {
 	logger := utils.LoggerFromContext(ctx)
 	scheduledExec, err := w.repository.GetScheduledExecution(ctx, tx, args.ScheduledExecutionId)
@@ -110,9 +114,18 @@ func (w *AsyncScheduledExecWorker) handleScheduledExecStatusRefres(
 		return err
 	}
 
-	if len(decisionsToCreate) != 0 && time.Since(jobCreatedAt) < maxJobDuration {
+	if len(decisionsToCreate) != 0 && time.Since(job.CreatedAt) < maxJobDuration {
 		// if there are still decisions to create, and the job is not too old, re-enqueue
-		return river.JobSnooze(scheduledExecStatusPollingFreq)
+		// Retry more frequently at the beginning for a better experience with small jobs (and in particular for when it runs in integration tests)
+		var delay time.Duration
+		if time.Since(job.CreatedAt) < scheduledExecPollingFreqDelay1 {
+			delay = scheduledExecStatusPollingFreqStep1
+		} else if time.Since(job.CreatedAt) < scheduledExecPollingFreqDelay2 {
+			delay = scheduledExecStatusPollingFreqStep2
+		} else {
+			delay = scheduledExecStatusPollingFreqStep3
+		}
+		return river.JobSnooze(delay)
 	}
 
 	counts, err := w.repository.CountDecisionsToCreateByStatus(ctx, tx, args.ScheduledExecutionId)

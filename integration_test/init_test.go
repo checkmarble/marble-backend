@@ -11,13 +11,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
 	"github.com/pkg/errors"
+	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 
 	"github.com/checkmarble/marble-backend/api"
 	"github.com/checkmarble/marble-backend/infra"
+	"github.com/checkmarble/marble-backend/jobs"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/repositories/firebase"
@@ -39,6 +43,7 @@ const (
 var (
 	testUsecases   usecases.Usecases
 	tokenGenerator *token.Generator
+	riverClient    *river.Client[pgx.Tx]
 	port           string
 )
 
@@ -118,6 +123,24 @@ func TestMain(m *testing.M) {
 
 	privateKey := infra.ParseOrGenerateSigningKey(ctx, "")
 
+	workers := river.NewWorkers()
+	// AddWorker panics if the worker is already registered or invalid
+
+	// river.AddWorker(workers, &scheduled_execution.AsyncDecisionWorker{})
+	// river.AddWorker(workers, &scheduled_execution.AsyncScheduledExecWorker{})
+	riverClient, err = river.NewClient(riverpgxv5.New(dbPool), &river.Config{
+		Workers: workers,
+		Queues: map[string]river.QueueConfig{
+			river.QueueDefault: {
+				MaxWorkers: 3,
+			},
+		},
+	})
+	if err != nil {
+		utils.LogAndReportSentryError(ctx, err)
+		log.Fatalf("Could not create river client: %s", err)
+	}
+
 	// actually using the convoy repository to send webhooks will fail (because we don't have an instance set up),
 	// but it is not blocking (an error will be logged but the test will pass). We sill need to pass the provider
 	// or else the repository will panic.
@@ -125,6 +148,7 @@ func TestMain(m *testing.M) {
 		"",
 		repositories.WithConvoyClientProvider(
 			infra.InitializeConvoyRessources(infra.ConvoyConfiguration{}), 0),
+		repositories.WithRiverClient(riverClient),
 	)
 
 	testUsecases = usecases.NewUsecases(repos,
@@ -132,6 +156,14 @@ func TestMain(m *testing.M) {
 		usecases.WithIngestionBucketUrl("file://./tempFiles?create_dir=true"),
 		usecases.WithCaseManagerBucketUrl("file://./tempFiles?create_dir=true"),
 	)
+
+	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, testUsecases)
+	river.AddWorker(workers, adminUc.NewAsyncDecisionWorker())
+	river.AddWorker(workers, adminUc.NewNewAsyncScheduledExecWorker())
+
+	if err := riverClient.Start(ctx); err != nil {
+		log.Fatalln("Could not start river client:", err)
+	}
 
 	// select a random port
 	port = fmt.Sprintf("%d", rand.Int31n(1000)+privatePortRangeMin)
@@ -179,6 +211,8 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 
 	_ = server.Shutdown(ctx)
+
+	_ = riverClient.Stop(ctx)
 
 	// You can't defer this because os.Exit doesn't care for defer
 	if err := pool.Purge(resource); err != nil {
