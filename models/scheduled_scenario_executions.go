@@ -230,3 +230,16 @@ const (
 	DecisionToCreateStatusFailed                   = "failed"
 	DecisionToCreateStatusTriggerConditionMismatch = "trigger_mismatch"
 )
+
+type ListDecisionsToCreateFilters struct {
+	ScheduledExecutionId string
+	Status               []DecisionToCreateStatus
+}
+
+type DecisionToCreateCountMetadata struct {
+	Pending                  int
+	Created                  int
+	Failed                   int
+	TriggerConditionMismatch int
+	SuccessfullyEvaluated    int
+}
