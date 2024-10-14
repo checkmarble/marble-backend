@@ -68,11 +68,10 @@ func (m *Migrater) Run(ctx context.Context) error {
 		return errors.Wrap(err, "unable to create migrator")
 	}
 
-	res, err := migrator.Migrate(ctx, rivermigrate.DirectionUp, nil)
+	_, err = migrator.Migrate(ctx, rivermigrate.DirectionUp, nil)
 	if err != nil {
 		return errors.Wrap(err, "unable to run migrations")
 	}
-	fmt.Println(res.Versions)
 
 	return nil
 }
