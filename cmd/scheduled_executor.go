@@ -82,6 +82,7 @@ func RunScheduledExecuter() error {
 	// AddWorker panics if the worker is already registered or invalid
 
 	river.AddWorker(workers, &scheduled_execution.AsyncDecisionWorker{})
+	river.AddWorker(workers, &scheduled_execution.AsyncScheduledExecWorker{})
 	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{})
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
