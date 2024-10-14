@@ -12,7 +12,7 @@ import (
 
 const (
 	nbRetriesAsyncDecision       = 6 // at 1sec*attempt^4, that's 90min for the 6th attempt
-	priorityAsyncDecision        = 3
+	priorityAsyncDecision        = 3 // nb: higher number is lower priority (between 1 and 4)
 	nbRetriesScheduledExecStatus = 7 // at 1sec*attempt^4, that's 6h for the 7th attempt
 	priorityScheduledExecStatus  = 2
 )
