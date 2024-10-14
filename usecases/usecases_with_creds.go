@@ -211,15 +211,10 @@ func (usecases *UsecasesWithCreds) NewRunScheduledExecution() scheduled_executio
 	return *scheduled_execution.NewRunScheduledExecution(
 		&usecases.Repositories.MarbleDbRepository,
 		usecases.NewExecutorFactory(),
-		usecases.Repositories.ScenarioPublicationRepository,
-		usecases.Repositories.DataModelRepository,
 		usecases.Repositories.IngestedDataReadRepository,
-		usecases.NewEvaluateAstExpression(),
-		&usecases.Repositories.MarbleDbRepository,
 		usecases.NewTransactionFactory(),
-		usecases.NewDecisionWorkflows(),
-		usecases.NewWebhookEventsUsecase(),
-		&usecases.Repositories.MarbleDbRepository,
+		usecases.Repositories.TaskQueueRepository,
+		usecases.Repositories.ScenarioPublicationRepository,
 	)
 }
 
@@ -262,7 +257,6 @@ func (usecases *UsecasesWithCreds) NewCaseUseCase() *CaseUseCase {
 		caseManagerBucketUrl: usecases.caseManagerBucketUrl,
 		blobRepository:       usecases.Repositories.BlobRepository,
 		webhookEventsUsecase: usecases.NewWebhookEventsUsecase(),
-		riverClient:          usecases.riverClient,
 	}
 }
 
@@ -415,4 +409,39 @@ func (usecases *UsecasesWithCreds) NewRuleSnoozeUsecase() RuleSnoozeUsecase {
 		security.NewEnforceSecurity(usecases.Credentials),
 		usecases.NewWebhookEventsUsecase(),
 	)
+}
+
+func (usecases UsecasesWithCreds) NewAsyncDecisionWorker() *scheduled_execution.AsyncDecisionWorker {
+	w := scheduled_execution.NewAsyncDecisionWorker(
+		&usecases.Repositories.MarbleDbRepository,
+		usecases.NewExecutorFactory(),
+		usecases.Repositories.ScenarioPublicationRepository,
+		usecases.Repositories.DataModelRepository,
+		usecases.Repositories.IngestedDataReadRepository,
+		usecases.NewEvaluateAstExpression(),
+		&usecases.Repositories.MarbleDbRepository,
+		usecases.NewTransactionFactory(),
+		usecases.NewDecisionWorkflows(),
+		usecases.NewWebhookEventsUsecase(),
+		&usecases.Repositories.MarbleDbRepository,
+		usecases.NewScenarioFetcher(),
+	)
+	return &w
+}
+
+func (usecases UsecasesWithCreds) NewNewAsyncScheduledExecWorker() *scheduled_execution.AsyncScheduledExecWorker {
+	w := scheduled_execution.NewAsyncScheduledExecWorker(
+		&usecases.Repositories.MarbleDbRepository,
+		usecases.NewExecutorFactory(),
+		usecases.Repositories.ScenarioPublicationRepository,
+		usecases.Repositories.DataModelRepository,
+		usecases.Repositories.IngestedDataReadRepository,
+		usecases.NewEvaluateAstExpression(),
+		&usecases.Repositories.MarbleDbRepository,
+		usecases.NewDecisionWorkflows(),
+		usecases.NewWebhookEventsUsecase(),
+		&usecases.Repositories.MarbleDbRepository,
+		usecases.NewScenarioFetcher(),
+	)
+	return &w
 }

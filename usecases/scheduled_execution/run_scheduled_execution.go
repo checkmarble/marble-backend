@@ -3,43 +3,18 @@ package scheduled_execution
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync"
-
-	"github.com/cockroachdb/errors"
-	"github.com/google/uuid"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
-	"github.com/checkmarble/marble-backend/usecases/ast_eval"
-	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
 // postgres will only accept 65535 parameters in a query, so we need to batch the decisions_to_create creation
 // this is taking into account the fact that we have 2 parameters per decision_to_create
-const batchSize = 30000
-
-type decisionWorkflowsUsecase interface {
-	AutomaticDecisionToCase(
-		ctx context.Context,
-		tx repositories.Transaction,
-		scenario models.Scenario,
-		decision models.DecisionWithRuleExecutions,
-		webhookEventId string,
-	) (bool, error)
-}
-
-type webhookEventsUsecase interface {
-	CreateWebhookEvent(
-		ctx context.Context,
-		tx repositories.Transaction,
-		input models.WebhookEventCreate,
-	) error
-	SendWebhookEventAsync(ctx context.Context, webhookEventId string)
-}
+const batchSize = 5000
 
 type RunScheduledExecutionRepository interface {
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
@@ -50,12 +25,6 @@ type RunScheduledExecutionRepository interface {
 		exec repositories.Executor,
 		decisionsToCreate models.DecisionToCreateBatchCreateInput,
 	) ([]models.DecisionToCreate, error)
-	UpdateDecisionToCreateStatus(
-		ctx context.Context,
-		exec repositories.Executor,
-		id string,
-		status models.DecisionToCreateStatus,
-	) error
 
 	ListScheduledExecutions(ctx context.Context, exec repositories.Executor,
 		filters models.ListScheduledExecutionsFilters) ([]models.ScheduledExecution, error)
@@ -74,54 +43,46 @@ type RunScheduledExecutionRepository interface {
 	GetScheduledExecution(ctx context.Context, exec repositories.Executor, id string) (models.ScheduledExecution, error)
 }
 
-type snoozesForDecisionReader interface {
-	ListActiveRuleSnoozesForDecision(
+type taskQueueRepository interface {
+	EnqueueDecisionTaskMany(
 		ctx context.Context,
-		exec repositories.Executor,
-		snoozeGroupIds []string,
-		pivotValue string,
-	) ([]models.RuleSnooze, error)
+		tx repositories.Transaction,
+		organizationId string,
+		decision []models.DecisionToCreate,
+		scenarioIterationId string,
+	) error
+	EnqueueScheduledExecStatusTask(
+		ctx context.Context,
+		tx repositories.Transaction,
+		organizationId string,
+		scheduledExecutionId string,
+	) error
 }
 
 type RunScheduledExecution struct {
 	repository                     RunScheduledExecutionRepository
 	executorFactory                executor_factory.ExecutorFactory
 	scenarioPublicationsRepository repositories.ScenarioPublicationRepository
-	dataModelRepository            repositories.DataModelRepository
 	ingestedDataReadRepository     repositories.IngestedDataReadRepository
-	evaluateAstExpression          ast_eval.EvaluateAstExpression
-	decisionRepository             repositories.DecisionRepository
 	transactionFactory             executor_factory.TransactionFactory
-	decisionWorkflows              decisionWorkflowsUsecase
-	webhookEventsSender            webhookEventsUsecase
-	snoozesReader                  snoozesForDecisionReader
+	taskQueueRepository            taskQueueRepository
 }
 
 func NewRunScheduledExecution(
 	repository RunScheduledExecutionRepository,
 	executorFactory executor_factory.ExecutorFactory,
-	scenarioPublicationsRepository repositories.ScenarioPublicationRepository,
-	dataModelRepository repositories.DataModelRepository,
 	ingestedDataReadRepository repositories.IngestedDataReadRepository,
-	evaluateAstExpression ast_eval.EvaluateAstExpression,
-	decisionRepository repositories.DecisionRepository,
 	transactionFactory executor_factory.TransactionFactory,
-	decisionWorkflows decisionWorkflowsUsecase,
-	webhookEventsSender webhookEventsUsecase,
-	snoozesReader snoozesForDecisionReader,
+	taskQueueRepository taskQueueRepository,
+	scenarioPublicationsRepository repositories.ScenarioPublicationRepository,
 ) *RunScheduledExecution {
 	return &RunScheduledExecution{
 		repository:                     repository,
 		executorFactory:                executorFactory,
-		scenarioPublicationsRepository: scenarioPublicationsRepository,
-		dataModelRepository:            dataModelRepository,
 		ingestedDataReadRepository:     ingestedDataReadRepository,
-		evaluateAstExpression:          evaluateAstExpression,
-		decisionRepository:             decisionRepository,
 		transactionFactory:             transactionFactory,
-		decisionWorkflows:              decisionWorkflows,
-		webhookEventsSender:            webhookEventsSender,
-		snoozesReader:                  snoozesReader,
+		taskQueueRepository:            taskQueueRepository,
+		scenarioPublicationsRepository: scenarioPublicationsRepository,
 	}
 }
 
@@ -188,100 +149,44 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 		return nil
 	}
 
-	completed, numberOfCreatedDecisions, err := usecase.createScheduledScenarioDecisions(
+	return usecase.insertAsyncDecisionTasks(
 		ctx,
 		scheduledExecution.Id,
 		scheduledExecution.Scenario,
 	)
-	if err != nil {
-		// if an error occurs, try to update the scheduled execution status to failure then return the error (no decisions have been created)
-		_, nestedErr := usecase.repository.UpdateScheduledExecutionStatus(
-			ctx,
-			exec,
-			models.UpdateScheduledExecutionStatusInput{
-				Id:                     scheduledExecution.Id,
-				Status:                 models.ScheduledExecutionFailure,
-				CurrentStatusCondition: models.ScheduledExecutionProcessing,
-			})
-		if nestedErr != nil {
-			return errors.Join(err, nestedErr)
-		}
-
-		return err
-	}
-
-	var finalStatus models.ScheduledExecutionStatus
-	if completed {
-		finalStatus = models.ScheduledExecutionSuccess
-	} else {
-		finalStatus = models.ScheduledExecutionPartialFailure
-	}
-	_, err = usecase.repository.UpdateScheduledExecutionStatus(
-		ctx,
-		exec,
-		models.UpdateScheduledExecutionStatusInput{
-			Id:                         scheduledExecution.Id,
-			Status:                     finalStatus,
-			NumberOfCreatedDecisions:   &numberOfCreatedDecisions.created,
-			NumberOfEvaluatedDecisions: &numberOfCreatedDecisions.evaluated,
-			CurrentStatusCondition:     models.ScheduledExecutionProcessing,
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	logger.InfoContext(ctx, fmt.Sprintf("Execution completed for %s", scheduledExecution.Id))
-	return nil
 }
 
-type numbersOfDecisions struct {
-	evaluated int
-	created   int
-}
-
-func (usecase *RunScheduledExecution) createScheduledScenarioDecisions(
+func (usecase *RunScheduledExecution) insertAsyncDecisionTasks(
 	ctx context.Context,
 	scheduledExecutionId string,
 	scenario models.Scenario,
-) (completed bool, nbDecisions numbersOfDecisions, err error) {
+) error {
+	logger := utils.LoggerFromContext(ctx)
 	exec := usecase.executorFactory.NewExecutor()
-	dataModel, err := usecase.dataModelRepository.GetDataModel(ctx, exec, scenario.OrganizationId, false)
-	if err != nil {
-		return false, numbersOfDecisions{}, err
-	}
-	tables := dataModel.Tables
-	table, ok := tables[scenario.TriggerObjectType]
-	if !ok {
-		return false, numbersOfDecisions{}, fmt.Errorf(
-			"trigger object type %s not found in data model: %w",
-			scenario.TriggerObjectType, models.NotFoundError)
-	}
-
-	pivotsMeta, err := usecase.dataModelRepository.ListPivots(ctx, exec, scenario.OrganizationId, nil)
-	if err != nil {
-		return false, numbersOfDecisions{}, err
-	}
-	pivot := models.FindPivot(pivotsMeta, scenario.TriggerObjectType, dataModel)
 
 	// list objects to score
 	db, err := usecase.executorFactory.NewClientDbExecutor(ctx, scenario.OrganizationId)
 	if err != nil {
-		return false, numbersOfDecisions{}, err
+		return err
 	}
 
-	liveVersion, err := usecase.repository.GetScenarioIteration(ctx, exec, *scenario.LiveVersionID)
+	scheduledExecution, err := usecase.repository.GetScheduledExecution(ctx, exec, scheduledExecutionId)
 	if err != nil {
-		return false, numbersOfDecisions{}, err
+		return err
+	}
+
+	liveVersion, err := usecase.repository.GetScenarioIteration(ctx, exec, scheduledExecution.ScenarioIterationId)
+	if err != nil {
+		return err
 	}
 	filters := selectFiltersFromTriggerAstRootAnd(
 		*liveVersion.TriggerConditionAstExpression,
-		models.TableIdentifier{Table: table.Name, Schema: db.DatabaseSchema().Schema},
+		models.TableIdentifier{Table: scenario.TriggerObjectType, Schema: db.DatabaseSchema().Schema},
 	)
 
-	objectIds, err := usecase.ingestedDataReadRepository.ListAllObjectIdsFromTable(ctx, db, table, filters...)
+	objectIds, err := usecase.ingestedDataReadRepository.ListAllObjectIdsFromTable(ctx, db, scenario.TriggerObjectType, filters...)
 	if err != nil {
-		return false, numbersOfDecisions{}, err
+		return err
 	}
 
 	nbPlannedDecisions := len(objectIds)
@@ -290,204 +195,62 @@ func (usecase *RunScheduledExecution) createScheduledScenarioDecisions(
 		NumberOfPlannedDecisions: &nbPlannedDecisions,
 	})
 	if err != nil {
-		return false, numbersOfDecisions{}, err
+		return err
 	}
 
 	if len(objectIds) == 0 {
-		return true, numbersOfDecisions{}, nil
+		return nil
 	}
 
-	decisionsToCreate := make([]models.DecisionToCreate, 0, len(objectIds))
-	batch := make([]models.DecisionToCreate, 0, batchSize)
 	err = usecase.transactionFactory.Transaction(
 		ctx,
 		func(tx repositories.Transaction) error {
+			// first, enqueue all the tasks that need to be executed
 			for i := 0; i < len(objectIds); i += batchSize {
 				end := min(len(objectIds), i+batchSize)
 
-				batch, err = usecase.repository.StoreDecisionsToCreate(ctx, exec, models.DecisionToCreateBatchCreateInput{
+				batch, err := usecase.repository.StoreDecisionsToCreate(ctx, tx, models.DecisionToCreateBatchCreateInput{
 					ScheduledExecutionId: scheduledExecutionId,
 					ObjectId:             objectIds[i:end],
 				})
 				if err != nil {
 					return err
 				}
-				decisionsToCreate = append(decisionsToCreate, batch...)
+
+				err = usecase.taskQueueRepository.EnqueueDecisionTaskMany(
+					ctx,
+					tx,
+					scenario.OrganizationId,
+					batch,
+					scheduledExecution.ScenarioIterationId,
+				)
+				if err != nil {
+					return err
+				}
 			}
+
+			// Then enqueue the task that will perform the scheduled execution status monitoring
+			err = usecase.taskQueueRepository.EnqueueScheduledExecStatusTask(
+				ctx,
+				tx,
+				scenario.OrganizationId,
+				scheduledExecutionId,
+			)
+			if err != nil {
+				return err
+			}
+
 			return nil
 		},
 	)
 	if err != nil {
-		return false, numbersOfDecisions{}, err
+		return err
 	}
 
-	var nbEvaluatedDec, nbCreatedDec int
-	for i, decisionToCreate := range decisionsToCreate {
-		created, err := usecase.createSingleDecisionForObjectId(
-			ctx,
-			db,
-			decisionToCreate,
-			scenario,
-			dataModel,
-			scheduledExecutionId,
-			pivot,
-			i,
-		)
-		nbEvaluatedDec += 1
-		if err != nil {
-			updateErr := usecase.repository.UpdateDecisionToCreateStatus(
-				ctx,
-				exec,
-				decisionToCreate.Id,
-				models.DecisionToCreateStatusFailed,
-			)
-			utils.LogAndReportSentryError(ctx, errors.Join(err, updateErr))
-			// Stop at the first encountered error, store the number of created decisions on the scheduled execution
-			return false, numbersOfDecisions{
-				evaluated: nbEvaluatedDec,
-				created:   nbCreatedDec,
-			}, nil
-		}
-		if created {
-			nbCreatedDec += 1
-		}
-
-		// Update the number of created decisions on the scheduled execution, but not at every decision
-		if nbEvaluatedDec%100 == 0 {
-			_, err = usecase.repository.UpdateScheduledExecutionStatus(
-				ctx,
-				exec,
-				models.UpdateScheduledExecutionStatusInput{
-					Id:                         decisionToCreate.ScheduledExecutionId,
-					CurrentStatusCondition:     models.ScheduledExecutionProcessing,
-					NumberOfCreatedDecisions:   &nbCreatedDec,
-					NumberOfEvaluatedDecisions: &nbEvaluatedDec,
-					Status:                     models.ScheduledExecutionProcessing,
-				},
-			)
-			if err != nil {
-				return false, numbersOfDecisions{}, err
-			}
-		}
-	}
-
-	return true, numbersOfDecisions{evaluated: nbEvaluatedDec, created: nbCreatedDec}, nil
-}
-
-func (usecase *RunScheduledExecution) createSingleDecisionForObjectId(
-	ctx context.Context,
-	db repositories.Executor,
-	decisionToCreate models.DecisionToCreate,
-	scenario models.Scenario,
-	dataModel models.DataModel,
-	scheduledExecutionId string,
-	pivot *models.Pivot,
-	objectIdx int,
-) (decisionCreated bool, err error) {
-	tracer := utils.OpenTelemetryTracerFromContext(ctx)
-	ctx, span := tracer.Start(
-		ctx,
-		"Batch RunScheduledExecution.executeScheduledScenario",
-		trace.WithAttributes(
-			attribute.String("scenario_id", scenario.Id),
-			attribute.Int64("object_index", int64(objectIdx)),
-			attribute.String("trigger_object_type", scenario.TriggerObjectType),
-		))
-	defer span.End()
-
-	table := dataModel.Tables[scenario.TriggerObjectType]
-
-	objectMap, err := usecase.ingestedDataReadRepository.QueryIngestedObject(ctx, db, table, decisionToCreate.ObjectId)
-	if err != nil {
-		return false, errors.Wrap(err, "error while querying ingested objects in RunScheduledExecution.createSingleDecisionForObjectId")
-	} else if len(objectMap) == 0 {
-		return false, fmt.Errorf("object %s not found in table %s", decisionToCreate.ObjectId, table.Name)
-	}
-	object := models.ClientObject{TableName: table.Name, Data: objectMap[0]}
-	scenarioExecution, err := evaluate_scenario.EvalScenario(
-		ctx,
-		evaluate_scenario.ScenarioEvaluationParameters{
-			Scenario:     scenario,
-			ClientObject: object,
-			DataModel:    dataModel,
-			Pivot:        pivot,
-		},
-		evaluate_scenario.ScenarioEvaluationRepositories{
-			EvalScenarioRepository:     usecase.repository,
-			ExecutorFactory:            usecase.executorFactory,
-			IngestedDataReadRepository: usecase.ingestedDataReadRepository,
-			EvaluateAstExpression:      usecase.evaluateAstExpression,
-			SnoozeReader:               usecase.snoozesReader,
-		},
+	logger.InfoContext(ctx, fmt.Sprintf("Inserted %d decisions to be executed", nbPlannedDecisions),
+		slog.String("scheduled_execution_id", scheduledExecution.Id),
+		slog.String("organization_id", scheduledExecution.OrganizationId),
 	)
 
-	if errors.Is(err, models.ErrScenarioTriggerConditionAndTriggerObjectMismatch) {
-		logger := utils.LoggerFromContext(ctx)
-		logger.InfoContext(ctx, "Trigger condition and trigger object mismatch",
-			"scenario_id", scenario.Id,
-			"object_index", objectIdx,
-			"trigger_object_type", scenario.TriggerObjectType,
-			"object_id", decisionToCreate.ObjectId)
-
-		if err := usecase.repository.UpdateDecisionToCreateStatus(
-			ctx,
-			usecase.executorFactory.NewExecutor(),
-			decisionToCreate.Id,
-			models.DecisionToCreateStatusTriggerConditionMismatch,
-		); err != nil {
-			return false, err
-		}
-		return false, nil
-	} else if err != nil {
-		return false, errors.Wrapf(err, "error evaluating scenario in executeScheduledScenario %s", scenario.Id)
-	}
-
-	decision := models.AdaptScenarExecToDecision(scenarioExecution, object, &scheduledExecutionId)
-	sendWebhookEventId := make([]string, 0, 2)
-	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
-		err = usecase.decisionRepository.StoreDecision(
-			ctx,
-			tx,
-			decision,
-			scenario.OrganizationId,
-			decision.DecisionId,
-		)
-		if err != nil {
-			return errors.Wrapf(err, "error storing decision in executeScheduledScenario %s", scenario.Id)
-		}
-
-		webhookEventId := uuid.NewString()
-		err = usecase.webhookEventsSender.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
-			Id:             webhookEventId,
-			OrganizationId: decision.OrganizationId,
-			EventContent:   models.NewWebhookEventDecisionCreated(decision.DecisionId),
-		})
-		if err != nil {
-			return err
-		}
-		sendWebhookEventId = append(sendWebhookEventId, webhookEventId)
-
-		caseWebhookEventId := uuid.NewString()
-		webhookEventCreated, err := usecase.decisionWorkflows.AutomaticDecisionToCase(
-			ctx, tx, scenario, decision, caseWebhookEventId,
-		)
-		if err != nil {
-			return err
-		}
-
-		if webhookEventCreated {
-			sendWebhookEventId = append(sendWebhookEventId, caseWebhookEventId)
-		}
-
-		return usecase.repository.UpdateDecisionToCreateStatus(ctx, tx, decisionToCreate.Id, models.DecisionToCreateStatusCreated)
-	})
-	if err != nil {
-		return false, err
-	}
-
-	for _, webhookEventId := range sendWebhookEventId {
-		usecase.webhookEventsSender.SendWebhookEventAsync(ctx, webhookEventId)
-	}
-
-	return true, nil
+	return nil
 }

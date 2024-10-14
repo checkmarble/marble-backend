@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 )
 
@@ -228,7 +229,11 @@ func (repo *MarbleDbRepository) StoreDecisionsToCreate(
 		if err != nil {
 			return nil, err
 		}
-		decisions = append(decisions, dbmodels.AdaptDecisionToCrate(db))
+		models, err := dbmodels.AdaptDecisionToCrate(db)
+		if err != nil {
+			return nil, err
+		}
+		decisions = append(decisions, models)
 	}
 
 	err = rows.Err()
@@ -256,4 +261,113 @@ func (repo *MarbleDbRepository) UpdateDecisionToCreateStatus(
 		Set("updated_at", "NOW()")
 
 	return ExecBuilder(ctx, exec, query)
+}
+
+func (repo *MarbleDbRepository) GetDecisionToCreate(
+	ctx context.Context,
+	exec Executor,
+	decisionToCreateId string,
+	forUpdate ...bool,
+) (models.DecisionToCreate, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.DecisionToCreate{}, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.DecisionToCreateFields...).
+		From(dbmodels.TABLE_DECISIONS_TO_CREATE).
+		Where("id = ?", decisionToCreateId)
+
+	if len(forUpdate) > 0 && forUpdate[0] {
+		query = query.Suffix("FOR UPDATE")
+	}
+
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptDecisionToCrate)
+}
+
+func (repo *MarbleDbRepository) ListDecisionsToCreate(
+	ctx context.Context,
+	exec Executor,
+	filters models.ListDecisionsToCreateFilters,
+	limit *int,
+) ([]models.DecisionToCreate, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.DecisionToCreateFields...).
+		From(dbmodels.TABLE_DECISIONS_TO_CREATE).
+		Where("scheduled_execution_id = ?", filters.ScheduledExecutionId)
+
+	if len(filters.Status) > 0 {
+		query = query.Where(squirrel.Eq{
+			"status": pure_utils.Map(
+				filters.Status,
+				func(s models.DecisionToCreateStatus) string { return string(s) },
+			),
+		})
+	}
+
+	if limit != nil {
+		query = query.Limit(uint64(*limit))
+	}
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptDecisionToCrate)
+}
+
+func (repo *MarbleDbRepository) CountDecisionsToCreateByStatus(
+	ctx context.Context,
+	exec Executor,
+	scheduledExecutionId string,
+) (models.DecisionToCreateCountMetadata, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.DecisionToCreateCountMetadata{}, err
+	}
+
+	query := NewQueryBuilder().
+		Select("status, COUNT(*) AS c").
+		From(dbmodels.TABLE_DECISIONS_TO_CREATE).
+		Where("scheduled_execution_id = ?", scheduledExecutionId)
+
+	query = query.GroupBy("status")
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return models.DecisionToCreateCountMetadata{}, err
+	}
+
+	rows, err := exec.Query(ctx, sql, args...)
+	if err != nil {
+		return models.DecisionToCreateCountMetadata{}, err
+	}
+
+	counts := models.DecisionToCreateCountMetadata{}
+	for rows.Next() {
+		var status string
+		var count int
+		err = rows.Scan(&status, &count)
+		if err != nil {
+			return models.DecisionToCreateCountMetadata{}, err
+		}
+
+		switch status {
+		case string(models.DecisionToCreateStatusPending):
+			counts.Pending = count
+		case string(models.DecisionToCreateStatusCreated):
+			counts.Created = count
+		case string(models.DecisionToCreateStatusFailed):
+			counts.Failed = count
+		case string(models.DecisionToCreateStatusTriggerConditionMismatch):
+			counts.TriggerConditionMismatch = count
+		}
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return models.DecisionToCreateCountMetadata{}, err
+	}
+
+	counts.SuccessfullyEvaluated = counts.Created + counts.TriggerConditionMismatch
+
+	return counts, nil
 }

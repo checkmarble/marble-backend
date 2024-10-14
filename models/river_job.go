@@ -1,28 +1,18 @@
 package models
 
-import (
-	"context"
-	"fmt"
-	"sort"
-
-	"github.com/riverqueue/river"
-)
-
-type SortArgs struct {
-	// Strings is a slice of strings to sort.
-	Strings []string `json:"strings"`
+// run async decision job
+type AsyncDecisionArgs struct {
+	DecisionToCreateId   string `json:"decision_to_create_id"`
+	ObjectId             string `json:"object_id"`
+	ScheduledExecutionId string `json:"scheduled_execution_id"`
+	ScenarioIterationId  string `json:"scenario_iteration_id"`
 }
 
-func (SortArgs) Kind() string { return "sort" }
+func (AsyncDecisionArgs) Kind() string { return "async_decision" }
 
-type SortWorker struct {
-	// An embedded WorkerDefaults sets up default methods to fulfill the rest of
-	// the Worker interface:
-	river.WorkerDefaults[SortArgs]
+// job that starts with a scheduled execution and performs book keeping on the scheduled execution status
+type ScheduledExecStatusSyncArgs struct {
+	ScheduledExecutionId string `json:"scheduled_execution_id"`
 }
 
-func (w *SortWorker) Work(ctx context.Context, job *river.Job[SortArgs]) error {
-	sort.Strings(job.Args.Strings)
-	fmt.Printf("Sorted strings: %+v\n", job.Args.Strings)
-	return nil
-}
+func (ScheduledExecStatusSyncArgs) Kind() string { return "scheduled_execution_status_sync" }

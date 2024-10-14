@@ -2,14 +2,16 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/checkmarble/marble-backend/infra"
+	"github.com/checkmarble/marble-backend/jobs"
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/cockroachdb/errors"
 	"github.com/riverqueue/river"
@@ -23,7 +25,6 @@ func RunTaskQueue() error {
 	gcpConfig := infra.GcpConfig{
 		EnableTracing: utils.GetEnv("ENABLE_GCP_TRACING", false),
 		ProjectId:     utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
-		// GoogleApplicationCredentials: utils.GetEnv("GOOGLE_APPLICATION_CREDENTIALS", ""),
 	}
 	pgConfig := infra.PgConfig{
 		Database:            "marble",
@@ -33,11 +34,16 @@ func RunTaskQueue() error {
 		Port:                utils.GetEnv("PG_PORT", "5432"),
 		User:                utils.GetRequiredEnv[string]("PG_USER"),
 	}
-
-	// licenseConfig := models.LicenseConfiguration{
-	// 	LicenseKey:             utils.GetEnv("LICENSE_KEY", ""),
-	// 	KillIfReadLicenseError: utils.GetEnv("KILL_IF_READ_LICENSE_ERROR", false),
-	// }
+	convoyConfiguration := infra.ConvoyConfiguration{
+		APIKey:    utils.GetEnv("CONVOY_API_KEY", ""),
+		APIUrl:    utils.GetEnv("CONVOY_API_URL", ""),
+		ProjectID: utils.GetEnv("CONVOY_PROJECT_ID", ""),
+		RateLimit: utils.GetEnv("CONVOY_RATE_LIMIT", 50),
+	}
+	licenseConfig := models.LicenseConfiguration{
+		LicenseKey:             utils.GetEnv("LICENSE_KEY", ""),
+		KillIfReadLicenseError: utils.GetEnv("KILL_IF_READ_LICENSE_ERROR", false),
+	}
 	serverConfig := struct {
 		env           string
 		loggingFormat string
@@ -50,7 +56,7 @@ func RunTaskQueue() error {
 
 	logger := utils.NewLogger(serverConfig.loggingFormat)
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
-	// license := infra.VerifyLicense(licenseConfig)
+	license := infra.VerifyLicense(licenseConfig)
 
 	infra.SetupSentry(serverConfig.sentryDsn, serverConfig.env)
 	defer sentry.Flush(3 * time.Second)
@@ -64,6 +70,7 @@ func RunTaskQueue() error {
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 	}
+	ctx = utils.StoreOpenTelemetryTracerInContext(ctx, telemetryRessources.Tracer)
 
 	pool, err := infra.NewPostgresConnectionPool(ctx, pgConfig.GetConnectionString(), telemetryRessources.TracerProvider)
 	if err != nil {
@@ -71,12 +78,10 @@ func RunTaskQueue() error {
 	}
 
 	workers := river.NewWorkers()
-	river.AddWorker(workers, &models.SortWorker{})
-
 	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
 		Workers: workers,
 		Queues: map[string]river.QueueConfig{
-			river.QueueDefault: {
+			repositories.DecisionsQueueName("54624b1f-aac3-4d3c-8fee-75db36436e12"): { // TODO: remove hard coded org id, get list of org ids from query instead. + Add periodic refresh with "add queue"
 				MaxWorkers: 3,
 			},
 		},
@@ -86,15 +91,23 @@ func RunTaskQueue() error {
 		return err
 	}
 
-	// repositories := repositories.NewRepositories(
-	// 	pool,
-	// 	gcpConfig.GoogleApplicationCredentials,
-	// )
+	repositories := repositories.NewRepositories(
+		pool,
+		gcpConfig.GoogleApplicationCredentials,
+		repositories.WithRiverClient(riverClient),
+		repositories.WithConvoyClientProvider(
+			infra.InitializeConvoyRessources(convoyConfiguration),
+			convoyConfiguration.RateLimit,
+		),
+	)
 
-	// uc := usecases.NewUsecases(repositories,
-	// 	usecases.WithLicense(license),
-	// 	usecases.WithRiverClient(riverClient),
-	// )
+	uc := usecases.NewUsecases(repositories,
+		usecases.WithLicense(license),
+	)
+
+	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, uc)
+	river.AddWorker(workers, adminUc.NewAsyncDecisionWorker())
+	river.AddWorker(workers, adminUc.NewNewAsyncScheduledExecWorker())
 
 	if err := riverClient.Start(ctx); err != nil {
 		utils.LogAndReportSentryError(ctx, err)
@@ -113,27 +126,28 @@ func RunTaskQueue() error {
 	// completely and exits uncleanly.
 	go func() {
 		<-sigintOrTerm
-		fmt.Printf("Received SIGINT/SIGTERM; initiating soft stop (try to wait for jobs to finish)\n")
+		logger.InfoContext(ctx, "Received SIGINT/SIGTERM; initiating soft stop (try to wait for jobs to finish)")
 
-		softStopCtx, softStopCtxCancel := context.WithTimeout(ctx, 10*time.Second)
+		softStopCtx, softStopCtxCancel := context.WithTimeout(ctx, 5*time.Second)
 		defer softStopCtxCancel()
 
 		go func() {
 			select {
 			case <-sigintOrTerm:
-				fmt.Printf("Received SIGINT/SIGTERM again; initiating hard stop (cancel everything)\n")
+				logger.InfoContext(ctx, "Received SIGINT/SIGTERM again; initiating hard stop (cancel everything)")
 				softStopCtxCancel()
 			case <-softStopCtx.Done():
-				fmt.Printf("Soft stop timeout; initiating hard stop (cancel everything)\n")
+				logger.InfoContext(ctx, "Soft stop timeout; initiating hard stop (cancel everything)")
 			}
 		}()
 
 		err := riverClient.Stop(softStopCtx)
 		if err != nil && !errors.Is(err, context.DeadlineExceeded) && !errors.Is(err, context.Canceled) {
+			logger.ErrorContext(ctx, "Soft stop failed", "error", err)
 			panic(err)
 		}
 		if err == nil {
-			fmt.Printf("Soft stop succeeded\n")
+			logger.InfoContext(ctx, "Soft stop succeeded")
 			return
 		}
 
@@ -146,36 +160,29 @@ func RunTaskQueue() error {
 		// result (what's shown here) or have a supervisor kill the process.
 		err = riverClient.StopAndCancel(hardStopCtx)
 		if err != nil && errors.Is(err, context.DeadlineExceeded) {
-			fmt.Printf("Hard stop timeout; ignoring stop procedure and exiting unsafely\n")
+			logger.InfoContext(ctx, "Hard stop timeout; ignoring stop procedure and exiting unsafely")
 		} else if err != nil {
 			panic(err)
 		}
-
 		// hard stop succeeded
 	}()
 
-	// Make sure our job starts being worked before doing anything else.
-	// <-jobStarted
-
-	// Cheat a little by sending a SIGTERM manually for the purpose of this
-	// example (normally this will be sent by user or supervisory process). The
-	// first SIGTERM tries a soft stop in which jobs are given a chance to
-	// finish up.
-	// sigintOrTerm <- syscall.SIGTERM
-
-	// // The soft stop will never work in this example because our job only
-	// // respects context cancellation, but wait a short amount of time to give it
-	// // a chance. After it elapses, send another SIGTERM to initiate a hard stop.
+	// The soft stop will never work in this example because our job only
+	// respects context cancellation, but wait a short amount of time to give it
+	// a chance. After it elapses, send another SIGTERM to initiate a hard stop.
+	logger.InfoContext(ctx, "Waiting for SIGINT/SIGTERM to stop")
 	select {
 	case <-riverClient.Stopped():
-		// Will never be reached in this example because our job will only ever
-		// finish on context cancellation.
-		fmt.Printf("Soft stop succeeded\n")
-
-	case <-time.After(4 * time.Second):
+		logger.InfoContext(ctx, "Soft stop succeeded")
+		return nil
+	case <-time.After(300 * time.Second): // TODO remove this eventually, it's for testing purposes
+		logger.InfoContext(ctx, "Sigterm now")
 		sigintOrTerm <- syscall.SIGTERM
 		<-riverClient.Stopped()
 	}
+
+	<-riverClient.Stopped()
+	logger.InfoContext(ctx, "Soft stop succeeded")
 
 	return nil
 }

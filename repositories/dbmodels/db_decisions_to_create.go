@@ -20,7 +20,7 @@ const TABLE_DECISIONS_TO_CREATE = "decisions_to_create"
 
 var DecisionToCreateFields = utils.ColumnList[DecisionToCreate]()
 
-func AdaptDecisionToCrate(db DecisionToCreate) models.DecisionToCreate {
+func AdaptDecisionToCrate(db DecisionToCreate) (models.DecisionToCreate, error) {
 	return models.DecisionToCreate{
 		Id:                   db.Id,
 		ScheduledExecutionId: db.ScheduledExecutionId,
@@ -28,5 +28,5 @@ func AdaptDecisionToCrate(db DecisionToCreate) models.DecisionToCreate {
 		Status:               models.DecisionToCreateStatus(db.Status),
 		CreatedAt:            db.CreatedAt,
 		UpdateAt:             db.UpdateAt,
-	}
+	}, nil
 }

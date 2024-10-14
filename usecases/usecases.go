@@ -11,8 +11,6 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
 	"github.com/checkmarble/marble-backend/usecases/security"
-	"github.com/jackc/pgx/v5"
-	"github.com/riverqueue/river"
 )
 
 type Usecases struct {
@@ -22,7 +20,6 @@ type Usecases struct {
 	caseManagerBucketUrl        string
 	failedWebhooksRetryPageSize int
 	license                     models.LicenseValidation
-	riverClient                 *river.Client[pgx.Tx]
 }
 
 type Option func(*options)
@@ -57,19 +54,12 @@ func WithBatchIngestionMaxSize(size int) Option {
 	}
 }
 
-func WithRiverClient(client *river.Client[pgx.Tx]) Option {
-	return func(o *options) {
-		o.riverClient = client
-	}
-}
-
 type options struct {
 	batchIngestionMaxSize       int
 	ingestionBucketUrl          string
 	caseManagerBucketUrl        string
 	failedWebhooksRetryPageSize int
 	license                     models.LicenseValidation
-	riverClient                 *river.Client[pgx.Tx]
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
@@ -83,7 +73,6 @@ func newUsecasesWithOptions(repositories repositories.Repositories, o *options) 
 		caseManagerBucketUrl:        o.caseManagerBucketUrl,
 		failedWebhooksRetryPageSize: o.failedWebhooksRetryPageSize,
 		license:                     o.license,
-		riverClient:                 o.riverClient,
 	}
 }
 
