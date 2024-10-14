@@ -14,8 +14,6 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/riverqueue/river"
-	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 
 	"github.com/cockroachdb/errors"
 	"github.com/getsentry/sentry-go"
@@ -111,15 +109,13 @@ func RunServer() error {
 		utils.LogAndReportSentryError(ctx, err)
 	}
 
-	workers := river.NewWorkers()
-	// AddWorker panics if the worker is already registered or invalid:
-	river.AddWorker(workers, &models.SortWorker{})
-
-	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{})
-	if err != nil {
-		utils.LogAndReportSentryError(ctx, err)
-		return err
-	}
+	// workers := river.NewWorkers()
+	// river.AddWorker(workers, &scheduled_execution.AsyncDecisionWorker{})
+	// riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{})
+	// if err != nil {
+	// 	utils.LogAndReportSentryError(ctx, err)
+	// 	return err
+	// }
 
 	repositories := repositories.NewRepositories(
 		pool,
@@ -130,6 +126,7 @@ func RunServer() error {
 			infra.InitializeConvoyRessources(convoyConfiguration),
 			convoyConfiguration.RateLimit,
 		),
+		// repositories.WithRiverClient(riverClient),
 	)
 
 	uc := usecases.NewUsecases(repositories,
@@ -137,7 +134,6 @@ func RunServer() error {
 		usecases.WithIngestionBucketUrl(serverConfig.ingestionBucketUrl),
 		usecases.WithCaseManagerBucketUrl(serverConfig.caseManagerBucket),
 		usecases.WithLicense(license),
-		usecases.WithRiverClient(riverClient),
 	)
 
 	////////////////////////////////////////////////////////////
