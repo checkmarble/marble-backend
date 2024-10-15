@@ -45,25 +45,31 @@ func RunTaskQueue() error {
 		LicenseKey:             utils.GetEnv("LICENSE_KEY", ""),
 		KillIfReadLicenseError: utils.GetEnv("KILL_IF_READ_LICENSE_ERROR", false),
 	}
-	serverConfig := struct {
-		env           string
-		loggingFormat string
-		sentryDsn     string
+	workerConfig := struct {
+		appName                     string
+		env                         string
+		failedWebhooksRetryPageSize int
+		ingestionBucketUrl          string
+		loggingFormat               string
+		sentryDsn                   string
 	}{
-		env:           utils.GetEnv("ENV", "development"),
-		loggingFormat: utils.GetEnv("LOGGING_FORMAT", "text"),
-		sentryDsn:     utils.GetEnv("SENTRY_DSN", ""),
+		appName:                     "marble-backend",
+		env:                         utils.GetEnv("ENV", "development"),
+		failedWebhooksRetryPageSize: utils.GetEnv("FAILED_WEBHOOKS_RETRY_PAGE_SIZE", 1000),
+		ingestionBucketUrl:          utils.GetRequiredEnv[string]("INGESTION_BUCKET_URL"),
+		loggingFormat:               utils.GetEnv("LOGGING_FORMAT", "text"),
+		sentryDsn:                   utils.GetEnv("SENTRY_DSN", ""),
 	}
 
-	logger := utils.NewLogger(serverConfig.loggingFormat)
+	logger := utils.NewLogger(workerConfig.loggingFormat)
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
 	license := infra.VerifyLicense(licenseConfig)
 
-	infra.SetupSentry(serverConfig.sentryDsn, serverConfig.env)
+	infra.SetupSentry(workerConfig.sentryDsn, workerConfig.env)
 	defer sentry.Flush(3 * time.Second)
 
 	tracingConfig := infra.TelemetryConfiguration{
-		ApplicationName: "marble",
+		ApplicationName: workerConfig.appName,
 		Enabled:         gcpConfig.EnableTracing,
 		ProjectID:       gcpConfig.ProjectId,
 	}
@@ -97,6 +103,7 @@ func RunTaskQueue() error {
 		),
 	)
 
+	// Start the task queue workers
 	workers := river.NewWorkers()
 	queues, err := usecases.QueuesFromOrgs(ctx, repositories.OrganizationRepository, repositories.ExecutorGetter)
 	if err != nil {
@@ -114,6 +121,8 @@ func RunTaskQueue() error {
 	}
 
 	uc := usecases.NewUsecases(repositories,
+		usecases.WithIngestionBucketUrl(workerConfig.ingestionBucketUrl),
+		usecases.WithFailedWebhooksRetryPageSize(workerConfig.failedWebhooksRetryPageSize),
 		usecases.WithLicense(license),
 	)
 	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, uc)
@@ -125,9 +134,16 @@ func RunTaskQueue() error {
 		return err
 	}
 
+	// Asynchronously keep the task queue workers up to date with the orgs in the database
 	taskQueueWorker := uc.NewTaskQueueWorker(riverClient)
 	go taskQueueWorker.RefreshQueuesFromOrgIds(ctx)
 
+	// Start the cron jobs using the old entrypoint.
+	// This will progressively be replaced by the new task queue system.
+	// We do not wait for it, the state of the job is handled by the task queue workers.
+	go jobs.RunScheduler(ctx, uc)
+
+	// Teardown sequence
 	sigintOrTerm := make(chan os.Signal, 1)
 	signal.Notify(sigintOrTerm, syscall.SIGINT, syscall.SIGTERM)
 
