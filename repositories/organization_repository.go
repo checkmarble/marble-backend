@@ -6,6 +6,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/google/uuid"
 )
 
@@ -16,6 +17,7 @@ type OrganizationRepository interface {
 	CreateOrganization(ctx context.Context, exec Executor, newOrganizationId, name string) error
 	UpdateOrganization(ctx context.Context, exec Executor, updateOrganization models.UpdateOrganizationInput) error
 	DeleteOrganization(ctx context.Context, exec Executor, organizationId string) error
+	DeleteOrganizationDecisionRulesAsync(ctx context.Context, exec Executor, organizationId string)
 
 	// organization schema
 	OrganizationSchemaOfOrganization(ctx context.Context, exec Executor, organizationId string) (models.OrganizationSchema, error)
@@ -111,6 +113,24 @@ func (repo *OrganizationRepositoryPostgresql) DeleteOrganization(ctx context.Con
 
 	err := ExecBuilder(ctx, exec, NewQueryBuilder().Delete(dbmodels.TABLE_ORGANIZATION).Where("id = ?", organizationId))
 	return err
+}
+
+func (repo *OrganizationRepositoryPostgresql) DeleteOrganizationDecisionRulesAsync(
+	ctx context.Context, exec Executor, organizationId string,
+) {
+	// This is used asynchronously after the organization is deleted, because it is not dramatic if it fails
+	go func() {
+		err := ExecBuilder(
+			ctx,
+			exec,
+			NewQueryBuilder().
+				Delete(dbmodels.TABLE_DECISION_RULES).
+				Where("org_id = ?", organizationId),
+		)
+		if err != nil {
+			utils.LogAndReportSentryError(ctx, err)
+		}
+	}()
 }
 
 func (repo *OrganizationRepositoryPostgresql) CreateOrganizationSchema(

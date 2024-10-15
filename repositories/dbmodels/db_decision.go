@@ -7,32 +7,28 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const TABLE_DECISIONS = "decisions"
 
 type DbDecision struct {
-	Id             string    `db:"id"`
-	OrganizationId string    `db:"org_id"`
-	CaseId         *string   `db:"case_id"`
-	CreatedAt      time.Time `db:"created_at"`
-	// ErrorCode            int         `db:"error_code"` TODO: remove this deprecated field
-	DeletedAt            pgtype.Time `db:"deleted_at"`
-	Outcome              string      `db:"outcome"`
-	PivotId              *string     `db:"pivot_id"`
-	PivotValue           *string     `db:"pivot_value"`
-	ReviewStatus         *string     `db:"review_status"`
-	ScenarioId           string      `db:"scenario_id"`
-	ScenarioIterationId  string      `db:"scenario_iteration_id"`
-	ScenarioName         string      `db:"scenario_name"`
-	ScenarioDescription  string      `db:"scenario_description"`
-	ScenarioVersion      int         `db:"scenario_version"`
-	ScheduledExecutionId *string     `db:"scheduled_execution_id"`
-	Score                int         `db:"score"`
-	TriggerObjectRaw     []byte      `db:"trigger_object"`
-	TriggerObjectType    string      `db:"trigger_object_type"`
+	Id                   string    `db:"id"`
+	OrganizationId       string    `db:"org_id"`
+	CaseId               *string   `db:"case_id"`
+	CreatedAt            time.Time `db:"created_at"`
+	Outcome              string    `db:"outcome"`
+	PivotId              *string   `db:"pivot_id"`
+	PivotValue           *string   `db:"pivot_value"`
+	ReviewStatus         *string   `db:"review_status"`
+	ScenarioId           string    `db:"scenario_id"`
+	ScenarioIterationId  string    `db:"scenario_iteration_id"`
+	ScenarioName         string    `db:"scenario_name"`
+	ScenarioDescription  string    `db:"scenario_description"`
+	ScenarioVersion      int       `db:"scenario_version"`
+	ScheduledExecutionId *string   `db:"scheduled_execution_id"`
+	Score                int       `db:"score"`
+	TriggerObjectRaw     []byte    `db:"trigger_object"`
+	TriggerObjectType    string    `db:"trigger_object_type"`
 }
 
 type DbJoinDecisionAndCase struct {

@@ -72,7 +72,7 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 	scenario models.Scenario,
 	decision models.DecisionWithRuleExecutions,
 	webhookEventId string,
-) (webhookEventCreated bool, err error) {
+) (addedToCase bool, err error) {
 	if scenario.DecisionToCaseWorkflowType == models.WorkflowDisabled ||
 		scenario.DecisionToCaseOutcomes == nil ||
 		!slices.Contains(scenario.DecisionToCaseOutcomes, decision.Outcome) ||

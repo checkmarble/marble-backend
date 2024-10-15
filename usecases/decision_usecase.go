@@ -317,7 +317,7 @@ func (usecase *DecisionUsecase) CreateDecision(
 		}
 
 		caseWebhookEventId := uuid.NewString()
-		webhookEventCreated, err := usecase.decisionWorkflows.AutomaticDecisionToCase(
+		addedToCase, err := usecase.decisionWorkflows.AutomaticDecisionToCase(
 			ctx,
 			tx,
 			scenario,
@@ -326,11 +326,19 @@ func (usecase *DecisionUsecase) CreateDecision(
 		if err != nil {
 			return models.DecisionWithRuleExecutions{}, err
 		}
-		if webhookEventCreated {
+		if addedToCase {
 			sendWebhookEventId = append(sendWebhookEventId, caseWebhookEventId)
 		}
 
-		return usecase.repository.DecisionWithRuleExecutionsById(ctx, tx, decision.DecisionId)
+		// only refresh the decision if it has changed, meaning if it was added to a case
+		if addedToCase {
+			dec, err := usecase.repository.DecisionWithRuleExecutionsById(ctx, tx, decision.DecisionId)
+			if err != nil {
+				return models.DecisionWithRuleExecutions{}, err
+			}
+			return dec, nil
+		}
+		return decision, nil
 	})
 	if err != nil {
 		return models.DecisionWithRuleExecutions{}, err

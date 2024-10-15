@@ -21,7 +21,7 @@ import (
 )
 
 // Maximum number of rules executed concurrently
-// TODO : set value from configuration/env instead
+// TODO: set value from configuration/env instead
 const MAX_CONCURRENT_RULE_EXECUTIONS = 5
 
 type ScenarioEvaluationParameters struct {
