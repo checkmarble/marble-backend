@@ -44,7 +44,7 @@ func main() {
 	}
 
 	if *shouldRunScheduleScenarios {
-		// TODOl: eventually, remove this entrypoint completely
+		// TODO: eventually, remove this entrypoint completely
 		logger.Info("The entrypoint \"scheduler\" is deprecated, its functionality has been merged into the \"scheduled-executer\" entrypoint")
 	}
 
@@ -70,7 +70,9 @@ func main() {
 	}
 
 	if *shouldRunScheduler {
-		err := cmd.RunJobScheduler()
+		// TODO: deprecated in favor of the task queue worker, which now runs the cron jobs. Will be removed eventually.
+		logger.Info("The entrypoint \"cron-scheduler\" is deprecated, its functionality has been merged into the \"worker\" entrypoint")
+		err := cmd.RunTaskQueue()
 		if err != nil {
 			log.Fatal(err)
 		}

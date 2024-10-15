@@ -15,6 +15,7 @@ func errToReturnCode(err error) int {
 	return 0
 }
 
+// Deprecated and to be moved into the river task scheduler
 func RunScheduler(ctx context.Context, usecases usecases.Usecases) {
 	taskr := tasker.New(tasker.Option{
 		Verbose: true,
