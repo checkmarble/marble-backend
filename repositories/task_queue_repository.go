@@ -64,7 +64,7 @@ func (r riverRepository) EnqueueDecisionTask(
 	}, &river.InsertOpts{
 		MaxAttempts: nbRetriesAsyncDecision,
 		Priority:    priorityAsyncDecision,
-		Queue:       DecisionsQueueName(organizationId),
+		Queue:       organizationId,
 		UniqueOpts: river.UniqueOpts{
 			ByArgs: true,
 		},
@@ -96,7 +96,7 @@ func (r riverRepository) EnqueueDecisionTaskMany(
 			InsertOpts: &river.InsertOpts{
 				MaxAttempts: nbRetriesAsyncDecision,
 				Priority:    priorityAsyncDecision,
-				Queue:       DecisionsQueueName(organizationId),
+				Queue:       organizationId,
 				UniqueOpts: river.UniqueOpts{
 					ByArgs: true,
 				},
@@ -126,7 +126,7 @@ func (r riverRepository) EnqueueScheduledExecStatusTask(
 	}, &river.InsertOpts{
 		MaxAttempts: nbRetriesScheduledExecStatus,
 		Priority:    priorityScheduledExecStatus,
-		Queue:       DecisionsQueueName(organizationId),
+		Queue:       organizationId,
 		UniqueOpts: river.UniqueOpts{
 			ByArgs: true,
 		},
@@ -137,8 +137,4 @@ func (r riverRepository) EnqueueScheduledExecStatusTask(
 	logger := utils.LoggerFromContext(ctx)
 	logger.DebugContext(ctx, "Enqueued scheduled execution status update task", "job_id", res.Job.ID)
 	return nil
-}
-
-func DecisionsQueueName(organizationId string) string {
-	return fmt.Sprintf("decisions-%s", organizationId)
 }
