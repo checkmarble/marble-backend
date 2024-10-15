@@ -237,9 +237,7 @@ type ListDecisionsToCreateFilters struct {
 }
 
 type DecisionToCreateCountMetadata struct {
-	Pending                  int
 	Created                  int
-	Failed                   int
 	TriggerConditionMismatch int
 	SuccessfullyEvaluated    int
 }

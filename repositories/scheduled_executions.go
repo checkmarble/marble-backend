@@ -316,7 +316,7 @@ func (repo *MarbleDbRepository) ListDecisionsToCreate(
 	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptDecisionToCrate)
 }
 
-func (repo *MarbleDbRepository) CountDecisionsToCreateByStatus(
+func (repo *MarbleDbRepository) CountCompletedDecisionsByStatus(
 	ctx context.Context,
 	exec Executor,
 	scheduledExecutionId string,
@@ -328,9 +328,11 @@ func (repo *MarbleDbRepository) CountDecisionsToCreateByStatus(
 	query := NewQueryBuilder().
 		Select("status, COUNT(*) AS c").
 		From(dbmodels.TABLE_DECISIONS_TO_CREATE).
-		Where("scheduled_execution_id = ?", scheduledExecutionId)
+		Where("scheduled_execution_id = ?", scheduledExecutionId).
+		Where("status IN (?, ?)",
+			models.DecisionToCreateStatusCreated, models.DecisionToCreateStatusTriggerConditionMismatch).
+		GroupBy("status")
 
-	query = query.GroupBy("status")
 	sql, args, err := query.ToSql()
 	if err != nil {
 		return models.DecisionToCreateCountMetadata{}, err
@@ -351,12 +353,8 @@ func (repo *MarbleDbRepository) CountDecisionsToCreateByStatus(
 		}
 
 		switch status {
-		case string(models.DecisionToCreateStatusPending):
-			counts.Pending = count
 		case string(models.DecisionToCreateStatusCreated):
 			counts.Created = count
-		case string(models.DecisionToCreateStatusFailed):
-			counts.Failed = count
 		case string(models.DecisionToCreateStatusTriggerConditionMismatch):
 			counts.TriggerConditionMismatch = count
 		}

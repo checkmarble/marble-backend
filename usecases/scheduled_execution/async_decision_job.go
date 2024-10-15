@@ -71,7 +71,7 @@ type asyncDecisionWorkerRepository interface {
 		filters models.ListDecisionsToCreateFilters,
 		limit *int,
 	) ([]models.DecisionToCreate, error)
-	CountDecisionsToCreateByStatus(
+	CountCompletedDecisionsByStatus(
 		ctx context.Context,
 		exec repositories.Executor,
 		ScheduledExecutionId string,
@@ -355,7 +355,7 @@ func (w *AsyncDecisionWorker) possiblyUpdateScheduledExecNumbers(
 ) error {
 	logger := utils.LoggerFromContext(ctx)
 
-	counts, err := w.repository.CountDecisionsToCreateByStatus(ctx, tx, args.ScheduledExecutionId)
+	counts, err := w.repository.CountCompletedDecisionsByStatus(ctx, tx, args.ScheduledExecutionId)
 	if err != nil {
 		return err
 	}
