@@ -128,7 +128,7 @@ func (w *AsyncScheduledExecWorker) handleScheduledExecStatusRefres(
 		return river.JobSnooze(delay)
 	}
 
-	counts, err := w.repository.CountDecisionsToCreateByStatus(ctx, tx, args.ScheduledExecutionId)
+	counts, err := w.repository.CountCompletedDecisionsByStatus(ctx, tx, args.ScheduledExecutionId)
 	if err != nil {
 		return err
 	}
