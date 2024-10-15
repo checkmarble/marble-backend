@@ -11,6 +11,9 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/scheduled_execution"
 	"github.com/checkmarble/marble-backend/usecases/security"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/riverqueue/river"
 )
 
 type Usecases struct {
@@ -214,4 +217,12 @@ func (usecases *Usecases) NewLicenseUsecase() PublicLicenseUseCase {
 		executorFactory:   usecases.NewExecutorFactory(),
 		licenseRepository: &usecases.Repositories.MarbleDbRepository,
 	}
+}
+
+func (usecases *Usecases) NewTaskQueueWorker(riverClient *river.Client[pgx.Tx]) *TaskQueueWorker {
+	return NewTaskQueueWorker(
+		usecases.NewExecutorFactory(),
+		usecases.Repositories.OrganizationRepository,
+		riverClient,
+	)
 }

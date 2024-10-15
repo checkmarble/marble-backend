@@ -15,7 +15,6 @@ import (
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
-	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -50,7 +49,7 @@ func TestBatchIngestionAndExecution(t *testing.T) {
 	organizationId := userCreds.OrganizationId
 
 	// add the river worker queue for this organization. It's used to run the asynchronous decisions for batch mode.
-	err := riverClient.Queues().Add(repositories.DecisionsQueueName(organizationId), river.QueueConfig{
+	err := riverClient.Queues().Add(organizationId, river.QueueConfig{
 		MaxWorkers: 3,
 	})
 	if err != nil {

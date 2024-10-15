@@ -109,14 +109,6 @@ func RunServer() error {
 		utils.LogAndReportSentryError(ctx, err)
 	}
 
-	// workers := river.NewWorkers()
-	// river.AddWorker(workers, &scheduled_execution.AsyncDecisionWorker{})
-	// riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{})
-	// if err != nil {
-	// 	utils.LogAndReportSentryError(ctx, err)
-	// 	return err
-	// }
-
 	repositories := repositories.NewRepositories(
 		pool,
 		gcpConfig.GoogleApplicationCredentials,
@@ -126,7 +118,6 @@ func RunServer() error {
 			infra.InitializeConvoyRessources(convoyConfiguration),
 			convoyConfiguration.RateLimit,
 		),
-		// repositories.WithRiverClient(riverClient),
 	)
 
 	uc := usecases.NewUsecases(repositories,
