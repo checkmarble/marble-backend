@@ -93,6 +93,7 @@ func AdaptScenarExecToDecision(scenarioExecution ScenarioExecution, clientObject
 	return DecisionWithRuleExecutions{
 		Decision: Decision{
 			DecisionId:           pure_utils.NewPrimaryKey(scenarioExecution.OrganizationId),
+			CreatedAt:            time.Now(),
 			ClientObject:         clientObject,
 			Outcome:              scenarioExecution.Outcome,
 			OrganizationId:       scenarioExecution.OrganizationId,

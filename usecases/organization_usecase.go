@@ -66,7 +66,7 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 	if err := usecase.enforceSecurity.DeleteOrganization(); err != nil {
 		return err
 	}
-	return usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+	err := usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		// delete all users
 		err := usecase.userRepository.DeleteUsersOfOrganization(ctx, tx, organizationId)
 		if err != nil {
@@ -84,6 +84,16 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 		}
 		return usecase.organizationSchemaRepository.DeleteSchema(ctx, db)
 	})
+	if err != nil {
+		return err
+	}
+
+	usecase.organizationRepository.DeleteOrganizationDecisionRulesAsync(
+		ctx,
+		usecase.executorFactory.NewExecutor(),
+		organizationId,
+	)
+	return nil
 }
 
 func (usecase *OrganizationUseCase) GetUsersOfOrganization(ctx context.Context, organizationId string) ([]models.User, error) {
