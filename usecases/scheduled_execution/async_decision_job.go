@@ -3,6 +3,9 @@ package scheduled_execution
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"math"
+	"math/rand/v2"
 	"slices"
 	"time"
 
@@ -196,8 +199,10 @@ func (w *AsyncDecisionWorker) handleDecision(
 		}
 	}
 
-	// TODO: how do I handle the decision count update on the scheduled execution??
-	// -> in a separate job, to be done later
+	err = w.possiblyUpdateScheduledExecNumbers(ctx, tx, args)
+	if err != nil {
+		return nil, err
+	}
 
 	return webhookEventIds, nil
 }
@@ -333,4 +338,66 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 	}
 
 	return true, sendWebhookEventId, nil
+}
+
+func (w *AsyncDecisionWorker) possiblyUpdateScheduledExecNumbers(
+	ctx context.Context,
+	tx repositories.Transaction,
+	args models.AsyncDecisionArgs,
+) error {
+	logger := utils.LoggerFromContext(ctx)
+
+	counts, err := w.repository.CountDecisionsToCreateByStatus(ctx, tx, args.ScheduledExecutionId)
+	if err != nil {
+		return err
+	}
+
+	if sample, err := w.sampleUpdateNumbers(ctx, args.ScheduledExecutionId); err != nil {
+		return err
+	} else if !sample {
+		return nil
+	}
+
+	done, err := w.repository.UpdateScheduledExecutionStatus(
+		ctx,
+		tx,
+		models.UpdateScheduledExecutionStatusInput{
+			Id:                         args.ScheduledExecutionId,
+			NumberOfCreatedDecisions:   &counts.Created,
+			NumberOfEvaluatedDecisions: &counts.SuccessfullyEvaluated,
+			Status:                     models.ScheduledExecutionProcessing,
+			CurrentStatusCondition:     models.ScheduledExecutionProcessing,
+		},
+	)
+	if err != nil {
+		return err
+	}
+	if !done {
+		logger.InfoContext(ctx,
+			"Scheduled execution is no longer in processing status, the numbers of decisions evaluated must have been updated by another task",
+			slog.String("scheduled_execution_id", args.ScheduledExecutionId),
+		)
+	}
+
+	return nil
+}
+
+func (w *AsyncDecisionWorker) sampleUpdateNumbers(ctx context.Context, scheduledExecutionId string) (isSampled bool, err error) {
+	// naive random heuristic. We want to avoid updating the numbers too often, but we also want to avoid having the numbers be too stale.
+	execution, err := w.repository.GetScheduledExecution(ctx, w.executorFactory.NewExecutor(), scheduledExecutionId)
+	if err != nil {
+		return false, err
+	}
+	var everyN int
+	if execution.NumberOfPlannedDecisions == nil || *execution.NumberOfPlannedDecisions < 100 {
+		everyN = 1
+	} else {
+		// every 32 decisions for 1000 planned, every 100 for 10k planned, every 1000 for 1M planned...
+		everyN = int(math.Sqrt(float64(*execution.NumberOfPlannedDecisions)))
+	}
+
+	if rand.Int64N(int64(everyN)) == 0 {
+		return true, nil
+	}
+	return false, nil
 }
