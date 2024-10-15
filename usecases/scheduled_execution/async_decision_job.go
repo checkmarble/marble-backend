@@ -224,6 +224,14 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 		))
 	defer span.End()
 
+	scheduledExecution, err := w.repository.GetScheduledExecution(ctx, tx, args.ScheduledExecutionId)
+	if err != nil {
+		return false, nil, err
+	}
+	if scheduledExecution.Status != models.ScheduledExecutionProcessing {
+		return false, nil, nil
+	}
+
 	scenarioAndIteration, err := w.scenarioFetcher.FetchScenarioAndIteration(ctx, tx, args.ScenarioIterationId)
 	if err != nil {
 		return false, nil, err
