@@ -13,11 +13,11 @@ import (
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
+
 	"github.com/cockroachdb/errors"
+	"github.com/getsentry/sentry-go"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
-
-	"github.com/getsentry/sentry-go"
 )
 
 func RunTaskQueue() error {
@@ -82,7 +82,7 @@ func RunTaskQueue() error {
 		Workers: workers,
 		Queues: map[string]river.QueueConfig{
 			repositories.DecisionsQueueName("54624b1f-aac3-4d3c-8fee-75db36436e12"): { // TODO: remove hard coded org id, get list of org ids from query instead. + Add periodic refresh with "add queue"
-				MaxWorkers: 3,
+				MaxWorkers: 4,
 			},
 		},
 	})

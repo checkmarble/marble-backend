@@ -6,6 +6,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
 )
