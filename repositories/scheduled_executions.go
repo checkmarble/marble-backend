@@ -229,7 +229,7 @@ func (repo *MarbleDbRepository) StoreDecisionsToCreate(
 		if err != nil {
 			return nil, err
 		}
-		models, err := dbmodels.AdaptDecisionToCrate(db)
+		models, err := dbmodels.AdaptDecisionToCreate(db)
 		if err != nil {
 			return nil, err
 		}
@@ -282,7 +282,7 @@ func (repo *MarbleDbRepository) GetDecisionToCreate(
 		query = query.Suffix("FOR UPDATE")
 	}
 
-	return SqlToModel(ctx, exec, query, dbmodels.AdaptDecisionToCrate)
+	return SqlToModel(ctx, exec, query, dbmodels.AdaptDecisionToCreate)
 }
 
 func (repo *MarbleDbRepository) ListDecisionsToCreate(
@@ -313,7 +313,7 @@ func (repo *MarbleDbRepository) ListDecisionsToCreate(
 		query = query.Limit(uint64(*limit))
 	}
 
-	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptDecisionToCrate)
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptDecisionToCreate)
 }
 
 func (repo *MarbleDbRepository) CountCompletedDecisionsByStatus(
