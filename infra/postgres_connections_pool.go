@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	MAX_CONNECTIONS          = 40
+	MAX_CONNECTIONS          = 40 // TODO: make this a configurable value
 	MAX_CONNECTION_IDLE_TIME = 5 * time.Minute
 )
 

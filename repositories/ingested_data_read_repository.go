@@ -17,7 +17,7 @@ type IngestedDataReadRepository interface {
 	ListAllObjectIdsFromTable(
 		ctx context.Context,
 		exec Executor,
-		table models.Table,
+		tableName string,
 		filters ...models.Filter,
 	) ([]string, error)
 	QueryIngestedObject(
@@ -198,14 +198,14 @@ func rowIsValid(tableName string) squirrel.Eq {
 func (repo *IngestedDataReadRepositoryImpl) ListAllObjectIdsFromTable(
 	ctx context.Context,
 	exec Executor,
-	table models.Table,
+	tableName string,
 	filters ...models.Filter,
 ) ([]string, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
-	qualifiedTableName := tableNameWithSchema(exec, table.Name)
+	qualifiedTableName := tableNameWithSchema(exec, tableName)
 	q := NewQueryBuilder().
 		Select("object_id").
 		From(qualifiedTableName).

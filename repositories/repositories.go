@@ -2,7 +2,9 @@ package repositories
 
 import (
 	"github.com/Masterminds/squirrel"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/riverqueue/river"
 )
 
 type options struct {
@@ -10,6 +12,7 @@ type options struct {
 	transfercheckEnrichmentBucket string
 	convoyClientProvider          ConvoyClientProvider
 	convoyRateLimit               int
+	riverClient                   *river.Client[pgx.Tx]
 }
 
 type Option func(*options)
@@ -41,6 +44,12 @@ func WithConvoyClientProvider(convoyResources ConvoyClientProvider, convoyRateLi
 	}
 }
 
+func WithRiverClient(client *river.Client[pgx.Tx]) Option {
+	return func(o *options) {
+		o.riverClient = client
+	}
+}
+
 type Repositories struct {
 	ExecutorGetter                    ExecutorGetter
 	ConvoyRepository                  ConvoyRepository
@@ -58,6 +67,7 @@ type Repositories struct {
 	UploadLogRepository               UploadLogRepository
 	MarbleAnalyticsRepository         MarbleAnalyticsRepository
 	TransferCheckEnrichmentRepository *TransferCheckEnrichmentRepository
+	TaskQueueRepository               TaskQueueRepository
 }
 
 func NewQueryBuilder() squirrel.StatementBuilderType {
@@ -97,5 +107,6 @@ func NewRepositories(
 			blobRepository,
 			options.transfercheckEnrichmentBucket,
 		),
+		TaskQueueRepository: NewTaskQueueRepository(options.riverClient),
 	}
 }

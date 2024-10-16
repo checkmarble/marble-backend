@@ -17,6 +17,7 @@ func main() {
 	shouldRunDataIngestion := flag.Bool("data-ingestion", false, "Run data ingestion")
 	shouldRunSendPendingWebhookEvents := flag.Bool("send-pending-webhook-events", false, "Send pending webhook events")
 	shouldRunScheduler := flag.Bool("cron-scheduler", false, "Run scheduler for cron jobs")
+	shouldRunWorker := flag.Bool("worker", false, "Run workers on the task queues")
 	flag.Parse()
 	logger := utils.NewLogger("text")
 	logger.Info("Flags",
@@ -26,6 +27,7 @@ func main() {
 		slog.Bool("shouldRunDataIngestion", *shouldRunDataIngestion),
 		slog.Bool("shouldRunScheduler", *shouldRunScheduler),
 		slog.Bool("shouldRunSendPendingWebhookEvents", *shouldRunSendPendingWebhookEvents),
+		slog.Bool("shouldRunWorker", *shouldRunWorker),
 	)
 
 	if *shouldRunMigrations {
@@ -42,7 +44,7 @@ func main() {
 	}
 
 	if *shouldRunScheduleScenarios {
-		// TODOl: eventually, remove this entrypoint completely
+		// TODO: eventually, remove this entrypoint completely
 		logger.Info("The entrypoint \"scheduler\" is deprecated, its functionality has been merged into the \"scheduled-executer\" entrypoint")
 	}
 
@@ -68,7 +70,16 @@ func main() {
 	}
 
 	if *shouldRunScheduler {
-		err := cmd.RunJobScheduler()
+		// TODO: deprecated in favor of the task queue worker, which now runs the cron jobs. Will be removed eventually.
+		logger.Info("The entrypoint \"cron-scheduler\" is deprecated, its functionality has been merged into the \"worker\" entrypoint")
+		err := cmd.RunTaskQueue()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	if *shouldRunWorker {
+		err := cmd.RunTaskQueue()
 		if err != nil {
 			log.Fatal(err)
 		}
