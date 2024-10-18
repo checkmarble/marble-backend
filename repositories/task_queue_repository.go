@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/utils"
@@ -84,6 +85,9 @@ func (r riverRepository) EnqueueDecisionTaskMany(
 	decisions []models.DecisionToCreate,
 	scenarioIterationId string,
 ) error {
+	logger := utils.LoggerFromContext(ctx)
+	logger.InfoContext(ctx, "start enqueueing batch of decision tasks")
+	t := time.Now()
 	params := make([]river.InsertManyParams, len(decisions))
 	for i, decision := range decisions {
 		params[i] = river.InsertManyParams{
@@ -111,7 +115,7 @@ func (r riverRepository) EnqueueDecisionTaskMany(
 	}
 
 	utils.LoggerFromContext(ctx).
-		DebugContext(ctx, fmt.Sprintf("Enqueued %d decision tasks", res))
+		InfoContext(ctx, fmt.Sprintf("Enqueued %d decision tasks in %s", res, time.Since(t)))
 	return nil
 }
 
