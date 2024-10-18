@@ -355,15 +355,15 @@ func (w *AsyncDecisionWorker) possiblyUpdateScheduledExecNumbers(
 ) error {
 	logger := utils.LoggerFromContext(ctx)
 
-	counts, err := w.repository.CountCompletedDecisionsByStatus(ctx, tx, args.ScheduledExecutionId)
-	if err != nil {
-		return err
-	}
-
 	if sample, err := w.sampleUpdateNumbers(ctx, args.ScheduledExecutionId); err != nil {
 		return err
 	} else if !sample {
 		return nil
+	}
+
+	counts, err := w.repository.CountCompletedDecisionsByStatus(ctx, tx, args.ScheduledExecutionId)
+	if err != nil {
+		return err
 	}
 
 	done, err := w.repository.UpdateScheduledExecutionStatus(
