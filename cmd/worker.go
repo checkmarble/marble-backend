@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -52,6 +53,7 @@ func RunTaskQueue() error {
 		ingestionBucketUrl          string
 		loggingFormat               string
 		sentryDsn                   string
+		cloudRunProbePort           string
 	}{
 		appName:                     "marble-backend",
 		env:                         utils.GetEnv("ENV", "development"),
@@ -59,6 +61,7 @@ func RunTaskQueue() error {
 		ingestionBucketUrl:          utils.GetRequiredEnv[string]("INGESTION_BUCKET_URL"),
 		loggingFormat:               utils.GetEnv("LOGGING_FORMAT", "text"),
 		sentryDsn:                   utils.GetEnv("SENTRY_DSN", ""),
+		cloudRunProbePort:           utils.GetEnv("CLOUD_RUN_PROBE_PORT", ""),
 	}
 
 	logger := utils.NewLogger(workerConfig.loggingFormat)
@@ -132,6 +135,19 @@ func RunTaskQueue() error {
 	if err := riverClient.Start(ctx); err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 		return err
+	}
+
+	// run a non-blocking basic http server to respond to Cloud Run http probes, to respect the Cloud Run contract
+	if workerConfig.cloudRunProbePort != "" {
+		go func() {
+			http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte("OK"))
+			})
+			if err := http.ListenAndServe(":"+workerConfig.cloudRunProbePort, nil); err != nil {
+				utils.LogAndReportSentryError(ctx, err)
+			}
+		}()
 	}
 
 	// Asynchronously keep the task queue workers up to date with the orgs in the database
