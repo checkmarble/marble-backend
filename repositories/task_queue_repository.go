@@ -101,8 +101,8 @@ func (r riverRepository) EnqueueDecisionTaskMany(
 				MaxAttempts: nbRetriesAsyncDecision,
 				Priority:    priorityAsyncDecision,
 				Queue:       organizationId,
-				UniqueOpts: river.UniqueOpts{
-					ByArgs: true,
+				UniqueOpts:  river.UniqueOpts{
+					// ByArgs: true,
 				},
 			},
 		}
