@@ -27,6 +27,7 @@ func RunSendPendingWebhookEvents() error {
 		Password:            utils.GetRequiredEnv[string]("PG_PASSWORD"),
 		Port:                utils.GetEnv("PG_PORT", "5432"),
 		User:                utils.GetRequiredEnv[string]("PG_USER"),
+		MaxPoolConnections:  utils.GetEnv("PG_MAX_POOL_SIZE", infra.DEFAULT_MAX_CONNECTIONS),
 	}
 	convoyConfiguration := infra.ConvoyConfiguration{
 		APIKey:    utils.GetEnv("CONVOY_API_KEY", ""),
@@ -71,7 +72,8 @@ func RunSendPendingWebhookEvents() error {
 	}
 	ctx = utils.StoreOpenTelemetryTracerInContext(ctx, telemetryRessources.Tracer)
 
-	pool, err := infra.NewPostgresConnectionPool(ctx, pgConfig.GetConnectionString(), telemetryRessources.TracerProvider)
+	pool, err := infra.NewPostgresConnectionPool(ctx, pgConfig.GetConnectionString(),
+		telemetryRessources.TracerProvider, pgConfig.MaxPoolConnections)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 		return err

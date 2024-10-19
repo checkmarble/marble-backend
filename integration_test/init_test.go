@@ -116,7 +116,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// Need to declare this after the migrations, to have the correct search path
-	dbPool, err := infra.NewPostgresConnectionPool(ctx, pgConfig.GetConnectionString(), nil)
+	dbPool, err := infra.NewPostgresConnectionPool(ctx, pgConfig.GetConnectionString(), nil, pgConfig.MaxPoolConnections)
 	if err != nil {
 		log.Fatalf("Could not create connection pool: %s", err)
 	}

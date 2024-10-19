@@ -20,6 +20,7 @@ type PgConfig struct {
 	Password            string
 	Port                string
 	User                string
+	MaxPoolConnections  int
 }
 
 func (config PgConfig) GetConnectionString() string {
