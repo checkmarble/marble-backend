@@ -12,11 +12,16 @@ import (
 )
 
 const (
-	MAX_CONNECTIONS          = 40 // TODO: make this a configurable value
+	DEFAULT_MAX_CONNECTIONS  = 40 // TODO: make this a configurable value
 	MAX_CONNECTION_IDLE_TIME = 5 * time.Minute
 )
 
-func NewPostgresConnectionPool(ctx context.Context, connectionString string, tp trace.TracerProvider) (*pgxpool.Pool, error) {
+func NewPostgresConnectionPool(
+	ctx context.Context,
+	connectionString string,
+	tp trace.TracerProvider,
+	maxConnections int,
+) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(connectionString)
 	if err != nil {
 		return nil, fmt.Errorf("create connection pool: %w", err)
@@ -26,7 +31,10 @@ func NewPostgresConnectionPool(ctx context.Context, connectionString string, tp 
 		ops = append(ops, otelpgx.WithTracerProvider(tp))
 	}
 	cfg.ConnConfig.Tracer = otelpgx.NewTracer(ops...)
-	cfg.MaxConns = MAX_CONNECTIONS
+	cfg.MaxConns = int32(maxConnections)
+	if cfg.MaxConns == 0 {
+		cfg.MaxConns = DEFAULT_MAX_CONNECTIONS
+	}
 	cfg.MaxConnIdleTime = MAX_CONNECTION_IDLE_TIME
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), cfg)

@@ -43,6 +43,7 @@ func RunServer() error {
 		Password:            utils.GetRequiredEnv[string]("PG_PASSWORD"),
 		Port:                utils.GetEnv("PG_PORT", "5432"),
 		User:                utils.GetRequiredEnv[string]("PG_USER"),
+		MaxPoolConnections:  utils.GetEnv("PG_MAX_POOL_SIZE", infra.DEFAULT_MAX_CONNECTIONS),
 	}
 	metabaseConfig := infra.MetabaseConfiguration{
 		SiteUrl:             utils.GetEnv("METABASE_SITE_URL", ""),
@@ -104,7 +105,8 @@ func RunServer() error {
 		utils.LogAndReportSentryError(ctx, err)
 	}
 
-	pool, err := infra.NewPostgresConnectionPool(ctx, pgConfig.GetConnectionString(), telemetryRessources.TracerProvider)
+	pool, err := infra.NewPostgresConnectionPool(ctx, pgConfig.GetConnectionString(),
+		telemetryRessources.TracerProvider, pgConfig.MaxPoolConnections)
 	if err != nil {
 		utils.LogAndReportSentryError(ctx, err)
 	}
