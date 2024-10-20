@@ -116,8 +116,9 @@ func RunTaskQueue() error {
 		return err
 	}
 	riverClient, err = river.NewClient(riverpgxv5.New(pool), &river.Config{
-		Workers: workers,
-		Queues:  queues,
+		Workers:           workers,
+		Queues:            queues,
+		FetchPollInterval: 100 * time.Millisecond,
 	},
 	)
 	if err != nil {

@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	numberWorkersPerQueue = 2
+	numberWorkersPerQueue = 5
 )
 
 type TaskQueueWorker struct {
