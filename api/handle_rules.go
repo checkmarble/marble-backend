@@ -13,20 +13,21 @@ import (
 
 func handleListRules(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		iterationID := c.Query("scenarioIterationId")
 		if iterationID == "" {
 			c.Status(http.StatusBadRequest)
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewRuleUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewRuleUsecase()
 		rules, err := usecase.ListRules(c.Request.Context(), iterationID)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
 		apiRules, err := pure_utils.MapErr(rules, dto.AdaptRuleDto)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, apiRules)
@@ -35,8 +36,9 @@ func handleListRules(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleCreateRule(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -47,18 +49,18 @@ func handleCreateRule(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		createInputRule, err := dto.AdaptCreateRuleInput(data, organizationId)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewRuleUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewRuleUsecase()
 		rule, err := usecase.CreateRule(c.Request.Context(), createInputRule)
-		if handleExpectedIterationError(c, err) || presentError(c, err) {
+		if handleExpectedIterationError(c, err) || presentError(ctx, c, err) {
 			return
 		}
 
 		apiRule, err := dto.AdaptRuleDto(rule)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -70,16 +72,17 @@ func handleCreateRule(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleGetRule(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		ruleID := c.Param("rule_id")
 
-		usecase := usecasesWithCreds(c.Request, uc).NewRuleUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewRuleUsecase()
 		rule, err := usecase.GetRule(c.Request.Context(), ruleID)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
 		apiRule, err := dto.AdaptRuleDto(rule)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -91,6 +94,7 @@ func handleGetRule(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleUpdateRule(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		ruleID := c.Param("rule_id")
 
 		var data dto.UpdateRuleBody
@@ -100,18 +104,18 @@ func handleUpdateRule(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		updateRuleInput, err := dto.AdaptUpdateRule(ruleID, data)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewRuleUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewRuleUsecase()
 		updatedRule, err := usecase.UpdateRule(c.Request.Context(), updateRuleInput)
-		if handleExpectedIterationError(c, err) || presentError(c, err) {
+		if handleExpectedIterationError(c, err) || presentError(ctx, c, err) {
 			return
 		}
 
 		apiRule, err := dto.AdaptRuleDto(updatedRule)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -123,11 +127,12 @@ func handleUpdateRule(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleDeleteRule(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		ruleID := c.Param("rule_id")
 
-		usecase := usecasesWithCreds(c.Request, uc).NewRuleUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewRuleUsecase()
 		err := usecase.DeleteRule(c.Request.Context(), ruleID)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.Status(http.StatusNoContent)

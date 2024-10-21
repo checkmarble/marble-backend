@@ -15,9 +15,9 @@ func handleGetOrganizations(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		usecase := usecasesWithCreds(c.Request, uc).NewOrganizationUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
 		organizations, err := usecase.GetOrganizations(ctx)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -29,15 +29,16 @@ func handleGetOrganizations(uc usecases.Usecases) func(c *gin.Context) {
 
 func handlePostOrganization(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		var data dto.CreateOrganizationBodyDto
 		if err := c.ShouldBindJSON(&data); err != nil {
 			c.Status(http.StatusBadRequest)
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewOrganizationUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
 		organization, err := usecase.CreateOrganization(c.Request.Context(), data.Name)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{
@@ -48,11 +49,12 @@ func handlePostOrganization(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleGetOrganizationUsers(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationID := c.Param("organization_id")
 
-		usecase := usecasesWithCreds(c.Request, uc).NewOrganizationUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
 		users, err := usecase.GetUsersOfOrganization(c.Request.Context(), organizationID)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{
@@ -63,12 +65,13 @@ func handleGetOrganizationUsers(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleGetOrganization(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationID := c.Param("organization_id")
 
-		usecase := usecasesWithCreds(c.Request, uc).NewOrganizationUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
 		organization, err := usecase.GetOrganization(c.Request.Context(), organizationID)
 
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{
@@ -79,6 +82,7 @@ func handleGetOrganization(uc usecases.Usecases) func(c *gin.Context) {
 
 func handlePatchOrganization(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationID := c.Param("organization_id")
 		var data dto.UpdateOrganizationBodyDto
 		if err := c.ShouldBindJSON(&data); err != nil {
@@ -86,13 +90,13 @@ func handlePatchOrganization(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewOrganizationUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
 		organization, err := usecase.UpdateOrganization(c.Request.Context(), models.UpdateOrganizationInput{
 			Id:   organizationID,
 			Name: data.Name,
 		})
 
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{
@@ -103,11 +107,12 @@ func handlePatchOrganization(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleDeleteOrganization(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationID := c.Param("organization_id")
 
-		usecase := usecasesWithCreds(c.Request, uc).NewOrganizationUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
 		err := usecase.DeleteOrganization(c.Request.Context(), organizationID)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.Status(http.StatusNoContent)

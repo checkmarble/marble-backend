@@ -18,15 +18,16 @@ type GetInboxIdUriInput struct {
 
 func handleGetInboxById(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		var getInboxInput GetInboxIdUriInput
 		if err := c.ShouldBindUri(&getInboxInput); err != nil {
 			c.Status(http.StatusBadRequest)
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewInboxUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
 		inbox, err := usecase.GetInboxById(c.Request.Context(), getInboxInput.InboxId)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -38,8 +39,9 @@ func handleGetInboxById(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleListInboxes(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -51,9 +53,9 @@ func handleListInboxes(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewInboxUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
 		inboxes, err := usecase.ListInboxes(c.Request.Context(), organizationId, withCaseCountFilter.WithCaseCount)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -67,8 +69,9 @@ type CreateInboxInput struct {
 
 func handlePostInbox(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -78,11 +81,11 @@ func handlePostInbox(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewInboxUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
 		inbox, err := usecase.CreateInbox(c.Request.Context(), models.CreateInboxInput{
 			Name: createInboxInput.Name, OrganizationId: organizationId,
 		})
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -94,6 +97,7 @@ func handlePostInbox(uc usecases.Usecases) func(c *gin.Context) {
 
 func handlePatchInbox(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		var getInboxInput GetInboxIdUriInput
 		if err := c.ShouldBindUri(&getInboxInput); err != nil {
 			c.Status(http.StatusBadRequest)
@@ -108,9 +112,9 @@ func handlePatchInbox(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewInboxUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
 		inbox, err := usecase.UpdateInbox(c.Request.Context(), getInboxInput.InboxId, data.Name)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -120,15 +124,16 @@ func handlePatchInbox(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleDeleteInbox(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		var getInboxInput GetInboxIdUriInput
 		if err := c.ShouldBindUri(&getInboxInput); err != nil {
 			c.Status(http.StatusBadRequest)
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewInboxUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
 		err := usecase.DeleteInbox(c.Request.Context(), getInboxInput.InboxId)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -142,15 +147,16 @@ type GetInboxUserInput struct {
 
 func handleGetInboxUserById(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		var getInboxUserInput GetInboxUserInput
 		if err := c.ShouldBindUri(&getInboxUserInput); err != nil {
 			c.Status(http.StatusBadRequest)
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewInboxUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
 		inboxUser, err := usecase.GetInboxUserById(c.Request.Context(), getInboxUserInput.Id)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -160,9 +166,10 @@ func handleGetInboxUserById(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleListAllInboxUsers(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		usecase := usecasesWithCreds(c.Request, uc).NewInboxUsecase()
+		ctx := c.Request.Context()
+		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
 		inboxUsers, err := usecase.ListAllInboxUsers(c.Request.Context())
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -172,15 +179,16 @@ func handleListAllInboxUsers(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleListInboxUsers(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		var listInboxUserInput GetInboxIdUriInput
 		if err := c.ShouldBindUri(&listInboxUserInput); err != nil {
 			c.Status(http.StatusBadRequest)
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewInboxUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
 		inboxUsers, err := usecase.ListInboxUsers(c.Request.Context(), listInboxUserInput.InboxId)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -200,6 +208,7 @@ type CreateInboxUserInput struct {
 
 func handlePostInboxUser(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		var input CreateInboxUserInput
 		if err := c.ShouldBindUri(&input.Uri); err != nil {
 			c.Status(http.StatusBadRequest)
@@ -211,13 +220,13 @@ func handlePostInboxUser(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewInboxUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
 		inboxUser, err := usecase.CreateInboxUser(c.Request.Context(), models.CreateInboxUserInput{
 			InboxId: input.Uri.InboxId,
 			UserId:  input.Body.UserId,
 			Role:    models.InboxUserRole(input.Body.Role),
 		})
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -227,6 +236,7 @@ func handlePostInboxUser(uc usecases.Usecases) func(c *gin.Context) {
 
 func handlePatchInboxUser(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		var getInboxUserInput GetInboxUserInput
 		if err := c.ShouldBindUri(&getInboxUserInput); err != nil {
 			c.Status(http.StatusBadRequest)
@@ -241,9 +251,9 @@ func handlePatchInboxUser(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewInboxUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
 		inboxUser, err := usecase.UpdateInboxUser(c.Request.Context(), getInboxUserInput.Id, models.InboxUserRole(data.Role))
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -253,15 +263,16 @@ func handlePatchInboxUser(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleDeleteInboxUser(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		var getInboxUserInput GetInboxUserInput
 		if err := c.ShouldBindUri(&getInboxUserInput); err != nil {
 			c.Status(http.StatusBadRequest)
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewInboxUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
 		err := usecase.DeleteInboxUser(c.Request.Context(), getInboxUserInput.Id)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 

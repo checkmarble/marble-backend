@@ -12,21 +12,22 @@ import (
 
 func handleGetEditorIdentifiers(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		scenarioID := c.Param("scenario_id")
 
-		usecase := usecasesWithCreds(c.Request, uc).AstExpressionUsecase()
+		usecase := usecasesWithCreds(ctx, uc).AstExpressionUsecase()
 		result, err := usecase.EditorIdentifiers(c.Request.Context(), scenarioID)
 
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
 		databaseNodes, err := pure_utils.MapErr(result.DatabaseAccessors, dto.AdaptNodeDto)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		payloadbaseNodes, err := pure_utils.MapErr(result.PayloadAccessors, dto.AdaptNodeDto)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -39,7 +40,8 @@ func handleGetEditorIdentifiers(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleGetEditorOperators(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		usecase := usecasesWithCreds(c.Request, uc).AstExpressionUsecase()
+		ctx := c.Request.Context()
+		usecase := usecasesWithCreds(ctx, uc).AstExpressionUsecase()
 		result := usecase.EditorOperators()
 
 		var functions []dto.FuncAttributesDto

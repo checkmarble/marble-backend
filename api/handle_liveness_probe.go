@@ -9,9 +9,10 @@ import (
 
 func handleLivenessProbe(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		usecase := uc.NewLivenessUsecase()
 		err := usecase.Liveness(c.Request.Context())
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 

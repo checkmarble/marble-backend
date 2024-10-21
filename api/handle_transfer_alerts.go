@@ -15,11 +15,12 @@ import (
 
 func handleGetTransferAlertSender(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		alertId := c.Param("alert_id")
 
-		usecase := usecasesWithCreds(c.Request, uc).NewTransferAlertsUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewTransferAlertsUsecase()
 		alert, err := usecase.GetTransferAlert(c.Request.Context(), alertId, "sender")
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -29,11 +30,12 @@ func handleGetTransferAlertSender(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleGetTransferAlertBeneficiary(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		alertId := c.Param("alert_id")
 
-		usecase := usecasesWithCreds(c.Request, uc).NewTransferAlertsUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewTransferAlertsUsecase()
 		alert, err := usecase.GetTransferAlert(c.Request.Context(), alertId, "beneficiary")
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -43,6 +45,7 @@ func handleGetTransferAlertBeneficiary(uc usecases.Usecases) func(c *gin.Context
 
 func handleListTransferAlertsSender(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		creds, _ := utils.CredentialsFromCtx(c.Request.Context())
 		var partnerId string
 		if creds.PartnerId != nil {
@@ -57,7 +60,7 @@ func handleListTransferAlertsSender(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewTransferAlertsUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewTransferAlertsUsecase()
 		alerts, err := usecase.ListTransferAlerts(
 			c.Request.Context(),
 			creds.OrganizationId,
@@ -65,7 +68,7 @@ func handleListTransferAlertsSender(uc usecases.Usecases) func(c *gin.Context) {
 			"sender",
 			null.NewString(filters.TransferId, filters.TransferId != ""),
 		)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -75,6 +78,7 @@ func handleListTransferAlertsSender(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleListTransferAlertsBeneficiary(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		creds, _ := utils.CredentialsFromCtx(c.Request.Context())
 		var partnerId string
 		if creds.PartnerId != nil {
@@ -89,7 +93,7 @@ func handleListTransferAlertsBeneficiary(uc usecases.Usecases) func(c *gin.Conte
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewTransferAlertsUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewTransferAlertsUsecase()
 		alerts, err := usecase.ListTransferAlerts(
 			c.Request.Context(),
 			creds.OrganizationId,
@@ -97,7 +101,7 @@ func handleListTransferAlertsBeneficiary(uc usecases.Usecases) func(c *gin.Conte
 			"beneficiary",
 			null.NewString(filters.TransferId, filters.TransferId != ""),
 		)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -107,6 +111,7 @@ func handleListTransferAlertsBeneficiary(uc usecases.Usecases) func(c *gin.Conte
 
 func handleCreateTransferAlert(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		var data dto.TransferAlertCreateBody
 		if err := c.ShouldBindJSON(&data); err != nil {
 			c.Status(http.StatusBadRequest)
@@ -119,7 +124,7 @@ func handleCreateTransferAlert(uc usecases.Usecases) func(c *gin.Context) {
 			partnerId = *creds.PartnerId
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewTransferAlertsUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewTransferAlertsUsecase()
 
 		alert, err := usecase.CreateTransferAlert(c.Request.Context(), models.TransferAlertCreateBody{
 			TransferId:         data.TransferId,
@@ -130,7 +135,7 @@ func handleCreateTransferAlert(uc usecases.Usecases) func(c *gin.Context) {
 			BeneficiaryIban:    data.BeneficiaryIban,
 			SenderIban:         data.SenderIban,
 		})
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -140,6 +145,7 @@ func handleCreateTransferAlert(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleUpdateTransferAlertSender(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		alertId := c.Param("alert_id")
 		creds, _ := utils.CredentialsFromCtx(c.Request.Context())
 
@@ -149,14 +155,14 @@ func handleUpdateTransferAlertSender(uc usecases.Usecases) func(c *gin.Context) 
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewTransferAlertsUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewTransferAlertsUsecase()
 		alert, err := usecase.UpdateTransferAlertAsSender(c.Request.Context(), alertId, models.TransferAlertUpdateBodySender{
 			Message:            data.Message,
 			TransferEndToEndId: data.TransferEndToEndId,
 			BeneficiaryIban:    data.BeneficiaryIban,
 			SenderIban:         data.SenderIban,
 		}, creds.OrganizationId)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -166,6 +172,7 @@ func handleUpdateTransferAlertSender(uc usecases.Usecases) func(c *gin.Context) 
 
 func handleUpdateTransferAlertBeneficiary(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		alertId := c.Param("alert_id")
 		creds, _ := utils.CredentialsFromCtx(c.Request.Context())
 
@@ -175,11 +182,11 @@ func handleUpdateTransferAlertBeneficiary(uc usecases.Usecases) func(c *gin.Cont
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewTransferAlertsUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewTransferAlertsUsecase()
 		alert, err := usecase.UpdateTransferAlertAsBeneficiary(c.Request.Context(), alertId, models.TransferAlertUpdateBodyBeneficiary{
 			Status: data.Status,
 		}, creds.OrganizationId)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 

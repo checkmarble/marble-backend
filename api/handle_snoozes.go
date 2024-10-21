@@ -15,21 +15,22 @@ import (
 
 func handleSnoozesOfDecision(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		_, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
 		decisionId := c.Param("decision_id")
 		_, err = uuid.Parse(decisionId)
 		if err != nil {
-			presentError(c, errors.Wrap(models.BadParameterError, "decision_id must be a valid uuid"))
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "decision_id must be a valid uuid"))
 			return
 		}
 
-		ruleSnoozeUsecase := usecasesWithCreds(c.Request, uc).NewRuleSnoozeUsecase()
+		ruleSnoozeUsecase := usecasesWithCreds(ctx, uc).NewRuleSnoozeUsecase()
 		snoozes, err := ruleSnoozeUsecase.ActiveSnoozesForDecision(c.Request.Context(), decisionId)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"snoozes": dto.AdaptSnoozesOfDecision(snoozes)})
@@ -38,8 +39,9 @@ func handleSnoozesOfDecision(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleSnoozeDecision(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -49,16 +51,16 @@ func handleSnoozeDecision(uc usecases.Usecases) func(c *gin.Context) {
 		decisionId := c.Param("decision_id")
 		_, err = uuid.Parse(decisionId)
 		if err != nil {
-			presentError(c, errors.Wrap(models.BadParameterError, "decision_id must be a valid uuid"))
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, "decision_id must be a valid uuid"))
 			return
 		}
 
 		var input dto.SnoozeDecisionInput
-		if presentError(c, c.BindJSON(&input)) {
+		if presentError(ctx, c, c.BindJSON(&input)) {
 			return
 		}
 
-		ruleSnoozeUsecase := usecasesWithCreds(c.Request, uc).NewRuleSnoozeUsecase()
+		ruleSnoozeUsecase := usecasesWithCreds(ctx, uc).NewRuleSnoozeUsecase()
 		snoozes, err := ruleSnoozeUsecase.SnoozeDecision(c.Request.Context(), models.SnoozeDecisionInput{
 			Comment:        input.Comment,
 			DecisionId:     decisionId,
@@ -67,7 +69,7 @@ func handleSnoozeDecision(uc usecases.Usecases) func(c *gin.Context) {
 			RuleId:         input.RuleId,
 			UserId:         userId,
 		})
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -77,23 +79,24 @@ func handleSnoozeDecision(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleSnoozesOfScenarioIteration(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		_, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
 		scenarioIterationId := c.Param("iteration_id")
 		_, err = uuid.Parse(scenarioIterationId)
 		if err != nil {
-			presentError(c, errors.Wrap(models.BadParameterError,
+			presentError(ctx, c, errors.Wrap(models.BadParameterError,
 				"scenario_iteration_id must be a valid uuid"))
 			return
 		}
 
-		ruleSnoozeUsecase := usecasesWithCreds(c.Request, uc).NewRuleSnoozeUsecase()
+		ruleSnoozeUsecase := usecasesWithCreds(ctx, uc).NewRuleSnoozeUsecase()
 		snoozes, err := ruleSnoozeUsecase.ActiveSnoozesForScenarioIteration(
 			c.Request.Context(), scenarioIterationId)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"snoozes": dto.AdaptSnoozesOfIteration(snoozes)})
@@ -102,17 +105,18 @@ func handleSnoozesOfScenarioIteration(uc usecases.Usecases) func(c *gin.Context)
 
 func handleGetSnoozesById(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		ruleSnoozeId := c.Param("rule_snooze_id")
 		_, err := uuid.Parse(ruleSnoozeId)
 		if err != nil {
-			presentError(c, errors.Wrap(models.BadParameterError,
+			presentError(ctx, c, errors.Wrap(models.BadParameterError,
 				"rule_snooze_id must be a valid uuid"))
 			return
 		}
 
-		ruleSnoozeUsecase := usecasesWithCreds(c.Request, uc).NewRuleSnoozeUsecase()
+		ruleSnoozeUsecase := usecasesWithCreds(ctx, uc).NewRuleSnoozeUsecase()
 		snooze, err := ruleSnoozeUsecase.GetRuleSnoozeById(c.Request.Context(), ruleSnoozeId)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 

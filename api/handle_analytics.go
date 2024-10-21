@@ -13,14 +13,15 @@ import (
 
 func handleListAnalytics(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewAnalyticsUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewAnalyticsUseCase()
 		analytics, err := usecase.ListAnalytics(c.Request.Context(), organizationId)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 

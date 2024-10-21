@@ -12,8 +12,9 @@ import (
 
 func handleCreateDataModelPivot(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationID, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -23,12 +24,12 @@ func handleCreateDataModelPivot(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewDataModelUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
 		pivot, err := usecase.CreatePivot(
 			c.Request.Context(),
 			dto.AdaptCreatePivotInput(input, organizationID),
 		)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{
@@ -39,8 +40,9 @@ func handleCreateDataModelPivot(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleListDataModelPivots(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationID, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -52,9 +54,9 @@ func handleListDataModelPivots(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewDataModelUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
 		pivots, err := usecase.ListPivots(c.Request.Context(), organizationID, filters.TableId)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 

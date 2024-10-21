@@ -14,14 +14,15 @@ import (
 
 func handleListApiKeys(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewApiKeyUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewApiKeyUseCase()
 		apiKeys, err := usecase.ListApiKeys(c.Request.Context(), organizationId)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -33,23 +34,24 @@ func handleListApiKeys(uc usecases.Usecases) func(c *gin.Context) {
 
 func handlePostApiKey(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
 		var input dto.CreateApiKeyBody
-		if presentError(c, c.ShouldBindJSON(&input)) {
+		if presentError(ctx, c, c.ShouldBindJSON(&input)) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewApiKeyUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewApiKeyUseCase()
 		apiKey, err := usecase.CreateApiKey(c.Request.Context(), models.CreateApiKeyInput{
 			OrganizationId: organizationId,
 			Description:    input.Description,
 			Role:           models.RoleFromString(input.Role),
 		})
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusCreated, gin.H{"api_key": dto.AdaptCreatedApiKeyDto(apiKey)})
@@ -62,15 +64,16 @@ type ApiKeyUriInput struct {
 
 func handleRevokeApiKey(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		var apiKeyUriInput ApiKeyUriInput
 		if err := c.ShouldBindUri(&apiKeyUriInput); err != nil {
 			c.Status(http.StatusBadRequest)
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewApiKeyUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewApiKeyUseCase()
 		err := usecase.DeleteApiKey(c.Request.Context(), apiKeyUriInput.ApiKeyId)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.Status(http.StatusNoContent)

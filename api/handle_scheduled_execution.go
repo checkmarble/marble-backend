@@ -14,12 +14,13 @@ import (
 
 func handleGetScheduledExecution(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		scheduledExecutionID := c.Param("execution_id")
 
-		usecase := usecasesWithCreds(c.Request, uc).NewScheduledExecutionUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewScheduledExecutionUsecase()
 		execution, err := usecase.GetScheduledExecution(c.Request.Context(), scheduledExecutionID)
 
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{
@@ -30,19 +31,20 @@ func handleGetScheduledExecution(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleListScheduledExecution(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		scenarioId := c.Query("scenario_id")
 		scenarioIdPtr := utils.PtrTo(scenarioId, &utils.PtrToOptions{OmitZero: true})
 
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewScheduledExecutionUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewScheduledExecutionUsecase()
 
 		executions, err := usecase.ListScheduledExecutions(c.Request.Context(), organizationId, scenarioIdPtr)
 
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -54,20 +56,21 @@ func handleListScheduledExecution(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleCreateScheduledExecution(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
 		iterationID := c.Param("iteration_id")
 
-		usecase := usecasesWithCreds(c.Request, uc).NewScheduledExecutionUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewScheduledExecutionUsecase()
 		err = usecase.CreateScheduledExecution(c.Request.Context(), models.CreateScheduledExecutionInput{
 			OrganizationId:      organizationId,
 			ScenarioIterationId: iterationID,
 		})
 
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.Status(http.StatusCreated)

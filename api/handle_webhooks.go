@@ -16,16 +16,17 @@ import (
 
 func handleListWebhooks(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(c.Request.Context())
 		if !found {
-			presentError(c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, fmt.Errorf("no credentials in context"))
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewWebhooksUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewWebhooksUsecase()
 
 		webhooks, err := usecase.ListWebhooks(c.Request.Context(), creds.OrganizationId, null.StringFromPtr(creds.PartnerId))
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -37,9 +38,10 @@ func handleListWebhooks(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleRegisterWebhook(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(c.Request.Context())
 		if !found {
-			presentError(c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, fmt.Errorf("no credentials in context"))
 			return
 		}
 
@@ -49,7 +51,7 @@ func handleRegisterWebhook(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewWebhooksUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewWebhooksUsecase()
 
 		webhook, err := usecase.RegisterWebhook(c.Request.Context(),
 			creds.OrganizationId,
@@ -61,7 +63,7 @@ func handleRegisterWebhook(uc usecases.Usecases) func(c *gin.Context) {
 				RateLimit:         data.RateLimit,
 				RateLimitDuration: data.RateLimitDuration,
 			})
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -71,21 +73,22 @@ func handleRegisterWebhook(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleGetWebhook(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		webhookId := c.Param("webhook_id")
 
 		creds, found := utils.CredentialsFromCtx(c.Request.Context())
 		if !found {
-			presentError(c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, fmt.Errorf("no credentials in context"))
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewWebhooksUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewWebhooksUsecase()
 
 		webhook, err := usecase.GetWebhook(c.Request.Context(),
 			creds.OrganizationId,
 			null.StringFromPtr(creds.PartnerId),
 			webhookId)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -95,21 +98,22 @@ func handleGetWebhook(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleDeleteWebhook(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		webhookId := c.Param("webhook_id")
 
 		creds, found := utils.CredentialsFromCtx(c.Request.Context())
 		if !found {
-			presentError(c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, fmt.Errorf("no credentials in context"))
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewWebhooksUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewWebhooksUsecase()
 
 		err := usecase.DeleteWebhook(c.Request.Context(),
 			creds.OrganizationId,
 			null.StringFromPtr(creds.PartnerId),
 			webhookId)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -119,11 +123,12 @@ func handleDeleteWebhook(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleUpdateWebhook(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		webhookId := c.Param("webhook_id")
 
 		creds, found := utils.CredentialsFromCtx(c.Request.Context())
 		if !found {
-			presentError(c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, fmt.Errorf("no credentials in context"))
 			return
 		}
 
@@ -133,7 +138,7 @@ func handleUpdateWebhook(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewWebhooksUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewWebhooksUsecase()
 
 		webhook, err := usecase.UpdateWebhook(c.Request.Context(),
 			creds.OrganizationId,
@@ -146,7 +151,7 @@ func handleUpdateWebhook(uc usecases.Usecases) func(c *gin.Context) {
 				RateLimit:         data.RateLimit,
 				RateLimitDuration: data.RateLimitDuration,
 			})
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 

@@ -16,15 +16,16 @@ import (
 
 func handleListScenarioPublications(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
 		scenarioID := c.Query("scenario_id")
 		scenarioIterationID := c.Query("scenario_iteration_id")
 
-		usecase := usecasesWithCreds(c.Request, uc).NewScenarioPublicationUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewScenarioPublicationUsecase()
 		scenarioPublications, err := usecase.ListScenarioPublications(
 			c.Request.Context(),
 			organizationId,
@@ -32,7 +33,7 @@ func handleListScenarioPublications(uc usecases.Usecases) func(c *gin.Context) {
 				ScenarioId:          utils.PtrTo(scenarioID, &utils.PtrToOptions{OmitZero: true}),
 				ScenarioIterationId: utils.PtrTo(scenarioIterationID, &utils.PtrToOptions{OmitZero: true}),
 			})
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, pure_utils.Map(scenarioPublications, dto.AdaptScenarioPublicationDto))
@@ -41,8 +42,9 @@ func handleListScenarioPublications(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleCreateScenarioPublication(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -52,12 +54,12 @@ func handleCreateScenarioPublication(uc usecases.Usecases) func(c *gin.Context) 
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewScenarioPublicationUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewScenarioPublicationUsecase()
 		scenarioPublications, err := usecase.ExecuteScenarioPublicationAction(
 			c.Request.Context(),
 			organizationId,
 			dto.AdaptCreateScenarioPublicationBody(data))
-		if handleExpectedPublicationError(c, err) || presentError(c, err) {
+		if handleExpectedPublicationError(c, err) || presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, pure_utils.Map(scenarioPublications, dto.AdaptScenarioPublicationDto))
@@ -66,11 +68,12 @@ func handleCreateScenarioPublication(uc usecases.Usecases) func(c *gin.Context) 
 
 func handleGetScenarioPublication(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		scenarioPublicationID := c.Param("publication_id")
 
-		usecase := usecasesWithCreds(c.Request, uc).NewScenarioPublicationUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewScenarioPublicationUsecase()
 		scenarioPublication, err := usecase.GetScenarioPublication(c.Request.Context(), scenarioPublicationID)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, dto.AdaptScenarioPublicationDto(scenarioPublication))
@@ -79,8 +82,9 @@ func handleGetScenarioPublication(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleGetPublicationPreparationStatus(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -92,12 +96,12 @@ func handleGetPublicationPreparationStatus(uc usecases.Usecases) func(c *gin.Con
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewScenarioPublicationUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewScenarioPublicationUsecase()
 		status, err := usecase.GetPublicationPreparationStatus(
 			c.Request.Context(),
 			organizationId,
 			data.ScenarioIterationId)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, dto.AdaptPublicationPreparationStatus(status))
@@ -106,8 +110,9 @@ func handleGetPublicationPreparationStatus(uc usecases.Usecases) func(c *gin.Con
 
 func handleStartPublicationPreparation(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -119,9 +124,9 @@ func handleStartPublicationPreparation(uc usecases.Usecases) func(c *gin.Context
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewScenarioPublicationUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewScenarioPublicationUsecase()
 		err = usecase.StartPublicationPreparation(c.Request.Context(), organizationId, data.ScenarioIterationId)
-		if handleExpectedPublicationError(c, err) || presentError(c, err) {
+		if handleExpectedPublicationError(c, err) || presentError(ctx, c, err) {
 			return
 		}
 		c.Status(http.StatusAccepted)
