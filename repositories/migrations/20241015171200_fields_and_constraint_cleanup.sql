@@ -1,5 +1,11 @@
 -- +goose Up
 -- +goose StatementBegin
+--- those views are created outside if this migration file, but we need to drop it here becauses it uses the table name
+-- (it wil be recreated as the migrations script is run)
+DROP VIEW IF EXISTS analytics.decisions;
+
+DROP VIEW IF EXISTS analytics.decision_rules;
+
 -- deprecated fields cleanup
 ALTER TABLE decisions
 DROP COLUMN error_code;
