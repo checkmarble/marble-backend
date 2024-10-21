@@ -7,10 +7,11 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
+// Beware that r.Context() will return a different context if the route's timeout is over (and gin has moved
+// on to the next handler). As a consequence, no long-running operations should be started before this function
+// is called in the api handlers.
 func usecasesWithCreds(r *http.Request, uc usecases.Usecases) *usecases.UsecasesWithCreds {
-	ctx := r.Context()
-
-	creds, found := utils.CredentialsFromCtx(ctx)
+	creds, found := utils.CredentialsFromCtx(r.Context())
 	if !found {
 		panic("no credentials in context")
 	}
