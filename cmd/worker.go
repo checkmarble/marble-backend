@@ -20,6 +20,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
+	"github.com/riverqueue/river/rivertype"
 )
 
 func RunTaskQueue() error {
@@ -116,9 +117,18 @@ func RunTaskQueue() error {
 		return err
 	}
 	riverClient, err = river.NewClient(riverpgxv5.New(pool), &river.Config{
-		Workers:           workers,
-		Queues:            queues,
 		FetchPollInterval: 100 * time.Millisecond,
+		Queues:            queues,
+
+		// Must be larger than the time it takes to process a job. Increase it if we want to use longer-lived jobs.
+		RescueStuckJobsAfter: 1 * time.Minute,
+		WorkerMiddleware: []rivertype.WorkerMiddleware{
+			jobs.NewTracingMiddleware(telemetryRessources.Tracer),
+			jobs.NewSentryMiddleware(),
+			jobs.NewLoggerMiddleware(logger),
+			jobs.NewRecoveredMiddleware(),
+		},
+		Workers: workers,
 	},
 	)
 	if err != nil {

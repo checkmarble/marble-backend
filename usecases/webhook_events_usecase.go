@@ -11,8 +11,6 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/guregu/null/v5"
 	"github.com/pkg/errors"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -117,12 +115,6 @@ func (usecase WebhookEventsUsecase) SendWebhookEventAsync(ctx context.Context, w
 	go func() {
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), ASYNC_WEBHOOKS_SEND_TIMEOUT)
 		defer cancel()
-		tracer := utils.OpenTelemetryTracerFromContext(ctx)
-		ctx, span := tracer.Start(
-			ctx,
-			"CreateWebhookEvent.SendWebhookEventAsync",
-			trace.WithAttributes(attribute.String("webhook_event_id", webhookEventId)))
-		defer span.End()
 
 		_, err := usecase._sendWebhookEvent(ctx, webhookEventId)
 		if err != nil {
