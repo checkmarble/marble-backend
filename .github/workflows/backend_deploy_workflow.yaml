@@ -80,7 +80,7 @@ jobs:
 
       - name: Deploy execute async worker service
         run: |
-          gcloud beta run jobs deploy marble-worker \
+          gcloud beta run deploy marble-backend-worker \
             --quiet \
             --image=${{ env.IMAGE }} \
             --region="europe-west1"
