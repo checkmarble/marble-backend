@@ -15,14 +15,15 @@ import (
 
 func handleGetDataModel(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationID, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewDataModelUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
 		dataModel, err := usecase.GetDataModel(c.Request.Context(), organizationID)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{
@@ -33,20 +34,21 @@ func handleGetDataModel(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleCreateTable(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationID, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
 		var input dto.CreateTableInput
 		if err := json.NewDecoder(c.Request.Body).Decode(&input); err != nil {
-			presentError(c, errors.Wrap(models.BadParameterError, err.Error()))
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewDataModelUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
 		tableID, err := usecase.CreateDataModelTable(c.Request.Context(), organizationID, input.Name, input.Description)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{
@@ -57,9 +59,10 @@ func handleCreateTable(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleCreateField(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		var input dto.CreateFieldInput
 		if err := json.NewDecoder(c.Request.Body).Decode(&input); err != nil {
-			presentError(c, errors.Wrap(models.BadParameterError, err.Error()))
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 
@@ -74,9 +77,9 @@ func handleCreateField(uc usecases.Usecases) func(c *gin.Context) {
 			IsUnique:    input.IsUnique,
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewDataModelUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
 		fieldID, err := usecase.CreateDataModelField(c.Request.Context(), field)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{
@@ -87,6 +90,7 @@ func handleCreateField(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleUpdateDataModelField(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		var input dto.UpdateFieldInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.Status(http.StatusBadRequest)
@@ -94,13 +98,13 @@ func handleUpdateDataModelField(uc usecases.Usecases) func(c *gin.Context) {
 		}
 		fieldID := c.Param("fieldID")
 
-		usecase := usecasesWithCreds(c.Request, uc).NewDataModelUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
 		err := usecase.UpdateDataModelField(c.Request.Context(), fieldID, models.UpdateFieldInput{
 			Description: input.Description,
 			IsEnum:      input.IsEnum,
 			IsUnique:    input.IsUnique,
 		})
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.Status(http.StatusNoContent)
@@ -109,14 +113,15 @@ func handleUpdateDataModelField(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleCreateLink(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationID, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
 		var input dto.CreateLinkInput
 		if err := json.NewDecoder(c.Request.Body).Decode(&input); err != nil {
-			presentError(c, errors.Wrap(models.BadParameterError, err.Error()))
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 
@@ -129,9 +134,9 @@ func handleCreateLink(uc usecases.Usecases) func(c *gin.Context) {
 			ChildFieldID:   input.ChildFieldId,
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewDataModelUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
 		_, err = usecase.CreateDataModelLink(c.Request.Context(), link)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.Status(http.StatusNoContent)
@@ -140,14 +145,15 @@ func handleCreateLink(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleDeleteDataModel(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationID, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewDataModelUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
 		err = usecase.DeleteDataModel(c.Request.Context(), organizationID)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.Status(http.StatusNoContent)
@@ -156,14 +162,15 @@ func handleDeleteDataModel(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleGetOpenAPI(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationID, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewDataModelUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
 		dataModel, err := usecase.GetDataModel(c.Request.Context(), organizationID)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 

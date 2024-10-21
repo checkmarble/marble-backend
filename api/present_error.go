@@ -14,7 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func presentError(c *gin.Context, err error) bool {
+func presentError(ctx context.Context, c *gin.Context, err error) bool {
 	if err == nil {
 		return false
 	}
@@ -22,7 +22,6 @@ func presentError(c *gin.Context, err error) bool {
 	errorResponse := dto.APIErrorResponse{
 		Message: err.Error(),
 	}
-	ctx := c.Request.Context()
 	logger := utils.LoggerFromContext(ctx)
 
 	switch {

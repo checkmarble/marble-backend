@@ -18,21 +18,22 @@ import (
 
 func handleIngestion(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
 		objectType := c.Param("object_type")
 		objectBody, err := io.ReadAll(c.Request.Body)
 		if err != nil {
-			presentError(c, errors.Wrap(models.BadParameterError, err.Error()))
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewIngestionUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewIngestionUseCase()
 		nb, err := usecase.IngestObject(c.Request.Context(), organizationId, objectType, objectBody)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		if nb == 0 {
@@ -45,21 +46,22 @@ func handleIngestion(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleIngestionMultiple(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
 		objectType := c.Param("object_type")
 		objectBody, err := io.ReadAll(c.Request.Body)
 		if err != nil {
-			presentError(c, errors.Wrap(models.BadParameterError, err.Error()))
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewIngestionUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewIngestionUseCase()
 		nb, err := usecase.IngestObjects(c.Request.Context(), organizationId, objectType, objectBody)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		if nb == 0 {
@@ -74,12 +76,12 @@ func handlePostCsvIngestion(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
-			presentError(c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, fmt.Errorf("no credentials in context"))
 			return
 		}
 		userId := string(creds.ActorIdentity.UserId)
@@ -94,11 +96,11 @@ func handlePostCsvIngestion(uc usecases.Usecases) func(c *gin.Context) {
 		fileReader := csv.NewReader(pure_utils.NewReaderWithoutBom(file))
 		objectType := c.Param("object_type")
 
-		ingestionUseCase := usecasesWithCreds(c.Request, uc).NewIngestionUseCase()
+		ingestionUseCase := usecasesWithCreds(ctx, uc).NewIngestionUseCase()
 		uploadLog, err := ingestionUseCase.ValidateAndUploadIngestionCsv(ctx,
 			organizationId, userId, objectType, fileReader)
 
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -112,15 +114,15 @@ func handleListUploadLogs(uc usecases.Usecases) func(c *gin.Context) {
 		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
-			presentError(c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, fmt.Errorf("no credentials in context"))
 			return
 		}
 
 		objectType := c.Param("object_type")
-		ingestionUseCase := usecasesWithCreds(c.Request, uc).NewIngestionUseCase()
+		ingestionUseCase := usecasesWithCreds(ctx, uc).NewIngestionUseCase()
 		uploadLogs, err := ingestionUseCase.ListUploadLogs(ctx, creds.OrganizationId, objectType)
 
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, pure_utils.Map(uploadLogs, dto.AdaptUploadLogDto))

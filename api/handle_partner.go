@@ -15,9 +15,9 @@ func handleListPartners(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		usecase := usecasesWithCreds(c.Request, uc).NewPartnerUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewPartnerUsecase()
 		partners, err := usecase.ListPartners(ctx, models.PartnerFilters{})
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -29,15 +29,16 @@ func handleListPartners(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleCreatePartner(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		var data dto.PartnerCreateBody
 		if err := c.ShouldBindJSON(&data); err != nil {
 			c.Status(http.StatusBadRequest)
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewPartnerUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewPartnerUsecase()
 		partner, err := usecase.CreatePartner(c.Request.Context(), dto.AdaptPartnerCreateInput(data))
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{
@@ -48,11 +49,12 @@ func handleCreatePartner(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleGetPartner(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		id := c.Param("partner_id")
 
-		usecase := usecasesWithCreds(c.Request, uc).NewPartnerUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewPartnerUsecase()
 		partner, err := usecase.GetPartner(c.Request.Context(), id)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{
@@ -63,6 +65,7 @@ func handleGetPartner(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleUpdatePartner(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		id := c.Param("partner_id")
 
 		var data dto.PartnerUpdateBody
@@ -71,9 +74,9 @@ func handleUpdatePartner(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewPartnerUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewPartnerUsecase()
 		partner, err := usecase.UpdatePartner(c.Request.Context(), id, dto.AdaptPartnerUpdateInput(data))
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{

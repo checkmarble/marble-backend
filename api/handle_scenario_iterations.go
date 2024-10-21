@@ -17,20 +17,21 @@ import (
 
 func handleListScenarioIterations(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		scenarioId := c.Query("scenario_id")
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewScenarioIterationUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewScenarioIterationUsecase()
 		scenarioIterations, err := usecase.ListScenarioIterations(
 			c.Request.Context(),
 			organizationId,
 			models.GetScenarioIterationFilters{
 				ScenarioId: utils.PtrTo(scenarioId, &utils.PtrToOptions{OmitZero: true}),
 			})
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -38,7 +39,7 @@ func handleListScenarioIterations(uc usecases.Usecases) func(c *gin.Context) {
 		for i, si := range scenarioIterations {
 			scenarioIterationDTO, err := dto.AdaptScenarioIterationWithBodyDto(si)
 			if err != nil {
-				presentError(c, err)
+				presentError(ctx, c, err)
 				return
 			}
 			scenarioIterationsDtos[i] = scenarioIterationDTO
@@ -52,7 +53,7 @@ func handleCreateScenarioIteration(uc usecases.Usecases) func(c *gin.Context) {
 		ctx := c.Request.Context()
 
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -63,18 +64,18 @@ func handleCreateScenarioIteration(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		createScenarioIterationInput, err := dto.AdaptCreateScenarioIterationInput(input, organizationId)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewScenarioIterationUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewScenarioIterationUsecase()
 		si, err := usecase.CreateScenarioIteration(ctx, organizationId, createScenarioIterationInput)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
 		apiScenarioIterationWithBody, err := dto.AdaptScenarioIterationWithBodyDto(si)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, apiScenarioIterationWithBody)
@@ -86,20 +87,20 @@ func handleCreateDraftFromIteration(uc usecases.Usecases) func(c *gin.Context) {
 		ctx := c.Request.Context()
 
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
 		iterationID := c.Param("iteration_id")
 
-		usecase := usecasesWithCreds(c.Request, uc).NewScenarioIterationUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewScenarioIterationUsecase()
 		si, err := usecase.CreateDraftFromScenarioIteration(ctx, organizationId, iterationID)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
 		apiScenarioIterationWithBody, err := dto.AdaptScenarioIterationWithBodyDto(si)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, apiScenarioIterationWithBody)
@@ -108,16 +109,17 @@ func handleCreateDraftFromIteration(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleGetScenarioIteration(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		iterationID := c.Param("iteration_id")
 
-		usecase := usecasesWithCreds(c.Request, uc).NewScenarioIterationUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewScenarioIterationUsecase()
 		si, err := usecase.GetScenarioIteration(c.Request.Context(), iterationID)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
 		scenarioIterationDto, err := dto.AdaptScenarioIterationWithBodyDto(si)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, scenarioIterationDto)
@@ -126,8 +128,9 @@ func handleGetScenarioIteration(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleUpdateScenarioIteration(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -139,19 +142,19 @@ func handleUpdateScenarioIteration(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		updateScenarioIterationInput, err := dto.AdaptUpdateScenarioIterationInput(data, iterationID)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewScenarioIterationUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewScenarioIterationUsecase()
 		updatedSI, err := usecase.UpdateScenarioIteration(c.Request.Context(),
 			organizationId, updateScenarioIterationInput)
-		if handleExpectedIterationError(c, err) || presentError(c, err) {
+		if handleExpectedIterationError(c, err) || presentError(ctx, c, err) {
 			return
 		}
 
 		iteration, err := dto.AdaptScenarioIterationWithBodyDto(updatedSI)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -168,6 +171,7 @@ type PostScenarioValidationInputBody struct {
 
 func handleValidateScenarioIteration(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		var input PostScenarioValidationInputBody
 		err := c.ShouldBindJSON(&input)
 		if err != nil && err != io.EOF { //nolint:errorlint
@@ -187,11 +191,11 @@ func handleValidateScenarioIteration(uc usecases.Usecases) func(c *gin.Context) 
 			triggerOrRule = &node
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewScenarioIterationUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewScenarioIterationUsecase()
 		scenarioValidation, err := usecase.ValidateScenarioIteration(c.Request.Context(),
 			scenarioIterationID, triggerOrRule, input.RuleId)
 
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -203,16 +207,17 @@ func handleValidateScenarioIteration(uc usecases.Usecases) func(c *gin.Context) 
 
 func handleCommitScenarioIterationVersion(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		scenarioIterationID := c.Param("iteration_id")
 
-		usecase := usecasesWithCreds(c.Request, uc).NewScenarioIterationUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewScenarioIterationUsecase()
 		iteration, err := usecase.CommitScenarioIterationVersion(c.Request.Context(), scenarioIterationID)
-		if handleExpectedIterationError(c, err) || presentError(c, err) {
+		if handleExpectedIterationError(c, err) || presentError(ctx, c, err) {
 			return
 		}
 
 		iterationDto, err := dto.AdaptScenarioIterationWithBodyDto(iteration)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 

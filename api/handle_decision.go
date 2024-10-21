@@ -22,11 +22,12 @@ var decisionPaginationDefaults = dto.PaginationDefaults{
 
 func handleGetDecision(uc usecases.Usecases, marbleAppHost string) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		decisionID := c.Param("decision_id")
 
-		usecase := usecasesWithCreds(c.Request, uc).NewDecisionUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewDecisionUsecase()
 		decision, err := usecase.GetDecision(c.Request.Context(), decisionID)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, dto.NewDecisionWithRuleDto(decision, marbleAppHost, true))
@@ -35,8 +36,9 @@ func handleGetDecision(uc usecases.Usecases, marbleAppHost string) func(c *gin.C
 
 func handleListDecisions(uc usecases.Usecases, marbleAppHost string) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -53,14 +55,14 @@ func handleListDecisions(uc usecases.Usecases, marbleAppHost string) func(c *gin
 		}
 		paginationAndSorting = dto.WithPaginationDefaults(paginationAndSorting, decisionPaginationDefaults)
 
-		usecase := usecasesWithCreds(c.Request, uc).NewDecisionUsecase()
+		usecase := usecasesWithCreds(ctx, uc).NewDecisionUsecase()
 		decisions, err := usecase.ListDecisions(
 			c.Request.Context(),
 			organizationId,
 			dto.AdaptPaginationAndSortingInput(paginationAndSorting),
 			filters,
 		)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -87,8 +89,9 @@ func handleListDecisions(uc usecases.Usecases, marbleAppHost string) func(c *gin
 
 func handlePostDecision(uc usecases.Usecases, marbleAppHost string) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -99,7 +102,7 @@ func handlePostDecision(uc usecases.Usecases, marbleAppHost string) func(c *gin.
 		}
 
 		// make a decision
-		decisionUsecase := usecasesWithCreds(c.Request, uc).NewDecisionUsecase()
+		decisionUsecase := usecasesWithCreds(ctx, uc).NewDecisionUsecase()
 		decision, err := decisionUsecase.CreateDecision(
 			c.Request.Context(),
 			models.CreateDecisionInput{
@@ -115,7 +118,7 @@ func handlePostDecision(uc usecases.Usecases, marbleAppHost string) func(c *gin.
 			},
 		)
 
-		if returnExpectedDecisionError(c, err) || presentError(c, err) {
+		if returnExpectedDecisionError(c, err) || presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, dto.NewDecisionWithRuleDto(decision, marbleAppHost, false))
@@ -141,8 +144,9 @@ func returnExpectedDecisionError(c *gin.Context, err error) bool {
 
 func handlePostAllDecisions(uc usecases.Usecases, marbleAppHost string) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -152,7 +156,7 @@ func handlePostAllDecisions(uc usecases.Usecases, marbleAppHost string) func(c *
 			return
 		}
 
-		decisionUsecase := usecasesWithCreds(c.Request, uc).NewDecisionUsecase()
+		decisionUsecase := usecasesWithCreds(ctx, uc).NewDecisionUsecase()
 		decisions, nbSkipped, err := decisionUsecase.CreateAllDecisions(
 			c.Request.Context(),
 			models.CreateAllDecisionsInput{
@@ -161,7 +165,7 @@ func handlePostAllDecisions(uc usecases.Usecases, marbleAppHost string) func(c *
 				TriggerObjectTable: requestData.ObjectType,
 			},
 		)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, dto.AdaptDecisionsWithMetadataDto(decisions, marbleAppHost, nbSkipped, false))

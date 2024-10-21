@@ -17,8 +17,9 @@ type InboxIdUriInput struct {
 
 func handleListTags(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -30,10 +31,10 @@ func handleListTags(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewTagUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewTagUseCase()
 		tags, err := usecase.ListAllTags(c.Request.Context(), organizationId, withCaseCountFilter.WithCaseCount)
 
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"tags": pure_utils.Map(tags, dto.AdaptTagDto)})
@@ -42,8 +43,9 @@ func handleListTags(uc usecases.Usecases) func(c *gin.Context) {
 
 func handlePostTag(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		var data dto.CreateTagBody
@@ -52,14 +54,14 @@ func handlePostTag(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewTagUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewTagUseCase()
 		tag, err := usecase.CreateTag(c.Request.Context(), models.CreateTagAttributes{
 			OrganizationId: organizationId,
 			Name:           data.Name,
 			Color:          data.Color,
 		})
 
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusCreated, gin.H{"tag": dto.AdaptTagDto(tag)})
@@ -72,16 +74,17 @@ type TagUriInput struct {
 
 func handleGetTag(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		var tagInput TagUriInput
 		if err := c.ShouldBindUri(&tagInput); err != nil {
 			c.Status(http.StatusBadRequest)
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewTagUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewTagUseCase()
 		tag, err := usecase.GetTagById(c.Request.Context(), tagInput.TagId)
 
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"tag": dto.AdaptTagDto(tag)})
@@ -90,6 +93,7 @@ func handleGetTag(uc usecases.Usecases) func(c *gin.Context) {
 
 func handlePatchTag(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		var tagInput TagUriInput
 		if err := c.ShouldBindUri(&tagInput); err != nil {
 			c.Status(http.StatusBadRequest)
@@ -102,14 +106,14 @@ func handlePatchTag(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewTagUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewTagUseCase()
 		tag, err := usecase.UpdateTag(c.Request.Context(), models.UpdateTagAttributes{
 			TagId: tagInput.TagId,
 			Color: data.Color,
 			Name:  data.Name,
 		})
 
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"tag": dto.AdaptTagDto(tag)})
@@ -118,8 +122,9 @@ func handlePatchTag(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleDeleteTag(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -129,10 +134,10 @@ func handleDeleteTag(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewTagUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewTagUseCase()
 		err = usecase.DeleteTag(c.Request.Context(), organizationId, tagInput.TagId)
 
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.Status(http.StatusNoContent)

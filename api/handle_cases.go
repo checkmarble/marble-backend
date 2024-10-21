@@ -23,8 +23,9 @@ var casesPaginationDefaults = dto.PaginationDefaults{
 
 func handleListCases(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -41,10 +42,10 @@ func handleListCases(uc usecases.Usecases) func(c *gin.Context) {
 		}
 		paginationAndSorting = dto.WithPaginationDefaults(paginationAndSorting, casesPaginationDefaults)
 
-		usecase := usecasesWithCreds(c.Request, uc).NewCaseUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
 		cases, err := usecase.ListCases(c.Request.Context(), organizationId,
 			dto.AdaptPaginationAndSortingInput(paginationAndSorting), filters)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -73,14 +74,15 @@ type CaseInput struct {
 
 func handleGetCase(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		var caseInput CaseInput
 		if err := c.ShouldBindUri(&caseInput); err != nil {
 			c.Status(http.StatusBadRequest)
 			return
 		}
-		usecase := usecasesWithCreds(c.Request, uc).NewCaseUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
 		inboxCase, err := usecase.GetCase(c.Request.Context(), caseInput.Id)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -90,9 +92,10 @@ func handleGetCase(uc usecases.Usecases) func(c *gin.Context) {
 
 func handlePostCase(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(c.Request.Context())
 		if !found {
-			presentError(c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, fmt.Errorf("no credentials in context"))
 			return
 		}
 		userId := string(creds.ActorIdentity.UserId)
@@ -103,9 +106,9 @@ func handlePostCase(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewCaseUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -120,7 +123,7 @@ func handlePostCase(uc usecases.Usecases) func(c *gin.Context) {
 				OrganizationId: organizationId,
 			})
 
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusCreated, gin.H{
@@ -131,9 +134,10 @@ func handlePostCase(uc usecases.Usecases) func(c *gin.Context) {
 
 func handlePatchCase(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(c.Request.Context())
 		if !found {
-			presentError(c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, fmt.Errorf("no credentials in context"))
 			return
 		}
 		userId := string(creds.ActorIdentity.UserId)
@@ -150,7 +154,7 @@ func handlePatchCase(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewCaseUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
 		inboxCase, err := usecase.UpdateCase(c.Request.Context(), userId, models.UpdateCaseAttributes{
 			Id:      caseInput.Id,
 			Name:    data.Name,
@@ -158,7 +162,7 @@ func handlePatchCase(uc usecases.Usecases) func(c *gin.Context) {
 			InboxId: data.InboxId,
 		})
 
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{
@@ -169,9 +173,10 @@ func handlePatchCase(uc usecases.Usecases) func(c *gin.Context) {
 
 func handlePostCaseDecisions(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(c.Request.Context())
 		if !found {
-			presentError(c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, fmt.Errorf("no credentials in context"))
 			return
 		}
 		userId := string(creds.ActorIdentity.UserId)
@@ -188,10 +193,10 @@ func handlePostCaseDecisions(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewCaseUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
 		inboxCase, err := usecase.AddDecisionsToCase(c.Request.Context(), userId, caseInput.Id, data.DecisionIds)
 
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"case": dto.AdaptCaseWithDecisionsDto(inboxCase)})
@@ -200,9 +205,10 @@ func handlePostCaseDecisions(uc usecases.Usecases) func(c *gin.Context) {
 
 func handlePostCaseComment(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(c.Request.Context())
 		if !found {
-			presentError(c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, fmt.Errorf("no credentials in context"))
 			return
 		}
 		userId := string(creds.ActorIdentity.UserId)
@@ -219,13 +225,13 @@ func handlePostCaseComment(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewCaseUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
 		inboxCase, err := usecase.CreateCaseComment(c.Request.Context(), userId, models.CreateCaseCommentAttributes{
 			Id:      caseInput.Id,
 			Comment: data.Comment,
 		})
 
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{
@@ -236,9 +242,10 @@ func handlePostCaseComment(uc usecases.Usecases) func(c *gin.Context) {
 
 func handlePostCaseTags(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(c.Request.Context())
 		if !found {
-			presentError(c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, fmt.Errorf("no credentials in context"))
 			return
 		}
 		userId := string(creds.ActorIdentity.UserId)
@@ -255,13 +262,13 @@ func handlePostCaseTags(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewCaseUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
 		inboxCase, err := usecase.CreateCaseTags(c.Request.Context(), userId, models.CreateCaseTagsAttributes{
 			CaseId: caseInput.Id,
 			TagIds: data.TagIds,
 		})
 
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusCreated, gin.H{"case": dto.AdaptCaseWithDecisionsDto(inboxCase)})
@@ -274,24 +281,25 @@ type FileForm struct {
 
 func handlePostCaseFile(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		var caseInput CaseInput
 		if err := c.ShouldBindUri(&caseInput); err != nil {
-			presentError(c, errors.Wrap(models.BadParameterError, err.Error()))
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 
 		var form FileForm
 		if err := c.ShouldBind(&form); err != nil {
-			presentError(c, errors.Wrap(models.BadParameterError, err.Error()))
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewCaseUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
 		cs, err := usecase.CreateCaseFile(c.Request.Context(), models.CreateCaseFileInput{
 			CaseId: caseInput.Id,
 			File:   form.File,
 		})
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -305,15 +313,16 @@ type CaseFileInput struct {
 
 func handleDownloadCaseFile(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		var caseFileInput CaseFileInput
 		if err := c.ShouldBindUri(&caseFileInput); err != nil {
-			presentError(c, errors.Wrap(models.BadParameterError, err.Error()))
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewCaseUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
 		url, err := usecase.GetCaseFileUrl(c.Request.Context(), caseFileInput.Id)
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 
@@ -323,9 +332,10 @@ func handleDownloadCaseFile(uc usecases.Usecases) func(c *gin.Context) {
 
 func handleReviewCaseDecisions(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		creds, found := utils.CredentialsFromCtx(c.Request.Context())
 		if !found {
-			presentError(c, fmt.Errorf("no credentials in context"))
+			presentError(ctx, c, fmt.Errorf("no credentials in context"))
 			return
 		}
 		userId := string(creds.ActorIdentity.UserId)
@@ -336,7 +346,7 @@ func handleReviewCaseDecisions(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		usecase := usecasesWithCreds(c.Request, uc).NewCaseUseCase()
+		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
 		case_, err := usecase.ReviewCaseDecisions(c.Request.Context(),
 			models.ReviewCaseDecisionsBody{
 				DecisionId:    data.DecisionId,
@@ -345,7 +355,7 @@ func handleReviewCaseDecisions(uc usecases.Usecases) func(c *gin.Context) {
 				UserId:        userId,
 			})
 
-		if presentError(c, err) {
+		if presentError(ctx, c, err) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"case": dto.AdaptCaseWithDecisionsDto(case_)})
