@@ -20,6 +20,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
+	"github.com/riverqueue/river/rivertype"
 )
 
 func RunTaskQueue() error {
@@ -119,6 +120,12 @@ func RunTaskQueue() error {
 		Workers:           workers,
 		Queues:            queues,
 		FetchPollInterval: 100 * time.Millisecond,
+		Logger:            logger,
+		WorkerMiddleware: []rivertype.WorkerMiddleware{
+			jobs.NewTracingMiddleware(telemetryRessources.Tracer),
+			jobs.NewLoggerMiddleware(logger),
+			jobs.NewRecoveredMiddleware(),
+		},
 	},
 	)
 	if err != nil {
