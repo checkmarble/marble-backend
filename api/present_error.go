@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -17,33 +18,39 @@ func presentError(c *gin.Context, err error) bool {
 	if err == nil {
 		return false
 	}
-	errString := err.Error()
+
 	errorResponse := dto.APIErrorResponse{
-		Message: errString,
+		Message: err.Error(),
 	}
+	ctx := c.Request.Context()
+	logger := utils.LoggerFromContext(ctx)
 
-	if errors.Is(err, models.BadParameterError) {
-		utils.LogRequestInfo(c.Request, fmt.Sprintf("BadParameterError: %v", err))
+	switch {
+	case errors.Is(err, models.BadParameterError):
+		logger.InfoContext(ctx, fmt.Sprintf("BadParameterError: %v", err))
 		c.JSON(http.StatusBadRequest, errorResponse)
-
-	} else if errors.Is(err, models.UnAuthorizedError) {
-		utils.LogRequestInfo(c.Request, fmt.Sprintf("UnAuthorizedError: %v", err))
+	case errors.Is(err, models.UnAuthorizedError):
+		logger.InfoContext(ctx, fmt.Sprintf("UnAuthorizedError: %v", err))
 		c.JSON(http.StatusUnauthorized, errorResponse)
-
-	} else if errors.Is(err, models.ForbiddenError) {
-		utils.LogRequestInfo(c.Request, fmt.Sprintf("ForbiddenError: %v", err))
+	case errors.Is(err, models.ForbiddenError):
+		logger.InfoContext(ctx, fmt.Sprintf("ForbiddenError: %v", err))
 		c.JSON(http.StatusForbidden, errorResponse)
-
-	} else if errors.Is(err, models.NotFoundError) {
-		utils.LogRequestInfo(c.Request, fmt.Sprintf("NotFoundError: %v", err))
+	case errors.Is(err, models.NotFoundError):
+		logger.InfoContext(ctx, fmt.Sprintf("NotFoundError: %v", err))
 		c.JSON(http.StatusNotFound, errorResponse)
-
-	} else if errors.Is(err, models.ConflictError) {
-		utils.LogRequestInfo(c.Request, fmt.Sprintf("ConflictError: %v", err))
+	case errors.Is(err, models.ConflictError):
+		logger.InfoContext(ctx, fmt.Sprintf("ConflictError: %v", err))
 		c.JSON(http.StatusConflict, errorResponse)
 
-	} else {
-		utils.LogRequestError(c.Request, fmt.Sprintf("Unexpected Error: %+v", err))
+	case errors.Is(err, context.DeadlineExceeded):
+		logger.WarnContext(ctx, fmt.Sprintf("Deadline exceeded: %v", err))
+		c.JSON(http.StatusRequestTimeout, errorResponse)
+	case errors.Is(err, context.Canceled):
+		logger.WarnContext(ctx, fmt.Sprintf("Deadline exceeded: %v", err))
+		c.JSON(http.StatusRequestTimeout, errorResponse)
+
+	default:
+		logger.ErrorContext(ctx, fmt.Sprintf("Unexpected Error: %+v", err))
 		if hub := sentrygin.GetHubFromContext(c); hub != nil {
 			hub.CaptureException(err)
 		} else {
