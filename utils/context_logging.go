@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"slices"
 
@@ -57,14 +56,4 @@ func LoggerFromContext(ctx context.Context) *slog.Logger {
 		logger.ErrorContext(ctx, "logger not found in context. Falling back to a new logger, but it will be missing context keys")
 	}
 	return logger
-}
-
-func LogRequestError(r *http.Request, msg string, args ...any) {
-	ctx := r.Context()
-	LoggerFromContext(ctx).ErrorContext(ctx, msg, args...)
-}
-
-func LogRequestInfo(r *http.Request, msg string, args ...any) {
-	ctx := r.Context()
-	LoggerFromContext(ctx).InfoContext(ctx, msg, args...)
 }

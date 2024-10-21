@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -17,6 +18,12 @@ func LogAndReportSentryError(ctx context.Context, err error) {
 	// In this case, we don't log the error in Sentry
 	if strings.Contains(err.Error(), "failed to connect to `host=/cloudsql/") {
 		logger.WarnContext(ctx, "Failed to create unix socket to connect to CloudSQL. Wait for the next execution of the job or retry starting the server")
+		return
+	}
+
+	// Ignore errors that are due to context deadlines or canceled context, as presumably their root case has been handled
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		logger.DebugContext(ctx, fmt.Sprintf("Deadline exceeded or context canceled: %v", err))
 		return
 	}
 
