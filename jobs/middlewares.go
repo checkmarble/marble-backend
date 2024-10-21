@@ -2,19 +2,25 @@ package jobs
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/getsentry/sentry-go"
 	"github.com/riverqueue/river/rivertype"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
 
-const sentryErrorGroupingTime = 30 * time.Second
+const (
+	sentryErrorGroupingTime = 30 * time.Second
+	sdkIdentifier           = "sentry.go.river.marble"
+)
 
 // Logger middleware
 
@@ -124,4 +130,49 @@ func (m TracingMiddleware) Work(ctx context.Context, job *rivertype.JobRow, doIn
 
 func NewTracingMiddleware(tracer trace.Tracer) TracingMiddleware {
 	return TracingMiddleware{tracer: tracer}
+}
+
+// Sentry middleware
+
+type SentryMiddleware struct{}
+
+func (m SentryMiddleware) Work(ctx context.Context, job *rivertype.JobRow, doInner func(context.Context) error) error {
+	hub := sentry.GetHubFromContext(ctx)
+	if hub == nil {
+		hub = sentry.CurrentHub().Clone()
+		ctx = sentry.SetHubOnContext(ctx, hub)
+	}
+
+	if client := hub.Client(); client != nil {
+		client.SetSDKIdentifier(sdkIdentifier)
+	}
+
+	options := []sentry.SpanOption{
+		sentry.WithOpName("river.task"),
+		sentry.WithTransactionSource(sentry.SourceTask),
+	}
+
+	scope := hub.PushScope()
+	scope.SetTag("job_id", strconv.FormatInt(job.ID, 10))
+	scope.SetTag("job_kind", job.Kind)
+	scope.SetTag("job_attempt", strconv.Itoa(job.Attempt))
+	scope.SetTag("queue", job.Queue)
+	scope.SetTag("priority", strconv.Itoa(job.Priority))
+	var args map[string]any
+	if err := json.Unmarshal(job.EncodedArgs, &args); err != nil {
+		scope.SetTag("payload", "error decoding payload")
+	} else {
+		scope.SetExtra("payload", args)
+	}
+
+	transaction := sentry.StartTransaction(ctx,
+		fmt.Sprintf("river task %s", job.Kind),
+		options...,
+	)
+
+	return doInner(transaction.Context())
+}
+
+func NewSentryMiddleware() SentryMiddleware {
+	return SentryMiddleware{}
 }

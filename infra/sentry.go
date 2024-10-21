@@ -21,7 +21,10 @@ func SetupSentry(dsn, env string) {
 				return 0.05
 			}
 			if ctx.Span.Name == "POST /transfers" {
-				return 0.05
+				return 0.01
+			}
+			if ctx.Span.Name == "async_decision" {
+				return 0.01
 			}
 			return 0.2
 		}),

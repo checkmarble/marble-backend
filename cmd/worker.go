@@ -117,15 +117,16 @@ func RunTaskQueue() error {
 		return err
 	}
 	riverClient, err = river.NewClient(riverpgxv5.New(pool), &river.Config{
-		Workers:           workers,
-		Queues:            queues,
-		FetchPollInterval: 100 * time.Millisecond,
-		Logger:            logger,
+		FetchPollInterval:    100 * time.Millisecond,
+		Queues:               queues,
+		RescueStuckJobsAfter: 1 * time.Minute,
 		WorkerMiddleware: []rivertype.WorkerMiddleware{
 			jobs.NewTracingMiddleware(telemetryRessources.Tracer),
+			jobs.NewSentryMiddleware(),
 			jobs.NewLoggerMiddleware(logger),
 			jobs.NewRecoveredMiddleware(),
 		},
+		Workers: workers,
 	},
 	)
 	if err != nil {
