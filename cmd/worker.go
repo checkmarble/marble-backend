@@ -117,8 +117,10 @@ func RunTaskQueue() error {
 		return err
 	}
 	riverClient, err = river.NewClient(riverpgxv5.New(pool), &river.Config{
-		FetchPollInterval:    100 * time.Millisecond,
-		Queues:               queues,
+		FetchPollInterval: 100 * time.Millisecond,
+		Queues:            queues,
+
+		// Must be larger than the time it takes to process a job. Increase it if we want to use longer-lived jobs.
 		RescueStuckJobsAfter: 1 * time.Minute,
 		WorkerMiddleware: []rivertype.WorkerMiddleware{
 			jobs.NewTracingMiddleware(telemetryRessources.Tracer),
