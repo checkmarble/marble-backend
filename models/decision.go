@@ -9,8 +9,7 @@ import (
 )
 
 const (
-	DECISION_TIMEOUT            = 10 * time.Second
-	SEQUENTIAL_DECISION_TIMEOUT = 30 * time.Second
+	DECISION_TIMEOUT = 10 * time.Second
 )
 
 // Decision models
