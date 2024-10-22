@@ -70,6 +70,7 @@ func (repo *IngestedDataReadRepositoryImpl) queryDbForField(ctx context.Context,
 	}
 
 	sql, args, err := query.ToSql()
+	fmt.Println(sql)
 	if err != nil {
 		return nil, fmt.Errorf("error while building SQL query: %w", err)
 	}
@@ -102,20 +103,23 @@ func createQueryDbForField(exec Executor, readParams models.DbFieldReadParams) (
 			link.ParentTableName, models.NotFoundError)
 	}
 	// "last table" is the last table reached starting from the trigger table and following the path, from which the field is selected
-	lastTable, err := getLastTableFromPath(readParams, firstTable)
-	if err != nil {
-		return squirrel.SelectBuilder{}, err
-	}
+	// lastTable, err := getLastTableFromPath(readParams, firstTable)
+	// if err != nil {
+	// 	return squirrel.SelectBuilder{}, err
+	// }
 
 	firstTableName := tableNameWithSchema(exec, firstTable.Name)
-	lastTableName := tableNameWithSchema(exec, lastTable.Name)
+	// lastTableName := tableNameWithSchema(exec, lastTable.Name)
 
 	// setup the end table we read the field from, the beginning table we join from, and relevant filters on the latter
 	query := NewQueryBuilder().
-		Select(fmt.Sprintf("%s.%s", lastTableName, readParams.FieldName)).
-		From(firstTableName).
-		Where(squirrel.Eq{fmt.Sprintf("%s.%s", firstTableName, link.ParentFieldName): firstTableLinkValue}).
-		Where(rowIsValid(firstTableName))
+		// Select(fmt.Sprintf("%s.%s", lastTableName, readParams.FieldName)).
+		Select(fmt.Sprintf("table_%d.%s", len(readParams.Path), readParams.FieldName)).
+		From(fmt.Sprintf("%s AS %s", firstTableName, "table_1")).
+		// Where(squirrel.Eq{fmt.Sprintf("%s.%s", firstTableName, link.ParentFieldName): firstTableLinkValue}).
+		Where(squirrel.Eq{fmt.Sprintf("%s.%s", "table_1", link.ParentFieldName): firstTableLinkValue}).
+		// Where(rowIsValid(firstTableName))
+		Where(rowIsValid("table_1"))
 
 	return addJoinsOnIntermediateTables(exec, query, readParams, firstTable)
 }
@@ -162,7 +166,8 @@ func addJoinsOnIntermediateTables(
 ) (squirrel.SelectBuilder, error) {
 	currentTable := firstTable
 	// ignore the first element of the path, as it is the starting table of the query
-	for _, linkName := range readParams.Path[1:] {
+	for i := 1; i < len(readParams.Path); i++ {
+		linkName := readParams.Path[i]
 		link, ok := currentTable.LinksToSingle[linkName]
 		if !ok {
 			return squirrel.SelectBuilder{}, fmt.Errorf(
@@ -174,17 +179,38 @@ func addJoinsOnIntermediateTables(
 				link.ParentTableName, models.NotFoundError)
 		}
 
-		currentTableName := tableNameWithSchema(exec, currentTable.Name)
+		// currentTableName := tableNameWithSchema(exec, currentTable.Name)
+		var aliasCurrentTable string
+		// handle the first iteration of the loop differently: the first table is not aliased in the received query from the calling function
+		// if i > 1 {
+		// 	aliasCurrentTable = currentTableName
+		// } else {
+		aliasCurrentTable = fmt.Sprintf("table_%d", i)
+		// aliasCurrentTable = currentTableName
+		// }
+
 		nextTableName := tableNameWithSchema(exec, nextTable.Name)
+		var aliastNextTable string
+		// Or is it ?// handle the last iteration of the loop differently: the last table is not aliased in the received query from the calling function
+		// if i < len(readParams.Path)-2 {
+		aliastNextTable = tableNameWithSchema(exec,
+			fmt.Sprintf("%s_%d", nextTable.Name, i+1))
+		aliastNextTable = fmt.Sprintf("table_%d", i+1)
+		// } else {
+		// 	aliastNextTable = nextTableName
+		// }
+
 		joinClause := fmt.Sprintf(
-			"%s ON %s.%s = %s.%s",
+			"%s AS %s ON %s.%s = %s.%s",
 			nextTableName,
-			currentTableName,
+			aliastNextTable,
+			aliasCurrentTable,
 			link.ChildFieldName,
-			nextTableName,
+			aliastNextTable,
 			link.ParentFieldName)
-		query = query.Join(joinClause).
-			Where(rowIsValid(nextTableName))
+		query = query.
+			Join(joinClause).
+			Where(rowIsValid(aliastNextTable))
 
 		currentTable = nextTable
 	}
