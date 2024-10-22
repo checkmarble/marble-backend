@@ -77,7 +77,14 @@ func EvalScenario(
 	exec := repositories.ExecutorFactory.NewExecutor()
 
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
-	ctx, span := tracer.Start(ctx, "evaluate_scenario.EvalScenario")
+	ctx, span := tracer.Start(ctx, "evaluate_scenario.EvalScenario",
+		trace.WithAttributes(
+			attribute.String("scenario_id", params.Scenario.Id),
+			attribute.String("organization_id", params.Scenario.OrganizationId),
+			attribute.String("scenario_iteration_id", *params.Scenario.LiveVersionID),
+			attribute.String("object_id", params.ClientObject.Data["object_id"].(string)),
+		),
+	)
 	defer span.End()
 
 	// If the scenario has no live version, don't try to Eval() it, return early
@@ -204,7 +211,12 @@ func evalScenarioRule(
 ) (int, models.RuleExecution, error) {
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(ctx, "evaluate_scenario.evalScenarioRule",
-		trace.WithAttributes(attribute.String("rule_id", rule.Id)))
+		trace.WithAttributes(
+			attribute.String("organization_id", rule.OrganizationId),
+			attribute.String("rule_id", rule.Id),
+			attribute.String("rule_name", rule.Name),
+			attribute.String("scenario_iteration_id", rule.ScenarioIterationId),
+		))
 	defer span.End()
 	logger := utils.LoggerFromContext(ctx)
 
