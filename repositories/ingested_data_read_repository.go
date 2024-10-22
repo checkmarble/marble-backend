@@ -70,7 +70,6 @@ func (repo *IngestedDataReadRepositoryImpl) queryDbForField(ctx context.Context,
 	}
 
 	sql, args, err := query.ToSql()
-	fmt.Println(sql)
 	if err != nil {
 		return nil, fmt.Errorf("error while building SQL query: %w", err)
 	}
@@ -102,24 +101,23 @@ func createQueryDbForField(exec Executor, readParams models.DbFieldReadParams) (
 		return squirrel.SelectBuilder{}, fmt.Errorf("no table with name %s: %w",
 			link.ParentTableName, models.NotFoundError)
 	}
-	// "last table" is the last table reached starting from the trigger table and following the path, from which the field is selected
-	// lastTable, err := getLastTableFromPath(readParams, firstTable)
-	// if err != nil {
-	// 	return squirrel.SelectBuilder{}, err
-	// }
 
+	// We alias all tables in the successive joins as "table_i" where i is the index of the table in the path
+	// This is because a given table can appear multiple times in the path, and we need to distinguish between them
+	// or the generated SQL is ambiguous.
+	// NB "table_0" would be the trigger table, but it's not used in the query
 	firstTableName := tableNameWithSchema(exec, firstTable.Name)
-	// lastTableName := tableNameWithSchema(exec, lastTable.Name)
+	firstTableAlias := "table_1"
+	// "last table" is the last table reached starting from the trigger table and following the path, from which the field is selected.
+	// Exactly which table this is is detedmined below
+	lastTableAlias := fmt.Sprintf("table_%d", len(readParams.Path))
 
 	// setup the end table we read the field from, the beginning table we join from, and relevant filters on the latter
 	query := NewQueryBuilder().
-		// Select(fmt.Sprintf("%s.%s", lastTableName, readParams.FieldName)).
-		Select(fmt.Sprintf("table_%d.%s", len(readParams.Path), readParams.FieldName)).
-		From(fmt.Sprintf("%s AS %s", firstTableName, "table_1")).
-		// Where(squirrel.Eq{fmt.Sprintf("%s.%s", firstTableName, link.ParentFieldName): firstTableLinkValue}).
-		Where(squirrel.Eq{fmt.Sprintf("%s.%s", "table_1", link.ParentFieldName): firstTableLinkValue}).
-		// Where(rowIsValid(firstTableName))
-		Where(rowIsValid("table_1"))
+		Select(fmt.Sprintf("%s.%s", lastTableAlias, readParams.FieldName)).
+		From(fmt.Sprintf("%s AS %s", firstTableName, firstTableAlias)).
+		Where(squirrel.Eq{fmt.Sprintf("%s.%s", firstTableAlias, link.ParentFieldName): firstTableLinkValue}).
+		Where(rowIsValid(firstTableAlias))
 
 	return addJoinsOnIntermediateTables(exec, query, readParams, firstTable)
 }
@@ -137,25 +135,6 @@ func getParentTableJoinField(payload models.ClientObject, fieldName string) (str
 	}
 
 	return parentField, nil
-}
-
-func getLastTableFromPath(params models.DbFieldReadParams, firstTable models.Table) (models.Table, error) {
-	currentTable := firstTable
-	// ignore the first element of the path, as it is the starting table of the query
-	for _, linkName := range params.Path[1:] {
-		link, ok := currentTable.LinksToSingle[linkName]
-		if !ok {
-			return models.Table{}, fmt.Errorf("no link with name %s: %w", linkName, models.NotFoundError)
-		}
-		nextTable, ok := params.DataModel.Tables[link.ParentTableName]
-		if !ok {
-			return models.Table{}, fmt.Errorf("no table with name %s: %w",
-				link.ParentTableName, models.NotFoundError)
-		}
-
-		currentTable = nextTable
-	}
-	return currentTable, nil
 }
 
 func addJoinsOnIntermediateTables(
@@ -179,26 +158,9 @@ func addJoinsOnIntermediateTables(
 				link.ParentTableName, models.NotFoundError)
 		}
 
-		// currentTableName := tableNameWithSchema(exec, currentTable.Name)
-		var aliasCurrentTable string
-		// handle the first iteration of the loop differently: the first table is not aliased in the received query from the calling function
-		// if i > 1 {
-		// 	aliasCurrentTable = currentTableName
-		// } else {
-		aliasCurrentTable = fmt.Sprintf("table_%d", i)
-		// aliasCurrentTable = currentTableName
-		// }
-
+		aliasCurrentTable := fmt.Sprintf("table_%d", i)
 		nextTableName := tableNameWithSchema(exec, nextTable.Name)
-		var aliastNextTable string
-		// Or is it ?// handle the last iteration of the loop differently: the last table is not aliased in the received query from the calling function
-		// if i < len(readParams.Path)-2 {
-		aliastNextTable = tableNameWithSchema(exec,
-			fmt.Sprintf("%s_%d", nextTable.Name, i+1))
-		aliastNextTable = fmt.Sprintf("table_%d", i+1)
-		// } else {
-		// 	aliastNextTable = nextTableName
-		// }
+		aliastNextTable := fmt.Sprintf("table_%d", i+1)
 
 		joinClause := fmt.Sprintf(
 			"%s AS %s ON %s.%s = %s.%s",
