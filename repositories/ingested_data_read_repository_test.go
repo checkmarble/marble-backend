@@ -14,12 +14,9 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-const expectedQueryDbFieldExpectedWithoutJoin string = "SELECT test_schema.second.int_var FROM test_schema.second " +
-	"WHERE test_schema.second.id = $1 AND test_schema.second.valid_until = $2"
+const expectedQueryDbFieldExpectedWithoutJoin string = "SELECT table_1.int_var FROM test_schema.second AS table_1 WHERE table_1.id = $1 AND table_1.valid_until = $2"
 
-const expectedQueryDbFieldWithJoin string = "SELECT test_schema.third.int_var " +
-	"FROM test_schema.second JOIN test_schema.third ON test_schema.second.id = test_schema.third.id " +
-	"WHERE test_schema.second.id = $1 AND test_schema.second.valid_until = $2 AND test_schema.third.valid_until = $3"
+const expectedQueryDbFieldWithJoin string = "SELECT table_2.int_var FROM test_schema.second AS table_1 JOIN test_schema.third AS table_2 ON table_1.id = table_2.id WHERE table_1.id = $1 AND table_1.valid_until = $2 AND table_2.valid_until = $3"
 
 const expectedQueryAggregatedWithoutFilter string = "SELECT AVG(int_var)::float8 FROM test_schema.first " +
 	"WHERE test_schema.first.valid_until = $1"
