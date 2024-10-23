@@ -6,6 +6,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -522,7 +523,7 @@ func (repo *MarbleDbRepository) StoreDecision(
 
 		builderForRules = builderForRules.
 			Values(
-				pure_utils.NewPrimaryKey(organizationId),
+				uuid.Must(uuid.NewV7()).String(),
 				organizationId,
 				newDecisionId,
 				ruleExecution.ResultScoreModifier,
