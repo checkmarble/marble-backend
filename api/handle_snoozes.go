@@ -29,7 +29,7 @@ func handleSnoozesOfDecision(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		ruleSnoozeUsecase := usecasesWithCreds(ctx, uc).NewRuleSnoozeUsecase()
-		snoozes, err := ruleSnoozeUsecase.ActiveSnoozesForDecision(c.Request.Context(), decisionId)
+		snoozes, err := ruleSnoozeUsecase.ActiveSnoozesForDecision(ctx, decisionId)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -45,7 +45,7 @@ func handleSnoozeDecision(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		creds, _ := utils.CredentialsFromCtx(c.Request.Context())
+		creds, _ := utils.CredentialsFromCtx(ctx)
 		userId := creds.ActorIdentity.UserId
 
 		decisionId := c.Param("decision_id")
@@ -61,7 +61,7 @@ func handleSnoozeDecision(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		ruleSnoozeUsecase := usecasesWithCreds(ctx, uc).NewRuleSnoozeUsecase()
-		snoozes, err := ruleSnoozeUsecase.SnoozeDecision(c.Request.Context(), models.SnoozeDecisionInput{
+		snoozes, err := ruleSnoozeUsecase.SnoozeDecision(ctx, models.SnoozeDecisionInput{
 			Comment:        input.Comment,
 			DecisionId:     decisionId,
 			Duration:       input.Duration,
@@ -95,7 +95,7 @@ func handleSnoozesOfScenarioIteration(uc usecases.Usecases) func(c *gin.Context)
 
 		ruleSnoozeUsecase := usecasesWithCreds(ctx, uc).NewRuleSnoozeUsecase()
 		snoozes, err := ruleSnoozeUsecase.ActiveSnoozesForScenarioIteration(
-			c.Request.Context(), scenarioIterationId)
+			ctx, scenarioIterationId)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -115,7 +115,7 @@ func handleGetSnoozesById(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		ruleSnoozeUsecase := usecasesWithCreds(ctx, uc).NewRuleSnoozeUsecase()
-		snooze, err := ruleSnoozeUsecase.GetRuleSnoozeById(c.Request.Context(), ruleSnoozeId)
+		snooze, err := ruleSnoozeUsecase.GetRuleSnoozeById(ctx, ruleSnoozeId)
 		if presentError(ctx, c, err) {
 			return
 		}

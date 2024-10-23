@@ -32,7 +32,7 @@ func handleListTags(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewTagUseCase()
-		tags, err := usecase.ListAllTags(c.Request.Context(), organizationId, withCaseCountFilter.WithCaseCount)
+		tags, err := usecase.ListAllTags(ctx, organizationId, withCaseCountFilter.WithCaseCount)
 
 		if presentError(ctx, c, err) {
 			return
@@ -55,7 +55,7 @@ func handlePostTag(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewTagUseCase()
-		tag, err := usecase.CreateTag(c.Request.Context(), models.CreateTagAttributes{
+		tag, err := usecase.CreateTag(ctx, models.CreateTagAttributes{
 			OrganizationId: organizationId,
 			Name:           data.Name,
 			Color:          data.Color,
@@ -82,7 +82,7 @@ func handleGetTag(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewTagUseCase()
-		tag, err := usecase.GetTagById(c.Request.Context(), tagInput.TagId)
+		tag, err := usecase.GetTagById(ctx, tagInput.TagId)
 
 		if presentError(ctx, c, err) {
 			return
@@ -107,7 +107,7 @@ func handlePatchTag(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewTagUseCase()
-		tag, err := usecase.UpdateTag(c.Request.Context(), models.UpdateTagAttributes{
+		tag, err := usecase.UpdateTag(ctx, models.UpdateTagAttributes{
 			TagId: tagInput.TagId,
 			Color: data.Color,
 			Name:  data.Name,
@@ -135,7 +135,7 @@ func handleDeleteTag(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewTagUseCase()
-		err = usecase.DeleteTag(c.Request.Context(), organizationId, tagInput.TagId)
+		err = usecase.DeleteTag(ctx, organizationId, tagInput.TagId)
 
 		if presentError(ctx, c, err) {
 			return

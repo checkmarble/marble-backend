@@ -27,7 +27,7 @@ func handleListScenarioPublications(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioPublicationUsecase()
 		scenarioPublications, err := usecase.ListScenarioPublications(
-			c.Request.Context(),
+			ctx,
 			organizationId,
 			models.ListScenarioPublicationsFilters{
 				ScenarioId:          utils.PtrTo(scenarioID, &utils.PtrToOptions{OmitZero: true}),
@@ -56,7 +56,7 @@ func handleCreateScenarioPublication(uc usecases.Usecases) func(c *gin.Context) 
 
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioPublicationUsecase()
 		scenarioPublications, err := usecase.ExecuteScenarioPublicationAction(
-			c.Request.Context(),
+			ctx,
 			organizationId,
 			dto.AdaptCreateScenarioPublicationBody(data))
 		if handleExpectedPublicationError(c, err) || presentError(ctx, c, err) {
@@ -72,7 +72,7 @@ func handleGetScenarioPublication(uc usecases.Usecases) func(c *gin.Context) {
 		scenarioPublicationID := c.Param("publication_id")
 
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioPublicationUsecase()
-		scenarioPublication, err := usecase.GetScenarioPublication(c.Request.Context(), scenarioPublicationID)
+		scenarioPublication, err := usecase.GetScenarioPublication(ctx, scenarioPublicationID)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -98,7 +98,7 @@ func handleGetPublicationPreparationStatus(uc usecases.Usecases) func(c *gin.Con
 
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioPublicationUsecase()
 		status, err := usecase.GetPublicationPreparationStatus(
-			c.Request.Context(),
+			ctx,
 			organizationId,
 			data.ScenarioIterationId)
 		if presentError(ctx, c, err) {
@@ -125,7 +125,7 @@ func handleStartPublicationPreparation(uc usecases.Usecases) func(c *gin.Context
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioPublicationUsecase()
-		err = usecase.StartPublicationPreparation(c.Request.Context(), organizationId, data.ScenarioIterationId)
+		err = usecase.StartPublicationPreparation(ctx, organizationId, data.ScenarioIterationId)
 		if handleExpectedPublicationError(c, err) || presentError(ctx, c, err) {
 			return
 		}
@@ -137,8 +137,9 @@ func handleExpectedPublicationError(c *gin.Context, err error) bool {
 	if err == nil {
 		return false
 	}
-	logger := utils.LoggerFromContext(c.Request.Context())
-	logger.InfoContext(c.Request.Context(), fmt.Sprintf("error: %v", err))
+	ctx := c.Request.Context()
+	logger := utils.LoggerFromContext(ctx)
+	logger.InfoContext(ctx, fmt.Sprintf("error: %v", err))
 
 	if errors.Is(err, models.ErrScenarioIterationIsDraft) {
 		c.JSON(http.StatusBadRequest, dto.APIErrorResponse{

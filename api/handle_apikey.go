@@ -21,7 +21,7 @@ func handleListApiKeys(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewApiKeyUseCase()
-		apiKeys, err := usecase.ListApiKeys(c.Request.Context(), organizationId)
+		apiKeys, err := usecase.ListApiKeys(ctx, organizationId)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -46,7 +46,7 @@ func handlePostApiKey(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewApiKeyUseCase()
-		apiKey, err := usecase.CreateApiKey(c.Request.Context(), models.CreateApiKeyInput{
+		apiKey, err := usecase.CreateApiKey(ctx, models.CreateApiKeyInput{
 			OrganizationId: organizationId,
 			Description:    input.Description,
 			Role:           models.RoleFromString(input.Role),
@@ -72,7 +72,7 @@ func handleRevokeApiKey(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewApiKeyUseCase()
-		err := usecase.DeleteApiKey(c.Request.Context(), apiKeyUriInput.ApiKeyId)
+		err := usecase.DeleteApiKey(ctx, apiKeyUriInput.ApiKeyId)
 		if presentError(ctx, c, err) {
 			return
 		}

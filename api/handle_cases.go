@@ -43,7 +43,7 @@ func handleListCases(uc usecases.Usecases) func(c *gin.Context) {
 		paginationAndSorting = dto.WithPaginationDefaults(paginationAndSorting, casesPaginationDefaults)
 
 		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
-		cases, err := usecase.ListCases(c.Request.Context(), organizationId,
+		cases, err := usecase.ListCases(ctx, organizationId,
 			dto.AdaptPaginationAndSortingInput(paginationAndSorting), filters)
 		if presentError(ctx, c, err) {
 			return
@@ -81,7 +81,7 @@ func handleGetCase(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
-		inboxCase, err := usecase.GetCase(c.Request.Context(), caseInput.Id)
+		inboxCase, err := usecase.GetCase(ctx, caseInput.Id)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -93,7 +93,7 @@ func handleGetCase(uc usecases.Usecases) func(c *gin.Context) {
 func handlePostCase(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		creds, found := utils.CredentialsFromCtx(c.Request.Context())
+		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
 			presentError(ctx, c, fmt.Errorf("no credentials in context"))
 			return
@@ -113,7 +113,7 @@ func handlePostCase(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		inboxCase, err := usecase.CreateCaseAsUser(
-			c.Request.Context(),
+			ctx,
 			organizationId,
 			userId,
 			models.CreateCaseAttributes{
@@ -135,7 +135,7 @@ func handlePostCase(uc usecases.Usecases) func(c *gin.Context) {
 func handlePatchCase(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		creds, found := utils.CredentialsFromCtx(c.Request.Context())
+		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
 			presentError(ctx, c, fmt.Errorf("no credentials in context"))
 			return
@@ -155,7 +155,7 @@ func handlePatchCase(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
-		inboxCase, err := usecase.UpdateCase(c.Request.Context(), userId, models.UpdateCaseAttributes{
+		inboxCase, err := usecase.UpdateCase(ctx, userId, models.UpdateCaseAttributes{
 			Id:      caseInput.Id,
 			Name:    data.Name,
 			Status:  models.CaseStatus(data.Status),
@@ -174,7 +174,7 @@ func handlePatchCase(uc usecases.Usecases) func(c *gin.Context) {
 func handlePostCaseDecisions(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		creds, found := utils.CredentialsFromCtx(c.Request.Context())
+		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
 			presentError(ctx, c, fmt.Errorf("no credentials in context"))
 			return
@@ -194,7 +194,7 @@ func handlePostCaseDecisions(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
-		inboxCase, err := usecase.AddDecisionsToCase(c.Request.Context(), userId, caseInput.Id, data.DecisionIds)
+		inboxCase, err := usecase.AddDecisionsToCase(ctx, userId, caseInput.Id, data.DecisionIds)
 
 		if presentError(ctx, c, err) {
 			return
@@ -206,7 +206,7 @@ func handlePostCaseDecisions(uc usecases.Usecases) func(c *gin.Context) {
 func handlePostCaseComment(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		creds, found := utils.CredentialsFromCtx(c.Request.Context())
+		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
 			presentError(ctx, c, fmt.Errorf("no credentials in context"))
 			return
@@ -226,7 +226,7 @@ func handlePostCaseComment(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
-		inboxCase, err := usecase.CreateCaseComment(c.Request.Context(), userId, models.CreateCaseCommentAttributes{
+		inboxCase, err := usecase.CreateCaseComment(ctx, userId, models.CreateCaseCommentAttributes{
 			Id:      caseInput.Id,
 			Comment: data.Comment,
 		})
@@ -243,7 +243,7 @@ func handlePostCaseComment(uc usecases.Usecases) func(c *gin.Context) {
 func handlePostCaseTags(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		creds, found := utils.CredentialsFromCtx(c.Request.Context())
+		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
 			presentError(ctx, c, fmt.Errorf("no credentials in context"))
 			return
@@ -263,7 +263,7 @@ func handlePostCaseTags(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
-		inboxCase, err := usecase.CreateCaseTags(c.Request.Context(), userId, models.CreateCaseTagsAttributes{
+		inboxCase, err := usecase.CreateCaseTags(ctx, userId, models.CreateCaseTagsAttributes{
 			CaseId: caseInput.Id,
 			TagIds: data.TagIds,
 		})
@@ -295,7 +295,7 @@ func handlePostCaseFile(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
-		cs, err := usecase.CreateCaseFile(c.Request.Context(), models.CreateCaseFileInput{
+		cs, err := usecase.CreateCaseFile(ctx, models.CreateCaseFileInput{
 			CaseId: caseInput.Id,
 			File:   form.File,
 		})
@@ -321,7 +321,7 @@ func handleDownloadCaseFile(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
-		url, err := usecase.GetCaseFileUrl(c.Request.Context(), caseFileInput.Id)
+		url, err := usecase.GetCaseFileUrl(ctx, caseFileInput.Id)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -333,7 +333,7 @@ func handleDownloadCaseFile(uc usecases.Usecases) func(c *gin.Context) {
 func handleReviewCaseDecisions(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		creds, found := utils.CredentialsFromCtx(c.Request.Context())
+		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
 			presentError(ctx, c, fmt.Errorf("no credentials in context"))
 			return
@@ -347,7 +347,7 @@ func handleReviewCaseDecisions(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
-		case_, err := usecase.ReviewCaseDecisions(c.Request.Context(),
+		case_, err := usecase.ReviewCaseDecisions(ctx,
 			models.ReviewCaseDecisionsBody{
 				DecisionId:    data.DecisionId,
 				ReviewComment: data.ReviewComment,

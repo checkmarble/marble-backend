@@ -23,7 +23,7 @@ func handleGetAllCustomLists(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewCustomListUseCase()
-		lists, err := usecase.GetCustomLists(c.Request.Context(), organizationId)
+		lists, err := usecase.GetCustomLists(ctx, organizationId)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -48,7 +48,7 @@ func handlePostCustomList(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewCustomListUseCase()
-		customList, err := usecase.CreateCustomList(c.Request.Context(), models.CreateCustomListInput{
+		customList, err := usecase.CreateCustomList(ctx, models.CreateCustomListInput{
 			Name:           data.Name,
 			Description:    data.Description,
 			OrganizationId: organizationId,
@@ -68,11 +68,11 @@ func handleGetCustomListWithValues(uc usecases.Usecases) func(c *gin.Context) {
 		customListID := c.Param("list_id")
 
 		usecase := usecasesWithCreds(ctx, uc).NewCustomListUseCase()
-		CustomList, err := usecase.GetCustomListById(c.Request.Context(), customListID)
+		CustomList, err := usecase.GetCustomListById(ctx, customListID)
 		if presentError(ctx, c, err) {
 			return
 		}
-		CustomListValues, err := usecase.GetCustomListValues(c.Request.Context(),
+		CustomListValues, err := usecase.GetCustomListValues(ctx,
 			models.GetCustomListValuesInput{
 				Id: customListID,
 			})
@@ -105,7 +105,7 @@ func handlePatchCustomList(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewCustomListUseCase()
-		CustomList, err := usecase.UpdateCustomList(c.Request.Context(), models.UpdateCustomListInput{
+		CustomList, err := usecase.UpdateCustomList(ctx, models.UpdateCustomListInput{
 			Id:          customListID,
 			Name:        &data.Name,
 			Description: &data.Description,
@@ -133,7 +133,7 @@ func handleDeleteCustomList(uc usecases.Usecases) func(c *gin.Context) {
 		logger = logger.With(slog.String("organizationId", organizationId))
 
 		usecase := usecasesWithCreds(ctx, uc).NewCustomListUseCase()
-		err = usecase.SoftDeleteCustomList(c.Request.Context(), c.Param("list_id"))
+		err = usecase.SoftDeleteCustomList(ctx, c.Param("list_id"))
 		if presentError(ctx, c, err) {
 			logger.ErrorContext(ctx, "error deleting a list: \n"+err.Error())
 			return
@@ -161,7 +161,7 @@ func handlePostCustomListValue(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewCustomListUseCase()
-		customListValue, err := usecase.AddCustomListValue(c.Request.Context(), models.AddCustomListValueInput{
+		customListValue, err := usecase.AddCustomListValue(ctx, models.AddCustomListValueInput{
 			CustomListId: customListID,
 			Value:        data.Value,
 		})
@@ -199,7 +199,7 @@ func handleDeleteCustomListValue(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewCustomListUseCase()
-		err = usecase.DeleteCustomListValue(c.Request.Context(), models.DeleteCustomListValueInput{
+		err = usecase.DeleteCustomListValue(ctx, models.DeleteCustomListValueInput{
 			Id:           valueID,
 			CustomListId: customListID,
 		})

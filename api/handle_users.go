@@ -17,7 +17,7 @@ func handleGetAllUsers(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		usecase := usecasesWithCreds(ctx, uc).NewUserUseCase()
-		users, err := usecase.GetAllUsers(c.Request.Context())
+		users, err := usecase.GetAllUsers(ctx)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -39,7 +39,7 @@ func handlePostUser(uc usecases.Usecases) func(c *gin.Context) {
 		createUser := dto.AdaptCreateUser(data)
 
 		usecase := usecasesWithCreds(ctx, uc).NewUserUseCase()
-		createdUser, err := usecase.AddUser(c.Request.Context(), createUser)
+		createdUser, err := usecase.AddUser(ctx, createUser)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -55,7 +55,7 @@ func handleGetUser(uc usecases.Usecases) func(c *gin.Context) {
 		userID := c.Param("user_id")
 
 		usecase := usecasesWithCreds(ctx, uc).NewUserUseCase()
-		user, err := usecase.GetUser(c.Request.Context(), userID)
+		user, err := usecase.GetUser(ctx, userID)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -96,7 +96,7 @@ func handlePatchUser(uc usecases.Usecases) func(c *gin.Context) {
 func handleDeleteUser(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		creds, found := utils.CredentialsFromCtx(c.Request.Context())
+		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
 			presentError(ctx, c, fmt.Errorf("no credentials in context"))
 			return
@@ -106,7 +106,7 @@ func handleDeleteUser(uc usecases.Usecases) func(c *gin.Context) {
 		userId := c.Param("user_id")
 
 		usecase := usecasesWithCreds(ctx, uc).NewUserUseCase()
-		err := usecase.DeleteUser(c.Request.Context(), userId, currentUserId)
+		err := usecase.DeleteUser(ctx, userId, currentUserId)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -117,7 +117,7 @@ func handleDeleteUser(uc usecases.Usecases) func(c *gin.Context) {
 func handleGetCredentials() func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		creds, found := utils.CredentialsFromCtx(c.Request.Context())
+		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
 			presentError(ctx, c, fmt.Errorf("no credentials in context %w", models.NotFoundError))
 			return

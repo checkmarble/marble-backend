@@ -37,7 +37,7 @@ func handlePostOrganization(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
-		organization, err := usecase.CreateOrganization(c.Request.Context(), data.Name)
+		organization, err := usecase.CreateOrganization(ctx, data.Name)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -53,7 +53,7 @@ func handleGetOrganizationUsers(uc usecases.Usecases) func(c *gin.Context) {
 		organizationID := c.Param("organization_id")
 
 		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
-		users, err := usecase.GetUsersOfOrganization(c.Request.Context(), organizationID)
+		users, err := usecase.GetUsersOfOrganization(ctx, organizationID)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -69,7 +69,7 @@ func handleGetOrganization(uc usecases.Usecases) func(c *gin.Context) {
 		organizationID := c.Param("organization_id")
 
 		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
-		organization, err := usecase.GetOrganization(c.Request.Context(), organizationID)
+		organization, err := usecase.GetOrganization(ctx, organizationID)
 
 		if presentError(ctx, c, err) {
 			return
@@ -91,7 +91,7 @@ func handlePatchOrganization(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
-		organization, err := usecase.UpdateOrganization(c.Request.Context(), models.UpdateOrganizationInput{
+		organization, err := usecase.UpdateOrganization(ctx, models.UpdateOrganizationInput{
 			Id:   organizationID,
 			Name: data.Name,
 		})
@@ -111,7 +111,7 @@ func handleDeleteOrganization(uc usecases.Usecases) func(c *gin.Context) {
 		organizationID := c.Param("organization_id")
 
 		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
-		err := usecase.DeleteOrganization(c.Request.Context(), organizationID)
+		err := usecase.DeleteOrganization(ctx, organizationID)
 		if presentError(ctx, c, err) {
 			return
 		}

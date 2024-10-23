@@ -15,7 +15,7 @@ func handleListLicenses(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		usecase := usecasesWithCreds(ctx, uc).NewLicenseUsecase()
-		licenses, err := usecase.ListLicenses(c.Request.Context())
+		licenses, err := usecase.ListLicenses(ctx)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -36,7 +36,7 @@ func handleCreateLicense(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewLicenseUsecase()
-		license, err := usecase.CreateLicense(c.Request.Context(), dto.AdaptCreateLicenseInput(data))
+		license, err := usecase.CreateLicense(ctx, dto.AdaptCreateLicenseInput(data))
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -53,7 +53,7 @@ func handleGetLicenseById(uc usecases.Usecases) func(c *gin.Context) {
 		licenseId := c.Param("license_id")
 
 		usecase := usecasesWithCreds(ctx, uc).NewLicenseUsecase()
-		license, err := usecase.GetLicenseById(c.Request.Context(), licenseId)
+		license, err := usecase.GetLicenseById(ctx, licenseId)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -75,7 +75,7 @@ func handleUpdateLicense(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewLicenseUsecase()
-		license, err := usecase.UpdateLicense(c.Request.Context(), dto.AdaptUpdateLicenseInput(id, data))
+		license, err := usecase.UpdateLicense(ctx, dto.AdaptUpdateLicenseInput(id, data))
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -91,7 +91,7 @@ func handleValidateLicense(uc usecases.Usecases) func(c *gin.Context) {
 		licenseKey := c.Param("license_key")
 
 		usecase := uc.NewLicenseUsecase()
-		licenseValidation, err := usecase.ValidateLicense(c.Request.Context(), strings.TrimPrefix(licenseKey, "/"))
+		licenseValidation, err := usecase.ValidateLicense(ctx, strings.TrimPrefix(licenseKey, "/"))
 		if presentError(ctx, c, err) {
 			return
 		}

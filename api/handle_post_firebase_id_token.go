@@ -27,6 +27,7 @@ type accessToken struct {
 }
 
 func (t *TokenHandler) GenerateToken(c *gin.Context) {
+	ctx := c.Request.Context()
 	key := ParseApiKeyHeader(c.Request.Header)
 	bearerToken, err := ParseAuthorizationBearerHeader(c.Request.Header)
 	if err != nil {
@@ -35,7 +36,7 @@ func (t *TokenHandler) GenerateToken(c *gin.Context) {
 		return
 	}
 
-	marbleToken, expirationTime, err := t.generator.GenerateToken(c.Request.Context(), key, bearerToken)
+	marbleToken, expirationTime, err := t.generator.GenerateToken(ctx, key, bearerToken)
 	if err != nil {
 		_ = c.Error(fmt.Errorf("generator.GenerateToken error: %w", err))
 

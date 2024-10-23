@@ -11,7 +11,7 @@ func handleLivenessProbe(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		usecase := uc.NewLivenessUsecase()
-		err := usecase.Liveness(c.Request.Context())
+		err := usecase.Liveness(ctx)
 		if presentError(ctx, c, err) {
 			return
 		}

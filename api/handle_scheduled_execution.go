@@ -18,7 +18,7 @@ func handleGetScheduledExecution(uc usecases.Usecases) func(c *gin.Context) {
 		scheduledExecutionID := c.Param("execution_id")
 
 		usecase := usecasesWithCreds(ctx, uc).NewScheduledExecutionUsecase()
-		execution, err := usecase.GetScheduledExecution(c.Request.Context(), scheduledExecutionID)
+		execution, err := usecase.GetScheduledExecution(ctx, scheduledExecutionID)
 
 		if presentError(ctx, c, err) {
 			return
@@ -42,7 +42,7 @@ func handleListScheduledExecution(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(ctx, uc).NewScheduledExecutionUsecase()
 
-		executions, err := usecase.ListScheduledExecutions(c.Request.Context(), organizationId, scenarioIdPtr)
+		executions, err := usecase.ListScheduledExecutions(ctx, organizationId, scenarioIdPtr)
 
 		if presentError(ctx, c, err) {
 			return
@@ -65,7 +65,7 @@ func handleCreateScheduledExecution(uc usecases.Usecases) func(c *gin.Context) {
 		iterationID := c.Param("iteration_id")
 
 		usecase := usecasesWithCreds(ctx, uc).NewScheduledExecutionUsecase()
-		err = usecase.CreateScheduledExecution(c.Request.Context(), models.CreateScheduledExecutionInput{
+		err = usecase.CreateScheduledExecution(ctx, models.CreateScheduledExecutionInput{
 			OrganizationId:      organizationId,
 			ScenarioIterationId: iterationID,
 		})
