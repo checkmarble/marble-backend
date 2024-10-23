@@ -32,7 +32,7 @@ func handleIngestion(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewIngestionUseCase()
-		nb, err := usecase.IngestObject(c.Request.Context(), organizationId, objectType, objectBody)
+		nb, err := usecase.IngestObject(ctx, organizationId, objectType, objectBody)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -60,7 +60,7 @@ func handleIngestionMultiple(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewIngestionUseCase()
-		nb, err := usecase.IngestObjects(c.Request.Context(), organizationId, objectType, objectBody)
+		nb, err := usecase.IngestObjects(ctx, organizationId, objectType, objectBody)
 		if presentError(ctx, c, err) {
 			return
 		}

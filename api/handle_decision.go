@@ -26,7 +26,7 @@ func handleGetDecision(uc usecases.Usecases, marbleAppHost string) func(c *gin.C
 		decisionID := c.Param("decision_id")
 
 		usecase := usecasesWithCreds(ctx, uc).NewDecisionUsecase()
-		decision, err := usecase.GetDecision(c.Request.Context(), decisionID)
+		decision, err := usecase.GetDecision(ctx, decisionID)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -57,7 +57,7 @@ func handleListDecisions(uc usecases.Usecases, marbleAppHost string) func(c *gin
 
 		usecase := usecasesWithCreds(ctx, uc).NewDecisionUsecase()
 		decisions, err := usecase.ListDecisions(
-			c.Request.Context(),
+			ctx,
 			organizationId,
 			dto.AdaptPaginationAndSortingInput(paginationAndSorting),
 			filters,
@@ -104,7 +104,7 @@ func handlePostDecision(uc usecases.Usecases, marbleAppHost string) func(c *gin.
 		// make a decision
 		decisionUsecase := usecasesWithCreds(ctx, uc).NewDecisionUsecase()
 		decision, err := decisionUsecase.CreateDecision(
-			c.Request.Context(),
+			ctx,
 			models.CreateDecisionInput{
 				OrganizationId:     organizationId,
 				PayloadRaw:         requestData.TriggerObject,
@@ -129,8 +129,9 @@ func returnExpectedDecisionError(c *gin.Context, err error) bool {
 	if err == nil {
 		return false
 	}
-	logger := utils.LoggerFromContext(c.Request.Context())
-	logger.InfoContext(c.Request.Context(), fmt.Sprintf("error: %v", err))
+	ctx := c.Request.Context()
+	logger := utils.LoggerFromContext(ctx)
+	logger.InfoContext(ctx, fmt.Sprintf("error: %v", err))
 
 	if errors.Is(err, models.ErrScenarioTriggerConditionAndTriggerObjectMismatch) {
 		c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
@@ -158,7 +159,7 @@ func handlePostAllDecisions(uc usecases.Usecases, marbleAppHost string) func(c *
 
 		decisionUsecase := usecasesWithCreds(ctx, uc).NewDecisionUsecase()
 		decisions, nbSkipped, err := decisionUsecase.CreateAllDecisions(
-			c.Request.Context(),
+			ctx,
 			models.CreateAllDecisionsInput{
 				OrganizationId:     organizationId,
 				PayloadRaw:         requestData.TriggerObject,

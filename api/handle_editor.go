@@ -16,7 +16,7 @@ func handleGetEditorIdentifiers(uc usecases.Usecases) func(c *gin.Context) {
 		scenarioID := c.Param("scenario_id")
 
 		usecase := usecasesWithCreds(ctx, uc).AstExpressionUsecase()
-		result, err := usecase.EditorIdentifiers(c.Request.Context(), scenarioID)
+		result, err := usecase.EditorIdentifiers(ctx, scenarioID)
 
 		if presentError(ctx, c, err) {
 			return

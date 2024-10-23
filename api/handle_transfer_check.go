@@ -24,7 +24,7 @@ func handleCreateTransfer(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		creds, _ := utils.CredentialsFromCtx(c.Request.Context())
+		creds, _ := utils.CredentialsFromCtx(ctx)
 		partnerId := creds.PartnerId
 
 		var data dto.TransferCreateBody
@@ -33,7 +33,7 @@ func handleCreateTransfer(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		transferCheck, err := usecase.CreateTransfer(c.Request.Context(), orgId, partnerId, dto.AdaptTransferCreateBody(data))
+		transferCheck, err := usecase.CreateTransfer(ctx, orgId, partnerId, dto.AdaptTransferCreateBody(data))
 		var fieldValidationError models.FieldValidationError
 		if errors.As(err, &fieldValidationError) {
 			c.JSON(http.StatusBadRequest, gin.H{"errors": fieldValidationError})
@@ -65,7 +65,7 @@ func handleUpdateTransfer(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		transferCheck, err := usecase.UpdateTransfer(c.Request.Context(), orgId, id, models.TransferUpdateBody(data))
+		transferCheck, err := usecase.UpdateTransfer(ctx, orgId, id, models.TransferUpdateBody(data))
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -94,13 +94,13 @@ func handleQueryTransfers(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		creds, _ := utils.CredentialsFromCtx(c.Request.Context())
+		creds, _ := utils.CredentialsFromCtx(ctx)
 		var partnerId string
 		if creds.PartnerId != nil {
 			partnerId = *creds.PartnerId
 		}
 
-		transferCheck, err := usecase.QueryTransfers(c.Request.Context(), orgId, partnerId, filters.TransferId)
+		transferCheck, err := usecase.QueryTransfers(ctx, orgId, partnerId, filters.TransferId)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -120,7 +120,7 @@ func handleGetTransfer(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewTransferCheckUsecase()
-		transferCheck, err := usecase.GetTransfer(c.Request.Context(), organizationId, id)
+		transferCheck, err := usecase.GetTransfer(ctx, organizationId, id)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -141,7 +141,7 @@ func handleScoreTransfer(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		transferCheck, err := usecase.ScoreTransfer(c.Request.Context(), orgId, id)
+		transferCheck, err := usecase.ScoreTransfer(ctx, orgId, id)
 		if presentError(ctx, c, err) {
 			return
 		}

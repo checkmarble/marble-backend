@@ -20,7 +20,7 @@ func listScenarios(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioUsecase()
-		scenarios, err := usecase.ListScenarios(c.Request.Context(), organizationId)
+		scenarios, err := usecase.ListScenarios(ctx, organizationId)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -44,7 +44,7 @@ func createScenario(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioUsecase()
 		scenario, err := usecase.CreateScenario(
-			c.Request.Context(),
+			ctx,
 			dto.AdaptCreateScenarioInput(input, organizationId))
 		if presentError(ctx, c, err) {
 			return
@@ -59,7 +59,7 @@ func getScenario(uc usecases.Usecases) func(c *gin.Context) {
 		id := c.Param("scenario_id")
 
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioUsecase()
-		scenario, err := usecase.GetScenario(c.Request.Context(), id)
+		scenario, err := usecase.GetScenario(ctx, id)
 
 		if presentError(ctx, c, err) {
 			return
@@ -81,7 +81,7 @@ func updateScenario(uc usecases.Usecases) func(c *gin.Context) {
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioUsecase()
 
 		scenario, err := usecase.UpdateScenario(
-			c.Request.Context(),
+			ctx,
 			dto.AdaptUpdateScenarioInput(scenarioId, input))
 		if presentError(ctx, c, err) {
 			return

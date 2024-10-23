@@ -37,7 +37,7 @@ func handleCreatePartner(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewPartnerUsecase()
-		partner, err := usecase.CreatePartner(c.Request.Context(), dto.AdaptPartnerCreateInput(data))
+		partner, err := usecase.CreatePartner(ctx, dto.AdaptPartnerCreateInput(data))
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -53,7 +53,7 @@ func handleGetPartner(uc usecases.Usecases) func(c *gin.Context) {
 		id := c.Param("partner_id")
 
 		usecase := usecasesWithCreds(ctx, uc).NewPartnerUsecase()
-		partner, err := usecase.GetPartner(c.Request.Context(), id)
+		partner, err := usecase.GetPartner(ctx, id)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -75,7 +75,7 @@ func handleUpdatePartner(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewPartnerUsecase()
-		partner, err := usecase.UpdatePartner(c.Request.Context(), id, dto.AdaptPartnerUpdateInput(data))
+		partner, err := usecase.UpdatePartner(ctx, id, dto.AdaptPartnerUpdateInput(data))
 		if presentError(ctx, c, err) {
 			return
 		}
