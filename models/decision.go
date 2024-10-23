@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/checkmarble/marble-backend/models/ast"
-	"github.com/checkmarble/marble-backend/pure_utils"
+	"github.com/google/uuid"
 )
 
 const (
@@ -91,7 +91,7 @@ func AdaptScenarExecToDecision(scenarioExecution ScenarioExecution, clientObject
 
 	return DecisionWithRuleExecutions{
 		Decision: Decision{
-			DecisionId:           pure_utils.NewPrimaryKey(scenarioExecution.OrganizationId),
+			DecisionId:           uuid.Must(uuid.NewV7()).String(),
 			CreatedAt:            time.Now(),
 			ClientObject:         clientObject,
 			Outcome:              scenarioExecution.Outcome,
