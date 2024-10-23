@@ -21,9 +21,14 @@ type Credentials struct {
 	Role           string   `json:"role"`
 }
 
-func AdaptCredentialDto(creds models.Credentials) Credentials {
-	permissions := pure_utils.Map(creds.Role.Permissions(),
-		func(p models.Permission) string { return p.String() })
+func AdaptCredentialDto(creds models.Credentials) (Credentials, error) {
+	permissions, err := pure_utils.MapErr(
+		creds.Role.Permissions(),
+		func(p models.Permission) (string, error) { return p.String() },
+	)
+	if err != nil {
+		return Credentials{}, err
+	}
 
 	return Credentials{
 		ActorIdentity: Identity{
@@ -37,7 +42,7 @@ func AdaptCredentialDto(creds models.Credentials) Credentials {
 		PartnerId:      creds.PartnerId,
 		Permissions:    permissions,
 		Role:           creds.Role.String(),
-	}
+	}, nil
 }
 
 func AdaptCredential(dto Credentials) models.Credentials {

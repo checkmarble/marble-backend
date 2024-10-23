@@ -47,22 +47,6 @@ func handlePostOrganization(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
-func handleGetOrganizationUsers(uc usecases.Usecases) func(c *gin.Context) {
-	return func(c *gin.Context) {
-		ctx := c.Request.Context()
-		organizationID := c.Param("organization_id")
-
-		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
-		users, err := usecase.GetUsersOfOrganization(ctx, organizationID)
-		if presentError(ctx, c, err) {
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{
-			"users": pure_utils.Map(users, dto.AdaptUserDto),
-		})
-	}
-}
-
 func handleGetOrganization(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()

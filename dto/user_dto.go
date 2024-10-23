@@ -40,10 +40,10 @@ type CreateUser struct {
 }
 
 type UpdateUser struct {
-	Email     string `json:"email"`
-	Role      string `json:"role"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
+	Email     *string `json:"email"`
+	Role      *string `json:"role"`
+	FirstName *string `json:"first_name"`
+	LastName  *string `json:"last_name"`
 }
 
 func AdaptCreateUser(dto CreateUser) models.CreateUser {
@@ -54,5 +54,21 @@ func AdaptCreateUser(dto CreateUser) models.CreateUser {
 		PartnerId:      dto.PartnerId,
 		FirstName:      dto.FirstName,
 		LastName:       dto.LastName,
+	}
+}
+
+func AdaptUpdateUser(dto UpdateUser, userId string) models.UpdateUser {
+	var updatedRole *models.Role
+	if dto.Role != nil {
+		new := models.RoleFromString(*dto.Role)
+		updatedRole = &new
+	}
+
+	return models.UpdateUser{
+		UserId:    userId,
+		Email:     dto.Email,
+		Role:      updatedRole,
+		FirstName: dto.FirstName,
+		LastName:  dto.LastName,
 	}
 }
