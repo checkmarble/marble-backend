@@ -48,7 +48,7 @@ func (repo *UserRepositoryPostgresql) CreateUser(ctx context.Context, exec Execu
 				"last_name",
 			).
 			Values(
-				string(userId),
+				userId,
 				createUser.Email,
 				int(createUser.Role),
 				organizationId,
