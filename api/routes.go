@@ -111,18 +111,18 @@ func addRoutes(r *gin.Engine, auth Authentication, tokenHandler TokenHandler, uc
 	router.GET("/editor/:scenario_id/identifiers", tom, handleGetEditorIdentifiers(uc))
 	router.GET("/editor/:scenario_id/operators", tom, handleGetEditorOperators(uc))
 
-	router.GET("/users", tom, handleGetAllUsers(uc))
+	router.GET("/users", tom, handleListUsers(uc))
 	router.POST("/users", tom, handlePostUser(uc))
 	router.GET("/users/:user_id", tom, handleGetUser(uc))
 	router.PATCH("/users/:user_id", tom, handlePatchUser(uc))
 	router.DELETE("/users/:user_id", tom, handleDeleteUser(uc))
+	router.GET("/organizations/:organization_id/users", tom, handleListUsers(uc)) // TODO: deprecated, use GET /users instead (with query param)
 
 	router.GET("/organizations", tom, handleGetOrganizations(uc))
 	router.POST("/organizations", tom, handlePostOrganization(uc))
 	router.GET("/organizations/:organization_id", tom, handleGetOrganization(uc))
 	router.PATCH("/organizations/:organization_id", tom, handlePatchOrganization(uc))
 	router.DELETE("/organizations/:organization_id", tom, handleDeleteOrganization(uc))
-	router.GET("/organizations/:organization_id/users", tom, handleGetOrganizationUsers(uc))
 
 	router.GET("/partners", tom, handleListPartners(uc))
 	router.POST("/partners", tom, handleCreatePartner(uc))

@@ -1,6 +1,8 @@
 package models
 
-import "slices"
+import (
+	"slices"
+)
 
 type Role int
 
@@ -15,6 +17,16 @@ const (
 	TRANSFER_CHECK_API_CLIENT
 	TRANSFER_CHECK_USER
 )
+
+func GetValidUserRoles() []Role {
+	return []Role{
+		VIEWER,
+		BUILDER,
+		PUBLISHER,
+		ADMIN,
+		MARBLE_ADMIN,
+	}
+}
 
 func (r Role) String() string {
 	switch r {
