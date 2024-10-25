@@ -18,6 +18,7 @@ func (m *ScenarioPublisher) PublishOrUnpublishIteration(
 	tx repositories.Transaction,
 	scenarioAndIteration models.ScenarioAndIteration,
 	publicationAction models.PublicationAction,
+	testMode bool,
 ) ([]models.ScenarioPublication, error) {
 	args := m.Called(ctx, tx, scenarioAndIteration, publicationAction)
 	return args.Get(0).([]models.ScenarioPublication), args.Error(1)

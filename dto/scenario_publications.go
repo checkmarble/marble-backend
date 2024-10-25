@@ -29,12 +29,14 @@ func AdaptScenarioPublicationDto(sp models.ScenarioPublication) ScenarioPublicat
 type CreateScenarioPublicationBody struct {
 	ScenarioIterationId string `json:"scenario_iteration_id"`
 	PublicationAction   string `json:"publication_action"`
+	TestMode            bool   `json:"test_mode"`
 }
 
 func AdaptCreateScenarioPublicationBody(dto CreateScenarioPublicationBody) models.PublishScenarioIterationInput {
 	out := models.PublishScenarioIterationInput{
 		ScenarioIterationId: dto.ScenarioIterationId,
 		PublicationAction:   models.PublicationActionFrom(dto.PublicationAction),
+		TestMode:            dto.TestMode,
 	}
 
 	return out

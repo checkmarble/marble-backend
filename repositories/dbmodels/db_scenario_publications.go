@@ -14,6 +14,7 @@ type DBScenarioPublication struct {
 	ScenarioId          string    `db:"scenario_id"`
 	ScenarioIterationId string    `db:"scenario_iteration_id"`
 	PublicationAction   string    `db:"publication_action"`
+	TestMode            bool      `db:"test_mode"`
 	CreatedAt           time.Time `db:"created_at"`
 }
 
@@ -29,6 +30,7 @@ func AdaptScenarioPublication(dto DBScenarioPublication) (models.ScenarioPublica
 		ScenarioIterationId: dto.ScenarioIterationId,
 		Rank:                dto.Rank,
 		CreatedAt:           dto.CreatedAt,
+		TestMode:            dto.TestMode,
 		PublicationAction:   models.PublicationActionFrom(dto.PublicationAction),
 	}
 

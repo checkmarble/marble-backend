@@ -157,7 +157,7 @@ func (usecase *ScenarioUsecase) CreateScenario(
 		return models.Scenario{}, err
 	}
 
-	cratedScenario, err := executor_factory.TransactionReturnValue(
+	createdScenario, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Transaction) (models.Scenario, error) {
@@ -174,7 +174,7 @@ func (usecase *ScenarioUsecase) CreateScenario(
 	}
 
 	tracking.TrackEvent(ctx, models.AnalyticsScenarioCreated, map[string]interface{}{
-		"scenario_id": cratedScenario.Id,
+		"scenario_id": createdScenario.Id,
 	})
-	return cratedScenario, nil
+	return createdScenario, nil
 }
