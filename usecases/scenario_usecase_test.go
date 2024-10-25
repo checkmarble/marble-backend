@@ -224,11 +224,10 @@ func (suite *ScenarioUsecaseTestSuite) TestCreateScenario() {
 
 	suite.enforceSecurity.On("CreateScenario", suite.organizationId).Return(nil)
 
-	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.scenarioRepository.On("CreateScenario", suite.transaction, suite.organizationId,
 		createScenarioInput, mock.Anything).Return(nil)
 	suite.scenarioRepository.On("GetScenarioById", suite.transaction, mock.Anything).Return(suite.scenario, nil).Once()
-
+	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	result, err := suite.makeUsecase().CreateScenario(suite.ctx, createScenarioInput)
 
 	t := suite.T()

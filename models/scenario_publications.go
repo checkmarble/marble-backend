@@ -12,6 +12,7 @@ type ScenarioPublication struct {
 	OrganizationId      string
 	ScenarioId          string
 	ScenarioIterationId string
+	TestMode            bool
 	PublicationAction   PublicationAction
 	CreatedAt           time.Time
 }
@@ -94,6 +95,7 @@ type ListScenarioPublicationsFilters struct {
 type PublishScenarioIterationInput struct {
 	ScenarioIterationId string
 	PublicationAction   PublicationAction
+	TestMode            bool
 }
 
 type CreateScenarioPublicationInput struct {
@@ -101,6 +103,7 @@ type CreateScenarioPublicationInput struct {
 	ScenarioId          string
 	ScenarioIterationId string
 	PublicationAction   PublicationAction
+	TestMode            bool
 }
 
 type PublicationPreparationStatus struct {
