@@ -1,5 +1,9 @@
 package models
 
+import (
+	"github.com/cockroachdb/errors"
+)
+
 type Permission int
 
 const (
@@ -18,7 +22,9 @@ const (
 	ORGANIZATIONS_CREATE
 	ORGANIZATIONS_DELETE
 	USER_CREATE
+	MARBLE_USER_READ
 	MARBLE_USER_CREATE
+	MARBLE_USER_UPDATE
 	MARBLE_USER_DELETE
 	ANY_ORGANIZATION_ID_IN_CONTEXT
 	ANY_PARTNER_ID_IN_CONTEXT
@@ -50,8 +56,8 @@ const (
 	TAG_DELETE
 )
 
-func (r Permission) String() string {
-	return [...]string{
+func (r Permission) String() (string, error) {
+	permissions := [...]string{
 		"DECISION_READ",
 		"DECISION_CREATE",
 		"INGESTION",
@@ -67,7 +73,9 @@ func (r Permission) String() string {
 		"ORGANIZATIONS_CREATE",
 		"ORGANIZATIONS_DELETE",
 		"USER_CREATE",
+		"MARBLE_USER_READ",
 		"MARBLE_USER_CREATE",
+		"MARBLE_USER_UPDATE",
 		"MARBLE_USER_DELETE",
 		"ANY_ORGANIZATION_ID_IN_CONTEXT",
 		"ANY_PARTNER_ID_IN_CONTEXT",
@@ -97,5 +105,9 @@ func (r Permission) String() string {
 		"TAG_CREATE",
 		"TAG_UPDATE",
 		"TAG_DELETE",
-	}[r]
+	}
+	if int(r) > len(permissions)-1 {
+		return "", errors.New("Invalid permission: no string representation has been set")
+	}
+	return permissions[r], nil
 }

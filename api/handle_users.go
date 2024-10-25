@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
@@ -13,11 +14,27 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func handleGetAllUsers(uc usecases.Usecases) func(c *gin.Context) {
+func handleListUsers(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
+
+		organizationId := c.Query("organization_id")
+		// TODO: remove this once the endpoint has been migrated on the frontend
+		// deprecation migration
+		if organizationId == "" {
+			organizationId = c.Param("organization_id")
+		}
+		if organizationId != "" {
+			if _, err := uuid.Parse(organizationId); err != nil {
+				c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
+					Message: "invalid organisation_id format",
+				})
+				return
+			}
+		}
+
 		usecase := usecasesWithCreds(ctx, uc).NewUserUseCase()
-		users, err := usecase.GetAllUsers(c.Request.Context())
+		users, err := usecase.ListUsers(ctx, utils.PtrTo(organizationId, &utils.PtrToOptions{OmitZero: true}))
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -39,7 +56,7 @@ func handlePostUser(uc usecases.Usecases) func(c *gin.Context) {
 		createUser := dto.AdaptCreateUser(data)
 
 		usecase := usecasesWithCreds(ctx, uc).NewUserUseCase()
-		createdUser, err := usecase.AddUser(c.Request.Context(), createUser)
+		createdUser, err := usecase.AddUser(ctx, createUser)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -55,7 +72,7 @@ func handleGetUser(uc usecases.Usecases) func(c *gin.Context) {
 		userID := c.Param("user_id")
 
 		usecase := usecasesWithCreds(ctx, uc).NewUserUseCase()
-		user, err := usecase.GetUser(c.Request.Context(), userID)
+		user, err := usecase.GetUser(ctx, userID)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -68,7 +85,13 @@ func handleGetUser(uc usecases.Usecases) func(c *gin.Context) {
 func handlePatchUser(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		userID := c.Param("user_id")
+		userId := c.Param("user_id")
+		if _, err := uuid.Parse(userId); err != nil {
+			c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
+				Message: "invalid user_id format",
+			})
+			return
+		}
 
 		var data dto.UpdateUser
 		if err := c.ShouldBindJSON(&data); err != nil {
@@ -77,13 +100,7 @@ func handlePatchUser(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewUserUseCase()
-		createdUser, err := usecase.UpdateUser(c, models.UpdateUser{
-			UserId:    models.UserId(userID),
-			Email:     data.Email,
-			Role:      models.RoleFromString(data.Role),
-			FirstName: data.FirstName,
-			LastName:  data.LastName,
-		})
+		createdUser, err := usecase.UpdateUser(c, dto.AdaptUpdateUser(data, userId))
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -96,7 +113,7 @@ func handlePatchUser(uc usecases.Usecases) func(c *gin.Context) {
 func handleDeleteUser(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		creds, found := utils.CredentialsFromCtx(c.Request.Context())
+		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
 			presentError(ctx, c, fmt.Errorf("no credentials in context"))
 			return
@@ -106,7 +123,7 @@ func handleDeleteUser(uc usecases.Usecases) func(c *gin.Context) {
 		userId := c.Param("user_id")
 
 		usecase := usecasesWithCreds(ctx, uc).NewUserUseCase()
-		err := usecase.DeleteUser(c.Request.Context(), userId, currentUserId)
+		err := usecase.DeleteUser(ctx, userId, currentUserId)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -117,14 +134,19 @@ func handleDeleteUser(uc usecases.Usecases) func(c *gin.Context) {
 func handleGetCredentials() func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		creds, found := utils.CredentialsFromCtx(c.Request.Context())
+		creds, found := utils.CredentialsFromCtx(ctx)
 		if !found {
 			presentError(ctx, c, fmt.Errorf("no credentials in context %w", models.NotFoundError))
 			return
 		}
+		credDto, err := dto.AdaptCredentialDto(creds)
+		if err != nil {
+			presentError(ctx, c, err)
+			return
+		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"credentials": dto.AdaptCredentialDto(creds),
+			"credentials": credDto,
 		})
 	}
 }

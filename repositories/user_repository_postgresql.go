@@ -11,23 +11,22 @@ import (
 )
 
 type UserRepository interface {
-	CreateUser(ctx context.Context, exec Executor, createUser models.CreateUser) (models.UserId, error)
+	CreateUser(ctx context.Context, exec Executor, createUser models.CreateUser) (string, error)
 	UpdateUser(ctx context.Context, exec Executor, updateUser models.UpdateUser) error
 	DeleteUser(ctx context.Context, exec Executor, userID models.UserId) error
 	DeleteUsersOfOrganization(ctx context.Context, exec Executor, organizationId string) error
-	UserByID(ctx context.Context, exec Executor, userId models.UserId) (models.User, error)
-	UsersOfOrganization(ctx context.Context, exec Executor, organizationIDFilter string) ([]models.User, error)
-	AllUsers(ctx context.Context, exec Executor) ([]models.User, error)
+	UserById(ctx context.Context, exec Executor, userId string) (models.User, error)
+	ListUsers(ctx context.Context, exec Executor, organizationIDFilter *string) ([]models.User, error)
 	UserByEmail(ctx context.Context, exec Executor, email string) (*models.User, error)
 }
 
 type UserRepositoryPostgresql struct{}
 
-func (repo *UserRepositoryPostgresql) CreateUser(ctx context.Context, exec Executor, createUser models.CreateUser) (models.UserId, error) {
-	userId := models.UserId(uuid.NewString())
+func (repo *UserRepositoryPostgresql) CreateUser(ctx context.Context, exec Executor, createUser models.CreateUser) (string, error) {
+	userId := uuid.NewString()
 
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.UserId(""), err
+		return "", err
 	}
 
 	var organizationId *string
@@ -49,7 +48,7 @@ func (repo *UserRepositoryPostgresql) CreateUser(ctx context.Context, exec Execu
 				"last_name",
 			).
 			Values(
-				string(userId),
+				userId,
 				createUser.Email,
 				int(createUser.Role),
 				organizationId,
@@ -68,17 +67,17 @@ func (repo *UserRepositoryPostgresql) UpdateUser(ctx context.Context, exec Execu
 
 	query := NewQueryBuilder().Update(dbmodels.TABLE_USERS).Where(squirrel.Eq{"id": updateUser.UserId})
 
-	if updateUser.Email != "" {
-		query = query.Set("email", updateUser.Email)
+	if updateUser.Email != nil {
+		query = query.Set("email", *updateUser.Email)
 	}
-	if updateUser.Role != models.Role(0) {
-		query = query.Set("role", int(updateUser.Role))
+	if updateUser.Role != nil && *updateUser.Role != models.NO_ROLE {
+		query = query.Set("role", int(*updateUser.Role))
 	}
-	if updateUser.FirstName != "" {
-		query = query.Set("first_name", updateUser.FirstName)
+	if updateUser.FirstName != nil {
+		query = query.Set("first_name", *updateUser.FirstName)
 	}
-	if updateUser.LastName != "" {
-		query = query.Set("last_name", updateUser.LastName)
+	if updateUser.LastName != nil {
+		query = query.Set("last_name", *updateUser.LastName)
 	}
 
 	err := ExecBuilder(ctx, exec, query)
@@ -114,7 +113,7 @@ func (repo *UserRepositoryPostgresql) DeleteUsersOfOrganization(ctx context.Cont
 	return err
 }
 
-func (repo *UserRepositoryPostgresql) UserByID(ctx context.Context, exec Executor, userId models.UserId) (models.User, error) {
+func (repo *UserRepositoryPostgresql) UserById(ctx context.Context, exec Executor, userId string) (models.User, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return models.User{}, err
 	}
@@ -132,36 +131,25 @@ func (repo *UserRepositoryPostgresql) UserByID(ctx context.Context, exec Executo
 	)
 }
 
-func (repo *UserRepositoryPostgresql) UsersOfOrganization(ctx context.Context, exec Executor, organizationIDFilter string) ([]models.User, error) {
+func (repo *UserRepositoryPostgresql) ListUsers(ctx context.Context, exec Executor, organizationIDFilter *string) ([]models.User, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.UserFields...).
+		From(dbmodels.TABLE_USERS).
+		Where("deleted_at IS NULL").
+		OrderBy("id")
+
+	if organizationIDFilter != nil {
+		query = query.Where(squirrel.Eq{"organization_id": *organizationIDFilter})
 	}
 
 	return SqlToListOfModels(
 		ctx,
 		exec,
-		NewQueryBuilder().
-			Select(dbmodels.UserFields...).
-			From(dbmodels.TABLE_USERS).
-			Where("organization_id = ?", organizationIDFilter).
-			Where("deleted_at IS NULL").
-			OrderBy("id"),
-		dbmodels.AdaptUser,
-	)
-}
-
-func (repo *UserRepositoryPostgresql) AllUsers(ctx context.Context, exec Executor) ([]models.User, error) {
-	if err := validateMarbleDbExecutor(exec); err != nil {
-		return nil, err
-	}
-
-	return SqlToListOfModels(
-		ctx,
-		exec,
-		NewQueryBuilder().
-			Select(dbmodels.UserFields...).
-			From(dbmodels.TABLE_USERS).
-			OrderBy("id"),
+		query,
 		dbmodels.AdaptUser,
 	)
 }

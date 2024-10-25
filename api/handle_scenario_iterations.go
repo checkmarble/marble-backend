@@ -26,7 +26,7 @@ func handleListScenarioIterations(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioIterationUsecase()
 		scenarioIterations, err := usecase.ListScenarioIterations(
-			c.Request.Context(),
+			ctx,
 			organizationId,
 			models.GetScenarioIterationFilters{
 				ScenarioId: utils.PtrTo(scenarioId, &utils.PtrToOptions{OmitZero: true}),
@@ -113,7 +113,7 @@ func handleGetScenarioIteration(uc usecases.Usecases) func(c *gin.Context) {
 		iterationID := c.Param("iteration_id")
 
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioIterationUsecase()
-		si, err := usecase.GetScenarioIteration(c.Request.Context(), iterationID)
+		si, err := usecase.GetScenarioIteration(ctx, iterationID)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -147,7 +147,7 @@ func handleUpdateScenarioIteration(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioIterationUsecase()
-		updatedSI, err := usecase.UpdateScenarioIteration(c.Request.Context(),
+		updatedSI, err := usecase.UpdateScenarioIteration(ctx,
 			organizationId, updateScenarioIterationInput)
 		if handleExpectedIterationError(c, err) || presentError(ctx, c, err) {
 			return
@@ -192,7 +192,7 @@ func handleValidateScenarioIteration(uc usecases.Usecases) func(c *gin.Context) 
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioIterationUsecase()
-		scenarioValidation, err := usecase.ValidateScenarioIteration(c.Request.Context(),
+		scenarioValidation, err := usecase.ValidateScenarioIteration(ctx,
 			scenarioIterationID, triggerOrRule, input.RuleId)
 
 		if presentError(ctx, c, err) {
@@ -211,7 +211,7 @@ func handleCommitScenarioIterationVersion(uc usecases.Usecases) func(c *gin.Cont
 		scenarioIterationID := c.Param("iteration_id")
 
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioIterationUsecase()
-		iteration, err := usecase.CommitScenarioIterationVersion(c.Request.Context(), scenarioIterationID)
+		iteration, err := usecase.CommitScenarioIterationVersion(ctx, scenarioIterationID)
 		if handleExpectedIterationError(c, err) || presentError(ctx, c, err) {
 			return
 		}
@@ -228,11 +228,12 @@ func handleCommitScenarioIterationVersion(uc usecases.Usecases) func(c *gin.Cont
 }
 
 func handleExpectedIterationError(c *gin.Context, err error) bool {
+	ctx := c.Request.Context()
 	if err == nil {
 		return false
 	}
-	logger := utils.LoggerFromContext(c.Request.Context())
-	logger.InfoContext(c.Request.Context(), fmt.Sprintf("error: %v", err))
+	logger := utils.LoggerFromContext(ctx)
+	logger.InfoContext(ctx, fmt.Sprintf("error: %v", err))
 	if errors.Is(err, models.ErrScenarioIterationNotDraft) {
 		c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
 			Message:   "Only a draft iteration can be committed or edited",

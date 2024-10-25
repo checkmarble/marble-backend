@@ -29,8 +29,8 @@ type InboxUsecaseTestSuite struct {
 	organizationId  string
 	inboxId         string
 	inbox           models.Inbox
-	adminUserId     models.UserId
-	nonAdminUserId  models.UserId
+	adminUserId     string
+	nonAdminUserId  string
 	repositoryError error
 	securityError   error
 	ctx             context.Context
@@ -47,8 +47,8 @@ func (suite *InboxUsecaseTestSuite) SetupTest() {
 
 	suite.organizationId = "25ab6323-1657-4a52-923a-ef6983fe4532"
 	suite.inboxId = "0ae6fda7-f7b3-4218-9fc3-4efa329432a7"
-	suite.adminUserId = models.UserId("some user id")
-	suite.nonAdminUserId = models.UserId("some other user id")
+	suite.adminUserId = "some user id"
+	suite.nonAdminUserId = "some other user id"
 	suite.inbox = models.Inbox{
 		Id:             suite.inboxId,
 		OrganizationId: suite.organizationId,
@@ -56,14 +56,14 @@ func (suite *InboxUsecaseTestSuite) SetupTest() {
 	}
 	suite.credentials = models.Credentials{
 		ActorIdentity: models.Identity{
-			UserId: suite.nonAdminUserId,
+			UserId: models.UserId(suite.nonAdminUserId),
 		},
 		OrganizationId: suite.organizationId,
 		Role:           models.BUILDER,
 	}
 	suite.adminCredentials = models.Credentials{
 		ActorIdentity: models.Identity{
-			UserId: suite.adminUserId,
+			UserId: models.UserId(suite.adminUserId),
 		},
 		OrganizationId: suite.organizationId,
 		Role:           models.ADMIN,
@@ -171,7 +171,7 @@ func (suite *InboxUsecaseTestSuite) Test_GetInboxUserById_nominal() {
 	suite.inboxRepository.On("GetInboxUserById", suite.transaction,
 		mock.AnythingOfType("string")).Return(inboxUser, nil)
 	suite.inboxRepository.On("ListInboxUsers", suite.transaction, models.InboxUserFilterInput{
-		UserId: suite.nonAdminUserId,
+		UserId: models.UserId(suite.nonAdminUserId),
 	}).Return([]models.InboxUser{inboxUser}, nil)
 	suite.enforceSecurity.On("ReadInboxUser", inboxUser,
 		mock.AnythingOfType("[]models.InboxUser")).Return(nil)
@@ -191,7 +191,7 @@ func (suite *InboxUsecaseTestSuite) Test_GetInboxUserById_security_error() {
 	suite.inboxRepository.On("GetInboxUserById", suite.transaction,
 		mock.AnythingOfType("string")).Return(inboxUser, nil)
 	suite.inboxRepository.On("ListInboxUsers", suite.transaction, models.InboxUserFilterInput{
-		UserId: suite.nonAdminUserId,
+		UserId: models.UserId(suite.nonAdminUserId),
 	}).Return([]models.InboxUser{inboxUser}, nil)
 	suite.enforceSecurity.On("ReadInboxUser", inboxUser, []models.InboxUser{inboxUser}).Return(suite.securityError)
 
@@ -210,7 +210,7 @@ func (suite *InboxUsecaseTestSuite) Test_ListInboxUsers_nominal() {
 		InboxId: suite.inboxId,
 	}).Return([]models.InboxUser{inboxUser}, nil)
 	suite.inboxRepository.On("ListInboxUsers", suite.transaction, models.InboxUserFilterInput{
-		UserId: suite.nonAdminUserId,
+		UserId: models.UserId(suite.nonAdminUserId),
 	}).Return([]models.InboxUser{inboxUser}, nil)
 	suite.enforceSecurity.On("ReadInboxUser", inboxUser, []models.InboxUser{inboxUser}).Return(nil)
 
@@ -224,18 +224,21 @@ func (suite *InboxUsecaseTestSuite) Test_ListInboxUsers_nominal() {
 }
 
 func (suite *InboxUsecaseTestSuite) Test_CreateInboxUser_nominal_non_admin() {
-	inboxUser := models.InboxUser{InboxId: suite.inboxId, UserId: string(suite.nonAdminUserId), Role: models.InboxUserRoleAdmin}
+	inboxUser := models.InboxUser{InboxId: suite.inboxId, UserId: suite.nonAdminUserId, Role: models.InboxUserRoleAdmin}
 	input := models.CreateInboxUserInput{
 		InboxId: suite.inboxId,
-		UserId:  string(suite.nonAdminUserId), Role: models.InboxUserRoleAdmin,
+		UserId:  suite.nonAdminUserId, Role: models.InboxUserRoleAdmin,
 	}
-	targetUser := models.User{OrganizationId: suite.organizationId, UserId: suite.nonAdminUserId}
+	targetUser := models.User{
+		OrganizationId: suite.organizationId,
+		UserId:         models.UserId(suite.nonAdminUserId),
+	}
 	targetInbox := models.Inbox{OrganizationId: suite.organizationId, Id: suite.inboxId}
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	suite.enforceSecurity.On("CreateInboxUser", input,
 		mock.AnythingOfType("[]models.InboxUser"), targetInbox, targetUser).Return(nil)
 	suite.inboxRepository.On("ListInboxUsers", suite.transaction, models.InboxUserFilterInput{
-		UserId: suite.nonAdminUserId,
+		UserId: models.UserId(suite.nonAdminUserId),
 	}).Return([]models.InboxUser{inboxUser}, nil)
 	suite.inboxRepository.On("GetInboxById", suite.transaction, suite.inboxId).Return(
 		targetInbox, nil).Return(targetInbox, nil)
@@ -243,7 +246,7 @@ func (suite *InboxUsecaseTestSuite) Test_CreateInboxUser_nominal_non_admin() {
 		mock.AnythingOfType("string")).Return(nil)
 	suite.inboxRepository.On("GetInboxUserById", suite.transaction,
 		mock.AnythingOfType("string")).Return(inboxUser, nil)
-	suite.userRepository.On("UserByID", suite.transaction, suite.nonAdminUserId).Return(targetUser, nil)
+	suite.userRepository.On("UserById", suite.ctx, suite.transaction, suite.nonAdminUserId).Return(targetUser, nil)
 
 	newInboxUser, err := suite.makeUsecase().CreateInboxUser(suite.ctx, input)
 

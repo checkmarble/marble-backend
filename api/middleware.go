@@ -36,6 +36,7 @@ type Authentication struct {
 }
 
 func (a *Authentication) Middleware(c *gin.Context) {
+	ctx := c.Request.Context()
 	key := ParseApiKeyHeader(c.Request.Header)
 	jwtToken, err := ParseAuthorizationBearerHeader(c.Request.Header)
 	if err != nil {
@@ -44,14 +45,14 @@ func (a *Authentication) Middleware(c *gin.Context) {
 		return
 	}
 
-	credentials, err := a.validator.Validate(c.Request.Context(), jwtToken, key)
+	credentials, err := a.validator.Validate(ctx, jwtToken, key)
 	if err != nil {
 		_ = c.Error(fmt.Errorf("validator.Validate error: %w", err))
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 
-	newContext := context.WithValue(c.Request.Context(), utils.ContextKeyCredentials, credentials)
+	newContext := context.WithValue(ctx, utils.ContextKeyCredentials, credentials)
 	if attr, ok := identityAttr(credentials.ActorIdentity); ok {
 		logger := utils.LoggerFromContext(newContext).
 			With(attr).

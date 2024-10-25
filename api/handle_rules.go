@@ -21,7 +21,7 @@ func handleListRules(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewRuleUsecase()
-		rules, err := usecase.ListRules(c.Request.Context(), iterationID)
+		rules, err := usecase.ListRules(ctx, iterationID)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -54,7 +54,7 @@ func handleCreateRule(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewRuleUsecase()
-		rule, err := usecase.CreateRule(c.Request.Context(), createInputRule)
+		rule, err := usecase.CreateRule(ctx, createInputRule)
 		if handleExpectedIterationError(c, err) || presentError(ctx, c, err) {
 			return
 		}
@@ -76,7 +76,7 @@ func handleGetRule(uc usecases.Usecases) func(c *gin.Context) {
 		ruleID := c.Param("rule_id")
 
 		usecase := usecasesWithCreds(ctx, uc).NewRuleUsecase()
-		rule, err := usecase.GetRule(c.Request.Context(), ruleID)
+		rule, err := usecase.GetRule(ctx, ruleID)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -109,7 +109,7 @@ func handleUpdateRule(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewRuleUsecase()
-		updatedRule, err := usecase.UpdateRule(c.Request.Context(), updateRuleInput)
+		updatedRule, err := usecase.UpdateRule(ctx, updateRuleInput)
 		if handleExpectedIterationError(c, err) || presentError(ctx, c, err) {
 			return
 		}
@@ -131,7 +131,7 @@ func handleDeleteRule(uc usecases.Usecases) func(c *gin.Context) {
 		ruleID := c.Param("rule_id")
 
 		usecase := usecasesWithCreds(ctx, uc).NewRuleUsecase()
-		err := usecase.DeleteRule(c.Request.Context(), ruleID)
+		err := usecase.DeleteRule(ctx, ruleID)
 		if presentError(ctx, c, err) {
 			return
 		}

@@ -91,6 +91,7 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T, orgName string) (models
 	// Create a new organization
 	testAdminUsecase := generateUsecaseWithCredForMarbleAdmin(testUsecases)
 	orgUsecase := testAdminUsecase.NewOrganizationUseCase()
+	userUsecase := testAdminUsecase.NewUserUseCase()
 	organization, err := orgUsecase.CreateOrganization(ctx, orgName)
 	if err != nil {
 		assert.FailNow(t, "Could not create organization", err)
@@ -101,14 +102,13 @@ func setupOrgAndCreds(ctx context.Context, t *testing.T, orgName string) (models
 	testAdminUsecase = generateUsecaseWithCredForMarbleAdmin(testUsecases)
 
 	// Check that there are no users on the organization yet
-	users, err := orgUsecase.GetUsersOfOrganization(ctx, organizationId)
+	users, err := userUsecase.ListUsers(ctx, &organizationId)
 	if err != nil {
 		assert.FailNow(t, "Could not get users of organization", err)
 	}
 	assert.Equal(t, 0, len(users), "Expected 0 users, got %d", len(users))
 
 	// Create a new admin user on the organization
-	userUsecase := testAdminUsecase.NewUserUseCase()
 	adminUser, err := userUsecase.AddUser(ctx, models.CreateUser{
 		Email:          uuid.NewString() + "@testmarble.com",
 		OrganizationId: organizationId,

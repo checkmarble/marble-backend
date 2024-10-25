@@ -22,7 +22,7 @@ func handleGetDataModel(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
-		dataModel, err := usecase.GetDataModel(c.Request.Context(), organizationID)
+		dataModel, err := usecase.GetDataModel(ctx, organizationID)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -47,7 +47,7 @@ func handleCreateTable(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
-		tableID, err := usecase.CreateDataModelTable(c.Request.Context(), organizationID, input.Name, input.Description)
+		tableID, err := usecase.CreateDataModelTable(ctx, organizationID, input.Name, input.Description)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -78,7 +78,7 @@ func handleCreateField(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
-		fieldID, err := usecase.CreateDataModelField(c.Request.Context(), field)
+		fieldID, err := usecase.CreateDataModelField(ctx, field)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -99,7 +99,7 @@ func handleUpdateDataModelField(uc usecases.Usecases) func(c *gin.Context) {
 		fieldID := c.Param("fieldID")
 
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
-		err := usecase.UpdateDataModelField(c.Request.Context(), fieldID, models.UpdateFieldInput{
+		err := usecase.UpdateDataModelField(ctx, fieldID, models.UpdateFieldInput{
 			Description: input.Description,
 			IsEnum:      input.IsEnum,
 			IsUnique:    input.IsUnique,
@@ -135,7 +135,7 @@ func handleCreateLink(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
-		_, err = usecase.CreateDataModelLink(c.Request.Context(), link)
+		_, err = usecase.CreateDataModelLink(ctx, link)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -152,7 +152,7 @@ func handleDeleteDataModel(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
-		err = usecase.DeleteDataModel(c.Request.Context(), organizationID)
+		err = usecase.DeleteDataModel(ctx, organizationID)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -169,7 +169,7 @@ func handleGetOpenAPI(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
-		dataModel, err := usecase.GetDataModel(c.Request.Context(), organizationID)
+		dataModel, err := usecase.GetDataModel(ctx, organizationID)
 		if presentError(ctx, c, err) {
 			return
 		}

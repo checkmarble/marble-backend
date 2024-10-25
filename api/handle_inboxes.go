@@ -26,7 +26,7 @@ func handleGetInboxById(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
-		inbox, err := usecase.GetInboxById(c.Request.Context(), getInboxInput.InboxId)
+		inbox, err := usecase.GetInboxById(ctx, getInboxInput.InboxId)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -54,7 +54,7 @@ func handleListInboxes(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
-		inboxes, err := usecase.ListInboxes(c.Request.Context(), organizationId, withCaseCountFilter.WithCaseCount)
+		inboxes, err := usecase.ListInboxes(ctx, organizationId, withCaseCountFilter.WithCaseCount)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -82,7 +82,7 @@ func handlePostInbox(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
-		inbox, err := usecase.CreateInbox(c.Request.Context(), models.CreateInboxInput{
+		inbox, err := usecase.CreateInbox(ctx, models.CreateInboxInput{
 			Name: createInboxInput.Name, OrganizationId: organizationId,
 		})
 		if presentError(ctx, c, err) {
@@ -113,7 +113,7 @@ func handlePatchInbox(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
-		inbox, err := usecase.UpdateInbox(c.Request.Context(), getInboxInput.InboxId, data.Name)
+		inbox, err := usecase.UpdateInbox(ctx, getInboxInput.InboxId, data.Name)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -132,7 +132,7 @@ func handleDeleteInbox(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
-		err := usecase.DeleteInbox(c.Request.Context(), getInboxInput.InboxId)
+		err := usecase.DeleteInbox(ctx, getInboxInput.InboxId)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -155,7 +155,7 @@ func handleGetInboxUserById(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
-		inboxUser, err := usecase.GetInboxUserById(c.Request.Context(), getInboxUserInput.Id)
+		inboxUser, err := usecase.GetInboxUserById(ctx, getInboxUserInput.Id)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -168,7 +168,7 @@ func handleListAllInboxUsers(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
-		inboxUsers, err := usecase.ListAllInboxUsers(c.Request.Context())
+		inboxUsers, err := usecase.ListAllInboxUsers(ctx)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -187,7 +187,7 @@ func handleListInboxUsers(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
-		inboxUsers, err := usecase.ListInboxUsers(c.Request.Context(), listInboxUserInput.InboxId)
+		inboxUsers, err := usecase.ListInboxUsers(ctx, listInboxUserInput.InboxId)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -221,7 +221,7 @@ func handlePostInboxUser(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
-		inboxUser, err := usecase.CreateInboxUser(c.Request.Context(), models.CreateInboxUserInput{
+		inboxUser, err := usecase.CreateInboxUser(ctx, models.CreateInboxUserInput{
 			InboxId: input.Uri.InboxId,
 			UserId:  input.Body.UserId,
 			Role:    models.InboxUserRole(input.Body.Role),
@@ -252,7 +252,7 @@ func handlePatchInboxUser(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
-		inboxUser, err := usecase.UpdateInboxUser(c.Request.Context(), getInboxUserInput.Id, models.InboxUserRole(data.Role))
+		inboxUser, err := usecase.UpdateInboxUser(ctx, getInboxUserInput.Id, models.InboxUserRole(data.Role))
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -271,7 +271,7 @@ func handleDeleteInboxUser(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewInboxUsecase()
-		err := usecase.DeleteInboxUser(c.Request.Context(), getInboxUserInput.Id)
+		err := usecase.DeleteInboxUser(ctx, getInboxUserInput.Id)
 		if presentError(ctx, c, err) {
 			return
 		}

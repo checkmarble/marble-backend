@@ -12,42 +12,37 @@ type UserRepository struct {
 	mock.Mock
 }
 
-func (r *UserRepository) CreateUser(ctx context.Context, exec repositories.Executor, createUser models.CreateUser) (models.UserId, error) {
-	args := r.Called(exec, createUser)
-	return args.Get(0).(models.UserId), args.Error(1)
+func (r *UserRepository) CreateUser(ctx context.Context, exec repositories.Executor, createUser models.CreateUser) (string, error) {
+	args := r.Called(ctx, exec, createUser)
+	return args.Get(0).(string), args.Error(1)
 }
 
 func (r *UserRepository) UpdateUser(ctx context.Context, exec repositories.Executor, updateUser models.UpdateUser) error {
-	args := r.Called(exec, updateUser)
+	args := r.Called(ctx, exec, updateUser)
 	return args.Error(0)
 }
 
 func (r *UserRepository) DeleteUser(ctx context.Context, exec repositories.Executor, userID models.UserId) error {
-	args := r.Called(exec, userID)
+	args := r.Called(ctx, exec, userID)
 	return args.Error(0)
 }
 
 func (r *UserRepository) DeleteUsersOfOrganization(ctx context.Context, exec repositories.Executor, organizationId string) error {
-	args := r.Called(exec, organizationId)
+	args := r.Called(ctx, exec, organizationId)
 	return args.Error(0)
 }
 
-func (r *UserRepository) UserByID(ctx context.Context, exec repositories.Executor, userId models.UserId) (models.User, error) {
-	args := r.Called(exec, userId)
+func (r *UserRepository) UserById(ctx context.Context, exec repositories.Executor, userId string) (models.User, error) {
+	args := r.Called(ctx, exec, userId)
 	return args.Get(0).(models.User), args.Error(1)
 }
 
-func (r *UserRepository) UsersOfOrganization(ctx context.Context, exec repositories.Executor, organizationIDFilter string) ([]models.User, error) {
-	args := r.Called(exec, organizationIDFilter)
-	return args.Get(0).([]models.User), args.Error(1)
-}
-
-func (r *UserRepository) AllUsers(ctx context.Context, exec repositories.Executor) ([]models.User, error) {
-	args := r.Called(exec)
+func (r *UserRepository) ListUsers(ctx context.Context, exec repositories.Executor, filterOrganisationId *string) ([]models.User, error) {
+	args := r.Called(ctx, exec, filterOrganisationId)
 	return args.Get(0).([]models.User), args.Error(1)
 }
 
 func (r *UserRepository) UserByEmail(ctx context.Context, exec repositories.Executor, email string) (*models.User, error) {
-	args := r.Called(exec, email)
+	args := r.Called(ctx, exec, email)
 	return args.Get(0).(*models.User), args.Error(1)
 }

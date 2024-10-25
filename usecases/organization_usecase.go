@@ -8,8 +8,6 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/organization"
 	"github.com/checkmarble/marble-backend/usecases/security"
-	"github.com/google/uuid"
-	"github.com/pkg/errors"
 )
 
 type OrganizationUseCase struct {
@@ -94,23 +92,4 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 		organizationId,
 	)
 	return nil
-}
-
-func (usecase *OrganizationUseCase) GetUsersOfOrganization(ctx context.Context, organizationId string) ([]models.User, error) {
-	if err := usecase.enforceSecurity.ReadOrganization(organizationId); err != nil {
-		return []models.User{}, err
-	}
-
-	if _, err := uuid.Parse(organizationId); err != nil {
-		return nil, errors.Wrap(
-			models.BadParameterError,
-			"OrganizationId is empty in GetUsersOfOrganization",
-		)
-	}
-
-	return usecase.userRepository.UsersOfOrganization(
-		ctx,
-		usecase.executorFactory.NewExecutor(),
-		organizationId,
-	)
 }

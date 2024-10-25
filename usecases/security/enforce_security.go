@@ -27,8 +27,13 @@ func (e *EnforceSecurityImpl) ReadOrganization(organizationId string) error {
 }
 
 func (e *EnforceSecurityImpl) Permission(permission models.Permission) error {
+	permissionStr, err := permission.String()
+	if err != nil {
+		return errors.Wrap(err, "failed to adapt permission to string")
+	}
+
 	if !e.Credentials.Role.HasPermission(permission) {
-		return errors.Wrap(models.ForbiddenError, "missing permission "+permission.String())
+		return errors.Wrap(models.ForbiddenError, "missing permission "+permissionStr)
 	}
 	return nil
 }

@@ -24,8 +24,12 @@ type Claims struct {
 var ValidationAlgo = jwt.SigningMethodRS256
 
 func (repo *MarbleJwtRepository) EncodeMarbleToken(expirationTime time.Time, creds models.Credentials) (string, error) {
+	credDto, err := dto.AdaptCredentialDto(creds)
+	if err != nil {
+		return "", err
+	}
 	claims := &Claims{
-		Credentials: dto.AdaptCredentialDto(creds),
+		Credentials: credDto,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			Issuer:    "marble",

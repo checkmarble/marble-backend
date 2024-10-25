@@ -106,7 +106,7 @@ func (usecase *InboxUsers) CreateInboxUser(ctx context.Context, input models.Cre
 				return models.InboxUser{}, err
 			}
 
-			targetUser, err := usecase.UserRepository.UserByID(ctx, tx, models.UserId(input.UserId))
+			targetUser, err := usecase.UserRepository.UserById(ctx, tx, input.UserId)
 			if err != nil {
 				return models.InboxUser{}, err
 			}
