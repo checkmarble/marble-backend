@@ -31,6 +31,7 @@ func (publisher ScenarioPublisher) PublishOrUnpublishIteration(
 	tx repositories.Transaction,
 	scenarioAndIteration models.ScenarioAndIteration,
 	publicationAction models.PublicationAction,
+	testMode bool,
 ) ([]models.ScenarioPublication, error) {
 	var scenarioPublications []models.ScenarioPublication
 
@@ -71,15 +72,18 @@ func (publisher ScenarioPublisher) PublishOrUnpublishIteration(
 					fmt.Sprintf("Error validating scenario iteration %s: %s", iterationId, err.Error()),
 				)
 			}
-
-			if sps, err := publisher.unpublishOldIteration(ctx, tx, organizationId,
-				scenariosId, liveVersionId); err != nil {
-				return nil, err
-			} else {
-				scenarioPublications = append(scenarioPublications, sps...)
+			// If we are in test mode, no need to unpublish anything
+			if !testMode {
+				if sps, err := publisher.unpublishOldIteration(ctx, tx, organizationId,
+					scenariosId, liveVersionId); err != nil {
+					return nil, err
+				} else {
+					scenarioPublications = append(scenarioPublications, sps...)
+				}
 			}
 
-			if sp, err := publisher.publishNewIteration(ctx, tx, organizationId, scenariosId, iterationId); err != nil {
+			if sp, err := publisher.publishNewIteration(ctx, tx, organizationId,
+				scenariosId, iterationId, testMode); err != nil {
 				return nil, err
 			} else {
 				scenarioPublications = append(scenarioPublications, sp)
@@ -124,7 +128,7 @@ func (publisher ScenarioPublisher) unpublishOldIteration(
 }
 
 func (publisher ScenarioPublisher) publishNewIteration(ctx context.Context,
-	tx repositories.Transaction, organizationId, scenarioId, scenarioIterationId string,
+	tx repositories.Transaction, organizationId, scenarioId, scenarioIterationId string, testMode bool,
 ) (models.ScenarioPublication, error) {
 	newScenarioPublicationId := pure_utils.NewPrimaryKey(organizationId)
 	if err := publisher.ScenarioPublicationsRepository.CreateScenarioPublication(ctx, tx, models.CreateScenarioPublicationInput{
@@ -132,6 +136,7 @@ func (publisher ScenarioPublisher) publishNewIteration(ctx context.Context,
 		ScenarioIterationId: scenarioIterationId,
 		ScenarioId:          scenarioId,
 		PublicationAction:   models.Publish,
+		TestMode:            testMode,
 	}, newScenarioPublicationId); err != nil {
 		return models.ScenarioPublication{}, err
 	}
@@ -140,9 +145,11 @@ func (publisher ScenarioPublisher) publishNewIteration(ctx context.Context,
 	if err != nil {
 		return models.ScenarioPublication{}, err
 	}
-
-	if err = publisher.Repository.UpdateScenarioLiveIterationId(ctx, tx, scenarioId, &scenarioIterationId); err != nil {
-		return models.ScenarioPublication{}, err
+	if !testMode {
+		if err = publisher.Repository.UpdateScenarioLiveIterationId(ctx, tx, scenarioId, &scenarioIterationId); err != nil {
+			return models.ScenarioPublication{}, err
+		}
 	}
+
 	return scenarioPublication, nil
 }

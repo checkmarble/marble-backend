@@ -83,6 +83,7 @@ func (repo *ScenarioPublicationRepositoryPostgresql) CreateScenarioPublication(c
 				"scenario_id",
 				"scenario_iteration_id",
 				"publication_action",
+				"test_mode",
 			).
 			Values(
 				newScenarioPublicationId,
@@ -90,6 +91,7 @@ func (repo *ScenarioPublicationRepositoryPostgresql) CreateScenarioPublication(c
 				input.ScenarioId,
 				input.ScenarioIterationId,
 				input.PublicationAction.String(),
+				input.TestMode,
 			),
 	)
 	return err
