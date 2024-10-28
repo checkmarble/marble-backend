@@ -14,6 +14,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const timeoutMst = "Sorry, the API timed out. Please try again later."
+
 func presentError(ctx context.Context, c *gin.Context, err error) bool {
 	if err == nil {
 		return false
@@ -43,10 +45,10 @@ func presentError(ctx context.Context, c *gin.Context, err error) bool {
 
 	case errors.Is(err, context.DeadlineExceeded):
 		logger.WarnContext(ctx, fmt.Sprintf("Deadline exceeded: %v", err))
-		c.JSON(http.StatusRequestTimeout, errorResponse)
+		c.JSON(http.StatusRequestTimeout, dto.APIErrorResponse{Message: timeoutMst})
 	case errors.Is(err, context.Canceled):
 		logger.WarnContext(ctx, fmt.Sprintf("Deadline exceeded: %v", err))
-		c.JSON(http.StatusRequestTimeout, errorResponse)
+		c.JSON(http.StatusRequestTimeout, dto.APIErrorResponse{Message: timeoutMst})
 
 	default:
 		logger.ErrorContext(ctx, fmt.Sprintf("Unexpected Error: %+v", err))
