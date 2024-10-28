@@ -43,7 +43,7 @@ func TestFilterToSql(t *testing.T) {
 				Operator:   ast.FUNC_STRING_CONTAINS,
 				RightValue: "mit",
 			},
-			expected: "? ILIKE CONCAT('%',?,'%')",
+			expected: "? ILIKE CONCAT('%',?::text,'%')",
 			args:     []any{"COMMIT", "mit"},
 		},
 		{
