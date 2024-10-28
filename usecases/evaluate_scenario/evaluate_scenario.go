@@ -76,6 +76,12 @@ func EvalScenario(
 	logger.InfoContext(ctx, "Evaluating scenario", "scenarioId", params.Scenario.Id)
 	exec := repositories.ExecutorFactory.NewExecutor()
 
+	// If the scenario has no live version, don't try to Eval() it, return early
+	if params.Scenario.LiveVersionID == nil {
+		return models.ScenarioExecution{}, errors.Wrap(models.ErrScenarioHasNoLiveVersion,
+			"scenario has no live version in EvalScenario")
+	}
+
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(ctx, "evaluate_scenario.EvalScenario",
 		trace.WithAttributes(
@@ -86,12 +92,6 @@ func EvalScenario(
 		),
 	)
 	defer span.End()
-
-	// If the scenario has no live version, don't try to Eval() it, return early
-	if params.Scenario.LiveVersionID == nil {
-		return models.ScenarioExecution{}, errors.Wrap(models.ErrScenarioHasNoLiveVersion,
-			"scenario has no live version in EvalScenario")
-	}
 
 	liveVersion, err := repositories.EvalScenarioRepository.GetScenarioIteration(ctx, exec, *params.Scenario.LiveVersionID)
 	if err != nil {
