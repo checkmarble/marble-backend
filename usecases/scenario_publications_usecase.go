@@ -26,7 +26,6 @@ type ScenarioPublisher interface {
 		exec repositories.Transaction,
 		scenarioAndIteration models.ScenarioAndIteration,
 		publicationAction models.PublicationAction,
-		testMode bool,
 	) ([]models.ScenarioPublication, error)
 }
 
@@ -121,7 +120,6 @@ func (usecase *ScenarioPublicationUsecase) ExecuteScenarioPublicationAction(
 				tx,
 				scenarioAndIteration,
 				input.PublicationAction,
-				input.TestMode,
 			)
 		})
 }
