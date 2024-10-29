@@ -159,6 +159,16 @@ func (usecases *UsecasesWithCreds) NewScenarioPublicationUsecase() ScenarioPubli
 	}
 }
 
+func (usecases *UsecasesWithCreds) NewScenarioTestRunUseCase() ScenarioTestRunUsecase {
+	return ScenarioTestRunUsecase{
+		transactionFactory:             usecases.NewTransactionFactory(),
+		executorFactory:                usecases.NewExecutorFactory(),
+		scenarioPublicationsRepository: usecases.Repositories.ScenarioPublicationRepository,
+		enforceSecurity:                usecases.NewEnforceScenarioSecurity(),
+		clientDbIndexEditor:            usecases.NewClientDbIndexEditor(),
+	}
+}
+
 func (usecases *UsecasesWithCreds) NewClientDbIndexEditor() clientDbIndexEditor {
 	return indexes.NewClientDbIndexEditor(
 		usecases.NewExecutorFactory(),

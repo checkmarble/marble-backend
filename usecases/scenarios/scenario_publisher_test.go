@@ -70,7 +70,7 @@ func TestScenarioPublisher_PublishOrUnpublishIteration_unpublish_nominal(t *test
 	}
 
 	publications, err := publisher.PublishOrUnpublishIteration(
-		ctx, transaction, scenarioAndIteration, models.Unpublish, false)
+		ctx, transaction, scenarioAndIteration, models.Unpublish)
 	assert.NoError(t, err)
 	assert.Equal(t, []models.ScenarioPublication{scenarioPublication}, publications)
 
@@ -121,7 +121,7 @@ func TestScenarioPublisher_PublishOrUnpublishIteration_unpublish_CreateScenarioP
 	}
 
 	_, err := publisher.PublishOrUnpublishIteration(context.Background(), transaction,
-		scenarioAndIteration, models.Unpublish, false)
+		scenarioAndIteration, models.Unpublish)
 	assert.Error(t, err)
 
 	spr.AssertExpectations(t)

@@ -91,7 +91,6 @@ func (repo *ScenarioPublicationRepositoryPostgresql) CreateScenarioPublication(c
 				input.ScenarioId,
 				input.ScenarioIterationId,
 				input.PublicationAction.String(),
-				input.TestMode,
 			),
 	)
 	return err

@@ -56,6 +56,9 @@ var (
 	ErrScenarioTriggerConditionAndTriggerObjectMismatch = errors.Wrap(BadParameterError, "trigger_object does not match the scenario's trigger conditions")
 	ErrInvalidAST                                       = errors.Wrap(BadParameterError, "invalid AST")
 	ErrPanicInScenarioEvalution                         = errors.New("panic during scenario evaluation")
+
+	ErrTestRunAlreadyExist      = errors.Wrap(ConflictError, "there is an already existing testrun for this scenario")
+	ErrWrongIterationForTestRun = errors.Wrap(ConflictError, "the current scenario iteration is a live version and cannot be used")
 )
 
 // ingestion and decision creating payload related errors

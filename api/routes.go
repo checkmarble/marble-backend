@@ -86,8 +86,8 @@ func addRoutes(r *gin.Engine, auth Authentication, tokenHandler TokenHandler, uc
 
 	router.GET("/scenario-publications", tom, handleListScenarioPublications(uc))
 	router.POST("/scenario-publications", tom, handleCreateScenarioPublication(uc))
-	router.POST("/scenarios-publications-backtest", tom,
-		handleCreateScenarioPublication(uc))
+	router.POST("/scenarios-testrun", tom,
+		handleScenarioTestRun(uc))
 	router.GET("/scenario-publications/preparation", tom,
 		handleGetPublicationPreparationStatus(uc))
 	router.POST("/scenario-publications/preparation", tom, handleStartPublicationPreparation(uc))
