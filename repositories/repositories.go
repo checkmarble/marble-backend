@@ -116,7 +116,6 @@ func NewRepositories(
 		OrganizationSchemaRepository:  &OrganizationSchemaRepositoryPostgresql{},
 		CustomListRepository:          &CustomListRepositoryPostgresql{},
 		UploadLogRepository:           &UploadLogRepositoryImpl{},
-		ScenarioTestrunRepository:     &ScenarioTestRunRepositoryPostgresql{},
 		BlobRepository:                blobRepository,
 		MarbleAnalyticsRepository: MarbleAnalyticsRepository{
 			metabase: options.metabase,

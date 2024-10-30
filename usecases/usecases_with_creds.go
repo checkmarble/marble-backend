@@ -28,6 +28,13 @@ func (usecases *UsecasesWithCreds) NewEnforceScenarioSecurity() security.Enforce
 	}
 }
 
+func (usecases *UsecasesWithCreds) NewEnforceTestRunScenarioSecurity() security.EnforceSecurityTestRun {
+	return &security.EnforceSecurotyTestRunImpl{
+		EnforceSecurity: usecases.NewEnforceSecurity(),
+		Credentials:     usecases.Credentials,
+	}
+}
+
 func (usecases *UsecasesWithCreds) NewEnforceDecisionSecurity() security.EnforceSecurityDecision {
 	return &security.EnforceSecurityDecisionImpl{
 		EnforceSecurity: usecases.NewEnforceSecurity(),
@@ -177,12 +184,11 @@ func (usecases *UsecasesWithCreds) NewScenarioPublicationUsecase() ScenarioPubli
 
 func (usecases *UsecasesWithCreds) NewScenarioTestRunUseCase() ScenarioTestRunUsecase {
 	return ScenarioTestRunUsecase{
-		transactionFactory:             usecases.NewTransactionFactory(),
-		executorFactory:                usecases.NewExecutorFactory(),
-		scenarioPublicationsRepository: usecases.Repositories.ScenarioPublicationRepository,
-		enforceSecurity:                usecases.NewEnforceScenarioSecurity(),
-		clientDbIndexEditor:            usecases.NewClientDbIndexEditor(),
-		repository:                     usecases.Repositories.ScenarioTestrunRepository,
+		transactionFactory:  usecases.NewTransactionFactory(),
+		executorFactory:     usecases.NewExecutorFactory(),
+		enforceSecurity:     usecases.NewEnforceTestRunScenarioSecurity(),
+		clientDbIndexEditor: usecases.NewClientDbIndexEditor(),
+		repository:          &usecases.Repositories.MarbleDbRepository,
 	}
 }
 

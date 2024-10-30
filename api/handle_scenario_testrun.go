@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func handleScenarioTestRun(uc usecases.Usecases) func(c *gin.Context) {
+func handleCreateScenarioTestRun(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
@@ -32,6 +32,8 @@ func handleScenarioTestRun(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 		result := dto.AdaptScenarioTestRunDto(scenarioTestRun)
-		c.JSON(http.StatusOK, result)
+		c.JSON(http.StatusOK, gin.H{
+			"scenario_test_run": result,
+		})
 	}
 }

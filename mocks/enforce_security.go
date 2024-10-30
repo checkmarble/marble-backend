@@ -20,6 +20,11 @@ func (e *EnforceSecurity) Permission(permission models.Permission) error {
 	return args.Error(0)
 }
 
+func (e *EnforceSecurity) Permissions(permissions []models.Permission) error {
+	args := e.Called(permissions)
+	return args.Error(0)
+}
+
 func (e *EnforceSecurity) ReadDecision(decision models.Decision) error {
 	args := e.Called(decision)
 	return args.Error(0)
@@ -139,6 +144,11 @@ func (e *EnforceSecurity) ListOrganization() error {
 
 func (e *EnforceSecurity) ReadDataModel() error {
 	args := e.Called()
+	return args.Error(0)
+}
+
+func (e *EnforceSecurity) CreateTestRun(organizationId string) error {
+	args := e.Called(organizationId)
 	return args.Error(0)
 }
 

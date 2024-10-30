@@ -19,14 +19,20 @@ func (s *ScenatioTestrunRepository) CreateTestRun(ctx context.Context, tx reposi
 	return args.Error(0)
 }
 
-func (s *ScenatioTestrunRepository) GetByScenarioIterationID(ctx context.Context,
+func (s *ScenatioTestrunRepository) GetTestRunByScenarioIterationID(ctx context.Context,
 	exec repositories.Executor, scenarioID string,
-) (models.ScenarioTestRun, error) {
+) (*models.ScenarioTestRun, error) {
 	args := s.Called(ctx, exec, scenarioID)
-	return args.Get(0).(models.ScenarioTestRun), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.ScenarioTestRun), args.Error(1)
 }
 
-func (s *ScenatioTestrunRepository) GetByID(ctx context.Context, exec repositories.Executor, testrunID string) (models.ScenarioTestRun, error) {
+func (s *ScenatioTestrunRepository) GetTestRunByID(ctx context.Context, exec repositories.Executor, testrunID string) (*models.ScenarioTestRun, error) {
 	args := s.Called(ctx, exec, testrunID)
-	return args.Get(0).(models.ScenarioTestRun), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.ScenarioTestRun), args.Error(1)
 }

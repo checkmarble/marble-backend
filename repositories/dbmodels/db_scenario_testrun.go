@@ -15,7 +15,7 @@ type DBScenarioTestRun struct {
 	Status              string        `db:"status"`
 }
 
-const TABLE_SCENARIO_TESTRUN = "scenario_testrun"
+const TABLE_SCENARIO_TESTRUN = "scenario_test_run"
 
 var SelectScenarioTestRunColumns = utils.ColumnList[DBScenarioTestRun]()
 
