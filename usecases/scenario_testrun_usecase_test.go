@@ -76,14 +76,12 @@ func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 		}).Return([]models.ScenarioPublication{
 		suite.scenarioPublication,
 	}, nil)
-	suite.repository.On("GetByID", suite.ctx, mock.Anything).Return(&models.ScenarioTestRun{
-		ScenarioIterationId: output.ScenarioIterationId,
-	}, nil)
+	suite.repository.On("GetByID", suite.ctx, suite.transaction,
+		mock.Anything).Return(output, nil)
 	suite.repository.On("CreateTestRun", suite.ctx, suite.transaction, mock.Anything, input).Return(nil)
 	suite.repository.On("GetByScenarioIterationID", suite.ctx, suite.transaction,
 		input.ScenarioIterationId).Return(models.ScenarioTestRun{}, nil)
-	suite.repository.On("GetByID", suite.ctx, suite.transaction,
-		mock.Anything).Return(output, nil)
+
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	result, err := suite.makeUsecase().ActivateScenarioTestRun(suite.ctx, suite.organizationId, input)
 	t := suite.T()
