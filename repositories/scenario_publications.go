@@ -83,7 +83,6 @@ func (repo *ScenarioPublicationRepositoryPostgresql) CreateScenarioPublication(c
 				"scenario_id",
 				"scenario_iteration_id",
 				"publication_action",
-				"test_mode",
 			).
 			Values(
 				newScenarioPublicationId,
