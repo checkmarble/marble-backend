@@ -216,9 +216,7 @@ func (usecase *TransferCheckUsecase) CreateTransfer(
 		},
 	)
 	if err != nil {
-		return models.Transfer{}, errors.Wrapf(
-			errors.Handled(err),
-			"Error while creating decision in transfercheck")
+		return models.Transfer{}, handleTransferCheckDecisionError(err)
 	}
 
 	return models.Transfer{
@@ -515,9 +513,7 @@ func (usecase *TransferCheckUsecase) ScoreTransfer(
 		},
 	)
 	if err != nil {
-		return models.Transfer{}, errors.Wrapf(
-			errors.Handled(err),
-			"Error while creating decision in transfercheck")
+		return models.Transfer{}, handleTransferCheckDecisionError(err)
 	}
 
 	transfer := models.Transfer{
@@ -592,4 +588,11 @@ func (usecase *TransferCheckUsecase) beneficiaryIsInNetwork(ctx context.Context,
 	}
 
 	return true, nil
+}
+
+func handleTransferCheckDecisionError(err error) error {
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		return err
+	}
+	return errors.Wrapf(errors.Handled(err), "Error while creating decision in transfercheck")
 }

@@ -195,7 +195,7 @@ func (f Filter) ToSql() (sql string, args []any) {
 				mathComparisonFuncToString(f.Operator), right)
 		}
 	} else if isStringComparison(f.Operator) {
-		sql = fmt.Sprintf("%s ILIKE CONCAT('%%',%s,'%%')", left, right)
+		sql = fmt.Sprintf("%s ILIKE CONCAT('%%',%s::text,'%%')", left, right)
 	} else if isInListComparison(f.Operator) {
 		sql = fmt.Sprintf("%s = ANY(%s)", left, right)
 	}
