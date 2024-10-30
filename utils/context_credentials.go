@@ -50,17 +50,5 @@ func OrganizationIdFromRequest(request *http.Request) (organizationId string, er
 			"Unexpected error: credentials does not grant access to any organization")
 	}
 
-	// if creds.OrganizationId == "" && creds.Role == models.MARBLE_ADMIN {
-	// 	return "", errors.Wrap(
-	// 		models.ForbiddenError,
-	// 		"An organizationId must be passed in the request query params for MARBLE_ADMIN to use this endpoint")
-	// }
-
-	// if creds.OrganizationId == "" {
-	// 	return "", errors.Wrap(
-	// 		models.ForbiddenError,
-	// 		"Unexpected error: credentials does not grant access to any organization")
-	// }
-
 	return creds.OrganizationId, nil
 }
