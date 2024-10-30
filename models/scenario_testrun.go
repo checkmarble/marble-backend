@@ -13,18 +13,18 @@ const (
 func (t TestrunStatus) String() string {
 	switch t {
 	case Up:
-		return "Up"
+		return "up"
 	case Down:
-		return "Down"
+		return "down"
 	}
 	return "unknown"
 }
 
 func ScenarioTestStatusFrom(s string) TestrunStatus {
 	switch s {
-	case "Up":
+	case "up":
 		return Up
-	case "Down":
+	case "down":
 		return Down
 	case "unknown":
 		return Unknown

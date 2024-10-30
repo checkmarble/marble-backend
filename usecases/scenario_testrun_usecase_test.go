@@ -17,15 +17,14 @@ type ScenarioTestrunTestSuite struct {
 	transactionFactory *mocks.TransactionFactory
 	transaction        *mocks.Transaction
 	// exec                           *mocks.Executor
-	executorFactory                *mocks.ExecutorFactory
-	scenarioPublicationsRepository *mocks.ScenarioPublicationRepository
-	enforceSecurity                *mocks.EnforceSecurity
-	repository                     *mocks.ScenatioTestrunRepository
-	organizationId                 string
-	scenarioId                     string
-	scenarioPublicationId          string
-	scenarioPublication            models.ScenarioPublication
-	ctx                            context.Context
+	executorFactory       *mocks.ExecutorFactory
+	scenarioRepository    *mocks.ScenarioRepository
+	enforceSecurity       *mocks.EnforceSecurity
+	repository            *mocks.ScenatioTestrunRepository
+	organizationId        string
+	scenarioId            string
+	scenarioPublicationId string
+	ctx                   context.Context
 }
 
 func (suite *ScenarioTestrunTestSuite) SetupTest() {
@@ -34,26 +33,21 @@ func (suite *ScenarioTestrunTestSuite) SetupTest() {
 	suite.enforceSecurity = new(mocks.EnforceSecurity)
 	suite.transactionFactory = &mocks.TransactionFactory{TxMock: suite.transaction}
 	suite.executorFactory = new(mocks.ExecutorFactory)
-	suite.scenarioPublicationsRepository = new(mocks.ScenarioPublicationRepository)
+	suite.scenarioRepository = new(mocks.ScenarioRepository)
 	suite.repository = new(mocks.ScenatioTestrunRepository)
 	suite.organizationId = "25ab6323-1657-4a52-923a-ef6983fe4532"
 	suite.scenarioId = "c5968ff7-6142-4623-a6b3-1539f345e5fa"
 	suite.scenarioPublicationId = "c1c005f5-a920-4f92-aee1-f5007f2ad8c1"
 	suite.ctx = context.Background()
-	suite.scenarioPublication = models.ScenarioPublication{
-		OrganizationId:      suite.organizationId,
-		ScenarioId:          suite.scenarioId,
-		ScenarioIterationId: suite.scenarioPublicationId,
-	}
 }
 
 func (suite *ScenarioTestrunTestSuite) makeUsecase() *ScenarioTestRunUsecase {
 	return &ScenarioTestRunUsecase{
-		transactionFactory:             suite.transactionFactory,
-		executorFactory:                suite.executorFactory,
-		enforceSecurity:                suite.enforceSecurity,
-		repository:                     suite.repository,
-		scenarioPublicationsRepository: suite.scenarioPublicationsRepository,
+		transactionFactory: suite.transactionFactory,
+		executorFactory:    suite.executorFactory,
+		enforceSecurity:    suite.enforceSecurity,
+		repository:         suite.repository,
+		scenarioRepository: suite.scenarioRepository,
 	}
 }
 
@@ -70,17 +64,19 @@ func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 		Period:              time.Duration(1000),
 	}
 	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
-	suite.scenarioPublicationsRepository.On("ListScenarioPublicationsOfOrganization", suite.ctx,
-		suite.transaction, suite.organizationId, models.ListScenarioPublicationsFilters{
-			ScenarioId: &input.ScenarioId,
-		}).Return([]models.ScenarioPublication{
-		suite.scenarioPublication,
+	liveVersionID := "b76359b2-9806-40f1-9fee-7ea18c797b2e"
+	suite.scenarioRepository.On("GetScenarioById",
+		suite.transaction, input.ScenarioId).Return(models.Scenario{
+		LiveVersionID: &liveVersionID,
 	}, nil)
-	suite.repository.On("GetByID", suite.ctx, suite.transaction,
-		mock.Anything).Return(output, nil)
+	suite.repository.On("GetTestRunByID", suite.ctx, suite.transaction,
+		mock.Anything).Return(&output, nil)
+	suite.enforceSecurity.On("CreateTestRun", suite.organizationId).Return(nil)
 	suite.repository.On("CreateTestRun", suite.ctx, suite.transaction, mock.Anything, input).Return(nil)
-	suite.repository.On("GetByScenarioIterationID", suite.ctx, suite.transaction,
-		input.ScenarioIterationId).Return(models.ScenarioTestRun{}, nil)
+	suite.repository.On("GetTestRunByScenarioIterationID", suite.ctx, suite.transaction,
+		input.ScenarioIterationId).Return(&models.ScenarioTestRun{
+		Status: models.Down,
+	}, nil)
 
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	result, err := suite.makeUsecase().ActivateScenarioTestRun(suite.ctx, suite.organizationId, input)

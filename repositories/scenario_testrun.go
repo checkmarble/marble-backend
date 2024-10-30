@@ -12,11 +12,9 @@ import (
 type ScenarioTestRunRepository interface {
 	CreateTestRun(ctx context.Context, tx Transaction, testrunID string,
 		input models.ScenarioTestRunInput) error
-	GetByScenarioIterationID(ctx context.Context, exec Executor, scenarioID string) (models.ScenarioTestRun, error)
-	GetByID(ctx context.Context, exec Executor, testrunID string) (models.ScenarioTestRun, error)
+	GetTestRunByScenarioIterationID(ctx context.Context, exec Executor, scenarioID string) (*models.ScenarioTestRun, error)
+	GetTestRunByID(ctx context.Context, exec Executor, testrunID string) (*models.ScenarioTestRun, error)
 }
-
-type ScenarioTestRunRepositoryPostgresql struct{}
 
 func selectTestruns() squirrel.SelectBuilder {
 	return NewQueryBuilder().
@@ -24,7 +22,7 @@ func selectTestruns() squirrel.SelectBuilder {
 		From(dbmodels.TABLE_SCENARIO_TESTRUN)
 }
 
-func (repo *ScenarioTestRunRepositoryPostgresql) CreateTestRun(ctx context.Context,
+func (repo *MarbleDbRepository) CreateTestRun(ctx context.Context,
 	tx Transaction, testrunID string, input models.ScenarioTestRunInput,
 ) error {
 	if err := validateMarbleDbExecutor(tx); err != nil {
@@ -54,13 +52,13 @@ func (repo *ScenarioTestRunRepositoryPostgresql) CreateTestRun(ctx context.Conte
 	return nil
 }
 
-func (repo *ScenarioTestRunRepositoryPostgresql) GetByScenarioIterationID(ctx context.Context,
+func (repo *MarbleDbRepository) GetTestRunByScenarioIterationID(ctx context.Context,
 	exec Executor, scenarioIterationID string,
-) (models.ScenarioTestRun, error) {
+) (*models.ScenarioTestRun, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.ScenarioTestRun{}, err
+		return nil, err
 	}
-	return SqlToModel(
+	return SqlToOptionalModel(
 		ctx,
 		exec,
 		selectTestruns().Where(squirrel.Eq{"scenario_iteration_id": scenarioIterationID}),
@@ -68,11 +66,11 @@ func (repo *ScenarioTestRunRepositoryPostgresql) GetByScenarioIterationID(ctx co
 	)
 }
 
-func (repo *ScenarioTestRunRepositoryPostgresql) GetByID(ctx context.Context, exec Executor, testrunID string) (models.ScenarioTestRun, error) {
+func (repo *MarbleDbRepository) GetTestRunByID(ctx context.Context, exec Executor, testrunID string) (*models.ScenarioTestRun, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.ScenarioTestRun{}, err
+		return nil, err
 	}
-	return SqlToModel(
+	return SqlToOptionalModel(
 		ctx,
 		exec,
 		selectTestruns().Where(squirrel.Eq{"id": testrunID}),

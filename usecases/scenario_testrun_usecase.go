@@ -13,45 +13,40 @@ import (
 )
 
 type ScenarioTestRunUsecase struct {
-	transactionFactory             executor_factory.TransactionFactory
-	executorFactory                executor_factory.ExecutorFactory
-	scenarioPublicationsRepository repositories.ScenarioPublicationRepository
-	enforceSecurity                security.EnforceSecurityScenario
-	clientDbIndexEditor            clientDbIndexEditor
-	repository                     repositories.ScenarioTestRunRepository
+	transactionFactory  executor_factory.TransactionFactory
+	executorFactory     executor_factory.ExecutorFactory
+	enforceSecurity     security.EnforceSecurityTestRun
+	clientDbIndexEditor clientDbIndexEditor
+	repository          repositories.ScenarioTestRunRepository
+	scenarioRepository  ScenarioUsecaseRepository
 }
 
 func (usecase *ScenarioTestRunUsecase) ActivateScenarioTestRun(ctx context.Context,
 	organizationId string,
 	input models.ScenarioTestRunInput,
 ) (models.ScenarioTestRun, error) {
+	if err := usecase.enforceSecurity.CreateTestRun(organizationId); err != nil {
+		return models.ScenarioTestRun{}, err
+	}
 	exec := usecase.executorFactory.NewExecutor()
 	// we should not have any existing testrun for this scenario
-	existingTestrun, err := usecase.repository.GetByScenarioIterationID(ctx, exec, input.ScenarioIterationId)
+	existingTestrun, err := usecase.repository.GetTestRunByScenarioIterationID(ctx, exec, input.ScenarioIterationId)
 	if err != nil {
 		return models.ScenarioTestRun{}, errors.Wrap(err,
 			"error while fecthing entries to find an existing testrun")
 	}
-	if existingTestrun.ScenarioIterationId != "" && existingTestrun.Status == models.Up {
+	if existingTestrun != nil && existingTestrun.Status == models.Up {
 		return models.ScenarioTestRun{}, errors.Wrap(models.ErrTestRunAlreadyExist,
 			fmt.Sprintf("the scenario %s has a running testrun", input.ScenarioId))
 	}
 
 	// we should have a live version running
-	scenarioPublications, errScenarioPubs := usecase.scenarioPublicationsRepository.ListScenarioPublicationsOfOrganization(
-		ctx, exec, organizationId, models.ListScenarioPublicationsFilters{
-			ScenarioId: &input.ScenarioId,
-		})
-	if errScenarioPubs != nil {
-		return models.ScenarioTestRun{}, errScenarioPubs
+	scenario, errScenario := usecase.scenarioRepository.GetScenarioById(ctx, exec, input.ScenarioId)
+	if errScenario != nil {
+		return models.ScenarioTestRun{}, errScenario
 	}
-	if len(scenarioPublications) == 0 {
+	if scenario.LiveVersionID == nil {
 		return models.ScenarioTestRun{}, models.ErrScenarioHasNoLiveVersion
-	}
-	for _, scenarioPublication := range scenarioPublications {
-		if scenarioPublication.ScenarioIterationId == input.ScenarioIterationId {
-			return models.ScenarioTestRun{}, models.ErrWrongIterationForTestRun
-		}
 	}
 
 	return executor_factory.TransactionReturnValue(
@@ -62,8 +57,11 @@ func (usecase *ScenarioTestRunUsecase) ActivateScenarioTestRun(ctx context.Conte
 			if err := usecase.repository.CreateTestRun(ctx, tx, testrunID, input); err != nil {
 				return models.ScenarioTestRun{}, err
 			}
-			result, err := usecase.repository.GetByID(ctx, exec, testrunID)
-			return result, err
+			result, err := usecase.repository.GetTestRunByID(ctx, exec, testrunID)
+			if err != nil {
+				return models.ScenarioTestRun{}, err
+			}
+			return *result, err
 		},
 	)
 }
