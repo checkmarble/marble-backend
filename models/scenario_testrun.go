@@ -7,6 +7,7 @@ type TestrunStatus int
 const (
 	Up TestrunStatus = iota
 	Down
+	Unknown
 )
 
 func (t TestrunStatus) String() string {
@@ -17,6 +18,18 @@ func (t TestrunStatus) String() string {
 		return "Down"
 	}
 	return "unknown"
+}
+
+func ScenarioTestStatusFrom(s string) TestrunStatus {
+	switch s {
+	case "Up":
+		return Up
+	case "Down":
+		return Down
+	case "unknown":
+		return Unknown
+	}
+	return Unknown
 }
 
 type ScenarioTestRun struct {

@@ -84,6 +84,7 @@ type Repositories struct {
 	MarbleAnalyticsRepository         MarbleAnalyticsRepository
 	TransferCheckEnrichmentRepository *TransferCheckEnrichmentRepository
 	TaskQueueRepository               TaskQueueRepository
+	ScenarioTestrunRepository         ScenarioTestRunRepository
 }
 
 func NewQueryBuilder() squirrel.StatementBuilderType {
@@ -115,6 +116,7 @@ func NewRepositories(
 		OrganizationSchemaRepository:  &OrganizationSchemaRepositoryPostgresql{},
 		CustomListRepository:          &CustomListRepositoryPostgresql{},
 		UploadLogRepository:           &UploadLogRepositoryImpl{},
+		ScenarioTestrunRepository:     &ScenarioTestRunRepositoryPostgresql{},
 		BlobRepository:                blobRepository,
 		MarbleAnalyticsRepository: MarbleAnalyticsRepository{
 			metabase: options.metabase,

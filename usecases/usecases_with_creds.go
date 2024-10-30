@@ -182,6 +182,7 @@ func (usecases *UsecasesWithCreds) NewScenarioTestRunUseCase() ScenarioTestRunUs
 		scenarioPublicationsRepository: usecases.Repositories.ScenarioPublicationRepository,
 		enforceSecurity:                usecases.NewEnforceScenarioSecurity(),
 		clientDbIndexEditor:            usecases.NewClientDbIndexEditor(),
+		repository:                     usecases.Repositories.ScenarioTestrunRepository,
 	}
 }
 
