@@ -39,22 +39,6 @@ func NewDbExecutorFactory(
 	}
 }
 
-// func (factory DbExecutorFactory) organizationDatabaseSchema(
-// 	ctx context.Context,
-// 	organizationId string,
-// ) (models.DatabaseSchema, error) {
-// 	organizationSchema, err := factory.orgGetter.OrganizationSchemaOfOrganization(
-// 		ctx, factory.NewExecutor(), organizationId)
-// 	if err != nil {
-// 		return models.DatabaseSchema{}, err
-// 	}
-
-// 	return models.DatabaseSchema{
-// 		SchemaType: models.DATABASE_SCHEMA_TYPE_CLIENT,
-// 		Schema:     organizationSchema.DatabaseSchema.Schema,
-// 	}, nil
-// }
-
 func (factory DbExecutorFactory) TransactionInOrgSchema(
 	ctx context.Context,
 	organizationId string,
