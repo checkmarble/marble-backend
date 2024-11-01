@@ -27,11 +27,6 @@ var (
 // Authentication related errors
 var ErrUnknownUser = errors.Wrap(NotFoundError, "unknown user")
 
-// DB related errors
-var (
-	ErrIgnoreRollBackError = errors.New("ignore rollback error")
-)
-
 // Scenario status related errors
 var (
 	// iteration edition
