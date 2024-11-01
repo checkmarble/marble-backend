@@ -20,7 +20,6 @@ func AdaptOrganizationSchema(db DbOrganizationSchema) (models.OrganizationSchema
 		OrganizationId: db.OrgId,
 		DatabaseSchema: models.DatabaseSchema{
 			SchemaType: models.DATABASE_SCHEMA_TYPE_CLIENT,
-			Database:   models.DATABASE_MARBLE,
 			Schema:     db.SchemaName,
 		},
 	}, nil

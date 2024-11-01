@@ -158,6 +158,7 @@ func (repo *OrganizationRepositoryPostgresql) CreateOrganizationSchema(
 	return err
 }
 
+// TODO: is to be removed because we no longer need it
 func (repo *OrganizationRepositoryPostgresql) OrganizationSchemaOfOrganization(
 	ctx context.Context, exec Executor, organizationId string,
 ) (models.OrganizationSchema, error) {

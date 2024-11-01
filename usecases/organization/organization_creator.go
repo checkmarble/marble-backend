@@ -2,7 +2,6 @@ package organization
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
@@ -35,7 +34,7 @@ func (creator *OrganizationCreator) CreateOrganization(ctx context.Context, name
 				ctx,
 				tx,
 				organization.Id,
-				fmt.Sprintf("org-%s", organization.Name),
+				models.OrgSchemaName(organization.Name),
 			); err != nil {
 				return models.Organization{}, err
 			}

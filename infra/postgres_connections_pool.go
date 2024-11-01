@@ -16,6 +16,12 @@ const (
 	MAX_CONNECTION_IDLE_TIME = 5 * time.Minute
 )
 
+type ClientDbConfig struct {
+	ConnectionString string `json:"connection_string"`
+	MaxConns         int    `json:"max_conns"`
+	SchemaName       string `json:"schema_name"`
+}
+
 func NewPostgresConnectionPool(
 	ctx context.Context,
 	connectionString string,
@@ -37,7 +43,7 @@ func NewPostgresConnectionPool(
 	}
 	cfg.MaxConnIdleTime = MAX_CONNECTION_IDLE_TIME
 
-	pool, err := pgxpool.NewWithConfig(context.Background(), cfg)
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create connection pool: %w", err)
 	}
