@@ -2,17 +2,21 @@ package repositories
 
 import (
 	"github.com/Masterminds/squirrel"
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type options struct {
 	metabase                      Metabase
 	transfercheckEnrichmentBucket string
+	clientDbConfig                map[string]infra.ClientDbConfig
 	convoyClientProvider          ConvoyClientProvider
 	convoyRateLimit               int
 	riverClient                   *river.Client[pgx.Tx]
+	tp                            trace.TracerProvider
 }
 
 type Option func(*options)
@@ -50,6 +54,18 @@ func WithRiverClient(client *river.Client[pgx.Tx]) Option {
 	}
 }
 
+func WithClientDbConfig(clientDbConfig map[string]infra.ClientDbConfig) Option {
+	return func(o *options) {
+		o.clientDbConfig = clientDbConfig
+	}
+}
+
+func WithTracerProvider(tp trace.TracerProvider) Option {
+	return func(o *options) {
+		o.tp = tp
+	}
+}
+
 type Repositories struct {
 	ExecutorGetter                    ExecutorGetter
 	ConvoyRepository                  ConvoyRepository
@@ -81,7 +97,7 @@ func NewRepositories(
 ) Repositories {
 	options := getOptions(opts)
 
-	executorGetter := NewExecutorGetter(marbleConnectionPool)
+	executorGetter := NewExecutorGetter(marbleConnectionPool, options.clientDbConfig, options.tp)
 
 	blobRepository := NewBlobRepository(googleApplicationCredentials)
 

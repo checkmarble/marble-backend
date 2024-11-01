@@ -37,6 +37,7 @@ func RunTaskQueue() error {
 		Port:                utils.GetEnv("PG_PORT", "5432"),
 		User:                utils.GetRequiredEnv[string]("PG_USER"),
 		MaxPoolConnections:  utils.GetEnv("PG_MAX_POOL_SIZE", infra.DEFAULT_MAX_CONNECTIONS),
+		ClientDbConfigFile:  utils.GetEnv("CLIENT_DB_CONFIG_FILE", ""),
 	}
 	convoyConfiguration := infra.ConvoyConfiguration{
 		APIKey:    utils.GetEnv("CONVOY_API_KEY", ""),
@@ -99,6 +100,12 @@ func RunTaskQueue() error {
 		return err
 	}
 
+	clientDbConfig, err := infra.ParseClientDbConfig(pgConfig.ClientDbConfigFile)
+	if err != nil {
+		utils.LogAndReportSentryError(ctx, err)
+		return err
+	}
+
 	repositories := repositories.NewRepositories(
 		pool,
 		gcpConfig.GoogleApplicationCredentials,
@@ -107,6 +114,8 @@ func RunTaskQueue() error {
 			infra.InitializeConvoyRessources(convoyConfiguration),
 			convoyConfiguration.RateLimit,
 		),
+		repositories.WithClientDbConfig(clientDbConfig),
+		repositories.WithTracerProvider(telemetryRessources.TracerProvider),
 	)
 
 	// Start the task queue workers

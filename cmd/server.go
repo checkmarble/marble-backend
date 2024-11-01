@@ -44,6 +44,7 @@ func RunServer() error {
 		Port:                utils.GetEnv("PG_PORT", "5432"),
 		User:                utils.GetRequiredEnv[string]("PG_USER"),
 		MaxPoolConnections:  utils.GetEnv("PG_MAX_POOL_SIZE", infra.DEFAULT_MAX_CONNECTIONS),
+		ClientDbConfigFile:  utils.GetEnv("CLIENT_DB_CONFIG_FILE", ""),
 	}
 	metabaseConfig := infra.MetabaseConfiguration{
 		SiteUrl:             utils.GetEnv("METABASE_SITE_URL", ""),
@@ -111,6 +112,12 @@ func RunServer() error {
 		utils.LogAndReportSentryError(ctx, err)
 	}
 
+	clientDbConfig, err := infra.ParseClientDbConfig(pgConfig.ClientDbConfigFile)
+	if err != nil {
+		utils.LogAndReportSentryError(ctx, err)
+		return err
+	}
+
 	repositories := repositories.NewRepositories(
 		pool,
 		gcpConfig.GoogleApplicationCredentials,
@@ -120,6 +127,8 @@ func RunServer() error {
 			infra.InitializeConvoyRessources(convoyConfiguration),
 			convoyConfiguration.RateLimit,
 		),
+		repositories.WithClientDbConfig(clientDbConfig),
+		repositories.WithTracerProvider(telemetryRessources.TracerProvider),
 	)
 
 	uc := usecases.NewUsecases(repositories,
@@ -177,6 +186,7 @@ func RunServer() error {
 			ctx,
 			errors.Wrap(err, "Error while shutting down the server"),
 		)
+		return err
 	}
 
 	return err

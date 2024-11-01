@@ -46,10 +46,17 @@ type Transaction interface {
 	RawTx() pgx.Tx
 }
 
-func NewExecutorGetter(pool *pgxpool.Pool) ExecutorGetter {
+func NewExecutorGetter(
+	pool *pgxpool.Pool,
+	clientDbConfigs map[string]infra.ClientDbConfig,
+	tp trace.TracerProvider,
+) ExecutorGetter {
 	return ExecutorGetter{
+		clientDbConfigs:      clientDbConfigs,
+		clientDbPools:        make(map[string]*pgxpool.Pool, len(clientDbConfigs)),
 		marbleConnectionPool: pool,
-		// Add the other fields
+		tp:                   tp,
+		mu:                   &sync.Mutex{},
 	}
 }
 
