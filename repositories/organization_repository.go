@@ -3,7 +3,6 @@ package repositories
 import (
 	"context"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
@@ -20,7 +19,6 @@ type OrganizationRepository interface {
 	DeleteOrganizationDecisionRulesAsync(ctx context.Context, exec Executor, organizationId string)
 
 	// organization schema
-	OrganizationSchemaOfOrganization(ctx context.Context, exec Executor, organizationId string) (models.OrganizationSchema, error)
 	CreateOrganizationSchema(
 		ctx context.Context,
 		exec Executor,
@@ -156,23 +154,4 @@ func (repo *OrganizationRepositoryPostgresql) CreateOrganizationSchema(
 			),
 	)
 	return err
-}
-
-// TODO: is to be removed because we no longer need it
-func (repo *OrganizationRepositoryPostgresql) OrganizationSchemaOfOrganization(
-	ctx context.Context, exec Executor, organizationId string,
-) (models.OrganizationSchema, error) {
-	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.OrganizationSchema{}, err
-	}
-
-	return SqlToModel(
-		ctx,
-		exec,
-		NewQueryBuilder().
-			Select(dbmodels.OrganizationSchemaFields...).
-			From(dbmodels.ORGANIZATION_SCHEMA_TABLE).
-			Where(squirrel.Eq{"org_id": organizationId}),
-		dbmodels.AdaptOrganizationSchema,
-	)
 }
