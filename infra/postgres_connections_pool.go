@@ -2,7 +2,9 @@ package infra
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -61,4 +63,18 @@ func NewPostgresConnectionPool(
 		retry.Attempts(3),
 		retry.LastErrorOnly(true),
 	)
+}
+
+func ParseClientDbConfig(filename string) (map[string]ClientDbConfig, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	clientDbConfigs := make(map[string]ClientDbConfig)
+	if err := json.NewDecoder(file).Decode(&clientDbConfigs); err != nil {
+		return nil, err
+	}
+	return clientDbConfigs, nil
 }
