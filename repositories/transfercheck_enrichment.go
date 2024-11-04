@@ -94,7 +94,7 @@ func (r *TransferCheckEnrichmentRepository) getIpCountryRanges(ctx context.Conte
 	defer r.muCountries.Unlock()
 
 	if time.Now().After(r.countryRangesExpireAt) {
-		ranges, err := r.readIpCountryRanges(ctx)
+		ranges, err := r.readIpCountryRangesFromBlob(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -106,7 +106,7 @@ func (r *TransferCheckEnrichmentRepository) getIpCountryRanges(ctx context.Conte
 }
 
 // Expects a CSV file with two columns: IP range and country code (ISO 3166-1 alpha-3) containing both ipv4 and ipv6 ranges.
-func (r *TransferCheckEnrichmentRepository) readIpCountryRanges(ctx context.Context) ([]ipCountryRange, error) {
+func (r *TransferCheckEnrichmentRepository) readIpCountryRangesFromBlob(ctx context.Context) ([]ipCountryRange, error) {
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(
 		ctx,
@@ -203,7 +203,7 @@ func (r *TransferCheckEnrichmentRepository) getIpTypeRanges(ctx context.Context)
 	defer r.muIpTypes.Unlock()
 
 	if time.Now().After(r.ipTypeRangesExpireAt) {
-		ranges, err := r.readIpTypeRanges(ctx)
+		ranges, err := r.readIpTypeRangesFromBlob(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -218,13 +218,14 @@ func (r *TransferCheckEnrichmentRepository) getIpTypeRanges(ctx context.Context)
 // one with one column (CIDR IP range) containing both ipv4 and ipv6 ranges with VPN address ranges
 // one with one column (IP addresses) containing  both ipv4 and ipv6 with TOR exit nodes
 // The ips & ranges between the two files may overlap.
-func (r *TransferCheckEnrichmentRepository) readIpTypeRanges(ctx context.Context) ([]ipTypeRange, error) {
+func (r *TransferCheckEnrichmentRepository) readIpTypeRangesFromBlob(ctx context.Context) ([]ipTypeRange, error) {
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(
 		ctx,
 		"repositories.TransferCheckEnrichmentRepository.setupIpTypeRanges",
 	)
 	defer span.End()
+	var ipRanges []ipTypeRange
 
 	file, err := r.blobRepository.GetBlob(ctx, r.bucket, IP_VPN_RANGE_FILE)
 	if err != nil {
@@ -239,7 +240,7 @@ func (r *TransferCheckEnrichmentRepository) readIpTypeRanges(ctx context.Context
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to parse VPN IP range %s", record[0])
 		}
-		r.ipTypeRanges = append(r.ipTypeRanges, ipTypeRange{
+		ipRanges = append(ipRanges, ipTypeRange{
 			ipRange: ipRange,
 			ipType:  models.VpnIP,
 		})
@@ -257,7 +258,6 @@ func (r *TransferCheckEnrichmentRepository) readIpTypeRanges(ctx context.Context
 	fileReader = csv.NewReader(file.ReadCloser)
 	record, err = fileReader.Read()
 
-	var ipRanges []ipTypeRange
 	var ip netip.Addr
 	for err == nil {
 		ip, err = netip.ParseAddr(record[0])
