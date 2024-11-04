@@ -17,7 +17,7 @@ type EnforceSecurotyTestRunImpl struct {
 
 func (e *EnforceSecurotyTestRunImpl) CreateTestRun(organizationId string) error {
 	return errors.Join(
-		e.Permissions(models.BUILDER_PERMISSIONS),
+		e.Permission(models.SCENARIO_CREATE),
 		e.ReadOrganization(organizationId),
 	)
 }

@@ -168,11 +168,10 @@ func (usecases *UsecasesWithCreds) NewScenarioPublicationUsecase() ScenarioPubli
 
 func (usecases *UsecasesWithCreds) NewScenarioTestRunUseCase() ScenarioTestRunUsecase {
 	return ScenarioTestRunUsecase{
-		transactionFactory:  usecases.NewTransactionFactory(),
-		executorFactory:     usecases.NewExecutorFactory(),
-		enforceSecurity:     usecases.NewEnforceTestRunScenarioSecurity(),
-		clientDbIndexEditor: usecases.NewClientDbIndexEditor(),
-		repository:          &usecases.Repositories.MarbleDbRepository,
+		transactionFactory: usecases.NewTransactionFactory(),
+		executorFactory:    usecases.NewExecutorFactory(),
+		enforceSecurity:    usecases.NewEnforceTestRunScenarioSecurity(),
+		repository:         &usecases.Repositories.MarbleDbRepository,
 	}
 }
 

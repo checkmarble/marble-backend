@@ -73,10 +73,8 @@ func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 		mock.Anything).Return(&output, nil)
 	suite.enforceSecurity.On("CreateTestRun", suite.organizationId).Return(nil)
 	suite.repository.On("CreateTestRun", suite.ctx, suite.transaction, mock.Anything, input).Return(nil)
-	suite.repository.On("GetTestRunByScenarioIterationID", suite.ctx, suite.transaction,
-		input.ScenarioIterationId).Return(&models.ScenarioTestRun{
-		Status: models.Down,
-	}, nil)
+	suite.repository.On("GetActiveTestRunByScenarioIterationID", suite.ctx, suite.transaction,
+		input.ScenarioIterationId).Return(nil, nil)
 
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	result, err := suite.makeUsecase().ActivateScenarioTestRun(suite.ctx, suite.organizationId, input)

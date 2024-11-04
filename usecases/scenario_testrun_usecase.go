@@ -13,12 +13,11 @@ import (
 )
 
 type ScenarioTestRunUsecase struct {
-	transactionFactory  executor_factory.TransactionFactory
-	executorFactory     executor_factory.ExecutorFactory
-	enforceSecurity     security.EnforceSecurityTestRun
-	clientDbIndexEditor clientDbIndexEditor
-	repository          repositories.ScenarioTestRunRepository
-	scenarioRepository  ScenarioUsecaseRepository
+	transactionFactory executor_factory.TransactionFactory
+	executorFactory    executor_factory.ExecutorFactory
+	enforceSecurity    security.EnforceSecurityTestRun
+	repository         repositories.ScenarioTestRunRepository
+	scenarioRepository ScenarioUsecaseRepository
 }
 
 func (usecase *ScenarioTestRunUsecase) ActivateScenarioTestRun(ctx context.Context,
@@ -30,12 +29,12 @@ func (usecase *ScenarioTestRunUsecase) ActivateScenarioTestRun(ctx context.Conte
 	}
 	exec := usecase.executorFactory.NewExecutor()
 	// we should not have any existing testrun for this scenario
-	existingTestrun, err := usecase.repository.GetTestRunByScenarioIterationID(ctx, exec, input.ScenarioIterationId)
+	existingTestrun, err := usecase.repository.GetActiveTestRunByScenarioIterationID(ctx, exec, input.ScenarioIterationId)
 	if err != nil {
 		return models.ScenarioTestRun{}, errors.Wrap(err,
 			"error while fecthing entries to find an existing testrun")
 	}
-	if existingTestrun != nil && existingTestrun.Status == models.Up {
+	if existingTestrun != nil {
 		return models.ScenarioTestRun{}, errors.Wrap(models.ErrTestRunAlreadyExist,
 			fmt.Sprintf("the scenario %s has a running testrun", input.ScenarioId))
 	}
@@ -47,6 +46,11 @@ func (usecase *ScenarioTestRunUsecase) ActivateScenarioTestRun(ctx context.Conte
 	}
 	if scenario.LiveVersionID == nil {
 		return models.ScenarioTestRun{}, models.ErrScenarioHasNoLiveVersion
+	}
+
+	// the live version must not be the one on which we want to start a testrun
+	if *scenario.LiveVersionID == input.ScenarioIterationId {
+		return models.ScenarioTestRun{}, models.ErrWrongIterationForTestRun
 	}
 
 	return executor_factory.TransactionReturnValue(

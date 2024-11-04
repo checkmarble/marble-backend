@@ -12,7 +12,9 @@ import (
 type ScenarioTestRunRepository interface {
 	CreateTestRun(ctx context.Context, tx Transaction, testrunID string,
 		input models.ScenarioTestRunInput) error
-	GetTestRunByScenarioIterationID(ctx context.Context, exec Executor, scenarioID string) (*models.ScenarioTestRun, error)
+	GetActiveTestRunByScenarioIterationID(ctx context.Context, exec Executor,
+		scenarioIterationID string) (*models.ScenarioTestRun, error)
+	ListTestRunsByScenarioID(ctx context.Context, exec Executor, scenarioID string) ([]models.ScenarioTestRun, error)
 	GetTestRunByID(ctx context.Context, exec Executor, testrunID string) (*models.ScenarioTestRun, error)
 }
 
@@ -52,16 +54,39 @@ func (repo *MarbleDbRepository) CreateTestRun(ctx context.Context,
 	return nil
 }
 
-func (repo *MarbleDbRepository) GetTestRunByScenarioIterationID(ctx context.Context,
+func (repo *MarbleDbRepository) GetActiveTestRunByScenarioIterationID(ctx context.Context,
 	exec Executor, scenarioIterationID string,
 ) (*models.ScenarioTestRun, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
+	query := selectTestruns().Where(squirrel.Eq{"scenario_iteration_id": scenarioIterationID}).Where(squirrel.Eq{
+		"status": models.Up.String(),
+	})
 	return SqlToOptionalModel(
 		ctx,
 		exec,
-		selectTestruns().Where(squirrel.Eq{"scenario_iteration_id": scenarioIterationID}),
+		query,
+		dbmodels.AdaptScenarioTestrun,
+	)
+}
+
+func (repo *MarbleDbRepository) ListTestRunsByScenarioID(ctx context.Context,
+	exec Executor, scenarioID string,
+) ([]models.ScenarioTestRun, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectScenarioTestRunColumns...).
+		From(dbmodels.TABLE_SCENARIO_TESTRUN + " AS tr").
+		Join(dbmodels.TABLE_SCENARIO_ITERATIONS + " AS scit ON scit.id = tr.scenario_iteration_id").
+		Join(dbmodels.TABLE_SCENARIOS + " AS sc ON sc.id = scit.scenario_id").
+		Where(squirrel.Eq{"sc.id": scenarioID})
+	return SqlToListOfModels(
+		ctx,
+		exec,
+		query,
 		dbmodels.AdaptScenarioTestrun,
 	)
 }
