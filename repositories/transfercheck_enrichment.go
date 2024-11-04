@@ -110,7 +110,7 @@ func (r *TransferCheckEnrichmentRepository) readIpCountryRangesFromBlob(ctx cont
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(
 		ctx,
-		"repositories.TransferCheckEnrichmentRepository.setupIpCountryRanges",
+		"repositories.TransferCheckEnrichmentRepository.readIpCountryRangesFromBlob",
 	)
 	defer span.End()
 
@@ -122,6 +122,11 @@ func (r *TransferCheckEnrichmentRepository) readIpCountryRangesFromBlob(ctx cont
 	fileReader := csv.NewReader(file.ReadCloser)
 	record, err := fileReader.Read()
 
+	_, span = tracer.Start(
+		ctx,
+		"repositories.TransferCheckEnrichmentRepository.readIpCountryRangesFromBlob - parse and sort",
+	)
+	defer span.End()
 	var ipRanges []ipCountryRange
 	var ipRange netip.Prefix
 	for err == nil {
@@ -222,7 +227,7 @@ func (r *TransferCheckEnrichmentRepository) readIpTypeRangesFromBlob(ctx context
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(
 		ctx,
-		"repositories.TransferCheckEnrichmentRepository.setupIpTypeRanges",
+		"repositories.TransferCheckEnrichmentRepository.readIpTypeRangesFromBlob",
 	)
 	defer span.End()
 	var ipRanges []ipTypeRange
