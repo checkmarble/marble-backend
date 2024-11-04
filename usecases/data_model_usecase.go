@@ -149,6 +149,10 @@ func (usecase *DataModelUseCase) UpdateDataModelTable(ctx context.Context, table
 }
 
 func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, field models.CreateFieldInput) (string, error) {
+	if field.Name == "id" {
+		return "", errors.Wrap(models.BadParameterError, "field name 'id' is reserved")
+	}
+
 	fieldId := uuid.New().String()
 	var tableName string
 	var organizationId string
