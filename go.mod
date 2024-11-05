@@ -18,7 +18,7 @@ require (
 	github.com/gin-contrib/size v1.0.1
 	github.com/gin-contrib/timeout v1.0.1
 	github.com/gin-gonic/gin v1.10.0
-	github.com/golang-jwt/jwt/v4 v4.5.0
+	github.com/golang-jwt/jwt/v4 v4.5.1
 	github.com/google/uuid v1.6.0
 	github.com/guregu/null/v5 v5.0.0
 	github.com/hashicorp/go-set/v2 v2.1.0
