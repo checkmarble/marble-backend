@@ -106,6 +106,7 @@ func (g ExecutorGetter) getPoolAndSchema(
 		defaultConfig, defaultConfigFound := g.clientDbConfigs[defaultOrgConfigKey]
 		if defaultConfigFound && org.UseMarbleDbSchemaAsDefault {
 			config = defaultConfig
+			config.SchemaName = ""
 		} else {
 			// as fallback, use the marble db with the default schema name
 			return g.marbleConnectionPool, models.DatabaseSchema{
