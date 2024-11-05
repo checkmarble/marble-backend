@@ -18,7 +18,7 @@ func RunMigrations() error {
 		Password:            utils.GetRequiredEnv[string]("PG_PASSWORD"),
 		Port:                utils.GetEnv("PG_PORT", "5432"),
 		User:                utils.GetRequiredEnv[string]("PG_USER"),
-		SslMode:             utils.GetEnv("PG_SSL_MODE", "require"),
+		SslMode:             utils.GetEnv("PG_SSL_MODE", "prefer"),
 	}
 
 	logger := utils.NewLogger(utils.GetEnv("LOGGING_FORMAT", "text"))

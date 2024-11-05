@@ -29,7 +29,7 @@ func RunSendPendingWebhookEvents() error {
 		Port:                utils.GetEnv("PG_PORT", "5432"),
 		User:                utils.GetRequiredEnv[string]("PG_USER"),
 		MaxPoolConnections:  utils.GetEnv("PG_MAX_POOL_SIZE", infra.DEFAULT_MAX_CONNECTIONS),
-		SslMode:             utils.GetEnv("PG_SSL_MODE", "require"),
+		SslMode:             utils.GetEnv("PG_SSL_MODE", "prefer"),
 	}
 	convoyConfiguration := infra.ConvoyConfiguration{
 		APIKey:    utils.GetEnv("CONVOY_API_KEY", ""),
