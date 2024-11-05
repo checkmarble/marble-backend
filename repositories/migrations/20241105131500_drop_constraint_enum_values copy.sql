@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 ALTER TABLE organizations
-ADD COLUMN use_marble_db_schema_as_default BOOLEAN NOT NULL DEFAULT FALSE;
+ADD COLUMN IF NOT EXISTS use_marble_db_schema_as_default BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- +goose StatementEnd
 -- +goose Down
