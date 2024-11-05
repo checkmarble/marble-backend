@@ -33,7 +33,7 @@ func RunScheduledExecuter() error {
 		User:                utils.GetRequiredEnv[string]("PG_USER"),
 		MaxPoolConnections:  utils.GetEnv("PG_MAX_POOL_SIZE", infra.DEFAULT_MAX_CONNECTIONS),
 		ClientDbConfigFile:  utils.GetEnv("CLIENT_DB_CONFIG_FILE", ""),
-		SslMode:             utils.GetEnv("PG_SSL_MODE", "require"),
+		SslMode:             utils.GetEnv("PG_SSL_MODE", "prefer"),
 	}
 	convoyConfiguration := infra.ConvoyConfiguration{
 		APIKey:    utils.GetEnv("CONVOY_API_KEY", ""),
