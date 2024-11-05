@@ -66,6 +66,9 @@ func NewPostgresConnectionPool(
 }
 
 func ParseClientDbConfig(filename string) (map[string]ClientDbConfig, error) {
+	if filename == "" {
+		return nil, nil
+	}
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err
