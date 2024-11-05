@@ -104,7 +104,7 @@ func (g ExecutorGetter) getPoolAndSchema(
 	if !ok {
 		// If no specific DB is configured for the client, check if there is a default config to use instead for all orgs
 		defaultConfig, defaultConfigFound := g.clientDbConfigs[defaultOrgConfigKey]
-		if defaultConfigFound && org.UseMarbleDbSchemaAsDefault {
+		if defaultConfigFound && !org.UseMarbleDbSchemaAsDefault {
 			config = defaultConfig
 			config.SchemaName = ""
 		} else {
