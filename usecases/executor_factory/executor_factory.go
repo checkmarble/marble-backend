@@ -9,13 +9,11 @@ import (
 
 // interfaces used by the class
 type executorFactoryRepository interface {
-	GetExecutor(ctx context.Context, typ models.DatabaseSchemaType, organizationId string,
-		organizationName string) (repositories.Executor, error)
+	GetExecutor(ctx context.Context, typ models.DatabaseSchemaType, org *models.Organization) (repositories.Executor, error)
 	Transaction(
 		ctx context.Context,
 		typ models.DatabaseSchemaType,
-		organizationId string,
-		organizationName string,
+		org *models.Organization,
 		fn func(tx repositories.Transaction) error,
 	) error
 }
@@ -50,18 +48,18 @@ func (factory DbExecutorFactory) TransactionInOrgSchema(
 	}
 
 	return factory.transactionFactoryRepository.Transaction(ctx,
-		models.DATABASE_SCHEMA_TYPE_CLIENT, organizationId, org.Name, f)
+		models.DATABASE_SCHEMA_TYPE_CLIENT, &org, f)
 }
 
 func (factory DbExecutorFactory) Transaction(
 	ctx context.Context,
 	f func(tx repositories.Transaction) error,
 ) error {
-	// for a DATABASE_SCHEMA_TYPE_MARBLE type transaction, we don't need to pass organizationId and organizationName because it just
+	// for a DATABASE_SCHEMA_TYPE_MARBLE type transaction, we don't need to pass the organization because it just
 	// uses the existing pool and default schema
 	return factory.transactionFactoryRepository.Transaction(
 		ctx,
-		models.DATABASE_SCHEMA_TYPE_MARBLE, "", "",
+		models.DATABASE_SCHEMA_TYPE_MARBLE, nil,
 		f)
 }
 
@@ -77,8 +75,7 @@ func (factory DbExecutorFactory) NewClientDbExecutor(
 	return factory.transactionFactoryRepository.GetExecutor(
 		ctx,
 		models.DATABASE_SCHEMA_TYPE_CLIENT,
-		organizationId,
-		org.Name,
+		&org,
 	)
 }
 
@@ -87,6 +84,6 @@ func (factory DbExecutorFactory) NewExecutor() repositories.Executor {
 	exec, _ := factory.transactionFactoryRepository.GetExecutor(
 		context.Background(),
 		models.DATABASE_SCHEMA_TYPE_MARBLE,
-		"", "")
+		nil)
 	return exec
 }

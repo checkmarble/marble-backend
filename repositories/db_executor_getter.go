@@ -15,6 +15,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+const defaultOrgConfigKey = "default"
+
 type ExecutorGetter struct {
 	marbleConnectionPool *pgxpool.Pool
 
@@ -63,11 +65,10 @@ func NewExecutorGetter(
 func (g ExecutorGetter) Transaction(
 	ctx context.Context,
 	typ models.DatabaseSchemaType,
-	organizationId string,
-	organizationName string,
+	org *models.Organization,
 	fn func(exec Transaction) error,
 ) error {
-	pool, databaseSchema, err := g.getPoolAndSchema(ctx, typ, organizationId, organizationName)
+	pool, databaseSchema, err := g.getPoolAndSchema(ctx, typ, org)
 	if err != nil {
 		return errors.Wrap(err, "Error getting pool and schema")
 	}
@@ -85,22 +86,41 @@ func (g ExecutorGetter) Transaction(
 func (g ExecutorGetter) getPoolAndSchema(
 	ctx context.Context,
 	typ models.DatabaseSchemaType,
-	organizationId string,
-	organizationName string,
+	org *models.Organization,
 ) (*pgxpool.Pool, models.DatabaseSchema, error) {
 	// For a marble connection pool, just use the existing pool
 	if typ == models.DATABASE_SCHEMA_TYPE_MARBLE {
 		return g.marbleConnectionPool, models.DATABASE_MARBLE_SCHEMA, nil
 	}
 
+	if org == nil {
+		return nil, models.DatabaseSchema{}, errors.New(
+			"Organization must be provided for client database")
+	}
+
 	// For a client connection pool, create a new pool if it doesn't exist. Several customers can share the same pool, depending on the config.
-	config, ok := g.clientDbConfigs[organizationId]
+	config, ok := g.clientDbConfigs[org.Id]
 	// if no specific DB is configured for the client, put the data in a dedicated schema in the main marble DB
 	if !ok {
-		return g.marbleConnectionPool, models.DatabaseSchema{
-			SchemaType: models.DATABASE_SCHEMA_TYPE_CLIENT,
-			Schema:     models.OrgSchemaName(organizationName),
-		}, nil
+		// If no specific DB is configured for the client, check if there is a default config to use instead for all orgs
+		defaultConfig, defaultConfigFound := g.clientDbConfigs[defaultOrgConfigKey]
+		if defaultConfigFound && org.UseMarbleDbSchemaAsDefault {
+			config = defaultConfig
+		} else {
+			// as fallback, use the marble db with the default schema name
+			return g.marbleConnectionPool, models.DatabaseSchema{
+				SchemaType: models.DATABASE_SCHEMA_TYPE_CLIENT,
+				Schema:     models.OrgSchemaName(org.Name),
+			}, nil
+		}
+	}
+
+	if config.ConnectionString == "" {
+		return nil, models.DatabaseSchema{}, errors.New(
+			"Client DB config must have a connection string")
+	}
+	if config.SchemaName == "" {
+		config.SchemaName = models.OrgSchemaName(org.Name)
 	}
 
 	g.mu.Lock()
@@ -130,10 +150,9 @@ func (g ExecutorGetter) getPoolAndSchema(
 func (g ExecutorGetter) GetExecutor(
 	ctx context.Context,
 	typ models.DatabaseSchemaType,
-	organizationId string,
-	organizationName string,
+	org *models.Organization,
 ) (Executor, error) {
-	pool, databaseSchema, err := g.getPoolAndSchema(ctx, typ, organizationId, organizationName)
+	pool, databaseSchema, err := g.getPoolAndSchema(ctx, typ, org)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error getting pool and schema")
 	}
