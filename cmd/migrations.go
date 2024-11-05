@@ -11,12 +11,14 @@ import (
 
 func RunMigrations() error {
 	pgConfig := infra.PgConfig{
+		ConnectionString:    utils.GetEnv("PG_CONNECTION_STRING", ""),
 		Database:            "marble",
 		DbConnectWithSocket: utils.GetEnv("PG_CONNECT_WITH_SOCKET", false),
 		Hostname:            utils.GetRequiredEnv[string]("PG_HOSTNAME"),
 		Password:            utils.GetRequiredEnv[string]("PG_PASSWORD"),
 		Port:                utils.GetEnv("PG_PORT", "5432"),
 		User:                utils.GetRequiredEnv[string]("PG_USER"),
+		SslMode:             utils.GetEnv("PG_SSL_MODE", "require"),
 	}
 
 	logger := utils.NewLogger(utils.GetEnv("LOGGING_FORMAT", "text"))
