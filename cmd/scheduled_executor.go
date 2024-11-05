@@ -24,6 +24,7 @@ func RunScheduledExecuter() error {
 		ProjectId:     utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
 	}
 	pgConfig := infra.PgConfig{
+		ConnectionString:    utils.GetEnv("PG_CONNECTION_STRING", ""),
 		Database:            "marble",
 		DbConnectWithSocket: utils.GetEnv("PG_CONNECT_WITH_SOCKET", false),
 		Hostname:            utils.GetRequiredEnv[string]("PG_HOSTNAME"),
@@ -32,6 +33,7 @@ func RunScheduledExecuter() error {
 		User:                utils.GetRequiredEnv[string]("PG_USER"),
 		MaxPoolConnections:  utils.GetEnv("PG_MAX_POOL_SIZE", infra.DEFAULT_MAX_CONNECTIONS),
 		ClientDbConfigFile:  utils.GetEnv("CLIENT_DB_CONFIG_FILE", ""),
+		SslMode:             utils.GetEnv("PG_SSL_MODE", "require"),
 	}
 	convoyConfiguration := infra.ConvoyConfiguration{
 		APIKey:    utils.GetEnv("CONVOY_API_KEY", ""),

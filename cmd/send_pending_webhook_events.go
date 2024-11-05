@@ -21,6 +21,7 @@ func RunSendPendingWebhookEvents() error {
 		ProjectId:     utils.GetEnv("GOOGLE_CLOUD_PROJECT", ""),
 	}
 	pgConfig := infra.PgConfig{
+		ConnectionString:    utils.GetEnv("PG_CONNECTION_STRING", ""),
 		Database:            "marble",
 		DbConnectWithSocket: utils.GetEnv("PG_CONNECT_WITH_SOCKET", false),
 		Hostname:            utils.GetRequiredEnv[string]("PG_HOSTNAME"),
@@ -28,6 +29,7 @@ func RunSendPendingWebhookEvents() error {
 		Port:                utils.GetEnv("PG_PORT", "5432"),
 		User:                utils.GetRequiredEnv[string]("PG_USER"),
 		MaxPoolConnections:  utils.GetEnv("PG_MAX_POOL_SIZE", infra.DEFAULT_MAX_CONNECTIONS),
+		SslMode:             utils.GetEnv("PG_SSL_MODE", "require"),
 	}
 	convoyConfiguration := infra.ConvoyConfiguration{
 		APIKey:    utils.GetEnv("CONVOY_API_KEY", ""),
