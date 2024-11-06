@@ -31,7 +31,12 @@ const (
 	BATCH_INGESTION_TIMEOUT = 55 * time.Second
 
 	SEQUENTIAL_DECISION_TIMEOUT = 30 * time.Second
-	DEFAULT_TIMEOUT             = 5 * time.Second
+
+	// TODO: temporary workaround, what we need to do is to make the endpoint reliably respond quickly even
+	// without warmup
+	LIST_DECISION_TIMEOUT = 10 * time.Second
+
+	DEFAULT_TIMEOUT = 5 * time.Second
 )
 
 func addRoutes(r *gin.Engine, auth Authentication, tokenHandler TokenHandler, uc usecases.Usecases, marbleAppHost string) {
@@ -47,7 +52,7 @@ func addRoutes(r *gin.Engine, auth Authentication, tokenHandler TokenHandler, uc
 
 	router.GET("/ast-expression/available-functions", tom, handleAvailableFunctions)
 
-	router.GET("/decisions", tom, handleListDecisions(uc, marbleAppHost))
+	router.GET("/decisions", timeoutMiddleware(LIST_DECISION_TIMEOUT), handleListDecisions(uc, marbleAppHost))
 	router.POST("/decisions", timeoutMiddleware(models.DECISION_TIMEOUT), handlePostDecision(uc, marbleAppHost))
 	router.POST("/decisions/all",
 		timeoutMiddleware(SEQUENTIAL_DECISION_TIMEOUT),

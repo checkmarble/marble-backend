@@ -25,7 +25,7 @@ type (
 )
 
 const (
-	COUNT_ROWS_LIMIT              = 9000
+	COUNT_ROWS_LIMIT              = 1000
 	SortingOrderAsc  SortingOrder = "ASC"
 	SortingOrderDesc SortingOrder = "DESC"
 )

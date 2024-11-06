@@ -52,3 +52,6 @@ e2e_test
 
 # Service account key folder for testing
 .service_account_key
+
+# client db config file
+*client_db_config.json

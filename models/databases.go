@@ -1,12 +1,7 @@
 package models
 
-type PostgresConnection string
+import "fmt"
 
-type Database struct {
-	Connection PostgresConnection
-}
-
-// SchemaType is use
 type DatabaseSchemaType int
 
 const (
@@ -18,17 +13,19 @@ const (
 
 type DatabaseSchema struct {
 	SchemaType DatabaseSchemaType
-	Database   Database
 	Schema     string
-}
-
-// There is only one instance of Marble database
-var DATABASE_MARBLE = Database{
-	Connection: PostgresConnection("connection string to marble database"),
 }
 
 var DATABASE_MARBLE_SCHEMA = DatabaseSchema{
 	SchemaType: DATABASE_SCHEMA_TYPE_MARBLE,
-	Database:   DATABASE_MARBLE,
 	Schema:     "marble",
+}
+
+type OrganizationSchema struct {
+	OrganizationId string
+	DatabaseSchema DatabaseSchema
+}
+
+func OrgSchemaName(orgName string) string {
+	return fmt.Sprintf("org-%s", orgName)
 }
