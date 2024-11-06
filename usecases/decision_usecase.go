@@ -82,6 +82,7 @@ type DecisionUsecase struct {
 	evaluateAstExpression      ast_eval.EvaluateAstExpression
 	decisionWorkflows          decisionWorkflowsUsecase
 	webhookEventsSender        webhookEventsUsecase
+	phantomUseCase             DecisionPhantomUsecase
 	snoozesReader              snoozesForDecisionReader
 }
 
@@ -328,16 +329,15 @@ func (usecase *DecisionUsecase) CreateDecision(
 		}
 		if addedToCase {
 			sendWebhookEventId = append(sendWebhookEventId, caseWebhookEventId)
-		}
 
-		// only refresh the decision if it has changed, meaning if it was added to a case
-		if addedToCase {
 			dec, err := usecase.repository.DecisionWithRuleExecutionsById(ctx, tx, decision.DecisionId)
 			if err != nil {
 				return models.DecisionWithRuleExecutions{}, err
 			}
 			return dec, nil
 		}
+
+		// only refresh the decision if it has changed, meaning if it was added to a case
 		return decision, nil
 	})
 	if err != nil {
@@ -347,6 +347,16 @@ func (usecase *DecisionUsecase) CreateDecision(
 	for _, webhookEventId := range sendWebhookEventId {
 		usecase.webhookEventsSender.SendWebhookEventAsync(ctx, webhookEventId)
 	}
+	go func() {
+		phantomInput := models.CreatePhantomDecisionInput{
+			OrganizationId:     input.OrganizationId,
+			Scenario:           scenario,
+			ClientObject:       &evaluationParameters.ClientObject,
+			Pivot:              evaluationParameters.Pivot,
+			TriggerObjectTable: input.TriggerObjectTable,
+		}
+		_, _ = usecase.phantomUseCase.CreatePhantomDecision(ctx, phantomInput, true, evaluationParameters)
+	}()
 
 	return newDecision, nil
 }
