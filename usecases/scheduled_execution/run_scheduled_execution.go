@@ -198,10 +198,6 @@ func (usecase *RunScheduledExecution) insertAsyncDecisionTasks(
 		return err
 	}
 
-	if len(objectIds) == 0 {
-		return nil
-	}
-
 	err = usecase.transactionFactory.Transaction(
 		ctx,
 		func(tx repositories.Transaction) error {
