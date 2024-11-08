@@ -29,7 +29,6 @@ type DbDecision struct {
 	Score                int       `db:"score"`
 	TriggerObjectRaw     []byte    `db:"trigger_object"`
 	TriggerObjectType    string    `db:"trigger_object_type"`
-	TestRunId            string    `db:"test_run_id"`
 }
 
 type DbJoinDecisionAndCase struct {

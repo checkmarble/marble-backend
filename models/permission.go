@@ -61,6 +61,7 @@ func (r Permission) String() (string, error) {
 	permissions := [...]string{
 		"DECISION_READ",
 		"DECISION_CREATE",
+		"PHANTOM_DECISION_CREATE",
 		"INGESTION",
 		"SCENARIO_READ",
 		"SCENARIO_CREATE",

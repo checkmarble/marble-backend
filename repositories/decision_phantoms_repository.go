@@ -47,7 +47,7 @@ func (repo *MarbleDbRepository) StorePhantomDecision(
 	err := ExecBuilder(
 		ctx,
 		exec,
-		NewQueryBuilder().Insert(dbmodels.TABLE_DECISIONS).
+		NewQueryBuilder().Insert(dbmodels.TABLE_PHANTOM_DECISIONS).
 			Columns(
 				"id",
 				"org_id",
@@ -55,16 +55,12 @@ func (repo *MarbleDbRepository) StorePhantomDecision(
 				"outcome",
 				"pivot_id",
 				"pivot_value",
-				"review_status",
 				"scenario_id",
 				"scenario_iteration_id",
-				"scenario_name",
-				"scenario_description",
 				"scenario_version",
 				"score",
 				"trigger_object",
 				"trigger_object_type",
-				"scheduled_execution_id",
 				"test_run_id",
 			).
 			Values(
@@ -74,16 +70,12 @@ func (repo *MarbleDbRepository) StorePhantomDecision(
 				decision.Outcome.String(),
 				decision.PivotId,
 				decision.PivotValue,
-				decision.ReviewStatus,
 				decision.ScenarioId,
 				decision.ScenarioIterationId,
-				decision.ScenarioName,
-				decision.ScenarioDescription,
 				decision.ScenarioVersion,
 				decision.Score,
 				decision.ClientObject.Data,
 				decision.ClientObject.TableName,
-				decision.ScheduledExecutionId,
 				testRunId,
 			),
 	)
@@ -140,5 +132,6 @@ func (repo *MarbleDbRepository) StorePhantomDecision(
 func (repo *MarbleDbRepository) GetTestRunIterationByScenarioId(ctx context.Context,
 	exec Executor, scenarioID string,
 ) (models.ScenarioIteration, error) {
+	// to be defined once we will integrate the testrun feature
 	return models.ScenarioIteration{}, nil
 }

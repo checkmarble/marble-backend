@@ -96,7 +96,7 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 		decisionWorkflows:          usecases.NewDecisionWorkflows(),
 		webhookEventsSender:        usecases.NewWebhookEventsUsecase(),
 		snoozesReader:              &usecases.Repositories.MarbleDbRepository,
-		phantomUseCase: DecisionPhantomUsecase{
+		phantomUseCase: PhantomDecisionUsecase{
 			enforceSecurity:            usecases.NewEnforcePhantomDecisionSecurity(),
 			transactionFactory:         usecases.NewTransactionFactory(),
 			executorFactory:            usecases.NewExecutorFactory(),

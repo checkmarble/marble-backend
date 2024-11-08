@@ -57,6 +57,112 @@ type ScenarioEvaluationRepositories struct {
 	SnoozeReader                  snoozesForDecisionReader
 }
 
+func processScenarioIteration(ctx context.Context, params ScenarioEvaluationParameters,
+	iteration models.ScenarioIteration, repositories ScenarioEvaluationRepositories, start time.Time,
+	logger *slog.Logger, exec repositories.Executor,
+) (models.ScenarioExecution, error) {
+	// Check the scenario & trigger_object's types
+	if params.Scenario.TriggerObjectType != params.ClientObject.TableName {
+		return models.ScenarioExecution{}, models.ErrScenarioTriggerTypeAndTiggerObjectTypeMismatch
+	}
+	dataAccessor := DataAccessor{
+		DataModel:                  params.DataModel,
+		ClientObject:               params.ClientObject,
+		executorFactory:            repositories.ExecutorFactory,
+		organizationId:             params.Scenario.OrganizationId,
+		ingestedDataReadRepository: repositories.IngestedDataReadRepository,
+	}
+
+	// Evaluate the trigger
+
+	errEval := evalScenarioTrigger(
+		ctx,
+		repositories,
+		*iteration.TriggerConditionAstExpression,
+		dataAccessor.organizationId,
+		dataAccessor.ClientObject,
+		params.DataModel,
+	)
+	if errEval != nil {
+		return models.ScenarioExecution{}, errEval
+	}
+	var pivotValue *string
+	var errPv error
+	if params.Pivot != nil {
+		pivotValue, errPv = getPivotValue(ctx, *params.Pivot, dataAccessor)
+		if errPv != nil {
+			return models.ScenarioExecution{}, errors.Wrap(
+				errPv,
+				"error getting pivot value in EvalScenario")
+		}
+	}
+
+	snoozes := make([]models.RuleSnooze, 0)
+	var errSnooze error
+	if pivotValue != nil {
+		snoozeGroupIds := make([]string, 0, len(iteration.Rules))
+		for _, rule := range iteration.Rules {
+			if rule.SnoozeGroupId != nil {
+				snoozeGroupIds = append(snoozeGroupIds, *rule.SnoozeGroupId)
+			}
+		}
+		snoozes, errSnooze = repositories.SnoozeReader.ListActiveRuleSnoozesForDecision(ctx, exec, snoozeGroupIds, *pivotValue)
+	}
+	if errSnooze != nil {
+		return models.ScenarioExecution{}, errors.Wrap(
+			errSnooze,
+			"error when listing active rule snozze")
+	}
+	// Evaluate all rules
+	score, ruleExecutions, errEval := evalAllScenarioRules(
+		ctx,
+		repositories,
+		iteration.Rules,
+		dataAccessor,
+		params.DataModel,
+		snoozes)
+	if errEval != nil {
+		return models.ScenarioExecution{}, errors.Wrap(errEval,
+			"error during concurrent rule evaluation")
+	}
+
+	// Compute outcome from score
+	var outcome models.Outcome
+
+	if score >= *iteration.ScoreDeclineThreshold {
+		outcome = models.Decline
+	} else if score >= *iteration.ScoreBlockAndReviewThreshold {
+		outcome = models.BlockAndReview
+	} else if score >= *iteration.ScoreReviewThreshold {
+		outcome = models.Review
+	} else {
+		outcome = models.Approve
+	}
+
+	// Build ScenarioExecution as result
+	se := models.ScenarioExecution{
+		ScenarioId:          params.Scenario.Id,
+		ScenarioIterationId: iteration.Id,
+		ScenarioName:        params.Scenario.Name,
+		ScenarioDescription: params.Scenario.Description,
+		ScenarioVersion:     *iteration.Version,
+		RuleExecutions:      ruleExecutions,
+		Score:               score,
+		Outcome:             outcome,
+		OrganizationId:      params.Scenario.OrganizationId,
+	}
+	if params.Pivot != nil {
+		se.PivotId = &params.Pivot.Id
+		se.PivotValue = pivotValue
+	}
+
+	elapsed := time.Since(start)
+	logger.InfoContext(ctx, fmt.Sprintf("Evaluated scenario in %dms",
+		elapsed.Milliseconds()), "score", score, "outcome", outcome)
+
+	return se, nil
+}
+
 func EvalTestRunScenario(ctx context.Context,
 	params ScenarioEvaluationParameters,
 	repositories ScenarioEvaluationRepositories,
@@ -94,102 +200,15 @@ func EvalTestRunScenario(ctx context.Context,
 		return models.ScenarioExecution{}, errors.Wrap(err,
 			"error getting testrun scenario iteration in EvalTestRunScenario")
 	}
-	if testRunIteration.Id != "" {
-		// Check the scenario & trigger_object's types
-		if params.Scenario.TriggerObjectType != params.ClientObject.TableName {
-			return models.ScenarioExecution{}, models.ErrScenarioTriggerTypeAndTiggerObjectTypeMismatch
-		}
-		dataAccessor := DataAccessor{
-			DataModel:                  params.DataModel,
-			ClientObject:               params.ClientObject,
-			executorFactory:            repositories.ExecutorFactory,
-			organizationId:             params.Scenario.OrganizationId,
-			ingestedDataReadRepository: repositories.IngestedDataReadRepository,
-		}
-
-		// Evaluate the trigger
-		err = evalScenarioTrigger(
-			ctx,
-			repositories,
-			*testRunIteration.TriggerConditionAstExpression,
-			dataAccessor.organizationId,
-			dataAccessor.ClientObject,
-			params.DataModel,
-		)
-		if err != nil {
-			return models.ScenarioExecution{}, err
-		}
-		var pivotValue *string
-
-		if params.Pivot != nil {
-			pivotValue, err = getPivotValue(ctx, *params.Pivot, dataAccessor)
-			if err != nil {
-				return models.ScenarioExecution{}, errors.Wrap(
-					err,
-					"error getting pivot value in EvalScenario")
-			}
-		}
-
-		snoozes := make([]models.RuleSnooze, 0)
-		if pivotValue != nil {
-			snoozeGroupIds := make([]string, 0, len(testRunIteration.Rules))
-			for _, rule := range testRunIteration.Rules {
-				if rule.SnoozeGroupId != nil {
-					snoozeGroupIds = append(snoozeGroupIds, *rule.SnoozeGroupId)
-				}
-			}
-			snoozes, err = repositories.SnoozeReader.ListActiveRuleSnoozesForDecision(ctx, exec, snoozeGroupIds, *pivotValue)
-		}
-		// Evaluate all rules
-		score, ruleExecutions, err := evalAllScenarioRules(
-			ctx,
-			repositories,
-			testRunIteration.Rules,
-			dataAccessor,
-			params.DataModel,
-			snoozes)
-		if err != nil {
-			return models.ScenarioExecution{}, errors.Wrap(err,
-				"error during concurrent rule evaluation")
-		}
-
-		// Compute outcome from score
-		var outcome models.Outcome
-
-		if score >= *testRunIteration.ScoreDeclineThreshold {
-			outcome = models.Decline
-		} else if score >= *testRunIteration.ScoreBlockAndReviewThreshold {
-			outcome = models.BlockAndReview
-		} else if score >= *testRunIteration.ScoreReviewThreshold {
-			outcome = models.Review
-		} else {
-			outcome = models.Approve
-		}
-
-		// Build ScenarioExecution as result
-		se = models.ScenarioExecution{
-			ScenarioId:          params.Scenario.Id,
-			ScenarioIterationId: testRunIteration.Id,
-			ScenarioName:        params.Scenario.Name,
-			ScenarioDescription: params.Scenario.Description,
-			ScenarioVersion:     *testRunIteration.Version,
-			RuleExecutions:      ruleExecutions,
-			Score:               score,
-			Outcome:             outcome,
-			OrganizationId:      params.Scenario.OrganizationId,
-		}
-		if params.Pivot != nil {
-			se.PivotId = &params.Pivot.Id
-			se.PivotValue = pivotValue
-		}
-
-		elapsed := time.Since(start)
-		logger.InfoContext(ctx, fmt.Sprintf("Evaluated scenario in %dms",
-			elapsed.Milliseconds()), "score", score, "outcome", outcome)
-
-		return se, nil
+	if testRunIteration.Id == "" {
+		return models.ScenarioExecution{}, nil
 	}
-	return models.ScenarioExecution{}, nil
+	se, errSe := processScenarioIteration(ctx, params, testRunIteration, repositories, start, logger, exec)
+	if errSe != nil {
+		return models.ScenarioExecution{}, errors.Wrap(errSe,
+			"error processing scenario iteration in EvalTestRunScenario")
+	}
+	return se, nil
 }
 
 func EvalScenario(
@@ -239,105 +258,11 @@ func EvalScenario(
 			"error getting scenario iteration in EvalScenario")
 	}
 
-	publishedVersion, err := models.NewPublishedScenarioIteration(liveVersion)
-	if err != nil {
-		return models.ScenarioExecution{}, errors.Wrap(err,
-			"error mapping published scenario iteration in eval scenario")
+	se, errSe := processScenarioIteration(ctx, params, liveVersion, repositories, start, logger, exec)
+	if errSe != nil {
+		return models.ScenarioExecution{}, errors.Wrap(errSe,
+			"error processing scenario iteration in EvalTestRunScenario")
 	}
-
-	// Check the scenario & trigger_object's types
-	if params.Scenario.TriggerObjectType != params.ClientObject.TableName {
-		return models.ScenarioExecution{}, models.ErrScenarioTriggerTypeAndTiggerObjectTypeMismatch
-	}
-
-	dataAccessor := DataAccessor{
-		DataModel:                  params.DataModel,
-		ClientObject:               params.ClientObject,
-		executorFactory:            repositories.ExecutorFactory,
-		organizationId:             params.Scenario.OrganizationId,
-		ingestedDataReadRepository: repositories.IngestedDataReadRepository,
-	}
-
-	// Evaluate the trigger
-	err = evalScenarioTrigger(
-		ctx,
-		repositories,
-		publishedVersion.Body.TriggerConditionAstExpression,
-		dataAccessor.organizationId,
-		dataAccessor.ClientObject,
-		params.DataModel,
-	)
-	if err != nil {
-		return models.ScenarioExecution{}, err
-	}
-
-	var pivotValue *string
-	if params.Pivot != nil {
-		pivotValue, err = getPivotValue(ctx, *params.Pivot, dataAccessor)
-		if err != nil {
-			return models.ScenarioExecution{}, errors.Wrap(
-				err,
-				"error getting pivot value in EvalScenario")
-		}
-	}
-
-	snoozes := make([]models.RuleSnooze, 0)
-	if pivotValue != nil {
-		snoozeGroupIds := make([]string, 0, len(publishedVersion.Body.Rules))
-		for _, rule := range publishedVersion.Body.Rules {
-			if rule.SnoozeGroupId != nil {
-				snoozeGroupIds = append(snoozeGroupIds, *rule.SnoozeGroupId)
-			}
-		}
-		snoozes, err = repositories.SnoozeReader.ListActiveRuleSnoozesForDecision(ctx, exec, snoozeGroupIds, *pivotValue)
-	}
-
-	// Evaluate all rules
-	score, ruleExecutions, err := evalAllScenarioRules(
-		ctx,
-		repositories,
-		publishedVersion.Body.Rules,
-		dataAccessor,
-		params.DataModel,
-		snoozes)
-	if err != nil {
-		return models.ScenarioExecution{}, errors.Wrap(err,
-			"error during concurrent rule evaluation")
-	}
-
-	// Compute outcome from score
-	var outcome models.Outcome
-
-	if score >= publishedVersion.Body.ScoreDeclineThreshold {
-		outcome = models.Decline
-	} else if score >= publishedVersion.Body.ScoreBlockAndReviewThreshold {
-		outcome = models.BlockAndReview
-	} else if score >= publishedVersion.Body.ScoreReviewThreshold {
-		outcome = models.Review
-	} else {
-		outcome = models.Approve
-	}
-
-	// Build ScenarioExecution as result
-	se = models.ScenarioExecution{
-		ScenarioId:          params.Scenario.Id,
-		ScenarioIterationId: publishedVersion.Id,
-		ScenarioName:        params.Scenario.Name,
-		ScenarioDescription: params.Scenario.Description,
-		ScenarioVersion:     publishedVersion.Version,
-		RuleExecutions:      ruleExecutions,
-		Score:               score,
-		Outcome:             outcome,
-		OrganizationId:      params.Scenario.OrganizationId,
-	}
-	if params.Pivot != nil {
-		se.PivotId = &params.Pivot.Id
-		se.PivotValue = pivotValue
-	}
-
-	elapsed := time.Since(start)
-	logger.InfoContext(ctx, fmt.Sprintf("Evaluated scenario in %dms", elapsed.Milliseconds()), "score", score, "outcome", outcome)
-
 	return se, nil
 }
 
