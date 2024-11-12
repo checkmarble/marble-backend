@@ -18,7 +18,7 @@ require (
 	github.com/gin-contrib/size v1.0.1
 	github.com/gin-contrib/timeout v1.0.1
 	github.com/gin-gonic/gin v1.10.0
-	github.com/golang-jwt/jwt/v4 v4.5.0
+	github.com/golang-jwt/jwt/v4 v4.5.1
 	github.com/google/uuid v1.6.0
 	github.com/guregu/null/v5 v5.0.0
 	github.com/hashicorp/go-set/v2 v2.1.0
@@ -29,9 +29,9 @@ require (
 	github.com/ory/dockertest/v3 v3.10.0
 	github.com/pkg/errors v0.9.1
 	github.com/pressly/goose/v3 v3.20.0
-	github.com/riverqueue/river v0.13.0
-	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.13.0
-	github.com/riverqueue/river/rivertype v0.13.0
+	github.com/riverqueue/river v0.14.0
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.14.0
+	github.com/riverqueue/river/rivertype v0.14.0
 	github.com/segmentio/analytics-go/v3 v3.3.0
 	github.com/stretchr/testify v1.9.0
 	github.com/tidwall/gjson v1.18.0
@@ -171,8 +171,8 @@ require (
 	github.com/perimeterx/marshmallow v1.1.5 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/riverqueue/river/riverdriver v0.13.0 // indirect
-	github.com/riverqueue/river/rivershared v0.13.0 // indirect
+	github.com/riverqueue/river/riverdriver v0.14.0 // indirect
+	github.com/riverqueue/river/rivershared v0.14.0 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/sanity-io/litter v1.5.5 // indirect
 	github.com/segmentio/backo-go v1.1.0 // indirect

@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
-	"io/fs"
 	"time"
 
 	"github.com/checkmarble/marble-backend/infra"
@@ -25,23 +24,16 @@ import (
 //go:embed migrations/*.sql
 var embedMigrations embed.FS
 
-// embed analytics_views sql folder
-//
-//go:embed analytics_views/*.sql
-var embedAnalyticsViews embed.FS
-
 type Migrater struct {
-	dbMigrationsFileSystem   embed.FS
-	analyticsViewsFileSystem embed.FS
-	pgConfig                 infra.PgConfig
-	db                       *sql.DB
+	dbMigrationsFileSystem embed.FS
+	pgConfig               infra.PgConfig
+	db                     *sql.DB
 }
 
 func NewMigrater(pgConfig infra.PgConfig) *Migrater {
 	return &Migrater{
-		dbMigrationsFileSystem:   embedMigrations,
-		analyticsViewsFileSystem: embedAnalyticsViews,
-		pgConfig:                 pgConfig,
+		dbMigrationsFileSystem: embedMigrations,
+		pgConfig:               pgConfig,
 	}
 }
 
@@ -53,10 +45,6 @@ func (m *Migrater) Run(ctx context.Context) error {
 	// Now run the migrations
 	if err := m.runMarbleDbMigrations(ctx); err != nil {
 		return errors.Wrap(err, "runMarbleDbMigrations error")
-	}
-
-	if err := m.migrateAnalyticsViews(ctx, m.analyticsViewsFileSystem); err != nil {
-		return errors.Wrap(err, "migrateAnalyticsViews error")
 	}
 
 	pgxPool, err := m.openDbPgx(ctx)
@@ -121,40 +109,4 @@ func (m *Migrater) runMarbleDbMigrations(ctx context.Context) error {
 		return err
 	}
 	return goose.Up(m.db, "migrations")
-}
-
-func (m *Migrater) migrateAnalyticsViews(ctx context.Context, folder embed.FS) error {
-	if err := fs.WalkDir(
-		folder,
-		".",
-		func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-
-			if !d.IsDir() {
-				return m.createViewFromFile(ctx, folder, path)
-			}
-
-			return nil
-		},
-	); err != nil {
-		return errors.Wrap(err, "error while walking embedded analytics_views folder")
-	}
-	return nil
-}
-
-func (m *Migrater) createViewFromFile(ctx context.Context, folder embed.FS, path string) error {
-	logger := utils.LoggerFromContext(ctx)
-	sql, err := folder.ReadFile(path)
-	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("unable to read file %s", path))
-	}
-
-	if _, err := m.db.Exec(string(sql)); err != nil {
-		return errors.Wrap(err, fmt.Sprintf("unable to create view from file %s", path))
-	}
-
-	logger.InfoContext(ctx, fmt.Sprintf("Successfully created view from %s", path))
-	return nil
 }

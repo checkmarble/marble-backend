@@ -3,11 +3,9 @@ package repositories
 import (
 	"context"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/google/uuid"
 )
 
 type OrganizationRepository interface {
@@ -18,14 +16,6 @@ type OrganizationRepository interface {
 	UpdateOrganization(ctx context.Context, exec Executor, updateOrganization models.UpdateOrganizationInput) error
 	DeleteOrganization(ctx context.Context, exec Executor, organizationId string) error
 	DeleteOrganizationDecisionRulesAsync(ctx context.Context, exec Executor, organizationId string)
-
-	// organization schema
-	OrganizationSchemaOfOrganization(ctx context.Context, exec Executor, organizationId string) (models.OrganizationSchema, error)
-	CreateOrganizationSchema(
-		ctx context.Context,
-		exec Executor,
-		organizationId, schemaName string,
-	) error
 }
 
 type OrganizationRepositoryPostgresql struct{}
@@ -131,47 +121,4 @@ func (repo *OrganizationRepositoryPostgresql) DeleteOrganizationDecisionRulesAsy
 			utils.LogAndReportSentryError(ctx, err)
 		}
 	}()
-}
-
-func (repo *OrganizationRepositoryPostgresql) CreateOrganizationSchema(
-	ctx context.Context,
-	exec Executor,
-	organizationId, schemaName string,
-) error {
-	if err := validateMarbleDbExecutor(exec); err != nil {
-		return err
-	}
-
-	err := ExecBuilder(
-		ctx,
-		exec,
-		NewQueryBuilder().Insert(dbmodels.ORGANIZATION_SCHEMA_TABLE).
-			Columns(
-				dbmodels.OrganizationSchemaFields...,
-			).
-			Values(
-				uuid.NewString(),
-				organizationId,
-				schemaName,
-			),
-	)
-	return err
-}
-
-func (repo *OrganizationRepositoryPostgresql) OrganizationSchemaOfOrganization(
-	ctx context.Context, exec Executor, organizationId string,
-) (models.OrganizationSchema, error) {
-	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.OrganizationSchema{}, err
-	}
-
-	return SqlToModel(
-		ctx,
-		exec,
-		NewQueryBuilder().
-			Select(dbmodels.OrganizationSchemaFields...).
-			From(dbmodels.ORGANIZATION_SCHEMA_TABLE).
-			Where(squirrel.Eq{"org_id": organizationId}),
-		dbmodels.AdaptOrganizationSchema,
-	)
 }

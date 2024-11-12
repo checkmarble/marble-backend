@@ -3,15 +3,16 @@ package jobs
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/checkmarble/marble-backend/utils"
 	"github.com/getsentry/sentry-go"
+	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -45,7 +46,8 @@ func (m LoggerMiddleware) Work(ctx context.Context, job *rivertype.JobRow, doInn
 
 	ctx = utils.StoreLoggerInContext(ctx, logger)
 	err := doInner(ctx)
-	if err != nil && isSnoozeError(err) {
+	var snoozeErr *river.JobSnoozeError
+	if err != nil && errors.As(err, &snoozeErr) {
 		logger.InfoContext(ctx, fmt.Sprintf("%s job n°%d snoozed after %s", job.Kind, job.ID, time.Since(start)))
 		return err
 	} else if err != nil {
@@ -80,10 +82,6 @@ func (m LoggerMiddleware) aggregateAndLogError(ctx context.Context, job *riverty
 
 func NewLoggerMiddleware(l *slog.Logger) LoggerMiddleware {
 	return LoggerMiddleware{l: l, errorCount: make(map[string]int), errorCountLock: &sync.Mutex{}}
-}
-
-func isSnoozeError(err error) bool {
-	return strings.Contains(err.Error(), "jobSnoozeError")
 }
 
 // Recovered middleware

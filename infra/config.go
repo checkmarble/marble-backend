@@ -21,14 +21,21 @@ type PgConfig struct {
 	Port                string
 	User                string
 	MaxPoolConnections  int
+	ClientDbConfigFile  string
+	SslMode             string
 }
 
 func (config PgConfig) GetConnectionString() string {
 	if config.ConnectionString != "" {
 		return config.ConnectionString
 	}
-	connectionString := fmt.Sprintf("host=%s user=%s password=%s database=%s sslmode=disable",
-		config.Hostname, config.User, config.Password, config.Database)
+
+	if config.SslMode == "" {
+		config.SslMode = "prefer"
+	}
+
+	connectionString := fmt.Sprintf("host=%s user=%s password=%s database=%s sslmode=%s",
+		config.Hostname, config.User, config.Password, config.Database, config.SslMode)
 	if !config.DbConnectWithSocket {
 		// Cloud Run connects to the DB through a proxy and a unix socket, so we don't need need to specify the port
 		// but we do when running locally

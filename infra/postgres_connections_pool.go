@@ -2,7 +2,9 @@ package infra
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -15,6 +17,12 @@ const (
 	DEFAULT_MAX_CONNECTIONS  = 40 // TODO: make this a configurable value
 	MAX_CONNECTION_IDLE_TIME = 5 * time.Minute
 )
+
+type ClientDbConfig struct {
+	ConnectionString string `json:"connection_string"`
+	MaxConns         int    `json:"max_conns"`
+	SchemaName       string `json:"schema_name"`
+}
 
 func NewPostgresConnectionPool(
 	ctx context.Context,
@@ -37,7 +45,7 @@ func NewPostgresConnectionPool(
 	}
 	cfg.MaxConnIdleTime = MAX_CONNECTION_IDLE_TIME
 
-	pool, err := pgxpool.NewWithConfig(context.Background(), cfg)
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create connection pool: %w", err)
 	}
@@ -55,4 +63,21 @@ func NewPostgresConnectionPool(
 		retry.Attempts(3),
 		retry.LastErrorOnly(true),
 	)
+}
+
+func ParseClientDbConfig(filename string) (map[string]ClientDbConfig, error) {
+	if filename == "" {
+		return nil, nil
+	}
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	clientDbConfigs := make(map[string]ClientDbConfig)
+	if err := json.NewDecoder(file).Decode(&clientDbConfigs); err != nil {
+		return nil, err
+	}
+	return clientDbConfigs, nil
 }

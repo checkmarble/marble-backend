@@ -42,6 +42,13 @@ func (usecases *UsecasesWithCreds) NewEnforceDecisionSecurity() security.Enforce
 	}
 }
 
+func (usecases *UsecasesWithCreds) NewEnforcePhantomDecisionSecurity() security.EnforceSecurityPhantomDecision {
+	return &security.EnforceSecurityPhantomDecisionImpl{
+		EnforceSecurity: usecases.NewEnforceSecurity(),
+		Credentials:     usecases.Credentials,
+	}
+}
+
 func (usecases *UsecasesWithCreds) NewEnforceCustomListSecurity() security.EnforceSecurityCustomList {
 	return &security.EnforceSecurityCustomListImpl{
 		EnforceSecurity: usecases.NewEnforceSecurity(),
@@ -96,6 +103,15 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 		decisionWorkflows:          usecases.NewDecisionWorkflows(),
 		webhookEventsSender:        usecases.NewWebhookEventsUsecase(),
 		snoozesReader:              &usecases.Repositories.MarbleDbRepository,
+		phantomUseCase: PhantomDecisionUsecase{
+			enforceSecurity:            usecases.NewEnforcePhantomDecisionSecurity(),
+			transactionFactory:         usecases.NewTransactionFactory(),
+			executorFactory:            usecases.NewExecutorFactory(),
+			ingestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
+			repository:                 &usecases.Repositories.MarbleDbRepository,
+			evaluateAstExpression:      usecases.NewEvaluateAstExpression(),
+			snoozesReader:              &usecases.Repositories.MarbleDbRepository,
+		},
 	}
 }
 

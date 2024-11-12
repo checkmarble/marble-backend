@@ -139,9 +139,6 @@ func (usecase *RunScheduledExecution) getPublishedScenarioIteration(
 	if err != nil {
 		return nil, err
 	}
-	publishedVersion, err := models.NewPublishedScenarioIteration(liveVersion)
-	if err != nil {
-		return nil, err
-	}
+	publishedVersion := models.NewPublishedScenarioIteration(liveVersion)
 	return &publishedVersion, nil
 }
