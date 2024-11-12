@@ -23,7 +23,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-const PHANTOM_DECISION_TIMEOUT = 1 * time.Minute
+const PHANTOM_DECISION_TIMEOUT = 5 * time.Second
 
 type DecisionUsecaseRepository interface {
 	DecisionWithRuleExecutionsById(

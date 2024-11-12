@@ -18,10 +18,10 @@ type DecisionPhantomUsecaseRepository interface {
 	StorePhantomDecision(
 		ctx context.Context,
 		exec Executor,
-		decision models.DecisionWithRuleExecutions,
+		decision models.PhantomDecision,
 		organizationId string,
 		testRunId string,
-		newDecisionId string) error
+		newPhantomDecisionId string) error
 
 	GetTestRunIterationByScenarioId(ctx context.Context, exec Executor, scenarioID string) (models.ScenarioIteration, error)
 }
@@ -29,17 +29,16 @@ type DecisionPhantomUsecaseRepository interface {
 func (repo *MarbleDbRepository) StorePhantomDecision(
 	ctx context.Context,
 	exec Executor,
-	decision models.DecisionWithRuleExecutions,
+	decision models.PhantomDecision,
 	organizationId string,
 	testRunId string,
-	newDecisionId string,
+	newPhantomDecisionId string,
 ) error {
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(
 		ctx,
 		"DecisionPhantomRepository.StorePhantomDecision.store_phantom_decision",
-		trace.WithAttributes(attribute.String("decision_id", newDecisionId)),
-		trace.WithAttributes(attribute.Int("nb_rule_executions", len(decision.RuleExecutions))))
+		trace.WithAttributes(attribute.String("phantom_decision_id", newPhantomDecisionId)))
 	defer span.End()
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
@@ -53,29 +52,19 @@ func (repo *MarbleDbRepository) StorePhantomDecision(
 				"org_id",
 				"created_at",
 				"outcome",
-				"pivot_id",
-				"pivot_value",
 				"scenario_id",
 				"scenario_iteration_id",
-				"scenario_version",
 				"score",
-				"trigger_object",
-				"trigger_object_type",
 				"test_run_id",
 			).
 			Values(
-				newDecisionId,
+				newPhantomDecisionId,
 				organizationId,
 				decision.CreatedAt,
 				decision.Outcome.String(),
-				decision.PivotId,
-				decision.PivotValue,
 				decision.ScenarioId,
 				decision.ScenarioIterationId,
-				decision.ScenarioVersion,
 				decision.Score,
-				decision.ClientObject.Data,
-				decision.ClientObject.TableName,
 				testRunId,
 			),
 	)
@@ -83,15 +72,10 @@ func (repo *MarbleDbRepository) StorePhantomDecision(
 		return err
 	}
 
-	if len(decision.RuleExecutions) == 0 {
-		return nil
-	}
-
 	ctx, span = tracer.Start(
 		ctx,
 		"DecisionPhantomRepository.StorePhantomDecision.store_phantom__decision_rules",
-		trace.WithAttributes(attribute.String("decision_id", newDecisionId)),
-		trace.WithAttributes(attribute.Int("nb_rule_executions", len(decision.RuleExecutions))))
+		trace.WithAttributes(attribute.String("phantom_decision_id", newPhantomDecisionId)))
 	defer span.End()
 	builderForRules := NewQueryBuilder().
 		Insert(dbmodels.TABLE_DECISION_RULES).
@@ -116,7 +100,7 @@ func (repo *MarbleDbRepository) StorePhantomDecision(
 			Values(
 				uuid.Must(uuid.NewV7()).String(),
 				organizationId,
-				newDecisionId,
+				newPhantomDecisionId,
 				ruleExecution.ResultScoreModifier,
 				ruleExecution.Result,
 				ast.AdaptExecutionError(ruleExecution.Error),

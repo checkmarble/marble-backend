@@ -27,7 +27,7 @@ type PhantomDecisionUsecase struct {
 
 func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(ctx context.Context,
 	input models.CreatePhantomDecisionInput, evaluationParameters evaluate_scenario.ScenarioEvaluationParameters,
-) (models.DecisionWithRuleExecutions, error) {
+) (models.PhantomDecision, error) {
 	exec := usecase.executorFactory.NewExecutor()
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(
@@ -36,7 +36,7 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(ctx context.Context
 		trace.WithAttributes(attribute.String("scenario_id", input.Scenario.Id)))
 	defer span.End()
 	if err := usecase.enforceSecurity.CreatePhantomDecision(input.OrganizationId); err != nil {
-		return models.DecisionWithRuleExecutions{}, err
+		return models.PhantomDecision{}, err
 	}
 	evaluationRepositories := evaluate_scenario.ScenarioEvaluationRepositories{
 		EvalTestRunScenatioRepository: usecase.repository,
@@ -48,18 +48,17 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(ctx context.Context
 	testRunScenarioExecution, err := evaluate_scenario.EvalTestRunScenario(ctx,
 		evaluationParameters, evaluationRepositories)
 	if err != nil {
-		return models.DecisionWithRuleExecutions{},
+		return models.PhantomDecision{},
 			fmt.Errorf("error evaluating scenario: %w", err)
 	}
 	if testRunScenarioExecution.ScenarioId == "" {
-		return models.DecisionWithRuleExecutions{}, err
+		return models.PhantomDecision{}, err
 	}
-	decision := models.AdaptScenarExecToDecision(testRunScenarioExecution, input.ClientObject, nil)
+	decision := models.AdapScenarExecToPhantomDecision(testRunScenarioExecution)
 	ctx, span = tracer.Start(
 		ctx,
 		"DecisionUsecase.CreateDecision.store_phantom_decision",
-		trace.WithAttributes(attribute.String("scenario_id", input.Scenario.Id)),
-		trace.WithAttributes(attribute.Int("nb_rule_executions", len(decision.RuleExecutions))))
+		trace.WithAttributes(attribute.String("scenario_id", input.Scenario.Id)))
 	defer span.End()
 
 	if err = usecase.repository.StorePhantomDecision(
@@ -68,10 +67,10 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(ctx context.Context
 		decision,
 		input.OrganizationId,
 		testRunScenarioExecution.ScenarioIterationId,
-		decision.DecisionId,
+		decision.PhantomDecisionId,
 	); err != nil {
-		return models.DecisionWithRuleExecutions{},
-			fmt.Errorf("error storing decision: %w", err)
+		return models.PhantomDecision{},
+			fmt.Errorf("error storing phantom decision: %w", err)
 	}
 	return decision, nil
 }

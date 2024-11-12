@@ -6,13 +6,8 @@ CREATE TABLE phantom_decisions(
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   outcome decision_outcome NOT NULL,
   scenario_id uuid NOT NULL,
-  scenario_version INT NOT NULL,
   score INT NOT NULL,
-  trigger_object_type CHARACTER VARYING,
-  trigger_object JSONB,
   scenario_iteration_id uuid NOT NULL,
-  pivot_id uuid NULL,
-  pivot_value TEXT,
   test_run_id uuid NOT NULL,
   PRIMARY KEY(id),
   CONSTRAINT fk_phantom_decisions_org FOREIGN KEY(org_id) REFERENCES organizations(id) ON DELETE CASCADE
