@@ -8,11 +8,11 @@ CREATE TABLE phantom_decisions(
   scenario_id uuid NOT NULL,
   score INT NOT NULL,
   scenario_iteration_id uuid NOT NULL,
-  #test_run_id uuid NOT NULL,
+  -- test_run_id uuid NOT NULL,
   PRIMARY KEY(id),
   CONSTRAINT fk_phantom_decisions_org FOREIGN KEY(org_id) REFERENCES organizations(id) ON DELETE CASCADE,
   CONSTRAINT fk_phantom_decisions_scenario_ite_id FOREIGN KEY(scenario_iteration_id) REFERENCES scenario_iterations(id) ON DELETE CASCADE,
-  #CONSTRAINT fk_phantom_decisions_test_run_id FOREIGN KEY(test_run_id) REFERENCES test_run(id) ON DELETE CASCADE
+  -- CONSTRAINT fk_phantom_decisions_test_run_id FOREIGN KEY(test_run_id) REFERENCES test_run(id) ON DELETE CASCADE
   CONSTRAINT fk_phantom_decisions_scenatio_pivot_id FOREIGN KEY(pivot_id) REFERENCES data_model_pivots(id) ON DELETE CASCADE SET NULL
 );
 -- +goose StatementEnd
