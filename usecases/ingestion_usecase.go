@@ -93,13 +93,10 @@ func (usecase *IngestionUseCase) IngestObject(
 	}
 
 	var nb int
-	ingestClosure := func() error {
-		return usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Transaction) error {
-			nb, err = usecase.ingestionRepository.IngestObjects(ctx, tx, []models.ClientObject{payload}, table)
-			return err
-		})
-	}
-	err = retryIngestion(ctx, ingestClosure)
+	err = retryIngestion(ctx, func() error {
+		nb, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, []models.ClientObject{payload}, table)
+		return err
+	})
 	if err != nil {
 		return 0, err
 	}
@@ -179,13 +176,10 @@ func (usecase *IngestionUseCase) IngestObjects(
 	}
 
 	var nb int
-	ingestClosure := func() error {
-		return usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Transaction) error {
-			nb, err = usecase.ingestionRepository.IngestObjects(ctx, tx, clientObjects, table)
-			return err
-		})
-	}
-	err = retryIngestion(ctx, ingestClosure)
+	err = retryIngestion(ctx, func() error {
+		nb, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, clientObjects, table)
+		return err
+	})
 	if err != nil {
 		return 0, err
 	}
@@ -516,22 +510,17 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 			clientObjects = append(clientObjects, clientObject)
 		}
 
-		ingestClosure := func() error {
-			return usecase.transactionFactory.TransactionInOrgSchema(
-				ctx,
-				organizationId,
-				func(tx repositories.Transaction) error {
-					_, err := usecase.ingestionRepository.IngestObjects(ctx, tx, clientObjects, table)
-					return err
-				})
-		}
-		if err := retryIngestion(ctx, ingestClosure); err != nil {
+		var nb int
+		if err := retryIngestion(ctx, func() error {
+			nb, err = usecase.insertEnumValuesAndIngest(ctx, organizationId, clientObjects, table)
+			return err
+		}); err != nil {
 			return ingestionResult{
 				numRowsIngested: total,
 				err:             err,
 			}
 		}
-		total += len(clientObjects)
+		total += nb
 	}
 
 	return ingestionResult{
@@ -625,4 +614,53 @@ func retryIngestion(ctx context.Context, f func() error) error {
 			logger.WarnContext(ctx, "Error occurred during ingestion, retry: "+err.Error())
 		}),
 	)
+}
+
+func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
+	ctx context.Context,
+	organizationId string,
+	payloads []models.ClientObject,
+	table models.Table,
+) (int, error) {
+	var nb int
+	var err error
+	err = usecase.transactionFactory.TransactionInOrgSchema(ctx, organizationId, func(tx repositories.Transaction) error {
+		nb, err = usecase.ingestionRepository.IngestObjects(ctx, tx, payloads, table)
+		return err
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	go func() {
+		// I'm giving it a short deadline because it's not critical to the user - in any situation i'd rather it fails
+		// than take more than 10ms
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Millisecond*10)
+		defer cancel()
+		enumValues := buildEnumValuesContainersFromTable(table)
+		for _, payload := range payloads {
+			enumValues.CollectEnumValues(payload)
+		}
+		exec := usecase.executorFactory.NewExecutor()
+		err := usecase.dataModelRepository.BatchInsertEnumValues(ctx, exec, enumValues, table)
+		if err != nil {
+			utils.LogAndReportSentryError(ctx, err)
+		} else if errors.Is(err, context.DeadlineExceeded) {
+			logger := utils.LoggerFromContext(ctx)
+			logger.WarnContext(ctx, "Deadline exceeded while inserting enum values")
+		}
+	}()
+
+	return nb, nil
+}
+
+func buildEnumValuesContainersFromTable(table models.Table) models.EnumValues {
+	enumValues := make(models.EnumValues)
+	for fieldName := range table.Fields {
+		dataType := table.Fields[fieldName].DataType
+		if table.Fields[fieldName].IsEnum && (dataType == models.String || dataType == models.Float) {
+			enumValues[fieldName] = make(map[any]struct{})
+		}
+	}
+	return enumValues
 }

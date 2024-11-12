@@ -215,6 +215,18 @@ type UpdateFieldInput struct {
 	IsUnique    *bool
 }
 
+type EnumValues map[string]map[any]struct{}
+
+// CollectEnumValues mutates the EnumValues object to collect all the enum values from the payload
+func (enumValues EnumValues) CollectEnumValues(payload ClientObject) {
+	for fieldName := range enumValues {
+		value := payload.Data[fieldName]
+		if value != nil && value != "" {
+			enumValues[fieldName][value] = struct{}{}
+		}
+	}
+}
+
 // ///////////////////////////////
 // Data Model Link
 // ///////////////////////////////

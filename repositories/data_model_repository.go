@@ -34,6 +34,7 @@ type DataModelRepository interface {
 	GetLinks(ctx context.Context, exec Executor, organizationId string) ([]models.LinkToSingle, error)
 	DeleteDataModel(ctx context.Context, exec Executor, organizationID string) error
 	GetDataModelField(ctx context.Context, exec Executor, fieldId string) (models.FieldMetadata, error)
+	BatchInsertEnumValues(ctx context.Context, exec Executor, enumValues models.EnumValues, table models.Table) error
 
 	CreatePivot(ctx context.Context, exec Executor, id string, pivot models.CreatePivotInput) error
 	ListPivots(ctx context.Context, exec Executor, organization_id string, tableId *string) ([]models.PivotMetadata, error)
@@ -499,4 +500,55 @@ func (repo *DataModelRepositoryPostgresql) GetPivot(ctx context.Context, exec Ex
 			Where(squirrel.Eq{"id": pivotId}),
 		dbmodels.AdaptPivotMetadata,
 	)
+}
+
+func (repo *DataModelRepositoryPostgresql) BatchInsertEnumValues(ctx context.Context, exec Executor, enumValues models.EnumValues, table models.Table) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	// This has to be done in 2 queries because there cannot be multiple ON CONFLICT clauses per query
+	textQuery := NewQueryBuilder().
+		Insert("data_model_enum_values").
+		Columns("field_id", "text_value").
+		Suffix("ON CONFLICT ON CONSTRAINT unique_data_model_enum_text_values_field_id_value DO NOTHING")
+
+	floatQuery := NewQueryBuilder().
+		Insert("data_model_enum_values").
+		Columns("field_id", "float_value").
+		Suffix("ON CONFLICT ON CONSTRAINT unique_data_model_enum_float_values_field_id_value DO NOTHING")
+
+	// Hack to avoid empty query, which would cause an execution error
+	var shouldInsertTextValues bool
+	var shouldInsertFloatValues bool
+
+	for fieldName, values := range enumValues {
+		fieldId := table.Fields[fieldName].ID
+		dataType := table.Fields[fieldName].DataType
+
+		for value := range values {
+			if dataType == models.String {
+				textQuery = textQuery.Values(fieldId, value)
+				shouldInsertTextValues = true
+			} else if dataType == models.Float {
+				floatQuery = floatQuery.Values(fieldId, value)
+				shouldInsertFloatValues = true
+			}
+		}
+	}
+
+	if shouldInsertTextValues {
+		err := ExecBuilder(ctx, exec, textQuery)
+		if err != nil {
+			return err
+		}
+	}
+	if shouldInsertFloatValues {
+		err := ExecBuilder(ctx, exec, floatQuery)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

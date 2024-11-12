@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -53,7 +52,7 @@ func (repo *IngestionRepositoryImpl) IngestObjects(
 	}
 
 	if len(payloadsToInsert) > 0 {
-		if err := repo.batchInsertPayloadsAndEnumValues(ctx, tx, payloadsToInsert, table); err != nil {
+		if err := repo.batchInsertPayloads(ctx, tx, payloadsToInsert, table); err != nil {
 			return 0, err
 		}
 	}
@@ -157,16 +156,12 @@ func (repo *IngestionRepositoryImpl) batchUpdateValidUntilOnObsoleteObjects(ctx 
 	return err
 }
 
-func (repo *IngestionRepositoryImpl) batchInsertPayloadsAndEnumValues(ctx context.Context,
-	exec Executor, payloads []models.ClientObject, table models.Table,
+func (repo *IngestionRepositoryImpl) batchInsertPayloads(ctx context.Context, exec Executor, payloads []models.ClientObject, table models.Table,
 ) error {
 	columnNames := models.ColumnNames(table)
 	query := NewQueryBuilder().Insert(tableNameWithSchema(exec, table.Name))
 
-	enumValues := buildEnumValuesWithEnumFields(table)
-
 	for _, payload := range payloads {
-		collectEnumValues(payload, enumValues)
 
 		insertValues := generateInsertValues(payload, columnNames)
 		// Add UUID to the insert values for the "id" field
@@ -174,43 +169,15 @@ func (repo *IngestionRepositoryImpl) batchInsertPayloadsAndEnumValues(ctx contex
 		query = query.Values(insertValues...)
 	}
 
-	err := batchInsertEnumValues(ctx, exec, enumValues, table)
-	if err != nil {
-		return fmt.Errorf("batchInsertEnumValues error: %w", err)
-	}
-
 	columnNames = append(columnNames, "id")
 	query = query.Columns(columnNames...)
 
-	err = ExecBuilder(ctx, exec, query)
+	err := ExecBuilder(ctx, exec, query)
 	if IsUniqueViolationError(err) {
 		return errors.Wrap(models.ConflictError, "unique constraint violation during ingestion")
 	}
 
 	return err
-}
-
-type EnumValues map[string]map[any]bool
-
-func buildEnumValuesWithEnumFields(table models.Table) EnumValues {
-	enumValues := make(EnumValues)
-	for fieldName := range table.Fields {
-		dataType := table.Fields[fieldName].DataType
-		if table.Fields[fieldName].IsEnum && (dataType == models.String || dataType == models.Float) {
-			enumValues[fieldName] = make(map[any]bool)
-		}
-	}
-	return enumValues
-}
-
-// mutates enumValues
-func collectEnumValues(payload models.ClientObject, enumValues EnumValues) {
-	for fieldName := range enumValues {
-		value := payload.Data[fieldName]
-		if value != nil && value != "" {
-			enumValues[fieldName][value] = true
-		}
-	}
 }
 
 func generateInsertValues(payload models.ClientObject, columnNames []string) []any {
@@ -219,51 +186,4 @@ func generateInsertValues(payload models.ClientObject, columnNames []string) []a
 		insertValues[i] = payload.Data[fieldName]
 	}
 	return insertValues
-}
-
-// This has to be done in 2 queries because there cannot be multiple ON CONFLICT clauses per query
-func batchInsertEnumValues(ctx context.Context, exec Executor, enumValues EnumValues, table models.Table) error {
-	textQuery := NewQueryBuilder().
-		Insert("data_model_enum_values").
-		Columns("field_id", "text_value").
-		Suffix("ON CONFLICT ON CONSTRAINT unique_data_model_enum_text_values_field_id_value DO NOTHING")
-
-	floatQuery := NewQueryBuilder().
-		Insert("data_model_enum_values").
-		Columns("field_id", "float_value").
-		Suffix("ON CONFLICT ON CONSTRAINT unique_data_model_enum_float_values_field_id_value DO NOTHING")
-
-	// Hack to avoid empty query, which would cause an execution error
-	var shouldInsertTextValues bool
-	var shouldInsertFloatValues bool
-
-	for fieldName, values := range enumValues {
-		fieldId := table.Fields[fieldName].ID
-		dataType := table.Fields[fieldName].DataType
-
-		for value := range values {
-			if dataType == models.String {
-				textQuery = textQuery.Values(fieldId, value)
-				shouldInsertTextValues = true
-			} else if dataType == models.Float {
-				floatQuery = floatQuery.Values(fieldId, value)
-				shouldInsertFloatValues = true
-			}
-		}
-	}
-
-	if shouldInsertTextValues {
-		err := ExecBuilder(ctx, exec, textQuery)
-		if err != nil {
-			return err
-		}
-	}
-	if shouldInsertFloatValues {
-		err := ExecBuilder(ctx, exec, floatQuery)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
