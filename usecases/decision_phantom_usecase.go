@@ -54,7 +54,10 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(ctx context.Context
 	if testRunScenarioExecution.ScenarioId == "" {
 		return models.PhantomDecision{}, err
 	}
-	decision := models.AdapScenarExecToPhantomDecision(testRunScenarioExecution)
+	decision := models.AdaptScenarExecToPhantomDecision(testRunScenarioExecution)
+	for i := range decision.RuleExecutions {
+		decision.RuleExecutions[i].Evaluation = nil
+	}
 	ctx, span = tracer.Start(
 		ctx,
 		"DecisionUsecase.CreateDecision.store_phantom_decision",

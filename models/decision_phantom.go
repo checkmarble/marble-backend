@@ -25,7 +25,7 @@ type PhantomDecision struct {
 	RuleExecutions      []RuleExecution
 }
 
-func AdapScenarExecToPhantomDecision(scenarioExecution ScenarioExecution) PhantomDecision {
+func AdaptScenarExecToPhantomDecision(scenarioExecution ScenarioExecution) PhantomDecision {
 	return PhantomDecision{
 		PhantomDecisionId:   uuid.Must(uuid.NewV7()).String(),
 		CreatedAt:           time.Now(),

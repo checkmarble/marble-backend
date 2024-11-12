@@ -2,13 +2,11 @@ package repositories
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
-	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -87,15 +85,9 @@ func (repo *MarbleDbRepository) StorePhantomDecision(
 			"result",
 			"error_code",
 			"rule_id",
-			"rule_evaluation",
 			"outcome",
 		)
 	for _, ruleExecution := range decision.RuleExecutions {
-		serializedRuleEvaluation, err := dbmodels.SerializeNodeEvaluationDto(ruleExecution.Evaluation)
-		if err != nil {
-			return errors.Wrap(err, fmt.Sprintf("rule(%s):", ruleExecution.Rule.Id))
-		}
-
 		builderForRules = builderForRules.
 			Values(
 				uuid.Must(uuid.NewV7()).String(),
@@ -105,7 +97,6 @@ func (repo *MarbleDbRepository) StorePhantomDecision(
 				ruleExecution.Result,
 				ast.AdaptExecutionError(ruleExecution.Error),
 				ruleExecution.Rule.Id,
-				serializedRuleEvaluation,
 				ruleExecution.Outcome,
 			)
 	}
