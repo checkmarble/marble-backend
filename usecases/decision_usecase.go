@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
@@ -21,6 +22,8 @@ import (
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/utils"
 )
+
+const PHANTOM_DECISION_TIMEOUT = 5 * time.Second
 
 type DecisionUsecaseRepository interface {
 	DecisionWithRuleExecutionsById(
@@ -82,6 +85,7 @@ type DecisionUsecase struct {
 	evaluateAstExpression      ast_eval.EvaluateAstExpression
 	decisionWorkflows          decisionWorkflowsUsecase
 	webhookEventsSender        webhookEventsUsecase
+	phantomUseCase             PhantomDecisionUsecase
 	snoozesReader              snoozesForDecisionReader
 }
 
@@ -328,16 +332,15 @@ func (usecase *DecisionUsecase) CreateDecision(
 		}
 		if addedToCase {
 			sendWebhookEventId = append(sendWebhookEventId, caseWebhookEventId)
-		}
 
-		// only refresh the decision if it has changed, meaning if it was added to a case
-		if addedToCase {
 			dec, err := usecase.repository.DecisionWithRuleExecutionsById(ctx, tx, decision.DecisionId)
 			if err != nil {
 				return models.DecisionWithRuleExecutions{}, err
 			}
 			return dec, nil
 		}
+
+		// only refresh the decision if it has changed, meaning if it was added to a case
 		return decision, nil
 	})
 	if err != nil {
@@ -347,6 +350,22 @@ func (usecase *DecisionUsecase) CreateDecision(
 	for _, webhookEventId := range sendWebhookEventId {
 		usecase.webhookEventsSender.SendWebhookEventAsync(ctx, webhookEventId)
 	}
+	go func() {
+		phantomInput := models.CreatePhantomDecisionInput{
+			OrganizationId:     input.OrganizationId,
+			Scenario:           scenario,
+			ClientObject:       evaluationParameters.ClientObject,
+			Pivot:              evaluationParameters.Pivot,
+			TriggerObjectTable: input.TriggerObjectTable,
+		}
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), PHANTOM_DECISION_TIMEOUT)
+		defer cancel()
+		logger := utils.LoggerFromContext(ctx).With("phantom_decisions_with_scenario_id", phantomInput.Scenario.Id)
+		_, errPhantom := usecase.phantomUseCase.CreatePhantomDecision(ctx, phantomInput, evaluationParameters)
+		if errPhantom != nil {
+			logger.ErrorContext(ctx, fmt.Sprintf("Error when creating phantom decisions with scenario id %s: %s", phantomInput.Scenario.Id, err.Error()))
+		}
+	}()
 
 	return newDecision, nil
 }

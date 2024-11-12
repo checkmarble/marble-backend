@@ -66,7 +66,7 @@ type PublishedScenarioIterationBody struct {
 	Schedule                      string
 }
 
-func NewPublishedScenarioIteration(si ScenarioIteration) (PublishedScenarioIteration, error) {
+func NewPublishedScenarioIteration(si ScenarioIteration) PublishedScenarioIteration {
 	result := PublishedScenarioIteration{
 		Id:         si.Id,
 		ScenarioId: si.ScenarioId,
@@ -83,7 +83,7 @@ func NewPublishedScenarioIteration(si ScenarioIteration) (PublishedScenarioItera
 	if si.TriggerConditionAstExpression != nil {
 		result.Body.TriggerConditionAstExpression = *si.TriggerConditionAstExpression
 	}
-	return result, nil
+	return result
 }
 
 type ListScenarioPublicationsFilters struct {
