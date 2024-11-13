@@ -37,7 +37,7 @@ type EvalScenarioRepository interface {
 }
 
 type EvalTestRunScenarioRepository interface {
-	GetTestRunIterationByScenarioId(ctx context.Context, exec repositories.Executor, scenarioID string) (models.ScenarioIteration, error)
+	GetTestRunIterationByScenarioId(ctx context.Context, exec repositories.Executor, scenarioID string) (*models.ScenarioIteration, error)
 }
 
 type snoozesForDecisionReader interface {
@@ -51,7 +51,7 @@ type snoozesForDecisionReader interface {
 
 type ScenarioEvaluationRepositories struct {
 	EvalScenarioRepository        EvalScenarioRepository
-	EvalTestRunScenatioRepository EvalTestRunScenarioRepository
+	EvalTestRunScenarioRepository EvalTestRunScenarioRepository
 	ExecutorFactory               executor_factory.ExecutorFactory
 	IngestedDataReadRepository    repositories.IngestedDataReadRepository
 	EvaluateAstExpression         ast_eval.EvaluateAstExpression
@@ -195,16 +195,16 @@ func EvalTestRunScenario(ctx context.Context,
 		),
 	)
 	defer span.End()
-	testRunIteration, err := repositories.EvalTestRunScenatioRepository.GetTestRunIterationByScenarioId(
+	testRunIteration, err := repositories.EvalTestRunScenarioRepository.GetTestRunIterationByScenarioId(
 		ctx, exec, params.Scenario.Id)
 	if err != nil {
 		return models.ScenarioExecution{}, errors.Wrap(err,
 			"error getting testrun scenario iteration in EvalTestRunScenario")
 	}
-	if testRunIteration.Id == "" {
-		return models.ScenarioExecution{}, nil
+	if testRunIteration == nil {
+		return models.ScenarioExecution{}, models.ErrNoTestRunFound
 	}
-	se, errSe := processScenarioIteration(ctx, params, testRunIteration, repositories, start, logger, exec)
+	se, errSe := processScenarioIteration(ctx, params, *testRunIteration, repositories, start, logger, exec)
 	if errSe != nil {
 		return models.ScenarioExecution{}, errors.Wrap(errSe,
 			"error processing scenario iteration in EvalTestRunScenario")
