@@ -634,8 +634,8 @@ func (usecase *IngestionUseCase) insertEnumValuesAndIngest(
 
 	go func() {
 		// I'm giving it a short deadline because it's not critical to the user - in any situation i'd rather it fails
-		// than take more than 10ms
-		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Millisecond*10)
+		// than take more than 40ms
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Millisecond*40)
 		defer cancel()
 		enumValues := buildEnumValuesContainersFromTable(table)
 		for _, payload := range payloads {
