@@ -121,7 +121,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not create connection pool: %s", err)
 	}
 
-	privateKey := infra.ParseOrGenerateSigningKey(ctx, "")
+	privateKey := infra.ReadParseOrGenerateSigningKey(ctx, "", "")
 
 	workers := river.NewWorkers()
 	// AddWorker panics if the worker is already registered or invalid
