@@ -76,6 +76,7 @@ func RunServer() error {
 		caseManagerBucket                string
 		ingestionBucketUrl               string
 		jwtSigningKey                    string
+		jwtSigningKeyFile                string
 		loggingFormat                    string
 		sentryDsn                        string
 		transferCheckEnrichmentBucketUrl string
@@ -84,6 +85,7 @@ func RunServer() error {
 		caseManagerBucket:                utils.GetEnv("CASE_MANAGER_BUCKET_URL", ""),
 		ingestionBucketUrl:               utils.GetEnv("INGESTION_BUCKET_URL", ""),
 		jwtSigningKey:                    utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY", ""),
+		jwtSigningKeyFile:                utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY_FILE", ""),
 		loggingFormat:                    utils.GetEnv("LOGGING_FORMAT", "text"),
 		sentryDsn:                        utils.GetEnv("SENTRY_DSN", ""),
 		transferCheckEnrichmentBucketUrl: utils.GetEnv("TRANSFER_CHECK_ENRICHMENT_BUCKET_URL", ""), // required for transfercheck
@@ -91,7 +93,7 @@ func RunServer() error {
 
 	logger := utils.NewLogger(serverConfig.loggingFormat)
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
-	marbleJwtSigningKey := infra.ParseOrGenerateSigningKey(ctx, serverConfig.jwtSigningKey)
+	marbleJwtSigningKey := infra.ReadParseOrGenerateSigningKey(ctx, serverConfig.jwtSigningKey, serverConfig.jwtSigningKeyFile)
 	license := infra.VerifyLicense(licenseConfig)
 
 	infra.SetupSentry(serverConfig.sentryDsn, apiConfig.Env)
