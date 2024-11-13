@@ -53,6 +53,7 @@ var (
 	ErrPanicInScenarioEvalution                         = errors.New("panic during scenario evaluation")
 
 	ErrTestRunAlreadyExist      = errors.Wrap(ConflictError, "there is an already existing testrun for this scenario")
+	ErrNoTestRunFound           = errors.Wrap(NotFoundError, "there is no testrun for this scenario")
 	ErrWrongIterationForTestRun = errors.Wrap(ConflictError, "the current scenario iteration is a live version and cannot be used")
 )
 
