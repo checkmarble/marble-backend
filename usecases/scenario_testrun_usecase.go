@@ -43,6 +43,12 @@ func (usecase *ScenarioTestRunUsecase) ActivateScenarioTestRun(ctx context.Conte
 			fmt.Sprintf("Cannot activate the scenario in test mode: it requires data preparation to be run first for %d indexes", len(indexesToCreate)),
 		)
 	}
+
+	errIdx := usecase.clientDbIndexEditor.CreateIndexesAsync(ctx, organizationId, indexesToCreate)
+	if errIdx != nil {
+		return models.ScenarioTestRun{}, errors.Wrap(errIdx,
+			"Error while creating indexes in ActivateScenarioTestRun")
+	}
 	exec := usecase.executorFactory.NewExecutor()
 	// we should not have any existing testrun for this scenario
 	existingTestrun, err := usecase.repository.GetActiveTestRunByScenarioIterationID(ctx, exec, input.ScenarioIterationId)
