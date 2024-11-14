@@ -68,6 +68,10 @@ func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 	}
 	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.organizationId, mock.Anything).Return(
 		[]models.ConcreteIndex{}, 0, nil)
+	suite.clientDbIndexEditor.On("CreateIndexesAsync",
+		suite.ctx,
+		suite.organizationId,
+		mock.Anything).Return(nil)
 	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
 	liveVersionID := "b76359b2-9806-40f1-9fee-7ea18c797b2e"
 	suite.scenarioRepository.On("GetScenarioById",
