@@ -363,7 +363,8 @@ func (usecase *DecisionUsecase) CreateDecision(
 		logger := utils.LoggerFromContext(ctx).With("phantom_decisions_with_scenario_id", phantomInput.Scenario.Id)
 		_, errPhantom := usecase.phantomUseCase.CreatePhantomDecision(ctx, phantomInput, evaluationParameters)
 		if errPhantom != nil {
-			logger.ErrorContext(ctx, fmt.Sprintf("Error when creating phantom decisions with scenario id %s: %s", phantomInput.Scenario.Id, err.Error()))
+			logger.ErrorContext(ctx, fmt.Sprintf("Error when creating phantom decisions with scenario id %s: %s",
+				phantomInput.Scenario.Id, errPhantom.Error()))
 		}
 	}()
 
