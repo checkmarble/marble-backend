@@ -82,6 +82,10 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 					ast.NewNamedArgumentError("filters"),
 				))
 			}
+			// At the first nil filter value found, stop and just return the default value for the aggregator
+			if filter.Value == nil {
+				return a.defaultValueForAggregator(aggregator)
+			}
 		}
 	}
 
@@ -123,8 +127,7 @@ func (a AggregatorEvaluator) defaultValueForAggregator(aggregator ast.Aggregator
 	case ast.AGGREGATOR_COUNT, ast.AGGREGATOR_COUNT_DISTINCT:
 		return 0, nil
 	case ast.AGGREGATOR_AVG, ast.AGGREGATOR_MAX, ast.AGGREGATOR_MIN:
-		return MakeEvaluateError(errors.Wrap(ast.ErrNullFieldRead,
-			fmt.Sprintf("aggregation %s returned null", aggregator)))
+		return nil, nil
 	default:
 		return MakeEvaluateError(errors.Wrap(ast.ErrRuntimeExpression,
 			fmt.Sprintf("aggregation %s not supported", aggregator)))

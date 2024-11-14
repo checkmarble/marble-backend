@@ -47,3 +47,107 @@ func TestBooleanArithmetic_zero_operator(t *testing.T) {
 		assert.ErrorIs(t, errs[0], ast.ErrWrongNumberOfArgument)
 	}
 }
+
+func TestBooleanArithmeticEvalOr(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []any
+		expected any
+		err      error
+	}{
+		{
+			name:     "all false",
+			args:     []any{false, false, false},
+			expected: false,
+			err:      nil,
+		},
+		{
+			name:     "one true",
+			args:     []any{false, true, false},
+			expected: true,
+			err:      nil,
+		},
+		{
+			name:     "all true",
+			args:     []any{true, true, true},
+			expected: true,
+			err:      nil,
+		},
+		{
+			name:     "contains nil",
+			args:     []any{false, nil, false},
+			expected: nil,
+			err:      nil,
+		},
+		{
+			name:     "non-boolean argument",
+			args:     []any{false, "string", false},
+			expected: nil,
+			err:      ast.ErrArgumentMustBeBool,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := booleanArithmeticEvalOr(tt.args)
+			if tt.err != nil {
+				assert.ErrorIs(t, err, tt.err)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestBooleanArithmeticEvalAnd(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []any
+		expected any
+		err      error
+	}{
+		{
+			name:     "all true",
+			args:     []any{true, true, true},
+			expected: true,
+			err:      nil,
+		},
+		{
+			name:     "one false",
+			args:     []any{true, false, true},
+			expected: false,
+			err:      nil,
+		},
+		{
+			name:     "all false",
+			args:     []any{false, false, false},
+			expected: false,
+			err:      nil,
+		},
+		{
+			name:     "contains nil",
+			args:     []any{true, nil, true},
+			expected: nil,
+			err:      nil,
+		},
+		{
+			name:     "non-boolean argument",
+			args:     []any{true, "string", true},
+			expected: nil,
+			err:      ast.ErrArgumentMustBeBool,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := booleanArithmeticEvalAnd(tt.args)
+			if tt.err != nil {
+				assert.ErrorIs(t, err, tt.err)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}

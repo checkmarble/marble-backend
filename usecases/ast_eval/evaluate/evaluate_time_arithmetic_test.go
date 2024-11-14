@@ -101,6 +101,20 @@ func TestTimeArithmetic_missing_timestampField(t *testing.T) {
 	}
 }
 
+func TestTimeArithmetic_nil_timestampField(t *testing.T) {
+	arguments := ast.Arguments{
+		NamedArgs: map[string]any{
+			"timestampField": nil,
+			"duration":       "PT1H",
+			"sign":           "+",
+		},
+	}
+
+	result, errs := timeArithmetic.Evaluate(context.TODO(), arguments)
+	assert.Empty(t, errs)
+	assert.Nil(t, result)
+}
+
 func TestTimeArithmetic_missing_duration(t *testing.T) {
 	arguments := ast.Arguments{
 		NamedArgs: map[string]any{

@@ -25,6 +25,9 @@ func (f StringInList) Evaluate(ctx context.Context, arguments ast.Arguments) (an
 	if err != nil {
 		return MakeEvaluateError(errors.Wrap(err, "Error in Evaluate function StringInList"))
 	}
+	if leftAny == nil || rightAny == nil {
+		return nil, nil
+	}
 
 	left, errLeft := adaptArgumentToString(leftAny)
 	right, errRight := adaptArgumentToListOfStrings(rightAny)

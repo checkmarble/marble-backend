@@ -24,6 +24,9 @@ func (f Arithmetic) Evaluate(ctx context.Context, arguments ast.Arguments) (any,
 	if err != nil {
 		return MakeEvaluateError(err)
 	}
+	if leftAny == nil || rightAny == nil {
+		return nil, nil
+	}
 
 	// try to promote to int64
 	if left, right, errs := adaptLeftAndRight(leftAny, rightAny, promoteArgumentToInt64); len(errs) == 0 {
