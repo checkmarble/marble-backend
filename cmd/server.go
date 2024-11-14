@@ -37,16 +37,15 @@ func RunServer() error {
 		GoogleApplicationCredentials: utils.GetEnv("GOOGLE_APPLICATION_CREDENTIALS", ""),
 	}
 	pgConfig := infra.PgConfig{
-		ConnectionString:    utils.GetEnv("PG_CONNECTION_STRING", ""),
-		Database:            "marble",
-		DbConnectWithSocket: utils.GetEnv("PG_CONNECT_WITH_SOCKET", false),
-		Hostname:            utils.GetRequiredEnv[string]("PG_HOSTNAME"),
-		Password:            utils.GetRequiredEnv[string]("PG_PASSWORD"),
-		Port:                utils.GetEnv("PG_PORT", "5432"),
-		User:                utils.GetRequiredEnv[string]("PG_USER"),
-		MaxPoolConnections:  utils.GetEnv("PG_MAX_POOL_SIZE", infra.DEFAULT_MAX_CONNECTIONS),
-		ClientDbConfigFile:  utils.GetEnv("CLIENT_DB_CONFIG_FILE", ""),
-		SslMode:             utils.GetEnv("PG_SSL_MODE", "prefer"),
+		ConnectionString:   utils.GetEnv("PG_CONNECTION_STRING", ""),
+		Database:           "marble",
+		Hostname:           utils.GetEnv("PG_HOSTNAME", ""),
+		Password:           utils.GetEnv("PG_PASSWORD", ""),
+		Port:               utils.GetEnv("PG_PORT", "5432"),
+		User:               utils.GetEnv("PG_USER", ""),
+		MaxPoolConnections: utils.GetEnv("PG_MAX_POOL_SIZE", infra.DEFAULT_MAX_CONNECTIONS),
+		ClientDbConfigFile: utils.GetEnv("CLIENT_DB_CONFIG_FILE", ""),
+		SslMode:            utils.GetEnv("PG_SSL_MODE", "prefer"),
 	}
 	metabaseConfig := infra.MetabaseConfiguration{
 		SiteUrl:             utils.GetEnv("METABASE_SITE_URL", ""),
@@ -77,6 +76,7 @@ func RunServer() error {
 		caseManagerBucket                string
 		ingestionBucketUrl               string
 		jwtSigningKey                    string
+		jwtSigningKeyFile                string
 		loggingFormat                    string
 		sentryDsn                        string
 		transferCheckEnrichmentBucketUrl string
@@ -85,6 +85,7 @@ func RunServer() error {
 		caseManagerBucket:                utils.GetEnv("CASE_MANAGER_BUCKET_URL", ""),
 		ingestionBucketUrl:               utils.GetEnv("INGESTION_BUCKET_URL", ""),
 		jwtSigningKey:                    utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY", ""),
+		jwtSigningKeyFile:                utils.GetEnv("AUTHENTICATION_JWT_SIGNING_KEY_FILE", ""),
 		loggingFormat:                    utils.GetEnv("LOGGING_FORMAT", "text"),
 		sentryDsn:                        utils.GetEnv("SENTRY_DSN", ""),
 		transferCheckEnrichmentBucketUrl: utils.GetEnv("TRANSFER_CHECK_ENRICHMENT_BUCKET_URL", ""), // required for transfercheck
@@ -92,7 +93,7 @@ func RunServer() error {
 
 	logger := utils.NewLogger(serverConfig.loggingFormat)
 	ctx := utils.StoreLoggerInContext(context.Background(), logger)
-	marbleJwtSigningKey := infra.ParseOrGenerateSigningKey(ctx, serverConfig.jwtSigningKey)
+	marbleJwtSigningKey := infra.ReadParseOrGenerateSigningKey(ctx, serverConfig.jwtSigningKey, serverConfig.jwtSigningKeyFile)
 	license := infra.VerifyLicense(licenseConfig)
 
 	infra.SetupSentry(serverConfig.sentryDsn, apiConfig.Env)
