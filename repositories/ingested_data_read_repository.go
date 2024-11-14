@@ -56,7 +56,7 @@ func (repo *IngestedDataReadRepositoryImpl) GetDbField(ctx context.Context, exec
 	var output any
 	err = row.Scan(&output)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, fmt.Errorf("no rows scanned while reading DB: %w", ast.ErrNoRowsRead)
+		return nil, nil
 	} else if err != nil {
 		return nil, err
 	}

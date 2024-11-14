@@ -16,7 +16,7 @@ type FilterEvaluator struct {
 	DataModel models.DataModel
 }
 
-var ValidTypeForFilterOperators = map[ast.FilterOperator][]models.DataType{
+var validTypeForFilterOperators = map[ast.FilterOperator][]models.DataType{
 	ast.FILTER_EQUAL:            {models.Bool, models.Int, models.Float, models.String, models.Timestamp},
 	ast.FILTER_NOT_EQUAL:        {models.Bool, models.Int, models.Float, models.String, models.Timestamp},
 	ast.FILTER_GREATER:          {models.Int, models.Float, models.String, models.Timestamp},
@@ -47,7 +47,7 @@ func (f FilterEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) 
 
 	// Operator validation
 	operator := ast.FilterOperator(operatorStr)
-	validTypes, isValid := ValidTypeForFilterOperators[operator]
+	validTypes, isValid := validTypeForFilterOperators[operator]
 	if !isValid {
 		return MakeEvaluateError(errors.Join(
 			errors.Wrap(ast.ErrRuntimeExpression,
@@ -67,6 +67,14 @@ func (f FilterEvaluator) Evaluate(ctx context.Context, arguments ast.Arguments) 
 
 	// Value validation
 	value := arguments.NamedArgs["value"]
+	if value == nil {
+		return ast.Filter{
+			TableName: tableName,
+			FieldName: fieldName,
+			Operator:  operator,
+			Value:     nil,
+		}, nil
+	}
 	var promotedValue any
 	// When value is a float, it cannot be cast to int but SQL can handle the comparision, so no casting is required
 	if fieldType == models.Int && reflect.TypeOf(value) == reflect.TypeOf(float64(0)) {

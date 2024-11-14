@@ -32,6 +32,9 @@ func (f TimeFunctions) Evaluate(ctx context.Context, arguments ast.Arguments) (a
 		if err := verifyNumberOfArguments(arguments.Args, 1); err != nil {
 			return MakeEvaluateError(err)
 		}
+		if arguments.Args[0] == nil {
+			return nil, nil
+		}
 
 		timeString, err := adaptArgumentToString(arguments.Args[0])
 		if err != nil {

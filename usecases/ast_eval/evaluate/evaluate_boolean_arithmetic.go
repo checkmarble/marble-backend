@@ -20,31 +20,71 @@ func NewBooleanArithmetic(f ast.Function) BooleanArithmetic {
 }
 
 func (f BooleanArithmetic) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
-	numberOfOperands := len(arguments.Args)
-	if numberOfOperands < 1 {
-		return MakeEvaluateError(errors.Wrap(ast.ErrWrongNumberOfArgument,
-			fmt.Sprintf("Boolean arithmetic expects at least 1 operand, got %d", numberOfOperands)))
+	if len(arguments.Args) < 1 {
+		return MakeEvaluateError(errors.Wrap(
+			ast.ErrWrongNumberOfArgument,
+			"Boolean arithmetic expects at least 1 operand, got 0"))
 	}
 
-	values, errs := AdaptArguments(arguments.Args, adaptArgumentToBool)
-	if len(errs) > 0 {
-		return nil, errs
+	switch f.Function {
+	case ast.FUNC_AND:
+		return MakeEvaluateResult(booleanArithmeticEvalAnd(arguments.Args))
+	case ast.FUNC_OR:
+		return MakeEvaluateResult(booleanArithmeticEvalOr(arguments.Args))
+	default:
+		return MakeEvaluateError(errors.New(fmt.Sprintf(
+			"Boolean arithmetic does not support %s function", f.Function.DebugString())))
 	}
-	return MakeEvaluateResult(f.booleanArithmeticEval(values))
 }
 
-func (f BooleanArithmetic) booleanArithmeticEval(args []bool) (bool, error) {
-	r := args[0]
-	numberOfOperands := len(args)
-	for i := 1; i < numberOfOperands; i++ {
-		switch f.Function {
-		case ast.FUNC_AND:
-			r = r && args[i]
-		case ast.FUNC_OR:
-			r = r || args[i]
-		default:
-			return false, errors.New(fmt.Sprintf("Arithmetic does not support %s function", f.Function.DebugString()))
+// Case OR:
+// - if any true: return true
+// - if any nulls: return null
+// - else (all false): return false
+func booleanArithmeticEvalOr(args []any) (any, error) {
+	nullFound := false
+	for _, arg := range args {
+		if arg == nil {
+			nullFound = true
+		} else {
+			argBool, ok := arg.(bool)
+			if !ok {
+				return nil, errors.Wrap(ast.ErrArgumentMustBeBool,
+					"Boolean arithmetic expects all arguments to be boolean")
+			}
+			if argBool {
+				return true, nil
+			}
 		}
 	}
-	return r, nil
+	if nullFound {
+		return nil, nil
+	}
+	return false, nil
+}
+
+// Case AND:
+// - if any false: return false
+// - if any null: return null
+// - else (only true): return true
+func booleanArithmeticEvalAnd(args []any) (any, error) {
+	nullFound := false
+	for _, arg := range args {
+		if arg == nil {
+			nullFound = true
+		} else {
+			argBool, ok := arg.(bool)
+			if !ok {
+				return nil, errors.Wrap(ast.ErrArgumentMustBeBool,
+					"Boolean arithmetic expects all arguments to be boolean")
+			}
+			if !argBool {
+				return false, nil
+			}
+		}
+	}
+	if nullFound {
+		return nil, nil
+	}
+	return true, nil
 }

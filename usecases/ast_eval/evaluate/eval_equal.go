@@ -17,6 +17,9 @@ func (f Equal) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []er
 	if err != nil {
 		return MakeEvaluateError(err)
 	}
+	if leftAny == nil || rightAny == nil {
+		return nil, nil
+	}
 
 	if left, right, errs := adaptLeftAndRight(leftAny, rightAny, adaptArgumentToString); len(errs) == 0 {
 		return MakeEvaluateResult(left == right)

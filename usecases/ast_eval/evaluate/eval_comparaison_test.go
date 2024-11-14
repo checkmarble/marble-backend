@@ -121,7 +121,13 @@ func TestComparison_wrongnumber_of_argument(t *testing.T) {
 }
 
 func TestComparison_required(t *testing.T) {
-	_, errs := NewComparison(ast.FUNC_ADD).Evaluate(context.TODO(), ast.Arguments{Args: []any{4, nil}})
+	_, errs := NewComparison(ast.FUNC_ADD).Evaluate(context.TODO(), ast.Arguments{Args: []any{4, "5"}})
 	assert.Equal(t, len(errs), 1)
 	assert.ErrorIs(t, errs[0], ast.ErrArgumentMustBeIntFloatOrTime)
+}
+
+func TestComparison_with_null(t *testing.T) {
+	out, errs := NewComparison(ast.FUNC_ADD).Evaluate(context.TODO(), ast.Arguments{Args: []any{4, nil}})
+	assert.Equal(t, len(errs), 0)
+	assert.Equal(t, out, nil)
 }

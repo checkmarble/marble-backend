@@ -25,6 +25,9 @@ func (f StringContains) Evaluate(ctx context.Context, arguments ast.Arguments) (
 	if err != nil {
 		return MakeEvaluateError(err)
 	}
+	if leftAny == nil || rightAny == nil {
+		return nil, nil
+	}
 
 	left, right, errs := adaptLeftAndRight(leftAny, rightAny, adaptArgumentToString)
 

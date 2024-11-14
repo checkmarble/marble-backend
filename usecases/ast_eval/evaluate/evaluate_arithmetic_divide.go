@@ -15,6 +15,9 @@ func (f ArithmeticDivide) Evaluate(ctx context.Context, arguments ast.Arguments)
 	if err != nil {
 		return MakeEvaluateError(errors.Wrap(err, "Error in Evaluate function Divide"))
 	}
+	if leftAny == nil || rightAny == nil {
+		return nil, nil
+	}
 
 	// promote to float64
 	left, right, errs := adaptLeftAndRight(leftAny, rightAny, promoteArgumentToFloat64)

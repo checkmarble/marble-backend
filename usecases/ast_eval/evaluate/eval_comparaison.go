@@ -25,6 +25,9 @@ func (f Comparison) Evaluate(ctx context.Context, arguments ast.Arguments) (any,
 	if err != nil {
 		return MakeEvaluateError(err)
 	}
+	if leftAny == nil || rightAny == nil {
+		return nil, nil
+	}
 
 	leftFloat, rightFloat, errs := adaptLeftAndRight(leftAny, rightAny, promoteArgumentToFloat64)
 	if len(errs) == 0 {
