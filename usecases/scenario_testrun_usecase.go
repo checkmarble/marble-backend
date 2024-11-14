@@ -13,11 +13,12 @@ import (
 )
 
 type ScenarioTestRunUsecase struct {
-	transactionFactory executor_factory.TransactionFactory
-	executorFactory    executor_factory.ExecutorFactory
-	enforceSecurity    security.EnforceSecurityTestRun
-	repository         repositories.ScenarioTestRunRepository
-	scenarioRepository ScenarioUsecaseRepository
+	transactionFactory  executor_factory.TransactionFactory
+	executorFactory     executor_factory.ExecutorFactory
+	enforceSecurity     security.EnforceSecurityTestRun
+	repository          repositories.ScenarioTestRunRepository
+	scenarioRepository  ScenarioUsecaseRepository
+	clientDbIndexEditor clientDbIndexEditor
 }
 
 func (usecase *ScenarioTestRunUsecase) ActivateScenarioTestRun(ctx context.Context,
@@ -26,6 +27,21 @@ func (usecase *ScenarioTestRunUsecase) ActivateScenarioTestRun(ctx context.Conte
 ) (models.ScenarioTestRun, error) {
 	if err := usecase.enforceSecurity.CreateTestRun(organizationId); err != nil {
 		return models.ScenarioTestRun{}, err
+	}
+	indexesToCreate, _, err := usecase.clientDbIndexEditor.GetIndexesToCreate(
+		ctx,
+		organizationId,
+		input.ScenarioIterationId,
+	)
+	if err != nil {
+		return models.ScenarioTestRun{}, errors.Wrap(err,
+			"Error while fetching indexes to create in ActivateScenarioTestRun")
+	}
+	if len(indexesToCreate) > 0 {
+		return models.ScenarioTestRun{}, errors.Wrap(
+			models.ErrScenarioIterationRequiresPreparation,
+			fmt.Sprintf("Cannot activate the scenario in test mode: it requires data preparation to be run first for %d indexes", len(indexesToCreate)),
+		)
 	}
 	exec := usecase.executorFactory.NewExecutor()
 	// we should not have any existing testrun for this scenario
