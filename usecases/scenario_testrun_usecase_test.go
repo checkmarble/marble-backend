@@ -21,6 +21,7 @@ type ScenarioTestrunTestSuite struct {
 	scenarioRepository    *mocks.ScenarioRepository
 	enforceSecurity       *mocks.EnforceSecurity
 	repository            *mocks.ScenatioTestrunRepository
+	clientDbIndexEditor   *mocks.ClientDbIndexEditor
 	organizationId        string
 	scenarioId            string
 	scenarioPublicationId string
@@ -38,16 +39,18 @@ func (suite *ScenarioTestrunTestSuite) SetupTest() {
 	suite.organizationId = "25ab6323-1657-4a52-923a-ef6983fe4532"
 	suite.scenarioId = "c5968ff7-6142-4623-a6b3-1539f345e5fa"
 	suite.scenarioPublicationId = "c1c005f5-a920-4f92-aee1-f5007f2ad8c1"
+	suite.clientDbIndexEditor = new(mocks.ClientDbIndexEditor)
 	suite.ctx = context.Background()
 }
 
 func (suite *ScenarioTestrunTestSuite) makeUsecase() *ScenarioTestRunUsecase {
 	return &ScenarioTestRunUsecase{
-		transactionFactory: suite.transactionFactory,
-		executorFactory:    suite.executorFactory,
-		enforceSecurity:    suite.enforceSecurity,
-		repository:         suite.repository,
-		scenarioRepository: suite.scenarioRepository,
+		transactionFactory:  suite.transactionFactory,
+		executorFactory:     suite.executorFactory,
+		enforceSecurity:     suite.enforceSecurity,
+		repository:          suite.repository,
+		scenarioRepository:  suite.scenarioRepository,
+		clientDbIndexEditor: suite.clientDbIndexEditor,
 	}
 }
 
@@ -63,6 +66,8 @@ func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 		Status:              models.Up,
 		Period:              time.Duration(1000),
 	}
+	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.organizationId, mock.Anything).Return(
+		[]models.ConcreteIndex{}, 0, nil)
 	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
 	liveVersionID := "b76359b2-9806-40f1-9fee-7ea18c797b2e"
 	suite.scenarioRepository.On("GetScenarioById",
