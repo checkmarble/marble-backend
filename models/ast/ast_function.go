@@ -25,6 +25,8 @@ var FuncOperators = []Function{
 	FUNC_STRING_NOT_CONTAIN,
 	FUNC_CONTAINS_ANY,
 	FUNC_CONTAINS_NONE,
+	FUNC_IS_EMPTY,
+	FUNC_IS_NOT_EMPTY,
 }
 
 const (
