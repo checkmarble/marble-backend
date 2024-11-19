@@ -22,9 +22,8 @@ type Filter struct {
 }
 
 var FuncFilterAttributes = FuncAttributes{
-	DebugName:         "FUNC_FILTER",
-	AstName:           "Filter",
-	NumberOfArguments: 4,
+	DebugName: "FUNC_FILTER",
+	AstName:   "Filter",
 	NamedArguments: []string{
 		"tableName",
 		"fieldName",
