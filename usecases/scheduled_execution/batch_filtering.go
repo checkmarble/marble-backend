@@ -50,9 +50,12 @@ func filterFromComparisonNode(node ast.Node, table models.TableIdentifier, depth
 		return models.Filter{}, false
 	}
 
-	rightVal := comparisonValueFromNode(node.Children[1], table, depth)
-	if !rightVal.valid {
-		return models.Filter{}, false
+	var rightVal parsedFilterValue
+	if len(node.Children) == 2 {
+		rightVal = comparisonValueFromNode(node.Children[1], table, depth)
+		if !rightVal.valid {
+			return models.Filter{}, false
+		}
 	}
 
 	return models.Filter{
@@ -173,6 +176,8 @@ func canBeNestedNode(node ast.Node) bool {
 			ast.FUNC_ADD,
 			ast.FUNC_MULTIPLY,
 			ast.FUNC_DIVIDE,
+			ast.FUNC_IS_EMPTY,
+			ast.FUNC_IS_NOT_EMPTY,
 		},
 		node.Function)
 }

@@ -59,15 +59,16 @@ const (
 	FUNC_FILTER
 	FUNC_FUZZY_MATCH
 	FUNC_FUZZY_MATCH_ANY_OF
+	FUNC_IS_EMPTY
+	FUNC_IS_NOT_EMPTY
 	FUNC_UNDEFINED Function = -1
 	FUNC_UNKNOWN   Function = -2
 )
 
 type FuncAttributes struct {
-	DebugName         string
-	AstName           string
-	NumberOfArguments int
-	NamedArguments    []string
+	DebugName      string
+	AstName        string
+	NamedArguments []string
 }
 
 // If number of arguments -1 the function can take any number of arguments
@@ -81,122 +82,99 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		AstName:   "",
 	},
 	FUNC_ADD: {
-		DebugName:         "FUNC_ADD",
-		AstName:           "+",
-		NumberOfArguments: 2,
+		DebugName: "FUNC_ADD",
+		AstName:   "+",
 	},
 	FUNC_SUBTRACT: {
-		DebugName:         "FUNC_SUBTRACT",
-		AstName:           "-",
-		NumberOfArguments: 2,
+		DebugName: "FUNC_SUBTRACT",
+		AstName:   "-",
 	},
 	FUNC_MULTIPLY: {
-		DebugName:         "FUNC_MULTIPLY",
-		AstName:           "*",
-		NumberOfArguments: 2,
+		DebugName: "FUNC_MULTIPLY",
+		AstName:   "*",
 	},
 	FUNC_DIVIDE: {
-		DebugName:         "FUNC_DIVIDE",
-		AstName:           "/",
-		NumberOfArguments: 2,
+		DebugName: "FUNC_DIVIDE",
+		AstName:   "/",
 	},
 	FUNC_GREATER: {
-		DebugName:         "FUNC_GREATER",
-		AstName:           ">",
-		NumberOfArguments: 2,
+		DebugName: "FUNC_GREATER",
+		AstName:   ">",
 	},
 	FUNC_GREATER_OR_EQUAL: {
-		DebugName:         "FUNC_GREATER_OR_EQUAL",
-		AstName:           ">=",
-		NumberOfArguments: 2,
+		DebugName: "FUNC_GREATER_OR_EQUAL",
+		AstName:   ">=",
 	},
 	FUNC_LESS: {
-		DebugName:         "FUNC_LESS",
-		AstName:           "<",
-		NumberOfArguments: 2,
+		DebugName: "FUNC_LESS",
+		AstName:   "<",
 	},
 	FUNC_LESS_OR_EQUAL: {
-		DebugName:         "FUNC_LESS_OR_EQUAL",
-		AstName:           "<=",
-		NumberOfArguments: 2,
+		DebugName: "FUNC_LESS_OR_EQUAL",
+		AstName:   "<=",
 	},
 	FUNC_EQUAL: {
-		DebugName:         "FUNC_EQUAL",
-		AstName:           "=",
-		NumberOfArguments: 2,
+		DebugName: "FUNC_EQUAL",
+		AstName:   "=",
 	},
 	FUNC_NOT_EQUAL: {
-		DebugName:         "FUNC_NOT_EQUAL",
-		AstName:           "≠",
-		NumberOfArguments: 2,
+		DebugName: "FUNC_NOT_EQUAL",
+		AstName:   "≠",
 	},
 	FUNC_NOT: {
-		DebugName:         "FUNC_NOT",
-		AstName:           "Not",
-		NumberOfArguments: 1,
+		DebugName: "FUNC_NOT",
+		AstName:   "Not",
 	},
 	FUNC_AND: {
-		DebugName:         "FUNC_AND",
-		AstName:           "And",
-		NumberOfArguments: -1,
+		DebugName: "FUNC_AND",
+		AstName:   "And",
 	},
 	FUNC_OR: {
-		DebugName:         "FUNC_OR",
-		AstName:           "Or",
-		NumberOfArguments: -1,
+		DebugName: "FUNC_OR",
+		AstName:   "Or",
 	},
 	FUNC_TIME_ADD: {
-		DebugName:         "FUNC_TIME_ADD",
-		AstName:           "TimeAdd",
-		NumberOfArguments: 3,
-		NamedArguments:    []string{"timestampField", "duration", "sign"},
+		DebugName:      "FUNC_TIME_ADD",
+		AstName:        "TimeAdd",
+		NamedArguments: []string{"timestampField", "duration", "sign"},
 	},
 	FUNC_TIME_NOW: {
-		DebugName:         "FUNC_TIME_NOW",
-		AstName:           "TimeNow",
-		NumberOfArguments: 0,
+		DebugName: "FUNC_TIME_NOW",
+		AstName:   "TimeNow",
 	},
 	FUNC_PARSE_TIME: {
-		DebugName:         "FUNC_PARSE_TIME",
-		AstName:           "ParseTime",
-		NumberOfArguments: 1,
+		DebugName: "FUNC_PARSE_TIME",
+		AstName:   "ParseTime",
 	},
 	FUNC_PAYLOAD: {
-		DebugName:         "FUNC_PAYLOAD",
-		AstName:           "Payload",
-		NumberOfArguments: 1,
+		DebugName: "FUNC_PAYLOAD",
+		AstName:   "Payload",
 	},
 	FUNC_DB_ACCESS:          AttributeFuncDbAccess.FuncAttributes,
 	FUNC_CUSTOM_LIST_ACCESS: AttributeFuncCustomListAccess.FuncAttributes,
 	FUNC_IS_IN_LIST: {
-		DebugName:         "FUNC_IS_IN_LIST",
-		AstName:           "IsInList",
-		NumberOfArguments: 2,
+		DebugName: "FUNC_IS_IN_LIST",
+		AstName:   "IsInList",
 	},
 	FUNC_IS_NOT_IN_LIST: {
-		DebugName:         "FUNC_IS_NOT_IN_LIST",
-		AstName:           "IsNotInList",
-		NumberOfArguments: 2,
+		DebugName: "FUNC_IS_NOT_IN_LIST",
+		AstName:   "IsNotInList",
 	},
 	FUNC_STRING_CONTAINS: {
-		DebugName:         "FUNC_STRING_CONTAINS",
-		AstName:           "StringContains",
-		NumberOfArguments: 2,
+		DebugName: "FUNC_STRING_CONTAINS",
+		AstName:   "StringContains",
 	},
 	FUNC_STRING_NOT_CONTAIN: {
-		DebugName:         "FUNC_STRING_NOT_CONTAIN",
-		AstName:           "StringNotContain",
-		NumberOfArguments: 2,
+		DebugName: "FUNC_STRING_NOT_CONTAIN",
+		AstName:   "StringNotContain",
 	},
 	FUNC_CONTAINS_ANY: {
-		DebugName:         "FUNC_CONTAINS_ANY",
-		AstName:           "ContainsAnyOf",
-		NumberOfArguments: 2,
+		DebugName: "FUNC_CONTAINS_ANY",
+		AstName:   "ContainsAnyOf",
 	},
 	FUNC_CONTAINS_NONE: {
-		DebugName:         "FUNC_CONTAINS_NONE",
-		AstName:           "ContainsNoneOf",
-		NumberOfArguments: 2,
+		DebugName: "FUNC_CONTAINS_NONE",
+		AstName:   "ContainsNoneOf",
 	},
 	FUNC_AGGREGATOR: FuncAggregatorAttributes,
 	FUNC_LIST: {
@@ -204,16 +182,22 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		AstName:   "List",
 	},
 	FUNC_FUZZY_MATCH: {
-		DebugName:         "FUNC_FUZZY_MATCH",
-		AstName:           "FuzzyMatch",
-		NumberOfArguments: 2,
-		NamedArguments:    []string{"algorithm"},
+		DebugName:      "FUNC_FUZZY_MATCH",
+		AstName:        "FuzzyMatch",
+		NamedArguments: []string{"algorithm"},
 	},
 	FUNC_FUZZY_MATCH_ANY_OF: {
-		DebugName:         "FUNC_FUZZY_MATCH_ANY_OF",
-		AstName:           "FuzzyMatchAnyOf",
-		NumberOfArguments: 2,
-		NamedArguments:    []string{"algorithm"},
+		DebugName:      "FUNC_FUZZY_MATCH_ANY_OF",
+		AstName:        "FuzzyMatchAnyOf",
+		NamedArguments: []string{"algorithm"},
+	},
+	FUNC_IS_EMPTY: {
+		DebugName: "FUNC_IS_EMPTY",
+		AstName:   "IsEmpty",
+	},
+	FUNC_IS_NOT_EMPTY: {
+		DebugName: "FUNC_IS_NOT_EMPTY",
+		AstName:   "IsNotEmpty",
 	},
 	FUNC_FILTER: FuncFilterAttributes,
 }

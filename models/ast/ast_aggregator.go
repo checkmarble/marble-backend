@@ -13,8 +13,7 @@ const (
 )
 
 var FuncAggregatorAttributes = FuncAttributes{
-	DebugName:         "FUNC_AGGREGATOR",
-	AstName:           "Aggregator",
-	NumberOfArguments: 4,
-	NamedArguments:    []string{"tableName", "fieldName", "aggregator", "filters", "label"},
+	DebugName:      "FUNC_AGGREGATOR",
+	AstName:        "Aggregator",
+	NamedArguments: []string{"tableName", "fieldName", "aggregator", "filters", "label"},
 }
