@@ -19,7 +19,6 @@ const batchSize = 5000
 type RunScheduledExecutionRepository interface {
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
 	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (models.ScenarioIteration, error)
-
 	StoreDecisionsToCreate(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -61,6 +60,7 @@ type taskQueueRepository interface {
 
 type RunScheduledExecution struct {
 	repository                     RunScheduledExecutionRepository
+	testrunScenarioRepository      repositories.EvalTestRunScenarioRepository
 	executorFactory                executor_factory.ExecutorFactory
 	scenarioPublicationsRepository repositories.ScenarioPublicationRepository
 	ingestedDataReadRepository     repositories.IngestedDataReadRepository
@@ -70,6 +70,7 @@ type RunScheduledExecution struct {
 
 func NewRunScheduledExecution(
 	repository RunScheduledExecutionRepository,
+	testrunScenarioRepository repositories.EvalTestRunScenarioRepository,
 	executorFactory executor_factory.ExecutorFactory,
 	ingestedDataReadRepository repositories.IngestedDataReadRepository,
 	transactionFactory executor_factory.TransactionFactory,
@@ -78,6 +79,7 @@ func NewRunScheduledExecution(
 ) *RunScheduledExecution {
 	return &RunScheduledExecution{
 		repository:                     repository,
+		testrunScenarioRepository:      testrunScenarioRepository,
 		executorFactory:                executorFactory,
 		ingestedDataReadRepository:     ingestedDataReadRepository,
 		transactionFactory:             transactionFactory,
@@ -148,6 +150,17 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 		logger.InfoContext(ctx, fmt.Sprintf("Execution %s is already being processed", scheduledExecution.Id))
 		return nil
 	}
+	go func() {
+		errPhantom := usecase.insertAsyncPhantomDecisionTask(
+			ctx,
+			scheduledExecution.Id,
+			scheduledExecution.Scenario,
+		)
+		if errPhantom != nil {
+			logger.ErrorContext(ctx, fmt.Sprintf("Error when inserting phantom decisions task with scenario id %s: %s",
+				scheduledExecution.Scenario.Id, errPhantom.Error()))
+		}
+	}()
 
 	return usecase.insertAsyncDecisionTasks(
 		ctx,
@@ -156,48 +169,47 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 	)
 }
 
-func (usecase *RunScheduledExecution) insertAsyncDecisionTasks(
-	ctx context.Context,
-	scheduledExecutionId string,
-	scenario models.Scenario,
+func (usecase *RunScheduledExecution) processDecisionTask(ctx context.Context, isPhantom bool,
+	scheduledExecutionId string, scenario models.Scenario,
 ) error {
 	logger := utils.LoggerFromContext(ctx)
 	exec := usecase.executorFactory.NewExecutor()
-
 	// list objects to score
 	db, err := usecase.executorFactory.NewClientDbExecutor(ctx, scenario.OrganizationId)
 	if err != nil {
 		return err
 	}
-
 	scheduledExecution, err := usecase.repository.GetScheduledExecution(ctx, exec, scheduledExecutionId)
 	if err != nil {
 		return err
 	}
-
-	liveVersion, err := usecase.repository.GetScenarioIteration(ctx, exec, scheduledExecution.ScenarioIterationId)
-	if err != nil {
-		return err
+	var iteration *models.ScenarioIteration
+	if isPhantom {
+		iteration, err = usecase.testrunScenarioRepository.GetTestRunIterationByScenarioId(
+			ctx, exec, scheduledExecution.ScenarioId)
+		if err != nil {
+			return err
+		}
+	} else {
+		var it models.ScenarioIteration
+		it, err = usecase.repository.GetScenarioIteration(ctx, exec, scheduledExecution.ScenarioIterationId)
+		if err != nil {
+			return err
+		}
+		iteration = &it
+	}
+	if iteration == nil {
+		return fmt.Errorf("there is no scenario iteration for this scheduled execution with iteration id : %s", scheduledExecution.ScenarioIterationId)
 	}
 	filters := selectFiltersFromTriggerAstRootAnd(
-		*liveVersion.TriggerConditionAstExpression,
+		*iteration.TriggerConditionAstExpression,
 		models.TableIdentifier{Table: scenario.TriggerObjectType, Schema: db.DatabaseSchema().Schema},
 	)
-
 	objectIds, err := usecase.ingestedDataReadRepository.ListAllObjectIdsFromTable(ctx, db, scenario.TriggerObjectType, filters...)
 	if err != nil {
 		return err
 	}
-
 	nbPlannedDecisions := len(objectIds)
-	err = usecase.repository.UpdateScheduledExecution(ctx, exec, models.UpdateScheduledExecutionInput{
-		Id:                       scheduledExecutionId,
-		NumberOfPlannedDecisions: &nbPlannedDecisions,
-	})
-	if err != nil {
-		return err
-	}
-
 	err = usecase.transactionFactory.Transaction(
 		ctx,
 		func(tx repositories.Transaction) error {
@@ -247,6 +259,19 @@ func (usecase *RunScheduledExecution) insertAsyncDecisionTasks(
 		slog.String("scheduled_execution_id", scheduledExecution.Id),
 		slog.String("organization_id", scheduledExecution.OrganizationId),
 	)
-
 	return nil
+}
+
+func (usecase *RunScheduledExecution) insertAsyncPhantomDecisionTask(ctx context.Context,
+	scheduledExecutionId string, scenario models.Scenario,
+) error {
+	return usecase.processDecisionTask(ctx, true, scheduledExecutionId, scenario)
+}
+
+func (usecase *RunScheduledExecution) insertAsyncDecisionTasks(
+	ctx context.Context,
+	scheduledExecutionId string,
+	scenario models.Scenario,
+) error {
+	return usecase.processDecisionTask(ctx, false, scheduledExecutionId, scenario)
 }

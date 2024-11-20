@@ -242,6 +242,7 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 func (usecases *UsecasesWithCreds) NewRunScheduledExecution() scheduled_execution.RunScheduledExecution {
 	return *scheduled_execution.NewRunScheduledExecution(
 		&usecases.Repositories.MarbleDbRepository,
+		&usecases.Repositories.MarbleDbRepository,
 		usecases.NewExecutorFactory(),
 		usecases.Repositories.IngestedDataReadRepository,
 		usecases.NewTransactionFactory(),

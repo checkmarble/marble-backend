@@ -31,14 +31,6 @@ type ScenarioEvaluationParameters struct {
 	Pivot        *models.Pivot
 }
 
-type EvalScenarioRepository interface {
-	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (models.ScenarioIteration, error)
-}
-
-type EvalTestRunScenarioRepository interface {
-	GetTestRunIterationByScenarioId(ctx context.Context, exec repositories.Executor, scenarioID string) (*models.ScenarioIteration, error)
-}
-
 type snoozesForDecisionReader interface {
 	ListActiveRuleSnoozesForDecision(
 		ctx context.Context,
@@ -49,8 +41,8 @@ type snoozesForDecisionReader interface {
 }
 
 type ScenarioEvaluationRepositories struct {
-	EvalScenarioRepository        EvalScenarioRepository
-	EvalTestRunScenarioRepository EvalTestRunScenarioRepository
+	EvalScenarioRepository        repositories.EvalScenarioRepository
+	EvalTestRunScenarioRepository repositories.EvalTestRunScenarioRepository
 	ExecutorFactory               executor_factory.ExecutorFactory
 	IngestedDataReadRepository    repositories.IngestedDataReadRepository
 	EvaluateAstExpression         ast_eval.EvaluateAstExpression
@@ -83,7 +75,7 @@ func processScenarioIteration(ctx context.Context, params ScenarioEvaluationPara
 		dataAccessor.ClientObject,
 		params.DataModel,
 	)
-	if errEval != nil {
+	if errEval != nil && !errors.Is(errEval, models.ErrScenarioTriggerConditionAndTriggerObjectMismatch) {
 		return models.ScenarioExecution{}, errEval
 	}
 	var pivotValue *string
