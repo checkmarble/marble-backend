@@ -25,10 +25,11 @@ import (
 const MAX_CONCURRENT_RULE_EXECUTIONS = 5
 
 type ScenarioEvaluationParameters struct {
-	Scenario     models.Scenario
-	ClientObject models.ClientObject
-	DataModel    models.DataModel
-	Pivot        *models.Pivot
+	Scenario          models.Scenario
+	TargetIterationId *string
+	ClientObject      models.ClientObject
+	DataModel         models.DataModel
+	Pivot             *models.Pivot
 }
 
 type EvalScenarioRepository interface {
@@ -236,7 +237,12 @@ func EvalScenario(
 	exec := repositories.ExecutorFactory.NewExecutor()
 
 	// If the scenario has no live version, don't try to Eval() it, return early
-	if params.Scenario.LiveVersionID == nil {
+	var targetVersionId string
+	if params.TargetIterationId != nil {
+		targetVersionId = *params.TargetIterationId
+	} else if params.Scenario.LiveVersionID != nil {
+		targetVersionId = *params.Scenario.LiveVersionID
+	} else {
 		return models.ScenarioExecution{}, errors.Wrap(models.ErrScenarioHasNoLiveVersion,
 			"scenario has no live version in EvalScenario")
 	}
@@ -252,13 +258,13 @@ func EvalScenario(
 	)
 	defer span.End()
 
-	liveVersion, err := repositories.EvalScenarioRepository.GetScenarioIteration(ctx, exec, *params.Scenario.LiveVersionID)
+	versionToRun, err := repositories.EvalScenarioRepository.GetScenarioIteration(ctx, exec, targetVersionId)
 	if err != nil {
 		return models.ScenarioExecution{}, errors.Wrap(err,
 			"error getting scenario iteration in EvalScenario")
 	}
 
-	se, errSe := processScenarioIteration(ctx, params, liveVersion, repositories, start, logger, exec)
+	se, errSe := processScenarioIteration(ctx, params, versionToRun, repositories, start, logger, exec)
 	if errSe != nil {
 		return models.ScenarioExecution{}, errors.Wrap(errSe,
 			"error processing scenario iteration in EvalTestRunScenario")

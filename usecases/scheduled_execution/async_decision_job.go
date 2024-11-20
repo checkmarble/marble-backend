@@ -273,10 +273,11 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 	scenarioExecution, err := evaluate_scenario.EvalScenario(
 		ctx,
 		evaluate_scenario.ScenarioEvaluationParameters{
-			Scenario:     scenario,
-			ClientObject: object,
-			DataModel:    dataModel,
-			Pivot:        pivot,
+			Scenario:          scenario,
+			TargetIterationId: &args.ScenarioIterationId,
+			ClientObject:      object,
+			DataModel:         dataModel,
+			Pivot:             pivot,
 		},
 		evaluate_scenario.ScenarioEvaluationRepositories{
 			EvalScenarioRepository:     w.repository,
