@@ -510,8 +510,8 @@ func createDecisions(
 		"Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
 	if assert.NotEmpty(t, approveNoRecordDecision.RuleExecutions) {
 		ruleExecution := findRuleExecutionByName(approveNoRecordDecision.RuleExecutions, "Check on account name")
-		assert.ErrorIs(t, ruleExecution.Error, ast.ErrNoRowsRead,
-			"Expected error to be \"%s\", got \"%s\"", ast.ErrNoRowsRead, ruleExecution.Error)
+		assert.ErrorIs(t, ruleExecution.Error, ast.ErrNullFieldRead,
+			"Expected error to be \"%s\", got \"%s\"", ast.ErrNullFieldRead, ruleExecution.Error)
 	}
 
 	// Create a decision [APPROVE] without a field in payload (null field read)
@@ -521,13 +521,12 @@ func createDecisions(
 		"account_id": "{account_id_approve}"
 	}`)
 	approveMissingFieldInPayloadDecision := createAndTestDecision(ctx, t, transactionPayloadJson,
-		table, decisionUsecase, organizationId, scenarioId, 1)
+		table, decisionUsecase, organizationId, scenarioId, 11)
 	assert.Equal(t, models.Approve, approveMissingFieldInPayloadDecision.Outcome,
 		"Expected decision to be Approve, got %s", approveNoRecordDecision.Outcome)
 	if assert.NotEmpty(t, approveMissingFieldInPayloadDecision.RuleExecutions) {
 		ruleExecution := findRuleExecutionByName(approveMissingFieldInPayloadDecision.RuleExecutions, "Check on account name")
-		assert.ErrorIs(t, ruleExecution.Error, ast.ErrNullFieldRead,
-			"Expected error to be \"%s\", got \"%s\"", ast.ErrNullFieldRead, ruleExecution.Error)
+		assert.Nil(t, ruleExecution.Error, "Expected error to be nil, got \"%s\"", ruleExecution.Error)
 	}
 
 	// Create a decision [APPROVE] with a division by zero

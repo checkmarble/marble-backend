@@ -48,19 +48,14 @@ func (d DatabaseAccess) Evaluate(ctx context.Context, arguments ast.Arguments) (
 	}
 
 	fieldValue, err := d.getDbField(ctx, tableName, fieldName, pathStringArr)
-	if err != nil {
+	if errors.Is(err, ast.ErrNullFieldRead) {
+		return nil, nil
+	} else if err != nil {
 		errorMsg := fmt.Sprintf("Error reading value in DatabaseAccess: tableName %s, fieldName %s, path %v", tableName, fieldName, path)
 		return MakeEvaluateError(errors.Join(
 			errors.Wrap(ast.ErrDatabaseAccessNotFound, errorMsg),
 			err,
 		))
-	}
-
-	if fieldValue == nil {
-		errorMsg := fmt.Sprintf("tableName: %s, fieldName: %s, path: %v", tableName, fieldName, path)
-		objectId, _ := d.getDbField(ctx, tableName, "object_id", pathStringArr)
-		return MakeEvaluateError(errors.Wrap(ast.ErrNullFieldRead,
-			fmt.Sprintf("value is null for object_id %s, in %s", objectId, errorMsg)))
 	}
 
 	fieldValueStr, ok := fieldValue.(string)

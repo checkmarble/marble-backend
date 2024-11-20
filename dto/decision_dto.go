@@ -48,6 +48,7 @@ type DecisionRule struct {
 	Result        bool      `json:"result"`
 	RuleId        string    `json:"rule_id"`
 	ScoreModifier int       `json:"score_modifier"`
+	ErrorCode     *int      `json:"error_code"`
 
 	// RuleEvaluation is not returned by default, it only is for endpoints consumed by the frontend
 	RuleEvaluation *ast.NodeEvaluationDto `json:"rule_evaluation,omitempty"`

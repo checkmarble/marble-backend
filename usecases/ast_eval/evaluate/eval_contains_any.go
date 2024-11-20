@@ -25,6 +25,10 @@ func (f ContainsAny) Evaluate(ctx context.Context, arguments ast.Arguments) (any
 	if err != nil {
 		return MakeEvaluateError(err)
 	}
+	if leftAny == nil || rightAny == nil {
+		return nil, nil
+	}
+
 	left, err := adaptArgumentToString(leftAny)
 	if err != nil {
 		return MakeEvaluateError(err)

@@ -32,6 +32,10 @@ func (root NodeEvaluation) FlattenErrors() []error {
 }
 
 func (root NodeEvaluation) GetBoolReturnValue() (bool, error) {
+	if root.ReturnValue == nil {
+		return false, ErrNullFieldRead
+	}
+
 	if returnValue, ok := root.ReturnValue.(bool); ok {
 		return returnValue, nil
 	}

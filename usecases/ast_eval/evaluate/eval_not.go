@@ -12,6 +12,9 @@ func (f Not) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []erro
 	if err := verifyNumberOfArguments(arguments.Args, 1); err != nil {
 		return MakeEvaluateError(err)
 	}
+	if arguments.Args[0] == nil {
+		return nil, nil
+	}
 
 	v, err := adaptArgumentToBool(arguments.Args[0])
 	errs := MakeAdaptedArgsErrors([]error{err})

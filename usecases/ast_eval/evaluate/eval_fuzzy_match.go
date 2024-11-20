@@ -21,6 +21,9 @@ func (fuzzyMatcher FuzzyMatch) Evaluate(ctx context.Context, arguments ast.Argum
 	if err != nil {
 		return MakeEvaluateError(errors.Wrap(err, "Error in Evaluate function FuzzyMatch"))
 	}
+	if leftAny == nil || rightAny == nil {
+		return nil, nil
+	}
 
 	left, errLeft := adaptArgumentToString(leftAny)
 	right, errRight := adaptArgumentToString(rightAny)
