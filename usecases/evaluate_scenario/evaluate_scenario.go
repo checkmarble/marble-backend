@@ -31,7 +31,7 @@ type ScenarioEvaluationParameters struct {
 	Pivot        *models.Pivot
 }
 
-type snoozesForDecisionReader interface {
+type SnoozesForDecisionReader interface {
 	ListActiveRuleSnoozesForDecision(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -46,7 +46,7 @@ type ScenarioEvaluationRepositories struct {
 	ExecutorFactory               executor_factory.ExecutorFactory
 	IngestedDataReadRepository    repositories.IngestedDataReadRepository
 	EvaluateAstExpression         ast_eval.EvaluateAstExpression
-	SnoozeReader                  snoozesForDecisionReader
+	SnoozeReader                  SnoozesForDecisionReader
 }
 
 func processScenarioIteration(ctx context.Context, params ScenarioEvaluationParameters,

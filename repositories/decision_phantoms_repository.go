@@ -113,7 +113,7 @@ func (repo *MarbleDbRepository) GetTestRunIterationByScenarioId(ctx context.Cont
 		return nil, err
 	}
 	query := NewQueryBuilder().
-		Select(dbmodels.SelectScenarioIterationColumn...).
+		Select("scit.id, scit.org_id, scit.scenario_id, scit.version, scit.created_at, scit.updated_at, scit.score_review_threshold, scit.score_block_and_review_threshold, scit.score_reject_threshold, scit.trigger_condition_ast_expression, scit.deleted_at, scit.schedule").
 		From(dbmodels.TABLE_SCENARIO_ITERATIONS + " AS scit").
 		Join(dbmodels.TABLE_SCENARIO_TESTRUN + " AS tr ON scit.id = tr.scenario_iteration_id").
 		Join(dbmodels.TABLE_SCENARIOS + " AS sc ON sc.id = scit.scenario_id").

@@ -12,6 +12,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
+	"github.com/checkmarble/marble-backend/usecases/decision_phantom"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/scenarios"
@@ -98,6 +99,7 @@ type AsyncDecisionWorker struct {
 	decisionWorkflows              decisionWorkflowsUsecase
 	webhookEventsSender            webhookEventsUsecase
 	snoozesReader                  snoozesForDecisionReader
+	phantomDecision                decision_phantom.PhantomDecisionUsecase
 	scenarioFetcher                scenarios.ScenarioFetcher
 }
 
@@ -114,6 +116,7 @@ func NewAsyncDecisionWorker(
 	webhookEventsSender webhookEventsUsecase,
 	snoozesReader snoozesForDecisionReader,
 	scenarioFetcher scenarios.ScenarioFetcher,
+	phantom decision_phantom.PhantomDecisionUsecase,
 ) AsyncDecisionWorker {
 	return AsyncDecisionWorker{
 		repository:                     repository,
@@ -128,6 +131,7 @@ func NewAsyncDecisionWorker(
 		webhookEventsSender:            webhookEventsSender,
 		snoozesReader:                  snoozesReader,
 		scenarioFetcher:                scenarioFetcher,
+		phantomDecision:                phantom,
 	}
 }
 
@@ -344,6 +348,28 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 	if err != nil {
 		return false, nil, err
 	}
+	go func() {
+		evaluationParameters := evaluate_scenario.ScenarioEvaluationParameters{
+			Scenario:     scenario,
+			ClientObject: object,
+			DataModel:    dataModel,
+			Pivot:        pivot,
+		}
+		phantomInput := models.CreatePhantomDecisionInput{
+			OrganizationId: scenario.OrganizationId,
+			Scenario:       scenario,
+			ClientObject:   object,
+			Pivot:          pivot,
+		}
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		logger := utils.LoggerFromContext(ctx).With("phantom_decisions_with_scenario_id", phantomInput.Scenario.Id)
+		_, errPhantom := w.phantomDecision.CreatePhantomDecision(ctx, phantomInput, evaluationParameters)
+		if errPhantom != nil {
+			logger.ErrorContext(ctx, fmt.Sprintf("Error when creating phantom decisions with scenario id %s: %s",
+				phantomInput.Scenario.Id, errPhantom.Error()))
+		}
+	}()
 
 	return true, sendWebhookEventId, nil
 }

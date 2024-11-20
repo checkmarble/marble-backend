@@ -1,4 +1,4 @@
-package usecases
+package decision_phantom
 
 import (
 	"context"
@@ -17,12 +17,26 @@ import (
 
 type PhantomDecisionUsecase struct {
 	enforceSecurity            security.EnforceSecurityPhantomDecision
-	transactionFactory         executor_factory.TransactionFactory
 	executorFactory            executor_factory.ExecutorFactory
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
 	repository                 repositories.DecisionPhantomUsecaseRepository
 	evaluateAstExpression      ast_eval.EvaluateAstExpression
-	snoozesReader              snoozesForDecisionReader
+	snoozesReader              evaluate_scenario.SnoozesForDecisionReader
+}
+
+func NewPhantomDecisionUseCase(enforceSecurity security.EnforceSecurityPhantomDecision,
+	executorFactory executor_factory.ExecutorFactory, ingestedDataReadRepository repositories.IngestedDataReadRepository,
+	repository repositories.DecisionPhantomUsecaseRepository, evaluateAstExpression ast_eval.EvaluateAstExpression,
+	snoozesReader evaluate_scenario.SnoozesForDecisionReader,
+) PhantomDecisionUsecase {
+	return PhantomDecisionUsecase{
+		enforceSecurity:            enforceSecurity,
+		executorFactory:            executorFactory,
+		ingestedDataReadRepository: ingestedDataReadRepository,
+		repository:                 repository,
+		evaluateAstExpression:      evaluateAstExpression,
+		snoozesReader:              snoozesReader,
+	}
 }
 
 func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(ctx context.Context,
