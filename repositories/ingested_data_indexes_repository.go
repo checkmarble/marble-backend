@@ -159,6 +159,26 @@ func (repo *ClientDbRepository) CreateIndexesAsync(
 	return nil
 }
 
+func (repo *ClientDbRepository) CreateIndexes(
+	ctx context.Context,
+	exec Executor,
+	indexes []models.ConcreteIndex,
+) error {
+	if err := validateClientDbExecutor(exec); err != nil {
+		return err
+	}
+
+	ctx = context.WithoutCancel(ctx)
+	ctx, _ = context.WithTimeout(ctx, INDEX_CREATION_TIMEOUT) //nolint:govet
+	for _, index := range indexes {
+		err := createIndexSQL(ctx, exec, index)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func asynchronouslyCreateIndexes(
 	ctx context.Context,
 	exec Executor,

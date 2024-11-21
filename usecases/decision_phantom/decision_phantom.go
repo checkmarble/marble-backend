@@ -66,11 +66,11 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(ctx context.Context
 			fmt.Errorf("error evaluating scenario: %w", err)
 	}
 	if testRunScenarioExecution.ScenarioId == "" {
-		return models.PhantomDecision{}, err
+		return models.PhantomDecision{}, nil
 	}
-	phantom_decision := models.AdaptScenarExecToPhantomDecision(testRunScenarioExecution)
-	for i := range phantom_decision.RuleExecutions {
-		phantom_decision.RuleExecutions[i].Evaluation = nil
+	decision_phantom := models.AdaptScenarExecToPhantomDecision(testRunScenarioExecution)
+	for i := range decision_phantom.RuleExecutions {
+		decision_phantom.RuleExecutions[i].Evaluation = nil
 	}
 	ctx, span = tracer.Start(
 		ctx,
@@ -81,13 +81,13 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(ctx context.Context
 	if err = usecase.repository.StorePhantomDecision(
 		ctx,
 		exec,
-		phantom_decision,
+		decision_phantom,
 		input.OrganizationId,
 		testRunScenarioExecution.ScenarioIterationId,
-		phantom_decision.PhantomDecisionId,
+		decision_phantom.PhantomDecisionId,
 	); err != nil {
 		return models.PhantomDecision{},
 			fmt.Errorf("error storing phantom decision: %w", err)
 	}
-	return phantom_decision, nil
+	return decision_phantom, nil
 }

@@ -6,6 +6,7 @@ type TestrunStatus int
 
 const (
 	Up TestrunStatus = iota
+	Idle
 	Down
 	Unknown
 )
@@ -14,6 +15,8 @@ func (t TestrunStatus) String() string {
 	switch t {
 	case Up:
 		return "up"
+	case Idle:
+		return "idle"
 	case Down:
 		return "down"
 	}

@@ -67,8 +67,12 @@ func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 		Period:              time.Duration(1000),
 	}
 	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.organizationId, mock.Anything).Return(
-		[]models.ConcreteIndex{}, 0, nil)
-	suite.clientDbIndexEditor.On("CreateIndexesAsync",
+		[]models.ConcreteIndex{
+			{
+				TableName: "sample_table",
+			},
+		}, 0, nil)
+	suite.clientDbIndexEditor.On("CreateIndexes",
 		suite.ctx,
 		suite.organizationId,
 		mock.Anything).Return(nil)

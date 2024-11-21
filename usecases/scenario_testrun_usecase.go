@@ -28,7 +28,7 @@ func (usecase *ScenarioTestRunUsecase) ActivateScenarioTestRun(ctx context.Conte
 	if err := usecase.enforceSecurity.CreateTestRun(organizationId); err != nil {
 		return models.ScenarioTestRun{}, err
 	}
-	indexesToCreate, _, err := usecase.clientDbIndexEditor.GetIndexesToCreate(
+	indexesToCreate, numPending, err := usecase.clientDbIndexEditor.GetIndexesToCreate(
 		ctx,
 		organizationId,
 		input.ScenarioIterationId,
@@ -37,14 +37,17 @@ func (usecase *ScenarioTestRunUsecase) ActivateScenarioTestRun(ctx context.Conte
 		return models.ScenarioTestRun{}, errors.Wrap(err,
 			"Error while fetching indexes to create in ActivateScenarioTestRun")
 	}
-	if len(indexesToCreate) > 0 {
-		return models.ScenarioTestRun{}, errors.Wrap(
-			models.ErrScenarioIterationRequiresPreparation,
-			fmt.Sprintf("Cannot activate the scenario in test mode: it requires data preparation to be run first for %d indexes", len(indexesToCreate)),
-		)
+
+	if numPending > 0 {
+		return models.ScenarioTestRun{}, models.ErrDataPreparationServiceUnavailable
 	}
 
-	errIdx := usecase.clientDbIndexEditor.CreateIndexesAsync(ctx, organizationId, indexesToCreate)
+	if len(indexesToCreate) == 0 {
+		return models.ScenarioTestRun{}, nil
+	}
+
+	errIdx := usecase.clientDbIndexEditor.CreateIndexes(ctx, organizationId, indexesToCreate)
+
 	if errIdx != nil {
 		return models.ScenarioTestRun{}, errors.Wrap(errIdx,
 			"Error while creating indexes in ActivateScenarioTestRun")
