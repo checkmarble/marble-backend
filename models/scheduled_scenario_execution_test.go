@@ -70,6 +70,15 @@ func TestFilterToSql(t *testing.T) {
 			expected: "? < (? / NULLIF(\"schema\".\"table\".\"num\", 0))",
 			args:     []any{float64(1), float64(3)},
 		},
+		{
+			name: "is empty check",
+			filter: Filter{
+				LeftSql:  "left",
+				Operator: ast.FUNC_IS_EMPTY,
+			},
+			expected: "(left IS NULL OR left = '')",
+			args:     nil,
+		},
 	}
 
 	for _, tc := range testCases {

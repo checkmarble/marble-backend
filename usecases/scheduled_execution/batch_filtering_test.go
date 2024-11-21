@@ -164,6 +164,21 @@ func TestFilterFromComparisonNode(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "is empty check",
+			ruleJson: `
+			{
+				"name": "IsEmpty",
+				"children": [
+					{ "name": "Payload", "children": [{ "constant": "after_migration" }] }
+				]
+			}`,
+			valid: true,
+			expected: models.Filter{
+				LeftSql:  "\"schema\".\"table\".\"after_migration\"",
+				Operator: ast.FUNC_IS_EMPTY,
+			},
+		},
 	}
 
 	for _, tc := range testCases {
