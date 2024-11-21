@@ -193,7 +193,7 @@ func EvalTestRunScenario(ctx context.Context,
 			"error getting testrun scenario iteration in EvalTestRunScenario")
 	}
 	if testRunIteration == nil {
-		return models.ScenarioExecution{}, models.ErrNoTestRunFound
+		return models.ScenarioExecution{}, nil
 	}
 	se, errSe := processScenarioIteration(ctx, params, *testRunIteration, repositories, start, logger, exec)
 	if errSe != nil {

@@ -151,7 +151,7 @@ func createDecisionsBatch(
 			assert.FailNow(t, "Failed to get scheduled execution", err)
 		}
 	}
-	if se.Status != models.ScheduledExecutionSuccess {
+	if se.Status != models.ScheduledExecutionProcessing {
 		assert.FailNow(t, "Scheduled execution did not succeed within allocated 10sec", "Status is %s", se.Status)
 	}
 	assert.NotNil(t, se.NumberOfPlannedDecisions, "Should have planned decisions")

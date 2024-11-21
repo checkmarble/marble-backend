@@ -44,7 +44,7 @@ func (repo *MarbleDbRepository) CreateTestRun(ctx context.Context,
 				testrunID,
 				input.ScenarioIterationId,
 				time.Now().Add(input.Period),
-				models.Up.String(),
+				models.Idle.String(),
 			),
 	)
 	if err != nil {

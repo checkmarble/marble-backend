@@ -30,6 +30,15 @@ func (editor *ClientDbIndexEditor) CreateIndexesAsync(
 	return args.Error(0)
 }
 
+func (editor *ClientDbIndexEditor) CreateIndexes(
+	ctx context.Context,
+	organizationId string,
+	indexes []models.ConcreteIndex,
+) error {
+	args := editor.Called(ctx, organizationId, indexes)
+	return args.Error(0)
+}
+
 func (editor *ClientDbIndexEditor) ListAllUniqueIndexes(ctx context.Context, organizationId string) ([]models.UnicityIndex, error) {
 	args := editor.Called(ctx, organizationId)
 	return args.Get(0).([]models.UnicityIndex), args.Error(1)
