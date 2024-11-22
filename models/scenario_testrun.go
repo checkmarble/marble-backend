@@ -6,7 +6,7 @@ type TestrunStatus int
 
 const (
 	Up TestrunStatus = iota
-	Idle
+	Pending
 	Down
 	Unknown
 )
@@ -15,8 +15,8 @@ func (t TestrunStatus) String() string {
 	switch t {
 	case Up:
 		return "up"
-	case Idle:
-		return "idle"
+	case Pending:
+		return "pending"
 	case Down:
 		return "down"
 	}
@@ -31,6 +31,8 @@ func ScenarioTestStatusFrom(s string) TestrunStatus {
 		return Down
 	case "unknown":
 		return Unknown
+	case "pending":
+		return Pending
 	}
 	return Unknown
 }

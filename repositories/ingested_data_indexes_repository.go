@@ -16,6 +16,7 @@ import (
 )
 
 var INDEX_CREATION_TIMEOUT time.Duration = 60 * 4 * time.Minute // 4 hours
+type OnCreateIndexesSucces func(ctx context.Context, exec Executor, args ...interface{}) error
 
 func (repo *ClientDbRepository) ListAllValidIndexes(
 	ctx context.Context,
@@ -159,10 +160,12 @@ func (repo *ClientDbRepository) CreateIndexesAsync(
 	return nil
 }
 
-func (repo *ClientDbRepository) CreateIndexes(
+func (repo *ClientDbRepository) CreateIndexesWithCallback(
 	ctx context.Context,
 	exec Executor,
 	indexes []models.ConcreteIndex,
+	onSuccess OnCreateIndexesSucces,
+	args ...interface{},
 ) error {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return err
@@ -170,11 +173,12 @@ func (repo *ClientDbRepository) CreateIndexes(
 
 	ctx = context.WithoutCancel(ctx)
 	ctx, _ = context.WithTimeout(ctx, INDEX_CREATION_TIMEOUT) //nolint:govet
+	var err error
 	for _, index := range indexes {
-		err := createIndexSQL(ctx, exec, index)
-		if err != nil {
-			return err
-		}
+		err = createIndexSQL(ctx, exec, index)
+	}
+	if err == nil {
+		_ = onSuccess(ctx, exec, args)
 	}
 	return nil
 }

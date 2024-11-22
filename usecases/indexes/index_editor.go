@@ -16,7 +16,8 @@ type IngestedDataIndexesRepository interface {
 	ListAllValidIndexes(ctx context.Context, exec repositories.Executor) ([]models.ConcreteIndex, error)
 	ListAllUniqueIndexes(ctx context.Context, exec repositories.Executor) ([]models.UnicityIndex, error)
 	CreateIndexesAsync(ctx context.Context, exec repositories.Executor, indexes []models.ConcreteIndex) error
-	CreateIndexes(ctx context.Context, exec repositories.Executor, indexes []models.ConcreteIndex) error
+	CreateIndexesWithCallback(ctx context.Context, exec repositories.Executor,
+		indexes []models.ConcreteIndex, onSuccess repositories.OnCreateIndexesSucces, args ...interface{}) error
 	CountPendingIndexes(ctx context.Context, exec repositories.Executor) (int, error)
 	CreateUniqueIndexAsync(ctx context.Context, exec repositories.Executor, index models.UnicityIndex) error
 	CreateUniqueIndex(ctx context.Context, exec repositories.Executor, index models.UnicityIndex) error
@@ -124,10 +125,12 @@ func (editor ClientDbIndexEditor) CreateIndexesAsync(
 	return nil
 }
 
-func (editor ClientDbIndexEditor) CreateIndexes(
+func (editor ClientDbIndexEditor) CreateIndexesAsyncForScenarioWithCallback(
 	ctx context.Context,
 	organizationId string,
 	indexes []models.ConcreteIndex,
+	onSuccess repositories.OnCreateIndexesSucces,
+	args ...interface{},
 ) error {
 	logger := utils.LoggerFromContext(ctx)
 
@@ -141,7 +144,7 @@ func (editor ClientDbIndexEditor) CreateIndexes(
 			err,
 			"Error while creating client schema executor in StartPublicationPreparation")
 	}
-	err = editor.ingestedDataIndexesRepository.CreateIndexes(ctx, db, indexes)
+	err = editor.ingestedDataIndexesRepository.CreateIndexesWithCallback(ctx, db, indexes, onSuccess, args)
 	if err != nil {
 		return errors.Wrap(err, "Error while creating indexes in StartPublicationPreparation")
 	}
