@@ -36,6 +36,12 @@ type DbJoinDecisionAndCase struct {
 	DBCase
 }
 
+type DbDecisionsByOutcome struct {
+	Version string `db:"scenario_version"`
+	Outcome string `db:"outcome"`
+	Total   int    `db:"total"`
+}
+
 type DBPaginatedDecisions struct {
 	DbDecision
 	DBCase
@@ -77,6 +83,14 @@ func AdaptDecisionCore(db DbDecision) models.DecisionCore {
 		OrganizationId: db.OrganizationId,
 		CreatedAt:      db.CreatedAt,
 		Score:          db.Score,
+	}
+}
+
+func AdaptDecisionByOutcome(db DbDecisionsByOutcome) models.DecisionsByVersionByOutcoume {
+	return models.DecisionsByVersionByOutcoume{
+		Version: db.Version,
+		Outcome: db.Outcome,
+		Count:   db.Total,
 	}
 }
 
