@@ -46,6 +46,9 @@ type DecisionUsecaseRepository interface {
 		paginationAndSorting models.PaginationAndSorting, filters models.DecisionFilters) ([]models.DecisionWithRank, error)
 
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
+
+	DecisionsByOutcome(ctx context.Context, exec repositories.Executor, scenarioId string) (
+		[]models.DecisionsByVersionByOutcoume, error)
 	ListScenariosOfOrganization(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.Scenario, error)
 
 	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (
@@ -100,6 +103,17 @@ func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId stri
 	}
 
 	return decision, nil
+}
+
+func (usecase *DecisionUsecase) GetDecisionsByVersionByOutcome(ctx context.Context,
+	scenarioId string,
+) ([]models.DecisionsByVersionByOutcoume, error) {
+	decisions, err := usecase.repository.DecisionsByOutcome(ctx,
+		usecase.executorFactory.NewExecutor(), scenarioId)
+	if err != nil {
+		return []models.DecisionsByVersionByOutcoume{}, err
+	}
+	return decisions, nil
 }
 
 func (usecase *DecisionUsecase) ListDecisions(

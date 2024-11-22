@@ -71,6 +71,16 @@ func (repo *MarbleDbRepository) DecisionWithRuleExecutionsById(ctx context.Conte
 	return decisions[0], nil
 }
 
+func (repo *MarbleDbRepository) DecisionsByOutcome(ctx context.Context, exec Executor,
+	scenarioID string,
+) ([]models.DecisionsByVersionByOutcoume, error) {
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectDecisionColumn...).
+		From(dbmodels.TABLE_DECISIONS)
+	// query := selectDecisions().Where(squirrel.Eq{"decisions.scenario_id": scenarioID}).GroupBy("")
+	return []models.DecisionsByVersionByOutcoume{}, nil
+}
+
 func (repo *MarbleDbRepository) DecisionsWithRuleExecutionsByIds(
 	ctx context.Context,
 	exec Executor,
