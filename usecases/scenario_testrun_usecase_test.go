@@ -20,7 +20,7 @@ type ScenarioTestrunTestSuite struct {
 	executorFactory       *mocks.ExecutorFactory
 	scenarioRepository    *mocks.ScenarioRepository
 	enforceSecurity       *mocks.EnforceSecurity
-	repository            *mocks.ScenatioTestrunRepository
+	repository            *mocks.ScenarioTestrunRepository
 	clientDbIndexEditor   *mocks.ClientDbIndexEditor
 	organizationId        string
 	scenarioId            string
@@ -35,7 +35,7 @@ func (suite *ScenarioTestrunTestSuite) SetupTest() {
 	suite.transactionFactory = &mocks.TransactionFactory{TxMock: suite.transaction}
 	suite.executorFactory = new(mocks.ExecutorFactory)
 	suite.scenarioRepository = new(mocks.ScenarioRepository)
-	suite.repository = new(mocks.ScenatioTestrunRepository)
+	suite.repository = new(mocks.ScenarioTestrunRepository)
 	suite.organizationId = "25ab6323-1657-4a52-923a-ef6983fe4532"
 	suite.scenarioId = "c5968ff7-6142-4623-a6b3-1539f345e5fa"
 	suite.scenarioPublicationId = "c1c005f5-a920-4f92-aee1-f5007f2ad8c1"
@@ -88,6 +88,14 @@ func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 	suite.repository.On("CreateTestRun", suite.ctx, suite.transaction, mock.Anything, input).Return(nil)
 	suite.repository.On("GetActiveTestRunByScenarioIterationID", suite.ctx, suite.transaction,
 		input.ScenarioIterationId).Return(nil, nil)
+
+	suite.clientDbIndexEditor.On("CreateIndexesAsyncForScenarioWithCallback", suite.ctx,
+		suite.organizationId, []models.ConcreteIndex{
+			{
+				TableName: "sample_table",
+			},
+		}, mock.Anything,
+		[]interface{}{input.ScenarioIterationId}).Return(nil)
 
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	result, err := suite.makeUsecase().ActivateScenarioTestRun(suite.ctx, suite.organizationId, input)

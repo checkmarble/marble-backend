@@ -21,11 +21,6 @@ type ScenarioTestRunUsecase struct {
 	clientDbIndexEditor clientDbIndexEditor
 }
 
-func (usecase *ScenarioTestRunUsecase) onCreateIndexesSuccess(ctx context.Context, exec repositories.Executor, args ...interface{}) error {
-	scenarioIterationId := args[0].(string)
-	return usecase.repository.UpdateTestRunStatus(ctx, exec, scenarioIterationId, models.Up)
-}
-
 func (usecase *ScenarioTestRunUsecase) ActivateScenarioTestRun(ctx context.Context,
 	organizationId string,
 	input models.ScenarioTestRunInput,
@@ -52,7 +47,10 @@ func (usecase *ScenarioTestRunUsecase) ActivateScenarioTestRun(ctx context.Conte
 	}
 	exec := usecase.executorFactory.NewExecutor()
 	errIdx := usecase.clientDbIndexEditor.CreateIndexesAsyncForScenarioWithCallback(ctx,
-		organizationId, indexesToCreate, usecase.onCreateIndexesSuccess, input.ScenarioIterationId)
+		organizationId, indexesToCreate, func(ctx context.Context, exec repositories.Executor, args ...interface{}) error {
+			scenarioIterationId := args[0].(string)
+			return usecase.repository.UpdateTestRunStatus(ctx, exec, scenarioIterationId, models.Up)
+		}, input.ScenarioIterationId)
 
 	if errIdx != nil {
 		return models.ScenarioTestRun{}, errors.Wrap(errIdx,

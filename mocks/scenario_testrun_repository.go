@@ -8,18 +8,25 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-type ScenatioTestrunRepository struct {
+type ScenarioTestrunRepository struct {
 	mock.Mock
 }
 
-func (s *ScenatioTestrunRepository) CreateTestRun(ctx context.Context, tx repositories.Transaction, testrunID string,
+func (s *ScenarioTestrunRepository) CreateTestRun(ctx context.Context, tx repositories.Transaction, testrunID string,
 	input models.ScenarioTestRunInput,
 ) error {
 	args := s.Called(ctx, tx, testrunID, input)
 	return args.Error(0)
 }
 
-func (s *ScenatioTestrunRepository) GetActiveTestRunByScenarioIterationID(ctx context.Context,
+func (s *ScenarioTestrunRepository) UpdateTestRunStatus(ctx context.Context, exec repositories.Executor,
+	scenarioIterationID string, status models.TestrunStatus,
+) error {
+	args := s.Called(ctx, exec, scenarioIterationID, status)
+	return args.Error(0)
+}
+
+func (s *ScenarioTestrunRepository) GetActiveTestRunByScenarioIterationID(ctx context.Context,
 	exec repositories.Executor, scenarioID string,
 ) (*models.ScenarioTestRun, error) {
 	args := s.Called(ctx, exec, scenarioID)
@@ -29,7 +36,7 @@ func (s *ScenatioTestrunRepository) GetActiveTestRunByScenarioIterationID(ctx co
 	return args.Get(0).(*models.ScenarioTestRun), args.Error(1)
 }
 
-func (s *ScenatioTestrunRepository) GetTestRunByID(ctx context.Context, exec repositories.Executor, testrunID string) (*models.ScenarioTestRun, error) {
+func (s *ScenarioTestrunRepository) GetTestRunByID(ctx context.Context, exec repositories.Executor, testrunID string) (*models.ScenarioTestRun, error) {
 	args := s.Called(ctx, exec, testrunID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -37,7 +44,7 @@ func (s *ScenatioTestrunRepository) GetTestRunByID(ctx context.Context, exec rep
 	return args.Get(0).(*models.ScenarioTestRun), args.Error(1)
 }
 
-func (s *ScenatioTestrunRepository) ListTestRunsByScenarioID(ctx context.Context,
+func (s *ScenarioTestrunRepository) ListTestRunsByScenarioID(ctx context.Context,
 	exec repositories.Executor, scenarioID string,
 ) ([]models.ScenarioTestRun, error) {
 	args := s.Called(ctx, exec, scenarioID)
