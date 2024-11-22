@@ -30,10 +30,10 @@ func (editor *ClientDbIndexEditor) CreateIndexesAsync(
 	return args.Error(0)
 }
 
-func (editor *ClientDbIndexEditor) CreateIndexesAsyncForScenarioWithCallback(ctx context.Context,
+func (editor *ClientDbIndexEditor) CreateIndexesAsyncForScenarioWithCallback(ctx context.Context, organizationId string,
 	indexes []models.ConcreteIndex, onSuccess repositories.OnCreateIndexesSucces, args ...interface{},
 ) error {
-	calls := editor.Called(ctx, indexes, onSuccess, args)
+	calls := editor.Called(ctx, organizationId, indexes, onSuccess, args)
 	return calls.Error(0)
 }
 
