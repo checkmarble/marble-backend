@@ -15,6 +15,9 @@ type ScenarioTestRunRepository interface {
 	GetActiveTestRunByScenarioIterationID(ctx context.Context, exec Executor,
 		scenarioIterationID string) (*models.ScenarioTestRun, error)
 	ListTestRunsByScenarioID(ctx context.Context, exec Executor, scenarioID string) ([]models.ScenarioTestRun, error)
+	UpdateTestRunStatus(ctx context.Context, exec Executor,
+		scenarioIterationID string, status models.TestrunStatus,
+	) error
 	GetTestRunByID(ctx context.Context, exec Executor, testrunID string) (*models.ScenarioTestRun, error)
 }
 
@@ -44,7 +47,7 @@ func (repo *MarbleDbRepository) CreateTestRun(ctx context.Context,
 				testrunID,
 				input.ScenarioIterationId,
 				time.Now().Add(input.Period),
-				models.Idle.String(),
+				models.Pending.String(),
 			),
 	)
 	if err != nil {
@@ -52,6 +55,22 @@ func (repo *MarbleDbRepository) CreateTestRun(ctx context.Context,
 	}
 
 	return nil
+}
+
+func (repo *MarbleDbRepository) UpdateTestRunStatus(ctx context.Context, exec Executor,
+	scenarioIterationID string, status models.TestrunStatus,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+	err := ExecBuilder(
+		ctx,
+		exec,
+		NewQueryBuilder().Update(dbmodels.TABLE_SCENARIO_TESTRUN).Set("status", status.String()).Where(squirrel.Eq{
+			"scenario_iteration_id": scenarioIterationID,
+		}),
+	)
+	return err
 }
 
 func (repo *MarbleDbRepository) GetActiveTestRunByScenarioIterationID(ctx context.Context,
