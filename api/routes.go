@@ -57,7 +57,7 @@ func addRoutes(r *gin.Engine, auth Authentication, tokenHandler TokenHandler, uc
 	router.POST("/decisions/all",
 		timeoutMiddleware(SEQUENTIAL_DECISION_TIMEOUT),
 		handlePostAllDecisions(uc, marbleAppHost))
-	router.GET("/decisions/data", timeoutMiddleware(LIST_DECISION_TIMEOUT), handleDecisionsData(uc, marbleAppHost))
+	router.GET("/decisions/data", timeoutMiddleware(LIST_DECISION_TIMEOUT), handleDecisionsData(uc))
 	router.GET("/decisions/:decision_id", tom, handleGetDecision(uc, marbleAppHost))
 	router.GET("/decisions/:decision_id/active-snoozes", tom, handleSnoozesOfDecision(uc))
 	router.POST("/decisions/:decision_id/snooze", tom, handleSnoozeDecision(uc))

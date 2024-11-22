@@ -8,16 +8,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func handleDecisionsData(uc usecases.Usecases, marbleAppHost string) func(c *gin.Context) {
+func handleDecisionsData(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		decisionID := c.Param("decision_id")
+		scenarioID := c.Param("scenario_id")
 
 		usecase := usecasesWithCreds(ctx, uc).NewDecisionUsecase()
-		decision, err := usecase.GetDecision(ctx, decisionID)
+		decisions, err := usecase.GetDecisionsByVersionByOutcome(ctx, scenarioID)
 		if presentError(ctx, c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, dto.NewDecisionWithRuleDto(decision, marbleAppHost, true))
+		c.JSON(http.StatusOK, dto.ProcessDecisionDataDtoFromModels(decisions))
 	}
 }
