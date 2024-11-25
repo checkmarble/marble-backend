@@ -171,15 +171,17 @@ func (repo *ClientDbRepository) CreateIndexesWithCallback(
 		return err
 	}
 
-	ctx = context.WithoutCancel(ctx)
-	ctx, _ = context.WithTimeout(ctx, INDEX_CREATION_TIMEOUT) //nolint:govet
-	var err error
-	for _, index := range indexes {
-		err = createIndexSQL(ctx, exec, index)
-	}
-	if err == nil {
-		_ = onSuccess(ctx, exec, args)
-	}
+	go func() {
+		ctx = context.WithoutCancel(ctx)
+		ctx, _ = context.WithTimeout(ctx, INDEX_CREATION_TIMEOUT) //nolint:govet
+		var err error
+		for _, index := range indexes {
+			err = createIndexSQL(ctx, exec, index)
+		}
+		if err == nil && onSuccess != nil {
+			_ = onSuccess(ctx, exec, args)
+		}
+	}()
 	return nil
 }
 
