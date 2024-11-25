@@ -18,7 +18,7 @@ func handleDecisionsDataByOutcome(uc usecases.Usecases) func(c *gin.Context) {
 			presentError(ctx, c, errBind)
 		}
 		usecase := usecasesWithCreds(ctx, uc).NewDecisionUsecase()
-		decisions, err := usecase.GetDecisionsByVersionByOutcome(ctx, input.ScenarioID, input.Begin, input.End)
+		decisions, err := usecase.GetDecisionsByVersionByOutcome(ctx, input.ScenarioID, input.TestRunBegin, input.TestRunEnd)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -36,7 +36,7 @@ func handleDecisionsDataByScore(uc usecases.Usecases) func(c *gin.Context) {
 			presentError(ctx, c, errBind)
 		}
 		usecase := usecasesWithCreds(ctx, uc).NewDecisionUsecase()
-		decisions, err := usecase.GetDecisionsByVersionByScore(ctx, input.ScenarioID, input.Begin, input.End)
+		decisions, err := usecase.GetDecisionsByVersionByScore(ctx, input.ScenarioID, input.TestRunBegin, input.TestRunEnd)
 		if presentError(ctx, c, err) {
 			return
 		}

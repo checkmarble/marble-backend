@@ -80,9 +80,9 @@ type DecisionData struct {
 }
 
 type DecisionQuery struct {
-	ScenarioID string    `form:"scenario_id"`
-	Begin      time.Time `form:"created_ad" time_format:"2006-01-02" time_utc:"1"`
-	End        time.Time `form:"expires_at" time_format:"2006-01-02" time_utc:"1"`
+	ScenarioID   string    `form:"scenario_id"`
+	TestRunBegin time.Time `form:"created_ad" time_format:"2006-01-02" time_utc:"1"`
+	TestRunEnd   time.Time `form:"expires_at" time_format:"2006-01-02" time_utc:"1"`
 }
 
 type Decision struct {
