@@ -8,13 +8,35 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func handleDecisionsData(uc usecases.Usecases) func(c *gin.Context) {
+func handleDecisionsDataByOutcome(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		scenarioID := c.Param("scenario_id")
+		var input dto.DecisionQuery
 
+		errBind := c.ShouldBindQuery(&input)
+		if errBind != nil {
+			presentError(ctx, c, errBind)
+		}
 		usecase := usecasesWithCreds(ctx, uc).NewDecisionUsecase()
-		decisions, err := usecase.GetDecisionsByVersionByOutcome(ctx, scenarioID)
+		decisions, err := usecase.GetDecisionsByVersionByOutcome(ctx, input.ScenarioID, input.Begin, input.End)
+		if presentError(ctx, c, err) {
+			return
+		}
+		c.JSON(http.StatusOK, dto.ProcessDecisionDataDtoFromModels(decisions))
+	}
+}
+
+func handleDecisionsDataByScore(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		var input dto.DecisionQuery
+
+		errBind := c.ShouldBindQuery(&input)
+		if errBind != nil {
+			presentError(ctx, c, errBind)
+		}
+		usecase := usecasesWithCreds(ctx, uc).NewDecisionUsecase()
+		decisions, err := usecase.GetDecisionsByVersionByScore(ctx, input.ScenarioID, input.Begin, input.End)
 		if presentError(ctx, c, err) {
 			return
 		}

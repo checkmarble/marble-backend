@@ -75,7 +75,14 @@ type PivotValue struct {
 type DecisionData struct {
 	Version string `json:"version"`
 	Outcome string `json:"outcome"`
+	Score   int    `json:"score"`
 	Total   int    `json:"total"`
+}
+
+type DecisionQuery struct {
+	ScenarioID string    `form:"scenario_id"`
+	Begin      time.Time `form:"created_ad" time_format:"2006-01-02" time_utc:"1"`
+	End        time.Time `form:"expires_at" time_format:"2006-01-02" time_utc:"1"`
 }
 
 type Decision struct {
@@ -140,6 +147,7 @@ func ProcessDecisionDataDtoFromModels(inputs []models.DecisionsByVersionByOutcou
 		item := DecisionData{
 			Version: input.Version,
 			Outcome: input.Outcome,
+			Score:   input.Score,
 			Total:   input.Count,
 		}
 		result[i] = item

@@ -55,6 +55,7 @@ type DecisionWithRuleExecutions struct {
 type DecisionsByVersionByOutcoume struct {
 	Version string
 	Outcome string
+	Score   int
 	Count   int
 }
 

@@ -47,7 +47,10 @@ type DecisionUsecaseRepository interface {
 
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
 
-	DecisionsByOutcome(ctx context.Context, exec repositories.Executor, scenarioId string) (
+	DecisionsByOutcome(ctx context.Context, exec repositories.Executor, scenarioId string, begin, end time.Time) (
+		[]models.DecisionsByVersionByOutcoume, error)
+
+	DecisionsByScore(ctx context.Context, exec repositories.Executor, scenarioId string, begin, end time.Time) (
 		[]models.DecisionsByVersionByOutcoume, error)
 	ListScenariosOfOrganization(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.Scenario, error)
 
@@ -106,10 +109,21 @@ func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId stri
 }
 
 func (usecase *DecisionUsecase) GetDecisionsByVersionByOutcome(ctx context.Context,
-	scenarioId string,
+	scenarioId string, begin, end time.Time,
 ) ([]models.DecisionsByVersionByOutcoume, error) {
 	decisions, err := usecase.repository.DecisionsByOutcome(ctx,
-		usecase.executorFactory.NewExecutor(), scenarioId)
+		usecase.executorFactory.NewExecutor(), scenarioId, begin, end)
+	if err != nil {
+		return []models.DecisionsByVersionByOutcoume{}, err
+	}
+	return decisions, nil
+}
+
+func (usecase *DecisionUsecase) GetDecisionsByVersionByScore(ctx context.Context,
+	scenarioId string, begin, end time.Time,
+) ([]models.DecisionsByVersionByOutcoume, error) {
+	decisions, err := usecase.repository.DecisionsByScore(ctx,
+		usecase.executorFactory.NewExecutor(), scenarioId, begin, end)
 	if err != nil {
 		return []models.DecisionsByVersionByOutcoume{}, err
 	}

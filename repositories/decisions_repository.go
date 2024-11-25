@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/cockroachdb/errors"
@@ -72,16 +73,41 @@ func (repo *MarbleDbRepository) DecisionWithRuleExecutionsById(ctx context.Conte
 }
 
 func (repo *MarbleDbRepository) DecisionsByOutcome(ctx context.Context, exec Executor,
-	scenarioID string,
+	scenarioID string, begin, end time.Time,
 ) ([]models.DecisionsByVersionByOutcoume, error) {
 	query := NewQueryBuilder().
-		Select("d.outcome, d.scenario_version, Count(d.outcome) as total").
-		From(fmt.Sprintf("%s AS d", dbmodels.TABLE_DECISIONS)).
-		Join(fmt.Sprintf("%s as sp on sp.scenario_iteration_id = d.scenario_iteration_id",
-			dbmodels.TABLE_SCENARIOS_PUBLICATIONS)).
-		Where(fmt.Sprintf("sp.publication_action = %s", models.Publish)).Where(squirrel.Eq{
-		"sp.scenario_id": scenarioID,
-	}).GroupBy("d.outcome, d.scenario_version")
+		Select("d.outcome, d.scenario_version, d.score, Count(d.outcome) as total").
+		From(fmt.Sprintf("%s AS d", dbmodels.TABLE_DECISIONS)).Where(squirrel.Eq{
+		"d.scenario_id": scenarioID,
+	}).Where(squirrel.Eq{
+		"d.created_at": begin.String(),
+	}).Where(squirrel.Eq{
+		"d.deleted_at": end.String(),
+	}).GroupBy("d.outcome, d.scenario_version, d.score")
+	return SqlToListOfRow(ctx,
+		exec,
+		query,
+		func(row pgx.CollectableRow) (models.DecisionsByVersionByOutcoume, error) {
+			db, err := pgx.RowToStructByPos[dbmodels.DbDecisionsByOutcome](row)
+			if err != nil {
+				return models.DecisionsByVersionByOutcoume{}, err
+			}
+			return dbmodels.AdaptDecisionByOutcome(db), nil
+		})
+}
+
+func (repo *MarbleDbRepository) DecisionsByScore(ctx context.Context, exec Executor,
+	scenarioID string, begin, end time.Time,
+) ([]models.DecisionsByVersionByOutcoume, error) {
+	query := NewQueryBuilder().
+		Select("d.outcome, d.scenario_version, d.score, Count(d.score) as total").
+		From(fmt.Sprintf("%s AS d", dbmodels.TABLE_DECISIONS)).Where(squirrel.Eq{
+		"d.scenario_id": scenarioID,
+	}).Where(squirrel.Eq{
+		"d.created_at": begin.String(),
+	}).Where(squirrel.Eq{
+		"d.deleted_at": end.String(),
+	}).GroupBy("d.outcome, d.scenario_version, d.score")
 	return SqlToListOfRow(ctx,
 		exec,
 		query,

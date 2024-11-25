@@ -39,6 +39,7 @@ type DbJoinDecisionAndCase struct {
 type DbDecisionsByOutcome struct {
 	Version string `db:"scenario_version"`
 	Outcome string `db:"outcome"`
+	Score   int    `db:"score"`
 	Total   int    `db:"total"`
 }
 
