@@ -198,6 +198,10 @@ func (f Filter) ToSql() (sql string, args []any) {
 		sql = fmt.Sprintf("%s ILIKE CONCAT('%%',%s::text,'%%')", left, right)
 	} else if isInListComparison(f.Operator) {
 		sql = fmt.Sprintf("%s = ANY(%s)", left, right)
+	} else if f.Operator == ast.FUNC_IS_EMPTY {
+		sql = fmt.Sprintf("(%s IS NULL OR %s = '')", left, left)
+	} else if f.Operator == ast.FUNC_IS_NOT_EMPTY {
+		sql = fmt.Sprintf("(%s IS NOT NULL AND %s != '')", left, left)
 	}
 
 	return sql, args
