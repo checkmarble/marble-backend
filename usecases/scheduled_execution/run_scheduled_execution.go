@@ -164,28 +164,41 @@ func (usecase *RunScheduledExecution) insertAsyncDecisionTasks(
 ) error {
 	logger := utils.LoggerFromContext(ctx)
 	exec := usecase.executorFactory.NewExecutor()
+
 	// list objects to score
 	db, err := usecase.executorFactory.NewClientDbExecutor(ctx, scenario.OrganizationId)
 	if err != nil {
 		return err
 	}
+
 	scheduledExecution, err := usecase.repository.GetScheduledExecution(ctx, exec, scheduledExecutionId)
 	if err != nil {
 		return err
 	}
-	iteration, errScit := usecase.repository.GetScenarioIteration(ctx, exec, scheduledExecution.ScenarioIterationId)
-	if errScit != nil {
-		return errScit
+
+	liveVersion, err := usecase.repository.GetScenarioIteration(ctx, exec, scheduledExecution.ScenarioIterationId)
+	if err != nil {
+		return err
 	}
 	filters := selectFiltersFromTriggerAstRootAnd(
-		*iteration.TriggerConditionAstExpression,
+		*liveVersion.TriggerConditionAstExpression,
 		models.TableIdentifier{Table: scenario.TriggerObjectType, Schema: db.DatabaseSchema().Schema},
 	)
+
 	objectIds, err := usecase.ingestedDataReadRepository.ListAllObjectIdsFromTable(ctx, db, scenario.TriggerObjectType, filters...)
 	if err != nil {
 		return err
 	}
+
 	nbPlannedDecisions := len(objectIds)
+	err = usecase.repository.UpdateScheduledExecution(ctx, exec, models.UpdateScheduledExecutionInput{
+		Id:                       scheduledExecutionId,
+		NumberOfPlannedDecisions: &nbPlannedDecisions,
+	})
+	if err != nil {
+		return err
+	}
+
 	err = usecase.transactionFactory.Transaction(
 		ctx,
 		func(tx repositories.Transaction) error {
@@ -235,5 +248,6 @@ func (usecase *RunScheduledExecution) insertAsyncDecisionTasks(
 		slog.String("scheduled_execution_id", scheduledExecution.Id),
 		slog.String("organization_id", scheduledExecution.OrganizationId),
 	)
+
 	return nil
 }
