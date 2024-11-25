@@ -22,8 +22,8 @@ type UserUseCase struct {
 }
 
 func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.CreateUser) (models.User, error) {
-	if !slices.Contains(models.GetValidUserRoles(), createUser.Role) {
-		return models.User{}, errors.Wrap(models.BadParameterError, "Invalid role received")
+	if err := validateUserCreate(createUser); err != nil {
+		return models.User{}, err
 	}
 
 	if err := usecase.enforceUserSecurity.CreateUser(createUser); err != nil {
@@ -51,11 +51,32 @@ func (usecase *UserUseCase) AddUser(ctx context.Context, createUser models.Creat
 	if err != nil {
 		return models.User{}, err
 	}
-	tracking.TrackEvent(context.Background(), models.AnalyticsUserCreated, map[string]interface{}{
+	tracking.TrackEvent(ctx, models.AnalyticsUserCreated, map[string]interface{}{
 		"user_id": createdUser.UserId,
 	})
 
 	return createdUser, nil
+}
+
+func validateUserCreate(createUser models.CreateUser) error {
+	switch {
+	case slices.Contains(models.GetValidTransfercheckUserRoles(), createUser.Role):
+		if createUser.PartnerId == nil {
+			return errors.Wrap(models.BadParameterError,
+				"PartnerId is required for transfercheck users")
+		}
+
+		return nil
+	case slices.Contains(models.GetValidUserRoles(), createUser.Role):
+		if createUser.PartnerId != nil {
+			return errors.Wrap(models.BadParameterError,
+				"Partner Id is only allowed for transfercheck users")
+		}
+
+		return nil
+	default:
+		return errors.Wrap(models.BadParameterError, "Invalid role received")
+	}
 }
 
 func (usecase *UserUseCase) UpdateUser(ctx context.Context, updateUser models.UpdateUser) (models.User, error) {
@@ -106,7 +127,7 @@ func (usecase *UserUseCase) DeleteUser(ctx context.Context, userId, currentUserI
 	if err != nil {
 		return err
 	}
-	tracking.TrackEvent(context.Background(), models.AnalyticsUserDeleted, map[string]interface{}{
+	tracking.TrackEvent(ctx, models.AnalyticsUserDeleted, map[string]interface{}{
 		"user_id": userId,
 	})
 
