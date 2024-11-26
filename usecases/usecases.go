@@ -195,6 +195,7 @@ func (usecases *Usecases) NewScenarioPublisher() ScenarioPublisher {
 		Repository:                     &usecases.Repositories.MarbleDbRepository,
 		ValidateScenarioIteration:      usecases.NewValidateScenarioIteration(),
 		ScenarioPublicationsRepository: usecases.Repositories.ScenarioPublicationRepository,
+		ScenarioTestRunRepository:      usecases.Repositories.ScenarioTestrunRepository,
 	}
 }
 

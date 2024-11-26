@@ -59,12 +59,12 @@ func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 		ScenarioIterationId: "b53fcdd9-4909-4167-9b22-7e36a065ffbd",
 		ScenarioId:          "b6f0c253-ca06-4a5c-a208-9d5a537ca827",
 		Period:              time.Duration(10),
+		LiveScenarioId:      "b76359b2-9806-40f1-9fee-7ea18c797b2e",
 	}
 	output := models.ScenarioTestRun{
 		ScenarioIterationId: "b53fcdd9-4909-4167-9b22-7e36a065ffbd",
 		ScenarioId:          "b6f0c253-ca06-4a5c-a208-9d5a537ca827",
 		Status:              models.Up,
-		Period:              time.Duration(1000),
 	}
 	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.organizationId, mock.Anything).Return(
 		[]models.ConcreteIndex{

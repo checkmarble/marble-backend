@@ -44,6 +44,8 @@ type SnoozesForDecisionReader interface {
 type ScenarioEvaluationRepositories struct {
 	EvalScenarioRepository        repositories.EvalScenarioRepository
 	EvalTestRunScenarioRepository repositories.EvalTestRunScenarioRepository
+	ScenarioTestRunRepository     repositories.ScenarioTestRunRepository
+	ScenarioRepository            repositories.ScenarioUsecaseRepository
 	ExecutorFactory               executor_factory.ExecutorFactory
 	IngestedDataReadRepository    repositories.IngestedDataReadRepository
 	EvaluateAstExpression         ast_eval.EvaluateAstExpression
@@ -187,6 +189,24 @@ func EvalTestRunScenario(ctx context.Context,
 		),
 	)
 	defer span.End()
+	testrun, errTr := repositories.ScenarioTestRunRepository.GetTestRunByLiveVersionID(ctx, exec, *params.Scenario.LiveVersionID)
+	if errTr != nil {
+		return models.ScenarioExecution{}, errors.Wrap(errTr,
+			"error getting testrun  in EvalTestRunScenario")
+	}
+	if testrun == nil {
+		return models.ScenarioExecution{}, nil
+	}
+	scenario, errScenario := repositories.ScenarioRepository.GetScenarioByLiveScenarioIterationId(
+		ctx, exec, testrun.ScenarioLiveIterationId)
+	if errScenario != nil {
+		return models.ScenarioExecution{}, errors.Wrap(errTr,
+			"error getting scenario  in EvalTestRunScenario")
+	}
+	if scenario.Id == "" {
+		logger.ErrorContext(ctx, "the live version iteration associated to the current testrun does not match with the actual live scenario iteration")
+		return models.ScenarioExecution{}, nil
+	}
 	testRunIteration, err := repositories.EvalTestRunScenarioRepository.GetTestRunIterationByScenarioId(
 		ctx, exec, params.Scenario.Id)
 	if err != nil {

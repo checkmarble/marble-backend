@@ -111,6 +111,7 @@ func NewRepositories(
 		DataModelRepository:           &DataModelRepositoryPostgresql{},
 		IngestedDataReadRepository:    &IngestedDataReadRepositoryImpl{},
 		MarbleDbRepository:            MarbleDbRepository{},
+		ScenarioTestrunRepository:     &MarbleDbRepository{},
 		ClientDbRepository:            ClientDbRepository{},
 		ScenarioPublicationRepository: &ScenarioPublicationRepositoryPostgresql{},
 		OrganizationSchemaRepository:  &OrganizationSchemaRepositoryPostgresql{},

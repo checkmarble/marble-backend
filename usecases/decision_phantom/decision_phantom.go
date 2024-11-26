@@ -20,6 +20,8 @@ type PhantomDecisionUsecase struct {
 	executorFactory            executor_factory.ExecutorFactory
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
 	repository                 repositories.DecisionPhantomUsecaseRepository
+	testrunRepository          repositories.ScenarioTestRunRepository
+	scenarioRepository         repositories.ScenarioUsecaseRepository
 	evaluateAstExpression      ast_eval.EvaluateAstExpression
 	snoozesReader              evaluate_scenario.SnoozesForDecisionReader
 }
@@ -28,13 +30,17 @@ func NewPhantomDecisionUseCase(enforceSecurity security.EnforceSecurityPhantomDe
 	executorFactory executor_factory.ExecutorFactory, ingestedDataReadRepository repositories.IngestedDataReadRepository,
 	repository repositories.DecisionPhantomUsecaseRepository, evaluateAstExpression ast_eval.EvaluateAstExpression,
 	snoozesReader evaluate_scenario.SnoozesForDecisionReader,
+	testrunRepository repositories.ScenarioTestRunRepository,
+	scenarioRepository repositories.ScenarioUsecaseRepository,
 ) PhantomDecisionUsecase {
 	return PhantomDecisionUsecase{
 		enforceSecurity:            enforceSecurity,
 		executorFactory:            executorFactory,
 		ingestedDataReadRepository: ingestedDataReadRepository,
 		repository:                 repository,
+		scenarioRepository:         scenarioRepository,
 		evaluateAstExpression:      evaluateAstExpression,
+		testrunRepository:          testrunRepository,
 		snoozesReader:              snoozesReader,
 	}
 }
@@ -54,9 +60,11 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(ctx context.Context
 	}
 	evaluationRepositories := evaluate_scenario.ScenarioEvaluationRepositories{
 		EvalTestRunScenarioRepository: usecase.repository,
+		ScenarioTestRunRepository:     usecase.testrunRepository,
 		ExecutorFactory:               usecase.executorFactory,
 		IngestedDataReadRepository:    usecase.ingestedDataReadRepository,
 		EvaluateAstExpression:         usecase.evaluateAstExpression,
+		ScenarioRepository:            usecase.scenarioRepository,
 		SnoozeReader:                  usecase.snoozesReader,
 	}
 	testRunScenarioExecution, err := evaluate_scenario.EvalTestRunScenario(ctx,
