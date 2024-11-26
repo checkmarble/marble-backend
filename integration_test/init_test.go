@@ -181,7 +181,8 @@ func TestMain(m *testing.M) {
 
 	telemetryRessources, _ := infra.InitTelemetry(infra.TelemetryConfiguration{Enabled: false})
 	router := api.InitRouterMiddlewares(ctx, apiConfig, deps.SegmentClient, telemetryRessources)
-	server := api.NewServer(router, apiConfig.Port, apiConfig.MarbleAppHost, testUsecases, deps.Authentication, deps.TokenHandler)
+	server := api.NewServer(router, apiConfig.Port, apiConfig.MarbleAppHost, testUsecases,
+		deps.Authentication, deps.TokenHandler, true)
 
 	jwtRepository := repositories.NewJWTRepository(privateKey)
 	database := postgres.New(dbPool)

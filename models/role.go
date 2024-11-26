@@ -25,6 +25,13 @@ func GetValidUserRoles() []Role {
 		PUBLISHER,
 		ADMIN,
 		MARBLE_ADMIN,
+		TRANSFER_CHECK_USER,
+	}
+}
+
+func GetValidTransfercheckUserRoles() []Role {
+	return []Role{
+		TRANSFER_CHECK_USER,
 	}
 }
 

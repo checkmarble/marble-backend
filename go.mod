@@ -16,7 +16,6 @@ require (
 	github.com/getsentry/sentry-go v0.28.1
 	github.com/gin-contrib/cors v1.7.2
 	github.com/gin-contrib/size v1.0.1
-	github.com/gin-contrib/timeout v1.0.1
 	github.com/gin-gonic/gin v1.10.0
 	github.com/golang-jwt/jwt/v4 v4.5.1
 	github.com/google/uuid v1.6.0
@@ -35,6 +34,7 @@ require (
 	github.com/segmentio/analytics-go/v3 v3.3.0
 	github.com/stretchr/testify v1.9.0
 	github.com/tidwall/gjson v1.18.0
+	github.com/vearne/gin-timeout v0.2.0
 	go.opentelemetry.io/contrib/detectors/gcp v1.27.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin v0.52.0
 	go.opentelemetry.io/otel v1.28.0

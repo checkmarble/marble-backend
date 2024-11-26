@@ -49,7 +49,7 @@ func (repo *OrganizationSchemaRepositoryPostgresql) CreateTable(ctx context.Cont
 
 	sanitizedTableName := pgx.Identifier.Sanitize([]string{exec.DatabaseSchema().Schema, tableName})
 	sql := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
-		id UUID NOT NULL DEFAULT uuid_generate_v4() PRIMARY KEY,
+		id UUID NOT NULL PRIMARY KEY,
 		object_id TEXT NOT NULL,
 		updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
 		valid_from TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
@@ -76,9 +76,7 @@ func (repo *OrganizationSchemaRepositoryPostgresql) CreateField(
 	builder := strings.Builder{}
 	builder.WriteString(fmt.Sprintf("ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s %s",
 		sanitizedTableName, field.Name, fieldType))
-	if !field.Nullable {
-		builder.WriteString(" NOT NULL")
-	}
+
 	_, err := exec.Exec(ctx, builder.String())
 	return err
 }
