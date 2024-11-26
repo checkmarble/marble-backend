@@ -136,7 +136,7 @@ func returnExpectedDecisionError(c *gin.Context, err error) bool {
 	if errors.Is(err, models.ErrScenarioTriggerConditionAndTriggerObjectMismatch) {
 		c.JSON(http.StatusBadRequest, dto.APIErrorResponse{
 			Message:   "The payload object you sent does not match the trigger condition of the scenario.",
-			ErrorCode: dto.CannotPublishDraft,
+			ErrorCode: dto.TriggerConditionNotMatched,
 		})
 		return true
 	}
