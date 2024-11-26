@@ -744,7 +744,7 @@ func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelLink_security_error()
 }
 
 func (suite *DatamodelUsecaseTestSuite) TestCreateDataModelLink_repository_error() {
-	link := models.DataModelLinkCreateInput{OrganizationID: suite.organizationId}
+	link := models.DataModelLinkCreateInput{OrganizationID: suite.organizationId, Name: "name"}
 	usecase := suite.makeUsecase()
 	suite.enforceSecurity.On("WriteDataModel", suite.organizationId).Return(nil)
 	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
