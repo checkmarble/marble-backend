@@ -8,21 +8,17 @@ import (
 	"github.com/checkmarble/marble-backend/usecases"
 
 	limits "github.com/gin-contrib/size"
-	"github.com/gin-contrib/timeout"
 	"github.com/gin-gonic/gin"
+	timeout "github.com/vearne/gin-timeout"
 )
 
 const maxCaseFileSize = 30 * 1024 * 1024 // 30MB
 
 func timeoutMiddleware(duration time.Duration) gin.HandlerFunc {
-	return timeout.New(
+	return timeout.Timeout(
 		timeout.WithTimeout(duration),
-		timeout.WithHandler(func(c *gin.Context) {
-			c.Next()
-		}),
-		timeout.WithResponse(func(c *gin.Context) {
-			c.String(http.StatusRequestTimeout, "timeout")
-		}),
+		timeout.WithErrorHttpCode(http.StatusRequestTimeout),
+		timeout.WithDefaultMsg("Request timeout"),
 	)
 }
 

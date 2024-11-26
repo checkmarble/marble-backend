@@ -37,6 +37,13 @@ func (e *EnforceSecurityUserImpl) CreateUser(input models.CreateUser) error {
 		)
 	}
 
+	if input.Role == models.TRANSFER_CHECK_USER && e.Credentials.Role != models.MARBLE_ADMIN {
+		return errors.Wrap(
+			models.ForbiddenError,
+			"only marble admins can create transfer check users",
+		)
+	}
+
 	// should already be handled by the fact that only the ADMIN & MARBLE_ADMIN roles have the
 	// MARBLE_USER_CREATE permission, but make double sure
 	if input.Role == models.ADMIN &&
@@ -44,15 +51,6 @@ func (e *EnforceSecurityUserImpl) CreateUser(input models.CreateUser) error {
 		return errors.Wrap(
 			models.ForbiddenError,
 			"only org admins and marble admins can create org admins",
-		)
-	}
-
-	if input.PartnerId != nil && (e.Credentials.Role != models.MARBLE_ADMIN ||
-		e.Credentials.PartnerId == nil ||
-		*e.Credentials.PartnerId != *input.PartnerId) {
-		return errors.Wrap(
-			models.ForbiddenError,
-			"only marble admins can create users with partner_id",
 		)
 	}
 
@@ -70,6 +68,13 @@ func (e *EnforceSecurityUserImpl) UpdateUser(targetUser models.User, updateUser 
 		return errors.Wrap(
 			models.BadParameterError,
 			"only marble admins can create marble admins")
+	}
+
+	if updateUser.Role != nil &&
+		*updateUser.Role == models.TRANSFER_CHECK_USER {
+		return errors.Wrap(
+			models.BadParameterError,
+			"cannot update an existing user to TRANSFER_CHECK_USER")
 	}
 
 	// Only org admins and marble admins can create org admins
