@@ -228,6 +228,10 @@ func getFieldUniqueIndex(tableName string, fieldName string) models.UnicityIndex
 }
 
 func (usecase *DataModelUseCase) UpdateDataModelField(ctx context.Context, fieldID string, input models.UpdateFieldInput) error {
+	// Note for the future me: if we want to allow making a "not nullable" field to "nullable", we need to also have a routine
+	// that removes the constraint on the DB if it exists, for backwards compatibility.
+	// We currently no longer add those constraints on fields marked as required and their value is only enforced at ingestion time
+	// in our code, as of early dec 2024.
 	exec := usecase.executorFactory.NewExecutor()
 	// permission and input validation
 	field, err := usecase.dataModelRepository.GetDataModelField(ctx, exec, fieldID)
