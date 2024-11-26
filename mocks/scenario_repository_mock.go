@@ -30,6 +30,16 @@ func (s *ScenarioRepository) ListAllScenarios(ctx context.Context, exec reposito
 	return args.Get(0).([]models.Scenario), args.Error(1)
 }
 
+func (s *ScenarioRepository) GetScenarioByLiveScenarioIterationId(ctx context.Context, exec repositories.Executor,
+	scenarioIterationId string,
+) (models.Scenario, error) {
+	args := s.Called(ctx, exec, scenarioIterationId)
+	if args.Get(0) == nil {
+		return models.Scenario{}, args.Error(1)
+	}
+	return args.Get(0).(models.Scenario), args.Error(1)
+}
+
 func (s *ScenarioRepository) CreateScenario(ctx context.Context, exec repositories.Executor,
 	organizationId string, scenario models.CreateScenarioInput, newScenarioId string,
 ) error {

@@ -108,6 +108,7 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 			usecases.NewEnforcePhantomDecisionSecurity(), usecases.NewExecutorFactory(),
 			usecases.Repositories.IngestedDataReadRepository,
 			&usecases.Repositories.MarbleDbRepository, usecases.NewEvaluateAstExpression(),
+			&usecases.Repositories.MarbleDbRepository, &usecases.Repositories.MarbleDbRepository,
 			&usecases.Repositories.MarbleDbRepository),
 	}
 }
@@ -459,6 +460,7 @@ func (usecases UsecasesWithCreds) NewAsyncDecisionWorker() *scheduled_execution.
 			usecases.NewEnforcePhantomDecisionSecurity(), usecases.NewExecutorFactory(),
 			usecases.Repositories.IngestedDataReadRepository,
 			&usecases.Repositories.MarbleDbRepository, usecases.NewEvaluateAstExpression(),
+			&usecases.Repositories.MarbleDbRepository, &usecases.Repositories.MarbleDbRepository,
 			&usecases.Repositories.MarbleDbRepository),
 	)
 	return &w

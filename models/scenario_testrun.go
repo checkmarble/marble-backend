@@ -38,14 +38,16 @@ func ScenarioTestStatusFrom(s string) TestrunStatus {
 }
 
 type ScenarioTestRun struct {
-	ScenarioIterationId string
-	ScenarioId          string
-	Period              time.Duration
-	Status              TestrunStatus
+	ScenarioIterationId     string
+	ScenarioId              string
+	ScenarioLiveIterationId string
+	ExpiresAt               time.Time
+	Status                  TestrunStatus
 }
 
 type ScenarioTestRunInput struct {
 	ScenarioIterationId string
+	LiveScenarioId      string
 	ScenarioId          string
 	Period              time.Duration
 }

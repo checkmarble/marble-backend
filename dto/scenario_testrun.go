@@ -13,15 +13,15 @@ type CreateScenarioTestRunBody struct {
 }
 
 type ScenarioTestRunResp struct {
-	ScenarioId string        `json:"scenario_id"`
-	Period     time.Duration `json:"period"`
-	Status     string        `json:"status"`
+	ScenarioId string    `json:"scenario_id"`
+	ExpiresAt  time.Time `json:"expires_at"`
+	Status     string    `json:"status"`
 }
 
 func AdaptScenarioTestRunDto(s models.ScenarioTestRun) ScenarioTestRunResp {
 	return ScenarioTestRunResp{
 		ScenarioId: s.ScenarioId,
-		Period:     s.Period,
+		ExpiresAt:  s.ExpiresAt,
 		Status:     s.Status.String(),
 	}
 }
