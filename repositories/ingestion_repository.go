@@ -165,7 +165,7 @@ func (repo *IngestionRepositoryImpl) batchInsertPayloads(ctx context.Context, ex
 
 		insertValues := generateInsertValues(payload, columnNames)
 		// Add UUID to the insert values for the "id" field
-		insertValues = append(insertValues, uuid.NewString())
+		insertValues = append(insertValues, uuid.Must(uuid.NewV7()).String())
 		query = query.Values(insertValues...)
 	}
 
