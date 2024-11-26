@@ -26,6 +26,23 @@ func (s *ScenarioTestrunRepository) UpdateTestRunStatus(ctx context.Context, exe
 	return args.Error(0)
 }
 
+func (s *ScenarioTestrunRepository) UpdateTestRunStatusByLiveVersion(ctx context.Context, exec repositories.Executor,
+	liveVersionID string, status models.TestrunStatus,
+) error {
+	args := s.Called(ctx, exec, liveVersionID, status)
+	return args.Error(0)
+}
+
+func (s *ScenarioTestrunRepository) GetTestRunByLiveVersionID(ctx context.Context, exec repositories.Executor,
+	liveVersionID string,
+) (*models.ScenarioTestRun, error) {
+	args := s.Called(ctx, exec, liveVersionID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.ScenarioTestRun), args.Error(1)
+}
+
 func (s *ScenarioTestrunRepository) GetActiveTestRunByScenarioIterationID(ctx context.Context,
 	exec repositories.Executor, scenarioID string,
 ) (*models.ScenarioTestRun, error) {
