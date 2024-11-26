@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"slices"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -23,8 +24,9 @@ type DataModelUseCase struct {
 }
 
 var (
-	uniqTypes = []models.DataType{models.String, models.Int, models.Float}
-	enumTypes = []models.DataType{models.String, models.Int, models.Float}
+	uniqTypes      = []models.DataType{models.String, models.Int, models.Float}
+	enumTypes      = []models.DataType{models.String, models.Int, models.Float}
+	validNameRegex = regexp.MustCompile(`^[a-z]+[a-z0-9_]+$`)
 )
 
 func (usecase *DataModelUseCase) GetDataModel(ctx context.Context, organizationID string) (models.DataModel, error) {
@@ -84,6 +86,11 @@ func (usecase *DataModelUseCase) CreateDataModelTable(ctx context.Context, organ
 	if err := usecase.enforceSecurity.WriteDataModel(organizationId); err != nil {
 		return "", err
 	}
+	if !validNameRegex.MatchString(name) {
+		return "", errors.Wrap(models.BadParameterError,
+			"table name must only contain lower case alphanumeric characters and underscores, and start by a letter")
+	}
+
 	tableId := uuid.New().String()
 
 	defaultFields := []models.CreateFieldInput{
@@ -151,6 +158,10 @@ func (usecase *DataModelUseCase) UpdateDataModelTable(ctx context.Context, table
 func (usecase *DataModelUseCase) CreateDataModelField(ctx context.Context, field models.CreateFieldInput) (string, error) {
 	if field.Name == "id" {
 		return "", errors.Wrap(models.BadParameterError, "field name 'id' is reserved")
+	}
+	if !validNameRegex.MatchString(field.Name) {
+		return "", errors.Wrap(models.BadParameterError,
+			"field name must only contain lower case alphanumeric characters and underscores, and start by a letter")
 	}
 
 	fieldId := uuid.New().String()
@@ -338,6 +349,10 @@ func findLinksToField(dataModel models.DataModel, tableName string, fieldName st
 func (usecase *DataModelUseCase) CreateDataModelLink(ctx context.Context, link models.DataModelLinkCreateInput) (string, error) {
 	if err := usecase.enforceSecurity.WriteDataModel(link.OrganizationID); err != nil {
 		return "", err
+	}
+	if !validNameRegex.MatchString(link.Name) {
+		return "", errors.Wrap(models.BadParameterError,
+			"field name must only contain lower case alphanumeric characters and underscores, and start by a letter")
 	}
 	exec := usecase.executorFactory.NewExecutor()
 
