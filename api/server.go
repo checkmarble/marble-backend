@@ -19,11 +19,19 @@ func NewServer(
 	uc usecases.Usecases,
 	auth Authentication,
 	tokenHandler TokenHandler,
+	localTest ...bool,
 ) *http.Server {
 	addRoutes(router, auth, tokenHandler, uc, marbleAppHost)
 
+	var host string
+	if len(localTest) > 0 && localTest[0] {
+		host = "localhost"
+	} else {
+		host = "0.0.0.0"
+	}
+
 	return &http.Server{
-		Addr:         fmt.Sprintf("0.0.0.0:%s", port),
+		Addr:         fmt.Sprintf("%s:%s", host, port),
 		WriteTimeout: time.Second * 60,
 		ReadTimeout:  time.Second * 60,
 		IdleTimeout:  time.Second * 60,
