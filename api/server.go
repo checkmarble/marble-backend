@@ -23,7 +23,7 @@ func NewServer(
 	addRoutes(router, auth, tokenHandler, uc, marbleAppHost)
 
 	return &http.Server{
-		Addr:         fmt.Sprintf("localhost:%s", port),
+		Addr:         fmt.Sprintf("0.0.0.0:%s", port),
 		WriteTimeout: time.Second * 60,
 		ReadTimeout:  time.Second * 60,
 		IdleTimeout:  time.Second * 60,
