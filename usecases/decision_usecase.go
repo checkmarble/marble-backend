@@ -48,11 +48,9 @@ type DecisionUsecaseRepository interface {
 
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
 
-	DecisionsByOutcome(ctx context.Context, exec repositories.Executor, scenarioId string, begin, end time.Time) (
+	DecisionsByOutcomeAndScore(ctx context.Context, exec repositories.Executor, scenarioId string, begin, end time.Time) (
 		[]models.DecisionsByVersionByOutcoume, error)
 
-	DecisionsByScore(ctx context.Context, exec repositories.Executor, scenarioId string, begin, end time.Time) (
-		[]models.DecisionsByVersionByOutcoume, error)
 	ListScenariosOfOrganization(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.Scenario, error)
 
 	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (
@@ -89,6 +87,7 @@ type DecisionUsecase struct {
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
 	dataModelRepository        repositories.DataModelRepository
 	repository                 DecisionUsecaseRepository
+	scenarioTestRunRepository  repositories.ScenarioTestRunRepository
 	evaluateAstExpression      ast_eval.EvaluateAstExpression
 	decisionWorkflows          decisionWorkflowsUsecase
 	webhookEventsSender        webhookEventsUsecase
@@ -109,22 +108,16 @@ func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId stri
 	return decision, nil
 }
 
-func (usecase *DecisionUsecase) GetDecisionsByVersionByOutcome(ctx context.Context,
-	scenarioId string, begin, end time.Time,
+func (usecase *DecisionUsecase) GetDecisionsByOutcomeAndScore(ctx context.Context,
+	testrunId string,
 ) ([]models.DecisionsByVersionByOutcoume, error) {
-	decisions, err := usecase.repository.DecisionsByOutcome(ctx,
-		usecase.executorFactory.NewExecutor(), scenarioId, begin, end)
-	if err != nil {
-		return []models.DecisionsByVersionByOutcoume{}, err
+	testrun, errTestRun := usecase.scenarioTestRunRepository.GetTestRunByID(ctx,
+		usecase.executorFactory.NewExecutor(), testrunId)
+	if errTestRun != nil {
+		return nil, errTestRun
 	}
-	return decisions, nil
-}
-
-func (usecase *DecisionUsecase) GetDecisionsByVersionByScore(ctx context.Context,
-	scenarioId string, begin, end time.Time,
-) ([]models.DecisionsByVersionByOutcoume, error) {
-	decisions, err := usecase.repository.DecisionsByScore(ctx,
-		usecase.executorFactory.NewExecutor(), scenarioId, begin, end)
+	decisions, err := usecase.repository.DecisionsByOutcomeAndScore(ctx,
+		usecase.executorFactory.NewExecutor(), testrun.ScenarioId, testrun.CreatedAt, testrun.Expires)
 	if err != nil {
 		return []models.DecisionsByVersionByOutcoume{}, err
 	}

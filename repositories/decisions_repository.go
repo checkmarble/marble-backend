@@ -72,42 +72,19 @@ func (repo *MarbleDbRepository) DecisionWithRuleExecutionsById(ctx context.Conte
 	return decisions[0], nil
 }
 
-func (repo *MarbleDbRepository) DecisionsByOutcome(ctx context.Context, exec Executor,
+func (repo *MarbleDbRepository) DecisionsByOutcomeAndScore(ctx context.Context, exec Executor,
 	scenarioID string, begin, end time.Time,
 ) ([]models.DecisionsByVersionByOutcoume, error) {
 	query := NewQueryBuilder().
-		Select("d.outcome, d.scenario_version, d.score, Count(d.outcome) as total").
-		From(fmt.Sprintf("%s AS d", dbmodels.TABLE_DECISIONS)).Where(squirrel.Eq{
+		Select("d.outcome, d.scenario_version, d.score, Count(d.outcome) as total, pd.outcome as phantom_outcome, pd.score as phantom_score, Count(pd.outcome) as phantom_total").
+		From(fmt.Sprintf("%s AS d", dbmodels.TABLE_DECISIONS)).Join(
+		dbmodels.TABLE_PHANTOM_DECISIONS + " AS pd on pd.scenario_id = d.scenario_id").Where(squirrel.Eq{
 		"d.scenario_id": scenarioID,
-	}).Where(squirrel.Eq{
+	}).Where(squirrel.GtOrEq{
 		"d.created_at": begin.String(),
-	}).Where(squirrel.Eq{
+	}).Where(squirrel.LtOrEq{
 		"d.deleted_at": end.String(),
-	}).GroupBy("d.outcome, d.scenario_version, d.score")
-	return SqlToListOfRow(ctx,
-		exec,
-		query,
-		func(row pgx.CollectableRow) (models.DecisionsByVersionByOutcoume, error) {
-			db, err := pgx.RowToStructByPos[dbmodels.DbDecisionsByOutcome](row)
-			if err != nil {
-				return models.DecisionsByVersionByOutcoume{}, err
-			}
-			return dbmodels.AdaptDecisionByOutcome(db), nil
-		})
-}
-
-func (repo *MarbleDbRepository) DecisionsByScore(ctx context.Context, exec Executor,
-	scenarioID string, begin, end time.Time,
-) ([]models.DecisionsByVersionByOutcoume, error) {
-	query := NewQueryBuilder().
-		Select("d.outcome, d.scenario_version, d.score, Count(d.score) as total").
-		From(fmt.Sprintf("%s AS d", dbmodels.TABLE_DECISIONS)).Where(squirrel.Eq{
-		"d.scenario_id": scenarioID,
-	}).Where(squirrel.Eq{
-		"d.created_at": begin.String(),
-	}).Where(squirrel.Eq{
-		"d.deleted_at": end.String(),
-	}).GroupBy("d.outcome, d.scenario_version, d.score")
+	}).GroupBy("d.outcome, d.scenario_version, d.score, pd.outcome, pd.score")
 	return SqlToListOfRow(ctx,
 		exec,
 		query,

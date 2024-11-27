@@ -53,10 +53,14 @@ type DecisionWithRuleExecutions struct {
 }
 
 type DecisionsByVersionByOutcoume struct {
-	Version string
-	Outcome string
-	Score   int
-	Count   int
+	Version        string
+	PhantomVersion string
+	Outcome        string
+	PhantonOutcome string
+	Score          int
+	PhantomScore   int
+	Count          int
+	PhantomCount   int
 }
 
 type DecisionWithRank struct {
