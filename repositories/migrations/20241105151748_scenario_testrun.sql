@@ -1,6 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
-CREATE TABLE scenario_test_run(
+CREATE TABLE  IF NOT EXISTS scenario_test_run(
  id uuid DEFAULT uuid_generate_v4(),
  scenario_iteration_id uuid NOT NULL,
  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
