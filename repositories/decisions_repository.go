@@ -74,7 +74,7 @@ func (repo *MarbleDbRepository) DecisionWithRuleExecutionsById(ctx context.Conte
 
 func (repo *MarbleDbRepository) DecisionsByOutcomeAndScore(ctx context.Context, exec Executor,
 	scenarioID string, begin, end time.Time,
-) ([]models.DecisionsByVersionByOutcoume, error) {
+) ([]models.DecisionsByVersionByOutcome, error) {
 	query := NewQueryBuilder().
 		Select("d.outcome, d.scenario_version, d.score, Count(d.outcome) as total, pd.outcome as phantom_outcome, pd.score as phantom_score, Count(pd.outcome) as phantom_total").
 		From(fmt.Sprintf("%s AS d", dbmodels.TABLE_DECISIONS)).Join(
@@ -88,10 +88,10 @@ func (repo *MarbleDbRepository) DecisionsByOutcomeAndScore(ctx context.Context, 
 	return SqlToListOfRow(ctx,
 		exec,
 		query,
-		func(row pgx.CollectableRow) (models.DecisionsByVersionByOutcoume, error) {
+		func(row pgx.CollectableRow) (models.DecisionsByVersionByOutcome, error) {
 			db, err := pgx.RowToStructByPos[dbmodels.DbDecisionsByOutcome](row)
 			if err != nil {
-				return models.DecisionsByVersionByOutcoume{}, err
+				return models.DecisionsByVersionByOutcome{}, err
 			}
 			return dbmodels.AdaptDecisionByOutcome(db), nil
 		})

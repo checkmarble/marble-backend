@@ -52,7 +52,7 @@ type DecisionWithRuleExecutions struct {
 	RuleExecutions []RuleExecution
 }
 
-type DecisionsByVersionByOutcoume struct {
+type DecisionsByVersionByOutcome struct {
 	Version        string
 	PhantomVersion string
 	Outcome        string

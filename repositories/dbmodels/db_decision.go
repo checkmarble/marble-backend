@@ -90,8 +90,8 @@ func AdaptDecisionCore(db DbDecision) models.DecisionCore {
 	}
 }
 
-func AdaptDecisionByOutcome(db DbDecisionsByOutcome) models.DecisionsByVersionByOutcoume {
-	return models.DecisionsByVersionByOutcoume{
+func AdaptDecisionByOutcome(db DbDecisionsByOutcome) models.DecisionsByVersionByOutcome {
+	return models.DecisionsByVersionByOutcome{
 		Version:        db.Version,
 		PhantonOutcome: db.PhantomOutcome,
 		Outcome:        db.Outcome,

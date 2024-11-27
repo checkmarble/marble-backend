@@ -138,7 +138,7 @@ func NewDecisionDto(decision models.Decision, marbleAppHost string) Decision {
 	return decisionDto
 }
 
-func ProcessDecisionDataDtoFromModels(inputs []models.DecisionsByVersionByOutcoume) []DecisionData {
+func ProcessDecisionDataDtoFromModels(inputs []models.DecisionsByVersionByOutcome) []DecisionData {
 	result := make([]DecisionData, len(inputs))
 	for i, input := range inputs {
 		item := DecisionData{

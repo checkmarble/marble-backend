@@ -49,7 +49,7 @@ type DecisionUsecaseRepository interface {
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
 
 	DecisionsByOutcomeAndScore(ctx context.Context, exec repositories.Executor, scenarioId string, begin, end time.Time) (
-		[]models.DecisionsByVersionByOutcoume, error)
+		[]models.DecisionsByVersionByOutcome, error)
 
 	ListScenariosOfOrganization(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.Scenario, error)
 
@@ -110,7 +110,7 @@ func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId stri
 
 func (usecase *DecisionUsecase) GetDecisionsByOutcomeAndScore(ctx context.Context,
 	testrunId string,
-) ([]models.DecisionsByVersionByOutcoume, error) {
+) ([]models.DecisionsByVersionByOutcome, error) {
 	testrun, errTestRun := usecase.scenarioTestRunRepository.GetTestRunByID(ctx,
 		usecase.executorFactory.NewExecutor(), testrunId)
 	if errTestRun != nil {
@@ -119,7 +119,7 @@ func (usecase *DecisionUsecase) GetDecisionsByOutcomeAndScore(ctx context.Contex
 	decisions, err := usecase.repository.DecisionsByOutcomeAndScore(ctx,
 		usecase.executorFactory.NewExecutor(), testrun.ScenarioId, testrun.CreatedAt, testrun.Expires)
 	if err != nil {
-		return []models.DecisionsByVersionByOutcoume{}, err
+		return []models.DecisionsByVersionByOutcome{}, err
 	}
 	return decisions, nil
 }
