@@ -181,6 +181,12 @@ func (usecases *Usecases) AstEvaluationEnvironmentFactory(params ast_eval.Evalua
 		DataModel: params.DataModel,
 	})
 
+	environment.AddEvaluator(ast.FUNC_TIMESTAMP_EXTRACT,
+		evaluate.NewTimestampExtract(
+			usecases.NewExecutorFactory(),
+			usecases.Repositories.OrganizationRepository,
+			params.OrganizationId))
+
 	return environment
 }
 

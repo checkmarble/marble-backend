@@ -4,6 +4,7 @@ type Organization struct {
 	Id                      string
 	Name                    string
 	TransferCheckScenarioId *string
+	DefaultScenarioTimezone *string
 
 	// Flagged to use the main marble db (in a separate schema) for ingested data of the company,
 	// even if a default external DB is configured in the CLIENT_DB_CONFIG_FILE.
