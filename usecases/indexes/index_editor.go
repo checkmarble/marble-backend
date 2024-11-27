@@ -16,6 +16,8 @@ type IngestedDataIndexesRepository interface {
 	ListAllValidIndexes(ctx context.Context, exec repositories.Executor) ([]models.ConcreteIndex, error)
 	ListAllUniqueIndexes(ctx context.Context, exec repositories.Executor) ([]models.UnicityIndex, error)
 	CreateIndexesAsync(ctx context.Context, exec repositories.Executor, indexes []models.ConcreteIndex) error
+	CreateIndexesWithCallback(ctx context.Context, exec repositories.Executor,
+		indexes []models.ConcreteIndex, onSuccess repositories.OnCreateIndexesSucces, args ...interface{}) error
 	CountPendingIndexes(ctx context.Context, exec repositories.Executor) (int, error)
 	CreateUniqueIndexAsync(ctx context.Context, exec repositories.Executor, index models.UnicityIndex) error
 	CreateUniqueIndex(ctx context.Context, exec repositories.Executor, index models.UnicityIndex) error
@@ -113,6 +115,36 @@ func (editor ClientDbIndexEditor) CreateIndexesAsync(
 			"Error while creating client schema executor in StartPublicationPreparation")
 	}
 	err = editor.ingestedDataIndexesRepository.CreateIndexesAsync(ctx, db, indexes)
+	if err != nil {
+		return errors.Wrap(err, "Error while creating indexes in StartPublicationPreparation")
+	}
+	logger.InfoContext(
+		ctx,
+		fmt.Sprintf("%d indexes pending creation in: %+v", len(indexes), indexes), "org_id", organizationId,
+	)
+	return nil
+}
+
+func (editor ClientDbIndexEditor) CreateIndexesAsyncForScenarioWithCallback(
+	ctx context.Context,
+	organizationId string,
+	indexes []models.ConcreteIndex,
+	onSuccess repositories.OnCreateIndexesSucces,
+	args ...interface{},
+) error {
+	logger := utils.LoggerFromContext(ctx)
+
+	if err := editor.enforceSecurityDataModel.WriteDataModel(organizationId); err != nil {
+		return err
+	}
+
+	db, err := editor.executorFactory.NewClientDbExecutor(ctx, organizationId)
+	if err != nil {
+		return errors.Wrap(
+			err,
+			"Error while creating client schema executor in StartPublicationPreparation")
+	}
+	err = editor.ingestedDataIndexesRepository.CreateIndexesWithCallback(ctx, db, indexes, onSuccess, args)
 	if err != nil {
 		return errors.Wrap(err, "Error while creating indexes in StartPublicationPreparation")
 	}

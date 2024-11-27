@@ -120,7 +120,8 @@ func TestScenarioPublisher_PublishOrUnpublishIteration_unpublish_CreateScenarioP
 		ScenarioPublicationsRepository: spr,
 	}
 
-	_, err := publisher.PublishOrUnpublishIteration(context.Background(), transaction, scenarioAndIteration, models.Unpublish)
+	_, err := publisher.PublishOrUnpublishIteration(context.Background(), transaction,
+		scenarioAndIteration, models.Unpublish)
 	assert.Error(t, err)
 
 	spr.AssertExpectations(t)

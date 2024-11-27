@@ -172,7 +172,7 @@ func (repo *DataModelRepositoryPostgresql) CreateDataModelField(
 		query,
 		fieldId,
 		field.TableId,
-		strings.ToLower(field.Name),
+		field.Name,
 		field.DataType.String(),
 		field.Nullable,
 		field.Description,

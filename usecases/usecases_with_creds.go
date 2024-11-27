@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/usecases/decision_phantom"
 	"github.com/checkmarble/marble-backend/usecases/decision_workflows"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
 	"github.com/checkmarble/marble-backend/usecases/indexes"
@@ -23,6 +24,13 @@ func (usecases *UsecasesWithCreds) NewEnforceSecurity() security.EnforceSecurity
 
 func (usecases *UsecasesWithCreds) NewEnforceScenarioSecurity() security.EnforceSecurityScenario {
 	return &security.EnforceSecurityScenarioImpl{
+		EnforceSecurity: usecases.NewEnforceSecurity(),
+		Credentials:     usecases.Credentials,
+	}
+}
+
+func (usecases *UsecasesWithCreds) NewEnforceTestRunScenarioSecurity() security.EnforceSecurityTestRun {
+	return &security.EnforceSecurotyTestRunImpl{
 		EnforceSecurity: usecases.NewEnforceSecurity(),
 		Credentials:     usecases.Credentials,
 	}
@@ -96,15 +104,11 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 		decisionWorkflows:          usecases.NewDecisionWorkflows(),
 		webhookEventsSender:        usecases.NewWebhookEventsUsecase(),
 		snoozesReader:              &usecases.Repositories.MarbleDbRepository,
-		phantomUseCase: PhantomDecisionUsecase{
-			enforceSecurity:            usecases.NewEnforcePhantomDecisionSecurity(),
-			transactionFactory:         usecases.NewTransactionFactory(),
-			executorFactory:            usecases.NewExecutorFactory(),
-			ingestedDataReadRepository: usecases.Repositories.IngestedDataReadRepository,
-			repository:                 &usecases.Repositories.MarbleDbRepository,
-			evaluateAstExpression:      usecases.NewEvaluateAstExpression(),
-			snoozesReader:              &usecases.Repositories.MarbleDbRepository,
-		},
+		phantomUseCase: decision_phantom.NewPhantomDecisionUseCase(
+			usecases.NewEnforcePhantomDecisionSecurity(), usecases.NewExecutorFactory(),
+			usecases.Repositories.IngestedDataReadRepository,
+			&usecases.Repositories.MarbleDbRepository, usecases.NewEvaluateAstExpression(),
+			&usecases.Repositories.MarbleDbRepository),
 	}
 }
 
@@ -175,6 +179,15 @@ func (usecases *UsecasesWithCreds) NewScenarioPublicationUsecase() ScenarioPubli
 	}
 }
 
+func (usecases *UsecasesWithCreds) NewScenarioTestRunUseCase() ScenarioTestRunUsecase {
+	return ScenarioTestRunUsecase{
+		transactionFactory: usecases.NewTransactionFactory(),
+		executorFactory:    usecases.NewExecutorFactory(),
+		enforceSecurity:    usecases.NewEnforceTestRunScenarioSecurity(),
+		repository:         &usecases.Repositories.MarbleDbRepository,
+	}
+}
+
 func (usecases *UsecasesWithCreds) NewClientDbIndexEditor() clientDbIndexEditor {
 	return indexes.NewClientDbIndexEditor(
 		usecases.NewExecutorFactory(),
@@ -225,6 +238,7 @@ func (usecases *UsecasesWithCreds) NewIngestionUseCase() IngestionUseCase {
 
 func (usecases *UsecasesWithCreds) NewRunScheduledExecution() scheduled_execution.RunScheduledExecution {
 	return *scheduled_execution.NewRunScheduledExecution(
+		&usecases.Repositories.MarbleDbRepository,
 		&usecases.Repositories.MarbleDbRepository,
 		usecases.NewExecutorFactory(),
 		usecases.Repositories.IngestedDataReadRepository,
@@ -441,6 +455,11 @@ func (usecases UsecasesWithCreds) NewAsyncDecisionWorker() *scheduled_execution.
 		usecases.NewWebhookEventsUsecase(),
 		&usecases.Repositories.MarbleDbRepository,
 		usecases.NewScenarioFetcher(),
+		decision_phantom.NewPhantomDecisionUseCase(
+			usecases.NewEnforcePhantomDecisionSecurity(), usecases.NewExecutorFactory(),
+			usecases.Repositories.IngestedDataReadRepository,
+			&usecases.Repositories.MarbleDbRepository, usecases.NewEvaluateAstExpression(),
+			&usecases.Repositories.MarbleDbRepository),
 	)
 	return &w
 }

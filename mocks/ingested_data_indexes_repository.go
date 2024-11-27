@@ -21,7 +21,22 @@ func (m *IngestedDataIndexesRepository) ListAllValidIndexes(
 	return args.Get(0).([]models.ConcreteIndex), args.Error(1)
 }
 
+func (m *IngestedDataIndexesRepository) CreateIndexesWithCallback(ctx context.Context, exec repositories.Executor,
+	indexes []models.ConcreteIndex, onSuccess repositories.OnCreateIndexesSucces, args ...interface{},
+) error {
+	calls := m.Called(ctx, exec, indexes, onSuccess, args)
+	return calls.Error(0)
+}
+
 func (m *IngestedDataIndexesRepository) CreateIndexesAsync(
+	ctx context.Context,
+	exec repositories.Executor, indexes []models.ConcreteIndex,
+) error {
+	args := m.Called(ctx, exec, indexes)
+	return args.Error(0)
+}
+
+func (m *IngestedDataIndexesRepository) CreateIndexes(
 	ctx context.Context,
 	exec repositories.Executor, indexes []models.ConcreteIndex,
 ) error {

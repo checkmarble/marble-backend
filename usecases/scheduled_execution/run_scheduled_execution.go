@@ -19,7 +19,6 @@ const batchSize = 5000
 type RunScheduledExecutionRepository interface {
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
 	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (models.ScenarioIteration, error)
-
 	StoreDecisionsToCreate(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -61,6 +60,7 @@ type taskQueueRepository interface {
 
 type RunScheduledExecution struct {
 	repository                     RunScheduledExecutionRepository
+	testrunScenarioRepository      repositories.EvalTestRunScenarioRepository
 	executorFactory                executor_factory.ExecutorFactory
 	scenarioPublicationsRepository repositories.ScenarioPublicationRepository
 	ingestedDataReadRepository     repositories.IngestedDataReadRepository
@@ -70,6 +70,7 @@ type RunScheduledExecution struct {
 
 func NewRunScheduledExecution(
 	repository RunScheduledExecutionRepository,
+	testrunScenarioRepository repositories.EvalTestRunScenarioRepository,
 	executorFactory executor_factory.ExecutorFactory,
 	ingestedDataReadRepository repositories.IngestedDataReadRepository,
 	transactionFactory executor_factory.TransactionFactory,
@@ -78,6 +79,7 @@ func NewRunScheduledExecution(
 ) *RunScheduledExecution {
 	return &RunScheduledExecution{
 		repository:                     repository,
+		testrunScenarioRepository:      testrunScenarioRepository,
 		executorFactory:                executorFactory,
 		ingestedDataReadRepository:     ingestedDataReadRepository,
 		transactionFactory:             transactionFactory,
@@ -148,7 +150,6 @@ func (usecase *RunScheduledExecution) executeScheduledScenario(ctx context.Conte
 		logger.InfoContext(ctx, fmt.Sprintf("Execution %s is already being processed", scheduledExecution.Id))
 		return nil
 	}
-
 	return usecase.insertAsyncDecisionTasks(
 		ctx,
 		scheduledExecution.Id,

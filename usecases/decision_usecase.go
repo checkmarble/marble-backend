@@ -16,6 +16,7 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
+	"github.com/checkmarble/marble-backend/usecases/decision_phantom"
 	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/payload_parser"
@@ -91,7 +92,7 @@ type DecisionUsecase struct {
 	evaluateAstExpression      ast_eval.EvaluateAstExpression
 	decisionWorkflows          decisionWorkflowsUsecase
 	webhookEventsSender        webhookEventsUsecase
-	phantomUseCase             PhantomDecisionUsecase
+	phantomUseCase             decision_phantom.PhantomDecisionUsecase
 	snoozesReader              snoozesForDecisionReader
 }
 
@@ -391,9 +392,8 @@ func (usecase *DecisionUsecase) CreateDecision(
 		logger := utils.LoggerFromContext(ctx).With("phantom_decisions_with_scenario_id", phantomInput.Scenario.Id)
 		_, errPhantom := usecase.phantomUseCase.CreatePhantomDecision(ctx, phantomInput, evaluationParameters)
 		if errPhantom != nil {
-			logger.ErrorContext(ctx,
-				fmt.Sprintf("Error when creating phantom decisions with scenario id %s: %s",
-					phantomInput.Scenario.Id, errPhantom.Error()))
+			logger.ErrorContext(ctx, fmt.Sprintf("Error when creating phantom decisions with scenario id %s: %s",
+				phantomInput.Scenario.Id, errPhantom.Error()))
 		}
 	}()
 
