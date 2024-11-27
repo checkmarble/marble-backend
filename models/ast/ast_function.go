@@ -63,13 +63,18 @@ const (
 	FUNC_FUZZY_MATCH_ANY_OF
 	FUNC_IS_EMPTY
 	FUNC_IS_NOT_EMPTY
+	FUNC_TIMESTAMP_EXTRACT
 	FUNC_UNDEFINED Function = -1
 	FUNC_UNKNOWN   Function = -2
 )
 
 type FuncAttributes struct {
-	DebugName      string
-	AstName        string
+	DebugName string
+	AstName   string
+
+	// WARNING: NamedArguments is written here for the sake of discoverability of the expected AST node format.
+	// However, it is not consumed anywhere, and it is in NO WAY enforced by the compiler or even the runtime.
+	// The only source of truth for what named children an AST must/can have is in the ast nodes Evaluate function.
 	NamedArguments []string
 }
 
@@ -200,6 +205,11 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 	FUNC_IS_NOT_EMPTY: {
 		DebugName: "FUNC_IS_NOT_EMPTY",
 		AstName:   "IsNotEmpty",
+	},
+	FUNC_TIMESTAMP_EXTRACT: {
+		DebugName:      "FUNC_TIMESTAMP_EXTRACT",
+		AstName:        "TimestampExtract",
+		NamedArguments: []string{"timestamp", "part"},
 	},
 	FUNC_FILTER: FuncFilterAttributes,
 }
