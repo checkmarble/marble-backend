@@ -10,6 +10,7 @@ import (
 type EnforceSecurity interface {
 	Permission(permission models.Permission) error
 	ReadOrganization(organizationId string) error
+	Permissions(permissions []models.Permission) error
 }
 
 type EnforceSecurityImpl struct {
@@ -24,6 +25,15 @@ func NewEnforceSecurity(credentials models.Credentials) *EnforceSecurityImpl {
 
 func (e *EnforceSecurityImpl) ReadOrganization(organizationId string) error {
 	return utils.EnforceOrganizationAccess(e.Credentials, organizationId)
+}
+
+func (e *EnforceSecurityImpl) Permissions(permissions []models.Permission) error {
+	for _, p := range permissions {
+		if err := e.Permission(p); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (e *EnforceSecurityImpl) Permission(permission models.Permission) error {

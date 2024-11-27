@@ -84,6 +84,7 @@ type Repositories struct {
 	MarbleAnalyticsRepository         MarbleAnalyticsRepository
 	TransferCheckEnrichmentRepository *TransferCheckEnrichmentRepository
 	TaskQueueRepository               TaskQueueRepository
+	ScenarioTestrunRepository         ScenarioTestRunRepository
 }
 
 func NewQueryBuilder() squirrel.StatementBuilderType {

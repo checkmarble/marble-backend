@@ -71,7 +71,6 @@ func (publisher ScenarioPublisher) PublishOrUnpublishIteration(
 					fmt.Sprintf("Error validating scenario iteration %s: %s", iterationId, err.Error()),
 				)
 			}
-
 			if sps, err := publisher.unpublishOldIteration(ctx, tx, organizationId,
 				scenariosId, liveVersionId); err != nil {
 				return nil, err
@@ -79,7 +78,8 @@ func (publisher ScenarioPublisher) PublishOrUnpublishIteration(
 				scenarioPublications = append(scenarioPublications, sps...)
 			}
 
-			if sp, err := publisher.publishNewIteration(ctx, tx, organizationId, scenariosId, iterationId); err != nil {
+			if sp, err := publisher.publishNewIteration(ctx, tx, organizationId,
+				scenariosId, iterationId); err != nil {
 				return nil, err
 			} else {
 				scenarioPublications = append(scenarioPublications, sp)
@@ -140,9 +140,9 @@ func (publisher ScenarioPublisher) publishNewIteration(ctx context.Context,
 	if err != nil {
 		return models.ScenarioPublication{}, err
 	}
-
 	if err = publisher.Repository.UpdateScenarioLiveIterationId(ctx, tx, scenarioId, &scenarioIterationId); err != nil {
 		return models.ScenarioPublication{}, err
 	}
+
 	return scenarioPublication, nil
 }

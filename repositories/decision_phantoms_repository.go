@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
@@ -21,7 +22,7 @@ type DecisionPhantomUsecaseRepository interface {
 		testRunId string,
 		newPhantomDecisionId string) error
 
-	GetTestRunIterationByScenarioId(ctx context.Context, exec Executor, scenarioID string) (models.ScenarioIteration, error)
+	GetTestRunIterationByScenarioId(ctx context.Context, exec Executor, scenarioID string) (*models.ScenarioIteration, error)
 }
 
 func (repo *MarbleDbRepository) StorePhantomDecision(
@@ -106,7 +107,22 @@ func (repo *MarbleDbRepository) StorePhantomDecision(
 
 func (repo *MarbleDbRepository) GetTestRunIterationByScenarioId(ctx context.Context,
 	exec Executor, scenarioID string,
-) (models.ScenarioIteration, error) {
+) (*models.ScenarioIteration, error) {
 	// to be defined once we will integrate the testrun feature
-	return models.ScenarioIteration{}, nil
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+	query := NewQueryBuilder().
+		Select("scit.id, scit.org_id, scit.scenario_id, scit.version, scit.created_at, scit.updated_at, scit.score_review_threshold, scit.score_block_and_review_threshold, scit.score_reject_threshold, scit.trigger_condition_ast_expression, scit.deleted_at, scit.schedule").
+		From(dbmodels.TABLE_SCENARIO_ITERATIONS + " AS scit").
+		Join(dbmodels.TABLE_SCENARIO_TESTRUN + " AS tr ON scit.id = tr.scenario_iteration_id").
+		Join(dbmodels.TABLE_SCENARIOS + " AS sc ON sc.id = scit.scenario_id").
+		Where(squirrel.Eq{"tr.status": models.Up.String()}).
+		Where(squirrel.Eq{"sc.id": scenarioID})
+	return SqlToOptionalModel(
+		ctx,
+		exec,
+		query,
+		dbmodels.AdaptScenarioIteration,
+	)
 }

@@ -1,4 +1,4 @@
-package usecases
+package decision_phantom
 
 import (
 	"context"
@@ -17,12 +17,26 @@ import (
 
 type PhantomDecisionUsecase struct {
 	enforceSecurity            security.EnforceSecurityPhantomDecision
-	transactionFactory         executor_factory.TransactionFactory
 	executorFactory            executor_factory.ExecutorFactory
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
 	repository                 repositories.DecisionPhantomUsecaseRepository
 	evaluateAstExpression      ast_eval.EvaluateAstExpression
-	snoozesReader              snoozesForDecisionReader
+	snoozesReader              evaluate_scenario.SnoozesForDecisionReader
+}
+
+func NewPhantomDecisionUseCase(enforceSecurity security.EnforceSecurityPhantomDecision,
+	executorFactory executor_factory.ExecutorFactory, ingestedDataReadRepository repositories.IngestedDataReadRepository,
+	repository repositories.DecisionPhantomUsecaseRepository, evaluateAstExpression ast_eval.EvaluateAstExpression,
+	snoozesReader evaluate_scenario.SnoozesForDecisionReader,
+) PhantomDecisionUsecase {
+	return PhantomDecisionUsecase{
+		enforceSecurity:            enforceSecurity,
+		executorFactory:            executorFactory,
+		ingestedDataReadRepository: ingestedDataReadRepository,
+		repository:                 repository,
+		evaluateAstExpression:      evaluateAstExpression,
+		snoozesReader:              snoozesReader,
+	}
 }
 
 func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(ctx context.Context,
@@ -39,7 +53,7 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(ctx context.Context
 		return models.PhantomDecision{}, err
 	}
 	evaluationRepositories := evaluate_scenario.ScenarioEvaluationRepositories{
-		EvalTestRunScenatioRepository: usecase.repository,
+		EvalTestRunScenarioRepository: usecase.repository,
 		ExecutorFactory:               usecase.executorFactory,
 		IngestedDataReadRepository:    usecase.ingestedDataReadRepository,
 		EvaluateAstExpression:         usecase.evaluateAstExpression,
@@ -52,11 +66,11 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(ctx context.Context
 			fmt.Errorf("error evaluating scenario: %w", err)
 	}
 	if testRunScenarioExecution.ScenarioId == "" {
-		return models.PhantomDecision{}, err
+		return models.PhantomDecision{}, nil
 	}
-	decision := models.AdaptScenarExecToPhantomDecision(testRunScenarioExecution)
-	for i := range decision.RuleExecutions {
-		decision.RuleExecutions[i].Evaluation = nil
+	decision_phantom := models.AdaptScenarExecToPhantomDecision(testRunScenarioExecution)
+	for i := range decision_phantom.RuleExecutions {
+		decision_phantom.RuleExecutions[i].Evaluation = nil
 	}
 	ctx, span = tracer.Start(
 		ctx,
@@ -67,13 +81,13 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(ctx context.Context
 	if err = usecase.repository.StorePhantomDecision(
 		ctx,
 		exec,
-		decision,
+		decision_phantom,
 		input.OrganizationId,
 		testRunScenarioExecution.ScenarioIterationId,
-		decision.PhantomDecisionId,
+		decision_phantom.PhantomDecisionId,
 	); err != nil {
 		return models.PhantomDecision{},
 			fmt.Errorf("error storing phantom decision: %w", err)
 	}
-	return decision, nil
+	return decision_phantom, nil
 }

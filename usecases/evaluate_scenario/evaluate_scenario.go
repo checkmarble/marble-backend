@@ -32,15 +32,7 @@ type ScenarioEvaluationParameters struct {
 	Pivot             *models.Pivot
 }
 
-type EvalScenarioRepository interface {
-	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (models.ScenarioIteration, error)
-}
-
-type EvalTestRunScenarioRepository interface {
-	GetTestRunIterationByScenarioId(ctx context.Context, exec repositories.Executor, scenarioID string) (models.ScenarioIteration, error)
-}
-
-type snoozesForDecisionReader interface {
+type SnoozesForDecisionReader interface {
 	ListActiveRuleSnoozesForDecision(
 		ctx context.Context,
 		exec repositories.Executor,
@@ -50,12 +42,12 @@ type snoozesForDecisionReader interface {
 }
 
 type ScenarioEvaluationRepositories struct {
-	EvalScenarioRepository        EvalScenarioRepository
-	EvalTestRunScenatioRepository EvalTestRunScenarioRepository
+	EvalScenarioRepository        repositories.EvalScenarioRepository
+	EvalTestRunScenarioRepository repositories.EvalTestRunScenarioRepository
 	ExecutorFactory               executor_factory.ExecutorFactory
 	IngestedDataReadRepository    repositories.IngestedDataReadRepository
 	EvaluateAstExpression         ast_eval.EvaluateAstExpression
-	SnoozeReader                  snoozesForDecisionReader
+	SnoozeReader                  SnoozesForDecisionReader
 }
 
 func processScenarioIteration(ctx context.Context, params ScenarioEvaluationParameters,
@@ -84,7 +76,7 @@ func processScenarioIteration(ctx context.Context, params ScenarioEvaluationPara
 		dataAccessor.ClientObject,
 		params.DataModel,
 	)
-	if errEval != nil {
+	if errEval != nil && !errors.Is(errEval, models.ErrScenarioTriggerConditionAndTriggerObjectMismatch) {
 		return models.ScenarioExecution{}, errEval
 	}
 	var pivotValue *string
@@ -195,16 +187,16 @@ func EvalTestRunScenario(ctx context.Context,
 		),
 	)
 	defer span.End()
-	testRunIteration, err := repositories.EvalTestRunScenatioRepository.GetTestRunIterationByScenarioId(
+	testRunIteration, err := repositories.EvalTestRunScenarioRepository.GetTestRunIterationByScenarioId(
 		ctx, exec, params.Scenario.Id)
 	if err != nil {
 		return models.ScenarioExecution{}, errors.Wrap(err,
 			"error getting testrun scenario iteration in EvalTestRunScenario")
 	}
-	if testRunIteration.Id == "" {
+	if testRunIteration == nil {
 		return models.ScenarioExecution{}, nil
 	}
-	se, errSe := processScenarioIteration(ctx, params, testRunIteration, repositories, start, logger, exec)
+	se, errSe := processScenarioIteration(ctx, params, *testRunIteration, repositories, start, logger, exec)
 	if errSe != nil {
 		return models.ScenarioExecution{}, errors.Wrap(errSe,
 			"error processing scenario iteration in EvalTestRunScenario")
