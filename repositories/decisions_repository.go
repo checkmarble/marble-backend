@@ -78,24 +78,23 @@ func (repo *MarbleDbRepository) DecisionsByOutcomeAndScore(ctx context.Context, 
 	decisionQuery := NewQueryBuilder().
 		Select("outcome, scenario_version, score").
 		From(dbmodels.TABLE_DECISIONS).Where(squirrel.GtOrEq{
-		"d.created_at": begin.String(),
+		"created_at": begin.String(),
 	}).Where(squirrel.LtOrEq{
-		"d.deleted_at": end.String(),
+		"created_at": end.String(),
 	})
 	phantomDecisionQuery := NewQueryBuilder().
 		Select("outcome, scenario_version, score").
 		From(dbmodels.TABLE_PHANTOM_DECISIONS).Where(squirrel.GtOrEq{
-		"d.created_at": begin.String(),
+		"created_at": begin.String(),
 	}).Where(squirrel.LtOrEq{
-		"d.deleted_at": end.String(),
+		"created_at": end.String(),
 	})
 	query, err := WithUnionAll(decisionQuery, phantomDecisionQuery)
 	if err != nil {
 		return nil, err
 	}
-	unionQuery, _, _ := query.ToSql()
 	finalQuery := NewQueryBuilder().Select("q.outcome, q.scenario_version, q.score, Count(q.outcome) as total ").
-		From(unionQuery + " AS q").GroupBy("scenario_version, outcome, score")
+		FromSelect(query, "q").GroupBy("scenario_version, outcome, score")
 	return SqlToListOfRow(ctx,
 		exec,
 		finalQuery,
