@@ -51,4 +51,8 @@ type ScenarioTestRunInput struct {
 	LiveScenarioId      string
 	ScenarioId          string
 	Period              time.Duration
+	RefIterationId      string
+	PhantomIterationId  string
+	StartDate           time.Time
+	EndDate             time.Time
 }

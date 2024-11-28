@@ -101,3 +101,27 @@ func (usecase *ScenarioTestRunUsecase) ActivateScenarioTestRun(ctx context.Conte
 		},
 	)
 }
+
+func (usecase *ScenarioTestRunUsecase) ListTestRunByScenarioId(ctx context.Context,
+	organizationId, scenarioId string,
+) ([]models.ScenarioTestRun, error) {
+	if err := usecase.enforceSecurity.ListTestRuns(organizationId); err != nil {
+		return nil, err
+	}
+	return usecase.repository.ListTestRunsByScenarioID(ctx,
+		usecase.executorFactory.NewExecutor(), scenarioId)
+}
+
+func (usecase *ScenarioTestRunUsecase) GetTestRunById(ctx context.Context,
+	testRunId string,
+) (models.ScenarioTestRun, error) {
+	testrun, err := usecase.repository.GetTestRunByID(ctx,
+		usecase.executorFactory.NewExecutor(), testRunId)
+	if err != nil {
+		return models.ScenarioTestRun{}, err
+	}
+	if testrun == nil {
+		return models.ScenarioTestRun{}, nil
+	}
+	return *testrun, nil
+}
