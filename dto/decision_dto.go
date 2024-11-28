@@ -142,13 +142,10 @@ func ProcessDecisionDataDtoFromModels(inputs []models.DecisionsByVersionByOutcom
 	result := make([]DecisionData, len(inputs))
 	for i, input := range inputs {
 		item := DecisionData{
-			Version:        input.Version,
-			Outcome:        input.Outcome,
-			PhantomOutcome: input.PhantonOutcome,
-			Score:          input.Score,
-			PhantomScore:   input.PhantomScore,
-			Total:          input.Count,
-			Phantom_Total:  input.PhantomCount,
+			Version: input.Version,
+			Outcome: input.Outcome,
+			Score:   input.Score,
+			Total:   input.Count,
 		}
 		result[i] = item
 	}

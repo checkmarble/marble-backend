@@ -75,19 +75,30 @@ func (repo *MarbleDbRepository) DecisionWithRuleExecutionsById(ctx context.Conte
 func (repo *MarbleDbRepository) DecisionsByOutcomeAndScore(ctx context.Context, exec Executor,
 	scenarioID string, begin, end time.Time,
 ) ([]models.DecisionsByVersionByOutcome, error) {
-	query := NewQueryBuilder().
-		Select("d.outcome, d.scenario_version, d.score, Count(d.outcome) as total, pd.outcome as phantom_outcome, pd.score as phantom_score, Count(pd.outcome) as phantom_total").
-		From(fmt.Sprintf("%s AS d", dbmodels.TABLE_DECISIONS)).Join(
-		dbmodels.TABLE_PHANTOM_DECISIONS + " AS pd on pd.scenario_id = d.scenario_id").Where(squirrel.Eq{
-		"d.scenario_id": scenarioID,
-	}).Where(squirrel.GtOrEq{
+	decisionQuery := NewQueryBuilder().
+		Select("outcome, scenario_version, score").
+		From(dbmodels.TABLE_DECISIONS).Where(squirrel.GtOrEq{
 		"d.created_at": begin.String(),
 	}).Where(squirrel.LtOrEq{
 		"d.deleted_at": end.String(),
-	}).GroupBy("d.outcome, d.scenario_version, d.score, pd.outcome, pd.score")
+	})
+	phantomDecisionQuery := NewQueryBuilder().
+		Select("outcome, scenario_version, score").
+		From(dbmodels.TABLE_PHANTOM_DECISIONS).Where(squirrel.GtOrEq{
+		"d.created_at": begin.String(),
+	}).Where(squirrel.LtOrEq{
+		"d.deleted_at": end.String(),
+	})
+	query, err := WithUnionAll(decisionQuery, phantomDecisionQuery)
+	if err != nil {
+		return nil, err
+	}
+	unionQuery, _, _ := query.ToSql()
+	finalQuery := NewQueryBuilder().Select("q.outcome, q.scenario_version, q.score, Count(q.outcome) as total ").
+		From(unionQuery + " AS q").GroupBy("scenario_version, outcome, score")
 	return SqlToListOfRow(ctx,
 		exec,
-		query,
+		finalQuery,
 		func(row pgx.CollectableRow) (models.DecisionsByVersionByOutcome, error) {
 			db, err := pgx.RowToStructByPos[dbmodels.DbDecisionsByOutcome](row)
 			if err != nil {

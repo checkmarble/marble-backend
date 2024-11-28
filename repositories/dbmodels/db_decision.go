@@ -37,13 +37,10 @@ type DbJoinDecisionAndCase struct {
 }
 
 type DbDecisionsByOutcome struct {
-	Version        string `db:"scenario_version"`
-	Outcome        string `db:"outcome"`
-	PhantomOutcome string `db:"phantom_outcome"`
-	Score          int    `db:"score"`
-	PhantomScore   int    `db:"phantom_score"`
-	Total          int    `db:"total"`
-	PhantomTotal   int    `db:"phantom_total"`
+	Version string `db:"scenario_version"`
+	Outcome string `db:"outcome"`
+	Score   int    `db:"score"`
+	Total   int    `db:"total"`
 }
 
 type DBPaginatedDecisions struct {
@@ -92,13 +89,10 @@ func AdaptDecisionCore(db DbDecision) models.DecisionCore {
 
 func AdaptDecisionByOutcome(db DbDecisionsByOutcome) models.DecisionsByVersionByOutcome {
 	return models.DecisionsByVersionByOutcome{
-		Version:        db.Version,
-		PhantonOutcome: db.PhantomOutcome,
-		Outcome:        db.Outcome,
-		Score:          db.Score,
-		PhantomScore:   db.PhantomScore,
-		Count:          db.Total,
-		PhantomCount:   db.PhantomTotal,
+		Version: db.Version,
+		Outcome: db.Outcome,
+		Score:   db.Score,
+		Count:   db.Total,
 	}
 }
 

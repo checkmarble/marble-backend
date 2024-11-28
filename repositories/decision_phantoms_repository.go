@@ -20,7 +20,8 @@ type DecisionPhantomUsecaseRepository interface {
 		decision models.PhantomDecision,
 		organizationId string,
 		testRunId string,
-		newPhantomDecisionId string) error
+		newPhantomDecisionId string,
+		scenarioVersion int) error
 
 	GetTestRunIterationByScenarioId(ctx context.Context, exec Executor, scenarioID string) (*models.ScenarioIteration, error)
 }
@@ -32,6 +33,7 @@ func (repo *MarbleDbRepository) StorePhantomDecision(
 	organizationId string,
 	testRunId string,
 	newPhantomDecisionId string,
+	scenarioVersion int,
 ) error {
 	tracer := utils.OpenTelemetryTracerFromContext(ctx)
 	ctx, span := tracer.Start(
@@ -55,6 +57,7 @@ func (repo *MarbleDbRepository) StorePhantomDecision(
 				"scenario_iteration_id",
 				"score",
 				"test_run_id",
+				"scenario_version",
 			).
 			Values(
 				newPhantomDecisionId,
@@ -65,6 +68,7 @@ func (repo *MarbleDbRepository) StorePhantomDecision(
 				decision.ScenarioIterationId,
 				decision.Score,
 				testRunId,
+				scenarioVersion,
 			),
 	)
 	if err != nil {

@@ -23,7 +23,7 @@ func AdaptScenarioTestRunDto(s models.ScenarioTestRun) ScenarioTestRunResp {
 	return ScenarioTestRunResp{
 		ScenarioId: s.ScenarioId,
 		CreatedAt:  s.CreatedAt,
-		ExpiresAt:  s.Expires,
+		ExpiresAt:  s.ExpiresAt,
 		Status:     s.Status.String(),
 	}
 }

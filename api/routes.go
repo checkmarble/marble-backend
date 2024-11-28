@@ -30,7 +30,7 @@ const (
 
 	// TODO: temporary workaround, what we need to do is to make the endpoint reliably respond quickly even
 	// without warmup
-	LIST_DECISION_TIMEOUT = 10 * time.Second
+	LIST_DECISION_TIMEOUT = 30 * time.Second
 
 	DEFAULT_TIMEOUT = 5 * time.Second
 )

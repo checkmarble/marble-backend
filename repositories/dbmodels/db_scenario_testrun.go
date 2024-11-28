@@ -11,7 +11,7 @@ type DBScenarioTestRun struct {
 	Id                  string    `db:"id"`
 	ScenarioIterationId string    `db:"scenario_iteration_id"`
 	CreatedAt           time.Time `db:"created_at"`
-	Expires             time.Time `db:"expires_at"`
+	ExpiresAt           time.Time `db:"expires_at"`
 	Status              string    `db:"status"`
 }
 
@@ -24,7 +24,7 @@ func AdaptScenarioTestrun(dto DBScenarioTestRun) (models.ScenarioTestRun, error)
 		ScenarioIterationId: dto.ScenarioIterationId,
 		ScenarioId:          dto.Id,
 		CreatedAt:           dto.CreatedAt,
-		Expires:             dto.Expires,
+		ExpiresAt:           dto.ExpiresAt,
 		Status:              models.ScenarioTestStatusFrom(dto.Status),
 	}, nil
 }

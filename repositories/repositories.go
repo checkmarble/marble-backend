@@ -1,6 +1,8 @@
 package repositories
 
 import (
+	"fmt"
+
 	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/infra"
 	"github.com/jackc/pgx/v5"
@@ -89,6 +91,14 @@ type Repositories struct {
 
 func NewQueryBuilder() squirrel.StatementBuilderType {
 	return squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
+}
+
+func WithUnionAll(builder squirrel.SelectBuilder, unionAllQuery squirrel.SelectBuilder) (squirrel.SelectBuilder, error) {
+	query, params, err := unionAllQuery.ToSql()
+	if err != nil {
+		return builder, fmt.Errorf("union all query failed: %w", err)
+	}
+	return builder.Suffix("UNION ALL "+query, params...), nil
 }
 
 func NewRepositories(

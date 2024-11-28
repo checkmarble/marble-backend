@@ -68,6 +68,7 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(ctx context.Context
 	if testRunScenarioExecution.ScenarioId == "" {
 		return models.PhantomDecision{}, nil
 	}
+
 	decision_phantom := models.AdaptScenarExecToPhantomDecision(testRunScenarioExecution)
 	for i := range decision_phantom.RuleExecutions {
 		decision_phantom.RuleExecutions[i].Evaluation = nil
@@ -85,6 +86,7 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(ctx context.Context
 		input.OrganizationId,
 		testRunScenarioExecution.ScenarioIterationId,
 		decision_phantom.PhantomDecisionId,
+		testRunScenarioExecution.ScenarioVersion,
 	); err != nil {
 		return models.PhantomDecision{},
 			fmt.Errorf("error storing phantom decision: %w", err)

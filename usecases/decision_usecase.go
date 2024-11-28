@@ -116,8 +116,9 @@ func (usecase *DecisionUsecase) GetDecisionsByOutcomeAndScore(ctx context.Contex
 	if errTestRun != nil {
 		return nil, errTestRun
 	}
+
 	decisions, err := usecase.repository.DecisionsByOutcomeAndScore(ctx,
-		usecase.executorFactory.NewExecutor(), testrun.ScenarioId, testrun.CreatedAt, testrun.Expires)
+		usecase.executorFactory.NewExecutor(), testrun.ScenarioId, testrun.CreatedAt, testrun.ExpiresAt)
 	if err != nil {
 		return []models.DecisionsByVersionByOutcome{}, err
 	}

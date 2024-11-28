@@ -13,4 +13,5 @@ type DbPhantomDecision struct {
 	Score               int       `db:"score"`
 	ScenarioIterationId string    `db:"scenario_iteration_id"`
 	TestRunId           string    `db:"test_run_id"`
+	ScenarioVersion     string    `db:"scenario_version"`
 }

@@ -41,7 +41,7 @@ type ScenarioTestRun struct {
 	ScenarioIterationId string
 	ScenarioId          string
 	CreatedAt           time.Time
-	Expires             time.Time
+	ExpiresAt           time.Time
 	Status              TestrunStatus
 }
 
