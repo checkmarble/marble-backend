@@ -5,11 +5,30 @@ import (
 	"testing"
 	"time"
 
+	"github.com/checkmarble/marble-backend/mocks"
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/utils"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestTimestampExtract_Evaluate(t *testing.T) {
+	createTimestampExtractMock := func() TimestampExtract {
+		orgRepo := new(mocks.OrganizationRepository)
+		execFac := &mocks.ExecutorFactory{}
+		transaction := &mocks.Transaction{}
+		orgId := "0193721e-88d9-7f67-9221-f7fbeb1a1e9e"
+		te := NewTimestampExtract(execFac, orgRepo, orgId)
+		execFac.On("NewExecutor").Once().Return(transaction)
+		ctx := context.Background()
+		orgRepo.On("GetOrganizationById", ctx, transaction, orgId).Return(models.Organization{
+			Id:                      orgId,
+			Name:                    "Name",
+			DefaultScenarioTimezone: utils.Ptr("UTC"),
+		}, nil)
+		return te
+	}
+
 	tests := []struct {
 		name      string
 		timestamp time.Time
@@ -63,7 +82,7 @@ func TestTimestampExtract_Evaluate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			te := NewTimestampExtract("UTC")
+			te := createTimestampExtractMock()
 			args := ast.Arguments{
 				NamedArgs: map[string]any{
 					"timestamp": tt.timestamp,
