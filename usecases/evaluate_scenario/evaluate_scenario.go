@@ -194,7 +194,7 @@ func EvalTestRunScenario(ctx context.Context,
 		return models.ScenarioExecution{}, errors.Wrap(errTr,
 			"error getting testrun  in EvalTestRunScenario")
 	}
-	if testrun == nil {
+	if testrun == nil || testrun.Status != models.Up {
 		return models.ScenarioExecution{}, nil
 	}
 	scenario, errScenario := repositories.ScenarioRepository.GetScenarioByLiveScenarioIterationId(

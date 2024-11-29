@@ -105,10 +105,12 @@ func (publisher ScenarioPublisher) shutDownTestRunIfNeeded(ctx context.Context, 
 	if errTestrun != nil {
 		return errTestrun
 	}
-	if testrun != nil && testrun.Status == models.Up {
-		errUpd := publisher.ScenarioTestRunRepository.UpdateTestRunStatusByLiveVersion(ctx, tx, liveVersionId, models.Down)
-		if errUpd != nil {
-			return errUpd
+	if testrun != nil {
+		if testrun.Status == models.Up || testrun.Status == models.Pending {
+			errUpd := publisher.ScenarioTestRunRepository.UpdateTestRunStatusByLiveVersion(ctx, tx, liveVersionId, models.Down)
+			if errUpd != nil {
+				return errUpd
+			}
 		}
 	}
 	return nil

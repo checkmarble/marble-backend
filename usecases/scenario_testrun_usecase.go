@@ -82,7 +82,7 @@ func (usecase *ScenarioTestRunUsecase) ActivateScenarioTestRun(ctx context.Conte
 		return models.ScenarioTestRun{}, models.ErrWrongIterationForTestRun
 	}
 
-	// keep track of the live version associated to the current testrung
+	// keep track of the live version associated to the current testrun
 	input.LiveScenarioId = *scenario.LiveVersionID
 
 	return executor_factory.TransactionReturnValue(
