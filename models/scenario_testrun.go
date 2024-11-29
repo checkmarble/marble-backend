@@ -38,6 +38,7 @@ func ScenarioTestStatusFrom(s string) TestrunStatus {
 }
 
 type ScenarioTestRun struct {
+	Id                      string
 	ScenarioIterationId     string
 	ScenarioId              string
 	ScenarioLiveIterationId string

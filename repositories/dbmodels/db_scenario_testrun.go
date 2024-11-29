@@ -20,13 +20,13 @@ const TABLE_SCENARIO_TESTRUN = "scenario_test_run"
 
 var SelectScenarioTestRunColumns = utils.ColumnList[DBScenarioTestRun]()
 
-func AdaptScenarioTestrun(dto DBScenarioTestRun) (models.ScenarioTestRun, error) {
+func AdaptScenarioTestrun(db DBScenarioTestRun) (models.ScenarioTestRun, error) {
 	return models.ScenarioTestRun{
-		ScenarioIterationId:     dto.ScenarioIterationId,
-		ScenarioId:              dto.Id,
-		ScenarioLiveIterationId: dto.LiveScenarioIterationId,
-		CreatedAt:               dto.CreatedAt,
-		ExpiresAt:               dto.ExpiresAt,
-		Status:                  models.ScenarioTestStatusFrom(dto.Status),
+		ScenarioIterationId:     db.ScenarioIterationId,
+		Id:                      db.Id,
+		ScenarioLiveIterationId: db.LiveScenarioIterationId,
+		CreatedAt:               db.CreatedAt,
+		ExpiresAt:               db.ExpiresAt,
+		Status:                  models.ScenarioTestStatusFrom(db.Status),
 	}, nil
 }

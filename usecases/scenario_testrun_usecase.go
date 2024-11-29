@@ -97,6 +97,7 @@ func (usecase *ScenarioTestRunUsecase) ActivateScenarioTestRun(ctx context.Conte
 			if err != nil {
 				return models.ScenarioTestRun{}, err
 			}
+			result.ScenarioId = scenario.Id
 			return *result, err
 		},
 	)
@@ -108,8 +109,17 @@ func (usecase *ScenarioTestRunUsecase) ListTestRunByScenarioId(ctx context.Conte
 	if err := usecase.enforceSecurity.ListTestRuns(organizationId); err != nil {
 		return nil, err
 	}
-	return usecase.repository.ListTestRunsByScenarioID(ctx,
+	testruns, err := usecase.repository.ListTestRunsByScenarioID(ctx,
 		usecase.executorFactory.NewExecutor(), scenarioId)
+	if err != nil {
+		return nil, err
+	}
+	if len(testruns) > 0 {
+		for _, testrun := range testruns {
+			testrun.ScenarioId = scenarioId
+		}
+	}
+	return testruns, nil
 }
 
 func (usecase *ScenarioTestRunUsecase) GetTestRunById(ctx context.Context,
