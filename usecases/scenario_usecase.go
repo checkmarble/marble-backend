@@ -14,28 +14,11 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-type ScenarioUsecaseRepository interface {
-	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
-	ListScenariosOfOrganization(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.Scenario, error)
-	CreateScenario(
-		ctx context.Context,
-		exec repositories.Executor,
-		organizationId string,
-		scenario models.CreateScenarioInput,
-		newScenarioId string,
-	) error
-	UpdateScenario(
-		ctx context.Context,
-		exec repositories.Executor,
-		scenario models.UpdateScenarioInput,
-	) error
-}
-
 type ScenarioUsecase struct {
 	transactionFactory executor_factory.TransactionFactory
 	executorFactory    executor_factory.ExecutorFactory
 	enforceSecurity    security.EnforceSecurityScenario
-	repository         ScenarioUsecaseRepository
+	repository         repositories.ScenarioUsecaseRepository
 }
 
 func (usecase *ScenarioUsecase) ListScenarios(ctx context.Context, organizationId string) ([]models.Scenario, error) {

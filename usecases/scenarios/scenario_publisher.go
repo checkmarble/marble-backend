@@ -24,6 +24,7 @@ type ScenarioPublisher struct {
 	Repository                     ScenarioPublisherRepository
 	ValidateScenarioIteration      ValidateScenarioIteration
 	ScenarioPublicationsRepository repositories.ScenarioPublicationRepository
+	ScenarioTestRunRepository      repositories.ScenarioTestRunRepository
 }
 
 func (publisher ScenarioPublisher) PublishOrUnpublishIteration(
@@ -99,6 +100,22 @@ func (publisher ScenarioPublisher) PublishOrUnpublishIteration(
 	return scenarioPublications, nil
 }
 
+func (publisher ScenarioPublisher) shutDownTestRunIfNeeded(ctx context.Context, tx repositories.Transaction, liveVersionId string) error {
+	testrun, errTestrun := publisher.ScenarioTestRunRepository.GetTestRunByLiveVersionID(ctx, tx, liveVersionId)
+	if errTestrun != nil {
+		return errTestrun
+	}
+	if testrun != nil {
+		if testrun.Status == models.Up || testrun.Status == models.Pending {
+			errUpd := publisher.ScenarioTestRunRepository.UpdateTestRunStatusByLiveVersion(ctx, tx, liveVersionId, models.Down)
+			if errUpd != nil {
+				return errUpd
+			}
+		}
+	}
+	return nil
+}
+
 func (publisher ScenarioPublisher) unpublishOldIteration(
 	ctx context.Context, tx repositories.Transaction, organizationId, scenarioId string, liveVersionId *string,
 ) ([]models.ScenarioPublication, error) {
@@ -118,6 +135,10 @@ func (publisher ScenarioPublisher) unpublishOldIteration(
 
 	if err := publisher.Repository.UpdateScenarioLiveIterationId(ctx, tx, scenarioId, nil); err != nil {
 		return nil, err
+	}
+	// stop any running testrun scenario associated to
+	if errShutdown := publisher.shutDownTestRunIfNeeded(ctx, tx, *liveVersionId); errShutdown != nil {
+		return nil, errShutdown
 	}
 	scenarioPublication, err := publisher.ScenarioPublicationsRepository.GetScenarioPublicationById(ctx, tx, newScenarioPublicationId)
 	return []models.ScenarioPublication{scenarioPublication}, err
@@ -142,6 +163,10 @@ func (publisher ScenarioPublisher) publishNewIteration(ctx context.Context,
 	}
 	if err = publisher.Repository.UpdateScenarioLiveIterationId(ctx, tx, scenarioId, &scenarioIterationId); err != nil {
 		return models.ScenarioPublication{}, err
+	}
+	// stop any running testrun scenario associated to
+	if errShutdown := publisher.shutDownTestRunIfNeeded(ctx, tx, scenarioIterationId); errShutdown != nil {
+		return models.ScenarioPublication{}, errShutdown
 	}
 
 	return scenarioPublication, nil

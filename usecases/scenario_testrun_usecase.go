@@ -17,7 +17,7 @@ type ScenarioTestRunUsecase struct {
 	executorFactory     executor_factory.ExecutorFactory
 	enforceSecurity     security.EnforceSecurityTestRun
 	repository          repositories.ScenarioTestRunRepository
-	scenarioRepository  ScenarioUsecaseRepository
+	scenarioRepository  repositories.ScenarioUsecaseRepository
 	clientDbIndexEditor clientDbIndexEditor
 }
 
@@ -81,6 +81,9 @@ func (usecase *ScenarioTestRunUsecase) ActivateScenarioTestRun(ctx context.Conte
 	if *scenario.LiveVersionID == input.ScenarioIterationId {
 		return models.ScenarioTestRun{}, models.ErrWrongIterationForTestRun
 	}
+
+	// keep track of the live version associated to the current testrun
+	input.LiveScenarioId = *scenario.LiveVersionID
 
 	return executor_factory.TransactionReturnValue(
 		ctx,

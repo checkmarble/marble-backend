@@ -64,9 +64,12 @@ func TestScenarioPublisher_PublishOrUnpublishIteration_unpublish_nominal(t *test
 		return err == nil
 	})).Return(scenarioPublication, nil)
 
+	str := new(mocks.ScenarioTestrunRepository)
+	str.On("GetTestRunByLiveVersionID", ctx, transaction, mock.Anything).Return(nil, nil)
 	publisher := ScenarioPublisher{
 		Repository:                     repo,
 		ScenarioPublicationsRepository: spr,
+		ScenarioTestRunRepository:      str,
 	}
 
 	publications, err := publisher.PublishOrUnpublishIteration(
