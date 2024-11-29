@@ -64,7 +64,6 @@ func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 		ScenarioIterationId: "b53fcdd9-4909-4167-9b22-7e36a065ffbd",
 		ScenarioId:          "b6f0c253-ca06-4a5c-a208-9d5a537ca827",
 		Status:              models.Up,
-		Period:              time.Duration(1000),
 	}
 	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.organizationId, mock.Anything).Return(
 		[]models.ConcreteIndex{

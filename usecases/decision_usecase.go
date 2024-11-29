@@ -47,6 +47,10 @@ type DecisionUsecaseRepository interface {
 		paginationAndSorting models.PaginationAndSorting, filters models.DecisionFilters) ([]models.DecisionWithRank, error)
 
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
+
+	DecisionsByOutcomeAndScore(ctx context.Context, exec repositories.Executor, scenarioId string, begin, end time.Time) (
+		[]models.DecisionsByVersionByOutcome, error)
+
 	ListScenariosOfOrganization(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.Scenario, error)
 
 	GetScenarioIteration(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (
@@ -83,6 +87,7 @@ type DecisionUsecase struct {
 	ingestedDataReadRepository repositories.IngestedDataReadRepository
 	dataModelRepository        repositories.DataModelRepository
 	repository                 DecisionUsecaseRepository
+	scenarioTestRunRepository  repositories.ScenarioTestRunRepository
 	evaluateAstExpression      ast_eval.EvaluateAstExpression
 	decisionWorkflows          decisionWorkflowsUsecase
 	webhookEventsSender        webhookEventsUsecase
@@ -101,6 +106,23 @@ func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId stri
 	}
 
 	return decision, nil
+}
+
+func (usecase *DecisionUsecase) GetDecisionsByOutcomeAndScore(ctx context.Context,
+	testrunId string,
+) ([]models.DecisionsByVersionByOutcome, error) {
+	testrun, errTestRun := usecase.scenarioTestRunRepository.GetTestRunByID(ctx,
+		usecase.executorFactory.NewExecutor(), testrunId)
+	if errTestRun != nil {
+		return nil, errTestRun
+	}
+
+	decisions, err := usecase.repository.DecisionsByOutcomeAndScore(ctx,
+		usecase.executorFactory.NewExecutor(), testrun.ScenarioId, testrun.CreatedAt, testrun.ExpiresAt)
+	if err != nil {
+		return []models.DecisionsByVersionByOutcome{}, err
+	}
+	return decisions, nil
 }
 
 func (usecase *DecisionUsecase) ListDecisions(

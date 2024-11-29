@@ -9,6 +9,7 @@ CREATE TABLE phantom_decisions(
   score INT NOT NULL,
   scenario_iteration_id uuid NOT NULL,
   test_run_id uuid NOT NULL,
+  scenario_version INT NOT NULL,
   PRIMARY KEY(id),
   CONSTRAINT fk_phantom_decisions_org FOREIGN KEY(org_id) REFERENCES organizations(id) ON DELETE CASCADE,
   CONSTRAINT fk_phantom_decisions_test_run_id FOREIGN KEY(test_run_id) REFERENCES scenario_test_run(id) ON DELETE CASCADE,

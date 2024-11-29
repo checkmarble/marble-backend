@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/cockroachdb/errors"
@@ -69,6 +70,41 @@ func (repo *MarbleDbRepository) DecisionWithRuleExecutionsById(ctx context.Conte
 			errors.Wrap(models.NotFoundError, "Decision not found")
 	}
 	return decisions[0], nil
+}
+
+func (repo *MarbleDbRepository) DecisionsByOutcomeAndScore(ctx context.Context, exec Executor,
+	scenarioID string, begin, end time.Time,
+) ([]models.DecisionsByVersionByOutcome, error) {
+	decisionQuery := NewQueryBuilder().
+		Select("outcome, scenario_version, score").
+		From(dbmodels.TABLE_DECISIONS).Where(squirrel.GtOrEq{
+		"created_at": begin.String(),
+	}).Where(squirrel.LtOrEq{
+		"created_at": end.String(),
+	})
+	phantomDecisionQuery := NewQueryBuilder().
+		Select("outcome, scenario_version, score").
+		From(dbmodels.TABLE_PHANTOM_DECISIONS).Where(squirrel.GtOrEq{
+		"created_at": begin.String(),
+	}).Where(squirrel.LtOrEq{
+		"created_at": end.String(),
+	})
+	query, err := WithUnionAll(decisionQuery, phantomDecisionQuery)
+	if err != nil {
+		return nil, err
+	}
+	finalQuery := NewQueryBuilder().Select("q.outcome, q.scenario_version, q.score, Count(q.outcome) as total ").
+		FromSelect(query, "q").GroupBy("scenario_version, outcome, score")
+	return SqlToListOfRow(ctx,
+		exec,
+		finalQuery,
+		func(row pgx.CollectableRow) (models.DecisionsByVersionByOutcome, error) {
+			db, err := pgx.RowToStructByPos[dbmodels.DbDecisionsByOutcome](row)
+			if err != nil {
+				return models.DecisionsByVersionByOutcome{}, err
+			}
+			return dbmodels.AdaptDecisionByOutcome(db), nil
+		})
 }
 
 func (repo *MarbleDbRepository) DecisionsWithRuleExecutionsByIds(

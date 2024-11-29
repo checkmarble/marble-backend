@@ -52,6 +52,13 @@ type DecisionWithRuleExecutions struct {
 	RuleExecutions []RuleExecution
 }
 
+type DecisionsByVersionByOutcome struct {
+	Version string
+	Outcome string
+	Score   int
+	Count   int
+}
+
 type DecisionWithRank struct {
 	Decision
 	RankNumber int

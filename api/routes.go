@@ -30,7 +30,7 @@ const (
 
 	// TODO: temporary workaround, what we need to do is to make the endpoint reliably respond quickly even
 	// without warmup
-	LIST_DECISION_TIMEOUT = 10 * time.Second
+	LIST_DECISION_TIMEOUT = 30 * time.Second
 
 	DEFAULT_TIMEOUT = 5 * time.Second
 )
@@ -66,6 +66,9 @@ func addRoutes(r *gin.Engine, auth Authentication, tokenHandler TokenHandler, uc
 	router.POST("/scenarios", tom, createScenario(uc))
 	router.GET("/scenarios/:scenario_id", tom, getScenario(uc))
 	router.PATCH("/scenarios/:scenario_id", tom, updateScenario(uc))
+
+	router.GET("/testrun/:testrun_id/databyscore", timeoutMiddleware(LIST_DECISION_TIMEOUT),
+		handleDecisionsDataByOutcomeAndScore(uc))
 
 	router.GET("/scenario-iterations", tom, handleListScenarioIterations(uc))
 	router.POST("/scenario-iterations", tom, handleCreateScenarioIteration(uc))
