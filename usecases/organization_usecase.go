@@ -46,13 +46,19 @@ func (usecase *OrganizationUseCase) GetOrganization(ctx context.Context, organiz
 func (usecase *OrganizationUseCase) UpdateOrganization(ctx context.Context,
 	organization models.UpdateOrganizationInput,
 ) (models.Organization, error) {
-	if err := usecase.enforceSecurity.CreateOrganization(); err != nil {
-		return models.Organization{}, err
-	}
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.Organization, error) {
-		err := usecase.organizationRepository.UpdateOrganization(ctx, tx, organization)
+		org, err := usecase.organizationRepository.GetOrganizationById(ctx, tx, organization.Id)
+		if err != nil {
+			return models.Organization{}, err
+		}
+
+		if err := usecase.enforceSecurity.EditOrganization(org); err != nil {
+			return models.Organization{}, err
+		}
+
+		err = usecase.organizationRepository.UpdateOrganization(ctx, tx, organization)
 		if err != nil {
 			return models.Organization{}, err
 		}

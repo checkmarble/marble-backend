@@ -86,8 +86,10 @@ func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(ctx context.Con
 
 	updateRequest := NewQueryBuilder().Update(dbmodels.TABLE_ORGANIZATION)
 
-	if updateOrganization.Name != nil {
-		updateRequest = updateRequest.Set("name", *updateOrganization.Name)
+	if updateOrganization.DefaultScenarioTimezone != nil {
+		updateRequest = updateRequest.Set(
+			"default_scenario_timezone",
+			*updateOrganization.DefaultScenarioTimezone)
 	}
 
 	updateRequest = updateRequest.Where("id = ?", updateOrganization.Id)
