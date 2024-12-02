@@ -42,18 +42,15 @@ type ScenarioTestRun struct {
 	ScenarioIterationId     string
 	ScenarioId              string
 	ScenarioLiveIterationId string
+	OrganizationId          string
 	CreatedAt               time.Time
 	ExpiresAt               time.Time
 	Status                  TestrunStatus
 }
 
 type ScenarioTestRunInput struct {
-	ScenarioIterationId string
-	LiveScenarioId      string
-	ScenarioId          string
-	Period              time.Duration
-	RefIterationId      string
-	PhantomIterationId  string
-	StartDate           time.Time
-	EndDate             time.Time
+	ScenarioId         string
+	PhantomIterationId string
+	LiveScenarioId     string
+	EndDate            time.Time
 }

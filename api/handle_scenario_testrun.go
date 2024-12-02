@@ -42,14 +42,10 @@ func handleCreateScenarioTestRun(uc usecases.Usecases) func(c *gin.Context) {
 func handleListScenarioTestRun(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(ctx, c, err) {
-			return
-		}
 		scenarioID := c.Query("scenario_id")
 
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioTestRunUseCase()
-		testruns, err := usecase.ListTestRunByScenarioId(ctx, organizationId, scenarioID)
+		testruns, err := usecase.ListTestRunByScenarioId(ctx, scenarioID)
 		if presentError(ctx, c, err) {
 			return
 		}

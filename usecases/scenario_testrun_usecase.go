@@ -31,7 +31,7 @@ func (usecase *ScenarioTestRunUsecase) ActivateScenarioTestRun(ctx context.Conte
 	indexesToCreate, numPending, err := usecase.clientDbIndexEditor.GetIndexesToCreate(
 		ctx,
 		organizationId,
-		input.ScenarioIterationId,
+		input.PhantomIterationId,
 	)
 	if err != nil {
 		return models.ScenarioTestRun{}, errors.Wrap(err,
@@ -50,7 +50,7 @@ func (usecase *ScenarioTestRunUsecase) ActivateScenarioTestRun(ctx context.Conte
 		organizationId, indexesToCreate, func(ctx context.Context, exec repositories.Executor, args ...interface{}) error {
 			scenarioIterationId := args[0].(string)
 			return usecase.repository.UpdateTestRunStatus(ctx, exec, scenarioIterationId, models.Up)
-		}, input.ScenarioIterationId)
+		}, input.PhantomIterationId)
 
 	if errIdx != nil {
 		return models.ScenarioTestRun{}, errors.Wrap(errIdx,
@@ -58,7 +58,7 @@ func (usecase *ScenarioTestRunUsecase) ActivateScenarioTestRun(ctx context.Conte
 	}
 
 	// we should not have any existing testrun for this scenario
-	existingTestrun, err := usecase.repository.GetActiveTestRunByScenarioIterationID(ctx, exec, input.ScenarioIterationId)
+	existingTestrun, err := usecase.repository.GetActiveTestRunByScenarioIterationID(ctx, exec, input.PhantomIterationId)
 	if err != nil {
 		return models.ScenarioTestRun{}, errors.Wrap(err,
 			"error while fecthing entries to find an existing testrun")
@@ -78,7 +78,7 @@ func (usecase *ScenarioTestRunUsecase) ActivateScenarioTestRun(ctx context.Conte
 	}
 
 	// the live version must not be the one on which we want to start a testrun
-	if *scenario.LiveVersionID == input.ScenarioIterationId {
+	if *scenario.LiveVersionID == input.PhantomIterationId {
 		return models.ScenarioTestRun{}, models.ErrWrongIterationForTestRun
 	}
 
@@ -104,11 +104,8 @@ func (usecase *ScenarioTestRunUsecase) ActivateScenarioTestRun(ctx context.Conte
 }
 
 func (usecase *ScenarioTestRunUsecase) ListTestRunByScenarioId(ctx context.Context,
-	organizationId, scenarioId string,
+	scenarioId string,
 ) ([]models.ScenarioTestRun, error) {
-	if err := usecase.enforceSecurity.ListTestRuns(organizationId); err != nil {
-		return nil, err
-	}
 	testruns, err := usecase.repository.ListTestRunsByScenarioID(ctx,
 		usecase.executorFactory.NewExecutor(), scenarioId)
 	if err != nil {
@@ -116,7 +113,9 @@ func (usecase *ScenarioTestRunUsecase) ListTestRunByScenarioId(ctx context.Conte
 	}
 	if len(testruns) > 0 {
 		for _, testrun := range testruns {
-			testrun.ScenarioId = scenarioId
+			if err := usecase.enforceSecurity.ListTestRuns(testrun.OrganizationId); err != nil {
+				return nil, err
+			}
 		}
 	}
 	return testruns, nil
@@ -125,9 +124,6 @@ func (usecase *ScenarioTestRunUsecase) ListTestRunByScenarioId(ctx context.Conte
 func (usecase *ScenarioTestRunUsecase) GetTestRunById(ctx context.Context,
 	testRunId, organizationId string,
 ) (models.ScenarioTestRun, error) {
-	if err := usecase.enforceSecurity.ReadTestRun(organizationId); err != nil {
-		return models.ScenarioTestRun{}, err
-	}
 	testrun, err := usecase.repository.GetTestRunByID(ctx,
 		usecase.executorFactory.NewExecutor(), testRunId)
 	if err != nil {
@@ -135,6 +131,9 @@ func (usecase *ScenarioTestRunUsecase) GetTestRunById(ctx context.Context,
 	}
 	if testrun == nil {
 		return models.ScenarioTestRun{}, nil
+	}
+	if err := usecase.enforceSecurity.ReadTestRun(testrun.OrganizationId); err != nil {
+		return models.ScenarioTestRun{}, err
 	}
 	return *testrun, nil
 }

@@ -56,10 +56,10 @@ func (suite *ScenarioTestrunTestSuite) makeUsecase() *ScenarioTestRunUsecase {
 
 func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 	input := models.ScenarioTestRunInput{
-		ScenarioIterationId: "b53fcdd9-4909-4167-9b22-7e36a065ffbd",
-		ScenarioId:          "b6f0c253-ca06-4a5c-a208-9d5a537ca827",
-		Period:              time.Duration(10),
-		LiveScenarioId:      "b76359b2-9806-40f1-9fee-7ea18c797b2e",
+		PhantomIterationId: "b53fcdd9-4909-4167-9b22-7e36a065ffbd",
+		ScenarioId:         "b6f0c253-ca06-4a5c-a208-9d5a537ca827",
+		EndDate:            time.Now(),
+		LiveScenarioId:     "b76359b2-9806-40f1-9fee-7ea18c797b2e",
 	}
 	output := models.ScenarioTestRun{
 		ScenarioIterationId: "b53fcdd9-4909-4167-9b22-7e36a065ffbd",
@@ -87,7 +87,7 @@ func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 	suite.enforceSecurity.On("CreateTestRun", suite.organizationId).Return(nil)
 	suite.repository.On("CreateTestRun", suite.ctx, suite.transaction, mock.Anything, input).Return(nil)
 	suite.repository.On("GetActiveTestRunByScenarioIterationID", suite.ctx, suite.transaction,
-		input.ScenarioIterationId).Return(nil, nil)
+		input.PhantomIterationId).Return(nil, nil)
 
 	suite.clientDbIndexEditor.On("CreateIndexesAsyncForScenarioWithCallback", suite.ctx,
 		suite.organizationId, []models.ConcreteIndex{
@@ -95,7 +95,7 @@ func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 				TableName: "sample_table",
 			},
 		}, mock.Anything,
-		[]interface{}{input.ScenarioIterationId}).Return(nil)
+		[]interface{}{input.PhantomIterationId}).Return(nil)
 
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	result, err := suite.makeUsecase().ActivateScenarioTestRun(suite.ctx, suite.organizationId, input)

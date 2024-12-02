@@ -53,10 +53,10 @@ func (repo *MarbleDbRepository) CreateTestRun(ctx context.Context,
 			).
 			Values(
 				testrunID,
-				input.ScenarioIterationId,
+				input.PhantomIterationId,
 				input.LiveScenarioId,
 				time.Now(),
-				time.Now().Add(input.Period),
+				input.EndDate,
 				models.Pending.String(),
 			),
 	)
@@ -150,7 +150,7 @@ func (repo *MarbleDbRepository) ListTestRunsByScenarioID(ctx context.Context,
 		return nil, err
 	}
 	query := NewQueryBuilder().
-		Select(dbmodels.SelectScenarioTestRunColumns...).
+		Select("tr.id, tr.scenario_iteration_id, tr.live_scenario_iteration_id, tr.created_at, tr.expires_at, tr.status, scit.org_id, scit.scenario_id").
 		From(dbmodels.TABLE_SCENARIO_TESTRUN + " AS tr").
 		Join(dbmodels.TABLE_SCENARIO_ITERATIONS + " AS scit ON scit.id = tr.scenario_iteration_id").
 		Join(dbmodels.TABLE_SCENARIOS + " AS sc ON sc.id = scit.scenario_id").
@@ -159,7 +159,7 @@ func (repo *MarbleDbRepository) ListTestRunsByScenarioID(ctx context.Context,
 		ctx,
 		exec,
 		query,
-		dbmodels.AdaptScenarioTestrun,
+		dbmodels.AdaptScenarioTestrunWithInfo,
 	)
 }
 
@@ -167,10 +167,15 @@ func (repo *MarbleDbRepository) GetTestRunByID(ctx context.Context, exec Executo
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
+	query := NewQueryBuilder().
+		Select("tr.id, tr.scenario_iteration_id, tr.live_scenario_iteration_id, tr.created_at, tr.expires_at, tr.status, scit.org_id, scit.scenario_id").
+		From(dbmodels.TABLE_SCENARIO_TESTRUN + " AS tr").
+		Join(dbmodels.TABLE_SCENARIO_ITERATIONS + " AS scit ON scit.id = tr.scenario_iteration_id").
+		Where(squirrel.Eq{"id": testrunID})
 	return SqlToOptionalModel(
 		ctx,
 		exec,
-		selectTestruns().Where(squirrel.Eq{"id": testrunID}),
-		dbmodels.AdaptScenarioTestrun,
+		query,
+		dbmodels.AdaptScenarioTestrunWithInfo,
 	)
 }
