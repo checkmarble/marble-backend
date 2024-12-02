@@ -78,7 +78,7 @@ func processScenarioIteration(ctx context.Context, params ScenarioEvaluationPara
 		dataAccessor.ClientObject,
 		params.DataModel,
 	)
-	if errEval != nil && !errors.Is(errEval, models.ErrScenarioTriggerConditionAndTriggerObjectMismatch) {
+	if errEval != nil {
 		return models.ScenarioExecution{}, errEval
 	}
 	var pivotValue *string
