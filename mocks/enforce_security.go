@@ -142,6 +142,11 @@ func (e *EnforceSecurity) CreateOrganization() error {
 	return args.Error(0)
 }
 
+func (e *EnforceSecurity) EditOrganization(org models.Organization) error {
+	args := e.Called(org)
+	return args.Error(0)
+}
+
 func (e *EnforceSecurity) DeleteOrganization() error {
 	args := e.Called()
 	return args.Error(0)

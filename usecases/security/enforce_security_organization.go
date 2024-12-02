@@ -10,6 +10,7 @@ type EnforceSecurityOrganization interface {
 	EnforceSecurity
 	ListOrganization() error
 	CreateOrganization() error
+	EditOrganization(org models.Organization) error
 	DeleteOrganization() error
 	ReadDataModel() error
 	WriteDataModel(organizationId string) error
@@ -29,6 +30,13 @@ func (e *EnforceSecurityOrganizationImpl) ListOrganization() error {
 func (e *EnforceSecurityOrganizationImpl) CreateOrganization() error {
 	return errors.Join(
 		e.Permission(models.ORGANIZATIONS_CREATE),
+	)
+}
+
+func (e *EnforceSecurityOrganizationImpl) EditOrganization(org models.Organization) error {
+	return errors.Join(
+		e.Permission(models.ORGANIZATIONS_UPDATE),
+		e.ReadOrganization(org.Id),
 	)
 }
 

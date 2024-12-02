@@ -76,8 +76,8 @@ func handlePatchOrganization(uc usecases.Usecases) func(c *gin.Context) {
 
 		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
 		organization, err := usecase.UpdateOrganization(ctx, models.UpdateOrganizationInput{
-			Id:   organizationID,
-			Name: data.Name,
+			Id:                      organizationID,
+			DefaultScenarioTimezone: data.DefaultScenarioTimezone,
 		})
 
 		if presentError(ctx, c, err) {

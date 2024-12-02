@@ -1,9 +1,16 @@
 package models
 
 type Organization struct {
-	Id                      string
-	Name                    string
+	Id string
+
+	// Name of the organization. Because this can be used to map to the organization's ingested data schema, it is unique and immutable.
+	Name string
+
+	// Scenario id user for transfercheck. Internal marble use only. On a regular org, this should be null.
 	TransferCheckScenarioId *string
+
+	// Default timezone used during scenario execution to interpret timestamps, e.g. when extracting a date/time part from a timestamp.
+	// Uses a IANA timezone validated with the go time std lib. "UTC" is used if not set.
 	DefaultScenarioTimezone *string
 
 	// Flagged to use the main marble db (in a separate schema) for ingested data of the company,
@@ -20,8 +27,8 @@ type CreateOrganizationInput struct {
 }
 
 type UpdateOrganizationInput struct {
-	Id   string
-	Name *string
+	Id                      string
+	DefaultScenarioTimezone *string
 }
 
 type SeedOrgConfiguration struct {
