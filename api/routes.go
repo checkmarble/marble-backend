@@ -90,13 +90,14 @@ func addRoutes(r *gin.Engine, auth Authentication, tokenHandler TokenHandler, uc
 
 	router.GET("/scenario-publications", tom, handleListScenarioPublications(uc))
 	router.POST("/scenario-publications", tom, handleCreateScenarioPublication(uc))
-	router.POST("/scenarios-testrun", tom, handleCreateScenarioTestRun(uc))
-	router.GET("/scenario-testrun", tom, handleListScenarioTestRun(uc))
-	router.GET("/scenario-testruns/:test_run_id", tom, handleGetScenarioTestRun(uc))
 	router.GET("/scenario-publications/preparation", tom,
 		handleGetPublicationPreparationStatus(uc))
 	router.POST("/scenario-publications/preparation", tom, handleStartPublicationPreparation(uc))
 	router.GET("/scenario-publications/:publication_id", tom, handleGetScenarioPublication(uc))
+
+	router.POST("/scenarios-testrun", tom, handleCreateScenarioTestRun(uc))
+	router.GET("/scenario-testrun", tom, handleListScenarioTestRun(uc))
+	router.GET("/scenario-testruns/:test_run_id", tom, handleGetScenarioTestRun(uc))
 
 	router.GET("/scheduled-executions", tom, handleListScheduledExecution(uc))
 	router.GET("/scheduled-executions/:execution_id", tom, handleGetScheduledExecution(uc))

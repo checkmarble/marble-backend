@@ -80,6 +80,11 @@ func (e *EnforceSecurity) ListTestRuns(organizationId string) error {
 	return args.Error(0)
 }
 
+func (e *EnforceSecurity) ReadTestRun(organizationId string) error {
+	args := e.Called(organizationId)
+	return args.Error(0)
+}
+
 func (e *EnforceSecurity) CreateScenario(organizationId string) error {
 	args := e.Called(organizationId)
 	return args.Error(0)

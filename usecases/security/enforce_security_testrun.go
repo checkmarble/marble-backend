@@ -9,6 +9,7 @@ type EnforceSecurityTestRun interface {
 	EnforceSecurity
 	CreateTestRun(organizationId string) error
 	ListTestRuns(organizationId string) error
+	ReadTestRun(organizationId string) error
 }
 
 type EnforceSecurotyTestRunImpl struct {
@@ -24,6 +25,21 @@ func (e *EnforceSecurotyTestRunImpl) CreateTestRun(organizationId string) error 
 }
 
 func (e *EnforceSecurotyTestRunImpl) ListTestRuns(organizationId string) error {
+	if e.Credentials.Role == models.MARBLE_ADMIN {
+		return errors.Join(
+			e.Permission(models.SCENARIO_LIST),
+		)
+	}
+	if organizationId == "" {
+		return errors.Wrap(models.ForbiddenError, "non-admin cannot list scenarios without organization_id")
+	}
+	return errors.Join(
+		e.Permission(models.SCENARIO_LIST),
+		e.ReadOrganization(organizationId),
+	)
+}
+
+func (e *EnforceSecurotyTestRunImpl) ReadTestRun(organizationId string) error {
 	return errors.Join(
 		e.Permission(models.SCENARIO_READ),
 		e.ReadOrganization(organizationId),
