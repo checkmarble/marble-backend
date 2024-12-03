@@ -6,6 +6,7 @@ import (
 
 	"github.com/adhocore/gronx"
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -51,6 +52,8 @@ type IterationUsecaseRepository interface {
 		exec repositories.Executor,
 		scenarioIterationId string,
 	) error
+
+	UpdateRule(ctx context.Context, exec repositories.Executor, rule models.UpdateRuleInput) error
 }
 
 type ScenarioIterationUsecase struct {
@@ -170,16 +173,19 @@ func (usecase *ScenarioIterationUsecase) UpdateScenarioIteration(ctx context.Con
 	return usecase.repository.UpdateScenarioIteration(ctx, exec, scenarioIteration)
 }
 
-func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(ctx context.Context,
-	organizationId string, scenarioIterationId string,
+func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
+	ctx context.Context,
+	organizationId string,
+	scenarioIterationId string,
 ) (models.ScenarioIteration, error) {
+	if err := usecase.enforceSecurity.CreateScenario(organizationId); err != nil {
+		return models.ScenarioIteration{}, err
+	}
+
 	newScenarioIteration, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Transaction) (models.ScenarioIteration, error) {
-			if err := usecase.enforceSecurity.CreateScenario(organizationId); err != nil {
-				return models.ScenarioIteration{}, err
-			}
 			si, err := usecase.repository.GetScenarioIteration(ctx, tx, scenarioIterationId)
 			if err != nil {
 				return models.ScenarioIteration{}, err
@@ -213,6 +219,7 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(ctx co
 				TriggerConditionAstExpression: si.TriggerConditionAstExpression,
 			}
 
+			stableRuleGroupsToUpdate := make([]models.UpdateRuleInput, 0, len(si.Rules))
 			for i, rule := range si.Rules {
 				createScenarioIterationInput.Body.Rules[i] = models.CreateRuleInput{
 					DisplayOrder:         rule.DisplayOrder,
@@ -222,6 +229,26 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(ctx co
 					ScoreModifier:        rule.ScoreModifier,
 					RuleGroup:            rule.RuleGroup,
 					SnoozeGroupId:        rule.SnoozeGroupId,
+					StableRuleId:         rule.StableRuleId,
+				}
+
+				// old rules may not have a stableGroupId. If so, when creating a new draft, we create new stable rule ids
+				// for the new draft rules, and backfill them on the version from which the draft is created.
+				// TODO: later, when we are confident no more iterations are being created from old versions, we could backfill
+				// random stable group ids on old rules and make the field not null.
+				if rule.StableRuleId == nil {
+					newId := uuid.NewString()
+					createScenarioIterationInput.Body.Rules[i].StableRuleId = &newId
+					stableRuleGroupsToUpdate = append(stableRuleGroupsToUpdate, models.UpdateRuleInput{
+						Id:           rule.Id,
+						StableRuleId: &newId,
+					})
+				}
+			}
+			for _, updateOldRule := range stableRuleGroupsToUpdate {
+				err := usecase.repository.UpdateRule(ctx, tx, updateOldRule)
+				if err != nil {
+					return models.ScenarioIteration{}, err
 				}
 			}
 			return usecase.repository.CreateScenarioIterationAndRules(ctx, tx, organizationId, createScenarioIterationInput)

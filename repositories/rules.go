@@ -8,6 +8,7 @@ import (
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/google/uuid"
 
 	"github.com/Masterminds/squirrel"
 )
@@ -82,6 +83,12 @@ func (repo *MarbleDbRepository) CreateRules(ctx context.Context, exec Executor, 
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
+	for i := range rules {
+		if rules[i].StableRuleId == nil {
+			newId := uuid.NewString()
+			rules[i].StableRuleId = &newId
+		}
+	}
 
 	dbCreateRuleInputs, err := pure_utils.MapErr(rules, dbmodels.AdaptDBCreateRuleInput)
 	if err != nil {
@@ -101,6 +108,7 @@ func (repo *MarbleDbRepository) CreateRules(ctx context.Context, exec Executor, 
 			"score_modifier",
 			"rule_group",
 			"snooze_group_id",
+			"stable_rule_id",
 		).
 		Suffix("RETURNING *")
 
@@ -116,6 +124,7 @@ func (repo *MarbleDbRepository) CreateRules(ctx context.Context, exec Executor, 
 			rule.ScoreModifier,
 			rule.RuleGroup,
 			rule.SnoozeGroupId,
+			rule.StableRuleId,
 		)
 	}
 
