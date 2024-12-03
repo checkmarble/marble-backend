@@ -17,9 +17,9 @@ import (
 // }
 
 type CreateScenarioTestRunBody struct {
-	PhantomIterationId string `json:"test_iteration_id"`
-	ScenarioId         string `json:"scenario_id"`
-	EndDate            string `json:"end_date"`
+	TestIterationId string `json:"test_iteration_id"`
+	ScenarioId      string `json:"scenario_id"`
+	EndDate         string `json:"end_date"`
 }
 
 type ScenarioTestRunResp struct {
@@ -54,6 +54,6 @@ func AdaptCreateScenarioTestRunBody(dto CreateScenarioTestRunBody) (models.Scena
 	return models.ScenarioTestRunInput{
 		ScenarioId:         dto.ScenarioId,
 		EndDate:            ed,
-		PhantomIterationId: dto.PhantomIterationId,
+		PhantomIterationId: dto.TestIterationId,
 	}, nil
 }
