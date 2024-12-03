@@ -6,16 +6,6 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 )
 
-// type CreateScenarioTestRunBody struct {
-// 	ScenarioIterationId string `json:"scenario_iteration_id"`
-// 	ScenarioId          string `json:"scenario_id"`
-// 	RefIterationId      string `json:"ref_iteration_id"`
-// 	PhantomIterationId  string `json:"phantom_iteration_id"`
-// 	StartDate           string `json:"start_date"`
-// 	EndDate             string `json:"end_date"`
-// 	Period              string `json:"period"`
-// }
-
 type CreateScenarioTestRunBody struct {
 	TestIterationId string `json:"test_iteration_id"`
 	ScenarioId      string `json:"scenario_id"`

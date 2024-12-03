@@ -122,7 +122,7 @@ func (usecase *ScenarioTestRunUsecase) ListTestRunByScenarioId(ctx context.Conte
 }
 
 func (usecase *ScenarioTestRunUsecase) GetTestRunById(ctx context.Context,
-	testRunId, organizationId string,
+	testRunId string,
 ) (models.ScenarioTestRun, error) {
 	testrun, err := usecase.repository.GetTestRunByID(ctx,
 		usecase.executorFactory.NewExecutor(), testRunId)
