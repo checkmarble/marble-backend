@@ -27,6 +27,7 @@ type DBRule struct {
 	DeletedAt            pgtype.Time `db:"deleted_at"`
 	RuleGroup            string      `db:"rule_group"`
 	SnoozeGroupId        *string     `db:"snooze_group_id"`
+	StableRuleId         *string     `db:"stable_rule_id"`
 }
 
 func AdaptRule(db DBRule) (models.Rule, error) {
@@ -47,6 +48,7 @@ func AdaptRule(db DBRule) (models.Rule, error) {
 		CreatedAt:            db.CreatedAt,
 		RuleGroup:            db.RuleGroup,
 		SnoozeGroupId:        db.SnoozeGroupId,
+		StableRuleId:         db.StableRuleId,
 	}, nil
 }
 
@@ -61,6 +63,7 @@ type DBCreateRuleInput struct {
 	FormulaAstExpression *[]byte `db:"formula_ast_expression"`
 	RuleGroup            string  `db:"rule_group"`
 	SnoozeGroupId        *string `db:"snooze_group_id"`
+	StableRuleId         *string `db:"stable_rule_id"`
 }
 
 func AdaptDBCreateRuleInput(rule models.CreateRuleInput) (DBCreateRuleInput, error) {
@@ -80,6 +83,7 @@ func AdaptDBCreateRuleInput(rule models.CreateRuleInput) (DBCreateRuleInput, err
 		FormulaAstExpression: formulaAstExpression,
 		RuleGroup:            rule.RuleGroup,
 		SnoozeGroupId:        rule.SnoozeGroupId,
+		StableRuleId:         rule.StableRuleId,
 	}, nil
 }
 
@@ -92,6 +96,7 @@ type DBUpdateRuleInput struct {
 	FormulaAstExpression *[]byte `db:"formula_ast_expression"`
 	RuleGroup            *string `db:"rule_group"`
 	SnoozeGroupId        *string `db:"snooze_group_id"`
+	StableRuleId         *string `db:"stable_rule_id"`
 }
 
 func AdaptDBUpdateRuleInput(rule models.UpdateRuleInput) (DBUpdateRuleInput, error) {
@@ -109,5 +114,6 @@ func AdaptDBUpdateRuleInput(rule models.UpdateRuleInput) (DBUpdateRuleInput, err
 		FormulaAstExpression: formulaAstExpression,
 		RuleGroup:            rule.RuleGroup,
 		SnoozeGroupId:        rule.SnoozeGroupId,
+		StableRuleId:         rule.StableRuleId,
 	}, nil
 }
