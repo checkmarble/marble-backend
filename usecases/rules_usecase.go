@@ -17,6 +17,8 @@ import (
 type RuleUsecaseRepository interface {
 	GetRuleById(ctx context.Context, exec repositories.Executor, ruleId string) (models.Rule, error)
 	ListRulesByIterationId(ctx context.Context, exec repositories.Executor, iterationId string) ([]models.Rule, error)
+	ListRulesExecutionByIterationId(ctx context.Context, exec repositories.Executor,
+		iterationId string) ([]models.RuleExecutionStat, error)
 	UpdateRule(ctx context.Context, exec repositories.Executor, rule models.UpdateRuleInput) error
 	DeleteRule(ctx context.Context, exec repositories.Executor, ruleID string) error
 	CreateRules(ctx context.Context, exec repositories.Executor, rules []models.CreateRuleInput) ([]models.Rule, error)
@@ -24,10 +26,12 @@ type RuleUsecaseRepository interface {
 }
 
 type RuleUsecase struct {
-	enforceSecurity    security.EnforceSecurityScenario
-	repository         RuleUsecaseRepository
-	scenarioFetcher    scenarios.ScenarioFetcher
-	transactionFactory executor_factory.TransactionFactory
+	enforceSecurity           security.EnforceSecurityScenario
+	repository                RuleUsecaseRepository
+	scenarioFetcher           scenarios.ScenarioFetcher
+	transactionFactory        executor_factory.TransactionFactory
+	executorFactory           executor_factory.ExecutorFactory
+	scenarioTestRunRepository repositories.ScenarioTestRunRepository
 }
 
 func (usecase *RuleUsecase) ListRules(ctx context.Context, iterationId string) ([]models.Rule, error) {
@@ -44,6 +48,26 @@ func (usecase *RuleUsecase) ListRules(ctx context.Context, iterationId string) (
 			}
 			return usecase.repository.ListRulesByIterationId(ctx, tx, iterationId)
 		})
+}
+
+func (usecase *RuleUsecase) ListRuleExecution(ctx context.Context, testrunId string) ([]models.RuleExecutionStat, error) {
+	testrun, errTestRun := usecase.scenarioTestRunRepository.GetTestRunByID(ctx,
+		usecase.executorFactory.NewExecutor(), testrunId)
+	if errTestRun != nil {
+		return nil, errTestRun
+	}
+	rules, err := usecase.repository.ListRulesExecutionByIterationId(ctx,
+		usecase.executorFactory.NewExecutor(), testrun.ScenarioIterationId)
+	if err != nil {
+		return nil, err
+	}
+	liveRules, err := usecase.repository.ListRulesExecutionByIterationId(ctx,
+		usecase.executorFactory.NewExecutor(), testrun.ScenarioLiveIterationId)
+	if err != nil {
+		return nil, err
+	}
+	result := append(rules, liveRules...)
+	return result, nil
 }
 
 func (usecase *RuleUsecase) CreateRule(ctx context.Context, ruleInput models.CreateRuleInput) (models.Rule, error) {

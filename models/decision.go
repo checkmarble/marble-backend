@@ -79,6 +79,12 @@ type ScenarioExecution struct {
 	OrganizationId      string
 }
 
+type RuleExecutionStat struct {
+	Version string
+	Outcome string
+	Total   int
+}
+
 type RuleExecution struct {
 	DecisionId          string
 	Error               error

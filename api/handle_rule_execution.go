@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func handleDecisionsDataByOutcomeAndScore(uc usecases.Usecases) func(c *gin.Context) {
+func handleListRulesExecution(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		testrunId := c.Param("testrun_id")
@@ -16,11 +16,11 @@ func handleDecisionsDataByOutcomeAndScore(uc usecases.Usecases) func(c *gin.Cont
 			c.Status(http.StatusBadRequest)
 			return
 		}
-		usecase := usecasesWithCreds(ctx, uc).NewDecisionUsecase()
-		decisions, err := usecase.GetDecisionsByOutcomeAndScore(ctx, testrunId)
+		usecase := usecasesWithCreds(ctx, uc).NewRuleUsecase()
+		rules, err := usecase.ListRuleExecution(ctx, testrunId)
 		if presentError(ctx, c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, dto.ProcessDecisionDataDtoFromModels(decisions))
+		c.JSON(http.StatusOK, dto.ProcessRuleExecutionDataDtoFromModels(rules))
 	}
 }

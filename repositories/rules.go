@@ -47,6 +47,14 @@ func (repo *MarbleDbRepository) ListRulesByIterationId(ctx context.Context, exec
 	)
 }
 
+func (repo *MarbleDbRepository) ListRulesExecutionByIterationId(ctx context.Context, exec Executor, iterationId string) ([]models.RuleExecutionStat, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+	// TO BE DEFINED
+	return nil, nil
+}
+
 func (repo *MarbleDbRepository) UpdateRule(ctx context.Context, exec Executor, rule models.UpdateRuleInput) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
