@@ -48,21 +48,62 @@ func (repo *MarbleDbRepository) ListRulesByIterationId(ctx context.Context, exec
 	)
 }
 
-func (repo *MarbleDbRepository) ListRulesExecutionByIterationId(ctx context.Context, exec Executor,
-	iterationId string, begin, end time.Time,
+func (repo *MarbleDbRepository) RulesExecutionStats(
+	ctx context.Context,
+	exec Executor,
+	organizationId string,
+	iterationId string,
+	begin, end time.Time,
 ) ([]models.RuleExecutionStat, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
 	query := NewQueryBuilder().
-		Select("scir.stable_rule_id, dr.name, dr.outcome, scit.version, COUNT(dr.outcome) as total").
-		From("scenario_iteration_rules as scir").
-		Join("decision_rules as dr ON dr.rule_id = scir.id").
-		Join("scenario_iterations as scit ON scit.id =  scir.scenario_iteration_id").
-		Where(squirrel.GtOrEq{"scir.created_at": begin}).
-		Where(squirrel.LtOrEq{"scir.deleted_at": end}).
-		Where(squirrel.Eq{"scit.id": iterationId}).
-		GroupBy("scir.stable_rule_id, dr.name, dr.outcome, scit.version")
+		Select("scir.stable_rule_id, scir.name, dr.outcome, scit.version, COUNT(*) as total").
+		From("decisions as d").
+		Join("scenario_iterations as scit ON scit.id = d.scenario_iteration_id").
+		Join("scenario_iteration_rules as scir ON scir.scenario_iteration_id = scit.id").
+		Join("decision_rules as dr ON dr.rule_id = scir.id and dr.decision_id = d.id").
+		Where(squirrel.GtOrEq{"d.created_at": begin}).
+		Where(squirrel.LtOrEq{"d.created_at": end}).
+		Where(squirrel.Eq{
+			"d.org_id":                organizationId,
+			"d.scenario_iteration_id": iterationId,
+		}).
+		GroupBy("scir.stable_rule_id, scir.name, dr.outcome, scit.version")
+
+	return SqlToListOfModels(
+		ctx,
+		exec,
+		query,
+		dbmodels.AdaptRuleExecutionStat,
+	)
+}
+
+func (repo *MarbleDbRepository) PhanomRulesExecutionStats(
+	ctx context.Context,
+	exec Executor,
+	organizationId string,
+	iterationId string,
+	begin, end time.Time,
+) ([]models.RuleExecutionStat, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+	query := NewQueryBuilder().
+		Select("scir.stable_rule_id, scir.name, dr.outcome, scit.version, COUNT(*) as total").
+		From("phantom_decisions as d").
+		Join("scenario_iterations as scit ON scit.id = d.scenario_iteration_id").
+		Join("scenario_iteration_rules as scir ON scir.scenario_iteration_id = scit.id").
+		Join("decision_rules as dr ON dr.rule_id = scir.id and dr.decision_id = d.id").
+		Where(squirrel.GtOrEq{"d.created_at": begin}).
+		Where(squirrel.LtOrEq{"d.created_at": end}).
+		Where(squirrel.Eq{
+			"d.org_id":                organizationId,
+			"d.scenario_iteration_id": iterationId,
+		}).
+		GroupBy("scir.stable_rule_id, scir.name, dr.outcome, scit.version")
+
 	return SqlToListOfModels(
 		ctx,
 		exec,

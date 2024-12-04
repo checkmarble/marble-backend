@@ -18,8 +18,20 @@ import (
 type RuleUsecaseRepository interface {
 	GetRuleById(ctx context.Context, exec repositories.Executor, ruleId string) (models.Rule, error)
 	ListRulesByIterationId(ctx context.Context, exec repositories.Executor, iterationId string) ([]models.Rule, error)
-	ListRulesExecutionByIterationId(ctx context.Context, exec repositories.Executor,
-		iterationId string, begin, end time.Time) ([]models.RuleExecutionStat, error)
+	RulesExecutionStats(
+		ctx context.Context,
+		exec repositories.Executor,
+		organizationId string,
+		iterationId string,
+		begin, end time.Time,
+	) ([]models.RuleExecutionStat, error)
+	PhanomRulesExecutionStats(
+		ctx context.Context,
+		exec repositories.Executor,
+		organizationId string,
+		iterationId string,
+		begin, end time.Time,
+	) ([]models.RuleExecutionStat, error)
 	UpdateRule(ctx context.Context, exec repositories.Executor, rule models.UpdateRuleInput) error
 	DeleteRule(ctx context.Context, exec repositories.Executor, ruleID string) error
 	CreateRules(ctx context.Context, exec repositories.Executor, rules []models.CreateRuleInput) ([]models.Rule, error)
@@ -52,18 +64,28 @@ func (usecase *RuleUsecase) ListRules(ctx context.Context, iterationId string) (
 }
 
 func (usecase *RuleUsecase) ListRuleExecution(ctx context.Context, testrunId string) ([]models.RuleExecutionStat, error) {
-	testrun, errTestRun := usecase.scenarioTestRunRepository.GetTestRunByID(ctx,
-		usecase.executorFactory.NewExecutor(), testrunId)
-	if errTestRun != nil {
-		return nil, errTestRun
-	}
-	rules, err := usecase.repository.ListRulesExecutionByIterationId(ctx,
-		usecase.executorFactory.NewExecutor(), testrun.ScenarioIterationId, testrun.CreatedAt, testrun.ExpiresAt)
+	exec := usecase.executorFactory.NewExecutor()
+	testrun, err := usecase.scenarioTestRunRepository.GetTestRunByID(ctx, exec, testrunId)
 	if err != nil {
 		return nil, err
 	}
-	liveRules, err := usecase.repository.ListRulesExecutionByIterationId(ctx,
-		usecase.executorFactory.NewExecutor(), testrun.ScenarioLiveIterationId, testrun.CreatedAt, testrun.ExpiresAt)
+	rules, err := usecase.repository.PhanomRulesExecutionStats(
+		ctx,
+		exec,
+		testrun.OrganizationId,
+		testrun.ScenarioIterationId,
+		testrun.CreatedAt,
+		testrun.ExpiresAt)
+	if err != nil {
+		return nil, err
+	}
+	liveRules, err := usecase.repository.RulesExecutionStats(
+		ctx,
+		exec,
+		testrun.OrganizationId,
+		testrun.ScenarioLiveIterationId,
+		testrun.CreatedAt,
+		testrun.ExpiresAt)
 	if err != nil {
 		return nil, err
 	}
