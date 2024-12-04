@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -18,7 +19,7 @@ type RuleUsecaseRepository interface {
 	GetRuleById(ctx context.Context, exec repositories.Executor, ruleId string) (models.Rule, error)
 	ListRulesByIterationId(ctx context.Context, exec repositories.Executor, iterationId string) ([]models.Rule, error)
 	ListRulesExecutionByIterationId(ctx context.Context, exec repositories.Executor,
-		iterationId string) ([]models.RuleExecutionStat, error)
+		iterationId string, begin, end time.Time) ([]models.RuleExecutionStat, error)
 	UpdateRule(ctx context.Context, exec repositories.Executor, rule models.UpdateRuleInput) error
 	DeleteRule(ctx context.Context, exec repositories.Executor, ruleID string) error
 	CreateRules(ctx context.Context, exec repositories.Executor, rules []models.CreateRuleInput) ([]models.Rule, error)
@@ -57,12 +58,12 @@ func (usecase *RuleUsecase) ListRuleExecution(ctx context.Context, testrunId str
 		return nil, errTestRun
 	}
 	rules, err := usecase.repository.ListRulesExecutionByIterationId(ctx,
-		usecase.executorFactory.NewExecutor(), testrun.ScenarioIterationId)
+		usecase.executorFactory.NewExecutor(), testrun.ScenarioIterationId, testrun.CreatedAt, testrun.ExpiresAt)
 	if err != nil {
 		return nil, err
 	}
 	liveRules, err := usecase.repository.ListRulesExecutionByIterationId(ctx,
-		usecase.executorFactory.NewExecutor(), testrun.ScenarioLiveIterationId)
+		usecase.executorFactory.NewExecutor(), testrun.ScenarioLiveIterationId, testrun.CreatedAt, testrun.ExpiresAt)
 	if err != nil {
 		return nil, err
 	}

@@ -80,9 +80,11 @@ type ScenarioExecution struct {
 }
 
 type RuleExecutionStat struct {
-	Version string
-	Outcome string
-	Total   int
+	Version      string
+	Name         string
+	Outcome      string
+	StableRuleId string
+	Total        int
 }
 
 type RuleExecution struct {

@@ -20,9 +20,11 @@ type RuleDto struct {
 }
 
 type RuleExecutionData struct {
-	Version string `json:"version"`
-	Status  string `json:"status"`
-	Total   int    `json:"total"`
+	Version      string `json:"version"`
+	Name         string `json:"name"`
+	Status       string `json:"status"`
+	StableRuleId string `json:"stable_rule_id"`
+	Total        int    `json:"total"`
 }
 
 type CreateRuleInputBody struct {
@@ -72,6 +74,7 @@ func ProcessRuleExecutionDataDtoFromModels(inputs []models.RuleExecutionStat) []
 	for i, input := range inputs {
 		item := RuleExecutionData{
 			Version: input.Version,
+			Name:    input.Name,
 			Status:  input.Outcome,
 			Total:   input.Total,
 		}

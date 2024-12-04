@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -47,12 +48,27 @@ func (repo *MarbleDbRepository) ListRulesByIterationId(ctx context.Context, exec
 	)
 }
 
-func (repo *MarbleDbRepository) ListRulesExecutionByIterationId(ctx context.Context, exec Executor, iterationId string) ([]models.RuleExecutionStat, error) {
+func (repo *MarbleDbRepository) ListRulesExecutionByIterationId(ctx context.Context, exec Executor,
+	iterationId string, begin, end time.Time,
+) ([]models.RuleExecutionStat, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
-	// TO BE DEFINED
-	return nil, nil
+	query := NewQueryBuilder().
+		Select("scir.stable_rule_id, dr.name, dr.outcome, scit.version, COUNT(dr.outcome) as total").
+		From("scenario_iteration_rules as scir").
+		Join("decision_rules as dr ON dr.rule_id = scir.id").
+		Join("scenario_iterations as scit ON scit.id =  scir.scenario_iteration_id").
+		Where(squirrel.GtOrEq{"scir.created_at": begin}).
+		Where(squirrel.LtOrEq{"scir.deleted_at": end}).
+		Where(squirrel.Eq{"scit.id": iterationId}).
+		GroupBy("scir.stable_rule_id, dr.name, dr.outcome, scit.version")
+	return SqlToListOfModels(
+		ctx,
+		exec,
+		query,
+		dbmodels.AdaptRuleExecutionStat,
+	)
 }
 
 func (repo *MarbleDbRepository) UpdateRule(ctx context.Context, exec Executor, rule models.UpdateRuleInput) error {
