@@ -2,12 +2,14 @@ package usecases
 
 import (
 	"context"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
 	"github.com/checkmarble/marble-backend/usecases/organization"
 	"github.com/checkmarble/marble-backend/usecases/security"
+	"github.com/pkg/errors"
 )
 
 type OrganizationUseCase struct {
@@ -46,6 +48,14 @@ func (usecase *OrganizationUseCase) GetOrganization(ctx context.Context, organiz
 func (usecase *OrganizationUseCase) UpdateOrganization(ctx context.Context,
 	organization models.UpdateOrganizationInput,
 ) (models.Organization, error) {
+	if organization.DefaultScenarioTimezone != nil {
+		_, err := time.LoadLocation(*organization.DefaultScenarioTimezone)
+		if err != nil {
+			return models.Organization{}, errors.Wrapf(models.BadParameterError,
+				"Invalid timezone %s", *organization.DefaultScenarioTimezone)
+		}
+	}
+
 	return executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
 		tx repositories.Transaction,
 	) (models.Organization, error) {
