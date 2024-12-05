@@ -69,6 +69,7 @@ func addRoutes(r *gin.Engine, auth Authentication, tokenHandler TokenHandler, uc
 
 	router.GET("/testrun/:testrun_id/databyscore", timeoutMiddleware(LIST_DECISION_TIMEOUT),
 		handleDecisionsDataByOutcomeAndScore(uc))
+	router.GET("/testrun/:testrun_id/databyruleexecution", tom, handleListRulesExecution(uc))
 
 	router.GET("/scenario-iterations", tom, handleListScenarioIterations(uc))
 	router.POST("/scenario-iterations", tom, handleCreateScenarioIteration(uc))

@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -17,6 +18,20 @@ import (
 type RuleUsecaseRepository interface {
 	GetRuleById(ctx context.Context, exec repositories.Executor, ruleId string) (models.Rule, error)
 	ListRulesByIterationId(ctx context.Context, exec repositories.Executor, iterationId string) ([]models.Rule, error)
+	RulesExecutionStats(
+		ctx context.Context,
+		exec repositories.Executor,
+		organizationId string,
+		iterationId string,
+		begin, end time.Time,
+	) ([]models.RuleExecutionStat, error)
+	PhanomRulesExecutionStats(
+		ctx context.Context,
+		exec repositories.Executor,
+		organizationId string,
+		iterationId string,
+		begin, end time.Time,
+	) ([]models.RuleExecutionStat, error)
 	UpdateRule(ctx context.Context, exec repositories.Executor, rule models.UpdateRuleInput) error
 	DeleteRule(ctx context.Context, exec repositories.Executor, ruleID string) error
 	CreateRules(ctx context.Context, exec repositories.Executor, rules []models.CreateRuleInput) ([]models.Rule, error)
@@ -24,10 +39,12 @@ type RuleUsecaseRepository interface {
 }
 
 type RuleUsecase struct {
-	enforceSecurity    security.EnforceSecurityScenario
-	repository         RuleUsecaseRepository
-	scenarioFetcher    scenarios.ScenarioFetcher
-	transactionFactory executor_factory.TransactionFactory
+	enforceSecurity           security.EnforceSecurityScenario
+	repository                RuleUsecaseRepository
+	scenarioFetcher           scenarios.ScenarioFetcher
+	transactionFactory        executor_factory.TransactionFactory
+	executorFactory           executor_factory.ExecutorFactory
+	scenarioTestRunRepository repositories.ScenarioTestRunRepository
 }
 
 func (usecase *RuleUsecase) ListRules(ctx context.Context, iterationId string) ([]models.Rule, error) {
@@ -44,6 +61,36 @@ func (usecase *RuleUsecase) ListRules(ctx context.Context, iterationId string) (
 			}
 			return usecase.repository.ListRulesByIterationId(ctx, tx, iterationId)
 		})
+}
+
+func (usecase *RuleUsecase) ListRuleExecution(ctx context.Context, testrunId string) ([]models.RuleExecutionStat, error) {
+	exec := usecase.executorFactory.NewExecutor()
+	testrun, err := usecase.scenarioTestRunRepository.GetTestRunByID(ctx, exec, testrunId)
+	if err != nil {
+		return nil, err
+	}
+	rules, err := usecase.repository.PhanomRulesExecutionStats(
+		ctx,
+		exec,
+		testrun.OrganizationId,
+		testrun.ScenarioIterationId,
+		testrun.CreatedAt,
+		testrun.ExpiresAt)
+	if err != nil {
+		return nil, err
+	}
+	liveRules, err := usecase.repository.RulesExecutionStats(
+		ctx,
+		exec,
+		testrun.OrganizationId,
+		testrun.ScenarioLiveIterationId,
+		testrun.CreatedAt,
+		testrun.ExpiresAt)
+	if err != nil {
+		return nil, err
+	}
+	result := append(rules, liveRules...)
+	return result, nil
 }
 
 func (usecase *RuleUsecase) CreateRule(ctx context.Context, ruleInput models.CreateRuleInput) (models.Rule, error) {

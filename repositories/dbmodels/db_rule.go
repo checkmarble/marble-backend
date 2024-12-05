@@ -52,6 +52,24 @@ func AdaptRule(db DBRule) (models.Rule, error) {
 	}, nil
 }
 
+type DbRuleExecution struct {
+	StableRuleId *string `db:"stable_rule_id"`
+	Name         string  `db:"name"`
+	Version      string  `db:"version"`
+	Outcome      string  `db:"outcome"`
+	Total        int     `db:"total"`
+}
+
+func AdaptRuleExecutionStat(db DbRuleExecution) (models.RuleExecutionStat, error) {
+	return models.RuleExecutionStat{
+		Version:      db.Version,
+		Name:         db.Name,
+		Outcome:      db.Outcome,
+		StableRuleId: *db.StableRuleId,
+		Total:        db.Total,
+	}, nil
+}
+
 type DBCreateRuleInput struct {
 	Id                   string  `db:"id"`
 	OrganizationId       string  `db:"org_id"`

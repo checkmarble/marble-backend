@@ -73,13 +73,9 @@ type PivotValue struct {
 }
 
 type DecisionData struct {
-	Version        string `json:"version"`
-	Outcome        string `json:"outcome"`
-	PhantomOutcome string `json:"phantom_outcome"`
-	Score          int    `json:"score"`
-	PhantomScore   int    `json:"phantom_score"`
-	Total          int    `json:"total"`
-	Phantom_Total  int    `json:"phantom_total"`
+	Version string `json:"version"`
+	Outcome string `json:"outcome"`
+	Total   int    `json:"total"`
 }
 
 type Decision struct {
@@ -144,7 +140,6 @@ func ProcessDecisionDataDtoFromModels(inputs []models.DecisionsByVersionByOutcom
 		item := DecisionData{
 			Version: input.Version,
 			Outcome: input.Outcome,
-			Score:   input.Score,
 			Total:   input.Count,
 		}
 		result[i] = item

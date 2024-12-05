@@ -19,6 +19,14 @@ type RuleDto struct {
 	RuleGroup            string    `json:"rule_group"`
 }
 
+type RuleExecutionData struct {
+	Version      string `json:"version"`
+	Name         string `json:"name"`
+	Status       string `json:"status"`
+	StableRuleId string `json:"stable_rule_id"`
+	Total        int    `json:"total"`
+}
+
 type CreateRuleInputBody struct {
 	ScenarioIterationId  string   `json:"scenario_iteration_id"`
 	DisplayOrder         int      `json:"display_order"`
@@ -59,6 +67,20 @@ func AdaptRuleDto(rule models.Rule) (RuleDto, error) {
 		CreatedAt:            rule.CreatedAt,
 		RuleGroup:            rule.RuleGroup,
 	}, nil
+}
+
+func ProcessRuleExecutionDataDtoFromModels(inputs []models.RuleExecutionStat) []RuleExecutionData {
+	result := make([]RuleExecutionData, len(inputs))
+	for i, input := range inputs {
+		item := RuleExecutionData{
+			Version: input.Version,
+			Name:    input.Name,
+			Status:  input.Outcome,
+			Total:   input.Total,
+		}
+		result[i] = item
+	}
+	return result
 }
 
 func AdaptCreateRuleInput(body CreateRuleInputBody, organizationId string) (models.CreateRuleInput, error) {
