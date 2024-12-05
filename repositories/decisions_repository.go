@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -246,7 +247,12 @@ func (repo *MarbleDbRepository) DecisionsOfOrganization(
 		return nil, err
 	}
 
-	filteredSubquery := selectDecisionsWithFilters(organizationId, pagination, filters, false)
+	orderCond, err := orderConditionForDecisions(pagination)
+	if err != nil {
+		return nil, err
+	}
+
+	filteredSubquery := selectDecisionsWithFilters(organizationId, orderCond, filters, false)
 
 	paginatedQuery := NewQueryBuilder().
 		Select(columnsNames("s", dbmodels.SelectDecisionColumn)...).
@@ -266,11 +272,11 @@ func (repo *MarbleDbRepository) DecisionsOfOrganization(
 		}
 	}
 
-	paginatedQuery, err := applyDecisionPaginationFilters(paginatedQuery, pagination, offsetDecision.Decision)
+	paginatedQuery, err = applyDecisionPaginationFilters(paginatedQuery, pagination, offsetDecision.Decision)
 	if err != nil {
 		return nil, err
 	}
-	query := selectDecisionsWithJoinedFields(paginatedQuery, pagination)
+	query := selectDecisionsWithJoinedFields(paginatedQuery, orderCond)
 
 	decision, err := SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (models.Decision, error) {
 		db, err := pgx.RowToStructByPos[dbmodels.DBPaginatedDecisions](row)
@@ -305,7 +311,12 @@ func (repo *MarbleDbRepository) DecisionsOfOrganizationWithRank(
 		return nil, err
 	}
 
-	filteredSubquery := selectDecisionsWithFilters(organizationId, pagination, filters, true)
+	orderCond, err := orderConditionForDecisions(pagination)
+	if err != nil {
+		return nil, err
+	}
+
+	filteredSubquery := selectDecisionsWithFilters(organizationId, orderCond, filters, true)
 
 	columns := columnsNames("s", append(dbmodels.SelectDecisionColumn, "rank_number"))
 	paginatedQuery := NewQueryBuilder().
@@ -326,11 +337,11 @@ func (repo *MarbleDbRepository) DecisionsOfOrganizationWithRank(
 		}
 	}
 
-	paginatedQuery, err := applyDecisionPaginationFilters(paginatedQuery, pagination, offsetDecision.Decision)
+	paginatedQuery, err = applyDecisionPaginationFilters(paginatedQuery, pagination, offsetDecision.Decision)
 	if err != nil {
 		return []models.DecisionWithRank{}, err
 	}
-	query := selectDecisionsWithJoinedFields(paginatedQuery, pagination).
+	query := selectDecisionsWithJoinedFields(paginatedQuery, orderCond).
 		Column("rank_number")
 
 	decision, err := SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (models.DecisionWithRank, error) {
@@ -355,13 +366,22 @@ func (repo *MarbleDbRepository) DecisionsOfOrganizationWithRank(
 	return decision, nil
 }
 
-func orderCondition(p models.PaginationAndSorting) string {
-	return fmt.Sprintf("d.%s %s, d.id %s", p.Sorting, p.Order, p.Order)
+func orderConditionForDecisions(p models.PaginationAndSorting) (string, error) {
+	allowedOrders := []models.SortingOrder{"ASC", "DESC"}
+
+	if p.Sorting != "created_at" {
+		return "", fmt.Errorf("invalid sorting field: %w", models.BadParameterError)
+	}
+	if !slices.Contains(allowedOrders, p.Order) {
+		return "", fmt.Errorf("invalid order: %s", p.Order)
+	}
+
+	return fmt.Sprintf("d.%s %s, d.id %s", p.Sorting, p.Order, p.Order), nil
 }
 
 func selectDecisionsWithFilters(
 	organizationId string,
-	p models.PaginationAndSorting,
+	orderCond string,
 	filters models.DecisionFilters,
 	withRank bool,
 ) squirrel.SelectBuilder {
@@ -369,10 +389,10 @@ func selectDecisionsWithFilters(
 		Select(columnsNames("d", dbmodels.SelectDecisionColumn)...).
 		From(fmt.Sprintf("%s AS d", dbmodels.TABLE_DECISIONS)).
 		Where(squirrel.Eq{"d.org_id": organizationId}).
-		OrderBy(orderCondition(p))
+		OrderBy(orderCond)
 
 	if withRank {
-		query = query.Column(fmt.Sprintf("RANK() OVER (ORDER BY %s) as rank_number", orderCondition(p)))
+		query = query.Column(fmt.Sprintf("RANK() OVER (ORDER BY %s) as rank_number", orderCond))
 	}
 
 	if len(filters.ScenarioIds) > 0 {
@@ -435,22 +455,22 @@ func applyDecisionPaginationFilters(query squirrel.SelectBuilder, p models.Pagin
 
 	args := []any{offsetValue, offsetValue, p.OffsetId}
 	if p.Order == "DESC" {
-		query = query.Where(fmt.Sprintf("%s < ? OR (%s = ? AND id < ?)", p.Sorting, p.Sorting), args...)
+		query = query.Where(squirrel.Expr(fmt.Sprintf("%s < ? OR (%s = ? AND id < ?)", p.Sorting, p.Sorting), args...))
 	} else {
-		query = query.Where(fmt.Sprintf("%s > ? OR (%s = ? AND id > ?)", p.Sorting, p.Sorting), args...)
+		query = query.Where(squirrel.Expr(fmt.Sprintf("%s > ? OR (%s = ? AND id > ?)", p.Sorting, p.Sorting), args...))
 	}
 
 	return query, nil
 }
 
-func selectDecisionsWithJoinedFields(query squirrel.SelectBuilder, p models.PaginationAndSorting) squirrel.SelectBuilder {
+func selectDecisionsWithJoinedFields(query squirrel.SelectBuilder, orderCond string) squirrel.SelectBuilder {
 	columns := columnsNames("d", dbmodels.SelectDecisionColumn)
 	columns = append(columns, columnsNames("c", dbmodels.SelectCaseColumn)...)
 	return squirrel.
 		Select(columns...).
 		FromSelect(query, "d").
 		LeftJoin(fmt.Sprintf("%s AS c ON c.id = d.case_id", dbmodels.TABLE_CASES)).
-		OrderBy(orderCondition(p)).
+		OrderBy(orderCond).
 		PlaceholderFormat(squirrel.Dollar)
 }
 
