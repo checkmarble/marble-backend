@@ -161,6 +161,18 @@ type DecisionFilters struct {
 	TriggerObjects        []string
 }
 
+type DecisionListPageWithIndexes struct {
+	Decisions   []Decision
+	StartIndex  int
+	EndIndex    int
+	HasNextPage bool
+}
+
+type DecisionListPage struct {
+	Decisions   []Decision
+	HasNextPage bool
+}
+
 const (
 	DecisionSortingCreatedAt SortingField = "created_at"
 )

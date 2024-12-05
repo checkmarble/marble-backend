@@ -10,7 +10,6 @@ import (
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
 )
@@ -49,22 +48,7 @@ func handleListCases(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		if len(cases) == 0 {
-			c.JSON(http.StatusOK, gin.H{
-				"total_count": dto.AdaptTotalCount(models.TotalCount{}),
-				"start_index": 0,
-				"end_index":   0,
-				"items":       []dto.APICase{},
-			})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"total_count": dto.AdaptTotalCount(cases[0].TotalCount),
-			"start_index": cases[0].RankNumber,
-			"end_index":   cases[len(cases)-1].RankNumber,
-			"items":       pure_utils.Map(cases, func(c models.CaseWithRank) dto.APICase { return dto.AdaptCaseDto(c.Case) }),
-		})
+		c.JSON(http.StatusOK, dto.AdaptCaseListPage(cases))
 	}
 }
 

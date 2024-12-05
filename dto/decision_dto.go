@@ -25,6 +25,45 @@ type DecisionFilters struct {
 	TriggerObjects        []string  `form:"trigger_object[]"`
 }
 
+type DecisionListPageWithIndexesDto struct {
+	Items       []Decision `json:"items"`
+	StartIndex  int        `json:"start_index"`
+	EndIndex    int        `json:"end_index"`
+	HasNextPage bool       `json:"has_next_page"`
+}
+
+func AdaptDecisionListPageWithIndexesDto(decisionsPage models.DecisionListPageWithIndexes, marbleAppHost string) DecisionListPageWithIndexesDto {
+	// initialize as a non nil slice, so that it is serialized as an empty array instead of null
+	items := make([]Decision, len(decisionsPage.Decisions))
+	for i, decision := range decisionsPage.Decisions {
+		items[i] = NewDecisionDto(decision, marbleAppHost)
+	}
+
+	return DecisionListPageWithIndexesDto{
+		Items:       items,
+		StartIndex:  decisionsPage.StartIndex,
+		EndIndex:    decisionsPage.EndIndex,
+		HasNextPage: decisionsPage.HasNextPage,
+	}
+}
+
+type DecisionListPageDto struct {
+	Items       []Decision `json:"items"`
+	HasNextPage bool       `json:"has_next_page"`
+}
+
+func AdaptDecisionListPageDto(decisionsPage models.DecisionListPageWithIndexes, marbleAppHost string) DecisionListPageDto {
+	items := make([]Decision, len(decisionsPage.Decisions))
+	for i, decision := range decisionsPage.Decisions {
+		items[i] = NewDecisionDto(decision, marbleAppHost)
+	}
+
+	return DecisionListPageDto{
+		Items:       items,
+		HasNextPage: decisionsPage.HasNextPage,
+	}
+}
+
 type CreateDecisionBody struct {
 	TriggerObject json.RawMessage `json:"trigger_object" binding:"required"`
 	ObjectType    string          `json:"object_type" binding:"required"`

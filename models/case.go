@@ -73,6 +73,13 @@ type CaseFilters struct {
 	InboxIds       []string
 }
 
+type CaseListPage struct {
+	Cases       []Case
+	StartIndex  int
+	EndIndex    int
+	HasNextPage bool
+}
+
 type CaseWithRank struct {
 	Case
 	RankNumber int

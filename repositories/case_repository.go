@@ -216,7 +216,7 @@ func casesCoreQueryWithRank(pagination models.PaginationAndSorting) squirrel.Sel
 
 	// When fetching the previous page, we want the "last xx cases", so we need to reverse the order of the query,
 	// select the xx items, then reverse again to put them back in the right order
-	if pagination.OffsetId != "" && pagination.Previous {
+	if pagination.OffsetId != "" { // && pagination.Previous {
 		query = query.OrderBy(fmt.Sprintf("c.%s %s, c.id %s", pagination.Sorting,
 			models.ReverseOrder(pagination.Order), models.ReverseOrder(pagination.Order)))
 	} else {
@@ -260,21 +260,21 @@ func applyCasesPagination(query squirrel.SelectBuilder, p models.PaginationAndSo
 	queryConditionBefore := fmt.Sprintf("s.%s < ? OR (s.%s = ? AND s.id < ?)", p.Sorting, p.Sorting)
 	queryConditionAfter := fmt.Sprintf("s.%s > ? OR (s.%s = ? AND s.id > ?)", p.Sorting, p.Sorting)
 	args := []any{offsetField, offsetField, p.OffsetId}
-	if p.Next {
-		if p.Order == "DESC" {
-			query = query.Where(queryConditionBefore, args...)
-		} else {
-			query = query.Where(queryConditionAfter, args...)
-		}
+	// if p.Next {
+	if p.Order == "DESC" {
+		query = query.Where(queryConditionBefore, args...)
+	} else {
+		query = query.Where(queryConditionAfter, args...)
 	}
+	// }
 
-	if p.Previous {
-		if p.Order == "DESC" {
-			query = query.Where(queryConditionAfter, args...)
-		} else {
-			query = query.Where(queryConditionBefore, args...)
-		}
-	}
+	// if p.Previous {
+	// 	if p.Order == "DESC" {
+	// 		query = query.Where(queryConditionAfter, args...)
+	// 	} else {
+	// 		query = query.Where(queryConditionBefore, args...)
+	// 	}
+	// }
 
 	return query, nil
 }

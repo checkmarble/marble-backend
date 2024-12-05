@@ -7,8 +7,6 @@ type PaginationAndSorting struct {
 	Sorting  SortingField
 	Order    SortingOrder
 	Limit    int
-	Previous bool
-	Next     bool
 }
 
 func NewDefaultPaginationAndSorting(sortColumnName string) PaginationAndSorting {
@@ -31,16 +29,11 @@ const (
 )
 
 func ValidatePagination(pagination PaginationAndSorting) error {
-	if pagination.OffsetId != "" {
-		if pagination.Previous && pagination.Next {
-			return fmt.Errorf("invalid pagination: both previous and next are true: %w", BadParameterError)
-		}
-		if !pagination.Previous && !pagination.Next {
-			return fmt.Errorf("invalid pagination: both previous and next are false: %w", BadParameterError)
-		}
-	}
 	if pagination.Order != SortingOrderAsc && pagination.Order != SortingOrderDesc {
 		return fmt.Errorf("invalid pagination: order must be either ASC or DESC: %w", BadParameterError)
+	}
+	if pagination.Limit <= 0 {
+		return fmt.Errorf("invalid pagination: limit must be greater than 0: %w", BadParameterError)
 	}
 	return nil
 }
