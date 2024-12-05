@@ -52,7 +52,7 @@ type DecisionListPageDto struct {
 	HasNextPage bool       `json:"has_next_page"`
 }
 
-func AdaptDecisionListPageDto(decisionsPage models.DecisionListPageWithIndexes, marbleAppHost string) DecisionListPageDto {
+func AdaptDecisionListPageDto(decisionsPage models.DecisionListPage, marbleAppHost string) DecisionListPageDto {
 	items := make([]Decision, len(decisionsPage.Decisions))
 	for i, decision := range decisionsPage.Decisions {
 		items[i] = NewDecisionDto(decision, marbleAppHost)

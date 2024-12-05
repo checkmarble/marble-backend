@@ -33,6 +33,7 @@ func handleGetDecision(uc usecases.Usecases, marbleAppHost string) func(c *gin.C
 	}
 }
 
+// Endpoint used by the public API, that does not return the output decision ranks
 func handleListDecisions(uc usecases.Usecases, marbleAppHost string) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
@@ -69,6 +70,7 @@ func handleListDecisions(uc usecases.Usecases, marbleAppHost string) func(c *gin
 	}
 }
 
+// Endpoint used by the internal API to serve the app, that returns the output decision ranks
 func handleListDecisionsInternal(uc usecases.Usecases, marbleAppHost string) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
@@ -91,7 +93,7 @@ func handleListDecisionsInternal(uc usecases.Usecases, marbleAppHost string) fun
 		paginationAndSorting = dto.WithPaginationDefaults(paginationAndSorting, decisionPaginationDefaults)
 
 		usecase := usecasesWithCreds(ctx, uc).NewDecisionUsecase()
-		decisions, err := usecase.ListDecisions(
+		decisions, err := usecase.ListDecisionsWithIndexes(
 			ctx,
 			organizationId,
 			dto.AdaptPaginationAndSortingInput(paginationAndSorting),
