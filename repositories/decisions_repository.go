@@ -241,7 +241,7 @@ func (repo *MarbleDbRepository) DecisionsOfOrganization(
 	paginatedQuery := NewQueryBuilder().
 		Select(decisionsWithRankColumns()...).
 		FromSelect(subquery, "s").
-		Limit(uint64(pagination.Limit))
+		Limit(uint64(pagination.Limit + 1))
 
 	var offsetDecision models.DecisionWithRuleExecutions
 	if pagination.OffsetId != "" {
@@ -262,11 +262,6 @@ func (repo *MarbleDbRepository) DecisionsOfOrganization(
 	}
 	query := selectDecisionsWithJoinedFields(paginatedQuery, pagination)
 
-	count, err := countDecisions(ctx, exec, organizationId, filters)
-	if err != nil {
-		return []models.DecisionWithRank{}, errors.Wrap(err, "failed to count decisions")
-	}
-
 	decision, err := SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (models.DecisionWithRank, error) {
 		db, err := pgx.RowToStructByPos[dbmodels.DBPaginatedDecisions](row)
 		if err != nil {
@@ -281,11 +276,12 @@ func (repo *MarbleDbRepository) DecisionsOfOrganization(
 			}
 			decisionCase = &decisionCaseValue
 		}
-		return dbmodels.AdaptDecisionWithRank(db.DbDecision, decisionCase, db.RankNumber, count), nil
+		return dbmodels.AdaptDecisionWithRank(db.DbDecision, decisionCase, db.RankNumber), nil
 	})
 	if err != nil {
 		return []models.DecisionWithRank{}, err
 	}
+
 	return decision, nil
 }
 

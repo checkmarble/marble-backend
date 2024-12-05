@@ -68,7 +68,6 @@ func handleListDecisions(uc usecases.Usecases, marbleAppHost string) func(c *gin
 
 		if len(decisions) == 0 {
 			c.JSON(http.StatusOK, gin.H{
-				"total_count": dto.AdaptTotalCount(models.TotalCount{}),
 				"start_index": 0,
 				"end_index":   0,
 				"items":       []dto.Decision{},
@@ -76,11 +75,13 @@ func handleListDecisions(uc usecases.Usecases, marbleAppHost string) func(c *gin
 			return
 		}
 
+		returnedDecisions := decisions[:min(paginationAndSorting.Limit, len(decisions))]
+
 		c.JSON(http.StatusOK, gin.H{
-			"total_count": dto.AdaptTotalCount(decisions[0].TotalCount),
-			"start_index": decisions[0].RankNumber,
-			"end_index":   decisions[len(decisions)-1].RankNumber,
-			"items": pure_utils.Map(decisions, func(d models.DecisionWithRank) dto.Decision {
+			"has_next_page": len(decisions) == paginationAndSorting.Limit+1,
+			"start_index":   returnedDecisions[0].RankNumber,
+			"end_index":     returnedDecisions[len(returnedDecisions)-1].RankNumber,
+			"items": pure_utils.Map(returnedDecisions, func(d models.DecisionWithRank) dto.Decision {
 				return dto.NewDecisionDto(d.Decision, marbleAppHost)
 			}),
 		})
