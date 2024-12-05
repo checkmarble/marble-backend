@@ -234,13 +234,12 @@ func (repo *MarbleDbRepository) DecisionsOfOrganization(
 		return nil, err
 	}
 
-	subquery := selectDecisionsWithRank(pagination).
-		Where(squirrel.Eq{"d.org_id": organizationId})
-	subquery = applyDecisionFilters(subquery, filters)
+	filteredSubquery := selectDecisionsWithFilters(organizationId, pagination, filters)
 
+	columns := columnsNames("s", append(dbmodels.SelectDecisionColumn, "rank_number"))
 	paginatedQuery := NewQueryBuilder().
-		Select(decisionsWithRankColumns()...).
-		FromSelect(subquery, "s").
+		Select(columns...).
+		FromSelect(filteredSubquery, "s").
 		Limit(uint64(pagination.Limit))
 
 	var offsetDecision models.DecisionWithRuleExecutions
@@ -256,7 +255,7 @@ func (repo *MarbleDbRepository) DecisionsOfOrganization(
 		}
 	}
 
-	paginatedQuery, err := applyDecisionPagination(paginatedQuery, pagination, offsetDecision.Decision)
+	paginatedQuery, err := applyDecisionPaginationFilters(paginatedQuery, pagination, offsetDecision.Decision)
 	if err != nil {
 		return []models.DecisionWithRank{}, err
 	}
@@ -284,7 +283,16 @@ func (repo *MarbleDbRepository) DecisionsOfOrganization(
 	return decision, nil
 }
 
-func applyDecisionFilters(query squirrel.SelectBuilder, filters models.DecisionFilters) squirrel.SelectBuilder {
+func selectDecisionsWithFilters(organizationId string, p models.PaginationAndSorting, filters models.DecisionFilters) squirrel.SelectBuilder {
+	orderCondition := fmt.Sprintf("d.%s %s, d.id %s", p.Sorting, p.Order, p.Order)
+
+	query := NewQueryBuilder().
+		Select(columnsNames("d", dbmodels.SelectDecisionColumn)...).
+		Column(fmt.Sprintf("RANK() OVER (ORDER BY %s) as rank_number", orderCondition)).
+		From(fmt.Sprintf("%s AS d", dbmodels.TABLE_DECISIONS)).
+		Where(squirrel.Eq{"d.org_id": organizationId}).
+		OrderBy(orderCondition)
+
 	if len(filters.ScenarioIds) > 0 {
 		query = query.Where(squirrel.Eq{"d.scenario_id": filters.ScenarioIds})
 	}
@@ -329,61 +337,26 @@ func applyDecisionFilters(query squirrel.SelectBuilder, filters models.DecisionF
 	return query
 }
 
-func selectDecisionsWithRank(p models.PaginationAndSorting) squirrel.SelectBuilder {
-	orderCondition := fmt.Sprintf("d.%s %s, d.id %s", p.Sorting, p.Order, p.Order)
-
-	return NewQueryBuilder().
-		Select(
-			pure_utils.Map(dbmodels.SelectDecisionColumn,
-				func(s string) string {
-					return "d." + s
-				})...,
-		).
-		Column(fmt.Sprintf("RANK() OVER (ORDER BY %s) as rank_number", orderCondition)).
-		From(fmt.Sprintf("%s AS d", dbmodels.TABLE_DECISIONS)).
-		OrderBy(orderCondition)
-}
-
-func decisionsWithRankColumns() (columns []string) {
-	columns = append(columns, dbmodels.SelectDecisionColumn...)
-
-	columns = columnsNames("s", columns)
-	columns = append(columns, "rank_number")
-	return columns
-}
-
-func applyDecisionPagination(query squirrel.SelectBuilder, p models.PaginationAndSorting, offset models.Decision) (squirrel.SelectBuilder, error) {
+func applyDecisionPaginationFilters(query squirrel.SelectBuilder, p models.PaginationAndSorting, offset models.Decision) (squirrel.SelectBuilder, error) {
 	if p.OffsetId == "" {
 		return query, nil
 	}
 
-	var offsetField any
+	var offsetValue any
 	switch p.Sorting {
 	case models.DecisionSortingCreatedAt:
-		offsetField = offset.CreatedAt
+		offsetValue = offset.CreatedAt
 	default:
-		// only pagination by created_at is allowed for now
+		// only ordering and pagination by created_at is allowed for now
 		return query, fmt.Errorf("invalid sorting field: %w", models.BadParameterError)
 	}
 
-	queryConditionBefore := fmt.Sprintf("%s < ? OR (%s = ? AND id < ?)", p.Sorting, p.Sorting)
-	queryConditionAfter := fmt.Sprintf("%s > ? OR (%s = ? AND id > ?)", p.Sorting, p.Sorting)
-
-	args := []any{offsetField, offsetField, p.OffsetId}
-	// if p.Next {
+	args := []any{offsetValue, offsetValue, p.OffsetId}
 	if p.Order == "DESC" {
-		query = query.Where(queryConditionBefore, args...)
+		query = query.Where(fmt.Sprintf("%s < ? OR (%s = ? AND id < ?)", p.Sorting, p.Sorting), args...)
 	} else {
-		query = query.Where(queryConditionAfter, args...)
+		query = query.Where(fmt.Sprintf("%s > ? OR (%s = ? AND id > ?)", p.Sorting, p.Sorting), args...)
 	}
-	// }
-	// if p.Previous {
-	// 	if p.Order == "DESC" {
-	// 		query = query.Where(queryConditionAfter, args...)
-	// 	} else {
-	// 		query = query.Where(queryConditionBefore, args...)
-	// 	}
-	// }
 
 	return query, nil
 }
