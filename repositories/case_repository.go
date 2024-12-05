@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
@@ -20,6 +21,11 @@ func (repo *MarbleDbRepository) ListOrganizationCases(
 	pagination models.PaginationAndSorting,
 ) ([]models.CaseWithRank, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	orderCond, err := orderConditionForCases(pagination)
+	if err != nil {
 		return nil, err
 	}
 
@@ -47,7 +53,7 @@ func (repo *MarbleDbRepository) ListOrganizationCases(
 	if err != nil {
 		return []models.CaseWithRank{}, err
 	}
-	queryWithJoinedFields := selectCasesWithJoinedFields(paginatedSubquery, pagination)
+	queryWithJoinedFields := selectCasesWithJoinedFields(paginatedSubquery, orderCond)
 
 	return SqlToListOfRow(ctx, exec, queryWithJoinedFields, func(row pgx.CollectableRow) (models.CaseWithRank, error) {
 		db, err := pgx.RowToStructByPos[dbmodels.DBPaginatedCases](row)
@@ -264,15 +270,15 @@ func applyCasesPagination(query squirrel.SelectBuilder, p models.PaginationAndSo
 	args := []any{offsetField, offsetField, p.OffsetId}
 
 	if p.Order == "DESC" {
-		query = query.Where(queryConditionBefore, args...)
+		query = query.Where(squirrel.Expr(queryConditionBefore, args...))
 	} else {
-		query = query.Where(queryConditionAfter, args...)
+		query = query.Where(squirrel.Expr(queryConditionAfter, args...))
 	}
 
 	return query, nil
 }
 
-func selectCasesWithJoinedFields(query squirrel.SelectBuilder, p models.PaginationAndSorting) squirrel.SelectBuilder {
+func selectCasesWithJoinedFields(query squirrel.SelectBuilder, orderCond string) squirrel.SelectBuilder {
 	return squirrel.StatementBuilder.
 		Select(columnsNames("c", dbmodels.SelectCaseColumn)...).
 		Column(
@@ -292,7 +298,7 @@ func selectCasesWithJoinedFields(query squirrel.SelectBuilder, p models.Paginati
 		Column(fmt.Sprintf("(SELECT count(distinct d.id) FROM %s AS d WHERE d.case_id = c.id AND d.org_id=c.org_id) AS decisions_count", dbmodels.TABLE_DECISIONS)).
 		Column("rank_number").
 		FromSelect(query, "c").
-		OrderBy(fmt.Sprintf("c.%s %s, c.id %s", p.Sorting, p.Order, p.Order)).
+		OrderBy(orderCond).
 		PlaceholderFormat(squirrel.Dollar)
 }
 
@@ -356,4 +362,17 @@ func (repo *MarbleDbRepository) GetCasesFileByCaseId(ctx context.Context, exec E
 			OrderBy("created_at DESC"),
 		dbmodels.AdaptCaseFile,
 	)
+}
+
+func orderConditionForCases(p models.PaginationAndSorting) (string, error) {
+	allowedOrders := []models.SortingOrder{"ASC", "DESC"}
+
+	if p.Sorting != "created_at" {
+		return "", fmt.Errorf("invalid sorting field: %w", models.BadParameterError)
+	}
+	if !slices.Contains(allowedOrders, p.Order) {
+		return "", fmt.Errorf("invalid order: %s", p.Order)
+	}
+
+	return fmt.Sprintf("d.%s %s, d.id %s", p.Sorting, p.Order, p.Order), nil
 }
