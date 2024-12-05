@@ -83,7 +83,6 @@ type CaseListPage struct {
 type CaseWithRank struct {
 	Case
 	RankNumber int
-	TotalCount TotalCount
 }
 
 const (

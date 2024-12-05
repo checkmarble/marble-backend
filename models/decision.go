@@ -62,7 +62,6 @@ type DecisionsByVersionByOutcome struct {
 type DecisionWithRank struct {
 	Decision
 	RankNumber int
-	TotalCount TotalCount
 }
 
 type ScenarioExecution struct {

@@ -39,15 +39,3 @@ func WithPaginationDefaults(pagination PaginationAndSortingInput, defaults Pagin
 
 	return pagination
 }
-
-type TotalCount struct {
-	Value      int  `json:"value"`
-	IsMaxCount bool `json:"is_max_count"`
-}
-
-func AdaptTotalCount(totalCount models.TotalCount) TotalCount {
-	return TotalCount{
-		Value:      totalCount.Value,
-		IsMaxCount: totalCount.IsMaxCount,
-	}
-}
