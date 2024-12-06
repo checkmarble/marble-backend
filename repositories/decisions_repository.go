@@ -279,7 +279,7 @@ func (repo *MarbleDbRepository) DecisionsOfOrganization(
 	query := selectDecisionsWithJoinedFields(paginatedQuery, orderCond)
 
 	decision, err := SqlToListOfRow(ctx, exec, query, func(row pgx.CollectableRow) (models.Decision, error) {
-		db, err := pgx.RowToStructByPos[dbmodels.DBPaginatedDecisions](row)
+		db, err := pgx.RowToStructByPos[dbmodels.DbJoinDecisionAndCase](row)
 		if err != nil {
 			return models.Decision{}, err
 		}

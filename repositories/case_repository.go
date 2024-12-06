@@ -266,9 +266,9 @@ func applyCasesPagination(query squirrel.SelectBuilder, p models.PaginationAndSo
 	args := []any{offsetField, offsetField, p.OffsetId}
 
 	if p.Order == models.SortingOrderDesc {
-		query = query.Where(squirrel.Expr(queryConditionBefore, args...))
+		query = query.Where(queryConditionBefore, args...)
 	} else {
-		query = query.Where(squirrel.Expr(queryConditionAfter, args...))
+		query = query.Where(queryConditionAfter, args...)
 	}
 
 	return query, nil
