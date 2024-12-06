@@ -3,7 +3,6 @@ package repositories
 import (
 	"context"
 	"fmt"
-	"slices"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -247,10 +246,11 @@ func (repo *MarbleDbRepository) DecisionsOfOrganization(
 		return nil, err
 	}
 
-	orderCond, err := orderConditionForDecisions(pagination)
-	if err != nil {
-		return nil, err
+	if pagination.Sorting != models.SortingFieldCreatedAt {
+		return nil, errors.Wrapf(models.BadParameterError, "invalid sorting field: %s", pagination.Sorting)
 	}
+
+	orderCond := orderConditionForDecisions(pagination)
 
 	filteredSubquery := selectDecisionsWithFilters(organizationId, orderCond, filters, false)
 
@@ -272,7 +272,7 @@ func (repo *MarbleDbRepository) DecisionsOfOrganization(
 		}
 	}
 
-	paginatedQuery, err = applyDecisionPaginationFilters(paginatedQuery, pagination, offsetDecision.Decision)
+	paginatedQuery, err := applyDecisionPaginationFilters(paginatedQuery, pagination, offsetDecision.Decision)
 	if err != nil {
 		return nil, err
 	}
@@ -311,10 +311,11 @@ func (repo *MarbleDbRepository) DecisionsOfOrganizationWithRank(
 		return nil, err
 	}
 
-	orderCond, err := orderConditionForDecisions(pagination)
-	if err != nil {
-		return nil, err
+	if pagination.Sorting != models.SortingFieldCreatedAt {
+		return nil, errors.Wrapf(models.BadParameterError, "invalid sorting field: %s", pagination.Sorting)
 	}
+
+	orderCond := orderConditionForDecisions(pagination)
 
 	filteredSubquery := selectDecisionsWithFilters(organizationId, orderCond, filters, true)
 
@@ -337,7 +338,7 @@ func (repo *MarbleDbRepository) DecisionsOfOrganizationWithRank(
 		}
 	}
 
-	paginatedQuery, err = applyDecisionPaginationFilters(paginatedQuery, pagination, offsetDecision.Decision)
+	paginatedQuery, err := applyDecisionPaginationFilters(paginatedQuery, pagination, offsetDecision.Decision)
 	if err != nil {
 		return []models.DecisionWithRank{}, err
 	}
@@ -366,17 +367,8 @@ func (repo *MarbleDbRepository) DecisionsOfOrganizationWithRank(
 	return decision, nil
 }
 
-func orderConditionForDecisions(p models.PaginationAndSorting) (string, error) {
-	allowedOrders := []models.SortingOrder{"ASC", "DESC"}
-
-	if p.Sorting != "created_at" {
-		return "", fmt.Errorf("invalid sorting field: %w", models.BadParameterError)
-	}
-	if !slices.Contains(allowedOrders, p.Order) {
-		return "", fmt.Errorf("invalid order: %s", p.Order)
-	}
-
-	return fmt.Sprintf("d.%s %s, d.id %s", p.Sorting, p.Order, p.Order), nil
+func orderConditionForDecisions(p models.PaginationAndSorting) string {
+	return fmt.Sprintf("d.%s %s, d.id %s", p.Sorting, p.Order, p.Order)
 }
 
 func selectDecisionsWithFilters(
@@ -454,10 +446,10 @@ func applyDecisionPaginationFilters(query squirrel.SelectBuilder, p models.Pagin
 	}
 
 	args := []any{offsetValue, offsetValue, p.OffsetId}
-	if p.Order == "DESC" {
-		query = query.Where(squirrel.Expr(fmt.Sprintf("%s < ? OR (%s = ? AND id < ?)", p.Sorting, p.Sorting), args...))
+	if p.Order == models.SortingOrderDesc {
+		query = query.Where(fmt.Sprintf("%s < ? OR (%s = ? AND id < ?)", p.Sorting, p.Sorting), args...)
 	} else {
-		query = query.Where(squirrel.Expr(fmt.Sprintf("%s > ? OR (%s = ? AND id > ?)", p.Sorting, p.Sorting), args...))
+		query = query.Where(fmt.Sprintf("%s > ? OR (%s = ? AND id > ?)", p.Sorting, p.Sorting), args...)
 	}
 
 	return query, nil

@@ -3,7 +3,6 @@ package repositories
 import (
 	"context"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
@@ -24,10 +23,7 @@ func (repo *MarbleDbRepository) ListOrganizationCases(
 		return nil, err
 	}
 
-	orderCond, err := orderConditionForCases(pagination)
-	if err != nil {
-		return nil, err
-	}
+	orderCond := orderConditionForCases(pagination)
 
 	coreQuery := casesCoreQueryWithRank(pagination)
 	filteredCoreQuery := applyCaseFilters(coreQuery, filters)
@@ -269,7 +265,7 @@ func applyCasesPagination(query squirrel.SelectBuilder, p models.PaginationAndSo
 	queryConditionAfter := fmt.Sprintf("s.%s > ? OR (s.%s = ? AND s.id > ?)", p.Sorting, p.Sorting)
 	args := []any{offsetField, offsetField, p.OffsetId}
 
-	if p.Order == "DESC" {
+	if p.Order == models.SortingOrderDesc {
 		query = query.Where(squirrel.Expr(queryConditionBefore, args...))
 	} else {
 		query = query.Where(squirrel.Expr(queryConditionAfter, args...))
@@ -364,15 +360,6 @@ func (repo *MarbleDbRepository) GetCasesFileByCaseId(ctx context.Context, exec E
 	)
 }
 
-func orderConditionForCases(p models.PaginationAndSorting) (string, error) {
-	allowedOrders := []models.SortingOrder{"ASC", "DESC"}
-
-	if p.Sorting != "created_at" {
-		return "", fmt.Errorf("invalid sorting field: %w", models.BadParameterError)
-	}
-	if !slices.Contains(allowedOrders, p.Order) {
-		return "", fmt.Errorf("invalid order: %s", p.Order)
-	}
-
-	return fmt.Sprintf("d.%s %s, d.id %s", p.Sorting, p.Order, p.Order), nil
+func orderConditionForCases(p models.PaginationAndSorting) string {
+	return fmt.Sprintf("d.%s %s, d.id %s", p.Sorting, p.Order, p.Order)
 }

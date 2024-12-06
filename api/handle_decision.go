@@ -13,7 +13,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-var decisionPaginationDefaults = dto.PaginationDefaults{
+var decisionPaginationDefaults = models.PaginationDefaults{
 	Limit:  25,
 	SortBy: models.DecisionSortingCreatedAt,
 	Order:  models.SortingOrderDesc,
@@ -48,20 +48,16 @@ func handleListDecisions(uc usecases.Usecases, marbleAppHost string) func(c *gin
 			return
 		}
 
-		var paginationAndSorting dto.PaginationAndSortingInput
-		if err := c.ShouldBind(&paginationAndSorting); err != nil {
+		var paginationAndSortingDto dto.PaginationAndSorting
+		if err := c.ShouldBind(&paginationAndSortingDto); err != nil {
 			c.Status(http.StatusBadRequest)
 			return
 		}
-		paginationAndSorting = dto.WithPaginationDefaults(paginationAndSorting, decisionPaginationDefaults)
+		paginationAndSorting := models.WithPaginationDefaults(
+			dto.AdaptPaginationAndSorting(paginationAndSortingDto), decisionPaginationDefaults)
 
 		usecase := usecasesWithCreds(ctx, uc).NewDecisionUsecase()
-		decisions, err := usecase.ListDecisions(
-			ctx,
-			organizationId,
-			dto.AdaptPaginationAndSortingInput(paginationAndSorting),
-			filters,
-		)
+		decisions, err := usecase.ListDecisions(ctx, organizationId, paginationAndSorting, filters)
 		if presentError(ctx, c, err) {
 			return
 		}
@@ -85,20 +81,16 @@ func handleListDecisionsInternal(uc usecases.Usecases, marbleAppHost string) fun
 			return
 		}
 
-		var paginationAndSorting dto.PaginationAndSortingInput
-		if err := c.ShouldBind(&paginationAndSorting); err != nil {
+		var paginationAndSortingDto dto.PaginationAndSorting
+		if err := c.ShouldBind(&paginationAndSortingDto); err != nil {
 			c.Status(http.StatusBadRequest)
 			return
 		}
-		paginationAndSorting = dto.WithPaginationDefaults(paginationAndSorting, decisionPaginationDefaults)
+		paginationAndSorting := models.WithPaginationDefaults(
+			dto.AdaptPaginationAndSorting(paginationAndSortingDto), decisionPaginationDefaults)
 
 		usecase := usecasesWithCreds(ctx, uc).NewDecisionUsecase()
-		decisions, err := usecase.ListDecisionsWithIndexes(
-			ctx,
-			organizationId,
-			dto.AdaptPaginationAndSortingInput(paginationAndSorting),
-			filters,
-		)
+		decisions, err := usecase.ListDecisionsWithIndexes(ctx, organizationId, paginationAndSorting, filters)
 		if presentError(ctx, c, err) {
 			return
 		}

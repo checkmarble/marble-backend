@@ -85,9 +85,7 @@ type CaseWithRank struct {
 	RankNumber int
 }
 
-const (
-	CasesSortingCreatedAt SortingField = "created_at"
-)
+const CasesSortingCreatedAt = SortingFieldCreatedAt
 
 func ValidateCaseStatuses(statuses []string) ([]CaseStatus, error) {
 	sanitizedStatuses := make([]CaseStatus, len(statuses))

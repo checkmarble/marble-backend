@@ -172,9 +172,7 @@ type DecisionListPage struct {
 	HasNextPage bool
 }
 
-const (
-	DecisionSortingCreatedAt SortingField = "created_at"
-)
+const DecisionSortingCreatedAt SortingField = SortingFieldCreatedAt
 
 type DecisionWorkflowFilters struct {
 	InboxId        string

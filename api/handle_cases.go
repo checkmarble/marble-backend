@@ -14,7 +14,7 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-var casesPaginationDefaults = dto.PaginationDefaults{
+var casesPaginationDefaults = models.PaginationDefaults{
 	Limit:  25,
 	SortBy: models.CasesSortingCreatedAt,
 	Order:  models.SortingOrderDesc,
@@ -34,16 +34,16 @@ func handleListCases(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		var paginationAndSorting dto.PaginationAndSortingInput
-		if err := c.ShouldBind(&paginationAndSorting); err != nil {
+		var paginationAndSortingDto dto.PaginationAndSorting
+		if err := c.ShouldBind(&paginationAndSortingDto); err != nil {
 			c.Status(http.StatusBadRequest)
 			return
 		}
-		paginationAndSorting = dto.WithPaginationDefaults(paginationAndSorting, casesPaginationDefaults)
+		paginationAndSorting := models.WithPaginationDefaults(
+			dto.AdaptPaginationAndSorting(paginationAndSortingDto), casesPaginationDefaults)
 
 		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
-		cases, err := usecase.ListCases(ctx, organizationId,
-			dto.AdaptPaginationAndSortingInput(paginationAndSorting), filters)
+		cases, err := usecase.ListCases(ctx, organizationId, paginationAndSorting, filters)
 		if presentError(ctx, c, err) {
 			return
 		}
