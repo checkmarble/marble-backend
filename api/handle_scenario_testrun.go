@@ -49,8 +49,7 @@ func handleListScenarioTestRun(uc usecases.Usecases) func(c *gin.Context) {
 		if presentError(ctx, c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"list scenario testrun by scenario id": pure_utils.Map(
-			testruns, dto.AdaptScenarioTestRunDto)})
+		c.JSON(http.StatusOK, pure_utils.Map(testruns, dto.AdaptScenarioTestRunDto))
 	}
 }
 
