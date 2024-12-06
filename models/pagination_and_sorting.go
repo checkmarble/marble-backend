@@ -4,8 +4,6 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-const COUNT_ROWS_LIMIT = 1000
-
 type PaginationAndSorting struct {
 	OffsetId string
 	Sorting  SortingField
