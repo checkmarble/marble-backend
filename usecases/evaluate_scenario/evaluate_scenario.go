@@ -207,20 +207,27 @@ func EvalTestRunScenario(ctx context.Context,
 		logger.ErrorContext(ctx, "the live version iteration associated to the current testrun does not match with the actual live scenario iteration")
 		return models.ScenarioExecution{}, nil
 	}
-	testRunIteration, err := repositories.EvalTestRunScenarioRepository.GetTestRunIterationByScenarioId(
+	testRunIterationId, err := repositories.EvalTestRunScenarioRepository.GetTestRunIterationIdByScenarioId(
 		ctx, exec, params.Scenario.Id)
 	if err != nil {
 		return models.ScenarioExecution{}, errors.Wrap(err,
 			"error getting testrun scenario iteration in EvalTestRunScenario")
 	}
-	if testRunIteration == nil {
+	if testRunIterationId == nil {
 		return models.ScenarioExecution{}, nil
 	}
-	se, errSe := processScenarioIteration(ctx, params, *testRunIteration, repositories, start, logger, exec)
+	testRunIteration, err := repositories.EvalScenarioRepository.GetScenarioIteration(ctx, exec, *testRunIterationId)
+	if err != nil {
+		return models.ScenarioExecution{}, errors.Wrap(err,
+			"error getting testrun scenario iteration in EvalTestRunScenario")
+	}
+
+	se, errSe := processScenarioIteration(ctx, params, testRunIteration, repositories, start, logger, exec)
 	if errSe != nil {
 		return models.ScenarioExecution{}, errors.Wrap(errSe,
 			"error processing scenario iteration in EvalTestRunScenario")
 	}
+	se.TestRunId = testrun.Id
 	return se, nil
 }
 

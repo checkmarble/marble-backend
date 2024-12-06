@@ -8,7 +8,9 @@ import (
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -23,7 +25,7 @@ type DecisionPhantomUsecaseRepository interface {
 		newPhantomDecisionId string,
 		scenarioVersion int) error
 
-	GetTestRunIterationByScenarioId(ctx context.Context, exec Executor, scenarioID string) (*models.ScenarioIteration, error)
+	GetTestRunIterationIdByScenarioId(ctx context.Context, exec Executor, scenarioID string) (*string, error)
 }
 
 func (repo *MarbleDbRepository) StorePhantomDecision(
@@ -47,7 +49,8 @@ func (repo *MarbleDbRepository) StorePhantomDecision(
 	err := ExecBuilder(
 		ctx,
 		exec,
-		NewQueryBuilder().Insert(dbmodels.TABLE_PHANTOM_DECISIONS).
+		NewQueryBuilder().
+			Insert(dbmodels.TABLE_PHANTOM_DECISIONS).
 			Columns(
 				"id",
 				"org_id",
@@ -109,24 +112,33 @@ func (repo *MarbleDbRepository) StorePhantomDecision(
 	return err
 }
 
-func (repo *MarbleDbRepository) GetTestRunIterationByScenarioId(ctx context.Context,
+func (repo *MarbleDbRepository) GetTestRunIterationIdByScenarioId(ctx context.Context,
 	exec Executor, scenarioID string,
-) (*models.ScenarioIteration, error) {
+) (*string, error) {
 	// to be defined once we will integrate the testrun feature
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
 	query := NewQueryBuilder().
-		Select("scit.id, scit.org_id, scit.scenario_id, scit.version, scit.created_at, scit.updated_at, scit.score_review_threshold, scit.score_block_and_review_threshold, scit.score_reject_threshold, scit.trigger_condition_ast_expression, scit.deleted_at, scit.schedule").
+		Select("scit.id").
 		From(dbmodels.TABLE_SCENARIO_ITERATIONS + " AS scit").
 		Join(dbmodels.TABLE_SCENARIO_TESTRUN + " AS tr ON scit.id = tr.scenario_iteration_id").
 		Join(dbmodels.TABLE_SCENARIOS + " AS sc ON sc.id = scit.scenario_id").
 		Where(squirrel.Eq{"tr.status": models.Up.String()}).
 		Where(squirrel.Eq{"sc.id": scenarioID})
-	return SqlToOptionalModel(
-		ctx,
-		exec,
-		query,
-		dbmodels.AdaptScenarioIteration,
-	)
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return nil, err
+	}
+	row := exec.QueryRow(ctx, sql, args...)
+	var scenarioIterationID string
+	err = row.Scan(&scenarioIterationID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &scenarioIterationID, nil
 }

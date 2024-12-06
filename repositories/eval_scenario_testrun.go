@@ -11,5 +11,5 @@ type EvalScenarioRepository interface {
 }
 
 type EvalTestRunScenarioRepository interface {
-	GetTestRunIterationByScenarioId(ctx context.Context, exec Executor, scenarioID string) (*models.ScenarioIteration, error)
+	GetTestRunIterationIdByScenarioId(ctx context.Context, exec Executor, scenarioID string) (*string, error)
 }
