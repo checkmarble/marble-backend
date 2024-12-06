@@ -17,7 +17,7 @@ type IngestedDataIndexesRepository interface {
 	ListAllUniqueIndexes(ctx context.Context, exec repositories.Executor) ([]models.UnicityIndex, error)
 	CreateIndexesAsync(ctx context.Context, exec repositories.Executor, indexes []models.ConcreteIndex) error
 	CreateIndexesWithCallback(ctx context.Context, exec repositories.Executor,
-		indexes []models.ConcreteIndex, onSuccess repositories.OnCreateIndexesSucces, args ...interface{}) error
+		indexes []models.ConcreteIndex, onSuccess repositories.OnCreateIndexesSucces) error
 	CountPendingIndexes(ctx context.Context, exec repositories.Executor) (int, error)
 	CreateUniqueIndexAsync(ctx context.Context, exec repositories.Executor, index models.UnicityIndex) error
 	CreateUniqueIndex(ctx context.Context, exec repositories.Executor, index models.UnicityIndex) error
@@ -130,7 +130,6 @@ func (editor ClientDbIndexEditor) CreateIndexesAsyncForScenarioWithCallback(
 	organizationId string,
 	indexes []models.ConcreteIndex,
 	onSuccess repositories.OnCreateIndexesSucces,
-	args ...interface{},
 ) error {
 	logger := utils.LoggerFromContext(ctx)
 
@@ -144,7 +143,7 @@ func (editor ClientDbIndexEditor) CreateIndexesAsyncForScenarioWithCallback(
 			err,
 			"Error while creating client schema executor in StartPublicationPreparation")
 	}
-	err = editor.ingestedDataIndexesRepository.CreateIndexesWithCallback(ctx, db, indexes, onSuccess, args)
+	err = editor.ingestedDataIndexesRepository.CreateIndexesWithCallback(ctx, db, indexes, onSuccess)
 	if err != nil {
 		return errors.Wrap(err, "Error while creating indexes in StartPublicationPreparation")
 	}
