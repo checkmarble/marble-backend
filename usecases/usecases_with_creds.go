@@ -109,7 +109,7 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 			usecases.Repositories.IngestedDataReadRepository,
 			&usecases.Repositories.MarbleDbRepository, usecases.NewEvaluateAstExpression(),
 			&usecases.Repositories.MarbleDbRepository, &usecases.Repositories.MarbleDbRepository,
-			&usecases.Repositories.MarbleDbRepository),
+			&usecases.Repositories.MarbleDbRepository, &usecases.Repositories.MarbleDbRepository),
 		scenarioTestRunRepository: &usecases.Repositories.MarbleDbRepository,
 	}
 }
@@ -455,7 +455,7 @@ func (usecases UsecasesWithCreds) NewAsyncDecisionWorker() *scheduled_execution.
 			usecases.Repositories.IngestedDataReadRepository,
 			&usecases.Repositories.MarbleDbRepository, usecases.NewEvaluateAstExpression(),
 			&usecases.Repositories.MarbleDbRepository, &usecases.Repositories.MarbleDbRepository,
-			&usecases.Repositories.MarbleDbRepository),
+			&usecases.Repositories.MarbleDbRepository, &usecases.Repositories.MarbleDbRepository),
 	)
 	return &w
 }

@@ -64,8 +64,6 @@ func handleGetScenarioTestRun(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 		result := dto.AdaptScenarioTestRunDto(testrun)
-		c.JSON(http.StatusOK, gin.H{
-			"scenario_test_run": result,
-		})
+		c.JSON(http.StatusOK, result)
 	}
 }

@@ -15,6 +15,10 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+type evalScenarioRepository interface {
+	GetScenarioIteration(ctx context.Context, exec repositories.Executor,
+		scenarioIterationId string) (models.ScenarioIteration, error)
+}
 type PhantomDecisionUsecase struct {
 	enforceSecurity            security.EnforceSecurityPhantomDecision
 	executorFactory            executor_factory.ExecutorFactory
@@ -24,6 +28,7 @@ type PhantomDecisionUsecase struct {
 	scenarioRepository         repositories.ScenarioUsecaseRepository
 	evaluateAstExpression      ast_eval.EvaluateAstExpression
 	snoozesReader              evaluate_scenario.SnoozesForDecisionReader
+	evalScenarioRepository     evalScenarioRepository
 }
 
 func NewPhantomDecisionUseCase(enforceSecurity security.EnforceSecurityPhantomDecision,
@@ -32,6 +37,7 @@ func NewPhantomDecisionUseCase(enforceSecurity security.EnforceSecurityPhantomDe
 	snoozesReader evaluate_scenario.SnoozesForDecisionReader,
 	testrunRepository repositories.ScenarioTestRunRepository,
 	scenarioRepository repositories.ScenarioUsecaseRepository,
+	evalScenarioRepository evalScenarioRepository,
 ) PhantomDecisionUsecase {
 	return PhantomDecisionUsecase{
 		enforceSecurity:            enforceSecurity,
@@ -42,6 +48,7 @@ func NewPhantomDecisionUseCase(enforceSecurity security.EnforceSecurityPhantomDe
 		evaluateAstExpression:      evaluateAstExpression,
 		testrunRepository:          testrunRepository,
 		snoozesReader:              snoozesReader,
+		evalScenarioRepository:     evalScenarioRepository,
 	}
 }
 
@@ -59,6 +66,7 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(ctx context.Context
 		return models.PhantomDecision{}, err
 	}
 	evaluationRepositories := evaluate_scenario.ScenarioEvaluationRepositories{
+		EvalScenarioRepository:        usecase.evalScenarioRepository,
 		EvalTestRunScenarioRepository: usecase.repository,
 		ScenarioTestRunRepository:     usecase.testrunRepository,
 		ExecutorFactory:               usecase.executorFactory,
@@ -67,6 +75,9 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(ctx context.Context
 		ScenarioRepository:            usecase.scenarioRepository,
 		SnoozeReader:                  usecase.snoozesReader,
 	}
+
+	// TODO remove
+	ctx = context.WithoutCancel(ctx)
 	testRunScenarioExecution, err := evaluate_scenario.EvalTestRunScenario(ctx,
 		evaluationParameters, evaluationRepositories)
 	if err != nil {
@@ -92,7 +103,7 @@ func (usecase *PhantomDecisionUsecase) CreatePhantomDecision(ctx context.Context
 		exec,
 		decision_phantom,
 		input.OrganizationId,
-		testRunScenarioExecution.ScenarioIterationId,
+		testRunScenarioExecution.TestRunId,
 		decision_phantom.PhantomDecisionId,
 		testRunScenarioExecution.ScenarioVersion,
 	); err != nil {

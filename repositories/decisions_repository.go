@@ -105,7 +105,7 @@ func (repo *MarbleDbRepository) DecisionsByOutcomeAndScore(ctx context.Context, 
 	if err != nil {
 		return nil, err
 	}
-	finalQuery := NewQueryBuilder().Select("q.outcome, q.scenario_version, q.score, Count(q.outcome) as total ").
+	finalQuery := NewQueryBuilder().Select("q.scenario_version, q.outcome, q.score, Count(q.outcome) as total").
 		FromSelect(query, "q").GroupBy("scenario_version, outcome, score").PlaceholderFormat(squirrel.Dollar)
 	return SqlToListOfRow(ctx,
 		exec,

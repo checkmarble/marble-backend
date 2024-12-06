@@ -76,6 +76,7 @@ type ScenarioExecution struct {
 	Score               int
 	Outcome             Outcome
 	OrganizationId      string
+	TestRunId           string
 }
 
 type RuleExecutionStat struct {
