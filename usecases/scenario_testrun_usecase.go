@@ -21,6 +21,17 @@ type ScenarioTestRunUsecase struct {
 	clientDbIndexEditor clientDbIndexEditor
 }
 
+func (usecases *UsecasesWithCreds) NewScenarioTestRunUseCase() ScenarioTestRunUsecase {
+	return ScenarioTestRunUsecase{
+		transactionFactory:  usecases.NewTransactionFactory(),
+		executorFactory:     usecases.NewExecutorFactory(),
+		enforceSecurity:     usecases.NewEnforceTestRunScenarioSecurity(),
+		repository:          &usecases.Repositories.MarbleDbRepository,
+		clientDbIndexEditor: usecases.NewClientDbIndexEditor(),
+		scenarioRepository:  &usecases.Repositories.MarbleDbRepository,
+	}
+}
+
 func (usecase *ScenarioTestRunUsecase) ActivateScenarioTestRun(ctx context.Context,
 	organizationId string,
 	input models.ScenarioTestRunInput,
