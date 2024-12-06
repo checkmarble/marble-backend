@@ -67,7 +67,7 @@ func AdaptCaseWithContributorsAndTags(db DBCaseWithContributorsAndTags) (models.
 	return caseModel, nil
 }
 
-func AdaptCaseWithRank(db DBCaseWithContributorsAndTags, rankNumber int, total int) (models.CaseWithRank, error) {
+func AdaptCaseWithRank(db DBCaseWithContributorsAndTags, rankNumber int) (models.CaseWithRank, error) {
 	c, err := AdaptCaseWithContributorsAndTags(db)
 	if err != nil {
 		return models.CaseWithRank{}, err
@@ -75,6 +75,5 @@ func AdaptCaseWithRank(db DBCaseWithContributorsAndTags, rankNumber int, total i
 	return models.CaseWithRank{
 		Case:       c,
 		RankNumber: rankNumber,
-		TotalCount: models.TotalCount{Value: total, IsMaxCount: total == models.COUNT_ROWS_LIMIT},
 	}, nil
 }

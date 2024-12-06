@@ -168,9 +168,9 @@ func createDecisionsBatch(
 	if err != nil {
 		assert.FailNow(t, "Error while listing decisions", err)
 	}
-	assert.Equalf(t, 1, len(decisions), "Expected 1 decision, got %d", len(decisions))
-	assert.Equalf(t, models.Decline, decisions[0].Outcome,
-		"Decision should be in review status, got %s", decisions[0].Outcome)
+	assert.Equalf(t, 1, len(decisions.Decisions), "Expected 1 decision, got %d", len(decisions.Decisions))
+	assert.Equalf(t, models.Decline, decisions.Decisions[0].Outcome,
+		"Decision should be in review status, got %s", decisions.Decisions[0].Outcome)
 }
 
 func getRulesForBatchTest() []models.CreateRuleInput {

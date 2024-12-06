@@ -49,6 +49,7 @@ func addRoutes(r *gin.Engine, auth Authentication, tokenHandler TokenHandler, uc
 	router.GET("/ast-expression/available-functions", tom, handleAvailableFunctions)
 
 	router.GET("/decisions", timeoutMiddleware(LIST_DECISION_TIMEOUT), handleListDecisions(uc, marbleAppHost))
+	router.GET("/decisions/internal", tom, handleListDecisionsInternal(uc, marbleAppHost))
 	router.POST("/decisions", timeoutMiddleware(models.DECISION_TIMEOUT), handlePostDecision(uc, marbleAppHost))
 	router.POST("/decisions/all",
 		timeoutMiddleware(SEQUENTIAL_DECISION_TIMEOUT),

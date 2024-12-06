@@ -159,8 +159,6 @@ paths:
             enum:
               - created_at
         - $ref: "#/components/parameters/offset_id"
-        - $ref: "#/components/parameters/previous"
-        - $ref: "#/components/parameters/next"
         - $ref: "#/components/parameters/limit"
         - $ref: "#/components/parameters/order"
       responses:
@@ -291,20 +289,6 @@ components:
       schema:
         type: string
         format: uuid
-    next:
-      in: query
-      name: next
-      description: Next page
-      required: false
-      schema:
-        type: boolean
-    previous:
-      in: query
-      name: previous
-      description: Previous page
-      required: false
-      schema:
-        type: boolean
     limit:
       in: query
       name: limit
@@ -572,21 +556,12 @@ components:
       required:
         - end_index
         - start_index
-        - total_count
+        - has_next_page
       properties:
         end_index:
           type: integer
         start_index:
           type: integer
-        total_count:
-          $ref: "#/components/schemas/pagination_count"
-    pagination_count:
-      type: object
-      required:
-        - is_max_count
-        - value
-      properties:
-        is_max_count:
+        has_next_page:
           type: boolean
-        value:
-          type: integer
+    

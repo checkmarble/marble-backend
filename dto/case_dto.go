@@ -40,6 +40,22 @@ func AdaptCaseDto(c models.Case) APICase {
 	}
 }
 
+type CastListPage struct {
+	Cases       []APICase `json:"cases"`
+	StartIndex  int       `json:"start_index"`
+	EndIndex    int       `json:"end_index"`
+	HasNextPage bool      `json:"has_next_page"`
+}
+
+func AdaptCaseListPage(casesPage models.CaseListPage) CastListPage {
+	return CastListPage{
+		Cases:       pure_utils.Map(casesPage.Cases, AdaptCaseDto),
+		StartIndex:  casesPage.StartIndex,
+		EndIndex:    casesPage.EndIndex,
+		HasNextPage: casesPage.HasNextPage,
+	}
+}
+
 func AdaptCaseWithDecisionsDto(c models.Case) APICaseWithDecisions {
 	return APICaseWithDecisions{
 		APICase: AdaptCaseDto(c),

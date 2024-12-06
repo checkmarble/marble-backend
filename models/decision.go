@@ -62,7 +62,6 @@ type DecisionsByVersionByOutcome struct {
 type DecisionWithRank struct {
 	Decision
 	RankNumber int
-	TotalCount TotalCount
 }
 
 type ScenarioExecution struct {
@@ -161,9 +160,19 @@ type DecisionFilters struct {
 	TriggerObjects        []string
 }
 
-const (
-	DecisionSortingCreatedAt SortingField = "created_at"
-)
+type DecisionListPageWithIndexes struct {
+	Decisions   []Decision
+	StartIndex  int
+	EndIndex    int
+	HasNextPage bool
+}
+
+type DecisionListPage struct {
+	Decisions   []Decision
+	HasNextPage bool
+}
+
+const DecisionSortingCreatedAt SortingField = SortingFieldCreatedAt
 
 type DecisionWorkflowFilters struct {
 	InboxId        string
