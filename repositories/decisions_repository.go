@@ -87,26 +87,26 @@ func (repo *MarbleDbRepository) DecisionWithRuleExecutionsById(ctx context.Conte
 func (repo *MarbleDbRepository) DecisionsByOutcomeAndScore(ctx context.Context, exec Executor,
 	scenarioID string, begin, end time.Time,
 ) ([]models.DecisionsByVersionByOutcome, error) {
-	decisionQuery := NewQueryBuilder().
+	decisionQuery := squirrel.StatementBuilder.
 		Select("outcome, scenario_version, score").
 		From(dbmodels.TABLE_DECISIONS).Where(squirrel.GtOrEq{
-		"created_at": begin.String(),
+		"created_at": begin,
 	}).Where(squirrel.LtOrEq{
-		"created_at": end.String(),
+		"created_at": end,
 	})
-	phantomDecisionQuery := NewQueryBuilder().
+	phantomDecisionQuery := squirrel.StatementBuilder.
 		Select("outcome, scenario_version, score").
 		From(dbmodels.TABLE_PHANTOM_DECISIONS).Where(squirrel.GtOrEq{
-		"created_at": begin.String(),
+		"created_at": begin,
 	}).Where(squirrel.LtOrEq{
-		"created_at": end.String(),
+		"created_at": end,
 	})
 	query, err := WithUnionAll(decisionQuery, phantomDecisionQuery)
 	if err != nil {
 		return nil, err
 	}
 	finalQuery := NewQueryBuilder().Select("q.outcome, q.scenario_version, q.score, Count(q.outcome) as total ").
-		FromSelect(query, "q").GroupBy("scenario_version, outcome, score")
+		FromSelect(query, "q").GroupBy("scenario_version, outcome, score").PlaceholderFormat(squirrel.Dollar)
 	return SqlToListOfRow(ctx,
 		exec,
 		finalQuery,

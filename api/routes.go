@@ -32,7 +32,7 @@ const (
 	// without warmup
 	LIST_DECISION_TIMEOUT = 30 * time.Second
 
-	DEFAULT_TIMEOUT = 5 * time.Second
+	DEFAULT_TIMEOUT = 500 * time.Second
 )
 
 func addRoutes(r *gin.Engine, auth Authentication, tokenHandler TokenHandler, uc usecases.Usecases, marbleAppHost string) {
@@ -68,10 +68,6 @@ func addRoutes(r *gin.Engine, auth Authentication, tokenHandler TokenHandler, uc
 	router.GET("/scenarios/:scenario_id", tom, getScenario(uc))
 	router.PATCH("/scenarios/:scenario_id", tom, updateScenario(uc))
 
-	router.GET("/testrun/:testrun_id/databyscore", timeoutMiddleware(LIST_DECISION_TIMEOUT),
-		handleDecisionsDataByOutcomeAndScore(uc))
-	router.GET("/testrun/:testrun_id/databyruleexecution", tom, handleListRulesExecution(uc))
-
 	router.GET("/scenario-iterations", tom, handleListScenarioIterations(uc))
 	router.POST("/scenario-iterations", tom, handleCreateScenarioIteration(uc))
 	router.GET("/scenario-iterations/:iteration_id", tom, handleGetScenarioIteration(uc))
@@ -99,6 +95,10 @@ func addRoutes(r *gin.Engine, auth Authentication, tokenHandler TokenHandler, uc
 
 	router.POST("/scenario-testrun", tom, handleCreateScenarioTestRun(uc))
 	router.GET("/scenario-testrun", tom, handleListScenarioTestRun(uc))
+	router.GET("/scenario-testruns/:test_run_id/decisiondatabyscore",
+		timeoutMiddleware(LIST_DECISION_TIMEOUT),
+		handleDecisionsDataByOutcomeAndScore(uc))
+	router.GET("/scenario-testruns/:test_run_id/databyruleexecution", tom, handleListRulesExecution(uc))
 	router.GET("/scenario-testruns/:test_run_id", tom, handleGetScenarioTestRun(uc))
 
 	router.GET("/scheduled-executions", tom, handleListScheduledExecution(uc))

@@ -32,7 +32,7 @@ func (usecases *UsecasesWithCreds) NewScenarioTestRunUseCase() ScenarioTestRunUs
 	}
 }
 
-func (usecase *ScenarioTestRunUsecase) ActivateScenarioTestRun(ctx context.Context,
+func (usecase *ScenarioTestRunUsecase) CreateScenarioTestRun(ctx context.Context,
 	organizationId string,
 	input models.ScenarioTestRunInput,
 ) (models.ScenarioTestRun, error) {
@@ -53,15 +53,11 @@ func (usecase *ScenarioTestRunUsecase) ActivateScenarioTestRun(ctx context.Conte
 		return models.ScenarioTestRun{}, models.ErrDataPreparationServiceUnavailable
 	}
 
-	if len(indexesToCreate) == 0 {
-		return models.ScenarioTestRun{}, nil
-	}
 	exec := usecase.executorFactory.NewExecutor()
 	errIdx := usecase.clientDbIndexEditor.CreateIndexesAsyncForScenarioWithCallback(ctx,
-		organizationId, indexesToCreate, func(ctx context.Context, exec repositories.Executor, args ...interface{}) error {
-			scenarioIterationId := args[0].(string)
-			return usecase.repository.UpdateTestRunStatus(ctx, exec, scenarioIterationId, models.Up)
-		}, input.PhantomIterationId)
+		organizationId, indexesToCreate, func(ctx context.Context) error {
+			return usecase.repository.UpdateTestRunStatus(ctx, exec, input.PhantomIterationId, models.Up)
+		})
 
 	if errIdx != nil {
 		return models.ScenarioTestRun{}, errors.Wrap(errIdx,
@@ -104,12 +100,12 @@ func (usecase *ScenarioTestRunUsecase) ActivateScenarioTestRun(ctx context.Conte
 			if err := usecase.repository.CreateTestRun(ctx, tx, testrunID, input); err != nil {
 				return models.ScenarioTestRun{}, err
 			}
-			result, err := usecase.repository.GetTestRunByID(ctx, exec, testrunID)
+			result, _ := usecase.repository.GetTestRunByID(ctx, tx, testrunID)
 			if err != nil {
 				return models.ScenarioTestRun{}, err
 			}
 			result.ScenarioId = scenario.Id
-			return *result, err
+			return result, nil
 		},
 	)
 }
@@ -140,11 +136,8 @@ func (usecase *ScenarioTestRunUsecase) GetTestRunById(ctx context.Context,
 	if err != nil {
 		return models.ScenarioTestRun{}, err
 	}
-	if testrun == nil {
-		return models.ScenarioTestRun{}, nil
-	}
 	if err := usecase.enforceSecurity.ReadTestRun(testrun.OrganizationId); err != nil {
 		return models.ScenarioTestRun{}, err
 	}
-	return *testrun, nil
+	return testrun, nil
 }
