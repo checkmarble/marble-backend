@@ -28,7 +28,7 @@ func handleCreateScenarioTestRun(uc usecases.Usecases) func(c *gin.Context) {
 		if presentError(ctx, c, err) {
 			return
 		}
-		scenarioTestRun, err := usecase.ActivateScenarioTestRun(ctx, organizationId, input)
+		scenarioTestRun, err := usecase.CreateScenarioTestRun(ctx, organizationId, input)
 		if presentError(ctx, c, err) {
 			return
 		}

@@ -110,6 +110,7 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 			&usecases.Repositories.MarbleDbRepository, usecases.NewEvaluateAstExpression(),
 			&usecases.Repositories.MarbleDbRepository, &usecases.Repositories.MarbleDbRepository,
 			&usecases.Repositories.MarbleDbRepository),
+		scenarioTestRunRepository: &usecases.Repositories.MarbleDbRepository,
 	}
 }
 

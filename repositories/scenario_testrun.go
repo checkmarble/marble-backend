@@ -24,7 +24,7 @@ type ScenarioTestRunRepository interface {
 	UpdateTestRunStatusByLiveVersion(ctx context.Context, exec Executor,
 		scenarioIterationID string, status models.TestrunStatus,
 	) error
-	GetTestRunByID(ctx context.Context, exec Executor, testrunID string) (*models.ScenarioTestRun, error)
+	GetTestRunByID(ctx context.Context, exec Executor, testrunID string) (models.ScenarioTestRun, error)
 }
 
 func selectTestruns() squirrel.SelectBuilder {
@@ -33,8 +33,11 @@ func selectTestruns() squirrel.SelectBuilder {
 		From(dbmodels.TABLE_SCENARIO_TESTRUN)
 }
 
-func (repo *MarbleDbRepository) CreateTestRun(ctx context.Context,
-	tx Transaction, testrunID string, input models.ScenarioTestRunInput,
+func (repo *MarbleDbRepository) CreateTestRun(
+	ctx context.Context,
+	tx Transaction,
+	testrunID string,
+	input models.ScenarioTestRunInput,
 ) error {
 	if err := validateMarbleDbExecutor(tx); err != nil {
 		return err
@@ -42,7 +45,8 @@ func (repo *MarbleDbRepository) CreateTestRun(ctx context.Context,
 	err := ExecBuilder(
 		ctx,
 		tx,
-		NewQueryBuilder().Insert(dbmodels.TABLE_SCENARIO_TESTRUN).
+		NewQueryBuilder().
+			Insert(dbmodels.TABLE_SCENARIO_TESTRUN).
 			Columns(
 				"id",
 				"scenario_iteration_id",
@@ -60,11 +64,7 @@ func (repo *MarbleDbRepository) CreateTestRun(ctx context.Context,
 				models.Pending.String(),
 			),
 	)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func (repo *MarbleDbRepository) UpdateTestRunStatus(ctx context.Context, exec Executor,
@@ -163,16 +163,24 @@ func (repo *MarbleDbRepository) ListTestRunsByScenarioID(ctx context.Context,
 	)
 }
 
-func (repo *MarbleDbRepository) GetTestRunByID(ctx context.Context, exec Executor, testrunID string) (*models.ScenarioTestRun, error) {
+func (repo *MarbleDbRepository) GetTestRunByID(ctx context.Context, exec Executor, testrunID string) (models.ScenarioTestRun, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return nil, err
+		return models.ScenarioTestRun{}, err
 	}
 	query := NewQueryBuilder().
-		Select("tr.id, tr.scenario_iteration_id, tr.live_scenario_iteration_id, tr.created_at, tr.expires_at, tr.status, scit.org_id, scit.scenario_id").
+		Select(`tr.id,
+			tr.scenario_iteration_id,
+			tr.live_scenario_iteration_id,
+			tr.created_at,
+			tr.expires_at,
+			tr.status,
+			scit.org_id,
+			scit.scenario_id`).
 		From(dbmodels.TABLE_SCENARIO_TESTRUN + " AS tr").
 		Join(dbmodels.TABLE_SCENARIO_ITERATIONS + " AS scit ON scit.id = tr.scenario_iteration_id").
-		Where(squirrel.Eq{"id": testrunID})
-	return SqlToOptionalModel(
+		Where(squirrel.Eq{"tr.id": testrunID})
+
+	return SqlToModel(
 		ctx,
 		exec,
 		query,

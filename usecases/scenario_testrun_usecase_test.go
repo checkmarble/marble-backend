@@ -98,7 +98,7 @@ func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 		[]interface{}{input.PhantomIterationId}).Return(nil)
 
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
-	result, err := suite.makeUsecase().ActivateScenarioTestRun(suite.ctx, suite.organizationId, input)
+	result, err := suite.makeUsecase().CreateScenarioTestRun(suite.ctx, suite.organizationId, input)
 	t := suite.T()
 	assert.Equal(t, nil, err)
 	assert.Equal(t, result.ScenarioIterationId, output.ScenarioIterationId)
