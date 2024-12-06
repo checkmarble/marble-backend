@@ -7,9 +7,9 @@ import (
 )
 
 type CreateScenarioTestRunBody struct {
-	TestIterationId string `json:"test_iteration_id"`
-	ScenarioId      string `json:"scenario_id"`
-	EndDate         string `json:"end_date"`
+	TestIterationId string    `json:"test_iteration_id"`
+	ScenarioId      string    `json:"scenario_id"`
+	EndDate         time.Time `json:"end_date"`
 }
 
 type ScenarioTestRunResp struct {
@@ -36,14 +36,9 @@ func AdaptScenarioTestRunDto(s models.ScenarioTestRun) ScenarioTestRunResp {
 }
 
 func AdaptCreateScenarioTestRunBody(dto CreateScenarioTestRunBody) (models.ScenarioTestRunInput, error) {
-	layout := "2006-01-02T15:04:05"
-	ed, err := time.Parse(layout, dto.EndDate)
-	if err != nil {
-		return models.ScenarioTestRunInput{}, err
-	}
 	return models.ScenarioTestRunInput{
 		ScenarioId:         dto.ScenarioId,
-		EndDate:            ed,
+		EndDate:            dto.EndDate,
 		PhantomIterationId: dto.TestIterationId,
 	}, nil
 }
