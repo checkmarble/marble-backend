@@ -11,7 +11,7 @@ import (
 func handleDecisionsDataByOutcomeAndScore(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		testrunId := c.Param("testrun_id")
+		testrunId := c.Param("test_run_id")
 		if testrunId == "" {
 			c.Status(http.StatusBadRequest)
 			return
@@ -21,14 +21,14 @@ func handleDecisionsDataByOutcomeAndScore(uc usecases.Usecases) func(c *gin.Cont
 		if presentError(ctx, c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, dto.ProcessDecisionDataDtoFromModels(decisions))
+		c.JSON(http.StatusOK, gin.H{"decisions": dto.ProcessDecisionDataDtoFromModels(decisions)})
 	}
 }
 
 func handleListRulesExecution(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		testrunId := c.Param("testrun_id")
+		testrunId := c.Param("test_run_id")
 		if testrunId == "" {
 			c.Status(http.StatusBadRequest)
 			return
@@ -38,6 +38,6 @@ func handleListRulesExecution(uc usecases.Usecases) func(c *gin.Context) {
 		if presentError(ctx, c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, dto.ProcessRuleExecutionDataDtoFromModels(rules))
+		c.JSON(http.StatusOK, gin.H{"rules": dto.ProcessRuleExecutionDataDtoFromModels(rules)})
 	}
 }

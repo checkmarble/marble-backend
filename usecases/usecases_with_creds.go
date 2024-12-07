@@ -110,6 +110,7 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 			&usecases.Repositories.MarbleDbRepository, usecases.NewEvaluateAstExpression(),
 			&usecases.Repositories.MarbleDbRepository, &usecases.Repositories.MarbleDbRepository,
 			&usecases.Repositories.MarbleDbRepository),
+		scenarioTestRunRepository: &usecases.Repositories.MarbleDbRepository,
 	}
 }
 
@@ -179,15 +180,6 @@ func (usecases *UsecasesWithCreds) NewScenarioPublicationUsecase() ScenarioPubli
 		scenarioFetcher:                usecases.NewScenarioFetcher(),
 		scenarioPublisher:              usecases.NewScenarioPublisher(),
 		clientDbIndexEditor:            usecases.NewClientDbIndexEditor(),
-	}
-}
-
-func (usecases *UsecasesWithCreds) NewScenarioTestRunUseCase() ScenarioTestRunUsecase {
-	return ScenarioTestRunUsecase{
-		transactionFactory: usecases.NewTransactionFactory(),
-		executorFactory:    usecases.NewExecutorFactory(),
-		enforceSecurity:    usecases.NewEnforceTestRunScenarioSecurity(),
-		repository:         &usecases.Repositories.MarbleDbRepository,
 	}
 }
 
