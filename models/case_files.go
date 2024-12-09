@@ -14,9 +14,9 @@ type CaseFile struct {
 	FileName      string
 }
 
-type CreateCaseFileInput struct {
+type CreateCaseFilesInput struct {
 	CaseId string
-	File   *multipart.FileHeader
+	Files  []*multipart.FileHeader
 }
 
 type CreateDbCaseFileInput struct {
