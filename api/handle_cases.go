@@ -272,16 +272,16 @@ func handlePostCaseFile(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		var form FileForm
-		if err := c.ShouldBind(&form); err != nil {
+		form, err := c.MultipartForm()
+		if err != nil {
 			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
 			return
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
-		cs, err := usecase.CreateCaseFile(ctx, models.CreateCaseFileInput{
+		cs, err := usecase.CreateCaseFiles(ctx, models.CreateCaseFilesInput{
 			CaseId: caseInput.Id,
-			File:   form.File,
+			Files:  form.File["file[]"],
 		})
 		if presentError(ctx, c, err) {
 			return

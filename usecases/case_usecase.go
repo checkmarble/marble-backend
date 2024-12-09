@@ -736,7 +736,7 @@ func trackCaseUpdatedEvents(ctx context.Context, caseId string, updateCaseAttrib
 	}
 }
 
-func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.CreateCaseFileInput) (models.Case, error) {
+func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.CreateCaseFilesInput) (models.Case, error) {
 	exec := usecase.executorFactory.NewExecutor()
 	logger := utils.LoggerFromContext(ctx)
 	creds, found := utils.CredentialsFromCtx(ctx)
@@ -745,8 +745,10 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 	}
 	userId := string(creds.ActorIdentity.UserId)
 
-	if err := validateFileType(input.File); err != nil {
-		return models.Case{}, err
+	for _, fileHeader := range input.Files {
+		if err := validateFileType(fileHeader); err != nil {
+			return models.Case{}, err
+		}
 	}
 
 	// permissions check
@@ -762,94 +764,93 @@ func (usecase *CaseUseCase) CreateCaseFile(ctx context.Context, input models.Cre
 		return models.Case{}, err
 	}
 
-	newFileReference := fmt.Sprintf("%s/%s/%s", creds.OrganizationId, input.CaseId, uuid.NewString())
-	writer, err := usecase.blobRepository.OpenStream(ctx, usecase.caseManagerBucketUrl, newFileReference, input.File.Filename)
-	if err != nil {
-		return models.Case{}, err
-	}
-	defer writer.Close() // We should still call Close when we are finished writing to check the error if any - this is a no-op if Close has already been called
+	for _, fileHeader := range input.Files {
+		newFileReference := fmt.Sprintf("%s/%s/%s", creds.OrganizationId, input.CaseId, uuid.NewString())
+		writer, err := usecase.blobRepository.OpenStream(ctx, usecase.caseManagerBucketUrl, newFileReference, fileHeader.Filename)
+		if err != nil {
+			return models.Case{}, err
+		}
+		defer writer.Close() // We should still call Close when we are finished writing to check the error if any - this is a no-op if Close has already been called
 
-	file, err := input.File.Open()
-	if err != nil {
-		return models.Case{}, errors.Wrap(models.BadParameterError, err.Error())
-	}
-	if _, err := io.Copy(writer, file); err != nil {
-		return models.Case{}, err
-	}
-	if err := writer.Close(); err != nil {
-		return models.Case{}, err
-	}
-
-	webhookEventId := uuid.New().String()
-
-	updatedCase, err := executor_factory.TransactionReturnValue(ctx, usecase.transactionFactory, func(
-		tx repositories.Transaction,
-	) (models.Case, error) {
-		if err := usecase.createCaseContributorIfNotExist(ctx, tx, input.CaseId, userId); err != nil {
+		file, err := fileHeader.Open()
+		if err != nil {
+			return models.Case{}, errors.Wrap(models.BadParameterError, err.Error())
+		}
+		if _, err := io.Copy(writer, file); err != nil {
+			return models.Case{}, err
+		}
+		if err := writer.Close(); err != nil {
 			return models.Case{}, err
 		}
 
-		newCaseFileId := uuid.NewString()
-		if err := usecase.repository.CreateDbCaseFile(
-			ctx,
-			tx,
-			models.CreateDbCaseFileInput{
-				Id:            newCaseFileId,
-				BucketName:    usecase.caseManagerBucketUrl,
-				CaseId:        input.CaseId,
-				FileName:      input.File.Filename,
-				FileReference: newFileReference,
-			},
-		); err != nil {
-			return models.Case{}, err
-		}
+		webhookEventId := uuid.New().String()
 
-		resourceType := models.CaseFileResourceType
-		err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
-			CaseId:         input.CaseId,
-			UserId:         userId,
-			EventType:      models.CaseFileAdded,
-			ResourceType:   &resourceType,
-			ResourceId:     &newCaseFileId,
-			AdditionalNote: &input.File.Filename,
+		err = usecase.transactionFactory.Transaction(ctx, func(
+			tx repositories.Transaction,
+		) error {
+			if err := usecase.createCaseContributorIfNotExist(ctx, tx, input.CaseId, userId); err != nil {
+				return err
+			}
+
+			newCaseFileId := uuid.NewString()
+			if err := usecase.repository.CreateDbCaseFile(
+				ctx,
+				tx,
+				models.CreateDbCaseFileInput{
+					Id:            newCaseFileId,
+					BucketName:    usecase.caseManagerBucketUrl,
+					CaseId:        input.CaseId,
+					FileName:      fileHeader.Filename,
+					FileReference: newFileReference,
+				},
+			); err != nil {
+				return err
+			}
+
+			resourceType := models.CaseFileResourceType
+			err = usecase.repository.CreateCaseEvent(ctx, tx, models.CreateCaseEventAttributes{
+				CaseId:         input.CaseId,
+				UserId:         userId,
+				EventType:      models.CaseFileAdded,
+				ResourceType:   &resourceType,
+				ResourceId:     &newCaseFileId,
+				AdditionalNote: &fileHeader.Filename,
+			})
+			if err != nil {
+				return err
+			}
+
+			err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
+				Id:             webhookEventId,
+				OrganizationId: creds.OrganizationId,
+				EventContent:   models.NewWebhookEventCaseFileCreated(input.CaseId),
+			})
+			if err != nil {
+				return err
+			}
+
+			return nil
 		})
 		if err != nil {
+			if deleteErr := usecase.blobRepository.DeleteFile(ctx,
+				usecase.caseManagerBucketUrl, newFileReference); deleteErr != nil {
+				logger.WarnContext(ctx, fmt.Sprintf("failed to clean up blob %s after case file creation failed", newFileReference),
+					"bucket", usecase.caseManagerBucketUrl,
+					"file_reference", newFileReference,
+					"error", deleteErr)
+				return models.Case{}, errors.Wrap(err, deleteErr.Error())
+			}
 			return models.Case{}, err
 		}
 
-		updatedCase, err := usecase.getCaseWithDetails(ctx, tx, input.CaseId)
-		if err != nil {
-			return models.Case{}, err
-		}
+		usecase.webhookEventsUsecase.SendWebhookEventAsync(ctx, webhookEventId)
 
-		err = usecase.webhookEventsUsecase.CreateWebhookEvent(ctx, tx, models.WebhookEventCreate{
-			Id:             webhookEventId,
-			OrganizationId: updatedCase.OrganizationId,
-			EventContent:   models.NewWebhookEventCaseFileCreated(updatedCase),
+		tracking.TrackEvent(ctx, models.AnalyticsCaseFileCreated, map[string]interface{}{
+			"case_id": input.CaseId,
 		})
-		if err != nil {
-			return models.Case{}, err
-		}
-
-		return updatedCase, nil
-	})
-	if err != nil {
-		if deleteErr := usecase.blobRepository.DeleteFile(ctx, usecase.caseManagerBucketUrl, newFileReference); deleteErr != nil {
-			logger.WarnContext(ctx, fmt.Sprintf("failed to clean up blob %s after case file creation failed", newFileReference),
-				"bucket", usecase.caseManagerBucketUrl,
-				"file_reference", newFileReference,
-				"error", deleteErr)
-			return models.Case{}, errors.Wrap(err, deleteErr.Error())
-		}
-		return models.Case{}, err
 	}
 
-	usecase.webhookEventsUsecase.SendWebhookEventAsync(ctx, webhookEventId)
-
-	tracking.TrackEvent(ctx, models.AnalyticsCaseFileCreated, map[string]interface{}{
-		"case_id": updatedCase.Id,
-	})
-	return updatedCase, nil
+	return usecase.getCaseWithDetails(ctx, exec, input.CaseId)
 }
 
 func validateFileType(file *multipart.FileHeader) error {
