@@ -33,9 +33,7 @@ func handleCreateScenarioTestRun(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 		result := dto.AdaptScenarioTestRunDto(scenarioTestRun)
-		c.JSON(http.StatusOK, gin.H{
-			"scenario_test_run": result,
-		})
+		c.JSON(http.StatusCreated, gin.H{"scenario_test_run": result})
 	}
 }
 
@@ -49,7 +47,7 @@ func handleListScenarioTestRun(uc usecases.Usecases) func(c *gin.Context) {
 		if presentError(ctx, c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, pure_utils.Map(testruns, dto.AdaptScenarioTestRunDto))
+		c.JSON(http.StatusOK, gin.H{"scenario_test_runs": pure_utils.Map(testruns, dto.AdaptScenarioTestRunDto)})
 	}
 }
 
@@ -64,6 +62,40 @@ func handleGetScenarioTestRun(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 		result := dto.AdaptScenarioTestRunDto(testrun)
-		c.JSON(http.StatusOK, result)
+		c.JSON(http.StatusOK, gin.H{"scenario_test_run": result})
+	}
+}
+
+func handleDecisionsDataByOutcomeAndScore(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		testrunId := c.Param("test_run_id")
+		if testrunId == "" {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+		usecase := usecasesWithCreds(ctx, uc).NewDecisionUsecase()
+		decisions, err := usecase.GetDecisionsByOutcomeAndScore(ctx, testrunId)
+		if presentError(ctx, c, err) {
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"decisions": dto.ProcessDecisionDataDtoFromModels(decisions)})
+	}
+}
+
+func handleListRulesExecution(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		testrunId := c.Param("test_run_id")
+		if testrunId == "" {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+		usecase := usecasesWithCreds(ctx, uc).NewRuleUsecase()
+		rules, err := usecase.ListRuleExecution(ctx, testrunId)
+		if presentError(ctx, c, err) {
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"rules": dto.ProcessRuleExecutionDataDtoFromModels(rules)})
 	}
 }

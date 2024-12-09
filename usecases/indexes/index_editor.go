@@ -17,7 +17,7 @@ type IngestedDataIndexesRepository interface {
 	ListAllUniqueIndexes(ctx context.Context, exec repositories.Executor) ([]models.UnicityIndex, error)
 	CreateIndexesAsync(ctx context.Context, exec repositories.Executor, indexes []models.ConcreteIndex) error
 	CreateIndexesWithCallback(ctx context.Context, exec repositories.Executor,
-		indexes []models.ConcreteIndex, onSuccess repositories.OnCreateIndexesSucces) error
+		indexes []models.ConcreteIndex, onSuccess models.OnCreateIndexesSuccess) error
 	CountPendingIndexes(ctx context.Context, exec repositories.Executor) (int, error)
 	CreateUniqueIndexAsync(ctx context.Context, exec repositories.Executor, index models.UnicityIndex) error
 	CreateUniqueIndex(ctx context.Context, exec repositories.Executor, index models.UnicityIndex) error
@@ -129,7 +129,7 @@ func (editor ClientDbIndexEditor) CreateIndexesAsyncForScenarioWithCallback(
 	ctx context.Context,
 	organizationId string,
 	indexes []models.ConcreteIndex,
-	onSuccess repositories.OnCreateIndexesSucces,
+	onSuccess models.OnCreateIndexesSuccess,
 ) error {
 	logger := utils.LoggerFromContext(ctx)
 

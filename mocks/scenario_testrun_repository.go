@@ -53,12 +53,9 @@ func (s *ScenarioTestrunRepository) GetActiveTestRunByScenarioIterationID(ctx co
 	return args.Get(0).(*models.ScenarioTestRun), args.Error(1)
 }
 
-func (s *ScenarioTestrunRepository) GetTestRunByID(ctx context.Context, exec repositories.Executor, testrunID string) (*models.ScenarioTestRun, error) {
+func (s *ScenarioTestrunRepository) GetTestRunByID(ctx context.Context, exec repositories.Executor, testrunID string) (models.ScenarioTestRun, error) {
 	args := s.Called(ctx, exec, testrunID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*models.ScenarioTestRun), args.Error(1)
+	return args.Get(0).(models.ScenarioTestRun), args.Error(1)
 }
 
 func (s *ScenarioTestrunRepository) ListTestRunsByScenarioID(ctx context.Context,

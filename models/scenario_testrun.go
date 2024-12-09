@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 type TestrunStatus int
 
@@ -54,3 +57,5 @@ type ScenarioTestRunInput struct {
 	LiveScenarioId     string
 	EndDate            time.Time
 }
+
+type OnCreateIndexesSuccess func(ctx context.Context) error
