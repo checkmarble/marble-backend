@@ -9,12 +9,11 @@ import (
 
 	"github.com/checkmarble/marble-backend/dto"
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-var decisionPaginationDefaults = dto.PaginationDefaults{
+var decisionPaginationDefaults = models.PaginationDefaults{
 	Limit:  25,
 	SortBy: models.DecisionSortingCreatedAt,
 	Order:  models.SortingOrderDesc,
@@ -34,6 +33,7 @@ func handleGetDecision(uc usecases.Usecases, marbleAppHost string) func(c *gin.C
 	}
 }
 
+// Endpoint used by the public API, that does not return the output decision ranks
 func handleListDecisions(uc usecases.Usecases, marbleAppHost string) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
@@ -48,42 +48,54 @@ func handleListDecisions(uc usecases.Usecases, marbleAppHost string) func(c *gin
 			return
 		}
 
-		var paginationAndSorting dto.PaginationAndSortingInput
-		if err := c.ShouldBind(&paginationAndSorting); err != nil {
+		var paginationAndSortingDto dto.PaginationAndSorting
+		if err := c.ShouldBind(&paginationAndSortingDto); err != nil {
 			c.Status(http.StatusBadRequest)
 			return
 		}
-		paginationAndSorting = dto.WithPaginationDefaults(paginationAndSorting, decisionPaginationDefaults)
+		paginationAndSorting := models.WithPaginationDefaults(
+			dto.AdaptPaginationAndSorting(paginationAndSortingDto), decisionPaginationDefaults)
 
 		usecase := usecasesWithCreds(ctx, uc).NewDecisionUsecase()
-		decisions, err := usecase.ListDecisions(
-			ctx,
-			organizationId,
-			dto.AdaptPaginationAndSortingInput(paginationAndSorting),
-			filters,
-		)
+		decisions, err := usecase.ListDecisions(ctx, organizationId, paginationAndSorting, filters)
 		if presentError(ctx, c, err) {
 			return
 		}
 
-		if len(decisions) == 0 {
-			c.JSON(http.StatusOK, gin.H{
-				"total_count": dto.AdaptTotalCount(models.TotalCount{}),
-				"start_index": 0,
-				"end_index":   0,
-				"items":       []dto.Decision{},
-			})
+		c.JSON(http.StatusOK, dto.AdaptDecisionListPageDto(decisions, marbleAppHost))
+	}
+}
+
+// Endpoint used by the internal API to serve the app, that returns the output decision ranks
+func handleListDecisionsInternal(uc usecases.Usecases, marbleAppHost string) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(ctx, c, err) {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"total_count": dto.AdaptTotalCount(decisions[0].TotalCount),
-			"start_index": decisions[0].RankNumber,
-			"end_index":   decisions[len(decisions)-1].RankNumber,
-			"items": pure_utils.Map(decisions, func(d models.DecisionWithRank) dto.Decision {
-				return dto.NewDecisionDto(d.Decision, marbleAppHost)
-			}),
-		})
+		var filters dto.DecisionFilters
+		if err := c.ShouldBind(&filters); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		var paginationAndSortingDto dto.PaginationAndSorting
+		if err := c.ShouldBind(&paginationAndSortingDto); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+		paginationAndSorting := models.WithPaginationDefaults(
+			dto.AdaptPaginationAndSorting(paginationAndSortingDto), decisionPaginationDefaults)
+
+		usecase := usecasesWithCreds(ctx, uc).NewDecisionUsecase()
+		decisions, err := usecase.ListDecisionsWithIndexes(ctx, organizationId, paginationAndSorting, filters)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, dto.AdaptDecisionListPageWithIndexesDto(decisions, marbleAppHost))
 	}
 }
 

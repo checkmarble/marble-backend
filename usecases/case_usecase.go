@@ -76,32 +76,32 @@ func (usecase *CaseUseCase) ListCases(
 	organizationId string,
 	pagination models.PaginationAndSorting,
 	filters dto.CaseFilters,
-) ([]models.CaseWithRank, error) {
+) (models.CaseListPage, error) {
 	if !filters.StartDate.IsZero() && !filters.EndDate.IsZero() &&
 		filters.StartDate.After(filters.EndDate) {
-		return []models.CaseWithRank{}, fmt.Errorf("start date must be before end date: %w", models.BadParameterError)
+		return models.CaseListPage{}, fmt.Errorf("start date must be before end date: %w", models.BadParameterError)
 	}
 	statuses, err := models.ValidateCaseStatuses(filters.Statuses)
 	if err != nil {
-		return []models.CaseWithRank{}, err
+		return models.CaseListPage{}, err
 	}
 
 	if err := models.ValidatePagination(pagination); err != nil {
-		return []models.CaseWithRank{}, err
+		return models.CaseListPage{}, err
 	}
 
 	return executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
-		func(tx repositories.Transaction) ([]models.CaseWithRank, error) {
+		func(tx repositories.Transaction) (models.CaseListPage, error) {
 			availableInboxIds, err := usecase.getAvailableInboxIds(ctx, tx, organizationId)
 			if err != nil {
-				return []models.CaseWithRank{}, err
+				return models.CaseListPage{}, err
 			}
 			if len(filters.InboxIds) > 0 {
 				for _, inboxId := range filters.InboxIds {
 					if !slices.Contains(availableInboxIds, inboxId) {
-						return []models.CaseWithRank{}, errors.Wrap(
+						return models.CaseListPage{}, errors.Wrap(
 							models.ForbiddenError, fmt.Sprintf("inbox %s is not accessible", inboxId))
 					}
 				}
@@ -119,16 +119,39 @@ func (usecase *CaseUseCase) ListCases(
 				repoFilters.InboxIds = availableInboxIds
 			}
 
+			paginationWithOneMore := pagination
+			paginationWithOneMore.Limit++
+
 			cases, err := usecase.repository.ListOrganizationCases(ctx, tx, repoFilters, pagination)
 			if err != nil {
-				return []models.CaseWithRank{}, err
+				return models.CaseListPage{}, err
 			}
 			for _, c := range cases {
 				if err := usecase.enforceSecurity.ReadOrUpdateCase(c.Case, availableInboxIds); err != nil {
-					return []models.CaseWithRank{}, err
+					return models.CaseListPage{}, err
 				}
 			}
-			return cases, nil
+
+			if len(cases) == 0 {
+				return models.CaseListPage{}, nil
+			}
+
+			hasNextPage := len(cases) > pagination.Limit
+			if hasNextPage {
+				cases = cases[:len(cases)-1]
+			}
+
+			casesWithoutRank := make([]models.Case, len(cases))
+			for i, c := range cases {
+				casesWithoutRank[i] = c.Case
+			}
+
+			return models.CaseListPage{
+				Cases:       casesWithoutRank,
+				StartIndex:  cases[0].RankNumber,
+				EndIndex:    cases[len(cases)-1].RankNumber,
+				HasNextPage: hasNextPage,
+			}, nil
 		},
 	)
 }

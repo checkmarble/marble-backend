@@ -43,8 +43,20 @@ type DecisionUsecaseRepository interface {
 		decision models.DecisionWithRuleExecutions,
 		organizationId string,
 		newDecisionId string) error
-	DecisionsOfOrganization(ctx context.Context, exec repositories.Executor, organizationId string,
-		paginationAndSorting models.PaginationAndSorting, filters models.DecisionFilters) ([]models.DecisionWithRank, error)
+	DecisionsOfOrganizationWithRank(
+		ctx context.Context,
+		exec repositories.Executor,
+		organizationId string,
+		paginationAndSorting models.PaginationAndSorting,
+		filters models.DecisionFilters,
+	) ([]models.DecisionWithRank, error)
+	DecisionsOfOrganization(
+		ctx context.Context,
+		exec repositories.Executor,
+		organizationId string,
+		paginationAndSorting models.PaginationAndSorting,
+		filters models.DecisionFilters,
+	) ([]models.Decision, error)
 
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
 
@@ -125,41 +137,44 @@ func (usecase *DecisionUsecase) GetDecisionsByOutcomeAndScore(ctx context.Contex
 	return decisions, nil
 }
 
-func (usecase *DecisionUsecase) ListDecisions(
+func (usecase *DecisionUsecase) ListDecisionsWithIndexes(
 	ctx context.Context,
 	organizationId string,
 	paginationAndSorting models.PaginationAndSorting,
 	filters dto.DecisionFilters,
-) ([]models.DecisionWithRank, error) {
+) (models.DecisionListPageWithIndexes, error) {
 	if err := usecase.validateScenarioIds(ctx, filters.ScenarioIds, organizationId); err != nil {
-		return []models.DecisionWithRank{}, err
+		return models.DecisionListPageWithIndexes{}, err
 	}
 
 	outcomes, err := usecase.validateOutcomes(filters.Outcomes)
 	if err != nil {
-		return []models.DecisionWithRank{}, err
+		return models.DecisionListPageWithIndexes{}, err
 	}
 
 	if !filters.StartDate.IsZero() && !filters.EndDate.IsZero() &&
 		filters.StartDate.After(filters.EndDate) {
-		return []models.DecisionWithRank{}, fmt.Errorf(
+		return models.DecisionListPageWithIndexes{}, fmt.Errorf(
 			"start date must be before end date: %w", models.BadParameterError)
 	}
 
 	triggerObjectTypes, err := usecase.validateTriggerObjects(ctx, filters.TriggerObjects, organizationId)
 	if err != nil {
-		return []models.DecisionWithRank{}, err
+		return models.DecisionListPageWithIndexes{}, err
 	}
 
 	if err := models.ValidatePagination(paginationAndSorting); err != nil {
-		return []models.DecisionWithRank{}, err
+		return models.DecisionListPageWithIndexes{}, err
 	}
 
-	decisions, err := usecase.repository.DecisionsOfOrganization(
+	paginationAndSortingWithOneMore := paginationAndSorting
+	paginationAndSortingWithOneMore.Limit++
+
+	decisions, err := usecase.repository.DecisionsOfOrganizationWithRank(
 		ctx,
 		usecase.executorFactory.NewExecutor(),
 		organizationId,
-		paginationAndSorting,
+		paginationAndSortingWithOneMore,
 		models.DecisionFilters{
 			CaseIds:               filters.CaseIds,
 			CaseInboxIds:          filters.CaseInboxIds,
@@ -174,14 +189,104 @@ func (usecase *DecisionUsecase) ListDecisions(
 			TriggerObjects:        triggerObjectTypes,
 		})
 	if err != nil {
-		return []models.DecisionWithRank{}, err
+		return models.DecisionListPageWithIndexes{}, err
 	}
 	for _, decision := range decisions {
 		if err := usecase.enforceSecurity.ReadDecision(decision.Decision); err != nil {
-			return []models.DecisionWithRank{}, err
+			return models.DecisionListPageWithIndexes{}, err
 		}
 	}
-	return decisions, nil
+	// handled separately so we're sure accessing an invalid index when checking the EndIndex below
+	if len(decisions) == 0 {
+		return models.DecisionListPageWithIndexes{}, nil
+	}
+
+	hasNextPage := len(decisions) > paginationAndSorting.Limit
+	if hasNextPage {
+		decisions = decisions[:len(decisions)-1]
+	}
+
+	decisionsWithoutRank := make([]models.Decision, len(decisions))
+	for i, decision := range decisions {
+		decisionsWithoutRank[i] = decision.Decision
+	}
+	return models.DecisionListPageWithIndexes{
+		Decisions:   decisionsWithoutRank,
+		StartIndex:  decisions[0].RankNumber,
+		EndIndex:    decisions[len(decisions)-1].RankNumber,
+		HasNextPage: hasNextPage,
+	}, nil
+}
+
+func (usecase *DecisionUsecase) ListDecisions(
+	ctx context.Context,
+	organizationId string,
+	paginationAndSorting models.PaginationAndSorting,
+	filters dto.DecisionFilters,
+) (models.DecisionListPage, error) {
+	if err := usecase.validateScenarioIds(ctx, filters.ScenarioIds, organizationId); err != nil {
+		return models.DecisionListPage{}, err
+	}
+
+	outcomes, err := usecase.validateOutcomes(filters.Outcomes)
+	if err != nil {
+		return models.DecisionListPage{}, err
+	}
+
+	if !filters.StartDate.IsZero() && !filters.EndDate.IsZero() &&
+		filters.StartDate.After(filters.EndDate) {
+		return models.DecisionListPage{}, fmt.Errorf(
+			"start date must be before end date: %w", models.BadParameterError)
+	}
+
+	triggerObjectTypes, err := usecase.validateTriggerObjects(ctx, filters.TriggerObjects, organizationId)
+	if err != nil {
+		return models.DecisionListPage{}, err
+	}
+
+	if err := models.ValidatePagination(paginationAndSorting); err != nil {
+		return models.DecisionListPage{}, err
+	}
+
+	paginationAndSortingWithOneMore := paginationAndSorting
+	paginationAndSortingWithOneMore.Limit++
+
+	decisions, err := usecase.repository.DecisionsOfOrganization(
+		ctx,
+		usecase.executorFactory.NewExecutor(),
+		organizationId,
+		paginationAndSortingWithOneMore,
+		models.DecisionFilters{
+			CaseIds:               filters.CaseIds,
+			CaseInboxIds:          filters.CaseInboxIds,
+			EndDate:               filters.EndDate,
+			HasCase:               filters.HasCase,
+			Outcomes:              outcomes,
+			PivotValue:            filters.PivotValue,
+			ReviewStatuses:        filters.ReviewStatuses,
+			ScenarioIds:           filters.ScenarioIds,
+			ScheduledExecutionIds: filters.ScheduledExecutionIds,
+			StartDate:             filters.StartDate,
+			TriggerObjects:        triggerObjectTypes,
+		})
+	if err != nil {
+		return models.DecisionListPage{}, err
+	}
+	for _, decision := range decisions {
+		if err := usecase.enforceSecurity.ReadDecision(decision); err != nil {
+			return models.DecisionListPage{}, err
+		}
+	}
+
+	hasNextPage := len(decisions) > paginationAndSorting.Limit
+	if hasNextPage {
+		decisions = decisions[:len(decisions)-1]
+	}
+
+	return models.DecisionListPage{
+		Decisions:   decisions,
+		HasNextPage: hasNextPage,
+	}, nil
 }
 
 func (usecase *DecisionUsecase) validateScenarioIds(ctx context.Context, scenarioIds []string, organizationId string) error {

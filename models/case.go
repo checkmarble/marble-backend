@@ -73,15 +73,19 @@ type CaseFilters struct {
 	InboxIds       []string
 }
 
+type CaseListPage struct {
+	Cases       []Case
+	StartIndex  int
+	EndIndex    int
+	HasNextPage bool
+}
+
 type CaseWithRank struct {
 	Case
 	RankNumber int
-	TotalCount TotalCount
 }
 
-const (
-	CasesSortingCreatedAt SortingField = "created_at"
-)
+const CasesSortingCreatedAt = SortingFieldCreatedAt
 
 func ValidateCaseStatuses(statuses []string) ([]CaseStatus, error) {
 	sanitizedStatuses := make([]CaseStatus, len(statuses))
