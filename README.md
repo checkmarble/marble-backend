@@ -85,13 +85,17 @@ The application uses [goose](https://github.com/pressly/goose) to manage migrati
 
 Migrations are located in the `repositories/migrations` folder.
 
-Execute the program with flags `-migrations` to run migrations
+Execute the program with flags `-migrations` to run migrations.
 
-To create a new migration, you can use the following command:
+To create a new migration, you can use the following command from within the `repositories/migrations` folder
 
 ```sh
-make generate_migration
+goose create add_some_column sql
 ```
+
+It happens that the migrations end up being misordered. This happens if two people pushed new migrations A and B, B having a timestamp greated than A, but B B is commited first to main. The issue can occur when pushing to the main branch, or when pulling changes from remote main to the local branch. In this case, you may need to roll back a few local migrations before you can migrate up again.
+
+The easiest way of doings this is by installing the goose cli with brew (`brew install goose`), configuring the goose environment variables (typically `export GOOSE_DRIVER=postgres` and `export GOOSE_DBSTRING="user=postgres dbname=marble host=localhost password=marble"` should work), and then running `goose down` as many times as needed from the `repositories/migrations` folder. See also [the goose doc](https://github.com/pressly/goose).
 
 ## FAQ
 
