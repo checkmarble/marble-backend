@@ -171,13 +171,21 @@ func (repo *ClientDbRepository) CreateIndexesWithCallback(
 
 	go func() {
 		ctx = context.WithoutCancel(ctx)
-		ctx, _ = context.WithTimeout(ctx, INDEX_CREATION_TIMEOUT) //nolint:govet
-		var err error
+		ctx, cancel := context.WithTimeout(ctx, INDEX_CREATION_TIMEOUT)
+		defer cancel()
 		for _, index := range indexes {
-			err = createIndexSQL(ctx, exec, index)
+			err := createIndexSQL(ctx, exec, index)
+			if err != nil {
+				utils.LogAndReportSentryError(ctx, err)
+				return
+			}
 		}
-		if err == nil && onSuccess != nil {
-			_ = onSuccess(ctx)
+
+		if onSuccess != nil {
+			err := onSuccess(ctx)
+			if err != nil {
+				utils.LogAndReportSentryError(ctx, err)
+			}
 		}
 	}()
 	return nil

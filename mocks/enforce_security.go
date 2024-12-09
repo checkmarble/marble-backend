@@ -171,3 +171,8 @@ func (e *EnforceSecurity) WriteDataModel(organizationId string) error {
 	args := e.Called(organizationId)
 	return args.Error(0)
 }
+
+func (e *EnforceSecurity) WriteDataModelIndexes(organizationId string) error {
+	args := e.Called(organizationId)
+	return args.Error(0)
+}

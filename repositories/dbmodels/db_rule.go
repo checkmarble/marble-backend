@@ -65,7 +65,7 @@ func AdaptRuleExecutionStat(db DbRuleExecution) (models.RuleExecutionStat, error
 		Version:      db.Version,
 		Name:         db.Name,
 		Outcome:      db.Outcome,
-		StableRuleId: *db.StableRuleId,
+		StableRuleId: db.StableRuleId,
 		Total:        db.Total,
 	}, nil
 }

@@ -83,7 +83,7 @@ type RuleExecutionStat struct {
 	Version      string
 	Name         string
 	Outcome      string
-	StableRuleId string
+	StableRuleId *string
 	Total        int
 }
 
