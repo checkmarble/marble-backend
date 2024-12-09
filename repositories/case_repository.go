@@ -361,5 +361,5 @@ func (repo *MarbleDbRepository) GetCasesFileByCaseId(ctx context.Context, exec E
 }
 
 func orderConditionForCases(p models.PaginationAndSorting) string {
-	return fmt.Sprintf("d.%s %s, d.id %s", p.Sorting, p.Order, p.Order)
+	return fmt.Sprintf("c.%s %s, c.id %s", p.Sorting, p.Order, p.Order)
 }
