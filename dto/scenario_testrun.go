@@ -47,11 +47,11 @@ func AdaptCreateScenarioTestRunBody(dto CreateScenarioTestRunBody) (models.Scena
 
 // rule execution stats DTO. Contains statistics on rule executions for either the live version or the tested version.
 type RuleExecutionData struct {
-	Version      string `json:"version"`
-	Name         string `json:"name"`
-	Status       string `json:"status"`
-	StableRuleId string `json:"stable_rule_id"`
-	Total        int    `json:"total"`
+	Version      string  `json:"version"`
+	Name         string  `json:"name"`
+	Status       string  `json:"status"`
+	StableRuleId *string `json:"stable_rule_id,omitempty"`
+	Total        int     `json:"total"`
 }
 
 func ProcessRuleExecutionDataDtoFromModels(inputs []models.RuleExecutionStat) []RuleExecutionData {
