@@ -111,12 +111,6 @@ type PivotValue struct {
 	PivotId    null.String `json:"pivot_id"`
 }
 
-type DecisionData struct {
-	Version string `json:"version"`
-	Outcome string `json:"outcome"`
-	Total   int    `json:"total"`
-}
-
 type Decision struct {
 	Id                   string           `json:"id"`
 	AppLink              null.String      `json:"app_link"`
@@ -171,19 +165,6 @@ func NewDecisionDto(decision models.Decision, marbleAppHost string) Decision {
 	}
 
 	return decisionDto
-}
-
-func ProcessDecisionDataDtoFromModels(inputs []models.DecisionsByVersionByOutcome) []DecisionData {
-	result := make([]DecisionData, len(inputs))
-	for i, input := range inputs {
-		item := DecisionData{
-			Version: input.Version,
-			Outcome: input.Outcome,
-			Total:   input.Count,
-		}
-		result[i] = item
-	}
-	return result
 }
 
 func toDecisionUrl(marbleAppHost string, decisionId string) null.String {

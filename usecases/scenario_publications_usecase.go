@@ -35,7 +35,7 @@ type clientDbIndexEditor interface {
 	)
 	CreateIndexesAsync(ctx context.Context, organizationId string, indexes []models.ConcreteIndex) error
 	CreateIndexesAsyncForScenarioWithCallback(ctx context.Context, organizationId string,
-		indexes []models.ConcreteIndex, onSuccess repositories.OnCreateIndexesSucces) error
+		indexes []models.ConcreteIndex, onSuccess models.OnCreateIndexesSuccess) error
 	ListAllUniqueIndexes(ctx context.Context, organizationId string) ([]models.UnicityIndex, error)
 	CreateUniqueIndex(ctx context.Context, exec repositories.Executor, organizationId string, index models.UnicityIndex) error
 	CreateUniqueIndexAsync(ctx context.Context, organizationId string, index models.UnicityIndex) error

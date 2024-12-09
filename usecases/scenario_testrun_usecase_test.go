@@ -83,7 +83,7 @@ func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 		LiveVersionID: &liveVersionID,
 	}, nil)
 	suite.repository.On("GetTestRunByID", suite.ctx, suite.transaction,
-		mock.Anything).Return(&output, nil)
+		mock.Anything).Return(output, nil)
 	suite.enforceSecurity.On("CreateTestRun", suite.organizationId).Return(nil)
 	suite.repository.On("CreateTestRun", suite.ctx, suite.transaction, mock.Anything, input).Return(nil)
 	suite.repository.On("GetActiveTestRunByScenarioIterationID", suite.ctx, suite.transaction,
@@ -95,7 +95,7 @@ func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 				TableName: "sample_table",
 			},
 		}, mock.Anything,
-		[]interface{}{input.PhantomIterationId}).Return(nil)
+	).Return(nil)
 
 	suite.transactionFactory.On("Transaction", suite.ctx, mock.Anything).Return(nil)
 	result, err := suite.makeUsecase().CreateScenarioTestRun(suite.ctx, suite.organizationId, input)

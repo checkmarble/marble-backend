@@ -134,6 +134,7 @@ func (usecase *DecisionUsecase) GetDecisionsByOutcomeAndScore(ctx context.Contex
 	if err != nil {
 		return []models.DecisionsByVersionByOutcome{}, err
 	}
+
 	return decisions, nil
 }
 

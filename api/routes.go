@@ -32,7 +32,7 @@ const (
 	// without warmup
 	LIST_DECISION_TIMEOUT = 30 * time.Second
 
-	DEFAULT_TIMEOUT = 500 * time.Second
+	DEFAULT_TIMEOUT = 5 * time.Second
 )
 
 func addRoutes(r *gin.Engine, auth Authentication, tokenHandler TokenHandler, uc usecases.Usecases, marbleAppHost string) {

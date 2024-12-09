@@ -22,7 +22,7 @@ func (m *IngestedDataIndexesRepository) ListAllValidIndexes(
 }
 
 func (m *IngestedDataIndexesRepository) CreateIndexesWithCallback(ctx context.Context, exec repositories.Executor,
-	indexes []models.ConcreteIndex, onSuccess repositories.OnCreateIndexesSucces,
+	indexes []models.ConcreteIndex, onSuccess models.OnCreateIndexesSuccess,
 ) error {
 	calls := m.Called(ctx, exec, indexes, onSuccess)
 	return calls.Error(0)

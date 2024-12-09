@@ -16,7 +16,6 @@ import (
 )
 
 var INDEX_CREATION_TIMEOUT time.Duration = 60 * 4 * time.Minute // 4 hours
-type OnCreateIndexesSucces func(ctx context.Context) error
 
 func (repo *ClientDbRepository) ListAllValidIndexes(
 	ctx context.Context,
@@ -164,7 +163,7 @@ func (repo *ClientDbRepository) CreateIndexesWithCallback(
 	ctx context.Context,
 	exec Executor,
 	indexes []models.ConcreteIndex,
-	onSuccess OnCreateIndexesSucces,
+	onSuccess models.OnCreateIndexesSuccess,
 ) error {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return err
