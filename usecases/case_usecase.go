@@ -122,7 +122,7 @@ func (usecase *CaseUseCase) ListCases(
 			paginationWithOneMore := pagination
 			paginationWithOneMore.Limit++
 
-			cases, err := usecase.repository.ListOrganizationCases(ctx, tx, repoFilters, pagination)
+			cases, err := usecase.repository.ListOrganizationCases(ctx, tx, repoFilters, paginationWithOneMore)
 			if err != nil {
 				return models.CaseListPage{}, err
 			}
