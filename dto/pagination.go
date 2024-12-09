@@ -6,7 +6,7 @@ type PaginationAndSorting struct {
 	OffsetId string `form:"offset_id"`
 	Sorting  string `form:"sorting"`
 	Order    string `form:"order"`
-	Limit    int    `form:"limit" binding:"min=1,max=100"`
+	Limit    int    `form:"limit" binding:"max=100"`
 }
 
 func AdaptPaginationAndSorting(input PaginationAndSorting) models.PaginationAndSorting {
