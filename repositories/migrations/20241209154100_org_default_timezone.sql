@@ -13,6 +13,6 @@ ALTER TABLE organizations
 DROP COLUMN default_scenario_timezone;
 
 ALTER TABLE organizations
-ADD COLUMN export_scheduled_execution_s3 VARCHAR() DEFAULT '';
+ADD COLUMN export_scheduled_execution_s3 VARCHAR DEFAULT '';
 
 -- +goose StatementEnd
