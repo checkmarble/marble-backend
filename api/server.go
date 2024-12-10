@@ -12,29 +12,55 @@ import (
 	"github.com/checkmarble/marble-backend/usecases"
 )
 
+type Option func(*options)
+
+func WithLocalTest(localTest bool) Option {
+	return func(o *options) {
+		o.localTest = localTest
+	}
+}
+
+type options struct {
+	localTest bool
+}
+
+func applyOptions(opts []Option) *options {
+	o := &options{
+		localTest: false,
+	}
+	for _, opt := range opts {
+		opt(o)
+	}
+	return o
+}
+
 func NewServer(
 	router *gin.Engine,
-	port string,
-	marbleAppHost string,
+	conf Configuration,
 	uc usecases.Usecases,
 	auth Authentication,
 	tokenHandler TokenHandler,
-	localTest ...bool,
+	opts ...Option,
 ) *http.Server {
-	addRoutes(router, auth, tokenHandler, uc, marbleAppHost)
+	o := applyOptions(opts)
+
+	addRoutes(router, conf, uc, auth, tokenHandler)
 
 	var host string
-	if len(localTest) > 0 && localTest[0] {
+	if o.localTest {
 		host = "localhost"
 	} else {
 		host = "0.0.0.0"
 	}
 
+	// Add 5 seconds to the server timeout to gracefully handle the timeout in our code
+	maxTimeout := max(conf.BatchTimeout, conf.DecisionTimeout, conf.DefaultTimeout) + 5*time.Second
+
 	return &http.Server{
-		Addr:         fmt.Sprintf("%s:%s", host, port),
-		WriteTimeout: time.Second * 60,
-		ReadTimeout:  time.Second * 60,
-		IdleTimeout:  time.Second * 60,
+		Addr:         fmt.Sprintf("%s:%s", host, conf.Port),
+		WriteTimeout: maxTimeout,
+		ReadTimeout:  maxTimeout,
+		IdleTimeout:  maxTimeout,
 		Handler:      h2c.NewHandler(router, &http2.Server{}),
 	}
 }

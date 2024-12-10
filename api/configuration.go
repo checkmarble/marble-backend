@@ -1,5 +1,7 @@
 package api
 
+import "time"
+
 type Configuration struct {
 	Env                  string
 	AppName              string
@@ -9,4 +11,7 @@ type Configuration struct {
 	RequestLoggingLevel  string
 	TokenLifetimeMinute  int
 	SegmentWriteKey      string
+	BatchTimeout         time.Duration
+	DecisionTimeout      time.Duration
+	DefaultTimeout       time.Duration
 }
