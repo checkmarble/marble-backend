@@ -110,7 +110,7 @@ func (repo *MarbleDbRepository) GetTestRunByLiveVersionID(
 	}
 	query := selectTestruns().
 		Where(squirrel.Eq{"live_scenario_iteration_id": liveVersionID}).
-		OrderBy("created_at")
+		OrderBy("created_at DESC")
 	testruns, err := SqlToListOfModels(
 		ctx,
 		exec,
