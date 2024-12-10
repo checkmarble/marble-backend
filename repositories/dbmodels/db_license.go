@@ -24,6 +24,7 @@ type DBLicense struct {
 	UserRoles            bool               `db:"user_roles"`
 	Webhooks             bool               `db:"webhooks"`
 	RuleSnoozes          bool               `db:"rule_snoozes"`
+	TestRun              bool               `db:"test_run"`
 }
 
 const TABLE_LICENSES = "licenses"
@@ -47,6 +48,7 @@ func AdaptLicense(db DBLicense) (models.License, error) {
 			UserRoles:      db.UserRoles,
 			Webhooks:       db.Webhooks,
 			RuleSnoozes:    db.RuleSnoozes,
+			TestRun:        db.TestRun,
 		},
 	}, nil
 }

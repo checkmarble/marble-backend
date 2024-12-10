@@ -58,6 +58,7 @@ type LicenseEntitlements struct {
 	UserRoles      bool
 	Webhooks       bool
 	RuleSnoozes    bool
+	TestRun        bool
 }
 
 type LicenseValidation struct {
@@ -76,6 +77,7 @@ func NewFullLicense() LicenseValidation {
 			UserRoles:      true,
 			Webhooks:       true,
 			RuleSnoozes:    true,
+			TestRun:        true,
 		},
 	}
 }
