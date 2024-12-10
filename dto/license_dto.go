@@ -18,6 +18,7 @@ type LicenseEntitlements struct {
 	UserRoles      bool `json:"user_roles"`
 	Webhooks       bool `json:"webhooks"`
 	RuleSnoozes    bool `json:"rule_snoozes"`
+	TestRun        bool `json:"test_run"`
 }
 
 func AdaptLicenseEntitlements(licenseEntitlements models.LicenseEntitlements) LicenseEntitlements {
@@ -29,6 +30,7 @@ func AdaptLicenseEntitlements(licenseEntitlements models.LicenseEntitlements) Li
 		UserRoles:      licenseEntitlements.UserRoles,
 		Webhooks:       licenseEntitlements.Webhooks,
 		RuleSnoozes:    licenseEntitlements.RuleSnoozes,
+		TestRun:        licenseEntitlements.TestRun,
 	}
 }
 
