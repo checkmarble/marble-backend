@@ -258,7 +258,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_CreateIndexesAsync_nominal() {
 			Included: []string{"c", "d"},
 		},
 	}
-	suite.enforceSecurityDataModel.On("WriteDataModel", suite.organizationId).Return(nil)
+	suite.enforceSecurityDataModel.On("WriteDataModelIndexes", suite.organizationId).Return(nil)
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.ingestedDataIndexesRepository.On("CreateIndexesAsync", suite.ctx, suite.transaction, indexes).Return(nil)
 
@@ -276,7 +276,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_CreateIndexesAsync_security_erro
 			Included: []string{"c", "d"},
 		},
 	}
-	suite.enforceSecurityDataModel.On("WriteDataModel", suite.organizationId).Return(suite.securityError)
+	suite.enforceSecurityDataModel.On("WriteDataModelIndexes", suite.organizationId).Return(suite.securityError)
 
 	err := suite.makeUsecase().CreateIndexesAsync(suite.ctx, suite.organizationId, indexes)
 
@@ -292,7 +292,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_CreateIndexesAsync_error() {
 			Included: []string{"c", "d"},
 		},
 	}
-	suite.enforceSecurityDataModel.On("WriteDataModel", suite.organizationId).Return(nil)
+	suite.enforceSecurityDataModel.On("WriteDataModelIndexes", suite.organizationId).Return(nil)
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(suite.transaction, nil)
 	suite.ingestedDataIndexesRepository.On("CreateIndexesAsync", suite.ctx, suite.transaction, indexes).Return(suite.repositoryError)
 
@@ -310,7 +310,7 @@ func (suite *ClientDbIndexEditorTestSuite) Test_CreateIndexesAsync_get_executor_
 			Included: []string{"c", "d"},
 		},
 	}
-	suite.enforceSecurityDataModel.On("WriteDataModel", suite.organizationId).Return(nil)
+	suite.enforceSecurityDataModel.On("WriteDataModelIndexes", suite.organizationId).Return(nil)
 	suite.executorFactory.On("NewClientDbExecutor", suite.ctx, suite.organizationId).Return(nil, suite.repositoryError)
 
 	err := suite.makeUsecase().CreateIndexesAsync(suite.ctx, suite.organizationId, indexes)

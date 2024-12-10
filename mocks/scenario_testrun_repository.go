@@ -26,13 +26,6 @@ func (s *ScenarioTestrunRepository) UpdateTestRunStatus(ctx context.Context, exe
 	return args.Error(0)
 }
 
-func (s *ScenarioTestrunRepository) UpdateTestRunStatusByLiveVersion(ctx context.Context, exec repositories.Executor,
-	liveVersionID string, status models.TestrunStatus,
-) error {
-	args := s.Called(ctx, exec, liveVersionID, status)
-	return args.Error(0)
-}
-
 func (s *ScenarioTestrunRepository) GetTestRunByLiveVersionID(ctx context.Context, exec repositories.Executor,
 	liveVersionID string,
 ) (*models.ScenarioTestRun, error) {

@@ -39,36 +39,13 @@ func (usecase *ScenarioTestRunUsecase) CreateScenarioTestRun(ctx context.Context
 	if err := usecase.enforceSecurity.CreateTestRun(organizationId); err != nil {
 		return models.ScenarioTestRun{}, err
 	}
-	indexesToCreate, numPending, err := usecase.clientDbIndexEditor.GetIndexesToCreate(
-		ctx,
-		organizationId,
-		input.PhantomIterationId,
-	)
-	if err != nil {
-		return models.ScenarioTestRun{}, errors.Wrap(err,
-			"Error while fetching indexes to create in ActivateScenarioTestRun")
-	}
-
-	if numPending > 0 {
-		return models.ScenarioTestRun{}, models.ErrDataPreparationServiceUnavailable
-	}
-
 	exec := usecase.executorFactory.NewExecutor()
-	errIdx := usecase.clientDbIndexEditor.CreateIndexesAsyncForScenarioWithCallback(ctx,
-		organizationId, indexesToCreate, func(ctx context.Context) error {
-			return usecase.repository.UpdateTestRunStatus(ctx, exec, input.PhantomIterationId, models.Up)
-		})
-
-	if errIdx != nil {
-		return models.ScenarioTestRun{}, errors.Wrap(errIdx,
-			"Error while creating indexes in ActivateScenarioTestRun")
-	}
 
 	// we should not have any existing testrun for this scenario
 	existingTestrun, err := usecase.repository.GetActiveTestRunByScenarioIterationID(ctx, exec, input.PhantomIterationId)
 	if err != nil {
 		return models.ScenarioTestRun{}, errors.Wrap(err,
-			"error while fecthing entries to find an existing testrun")
+			"error while fetching entries to find an existing testrun")
 	}
 	if existingTestrun != nil {
 		return models.ScenarioTestRun{}, errors.Wrap(models.ErrTestRunAlreadyExist,
@@ -83,38 +60,68 @@ func (usecase *ScenarioTestRunUsecase) CreateScenarioTestRun(ctx context.Context
 	if scenario.LiveVersionID == nil {
 		return models.ScenarioTestRun{}, models.ErrScenarioHasNoLiveVersion
 	}
-
 	// the live version must not be the one on which we want to start a testrun
 	if *scenario.LiveVersionID == input.PhantomIterationId {
 		return models.ScenarioTestRun{}, models.ErrWrongIterationForTestRun
 	}
 
+	indexesToCreate, numPending, err := usecase.clientDbIndexEditor.GetIndexesToCreate(
+		ctx,
+		organizationId,
+		input.PhantomIterationId,
+	)
+	if err != nil {
+		return models.ScenarioTestRun{}, errors.Wrap(err,
+			"Error while fetching indexes to create in ActivateScenarioTestRun")
+	}
+	if numPending > 0 {
+		return models.ScenarioTestRun{}, models.ErrDataPreparationServiceUnavailable
+	}
+
 	// keep track of the live version associated to the current testrun
 	input.LiveScenarioId = *scenario.LiveVersionID
+	testRunId := pure_utils.NewPrimaryKey(organizationId)
 
-	return executor_factory.TransactionReturnValue(
+	tr, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Transaction) (models.ScenarioTestRun, error) {
-			testrunID := pure_utils.NewPrimaryKey(organizationId)
-			if err := usecase.repository.CreateTestRun(ctx, tx, testrunID, input); err != nil {
+			if err := usecase.repository.CreateTestRun(ctx, tx, testRunId, input); err != nil {
 				return models.ScenarioTestRun{}, err
 			}
-			result, _ := usecase.repository.GetTestRunByID(ctx, tx, testrunID)
+			result, err := usecase.repository.GetTestRunByID(ctx, tx, testRunId)
 			if err != nil {
 				return models.ScenarioTestRun{}, err
 			}
-			result.ScenarioId = scenario.Id
 			return result, nil
 		},
 	)
+	if err != nil {
+		return models.ScenarioTestRun{}, err
+	}
+
+	// finally, create the indexes, and update the status asynchronously. This is error prone, and an improvement is planned (creating
+	// the test run in a task queue)
+	err = usecase.clientDbIndexEditor.CreateIndexesAsyncForScenarioWithCallback(
+		ctx,
+		organizationId,
+		indexesToCreate,
+		func(ctx context.Context) error {
+			return usecase.repository.UpdateTestRunStatus(ctx, exec, testRunId, models.Up)
+		})
+	if err != nil {
+		return models.ScenarioTestRun{}, errors.Wrap(err,
+			"Error while creating indexes in ActivateScenarioTestRun")
+	}
+
+	return tr, nil
 }
 
 func (usecase *ScenarioTestRunUsecase) ListTestRunByScenarioId(ctx context.Context,
 	scenarioId string,
 ) ([]models.ScenarioTestRun, error) {
-	testruns, err := usecase.repository.ListTestRunsByScenarioID(ctx,
-		usecase.executorFactory.NewExecutor(), scenarioId)
+	exec := usecase.executorFactory.NewExecutor()
+	testruns, err := usecase.repository.ListTestRunsByScenarioID(ctx, exec, scenarioId)
 	if err != nil {
 		return nil, err
 	}
@@ -131,8 +138,10 @@ func (usecase *ScenarioTestRunUsecase) ListTestRunByScenarioId(ctx context.Conte
 func (usecase *ScenarioTestRunUsecase) GetTestRunById(ctx context.Context,
 	testRunId string,
 ) (models.ScenarioTestRun, error) {
-	testrun, err := usecase.repository.GetTestRunByID(ctx,
-		usecase.executorFactory.NewExecutor(), testRunId)
+	testrun, err := usecase.repository.GetTestRunByID(
+		ctx,
+		usecase.executorFactory.NewExecutor(),
+		testRunId)
 	if err != nil {
 		return models.ScenarioTestRun{}, err
 	}

@@ -16,8 +16,12 @@ type IngestedDataIndexesRepository interface {
 	ListAllValidIndexes(ctx context.Context, exec repositories.Executor) ([]models.ConcreteIndex, error)
 	ListAllUniqueIndexes(ctx context.Context, exec repositories.Executor) ([]models.UnicityIndex, error)
 	CreateIndexesAsync(ctx context.Context, exec repositories.Executor, indexes []models.ConcreteIndex) error
-	CreateIndexesWithCallback(ctx context.Context, exec repositories.Executor,
-		indexes []models.ConcreteIndex, onSuccess models.OnCreateIndexesSuccess) error
+	CreateIndexesWithCallback(
+		ctx context.Context,
+		exec repositories.Executor,
+		indexes []models.ConcreteIndex,
+		onSuccess models.OnCreateIndexesSuccess,
+	) error
 	CountPendingIndexes(ctx context.Context, exec repositories.Executor) (int, error)
 	CreateUniqueIndexAsync(ctx context.Context, exec repositories.Executor, index models.UnicityIndex) error
 	CreateUniqueIndex(ctx context.Context, exec repositories.Executor, index models.UnicityIndex) error
@@ -104,7 +108,7 @@ func (editor ClientDbIndexEditor) CreateIndexesAsync(
 ) error {
 	logger := utils.LoggerFromContext(ctx)
 
-	if err := editor.enforceSecurityDataModel.WriteDataModel(organizationId); err != nil {
+	if err := editor.enforceSecurityDataModel.WriteDataModelIndexes(organizationId); err != nil {
 		return err
 	}
 
@@ -133,7 +137,7 @@ func (editor ClientDbIndexEditor) CreateIndexesAsyncForScenarioWithCallback(
 ) error {
 	logger := utils.LoggerFromContext(ctx)
 
-	if err := editor.enforceSecurityDataModel.WriteDataModel(organizationId); err != nil {
+	if err := editor.enforceSecurityDataModel.WriteDataModelIndexes(organizationId); err != nil {
 		return err
 	}
 
@@ -149,7 +153,7 @@ func (editor ClientDbIndexEditor) CreateIndexesAsyncForScenarioWithCallback(
 	}
 	logger.InfoContext(
 		ctx,
-		fmt.Sprintf("%d indexes pending creation in: %+v", len(indexes), indexes), "org_id", organizationId,
+		fmt.Sprintf("%d indexes pending creation: %+v", len(indexes), indexes), "org_id", organizationId,
 	)
 	return nil
 }
