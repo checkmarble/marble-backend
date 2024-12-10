@@ -56,6 +56,10 @@ func NewAstEvaluationEnvironment() AstEvaluationEnvironment {
 		evaluate.NewStringContains(ast.FUNC_STRING_CONTAINS))
 	environment.AddEvaluator(ast.FUNC_STRING_NOT_CONTAIN,
 		evaluate.NewStringContains(ast.FUNC_STRING_NOT_CONTAIN))
+	environment.AddEvaluator(ast.FUNC_STRING_STARTS_WITH,
+		evaluate.NewStringStartsWith(ast.FUNC_STRING_STARTS_WITH))
+	environment.AddEvaluator(ast.FUNC_STRING_ENDS_WITH,
+		evaluate.NewStringEndsWith(ast.FUNC_STRING_ENDS_WITH))
 	environment.AddEvaluator(ast.FUNC_CONTAINS_ANY,
 		evaluate.NewContainsAny(ast.FUNC_CONTAINS_ANY))
 	environment.AddEvaluator(ast.FUNC_CONTAINS_NONE,
