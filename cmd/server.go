@@ -30,6 +30,9 @@ func RunServer() error {
 		RequestLoggingLevel:  utils.GetEnv("REQUEST_LOGGING_LEVEL", "all"),
 		TokenLifetimeMinute:  utils.GetEnv("TOKEN_LIFETIME_MINUTE", 60*2),
 		SegmentWriteKey:      utils.GetEnv("SEGMENT_WRITE_KEY", ""),
+		BatchTimeout:         time.Duration(utils.GetEnv("BATCH_TIMEOUT_SECOND", 55)) * time.Second,
+		DecisionTimeout:      time.Duration(utils.GetEnv("DECISION_TIMEOUT_SECOND", 10)) * time.Second,
+		DefaultTimeout:       time.Duration(utils.GetEnv("DEFAULT_TIMEOUT_SECOND", 5)) * time.Second,
 	}
 	gcpConfig := infra.GcpConfig{
 		EnableTracing:                utils.GetEnv("ENABLE_GCP_TRACING", false),
@@ -165,7 +168,7 @@ func RunServer() error {
 	deps := api.InitDependencies(ctx, apiConfig, pool, marbleJwtSigningKey)
 
 	router := api.InitRouterMiddlewares(ctx, apiConfig, deps.SegmentClient, telemetryRessources)
-	server := api.NewServer(router, apiConfig.Port, apiConfig.MarbleAppHost, uc, deps.Authentication, deps.TokenHandler)
+	server := api.NewServer(router, apiConfig, uc, deps.Authentication, deps.TokenHandler)
 
 	notify, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

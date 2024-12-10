@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/usecases"
 
 	limits "github.com/gin-contrib/size"
@@ -22,21 +21,8 @@ func timeoutMiddleware(duration time.Duration) gin.HandlerFunc {
 	)
 }
 
-const (
-	// Infra timeout is 60sec, so we set it to 55sec in order to gracefully handle the timeout in our code
-	BATCH_INGESTION_TIMEOUT = 55 * time.Second
-
-	SEQUENTIAL_DECISION_TIMEOUT = 30 * time.Second
-
-	// TODO: temporary workaround, what we need to do is to make the endpoint reliably respond quickly even
-	// without warmup
-	LIST_DECISION_TIMEOUT = 30 * time.Second
-
-	DEFAULT_TIMEOUT = 5 * time.Second
-)
-
-func addRoutes(r *gin.Engine, auth Authentication, tokenHandler TokenHandler, uc usecases.Usecases, marbleAppHost string) {
-	tom := timeoutMiddleware(DEFAULT_TIMEOUT)
+func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Authentication, tokenHandler TokenHandler) {
+	tom := timeoutMiddleware(conf.DefaultTimeout)
 
 	r.GET("/liveness", tom, handleLivenessProbe(uc))
 	r.POST("/token", tom, tokenHandler.GenerateToken)
@@ -48,19 +34,21 @@ func addRoutes(r *gin.Engine, auth Authentication, tokenHandler TokenHandler, uc
 
 	router.GET("/ast-expression/available-functions", tom, handleAvailableFunctions)
 
-	router.GET("/decisions", timeoutMiddleware(LIST_DECISION_TIMEOUT), handleListDecisions(uc, marbleAppHost))
-	router.GET("/decisions/with-ranks", tom, handleListDecisionsInternal(uc, marbleAppHost))
-	router.POST("/decisions", timeoutMiddleware(models.DECISION_TIMEOUT), handlePostDecision(uc, marbleAppHost))
+	router.GET("/decisions", tom, handleListDecisions(uc, conf.MarbleAppHost))
+	router.GET("/decisions/with-ranks", tom,
+		handleListDecisionsInternal(uc, conf.MarbleAppHost))
+	router.POST("/decisions", timeoutMiddleware(conf.DecisionTimeout),
+		handlePostDecision(uc, conf.MarbleAppHost))
 	router.POST("/decisions/all",
-		timeoutMiddleware(SEQUENTIAL_DECISION_TIMEOUT),
-		handlePostAllDecisions(uc, marbleAppHost))
-	router.GET("/decisions/:decision_id", tom, handleGetDecision(uc, marbleAppHost))
+		timeoutMiddleware(3*conf.DefaultTimeout),
+		handlePostAllDecisions(uc, conf.MarbleAppHost))
+	router.GET("/decisions/:decision_id", tom, handleGetDecision(uc, conf.MarbleAppHost))
 	router.GET("/decisions/:decision_id/active-snoozes", tom, handleSnoozesOfDecision(uc))
 	router.POST("/decisions/:decision_id/snooze", tom, handleSnoozeDecision(uc))
 
 	router.POST("/ingestion/:object_type", tom, handleIngestion(uc))
 	router.POST("/ingestion/:object_type/multiple", tom, handleIngestionMultiple(uc))
-	router.POST("/ingestion/:object_type/batch", timeoutMiddleware(BATCH_INGESTION_TIMEOUT), handlePostCsvIngestion(uc))
+	router.POST("/ingestion/:object_type/batch", timeoutMiddleware(conf.BatchTimeout), handlePostCsvIngestion(uc))
 	router.GET("/ingestion/:object_type/upload-logs", tom, handleListUploadLogs(uc))
 
 	router.GET("/scenarios", tom, listScenarios(uc))
@@ -96,7 +84,7 @@ func addRoutes(r *gin.Engine, auth Authentication, tokenHandler TokenHandler, uc
 	router.POST("/scenario-testrun", tom, handleCreateScenarioTestRun(uc))
 	router.GET("/scenario-testrun", tom, handleListScenarioTestRun(uc))
 	router.GET("/scenario-testruns/:test_run_id/decision_data_by_score",
-		timeoutMiddleware(LIST_DECISION_TIMEOUT),
+		tom,
 		handleDecisionsDataByOutcomeAndScore(uc))
 	router.GET("/scenario-testruns/:test_run_id/data_by_rule_execution", tom, handleListRulesExecution(uc))
 	router.GET("/scenario-testruns/:test_run_id", tom, handleGetScenarioTestRun(uc))

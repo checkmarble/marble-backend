@@ -174,6 +174,9 @@ func TestMain(m *testing.M) {
 		RequestLoggingLevel: "all",
 		TokenLifetimeMinute: 60,
 		SegmentWriteKey:     "",
+		BatchTimeout:        55 * time.Second,
+		DecisionTimeout:     10 * time.Second,
+		DefaultTimeout:      5 * time.Second,
 	}
 	tokenVerifier := infra.NewMockedFirebaseTokenVerifier()
 	firebaseClient := firebase.New(tokenVerifier)
@@ -181,8 +184,8 @@ func TestMain(m *testing.M) {
 
 	telemetryRessources, _ := infra.InitTelemetry(infra.TelemetryConfiguration{Enabled: false})
 	router := api.InitRouterMiddlewares(ctx, apiConfig, deps.SegmentClient, telemetryRessources)
-	server := api.NewServer(router, apiConfig.Port, apiConfig.MarbleAppHost, testUsecases,
-		deps.Authentication, deps.TokenHandler, true)
+	server := api.NewServer(router, apiConfig, testUsecases,
+		deps.Authentication, deps.TokenHandler, api.WithLocalTest(true))
 
 	jwtRepository := repositories.NewJWTRepository(privateKey)
 	database := postgres.New(dbPool)
