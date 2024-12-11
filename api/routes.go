@@ -34,13 +34,15 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Aut
 
 	router.GET("/ast-expression/available-functions", tom, handleAvailableFunctions)
 
-	router.GET("/decisions", tom, handleListDecisions(uc, conf.MarbleAppHost))
+	router.GET("/decisions",
+		timeoutMiddleware(conf.DecisionTimeout),
+		handleListDecisions(uc, conf.MarbleAppHost))
 	router.GET("/decisions/with-ranks", tom,
 		handleListDecisionsInternal(uc, conf.MarbleAppHost))
 	router.POST("/decisions", timeoutMiddleware(conf.DecisionTimeout),
 		handlePostDecision(uc, conf.MarbleAppHost))
 	router.POST("/decisions/all",
-		timeoutMiddleware(3*conf.DefaultTimeout),
+		timeoutMiddleware(3*conf.DecisionTimeout),
 		handlePostAllDecisions(uc, conf.MarbleAppHost))
 	router.GET("/decisions/:decision_id", tom, handleGetDecision(uc, conf.MarbleAppHost))
 	router.GET("/decisions/:decision_id/active-snoozes", tom, handleSnoozesOfDecision(uc))
@@ -84,9 +86,11 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Aut
 	router.POST("/scenario-testrun", tom, handleCreateScenarioTestRun(uc))
 	router.GET("/scenario-testrun", tom, handleListScenarioTestRun(uc))
 	router.GET("/scenario-testruns/:test_run_id/decision_data_by_score",
-		tom,
+		timeoutMiddleware(conf.BatchTimeout),
 		handleDecisionsDataByOutcomeAndScore(uc))
-	router.GET("/scenario-testruns/:test_run_id/data_by_rule_execution", tom, handleListRulesExecution(uc))
+	router.GET("/scenario-testruns/:test_run_id/data_by_rule_execution",
+		timeoutMiddleware(conf.BatchTimeout),
+		handleListRulesExecution(uc))
 	router.GET("/scenario-testruns/:test_run_id", tom, handleGetScenarioTestRun(uc))
 
 	router.GET("/scheduled-executions", tom, handleListScheduledExecution(uc))
