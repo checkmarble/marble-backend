@@ -59,13 +59,13 @@ func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 		PhantomIterationId: "b53fcdd9-4909-4167-9b22-7e36a065ffbd",
 		ScenarioId:         "b6f0c253-ca06-4a5c-a208-9d5a537ca827",
 		EndDate:            time.Now(),
-		LiveScenarioId:     "b76359b2-9806-40f1-9fee-7ea18c797b2e",
 	}
 	output := models.ScenarioTestRun{
 		ScenarioIterationId: "b53fcdd9-4909-4167-9b22-7e36a065ffbd",
 		ScenarioId:          "b6f0c253-ca06-4a5c-a208-9d5a537ca827",
 		Status:              models.Up,
 	}
+	liveVersionID := "b76359b2-9806-40f1-9fee-7ea18c797b2e"
 	suite.clientDbIndexEditor.On("GetIndexesToCreate", suite.ctx, suite.organizationId, mock.Anything).Return(
 		[]models.ConcreteIndex{
 			{
@@ -77,7 +77,6 @@ func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 		suite.organizationId,
 		mock.Anything).Return(nil)
 	suite.executorFactory.On("NewExecutor").Return(suite.transaction)
-	liveVersionID := "b76359b2-9806-40f1-9fee-7ea18c797b2e"
 	suite.scenarioRepository.On("GetScenarioById",
 		suite.transaction, input.ScenarioId).Return(models.Scenario{
 		LiveVersionID: &liveVersionID,
@@ -85,9 +84,10 @@ func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 	suite.repository.On("GetTestRunByID", suite.ctx, suite.transaction,
 		mock.Anything).Return(output, nil)
 	suite.enforceSecurity.On("CreateTestRun", suite.organizationId).Return(nil)
-	suite.repository.On("CreateTestRun", suite.ctx, suite.transaction, mock.Anything, input).Return(nil)
-	suite.repository.On("GetActiveTestRunByScenarioIterationID", suite.ctx, suite.transaction,
-		input.PhantomIterationId).Return(nil, nil)
+	suite.repository.On("CreateTestRun", suite.ctx, suite.transaction, mock.Anything,
+		input.CreateDbInput(liveVersionID)).Return(nil)
+	suite.repository.On("GetTestRunByLiveVersionID", suite.ctx, suite.transaction,
+		liveVersionID).Return(nil, nil)
 
 	suite.clientDbIndexEditor.On("CreateIndexesAsyncForScenarioWithCallback", suite.ctx,
 		suite.organizationId, []models.ConcreteIndex{

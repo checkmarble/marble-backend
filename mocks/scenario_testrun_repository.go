@@ -12,10 +12,13 @@ type ScenarioTestrunRepository struct {
 	mock.Mock
 }
 
-func (s *ScenarioTestrunRepository) CreateTestRun(ctx context.Context, tx repositories.Transaction, testrunID string,
-	input models.ScenarioTestRunInput,
+func (s *ScenarioTestrunRepository) CreateTestRun(
+	ctx context.Context,
+	tx repositories.Transaction,
+	testrunId string,
+	input models.ScenarioTestRunCreateDbInput,
 ) error {
-	args := s.Called(ctx, tx, testrunID, input)
+	args := s.Called(ctx, tx, testrunId, input)
 	return args.Error(0)
 }
 
@@ -26,20 +29,9 @@ func (s *ScenarioTestrunRepository) UpdateTestRunStatus(ctx context.Context, exe
 	return args.Error(0)
 }
 
-func (s *ScenarioTestrunRepository) GetTestRunByLiveVersionID(ctx context.Context, exec repositories.Executor,
-	liveVersionID string,
+func (s *ScenarioTestrunRepository) GetTestRunByLiveVersionID(ctx context.Context, exec repositories.Executor, liveVersionID string,
 ) (*models.ScenarioTestRun, error) {
 	args := s.Called(ctx, exec, liveVersionID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*models.ScenarioTestRun), args.Error(1)
-}
-
-func (s *ScenarioTestrunRepository) GetActiveTestRunByScenarioIterationID(ctx context.Context,
-	exec repositories.Executor, scenarioID string,
-) (*models.ScenarioTestRun, error) {
-	args := s.Called(ctx, exec, scenarioID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
