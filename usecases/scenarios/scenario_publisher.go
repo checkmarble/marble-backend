@@ -101,9 +101,9 @@ func (publisher ScenarioPublisher) PublishOrUnpublishIteration(
 }
 
 func (publisher ScenarioPublisher) shutDownTestRunIfNeeded(ctx context.Context, tx repositories.Transaction, liveVersionId string) error {
-	testrun, errTestrun := publisher.ScenarioTestRunRepository.GetTestRunByLiveVersionID(ctx, tx, liveVersionId)
-	if errTestrun != nil {
-		return errTestrun
+	testrun, err := publisher.ScenarioTestRunRepository.GetTestRunByLiveVersionID(ctx, tx, liveVersionId)
+	if err != nil {
+		return err
 	}
 	if testrun != nil && (testrun.Status == models.Up || testrun.Status == models.Pending) {
 		return publisher.ScenarioTestRunRepository.UpdateTestRunStatus(ctx, tx, testrun.Id, models.Down)

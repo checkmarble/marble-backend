@@ -54,6 +54,21 @@ type ScenarioTestRun struct {
 type ScenarioTestRunInput struct {
 	ScenarioId         string
 	PhantomIterationId string
+	EndDate            time.Time
+}
+
+func (i ScenarioTestRunInput) CreateDbInput(liveIterationId string) ScenarioTestRunCreateDbInput {
+	return ScenarioTestRunCreateDbInput{
+		ScenarioId:         i.ScenarioId,
+		PhantomIterationId: i.PhantomIterationId,
+		LiveScenarioId:     liveIterationId,
+		EndDate:            i.EndDate,
+	}
+}
+
+type ScenarioTestRunCreateDbInput struct {
+	ScenarioId         string
+	PhantomIterationId string
 	LiveScenarioId     string
 	EndDate            time.Time
 }

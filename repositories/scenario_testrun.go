@@ -10,13 +10,17 @@ import (
 )
 
 type ScenarioTestRunRepository interface {
-	CreateTestRun(ctx context.Context, tx Transaction, testrunID string,
-		input models.ScenarioTestRunInput) error
-	GetActiveTestRunByScenarioIterationID(ctx context.Context, exec Executor,
-		scenarioIterationID string) (*models.ScenarioTestRun, error)
+	CreateTestRun(
+		ctx context.Context,
+		tx Transaction,
+		testrunId string,
+		input models.ScenarioTestRunCreateDbInput,
+	) error
 	ListTestRunsByScenarioID(ctx context.Context, exec Executor, scenarioID string) ([]models.ScenarioTestRun, error)
-	GetTestRunByLiveVersionID(ctx context.Context,
-		exec Executor, liveVersionID string,
+	GetTestRunByLiveVersionID(
+		ctx context.Context,
+		exec Executor,
+		liveVersionID string,
 	) (*models.ScenarioTestRun, error)
 	UpdateTestRunStatus(ctx context.Context, exec Executor,
 		scenarioIterationID string, status models.TestrunStatus,
@@ -34,7 +38,7 @@ func (repo *MarbleDbRepository) CreateTestRun(
 	ctx context.Context,
 	tx Transaction,
 	testrunID string,
-	input models.ScenarioTestRunInput,
+	input models.ScenarioTestRunCreateDbInput,
 ) error {
 	if err := validateMarbleDbExecutor(tx); err != nil {
 		return err
@@ -84,24 +88,6 @@ func (repo *MarbleDbRepository) UpdateTestRunStatus(ctx context.Context, exec Ex
 	return err
 }
 
-func (repo *MarbleDbRepository) GetActiveTestRunByScenarioIterationID(
-	ctx context.Context, exec Executor, scenarioIterationID string,
-) (*models.ScenarioTestRun, error) {
-	if err := validateMarbleDbExecutor(exec); err != nil {
-		return nil, err
-	}
-	query := selectTestruns().
-		Where(squirrel.Eq{"scenario_iteration_id": scenarioIterationID}).
-		Where(squirrel.Eq{"status": models.Up.String()})
-
-	return SqlToOptionalModel(
-		ctx,
-		exec,
-		query,
-		dbmodels.AdaptScenarioTestrun,
-	)
-}
-
 func (repo *MarbleDbRepository) GetTestRunByLiveVersionID(
 	ctx context.Context, exec Executor, liveVersionID string,
 ) (*models.ScenarioTestRun, error) {
@@ -111,12 +97,7 @@ func (repo *MarbleDbRepository) GetTestRunByLiveVersionID(
 	query := selectTestruns().
 		Where(squirrel.Eq{"live_scenario_iteration_id": liveVersionID}).
 		OrderBy("created_at DESC")
-	testruns, err := SqlToListOfModels(
-		ctx,
-		exec,
-		query,
-		dbmodels.AdaptScenarioTestrun,
-	)
+	testruns, err := SqlToListOfModels(ctx, exec, query, dbmodels.AdaptScenarioTestrun)
 	if err != nil {
 		return nil, err
 	}
