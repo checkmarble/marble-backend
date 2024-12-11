@@ -73,5 +73,6 @@ func NewAstEvaluationEnvironment() AstEvaluationEnvironment {
 	environment.AddEvaluator(ast.FUNC_FUZZY_MATCH_ANY_OF, evaluate.FuzzyMatchAnyOf{})
 	environment.AddEvaluator(ast.FUNC_IS_EMPTY, evaluate.IsEmpty{})
 	environment.AddEvaluator(ast.FUNC_IS_NOT_EMPTY, evaluate.IsNotEmpty{})
+	environment.AddEvaluator(ast.FUNC_IS_ROUNDED, evaluate.IsRounded{})
 	return environment
 }
