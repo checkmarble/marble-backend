@@ -25,6 +25,8 @@ var FuncOperators = []Function{
 	FUNC_STRING_NOT_CONTAIN,
 	FUNC_CONTAINS_ANY,
 	FUNC_CONTAINS_NONE,
+	FUNC_STRING_STARTS_WITH,
+	FUNC_STRING_ENDS_WITH,
 	FUNC_IS_EMPTY,
 	FUNC_IS_NOT_EMPTY,
 }
@@ -64,6 +66,8 @@ const (
 	FUNC_IS_EMPTY
 	FUNC_IS_NOT_EMPTY
 	FUNC_TIMESTAMP_EXTRACT
+	FUNC_STRING_STARTS_WITH
+	FUNC_STRING_ENDS_WITH
 	FUNC_UNDEFINED Function = -1
 	FUNC_UNKNOWN   Function = -2
 )
@@ -174,6 +178,14 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 	FUNC_STRING_NOT_CONTAIN: {
 		DebugName: "FUNC_STRING_NOT_CONTAIN",
 		AstName:   "StringNotContain",
+	},
+	FUNC_STRING_STARTS_WITH: {
+		DebugName: "FUNC_STRING_STARTS_WITH",
+		AstName:   "StringStartsWith",
+	},
+	FUNC_STRING_ENDS_WITH: {
+		DebugName: "FUNC_STRING_ENDS_WITH",
+		AstName:   "StringEndsWith",
 	},
 	FUNC_CONTAINS_ANY: {
 		DebugName: "FUNC_CONTAINS_ANY",

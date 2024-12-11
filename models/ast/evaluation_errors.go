@@ -9,6 +9,7 @@ var (
 	ErrMissingNamedArgument              = errors.New("missing named argument")
 	ErrArgumentMustBeIntOrFloat          = errors.New("arguments must be an integer or a float")
 	ErrArgumentMustBeIntFloatOrTime      = errors.New("all arguments must be an integer, a float or a time")
+	ErrArgumentMustBeStringOrList        = errors.New("arguments must be string or list")
 	ErrArgumentMustBeInt                 = errors.New("arguments must be an integer")
 	ErrArgumentMustBeString              = errors.New("arguments must be a string")
 	ErrArgumentMustBeBool                = errors.New("arguments must be a boolean")
