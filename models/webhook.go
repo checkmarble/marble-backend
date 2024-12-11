@@ -171,8 +171,8 @@ func NewWebhookEventCaseCommentCreated(c Case) WebhookEventContent {
 	return newWebhookContentCase(WebhookEventType_CaseCommentCreated, c.Id)
 }
 
-func NewWebhookEventCaseFileCreated(c Case) WebhookEventContent {
-	return newWebhookContentCase(WebhookEventType_CaseFileCreated, c.Id)
+func NewWebhookEventCaseFileCreated(caseId string) WebhookEventContent {
+	return newWebhookContentCase(WebhookEventType_CaseFileCreated, caseId)
 }
 
 func NewWebhookEventRuleSnoozeCreated(c Case) WebhookEventContent {
