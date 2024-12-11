@@ -768,11 +768,11 @@ func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.Cr
 		fileReference string
 		fileName      string
 	}
-	uploadedFilesMetadata := make([]uploadedFileMetadata, len(input.Files))
+	uploadedFilesMetadata := make([]uploadedFileMetadata, 0, len(input.Files))
 	for _, fileHeader := range input.Files {
 		newFileReference := fmt.Sprintf("%s/%s/%s", creds.OrganizationId, input.CaseId, uuid.NewString())
 		err = writeToBlobStorage(ctx, usecase, fileHeader, newFileReference)
-		if err == nil {
+		if err != nil {
 			break
 		}
 
@@ -783,16 +783,12 @@ func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.Cr
 	}
 	if err != nil {
 		for _, uploadedFile := range uploadedFilesMetadata {
-			if uploadedFile.fileReference == "" {
-				continue
-			}
 			if deleteErr := usecase.blobRepository.DeleteFile(ctx,
 				usecase.caseManagerBucketUrl, uploadedFile.fileReference); deleteErr != nil {
 				logger.WarnContext(ctx, fmt.Sprintf("failed to clean up blob %s after case file creation failed", uploadedFile.fileReference),
 					"bucket", usecase.caseManagerBucketUrl,
 					"file_reference", uploadedFile.fileReference,
 					"error", deleteErr)
-				return models.Case{}, errors.Wrap(err, deleteErr.Error())
 			}
 		}
 		return models.Case{}, err
@@ -863,7 +859,7 @@ func (usecase *CaseUseCase) CreateCaseFiles(ctx context.Context, input models.Cr
 	return usecase.getCaseWithDetails(ctx, exec, input.CaseId)
 }
 
-func validateFileType(file *multipart.FileHeader) error {
+func validateFileType(file multipart.FileHeader) error {
 	supportedFileTypes := []string{
 		"text/",
 		"application/vnd.ms-excel",
@@ -885,7 +881,7 @@ func validateFileType(file *multipart.FileHeader) error {
 	return errFileType
 }
 
-func writeToBlobStorage(ctx context.Context, usecase *CaseUseCase, fileHeader *multipart.FileHeader, newFileReference string) error {
+func writeToBlobStorage(ctx context.Context, usecase *CaseUseCase, fileHeader multipart.FileHeader, newFileReference string) error {
 	writer, err := usecase.blobRepository.OpenStream(ctx, usecase.caseManagerBucketUrl, newFileReference, fileHeader.Filename)
 	if err != nil {
 		return err
