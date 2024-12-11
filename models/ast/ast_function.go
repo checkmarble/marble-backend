@@ -64,6 +64,7 @@ const (
 	FUNC_IS_EMPTY
 	FUNC_IS_NOT_EMPTY
 	FUNC_TIMESTAMP_EXTRACT
+	FUNC_IS_ROUNDED
 	FUNC_UNDEFINED Function = -1
 	FUNC_UNKNOWN   Function = -2
 )
@@ -210,6 +211,11 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		DebugName:      "FUNC_TIMESTAMP_EXTRACT",
 		AstName:        "TimestampExtract",
 		NamedArguments: []string{"timestamp", "part"},
+	},
+	FUNC_IS_ROUNDED: {
+		DebugName:      "FUNC_IS_ROUNDED",
+		AstName:        "IsRounded",
+		NamedArguments: []string{"value", "threshold"},
 	},
 	FUNC_FILTER: FuncFilterAttributes,
 }
