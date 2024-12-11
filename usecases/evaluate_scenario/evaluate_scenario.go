@@ -189,26 +189,22 @@ func EvalTestRunScenario(ctx context.Context,
 		),
 	)
 	defer span.End()
-	testrun, errTr := repositories.ScenarioTestRunRepository.GetTestRunByLiveVersionID(ctx, exec, *params.Scenario.LiveVersionID)
-	if errTr != nil {
-		return models.ScenarioExecution{}, errors.Wrap(errTr,
-			"error getting testrun  in EvalTestRunScenario")
+	testrun, err := repositories.ScenarioTestRunRepository.GetTestRunByLiveVersionID(ctx, exec, *params.Scenario.LiveVersionID)
+	if err != nil {
+		return models.ScenarioExecution{}, err
 	}
 	if testrun == nil || testrun.Status != models.Up {
 		return models.ScenarioExecution{}, nil
 	}
-	scenario, errScenario := repositories.ScenarioRepository.GetScenarioByLiveScenarioIterationId(
-		ctx, exec, testrun.ScenarioLiveIterationId)
-	if errScenario != nil {
-		return models.ScenarioExecution{}, errors.Wrap(errTr,
-			"error getting scenario  in EvalTestRunScenario")
+	scenario, err := repositories.ScenarioRepository.GetScenarioByLiveScenarioIterationId(ctx, exec, testrun.ScenarioLiveIterationId)
+	if err != nil {
+		return models.ScenarioExecution{}, err
 	}
 	if scenario.Id == "" {
 		logger.ErrorContext(ctx, "the live version iteration associated to the current testrun does not match with the actual live scenario iteration")
 		return models.ScenarioExecution{}, nil
 	}
-	testRunIterationId, err := repositories.EvalTestRunScenarioRepository.GetTestRunIterationIdByScenarioId(
-		ctx, exec, params.Scenario.Id)
+	testRunIterationId, err := repositories.EvalTestRunScenarioRepository.GetTestRunIterationIdByScenarioId(ctx, exec, params.Scenario.Id)
 	if err != nil {
 		return models.ScenarioExecution{}, errors.Wrap(err,
 			"error getting testrun scenario iteration in EvalTestRunScenario")
@@ -218,14 +214,12 @@ func EvalTestRunScenario(ctx context.Context,
 	}
 	testRunIteration, err := repositories.EvalScenarioRepository.GetScenarioIteration(ctx, exec, *testRunIterationId)
 	if err != nil {
-		return models.ScenarioExecution{}, errors.Wrap(err,
-			"error getting testrun scenario iteration in EvalTestRunScenario")
+		return models.ScenarioExecution{}, err
 	}
 
-	se, errSe := processScenarioIteration(ctx, params, testRunIteration, repositories, start, logger, exec)
-	if errSe != nil {
-		return models.ScenarioExecution{}, errors.Wrap(errSe,
-			"error processing scenario iteration in EvalTestRunScenario")
+	se, err = processScenarioIteration(ctx, params, testRunIteration, repositories, start, logger, exec)
+	if err != nil {
+		return models.ScenarioExecution{}, err
 	}
 	se.TestRunId = testrun.Id
 	return se, nil

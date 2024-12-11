@@ -2,7 +2,6 @@ package usecases
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
@@ -32,7 +31,8 @@ func (usecases *UsecasesWithCreds) NewScenarioTestRunUseCase() ScenarioTestRunUs
 	}
 }
 
-func (usecase *ScenarioTestRunUsecase) CreateScenarioTestRun(ctx context.Context,
+func (usecase *ScenarioTestRunUsecase) CreateScenarioTestRun(
+	ctx context.Context,
 	organizationId string,
 	input models.ScenarioTestRunInput,
 ) (models.ScenarioTestRun, error) {
@@ -41,21 +41,10 @@ func (usecase *ScenarioTestRunUsecase) CreateScenarioTestRun(ctx context.Context
 	}
 	exec := usecase.executorFactory.NewExecutor()
 
-	// we should not have any existing testrun for this scenario
-	existingTestrun, err := usecase.repository.GetActiveTestRunByScenarioIterationID(ctx, exec, input.PhantomIterationId)
-	if err != nil {
-		return models.ScenarioTestRun{}, errors.Wrap(err,
-			"error while fetching entries to find an existing testrun")
-	}
-	if existingTestrun != nil {
-		return models.ScenarioTestRun{}, errors.Wrap(models.ErrTestRunAlreadyExist,
-			fmt.Sprintf("the scenario %s has a running testrun", input.ScenarioId))
-	}
-
 	// we should have a live version running
-	scenario, errScenario := usecase.scenarioRepository.GetScenarioById(ctx, exec, input.ScenarioId)
-	if errScenario != nil {
-		return models.ScenarioTestRun{}, errScenario
+	scenario, err := usecase.scenarioRepository.GetScenarioById(ctx, exec, input.ScenarioId)
+	if err != nil {
+		return models.ScenarioTestRun{}, err
 	}
 	if scenario.LiveVersionID == nil {
 		return models.ScenarioTestRun{}, models.ErrScenarioHasNoLiveVersion
@@ -63,6 +52,16 @@ func (usecase *ScenarioTestRunUsecase) CreateScenarioTestRun(ctx context.Context
 	// the live version must not be the one on which we want to start a testrun
 	if *scenario.LiveVersionID == input.PhantomIterationId {
 		return models.ScenarioTestRun{}, models.ErrWrongIterationForTestRun
+	}
+
+	// we should not have any existing testrun for this scenario
+	existingTestrun, err := usecase.repository.GetTestRunByLiveVersionID(ctx, exec, *scenario.LiveVersionID)
+	if err != nil {
+		return models.ScenarioTestRun{}, err
+	}
+	if existingTestrun != nil {
+		return models.ScenarioTestRun{}, errors.Wrapf(models.ErrTestRunAlreadyExist,
+			"the scenario %s has a running testrun", input.ScenarioId)
 	}
 
 	indexesToCreate, numPending, err := usecase.clientDbIndexEditor.GetIndexesToCreate(
@@ -79,14 +78,14 @@ func (usecase *ScenarioTestRunUsecase) CreateScenarioTestRun(ctx context.Context
 	}
 
 	// keep track of the live version associated to the current testrun
-	input.LiveScenarioId = *scenario.LiveVersionID
+	repoInput := input.CreateDbInput(*scenario.LiveVersionID)
 	testRunId := pure_utils.NewPrimaryKey(organizationId)
 
 	tr, err := executor_factory.TransactionReturnValue(
 		ctx,
 		usecase.transactionFactory,
 		func(tx repositories.Transaction) (models.ScenarioTestRun, error) {
-			if err := usecase.repository.CreateTestRun(ctx, tx, testRunId, input); err != nil {
+			if err := usecase.repository.CreateTestRun(ctx, tx, testRunId, repoInput); err != nil {
 				return models.ScenarioTestRun{}, err
 			}
 			result, err := usecase.repository.GetTestRunByID(ctx, tx, testRunId)
