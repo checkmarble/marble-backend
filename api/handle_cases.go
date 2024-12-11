@@ -260,7 +260,7 @@ func handlePostCaseTags(uc usecases.Usecases) func(c *gin.Context) {
 }
 
 type FileForm struct {
-	Files []*multipart.FileHeader `form:"file[]" binding:"required"`
+	Files []multipart.FileHeader `form:"file[]" binding:"required"`
 }
 
 func handlePostCaseFile(uc usecases.Usecases) func(c *gin.Context) {
