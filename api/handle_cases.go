@@ -260,7 +260,7 @@ func handlePostCaseTags(uc usecases.Usecases) func(c *gin.Context) {
 }
 
 type FileForm struct {
-	File *multipart.FileHeader `form:"file" binding:"required"`
+	Files []*multipart.FileHeader `form:"file[]" binding:"required"`
 }
 
 func handlePostCaseFile(uc usecases.Usecases) func(c *gin.Context) {
@@ -279,9 +279,9 @@ func handlePostCaseFile(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewCaseUseCase()
-		cs, err := usecase.CreateCaseFile(ctx, models.CreateCaseFileInput{
+		cs, err := usecase.CreateCaseFiles(ctx, models.CreateCaseFilesInput{
 			CaseId: caseInput.Id,
-			File:   form.File,
+			Files:  form.Files,
 		})
 		if presentError(ctx, c, err) {
 			return
