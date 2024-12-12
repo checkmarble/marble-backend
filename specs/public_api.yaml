@@ -554,14 +554,8 @@ components:
     pagination:
       type: object
       required:
-        - end_index
-        - start_index
         - has_next_page
       properties:
-        end_index:
-          type: integer
-        start_index:
-          type: integer
         has_next_page:
           type: boolean
     
