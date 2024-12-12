@@ -10,9 +10,9 @@ import (
 	"github.com/checkmarble/marble-backend/models/ast"
 )
 
-type IsRounded struct{}
+type IsMultipleOf struct{}
 
-func (f IsRounded) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
+func (f IsMultipleOf) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
 	value, valueErr := AdaptNamedArgument(arguments.NamedArgs, "value", promoteArgumentToFloat64)
 	threshold, thresholdErr := AdaptNamedArgument(arguments.NamedArgs, "threshold", promoteArgumentToFloat64)
 
@@ -38,7 +38,8 @@ func downcastToInt64(n float64) (int64, bool) {
 	if n < math.MinInt64 || n > math.MaxInt64 {
 		return 0, false
 	}
-	if n != float64(int64(n)) {
+	r := math.Round(n)
+	if math.Abs(r-n) > 1e-8 {
 		return 0, false
 	}
 	return int64(n), true

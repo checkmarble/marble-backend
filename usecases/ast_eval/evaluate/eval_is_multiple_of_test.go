@@ -2,6 +2,8 @@ package evaluate
 
 import (
 	"context"
+	"fmt"
+	"math"
 	"testing"
 
 	"github.com/checkmarble/marble-backend/models/ast"
@@ -9,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestIsRounded(t *testing.T) {
+func TestIsMultipleOf(t *testing.T) {
 	tests := []struct {
 		name   string
 		args   map[string]any
@@ -75,7 +77,7 @@ func TestIsRounded(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r, errs := IsRounded{}.Evaluate(context.TODO(), ast.Arguments{
+			r, errs := IsMultipleOf{}.Evaluate(context.TODO(), ast.Arguments{
 				Args:      []any{},
 				NamedArgs: tt.args,
 			})
@@ -85,5 +87,42 @@ func TestIsRounded(t *testing.T) {
 			}
 			assert.Equal(t, tt.want, r)
 		})
+	}
+}
+
+func TestDowncastToInt64(t *testing.T) {
+	// Cas de test
+	tests := []struct {
+		input    float64
+		expected int64
+		success  bool
+	}{
+		// Edge cases
+		{math.MinInt64, math.MinInt64, true}, // Min int64
+		{math.MaxInt64, math.MaxInt64, true}, // Max int64
+		{math.MinInt64 - 1, 0, false},        // Out of bounds (too low)
+		{math.MaxInt64 + 1, 0, false},        // Out of bounds (too big)
+
+		// Entiers simples
+		{0, 0, true},         // Zero
+		{123.0, 123, true},   // Positive int
+		{-123.0, -123, true}, // Negative
+
+		// Décimaux
+		{123.45, 0, false},         // Decimal
+		{-123.45, 0, false},        // Negative decimal
+		{123.00000000001, 0, true}, // Decimal as close as possible of int
+
+		// Cas spécifiques
+		{1e20, 0, false},   // Huge number, out of bounds
+		{-1e20, 0, false},  // Tiny number, out of bounds
+		{1e18, 1e18, true}, // exact number in int64 range
+	}
+
+	// Exécution des tests
+	for _, test := range tests {
+		result, success := downcastToInt64(test.input)
+		fmt.Printf("Input: %f, Expected: %d, Success: %v, Got: %d, Success: %v\n",
+			test.input, test.expected, test.success, result, success)
 	}
 }
