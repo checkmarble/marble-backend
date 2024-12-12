@@ -84,29 +84,46 @@ func (repo *MarbleDbRepository) DecisionWithRuleExecutionsById(ctx context.Conte
 	return decisions[0], nil
 }
 
-func (repo *MarbleDbRepository) DecisionsByOutcomeAndScore(ctx context.Context, exec Executor,
-	scenarioID string, begin, end time.Time,
+func (repo *MarbleDbRepository) DecisionsByOutcomeAndScore(
+	ctx context.Context,
+	exec Executor,
+	organizationId string,
+	begin, end time.Time,
 ) ([]models.DecisionsByVersionByOutcome, error) {
 	decisionQuery := squirrel.StatementBuilder.
 		Select("outcome, scenario_version, score").
-		From(dbmodels.TABLE_DECISIONS).Where(squirrel.GtOrEq{
-		"created_at": begin,
-	}).Where(squirrel.LtOrEq{
-		"created_at": end,
-	})
+		From(dbmodels.TABLE_DECISIONS).
+		Where(squirrel.GtOrEq{
+			"created_at": begin,
+		}).
+		Where(squirrel.LtOrEq{
+			"created_at": end,
+		}).
+		Where(squirrel.Eq{
+			"org_id": organizationId,
+		})
 	phantomDecisionQuery := squirrel.StatementBuilder.
 		Select("outcome, scenario_version, score").
-		From(dbmodels.TABLE_PHANTOM_DECISIONS).Where(squirrel.GtOrEq{
-		"created_at": begin,
-	}).Where(squirrel.LtOrEq{
-		"created_at": end,
-	})
+		From(dbmodels.TABLE_PHANTOM_DECISIONS).
+		Where(squirrel.GtOrEq{
+			"created_at": begin,
+		}).
+		Where(squirrel.LtOrEq{
+			"created_at": end,
+		}).
+		Where(squirrel.Eq{
+			"org_id": organizationId,
+		})
 	query, err := WithUnionAll(decisionQuery, phantomDecisionQuery)
 	if err != nil {
 		return nil, err
 	}
-	finalQuery := NewQueryBuilder().Select("q.scenario_version, q.outcome, q.score, Count(q.outcome) as total").
-		FromSelect(query, "q").GroupBy("scenario_version, outcome, score").PlaceholderFormat(squirrel.Dollar)
+	finalQuery := NewQueryBuilder().
+		Select("q.scenario_version, q.outcome, q.score, Count(q.outcome) as total").
+		FromSelect(query, "q").
+		GroupBy("scenario_version, outcome, score").
+		PlaceholderFormat(squirrel.Dollar)
+
 	return SqlToListOfRow(ctx,
 		exec,
 		finalQuery,

@@ -60,8 +60,12 @@ type DecisionUsecaseRepository interface {
 
 	GetScenarioById(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error)
 
-	DecisionsByOutcomeAndScore(ctx context.Context, exec repositories.Executor, scenarioId string, begin, end time.Time) (
-		[]models.DecisionsByVersionByOutcome, error)
+	DecisionsByOutcomeAndScore(
+		ctx context.Context,
+		exec repositories.Executor,
+		organizationId string,
+		begin, end time.Time,
+	) ([]models.DecisionsByVersionByOutcome, error)
 
 	ListScenariosOfOrganization(ctx context.Context, exec repositories.Executor, organizationId string) ([]models.Scenario, error)
 
@@ -123,14 +127,14 @@ func (usecase *DecisionUsecase) GetDecision(ctx context.Context, decisionId stri
 func (usecase *DecisionUsecase) GetDecisionsByOutcomeAndScore(ctx context.Context,
 	testrunId string,
 ) ([]models.DecisionsByVersionByOutcome, error) {
-	testrun, errTestRun := usecase.scenarioTestRunRepository.GetTestRunByID(ctx,
-		usecase.executorFactory.NewExecutor(), testrunId)
+	exec := usecase.executorFactory.NewExecutor()
+	testrun, errTestRun := usecase.scenarioTestRunRepository.GetTestRunByID(ctx, exec, testrunId)
 	if errTestRun != nil {
 		return nil, errTestRun
 	}
 
-	decisions, err := usecase.repository.DecisionsByOutcomeAndScore(ctx,
-		usecase.executorFactory.NewExecutor(), testrun.ScenarioId, testrun.CreatedAt, testrun.ExpiresAt)
+	decisions, err := usecase.repository.DecisionsByOutcomeAndScore(ctx, exec,
+		testrun.OrganizationId, testrun.CreatedAt, testrun.ExpiresAt)
 	if err != nil {
 		return []models.DecisionsByVersionByOutcome{}, err
 	}
