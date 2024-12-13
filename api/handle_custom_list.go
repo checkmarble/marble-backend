@@ -143,6 +143,35 @@ func handleDeleteCustomList(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
+func handleGetCsvCustomListValues(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		logger := utils.LoggerFromContext(ctx)
+
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(ctx, c, err) {
+			return
+		}
+		logger = logger.With(slog.String("organizationId", organizationId))
+
+		customListID := c.Param("list_id")
+
+		usecase := usecasesWithCreds(ctx, uc).NewCustomListUseCase()
+		customListName, err := usecase.WriteCustomListValuesToCSV(ctx, customListID, c.Writer)
+		if presentError(ctx, c, err) {
+			logger.ErrorContext(ctx, "error writing values to a list to CSV: \n"+err.Error())
+			return
+		}
+
+		c.Writer.Header().Add("Access-Control-Expose-Headers", "Content-Disposition")
+		c.Writer.Header().Set("Content-Disposition",
+			fmt.Sprintf("attachment; filename=%s.csv", customListName))
+		c.Writer.Header().Set("Content-Type", "text/csv")
+
+		c.Status(http.StatusOK)
+	}
+}
+
 func handlePostCustomListValue(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()

@@ -108,6 +108,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Aut
 	router.GET("/custom-lists/:list_id", tom, handleGetCustomListWithValues(uc))
 	router.PATCH("/custom-lists/:list_id", tom, handlePatchCustomList(uc))
 	router.DELETE("/custom-lists/:list_id", tom, handleDeleteCustomList(uc))
+	router.GET("/custom-lists/:list_id/values", tom, handleGetCsvCustomListValues(uc))
 	router.POST("/custom-lists/:list_id/values", tom, handlePostCustomListValue(uc))
 	router.POST("/custom-lists/:list_id/values/batch", timeoutMiddleware(conf.BatchTimeout), handlePostCsvCustomListValues(uc))
 	router.DELETE("/custom-lists/:list_id/values/:value_id", tom, handleDeleteCustomListValue(uc))
