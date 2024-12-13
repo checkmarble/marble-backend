@@ -227,7 +227,7 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 	FUNC_IS_MULTIPLE_OF: {
 		DebugName:      "FUNC_IS_MULTIPLE_OF",
 		AstName:        "IsMultipleOf",
-		NamedArguments: []string{"value", "threshold"},
+		NamedArguments: []string{"value", "divider"},
 	},
 	FUNC_FILTER: FuncFilterAttributes,
 }
