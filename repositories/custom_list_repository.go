@@ -24,10 +24,24 @@ type CustomListRepository interface {
 		newCustomListId string,
 		userId *models.UserId,
 	) error
+	BatchInsertCustomListValues(
+		ctx context.Context,
+		exec Executor,
+		customListId string,
+		customListValues []models.BatchInsertCustomListValue,
+		userId *models.UserId,
+	) error
 	DeleteCustomListValue(
 		ctx context.Context,
 		exec Executor,
 		deleteCustomListValue models.DeleteCustomListValueInput,
+		userId *models.UserId,
+	) error
+	BatchDeleteCustomListValues(
+		ctx context.Context,
+		exec Executor,
+		customListId string,
+		deleteCustomListValueIds []string,
 		userId *models.UserId,
 	) error
 }
@@ -200,6 +214,42 @@ func (repo *CustomListRepositoryPostgresql) AddCustomListValue(
 	return err
 }
 
+func (repo *CustomListRepositoryPostgresql) BatchInsertCustomListValues(
+	ctx context.Context,
+	exec Executor,
+	customListId string,
+	customListValues []models.BatchInsertCustomListValue,
+	userId *models.UserId,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	if userId != nil {
+		if err := setCurrentUserIdContext(ctx, exec, userId); err != nil {
+			return err
+		}
+	}
+
+	query := NewQueryBuilder().Insert(dbmodels.TABLE_CUSTOM_LIST_VALUE).
+		Columns(
+			"id",
+			"custom_list_id",
+			"value",
+		)
+
+	for _, addCustomListValue := range customListValues {
+		query = query.Values(
+			addCustomListValue.Id,
+			customListId,
+			addCustomListValue.Value,
+		)
+	}
+
+	err := ExecBuilder(ctx, exec, query)
+	return err
+}
+
 func (repo *CustomListRepositoryPostgresql) DeleteCustomListValue(
 	ctx context.Context,
 	exec Executor,
@@ -222,6 +272,36 @@ func (repo *CustomListRepositoryPostgresql) DeleteCustomListValue(
 
 	deleteRequest = deleteRequest.Where("id = ? AND custom_list_id = ?",
 		deleteCustomListValue.Id, deleteCustomListValue.CustomListId)
+
+	err := ExecBuilder(ctx, exec, deleteRequest)
+	return err
+}
+
+func (repo *CustomListRepositoryPostgresql) BatchDeleteCustomListValues(
+	ctx context.Context,
+	exec Executor,
+	customListId string,
+	deleteCustomListValueIds []string,
+	userId *models.UserId,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	if userId != nil {
+		if err := setCurrentUserIdContext(ctx, exec, userId); err != nil {
+			return err
+		}
+	}
+
+	deleteRequest := NewQueryBuilder().Update(dbmodels.TABLE_CUSTOM_LIST_VALUE)
+
+	deleteRequest = deleteRequest.Set("deleted_at", squirrel.Expr("NOW()"))
+
+	deleteRequest = deleteRequest.Where(map[string]interface{}{
+		"custom_list_id": customListId,
+		"id":             deleteCustomListValueIds,
+	})
 
 	err := ExecBuilder(ctx, exec, deleteRequest)
 	return err

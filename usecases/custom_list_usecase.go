@@ -2,7 +2,12 @@ package usecases
 
 import (
 	"context"
+	"encoding/csv"
+	"fmt"
+	"io"
+	"time"
 
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -181,6 +186,154 @@ func (usecase *CustomListUseCase) AddCustomListValue(ctx context.Context,
 	})
 
 	return value, nil
+}
+
+// If we go for an upsert, change logging to reflect that
+func (usecase *CustomListUseCase) ReplaceCustomListValuesFromCSV(ctx context.Context, customListID string, fileReader *csv.Reader) error {
+	logger := utils.LoggerFromContext(ctx)
+	logger.InfoContext(ctx, "Ingesting custom list values from CSV")
+	total := 0
+	start := time.Now()
+	printDuration := func() {
+		end := time.Now()
+		duration := end.Sub(start)
+		// divide by 1e6 convert to milliseconds (base is nanoseconds)
+		avgDuration := float64(duration) / float64(total*1e6)
+		logger.InfoContext(ctx, fmt.Sprintf("Successfully ingested %d custom list values in %s, average %vms", total, duration, avgDuration))
+	}
+	defer printDuration()
+
+	var userId *models.UserId
+	creds, found := utils.CredentialsFromCtx(ctx)
+	if found {
+		userId = &creds.ActorIdentity.UserId
+	}
+
+	customListValuesFromCSV, err := processCSVFile(fileReader)
+	if err != nil {
+		return errors.Wrap(models.BadParameterError, err.Error())
+	}
+
+	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
+		customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, customListID)
+		if err != nil {
+			return err
+		}
+		if err := usecase.enforceSecurity.ModifyCustomList(customList); err != nil {
+			return err
+		}
+
+		currentCustomListValues, err := usecase.CustomListRepository.GetCustomListValues(
+			ctx, tx, models.GetCustomListValuesInput{Id: customListID})
+		if err != nil {
+			return err
+		}
+
+		newCustomListValuesToAdd, currentCustomListValueIdsToDelete :=
+			computeCustomListValueUpdates(customListValuesFromCSV, currentCustomListValues)
+
+		newCustomListValuesInput := make([]models.BatchInsertCustomListValue, len(newCustomListValuesToAdd))
+		for i, customListValue := range newCustomListValuesToAdd {
+			newCustomListValuesInput[i] = models.BatchInsertCustomListValue{
+				Id:    uuid.NewString(),
+				Value: customListValue,
+			}
+		}
+
+		err = usecase.CustomListRepository.BatchInsertCustomListValues(ctx, tx,
+			customListID, newCustomListValuesInput, userId)
+		if err != nil {
+			return err
+		}
+
+		err = usecase.CustomListRepository.BatchDeleteCustomListValues(ctx, tx,
+			customListID, currentCustomListValueIdsToDelete, userId)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	tracking.TrackEvent(ctx, models.AnalyticsListValueCreated, map[string]interface{}{
+		"list_id": customListID,
+	})
+
+	return nil
+}
+
+func computeCustomListValueUpdates(customListValuesFromCSV []string,
+	currentCustomListValues []models.CustomListValue,
+) ([]string, []string) {
+	newCustomListValuesMap := make(map[string]bool)
+	for _, customListValue := range customListValuesFromCSV {
+		newCustomListValuesMap[customListValue] = true
+	}
+
+	currentCustomListValueIdsToDelete := make([]string, 0)
+	for _, customListValue := range currentCustomListValues {
+		_, ok := newCustomListValuesMap[customListValue.Value]
+		if ok {
+			newCustomListValuesMap[customListValue.Value] = false
+		} else {
+			currentCustomListValueIdsToDelete = append(
+				currentCustomListValueIdsToDelete, customListValue.Id)
+		}
+	}
+
+	newCustomListValuesToAdd := make([]string, 0)
+	for customListValue, shouldAdd := range newCustomListValuesMap {
+		if shouldAdd {
+			newCustomListValuesToAdd = append(newCustomListValuesToAdd, customListValue)
+		}
+	}
+	return newCustomListValuesToAdd, currentCustomListValueIdsToDelete
+}
+
+var customListValuesCSVHeader = []string{"value"}
+
+func processCSVFile(fileReader *csv.Reader) ([]string, error) {
+	firstRow, err := fileReader.Read()
+	if err != nil {
+		return nil, fmt.Errorf("error reading first row of CSV: %w", err)
+	}
+
+	// Check that CSV header matches expected header
+	if len(firstRow) != len(customListValuesCSVHeader) {
+		return nil, fmt.Errorf("invalid CSV header: expected %v columns, got %v",
+			len(customListValuesCSVHeader), len(firstRow))
+	}
+	for i, headerValue := range customListValuesCSVHeader {
+		if firstRow[i] != headerValue {
+			return nil, fmt.Errorf("invalid CSV header: expected %v at column %v, got %v", headerValue, i, firstRow[i])
+		}
+	}
+
+	// Read the rest of the file
+	customListValues := make([]string, 0)
+	for lineNumber := 2; ; lineNumber++ {
+		row, err := fileReader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			var parseError *csv.ParseError
+			if errors.As(err, &parseError) {
+				return nil, err
+			} else {
+				return nil, fmt.Errorf("error found at line %d in CSV", lineNumber)
+			}
+		}
+
+		if len(row) != len(customListValuesCSVHeader) {
+			return nil, fmt.Errorf("invalid CSV row: expected %v columns, got %v at line %d",
+				len(customListValuesCSVHeader), len(row), lineNumber)
+		}
+		customListValues = append(customListValues, row[0])
+	}
+	return customListValues, nil
 }
 
 func (usecase *CustomListUseCase) DeleteCustomListValue(ctx context.Context,
