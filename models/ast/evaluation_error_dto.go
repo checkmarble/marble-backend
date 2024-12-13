@@ -27,6 +27,7 @@ var evaluationErrorDtoMap = []errorAndCode{
 	{ErrArgumentMustBeString, "ARGUMENT_MUST_BE_STRING"},
 	{ErrArgumentMustBeBool, "ARGUMENT_MUST_BE_BOOLEAN"},
 	{ErrArgumentMustBeList, "ARGUMENT_MUST_BE_LIST"},
+	{ErrArgumentMustBeStringOrList, "ARGUMENT_MUST_BE_STRING_OR_LIST"},
 	{ErrArgumentCantBeConvertedToDuration, "ARGUMENT_MUST_BE_CONVERTIBLE_TO_DURATION"},
 	{ErrArgumentMustBeTime, "ARGUMENT_MUST_BE_TIME"},
 	{ErrArgumentRequired, "ARGUMENT_REQUIRED"},
