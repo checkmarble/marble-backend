@@ -62,23 +62,19 @@ func startsEndsWithString(left string, right string, f ast.Function) (any, []err
 
 func startsEndsWithListOfStrings(left string, right []string, f ast.Function) (any, []error) {
 	if f == ast.FUNC_STRING_STARTS_WITH {
-		var containsElement bool
 		for _, r := range right {
 			if strings.HasPrefix(strings.ToLower(left), strings.ToLower(r)) {
-				containsElement = true
-				break
+				return true, nil
 			}
 		}
-		return containsElement, nil
+		return false, nil
 	} else if f == ast.FUNC_STRING_ENDS_WITH {
-		var containsElement bool
 		for _, r := range right {
 			if strings.HasSuffix(strings.ToLower(left), strings.ToLower(r)) {
-				containsElement = true
-				break
+				return true, nil
 			}
 		}
-		return containsElement, nil
+		return false, nil
 	} else {
 		return MakeEvaluateError(errors.New(fmt.Sprintf(
 			"StringStartsWith does not support %s function", f.DebugString())))
