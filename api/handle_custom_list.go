@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/csv"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -172,6 +173,38 @@ func handlePostCustomListValue(uc usecases.Usecases) func(c *gin.Context) {
 		c.JSON(http.StatusCreated, gin.H{
 			"custom_list_value": dto.AdaptCustomListValueDto(customListValue),
 		})
+	}
+}
+
+func handlePostCsvCustomListValues(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		logger := utils.LoggerFromContext(ctx)
+
+		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
+		if presentError(ctx, c, err) {
+			return
+		}
+		logger = logger.With(slog.String("organizationId", organizationId))
+
+		customListID := c.Param("list_id")
+
+		file, _, err := c.Request.FormFile("file")
+		if err != nil {
+			http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+			return
+		}
+		defer file.Close()
+
+		fileReader := csv.NewReader(pure_utils.NewReaderWithoutBom(file))
+
+		usecase := usecasesWithCreds(ctx, uc).NewCustomListUseCase()
+		err = usecase.ReplaceCustomListValuesFromCSV(ctx, customListID, fileReader)
+		if presentError(ctx, c, err) {
+			logger.ErrorContext(ctx, "error replacing values to a list from CSV: \n"+err.Error())
+			return
+		}
+		c.Status(http.StatusCreated)
 	}
 }
 

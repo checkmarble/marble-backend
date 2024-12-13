@@ -45,3 +45,8 @@ type DeleteCustomListValueInput struct {
 	Id           string
 	CustomListId string
 }
+
+type BatchInsertCustomListValue struct {
+	Id    string
+	Value string
+}

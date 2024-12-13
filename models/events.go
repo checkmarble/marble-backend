@@ -14,6 +14,7 @@ const (
 	AnalyticsListUpdated                AnalyticsEvent = "Updated a List"
 	AnalyticsListDeleted                AnalyticsEvent = "Deleted a List"
 	AnalyticsListValueCreated           AnalyticsEvent = "Created a List Value"
+	AnalyticsListValuesReplaced         AnalyticsEvent = "Replaced List Values by CSV"
 	AnalyticsListValueDeleted           AnalyticsEvent = "Deleted a List Value"
 	AnalyticsCaseCreated                AnalyticsEvent = "Created a Case"
 	AnalyticsCaseUpdated                AnalyticsEvent = "Updated a Case"
