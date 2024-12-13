@@ -66,6 +66,21 @@ func handleGetScenarioTestRun(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
+func handleCancelScenarioTestRun(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		testRunId := c.Param("test_run_id")
+
+		usecase := usecasesWithCreds(ctx, uc).NewScenarioTestRunUseCase()
+		testrun, err := usecase.CancelTestRunById(ctx, testRunId)
+		if presentError(ctx, c, err) {
+			return
+		}
+		result := dto.AdaptScenarioTestRunDto(testrun)
+		c.JSON(http.StatusOK, gin.H{"scenario_test_run": result})
+	}
+}
+
 func handleDecisionsDataByOutcomeAndScore(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()

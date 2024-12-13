@@ -16,6 +16,7 @@ type ScenarioTestRunRepository interface {
 		testrunId string,
 		input models.ScenarioTestRunCreateDbInput,
 	) error
+	ListRunningTestRun(ctx context.Context, exec Executor) ([]models.ScenarioTestRun, error)
 	ListTestRunsByScenarioID(ctx context.Context, exec Executor, scenarioID string) ([]models.ScenarioTestRun, error)
 	GetTestRunByLiveVersionID(
 		ctx context.Context,
@@ -105,6 +106,25 @@ func (repo *MarbleDbRepository) GetTestRunByLiveVersionID(
 		return nil, nil
 	}
 	return &testruns[0], nil
+}
+
+func (repo *MarbleDbRepository) ListRunningTestRun(
+	ctx context.Context, exec Executor,
+) ([]models.ScenarioTestRun, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+	query := selectTestruns().
+		Where(squirrel.Eq{"status": models.Up}).
+		OrderBy("created_at DESC")
+	testruns, err := SqlToListOfModels(ctx, exec, query, dbmodels.AdaptScenarioTestrun)
+	if err != nil {
+		return nil, err
+	}
+	if len(testruns) == 0 {
+		return nil, nil
+	}
+	return testruns, nil
 }
 
 func (repo *MarbleDbRepository) ListTestRunsByScenarioID(ctx context.Context,
