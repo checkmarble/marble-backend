@@ -54,9 +54,9 @@ func (s *ScenarioTestrunRepository) ListTestRunsByScenarioID(ctx context.Context
 }
 
 func (s *ScenarioTestrunRepository) ListRunningTestRun(ctx context.Context,
-	exec repositories.Executor,
+	exec repositories.Executor, organizationId string,
 ) ([]models.ScenarioTestRun, error) {
-	args := s.Called(ctx, exec)
+	args := s.Called(ctx, exec, organizationId)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
