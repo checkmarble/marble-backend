@@ -16,7 +16,7 @@ type ScenarioTestRunRepository interface {
 		testrunId string,
 		input models.ScenarioTestRunCreateDbInput,
 	) error
-	ListRunningTestRun(ctx context.Context, exec Executor) ([]models.ScenarioTestRun, error)
+	ListRunningTestRun(ctx context.Context, exec Executor, organizationId string) ([]models.ScenarioTestRun, error)
 	ListTestRunsByScenarioID(ctx context.Context, exec Executor, scenarioID string) ([]models.ScenarioTestRun, error)
 	GetTestRunByLiveVersionID(
 		ctx context.Context,
@@ -109,22 +109,32 @@ func (repo *MarbleDbRepository) GetTestRunByLiveVersionID(
 }
 
 func (repo *MarbleDbRepository) ListRunningTestRun(
-	ctx context.Context, exec Executor,
+	ctx context.Context, exec Executor, organizationId string,
 ) ([]models.ScenarioTestRun, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
-	query := selectTestruns().
-		Where(squirrel.Eq{"status": models.Up}).
+	query := NewQueryBuilder().
+		Select(`
+			tr.id, 
+			tr.scenario_iteration_id,
+			tr.live_scenario_iteration_id,
+			tr.created_at, 
+			tr.expires_at,
+			tr.status`).
+		From(dbmodels.TABLE_SCENARIO_TESTRUN + " AS tr").
+		Join(dbmodels.TABLE_SCENARIO_ITERATIONS + " AS scit ON scit.id = tr.scenario_iteration_id").
+		Where(squirrel.And{
+			squirrel.Eq{"tr.status": models.Up},
+			squirrel.Eq{"scit.org_id": organizationId},
+		}).
 		OrderBy("created_at DESC")
-	testruns, err := SqlToListOfModels(ctx, exec, query, dbmodels.AdaptScenarioTestrun)
-	if err != nil {
-		return nil, err
-	}
-	if len(testruns) == 0 {
-		return nil, nil
-	}
-	return testruns, nil
+	return SqlToListOfModels(
+		ctx,
+		exec,
+		query,
+		dbmodels.AdaptScenarioTestrun,
+	)
 }
 
 func (repo *MarbleDbRepository) ListTestRunsByScenarioID(ctx context.Context,

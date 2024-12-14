@@ -55,7 +55,7 @@ func (usecase *ScenarioTestRunUsecase) CreateScenarioTestRun(
 	}
 
 	// we should not have any existing testrun for this scenario
-	testRuns, err := usecase.repository.ListRunningTestRun(ctx, exec)
+	testRuns, err := usecase.repository.ListRunningTestRun(ctx, exec, organizationId)
 	if err != nil {
 		return models.ScenarioTestRun{}, err
 	}
@@ -164,10 +164,7 @@ func (usecase *ScenarioTestRunUsecase) CancelTestRunById(ctx context.Context,
 	if err := usecase.enforceSecurity.ReadTestRun(testRun.OrganizationId); err != nil {
 		return models.ScenarioTestRun{}, err
 	}
-	if testRun.Status == models.Down {
-		return testRun, nil
-	}
-	if testRun.Status == models.Up {
+	if testRun.Status != models.Down {
 		if err := usecase.repository.UpdateTestRunStatus(ctx,
 			exec, testRunId, models.Down); err != nil {
 			return models.ScenarioTestRun{}, err
@@ -181,5 +178,5 @@ func (usecase *ScenarioTestRunUsecase) CancelTestRunById(ctx context.Context,
 		}
 		return updatedTestRun, nil
 	}
-	return models.ScenarioTestRun{}, models.BadParameterError
+	return testRun, nil
 }

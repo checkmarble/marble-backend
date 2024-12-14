@@ -1,8 +1,7 @@
 services:
   db:
     container_name: postgres
-    #image: europe-west1-docker.pkg.dev/marble-infra/marble/postgresql-db:latest # custom image of postgres 15 with pg_cron extension added
-    image: postgres:15.2-alpine
+    image: europe-west1-docker.pkg.dev/marble-infra/marble/postgresql-db:latest # custom image of postgres 15 with pg_cron extension added
     shm_size: 1g
     restart: always
     environment:
@@ -15,7 +14,7 @@ services:
     volumes:
       - postgres-db:/data/postgres
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 2s
       timeout: 1s
       retries: 5
