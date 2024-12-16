@@ -189,29 +189,33 @@ func (usecase *CustomListUseCase) AddCustomListValue(ctx context.Context,
 }
 
 func (usecase *CustomListUseCase) ReadCustomListValuesToCSV(ctx context.Context, customListID string, w io.Writer) (string, error) {
-	customList, err := usecase.GetCustomListById(ctx, customListID)
+	exec := usecase.executorFactory.NewExecutor()
+	customList, err := usecase.CustomListRepository.GetCustomListById(ctx, exec, customListID)
 	if err != nil {
 		return "", err
 	}
-	customListValues, err := usecase.CustomListRepository.GetCustomListValues(ctx,
-		usecase.executorFactory.NewExecutor(), models.GetCustomListValuesInput{Id: customListID})
+	if err := usecase.enforceSecurity.ReadCustomList(customList); err != nil {
+		return "", err
+	}
+
+	customListValues, err := usecase.CustomListRepository.GetCustomListValues(ctx, exec, models.GetCustomListValuesInput{
+		Id: customListID,
+	})
 	if err != nil {
 		return "", err
 	}
 
 	csvWriter := csv.NewWriter(w)
-
-	// Write header
-	if err := csvWriter.Write(customListValuesCSVHeader); err != nil {
-		return "", err
-	}
-
-	// Write values
 	for _, customListValue := range customListValues {
 		if err := csvWriter.Write([]string{customListValue.Value}); err != nil {
 			return "", err
 		}
 	}
+	csvWriter.Flush()
+	if err = csvWriter.Error(); err != nil {
+		return "", err
+	}
+
 	return customList.Name, nil
 }
 
