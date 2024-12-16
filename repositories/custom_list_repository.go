@@ -12,7 +12,12 @@ import (
 type CustomListRepository interface {
 	AllCustomLists(ctx context.Context, exec Executor, organizationId string) ([]models.CustomList, error)
 	GetCustomListById(ctx context.Context, exec Executor, id string) (models.CustomList, error)
-	GetCustomListValues(ctx context.Context, exec Executor, getCustomList models.GetCustomListValuesInput) ([]models.CustomListValue, error)
+	GetCustomListValues(
+		ctx context.Context,
+		exec Executor,
+		getCustomList models.GetCustomListValuesInput,
+		forUpdate ...bool,
+	) ([]models.CustomListValue, error)
 	GetCustomListValueById(ctx context.Context, exec Executor, id string) (models.CustomListValue, error)
 	CreateCustomList(ctx context.Context, exec Executor, createCustomList models.CreateCustomListInput, newCustomListId string) error
 	UpdateCustomList(ctx context.Context, exec Executor, updateCustomList models.UpdateCustomListInput) error
@@ -81,22 +86,26 @@ func (repo *CustomListRepositoryPostgresql) GetCustomListById(ctx context.Contex
 	)
 }
 
-func (repo *CustomListRepositoryPostgresql) GetCustomListValues(ctx context.Context, exec Executor,
+func (repo *CustomListRepositoryPostgresql) GetCustomListValues(
+	ctx context.Context,
+	exec Executor,
 	getCustomList models.GetCustomListValuesInput,
+	forUpdate ...bool,
 ) ([]models.CustomListValue, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return nil, err
 	}
 
-	return SqlToListOfModels(
-		ctx,
-		exec,
-		NewQueryBuilder().
-			Select(dbmodels.ColumnsSelectCustomListValue...).
-			From(dbmodels.TABLE_CUSTOM_LIST_VALUE).
-			Where("custom_list_id = ? AND deleted_at IS NULL", getCustomList.Id),
-		dbmodels.AdaptCustomListValue,
-	)
+	query := NewQueryBuilder().
+		Select(dbmodels.ColumnsSelectCustomListValue...).
+		From(dbmodels.TABLE_CUSTOM_LIST_VALUE).
+		Where("custom_list_id = ? AND deleted_at IS NULL", getCustomList.Id)
+
+	if len(forUpdate) > 0 && forUpdate[0] {
+		query = query.Suffix("FOR UPDATE")
+	}
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptCustomListValue)
 }
 
 func (repo *CustomListRepositoryPostgresql) GetCustomListValueById(ctx context.Context, exec Executor, id string) (models.CustomListValue, error) {
@@ -223,6 +232,9 @@ func (repo *CustomListRepositoryPostgresql) BatchInsertCustomListValues(
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
+	}
+	if len(customListValues) == 0 {
+		return nil
 	}
 
 	if userId != nil {

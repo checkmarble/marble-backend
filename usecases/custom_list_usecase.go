@@ -188,7 +188,7 @@ func (usecase *CustomListUseCase) AddCustomListValue(ctx context.Context,
 	return value, nil
 }
 
-func (usecase *CustomListUseCase) WriteCustomListValuesToCSV(ctx context.Context, customListID string, w io.Writer) (string, error) {
+func (usecase *CustomListUseCase) ReadCustomListValuesToCSV(ctx context.Context, customListID string, w io.Writer) (string, error) {
 	customList, err := usecase.GetCustomListById(ctx, customListID)
 	if err != nil {
 		return "", err
@@ -250,7 +250,7 @@ func (usecase *CustomListUseCase) ReplaceCustomListValuesFromCSV(ctx context.Con
 		}
 
 		currentCustomListValues, err := usecase.CustomListRepository.GetCustomListValues(
-			ctx, tx, models.GetCustomListValuesInput{Id: customListID})
+			ctx, tx, models.GetCustomListValuesInput{Id: customListID}, true)
 		if err != nil {
 			return err
 		}
@@ -318,28 +318,11 @@ func computeCustomListValueUpdates(customListValuesFromCSV []string,
 	return newCustomListValuesToAdd, currentCustomListValueIdsToDelete
 }
 
-var customListValuesCSVHeader = []string{"value"}
+var maxCustomListValues = 10000
 
 func processCSVFile(fileReader *csv.Reader) ([]string, error) {
-	firstRow, err := fileReader.Read()
-	if err != nil {
-		return nil, fmt.Errorf("error reading first row of CSV: %w", err)
-	}
-
-	// Check that CSV header matches expected header
-	if len(firstRow) != len(customListValuesCSVHeader) {
-		return nil, fmt.Errorf("invalid CSV header: expected %v columns, got %v",
-			len(customListValuesCSVHeader), len(firstRow))
-	}
-	for i, headerValue := range customListValuesCSVHeader {
-		if firstRow[i] != headerValue {
-			return nil, fmt.Errorf("invalid CSV header: expected %v at column %v, got %v", headerValue, i, firstRow[i])
-		}
-	}
-
-	// Read the rest of the file
 	customListValues := make([]string, 0)
-	for lineNumber := 2; ; lineNumber++ {
+	for lineNumber := 1; ; lineNumber++ {
 		row, err := fileReader.Read()
 		if err == io.EOF {
 			break
@@ -353,11 +336,15 @@ func processCSVFile(fileReader *csv.Reader) ([]string, error) {
 			}
 		}
 
-		if len(row) != len(customListValuesCSVHeader) {
-			return nil, fmt.Errorf("invalid CSV row: expected %v columns, got %v at line %d",
-				len(customListValuesCSVHeader), len(row), lineNumber)
+		if len(row) != 1 {
+			return nil, fmt.Errorf("invalid CSV row: expected 1 column, got %v at line %d",
+				len(row), lineNumber)
 		}
 		customListValues = append(customListValues, row[0])
+	}
+	if len(customListValues) > maxCustomListValues {
+		return nil, fmt.Errorf("too many values in CSV: expected at most %v, got %v",
+			maxCustomListValues, len(customListValues))
 	}
 	return customListValues, nil
 }

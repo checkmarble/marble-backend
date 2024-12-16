@@ -157,7 +157,7 @@ func handleGetCsvCustomListValues(uc usecases.Usecases) func(c *gin.Context) {
 		customListID := c.Param("list_id")
 
 		usecase := usecasesWithCreds(ctx, uc).NewCustomListUseCase()
-		customListName, err := usecase.WriteCustomListValuesToCSV(ctx, customListID, c.Writer)
+		customListName, err := usecase.ReadCustomListValuesToCSV(ctx, customListID, c.Writer)
 		if presentError(ctx, c, err) {
 			logger.ErrorContext(ctx, "error writing values to a list to CSV: \n"+err.Error())
 			return
@@ -208,13 +208,6 @@ func handlePostCustomListValue(uc usecases.Usecases) func(c *gin.Context) {
 func handlePostCsvCustomListValues(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		logger := utils.LoggerFromContext(ctx)
-
-		organizationId, err := utils.OrganizationIdFromRequest(c.Request)
-		if presentError(ctx, c, err) {
-			return
-		}
-		logger = logger.With(slog.String("organizationId", organizationId))
 
 		customListID := c.Param("list_id")
 
@@ -230,7 +223,6 @@ func handlePostCsvCustomListValues(uc usecases.Usecases) func(c *gin.Context) {
 		usecase := usecasesWithCreds(ctx, uc).NewCustomListUseCase()
 		err = usecase.ReplaceCustomListValuesFromCSV(ctx, customListID, fileReader)
 		if presentError(ctx, c, err) {
-			logger.ErrorContext(ctx, "error replacing values to a list from CSV: \n"+err.Error())
 			return
 		}
 		c.Status(http.StatusCreated)
