@@ -11,11 +11,18 @@ concurrency:
 
 jobs:
   test_backend:
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: write
     uses: ./.github/workflows/backend_test_workflow.yaml
 
   build_and_deploy_backend:
     needs: test_backend
     uses: ./.github/workflows/backend_deploy_workflow.yaml
+    permissions:
+      contents: read
+      id-token: "write" # needed for using open id token to authenticate with GCP services
     with:
       environment: "production"
       version: ${{ github.ref_name }}
