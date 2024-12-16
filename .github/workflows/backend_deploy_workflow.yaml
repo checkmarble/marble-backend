@@ -12,10 +12,6 @@ on:
         description: "version to deploy"
         required: true
 
-permissions:
-  contents: read
-  id-token: "write" # needed for using open id token to authenticate with GCP
-
 jobs:
   build_and_deploy_backend:
     name: Build and deploy back-end

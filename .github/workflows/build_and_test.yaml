@@ -8,4 +8,8 @@ concurrency:
 
 jobs:
   test_backend:
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: write
     uses: ./.github/workflows/backend_test_workflow.yaml
