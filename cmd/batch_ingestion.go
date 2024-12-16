@@ -99,7 +99,9 @@ func RunBatchIngestion() error {
 	)
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithIngestionBucketUrl(jobConfig.ingestionBucketUrl),
-		usecases.WithLicense(license))
+		usecases.WithLicense(license),
+		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
+	)
 
 	err = jobs.IngestDataFromCsv(ctx, uc)
 	if err != nil {

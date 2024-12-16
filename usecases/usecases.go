@@ -22,6 +22,7 @@ type Usecases struct {
 	ingestionBucketUrl          string
 	caseManagerBucketUrl        string
 	failedWebhooksRetryPageSize int
+	hasConvoyServerSetup        bool
 	license                     models.LicenseValidation
 }
 
@@ -57,12 +58,21 @@ func WithBatchIngestionMaxSize(size int) Option {
 	}
 }
 
+func WithConvoyServer(url string) Option {
+	return func(o *options) {
+		if url != "" {
+			o.hasConvoyServerSetup = true
+		}
+	}
+}
+
 type options struct {
 	batchIngestionMaxSize       int
 	ingestionBucketUrl          string
 	caseManagerBucketUrl        string
 	failedWebhooksRetryPageSize int
 	license                     models.LicenseValidation
+	hasConvoyServerSetup        bool
 }
 
 func newUsecasesWithOptions(repositories repositories.Repositories, o *options) Usecases {
