@@ -410,6 +410,7 @@ func (usecases *UsecasesWithCreds) NewWebhookEventsUsecase() WebhookEventsUsecas
 		usecases.Repositories.MarbleDbRepository,
 		usecases.Usecases.failedWebhooksRetryPageSize,
 		usecases.Usecases.license.Webhooks,
+		usecases.Usecases.hasConvoyServerSetup,
 	)
 }
 

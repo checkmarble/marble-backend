@@ -150,6 +150,7 @@ func RunTaskQueue() error {
 		usecases.WithIngestionBucketUrl(workerConfig.ingestionBucketUrl),
 		usecases.WithFailedWebhooksRetryPageSize(workerConfig.failedWebhooksRetryPageSize),
 		usecases.WithLicense(license),
+		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
 	)
 	adminUc := jobs.GenerateUsecaseWithCredForMarbleAdmin(ctx, uc)
 	river.AddWorker(workers, adminUc.NewAsyncDecisionWorker())

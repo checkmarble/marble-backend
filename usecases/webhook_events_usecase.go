@@ -55,6 +55,7 @@ type WebhookEventsUsecase struct {
 	webhookEventsRepository     webhookEventsRepository
 	failedWebhooksRetryPageSize int
 	hasLicense                  bool
+	hasConvoyServerSetup        bool
 }
 
 func NewWebhookEventsUsecase(
@@ -64,6 +65,7 @@ func NewWebhookEventsUsecase(
 	webhookEventsRepository webhookEventsRepository,
 	failedWebhooksRetryPageSize int,
 	hasLicense bool,
+	hasConvoyServerSetup bool,
 ) WebhookEventsUsecase {
 	if failedWebhooksRetryPageSize == 0 {
 		failedWebhooksRetryPageSize = DEFAULT_FAILED_WEBHOOKS_PAGE_SIZE
@@ -76,6 +78,7 @@ func NewWebhookEventsUsecase(
 		webhookEventsRepository:     webhookEventsRepository,
 		failedWebhooksRetryPageSize: failedWebhooksRetryPageSize,
 		hasLicense:                  hasLicense,
+		hasConvoyServerSetup:        hasConvoyServerSetup,
 	}
 }
 
@@ -85,7 +88,7 @@ func (usecase WebhookEventsUsecase) CreateWebhookEvent(
 	tx repositories.Transaction,
 	input models.WebhookEventCreate,
 ) error {
-	if !usecase.hasLicense {
+	if !usecase.hasLicense || !usecase.hasConvoyServerSetup {
 		return nil
 	}
 
@@ -101,13 +104,12 @@ func (usecase WebhookEventsUsecase) CreateWebhookEvent(
 	return nil
 }
 
-// SendWebhookEventAsync sends a webhook event asynchronously, with a new context and timeout and a child span.
-// Does nothing if the license is not active
+// SendWebhookEventAsync sends a webhook event asynchronously, with a new context and timeout. This is the public method that should be
+// used from other usecases.
 func (usecase WebhookEventsUsecase) SendWebhookEventAsync(ctx context.Context, webhookEventId string) {
 	logger := utils.LoggerFromContext(ctx).With("webhook_event_id", webhookEventId)
 	ctx = utils.StoreLoggerInContext(ctx, logger)
 
-	// goroutine to send the webhook event asynchronously, with a new context and timeout and a child span
 	go func() {
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), ASYNC_WEBHOOKS_SEND_TIMEOUT)
 		defer cancel()
@@ -120,7 +122,9 @@ func (usecase WebhookEventsUsecase) SendWebhookEventAsync(ctx context.Context, w
 }
 
 // RetrySendWebhookEvents retries sending webhook events that have failed to be sent.
-// Does nothing if the license is not active
+// It handles them in limited batches.
+// TODO: refactor the whole usecase to use the the task queue tu send webhooks, removing the need for those methods (usecases should
+// just create a task transactionally)
 func (usecase WebhookEventsUsecase) RetrySendWebhookEvents(
 	ctx context.Context,
 ) error {
@@ -134,7 +138,7 @@ func (usecase WebhookEventsUsecase) RetrySendWebhookEvents(
 	if err != nil {
 		return errors.Wrap(err, "error while listing pending webhook events")
 	}
-	logger.InfoContext(ctx, fmt.Sprintf("Found %d webhook events to send", len(pendingWebhookEvents)))
+	logger.InfoContext(ctx, fmt.Sprintf("Found %d webhook events to retry", len(pendingWebhookEvents)))
 	if len(pendingWebhookEvents) == 0 {
 		return nil
 	}
@@ -169,25 +173,29 @@ func (usecase WebhookEventsUsecase) RetrySendWebhookEvents(
 
 	successCount := 0
 	retryCount := 0
+	skipCount := 0
 	for _, status := range deliveryStatuses {
 		switch status {
 		case models.Success:
 			successCount++
 		case models.Retry:
 			retryCount++
+		case models.Skipped:
+			skipCount++
 		}
 	}
-	logger.InfoContext(ctx, fmt.Sprintf("Webhook events sent: %d success, %d retry out of %d events",
-		successCount, retryCount, len(pendingWebhookEvents)))
+	logger.InfoContext(ctx, fmt.Sprintf("Webhook events sent: %d success, %d retry, %d skipped out of %d events",
+		successCount, retryCount, skipCount, len(pendingWebhookEvents)))
 
 	return nil
 }
 
-// _sendWebhookEvent actually sends a webhook event and updates its status in the database.
+// _sendWebhookEvent actually sends a webhook event using the repository, and updates its status in the database.
+// The webhook event is marked as "skipped" if the currently active license does not include webhooks, or if no Convoy instance has been configured.
 func (usecase WebhookEventsUsecase) _sendWebhookEvent(ctx context.Context, webhookEventId string) (models.WebhookEventDeliveryStatus, error) {
 	logger := utils.LoggerFromContext(ctx)
 	exec := usecase.executorFactory.NewExecutor()
-	if !usecase.hasLicense { // TODO: add condition on no convoy set up
+	if !usecase.hasLicense || !usecase.hasConvoyServerSetup {
 		return models.Skipped, usecase.webhookEventsRepository.MarkWebhookEventRetried(
 			ctx, exec, models.WebhookEventUpdate{Id: webhookEventId, DeliveryStatus: models.Skipped})
 	}

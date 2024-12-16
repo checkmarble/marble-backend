@@ -111,7 +111,10 @@ func RunScheduledExecuter() error {
 		repositories.WithTracerProvider(telemetryRessources.TracerProvider),
 	)
 
-	uc := usecases.NewUsecases(repositories, usecases.WithLicense(license))
+	uc := usecases.NewUsecases(repositories,
+		usecases.WithLicense(license),
+		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
+	)
 
 	err = jobs.ExecuteAllScheduledScenarios(ctx, uc)
 	if err != nil {

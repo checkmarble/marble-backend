@@ -89,7 +89,9 @@ func RunSendPendingWebhookEvents() error {
 		))
 	uc := usecases.NewUsecases(repositories,
 		usecases.WithFailedWebhooksRetryPageSize(jobConfig.failedWebhooksRetryPageSize),
-		usecases.WithLicense(license))
+		usecases.WithLicense(license),
+		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
+	)
 
 	err = jobs.SendPendingWebhookEvents(ctx, uc)
 	if err != nil {

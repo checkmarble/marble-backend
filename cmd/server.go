@@ -142,6 +142,7 @@ func RunServer() error {
 		usecases.WithIngestionBucketUrl(serverConfig.ingestionBucketUrl),
 		usecases.WithCaseManagerBucketUrl(serverConfig.caseManagerBucket),
 		usecases.WithLicense(license),
+		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
 	)
 
 	////////////////////////////////////////////////////////////
