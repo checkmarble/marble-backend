@@ -24,7 +24,7 @@ func (cl *CustomListRepository) GetCustomListById(ctx context.Context, exec repo
 }
 
 func (cl *CustomListRepository) GetCustomListValues(ctx context.Context, exec repositories.Executor,
-	getCustomList models.GetCustomListValuesInput,
+	getCustomList models.GetCustomListValuesInput, forUpdate ...bool,
 ) ([]models.CustomListValue, error) {
 	args := cl.Called(exec, getCustomList)
 	return args.Get(0).([]models.CustomListValue), args.Error(1)
@@ -65,6 +65,17 @@ func (cl *CustomListRepository) AddCustomListValue(
 	return args.Error(0)
 }
 
+func (cl *CustomListRepository) BatchInsertCustomListValues(
+	ctx context.Context,
+	exec repositories.Executor,
+	customListId string,
+	customListValues []models.BatchInsertCustomListValue,
+	userId *models.UserId,
+) error {
+	args := cl.Called(ctx, exec, customListId, customListValues, userId)
+	return args.Error(0)
+}
+
 func (cl *CustomListRepository) DeleteCustomListValue(
 	ctx context.Context,
 	exec repositories.Executor,
@@ -72,5 +83,16 @@ func (cl *CustomListRepository) DeleteCustomListValue(
 	userId *models.UserId,
 ) error {
 	args := cl.Called(ctx, exec, deleteCustomListValue, userId)
+	return args.Error(0)
+}
+
+func (cl *CustomListRepository) BatchDeleteCustomListValues(
+	ctx context.Context,
+	exec repositories.Executor,
+	customListId string,
+	deleteCustomListValueIds []string,
+	userId *models.UserId,
+) error {
+	args := cl.Called(ctx, exec, customListId, deleteCustomListValueIds, userId)
 	return args.Error(0)
 }
