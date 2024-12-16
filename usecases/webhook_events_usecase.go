@@ -104,10 +104,6 @@ func (usecase WebhookEventsUsecase) CreateWebhookEvent(
 // SendWebhookEventAsync sends a webhook event asynchronously, with a new context and timeout and a child span.
 // Does nothing if the license is not active
 func (usecase WebhookEventsUsecase) SendWebhookEventAsync(ctx context.Context, webhookEventId string) {
-	if !usecase.hasLicense {
-		return
-	}
-
 	logger := utils.LoggerFromContext(ctx).With("webhook_event_id", webhookEventId)
 	ctx = utils.StoreLoggerInContext(ctx, logger)
 
@@ -128,10 +124,6 @@ func (usecase WebhookEventsUsecase) SendWebhookEventAsync(ctx context.Context, w
 func (usecase WebhookEventsUsecase) RetrySendWebhookEvents(
 	ctx context.Context,
 ) error {
-	if !usecase.hasLicense {
-		return nil
-	}
-
 	logger := utils.LoggerFromContext(ctx)
 	exec := usecase.executorFactory.NewExecutor()
 
@@ -195,6 +187,11 @@ func (usecase WebhookEventsUsecase) RetrySendWebhookEvents(
 func (usecase WebhookEventsUsecase) _sendWebhookEvent(ctx context.Context, webhookEventId string) (models.WebhookEventDeliveryStatus, error) {
 	logger := utils.LoggerFromContext(ctx)
 	exec := usecase.executorFactory.NewExecutor()
+	if !usecase.hasLicense { // TODO: add condition on no convoy set up
+		return models.Skipped, usecase.webhookEventsRepository.MarkWebhookEventRetried(
+			ctx, exec, models.WebhookEventUpdate{Id: webhookEventId, DeliveryStatus: models.Skipped})
+	}
+
 	webhookEvent, err := usecase.webhookEventsRepository.GetWebhookEvent(ctx, exec, webhookEventId)
 	if err != nil {
 		return models.Scheduled, err
@@ -221,8 +218,9 @@ func (usecase WebhookEventsUsecase) _sendWebhookEvent(ctx context.Context, webho
 	}
 
 	err = usecase.webhookEventsRepository.MarkWebhookEventRetried(ctx, exec, webhookEventUpdate)
-	return webhookEventUpdate.DeliveryStatus, errors.Wrapf(
-		err,
-		"error while updating webhook event %s", webhookEvent.Id,
-	)
+	if err != nil {
+		return webhookEventUpdate.DeliveryStatus,
+			errors.Wrapf(err, "error while updating webhook event %s", webhookEvent.Id)
+	}
+	return webhookEventUpdate.DeliveryStatus, nil
 }

@@ -18,6 +18,8 @@ const (
 	Success WebhookEventDeliveryStatus = "success"
 	// The event delivery previously failed and the automatic retries have kicked in
 	Retry WebhookEventDeliveryStatus = "retry"
+	// The webhooks feature is available in the license, or no convoy server has been set up
+	Skipped WebhookEventDeliveryStatus = "skipped"
 )
 
 type WebhookEventType string
