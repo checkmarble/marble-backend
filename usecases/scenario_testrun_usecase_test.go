@@ -86,8 +86,8 @@ func (suite *ScenarioTestrunTestSuite) TestActivateScenarioTestRun() {
 	suite.enforceSecurity.On("CreateTestRun", suite.organizationId).Return(nil)
 	suite.repository.On("CreateTestRun", suite.ctx, suite.transaction, mock.Anything,
 		input.CreateDbInput(liveVersionID)).Return(nil)
-	suite.repository.On("GetTestRunByLiveVersionID", suite.ctx, suite.transaction,
-		liveVersionID).Return(nil, nil)
+	suite.repository.On("ListRunningTestRun", suite.ctx, suite.transaction,
+		suite.organizationId).Return(nil, nil)
 
 	suite.clientDbIndexEditor.On("CreateIndexesAsyncForScenarioWithCallback", suite.ctx,
 		suite.organizationId, []models.ConcreteIndex{

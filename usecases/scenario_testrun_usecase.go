@@ -55,11 +55,11 @@ func (usecase *ScenarioTestRunUsecase) CreateScenarioTestRun(
 	}
 
 	// we should not have any existing testrun for this scenario
-	existingTestrun, err := usecase.repository.GetTestRunByLiveVersionID(ctx, exec, *scenario.LiveVersionID)
+	testRuns, err := usecase.repository.ListRunningTestRun(ctx, exec, organizationId)
 	if err != nil {
 		return models.ScenarioTestRun{}, err
 	}
-	if existingTestrun != nil {
+	if len(testRuns) > 0 {
 		return models.ScenarioTestRun{}, errors.Wrapf(models.ErrTestRunAlreadyExist,
 			"the scenario %s has a running testrun", input.ScenarioId)
 	}
@@ -148,4 +148,35 @@ func (usecase *ScenarioTestRunUsecase) GetTestRunById(ctx context.Context,
 		return models.ScenarioTestRun{}, err
 	}
 	return testrun, nil
+}
+
+func (usecase *ScenarioTestRunUsecase) CancelTestRunById(ctx context.Context,
+	testRunId string,
+) (models.ScenarioTestRun, error) {
+	exec := usecase.executorFactory.NewExecutor()
+	testRun, err := usecase.repository.GetTestRunByID(
+		ctx,
+		exec,
+		testRunId)
+	if err != nil {
+		return models.ScenarioTestRun{}, err
+	}
+	if err := usecase.enforceSecurity.ReadTestRun(testRun.OrganizationId); err != nil {
+		return models.ScenarioTestRun{}, err
+	}
+	if testRun.Status != models.Down {
+		if err := usecase.repository.UpdateTestRunStatus(ctx,
+			exec, testRunId, models.Down); err != nil {
+			return models.ScenarioTestRun{}, err
+		}
+		updatedTestRun, err := usecase.repository.GetTestRunByID(
+			ctx,
+			exec,
+			testRunId)
+		if err != nil {
+			return models.ScenarioTestRun{}, err
+		}
+		return updatedTestRun, nil
+	}
+	return testRun, nil
 }

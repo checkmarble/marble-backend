@@ -92,6 +92,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Aut
 		timeoutMiddleware(conf.BatchTimeout),
 		handleListRulesExecution(uc))
 	router.GET("/scenario-testruns/:test_run_id", tom, handleGetScenarioTestRun(uc))
+	router.POST("/scenario-testruns/:test_run_id/cancel", tom, handleCancelScenarioTestRun(uc))
 
 	router.GET("/scheduled-executions", tom, handleListScheduledExecution(uc))
 	router.GET("/scheduled-executions/:execution_id", tom, handleGetScheduledExecution(uc))
