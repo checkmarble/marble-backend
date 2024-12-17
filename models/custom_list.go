@@ -50,3 +50,9 @@ type BatchInsertCustomListValue struct {
 	Id    string
 	Value string
 }
+
+type BatchInsertCustomListValueResults struct {
+	TotalExisting int
+	TotalDeleted  int
+	TotalCreated  int
+}

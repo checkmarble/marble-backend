@@ -219,7 +219,9 @@ func (usecase *CustomListUseCase) ReadCustomListValuesToCSV(ctx context.Context,
 	return customList.Name, nil
 }
 
-func (usecase *CustomListUseCase) ReplaceCustomListValuesFromCSV(ctx context.Context, customListID string, fileReader *csv.Reader) error {
+func (usecase *CustomListUseCase) ReplaceCustomListValuesFromCSV(ctx context.Context,
+	customListID string, fileReader *csv.Reader,
+) (models.BatchInsertCustomListValueResults, error) {
 	logger := utils.LoggerFromContext(ctx)
 	logger.InfoContext(ctx, "Ingesting custom list values from CSV")
 	total := 0
@@ -241,9 +243,11 @@ func (usecase *CustomListUseCase) ReplaceCustomListValuesFromCSV(ctx context.Con
 
 	customListValuesFromCSV, err := processCSVFile(fileReader)
 	if err != nil {
-		return errors.Wrap(models.BadParameterError, err.Error())
+		return models.BatchInsertCustomListValueResults{},
+			errors.Wrap(models.BadParameterError, err.Error())
 	}
 
+	var results models.BatchInsertCustomListValueResults
 	err = usecase.transactionFactory.Transaction(ctx, func(tx repositories.Transaction) error {
 		customList, err := usecase.CustomListRepository.GetCustomListById(ctx, tx, customListID)
 		if err != nil {
@@ -281,17 +285,20 @@ func (usecase *CustomListUseCase) ReplaceCustomListValuesFromCSV(ctx context.Con
 		if err != nil {
 			return err
 		}
+		results.TotalCreated = len(newCustomListValuesToAdd)
+		results.TotalDeleted = len(currentCustomListValueIdsToDelete)
+		results.TotalExisting = len(customListValuesFromCSV) - results.TotalCreated
 		return nil
 	})
 	if err != nil {
-		return err
+		return models.BatchInsertCustomListValueResults{}, err
 	}
 
 	tracking.TrackEvent(ctx, models.AnalyticsListValueCreated, map[string]interface{}{
 		"list_id": customListID,
 	})
 
-	return nil
+	return results, nil
 }
 
 func computeCustomListValueUpdates(customListValuesFromCSV []string,
