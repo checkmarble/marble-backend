@@ -66,3 +66,17 @@ type UpdateCustomListBodyDto struct {
 type CreateCustomListValueBodyDto struct {
 	Value string `json:"value"`
 }
+
+type BatchInsertCustomListValueResultsDto struct {
+	TotalExisting int `json:"total_existing"`
+	TotalDeleted  int `json:"total_deleted"`
+	TotalCreated  int `json:"total_created"`
+}
+
+func AdaptBatchInsertCustomListValueResultsDto(listValue models.BatchInsertCustomListValueResults) BatchInsertCustomListValueResultsDto {
+	return BatchInsertCustomListValueResultsDto{
+		TotalExisting: listValue.TotalExisting,
+		TotalDeleted:  listValue.TotalDeleted,
+		TotalCreated:  listValue.TotalCreated,
+	}
+}

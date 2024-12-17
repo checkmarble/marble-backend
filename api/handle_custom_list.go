@@ -221,11 +221,13 @@ func handlePostCsvCustomListValues(uc usecases.Usecases) func(c *gin.Context) {
 		fileReader := csv.NewReader(pure_utils.NewReaderWithoutBom(file))
 
 		usecase := usecasesWithCreds(ctx, uc).NewCustomListUseCase()
-		err = usecase.ReplaceCustomListValuesFromCSV(ctx, customListID, fileReader)
+		results, err := usecase.ReplaceCustomListValuesFromCSV(ctx, customListID, fileReader)
 		if presentError(ctx, c, err) {
 			return
 		}
-		c.Status(http.StatusCreated)
+		c.JSON(http.StatusCreated, gin.H{
+			"results": dto.AdaptBatchInsertCustomListValueResultsDto(results),
+		})
 	}
 }
 
