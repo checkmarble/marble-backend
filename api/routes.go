@@ -163,6 +163,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Aut
 
 	router.GET("/data-model", tom, handleGetDataModel(uc))
 	router.POST("/data-model/tables", tom, handleCreateTable(uc))
+	router.PATCH("/data-model/tables/:tableID", tom, handleUpdateDataModelTable(uc))
 	router.POST("/data-model/links", tom, handleCreateLink(uc))
 	router.POST("/data-model/tables/:tableID/fields", tom, handleCreateField(uc))
 	router.PATCH("/data-model/fields/:fieldID", tom, handleUpdateDataModelField(uc))
