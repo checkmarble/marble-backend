@@ -57,6 +57,25 @@ func handleCreateTable(uc usecases.Usecases) func(c *gin.Context) {
 	}
 }
 
+func handleUpdateDataModelTable(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		var input dto.UpdateTableInput
+		if err := json.NewDecoder(c.Request.Body).Decode(&input); err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
+		}
+		tableID := c.Param("tableID")
+
+		usecase := usecasesWithCreds(ctx, uc).NewDataModelUseCase()
+		err := usecase.UpdateDataModelTable(ctx, tableID, input.Description)
+		if presentError(ctx, c, err) {
+			return
+		}
+		c.Status(http.StatusNoContent)
+	}
+}
+
 func handleCreateField(uc usecases.Usecases) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()

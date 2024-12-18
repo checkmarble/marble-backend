@@ -90,6 +90,10 @@ type CreateTableInput struct {
 	Description string `json:"description"`
 }
 
+type UpdateTableInput struct {
+	Description string `json:"description"`
+}
+
 type CreateLinkInput struct {
 	Name          string `json:"name"`
 	ParentTableId string `json:"parent_table_id"`
