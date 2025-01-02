@@ -540,7 +540,7 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 	}
 	var filteredScenarios []models.Scenario
 	for _, scenario := range scenarios {
-		if scenario.TriggerObjectType == input.TriggerObjectTable {
+		if scenario.TriggerObjectType == input.TriggerObjectTable && scenario.LiveVersionID != nil {
 			if err := usecase.enforceSecurityScenario.ReadScenario(scenario); err != nil {
 				return nil, 0, err
 			}
