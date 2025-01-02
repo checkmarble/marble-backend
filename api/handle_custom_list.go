@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -164,8 +166,10 @@ func handleGetCsvCustomListValues(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		c.Writer.Header().Add("Access-Control-Expose-Headers", "Content-Disposition")
+		nameWithoutSpaces := strings.ReplaceAll(customListName, " ", "_")
+		encodedName := url.QueryEscape(nameWithoutSpaces)
 		c.Writer.Header().Set("Content-Disposition",
-			fmt.Sprintf("attachment; filename=%s.csv", customListName))
+			fmt.Sprintf("attachment; filename*=UTF-8''%s.csv", encodedName))
 		c.Writer.Header().Set("Content-Type", "text/csv")
 
 		c.Status(http.StatusOK)
