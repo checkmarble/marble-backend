@@ -28,10 +28,6 @@ type EditorIdentifiers struct {
 	DatabaseAccessors []ast.Node `json:"database_accessors"`
 }
 
-type EditorOperators struct {
-	OperatorAccessors []ast.FuncAttributes `json:"operator_accessors"`
-}
-
 func (usecase *AstExpressionUsecase) getLinkedDatabaseIdentifiers(scenario models.Scenario, dataModel models.DataModel) ([]ast.Node, error) {
 	dataAccessors := []ast.Node{}
 	var recursiveDatabaseAccessor func(path []string, links map[string]models.LinkToSingle) error
@@ -134,18 +130,4 @@ func (usecase *AstExpressionUsecase) EditorIdentifiers(ctx context.Context, scen
 		PayloadAccessors:  payloadAccessors,
 		DatabaseAccessors: databaseAccessors,
 	}, nil
-}
-
-func (usecase *AstExpressionUsecase) EditorOperators() EditorOperators {
-	if err := usecase.EnforceSecurity.Permission(models.SCENARIO_READ); err != nil {
-		return EditorOperators{}
-	}
-
-	var operatorAccessors []ast.FuncAttributes
-	for _, functionType := range ast.FuncOperators {
-		operatorAccessors = append(operatorAccessors, ast.FuncAttributesMap[functionType])
-	}
-	return EditorOperators{
-		OperatorAccessors: operatorAccessors,
-	}
 }

@@ -33,8 +33,6 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Aut
 
 	router.GET("/credentials", tom, handleGetCredentials())
 
-	router.GET("/ast-expression/available-functions", tom, handleAvailableFunctions)
-
 	router.GET("/decisions",
 		timeoutMiddleware(conf.DecisionTimeout),
 		handleListDecisions(uc, conf.MarbleAppHost))
@@ -116,7 +114,6 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Aut
 	router.DELETE("/custom-lists/:list_id/values/:value_id", tom, handleDeleteCustomListValue(uc))
 
 	router.GET("/editor/:scenario_id/identifiers", tom, handleGetEditorIdentifiers(uc))
-	router.GET("/editor/:scenario_id/operators", tom, handleGetEditorOperators(uc))
 
 	router.GET("/users", tom, handleListUsers(uc))
 	router.POST("/users", tom, handlePostUser(uc))
