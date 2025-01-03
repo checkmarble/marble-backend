@@ -37,20 +37,3 @@ func handleGetEditorIdentifiers(uc usecases.Usecases) func(c *gin.Context) {
 		})
 	}
 }
-
-func handleGetEditorOperators(uc usecases.Usecases) func(c *gin.Context) {
-	return func(c *gin.Context) {
-		ctx := c.Request.Context()
-		usecase := usecasesWithCreds(ctx, uc).AstExpressionUsecase()
-		result := usecase.EditorOperators()
-
-		var functions []dto.FuncAttributesDto
-
-		for _, attributes := range result.OperatorAccessors {
-			functions = append(functions, dto.AdaptFuncAttributesDto(attributes))
-		}
-		c.JSON(http.StatusOK, gin.H{
-			"operators_accessors": functions,
-		})
-	}
-}
