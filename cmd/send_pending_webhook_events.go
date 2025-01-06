@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"log/slog"
 	"time"
 
 	"github.com/checkmarble/marble-backend/infra"
@@ -14,6 +13,7 @@ import (
 	"github.com/getsentry/sentry-go"
 )
 
+// Deprecated
 func RunSendPendingWebhookEvents() error {
 	// This is where we read the environment variables and set up the configuration for the application.
 	gcpConfig := infra.GcpConfig{
@@ -93,10 +93,6 @@ func RunSendPendingWebhookEvents() error {
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
 	)
 
-	err = jobs.SendPendingWebhookEvents(ctx, uc)
-	if err != nil {
-		logger.ErrorContext(ctx, "failed to send pending webhook events", slog.String("error", err.Error()))
-	}
-
-	return err
+	jobs.SendPendingWebhookEvents(ctx, uc)
+	return nil
 }

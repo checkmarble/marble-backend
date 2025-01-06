@@ -13,9 +13,8 @@ import (
 
 const batchScenarioExecutionTimeout = 3 * time.Hour
 
-// Runs every minute
-func ExecuteAllScheduledScenarios(ctx context.Context, uc usecases.Usecases) error {
-	return executeWithMonitoring(
+func ExecuteAllScheduledScenarios(ctx context.Context, uc usecases.Usecases) {
+	executeWithMonitoring(
 		ctx,
 		uc,
 		"scheduled-execution",

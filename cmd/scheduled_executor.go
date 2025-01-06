@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"log/slog"
 	"time"
 
 	"github.com/checkmarble/marble-backend/infra"
@@ -17,6 +16,7 @@ import (
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 )
 
+// Deprecated
 func RunScheduledExecuter() error {
 	// This is where we read the environment variables and set up the configuration for the application.
 	gcpConfig := infra.GcpConfig{
@@ -116,10 +116,6 @@ func RunScheduledExecuter() error {
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
 	)
 
-	err = jobs.ExecuteAllScheduledScenarios(ctx, uc)
-	if err != nil {
-		logger.ErrorContext(ctx, "failed to execute all scheduled scenarios", slog.String("error", err.Error()))
-	}
-
-	return err
+	jobs.ExecuteAllScheduledScenarios(ctx, uc)
+	return nil
 }

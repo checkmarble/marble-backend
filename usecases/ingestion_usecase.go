@@ -387,7 +387,7 @@ func (usecase *IngestionUseCase) processUploadLog(ctx context.Context, uploadLog
 	out := usecase.readFileIngestObjects(ctx, file.FileName, file.ReadCloser)
 	if out.err != nil {
 		setToFailed(out.numRowsIngested)
-		return err
+		return out.err
 	}
 
 	currentTime := time.Now()
@@ -409,6 +409,8 @@ type ingestionResult struct {
 	err             error
 }
 
+// This method uses a return value wrapping an error, because we still want to use the number of rows ingested even if
+// an error occurred.
 func (usecase *IngestionUseCase) readFileIngestObjects(ctx context.Context, fileName string, fileReader io.Reader) ingestionResult {
 	logger := utils.LoggerFromContext(ctx)
 	logger.InfoContext(ctx, fmt.Sprintf("Ingesting data from CSV %s", fileName))
@@ -455,7 +457,9 @@ func (usecase *IngestionUseCase) ingestObjectsFromCSV(ctx context.Context, organ
 		duration := end.Sub(start)
 		// divide by 1e6 convert to milliseconds (base is nanoseconds)
 		avgDuration := float64(duration) / float64(total*1e6)
-		logger.InfoContext(ctx, fmt.Sprintf("Successfully ingested %d objects in %s, average %vms", total, duration, avgDuration))
+		if total > 0 {
+			logger.InfoContext(ctx, fmt.Sprintf("Successfully ingested %d objects in %s, average %vms", total, duration, avgDuration))
+		}
 	}
 	defer printDuration()
 

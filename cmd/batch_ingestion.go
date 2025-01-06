@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"log/slog"
 	"time"
 
 	"github.com/checkmarble/marble-backend/infra"
@@ -14,6 +13,7 @@ import (
 	"github.com/getsentry/sentry-go"
 )
 
+// Deprecated
 func RunBatchIngestion() error {
 	// This is where we read the environment variables and set up the configuration for the application.
 	gcpConfig := infra.GcpConfig{
@@ -103,10 +103,6 @@ func RunBatchIngestion() error {
 		usecases.WithConvoyServer(convoyConfiguration.APIUrl),
 	)
 
-	err = jobs.IngestDataFromCsv(ctx, uc)
-	if err != nil {
-		logger.ErrorContext(ctx, "failed to ingest data from csvs", slog.String("error", err.Error()))
-	}
-
-	return err
+	jobs.IngestDataFromCsv(ctx, uc)
+	return nil
 }
