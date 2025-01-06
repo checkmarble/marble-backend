@@ -7,7 +7,6 @@ import (
 	"github.com/checkmarble/marble-backend/usecases"
 	"github.com/checkmarble/marble-backend/utils"
 
-	"github.com/cockroachdb/errors"
 	"github.com/getsentry/sentry-go"
 )
 
@@ -16,7 +15,7 @@ func executeWithMonitoring(
 	uc usecases.Usecases,
 	jobName string,
 	fn func(context.Context, usecases.Usecases) error,
-) error {
+) {
 	logger := utils.LoggerFromContext(ctx)
 	logger.InfoContext(ctx, fmt.Sprintf("Start job %s", jobName))
 
@@ -43,7 +42,8 @@ func executeWithMonitoring(
 		} else {
 			sentry.CaptureException(err)
 		}
-		return errors.Wrap(err, fmt.Sprintf("error executing job %s", jobName))
+		logger.ErrorContext(ctx, fmt.Sprintf("Unexpected Error in batch job: %+v", err))
+		return
 	}
 
 	sentry.CaptureCheckIn(
@@ -56,5 +56,4 @@ func executeWithMonitoring(
 	)
 
 	logger.InfoContext(ctx, fmt.Sprintf("Done executing job %s", jobName))
-	return nil
 }

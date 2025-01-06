@@ -9,8 +9,8 @@ import (
 
 const csvIngestionTimeout = 1 * time.Hour
 
-func IngestDataFromCsv(ctx context.Context, uc usecases.Usecases) error {
-	return executeWithMonitoring(
+func IngestDataFromCsv(ctx context.Context, uc usecases.Usecases) {
+	executeWithMonitoring(
 		ctx,
 		uc,
 		"batch-ingestion",

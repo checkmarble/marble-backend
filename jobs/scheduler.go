@@ -8,13 +8,6 @@ import (
 	"github.com/checkmarble/marble-backend/utils"
 )
 
-func errToReturnCode(err error) int {
-	if err != nil {
-		return 1
-	}
-	return 0
-}
-
 // Deprecated and to be moved into the river task scheduler
 func RunScheduler(ctx context.Context, usecases usecases.Usecases) {
 	taskr := tasker.New(tasker.Option{
@@ -25,22 +18,22 @@ func RunScheduler(ctx context.Context, usecases usecases.Usecases) {
 	taskr.Task("* * * * *", func(ctx context.Context) (int, error) {
 		logger := utils.LoggerFromContext(ctx).With("job", "execute_all_scheduled_scenarios")
 		ctx = utils.StoreLoggerInContext(ctx, logger)
-		err := ExecuteAllScheduledScenarios(ctx, usecases)
-		return errToReturnCode(err), err
+		ExecuteAllScheduledScenarios(ctx, usecases)
+		return 0, nil
 	})
 
 	taskr.Task("* * * * *", func(ctx context.Context) (int, error) {
 		logger := utils.LoggerFromContext(ctx).With("job", "ingest_data_from_csv")
 		ctx = utils.StoreLoggerInContext(ctx, logger)
-		err := IngestDataFromCsv(ctx, usecases)
-		return errToReturnCode(err), err
+		IngestDataFromCsv(ctx, usecases)
+		return 0, nil
 	})
 
 	taskr.Task("*/10 * * * *", func(ctx context.Context) (int, error) {
 		logger := utils.LoggerFromContext(ctx).With("job", "send_webhook_events_to_convoy")
 		ctx = utils.StoreLoggerInContext(ctx, logger)
-		err := SendPendingWebhookEvents(ctx, usecases)
-		return errToReturnCode(err), err
+		SendPendingWebhookEvents(ctx, usecases)
+		return 0, nil
 	})
 
 	taskr.Run()

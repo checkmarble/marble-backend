@@ -6,9 +6,8 @@ import (
 	"github.com/checkmarble/marble-backend/usecases"
 )
 
-// Runs every minute
-func SendPendingWebhookEvents(ctx context.Context, uc usecases.Usecases) error {
-	return executeWithMonitoring(
+func SendPendingWebhookEvents(ctx context.Context, uc usecases.Usecases) {
+	executeWithMonitoring(
 		ctx,
 		uc,
 		"send-webhook-events",
