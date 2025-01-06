@@ -33,3 +33,7 @@ func (fetcher ScenarioFetcher) FetchScenarioAndIteration(ctx context.Context,
 
 	return result, err
 }
+
+func (fetcher ScenarioFetcher) FetchScenario(ctx context.Context, exec repositories.Executor, scenarioId string) (models.Scenario, error) {
+	return fetcher.Repository.GetScenarioById(ctx, exec, scenarioId)
+}

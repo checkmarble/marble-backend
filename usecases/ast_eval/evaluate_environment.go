@@ -74,5 +74,6 @@ func NewAstEvaluationEnvironment() AstEvaluationEnvironment {
 	environment.AddEvaluator(ast.FUNC_IS_EMPTY, evaluate.IsEmpty{})
 	environment.AddEvaluator(ast.FUNC_IS_NOT_EMPTY, evaluate.IsNotEmpty{})
 	environment.AddEvaluator(ast.FUNC_IS_MULTIPLE_OF, evaluate.IsMultipleOf{})
+	environment.AddEvaluator(ast.FUNC_STRING_TEMPLATE, evaluate.StringTemplate{})
 	return environment
 }

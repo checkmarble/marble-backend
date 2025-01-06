@@ -215,8 +215,20 @@ func (usecases *Usecases) NewScenarioPublisher() ScenarioPublisher {
 	}
 }
 
+func (usecases *Usecases) NewValidateScenarioAst() scenarios.ValidateScenarioAst {
+	return &scenarios.ValidateScenarioAstImpl{
+		AstValidator: usecases.NewAstValidator(),
+	}
+}
+
 func (usecases *Usecases) NewValidateScenarioIteration() scenarios.ValidateScenarioIteration {
 	return &scenarios.ValidateScenarioIterationImpl{
+		AstValidator: usecases.NewAstValidator(),
+	}
+}
+
+func (usecases *Usecases) NewAstValidator() scenarios.AstValidator {
+	return &scenarios.AstValidatorImpl{
 		DataModelRepository:             usecases.Repositories.DataModelRepository,
 		AstEvaluationEnvironmentFactory: usecases.AstEvaluationEnvironmentFactory,
 		ExecutorFactory:                 usecases.NewExecutorFactory(),

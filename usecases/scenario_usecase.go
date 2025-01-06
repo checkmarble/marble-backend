@@ -5,9 +5,11 @@ import (
 	"slices"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/executor_factory"
+	"github.com/checkmarble/marble-backend/usecases/scenarios"
 	"github.com/checkmarble/marble-backend/usecases/security"
 	"github.com/checkmarble/marble-backend/usecases/tracking"
 
@@ -15,10 +17,12 @@ import (
 )
 
 type ScenarioUsecase struct {
-	transactionFactory executor_factory.TransactionFactory
-	executorFactory    executor_factory.ExecutorFactory
-	enforceSecurity    security.EnforceSecurityScenario
-	repository         repositories.ScenarioUsecaseRepository
+	transactionFactory  executor_factory.TransactionFactory
+	scenarioFetcher     scenarios.ScenarioFetcher
+	validateScenarioAst scenarios.ValidateScenarioAst
+	executorFactory     executor_factory.ExecutorFactory
+	enforceSecurity     security.EnforceSecurityScenario
+	repository          repositories.ScenarioUsecaseRepository
 }
 
 func (usecase *ScenarioUsecase) ListScenarios(ctx context.Context, organizationId string) ([]models.Scenario, error) {
@@ -71,7 +75,8 @@ func (usecase *ScenarioUsecase) UpdateScenario(
 			// influence how decisions are treated) so require a higher permission to update
 			changeWorkflowSettings := scenarioInput.DecisionToCaseInboxId.Valid ||
 				scenarioInput.DecisionToCaseOutcomes != nil ||
-				scenarioInput.DecisionToCaseWorkflowType != nil
+				scenarioInput.DecisionToCaseWorkflowType != nil ||
+				scenarioInput.DecisionToCaseNameTemplate != nil
 			if changeWorkflowSettings {
 				if err := usecase.enforceSecurity.PublishScenario(scenario); err != nil {
 					return models.Scenario{}, err
@@ -80,6 +85,13 @@ func (usecase *ScenarioUsecase) UpdateScenario(
 
 			if err := validateScenarioUpdate(scenario, scenarioInput); err != nil {
 				return models.Scenario{}, err
+			}
+
+			if scenarioInput.DecisionToCaseNameTemplate != nil {
+				if validation, _ := usecase.ValidateScenarioAst(ctx, scenarioInput.Id,
+					scenarioInput.DecisionToCaseNameTemplate, "string"); len(validation.FlattenErrors()) > 0 {
+					return models.Scenario{}, errors.Join(validation.FlattenErrors()...)
+				}
 			}
 
 			err = usecase.repository.UpdateScenario(ctx, tx, scenarioInput)
@@ -130,6 +142,24 @@ func validateScenarioUpdate(scenario models.Scenario, input models.UpdateScenari
 	}
 
 	return nil
+}
+
+func (usecase *ScenarioUsecase) ValidateScenarioAst(ctx context.Context,
+	scenarioId string, astNode *ast.Node, returnType string,
+) (validation ast.NodeEvaluation, err error) {
+	scenario, err := usecase.scenarioFetcher.FetchScenario(ctx,
+		usecase.executorFactory.NewExecutor(), scenarioId)
+	if err != nil {
+		return validation, err
+	}
+
+	if err := usecase.enforceSecurity.ReadScenario(scenario); err != nil {
+		return validation, err
+	}
+
+	validation, err = usecase.validateScenarioAst.Validate(ctx, scenario, astNode, returnType)
+
+	return validation, err
 }
 
 func (usecase *ScenarioUsecase) CreateScenario(

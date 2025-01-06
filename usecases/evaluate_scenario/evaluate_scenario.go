@@ -319,7 +319,7 @@ func evalScenarioRule(
 	}
 
 	// Evaluate single rule
-	returnValue, ruleEvaluation, err := repositories.EvaluateAstExpression.EvaluateAstExpression(
+	ruleEvaluation, err := repositories.EvaluateAstExpression.EvaluateAstExpression(
 		ctx,
 		*rule.FormulaAstExpression,
 		dataAccessor.organizationId,
@@ -327,9 +327,22 @@ func evalScenarioRule(
 		dataModel,
 	)
 
-	if err != nil && !ast.IsAuthorizedError(err) {
+	isAuthorizedError := ast.IsAuthorizedError(err)
+	if err != nil && !isAuthorizedError {
 		return 0, models.RuleExecution{}, errors.Wrap(err,
 			fmt.Sprintf("error while evaluating rule %s (%s)", rule.Name, rule.Id))
+	}
+
+	var returnValue bool
+	var isAuthorizedTypeError bool
+	if err == nil {
+		returnValue, err = ruleEvaluation.GetBoolReturnValue()
+		isAuthorizedTypeError = ast.IsAuthorizedError(err)
+		if err != nil && !isAuthorizedTypeError {
+			return 0, models.RuleExecution{}, errors.Wrap(
+				errors.Join(ast.ErrRuntimeExpression, err),
+				fmt.Sprintf("error while evaluating rule %s (%s)", rule.Name, rule.Id))
+		}
 	}
 
 	ruleEvaluationDto := ast.AdaptNodeEvaluationDto(ruleEvaluation)
@@ -374,20 +387,34 @@ func evalScenarioTrigger(
 	ctx, span := tracer.Start(ctx, "evaluate_scenario.evalScenarioTrigger")
 	defer span.End()
 
-	returnValue, _, err := repositories.EvaluateAstExpression.EvaluateAstExpression(
+	triggerEvaluation, err := repositories.EvaluateAstExpression.EvaluateAstExpression(
 		ctx,
 		triggerAstExpression,
 		organizationId,
 		payload,
 		dataModel,
 	)
+
 	isAuthorizedError := ast.IsAuthorizedError(err)
+
 	if err != nil && !isAuthorizedError {
 		return errors.Wrap(err,
 			"Unexpected error evaluating trigger condition in EvalScenario")
 	}
 
-	if !returnValue || isAuthorizedError {
+	var returnValue bool
+	var isAuthorizedTypeError bool
+	if err == nil {
+		returnValue, err = triggerEvaluation.GetBoolReturnValue()
+		isAuthorizedTypeError = ast.IsAuthorizedError(err)
+		if err != nil && !isAuthorizedTypeError {
+			return errors.Wrap(
+				errors.Join(ast.ErrRuntimeExpression, err),
+				"Unexpected error evaluating trigger condition in EvalScenario")
+		}
+	}
+
+	if !returnValue || isAuthorizedError || isAuthorizedTypeError {
 		return errors.Wrap(
 			models.ErrScenarioTriggerConditionAndTriggerObjectMismatch,
 			"scenario trigger object does not match payload in EvalScenario")
@@ -480,4 +507,40 @@ func getPivotValue(ctx context.Context, pivot models.Pivot, dataAccessor DataAcc
 	}
 
 	return &valStr, nil
+}
+
+func EvalCaseName(
+	ctx context.Context,
+	params ScenarioEvaluationParameters,
+	repositories ScenarioEvaluationRepositories,
+	scenario models.Scenario,
+	decision models.DecisionWithRuleExecutions,
+) (string, error) {
+	if scenario.DecisionToCaseNameTemplate == nil {
+		return fmt.Sprintf("Case for %s: %s", scenario.TriggerObjectType,
+			decision.ClientObject.Data["object_id"]), nil
+	}
+
+	caseNameEvaluation, err := repositories.EvaluateAstExpression.EvaluateAstExpression(
+		ctx,
+		*scenario.DecisionToCaseNameTemplate,
+		params.Scenario.OrganizationId,
+		params.ClientObject,
+		params.DataModel,
+	)
+
+	isAuthorizedError := ast.IsAuthorizedError(err)
+	if err != nil && !isAuthorizedError {
+		return "", errors.Wrap(err,
+			"Unexpected error evaluating case name in EvalCaseName")
+	}
+
+	returnValue, err := caseNameEvaluation.GetStringReturnValue()
+	if err != nil && !isAuthorizedError {
+		return "", errors.Wrap(
+			errors.Join(ast.ErrRuntimeExpression, err),
+			"Unexpected error evaluating case name in EvalCaseName")
+	}
+
+	return returnValue, nil
 }

@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/guregu/null/v5"
 )
 
@@ -26,6 +27,7 @@ type Scenario struct {
 	DecisionToCaseOutcomes     []Outcome
 	DecisionToCaseInboxId      *string
 	DecisionToCaseWorkflowType WorkflowType
+	DecisionToCaseNameTemplate *ast.Node
 	Description                string
 	LiveVersionID              *string
 	Name                       string
@@ -45,6 +47,7 @@ type UpdateScenarioInput struct {
 	DecisionToCaseOutcomes     []Outcome
 	DecisionToCaseInboxId      null.String
 	DecisionToCaseWorkflowType *WorkflowType
+	DecisionToCaseNameTemplate *ast.Node
 	Description                *string
 	Name                       *string
 }

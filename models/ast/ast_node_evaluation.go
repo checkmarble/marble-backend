@@ -43,3 +43,15 @@ func (root NodeEvaluation) GetBoolReturnValue() (bool, error) {
 	return false, errors.New(
 		fmt.Sprintf("root ast expression does not return a boolean, '%v' instead", root.ReturnValue))
 }
+
+func (root NodeEvaluation) GetStringReturnValue() (string, error) {
+	if root.ReturnValue == nil {
+		return "", ErrNullFieldRead
+	}
+
+	if returnValue, ok := root.ReturnValue.(string); ok {
+		return returnValue, nil
+	}
+
+	return "", errors.New(fmt.Sprintf("ast expression expected to return a string, got '%v' instead", root.ReturnValue))
+}
