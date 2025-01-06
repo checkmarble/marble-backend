@@ -26,27 +26,3 @@ func AdaptFeature(db DBFeature) (models.Feature, error) {
 		Slug: db.Slug,
 	}, nil
 }
-
-type DBFeatureCreateInput struct {
-	Id   string `db:"id"`
-	Name string `db:"name"`
-}
-
-func AdaptCreateFeatureInput(db DBFeatureCreateInput) models.CreateFeatureInput {
-	return models.CreateFeatureInput{
-		Id:   db.Id,
-		Name: db.Name,
-	}
-}
-
-type DBFeatureUpdateInput struct {
-	Id   string `db:"id"`
-	Name string `db:"name"`
-}
-
-func AdaptUpdateFeatureInput(db DBFeatureUpdateInput) models.UpdateFeatureInput {
-	return models.UpdateFeatureInput{
-		Id:   db.Id,
-		Name: db.Name,
-	}
-}

@@ -56,6 +56,10 @@ const (
 	TAG_CREATE
 	TAG_UPDATE
 	TAG_DELETE
+	FEATURE_READ
+	FEATURE_CREATE
+	FEATURE_UPDATE
+	FEATURE_DELETE
 )
 
 func (r Permission) String() (string, error) {

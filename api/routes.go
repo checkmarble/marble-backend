@@ -202,4 +202,10 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Aut
 	router.DELETE("/webhooks/:webhook_id", tom, handleDeleteWebhook(uc))
 
 	router.GET("/rule-snoozes/:rule_snooze_id", tom, handleGetSnoozesById(uc))
+
+	router.GET("/features", tom, handleListFeatures(uc))
+	router.GET("/features/:feature_id", tom, handleGetFeature(uc))
+	router.POST("/features", tom, handleCreateFeature(uc))
+	router.PATCH("/features/:feature_id", tom, handleUpdateFeature(uc))
+	router.DELETE("/features/:feature_id", tom, handleDeleteFeature(uc))
 }

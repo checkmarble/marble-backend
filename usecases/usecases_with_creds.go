@@ -91,6 +91,12 @@ func (usecases *UsecasesWithCreds) NewEnforceTagSecurity() security.EnforceSecur
 	}
 }
 
+func (usecases *UsecasesWithCreds) NewEnforceFeatureSecurity() security.EnforceSecurityFeatures {
+	return &security.EnforceSecurityImpl{
+		Credentials: usecases.Credentials,
+	}
+}
+
 func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 	return DecisionUsecase{
 		enforceSecurity:            usecases.NewEnforceDecisionSecurity(),
@@ -318,6 +324,15 @@ func (usecases *UsecasesWithCreds) NewInboxUsecase() InboxUsecase {
 func (usecases *UsecasesWithCreds) NewTagUseCase() TagUseCase {
 	return TagUseCase{
 		enforceSecurity:    usecases.NewEnforceTagSecurity(),
+		transactionFactory: usecases.NewTransactionFactory(),
+		executorFactory:    usecases.NewExecutorFactory(),
+		repository:         &usecases.Repositories.MarbleDbRepository,
+	}
+}
+
+func (usecases UsecasesWithCreds) NewFeatureUseCase() FeatureUseCase {
+	return FeatureUseCase{
+		enforceSecurity:    usecases.NewEnforceFeatureSecurity(),
 		transactionFactory: usecases.NewTransactionFactory(),
 		executorFactory:    usecases.NewExecutorFactory(),
 		repository:         &usecases.Repositories.MarbleDbRepository,
