@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
@@ -16,6 +17,10 @@ type OrganizationRepository interface {
 	UpdateOrganization(ctx context.Context, exec Executor, updateOrganization models.UpdateOrganizationInput) error
 	DeleteOrganization(ctx context.Context, exec Executor, organizationId string) error
 	DeleteOrganizationDecisionRulesAsync(ctx context.Context, exec Executor, organizationId string)
+	GetOrganizationEntitlements(ctx context.Context, exec Executor, organizationId string) (
+		[]models.OrganizationEntitlement, error)
+	UpdateOrganizationEntitlements(ctx context.Context, exec Executor, organizationId string,
+		entitlements models.UpdateOrganizationEntitlementInput) error
 }
 
 type OrganizationRepositoryPostgresql struct{}
@@ -123,4 +128,39 @@ func (repo *OrganizationRepositoryPostgresql) DeleteOrganizationDecisionRulesAsy
 			utils.LogAndReportSentryError(ctx, err)
 		}
 	}()
+}
+
+func (repo *OrganizationRepositoryPostgresql) GetOrganizationEntitlements(ctx context.Context, exec Executor,
+	organizationId string,
+) ([]models.OrganizationEntitlement, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return nil, err
+	}
+
+	query := NewQueryBuilder().
+		Select(dbmodels.SelectOrganizationEntitlementColumn...).
+		From(dbmodels.TABLE_ORGANIZATION_ENTITLEMENTS).
+		Where("organization_id = ?", organizationId).
+		OrderBy("created_at DESC")
+
+	return SqlToListOfModels(ctx, exec, query, dbmodels.AdaptOrganizationEntitlement)
+}
+
+func (repo *OrganizationRepositoryPostgresql) UpdateOrganizationEntitlements(ctx context.Context, exec Executor,
+	organizationId string, entitlement models.UpdateOrganizationEntitlementInput,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_ORGANIZATION_ENTITLEMENTS).
+		Where(squirrel.And{
+			squirrel.Eq{"organization_id": organizationId},
+			squirrel.Eq{"feature_id": entitlement.FeatureId},
+		}).
+		Set("availability", entitlement.Availability)
+
+	err := ExecBuilder(ctx, exec, query)
+	return err
 }

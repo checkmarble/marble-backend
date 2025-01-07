@@ -102,3 +102,43 @@ func handleDeleteOrganization(uc usecases.Usecases) func(c *gin.Context) {
 		c.Status(http.StatusNoContent)
 	}
 }
+
+func handleGetOrganizationEntitlements(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		organizationID := c.Param("organization_id")
+
+		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
+		entitlements, err := usecase.GetOrganizationEntitlements(ctx, organizationID)
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"entitlements": pure_utils.Map(entitlements, dto.AdaptOrganizationEntitlementDto),
+		})
+	}
+}
+
+func handleUpdateOrganizationEntitlements(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		organizationID := c.Param("organization_id")
+		var data dto.UpdateOrganizationEntitlementBodyDto
+		if err := c.ShouldBindJSON(&data); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
+		err := usecase.UpdateOrganizationEntitlements(ctx, organizationID, models.UpdateOrganizationEntitlementInput{
+			FeatureId:      data.FeatureId,
+			Availability:   models.FeatureAvailabilityFrom(data.Availability),
+			OrganizationId: organizationID,
+		})
+		if presentError(ctx, c, err) {
+			return
+		}
+		c.Status(http.StatusNoContent)
+	}
+}

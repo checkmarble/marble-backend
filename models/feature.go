@@ -5,7 +5,6 @@ import "time"
 type Feature struct {
 	Id        string
 	Name      string
-	Slug      string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt *time.Time

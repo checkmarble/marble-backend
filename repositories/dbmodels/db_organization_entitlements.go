@@ -13,9 +13,9 @@ var SelectOrganizationEntitlementColumn = utils.ColumnList[models.OrganizationEn
 
 type DBOrganizationEntitlement struct {
 	Id             string    `db:"id"`
-	OrganizationId string    `db:"id"`
+	OrganizationId string    `db:"organization_id"`
 	FeatureId      string    `db:"feature_id"`
-	Access         string    `db:"access"`
+	Availability   string    `db:"availability"`
 	CreatedAt      time.Time `db:"created_at"`
 	UpdatedAt      time.Time `db:"updated_at"`
 }
@@ -25,7 +25,7 @@ func AdaptOrganizationEntitlement(db DBOrganizationEntitlement) (models.Organiza
 		Id:             db.Id,
 		OrganizationId: db.OrganizationId,
 		FeatureId:      db.FeatureId,
-		Availability:   models.FeatureAvailabilityFrom(db.Access),
+		Availability:   models.FeatureAvailabilityFrom(db.Availability),
 	}, nil
 }
 
@@ -33,7 +33,7 @@ type DBOrganizationEntitlementCreateInput struct {
 	Id             string `db:"id"`
 	OrganizationId string `db:"organization_id"`
 	FeatureId      string `db:"feature_id"`
-	Access         string `db:"access"`
+	Availability   string `db:"availability"`
 }
 
 func AdaptOrganizationEntitlementCreateInput(db DBOrganizationEntitlementCreateInput) models.CreateOrganizationEntitlementInput {
@@ -41,7 +41,7 @@ func AdaptOrganizationEntitlementCreateInput(db DBOrganizationEntitlementCreateI
 		Id:             db.Id,
 		OrganizationId: db.OrganizationId,
 		FeatureId:      db.FeatureId,
-		Availability:   models.FeatureAvailabilityFrom(db.Access),
+		Availability:   models.FeatureAvailabilityFrom(db.Availability),
 	}
 }
 
@@ -49,7 +49,7 @@ type DBOrganizationEntitlementUpdateInput struct {
 	Id             string `db:"id"`
 	OrganizationId string `db:"organization_id"`
 	FeatureId      string `db:"feature_id"`
-	Access         string `db:"access"`
+	Availability   string `db:"availability"`
 }
 
 func AdaptOrganizationEntitlementUpdateInput(db DBOrganizationEntitlementUpdateInput) models.UpdateOrganizationEntitlementInput {
@@ -57,6 +57,6 @@ func AdaptOrganizationEntitlementUpdateInput(db DBOrganizationEntitlementUpdateI
 		Id:             db.Id,
 		OrganizationId: db.OrganizationId,
 		FeatureId:      db.FeatureId,
-		Availability:   models.FeatureAvailabilityFrom(db.Access),
+		Availability:   models.FeatureAvailabilityFrom(db.Availability),
 	}
 }

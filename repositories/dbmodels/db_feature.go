@@ -23,6 +23,5 @@ func AdaptFeature(db DBFeature) (models.Feature, error) {
 	return models.Feature{
 		Id:   db.Id,
 		Name: db.Name,
-		Slug: db.Slug,
 	}, nil
 }

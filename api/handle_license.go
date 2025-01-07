@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -96,5 +97,21 @@ func handleValidateLicense(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusOK, dto.AdaptLicenseValidationDto(licenseValidation))
+	}
+}
+
+func handleIsSSOEnabled(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		licenseKey := os.Getenv("LICENSE_KEY")
+
+		usecase := uc.NewLicenseUsecase()
+		licenseValidation, err := usecase.ValidateLicense(ctx, strings.TrimPrefix(licenseKey, "/"))
+		if presentError(ctx, c, err) {
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"is_sso_enabled": licenseValidation.Sso,
+		})
 	}
 }

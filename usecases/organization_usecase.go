@@ -109,3 +109,25 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 	)
 	return nil
 }
+
+func (usecase *OrganizationUseCase) GetOrganizationEntitlements(ctx context.Context,
+	organizationId string,
+) ([]models.OrganizationEntitlement, error) {
+	if err := usecase.enforceSecurity.GetOrganizationEntitlements(); err != nil {
+		return []models.OrganizationEntitlement{}, err
+	}
+
+	return usecase.organizationRepository.GetOrganizationEntitlements(ctx,
+		usecase.executorFactory.NewExecutor(), organizationId)
+}
+
+func (usecase *OrganizationUseCase) UpdateOrganizationEntitlements(ctx context.Context,
+	organizationId string, entitlement models.UpdateOrganizationEntitlementInput,
+) error {
+	if err := usecase.enforceSecurity.UpdateOrganizationEntitlements(); err != nil {
+		return err
+	}
+
+	return usecase.organizationRepository.UpdateOrganizationEntitlements(ctx,
+		usecase.executorFactory.NewExecutor(), organizationId, entitlement)
+}
