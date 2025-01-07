@@ -88,8 +88,12 @@ func (usecase *ScenarioUsecase) UpdateScenario(
 			}
 
 			if scenarioInput.DecisionToCaseNameTemplate != nil {
-				if validation, _ := usecase.ValidateScenarioAst(ctx, scenarioInput.Id,
-					scenarioInput.DecisionToCaseNameTemplate, "string"); len(validation.FlattenErrors()) > 0 {
+				validation, err := usecase.ValidateScenarioAst(ctx, scenarioInput.Id,
+					scenarioInput.DecisionToCaseNameTemplate, "string")
+				if err != nil {
+					return models.Scenario{}, err
+				}
+				if len(validation.FlattenErrors()) > 0 {
 					return models.Scenario{}, errors.Join(validation.FlattenErrors()...)
 				}
 			}
