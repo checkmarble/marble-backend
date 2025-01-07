@@ -2,14 +2,17 @@ package evaluate
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/checkmarble/marble-backend/models/ast"
-	"github.com/cockroachdb/errors"
+	cockroachdbErrors "github.com/cockroachdb/errors"
 )
+
+var stringTemplateVariableRegexp = regexp.MustCompile(`(?mi)%([a-z0-9_]+)%`)
 
 type StringTemplate struct{}
 
@@ -29,11 +32,10 @@ func (f StringTemplate) Evaluate(ctx context.Context, arguments ast.Arguments) (
 
 	var execErrors []error
 	replacedTemplate := template
-	variableRegexp := regexp.MustCompile(`(?mi)%([a-z0-9_]+)%`)
-	for _, match := range variableRegexp.FindAllStringSubmatch(template, -1) {
+	for _, match := range stringTemplateVariableRegexp.FindAllStringSubmatch(template, -1) {
 		variableValue, argErr := adapatVariableValue(arguments.NamedArgs, match[1])
 		if argErr != nil {
-			if !ast.IsError(argErr, ast.ErrArgumentRequired) {
+			if !errors.Is(argErr, ast.ErrArgumentRequired) {
 				execErrors = append(execErrors, argErr)
 				continue
 			}
@@ -64,6 +66,6 @@ func adapatVariableValue(namedArgs map[string]any, name string) (string, error) 
 		return strconv.FormatInt(value, 10), nil
 	}
 
-	return "", errors.Wrap(ast.ErrArgumentInvalidType,
+	return "", cockroachdbErrors.Wrap(ast.ErrArgumentInvalidType,
 		"all variables to String Template Evaluate must be string, int or float")
 }

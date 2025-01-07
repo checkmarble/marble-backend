@@ -44,7 +44,3 @@ func IsAuthorizedError(err error) bool {
 	}
 	return false
 }
-
-func IsError(err error, errorRef error) bool {
-	return errors.Is(err, errorRef)
-}

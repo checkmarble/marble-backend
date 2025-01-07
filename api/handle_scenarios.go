@@ -4,9 +4,11 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
 
 	"github.com/checkmarble/marble-backend/dto"
+	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
@@ -117,8 +119,8 @@ func updateScenario(uc usecases.Usecases) func(c *gin.Context) {
 }
 
 type PostScenarioAstValidationInputBody struct {
-	Node       *dto.NodeDto `json:"node"`
-	ReturnType string       `json:"return_type"`
+	Node       dto.NodeDto `json:"node" binding:"required"`
+	ReturnType string      `json:"return_type"`
 }
 
 func validateScenarioAst(uc usecases.Usecases) func(c *gin.Context) {
@@ -133,14 +135,10 @@ func validateScenarioAst(uc usecases.Usecases) func(c *gin.Context) {
 
 		scenarioId := c.Param("scenario_id")
 
-		var astNode *ast.Node
-		if input.Node != nil {
-			node, err := dto.AdaptASTNode(*input.Node)
-			if err != nil {
-				c.Status(http.StatusInternalServerError)
-				return
-			}
-			astNode = &node
+		astNode, err := dto.AdaptASTNode(input.Node)
+		if err != nil {
+			presentError(ctx, c, errors.Wrap(models.BadParameterError, err.Error()))
+			return
 		}
 
 		returnType := "bool"
@@ -149,7 +147,7 @@ func validateScenarioAst(uc usecases.Usecases) func(c *gin.Context) {
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioUsecase()
-		astValidation, err := usecase.ValidateScenarioAst(ctx, scenarioId, astNode, returnType)
+		astValidation, err := usecase.ValidateScenarioAst(ctx, scenarioId, &astNode, returnType)
 
 		if presentError(ctx, c, err) {
 			return

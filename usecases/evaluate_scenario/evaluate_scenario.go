@@ -334,11 +334,9 @@ func evalScenarioRule(
 	}
 
 	var returnValue bool
-	var isAuthorizedTypeError bool
 	if err == nil {
 		returnValue, err = ruleEvaluation.GetBoolReturnValue()
-		isAuthorizedTypeError = ast.IsAuthorizedError(err)
-		if err != nil && !isAuthorizedTypeError {
+		if err != nil && !ast.IsAuthorizedError(err) {
 			return 0, models.RuleExecution{}, errors.Wrap(
 				errors.Join(ast.ErrRuntimeExpression, err),
 				fmt.Sprintf("error while evaluating rule %s (%s)", rule.Name, rule.Id))
