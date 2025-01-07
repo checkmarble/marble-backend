@@ -82,6 +82,8 @@ type decisionWorkflowsUsecase interface {
 		tx repositories.Transaction,
 		scenario models.Scenario,
 		decision models.DecisionWithRuleExecutions,
+		repositories evaluate_scenario.ScenarioEvaluationRepositories,
+		params evaluate_scenario.ScenarioEvaluationParameters,
 		webhookEventId string,
 	) (bool, error)
 }
@@ -459,6 +461,8 @@ func (usecase *DecisionUsecase) CreateDecision(
 			tx,
 			scenario,
 			decision,
+			evaluationRepositories,
+			evaluationParameters,
 			caseWebhookEventId)
 		if err != nil {
 			return models.DecisionWithRuleExecutions{}, err
@@ -622,8 +626,16 @@ func (usecase *DecisionUsecase) CreateAllDecisions(
 			sendWebhookEventIds = append(sendWebhookEventIds, webhookEventId)
 
 			caseWebhookEventId := uuid.NewString()
+
+			evaluationParameters := evaluate_scenario.ScenarioEvaluationParameters{
+				Scenario:     item.scenario,
+				ClientObject: payload,
+				DataModel:    dataModel,
+				Pivot:        pivot,
+			}
 			webhookEventCreated, err := usecase.decisionWorkflows.AutomaticDecisionToCase(
-				ctx, tx, item.scenario, item.decision, caseWebhookEventId)
+				ctx, tx, item.scenario, item.decision, evaluationRepositories,
+				evaluationParameters, caseWebhookEventId)
 			if err != nil {
 				return nil, err
 			}

@@ -3,10 +3,13 @@ package scenarios
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"time"
 
 	"github.com/cockroachdb/errors"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/models/ast"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/ast_eval"
@@ -42,12 +45,12 @@ type ValidateScenarioIteration interface {
 }
 
 type ValidateScenarioIterationImpl struct {
-	DataModelRepository             repositories.DataModelRepository
-	AstEvaluationEnvironmentFactory ast_eval.AstEvaluationEnvironmentFactory
-	ExecutorFactory                 executor_factory.ExecutorFactory
+	AstValidator AstValidator
 }
 
-func (validator *ValidateScenarioIterationImpl) Validate(ctx context.Context, si models.ScenarioAndIteration) models.ScenarioValidation {
+func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
+	si models.ScenarioAndIteration,
+) models.ScenarioValidation {
 	iteration := si.Iteration
 
 	result := models.NewScenarioValidation()
@@ -71,7 +74,7 @@ func (validator *ValidateScenarioIterationImpl) Validate(ctx context.Context, si
 		})
 	}
 
-	dryRunEnvironment, err := validator.makeDryRunEnvironment(ctx, si)
+	dryRunEnvironment, err := self.AstValidator.MakeDryRunEnvironment(ctx, si.Scenario)
 	if err != nil {
 		result.Errors = append(result.Errors, *err)
 		return result
@@ -121,16 +124,80 @@ func (validator *ValidateScenarioIterationImpl) Validate(ctx context.Context, si
 	return result
 }
 
+type ValidateScenarioAst interface {
+	Validate(ctx context.Context, scenario models.Scenario, astNode *ast.Node,
+		expectedReturnType string) (ast.NodeEvaluation, error)
+}
+
+type ValidateScenarioAstImpl struct {
+	AstValidator AstValidator
+}
+
+func (self *ValidateScenarioAstImpl) Validate(ctx context.Context,
+	scenario models.Scenario,
+	astNode *ast.Node,
+	expectedReturnTypeStr string,
+) (ast.NodeEvaluation, error) {
+	dryRunEnvironment, err := self.AstValidator.MakeDryRunEnvironment(ctx, scenario)
+	if err != nil {
+		return ast.NodeEvaluation{}, err.Error
+	}
+
+	expectedReturnType, ok := getTypeFromString(expectedReturnTypeStr)
+	if !ok {
+		return ast.NodeEvaluation{}, errors.Wrapf(models.BadParameterError,
+			"unknown specified type '%s'", expectedReturnTypeStr)
+	}
+
+	astEvaluation, _ := ast_eval.EvaluateAst(ctx, dryRunEnvironment, *astNode)
+	astEvaluationReturnType := reflect.TypeOf(astEvaluation.ReturnValue)
+
+	if len(astEvaluation.FlattenErrors()) == 0 && astEvaluationReturnType != expectedReturnType {
+		astEvaluation.Errors = append(astEvaluation.Errors, errors.Wrapf(models.BadParameterError,
+			"ast node does not return a %s", expectedReturnTypeStr))
+	}
+
+	return astEvaluation, nil
+}
+
+func getTypeFromString(typeStr string) (reflect.Type, bool) {
+	switch typeStr {
+	case "string":
+		return reflect.TypeOf(""), true
+	case "int":
+		return reflect.TypeOf(int64(0)), true
+	case "float":
+		return reflect.TypeOf(float64(0)), true
+	case "bool":
+		return reflect.TypeOf(false), true
+	case "datetime":
+		return reflect.TypeOf(time.Now()), true
+	default:
+		return nil, false
+	}
+}
+
 func hasScoreThresholds(iteration models.ScenarioIteration) bool {
 	return iteration.ScoreReviewThreshold != nil &&
 		iteration.ScoreBlockAndReviewThreshold != nil &&
 		iteration.ScoreDeclineThreshold != nil
 }
 
-func (validator *ValidateScenarioIterationImpl) makeDryRunEnvironment(ctx context.Context,
-	si models.ScenarioAndIteration,
+type AstValidator interface {
+	MakeDryRunEnvironment(ctx context.Context, scenario models.Scenario) (
+		ast_eval.AstEvaluationEnvironment, *models.ScenarioValidationError)
+}
+
+type AstValidatorImpl struct {
+	DataModelRepository             repositories.DataModelRepository
+	AstEvaluationEnvironmentFactory ast_eval.AstEvaluationEnvironmentFactory
+	ExecutorFactory                 executor_factory.ExecutorFactory
+}
+
+func (validator *AstValidatorImpl) MakeDryRunEnvironment(ctx context.Context,
+	scenario models.Scenario,
 ) (ast_eval.AstEvaluationEnvironment, *models.ScenarioValidationError) {
-	organizationId := si.Scenario.OrganizationId
+	organizationId := scenario.OrganizationId
 
 	dataModel, err := validator.DataModelRepository.GetDataModel(ctx,
 		validator.ExecutorFactory.NewExecutor(), organizationId, false)
@@ -141,11 +208,11 @@ func (validator *ValidateScenarioIterationImpl) makeDryRunEnvironment(ctx contex
 		}
 	}
 
-	table, ok := dataModel.Tables[si.Scenario.TriggerObjectType]
+	table, ok := dataModel.Tables[scenario.TriggerObjectType]
 	if !ok {
 		return ast_eval.AstEvaluationEnvironment{}, &models.ScenarioValidationError{
 			Error: errors.Wrap(models.NotFoundError,
-				fmt.Sprintf("table %s not found in data model for dry run", si.Scenario.TriggerObjectType)),
+				fmt.Sprintf("table %s not found in data model for dry run", scenario.TriggerObjectType)),
 			Code: models.TrigerObjectNotFound,
 		}
 	}

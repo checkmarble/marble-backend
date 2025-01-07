@@ -69,6 +69,7 @@ const (
 	FUNC_STRING_STARTS_WITH
 	FUNC_STRING_ENDS_WITH
 	FUNC_IS_MULTIPLE_OF
+	FUNC_STRING_TEMPLATE
 	FUNC_UNDEFINED Function = -1
 	FUNC_UNKNOWN   Function = -2
 )
@@ -228,6 +229,10 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		DebugName:      "FUNC_IS_MULTIPLE_OF",
 		AstName:        "IsMultipleOf",
 		NamedArguments: []string{"value", "divider"},
+	},
+	FUNC_STRING_TEMPLATE: {
+		DebugName: "FUNC_STRING_TEMPLATE",
+		AstName:   "StringTemplate",
 	},
 	FUNC_FILTER: FuncFilterAttributes,
 }

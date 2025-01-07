@@ -7,6 +7,7 @@ import (
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories"
+	"github.com/checkmarble/marble-backend/usecases/evaluate_scenario"
 	"github.com/pkg/errors"
 )
 
@@ -71,6 +72,8 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 	tx repositories.Transaction,
 	scenario models.Scenario,
 	decision models.DecisionWithRuleExecutions,
+	repositories evaluate_scenario.ScenarioEvaluationRepositories,
+	params evaluate_scenario.ScenarioEvaluationParameters,
 	webhookEventId string,
 ) (addedToCase bool, err error) {
 	if scenario.DecisionToCaseWorkflowType == models.WorkflowDisabled ||
@@ -81,7 +84,12 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 	}
 
 	if scenario.DecisionToCaseWorkflowType == models.WorkflowCreateCase {
-		input := automaticCreateCaseAttributes(scenario, decision)
+		caseName, err := evaluate_scenario.EvalCaseName(ctx, params, repositories, scenario, decision)
+		if err != nil {
+			return false, errors.Wrap(err, "error creating case for decision")
+		}
+
+		input := automaticCreateCaseAttributes(scenario, decision, caseName)
 		newCase, err := d.caseEditor.CreateCase(ctx, tx, "", input, false)
 		if err != nil {
 			return false, errors.Wrap(err, "error creating case for decision")
@@ -105,7 +113,12 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 		}
 
 		if !added {
-			input := automaticCreateCaseAttributes(scenario, decision)
+			caseName, err := evaluate_scenario.EvalCaseName(ctx, params, repositories, scenario, decision)
+			if err != nil {
+				return false, errors.Wrap(err, "error creating case for decision")
+			}
+
+			input := automaticCreateCaseAttributes(scenario, decision, caseName)
 			newCase, err := d.caseEditor.CreateCase(ctx, tx, "", input, false)
 			if err != nil {
 				return false, errors.Wrap(err, "error creating case for decision")
@@ -141,15 +154,12 @@ func (d DecisionsWorkflows) AutomaticDecisionToCase(
 func automaticCreateCaseAttributes(
 	scenario models.Scenario,
 	decision models.DecisionWithRuleExecutions,
+	name string,
 ) models.CreateCaseAttributes {
 	return models.CreateCaseAttributes{
-		DecisionIds: []string{decision.DecisionId},
-		InboxId:     *scenario.DecisionToCaseInboxId,
-		Name: fmt.Sprintf(
-			"Case for %s: %s",
-			scenario.TriggerObjectType,
-			decision.ClientObject.Data["object_id"],
-		),
+		DecisionIds:    []string{decision.DecisionId},
+		InboxId:        *scenario.DecisionToCaseInboxId,
+		Name:           name,
 		OrganizationId: scenario.OrganizationId,
 	}
 }

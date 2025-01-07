@@ -124,10 +124,12 @@ func (usecases *UsecasesWithCreds) NewDecisionWorkflows() decision_workflows.Dec
 
 func (usecases *UsecasesWithCreds) NewScenarioUsecase() ScenarioUsecase {
 	return ScenarioUsecase{
-		transactionFactory: usecases.NewTransactionFactory(),
-		executorFactory:    usecases.NewExecutorFactory(),
-		enforceSecurity:    usecases.NewEnforceScenarioSecurity(),
-		repository:         &usecases.Repositories.MarbleDbRepository,
+		transactionFactory:  usecases.NewTransactionFactory(),
+		scenarioFetcher:     usecases.NewScenarioFetcher(),
+		validateScenarioAst: usecases.NewValidateScenarioAst(),
+		executorFactory:     usecases.NewExecutorFactory(),
+		enforceSecurity:     usecases.NewEnforceScenarioSecurity(),
+		repository:          &usecases.Repositories.MarbleDbRepository,
 	}
 }
 

@@ -30,6 +30,8 @@ type decisionWorkflowsUsecase interface {
 		tx repositories.Transaction,
 		scenario models.Scenario,
 		decision models.DecisionWithRuleExecutions,
+		repositories evaluate_scenario.ScenarioEvaluationRepositories,
+		params evaluate_scenario.ScenarioEvaluationParameters,
 		webhookEventId string,
 	) (bool, error)
 }
@@ -274,22 +276,27 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 	}
 
 	object := models.ClientObject{TableName: table.Name, Data: objectMap[0]}
+
+	evaluationParameters := evaluate_scenario.ScenarioEvaluationParameters{
+		Scenario:          scenario,
+		TargetIterationId: &args.ScenarioIterationId,
+		ClientObject:      object,
+		DataModel:         dataModel,
+		Pivot:             pivot,
+	}
+
+	evaluationRepositories := evaluate_scenario.ScenarioEvaluationRepositories{
+		EvalScenarioRepository:     w.repository,
+		ExecutorFactory:            w.executorFactory,
+		IngestedDataReadRepository: w.ingestedDataReadRepository,
+		EvaluateAstExpression:      w.evaluateAstExpression,
+		SnoozeReader:               w.snoozesReader,
+	}
+
 	scenarioExecution, err := evaluate_scenario.EvalScenario(
 		ctx,
-		evaluate_scenario.ScenarioEvaluationParameters{
-			Scenario:          scenario,
-			TargetIterationId: &args.ScenarioIterationId,
-			ClientObject:      object,
-			DataModel:         dataModel,
-			Pivot:             pivot,
-		},
-		evaluate_scenario.ScenarioEvaluationRepositories{
-			EvalScenarioRepository:     w.repository,
-			ExecutorFactory:            w.executorFactory,
-			IngestedDataReadRepository: w.ingestedDataReadRepository,
-			EvaluateAstExpression:      w.evaluateAstExpression,
-			SnoozeReader:               w.snoozesReader,
-		},
+		evaluationParameters,
+		evaluationRepositories,
 	)
 
 	if errors.Is(err, models.ErrScenarioTriggerConditionAndTriggerObjectMismatch) {
@@ -336,7 +343,8 @@ func (w *AsyncDecisionWorker) createSingleDecisionForObjectId(
 	sendWebhookEventId = append(sendWebhookEventId, webhookEventId)
 
 	caseWebhookEventId := uuid.NewString()
-	webhookEventCreated, err := w.decisionWorkflows.AutomaticDecisionToCase(ctx, tx, scenario, decision, caseWebhookEventId)
+	webhookEventCreated, err := w.decisionWorkflows.AutomaticDecisionToCase(ctx, tx, scenario,
+		decision, evaluationRepositories, evaluationParameters, caseWebhookEventId)
 	if err != nil {
 		return false, nil, err
 	}

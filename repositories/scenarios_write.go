@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
@@ -64,6 +65,15 @@ func (repo *MarbleDbRepository) UpdateScenario(ctx context.Context, exec Executo
 	}
 	if scenario.DecisionToCaseWorkflowType != nil {
 		sql = sql.Set("decision_to_case_workflow_type", scenario.DecisionToCaseWorkflowType)
+		countApply++
+	}
+	if scenario.DecisionToCaseNameTemplate != nil {
+		serializedAst, err := dbmodels.SerializeFormulaAstExpression(scenario.DecisionToCaseNameTemplate)
+		if err != nil {
+			return fmt.Errorf(
+				"unable to marshal ast expression: %w", err)
+		}
+		sql = sql.Set("decision_to_case_name_template", serializedAst)
 		countApply++
 	}
 	if scenario.Description != nil {

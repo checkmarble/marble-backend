@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/checkmarble/marble-backend/models"
@@ -15,6 +16,7 @@ type ScenarioDto struct {
 	DecisionToCaseOutcomes     []string    `json:"decision_to_case_outcomes"`
 	DecisionToCaseInboxId      null.String `json:"decision_to_case_inbox_id"`
 	DecisionToCaseWorkflowType string      `json:"decision_to_case_workflow_type"`
+	DecisionToCaseNameTemplate *NodeDto    `json:"decision_to_case_name_template"`
 	Description                string      `json:"description"`
 	LiveVersionID              *string     `json:"live_version_id,omitempty"`
 	Name                       string      `json:"name"`
@@ -22,8 +24,8 @@ type ScenarioDto struct {
 	TriggerObjectType          string      `json:"trigger_object_type"`
 }
 
-func AdaptScenarioDto(scenario models.Scenario) ScenarioDto {
-	return ScenarioDto{
+func AdaptScenarioDto(scenario models.Scenario) (ScenarioDto, error) {
+	scenarioDto := ScenarioDto{
 		Id:                    scenario.Id,
 		CreatedAt:             scenario.CreatedAt,
 		DecisionToCaseInboxId: null.StringFromPtr(scenario.DecisionToCaseInboxId),
@@ -36,6 +38,17 @@ func AdaptScenarioDto(scenario models.Scenario) ScenarioDto {
 		OrganizationId:             scenario.OrganizationId,
 		TriggerObjectType:          scenario.TriggerObjectType,
 	}
+
+	if scenario.DecisionToCaseNameTemplate != nil {
+		astDto, err := AdaptNodeDto(*scenario.DecisionToCaseNameTemplate)
+		if err != nil {
+			return ScenarioDto{},
+				fmt.Errorf("unable to marshal ast expression: %w", err)
+		}
+		scenarioDto.DecisionToCaseNameTemplate = &astDto
+	}
+
+	return scenarioDto, nil
 }
 
 // Create scenario DTO
@@ -61,6 +74,7 @@ type UpdateScenarioBody struct {
 	DecisionToCaseOutcomes     []string    `json:"decision_to_case_outcomes"`
 	DecisionToCaseInboxId      null.String `json:"decision_to_case_inbox_id"`
 	DecisionToCaseWorkflowType *string     `json:"decision_to_case_workflow_type"`
+	DecisionToCaseNameTemplate *NodeDto    `json:"decision_to_case_name_template"`
 	Description                *string     `json:"description"`
 	Name                       *string     `json:"name"`
 }
@@ -78,6 +92,12 @@ func AdaptUpdateScenarioInput(scenarioId string, input UpdateScenarioBody) model
 	if input.DecisionToCaseWorkflowType != nil {
 		val := models.WorkflowType(*input.DecisionToCaseWorkflowType)
 		parsedInput.DecisionToCaseWorkflowType = &val
+	}
+	if input.DecisionToCaseNameTemplate != nil {
+		astNode, err := AdaptASTNode(*input.DecisionToCaseNameTemplate)
+		if err == nil {
+			parsedInput.DecisionToCaseNameTemplate = &astNode
+		}
 	}
 	return parsedInput
 }

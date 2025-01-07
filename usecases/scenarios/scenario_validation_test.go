@@ -88,7 +88,7 @@ func TestValidateScenarioIterationImpl_Validate(t *testing.T) {
 			},
 		}, nil)
 
-	validator := ValidateScenarioIterationImpl{
+	validator := AstValidatorImpl{
 		DataModelRepository: mdmr,
 		AstEvaluationEnvironmentFactory: func(params ast_eval.EvaluationEnvironmentFactoryParams) ast_eval.AstEvaluationEnvironment {
 			return ast_eval.NewAstEvaluationEnvironment()
@@ -96,7 +96,11 @@ func TestValidateScenarioIterationImpl_Validate(t *testing.T) {
 		ExecutorFactory: executorFactory,
 	}
 
-	result := validator.Validate(ctx, models.ScenarioAndIteration{
+	siValidator := ValidateScenarioIterationImpl{
+		AstValidator: &validator,
+	}
+
+	result := siValidator.Validate(ctx, models.ScenarioAndIteration{
 		Scenario:  scenario,
 		Iteration: scenarioIteration,
 	})
@@ -176,7 +180,7 @@ func TestValidateScenarioIterationImpl_Validate_notBool(t *testing.T) {
 			},
 		}, nil)
 
-	validator := ValidateScenarioIterationImpl{
+	validator := AstValidatorImpl{
 		DataModelRepository: mdmr,
 		AstEvaluationEnvironmentFactory: func(params ast_eval.EvaluationEnvironmentFactoryParams) ast_eval.AstEvaluationEnvironment {
 			return ast_eval.NewAstEvaluationEnvironment()
@@ -184,7 +188,11 @@ func TestValidateScenarioIterationImpl_Validate_notBool(t *testing.T) {
 		ExecutorFactory: executorFactory,
 	}
 
-	result := validator.Validate(ctx, models.ScenarioAndIteration{
+	siValidator := ValidateScenarioIterationImpl{
+		AstValidator: &validator,
+	}
+
+	result := siValidator.Validate(ctx, models.ScenarioAndIteration{
 		Scenario:  scenario,
 		Iteration: scenarioIteration,
 	})
