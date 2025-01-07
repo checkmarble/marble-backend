@@ -15,6 +15,8 @@ type EnforceSecurityOrganization interface {
 	ReadDataModel() error
 	WriteDataModel(organizationId string) error
 	WriteDataModelIndexes(organizationId string) error
+	GetOrganizationEntitlements() error
+	UpdateOrganizationEntitlements() error
 }
 
 type EnforceSecurityOrganizationImpl struct {
@@ -64,5 +66,17 @@ func (e *EnforceSecurityOrganizationImpl) WriteDataModelIndexes(organizationId s
 	return errors.Join(
 		e.Permission(models.SCENARIO_CREATE),
 		e.ReadOrganization(organizationId),
+	)
+}
+
+func (e *EnforceSecurityOrganizationImpl) GetOrganizationEntitlements(organizationId string) error {
+	return errors.Join(
+		e.Permission(models.ORGANIZATIONS_LIST),
+	)
+}
+
+func (e *EnforceSecurityOrganizationImpl) UpdateOrganizationEntitlements(organizationId string) error {
+	return errors.Join(
+		e.Permission(models.ORGANIZATIONS_UPDATE),
 	)
 }
