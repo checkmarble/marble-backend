@@ -119,8 +119,8 @@ func updateScenario(uc usecases.Usecases) func(c *gin.Context) {
 }
 
 type PostScenarioAstValidationInputBody struct {
-	Node       dto.NodeDto `json:"node" binding:"required"`
-	ReturnType string      `json:"return_type"`
+	Node               dto.NodeDto `json:"node" binding:"required"`
+	ExpectedReturnType string      `json:"expected_return_type"`
 }
 
 func validateScenarioAst(uc usecases.Usecases) func(c *gin.Context) {
@@ -141,13 +141,13 @@ func validateScenarioAst(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		returnType := "bool"
-		if input.ReturnType != "" {
-			returnType = input.ReturnType
+		expectedReturnType := "bool"
+		if input.ExpectedReturnType != "" {
+			expectedReturnType = input.ExpectedReturnType
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewScenarioUsecase()
-		astValidation, err := usecase.ValidateScenarioAst(ctx, scenarioId, &astNode, returnType)
+		astValidation, err := usecase.ValidateScenarioAst(ctx, scenarioId, &astNode, expectedReturnType)
 
 		if presentError(ctx, c, err) {
 			return

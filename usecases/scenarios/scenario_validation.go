@@ -125,7 +125,8 @@ func (self *ValidateScenarioIterationImpl) Validate(ctx context.Context,
 }
 
 type ValidateScenarioAst interface {
-	Validate(ctx context.Context, scenario models.Scenario, astNode *ast.Node, returnType string) (ast.NodeEvaluation, error)
+	Validate(ctx context.Context, scenario models.Scenario, astNode *ast.Node,
+		expectedReturnType string) (ast.NodeEvaluation, error)
 }
 
 type ValidateScenarioAstImpl struct {
@@ -135,25 +136,25 @@ type ValidateScenarioAstImpl struct {
 func (self *ValidateScenarioAstImpl) Validate(ctx context.Context,
 	scenario models.Scenario,
 	astNode *ast.Node,
-	returnTypeStr string,
+	expectedReturnTypeStr string,
 ) (ast.NodeEvaluation, error) {
 	dryRunEnvironment, err := self.AstValidator.MakeDryRunEnvironment(ctx, scenario)
 	if err != nil {
 		return ast.NodeEvaluation{}, err.Error
 	}
 
-	returnType, ok := getTypeFromString(returnTypeStr)
+	expectedReturnType, ok := getTypeFromString(expectedReturnTypeStr)
 	if !ok {
 		return ast.NodeEvaluation{}, errors.Wrapf(models.BadParameterError,
-			"unknown specified type '%s'", returnTypeStr)
+			"unknown specified type '%s'", expectedReturnTypeStr)
 	}
 
 	astEvaluation, _ := ast_eval.EvaluateAst(ctx, dryRunEnvironment, *astNode)
 	astEvaluationReturnType := reflect.TypeOf(astEvaluation.ReturnValue)
 
-	if len(astEvaluation.FlattenErrors()) == 0 && astEvaluationReturnType != returnType {
+	if len(astEvaluation.FlattenErrors()) == 0 && astEvaluationReturnType != expectedReturnType {
 		astEvaluation.Errors = append(astEvaluation.Errors, errors.Wrapf(models.BadParameterError,
-			"ast node does not return a %s", returnTypeStr))
+			"ast node does not return a %s", expectedReturnTypeStr))
 	}
 
 	return astEvaluation, nil
