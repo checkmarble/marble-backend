@@ -27,6 +27,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Aut
 	r.GET("/liveness", tom, handleLivenessProbe(uc))
 	r.POST("/token", tom, tokenHandler.GenerateToken)
 	r.GET("/validate-license/*license_key", tom, handleValidateLicense(uc))
+	r.GET("/isSsoAvailable", tom, handleIsSsoAvailable(uc))
 
 	router := r.Use(auth.Middleware)
 
@@ -129,6 +130,9 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Aut
 	router.GET("/organizations/:organization_id", tom, handleGetOrganization(uc))
 	router.PATCH("/organizations/:organization_id", tom, handlePatchOrganization(uc))
 	router.DELETE("/organizations/:organization_id", tom, handleDeleteOrganization(uc))
+	router.GET("/organizations/:organization_id/feature_access", tom, handleGetOrganizationFeatureAccess(uc))
+	router.PATCH("/organizations/:organization_id/feature_access", tom,
+		handlePatchOrganizationFeatureAccess(uc))
 
 	router.GET("/partners", tom, handleListPartners(uc))
 	router.POST("/partners", tom, handleCreatePartner(uc))
