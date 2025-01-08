@@ -109,3 +109,23 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 	)
 	return nil
 }
+
+func (usecase *OrganizationUseCase) GetOrganizationFeatureAccess(ctx context.Context,
+	organizationId string,
+) (models.OrganizationFeatureAccess, error) {
+	if err := usecase.enforceSecurity.CreateOrganization(); err != nil {
+		return models.OrganizationFeatureAccess{}, err
+	}
+	return usecase.organizationRepository.GetOrganizationFeatureAccess(ctx,
+		usecase.executorFactory.NewExecutor(), organizationId)
+}
+
+func (usecase *OrganizationUseCase) UpdateOrganizationFeatureAccess(ctx context.Context,
+	organizationId string, featureAccess models.UpdateOrganizationFeatureAccessInput,
+) error {
+	if err := usecase.enforceSecurity.CreateOrganization(); err != nil {
+		return err
+	}
+	return usecase.organizationRepository.UpdateOrganizationFeatureAccess(ctx,
+		usecase.executorFactory.NewExecutor(), organizationId, featureAccess)
+}
