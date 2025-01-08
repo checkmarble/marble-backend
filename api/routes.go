@@ -27,7 +27,7 @@ func addRoutes(r *gin.Engine, conf Configuration, uc usecases.Usecases, auth Aut
 	r.GET("/liveness", tom, handleLivenessProbe(uc))
 	r.POST("/token", tom, tokenHandler.GenerateToken)
 	r.GET("/validate-license/*license_key", tom, handleValidateLicense(uc))
-	r.GET("/isSsoAvailable", tom, handleIsSsoAvailable(uc))
+	// r.GET("/isSsoAvailable", tom, handleIsSsoAvailable(uc))
 
 	router := r.Use(auth.Middleware)
 
