@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/dbmodels"
 	"github.com/checkmarble/marble-backend/utils"
@@ -16,6 +17,10 @@ type OrganizationRepository interface {
 	UpdateOrganization(ctx context.Context, exec Executor, updateOrganization models.UpdateOrganizationInput) error
 	DeleteOrganization(ctx context.Context, exec Executor, organizationId string) error
 	DeleteOrganizationDecisionRulesAsync(ctx context.Context, exec Executor, organizationId string)
+	GetOrganizationFeatureAccess(ctx context.Context, exec Executor, organizationId string) (
+		models.OrganizationFeatureAccess, error)
+	UpdateOrganizationFeatureAccess(ctx context.Context, exec Executor, organizationId string,
+		updateFeatureAccess models.UpdateOrganizationFeatureAccessInput) error
 }
 
 type OrganizationRepositoryPostgresql struct{}
@@ -76,6 +81,34 @@ func (repo *OrganizationRepositoryPostgresql) CreateOrganization(
 				name,
 			),
 	)
+
+	if err == nil {
+		err := ExecBuilder(ctx, exec, NewQueryBuilder().
+			Insert(dbmodels.TABLE_ORGANIZATION_FEATURE_ACCESS).
+			Columns(
+				"organization_id",
+				"test_run",
+				"workflows",
+				"webhooks",
+				"rule_snoozed",
+				"roles",
+				"analytics",
+				"sanctions",
+			).
+			Values(
+				newOrganizationId,
+				"allow",
+				"allow",
+				"allow",
+				"allow",
+				"allow",
+				"allow",
+				"allow",
+			))
+
+		return err
+	}
+
 	return err
 }
 
@@ -123,4 +156,44 @@ func (repo *OrganizationRepositoryPostgresql) DeleteOrganizationDecisionRulesAsy
 			utils.LogAndReportSentryError(ctx, err)
 		}
 	}()
+}
+
+func (repo *OrganizationRepositoryPostgresql) GetOrganizationFeatureAccess(ctx context.Context, exec Executor,
+	organizationId string,
+) (models.OrganizationFeatureAccess, error) {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return models.OrganizationFeatureAccess{}, err
+	}
+
+	return SqlToModel(
+		ctx,
+		exec,
+		NewQueryBuilder().
+			Select(dbmodels.SelectOrganizationFeatureAccessColumn...).
+			From(dbmodels.TABLE_ORGANIZATION_FEATURE_ACCESS).
+			Where(squirrel.Eq{"organization_id": organizationId}),
+		dbmodels.AdaptOrganizationFeatureAccess,
+	)
+}
+
+func (repo *OrganizationRepositoryPostgresql) UpdateOrganizationFeatureAccess(ctx context.Context, exec Executor,
+	organizationId string, updateFeatureAccess models.UpdateOrganizationFeatureAccessInput,
+) error {
+	if err := validateMarbleDbExecutor(exec); err != nil {
+		return err
+	}
+
+	query := NewQueryBuilder().
+		Update(dbmodels.TABLE_ORGANIZATION_FEATURE_ACCESS).
+		Where(squirrel.Eq{"organization_id": organizationId}).
+		Set("test_run", updateFeatureAccess.TestRun).
+		Set("workflows", updateFeatureAccess.Workflows).
+		Set("webhooks", updateFeatureAccess.Webhooks).
+		Set("rule_snoozed", updateFeatureAccess.RuleSnoozed).
+		Set("roles", updateFeatureAccess.Roles).
+		Set("analytics", updateFeatureAccess.Analytics).
+		Set("sanctions", updateFeatureAccess.Sanctions)
+
+	err := ExecBuilder(ctx, exec, query)
+	return err
 }
