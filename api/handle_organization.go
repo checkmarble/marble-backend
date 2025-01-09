@@ -131,14 +131,13 @@ func handlePatchOrganizationFeatureAccess(uc usecases.Usecases) func(c *gin.Cont
 
 		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
 		err := usecase.UpdateOrganizationFeatureAccess(ctx, organizationID, models.UpdateOrganizationFeatureAccessInput{
-			OrganizationId: organizationID,
-			TestRun:        models.FeatureAccessFrom(data.TestRun),
-			Workflows:      models.FeatureAccessFrom(data.Workflows),
-			Webhooks:       models.FeatureAccessFrom(data.Webhooks),
-			RuleSnoozed:    models.FeatureAccessFrom(data.RuleSnoozed),
-			Roles:          models.FeatureAccessFrom(data.Roles),
-			Analytics:      models.FeatureAccessFrom(data.Analytics),
-			Sanctions:      models.FeatureAccessFrom(data.Sanctions),
+			TestRun:     models.FeatureAccessFrom(data.TestRun),
+			Workflows:   models.FeatureAccessFrom(data.Workflows),
+			Webhooks:    models.FeatureAccessFrom(data.Webhooks),
+			RuleSnoozed: models.FeatureAccessFrom(data.RuleSnoozed),
+			Roles:       models.FeatureAccessFrom(data.Roles),
+			Analytics:   models.FeatureAccessFrom(data.Analytics),
+			Sanctions:   models.FeatureAccessFrom(data.Sanctions),
 		})
 		if presentError(ctx, c, err) {
 			return

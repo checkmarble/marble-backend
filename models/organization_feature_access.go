@@ -17,12 +17,11 @@ type OrganizationFeatureAccess struct {
 }
 
 type UpdateOrganizationFeatureAccessInput struct {
-	OrganizationId string
-	TestRun        FeatureAccess
-	Workflows      FeatureAccess
-	Webhooks       FeatureAccess
-	RuleSnoozed    FeatureAccess
-	Roles          FeatureAccess
-	Analytics      FeatureAccess
-	Sanctions      FeatureAccess
+	TestRun     FeatureAccess
+	Workflows   FeatureAccess
+	Webhooks    FeatureAccess
+	RuleSnoozed FeatureAccess
+	Roles       FeatureAccess
+	Analytics   FeatureAccess
+	Sanctions   FeatureAccess
 }
