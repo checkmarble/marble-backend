@@ -3,21 +3,21 @@ package models
 type FeatureAccess int
 
 const (
-	Allow FeatureAccess = iota
-	Disallow
+	Allowed FeatureAccess = iota
+	Premium
 	Test
 	UnknownFeatureAccess
 )
 
-var ValidFeaturesAccess = []FeatureAccess{Allow, Disallow, Test}
+var ValidFeaturesAccess = []FeatureAccess{Allowed, Premium, Test}
 
 // Provide a string value for each outcome
 func (f FeatureAccess) String() string {
 	switch f {
-	case Allow:
-		return "allow"
-	case Disallow:
-		return "disallow"
+	case Allowed:
+		return "allowed"
+	case Premium:
+		return "premium"
 	case Test:
 		return "test"
 	}
@@ -27,10 +27,10 @@ func (f FeatureAccess) String() string {
 // Provide an Outcome from a string value
 func FeatureAccessFrom(s string) FeatureAccess {
 	switch s {
-	case "allow":
-		return Allow
-	case "disallow":
-		return Disallow
+	case "allowed":
+		return Allowed
+	case "premium":
+		return Premium
 	case "test":
 		return Test
 	}
