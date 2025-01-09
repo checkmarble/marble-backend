@@ -59,6 +59,7 @@ type LicenseEntitlements struct {
 	Webhooks       bool
 	RuleSnoozes    bool
 	TestRun        bool
+	Sanctions      bool
 }
 
 type LicenseValidation struct {
@@ -78,6 +79,7 @@ func NewFullLicense() LicenseValidation {
 			Webhooks:       true,
 			RuleSnoozes:    true,
 			TestRun:        true,
+			Sanctions:      true,
 		},
 	}
 }

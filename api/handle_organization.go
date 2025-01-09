@@ -102,3 +102,40 @@ func handleDeleteOrganization(uc usecases.Usecases) func(c *gin.Context) {
 		c.Status(http.StatusNoContent)
 	}
 }
+
+func handleGetOrganizationFeatureAccess(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		organizationID := c.Param("organization_id")
+
+		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
+		featureAccess, err := usecase.GetOrganizationFeatureAccess(ctx, organizationID)
+		if presentError(ctx, c, err) {
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"feature_access": dto.AdaptOrganizationFeatureAccessDto(featureAccess),
+		})
+	}
+}
+
+func handlePatchOrganizationFeatureAccess(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		organizationID := c.Param("organization_id")
+		var data dto.UpdateOrganizationFeatureAccessBodyDto
+		if err := c.ShouldBindJSON(&data); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
+		err := usecase.UpdateOrganizationFeatureAccess(ctx,
+			dto.AdaptUpdateOrganizationFeatureAccessInput(data, organizationID))
+		if presentError(ctx, c, err) {
+			return
+		}
+
+		c.Status(http.StatusNoContent)
+	}
+}

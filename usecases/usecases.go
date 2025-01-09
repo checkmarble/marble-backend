@@ -242,10 +242,11 @@ func (usecase *Usecases) NewScenarioFetcher() scenarios.ScenarioFetcher {
 }
 
 func (usecases *Usecases) NewLicenseUsecase() PublicLicenseUseCase {
-	return PublicLicenseUseCase{
-		executorFactory:   usecases.NewExecutorFactory(),
-		licenseRepository: &usecases.Repositories.MarbleDbRepository,
-	}
+	return NewPublicLicenseUsecase(
+		usecases.NewExecutorFactory(),
+		&usecases.Repositories.MarbleDbRepository,
+		usecases.license,
+	)
 }
 
 func (usecases *Usecases) NewTaskQueueWorker(riverClient *river.Client[pgx.Tx]) *TaskQueueWorker {
