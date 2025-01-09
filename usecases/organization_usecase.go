@@ -148,7 +148,8 @@ func (usecase *OrganizationUseCase) GetOrganizationFeatureAccess(ctx context.Con
 		return models.OrganizationFeatureAccess{}, err
 	}
 
-	return usecase.license.MergeWithFeatureAccess(dbStoredFeatureAccess), nil
+	return dbStoredFeatureAccess.MergeWithLicenseEntitlement(
+		&usecase.license.LicenseEntitlements), nil
 }
 
 func (usecase *OrganizationUseCase) UpdateOrganizationFeatureAccess(
