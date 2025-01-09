@@ -196,16 +196,17 @@ func (usecases *UsecasesWithCreds) NewClientDbIndexEditor() clientDbIndexEditor 
 }
 
 func (usecases *UsecasesWithCreds) NewOrganizationUseCase() OrganizationUseCase {
-	return OrganizationUseCase{
-		enforceSecurity:              usecases.NewEnforceOrganizationSecurity(),
-		executorFactory:              usecases.NewExecutorFactory(),
-		transactionFactory:           usecases.NewTransactionFactory(),
-		organizationRepository:       usecases.Repositories.OrganizationRepository,
-		datamodelRepository:          usecases.Repositories.DataModelRepository,
-		userRepository:               usecases.Repositories.UserRepository,
-		organizationCreator:          usecases.NewOrganizationCreator(),
-		organizationSchemaRepository: usecases.Repositories.OrganizationSchemaRepository,
-	}
+	return NewOrganizationUseCase(
+		usecases.NewEnforceOrganizationSecurity(),
+		usecases.NewTransactionFactory(),
+		usecases.Repositories.OrganizationRepository,
+		usecases.Repositories.DataModelRepository,
+		usecases.Repositories.UserRepository,
+		usecases.NewOrganizationCreator(),
+		usecases.Repositories.OrganizationSchemaRepository,
+		usecases.NewExecutorFactory(),
+		usecases.Usecases.license,
+	)
 }
 
 func (usecases *UsecasesWithCreds) NewDataModelUseCase() DataModelUseCase {

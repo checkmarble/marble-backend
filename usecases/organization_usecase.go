@@ -21,6 +21,31 @@ type OrganizationUseCase struct {
 	organizationCreator          organization.OrganizationCreator
 	organizationSchemaRepository repositories.OrganizationSchemaRepository
 	executorFactory              executor_factory.ExecutorFactory
+	license                      models.LicenseValidation
+}
+
+func NewOrganizationUseCase(
+	enforceSecurity security.EnforceSecurityOrganization,
+	transactionFactory executor_factory.TransactionFactory,
+	organizationRepository repositories.OrganizationRepository,
+	datamodelRepository repositories.DataModelRepository,
+	userRepository repositories.UserRepository,
+	organizationCreator organization.OrganizationCreator,
+	organizationSchemaRepository repositories.OrganizationSchemaRepository,
+	executorFactory executor_factory.ExecutorFactory,
+	license models.LicenseValidation,
+) OrganizationUseCase {
+	return OrganizationUseCase{
+		enforceSecurity:              enforceSecurity,
+		transactionFactory:           transactionFactory,
+		organizationRepository:       organizationRepository,
+		datamodelRepository:          datamodelRepository,
+		userRepository:               userRepository,
+		organizationCreator:          organizationCreator,
+		organizationSchemaRepository: organizationSchemaRepository,
+		executorFactory:              executorFactory,
+		license:                      license,
+	}
 }
 
 func (usecase *OrganizationUseCase) GetOrganizations(ctx context.Context) ([]models.Organization, error) {
@@ -113,19 +138,26 @@ func (usecase *OrganizationUseCase) DeleteOrganization(ctx context.Context, orga
 func (usecase *OrganizationUseCase) GetOrganizationFeatureAccess(ctx context.Context,
 	organizationId string,
 ) (models.OrganizationFeatureAccess, error) {
-	if err := usecase.enforceSecurity.CreateOrganization(); err != nil {
+	if err := usecase.enforceSecurity.ReadOrganization(organizationId); err != nil {
 		return models.OrganizationFeatureAccess{}, err
 	}
-	return usecase.organizationRepository.GetOrganizationFeatureAccess(ctx,
+
+	dbStoredFeatureAccess, err := usecase.organizationRepository.GetOrganizationFeatureAccess(ctx,
 		usecase.executorFactory.NewExecutor(), organizationId)
+	if err != nil {
+		return models.OrganizationFeatureAccess{}, err
+	}
+
+	return usecase.license.MergeWithFeatureAccess(dbStoredFeatureAccess), nil
 }
 
-func (usecase *OrganizationUseCase) UpdateOrganizationFeatureAccess(ctx context.Context,
-	organizationId string, featureAccess models.UpdateOrganizationFeatureAccessInput,
+func (usecase *OrganizationUseCase) UpdateOrganizationFeatureAccess(
+	ctx context.Context,
+	featureAccess models.UpdateOrganizationFeatureAccessInput,
 ) error {
 	if err := usecase.enforceSecurity.CreateOrganization(); err != nil {
 		return err
 	}
 	return usecase.organizationRepository.UpdateOrganizationFeatureAccess(ctx,
-		usecase.executorFactory.NewExecutor(), organizationId, featureAccess)
+		usecase.executorFactory.NewExecutor(), featureAccess)
 }
