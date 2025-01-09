@@ -9,7 +9,6 @@ import (
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/pure_utils"
 	"github.com/checkmarble/marble-backend/usecases"
-	"github.com/checkmarble/marble-backend/utils"
 )
 
 func handleGetOrganizations(uc usecases.Usecases) func(c *gin.Context) {
@@ -131,11 +130,8 @@ func handlePatchOrganizationFeatureAccess(uc usecases.Usecases) func(c *gin.Cont
 		}
 
 		usecase := usecasesWithCreds(ctx, uc).NewOrganizationUseCase()
-		err := usecase.UpdateOrganizationFeatureAccess(ctx, models.UpdateOrganizationFeatureAccessInput{
-			OrganizationId: organizationID,
-			TestRun:        utils.Ptr(models.FeatureAccessFrom(data.TestRun)),
-			Sanctions:      utils.Ptr(models.FeatureAccessFrom(data.Sanctions)),
-		})
+		err := usecase.UpdateOrganizationFeatureAccess(ctx,
+			dto.AdaptUpdateOrganizationFeatureAccessInput(data, organizationID))
 		if presentError(ctx, c, err) {
 			return
 		}

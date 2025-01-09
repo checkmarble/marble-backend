@@ -2,6 +2,7 @@ package dto
 
 import (
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 type APIOrganizationFeatureAccess struct {
@@ -27,6 +28,21 @@ func AdaptOrganizationFeatureAccessDto(f models.OrganizationFeatureAccess) APIOr
 }
 
 type UpdateOrganizationFeatureAccessBodyDto struct {
-	TestRun   string `json:"test_run"`
-	Sanctions string `json:"sanctions"`
+	TestRun   *string `json:"test_run"`
+	Sanctions *string `json:"sanctions"`
+}
+
+func AdaptUpdateOrganizationFeatureAccessInput(f UpdateOrganizationFeatureAccessBodyDto, orgId string) models.UpdateOrganizationFeatureAccessInput {
+	var testRun, sanctions *models.FeatureAccess
+	if f.TestRun != nil {
+		testRun = utils.Ptr(models.FeatureAccessFrom(*f.TestRun))
+	}
+	if f.Sanctions != nil {
+		sanctions = utils.Ptr(models.FeatureAccessFrom(*f.Sanctions))
+	}
+	return models.UpdateOrganizationFeatureAccessInput{
+		OrganizationId: orgId,
+		TestRun:        testRun,
+		Sanctions:      sanctions,
+	}
 }
