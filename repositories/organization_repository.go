@@ -18,9 +18,13 @@ type OrganizationRepository interface {
 	DeleteOrganization(ctx context.Context, exec Executor, organizationId string) error
 	DeleteOrganizationDecisionRulesAsync(ctx context.Context, exec Executor, organizationId string)
 	GetOrganizationFeatureAccess(ctx context.Context, exec Executor, organizationId string) (
-		models.OrganizationFeatureAccess, error)
-	UpdateOrganizationFeatureAccess(ctx context.Context, exec Executor, organizationId string,
-		updateFeatureAccess models.UpdateOrganizationFeatureAccessInput) error
+		models.DbStoredOrganizationFeatureAccess, error,
+	)
+	UpdateOrganizationFeatureAccess(
+		ctx context.Context,
+		exec Executor,
+		updateFeatureAccess models.UpdateOrganizationFeatureAccessInput,
+	) error
 }
 
 type OrganizationRepositoryPostgresql struct{}
@@ -141,9 +145,9 @@ func (repo *OrganizationRepositoryPostgresql) DeleteOrganizationDecisionRulesAsy
 
 func (repo *OrganizationRepositoryPostgresql) GetOrganizationFeatureAccess(ctx context.Context, exec Executor,
 	organizationId string,
-) (models.OrganizationFeatureAccess, error) {
+) (models.DbStoredOrganizationFeatureAccess, error) {
 	if err := validateMarbleDbExecutor(exec); err != nil {
-		return models.OrganizationFeatureAccess{}, err
+		return models.DbStoredOrganizationFeatureAccess{}, err
 	}
 
 	return SqlToModel(
@@ -157,8 +161,10 @@ func (repo *OrganizationRepositoryPostgresql) GetOrganizationFeatureAccess(ctx c
 	)
 }
 
-func (repo *OrganizationRepositoryPostgresql) UpdateOrganizationFeatureAccess(ctx context.Context, exec Executor,
-	organizationId string, updateFeatureAccess models.UpdateOrganizationFeatureAccessInput,
+func (repo *OrganizationRepositoryPostgresql) UpdateOrganizationFeatureAccess(
+	ctx context.Context,
+	exec Executor,
+	updateFeatureAccess models.UpdateOrganizationFeatureAccessInput,
 ) error {
 	if err := validateMarbleDbExecutor(exec); err != nil {
 		return err
@@ -166,14 +172,23 @@ func (repo *OrganizationRepositoryPostgresql) UpdateOrganizationFeatureAccess(ct
 
 	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_ORGANIZATION_FEATURE_ACCESS).
-		Where(squirrel.Eq{"org_id": organizationId}).
-		Set("test_run", updateFeatureAccess.TestRun).
-		Set("workflows", updateFeatureAccess.Workflows).
-		Set("webhooks", updateFeatureAccess.Webhooks).
-		Set("rule_snoozed", updateFeatureAccess.RuleSnoozed).
-		Set("roles", updateFeatureAccess.Roles).
-		Set("analytics", updateFeatureAccess.Analytics).
-		Set("sanctions", updateFeatureAccess.Sanctions)
+		Where(squirrel.Eq{"org_id": updateFeatureAccess.OrganizationId})
+
+	nbUpdated := 0
+	if updateFeatureAccess.TestRun != nil {
+		query = query.Set("test_run", *updateFeatureAccess.TestRun)
+		nbUpdated++
+	}
+	if updateFeatureAccess.Sanctions != nil {
+		query = query.Set("sanctions", *updateFeatureAccess.Sanctions)
+		nbUpdated++
+	}
+
+	if nbUpdated == 0 {
+		return nil
+	}
+
+	query.Set("updated_at", squirrel.Expr("NOW()"))
 
 	err := ExecBuilder(ctx, exec, query)
 	return err

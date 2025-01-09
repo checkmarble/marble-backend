@@ -19,6 +19,7 @@ type LicenseEntitlements struct {
 	Webhooks       bool `json:"webhooks"`
 	RuleSnoozes    bool `json:"rule_snoozes"`
 	TestRun        bool `json:"test_run"`
+	Sanctions      bool `json:"sanctions"`
 }
 
 func AdaptLicenseEntitlements(licenseEntitlements models.LicenseEntitlements) LicenseEntitlements {
@@ -31,6 +32,7 @@ func AdaptLicenseEntitlements(licenseEntitlements models.LicenseEntitlements) Li
 		Webhooks:       licenseEntitlements.Webhooks,
 		RuleSnoozes:    licenseEntitlements.RuleSnoozes,
 		TestRun:        licenseEntitlements.TestRun,
+		Sanctions:      licenseEntitlements.Sanctions,
 	}
 }
 
