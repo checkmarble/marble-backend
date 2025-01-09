@@ -98,3 +98,12 @@ func handleValidateLicense(uc usecases.Usecases) func(c *gin.Context) {
 		c.JSON(http.StatusOK, dto.AdaptLicenseValidationDto(licenseValidation))
 	}
 }
+
+func handleIsSSOEnabled(uc usecases.Usecases) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		usecase := uc.NewLicenseUsecase()
+		c.JSON(http.StatusOK, gin.H{
+			"is_sso_enabled": usecase.HasSsoEnabled(),
+		})
+	}
+}

@@ -125,6 +125,19 @@ type publicLicenseRepository interface {
 type PublicLicenseUseCase struct {
 	executorFactory   executor_factory.ExecutorFactory
 	licenseRepository publicLicenseRepository
+	license           models.LicenseValidation
+}
+
+func NewPublicLicenseUsecase(
+	executorFactory executor_factory.ExecutorFactory,
+	publicLicenseRepository publicLicenseRepository,
+	license models.LicenseValidation,
+) PublicLicenseUseCase {
+	return PublicLicenseUseCase{
+		executorFactory:   executorFactory,
+		licenseRepository: publicLicenseRepository,
+		license:           license,
+	}
 }
 
 func (usecase *PublicLicenseUseCase) ValidateLicense(ctx context.Context, licenseKey string) (models.LicenseValidation, error) {
@@ -154,4 +167,8 @@ func (usecase *PublicLicenseUseCase) ValidateLicense(ctx context.Context, licens
 		LicenseValidationCode: models.VALID,
 		LicenseEntitlements:   license.LicenseEntitlements,
 	}, nil
+}
+
+func (usecase *PublicLicenseUseCase) HasSsoEnabled() bool {
+	return usecase.license.Sso
 }
