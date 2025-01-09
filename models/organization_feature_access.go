@@ -40,7 +40,7 @@ func (f DbStoredOrganizationFeatureAccess) MergeWithLicenseEntitlement(l *Licens
 		CreatedAt:      f.CreatedAt,
 		UpdatedAt:      f.UpdatedAt,
 	}
-	// Add the feature accesses computed directly from the license entitlements
+	// First, set the feature accesses to "allowed" if the license allows it
 	if l.Analytics {
 		o.Analytics = Allowed
 	}
@@ -63,14 +63,6 @@ func (f DbStoredOrganizationFeatureAccess) MergeWithLicenseEntitlement(l *Licens
 	}
 	if !l.Sanctions {
 		o.Sanctions = Restricted
-	}
-
-	// set to "test" if the feature access overrides the license
-	if f.TestRun == Test {
-		o.TestRun = Test
-	}
-	if f.Sanctions == Test {
-		o.Sanctions = Test
 	}
 
 	return o
