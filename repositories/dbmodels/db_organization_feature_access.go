@@ -15,46 +15,18 @@ type DBOrganizationFeatureAccess struct {
 	Id             string    `db:"id"`
 	OrganizationId string    `db:"org_id"`
 	TestRun        string    `db:"test_run"`
-	Workflows      string    `db:"workflows"`
-	Webhooks       string    `db:"webhooks"`
-	RuleSnoozed    string    `db:"rule_snoozed"`
-	Roles          string    `db:"roles"`
-	Analytics      string    `db:"analytics"`
 	Sanctions      string    `db:"sanctions"`
 	CreatedAt      time.Time `db:"created_at"`
 	UpdatedAt      time.Time `db:"updated_at"`
 }
 
-func AdaptOrganizationFeatureAccess(db DBOrganizationFeatureAccess) (models.OrganizationFeatureAccess, error) {
-	return models.OrganizationFeatureAccess{
-		TestRun:     models.FeatureAccessFrom(db.TestRun),
-		Workflows:   models.FeatureAccessFrom(db.Workflows),
-		Webhooks:    models.FeatureAccessFrom(db.Webhooks),
-		RuleSnoozed: models.FeatureAccessFrom(db.RuleSnoozed),
-		Roles:       models.FeatureAccessFrom(db.Roles),
-		Analytics:   models.FeatureAccessFrom(db.Analytics),
-		Sanctions:   models.FeatureAccessFrom(db.Sanctions),
+func AdaptOrganizationFeatureAccess(db DBOrganizationFeatureAccess) (models.DbStoredOrganizationFeatureAccess, error) {
+	return models.DbStoredOrganizationFeatureAccess{
+		Id:             db.Id,
+		OrganizationId: db.OrganizationId,
+		TestRun:        models.FeatureAccessFrom(db.TestRun),
+		Sanctions:      models.FeatureAccessFrom(db.Sanctions),
+		CreatedAt:      db.CreatedAt,
+		UpdatedAt:      db.UpdatedAt,
 	}, nil
-}
-
-type DBOrganizationFeatureAccessUpdateInput struct {
-	TestRun     string `db:"test_run"`
-	Workflows   string `db:"workflows"`
-	Webhooks    string `db:"webhooks"`
-	RuleSnoozed string `db:"rule_snoozed"`
-	Roles       string `db:"roles"`
-	Analytics   string `db:"analytics"`
-	Sanctions   string `db:"sanctions"`
-}
-
-func AdaptOrganizationFeatureAccessUpdateInput(db DBOrganizationFeatureAccessUpdateInput) models.UpdateOrganizationFeatureAccessInput {
-	return models.UpdateOrganizationFeatureAccessInput{
-		TestRun:     models.FeatureAccessFrom(db.TestRun),
-		Workflows:   models.FeatureAccessFrom(db.Workflows),
-		Webhooks:    models.FeatureAccessFrom(db.Webhooks),
-		RuleSnoozed: models.FeatureAccessFrom(db.RuleSnoozed),
-		Roles:       models.FeatureAccessFrom(db.Roles),
-		Analytics:   models.FeatureAccessFrom(db.Analytics),
-		Sanctions:   models.FeatureAccessFrom(db.Sanctions),
-	}
 }

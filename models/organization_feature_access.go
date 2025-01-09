@@ -8,7 +8,7 @@ type OrganizationFeatureAccess struct {
 	TestRun        FeatureAccess
 	Workflows      FeatureAccess
 	Webhooks       FeatureAccess
-	RuleSnoozed    FeatureAccess
+	RuleSnoozes    FeatureAccess
 	Roles          FeatureAccess
 	Analytics      FeatureAccess
 	Sanctions      FeatureAccess
@@ -16,12 +16,17 @@ type OrganizationFeatureAccess struct {
 	UpdatedAt      time.Time
 }
 
+type DbStoredOrganizationFeatureAccess struct {
+	Id             string
+	OrganizationId string
+	TestRun        FeatureAccess
+	Sanctions      FeatureAccess
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
 type UpdateOrganizationFeatureAccessInput struct {
-	TestRun     FeatureAccess
-	Workflows   FeatureAccess
-	Webhooks    FeatureAccess
-	RuleSnoozed FeatureAccess
-	Roles       FeatureAccess
-	Analytics   FeatureAccess
-	Sanctions   FeatureAccess
+	OrganizationId string
+	TestRun        *FeatureAccess
+	Sanctions      *FeatureAccess
 }
