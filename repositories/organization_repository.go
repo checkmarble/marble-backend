@@ -81,35 +81,16 @@ func (repo *OrganizationRepositoryPostgresql) CreateOrganization(
 				name,
 			),
 	)
-
-	if err == nil {
-		err := ExecBuilder(ctx, exec, NewQueryBuilder().
-			Insert(dbmodels.TABLE_ORGANIZATION_FEATURE_ACCESS).
-			Columns(
-				"organization_id",
-				"test_run",
-				"workflows",
-				"webhooks",
-				"rule_snoozed",
-				"roles",
-				"analytics",
-				"sanctions",
-			).
-			Values(
-				newOrganizationId,
-				"allow",
-				"allow",
-				"allow",
-				"allow",
-				"allow",
-				"allow",
-				"allow",
-			))
-
+	if err != nil {
 		return err
 	}
 
-	return err
+	newErr := ExecBuilder(ctx, exec, NewQueryBuilder().
+		Insert(dbmodels.TABLE_ORGANIZATION_FEATURE_ACCESS).
+		Columns("org_id").
+		Values(newOrganizationId))
+
+	return newErr
 }
 
 func (repo *OrganizationRepositoryPostgresql) UpdateOrganization(ctx context.Context, exec Executor, updateOrganization models.UpdateOrganizationInput) error {
@@ -171,7 +152,7 @@ func (repo *OrganizationRepositoryPostgresql) GetOrganizationFeatureAccess(ctx c
 		NewQueryBuilder().
 			Select(dbmodels.SelectOrganizationFeatureAccessColumn...).
 			From(dbmodels.TABLE_ORGANIZATION_FEATURE_ACCESS).
-			Where(squirrel.Eq{"organization_id": organizationId}),
+			Where(squirrel.Eq{"org_id": organizationId}),
 		dbmodels.AdaptOrganizationFeatureAccess,
 	)
 }
@@ -185,7 +166,7 @@ func (repo *OrganizationRepositoryPostgresql) UpdateOrganizationFeatureAccess(ct
 
 	query := NewQueryBuilder().
 		Update(dbmodels.TABLE_ORGANIZATION_FEATURE_ACCESS).
-		Where(squirrel.Eq{"organization_id": organizationId}).
+		Where(squirrel.Eq{"org_id": organizationId}).
 		Set("test_run", updateFeatureAccess.TestRun).
 		Set("workflows", updateFeatureAccess.Workflows).
 		Set("webhooks", updateFeatureAccess.Webhooks).
