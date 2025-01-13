@@ -10,7 +10,8 @@ import (
 )
 
 type AstEvaluationEnvironment struct {
-	availableFunctions map[ast.Function]evaluate.Evaluator
+	availableFunctions     map[ast.Function]evaluate.Evaluator
+	disableCircuitBreaking bool
 }
 
 func (environment *AstEvaluationEnvironment) AddEvaluator(function ast.Function, evaluator evaluate.Evaluator) {
@@ -25,6 +26,12 @@ func (environment *AstEvaluationEnvironment) GetEvaluator(function ast.Function)
 		return funcClass, nil
 	}
 	return nil, errors.New(fmt.Sprintf("function '%s' is not available", function.DebugString()))
+}
+
+func (environment AstEvaluationEnvironment) WithoutCircuitBreaking() AstEvaluationEnvironment {
+	environment.disableCircuitBreaking = true
+
+	return environment
 }
 
 func NewAstEvaluationEnvironment() AstEvaluationEnvironment {
