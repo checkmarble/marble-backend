@@ -19,19 +19,29 @@ func EvaluateAst(ctx context.Context, environment AstEvaluationEnvironment, node
 
 	childEvaluationFail := false
 
-	evalChild := func(child ast.Node) ast.NodeEvaluation {
+	// Only interested in lazy callback which will have default value if an error is returned
+	attrs, _ := node.Function.Attributes()
+
+	evalChild := func(child ast.Node) (childEval ast.NodeEvaluation, evalNext bool) {
 		childEval, ok := EvaluateAst(ctx, environment, child)
+
 		if !ok {
 			childEvaluationFail = true
 		}
-		return childEval
+
+		// Should we continue evaluating subsequent children nodes?
+		// We always do if circuit breaking is disabled in the environment or if the parent node does not support lazy evaluation.
+		// Otherwise, we run the lazy evaluator to determine if we should continue or stop.
+		evalNext = environment.disableCircuitBreaking || attrs.LazyChildEvaluation == nil || attrs.LazyChildEvaluation(childEval)
+
+		return
 	}
 
 	// eval each child
 	evaluation := ast.NodeEvaluation{
 		Function:      node.Function,
-		Children:      pure_utils.Map(node.Children, evalChild),
-		NamedChildren: pure_utils.MapValues(node.NamedChildren, evalChild),
+		Children:      pure_utils.MapWhile(node.Children, evalChild),
+		NamedChildren: pure_utils.MapValuesWhile(node.NamedChildren, evalChild),
 	}
 
 	if childEvaluationFail {

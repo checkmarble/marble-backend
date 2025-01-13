@@ -529,11 +529,11 @@ func createDecisions(
 		assert.Nil(t, ruleExecution.Error, "Expected error to be nil, got \"%s\"", ruleExecution.Error)
 	}
 
-	// Create a decision [APPROVE] with a division by zero
+	// Create a decision [DECLINE] with a division by zero
 	transactionPayloadJson = []byte(`{
 		"object_id": "{transaction_id}",
 		"updated_at": "2020-01-01T00:00:00Z",
-		"account_id": "{account_id_approve}",
+		"account_id": "{account_id_decline}",
 		"amount": 0
 	}`)
 	approveDivisionByZeroDecision := createAndTestDecision(ctx, t, transactionPayloadJson, table,
