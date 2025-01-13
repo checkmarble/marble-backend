@@ -82,6 +82,10 @@ type FuncAttributes struct {
 	// However, it is not consumed anywhere, and it is in NO WAY enforced by the compiler or even the runtime.
 	// The only source of truth for what named children an AST must/can have is in the ast nodes Evaluate function.
 	NamedArguments []string
+	// A function can define LazyChildEvaluation indicating that its children should be evaluated lazily,
+	// considering for every one of them if evaluation should continue or not. For the result value of one child, the
+	// function returns whether evaluation of subsequent children should continue (true) or not (false).
+	LazyChildEvaluation func(NodeEvaluation) bool
 }
 
 // If number of arguments -1 the function can take any number of arguments
@@ -141,10 +145,14 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 	FUNC_AND: {
 		DebugName: "FUNC_AND",
 		AstName:   "And",
+		// Boolean AND returns false if any child node evaluates to false
+		LazyChildEvaluation: shortCircuitIfFalse,
 	},
 	FUNC_OR: {
 		DebugName: "FUNC_OR",
 		AstName:   "Or",
+		// Boolean OR returns true if any child nodes evluates to true
+		LazyChildEvaluation: shortCircuitIfTrue,
 	},
 	FUNC_TIME_ADD: {
 		DebugName:      "FUNC_TIME_ADD",
@@ -285,4 +293,20 @@ func NewNodeDatabaseAccess(tableName string, fieldName string, path []string) No
 		AddNamedChild(AttributeFuncDbAccess.ArgumentTableName, NewNodeConstant(tableName)).
 		AddNamedChild(AttributeFuncDbAccess.ArgumentFieldName, NewNodeConstant(fieldName)).
 		AddNamedChild(AttributeFuncDbAccess.ArgumentPathName, NewNodeConstant(path))
+}
+
+func shortCircuitIfTrue(res NodeEvaluation) bool {
+	if b, ok := res.ReturnValue.(bool); ok {
+		// If node returned true, we stop (return !true = false), otherwise, continue with true
+		return !b
+	}
+	return true
+}
+
+func shortCircuitIfFalse(res NodeEvaluation) bool {
+	if b, ok := res.ReturnValue.(bool); ok {
+		// If node returned false, we stop (return false), otherwise, continue with true
+		return b
+	}
+	return true
 }
