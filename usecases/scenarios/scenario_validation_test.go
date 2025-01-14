@@ -91,7 +91,7 @@ func TestValidateScenarioIterationImpl_Validate(t *testing.T) {
 	validator := AstValidatorImpl{
 		DataModelRepository: mdmr,
 		AstEvaluationEnvironmentFactory: func(params ast_eval.EvaluationEnvironmentFactoryParams) ast_eval.AstEvaluationEnvironment {
-			return ast_eval.NewAstEvaluationEnvironment().WithoutCircuitBreaking()
+			return ast_eval.NewAstEvaluationEnvironment().WithoutOptimizations()
 		},
 		ExecutorFactory: executorFactory,
 	}
@@ -183,7 +183,7 @@ func TestValidateScenarioIterationImpl_Validate_notBool(t *testing.T) {
 	validator := AstValidatorImpl{
 		DataModelRepository: mdmr,
 		AstEvaluationEnvironmentFactory: func(params ast_eval.EvaluationEnvironmentFactoryParams) ast_eval.AstEvaluationEnvironment {
-			return ast_eval.NewAstEvaluationEnvironment().WithoutCircuitBreaking()
+			return ast_eval.NewAstEvaluationEnvironment().WithoutOptimizations()
 		},
 		ExecutorFactory: executorFactory,
 	}
@@ -283,7 +283,7 @@ func TestValidationShouldBypassCircuitBreaking(t *testing.T) {
 	validator := AstValidatorImpl{
 		DataModelRepository: mdmr,
 		AstEvaluationEnvironmentFactory: func(params ast_eval.EvaluationEnvironmentFactoryParams) ast_eval.AstEvaluationEnvironment {
-			return ast_eval.NewAstEvaluationEnvironment().WithoutCircuitBreaking()
+			return ast_eval.NewAstEvaluationEnvironment().WithoutOptimizations()
 		},
 		ExecutorFactory: executorFactory,
 	}
