@@ -16,4 +16,5 @@ var FuncAggregatorAttributes = FuncAttributes{
 	DebugName:      "FUNC_AGGREGATOR",
 	AstName:        "Aggregator",
 	NamedArguments: []string{"tableName", "fieldName", "aggregator", "filters", "label"},
+	Cost:           50,
 }

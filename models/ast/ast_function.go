@@ -86,6 +86,11 @@ type FuncAttributes struct {
 	// considering for every one of them if evaluation should continue or not. For the result value of one child, the
 	// function returns whether evaluation of subsequent children should continue (true) or not (false).
 	LazyChildEvaluation func(NodeEvaluation) bool
+	// Commutative indicates this function can treat its children as a commutative list of arguments, and that
+	// they can be reordered without changing the outcome of the function.
+	Commutative bool
+	// Cost modelizes the computation cost of a given node, the default being zero.
+	Cost int
 }
 
 // If number of arguments -1 the function can take any number of arguments
@@ -143,14 +148,16 @@ var FuncAttributesMap = map[Function]FuncAttributes{
 		AstName:   "Not",
 	},
 	FUNC_AND: {
-		DebugName: "FUNC_AND",
-		AstName:   "And",
+		DebugName:   "FUNC_AND",
+		AstName:     "And",
+		Commutative: true,
 		// Boolean AND returns false if any child node evaluates to false
 		LazyChildEvaluation: shortCircuitIfFalse,
 	},
 	FUNC_OR: {
-		DebugName: "FUNC_OR",
-		AstName:   "Or",
+		DebugName:   "FUNC_OR",
+		AstName:     "Or",
+		Commutative: true,
 		// Boolean OR returns true if any child nodes evluates to true
 		LazyChildEvaluation: shortCircuitIfTrue,
 	},
