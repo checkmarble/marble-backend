@@ -7,6 +7,8 @@ import (
 )
 
 type Node struct {
+	Index int
+
 	// A node is a constant xOR a function
 	Function Function
 	Constant any
@@ -48,4 +50,21 @@ func (node Node) ReadConstantNamedChildString(name string) (string, error) {
 		return "", errors.New(fmt.Sprintf("\"%s\" constant is not a string: takes value %v", name, child.Constant))
 	}
 	return value, nil
+}
+
+// Cost calculates the weights of an AST subtree to reorder, when the parent is commutative,
+// nodes to prioritize faster ones.
+func (node Node) Cost() int {
+	selfCost := 0
+	childCost := 0
+
+	if attrs, err := node.Function.Attributes(); err == nil {
+		selfCost = attrs.Cost
+	}
+
+	for _, ch := range node.Children {
+		childCost += ch.Cost()
+	}
+
+	return selfCost + childCost
 }

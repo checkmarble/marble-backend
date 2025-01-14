@@ -11,6 +11,7 @@ func EvaluateAst(ctx context.Context, environment AstEvaluationEnvironment, node
 	// Early exit for constant, because it should have no children.
 	if node.Function == ast.FUNC_CONSTANT {
 		return ast.NodeEvaluation{
+			Index:       node.Index,
 			Function:    node.Function,
 			ReturnValue: node.Constant,
 			Errors:      []error{},
@@ -37,10 +38,13 @@ func EvaluateAst(ctx context.Context, environment AstEvaluationEnvironment, node
 		return
 	}
 
+	weightedNodes := NewWeightedNodes(environment, node, node.Children)
+
 	// eval each child
 	evaluation := ast.NodeEvaluation{
+		Index:         node.Index,
 		Function:      node.Function,
-		Children:      pure_utils.MapWhile(node.Children, evalChild),
+		Children:      weightedNodes.Reorder(pure_utils.MapWhile(weightedNodes.Sorted(), evalChild)),
 		NamedChildren: pure_utils.MapValuesWhile(node.NamedChildren, evalChild),
 	}
 
