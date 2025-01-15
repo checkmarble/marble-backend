@@ -57,12 +57,13 @@ type IterationUsecaseRepository interface {
 }
 
 type ScenarioIterationUsecase struct {
-	repository                IterationUsecaseRepository
-	enforceSecurity           security.EnforceSecurityScenario
-	scenarioFetcher           scenarios.ScenarioFetcher
-	validateScenarioIteration scenarios.ValidateScenarioIteration
-	executorFactory           executor_factory.ExecutorFactory
-	transactionFactory        executor_factory.TransactionFactory
+	repository                    IterationUsecaseRepository
+	sanctionCheckConfigRepository SanctionCheckConfigRepository
+	enforceSecurity               security.EnforceSecurityScenario
+	scenarioFetcher               scenarios.ScenarioFetcher
+	validateScenarioIteration     scenarios.ValidateScenarioIteration
+	executorFactory               executor_factory.ExecutorFactory
+	transactionFactory            executor_factory.TransactionFactory
 }
 
 func (usecase *ScenarioIterationUsecase) ListScenarioIterations(
@@ -91,6 +92,18 @@ func (usecase *ScenarioIterationUsecase) GetScenarioIteration(ctx context.Contex
 	if err != nil {
 		return models.ScenarioIteration{}, err
 	}
+
+	scc, err := usecase.sanctionCheckConfigRepository.GetSanctionCheckConfig(ctx,
+		usecase.executorFactory.NewExecutor(), si.Id)
+
+	switch {
+	case err == nil:
+		si.SanctionCheckConfig = &scc
+	case !errors.Is(err, models.NotFoundError):
+		return models.ScenarioIteration{}, errors.Wrap(err,
+			"could not retrieve sanction check config from scenario iteration")
+	}
+
 	if err := usecase.enforceSecurity.ReadScenarioIteration(si); err != nil {
 		return models.ScenarioIteration{}, err
 	}
@@ -148,29 +161,49 @@ func (usecase *ScenarioIterationUsecase) CreateScenarioIteration(ctx context.Con
 func (usecase *ScenarioIterationUsecase) UpdateScenarioIteration(ctx context.Context,
 	organizationId string, scenarioIteration models.UpdateScenarioIterationInput,
 ) (iteration models.ScenarioIteration, err error) {
-	exec := usecase.executorFactory.NewExecutor()
-	scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, exec, scenarioIteration.Id)
+	updatedScenarioIteration, err := executor_factory.TransactionReturnValue(
+		ctx,
+		usecase.transactionFactory,
+		func(tx repositories.Transaction) (models.ScenarioIteration, error) {
+			scenarioAndIteration, err := usecase.scenarioFetcher.FetchScenarioAndIteration(ctx, tx, scenarioIteration.Id)
+			if err != nil {
+				return iteration, err
+			}
+			if err := usecase.enforceSecurity.UpdateScenario(scenarioAndIteration.Scenario); err != nil {
+				return iteration, err
+			}
+
+			body := scenarioIteration.Body
+			if body.Schedule != nil && *body.Schedule != "" {
+				gron := gronx.New()
+				ok := gron.IsValid(*body.Schedule)
+				if !ok {
+					return iteration, fmt.Errorf("invalid schedule: %w", models.BadParameterError)
+				}
+			}
+			if scenarioAndIteration.Iteration.Version != nil {
+				return iteration, errors.Wrap(
+					models.ErrScenarioIterationNotDraft,
+					fmt.Sprintf("iteration %s is not a draft", scenarioAndIteration.Iteration.Id),
+				)
+			}
+
+			if scenarioIteration.Body.SanctionCheckConfig != nil {
+				if _, err := usecase.sanctionCheckConfigRepository.UpdateSanctionCheckConfig(ctx, tx,
+					scenarioAndIteration.Iteration.Id, *scenarioIteration.Body.SanctionCheckConfig); err != nil {
+					return iteration, err
+				}
+			}
+
+			scenarioIteration, err := usecase.repository.UpdateScenarioIteration(ctx, tx, scenarioIteration)
+
+			return scenarioIteration, err
+		})
 	if err != nil {
-		return iteration, err
+		return models.ScenarioIteration{}, err
 	}
-	if err := usecase.enforceSecurity.UpdateScenario(scenarioAndIteration.Scenario); err != nil {
-		return iteration, err
-	}
-	body := scenarioIteration.Body
-	if body.Schedule != nil && *body.Schedule != "" {
-		gron := gronx.New()
-		ok := gron.IsValid(*body.Schedule)
-		if !ok {
-			return iteration, fmt.Errorf("invalid schedule: %w", models.BadParameterError)
-		}
-	}
-	if scenarioAndIteration.Iteration.Version != nil {
-		return iteration, errors.Wrap(
-			models.ErrScenarioIterationNotDraft,
-			fmt.Sprintf("iteration %s is not a draft", scenarioAndIteration.Iteration.Id),
-		)
-	}
-	return usecase.repository.UpdateScenarioIteration(ctx, exec, scenarioIteration)
+
+	return updatedScenarioIteration, nil
 }
 
 func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
