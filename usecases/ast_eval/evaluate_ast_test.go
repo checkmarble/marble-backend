@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/utils"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -90,4 +91,90 @@ func NewAstOrFalse() ast.Node {
 		AddChild(ast.Node{Constant: false}).
 		AddChild(ast.Node{Constant: false}).
 		AddChild(ast.Node{Constant: false})
+}
+
+func TestLazyAnd(t *testing.T) {
+	environment := NewAstEvaluationEnvironment()
+
+	for _, value := range []bool{true, false} {
+		root := ast.Node{Function: ast.FUNC_AND}.
+			AddChild(ast.Node{Function: ast.FUNC_EQUAL}.
+				AddChild(ast.Node{Constant: value}).
+				AddChild(ast.Node{Constant: true})).
+			AddChild(ast.Node{Function: ast.FUNC_UNKNOWN})
+
+		evaluation, ok := EvaluateAst(context.TODO(), environment, root)
+
+		switch value {
+		case false:
+			assert.True(t, ok, "unknown node should not be evaluated because of AND lazy evaluation")
+			assert.Len(t, evaluation.Children, 1, "lazy evaluated AND should only have one child")
+		case true:
+			assert.False(t, ok, "unknown node should be evaluated because of AND lazy evaluation")
+			assert.Len(t, evaluation.Children, 2, "lazy evaluated AND should have two children")
+		}
+	}
+}
+
+func TestLazyOr(t *testing.T) {
+	environment := NewAstEvaluationEnvironment()
+
+	for _, value := range []bool{true, false} {
+		root := ast.Node{Function: ast.FUNC_OR}.
+			AddChild(ast.Node{Function: ast.FUNC_EQUAL}.
+				AddChild(ast.Node{Constant: value}).
+				AddChild(ast.Node{Constant: true})).
+			AddChild(ast.Node{Function: ast.FUNC_UNKNOWN})
+
+		evaluation, ok := EvaluateAst(context.TODO(), environment, root)
+
+		switch value {
+		case true:
+			assert.True(t, ok, "unknown node should not be evaluated because of OR lazy evaluation")
+			assert.Len(t, evaluation.Children, 1, "lazy evaluates OR should only have one child")
+		case false:
+			assert.False(t, ok, "unknown node should be evaluated because of OR lazy evaluation")
+			assert.Len(t, evaluation.Children, 2, "lazy evaluated AND should have two children")
+		}
+	}
+}
+
+func TestLazyBooleanNulls(t *testing.T) {
+	tts := []struct {
+		fn            ast.Function
+		lhs, rhs, res *bool
+	}{
+		{ast.FUNC_OR, nil, utils.Ptr(true), utils.Ptr(true)},
+		{ast.FUNC_OR, utils.Ptr(true), nil, utils.Ptr(true)},
+		{ast.FUNC_OR, nil, utils.Ptr(false), nil},
+		{ast.FUNC_OR, utils.Ptr(false), nil, nil},
+		{ast.FUNC_AND, nil, utils.Ptr(true), nil},
+		{ast.FUNC_AND, utils.Ptr(true), nil, nil},
+		{ast.FUNC_AND, nil, utils.Ptr(false), utils.Ptr(false)},
+		{ast.FUNC_AND, utils.Ptr(false), nil, utils.Ptr(false)},
+	}
+
+	environment := NewAstEvaluationEnvironment()
+
+	for _, tt := range tts {
+		root := ast.Node{Function: tt.fn}
+
+		for _, op := range []*bool{tt.lhs, tt.rhs} {
+			switch op {
+			case nil:
+				root = root.AddChild(ast.Node{Constant: nil})
+			default:
+				root = root.AddChild(ast.Node{Constant: *op})
+			}
+		}
+
+		evaluation, _ := EvaluateAst(context.TODO(), environment, root)
+
+		switch {
+		case tt.res == nil:
+			assert.Equal(t, nil, evaluation.ReturnValue)
+		default:
+			assert.Equal(t, *tt.res, evaluation.ReturnValue)
+		}
+	}
 }

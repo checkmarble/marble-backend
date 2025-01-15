@@ -50,3 +50,37 @@ func MapValuesErr[Key comparable, T any, U any](src map[Key]T, f func(T) (U, err
 	}
 	return result, nil
 }
+
+// MapWhile maps over items in a slice and produces a slice of items of another type.
+// Contrary to regular Map(), the callbacks returns a second boolean value to indicate if the operation
+// should continue. It stops whenever the callback returns false.
+func MapWhile[T, U any](src []T, f func(T) (U, bool)) []U {
+	us := make([]U, 0, len(src))
+	for i := range src {
+		item, next := f(src[i])
+
+		us = append(us, item)
+
+		if !next {
+			break
+		}
+	}
+	return us
+}
+
+// MapValuesWhile maps over a map's values in a slice and produces a slice of items of another type.
+// Contrary to regular MapValues(), the callbacks returns a second boolean value to indicate if the operation
+// should continue. It stops whenever the callback returns false.
+func MapValuesWhile[Key comparable, T any, U any](src map[Key]T, f func(T) (U, bool)) map[Key]U {
+	result := make(map[Key]U, len(src))
+	for key, value := range src {
+		item, next := f(value)
+
+		result[key] = item
+
+		if !next {
+			break
+		}
+	}
+	return result
+}

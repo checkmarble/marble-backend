@@ -227,6 +227,8 @@ func (validator *AstValidatorImpl) MakeDryRunEnvironment(ctx context.Context,
 		ClientObject:                  clientObject,
 		DataModel:                     dataModel,
 		DatabaseAccessReturnFakeValue: true,
-	})
+	}).
+		WithoutCircuitBreaking()
+
 	return env, nil
 }
