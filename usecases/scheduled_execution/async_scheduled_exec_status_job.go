@@ -39,6 +39,7 @@ type AsyncScheduledExecWorker struct {
 	webhookEventsSender            webhookEventsUsecase
 	snoozesReader                  snoozesForDecisionReader
 	scenarioFetcher                scenarios.ScenarioFetcher
+	sanctionCheckConfigRepository  repositories.EvalSanctionCheckConfigRepository
 }
 
 func NewAsyncScheduledExecWorker(
@@ -53,6 +54,7 @@ func NewAsyncScheduledExecWorker(
 	webhookEventsSender webhookEventsUsecase,
 	snoozesReader snoozesForDecisionReader,
 	scenarioFetcher scenarios.ScenarioFetcher,
+	sanctionCheckConfigRepository repositories.EvalSanctionCheckConfigRepository,
 ) AsyncScheduledExecWorker {
 	return AsyncScheduledExecWorker{
 		repository:                     repository,
@@ -66,6 +68,7 @@ func NewAsyncScheduledExecWorker(
 		webhookEventsSender:            webhookEventsSender,
 		snoozesReader:                  snoozesReader,
 		scenarioFetcher:                scenarioFetcher,
+		sanctionCheckConfigRepository:  sanctionCheckConfigRepository,
 	}
 }
 
