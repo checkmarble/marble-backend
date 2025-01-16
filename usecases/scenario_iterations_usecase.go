@@ -223,6 +223,17 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 			if err != nil {
 				return models.ScenarioIteration{}, err
 			}
+
+			var sanctionCheckConfig *models.SanctionCheckConfig
+
+			switch scc, err := usecase.sanctionCheckConfigRepository.GetSanctionCheckConfig(ctx, tx, si.Id); {
+			case err == nil:
+				sanctionCheckConfig = &scc
+			case !errors.Is(err, models.NotFoundError):
+				return models.ScenarioIteration{}, errors.Wrap(err,
+					"could not retrieve sanction check config while creating draft")
+			}
+
 			iterations, err := usecase.repository.ListScenarioIterations(
 				ctx,
 				tx,
@@ -284,7 +295,19 @@ func (usecase *ScenarioIterationUsecase) CreateDraftFromScenarioIteration(
 					return models.ScenarioIteration{}, err
 				}
 			}
-			return usecase.repository.CreateScenarioIterationAndRules(ctx, tx, organizationId, createScenarioIterationInput)
+
+			newScenarioIteration, err := usecase.repository.CreateScenarioIterationAndRules(
+				ctx, tx, organizationId, createScenarioIterationInput)
+
+			if sanctionCheckConfig != nil {
+				if _, err := usecase.sanctionCheckConfigRepository.UpdateSanctionCheckConfig(ctx, tx,
+					newScenarioIteration.Id, *sanctionCheckConfig); err != nil {
+					return models.ScenarioIteration{}, errors.Wrap(err,
+						"could not duplicate sanction check config for new iteration")
+				}
+			}
+
+			return newScenarioIteration, err
 		})
 	if err != nil {
 		return models.ScenarioIteration{}, err

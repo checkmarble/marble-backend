@@ -32,6 +32,10 @@ type ScenarioEvaluationParameters struct {
 	Pivot             *models.Pivot
 }
 
+type EvalSanctionCheckUsecase interface {
+	Execute(context.Context, models.SanctionCheckConfig, models.OpenSanctionsQuery) (models.SanctionCheckResult, error)
+}
+
 type SnoozesForDecisionReader interface {
 	ListActiveRuleSnoozesForDecision(
 		ctx context.Context,
@@ -42,14 +46,16 @@ type SnoozesForDecisionReader interface {
 }
 
 type ScenarioEvaluationRepositories struct {
-	EvalScenarioRepository        repositories.EvalScenarioRepository
-	EvalTestRunScenarioRepository repositories.EvalTestRunScenarioRepository
-	ScenarioTestRunRepository     repositories.ScenarioTestRunRepository
-	ScenarioRepository            repositories.ScenarioUsecaseRepository
-	ExecutorFactory               executor_factory.ExecutorFactory
-	IngestedDataReadRepository    repositories.IngestedDataReadRepository
-	EvaluateAstExpression         ast_eval.EvaluateAstExpression
-	SnoozeReader                  SnoozesForDecisionReader
+	EvalScenarioRepository            repositories.EvalScenarioRepository
+	EvalSanctionCheckConfigRepository repositories.EvalSanctionCheckConfigRepository
+	EvalSanctionCheckUsecase          EvalSanctionCheckUsecase
+	EvalTestRunScenarioRepository     repositories.EvalTestRunScenarioRepository
+	ScenarioTestRunRepository         repositories.ScenarioTestRunRepository
+	ScenarioRepository                repositories.ScenarioUsecaseRepository
+	ExecutorFactory                   executor_factory.ExecutorFactory
+	IngestedDataReadRepository        repositories.IngestedDataReadRepository
+	EvaluateAstExpression             ast_eval.EvaluateAstExpression
+	SnoozeReader                      SnoozesForDecisionReader
 }
 
 func processScenarioIteration(ctx context.Context, params ScenarioEvaluationParameters,
@@ -123,6 +129,19 @@ func processScenarioIteration(ctx context.Context, params ScenarioEvaluationPara
 	if errEval != nil {
 		return models.ScenarioExecution{}, errors.Wrap(errEval,
 			"error during concurrent rule evaluation")
+	}
+
+	if iteration.SanctionCheckConfig != nil {
+		query := models.OpenSanctionsQuery{Queries: models.OpenSanctionCheckFilter{
+			"name": []string{"obama"},
+		}}
+
+		result, err := repositories.EvalSanctionCheckUsecase.Execute(ctx, *iteration.SanctionCheckConfig, query)
+		if err != nil {
+			return models.ScenarioExecution{}, errors.Wrap(err, "could not perform sanction check")
+		}
+
+		logger.Debug("SANCTION CHECK: found", "matches", result.Count)
 	}
 
 	// Compute outcome from score
@@ -221,6 +240,16 @@ func EvalTestRunScenario(ctx context.Context,
 		return models.ScenarioExecution{}, err
 	}
 
+	scc, err := repositories.EvalSanctionCheckConfigRepository.GetSanctionCheckConfig(ctx, exec, testRunIteration.Id)
+
+	switch {
+	case err == nil:
+		testRunIteration.SanctionCheckConfig = &scc
+	case !errors.Is(err, models.NotFoundError):
+		return models.ScenarioExecution{}, errors.Wrap(err,
+			"error getting sanction check config from scenario iteration")
+	}
+
 	se, err = processScenarioIteration(ctx, params, testRunIteration, repositories, start, logger, exec)
 	if err != nil {
 		return models.ScenarioExecution{}, err
@@ -279,6 +308,16 @@ func EvalScenario(
 	if err != nil {
 		return models.ScenarioExecution{}, errors.Wrap(err,
 			"error getting scenario iteration in EvalScenario")
+	}
+
+	scc, err := repositories.EvalSanctionCheckConfigRepository.GetSanctionCheckConfig(ctx, exec, versionToRun.Id)
+
+	switch {
+	case err == nil:
+		versionToRun.SanctionCheckConfig = &scc
+	case !errors.Is(err, models.NotFoundError):
+		return models.ScenarioExecution{}, errors.Wrap(err,
+			"error getting sanction check config from scenario iteration")
 	}
 
 	se, errSe := processScenarioIteration(ctx, params, versionToRun, repositories, start, logger, exec)
