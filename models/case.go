@@ -67,6 +67,7 @@ type CreateCaseCommentAttributes struct {
 
 type CaseFilters struct {
 	OrganizationId string
+	Name           string
 	StartDate      time.Time
 	EndDate        time.Time
 	Statuses       []CaseStatus

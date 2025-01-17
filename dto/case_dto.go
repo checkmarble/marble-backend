@@ -90,6 +90,7 @@ type CaseFilters struct {
 	InboxIds  []string  `form:"inbox_id[]"`
 	StartDate time.Time `form:"start_date"`
 	Statuses  []string  `form:"status[]"`
+	Name      string    `form:"name"`
 }
 
 type ReviewCaseDecisionsBody struct {
