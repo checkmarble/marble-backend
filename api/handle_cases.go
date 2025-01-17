@@ -34,8 +34,6 @@ func handleListCases(uc usecases.Usecases) func(c *gin.Context) {
 			return
 		}
 
-		fmt.Printf("%#v\n", filters)
-
 		var paginationAndSortingDto dto.PaginationAndSorting
 		if err := c.ShouldBind(&paginationAndSortingDto); err != nil {
 			c.Status(http.StatusBadRequest)
