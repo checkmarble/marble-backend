@@ -6,12 +6,15 @@ import (
 )
 
 type DBOrganizationResult struct {
-	Id                         string  `db:"id"`
-	DeletedAt                  *int    `db:"deleted_at"`
-	Name                       string  `db:"name"`
-	TransferCheckScenarioId    *string `db:"transfer_check_scenario_id"`
-	UseMarbleDbSchemaAsDefault bool    `db:"use_marble_db_schema_as_default"`
-	DefaultScenarioTimezone    *string `db:"default_scenario_timezone"`
+	Id                         string   `db:"id"`
+	DeletedAt                  *int     `db:"deleted_at"`
+	Name                       string   `db:"name"`
+	TransferCheckScenarioId    *string  `db:"transfer_check_scenario_id"`
+	UseMarbleDbSchemaAsDefault bool     `db:"use_marble_db_schema_as_default"`
+	DefaultScenarioTimezone    *string  `db:"default_scenario_timezone"`
+	SanctionCheckDatasets      []string `db:"sanctioncheck_datasets"`
+	SanctionCheckThreshold     *int     `db:"sanctioncheck_threshold"`
+	SanctionCheckLimit         *int     `db:"sanctioncheck_limit"`
 }
 
 const TABLE_ORGANIZATION = "organizations"
@@ -25,7 +28,10 @@ func AdaptOrganization(db DBOrganizationResult) (models.Organization, error) {
 		TransferCheckScenarioId:    db.TransferCheckScenarioId,
 		UseMarbleDbSchemaAsDefault: db.UseMarbleDbSchemaAsDefault,
 		DefaultScenarioTimezone:    db.DefaultScenarioTimezone,
-		// TODO: Actually get it from the database
-		OpenSanctionsConfig: models.DefaultOrganizationOpenSanctionsConfig(),
+		OpenSanctionsConfig: models.OrganizationOpenSanctionsConfig{
+			Datasets:       db.SanctionCheckDatasets,
+			MatchThreshold: db.SanctionCheckThreshold,
+			MatchLimit:     db.SanctionCheckLimit,
+		},
 	}, nil
 }
