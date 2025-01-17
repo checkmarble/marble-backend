@@ -33,7 +33,8 @@ type ScenarioEvaluationParameters struct {
 }
 
 type EvalSanctionCheckUsecase interface {
-	Execute(context.Context, models.SanctionCheckConfig, models.OpenSanctionsQuery) (models.SanctionCheckResult, error)
+	Execute(context.Context, string, models.SanctionCheckConfig,
+		models.OpenSanctionsQuery) (models.SanctionCheckResult, error)
 }
 
 type SnoozesForDecisionReader interface {
@@ -137,7 +138,8 @@ func processScenarioIteration(ctx context.Context, params ScenarioEvaluationPara
 			"name": []string{"obama"},
 		}}
 
-		result, err := repositories.EvalSanctionCheckUsecase.Execute(ctx, *iteration.SanctionCheckConfig, query)
+		result, err := repositories.EvalSanctionCheckUsecase.Execute(ctx,
+			params.Scenario.OrganizationId, *iteration.SanctionCheckConfig, query)
 		if err != nil {
 			return models.ScenarioExecution{}, errors.Wrap(err, "could not perform sanction check")
 		}
