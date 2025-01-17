@@ -56,4 +56,10 @@ type UpdateScenarioIterationBody struct {
 
 type SanctionCheckConfig struct {
 	Enabled bool
+	Outcome SanctionCheckOutcome
+}
+
+type SanctionCheckOutcome struct {
+	ForceOutcome  Outcome
+	ScoreModifier int
 }
