@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 
+	"github.com/checkmarble/marble-backend/infra"
 	"github.com/checkmarble/marble-backend/models"
 	"github.com/checkmarble/marble-backend/repositories/httpmodels"
 	"github.com/checkmarble/marble-backend/utils"
@@ -14,12 +16,9 @@ import (
 	"github.com/google/uuid"
 )
 
-const (
-	// TODO: Pull this as server configuration
-	DEV_YENTE_URL = "http://app.yente.orb.local"
-)
-
-type OpenSanctionsRepository struct{}
+type OpenSanctionsRepository struct {
+	opensanctions infra.OpenSanctions
+}
 
 type openSanctionsRequest struct {
 	Queries map[string]openSanctionsRequestQuery `json:"queries"`
@@ -62,7 +61,7 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context, cfg models.Sanct
 	return httpmodels.AdaptOpenSanctionsResult(matches)
 }
 
-func (OpenSanctionsRepository) searchRequest(ctx context.Context, query models.OpenSanctionsQuery) (*http.Request, error) {
+func (repo OpenSanctionsRepository) searchRequest(ctx context.Context, query models.OpenSanctionsQuery) (*http.Request, error) {
 	q := openSanctionsRequest{
 		Queries: make(map[string]openSanctionsRequestQuery, len(query.Queries)),
 	}
@@ -80,8 +79,16 @@ func (OpenSanctionsRepository) searchRequest(ctx context.Context, query models.O
 		return nil, errors.Wrap(err, "could not parse OpenSanctions response")
 	}
 
-	url := fmt.Sprintf("%s/match/sanctions", DEV_YENTE_URL)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, &body)
+	requestUrl := fmt.Sprintf("%s/match/sanctions", repo.opensanctions.Host())
+
+	if len(repo.opensanctions.ApiKey()) > 0 {
+		qs := url.Values{}
+		qs.Set("api_key", repo.opensanctions.ApiKey())
+
+		requestUrl = fmt.Sprintf("%s?%s", requestUrl, qs.Encode())
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestUrl, &body)
 
 	return req, err
 }
