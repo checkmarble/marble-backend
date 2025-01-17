@@ -10,7 +10,7 @@ import (
 type SanctionCheckConfigRepository interface {
 	GetSanctionCheckConfig(ctx context.Context, exec repositories.Executor, scenarioIterationId string) (models.SanctionCheckConfig, error)
 	UpdateSanctionCheckConfig(ctx context.Context, exec repositories.Executor,
-		scenarioIterationId string, sanctionCheckConfig models.SanctionCheckConfig) (models.SanctionCheckConfig, error)
+		scenarioIterationId string, sanctionCheckConfig models.UpdateSanctionCheckConfigInput) (models.SanctionCheckConfig, error)
 }
 
 // TODO: Will we have a usecase for sanction checks?
