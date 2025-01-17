@@ -188,16 +188,19 @@ func (usecase *ScenarioIterationUsecase) UpdateScenarioIteration(ctx context.Con
 				)
 			}
 
+			updatedScenarioIteration, err := usecase.repository.UpdateScenarioIteration(ctx, tx, scenarioIteration)
+
 			if scenarioIteration.Body.SanctionCheckConfig != nil {
-				if _, err := usecase.sanctionCheckConfigRepository.UpdateSanctionCheckConfig(ctx, tx,
-					scenarioAndIteration.Iteration.Id, *scenarioIteration.Body.SanctionCheckConfig); err != nil {
+				scc, err := usecase.sanctionCheckConfigRepository.UpdateSanctionCheckConfig(ctx, tx,
+					scenarioAndIteration.Iteration.Id, *scenarioIteration.Body.SanctionCheckConfig)
+				if err != nil {
 					return iteration, err
 				}
+
+				updatedScenarioIteration.SanctionCheckConfig = &scc
 			}
 
-			scenarioIteration, err := usecase.repository.UpdateScenarioIteration(ctx, tx, scenarioIteration)
-
-			return scenarioIteration, err
+			return updatedScenarioIteration, err
 		})
 	if err != nil {
 		return models.ScenarioIteration{}, err
