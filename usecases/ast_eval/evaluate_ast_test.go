@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/checkmarble/marble-backend/models/ast"
+	"github.com/checkmarble/marble-backend/usecases/ast_eval/evaluate"
 	"github.com/checkmarble/marble-backend/utils"
 
 	"github.com/stretchr/testify/assert"
@@ -94,7 +95,7 @@ func NewAstOrFalse() ast.Node {
 }
 
 func TestLazyAnd(t *testing.T) {
-	environment := NewAstEvaluationEnvironment()
+	environment := NewAstEvaluationEnvironment().WithoutCostOptimizations()
 
 	for _, value := range []bool{true, false} {
 		root := ast.Node{Function: ast.FUNC_AND}.
@@ -117,7 +118,7 @@ func TestLazyAnd(t *testing.T) {
 }
 
 func TestLazyOr(t *testing.T) {
-	environment := NewAstEvaluationEnvironment()
+	environment := NewAstEvaluationEnvironment().WithoutCostOptimizations()
 
 	for _, value := range []bool{true, false} {
 		root := ast.Node{Function: ast.FUNC_OR}.
@@ -154,7 +155,7 @@ func TestLazyBooleanNulls(t *testing.T) {
 		{ast.FUNC_AND, utils.Ptr(false), nil, utils.Ptr(false)},
 	}
 
-	environment := NewAstEvaluationEnvironment()
+	environment := NewAstEvaluationEnvironment().WithoutCostOptimizations()
 
 	for _, tt := range tts {
 		root := ast.Node{Function: tt.fn}
@@ -177,4 +178,35 @@ func TestLazyBooleanNulls(t *testing.T) {
 			assert.Equal(t, *tt.res, evaluation.ReturnValue)
 		}
 	}
+}
+
+const TEST_FUNC_COSTLY = -10
+
+type costlyNode struct{}
+
+func (costlyNode) Evaluate(ctx context.Context, arguments ast.Arguments) (any, []error) {
+	return evaluate.MakeEvaluateResult(false)
+}
+
+func TestAggregatesOrderedLast(t *testing.T) {
+	ast.FuncAttributesMap[TEST_FUNC_COSTLY] = ast.FuncAttributes{
+		Cost: 1000,
+	}
+
+	defer delete(ast.FuncAttributesMap, TEST_FUNC_COSTLY)
+
+	environment := NewAstEvaluationEnvironment()
+	environment.AddEvaluator(TEST_FUNC_COSTLY, costlyNode{})
+
+	root := ast.Node{Function: ast.FUNC_OR}.
+		AddChild(ast.Node{Function: TEST_FUNC_COSTLY}).
+		AddChild(ast.Node{Constant: true})
+
+	evaluation, ok := EvaluateAst(context.TODO(), environment, root)
+
+	assert.True(t, ok)
+	assert.Equal(t, ast.NodeEvaluation{Index: 0, Skipped: true, ReturnValue: nil}, evaluation.Children[0])
+	assert.Equal(t, false, evaluation.Children[1].Skipped)
+	assert.Equal(t, true, evaluation.Children[1].ReturnValue)
+	assert.Equal(t, true, evaluation.ReturnValue)
 }

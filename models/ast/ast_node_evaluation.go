@@ -7,6 +7,14 @@ import (
 )
 
 type NodeEvaluation struct {
+	// Index of the initial node winhin its level of the AST tree, used to
+	// reorder the results as they were. This should become obsolete when each
+	// node has a unique ID.
+	Index int
+	// Skipped indicates whether this node was evaluated at all or not. A `true` values means the
+	// engine determined the result of this node would not impact the overall decision's outcome.
+	Skipped bool
+
 	Function    Function
 	ReturnValue any
 	Errors      []error

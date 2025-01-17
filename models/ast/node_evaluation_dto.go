@@ -14,6 +14,7 @@ type NodeEvaluationDto struct {
 	Errors        []EvaluationErrorDto         `json:"errors"`
 	Children      []NodeEvaluationDto          `json:"children,omitempty"`
 	NamedChildren map[string]NodeEvaluationDto `json:"named_children,omitempty"`
+	Skipped       bool                         `json:"skipped"`
 }
 
 func AdaptNodeEvaluationDto(evaluation NodeEvaluation) NodeEvaluationDto {
@@ -29,6 +30,7 @@ func AdaptNodeEvaluationDto(evaluation NodeEvaluation) NodeEvaluationDto {
 		Errors:        pure_utils.Map(evaluation.Errors, AdaptEvaluationErrorDto),
 		Children:      pure_utils.Map(evaluation.Children, AdaptNodeEvaluationDto),
 		NamedChildren: pure_utils.MapValues(evaluation.NamedChildren, AdaptNodeEvaluationDto),
+		Skipped:       evaluation.Skipped,
 	}
 }
 
