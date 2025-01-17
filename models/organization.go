@@ -20,6 +20,23 @@ type Organization struct {
 	// to a separate DB.
 	// TODO: clean this up when it's no longuer used.
 	UseMarbleDbSchemaAsDefault bool
+
+	OpenSanctionsConfig OrganizationOpenSanctionsConfig
+}
+
+// TODO: Add other organization-level configuration options
+type OrganizationOpenSanctionsConfig struct {
+	Datasets       []string
+	MatchThreshold int
+	MatchLimit     int
+}
+
+func DefaultOrganizationOpenSanctionsConfig() OrganizationOpenSanctionsConfig {
+	return OrganizationOpenSanctionsConfig{
+		Datasets:       []string{},
+		MatchThreshold: 70,
+		MatchLimit:     20,
+	}
 }
 
 type CreateOrganizationInput struct {

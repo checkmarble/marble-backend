@@ -25,5 +25,7 @@ func AdaptOrganization(db DBOrganizationResult) (models.Organization, error) {
 		TransferCheckScenarioId:    db.TransferCheckScenarioId,
 		UseMarbleDbSchemaAsDefault: db.UseMarbleDbSchemaAsDefault,
 		DefaultScenarioTimezone:    db.DefaultScenarioTimezone,
+		// TODO: Actually get it from the database
+		OpenSanctionsConfig: models.DefaultOrganizationOpenSanctionsConfig(),
 	}, nil
 }
