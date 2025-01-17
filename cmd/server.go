@@ -64,6 +64,10 @@ func RunServer() error {
 		ProjectID: utils.GetEnv("CONVOY_PROJECT_ID", ""),
 		RateLimit: utils.GetEnv("CONVOY_RATE_LIMIT", 50),
 	}
+	openSanctionsConfig := infra.InitializeOpenSanctions(
+		utils.GetEnv("OPENSANCTIONS_API_HOST", ""),
+		utils.GetEnv("OPENSANCTIONS_API_KEY", ""),
+	)
 
 	seedOrgConfig := models.SeedOrgConfiguration{
 		CreateGlobalAdminEmail: utils.GetEnv("CREATE_GLOBAL_ADMIN_EMAIL", ""),
@@ -133,6 +137,7 @@ func RunServer() error {
 			infra.InitializeConvoyRessources(convoyConfiguration),
 			convoyConfiguration.RateLimit,
 		),
+		repositories.WithOpenSanctions(openSanctionsConfig),
 		repositories.WithClientDbConfig(clientDbConfig),
 		repositories.WithTracerProvider(telemetryRessources.TracerProvider),
 	)

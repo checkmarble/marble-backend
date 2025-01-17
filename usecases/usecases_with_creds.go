@@ -2,7 +2,6 @@ package usecases
 
 import (
 	"github.com/checkmarble/marble-backend/models"
-	"github.com/checkmarble/marble-backend/repositories"
 	"github.com/checkmarble/marble-backend/usecases/decision_phantom"
 	"github.com/checkmarble/marble-backend/usecases/decision_workflows"
 	"github.com/checkmarble/marble-backend/usecases/inboxes"
@@ -120,7 +119,7 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 
 func (usecases *UsecasesWithCreds) NewSanctionCheckUsecase() SanctionCheckUsecase {
 	return SanctionCheckUsecase{
-		openSanctionsProvider: repositories.OpenSanctionsRepository{},
+		openSanctionsProvider: usecases.Repositories.OpenSanctionsRepository,
 		repository:            &usecases.Repositories.MarbleDbRepository,
 	}
 }
