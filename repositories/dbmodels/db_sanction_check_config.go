@@ -13,17 +13,25 @@ type DBSanctionCheckConfigs struct {
 	Id                  string    `db:"id"`
 	ScenarioIterationId string    `db:"scenario_iteration_id"`
 	Enabled             bool      `db:"enabled"`
+	ForcedOutcome       *string   `db:"forced_outcome"`
+	ScoreModifier       int       `db:"score_modifier"`
 	UpdatedAt           time.Time `db:"updated_at"`
 }
 
 var SanctionCheckConfigColumnList = utils.ColumnList[DBSanctionCheckConfigs]()
 
 func AdaptSanctionCheckConfig(db DBSanctionCheckConfigs) (models.SanctionCheckConfig, error) {
+	var forcedOutcome models.Outcome
+
+	if db.ForcedOutcome != nil {
+		forcedOutcome = models.OutcomeFrom(*db.ForcedOutcome)
+	}
+
 	scc := models.SanctionCheckConfig{
 		Enabled: db.Enabled,
-		// TODO: retrieve from database
 		Outcome: models.SanctionCheckOutcome{
-			ScoreModifier: -20,
+			ForceOutcome:  forcedOutcome,
+			ScoreModifier: db.ScoreModifier,
 		},
 	}
 
