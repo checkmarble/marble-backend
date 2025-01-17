@@ -105,7 +105,7 @@ func TestIngestedDataQueryAggregatedValueWithoutFilter(t *testing.T) {
 		utils.DummyFieldNameForInt,
 		models.Int,
 		ast.AGGREGATOR_AVG,
-		[]FilterWithType{},
+		[]models.FilterWithType{},
 	)
 	assert.Empty(t, err)
 	sql, args, err := query.ToSql()
@@ -123,7 +123,7 @@ func TestIngestedDataQueryCountWithoutFilter(t *testing.T) {
 		utils.DummyFieldNameForInt,
 		models.Int,
 		ast.AGGREGATOR_COUNT,
-		[]FilterWithType{})
+		[]models.FilterWithType{})
 	assert.Empty(t, err)
 	sql, args, err := query.ToSql()
 	assert.Empty(t, err)
@@ -134,7 +134,7 @@ func TestIngestedDataQueryCountWithoutFilter(t *testing.T) {
 }
 
 func TestIngestedDataQueryAggregatedValueWithFilter(t *testing.T) {
-	filters := []FilterWithType{
+	filters := []models.FilterWithType{
 		{
 			Filter: ast.Filter{
 				TableName: utils.DummyTableNameFirst,

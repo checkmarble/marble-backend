@@ -12,12 +12,6 @@ import (
 	"github.com/checkmarble/marble-backend/models/ast"
 )
 
-// Define where to put that
-type FilterWithType struct {
-	Filter    ast.Filter
-	FieldType models.DataType
-}
-
 type IngestedDataReadRepository interface {
 	GetDbField(ctx context.Context, exec Executor, readParams models.DbFieldReadParams) (any, error)
 	ListAllObjectIdsFromTable(
@@ -39,7 +33,7 @@ type IngestedDataReadRepository interface {
 		fieldName string,
 		fieldType models.DataType,
 		aggregator ast.Aggregator,
-		filters []FilterWithType,
+		filters []models.FilterWithType,
 	) (any, error)
 }
 
@@ -320,7 +314,7 @@ func createQueryAggregated(
 	fieldName string,
 	fieldType models.DataType,
 	aggregator ast.Aggregator,
-	filters []FilterWithType,
+	filters []models.FilterWithType,
 ) (squirrel.SelectBuilder, error) {
 	var selectExpression string
 	if aggregator == ast.AGGREGATOR_COUNT_DISTINCT {
@@ -361,7 +355,7 @@ func (repo *IngestedDataReadRepositoryImpl) QueryAggregatedValue(
 	fieldName string,
 	fieldType models.DataType,
 	aggregator ast.Aggregator,
-	filters []FilterWithType,
+	filters []models.FilterWithType,
 ) (any, error) {
 	if err := validateClientDbExecutor(exec); err != nil {
 		return nil, err

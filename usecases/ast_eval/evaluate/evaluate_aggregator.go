@@ -73,7 +73,7 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 	}
 
 	// Filters validation
-	var filtersWithType []repositories.FilterWithType
+	var filtersWithType []models.FilterWithType
 	if len(filters) > 0 {
 		for _, filter := range filters {
 			if filter.TableName != tableName {
@@ -97,7 +97,7 @@ func (a AggregatorEvaluator) Evaluate(ctx context.Context, arguments ast.Argumen
 				))
 			}
 
-			filtersWithType = append(filtersWithType, repositories.FilterWithType{
+			filtersWithType = append(filtersWithType, models.FilterWithType{
 				Filter:    filter,
 				FieldType: filterFieldType,
 			})
@@ -122,7 +122,7 @@ func (a AggregatorEvaluator) runQueryInRepository(
 	fieldName string,
 	fieldType models.DataType,
 	aggregator ast.Aggregator,
-	filters []repositories.FilterWithType,
+	filters []models.FilterWithType,
 ) (any, error) {
 	if a.ReturnFakeValue {
 		return DryRunQueryAggregatedValue(a.DataModel, tableName, fieldName, aggregator)
