@@ -12,7 +12,6 @@ type HTTPOpenSanctionsResult struct {
 		Total struct {
 			Value int `json:"value"`
 		} `json:"total"`
-		Limit   int `json:"limit"`
 		Results []struct {
 			Id         string   `json:"id"`
 			Schema     string   `json:"schema"`
@@ -30,7 +29,7 @@ func AdaptOpenSanctionsResult(result HTTPOpenSanctionsResult) (models.SanctionCh
 	matches := make(map[string]models.SanctionCheckResultMatch)
 
 	for _, resp := range result.Responses {
-		if resp.Total.Value != resp.Limit {
+		if resp.Total.Value > len(resp.Results) {
 			partial = true
 		}
 
