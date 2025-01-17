@@ -22,11 +22,12 @@ func (repo *MarbleDbRepository) GetSanctionCheckConfig(ctx context.Context, exec
 }
 
 func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, exec Executor,
-	scenarioIterationId string, sanctionCheckConfig models.SanctionCheckConfig,
+	scenarioIterationId string, sanctionCheckConfig models.UpdateSanctionCheckConfigInput,
 ) (models.SanctionCheckConfig, error) {
 	var outcome *string
 
-	if sanctionCheckConfig.Outcome.ForceOutcome != models.Approve {
+	if sanctionCheckConfig.Outcome.ForceOutcome != nil &&
+		*sanctionCheckConfig.Outcome.ForceOutcome != models.Approve {
 		outcome = utils.Ptr(sanctionCheckConfig.Outcome.ForceOutcome.String())
 	}
 
@@ -36,14 +37,26 @@ func (repo *MarbleDbRepository) UpdateSanctionCheckConfig(ctx context.Context, e
 		Values(scenarioIterationId, sanctionCheckConfig.Enabled,
 			outcome,
 			sanctionCheckConfig.Outcome.ScoreModifier).
-		Suffix("ON CONFLICT (scenario_iteration_id) DO UPDATE").
-		Suffix(`SET
-			enabled = EXCLUDED.enabled,
-			forced_outcome = EXCLUDED.forced_outcome,
-			score_modifier = EXCLUDED.score_modifier,
-			updated_at = NOW()
-		`).
-		Suffix(fmt.Sprintf("RETURNING %s", strings.Join(dbmodels.SanctionCheckConfigColumnList, ",")))
+		Suffix("ON CONFLICT (scenario_iteration_id) DO UPDATE SET")
+
+	updateFields := make([]string, 0, 4)
+
+	if sanctionCheckConfig.Enabled != nil {
+		updateFields = append(updateFields, "enabled = EXCLUDED.enabled")
+	}
+	if sanctionCheckConfig.Outcome.ForceOutcome != nil {
+		updateFields = append(updateFields, "forced_outcome = EXCLUDED.forced_outcome")
+	}
+	if sanctionCheckConfig.Outcome.ScoreModifier != nil {
+		updateFields = append(updateFields, "score_modifier = EXCLUDED.score_modifier")
+	}
+
+	updateFields = append(updateFields, "updated_at = NOW()")
+
+	sql = sql.Suffix(strings.Join(updateFields, ","))
+
+	sql = sql.Suffix(fmt.Sprintf("RETURNING %s",
+		strings.Join(dbmodels.SanctionCheckConfigColumnList, ",")))
 
 	return SqlToModel(ctx, exec, sql, dbmodels.AdaptSanctionCheckConfig)
 }
