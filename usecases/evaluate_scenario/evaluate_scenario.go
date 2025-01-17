@@ -132,6 +132,9 @@ func processScenarioIteration(ctx context.Context, params ScenarioEvaluationPara
 			"error during concurrent rule evaluation")
 	}
 
+	// Compute outcome from score
+	var outcome models.Outcome
+
 	if iteration.SanctionCheckConfig != nil {
 		query := models.OpenSanctionsQuery{Queries: models.OpenSanctionCheckFilter{
 			// TODO: take this from the context and the scenario configuration
@@ -144,20 +147,31 @@ func processScenarioIteration(ctx context.Context, params ScenarioEvaluationPara
 			return models.ScenarioExecution{}, errors.Wrap(err, "could not perform sanction check")
 		}
 
+		if result.Count > 0 {
+			switch {
+			case iteration.SanctionCheckConfig.Outcome.ForceOutcome != models.Approve:
+				outcome = iteration.SanctionCheckConfig.Outcome.ForceOutcome
+				logger.Debug("SANCTION CHECK: forcing outcome", "outcome", outcome)
+			case iteration.SanctionCheckConfig.Outcome.ScoreModifier != 0:
+				score += iteration.SanctionCheckConfig.Outcome.ScoreModifier
+				logger.Debug("SANCTION CHECK: score modifier", "modifier",
+					iteration.SanctionCheckConfig.Outcome.ScoreModifier)
+			}
+		}
+
 		logger.Debug("SANCTION CHECK: found", "matches", result.Count, "partial", result.Partial)
 	}
 
-	// Compute outcome from score
-	var outcome models.Outcome
-
-	if score >= *iteration.ScoreDeclineThreshold {
-		outcome = models.Decline
-	} else if score >= *iteration.ScoreBlockAndReviewThreshold {
-		outcome = models.BlockAndReview
-	} else if score >= *iteration.ScoreReviewThreshold {
-		outcome = models.Review
-	} else {
-		outcome = models.Approve
+	if outcome == models.Approve {
+		if score >= *iteration.ScoreDeclineThreshold {
+			outcome = models.Decline
+		} else if score >= *iteration.ScoreBlockAndReviewThreshold {
+			outcome = models.BlockAndReview
+		} else if score >= *iteration.ScoreReviewThreshold {
+			outcome = models.Review
+		} else {
+			outcome = models.Approve
+		}
 	}
 
 	// Build ScenarioExecution as result

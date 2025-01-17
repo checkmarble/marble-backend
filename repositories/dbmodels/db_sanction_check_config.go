@@ -21,6 +21,10 @@ var SanctionCheckConfigColumnList = utils.ColumnList[DBSanctionCheckConfigs]()
 func AdaptSanctionCheckConfig(db DBSanctionCheckConfigs) (models.SanctionCheckConfig, error) {
 	scc := models.SanctionCheckConfig{
 		Enabled: db.Enabled,
+		// TODO: retrieve from database
+		Outcome: models.SanctionCheckOutcome{
+			ScoreModifier: -20,
+		},
 	}
 
 	return scc, nil
