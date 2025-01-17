@@ -35,7 +35,9 @@ type ScenarioIterationBodyDto struct {
 }
 
 type SanctionCheckConfig struct {
-	Enabled bool `json:"enabled"`
+	Enabled       bool    `json:"enabled"`
+	ForceOutcome  *string `json:"force_outcome,omitempty"`
+	ScoreModifier *int    `json:"score_modifier,omitempty"`
 }
 
 func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIterationWithBodyDto, error) {
@@ -58,7 +60,14 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 	}
 	if si.SanctionCheckConfig != nil {
 		body.SanctionCheckConfig = &SanctionCheckConfig{
-			Enabled: si.SanctionCheckConfig.Enabled,
+			Enabled:       si.SanctionCheckConfig.Enabled,
+			ForceOutcome:  nil,
+			ScoreModifier: &si.SanctionCheckConfig.Outcome.ScoreModifier,
+		}
+
+		if si.SanctionCheckConfig.Outcome.ForceOutcome != models.Approve {
+			outcome := si.SanctionCheckConfig.Outcome.ForceOutcome.String()
+			body.SanctionCheckConfig.ForceOutcome = &outcome
 		}
 	}
 
@@ -109,8 +118,22 @@ func AdaptUpdateScenarioIterationInput(input UpdateScenarioIterationBody, iterat
 	}
 
 	if input.Body.SanctionCheckConfig != nil {
+		var forcedOutcome models.Outcome
+		var scoreModifier int
+
+		if input.Body.SanctionCheckConfig.ForceOutcome != nil {
+			forcedOutcome = models.OutcomeFrom(*input.Body.SanctionCheckConfig.ForceOutcome)
+		}
+		if input.Body.SanctionCheckConfig.ScoreModifier != nil {
+			scoreModifier = *input.Body.SanctionCheckConfig.ScoreModifier
+		}
+
 		updateScenarioIterationInput.Body.SanctionCheckConfig = &models.SanctionCheckConfig{
 			Enabled: input.Body.SanctionCheckConfig.Enabled,
+			Outcome: models.SanctionCheckOutcome{
+				ForceOutcome:  forcedOutcome,
+				ScoreModifier: scoreModifier,
+			},
 		}
 	}
 
