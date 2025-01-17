@@ -7,6 +7,7 @@ import (
 	"github.com/cockroachdb/errors"
 
 	"github.com/checkmarble/marble-backend/models"
+	"github.com/checkmarble/marble-backend/utils"
 )
 
 // Read DTO
@@ -35,7 +36,7 @@ type ScenarioIterationBodyDto struct {
 }
 
 type SanctionCheckConfig struct {
-	Enabled       bool    `json:"enabled"`
+	Enabled       *bool   `json:"enabled"`
 	ForceOutcome  *string `json:"force_outcome,omitempty"`
 	ScoreModifier *int    `json:"score_modifier,omitempty"`
 }
@@ -60,7 +61,7 @@ func AdaptScenarioIterationWithBodyDto(si models.ScenarioIteration) (ScenarioIte
 	}
 	if si.SanctionCheckConfig != nil {
 		body.SanctionCheckConfig = &SanctionCheckConfig{
-			Enabled:       si.SanctionCheckConfig.Enabled,
+			Enabled:       &si.SanctionCheckConfig.Enabled,
 			ForceOutcome:  nil,
 			ScoreModifier: &si.SanctionCheckConfig.Outcome.ScoreModifier,
 		}
@@ -118,22 +119,21 @@ func AdaptUpdateScenarioIterationInput(input UpdateScenarioIterationBody, iterat
 	}
 
 	if input.Body.SanctionCheckConfig != nil {
-		var forcedOutcome models.Outcome
-		var scoreModifier int
+		updateScenarioIterationInput.Body.SanctionCheckConfig = &models.UpdateSanctionCheckConfigInput{
+			Enabled: input.Body.SanctionCheckConfig.Enabled,
+			Outcome: models.UpdateSanctionCheckOutcomeInput{
+				ForceOutcome:  nil,
+				ScoreModifier: nil,
+			},
+		}
 
 		if input.Body.SanctionCheckConfig.ForceOutcome != nil {
-			forcedOutcome = models.OutcomeFrom(*input.Body.SanctionCheckConfig.ForceOutcome)
+			updateScenarioIterationInput.Body.SanctionCheckConfig.Outcome.ForceOutcome = utils.Ptr(models.OutcomeFrom(
+				*input.Body.SanctionCheckConfig.ForceOutcome))
 		}
 		if input.Body.SanctionCheckConfig.ScoreModifier != nil {
-			scoreModifier = *input.Body.SanctionCheckConfig.ScoreModifier
-		}
-
-		updateScenarioIterationInput.Body.SanctionCheckConfig = &models.SanctionCheckConfig{
-			Enabled: input.Body.SanctionCheckConfig.Enabled,
-			Outcome: models.SanctionCheckOutcome{
-				ForceOutcome:  forcedOutcome,
-				ScoreModifier: scoreModifier,
-			},
+			updateScenarioIterationInput.Body.SanctionCheckConfig.Outcome.ScoreModifier =
+				input.Body.SanctionCheckConfig.ScoreModifier
 		}
 	}
 
