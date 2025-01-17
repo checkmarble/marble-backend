@@ -133,6 +133,7 @@ func processScenarioIteration(ctx context.Context, params ScenarioEvaluationPara
 
 	if iteration.SanctionCheckConfig != nil {
 		query := models.OpenSanctionsQuery{Queries: models.OpenSanctionCheckFilter{
+			// TODO: take this from the context and the scenario configuration
 			"name": []string{"obama"},
 		}}
 
@@ -141,7 +142,7 @@ func processScenarioIteration(ctx context.Context, params ScenarioEvaluationPara
 			return models.ScenarioExecution{}, errors.Wrap(err, "could not perform sanction check")
 		}
 
-		logger.Debug("SANCTION CHECK: found", "matches", result.Count)
+		logger.Debug("SANCTION CHECK: found", "matches", result.Count, "partial", result.Partial)
 	}
 
 	// Compute outcome from score
