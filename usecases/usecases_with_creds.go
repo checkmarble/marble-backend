@@ -119,8 +119,10 @@ func (usecases *UsecasesWithCreds) NewDecisionUsecase() DecisionUsecase {
 
 func (usecases *UsecasesWithCreds) NewSanctionCheckUsecase() SanctionCheckUsecase {
 	return SanctionCheckUsecase{
-		openSanctionsProvider: usecases.Repositories.OpenSanctionsRepository,
-		repository:            &usecases.Repositories.MarbleDbRepository,
+		organizationRepository: usecases.Repositories.OrganizationRepository,
+		openSanctionsProvider:  usecases.Repositories.OpenSanctionsRepository,
+		repository:             &usecases.Repositories.MarbleDbRepository,
+		executorFactory:        usecases.NewExecutorFactory(),
 	}
 }
 

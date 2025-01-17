@@ -29,10 +29,11 @@ type openSanctionsRequestQuery struct {
 	Properties models.OpenSanctionCheckFilter `json:"properties"`
 }
 
-func (repo OpenSanctionsRepository) Search(ctx context.Context, cfg models.SanctionCheckConfig,
+func (repo OpenSanctionsRepository) Search(ctx context.Context,
+	orgCfg models.OrganizationOpenSanctionsConfig, cfg models.SanctionCheckConfig,
 	query models.OpenSanctionsQuery,
 ) (models.SanctionCheckResult, error) {
-	req, err := repo.searchRequest(ctx, query)
+	req, err := repo.searchRequest(ctx, orgCfg, query)
 	if err != nil {
 		return models.SanctionCheckResult{}, err
 	}
@@ -61,7 +62,9 @@ func (repo OpenSanctionsRepository) Search(ctx context.Context, cfg models.Sanct
 	return httpmodels.AdaptOpenSanctionsResult(matches)
 }
 
-func (repo OpenSanctionsRepository) searchRequest(ctx context.Context, query models.OpenSanctionsQuery) (*http.Request, error) {
+func (repo OpenSanctionsRepository) searchRequest(ctx context.Context,
+	orgCfg models.OrganizationOpenSanctionsConfig, query models.OpenSanctionsQuery,
+) (*http.Request, error) {
 	q := openSanctionsRequest{
 		Queries: make(map[string]openSanctionsRequestQuery, len(query.Queries)),
 	}
@@ -81,14 +84,31 @@ func (repo OpenSanctionsRepository) searchRequest(ctx context.Context, query mod
 
 	requestUrl := fmt.Sprintf("%s/match/sanctions", repo.opensanctions.Host())
 
-	if len(repo.opensanctions.ApiKey()) > 0 {
-		qs := url.Values{}
-		qs.Set("api_key", repo.opensanctions.ApiKey())
-
+	if qs := repo.buildQueryString(orgCfg); len(qs) > 0 {
 		requestUrl = fmt.Sprintf("%s?%s", requestUrl, qs.Encode())
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestUrl, &body)
 
 	return req, err
+}
+
+func (repo OpenSanctionsRepository) buildQueryString(orgCfg models.OrganizationOpenSanctionsConfig) url.Values {
+	qs := url.Values{}
+
+	if len(repo.opensanctions.ApiKey()) > 0 {
+		qs.Set("api_key", repo.opensanctions.ApiKey())
+	}
+
+	if len(orgCfg.Datasets) > 0 {
+		qs["include_dataset"] = orgCfg.Datasets
+	}
+	if orgCfg.MatchLimit > 0 {
+		qs.Set("limit", fmt.Sprintf("%d", orgCfg.MatchLimit))
+	}
+	if orgCfg.MatchThreshold > 0 {
+		qs.Set("threshold", fmt.Sprintf("%.1f", float64(orgCfg.MatchThreshold)/100))
+	}
+
+	return qs
 }
