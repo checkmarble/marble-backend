@@ -27,16 +27,8 @@ type Organization struct {
 // TODO: Add other organization-level configuration options
 type OrganizationOpenSanctionsConfig struct {
 	Datasets       []string
-	MatchThreshold int
-	MatchLimit     int
-}
-
-func DefaultOrganizationOpenSanctionsConfig() OrganizationOpenSanctionsConfig {
-	return OrganizationOpenSanctionsConfig{
-		Datasets:       []string{},
-		MatchThreshold: 70,
-		MatchLimit:     20,
-	}
+	MatchThreshold *int
+	MatchLimit     *int
 }
 
 type CreateOrganizationInput struct {
@@ -46,6 +38,7 @@ type CreateOrganizationInput struct {
 type UpdateOrganizationInput struct {
 	Id                      string
 	DefaultScenarioTimezone *string
+	SanctionCheckConfig     OrganizationOpenSanctionsConfig
 }
 
 type SeedOrgConfiguration struct {
