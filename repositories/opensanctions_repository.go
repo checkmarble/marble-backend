@@ -103,11 +103,11 @@ func (repo OpenSanctionsRepository) buildQueryString(orgCfg models.OrganizationO
 	if len(orgCfg.Datasets) > 0 {
 		qs["include_dataset"] = orgCfg.Datasets
 	}
-	if orgCfg.MatchLimit > 0 {
-		qs.Set("limit", fmt.Sprintf("%d", orgCfg.MatchLimit))
+	if orgCfg.MatchLimit != nil {
+		qs.Set("limit", fmt.Sprintf("%d", *orgCfg.MatchLimit))
 	}
-	if orgCfg.MatchThreshold > 0 {
-		qs.Set("threshold", fmt.Sprintf("%.1f", float64(orgCfg.MatchThreshold)/100))
+	if orgCfg.MatchThreshold != nil {
+		qs.Set("threshold", fmt.Sprintf("%.1f", float64(*orgCfg.MatchThreshold)/100))
 	}
 
 	return qs
