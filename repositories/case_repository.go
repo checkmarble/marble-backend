@@ -245,7 +245,7 @@ func applyCaseFilters(query squirrel.SelectBuilder, filters models.CaseFilters) 
 		query = query.Where(squirrel.Eq{"c.inbox_id": filters.InboxIds})
 	}
 	if filters.Name != "" {
-		query = query.Where(squirrel.ILike{"c.name": filters.Name})
+		query = query.Where("c.name % ?", filters.Name)
 	}
 	return query
 }
