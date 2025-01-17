@@ -65,6 +65,9 @@ func (node Node) Cost() int {
 	for _, ch := range node.Children {
 		childCost += ch.Cost()
 	}
+	for _, ch := range node.NamedChildren {
+		childCost += ch.Cost()
+	}
 
 	return selfCost + childCost
 }
