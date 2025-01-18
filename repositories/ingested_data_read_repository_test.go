@@ -105,7 +105,7 @@ func TestIngestedDataQueryAggregatedValueWithoutFilter(t *testing.T) {
 		utils.DummyFieldNameForInt,
 		models.Int,
 		ast.AGGREGATOR_AVG,
-		[]ast.Filter{},
+		[]models.FilterWithType{},
 	)
 	assert.Empty(t, err)
 	sql, args, err := query.ToSql()
@@ -123,7 +123,7 @@ func TestIngestedDataQueryCountWithoutFilter(t *testing.T) {
 		utils.DummyFieldNameForInt,
 		models.Int,
 		ast.AGGREGATOR_COUNT,
-		[]ast.Filter{})
+		[]models.FilterWithType{})
 	assert.Empty(t, err)
 	sql, args, err := query.ToSql()
 	assert.Empty(t, err)
@@ -134,18 +134,24 @@ func TestIngestedDataQueryCountWithoutFilter(t *testing.T) {
 }
 
 func TestIngestedDataQueryAggregatedValueWithFilter(t *testing.T) {
-	filters := []ast.Filter{
+	filters := []models.FilterWithType{
 		{
-			TableName: utils.DummyTableNameFirst,
-			FieldName: utils.DummyFieldNameForInt,
-			Operator:  ast.FILTER_EQUAL,
-			Value:     1,
+			Filter: ast.Filter{
+				TableName: utils.DummyTableNameFirst,
+				FieldName: utils.DummyFieldNameForInt,
+				Operator:  ast.FILTER_EQUAL,
+				Value:     1,
+			},
+			FieldType: models.Int,
 		},
 		{
-			TableName: utils.DummyTableNameFirst,
-			FieldName: utils.DummyFieldNameForBool,
-			Operator:  ast.FILTER_NOT_EQUAL,
-			Value:     true,
+			Filter: ast.Filter{
+				TableName: utils.DummyTableNameFirst,
+				FieldName: utils.DummyFieldNameForBool,
+				Operator:  ast.FILTER_NOT_EQUAL,
+				Value:     true,
+			},
+			FieldType: models.Bool,
 		},
 	}
 

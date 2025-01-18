@@ -1,5 +1,7 @@
 package ast
 
+import "slices"
+
 type FilterOperator string
 
 const (
@@ -11,8 +13,16 @@ const (
 	FILTER_LESSER_OR_EQUAL   FilterOperator = "<="
 	FILTER_IS_IN_LIST        FilterOperator = "IsInList"
 	FILTER_IS_NOT_IN_LIST    FilterOperator = "IsNotInList"
+	FILTER_IS_EMPTY          FilterOperator = "IsEmpty"
+	FILTER_IS_NOT_EMPTY      FilterOperator = "IsNotEmpty"
+	FILTER_STARTS_WITH       FilterOperator = "StringStartsWith"
+	FILTER_ENDS_WITH         FilterOperator = "StringEndsWith"
 	FILTER_UNKNOWN_OPERATION FilterOperator = "FILTER_UNKNOWN_OPERATION"
 )
+
+func (op FilterOperator) IsUnary() bool {
+	return slices.Contains([]FilterOperator{FILTER_IS_EMPTY, FILTER_IS_NOT_EMPTY}, op)
+}
 
 type Filter struct {
 	TableName string
